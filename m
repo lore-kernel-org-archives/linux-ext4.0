@@ -1,154 +1,438 @@
-From: Manish Katiyar <mkatiyar@gmail.com>
-Subject: Re: [PATCH] ext4: Fix missing iput for root inode in case of all
- failed mount paths.
-Date: Sat, 29 Jan 2011 21:40:34 -0800
-Message-ID: <AANLkTim0XZe2=3AWw4Ydb8F7BQGCf+=FyjKoyadc+3yw@mail.gmail.com>
-References: <AANLkTik8jweuA_kDfzY7H=wP-ikSSwdf-FF1NX09DDCT@mail.gmail.com>
- <032DF412-6B37-4EB7-A687-8216CB1E2BAB@dilger.ca> <AANLkTiku46htAypEN7QNN=UZuRETKGnHJQ8cxt3kYPJg@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Theodore Ts'o" <tytso@mit.edu>, ext4 <linux-ext4@vger.kernel.org>,
-	mkatiyar@gmail.com
-To: Andreas Dilger <adilger@dilger.ca>
+From: hao.bigrat@gmail.com
+Subject: [PATCH 1/3] dumpe2fs: add displaying file system block usage feature, therefore add '-s' flags
+Date: Sun, 30 Jan 2011 14:27:24 +0800
+Message-ID: <1296368844-14013-1-git-send-email-hao.bigrat@gmail.com>
+Cc: Robin Dong <sanbai@taobao.com>, Andreas Dilger <adilger@dilger.ca>,
+	Theodore Tso <tytso@google.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:38095 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751049Ab1A3Fky convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 30 Jan 2011 00:40:54 -0500
-Received: by mail-qw0-f46.google.com with SMTP id 26so4504907qwa.19
-        for <linux-ext4@vger.kernel.org>; Sat, 29 Jan 2011 21:40:54 -0800 (PST)
-In-Reply-To: <AANLkTiku46htAypEN7QNN=UZuRETKGnHJQ8cxt3kYPJg@mail.gmail.com>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:62217 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750704Ab1A3G1v (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 30 Jan 2011 01:27:51 -0500
+Received: by iwn9 with SMTP id 9so4398746iwn.19
+        for <linux-ext4@vger.kernel.org>; Sat, 29 Jan 2011 22:27:50 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jan 16, 2011 at 10:05 AM, Manish Katiyar <mkatiyar@gmail.com> w=
-rote:
-> On Sun, Jan 16, 2011 at 8:20 AM, Andreas Dilger <adilger@dilger.ca> w=
-rote:
->> Why not just put the iput() at failed_mount4() instead of spread aro=
-und the code?
->
-> Thanks Andreas, Here is the updated patch.
->
-> Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
-> ---
-> =A0fs/ext4/super.c | =A0 =A05 +++--
-> =A01 files changed, 3 insertions(+), 2 deletions(-)
->
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index cb10a06..8fa53e9 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -3522,17 +3522,16 @@ no_journal:
-> =A0 =A0 =A0 =A0if (IS_ERR(root)) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext4_msg(sb, KERN_ERR, "get root inode=
- failed");
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ret =3D PTR_ERR(root);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 root =3D NULL;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto failed_mount4;
-> =A0 =A0 =A0 =A0}
-> =A0 =A0 =A0 =A0if (!S_ISDIR(root->i_mode) || !root->i_blocks || !root=
-->i_size) {
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 iput(root);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext4_msg(sb, KERN_ERR, "corrupt root i=
-node, run e2fsck");
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto failed_mount4;
-> =A0 =A0 =A0 =A0}
-> =A0 =A0 =A0 =A0sb->s_root =3D d_alloc_root(root);
-> =A0 =A0 =A0 =A0if (!sb->s_root) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext4_msg(sb, KERN_ERR, "get root dentr=
-y failed");
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 iput(root);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ret =3D -ENOMEM;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto failed_mount4;
-> =A0 =A0 =A0 =A0}
-> @@ -3648,6 +3647,8 @@ cantfind_ext4:
-> =A0 =A0 =A0 =A0goto failed_mount;
->
-> =A0failed_mount4:
-> + =A0 =A0 =A0 iput(root);
-> + =A0 =A0 =A0 sb->s_root =3D NULL;
-> =A0 =A0 =A0 =A0ext4_msg(sb, KERN_ERR, "mount failed");
-> =A0 =A0 =A0 =A0destroy_workqueue(EXT4_SB(sb)->dio_unwritten_wq);
-> =A0failed_mount_wq:
-> --
-> 1.7.1
->
->
->
->>
->> Cheers, Andreas
->>
->> On 2011-01-16, at 0:30, Manish Katiyar <mkatiyar@gmail.com> wrote:
->>
->>> Fix missing iput for root inode in case of all failed mount paths.
->>> Fixes bug#26752
->>>
->>> Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
->>>
->>> ---
->>> fs/ext4/super.c | =A0 =A08 +++++++-
->>> 1 files changed, 7 insertions(+), 1 deletions(-)
->>>
->>> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
->>> index cb10a06..9570fcc 100644
->>> --- a/fs/ext4/super.c
->>> +++ b/fs/ext4/super.c
->>> @@ -3587,6 +3587,7 @@ no_journal:
->>> =A0 =A0 =A0 =A0if (err) {
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext4_msg(sb, KERN_ERR, "failed to in=
-itialize system "
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 "zone (%d)", err);
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 iput(root);
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto failed_mount4;
->>> =A0 =A0 =A0 =A0}
->>>
->>> @@ -3595,12 +3596,15 @@ no_journal:
->>> =A0 =A0 =A0 =A0if (err) {
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext4_msg(sb, KERN_ERR, "failed to in=
-itialize mballoc (%d)",
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 err);
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 iput(root);
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto failed_mount4;
->>> =A0 =A0 =A0 =A0}
->>>
->>> =A0 =A0 =A0 =A0err =3D ext4_register_li_request(sb, first_not_zeroe=
-d);
->>> - =A0 =A0 =A0 if (err)
->>> + =A0 =A0 =A0 if (err) {
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 iput(root);
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto failed_mount4;
->>> + =A0 =A0 =A0 }
->>>
->>> =A0 =A0 =A0 =A0sbi->s_kobj.kset =3D ext4_kset;
->>> =A0 =A0 =A0 =A0init_completion(&sbi->s_kobj_unregister);
->>> @@ -3609,6 +3613,7 @@ no_journal:
->>> =A0 =A0 =A0 =A0if (err) {
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext4_mb_release(sb);
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext4_ext_release(sb);
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 iput(root);
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto failed_mount4;
->>> =A0 =A0 =A0 =A0};
->>>
->>> @@ -3648,6 +3653,7 @@ cantfind_ext4:
->>> =A0 =A0 =A0 =A0goto failed_mount;
->>>
->>> failed_mount4:
->>> + =A0 =A0 =A0 sb->s_root =3D NULL;
->>> =A0 =A0 =A0 =A0ext4_msg(sb, KERN_ERR, "mount failed");
->>> =A0 =A0 =A0 =A0destroy_workqueue(EXT4_SB(sb)->dio_unwritten_wq);
->>> failed_mount_wq:
+From: Robin Dong <sanbai@taobao.com>
 
-Hi Ted,
+[Purpose]
+Having a view of blocks usage of block group descriptors, 
+block/inode bitmaps, inode table, block pointer blocks, extents .etc, 
+can help users in many cases,
 
-Any feedback on this ?
+1) Make estimation on how many memory might be occupied as buffer 
+cache or page cache.
+2) For some specific workload, is a file system is well formatted for 
+block usage, e.g. whether there are never-be-used blocks allocated for 
+inode table.
+3) If there is a chance to allocated meta data from non-seek-cost 
+device like SSD as a meta-data device, first of all user should know 
+how many meta data blocks are allocated/used on the file system.
 
---=20
-Thanks -
-Manish
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Therefore a tool to collect block usage information and display in a 
+clear view is necessary. 
+This patch is a first effort to add such a feature to dumpe2fs tool.
+
+[Example]
+An example of dumpe2fs execution looks like this:
+
+#dumpe2fs -s /dev/mapper/sys-var
+
+result:
+[Blocks Usage (Unit: blocks)]
+Super block:              9
+Group descriptor:         9
+Reserved GDT:             4600
+Inode table:              65536
+Inode bitmap:             64
+Block bitmap:             64
+Link block:               0
+Journal:                  32802
+Directory:                767
+Extent (ext4):            0
+Uninit Extent (ext4):     0
+Extent Data (ext4):       0
+Ind-Block:                591
+Dind-Block:               181
+Tind-Block:               0
+File Data (ext2):         321088
+ACL block:                194
+
+Singed-off-by: Robin Dong <sanbai@taobao.com>
+---
+ misc/dumpe2fs.c |  316 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 314 insertions(+), 2 deletions(-)
+
+diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
+index c01ffe5..af17ae9 100644
+--- a/misc/dumpe2fs.c
++++ b/misc/dumpe2fs.c
+@@ -44,13 +44,53 @@ extern int optind;
+ 
+ #define in_use(m, x)	(ext2fs_test_bit ((x), (m)))
+ 
++#define SECTOR_SIZE 512
++
+ const char * program_name = "dumpe2fs";
+ char * device_name = NULL;
+ int hex_format = 0;
+ 
++struct fs_usage_count {
++	__u32 super_block;
++	__u32 group_desc_block;
++	__u32 reserved_gdt_block;
++	__u32 inode_table_block;
++	__u32 inode_bitmap_block;
++	__u32 block_bitmap_block;
++	__u32 dir_block;
++	__u32 acl_block;
++	__u32 file_data_block;
++	__u32 file_extent_block;
++	__u32 file_extent_uninit_block;
++	__u32 file_extent_data_block;
++	__u32 file_data_ind_block;
++	__u32 file_data_dind_block;
++	__u32 file_data_tind_block;
++	__u32 link_block;
++	__u32 journal_block;
++};
++
++struct fs_usage_count usage_counter;
++
++struct process_block_struct {
++	ext2_ino_t	ino;
++	int	is_dir;
++	__u32 i_flags;
++	struct fs_usage_count *counter;
++};
++
++/*
++ * These subroutines short circuits ext2fs_get_blocks and
++ * ext2fs_check_directory; we use them since we already have the inode
++ * structure, so there's no point in letting the ext2fs library read
++ * the inode again.
++ */
++static ino_t stashed_ino = 0;
++static struct ext2_inode *stashed_inode;
++
+ static void usage(void)
+ {
+-	fprintf (stderr, _("Usage: %s [-bfhixV] [-o superblock=<num>] "
++	fprintf (stderr, _("Usage: %s [-bfhsixV] [-o superblock=<num>] "
+ 		 "[-o blocksize=<num>] device\n"), program_name);
+ 	exit (1);
+ }
+@@ -404,6 +444,269 @@ static void print_journal_information(ext2_filsys fs)
+ 	}
+ }
+ 
++static errcode_t meta_get_blocks(ext2_filsys fs EXT2FS_ATTR((unused)),
++				 ext2_ino_t ino,
++				 blk_t *blocks)
++{
++	int	i;
++
++	if ((ino != stashed_ino) || !stashed_inode)
++		return EXT2_ET_CALLBACK_NOTHANDLED;
++
++	for (i=0; i < EXT2_N_BLOCKS; i++)
++		blocks[i] = stashed_inode->i_block[i];
++	return 0;
++}
++
++static errcode_t meta_check_directory(ext2_filsys fs EXT2FS_ATTR((unused)),
++				      ext2_ino_t ino)
++{
++	if ((ino != stashed_ino) || !stashed_inode)
++		return EXT2_ET_CALLBACK_NOTHANDLED;
++
++	if (!LINUX_S_ISDIR(stashed_inode->i_mode))
++		return EXT2_ET_NO_DIRECTORY;
++	return 0;
++}
++
++static errcode_t meta_read_inode(ext2_filsys fs EXT2FS_ATTR((unused)),
++				 ext2_ino_t ino,
++				 struct ext2_inode *inode)
++{
++	if ((ino != stashed_ino) || !stashed_inode)
++		return EXT2_ET_CALLBACK_NOTHANDLED;
++	*inode = *stashed_inode;
++	return 0;
++}
++
++static void use_inode_shortcuts(ext2_filsys fs, int bool)
++{
++	if (bool) {
++		fs->get_blocks = meta_get_blocks;
++		fs->check_directory = meta_check_directory;
++		fs->read_inode = meta_read_inode;
++		stashed_ino = 0;
++	} else {
++		fs->get_blocks = 0;
++		fs->check_directory = 0;
++		fs->read_inode = 0;
++	}
++}
++
++static int process_file_block(ext2_filsys fs EXT2FS_ATTR((unused)),
++			      blk64_t *block_nr,
++			      e2_blkcnt_t blockcnt,
++			      blk64_t ref_block EXT2FS_ATTR((unused)),
++			      int ref_offset EXT2FS_ATTR((unused)),
++			      void *priv_data EXT2FS_ATTR((unused)))
++{
++	struct process_block_struct *p;
++	__u32 e_flags;
++
++	p = (struct process_block_struct *) priv_data;
++
++	if (p->i_flags & EXT4_EXTENTS_FL) {
++		if (blockcnt == -1) {
++			/* extent block */
++			p->counter->file_extent_block ++;
++		} else {
++			e_flags = ref_block;
++			if (e_flags & EXT2_EXTENT_FLAGS_UNINIT) {
++				/* data block ponited by uninit-extent */
++				p->counter->file_extent_uninit_block ++;
++			} else {
++				/* data block pointed by extent */
++				p->counter->file_extent_data_block ++;
++			}
++		}
++	} else {
++		if (blockcnt == BLOCK_COUNT_IND) {
++			p->counter->file_data_ind_block ++;
++		} else if (blockcnt == BLOCK_COUNT_DIND) {
++			p->counter->file_data_dind_block ++;
++		} else if (blockcnt == BLOCK_COUNT_TIND) {
++			p->counter->file_data_tind_block ++;
++		} 
++		/* ext2/ext3 data block */
++		p->counter->file_data_block ++;
++	}
++
++	return 0;
++}
++
++static void calculate_table_blocks(ext2_filsys fs,
++				struct fs_usage_count *counter)
++{
++	blk64_t	first_block, b;
++	unsigned int	i,j;
++
++	first_block = fs->super->s_first_data_block;
++
++	/*
++	 * calculate the block_bitmap/inode_bitmap/inode_table
++	 */
++	counter->block_bitmap_block = fs->group_desc_count;
++	counter->inode_bitmap_block = fs->group_desc_count;
++	counter->inode_table_block =
++		fs->inode_blocks_per_group * fs->group_desc_count;
++
++	for (i = 0; i < fs->group_desc_count; i++) {
++		if (i == 0) {
++			counter->reserved_gdt_block += 1;
++		}
++
++		if (ext2fs_bg_has_super(fs, i)) {
++			counter->super_block += 1;
++			counter->group_desc_block += fs->desc_blocks;
++			counter->reserved_gdt_block +=
++				fs->super->s_reserved_gdt_blocks;
++		}
++	}
++}
++
++static void calculate_blocks_usage(ext2_filsys fs,
++				struct fs_usage_count *counter)
++{
++	struct process_block_struct	pb;
++	struct ext2_inode		inode;
++	ext2_inode_scan			scan;
++	ext2_ino_t			ino;
++	errcode_t			retval;
++	char *				block_buf;
++
++	calculate_table_blocks(fs, counter);
++
++	retval = ext2fs_open_inode_scan(fs, 0, &scan);
++	if (retval) {
++		com_err(program_name, retval, _("while opening inode scan"));
++		exit(1);
++	}
++
++	block_buf = malloc(fs->blocksize * 3);
++	if (!block_buf) {
++		com_err(program_name, 0, "Can't allocate block buffer");
++		exit(1);
++	}
++
++	use_inode_shortcuts(fs, 1);
++	stashed_inode = &inode;
++	while (1) {
++		retval = ext2fs_get_next_inode(scan, &ino, &inode);
++		if (retval == EXT2_ET_BAD_BLOCK_IN_INODE_TABLE)
++			continue;
++		if (retval) {
++			com_err(program_name, retval,
++				_("while getting next inode"));
++			exit(1);
++		}
++		if (ino == 0)
++			break;
++		if (!inode.i_links_count)
++			continue;
++		if (ext2fs_file_acl_block(&inode)) {
++			counter->acl_block++;
++		}
++		if (!ext2fs_inode_has_valid_blocks(&inode))
++			continue;
++
++		stashed_ino = ino;
++		pb.ino = ino;
++		pb.is_dir = LINUX_S_ISDIR(inode.i_mode);
++		pb.i_flags = inode.i_flags;
++		/* calc journal block */
++		if (ino == fs->super->s_journal_inum) {
++			counter->journal_block += inode.i_blocks * 
++					SECTOR_SIZE / fs->blocksize;
++		} else if (LINUX_S_ISDIR(inode.i_mode)) {
++			counter->dir_block += inode.i_blocks * 
++					SECTOR_SIZE / fs->blocksize;
++		} else if (LINUX_S_ISLNK(inode.i_mode) &&
++		     ext2fs_inode_has_valid_blocks(&inode)) {
++			counter->link_block += inode.i_blocks * 
++				SECTOR_SIZE / fs->blocksize;
++		} else {
++			pb.counter = counter;
++			if ((inode.i_flags & EXT4_EXTENTS_FL) ||
++			    inode.i_block[EXT2_IND_BLOCK] ||
++			    inode.i_block[EXT2_DIND_BLOCK] ||
++			    inode.i_block[EXT2_TIND_BLOCK]) 
++			{
++				retval = ext2fs_block_iterate3(fs,
++				       ino, BLOCK_FLAG_READ_ONLY, block_buf,
++				       process_file_block, &pb);
++				if (retval) {
++					com_err(program_name, retval,
++					"while iterating over inode %u", ino);
++					exit(1);
++				}
++			} else {
++				counter->file_data_block += inode.i_blocks * 
++					SECTOR_SIZE / fs->blocksize;
++			}
++		}
++	}
++	use_inode_shortcuts(fs, 0);
++	free(block_buf);
++}
++
++static void print_blocks_usage_information(ext2_filsys fs)
++{
++	struct fs_usage_count usage_counter;
++
++	memset(&usage_counter, 0, sizeof(struct fs_usage_count));
++
++	calculate_blocks_usage(fs, &usage_counter);
++
++	/*
++	 * take off the blocks of  Reserved_GDT
++	 */
++	usage_counter.file_data_ind_block -=
++			fs->super->s_reserved_gdt_blocks;
++	usage_counter.file_data_dind_block -= 1;
++	usage_counter.file_data_block -= usage_counter.reserved_gdt_block;
++
++	/*
++	 * take off the xattr block (ACL block)
++	 */
++	usage_counter.file_data_block -= usage_counter.acl_block;
++
++	printf("[Blocks Usage (Unit: blocks)]\n");
++	printf("Super block:              %lu\n",
++			usage_counter.super_block);
++	printf("Group descriptor:         %lu\n",
++			usage_counter.group_desc_block);
++	printf("Reserved GDT:             %lu\n",
++			usage_counter.reserved_gdt_block);
++	printf("Inode table:              %lu\n",
++			usage_counter.inode_table_block);
++	printf("Inode bitmap:             %lu\n",
++			usage_counter.inode_bitmap_block);
++	printf("Block bitmap:             %lu\n",
++			usage_counter.block_bitmap_block);
++	printf("Link block:               %lu\n",
++			usage_counter.link_block);
++	printf("Journal:                  %lu\n",
++			usage_counter.journal_block);
++	printf("Directory:                %lu\n",
++			usage_counter.dir_block);
++	printf("Extent (ext4):            %lu\n",
++			usage_counter.file_extent_block);
++	printf("Uninit Extent (ext4):     %lu\n",
++			usage_counter.file_extent_uninit_block);
++	printf("Extent Data (ext4):       %lu\n",
++			usage_counter.file_extent_data_block);
++	printf("Ind-Block:                %lu\n",
++			usage_counter.file_data_ind_block);
++	printf("Dind-Block:               %lu\n",
++			usage_counter.file_data_dind_block);
++	printf("Tind-Block:               %lu\n",
++			usage_counter.file_data_tind_block);
++	printf("File Data (ext2):         %lu\n",
++			usage_counter.file_data_block);
++	printf("ACL block:                %lu\n",
++			usage_counter.acl_block);
++}
++
+ static void parse_extended_opts(const char *opts, blk64_t *superblock,
+ 				int *blocksize)
+ {
+@@ -492,6 +795,7 @@ int main (int argc, char ** argv)
+ 	int		force = 0;
+ 	int		flags;
+ 	int		header_only = 0;
++	int		usage_info = 0;
+ 	int		c;
+ 
+ #ifdef ENABLE_NLS
+@@ -506,7 +810,7 @@ int main (int argc, char ** argv)
+ 	if (argc && *argv)
+ 		program_name = *argv;
+ 
+-	while ((c = getopt (argc, argv, "bfhixVo:")) != EOF) {
++	while ((c = getopt (argc, argv, "bfhsixVo:")) != EOF) {
+ 		switch (c) {
+ 		case 'b':
+ 			print_badblocks++;
+@@ -517,6 +821,9 @@ int main (int argc, char ** argv)
+ 		case 'h':
+ 			header_only++;
+ 			break;
++		case 's':
++			usage_info++;
++			break;
+ 		case 'i':
+ 			image_dump++;
+ 			break;
+@@ -568,6 +875,11 @@ int main (int argc, char ** argv)
+ 	if (print_badblocks) {
+ 		list_bad_blocks(fs, 1);
+ 	} else {
++		if (usage_info) {
++			print_blocks_usage_information(fs);
++			ext2fs_close (fs);
++			exit (0);
++		}
+ 		list_super (fs->super);
+ 		if (fs->super->s_feature_incompat &
+ 		      EXT3_FEATURE_INCOMPAT_JOURNAL_DEV) {
+-- 
+1.7.3.5
+
