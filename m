@@ -1,139 +1,101 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 27912] New: Set 'err' in ext4_init_fs() if
- kset_create_and_add() fails
-Date: Mon, 31 Jan 2011 20:31:34 GMT
-Message-ID: <bug-27912-13602@https.bugzilla.kernel.org/>
+From: Curt Wohlgemuth <curtw@google.com>
+Subject: ext4: Fix clear_buffer_dirty() call for mblk_io_submit writepages path
+Date: Mon, 31 Jan 2011 12:44:57 -0800
+Message-ID: <AANLkTi=Mzjqoo_QWNLSjhS5CKt9JdTQB6iHEWp_NPuw_@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:36781 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753408Ab1AaUbf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Jan 2011 15:31:35 -0500
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p0VKVYax032174
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 31 Jan 2011 20:31:34 GMT
+Received: from smtp-out.google.com ([216.239.44.51]:40833 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753253Ab1AaUpR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Jan 2011 15:45:17 -0500
+Received: from hpaq2.eem.corp.google.com (hpaq2.eem.corp.google.com [172.25.149.2])
+	by smtp-out.google.com with ESMTP id p0VKjGax015502
+	for <linux-ext4@vger.kernel.org>; Mon, 31 Jan 2011 12:45:16 -0800
+Received: from vxd2 (vxd2.prod.google.com [10.241.33.194])
+	by hpaq2.eem.corp.google.com with ESMTP id p0VKjEV2021710
+	(version=TLSv1/SSLv3 cipher=RC4-MD5 bits=128 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Mon, 31 Jan 2011 12:45:15 -0800
+Received: by vxd2 with SMTP id 2so343315vxd.8
+        for <linux-ext4@vger.kernel.org>; Mon, 31 Jan 2011 12:45:14 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=27912
+The ext4 code path to bundle multiple pages for writeback in
+ext4_bio_write_page() had a bug:  we should be clearing buffer head dirty
+flags before we submit the bio, not in the completion routine.
 
-           Summary: Set 'err' in ext4_init_fs() if kset_create_and_add()
-                    fails
-           Product: File System
-           Version: 2.5
-    Kernel Version: 2.6.38-rc2
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: dame_eugene@mail.ru
-        Regression: No
+Also don't deference the bio in ext4_end_bio() after the bio_put() call.
 
+(I also added a blank line in ext4_bio_write_page(), 'cause my eyes
+constantly confused the complex 'for' conditions from the first statement
+in the block.)
 
-Set 'err' in ext4_init_fs() if kset_create_and_add() fails
-------------------------
+Signed-off-by: Curt Wohlgemuth <curtw@google.com>
 
-In ext4_init_fs() (super.c), consider the following fragment:
+---
 
-ext4_kset = kset_create_and_add("ext4", NULL, fs_kobj);
-if (!ext4_kset)
-    goto out4;
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 6e0e99b..c3d490f 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -193,6 +193,7 @@ static void ext4_end_bio(struct bio *bio, int error)
+ 	struct inode *inode;
+ 	unsigned long flags;
+ 	int i;
++	sector_t bi_sector = bio->bi_sector;
 
-If kset_create_and_add() fails for some reason, 'err' variable will remain 0,
-so ext4_init_fs() will return 0 despite this failure. It will look like as if
-the module has initialized itself successfully while it has not. 
+ 	BUG_ON(!io_end);
+ 	bio->bi_private = NULL;
+@@ -210,9 +211,7 @@ static void ext4_end_bio(struct bio *bio, int error)
+ 		if (error)
+ 			SetPageError(page);
+ 		BUG_ON(!head);
+-		if (head->b_size == PAGE_CACHE_SIZE)
+-			clear_buffer_dirty(head);
+-		else {
++		if (head->b_size != PAGE_CACHE_SIZE) {
+ 			loff_t offset;
+ 			loff_t io_end_offset = io_end->offset + io_end->size;
 
-On my system this results in a kernel oops as soon as I try to unload ext4
-module. To be exact, when destroy_inodecache() is invoked, it tries to call
-kmem_cache_destroy(ext4_inode_cachep) but ext4_inode_cachep is NULL because it
-was not initialized due to that incomplete init. So, 
+@@ -224,7 +223,6 @@ static void ext4_end_bio(struct bio *bio, int error)
+ 					if (error)
+ 						buffer_io_error(bh);
 
-BUG_ON(!cachep || in_interrupt()) 
+-					clear_buffer_dirty(bh);
+ 				}
+ 				if (buffer_delay(bh))
+ 					partial_write = 1;
+@@ -260,7 +258,7 @@ static void ext4_end_bio(struct bio *bio, int error)
+ 			     (unsigned long long) io_end->offset,
+ 			     (long) io_end->size,
+ 			     (unsigned long long)
+-			     bio->bi_sector >> (inode->i_blkbits - 9));
++			     bi_sector >> (inode->i_blkbits - 9));
+ 	}
 
-triggers in kmem_cache_destroy().
+ 	/* Add the io_end to per-inode completed io list*/
+@@ -383,6 +381,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
 
-The problem can be reproduced as follows (it is assumed that ext4 is compiled
-as a module): load ext4.ko, unload it and then load it again. For some reason,
-/sys/fs/ext4/ directory is not deleted when the module is unloaded and that is
-why kset_create_and_add() fails when I try to load it the second time. From the
-system log:
+ 	blocksize = 1 << inode->i_blkbits;
 
----------------------------------
-[ 3077.802232] WARNING: at
-/home/eugene/distrib/kernel/mainline.git/linux-2.6/fs/sysfs/dir.c:455
-sysfs_add_one+0x8a/0xb0()
-[ 3077.802236] Hardware name: VirtualBox
-[ 3077.802239] sysfs: cannot create duplicate filename '/fs/ext4'
-[ 3077.802242] Modules linked in: ext4(+) jbd2 crc16 kedr_controller
-kedr_fsim_indicator_kmalloc kedr_fsim_indicator_common
-kedr_fsim_user_space_access kedr_fsim_cmm kedr_fault_simulation kedr_trace
-kedr_base fuse snd_pcm_oss snd_mixer_oss snd_seq snd_seq_device edd af_packet
-mperf loop dm_mod snd_intel8x0 snd_ac97_codec ac97_bus e1000 snd_pcm snd_timer
-ppdev button sg snd soundcore snd_page_alloc parport_pc sr_mod parport cdrom
-i2c_piix4 ac pcspkr ohci_hcd ehci_hcd usbcore rtc_cmos sd_mod rtc_core rtc_lib
-fan processor ata_generic thermal thermal_sys hwmon ata_piix ahci libahci
-libata scsi_mod [last unloaded: kedr_base]
-[ 3077.802275] Pid: 5388, comm: modprobe Not tainted 2.6.38-rc2-testbox+ #1
-[ 3077.802278] Call Trace:
-[ 3077.802286]  [<c02450fd>] ? warn_slowpath_common+0x6d/0xa0
-[ 3077.802290]  [<c035267a>] ? sysfs_add_one+0x8a/0xb0
-[ 3077.802293]  [<c035267a>] ? sysfs_add_one+0x8a/0xb0
-[ 3077.802298]  [<c02451ae>] ? warn_slowpath_fmt+0x2e/0x30
-[ 3077.802301]  [<c035267a>] ? sysfs_add_one+0x8a/0xb0
-[ 3077.802305]  [<c03526fc>] ? create_dir+0x5c/0xa0
-[ 3077.802309]  [<c03527de>] ? sysfs_create_dir+0x6e/0xa0
-[ 3077.802314]  [<c03d337d>] ? kobject_add_internal+0x9d/0x230
-[ 3077.802318]  [<c03dd383>] ? kvasprintf+0x43/0x60
-[ 3077.802322]  [<c03d3a87>] ? kset_register+0x27/0x60
-[ 3077.802326]  [<c03d3b27>] ? kset_create_and_add+0x67/0xa0
-[ 3077.802336]  [<f8fc4143>] ? ext4_init_fs+0x37/0x114 [ext4]
-[ 3077.802340]  [<c0201230>] ? do_one_initcall+0x30/0x170
-[ 3077.802349]  [<f8fc410c>] ? ext4_init_fs+0x0/0x114 [ext4]
-[ 3077.802354]  [<c0278936>] ? sys_init_module+0x116/0x19c0
-[ 3077.802359]  [<c0202ddc>] ? sysenter_do_call+0x12/0x28
-[ 3077.802362] ---[ end trace 8b7776f89b6ab60b ]---
-[ 3077.802367] kobject_add_internal failed for ext4 with -EEXIST, don't try to
-register things with the same name in the same directory.
-[ 3077.802371] Pid: 5388, comm: modprobe Tainted: G        W  
-2.6.38-rc2-testbox+ #1
-[ 3077.802374] Call Trace:
-[ 3077.802378]  [<c03d3434>] ? kobject_add_internal+0x154/0x230
-[ 3077.802382]  [<c03dd383>] ? kvasprintf+0x43/0x60
-[ 3077.802386]  [<c03d3a87>] ? kset_register+0x27/0x60
-[ 3077.802389]  [<c03d3b27>] ? kset_create_and_add+0x67/0xa0
-[ 3077.802398]  [<f8fc4143>] ? ext4_init_fs+0x37/0x114 [ext4]
-[ 3077.802402]  [<c0201230>] ? do_one_initcall+0x30/0x170
-[ 3077.802411]  [<f8fc410c>] ? ext4_init_fs+0x0/0x114 [ext4]
-[ 3077.802416]  [<c0278936>] ? sys_init_module+0x116/0x19c0
-[ 3077.802420]  [<c0202ddc>] ? sysenter_do_call+0x12/0x28 
----------------------------------
-
-I suppose a trivial change in ext4_init_fs() would be enough to fix this
-problem:
-
-ext4_kset = kset_create_and_add("ext4", NULL, fs_kobj);
-if (!ext4_kset) {
-    err = -EEXIST;
-    goto out4;
-}
-
-Not sure about which error code to return though. As far as I can see from the
-code, kset_create_and_add() can fail due to other reasons as well (out of
-memory conditions, for example).
-
-Besides that, it is still unclear to me why that sysfs directory is not deleted
-when ext4.ko is unloaded. kset_unregister(ext4_kset) seems to be in place in
-ext4_exit_fs(). I could probably analyze this a bit further. Anyway, it is
-another story. Should I file another bug for this?
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
++	BUG_ON(!PageLocked(page));
+ 	BUG_ON(PageWriteback(page));
+ 	set_page_writeback(page);
+ 	ClearPageError(page);
+@@ -400,12 +399,14 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 	for (bh = head = page_buffers(page), block_start = 0;
+ 	     bh != head || !block_start;
+ 	     block_start = block_end, bh = bh->b_this_page) {
++
+ 		block_end = block_start + blocksize;
+ 		if (block_start >= len) {
+ 			clear_buffer_dirty(bh);
+ 			set_buffer_uptodate(bh);
+ 			continue;
+ 		}
++		clear_buffer_dirty(bh);
+ 		ret = io_submit_add_bh(io, io_page, inode, wbc, bh);
+ 		if (ret) {
+ 			/*
