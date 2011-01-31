@@ -1,54 +1,102 @@
 From: Manish Katiyar <mkatiyar@gmail.com>
-Subject: Re: [PATCH 2/3] ext4 : Pass GFP_KERNEL for transaction allocation if
- caller can handler failures
-Date: Sun, 30 Jan 2011 17:04:09 -0800
-Message-ID: <AANLkTin8_mKJB9JuBzXAyZ9-22B+a2Sdbg0b5VbJFdWY@mail.gmail.com>
-References: <AANLkTinVBicZyTthnp5SjOoHUWHcKc1Css46RjpfEEnh@mail.gmail.com>
- <20110125161745.GC4088@quack.suse.cz> <AANLkTiniUaD8SN53BKFC2ayku-4m=4EATKxBc148d51G@mail.gmail.com>
- <20110130194251.GE4258@thunk.org> <AANLkTik8_iO=LF=HqmZyNGC=t5TVqEHzb=G78M-NWMHR@mail.gmail.com>
- <20110130200712.GF4258@thunk.org>
+Subject: [PATCH 1/4] Update ext4 journal routines to specify if journal
+ allocations can fail with ENOMEM
+Date: Sun, 30 Jan 2011 17:14:18 -0800
+Message-ID: <AANLkTimMq=c_6TxghAUto8V0Cvei+ch8dXb_mY1Drw19@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack@suse.cz>, ext4 <linux-ext4@vger.kernel.org>
-To: "Ted Ts'o" <tytso@mit.edu>
+Cc: mkatiyar@gmail.com
+To: "Theodore Ts'o" <tytso@mit.edu>, ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:57056 "EHLO
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:65072 "EHLO
 	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750858Ab1AaBEa convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 30 Jan 2011 20:04:30 -0500
-Received: by qwa26 with SMTP id 26so4962244qwa.19
-        for <linux-ext4@vger.kernel.org>; Sun, 30 Jan 2011 17:04:30 -0800 (PST)
-In-Reply-To: <20110130200712.GF4258@thunk.org>
+	with ESMTP id S1750858Ab1AaBOk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 30 Jan 2011 20:14:40 -0500
+Received: by qwa26 with SMTP id 26so4966822qwa.19
+        for <linux-ext4@vger.kernel.org>; Sun, 30 Jan 2011 17:14:39 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jan 30, 2011 at 12:07 PM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Sun, Jan 30, 2011 at 11:44:25AM -0800, Manish Katiyar wrote:
->>
->> Do you mean separate patch for each of the changed functions ?
->
-> Unless the cleanups for a set of functions are all the same issue,
-> yes. =A0The idea is that commit description should apply to all of th=
-e
-> patch hunks in the commit.
->
-> That way if there is a problem, it becomes easier to bisect and then
-> determine what's going on by reading the commit description. =A0It al=
-so
-> becomes easier to review the changes, as well.
->
-> Does that make sense?
+Following patch updates ext4 journal routines to take extra paramter
+to specify whether it
+is ok to fail journal transaction allocation or not. Passing 'true'
+means allocations can fail with ENOMEM
+and the caller has to handle errors.
 
-Hi Ted,
+Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+---
+ fs/ext4/ext4_jbd2.h |    9 +++++----
+ fs/ext4/super.c     |    4 ++--
+ 2 files changed, 7 insertions(+), 6 deletions(-)
 
-Resending the above patch broken in following series of patch.
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index d8b992e..38f128e 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -161,7 +161,7 @@ int __ext4_handle_dirty_super(const char *where,
+unsigned int line,
+ #define ext4_handle_dirty_super(handle, sb) \
+ 	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb))
 
---=20
+-handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks);
++handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks,
+bool errok);
+ int __ext4_journal_stop(const char *where, unsigned int line,
+handle_t *handle);
+
+ #define EXT4_NOJOURNAL_MAX_REF_COUNT ((unsigned long) 4096)
+@@ -209,9 +209,10 @@ static inline void
+ext4_journal_release_buffer(handle_t *handle,
+ 		jbd2_journal_release_buffer(handle, bh);
+ }
+
+-static inline handle_t *ext4_journal_start(struct inode *inode, int nblocks)
++static inline handle_t *ext4_journal_start(struct inode *inode,
++					   int nblocks, bool errok)
+ {
+-	return ext4_journal_start_sb(inode->i_sb, nblocks);
++	return ext4_journal_start_sb(inode->i_sb, nblocks, errok);
+ }
+
+ #define ext4_journal_stop(handle) \
+@@ -232,7 +233,7 @@ static inline int ext4_journal_extend(handle_t
+*handle, int nblocks)
+ static inline int ext4_journal_restart(handle_t *handle, int nblocks)
+ {
+ 	if (ext4_handle_valid(handle))
+-		return jbd2_journal_restart(handle, nblocks);
++		return jbd2_journal_restart(handle, nblocks, false);
+ 	return 0;
+ }
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index cb10a06..3f1d629 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -241,7 +241,7 @@ static void ext4_put_nojournal(handle_t *handle)
+  * that sync() will call the filesystem's write_super callback if
+  * appropriate.
+  */
+-handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
++handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks,
+bool errok)
+ {
+ 	journal_t *journal;
+
+@@ -258,7 +258,7 @@ handle_t *ext4_journal_start_sb(struct super_block
+*sb, int nblocks)
+ 			ext4_abort(sb, "Detected aborted journal");
+ 			return ERR_PTR(-EROFS);
+ 		}
+-		return jbd2_journal_start(journal, nblocks);
++		return jbd2_journal_start(journal, nblocks, errok);
+ 	}
+ 	return ext4_get_nojournal();
+ }
+-- 
+1.6.0.4
+
+
+-- 
 Thanks -
 Manish
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
