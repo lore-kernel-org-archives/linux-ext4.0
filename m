@@ -1,7 +1,7 @@
 From: Mike Snitzer <snitzer@redhat.com>
-Subject: [PATCH v2 2/2] block: share request flush fields with elevator_private
-Date: Tue,  1 Feb 2011 17:46:13 -0500
-Message-ID: <1296600373-6906-2-git-send-email-snitzer@redhat.com>
+Subject: [PATCH v2 1/2] block: skip elevator initialization for flush requests
+Date: Tue,  1 Feb 2011 17:46:12 -0500
+Message-ID: <1296600373-6906-1-git-send-email-snitzer@redhat.com>
 References: <20110201185225.GT14211@htj.dyndns.org>
 Cc: tytso@mit.edu, djwong@us.ibm.com, shli@kernel.org, neilb@suse.de,
 	adilger.kernel@dilger.ca, jack@suse.cz,
@@ -10,106 +10,85 @@ Cc: tytso@mit.edu, djwong@us.ibm.com, shli@kernel.org, neilb@suse.de,
 	josef@redhat.com, jmoyer@redhat.com, vgoyal@redhat.com,
 	snitzer@redhat.com
 To: Tejun Heo <tj@kernel.org>, Jens Axboe <jaxboe@fusionio.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:20646 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751796Ab1BAWqb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Feb 2011 17:46:31 -0500
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20110201185225.GT14211@htj.dyndns.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Flush requests are never put on the IO scheduler.  Convert request
-structure's elevator_private* into an array and have the flush fields
-share a union with it.
+Skip elevator initialization during request allocation if REQ_SORTED
+is not set in the @rw_flags passed to the request allocator.
 
-Reclaim the space lost in 'struct request' by moving 'completion_data'
-back in the union with 'rb_node'.
+Set REQ_SORTED for all requests that may be put on IO scheduler.  Flush
+requests are not put on IO scheduler so REQ_SORTED is not set for
+them.
 
 Signed-off-by: Mike Snitzer <snitzer@redhat.com>
 ---
- block/cfq-iosched.c    |   18 +++++++++---------
- block/elevator.c       |    2 +-
- include/linux/blkdev.h |   23 ++++++++++++-----------
- 3 files changed, 22 insertions(+), 21 deletions(-)
+ block/blk-core.c |   24 +++++++++++++++++++-----
+ 1 files changed, 19 insertions(+), 5 deletions(-)
 
-diff --git a/block/cfq-iosched.c b/block/cfq-iosched.c
-index 501ffdf..8692958 100644
---- a/block/cfq-iosched.c
-+++ b/block/cfq-iosched.c
-@@ -54,9 +54,9 @@ static const int cfq_hist_divisor = 4;
- #define CFQQ_SEEKY(cfqq)	(hweight32(cfqq->seek_history) > 32/8)
+diff --git a/block/blk-core.c b/block/blk-core.c
+index 72dd23b..f6fcc64 100644
+--- a/block/blk-core.c
++++ b/block/blk-core.c
+@@ -764,7 +764,7 @@ static struct request *get_request(struct request_queue *q, int rw_flags,
+ 	struct request_list *rl = &q->rq;
+ 	struct io_context *ioc = NULL;
+ 	const bool is_sync = rw_is_sync(rw_flags) != 0;
+-	int may_queue, priv;
++	int may_queue, priv = 0;
  
- #define RQ_CIC(rq)		\
--	((struct cfq_io_context *) (rq)->elevator_private)
--#define RQ_CFQQ(rq)		(struct cfq_queue *) ((rq)->elevator_private2)
--#define RQ_CFQG(rq)		(struct cfq_group *) ((rq)->elevator_private3)
-+	((struct cfq_io_context *) (rq)->elevator_private[0])
-+#define RQ_CFQQ(rq)		(struct cfq_queue *) ((rq)->elevator_private[1])
-+#define RQ_CFQG(rq)		(struct cfq_group *) ((rq)->elevator_private[2])
+ 	may_queue = elv_may_queue(q, rw_flags);
+ 	if (may_queue == ELV_MQUEUE_NO)
+@@ -808,9 +808,14 @@ static struct request *get_request(struct request_queue *q, int rw_flags,
+ 	rl->count[is_sync]++;
+ 	rl->starved[is_sync] = 0;
  
- static struct kmem_cache *cfq_pool;
- static struct kmem_cache *cfq_ioc_pool;
-@@ -3609,12 +3609,12 @@ static void cfq_put_request(struct request *rq)
+-	priv = !test_bit(QUEUE_FLAG_ELVSWITCH, &q->queue_flags);
+-	if (priv)
+-		rl->elvpriv++;
++	/*
++	 * Only initialize elevator data if REQ_SORTED is set.
++	 */
++	if (rw_flags & REQ_SORTED) {
++		priv = !test_bit(QUEUE_FLAG_ELVSWITCH, &q->queue_flags);
++		if (priv)
++			rl->elvpriv++;
++	}
  
- 		put_io_context(RQ_CIC(rq)->ioc);
+ 	if (blk_queue_io_stat(q))
+ 		rw_flags |= REQ_IO_STAT;
+@@ -1197,6 +1202,7 @@ static int __make_request(struct request_queue *q, struct bio *bio)
+ 	const unsigned short prio = bio_prio(bio);
+ 	const bool sync = !!(bio->bi_rw & REQ_SYNC);
+ 	const bool unplug = !!(bio->bi_rw & REQ_UNPLUG);
++	const bool flush = !!(bio->bi_rw & (REQ_FLUSH | REQ_FUA));
+ 	const unsigned long ff = bio->bi_rw & REQ_FAILFAST_MASK;
+ 	int where = ELEVATOR_INSERT_SORT;
+ 	int rw_flags;
+@@ -1210,7 +1216,7 @@ static int __make_request(struct request_queue *q, struct bio *bio)
  
--		rq->elevator_private = NULL;
--		rq->elevator_private2 = NULL;
-+		rq->elevator_private[0] = NULL;
-+		rq->elevator_private[1] = NULL;
+ 	spin_lock_irq(q->queue_lock);
  
- 		/* Put down rq reference on cfqg */
- 		cfq_put_cfqg(RQ_CFQG(rq));
--		rq->elevator_private3 = NULL;
-+		rq->elevator_private[2] = NULL;
- 
- 		cfq_put_queue(cfqq);
+-	if (bio->bi_rw & (REQ_FLUSH | REQ_FUA)) {
++	if (flush) {
+ 		where = ELEVATOR_INSERT_FLUSH;
+ 		goto get_rq;
  	}
-@@ -3702,9 +3702,9 @@ new_queue:
+@@ -1293,6 +1299,14 @@ get_rq:
+ 		rw_flags |= REQ_SYNC;
  
- 	cfqq->allocated[rw]++;
- 	cfqq->ref++;
--	rq->elevator_private = cic;
--	rq->elevator_private2 = cfqq;
--	rq->elevator_private3 = cfq_ref_get_cfqg(cfqq->cfqg);
-+	rq->elevator_private[0] = cic;
-+	rq->elevator_private[1] = cfqq;
-+	rq->elevator_private[2] = cfq_ref_get_cfqg(cfqq->cfqg);
- 
- 	spin_unlock_irqrestore(q->queue_lock, flags);
- 
-diff --git a/block/elevator.c b/block/elevator.c
-index 270e097..f98e92e 100644
---- a/block/elevator.c
-+++ b/block/elevator.c
-@@ -764,7 +764,7 @@ int elv_set_request(struct request_queue *q, struct request *rq, gfp_t gfp_mask)
- 	if (e->ops->elevator_set_req_fn)
- 		return e->ops->elevator_set_req_fn(q, rq, gfp_mask);
- 
--	rq->elevator_private = NULL;
-+	rq->elevator_private[0] = NULL;
- 	return 0;
- }
- 
-diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
-index 8a082a5..e3ee74f 100644
---- a/include/linux/blkdev.h
-+++ b/include/linux/blkdev.h
-@@ -99,25 +99,26 @@ struct request {
  	/*
- 	 * The rb_node is only used inside the io scheduler, requests
- 	 * are pruned when moved to the dispatch queue. So let the
--	 * flush fields share space with the rb_node.
-+	 * completion_data share space with the rb_node.
++	 * Set REQ_SORTED for all requests that may be put on IO scheduler.
++	 * The request allocator's IO scheduler initialization will be skipped
++	 * if REQ_SORTED is not set.
++	 */
++	if (!flush)
++		rw_flags |= REQ_SORTED;
++
++	/*
+ 	 * Grab a free request. This is might sleep but can not fail.
+ 	 * Returns with the queue unlocked.
  	 */
- 	union {
- 		struct rb_node rb_node;	/* sort/lookup */
--		struct {
--			unsigned int			seq;
--			struct list_head		list;
--		} flush;
-+		void *completion_data;
- 	};
- 
--	void *completion_data;
+-- 
+1.7.3.4
