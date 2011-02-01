@@ -1,224 +1,123 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 2/2] resize2fs: Add discard support
-Date: Tue,  1 Feb 2011 18:14:25 +0100
-Message-ID: <1296580465-28519-2-git-send-email-lczerner@redhat.com>
-References: <1296580465-28519-1-git-send-email-lczerner@redhat.com>
-Cc: tytso@MIT.EDU, lczerner@redhat.com
-To: linux-ext4@vger.kernel.org
+From: Curt Wohlgemuth <curtw@google.com>
+Subject: ext4: Fix data corruption with multi-block writepages support
+Date: Tue, 1 Feb 2011 09:51:26 -0800
+Message-ID: <AANLkTinadVSGuoZwtNfahxVYneRDUe_4_qpyuoidHoVd@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43590 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751949Ab1BAROc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Feb 2011 12:14:32 -0500
-In-Reply-To: <1296580465-28519-1-git-send-email-lczerner@redhat.com>
+Received: from smtp-out.google.com ([74.125.121.67]:37096 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752701Ab1BARva (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Feb 2011 12:51:30 -0500
+Received: from wpaz5.hot.corp.google.com (wpaz5.hot.corp.google.com [172.24.198.69])
+	by smtp-out.google.com with ESMTP id p11HpSok017081
+	for <linux-ext4@vger.kernel.org>; Tue, 1 Feb 2011 09:51:28 -0800
+Received: from vws9 (vws9.prod.google.com [10.241.21.137])
+	by wpaz5.hot.corp.google.com with ESMTP id p11HovHs002353
+	(version=TLSv1/SSLv3 cipher=RC4-MD5 bits=128 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Tue, 1 Feb 2011 09:51:27 -0800
+Received: by vws9 with SMTP id 9so2449206vws.27
+        for <linux-ext4@vger.kernel.org>; Tue, 01 Feb 2011 09:51:27 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This commit adds two new extended options - discard and nodiscard. When
-'-E discard' is specified, resize2fs will attempt to discard the portion
-of the device which will be used to extend the file system.
+This fixes a corruption problem with the multi-block
+writepages submittal change for ext4, from commit
+bd2d0210cf22f2bd0cef72eb97cf94fc7d31d8cc ("ext4: use bio
+layer instead of buffer layer in mpage_da_submit_io").
 
-As a side-effect, if the discard also zeroes data (every subsequent read
-form discarded block will return zeros) resize2fs will skip inode table
-initialization, but still set the EXT2_BG_INODE_ZEROED flag. The default
-is 'nodiscard'.
+(Note that this corruption is not present in 2.6.37 on ext4,
+because the multi-block writepages function is only enabled
+by a non-default mount option.  With the patch below, we can
+eventually remove this mount option.)
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+The ext4 code path to bundle multiple pages for writeback in
+ext4_bio_write_page() had a bug:  we should be clearing
+buffer head dirty flags *before* we submit the bio, not in
+the completion routine.
+
+The patch below was tested on 2.6.37 under KVM with the
+postgresql script specified by Ted Tso in
+1449032be17abb69116dbc393f67ceb8bd034f92 -- without this
+commit, and hence by default using the multiblock writepages
+submittal code.
+
+Without the patch, I'd hit the corruption problem about
+50-70% of the time.  With the patch, I executed the script
+> 100 times with no corruption seen.
+
+Also don't dereference the bio in ext4_end_bio() after the
+bio_put() call.
+
+(I also added a blank line in ext4_bio_write_page(), 'cause
+my eyes constantly confused the complex 'for' conditions
+from the first statement in the block.)
+
+Signed-off-by: Curt Wohlgemuth <curtw@google.com>
+
 ---
- resize/main.c         |   11 ++++++-
- resize/resize2fs.8.in |   14 +++++++++
- resize/resize2fs.c    |   74 ++++++++++++++++++++++++++++++++++++++++++++++++-
- resize/resize2fs.h    |    3 ++
- 4 files changed, 100 insertions(+), 2 deletions(-)
 
-diff --git a/resize/main.c b/resize/main.c
-index 0f1a8db..f7e6a0e 100644
---- a/resize/main.c
-+++ b/resize/main.c
-@@ -61,6 +61,9 @@ static errcode_t resize_progress_func(ext2_resize_t rfs, int pass,
- 			ext2fs_progress_close(progress);
- 		progress = 0;
- 		switch (pass) {
-+		case E2_RSZ_DISCARD_DEVICE:
-+			label = _("Discarding device");
-+			break;
- 		case E2_RSZ_EXTEND_ITABLE_PASS:
- 			label = _("Extending the inode table");
- 			break;
-@@ -181,6 +184,10 @@ static void parse_extended_opts(int *flags, const char *opts)
- 				lazy = 1;
- 			if (lazy)
- 				*flags |= RESIZE_LAZY_ITABLE_INIT;
-+		} else if (!strcmp(token, "discard")) {
-+			*flags |= RESIZE_DISCARD;
-+		} else if (!strcmp(token, "nodiscard")) {
-+			*flags &= ~RESIZE_DISCARD;
- 		} else {
- 			r_usage++;
- 			badopt = token;
-@@ -192,7 +199,9 @@ static void parse_extended_opts(int *flags, const char *opts)
- 			"and may take an argument which\n"
- 			"\tis set off by an equals ('=') sign.\n\n"
- 			"Valid extended options are:\n"
--			"\tlazy_itable_init=<0 to disable, 1 to enable>\n\n"),
-+			"\tlazy_itable_init=<0 to disable, 1 to enable>\n"
-+			"\tdiscard\n"
-+			"\tnodiscard\n\n"),
- 			badopt ? badopt : "");
- 		free(buf);
- 		exit(1);
-diff --git a/resize/resize2fs.8.in b/resize/resize2fs.8.in
-index 448265c..3e47610 100644
---- a/resize/resize2fs.8.in
-+++ b/resize/resize2fs.8.in
-@@ -148,6 +148,20 @@ resize noticeably, but it requires the kernel to finish
- initializing the filesystem in the background when the filesystem is
- mounted.  If the option value is omitted, it defaults to 1 to
- enable lazy inode table initialization.
-+TP
-+.BI discard
-+Attempt to discard blocks
-+.BR resize2fs
-+is going to use to extend the filesystem (discarding blocks is useful on solid
-+state devices and sparse / thin-provisioned storage) before the resize. If the
-+device advertises that discard also zeroes data (any subsequent read after the
-+discard and before write returns zero), then mark all not-yet-zeroed inode
-+tables as zeroed. This significantly speed up filesystem resize if
-+.BR lazy_itable_init
-+is not specified.
-+.TP
-+.BI nodiscard
-+Do not attempt to discard blocks before resize. This is the default.
- .SH KNOWN BUGS
- The minimum size of the filesystem as estimated by resize2fs may be
- incorrect, especially for filesystems with 1k and 2k blocksizes.
-diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-index 1101364..34ac506 100644
---- a/resize/resize2fs.c
-+++ b/resize/resize2fs.c
-@@ -66,6 +66,54 @@ static errcode_t fix_sb_journal_backup(ext2_filsys fs);
- #define SUPER_OVERHEAD(fs) (1 + (fs)->desc_blocks +\
- 			    (fs)->super->s_reserved_gdt_blocks)
- 
-+#define DISCARD_STEP_MB		(2048)
-+
-+static int resize2fs_discard_device(ext2_resize_t rfs, blk64_t start,
-+				    blk64_t end)
-+{
-+	ext2_filsys fs = rfs->new_fs;
-+	blk64_t blocks = end - start;
-+	blk64_t count = DISCARD_STEP_MB;
-+	blk64_t cur = 0;
-+	int retval = 0;
-+
-+	if (start >= end)
-+		return -EINVAL;
-+
-+	count *= (1024 * 1024);
-+	count /= fs->blocksize;
-+
-+	if (rfs->progress) {
-+		retval = rfs->progress(rfs, E2_RSZ_DISCARD_DEVICE,
-+				       cur, blocks);
-+		if (retval)
-+			return retval;
-+	}
-+
-+	while (cur < blocks) {
-+		if (cur + count > blocks)
-+			count = blocks - cur;
-+		retval = io_channel_discard(fs->io, start + cur, count,
-+					    fs->blocksize);
-+		if (retval)
-+			break;
-+
-+		cur += count;
-+		if (rfs->progress) {
-+			retval = rfs->progress(rfs, E2_RSZ_DISCARD_DEVICE,
-+					       cur, blocks);
-+			if (retval)
-+				break;
-+		}
-+	}
-+
-+	if (retval && rfs->progress) {
-+		printf(_("\nDiscard Failed - "));
-+		printf("%s\n",error_message(retval));
-+	}
-+	return retval;
-+}
-+
- /*
-  * This is the top-level routine which does the dirty deed....
-  */
-@@ -103,6 +151,28 @@ errcode_t resize_fs(ext2_filsys fs, blk64_t *new_size, int flags,
- 	if (retval)
- 		goto errout;
- 
-+	/*
-+	 * Attempt to discard space which we are going to use to extend the
-+	 * file system. We do no need to abort file system resize if this
-+	 * fails due to EOPNOTSUPP, just clear RESIZE_DISCARD flag
-+	 */
-+	if ((flags & RESIZE_DISCARD) &&
-+	    (*new_size > ext2fs_blocks_count(fs->super))) {
-+		if (io_channel_discard_zeroes_data(rfs->new_fs->io))
-+			flags |= RESIZE_DISCARD_ZEROES;
-+		retval = resize2fs_discard_device(rfs,
-+					ext2fs_blocks_count(fs->super),
-+					*new_size);
-+		if (retval = -EOPNOTSUPP)
-+			flags &= ~(RESIZE_DISCARD & RESIZE_DISCARD_ZEROES);
-+		else {
-+			fprintf(stderr, _("Warning: Something went wrong"
-+				"while discarding, maybe due programming"
-+				"error, or the device is broken. Exiting!\n"));
-+			exit(retval);
-+		}
-+	}
-+
- 	retval = adjust_superblock(rfs, *new_size, flags);
- 	if (retval)
- 		goto errout;
-@@ -499,6 +569,8 @@ retry:
- 		adjblocks = 0;
- 
- 		ext2fs_bg_flags_zap(fs, i);
-+		if (csum_flag && (flags & RESIZE_DISCARD_ZEROES))
-+			ext2fs_bg_flags_set(fs, i, EXT2_BG_INODE_ZEROED);
- 		if (csum_flag && (flags & RESIZE_LAZY_ITABLE_INIT))
- 			ext2fs_bg_flags_set(fs, i, EXT2_BG_INODE_UNINIT);
- 		else if (csum_flag)
-@@ -672,7 +744,7 @@ static errcode_t adjust_superblock(ext2_resize_t rfs, blk64_t new_size,
- 	if (retval)
- 		goto errout;
- 
--	if (!(flags & RESIZE_LAZY_ITABLE_INIT))
-+	if (!(flags & (RESIZE_LAZY_ITABLE_INIT | RESIZE_DISCARD_ZEROES)))
- 		retval = write_inode_tables(rfs, fs);
- errout:
- 	return retval;
-diff --git a/resize/resize2fs.h b/resize/resize2fs.h
-index a968071..d9aee33 100644
---- a/resize/resize2fs.h
-+++ b/resize/resize2fs.h
-@@ -80,6 +80,8 @@ typedef struct ext2_sim_progress *ext2_sim_progmeter;
- #define RESIZE_PERCENT_COMPLETE		0x0100
- #define RESIZE_VERBOSE			0x0200
- #define RESIZE_LAZY_ITABLE_INIT		0x0400	/* Do not initialize inode tables*/
-+#define RESIZE_DISCARD			0x0800	/* Discard space before attempt to resize */
-+#define RESIZE_DISCARD_ZEROES		0x1000	/* Discard zeroes data */
- 
- /*
-  * The core state structure for the ext2 resizer
-@@ -115,6 +117,7 @@ struct ext2_resize_struct {
- /*
-  * Progress pass numbers...
-  */
-+#define E2_RSZ_DISCARD_DEVICE		0
- #define E2_RSZ_EXTEND_ITABLE_PASS	1
- #define E2_RSZ_BLOCK_RELOC_PASS		2
- #define E2_RSZ_INODE_SCAN_PASS		3
--- 
-1.7.2.3
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 6e0e99b..c3d490f 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -193,6 +193,7 @@ static void ext4_end_bio(struct bio *bio, int error)
+ 	struct inode *inode;
+ 	unsigned long flags;
+ 	int i;
++	sector_t bi_sector = bio->bi_sector;
 
+ 	BUG_ON(!io_end);
+ 	bio->bi_private = NULL;
+@@ -210,9 +211,7 @@ static void ext4_end_bio(struct bio *bio, int error)
+ 		if (error)
+ 			SetPageError(page);
+ 		BUG_ON(!head);
+-		if (head->b_size == PAGE_CACHE_SIZE)
+-			clear_buffer_dirty(head);
+-		else {
++		if (head->b_size != PAGE_CACHE_SIZE) {
+ 			loff_t offset;
+ 			loff_t io_end_offset = io_end->offset + io_end->size;
+
+@@ -224,7 +223,6 @@ static void ext4_end_bio(struct bio *bio, int error)
+ 					if (error)
+ 						buffer_io_error(bh);
+
+-					clear_buffer_dirty(bh);
+ 				}
+ 				if (buffer_delay(bh))
+ 					partial_write = 1;
+@@ -260,7 +258,7 @@ static void ext4_end_bio(struct bio *bio, int error)
+ 			     (unsigned long long) io_end->offset,
+ 			     (long) io_end->size,
+ 			     (unsigned long long)
+-			     bio->bi_sector >> (inode->i_blkbits - 9));
++			     bi_sector >> (inode->i_blkbits - 9));
+ 	}
+
+ 	/* Add the io_end to per-inode completed io list*/
+@@ -383,6 +381,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+
+ 	blocksize = 1 << inode->i_blkbits;
+
++	BUG_ON(!PageLocked(page));
+ 	BUG_ON(PageWriteback(page));
+ 	set_page_writeback(page);
+ 	ClearPageError(page);
+@@ -400,12 +399,14 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 	for (bh = head = page_buffers(page), block_start = 0;
+ 	     bh != head || !block_start;
+ 	     block_start = block_end, bh = bh->b_this_page) {
++
+ 		block_end = block_start + blocksize;
+ 		if (block_start >= len) {
+ 			clear_buffer_dirty(bh);
+ 			set_buffer_uptodate(bh);
+ 			continue;
+ 		}
++		clear_buffer_dirty(bh);
+ 		ret = io_submit_add_bh(io, io_page, inode, wbc, bh);
+ 		if (ret) {
+ 			/*
