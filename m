@@ -1,70 +1,70 @@
-From: Tejun Heo <tj@kernel.org>
-Subject: Re: [RFC PATCH 4/3] block: skip elevator initialization for flush
- requests
-Date: Tue, 1 Feb 2011 19:52:25 +0100
-Message-ID: <20110201185225.GT14211@htj.dyndns.org>
-References: <1295625598-15203-1-git-send-email-tj@kernel.org>
- <1295625598-15203-4-git-send-email-tj@kernel.org>
- <20110125204158.GA3013@redhat.com>
- <20110126100322.GC12520@htj.dyndns.org>
- <20110201173846.GA25252@redhat.com>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 1/2] resize2fs: Add support for lazy itable initialization
+Date: Tue, 1 Feb 2011 12:15:17 -0700
+Message-ID: <5B2E3DA2-B789-41BE-8534-BB19D1B9FA44@dilger.ca>
+References: <1296580465-28519-1-git-send-email-lczerner@redhat.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
 Content-Type: text/plain; charset=us-ascii
-Cc: axboe@kernel.dk, tytso@mit.edu, djwong@us.ibm.com, shli@kernel.org,
-	neilb@suse.de, adilger.kernel@dilger.ca, jack@suse.cz,
-	linux-kernel@vger.kernel.org, kmannth@us.ibm.com, cmm@us.ibm.com,
-	linux-ext4@vger.kernel.org, rwheeler@redhat.com, hch@lst.de,
-	josef@redhat.com, jmoyer@redhat.com
-To: Mike Snitzer <snitzer@redhat.com>
+Content-Transfer-Encoding: 8BIT
+Cc: linux-ext4@vger.kernel.org, tytso@MIT.EDU
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:37162 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751843Ab1BASwb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Feb 2011 13:52:31 -0500
-Content-Disposition: inline
-In-Reply-To: <20110201173846.GA25252@redhat.com>
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:30672 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751077Ab1BATPT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Feb 2011 14:15:19 -0500
+In-Reply-To: <1296580465-28519-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
+On 2011-02-01, at 10:14, Lukas Czerner wrote:
+> This commit adds extended options '-E' to the resize2fs code along with
+> the first extended option lazy_itable_init=n.
 
-On Tue, Feb 01, 2011 at 12:38:46PM -0500, Mike Snitzer wrote:
-> > I thought about doing it this way but I think we're burying the
-> > REQ_FLUSH|REQ_FUA test logic too deep.  get_request() shouldn't
-> > "magically" know not to allocate elevator data.
-> 
-> There is already a considerable amount of REQ_FLUSH|REQ_FUA special
-> casing magic sprinkled though-out the block layer.  Why is this
-> get_request() change the case that goes too far?
+Here it says the option is "=n", is it also possible to force this with "=y"?
 
-After the reimplementation, FLUSH implementation seems to be pretty
-well isolated.  Also, having REQ_FLUSH logic in the issue and
-completion paths is logical and preventing them from leaking to other
-places sounds like a good idea.
+> +static void parse_extended_opts(int *flags, const char *opts)
+> +{
+> +		if (!strcmp(token, "lazy_itable_init")) {
+> +			int lazy;
+> +			if (arg)
+> +				lazy = strtoul(arg, &p, 0);
+> +			else
+> +				lazy = 1;
+> +			if (lazy)
+> +				*flags |= RESIZE_LAZY_ITABLE_INIT;
 
-> > The decision should
-> > be made higher in the stack and passed down to get_request().  e.g. if
-> > REQ_SORTED is set in @rw, elevator data is allocated; otherwise, not.
-> 
-> Considering REQ_SORTED is set in elv_insert(), well after get_request() 
-> is called, I'm not seeing what you're suggesting.
+Here it parses the option as "=0" or "=1", not "=n" or "=y".  It looks like "=n" will accidentally return 0 from strtoul(), so that works as expected, but the "=y" option would fail (it would also return 0).
 
-I was suggesting using REQ_SORTED in @rw parameter to indicate "this
-request may be sorted and thus needs elevator data allocation".
+> +	if (r_usage) {
+> +		fprintf(stderr, _("\nBad option(s) specified: %s\n\n"
+> +			"\tlazy_itable_init=<0 to disable, 1 to enable>\n\n"),
 
-> Anyway, I agree that ideally we'd have a mechanism to explicitly
-> short-circuit elevator initialization.  But doing so in a meaningful way
-> would likely require a fair amount of refactoring of get_request* and
-> its callers.  I'll come back to this and have another look but my gut is
-> this interface churn wouldn't _really_ help -- all things considered.
+It looks a bit confusing "=<0 to disable", I thought initially that meant any value <= 0 would disable it, though I later see that there is a closing '>'.  I think it is more standard to use "{}" braces for "one of these options must be given".
 
-I don't know.  I agree that it's not a critical issue but, to me,
-subjectively of course, it feels a bit too subtle.  The sharing of
-fields using unions is already subtle enough.  I with that at least
-the allocation switching would be obvious and explicit.  The combined
-subtleties scare me.
+> @@ -232,6 +290,12 @@ int main (int argc, char ** argv)
+> +	if (access("/sys/fs/ext4/features/lazy_itable_init", R_OK) == 0)
+> +		flags |= RESIZE_LAZY_ITABLE_INIT;
+> +
+> +	if (extended_opts)
+> +		parse_extended_opts(&flags, extended_opts);
 
-Thank you.
+Good that the command-line options override the default value.
 
--- 
-tejun
+> +.B lazy_itable_init\fR[\fB= \fI<0 to disable, 1 to enable>\fR]
+
+Similarly, this should use "{}" around the options instead of "<>".
+
+> +If enabled and the uninit_bg feature is enabled, the inode table will
+> +not be fully initialized by
+
+I would write "not be zeroed out on disk", since it is otherwise unclear
+if "not fully initialized" means that there will be less inodes available
+or some other issues if the inode table is not "fully" initialized.
+
+Cheers, Andreas
+
+
+
+
+
