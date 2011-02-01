@@ -1,123 +1,139 @@
-From: Curt Wohlgemuth <curtw@google.com>
-Subject: ext4: Fix data corruption with multi-block writepages support
-Date: Tue, 1 Feb 2011 09:51:26 -0800
-Message-ID: <AANLkTinadVSGuoZwtNfahxVYneRDUe_4_qpyuoidHoVd@mail.gmail.com>
+From: Mike Snitzer <snitzer@redhat.com>
+Subject: Re: [RFC PATCH 4/3] block: skip elevator initialization for flush
+ requests
+Date: Tue, 1 Feb 2011 12:38:46 -0500
+Message-ID: <20110201173846.GA25252@redhat.com>
+References: <1295625598-15203-1-git-send-email-tj@kernel.org>
+ <1295625598-15203-4-git-send-email-tj@kernel.org>
+ <20110125204158.GA3013@redhat.com>
+ <20110126100322.GC12520@htj.dyndns.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: axboe@kernel.dk, tytso@mit.edu, djwong@us.ibm.com, shli@kernel.org,
+	neilb@suse.de, adilger.kernel@dilger.ca, jack@suse.cz,
+	linux-kernel@vger.kernel.org, kmannth@us.ibm.com, cmm@us.ibm.com,
+	linux-ext4@vger.kernel.org, rwheeler@redhat.com, hch@lst.de,
+	josef@redhat.com, jmoyer@redhat.com
+To: Tejun Heo <tj@kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([74.125.121.67]:37096 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752701Ab1BARva (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Feb 2011 12:51:30 -0500
-Received: from wpaz5.hot.corp.google.com (wpaz5.hot.corp.google.com [172.24.198.69])
-	by smtp-out.google.com with ESMTP id p11HpSok017081
-	for <linux-ext4@vger.kernel.org>; Tue, 1 Feb 2011 09:51:28 -0800
-Received: from vws9 (vws9.prod.google.com [10.241.21.137])
-	by wpaz5.hot.corp.google.com with ESMTP id p11HovHs002353
-	(version=TLSv1/SSLv3 cipher=RC4-MD5 bits=128 verify=NOT)
-	for <linux-ext4@vger.kernel.org>; Tue, 1 Feb 2011 09:51:27 -0800
-Received: by vws9 with SMTP id 9so2449206vws.27
-        for <linux-ext4@vger.kernel.org>; Tue, 01 Feb 2011 09:51:27 -0800 (PST)
+Received: from mx1.redhat.com ([209.132.183.28]:15973 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751366Ab1BASLm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Feb 2011 13:11:42 -0500
+Content-Disposition: inline
+In-Reply-To: <20110126100322.GC12520@htj.dyndns.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This fixes a corruption problem with the multi-block
-writepages submittal change for ext4, from commit
-bd2d0210cf22f2bd0cef72eb97cf94fc7d31d8cc ("ext4: use bio
-layer instead of buffer layer in mpage_da_submit_io").
+On Wed, Jan 26 2011 at  5:03am -0500,
+Tejun Heo <tj@kernel.org> wrote:
 
-(Note that this corruption is not present in 2.6.37 on ext4,
-because the multi-block writepages function is only enabled
-by a non-default mount option.  With the patch below, we can
-eventually remove this mount option.)
+> > diff --git a/block/blk-core.c b/block/blk-core.c
+> > index 72dd23b..f507888 100644
+> > --- a/block/blk-core.c
+> > +++ b/block/blk-core.c
+> > @@ -764,7 +764,7 @@ static struct request *get_request(struct request_queue *q, int rw_flags,
+> >  	struct request_list *rl = &q->rq;
+> >  	struct io_context *ioc = NULL;
+> >  	const bool is_sync = rw_is_sync(rw_flags) != 0;
+> > -	int may_queue, priv;
+> > +	int may_queue, priv = 0;
+> >  
+> >  	may_queue = elv_may_queue(q, rw_flags);
+> >  	if (may_queue == ELV_MQUEUE_NO)
+> > @@ -808,9 +808,14 @@ static struct request *get_request(struct request_queue *q, int rw_flags,
+> >  	rl->count[is_sync]++;
+> >  	rl->starved[is_sync] = 0;
+> >  
+> > -	priv = !test_bit(QUEUE_FLAG_ELVSWITCH, &q->queue_flags);
+> > -	if (priv)
+> > -		rl->elvpriv++;
+> > +	/*
+> > +	 * Skip elevator initialization for flush requests
+> > +	 */
+> > +	if (!(bio && (bio->bi_rw & (REQ_FLUSH | REQ_FUA)))) {
+> > +		priv = !test_bit(QUEUE_FLAG_ELVSWITCH, &q->queue_flags);
+> > +		if (priv)
+> > +			rl->elvpriv++;
+> > +	}
+> 
+> I thought about doing it this way but I think we're burying the
+> REQ_FLUSH|REQ_FUA test logic too deep.  get_request() shouldn't
+> "magically" know not to allocate elevator data.
 
-The ext4 code path to bundle multiple pages for writeback in
-ext4_bio_write_page() had a bug:  we should be clearing
-buffer head dirty flags *before* we submit the bio, not in
-the completion routine.
+There is already a considerable amount of REQ_FLUSH|REQ_FUA special
+casing magic sprinkled though-out the block layer.  Why is this
+get_request() change the case that goes too far?
 
-The patch below was tested on 2.6.37 under KVM with the
-postgresql script specified by Ted Tso in
-1449032be17abb69116dbc393f67ceb8bd034f92 -- without this
-commit, and hence by default using the multiblock writepages
-submittal code.
+> The decision should
+> be made higher in the stack and passed down to get_request().  e.g. if
+> REQ_SORTED is set in @rw, elevator data is allocated; otherwise, not.
 
-Without the patch, I'd hit the corruption problem about
-50-70% of the time.  With the patch, I executed the script
-> 100 times with no corruption seen.
+Considering REQ_SORTED is set in elv_insert(), well after get_request() 
+is called, I'm not seeing what you're suggesting.
 
-Also don't dereference the bio in ext4_end_bio() after the
-bio_put() call.
+Anyway, I agree that ideally we'd have a mechanism to explicitly
+short-circuit elevator initialization.  But doing so in a meaningful way
+would likely require a fair amount of refactoring of get_request* and
+its callers.  I'll come back to this and have another look but my gut is
+this interface churn wouldn't _really_ help -- all things considered.
 
-(I also added a blank line in ext4_bio_write_page(), 'cause
-my eyes constantly confused the complex 'for' conditions
-from the first statement in the block.)
+> > diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+> > index 8a082a5..0c569ec 100644
+> > --- a/include/linux/blkdev.h
+> > +++ b/include/linux/blkdev.h
+> > @@ -99,25 +99,29 @@ struct request {
+> >  	/*
+> >  	 * The rb_node is only used inside the io scheduler, requests
+> >  	 * are pruned when moved to the dispatch queue. So let the
+> > -	 * flush fields share space with the rb_node.
+> > +	 * completion_data share space with the rb_node.
+> >  	 */
+> >  	union {
+> >  		struct rb_node rb_node;	/* sort/lookup */
+> > -		struct {
+> > -			unsigned int			seq;
+> > -			struct list_head		list;
+> > -		} flush;
+> > +		void *completion_data;
+> >  	};
+> >  
+> > -	void *completion_data;
+> > -
+> >  	/*
+> >  	 * Three pointers are available for the IO schedulers, if they need
+> > -	 * more they have to dynamically allocate it.
+> > +	 * more they have to dynamically allocate it.  Let the flush fields
+> > +	 * share space with these three pointers.
+> >  	 */
+> > -	void *elevator_private;
+> > -	void *elevator_private2;
+> > -	void *elevator_private3;
+> > +	union {
+> > +		struct {
+> > +			void *private;
+> > +			void *private2;
+> > +			void *private3;
+> > +		} elevator;
+> > +		struct {
+> > +			unsigned int			seq;
+> > +			struct list_head		list;
+> > +		} flush;
+> > +	};
+> 
+> Another thing is, can we please make private* an array?  The number
+> postfixes are irksome.  It's even one based instead of zero!
 
-Signed-off-by: Curt Wohlgemuth <curtw@google.com>
+Sure, I can sort that out.
 
----
+> > Also, it would be great to better describe the lifetime difference
+> > between the first and the second unions and why it has be organized
+> > this way (rb_node and completion_data can live together but rb_node
+> > and flush can't).
+>
+> Oops, what can't live together are elevator_private* and
+> completion_data.
 
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 6e0e99b..c3d490f 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -193,6 +193,7 @@ static void ext4_end_bio(struct bio *bio, int error)
- 	struct inode *inode;
- 	unsigned long flags;
- 	int i;
-+	sector_t bi_sector = bio->bi_sector;
+I'll better describe the 2nd union's sharing in the next revision.
 
- 	BUG_ON(!io_end);
- 	bio->bi_private = NULL;
-@@ -210,9 +211,7 @@ static void ext4_end_bio(struct bio *bio, int error)
- 		if (error)
- 			SetPageError(page);
- 		BUG_ON(!head);
--		if (head->b_size == PAGE_CACHE_SIZE)
--			clear_buffer_dirty(head);
--		else {
-+		if (head->b_size != PAGE_CACHE_SIZE) {
- 			loff_t offset;
- 			loff_t io_end_offset = io_end->offset + io_end->size;
-
-@@ -224,7 +223,6 @@ static void ext4_end_bio(struct bio *bio, int error)
- 					if (error)
- 						buffer_io_error(bh);
-
--					clear_buffer_dirty(bh);
- 				}
- 				if (buffer_delay(bh))
- 					partial_write = 1;
-@@ -260,7 +258,7 @@ static void ext4_end_bio(struct bio *bio, int error)
- 			     (unsigned long long) io_end->offset,
- 			     (long) io_end->size,
- 			     (unsigned long long)
--			     bio->bi_sector >> (inode->i_blkbits - 9));
-+			     bi_sector >> (inode->i_blkbits - 9));
- 	}
-
- 	/* Add the io_end to per-inode completed io list*/
-@@ -383,6 +381,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
-
- 	blocksize = 1 << inode->i_blkbits;
-
-+	BUG_ON(!PageLocked(page));
- 	BUG_ON(PageWriteback(page));
- 	set_page_writeback(page);
- 	ClearPageError(page);
-@@ -400,12 +399,14 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
- 	for (bh = head = page_buffers(page), block_start = 0;
- 	     bh != head || !block_start;
- 	     block_start = block_end, bh = bh->b_this_page) {
-+
- 		block_end = block_start + blocksize;
- 		if (block_start >= len) {
- 			clear_buffer_dirty(bh);
- 			set_buffer_uptodate(bh);
- 			continue;
- 		}
-+		clear_buffer_dirty(bh);
- 		ret = io_submit_add_bh(io, io_page, inode, wbc, bh);
- 		if (ret) {
- 			/*
+Mike
