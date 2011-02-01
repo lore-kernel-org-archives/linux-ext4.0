@@ -1,59 +1,115 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: [PATCH] e2fsprogs: Fix how we treat user-spcified filesystem size
-Date: Tue, 1 Feb 2011 16:57:51 -0500
-Message-ID: <AANLkTimRMnceeWpTy6A3h_pEYLq_meAwjOHNOojmhuJR@mail.gmail.com>
-References: <1296587912-16756-1-git-send-email-lczerner@redhat.com> <140BFB14-31E6-4E76-B1DA-5CD8F54FDD5B@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu
-To: Andreas Dilger <adilger@dilger.ca>
+From: Mike Snitzer <snitzer@redhat.com>
+Subject: [PATCH v2 2/2] block: share request flush fields with elevator_private
+Date: Tue,  1 Feb 2011 17:46:13 -0500
+Message-ID: <1296600373-6906-2-git-send-email-snitzer@redhat.com>
+References: <20110201185225.GT14211@htj.dyndns.org>
+Cc: tytso@mit.edu, djwong@us.ibm.com, shli@kernel.org, neilb@suse.de,
+	adilger.kernel@dilger.ca, jack@suse.cz,
+	linux-kernel@vger.kernel.org, kmannth@us.ibm.com, cmm@us.ibm.com,
+	linux-ext4@vger.kernel.org, rwheeler@redhat.com, hch@lst.de,
+	josef@redhat.com, jmoyer@redhat.com, vgoyal@redhat.com,
+	snitzer@redhat.com
+To: Tejun Heo <tj@kernel.org>, Jens Axboe <jaxboe@fusionio.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:34030 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752798Ab1BAV6L convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Feb 2011 16:58:11 -0500
-Received: by iwn9 with SMTP id 9so6964544iwn.19
-        for <linux-ext4@vger.kernel.org>; Tue, 01 Feb 2011 13:58:11 -0800 (PST)
-In-Reply-To: <140BFB14-31E6-4E76-B1DA-5CD8F54FDD5B@dilger.ca>
+Received: from mx1.redhat.com ([209.132.183.28]:20646 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751796Ab1BAWqb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Feb 2011 17:46:31 -0500
+In-Reply-To: <20110201185225.GT14211@htj.dyndns.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Feb 1, 2011 at 3:37 PM, Andreas Dilger <adilger@dilger.ca> wrot=
-e:
-> On 2011-02-01, at 12:18, Lukas Czerner wrote:
->> +Optionally, the
->> +.I filesystem-size
->> +parameter may be suffixed by one of the following the units
->> +designators: 'b', 's', 'K', 'M', or 'G',
->> +for blocks count, 512 byte sectors, kilobytes, megabytes, or gigaby=
-tes,
->> +respectively.
->
-> My reading of parse_num_blocks() shows that 'T' is also accepted as a=
- suffix for terabytes, which I was otherwise going to suggest be added,=
- since this is the normal size for filesystems today. =A0It might be wo=
-rthwhile _briefly_ mentioning here that these are binary/power-of-two v=
-alues and not decimal values, instead of the rant further below.
->
-> Minor technical nit - the proper metric value is lower-case 'k' for k=
-ilo, though the upper-case 'M', 'G', and 'T' are correct for mega-, gig=
-a-, and terabytes.
+Flush requests are never put on the IO scheduler.  Convert request
+structure's elevator_private* into an array and have the flush fields
+share a union with it.
 
-<pedantic>
-If they are powers of 2, they are: kibibytes, mebibytes, gibibytes,
-and tebibytes.
+Reclaim the space lost in 'struct request' by moving 'completion_data'
+back in the union with 'rb_node'.
 
-See the chart on the right of: http://en.wikipedia.org/wiki/Kibibyte
+Signed-off-by: Mike Snitzer <snitzer@redhat.com>
+---
+ block/cfq-iosched.c    |   18 +++++++++---------
+ block/elevator.c       |    2 +-
+ include/linux/blkdev.h |   23 ++++++++++++-----------
+ 3 files changed, 22 insertions(+), 21 deletions(-)
 
-Many linux tools have already moved to these names and abbreviations.
-(TiB not TB, etc.)
-<\pedantic>
-
-Greg
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/block/cfq-iosched.c b/block/cfq-iosched.c
+index 501ffdf..8692958 100644
+--- a/block/cfq-iosched.c
++++ b/block/cfq-iosched.c
+@@ -54,9 +54,9 @@ static const int cfq_hist_divisor = 4;
+ #define CFQQ_SEEKY(cfqq)	(hweight32(cfqq->seek_history) > 32/8)
+ 
+ #define RQ_CIC(rq)		\
+-	((struct cfq_io_context *) (rq)->elevator_private)
+-#define RQ_CFQQ(rq)		(struct cfq_queue *) ((rq)->elevator_private2)
+-#define RQ_CFQG(rq)		(struct cfq_group *) ((rq)->elevator_private3)
++	((struct cfq_io_context *) (rq)->elevator_private[0])
++#define RQ_CFQQ(rq)		(struct cfq_queue *) ((rq)->elevator_private[1])
++#define RQ_CFQG(rq)		(struct cfq_group *) ((rq)->elevator_private[2])
+ 
+ static struct kmem_cache *cfq_pool;
+ static struct kmem_cache *cfq_ioc_pool;
+@@ -3609,12 +3609,12 @@ static void cfq_put_request(struct request *rq)
+ 
+ 		put_io_context(RQ_CIC(rq)->ioc);
+ 
+-		rq->elevator_private = NULL;
+-		rq->elevator_private2 = NULL;
++		rq->elevator_private[0] = NULL;
++		rq->elevator_private[1] = NULL;
+ 
+ 		/* Put down rq reference on cfqg */
+ 		cfq_put_cfqg(RQ_CFQG(rq));
+-		rq->elevator_private3 = NULL;
++		rq->elevator_private[2] = NULL;
+ 
+ 		cfq_put_queue(cfqq);
+ 	}
+@@ -3702,9 +3702,9 @@ new_queue:
+ 
+ 	cfqq->allocated[rw]++;
+ 	cfqq->ref++;
+-	rq->elevator_private = cic;
+-	rq->elevator_private2 = cfqq;
+-	rq->elevator_private3 = cfq_ref_get_cfqg(cfqq->cfqg);
++	rq->elevator_private[0] = cic;
++	rq->elevator_private[1] = cfqq;
++	rq->elevator_private[2] = cfq_ref_get_cfqg(cfqq->cfqg);
+ 
+ 	spin_unlock_irqrestore(q->queue_lock, flags);
+ 
+diff --git a/block/elevator.c b/block/elevator.c
+index 270e097..f98e92e 100644
+--- a/block/elevator.c
++++ b/block/elevator.c
+@@ -764,7 +764,7 @@ int elv_set_request(struct request_queue *q, struct request *rq, gfp_t gfp_mask)
+ 	if (e->ops->elevator_set_req_fn)
+ 		return e->ops->elevator_set_req_fn(q, rq, gfp_mask);
+ 
+-	rq->elevator_private = NULL;
++	rq->elevator_private[0] = NULL;
+ 	return 0;
+ }
+ 
+diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+index 8a082a5..e3ee74f 100644
+--- a/include/linux/blkdev.h
++++ b/include/linux/blkdev.h
+@@ -99,25 +99,26 @@ struct request {
+ 	/*
+ 	 * The rb_node is only used inside the io scheduler, requests
+ 	 * are pruned when moved to the dispatch queue. So let the
+-	 * flush fields share space with the rb_node.
++	 * completion_data share space with the rb_node.
+ 	 */
+ 	union {
+ 		struct rb_node rb_node;	/* sort/lookup */
+-		struct {
+-			unsigned int			seq;
+-			struct list_head		list;
+-		} flush;
++		void *completion_data;
+ 	};
+ 
+-	void *completion_data;
