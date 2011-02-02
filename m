@@ -1,46 +1,54 @@
-From: Sunil Mushran <sunil.mushran@oracle.com>
-Subject: Re: [PATCH] e2fsprogs: Fix how we treat user-spcified filesystem
- size
-Date: Wed, 02 Feb 2011 10:05:15 -0800
-Message-ID: <4D499CDB.80107@oracle.com>
-References: <1296587912-16756-1-git-send-email-lczerner@redhat.com> <140BFB14-31E6-4E76-B1DA-5CD8F54FDD5B@dilger.ca> <AANLkTimRMnceeWpTy6A3h_pEYLq_meAwjOHNOojmhuJR@mail.gmail.com> <alpine.LFD.2.00.1102021048230.3559@dhcp-lab-213.englab.brq.redhat.com> <AANLkTi=5QWtEc+mRnveErm1AE4oLZAZwGOmLP69cx2dx@mail.gmail.com>
+From: Jim Meyering <jim@meyering.net>
+Subject: [PATCH] filefrag: remove useless assignment
+Date: Wed, 02 Feb 2011 21:55:38 +0100
+Message-ID: <87ei7qp35h.fsf@meyering.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Lukas Czerner <lczerner@redhat.com>,
-	Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu
-To: Greg Freemyer <greg.freemyer@gmail.com>
+Content-Type: text/plain
+To: ext <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:49905 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754417Ab1BBSGe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Feb 2011 13:06:34 -0500
-In-Reply-To: <AANLkTi=5QWtEc+mRnveErm1AE4oLZAZwGOmLP69cx2dx@mail.gmail.com>
+Received: from smtp1-g21.free.fr ([212.27.42.1]:53820 "EHLO smtp1-g21.free.fr"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753049Ab1BBUzq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 2 Feb 2011 15:55:46 -0500
+Received: from mx.meyering.net (unknown [82.230.74.64])
+	by smtp1-g21.free.fr (Postfix) with ESMTP id 259BC9400EB
+	for <linux-ext4@vger.kernel.org>; Wed,  2 Feb 2011 21:55:39 +0100 (CET)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 02/02/2011 09:56 AM, Greg Freemyer wrote:
->> Right, that's why there is the "rant" about it being called kilobytes,
->> but still treated as binary, not decimal unit. But Andreas is right
->> that it is not necessary to have one paragraph grumbling about the
->> stupid-sounding kibibytes and so on.
->>
->> So, what I am going to do is to cope with the standard and use those
->> stupid-sounding binary prefixes (kibi- etc.), remove the "rant" and add
->> one line note for people to be really sure that it is meant to be a
->> binary unit.
->>
->> Thanks!
->> -Lukas
-> Lukas,
->
-> I'm glad you did that.  I see too often:
->
-> Fdisk is broken, I can only put a 150 gigabyte partition on my 160
-> gigabyte drive.
->
-> Hopefully people will realize the difference when they see its a 150
-> Gibibyte partition on a 160 Gigabyte drive.
+Barely worth posting, but...
+There's no point in setting fiemap->ANYTHING
+when the very next statement zeros the entire buffer.
+The correct initialization is already done after the memset.
 
-That's wishful thinking.
+>From b2e2dd33c57dbae034b9ea7830d21681bc788fbe Mon Sep 17 00:00:00 2001
+From: Jim Meyering <meyering@redhat.com>
+Date: Tue, 1 Feb 2011 19:25:35 +0100
+Subject: [PATCH] filefrag: remove useless assignment
+
+The very next one memset's all bytes of fiemap to 0.
+
+Signed-off-by: Jim Meyering <meyering@redhat.com>
+---
+ misc/filefrag.c |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
+
+diff --git a/misc/filefrag.c b/misc/filefrag.c
+index bd4486d..d604b6c 100644
+--- a/misc/filefrag.c
++++ b/misc/filefrag.c
+@@ -168,28 +168,26 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents)
+ 	struct fiemap *fiemap = (struct fiemap *)buf;
+ 	struct fiemap_extent *fm_ext = &fiemap->fm_extents[0];
+ 	int count = (sizeof(buf) - sizeof(*fiemap)) /
+ 			sizeof(struct fiemap_extent);
+ 	unsigned long long last_blk = 0;
+ 	unsigned long flags = 0;
+ 	unsigned int i;
+ 	static int fiemap_incompat_printed;
+ 	int fiemap_header_printed = 0;
+ 	int tot_extents = 1, n = 0;
+ 	int last = 0;
+ 	int rc;
+
+-	fiemap->fm_length = ~0ULL;
