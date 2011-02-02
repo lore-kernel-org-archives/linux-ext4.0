@@ -1,164 +1,61 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH v3 1/2] e2fsprogs: Fix how we treat user-spcified filesystem size
-Date: Wed,  2 Feb 2011 12:17:28 +0100
-Message-ID: <1296645448-18563-1-git-send-email-lczerner@redhat.com>
-References: <1296643439-13908-1-git-send-email-lczerner@redhat.com>
-Cc: tytso@MIT.EDU, lczerner@redhat.com, adilger@dilger.ca
-To: linux-ext4@vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: ext4: Fix clear_buffer_dirty() call for mblk_io_submit writepages
+ path
+Date: Wed, 02 Feb 2011 10:58:46 -0600
+Message-ID: <4D498D46.9060801@redhat.com>
+References: <AANLkTi=Mzjqoo_QWNLSjhS5CKt9JdTQB6iHEWp_NPuw_@mail.gmail.com> <AANLkTikk-ngjGfWDwryPtMdQ6+660YC3ScpXTHLkKx_A@mail.gmail.com> <4D478A64.7070108@redhat.com> <3DDF4CC0-B456-425D-A132-A082B27379F2@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Curt Wohlgemuth <curtw@google.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:21764 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:12137 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753657Ab1BBLRc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 2 Feb 2011 06:17:32 -0500
-In-Reply-To: <1296643439-13908-1-git-send-email-lczerner@redhat.com>
+	id S1754452Ab1BBQ6x (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 2 Feb 2011 11:58:53 -0500
+In-Reply-To: <3DDF4CC0-B456-425D-A132-A082B27379F2@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-mke2fs and resize2fs allows specifying filesystem size as a parameter,
-former called as blocks-count. However it has been a little bit messy so
-this commit fixes it mainly by updating man pages.
+On 2/1/11 1:37 AM, Theodore Tso wrote:
+> 
+> On Jan 31, 2011, at 11:21 PM, Eric Sandeen wrote:
+> 
+>> On 1/31/11 6:15 PM, Curt Wohlgemuth wrote:
+>>> Sorry:  I forgot to mention that I tested this on 2.6.37 under KVM
+>>> with the postgresql script specified by Ted in
+>>> 1449032be17abb69116dbc393f67ceb8bd034f92 -- without this commit, and
+>>> hence by default using the multiblock writepages submittal code.
+>>>
+>>> Without the patch, I'd hit the corruption problem about 50-70% of the
+>>> time.  With the patch, I executed the script > 100 times with no
+>>> corruption seen.
+>>
+>> Can you resubmit with a changelog that indicates it's actually a corruption
+>> fix?  Maybe even in the summary.  That is important information to have
+>> for the commit...
+> 
+> Agreed, although I'd also point out that the corruption fix was for code that
+> was disabled by default before 2.6.37 shipped, precisely because of the
+> reported corruption bug, and that  this code should make it safe to use
+> the mblk_io_submit mount option, which will become the default in
+> 2.6.39.
 
-We can not specify filesystem size in blocks count without specifying
-blocksize as well. It is because we need blocks count to determine
-filesystem type, and we need filesystem type to determine blocksize. So
-it should not be allowed, however due to compatibility reason it should
-be still possible, so at least print warning message for now, so we can
-easily restrict that later.
+Right, but a corruption fix should never be committed w/o clear notice.
+Speaking as one who does a fair bit of git archaeology, it drives me nuts
+to have commits which look innocuous and are in fact momentous.
 
-Filesystem size can be specified using units as suffixes. This was not
-documented for mke2fs, so this commits adds proper documentation into
-mke2fs man page.
+> Normally I add such clarifications in the commit description (I'm used to
+> editing descriptions to correct English and to make things clearer, so for
+> me this is no big deal), but if you want resubmit with an updated description
+> and save me some work, I won't complain.  :-)
 
-For the sake of completeness add 'b' (blocks count) unit.
+Ok, just trying to coach a bit ;)
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- lib/e2p/parse_num.c   |    9 +++++++++
- misc/mke2fs.8.in      |   32 ++++++++++++++++++++++++++------
- resize/resize2fs.8.in |   17 +++++------------
- 3 files changed, 40 insertions(+), 18 deletions(-)
+-Eric
 
-diff --git a/lib/e2p/parse_num.c b/lib/e2p/parse_num.c
-index 83a329a..5e7924b 100644
---- a/lib/e2p/parse_num.c
-+++ b/lib/e2p/parse_num.c
-@@ -10,6 +10,7 @@
-  */
- 
- #include "e2p.h"
-+#include "../misc/nls-enable.h"
- 
- #include <stdlib.h>
- 
-@@ -37,6 +38,14 @@ unsigned long long parse_num_blocks2(const char *arg, int log_block_size)
- 		num >>= (1+log_block_size);
- 		break;
- 	case '\0':
-+	case 'b':
-+		if (!log_block_size) {
-+			fprintf(stderr,
-+				_("Warning: You can not specify blocks count "
-+				"without specifying block size '-b'. Will "
-+				"assume kilobytes instead of blocks count!.\n"
-+				));
-+		}
- 		break;
- 	default:
- 		return 0;
-diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
-index 2eead17..b85b9e5 100644
---- a/misc/mke2fs.8.in
-+++ b/misc/mke2fs.8.in
-@@ -108,7 +108,7 @@ mke2fs \- create an ext2/ext3/ext4 filesystem
- ]
- .I device
- [
--.I blocks-count
-+.I filesystem-size
- ]
- @JDEV@.sp
- @JDEV@.B "mke2fs \-O journal_dev"
-@@ -136,7 +136,7 @@ mke2fs \- create an ext2/ext3/ext4 filesystem
- @JDEV@]
- @JDEV@.I external-journal
- @JDEV@[
--@JDEV@.I blocks-count
-+@JDEV@.I filesystem-size
- @JDEV@]
- .SH DESCRIPTION
- .B mke2fs
-@@ -145,10 +145,30 @@ partition.
- .I device
- is the special file corresponding to the device (e.g
- .IR /dev/hdXX ).
--.I blocks-count
--is the number of blocks on the device.  If omitted,
--.B mke2fs
--automagically figures the file system size.  If called as
-+.I filesystem-size
-+is the size of the filesystem you want to create.
-+If no units are specified, the units of the
-+.I filesystem-size
-+parameter shall be the blocks count of the filesystem. Keep in mind that
-+you can not specify
-+.I filesystem-size
-+in blocks count without specifying the blocksize as well. This will be
-+allowed for now (kibibytes will be assumed)
-+due to compatibility reasons, however it may be restricted
-+in the future.
-+Optionally, the
-+.I filesystem-size
-+parameter may be suffixed by one of the following units
-+designators: 'b', 's', 'K', 'M', 'G', or 'T',
-+for blocks count, 512 byte sectors, kibibytes, mebibytes, gibibytes, or
-+tebibytes respectively, which are binary (power-of-2), not decimal,
-+units. The
-+.I filesystem-size
-+may never be larger than the size of the partition.
-+If
-+.I filesystem-size
-+parameter is not specified, it will default to the size of the partition.
-+If called as
- .B mkfs.ext3
- a journal is created as if the
- .B \-j
-diff --git a/resize/resize2fs.8.in b/resize/resize2fs.8.in
-index e02345d..4184def 100644
---- a/resize/resize2fs.8.in
-+++ b/resize/resize2fs.8.in
-@@ -38,27 +38,20 @@ The
- parameter specifies the requested new size of the filesystem.
- If no units are specified, the units of the
- .I size
--parameter shall be the filesystem blocksize of the filesystem.
-+parameter shall be the blocks count of the filesystem.
- Optionally, the 
- .I size
- parameter may be suffixed by one of the following the units 
--designators: 's', 'K', 'M', or 'G',
--for 512 byte sectors, kilobytes, megabytes, or gigabytes, respectively.
--The 
-+designators: 'b', 's', 'K', 'M', 'G', or 'T',
-+for blocks count, 512 byte sectors, kibibytes, mebibytes, gibibytes, or
-+tebibytes respectively, which are binary (power-of-2), not decimal,
-+units. The
- .I size
- of the filesystem may never be larger than the size of the partition.
- If 
- .I size
- parameter is not specified, it will default to the size of the partition.
- .PP
--Note: when kilobytes is used above, I mean
--.IR real ,
--power-of-2 kilobytes, (i.e., 1024 bytes), which some politically correct
--folks insist should be the stupid-sounding ``kibibytes''.  The same
--holds true for megabytes, also sometimes known as ``mebibytes'', or
--gigabytes, as the amazingly silly ``gibibytes''.  Makes you want to
--gibber, doesn't it?
--.PP
- The
- .B resize2fs
- program does not manipulate the size of partitions.  If you wish to enlarge
--- 
-1.7.2.3
+> -- Ted
+> 
 
