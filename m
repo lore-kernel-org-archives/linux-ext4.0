@@ -1,94 +1,69 @@
-From: Mike Snitzer <snitzer@redhat.com>
-Subject: [PATCH v2 1/2] block: skip elevator initialization for flush requests
-Date: Tue,  1 Feb 2011 17:46:12 -0500
-Message-ID: <1296600373-6906-1-git-send-email-snitzer@redhat.com>
-References: <20110201185225.GT14211@htj.dyndns.org>
-Cc: tytso@mit.edu, djwong@us.ibm.com, shli@kernel.org, neilb@suse.de,
-	adilger.kernel@dilger.ca, jack@suse.cz,
-	linux-kernel@vger.kernel.org, kmannth@us.ibm.com, cmm@us.ibm.com,
-	linux-ext4@vger.kernel.org, rwheeler@redhat.com, hch@lst.de,
-	josef@redhat.com, jmoyer@redhat.com, vgoyal@redhat.com,
-	snitzer@redhat.com
-To: Tejun Heo <tj@kernel.org>, Jens Axboe <jaxboe@fusionio.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20110201185225.GT14211@htj.dyndns.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH] e2fsprogs: Fix how we treat user-spcified filesystem
+ size
+Date: Wed, 2 Feb 2011 11:12:44 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1102021048230.3559@dhcp-lab-213.englab.brq.redhat.com>
+References: <1296587912-16756-1-git-send-email-lczerner@redhat.com> <140BFB14-31E6-4E76-B1DA-5CD8F54FDD5B@dilger.ca> <AANLkTimRMnceeWpTy6A3h_pEYLq_meAwjOHNOojmhuJR@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: MULTIPART/MIXED; BOUNDARY="571140353-1313899754-1296641568=:3559"
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	Lukas Czerner <lczerner@redhat.com>,
+	linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Greg Freemyer <greg.freemyer@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:44342 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751677Ab1BBKMw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 2 Feb 2011 05:12:52 -0500
+In-Reply-To: <AANLkTimRMnceeWpTy6A3h_pEYLq_meAwjOHNOojmhuJR@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Skip elevator initialization during request allocation if REQ_SORTED
-is not set in the @rw_flags passed to the request allocator.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-Set REQ_SORTED for all requests that may be put on IO scheduler.  Flush
-requests are not put on IO scheduler so REQ_SORTED is not set for
-them.
+--571140353-1313899754-1296641568=:3559
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1
+Content-Transfer-Encoding: 8BIT
 
-Signed-off-by: Mike Snitzer <snitzer@redhat.com>
----
- block/blk-core.c |   24 +++++++++++++++++++-----
- 1 files changed, 19 insertions(+), 5 deletions(-)
+On Tue, 1 Feb 2011, Greg Freemyer wrote:
 
-diff --git a/block/blk-core.c b/block/blk-core.c
-index 72dd23b..f6fcc64 100644
---- a/block/blk-core.c
-+++ b/block/blk-core.c
-@@ -764,7 +764,7 @@ static struct request *get_request(struct request_queue *q, int rw_flags,
- 	struct request_list *rl = &q->rq;
- 	struct io_context *ioc = NULL;
- 	const bool is_sync = rw_is_sync(rw_flags) != 0;
--	int may_queue, priv;
-+	int may_queue, priv = 0;
- 
- 	may_queue = elv_may_queue(q, rw_flags);
- 	if (may_queue == ELV_MQUEUE_NO)
-@@ -808,9 +808,14 @@ static struct request *get_request(struct request_queue *q, int rw_flags,
- 	rl->count[is_sync]++;
- 	rl->starved[is_sync] = 0;
- 
--	priv = !test_bit(QUEUE_FLAG_ELVSWITCH, &q->queue_flags);
--	if (priv)
--		rl->elvpriv++;
-+	/*
-+	 * Only initialize elevator data if REQ_SORTED is set.
-+	 */
-+	if (rw_flags & REQ_SORTED) {
-+		priv = !test_bit(QUEUE_FLAG_ELVSWITCH, &q->queue_flags);
-+		if (priv)
-+			rl->elvpriv++;
-+	}
- 
- 	if (blk_queue_io_stat(q))
- 		rw_flags |= REQ_IO_STAT;
-@@ -1197,6 +1202,7 @@ static int __make_request(struct request_queue *q, struct bio *bio)
- 	const unsigned short prio = bio_prio(bio);
- 	const bool sync = !!(bio->bi_rw & REQ_SYNC);
- 	const bool unplug = !!(bio->bi_rw & REQ_UNPLUG);
-+	const bool flush = !!(bio->bi_rw & (REQ_FLUSH | REQ_FUA));
- 	const unsigned long ff = bio->bi_rw & REQ_FAILFAST_MASK;
- 	int where = ELEVATOR_INSERT_SORT;
- 	int rw_flags;
-@@ -1210,7 +1216,7 @@ static int __make_request(struct request_queue *q, struct bio *bio)
- 
- 	spin_lock_irq(q->queue_lock);
- 
--	if (bio->bi_rw & (REQ_FLUSH | REQ_FUA)) {
-+	if (flush) {
- 		where = ELEVATOR_INSERT_FLUSH;
- 		goto get_rq;
- 	}
-@@ -1293,6 +1299,14 @@ get_rq:
- 		rw_flags |= REQ_SYNC;
- 
- 	/*
-+	 * Set REQ_SORTED for all requests that may be put on IO scheduler.
-+	 * The request allocator's IO scheduler initialization will be skipped
-+	 * if REQ_SORTED is not set.
-+	 */
-+	if (!flush)
-+		rw_flags |= REQ_SORTED;
-+
-+	/*
- 	 * Grab a free request. This is might sleep but can not fail.
- 	 * Returns with the queue unlocked.
- 	 */
--- 
-1.7.3.4
+> On Tue, Feb 1, 2011 at 3:37 PM, Andreas Dilger <adilger@dilger.ca> wrote:
+> > On 2011-02-01, at 12:18, Lukas Czerner wrote:
+> >> +Optionally, the
+> >> +.I filesystem-size
+> >> +parameter may be suffixed by one of the following the units
+> >> +designators: 'b', 's', 'K', 'M', or 'G',
+> >> +for blocks count, 512 byte sectors, kilobytes, megabytes, or gigabytes,
+> >> +respectively.
+> >
+> > My reading of parse_num_blocks() shows that 'T' is also accepted as a suffix for terabytes, which I was otherwise going to suggest be added, since this is the normal size for filesystems today.  It might be worthwhile _briefly_ mentioning here that these are binary/power-of-two values and not decimal values, instead of the rant further below.
+> >
+> > Minor technical nit - the proper metric value is lower-case 'k' for kilo, though the upper-case 'M', 'G', and 'T' are correct for mega-, giga-, and terabytes.
+> 
+> <pedantic>
+> If they are powers of 2, they are: kibibytes, mebibytes, gibibytes,
+> and tebibytes.
+> 
+> See the chart on the right of: http://en.wikipedia.org/wiki/Kibibyte
+> 
+> Many linux tools have already moved to these names and abbreviations.
+> (TiB not TB, etc.)
+> <\pedantic>
+> 
+> Greg
+> 
+
+Right, that's why there is the "rant" about it being called kilobytes,
+but still treated as binary, not decimal unit. But Andreas is right
+that it is not necessary to have one paragraph grumbling about the
+stupid-sounding kibibytes and so on.
+
+So, what I am going to do is to cope with the standard and use those
+stupid-sounding binary prefixes (kibi- etc.), remove the "rant" and add
+one line note for people to be really sure that it is meant to be a
+binary unit.
+
+Thanks!
+-Lukas
+--571140353-1313899754-1296641568=:3559--
