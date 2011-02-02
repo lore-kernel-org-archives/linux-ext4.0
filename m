@@ -1,69 +1,162 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] e2fsprogs: Fix how we treat user-spcified filesystem
- size
-Date: Wed, 2 Feb 2011 11:12:44 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1102021048230.3559@dhcp-lab-213.englab.brq.redhat.com>
-References: <1296587912-16756-1-git-send-email-lczerner@redhat.com> <140BFB14-31E6-4E76-B1DA-5CD8F54FDD5B@dilger.ca> <AANLkTimRMnceeWpTy6A3h_pEYLq_meAwjOHNOojmhuJR@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="571140353-1313899754-1296641568=:3559"
-Cc: Andreas Dilger <adilger@dilger.ca>,
-	Lukas Czerner <lczerner@redhat.com>,
-	linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: [PATCH 1/2] e2fsprogs: Fix how we treat user-spcified filesystem size
+Date: Wed,  2 Feb 2011 11:43:58 +0100
+Message-ID: <1296643439-13908-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@MIT.EDU, lczerner@redhat.com, adilger@dilger.ca
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44342 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54399 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751677Ab1BBKMw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 2 Feb 2011 05:12:52 -0500
-In-Reply-To: <AANLkTimRMnceeWpTy6A3h_pEYLq_meAwjOHNOojmhuJR@mail.gmail.com>
+	id S1752223Ab1BBKoG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 2 Feb 2011 05:44:06 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+mke2fs and resize2fs allows specifying filesystem size as a parameter,
+former called as blocks-count. However it has been a little bit messy so
+this commit fixes it mainly by updating man pages.
 
---571140353-1313899754-1296641568=:3559
-Content-Type: TEXT/PLAIN; charset=ISO-8859-1
-Content-Transfer-Encoding: 8BIT
+We can not specify filesystem size in blocks count without specifying
+blocksize as well. It is because we need blocks count to determine
+filesystem type, and we need filesystem type to determine blocksize. So
+it should not be allowed, however due to compatibility reason it should
+be still possible, so at least print warning message for now, so we can
+easily restrict that later.
 
-On Tue, 1 Feb 2011, Greg Freemyer wrote:
+Filesystem size can be specified using units as suffixes. This was not
+documented for mke2fs, so this commits adds proper documentation into
+mke2fs man page.
 
-> On Tue, Feb 1, 2011 at 3:37 PM, Andreas Dilger <adilger@dilger.ca> wrote:
-> > On 2011-02-01, at 12:18, Lukas Czerner wrote:
-> >> +Optionally, the
-> >> +.I filesystem-size
-> >> +parameter may be suffixed by one of the following the units
-> >> +designators: 'b', 's', 'K', 'M', or 'G',
-> >> +for blocks count, 512 byte sectors, kilobytes, megabytes, or gigabytes,
-> >> +respectively.
-> >
-> > My reading of parse_num_blocks() shows that 'T' is also accepted as a suffix for terabytes, which I was otherwise going to suggest be added, since this is the normal size for filesystems today.  It might be worthwhile _briefly_ mentioning here that these are binary/power-of-two values and not decimal values, instead of the rant further below.
-> >
-> > Minor technical nit - the proper metric value is lower-case 'k' for kilo, though the upper-case 'M', 'G', and 'T' are correct for mega-, giga-, and terabytes.
-> 
-> <pedantic>
-> If they are powers of 2, they are: kibibytes, mebibytes, gibibytes,
-> and tebibytes.
-> 
-> See the chart on the right of: http://en.wikipedia.org/wiki/Kibibyte
-> 
-> Many linux tools have already moved to these names and abbreviations.
-> (TiB not TB, etc.)
-> <\pedantic>
-> 
-> Greg
-> 
+For the sake of completeness add 'b' (blocks count) unit.
 
-Right, that's why there is the "rant" about it being called kilobytes,
-but still treated as binary, not decimal unit. But Andreas is right
-that it is not necessary to have one paragraph grumbling about the
-stupid-sounding kibibytes and so on.
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ lib/e2p/parse_num.c   |    9 +++++++++
+ misc/mke2fs.8.in      |   32 ++++++++++++++++++++++++++------
+ resize/resize2fs.8.in |   17 +++++------------
+ 3 files changed, 40 insertions(+), 18 deletions(-)
 
-So, what I am going to do is to cope with the standard and use those
-stupid-sounding binary prefixes (kibi- etc.), remove the "rant" and add
-one line note for people to be really sure that it is meant to be a
-binary unit.
+diff --git a/lib/e2p/parse_num.c b/lib/e2p/parse_num.c
+index 83a329a..5e7924b 100644
+--- a/lib/e2p/parse_num.c
++++ b/lib/e2p/parse_num.c
+@@ -10,6 +10,7 @@
+  */
+ 
+ #include "e2p.h"
++#include "../misc/nls-enable.h"
+ 
+ #include <stdlib.h>
+ 
+@@ -37,6 +38,14 @@ unsigned long long parse_num_blocks2(const char *arg, int log_block_size)
+ 		num >>= (1+log_block_size);
+ 		break;
+ 	case '\0':
++	case 'b':
++		if (!log_block_size) {
++			fprintf(stderr,
++				_("Warning: You can not specify blocks count "
++				"without specifying block size '-b'. Will "
++				"assume kilobytes instead of blocks count!.\n"
++				));
++		}
+ 		break;
+ 	default:
+ 		return 0;
+diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
+index 2eead17..b85b9e5 100644
+--- a/misc/mke2fs.8.in
++++ b/misc/mke2fs.8.in
+@@ -108,7 +108,7 @@ mke2fs \- create an ext2/ext3/ext4 filesystem
+ ]
+ .I device
+ [
+-.I blocks-count
++.I filesystem-size
+ ]
+ @JDEV@.sp
+ @JDEV@.B "mke2fs \-O journal_dev"
+@@ -136,7 +136,7 @@ mke2fs \- create an ext2/ext3/ext4 filesystem
+ @JDEV@]
+ @JDEV@.I external-journal
+ @JDEV@[
+-@JDEV@.I blocks-count
++@JDEV@.I filesystem-size
+ @JDEV@]
+ .SH DESCRIPTION
+ .B mke2fs
+@@ -145,10 +145,30 @@ partition.
+ .I device
+ is the special file corresponding to the device (e.g
+ .IR /dev/hdXX ).
+-.I blocks-count
+-is the number of blocks on the device.  If omitted,
+-.B mke2fs
+-automagically figures the file system size.  If called as
++.I filesystem-size
++is the size of the filesystem you want to create.
++If no units are specified, the units of the
++.I filesystem-size
++parameter shall be the blocks count of the filesystem. Keep in mind that
++you can not specify
++.I filesystem-size
++in blocks count without specifying the blocksize as well. This will be
++allowed for now (kibibytes will be assumed)
++due to compatibility reasons, however it may be restricted
++in the future.
++Optionally, the
++.I filesystem-size
++parameter may be suffixed by one of the following units
++designators: 'b', 's', 'K', 'M', 'G', or 'T',
++for blocks count, 512 byte sectors, kibibytes, mebibytes, gibibytes, or
++tebibytes respectively, which are binary (power-of-2), not decimal,
++units. The
++.I filesystem-size
++may never be larger than the size of the partition.
++If
++.I filesystem-size
++parameter is not specified, it will default to the size of the partition.
++If called as
+ .B mkfs.ext3
+ a journal is created as if the
+ .B \-j
+diff --git a/resize/resize2fs.8.in b/resize/resize2fs.8.in
+index e02345d..4184def 100644
+--- a/resize/resize2fs.8.in
++++ b/resize/resize2fs.8.in
+@@ -38,27 +38,20 @@ The
+ parameter specifies the requested new size of the filesystem.
+ If no units are specified, the units of the
+ .I size
+-parameter shall be the filesystem blocksize of the filesystem.
++parameter shall be the blocks count of the filesystem.
+ Optionally, the 
+ .I size
+ parameter may be suffixed by one of the following the units 
+-designators: 's', 'K', 'M', or 'G',
+-for 512 byte sectors, kilobytes, megabytes, or gigabytes, respectively.
+-The 
++designators: 'b', 's', 'K', 'M', 'G', or 'T',
++for blocks count, 512 byte sectors, kibibytes, mebibytes, gibibytes, or
++tebibytes respectively, which are binary (power-of-2), not decimal,
++units. The
+ .I size
+ of the filesystem may never be larger than the size of the partition.
+ If 
+ .I size
+ parameter is not specified, it will default to the size of the partition.
+ .PP
+-Note: when kilobytes is used above, I mean
+-.IR real ,
+-power-of-2 kilobytes, (i.e., 1024 bytes), which some politically correct
+-folks insist should be the stupid-sounding ``kibibytes''.  The same
+-holds true for megabytes, also sometimes known as ``mebibytes'', or
+-gigabytes, as the amazingly silly ``gibibytes''.  Makes you want to
+-gibber, doesn't it?
+-.PP
+ The
+ .B resize2fs
+ program does not manipulate the size of partitions.  If you wish to enlarge
+-- 
+1.7.2.3
 
-Thanks!
--Lukas
---571140353-1313899754-1296641568=:3559--
