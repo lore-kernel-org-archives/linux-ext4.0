@@ -1,60 +1,65 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 25832] kernel crashes upon resume if usb devices are removed
- when suspended
-Date: Thu, 3 Feb 2011 18:22:26 GMT
-Message-ID: <201102031822.p13IMQsi031573@demeter2.kernel.org>
-References: <bug-25832-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: ext4: Fix data corruption with multi-block writepages support
+Date: Thu, 3 Feb 2011 13:38:55 -0500
+Message-ID: <20110203183854.GA2623@thunk.org>
+References: <AANLkTinadVSGuoZwtNfahxVYneRDUe_4_qpyuoidHoVd@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Jon Nelson <jnelson@jamponi.net>
+To: Curt Wohlgemuth <curtw@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:47091 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756418Ab1BCSW1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Feb 2011 13:22:27 -0500
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p13IMQ13031574
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 3 Feb 2011 18:22:26 GMT
-In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:33593 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932312Ab1BCSjA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 3 Feb 2011 13:39:00 -0500
+Content-Disposition: inline
+In-Reply-To: <AANLkTinadVSGuoZwtNfahxVYneRDUe_4_qpyuoidHoVd@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=25832
+Thanks, added to the ext4 patch queue.
 
+I modified the commit description slightly to give credit to Jon
+Nelson, who reported the bug and really helped by devising a
+reproduceable test case.  Many thanks, Jon!!
 
-Theodore Tso <tytso@mit.edu> changed:
+							- Ted
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
+ext4: Fix data corruption with multi-block writepages support
 
+From: Curt Wohlgemuth <curtw@google.com>
 
+This fixes a corruption problem with the multi-block
+writepages submittal change for ext4, from commit
+bd2d0210cf22f2bd0cef72eb97cf94fc7d31d8cc ("ext4: use bio
+layer instead of buffer layer in mpage_da_submit_io").
 
+(Note that this corruption is not present in 2.6.37 on
+ext4, because the corruption was detected after the
+feature was merged in 2.6.37-rc1, and so it was turned
+off by adding a non-default mount option,
+mblk_io_submit.  With this commit, which hopefully
+fixes the last of the bugs with this feature, we'll be
+able to turn on this performance feature by default in
+2.6.38, and remove the mblk_io_submit option.)
 
---- Comment #6 from Theodore Tso <tytso@mit.edu>  2011-02-03 18:22:24 ---
-I've looked at the kernel log, and the kernel messages displayed, and
-unfortunately there's no stack trace that would help narrow down what might be
-going on.
+The ext4 code path to bundle multiple pages for
+writeback in ext4_bio_write_page() had a bug: we should
+be clearing buffer head dirty flags *before* we submit
+the bio, not in the completion routine.
 
-Did you have CONFIG_DETECT_SOFTLOCKUP enabled?   If not, I would suggest
-enabling it, and see if you can get a stack trace.   Another useful thing to do
-is to try getting some information via sysrq-l and sysrq-d.  Using sysrq-p
-multiple times to see where the PC is on the various machines can be useful to
-detect livelocks.  Sysrq-t can also be useful, but it's a huge amount of
-information.
+The patch below was tested on 2.6.37 under KVM with the
+postgresql script which was submitted by Jon Nelson as
+documented in commit 1449032be1.
 
-In general, for most of the sysrq dumps, you'll really going to need to use a
-serial console attached to a second computer to record all of this output.   So
-if someone would like to help reproduce this problem.  Even if the problem is
-gone in 2.6.38, it would be useful to see what is going the problem in 2.6.37
-so that perhaps the patches could be backported into the stable release if the
-changes aren't too invasive.  So if someone can help us gather this
-information, it would be really helpful.
+Without the patch, I'd hit the corruption problem about
+50-70% of the time.  With the patch, I executed the
+script > 100 times with no corruption seen.
 
--- Ted
+I also fixed a bug to make sure ext4_end_bio() doesn't
+dereference the bio after the bio_put() call.
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Reported-by: Jon Nelson <jnelson@jamponi.net>
+Signed-off-by: Curt Wohlgemuth <curtw@google.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
