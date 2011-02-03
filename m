@@ -1,65 +1,49 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: ext4: Fix data corruption with multi-block writepages support
-Date: Thu, 3 Feb 2011 13:38:55 -0500
-Message-ID: <20110203183854.GA2623@thunk.org>
-References: <AANLkTinadVSGuoZwtNfahxVYneRDUe_4_qpyuoidHoVd@mail.gmail.com>
+From: Michael Rubin <mrubin@google.com>
+Subject: Re: [LSF/MM TOPIC] Drop ext2/ext3 codebase? When?
+Date: Thu, 3 Feb 2011 11:32:01 -0800
+Message-ID: <AANLkTi=YxSpgm9vYHBKdASpLOaY_U3=ggsE8yTg_G0Bc@mail.gmail.com>
+References: <20110203144011.GA28409@quack.suse.cz> <4D4AC4E2.701@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Jon Nelson <jnelson@jamponi.net>
-To: Curt Wohlgemuth <curtw@google.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Jan Kara <jack@suse.cz>, lsf-pc@lists.linuxfoundation.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33593 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932312Ab1BCSjA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 3 Feb 2011 13:39:00 -0500
-Content-Disposition: inline
-In-Reply-To: <AANLkTinadVSGuoZwtNfahxVYneRDUe_4_qpyuoidHoVd@mail.gmail.com>
+Received: from smtp-out.google.com ([216.239.44.51]:16354 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756554Ab1BCTcZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Feb 2011 14:32:25 -0500
+Received: from kpbe15.cbf.corp.google.com (kpbe15.cbf.corp.google.com [172.25.105.79])
+	by smtp-out.google.com with ESMTP id p13JWN3O010875
+	for <linux-ext4@vger.kernel.org>; Thu, 3 Feb 2011 11:32:23 -0800
+Received: from yxd30 (yxd30.prod.google.com [10.190.1.222])
+	by kpbe15.cbf.corp.google.com with ESMTP id p13JVSwH028287
+	(version=TLSv1/SSLv3 cipher=RC4-MD5 bits=128 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Thu, 3 Feb 2011 11:32:22 -0800
+Received: by yxd30 with SMTP id 30so649830yxd.30
+        for <linux-ext4@vger.kernel.org>; Thu, 03 Feb 2011 11:32:22 -0800 (PST)
+In-Reply-To: <4D4AC4E2.701@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Thanks, added to the ext4 patch queue.
+On Thu, Feb 3, 2011 at 7:08 AM, Eric Sandeen <sandeen@redhat.com> wrote=
+:
+> If we can have a real plan for moving in this direction though, I'd
+> support it. =A0I'm just not sure how we get enough real testing under
+> our belts to be comfortable with dropping ext[23], especially as
+> most distros now default to ext4 anyway.
 
-I modified the commit description slightly to give credit to Jon
-Nelson, who reported the bug and really helped by devising a
-reproduceable test case.  Many thanks, Jon!!
+Eric what sort of testing are you looking for?
 
-							- Ted
+I admit I like having ext2 around for comparisons in bug situations.
+It really helps to isolate the problem area. How painful is the
+upkeep?
 
-ext4: Fix data corruption with multi-block writepages support
-
-From: Curt Wohlgemuth <curtw@google.com>
-
-This fixes a corruption problem with the multi-block
-writepages submittal change for ext4, from commit
-bd2d0210cf22f2bd0cef72eb97cf94fc7d31d8cc ("ext4: use bio
-layer instead of buffer layer in mpage_da_submit_io").
-
-(Note that this corruption is not present in 2.6.37 on
-ext4, because the corruption was detected after the
-feature was merged in 2.6.37-rc1, and so it was turned
-off by adding a non-default mount option,
-mblk_io_submit.  With this commit, which hopefully
-fixes the last of the bugs with this feature, we'll be
-able to turn on this performance feature by default in
-2.6.38, and remove the mblk_io_submit option.)
-
-The ext4 code path to bundle multiple pages for
-writeback in ext4_bio_write_page() had a bug: we should
-be clearing buffer head dirty flags *before* we submit
-the bio, not in the completion routine.
-
-The patch below was tested on 2.6.37 under KVM with the
-postgresql script which was submitted by Jon Nelson as
-documented in commit 1449032be1.
-
-Without the patch, I'd hit the corruption problem about
-50-70% of the time.  With the patch, I executed the
-script > 100 times with no corruption seen.
-
-I also fixed a bug to make sure ext4_end_bio() doesn't
-dereference the bio after the bio_put() call.
-
-Reported-by: Jon Nelson <jnelson@jamponi.net>
-Signed-off-by: Curt Wohlgemuth <curtw@google.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+mrubin
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
