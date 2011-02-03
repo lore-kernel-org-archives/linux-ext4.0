@@ -1,52 +1,54 @@
-From: Tejun Heo <tj@kernel.org>
-Subject: Re: [PATCH v3 1/2] block: skip elevator data initialization for
- flush requests
-Date: Thu, 3 Feb 2011 10:28:23 +0100
-Message-ID: <20110203092823.GB2570@htj.dyndns.org>
-References: <20110201185225.GT14211@htj.dyndns.org>
- <1296600373-6906-1-git-send-email-snitzer@redhat.com>
- <20110202225549.GA28109@redhat.com>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: [PATCH] exofs: simple fsync race fix
+Date: Thu, 03 Feb 2011 13:44:51 +0200
+Message-ID: <4D4A9533.4090304@panasas.com>
+References: <20101125074909.GA4160@amd> <4CEE2C2E.4010003@panasas.com> <20101125100603.GA3164@amd> <4CEE3F9F.9070108@panasas.com> <4CEE3FD8.6080202@panasas.com> <20101125115033.GA3643@amd>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jens Axboe <jaxboe@fusionio.com>, tytso@mit.edu, djwong@us.ibm.com,
-	shli@kernel.org, neilb@suse.de, adilger.kernel@dilger.ca,
-	jack@suse.cz, linux-kernel@vger.kernel.org, kmannth@us.ibm.com,
-	cmm@us.ibm.com, linux-ext4@vger.kernel.org, rwheeler@redhat.com,
-	hch@lst.de, josef@redhat.com, jmoyer@redhat.com, vgoyal@redhat.com
-To: Mike Snitzer <snitzer@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20110202225549.GA28109@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Roman Zippel <zippel@linux-m68k.org>,
+	"Tigran A. Aivazian" <tigran@aivazian.fsnet.co.uk>,
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
+	Bob Copeland <me@bobcopeland.com>,
+	reiserfs-devel@vger.kernel.org,
+	Christoph Hellwig <hch@infradead.org>,
+	Evgeniy Dushistov <dushistov@mail.ru>, Jan Kara <jack@suse.cz>
+To: Nick Piggin <npiggin@kernel.dk>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from daytona.panasas.com ([67.152.220.89]:10683 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756289Ab1BCLoz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Feb 2011 06:44:55 -0500
+In-Reply-To: <20101125115033.GA3643@amd>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
+On 11/25/2010 01:50 PM, Nick Piggin wrote:
+> This is fine, we'll get it merged before 2.6.37, just give a couple of
+> days for review, I haven't had much confirmation from other vfs people
+> about these problems.
+> 
+> Thanks,
+> Nick
+> 
 
-On Wed, Feb 02, 2011 at 05:55:49PM -0500, Mike Snitzer wrote:
-> @@ -808,9 +808,14 @@ static struct request *get_request(struc
->  	rl->count[is_sync]++;
->  	rl->starved[is_sync] = 0;
->  
-> -	priv = !test_bit(QUEUE_FLAG_ELVSWITCH, &q->queue_flags);
-> -	if (priv)
-> -		rl->elvpriv++;
-> +	/*
-> +	 * Only initialize elevator data if REQ_SORTED is set.
-> +	 */
-> +	if (rw_flags & REQ_SORTED) {
-> +		priv = !test_bit(QUEUE_FLAG_ELVSWITCH, &q->queue_flags);
-> +		if (priv)
-> +			rl->elvpriv++;
-> +	}
+Hi Dear Nick.
 
-This isn't enough.  Now the allocated requests would have REQ_SORTED
-set before going into elevator.  You probably want to filter out
-REQ_SORTED to elv_may_queue() too.
+So I was cleaning the table and I fell on this patch. What ever happened
+to it? should I push it through my tree?
 
-Also, it would be great if you update the comment on top of
-get_request() to explain what @rw_flags does.
+Thanks
+Boaz
 
-Thank you.
+> On Thu, Nov 25, 2010 at 12:52:08PM +0200, Boaz Harrosh wrote:
+>> From: Nick Piggin <npiggin@kernel.dk>
+>>
+>> It is incorrect to test inode dirty bits without participating in the inode
+>> writeback protocol. Inode writeback sets I_SYNC and clears I_DIRTY_?, then
+>> writes out the particular bits, then clears I_SYNC when it is done. BTW. it
+>> may not completely write all pages out, so I_DIRTY_PAGES would get set
+>> again.
+>>
 
--- 
-tejun
