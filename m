@@ -1,100 +1,56 @@
-From: Mike Snitzer <snitzer@redhat.com>
-Subject: [PATCH v5 1/2] block: skip elevator data initialization for flush
- requests
-Date: Fri, 4 Feb 2011 11:58:39 -0500
-Message-ID: <20110204165839.GA2630@redhat.com>
-References: <20110201185225.GT14211@htj.dyndns.org>
- <1296600373-6906-1-git-send-email-snitzer@redhat.com>
- <20110202225549.GA28109@redhat.com>
- <4D4AAC9A.4050407@fusionio.com>
- <20110203133820.GF2570@htj.dyndns.org>
- <20110204150456.GD32190@redhat.com>
+From: Ric Wheeler <ricwheeler@gmail.com>
+Subject: Re: [LSF/MM TOPIC] Drop ext2/ext3 codebase? When?
+Date: Fri, 04 Feb 2011 12:03:16 -0500
+Message-ID: <4D4C3154.3020502@gmail.com>
+References: <20110203144011.GA28409@quack.suse.cz> <4D4AC4E2.701@redhat.com> <AANLkTi=YxSpgm9vYHBKdASpLOaY_U3=ggsE8yTg_G0Bc@mail.gmail.com> <20110204131739.GC4104@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Tejun Heo <tj@kernel.org>, Vivek Goyal <vgoyal@redhat.com>,
-	"tytso@mit.edu" <tytso@mit.edu>,
-	"djwong@us.ibm.com" <djwong@us.ibm.com>,
-	"shli@kernel.org" <shli@kernel.org>,
-	"neilb@suse.de" <neilb@suse.de>,
-	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
-	"jack@suse.cz" <jack@suse.cz>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"kmannth@us.ibm.com" <kmannth@us.ibm.com>,
-	"cmm@us.ibm.com" <cmm@us.ibm.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"rwheeler@redhat.com" <rwheeler@redhat.com>,
-	"hch@lst.de" <hch@lst.de>, "josef@redhat.com" <josef@redhat.com>,
-	"jmoyer@redhat.com" <jmoyer@redhat.com>
-To: Jens Axboe <jaxboe@fusionio.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20110204150456.GD32190@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Michael Rubin <mrubin@google.com>,
+	Eric Sandeen <sandeen@redhat.com>,
+	lsf-pc@lists.linuxfoundation.org, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20110204131739.GC4104@quack.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Skip elevator initialization for flush requests by passing priv=0 to
-blk_alloc_request() in get_request().  As such elv_set_request() is
-never called for flush requests.
+On 02/04/2011 08:17 AM, Jan Kara wrote:
+> On Thu 03-02-11 11:32:01, Michael Rubin wrote:
+>> On Thu, Feb 3, 2011 at 7:08 AM, Eric Sandeen<sandeen@redhat.com>  wrote:
+>>> If we can have a real plan for moving in this direction though, I'd
+>>> support it.  I'm just not sure how we get enough real testing under
+>>> our belts to be comfortable with dropping ext[23], especially as
+>>> most distros now default to ext4 anyway.
+>> Eric what sort of testing are you looking for?
+> I believe Ted wrote a good summary of what combinations of options would
+> need to be tested on a regular basis to get at least some confidence that
+> the switch could work.
+>
+>> I admit I like having ext2 around for comparisons in bug situations.
+>> It really helps to isolate the problem area. How painful is the
+>> upkeep?
+> Well, for me it's a couple of hours per week on average I'd say. Plus
+> there is some work other people do when changing some VFS/MM interfaces
+> influencing all the filesystems.
+>
+> The time I spend is enough to keep ext3 in a good shape I believe but I
+> have a feeling that ext2 is slowly bitrotting. Sometime when I look at
+> ext2 code I see stuff we simply do differently these days and that's just
+> a step away from the code getting broken... It would not be too much work
+> to clean things up and maintain but it's a work with no clear gain (if you
+> do the thankless job of maintaining old code, you should at least have
+> users who appreciate that ;) so naturally no one does it.
+>
+> 								Honza
 
-Signed-off-by: Mike Snitzer <snitzer@redhat.com>
----
- block/blk-core.c |   29 +++++++++++++++++++++++++----
- 1 file changed, 25 insertions(+), 4 deletions(-)
+I would definitely be interesting in figuring out if and when we can drop one or 
+both of ext2 and ext3. The number of actively supported file systems to test for 
+correctness and performance is getting to be a challenge.
 
-v5: introduces blk_rq_should_init_elevator() to abstract the elevator
-    initialization decision to promote future reuse and clarity.
+Great topic, might require beer though to be done right :)
 
-Index: linux-2.6/block/blk-core.c
-===================================================================
---- linux-2.6.orig/block/blk-core.c
-+++ linux-2.6/block/blk-core.c
-@@ -753,6 +753,25 @@ static void freed_request(struct request
- }
- 
- /*
-+ * Determine if elevator data should be initialized when allocating the
-+ * request associated with @bio.
-+ */
-+static bool blk_rq_should_init_elevator(struct bio *bio)
-+{
-+	if (!bio)
-+		return true;
-+
-+	/*
-+	 * Flush requests do not use the elevator so skip initialization.
-+	 * This allows a request to share the flush and elevator data.
-+	 */
-+	if (bio->bi_rw & (REQ_FLUSH | REQ_FUA))
-+		return false;
-+
-+	return true;
-+}
-+
-+/*
-  * Get a free request, queue_lock must be held.
-  * Returns NULL on failure, with queue_lock held.
-  * Returns !NULL on success, with queue_lock *not held*.
-@@ -764,7 +783,7 @@ static struct request *get_request(struc
- 	struct request_list *rl = &q->rq;
- 	struct io_context *ioc = NULL;
- 	const bool is_sync = rw_is_sync(rw_flags) != 0;
--	int may_queue, priv;
-+	int may_queue, priv = 0;
- 
- 	may_queue = elv_may_queue(q, rw_flags);
- 	if (may_queue == ELV_MQUEUE_NO)
-@@ -808,9 +827,11 @@ static struct request *get_request(struc
- 	rl->count[is_sync]++;
- 	rl->starved[is_sync] = 0;
- 
--	priv = !test_bit(QUEUE_FLAG_ELVSWITCH, &q->queue_flags);
--	if (priv)
--		rl->elvpriv++;
-+	if (blk_rq_should_init_elevator(bio)) {
-+		priv = !test_bit(QUEUE_FLAG_ELVSWITCH, &q->queue_flags);
-+		if (priv)
-+			rl->elvpriv++;
-+	}
- 
- 	if (blk_queue_io_stat(q))
- 		rw_flags |= REQ_IO_STAT;
+ric
+
