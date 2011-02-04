@@ -1,129 +1,97 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: [BUG] v2.6.38-rc3+ BUG when calling destroy_inodecache at module
- unload
-Date: Fri, 04 Feb 2011 16:36:59 +0800
-Message-ID: <4D4BBAAB.4070500@tao.ma>
-References: <4D4AF928.9030609@panasas.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [LSF/MM TOPIC] Drop ext2/ext3 codebase? When?
+Date: Fri, 4 Feb 2011 14:03:13 +0100
+Message-ID: <20110204130313.GB4104@quack.suse.cz>
+References: <20110203144011.GA28409@quack.suse.cz>
+ <4D4AC4E2.701@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Nick Piggin <npiggin@gmail.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <4D4AF928.9030609@panasas.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, lsf-pc@lists.linuxfoundation.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:34303 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751907Ab1BDNFc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 4 Feb 2011 08:05:32 -0500
+Content-Disposition: inline
+In-Reply-To: <4D4AC4E2.701@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 02/04/2011 02:51 AM, Boaz Harrosh wrote:
-> Last good Kernel was 2.6.37
-> I'm doing a "mount" then "unmount". I think root is the only created inode.
-> rmmod is called immediately after "unmount" within a script
->
-> if I only do unmount and manually call "modprobe --remove exofs" after a small while
-> all is fine.
->
-> I get:
-> slab error in kmem_cache_destroy(): cache `exofs_inode_cache': Can't free all objects
-> Call Trace:
-> 77dfde08:  [<6007e9a6>] kmem_cache_destroy+0x82/0xca
-> 77dfde38:  [<7c1fa3da>] exit_exofs+0x1a/0x1c [exofs]
-> 77dfde48:  [<60054c10>] sys_delete_module+0x1b9/0x217
-> 77dfdee8:  [<60014d60>] handle_syscall+0x58/0x70
-> 77dfdf08:  [<60024163>] userspace+0x2dd/0x38a
-> 77dfdfc8:  [<600126af>] fork_handler+0x62/0x69
->    
-I also get a similar error when testing ext4 and a bug is opened there.
+On Thu 03-02-11 09:08:18, Eric Sandeen wrote:
+> On 2/3/11 8:40 AM, Jan Kara wrote:
+> > As you well know, there are three independent code bases in kernel
+> > implementing ext-based filesystems - ext2, ext3, and ext4. Of course it
+> > costs some effort to maintain them all in a reasonably good condition so
+> > once in a while someone comes and proposes we should drop one of ext2, ext3
+> > or both. So I'd like to gather input what people think about this - should
+> > we ever drop ext2 / ext3 codebases? If yes, under what condition do we deem
+> > it is OK to drop it?
+> > 
+> > To give some facts:
+> > Feature-wise, ext4 should now be almost a superset of both ext2 and
+> > ext3. ext4 has nojournal mode to simulate ext2, looking at the code I only
+> > don't see XIP support in ext4, arguably also nobh-mode but I personally
+> > feel that these days the complication in the code isn't worth it. As far as
+> > I know it should be backward compatible to writeably mount ext2/ext3
+> > filesystem with ext4 (i.e., no incompatible features should be turned on
+> > magically).
+> > 
+> > On the other hand there are differences noticeable under some conditions -
+> > e.g. delayed allocation, data=ordered mode of ext3 gives better data
+> > integrity than that of ext4 in practice (it's just a side effect we never
+> > promised but app developers somehow got used to it ;), different allocation
+> > decisions, and I believe there are more of these subtle differences.
+> 
+> I think that ext4 with nodelalloc should mostly mimic ext3 in those
+> cases, no?
+  Yeah, mostly. The biggest obstacle I see here is the different behavior
+of mmap - with nodelalloc allocation happens at the time of page fault and
+that fragments the file like hell for some kinds of load. Since ext3 here
+essentially does delayed allocation, it might be useful to do delayed
+allocation only from page fault path when we try to mimic ext3 behavior.
+So mimicking ext3 is possible but needs some tweaks...
 
-https://bugzilla.kernel.org/show_bug.cgi?id=27652
+> > Then of course there is the factor of the codebase itself: Ext2 - ~9k
+> > lines, Ext3+JBD - 24k lines, Ext4+JBD2 - 43k lines. Ext2 codebase is so
+> > simple that it sometimes serves as a "model filesystem". But arguably it
+> > also bitrots slowly so copy-and-pasting from ext2 need not be clever idea
+> > anymore.
+> 
+> Yep at one point it was asserted that ext2 was a model filesystem and should
+> therefore be kept around, but I agree with you that it may not really 
+> serve that purpose too well.
+> 
+> While I'm no fan of having 3 kinda-similar codebases that must be maintained,
+> my concerns would be:
+> 
+> 1) ext4 is still in active development, and may introduce instabilities
+>    that ext3 would otherwise avoid.
+  Sure but since ext4 is now pushed in RHEL, Fedora, openSUSE, Ubuntu, we
+should be already really careful not to break stuff. I agree there is
+higher potential for bugs in ext4 but sometime it should be good enough I
+hope ;). And it's exactly this "sometime" which I'd like to get some
+concesus on.
 
-And I have done some simple investigation for ext4 and It looks as if now with the new *fs_i_callback doesn't free the inode to *fs_inode_cache immediately. So the old logic will destroy the inode cache before we free all the inode object.
+> 2) ext4's more, um ... unique option combinations probably get next to
+>    no testing in the real world.  So while we can say that noextent,
+>    nodelalloc is mostly like ext3, in practice, does that ever really
+>    get much testing?
+  Yes. We definitely cannot remove old codebase until the equivalent paths
+in ext4 won't be beaten regularly and hard. So I agree there is definitely
+lots of testing ahead if we decide to move towards removing old code.
 
-Since there are more than one fs affected by this, we may need to find a way in the VFS.
+> If we can have a real plan for moving in this direction though, I'd
+> support it.  I'm just not sure how we get enough real testing under
+> our belts to be comfortable with dropping ext[23], especially as
+> most distros now default to ext4 anyway.
+  Well, I believe this actually works for us. If the real users move to
+ext4 (or a different fs), then it's easier to make ext[23] mode in ext4
+good enough for the few legacy users...
 
-Regards,
-Tao
-
-> The UML Kernel also crashes after this message, with:
->
-> Modules linked in: nfsd exportfs nfs lockd nfs_acl auth_rpcgss sunrpc cryptomgr aead crc32c crypto_hash crypto_algapi iscsi_tcp libiscsi_tcp libiscsi scsi_transport_iscsi scsi_mod binfmt_misc [last unloaded: libosd]
-> Pid: 6, comm: rcu_kthread Not tainted 2.6.38-rc3+
-> RIP: 0033:[<000000007c1fa0e7>]
-> RSP: 000000007943be18  EFLAGS: 00010246
-> RAX: 000000007943a000 RBX: 000000007937bb80 RCX: 0000000000000095
-> RDX: 000000007937c8b8 RSI: 0000000077fb6c80 RDI: 000000007937bb80
-> RBP: 000000007943be40 R08: 000000007943be10 R09: 000000007943a000
-> R10: 0000000000000000 R11: 0000000000000000 R12: 00000000795123e0
-> R13: 0000000000000001 R14: 0000000000000000 R15: 000000000000000a
-> Call Trace:
-> 602678f8:  [<600144ed>] segv+0x70/0x212
-> 60267928:  [<6001cd9e>] ubd_intr+0x72/0xdf
-> 60267988:  [<601b778e>] _raw_spin_unlock_irqrestore+0x18/0x1c
-> 602679d8:  [<600146ee>] segv_handler+0x5f/0x65
-> 60267a08:  [<60021488>] sig_handler_common+0x84/0x98
-> 60267ab0:  [<60130926>] strncpy+0xf/0x27
-> 60267b38:  [<600215ce>] sig_handler+0x30/0x3b
-> 60267b58:  [<60021800>] handle_signal+0x6d/0xa3
-> 60267ba8:  [<60023180>] hard_handler+0x10/0x14
->
-> Kernel panic - not syncing: Segfault with no mm
-> Call Trace:
-> 602677f8:  [<601b52b1>] panic+0xea/0x1e6
-> 60267818:  [<6007e299>] kmem_cache_free+0x54/0x5f
-> 60267850:  [<6005342e>] __module_text_address+0xd/0x53
-> 60267868:  [<6005347d>] is_module_text_address+0x9/0x11
-> 60267878:  [<6004290c>] __kernel_text_address+0x65/0x6b
-> 60267880:  [<60023180>] hard_handler+0x10/0x14
-> 60267898:  [<6001345e>] show_trace+0x8e/0x95
-> 602678c8:  [<60026c40>] show_regs+0x2b/0x2f
-> 602678f8:  [<60014577>] segv+0xfa/0x212
-> 60267928:  [<6001cd9e>] ubd_intr+0x72/0xdf
-> 60267988:  [<601b778e>] _raw_spin_unlock_irqrestore+0x18/0x1c
-> 602679d8:  [<600146ee>] segv_handler+0x5f/0x65
-> 60267a08:  [<60021488>] sig_handler_common+0x84/0x98
-> 60267ab0:  [<60130926>] strncpy+0xf/0x27
-> 60267b38:  [<600215ce>] sig_handler+0x30/0x3b
-> 60267b58:  [<60021800>] handle_signal+0x6d/0xa3
-> 60267ba8:  [<60023180>] hard_handler+0x10/0x14
->
->
-> Modules linked in: nfsd exportfs nfs lockd nfs_acl auth_rpcgss sunrpc cryptomgr aead crc32c crypto_hash crypto_algapi iscsi_tcp libiscsi_tcp libiscsi scsi_transport_iscsi scsi_mod binfmt_misc [last unloaded: libosd]
-> Pid: 6, comm: rcu_kthread Not tainted 2.6.38-rc3+
-> RIP: 0033:[<0000003ea3832ad7>]
-> RSP: 00007fff63338e38  EFLAGS: 00000202
-> RAX: 0000000000000000 RBX: 0000000000000219 RCX: ffffffffffffffff
-> RDX: 0000000000000000 RSI: 0000000000000013 RDI: 0000000000000219
-> RBP: 00007fff63338e70 R08: 0000000000000000 R09: 00007fff63338e70
-> R10: 00007fff63338be0 R11: 0000000000000202 R12: 0000000000000215
-> R13: 00007fe54ee756a8 R14: 00007fff63339090 R15: 00007fff63339928
-> Call Trace:
-> 60267788:  [<6001485b>] panic_exit+0x2f/0x45
-> 602677a8:  [<60048ad6>] notifier_call_chain+0x32/0x5e
-> 602677e8:  [<60048b24>] atomic_notifier_call_chain+0x13/0x15
-> 602677f8:  [<601b52cc>] panic+0x105/0x1e6
-> 60267818:  [<6007e299>] kmem_cache_free+0x54/0x5f
-> 60267850:  [<6005342e>] __module_text_address+0xd/0x53
-> 60267868:  [<6005347d>] is_module_text_address+0x9/0x11
-> 60267878:  [<6004290c>] __kernel_text_address+0x65/0x6b
-> 60267880:  [<60023180>] hard_handler+0x10/0x14
-> 60267898:  [<6001345e>] show_trace+0x8e/0x95
-> 602678c8:  [<60026c40>] show_regs+0x2b/0x2f
-> 602678f8:  [<60014577>] segv+0xfa/0x212
-> 60267928:  [<6001cd9e>] ubd_intr+0x72/0xdf
-> 60267988:  [<601b778e>] _raw_spin_unlock_irqrestore+0x18/0x1c
-> 602679d8:  [<600146ee>] segv_handler+0x5f/0x65
-> 60267a08:  [<60021488>] sig_handler_common+0x84/0x98
-> 60267ab0:  [<60130926>] strncpy+0xf/0x27
-> 60267b38:  [<600215ce>] sig_handler+0x30/0x3b
-> 60267b58:  [<60021800>] handle_signal+0x6d/0xa3
-> 60267ba8:  [<60023180>] hard_handler+0x10/0x14
->
-> Thanks
-> Boaz
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->    
-
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
