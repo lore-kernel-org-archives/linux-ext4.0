@@ -1,48 +1,100 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/3] jbd2 : Make jbd2 transaction handle allocation to
- return errors and handle them gracefully.
-Date: Fri, 4 Feb 2011 16:53:58 +0100
-Message-ID: <20110204155358.GF4104@quack.suse.cz>
-References: <AANLkTi=o-rcsbY1gOExGyWdQ41m7KWpJ7=UzX4306m=t@mail.gmail.com>
- <20110123054049.GC3237@thunk.org>
- <20110123062900.GA7436@noexit>
- <20110124133143.GA5058@quack.suse.cz>
- <AA32FD05-E9BD-40AB-8495-EAD0547B5E02@dilger.ca>
- <20110125114656.GB4088@quack.suse.cz>
- <AANLkTi=x_RufCNMGaM1DBbYKPKdO-JoQP5YCdDz6dfAc@mail.gmail.com>
+From: Mike Snitzer <snitzer@redhat.com>
+Subject: [PATCH v5 1/2] block: skip elevator data initialization for flush
+ requests
+Date: Fri, 4 Feb 2011 11:58:39 -0500
+Message-ID: <20110204165839.GA2630@redhat.com>
+References: <20110201185225.GT14211@htj.dyndns.org>
+ <1296600373-6906-1-git-send-email-snitzer@redhat.com>
+ <20110202225549.GA28109@redhat.com>
+ <4D4AAC9A.4050407@fusionio.com>
+ <20110203133820.GF2570@htj.dyndns.org>
+ <20110204150456.GD32190@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger.kernel@dilger.ca>,
-	Joel Becker <jlbec@evilplan.org>, Ted Ts'o <tytso@mit.edu>,
-	ext4 <linux-ext4@vger.kernel.org>
-To: Manish Katiyar <mkatiyar@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:33077 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751082Ab1BDPyG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 4 Feb 2011 10:54:06 -0500
+Cc: Tejun Heo <tj@kernel.org>, Vivek Goyal <vgoyal@redhat.com>,
+	"tytso@mit.edu" <tytso@mit.edu>,
+	"djwong@us.ibm.com" <djwong@us.ibm.com>,
+	"shli@kernel.org" <shli@kernel.org>,
+	"neilb@suse.de" <neilb@suse.de>,
+	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
+	"jack@suse.cz" <jack@suse.cz>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"kmannth@us.ibm.com" <kmannth@us.ibm.com>,
+	"cmm@us.ibm.com" <cmm@us.ibm.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"rwheeler@redhat.com" <rwheeler@redhat.com>,
+	"hch@lst.de" <hch@lst.de>, "josef@redhat.com" <josef@redhat.com>,
+	"jmoyer@redhat.com" <jmoyer@redhat.com>
+To: Jens Axboe <jaxboe@fusionio.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <AANLkTi=x_RufCNMGaM1DBbYKPKdO-JoQP5YCdDz6dfAc@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20110204150456.GD32190@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat 29-01-11 21:40:03, Manish Katiyar wrote:
-  Hi Manish,
+Skip elevator initialization for flush requests by passing priv=0 to
+blk_alloc_request() in get_request().  As such elv_set_request() is
+never called for flush requests.
 
-> Have we reached on any conclusion yet on the function name which I can
-> use to send my updated patch ? My preference from the above list is to
-> use ext4_journal_start_nofs() as that seems the closest match, but I
-> would like hear the conclusion from experts.
-  How about "ext4_journal_start_tryhard()"? I don't like "nofs" because
-the fact whether we use GFP_NOFS is separate from the fact whether we are
-able to handle memory allocation failure.
+Signed-off-by: Mike Snitzer <snitzer@redhat.com>
+---
+ block/blk-core.c |   29 +++++++++++++++++++++++++----
+ 1 file changed, 25 insertions(+), 4 deletions(-)
 
-In fact, your patch set should keep calling kzalloc() with GFP_NOFS in all
-cases to avoid new recursions into the filesystem (which could cause
-deadlocks - changing that would need a separate audit if we care enough).
-Just the retrying logic should be influenced by your work.
+v5: introduces blk_rq_should_init_elevator() to abstract the elevator
+    initialization decision to promote future reuse and clarity.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Index: linux-2.6/block/blk-core.c
+===================================================================
+--- linux-2.6.orig/block/blk-core.c
++++ linux-2.6/block/blk-core.c
+@@ -753,6 +753,25 @@ static void freed_request(struct request
+ }
+ 
+ /*
++ * Determine if elevator data should be initialized when allocating the
++ * request associated with @bio.
++ */
++static bool blk_rq_should_init_elevator(struct bio *bio)
++{
++	if (!bio)
++		return true;
++
++	/*
++	 * Flush requests do not use the elevator so skip initialization.
++	 * This allows a request to share the flush and elevator data.
++	 */
++	if (bio->bi_rw & (REQ_FLUSH | REQ_FUA))
++		return false;
++
++	return true;
++}
++
++/*
+  * Get a free request, queue_lock must be held.
+  * Returns NULL on failure, with queue_lock held.
+  * Returns !NULL on success, with queue_lock *not held*.
+@@ -764,7 +783,7 @@ static struct request *get_request(struc
+ 	struct request_list *rl = &q->rq;
+ 	struct io_context *ioc = NULL;
+ 	const bool is_sync = rw_is_sync(rw_flags) != 0;
+-	int may_queue, priv;
++	int may_queue, priv = 0;
+ 
+ 	may_queue = elv_may_queue(q, rw_flags);
+ 	if (may_queue == ELV_MQUEUE_NO)
+@@ -808,9 +827,11 @@ static struct request *get_request(struc
+ 	rl->count[is_sync]++;
+ 	rl->starved[is_sync] = 0;
+ 
+-	priv = !test_bit(QUEUE_FLAG_ELVSWITCH, &q->queue_flags);
+-	if (priv)
+-		rl->elvpriv++;
++	if (blk_rq_should_init_elevator(bio)) {
++		priv = !test_bit(QUEUE_FLAG_ELVSWITCH, &q->queue_flags);
++		if (priv)
++			rl->elvpriv++;
++	}
+ 
+ 	if (blk_queue_io_stat(q))
+ 		rw_flags |= REQ_IO_STAT;
