@@ -1,69 +1,49 @@
-From: James Bottomley <James.Bottomley@HansenPartnership.com>
-Subject: Re: [Lsf-pc] [LSF/MM TOPIC] Drop ext2/ext3 codebase? When?
-Date: Fri, 04 Feb 2011 11:17:53 -0600
-Message-ID: <1296839873.3025.39.camel@mulgrave.site>
-References: <20110203144011.GA28409@quack.suse.cz> <4D4AC4E2.701@redhat.com>
-	 <AANLkTi=YxSpgm9vYHBKdASpLOaY_U3=ggsE8yTg_G0Bc@mail.gmail.com>
-	 <20110204131739.GC4104@quack.suse.cz>  <4D4C3154.3020502@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
-	Michael Rubin <mrubin@google.com>,
-	lsf-pc@lists.linuxfoundation.org, linux-fsdevel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-To: Ric Wheeler <ricwheeler@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <4D4C3154.3020502@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [LSF/MM TOPIC] Drop ext2/ext3 codebase? When?
+Date: Fri, 4 Feb 2011 10:36:21 -0700
+Message-ID: <316721F8-70CD-4E29-A94E-BFEF2D762829@dilger.ca>
+References: <20110203144011.GA28409@quack.suse.cz> <4D4AC4E2.701@redhat.com> <20110204130313.GB4104@quack.suse.cz>
+Mime-Version: 1.0 (iPhone Mail 8C148a)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Eric Sandeen <sandeen@redhat.com>, Jan Kara <jack@suse.cz>,
+	"lsf-pc@lists.linuxfoundation.org" <lsf-pc@lists.linuxfoundation.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:46626 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751200Ab1BDRg2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Feb 2011 12:36:28 -0500
+In-Reply-To: <20110204130313.GB4104@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2011-02-04 at 12:03 -0500, Ric Wheeler wrote:
-> On 02/04/2011 08:17 AM, Jan Kara wrote:
-> > On Thu 03-02-11 11:32:01, Michael Rubin wrote:
-> >> On Thu, Feb 3, 2011 at 7:08 AM, Eric Sandeen<sandeen@redhat.com>  wrote:
-> >>> If we can have a real plan for moving in this direction though, I'd
-> >>> support it.  I'm just not sure how we get enough real testing under
-> >>> our belts to be comfortable with dropping ext[23], especially as
-> >>> most distros now default to ext4 anyway.
-> >> Eric what sort of testing are you looking for?
-> > I believe Ted wrote a good summary of what combinations of options would
-> > need to be tested on a regular basis to get at least some confidence that
-> > the switch could work.
-> >
-> >> I admit I like having ext2 around for comparisons in bug situations.
-> >> It really helps to isolate the problem area. How painful is the
-> >> upkeep?
-> > Well, for me it's a couple of hours per week on average I'd say. Plus
-> > there is some work other people do when changing some VFS/MM interfaces
-> > influencing all the filesystems.
-> >
-> > The time I spend is enough to keep ext3 in a good shape I believe but I
-> > have a feeling that ext2 is slowly bitrotting. Sometime when I look at
-> > ext2 code I see stuff we simply do differently these days and that's just
-> > a step away from the code getting broken... It would not be too much work
-> > to clean things up and maintain but it's a work with no clear gain (if you
-> > do the thankless job of maintaining old code, you should at least have
-> > users who appreciate that ;) so naturally no one does it.
-> >
-> > 								Honza
-> 
-> I would definitely be interesting in figuring out if and when we can drop one or 
-> both of ext2 and ext3. The number of actively supported file systems to test for 
-> correctness and performance is getting to be a challenge.
+On 2011-02-04, at 6:03, Jan Kara <jack@suse.cz> wrote:
+>> I think that ext4 with nodelalloc should mostly mimic ext3 in those
+>> cases, no?
+>  Yeah, mostly. The biggest obstacle I see here is the different behavior
+> of mmap - with nodelalloc allocation happens at the time of page fault and
+> that fragments the file like hell for some kinds of load. Since ext3 here
+> essentially does delayed allocation, it might be useful to do delayed
+> allocation only from page fault path when we try to mimic ext3 behavior.
+> So mimicking ext3 is possible but needs some tweaks...
 
-ext2 yes ... I think there's no way we can drop ext3: it's still a
-current default filesystem for most distributions.  Now, if we discuss
-dropping ext2 and working out an end of life plan for ext3 (for the
-feature removals schedule) so we don't eventually get into the same
-position with it as we are with ext2, then this sounds like a plan.
+The question is whether we need to mimic the runtime behavior or just the on-disk format?  Apps already need to deal with ext4 and other fs that do not do ext3 ordered mode. 
 
-> Great topic, might require beer though to be done right :)
+>> If we can have a real plan for moving in this direction though, I'd
+>> support it.  I'm just not sure how we get enough real testing under
+>> our belts to be comfortable with dropping ext[23], especially as
+>> most distros now default to ext4 anyway.
+>  Well, I believe this actually works for us. If the real users move to
+> ext4 (or a different fs), then it's easier to make ext[23] mode in ext4
+> good enough for the few legacy users...
 
-I'm invoking the anti-discrimination statutes here on behalf of those of
-us who don't like beer.
+I think the best road forward is to make ext4 the default for ext2 and ext3 filesystems in newer kernels, and mark ext2 and ext3 obsolete. This will start to get usage and testing of these other config options. The ext2 mode is already heavily tested at Google, and don't they also test noextent mode on updated filesystems, or were all of the filesystems reformatted with ext4 options?
 
-James
+After some number of kernel releases with ext4 as the default, we could remove the ext2 and ext3 code. 
 
-
+Cheers, Andreas. 
