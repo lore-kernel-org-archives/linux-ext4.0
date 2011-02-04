@@ -1,60 +1,61 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [LSF/MM TOPIC] Drop ext2/ext3 codebase? When?
-Date: Thu, 3 Feb 2011 19:04:31 -0500
-Message-ID: <20110204000431.GB2623@thunk.org>
-References: <20110203144011.GA28409@quack.suse.cz>
- <4D4AC4E2.701@redhat.com>
- <AANLkTi=YxSpgm9vYHBKdASpLOaY_U3=ggsE8yTg_G0Bc@mail.gmail.com>
+From: Joel Becker <jlbec@evilplan.org>
+Subject: Re: [LSF/FS TOPIC] Ext4 snapshots status update
+Date: Thu, 3 Feb 2011 16:20:44 -0800
+Message-ID: <20110204002043.GA15658@noexit>
+References: <AANLkTink6o249JivXiETT6JnANNcikNqGGfr8+McDQsM@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Eric Sandeen <sandeen@redhat.com>, Jan Kara <jack@suse.cz>,
-	lsf-pc@lists.linuxfoundation.org, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Michael Rubin <mrubin@google.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: lsf-pc@lists.linuxfoundation.org,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Theodore Tso <tytso@mit.edu>
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:50692 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752555Ab1BDAEr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 3 Feb 2011 19:04:47 -0500
+Received: from zeniv.linux.org.uk ([195.92.253.2]:57872 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754131Ab1BDAUw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Feb 2011 19:20:52 -0500
 Content-Disposition: inline
-In-Reply-To: <AANLkTi=YxSpgm9vYHBKdASpLOaY_U3=ggsE8yTg_G0Bc@mail.gmail.com>
+In-Reply-To: <AANLkTink6o249JivXiETT6JnANNcikNqGGfr8+McDQsM@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Feb 03, 2011 at 11:32:01AM -0800, Michael Rubin wrote:
-> On Thu, Feb 3, 2011 at 7:08 AM, Eric Sandeen <sandeen@redhat.com> wro=
-te:
-> > If we can have a real plan for moving in this direction though, I'd
-> > support it. =A0I'm just not sure how we get enough real testing und=
-er
-> > our belts to be comfortable with dropping ext[23], especially as
-> > most distros now default to ext4 anyway.
->=20
-> Eric what sort of testing are you looking for?
+On Fri, Feb 04, 2011 at 12:33:39AM +0200, Amir Goldstein wrote:
+> I have been working on porting Next3 snapshots to Ext4
+> with a group of 4 CS students.
+> 
+> This is where it all happens:
+> https://github.com/amir73il/ext4-snapshots
+> 
+> Ext4 snapshots prototype is already working!
+> Would you like to see a demo?
+> 
+> I would like to present the progress of our work
+> and discuss the remaining issues and how they should be best addressed.
+> 
+> Additionally, I would like to discuss the need for a unified snapshots API that
+> would serve both Ext4 and Btrfs.
+> This could be useful for someone that wants to implement a generic
+> snapshots management system.
 
-The biggest problem in my opinion is that we have a large set of
-options, and we don't necessarily test all of them.  The options that
-I normaly test is
+	ocfs2 definitely wants to be a part of that discussion, as we
+already do snapshots and thin clones.  ocfs2 snapshots are actually just
+thin clones marked readonly.  They can be placed anywhere in the
+filesystem and are first-class inodes.  They do not live in a hidden
+space like Next3 snapshots seem to.
+	I've already got a design for a front-end snapshot program that
+implements a policy on top this generic behavior.  This design would
+cover both first-class and hidden style snapshots, because it assume
+snapshots are in a distinct namespace.  I haven't gotten around to
+implementing it yet, but btrfs and other snapshottable filesystems were
+part of the design goal.
 
-   * 4k blocksize, with journal, extents
-   * 1k blocksize, with journal, extents (this helps flush out problems
-		   that show up architectures with 16k page size and
-		   4k block sizes, i.e., Power PC and Itanium)
-   * 4k blocksize, no journal
+Joel
 
-Things that I should also test, but which take a lot longer:
+-- 
 
-   * nodelalloc (and combinatorics, 4k/1k blocksize, journal)
-   * filesystem with extents disabled (with more combinatorics!)
+"Sometimes one pays most for the things one gets for nothing."
+        - Albert Einstein
 
-I'll sometimes do these additional tests, but they're not part of my
-regular test sets.
-
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+			http://www.jlbec.org/
+			jlbec@evilplan.org
