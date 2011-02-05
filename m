@@ -1,51 +1,46 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [Lsf-pc] [LSF/MM TOPIC] Drop ext2/ext3 codebase? When?
-Date: Sat, 05 Feb 2011 13:43:17 -0500
-Message-ID: <1296931397.6481.0.camel@heimdal.trondhjem.org>
-References: <20110203144011.GA28409@quack.suse.cz> <4D4AC4E2.701@redhat.com>
-	 <AANLkTi=YxSpgm9vYHBKdASpLOaY_U3=ggsE8yTg_G0Bc@mail.gmail.com>
-	 <20110204131739.GC4104@quack.suse.cz>  <4D4C3154.3020502@gmail.com>
-	 <1296839873.3025.39.camel@mulgrave.site>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 25832] kernel crashes upon resume if usb devices are removed
+ when suspended
+Date: Sat, 5 Feb 2011 19:12:49 GMT
+Message-ID: <201102051912.p15JCnLq002659@demeter1.kernel.org>
+References: <bug-25832-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-Cc: Ric Wheeler <ricwheeler@gmail.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Michael Rubin <mrubin@google.com>, Jan Kara <jack@suse.cz>,
-	lsf-pc@lists.linuxfoundation.org, linux-fsdevel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-To: James Bottomley <James.Bottomley@hansenpartnership.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:51331 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753268Ab1BESnU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Feb 2011 13:43:20 -0500
-In-Reply-To: <1296839873.3025.39.camel@mulgrave.site>
+Received: from demeter1.kernel.org ([140.211.167.39]:34283 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752948Ab1BETMu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Feb 2011 14:12:50 -0500
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p15JCndq002660
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Sat, 5 Feb 2011 19:12:49 GMT
+In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2011-02-04 at 11:17 -0600, James Bottomley wrote: 
-> On Fri, 2011-02-04 at 12:03 -0500, Ric Wheeler wrote:
-> > On 02/04/2011 08:17 AM, Jan Kara wrote:
-> ext2 yes ... I think there's no way we can drop ext3: it's still a
-> current default filesystem for most distributions.  Now, if we discuss
-> dropping ext2 and working out an end of life plan for ext3 (for the
-> feature removals schedule) so we don't eventually get into the same
-> position with it as we are with ext2, then this sounds like a plan.
-> 
-> > Great topic, might require beer though to be done right :)
-> 
-> I'm invoking the anti-discrimination statutes here on behalf of those of
-> us who don't like beer.
+https://bugzilla.kernel.org/show_bug.cgi?id=25832
 
-OK. I'm putting this as filesystems track only proposal, then...
+
+
+
+
+--- Comment #12 from Theodore Tso <tytso@mit.edu>  2011-02-05 19:12:45 ---
+Rocko,
+
+can you reproduce the problem reliably at this point?  And if so, can you give
+us more details about how you reproduced, and how someone else might be able to
+replicate the problem reliably?
+
+Is FUSE always involved, as it was apparently in comment #10?   Can you
+reproduce the problem without FUSE?
+
+You're right, the oops message does look cut off.
+
+-- Ted
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
