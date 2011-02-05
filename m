@@ -1,53 +1,41 @@
-From: Manish Katiyar <mkatiyar@gmail.com>
-Subject: Re: [PATCH 1/3] jbd2 : Make jbd2 transaction handle allocation to
- return errors and handle them gracefully.
-Date: Fri, 4 Feb 2011 14:44:57 -0800
-Message-ID: <AANLkTim779kmcr0Zjz9a9EGkBHwbFqgV7hxokXPBc522@mail.gmail.com>
-References: <AANLkTi=o-rcsbY1gOExGyWdQ41m7KWpJ7=UzX4306m=t@mail.gmail.com>
- <20110123054049.GC3237@thunk.org> <20110123062900.GA7436@noexit>
- <20110124133143.GA5058@quack.suse.cz> <AA32FD05-E9BD-40AB-8495-EAD0547B5E02@dilger.ca>
- <20110125114656.GB4088@quack.suse.cz> <AANLkTi=x_RufCNMGaM1DBbYKPKdO-JoQP5YCdDz6dfAc@mail.gmail.com>
- <20110204155358.GF4104@quack.suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 25832] kernel crashes upon resume if usb devices are removed
+ when suspended
+Date: Sat, 5 Feb 2011 08:31:38 GMT
+Message-ID: <201102050831.p158VcNc016579@demeter1.kernel.org>
+References: <bug-25832-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	Joel Becker <jlbec@evilplan.org>, "Ted Ts'o" <tytso@mit.edu>,
-	ext4 <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f181.google.com ([209.85.216.181]:39304 "EHLO
-	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751911Ab1BDWpS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Feb 2011 17:45:18 -0500
-Received: by qyk12 with SMTP id 12so2397815qyk.19
-        for <linux-ext4@vger.kernel.org>; Fri, 04 Feb 2011 14:45:17 -0800 (PST)
-In-Reply-To: <20110204155358.GF4104@quack.suse.cz>
+Received: from demeter1.kernel.org ([140.211.167.39]:41947 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751105Ab1BEIbj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Feb 2011 03:31:39 -0500
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p158VcjB016580
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Sat, 5 Feb 2011 08:31:38 GMT
+In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Feb 4, 2011 at 7:53 AM, Jan Kara <jack@suse.cz> wrote:
-> On Sat 29-01-11 21:40:03, Manish Katiyar wrote:
-> =A0Hi Manish,
->
->> Have we reached on any conclusion yet on the function name which I c=
-an
->> use to send my updated patch ? My preference from the above list is =
-to
->> use ext4_journal_start_nofs() as that seems the closest match, but I
->> would like hear the conclusion from experts.
-> =A0How about "ext4_journal_start_tryhard()"?
+https://bugzilla.kernel.org/show_bug.cgi?id=25832
 
-Thanks Jan,
 
-I will post an updated patch of the full series using
-ext4_journal_start_tryhard() once other patches have been reviewed.
 
---=20
-Thanks -
-Manish
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+--- Comment #10 from rocko <rockorequin@hotmail.com>  2011-02-05 08:31:16 ---
+Created an attachment (id=46432)
+ --> (https://bugzilla.kernel.org/attachment.cgi?id=46432)
+inode kernel bug dump
+
+I tried suspending/resuming from a VT console in 2.6.38-rc3 and discovered a
+kernel bug - I've attached it in case it's related to this. But the system
+didn't freeze up in 2.6.38.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
