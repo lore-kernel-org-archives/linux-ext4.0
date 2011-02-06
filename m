@@ -1,21 +1,21 @@
 From: bugzilla-daemon@bugzilla.kernel.org
 Subject: [Bug 25832] kernel crashes upon resume if usb devices are removed
  when suspended
-Date: Sun, 6 Feb 2011 03:44:24 GMT
-Message-ID: <201102060344.p163iOOS015363@demeter2.kernel.org>
+Date: Sun, 6 Feb 2011 04:26:27 GMT
+Message-ID: <201102060426.p164QRoV003763@demeter2.kernel.org>
 References: <bug-25832-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:35256 "EHLO
+Received: from demeter2.kernel.org ([140.211.167.42]:50838 "EHLO
 	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752375Ab1BFDoZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Feb 2011 22:44:25 -0500
+	with ESMTP id S1752377Ab1BFE02 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Feb 2011 23:26:28 -0500
 Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p163iOTg015364
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p164QRlr003764
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sun, 6 Feb 2011 03:44:24 GMT
+	for <linux-ext4@vger.kernel.org>; Sun, 6 Feb 2011 04:26:27 GMT
 In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -26,19 +26,29 @@ https://bugzilla.kernel.org/show_bug.cgi?id=25832
 
 
 
---- Comment #18 from rocko <rockorequin@hotmail.com>  2011-02-06 03:44:22 ---
-Created an attachment (id=46552)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=46552)
-log of latest kernel panic
+--- Comment #19 from Theodore Tso <tytso@mit.edu>  2011-02-06 04:26:25 ---
+Hmm.... what if you only remove one drive while suspended?   Can you try
+removing each of the drives as separate experiments, and see if you can narrow
+it down to a single drive that seems to cause the problem when it is removed?
 
-The attached shows some more information from a 2.6.37 kernel panic during
-resume. The panic followed what I assume was the paging request error (the full
-log scrolled off the top of the screen, but it looks similar to the last one).
-I didn't copy down all the hex data but I might be able to figure them out from
-some (slightly blurry) photos of the screen if they are important.
+And then can you see how that drive is being used (if it is being used at all)?
 
-Note: this time I had removed the drives from the hub individually rather than
-removing the hub. So it didn't make any difference doing it that way around.
+If the system is mostly quiet, then presumably it would die immediately on
+resume, but when the system actually tried to access the file system.  So if we
+can narrow it down to a single file system, and then figure out which processes
+had files opened on that file system, maybe that would give us a clue.
+
+You said, "paging request error" --- were you running programs off of any of
+the external drives?   What programs if any were accessing the drive?
+
+I'll note that I've tried some simple experiments with removing a quiescent USB
+drive from my system while it was suspended, and I haven't been able to
+reproduce the problem.   I have often forgotten to unmount a hot-swapping AHCI
+attached hot-swappable SATA drive in my Ultrabay slot which is idle while
+suspending, and it's never caused a hang on resume.  It gets a new sdN drive
+letter on resume, so all of the file system mounts are invalidated, but I've
+never gotten a crash when that happens --- and I've been using 2.6.37 on my
+laptop almost ever since it has been released.
 
 -- 
 Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
