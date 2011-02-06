@@ -1,21 +1,21 @@
 From: bugzilla-daemon@bugzilla.kernel.org
 Subject: [Bug 25832] kernel crashes upon resume if usb devices are removed
  when suspended
-Date: Sun, 6 Feb 2011 02:54:00 GMT
-Message-ID: <201102060254.p162s02L019390@demeter2.kernel.org>
+Date: Sun, 6 Feb 2011 03:44:24 GMT
+Message-ID: <201102060344.p163iOOS015363@demeter2.kernel.org>
 References: <bug-25832-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:48256 "EHLO
+Received: from demeter2.kernel.org ([140.211.167.42]:35256 "EHLO
 	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752087Ab1BFCyA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Feb 2011 21:54:00 -0500
+	with ESMTP id S1752375Ab1BFDoZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Feb 2011 22:44:25 -0500
 Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p162s0DC019391
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p163iOTg015364
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sun, 6 Feb 2011 02:54:00 GMT
+	for <linux-ext4@vger.kernel.org>; Sun, 6 Feb 2011 03:44:24 GMT
 In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -26,23 +26,19 @@ https://bugzilla.kernel.org/show_bug.cgi?id=25832
 
 
 
---- Comment #17 from rocko <rockorequin@hotmail.com>  2011-02-06 02:53:57 ---
-The home directory is on an internal partition and thus never removed. The
-system was pretty quiet before the suspend - all I had done after rebooting was
-run Firefox to look at this bug report, and I didn't see any substantial disk
-activity from any automated tasks like updatedb.
+--- Comment #18 from rocko <rockorequin@hotmail.com>  2011-02-06 03:44:22 ---
+Created an attachment (id=46552)
+ --> (https://bugzilla.kernel.org/attachment.cgi?id=46552)
+log of latest kernel panic
 
-I tried a few cycles removing only the drives and not the hub but haven't
-re-encountered the problem in 2.6.38-rc3 yet. This did reveal that I actually
-have five external drives connected, not four. (There's an extra 1TB.) I'll try
-later with 2.6.37 since it does seem to be easier to reproduce there.
+The attached shows some more information from a 2.6.37 kernel panic during
+resume. The panic followed what I assume was the paging request error (the full
+log scrolled off the top of the screen, but it looks similar to the last one).
+I didn't copy down all the hex data but I might be able to figure them out from
+some (slightly blurry) photos of the screen if they are important.
 
-On a few occasions the PC has frozen when I simply removed the USB cable during
-normal operation (not during a resume). This happened once on the other 32 bit
-PC as well. It is unfortunately much harder to reproduce. Could this indicate
-perhaps that the paging request bug is a symptom of an earlier memory
-corruption caused when the file system attempts to access a mounted but removed
-partition before realising it has gone?
+Note: this time I had removed the drives from the hub individually rather than
+removing the hub. So it didn't make any difference doing it that way around.
 
 -- 
 Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
