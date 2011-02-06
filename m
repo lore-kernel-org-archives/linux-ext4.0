@@ -1,48 +1,48 @@
-From: Coly Li <i@coly.li>
-Subject: [PATCH 3/5] mballoc: add comments to ext4_mb_mark_free_simple()
-Date: Sun, 06 Feb 2011 12:54:00 +0800
-Message-ID: <4D4E2968.5010308@coly.li>
-Reply-To: i@coly.li
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 25832] kernel crashes upon resume if usb devices are removed
+ when suspended
+Date: Sun, 6 Feb 2011 06:43:00 GMT
+Message-ID: <201102060643.p166h03p004662@demeter2.kernel.org>
+References: <bug-25832-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Alex Tomas <alex@clusterfs.com>, Theodore Tso <tytso@google.com>
+Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cpoproxy3-pub.bluehost.com ([67.222.54.6]:60875 "HELO
-	cpoproxy3-pub.bluehost.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1752377Ab1BFE1f (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Feb 2011 23:27:35 -0500
+Received: from demeter2.kernel.org ([140.211.167.42]:54192 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750876Ab1BFGnC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Feb 2011 01:43:02 -0500
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p166h0vb004663
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Sun, 6 Feb 2011 06:43:00 GMT
+In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch tries to add comments to make ext4_mb_mark_free_simple more
-readable.
+https://bugzilla.kernel.org/show_bug.cgi?id=25832
 
-Signed-off-by: Coly Li <bosong.ly@taobao.com>
-Cc: Alex Tomas <alex@clusterfs.com>
-Cc: Theodore Tso <tytso@google.com>
----
-  fs/ext4/mballoc.c |    7 ++++++-
-  1 files changed, 6 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 458dce0..c5534f4 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -630,7 +630,12 @@ static int __mb_check_buddy(struct ext4_buddy *e4b, char *file,
-  #define mb_check_buddy(e4b)
-  #endif
 
--/* FIXME!! need more doc */
-+/*
-+ * Devide blocks started from @first with length @len into
-+ * smaller chunks with power of 2 blocks.
-+ * Clear the bits in bitmap which the blocks of the chunk(s) covered,
-+ * then increase bb_counters[] for corresponded chunk size.
-+ */
-  static void ext4_mb_mark_free_simple(struct super_block *sb,
-  				void *buddy, ext4_grpblk_t first, ext4_grpblk_t len,
-  					struct ext4_group_info *grp)
+
+
+--- Comment #20 from rocko <rockorequin@hotmail.com>  2011-02-06 06:42:59 ---
+It's a *lot* harder to repeat it with just one drive attached. Over 20
+suspend/resume cycles I only managed to repeat the freeze once with a single
+drive attached (with the 500GB drive attached in this case).
+
+I doubt very much that a particular program is accessing the external
+partitions. In my testing I just allow Gnome to mount the partitions and once
+it has settled I run the sleep command. A "lsof|grep media" after the
+partitions are mounted doesn't show anything accessing the external file
+systems.
+
+Is it relevant that when I start the suspend cycle but before suspend occurs
+there are some kernel messages saying that the external partitions are being
+remounted? I would have thought that they would be unmounted without a remount
+before suspend.
+
 -- 
-1.7.3.4
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
