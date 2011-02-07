@@ -1,69 +1,42 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [LSF/MM TOPIC] Drop ext2/ext3 codebase? When?
-Date: Mon, 7 Feb 2011 17:19:33 +0100
-Message-ID: <20110207161933.GB5337@quack.suse.cz>
-References: <20110203144011.GA28409@quack.suse.cz>
- <4D4AC4E2.701@redhat.com>
- <20110204130313.GB4104@quack.suse.cz>
- <316721F8-70CD-4E29-A94E-BFEF2D762829@dilger.ca>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger.kernel@dilger.ca>
+Subject: Re: [PATCH] mke2fs: Add support for lazy journal initialization
+Date: Mon, 7 Feb 2011 08:29:09 -0800
+Message-ID: <7925BD53-B86D-4ED6-8EA1-20A00DB7D4C0@dilger.ca>
+References: <alpine.LFD.2.00.1102012025400.3559@dhcp-lab-213.englab.brq.redhat.com> <1296645377-18480-1-git-send-email-lczerner@redhat.com> <DFB0F581-2306-41A9-AD21-F6019C3AC3C5@dilger.ca> <alpine.LFD.2.00.1102071506520.3927@dhcp-27-109.brq.redhat.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
-	"lsf-pc@lists.linuxfoundation.org" <lsf-pc@lists.linuxfoundation.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Transfer-Encoding: 8BIT
+Cc: Ted Ts'o <tytso@MIT.EDU>, ext4 List <linux-ext4@vger.kernel.org>
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:36727 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751886Ab1BGQTg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 Feb 2011 11:19:36 -0500
-Content-Disposition: inline
-In-Reply-To: <316721F8-70CD-4E29-A94E-BFEF2D762829@dilger.ca>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:8858 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754068Ab1BGQ3M convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Feb 2011 11:29:12 -0500
+In-Reply-To: <alpine.LFD.2.00.1102071506520.3927@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 04-02-11 10:36:21, Andreas Dilger wrote:
-> On 2011-02-04, at 6:03, Jan Kara <jack@suse.cz> wrote:
-> >> I think that ext4 with nodelalloc should mostly mimic ext3 in those
-> >> cases, no?
-> >  Yeah, mostly. The biggest obstacle I see here is the different behavior
-> > of mmap - with nodelalloc allocation happens at the time of page fault and
-> > that fragments the file like hell for some kinds of load. Since ext3 here
-> > essentially does delayed allocation, it might be useful to do delayed
-> > allocation only from page fault path when we try to mimic ext3 behavior.
-> > So mimicking ext3 is possible but needs some tweaks...
+On 2011-02-07, at 06:15, Lukas Czerner wrote:
+> On Thu, 3 Feb 2011, Andreas Dilger wrote:
+>> This patch adds the ability to skip zeroing the journal on disk.  This can
+>> significantly speed up mke2fs with large journals.  At worst the uninitialized
+>> journal is only a very short-term risk (if at all), because the journal will
+>> be overwritten on any new filesystem as soon as any significant amount of data
+>> is written to disk, unlike lazy_itable_init which can leave uninitialized
+>> itable blocks indefinitely (in the absence of the kernel init thread).
 > 
-> The question is whether we need to mimic the runtime behavior or just the
-> on-disk format?  Apps already need to deal with ext4 and other fs that do
-> not do ext3 ordered mode. 
-  Well written apps do, but badly written apps don't and e.g. our distro
-customers don't always have the choice of the application. So as a developer
-I see your point (screw stupidly written apps) but in the real world, I'm
-afraid it's too hard on users.
+> I think that we can skip the journal zeroing if the underlying device,
+> or the journal device supports discard, and advertise that discard
+> zeroes data. It is the same behavior as in the case of inode tables and
+> it would be nice to have the same thing for journal. Are you planning to
+> implement this as well ?
 
-> >> If we can have a real plan for moving in this direction though, I'd
-> >> support it.  I'm just not sure how we get enough real testing under
-> >> our belts to be comfortable with dropping ext[23], especially as
-> >> most distros now default to ext4 anyway.
-> >  Well, I believe this actually works for us. If the real users move to
-> > ext4 (or a different fs), then it's easier to make ext[23] mode in ext4
-> > good enough for the few legacy users...
-> 
-> I think the best road forward is to make ext4 the default for ext2 and
-> ext3 filesystems in newer kernels, and mark ext2 and ext3 obsolete. This
-> will start to get usage and testing of these other config options. The
-> ext2 mode is already heavily tested at Google, and don't they also test
-> noextent mode on updated filesystems, or were all of the filesystems
-> reformatted with ext4 options?
-  Yes, I know you are on relatively radical side ;). My position would be
-to test ext4 for resonable combinations of options as ext2 driver and if
-that works, switch ext2 as you describe. Then if it works fine for an year
-or so, we can talk about ext3 but as James said, ext3 is still widely used
-so there might be more friction on subtle runtime differences...
+That detection didn't exist when I originally wrote that patch.  It definitely makes sense to default to not zeroing the journal if discard has been done.
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Cheers, Andreas
+
+
+
+
+
