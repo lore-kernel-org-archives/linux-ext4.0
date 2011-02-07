@@ -1,21 +1,21 @@
 From: bugzilla-daemon@bugzilla.kernel.org
 Subject: [Bug 25832] kernel crashes upon resume if usb devices are removed
  when suspended
-Date: Mon, 7 Feb 2011 03:33:14 GMT
-Message-ID: <201102070333.p173XEl8031124@demeter1.kernel.org>
+Date: Mon, 7 Feb 2011 04:24:51 GMT
+Message-ID: <201102070424.p174OpQg025552@demeter1.kernel.org>
 References: <bug-25832-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:36777 "EHLO
+Received: from demeter1.kernel.org ([140.211.167.39]:35672 "EHLO
 	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754467Ab1BGDdP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Feb 2011 22:33:15 -0500
+	with ESMTP id S1751334Ab1BGEYw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Feb 2011 23:24:52 -0500
 Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p173XEEu031125
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p174OpN1025553
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 7 Feb 2011 03:33:14 GMT
+	for <linux-ext4@vger.kernel.org>; Mon, 7 Feb 2011 04:24:51 GMT
 In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -26,8 +26,23 @@ https://bugzilla.kernel.org/show_bug.cgi?id=25832
 
 
 
---- Comment #25 from Theodore Tso <tytso@mit.edu>  2011-02-07 03:33:09 ---
-(i.e., but rather something which is device driver specific)
+--- Comment #26 from rocko <rockorequin@hotmail.com>  2011-02-07 04:24:49 ---
+The kernel panic messages (when kmsg gets that far) do say that a fatal
+exception has happened in an interrupt. It seems odd to me though that
+kmsg_dump locks up a seemingly random time later while reporting the panic.
+
+I tried again with two vfat USB drives, one ext3 external drive, and an ntfs
+external drive attached via the hub. I reproduced the freeze, this time caused
+by a null pointer reference error rather than a unhandled page fault error.
+Again it was in task_rq_lock. The stack trace stopped very abruptly this time. 
+
+I'm not positive that this lets ext4 completely off the hook because of the
+crash that was caused when firefox tried to access the internal ext4 home
+partition. Presumably I'd have to try and reproduce the problem with all the
+internal partitions reformatted to ext3 to rule out ext4 completely.
+
+But perhaps ext4's memory was corrupted by the umount operations? Is there
+common umount kernel code shared by all file systems?
 
 -- 
 Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
