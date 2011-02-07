@@ -1,107 +1,87 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: Adjust trim start with first_data_block.
-Date: Mon, 7 Feb 2011 14:03:34 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1102071349380.3927@dhcp-27-109.brq.redhat.com>
-References: <1295618707-3677-1-git-send-email-tm@tao.ma> <20110204054012.GD2623@thunk.org> <4D4D69DF.1070105@tao.ma>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: [PATCH] VFS: call synchronize_rcu after kill_sb.
+Date: Mon, 07 Feb 2011 15:14:40 +0200
+Message-ID: <4D4FF040.9050707@panasas.com>
+References: <1296896481-3650-1-git-send-email-tm@tao.ma>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="571140353-93472829-1297083817=:3927"
-Cc: "Ted Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Lukas Czerner <lczerner@redhat.com>
-To: Tao Ma <tm@tao.ma>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40931 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751954Ab1BGNDk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 Feb 2011 08:03:40 -0500
-In-Reply-To: <4D4D69DF.1070105@tao.ma>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	Chris Mason <chris.mason@oracle.com>
+To: Tao Ma <tm@tao.ma>, Nick Piggin <npiggin@kernel.dk>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1296896481-3650-1-git-send-email-tm@tao.ma>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
-
---571140353-93472829-1297083817=:3927
-Content-Type: TEXT/PLAIN; charset=ISO-8859-15
-Content-Transfer-Encoding: 8BIT
-
-On Sat, 5 Feb 2011, Tao Ma wrote:
-
-> Hi Ted,
-> On 02/04/2011 01:40 PM, Ted Ts'o wrote:
-> > On Fri, Jan 21, 2011 at 10:05:07PM +0800, Tao Ma wrote:
-> >    
-> > > From: Tao Ma<boyu.mt@taobao.com>
-> > > 
-> > > As we have make the consense in the e-mail[1], the trim start should
-> > > be added with first_data_block. So this patch fulfill it and remove
-> > > the check for start<  first_data_block.
-> > >      
-> >    
-> > > [1] http://www.spinics.net/lists/linux-ext4/msg22737.html
-> > > 
-> > >      
-> > Sorry, I was away at Linux.conf.au and didn't have a chance to respond
-> > this.
-> >    
-> np.
-> > Fundamentally I think we need to understand what the arguments to the
-> > trim ioctl is supposed to *mean*.  Are they supposed to be physical
-> > block numbers, or some thing else?  If we just bump everything by the
-> > first_data_block, (which is non-zero only for the 1k case), that will
-> > screw up the length argument, because the userspace program isn't
-> > going to know that (a) the file system is using 1k blocks, and (b) on
-> > ext2/3/4 that means that first_data_block is 1.
-> >    
-> fair enough.
-> > So instead of saying that the arguments to trim mean "the data blocks"
-> > --- which is a concept that doesn't really have any meaning to the
-> > caller of the trim ioctl, without forcing it to know a lot more about
-> > the physical layout of filesystems, I think the argument to trim
-> > should be the physical block numbers.
-> > 
-> > And just as we don't trim blocks that contain data that should be
-> > saved, we should just simply not trim block #0 (the boot block) and
-> > and block #1 (the superblock) on 1k block filesystems, and not trim
-> > block #0 (the boot block as well as the superblock) on 4k block
-> > filesystems.  But we shouldn't be doing this by taking block number
-> > passed to trim and just adding first_data_block to it.
-> >    
-> I am open to any suggestion as:
-> 1) you are the original author of ext2/3/4. ;)
-> 2) I am not the original author of trim in ext3/4 and this patch is suggested
-> by Lucas. So Lucas, do you agree with it?
-
-Well, originally (when I suggested that we should just add
-first_data_block) the intention was for the arguments to be "bytes of
-data". I am not sure what exactly is counted into filesystem size
-(device size - metadata blocks - reserved bocks - first data block etc.. ??),
-but the idea was (since FITRIM is called on mounted filesystem), that
-start=0 means first data block for the user, but if it is counted into
-filesystem size (marked as used space) it does not really make sense to
-add fist_data_block to the start argument.
-
-Does it make sense ?
-
-Thanks!
--Lukas
-
-(BTW, my name is spelled with 'k' in it, so it is "Lukas", or "Luká¨" to be
-exact, but the first one is just fine :) )
-
-> > I know a patch to do that has already merged into ext3, but with the
-> > indulgence of the folks on linux-ext4, could we reopen this question?
-> >    
-> Never mind.
-> So if you has the objection to this patch, please consider merging another
-> patch.
-> It fix an underflow problem and treat 'start' as the first physical block
-> number.
-> http://marc.info/?l=linux-ext4&m=129543034911496&w=2
+On 02/05/2011 11:01 AM, Tao Ma wrote:
+> From: Tao Ma <boyu.mt@taobao.com>
 > 
-> As for ext3, I will contact Jan for the update if you decide to abandon this
-> patch and accept the patch for 'underflow'.
+> In fa0d7e3, we use rcu free inode instead of freeing the inode
+> directly. It causes a problem when we rmmod immediately after
+> we umount the volume[1].
 > 
-> Regards,
-> Tao
+> So we need to call synchronize_rcu after we kill_sb so that
+> the inode is freed before we do rmmod. The idea is inspired
+> by Chris Mason[2]. I tested with ext4 by umount+rmmod and it
+> doesn't show any error by now.
 > 
---571140353-93472829-1297083817=:3927--
+> 1. http://marc.info/?l=linux-fsdevel&m=129680863330185&w=2
+> 2. http://marc.info/?l=linux-fsdevel&m=129684698713709&w=2 
+> 
+> Cc: Nick Piggin <npiggin@kernel.dk>
+> Cc: Al Viro <viro@zeniv.linux.org.uk>
+> Cc: Chris Mason <chris.mason@oracle.com>
+> Cc: Boaz Harrosh <bharrosh@panasas.com>
+> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+> ---
+>  fs/super.c |    7 +++++++
+>  1 files changed, 7 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/super.c b/fs/super.c
+> index 74e149e..315bce9 100644
+> --- a/fs/super.c
+> +++ b/fs/super.c
+> @@ -177,6 +177,13 @@ void deactivate_locked_super(struct super_block *s)
+>  	struct file_system_type *fs = s->s_type;
+>  	if (atomic_dec_and_test(&s->s_active)) {
+>  		fs->kill_sb(s);
+> +		/*
+> +		 * We need to synchronize rcu here so that
+> +		 * the delayed rcu inode free can be executed
+> +		 * before we put_super.
+> +		 * https://bugzilla.kernel.org/show_bug.cgi?id=27652
+> +		 */
+> +		synchronize_rcu();
+>  		put_filesystem(fs);
+>  		put_super(s);
+>  	} else {
+
+
+Sorry for not testing sooner.
+
+The above does not work I still get the exact same crash!!
+
+Looking at the code for synchronize_rcu() it looks like it might not be
+enough. It looks like all it does is a memory barrier. But we need 
+something that will actually pump these pending releases.
+(I might be way off here)
+
+BTW after I get the Warning from the kmem_cache_destroy:
+slab error in kmem_cache_destroy(): cache `exofs_inode_cache': Can't free all objects
+Call Trace: 
+754efe08:  [<6007e9a6>] kmem_cache_destroy+0x82/0xca
+754efe38:  [<7a9296ba>] exit_exofs+0x1a/0x1c [exofs]
+754efe48:  [<60054c10>] sys_delete_module+0x1b9/0x217
+754efee8:  [<60014d60>] handle_syscall+0x58/0x70
+754eff08:  [<60024163>] userspace+0x2dd/0x38a
+754effc8:  [<600126af>] fork_handler+0x62/0x69
+
+
+I also get a Kernel crash. I suspect it's when finally these
+free_rcu come and the module (and kmem_cache) are no longer there.
+
+What to do? Nick?
+
+Boaz
