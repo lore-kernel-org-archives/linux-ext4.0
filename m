@@ -1,91 +1,105 @@
-From: bryan.coleman@dart.biz
-Subject: ext4 problems with external RAID array via SAS connection
-Date: Mon, 7 Feb 2011 13:53:18 -0500
-Message-ID: <OFFAEBAC93.6731CA9F-ON85257830.0067BABF-85257830.0067C1CB@dart.biz>
+From: Matt <jackdachef@gmail.com>
+Subject: Re: ext4: Fix data corruption with multi-block writepages support
+Date: Mon, 7 Feb 2011 18:56:28 +0000
+Message-ID: <AANLkTinybnXVk9WRsvrLLfhWGXm1=jQnTGvE0JT6=RXs@mail.gmail.com>
+References: <AANLkTi=gcf=A_6Kp6h7s2+OkxR4YUb6gqzc43asn-wfK@mail.gmail.com>
+	<20110207174552.GC3457@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from comns1.dartcontainer.com ([173.241.223.201]:4257 "EHLO
-	MAS-NS06.dartcontainer.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754234Ab1BGSxU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Feb 2011 13:53:20 -0500
+Received: from mail-ew0-f46.google.com ([209.85.215.46]:50660 "EHLO
+	mail-ew0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754628Ab1BGS4a convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Feb 2011 13:56:30 -0500
+In-Reply-To: <20110207174552.GC3457@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I am experiencing problems with an ext4 file system.
+On Mon, Feb 7, 2011 at 5:45 PM, Ted Ts'o <tytso@mit.edu> wrote:
+> On Fri, Feb 04, 2011 at 10:40:47PM +0000, Matt wrote:
+>>
+>> So that means that the file-corruption which existed until 2.6.37-rc=
+6
+>> and got triggered (for me) more easily via "dm crypt: scale to
+>> multiple CPUs"
+>> is fixed now ?
+>
+> Well, a patch exists for it that will be merged into 2.6.38.
+>
+>> That should give ext4 a nice speedup for >=3D2.6.38 :)
+>
+> I'm not going to make it be the default for 2.6.38, since it's fairly
+> late in the -rc features. =A0People who want it can explicitly enable=
+ it
+> using the mount option mblk_io_submit, though. =A0(And let me know yo=
+ur
+> success stories! =A0:-) I will be enabling it as the default in
+> 2.6.39-rc1.
+>
 
-At first, the drive seemed to work fine.  I was primarily copying things 
-to the drive migrating data from another server.  After many GBs of data, 
-that seemingly successfully were done being transferred, I started seeing 
-ext4 errors in /var/log/messages.  I then unmounted the drive and ran fsck 
-on it (which took multiple hours to run).  I then ls'ed around and one of 
-the areas caused the system to again throw ext4 errors.
+Hi Ted,
 
-I did run memtest through one complete pass and it found no problems.
+I guess it should be save to enable it with 2.6.37, dm-crypt multi-cpu
+patch and the following patch ?
 
-I then went looking for help on the fedora forum and it was suggested that 
-I increase my journal size.  So I recreated the ext4 partition (with 
-larger journal) and started the migration process again.  After several 
-days of copying, the errors started again.
-
-
-Here are some of the errors from /var/log/messages:
-
-Feb 2 04:48:30 mdct-00fs kernel: [672021.519914] EXT4-fs error (device 
-dm-2): ext4_mb_generate_buddy: EXT4-fs: group 22307: 460 blocks in bitmap, 
-0 in gd
-Feb 2 04:48:30 mdct-00fs kernel: [672021.520429] EXT4-fs error (device 
-dm-2): ext4_mb_generate_buddy: EXT4-fs: group 22308: 1339 blocks in 
-bitmap, 0 in gd
-Feb 2 04:48:30 mdct-00fs kernel: [672021.520927] EXT4-fs error (device 
-dm-2): ext4_mb_generate_buddy: EXT4-fs: group 22309: 3204 blocks in 
-bitmap, 0 in gd
-Feb 2 04:48:30 mdct-00fs kernel: [672021.521409] EXT4-fs error (device 
-dm-2): ext4_mb_generate_buddy: EXT4-fs: group 22310: 2117 blocks in 
-bitmap, 0 in gd
-Feb 4 05:08:29 mdct-00fs kernel: [845547.724807] EXT4-fs error (device 
-dm-2): ext4_dx_find_entry: inode #311951364: (comm scp) bad entry in 
-directory: directory entry across blocks - 
-block=1257308156offset=0(9166848), inode=3143403788, rec_len=80864, 
-name_len=168
-Feb 4 05:08:29 mdct-00fs kernel: [845547.733034] EXT4-fs error (device 
-dm-2): ext4_add_entry: inode #311951364: (comm scp) bad entry in 
-directory: directory entry across blocks - block=1257308156offset=0(0), 
-inode=3143403788, rec_len=80864, name_len=168
-Feb 4 05:19:41 mdct-00fs kernel: [846217.922351] EXT4-fs error (device 
-dm-2): ext4_dx_find_entry: inode #311951364: (comm scp) bad entry in 
-directory: directory entry across blocks - 
-block=1257308156offset=0(9166848), inode=3143403788, rec_len=80864, 
-name_len=168
-Feb 4 05:19:41 mdct-00fs kernel: [846217.928922] EXT4-fs error (device 
-dm-2): ext4_add_entry: inode #311951364: (comm scp) bad entry in 
-directory: directory entry across blocks - block=1257308156offset=0(0), 
-inode=3143403788, rec_len=80864, name_len=168 
+"ext4: Fix data corruption with multi-block writepages support"
+(of course that's the minimum - it would be better to pull in the ext4
+changes for 2.6.38)
 
 
-Here is my setup:
+=46or a short time I had it activated (via additional) mblk_io_submit
+mount-command on my portage-partition (where the portage-ball of my
+Gentoo system is).
+I was curious to see what messages I would get and wondered why there
+was nothing about mballoc mentioned
 
-        Promise Vtrak RAID array with 12 drives in a RAID 6 configuration 
-(over 5TB).
-        The promise array is connected to my server using a external SAS 
-connection.
-        OS: Fedora 14
- 
-        One logical volume on the promise.
-        One logical volume at the external SAS level.
-        One logical volume at the OS level.
-        So from my OS, I see one logical volume depicting one big drive.
+If I recall correctly there were always messages in the past, like:
 
-        I then setup the ext4 system using the following command: 
-'mkfs.ext4 -v -m 1 -J size=1024 -E stride=16,stripe-width=160 
-/dev/vg_storage/lv_storage'
+EXT4-fs: delayed allocation enabled
+EXT4-fs: file extents enabled
+EXT4-fs: mballoc enabled
+
+these are from 2.6.28 -
+
+I'm only getting:
+
+EXT4-fs (dm-3): mounted filesystem with ordered data mode.
+
+or
+
+EXT4-fs (dm-3): mounted filesystem with ordered data mode. Opts:
+commit=3D60,barrier=3D1
+
+(I like to set the barriers / flushes explicitly).
+
+Sorry if I didn't follow development but these messages were kind of
+more and more silenced ?
 
 
-Any thoughts/tips on how to track down the problem?
-
-My thought now is to try using ext3; however, my fear is that I will just 
-run into the problem with it.  Is ext4 production ready?
+Thanks !
 
 
-Thoughts?
+>> Reported-by: Matthias Bayer <jackdachef <at> gmail <dot> com >
+>
+> Sure!
+
+Thanks !
+
+
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0- Ted
+>
+
+Regards
+
+Matt
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
