@@ -1,42 +1,64 @@
-From: Manish Katiyar <mkatiyar@gmail.com>
-Subject: Re: [PATCH] ext4: Fix missing iput for root inode in case of all
- failed mount paths.
-Date: Mon, 7 Feb 2011 15:31:41 -0800
-Message-ID: <AANLkTikj9qdFJfD+c09V9duTPq_soRv_UsuBgutRHEQt@mail.gmail.com>
-References: <AANLkTik8jweuA_kDfzY7H=wP-ikSSwdf-FF1NX09DDCT@mail.gmail.com>
- <032DF412-6B37-4EB7-A687-8216CB1E2BAB@dilger.ca> <AANLkTiku46htAypEN7QNN=UZuRETKGnHJQ8cxt3kYPJg@mail.gmail.com>
- <AANLkTim0XZe2=3AWw4Ydb8F7BQGCf+=FyjKoyadc+3yw@mail.gmail.com> <20110207232343.GA26289@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 25832] kernel crashes upon resume if usb devices are removed
+ when suspended
+Date: Mon, 7 Feb 2011 23:49:15 GMT
+Message-ID: <201102072349.p17NnF0g006369@demeter2.kernel.org>
+References: <bug-25832-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Andreas Dilger <adilger@dilger.ca>,
-	ext4 <linux-ext4@vger.kernel.org>
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:60493 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755204Ab1BGXcW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Feb 2011 18:32:22 -0500
-Received: by qyj19 with SMTP id 19so1934466qyj.19
-        for <linux-ext4@vger.kernel.org>; Mon, 07 Feb 2011 15:32:03 -0800 (PST)
-In-Reply-To: <20110207232343.GA26289@thunk.org>
+Received: from demeter2.kernel.org ([140.211.167.42]:37877 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753313Ab1BGXtQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Feb 2011 18:49:16 -0500
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p17NnG6J006370
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 7 Feb 2011 23:49:16 GMT
+In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 7, 2011 at 3:23 PM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Sat, Jan 29, 2011 at 09:40:34PM -0800, Manish Katiyar wrote:
->>
->> Any feedback on this ?
->
-> The patch looks good, but it doesn't fix bug #26752.
->
-> The root cause of that bug is the fact that ext4_sync_fs() and
-> ext4_put_super() assumes that sbi has been initialized.
+https://bugzilla.kernel.org/show_bug.cgi?id=25832
 
-Hmm.. Actually I was looking at generic_super_shutdown() which I
-thought would call ext4_put_super() only if sb->root is set, and since
-I was setting sb->root explicitly to NULL in my patch in case of
-failures.
+
+
+
+
+--- Comment #28 from rocko <rockorequin@hotmail.com>  2011-02-07 23:49:14 ---
+Actually, the lockup doesn't take place _immediately_ after resume - there is a
+random interval of up to several seconds. A couple of times I even managed to
+type my password in for the screensaver and get back to the desktop before the
+freeze. So there is certainly time for a userspace process to try and access a
+missing drive. 
+
+And there is a process that umount drives when it detects they are missing (I
+think it is udev?). They disappear from my Gnome desktop when I pull out the
+drive or when I resume after removing the drives.
+
+These (sample) messages after resume show it happening:
+
+Feb  7 10:04:04 pegasus-maverick ntfs-3g[2745]: Unmounting /dev/sdf1 (My
+Passport)
+Feb  7 10:04:04 pegasus-maverick kernel: [  128.908709] JBD: I/O error detected
+when updating journal superblock for sde1.
+Feb  7 10:04:04 pegasus-maverick kernel: [  128.934868] scsi 9:0:0:1: rejecting
+I/O to dead device
+Feb  7 10:04:04 pegasus-maverick kernel: [  128.949322] EXT3-fs (sde1): I/O
+error while writing superblock
+
+
+The first message implies that a umount happens for at least missing ntfs
+drives. The bug in comment #10 happened during a sys_umount call, which was
+triggered by Gnome automatically in response to the missing drive.
+
+
+The most confusing thing is how the sytem might have crashed when firefox was
+trying to access a valid mounted ext4 partition. That's why I'm thinking it's
+caused by a memory corruption or invalid pointer.
 
 -- 
-Thanks -
-Manish
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
