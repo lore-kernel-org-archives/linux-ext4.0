@@ -1,54 +1,37 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 25832] kernel crashes upon resume if usb devices are removed
- when suspended
-Date: Mon, 7 Feb 2011 01:20:04 GMT
-Message-ID: <201102070120.p171K3LD026389@demeter2.kernel.org>
-References: <bug-25832-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: e2fsprogs git master branch
+Date: Sun, 6 Feb 2011 20:54:22 -0500
+Message-ID: <20110207015422.GH10402@thunk.org>
+References: <831EA70A-C209-480B-B9C0-17B12995295A@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 List <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:36729 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754326Ab1BGBUF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Feb 2011 20:20:05 -0500
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p171K4sD026390
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 7 Feb 2011 01:20:04 GMT
-In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:55168 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754237Ab1BGBye (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 6 Feb 2011 20:54:34 -0500
+Content-Disposition: inline
+In-Reply-To: <831EA70A-C209-480B-B9C0-17B12995295A@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=25832
+On Fri, Feb 04, 2011 at 03:40:27PM -0700, Andreas Dilger wrote:
+> Ted,
+> I was going to port some of the Lustre patches to the master branch
+> of e2fsprogs (where I thought 1.42 would be derived from, with the
+> >16TB changes).  However, it looks like master is only up-to-date
+> with v1.41.12 (as per version.h and the RELEASE-NOTES files), and
+> not 1.41.14.
 
+Um, I just checked e2fsprogs.git on git.kernel.org, and the master
+branch is in fact up to date with respect to 1.41.14...
 
+See: 
 
+http://git.kernel.org/?p=fs/ext2/e2fsprogs.git;a=shortlog;h=refs/heads/master
 
+So it sounds like your master branch is out of date....
 
---- Comment #22 from Theodore Tso <tytso@mit.edu>  2011-02-07 01:20:01 ---
-Memory doesn't get freed just because a device disappears.   The file system is
-still shown as mounted after the system resumes.  Attempts to access the
-mounted file system will result in errors, but the data structures don't get
-magically freed until you explicit umount the failed file system.
-
-It's more likely that the kernel is stuck in some loop trying to access the
-failed file system, and looping, but in that case, it would be caused by a
-specific process trying to access the file system after the system resumed. 
-Say, if you were executing a program that was located on the now-failed file
-system, or if a file from the now-failed file system was mmap'ed into memory,
-and for some reason the kernel was looping forever instead of returning an
-error to the program and/or killing the program.
-
-This is why I asked you if you could use the various sysrq commands to try to
-figure out what the kernel was doing after it locked up.  In answer to your
-previous message, no, sysrq doesn't require access over the network.  It
-requires access to the console.  If you have a VT console, sysrq-p can be
-triggered by holding down the alt, sysrq and p keys; sysrq-l can be triggered
-by alt-sysrq-l, etc.   If you have a serial console, you can send a break
-followed by an l to trigger a sysrq-l, and so on.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+      	     	       	      	     	    - Ted
