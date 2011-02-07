@@ -1,35 +1,129 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 0/5] mballoc: trivial code cleanup
-Date: Mon, 7 Feb 2011 17:24:50 -0500
-Message-ID: <20110207222450.GF3457@thunk.org>
-References: <4D4E294E.4080507@coly.li>
- <AANLkTimT3i1oOSh02oTtvN_OmHcYwhNOABLV4cT7VV5p@mail.gmail.com>
- <20110207174125.GB3457@thunk.org>
- <AANLkTimOaQSdJa9aXEs_UM0pAO92S0_zGT5w7kU33etk@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: i@coly.li, Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Amir Goldstein <amir73il@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] jbd2: call __jbd2_log_start_commit with j_state_lock write locked
+Date: Mon,  7 Feb 2011 17:42:13 -0500
+Message-ID: <1297118533-25857-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:55975 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:38596 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755178Ab1BGWYz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 Feb 2011 17:24:55 -0500
-Content-Disposition: inline
-In-Reply-To: <AANLkTimOaQSdJa9aXEs_UM0pAO92S0_zGT5w7kU33etk@mail.gmail.com>
+	id S1753313Ab1BGWmQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 7 Feb 2011 17:42:16 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 07, 2011 at 10:59:54PM +0200, Amir Goldstein wrote:
-> it says alloc_sem protects against lazy init of adjacent groups
-> and says nothing about protecting block group specific data structures...
-> 
-> what am I missing???
+On an SMP ARM system running ext4, I've received a report that the
+first J_ASSERT in jbd2_journal_commit_transaction has been triggering:
 
-You're missing ext4_mb_load_buddy(), which takes grp->alloc_sem, and
-which is released by ext4_mb_unload_buddy().  No, it's not the most
-obvious code in the world...
+	J_ASSERT(journal->j_running_transaction != NULL);
 
-					- Ted
+While investigating possible causes for this problem, I noticed that
+__jbd2_log_start_commit() is getting called with j_state_lock only
+read-locked, in spite of the fact that it's possible for it might
+j_commit_request.  Fix this by grabbing the necessary information so
+we can test to see if we need to start a new transaction before
+dropping the read lock, and then calling jbd2_log_start_commit() which
+will grab the write lock.
 
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/jbd2/journal.c     |    9 +++++++--
+ fs/jbd2/transaction.c |   21 ++++++++++++++-------
+ 2 files changed, 21 insertions(+), 9 deletions(-)
+
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 9e46869..97e7346 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -473,7 +473,8 @@ int __jbd2_log_space_left(journal_t *journal)
+ }
+ 
+ /*
+- * Called under j_state_lock.  Returns true if a transaction commit was started.
++ * Called with j_state_lock locked for writing.
++ * Returns true if a transaction commit was started.
+  */
+ int __jbd2_log_start_commit(journal_t *journal, tid_t target)
+ {
+@@ -520,11 +521,13 @@ int jbd2_journal_force_commit_nested(journal_t *journal)
+ {
+ 	transaction_t *transaction = NULL;
+ 	tid_t tid;
++	int need_to_start = 0;
+ 
+ 	read_lock(&journal->j_state_lock);
+ 	if (journal->j_running_transaction && !current->journal_info) {
+ 		transaction = journal->j_running_transaction;
+-		__jbd2_log_start_commit(journal, transaction->t_tid);
++		if (!tid_geq(journal->j_commit_request, transaction->t_tid))
++			need_to_start = 1;
+ 	} else if (journal->j_committing_transaction)
+ 		transaction = journal->j_committing_transaction;
+ 
+@@ -535,6 +538,8 @@ int jbd2_journal_force_commit_nested(journal_t *journal)
+ 
+ 	tid = transaction->t_tid;
+ 	read_unlock(&journal->j_state_lock);
++	if (need_to_start)
++		jbd2_log_start_commit(journal, tid);
+ 	jbd2_log_wait_commit(journal, tid);
+ 	return 1;
+ }
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index faad2bd..1d11910 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -117,10 +117,10 @@ static inline void update_t_max_wait(transaction_t *transaction)
+ static int start_this_handle(journal_t *journal, handle_t *handle,
+ 			     int gfp_mask)
+ {
+-	transaction_t *transaction;
+-	int needed;
+-	int nblocks = handle->h_buffer_credits;
+-	transaction_t *new_transaction = NULL;
++	transaction_t	*transaction, *new_transaction = NULL;
++	tid_t		tid;
++	int		needed, need_to_start;
++	int		nblocks = handle->h_buffer_credits;
+ 
+ 	if (nblocks > journal->j_max_transaction_buffers) {
+ 		printk(KERN_ERR "JBD: %s wants too many credits (%d > %d)\n",
+@@ -222,8 +222,11 @@ repeat:
+ 		atomic_sub(nblocks, &transaction->t_outstanding_credits);
+ 		prepare_to_wait(&journal->j_wait_transaction_locked, &wait,
+ 				TASK_UNINTERRUPTIBLE);
+-		__jbd2_log_start_commit(journal, transaction->t_tid);
++		tid = transaction->t_tid;
++		need_to_start = !tid_geq(journal->j_commit_request, tid);
+ 		read_unlock(&journal->j_state_lock);
++		if (need_to_start)
++			jbd2_log_start_commit(journal, tid);
+ 		schedule();
+ 		finish_wait(&journal->j_wait_transaction_locked, &wait);
+ 		goto repeat;
+@@ -442,7 +445,8 @@ int jbd2__journal_restart(handle_t *handle, int nblocks, int gfp_mask)
+ {
+ 	transaction_t *transaction = handle->h_transaction;
+ 	journal_t *journal = transaction->t_journal;
+-	int ret;
++	tid_t		tid;
++	int		need_to_start, ret;
+ 
+ 	/* If we've had an abort of any type, don't even think about
+ 	 * actually doing the restart! */
+@@ -465,8 +469,11 @@ int jbd2__journal_restart(handle_t *handle, int nblocks, int gfp_mask)
+ 	spin_unlock(&transaction->t_handle_lock);
+ 
+ 	jbd_debug(2, "restarting handle %p\n", handle);
+-	__jbd2_log_start_commit(journal, transaction->t_tid);
++	tid = transaction->t_tid;
++	need_to_start = !tid_geq(journal->j_commit_request, tid);
+ 	read_unlock(&journal->j_state_lock);
++	if (need_to_start)
++		jbd2_log_start_commit(journal, tid);
+ 
+ 	lock_map_release(&handle->h_lockdep_map);
+ 	handle->h_buffer_credits = nblocks;
+-- 
+1.7.3.1
 
