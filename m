@@ -1,64 +1,56 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 25832] kernel crashes upon resume if usb devices are removed
- when suspended
-Date: Mon, 7 Feb 2011 23:49:15 GMT
-Message-ID: <201102072349.p17NnF0g006369@demeter2.kernel.org>
-References: <bug-25832-13602@https.bugzilla.kernel.org/>
+From: "Alexander V. Lukyanov" <lav@netis.ru>
+Subject: [PATCH] ext4: allow inode_readahead_blks=0 (linux-2.6.37)
+Date: Tue, 8 Feb 2011 09:39:25 +0300
+Message-ID: <20110208063925.GA13619@lw.yar.ru>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
+	linux-kernel@vger.kernel.org
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:37877 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753313Ab1BGXtQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Feb 2011 18:49:16 -0500
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p17NnG6J006370
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 7 Feb 2011 23:49:16 GMT
-In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
+Received: from lav-w.yar.ru ([193.233.48.101]:48508 "EHLO
+	localhost.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751108Ab1BHGyf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Feb 2011 01:54:35 -0500
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=25832
+Hello!
 
+I cannot disable inode-read-ahead feature of ext4 (on 2.6.37):
 
+# echo 0 > /sys/fs/ext4/sda2/inode_readahead_blks 
+bash: echo: write error: Invalid argument
 
+On a server with lots of small files and random access this read-ahead makes
+performance worse, and I'd like to disable it. I work around this problem
+by using value of 1, but it still reads an extra block.
 
+This patch fixes the problem by checking for zero explicitly.
 
---- Comment #28 from rocko <rockorequin@hotmail.com>  2011-02-07 23:49:14 ---
-Actually, the lockup doesn't take place _immediately_ after resume - there is a
-random interval of up to several seconds. A couple of times I even managed to
-type my password in for the screensaver and get back to the desktop before the
-freeze. So there is certainly time for a userspace process to try and access a
-missing drive. 
+--- a/fs/ext4/super.c.0	2010-11-16 10:48:33.418629215 +0300
++++ b/fs/ext4/super.c	2010-11-16 10:46:07.739753246 +0300
+@@ -1657,7 +1657,7 @@ set_qf_format:
+ 				return 0;
+ 			if (option < 0 || option > (1 << 30))
+ 				return 0;
+-			if (!is_power_of_2(option)) {
++			if (option && !is_power_of_2(option)) {
+ 				ext4_msg(sb, KERN_ERR,
+ 					 "EXT4-fs: inode_readahead_blks"
+ 					 " must be a power of 2");
+@@ -2274,7 +2274,7 @@ static ssize_t inode_readahead_blks_stor
+ 	if (parse_strtoul(buf, 0x40000000, &t))
+ 		return -EINVAL;
+ 
+-	if (!is_power_of_2(t))
++	if (t && !is_power_of_2(t))
+ 		return -EINVAL;
+ 
+ 	sbi->s_inode_readahead_blks = t;
 
-And there is a process that umount drives when it detects they are missing (I
-think it is udev?). They disappear from my Gnome desktop when I pull out the
-drive or when I resume after removing the drives.
-
-These (sample) messages after resume show it happening:
-
-Feb  7 10:04:04 pegasus-maverick ntfs-3g[2745]: Unmounting /dev/sdf1 (My
-Passport)
-Feb  7 10:04:04 pegasus-maverick kernel: [  128.908709] JBD: I/O error detected
-when updating journal superblock for sde1.
-Feb  7 10:04:04 pegasus-maverick kernel: [  128.934868] scsi 9:0:0:1: rejecting
-I/O to dead device
-Feb  7 10:04:04 pegasus-maverick kernel: [  128.949322] EXT3-fs (sde1): I/O
-error while writing superblock
-
-
-The first message implies that a umount happens for at least missing ntfs
-drives. The bug in comment #10 happened during a sys_umount call, which was
-triggered by Gnome automatically in response to the missing drive.
-
-
-The most confusing thing is how the sytem might have crashed when firefox was
-trying to access a valid mounted ext4 partition. That's why I'm thinking it's
-caused by a memory corruption or invalid pointer.
+Signed-off-by: Alexander V. Lukyanov <lav@netis.ru>
 
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+   Alexander.
