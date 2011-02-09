@@ -1,177 +1,129 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: ext4 problems with external RAID array via SAS connection
-Date: Tue, 08 Feb 2011 14:49:34 -0600
-Message-ID: <4D51AC5E.10404@redhat.com>
-References: <OFFAEBAC93.6731CA9F-ON85257830.0067BABF-85257830.0067C1CB@dart.biz> <20110207225436.GG3457@thunk.org> <OF1BE984CE.39437668-ON85257831.00491D12-85257831.0049261D@dart.biz> <OF3CD75888.312195E5-ON85257831.0050CD2F-85257831.0051875E@dart.biz> <4D515F0D.1030902@redhat.com> <OF0792030A.13D80D43-ON85257831.0066ABF1-85257831.006780FD@dart.biz>
+From: Tao Ma <tm@tao.ma>
+Subject: Re: [PATCH] VFS: call synchronize_rcu after kill_sb.
+Date: Wed, 09 Feb 2011 09:49:15 +0800
+Message-ID: <4D51F29B.8060304@tao.ma>
+References: <1296896481-3650-1-git-send-email-tm@tao.ma> <4D4FF040.9050707@panasas.com> <87hbceqxax.fsf@linux.vnet.ibm.com> <4D517C98.7060000@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, "Ted Ts'o" <tytso@mit.edu>
-To: bryan.coleman@dart.biz
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49084 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755789Ab1BHUti (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 Feb 2011 15:49:38 -0500
-In-Reply-To: <OF0792030A.13D80D43-ON85257831.0066ABF1-85257831.006780FD@dart.biz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Nick Piggin <npiggin@kernel.dk>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
+	Chris Mason <chris.mason@oracle.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <4D517C98.7060000@panasas.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2/8/11 12:50 PM, bryan.coleman@dart.biz wrote:
-> I found that the promise array had been restarted via watchdog timer.  I 
-> am investigating that avenue via promise (albeit slow).  Note: the 
-> watchdog reset the controller days after the initial ext4 messages.  I'm 
-> not saying they are unrelated.  I just what to get all of the facts out 
-> there.
-> 
-> I suspect the connection between the server and the promise got hosed when 
-> the controller was reset.  When I restart the server, I could fsck the 
-> drive.
-> 
-> The fsck is currently running (and has been for some time now). 
-> 
-> It is doing a ton of "Inode ######## ref count is 2, should be 1.  Fix? 
-> yes"  "Unattached inode #########"  "Connect to /lost+found? yes"
-> 
-> I am running fsck in a script session; however, there are currently a ton 
-> of the messages above (current log size: 106M).
-> 
-> Do you think it is still hardware?  If so, is there a command that would 
-> stress it enough to break quickly?  What is the best way to isolate 
-> hardware problems?
-
-My assertion of hardware problems was based solely on the IO error reading
-block 0.  If you can't read the superblock there's not much to be done.
-
-As for what caused the corruption fsck is now finding, that's harder to say,
-you're essentially getting reports that fsck is finding errors which happened
-sometime in the past.
-
-My first thought is whether a large cache on the array got lost when it was
-reset, that could certainly cause filesystem corruption.
-
--Eric
-
-> Bryan
-> 
-> 
-> 
-> From:   Eric Sandeen <sandeen@redhat.com>
-> To:     bryan.coleman@dart.biz
-> Cc:     linux-ext4@vger.kernel.org, "Ted Ts'o" <tytso@mit.edu>
-> Date:   02/08/2011 10:21 AM
-> Subject:        Re: ext4 problems with external RAID array via SAS 
-> connection
-> Sent by:        linux-ext4-owner@vger.kernel.org
-> 
-> 
-> 
-> On 2/8/11 8:50 AM, bryan.coleman@dart.biz wrote:
->> Well, I attempted to run fsck on the problem drive using the script 
->> command to capture the transcript; however, it failed to read a block 
-> from 
->> the file system.  The exception was "fsck.ext4: Attempt to read block 
-> from 
->> filesystem resulted in short read while trying to open 
->> /dev/mapper/vg_storage-lv_storage". 
->>
->> Other messages that are now in /var/log/messages:
->>
->> Buffer I/O error on device dm-2, logical block 0
->> lost page write due to I/O error on dm-2
->> EXT4-fs (dm-2): previous I/O error to superblock detected
->> Buffer I/O error on device dm-2, logical block 0
->> lost page write due to I/O error on dm-2
->> Buffer I/O error on device dm-2, logical block 0
->> Buffer I/O error on device dm-2, logical block 1
->> Buffer I/O error on device dm-2, logical block 2
->> Buffer I/O error on device dm-2, logical block 3
->> Buffer I/O error on device dm-2, logical block 0
->> EXT4-fs (dm-2): unable to read superblock
->>
->>
->> Since it looks like I need to start the process all over again, is there 
-> a 
->> good way to quickly determine if the problem is hardware related?  Is 
->> there a preferred method that will stress test the drive and shed more 
->> light on what might be going wrong?
-> 
-> You have a hardware problem... "Buffer I/O error on device dm-2, logical 
-> block 0"
-> means that you failed to read the first block on that device; not 
-> something
-> e2fsck can fix, I'm afraid; you'll need to sort out what's wrong with the 
-> storage,
-> first.
-> 
-> -Eric
-> 
->> Thank you,
->>
->> Bryan
->>
->>
->>
->> From:   bryan.coleman@dart.biz
->> To:     linux-ext4@vger.kernel.org, linux-ext4-owner@vger.kernel.org
->> Date:   02/08/2011 08:19 AM
->> Subject:        Re: ext4 problems with external RAID array via SAS 
->> connection
->> Sent by:        linux-ext4-owner@vger.kernel.org
->>
->>
->>
->> When I ran fsck after the first bout of failure, it did report a lot of 
->> errors.  I do not have a copy of that fsck transcript; however, I have 
-> not 
->>
->> yet run fsck since my second attempt.  Is there a method of capturing 
-> the 
->> transcript that is preferred?
->>
->> Bryan
->>
->>
->>
->> From:   Ted Ts'o <tytso@mit.edu>
->> To:     bryan.coleman@dart.biz
->> Cc:     linux-ext4@vger.kernel.org
->> Date:   02/07/2011 05:55 PM
->> Subject:        Re: ext4 problems with external RAID array via SAS 
->> connection
->> Sent by:        linux-ext4-owner@vger.kernel.org
->>
->>
->>
->> On Mon, Feb 07, 2011 at 01:53:18PM -0500, bryan.coleman@dart.biz wrote:
->>> I am experiencing problems with an ext4 file system.
+On 02/09/2011 01:25 AM, Boaz Harrosh wrote:
+> On 02/08/2011 06:57 PM, Aneesh Kumar K. V wrote:
+>    
+>> On Mon, 07 Feb 2011 15:14:40 +0200, Boaz Harrosh<bharrosh@panasas.com>  wrote:
+>>      
+>>> On 02/05/2011 11:01 AM, Tao Ma wrote:
+>>>        
+>>>> From: Tao Ma<boyu.mt@taobao.com>
+>>>>
+>>>> In fa0d7e3, we use rcu free inode instead of freeing the inode
+>>>> directly. It causes a problem when we rmmod immediately after
+>>>> we umount the volume[1].
+>>>>
+>>>> So we need to call synchronize_rcu after we kill_sb so that
+>>>> the inode is freed before we do rmmod. The idea is inspired
+>>>> by Chris Mason[2]. I tested with ext4 by umount+rmmod and it
+>>>> doesn't show any error by now.
+>>>>
+>>>> 1. http://marc.info/?l=linux-fsdevel&m=129680863330185&w=2
+>>>> 2. http://marc.info/?l=linux-fsdevel&m=129684698713709&w=2
+>>>>
+>>>> Cc: Nick Piggin<npiggin@kernel.dk>
+>>>> Cc: Al Viro<viro@zeniv.linux.org.uk>
+>>>> Cc: Chris Mason<chris.mason@oracle.com>
+>>>> Cc: Boaz Harrosh<bharrosh@panasas.com>
+>>>> Signed-off-by: Tao Ma<boyu.mt@taobao.com>
+>>>> ---
+>>>>   fs/super.c |    7 +++++++
+>>>>   1 files changed, 7 insertions(+), 0 deletions(-)
+>>>>
+>>>> diff --git a/fs/super.c b/fs/super.c
+>>>> index 74e149e..315bce9 100644
+>>>> --- a/fs/super.c
+>>>> +++ b/fs/super.c
+>>>> @@ -177,6 +177,13 @@ void deactivate_locked_super(struct super_block *s)
+>>>>   	struct file_system_type *fs = s->s_type;
+>>>>   	if (atomic_dec_and_test(&s->s_active)) {
+>>>>   		fs->kill_sb(s);
+>>>> +		/*
+>>>> +		 * We need to synchronize rcu here so that
+>>>> +		 * the delayed rcu inode free can be executed
+>>>> +		 * before we put_super.
+>>>> +		 * https://bugzilla.kernel.org/show_bug.cgi?id=27652
+>>>> +		 */
+>>>> +		synchronize_rcu();
+>>>>   		put_filesystem(fs);
+>>>>   		put_super(s);
+>>>>   	} else {
+>>>>          
 >>>
->>> At first, the drive seemed to work fine.  I was primarily copying 
-> things 
+>>>        
+> <>
+>    
+>> http://lwn.net/Articles/217484/ explains how to wait for rcu callback to finish
 >>
->>
->>> to the drive migrating data from another server.  After many GBs of 
->> data, 
->>> that seemingly successfully were done being transferred, I started 
->> seeing 
->>> ext4 errors in /var/log/messages.  I then unmounted the drive and ran 
->> fsck 
->>> on it (which took multiple hours to run).  I then ls'ed around and one 
->> of 
->>> the areas caused the system to again throw ext4 errors.
->>
->> Did fsck report any errors?  Do you have a copy of your fsck
->> transcript?
->>
->> The errors you've reported do make me suspicious that there's
->> something unstable with your hardware...
->>
->>   - Ted
->> --
+>> -aneesh
+>>      
+> Yes thanks Aneesh, rcu_barrier does the trick
+> ---
+> From: Boaz Harrosh<bharrosh@panasas.com>
+>
+> In fa0d7e3, we use rcu free inode instead of freeing the inode
+> directly. It causes a problem when we rmmod immediately after
+> we umount the volume[1].
+>
+> So we need to call rcu_barrier after we kill_sb so that
+> the inode is freed before we do rmmod. The idea is inspired
+> by Aneesh Kumar. rcu_barrier will wait for all callbacks
+> to end before preceding. The original patch was done by
+> Tao Ma, but synchronize_rcu() is not enough here.
+>
+> 1. http://marc.info/?l=linux-fsdevel&m=129680863330185&w=2
+> 2. http://marc.info/?l=linux-fsdevel&m=129684698713709&w=2
+>
+> Cc: Nick Piggin<npiggin@kernel.dk>
+> Cc: Al Viro<viro@zeniv.linux.org.uk>
+> Cc: Chris Mason<chris.mason@oracle.com>
+> Cc: Tao Ma<boyu.mt@taobao.com>
+> Signed-off-by: Boaz Harrosh<bharrosh@panasas.com>
+>    
+It works now in my ext4 test box. Thanks for your work.
+Tested-by: Tao Ma <boyu.mt@taobao.com>
+> ---
+> git diff --stat -p -M fs/super.c
+>   fs/super.c |    1 +
+>   1 files changed, 1 insertions(+), 0 deletions(-)
+>
+> diff --git a/fs/super.c b/fs/super.c
+> index 74e149e..5fd4ec9 100644
+> --- a/fs/super.c
+> +++ b/fs/super.c
+> @@ -177,6 +177,13 @@ void deactivate_locked_super(struct super_block *s)
+>   	struct file_system_type *fs = s->s_type;
+>   	if (atomic_dec_and_test(&s->s_active)) {
+>   		fs->kill_sb(s);
+> +		/*
+> +		 * We need to synchronize rcu here so that
+> +		 * the delayed rcu inode free can be executed
+> +		 * before we put_super.
+> +		 * https://bugzilla.kernel.org/show_bug.cgi?id=27652
+> +		 */
+> +		rcu_barrier();
+>   		put_filesystem(fs);
+>   		put_super(s);
+>   	} else {
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
+>    
 
