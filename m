@@ -1,154 +1,39 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 4/4] ext4: Speed up FITRIM by recording flags in
- ext4_group_info.
-Date: Wed, 9 Feb 2011 15:01:46 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1102091445580.5596@dhcp-27-109.brq.redhat.com>
-References: <4D522B9B.5070707@tao.ma> <1297231048-3458-4-git-send-email-tm@tao.ma>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: ext4 problems with external RAID array via SAS connection
+Date: Wed, 9 Feb 2011 13:28:23 -0500
+Message-ID: <20110209182823.GC9533@thunk.org>
+References: <OFFAEBAC93.6731CA9F-ON85257830.0067BABF-85257830.0067C1CB@dart.biz>
+ <20110207225436.GG3457@thunk.org>
+ <OF1BE984CE.39437668-ON85257831.00491D12-85257831.0049261D@dart.biz>
+ <OF3CD75888.312195E5-ON85257831.0050CD2F-85257831.0051875E@dart.biz>
+ <4D515F0D.1030902@redhat.com>
+ <OF0792030A.13D80D43-ON85257831.0066ABF1-85257831.006780FD@dart.biz>
+ <4D51AC5E.10404@redhat.com>
+ <OF29FBBBDF.6F048139-ON85257832.004A565E-85257832.004B6F04@dart.biz>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Lukas Czerner <lczerner@redhat.com>
-To: Tao Ma <tm@tao.ma>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
+To: bryan.coleman@dart.biz
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46781 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755212Ab1BIOBw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 9 Feb 2011 09:01:52 -0500
-In-Reply-To: <1297231048-3458-4-git-send-email-tm@tao.ma>
+Received: from li9-11.members.linode.com ([67.18.176.11]:40492 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755472Ab1BIS2d (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 9 Feb 2011 13:28:33 -0500
+Content-Disposition: inline
+In-Reply-To: <OF29FBBBDF.6F048139-ON85257832.004A565E-85257832.004B6F04@dart.biz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 9 Feb 2011, Tao Ma wrote:
-
-> From: Tao Ma <boyu.mt@taobao.com>
+On Wed, Feb 09, 2011 at 08:43:56AM -0500, bryan.coleman@dart.biz wrote:
 > 
-> In ext4, when FITRIM is called every time, we iterate all the
-> groups and do trim one by one. It is a bit time wasting if the
-> group has been trimmed and there is no change since the last
-> trim.
-> 
-> So this patch adds a new flag in ext4_group_info->bb_state to
-> indicate that the group has been trimmed, and it will be cleared
-> if some blocks is freed(in release_blocks_on_commit). Another
-> trim_minlen is added in ext4_sb_info to record the last minlen
-> we use to trim the volume, so that if the caller provide a small
-> one, we will go on the trim regardless of the bb_state. The idea
-> is inspired by Andreas  and Lukas Czerner.
+> The fsck said it completed successfully.  I kicked off fsck again just to 
+> make sure and it reported clean.  So I mounted the drive and ls'd around 
+> and it started reporting errors.  "ls: cannot access 40: Input/output 
+> error"  Note: 40 is a directory.
 
-Hi Tao,
+Well, we'd need to look at the kernel messages, but the Input/output
+error strongly suggests that there are, well, I/O errors talking to
+your storage array.  Which again suggests hardware problems, or device
+driver bugs, or both.
 
-This is great, thanks for the patch! Do you have any benchmark numbers
-showing how much does it improve FSTRIM time ? It seems it might help a
-lot. Couple of comments bellow.
-
-> 
-> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-> Cc: Lukas Czerner <lczerner@redhat.com>
-> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
-> ---
->  fs/ext4/ext4.h    |    8 +++++++-
->  fs/ext4/mballoc.c |   22 ++++++++++++++++++++++
->  2 files changed, 29 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 0c8d97b..684f48e 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1200,6 +1200,9 @@ struct ext4_sb_info {
->  	struct ext4_li_request *s_li_request;
->  	/* Wait multiplier for lazy initialization thread */
->  	unsigned int s_li_wait_mult;
-> +
-> +	/* record the last minlen when FITRIM is called. */
-> +	u64 trim_minlen;
-
-Maybe this is a bit nitpicking, but it is not very clear what is the
-"trim_minlen" for. I would rather use something like
-"last_trim_minblks", or similar.
-
->  };
->  
->  static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
-> @@ -1970,10 +1973,13 @@ struct ext4_group_info {
->  					 * 5 free 8-block regions. */
->  };
->  
-> -#define EXT4_GROUP_INFO_NEED_INIT_BIT	0
-> +#define EXT4_GROUP_INFO_NEED_INIT_BIT		0
-> +#define EXT4_GROUP_INFO_HAS_BEEN_TRIMMED	1
->  
->  #define EXT4_MB_GRP_NEED_INIT(grp)	\
->  	(test_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &((grp)->bb_state)))
-> +#define EXT4_MB_GRP_HAS_BEEN_TRIMMED(grp)	\
-> +	(test_bit(EXT4_GROUP_INFO_HAS_BEEN_TRIMMED, &((grp)->bb_state)))
->  
->  #define EXT4_MAX_CONTENTION		8
->  #define EXT4_CONTENTION_THRESHOLD	2
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index 4eadac8..3f6b809 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -1563,6 +1563,9 @@ static int mb_mark_used(struct ext4_buddy *e4b, struct ext4_free_extent *ex)
->  	mb_set_bits(EXT4_MB_BITMAP(e4b), ex->fe_start, len0);
->  	mb_check_buddy(e4b);
->  
-> +	if (!ret)
-> +		EXT4_SB(sb)->trim_minlen = minlen;
-> +
-
-Did you even tried to compile it ? "minlen" is not defined in
-mb_mark_used(), also it does make sense to set trim_minlen there. Did
-not you meant it to be in ext4_trim_fs ?
-
->  	return ret;
->  }
->  
-> @@ -2687,6 +2690,16 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
->  		rb_erase(&entry->node, &(db->bb_free_root));
->  		mb_free_blocks(NULL, &e4b, entry->start_blk, entry->count);
->  
-> +		/*
-> +		 * Clear the trimmed flag for the group so that the next
-> +		 * ext4_trim_fs can trim it.
-> +		 * If the volume is mounted with -o discard, online discard
-> +		 * is supported and the free blocks will be trimmed online.
-> +		 */
-> +		if (!test_opt(sb, DISCARD))
-> +			clear_bit(EXT4_GROUP_INFO_HAS_BEEN_TRIMMED,
-> +				  &(db->bb_state));
-> +
->  		if (!db->bb_free_root.rb_node) {
->  			/* No more items in the per group rb tree
->  			 * balance refcounts from ext4_mb_free_metadata()
-> @@ -4772,6 +4785,10 @@ ext4_grpblk_t ext4_trim_all_free(struct super_block *sb, struct ext4_buddy *e4b,
->  
->  	ext4_lock_group(sb, group);
->  
-> +	if (EXT4_MB_GRP_HAS_BEEN_TRIMMED(e4b->bd_info) &&
-> +	    minblocks >= EXT4_SB(sb)->trim_minlen)
-> +		goto out;
-> +
-
-I think this can be placed in the ext4_trim_fs() in the for() loop so we can
-avoid unnecessary call to ext4_trim_all_free.
-
->  	trace_ext4_trim_all_free(sb, group, start, max);
->  
->  	while (start < max) {
-> @@ -4804,6 +4821,11 @@ ext4_grpblk_t ext4_trim_all_free(struct super_block *sb, struct ext4_buddy *e4b,
->  		if ((e4b->bd_info->bb_free - free_count) < minblocks)
->  			break;
->  	}
-> +
-> +	if (!ret)
-> +		set_bit(EXT4_GROUP_INFO_HAS_BEEN_TRIMMED,
-> +			&(e4b->bd_info->bb_state));
-> +out:
->  	ext4_unlock_group(sb, group);
->  
->  	ext4_debug("trimmed %d blocks in the group %d\n",
-> 
-
-Thanks!
--Lukas
+						- Ted
