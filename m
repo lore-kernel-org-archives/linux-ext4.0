@@ -1,37 +1,33 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] VFS: call synchronize_rcu after kill_sb.
-Date: Tue, 8 Feb 2011 23:50:07 -0500
-Message-ID: <20110209045007.GA29650@infradead.org>
-References: <1296896481-3650-1-git-send-email-tm@tao.ma>
- <4D4FF040.9050707@panasas.com>
- <87hbceqxax.fsf@linux.vnet.ibm.com>
- <4D517C98.7060000@panasas.com>
+From: Tao Ma <tm@tao.ma>
+Subject: [PATCH 0/4] EXT4 trim bug fixes and improvement.
+Date: Wed, 09 Feb 2011 13:52:27 +0800
+Message-ID: <4D522B9B.5070707@tao.ma>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Tao Ma <tm@tao.ma>, Nick Piggin <npiggin@kernel.dk>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	Chris Mason <chris.mason@oracle.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:35929 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750752Ab1BIEuN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Feb 2011 23:50:13 -0500
-Content-Disposition: inline
-In-Reply-To: <4D517C98.7060000@panasas.com>
+Received: from cpoproxy2-pub.bluehost.com ([67.222.39.38]:57702 "HELO
+	cpoproxy2-pub.bluehost.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1751071Ab1BIFwg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Feb 2011 00:52:36 -0500
+Received: from [114.251.86.0] (helo=[10.32.105.66])
+	by box585.bluehost.com with esmtpsa (TLSv1:AES256-SHA:256)
+	(Exim 4.69)
+	(envelope-from <tm@tao.ma>)
+	id 1Pn2yh-0002Xf-1h
+	for linux-ext4@vger.kernel.org; Tue, 08 Feb 2011 22:52:35 -0700
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> +		/*
-> +		 * We need to synchronize rcu here so that
-> +		 * the delayed rcu inode free can be executed
-> +		 * before we put_super.
-> +		 * https://bugzilla.kernel.org/show_bug.cgi?id=27652
-> +		 */
+Hi Ted and the list,
+     Here are 4 patches for trim support in ext4.
+     Patch 1/4 is a fix for the 'len' overflow. As we have decided that 
+we don't adjust start to s_first_data_block, this patch is still needed.
+     Patch 2/4 is a speedup for trim in one group.
+     Patch 3/4 adds trace points for the functions used in FITRIM.
+     Patch 4/4 is a speedup for trim in the whole volume. For more 
+details, please check the commit log.
 
-URLs in comments are not useful, descriptions of the issues in comments
-should be complete enough to understand the issue.  I think the comment
-without the url is enough, though.
-
+Regards,
+Tao
