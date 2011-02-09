@@ -1,222 +1,154 @@
-From: bryan.coleman@dart.biz
-Subject: Re: ext4 problems with external RAID array via SAS connection
-Date: Wed, 9 Feb 2011 08:43:56 -0500
-Message-ID: <OF29FBBBDF.6F048139-ON85257832.004A565E-85257832.004B6F04@dart.biz>
-References: <OFFAEBAC93.6731CA9F-ON85257830.0067BABF-85257830.0067C1CB@dart.biz> <20110207225436.GG3457@thunk.org> <OF1BE984CE.39437668-ON85257831.00491D12-85257831.0049261D@dart.biz> <OF3CD75888.312195E5-ON85257831.0050CD2F-85257831.0051875E@dart.biz> <4D515F0D.1030902@redhat.com> <OF0792030A.13D80D43-ON85257831.0066ABF1-85257831.006780FD@dart.biz> <4D51AC5E.10404@redhat.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH 4/4] ext4: Speed up FITRIM by recording flags in
+ ext4_group_info.
+Date: Wed, 9 Feb 2011 15:01:46 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1102091445580.5596@dhcp-27-109.brq.redhat.com>
+References: <4D522B9B.5070707@tao.ma> <1297231048-3458-4-git-send-email-tm@tao.ma>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-Cc: linux-ext4@vger.kernel.org, "Ted Ts'o" <tytso@mit.edu>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Lukas Czerner <lczerner@redhat.com>
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mas-ns06.dartcontainer.com ([173.241.223.201]:2470 "EHLO
-	MAS-NS06.dartcontainer.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755008Ab1BINn6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Feb 2011 08:43:58 -0500
-In-Reply-To: <4D51AC5E.10404@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:46781 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755212Ab1BIOBw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 9 Feb 2011 09:01:52 -0500
+In-Reply-To: <1297231048-3458-4-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The disk was not in the middle of copying when the array went down.
+On Wed, 9 Feb 2011, Tao Ma wrote:
 
-I did get an fsck transcript; however, it is 14M tgz'd.  I don't really 
-want to send it to the list, but am willing to send it direct if you (or 
-Ted) are willing.
-
-The fsck said it completed successfully.  I kicked off fsck again just to 
-make sure and it reported clean.  So I mounted the drive and ls'd around 
-and it started reporting errors.  "ls: cannot access 40: Input/output 
-error"  Note: 40 is a directory.
-
-So I unmounted again and started an fsck.  It reported errors and started 
-on it's merry way; however, now it was dealing with many "Multiple-claimed 
-block(s) in inode #########: <many numbers following>"
-
-I am willing to reformat the drive again; however, I would like to know 
-what the best way to track down the issue is?
-
-Any thoughts? 
-
-
-
-From:   Eric Sandeen <sandeen@redhat.com>
-To:     bryan.coleman@dart.biz
-Cc:     linux-ext4@vger.kernel.org, "Ted Ts'o" <tytso@mit.edu>
-Date:   02/08/2011 03:49 PM
-Subject:        Re: ext4 problems with external RAID array via SAS 
-connection
-
-
-
-On 2/8/11 12:50 PM, bryan.coleman@dart.biz wrote:
-> I found that the promise array had been restarted via watchdog timer.  I 
-
-> am investigating that avenue via promise (albeit slow).  Note: the 
-> watchdog reset the controller days after the initial ext4 messages.  I'm 
-
-> not saying they are unrelated.  I just what to get all of the facts out 
-> there.
+> From: Tao Ma <boyu.mt@taobao.com>
 > 
-> I suspect the connection between the server and the promise got hosed 
-when 
-> the controller was reset.  When I restart the server, I could fsck the 
-> drive.
+> In ext4, when FITRIM is called every time, we iterate all the
+> groups and do trim one by one. It is a bit time wasting if the
+> group has been trimmed and there is no change since the last
+> trim.
 > 
-> The fsck is currently running (and has been for some time now). 
-> 
-> It is doing a ton of "Inode ######## ref count is 2, should be 1.  Fix? 
-> yes"  "Unattached inode #########"  "Connect to /lost+found? yes"
-> 
-> I am running fsck in a script session; however, there are currently a 
-ton 
-> of the messages above (current log size: 106M).
-> 
-> Do you think it is still hardware?  If so, is there a command that would 
+> So this patch adds a new flag in ext4_group_info->bb_state to
+> indicate that the group has been trimmed, and it will be cleared
+> if some blocks is freed(in release_blocks_on_commit). Another
+> trim_minlen is added in ext4_sb_info to record the last minlen
+> we use to trim the volume, so that if the caller provide a small
+> one, we will go on the trim regardless of the bb_state. The idea
+> is inspired by Andreas  and Lukas Czerner.
 
-> stress it enough to break quickly?  What is the best way to isolate 
-> hardware problems?
+Hi Tao,
 
-My assertion of hardware problems was based solely on the IO error reading
-block 0.  If you can't read the superblock there's not much to be done.
+This is great, thanks for the patch! Do you have any benchmark numbers
+showing how much does it improve FSTRIM time ? It seems it might help a
+lot. Couple of comments bellow.
 
-As for what caused the corruption fsck is now finding, that's harder to 
-say,
-you're essentially getting reports that fsck is finding errors which 
-happened
-sometime in the past.
+> 
+> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+> Cc: Lukas Czerner <lczerner@redhat.com>
+> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+> ---
+>  fs/ext4/ext4.h    |    8 +++++++-
+>  fs/ext4/mballoc.c |   22 ++++++++++++++++++++++
+>  2 files changed, 29 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 0c8d97b..684f48e 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1200,6 +1200,9 @@ struct ext4_sb_info {
+>  	struct ext4_li_request *s_li_request;
+>  	/* Wait multiplier for lazy initialization thread */
+>  	unsigned int s_li_wait_mult;
+> +
+> +	/* record the last minlen when FITRIM is called. */
+> +	u64 trim_minlen;
 
-My first thought is whether a large cache on the array got lost when it 
-was
-reset, that could certainly cause filesystem corruption.
+Maybe this is a bit nitpicking, but it is not very clear what is the
+"trim_minlen" for. I would rather use something like
+"last_trim_minblks", or similar.
 
--Eric
+>  };
+>  
+>  static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
+> @@ -1970,10 +1973,13 @@ struct ext4_group_info {
+>  					 * 5 free 8-block regions. */
+>  };
+>  
+> -#define EXT4_GROUP_INFO_NEED_INIT_BIT	0
+> +#define EXT4_GROUP_INFO_NEED_INIT_BIT		0
+> +#define EXT4_GROUP_INFO_HAS_BEEN_TRIMMED	1
+>  
+>  #define EXT4_MB_GRP_NEED_INIT(grp)	\
+>  	(test_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &((grp)->bb_state)))
+> +#define EXT4_MB_GRP_HAS_BEEN_TRIMMED(grp)	\
+> +	(test_bit(EXT4_GROUP_INFO_HAS_BEEN_TRIMMED, &((grp)->bb_state)))
+>  
+>  #define EXT4_MAX_CONTENTION		8
+>  #define EXT4_CONTENTION_THRESHOLD	2
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 4eadac8..3f6b809 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -1563,6 +1563,9 @@ static int mb_mark_used(struct ext4_buddy *e4b, struct ext4_free_extent *ex)
+>  	mb_set_bits(EXT4_MB_BITMAP(e4b), ex->fe_start, len0);
+>  	mb_check_buddy(e4b);
+>  
+> +	if (!ret)
+> +		EXT4_SB(sb)->trim_minlen = minlen;
+> +
 
-> Bryan
-> 
-> 
-> 
-> From:   Eric Sandeen <sandeen@redhat.com>
-> To:     bryan.coleman@dart.biz
-> Cc:     linux-ext4@vger.kernel.org, "Ted Ts'o" <tytso@mit.edu>
-> Date:   02/08/2011 10:21 AM
-> Subject:        Re: ext4 problems with external RAID array via SAS 
-> connection
-> Sent by:        linux-ext4-owner@vger.kernel.org
-> 
-> 
-> 
-> On 2/8/11 8:50 AM, bryan.coleman@dart.biz wrote:
->> Well, I attempted to run fsck on the problem drive using the script 
->> command to capture the transcript; however, it failed to read a block 
-> from 
->> the file system.  The exception was "fsck.ext4: Attempt to read block 
-> from 
->> filesystem resulted in short read while trying to open 
->> /dev/mapper/vg_storage-lv_storage". 
->>
->> Other messages that are now in /var/log/messages:
->>
->> Buffer I/O error on device dm-2, logical block 0
->> lost page write due to I/O error on dm-2
->> EXT4-fs (dm-2): previous I/O error to superblock detected
->> Buffer I/O error on device dm-2, logical block 0
->> lost page write due to I/O error on dm-2
->> Buffer I/O error on device dm-2, logical block 0
->> Buffer I/O error on device dm-2, logical block 1
->> Buffer I/O error on device dm-2, logical block 2
->> Buffer I/O error on device dm-2, logical block 3
->> Buffer I/O error on device dm-2, logical block 0
->> EXT4-fs (dm-2): unable to read superblock
->>
->>
->> Since it looks like I need to start the process all over again, is 
-there 
-> a 
->> good way to quickly determine if the problem is hardware related?  Is 
->> there a preferred method that will stress test the drive and shed more 
->> light on what might be going wrong?
-> 
-> You have a hardware problem... "Buffer I/O error on device dm-2, logical 
+Did you even tried to compile it ? "minlen" is not defined in
+mb_mark_used(), also it does make sense to set trim_minlen there. Did
+not you meant it to be in ext4_trim_fs ?
 
-> block 0"
-> means that you failed to read the first block on that device; not 
-> something
-> e2fsck can fix, I'm afraid; you'll need to sort out what's wrong with 
-the 
-> storage,
-> first.
-> 
-> -Eric
-> 
->> Thank you,
->>
->> Bryan
->>
->>
->>
->> From:   bryan.coleman@dart.biz
->> To:     linux-ext4@vger.kernel.org, linux-ext4-owner@vger.kernel.org
->> Date:   02/08/2011 08:19 AM
->> Subject:        Re: ext4 problems with external RAID array via SAS 
->> connection
->> Sent by:        linux-ext4-owner@vger.kernel.org
->>
->>
->>
->> When I ran fsck after the first bout of failure, it did report a lot of 
+>  	return ret;
+>  }
+>  
+> @@ -2687,6 +2690,16 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
+>  		rb_erase(&entry->node, &(db->bb_free_root));
+>  		mb_free_blocks(NULL, &e4b, entry->start_blk, entry->count);
+>  
+> +		/*
+> +		 * Clear the trimmed flag for the group so that the next
+> +		 * ext4_trim_fs can trim it.
+> +		 * If the volume is mounted with -o discard, online discard
+> +		 * is supported and the free blocks will be trimmed online.
+> +		 */
+> +		if (!test_opt(sb, DISCARD))
+> +			clear_bit(EXT4_GROUP_INFO_HAS_BEEN_TRIMMED,
+> +				  &(db->bb_state));
+> +
+>  		if (!db->bb_free_root.rb_node) {
+>  			/* No more items in the per group rb tree
+>  			 * balance refcounts from ext4_mb_free_metadata()
+> @@ -4772,6 +4785,10 @@ ext4_grpblk_t ext4_trim_all_free(struct super_block *sb, struct ext4_buddy *e4b,
+>  
+>  	ext4_lock_group(sb, group);
+>  
+> +	if (EXT4_MB_GRP_HAS_BEEN_TRIMMED(e4b->bd_info) &&
+> +	    minblocks >= EXT4_SB(sb)->trim_minlen)
+> +		goto out;
+> +
 
->> errors.  I do not have a copy of that fsck transcript; however, I have 
-> not 
->>
->> yet run fsck since my second attempt.  Is there a method of capturing 
-> the 
->> transcript that is preferred?
->>
->> Bryan
->>
->>
->>
->> From:   Ted Ts'o <tytso@mit.edu>
->> To:     bryan.coleman@dart.biz
->> Cc:     linux-ext4@vger.kernel.org
->> Date:   02/07/2011 05:55 PM
->> Subject:        Re: ext4 problems with external RAID array via SAS 
->> connection
->> Sent by:        linux-ext4-owner@vger.kernel.org
->>
->>
->>
->> On Mon, Feb 07, 2011 at 01:53:18PM -0500, bryan.coleman@dart.biz wrote:
->>> I am experiencing problems with an ext4 file system.
->>>
->>> At first, the drive seemed to work fine.  I was primarily copying 
-> things 
->>
->>
->>> to the drive migrating data from another server.  After many GBs of 
->> data, 
->>> that seemingly successfully were done being transferred, I started 
->> seeing 
->>> ext4 errors in /var/log/messages.  I then unmounted the drive and ran 
->> fsck 
->>> on it (which took multiple hours to run).  I then ls'ed around and one 
+I think this can be placed in the ext4_trim_fs() in the for() loop so we can
+avoid unnecessary call to ext4_trim_all_free.
 
->> of 
->>> the areas caused the system to again throw ext4 errors.
->>
->> Did fsck report any errors?  Do you have a copy of your fsck
->> transcript?
->>
->> The errors you've reported do make me suspicious that there's
->> something unstable with your hardware...
->>
->>   - Ted
->> --
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+>  	trace_ext4_trim_all_free(sb, group, start, max);
+>  
+>  	while (start < max) {
+> @@ -4804,6 +4821,11 @@ ext4_grpblk_t ext4_trim_all_free(struct super_block *sb, struct ext4_buddy *e4b,
+>  		if ((e4b->bd_info->bb_free - free_count) < minblocks)
+>  			break;
+>  	}
+> +
+> +	if (!ret)
+> +		set_bit(EXT4_GROUP_INFO_HAS_BEEN_TRIMMED,
+> +			&(e4b->bd_info->bb_state));
+> +out:
+>  	ext4_unlock_group(sb, group);
+>  
+>  	ext4_debug("trimmed %d blocks in the group %d\n",
 > 
 
-
-
+Thanks!
+-Lukas
