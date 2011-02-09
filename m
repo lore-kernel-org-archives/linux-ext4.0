@@ -1,165 +1,222 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH v2 1/2] e2fsprogs: Fix how we treat user-spcified filesystem size
-Date: Wed,  9 Feb 2011 14:03:26 +0100
-Message-ID: <1297256607-4654-1-git-send-email-lczerner@redhat.com>
-Cc: tytso@MIT.EDU, lczerner@redhat.com, adilger@dilger.ca
-To: linux-ext4@vger.kernel.org
+From: bryan.coleman@dart.biz
+Subject: Re: ext4 problems with external RAID array via SAS connection
+Date: Wed, 9 Feb 2011 08:43:56 -0500
+Message-ID: <OF29FBBBDF.6F048139-ON85257832.004A565E-85257832.004B6F04@dart.biz>
+References: <OFFAEBAC93.6731CA9F-ON85257830.0067BABF-85257830.0067C1CB@dart.biz> <20110207225436.GG3457@thunk.org> <OF1BE984CE.39437668-ON85257831.00491D12-85257831.0049261D@dart.biz> <OF3CD75888.312195E5-ON85257831.0050CD2F-85257831.0051875E@dart.biz> <4D515F0D.1030902@redhat.com> <OF0792030A.13D80D43-ON85257831.0066ABF1-85257831.006780FD@dart.biz> <4D51AC5E.10404@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="US-ASCII"
+Cc: linux-ext4@vger.kernel.org, "Ted Ts'o" <tytso@mit.edu>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46994 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754137Ab1BINDf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 9 Feb 2011 08:03:35 -0500
+Received: from mas-ns06.dartcontainer.com ([173.241.223.201]:2470 "EHLO
+	MAS-NS06.dartcontainer.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755008Ab1BINn6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Feb 2011 08:43:58 -0500
+In-Reply-To: <4D51AC5E.10404@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-(v2: do not spell units - mebibytes etc... - but rather use just abbrev.)
+The disk was not in the middle of copying when the array went down.
 
-mke2fs and resize2fs allows specifying filesystem size as a parameter,
-former called as blocks-count. However it has been a little bit messy so
-this commit fixes it mainly by updating man pages.
+I did get an fsck transcript; however, it is 14M tgz'd.  I don't really 
+want to send it to the list, but am willing to send it direct if you (or 
+Ted) are willing.
 
-We can not specify filesystem size in blocks count without specifying
-blocksize as well. It is because we need blocks count to determine
-filesystem type, and we need filesystem type to determine blocksize. So
-it should not be allowed, however due to compatibility reason it should
-be still possible, so at least print warning message for now, so we can
-easily restrict that later.
+The fsck said it completed successfully.  I kicked off fsck again just to 
+make sure and it reported clean.  So I mounted the drive and ls'd around 
+and it started reporting errors.  "ls: cannot access 40: Input/output 
+error"  Note: 40 is a directory.
 
-Filesystem size can be specified using units as suffixes. This was not
-documented for mke2fs, so this commits adds proper documentation into
-mke2fs man page.
+So I unmounted again and started an fsck.  It reported errors and started 
+on it's merry way; however, now it was dealing with many "Multiple-claimed 
+block(s) in inode #########: <many numbers following>"
 
-For the sake of completeness add 'b' (blocks count) unit.
+I am willing to reformat the drive again; however, I would like to know 
+what the best way to track down the issue is?
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- lib/e2p/parse_num.c   |    9 +++++++++
- misc/mke2fs.8.in      |   32 ++++++++++++++++++++++++++------
- resize/resize2fs.8.in |   19 ++++++-------------
- 3 files changed, 41 insertions(+), 19 deletions(-)
+Any thoughts? 
 
-diff --git a/lib/e2p/parse_num.c b/lib/e2p/parse_num.c
-index 83a329a..5e7924b 100644
---- a/lib/e2p/parse_num.c
-+++ b/lib/e2p/parse_num.c
-@@ -10,6 +10,7 @@
-  */
- 
- #include "e2p.h"
-+#include "../misc/nls-enable.h"
- 
- #include <stdlib.h>
- 
-@@ -37,6 +38,14 @@ unsigned long long parse_num_blocks2(const char *arg, int log_block_size)
- 		num >>= (1+log_block_size);
- 		break;
- 	case '\0':
-+	case 'b':
-+		if (!log_block_size) {
-+			fprintf(stderr,
-+				_("Warning: You can not specify blocks count "
-+				"without specifying block size '-b'. Will "
-+				"assume kilobytes instead of blocks count!.\n"
-+				));
-+		}
- 		break;
- 	default:
- 		return 0;
-diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
-index 2eead17..e093be0 100644
---- a/misc/mke2fs.8.in
-+++ b/misc/mke2fs.8.in
-@@ -108,7 +108,7 @@ mke2fs \- create an ext2/ext3/ext4 filesystem
- ]
- .I device
- [
--.I blocks-count
-+.I filesystem-size
- ]
- @JDEV@.sp
- @JDEV@.B "mke2fs \-O journal_dev"
-@@ -136,7 +136,7 @@ mke2fs \- create an ext2/ext3/ext4 filesystem
- @JDEV@]
- @JDEV@.I external-journal
- @JDEV@[
--@JDEV@.I blocks-count
-+@JDEV@.I filesystem-size
- @JDEV@]
- .SH DESCRIPTION
- .B mke2fs
-@@ -145,10 +145,30 @@ partition.
- .I device
- is the special file corresponding to the device (e.g
- .IR /dev/hdXX ).
--.I blocks-count
--is the number of blocks on the device.  If omitted,
--.B mke2fs
--automagically figures the file system size.  If called as
-+.I filesystem-size
-+is the size of the filesystem you want to create.
-+If no units are specified, the units of the
-+.I filesystem-size
-+parameter shall be the blocks count of the filesystem. Keep in mind that
-+you can not specify
-+.I filesystem-size
-+in blocks count without specifying the blocksize as well. This will be
-+allowed for now (1024 byte blocks will be assumed)
-+due to compatibility reasons, however it may be restricted
-+in the future.
-+Optionally, the
-+.I filesystem-size
-+parameter may be suffixed by one of the following units
-+designators: 'b', 's', 'K', 'M', 'G', or 'T',
-+for blocks count, 512 byte sectors, KiB (2^10 Bytes), MiB (2^20 Bytes),
-+GiB (2^30 Bytes), or TiB (2^40 Bytes) respectively, which are binary (power-of-2),
-+not decimal, units. The
-+.I filesystem-size
-+may never be larger than the size of the partition.
-+If
-+.I filesystem-size
-+parameter is not specified, it will default to the size of the partition.
-+If called as
- .B mkfs.ext3
- a journal is created as if the
- .B \-j
-diff --git a/resize/resize2fs.8.in b/resize/resize2fs.8.in
-index e02345d..769fd14 100644
---- a/resize/resize2fs.8.in
-+++ b/resize/resize2fs.8.in
-@@ -38,27 +38,20 @@ The
- parameter specifies the requested new size of the filesystem.
- If no units are specified, the units of the
- .I size
--parameter shall be the filesystem blocksize of the filesystem.
-+parameter shall be the blocks count of the filesystem.
- Optionally, the 
- .I size
--parameter may be suffixed by one of the following the units 
--designators: 's', 'K', 'M', or 'G',
--for 512 byte sectors, kilobytes, megabytes, or gigabytes, respectively.
--The 
-+parameter may be suffixed by one of the following the units
-+designators: 'b', 's', 'K', 'M', 'G', or 'T',
-+for blocks count, 512 byte sectors, KiB (2^10 Bytes), MiB (2^20 Bytes),
-+GiB (2^30 Bytes), or TiB (2^40 Bytes) respectively, which are binary (power-of-2),
-+not decimal, units. The
- .I size
- of the filesystem may never be larger than the size of the partition.
- If 
- .I size
- parameter is not specified, it will default to the size of the partition.
- .PP
--Note: when kilobytes is used above, I mean
--.IR real ,
--power-of-2 kilobytes, (i.e., 1024 bytes), which some politically correct
--folks insist should be the stupid-sounding ``kibibytes''.  The same
--holds true for megabytes, also sometimes known as ``mebibytes'', or
--gigabytes, as the amazingly silly ``gibibytes''.  Makes you want to
--gibber, doesn't it?
--.PP
- The
- .B resize2fs
- program does not manipulate the size of partitions.  If you wish to enlarge
--- 
-1.7.4
+
+
+From:   Eric Sandeen <sandeen@redhat.com>
+To:     bryan.coleman@dart.biz
+Cc:     linux-ext4@vger.kernel.org, "Ted Ts'o" <tytso@mit.edu>
+Date:   02/08/2011 03:49 PM
+Subject:        Re: ext4 problems with external RAID array via SAS 
+connection
+
+
+
+On 2/8/11 12:50 PM, bryan.coleman@dart.biz wrote:
+> I found that the promise array had been restarted via watchdog timer.  I 
+
+> am investigating that avenue via promise (albeit slow).  Note: the 
+> watchdog reset the controller days after the initial ext4 messages.  I'm 
+
+> not saying they are unrelated.  I just what to get all of the facts out 
+> there.
+> 
+> I suspect the connection between the server and the promise got hosed 
+when 
+> the controller was reset.  When I restart the server, I could fsck the 
+> drive.
+> 
+> The fsck is currently running (and has been for some time now). 
+> 
+> It is doing a ton of "Inode ######## ref count is 2, should be 1.  Fix? 
+> yes"  "Unattached inode #########"  "Connect to /lost+found? yes"
+> 
+> I am running fsck in a script session; however, there are currently a 
+ton 
+> of the messages above (current log size: 106M).
+> 
+> Do you think it is still hardware?  If so, is there a command that would 
+
+> stress it enough to break quickly?  What is the best way to isolate 
+> hardware problems?
+
+My assertion of hardware problems was based solely on the IO error reading
+block 0.  If you can't read the superblock there's not much to be done.
+
+As for what caused the corruption fsck is now finding, that's harder to 
+say,
+you're essentially getting reports that fsck is finding errors which 
+happened
+sometime in the past.
+
+My first thought is whether a large cache on the array got lost when it 
+was
+reset, that could certainly cause filesystem corruption.
+
+-Eric
+
+> Bryan
+> 
+> 
+> 
+> From:   Eric Sandeen <sandeen@redhat.com>
+> To:     bryan.coleman@dart.biz
+> Cc:     linux-ext4@vger.kernel.org, "Ted Ts'o" <tytso@mit.edu>
+> Date:   02/08/2011 10:21 AM
+> Subject:        Re: ext4 problems with external RAID array via SAS 
+> connection
+> Sent by:        linux-ext4-owner@vger.kernel.org
+> 
+> 
+> 
+> On 2/8/11 8:50 AM, bryan.coleman@dart.biz wrote:
+>> Well, I attempted to run fsck on the problem drive using the script 
+>> command to capture the transcript; however, it failed to read a block 
+> from 
+>> the file system.  The exception was "fsck.ext4: Attempt to read block 
+> from 
+>> filesystem resulted in short read while trying to open 
+>> /dev/mapper/vg_storage-lv_storage". 
+>>
+>> Other messages that are now in /var/log/messages:
+>>
+>> Buffer I/O error on device dm-2, logical block 0
+>> lost page write due to I/O error on dm-2
+>> EXT4-fs (dm-2): previous I/O error to superblock detected
+>> Buffer I/O error on device dm-2, logical block 0
+>> lost page write due to I/O error on dm-2
+>> Buffer I/O error on device dm-2, logical block 0
+>> Buffer I/O error on device dm-2, logical block 1
+>> Buffer I/O error on device dm-2, logical block 2
+>> Buffer I/O error on device dm-2, logical block 3
+>> Buffer I/O error on device dm-2, logical block 0
+>> EXT4-fs (dm-2): unable to read superblock
+>>
+>>
+>> Since it looks like I need to start the process all over again, is 
+there 
+> a 
+>> good way to quickly determine if the problem is hardware related?  Is 
+>> there a preferred method that will stress test the drive and shed more 
+>> light on what might be going wrong?
+> 
+> You have a hardware problem... "Buffer I/O error on device dm-2, logical 
+
+> block 0"
+> means that you failed to read the first block on that device; not 
+> something
+> e2fsck can fix, I'm afraid; you'll need to sort out what's wrong with 
+the 
+> storage,
+> first.
+> 
+> -Eric
+> 
+>> Thank you,
+>>
+>> Bryan
+>>
+>>
+>>
+>> From:   bryan.coleman@dart.biz
+>> To:     linux-ext4@vger.kernel.org, linux-ext4-owner@vger.kernel.org
+>> Date:   02/08/2011 08:19 AM
+>> Subject:        Re: ext4 problems with external RAID array via SAS 
+>> connection
+>> Sent by:        linux-ext4-owner@vger.kernel.org
+>>
+>>
+>>
+>> When I ran fsck after the first bout of failure, it did report a lot of 
+
+>> errors.  I do not have a copy of that fsck transcript; however, I have 
+> not 
+>>
+>> yet run fsck since my second attempt.  Is there a method of capturing 
+> the 
+>> transcript that is preferred?
+>>
+>> Bryan
+>>
+>>
+>>
+>> From:   Ted Ts'o <tytso@mit.edu>
+>> To:     bryan.coleman@dart.biz
+>> Cc:     linux-ext4@vger.kernel.org
+>> Date:   02/07/2011 05:55 PM
+>> Subject:        Re: ext4 problems with external RAID array via SAS 
+>> connection
+>> Sent by:        linux-ext4-owner@vger.kernel.org
+>>
+>>
+>>
+>> On Mon, Feb 07, 2011 at 01:53:18PM -0500, bryan.coleman@dart.biz wrote:
+>>> I am experiencing problems with an ext4 file system.
+>>>
+>>> At first, the drive seemed to work fine.  I was primarily copying 
+> things 
+>>
+>>
+>>> to the drive migrating data from another server.  After many GBs of 
+>> data, 
+>>> that seemingly successfully were done being transferred, I started 
+>> seeing 
+>>> ext4 errors in /var/log/messages.  I then unmounted the drive and ran 
+>> fsck 
+>>> on it (which took multiple hours to run).  I then ls'ed around and one 
+
+>> of 
+>>> the areas caused the system to again throw ext4 errors.
+>>
+>> Did fsck report any errors?  Do you have a copy of your fsck
+>> transcript?
+>>
+>> The errors you've reported do make me suspicious that there's
+>> something unstable with your hardware...
+>>
+>>   - Ted
+>> --
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
+
+
 
