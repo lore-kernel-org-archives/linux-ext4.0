@@ -1,62 +1,38 @@
-From: Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: [PATCH 4/4] ext4: Speed up FITRIM by recording flags in ext4_group_info.
-Date: Wed, 9 Feb 2011 11:25:25 -0800
-Message-ID: <8576F204-586C-4046-974B-A691C8C36E34@dilger.ca>
-References: <4D522B9B.5070707@tao.ma> <1297231048-3458-4-git-send-email-tm@tao.ma> <alpine.LFD.2.00.1102091445580.5596@dhcp-27-109.brq.redhat.com>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Tao Ma <tm@tao.ma>, linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: ext4 problems with external RAID array via SAS connection
+Date: Wed, 09 Feb 2011 14:46:34 -0500
+Message-ID: <4D52EF1A.6060902@redhat.com>
+References: <OFFAEBAC93.6731CA9F-ON85257830.0067BABF-85257830.0067C1CB@dart.biz> <20110207225436.GG3457@thunk.org> <OF1BE984CE.39437668-ON85257831.00491D12-85257831.0049261D@dart.biz> <OF3CD75888.312195E5-ON85257831.0050CD2F-85257831.0051875E@dart.biz> <4D515F0D.1030902@redhat.com> <OF0792030A.13D80D43-ON85257831.0066ABF1-85257831.006780FD@dart.biz> <4D51AC5E.10404@redhat.com> <OF29FBBBDF.6F048139-ON85257832.004A565E-85257832.004B6F04@dart.biz> <20110209182823.GC9533@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
+To: "Ted Ts'o" <tytso@mit.edu>, bryan.coleman@dart.biz
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:64252 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751172Ab1BITZZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Feb 2011 14:25:25 -0500
-In-Reply-To: <alpine.LFD.2.00.1102091445580.5596@dhcp-27-109.brq.redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:22187 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751010Ab1BITqj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 9 Feb 2011 14:46:39 -0500
+In-Reply-To: <20110209182823.GC9533@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-02-09, at 06:01, Lukas Czerner wrote:
->> @@ -1200,6 +1200,9 @@ struct ext4_sb_info {
->> 	struct ext4_li_request *s_li_request;
->> 	/* Wait multiplier for lazy initialization thread */
->> 	unsigned int s_li_wait_mult;
->> +
->> +	/* record the last minlen when FITRIM is called. */
->> +	u64 trim_minlen;
-> 
-> Maybe this is a bit nitpicking, but it is not very clear what is the
-> "trim_minlen" for. I would rather use something like
-> "last_trim_minblks", or similar.
+On 02/09/2011 01:28 PM, Ted Ts'o wrote:
+> On Wed, Feb 09, 2011 at 08:43:56AM -0500, bryan.coleman@dart.biz wrote:
+>> The fsck said it completed successfully.  I kicked off fsck again just to
+>> make sure and it reported clean.  So I mounted the drive and ls'd around
+>> and it started reporting errors.  "ls: cannot access 40: Input/output
+>> error"  Note: 40 is a directory.
+> Well, we'd need to look at the kernel messages, but the Input/output
+> error strongly suggests that there are, well, I/O errors talking to
+> your storage array.  Which again suggests hardware problems, or device
+> driver bugs, or both.
+>
+> 						- Ted
 
-And for good measure, this should use the "s_" prefix to indicate it is in the superblock.
+I think that you might want to start to test with a simplified storage config. 
+Try keep the RAID card in the loop, but using a simpler RAID scheme (single 
+drive? RAID0 or RAID1) and see if the issue persists.
 
->> +#define EXT4_GROUP_INFO_NEED_INIT_BIT		0
->> +#define EXT4_GROUP_INFO_HAS_BEEN_TRIMMED	1
-
-It would also be good if the names of these fields were consistent, like
-
-+#define EXT4_GROUP_INFO_NEED_INIT_BIT		0
-+#define EXT4_GROUP_INFO_WAS_TRIMMED_BIT	1
-
->> @@ -1563,6 +1563,9 @@ static int mb_mark_used(struct ext4_buddy *e4b, struct ext4_free_extent *ex)
->> 	mb_set_bits(EXT4_MB_BITMAP(e4b), ex->fe_start, len0);
->> 	mb_check_buddy(e4b);
->> 
->> +	if (!ret)
->> +		EXT4_SB(sb)->trim_minlen = minlen;
->> +
-> 
-> Did you even tried to compile it ? "minlen" is not defined in
-> mb_mark_used(), also it does make sense to set trim_minlen there. Did
-> not you meant it to be in ext4_trim_fs ?
-
-I was wondering exactly the same thing, but I haven't had time to look at the code.
-
-Cheers, Andreas
-
-
-
-
+Ric
 
