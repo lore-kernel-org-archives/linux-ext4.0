@@ -1,66 +1,134 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: [PATCH] VFS: call rcu_barrier after kill_sb.
-Date: Wed, 09 Feb 2011 10:26:46 +0200
-Message-ID: <4D524FC6.3020300@panasas.com>
-References: <1296896481-3650-1-git-send-email-tm@tao.ma> <4D4FF040.9050707@panasas.com> <87hbceqxax.fsf@linux.vnet.ibm.com> <4D517C98.7060000@panasas.com> <20110209045007.GA29650@infradead.org>
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: Re: [PATCH 0/5] mballoc: trivial code cleanup
+Date: Wed, 9 Feb 2011 11:09:32 +0200
+Message-ID: <AANLkTin0tSCT8p26MQhi0kx6V-B9vYiZ=ryog6D980nX@mail.gmail.com>
+References: <4D4E294E.4080507@coly.li>
+	<AANLkTimT3i1oOSh02oTtvN_OmHcYwhNOABLV4cT7VV5p@mail.gmail.com>
+	<20110207174125.GB3457@thunk.org>
+	<AANLkTimOaQSdJa9aXEs_UM0pAO92S0_zGT5w7kU33etk@mail.gmail.com>
+	<20110207222450.GF3457@thunk.org>
+	<AANLkTinbE9tmtfQKXuVXL0m_O6==yWOf3VxpVHwGaP0H@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: Christoph Hellwig <hch@infradead.org>,
-	"Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Tao Ma <tm@tao.ma>, Nick Piggin <npiggin@kernel.dk>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Chris Mason <chris.mason@oracle.com>
-To: Al Viro <viro@zeniv.linux.org.uk>,
-	Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: i@coly.li, Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Ted Ts'o" <tytso@mit.edu>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:17149 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752580Ab1BII0v (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Feb 2011 03:26:51 -0500
-In-Reply-To: <20110209045007.GA29650@infradead.org>
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:55306 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753189Ab1BIJJe convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Feb 2011 04:09:34 -0500
+Received: by qyj19 with SMTP id 19so1190066qyj.19
+        for <linux-ext4@vger.kernel.org>; Wed, 09 Feb 2011 01:09:33 -0800 (PST)
+In-Reply-To: <AANLkTinbE9tmtfQKXuVXL0m_O6==yWOf3VxpVHwGaP0H@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Tue, Feb 8, 2011 at 10:54 AM, Amir Goldstein <amir73il@gmail.com> wr=
+ote:
+> On Tue, Feb 8, 2011 at 12:24 AM, Ted Ts'o <tytso@mit.edu> wrote:
+>> On Mon, Feb 07, 2011 at 10:59:54PM +0200, Amir Goldstein wrote:
+>>> it says alloc_sem protects against lazy init of adjacent groups
+>>> and says nothing about protecting block group specific data structu=
+res...
+>>>
+>>> what am I missing???
+>>
+>> You're missing ext4_mb_load_buddy(), which takes grp->alloc_sem, and
+>> which is released by ext4_mb_unload_buddy(). =A0No, it's not the mos=
+t
+>> obvious code in the world...
+>>
+>
+> OK Ted, you leave me no choice... I need to paste the code of mb_load=
+_buddy():
+>
+> 1157 =A0 =A0 =A0 =A0e4b->alloc_semp =3D &grp->alloc_sem;
+> 1158
+> 1159 =A0 =A0 =A0 =A0/* Take the read lock on the group alloc
+> 1160 =A0 =A0 =A0 =A0 * sem. This would make sure a parallel
+> 1161 =A0 =A0 =A0 =A0 * ext4_mb_init_group happening on other
+> 1162 =A0 =A0 =A0 =A0 * groups mapped by the page is blocked
+> 1163 =A0 =A0 =A0 =A0 * till we are done with allocation
+> 1164 =A0 =A0 =A0 =A0 */
+> 1165repeat_load_buddy:
+> 1166 =A0 =A0 =A0 =A0down_read(e4b->alloc_semp);
+> 1167
+> 1168 =A0 =A0 =A0 =A0if (unlikely(EXT4_MB_GRP_NEED_INIT(grp))) {
+> 1169 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/* we need to check for group nee=
+d init flag
+> 1170 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 * with alloc_semp held so that w=
+e can be sure
+> 1171 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 * that new blocks didn't get add=
+ed to the group
+> 1172 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 * when we are loading the buddy =
+cache
+> 1173 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 */
+> 1174 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0up_read(e4b->alloc_semp);
+> 1175 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/*
+> 1176 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 * we need full data about the gr=
+oup
+> 1177 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 * to make a good selection
+> 1178 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 */
+> 1179 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ret =3D ext4_mb_init_group(sb, gr=
+oup);
+> 1180 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (ret)
+> 1181 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return ret;
+> 1182 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto repeat_load_buddy;
+> 1183 =A0 =A0 =A0 =A0}
+> 1184
+>
+> ext4_mb_load_buddy() *only* takes down_read(grp->alloc_sem),
+> except for the first time after mount, in which ext4_mb_init_group() =
+takes
+> down_write(grp->alloc_sem), releases it, and then repeat_load_buddy l=
+abel
+> will re-take down_read(grp->alloc_sem).
+>
+> Essentially, this means that after time Ti(group), all users take onl=
+y read
+> access to grp->alloc_sem, which is kind of futile...
+>
+> Your statement that alloc_sem is needed certainly makes sense, but I =
+just don't
+> see it in the code.
+> As un-obvious as the code may be, you cannot protect data structures
+> without anyone taking write access to the semaphore on allocation rou=
+tines.
+> Also, I believe that buddy data structures are modified in
+> ext4_mb_generate_buddy()
+> under the protection of ext4_lock_group().
+>
+> So at the risk of having to buy you a beer on LFS I will repeat my
+> nagging question:
+> What am I missing???
+>
 
-In fa0d7e3, we use rcu free inode instead of freeing the inode
-directly. It causes a crash when we rmmod immediately after
-we umount the volume[1].
+I found out what I was missing (it's in the comment in line 1169 above)=
+=2E
+I wrongly assumed the EXT4_GROUP_INFO_NEED_INIT_BIT is set only
+once in a lifetime of an ext4_group_info, but I was wrong. It may also =
+be set
+when adding blocks to an existing group from ext4_group_extend().
 
-So we need to call rcu_barrier after we kill_sb so that
-the inode is freed before we do rmmod. The idea is inspired
-by Aneesh Kumar. rcu_barrier will wait for all callbacks
-to end before preceding. The original patch was done by
-Tao Ma, but synchronize_rcu() is not enough here.
+Still, I think that the use cases in which down_read(alloc_sem) is need=
+ed are
+very unlikely() and can be covered with the following check:
 
-1. http://marc.info/?l=linux-fsdevel&m=129680863330185&w=2
+=A0   if (blocks_per_page > 2 || group =3D=3D sbi->s_groups_count - 1)
+=A0 =A0 =A0   /* Synchronize init of adjacent group and adding of block=
+s to
+last group */
+=A0 =A0 =A0   e4b->alloc_semp =3D &grp->alloc_sem;
+=A0   else
+=A0 =A0 =A0   e4b->alloc_semp =3D NULL;
 
-Cc: Nick Piggin <npiggin@kernel.dk>
-Cc: Al Viro <viro@zeniv.linux.org.uk>
-Cc: Chris Mason <chris.mason@oracle.com>
-Tested-by: Tao Ma <boyu.mt@taobao.com>
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/super.c |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
+I will post a patch for review.
 
-diff --git a/fs/super.c b/fs/super.c
-index 74e149e..7e9dd4c 100644
---- a/fs/super.c
-+++ b/fs/super.c
-@@ -177,6 +177,11 @@ void deactivate_locked_super(struct super_block *s)
- 	struct file_system_type *fs = s->s_type;
- 	if (atomic_dec_and_test(&s->s_active)) {
- 		fs->kill_sb(s);
-+		/*
-+		 * We need to call rcu_barrier so all the delayed rcu free
-+		 * inodes are flushed before we release the fs module.
-+		 */
-+		rcu_barrier();
- 		put_filesystem(fs);
- 		put_super(s);
- 	} else {
--- 
-1.7.2.3
-
-
+Amir.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
