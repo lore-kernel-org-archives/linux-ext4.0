@@ -1,25 +1,25 @@
 From: Eric Sandeen <sandeen@redhat.com>
 Subject: [PATCH] e2fsck: don't check/clone duplicate xattr blocks in fs without
  xattr feature
-Date: Wed, 09 Feb 2011 12:41:37 -0600
-Message-ID: <4D52DFE1.4090709@redhat.com>
+Date: Wed, 09 Feb 2011 12:41:43 -0600
+Message-ID: <4D52DFE7.4050301@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50080 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:20004 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755675Ab1BISlj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 9 Feb 2011 13:41:39 -0500
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p19Ifcmj029934
+	id S1755793Ab1BISlp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 9 Feb 2011 13:41:45 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p19IfjoM014946
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Wed, 9 Feb 2011 13:41:38 -0500
+	for <linux-ext4@vger.kernel.org>; Wed, 9 Feb 2011 13:41:45 -0500
 Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id p19IfbaE005162
-	(version=TLSv1/SSLv3 cipher=AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 9 Feb 2011 13:41:38 -0500
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p19Ifhho015658
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 9 Feb 2011 13:41:44 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
