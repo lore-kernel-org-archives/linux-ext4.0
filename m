@@ -1,126 +1,66 @@
-From: Tao Ma <tm@tao.ma>
-Subject: [PATCH 4/4] ext4: Speed up FITRIM by recording flags in ext4_group_info.
-Date: Wed,  9 Feb 2011 13:57:28 +0800
-Message-ID: <1297231048-3458-4-git-send-email-tm@tao.ma>
-References: <4D522B9B.5070707@tao.ma>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: [PATCH] VFS: call rcu_barrier after kill_sb.
+Date: Wed, 09 Feb 2011 10:26:46 +0200
+Message-ID: <4D524FC6.3020300@panasas.com>
+References: <1296896481-3650-1-git-send-email-tm@tao.ma> <4D4FF040.9050707@panasas.com> <87hbceqxax.fsf@linux.vnet.ibm.com> <4D517C98.7060000@panasas.com> <20110209045007.GA29650@infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: Christoph Hellwig <hch@infradead.org>,
+	"Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Tao Ma <tm@tao.ma>, Nick Piggin <npiggin@kernel.dk>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Chris Mason <chris.mason@oracle.com>
+To: Al Viro <viro@zeniv.linux.org.uk>,
+	Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy2-pub.bluehost.com ([67.222.39.60]:47451 "HELO
-	oproxy2-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1750926Ab1BIF6T (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Feb 2011 00:58:19 -0500
-In-Reply-To: <4D522B9B.5070707@tao.ma>
+Received: from daytona.panasas.com ([67.152.220.89]:17149 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752580Ab1BII0v (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Feb 2011 03:26:51 -0500
+In-Reply-To: <20110209045007.GA29650@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Tao Ma <boyu.mt@taobao.com>
 
-In ext4, when FITRIM is called every time, we iterate all the
-groups and do trim one by one. It is a bit time wasting if the
-group has been trimmed and there is no change since the last
-trim.
+In fa0d7e3, we use rcu free inode instead of freeing the inode
+directly. It causes a crash when we rmmod immediately after
+we umount the volume[1].
 
-So this patch adds a new flag in ext4_group_info->bb_state to
-indicate that the group has been trimmed, and it will be cleared
-if some blocks is freed(in release_blocks_on_commit). Another
-trim_minlen is added in ext4_sb_info to record the last minlen
-we use to trim the volume, so that if the caller provide a small
-one, we will go on the trim regardless of the bb_state. The idea
-is inspired by Andreas  and Lukas Czerner.
+So we need to call rcu_barrier after we kill_sb so that
+the inode is freed before we do rmmod. The idea is inspired
+by Aneesh Kumar. rcu_barrier will wait for all callbacks
+to end before preceding. The original patch was done by
+Tao Ma, but synchronize_rcu() is not enough here.
 
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: Lukas Czerner <lczerner@redhat.com>
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+1. http://marc.info/?l=linux-fsdevel&m=129680863330185&w=2
+
+Cc: Nick Piggin <npiggin@kernel.dk>
+Cc: Al Viro <viro@zeniv.linux.org.uk>
+Cc: Chris Mason <chris.mason@oracle.com>
+Tested-by: Tao Ma <boyu.mt@taobao.com>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- fs/ext4/ext4.h    |    8 +++++++-
- fs/ext4/mballoc.c |   22 ++++++++++++++++++++++
- 2 files changed, 29 insertions(+), 1 deletions(-)
+ fs/super.c |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 0c8d97b..684f48e 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1200,6 +1200,9 @@ struct ext4_sb_info {
- 	struct ext4_li_request *s_li_request;
- 	/* Wait multiplier for lazy initialization thread */
- 	unsigned int s_li_wait_mult;
-+
-+	/* record the last minlen when FITRIM is called. */
-+	u64 trim_minlen;
- };
- 
- static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
-@@ -1970,10 +1973,13 @@ struct ext4_group_info {
- 					 * 5 free 8-block regions. */
- };
- 
--#define EXT4_GROUP_INFO_NEED_INIT_BIT	0
-+#define EXT4_GROUP_INFO_NEED_INIT_BIT		0
-+#define EXT4_GROUP_INFO_HAS_BEEN_TRIMMED	1
- 
- #define EXT4_MB_GRP_NEED_INIT(grp)	\
- 	(test_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &((grp)->bb_state)))
-+#define EXT4_MB_GRP_HAS_BEEN_TRIMMED(grp)	\
-+	(test_bit(EXT4_GROUP_INFO_HAS_BEEN_TRIMMED, &((grp)->bb_state)))
- 
- #define EXT4_MAX_CONTENTION		8
- #define EXT4_CONTENTION_THRESHOLD	2
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 4eadac8..3f6b809 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1563,6 +1563,9 @@ static int mb_mark_used(struct ext4_buddy *e4b, struct ext4_free_extent *ex)
- 	mb_set_bits(EXT4_MB_BITMAP(e4b), ex->fe_start, len0);
- 	mb_check_buddy(e4b);
- 
-+	if (!ret)
-+		EXT4_SB(sb)->trim_minlen = minlen;
-+
- 	return ret;
- }
- 
-@@ -2687,6 +2690,16 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
- 		rb_erase(&entry->node, &(db->bb_free_root));
- 		mb_free_blocks(NULL, &e4b, entry->start_blk, entry->count);
- 
+diff --git a/fs/super.c b/fs/super.c
+index 74e149e..7e9dd4c 100644
+--- a/fs/super.c
++++ b/fs/super.c
+@@ -177,6 +177,11 @@ void deactivate_locked_super(struct super_block *s)
+ 	struct file_system_type *fs = s->s_type;
+ 	if (atomic_dec_and_test(&s->s_active)) {
+ 		fs->kill_sb(s);
 +		/*
-+		 * Clear the trimmed flag for the group so that the next
-+		 * ext4_trim_fs can trim it.
-+		 * If the volume is mounted with -o discard, online discard
-+		 * is supported and the free blocks will be trimmed online.
++		 * We need to call rcu_barrier so all the delayed rcu free
++		 * inodes are flushed before we release the fs module.
 +		 */
-+		if (!test_opt(sb, DISCARD))
-+			clear_bit(EXT4_GROUP_INFO_HAS_BEEN_TRIMMED,
-+				  &(db->bb_state));
-+
- 		if (!db->bb_free_root.rb_node) {
- 			/* No more items in the per group rb tree
- 			 * balance refcounts from ext4_mb_free_metadata()
-@@ -4772,6 +4785,10 @@ ext4_grpblk_t ext4_trim_all_free(struct super_block *sb, struct ext4_buddy *e4b,
- 
- 	ext4_lock_group(sb, group);
- 
-+	if (EXT4_MB_GRP_HAS_BEEN_TRIMMED(e4b->bd_info) &&
-+	    minblocks >= EXT4_SB(sb)->trim_minlen)
-+		goto out;
-+
- 	trace_ext4_trim_all_free(sb, group, start, max);
- 
- 	while (start < max) {
-@@ -4804,6 +4821,11 @@ ext4_grpblk_t ext4_trim_all_free(struct super_block *sb, struct ext4_buddy *e4b,
- 		if ((e4b->bd_info->bb_free - free_count) < minblocks)
- 			break;
- 	}
-+
-+	if (!ret)
-+		set_bit(EXT4_GROUP_INFO_HAS_BEEN_TRIMMED,
-+			&(e4b->bd_info->bb_state));
-+out:
- 	ext4_unlock_group(sb, group);
- 
- 	ext4_debug("trimmed %d blocks in the group %d\n",
++		rcu_barrier();
+ 		put_filesystem(fs);
+ 		put_super(s);
+ 	} else {
 -- 
-1.6.3.GIT
+1.7.2.3
+
 
