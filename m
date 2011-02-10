@@ -1,40 +1,57 @@
-From: John Reiser <jreiser@bitwagon.com>
-Subject: resize2fs shrink ext3 can be CPU limited
-Date: Thu, 10 Feb 2011 19:23:54 -0800
-Message-ID: <4D54ABCA.9020700@bitwagon.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 4/4 v2] ext4: Speed up FITRIM by recording flags in ext4_group_info.
+Date: Thu, 10 Feb 2011 13:50:14 -0800
+Message-ID: <E9EB058B-97B5-4CF8-951E-48258E1754BD@dilger.ca>
+References: <1297231048-3458-4-git-send-email-tm@tao.ma> <1297323206-9874-1-git-send-email-tm@tao.ma>
+Mime-Version: 1.0 (iPhone Mail 8C148a)
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Lukas Czerner <lczerner@redhat.com>
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bitwagon.com ([74.82.39.175]:33180 "HELO bitwagon.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
-	id S1750910Ab1BKDjP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 10 Feb 2011 22:39:15 -0500
-Received: from f14-64.local ([67.171.188.169]) by bitwagon.com for <linux-ext4@vger.kernel.org>; Thu, 10 Feb 2011 19:24:13 -0800
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:41184 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750772Ab1BKGBi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Feb 2011 01:01:38 -0500
+In-Reply-To: <1297323206-9874-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On 2011-02-09, at 23:33, Tao Ma <tm@tao.ma> wrote:
+> After I delete some big image files and re-run the trim,
+> it is still much faster than iterating the whole disk.
+> /dev/sdb2             108G   25G   78G  24% /mnt/ext4
+> 
+> [root@boyu-tm test]# time ./ftrim /mnt/ext4/a
+> real    0m0.513s
+> user    0m0.000s
+> sys    0m0.069s
 
-When I use resize2fs to shrink a 153GB ext3 from about 53% full
-to about 55% of its original size (thus becoming about 98% full),
-then Pass 3, Scanning inode table, is CPU limited and a significant
-fraction of elapsed wall-clock time (tens of minutes out of more than
-an hour).  Being CPU-limited for such a duration seems peculiar to me.
+Excellent results. 
 
-The behavior is reproducible.  The details are at
-  https://bugzilla.redhat.com/show_bug.cgi?id=676683
-including reports from oprofile.
+> +#define EXT4_GROUP_INFO_NEED_INIT_BIT        0
+> +#define EXT4_GROUP_INFO_WAS_TRIMMED_BIT        1
+> 
+> #define EXT4_MB_GRP_NEED_INIT(grp)    \
+>    (test_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &((grp)->bb_state)))
+> +#define EXT4_MB_GRP_HAS_BEEN_TRIMMED(grp)    \
 
-  resize2fs 1.41.12 (17-May-2010)
-    input: 1071971/9863168 files (0.1% non-contiguous), 21597266/39423744
-    output: The filesystem on /dev/sdc2 is now 22989038 blocks long.
-real 69m52.167s
-user 26m29.431s
-sys 2m3.456s
+For consistency, it would be better to call this:
 
-[I'm not subscribed to this mailing list.]
+EXT4_MB_GRP_WAS_TRIMMED(grp)
 
--- 
-John Reiser, jreiser@BitWagon.com
+And also add and use:
+
+EXT4_MB_GRP_SET_TRIMMED(grp)
+
+And 
+
+EXT4_MB_GRP_CLEAR_TRIMMED(grp)
+
+> 
+
+In the code. Then you can add Reviewed-by: on this patch. 
+
+Cheers, Andreas
