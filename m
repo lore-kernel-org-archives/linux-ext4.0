@@ -1,65 +1,40 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [GIT PULL] ext4 regression and bug fixes for 2.6.38
-Date: Thu, 10 Feb 2011 19:02:54 -0500
-Message-ID: <20110211000254.GI16597@thunk.org>
-References: <E1PmaYB-0001aV-RQ@tytso-glaptop>
+From: John Reiser <jreiser@bitwagon.com>
+Subject: resize2fs shrink ext3 can be CPU limited
+Date: Thu, 10 Feb 2011 19:23:54 -0800
+Message-ID: <4D54ABCA.9020700@bitwagon.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:39457 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757240Ab1BKAC4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 10 Feb 2011 19:02:56 -0500
-Content-Disposition: inline
-In-Reply-To: <E1PmaYB-0001aV-RQ@tytso-glaptop>
+Received: from bitwagon.com ([74.82.39.175]:33180 "HELO bitwagon.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S1750910Ab1BKDjP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 10 Feb 2011 22:39:15 -0500
+Received: from f14-64.local ([67.171.188.169]) by bitwagon.com for <linux-ext4@vger.kernel.org>; Thu, 10 Feb 2011 19:24:13 -0800
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 07, 2011 at 06:31:19PM -0500, Theodore Ts'o wrote:
-> Hi Linus,
-> 
-> Please pull from:
-> 
->   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
-> 
-> to get regression and bug fixes for 2.6.38.
-> 
-> Thanks,
+Hi,
 
-Hi Linus, it looks like you haven't pulled this tree yet.  It turns
-out there's one more patch (from Dan Carpenter) which I need to send
-you, so I've updated for_linus branch with an additional commit.  The
-shortlog and diff should now be as shown below.
+When I use resize2fs to shrink a 153GB ext3 from about 53% full
+to about 55% of its original size (thus becoming about 98% full),
+then Pass 3, Scanning inode table, is CPU limited and a significant
+fraction of elapsed wall-clock time (tens of minutes out of more than
+an hour).  Being CPU-limited for such a duration seems peculiar to me.
 
-Please pull when you have a chance, thanks!!
+The behavior is reproducible.  The details are at
+  https://bugzilla.redhat.com/show_bug.cgi?id=676683
+including reports from oprofile.
 
-	       	  	     	      	  - Ted
+  resize2fs 1.41.12 (17-May-2010)
+    input: 1071971/9863168 files (0.1% non-contiguous), 21597266/39423744
+    output: The filesystem on /dev/sdc2 is now 22989038 blocks long.
+real 69m52.167s
+user 26m29.431s
+sys 2m3.456s
 
-Curt Wohlgemuth (1):
-      ext4: Fix data corruption with multi-block writepages support
+[I'm not subscribed to this mailing list.]
 
-Dan Carpenter (1):
-      ext4: off by one check in ext4_groupinfo_create_slab()
-
-Eric Sandeen (3):
-      ext4: fix panic on module unload when stopping lazyinit thread
-      ext4: make grpinfo slab cache names static
-      ext4: serialize unaligned asynchronous DIO
-
-Lukas Czerner (1):
-      ext4: unregister features interface on module unload
-
-Theodore Ts'o (2):
-      ext4: fix up ext4 error handling
-      jbd2: call __jbd2_log_start_commit with j_state_lock write locked
-
- fs/ext4/ext4.h        |    8 ++++
- fs/ext4/extents.c     |   10 +++--
- fs/ext4/file.c        |   60 +++++++++++++++++++++++++++++-
- fs/ext4/mballoc.c     |  100 +++++++++++++++++++++++++++++-------------------
- fs/ext4/page-io.c     |   36 +++++++++--------
- fs/ext4/super.c       |   66 ++++++++++++++++++++++----------
- fs/jbd2/journal.c     |    9 +++-
- fs/jbd2/transaction.c |   21 +++++++---
- 8 files changed, 219 insertions(+), 91 deletions(-)
+-- 
+John Reiser, jreiser@BitWagon.com
