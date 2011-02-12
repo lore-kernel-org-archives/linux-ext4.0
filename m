@@ -1,69 +1,60 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: [LSF/MM TOPIC] Drop ext2/ext3 codebase? When?
-Date: Sat, 12 Feb 2011 13:05:02 +0200
-Message-ID: <AANLkTin=6wY6y0LZCDtMGiy8vmdok=UUj-7rmsTPAVuh@mail.gmail.com>
-References: <20110203144011.GA28409@quack.suse.cz>
-	<4D4AC4E2.701@redhat.com>
-	<AANLkTi=YxSpgm9vYHBKdASpLOaY_U3=ggsE8yTg_G0Bc@mail.gmail.com>
-	<20110204131739.GC4104@quack.suse.cz>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [GIT PULL]
+Date: Sat, 12 Feb 2011 08:28:26 -0500
+Message-ID: <20110212132826.GB2598@thunk.org>
+References: <20110211134058.GA4309@thunk.org>
+ <AANLkTineDxntR0ZTXdgXrc6qx6pATTORgOwFR5+w5MLN@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Michael Rubin <mrubin@google.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	lsf-pc@lists.linuxfoundation.org, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Theodore Tso <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20110204131739.GC4104@quack.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:43565 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751640Ab1BLN21 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 12 Feb 2011 08:28:27 -0500
+Content-Disposition: inline
+In-Reply-To: <AANLkTineDxntR0ZTXdgXrc6qx6pATTORgOwFR5+w5MLN@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Feb 4, 2011 at 3:17 PM, Jan Kara <jack@suse.cz> wrote:
->
-> On Thu 03-02-11 11:32:01, Michael Rubin wrote:
-> > On Thu, Feb 3, 2011 at 7:08 AM, Eric Sandeen <sandeen@redhat.com> w=
-rote:
-> > > If we can have a real plan for moving in this direction though, I=
-'d
-> > > support it. =A0I'm just not sure how we get enough real testing u=
-nder
-> > > our belts to be comfortable with dropping ext[23], especially as
-> > > most distros now default to ext4 anyway.
-> >
-> > Eric what sort of testing are you looking for?
-> I believe Ted wrote a good summary of what combinations of options wo=
-uld
-> need to be tested on a regular basis to get at least some confidence =
-that
-> the switch could work.
->
+On Fri, Feb 11, 2011 at 04:33:59PM -0800, Linus Torvalds wrote:
+> This is a completely disgusting patch, and it causes warnings like this:
 
-So the problem is that people don'y have much incentive to test "ext3
-mode" as long as they have, well, ext3.
+Mea culpa, mea culpa, mea maximum culpa.  Yes, sorry, I should have
+caught the macro expansion bug and the cast warning.
 
-I can offer an incentive in the form of snapshots support, which may
-appeal for some users, to whom performance improvements is not a good
-enough reason to upgrade their fs.
+I've fixed up the problems, and repushed the for_linus branch.  My
+post -rc1 push came late due to travel and other business, and that no
+doubt contributed to the lack of quality control, but I didn't want to
+wait since they did fix a number of fairly serious regressions.  I
+hope you'll take the pull with these problems fixed?
 
-Most conveniently, ext4 snapshots is short of extents and delalloc
-support at the moment, but the rest of the code, which was ported from
-next3 is ready to be stabilized/cleaned up for submission.
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
 
-So it can be claimed, that pursuing my cause, of pushing the snapshots
-feature for early testers as soon as possible (i.e. before extent
-move-on-write implementation), may also be beneficial to the cause of
-getting "ext3 mode" tested by a larger number of users.
+						- Ted
 
-What do you say, Jan. Do you think that some of your upgrading
-customers could be lured into using ext4 code if we offer them
-snapshots in "ext3 mode"?
+Curt Wohlgemuth (1):
+      ext4: Fix data corruption with multi-block writepages support
 
-Amir.
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Eric Sandeen (3):
+      ext4: fix panic on module unload when stopping lazyinit thread
+      ext4: make grpinfo slab cache names static
+      ext4: serialize unaligned asynchronous DIO
+
+Lukas Czerner (1):
+      ext4: unregister features interface on module unload
+
+Theodore Ts'o (2):
+      ext4: fix up ext4 error handling
+      jbd2: call __jbd2_log_start_commit with j_state_lock write locked
+
+ fs/ext4/ext4.h        |   10 +++++
+ fs/ext4/extents.c     |   10 +++--
+ fs/ext4/file.c        |   60 +++++++++++++++++++++++++++++-
+ fs/ext4/mballoc.c     |  100 +++++++++++++++++++++++++++++-------------------
+ fs/ext4/page-io.c     |   36 +++++++++--------
+ fs/ext4/super.c       |   66 ++++++++++++++++++++++----------
+ fs/jbd2/journal.c     |    9 +++-
+ fs/jbd2/transaction.c |   21 +++++++---
+ 8 files changed, 221 insertions(+), 91 deletions(-)
