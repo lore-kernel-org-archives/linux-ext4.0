@@ -1,45 +1,68 @@
-From: Michael Rubin <mrubin@google.com>
-Subject: Re: [LSF/MM TOPIC] Drop ext2/ext3 codebase? When?
-Date: Fri, 11 Feb 2011 10:44:25 -0800
-Message-ID: <AANLkTimebOEZxL6dJxDg19C-XTXgnZpORXjStn+1=cO6@mail.gmail.com>
-References: <20110203144011.GA28409@quack.suse.cz> <4D4AC4E2.701@redhat.com>
- <20110204130313.GB4104@quack.suse.cz> <316721F8-70CD-4E29-A94E-BFEF2D762829@dilger.ca>
- <20110207161933.GB5337@quack.suse.cz> <946A4527-3A1C-4EC5-BEAC-4E47F3CFDF01@dilger.ca>
- <20110211111658.GA5187@quack.suse.cz>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [GIT PULL]
+Date: Fri, 11 Feb 2011 16:33:59 -0800
+Message-ID: <AANLkTineDxntR0ZTXdgXrc6qx6pATTORgOwFR5+w5MLN@mail.gmail.com>
+References: <20110211134058.GA4309@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Andreas Dilger <adilger@dilger.ca>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-	ext4 List <linux-ext4@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: "Ted Ts'o" <tytso@mit.edu>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.44.51]:56773 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757904Ab1BKSor (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Feb 2011 13:44:47 -0500
-Received: from kpbe11.cbf.corp.google.com (kpbe11.cbf.corp.google.com [172.25.105.75])
-	by smtp-out.google.com with ESMTP id p1BIikD4017064
-	for <linux-ext4@vger.kernel.org>; Fri, 11 Feb 2011 10:44:46 -0800
-Received: from gxk28 (gxk28.prod.google.com [10.202.11.28])
-	by kpbe11.cbf.corp.google.com with ESMTP id p1BIij29014975
-	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=NOT)
-	for <linux-ext4@vger.kernel.org>; Fri, 11 Feb 2011 10:44:46 -0800
-Received: by gxk28 with SMTP id 28so1368162gxk.18
-        for <linux-ext4@vger.kernel.org>; Fri, 11 Feb 2011 10:44:45 -0800 (PST)
-In-Reply-To: <20110211111658.GA5187@quack.suse.cz>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:35373 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752298Ab1BLAeV convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 11 Feb 2011 19:34:21 -0500
+In-Reply-To: <20110211134058.GA4309@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Just as an aside, we just upgraded in place a large number of ext2
-file systems to ext4. The process completed very smoothly and created
-a performance boost for almost every workload we had.
+On Fri, Feb 11, 2011 at 5:40 AM, Ted Ts'o <tytso@mit.edu> wrote:
+>
+> Please pull from:
+>
+> =A0git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_l=
+inus
+>
+> to get regression and bug fixes for 2.6.38.
+>
+> Eric Sandeen (3):
+> =A0 =A0 =A0ext4: serialize unaligned asynchronous DIO
 
-I think keeping ext3 around is really convenient to compare against
-ext4 as it becomes more mature, but outside of its academic use I
-don't see any good reason to keep it around. With such an easy
-migration path for users (mount as ext4 in place) I think an "end of
-life" plan should not be that complicated and encouraged.
+This is a completely disgusting patch, and it causes warnings like this=
+:
 
-mrubin
+ fs/ext4/file.c: In function =91ext4_aiodio_wait=92:
+ fs/ext4/file.c:60:44: warning: cast from pointer to integer of differe=
+nt size
+
+because that disgusting patch does things like
+
+  #define ext4_aio_mutex(v)  (&ext4__aio_mutex[((unsigned)v) % EXT4_WQ_=
+HASH_SZ])
+
+which is just terminally broken.
+
+It's terminally broken for multiple reasons, too. It's not just "oh, a
+warning". It's a case of "oh, THAT CODE IS UTTER CRAP". The warning
+was just the lucky reason I noticed the totally unacceptable code.
+
+Dammit, don't send sh*t to me this late in the release cycle. This
+clearly went through _zero_ quality control.
+
+                   Linus
+
+PS. If people don't understand why that code is utter crap, let me
+give you a hint: macro argument expansion vs operator precedence.
+
+PPS. And btw, the warning is unacceptable too. Cast the thing to
+"unsigned long" (or uintptr_t, but quite frankly, in the kernel I'd
+suggest "unsigned long" rather than the more obscure standard types)
+after you've fixed the macro argument problem.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
