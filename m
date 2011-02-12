@@ -1,60 +1,41 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [GIT PULL]
-Date: Sat, 12 Feb 2011 08:28:26 -0500
-Message-ID: <20110212132826.GB2598@thunk.org>
-References: <20110211134058.GA4309@thunk.org>
- <AANLkTineDxntR0ZTXdgXrc6qx6pATTORgOwFR5+w5MLN@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 27652] 38-rc1: umount+rmmod cause ext4 error.
+Date: Sat, 12 Feb 2011 22:39:29 GMT
+Message-ID: <201102122239.p1CMdTum002261@demeter1.kernel.org>
+References: <bug-27652-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:43565 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751640Ab1BLN21 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 12 Feb 2011 08:28:27 -0500
-Content-Disposition: inline
-In-Reply-To: <AANLkTineDxntR0ZTXdgXrc6qx6pATTORgOwFR5+w5MLN@mail.gmail.com>
+Received: from demeter1.kernel.org ([140.211.167.39]:60861 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752103Ab1BLWjd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Feb 2011 17:39:33 -0500
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p1CMdUlg002295
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Sat, 12 Feb 2011 22:39:30 GMT
+In-Reply-To: <bug-27652-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Feb 11, 2011 at 04:33:59PM -0800, Linus Torvalds wrote:
-> This is a completely disgusting patch, and it causes warnings like this:
+https://bugzilla.kernel.org/show_bug.cgi?id=27652
 
-Mea culpa, mea culpa, mea maximum culpa.  Yes, sorry, I should have
-caught the macro expansion bug and the cast warning.
 
-I've fixed up the problems, and repushed the for_linus branch.  My
-post -rc1 push came late due to travel and other business, and that no
-doubt contributed to the lack of quality control, but I didn't want to
-wait since they did fix a number of fairly serious regressions.  I
-hope you'll take the pull with these problems fixed?
+Rafael J. Wysocki <rjw@sisk.pl> changed:
 
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+             Status|RESOLVED                    |CLOSED
+         Resolution|PATCH_ALREADY_AVAILABLE     |CODE_FIX
 
-						- Ted
 
-Curt Wohlgemuth (1):
-      ext4: Fix data corruption with multi-block writepages support
 
-Eric Sandeen (3):
-      ext4: fix panic on module unload when stopping lazyinit thread
-      ext4: make grpinfo slab cache names static
-      ext4: serialize unaligned asynchronous DIO
 
-Lukas Czerner (1):
-      ext4: unregister features interface on module unload
+--- Comment #17 from Rafael J. Wysocki <rjw@sisk.pl>  2011-02-12 22:38:59 ---
+Fixed by commit d863b50ab01333659314c2034890cb76d9fdc3c7 .
 
-Theodore Ts'o (2):
-      ext4: fix up ext4 error handling
-      jbd2: call __jbd2_log_start_commit with j_state_lock write locked
-
- fs/ext4/ext4.h        |   10 +++++
- fs/ext4/extents.c     |   10 +++--
- fs/ext4/file.c        |   60 +++++++++++++++++++++++++++++-
- fs/ext4/mballoc.c     |  100 +++++++++++++++++++++++++++++-------------------
- fs/ext4/page-io.c     |   36 +++++++++--------
- fs/ext4/super.c       |   66 ++++++++++++++++++++++----------
- fs/jbd2/journal.c     |    9 +++-
- fs/jbd2/transaction.c |   21 +++++++---
- 8 files changed, 221 insertions(+), 91 deletions(-)
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
