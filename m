@@ -1,284 +1,132 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH,RFC 1/7] ext4: fold __mpage_da_writepage() into write_cache_pages_da()
-Date: Sat, 12 Feb 2011 19:15:51 -0500
-Message-ID: <1297556157-21559-2-git-send-email-tytso@mit.edu>
+Subject: [PATCH,RFC 3/7] ext4: clear the dirty bit for a page in writeback at the last minute
+Date: Sat, 12 Feb 2011 19:15:53 -0500
+Message-ID: <1297556157-21559-4-git-send-email-tytso@mit.edu>
 References: <1297556157-21559-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38173 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:38179 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753312Ab1BMA5Y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 12 Feb 2011 19:57:24 -0500
+	id S1753363Ab1BMA52 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 12 Feb 2011 19:57:28 -0500
 In-Reply-To: <1297556157-21559-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fold the __mpage_da_writepage() function into write_cache_pages_da().
-This will give us opportunities to clean up and simplify the resulting
-code.
+Move when we call clear_page_dirty_for_io() to just before we actually
+write the page.  This simplifies the code somewhat, and avoids marking
+pages as clean and then needing to remark them as dirty later.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/inode.c |  206 ++++++++++++++++++++++++-------------------------------
- 1 files changed, 91 insertions(+), 115 deletions(-)
+ fs/ext4/inode.c |   28 +++++++++++-----------------
+ 1 files changed, 11 insertions(+), 17 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 9f7f9e4..627729f 100644
+index e230f4f..3eca465 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2438,102 +2438,6 @@ static int ext4_bh_delay_or_unwritten(handle_t *handle, struct buffer_head *bh)
- }
+@@ -2060,7 +2060,7 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd,
+ 		if (nr_pages == 0)
+ 			break;
+ 		for (i = 0; i < nr_pages; i++) {
+-			int commit_write = 0, redirty_page = 0;
++			int commit_write = 0, skip_page = 0;
+ 			struct page *page = pvec.pages[i];
  
- /*
-- * __mpage_da_writepage - finds extent of pages and blocks
-- *
-- * @page: page to consider
-- * @wbc: not used, we just follow rules
-- * @data: context
-- *
-- * The function finds extents of pages and scan them for all blocks.
-- */
--static int __mpage_da_writepage(struct page *page,
--				struct writeback_control *wbc,
--				struct mpage_da_data *mpd)
--{
--	struct inode *inode = mpd->inode;
--	struct buffer_head *bh, *head;
--	sector_t logical;
--
--	/*
--	 * Can we merge this page to current extent?
--	 */
--	if (mpd->next_page != page->index) {
--		/*
--		 * Nope, we can't. So, we map non-allocated blocks
--		 * and start IO on them
--		 */
--		if (mpd->next_page != mpd->first_page) {
--			mpage_da_map_and_submit(mpd);
--			/*
--			 * skip rest of the page in the page_vec
--			 */
--			redirty_page_for_writepage(wbc, page);
--			unlock_page(page);
--			return MPAGE_DA_EXTENT_TAIL;
--		}
--
--		/*
--		 * Start next extent of pages ...
--		 */
--		mpd->first_page = page->index;
--
--		/*
--		 * ... and blocks
--		 */
--		mpd->b_size = 0;
--		mpd->b_state = 0;
--		mpd->b_blocknr = 0;
--	}
--
--	mpd->next_page = page->index + 1;
--	logical = (sector_t) page->index <<
--		  (PAGE_CACHE_SHIFT - inode->i_blkbits);
--
--	if (!page_has_buffers(page)) {
--		mpage_add_bh_to_extent(mpd, logical, PAGE_CACHE_SIZE,
--				       (1 << BH_Dirty) | (1 << BH_Uptodate));
--		if (mpd->io_done)
--			return MPAGE_DA_EXTENT_TAIL;
--	} else {
--		/*
--		 * Page with regular buffer heads, just add all dirty ones
--		 */
--		head = page_buffers(page);
--		bh = head;
--		do {
--			BUG_ON(buffer_locked(bh));
--			/*
--			 * We need to try to allocate
--			 * unmapped blocks in the same page.
--			 * Otherwise we won't make progress
--			 * with the page in ext4_writepage
--			 */
--			if (ext4_bh_delay_or_unwritten(NULL, bh)) {
--				mpage_add_bh_to_extent(mpd, logical,
--						       bh->b_size,
--						       bh->b_state);
--				if (mpd->io_done)
--					return MPAGE_DA_EXTENT_TAIL;
--			} else if (buffer_dirty(bh) && (buffer_mapped(bh))) {
--				/*
--				 * mapped dirty buffer. We need to update
--				 * the b_state because we look at
--				 * b_state in mpage_da_map_blocks. We don't
--				 * update b_size because if we find an
--				 * unmapped buffer_head later we need to
--				 * use the b_state flag of that buffer_head.
--				 */
--				if (mpd->b_size == 0)
--					mpd->b_state = bh->b_state & BH_FLAGS;
--			}
--			logical++;
--		} while ((bh = bh->b_this_page) != head);
--	}
--
--	return 0;
--}
--
--/*
-  * This is a special get_blocks_t callback which is used by
-  * ext4_da_write_begin().  It will either return mapped block or
-  * reserve space for a single block.
-@@ -2811,18 +2715,17 @@ static int ext4_da_writepages_trans_blocks(struct inode *inode)
- 
- /*
-  * write_cache_pages_da - walk the list of dirty pages of the given
-- * address space and call the callback function (which usually writes
-- * the pages).
-- *
-- * This is a forked version of write_cache_pages().  Differences:
-- *	Range cyclic is ignored.
-- *	no_nrwrite_index_update is always presumed true
-+ * address space and accumulate pages that need writing, and call
-+ * mpage_da_map_and_submit to map the pages and then write them.
-  */
- static int write_cache_pages_da(struct address_space *mapping,
- 				struct writeback_control *wbc,
- 				struct mpage_da_data *mpd,
- 				pgoff_t *done_index)
- {
-+	struct inode *inode = mpd->inode;
-+	struct buffer_head *bh, *head;
-+	sector_t logical;
- 	int ret = 0;
- 	int done = 0;
- 	struct pagevec pvec;
-@@ -2899,17 +2802,90 @@ continue_unlock:
- 			if (!clear_page_dirty_for_io(page))
- 				goto continue_unlock;
- 
--			ret = __mpage_da_writepage(page, wbc, mpd);
--			if (unlikely(ret)) {
--				if (ret == AOP_WRITEPAGE_ACTIVATE) {
-+			/* BEGIN __mpage_da_writepage */
-+
-+			/*
-+			 * Can we merge this page to current extent?
-+			 */
-+			if (mpd->next_page != page->index) {
-+				/*
-+				 * Nope, we can't. So, we map
-+				 * non-allocated blocks and start IO
-+				 * on them
-+				 */
-+				if (mpd->next_page != mpd->first_page) {
-+					mpage_da_map_and_submit(mpd);
-+					/*
-+					 * skip rest of the page in the page_vec
-+					 */
-+					redirty_page_for_writepage(wbc, page);
+ 			index = page->index;
+@@ -2086,14 +2086,12 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd,
+ 			 * If the page does not have buffers (for
+ 			 * whatever reason), try to create them using
+ 			 * __block_write_begin.  If this fails,
+-			 * redirty the page and move on.
++			 * skip the page and move on.
+ 			 */
+ 			if (!page_has_buffers(page)) {
+ 				if (__block_write_begin(page, 0, len,
+ 						noalloc_get_block_write)) {
+-				redirty_page:
+-					redirty_page_for_writepage(mpd->wbc,
+-								   page);
++				skip_page:
  					unlock_page(page);
--					ret = 0;
--				} else {
--					done = 1;
--					break;
-+					ret = MPAGE_DA_EXTENT_TAIL;
-+					goto out;
-+				}
-+
-+				/*
-+				 * Start next extent of pages and blocks
-+				 */
-+				mpd->first_page = page->index;
-+				mpd->b_size = 0;
-+				mpd->b_state = 0;
-+				mpd->b_blocknr = 0;
-+			}
-+
-+			mpd->next_page = page->index + 1;
-+			logical = (sector_t) page->index <<
-+				(PAGE_CACHE_SHIFT - inode->i_blkbits);
-+
-+			if (!page_has_buffers(page)) {
-+				mpage_add_bh_to_extent(mpd, logical, PAGE_CACHE_SIZE,
-+						       (1 << BH_Dirty) | (1 << BH_Uptodate));
-+				if (mpd->io_done) {
-+					ret = MPAGE_DA_EXTENT_TAIL;
-+					goto out;
+ 					continue;
  				}
-+			} else {
-+				/*
-+				 * Page with regular buffer heads, just add all dirty ones
-+				 */
-+				head = page_buffers(page);
-+				bh = head;
-+				do {
-+					BUG_ON(buffer_locked(bh));
-+					/*
-+					 * We need to try to allocate
-+					 * unmapped blocks in the same page.
-+					 * Otherwise we won't make progress
-+					 * with the page in ext4_writepage
-+					 */
-+					if (ext4_bh_delay_or_unwritten(NULL, bh)) {
-+						mpage_add_bh_to_extent(mpd, logical,
-+								       bh->b_size,
-+								       bh->b_state);
-+						if (mpd->io_done) {
-+							ret = MPAGE_DA_EXTENT_TAIL;
-+							goto out;
-+						}
-+					} else if (buffer_dirty(bh) && (buffer_mapped(bh))) {
-+						/*
-+						 * mapped dirty buffer. We need to update
-+						 * the b_state because we look at
-+						 * b_state in mpage_da_map_blocks. We don't
-+						 * update b_size because if we find an
-+						 * unmapped buffer_head later we need to
-+						 * use the b_state flag of that buffer_head.
-+						 */
-+						if (mpd->b_size == 0)
-+							mpd->b_state = bh->b_state & BH_FLAGS;
-+					}
-+					logical++;
-+				} while ((bh = bh->b_this_page) != head);
- 			}
+@@ -2104,7 +2102,7 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd,
+ 			block_start = 0;
+ 			do {
+ 				if (!bh)
+-					goto redirty_page;
++					goto skip_page;
+ 				if (map && (cur_logical >= map->m_lblk) &&
+ 				    (cur_logical <= (map->m_lblk +
+ 						     (map->m_len - 1)))) {
+@@ -2120,22 +2118,23 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd,
+ 					clear_buffer_unwritten(bh);
+ 				}
  
-+			ret = 0;
-+
-+			/* END __mpage_da_writepage */
-+
- 			if (nr_to_write > 0) {
- 				nr_to_write--;
- 				if (nr_to_write == 0 &&
-@@ -2933,6 +2909,10 @@ continue_unlock:
- 		cond_resched();
- 	}
- 	return ret;
-+out:
-+	pagevec_release(&pvec);
-+	cond_resched();
-+	return ret;
- }
+-				/* redirty page if block allocation undone */
++				/* skip page if block allocation undone */
+ 				if (buffer_delay(bh) || buffer_unwritten(bh))
+-					redirty_page = 1;
++					skip_page = 1;
+ 				bh = bh->b_this_page;
+ 				block_start += bh->b_size;
+ 				cur_logical++;
+ 				pblock++;
+ 			} while (bh != page_bufs);
  
+-			if (redirty_page)
+-				goto redirty_page;
++			if (skip_page)
++				goto skip_page;
  
-@@ -3059,13 +3039,9 @@ retry:
- 		}
+ 			if (commit_write)
+ 				/* mark the buffer_heads as dirty & uptodate */
+ 				block_commit_write(page, 0, len);
  
++			clear_page_dirty_for_io(page);
+ 			/*
+ 			 * Delalloc doesn't support data journalling,
+ 			 * but eventually maybe we'll lift this
+@@ -2279,9 +2278,8 @@ static void mpage_da_map_and_submit(struct mpage_da_data *mpd)
+ 		err = blks;
  		/*
--		 * Now call __mpage_da_writepage to find the next
-+		 * Now call write_cache_pages_da() to find the next
- 		 * contiguous region of logical blocks that need
--		 * blocks to be allocated by ext4.  We don't actually
--		 * submit the blocks for I/O here, even though
--		 * write_cache_pages thinks it will, and will set the
--		 * pages as clean for write before calling
--		 * __mpage_da_writepage().
-+		 * blocks to be allocated by ext4 and submit them.
+ 		 * If get block returns EAGAIN or ENOSPC and there
+-		 * appears to be free blocks we will call
+-		 * ext4_writepage() for all of the pages which will
+-		 * just redirty the pages.
++		 * appears to be free blocks we will just let
++		 * mpage_da_submit_io() unlock all of the pages.
  		 */
- 		mpd.b_size = 0;
- 		mpd.b_state = 0;
+ 		if (err == -EAGAIN)
+ 			goto submit_io;
+@@ -2777,7 +2775,6 @@ static int write_cache_pages_da(struct address_space *mapping,
+ 			    (PageWriteback(page) &&
+ 			     (wbc->sync_mode == WB_SYNC_NONE)) ||
+ 			    unlikely(page->mapping != mapping)) {
+-			continue_unlock:
+ 				unlock_page(page);
+ 				continue;
+ 			}
+@@ -2786,8 +2783,6 @@ static int write_cache_pages_da(struct address_space *mapping,
+ 				wait_on_page_writeback(page);
+ 
+ 			BUG_ON(PageWriteback(page));
+-			if (!clear_page_dirty_for_io(page))
+-				goto continue_unlock;
+ 
+ 			/*
+ 			 * Can we merge this page to current extent?
+@@ -2803,7 +2798,6 @@ static int write_cache_pages_da(struct address_space *mapping,
+ 					/*
+ 					 * skip rest of the page in the page_vec
+ 					 */
+-					redirty_page_for_writepage(wbc, page);
+ 					unlock_page(page);
+ 					goto ret_extent_tail;
+ 				}
 -- 
 1.7.3.1
 
