@@ -1,96 +1,82 @@
 From: Josef Bacik <josef@redhat.com>
-Subject: Re: [PATCH,RFC 4/7] ext4: remove page_skipped hackery in
-	ext4_da_writepages()
-Date: Sat, 12 Feb 2011 20:36:58 -0500
-Message-ID: <20110213013657.GG19533@dhcp231-156.rdu.redhat.com>
-References: <1297556157-21559-1-git-send-email-tytso@mit.edu> <1297556157-21559-5-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH,RFC 5/7] ext4: don't lock the next page in
+	write_cache_pages if not needed
+Date: Sat, 12 Feb 2011 20:38:07 -0500
+Message-ID: <20110213013806.GH19533@dhcp231-156.rdu.redhat.com>
+References: <1297556157-21559-1-git-send-email-tytso@mit.edu> <1297556157-21559-6-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58864 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:2061 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753451Ab1BMBlt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 12 Feb 2011 20:41:49 -0500
+	id S1753451Ab1BMBm6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 12 Feb 2011 20:42:58 -0500
 Content-Disposition: inline
-In-Reply-To: <1297556157-21559-5-git-send-email-tytso@mit.edu>
+In-Reply-To: <1297556157-21559-6-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Feb 12, 2011 at 07:15:54PM -0500, Theodore Ts'o wrote:
-> Because the ext4 page writeback codepath had been prematurely calling
-> clear_page_dirty_for_io(), if it turned out that a particular page
-> couldn't be written out during a particular pass of
-> write_cache_pages_da(), the page would have to get redirtied by
-> calling redirty_pages_for_writeback().  Not only was this wasted work,
-> but redirty_page_for_writeback() would increment wbc->pages_skipped to
-> signal to writeback_sb_inodes() that buffers were locked, and that it
-> should skip this inode until later.
-> 
-> Since this signal was incorrect in ext4's case --- which was caused by
-> ext4's historically incorrect use of write_cache_pages() ---
-> ext4_da_writepages() saved and restored wbc->skipped_pages to avoid
-> confusing writeback_sb_inodes().
-> 
-> Now that we've fixed ext4 to call clear_page_dirty_for_io() right
-> before initiating the page I/O, we can nuke the page_skipped
-> save/restore hackery, and breathe a sigh of relief.
+On Sat, Feb 12, 2011 at 07:15:55PM -0500, Theodore Ts'o wrote:
+> If we have accumulated a contiguous region of memory to be written
+> out, and the next page can added to this region, don't bother locking
+> (and then unlocking the page) before writing out the memory.  In the
+> unlikely event that the next page was being written back by some other
+> CPU, we can also skip waiting that page to finish writeback.
 > 
 > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 > ---
->  fs/ext4/inode.c |   10 ----------
->  1 files changed, 0 insertions(+), 10 deletions(-)
+>  fs/ext4/inode.c |   27 ++++++++++-----------------
+>  1 files changed, 10 insertions(+), 17 deletions(-)
 > 
 > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 3eca465..6dfdc0e 100644
+> index 6dfdc0e..2ac64e3 100644
 > --- a/fs/ext4/inode.c
 > +++ b/fs/ext4/inode.c
-> @@ -2900,7 +2900,6 @@ static int ext4_da_writepages(struct address_space *mapping,
->  	struct mpage_da_data mpd;
->  	struct inode *inode = mapping->host;
->  	int pages_written = 0;
-> -	long pages_skipped;
->  	unsigned int max_pages;
->  	int range_cyclic, cycled = 1, io_done = 0;
->  	int needed_blocks, ret = 0;
-> @@ -2986,8 +2985,6 @@ static int ext4_da_writepages(struct address_space *mapping,
->  	mpd.wbc = wbc;
->  	mpd.inode = mapping->host;
+> @@ -2761,6 +2761,16 @@ static int write_cache_pages_da(struct address_space *mapping,
 >  
-> -	pages_skipped = wbc->pages_skipped;
-> -
->  retry:
->  	if (wbc->sync_mode == WB_SYNC_ALL)
->  		tag_pages_for_writeback(mapping, index, end);
-> @@ -3047,7 +3044,6 @@ retry:
->  			 * and try again
->  			 */
->  			jbd2_journal_force_commit_nested(sbi->s_journal);
-> -			wbc->pages_skipped = pages_skipped;
->  			ret = 0;
->  		} else if (ret == MPAGE_DA_EXTENT_TAIL) {
+>  			*done_index = page->index + 1;
+>  
+> +			/*
+> +			 * If we can't merge this page, and we have
+> +			 * accumulated an contiguous region, write it
+> +			 */
+> +			if ((mpd->next_page != page->index) &&
+> +			    (mpd->next_page != mpd->first_page)) {
+> +				mpage_da_map_and_submit(mpd);
+> +				goto ret_extent_tail;
+> +			}
+> +
+>  			lock_page(page);
+>  
 >  			/*
-> @@ -3055,7 +3051,6 @@ retry:
->  			 * rest of the pages
->  			 */
->  			pages_written += mpd.pages_written;
-> -			wbc->pages_skipped = pages_skipped;
->  			ret = 0;
->  			io_done = 1;
->  		} else if (wbc->nr_to_write)
-> @@ -3073,11 +3068,6 @@ retry:
->  		wbc->range_end  = mapping->writeback_index - 1;
->  		goto retry;
->  	}
-> -	if (pages_skipped != wbc->pages_skipped)
-> -		ext4_msg(inode->i_sb, KERN_CRIT,
-> -			 "This should not happen leaving %s "
-> -			 "with nr_to_write = %ld ret = %d",
-> -			 __func__, wbc->nr_to_write, ret);
+> @@ -2784,25 +2794,8 @@ static int write_cache_pages_da(struct address_space *mapping,
 >  
->  	/* Update index */
->  	wbc->range_cyclic = range_cyclic;
+>  			BUG_ON(PageWriteback(page));
+>  
+> -			/*
+> -			 * Can we merge this page to current extent?
+> -			 */
+>  			if (mpd->next_page != page->index) {
+>  				/*
+> -				 * Nope, we can't. So, we map
+> -				 * non-allocated blocks and start IO
+> -				 * on them
+> -				 */
+> -				if (mpd->next_page != mpd->first_page) {
+> -					mpage_da_map_and_submit(mpd);
+> -					/*
+> -					 * skip rest of the page in the page_vec
+> -					 */
+> -					unlock_page(page);
+> -					goto ret_extent_tail;
+> -				}
+> -
+> -				/*
+>  				 * Start next extent of pages and blocks
+>  				 */
+>  				mpd->first_page = page->index;
 
 Looks good.
 
