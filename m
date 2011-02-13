@@ -1,109 +1,55 @@
-From: Josef Bacik <josef@redhat.com>
-Subject: Re: [PATCH,RFC 6/7] ext4: move setup of the mpd structure to
-	write_cache_pages_da()
-Date: Sat, 12 Feb 2011 20:40:01 -0500
-Message-ID: <20110213014000.GI19533@dhcp231-156.rdu.redhat.com>
-References: <1297556157-21559-1-git-send-email-tytso@mit.edu> <1297556157-21559-7-git-send-email-tytso@mit.edu>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH,RFC 1/7] ext4: fold __mpage_da_writepage() into
+ write_cache_pages_da()
+Date: Sun, 13 Feb 2011 00:42:35 -0500
+Message-ID: <20110213054235.GD2598@thunk.org>
+References: <1297556157-21559-1-git-send-email-tytso@mit.edu>
+ <1297556157-21559-2-git-send-email-tytso@mit.edu>
+ <20110213012528.GD19533@dhcp231-156.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: Josef Bacik <josef@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:63775 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753563Ab1BMBow (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 12 Feb 2011 20:44:52 -0500
+Received: from li9-11.members.linode.com ([67.18.176.11]:47922 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750783Ab1BMFme (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 13 Feb 2011 00:42:34 -0500
 Content-Disposition: inline
-In-Reply-To: <1297556157-21559-7-git-send-email-tytso@mit.edu>
+In-Reply-To: <20110213012528.GD19533@dhcp231-156.rdu.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Feb 12, 2011 at 07:15:56PM -0500, Theodore Ts'o wrote:
-> Move the initialization of all of the fields of the mpd structure to
-> write_cache_pages_da().  This simplifies the code considerably.
+On Sat, Feb 12, 2011 at 08:25:29PM -0500, Josef Bacik wrote:
+> > +out:
+> > +	pagevec_release(&pvec);
+> > +	cond_resched();
+> > +	return ret;
+> >  }
 > 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/ext4/inode.c |   29 +++++++----------------------
->  1 files changed, 7 insertions(+), 22 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 2ac64e3..235a90e 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -2714,7 +2714,8 @@ static int ext4_da_writepages_trans_blocks(struct inode *inode)
->  /*
->   * write_cache_pages_da - walk the list of dirty pages of the given
->   * address space and accumulate pages that need writing, and call
-> - * mpage_da_map_and_submit to map the pages and then write them.
-> + * mpage_da_map_and_submit to map a single contiguous memory region
-> + * and then write them.
->   */
->  static int write_cache_pages_da(struct address_space *mapping,
->  				struct writeback_control *wbc,
-> @@ -2722,7 +2723,7 @@ static int write_cache_pages_da(struct address_space *mapping,
->  				pgoff_t *done_index)
->  {
->  	struct buffer_head	*bh, *head;
-> -	struct inode		*inode = mpd->inode;
-> +	struct inode		*inode = mapping->host;
->  	struct pagevec		pvec;
->  	unsigned int		nr_pages;
->  	sector_t		logical;
-> @@ -2730,6 +2731,9 @@ static int write_cache_pages_da(struct address_space *mapping,
->  	long			nr_to_write = wbc->nr_to_write;
->  	int			i, tag, ret = 0;
->  
-> +	memset(mpd, 0, sizeof(struct mpage_da_data));
-> +	mpd->wbc = wbc;
-> +	mpd->inode = inode;
->  	pagevec_init(&pvec, 0);
->  	index = wbc->range_start >> PAGE_CACHE_SHIFT;
->  	end = wbc->range_end >> PAGE_CACHE_SHIFT;
-> @@ -2794,16 +2798,8 @@ static int write_cache_pages_da(struct address_space *mapping,
->  
->  			BUG_ON(PageWriteback(page));
->  
-> -			if (mpd->next_page != page->index) {
-> -				/*
-> -				 * Start next extent of pages and blocks
-> -				 */
-> +			if (mpd->next_page != page->index)
->  				mpd->first_page = page->index;
-> -				mpd->b_size = 0;
-> -				mpd->b_state = 0;
-> -				mpd->b_blocknr = 0;
-> -			}
-> -
->  			mpd->next_page = page->index + 1;
->  			logical = (sector_t) page->index <<
->  				(PAGE_CACHE_SHIFT - inode->i_blkbits);
-> @@ -2975,9 +2971,6 @@ static int ext4_da_writepages(struct address_space *mapping,
->  		wbc->nr_to_write = desired_nr_to_write;
->  	}
->  
-> -	mpd.wbc = wbc;
-> -	mpd.inode = mapping->host;
-> -
->  retry:
->  	if (wbc->sync_mode == WB_SYNC_ALL)
->  		tag_pages_for_writeback(mapping, index, end);
-> @@ -3008,14 +3001,6 @@ retry:
->  		 * contiguous region of logical blocks that need
->  		 * blocks to be allocated by ext4 and submit them.
->  		 */
-> -		mpd.b_size = 0;
-> -		mpd.b_state = 0;
-> -		mpd.b_blocknr = 0;
-> -		mpd.first_page = 0;
-> -		mpd.next_page = 0;
-> -		mpd.io_done = 0;
-> -		mpd.pages_written = 0;
-> -		mpd.retval = 0;
->  		ret = write_cache_pages_da(mapping, wbc, &mpd, &done_index);
->  		/*
->  		 * If we have a contiguous extent of pages and we
+> Do we really need the cond_resched() here?  Seems like it will just add
+> unwanted/uneeded latencies.
 
-Looks good,
+The cond_resched is from the original write_cache_pages(), and if you
+follow the code movement, it goes all the way back to fs/mpage.c's
+__mpage_writepages() from 2.6.11 (the beginning of time as far as the
+Linux 2.6's git repository is concerned).
 
-Josef
+The basic idea is that given that writeback threads are basically
+running in a tight loop trying to push out dirty pages, you need to
+eventually give other processes a chance to run --- especially on a UP
+system!  I do wonder whether we are checking way too much, though.
+The cond_resched() I'd be tempted to take out is not the one at the
+end of the function, but the one at the end of the while loop.
+
+That would allow us to complete the the writeback for a particular
+inode before letting another process run, which would trade off
+efficiency for a bit more scheduling unfairness.  But given that a
+particular writeback call is capped at writing out a relatively small
+mount of data anyway, that would seem to be OK.
+
+But even XFS has a cond_resched in xfs_cluster_write() (in
+fs/xfs/linux-2.6/xfs_aops.c) so I'd want to do a lot of thinking,
+testing, and benchmarking before removing that call to cond_resched().
+
+	     		  	 	  - Ted
