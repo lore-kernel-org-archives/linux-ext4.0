@@ -1,63 +1,97 @@
 From: Josef Bacik <josef@redhat.com>
-Subject: Re: [PATCH,RFC 3/7] ext4: clear the dirty bit for a page in
-	writeback at the last minute
-Date: Sat, 12 Feb 2011 20:34:53 -0500
-Message-ID: <20110213013452.GF19533@dhcp231-156.rdu.redhat.com>
-References: <1297556157-21559-1-git-send-email-tytso@mit.edu> <1297556157-21559-4-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH,RFC 4/7] ext4: remove page_skipped hackery in
+	ext4_da_writepages()
+Date: Sat, 12 Feb 2011 20:36:58 -0500
+Message-ID: <20110213013657.GG19533@dhcp231-156.rdu.redhat.com>
+References: <1297556157-21559-1-git-send-email-tytso@mit.edu> <1297556157-21559-5-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59043 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:58864 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753451Ab1BMBjo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 12 Feb 2011 20:39:44 -0500
+	id S1753451Ab1BMBlt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 12 Feb 2011 20:41:49 -0500
 Content-Disposition: inline
-In-Reply-To: <1297556157-21559-4-git-send-email-tytso@mit.edu>
+In-Reply-To: <1297556157-21559-5-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Feb 12, 2011 at 07:15:53PM -0500, Theodore Ts'o wrote:
-> Move when we call clear_page_dirty_for_io() to just before we actually
-> write the page.  This simplifies the code somewhat, and avoids marking
-> pages as clean and then needing to remark them as dirty later.
+On Sat, Feb 12, 2011 at 07:15:54PM -0500, Theodore Ts'o wrote:
+> Because the ext4 page writeback codepath had been prematurely calling
+> clear_page_dirty_for_io(), if it turned out that a particular page
+> couldn't be written out during a particular pass of
+> write_cache_pages_da(), the page would have to get redirtied by
+> calling redirty_pages_for_writeback().  Not only was this wasted work,
+> but redirty_page_for_writeback() would increment wbc->pages_skipped to
+> signal to writeback_sb_inodes() that buffers were locked, and that it
+> should skip this inode until later.
+> 
+> Since this signal was incorrect in ext4's case --- which was caused by
+> ext4's historically incorrect use of write_cache_pages() ---
+> ext4_da_writepages() saved and restored wbc->skipped_pages to avoid
+> confusing writeback_sb_inodes().
+> 
+> Now that we've fixed ext4 to call clear_page_dirty_for_io() right
+> before initiating the page I/O, we can nuke the page_skipped
+> save/restore hackery, and breathe a sigh of relief.
 > 
 > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 > ---
->  fs/ext4/inode.c |   28 +++++++++++-----------------
->  1 files changed, 11 insertions(+), 17 deletions(-)
+>  fs/ext4/inode.c |   10 ----------
+>  1 files changed, 0 insertions(+), 10 deletions(-)
 > 
 > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index e230f4f..3eca465 100644
+> index 3eca465..6dfdc0e 100644
 > --- a/fs/ext4/inode.c
 > +++ b/fs/ext4/inode.c
-> @@ -2060,7 +2060,7 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd,
->  		if (nr_pages == 0)
->  			break;
->  		for (i = 0; i < nr_pages; i++) {
-> -			int commit_write = 0, redirty_page = 0;
-> +			int commit_write = 0, skip_page = 0;
->  			struct page *page = pvec.pages[i];
+> @@ -2900,7 +2900,6 @@ static int ext4_da_writepages(struct address_space *mapping,
+>  	struct mpage_da_data mpd;
+>  	struct inode *inode = mapping->host;
+>  	int pages_written = 0;
+> -	long pages_skipped;
+>  	unsigned int max_pages;
+>  	int range_cyclic, cycled = 1, io_done = 0;
+>  	int needed_blocks, ret = 0;
+> @@ -2986,8 +2985,6 @@ static int ext4_da_writepages(struct address_space *mapping,
+>  	mpd.wbc = wbc;
+>  	mpd.inode = mapping->host;
 >  
->  			index = page->index;
-> @@ -2086,14 +2086,12 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd,
->  			 * If the page does not have buffers (for
->  			 * whatever reason), try to create them using
->  			 * __block_write_begin.  If this fails,
-> -			 * redirty the page and move on.
-> +			 * skip the page and move on.
+> -	pages_skipped = wbc->pages_skipped;
+> -
+>  retry:
+>  	if (wbc->sync_mode == WB_SYNC_ALL)
+>  		tag_pages_for_writeback(mapping, index, end);
+> @@ -3047,7 +3044,6 @@ retry:
+>  			 * and try again
 >  			 */
->  			if (!page_has_buffers(page)) {
->  				if (__block_write_begin(page, 0, len,
->  						noalloc_get_block_write)) {
-> -				redirty_page:
-> -					redirty_page_for_writepage(mpd->wbc,
-> -								   page);
-> +				skip_page:
+>  			jbd2_journal_force_commit_nested(sbi->s_journal);
+> -			wbc->pages_skipped = pages_skipped;
+>  			ret = 0;
+>  		} else if (ret == MPAGE_DA_EXTENT_TAIL) {
+>  			/*
+> @@ -3055,7 +3051,6 @@ retry:
+>  			 * rest of the pages
+>  			 */
+>  			pages_written += mpd.pages_written;
+> -			wbc->pages_skipped = pages_skipped;
+>  			ret = 0;
+>  			io_done = 1;
+>  		} else if (wbc->nr_to_write)
+> @@ -3073,11 +3068,6 @@ retry:
+>  		wbc->range_end  = mapping->writeback_index - 1;
+>  		goto retry;
+>  	}
+> -	if (pages_skipped != wbc->pages_skipped)
+> -		ext4_msg(inode->i_sb, KERN_CRIT,
+> -			 "This should not happen leaving %s "
+> -			 "with nr_to_write = %ld ret = %d",
+> -			 __func__, wbc->nr_to_write, ret);
+>  
+>  	/* Update index */
+>  	wbc->range_cyclic = range_cyclic;
 
-Hmm so it looks like it's been done like this before.  I guess if thats the way
-you want it then it's ok, I just find it hard to read.  Other than that this
-looks good.  Thanks,
+Looks good.
 
 Josef
