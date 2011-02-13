@@ -1,41 +1,91 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 27652] 38-rc1: umount+rmmod cause ext4 error.
-Date: Sat, 12 Feb 2011 22:39:29 GMT
-Message-ID: <201102122239.p1CMdTum002261@demeter1.kernel.org>
-References: <bug-27652-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH,RFC 4/7] ext4: remove page_skipped hackery in ext4_da_writepages()
+Date: Sat, 12 Feb 2011 19:15:54 -0500
+Message-ID: <1297556157-21559-5-git-send-email-tytso@mit.edu>
+References: <1297556157-21559-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:60861 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752103Ab1BLWjd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Feb 2011 17:39:33 -0500
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p1CMdUlg002295
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sat, 12 Feb 2011 22:39:30 GMT
-In-Reply-To: <bug-27652-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:39658 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752584Ab1BMAPz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 12 Feb 2011 19:15:55 -0500
+In-Reply-To: <1297556157-21559-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=27652
+Because the ext4 page writeback codepath had been prematurely calling
+clear_page_dirty_for_io(), if it turned out that a particular page
+couldn't be written out during a particular pass of
+write_cache_pages_da(), the page would have to get redirtied by
+calling redirty_pages_for_writeback().  Not only was this wasted work,
+but redirty_page_for_writeback() would increment wbc->pages_skipped to
+signal to writeback_sb_inodes() that buffers were locked, and that it
+should skip this inode until later.
 
+Since this signal was incorrect in ext4's case --- which was caused by
+ext4's historically incorrect use of write_cache_pages() ---
+ext4_da_writepages() saved and restored wbc->skipped_pages to avoid
+confusing writeback_sb_inodes().
 
-Rafael J. Wysocki <rjw@sisk.pl> changed:
+Now that we've fixed ext4 to call clear_page_dirty_for_io() right
+before initiating the page I/O, we can nuke the page_skipped
+save/restore hackery, and breathe a sigh of relief.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|RESOLVED                    |CLOSED
-         Resolution|PATCH_ALREADY_AVAILABLE     |CODE_FIX
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/inode.c |   10 ----------
+ 1 files changed, 0 insertions(+), 10 deletions(-)
 
-
-
-
---- Comment #17 from Rafael J. Wysocki <rjw@sisk.pl>  2011-02-12 22:38:59 ---
-Fixed by commit d863b50ab01333659314c2034890cb76d9fdc3c7 .
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 3eca465..6dfdc0e 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2900,7 +2900,6 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 	struct mpage_da_data mpd;
+ 	struct inode *inode = mapping->host;
+ 	int pages_written = 0;
+-	long pages_skipped;
+ 	unsigned int max_pages;
+ 	int range_cyclic, cycled = 1, io_done = 0;
+ 	int needed_blocks, ret = 0;
+@@ -2986,8 +2985,6 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 	mpd.wbc = wbc;
+ 	mpd.inode = mapping->host;
+ 
+-	pages_skipped = wbc->pages_skipped;
+-
+ retry:
+ 	if (wbc->sync_mode == WB_SYNC_ALL)
+ 		tag_pages_for_writeback(mapping, index, end);
+@@ -3047,7 +3044,6 @@ retry:
+ 			 * and try again
+ 			 */
+ 			jbd2_journal_force_commit_nested(sbi->s_journal);
+-			wbc->pages_skipped = pages_skipped;
+ 			ret = 0;
+ 		} else if (ret == MPAGE_DA_EXTENT_TAIL) {
+ 			/*
+@@ -3055,7 +3051,6 @@ retry:
+ 			 * rest of the pages
+ 			 */
+ 			pages_written += mpd.pages_written;
+-			wbc->pages_skipped = pages_skipped;
+ 			ret = 0;
+ 			io_done = 1;
+ 		} else if (wbc->nr_to_write)
+@@ -3073,11 +3068,6 @@ retry:
+ 		wbc->range_end  = mapping->writeback_index - 1;
+ 		goto retry;
+ 	}
+-	if (pages_skipped != wbc->pages_skipped)
+-		ext4_msg(inode->i_sb, KERN_CRIT,
+-			 "This should not happen leaving %s "
+-			 "with nr_to_write = %ld ret = %d",
+-			 __func__, wbc->nr_to_write, ret);
+ 
+ 	/* Update index */
+ 	wbc->range_cyclic = range_cyclic;
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.7.3.1
+
