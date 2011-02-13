@@ -1,83 +1,109 @@
 From: Josef Bacik <josef@redhat.com>
-Subject: Re: [PATCH,RFC 5/7] ext4: don't lock the next page in
-	write_cache_pages if not needed
-Date: Sat, 12 Feb 2011 20:38:07 -0500
-Message-ID: <20110213013806.GH19533@dhcp231-156.rdu.redhat.com>
-References: <1297556157-21559-1-git-send-email-tytso@mit.edu> <1297556157-21559-6-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH,RFC 6/7] ext4: move setup of the mpd structure to
+	write_cache_pages_da()
+Date: Sat, 12 Feb 2011 20:40:01 -0500
+Message-ID: <20110213014000.GI19533@dhcp231-156.rdu.redhat.com>
+References: <1297556157-21559-1-git-send-email-tytso@mit.edu> <1297556157-21559-7-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:2061 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:63775 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753451Ab1BMBm6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 12 Feb 2011 20:42:58 -0500
+	id S1753563Ab1BMBow (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 12 Feb 2011 20:44:52 -0500
 Content-Disposition: inline
-In-Reply-To: <1297556157-21559-6-git-send-email-tytso@mit.edu>
+In-Reply-To: <1297556157-21559-7-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Feb 12, 2011 at 07:15:55PM -0500, Theodore Ts'o wrote:
-> If we have accumulated a contiguous region of memory to be written
-> out, and the next page can added to this region, don't bother locking
-> (and then unlocking the page) before writing out the memory.  In the
-> unlikely event that the next page was being written back by some other
-> CPU, we can also skip waiting that page to finish writeback.
+On Sat, Feb 12, 2011 at 07:15:56PM -0500, Theodore Ts'o wrote:
+> Move the initialization of all of the fields of the mpd structure to
+> write_cache_pages_da().  This simplifies the code considerably.
 > 
 > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 > ---
->  fs/ext4/inode.c |   27 ++++++++++-----------------
->  1 files changed, 10 insertions(+), 17 deletions(-)
+>  fs/ext4/inode.c |   29 +++++++----------------------
+>  1 files changed, 7 insertions(+), 22 deletions(-)
 > 
 > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 6dfdc0e..2ac64e3 100644
+> index 2ac64e3..235a90e 100644
 > --- a/fs/ext4/inode.c
 > +++ b/fs/ext4/inode.c
-> @@ -2761,6 +2761,16 @@ static int write_cache_pages_da(struct address_space *mapping,
+> @@ -2714,7 +2714,8 @@ static int ext4_da_writepages_trans_blocks(struct inode *inode)
+>  /*
+>   * write_cache_pages_da - walk the list of dirty pages of the given
+>   * address space and accumulate pages that need writing, and call
+> - * mpage_da_map_and_submit to map the pages and then write them.
+> + * mpage_da_map_and_submit to map a single contiguous memory region
+> + * and then write them.
+>   */
+>  static int write_cache_pages_da(struct address_space *mapping,
+>  				struct writeback_control *wbc,
+> @@ -2722,7 +2723,7 @@ static int write_cache_pages_da(struct address_space *mapping,
+>  				pgoff_t *done_index)
+>  {
+>  	struct buffer_head	*bh, *head;
+> -	struct inode		*inode = mpd->inode;
+> +	struct inode		*inode = mapping->host;
+>  	struct pagevec		pvec;
+>  	unsigned int		nr_pages;
+>  	sector_t		logical;
+> @@ -2730,6 +2731,9 @@ static int write_cache_pages_da(struct address_space *mapping,
+>  	long			nr_to_write = wbc->nr_to_write;
+>  	int			i, tag, ret = 0;
 >  
->  			*done_index = page->index + 1;
->  
-> +			/*
-> +			 * If we can't merge this page, and we have
-> +			 * accumulated an contiguous region, write it
-> +			 */
-> +			if ((mpd->next_page != page->index) &&
-> +			    (mpd->next_page != mpd->first_page)) {
-> +				mpage_da_map_and_submit(mpd);
-> +				goto ret_extent_tail;
-> +			}
-> +
->  			lock_page(page);
->  
->  			/*
-> @@ -2784,25 +2794,8 @@ static int write_cache_pages_da(struct address_space *mapping,
+> +	memset(mpd, 0, sizeof(struct mpage_da_data));
+> +	mpd->wbc = wbc;
+> +	mpd->inode = inode;
+>  	pagevec_init(&pvec, 0);
+>  	index = wbc->range_start >> PAGE_CACHE_SHIFT;
+>  	end = wbc->range_end >> PAGE_CACHE_SHIFT;
+> @@ -2794,16 +2798,8 @@ static int write_cache_pages_da(struct address_space *mapping,
 >  
 >  			BUG_ON(PageWriteback(page));
 >  
-> -			/*
-> -			 * Can we merge this page to current extent?
-> -			 */
->  			if (mpd->next_page != page->index) {
->  				/*
-> -				 * Nope, we can't. So, we map
-> -				 * non-allocated blocks and start IO
-> -				 * on them
-> -				 */
-> -				if (mpd->next_page != mpd->first_page) {
-> -					mpage_da_map_and_submit(mpd);
-> -					/*
-> -					 * skip rest of the page in the page_vec
-> -					 */
-> -					unlock_page(page);
-> -					goto ret_extent_tail;
-> -				}
-> -
+> -			if (mpd->next_page != page->index) {
 > -				/*
->  				 * Start next extent of pages and blocks
->  				 */
+> -				 * Start next extent of pages and blocks
+> -				 */
+> +			if (mpd->next_page != page->index)
 >  				mpd->first_page = page->index;
+> -				mpd->b_size = 0;
+> -				mpd->b_state = 0;
+> -				mpd->b_blocknr = 0;
+> -			}
+> -
+>  			mpd->next_page = page->index + 1;
+>  			logical = (sector_t) page->index <<
+>  				(PAGE_CACHE_SHIFT - inode->i_blkbits);
+> @@ -2975,9 +2971,6 @@ static int ext4_da_writepages(struct address_space *mapping,
+>  		wbc->nr_to_write = desired_nr_to_write;
+>  	}
+>  
+> -	mpd.wbc = wbc;
+> -	mpd.inode = mapping->host;
+> -
+>  retry:
+>  	if (wbc->sync_mode == WB_SYNC_ALL)
+>  		tag_pages_for_writeback(mapping, index, end);
+> @@ -3008,14 +3001,6 @@ retry:
+>  		 * contiguous region of logical blocks that need
+>  		 * blocks to be allocated by ext4 and submit them.
+>  		 */
+> -		mpd.b_size = 0;
+> -		mpd.b_state = 0;
+> -		mpd.b_blocknr = 0;
+> -		mpd.first_page = 0;
+> -		mpd.next_page = 0;
+> -		mpd.io_done = 0;
+> -		mpd.pages_written = 0;
+> -		mpd.retval = 0;
+>  		ret = write_cache_pages_da(mapping, wbc, &mpd, &done_index);
+>  		/*
+>  		 * If we have a contiguous extent of pages and we
 
-Looks good.
+Looks good,
 
 Josef
