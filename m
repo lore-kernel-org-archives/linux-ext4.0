@@ -1,273 +1,114 @@
 From: Josef Bacik <josef@redhat.com>
-Subject: Re: [PATCH,RFC 1/7] ext4: fold __mpage_da_writepage() into
-	write_cache_pages_da()
-Date: Sat, 12 Feb 2011 20:25:29 -0500
-Message-ID: <20110213012528.GD19533@dhcp231-156.rdu.redhat.com>
-References: <1297556157-21559-1-git-send-email-tytso@mit.edu> <1297556157-21559-2-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH,RFC 2/7] ext4: simple cleanups to write_cache_pages_da()
+Date: Sat, 12 Feb 2011 20:31:03 -0500
+Message-ID: <20110213013103.GE19533@dhcp231-156.rdu.redhat.com>
+References: <1297556157-21559-1-git-send-email-tytso@mit.edu> <1297556157-21559-3-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:6062 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37312 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753381Ab1BMBaU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 12 Feb 2011 20:30:20 -0500
+	id S1753217Ab1BMBf4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 12 Feb 2011 20:35:56 -0500
 Content-Disposition: inline
-In-Reply-To: <1297556157-21559-2-git-send-email-tytso@mit.edu>
+In-Reply-To: <1297556157-21559-3-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Feb 12, 2011 at 07:15:51PM -0500, Theodore Ts'o wrote:
-> Fold the __mpage_da_writepage() function into write_cache_pages_da().
-> This will give us opportunities to clean up and simplify the resulting
-> code.
+On Sat, Feb 12, 2011 at 07:15:52PM -0500, Theodore Ts'o wrote:
+> Eliminate duplicate code, unneeded variables, etc., to make it easier
+> to understand the code.  No behavioral changes were made in this patch.
 > 
 > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 > ---
->  fs/ext4/inode.c |  206 ++++++++++++++++++++++++-------------------------------
->  1 files changed, 91 insertions(+), 115 deletions(-)
+>  fs/ext4/inode.c |  115 +++++++++++++++++++++++--------------------------------
+>  1 files changed, 48 insertions(+), 67 deletions(-)
 > 
 > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 9f7f9e4..627729f 100644
+> index 627729f..e230f4f 100644
 > --- a/fs/ext4/inode.c
 > +++ b/fs/ext4/inode.c
-> @@ -2438,102 +2438,6 @@ static int ext4_bh_delay_or_unwritten(handle_t *handle, struct buffer_head *bh)
->  }
->  
->  /*
-> - * __mpage_da_writepage - finds extent of pages and blocks
-> - *
-> - * @page: page to consider
-> - * @wbc: not used, we just follow rules
-> - * @data: context
-> - *
-> - * The function finds extents of pages and scan them for all blocks.
-> - */
-> -static int __mpage_da_writepage(struct page *page,
-> -				struct writeback_control *wbc,
-> -				struct mpage_da_data *mpd)
-> -{
-> -	struct inode *inode = mpd->inode;
-> -	struct buffer_head *bh, *head;
-> -	sector_t logical;
-> -
-> -	/*
-> -	 * Can we merge this page to current extent?
-> -	 */
-> -	if (mpd->next_page != page->index) {
-> -		/*
-> -		 * Nope, we can't. So, we map non-allocated blocks
-> -		 * and start IO on them
-> -		 */
-> -		if (mpd->next_page != mpd->first_page) {
-> -			mpage_da_map_and_submit(mpd);
-> -			/*
-> -			 * skip rest of the page in the page_vec
-> -			 */
-> -			redirty_page_for_writepage(wbc, page);
-> -			unlock_page(page);
-> -			return MPAGE_DA_EXTENT_TAIL;
-> -		}
-> -
-> -		/*
-> -		 * Start next extent of pages ...
-> -		 */
-> -		mpd->first_page = page->index;
-> -
-> -		/*
-> -		 * ... and blocks
-> -		 */
-> -		mpd->b_size = 0;
-> -		mpd->b_state = 0;
-> -		mpd->b_blocknr = 0;
-> -	}
-> -
-> -	mpd->next_page = page->index + 1;
-> -	logical = (sector_t) page->index <<
-> -		  (PAGE_CACHE_SHIFT - inode->i_blkbits);
-> -
-> -	if (!page_has_buffers(page)) {
-> -		mpage_add_bh_to_extent(mpd, logical, PAGE_CACHE_SIZE,
-> -				       (1 << BH_Dirty) | (1 << BH_Uptodate));
-> -		if (mpd->io_done)
-> -			return MPAGE_DA_EXTENT_TAIL;
-> -	} else {
-> -		/*
-> -		 * Page with regular buffer heads, just add all dirty ones
-> -		 */
-> -		head = page_buffers(page);
-> -		bh = head;
-> -		do {
-> -			BUG_ON(buffer_locked(bh));
-> -			/*
-> -			 * We need to try to allocate
-> -			 * unmapped blocks in the same page.
-> -			 * Otherwise we won't make progress
-> -			 * with the page in ext4_writepage
-> -			 */
-> -			if (ext4_bh_delay_or_unwritten(NULL, bh)) {
-> -				mpage_add_bh_to_extent(mpd, logical,
-> -						       bh->b_size,
-> -						       bh->b_state);
-> -				if (mpd->io_done)
-> -					return MPAGE_DA_EXTENT_TAIL;
-> -			} else if (buffer_dirty(bh) && (buffer_mapped(bh))) {
-> -				/*
-> -				 * mapped dirty buffer. We need to update
-> -				 * the b_state because we look at
-> -				 * b_state in mpage_da_map_blocks. We don't
-> -				 * update b_size because if we find an
-> -				 * unmapped buffer_head later we need to
-> -				 * use the b_state flag of that buffer_head.
-> -				 */
-> -				if (mpd->b_size == 0)
-> -					mpd->b_state = bh->b_state & BH_FLAGS;
-> -			}
-> -			logical++;
-> -		} while ((bh = bh->b_this_page) != head);
-> -	}
-> -
-> -	return 0;
-> -}
-> -
-> -/*
->   * This is a special get_blocks_t callback which is used by
->   * ext4_da_write_begin().  It will either return mapped block or
->   * reserve space for a single block.
-> @@ -2811,18 +2715,17 @@ static int ext4_da_writepages_trans_blocks(struct inode *inode)
->  
->  /*
->   * write_cache_pages_da - walk the list of dirty pages of the given
-> - * address space and call the callback function (which usually writes
-> - * the pages).
-> - *
-> - * This is a forked version of write_cache_pages().  Differences:
-> - *	Range cyclic is ignored.
-> - *	no_nrwrite_index_update is always presumed true
-> + * address space and accumulate pages that need writing, and call
-> + * mpage_da_map_and_submit to map the pages and then write them.
->   */
->  static int write_cache_pages_da(struct address_space *mapping,
->  				struct writeback_control *wbc,
+> @@ -2723,17 +2723,14 @@ static int write_cache_pages_da(struct address_space *mapping,
 >  				struct mpage_da_data *mpd,
 >  				pgoff_t *done_index)
 >  {
-> +	struct inode *inode = mpd->inode;
-> +	struct buffer_head *bh, *head;
-> +	sector_t logical;
->  	int ret = 0;
->  	int done = 0;
->  	struct pagevec pvec;
-> @@ -2899,17 +2802,90 @@ continue_unlock:
->  			if (!clear_page_dirty_for_io(page))
->  				goto continue_unlock;
+> -	struct inode *inode = mpd->inode;
+> -	struct buffer_head *bh, *head;
+> -	sector_t logical;
+> -	int ret = 0;
+> -	int done = 0;
+> -	struct pagevec pvec;
+> -	unsigned nr_pages;
+> -	pgoff_t index;
+> -	pgoff_t end;		/* Inclusive */
+> -	long nr_to_write = wbc->nr_to_write;
+> -	int tag;
+> +	struct buffer_head	*bh, *head;
+> +	struct inode		*inode = mpd->inode;
+> +	struct pagevec		pvec;
+> +	unsigned int		nr_pages;
+> +	sector_t		logical;
+> +	pgoff_t			index, end;
+> +	long			nr_to_write = wbc->nr_to_write;
+> +	int			i, tag, ret = 0;
 >  
-> -			ret = __mpage_da_writepage(page, wbc, mpd);
-> -			if (unlikely(ret)) {
-> -				if (ret == AOP_WRITEPAGE_ACTIVATE) {
-> +			/* BEGIN __mpage_da_writepage */
-> +
-> +			/*
-> +			 * Can we merge this page to current extent?
-> +			 */
-> +			if (mpd->next_page != page->index) {
-> +				/*
-> +				 * Nope, we can't. So, we map
-> +				 * non-allocated blocks and start IO
-> +				 * on them
-> +				 */
-> +				if (mpd->next_page != mpd->first_page) {
-> +					mpage_da_map_and_submit(mpd);
-> +					/*
-> +					 * skip rest of the page in the page_vec
-> +					 */
-> +					redirty_page_for_writepage(wbc, page);
->  					unlock_page(page);
-> -					ret = 0;
-> -				} else {
-> -					done = 1;
-> -					break;
-> +					ret = MPAGE_DA_EXTENT_TAIL;
-> +					goto out;
-> +				}
-> +
-> +				/*
-> +				 * Start next extent of pages and blocks
-> +				 */
-> +				mpd->first_page = page->index;
-> +				mpd->b_size = 0;
-> +				mpd->b_state = 0;
-> +				mpd->b_blocknr = 0;
-> +			}
-> +
-> +			mpd->next_page = page->index + 1;
-> +			logical = (sector_t) page->index <<
-> +				(PAGE_CACHE_SHIFT - inode->i_blkbits);
-> +
-> +			if (!page_has_buffers(page)) {
-> +				mpage_add_bh_to_extent(mpd, logical, PAGE_CACHE_SIZE,
-> +						       (1 << BH_Dirty) | (1 << BH_Uptodate));
-> +				if (mpd->io_done) {
-> +					ret = MPAGE_DA_EXTENT_TAIL;
-> +					goto out;
->  				}
-> +			} else {
-> +				/*
-> +				 * Page with regular buffer heads, just add all dirty ones
-> +				 */
-> +				head = page_buffers(page);
-> +				bh = head;
-> +				do {
-> +					BUG_ON(buffer_locked(bh));
-> +					/*
-> +					 * We need to try to allocate
-> +					 * unmapped blocks in the same page.
-> +					 * Otherwise we won't make progress
-> +					 * with the page in ext4_writepage
-> +					 */
-> +					if (ext4_bh_delay_or_unwritten(NULL, bh)) {
-> +						mpage_add_bh_to_extent(mpd, logical,
-> +								       bh->b_size,
-> +								       bh->b_state);
-> +						if (mpd->io_done) {
-> +							ret = MPAGE_DA_EXTENT_TAIL;
-> +							goto out;
-> +						}
-> +					} else if (buffer_dirty(bh) && (buffer_mapped(bh))) {
-> +						/*
-> +						 * mapped dirty buffer. We need to update
-> +						 * the b_state because we look at
-> +						 * b_state in mpage_da_map_blocks. We don't
-> +						 * update b_size because if we find an
-> +						 * unmapped buffer_head later we need to
-> +						 * use the b_state flag of that buffer_head.
-> +						 */
-> +						if (mpd->b_size == 0)
-> +							mpd->b_state = bh->b_state & BH_FLAGS;
-> +					}
-> +					logical++;
-> +				} while ((bh = bh->b_this_page) != head);
->  			}
+>  	pagevec_init(&pvec, 0);
+>  	index = wbc->range_start >> PAGE_CACHE_SHIFT;
+> @@ -2745,13 +2742,11 @@ static int write_cache_pages_da(struct address_space *mapping,
+>  		tag = PAGECACHE_TAG_DIRTY;
 >  
-> +			ret = 0;
-> +
-> +			/* END __mpage_da_writepage */
-> +
->  			if (nr_to_write > 0) {
->  				nr_to_write--;
->  				if (nr_to_write == 0 &&
-> @@ -2933,6 +2909,10 @@ continue_unlock:
->  		cond_resched();
->  	}
->  	return ret;
-> +out:
-> +	pagevec_release(&pvec);
-> +	cond_resched();
-> +	return ret;
->  }
+>  	*done_index = index;
+> -	while (!done && (index <= end)) {
+> -		int i;
+> -
+> +	while (index <= end) {
+>  		nr_pages = pagevec_lookup_tag(&pvec, mapping, &index, tag,
+>  			      min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);
+>  		if (nr_pages == 0)
+> -			break;
+> +			return 0;
+>  
+>  		for (i = 0; i < nr_pages; i++) {
+>  			struct page *page = pvec.pages[i];
+> @@ -2763,47 +2758,37 @@ static int write_cache_pages_da(struct address_space *mapping,
+>  			 * mapping. However, page->index will not change
+>  			 * because we have a reference on the page.
+>  			 */
+> -			if (page->index > end) {
+> -				done = 1;
+> -				break;
+> -			}
+> +			if (page->index > end)
+> +				goto out;
+>  
+>  			*done_index = page->index + 1;
+>  
+>  			lock_page(page);
+>  
+>  			/*
+> -			 * Page truncated or invalidated. We can freely skip it
+> -			 * then, even for data integrity operations: the page
+> -			 * has disappeared concurrently, so there could be no
+> -			 * real expectation of this data interity operation
+> -			 * even if there is now a new, dirty page at the same
+> -			 * pagecache address.
+> +			 * If the page is no longer dirty, or its
+> +			 * mapping no longer corresponds to inode we
+> +			 * are writing (which means it has been
+> +			 * truncated or invalidated), or the page is
+> +			 * already under writeback and we are not
+> +			 * doing a data integrity writeback, skip the page
+>  			 */
+> -			if (unlikely(page->mapping != mapping)) {
+> -continue_unlock:
+> +			if (!PageDirty(page) ||
+> +			    (PageWriteback(page) &&
+> +			     (wbc->sync_mode == WB_SYNC_NONE)) ||
+> +			    unlikely(page->mapping != mapping)) {
+> +			continue_unlock:
 
-Do we really need the cond_resched() here?  Seems like it will just add
-unwanted/uneeded latencies.  Thanks,
+Formatting is wrong here.  Everything else looks fine.  Thanks,
 
 Josef
