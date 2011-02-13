@@ -1,132 +1,234 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH,RFC 3/7] ext4: clear the dirty bit for a page in writeback at the last minute
-Date: Sat, 12 Feb 2011 19:15:53 -0500
-Message-ID: <1297556157-21559-4-git-send-email-tytso@mit.edu>
+Subject: [PATCH,RFC 2/7] ext4: simple cleanups to write_cache_pages_da()
+Date: Sat, 12 Feb 2011 19:15:52 -0500
+Message-ID: <1297556157-21559-3-git-send-email-tytso@mit.edu>
 References: <1297556157-21559-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38179 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:38177 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753363Ab1BMA52 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1753312Ab1BMA52 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sat, 12 Feb 2011 19:57:28 -0500
 In-Reply-To: <1297556157-21559-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Move when we call clear_page_dirty_for_io() to just before we actually
-write the page.  This simplifies the code somewhat, and avoids marking
-pages as clean and then needing to remark them as dirty later.
+Eliminate duplicate code, unneeded variables, etc., to make it easier
+to understand the code.  No behavioral changes were made in this patch.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/inode.c |   28 +++++++++++-----------------
- 1 files changed, 11 insertions(+), 17 deletions(-)
+ fs/ext4/inode.c |  115 +++++++++++++++++++++++--------------------------------
+ 1 files changed, 48 insertions(+), 67 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index e230f4f..3eca465 100644
+index 627729f..e230f4f 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2060,7 +2060,7 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd,
+@@ -2723,17 +2723,14 @@ static int write_cache_pages_da(struct address_space *mapping,
+ 				struct mpage_da_data *mpd,
+ 				pgoff_t *done_index)
+ {
+-	struct inode *inode = mpd->inode;
+-	struct buffer_head *bh, *head;
+-	sector_t logical;
+-	int ret = 0;
+-	int done = 0;
+-	struct pagevec pvec;
+-	unsigned nr_pages;
+-	pgoff_t index;
+-	pgoff_t end;		/* Inclusive */
+-	long nr_to_write = wbc->nr_to_write;
+-	int tag;
++	struct buffer_head	*bh, *head;
++	struct inode		*inode = mpd->inode;
++	struct pagevec		pvec;
++	unsigned int		nr_pages;
++	sector_t		logical;
++	pgoff_t			index, end;
++	long			nr_to_write = wbc->nr_to_write;
++	int			i, tag, ret = 0;
+ 
+ 	pagevec_init(&pvec, 0);
+ 	index = wbc->range_start >> PAGE_CACHE_SHIFT;
+@@ -2745,13 +2742,11 @@ static int write_cache_pages_da(struct address_space *mapping,
+ 		tag = PAGECACHE_TAG_DIRTY;
+ 
+ 	*done_index = index;
+-	while (!done && (index <= end)) {
+-		int i;
+-
++	while (index <= end) {
+ 		nr_pages = pagevec_lookup_tag(&pvec, mapping, &index, tag,
+ 			      min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);
  		if (nr_pages == 0)
- 			break;
+-			break;
++			return 0;
+ 
  		for (i = 0; i < nr_pages; i++) {
--			int commit_write = 0, redirty_page = 0;
-+			int commit_write = 0, skip_page = 0;
  			struct page *page = pvec.pages[i];
- 
- 			index = page->index;
-@@ -2086,14 +2086,12 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd,
- 			 * If the page does not have buffers (for
- 			 * whatever reason), try to create them using
- 			 * __block_write_begin.  If this fails,
--			 * redirty the page and move on.
-+			 * skip the page and move on.
+@@ -2763,47 +2758,37 @@ static int write_cache_pages_da(struct address_space *mapping,
+ 			 * mapping. However, page->index will not change
+ 			 * because we have a reference on the page.
  			 */
- 			if (!page_has_buffers(page)) {
- 				if (__block_write_begin(page, 0, len,
- 						noalloc_get_block_write)) {
--				redirty_page:
--					redirty_page_for_writepage(mpd->wbc,
--								   page);
-+				skip_page:
- 					unlock_page(page);
- 					continue;
- 				}
-@@ -2104,7 +2102,7 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd,
- 			block_start = 0;
- 			do {
- 				if (!bh)
--					goto redirty_page;
-+					goto skip_page;
- 				if (map && (cur_logical >= map->m_lblk) &&
- 				    (cur_logical <= (map->m_lblk +
- 						     (map->m_len - 1)))) {
-@@ -2120,22 +2118,23 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd,
- 					clear_buffer_unwritten(bh);
- 				}
+-			if (page->index > end) {
+-				done = 1;
+-				break;
+-			}
++			if (page->index > end)
++				goto out;
  
--				/* redirty page if block allocation undone */
-+				/* skip page if block allocation undone */
- 				if (buffer_delay(bh) || buffer_unwritten(bh))
--					redirty_page = 1;
-+					skip_page = 1;
- 				bh = bh->b_this_page;
- 				block_start += bh->b_size;
- 				cur_logical++;
- 				pblock++;
- 			} while (bh != page_bufs);
+ 			*done_index = page->index + 1;
  
--			if (redirty_page)
--				goto redirty_page;
-+			if (skip_page)
-+				goto skip_page;
+ 			lock_page(page);
  
- 			if (commit_write)
- 				/* mark the buffer_heads as dirty & uptodate */
- 				block_commit_write(page, 0, len);
- 
-+			clear_page_dirty_for_io(page);
  			/*
- 			 * Delalloc doesn't support data journalling,
- 			 * but eventually maybe we'll lift this
-@@ -2279,9 +2278,8 @@ static void mpage_da_map_and_submit(struct mpage_da_data *mpd)
- 		err = blks;
- 		/*
- 		 * If get block returns EAGAIN or ENOSPC and there
--		 * appears to be free blocks we will call
--		 * ext4_writepage() for all of the pages which will
--		 * just redirty the pages.
-+		 * appears to be free blocks we will just let
-+		 * mpage_da_submit_io() unlock all of the pages.
- 		 */
- 		if (err == -EAGAIN)
- 			goto submit_io;
-@@ -2777,7 +2775,6 @@ static int write_cache_pages_da(struct address_space *mapping,
- 			    (PageWriteback(page) &&
- 			     (wbc->sync_mode == WB_SYNC_NONE)) ||
- 			    unlikely(page->mapping != mapping)) {
--			continue_unlock:
+-			 * Page truncated or invalidated. We can freely skip it
+-			 * then, even for data integrity operations: the page
+-			 * has disappeared concurrently, so there could be no
+-			 * real expectation of this data interity operation
+-			 * even if there is now a new, dirty page at the same
+-			 * pagecache address.
++			 * If the page is no longer dirty, or its
++			 * mapping no longer corresponds to inode we
++			 * are writing (which means it has been
++			 * truncated or invalidated), or the page is
++			 * already under writeback and we are not
++			 * doing a data integrity writeback, skip the page
+ 			 */
+-			if (unlikely(page->mapping != mapping)) {
+-continue_unlock:
++			if (!PageDirty(page) ||
++			    (PageWriteback(page) &&
++			     (wbc->sync_mode == WB_SYNC_NONE)) ||
++			    unlikely(page->mapping != mapping)) {
++			continue_unlock:
  				unlock_page(page);
  				continue;
  			}
-@@ -2786,8 +2783,6 @@ static int write_cache_pages_da(struct address_space *mapping,
- 				wait_on_page_writeback(page);
+ 
+-			if (!PageDirty(page)) {
+-				/* someone wrote it for us */
+-				goto continue_unlock;
+-			}
+-
+-			if (PageWriteback(page)) {
+-				if (wbc->sync_mode != WB_SYNC_NONE)
+-					wait_on_page_writeback(page);
+-				else
+-					goto continue_unlock;
+-			}
++			if (PageWriteback(page))
++				wait_on_page_writeback(page);
  
  			BUG_ON(PageWriteback(page));
--			if (!clear_page_dirty_for_io(page))
--				goto continue_unlock;
+ 			if (!clear_page_dirty_for_io(page))
+ 				goto continue_unlock;
  
+-			/* BEGIN __mpage_da_writepage */
+-
  			/*
  			 * Can we merge this page to current extent?
-@@ -2803,7 +2798,6 @@ static int write_cache_pages_da(struct address_space *mapping,
- 					/*
- 					 * skip rest of the page in the page_vec
+ 			 */
+@@ -2820,8 +2805,7 @@ continue_unlock:
  					 */
--					redirty_page_for_writepage(wbc, page);
+ 					redirty_page_for_writepage(wbc, page);
  					unlock_page(page);
- 					goto ret_extent_tail;
+-					ret = MPAGE_DA_EXTENT_TAIL;
+-					goto out;
++					goto ret_extent_tail;
  				}
+ 
+ 				/*
+@@ -2838,15 +2822,15 @@ continue_unlock:
+ 				(PAGE_CACHE_SHIFT - inode->i_blkbits);
+ 
+ 			if (!page_has_buffers(page)) {
+-				mpage_add_bh_to_extent(mpd, logical, PAGE_CACHE_SIZE,
++				mpage_add_bh_to_extent(mpd, logical,
++						       PAGE_CACHE_SIZE,
+ 						       (1 << BH_Dirty) | (1 << BH_Uptodate));
+-				if (mpd->io_done) {
+-					ret = MPAGE_DA_EXTENT_TAIL;
+-					goto out;
+-				}
++				if (mpd->io_done)
++					goto ret_extent_tail;
+ 			} else {
+ 				/*
+-				 * Page with regular buffer heads, just add all dirty ones
++				 * Page with regular buffer heads,
++				 * just add all dirty ones
+ 				 */
+ 				head = page_buffers(page);
+ 				bh = head;
+@@ -2862,18 +2846,19 @@ continue_unlock:
+ 						mpage_add_bh_to_extent(mpd, logical,
+ 								       bh->b_size,
+ 								       bh->b_state);
+-						if (mpd->io_done) {
+-							ret = MPAGE_DA_EXTENT_TAIL;
+-							goto out;
+-						}
++						if (mpd->io_done)
++							goto ret_extent_tail;
+ 					} else if (buffer_dirty(bh) && (buffer_mapped(bh))) {
+ 						/*
+-						 * mapped dirty buffer. We need to update
+-						 * the b_state because we look at
+-						 * b_state in mpage_da_map_blocks. We don't
+-						 * update b_size because if we find an
+-						 * unmapped buffer_head later we need to
+-						 * use the b_state flag of that buffer_head.
++						 * mapped dirty buffer. We need
++						 * to update the b_state
++						 * because we look at b_state
++						 * in mpage_da_map_blocks.  We
++						 * don't update b_size because
++						 * if we find an unmapped
++						 * buffer_head later we need to
++						 * use the b_state flag of that
++						 * buffer_head.
+ 						 */
+ 						if (mpd->b_size == 0)
+ 							mpd->b_state = bh->b_state & BH_FLAGS;
+@@ -2882,14 +2867,10 @@ continue_unlock:
+ 				} while ((bh = bh->b_this_page) != head);
+ 			}
+ 
+-			ret = 0;
+-
+-			/* END __mpage_da_writepage */
+-
+ 			if (nr_to_write > 0) {
+ 				nr_to_write--;
+ 				if (nr_to_write == 0 &&
+-				    wbc->sync_mode == WB_SYNC_NONE) {
++				    wbc->sync_mode == WB_SYNC_NONE)
+ 					/*
+ 					 * We stop writing back only if we are
+ 					 * not doing integrity sync. In case of
+@@ -2900,15 +2881,15 @@ continue_unlock:
+ 					 * pages, but have not synced all of the
+ 					 * old dirty pages.
+ 					 */
+-					done = 1;
+-					break;
+-				}
++					goto out;
+ 			}
+ 		}
+ 		pagevec_release(&pvec);
+ 		cond_resched();
+ 	}
+-	return ret;
++	return 0;
++ret_extent_tail:
++	ret = MPAGE_DA_EXTENT_TAIL;
+ out:
+ 	pagevec_release(&pvec);
+ 	cond_resched();
 -- 
 1.7.3.1
 
