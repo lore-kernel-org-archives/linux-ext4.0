@@ -1,207 +1,86 @@
-From: Aditya Kali <adityakali@google.com>
-Subject: Re: [PATCH] e2fsprogs: reserving code points for new ext4 quota feature
-Date: Tue, 15 Feb 2011 14:27:27 -0800
-Message-ID: <AANLkTi=7DwksHgsTiT3onUpsiE12ZAdfEgbYX=HW5NwM@mail.gmail.com>
-References: <AANLkTik3Ff7jokEL47uaLphwAP9hcd_16-eb3P8Cvagf@mail.gmail.com>
- <BD2A37BD-B970-4520-A8AB-589249C96755@dilger.ca> <20110215170713.GF4255@thunk.org>
- <AANLkTimsXW82EgB5Fq2Bwc77RYny_DmSPWwgHvQmNKPM@mail.gmail.com> <745DB43F-B3C1-4730-8F29-38F734988617@dilger.ca>
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Subject: Re: [BUG] ext4: cannot unfreeze a filesystem due to a deadlock
+Date: Wed, 16 Feb 2011 08:17:46 +0900
+Message-ID: <20110216081746.54d146d1.toshi.okajima@jp.fujitsu.com>
+References: <20110207205325.FB6A.61FB500B@jp.fujitsu.com>
+	<20110215160630.GH17313@quack.suse.cz>
+	<20110215170352.GE4255@thunk.org>
+	<20110215172954.GK17313@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "Ted Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([74.125.121.67]:25586 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753939Ab1BOW1w (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Feb 2011 17:27:52 -0500
-Received: from hpaq7.eem.corp.google.com (hpaq7.eem.corp.google.com [172.25.149.7])
-	by smtp-out.google.com with ESMTP id p1FMRnA6028249
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Feb 2011 14:27:50 -0800
-Received: from pzk32 (pzk32.prod.google.com [10.243.19.160])
-	by hpaq7.eem.corp.google.com with ESMTP id p1FMRXfk020726
-	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=NOT)
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Feb 2011 14:27:47 -0800
-Received: by pzk32 with SMTP id 32so106881pzk.13
-        for <linux-ext4@vger.kernel.org>; Tue, 15 Feb 2011 14:27:47 -0800 (PST)
-In-Reply-To: <745DB43F-B3C1-4730-8F29-38F734988617@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Ted Ts'o <tytso@mit.edu>,
+	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20110215172954.GK17313@quack.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-I removed these to simply avoid compilation errors and didn't replace
-them because this code doesn't seem to support any of ext4 features.
-But I have now fixed the switch-case statement to print out the
-correct information.
+Hi.
 
-Thanks.
---
-Aditya
+On Tue, 15 Feb 2011 18:29:54 +0100
+Jan Kara <jack@suse.cz> wrote:
+> On Tue 15-02-11 12:03:52, Ted Ts'o wrote:
+> > On Tue, Feb 15, 2011 at 05:06:30PM +0100, Jan Kara wrote:
+> > > Thanks for detailed analysis. Indeed this is a bug. Whenever we do IO
+> > > under s_umount semaphore, we are prone to deadlock like the one you
+> > > describe above.
+> > 
+> > One of the fundamental problems here is that the freeze and thaw
+> > routines are using down_write(&sb->s_umount) for two purposes.  The
+> > first is to prevent the resume/thaw from racing with a umount (which
+> > it could do just as well by taking a read lock), but the second is to
+> > prevent the resume/thaw code from racing with itself.  That's the core
+> > fundamental problem here.
+> > 
+> > So I think we can solve this by introduce a new mutex, s_freeze, and
+> > having the the resume/thaw first take the s_freeze mutex and then
+> > second take a read lock on the s_umount.
+>   Sadly this does not quite work because even down_read(&sb->s_umount)
+> in thaw_super() can block if there is another process that tries to acquire
+> s_umount for writing - a situation like:
+>   TASK 1 (e.g. flusher)		TASK 2	(e.g. remount)		TASK 3 (unfreeze)
+> down_read(&sb->s_umount)
+>   block on s_frozen
+> 				down_write(&sb->s_umount)
+> 				  -blocked
+> 								down_read(&sb->s_umount)
+> 								  -blocked
+> behind the write access...
+> 
+> The only working solution I see is to check for frozen filesystem before
+> taking s_umount semaphore which seems rather ugly (but might be bearable if
+> we did so in some well described wrapper).
+I created the patch that you imagine yesterday.
+ 
+I got a reproducer from Mizuma-san yesterday, and then I executed it on the kernel
+without a fixed patch. After an hour, I confirmed that this deadlock happened.
 
+However, on the kernel with a fixed patch, this deadlock doesn't still happen 
+after 12 hours passed.
 
-
-This patch adds support for detecting the new 'quota' feature in ext4.
-The patch reserves code points for usr and group quota inodes and also
-for the feature flag EXT4_FEATURE_RO_COMPAT_QUOTA.
-
-Signed-off-by: Aditya Kali <adityakali@google.com>
+The patch for linux-2.6.38-rc4 is as follows:
 ---
- debugfs/set_fields.c        |    2 ++
- e2fsck/message.c            |    4 ++--
- ext2ed/inode_com.c          |    8 ++++----
- lib/blkid/probe.h           |    1 +
- lib/e2p/feature.c           |    2 ++
- lib/e2p/ls.c                |    4 ++++
- lib/ext2fs/ext2_fs.h        |    9 ++++++---
- lib/ext2fs/swapfs.c         |    2 ++
- lib/ext2fs/tst_super_size.c |    2 ++
- 9 files changed, 25 insertions(+), 9 deletions(-)
+ fs/fs-writeback.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/debugfs/set_fields.c b/debugfs/set_fields.c
-index 1f4c501..a54f3e1 100644
---- a/debugfs/set_fields.c
-+++ b/debugfs/set_fields.c
-@@ -141,6 +141,8 @@ static struct field_set_info super_fields[] = {
- 	  parse_uint },
- 	{ "snapshot_list", &set_sb.s_snapshot_list, 4, parse_uint },
- 	{ "mount_opts",  &set_sb.s_mount_opts, 64, parse_string },
-+	{ "usr_quota_inum", &set_sb.s_usr_quota_inum, 4, parse_uint },
-+	{ "grp_quota_inum", &set_sb.s_grp_quota_inum, 4, parse_uint },
- 	{ 0, 0, 0, 0 }
- };
+diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+index 59c6e49..1c9a05e 100644
+--- a/fs/fs-writeback.c
++++ b/fs/fs-writeback.c
+@@ -456,7 +456,7 @@ static bool pin_sb_for_writeback(struct super_block *sb)
+        spin_unlock(&sb_lock);
 
-diff --git a/e2fsck/message.c b/e2fsck/message.c
-index 8b09ce8..a5f8947 100644
---- a/e2fsck/message.c
-+++ b/e2fsck/message.c
-@@ -151,8 +151,8 @@ static const char *special_inode_name[] =
- 	N_("<The NULL inode>"),			/* 0 */
- 	N_("<The bad blocks inode>"),		/* 1 */
- 	"/",					/* 2 */
--	N_("<The ACL index inode>"),		/* 3 */
--	N_("<The ACL data inode>"),		/* 4 */
-+	N_("<The user quota inode>"),		/* 3 */
-+	N_("<The group quota inode>"),		/* 4 */
- 	N_("<The boot loader inode>"),		/* 5 */
- 	N_("<The undelete directory inode>"),	/* 6 */
- 	N_("<The group descriptor inode>"),	/* 7 */
-diff --git a/ext2ed/inode_com.c b/ext2ed/inode_com.c
-index 843286c..8d4b9f3 100644
---- a/ext2ed/inode_com.c
-+++ b/ext2ed/inode_com.c
-@@ -222,11 +222,11 @@ void type_ext2_inode___show (char *command_line)
- 			case EXT2_ROOT_INO:
- 				wprintw (show_win,"Root inode - ");
- 				break;
--			case EXT2_ACL_IDX_INO:
--				wprintw (show_win,"ACL index inode - ");
-+			case EXT4_USR_QUOTA_INO:
-+				wprintw (show_win,"User quota inode - ");
- 				break;
--			case EXT2_ACL_DATA_INO:
--				wprintw (show_win,"ACL data inode - ");
-+			case EXT4_GRP_QUOTA_INO:
-+				wprintw (show_win,"Group quota inode - ");
- 				break;
- 			case EXT2_BOOT_LOADER_INO:
- 				wprintw (show_win,"Boot loader inode - ");
-diff --git a/lib/blkid/probe.h b/lib/blkid/probe.h
-index 37fc9c0..37e80ef 100644
---- a/lib/blkid/probe.h
-+++ b/lib/blkid/probe.h
-@@ -109,6 +109,7 @@ struct ext2_super_block {
- #define EXT4_FEATURE_RO_COMPAT_GDT_CSUM		0x0010
- #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
- #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
-+#define EXT4_FEATURE_RO_COMPAT_QUOTA		0x0100
-
- /* for s_feature_incompat */
- #define EXT2_FEATURE_INCOMPAT_FILETYPE		0x0002
-diff --git a/lib/e2p/feature.c b/lib/e2p/feature.c
-index c7f8a35..9324199 100644
---- a/lib/e2p/feature.c
-+++ b/lib/e2p/feature.c
-@@ -55,6 +55,8 @@ static struct feature feature_list[] = {
- 			"dir_nlink" },
- 	{	E2P_FEATURE_RO_INCOMPAT, EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE,
- 			"extra_isize" },
-+	{	E2P_FEATURE_RO_INCOMPAT, EXT4_FEATURE_RO_COMPAT_QUOTA,
-+			"quota" },
-
- 	{	E2P_FEATURE_INCOMPAT, EXT2_FEATURE_INCOMPAT_COMPRESSION,
- 			"compression" },
-diff --git a/lib/e2p/ls.c b/lib/e2p/ls.c
-index d76902b..235832f 100644
---- a/lib/e2p/ls.c
-+++ b/lib/e2p/ls.c
-@@ -394,6 +394,10 @@ void list_super2(struct ext2_super_block * sb, FILE *f)
- 		fprintf(f, "Last error block #:       %llu\n",
- 			sb->s_last_error_block);
- 	}
-+	fprintf(f, "User quota inode:         %u\n",
-+			sb->s_usr_quota_inum);
-+	fprintf(f, "Group quota inode:        %u\n",
-+			sb->s_grp_quota_inum);
- }
-
- void list_super (struct ext2_super_block * s)
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index fee3919..65f5591 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -44,8 +44,8 @@
-  */
- #define EXT2_BAD_INO		 1	/* Bad blocks inode */
- #define EXT2_ROOT_INO		 2	/* Root inode */
--#define EXT2_ACL_IDX_INO	 3	/* ACL inode */
--#define EXT2_ACL_DATA_INO	 4	/* ACL inode */
-+#define EXT4_USR_QUOTA_INO	 3	/* User quota inode */
-+#define EXT4_GRP_QUOTA_INO	 4	/* Group quota inode */
- #define EXT2_BOOT_LOADER_INO	 5	/* Boot loader inode */
- #define EXT2_UNDEL_DIR_INO	 6	/* Undelete directory inode */
- #define EXT2_RESIZE_INO		 7	/* Reserved group descriptors inode */
-@@ -617,7 +617,9 @@ struct ext2_super_block {
- 	__u8	s_last_error_func[32];	/* function where the error happened */
- #define EXT4_S_ERR_END ext4_offsetof(struct ext2_super_block, s_mount_opts)
- 	__u8	s_mount_opts[64];
--	__u32   s_reserved[112];        /* Padding to the end of the block */
-+	__u32	s_usr_quota_inum;	/* inode number of user quota file */
-+	__u32	s_grp_quota_inum;	/* inode number of group quota file */
-+	__u32   s_reserved[110];        /* Padding to the end of the block */
- };
-
- #define EXT4_S_ERR_LEN (EXT4_S_ERR_END - EXT4_S_ERR_START)
-@@ -675,6 +677,7 @@ struct ext2_super_block {
- #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
- #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
- #define EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT	0x0080
-+#define EXT4_FEATURE_RO_COMPAT_QUOTA		0x0100
-
- #define EXT2_FEATURE_INCOMPAT_COMPRESSION	0x0001
- #define EXT2_FEATURE_INCOMPAT_FILETYPE		0x0002
-diff --git a/lib/ext2fs/swapfs.c b/lib/ext2fs/swapfs.c
-index de7585c..19128a7 100644
---- a/lib/ext2fs/swapfs.c
-+++ b/lib/ext2fs/swapfs.c
-@@ -76,6 +76,8 @@ void ext2fs_swap_super(struct ext2_super_block * sb)
- 	sb->s_snapshot_r_blocks_count =
- 		ext2fs_swab64(sb->s_snapshot_r_blocks_count);
- 	sb->s_snapshot_list = ext2fs_swab32(sb->s_snapshot_list);
-+	sb->s_usr_quota_inum = ext2fs_swab32(sb->s_usr_quota_inum);
-+	sb->s_grp_quota_inum = ext2fs_swab32(sb->s_grp_quota_inum);
-
- 	for (i=0; i < 4; i++)
- 		sb->s_hash_seed[i] = ext2fs_swab32(sb->s_hash_seed[i]);
-diff --git a/lib/ext2fs/tst_super_size.c b/lib/ext2fs/tst_super_size.c
-index eb9114f..a3a5b44 100644
---- a/lib/ext2fs/tst_super_size.c
-+++ b/lib/ext2fs/tst_super_size.c
-@@ -123,6 +123,8 @@ void check_superblock_fields()
- 	check_field(s_last_error_block);
- 	check_field(s_last_error_func);
- 	check_field(s_mount_opts);
-+	check_field(s_usr_quota_inum);
-+	check_field(s_grp_quota_inum);
- 	check_field(s_reserved);
- 	printf("Ending offset is %d\n\n", cur_offset);
- #endif
+        if (down_read_trylock(&sb->s_umount)) {
+-               if (sb->s_root)
++               if (sb->s_frozen == SB_UNFROZEN && sb->s_root)
+                        return true;
+                up_read(&sb->s_umount);
+        }
 -- 
-1.7.3.1
+
+Best Regards,
+Toshiyuki Okajima
