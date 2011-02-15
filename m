@@ -1,55 +1,41 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 1/2] ext4: check if device support discard in FITRIM ioctl
-Date: Tue, 15 Feb 2011 18:06:24 +0100
-Message-ID: <1297789585-5986-1-git-send-email-lczerner@redhat.com>
-Cc: tytso@mit.edu, lczerner@redhat.com
-To: linux-ext4@vger.kernel.org
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] e2fsprogs: reserving code points for new ext4 quota
+ feature
+Date: Tue, 15 Feb 2011 12:07:13 -0500
+Message-ID: <20110215170713.GF4255@thunk.org>
+References: <AANLkTik3Ff7jokEL47uaLphwAP9hcd_16-eb3P8Cvagf@mail.gmail.com>
+ <BD2A37BD-B970-4520-A8AB-589249C96755@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Aditya Kali <adityakali@google.com>, linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:9442 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754249Ab1BORGa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Feb 2011 12:06:30 -0500
+Received: from li9-11.members.linode.com ([67.18.176.11]:38833 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755141Ab1BORHP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Feb 2011 12:07:15 -0500
+Content-Disposition: inline
+In-Reply-To: <BD2A37BD-B970-4520-A8AB-589249C96755@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Right now we, are relying on the fact that when we attempt to actually do
-the discard, blkdev_issue_discar() returns -EOPNOTSUPP and the user is
-informed that the device does not support discard.
+On Mon, Feb 14, 2011 at 10:21:49PM -0700, Andreas Dilger wrote:
+> This is missing the fact that ino 3 and 4 are already reserved for ACLs:
+> 
+> #define EXT2_ACL_IDX_INO         3      /* ACL inode */
+> #define EXT2_ACL_DATA_INO        4      /* ACL inode */
+> 
+> That said, I don't know if those inodes are actually ever used,
+> because the ACLs are stored in xattrs on each inode.
 
-However, in the case where the we do not hit any suitable free extent to
-trim in FITRIM code, it will finish without any error. This is very
-confusing, because it seems that FITRIM was successful even though the
-device does not actually supports discard.
+Nope, they were never used that for ACL's.  An early design used
+separate ACL's to store the ACL's for the inodes, but eventually they
+were implemented using extended attributes.
 
-Solution: Check for the discard support before attempt to search for
-free extents.
+> In any case, the quota definitions should replace the ACL ones
+> instead of being hidden after the main list (which is otherwise kept
+> in numeric order).
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- fs/ext4/ioctl.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
+Agreed.
 
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index eb3bc2f..25ba7c7 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -334,12 +334,16 @@ mext_out:
- 	case FITRIM:
- 	{
- 		struct super_block *sb = inode->i_sb;
-+		struct request_queue *q = bdev_get_queue(sb->s_bdev);
- 		struct fstrim_range range;
- 		int ret = 0;
- 
- 		if (!capable(CAP_SYS_ADMIN))
- 			return -EPERM;
- 
-+		if (!blk_queue_discard(q))
-+			return -EOPNOTSUPP;
-+
- 		if (copy_from_user(&range, (struct fstrim_range *)arg,
- 		    sizeof(range)))
- 			return -EFAULT;
--- 
-1.7.4
-
+						- Ted
