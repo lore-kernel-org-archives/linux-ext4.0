@@ -1,54 +1,60 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [LSF/MM TOPIC] Drop ext2/ext3 codebase? When?
-Date: Tue, 15 Feb 2011 12:29:22 -0500
-Message-ID: <20110215172922.GG4255@thunk.org>
-References: <20110203144011.GA28409@quack.suse.cz>
- <4D4AC4E2.701@redhat.com>
- <AANLkTi=YxSpgm9vYHBKdASpLOaY_U3=ggsE8yTg_G0Bc@mail.gmail.com>
- <20110204131739.GC4104@quack.suse.cz>
- <AANLkTin=6wY6y0LZCDtMGiy8vmdok=UUj-7rmsTPAVuh@mail.gmail.com>
- <20110214172504.GC3018@quack.suse.cz>
- <AANLkTimdApPPK6FkH+CPrXdNpND6_twE2voRiNhgQOOE@mail.gmail.com>
- <20110214195845.GD4255@thunk.org>
- <20110215042837.GD13052@dastard>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [BUG] ext4: cannot unfreeze a filesystem due to a deadlock
+Date: Tue, 15 Feb 2011 18:29:54 +0100
+Message-ID: <20110215172954.GK17313@quack.suse.cz>
+References: <20110207205325.FB6A.61FB500B@jp.fujitsu.com>
+ <20110215160630.GH17313@quack.suse.cz>
+ <20110215170352.GE4255@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Amir Goldstein <amir73il@gmail.com>, Jan Kara <jack@suse.cz>,
-	Michael Rubin <mrubin@google.com>,
-	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:42939 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755728Ab1BOR3l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Feb 2011 12:29:41 -0500
+Cc: Jan Kara <jack@suse.cz>,
+	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20110215042837.GD13052@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20110215170352.GE4255@thunk.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Feb 15, 2011 at 03:28:37PM +1100, Dave Chinner wrote:
+On Tue 15-02-11 12:03:52, Ted Ts'o wrote:
+> On Tue, Feb 15, 2011 at 05:06:30PM +0100, Jan Kara wrote:
+> > Thanks for detailed analysis. Indeed this is a bug. Whenever we do IO
+> > under s_umount semaphore, we are prone to deadlock like the one you
+> > describe above.
 > 
-> What scripts are needed? xfstests has the $MKFS_OPTIONS and
-> $MOUNT_OPTIONS environment variables for customising your mkfs and
-> mount parameters for each test run, so isn't testing ext3
-> filesystems with the ext4 code should just be a matter of setting
-> these appropriately?
+> One of the fundamental problems here is that the freeze and thaw
+> routines are using down_write(&sb->s_umount) for two purposes.  The
+> first is to prevent the resume/thaw from racing with a umount (which
+> it could do just as well by taking a read lock), but the second is to
+> prevent the resume/thaw code from racing with itself.  That's the core
+> fundamental problem here.
+> 
+> So I think we can solve this by introduce a new mutex, s_freeze, and
+> having the the resume/thaw first take the s_freeze mutex and then
+> second take a read lock on the s_umount.
+  Sadly this does not quite work because even down_read(&sb->s_umount)
+in thaw_super() can block if there is another process that tries to acquire
+s_umount for writing - a situation like:
+  TASK 1 (e.g. flusher)		TASK 2	(e.g. remount)		TASK 3 (unfreeze)
+down_read(&sb->s_umount)
+  block on s_frozen
+				down_write(&sb->s_umount)
+				  -blocked
+								down_read(&sb->s_umount)
+								  -blocked
+behind the write access...
 
-Correct, this doesn't require changes to xfstests.
+The only working solution I see is to check for frozen filesystem before
+taking s_umount semaphore which seems rather ugly (but might be bearable if
+we did so in some well described wrapper).
 
-What is needed for this ext4/ext3-using-ext4 testing is a wrapper
-script *around* xfstests that sets up the enviornment variables
-correctly, and uses different devices for the "common case"
-combinations of mkfs and mount options (where we would keep an aged
-file system around), and for those devices which we don't think are
-valuable enough to dedicate a reserved file system image, we'd have to
-mkfs a special version of that filesystem for TEST_DEV.
+And in particular ext4 has another deadlock of this kind because it does
+IO from ext4_remount() e.g. when doing online resize (I know it's a bit
+artifical but still ;).
 
-(I'm not sure why xfstests doesn't use freshly created file in the
-case where SCRATCH_DEV is defined by TEST_DEV is not, but it doesn't;
-as far as I know there are no tests where it uses both TEST_DEV and
-SCRATCH_DEV, is there?)
-
-							- Ted
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
