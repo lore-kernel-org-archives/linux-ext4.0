@@ -1,81 +1,57 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [BUG] ext4: cannot unfreeze a filesystem due to a deadlock
-Date: Tue, 15 Feb 2011 20:11:25 +0100
-Message-ID: <20110215191125.GL17313@quack.suse.cz>
-References: <20110207205325.FB6A.61FB500B@jp.fujitsu.com>
- <20110215160630.GH17313@quack.suse.cz>
- <20110215170352.GE4255@thunk.org>
- <20110215172954.GK17313@quack.suse.cz>
- <20110215180435.GH4255@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20110215180435.GH4255@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH] ext4: mark objects for local use as static
+Date: Tue, 15 Feb 2011 20:43:18 +0100
+Message-ID: <1297798998-19306-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, lczerner@redhat.com
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:17946 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755875Ab1BOTnX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Feb 2011 14:43:23 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 15-02-11 13:04:35, Ted Ts'o wrote:
-> On Tue, Feb 15, 2011 at 06:29:54PM +0100, Jan Kara wrote:
-> >   Sadly this does not quite work because even down_read(&sb->s_umount)
-> > in thaw_super() can block if there is another process that tries to acquire
-> > s_umount for writing - a situation like:
-> >   TASK 1 (e.g. flusher)		TASK 2	(e.g. remount)		TASK 3 (unfreeze)
-> > down_read(&sb->s_umount)
-> >   block on s_frozen
-> > 				down_write(&sb->s_umount)
-> > 				  -blocked
-> > 								down_read(&sb->s_umount)
-> > 								  -blocked
-> > behind the write access...
-> 
-> OK, sorry for being dense, but why does this cause a deadlock?  What
-> are you imaging TASK 3 doing that would impede the flusher from
-> eventually resuming?  Or how would TASK 3 prevent userspace from
-> completing whatever it needs to do (say, a device mapper ioctl)?
-  I was arguing that using down_read(sb->s_umount) in thaw_super() instead
-of down_write() does not solve anything. The deadlock as originally
-reported can still happen, you just need another task (TASK 2 in the above
-scheme) to block in down_write() before thaw_super() happens.
+Certain object in ext4 code are supposed to be used only locally, but
+are not defined as static. Fix it by adding static into definition.
 
-> freeze_fs has always been inherently dangerous if the userspace does
-> not know what it's doing.  If it freezes the root file system, and
-> then while the file system is frozen, userspace attempts to modify
-> /etc/mtab, it's going to lose.  I've in the past argued for some kind
-> of safety timeout that prevents the system from wedging, but the
-> argument I've gotten back is (a) it's too complex, and (b) userspace
-> programmers aren't that stupid, and (c) it could cause the filesystem
-> to unfreeze when userspace wasn't expecting it.  Oh, and (d) if the
-> system wedges up due to userspace being stupid, it's acceptable.
-> 
-> Obviously, if the kernel does something to itself that causes a
-> deadlock, we need to fix it, but userspace doing something stupid has
-> been explicitly ruled out of scope, at least in previous
-> discussions...
-> 
-> > And in particular ext4 has another deadlock of this kind because it does
-> > IO from ext4_remount() e.g. when doing online resize (I know it's a bit
-> > artifical but still ;).
-> 
-> OK, I'm being dense again.  How does remount and online resize relate
-> with each other?  and it's not I/O in general which is a problem, it's
-> writeback activity which causes a problem because it takes a read lock
-> on s_umount, right?
-  The problem is to start a transaction while holding s_umount semaphore,
-or actually any lock that thaw_super() (including per-filesystem
-->unfreeze_fs() callback) needs. For ext4 this seems to be sb->s_lock.
-I was actually wrong with the ext4 online resizing using resize option
-causing possible deadlocks because do_remount_sb() refuses to do anything
-with the superblock while it is frozen... But still if we ever happen to
-start a transaction in ext4 while sb->s_lock is held, the deadlock with
-freezing code can happen and that's just subtle and ugly IMHO.
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/mballoc.c |    3 ++-
+ fs/ext4/super.c   |    6 +++---
+ 2 files changed, 5 insertions(+), 4 deletions(-)
 
-								Honza
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index d1fe09a..ae4d7f5 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4753,7 +4753,8 @@ static int ext4_trim_extent(struct super_block *sb, int start, int count,
+  * bitmap. Then issue a TRIM command on this extent and free the extent in
+  * the group buddy bitmap. This is done until whole group is scanned.
+  */
+-ext4_grpblk_t ext4_trim_all_free(struct super_block *sb, struct ext4_buddy *e4b,
++static ext4_grpblk_t
++ext4_trim_all_free(struct super_block *sb, struct ext4_buddy *e4b,
+ 		ext4_grpblk_t start, ext4_grpblk_t max, ext4_grpblk_t minblocks)
+ {
+ 	void *bitmap;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index f6a318f..5fe6d1b 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -54,9 +54,9 @@
+ 
+ static struct proc_dir_entry *ext4_proc_root;
+ static struct kset *ext4_kset;
+-struct ext4_lazy_init *ext4_li_info;
+-struct mutex ext4_li_mtx;
+-struct ext4_features *ext4_feat;
++static struct ext4_lazy_init *ext4_li_info;
++static struct mutex ext4_li_mtx;
++static struct ext4_features *ext4_feat;
+ 
+ static int ext4_load_journal(struct super_block *, struct ext4_super_block *,
+ 			     unsigned long journal_devnum);
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.4
+
