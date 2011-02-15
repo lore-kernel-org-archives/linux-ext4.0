@@ -1,41 +1,54 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsprogs: reserving code points for new ext4 quota
- feature
-Date: Tue, 15 Feb 2011 12:07:13 -0500
-Message-ID: <20110215170713.GF4255@thunk.org>
-References: <AANLkTik3Ff7jokEL47uaLphwAP9hcd_16-eb3P8Cvagf@mail.gmail.com>
- <BD2A37BD-B970-4520-A8AB-589249C96755@dilger.ca>
+Subject: Re: [LSF/MM TOPIC] Drop ext2/ext3 codebase? When?
+Date: Tue, 15 Feb 2011 12:29:22 -0500
+Message-ID: <20110215172922.GG4255@thunk.org>
+References: <20110203144011.GA28409@quack.suse.cz>
+ <4D4AC4E2.701@redhat.com>
+ <AANLkTi=YxSpgm9vYHBKdASpLOaY_U3=ggsE8yTg_G0Bc@mail.gmail.com>
+ <20110204131739.GC4104@quack.suse.cz>
+ <AANLkTin=6wY6y0LZCDtMGiy8vmdok=UUj-7rmsTPAVuh@mail.gmail.com>
+ <20110214172504.GC3018@quack.suse.cz>
+ <AANLkTimdApPPK6FkH+CPrXdNpND6_twE2voRiNhgQOOE@mail.gmail.com>
+ <20110214195845.GD4255@thunk.org>
+ <20110215042837.GD13052@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Aditya Kali <adityakali@google.com>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: Amir Goldstein <amir73il@gmail.com>, Jan Kara <jack@suse.cz>,
+	Michael Rubin <mrubin@google.com>,
+	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38833 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:42939 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755141Ab1BORHP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Feb 2011 12:07:15 -0500
+	id S1755728Ab1BOR3l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Feb 2011 12:29:41 -0500
 Content-Disposition: inline
-In-Reply-To: <BD2A37BD-B970-4520-A8AB-589249C96755@dilger.ca>
+In-Reply-To: <20110215042837.GD13052@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 14, 2011 at 10:21:49PM -0700, Andreas Dilger wrote:
-> This is missing the fact that ino 3 and 4 are already reserved for ACLs:
+On Tue, Feb 15, 2011 at 03:28:37PM +1100, Dave Chinner wrote:
 > 
-> #define EXT2_ACL_IDX_INO         3      /* ACL inode */
-> #define EXT2_ACL_DATA_INO        4      /* ACL inode */
-> 
-> That said, I don't know if those inodes are actually ever used,
-> because the ACLs are stored in xattrs on each inode.
+> What scripts are needed? xfstests has the $MKFS_OPTIONS and
+> $MOUNT_OPTIONS environment variables for customising your mkfs and
+> mount parameters for each test run, so isn't testing ext3
+> filesystems with the ext4 code should just be a matter of setting
+> these appropriately?
 
-Nope, they were never used that for ACL's.  An early design used
-separate ACL's to store the ACL's for the inodes, but eventually they
-were implemented using extended attributes.
+Correct, this doesn't require changes to xfstests.
 
-> In any case, the quota definitions should replace the ACL ones
-> instead of being hidden after the main list (which is otherwise kept
-> in numeric order).
+What is needed for this ext4/ext3-using-ext4 testing is a wrapper
+script *around* xfstests that sets up the enviornment variables
+correctly, and uses different devices for the "common case"
+combinations of mkfs and mount options (where we would keep an aged
+file system around), and for those devices which we don't think are
+valuable enough to dedicate a reserved file system image, we'd have to
+mkfs a special version of that filesystem for TEST_DEV.
 
-Agreed.
+(I'm not sure why xfstests doesn't use freshly created file in the
+case where SCRATCH_DEV is defined by TEST_DEV is not, but it doesn't;
+as far as I know there are no tests where it uses both TEST_DEV and
+SCRATCH_DEV, is there?)
 
-						- Ted
+							- Ted
