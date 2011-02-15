@@ -1,39 +1,42 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [BUG] ext4: cannot unfreeze a filesystem due to a deadlock
-Date: Tue, 15 Feb 2011 12:03:52 -0500
-Message-ID: <20110215170352.GE4255@thunk.org>
-References: <20110207205325.FB6A.61FB500B@jp.fujitsu.com>
- <20110215160630.GH17313@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 2/2] ext4: Adjust mineln with discard_granularity in FITRIM code
+Date: Tue, 15 Feb 2011 18:06:25 +0100
+Message-ID: <1297789585-5986-2-git-send-email-lczerner@redhat.com>
+References: <1297789585-5986-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, lczerner@redhat.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38829 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753073Ab1BOREA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Feb 2011 12:04:00 -0500
-Content-Disposition: inline
-In-Reply-To: <20110215160630.GH17313@quack.suse.cz>
+Received: from mx1.redhat.com ([209.132.183.28]:62198 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754249Ab1BORGb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Feb 2011 12:06:31 -0500
+In-Reply-To: <1297789585-5986-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Feb 15, 2011 at 05:06:30PM +0100, Jan Kara wrote:
-> Thanks for detailed analysis. Indeed this is a bug. Whenever we do IO
-> under s_umount semaphore, we are prone to deadlock like the one you
-> describe above.
+Discard granularity tells us the minimum size of extent to be discarded.
+Use that information to adjust minlen properly in FITRIM code. Smaller
+extents will be ignored anyway, so we can optimize by not even trying to
+discard them.
 
-One of the fundamental problems here is that the freeze and thaw
-routines are using down_write(&sb->s_umount) for two purposes.  The
-first is to prevent the resume/thaw from racing with a umount (which
-it could do just as well by taking a read lock), but the second is to
-prevent the resume/thaw code from racing with itself.  That's the core
-fundamental problem here.
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/ioctl.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-So I think we can solve this by introduce a new mutex, s_freeze, and
-having the the resume/thaw first take the s_freeze mutex and then
-second take a read lock on the s_umount.
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 25ba7c7..c052c9f 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -348,6 +348,8 @@ mext_out:
+ 		    sizeof(range)))
+ 			return -EFAULT;
+ 
++		range.minlen = max((unsigned int)range.minlen,
++				   q->limits.discard_granularity);
+ 		ret = ext4_trim_fs(sb, &range);
+ 		if (ret < 0)
+ 			return ret;
+-- 
+1.7.4
 
-						- Ted
