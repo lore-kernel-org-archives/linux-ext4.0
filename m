@@ -1,40 +1,40 @@
-From: Andreas Dilger <adilger@dilger.ca>
+From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: [PATCH 2/2] e2fsprogs: enable user namespace xattrs by default
-Date: Wed, 16 Feb 2011 12:15:27 -0700
-Message-ID: <C637E27A-6E13-4950-B4CC-0451FDB421B9@dilger.ca>
-References: <4D5C1380.2020602@redhat.com> <4D5C15C6.5000802@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
+Date: Wed, 16 Feb 2011 13:27:39 -0600
+Message-ID: <4D5C252B.2010102@redhat.com>
+References: <4D5C1380.2020602@redhat.com> <4D5C15C6.5000802@redhat.com> <C637E27A-6E13-4950-B4CC-0451FDB421B9@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:40202 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753038Ab1BPTPV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Feb 2011 14:15:21 -0500
-In-Reply-To: <4D5C15C6.5000802@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:4415 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753115Ab1BPT1l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 16 Feb 2011 14:27:41 -0500
+In-Reply-To: <C637E27A-6E13-4950-B4CC-0451FDB421B9@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-02-16, at 11:21, Eric Sandeen wrote:
-> User namespace xattrs are generally useful, and I think extN
-> is the only filesystem requiring a special mount option to
-> enable them, when xattrs are otherwise available.  So this
-> change sets that mount option into the defaults.
+On 2/16/11 1:15 PM, Andreas Dilger wrote:
+> On 2011-02-16, at 11:21, Eric Sandeen wrote:
+>> User namespace xattrs are generally useful, and I think extN
+>> is the only filesystem requiring a special mount option to
+>> enable them, when xattrs are otherwise available.  So this
+>> change sets that mount option into the defaults.
+>>
+>> Note that if xattrs are config'd off, this will lead to a
+>> mostly-harmless:
+>>
+>>   EXT4-fs (sdc1): (no)user_xattr options not supported
+>>
+>> message at mount time... 
 > 
-> Note that if xattrs are config'd off, this will lead to a
-> mostly-harmless:
+> Wouldn't it be more useful to change this in the kernel, instead of only changing it in the superblock for new filesystems?
 > 
->   EXT4-fs (sdc1): (no)user_xattr options not supported
-> 
-> message at mount time... 
+> Cheers, Andreas
 
-Wouldn't it be more useful to change this in the kernel, instead of only changing it in the superblock for new filesystems?
+I thought about that; maybe it should happen in both places?
 
-Cheers, Andreas
-
-
-
-
-
+-Eric
