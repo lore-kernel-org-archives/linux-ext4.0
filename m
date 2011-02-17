@@ -1,104 +1,158 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 29312] New: Unmounting fails even after the underlying device
- is long gone
-Date: Thu, 17 Feb 2011 19:20:45 GMT
-Message-ID: <bug-29312-13602@https.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH 1/2 V2] e2fsprogs: turn off enforced fsck intervals by default
+Date: Thu, 17 Feb 2011 15:55:15 -0600
+Message-ID: <4D5D9943.70901@redhat.com>
+References: <4D5C1380.2020602@redhat.com> <4D5C1409.1030203@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:45439 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751005Ab1BQTUp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Feb 2011 14:20:45 -0500
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p1HJKjSL020084
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 17 Feb 2011 19:20:45 GMT
+Received: from mx1.redhat.com ([209.132.183.28]:2065 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752992Ab1BQVzR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 Feb 2011 16:55:17 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p1HLtHcV028541
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Feb 2011 16:55:17 -0500
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p1HLtFkI024589
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Feb 2011 16:55:16 -0500
+In-Reply-To: <4D5C1409.1030203@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=29312
+The forced fsck often comes at unexpected and inopportune moments,
+and even enterprise customers are often caught by surprise when 
+this happens.  Because a filesystem with an error condition will 
+be marked as requiring fsck anyway, I submit that the time-based 
+and mount-based checks are not particularly useful, and that 
+administrators can schedule fscks on their own time, or tune2fs 
+the enforced intervals if they so choose.  This patch disables the 
+intervals by default, and I've added a new mkfs.conf option to 
+turn on the old behavior of random, unexpected, time-consuming
+fscks at boot time.  ;)
 
-           Summary: Unmounting fails even after the underlying device is
-                    long gone
-           Product: File System
-           Version: 2.5
-    Kernel Version: 2.6.38-rc5
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: bart.vanassche@gmail.com
-        Regression: Yes
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
+diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
+index 7c38975..1d2927c 100644
+--- a/lib/ext2fs/initialize.c
++++ b/lib/ext2fs/initialize.c
+@@ -46,19 +46,6 @@
+ #endif /* defined(__linux__)   && defined(EXT2_OS_LINUX) */
+ 
+ /*
+- * Note we override the kernel include file's idea of what the default
+- * check interval (never) should be.  It's a good idea to check at
+- * least *occasionally*, specially since servers will never rarely get
+- * to reboot, since Linux is so robust these days.  :-)
+- *
+- * 180 days (six months) seems like a good value.
+- */
+-#ifdef EXT2_DFL_CHECKINTERVAL
+-#undef EXT2_DFL_CHECKINTERVAL
+-#endif
+-#define EXT2_DFL_CHECKINTERVAL (86400L * 180L)
+-
+-/*
+  * Calculate the number of GDT blocks to reserve for online filesystem growth.
+  * The absolute maximum number of GDT blocks we can reserve is determined by
+  * the number of block pointers that can fit into a single block.
+@@ -155,7 +142,7 @@ errcode_t ext2fs_initialize(const char *name, int flags,
+ 	set_field(s_log_block_size, 0);	/* default blocksize: 1024 bytes */
+ 	set_field(s_log_frag_size, 0); /* default fragsize: 1024 bytes */
+ 	set_field(s_first_data_block, super->s_log_block_size ? 0 : 1);
+-	set_field(s_max_mnt_count, EXT2_DFL_MAX_MNT_COUNT);
++	set_field(s_max_mnt_count, 0);
+ 	set_field(s_errors, EXT2_ERRORS_DEFAULT);
+ 	set_field(s_feature_compat, 0);
+ 	set_field(s_feature_incompat, 0);
+@@ -189,7 +176,7 @@ errcode_t ext2fs_initialize(const char *name, int flags,
+ 		super->s_inode_size = EXT2_GOOD_OLD_INODE_SIZE;
+ 	}
+ 
+-	set_field(s_checkinterval, EXT2_DFL_CHECKINTERVAL);
++	set_field(s_checkinterval, 0);
+ 	super->s_mkfs_time = super->s_lastcheck = fs->now ? fs->now : time(NULL);
+ 
+ 	super->s_creator_os = CREATOR_OS;
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 0ba4a4c..2910e6e 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -2105,13 +2105,31 @@ int main (int argc, char *argv[])
+ 	uuid_generate((unsigned char *) fs->super->s_hash_seed);
+ 
+ 	/*
+-	 * Add "jitter" to the superblock's check interval so that we
+-	 * don't check all the filesystems at the same time.  We use a
+-	 * kludgy hack of using the UUID to derive a random jitter value.
++	 * Periodic checks can be enabled/disabled via config file.
++	 * Note we override the kernel include file's idea of what the default
++	 * check interval (never) should be.  It's a good idea to check at
++	 * least *occasionally*, specially since servers will never rarely get
++	 * to reboot, since Linux is so robust these days.  :-)
++	 *
++	 * 180 days (six months) seems like a good value.
+ 	 */
+-	for (i = 0, val = 0 ; i < sizeof(fs->super->s_uuid); i++)
+-		val += fs->super->s_uuid[i];
+-	fs->super->s_max_mnt_count += val % EXT2_DFL_MAX_MNT_COUNT;
++#ifdef EXT2_DFL_CHECKINTERVAL
++#undef EXT2_DFL_CHECKINTERVAL
++#endif
++#define EXT2_DFL_CHECKINTERVAL (86400L * 180L)
++
++	if (get_bool_from_profile(fs_types, "enable_periodic_fsck", 0)) {
++		fs->super->s_checkinterval = EXT2_DFL_CHECKINTERVAL;
++		fs->super->s_max_mnt_count = EXT2_DFL_MAX_MNT_COUNT;
++		/*
++		 * Add "jitter" to the superblock's check interval so that we
++		 * don't check all the filesystems at the same time.  We use a
++		 * kludgy hack of using the UUID to derive a random jitter value
++		 */
++		for (i = 0, val = 0 ; i < sizeof(fs->super->s_uuid); i++)
++			val += fs->super->s_uuid[i];
++		fs->super->s_max_mnt_count += val % EXT2_DFL_MAX_MNT_COUNT;
++	}
+ 
+ 	/*
+ 	 * Override the creator OS, if applicable
+diff --git a/misc/mke2fs.conf b/misc/mke2fs.conf
+index a7dd1c7..a96251e 100644
+--- a/misc/mke2fs.conf
++++ b/misc/mke2fs.conf
+@@ -1,5 +1,6 @@
+ [defaults]
+ 	base_features = sparse_super,filetype,resize_inode,dir_index,ext_attr
++	enable_periodic_fsck = 0
+ 	blocksize = 4096
+ 	inode_size = 256
+ 	inode_ratio = 16384
+diff --git a/misc/mke2fs.conf.5.in b/misc/mke2fs.conf.5.in
+index e9913cb..1e777cd 100644
+--- a/misc/mke2fs.conf.5.in
++++ b/misc/mke2fs.conf.5.in
+@@ -107,6 +107,17 @@ command-line option
+ to 
+ .BR mke2fs (8).
+ .TP
++.I enable_periodic_fsck
++This relation specifies whether periodic filesystem checks should be
++enforced at boot time.  If enabled, checks will be forced every
++180 days, or after a random number of mounts.  These values may
++be changed later via the
++.B -i
++and
++.B -c
++command-line options to
++.BR tune2fs (8).
++.TP
+ .I force_undo
+ This relation, if set to a boolean value of true, forces
+ .B mke2fs
 
-Unmounting a filesystem after the underlying (network) device is gone used to
-work with previous kernel versions but apparently doesn't work anymore with
-2.6.38. Additionally, CPU load goes up to 1.0 and stays at 1.0:
-
-# umount /mnt
-umount: /mnt: device is busy.
-        (In some cases useful info about processes that use
-         the device is found by lsof(8) or fuser(1))
-# echo 1 > /sys/block/sdc/device/delete
--bash: /sys/block/sdc/device/delete: No such file or directory
-# cat /proc/loadavg
-1.05 1.15 1.94 1/278 8426
-
-The following call trace was logged several times:
-
-sd 8:0:0:0: [sdc] Unhandled error code
-sd 8:0:0:0: [sdc]  Result: hostbyte=DID_NO_CONNECT driverbyte=DRIVER_OK
-sd 8:0:0:0: [sdc] CDB: Write(10): 2a 00 00 00 01 80 00 00 08 00
-end_request: I/O error, dev sdc, sector 384
-------------[ cut here ]------------
-WARNING: at fs/ext4/extents.c:3765 ext4_convert_unwritten_extents+0xef/0x120
-[ext4]()
-Hardware name: P5Q DELUXE
-Modules linked in: ib_srp ext4 jbd2 crc16 scsi_transport_srp fuse ip6t_LOG
-ipt_MASQUERADE xt_pkttype xt_TCPMSS xt_tcpudp ipt_LOG xt_limit iptable_nat
-nf_nat radeon ttm drm_kms_helper drm i2c_algo_bit snd_pcm_oss snd_mixer_oss
-snd_seq snd_seq_device af_packet rdma_ucm ib_ipoib ib_uverbs ib_umad
-cpufreq_conservative cpufreq_userspace cpufreq_powersave acpi_cpufreq mperf
-mlx4_ib ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 ip6table_raw xt_NOTRACK
-ipt_REJECT xt_state iptable_raw iptable_filter ip6table_mangle
-nf_conntrack_netbios_ns nf_conntrack_ipv4 nf_conntrack nf_defrag_ipv4 ip_tables
-ip6table_filter ip6_tables x_tables loop dm_mod coretemp snd_hda_codec_hdmi
-snd_hda_codec_analog snd_hda_intel snd_hda_codec snd_hwdep snd_pcm snd_timer sg
-i2c_i801 snd sr_mod soundcore snd_page_alloc pcspkr hid_belkin cdrom skge
-mlx4_core button sky2 i2c_core raid456 async_raid6_recov async_pq usbhid hid
-raid6_pq async_xor xor async_memcpy async_tx raid10 raid0 uhci_hcd rtc_cmos
-rtc_core ehci_hcd rtc_
-lib usbcore sd_mod edd raid1 ext3 mbcache jbd fan ata_generic ata_piix
-pata_marvell ahci libahci libata thermal processor thermal_sys hwmon [last
-unloaded: ib_srp]
-Pid: 20, comm: kworker/1:1 Not tainted 2.6.38-rc5-tcm+ #3
-Call Trace:
- [<ffffffff8103fe0a>] ? warn_slowpath_common+0x7a/0xb0
- [<ffffffff8103fe55>] ? warn_slowpath_null+0x15/0x20
- [<ffffffffa05addef>] ? ext4_convert_unwritten_extents+0xef/0x120 [ext4]
- [<ffffffffa0599948>] ? ext4_end_io_nolock+0x48/0x110 [ext4]
- [<ffffffffa0599a4a>] ? ext4_end_io_work+0x3a/0xb0 [ext4]
- [<ffffffffa0599a10>] ? ext4_end_io_work+0x0/0xb0 [ext4]
- [<ffffffff8105490f>] ? process_one_work+0xff/0x370
- [<ffffffff810560d1>] ? worker_thread+0x161/0x330
- [<ffffffff81055f70>] ? worker_thread+0x0/0x330
- [<ffffffff8105a6c6>] ? kthread+0x96/0xa0
- [<ffffffff81003a94>] ? kernel_thread_helper+0x4/0x10
- [<ffffffff8105a630>] ? kthread+0x0/0xa0
- [<ffffffff81003a90>] ? kernel_thread_helper+0x0/0x10
----[ end trace 3e35244bb4bb9c94 ]---
-ext4_convert_unwritten_extents: ext4_ext_map_blocks returned error inode#36,
-block=2203, max_blocks=1
-ext4_end_io_nolock: failed to convert unwritten extents to written extents,
-error is -5 io is still on inode 36 aio dio list
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
