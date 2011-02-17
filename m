@@ -1,70 +1,74 @@
-From: Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: [BUG] ext4: cannot unfreeze a filesystem due to a deadlock
-Date: Wed, 16 Feb 2011 22:13:53 -0700
-Message-ID: <169849F1-1830-4771-9D38-6A39C8B46C90@dilger.ca>
-References: <20110207205325.FB6A.61FB500B@jp.fujitsu.com> <20110215160630.GH17313@quack.suse.cz> <20110215170352.GE4255@thunk.org> <20110215172954.GK17313@quack.suse.cz> <20110216081746.54d146d1.toshi.okajima@jp.fujitsu.com> <20110216145627.GB5592@quack.suse.cz> <4D5C9B1B.2050304@jp.fujitsu.com>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Jan Kara <jack@suse.cz>, Ted Ts'o <tytso@mit.edu>,
-	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: toshi.okajima@jp.fujitsu.com
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <4D5C9B1B.2050304@jp.fujitsu.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Steven Liu <lingjiujianke@gmail.com>
+Subject: [PATCH] code cleanup on fs/super.c
+Date: Thu, 17 Feb 2011 17:29:23 +0800
+Message-ID: <AANLkTiknstm30Woccr-BSZYYYr=0DdKe4=aUVQuj2Z_s@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-ext4@vger.kernel.org, liuqi <liuqi@thunderst.com>
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:54984 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752390Ab1BQJ3X (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Feb 2011 04:29:23 -0500
+Received: by vxb37 with SMTP id 37so974606vxb.19
+        for <linux-ext4@vger.kernel.org>; Thu, 17 Feb 2011 01:29:23 -0800 (PST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-02-16, at 20:50, Toshiyuki Okajima wrote:
-> (2011/02/16 23:56), Jan Kara wrote:
->> 
->>> I got a reproducer from Mizuma-san yesterday, and then I executed it on the kernel without a fixed patch. After an hour, I confirmed that this deadlock happened.
->>> 
->>> However, on the kernel with a fixed patch, this deadlock doesn't still happen
->>> after 12 hours passed.
->>> 
->>> The patch for linux-2.6.38-rc4 is as follows:
->>> ---
->>>  fs/fs-writeback.c |    2 +-
->>>  1 files changed, 1 insertions(+), 1 deletions(-)
->>> 
->>> diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
->>> index 59c6e49..1c9a05e 100644
->>> --- a/fs/fs-writeback.c
->>> +++ b/fs/fs-writeback.c
->>> @@ -456,7 +456,7 @@ static bool pin_sb_for_writeback(struct super_block *sb)
->>>         spin_unlock(&sb_lock);
->>> 
->>>         if (down_read_trylock(&sb->s_umount)) {
->>> -               if (sb->s_root)
->>> +               if (sb->s_frozen == SB_UNFROZEN && sb->s_root)
->>>                         return true;
->>>                 up_read(&sb->s_umount);
+Hi Tso,
 
-This seems like a very low-risk fix.
 
->>   So this is something along the lines I thought but it actually won't work
->> for example if sync(1) is run while the filesystem is frozen (that takes
->> s_umount semaphore in a different place). And generally, I'm not convinced
->> there are not other places that try to do IO while holding s_umount
->> semaphore...
-> 
-> OK. I understand.
-> 
-> This code only fixes the case for the following path:
-> writeback_inodes_wb
-> -> ext4_da_writepages
->   -> ext4_journal_start_sb
->      -> vfs_check_frozen
-> But, the code doesn't fix the other cases.
-> 
-> We must modify the local filesystem part in order to fix all cases...?
+  Can this patch be fixed?
 
-It seems worthwhile to implement the low-risk fix that covers the common case, and if/when someone hits the rare 3-process case and/or submits a patch for it then that one will be fixed also.
-
-Cheers, Andreas
+  Clean up the unused code on fs/super.c. All the filesystem
+  are using mount_bdev and mount_nodev to replace
+   get_sb_bdev and get_sb_nodev.
 
 
 
 
 
+Signed-off-by: root <root@localhost.(none)>
+---
+ fs/super.c |   31 -------------------------------
+ 1 files changed, 0 insertions(+), 31 deletions(-)
+
+diff --git a/fs/super.c b/fs/super.c
+index 7e9dd4c..8272f26 100644
+--- a/fs/super.c
++++ b/fs/super.c
+@@ -843,22 +843,6 @@ error:
+ }
+ EXPORT_SYMBOL(mount_bdev);
+
+-int get_sb_bdev(struct file_system_type *fs_type,
+-	int flags, const char *dev_name, void *data,
+-	int (*fill_super)(struct super_block *, void *, int),
+-	struct vfsmount *mnt)
+-{
+-	struct dentry *root;
+-
+-	root = mount_bdev(fs_type, flags, dev_name, data, fill_super);
+-	if (IS_ERR(root))
+-		return PTR_ERR(root);
+-	mnt->mnt_root = root;
+-	mnt->mnt_sb = root->d_sb;
+-	return 0;
+-}
+-
+-EXPORT_SYMBOL(get_sb_bdev);
+
+ void kill_block_super(struct super_block *sb)
+ {
+@@ -897,21 +881,6 @@ struct dentry *mount_nodev(struct
+file_system_type *fs_type,
+ }
+ EXPORT_SYMBOL(mount_nodev);
+
+-int get_sb_nodev(struct file_system_type *fs_type,
+-	int flags, void *data,
+-	int (*fill_super)(struct super_block *, void *, int),
+-	struct vfsmount *mnt)
+-{
+-	struct dentry *root;
