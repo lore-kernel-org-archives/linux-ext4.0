@@ -1,125 +1,70 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 2/2 V2] e2fsprogs: enable user namespace xattrs by default
-Date: Thu, 17 Feb 2011 15:56:17 -0600
-Message-ID: <4D5D9981.1020300@redhat.com>
-References: <4D5C1380.2020602@redhat.com> <4D5C15C6.5000802@redhat.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH,RFC 7/7] ext4: move ext4_journal_start/stop to
+ mpage_da_map_and_submit()
+Date: Thu, 17 Feb 2011 23:23:53 -0500
+Message-ID: <20110218042353.GA4923@thunk.org>
+References: <1297556157-21559-1-git-send-email-tytso@mit.edu>
+ <1297556157-21559-8-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:3725 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754560Ab1BQV4T (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 17 Feb 2011 16:56:19 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p1HLuJdu028779
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Thu, 17 Feb 2011 16:56:19 -0500
-Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p1HLuHBI010919
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 17 Feb 2011 16:56:18 -0500
-In-Reply-To: <4D5C15C6.5000802@redhat.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:47545 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752218Ab1BREXz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 Feb 2011 23:23:55 -0500
+Content-Disposition: inline
+In-Reply-To: <1297556157-21559-8-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-User namespace xattrs are generally useful, and I think extN
-is the only filesystem requiring a special mount option to
-enable them, when xattrs are otherwise available.  So this
-change sets that mount option into the defaults, via a
-mke2fs.conf option.
+On Sat, Feb 12, 2011 at 07:15:57PM -0500, Theodore Ts'o wrote:
+> Previously, ext4_da_writepages() was responsible for calling
+> ext4_journal_start() and ext4_journal_stop().  If the blocks had
+> already been allocated (we don't support journal=data in
+> ext4_da_writepages), then there's no need to start a new journal
+> handle.
+> 
+> By moving ext4_journal_start/stop calls to mpage_da_map_and_submit()
+> we should significantly reduce the cpu usage (and cache line bouncing)
+> if the journal is enabled.  This should (hopefully!) be especially
+> noticeable on large SMP systems.
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-Note that if xattrs are config'd off, this will lead to a
-mostly-harmless:
+Argh, it turns out this doesn't work.  I was getting sporadic
+deadlocks and I finally figured out the problem.  If a process is
+holding page locks, it can't call ext4_journal_start() safely in
+data=ordered, since there's a chance that there won't be enough
+transaction credits and a new transaction will be started.  And at
+that point, in data=ordered mode, we may end up calling
+journal_submit_inode_data_buffers(), which could try to write back the
+inode pages in question --- which are already locked.
 
-   EXT4-fs (sdc1): (no)user_xattr options not supported
+This means that we need to start the journal handle long before we
+know whether or not we really need it.  Boo, hiss!
 
-message at mount time... 
+The only way to solve this problem is to do what I've been planning
+all for a while, which is to add support in ext4_map_blocks() for a
+mode where it will allocate a region of blocks, but *not* update the
+extent map.  It will have to store the allocation in an in-memory
+cache, so that if other CPU's try to request a logical block, it will
+get the right answer.  However, the actual on-disk extent map can't be
+updated until *after* the data is safely written on disk (and the
+pages can thus be unlocked).
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+Once we do that, we'll also be able to ditch ordered mode for good,
+since it means that there won't be any chance of stale data being
+revealed, without any of performance disasters involved with
+data=ordered mode.
 
+I have no idea what these changes will do to Amir's snapshot plans,
+but sorry, getting this right is going to be higher priority.
 
-diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
-index 1d2927c..4cf0863 100644
---- a/lib/ext2fs/initialize.c
-+++ b/lib/ext2fs/initialize.c
-@@ -147,6 +147,7 @@ errcode_t ext2fs_initialize(const char *name, int flags,
- 	set_field(s_feature_compat, 0);
- 	set_field(s_feature_incompat, 0);
- 	set_field(s_feature_ro_compat, 0);
-+	set_field(s_default_mount_opts, 0);
- 	set_field(s_first_meta_bg, 0);
- 	set_field(s_raid_stride, 0);		/* default stride size: 0 */
- 	set_field(s_raid_stripe_width, 0);	/* default stripe width: 0 */
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 2910e6e..e9e3129 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -829,6 +829,18 @@ static void edit_feature(const char *str, __u32 *compat_array)
- 	}
- }
- 
-+static void edit_mntopts(const char *str, __u32 *mntopts)
-+{
-+	if (!str)
-+		return;
-+
-+	if (e2p_edit_mntopts(str, mntopts, ~0)) {
-+		fprintf(stderr, _("Invalid mount option set: %s\n"),
-+			str);
-+		exit(1);
-+	}
-+}
-+
- struct str_list {
- 	char **list;
- 	int num;
-@@ -1576,6 +1588,16 @@ profile_error:
- 	}
- 	edit_feature(fs_features ? fs_features : tmp,
- 		     &fs_param.s_feature_compat);
-+
-+	if (tmp)
-+		free(tmp);
-+
-+	/* And which mount options as well */
-+	tmp = NULL;
-+	tmp = get_string_from_profile(fs_types, "default_mntopts",
-+		"acl,user_xattr");
-+	edit_mntopts(tmp, &fs_param.s_default_mount_opts);
-+
- 	if (tmp)
- 		free(tmp);
- 
-diff --git a/misc/mke2fs.conf b/misc/mke2fs.conf
-index a96251e..775e046 100644
---- a/misc/mke2fs.conf
-+++ b/misc/mke2fs.conf
-@@ -1,5 +1,6 @@
- [defaults]
- 	base_features = sparse_super,filetype,resize_inode,dir_index,ext_attr
-+	default_mntopts = acl,user_xattr
- 	enable_periodic_fsck = 0
- 	blocksize = 4096
- 	inode_size = 256
-diff --git a/misc/mke2fs.conf.5.in b/misc/mke2fs.conf.5.in
-index 1e777cd..791cf7e 100644
---- a/misc/mke2fs.conf.5.in
-+++ b/misc/mke2fs.conf.5.in
-@@ -314,6 +314,13 @@ relations.  It may be overridden by the
- command-line option to
- .BR mke2fs (8).
- .TP
-+.I default_mntopts
-+This relation specifies the set of mount options which should be enabled
-+by default.  These may be changed at a later time with the
-+.B -o
-+command-line option to
-+.BR tune2fs (8).
-+.TP
- .I auto_64-bit_support
- This relation is a boolean which specifies whether
- .BR mke2fs (8)
+I may end up submitting the rest of this patch series without this
+last patch, since it does clean up the code paths a lot, and it should
+result in a few small performance improvements --- the big performance
+improvement, found in this patch, we'll have to skip until we can fix
+up the writeback submission.
 
+		     	      	       - Ted
