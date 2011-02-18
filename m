@@ -1,82 +1,54 @@
 From: Curt Wohlgemuth <curtw@google.com>
-Subject: [PATCH 2/2] ext4: fix ext4_da_block_invalidatepages() to handle page range properly
-Date: Fri, 18 Feb 2011 13:31:39 -0800
-Message-ID: <1298064699-17987-2-git-send-email-curtw@google.com>
-References: <1298064699-17987-1-git-send-email-curtw@google.com>
+Subject: [PATCH 1/2] ext4: mark multi-page IO complete on mapping failure
+Date: Fri, 18 Feb 2011 13:31:38 -0800
+Message-ID: <1298064699-17987-1-git-send-email-curtw@google.com>
 Cc: Curt Wohlgemuth <curtw@google.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([74.125.121.67]:56295 "EHLO
+Received: from smtp-out.google.com ([216.239.44.51]:35951 "EHLO
 	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756751Ab1BRVbx (ORCPT
+	with ESMTP id S1756755Ab1BRVbx (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Feb 2011 16:31:53 -0500
-Received: from hpaq11.eem.corp.google.com (hpaq11.eem.corp.google.com [172.25.149.11])
-	by smtp-out.google.com with ESMTP id p1ILVpJL018861
+Received: from kpbe16.cbf.corp.google.com (kpbe16.cbf.corp.google.com [172.25.105.80])
+	by smtp-out.google.com with ESMTP id p1ILVpmZ005427
 	for <linux-ext4@vger.kernel.org>; Fri, 18 Feb 2011 13:31:51 -0800
-In-Reply-To: <1298064699-17987-1-git-send-email-curtw@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If ext4_da_block_invalidatepages() is called because of a
-failure from ext4_map_blocks() in mpage_da_map_and_submit(),
-it's supposed to clean up -- including unlock -- all the
-pages in the mpd structure.  But these values may not match
-up, even on a system in which block size == page size:
+In mpage_da_map_and_submit(), if we have a delayed block
+allocation failure from ext4_map_blocks(), we need to mark
+the IO as complete, by setting
 
-   mpd->b_blocknr != mpd->first_page
-   mpd->b_size != (mpd->next_page - mpd->first_page)
+      mpd->io_done = 1;
 
-ext4_da_block_invalidatepages() has been using b_blocknr and
-b_size; this patch changes it to use first_page and
-next_page.
+Otherwise, we could end up submitting the pages in an outer
+loop; since they are unlocked on mapping failure in
+ext4_da_block_invalidatepages(), this will cause a bug check
+in mpage_da_submit_io().
 
-Tested:  I injected a small number (5%) of failures in
-ext4_map_blocks() in the case that the flags contain
-EXT4_GET_BLOCKS_DELALLOC_RESERVE, and ran fsstress on this
-kernel.  Without this patch, I got hung tasks every time.
-With this patch, I see no hangs in many runs of fsstress.
+I tested this by injected failures into ext4_map_blocks().
+Without this patch, a simple fsstress run will bug check;
+with the patch, it works fine.
 
 Signed-off-by: Curt Wohlgemuth <curtw@google.com>
 ---
- fs/ext4/inode.c |   11 ++++-------
- 1 files changed, 4 insertions(+), 7 deletions(-)
+ fs/ext4/inode.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 1cff229..18a3b90 100644
+index 9f7f9e4..1cff229 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2165,8 +2165,7 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd,
- 	return ret;
- }
- 
--static void ext4_da_block_invalidatepages(struct mpage_da_data *mpd,
--					sector_t logical, long blk_cnt)
-+static void ext4_da_block_invalidatepages(struct mpage_da_data *mpd)
- {
- 	int nr_pages, i;
- 	pgoff_t index, end;
-@@ -2174,9 +2173,8 @@ static void ext4_da_block_invalidatepages(struct mpage_da_data *mpd,
- 	struct inode *inode = mpd->inode;
- 	struct address_space *mapping = inode->i_mapping;
- 
--	index = logical >> (PAGE_CACHE_SHIFT - inode->i_blkbits);
--	end   = (logical + blk_cnt - 1) >>
--				(PAGE_CACHE_SHIFT - inode->i_blkbits);
-+	index = mpd->first_page;
-+	end   = mpd->next_page - 1;
- 	while (index <= end) {
- 		nr_pages = pagevec_lookup(&pvec, mapping, index, PAGEVEC_SIZE);
- 		if (nr_pages == 0)
-@@ -2312,8 +2310,7 @@ static void mpage_da_map_and_submit(struct mpage_da_data *mpd)
- 				ext4_print_free_blocks(mpd->inode);
- 		}
+@@ -2314,6 +2314,9 @@ static void mpage_da_map_and_submit(struct mpage_da_data *mpd)
  		/* invalidate all the pages */
--		ext4_da_block_invalidatepages(mpd, next,
--				mpd->b_size >> mpd->inode->i_blkbits);
-+		ext4_da_block_invalidatepages(mpd);
- 
- 		/* Mark this page range as having been completed */
- 		mpd->io_done = 1;
+ 		ext4_da_block_invalidatepages(mpd, next,
+ 				mpd->b_size >> mpd->inode->i_blkbits);
++
++		/* Mark this page range as having been completed */
++		mpd->io_done = 1;
+ 		return;
+ 	}
+ 	BUG_ON(blks == 0);
 -- 
 1.7.3.1
 
