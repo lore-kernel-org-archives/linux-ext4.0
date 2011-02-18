@@ -1,72 +1,82 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] ext4: enable acls and user_xattr by default
-Date: Fri, 18 Feb 2011 14:31:01 -0600
-Message-ID: <4D5ED705.7010902@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>
-To: ext4 development <linux-ext4@vger.kernel.org>
+From: Curt Wohlgemuth <curtw@google.com>
+Subject: [PATCH 2/2] ext4: fix ext4_da_block_invalidatepages() to handle page range properly
+Date: Fri, 18 Feb 2011 13:31:39 -0800
+Message-ID: <1298064699-17987-2-git-send-email-curtw@google.com>
+References: <1298064699-17987-1-git-send-email-curtw@google.com>
+Cc: Curt Wohlgemuth <curtw@google.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:23099 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757582Ab1BRUbF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 18 Feb 2011 15:31:05 -0500
+Received: from smtp-out.google.com ([74.125.121.67]:56295 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756751Ab1BRVbx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Feb 2011 16:31:53 -0500
+Received: from hpaq11.eem.corp.google.com (hpaq11.eem.corp.google.com [172.25.149.11])
+	by smtp-out.google.com with ESMTP id p1ILVpJL018861
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Feb 2011 13:31:51 -0800
+In-Reply-To: <1298064699-17987-1-git-send-email-curtw@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-There's no good reason to require the extra step of providing
-a mount option for acl or user_xattr once the feature is configured
-on; no other filesystem that I know of requires this.
+If ext4_da_block_invalidatepages() is called because of a
+failure from ext4_map_blocks() in mpage_da_map_and_submit(),
+it's supposed to clean up -- including unlock -- all the
+pages in the mpd structure.  But these values may not match
+up, even on a system in which block size == page size:
 
-Userspace patches have set these options in default mount options,
-and this patch makes them default in the kernel.  At some point
-we can start to deprecate the options, perhaps.
+   mpd->b_blocknr != mpd->first_page
+   mpd->b_size != (mpd->next_page - mpd->first_page)
 
-For now I've removed default mount option checks in show_options()
-to be explicit about what's set, since it's changing the default,
-but I'm open to alternatives if desired.
+ext4_da_block_invalidatepages() has been using b_blocknr and
+b_size; this patch changes it to use first_page and
+next_page.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Tested:  I injected a small number (5%) of failures in
+ext4_map_blocks() in the case that the flags contain
+EXT4_GET_BLOCKS_DELALLOC_RESERVE, and ran fsstress on this
+kernel.  Without this patch, I got hung tasks every time.
+With this patch, I see no hangs in many runs of fsstress.
+
+Signed-off-by: Curt Wohlgemuth <curtw@google.com>
 ---
+ fs/ext4/inode.c |   11 ++++-------
+ 1 files changed, 4 insertions(+), 7 deletions(-)
 
-p.s. I've got ext2 & ext3 patches too - Jan, is this ok with
-you for ext2/3 as well?
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 1cff229..18a3b90 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2165,8 +2165,7 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd,
+ 	return ret;
+ }
+ 
+-static void ext4_da_block_invalidatepages(struct mpage_da_data *mpd,
+-					sector_t logical, long blk_cnt)
++static void ext4_da_block_invalidatepages(struct mpage_da_data *mpd)
+ {
+ 	int nr_pages, i;
+ 	pgoff_t index, end;
+@@ -2174,9 +2173,8 @@ static void ext4_da_block_invalidatepages(struct mpage_da_data *mpd,
+ 	struct inode *inode = mpd->inode;
+ 	struct address_space *mapping = inode->i_mapping;
+ 
+-	index = logical >> (PAGE_CACHE_SHIFT - inode->i_blkbits);
+-	end   = (logical + blk_cnt - 1) >>
+-				(PAGE_CACHE_SHIFT - inode->i_blkbits);
++	index = mpd->first_page;
++	end   = mpd->next_page - 1;
+ 	while (index <= end) {
+ 		nr_pages = pagevec_lookup(&pvec, mapping, index, PAGEVEC_SIZE);
+ 		if (nr_pages == 0)
+@@ -2312,8 +2310,7 @@ static void mpage_da_map_and_submit(struct mpage_da_data *mpd)
+ 				ext4_print_free_blocks(mpd->inode);
+ 		}
+ 		/* invalidate all the pages */
+-		ext4_da_block_invalidatepages(mpd, next,
+-				mpd->b_size >> mpd->inode->i_blkbits);
++		ext4_da_block_invalidatepages(mpd);
+ 
+ 		/* Mark this page range as having been completed */
+ 		mpd->io_done = 1;
+-- 
+1.7.3.1
 
-
-index 48ce561..77dec05 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -995,13 +995,10 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
- 	if (test_opt(sb, OLDALLOC))
- 		seq_puts(seq, ",oldalloc");
- #ifdef CONFIG_EXT4_FS_XATTR
--	if (test_opt(sb, XATTR_USER) &&
--		!(def_mount_opts & EXT4_DEFM_XATTR_USER))
-+	if (test_opt(sb, XATTR_USER))
- 		seq_puts(seq, ",user_xattr");
--	if (!test_opt(sb, XATTR_USER) &&
--	    (def_mount_opts & EXT4_DEFM_XATTR_USER)) {
-+	if (!test_opt(sb, XATTR_USER))
- 		seq_puts(seq, ",nouser_xattr");
--	}
- #endif
- #ifdef CONFIG_EXT4_FS_POSIX_ACL
- 	if (test_opt(sb, POSIX_ACL) && !(def_mount_opts & EXT4_DEFM_ACL))
-@@ -3093,13 +3090,12 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	}
- 	if (def_mount_opts & EXT4_DEFM_UID16)
- 		set_opt(sb, NO_UID32);
-+	/* xattr user namespace & acls are now defaulted on */
- #ifdef CONFIG_EXT4_FS_XATTR
--	if (def_mount_opts & EXT4_DEFM_XATTR_USER)
--		set_opt(sb, XATTR_USER);
-+	set_opt(sb, XATTR_USER);
- #endif
- #ifdef CONFIG_EXT4_FS_POSIX_ACL
--	if (def_mount_opts & EXT4_DEFM_ACL)
--		set_opt(sb, POSIX_ACL);
-+	set_opt(sb, POSIX_ACL);
- #endif
- 	if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_DATA)
- 		set_opt(sb, JOURNAL_DATA);
