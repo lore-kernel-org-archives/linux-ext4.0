@@ -1,47 +1,71 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 29492] kernel BUG at
- /home/kernel-ppa/COD/linux/fs/inode.c:1421!
-Date: Sun, 20 Feb 2011 01:14:40 GMT
-Message-ID: <201102200114.p1K1EepX029889@demeter1.kernel.org>
-References: <bug-29492-13602@https.bugzilla.kernel.org/>
+From: Mark Lord <kernel@teksavvy.com>
+Subject: Re: ext4 crash on 2.6.37: NULL ptr in ext4_discard_preallocations
+Date: Sat, 19 Feb 2011 23:54:31 -0500
+Message-ID: <4D609E87.5000903@teksavvy.com>
+References: <4D604620.9060204@teksavvy.com> <20110220000550.GA8765@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+To: Ted Ts'o <tytso@mit.edu>,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:57550 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753507Ab1BTBOl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Feb 2011 20:14:41 -0500
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p1K1Efqx029890
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sun, 20 Feb 2011 01:14:41 GMT
-In-Reply-To: <bug-29492-13602@https.bugzilla.kernel.org/>
+Received: from ironport2-out.teksavvy.com ([206.248.154.183]:34474 "EHLO
+	ironport2-out.pppoe.ca" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751187Ab1BTEyi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Feb 2011 23:54:38 -0500
+In-Reply-To: <20110220000550.GA8765@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=29492
+On 11-02-19 07:05 PM, Ted Ts'o wrote:
+> On Sat, Feb 19, 2011 at 05:37:20PM -0500, Mark Lord wrote:
+>> 32-bit x86 system, 2.6.37 SMP kernel, Core2duo, 3.3GB RAM, no swap.
+>>
+>> The system just suddenly switched to fbconsole and dumped a traceback.
+>> Here's the screen-shot photo:  http://rtr.ca/ext4_crash.jpg
+>>
+>> Is this a known bug that got fixed in 2.6.37.1 ?
+> 
+> No, this looks like a new one.
+> 
+> And I can't make the Code: line make sense.  Can you send me the
+> fs/ext4/mballoc.s file after running the command "make
+> fs/ext4/mballoc.s" in your build tree where you built this kernel?
 
+Sent.  And here's an extract:
 
-Eric Sandeen <sandeen@redhat.com> changed:
+.globl ext4_discard_preallocations
+        .type   ext4_discard_preallocations, @function
+ext4_discard_preallocations:
+        pushl   %ebp    #
+        pushl   %edi    #
+        leal    -136(%eax), %edi        #, ei
+        pushl   %esi    #
+        pushl   %ebx    #
+        subl    $80, %esp       #,
+        movl    172(%eax), %esi # <variable>.i_sb, sb
+        movl    $0, 76(%esp)    #, group
+        movzwl  122(%eax), %edx # <variable>.i_mode, tmp85
+        andl    $61440, %edx    #, tmp85
+        cmpl    $32768, %edx    #, tmp85
+        jne     .L875   #,
+        leal    68(%esp), %edx  #, tmp86
+        leal    380(%eax), %ebx #, D.45176
+        movl    %edx, 68(%esp)  # tmp86, list.next
+        addl    $372, %eax      #,
+        movl    %edx, 72(%esp)  # tmp86, list.prev
+        movl    %eax, 28(%esp)  #, %sfp
+.L876:
+        movl    %ebx, %eax      # D.45176,
+        call    _raw_spin_lock  #
+        jmp     .L861   #
+.L867:
+        cmpl    %ebx, 60(%ebp)  # D.45176, <variable>.pa_obj_lock
+        je      .L862   #,
+#APP
+# 3810 "fs/ext4/mballoc.c" 1
+        1:      ud2
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |sandeen@redhat.com
+I wonder if the 003c offset is that "cmpl %ebx, 60(%ebp)" line?
 
-
-
-
---- Comment #2 from Eric Sandeen <sandeen@redhat.com>  2011-02-20 01:14:37 ---
-void iput(struct inode *inode)
-{
-        if (inode) {
-                BUG_ON(inode->i_state & I_CLEAR); <<<<<<<<<
-
-but this doesn't look like an ext3 bug to me; fuse is in the backtrace, not
-ext3.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
