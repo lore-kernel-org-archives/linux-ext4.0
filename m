@@ -1,85 +1,67 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [PATCH]ext4: Fix compile warnings with EXT4FS_DEBUG
-Date: Tue, 22 Feb 2011 12:05:14 +0900
-Message-ID: <4D6327EA.6020305@rs.jp.nec.com>
-References: <4D393732.5020301@rs.jp.nec.com> <20110222015216.GB2924@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: "Ted Ts'o" <tytso@mit.edu>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: fsck performance.
+Date: Mon, 21 Feb 2011 11:00:02 -0700
+Message-ID: <C5662C0F-10E3-4AC3-8ACA-4CBBF4F36D70@dilger.ca>
+References: <20110220090656.GA11402@bitwizard.nl> <20110220170931.GB3017@thunk.org> <20110220193406.GC3017@thunk.org> <20110220215531.GA21917@bitwizard.nl> <20110220222013.GA2849@thunk.org> <20110220231514.GC21917@bitwizard.nl> <20110220234131.GC4001@thunk.org> <AANLkTikJs8mBHGvHkJAp-aC719aG6QSJaUH-uvwpx0JK@mail.gmail.com> <AANLkTinWOSBqkXhgOa4qdfK+iiLcJSP9LeZaYmUHH9KF@mail.gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Amir Goldstein <amir73il@gmail.com>, Ted Ts'o <tytso@mit.edu>,
+	Rogier Wolff <R.E.Wolff@bitwizard.nl>,
+	linux-ext4@vger.kernel.org
+To: =?utf-8?Q?Pawe=C5=82_Brodacki?= <pawel.brodacki@googlemail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:64979 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753143Ab1BVDFf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Feb 2011 22:05:35 -0500
-In-Reply-To: <20110222015216.GB2924@thunk.org>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:2321 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751176Ab1BVEA4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Feb 2011 23:00:56 -0500
+In-Reply-To: <AANLkTinWOSBqkXhgOa4qdfK+iiLcJSP9LeZaYmUHH9KF@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On 2011-02-21, at 9:04 AM, Pawe=C5=82 Brodacki wrote:
+> 2011/2/21 Amir Goldstein <amir73il@gmail.com>:
+>> One thing I am not sure I understand is (excuse my ignorance) why is=
+ the
+>> swap space solution good only for 64bit processors?
+>=20
+> It's an address space limit on 32 bit processors. Even with PAE the
+> user space process still won't have access to more than 2^32 bits,
+> that is 4 GiB of memory. Due to practical limitations (e.g. kernel
+> needing some address space) usually a process won't have access to
+> more than 3 GiB.
 
-> s_itb_per_group is defined to be an unsigned long, so a much better
-> fix is simply to change the format string.
+Roger,
+are you using the icount allocation reduction patches previously posted=
+?  They won't help if you need more than 3GB of address space, but they=
+ definitely reduce the size of allocations and allow the icount data to=
+ be swapped.  See the thread "[PATCH]: icount: Replace the icount list =
+by a two-level tree".
 
-Thanks for your work. ;)
+>> If it is common knowledge, do you know of an upper limit (depending =
+on fs size,
+>> no. of inodes, etc)?
+>>=20
+>=20
+> I vaguely remember some estimation of memory requirements of fsck
+> being given somewhere, but I'm not able to find the posts now :(.
 
-(2011/02/22 10:52), Ted Ts'o wrote:
-> On Fri, Jan 21, 2011 at 04:35:14PM +0900, Akira Fujita wrote:
->>          ext4_debug("clear inode table blocks %#04llx ->  %#04llx\n",
->> -                       block, sbi->s_itb_per_group);
->> +                       block, (ext4_fsblk_t)sbi->s_itb_per_group);
-> 
-> s_itb_per_group is defined to be an unsigned long, so a much better
-> fix is simply to change the format string.
-> 
->         	      	 	    	   - Ted
-> 
->> From da488945f4bf4096f4ab6091938469bd8822cfec Mon Sep 17 00:00:00 2001
-> From: Theodore Ts'o<tytso@mit.edu>
-> Date: Mon, 21 Feb 2011 20:39:58 -0500
-> Subject: [PATCH] ext4: fix compile warnings with EXT4FS_DEBUG enabled
-> 
-> Compile 2.6.38-rc1 with turning EXT4FS_DEBUG on,
-> we get following compile warnings. This patch fixes them.
-> 
->    CC      fs/ext4/hash.o
->    CC      fs/ext4/resize.o
-> fs/ext4/resize.c: In function 'setup_new_group_blocks':
-> fs/ext4/resize.c:233:2: warning: format '%#04llx' expects type 'long long
-> unsigned int', but argument 3 has type 'long unsigned int'
-> fs/ext4/resize.c:251:2: warning: format '%#04llx' expects type 'long long
-> unsigned int', but argument 3 has type 'long unsigned int'
->    CC      fs/ext4/extents.o
->    CC      fs/ext4/ext4_jbd2.o
->    CC      fs/ext4/migrate.o
-> 
-> Reported-by: Akira Fujita<a-fujita@rs.jp.nec.com>
-> Signed-off-by: "Theodore Ts'o"<tytso@mit.edu>
-> ---
->   fs/ext4/resize.c |    4 ++--
->   1 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-> index 3ecc6e4..66fec4e 100644
-> --- a/fs/ext4/resize.c
-> +++ b/fs/ext4/resize.c
-> @@ -230,7 +230,7 @@ static int setup_new_group_blocks(struct super_block *sb,
->   	}
-> 
->   	/* Zero out all of the reserved backup group descriptor table blocks */
-> -	ext4_debug("clear inode table blocks %#04llx ->  %#04llx\n",
-> +	ext4_debug("clear inode table blocks %#04llx ->  %#04lx\n",
->   			block, sbi->s_itb_per_group);
->   	err = sb_issue_zeroout(sb, gdblocks + start + 1, reserved_gdb,
->   			       GFP_NOFS);
-> @@ -248,7 +248,7 @@ static int setup_new_group_blocks(struct super_block *sb,
-> 
->   	/* Zero out all of the inode table blocks */
->   	block = input->inode_table;
-> -	ext4_debug("clear inode table blocks %#04llx ->  %#04llx\n",
-> +	ext4_debug("clear inode table blocks %#04llx ->  %#04lx\n",
->   			block, sbi->s_itb_per_group);
->   	err = sb_issue_zeroout(sb, block, sbi->s_itb_per_group, GFP_NOFS);
->   	if (err)
+My rule of thumb is about 1 byte of memory per block in the filesystem,=
+ for "normal" filesystems (i.e. mostly regular files, and a small fract=
+ion of directories).  For a 3TB filesystem this would mean ~768MB of RA=
+M.  One problem is that the current icount implementation allocates alm=
+ost 2x the peak usage when it is resizing the array, hence the patch me=
+ntioned above for filesystems with lots of directories and hard links.
 
+
+Cheers, Andreas
+
+
+
+
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
