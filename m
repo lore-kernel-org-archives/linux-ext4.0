@@ -1,31 +1,58 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] Check for immutable flag in fallocate path
-Date: Mon, 21 Feb 2011 07:46:35 -0500
-Message-ID: <20110221124635.GA5525@infradead.org>
-References: <4D6221B8.9040303@gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: enable acls and user_xattr by default
+Date: Mon, 21 Feb 2011 14:46:42 +0100
+Message-ID: <20110221134642.GC6584@quack.suse.cz>
+References: <4D5ED705.7010902@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
-	cluster-devel@redhat.com,
-	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	xfs@oss.sgi.com
-To: Marco Stornelli <marco.stornelli@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:58397 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756045Ab1BUNqw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 21 Feb 2011 08:46:52 -0500
 Content-Disposition: inline
-In-Reply-To: <4D6221B8.9040303@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <4D5ED705.7010902@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 21, 2011 at 09:26:32AM +0100, Marco Stornelli wrote:
-> From: Marco Stornelli <marco.stornelli@gmail.com>
+  Hi Eric,
+
+On Fri 18-02-11 14:31:01, Eric Sandeen wrote:
+> There's no good reason to require the extra step of providing
+> a mount option for acl or user_xattr once the feature is configured
+> on; no other filesystem that I know of requires this.
 > 
-> All fs must check for the immutable flag in their fallocate callback.
-> It's possible to have a race condition in this scenario: an application
-> open a file in read/write and it does something, meanwhile root set the
-> immutable flag on the file, the application at that point can call
-> fallocate with success. Only Ocfs2 check for the immutable flag at the
-> moment.
+> Userspace patches have set these options in default mount options,
+> and this patch makes them default in the kernel.  At some point
+> we can start to deprecate the options, perhaps.
+> 
+> For now I've removed default mount option checks in show_options()
+> to be explicit about what's set, since it's changing the default,
+> but I'm open to alternatives if desired.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> ---
+> 
+> p.s. I've got ext2 & ext3 patches too - Jan, is this ok with
+> you for ext2/3 as well?
+  I was thinking about this for a while. I definitely agree with the change
+of default mount options in e2fsprogs (so that user_xattr and acl will be
+turned on by default). But after such change is there really any bigger
+point in changing the kernel defaults? Users won't have to specify options
+for new filesystems because of new default mount options setting (so the
+change does not bring any simplification) and for old filesystems the admin
+has proper options in /etc/fstab and if not perhaps he didn't want e.g.
+user_xattr to be supported so suddently turning the support on with newer
+kernel will confuse them)?
 
-Please add the check in fs/open.c:do_fallocate() so that it covers all
-filesystems.
+So if we wanted to do such a transition for consistency with other
+filesystems, we should maybe first start warning that people should use
+nouser_xattr and noacl when they really didn't want them?
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
