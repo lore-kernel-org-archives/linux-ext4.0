@@ -1,47 +1,71 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: fsck performance.
-Date: Tue, 22 Feb 2011 17:13:04 -0500
-Message-ID: <20110222221304.GH2924@thunk.org>
-References: <20110220222013.GA2849@thunk.org>
- <20110220231514.GC21917@bitwizard.nl>
- <20110220234131.GC4001@thunk.org>
- <AANLkTikJs8mBHGvHkJAp-aC719aG6QSJaUH-uvwpx0JK@mail.gmail.com>
- <AANLkTinWOSBqkXhgOa4qdfK+iiLcJSP9LeZaYmUHH9KF@mail.gmail.com>
- <C5662C0F-10E3-4AC3-8ACA-4CBBF4F36D70@dilger.ca>
- <20110222102056.GH21917@bitwizard.nl>
- <20110222133652.GI21917@bitwizard.nl>
- <20110222135431.GK21917@bitwizard.nl>
- <386B23FA-CE6E-4D9C-9799-C121B2E8C3BB@dilger.ca>
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: [opensuse-factory] /sbin/fstrim: /home: FITRIM ioctl failed:
+ Operation not supported
+Date: Tue, 22 Feb 2011 18:34:37 -0500
+Message-ID: <AANLkTi=sMAam8sa-QUxZKzeCev2JWqhc+HnhwC33wgUy@mail.gmail.com>
+References: <4D644245.9000809@opensuse.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Rogier Wolff <R.E.Wolff@BitWizard.nl>,
-	Pawe?? Brodacki <pawel.brodacki@googlemail.com>,
-	Amir Goldstein <amir73il@gmail.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: opensuse-factory <opensuse-factory@opensuse.org>,
+	ext4 <linux-ext4@vger.kernel.org>
+To: =?ISO-8859-1?Q?Cristian_Rodr=EDguez?= <crrodriguez@opensuse.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:36579 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751361Ab1BVWNK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 22 Feb 2011 17:13:10 -0500
-Content-Disposition: inline
-In-Reply-To: <386B23FA-CE6E-4D9C-9799-C121B2E8C3BB@dilger.ca>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:57090 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753430Ab1BVXe6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Feb 2011 18:34:58 -0500
+Received: by iyb26 with SMTP id 26so2349121iyb.19
+        for <linux-ext4@vger.kernel.org>; Tue, 22 Feb 2011 15:34:57 -0800 (PST)
+In-Reply-To: <4D644245.9000809@opensuse.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Feb 22, 2011 at 09:32:28AM -0700, Andreas Dilger wrote:
-> 
-> Any idea what the hash size does to memory usage?  I wonder if we
-> can scale this based on the directory count, or if the memory usage
-> is minimal (only needed in case of tdb) then just make it the
-> default. It definitely appears to have been a major performance
-> boost.
+On Tue, Feb 22, 2011 at 6:09 PM, Cristian Rodr=EDguez
+<crrodriguez@opensuse.org> wrote:
+> =A0Hi:
+>
+> =A0I get the error message in $Subject if I try to use /sbin/fstrim o=
+n all
+> =A0my filesystems BUT /boot which is the only one which is not encryp=
+ted.
+>
+> =A0How am I supposed to "trim" dm-crypt/LUKS volumes on an SSD device=
+ ?
+>
+> Thanks.
 
-Yeah, that was my question.  Your patch adds a magic number which
-probably works well on your machine (and I'm not really worried if
-someone has less than 1G --- here's a quarter kid, buy your self a
-real computer :-).  But I wonder if we should be using a hash size
-which is sized automatically depending on available memory or file
-system size.
+=46irst, trim is a nicety, not a 100% requirement.  The FITRIM ioctl wa=
+s
+just introduced in 2.6.37 and it does NOT work in all environments.
+ie. I don't think LVM / mdraid are supported either.  But they may
+just silently drop the trim commands in the block stack.
 
-					- Ted
+The main solution prior to 2.6.37 was wiper.sh from the hdparm
+package.  But it to had known limitations similar to those above.
+
+As to your real question
+I suspect that is a question you need to take to lkml or one of its
+sub-mailing lists.
+
+          linux-fsdevel@vger.kernel.org,
+          linux-ext4@vger.kernel.org
+
+I monitor the ext4 one and have not seen any discussion related to
+trimming dm-crypt/LUKS protected volumes that I recall.
+
+I also wonder if wiper.sh from hdparm would work with your
+filesystems.  Trouble is a failure may cause major data loss.  I have
+no idea of the odds, I'm just very nervous about unintentionally
+trimming the wrong sectors.
+
+Mark Lord is the maintainer of hdparm.  I've found him to be pretty
+responsive to questions about wiper.sh, so if you can't tell from the
+release notes, etc. I'd send him a email.
+
+Greg
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
