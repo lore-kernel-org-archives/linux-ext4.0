@@ -1,57 +1,64 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: fsck performance.
-Date: Tue, 22 Feb 2011 09:32:28 -0700
-Message-ID: <386B23FA-CE6E-4D9C-9799-C121B2E8C3BB@dilger.ca>
-References: <20110220193406.GC3017@thunk.org> <20110220215531.GA21917@bitwizard.nl> <20110220222013.GA2849@thunk.org> <20110220231514.GC21917@bitwizard.nl> <20110220234131.GC4001@thunk.org> <AANLkTikJs8mBHGvHkJAp-aC719aG6QSJaUH-uvwpx0JK@mail.gmail.com> <AANLkTinWOSBqkXhgOa4qdfK+iiLcJSP9LeZaYmUHH9KF@mail.gmail.com> <C5662C0F-10E3-4AC3-8ACA-4CBBF4F36D70@dilger.ca> <20110222102056.GH21917@bitwizard.nl> <20110222133652.GI21917@bitwizard.nl> <20110222135431.GK21917@bitwizard.nl>
-Mime-Version: 1.0 (iPhone Mail 8C148a)
-Content-Type: text/plain;
-	charset=us-ascii
+Subject: Re: ditching e4b->alloc_semp
+Date: Tue, 22 Feb 2011 10:18:59 -0700
+Message-ID: <6F62599D-3EC9-421C-AAD2-CFA6204A5F8C@dilger.ca>
+References: <AANLkTikSLsuiZGYaUKtQnMQNZ6Pj=K_RDkYtpK98ujy1@mail.gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 8BIT
-Cc: Rogier Wolff <R.E.Wolff@BitWizard.nl>,
-	Pawe?? Brodacki <pawel.brodacki@googlemail.com>,
-	Amir Goldstein <amir73il@gmail.com>, Ted Ts'o <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Rogier Wolff <R.E.Wolff@BitWizard.nl>
+Cc: Ted Ts'o <tytso@mit.edu>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from shawmail.shawcable.com ([64.59.128.220]:11068 "EHLO
-	mail.shawcable.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752967Ab1BVQmH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Feb 2011 11:42:07 -0500
-In-Reply-To: <20110222135431.GK21917@bitwizard.nl>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:29229 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752853Ab1BVRTA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Feb 2011 12:19:00 -0500
+In-Reply-To: <AANLkTikSLsuiZGYaUKtQnMQNZ6Pj=K_RDkYtpK98ujy1@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Roger,
-Any idea what the hash size does to memory usage?  I wonder if we can scale this based on the directory count, or if the memory usage is minimal (only needed in case of tdb) then just make it the default. It definitely appears to have been a major performance boost.
+On 2011-02-21, at 1:02 PM, Amir Goldstein wrote:
+> On Mon, Feb 14, 2011 at 11:22 PM, Amir Goldstein <amir73il@gmail.com> wrote:
+>> On Mon, Feb 14, 2011 at 9:58 PM, Ted Ts'o <tytso@mit.edu> wrote:
+>> 
+>>> One thing that comes to mind about your question with the
+>>> e4b->alloc_semp causing problems.  If the only reason why we need it
+>>> is to protect against multiple attempts to initialize different block
+>>> groups that share the same buddy bitmap, can we solve the problem by
+>>> ditching e4b->alloc_semp entirely, and simply using lock_page() on the
+>>> buddy bitmap page to protect it?
+>> 
+>> Perhaps. I imagine there is more than one elegant way to deal with that,
+>> but using a semaphore is not one of them.
+>> I will take a shot at evaporating e4b->alloc_semp.
+> 
+> After looking at the code a bit, I find that the only critical resource
+> that several groups may share on a single page is the Uptodate flag,
+> which is used to indicate that the buddy cache for *all* these groups
+> is loaded and lock_page() and get_page() are used to protect it.
+> 
+> There are 2 ways to eliminate this dependency:
+> 
+> 1. (AKA easy lane) use a single page (or more) per block group.
+> this will increase the memory usage for 1K blocks fs and for 2K block fs
+> on 8K page system, but are these use cases really that common?
 
-Another possible optuzatiom is to use the in-memory icount list (preferably with the patch to reduce realloc size) until the allocations fail and only then dump the list into tdb?  That would allow people to run with a swapfile configured by default, but only pay the cost of on-disk operations if really needed. 
+I think some distros may use 1kB block filesystems for root, where there are lots of small files.  I wonder if smolt would have this kind of info?
+
+> 2. (AKA hard lane) attach buffer heads to buddy page and use
+> buffer_uptodate() and buffer_lock() instead of PageUptodate() and lock_page()
+> to initialize buddy cache of groups that share the same page.
+> 
+> What do you say?
+> Shall I take easy lane?
+
+For flex_bg filesystems, it would probably make even more sense to just load all of the bitmaps for that page, since it won't waste any more memory or cause extra disk seeks.  I wonder what the memory vs. seek performance tradeoff is for 1k filesystems to load all the bitmaps even for the non-flex_bg case (i.e. would the second bitmap have been loaded anyway in most cases)?
 
 Cheers, Andreas
 
-On 2011-02-22, at 6:54, Rogier Wolff <R.E.Wolff@BitWizard.nl> wrote:
 
-> On Tue, Feb 22, 2011 at 02:36:52PM +0100, Rogier Wolff wrote:
->> On Tue, Feb 22, 2011 at 11:20:56AM +0100, Rogier Wolff wrote:
->>> I wouldn't be surprised if I'd need more than 3G of RAM. When I
->>> extrapolated "more than a few days" it was at under 20% of the
->>> filesystem and had already allocated on the order of 800Gb of
->>> memory. Now I'm not entirely sure that this is fair: memory use seems
->>> to go up quickly in the beginning, and then stabilize: as if it has
->>> decided that 800M of memory use is "acceptable" and somehow uses a
->>> different strategy once it hits that limit.
->> 
->> OK. Good news. It's finished pass1. It is currently using about 2100Mb
->> of RAM (ehh. mostly swap, I have only 1G in there). Here is the patch.
-> 
-> Forgot the patch. 
-> 
->    Roger. 
-> 
-> -- 
-> ** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
-> **    Delftechpark 26 2628 XH  Delft, The Netherlands. KVK: 27239233    **
-> *-- BitWizard writes Linux device drivers for any device you may have! --*
-> Q: It doesn't work. A: Look buddy, doesn't work is an ambiguous statement. 
-> Does it sit on the couch all day? Is it unemployed? Please be specific! 
-> Define 'it' and what it isn't doing. --------- Adapted from lxrbot FAQ
-> <cputimefix.patch>
+
+
+
