@@ -1,68 +1,47 @@
-From: Chris Mason <chris.mason@oracle.com>
-Subject: fiemap bugs on sparse files.
-Date: Tue, 22 Feb 2011 16:18:53 -0500
-Message-ID: <1298409435-sup-2565@think>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-To: linux-ext4 <linux-ext4@vger.kernel.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: fsck performance.
+Date: Tue, 22 Feb 2011 17:13:04 -0500
+Message-ID: <20110222221304.GH2924@thunk.org>
+References: <20110220222013.GA2849@thunk.org>
+ <20110220231514.GC21917@bitwizard.nl>
+ <20110220234131.GC4001@thunk.org>
+ <AANLkTikJs8mBHGvHkJAp-aC719aG6QSJaUH-uvwpx0JK@mail.gmail.com>
+ <AANLkTinWOSBqkXhgOa4qdfK+iiLcJSP9LeZaYmUHH9KF@mail.gmail.com>
+ <C5662C0F-10E3-4AC3-8ACA-4CBBF4F36D70@dilger.ca>
+ <20110222102056.GH21917@bitwizard.nl>
+ <20110222133652.GI21917@bitwizard.nl>
+ <20110222135431.GK21917@bitwizard.nl>
+ <386B23FA-CE6E-4D9C-9799-C121B2E8C3BB@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Rogier Wolff <R.E.Wolff@BitWizard.nl>,
+	Pawe?? Brodacki <pawel.brodacki@googlemail.com>,
+	Amir Goldstein <amir73il@gmail.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:56991 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753535Ab1BVVTJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Feb 2011 16:19:09 -0500
-Received: from rcsinet15.oracle.com (rcsinet15.oracle.com [148.87.113.117])
-	by rcsinet10.oracle.com (Switch-3.4.2/Switch-3.4.2) with ESMTP id p1MLJ38R009947
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Tue, 22 Feb 2011 21:19:04 GMT
-Received: from acsmt354.oracle.com (acsmt354.oracle.com [141.146.40.154])
-	by rcsinet15.oracle.com (Switch-3.4.2/Switch-3.4.1) with ESMTP id p1MAndtX025115
-	for <linux-ext4@vger.kernel.org>; Tue, 22 Feb 2011 21:18:57 GMT
+Received: from li9-11.members.linode.com ([67.18.176.11]:36579 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751361Ab1BVWNK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 22 Feb 2011 17:13:10 -0500
+Content-Disposition: inline
+In-Reply-To: <386B23FA-CE6E-4D9C-9799-C121B2E8C3BB@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-[ resend, sorry if this is a dup ]
+On Tue, Feb 22, 2011 at 09:32:28AM -0700, Andreas Dilger wrote:
+> 
+> Any idea what the hash size does to memory usage?  I wonder if we
+> can scale this based on the directory count, or if the memory usage
+> is minimal (only needed in case of tdb) then just make it the
+> default. It definitely appears to have been a major performance
+> boost.
 
-Hi everyone,
+Yeah, that was my question.  Your patch adds a magic number which
+probably works well on your machine (and I'm not really worried if
+someone has less than 1G --- here's a quarter kid, buy your self a
+real computer :-).  But I wonder if we should be using a hash size
+which is sized automatically depending on available memory or file
+system size.
 
-We've had reports on btrfs that cp is giving us files full of zeros
-instead of actually copying them.  It was tracked down to a bug with
-the btrfs fiemap implementation where it was returning holes for
-delalloc ranges.
-
-Newer versions of cp are trusting fiemap to tell it where the holes
-are, which does seem like a pretty neat trick.
-
-I decided to give xfs and ext4 a shot with a few tests cases too, xfs
-passed with all the ones btrfs was getting wrong, and ext4 got the basic
-delalloc case right.
-
-# mkfs.ext4 /dev/xxx
-# mount /dev/xxx /mnt
-# dd if=/dev/zero of=/mnt/foo bs=1M count=1
-# fiemap-test foo
-ext:   0 logical: [       0..     255] phys:        0..     255 flags: 0x007 tot: 256
-
-Horray!  But once we throw a hole in, things go bad:
-
-# mkfs.ext4 /dev/xxx
-# mount /dev/xxx /mnt
-# dd if=/dev/zero of=/mnt/foo bs=1M count=1 seek=1
-# fiemap-test foo
-< no output >
-
-We've got a delalloc extent after the hole and ext4 fiemap didn't find
-it.  If I run sync to kick the delalloc out:
-
-# sync
-# fiemap-test foo
-ext:   0 logical: [     256..     511] phys:    34048..   34303 flags: 0x001 tot: 256
-
-fiemap-test is sitting in my /usr/local/bin, and I have no idea how it
-got there.  It's full of pretty comments so I know it isn't mine, but
-you can grab it here:
-
-http://oss.oracle.com/~mason/fiemap-test.c
-
-xfsqa has a fiemap program too.
-
--chris
+					- Ted
