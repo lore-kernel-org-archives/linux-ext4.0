@@ -1,71 +1,88 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: [opensuse-factory] /sbin/fstrim: /home: FITRIM ioctl failed:
- Operation not supported
-Date: Tue, 22 Feb 2011 18:34:37 -0500
-Message-ID: <AANLkTi=sMAam8sa-QUxZKzeCev2JWqhc+HnhwC33wgUy@mail.gmail.com>
-References: <4D644245.9000809@opensuse.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: opensuse-factory <opensuse-factory@opensuse.org>,
-	ext4 <linux-ext4@vger.kernel.org>
-To: =?ISO-8859-1?Q?Cristian_Rodr=EDguez?= <crrodriguez@opensuse.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:57090 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753430Ab1BVXe6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Feb 2011 18:34:58 -0500
-Received: by iyb26 with SMTP id 26so2349121iyb.19
-        for <linux-ext4@vger.kernel.org>; Tue, 22 Feb 2011 15:34:57 -0800 (PST)
-In-Reply-To: <4D644245.9000809@opensuse.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Josh Hunt <johunt@akamai.com>
+Subject: [RFC][PATCH] ext2: Resolve i_nlink race in ext2_rename
+Date: Tue, 22 Feb 2011 15:42:18 -0800
+Message-ID: <1298418138-28797-1-git-send-email-johunt@akamai.com>
+Cc: sandeen@redhat.com, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Feb 22, 2011 at 6:09 PM, Cristian Rodr=EDguez
-<crrodriguez@opensuse.org> wrote:
-> =A0Hi:
->
-> =A0I get the error message in $Subject if I try to use /sbin/fstrim o=
-n all
-> =A0my filesystems BUT /boot which is the only one which is not encryp=
-ted.
->
-> =A0How am I supposed to "trim" dm-crypt/LUKS volumes on an SSD device=
- ?
->
-> Thanks.
+We have a multi-threaded workload which is currently "losing" files in the form
+of unattached inodes. The workload is link, rename, unlink intensive. This is
+happening on an ext2 filesystem and have reproduced the issue in kernel
+2.6.37.  Here's a sample strace:
 
-=46irst, trim is a nicety, not a 100% requirement.  The FITRIM ioctl wa=
-s
-just introduced in 2.6.37 and it does NOT work in all environments.
-ie. I don't think LVM / mdraid are supported either.  But they may
-just silently drop the trim commands in the block stack.
+    open("/a/tmp/tmpfile.1296184058", O_WRONLY|O_CREAT|O_TRUNC|O_LARGEFILE, 0666) = 9
+    link("/a/tmp/tmpfile.1296184058", "/a/tmp/tmpfile.28117.1296184059") = 0
+    rename("/a/tmp/tmpfile.28117.1296184059", "/a/tmp/tmpfile") = 0
+    stat64("/a/tmp/tmpfile", {st_mode=S_IFREG|0644, st_size=24248267, ...}) = 0
+    link("/a/tmp/tmpfile", "/a/tmp/submit/tmpfile")        = 0
+    open("/a/tmp/tmpfile.1296184058", O_RDONLY) = 13
+    open("/a/tmp/submit/tmpfile.send.q9SNoL", O_RDWR|O_CREAT|O_EXCL, 0600) = 824
+    rename("/a/tmp/submit/tmpfile", "/a/tmp/submit/tmpfile.send.q9SNoL")                = 0
+    unlink("/a/tmp/tmpfile.1296184058") = 0
+    open("/a/tmp/submit/tmpfile.send.q9SNoL", O_RDONLY) = 827
+    open("/a/tmp/submit/tmpfile.send.q9SNoL", O_RDONLY) = 828
+    open("/a/tmp/submit/tmpfile.send.q9SNoL", O_RDONLY) = 829
+    unlink("/a/tmp/submit/tmpfile.send.q9SNoL") = 0
 
-The main solution prior to 2.6.37 was wiper.sh from the hdparm
-package.  But it to had known limitations similar to those above.
+The application behavior shown above repeats indefinitely with most filenames
+changing during each iteration except for 'tmpfile'. Looking into this issue I
+see that vfs_rename_other() only takes i_mutex for the new inode and the new
+inode's directory as well as the old directory's mutex. This works for
+modifying the dir entry and appears to be fine for most filesystems, but
+ext2 and a few others (exofs, minix, nilfs2, omfs, sysv, ufs) modify i_nlink
+inside of their respective rename functions without grabbing the i_mutex. The
+modifications are done through calls to inode_inc_link_count(old_inode) and
+inode_dec_link_count(old_inode), etc.
 
-As to your real question
-I suspect that is a question you need to take to lkml or one of its
-sub-mailing lists.
+Taking the mutex for the old inode appears to resolve the issue of the
+lost files/unattached inodes that I am seeing with this workload. I've attached
+a patch below doing what I've described above. If this is an accepted solution
+I believe other filesystems may also be affected by this and I could provide
+a patch for those as well.
 
-          linux-fsdevel@vger.kernel.org,
-          linux-ext4@vger.kernel.org
+Thanks
+Josh
 
-I monitor the ext4 one and have not seen any discussion related to
-trimming dm-crypt/LUKS protected volumes that I recall.
+ext2_rename modifies old_inode's nlink values through inode_inc_link_count(old_inode) and inode_dec_link_count(old_inode) without holding old_inode's mutex. vfs_rename_other() only takes the mutex of the new inode and directory and old inode's directory. This causes old inode's nlink values to become incorrect and results in an unattached inode.
 
-I also wonder if wiper.sh from hdparm would work with your
-filesystems.  Trouble is a failure may cause major data loss.  I have
-no idea of the odds, I'm just very nervous about unintentionally
-trimming the wrong sectors.
+CC: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: Josh Hunt <johunt@akamai.com>
+---
+ fs/ext2/namei.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
 
-Mark Lord is the maintainer of hdparm.  I've found him to be pretty
-responsive to questions about wiper.sh, so if you can't tell from the
-release notes, etc. I'd send him a email.
-
-Greg
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
+index 2e1d834..827839a 100644
+--- a/fs/ext2/namei.c
++++ b/fs/ext2/namei.c
+@@ -321,6 +321,8 @@ static int ext2_rename (struct inode * old_dir, struct dentry * old_dentry,
+ 	dquot_initialize(old_dir);
+ 	dquot_initialize(new_dir);
+ 
++	mutex_lock(&old_inode->i_mutex);
++
+ 	old_de = ext2_find_entry (old_dir, &old_dentry->d_name, &old_page);
+ 	if (!old_de)
+ 		goto out;
+@@ -375,6 +377,7 @@ static int ext2_rename (struct inode * old_dir, struct dentry * old_dentry,
+ 
+ 	ext2_delete_entry (old_de, old_page);
+ 	inode_dec_link_count(old_inode);
++	mutex_unlock(&old_inode->i_mutex);
+ 
+ 	if (dir_de) {
+ 		if (old_dir != new_dir)
+@@ -397,6 +400,7 @@ out_old:
+ 	kunmap(old_page);
+ 	page_cache_release(old_page);
+ out:
++	mutex_unlock(&old_inode->i_mutex);
+ 	return err;
+ }
+ 
+-- 
+1.7.0.4
