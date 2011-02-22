@@ -1,93 +1,68 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: ditching e4b->alloc_semp
-Date: Tue, 22 Feb 2011 22:02:39 +0200
-Message-ID: <AANLkTi=a_p6euBjPsJJUgFp8cR+6tkHx4+iGjeTWAi2G@mail.gmail.com>
-References: <AANLkTikSLsuiZGYaUKtQnMQNZ6Pj=K_RDkYtpK98ujy1@mail.gmail.com>
-	<6F62599D-3EC9-421C-AAD2-CFA6204A5F8C@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Ted Ts'o" <tytso@mit.edu>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+From: Chris Mason <chris.mason@oracle.com>
+Subject: fiemap bugs on sparse files.
+Date: Tue, 22 Feb 2011 16:18:53 -0500
+Message-ID: <1298409435-sup-2565@think>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:39478 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754925Ab1BVUCm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Feb 2011 15:02:42 -0500
-Received: by qwd7 with SMTP id 7so3191257qwd.19
-        for <linux-ext4@vger.kernel.org>; Tue, 22 Feb 2011 12:02:40 -0800 (PST)
-In-Reply-To: <6F62599D-3EC9-421C-AAD2-CFA6204A5F8C@dilger.ca>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:56991 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753535Ab1BVVTJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Feb 2011 16:19:09 -0500
+Received: from rcsinet15.oracle.com (rcsinet15.oracle.com [148.87.113.117])
+	by rcsinet10.oracle.com (Switch-3.4.2/Switch-3.4.2) with ESMTP id p1MLJ38R009947
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Tue, 22 Feb 2011 21:19:04 GMT
+Received: from acsmt354.oracle.com (acsmt354.oracle.com [141.146.40.154])
+	by rcsinet15.oracle.com (Switch-3.4.2/Switch-3.4.1) with ESMTP id p1MAndtX025115
+	for <linux-ext4@vger.kernel.org>; Tue, 22 Feb 2011 21:18:57 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Feb 22, 2011 at 7:18 PM, Andreas Dilger <adilger@dilger.ca> wro=
-te:
-> On 2011-02-21, at 1:02 PM, Amir Goldstein wrote:
->> On Mon, Feb 14, 2011 at 11:22 PM, Amir Goldstein <amir73il@gmail.com=
-> wrote:
->>> On Mon, Feb 14, 2011 at 9:58 PM, Ted Ts'o <tytso@mit.edu> wrote:
->>>
->>>> One thing that comes to mind about your question with the
->>>> e4b->alloc_semp causing problems. =A0If the only reason why we nee=
-d it
->>>> is to protect against multiple attempts to initialize different bl=
-ock
->>>> groups that share the same buddy bitmap, can we solve the problem =
-by
->>>> ditching e4b->alloc_semp entirely, and simply using lock_page() on=
- the
->>>> buddy bitmap page to protect it?
->>>
->>> Perhaps. I imagine there is more than one elegant way to deal with =
-that,
->>> but using a semaphore is not one of them.
->>> I will take a shot at evaporating e4b->alloc_semp.
->>
->> After looking at the code a bit, I find that the only critical resou=
-rce
->> that several groups may share on a single page is the Uptodate flag,
->> which is used to indicate that the buddy cache for *all* these group=
-s
->> is loaded and lock_page() and get_page() are used to protect it.
->>
->> There are 2 ways to eliminate this dependency:
->>
->> 1. (AKA easy lane) use a single page (or more) per block group.
->> this will increase the memory usage for 1K blocks fs and for 2K bloc=
-k fs
->> on 8K page system, but are these use cases really that common?
->
-> I think some distros may use 1kB block filesystems for root, where th=
-ere are lots of small files. =A0I wonder if smolt would have this kind =
-of info?
->
->> 2. (AKA hard lane) attach buffer heads to buddy page and use
->> buffer_uptodate() and buffer_lock() instead of PageUptodate() and lo=
-ck_page()
->> to initialize buddy cache of groups that share the same page.
->>
->> What do you say?
->> Shall I take easy lane?
->
-> For flex_bg filesystems, it would probably make even more sense to ju=
-st load all of the bitmaps for that page, since it won't waste any more=
- memory or cause extra disk seeks. =A0I wonder what the memory vs. seek=
- performance tradeoff is for 1k filesystems to load all the bitmaps eve=
-n for the non-flex_bg case (i.e. would the second bitmap have been load=
-ed anyway in most cases)?
->
+[ resend, sorry if this is a dup ]
 
-I'm sorry. I don't follow. I see how disk seeks can be avoided if we
-load all bitmaps of a flex_bg,
-but there can be no more than 2 groups on a page (4 on 8k system).
-So what do I gain? My goal  is to remove the locking protection on
-allocations from different block groups.
+Hi everyone,
 
-Amir.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+We've had reports on btrfs that cp is giving us files full of zeros
+instead of actually copying them.  It was tracked down to a bug with
+the btrfs fiemap implementation where it was returning holes for
+delalloc ranges.
+
+Newer versions of cp are trusting fiemap to tell it where the holes
+are, which does seem like a pretty neat trick.
+
+I decided to give xfs and ext4 a shot with a few tests cases too, xfs
+passed with all the ones btrfs was getting wrong, and ext4 got the basic
+delalloc case right.
+
+# mkfs.ext4 /dev/xxx
+# mount /dev/xxx /mnt
+# dd if=/dev/zero of=/mnt/foo bs=1M count=1
+# fiemap-test foo
+ext:   0 logical: [       0..     255] phys:        0..     255 flags: 0x007 tot: 256
+
+Horray!  But once we throw a hole in, things go bad:
+
+# mkfs.ext4 /dev/xxx
+# mount /dev/xxx /mnt
+# dd if=/dev/zero of=/mnt/foo bs=1M count=1 seek=1
+# fiemap-test foo
+< no output >
+
+We've got a delalloc extent after the hole and ext4 fiemap didn't find
+it.  If I run sync to kick the delalloc out:
+
+# sync
+# fiemap-test foo
+ext:   0 logical: [     256..     511] phys:    34048..   34303 flags: 0x001 tot: 256
+
+fiemap-test is sitting in my /usr/local/bin, and I have no idea how it
+got there.  It's full of pretty comments so I know it isn't mine, but
+you can grab it here:
+
+http://oss.oracle.com/~mason/fiemap-test.c
+
+xfsqa has a fiemap program too.
+
+-chris
