@@ -1,43 +1,37 @@
-From: Rogier Wolff <R.E.Wolff@BitWizard.nl>
-Subject: Re: fsck performance.
-Date: Tue, 22 Feb 2011 14:36:52 +0100
-Message-ID: <20110222133652.GI21917@bitwizard.nl>
-References: <20110220170931.GB3017@thunk.org> <20110220193406.GC3017@thunk.org> <20110220215531.GA21917@bitwizard.nl> <20110220222013.GA2849@thunk.org> <20110220231514.GC21917@bitwizard.nl> <20110220234131.GC4001@thunk.org> <AANLkTikJs8mBHGvHkJAp-aC719aG6QSJaUH-uvwpx0JK@mail.gmail.com> <AANLkTinWOSBqkXhgOa4qdfK+iiLcJSP9LeZaYmUHH9KF@mail.gmail.com> <C5662C0F-10E3-4AC3-8ACA-4CBBF4F36D70@dilger.ca> <20110222102056.GH21917@bitwizard.nl>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 29402] kernel panics while running ffsb scalability workloads
+ on 2.6.38-rc1 through -rc5
+Date: Tue, 22 Feb 2011 13:43:12 GMT
+Message-ID: <201102221343.p1MDhCl5028413@demeter2.kernel.org>
+References: <bug-29402-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>,
-	Pawe?? Brodacki <pawel.brodacki@googlemail.com>,
-	Amir Goldstein <amir73il@gmail.com>, Ted Ts'o <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org
-To: Rogier Wolff <R.E.Wolff@BitWizard.nl>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from dtp.xs4all.nl ([80.101.171.8]:57737 "HELO abra2.bitwizard.nl"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-	id S1752041Ab1BVNgy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 22 Feb 2011 08:36:54 -0500
-Content-Disposition: inline
-In-Reply-To: <20110222102056.GH21917@bitwizard.nl>
+Received: from demeter2.kernel.org ([140.211.167.42]:46546 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751437Ab1BVNnM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Feb 2011 08:43:12 -0500
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p1MDhC8d028414
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 22 Feb 2011 13:43:12 GMT
+In-Reply-To: <bug-29402-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Feb 22, 2011 at 11:20:56AM +0100, Rogier Wolff wrote:
-> I wouldn't be surprised if I'd need more than 3G of RAM. When I
-> extrapolated "more than a few days" it was at under 20% of the
-> filesystem and had already allocated on the order of 800Gb of
-> memory. Now I'm not entirely sure that this is fair: memory use seems
-> to go up quickly in the beginning, and then stabilize: as if it has
-> decided that 800M of memory use is "acceptable" and somehow uses a
-> different strategy once it hits that limit.
+https://bugzilla.kernel.org/show_bug.cgi?id=29402
 
-OK. Good news. It's finished pass1. It is currently using about 2100Mb
-of RAM (ehh. mostly swap, I have only 1G in there). Here is the patch.
 
-	Roger. 
+
+
+
+--- Comment #5 from Lukas Czerner <lczerner@redhat.com>  2011-02-22 13:43:10 ---
+Created an attachment (id=48672)
+ --> (https://bugzilla.kernel.org/attachment.cgi?id=48672)
+Fix ordering patch
 
 -- 
-** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
-**    Delftechpark 26 2628 XH  Delft, The Netherlands. KVK: 27239233    **
-*-- BitWizard writes Linux device drivers for any device you may have! --*
-Q: It doesn't work. A: Look buddy, doesn't work is an ambiguous statement. 
-Does it sit on the couch all day? Is it unemployed? Please be specific! 
-Define 'it' and what it isn't doing. --------- Adapted from lxrbot FAQ
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
