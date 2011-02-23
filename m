@@ -1,39 +1,48 @@
-From: Hari Subramanian <hari@vmware.com>
-Subject: e2fsprogs/ext4 version compatibility
-Date: Wed, 23 Feb 2011 13:09:20 -0800
-Message-ID: <10FC03A59E498D4A90A45E4A105AD3ED02DCB0363A@EXCH-MBX-2.vmware.com>
+From: Milan Broz <mbroz@redhat.com>
+Subject: Re: [opensuse-factory] /sbin/fstrim: /home: FITRIM ioctl failed:
+ Operation not supported
+Date: Wed, 23 Feb 2011 23:20:57 +0100
+Message-ID: <4D658849.2010104@redhat.com>
+References: <4D644245.9000809@opensuse.org> <AANLkTi=sMAam8sa-QUxZKzeCev2JWqhc+HnhwC33wgUy@mail.gmail.com> <alpine.LFD.2.00.1102231119580.2934@dhcp-27-109.brq.redhat.com> <4D655C06.2080704@opensuse.org> <alpine.LFD.2.00.1102232117010.2934@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-outbound-1.vmware.com ([65.115.85.69]:18801 "EHLO
-	smtp-outbound-1.vmware.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753024Ab1BWVJW convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Feb 2011 16:09:22 -0500
-Received: from mailhost3.vmware.com (mailhost3.vmware.com [10.16.27.45])
-	by smtp-outbound-1.vmware.com (Postfix) with ESMTP id 40C4B130E1
-	for <linux-ext4@vger.kernel.org>; Wed, 23 Feb 2011 13:09:22 -0800 (PST)
-Received: from pa-exht01.vmware.com (pa-exht01.vmware.com [10.113.81.167])
-	by mailhost3.vmware.com (Postfix) with ESMTP id 38C76CD974
-	for <linux-ext4@vger.kernel.org>; Wed, 23 Feb 2011 13:09:22 -0800 (PST)
-Content-Language: en-US
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: =?UTF-8?B?Q3Jpc3RpYW4gUm9kcsOtZ3Vleg==?= <crrodriguez@opensuse.org>,
+	Greg Freemyer <greg.freemyer@gmail.com>,
+	opensuse-factory <opensuse-factory@opensuse.org>,
+	ext4 <linux-ext4@vger.kernel.org>, linux-fsdevel@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <alpine.LFD.2.00.1102232117010.2934@dhcp-27-109.brq.redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+On 02/23/2011 09:18 PM, Lukas Czerner wrote:
+>>> Now, there might be some way around this to allow trimming encrypted
+>>> volumes without serious security issue, but this is rather question for
+>>> dm-crypt guys.
+>>
+>> Maybe making work the "discard" mount option ?
 
-I'm running a SLES11 SP1 GA based kernel (2.6.32.23) with ext4 filesystem. The e2fsprogs package that's installed on the box is version 1.41.9 (22-Aug-2009). I was wondering if there was a version in compatibility between the filesystem implementation and the tools package, esp. since there have been 5 revisions of the package since 1.41.9
+There were discussion about TRIM on dm-crypt mailing list several times.
+one of it is here http://thread.gmane.org/gmane.linux.kernel.device-mapper.dm-crypt/4075/ )
 
-The reason I'm asking the question is my machine recently rebooted after a crash but fsck failed with an error code of 4 and the following message:
+Currently TRIM/discard is not intentionally supported on dm-crypt.
 
-"Inodes that were part of a corrupted orphan linked list found"
-"UNEXPECTED INCONSISTENCY: RUN fsck MANUALLY"
+Security aspects are obvious (leaking of used blocks at least).
 
-There were no files being created or deleted at the time of the crash although IOs were probably inflight. So, the inodes being a part of orphaned link list doesn't make sense to me. I don't claim deep knowledge in filesystem internals either. Before I go suspecting a corrupted filesystem, I wanted to make sure I was running the right version of fsck.
+The decision cannot be done in kernel automatically, you can have different
+policies, in some situation TRIM of encryption device is not problem,
+in other it can be disaster.
 
-Thanks in advance for your help!
-~ Hari
+So plan is to implement TRIM in dm-crypt but never enable it by default.
 
-P.S. I wasn't sure if this is the right forum to post this question but I couldn't find a e2fsprogs mailing list and linux-ext4 seemed like a good alternative. Sorry, if this is the wrong forum.
+You will be able to enable it per-device using device-mapper message
+with explicit user request.
+(we are using the same message mechanism for wiping/resuming key when
+freezing device).
+
+In future this can be flag for LUKS2 metadata but current version of LUKS
+doesn't allow such extensions.
+
+Milan
