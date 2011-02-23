@@ -1,56 +1,67 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 2/2] ext4: Adjust mineln with discard_granularity in
- FITRIM code
-Date: Wed, 23 Feb 2011 19:19:18 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1102231917520.2934@dhcp-27-109.brq.redhat.com>
-References: <1297789585-5986-1-git-send-email-lczerner@redhat.com> <1297789585-5986-2-git-send-email-lczerner@redhat.com> <20110223175835.GO2924@thunk.org>
+From: =?UTF-8?B?Q3Jpc3RpYW4gUm9kcsOtZ3Vleg==?= <crrodriguez@opensuse.org>
+Subject: Re: [opensuse-factory] /sbin/fstrim: /home: FITRIM ioctl failed:
+ Operation not supported
+Date: Wed, 23 Feb 2011 16:12:06 -0300
+Message-ID: <4D655C06.2080704@opensuse.org>
+References: <4D644245.9000809@opensuse.org> <AANLkTi=sMAam8sa-QUxZKzeCev2JWqhc+HnhwC33wgUy@mail.gmail.com> <alpine.LFD.2.00.1102231119580.2934@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Greg Freemyer <greg.freemyer@gmail.com>,
+	opensuse-factory <opensuse-factory@opensuse.org>,
+	ext4 <linux-ext4@vger.kernel.org>
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58703 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753601Ab1BWSTX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Feb 2011 13:19:23 -0500
-In-Reply-To: <20110223175835.GO2924@thunk.org>
+Received: from mail-px0-f174.google.com ([209.85.212.174]:39220 "EHLO
+	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932408Ab1BWTLE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Feb 2011 14:11:04 -0500
+Received: by pxi15 with SMTP id 15so470349pxi.19
+        for <linux-ext4@vger.kernel.org>; Wed, 23 Feb 2011 11:11:02 -0800 (PST)
+In-Reply-To: <alpine.LFD.2.00.1102231119580.2934@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 23 Feb 2011, Ted Ts'o wrote:
+El 23/02/11 07:28, Lukas Czerner escribi=C3=B3:
+> On Tue, 22 Feb 2011, Greg Freemyer wrote:
+>=20
+>> On Tue, Feb 22, 2011 at 6:09 PM, Cristian Rodr=C3=ADguez
+>> <crrodriguez@opensuse.org> wrote:
+>>>  Hi:
+>>>
+>>>  I get the error message in $Subject if I try to use /sbin/fstrim o=
+n all
+>>>  my filesystems BUT /boot which is the only one which is not encryp=
+ted.
+>>>
+>>>  How am I supposed to "trim" dm-crypt/LUKS volumes on an SSD device=
+ ?
+>>>
+>>> Thanks.
 
-> On Tue, Feb 15, 2011 at 06:06:25PM +0100, Lukas Czerner wrote:
-> > Discard granularity tells us the minimum size of extent to be discarded.
-> > Use that information to adjust minlen properly in FITRIM code. Smaller
-> > extents will be ignored anyway, so we can optimize by not even trying to
-> > discard them.
-> > 
-> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> 
-> Applied to the ext4 patch queue, with a rewritten commit description.
-> 
-> "Always write with a deep sympathy for the reader"
-> 
-> 	      	     	  	       - Ted
-> 
-> ext4: Adjust minlen with discard_granularity in the FITRIM ioctl
-> 
-> From: Lukas Czerner <lczerner@redhat.com>
-> 
-> Discard granularity tells us the minimum size of extent that can be
-> discard by the device.  If the user supplies a minimum extent that
-> should be discarded (range.minlen) which is smaller than the discard
-> granularity, increase minlen to the discard granularity, since there's
-> no point submitting trim requests that the device will reject anyway.
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> 
+Lukas, thanks for your answer.
 
-Hi Ted,
+> No NO NO! Big no to trimming encrypted filesystems! When you are
+> discarding blocks, the subsequent read from those blocks are usually =
+"well
+> defined" and hence you are giving away useful information for attacke=
+r
+> trying to decrypt your filesystem.=20
 
-thanks for merging and for the description. My English still needs a lot
-of practice :)
+I understand that there might be security issues, but so far, for this
+scenario the only kind of attacker from which I need to protect my
+desktop is from low-funded regular thieves that may break into my home
+office, unlikely that will get pass the volume password prompt ;-)
 
-Thanks!
--Lukas
+
+> Now, there might be some way around this to allow trimming encrypted
+> volumes without serious security issue, but this is rather question f=
+or
+> dm-crypt guys.
+
+Maybe making work the "discard" mount option ?
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
