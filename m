@@ -1,7 +1,7 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -V5 19/24] richacl: Automatic Inheritance
-Date: Wed, 23 Feb 2011 19:22:06 +0530
-Message-ID: <1298469131-16555-20-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V5 17/24] richacl: Create-time inheritance
+Date: Wed, 23 Feb 2011 19:22:04 +0530
+Message-ID: <1298469131-16555-18-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
 	linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -14,176 +14,193 @@ In-Reply-To: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Andreas Gruenbacher <agruen@suse.de>
+When a new file is created, it can inherit an acl from its parent
+directory; this is similar to how default acls work in POSIX (draft)
+ACLs.
 
-Automatic Inheritance (AI) allows changes to the acl of a directory to
-recursively propagate down to files and directories in the directory.
-
-To implement this, the kernel keeps track of which permissions have been
-inherited, and makes sure that permission propagation is turned off when
-the file permission bits of a file are changed (upon create or chmod).
-
-The actual permission propagation is implemented in user space.
-
-AI works as follows:
-
- - When the ACL4_AUTO_INHERIT flag in the acl of a file is cleared, the
-   file is not affected by AI.
-
- - When the ACL4_AUTO_INHERIT flag in the acl of a directory is set and
-   a file or subdirectory is created in that directory, files created in
-   the directory will have the ACL4_AUTO_INHERIT flag set, and all
-   inherited aces will have the ACE4_INHERITED_ACE flag set.  This
-   allows user space to distinguish between aces which have been
-   inherited, and aces which have been explicitly added.
-
- - When the ACL4_PROTECTED acl flag in the acl of a file is set, AI will
-   not modify the acl of the file.  This does not affect propagation of
-   permissions from the file to its children (if the file is a
-   directory).
-
-Linux does not have a way of creating files without setting the file
-permission bits, so all files created inside a directory with
-ACL4_AUTO_INHERIT set will also have the ACL4_PROTECTED flag set.  This
-effectively disables AI.
-
-Protocols which support creating files without specifying permissions
-can explicitly clear the ACL4_PROTECTED flag after creating a file (and
-reset the file masks to "undo" applying the create mode; see
-richacl_compute_max_masks()).  This is a workaround; a per-create or
-per-process flag indicating to ignore the create mode when AI is in
-effect would fix this problem.
+As with POSIX ACLs, if a file inherits an acl from its parent directory,
+the intersection between the create mode and the permissions granted by
+the inherited acl determines the file masks and file permission bits,
+and the umask is ignored.
 
 Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/richacl_base.c       |   10 +++++++++-
- fs/richacl_inode.c      |    7 ++++++-
- include/linux/richacl.h |   25 +++++++++++++++++++++++--
- 3 files changed, 38 insertions(+), 4 deletions(-)
+ fs/Makefile             |    2 +-
+ fs/richacl_base.c       |   69 +++++++++++++++++++++++++++++++++++++++++++++++
+ fs/richacl_inode.c      |   59 ++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl.h |    4 +++
+ 4 files changed, 133 insertions(+), 1 deletions(-)
+ create mode 100644 fs/richacl_inode.c
 
+diff --git a/fs/Makefile b/fs/Makefile
+index ed79438..e313219 100644
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -49,7 +49,7 @@ obj-$(CONFIG_NFS_COMMON)	+= nfs_common/
+ obj-$(CONFIG_GENERIC_ACL)	+= generic_acl.o
+ 
+ obj-$(CONFIG_FS_RICHACL)	+= richacl.o
+-richacl-y			:= richacl_base.o
++richacl-y			:= richacl_base.o richacl_inode.o
+ 
+ obj-y				+= quota/
+ 
 diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index e60440b..c064c90 100644
+index a6e3199..5e926ad 100644
 --- a/fs/richacl_base.c
 +++ b/fs/richacl_base.c
-@@ -377,7 +377,8 @@ richacl_chmod(struct richacl *acl, mode_t mode)
- 	if (acl->a_owner_mask == owner_mask &&
- 	    acl->a_group_mask == group_mask &&
- 	    acl->a_other_mask == other_mask &&
--	    (acl->a_flags & ACL4_MASKED))
-+	    (acl->a_flags & ACL4_MASKED) &&
-+	    (!richacl_is_auto_inherit(acl) || richacl_is_protected(acl)))
- 		return acl;
- 
- 	clone = richacl_clone(acl);
-@@ -389,6 +390,8 @@ richacl_chmod(struct richacl *acl, mode_t mode)
- 	clone->a_owner_mask = owner_mask;
- 	clone->a_group_mask = group_mask;
- 	clone->a_other_mask = other_mask;
-+	if (richacl_is_auto_inherit(clone))
-+		clone->a_flags |= ACL4_PROTECTED;
- 
- 	return clone;
+@@ -492,3 +492,72 @@ is_everyone:
+ 	return denied ? -EACCES : 0;
  }
-@@ -558,6 +561,11 @@ richacl_inherit(const struct richacl *dir_acl, int isdir)
- 			ace++;
- 		}
- 	}
-+	if (richacl_is_auto_inherit(dir_acl)) {
-+		acl->a_flags = ACL4_AUTO_INHERIT;
-+		richacl_for_each_entry(ace, acl)
-+			ace->e_flags |= ACE4_INHERITED_ACE;
+ EXPORT_SYMBOL_GPL(richacl_permission);
++
++/**
++ * richacl_inherit  -  compute the inherited acl of a new file
++ * @dir_acl:	acl of the containing direcory
++ * @isdir:	inherit by a directory or non-directory?
++ *
++ * A directory can have acl entries which files and/or directories created
++ * inside the directory will inherit.  This function computes the acl for such
++ * a new file.  If there is no inheritable acl, it will return %NULL.
++ */
++struct richacl *
++richacl_inherit(const struct richacl *dir_acl, int isdir)
++{
++	const struct richace *dir_ace;
++	struct richacl *acl = NULL;
++	struct richace *ace;
++	int count = 0;
++
++	if (isdir) {
++		richacl_for_each_entry(dir_ace, dir_acl) {
++			if (!richace_is_inheritable(dir_ace))
++				continue;
++			count++;
++		}
++		if (!count)
++			return NULL;
++		acl = richacl_alloc(count);
++		if (!acl)
++			return ERR_PTR(-ENOMEM);
++		ace = acl->a_entries;
++		richacl_for_each_entry(dir_ace, dir_acl) {
++			if (!richace_is_inheritable(dir_ace))
++				continue;
++			memcpy(ace, dir_ace, sizeof(struct richace));
++			if (dir_ace->e_flags & ACE4_NO_PROPAGATE_INHERIT_ACE)
++				richace_clear_inheritance_flags(ace);
++			if ((dir_ace->e_flags & ACE4_FILE_INHERIT_ACE) &&
++			    !(dir_ace->e_flags & ACE4_DIRECTORY_INHERIT_ACE))
++				ace->e_flags |= ACE4_INHERIT_ONLY_ACE;
++			ace++;
++		}
++	} else {
++		richacl_for_each_entry(dir_ace, dir_acl) {
++			if (!(dir_ace->e_flags & ACE4_FILE_INHERIT_ACE))
++				continue;
++			count++;
++		}
++		if (!count)
++			return NULL;
++		acl = richacl_alloc(count);
++		if (!acl)
++			return ERR_PTR(-ENOMEM);
++		ace = acl->a_entries;
++		richacl_for_each_entry(dir_ace, dir_acl) {
++			if (!(dir_ace->e_flags & ACE4_FILE_INHERIT_ACE))
++				continue;
++			memcpy(ace, dir_ace, sizeof(struct richace));
++			richace_clear_inheritance_flags(ace);
++			/*
++			 * ACE4_DELETE_CHILD is meaningless for
++			 * non-directories, so clear it.
++			 */
++			ace->e_mask &= ~ACE4_DELETE_CHILD;
++			ace++;
++		}
 +	}
- 
- 	return acl;
- }
++
++	return acl;
++}
 diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
-index 31e6925..5ae6326 100644
---- a/fs/richacl_inode.c
+new file mode 100644
+index 0000000..31e6925
+--- /dev/null
 +++ b/fs/richacl_inode.c
-@@ -37,9 +37,14 @@ richacl_inherit_inode(const struct richacl *dir_acl, struct inode *inode)
- 
- 	acl = richacl_inherit(dir_acl, S_ISDIR(inode->i_mode));
- 	if (acl) {
+@@ -0,0 +1,59 @@
++/*
++ * Copyright (C) 2010  Novell, Inc.
++ * Written by Andreas Gruenbacher <agruen@suse.de>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2, or (at your option) any
++ * later version.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
++
++#include <linux/sched.h>
++#include <linux/module.h>
++#include <linux/fs.h>
++#include <linux/richacl.h>
++
++/**
++ * richacl_inherit_inode  -  compute inherited acl and file mode
++ * @dir_acl:	acl of the containing direcory
++ * @inode:	inode of the new file (create mode in i_mode)
++ *
++ * The file permission bits in inode->i_mode must be set to the create mode.
++ * If there is an inheritable acl, the maximum permissions that the acl grants
++ * will be computed and permissions not granted by the acl will be removed from
++ * inode->i_mode.  If there is no inheritable acl, the umask will be applied
++ * instead.
++ */
++struct richacl *
++richacl_inherit_inode(const struct richacl *dir_acl, struct inode *inode)
++{
++	struct richacl *acl;
++	mode_t mask;
++
++	acl = richacl_inherit(dir_acl, S_ISDIR(inode->i_mode));
++	if (acl) {
++
++		richacl_compute_max_masks(acl);
++
 +		/*
-+		 * We need to set ACL4_PROTECTED because we are
-+		 * doing an implicit chmod
++		 * Ensure that the acl will not grant any permissions beyond
++		 * the create mode.
 +		 */
-+		if (richacl_is_auto_inherit(acl))
-+			acl->a_flags |= ACL4_PROTECTED;
- 
- 		richacl_compute_max_masks(acl);
--
- 		/*
- 		 * Ensure that the acl will not grant any permissions beyond
- 		 * the create mode.
++		acl->a_flags |= ACL4_MASKED;
++		acl->a_owner_mask &= richacl_mode_to_mask(inode->i_mode >> 6) |
++				     ACE4_POSIX_OWNER_ALLOWED;
++		acl->a_group_mask &= richacl_mode_to_mask(inode->i_mode >> 3);
++		acl->a_other_mask &= richacl_mode_to_mask(inode->i_mode);
++		mask = ~S_IRWXUGO | richacl_masks_to_mode(acl);
++	} else
++		mask = ~current_umask();
++
++	inode->i_mode &= mask;
++	return acl;
++}
++EXPORT_SYMBOL_GPL(richacl_inherit_inode);
 diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 12a79f1..23befbc 100644
+index c9d2761..630bf86 100644
 --- a/include/linux/richacl.h
 +++ b/include/linux/richacl.h
-@@ -47,10 +47,16 @@ struct richacl {
- 	     _ace != _acl->a_entries - 1; \
- 	     _ace--)
+@@ -291,5 +291,9 @@ extern void richacl_compute_max_masks(struct richacl *);
+ extern struct richacl *richacl_chmod(struct richacl *, mode_t);
+ extern int richacl_permission(struct inode *, const struct richacl *,
+ 			      unsigned int);
++extern struct richacl *richacl_inherit(const struct richacl *, int);
  
-+/* a_flags values */
-+#define ACL4_AUTO_INHERIT		0x01
-+#define ACL4_PROTECTED			0x02
-+/* #define ACL4_DEFAULTED			0x04 */
- /* Flag values defined by rich-acl */
- #define ACL4_MASKED			0x80
- 
- #define ACL4_VALID_FLAGS (			\
-+		ACL4_AUTO_INHERIT |		\
-+		ACL4_PROTECTED |		\
- 		ACL4_MASKED)
- 
- /* e_type values */
-@@ -67,6 +73,7 @@ struct richacl {
- /*#define ACE4_SUCCESSFUL_ACCESS_ACE_FLAG	0x0010*/
- /*#define ACE4_FAILED_ACCESS_ACE_FLAG	0x0020*/
- #define ACE4_IDENTIFIER_GROUP		0x0040
-+#define ACE4_INHERITED_ACE		0x0080
- /* in-memory representation only */
- #define ACE4_SPECIAL_WHO		0x4000
- 
-@@ -75,7 +82,8 @@ struct richacl {
- 	ACE4_DIRECTORY_INHERIT_ACE |		\
- 	ACE4_NO_PROPAGATE_INHERIT_ACE |		\
- 	ACE4_INHERIT_ONLY_ACE |			\
--	ACE4_IDENTIFIER_GROUP)
-+	ACE4_IDENTIFIER_GROUP |			\
-+	ACE4_INHERITED_ACE)
- 
- /* e_mask bitflags */
- #define ACE4_READ_DATA			0x00000001
-@@ -181,6 +189,18 @@ richacl_put(struct richacl *acl)
- 		kfree(acl);
- }
- 
-+static inline int
-+richacl_is_auto_inherit(const struct richacl *acl)
-+{
-+	return acl->a_flags & ACL4_AUTO_INHERIT;
-+}
-+
-+static inline int
-+richacl_is_protected(const struct richacl *acl)
-+{
-+	return acl->a_flags & ACL4_PROTECTED;
-+}
-+
- /*
-  * Special e_who identifiers: we use these pointer values in comparisons
-  * instead of doing a strcmp.
-@@ -259,7 +279,8 @@ richace_clear_inheritance_flags(struct richace *ace)
- 	ace->e_flags &= ~(ACE4_FILE_INHERIT_ACE |
- 			  ACE4_DIRECTORY_INHERIT_ACE |
- 			  ACE4_NO_PROPAGATE_INHERIT_ACE |
--			  ACE4_INHERIT_ONLY_ACE);
-+			  ACE4_INHERIT_ONLY_ACE |
-+			  ACE4_INHERITED_ACE);
- }
- 
- /**
++/* richacl_inode.c */
++extern struct richacl *richacl_inherit_inode(const struct richacl *,
++					     struct inode *);
+ #endif /* __RICHACL_H */
 -- 
 1.7.1
