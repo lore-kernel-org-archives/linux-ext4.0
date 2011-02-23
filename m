@@ -1,176 +1,106 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -V5 22/24] vfs: Cache richacl in struct inode
-Date: Wed, 23 Feb 2011 19:22:09 +0530
-Message-ID: <1298469131-16555-23-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
+Subject: [PATCH -V5 15/24] richacl: Update the file masks in chmod()
+Date: Wed, 23 Feb 2011 19:22:02 +0530
+Message-ID: <1298469131-16555-16-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-	linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Andreas Gruenbacher <agruen@suse.de>
-To: sfrench@us.ibm.com, agruen@linbit.com, dilger.kernel@dilger.ca,
-	sandeen@redhat.com, tytso@mit.edu, bfields@fieldses.org,
-	jlayton@redhat.com
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Cc: aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andreas Gruenbacher <agruen-l3A5Bk7waGM@public.gmane.org>
+To: sfrench-r/Jw6+rmf7HQT0dZR+AlfA@public.gmane.org, agruen-63ez5xqkn6DQT0dZR+AlfA@public.gmane.org, dilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org,
+	sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org,
+	jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <1298469131-16555-1-git-send-email-aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Andreas Gruenbacher <agruen@suse.de>
+From: Andreas Gruenbacher <agruen-l3A5Bk7waGM@public.gmane.org>
 
-Cache richacls in struct inode so that this doesn't have to be done
-individually in each filesystem.
+Doing a chmod() sets the file mode, which includes the file permission
+bits.  When a file has a richacl, the permissions that the richacl
+grants need to be limited to what the new file permission bits allow.
 
-Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+This is done by setting the file masks in the richacl to what the file
+permission bits map to.  The richacl access check algorithm takes the
+file masks into account, which ensures that the richacl cannot grant too
+many permissions.
+
+It is possible to explicitly add permissions to the file masks which go
+beyond what the file permission bits can grant (like the ACE4_WRITE_ACL
+permission).  The POSIX.1 standard calls this an alternate file access
+control mechanism.  A subsequent chmod() would ensure that those
+permissions are disabled again.
+
+Signed-off-by: Andreas Gruenbacher <agruen-l3A5Bk7waGM@public.gmane.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
 ---
- fs/inode.c              |   24 ++++++++++++++++----
- include/linux/fs.h      |   12 ++++++++-
- include/linux/richacl.h |   53 +++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 82 insertions(+), 7 deletions(-)
+ fs/richacl_base.c       |   40 ++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl.h |    1 +
+ 2 files changed, 41 insertions(+), 0 deletions(-)
 
-diff --git a/fs/inode.c b/fs/inode.c
-index da85e56..381edca 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -25,6 +25,7 @@
- #include <linux/async.h>
- #include <linux/posix_acl.h>
- #include <linux/ima.h>
-+#include <linux/richacl.h>
- 
- /*
-  * This is needed for the following functions:
-@@ -219,7 +220,12 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
- 	inode->i_private = NULL;
- 	inode->i_mapping = mapping;
- #ifdef CONFIG_FS_POSIX_ACL
--	inode->i_acl = inode->i_default_acl = ACL_NOT_CACHED;
-+	if (IS_POSIXACL(inode))
-+		inode->i_acl = inode->i_default_acl = ACL_NOT_CACHED;
-+#endif
-+#ifdef CONFIG_FS_RICHACL
-+	if (IS_RICHACL(inode))
-+		inode->i_richacl = ACL_NOT_CACHED;
- #endif
- 
- #ifdef CONFIG_FSNOTIFY
-@@ -269,10 +275,18 @@ void __destroy_inode(struct inode *inode)
- 	security_inode_free(inode);
- 	fsnotify_inode_delete(inode);
- #ifdef CONFIG_FS_POSIX_ACL
--	if (inode->i_acl && inode->i_acl != ACL_NOT_CACHED)
--		posix_acl_release(inode->i_acl);
--	if (inode->i_default_acl && inode->i_default_acl != ACL_NOT_CACHED)
--		posix_acl_release(inode->i_default_acl);
-+	if (IS_POSIXACL(inode)) {
-+		if (inode->i_acl != ACL_NOT_CACHED)
-+			posix_acl_release(inode->i_acl);
-+		if (inode->i_default_acl != ACL_NOT_CACHED)
-+			posix_acl_release(inode->i_default_acl);
-+	}
-+#endif
-+#ifdef CONFIG_FS_RICHACL
-+	if (IS_RICHACL(inode)) {
-+		if (inode->i_richacl != ACL_NOT_CACHED)
-+			richacl_put(inode->i_richacl);
-+	}
- #endif
- 	this_cpu_dec(nr_inodes);
+diff --git a/fs/richacl_base.c b/fs/richacl_base.c
+index 69ddb00..b59c75c 100644
+--- a/fs/richacl_base.c
++++ b/fs/richacl_base.c
+@@ -353,3 +353,43 @@ restart:
+ 	acl->a_flags &= ~ACL4_MASKED;
  }
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 1627592..77ce324 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -754,6 +754,7 @@ static inline int mapping_writably_mapped(struct address_space *mapping)
- #endif
- 
- struct posix_acl;
-+struct richacl;
- #define ACL_NOT_CACHED ((void *)(-1))
- 
- struct inode {
-@@ -824,10 +825,17 @@ struct inode {
- #ifdef CONFIG_SECURITY
- 	void			*i_security;
- #endif
-+	union {
- #ifdef CONFIG_FS_POSIX_ACL
--	struct posix_acl	*i_acl;
--	struct posix_acl	*i_default_acl;
-+		struct {
-+			struct posix_acl *i_acl;
-+			struct posix_acl *i_default_acl;
-+		};
- #endif
-+#ifdef CONFIG_FS_RICHACL
-+		struct richacl	*i_richacl;
-+#endif
-+	};
- 	void			*i_private; /* fs or device private pointer */
- };
- 
+ EXPORT_SYMBOL_GPL(richacl_compute_max_masks);
++
++/**
++ * richacl_chmod  -  update the file masks to reflect the new mode
++ * @mode:	new file permission bits
++ *
++ * Return a copy of @acl where the file masks have been replaced by the file
++ * masks corresponding to the file permission bits in @mode, or returns @acl
++ * itself if the file masks are already up to date.  Takes over a reference
++ * to @acl.
++ */
++struct richacl *
++richacl_chmod(struct richacl *acl, mode_t mode)
++{
++	unsigned int owner_mask, group_mask, other_mask;
++	struct richacl *clone;
++
++	owner_mask = richacl_mode_to_mask(mode >> 6) |
++		     ACE4_POSIX_OWNER_ALLOWED;
++	group_mask = richacl_mode_to_mask(mode >> 3);
++	other_mask = richacl_mode_to_mask(mode);
++
++	if (acl->a_owner_mask == owner_mask &&
++	    acl->a_group_mask == group_mask &&
++	    acl->a_other_mask == other_mask &&
++	    (acl->a_flags & ACL4_MASKED))
++		return acl;
++
++	clone = richacl_clone(acl);
++	richacl_put(acl);
++	if (!clone)
++		return ERR_PTR(-ENOMEM);
++
++	clone->a_flags |= ACL4_MASKED;
++	clone->a_owner_mask = owner_mask;
++	clone->a_group_mask = group_mask;
++	clone->a_other_mask = other_mask;
++
++	return clone;
++}
++EXPORT_SYMBOL_GPL(richacl_chmod);
 diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 23befbc..c788a91 100644
+index f491e59..3aa165b 100644
 --- a/include/linux/richacl.h
 +++ b/include/linux/richacl.h
-@@ -189,6 +189,59 @@ richacl_put(struct richacl *acl)
- 		kfree(acl);
- }
+@@ -288,5 +288,6 @@ extern int richacl_masks_to_mode(const struct richacl *);
+ extern unsigned int richacl_mode_to_mask(mode_t);
+ extern unsigned int richacl_want_to_mask(int);
+ extern void richacl_compute_max_masks(struct richacl *);
++extern struct richacl *richacl_chmod(struct richacl *, mode_t);
  
-+#ifdef CONFIG_FS_RICHACL
-+static inline struct richacl *get_cached_richacl(struct inode *inode)
-+{
-+	struct richacl **p, *acl;
-+
-+	p = &inode->i_richacl;
-+	acl = ACCESS_ONCE(*p);
-+	if (acl) {
-+		spin_lock(&inode->i_lock);
-+		acl = *p;
-+		if (acl != ACL_NOT_CACHED)
-+			acl = richacl_get(acl);
-+		spin_unlock(&inode->i_lock);
-+	}
-+	return acl;
-+}
-+
-+static inline void set_cached_richacl(struct inode *inode,
-+				      struct richacl *acl)
-+{
-+	struct richacl *old = NULL;
-+	spin_lock(&inode->i_lock);
-+	old = inode->i_richacl;
-+	inode->i_richacl = richacl_get(acl);
-+	spin_unlock(&inode->i_lock);
-+	if (old != ACL_NOT_CACHED)
-+		richacl_put(old);
-+}
-+
-+static inline void forget_cached_richacl(struct inode *inode)
-+{
-+	struct richacl *old = NULL;
-+	spin_lock(&inode->i_lock);
-+	old = inode->i_richacl;
-+	inode->i_richacl = ACL_NOT_CACHED;
-+	spin_unlock(&inode->i_lock);
-+	if (old != ACL_NOT_CACHED)
-+		richacl_put(old);
-+}
-+
-+static inline int negative_cached_richacl(struct inode *inode)
-+{
-+	struct richacl **p, *acl;
-+
-+	p = &inode->i_richacl;
-+	acl = ACCESS_ONCE(*p);
-+	if (acl)
-+		return 0;
-+	return 1;
-+}
-+
-+#endif
-+
- static inline int
- richacl_is_auto_inherit(const struct richacl *acl)
- {
+ #endif /* __RICHACL_H */
 -- 
 1.7.1
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
