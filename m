@@ -1,11 +1,11 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -V5 24/24] ext4: Add temporary richacl mount option for ext4
-Date: Wed, 23 Feb 2011 19:22:11 +0530
-Message-ID: <1298469131-16555-25-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V5 05/24] vfs: Add IS_RICHACL() test for richacl support
+Date: Wed, 23 Feb 2011 19:21:52 +0530
+Message-ID: <1298469131-16555-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
 	linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
+	linux-kernel@vger.kernel.org, Andreas Gruenbacher <agruen@suse.de>
 To: sfrench@us.ibm.com, agruen@linbit.com, dilger.kernel@dilger.ca,
 	sandeen@redhat.com, tytso@mit.edu, bfields@fieldses.org,
 	jlayton@redhat.com
@@ -14,125 +14,46 @@ In-Reply-To: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This helps in easy testing of the patchset. The mount
-option will be later removed in favour of a feature flag.
+From: Andreas Gruenbacher <agruen@suse.de>
 
-***Should be folded before merging***
+Introduce a new MS_RICHACL super-block flag and a new IS_RICHACL() test
+which file systems like nfs can use.  IS_ACL() is true if IS_POSIXACL()
+or IS_RICHACL() is true.
 
+Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/ext4/super.c |   52 +++++++++++++++++++++++++++++++++++++++++-----------
- 1 files changed, 41 insertions(+), 11 deletions(-)
+ include/linux/fs.h |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index adc97b7..9f3fe61 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1011,6 +1011,10 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
- 	if (!(sb->s_flags & MS_POSIXACL) && (def_mount_opts & EXT4_DEFM_ACL))
- 		seq_puts(seq, ",noacl");
- #endif
-+#ifdef CONFIG_EXT4_FS_RICHACL
-+	if (sb->s_flags & MS_RICHACL)
-+		seq_puts(seq, ",richacl");
-+#endif
- 	if (sbi->s_commit_interval != JBD2_DEFAULT_MAX_COMMIT_AGE*HZ) {
- 		seq_printf(seq, ",commit=%u",
- 			   (unsigned) (sbi->s_commit_interval / HZ));
-@@ -1262,6 +1266,7 @@ enum {
- 	Opt_dioread_nolock, Opt_dioread_lock,
- 	Opt_discard, Opt_nodiscard,
- 	Opt_init_inode_table, Opt_noinit_inode_table,
-+	Opt_richacl,
- };
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 70c7779..e542157 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -214,6 +214,7 @@ struct inodes_stat_t {
+ #define MS_KERNMOUNT	(1<<22) /* this is a kern_mount call */
+ #define MS_I_VERSION	(1<<23) /* Update inode I_version field */
+ #define MS_STRICTATIME	(1<<24) /* Always perform atime updates */
++#define MS_RICHACL	(1<<25) /* Supports richacls */
+ #define MS_BORN		(1<<29)
+ #define MS_ACTIVE	(1<<30)
+ #define MS_NOUSER	(1<<31)
+@@ -272,6 +273,7 @@ struct inodes_stat_t {
+ #define IS_APPEND(inode)	((inode)->i_flags & S_APPEND)
+ #define IS_IMMUTABLE(inode)	((inode)->i_flags & S_IMMUTABLE)
+ #define IS_POSIXACL(inode)	__IS_FLG(inode, MS_POSIXACL)
++#define IS_RICHACL(inode)	__IS_FLG(inode, MS_RICHACL)
  
- static const match_table_t tokens = {
-@@ -1337,6 +1342,7 @@ static const match_table_t tokens = {
- 	{Opt_init_inode_table, "init_itable=%u"},
- 	{Opt_init_inode_table, "init_itable"},
- 	{Opt_noinit_inode_table, "noinit_itable"},
-+	{Opt_richacl, "richacl"},
- 	{Opt_err, NULL},
- };
+ #define IS_DEADDIR(inode)	((inode)->i_flags & S_DEAD)
+ #define IS_NOCMTIME(inode)	((inode)->i_flags & S_NOCMTIME)
+@@ -284,7 +286,7 @@ struct inodes_stat_t {
+  * IS_ACL() tells the VFS to not apply the umask
+  * and use iop->check_acl for acl permission checks when defined.
+  */
+-#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL)
++#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL | MS_RICHACL)
  
-@@ -1363,6 +1369,35 @@ static ext4_fsblk_t get_sb_block(void **data)
- 	return sb_block;
- }
- 
-+static void enable_acl(struct super_block *sb)
-+{
-+#if !defined(CONFIG_EXT4_FS_POSIX_ACL)
-+	ext4_msg(sb, KERN_ERR, "acl options not supported");
-+	return;
-+#endif
-+	sb->s_flags |= MS_POSIXACL;
-+}
-+
-+static void disable_acl(struct super_block *sb)
-+{
-+#if !defined(CONFIG_EXT4_FS_POSIX_ACL)
-+	ext4_msg(sb, KERN_ERR, "acl options not supported");
-+	return;
-+#endif
-+	sb->s_flags &= ~MS_POSIXACL;
-+	return;
-+}
-+
-+static void enable_richacl(struct super_block *sb)
-+{
-+#if !defined(CONFIG_EXT4_FS_RICHACL)
-+	ext4_msg(sb, KERN_ERR, "richacl options not supported");
-+	return;
-+#endif
-+	sb->s_flags |= MS_RICHACL;
-+	return;
-+}
-+
- #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
- static char deprecated_msg[] = "Mount option \"%s\" will be removed by %s\n"
- 	"Contact linux-ext4@vger.kernel.org if you think we should keep it.\n";
-@@ -1527,19 +1562,12 @@ static int parse_options(char *options, struct super_block *sb,
- 			ext4_msg(sb, KERN_ERR, "(no)user_xattr options not supported");
- 			break;
- #endif
--#ifdef CONFIG_EXT4_FS_POSIX_ACL
- 		case Opt_acl:
--			sb->s_flags |= MS_POSIXACL;
-+			enable_acl(sb);
- 			break;
- 		case Opt_noacl:
--			sb->s_flags &= ~MS_POSIXACL;
-+			disable_acl(sb);
- 			break;
--#else
--		case Opt_acl:
--		case Opt_noacl:
--			ext4_msg(sb, KERN_ERR, "(no)acl options not supported");
--			break;
--#endif
- 		case Opt_journal_update:
- 			/* @@@ FIXME */
- 			/* Eventually we will want to be able to create
-@@ -1826,6 +1854,8 @@ set_qf_format:
- 			break;
- 		case Opt_noinit_inode_table:
- 			clear_opt(sb, INIT_INODE_TABLE);
-+		case Opt_richacl:
-+			enable_richacl(sb);
- 			break;
- 		default:
- 			ext4_msg(sb, KERN_ERR,
-@@ -3099,9 +3129,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	if (def_mount_opts & EXT4_DEFM_XATTR_USER)
- 		set_opt(sb, XATTR_USER);
- #endif
--#ifdef CONFIG_EXT4_FS_POSIX_ACL
-+#if defined(CONFIG_EXT4_FS_POSIX_ACL)
- 	if (def_mount_opts & EXT4_DEFM_ACL)
--		sb->s_flags |= MS_POSIXACL;
-+		enable_acl(sb);
- #endif
- 	if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_DATA)
- 		set_opt(sb, JOURNAL_DATA);
+ /* the read-only stuff doesn't really belong here, but any other place is
+    probably as bad and I don't want to create yet another include file. */
 -- 
 1.7.1
