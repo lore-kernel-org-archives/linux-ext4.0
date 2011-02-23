@@ -1,46 +1,53 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: fsck performance.
-Date: Wed, 23 Feb 2011 18:17:39 -0500
-Message-ID: <20110223231739.GS2924@thunk.org>
-References: <C5662C0F-10E3-4AC3-8ACA-4CBBF4F36D70@dilger.ca>
- <20110222102056.GH21917@bitwizard.nl>
- <20110222133652.GI21917@bitwizard.nl>
- <20110222135431.GK21917@bitwizard.nl>
- <386B23FA-CE6E-4D9C-9799-C121B2E8C3BB@dilger.ca>
- <20110222221304.GH2924@thunk.org>
- <20110223044427.GM21917@bitwizard.nl>
- <DC8EC4D5-BB64-4908-985B-C6D3EDA955E3@mit.edu>
- <20110223205309.GA16661@bitwizard.nl>
- <F03E2EAC-9D44-4D8E-93AC-902FDFC22B92@dilger.ca>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] ext4:Fix a bug in ext4_ext_fiemap_cb().
+Date: Wed, 23 Feb 2011 16:35:22 -0700
+Message-ID: <FDE557FB-8511-4CBB-A32D-2E5B82C71E4B@dilger.ca>
+References: <1298476779-27883-1-git-send-email-xiaoqiangnk@gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
 Content-Type: text/plain; charset=us-ascii
-Cc: Rogier Wolff <R.E.Wolff@bitwizard.nl>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Transfer-Encoding: 8BIT
+Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:56851 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753582Ab1BWXRq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Feb 2011 18:17:46 -0500
-Content-Disposition: inline
-In-Reply-To: <F03E2EAC-9D44-4D8E-93AC-902FDFC22B92@dilger.ca>
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:41402 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750993Ab1BWXfX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Feb 2011 18:35:23 -0500
+In-Reply-To: <1298476779-27883-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 23, 2011 at 03:24:18PM -0700, Andreas Dilger wrote:
+On 2011-02-23, at 8:59 AM, Yongqiang Yang wrote:
+> @@ -3788,17 +3788,27 @@ static int ext4_ext_fiemap_cb(struct inode *inode,
+> -	if (newex->ec_start == 0) {
+> +	if (!newex->ec_start) {
+
+(style) the original code is actually correct.  ec_start is not a boolean, so comparing it == 0 is actually the right thing to do.
+
+> @@ -3807,8 +3817,13 @@ static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
+> 		if (!bh)
+> 			return EXT_CONTINUE;
 > 
-> If you have the opportunity, I wonder whether the entire need for
-> tdb can be avoided in your case by using swap and the icount
-> optimization patches previously posted?  
+> +		/* Assume block-size equals page-size. */
 
-Unfortunately, there are people who are still using 32-bit CPU's, so
-no, swap is not a solution here.   
+This is not a valid assumption.
 
-> I'd really like to get that patch included upstream, but it needs
-> testing in an environment like yours where icount is a significant
-> factor.  This would avoid all of the tdb overhead.
+> 		if (buffer_delay(bh)) {
+> 			flags |= FIEMAP_EXTENT_DELALLOC;
+> +			if (page->index > offset) {
+> +				logical =  ((__u64)page->index << PAGE_SHIFT);
+> +				newex->ec_block = logical >> blksize_bits;
+> +			}	
 
-Adjusting the tdb hash parameters, and changing the tdb hash functions
-shouldn't be hard to get into upstream.  We should really improve our
-testing for [scratch files], but that's always been true....
+So, this assumes that the entire unmapped extent is described by the first page, but doesn't actually check whether all of the pages exist.  For the purpose of cp it might be OK, since at worst it means that cp will be reading from a hole in the source file.  However, I wonder if other applications will depend on the allocated extent being more accurate?
 
-	    	     	     	 	- Ted
+> +EXPORT_SYMBOL(find_get_pages);
+
+Eric had also suggested pagevec_lookup_tag(), which is already exported.
+
+Cheers, Andreas
+
+
+
+
+
