@@ -1,69 +1,100 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [opensuse-factory] /sbin/fstrim: /home: FITRIM ioctl failed:
- Operation not supported
-Date: Wed, 23 Feb 2011 21:18:51 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1102232117010.2934@dhcp-27-109.brq.redhat.com>
-References: <4D644245.9000809@opensuse.org> <AANLkTi=sMAam8sa-QUxZKzeCev2JWqhc+HnhwC33wgUy@mail.gmail.com> <alpine.LFD.2.00.1102231119580.2934@dhcp-27-109.brq.redhat.com> <4D655C06.2080704@opensuse.org>
+From: Rogier Wolff <R.E.Wolff@BitWizard.nl>
+Subject: Re: fsck performance.
+Date: Wed, 23 Feb 2011 21:53:09 +0100
+Message-ID: <20110223205309.GA16661@bitwizard.nl>
+References: <AANLkTikJs8mBHGvHkJAp-aC719aG6QSJaUH-uvwpx0JK@mail.gmail.com> <AANLkTinWOSBqkXhgOa4qdfK+iiLcJSP9LeZaYmUHH9KF@mail.gmail.com> <C5662C0F-10E3-4AC3-8ACA-4CBBF4F36D70@dilger.ca> <20110222102056.GH21917@bitwizard.nl> <20110222133652.GI21917@bitwizard.nl> <20110222135431.GK21917@bitwizard.nl> <386B23FA-CE6E-4D9C-9799-C121B2E8C3BB@dilger.ca> <20110222221304.GH2924@thunk.org> <20110223044427.GM21917@bitwizard.nl> <DC8EC4D5-BB64-4908-985B-C6D3EDA955E3@mit.edu>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="571140353-1650493836-1298492334=:2934"
-Cc: Lukas Czerner <lczerner@redhat.com>,
-	Greg Freemyer <greg.freemyer@gmail.com>,
-	opensuse-factory <opensuse-factory@opensuse.org>,
-	ext4 <linux-ext4@vger.kernel.org>, linux-fsdevel@vger.kernel.org
-To: =?ISO-8859-15?Q?Cristian_Rodr=EDguez?= <crrodriguez@opensuse.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <4D655C06.2080704@opensuse.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Rogier Wolff <R.E.Wolff@bitwizard.nl>, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@MIT.EDU>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from dtp.xs4all.nl ([80.101.171.8]:40321 "HELO abra2.bitwizard.nl"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
+	id S1752537Ab1BWUxM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 23 Feb 2011 15:53:12 -0500
+Content-Disposition: inline
+In-Reply-To: <DC8EC4D5-BB64-4908-985B-C6D3EDA955E3@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
-
---571140353-1650493836-1298492334=:2934
-Content-Type: TEXT/PLAIN; charset=UTF-8
-Content-Transfer-Encoding: 8BIT
-
-On Wed, 23 Feb 2011, Cristian Rodríguez wrote:
-
-> El 23/02/11 07:28, Lukas Czerner escribió:
-> > On Tue, 22 Feb 2011, Greg Freemyer wrote:
+On Wed, Feb 23, 2011 at 06:32:17AM -0500, Theodore Tso wrote:
+> 
+> On Feb 22, 2011, at 11:44 PM, Rogier Wolff wrote:
+> 
 > > 
-> >> On Tue, Feb 22, 2011 at 6:09 PM, Cristian Rodríguez
-> >> <crrodriguez@opensuse.org> wrote:
-> >>>  Hi:
-> >>>
-> >>>  I get the error message in $Subject if I try to use /sbin/fstrim on all
-> >>>  my filesystems BUT /boot which is the only one which is not encrypted.
-> >>>
-> >>>  How am I supposed to "trim" dm-crypt/LUKS volumes on an SSD device ?
-> >>>
-> >>> Thanks.
-> 
-> Lukas, thanks for your answer.
-> 
-> > No NO NO! Big no to trimming encrypted filesystems! When you are
-> > discarding blocks, the subsequent read from those blocks are usually "well
-> > defined" and hence you are giving away useful information for attacker
-> > trying to decrypt your filesystem. 
-> 
-> I understand that there might be security issues, but so far, for this
-> scenario the only kind of attacker from which I need to protect my
-> desktop is from low-funded regular thieves that may break into my home
-> office, unlikely that will get pass the volume password prompt ;-)
-> 
-> 
-> > Now, there might be some way around this to allow trimming encrypted
-> > volumes without serious security issue, but this is rather question for
-> > dm-crypt guys.
-> 
-> Maybe making work the "discard" mount option ?
-> --
+> > I'll shoot off an Email to the TDB guys as well. 
+ 
+> I'm pretty sure this won't come as a surprise to them.  I'm using
+> the last version of TDB which was licensed under the GPLv2, and they
+> relicensed to GPLv3 quite a while ago.  I remember hearing they had
+> added a new hash algorithm to TDB since the relicensing, but those
+> newer versions aren't available to e2fsprogs....
 
-This is really a question for dm-crypt/block layer guys.
-Adding linux-fsdevel@vger.kernel.org into cc.
+Well then.... 
 
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
---571140353-1650493836-1298492334=:2934--
+You're free to use my "new" hash function, provided it is kept under
+GPLv2 and not under GPLv3.
+
+My implementation has been a "cleanroom" implementation in that I've
+only looked at the specifications and implemented it from
+there. Although no external attestation is available that I have been
+completely shielded from the newer GPLv3 version... 
+
+On a slightly different note: 
+
+A pretty good estimate of the number of inodes is available in the
+superblock (tot inodes - free inodes). A good hash size would be: "a
+rough estimate of the number of inodes." Two or three times more or
+less doesn't matter much. CPU is cheap. I'm not sure what the
+estimate for the "dircount" tdb should be.
+
+The amount of disk space that the tdb will use is at least: 
+  overhead + hash_size * 4 + numrecords * (keysize + datasize +
+                                                 perrecordoverhead)
+
+There must also be some overhead to store the size of the keys and
+data as both can be variable length. By implementing the "database"
+ourselves we could optimize that out. I don't think it's worth the
+trouble. 
+
+With keysize equal 4, datasize also 4 and hash_size equal to numinodes
+or numrecords, we would get
+
+ overhead + numinodes * (12 + perrecordoverhead). 
+
+In fact, my icount database grew to about 750Mb, with only 23M inodes,
+so that means that apparently the perrecordoverhead is about 20 bytes.
+This is the price you pay for using a much more versatile database
+than what you really need. Disk is cheap (except when checking a root
+filesystem!)
+
+So... 
+
+-- I suggest that for the icount tdb we move to using the superblock
+info as the hash size.
+
+-- I suggest that we use our own hash function. tdb allows us to
+specify our own hash function. Instead of modifying the bad tdb, we'll
+just keep it intact, and pass a better (local) hash function.
+
+
+Does anybody know what the "dircount" tdb database holds, and what is
+an estimate for the number of elements eventually in the database?  (I
+could find out myself: I have the source. But I'm lazy. I'm a
+programmer you know...).
+
+
+On a separate note, my filesystem finished the fsck (33 hours (*)),
+and I started the backups again... :-)
+
+	Roger. 
+
+*) that might include an estimated 1-5 hours of "Fix <y>?" waiting.
+
+-- 
+** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
+**    Delftechpark 26 2628 XH  Delft, The Netherlands. KVK: 27239233    **
+*-- BitWizard writes Linux device drivers for any device you may have! --*
+Q: It doesn't work. A: Look buddy, doesn't work is an ambiguous statement. 
+Does it sit on the couch all day? Is it unemployed? Please be specific! 
+Define 'it' and what it isn't doing. --------- Adapted from lxrbot FAQ
