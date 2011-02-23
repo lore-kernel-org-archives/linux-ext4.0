@@ -1,75 +1,80 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
-Subject: [PATCH -V5 02/24] vfs: Pass all mask flags down to iop->check_acl
-Date: Wed, 23 Feb 2011 19:21:49 +0530
-Message-ID: <1298469131-16555-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andreas Gruenbacher <agruen-l3A5Bk7waGM@public.gmane.org>
-To: sfrench-r/Jw6+rmf7HQT0dZR+AlfA@public.gmane.org, agruen-63ez5xqkn6DQT0dZR+AlfA@public.gmane.org, dilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org,
-	sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org,
-	jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <1298469131-16555-1-git-send-email-aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: fiemap bugs on sparse files.
+Date: Wed, 23 Feb 2011 09:34:37 -0600
+Message-ID: <4D65290D.4040800@redhat.com>
+References: <1298409435-sup-2565@think>	<AANLkTikMhTM6c1=ihMj0XOZD0VYVLoHOeoGV4_7qvN=b@mail.gmail.com> <AANLkTikTet_Gw2kCQ8+j-qYVJgUc0dxKQ=kE295gcJR7@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Chris Mason <chris.mason@oracle.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:46466 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754090Ab1BWPem (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 23 Feb 2011 10:34:42 -0500
+In-Reply-To: <AANLkTikTet_Gw2kCQ8+j-qYVJgUc0dxKQ=kE295gcJR7@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen-l3A5Bk7waGM@public.gmane.org>
+On 2/23/11 3:34 AM, Yongqiang Yang wrote:
+> On Wed, Feb 23, 2011 at 4:59 PM, Yongqiang Yang <xiaoqiangnk@gmail.com> wrote:
+>> On Wed, Feb 23, 2011 at 5:18 AM, Chris Mason <chris.mason@oracle.com> wrote:
+>>> [ resend, sorry if this is a dup ]
+>>>
+>>> Hi everyone,
+>>>
+>>> We've had reports on btrfs that cp is giving us files full of zeros
+>>> instead of actually copying them.  It was tracked down to a bug with
+>>> the btrfs fiemap implementation where it was returning holes for
+>>> delalloc ranges.
+>>>
+>>> Newer versions of cp are trusting fiemap to tell it where the holes
+>>> are, which does seem like a pretty neat trick.
+>>>
+>>> I decided to give xfs and ext4 a shot with a few tests cases too, xfs
+>>> passed with all the ones btrfs was getting wrong, and ext4 got the basic
+>>> delalloc case right.
+>>>
+>>> # mkfs.ext4 /dev/xxx
+>>> # mount /dev/xxx /mnt
+>>> # dd if=/dev/zero of=/mnt/foo bs=1M count=1
+>>> # fiemap-test foo
+>>> ext:   0 logical: [       0..     255] phys:        0..     255 flags: 0x007 tot: 256
+>>>
+>>> Horray!  But once we throw a hole in, things go bad:
+>>>
+>>> # mkfs.ext4 /dev/xxx
+>>> # mount /dev/xxx /mnt
+>>> # dd if=/dev/zero of=/mnt/foo bs=1M count=1 seek=1
+>>> # fiemap-test foo
+>>> < no output >
+>> Actually, there is no extent in extent tree now, so
+>> ext4_ext_walk_space() will pass ext4_ext_fiemap_cb() a variable of
+>> struct ext4_ext_cache with the requested length. But in
+>> ext4_ext_fiemap_cb() just the paging contains start block is got
+>> via find_get_page(), if find_get_page() return null,
+>> ext4_ext_fiemap_cb()  thinks the whole request range is empty and it
+>> returns request range.
+>>
+>> In 1st case, find_get_page() will succeed.
+>>
+>> It seems that we should get no. of pages in page cache if
+>> find_get_page() fails, and correct the range to be returned.
+> We can call find_get_pages() with nr_pages=1 instead. And we can regulate
+> the range with page->index if it is not the the paging contains start block.
+> 
+> 
+>>
+>> Right?
+>>
+>> If right I will send a patch.
 
-Some file permission models differentiate between writing to a file
-(MAY_WRITE) and appending to it (MAY_WRITE | MAY_APPEND).  Pass all the
-mask flags down to iop->check_acl so that filesystems can distinguish
-between writing and appending.
+Your analysis is correct, the way it's working now is pretty broken (my fault I'm afraid)
 
-All users of iop->check_acl pass the mask value back into
-posix_acl_permission(); strip off the additional mask flags there.
+Right now we only look at the first page in a "gap" to see if it's delalloc; we need to search through any dirty pages in the gap, since the first page may be a hole, with delalloc ranges coming later.
 
-Signed-off-by: Andreas Gruenbacher <agruen-l3A5Bk7waGM@public.gmane.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
----
- fs/namei.c     |    4 +---
- fs/posix_acl.c |    2 ++
- 2 files changed, 3 insertions(+), 3 deletions(-)
+We need some variant of page cache search, yes.
 
-diff --git a/fs/namei.c b/fs/namei.c
-index b01eab8..f09ab1f 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -174,8 +174,6 @@ static int acl_permission_check(struct inode *inode, int mask, unsigned int flag
- {
- 	umode_t			mode = inode->i_mode;
- 
--	mask &= MAY_READ | MAY_WRITE | MAY_EXEC;
--
- 	if (current_fsuid() == inode->i_uid)
- 		mode >>= 6;
- 	else {
-@@ -192,7 +190,7 @@ static int acl_permission_check(struct inode *inode, int mask, unsigned int flag
- 	/*
- 	 * If the DACs are ok we don't need any capability check.
- 	 */
--	if ((mask & ~mode) == 0)
-+	if ((mask & (MAY_READ | MAY_WRITE | MAY_EXEC) & ~mode) == 0)
- 		return 0;
- 	return -EACCES;
- }
-diff --git a/fs/posix_acl.c b/fs/posix_acl.c
-index b1cf6bf..ad40df2 100644
---- a/fs/posix_acl.c
-+++ b/fs/posix_acl.c
-@@ -222,6 +222,8 @@ posix_acl_permission(struct inode *inode, const struct posix_acl *acl, int want)
- 	const struct posix_acl_entry *pa, *pe, *mask_obj;
- 	int found = 0;
- 
-+	want &= MAY_READ | MAY_WRITE | MAY_EXEC;
-+
- 	FOREACH_ACL_ENTRY(pa, acl, pe) {
-                 switch(pa->e_tag) {
-                         case ACL_USER_OBJ:
--- 
-1.7.1
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-Eric
