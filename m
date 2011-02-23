@@ -1,131 +1,93 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: ditching e4b->alloc_semp
-Date: Wed, 23 Feb 2011 11:54:55 +0200
-Message-ID: <AANLkTimb2qcAaxO8MTbbhNcf2bjfy8Q+6RCCdpQ3p_bX@mail.gmail.com>
-References: <AANLkTikSLsuiZGYaUKtQnMQNZ6Pj=K_RDkYtpK98ujy1@mail.gmail.com>
-	<6F62599D-3EC9-421C-AAD2-CFA6204A5F8C@dilger.ca>
-	<AANLkTi=a_p6euBjPsJJUgFp8cR+6tkHx4+iGjeTWAi2G@mail.gmail.com>
-	<6A9C4ED7-C0FF-4232-8E2D-D76855021E87@dilger.ca>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [opensuse-factory] /sbin/fstrim: /home: FITRIM ioctl failed:
+ Operation not supported
+Date: Wed, 23 Feb 2011 11:28:32 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1102231119580.2934@dhcp-27-109.brq.redhat.com>
+References: <4D644245.9000809@opensuse.org> <AANLkTi=sMAam8sa-QUxZKzeCev2JWqhc+HnhwC33wgUy@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Ted Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>
+Content-Type: MULTIPART/MIXED; BOUNDARY="571140353-2032693338-1298456914=:2934"
+Cc: =?ISO-8859-15?Q?Cristian_Rodr=EDguez?= <crrodriguez@opensuse.org>,
+	opensuse-factory <opensuse-factory@opensuse.org>,
+	ext4 <linux-ext4@vger.kernel.org>
+To: Greg Freemyer <greg.freemyer@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:49677 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751515Ab1BWJy6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Feb 2011 04:54:58 -0500
-Received: by qwd7 with SMTP id 7so3586752qwd.19
-        for <linux-ext4@vger.kernel.org>; Wed, 23 Feb 2011 01:54:57 -0800 (PST)
-In-Reply-To: <6A9C4ED7-C0FF-4232-8E2D-D76855021E87@dilger.ca>
+Received: from mx1.redhat.com ([209.132.183.28]:53214 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751017Ab1BWK2j (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 23 Feb 2011 05:28:39 -0500
+In-Reply-To: <AANLkTi=sMAam8sa-QUxZKzeCev2JWqhc+HnhwC33wgUy@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Feb 22, 2011 at 11:00 PM, Andreas Dilger <adilger@dilger.ca> wr=
-ote:
-> On 2011-02-22, at 1:02 PM, Amir Goldstein wrote:
->> On Tue, Feb 22, 2011 at 7:18 PM, Andreas Dilger <adilger@dilger.ca> =
-wrote:
->>> On 2011-02-21, at 1:02 PM, Amir Goldstein wrote:
->>>> After looking at the code a bit, I find that the only critical res=
-ource
->>>> that several groups may share on a single page is the Uptodate fla=
-g,
->>>> which is used to indicate that the buddy cache for *all* these gro=
-ups
->>>> is loaded and lock_page() and get_page() are used to protect it.
->>>>
->>>> There are 2 ways to eliminate this dependency:
->>>>
->>>> 1. (AKA easy lane) use a single page (or more) per block group.
->>>> this will increase the memory usage for 1K blocks fs and for 2K bl=
-ock fs
->>>> on 8K page system, but are these use cases really that common?
->>>
->>> I think some distros may use 1kB block filesystems for root, where =
-there are lots of small files. =A0I wonder if smolt would have this kin=
-d of info?
->>>
->>>> 2. (AKA hard lane) attach buffer heads to buddy page and use
->>>> buffer_uptodate() and buffer_lock() instead of PageUptodate() and =
-lock_page()
->>>> to initialize buddy cache of groups that share the same page.
->>>>
->>>> What do you say?
->>>> Shall I take easy lane?
->>>
->>> For flex_bg filesystems, it would probably make even more sense to =
-just load all of the bitmaps for that page, since it won't waste any mo=
-re memory or cause extra disk seeks. =A0I wonder what the memory vs. se=
-ek performance tradeoff is for 1k filesystems to load all the bitmaps e=
-ven for the non-flex_bg case (i.e. would the second bitmap have been lo=
-aded anyway in most cases)?
->>
->> I'm sorry. I don't follow. I see how disk seeks can be avoided if we
->> load all bitmaps of a flex_bg,
->> but there can be no more than 2 groups on a page (4 on 8k system).
->> So what do I gain? My goal =A0is to remove the locking protection on
->> allocations from different block groups.
->
-> My point was that the locking is necessary because we may be loading =
-multiple bitmaps into a single page at different times, making it diffi=
-cult to set PageUptodate at one time. =A0However, with flex_bg it is po=
-ssible to read both bitmap blocks into the same page at one time withou=
-t noticeably hurting performance, and possibly even improving performan=
-ce due to reduced disk operations. =A0Without flex_bg the benefit of re=
-ading all the bitmaps into a page at one time is less clear, because it=
- would seek to read each bitmap.
->
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-I'm afraid the the details of buddy cache initialization are a bit more=
- complex
-than the level of our discussion and you may be referring to other lock=
-s then
-the ones I am referring to (there are several levels of lockings).
+--571140353-2032693338-1298456914=:2934
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1
+Content-Transfer-Encoding: 8BIT
 
-I am trying to ditch the holding of down_read(grp->alloc_sem) throughou=
-t the
-time that buddy is loaded,
-because I find it to be an overkill and it interferes with snapshots CO=
-W.
+On Tue, 22 Feb 2011, Greg Freemyer wrote:
 
-In both options (i.e. easy lane or hard lane above), the page_lock() wi=
-ll be
-held during ext4_mb_init_cache() and down_write(grp->alloc_sem) of the =
-group
-ITSELF will be held during ext4_mb_init_group().
-In the buddy page buffers option, it is possible to read all blocks of =
-the same
-page at the same time and mark all buddy page buffers uptodate.
-Other groups on the same page will be able to skip the read from disk, =
-go
-straight to initializing phase and mark the buddy page buffers bitmap_u=
-ptodate
-on completion.
+> On Tue, Feb 22, 2011 at 6:09 PM, Cristian Rodríguez
+> <crrodriguez@opensuse.org> wrote:
+> >  Hi:
+> >
+> >  I get the error message in $Subject if I try to use /sbin/fstrim on all
+> >  my filesystems BUT /boot which is the only one which is not encrypted.
+> >
+> >  How am I supposed to "trim" dm-crypt/LUKS volumes on an SSD device ?
+> >
+> > Thanks.
 
-ext4_mb_load_buddy() would then check for !buffer_bitmap_uptodate() ins=
-tead
-of !PageUptodate(), before calling ext4_mb_init_cache().
+No NO NO! Big no to trimming encrypted filesystems! When you are
+discarding blocks, the subsequent read from those blocks are usually "well
+defined" and hence you are giving away useful information for attacker
+trying to decrypt your filesystem. And I do not think dm-crypt guys will
+ever allow this. wiper.sh might work, however you can as well give up on
+using encrypted filesystem.
 
-It's a bit complicated to explain without a patch and I will get to it.=
-=2E.
-I only wanted to know if I can take easy lane, since it is a lot less w=
-ork
-and I was not sure the little memory saved for 1K block fs is worth tha=
-t work.
+Now, there might be some way around this to allow trimming encrypted
+volumes without serious security issue, but this is rather question for
+dm-crypt guys.
 
-Easy lane will also be simplifying mballoc.c and reduce lines, whereas
-hard lane is
-likely to add more lines that it removes.
+Thanks!
+-Lukas
 
-Ted, can you please comment on the easy vs. hard choice?
 
-Thanks,
-Amir.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> First, trim is a nicety, not a 100% requirement.  The FITRIM ioctl was
+> just introduced in 2.6.37 and it does NOT work in all environments.
+> ie. I don't think LVM / mdraid are supported either.  But they may
+> just silently drop the trim commands in the block stack.
+> 
+> The main solution prior to 2.6.37 was wiper.sh from the hdparm
+> package.  But it to had known limitations similar to those above.
+> 
+> As to your real question
+> I suspect that is a question you need to take to lkml or one of its
+> sub-mailing lists.
+> 
+>           linux-fsdevel@vger.kernel.org,
+>           linux-ext4@vger.kernel.org
+> 
+> I monitor the ext4 one and have not seen any discussion related to
+> trimming dm-crypt/LUKS protected volumes that I recall.
+> 
+> I also wonder if wiper.sh from hdparm would work with your
+> filesystems.  Trouble is a failure may cause major data loss.  I have
+> no idea of the odds, I'm just very nervous about unintentionally
+> trimming the wrong sectors.
+> 
+> Mark Lord is the maintainer of hdparm.  I've found him to be pretty
+> responsive to questions about wiper.sh, so if you can't tell from the
+> release notes, etc. I'd send him a email.
+> 
+> Greg
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
+-- 
+--571140353-2032693338-1298456914=:2934--
