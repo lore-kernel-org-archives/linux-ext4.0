@@ -1,92 +1,75 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -V5 04/24] vfs: Add generic IS_ACL() test for acl support
-Date: Wed, 23 Feb 2011 19:21:51 +0530
-Message-ID: <1298469131-16555-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
+Subject: [PATCH -V5 02/24] vfs: Pass all mask flags down to iop->check_acl
+Date: Wed, 23 Feb 2011 19:21:49 +0530
+Message-ID: <1298469131-16555-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-	linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Andreas Gruenbacher <agruen@suse.de>
-To: sfrench@us.ibm.com, agruen@linbit.com, dilger.kernel@dilger.ca,
-	sandeen@redhat.com, tytso@mit.edu, bfields@fieldses.org,
-	jlayton@redhat.com
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Cc: aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andreas Gruenbacher <agruen-l3A5Bk7waGM@public.gmane.org>
+To: sfrench-r/Jw6+rmf7HQT0dZR+AlfA@public.gmane.org, agruen-63ez5xqkn6DQT0dZR+AlfA@public.gmane.org, dilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org,
+	sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org,
+	jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <1298469131-16555-1-git-send-email-aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Andreas Gruenbacher <agruen@suse.de>
+From: Andreas Gruenbacher <agruen-l3A5Bk7waGM@public.gmane.org>
 
-When IS_POSIXACL() is true, the vfs does not apply the umask.  Other acl
-models will need the same exception, so introduce a separate IS_ACL()
-test.
+Some file permission models differentiate between writing to a file
+(MAY_WRITE) and appending to it (MAY_WRITE | MAY_APPEND).  Pass all the
+mask flags down to iop->check_acl so that filesystems can distinguish
+between writing and appending.
 
-The IS_POSIX_ACL() test is still needed so that nfsd can determine when
-the underlying file system supports POSIX ACLs (as opposed to some other
-kind).
+All users of iop->check_acl pass the mask value back into
+posix_acl_permission(); strip off the additional mask flags there.
 
-Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Andreas Gruenbacher <agruen-l3A5Bk7waGM@public.gmane.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
 ---
- fs/namei.c         |    6 +++---
- include/linux/fs.h |    8 +++++++-
- 2 files changed, 10 insertions(+), 4 deletions(-)
+ fs/namei.c     |    4 +---
+ fs/posix_acl.c |    2 ++
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/fs/namei.c b/fs/namei.c
-index 0bfc546..b1e5104 100644
+index b01eab8..f09ab1f 100644
 --- a/fs/namei.c
 +++ b/fs/namei.c
-@@ -2161,7 +2161,7 @@ static int __open_namei_create(struct nameidata *nd, struct path *path,
- 	int error;
- 	struct dentry *dir = nd->path.dentry;
+@@ -174,8 +174,6 @@ static int acl_permission_check(struct inode *inode, int mask, unsigned int flag
+ {
+ 	umode_t			mode = inode->i_mode;
  
--	if (!IS_POSIXACL(dir->d_inode))
-+	if (!IS_ACL(dir->d_inode))
- 		mode &= ~current_umask();
- 	error = security_path_mknod(&nd->path, path->dentry, mode, 0);
- 	if (error)
-@@ -2691,7 +2691,7 @@ SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, int, mode,
- 		error = PTR_ERR(dentry);
- 		goto out_unlock;
- 	}
--	if (!IS_POSIXACL(nd.path.dentry->d_inode))
-+	if (!IS_ACL(nd.path.dentry->d_inode))
- 		mode &= ~current_umask();
- 	error = may_mknod(mode);
- 	if (error)
-@@ -2768,7 +2768,7 @@ SYSCALL_DEFINE3(mkdirat, int, dfd, const char __user *, pathname, int, mode)
- 	if (IS_ERR(dentry))
- 		goto out_unlock;
+-	mask &= MAY_READ | MAY_WRITE | MAY_EXEC;
+-
+ 	if (current_fsuid() == inode->i_uid)
+ 		mode >>= 6;
+ 	else {
+@@ -192,7 +190,7 @@ static int acl_permission_check(struct inode *inode, int mask, unsigned int flag
+ 	/*
+ 	 * If the DACs are ok we don't need any capability check.
+ 	 */
+-	if ((mask & ~mode) == 0)
++	if ((mask & (MAY_READ | MAY_WRITE | MAY_EXEC) & ~mode) == 0)
+ 		return 0;
+ 	return -EACCES;
+ }
+diff --git a/fs/posix_acl.c b/fs/posix_acl.c
+index b1cf6bf..ad40df2 100644
+--- a/fs/posix_acl.c
++++ b/fs/posix_acl.c
+@@ -222,6 +222,8 @@ posix_acl_permission(struct inode *inode, const struct posix_acl *acl, int want)
+ 	const struct posix_acl_entry *pa, *pe, *mask_obj;
+ 	int found = 0;
  
--	if (!IS_POSIXACL(nd.path.dentry->d_inode))
-+	if (!IS_ACL(nd.path.dentry->d_inode))
- 		mode &= ~current_umask();
- 	error = mnt_want_write(nd.path.mnt);
- 	if (error)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index bd32159..70c7779 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -205,7 +205,7 @@ struct inodes_stat_t {
- #define MS_VERBOSE	32768	/* War is peace. Verbosity is silence.
- 				   MS_VERBOSE is deprecated. */
- #define MS_SILENT	32768
--#define MS_POSIXACL	(1<<16)	/* VFS does not apply the umask */
-+#define MS_POSIXACL	(1<<16) /* Supports POSIX ACLs */
- #define MS_UNBINDABLE	(1<<17)	/* change to unbindable */
- #define MS_PRIVATE	(1<<18)	/* change to private */
- #define MS_SLAVE	(1<<19)	/* change to slave */
-@@ -280,6 +280,12 @@ struct inodes_stat_t {
- #define IS_IMA(inode)		((inode)->i_flags & S_IMA)
- #define IS_AUTOMOUNT(inode)	((inode)->i_flags & S_AUTOMOUNT)
- 
-+/*
-+ * IS_ACL() tells the VFS to not apply the umask
-+ * and use iop->check_acl for acl permission checks when defined.
-+ */
-+#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL)
++	want &= MAY_READ | MAY_WRITE | MAY_EXEC;
 +
- /* the read-only stuff doesn't really belong here, but any other place is
-    probably as bad and I don't want to create yet another include file. */
- 
+ 	FOREACH_ACL_ENTRY(pa, acl, pe) {
+                 switch(pa->e_tag) {
+                         case ACL_USER_OBJ:
 -- 
 1.7.1
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
