@@ -1,48 +1,56 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: enable acls and user_xattr by default
-Date: Wed, 23 Feb 2011 12:31:52 -0500
-Message-ID: <20110223173152.GM2924@thunk.org>
-References: <4D5ED705.7010902@redhat.com>
- <20110221134642.GC6584@quack.suse.cz>
- <4D629C78.60600@redhat.com>
+Subject: Re: [PATCH 1/2] ext4: check if device support discard in FITRIM
+ ioctl
+Date: Wed, 23 Feb 2011 12:50:23 -0500
+Message-ID: <20110223175023.GN2924@thunk.org>
+References: <1297789585-5986-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:50631 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:32864 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752073Ab1BWRb7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Feb 2011 12:31:59 -0500
+	id S1755378Ab1BWRu0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 23 Feb 2011 12:50:26 -0500
 Content-Disposition: inline
-In-Reply-To: <4D629C78.60600@redhat.com>
+In-Reply-To: <1297789585-5986-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 21, 2011 at 11:10:16AM -0600, Eric Sandeen wrote:
+On Tue, Feb 15, 2011 at 06:06:24PM +0100, Lukas Czerner wrote:
+> Right now we, are relying on the fact that when we attempt to actually do
+> the discard, blkdev_issue_discar() returns -EOPNOTSUPP and the user is
+> informed that the device does not support discard.
 > 
-> Well, I did this initially because Ted & Andreas seemed to want it ;)
+> However, in the case where the we do not hit any suitable free extent to
+> trim in FITRIM code, it will finish without any error. This is very
+> confusing, because it seems that FITRIM was successful even though the
+> device does not actually supports discard.
 > 
-> I think the idea is, we should move to deprecating and removing the options
-> altogether.  Is there any advantage to having them?  And the first step
-> to deprecating them might be to change the default.
+> Solution: Check for the discard support before attempt to search for
+> free extents.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
-Yeah, part of the whole goal is to reduce the number of mount options,
-since they have really gotten out of control.  Each mount option is
-another adds more to the test combinatorics nightmare.
-
-So basically, the question is how much value does the mount option
-add?  In fact changing acl's on and off can in fact cause surprises,
-since the posix acl's are designed to be safe when going from the
-noacl->acl case.  That is, the additional information in the posix
-acl's are designed to take away rights, but not add access rights.
-But that also means that if you have a file system that had ACL's to
-restrict access rights, and then you mount it without using the acl
-option, users who aren't supposed to have access to the file might
-find themselves with access.
-
-So changing things to have acl's on by default just seems to make
-sense....
+Added to the ext4 patch queue, but I rewrote the commit description to
+make it more understable.
 
 						- Ted
+
+ext4: check if device support discard in FITRIM ioctl
+
+From: Lukas Czerner <lczerner@redhat.com>
+
+For a device that does not support discard, the FITRIM ioctl returns
+-EOPNOTSUPP when blkdev_issue_discard() returns this error code, which
+is how the user is informed that the device does not support discard.
+
+If there are no suitable free extents to be trimmed, then FITRIM will
+return success even though the device does not support discard, which
+could confuse the user.  So check explicitly if the device supports
+discard and return an error code at the beginning of the FITRIM ioctl
+processing.
+
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
