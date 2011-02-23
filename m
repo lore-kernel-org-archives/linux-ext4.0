@@ -1,191 +1,189 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
-Subject: [PATCH -V5 14/24] richacl: Compute maximum file masks from an acl
-Date: Wed, 23 Feb 2011 19:22:01 +0530
-Message-ID: <1298469131-16555-15-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V5 19/24] richacl: Automatic Inheritance
+Date: Wed, 23 Feb 2011 19:22:06 +0530
+Message-ID: <1298469131-16555-20-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andreas Gruenbacher <agruen-l3A5Bk7waGM@public.gmane.org>
-To: sfrench-r/Jw6+rmf7HQT0dZR+AlfA@public.gmane.org, agruen-63ez5xqkn6DQT0dZR+AlfA@public.gmane.org, dilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org,
-	sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org,
-	jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <1298469131-16555-1-git-send-email-aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+	linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, Andreas Gruenbacher <agruen@suse.de>
+To: sfrench@us.ibm.com, agruen@linbit.com, dilger.kernel@dilger.ca,
+	sandeen@redhat.com, tytso@mit.edu, bfields@fieldses.org,
+	jlayton@redhat.com
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Andreas Gruenbacher <agruen-l3A5Bk7waGM@public.gmane.org>
+From: Andreas Gruenbacher <agruen@suse.de>
 
-Compute upper bound owner, group, and other file masks with as few
-permissions as possible without denying any permissions that the NFSv4
-acl in a richacl grants.
+Automatic Inheritance (AI) allows changes to the acl of a directory to
+recursively propagate down to files and directories in the directory.
 
-This algorithm is used when a file inherits an acl at create time and
-when an acl is set via a mechanism that does not specify file modes
-(such as via nfsd).  When user-space sets an acl, the file masks are
-passed in as part of the xattr.
+To implement this, the kernel keeps track of which permissions have been
+inherited, and makes sure that permission propagation is turned off when
+the file permission bits of a file are changed (upon create or chmod).
 
-When setting a richacl, the file masks determine what the file
-permission bits will be set to; see richacl_masks_to_mode().
+The actual permission propagation is implemented in user space.
 
-Signed-off-by: Andreas Gruenbacher <agruen-l3A5Bk7waGM@public.gmane.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
+AI works as follows:
+
+ - When the ACL4_AUTO_INHERIT flag in the acl of a file is cleared, the
+   file is not affected by AI.
+
+ - When the ACL4_AUTO_INHERIT flag in the acl of a directory is set and
+   a file or subdirectory is created in that directory, files created in
+   the directory will have the ACL4_AUTO_INHERIT flag set, and all
+   inherited aces will have the ACE4_INHERITED_ACE flag set.  This
+   allows user space to distinguish between aces which have been
+   inherited, and aces which have been explicitly added.
+
+ - When the ACL4_PROTECTED acl flag in the acl of a file is set, AI will
+   not modify the acl of the file.  This does not affect propagation of
+   permissions from the file to its children (if the file is a
+   directory).
+
+Linux does not have a way of creating files without setting the file
+permission bits, so all files created inside a directory with
+ACL4_AUTO_INHERIT set will also have the ACL4_PROTECTED flag set.  This
+effectively disables AI.
+
+Protocols which support creating files without specifying permissions
+can explicitly clear the ACL4_PROTECTED flag after creating a file (and
+reset the file masks to "undo" applying the create mode; see
+richacl_compute_max_masks()).  This is a workaround; a per-create or
+per-process flag indicating to ignore the create mode when AI is in
+effect would fix this problem.
+
+Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/richacl_base.c       |  128 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |    1 +
- 2 files changed, 129 insertions(+), 0 deletions(-)
+ fs/richacl_base.c       |   10 +++++++++-
+ fs/richacl_inode.c      |    7 ++++++-
+ include/linux/richacl.h |   25 +++++++++++++++++++++++--
+ 3 files changed, 38 insertions(+), 4 deletions(-)
 
 diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index 50ba645..69ddb00 100644
+index e60440b..c064c90 100644
 --- a/fs/richacl_base.c
 +++ b/fs/richacl_base.c
-@@ -225,3 +225,131 @@ richace_set_who(struct richace *ace, const char *who)
- 	return 0;
+@@ -377,7 +377,8 @@ richacl_chmod(struct richacl *acl, mode_t mode)
+ 	if (acl->a_owner_mask == owner_mask &&
+ 	    acl->a_group_mask == group_mask &&
+ 	    acl->a_other_mask == other_mask &&
+-	    (acl->a_flags & ACL4_MASKED))
++	    (acl->a_flags & ACL4_MASKED) &&
++	    (!richacl_is_auto_inherit(acl) || richacl_is_protected(acl)))
+ 		return acl;
+ 
+ 	clone = richacl_clone(acl);
+@@ -389,6 +390,8 @@ richacl_chmod(struct richacl *acl, mode_t mode)
+ 	clone->a_owner_mask = owner_mask;
+ 	clone->a_group_mask = group_mask;
+ 	clone->a_other_mask = other_mask;
++	if (richacl_is_auto_inherit(clone))
++		clone->a_flags |= ACL4_PROTECTED;
+ 
+ 	return clone;
  }
- EXPORT_SYMBOL_GPL(richace_set_who);
-+
-+/**
-+ * richacl_allowed_to_who  -  mask flags allowed to a specific who value
-+ *
-+ * Computes the mask values allowed to a specific who value, taking
-+ * EVERYONE@ entries into account.
-+ */
-+static unsigned int richacl_allowed_to_who(struct richacl *acl,
-+					   struct richace *who)
-+{
-+	struct richace *ace;
-+	unsigned int allowed = 0;
-+
-+	richacl_for_each_entry_reverse(ace, acl) {
-+		if (richace_is_inherit_only(ace))
-+			continue;
-+		if (richace_is_same_identifier(ace, who) ||
-+		    richace_is_everyone(ace)) {
-+			if (richace_is_allow(ace))
-+				allowed |= ace->e_mask;
-+			else if (richace_is_deny(ace))
-+				allowed &= ~ace->e_mask;
-+		}
+@@ -558,6 +561,11 @@ richacl_inherit(const struct richacl *dir_acl, int isdir)
+ 			ace++;
+ 		}
+ 	}
++	if (richacl_is_auto_inherit(dir_acl)) {
++		acl->a_flags = ACL4_AUTO_INHERIT;
++		richacl_for_each_entry(ace, acl)
++			ace->e_flags |= ACE4_INHERITED_ACE;
 +	}
-+	return allowed;
-+}
-+
-+/**
-+ * richacl_group_class_allowed  -  maximum permissions the group class is allowed
-+ *
-+ * See richacl_compute_max_masks().
-+ */
-+static unsigned int richacl_group_class_allowed(struct richacl *acl)
-+{
-+	struct richace *ace;
-+	unsigned int everyone_allowed = 0, group_class_allowed = 0;
-+	int had_group_ace = 0;
-+
-+	richacl_for_each_entry_reverse(ace, acl) {
-+		if (richace_is_inherit_only(ace) ||
-+		    richace_is_owner(ace))
-+			continue;
-+
-+		if (richace_is_everyone(ace)) {
-+			if (richace_is_allow(ace))
-+				everyone_allowed |= ace->e_mask;
-+			else if (richace_is_deny(ace))
-+				everyone_allowed &= ~ace->e_mask;
-+		} else {
-+			group_class_allowed |=
-+				richacl_allowed_to_who(acl, ace);
-+
-+			if (richace_is_group(ace))
-+				had_group_ace = 1;
-+		}
-+	}
-+	if (!had_group_ace)
-+		group_class_allowed |= everyone_allowed;
-+	return group_class_allowed;
-+}
-+
-+/**
-+ * richacl_compute_max_masks  -  compute upper bound masks
-+ *
-+ * Computes upper bound owner, group, and other masks so that none of
-+ * the mask flags allowed by the acl are disabled (for any choice of the
-+ * file owner or group membership).
-+ */
-+void richacl_compute_max_masks(struct richacl *acl)
-+{
-+	unsigned int gmask = ~0;
-+	struct richace *ace;
-+
-+	/*
-+	 * @gmask contains all permissions which the group class is ever
-+	 * allowed.  We use it to avoid adding permissions to the group mask
-+	 * from everyone@ allow aces which the group class is always denied
-+	 * through other aces.  For example, the following acl would otherwise
-+	 * result in a group mask or rw:
-+	 *
-+	 *	group@:w::deny
-+	 *	everyone@:rw::allow
-+	 *
-+	 * Avoid computing @gmask for acls which do not include any group class
-+	 * deny aces: in such acls, the group class is never denied any
-+	 * permissions from everyone@ allow aces.
-+	 */
-+
-+restart:
-+	acl->a_owner_mask = 0;
-+	acl->a_group_mask = 0;
-+	acl->a_other_mask = 0;
-+
-+	richacl_for_each_entry_reverse(ace, acl) {
-+		if (richace_is_inherit_only(ace))
-+			continue;
-+
-+		if (richace_is_owner(ace)) {
-+			if (richace_is_allow(ace))
-+				acl->a_owner_mask |= ace->e_mask;
-+			else if (richace_is_deny(ace))
-+				acl->a_owner_mask &= ~ace->e_mask;
-+		} else if (richace_is_everyone(ace)) {
-+			if (richace_is_allow(ace)) {
-+				acl->a_owner_mask |= ace->e_mask;
-+				acl->a_group_mask |= ace->e_mask & gmask;
-+				acl->a_other_mask |= ace->e_mask;
-+			} else if (richace_is_deny(ace)) {
-+				acl->a_owner_mask &= ~ace->e_mask;
-+				acl->a_group_mask &= ~ace->e_mask;
-+				acl->a_other_mask &= ~ace->e_mask;
-+			}
-+		} else {
-+			if (richace_is_allow(ace)) {
-+				acl->a_owner_mask |= ace->e_mask & gmask;
-+				acl->a_group_mask |= ace->e_mask & gmask;
-+			} else if (richace_is_deny(ace) && gmask == ~0) {
-+				gmask = richacl_group_class_allowed(acl);
-+				if (likely(gmask != ~0))
-+					/* should always be true */
-+					goto restart;
-+			}
-+		}
-+	}
-+
-+	acl->a_flags &= ~ACL4_MASKED;
-+}
-+EXPORT_SYMBOL_GPL(richacl_compute_max_masks);
+ 
+ 	return acl;
+ }
+diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
+index 31e6925..5ae6326 100644
+--- a/fs/richacl_inode.c
++++ b/fs/richacl_inode.c
+@@ -37,9 +37,14 @@ richacl_inherit_inode(const struct richacl *dir_acl, struct inode *inode)
+ 
+ 	acl = richacl_inherit(dir_acl, S_ISDIR(inode->i_mode));
+ 	if (acl) {
++		/*
++		 * We need to set ACL4_PROTECTED because we are
++		 * doing an implicit chmod
++		 */
++		if (richacl_is_auto_inherit(acl))
++			acl->a_flags |= ACL4_PROTECTED;
+ 
+ 		richacl_compute_max_masks(acl);
+-
+ 		/*
+ 		 * Ensure that the acl will not grant any permissions beyond
+ 		 * the create mode.
 diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 399dbc9..f491e59 100644
+index 12a79f1..23befbc 100644
 --- a/include/linux/richacl.h
 +++ b/include/linux/richacl.h
-@@ -287,5 +287,6 @@ extern int richace_set_who(struct richace *, const char *);
- extern int richacl_masks_to_mode(const struct richacl *);
- extern unsigned int richacl_mode_to_mask(mode_t);
- extern unsigned int richacl_want_to_mask(int);
-+extern void richacl_compute_max_masks(struct richacl *);
+@@ -47,10 +47,16 @@ struct richacl {
+ 	     _ace != _acl->a_entries - 1; \
+ 	     _ace--)
  
- #endif /* __RICHACL_H */
++/* a_flags values */
++#define ACL4_AUTO_INHERIT		0x01
++#define ACL4_PROTECTED			0x02
++/* #define ACL4_DEFAULTED			0x04 */
+ /* Flag values defined by rich-acl */
+ #define ACL4_MASKED			0x80
+ 
+ #define ACL4_VALID_FLAGS (			\
++		ACL4_AUTO_INHERIT |		\
++		ACL4_PROTECTED |		\
+ 		ACL4_MASKED)
+ 
+ /* e_type values */
+@@ -67,6 +73,7 @@ struct richacl {
+ /*#define ACE4_SUCCESSFUL_ACCESS_ACE_FLAG	0x0010*/
+ /*#define ACE4_FAILED_ACCESS_ACE_FLAG	0x0020*/
+ #define ACE4_IDENTIFIER_GROUP		0x0040
++#define ACE4_INHERITED_ACE		0x0080
+ /* in-memory representation only */
+ #define ACE4_SPECIAL_WHO		0x4000
+ 
+@@ -75,7 +82,8 @@ struct richacl {
+ 	ACE4_DIRECTORY_INHERIT_ACE |		\
+ 	ACE4_NO_PROPAGATE_INHERIT_ACE |		\
+ 	ACE4_INHERIT_ONLY_ACE |			\
+-	ACE4_IDENTIFIER_GROUP)
++	ACE4_IDENTIFIER_GROUP |			\
++	ACE4_INHERITED_ACE)
+ 
+ /* e_mask bitflags */
+ #define ACE4_READ_DATA			0x00000001
+@@ -181,6 +189,18 @@ richacl_put(struct richacl *acl)
+ 		kfree(acl);
+ }
+ 
++static inline int
++richacl_is_auto_inherit(const struct richacl *acl)
++{
++	return acl->a_flags & ACL4_AUTO_INHERIT;
++}
++
++static inline int
++richacl_is_protected(const struct richacl *acl)
++{
++	return acl->a_flags & ACL4_PROTECTED;
++}
++
+ /*
+  * Special e_who identifiers: we use these pointer values in comparisons
+  * instead of doing a strcmp.
+@@ -259,7 +279,8 @@ richace_clear_inheritance_flags(struct richace *ace)
+ 	ace->e_flags &= ~(ACE4_FILE_INHERIT_ACE |
+ 			  ACE4_DIRECTORY_INHERIT_ACE |
+ 			  ACE4_NO_PROPAGATE_INHERIT_ACE |
+-			  ACE4_INHERIT_ONLY_ACE);
++			  ACE4_INHERIT_ONLY_ACE |
++			  ACE4_INHERITED_ACE);
+ }
+ 
+ /**
 -- 
 1.7.1
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
