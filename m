@@ -1,7 +1,7 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -V5 21/24] ext4: Use IS_POSIXACL() to check for POSIX ACL support
-Date: Wed, 23 Feb 2011 19:22:08 +0530
-Message-ID: <1298469131-16555-22-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V5 20/24] richacl: xattr mapping functions
+Date: Wed, 23 Feb 2011 19:22:07 +0530
+Message-ID: <1298469131-16555-21-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
 	linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -14,162 +14,247 @@ In-Reply-To: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Use IS_POSIXACL() instead of a file system specific mount flag since we
-have IS_POSIXACL() in the vfs already, anyway.
+From: Andreas Gruenbacher <agruen@suse.de>
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Map between "system.richacl" xattrs and the in-kernel representation.
+
 Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/ext4/acl.c   |   16 ++++++++--------
- fs/ext4/ext4.h  |    1 -
- fs/ext4/super.c |   16 +++++-----------
- 3 files changed, 13 insertions(+), 20 deletions(-)
+ fs/Makefile                   |    2 +-
+ fs/richacl_xattr.c            |  156 +++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl_xattr.h |   47 ++++++++++++
+ 3 files changed, 204 insertions(+), 1 deletions(-)
+ create mode 100644 fs/richacl_xattr.c
+ create mode 100644 include/linux/richacl_xattr.h
 
-diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
-index e0270d1..364514c 100644
---- a/fs/ext4/acl.c
-+++ b/fs/ext4/acl.c
-@@ -139,7 +139,7 @@ ext4_get_acl(struct inode *inode, int type)
- 	struct posix_acl *acl;
- 	int retval;
+diff --git a/fs/Makefile b/fs/Makefile
+index e313219..4e52702 100644
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -49,7 +49,7 @@ obj-$(CONFIG_NFS_COMMON)	+= nfs_common/
+ obj-$(CONFIG_GENERIC_ACL)	+= generic_acl.o
  
--	if (!test_opt(inode->i_sb, POSIX_ACL))
-+	if (!IS_POSIXACL(inode))
- 		return NULL;
+ obj-$(CONFIG_FS_RICHACL)	+= richacl.o
+-richacl-y			:= richacl_base.o richacl_inode.o
++richacl-y			:= richacl_base.o richacl_inode.o richacl_xattr.o
  
- 	acl = get_cached_acl(inode, type);
-@@ -273,7 +273,7 @@ ext4_init_acl(handle_t *handle, struct inode *inode, struct inode *dir)
- 	int error = 0;
+ obj-y				+= quota/
  
- 	if (!S_ISLNK(inode->i_mode)) {
--		if (test_opt(dir->i_sb, POSIX_ACL)) {
-+		if (IS_POSIXACL(inode)) {
- 			acl = ext4_get_acl(dir, ACL_TYPE_DEFAULT);
- 			if (IS_ERR(acl))
- 				return PTR_ERR(acl);
-@@ -281,7 +281,7 @@ ext4_init_acl(handle_t *handle, struct inode *inode, struct inode *dir)
- 		if (!acl)
- 			inode->i_mode &= ~current_umask();
- 	}
--	if (test_opt(inode->i_sb, POSIX_ACL) && acl) {
-+	if (IS_POSIXACL(inode) && acl) {
- 		struct posix_acl *clone;
- 		mode_t mode;
- 
-@@ -335,7 +335,7 @@ ext4_acl_chmod(struct inode *inode)
- 
- 	if (S_ISLNK(inode->i_mode))
- 		return -EOPNOTSUPP;
--	if (!test_opt(inode->i_sb, POSIX_ACL))
-+	if (!IS_POSIXACL(inode))
- 		return 0;
- 	acl = ext4_get_acl(inode, ACL_TYPE_ACCESS);
- 	if (IS_ERR(acl) || !acl)
-@@ -377,7 +377,7 @@ ext4_xattr_list_acl_access(struct dentry *dentry, char *list, size_t list_len,
- {
- 	const size_t size = sizeof(POSIX_ACL_XATTR_ACCESS);
- 
--	if (!test_opt(dentry->d_sb, POSIX_ACL))
-+	if (!IS_POSIXACL(dentry->d_inode))
- 		return 0;
- 	if (list && size <= list_len)
- 		memcpy(list, POSIX_ACL_XATTR_ACCESS, size);
-@@ -390,7 +390,7 @@ ext4_xattr_list_acl_default(struct dentry *dentry, char *list, size_t list_len,
- {
- 	const size_t size = sizeof(POSIX_ACL_XATTR_DEFAULT);
- 
--	if (!test_opt(dentry->d_sb, POSIX_ACL))
-+	if (!IS_POSIXACL(dentry->d_inode))
- 		return 0;
- 	if (list && size <= list_len)
- 		memcpy(list, POSIX_ACL_XATTR_DEFAULT, size);
-@@ -406,7 +406,7 @@ ext4_xattr_get_acl(struct dentry *dentry, const char *name, void *buffer,
- 
- 	if (strcmp(name, "") != 0)
- 		return -EINVAL;
--	if (!test_opt(dentry->d_sb, POSIX_ACL))
-+	if (!IS_POSIXACL(dentry->d_inode))
- 		return -EOPNOTSUPP;
- 
- 	acl = ext4_get_acl(dentry->d_inode, type);
-@@ -431,7 +431,7 @@ ext4_xattr_set_acl(struct dentry *dentry, const char *name, const void *value,
- 
- 	if (strcmp(name, "") != 0)
- 		return -EINVAL;
--	if (!test_opt(inode->i_sb, POSIX_ACL))
-+	if (!IS_POSIXACL(dentry->d_inode))
- 		return -EOPNOTSUPP;
- 	if (!is_owner_or_cap(inode))
- 		return -EPERM;
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 3aa0b72..5d1f56a 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -892,7 +892,6 @@ struct ext4_inode_info {
- #define EXT4_MOUNT_UPDATE_JOURNAL	0x01000	/* Update the journal format */
- #define EXT4_MOUNT_NO_UID32		0x02000  /* Disable 32-bit UIDs */
- #define EXT4_MOUNT_XATTR_USER		0x04000	/* Extended user attributes */
--#define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
- #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mapping */
- #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
- #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index f6a318f..adc97b7 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1006,9 +1006,9 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
- 	}
- #endif
- #ifdef CONFIG_EXT4_FS_POSIX_ACL
--	if (test_opt(sb, POSIX_ACL) && !(def_mount_opts & EXT4_DEFM_ACL))
-+	if ((sb->s_flags & MS_POSIXACL) && !(def_mount_opts & EXT4_DEFM_ACL))
- 		seq_puts(seq, ",acl");
--	if (!test_opt(sb, POSIX_ACL) && (def_mount_opts & EXT4_DEFM_ACL))
-+	if (!(sb->s_flags & MS_POSIXACL) && (def_mount_opts & EXT4_DEFM_ACL))
- 		seq_puts(seq, ",noacl");
- #endif
- 	if (sbi->s_commit_interval != JBD2_DEFAULT_MAX_COMMIT_AGE*HZ) {
-@@ -1529,10 +1529,10 @@ static int parse_options(char *options, struct super_block *sb,
- #endif
- #ifdef CONFIG_EXT4_FS_POSIX_ACL
- 		case Opt_acl:
--			set_opt(sb, POSIX_ACL);
-+			sb->s_flags |= MS_POSIXACL;
- 			break;
- 		case Opt_noacl:
--			clear_opt(sb, POSIX_ACL);
-+			sb->s_flags &= ~MS_POSIXACL;
- 			break;
- #else
- 		case Opt_acl:
-@@ -3101,7 +3101,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- #endif
- #ifdef CONFIG_EXT4_FS_POSIX_ACL
- 	if (def_mount_opts & EXT4_DEFM_ACL)
--		set_opt(sb, POSIX_ACL);
-+		sb->s_flags |= MS_POSIXACL;
- #endif
- 	if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_DATA)
- 		set_opt(sb, JOURNAL_DATA);
-@@ -3148,9 +3148,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 			   &journal_ioprio, NULL, 0))
- 		goto failed_mount;
- 
--	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
--		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
--
- 	if (le32_to_cpu(es->s_rev_level) == EXT4_GOOD_OLD_REV &&
- 	    (EXT4_HAS_COMPAT_FEATURE(sb, ~0U) ||
- 	     EXT4_HAS_RO_COMPAT_FEATURE(sb, ~0U) ||
-@@ -4235,9 +4232,6 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 	if (sbi->s_mount_flags & EXT4_MF_FS_ABORTED)
- 		ext4_abort(sb, "Abort forced by user");
- 
--	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
--		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
--
- 	es = sbi->s_es;
- 
- 	if (sbi->s_journal) {
+diff --git a/fs/richacl_xattr.c b/fs/richacl_xattr.c
+new file mode 100644
+index 0000000..51d1c3c
+--- /dev/null
++++ b/fs/richacl_xattr.c
+@@ -0,0 +1,156 @@
++/*
++ * Copyright (C) 2006, 2010  Novell, Inc.
++ * Written by Andreas Gruenbacher <agruen@suse.de>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2, or (at your option) any
++ * later version.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
++
++#include <linux/kernel.h>
++#include <linux/fs.h>
++#include <linux/slab.h>
++#include <linux/module.h>
++#include <linux/richacl_xattr.h>
++
++MODULE_LICENSE("GPL");
++
++/**
++ * richacl_from_xattr  -  convert a richacl xattr into the in-memory representation
++ */
++struct richacl *
++richacl_from_xattr(const void *value, size_t size)
++{
++	const struct richacl_xattr *xattr_acl = value;
++	const struct richace_xattr *xattr_ace = (void *)(xattr_acl + 1);
++	struct richacl *acl;
++	struct richace *ace;
++	int count;
++
++	if (size < sizeof(struct richacl_xattr) ||
++	    xattr_acl->a_version != ACL4_XATTR_VERSION ||
++	    (xattr_acl->a_flags & ~ACL4_VALID_FLAGS))
++		return ERR_PTR(-EINVAL);
++
++	count = le16_to_cpu(xattr_acl->a_count);
++	if (count > ACL4_XATTR_MAX_COUNT)
++		return ERR_PTR(-EINVAL);
++
++	acl = richacl_alloc(count);
++	if (!acl)
++		return ERR_PTR(-ENOMEM);
++
++	acl->a_flags = xattr_acl->a_flags;
++	acl->a_owner_mask = le32_to_cpu(xattr_acl->a_owner_mask);
++	if (acl->a_owner_mask & ~ACE4_VALID_MASK)
++		goto fail_einval;
++	acl->a_group_mask = le32_to_cpu(xattr_acl->a_group_mask);
++	if (acl->a_group_mask & ~ACE4_VALID_MASK)
++		goto fail_einval;
++	acl->a_other_mask = le32_to_cpu(xattr_acl->a_other_mask);
++	if (acl->a_other_mask & ~ACE4_VALID_MASK)
++		goto fail_einval;
++
++	richacl_for_each_entry(ace, acl) {
++		const char *who = (void *)(xattr_ace + 1), *end;
++		ssize_t used = (void *)who - value;
++
++		if (used > size)
++			goto fail_einval;
++		end = memchr(who, 0, size - used);
++		if (!end)
++			goto fail_einval;
++
++		ace->e_type = le16_to_cpu(xattr_ace->e_type);
++		ace->e_flags = le16_to_cpu(xattr_ace->e_flags);
++		ace->e_mask = le32_to_cpu(xattr_ace->e_mask);
++		ace->u.e_id = le32_to_cpu(xattr_ace->e_id);
++
++		if (ace->e_flags & ~ACE4_VALID_FLAGS)
++			goto fail_einval;
++		if (ace->e_type > ACE4_ACCESS_DENIED_ACE_TYPE ||
++		    (ace->e_mask & ~ACE4_VALID_MASK))
++			goto fail_einval;
++
++		if (who == end) {
++			if (ace->u.e_id == -1)
++				goto fail_einval;  /* uid/gid needed */
++		} else if (richace_set_who(ace, who))
++			goto fail_einval;
++
++		xattr_ace = (void *)who + ALIGN(end - who + 1, 4);
++	}
++
++	return acl;
++
++fail_einval:
++	richacl_put(acl);
++	return ERR_PTR(-EINVAL);
++}
++EXPORT_SYMBOL_GPL(richacl_from_xattr);
++
++/**
++ * richacl_xattr_size  -  compute the size of the xattr representation of @acl
++ */
++size_t
++richacl_xattr_size(const struct richacl *acl)
++{
++	size_t size = sizeof(struct richacl_xattr);
++	const struct richace *ace;
++
++	richacl_for_each_entry(ace, acl) {
++		size += sizeof(struct richace_xattr) +
++			(richace_is_unix_id(ace) ? 4 :
++			 ALIGN(strlen(ace->u.e_who) + 1, 4));
++	}
++	return size;
++}
++EXPORT_SYMBOL_GPL(richacl_xattr_size);
++
++/**
++ * richacl_to_xattr  -  convert @acl into its xattr representation
++ * @acl:	the richacl to convert
++ * @buffer:	buffer of size richacl_xattr_size(@acl) for the result
++ */
++void
++richacl_to_xattr(const struct richacl *acl, void *buffer)
++{
++	struct richacl_xattr *xattr_acl = buffer;
++	struct richace_xattr *xattr_ace;
++	const struct richace *ace;
++
++	xattr_acl->a_version = ACL4_XATTR_VERSION;
++	xattr_acl->a_flags = acl->a_flags;
++	xattr_acl->a_count = cpu_to_le16(acl->a_count);
++
++	xattr_acl->a_owner_mask = cpu_to_le32(acl->a_owner_mask);
++	xattr_acl->a_group_mask = cpu_to_le32(acl->a_group_mask);
++	xattr_acl->a_other_mask = cpu_to_le32(acl->a_other_mask);
++
++	xattr_ace = (void *)(xattr_acl + 1);
++	richacl_for_each_entry(ace, acl) {
++		xattr_ace->e_type = cpu_to_le16(ace->e_type);
++		xattr_ace->e_flags = cpu_to_le16(ace->e_flags &
++						 ACE4_VALID_FLAGS);
++		xattr_ace->e_mask = cpu_to_le32(ace->e_mask);
++		if (richace_is_unix_id(ace)) {
++			xattr_ace->e_id = cpu_to_le32(ace->u.e_id);
++			memset(xattr_ace->e_who, 0, 4);
++			xattr_ace = (void *)xattr_ace->e_who + 4;
++		} else {
++			int sz = ALIGN(strlen(ace->u.e_who) + 1, 4);
++
++			xattr_ace->e_id = cpu_to_le32(-1);
++			memset(xattr_ace->e_who + sz - 4, 0, 4);
++			strcpy(xattr_ace->e_who, ace->u.e_who);
++			xattr_ace = (void *)xattr_ace->e_who + sz;
++		}
++	}
++}
++EXPORT_SYMBOL_GPL(richacl_to_xattr);
+diff --git a/include/linux/richacl_xattr.h b/include/linux/richacl_xattr.h
+new file mode 100644
+index 0000000..e038a7c
+--- /dev/null
++++ b/include/linux/richacl_xattr.h
+@@ -0,0 +1,47 @@
++/*
++ * Copyright (C) 2006, 2010  Novell, Inc.
++ * Written by Andreas Gruenbacher <agruen@suse.de>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2, or (at your option) any
++ * later version.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
++
++#ifndef __RICHACL_XATTR_H
++#define __RICHACL_XATTR_H
++
++#include <linux/richacl.h>
++
++#define RICHACL_XATTR "system.richacl"
++
++struct richace_xattr {
++	__le16		e_type;
++	__le16		e_flags;
++	__le32		e_mask;
++	__le32		e_id;
++	char		e_who[0];
++};
++
++struct richacl_xattr {
++	unsigned char	a_version;
++	unsigned char	a_flags;
++	__le16		a_count;
++	__le32		a_owner_mask;
++	__le32		a_group_mask;
++	__le32		a_other_mask;
++};
++
++#define ACL4_XATTR_VERSION	0
++#define ACL4_XATTR_MAX_COUNT	1024
++
++extern struct richacl *richacl_from_xattr(const void *, size_t);
++extern size_t richacl_xattr_size(const struct richacl *acl);
++extern void richacl_to_xattr(const struct richacl *, void *);
++
++#endif /* __RICHACL_XATTR_H */
 -- 
 1.7.1
