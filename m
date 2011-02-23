@@ -1,178 +1,133 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4:Fix a bug in ext4_ext_fiemap_cb().
-Date: Wed, 23 Feb 2011 10:41:42 -0600
-Message-ID: <4D6538C6.4090004@redhat.com>
-References: <1298476779-27883-1-git-send-email-xiaoqiangnk@gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 29752] New: Possible i_nlink race in ext2_rename
+Date: Wed, 23 Feb 2011 17:10:38 GMT
+Message-ID: <bug-29752-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56467 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754879Ab1BWQlp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Feb 2011 11:41:45 -0500
-In-Reply-To: <1298476779-27883-1-git-send-email-xiaoqiangnk@gmail.com>
+Received: from demeter2.kernel.org ([140.211.167.42]:52525 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755168Ab1BWRKj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Feb 2011 12:10:39 -0500
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p1NHAcOM007846
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 23 Feb 2011 17:10:38 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2/23/11 9:59 AM, Yongqiang Yang wrote:
-> 1] Delayed extents after a hole are neglected.
-> 
->    By using find_get_pages() instead of find_get_page() to
->    lookup pagecache, delayed extents can be found, because
->    find_get_pages() with nr_pages=1 will return the next page
->    in pagecache.
-> 
-> 2] Extents after a delayed extent or a hole are neglected as well.
-> 
->    Fix it by accurating the request range by the result of
->    ext4_ext_next_allocated_block().
-> 
-> Reported by Chris Mason <chris.mason@oracle.com>:
-> We've had reports on btrfs that cp is giving us files full of zeros
-> instead of actually copying them.  It was tracked down to a bug with
-> the btrfs fiemap implementation where it was returning holes for
-> delalloc ranges.
-> 
-> Newer versions of cp are trusting fiemap to tell it where the holes
-> are, which does seem like a pretty neat trick.
-> 
-> I decided to give xfs and ext4 a shot with a few tests cases too, xfs
-> passed with all the ones btrfs was getting wrong, and ext4 got the basic
-> delalloc case right.
-> $ mkfs.ext4 /dev/xxx
-> $ mount /dev/xxx /mnt
-> $ dd if=/dev/zero of=/mnt/foo bs=1M count=1
-> $ fiemap-test foo
-> ext:   0 logical: [       0..     255] phys:        0..     255 
-> flags: 0x007 tot: 256
-> 
-> Horray!  But once we throw a hole in, things go bad:
-> $ mkfs.ext4 /dev/xxx
-> $ mount /dev/xxx /mnt
-> $ dd if=/dev/zero of=/mnt/foo bs=1M count=1 seek=1
-> $ fiemap-test foo
-> < no output >
-> 
-> We've got a delalloc extent after the hole and ext4 fiemap didn't find
-> it.  If I run sync to kick the delalloc out:
-> $sync
-> $ fiemap-test foo
-> ext:   0 logical: [     256..     511] phys:    34048..   34303 
-> flags: 0x001 tot: 256
-> 
-> fiemap-test is sitting in my /usr/local/bin, and I have no idea how it
-> got there.  It's full of pretty comments so I know it isn't mine, but
-> you can grab it here:
-> 
-> http://oss.oracle.com/~mason/fiemap-test.c
-> 
-> xfsqa has a fiemap program too.
-> 
-> After Fix, test results are as follows:
-> ext:   0 logical: [     256..     511] phys:        0..     255 
-> flags: 0x007 tot: 256
-> ext:   0 logical: [     256..     511] phys:    33280..   33535 
-> flags: 0x001 tot: 256
-> 
-> Signe-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-> ---
->  fs/ext4/extents.c |   26 +++++++++++++++++++++++---
->  mm/filemap.c      |    1 +
->  2 files changed, 24 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index ccce8a7..ad455a0 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -3788,17 +3788,27 @@ static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
->  	__u64	physical;
->  	__u64	length;
->  	__u32	flags = 0;
-> +	ext4_lblk_t end;
->  	int	error;
->  
->  	logical =  (__u64)newex->ec_block << blksize_bits;
->  
-> -	if (newex->ec_start == 0) {
-> +	if (!newex->ec_start) {
-> +		/* 
-> +		 * There is no extent contains @newex->ec_block block.
-> +		 * It implies that @newex->ec_block block lies 1)a hole 
-> +		 * or 2)delayed-allocated blocks that has not been
-> +		 * allocated, so pagecache is needed to lookup. 
-> +		 *
-> +		 * And if it is case 2, @newex->ec_len needs to be corrected.
-> +		 * 
-> +		 */
->  		pgoff_t offset;
->  		struct page *page;
->  		struct buffer_head *bh = NULL;
->  
->  		offset = logical >> PAGE_SHIFT;
-> -		page = find_get_page(inode->i_mapping, offset);
-> +		(void)find_get_pages(inode->i_mapping, offset, 1, &page);
->  		if (!page || !page_has_buffers(page))
->  			return EXT_CONTINUE;
->  
-> @@ -3807,8 +3817,13 @@ static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
->  		if (!bh)
->  			return EXT_CONTINUE;
->  
-> +		/* Assume block-size equals page-size. */
->  		if (buffer_delay(bh)) {
->  			flags |= FIEMAP_EXTENT_DELALLOC;
-> +			if (page->index > offset) {
-> +				logical =  ((__u64)page->index << PAGE_SHIFT);
-> +				newex->ec_block = logical >> blksize_bits;
-> +			}	
->  			page_cache_release(page);
->  		} else {
->  			page_cache_release(page);
-> @@ -3830,7 +3845,8 @@ static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
->  	 *
->  	 * XXX this might miss a single-block extent at EXT_MAX_BLOCK
->  	 */
-> -	if (ext4_ext_next_allocated_block(path) == EXT_MAX_BLOCK ||
-> +	end = ext4_ext_next_allocated_block(path);
+https://bugzilla.kernel.org/show_bug.cgi?id=29752
 
-I think this will fall down if you have:
+           Summary: Possible i_nlink race in ext2_rename
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.37
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext2
+        AssignedTo: fs_ext2@kernel-bugs.osdl.org
+        ReportedBy: joshhunt00@gmail.com
+        Regression: No
 
-[ HOLE ][ DELALLOC ][ HOLE ][ ALLOCATED ] won't it?
 
-i.e. your "end" will be the first block of "allocated" right?
+I believe I have identified a possible race condition in ext2_rename when
+modifying i_nlink. I sent the following mail to linux-ext4 and linux-fsdevel on
+Feb 22, 2011.
 
--Eric
+<email>
+We have a multi-threaded workload which is currently "losing" files in the form
+of unattached inodes. The workload is link, rename, unlink intensive. This is
+happening on an ext2 filesystem and have reproduced the issue in kernel
+2.6.37.  Here's a sample strace:
 
-> +	if (end == EXT_MAX_BLOCK ||
->  	    newex->ec_block + newex->ec_len - 1 == EXT_MAX_BLOCK) {
->  		loff_t size = i_size_read(inode);
->  		loff_t bs = EXT4_BLOCK_SIZE(inode->i_sb);
-> @@ -3839,8 +3855,12 @@ static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
->  		if ((flags & FIEMAP_EXTENT_DELALLOC) &&
->  		    logical+length > size)
->  			length = (size - logical + bs - 1) & ~(bs-1);
-> +	} else {
-> +		newex->ec_len = end - newex->ec_block;
-> +		length = (__u64)newex->ec_len << blksize_bits;
->  	}
->  
-> +	
->  	error = fiemap_fill_next_extent(fieinfo, logical, physical,
->  					length, flags);
->  	if (error < 0)
-> diff --git a/mm/filemap.c b/mm/filemap.c
-> index 83a45d3..1c01ffc 100644
-> --- a/mm/filemap.c
-> +++ b/mm/filemap.c
-> @@ -803,6 +803,7 @@ repeat:
->  	rcu_read_unlock();
->  	return ret;
->  }
-> +EXPORT_SYMBOL(find_get_pages);
->  
->  /**
->   * find_get_pages_contig - gang contiguous pagecache lookup
+   open("/a/tmp/tmpfile.1296184058", O_WRONLY|O_CREAT|O_TRUNC|O_LARGEFILE,
+0666) = 9
+   link("/a/tmp/tmpfile.1296184058", "/a/tmp/tmpfile.28117.1296184059") = 0
+   rename("/a/tmp/tmpfile.28117.1296184059", "/a/tmp/tmpfile") = 0
+   stat64("/a/tmp/tmpfile", {st_mode=S_IFREG|0644, st_size=24248267, ...}) = 0
+   link("/a/tmp/tmpfile", "/a/tmp/submit/tmpfile")        = 0
+   open("/a/tmp/tmpfile.1296184058", O_RDONLY) = 13
+   open("/a/tmp/submit/tmpfile.send.q9SNoL", O_RDWR|O_CREAT|O_EXCL, 0600) = 824
+   rename("/a/tmp/submit/tmpfile", "/a/tmp/submit/tmpfile.send.q9SNoL")        
+       = 0
+   unlink("/a/tmp/tmpfile.1296184058") = 0
+   open("/a/tmp/submit/tmpfile.send.q9SNoL", O_RDONLY) = 827
+   open("/a/tmp/submit/tmpfile.send.q9SNoL", O_RDONLY) = 828
+   open("/a/tmp/submit/tmpfile.send.q9SNoL", O_RDONLY) = 829
+   unlink("/a/tmp/submit/tmpfile.send.q9SNoL") = 0
 
+The application behavior shown above repeats indefinitely with most filenames
+changing during each iteration except for 'tmpfile'. Looking into this issue I
+see that vfs_rename_other() only takes i_mutex for the new inode and the new
+inode's directory as well as the old directory's mutex. This works for
+modifying the dir entry and appears to be fine for most filesystems, but
+ext2 and a few others (exofs, minix, nilfs2, omfs, sysv, ufs) modify i_nlink
+inside of their respective rename functions without grabbing the i_mutex. The
+modifications are done through calls to inode_inc_link_count(old_inode) and
+inode_dec_link_count(old_inode), etc.
+
+Taking the mutex for the old inode appears to resolve the issue of the
+lost files/unattached inodes that I am seeing with this workload. I've attached
+a patch below doing what I've described above. If this is an accepted solution
+I believe other filesystems may also be affected by this and I could provide
+a patch for those as well.
+
+Thanks
+Josh
+
+ext2_rename modifies old_inode's nlink values through
+inode_inc_link_count(old_inode) and inode_dec_link_count(old_inode) without
+holding old_inode's mutex. vfs_rename_other() only takes the mutex of the new
+inode and directory and old inode's directory. This causes old inode's nlink
+values to become incorrect and results in an unattached inode.
+
+CC: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: Josh Hunt <johunt@akamai.com>
+---
+ fs/ext2/namei.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
+
+diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
+index 2e1d834..827839a 100644
+--- a/fs/ext2/namei.c
++++ b/fs/ext2/namei.c
+@@ -321,6 +321,8 @@ static int ext2_rename (struct inode * old_dir, struct
+dentry * old_dentry,
+       dquot_initialize(old_dir);
+       dquot_initialize(new_dir);
+
++       mutex_lock(&old_inode->i_mutex);
++
+       old_de = ext2_find_entry (old_dir, &old_dentry->d_name, &old_page);
+       if (!old_de)
+               goto out;
+@@ -375,6 +377,7 @@ static int ext2_rename (struct inode * old_dir, struct
+dentry * old_dentry,
+
+       ext2_delete_entry (old_de, old_page);
+       inode_dec_link_count(old_inode);
++       mutex_unlock(&old_inode->i_mutex);
+
+       if (dir_de) {
+               if (old_dir != new_dir)
+@@ -397,6 +400,7 @@ out_old:
+       kunmap(old_page);
+       page_cache_release(old_page);
+ out:
++       mutex_unlock(&old_inode->i_mutex);
+       return err;
+ }
+
+--
+1.7.0.4
+</email>
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
