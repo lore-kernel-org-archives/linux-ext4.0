@@ -1,168 +1,245 @@
-From: Josh Hunt <johunt@akamai.com>
-Subject: Re: [RFC][PATCH] ext2: Resolve i_nlink race in ext2_rename
-Date: Thu, 24 Feb 2011 12:18:32 -0800
-Message-ID: <4D66BD18.2030207@akamai.com>
-References: <1298528501-32176-1-git-send-email-johunt@akamai.com> <20110224063749.GV22723@ZenIV.linux.org.uk> <20110224112010.GB23042@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------080601080000090204030400"
-Cc: Al Viro <viro@ZenIV.linux.org.uk>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"sandeen@redhat.com" <sandeen@redhat.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20110224112010.GB23042@quack.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH v1] ext4:Make FIEMAP and delayed allocation play well together.
+Date: Thu, 24 Feb 2011 14:14:09 -0700
+Message-ID: <7CF68C64-B56F-4C1C-881B-BB92AD745C3E@dilger.ca>
+References: <1298564112-11078-1-git-send-email-xiaoqiangnk@gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:2337 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756012Ab1BXVOL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Feb 2011 16:14:11 -0500
+In-Reply-To: <1298564112-11078-1-git-send-email-xiaoqiangnk@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------080601080000090204030400
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+On 2011-02-24, at 9:15 AM, Yongqiang Yang wrote:
+> static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
+> 		       struct ext4_ext_cache *newex, struct ext4_extent *ex,
+> 		       void *data)
+> {
+> +	struct page *pages[NR_PAGES_PER_TIME];
 
-On 02/24/2011 03:20 AM, Jan Kara wrote:
-> On Thu 24-02-11 06:37:49, Al Viro wrote:
->> On Wed, Feb 23, 2011 at 10:21:41PM -0800, Josh Hunt wrote:
->>> [resending: left Jan off the original mail by accident]
->>>
->>> We have a multi-threaded workload which is currently "losing" files in the form
->>> of unattached inodes. The workload is link, rename, unlink intensive. This is
->>> happening on an ext2 filesystem and have reproduced the issue in kernel
->>> 2.6.37.  Here's a sample strace:
->>>
->>>     open("/a/tmp/tmpfile.1296184058", O_WRONLY|O_CREAT|O_TRUNC|O_LARGEFILE, 0666) = 9
->>>     link("/a/tmp/tmpfile.1296184058", "/a/tmp/tmpfile.28117.1296184059") = 0
->>>     rename("/a/tmp/tmpfile.28117.1296184059", "/a/tmp/tmpfile") = 0
->>>     stat64("/a/tmp/tmpfile", {st_mode=S_IFREG|0644, st_size=24248267, ...}) = 0
->>>     link("/a/tmp/tmpfile", "/a/tmp/submit/tmpfile")        = 0
->>>     open("/a/tmp/tmpfile.1296184058", O_RDONLY) = 13
->>>     open("/a/tmp/submit/tmpfile.send.q9SNoL", O_RDWR|O_CREAT|O_EXCL, 0600) = 824
->>>     rename("/a/tmp/submit/tmpfile", "/a/tmp/submit/tmpfile.send.q9SNoL")                = 0
->>>     unlink("/a/tmp/tmpfile.1296184058") = 0
->>>     open("/a/tmp/submit/tmpfile.send.q9SNoL", O_RDONLY) = 827
->>>     open("/a/tmp/submit/tmpfile.send.q9SNoL", O_RDONLY) = 828
->>>     open("/a/tmp/submit/tmpfile.send.q9SNoL", O_RDONLY) = 829
->>>     unlink("/a/tmp/submit/tmpfile.send.q9SNoL") = 0
->>>
->>> The application behavior shown above repeats indefinitely with most filenames
->>> changing during each iteration except for 'tmpfile'. Looking into this issue I
->>> see that vfs_rename_other() only takes i_mutex for the new inode and the new
->>> inode's directory as well as the old directory's mutex. This works for
->>> modifying the dir entry and appears to be fine for most filesystems, but
->>> ext2 and a few others (exofs, minix, nilfs2, omfs, sysv, ufs) modify i_nlink
->>> inside of their respective rename functions without grabbing the i_mutex. The
->>> modifications are done through calls to inode_inc_link_count(old_inode) and
->>> inode_dec_link_count(old_inode), etc.
->>>
->>> Taking the mutex for the old inode appears to resolve the issue of the
->>> lost files/unattached inodes that I am seeing with this workload. I've attached
->>> a patch below doing what I've described above. If this is an accepted solution
->>> I believe other filesystems may also be affected by this and I could provide
->>> a patch for those as well.
->>
->> I don't know...  The thing is, we mostly do that to make life easier for
->> fsck in case of crash.  Other than that, there's no reason to play with
->> link count of that sucker at all.  The question is, do we really want
->> such rename() interrupted by dirty shutdown to result in what looks like two
->> legitimate links to that inode without any indications of what had happened?
->> Note that fsck (at least on ext2) will correct link counts anyway and if
->> nothing else, we probably want some noise pointing to the inode in question...
->   Yeah, I agree that playing with the link count is not worth it. It is
-> even more disputable because it would have some reasonable effect only if
-> we happened to write out the moved inode after it is linked to the new
-> directory and before it is unlinked from the old one. Moreover we'd need
-> to writeout the new directory and not the old directory before crash
-> happens. All this is highly unlikely and even if that happens, it is
-> questionable whether the result is worth it. So I'll just do away with
-> those games with link count...
->   The patch is attached. Josh, can you test it as well? Thanks.
+I agree with Eric that this cannot live on the stack (or alternately that we need better stack handling in the kernel :-).  Fortunately, the kmalloc() of this data only needs to happen in rare cases, so it shouldn't impact performance very much.  It might be possible to cache this buffer in newex, to limit the allocation to once per file, instead of once per hole, but I'm not sure it is worthwhile.
+
+The benefit of kmalloc() is that it could be a full page or two, and allow far fewer calls into pagevec_lookup_tag(), which I suspect is more of a performance win than the cost of calling kmalloc().
+
+> +	__u64  logical;
+> +	__u64  physical;
+> +	__u64  length;
+> +
+> +	loff_t  size = i_size_read(inode);
+> +	pgoff_t index = 0;
+> +	ext4_lblk_t end = 0;
+> +
+> +	__u32  flags = 0;
+> +	int	   ret = 0;
+
+(style) please align variable declarations in some consistent manner
+
+> 	struct fiemap_extent_info *fieinfo = data;
+> +
+> 	unsigned char blksize_bits = inode->i_sb->s_blocksize_bits;
+
+Many of these are specific to the "if (newex->ec_start == 0)" context, so should be allocated there to make this more clear.
+
+(style) there shouldn't be blank lines between the variable declarations.  There are also many other CodingStyle violations that should be cleaned up.
+
+> 	if (newex->ec_start == 0) {
+> +		/*
+> +		 * No extent in extent-tree contains block @newex->ec_start,
+> +		 * then the block may stay in 1)a hole or 2)delayed-extent.
+> +		 * 
+> + 		 * Holes or delayed-extents are processed as follows.
+> +		 * 1. lookup dirty pages with specified range in pagecache.
+> +		 *    If no page is got, then there is no delayed-extent and 
+> +		 *    return with EXT_CONTINUE. 
+> +		 * 2. find the 1st mapped buffer,  	 
+> +		 * 3. check if the mapped buffer is both in the request range 
+> +		 *    and a delayed buffer. If not, there is no delayed-extent, 
+> +		 *    then return.
+> +		 * 4. a delayed-extent is found, the extent will be collected.
+> +		 */
+
+Good comment.
+
+> +		pgoff_t last_offset;
+> 		pgoff_t offset;
+> 		struct buffer_head *bh = NULL;
+> +		struct buffer_head *head = NULL;
+> +		unsigned int nr_pages = NR_PAGES_PER_TIME;
 > 
-> 								Honza
-Jan
+> 		offset = logical >> PAGE_SHIFT;
+> 
+> +repeat:
+> +		index = 0;	
+> +		last_offset = offset;
+> +		head = NULL;	
+> +		ret = find_get_pages_tag(inode->i_mapping, &offset,
+> +					PAGECACHE_TAG_DIRTY, nr_pages, pages);
+> +
+> +		if (!(flags & FIEMAP_EXTENT_DELALLOC)) {
+> +			/* First time, try to find a mapped buffer. */
+> +			if (ret == 0)
+> +				/* just a hole. */
+> +				return EXT_CONTINUE;
 
-I'm not seeing the problem with your patch as was expected since we're
-not messing with i_nlink anymore. Al suggested marking the inode as
-dirty where we were previously doing the old_inode dec. I believe this
-is needed as well since we are updating it's ctime. I've attached a
-version marking the inode dirty and it also fixes the comment making
-reference to calling inode_dec_link_count().
+This could contain the "out:" label, and the page_cache_release() loop would be skipped because ret == 0.  That would avoid the need to use the pages[] and index values outside of the scope of the "if (ec_start == 0)" clause, like:
 
-I'm not completely clear on the historical reasons for messing with the
-link count of old_inode in the first place. It was just to simulate the
-linking and unlinking of the old_inode?
+			if (ret == 0) {
+			out:
+				/* just a hole. */
+				for (index = 0; index < ret; index++)
+					page_cache_release(pages[index]);
+				return EXT_CONTINUE;
+			}
 
-Thanks
-Josh
+> +			/* Try to find the 1st mapped buffer. */
+> +			end = ((__u64)pages[0]->index << PAGE_SHIFT) >> blksize_bits; 
+> +			for (index = 0; index < ret; index ++) {
+> +				if (!page_has_buffers(pages[index]))
+> +					goto out;
+> +				head = page_buffers(pages[index]);
+> +				if (!head)
+> +					goto out;
+> +			
+> +				bh = head;
+> +				do {
+> +					if (buffer_mapped(bh)) {
+> +						/* get the 1st mapped buffer. */
+> +						if (end > newex->ec_block + newex->ec_len)
+> +							/* The buffer is out of the request range. */ 
+> +							goto out;
+> +						goto found_mapped_buffer;
+> +					}
+> +					bh = bh->b_this_page;
+> +					end ++;
+> +				} while (bh != head);
+> +			}			
+> +			
+> +			if (index == ret)
+> +				/* No mapped buffer found? */
+> +				BUG();
 
---------------080601080000090204030400
-Content-Type: text/x-patch;
- name="0001-ext2-Resolve-i_nlink-count-corruption-with-heavy-unl.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename*0="0001-ext2-Resolve-i_nlink-count-corruption-with-heavy-unl.pa";
- filename*1="tch"
+Hmm, this should be BUG_ON(index == ret), but even so I'm not so fond of BUG() as a form of error handling.  I'd rather just return at this point without an extent.
 
->From cb347219bc21622dee06491b689c711e452005ce Mon Sep 17 00:00:00 2001
-From: Josh Hunt <johunt@akamai.com>
-Date: Thu, 24 Feb 2011 11:56:43 -0800
-Subject: [PATCH] ext2: Resolve i_nlink count corruption with heavy unlink and rename
+> 		} else {
+> +			/*Find contiguous delayed buffers. */
+> +			if (ret > 0 && pages[0]->index == last_offset)
+> +				head = page_buffers(pages[0]);
+> +			bh = head;
+> +		} 
+> +
+> +found_mapped_buffer:		
+> +		if (bh && buffer_delay(bh)) {
+> +			/* 1st or contiguous delayed buffer found. */
+> +			if (!(flags & FIEMAP_EXTENT_DELALLOC)) {
+> +				/* 1st delayed buffer found, record the start of extent. */
+> +				flags |= FIEMAP_EXTENT_DELALLOC;
+> +				newex->ec_block = end;
+> +				logical =  (__u64)end << blksize_bits;
+> +			}
+> +			/* Find contiguous delayed buffers. */
+> +			do {
+> +				if (!buffer_delay(bh))
+> +					goto found_delayed_extent;
+> +				bh = bh->b_this_page;
+> +				end ++;
+> +			} while (bh != head);
+> +
+> +			for (index ++; index < ret; index ++) {
+> +				if (!page_has_buffers(pages[index])) {
+> +					bh = NULL;
+> +					break;
+> +				}
+> +				head = page_buffers(pages[index]);
+> +				if (!head) {
+> +					bh = NULL;
+> +					break;
+> +				}
+> +				if (pages[index]->index != pages[0]->index + index) {
+> +					/* Blocks are not contiguous. */
+> +					bh = NULL;
+> +					break;
+> +				}
+> +				bh = head;
+> +				do {
+> +					if (!buffer_delay(bh))
+> +						/* Delayed-extent ends. */
+> +						goto found_delayed_extent;
+> +					bh = bh->b_this_page;
+> +					end ++;
+> +				} while (bh != head); 
+> +			}
+> +		} else if (!(flags & FIEMAP_EXTENT_DELALLOC))
+> +			/* a hole found. */
+> +			goto out;
+> +
+> +found_delayed_extent:
+> +		newex->ec_len = min(end - newex->ec_block,
+> +						(ext4_lblk_t)EXT_INIT_MAX_LEN);
+> +		if (ret == nr_pages && newex->ec_len < EXT_INIT_MAX_LEN 
+> +			&& bh && buffer_delay(bh)) {
+> +			/* Have not collected an extent and continue. */
+> +			for (index =0; index < ret; index ++) 
+> +				page_cache_release(pages[index]);
+> +			goto repeat;
+> 		}
+> +
+> +		for (index =0; index < ret; index ++) 
+> +			page_cache_release(pages[index]);
+> 	}
+> 
+> 	physical = (__u64)newex->ec_start << blksize_bits;
+> @@ -3822,32 +3935,24 @@ static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
+> 	if (ex && ext4_ext_is_uninitialized(ex))
+> 		flags |= FIEMAP_EXTENT_UNWRITTEN;
+> 
+> 
+> +	if (logical + length >= size) {
+> 		loff_t bs = EXT4_BLOCK_SIZE(inode->i_sb);
+> +			flags |= FIEMAP_EXTENT_LAST;
+> +		if (flags & FIEMAP_EXTENT_DELALLOC)
+> 			length = (size - logical + bs - 1) & ~(bs-1);
 
-old_inode's i_nlink count can become corrupt in ext2_rename() because we do not
-grab it's i_mutex in vfs_rename_other(). Looking into this further it has been
-determined there is no good reason for changing old_inode's link counts at all.
-Instead we just mark the inode as dirty when we are done.
+This should probably set "physical = 0" just so that we don't return random garbage in that field.
 
-CC: Al Viro  <viro@ZenIV.linux.org.uk>
-CC: Jan Kara <jack@suse.cz>
-Signed-off-by: Josh Hunt <johunt@akamai.com>
----
- fs/ext2/namei.c |    9 ++-------
- 1 files changed, 2 insertions(+), 7 deletions(-)
-
-diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
-index 2e1d834..adb9185 100644
---- a/fs/ext2/namei.c
-+++ b/fs/ext2/namei.c
-@@ -344,7 +344,6 @@ static int ext2_rename (struct inode * old_dir, struct dentry * old_dentry,
- 		new_de = ext2_find_entry (new_dir, &new_dentry->d_name, &new_page);
- 		if (!new_de)
- 			goto out_dir;
--		inode_inc_link_count(old_inode);
- 		ext2_set_link(new_dir, new_de, new_page, old_inode, 1);
- 		new_inode->i_ctime = CURRENT_TIME_SEC;
- 		if (dir_de)
-@@ -356,12 +355,9 @@ static int ext2_rename (struct inode * old_dir, struct dentry * old_dentry,
- 			if (new_dir->i_nlink >= EXT2_LINK_MAX)
- 				goto out_dir;
- 		}
--		inode_inc_link_count(old_inode);
- 		err = ext2_add_link(new_dentry, old_inode);
--		if (err) {
--			inode_dec_link_count(old_inode);
-+		if (err)
- 			goto out_dir;
--		}
- 		if (dir_de)
- 			inode_inc_link_count(new_dir);
- 	}
-@@ -369,12 +365,11 @@ static int ext2_rename (struct inode * old_dir, struct dentry * old_dentry,
- 	/*
- 	 * Like most other Unix systems, set the ctime for inodes on a
-  	 * rename.
--	 * inode_dec_link_count() will mark the inode dirty.
- 	 */
- 	old_inode->i_ctime = CURRENT_TIME_SEC;
-+	mark_inode_dirty(old_inode);
-
- 	ext2_delete_entry (old_de, old_page);
--	inode_dec_link_count(old_inode);
-
- 	if (dir_de) {
- 		if (old_dir != new_dir)
---
-1.7.0.4
+> 	}
+> 
+> -	error = fiemap_fill_next_extent(fieinfo, logical, physical,
+> +	ret = fiemap_fill_next_extent(fieinfo, logical, physical,
+> 					length, flags);
+> -	if (error < 0)
+> -		return error;
+> -	if (error == 1)
+> +	if (ret < 0)
+> +		return ret;
+> +	if (ret == 1)
+> 		return EXT_BREAK;
+> 
+> +out:
+> +	for (index =0; index < ret; index ++) 
+> +		page_cache_release(pages[index]);
+> +
+> 	return EXT_CONTINUE;
+> }
+> 
+> -- 
+> 1.7.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 
---------------080601080000090204030400--
+Cheers, Andreas
+
+
+
+
+
