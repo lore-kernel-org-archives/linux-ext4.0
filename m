@@ -1,39 +1,40 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH v1] ext4:Make FIEMAP and delayed allocation play well
- together.
-Date: Thu, 24 Feb 2011 16:23:01 -0600
-Message-ID: <4D66DA45.5050201@redhat.com>
-References: <1298564112-11078-1-git-send-email-xiaoqiangnk@gmail.com>
+From: Rogier Wolff <R.E.Wolff@BitWizard.nl>
+Subject: Re: fsck performance.
+Date: Fri, 25 Feb 2011 00:53:54 +0100
+Message-ID: <20110224235354.GA15464@bitwizard.nl>
+References: <20110222133652.GI21917@bitwizard.nl> <20110222135431.GK21917@bitwizard.nl> <386B23FA-CE6E-4D9C-9799-C121B2E8C3BB@dilger.ca> <20110222221304.GH2924@thunk.org> <20110223044427.GM21917@bitwizard.nl> <DC8EC4D5-BB64-4908-985B-C6D3EDA955E3@mit.edu> <20110223205309.GA16661@bitwizard.nl> <F03E2EAC-9D44-4D8E-93AC-902FDFC22B92@dilger.ca> <20110224072945.GE16661@bitwizard.nl> <AANLkTinv-JPaiPzKC4xSqh0shmzjf4rKeQShRwiOznoz@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Rogier Wolff <R.E.Wolff@bitwizard.nl>,
+	Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:8894 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753570Ab1BXWXE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 24 Feb 2011 17:23:04 -0500
-In-Reply-To: <1298564112-11078-1-git-send-email-xiaoqiangnk@gmail.com>
+Received: from cust-95-128-94-82.breedbanddelft.nl ([95.128.94.82]:49793 "HELO
+	abra2.bitwizard.nl" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with SMTP id S1756592Ab1BYAAg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Feb 2011 19:00:36 -0500
+Content-Disposition: inline
+In-Reply-To: <AANLkTinv-JPaiPzKC4xSqh0shmzjf4rKeQShRwiOznoz@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 02/24/2011 10:15 AM, Yongqiang Yang wrote:
-> 1. lookup dirty pages with specified range in pagecache.
->    If no page is got, then there is no delayed-extent and
->    return with EXT_CONTINUE.
-> 2. find the 1st mapped buffer,
-> 3. check if the mapped buffer is both in the request range
->    and a delayed buffer. If not, there is no delayed-extent,
->    then return.
-> 4. a delayed-extent is found, the extent will be collected.
 
-This does seem to work now; I patched xfstests to do a run
-with and without sync, and both pass.
+On Thu, Feb 24, 2011 at 10:59:23AM +0200, Amir Goldstein wrote:
+> That tool is e2image -r, which creates a sparse file image of your fs
 
-The patches for xfstests are here:
+Ah... I got: 
 
-http://oss.sgi.com/pipermail/xfs/2011-February/049525.html
-http://oss.sgi.com/pipermail/xfs/2011-February/049527.html
+/home/wolff/e2image: File too large error writing block 535822337
 
--Eric
+Sigh. 2Tb max filesize on ext3. :-(
+
+	Roger. 
+
+
+-- 
+** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
+**    Delftechpark 26 2628 XH  Delft, The Netherlands. KVK: 27239233    **
+*-- BitWizard writes Linux device drivers for any device you may have! --*
+Q: It doesn't work. A: Look buddy, doesn't work is an ambiguous statement. 
+Does it sit on the couch all day? Is it unemployed? Please be specific! 
+Define 'it' and what it isn't doing. --------- Adapted from lxrbot FAQ
