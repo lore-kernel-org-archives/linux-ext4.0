@@ -1,51 +1,81 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4:Fix a bug in ext4_ext_fiemap_cb().
-Date: Thu, 24 Feb 2011 10:36:43 -0600
-Message-ID: <4D66891B.5000206@redhat.com>
-References: <1298476779-27883-1-git-send-email-xiaoqiangnk@gmail.com>	<4D6538C6.4090004@redhat.com> <AANLkTi=E_yGKHS8J3=hW2jxv+8wmTDJSPPysGihV84AR@mail.gmail.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: enable acls and user_xattr by default
+Date: Thu, 24 Feb 2011 11:49:13 -0500
+Message-ID: <20110224164913.GT2924@thunk.org>
+References: <4D5ED705.7010902@redhat.com>
+ <20110221134642.GC6584@quack.suse.cz>
+ <4D629C78.60600@redhat.com>
+ <20110223173152.GM2924@thunk.org>
+ <20110224114914.GD23042@quack.suse.cz>
+ <4688CF7A-2859-465B-B0EC-B4E31800E5F2@mit.edu>
+ <20110224135740.GF23042@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:14006 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755790Ab1BXQgp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 24 Feb 2011 11:36:45 -0500
-In-Reply-To: <AANLkTi=E_yGKHS8J3=hW2jxv+8wmTDJSPPysGihV84AR@mail.gmail.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:34298 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755536Ab1BXQtT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 24 Feb 2011 11:49:19 -0500
+Content-Disposition: inline
+In-Reply-To: <20110224135740.GF23042@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 02/23/2011 06:33 PM, Yongqiang Yang wrote:
-> On Thu, Feb 24, 2011 at 12:41 AM, Eric Sandeen <sandeen@redhat.com> wrote:
->> On 2/23/11 9:59 AM, Yongqiang Yang wrote:
+On Thu, Feb 24, 2011 at 02:57:40PM +0100, Jan Kara wrote:
+>   I've actually tried that before posting my email and it's not like that.
+> I did:
+> jack@quack:~/source> echo 'aaa' >/tmp/f
+> jack@quack:~/source> chmod 600 /tmp/f
+> jack@quack:~/source> setfacl -m u:nobody:rw /tmp/f
+> jack@quack:~/source> sudo su nobody -c "cat /tmp/f"
+> aaa
+> jack@quack:~/source> sudo su news -c "cat /tmp/f"
+> cat: /tmp/f: Permission denied
 
-...
+Hmm... yes, but it's a bit more complicated.  Look at this, and note
+how remounting the file system without acl's gave the group "users" rw
+access to the file /mnt/f.
 
->>> @@ -3830,7 +3845,8 @@ static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
->>>        *
->>>        * XXX this might miss a single-block extent at EXT_MAX_BLOCK
->>>        */
->>> -     if (ext4_ext_next_allocated_block(path) == EXT_MAX_BLOCK ||
->>> +     end = ext4_ext_next_allocated_block(path);
->>
->> I think this will fall down if you have:
->>
->> [ HOLE ][ DELALLOC ][ HOLE ][ ALLOCATED ] won't it?
->>
->> i.e. your "end" will be the first block of "allocated" right?
-> Yes, but it neglect nothing.  If we want to deal his model, we need to
-> lookup dirty pages in specified range.
-> 
+						- Ted
 
-I think it's clearly a bug to return a delalloc range when in fact it's
-a hole...
+<tytso.root@tytso-glaptop> {/}  
+2100# mount -o acl /dev/funarg/test /mnt
+<tytso.root@tytso-glaptop> {/}  
+2101# echo aaa > /mnt/f
+<tytso.root@tytso-glaptop> {/}  
+2102# chown root:users /mnt/f
+<tytso.root@tytso-glaptop> {/}  
+2103# chmod 400 /mnt/f
+<tytso.root@tytso-glaptop> {/}  
+2104# ls -l /mnt/f
+4 -r-------- 1 root users 4 Feb 24 11:46 /mnt/f
+<tytso.root@tytso-glaptop> {/}  
+2105# setfacl -m u:tytso:rw /mnt/f
+<tytso.root@tytso-glaptop> {/}  
+2106# getfacl /mnt/f
+getfacl: Removing leading '/' from absolute path names
+# file: mnt/f
+# owner: root
+# group: users
+user::r--
+user:tytso:rw-
+group::---
+mask::rw-
+other::---
 
-> We use pagevec_lookup_tag() instead of find_get_page() and check
-> BH_Delay of contiguous pages. Then, we can deal this model.
+<tytso.root@tytso-glaptop> {/}  
+2107# ls -l /mnt/f
+8 -r--rw----+ 1 root users 4 Feb 24 11:46 /mnt/f
+<tytso.root@tytso-glaptop> {/}  
+2108# umount /mnt
+<tytso.root@tytso-glaptop> {/}  
+2109# mount -o noacl /dev/funarg/test /mnt
+<tytso.root@tytso-glaptop> {/}  
+2110# ls -l /mnt/f
+8 -r--rw---- 1 root users 4 Feb 24 11:46 /mnt/f
 
-Yes, that's how I was going to go about it before you jumped right in,
-thanks! :)
 
--Eric
+
