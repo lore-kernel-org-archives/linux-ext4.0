@@ -1,53 +1,111 @@
-From: Andreas Dilger <adilger@dilger.ca>
+From: Dave Chinner <david@fromorbit.com>
 Subject: Re: [PATCH] ext4:Fix a bug in ext4_ext_fiemap_cb().
-Date: Wed, 23 Feb 2011 16:35:22 -0700
-Message-ID: <FDE557FB-8511-4CBB-A32D-2E5B82C71E4B@dilger.ca>
+Date: Thu, 24 Feb 2011 11:04:55 +1100
+Message-ID: <20110224000455.GN3166@dastard>
 References: <1298476779-27883-1-git-send-email-xiaoqiangnk@gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+ <4D6538C6.4090004@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:41402 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750993Ab1BWXfX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Feb 2011 18:35:23 -0500
-In-Reply-To: <1298476779-27883-1-git-send-email-xiaoqiangnk@gmail.com>
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:34460 "EHLO
+	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753042Ab1BXAE6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 23 Feb 2011 19:04:58 -0500
+Content-Disposition: inline
+In-Reply-To: <4D6538C6.4090004@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-02-23, at 8:59 AM, Yongqiang Yang wrote:
-> @@ -3788,17 +3788,27 @@ static int ext4_ext_fiemap_cb(struct inode *inode,
-> -	if (newex->ec_start == 0) {
-> +	if (!newex->ec_start) {
+On Wed, Feb 23, 2011 at 10:41:42AM -0600, Eric Sandeen wrote:
+> On 2/23/11 9:59 AM, Yongqiang Yang wrote:
+> > 1] Delayed extents after a hole are neglected.
+> >=20
+> >    By using find_get_pages() instead of find_get_page() to
+> >    lookup pagecache, delayed extents can be found, because
+> >    find_get_pages() with nr_pages=3D1 will return the next page
+> >    in pagecache.
+> >=20
+> > 2] Extents after a delayed extent or a hole are neglected as well.
+> >=20
+> >    Fix it by accurating the request range by the result of
+> >    ext4_ext_next_allocated_block().
+> >=20
+> > Reported by Chris Mason <chris.mason@oracle.com>:
+> > We've had reports on btrfs that cp is giving us files full of zeros
+> > instead of actually copying them.  It was tracked down to a bug wit=
+h
+> > the btrfs fiemap implementation where it was returning holes for
+> > delalloc ranges.
+> >=20
+> > Newer versions of cp are trusting fiemap to tell it where the holes
+> > are, which does seem like a pretty neat trick.
+> >=20
+> > I decided to give xfs and ext4 a shot with a few tests cases too, x=
+fs
+> > passed with all the ones btrfs was getting wrong, and ext4 got the =
+basic
+> > delalloc case right.
+> > $ mkfs.ext4 /dev/xxx
+> > $ mount /dev/xxx /mnt
+> > $ dd if=3D/dev/zero of=3D/mnt/foo bs=3D1M count=3D1
+> > $ fiemap-test foo
+> > ext:   0 logical: [       0..     255] phys:        0..     255=20
+> > flags: 0x007 tot: 256
+> >=20
+> > Horray!  But once we throw a hole in, things go bad:
+> > $ mkfs.ext4 /dev/xxx
+> > $ mount /dev/xxx /mnt
+> > $ dd if=3D/dev/zero of=3D/mnt/foo bs=3D1M count=3D1 seek=3D1
+> > $ fiemap-test foo
+> > < no output >
+> >=20
+> > We've got a delalloc extent after the hole and ext4 fiemap didn't f=
+ind
+> > it.  If I run sync to kick the delalloc out:
+> > $sync
+> > $ fiemap-test foo
+> > ext:   0 logical: [     256..     511] phys:    34048..   34303=20
+> > flags: 0x001 tot: 256
+> >=20
+> > fiemap-test is sitting in my /usr/local/bin, and I have no idea how=
+ it
+> > got there.  It's full of pretty comments so I know it isn't mine, b=
+ut
+> > you can grab it here:
+> >=20
+> > http://oss.oracle.com/~mason/fiemap-test.c
+> >=20
+> > xfsqa has a fiemap program too.
+=2E....
+> I think this will fall down if you have:
+>=20
+> [ HOLE ][ DELALLOC ][ HOLE ][ ALLOCATED ] won't it?
+>=20
+> i.e. your "end" will be the first block of "allocated" right?
 
-(style) the original code is actually correct.  ec_start is not a boolean, so comparing it == 0 is actually the right thing to do.
+This sound sort of problem indicate=D1=95 to me that we need a generic
+fiemap test in xfstests that exercises all these corner cases.
+Perhaps something similar to the way I tested all the
+XFS_IOC_ZERO_RANGE corner cases in test 242 by setting up all the
+different hole/delalloc/unwritten/allocated combinations using
+xfs_io and used the fiemap output as the golden output?
 
-> @@ -3807,8 +3817,13 @@ static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
-> 		if (!bh)
-> 			return EXT_CONTINUE;
-> 
-> +		/* Assume block-size equals page-size. */
+That would catch all of these problems in the different filesystems
+that implement fiemap and make sure we notice regressions pretty
+quickly.....
 
-This is not a valid assumption.
+Cheers,
 
-> 		if (buffer_delay(bh)) {
-> 			flags |= FIEMAP_EXTENT_DELALLOC;
-> +			if (page->index > offset) {
-> +				logical =  ((__u64)page->index << PAGE_SHIFT);
-> +				newex->ec_block = logical >> blksize_bits;
-> +			}	
-
-So, this assumes that the entire unmapped extent is described by the first page, but doesn't actually check whether all of the pages exist.  For the purpose of cp it might be OK, since at worst it means that cp will be reading from a hole in the source file.  However, I wonder if other applications will depend on the allocated extent being more accurate?
-
-> +EXPORT_SYMBOL(find_get_pages);
-
-Eric had also suggested pagevec_lookup_tag(), which is already exported.
-
-Cheers, Andreas
-
-
-
-
-
+Dave.
+--=20
+Dave Chinner
+david@fromorbit.com
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
