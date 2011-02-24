@@ -1,69 +1,89 @@
-From: Al Viro <viro@ZenIV.linux.org.uk>
-Subject: Re: [RFC][PATCH] ext2: Resolve i_nlink race in ext2_rename
-Date: Thu, 24 Feb 2011 06:37:49 +0000
-Message-ID: <20110224063749.GV22723@ZenIV.linux.org.uk>
-References: <1298528501-32176-1-git-send-email-johunt@akamai.com>
+From: Rogier Wolff <R.E.Wolff@BitWizard.nl>
+Subject: Re: fsck performance.
+Date: Thu, 24 Feb 2011 08:29:46 +0100
+Message-ID: <20110224072945.GE16661@bitwizard.nl>
+References: <C5662C0F-10E3-4AC3-8ACA-4CBBF4F36D70@dilger.ca> <20110222102056.GH21917@bitwizard.nl> <20110222133652.GI21917@bitwizard.nl> <20110222135431.GK21917@bitwizard.nl> <386B23FA-CE6E-4D9C-9799-C121B2E8C3BB@dilger.ca> <20110222221304.GH2924@thunk.org> <20110223044427.GM21917@bitwizard.nl> <DC8EC4D5-BB64-4908-985B-C6D3EDA955E3@mit.edu> <20110223205309.GA16661@bitwizard.nl> <F03E2EAC-9D44-4D8E-93AC-902FDFC22B92@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	sandeen@redhat.com, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Josh Hunt <johunt@akamai.com>
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:49623 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932381Ab1BXGhw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Feb 2011 01:37:52 -0500
+Received: from dtp.xs4all.nl ([80.101.171.8]:51838 "HELO abra2.bitwizard.nl"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
+	id S1751639Ab1BXH3s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 24 Feb 2011 02:29:48 -0500
 Content-Disposition: inline
-In-Reply-To: <1298528501-32176-1-git-send-email-johunt@akamai.com>
+In-Reply-To: <F03E2EAC-9D44-4D8E-93AC-902FDFC22B92@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 23, 2011 at 10:21:41PM -0800, Josh Hunt wrote:
-> [resending: left Jan off the original mail by accident]
-> 
-> We have a multi-threaded workload which is currently "losing" files in the form
-> of unattached inodes. The workload is link, rename, unlink intensive. This is
-> happening on an ext2 filesystem and have reproduced the issue in kernel
-> 2.6.37.  Here's a sample strace:
-> 
->     open("/a/tmp/tmpfile.1296184058", O_WRONLY|O_CREAT|O_TRUNC|O_LARGEFILE, 0666) = 9
->     link("/a/tmp/tmpfile.1296184058", "/a/tmp/tmpfile.28117.1296184059") = 0
->     rename("/a/tmp/tmpfile.28117.1296184059", "/a/tmp/tmpfile") = 0
->     stat64("/a/tmp/tmpfile", {st_mode=S_IFREG|0644, st_size=24248267, ...}) = 0
->     link("/a/tmp/tmpfile", "/a/tmp/submit/tmpfile")        = 0
->     open("/a/tmp/tmpfile.1296184058", O_RDONLY) = 13
->     open("/a/tmp/submit/tmpfile.send.q9SNoL", O_RDWR|O_CREAT|O_EXCL, 0600) = 824
->     rename("/a/tmp/submit/tmpfile", "/a/tmp/submit/tmpfile.send.q9SNoL")                = 0
->     unlink("/a/tmp/tmpfile.1296184058") = 0
->     open("/a/tmp/submit/tmpfile.send.q9SNoL", O_RDONLY) = 827
->     open("/a/tmp/submit/tmpfile.send.q9SNoL", O_RDONLY) = 828
->     open("/a/tmp/submit/tmpfile.send.q9SNoL", O_RDONLY) = 829
->     unlink("/a/tmp/submit/tmpfile.send.q9SNoL") = 0
-> 
-> The application behavior shown above repeats indefinitely with most filenames
-> changing during each iteration except for 'tmpfile'. Looking into this issue I
-> see that vfs_rename_other() only takes i_mutex for the new inode and the new
-> inode's directory as well as the old directory's mutex. This works for
-> modifying the dir entry and appears to be fine for most filesystems, but
-> ext2 and a few others (exofs, minix, nilfs2, omfs, sysv, ufs) modify i_nlink
-> inside of their respective rename functions without grabbing the i_mutex. The
-> modifications are done through calls to inode_inc_link_count(old_inode) and
-> inode_dec_link_count(old_inode), etc.
-> 
-> Taking the mutex for the old inode appears to resolve the issue of the
-> lost files/unattached inodes that I am seeing with this workload. I've attached
-> a patch below doing what I've described above. If this is an accepted solution
-> I believe other filesystems may also be affected by this and I could provide
-> a patch for those as well.
+On Wed, Feb 23, 2011 at 03:24:18PM -0700, Andreas Dilger wrote:
 
-I don't know...  The thing is, we mostly do that to make life easier for
-fsck in case of crash.  Other than that, there's no reason to play with
-link count of that sucker at all.  The question is, do we really want
-such rename() interrupted by dirty shutdown to result in what looks like two
-legitimate links to that inode without any indications of what had happened?
-Note that fsck (at least on ext2) will correct link counts anyway and if
-nothing else, we probably want some noise pointing to the inode in question...
+> The dircount can be extracted from the group descriptors, which
+> count the number of allocated directories in each group.  Since the
 
-IOW, maybe it's better to rip these inc/dec for old_inode out and replace
-them with mark_inode_dirty() in place where we currently do dec.  Comments?
+OK. 
+
+> superblock "free inodes" count is no longer updated except at
+> unmount time, the code would need to walk all of the group
+> descriptors to get this number anyway.
+
+No worries. It matters a bit for performance, but if that free inode
+count in the superblock is outdated, we'll just use that outdated
+one. The one case that I'm afraid of is that someone creates a new
+filesystem (superblock inodes-in-use =~= 0), then copies on millions
+of files, and then crashes his system.... 
+
+I'll add a minimum of 999931, causing an overhead of around 4Mb of
+disk space usage if this was totally unneccesary.
+
+> If you have the opportunity, I wonder whether the entire need for
+> tdb can be avoided in your case by using swap and the icount
+> optimization patches previously posted?  I'd really like to get that
+> patch included upstream, but it needs testing in an environment like
+> yours where icount is a significant factor.  This would avoid all of
+> the tdb overhead.
+
+First: I don't think it will work. The largest amount of memory that
+e2fsck had allocated was 2.5Gb. At that point it also had around 1.5G
+of disk space in use for tdb's for a total of 4G. On the other hand,
+we've established that the overhead in tdb is about 24bytes per 8
+bytes of real data.... So maybe we would only have needed 200M of
+in-memory datastructures to handle this. Two of those 400M together
+with the dircount (tdb =750M, assume same ratio) total 600M still
+above 3G.
+
+Second: e2fsck is too fragile as it is. It should be able to handle
+big filesystems on little systems. I have a puny little 2GHz Athlon
+system that currently has 3T of disk storage and 1G RAM. Embedded
+Linux systems can be running those amounts of storage with only 64
+or 128 Mb of RAM. 
+
+Even if MY filesystem happens to pass, with a little less memory-use,
+then there is a slightly larger system that won't.
+
+I have a server that has 4x2T instead of the server that has 4*1T. It
+uses the same backup strategy, so it too has lots and lots of files.
+In fact it has 84M inodes in use. (I thought 96M inodes would be
+plenty... wrong! I HAVE run out of inodes on that thing!)
+
+That one too may need to fsck the filesystem... 
+
+I remember hearing about a tool that would extract all the filesystem
+meta-info, so that I can make an image that I can then test e.g. fsck
+upon? Inodes, directory blocks, indirect blocks etc.?
+
+Then I could make an image where I could test this. I don't really
+want to put this offline again for multiple days.
+
+
+	Roger. 
+
+
+-- 
+** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
+**    Delftechpark 26 2628 XH  Delft, The Netherlands. KVK: 27239233    **
+*-- BitWizard writes Linux device drivers for any device you may have! --*
+Q: It doesn't work. A: Look buddy, doesn't work is an ambiguous statement. 
+Does it sit on the couch all day? Is it unemployed? Please be specific! 
+Define 'it' and what it isn't doing. --------- Adapted from lxrbot FAQ
