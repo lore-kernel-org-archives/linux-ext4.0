@@ -1,88 +1,281 @@
-From: Rogier Wolff <R.E.Wolff@BitWizard.nl>
-Subject: Re: Proposed design for big allocation blocks for ext4
-Date: Fri, 25 Feb 2011 10:15:59 +0100
-Message-ID: <20110225091559.GC15464@bitwizard.nl>
-References: <E1PsnrK-0005r5-JH@tytso-glaptop> <1F9A85BD-4B5E-488C-B903-0AE17AACF2B7@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: [PATCH v3] ext4:Make FIEMAP and delayed allocation play well together.
+Date: Fri, 25 Feb 2011 17:40:25 +0800
+Message-ID: <1298626825-3131-1-git-send-email-xiaoqiangnk@gmail.com>
+Cc: sandeen@redhat.com, adilger@dilger.ca,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cust-95-128-94-82.breedbanddelft.nl ([95.128.94.82]:53166 "HELO
-	abra2.bitwizard.nl" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with SMTP id S932191Ab1BYJQF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Feb 2011 04:16:05 -0500
-Content-Disposition: inline
-In-Reply-To: <1F9A85BD-4B5E-488C-B903-0AE17AACF2B7@dilger.ca>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:51515 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932167Ab1BYJhW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Feb 2011 04:37:22 -0500
+Received: by iyb26 with SMTP id 26so753201iyb.19
+        for <linux-ext4@vger.kernel.org>; Fri, 25 Feb 2011 01:37:22 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+1. lookup dirty pages with specified range in pagecache.
+   If no page is got, then there is no delayed-extent and
+   return with EXT_CONTINUE.
+2. find the 1st mapped buffer,
+3. check if the mapped buffer is both in the request range
+   and a delayed buffer. If not, there is no delayed-extent,
+   then return.
+4. a delayed-extent is found, the extent will be collected.
 
-Hi,
+Reported by Chris Mason <chris.mason@oracle.com>:
+We've had reports on btrfs that cp is giving us files full of zeros
+instead of actually copying them.  It was tracked down to a bug with
+the btrfs fiemap implementation where it was returning holes for
+delalloc ranges.
 
-I must say I haven't read all of the large amounts of text in this
-discussion.
+Newer versions of cp are trusting fiemap to tell it where the holes
+are, which does seem like a pretty neat trick.
 
-But what I understand is that you're suggesting that we implement
-larger blocksizes on the device, while we have to maintain towards the
-rest of the kernel that the blocksize is no larger than 4k, because
-the kernel can't handle that.
+I decided to give xfs and ext4 a shot with a few tests cases too, xfs
+passed with all the ones btrfs was getting wrong, and ext4 got the basic
+delalloc case right.
+$ mkfs.ext4 /dev/xxx
+$ mount /dev/xxx /mnt
+$ dd if=/dev/zero of=/mnt/foo bs=1M count=1
+$ fiemap-test foo
+ext:   0 logical: [       0..     255] phys:        0..     255
+flags: 0x007 tot: 256
 
-Part of reasoning why this should be like this comes from the
-assumption that each block group has just one block worth of bitmap.
-That is IMHO the "outdated" assumption that needs to go.
+Horray!  But once we throw a hole in, things go bad:
+$ mkfs.ext4 /dev/xxx
+$ mount /dev/xxx /mnt
+$ dd if=/dev/zero of=/mnt/foo bs=1M count=1 seek=1
+$ fiemap-test foo
+< no output >
 
-Then, especially on filesystems where many large files live, we can
-emulate the "larger blocksize" at the filesystem level: We always
-allocate 256 blocks in one go! This is something that can be
-dynamically adjusted: You might stop doing this for the last 10% of
-free disk space.
+We've got a delalloc extent after the hole and ext4 fiemap didn't find
+it.  If I run sync to kick the delalloc out:
+$sync
+$ fiemap-test foo
+ext:   0 logical: [     256..     511] phys:    34048..   34303
+flags: 0x001 tot: 256
 
-Now, you might say: How does this help with the performance problems
-mentioned in the introduction? Well. reading 16 block bitmaps from 16
-block groups will cost a modern harddrive on average 16 * (7ms avg
-seek + 4.1 avg rot latency + 0.04ms transfer time), or about 170 ms.
+fiemap-test is sitting in my /usr/local/bin, and I have no idea how it
+got there.  It's full of pretty comments so I know it isn't mine, but
+you can grab it here:
 
-Reading 16 block bitmaps from ONE block group will cost a modern
-harddrive on average: 7ms avg seek + 4.1ms rot + 16*0.06 =
-11.2ms. That is an improvement of a factor of over 15...
+http://oss.oracle.com/~mason/fiemap-test.c
 
-Now, whenever you allocate blocks for a file, just zap 256 bits at
-once! Again the overhead of handling 255 more bits in memory is
-trivial. 
+xfsqa has a fiemap program too.
 
-I now see that andreas already suggested something similar but still
-different.
+After Fix, test results are as follows:
+ext:   0 logical: [     256..     511] phys:        0..     255
+flags: 0x007 tot: 256
+ext:   0 logical: [     256..     511] phys:    33280..   33535
+flags: 0x001 tot: 256
 
-Anyway: Advantages that I see: 
+$ mkfs.ext4 /dev/xxx
+$ mount /dev/xxx /mnt
+$ dd if=/dev/zero of=/mnt/foo bs=1M count=1 seek=1
+$ sync
+$ dd if=/dev/zero of=/mnt/foo bs=1M count=1 seek=3
+$ dd if=/dev/zero of=/mnt/foo bs=1M count=1 seek=5
+$ fiemap-test foo
+ext:   0 logical: [     256..     511] phys:    33280..   33535
+flags: 0x000 tot: 256
+ext:   1 logical: [     768..    1023] phys:        0..     255
+flags: 0x006 tot: 256
+ext:   2 logical: [    1280..    1535] phys:        0..     255
+flags: 0x007 tot: 256
 
-- the performance benefits sougth for. 
+Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+---
+ fs/ext4/extents.c |  149 +++++++++++++++++++++++++++++++++++++++--------------
+ 1 files changed, 110 insertions(+), 39 deletions(-)
 
-- a more sensible number of block groups on filesystems. (my 3T
-  filessytem has 21000 block groups!)
-
-- the option of storing lots of small files without having to make 
-  a fs-creation-time choice. 
-
-- the option of improving defrag to "make things perfect".  (allocation
-  strategy may be: big files go in big-files-only block groups and
-  their tails go in small-files-only block groups. Or if you think
-  big files may grow, tails go in big-files-only block groups. Whatever
-  you chose, defrag may clean up a fragpoint and or some unallocated
-  space when after a while it's clear that a big file will no longer
-  grow, and is just an archive). 
-
-	Roger. 
-
-
-On Fri, Feb 25, 2011 at 01:21:58AM -0700, Andreas Dilger wrote:
-> On 2011-02-24, at 7:56 PM, Theodore Ts'o wrote:
-> > = Problem statement = 
-
--- 
-** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
-**    Delftechpark 26 2628 XH  Delft, The Netherlands. KVK: 27239233    **
-*-- BitWizard writes Linux device drivers for any device you may have! --*
-Q: It doesn't work. A: Look buddy, doesn't work is an ambiguous statement. 
-Does it sit on the couch all day? Is it unemployed? Please be specific! 
-Define 'it' and what it isn't doing. --------- Adapted from lxrbot FAQ
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index ccce8a7..9361adb 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3775,6 +3775,7 @@ int ext4_convert_unwritten_extents(struct inode *inode, loff_t offset,
+ 	}
+ 	return ret > 0 ? ret2 : ret;
+ }
++
+ /*
+  * Callback function called for each extent to gather FIEMAP information.
+  */
+@@ -3782,38 +3783,124 @@ static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
+ 		       struct ext4_ext_cache *newex, struct ext4_extent *ex,
+ 		       void *data)
+ {
+-	struct fiemap_extent_info *fieinfo = data;
+-	unsigned char blksize_bits = inode->i_sb->s_blocksize_bits;
+ 	__u64	logical;
+ 	__u64	physical;
+ 	__u64	length;
++	loff_t	size;
+ 	__u32	flags = 0;
+-	int	error;
++	int		ret = 0;
++	struct fiemap_extent_info *fieinfo = data;
++	unsigned char blksize_bits;
+ 
+-	logical =  (__u64)newex->ec_block << blksize_bits;
++	blksize_bits = inode->i_sb->s_blocksize_bits;
++	logical = (__u64)newex->ec_block << blksize_bits;
+ 
+ 	if (newex->ec_start == 0) {
+-		pgoff_t offset;
+-		struct page *page;
++		/*
++		 * No extent in extent-tree contains block @newex->ec_start,
++		 * then the block may stay in 1)a hole or 2)delayed-extent.
++		 *
++		 * Holes or delayed-extents are processed as follows.
++		 * 1. lookup dirty pages with specified range in pagecache.
++		 *    If no page is got, then there is no delayed-extent and
++		 *    return with EXT_CONTINUE.
++		 * 2. find the 1st mapped buffer,
++		 * 3. check if the mapped buffer is both in the request range
++		 *    and a delayed buffer. If not, there is no delayed-extent,
++		 *    then return.
++		 * 4. a delayed-extent is found, the extent will be collected.
++		 */
++		ext4_lblk_t	end = 0;
++		pgoff_t		last_offset;
++		pgoff_t		offset;
++		struct page	*page = NULL;
+ 		struct buffer_head *bh = NULL;
++		struct buffer_head *head = NULL;
+ 
+ 		offset = logical >> PAGE_SHIFT;
+-		page = find_get_page(inode->i_mapping, offset);
+-		if (!page || !page_has_buffers(page))
+-			return EXT_CONTINUE;
+-
+-		bh = page_buffers(page);
++repeat:
++		last_offset = offset;
++		head = NULL;
++		ret = find_get_pages_tag(inode->i_mapping, &offset,
++					PAGECACHE_TAG_DIRTY, 1, &page);
++
++		if (!(flags & FIEMAP_EXTENT_DELALLOC)) {
++			/* First time, try to find a mapped buffer. */
++			if (ret == 0) {
++out:
++				if (ret > 0)
++					page_cache_release(page);
++				/* just a hole. */
++				return EXT_CONTINUE;
++			}
+ 
+-		if (!bh)
+-			return EXT_CONTINUE;
++			/* Try to find the 1st mapped buffer. */
++			end = ((__u64)page->index << PAGE_SHIFT)
++					>> blksize_bits;
++			if (!page_has_buffers(page))
++				goto out;
++			head = page_buffers(page);
++			if (!head)
++				goto out;
+ 
+-		if (buffer_delay(bh)) {
+-			flags |= FIEMAP_EXTENT_DELALLOC;
+-			page_cache_release(page);
++			bh = head;
++			do {
++				if (buffer_mapped(bh)) {
++					/* get the 1st mapped buffer. */
++					if (end > newex->ec_block +
++						newex->ec_len)
++						/* The buffer is out of
++						 * the request range.
++						 */
++						goto out;
++					goto found_mapped_buffer;
++				}
++				bh = bh->b_this_page;
++				end++;
++			} while (bh != head);
++			/* No mapped buffer found. */
++			goto out;
+ 		} else {
++			/*Find contiguous delayed buffers. */
++			if (ret > 0 && page->index == last_offset)
++				head = page_buffers(page);
++			bh = head;
++		}
++
++found_mapped_buffer:
++		if (bh != NULL && buffer_delay(bh)) {
++			/* 1st or contiguous delayed buffer found. */
++			if (!(flags & FIEMAP_EXTENT_DELALLOC)) {
++				/*
++				 * 1st delayed buffer found, record
++				 * the start of extent.
++				 */
++				flags |= FIEMAP_EXTENT_DELALLOC;
++				newex->ec_block = end;
++				logical =  (__u64)end << blksize_bits;
++			}
++			/* Find contiguous delayed buffers. */
++			do {
++				if (!buffer_delay(bh))
++					goto found_delayed_extent;
++				bh = bh->b_this_page;
++				end++;
++			} while (bh != head);
++		} else if (!(flags & FIEMAP_EXTENT_DELALLOC))
++			/* a hole found. */
++			goto out;
++
++found_delayed_extent:
++		newex->ec_len = min(end - newex->ec_block,
++						(ext4_lblk_t)EXT_INIT_MAX_LEN);
++		if (ret == 1 && bh != NULL
++			&& newex->ec_len < EXT_INIT_MAX_LEN
++			&& buffer_delay(bh)) {
++			/* Have not collected an extent and continue. */
+ 			page_cache_release(page);
+-			return EXT_CONTINUE;
++			goto repeat;
+ 		}
++		page_cache_release(page);
+ 	}
+ 
+ 	physical = (__u64)newex->ec_start << blksize_bits;
+@@ -3822,32 +3909,16 @@ static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
+ 	if (ex && ext4_ext_is_uninitialized(ex))
+ 		flags |= FIEMAP_EXTENT_UNWRITTEN;
+ 
+-	/*
+-	 * If this extent reaches EXT_MAX_BLOCK, it must be last.
+-	 *
+-	 * Or if ext4_ext_next_allocated_block is EXT_MAX_BLOCK,
+-	 * this also indicates no more allocated blocks.
+-	 *
+-	 * XXX this might miss a single-block extent at EXT_MAX_BLOCK
+-	 */
+-	if (ext4_ext_next_allocated_block(path) == EXT_MAX_BLOCK ||
+-	    newex->ec_block + newex->ec_len - 1 == EXT_MAX_BLOCK) {
+-		loff_t size = i_size_read(inode);
+-		loff_t bs = EXT4_BLOCK_SIZE(inode->i_sb);
+-
++	size = i_size_read(inode);
++	if (logical + length >= size)
+ 		flags |= FIEMAP_EXTENT_LAST;
+-		if ((flags & FIEMAP_EXTENT_DELALLOC) &&
+-		    logical+length > size)
+-			length = (size - logical + bs - 1) & ~(bs-1);
+-	}
+ 
+-	error = fiemap_fill_next_extent(fieinfo, logical, physical,
++	ret = fiemap_fill_next_extent(fieinfo, logical, physical,
+ 					length, flags);
+-	if (error < 0)
+-		return error;
+-	if (error == 1)
++	if (ret < 0)
++		return ret;
++	if (ret == 1)
+ 		return EXT_BREAK;
