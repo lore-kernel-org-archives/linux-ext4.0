@@ -1,142 +1,68 @@
 From: Hari Subramanian <hari@vmware.com>
 Subject: RE: e2fsprogs/ext4 version compatibility
-Date: Thu, 24 Feb 2011 16:13:46 -0800
-Message-ID: <10FC03A59E498D4A90A45E4A105AD3ED02DCB03B88@EXCH-MBX-2.vmware.com>
+Date: Thu, 24 Feb 2011 16:17:22 -0800
+Message-ID: <10FC03A59E498D4A90A45E4A105AD3ED02DCB03B90@EXCH-MBX-2.vmware.com>
 References: <10FC03A59E498D4A90A45E4A105AD3ED02DCB0363A@EXCH-MBX-2.vmware.com>
- <AANLkTi=cgVAbEd+vmXeRRHD7wWdbt_Dyf=vYRLFH-45r@mail.gmail.com>
+ <20110224093946.GA11399@bitwizard.nl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
 Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Amir Goldstein <amir73il@gmail.com>
+To: Rogier Wolff <R.E.Wolff@BitWizard.nl>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-outbound-2.vmware.com ([65.115.85.73]:22082 "EHLO
+Received: from smtp-outbound-2.vmware.com ([65.115.85.73]:22253 "EHLO
 	smtp-outbound-2.vmware.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756632Ab1BYANs convert rfc822-to-8bit
+	by vger.kernel.org with ESMTP id S1756666Ab1BYARX convert rfc822-to-8bit
 	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 24 Feb 2011 19:13:48 -0500
-In-Reply-To: <AANLkTi=cgVAbEd+vmXeRRHD7wWdbt_Dyf=vYRLFH-45r@mail.gmail.com>
+	Thu, 24 Feb 2011 19:17:23 -0500
+In-Reply-To: <20110224093946.GA11399@bitwizard.nl>
 Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Amir,
+Hi Rogier,
 
-Thanks for the quick response. Glad to note that I'm running the right =
-version of fsck to start with.
-=20
-So, is the variable i_dtime overloaded to store something other than 'd=
-eleted timestamp' after the fact that a file is deleted? Coz, the follo=
-wing part of the check doesn't make sense to me:
+My setup certainly has ECC RAM although I'm running this on a VM. So, that adds another software layer that potentially has bugs. In any case, I'm totally OK with running fsck but would like not have to manually intervene to fix problems. Any suggestions in this specific case to work around the 'required manual intervention'?
 
-inode->i_dtime < ctx->fs->super->s_inodes_count
-
-In any case it looks like it found an inode that has been deleted (infe=
-rred from a non zero i_dtime?).
-
-It's certainly possible that the time on the node was changed following=
- the crash. I'm running this on a VM and it's even possible that the hy=
-pervisor chose to change the time at the time of reboot (following the =
-crash). But I doubt if it was 1/1/1970. Another thing that is not obvio=
-us to me how it determined that he i_dtime too old? That would help me =
-get to the bottom of this.
-
-I would like to have the setup configured so that I don't have to manua=
-lly intervene to fix such problems at all and that's the intention behi=
-nd these questions. As such you have been of great help so far.
-
-Thanks again
+Thanks
 ~ Hari
 
-
 -----Original Message-----
-=46rom: Amir Goldstein [mailto:amir73il@gmail.com]=20
-Sent: Thursday, February 24, 2011 4:23 AM
+From: Rogier Wolff [mailto:R.E.Wolff@BitWizard.nl] 
+Sent: Thursday, February 24, 2011 4:40 AM
 To: Hari Subramanian
 Cc: linux-ext4@vger.kernel.org
 Subject: Re: e2fsprogs/ext4 version compatibility
 
-On Wed, Feb 23, 2011 at 11:09 PM, Hari Subramanian <hari@vmware.com> wr=
-ote:
-> Hi,
->
-> I'm running a SLES11 SP1 GA based kernel (2.6.32.23) with ext4 filesy=
-stem. The e2fsprogs package that's installed on the box is version 1.41=
-=2E9 (22-Aug-2009). I was wondering if there was a version in compatibi=
-lity between the filesystem implementation and the tools package, esp. =
-since there have been 5 revisions of the package since 1.41.9
->
+On Wed, Feb 23, 2011 at 01:09:20PM -0800, Hari Subramanian wrote:
 
-I am using the same kernel/e2fsprogs versions and they don't seem to
-have any comparability issues
-(none of the kernel/e2fsprogs versions should have comparability issues=
- AFAIK)
-
-> The reason I'm asking the question is my machine recently rebooted af=
-ter a crash but fsck failed with an error code of 4 and the following m=
-essage:
->
+> The reason I'm asking the question is my machine recently rebooted
+> after a crash but fsck failed with an error code of 4 and the
+> following message:
+ 
 > "Inodes that were part of a corrupted orphan linked list found"
 > "UNEXPECTED INCONSISTENCY: RUN fsck MANUALLY"
 
-This doesn't look like a kernel/e2fsprogs compatibility issue.
-=46sck is telling you it found an inode, which looks like it should hav=
-e
-been on the orphan list,
-but wasn't found on the list.
+These sorts of filesystem errors occasionally occur. :-( 
 
-It could also be that you deleted an inode back in the 80's,
-but I think the code is trying to rule that option out somehow
-with the busted_fs_time:
+Do you have ECC RAM? A cosmic particle may have flipped a bit in your
+RAM. There is not much you can do about it, except buy ECC RAM next
+time. Much more likely, but less likely to be believed by users is:
+your system simply flipped a bit. Somewhere in your system there is a
+path that once in a million times is not fast enough to catch the
+proper data, and will latch the wrong data. Result? A flipped bit.
 
-                if (inode->i_dtime && !busted_fs_time &&
-                    inode->i_dtime < ctx->fs->super->s_inodes_count) {
-                        if (fix_problem(ctx, PR_1_LOW_DTIME, &pctx)) {
-                                inode->i_dtime =3D inode->i_links_count=
- ?
-                                        0 : ctx->now;
-                                e2fsck_write_inode(ctx, ino, inode,
-                                                   "pass1");
-                        }
-                }
+Anyway, these errors accumulate. That's why running e2fsck is still
+good to be doing every once in a while even on a logging filesystem
+like ext3 or ext4 that should be resistant to suddenly turning off
+the power (or crashing).
 
-In any case, saying yes to fix that problem seems to be mostly harmless=
-=2E
-later passes of fsck would figure out what to do with that inode, which
-is why fsck requires you to run it manually, so you can answer importan=
-t
-questions like: delete inode XXX?
+	Roger. 
 
->
-> There were no files being created or deleted at the time of the crash=
- although IOs were probably inflight. So, the inodes being a part of or=
-phaned link list doesn't make sense to me. I don't claim deep knowledge=
- in filesystem internals either. Before I go suspecting a corrupted fil=
-esystem, I wanted to make sure I was running the right version of fsck.
-
-An inode is added to orphan list before every write that is about to
-change the file size, so it does make sense to
-have inodes on the orphan list after crash, but it doesn't explain why
-the orphan list is corrupted.
-
-Could it be that your system had skewed time before the crash? 1/1/1970=
-?
-
->
-> Thanks in advance for your help!
-> ~ Hari
->
-> P.S. I wasn't sure if this is the right forum to post this question b=
-ut I couldn't find a e2fsprogs mailing list and linux-ext4 seemed like =
-a good alternative. Sorry, if this is the wrong forum.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
+**    Delftechpark 26 2628 XH  Delft, The Netherlands. KVK: 27239233    **
+*-- BitWizard writes Linux device drivers for any device you may have! --*
+Q: It doesn't work. A: Look buddy, doesn't work is an ambiguous statement. 
+Does it sit on the couch all day? Is it unemployed? Please be specific! 
+Define 'it' and what it isn't doing. --------- Adapted from lxrbot FAQ
