@@ -1,59 +1,95 @@
-From: Amir Goldstein <amir73il@gmail.com>
+From: Joel Becker <jlbec@evilplan.org>
 Subject: Re: Proposed design for big allocation blocks for ext4
-Date: Fri, 25 Feb 2011 23:24:33 +0200
-Message-ID: <AANLkTi=j2LCgORZPdusuCEvo55Bed6CVJp0yFwEy7dGa@mail.gmail.com>
+Date: Fri, 25 Feb 2011 13:59:25 -0800
+Message-ID: <20110225215924.GA28214@noexit>
 References: <E1PsnrK-0005r5-JH@tytso-glaptop>
-	<1F9A85BD-4B5E-488C-B903-0AE17AACF2B7@dilger.ca>
-	<CE75B187-E5BB-444E-9256-4DBF96B6DCDA@mit.edu>
-	<AANLkTinYzZo+uxjZhO8VKu88UfBJ3RZQhfQK5qaHPwh-@mail.gmail.com>
-	<20110225190436.GZ2924@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:63566 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754671Ab1BYVYe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Feb 2011 16:24:34 -0500
-Received: by qwd7 with SMTP id 7so1555326qwd.19
-        for <linux-ext4@vger.kernel.org>; Fri, 25 Feb 2011 13:24:34 -0800 (PST)
-In-Reply-To: <20110225190436.GZ2924@thunk.org>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:46197 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754912Ab1BYV7a (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Feb 2011 16:59:30 -0500
+Content-Disposition: inline
+In-Reply-To: <E1PsnrK-0005r5-JH@tytso-glaptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Feb 25, 2011 at 9:04 PM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Fri, Feb 25, 2011 at 08:05:43PM +0200, Amir Goldstein wrote:
->>
->> I like your design. very KISS indeed.
->> I am just wondering why should BIGALLOC be INCOMPAT and not RO_COMPA=
-T?
->> After all, ro mount doesn't allocate and RO_COMPAT features are so m=
-uc
->> =A0nicer...
->
-> I can try to make it be RO_COMPAT, but one thing my design changes is
-> that a block group will contain 32768 allocation blocks; so assuming =
-a
-> 4k blocks, instead of a block group containing a maximum of 32,768 4k
-> blocks comprising 128 MB, a block group would now contain 32,768 1M
-> blocks, or 32 GiB, or 8,388,608 4k blocks.
->
-> I'm pretty sure that existing kernels have superblock sanity checks
-> that will barf if they see this. =A0Still, yeah, I can try allocating
-> this as a ROCOMPAT feature, and later on, if people really care, they
-> can patch older kernels so they won't freak out when they see a
-> BigAlloc file system and can thus successfully mount it read-only.
->
-> (Right now existing kernels will complain when s_blocks_per_group is
-> greater than blocksize*8.)
->
+On Thu, Feb 24, 2011 at 09:56:46PM -0500, Theodore Ts'o wrote:
+> The solution to this problem is to use an increased allocation size as
+> far as the block allocaiton bitmaps are concerned.  However, the size
+> of allocation bitmaps, and the granularity of blocks as far as the the
+> extent tree blocks are concerned, are still based on the original
+> maximum 4k block size.
 
-no problem. just rename s_blocks_per_group to s_bigblocks_per_group
-to be compatible with old kernels.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+	Why not call it a 'cluster' like the rest of us do?  The term
+'blocksize' is overloaded enough already.
+
+> Because we are not changing the definition of a block, the only
+> changes that need to be made are at the intersection of allocating to
+> an inode (or to file system metadata).  This is good, because it means
+> the bulk of ext4 does not need to be changed
+> 
+> 
+> = Kernel Changes required =
+> 
+> 1) Globally throughout ext4: uses of EXT4_BLOCKS_PER_GROUP() need to
+> be audited to see if they should be EXT4_BLOCKS_PER_GROUP() or
+> EXT4_ALLOC_BLOCKS_PER_GROUP().
+> 
+> 2) ext4_map_blocks() and its downstream functions need to be changed so
+> that they understand the new allocation rules, and in particular
+> understand that before allocating a new block, they need to see if a
+> partially allocated block has already been allocated, and can be used
+> to fulfill the current allocation.
+> 
+> 3) mballoc.c will need little or no changes, other than the
+> EXT4_BLOCKS_PER_GROUP()/EXT4_ALLOC_BLOCKS_PER_GROUP() audit discussed
+> in (1).
+
+	Be careful in your zeroing.  A new allocation block might have
+pages at its front that are not part of the write() or mmap().  You'll
+either need to keep track that they are uninitialized, or you will have
+to zero them in write_begin() (ocfs2 does the latter).  We've had quite
+a few tricky bugs in this area, because the standard pagecache code
+handles the pags covered by the write, but the filesystem has to handle
+the new pages outside the write.
+
+> = Downsides =
+> 
+> Internal fragmentation will be expensive for small files.  So this is
+> only useful for file systems where most files are large, or where the
+> file system performance is more important than the losses caused by
+> internal fragmentation.  
+
+	It's a huge win for anything needing large files, like database
+files or VM images.  mkfs.ocfs2 has a vmimage mode just for this ;-)
+Even with good allocation code and proper extents, a long-lived
+filesystem with 4K clusters just gets fragmented.  This leads to later
+files being very discontiguous, which are slow to I/O to.  I think this
+is much more important than the simple speed-of-allocation win.
+
+> Directories will also be allocated in chucks of the allocation block
+> size.  If this is especially large (such as 1 MiB), and there are a
+> large number of directories, this could be quite expensive.
+> Applications which use multi-level directory schemes to keep
+> directories small to optimize for ext2's very slow large directory
+> performance could be especially vulnerable.
+
+	Anecdotal evidence suggests that directories often benefit with
+clusters of 8-16K size, but suffer greatly after 128K for precisely the
+reasons you describe.  We usually don't recommend clusters greater than
+32K for filesystems that aren't expressly for large things.
+
+Joel
+
+-- 
+
+"I don't want to achieve immortality through my work; I want to
+ achieve immortality through not dying."
+        - Woody Allen
+
+			http://www.jlbec.org/
+			jlbec@evilplan.org
