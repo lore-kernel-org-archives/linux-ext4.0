@@ -1,40 +1,142 @@
-From: Rogier Wolff <R.E.Wolff@BitWizard.nl>
-Subject: Re: fsck performance.
-Date: Fri, 25 Feb 2011 00:53:54 +0100
-Message-ID: <20110224235354.GA15464@bitwizard.nl>
-References: <20110222133652.GI21917@bitwizard.nl> <20110222135431.GK21917@bitwizard.nl> <386B23FA-CE6E-4D9C-9799-C121B2E8C3BB@dilger.ca> <20110222221304.GH2924@thunk.org> <20110223044427.GM21917@bitwizard.nl> <DC8EC4D5-BB64-4908-985B-C6D3EDA955E3@mit.edu> <20110223205309.GA16661@bitwizard.nl> <F03E2EAC-9D44-4D8E-93AC-902FDFC22B92@dilger.ca> <20110224072945.GE16661@bitwizard.nl> <AANLkTinv-JPaiPzKC4xSqh0shmzjf4rKeQShRwiOznoz@mail.gmail.com>
+From: Hari Subramanian <hari@vmware.com>
+Subject: RE: e2fsprogs/ext4 version compatibility
+Date: Thu, 24 Feb 2011 16:13:46 -0800
+Message-ID: <10FC03A59E498D4A90A45E4A105AD3ED02DCB03B88@EXCH-MBX-2.vmware.com>
+References: <10FC03A59E498D4A90A45E4A105AD3ED02DCB0363A@EXCH-MBX-2.vmware.com>
+ <AANLkTi=cgVAbEd+vmXeRRHD7wWdbt_Dyf=vYRLFH-45r@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Rogier Wolff <R.E.Wolff@bitwizard.nl>,
-	Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cust-95-128-94-82.breedbanddelft.nl ([95.128.94.82]:49793 "HELO
-	abra2.bitwizard.nl" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with SMTP id S1756592Ab1BYAAg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Feb 2011 19:00:36 -0500
-Content-Disposition: inline
-In-Reply-To: <AANLkTinv-JPaiPzKC4xSqh0shmzjf4rKeQShRwiOznoz@mail.gmail.com>
+Received: from smtp-outbound-2.vmware.com ([65.115.85.73]:22082 "EHLO
+	smtp-outbound-2.vmware.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756632Ab1BYANs convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 24 Feb 2011 19:13:48 -0500
+In-Reply-To: <AANLkTi=cgVAbEd+vmXeRRHD7wWdbt_Dyf=vYRLFH-45r@mail.gmail.com>
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hi Amir,
 
-On Thu, Feb 24, 2011 at 10:59:23AM +0200, Amir Goldstein wrote:
-> That tool is e2image -r, which creates a sparse file image of your fs
+Thanks for the quick response. Glad to note that I'm running the right =
+version of fsck to start with.
+=20
+So, is the variable i_dtime overloaded to store something other than 'd=
+eleted timestamp' after the fact that a file is deleted? Coz, the follo=
+wing part of the check doesn't make sense to me:
 
-Ah... I got: 
+inode->i_dtime < ctx->fs->super->s_inodes_count
 
-/home/wolff/e2image: File too large error writing block 535822337
+In any case it looks like it found an inode that has been deleted (infe=
+rred from a non zero i_dtime?).
 
-Sigh. 2Tb max filesize on ext3. :-(
+It's certainly possible that the time on the node was changed following=
+ the crash. I'm running this on a VM and it's even possible that the hy=
+pervisor chose to change the time at the time of reboot (following the =
+crash). But I doubt if it was 1/1/1970. Another thing that is not obvio=
+us to me how it determined that he i_dtime too old? That would help me =
+get to the bottom of this.
 
-	Roger. 
+I would like to have the setup configured so that I don't have to manua=
+lly intervene to fix such problems at all and that's the intention behi=
+nd these questions. As such you have been of great help so far.
+
+Thanks again
+~ Hari
 
 
--- 
-** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
-**    Delftechpark 26 2628 XH  Delft, The Netherlands. KVK: 27239233    **
-*-- BitWizard writes Linux device drivers for any device you may have! --*
-Q: It doesn't work. A: Look buddy, doesn't work is an ambiguous statement. 
-Does it sit on the couch all day? Is it unemployed? Please be specific! 
-Define 'it' and what it isn't doing. --------- Adapted from lxrbot FAQ
+-----Original Message-----
+=46rom: Amir Goldstein [mailto:amir73il@gmail.com]=20
+Sent: Thursday, February 24, 2011 4:23 AM
+To: Hari Subramanian
+Cc: linux-ext4@vger.kernel.org
+Subject: Re: e2fsprogs/ext4 version compatibility
+
+On Wed, Feb 23, 2011 at 11:09 PM, Hari Subramanian <hari@vmware.com> wr=
+ote:
+> Hi,
+>
+> I'm running a SLES11 SP1 GA based kernel (2.6.32.23) with ext4 filesy=
+stem. The e2fsprogs package that's installed on the box is version 1.41=
+=2E9 (22-Aug-2009). I was wondering if there was a version in compatibi=
+lity between the filesystem implementation and the tools package, esp. =
+since there have been 5 revisions of the package since 1.41.9
+>
+
+I am using the same kernel/e2fsprogs versions and they don't seem to
+have any comparability issues
+(none of the kernel/e2fsprogs versions should have comparability issues=
+ AFAIK)
+
+> The reason I'm asking the question is my machine recently rebooted af=
+ter a crash but fsck failed with an error code of 4 and the following m=
+essage:
+>
+> "Inodes that were part of a corrupted orphan linked list found"
+> "UNEXPECTED INCONSISTENCY: RUN fsck MANUALLY"
+
+This doesn't look like a kernel/e2fsprogs compatibility issue.
+=46sck is telling you it found an inode, which looks like it should hav=
+e
+been on the orphan list,
+but wasn't found on the list.
+
+It could also be that you deleted an inode back in the 80's,
+but I think the code is trying to rule that option out somehow
+with the busted_fs_time:
+
+                if (inode->i_dtime && !busted_fs_time &&
+                    inode->i_dtime < ctx->fs->super->s_inodes_count) {
+                        if (fix_problem(ctx, PR_1_LOW_DTIME, &pctx)) {
+                                inode->i_dtime =3D inode->i_links_count=
+ ?
+                                        0 : ctx->now;
+                                e2fsck_write_inode(ctx, ino, inode,
+                                                   "pass1");
+                        }
+                }
+
+In any case, saying yes to fix that problem seems to be mostly harmless=
+=2E
+later passes of fsck would figure out what to do with that inode, which
+is why fsck requires you to run it manually, so you can answer importan=
+t
+questions like: delete inode XXX?
+
+>
+> There were no files being created or deleted at the time of the crash=
+ although IOs were probably inflight. So, the inodes being a part of or=
+phaned link list doesn't make sense to me. I don't claim deep knowledge=
+ in filesystem internals either. Before I go suspecting a corrupted fil=
+esystem, I wanted to make sure I was running the right version of fsck.
+
+An inode is added to orphan list before every write that is about to
+change the file size, so it does make sense to
+have inodes on the orphan list after crash, but it doesn't explain why
+the orphan list is corrupted.
+
+Could it be that your system had skewed time before the crash? 1/1/1970=
+?
+
+>
+> Thanks in advance for your help!
+> ~ Hari
+>
+> P.S. I wasn't sure if this is the right forum to post this question b=
+ut I couldn't find a e2fsprogs mailing list and linux-ext4 seemed like =
+a good alternative. Sorry, if this is the wrong forum.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
