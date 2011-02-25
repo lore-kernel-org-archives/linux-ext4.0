@@ -1,50 +1,222 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: Proposed design for big allocation blocks for ext4
-Date: Fri, 25 Feb 2011 12:39:38 -0700
-Message-ID: <F18281E8-0B93-44D8-A88B-4B822BDB9CC8@dilger.ca>
-References: <E1PsnrK-0005r5-JH@tytso-glaptop> <1F9A85BD-4B5E-488C-B903-0AE17AACF2B7@dilger.ca> <CE75B187-E5BB-444E-9256-4DBF96B6DCDA@mit.edu> <AANLkTinYzZo+uxjZhO8VKu88UfBJ3RZQhfQK5qaHPwh-@mail.gmail.com> <20110225190436.GZ2924@thunk.org>
+Subject: Re: [PATCH v3] ext4:Make FIEMAP and delayed allocation play well together.
+Date: Fri, 25 Feb 2011 13:01:27 -0700
+Message-ID: <C821E65A-5A3A-4B15-B7A9-715B425F6B46@dilger.ca>
+References: <1298626825-3131-1-git-send-email-xiaoqiangnk@gmail.com> <9CFD5FC9-82EC-426F-B0EA-742AFB05711E@dilger.ca> <AANLkTimUzNXK3t0cr94oXXmEM0kox6zaZNO4b2dfpVNe@mail.gmail.com>
 Mime-Version: 1.0 (Apple Message framework v1082)
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 8BIT
-Cc: Amir Goldstein <amir73il@gmail.com>, linux-ext4@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:38798 "EHLO
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:23168 "EHLO
 	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756241Ab1BYTjk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Feb 2011 14:39:40 -0500
-In-Reply-To: <20110225190436.GZ2924@thunk.org>
+	with ESMTP id S932648Ab1BYUB2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Feb 2011 15:01:28 -0500
+In-Reply-To: <AANLkTimUzNXK3t0cr94oXXmEM0kox6zaZNO4b2dfpVNe@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-02-25, at 12:04 PM, Ted Ts'o wrote:
-> On Fri, Feb 25, 2011 at 08:05:43PM +0200, Amir Goldstein wrote:
+On 2011-02-25, at 6:46 AM, Yongqiang Yang wrote:
+> On Fri, Feb 25, 2011 at 6:13 PM, Andreas Dilger <adilger@dilger.ca> wrote:
+>> On 2011-02-25, at 2:40 AM, Yongqiang Yang wrote:
+>>> @@ -3782,38 +3783,124 @@ static int ext4_ext_fiemap_cb(struct inode *inode,
+>>>       if (newex->ec_start == 0) {
+>>> +             struct page     *page = NULL;
+>>> +repeat:
+>>> +             last_offset = offset;
+>>> +             head = NULL;
+>>> +             ret = find_get_pages_tag(inode->i_mapping, &offset,
+>>> +                                     PAGECACHE_TAG_DIRTY, 1, &page);
 >> 
->> I like your design. very KISS indeed.
->> I am just wondering why should BIGALLOC be INCOMPAT and not RO_COMPAT?
->> After all, ro mount doesn't allocate and RO_COMPAT features are so muc
->> nicer...
+>> Hmm, now I wonder about the expense of mapping many thousands of delalloc
+>> pages, one at a time, in order to map this extent.
+>> 
+>> Could you please do a test, with as large a file as possible before it is written to disk (say 4GB == 1M pages), to see whether single-page find_get_pages_tag() is faster than kmalloc() of a PAGE_SIZE buffer and (PAGE_SIZE/sizeof(struct page *)) page pointers?
 > 
-> I can try to make it be RO_COMPAT, but one thing my design changes is
-> that a block group will contain 32768 allocation blocks; so assuming a
-> 4k blocks, instead of a block group containing a maximum of 32,768 4k
-> blocks comprising 128 MB, a block group would now contain 32,768 1M
-> blocks, or 32 GiB, or 8,388,608 4k blocks.
+> Sorry, my machine's memory is in 2GB size. Should I do a test with a
+> file in 1.5GB size?
+
+Yes, as large a file that is possible to keep in DELALLOC state.  I think that will require tuning the VM to avoid writeout for as long as possible, and of course making sure that the fiemap tool is not using FIEMAP_FLAG_SYNC:
+
+/proc/sys/vm/dirty_expire_centisecs:60000	# 10 minutes
+/proc/sys/vm/dirty_writeback_centisecs:60000
+/proc/sys/vm/dirty_ratio:99 			# 99% of RAM dirty before flush
+
+Hopefully this does not lock up your system, so long as the dirty data is kept below the amount of free RAM.
+
+> I think kmalloc() is faster than single-page.
+
+I hope so as well.
+
+> Thank you.
+>> 
+>> This would probably work best if the VM is tuned not to flush out dirty pages.
+>> 
+>> Otherwise, there are only minor style issues to fix up.  Thanks for your work so far.
+>> 
+>>> +             if (!(flags & FIEMAP_EXTENT_DELALLOC)) {
+>>> +                     /* First time, try to find a mapped buffer. */
+>>> +                     if (ret == 0) {
+>>> +out:
+>>> +                             if (ret > 0)
+>>> +                                     page_cache_release(page);
+>>> +                             /* just a hole. */
+>>> +                             return EXT_CONTINUE;
+>>> +                     }
+>>> 
+>>> -             if (!bh)
+>>> -                     return EXT_CONTINUE;
+>>> +                     /* Try to find the 1st mapped buffer. */
+>>> +                     end = ((__u64)page->index << PAGE_SHIFT)
+>>> +                                     >> blksize_bits;
+>> 
+>> (style) operators go at the end of the previous line.
+>> 
+>>> +                     if (!page_has_buffers(page))
+>>> +                             goto out;
+>>> +                     head = page_buffers(page);
+>>> +                     if (!head)
+>>> +                             goto out;
+>>> 
+>>> -             if (buffer_delay(bh)) {
+>>> -                     flags |= FIEMAP_EXTENT_DELALLOC;
+>>> -                     page_cache_release(page);
+>>> +                     bh = head;
+>>> +                     do {
+>>> +                             if (buffer_mapped(bh)) {
+>>> +                                     /* get the 1st mapped buffer. */
+>>> +                                     if (end > newex->ec_block +
+>>> +                                             newex->ec_len)
+>> 
+>> (style) continued lines should align by the parenthesis '(' on the previous line, not on a full tab.
+>> 
+>>> +                                             /* The buffer is out of
+>>> +                                              * the request range.
+>>> +                                              */
+>>> +                                             goto out;
+>>> +                                     goto found_mapped_buffer;
+>>> +                             }
+>>> +                             bh = bh->b_this_page;
+>>> +                             end++;
+>>> +                     } while (bh != head);
+>>> +                     /* No mapped buffer found. */
+>>> +                     goto out;
+>>>               } else {
+>>> +                     /*Find contiguous delayed buffers. */
+>>> +                     if (ret > 0 && page->index == last_offset)
+>>> +                             head = page_buffers(page);
+>>> +                     bh = head;
+>>> +             }
+>>> +
+>>> +found_mapped_buffer:
+>>> +             if (bh != NULL && buffer_delay(bh)) {
+>>> +                     /* 1st or contiguous delayed buffer found. */
+>>> +                     if (!(flags & FIEMAP_EXTENT_DELALLOC)) {
+>>> +                             /*
+>>> +                              * 1st delayed buffer found, record
+>>> +                              * the start of extent.
+>>> +                              */
+>>> +                             flags |= FIEMAP_EXTENT_DELALLOC;
+>>> +                             newex->ec_block = end;
+>>> +                             logical =  (__u64)end << blksize_bits;
+>> 
+>> (style) remove double space before '('
+>> 
+>>> +                     }
+>>> +                     /* Find contiguous delayed buffers. */
+>>> +                     do {
+>>> +                             if (!buffer_delay(bh))
+>>> +                                     goto found_delayed_extent;
+>>> +                             bh = bh->b_this_page;
+>>> +                             end++;
+>>> +                     } while (bh != head);
+>>> +             } else if (!(flags & FIEMAP_EXTENT_DELALLOC))
+>>> +                     /* a hole found. */
+>>> +                     goto out;
+>>> +
+>>> +found_delayed_extent:
+>>> +             newex->ec_len = min(end - newex->ec_block,
+>>> +                                             (ext4_lblk_t)EXT_INIT_MAX_LEN);
+>> 
+>> (style) align continued line after '(' on previous line
+>> 
+>>> +             if (ret == 1 && bh != NULL
+>>> +                     && newex->ec_len < EXT_INIT_MAX_LEN
+>>> +                     && buffer_delay(bh)) {
+>> 
+>> (style) operators go at the end of the previous line, like:
+>> 
+>> +               if (ret == 1 && bh != NULL &&
+>> +                   newex->ec_len < EXT_INIT_MAX_LEN && buffer_delay(bh)) {
+>> 
+>>> +                     /* Have not collected an extent and continue. */
+>>>                       page_cache_release(page);
+>>> -                     return EXT_CONTINUE;
+>>> +                     goto repeat;
+>>>               }
+>>> +             page_cache_release(page);
+>>>       }
+>>> 
+>>>       physical = (__u64)newex->ec_start << blksize_bits;
+>>> @@ -3822,32 +3909,16 @@ static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
+>>>       if (ex && ext4_ext_is_uninitialized(ex))
+>>>               flags |= FIEMAP_EXTENT_UNWRITTEN;
+>>> 
+>>> -     /*
+>>> -      * If this extent reaches EXT_MAX_BLOCK, it must be last.
+>>> -      *
+>>> -      * Or if ext4_ext_next_allocated_block is EXT_MAX_BLOCK,
+>>> -      * this also indicates no more allocated blocks.
+>>> -      *
+>>> -      * XXX this might miss a single-block extent at EXT_MAX_BLOCK
+>>> -      */
+>>> -     if (ext4_ext_next_allocated_block(path) == EXT_MAX_BLOCK ||
+>>> -         newex->ec_block + newex->ec_len - 1 == EXT_MAX_BLOCK) {
+>>> -             loff_t size = i_size_read(inode);
+>>> -             loff_t bs = EXT4_BLOCK_SIZE(inode->i_sb);
+>>> -
+>>> +     size = i_size_read(inode);
+>>> +     if (logical + length >= size)
+>>>               flags |= FIEMAP_EXTENT_LAST;
+>>> -             if ((flags & FIEMAP_EXTENT_DELALLOC) &&
+>>> -                 logical+length > size)
+>>> -                     length = (size - logical + bs - 1) & ~(bs-1);
+>>> -     }
+>>> 
+>>> -     error = fiemap_fill_next_extent(fieinfo, logical, physical,
+>>> +     ret = fiemap_fill_next_extent(fieinfo, logical, physical,
+>>>                                       length, flags);
+>>> -     if (error < 0)
+>>> -             return error;
+>>> -     if (error == 1)
+>>> +     if (ret < 0)
+>>> +             return ret;
+>>> +     if (ret == 1)
+>>>               return EXT_BREAK;
+>>> -
+>>>       return EXT_CONTINUE;
+>>> }
+>>> 
+>>> --
+>>> 1.7.4
+>>> 
+>> 
+>> 
+>> Cheers, Andreas
+>> 
+>> 
+>> 
+>> 
+>> 
+>> 
 > 
-> I'm pretty sure that existing kernels have superblock sanity checks
-> that will barf if they see this.  Still, yeah, I can try allocating
-> this as a ROCOMPAT feature, and later on, if people really care, they
-> can patch older kernels so they won't freak out when they see a
-> BigAlloc file system and can thus successfully mount it read-only.
 > 
-> (Right now existing kernels will complain when s_blocks_per_group is
-> greater than blocksize*8.)
+> 
+> -- 
+> Best Wishes
+> Yongqiang Yang
 
-Hmm, if we stuck with a flex_bg factor G >= the allocation blocksize (2^G * blocksize), then it would appear that the main difference is (2^G - 1) unused block bitmaps per flex_bg, and the single used block bitmap per group would be compressed 2^G:1 (i.e. it wouldn't represent a valid block bitmap to unaware kernels).  This would be OK for ROCOMPAT, like Amir wrote.
-
-I guess the main difference is that there would still be 2^G more group descriptors to read/scan/write, though they would all be contiguous on disk.
-
-To convert away from this feature on an old kernel would mean expanding each bit in flex_bg bitmap[0] by a factor 2^G and clearing the ROCOMPAT flag.
 
 Cheers, Andreas
 
