@@ -1,282 +1,49 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH v2] ext4:Make FIEMAP and delayed allocation play well together.
-Date: Fri, 25 Feb 2011 13:08:11 +0800
-Message-ID: <1298610491-3414-1-git-send-email-xiaoqiangnk@gmail.com>
-Cc: sandeen@redhat.com, Yongqiang Yang <xiaoqiangnk@gmail.com>
-To: linux-ext4@vger.kernel.org
+From: Marco Stornelli <marco.stornelli@gmail.com>
+Subject: Re: [RFC][PATCH] ext2: Resolve i_nlink race in ext2_rename
+Date: Fri, 25 Feb 2011 08:38:15 +0100
+Message-ID: <AANLkTikmgaoBsf5neCxM9jYCJGkdAS1QC2k0zKUTW2=8@mail.gmail.com>
+References: <1298528501-32176-1-git-send-email-johunt@akamai.com>
+	<20110224063749.GV22723@ZenIV.linux.org.uk>
+	<20110224112010.GB23042@quack.suse.cz>
+	<4D66BD18.2030207@akamai.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Jan Kara <jack@suse.cz>, Al Viro <viro@zeniv.linux.org.uk>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"sandeen@redhat.com" <sandeen@redhat.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: Josh Hunt <johunt@akamai.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yi0-f46.google.com ([209.85.218.46]:59118 "EHLO
-	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750753Ab1BYFE7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Feb 2011 00:04:59 -0500
-Received: by yib19 with SMTP id 19so594107yib.19
-        for <linux-ext4@vger.kernel.org>; Thu, 24 Feb 2011 21:04:59 -0800 (PST)
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:54742 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755404Ab1BYHiQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Feb 2011 02:38:16 -0500
+In-Reply-To: <4D66BD18.2030207@akamai.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-1. lookup dirty pages with specified range in pagecache.
-   If no page is got, then there is no delayed-extent and
-   return with EXT_CONTINUE.
-2. find the 1st mapped buffer,
-3. check if the mapped buffer is both in the request range
-   and a delayed buffer. If not, there is no delayed-extent,
-   then return.
-4. a delayed-extent is found, the extent will be collected.
+Hi,
 
-Reported by Chris Mason <chris.mason@oracle.com>:
-We've had reports on btrfs that cp is giving us files full of zeros
-instead of actually copying them.  It was tracked down to a bug with
-the btrfs fiemap implementation where it was returning holes for
-delalloc ranges.
+2011/2/24 Josh Hunt <johunt@akamai.com>:
+> Jan
+>
+> I'm not seeing the problem with your patch as was expected since we're
+> not messing with i_nlink anymore. Al suggested marking the inode as
+> dirty where we were previously doing the old_inode dec. I believe this
+> is needed as well since we are updating it's ctime. I've attached a
+> version marking the inode dirty and it also fixes the comment making
+> reference to calling inode_dec_link_count().
+>
+> I'm not completely clear on the historical reasons for messing with the
+> link count of old_inode in the first place. It was just to simulate the
+> linking and unlinking of the old_inode?
+>
+> Thanks
+> Josh
+>
 
-Newer versions of cp are trusting fiemap to tell it where the holes
-are, which does seem like a pretty neat trick.
+can we share your test/benchmark? I'd like to add it to my test suite
+as no-regression test.
 
-I decided to give xfs and ext4 a shot with a few tests cases too, xfs
-passed with all the ones btrfs was getting wrong, and ext4 got the basic
-delalloc case right.
-$ mkfs.ext4 /dev/xxx
-$ mount /dev/xxx /mnt
-$ dd if=/dev/zero of=/mnt/foo bs=1M count=1
-$ fiemap-test foo
-ext:   0 logical: [       0..     255] phys:        0..     255
-flags: 0x007 tot: 256
-
-Horray!  But once we throw a hole in, things go bad:
-$ mkfs.ext4 /dev/xxx
-$ mount /dev/xxx /mnt
-$ dd if=/dev/zero of=/mnt/foo bs=1M count=1 seek=1
-$ fiemap-test foo
-< no output >
-
-We've got a delalloc extent after the hole and ext4 fiemap didn't find
-it.  If I run sync to kick the delalloc out:
-$sync
-$ fiemap-test foo
-ext:   0 logical: [     256..     511] phys:    34048..   34303
-flags: 0x001 tot: 256
-
-fiemap-test is sitting in my /usr/local/bin, and I have no idea how it
-got there.  It's full of pretty comments so I know it isn't mine, but
-you can grab it here:
-
-http://oss.oracle.com/~mason/fiemap-test.c
-
-xfsqa has a fiemap program too.
-
-After Fix, test results are as follows:
-ext:   0 logical: [     256..     511] phys:        0..     255
-flags: 0x007 tot: 256
-ext:   0 logical: [     256..     511] phys:    33280..   33535
-flags: 0x001 tot: 256
-
-$ mkfs.ext4 /dev/xxx
-$ mount /dev/xxx /mnt
-$ dd if=/dev/zero of=/mnt/foo bs=1M count=1 seek=1
-$ sync
-$ dd if=/dev/zero of=/mnt/foo bs=1M count=1 seek=3
-$ dd if=/dev/zero of=/mnt/foo bs=1M count=1 seek=5
-$ fiemap-test foo
-ext:   0 logical: [     256..     511] phys:    33280..   33535
-flags: 0x000 tot: 256
-ext:   1 logical: [     768..    1023] phys:        0..     255
-flags: 0x006 tot: 256
-ext:   2 logical: [    1280..    1535] phys:        0..     255
-flags: 0x007 tot: 256
-
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
----
- fs/ext4/extents.c |  149 ++++++++++++++++++++++++++++++++++++++++-------------
- 1 files changed, 112 insertions(+), 37 deletions(-)
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index ccce8a7..35fa988 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3775,6 +3775,7 @@ int ext4_convert_unwritten_extents(struct inode *inode, loff_t offset,
- 	}
- 	return ret > 0 ? ret2 : ret;
- }
-+
- /*
-  * Callback function called for each extent to gather FIEMAP information.
-  */
-@@ -3782,38 +3783,124 @@ static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
- 		       struct ext4_ext_cache *newex, struct ext4_extent *ex,
- 		       void *data)
- {
--	struct fiemap_extent_info *fieinfo = data;
--	unsigned char blksize_bits = inode->i_sb->s_blocksize_bits;
- 	__u64	logical;
- 	__u64	physical;
- 	__u64	length;
-+	loff_t	size;
- 	__u32	flags = 0;
--	int	error;
-+	int		ret = 0;
-+	struct fiemap_extent_info *fieinfo = data;
-+	unsigned char blksize_bits;
- 
--	logical =  (__u64)newex->ec_block << blksize_bits;
-+	blksize_bits = inode->i_sb->s_blocksize_bits;
-+	logical = (__u64)newex->ec_block << blksize_bits;
- 
- 	if (newex->ec_start == 0) {
--		pgoff_t offset;
--		struct page *page;
-+		/*
-+		 * No extent in extent-tree contains block @newex->ec_start,
-+		 * then the block may stay in 1)a hole or 2)delayed-extent.
-+		 *
-+		 * Holes or delayed-extents are processed as follows.
-+		 * 1. lookup dirty pages with specified range in pagecache.
-+		 *    If no page is got, then there is no delayed-extent and
-+		 *    return with EXT_CONTINUE.
-+		 * 2. find the 1st mapped buffer,
-+		 * 3. check if the mapped buffer is both in the request range
-+		 *    and a delayed buffer. If not, there is no delayed-extent,
-+		 *    then return.
-+		 * 4. a delayed-extent is found, the extent will be collected.
-+		 */
-+		ext4_lblk_t	end = 0;
-+		pgoff_t		last_offset;
-+		pgoff_t		offset;
-+		struct page	*page = NULL;
- 		struct buffer_head *bh = NULL;
-+		struct buffer_head *head = NULL;
- 
- 		offset = logical >> PAGE_SHIFT;
--		page = find_get_page(inode->i_mapping, offset);
--		if (!page || !page_has_buffers(page))
--			return EXT_CONTINUE;
--
--		bh = page_buffers(page);
-+repeat:
-+		last_offset = offset;
-+		head = NULL;
-+		ret = find_get_pages_tag(inode->i_mapping, &offset,
-+					PAGECACHE_TAG_DIRTY, 1, &page);
-+
-+		if (!(flags & FIEMAP_EXTENT_DELALLOC)) {
-+			/* First time, try to find a mapped buffer. */
-+			if (ret == 0) {
-+out:
-+				if (ret > 0)
-+					page_cache_release(page);
-+				/* just a hole. */
-+				return EXT_CONTINUE;
-+			}
- 
--		if (!bh)
--			return EXT_CONTINUE;
-+			/* Try to find the 1st mapped buffer. */
-+			end = ((__u64)page->index << PAGE_SHIFT)
-+					>> blksize_bits;
-+			if (!page_has_buffers(page))
-+				goto out;
-+			head = page_buffers(page);
-+			if (!head)
-+				goto out;
- 
--		if (buffer_delay(bh)) {
--			flags |= FIEMAP_EXTENT_DELALLOC;
--			page_cache_release(page);
-+			bh = head;
-+			do {
-+				if (buffer_mapped(bh)) {
-+					/* get the 1st mapped buffer. */
-+					if (end > newex->ec_block +
-+						newex->ec_len)
-+						/* The buffer is out of
-+						 * the request range.
-+						 */
-+						goto out;
-+					goto found_mapped_buffer;
-+				}
-+				bh = bh->b_this_page;
-+				end++;
-+			} while (bh != head);
-+			/* No mapped buffer found. */
-+			goto out;
- 		} else {
-+			/*Find contiguous delayed buffers. */
-+			if (ret > 0 && page->index == last_offset)
-+				head = page_buffers(page);
-+			bh = head;
-+		}
-+
-+found_mapped_buffer:
-+		if (bh != NULL && buffer_delay(bh)) {
-+			/* 1st or contiguous delayed buffer found. */
-+			if (!(flags & FIEMAP_EXTENT_DELALLOC)) {
-+				/*
-+				 * 1st delayed buffer found, record
-+				 * the start of extent.
-+				 */
-+				flags |= FIEMAP_EXTENT_DELALLOC;
-+				newex->ec_block = end;
-+				logical =  (__u64)end << blksize_bits;
-+			}
-+			/* Find contiguous delayed buffers. */
-+			do {
-+				if (!buffer_delay(bh))
-+					goto found_delayed_extent;
-+				bh = bh->b_this_page;
-+				end++;
-+			} while (bh != head);
-+		} else if (!(flags & FIEMAP_EXTENT_DELALLOC))
-+			/* a hole found. */
-+			goto out;
-+
-+found_delayed_extent:
-+		newex->ec_len = min(end - newex->ec_block,
-+						(ext4_lblk_t)EXT_INIT_MAX_LEN);
-+		if (ret == 1 && bh != NULL
-+			&& newex->ec_len < EXT_INIT_MAX_LEN
-+			&& buffer_delay(bh)) {
-+			/* Have not collected an extent and continue. */
- 			page_cache_release(page);
--			return EXT_CONTINUE;
-+			goto repeat;
- 		}
-+		page_cache_release(page);
- 	}
- 
- 	physical = (__u64)newex->ec_start << blksize_bits;
-@@ -3822,32 +3909,20 @@ static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
- 	if (ex && ext4_ext_is_uninitialized(ex))
- 		flags |= FIEMAP_EXTENT_UNWRITTEN;
- 
--	/*
--	 * If this extent reaches EXT_MAX_BLOCK, it must be last.
--	 *
--	 * Or if ext4_ext_next_allocated_block is EXT_MAX_BLOCK,
--	 * this also indicates no more allocated blocks.
--	 *
--	 * XXX this might miss a single-block extent at EXT_MAX_BLOCK
--	 */
--	if (ext4_ext_next_allocated_block(path) == EXT_MAX_BLOCK ||
--	    newex->ec_block + newex->ec_len - 1 == EXT_MAX_BLOCK) {
--		loff_t size = i_size_read(inode);
-+	size = i_size_read(inode);
-+	if (logical + length >= size) {
- 		loff_t bs = EXT4_BLOCK_SIZE(inode->i_sb);
--
--		flags |= FIEMAP_EXTENT_LAST;
--		if ((flags & FIEMAP_EXTENT_DELALLOC) &&
--		    logical+length > size)
-+			flags |= FIEMAP_EXTENT_LAST;
-+		if (flags & FIEMAP_EXTENT_DELALLOC)
- 			length = (size - logical + bs - 1) & ~(bs-1);
- 	}
- 
--	error = fiemap_fill_next_extent(fieinfo, logical, physical,
-+	ret = fiemap_fill_next_extent(fieinfo, logical, physical,
- 					length, flags);
--	if (error < 0)
--		return error;
--	if (error == 1)
-+	if (ret < 0)
-+		return ret;
-+	if (ret == 1)
- 		return EXT_BREAK;
+Marco
