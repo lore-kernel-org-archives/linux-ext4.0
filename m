@@ -1,42 +1,165 @@
-From: Rogier Wolff <R.E.Wolff@BitWizard.nl>
-Subject: Re: Proposed design for big allocation blocks for ext4
-Date: Fri, 25 Feb 2011 11:39:29 +0100
-Message-ID: <20110225103929.GD15464@bitwizard.nl>
-References: <E1PsnrK-0005r5-JH@tytso-glaptop> <1F9A85BD-4B5E-488C-B903-0AE17AACF2B7@dilger.ca> <20110225091559.GC15464@bitwizard.nl> <BBAF46A2-4F43-47E5-B98C-A33837EEF67E@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Rogier Wolff <R.E.Wolff@BitWizard.nl>,
-	Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 2/4] e2image: Support for conversion QCOW2 image into raw
+Date: Fri, 25 Feb 2011 13:49:31 +0100
+Message-ID: <1298638173-25050-2-git-send-email-lczerner@redhat.com>
+References: <1298638173-25050-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, sandeen@redhat.com, lczerner@redhat.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cust-95-128-94-82.breedbanddelft.nl ([95.128.94.82]:40045 "HELO
-	abra2.bitwizard.nl" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with SMTP id S932324Ab1BYKjb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Feb 2011 05:39:31 -0500
-Content-Disposition: inline
-In-Reply-To: <BBAF46A2-4F43-47E5-B98C-A33837EEF67E@dilger.ca>
+Received: from mx1.redhat.com ([209.132.183.28]:36784 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753665Ab1BYMto (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 Feb 2011 07:49:44 -0500
+In-Reply-To: <1298638173-25050-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+This commit adds support for converting QCOW2 image created previously
+with e2image into raw image. The QCOW2 image is detected automatically,
+so there is not new option. Just use following command:
 
-On Fri, Feb 25, 2011 at 03:01:08AM -0700, Andreas Dilger wrote:
+  e2image -r image.qcow image.raw
 
-.... I was babbling.... 
+No that this tool is aimed to quickly convert qcow2 image created with
+e2image into raw image. In order to improve speed we are doing some
+assumption I believe might not be true for regular qcow2 images. So it
+was not tested with regular QCOW2 images and it might not work with
+them. The intention of this tool is only convert images previously
+created by e2image.
 
-> That is the time to load bitmaps in a non-flex_bg filesystem, which is
-> the default for ext3-formatted filesystems.
+Note that there is nothing special with QCOW2 images created by e2images
+and it can be used with tools like qemu-img, or qemu-nbd without any
+problems.
 
-OK! Already done!
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ lib/ext2fs/qcow2.c |    3 ++-
+ misc/e2image.8.in  |    4 ++++
+ misc/e2image.c     |   43 ++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 48 insertions(+), 2 deletions(-)
 
-Then I don't really understand what the problem is, so better ignore
-me. :-)
-
-	Roger. 
-
+diff --git a/lib/ext2fs/qcow2.c b/lib/ext2fs/qcow2.c
+index 17eab38..9ac050b 100644
+--- a/lib/ext2fs/qcow2.c
++++ b/lib/ext2fs/qcow2.c
+@@ -209,9 +209,10 @@ int qcow2_write_raw_image(int qcow2_fd, int raw_fd,
+ 	}
+ 
+ 	/* Resize the output image to the filesystem size */
+-	if (lseek(raw_fd, img.image_size, SEEK_SET) < 0)
++	if (lseek(raw_fd, img.image_size - 1, SEEK_SET) < 0)
+ 		return errno;
+ 
++	memset(copy_buf, 0, 1);
+ 	size = write(raw_fd, copy_buf, 1);
+ 	if (size != 1)
+ 		return errno;
+diff --git a/misc/e2image.8.in b/misc/e2image.8.in
+index 4a28580..6f31dd1 100644
+--- a/misc/e2image.8.in
++++ b/misc/e2image.8.in
+@@ -131,6 +131,10 @@ the
+ option will prevent analysis of problems related to hash-tree indexed
+ directories.
+ .PP
++Note that this will work even if you substitute "/dev/hda1" for another raw
++disk image, or QCOW2 image previously created by
++.BR e2image .
++.PP
+ .SH QCOW2 IMAGE FILES
+ The 
+ .B \-Q
+diff --git a/misc/e2image.c b/misc/e2image.c
+index 6dc78d3..d749981 100644
+--- a/misc/e2image.c
++++ b/misc/e2image.c
+@@ -1229,16 +1229,33 @@ static void install_image(char *device, char *image_fn, int type)
+ 	exit (0);
+ }
+ 
++static struct ext2_qcow2_hdr *check_qcow2_image(int *fd, char *name)
++{
++
++#ifdef HAVE_OPEN64
++	*fd = open64(name, O_RDONLY, 0600);
++#else
++	*fd = open(name, O_RDONLY, 0600);
++#endif
++	if (*fd < 0)
++		return NULL;
++
++	return qcow2_read_header(*fd, name);
++}
++
+ int main (int argc, char ** argv)
+ {
+ 	int c;
+ 	errcode_t retval;
+ 	ext2_filsys fs;
+ 	char *image_fn;
++	struct ext2_qcow2_hdr *header = NULL;
+ 	int open_flag = EXT2_FLAG_64BITS;
+ 	int img_type = 0;
+ 	int flags = 0;
++	int qcow2_fd = 0;
+ 	int fd = 0;
++	int ret = 0;
+ 
+ #ifdef ENABLE_NLS
+ 	setlocale(LC_MESSAGES, "");
+@@ -1282,6 +1299,14 @@ int main (int argc, char ** argv)
+ 		exit (0);
+ 	}
+ 
++	if (img_type & IMAGE_RAW) {
++		header = check_qcow2_image(&qcow2_fd, device_name);
++		if (header) {
++			flags |= IS_QCOW2_FLAG;
++			goto skip_device;
++		}
++	}
++
+ 	retval = ext2fs_open (device_name, open_flag, 0, 0,
+ 			      unix_io_manager, &fs);
+         if (retval) {
+@@ -1291,6 +1316,7 @@ int main (int argc, char ** argv)
+ 		exit(1);
+ 	}
+ 
++skip_device:
+ 	if (strcmp(image_fn, "-") == 0)
+ 		fd = 1;
+ 	else {
+@@ -1306,6 +1332,16 @@ int main (int argc, char ** argv)
+ 		}
+ 	}
+ 
++	if (flags & IS_QCOW2_FLAG) {
++		ret = qcow2_write_raw_image(qcow2_fd, fd, header);
++		if (ret)
++			com_err(program_name, errno,
++				_("while trying to convert qcow2 image"
++				  " (%s) into raw image (%s)"),
++				  device_name, image_fn);
++		goto out;
++	}
++
+ 	if ((img_type & IMAGE_QCOW2) && (fd == 1)) {
+ 		com_err(program_name, 0, "QCOW2 image can not be written to "
+ 					 "the stdout!\n");
+@@ -1318,6 +1354,11 @@ int main (int argc, char ** argv)
+ 		write_image_file(fs, fd);
+ 
+ 	ext2fs_close (fs);
++out:
++	if (header)
++		free(header);
++	if (qcow2_fd)
++		close(qcow2_fd);
+ 	remove_error_table(&et_ext2_error_table);
+-	exit (0);
++	return ret;
+ }
 -- 
-** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
-**    Delftechpark 26 2628 XH  Delft, The Netherlands. KVK: 27239233    **
-*-- BitWizard writes Linux device drivers for any device you may have! --*
-Q: It doesn't work. A: Look buddy, doesn't work is an ambiguous statement. 
-Does it sit on the couch all day? Is it unemployed? Please be specific! 
-Define 'it' and what it isn't doing. --------- Adapted from lxrbot FAQ
+1.7.4
+
