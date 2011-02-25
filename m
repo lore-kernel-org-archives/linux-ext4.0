@@ -1,118 +1,397 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: Proposed design for big allocation blocks for ext4
-Date: Fri, 25 Feb 2011 03:01:08 -0700
-Message-ID: <BBAF46A2-4F43-47E5-B98C-A33837EEF67E@dilger.ca>
-References: <E1PsnrK-0005r5-JH@tytso-glaptop> <1F9A85BD-4B5E-488C-B903-0AE17AACF2B7@dilger.ca> <20110225091559.GC15464@bitwizard.nl>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Rogier Wolff <R.E.Wolff@BitWizard.nl>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: Re: [PATCH v3] ext4:Make FIEMAP and delayed allocation play well together.
+Date: Fri, 25 Feb 2011 18:04:36 +0800
+Message-ID: <AANLkTim_RzPmGZdrY=x=VAqGddgwUqvEz5Dxg+BqHZaT@mail.gmail.com>
+References: <1298626825-3131-1-git-send-email-xiaoqiangnk@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: sandeen@redhat.com, adilger@dilger.ca,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:28364 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932114Ab1BYKBK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Feb 2011 05:01:10 -0500
-In-Reply-To: <20110225091559.GC15464@bitwizard.nl>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:63439 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932478Ab1BYKEj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Feb 2011 05:04:39 -0500
+Received: by eyx24 with SMTP id 24so532352eyx.19
+        for <linux-ext4@vger.kernel.org>; Fri, 25 Feb 2011 02:04:37 -0800 (PST)
+In-Reply-To: <1298626825-3131-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-02-25, at 2:15 AM, Rogier Wolff wrote:
-> I must say I haven't read all of the large amounts of text in this
-> discussion.
+Hi Eric,
 
-We don't write it to be read, just for fun :-).
+Can this patch be merged now?
 
-> But what I understand is that you're suggesting that we implement
-> larger blocksizes on the device, while we have to maintain towards the
-> rest of the kernel that the blocksize is no larger than 4k, because
-> the kernel can't handle that.
-> 
-> Part of reasoning why this should be like this comes from the
-> assumption that each block group has just one block worth of bitmap.
-> That is IMHO the "outdated" assumption that needs to go.
+On Fri, Feb 25, 2011 at 5:40 PM, Yongqiang Yang <xiaoqiangnk@gmail.com>=
+ wrote:
+> 1. lookup dirty pages with specified range in pagecache.
+> =A0 If no page is got, then there is no delayed-extent and
+> =A0 return with EXT_CONTINUE.
+> 2. find the 1st mapped buffer,
+> 3. check if the mapped buffer is both in the request range
+> =A0 and a delayed buffer. If not, there is no delayed-extent,
+> =A0 then return.
+> 4. a delayed-extent is found, the extent will be collected.
+>
+> Reported by Chris Mason <chris.mason@oracle.com>:
+> We've had reports on btrfs that cp is giving us files full of zeros
+> instead of actually copying them. =A0It was tracked down to a bug wit=
+h
+> the btrfs fiemap implementation where it was returning holes for
+> delalloc ranges.
+>
+> Newer versions of cp are trusting fiemap to tell it where the holes
+> are, which does seem like a pretty neat trick.
+>
+> I decided to give xfs and ext4 a shot with a few tests cases too, xfs
+> passed with all the ones btrfs was getting wrong, and ext4 got the ba=
+sic
+> delalloc case right.
+> $ mkfs.ext4 /dev/xxx
+> $ mount /dev/xxx /mnt
+> $ dd if=3D/dev/zero of=3D/mnt/foo bs=3D1M count=3D1
+> $ fiemap-test foo
+> ext: =A0 0 logical: [ =A0 =A0 =A0 0.. =A0 =A0 255] phys: =A0 =A0 =A0 =
+=A00.. =A0 =A0 255
+> flags: 0x007 tot: 256
+>
+> Horray! =A0But once we throw a hole in, things go bad:
+> $ mkfs.ext4 /dev/xxx
+> $ mount /dev/xxx /mnt
+> $ dd if=3D/dev/zero of=3D/mnt/foo bs=3D1M count=3D1 seek=3D1
+> $ fiemap-test foo
+> < no output >
+>
+> We've got a delalloc extent after the hole and ext4 fiemap didn't fin=
+d
+> it. =A0If I run sync to kick the delalloc out:
+> $sync
+> $ fiemap-test foo
+> ext: =A0 0 logical: [ =A0 =A0 256.. =A0 =A0 511] phys: =A0 =A034048..=
+ =A0 34303
+> flags: 0x001 tot: 256
+>
+> fiemap-test is sitting in my /usr/local/bin, and I have no idea how i=
+t
+> got there. =A0It's full of pretty comments so I know it isn't mine, b=
+ut
+> you can grab it here:
+>
+> http://oss.oracle.com/~mason/fiemap-test.c
+>
+> xfsqa has a fiemap program too.
+>
+> After Fix, test results are as follows:
+> ext: =A0 0 logical: [ =A0 =A0 256.. =A0 =A0 511] phys: =A0 =A0 =A0 =A0=
+0.. =A0 =A0 255
+> flags: 0x007 tot: 256
+> ext: =A0 0 logical: [ =A0 =A0 256.. =A0 =A0 511] phys: =A0 =A033280..=
+ =A0 33535
+> flags: 0x001 tot: 256
+>
+> $ mkfs.ext4 /dev/xxx
+> $ mount /dev/xxx /mnt
+> $ dd if=3D/dev/zero of=3D/mnt/foo bs=3D1M count=3D1 seek=3D1
+> $ sync
+> $ dd if=3D/dev/zero of=3D/mnt/foo bs=3D1M count=3D1 seek=3D3
+> $ dd if=3D/dev/zero of=3D/mnt/foo bs=3D1M count=3D1 seek=3D5
+> $ fiemap-test foo
+> ext: =A0 0 logical: [ =A0 =A0 256.. =A0 =A0 511] phys: =A0 =A033280..=
+ =A0 33535
+> flags: 0x000 tot: 256
+> ext: =A0 1 logical: [ =A0 =A0 768.. =A0 =A01023] phys: =A0 =A0 =A0 =A0=
+0.. =A0 =A0 255
+> flags: 0x006 tot: 256
+> ext: =A0 2 logical: [ =A0 =A01280.. =A0 =A01535] phys: =A0 =A0 =A0 =A0=
+0.. =A0 =A0 255
+> flags: 0x007 tot: 256
+>
+> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+> ---
+> =A0fs/ext4/extents.c | =A0149 +++++++++++++++++++++++++++++++++++++++=
+--------------
+> =A01 files changed, 110 insertions(+), 39 deletions(-)
+>
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index ccce8a7..9361adb 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -3775,6 +3775,7 @@ int ext4_convert_unwritten_extents(struct inode=
+ *inode, loff_t offset,
+> =A0 =A0 =A0 =A0}
+> =A0 =A0 =A0 =A0return ret > 0 ? ret2 : ret;
+> =A0}
+> +
+> =A0/*
+> =A0* Callback function called for each extent to gather FIEMAP inform=
+ation.
+> =A0*/
+> @@ -3782,38 +3783,124 @@ static int ext4_ext_fiemap_cb(struct inode *=
+inode, struct ext4_ext_path *path,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct ext4_ext_cache *ne=
+wex, struct ext4_extent *ex,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 void *data)
+> =A0{
+> - =A0 =A0 =A0 struct fiemap_extent_info *fieinfo =3D data;
+> - =A0 =A0 =A0 unsigned char blksize_bits =3D inode->i_sb->s_blocksize=
+_bits;
+> =A0 =A0 =A0 =A0__u64 =A0 logical;
+> =A0 =A0 =A0 =A0__u64 =A0 physical;
+> =A0 =A0 =A0 =A0__u64 =A0 length;
+> + =A0 =A0 =A0 loff_t =A0size;
+> =A0 =A0 =A0 =A0__u32 =A0 flags =3D 0;
+> - =A0 =A0 =A0 int =A0 =A0 error;
+> + =A0 =A0 =A0 int =A0 =A0 =A0 =A0 =A0 =A0 ret =3D 0;
+> + =A0 =A0 =A0 struct fiemap_extent_info *fieinfo =3D data;
+> + =A0 =A0 =A0 unsigned char blksize_bits;
+>
+> - =A0 =A0 =A0 logical =3D =A0(__u64)newex->ec_block << blksize_bits;
+> + =A0 =A0 =A0 blksize_bits =3D inode->i_sb->s_blocksize_bits;
+> + =A0 =A0 =A0 logical =3D (__u64)newex->ec_block << blksize_bits;
+>
+> =A0 =A0 =A0 =A0if (newex->ec_start =3D=3D 0) {
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 pgoff_t offset;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct page *page;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 /*
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* No extent in extent-tree contains =
+block @newex->ec_start,
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* then the block may stay in 1)a hol=
+e or 2)delayed-extent.
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0*
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* Holes or delayed-extents are proce=
+ssed as follows.
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* 1. lookup dirty pages with specifi=
+ed range in pagecache.
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* =A0 =A0If no page is got, then the=
+re is no delayed-extent and
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* =A0 =A0return with EXT_CONTINUE.
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* 2. find the 1st mapped buffer,
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* 3. check if the mapped buffer is b=
+oth in the request range
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* =A0 =A0and a delayed buffer. If no=
+t, there is no delayed-extent,
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* =A0 =A0then return.
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* 4. a delayed-extent is found, the =
+extent will be collected.
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0*/
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_lblk_t =A0 =A0 end =3D 0;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 pgoff_t =A0 =A0 =A0 =A0 last_offset;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 pgoff_t =A0 =A0 =A0 =A0 offset;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct page =A0 =A0 *page =3D NULL;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0struct buffer_head *bh =3D NULL;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct buffer_head *head =3D NULL;
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0offset =3D logical >> PAGE_SHIFT;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 page =3D find_get_page(inode->i_mapping=
+, offset);
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!page || !page_has_buffers(page))
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return EXT_CONTINUE;
+> -
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 bh =3D page_buffers(page);
+> +repeat:
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 last_offset =3D offset;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 head =3D NULL;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 ret =3D find_get_pages_tag(inode->i_map=
+ping, &offset,
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 PAGECACHE_TAG_DIRTY, 1, &page);
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!(flags & FIEMAP_EXTENT_DELALLOC)) =
+{
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* First time, try to f=
+ind a mapped buffer. */
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (ret =3D=3D 0) {
+> +out:
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (ret=
+ > 0)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 page_cache_release(page);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* just=
+ a hole. */
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return =
+EXT_CONTINUE;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+>
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!bh)
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return EXT_CONTINUE;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* Try to find the 1st =
+mapped buffer. */
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 end =3D ((__u64)page->i=
+ndex << PAGE_SHIFT)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 >> blksize_bits;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!page_has_buffers(p=
+age))
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto ou=
+t;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 head =3D page_buffers(p=
+age);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!head)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto ou=
+t;
+>
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (buffer_delay(bh)) {
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 flags |=3D FIEMAP_EXTEN=
+T_DELALLOC;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 page_cache_release(page=
+);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 bh =3D head;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 do {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (buf=
+fer_mapped(bh)) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 /* get the 1st mapped buffer. */
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 if (end > newex->ec_block +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 newex->ec_len)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 /* The buffer is out of
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 =A0* the request range.
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 =A0*/
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 goto out;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 goto found_mapped_buffer;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 bh =3D =
+bh->b_this_page;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 end++;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 } while (bh !=3D head);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* No mapped buffer fou=
+nd. */
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0} else {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /*Find contiguous delay=
+ed buffers. */
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (ret > 0 && page->in=
+dex =3D=3D last_offset)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 head =3D=
+ page_buffers(page);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 bh =3D head;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> +
+> +found_mapped_buffer:
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (bh !=3D NULL && buffer_delay(bh)) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* 1st or contiguous de=
+layed buffer found. */
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!(flags & FIEMAP_EX=
+TENT_DELALLOC)) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /*
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* 1s=
+t delayed buffer found, record
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* th=
+e start of extent.
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0*/
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 flags |=
+=3D FIEMAP_EXTENT_DELALLOC;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 newex->=
+ec_block =3D end;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 logical=
+ =3D =A0(__u64)end << blksize_bits;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* Find contiguous dela=
+yed buffers. */
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 do {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!bu=
+ffer_delay(bh))
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 goto found_delayed_extent;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 bh =3D =
+bh->b_this_page;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 end++;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 } while (bh !=3D head);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 } else if (!(flags & FIEMAP_EXTENT_DELA=
+LLOC))
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* a hole found. */
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out;
+> +
+> +found_delayed_extent:
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 newex->ec_len =3D min(end - newex->ec_b=
+lock,
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 (ext4_lblk_t)EXT_INIT_MAX_LEN);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (ret =3D=3D 1 && bh !=3D NULL
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 && newex->ec_len < EXT_=
+INIT_MAX_LEN
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 && buffer_delay(bh)) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* Have not collected a=
+n extent and continue. */
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0page_cache_release(pag=
+e);
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return EXT_CONTINUE;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto repeat;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 page_cache_release(page);
+> =A0 =A0 =A0 =A0}
+>
+> =A0 =A0 =A0 =A0physical =3D (__u64)newex->ec_start << blksize_bits;
+> @@ -3822,32 +3909,16 @@ static int ext4_ext_fiemap_cb(struct inode *i=
+node, struct ext4_ext_path *path,
+> =A0 =A0 =A0 =A0if (ex && ext4_ext_is_uninitialized(ex))
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0flags |=3D FIEMAP_EXTENT_UNWRITTEN;
+>
+> - =A0 =A0 =A0 /*
+> - =A0 =A0 =A0 =A0* If this extent reaches EXT_MAX_BLOCK, it must be l=
+ast.
+> - =A0 =A0 =A0 =A0*
+> - =A0 =A0 =A0 =A0* Or if ext4_ext_next_allocated_block is EXT_MAX_BLO=
+CK,
+> - =A0 =A0 =A0 =A0* this also indicates no more allocated blocks.
+> - =A0 =A0 =A0 =A0*
+> - =A0 =A0 =A0 =A0* XXX this might miss a single-block extent at EXT_M=
+AX_BLOCK
+> - =A0 =A0 =A0 =A0*/
+> - =A0 =A0 =A0 if (ext4_ext_next_allocated_block(path) =3D=3D EXT_MAX_=
+BLOCK ||
+> - =A0 =A0 =A0 =A0 =A0 newex->ec_block + newex->ec_len - 1 =3D=3D EXT_=
+MAX_BLOCK) {
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 loff_t size =3D i_size_read(inode);
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 loff_t bs =3D EXT4_BLOCK_SIZE(inode->i_=
+sb);
+> -
+> + =A0 =A0 =A0 size =3D i_size_read(inode);
+> + =A0 =A0 =A0 if (logical + length >=3D size)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0flags |=3D FIEMAP_EXTENT_LAST;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if ((flags & FIEMAP_EXTENT_DELALLOC) &&
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 logical+length > size)
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 length =3D (size - logi=
+cal + bs - 1) & ~(bs-1);
+> - =A0 =A0 =A0 }
+>
+> - =A0 =A0 =A0 error =3D fiemap_fill_next_extent(fieinfo, logical, phy=
+sical,
+> + =A0 =A0 =A0 ret =3D fiemap_fill_next_extent(fieinfo, logical, physi=
+cal,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0length, flags);
+> - =A0 =A0 =A0 if (error < 0)
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 return error;
+> - =A0 =A0 =A0 if (error =3D=3D 1)
+> + =A0 =A0 =A0 if (ret < 0)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 return ret;
+> + =A0 =A0 =A0 if (ret =3D=3D 1)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return EXT_BREAK;
+> -
+> =A0 =A0 =A0 =A0return EXT_CONTINUE;
+> =A0}
+>
+> --
+> 1.7.4
+>
+>
 
-What you are suggesting is a feature called "flex_bg", and already is
-implemented in ext4, which is why I referenced it in my email.
-
-> Then, especially on filesystems where many large files live, we can
-> emulate the "larger blocksize" at the filesystem level: We always
-> allocate 256 blocks in one go! This is something that can be
-> dynamically adjusted: You might stop doing this for the last 10% of
-> free disk space.
-
-That's exactly what I wrote.
-
-> Now, you might say: How does this help with the performance problems
-> mentioned in the introduction? Well. reading 16 block bitmaps from 16
-> block groups will cost a modern harddrive on average 16 * (7ms avg
-> seek + 4.1ms avg rot latency + 0.04ms transfer time), or about 170 ms.
-
-That is the time to load bitmaps in a non-flex_bg filesystem, which is
-the default for ext3-formatted filesystems.
-
-> Reading 16 block bitmaps from ONE block group will cost a modern
-> harddrive on average: 7ms avg seek + 4.1ms rot + 16*0.04ms xfer =
-> 11.2ms. That is an improvement of a factor of over 15...
-
-That is possible with flex_bg and a flex_bg factor of 16.  That said,
-I don't think the kernel explicitly fetches all 16 bitmaps today,
-though it may have the benefit of a track cache on the disk.  I think
-the correct number above is actually 11.8ms, not 11.2ms.
-
-In comparison, Ted's proposal would have an average access time of
-
-7ms avg seek + 4.1ms rot + 0.04ms xfer = 11.14ms
-
-which is not a significant savings.
-
-> Now, whenever you allocate blocks for a file, just zap 256 bits at
-> once! Again the overhead of handling 255 more bits in memory is
-> trivial. 
-> 
-> I now see that andreas already suggested something similar but still
-> different.
-
-I'm not quite sure how your proposal is different, once you understand
-what a flex_bg is.
-
-> Anyway: Advantages that I see: 
-> 
-> - the performance benefits sougth for. 
-> 
-> - a more sensible number of block groups on filesystems. (my 3T
->  filessytem has 21000 block groups!)
-> 
-> - the option of storing lots of small files without having to make 
->  a fs-creation-time choice. 
-> 
-> - the option of improving defrag to "make things perfect".  (allocation
->  strategy may be: big files go in big-files-only block groups and
->  their tails go in small-files-only block groups. Or if you think
->  big files may grow, tails go in big-files-only block groups. Whatever
->  you chose, defrag may clean up a fragpoint and or some unallocated
->  space when after a while it's clear that a big file will no longer
->  grow, and is just an archive). 
-> 
-> 	Roger. 
-> 
-> 
-> On Fri, Feb 25, 2011 at 01:21:58AM -0700, Andreas Dilger wrote:
->> On 2011-02-24, at 7:56 PM, Theodore Ts'o wrote:
->>> = Problem statement = 
-> 
-> -- 
-> ** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
-> **    Delftechpark 26 2628 XH  Delft, The Netherlands. KVK: 27239233    **
-> *-- BitWizard writes Linux device drivers for any device you may have! --*
-> Q: It doesn't work. A: Look buddy, doesn't work is an ambiguous statement. 
-> Does it sit on the couch all day? Is it unemployed? Please be specific! 
-> Define 'it' and what it isn't doing. --------- Adapted from lxrbot FAQ
 
 
-Cheers, Andreas
-
-
-
-
-
+--=20
+Best Wishes
+Yongqiang Yang
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
