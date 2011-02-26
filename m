@@ -1,323 +1,104 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [PATCH v3] ext4:Make FIEMAP and delayed allocation play well together.
-Date: Sat, 26 Feb 2011 18:58:52 +0800
-Message-ID: <AANLkTimQeFL3YD5EoKPZ0ToTX4-VfHYK7xCk8cq59gSk@mail.gmail.com>
-References: <1298626825-3131-1-git-send-email-xiaoqiangnk@gmail.com>
-	<9CFD5FC9-82EC-426F-B0EA-742AFB05711E@dilger.ca>
-	<AANLkTimUzNXK3t0cr94oXXmEM0kox6zaZNO4b2dfpVNe@mail.gmail.com>
-	<C821E65A-5A3A-4B15-B7A9-715B425F6B46@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: ext4 corruption
+Date: Sat, 26 Feb 2011 06:10:55 -0500
+Message-ID: <C5B8C496-E8F1-4BF7-9A51-373C0C63E357@mit.edu>
+References: <AANLkTin5hN-gnpmgntApSSrWVWJPQqK99tPJtfmFn5++@mail.gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+To: Bill Huey (hui) <bill.huey@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:33357 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751757Ab1BZK6x convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Feb 2011 05:58:53 -0500
-Received: by iwn34 with SMTP id 34so1785347iwn.19
-        for <linux-ext4@vger.kernel.org>; Sat, 26 Feb 2011 02:58:52 -0800 (PST)
-In-Reply-To: <C821E65A-5A3A-4B15-B7A9-715B425F6B46@dilger.ca>
+Received: from DMZ-MAILSEC-SCANNER-5.MIT.EDU ([18.7.68.34]:60264 "EHLO
+	dmz-mailsec-scanner-5.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751888Ab1BZLK7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 26 Feb 2011 06:10:59 -0500
+In-Reply-To: <AANLkTin5hN-gnpmgntApSSrWVWJPQqK99tPJtfmFn5++@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Feb 26, 2011 at 4:01 AM, Andreas Dilger <adilger@dilger.ca> wro=
-te:
-> On 2011-02-25, at 6:46 AM, Yongqiang Yang wrote:
->> On Fri, Feb 25, 2011 at 6:13 PM, Andreas Dilger <adilger@dilger.ca> =
-wrote:
->>> On 2011-02-25, at 2:40 AM, Yongqiang Yang wrote:
->>>> @@ -3782,38 +3783,124 @@ static int ext4_ext_fiemap_cb(struct inod=
-e *inode,
->>>> =A0 =A0 =A0 if (newex->ec_start =3D=3D 0) {
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 struct page =A0 =A0 *page =3D NULL;
->>>> +repeat:
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 last_offset =3D offset;
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 head =3D NULL;
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 ret =3D find_get_pages_tag(inode->i_mapp=
-ing, &offset,
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-=A0 =A0 PAGECACHE_TAG_DIRTY, 1, &page);
->>>
->>> Hmm, now I wonder about the expense of mapping many thousands of de=
-lalloc
->>> pages, one at a time, in order to map this extent.
->>>
->>> Could you please do a test, with as large a file as possible before=
- it is written to disk (say 4GB =3D=3D 1M pages), to see whether single=
--page find_get_pages_tag() is faster than kmalloc() of a PAGE_SIZE buff=
-er and (PAGE_SIZE/sizeof(struct page *)) page pointers?
->>
->> Sorry, my machine's memory is in 2GB size. Should I do a test with a
->> file in 1.5GB size?
->
-> Yes, as large a file that is possible to keep in DELALLOC state. =A0I=
- think that will require tuning the VM to avoid writeout for as long as=
- possible, and of course making sure that the fiemap tool is not using =
-=46IEMAP_FLAG_SYNC:
->
-> /proc/sys/vm/dirty_expire_centisecs:60000 =A0 =A0 =A0 # 10 minutes
-> /proc/sys/vm/dirty_writeback_centisecs:60000
-> /proc/sys/vm/dirty_ratio:99 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 #=
- 99% of RAM dirty before flush
-I used a computer with 4GB memory, and set as you said above.  Then, I
-dd a 2GB file , fiemap it.  However, most of blocks of a file has been
-allocated except last 10 thousands ones.
+
+On Feb 26, 2011, at 5:16 AM, Bill Huey (hui) wrote:
+
+> Maybe this is deletion related since I was creating and destroying a
+> bunch of file with rsync. I don't know. I'm redoing the rsync with
+> checksums to see if the data is still in tact. Seems like some bits of
+> this got corrupted, but I can't tell if it's disk or file system
+> related.
+
+I'd run e2fsck before you do anything else.   Some of the error
+messages listed below, especially the ones about bad link
+counts on empty directories, smells very much like the inode
+table got corrupted.
+
+-- Ted
 
 
->
-> Hopefully this does not lock up your system, so long as the dirty dat=
-a is kept below the amount of free RAM.
->
->> I think kmalloc() is faster than single-page.
->
-> I hope so as well.
->
->> Thank you.
->>>
->>> This would probably work best if the VM is tuned not to flush out d=
-irty pages.
->>>
->>> Otherwise, there are only minor style issues to fix up. =A0Thanks f=
-or your work so far.
->>>
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 if (!(flags & FIEMAP_EXTENT_DELALLOC)) {
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* First time, try to fi=
-nd a mapped buffer. */
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (ret =3D=3D 0) {
->>>> +out:
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (ret =
-> 0)
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-=A0 =A0 page_cache_release(page);
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* just =
-a hole. */
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return E=
-XT_CONTINUE;
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
->>>>
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 if (!bh)
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return EXT_CONTINUE;
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* Try to find the 1st m=
-apped buffer. */
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 end =3D ((__u64)page->in=
-dex << PAGE_SHIFT)
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-=A0 =A0 >> blksize_bits;
->>>
->>> (style) operators go at the end of the previous line.
->>>
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!page_has_buffers(pa=
-ge))
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out=
-;
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 head =3D page_buffers(pa=
-ge);
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!head)
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out=
-;
->>>>
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 if (buffer_delay(bh)) {
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 flags |=3D FIEMAP_EXTENT=
-_DELALLOC;
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 page_cache_release(page)=
-;
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 bh =3D head;
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 do {
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (buff=
-er_mapped(bh)) {
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-=A0 =A0 /* get the 1st mapped buffer. */
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-=A0 =A0 if (end > newex->ec_block +
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-=A0 =A0 =A0 =A0 =A0 =A0 newex->ec_len)
->>>
->>> (style) continued lines should align by the parenthesis '(' on the =
-previous line, not on a full tab.
->>>
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-=A0 =A0 =A0 =A0 =A0 =A0 /* The buffer is out of
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-=A0 =A0 =A0 =A0 =A0 =A0 =A0* the request range.
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-=A0 =A0 =A0 =A0 =A0 =A0 =A0*/
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-=A0 =A0 =A0 =A0 =A0 =A0 goto out;
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-=A0 =A0 goto found_mapped_buffer;
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 bh =3D b=
-h->b_this_page;
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 end++;
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 } while (bh !=3D head);
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* No mapped buffer foun=
-d. */
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out;
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 } else {
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /*Find contiguous delaye=
-d buffers. */
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (ret > 0 && page->ind=
-ex =3D=3D last_offset)
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 head =3D=
- page_buffers(page);
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 bh =3D head;
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 }
->>>> +
->>>> +found_mapped_buffer:
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 if (bh !=3D NULL && buffer_delay(bh)) {
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* 1st or contiguous del=
-ayed buffer found. */
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!(flags & FIEMAP_EXT=
-ENT_DELALLOC)) {
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /*
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* 1st=
- delayed buffer found, record
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* the=
- start of extent.
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0*/
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 flags |=3D=
- FIEMAP_EXTENT_DELALLOC;
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 newex->e=
-c_block =3D end;
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 logical =
-=3D =A0(__u64)end << blksize_bits;
->>>
->>> (style) remove double space before '('
->>>
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* Find contiguous delay=
-ed buffers. */
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 do {
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!buf=
-fer_delay(bh))
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-=A0 =A0 goto found_delayed_extent;
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 bh =3D b=
-h->b_this_page;
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 end++;
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 } while (bh !=3D head);
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 } else if (!(flags & FIEMAP_EXTENT_DELAL=
-LOC))
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* a hole found. */
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out;
->>>> +
->>>> +found_delayed_extent:
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 newex->ec_len =3D min(end - newex->ec_bl=
-ock,
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-=A0 =A0 =A0 =A0 =A0 =A0 (ext4_lblk_t)EXT_INIT_MAX_LEN);
->>>
->>> (style) align continued line after '(' on previous line
->>>
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 if (ret =3D=3D 1 && bh !=3D NULL
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 && newex->ec_len < EXT_I=
-NIT_MAX_LEN
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 && buffer_delay(bh)) {
->>>
->>> (style) operators go at the end of the previous line, like:
->>>
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (ret =3D=3D 1 && bh !=3D NULL &&
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 newex->ec_len < EXT_INIT_MAX_=
-LEN && buffer_delay(bh)) {
->>>
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* Have not collected an=
- extent and continue. */
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 page_cache_release(pag=
-e);
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return EXT_CONTINUE;
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto repeat;
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 page_cache_release(page);
->>>> =A0 =A0 =A0 }
->>>>
->>>> =A0 =A0 =A0 physical =3D (__u64)newex->ec_start << blksize_bits;
->>>> @@ -3822,32 +3909,16 @@ static int ext4_ext_fiemap_cb(struct inode=
- *inode, struct ext4_ext_path *path,
->>>> =A0 =A0 =A0 if (ex && ext4_ext_is_uninitialized(ex))
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 flags |=3D FIEMAP_EXTENT_UNWRITTEN;
->>>>
->>>> - =A0 =A0 /*
->>>> - =A0 =A0 =A0* If this extent reaches EXT_MAX_BLOCK, it must be la=
-st.
->>>> - =A0 =A0 =A0*
->>>> - =A0 =A0 =A0* Or if ext4_ext_next_allocated_block is EXT_MAX_BLOC=
-K,
->>>> - =A0 =A0 =A0* this also indicates no more allocated blocks.
->>>> - =A0 =A0 =A0*
->>>> - =A0 =A0 =A0* XXX this might miss a single-block extent at EXT_MA=
-X_BLOCK
->>>> - =A0 =A0 =A0*/
->>>> - =A0 =A0 if (ext4_ext_next_allocated_block(path) =3D=3D EXT_MAX_B=
-LOCK ||
->>>> - =A0 =A0 =A0 =A0 newex->ec_block + newex->ec_len - 1 =3D=3D EXT_M=
-AX_BLOCK) {
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 loff_t size =3D i_size_read(inode);
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 loff_t bs =3D EXT4_BLOCK_SIZE(inode->i_s=
-b);
->>>> -
->>>> + =A0 =A0 size =3D i_size_read(inode);
->>>> + =A0 =A0 if (logical + length >=3D size)
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 flags |=3D FIEMAP_EXTENT_LAST;
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 if ((flags & FIEMAP_EXTENT_DELALLOC) &&
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 logical+length > size)
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 length =3D (size - logic=
-al + bs - 1) & ~(bs-1);
->>>> - =A0 =A0 }
->>>>
->>>> - =A0 =A0 error =3D fiemap_fill_next_extent(fieinfo, logical, phys=
-ical,
->>>> + =A0 =A0 ret =3D fiemap_fill_next_extent(fieinfo, logical, physic=
-al,
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 length, flags);
->>>> - =A0 =A0 if (error < 0)
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 return error;
->>>> - =A0 =A0 if (error =3D=3D 1)
->>>> + =A0 =A0 if (ret < 0)
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 return ret;
->>>> + =A0 =A0 if (ret =3D=3D 1)
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 return EXT_BREAK;
->>>> -
->>>> =A0 =A0 =A0 return EXT_CONTINUE;
->>>> }
->>>>
->>>> --
->>>> 1.7.4
->>>>
->>>
->>>
->>> Cheers, Andreas
->>>
->>>
->>>
->>>
->>>
->>>
->>
->>
->>
->> --
->> Best Wishes
->> Yongqiang Yang
->
->
-> Cheers, Andreas
->
->
->
->
->
->
+> 
+> bill
+> ------------------------------------
+> 
+> Feb 22 19:23:31 finfin kernel: [    2.819633]  sdb1
+> Feb 22 19:27:40 finfin kernel: [  263.857108]  sdb: sdb1
+> Feb 22 20:03:18 finfin kernel: [ 2402.182269] EXT4-fs (sdb1): mounted
+> filesystem with ordered data mode. Opts: (null)
+> Feb 25 03:49:40 finfin kernel: [203184.800029] EXT4-fs (sdb1):
+> warning: mounting fs with errors, running e2fsck is recommended
+> Feb 25 03:49:41 finfin kernel: [203184.980730] EXT4-fs (sdb1): mounted
+> filesystem with ordered data mode. Opts: (null)
+> Feb 25 04:41:26 finfin kernel: [206290.181230] JBD: Spotted dirty
+> metadata buffer (dev = sdb1, blocknr = 0). There's a risk of
+> filesystem corruption in case of system crash.
+> Feb 25 05:01:39 finfin kernel: [    2.405998]  sdb: sdb1
+> Feb 25 05:02:07 finfin kernel: [   82.487625] EXT4-fs (sdb1): warning:
+> mounting fs with errors, running e2fsck is recommended
+> Feb 25 05:02:07 finfin kernel: [   82.657297] EXT4-fs (sdb1): mounted
+> filesystem with ordered data mode. Opts: (null)
+> Feb 25 05:09:40 finfin kernel: [    2.408385]  sdb: sdb1
+> Feb 25 05:14:17 finfin kernel: [    2.438605]  sdb: sdb1
+> Feb 25 05:16:21 finfin kernel: [  174.548463] EXT4-fs (sdb1): warning:
+> mounting fs with errors, running e2fsck is recommended
+> Feb 25 05:16:21 finfin kernel: [  174.728174] EXT4-fs (sdb1): mounted
+> filesystem with ordered data mode. Opts: (null)
+> Feb 25 15:18:20 finfin kernel: [36293.209497] EXT4-fs warning (device
+> sdb1): empty_dir: bad directory (dir #40242283) - no `.' or `..'
+> Feb 25 15:18:20 finfin kernel: [36293.209594] EXT4-fs warning (device
+> sdb1): empty_dir: bad directory (dir #40242282) - no `.' or `..'
+> Feb 25 15:18:20 finfin kernel: [36293.209668] EXT4-fs warning (device
+> sdb1): empty_dir: bad directory (dir #40242281) - no `.' or `..'
+> Feb 25 15:18:20 finfin kernel: [36293.209739] EXT4-fs warning (device
+> sdb1): empty_dir: bad directory (dir #40242280) - no `.' or `..'
+> Feb 25 15:18:20 finfin kernel: [36293.209745] EXT4-fs warning (device
+> sdb1): ext4_rmdir: empty directory has too many links (8)
+> Feb 25 15:18:20 finfin kernel: [36293.209818] EXT4-fs warning (device
+> sdb1): empty_dir: bad directory (dir #40242279) - no `.' or `..'
+> Feb 25 15:18:20 finfin kernel: [36293.209824] EXT4-fs warning (device
+> sdb1): ext4_rmdir: empty directory has too many links (5)
+> Feb 25 15:18:20 finfin kernel: [36293.209892] EXT4-fs warning (device
+> sdb1): empty_dir: bad directory (dir #40242278) - no `.' or `..'
+> Feb 25 15:18:20 finfin kernel: [36293.209898] EXT4-fs warning (device
+> sdb1): ext4_rmdir: empty directory has too many links (3)
+> Feb 25 15:18:20 finfin kernel: [36293.226488] EXT4-fs warning (device
+> sdb1): ext4_rmdir: empty directory has too many links (125)
+> Feb 25 15:18:45 finfin kernel: [36317.996660] EXT4-fs warning (device
+> sdb1): empty_dir: bad directory (dir #40247537) - no data block
+> Feb 25 15:18:45 finfin kernel: [36317.996671] EXT4-fs warning (device
+> sdb1): ext4_rmdir: empty directory has too many links (24906)
+> Feb 25 15:19:38 finfin kernel: [36371.180386] EXT4-fs warning (device
+> sdb1): empty_dir: bad directory (dir #40239122) - no `.' or `..'
+> Feb 25 15:19:38 finfin kernel: [36371.232941] EXT4-fs warning (device
+> sdb1): ext4_rmdir: empty directory has too many links (3)
+> Feb 25 15:19:38 finfin kernel: [36371.343549] EXT4-fs warning (device
+> sdb1): ext4_rmdir: empty directory has too many links (5)
+> Feb 25 15:19:38 finfin kernel: [36371.397308] EXT4-fs warning (device
+> sdb1): empty_dir: bad directory (dir #40239106) - no `.' or `..'
+> Feb 25 18:13:27 finfin kernel: [46799.800244] EXT4-fs (sdb1): mounted
+> filesystem with ordered data mode. Opts: (null)
+> Feb 25 21:51:47 finfin kernel: [59900.021575] EXT4-fs (sdb1): mounted
+> filesystem with ordered data mode. Opts: (null)
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-
-
---=20
-Best Wishes
-Yongqiang Yang
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
