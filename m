@@ -1,55 +1,56 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: [PATCH] ext3: skip orphan cleanup on rocompat fs
-Date: Sat, 26 Feb 2011 22:40:19 +0200
-Message-ID: <AANLkTimLAL7hPL+Yb392hyVAWEfHtObv7WwjzKt2awur@mail.gmail.com>
+From: Manish Katiyar <mkatiyar@gmail.com>
+Subject: Re: [PATCH] ext4: Fix missing iput for root inode in case of all
+ failed mount paths.
+Date: Sat, 26 Feb 2011 13:35:05 -0800
+Message-ID: <AANLkTimUhDQAcacCf8gyLn76k+RgRNs52AJbbMmpaaox@mail.gmail.com>
+References: <AANLkTik8jweuA_kDfzY7H=wP-ikSSwdf-FF1NX09DDCT@mail.gmail.com>
+ <032DF412-6B37-4EB7-A687-8216CB1E2BAB@dilger.ca> <AANLkTiku46htAypEN7QNN=UZuRETKGnHJQ8cxt3kYPJg@mail.gmail.com>
+ <AANLkTim0XZe2=3AWw4Ydb8F7BQGCf+=FyjKoyadc+3yw@mail.gmail.com>
+ <20110207232343.GA26289@thunk.org> <AANLkTikj9qdFJfD+c09V9duTPq_soRv_UsuBgutRHEQt@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: Theodore Tso <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	ext4 <linux-ext4@vger.kernel.org>
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:40728 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752513Ab1BZUkU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Feb 2011 15:40:20 -0500
-Received: by qwd7 with SMTP id 7so2007203qwd.19
-        for <linux-ext4@vger.kernel.org>; Sat, 26 Feb 2011 12:40:20 -0800 (PST)
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:42904 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750992Ab1BZVf0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Feb 2011 16:35:26 -0500
+Received: by qyk7 with SMTP id 7so1315926qyk.19
+        for <linux-ext4@vger.kernel.org>; Sat, 26 Feb 2011 13:35:25 -0800 (PST)
+In-Reply-To: <AANLkTikj9qdFJfD+c09V9duTPq_soRv_UsuBgutRHEQt@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Orphan cleanup is currently executed even on readonly mount.
-It deletes inodes and frees blocks, which could be very bad for some
-RO_COMPAT features, HAS_SNAPSHOT to name one.
+On Mon, Feb 7, 2011 at 3:31 PM, Manish Katiyar <mkatiyar@gmail.com> wrote:
+> On Mon, Feb 7, 2011 at 3:23 PM, Ted Ts'o <tytso@mit.edu> wrote:
+>> On Sat, Jan 29, 2011 at 09:40:34PM -0800, Manish Katiyar wrote:
+>>>
+>>> Any feedback on this ?
+>>
+>> The patch looks good, but it doesn't fix bug #26752.
+>>
+>> The root cause of that bug is the fact that ext4_sync_fs() and
+>> ext4_put_super() assumes that sbi has been initialized.
 
-Now the damage is done, because current stock kernels may
-corrupt future fs with readonly compatible features,
-when doing orphan cleanup.
+Hi Ted,
 
-This patch skips the orphan cleanup if readonly compatible features
-would prevent the fs from being mounted (or remounted) readwrite.
+Is there anything else that I need to do to get this merged in your tree ?
 
-Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
----
- fs/ext3/super.c |    7 +++++++
- 1 files changed, 7 insertions(+), 0 deletions(-)
+>
+> Hmm.. Actually I was looking at generic_super_shutdown() which I
+> thought would call ext4_put_super() only if sb->root is set, and since
+> I was setting sb->root explicitly to NULL in my patch in case of
+> failures.
+>
+> --
+> Thanks -
+> Manish
+>
 
-diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index 85c8cc8..6cdd575 100644
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -1464,6 +1464,13 @@ static void ext3_orphan_cleanup (struct super_block * sb,
-                return;
-        }
 
-+       /* Check if feature set allows readwrite operations */
-+       if (EXT3_HAS_RO_COMPAT_FEATURE(sb, ~EXT3_FEATURE_RO_COMPAT_SUPP)) {
-+               ext3_msg(sb, KERN_INFO, "Skipping orphan cleanup on readonly-"
-+                              "compatible fs");
-+               return;
-+       }
-+
-        if (EXT3_SB(sb)->s_mount_state & EXT3_ERROR_FS) {
-                if (es->s_last_orphan)
-                        jbd_debug(1, "Errors on filesystem, "
---
-1.7.0.4
+
+-- 
+Thanks -
+Manish
