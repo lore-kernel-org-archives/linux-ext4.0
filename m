@@ -1,65 +1,52 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 4/4] e2fsck: Add QCOW2 support
-Date: Sat, 26 Feb 2011 11:44:42 -0500
-Message-ID: <20110226164442.GD2924@thunk.org>
-References: <1298638173-25050-1-git-send-email-lczerner@redhat.com>
- <1298638173-25050-4-git-send-email-lczerner@redhat.com>
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: orphan cleanup on readonly fs will corrupt future fs!
+Date: Sat, 26 Feb 2011 20:21:47 +0200
+Message-ID: <AANLkTi=_QBgDutcb7h2XHpjHR6k-4Rj-r6zryMXaNn6e@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	Andreas Dilger <adilger@dilger.ca>,
+	Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:42167 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752315Ab1BZQop (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 26 Feb 2011 11:44:45 -0500
-Content-Disposition: inline
-In-Reply-To: <1298638173-25050-4-git-send-email-lczerner@redhat.com>
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:41195 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751491Ab1BZSVs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Feb 2011 13:21:48 -0500
+Received: by qwd7 with SMTP id 7so1960970qwd.19
+        for <linux-ext4@vger.kernel.org>; Sat, 26 Feb 2011 10:21:47 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Feb 25, 2011 at 01:49:33PM +0100, Lukas Czerner wrote:
-> This commit adds QCOW2 support for e2fsck. In order to avoid creating
-> real QCOW2 image support, which would require creating a lot of code, we
-> simply bypass the problem by converting the QCOW2 image into raw image
-> and than let e2fsck work with raw image. Conversion itself can be quite
-> fast, so it should not be a serious slowdown.
-> 
-> Add '-Q' option to specify path for the raw image. It not specified the
-> raw image will be saved in /tmp direcotry in format
-> <qcow2_filename>.raw.XXXXXX, where X chosen randomly.
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Hi guys,
 
-If we're just going to convert the qcow2 image into a raw image, that
-means that if someone sends us a N gigabyte QCOW2 image, it will lots
-of time (I'm not sure I agree with the "quite fast part"), and consume
-an extra N gigabytes of free space to create the raw image.
+I have just realized something very disturbing -
+that orphan cleanup is not being skipped on readonly mount of ext4/ext3.
 
-In that case, I'm not so sure we really want to have a -Q option to
-e2fsck.  We might be better off simply forcing the use of e2image to
-convert the image back.
+I know that journal recovery is done on readonly mount
+and there is problem with that, since nothing happens
+in the fs level.
 
-Note that the other reason why it's a lot better to be able to allow
-e2fsck to be able to work on the raw image directly is that if a
-customer sends a qcow2's metadata-only image from their 3TB raid
-array, we won't be able to expand that to a raw image because of
-ext2/3/4's 2TB maximum file size limit.  The qcow2 image might be only
-a few hundreds of megabytes, so being able to have e2fsck operate on
-that image directly would be a huge win. 
+But orphan cleanup deletes inodes and frees blocks and that
+could be very bad for some RO_COMPAT features, SNAPSHOT
+and BIGALLOC to name two.
 
-Adding iomanager support would also allow debugfs to access the qcow2
-image directly --- also a win.
+I am not so sure why orphan cleanup is so important for readonly
+mount in the first place?
 
-Whether or not we add the io_manager support right away (eventually I
-think it's a must have feature), I don't think having a "decompress a
-qcow2 image to a sparse raw image" makes sense as an explicit e2fsck
-option.  It just clutters up the e2fsck option space, and people might
-be confused because now e2fsck could break because there wasn't enough
-free space to decompress the raw image.  Also, e2fsck doesn't delete
-the /tmp file afterwards, which is bad --- but if it takes a large
-amount of time to create the raw image, deleting afterwards is a bit
-of waste as well.  Probably better to force the user to manage the
-converted raw file system image.
+Now the damage has been done, because current stock kernels will
+corrupt future fs with SNAPSHOT and BIGALLOC features
+(unless Ted backs up from the decision to make BIGALLOC RO_COMPAT...)
 
-					- Ted
+I think that we should skip orphan cleanup on readonly mount ASAP and try
+to push this fix to as many stable/maint kernels out there, before the
+problem gets worse.
+
+Can anyway see a problem with skipping orphan cleanup?
+Maybe there is a problem with later remount read-write?
+
+I would spend time more time to investigate these questions,
+but I find this problem too disturbing and urgent to wait until I find
+the time to do so...
+
+Amir.
