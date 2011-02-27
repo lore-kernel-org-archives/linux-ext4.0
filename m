@@ -1,61 +1,62 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: don't leave PageWriteback set after memory failure
-Date: Sun, 27 Feb 2011 16:44:03 -0500
-Message-ID: <1298843043-13087-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] Check for immutable flag in fallocate path
+Date: Sun, 27 Feb 2011 17:49:40 -0500
+Message-ID: <20110227224940.GL2924@thunk.org>
+References: <4D6221B8.9040303@gmail.com>
+ <20110221124635.GA5525@infradead.org>
+ <AANLkTi=bJBeR0m3xuGX_9YZPqRFuMY=bKoxZEWJt37=M@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	cluster-devel@redhat.com,
+	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	xfs@oss.sgi.com
+To: Marco Stornelli <marco.stornelli@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:45421 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:45437 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751857Ab1B0Xdf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 27 Feb 2011 18:33:35 -0500
+	id S1751985Ab1B0Xdq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 27 Feb 2011 18:33:46 -0500
+Content-Disposition: inline
+In-Reply-To: <AANLkTi=bJBeR0m3xuGX_9YZPqRFuMY=bKoxZEWJt37=M@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In ext4_bio_write_page(), if the memory allocation for the struct
-ext4_io_page fails, it returns with the page's PageWriteback flag set.
-This will end up causing the page not to skip writeback in
-WB_SYNC_NONE mode, and in WB_SYNC_ALL mode (i.e., on a sync, fsync, or
-umount) the writeback daemon will get stuck forever on the
-wait_on_page_writeback() function in write_cache_pages_da().
+On Mon, Feb 21, 2011 at 05:50:21PM +0100, Marco Stornelli wrote:
+> 2011/2/21 Christoph Hellwig <hch@infradead.org>:
+> > On Mon, Feb 21, 2011 at 09:26:32AM +0100, Marco Stornelli wrote:
+> >> From: Marco Stornelli <marco.stornelli@gmail.com>
+> >>
+> >> All fs must check for the immutable flag in their fallocate callback.
+> >> It's possible to have a race condition in this scenario: an application
+> >> open a file in read/write and it does something, meanwhile root set the
+> >> immutable flag on the file, the application at that point can call
+> >> fallocate with success. Only Ocfs2 check for the immutable flag at the
+> >> moment.
+> >
+> > Please add the check in fs/open.c:do_fallocate() so that it covers all
+> > filesystems.
+> >
+> >
+> 
+> The check should be done after the fs got the inode mutex lock.
 
-Or, if journalling is enabled and the file gets deleted, it the
-journal thread can get stuck in journal_finish_inode_data_buffers()
-call to filemap_fdatawait().
+Why?  None of the other places which check the IMMUTABLE flag do so
+under the inode mutex lock.  Yes, it's true that we're not properly
+doing proper locking when updating i_flags from the ioctl (this is
+true for all file systems), but this has been true for quite some
+time, and using a mutex to protect bit set/clear/test operations would
+be like using a sledgehammer to kill a fly.
 
-Another place where things can get hung up is in
-truncate_inode_pages(), called out of ext4_evict_inode().
+A proper fix if we want to be completely correct about updates to
+i_flags would involve using test_bit, set_bit, and clear_bit, which is
+guaranteed to be atomic.  This is how we update the
+ext4_inode_info->i_flags (which is different from inode->i_flags) (see
+the definition and use of EXT4_INODE_BIT_FNS in fs/ext4/ext4.h).
 
-Fix this by not setting PageWriteback until after we have successfully
-allocated the struct ext4_io_page.
+At some point, it would be good to fix how we set/get i_flags values,
+but that's independent of the change that's being discussed here.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/page-io.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 68d92a8..d5c391f 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -381,8 +381,6 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
- 
- 	BUG_ON(!PageLocked(page));
- 	BUG_ON(PageWriteback(page));
--	set_page_writeback(page);
--	ClearPageError(page);
- 
- 	io_page = kmem_cache_alloc(io_page_cachep, GFP_NOFS);
- 	if (!io_page) {
-@@ -393,6 +391,8 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
- 	io_page->p_page = page;
- 	atomic_set(&io_page->p_count, 1);
- 	get_page(page);
-+	set_page_writeback(page);
-+	ClearPageError(page);
- 
- 	for (bh = head = page_buffers(page), block_start = 0;
- 	     bh != head || !block_start;
--- 
-1.7.3.1
-
+    	   	       	      	     	    	  - Ted
