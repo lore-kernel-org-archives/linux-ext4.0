@@ -1,48 +1,45 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: [PATCH] ext4: nblocks arg to ext4_truncate_restart_trans() is ignored
-Date: Sun, 27 Feb 2011 11:54:28 +0200
-Message-ID: <AANLkTikjhsA0ooZAkS4zhaMrFidOgpjuk54cTxu30Xb5@mail.gmail.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] Add basic BIGALLOC support for cluster-based allocation
+Date: Sun, 27 Feb 2011 16:59:47 -0500
+Message-ID: <20110227215947.GI2924@thunk.org>
+References: <1298688625-19820-1-git-send-email-tytso@mit.edu>
+ <AANLkTi=b8eKuiOPxUiJYaDCzu1nJ40SxNqszxONC3CZ8@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:54003 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751878Ab1B0Jy3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 27 Feb 2011 04:54:29 -0500
-Received: by qwd7 with SMTP id 7so2192408qwd.19
-        for <linux-ext4@vger.kernel.org>; Sun, 27 Feb 2011 01:54:28 -0800 (PST)
+Received: from li9-11.members.linode.com ([67.18.176.11]:45420 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751833Ab1B0Xdf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 27 Feb 2011 18:33:35 -0500
+Content-Disposition: inline
+In-Reply-To: <AANLkTi=b8eKuiOPxUiJYaDCzu1nJ40SxNqszxONC3CZ8@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-nblocks is passed into ext4_truncate_restart_trans() from
-ext4_ext_truncate_extend_restart() with a value different from the default
-blocks_for_truncate(), but is being ignored.
+On Sat, Feb 26, 2011 at 09:20:55AM +0200, Amir Goldstein wrote:
+> Just to be clear, my alternative suggestion to on-disk format change was:
+> 
+>         __u32   s_log_block_size;       /* Block size */
+> -       __s32   s_log_frag_size;        /* Fragment size */
+> +       __s32   s_log_cluster_size;     /* Allocation cluster size */
+> -       __u32   s_blocks_per_group;     /* # Blocks per group */
+> +       __u32   s_clusters_per_group;   /* # Clusters per group */
+> -       __u32   s_frags_per_group;      /* # Fragments per group */
+> +       __u32   s_blocks_per_group;   /* # Blocks per group */
+>         __u32   s_inodes_per_group;     /* # Inodes per group */
+> 
+> This way, old kernels see a sane value in what used to be
+> s_blocks_per_group (32K) and new kernels (even without the BIGALLOC
+> feature) make sure to write correct values in both new
+> s_blocks_per_group and s_clusters_per_group (old s_blocks_per_group)
 
-The two other calls to ext4_truncate_restart_trans() already pass the
-default value, which is then being recalculated inside the function.
+Unfortunately, that's likely to confuse old kernels even more, since
+s_blocks_per_group is used to calculate the number of block groups,
+i.e. s_blocks_count / s_blocks_per_group.  In BIGALLOC mode, the
+number of block groups go down, and so if we change s_blocks_per_group
+to s_clusters_per_group, it's likely to cause much mischief, for
+example in ext4_check_descriptors().
 
-Fix the problem by using the passed argument.
-
-Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
----
- fs/ext4/inode.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 9f7f9e4..33b970c 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -173,7 +173,7 @@ int ext4_truncate_restart_trans(handle_t *handle,
-struct inode *inode,
-        BUG_ON(EXT4_JOURNAL(inode) == NULL);
-        jbd_debug(2, "restarting handle %p\n", handle);
-        up_write(&EXT4_I(inode)->i_data_sem);
--       ret = ext4_journal_restart(handle, blocks_for_truncate(inode));
-+       ret = ext4_journal_restart(handle, nblocks);
-        down_write(&EXT4_I(inode)->i_data_sem);
-        ext4_discard_preallocations(inode);
-
---
-1.7.0.4
+					- Ted
