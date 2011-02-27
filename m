@@ -1,33 +1,61 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 12/17]fs:jbd Remove one to many n's in a word.
-Date: Sun, 27 Feb 2011 17:38:27 -0500
-Message-ID: <20110227223826.GK2924@thunk.org>
-References: <1298781250-2718-1-git-send-email-justinmattock@gmail.com>
- <1298781250-2718-13-git-send-email-justinmattock@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: trivial@kernel.org, linux-kernel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: "Justin P. Mattock" <justinmattock@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: don't leave PageWriteback set after memory failure
+Date: Sun, 27 Feb 2011 16:44:03 -0500
+Message-ID: <1298843043-13087-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:45430 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:45421 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751901Ab1B0Xdh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 27 Feb 2011 18:33:37 -0500
-Content-Disposition: inline
-In-Reply-To: <1298781250-2718-13-git-send-email-justinmattock@gmail.com>
+	id S1751857Ab1B0Xdf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 27 Feb 2011 18:33:35 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Feb 26, 2011 at 08:34:05PM -0800, Justin P. Mattock wrote:
-> The Patch below removes one to many "n's" in a word.. 
-> 
-> Signed-off-by: Justin P. Mattock <justinmattock@gmail.com>
-> CC: Andrew Morton <akpm@linux-foundation.org> 
-> CC: Jan Kara <jack@suse.cz> 
-> CC: linux-ext4@vger.kernel.org
+In ext4_bio_write_page(), if the memory allocation for the struct
+ext4_io_page fails, it returns with the page's PageWriteback flag set.
+This will end up causing the page not to skip writeback in
+WB_SYNC_NONE mode, and in WB_SYNC_ALL mode (i.e., on a sync, fsync, or
+umount) the writeback daemon will get stuck forever on the
+wait_on_page_writeback() function in write_cache_pages_da().
 
-Acked-by: "Theodore Ts'o" <tytso@mit.edu>
+Or, if journalling is enabled and the file gets deleted, it the
+journal thread can get stuck in journal_finish_inode_data_buffers()
+call to filemap_fdatawait().
 
-						- Ted
+Another place where things can get hung up is in
+truncate_inode_pages(), called out of ext4_evict_inode().
+
+Fix this by not setting PageWriteback until after we have successfully
+allocated the struct ext4_io_page.
+
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/page-io.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 68d92a8..d5c391f 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -381,8 +381,6 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 
+ 	BUG_ON(!PageLocked(page));
+ 	BUG_ON(PageWriteback(page));
+-	set_page_writeback(page);
+-	ClearPageError(page);
+ 
+ 	io_page = kmem_cache_alloc(io_page_cachep, GFP_NOFS);
+ 	if (!io_page) {
+@@ -393,6 +391,8 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 	io_page->p_page = page;
+ 	atomic_set(&io_page->p_count, 1);
+ 	get_page(page);
++	set_page_writeback(page);
++	ClearPageError(page);
+ 
+ 	for (bh = head = page_buffers(page), block_start = 0;
+ 	     bh != head || !block_start;
+-- 
+1.7.3.1
+
