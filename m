@@ -1,51 +1,41 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 29402] kernel panics while running ffsb scalability workloads
- on 2.6.38-rc1 through -rc5
-Date: Mon, 28 Feb 2011 18:22:05 GMT
-Message-ID: <201102281822.p1SIM5k2028925@demeter2.kernel.org>
-References: <bug-29402-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext3: skip orphan cleanup on rocompat fs
+Date: Mon, 28 Feb 2011 13:22:58 -0500
+Message-ID: <20110228182258.GB28617@thunk.org>
+References: <AANLkTimLAL7hPL+Yb392hyVAWEfHtObv7WwjzKt2awur@mail.gmail.com>
+ <20110228101454.GE4834@bitwizard.nl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Amir Goldstein <amir73il@gmail.com>, Jan Kara <jack@suse.cz>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Rogier Wolff <R.E.Wolff@bitwizard.nl>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:38121 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753586Ab1B1SWI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Feb 2011 13:22:08 -0500
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p1SIM7GM029017
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 28 Feb 2011 18:22:07 GMT
-In-Reply-To: <bug-29402-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:43304 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753942Ab1B1SXJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Feb 2011 13:23:09 -0500
+Content-Disposition: inline
+In-Reply-To: <20110228101454.GE4834@bitwizard.nl>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=29402
+On Mon, Feb 28, 2011 at 11:14:55AM +0100, Rogier Wolff wrote:
+> If the cleanup/fixup is really neccesary, do so in in-core buffers of
+> the filesystem. Write the infrastructure that allows us to have dirty
+> buffers that MAY NOT (yet?!?) be written to the device. This will also
+> solve the problem of journal recovery on readonly mount of a root
+> filesystem. when it has been fscked, and it's remounted rw, we can
+> remove the ban on the writeback of the dirty buffers.
 
+That would be an interesting and useful thing to add, but it's not a
+trivial change.  There is the risk that if the journal is very large,
+and system memory is very, that there might not be enough memory to
+hold all of the dirty buffers (or it might handicap the machine).
+That shouldn't be an issue on reasonably configured machines, but as
+we know, not all file servers are reasonably configured (see previous
+discussions about tdb :-)
 
-Lukas Czerner <lczerner@redhat.com> changed:
+If someone want to work on this as a project, that would be great, but
+to be honest it's not high on my priority list at the moment.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-  Attachment #48672|0                           |1
-        is obsolete|                            |
-
-
-
-
---- Comment #13 from Lukas Czerner <lczerner@redhat.com>  2011-02-28 18:22:03 ---
-Created an attachment (id=49642)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=49642)
-Possible fix no.2 - simplification to avoid bad ordering
-
-Hi Eric,
-
-here is a patch for testing. The behaviour should be the same as with your
-patch, to I hope it would work as expected. Thanks for testing.
-
--Lukas
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+      	     	      	      	 	  - Ted
