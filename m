@@ -1,41 +1,59 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 22212] Crash in ext4_init_io_end
-Date: Mon, 28 Feb 2011 01:25:29 GMT
-Message-ID: <201102280125.p1S1PTdN004577@demeter1.kernel.org>
-References: <bug-22212-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Fix missing iput for root inode in case of all
+ failed mount paths.
+Date: Sun, 27 Feb 2011 20:45:48 -0500
+Message-ID: <20110228014548.GO2924@thunk.org>
+References: <AANLkTik8jweuA_kDfzY7H=wP-ikSSwdf-FF1NX09DDCT@mail.gmail.com>
+ <032DF412-6B37-4EB7-A687-8216CB1E2BAB@dilger.ca>
+ <AANLkTiku46htAypEN7QNN=UZuRETKGnHJQ8cxt3kYPJg@mail.gmail.com>
+ <AANLkTim0XZe2=3AWw4Ydb8F7BQGCf+=FyjKoyadc+3yw@mail.gmail.com>
+ <20110207232343.GA26289@thunk.org>
+ <AANLkTikj9qdFJfD+c09V9duTPq_soRv_UsuBgutRHEQt@mail.gmail.com>
+ <AANLkTimUhDQAcacCf8gyLn76k+RgRNs52AJbbMmpaaox@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	ext4 <linux-ext4@vger.kernel.org>
+To: Manish Katiyar <mkatiyar@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:58535 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751886Ab1B1BZc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 27 Feb 2011 20:25:32 -0500
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p1S1PUjg004579
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 28 Feb 2011 01:25:30 GMT
-In-Reply-To: <bug-22212-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:45345 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751992Ab1B1Bp4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 27 Feb 2011 20:45:56 -0500
+Content-Disposition: inline
+In-Reply-To: <AANLkTimUhDQAcacCf8gyLn76k+RgRNs52AJbbMmpaaox@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=22212
+On Sat, Feb 26, 2011 at 01:35:05PM -0800, Manish Katiyar wrote:
+> 
+> Is there anything else that I need to do to get this merged in your tree ?
+> 
+
+I've added the patch with the following explanation:
+
+ext4: fix missing iput of root inode for some mount error paths
+
+This assures that the root inode is not leaked, and that sb->s_root is
+NULL, which will prevent generic_shutdown_super() from doing extra
+work, including call sync_filesystem, which ultimately results in
+ext4_sync_fs() getting called with an uninitialized struct super,
+which is the cause of the crash noted in Kernel Bugzilla #26752.
+
+https://bugzilla.kernel.org/show_bug.cgi?id=26752
+
+Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
 
-Theodore Tso <tytso@mit.edu> changed:
+Sorry for the delay, but this patch was held up pending my tracingg
+through the code and understanding why this really fixed BZ #26752.
+In the future, adding a bit more detail in the commit log will help me
+process the patch faster, since I won't have to reproduce your
+analysis.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|NEW                         |RESOLVED
-         Resolution|                            |CODE_FIX
+Also, just quoting a BZ number without going into more detail risks my
+putting it the patch on my "to analyze --- when I have access to
+network" queue if I happen to come across it while on an airplane.  :-)
 
-
-
-
---- Comment #4 from Theodore Tso <tytso@mit.edu>  2011-02-28 01:25:14 ---
-Fix commited, closing bug.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+					- Ted
