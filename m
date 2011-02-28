@@ -1,53 +1,32 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: ext2/3/4: punch support?
-Date: Mon, 28 Feb 2011 09:17:54 -0600
-Message-ID: <4D6BBCA2.8030104@redhat.com>
-References: <AANLkTimyu6A=LgF8pit6So6JkPrScFLB42U3NwBJq7mv@mail.gmail.com>	<20110228131118.GA18193@dhcp231-156.rdu.redhat.com> <AANLkTimwpoi6agwO4q8qhOcohhSnYFrKhFOCnk0BuTEC@mail.gmail.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: ext4 corruption
+Date: Sun, 27 Feb 2011 23:43:07 -0500
+Message-ID: <20110228044307.GQ2924@thunk.org>
+References: <AANLkTin5hN-gnpmgntApSSrWVWJPQqK99tPJtfmFn5++@mail.gmail.com>
+ <C5B8C496-E8F1-4BF7-9A51-373C0C63E357@mit.edu>
+ <AANLkTimcKiKgKTVft9N+OVHd5-N+-AscSoimdOfkoBt9@mail.gmail.com>
+ <AANLkTik22qfqzi4nPhvXRinzEDPDZ+UQFYT98eKK+aau@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: Josef Bacik <josef@redhat.com>, Theodore Tso <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-To: Dave Young <hidave.darkstar@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <AANLkTimwpoi6agwO4q8qhOcohhSnYFrKhFOCnk0BuTEC@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "Bill Huey (hui)" <bill.huey@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:49775 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755063Ab1B1QFb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Feb 2011 11:05:31 -0500
+Content-Disposition: inline
+In-Reply-To: <AANLkTik22qfqzi4nPhvXRinzEDPDZ+UQFYT98eKK+aau@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 2/28/11 8:29 AM, Dave Young wrote:
-> On Mon, Feb 28, 2011 at 9:11 PM, Josef Bacik <josef@redhat.com> wrote:
->> On Mon, Feb 28, 2011 at 03:03:40PM +0800, Dave Young wrote:
->>> Hi, josef and ext guys
->>>
->>> Do you have any plan with ext4 hole punching support? And the
->>> fallocate for ext2/3?
->>>
->>> What's the obstacle to work on this? could someone tell the status of
->>> this issue?
->>
->> There is no obstacle, just nobody has bothered to do it.  If you want to do it
->> go for it.  Thanks,
-> 
-> Yes, I want to do some kvm image space discard stuff,
-> I use ext4 as my filesystem, but currently only xfs support something
-> like trim/discard.
+On Sat, Feb 26, 2011 at 03:16:38AM -0800, Bill Huey (hui) wrote:
+> Just to clarify, it did clear the problems, but the continued use of
+> the file system resulted in more corruption. It's no longer usable. I
+> have to remake the file system and copy the data again.
 
-As Lukas said, ext4 & ext3 support various forms of trim/discard already.
+You didn't say what version of the kernel you were using, but there
+hasn't been any ext4 bugs that have caused this much corruption this
+quickly; it sure smells like a hardware problem....
 
-But that's different from punch...
-
-And as for fallocate on ext3, you need somewhere to put the metadata to indicate a block is allocated but not written.  This was a lot more straightforward for ext4, since it describes a large range of blocks with a single extent structure.
-
--Eric
-
-> I know general knowledge about ext filesystem, but nearly new to ext4 code,
-> could you give some hint where to start?
-> 
-> --
-> Thanks
-> dave
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+							- Ted
