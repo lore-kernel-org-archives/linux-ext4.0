@@ -1,35 +1,86 @@
 From: Rogier Wolff <R.E.Wolff@BitWizard.nl>
-Subject: Re: [PATCH 4/4] e2fsck: Add QCOW2 support
-Date: Mon, 28 Feb 2011 10:44:44 +0100
-Message-ID: <20110228094444.GD4834@bitwizard.nl>
-References: <1298638173-25050-1-git-send-email-lczerner@redhat.com> <1298638173-25050-4-git-send-email-lczerner@redhat.com> <20110226164442.GD2924@thunk.org>
+Subject: Re: [PATCH] ext3: skip orphan cleanup on rocompat fs
+Date: Mon, 28 Feb 2011 11:14:55 +0100
+Message-ID: <20110228101454.GE4834@bitwizard.nl>
+References: <AANLkTimLAL7hPL+Yb392hyVAWEfHtObv7WwjzKt2awur@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	sandeen@redhat.com
-To: Ted Ts'o <tytso@mit.edu>
+Cc: Jan Kara <jack@suse.cz>, Theodore Tso <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cust-95-128-94-82.breedbanddelft.nl ([95.128.94.82]:48341 "HELO
+Received: from cust-95-128-94-82.breedbanddelft.nl ([95.128.94.82]:34094 "HELO
 	abra2.bitwizard.nl" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with SMTP id S1752677Ab1B1Joq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Feb 2011 04:44:46 -0500
+	with SMTP id S1752915Ab1B1KO4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Feb 2011 05:14:56 -0500
 Content-Disposition: inline
-In-Reply-To: <20110226164442.GD2924@thunk.org>
+In-Reply-To: <AANLkTimLAL7hPL+Yb392hyVAWEfHtObv7WwjzKt2awur@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Feb 26, 2011 at 11:44:42AM -0500, Ted Ts'o wrote:
-> ext2/3/4's 2TB maximum file size limit.  The qcow2 image might be only
-> a few hundreds of megabytes, so being able to have e2fsck operate on
-> that image directly would be a huge win. 
 
-driepoot:~> ls -ls /mnt/md3.img 
-61558920 -rw------- 1 root root 2937535070208 Feb 26 00:36 /mnt/md3.img
+On Sat, Feb 26, 2011 at 10:40:19PM +0200, Amir Goldstein wrote:
+> This patch skips the orphan cleanup if readonly compatible features
+> would prevent the fs from being mounted (or remounted) readwrite.
 
-61 Gigabytes in my case... (and my system finished counting: I have
-8.9M directories on there...)
+I use the "mount readonly" option to, for instance, view/check the
+filesystem to determine wether or not I need to fsck first. I use the
+"readonly" feature to prevent the mounting to be a mistake-prone
+situation. It prevents e.g. applications from dropping temporary files
+in my current directory.
+
+Every time fsck or such a cleanup does something, there is the option
+of the cleanup or fixup being wrong. When you honour the "readonly"
+request from the user, the careful user can go back to the situation
+where he/she started.
+
+If the cleanup/fixup is really neccesary, do so in in-core buffers of
+the filesystem. Write the infrastructure that allows us to have dirty
+buffers that MAY NOT (yet?!?) be written to the device. This will also
+solve the problem of journal recovery on readonly mount of a root
+filesystem. when it has been fscked, and it's remounted rw, we can
+remove the ban on the writeback of the dirty buffers.
+
+So I stronly disagree with your patch: It should not only prevent the
+cleanup when writing is not allows due to ro-compat situation, but
+also when requested by the user.
+
 
 	Roger.
+
+------------------ 
+
+Back in the old days I was still using minix. Linux didn't exist or
+wasn't usable enough. I had something that needed removing, so I typed
+rm -rf *, thinking I was in the directory that needed removing. I
+wasn't! There went my (modified) kernel tree! It took me some three
+seconds to find, verify and execute the solution: Powerswitch.
+
+In such an incident, cleaning up inodes that you think were deleted
+anyway removes information about files that may need recovery. Imagine
+that accidentally my big database file was unlinked. Ooops. But the
+database server is still keeping the file open. Phew. We can continue
+to run until we find a solution.... So the inode is now orphaned. But
+we can recover it with some filesystem magic. Maybe not by answering
+yes to fsck questions, but it is recoverable without dataloss, right?
+
+Then the power goes out... Ooops. Instead of two more days to get
+everything ready for the recovery we have to do it NOW.  There goes.
+Boot from CD, let's just mount the partition readonly to get access to
+our tools and binaries that may facilitate the recovery of our
+database. BAM! Away goes the nicely allocated inode. (ext2 used to
+just mark the inode as not in use, ext3 cleans it up so that we lose
+the pointers to the 7 datablocks, the indirect block and double
+indirect block!) Now we will have to guess where the file started etc
+etc. 
+
+The principle is: Do as I say. That keeps things predictable. If you
+try to outguess the user, it will be horribly wrong every once in a
+while. You're right. In 99% of the cases, the system just
+crashed/rebooted while some temporary files were still open, but
+already deleted. And in 99% of the cases, the system will boot,
+perform an automatic fsck and eventually remount rw. So writing those
+orphaned inodes back early doesn't make a real difference.
 
 -- 
 ** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
