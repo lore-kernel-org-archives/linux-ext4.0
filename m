@@ -1,43 +1,312 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: orphan cleanup on readonly fs will corrupt future fs!
-Date: Mon, 28 Feb 2011 00:48:41 -0500
-Message-ID: <20110228054841.GR2924@thunk.org>
-References: <AANLkTi=_QBgDutcb7h2XHpjHR6k-4Rj-r6zryMXaNn6e@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] xfstests: add fallocate calls to fsx
+Date: Mon, 28 Feb 2011 11:32:26 -0600
+Message-ID: <4D6BDC2A.4020308@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Amir Goldstein <amir73il@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: xfs-oss <xfs@oss.sgi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:49785 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754436Ab1B1QFe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Feb 2011 11:05:34 -0500
-Content-Disposition: inline
-In-Reply-To: <AANLkTi=_QBgDutcb7h2XHpjHR6k-4Rj-r6zryMXaNn6e@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:23918 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753759Ab1B1Rc3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Feb 2011 12:32:29 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Feb 26, 2011 at 08:21:47PM +0200, Amir Goldstein wrote:
-> Hi guys,
-> 
-> I have just realized something very disturbing -
-> that orphan cleanup is not being skipped on readonly mount of ext4/ext3.
-> 
-> I know that journal recovery is done on readonly mount
-> and there is problem with that, since nothing happens
-> in the fs level.
-> 
-> But orphan cleanup deletes inodes and frees blocks and that
-> could be very bad for some RO_COMPAT features, SNAPSHOT
-> and BIGALLOC to name two.
+(Sending one more time, hoping for a real reviewed-by) :)
 
-Yes, good point.  Fortunately it won't be a problem for the BIGALLOC
-feature, since other changes in the superblock will cause the kernel's
-sanity checks to refuse to mount it until we teach future kernels how
-not to freak out when s_blocks_per_group > blocksize * 8, for example.
+Add random runtime fallocate calls to fsx (vs. the existing
+preallocate file at start of run).
 
-But yes, this is something we should fix.
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-						- Ted
+diff --git a/aclocal.m4 b/aclocal.m4
+index 6457d39..70ea0f3 100644
+--- a/aclocal.m4
++++ b/aclocal.m4
+@@ -18,6 +18,17 @@ AC_DEFUN([AC_PACKAGE_WANT_LINUX_FIEMAP_H],
+ 
+ AC_DEFUN([AC_PACKAGE_WANT_FALLOCATE],
+   [ AC_MSG_CHECKING([for fallocate])
++    AC_TRY_COMPILE([
++#include <linux/falloc.h>
++    ], [
++         fallocate(0, 0, 0, 0);
++    ], have_fallocate=true
++       AC_MSG_RESULT(true),
++       AC_MSG_RESULT(false))
++    AC_SUBST(have_fallocate)
++  ])
++AC_DEFUN([AC_PACKAGE_WANT_FALLOCATE],
++  [ AC_MSG_CHECKING([for fallocate])
+     AC_TRY_LINK([
+ #define _GNU_SOURCE
+ #define _FILE_OFFSET_BITS 64
+diff --git a/include/builddefs.in b/include/builddefs.in
+index 3bea050..0d51715 100644
+--- a/include/builddefs.in
++++ b/include/builddefs.in
+@@ -58,6 +58,7 @@ RPM_VERSION     = @rpm_version@
+ ENABLE_SHARED = @enable_shared@
+ HAVE_DB = @have_db@
+ HAVE_AIO = @have_aio@
++HAVE_FALLOCATE = @have_fallocate@
+ HAVE_DMAPI = @have_dmapi@
+ HAVE_ATTR_LIST = @have_attr_list@
+ HAVE_FIEMAP = @have_fiemap@
+diff --git a/ltp/Makefile b/ltp/Makefile
+index d74a9df..f3899e1 100644
+--- a/ltp/Makefile
++++ b/ltp/Makefile
+@@ -27,6 +27,10 @@ LCFLAGS += -DAIO
+ LLDLIBS += -laio -lpthread
+ endif
+ 
++ifeq ($(HAVE_FALLOCATE), true)
++LCFLAGS += -DFALLOCATE
++endif
++
+ default: depend $(TARGETS)
+ 
+ include $(BUILDRULES)
+diff --git a/ltp/fsx.c b/ltp/fsx.c
+index 1167d72..b95431e 100644
+--- a/ltp/fsx.c
++++ b/ltp/fsx.c
+@@ -32,6 +32,9 @@
+ #ifdef AIO
+ #include <libaio.h>
+ #endif
++#ifdef FALLOCATE
++#include <linux/falloc.h>
++#endif
+ 
+ #ifndef MAP_FILE
+ # define MAP_FILE 0
+@@ -65,6 +68,7 @@ int			logcount = 0;	/* total ops */
+ #define OP_MAPREAD	5
+ #define OP_MAPWRITE	6
+ #define OP_SKIPPED	7
++#define OP_FALLOCATE	8
+ 
+ #undef PAGE_SIZE
+ #define PAGE_SIZE       getpagesize()
+@@ -105,6 +109,11 @@ long	numops = -1;			/* -N flag */
+ int	randomoplen = 1;		/* -O flag disables it */
+ int	seed = 1;			/* -S flag */
+ int     mapped_writes = 1;              /* -W flag disables */
++#ifdef FALLOCATE
++int     fallocate_calls = 1;            /* -F flag disables */
++#else
++int     fallocate_calls = 0;            /* -F flag disables */
++#endif
+ int 	mapped_reads = 1;		/* -R flag disables it */
+ int	fsxgoodfd = 0;
+ int	o_direct;			/* -Z */
+@@ -202,6 +211,7 @@ logdump(void)
+ {
+ 	int	i, count, down;
+ 	struct log_entry	*lp;
++	char *falloc_type[3] = {"PAST_EOF", "EXTENDING", "INTERIOR"};
+ 
+ 	prt("LOG DUMP (%d total operations):\n", logcount);
+ 	if (logcount < LOGSIZE) {
+@@ -265,6 +275,14 @@ logdump(void)
+ 			    badoff < lp->args[!!down])
+ 				prt("\t******WWWW");
+ 			break;
++		case OP_FALLOCATE:
++			/* 0: offset 1: length 2: where alloced */
++			prt("FALLOCATE %s\tfrom 0x%x to 0x%x",
++			    falloc_type[lp->args[2]], lp->args[0], lp->args[0] + lp->args[1]);
++			if (badoff >= lp->args[0] &&
++			    badoff < lp->args[0] + lp->args[1])
++				prt("\t******FFFF");
++			break;
+ 		case OP_SKIPPED:
+ 			prt("SKIPPED (no operation)");
+ 			break;
+@@ -770,6 +788,64 @@ dotruncate(unsigned size)
+ 	}
+ }
+ 
++#ifdef FALLOCATE
++/* fallocate is basically a no-op unless extending, then a lot like a truncate */
++void
++dofallocate(unsigned offset, unsigned length)
++{
++	unsigned end_offset;
++	int keep_size;
++
++        if (length == 0) {
++                if (!quiet && testcalls > simulatedopcount)
++                        prt("skipping zero length fallocate\n");
++                log4(OP_SKIPPED, OP_FALLOCATE, offset, length);
++                return;
++        }
++
++	keep_size = random() % 2;
++
++	end_offset = keep_size ? 0 : offset + length;
++
++	if (end_offset > biggest) {
++		biggest = end_offset;
++		if (!quiet && testcalls > simulatedopcount)
++			prt("fallocating to largest ever: 0x%x\n", end_offset);
++	}
++
++	/*
++	 * last arg:
++	 * 	1: allocate past EOF
++	 * 	2: extending prealloc
++	 * 	3: interior prealloc
++	 */
++	log4(OP_FALLOCATE, offset, length, (end_offset > file_size) ? (keep_size ? 1 : 2) : 3);
++
++	if (end_offset > file_size) {
++		memset(good_buf + file_size, '\0', end_offset - file_size);
++		file_size = end_offset;
++	}
++
++	if (testcalls <= simulatedopcount)
++		return;
++	
++	if ((progressinterval && testcalls % progressinterval == 0) ||
++	    (debug && (monitorstart == -1 || monitorend == -1 ||
++		      end_offset <= monitorend)))
++		prt("%lu falloc\tfrom 0x%x to 0x%x\n", testcalls, offset, length);
++	if (fallocate(fd, keep_size ? FALLOC_FL_KEEP_SIZE : 0, (loff_t)offset, (loff_t)length) == -1) {
++	        prt("fallocate: %x to %x\n", offset, length);
++		prterr("dofallocate: fallocate");
++		report_failure(161);
++	}
++}
++#else
++void
++dofallocate(unsigned offset, unsigned length)
++{
++	return;
++}
++#endif
+ 
+ void
+ writefileimage()
+@@ -823,7 +899,7 @@ test(void)
+ 	unsigned long	offset;
+ 	unsigned long	size = maxoplen;
+ 	unsigned long	rv = random();
+-	unsigned long	op = rv % (3 + !lite + mapped_writes);
++	unsigned long	op = rv % (3 + !lite + mapped_writes + fallocate_calls);
+ 
+         /* turn off the map read if necessary */
+ 
+@@ -845,22 +921,33 @@ test(void)
+ 		prt("%lu...\n", testcalls);
+ 
+ 	/*
+-	 * READ:	op = 0
+-	 * WRITE:	op = 1
+-	 * MAPREAD:     op = 2
+-	 * TRUNCATE:	op = 3
+-	 * MAPWRITE:    op = 3 or 4
++	 *                 lite  !lite
++	 * READ:	op = 0	   0
++	 * WRITE:	op = 1     1
++	 * MAPREAD:     op = 2     2
++	 * TRUNCATE:	op = -     3
++	 * MAPWRITE:    op = 3     4
++	 * FALLOCATE:   op = -     5
+ 	 */
+ 	if (lite ? 0 : op == 3 && (style & 1) == 0) /* vanilla truncate? */
+ 		dotruncate(random() % maxfilelen);
+ 	else {
+ 		if (randomoplen)
+ 			size = random() % (maxoplen+1);
++
++		/* truncate */
+ 		if (lite ? 0 : op == 3)
+ 			dotruncate(size);
+ 		else {
+ 			offset = random();
+-			if (op == 1 || op == (lite ? 3 : 4)) {
++			/* fallocate */
++			if (op == 5) {
++				offset %= maxfilelen;
++				if (offset + size > maxfilelen)
++					size = maxfilelen - offset;
++				dofallocate(offset, size);
++			/* write / mapwrite */
++			} else if (op == 1 || op == (lite ? 3 : 4)) {
+ 				offset %= maxfilelen;
+ 				if (offset + size > maxfilelen)
+ 					size = maxfilelen - offset;
+@@ -868,6 +955,7 @@ test(void)
+ 					domapwrite(offset, size);
+ 				else
+ 					dowrite(offset, size);
++			/* read / mapread */
+ 			} else {
+ 				if (file_size)
+ 					offset %= file_size;
+@@ -904,7 +992,7 @@ void
+ usage(void)
+ {
+ 	fprintf(stdout, "usage: %s",
+-		"fsx [-dnqxALOWZ] [-b opnum] [-c Prob] [-l flen] [-m start:end] [-o oplen] [-p progressinterval] [-r readbdy] [-s style] [-t truncbdy] [-w writebdy] [-D startingop] [-N numops] [-P dirpath] [-S seed] fname\n\
++		"fsx [-dnqxAFLOWZ] [-b opnum] [-c Prob] [-l flen] [-m start:end] [-o oplen] [-p progressinterval] [-r readbdy] [-s style] [-t truncbdy] [-w writebdy] [-D startingop] [-N numops] [-P dirpath] [-S seed] fname\n\
+ 	-b opnum: beginning operation number (default 1)\n\
+ 	-c P: 1 in P chance of file close+open at each op (default infinity)\n\
+ 	-d: debug output for all operations\n\
+@@ -925,8 +1013,11 @@ usage(void)
+ #ifdef AIO
+ "	-A: Use the AIO system calls\n"
+ #endif
+-"	-D startingop: debug output starting at specified operation\n\
+-	-L: fsxLite - no file creations & no file size changes\n\
++"	-D startingop: debug output starting at specified operation\n"
++#ifdef FALLOCATE
++"	-F: Do not use fallocate (preallocation) calls\n"
++#endif
++"	-L: fsxLite - no file creations & no file size changes\n\
+ 	-N numops: total # operations to do (default infinity)\n\
+ 	-O: use oplen (see -o flag) for every op (default random)\n\
+ 	-P: save .fsxlog and .fsxgood files in dirpath (default ./)\n\
+@@ -1092,7 +1183,7 @@ main(int argc, char **argv)
+ 
+ 	setvbuf(stdout, (char *)0, _IOLBF, 0); /* line buffered stdout */
+ 
+-	while ((ch = getopt(argc, argv, "b:c:dfl:m:no:p:qr:s:t:w:xyAD:LN:OP:RS:WZ"))
++	while ((ch = getopt(argc, argv, "b:c:dfl:m:no:p:qr:s:t:w:xyAD:FLN:OP:RS:WZ"))
+ 	       != EOF)
+ 		switch (ch) {
+ 		case 'b':
+@@ -1186,6 +1277,9 @@ main(int argc, char **argv)
+ 			if (debugstart < 1)
+ 				usage();
+ 			break;
++		case 'F':
++			fallocate_calls = 0;
++			break;
+ 		case 'L':
+ 		        lite = 1;
+ 			break;
+@@ -1331,6 +1425,16 @@ main(int argc, char **argv)
+ 	} else 
+ 		check_trunc_hack();
+ 
++#ifdef FALLOCATE
++	if (!lite && fallocate_calls) {
++		if (fallocate(fd, 0, 0, 1) && errno == EOPNOTSUPP) {
++			warn("main: filesystem does not support fallocate, disabling");
++			fallocate_calls = 0;
++		} else
++			ftruncate(fd, 0);
++	}
++#endif
++
+ 	while (numops == -1 || numops--)
+ 		test();
+ 
