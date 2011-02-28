@@ -1,25 +1,43 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v5] ext4:Make FIEMAP and delayed allocation play well
- together.
-Date: Sun, 27 Feb 2011 17:36:47 -0500
-Message-ID: <20110227223647.GJ2924@thunk.org>
-References: <1298794585-13926-1-git-send-email-xiaoqiangnk@gmail.com>
- <AANLkTikNpm0vrH_zMpWzEkrXxkHt+5Wy62=quWUtGe5U@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 15349] kernel BUG at fs/ext4/inode.c:1853!
+Date: Mon, 28 Feb 2011 01:19:58 GMT
+Message-ID: <201102280119.p1S1JwhW001187@demeter1.kernel.org>
+References: <bug-15349-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: sandeen@redhat.com, adilger@dilger.ca, linux-ext4@vger.kernel.org
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:45429 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751897Ab1B0Xdh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 27 Feb 2011 18:33:37 -0500
-Content-Disposition: inline
-In-Reply-To: <AANLkTikNpm0vrH_zMpWzEkrXxkHt+5Wy62=quWUtGe5U@mail.gmail.com>
+Received: from demeter1.kernel.org ([140.211.167.39]:47250 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752085Ab1B1BUA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 27 Feb 2011 20:20:00 -0500
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p1S1JxCa001190
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Feb 2011 01:19:59 GMT
+In-Reply-To: <bug-15349-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Yongqiang, I've added your patch to the ext4 patch queue.  Thanks for
-working on this patch!
+https://bugzilla.kernel.org/show_bug.cgi?id=15349
 
-					- Ted
+
+Theodore Tso <tytso@mit.edu> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
+     Kernel Version|Linux muser                 |2.6.31.12-desktop-1mnb
+                   |2.6.31.12-desktop-1mnb #1   |
+                   |SMP Tue Jan 26 03:35:36 EST |
+                   |2010 i686 Pentium(R)        |
+                   |Dual-Core  CPU      E6500   |
+                   |@ 2.93GHz GNU/Linux         |
+
+
+
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
