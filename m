@@ -1,36 +1,43 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: nblocks arg to ext4_truncate_restart_trans() is
- ignored
-Date: Sun, 27 Feb 2011 23:41:39 -0500
-Message-ID: <20110228044139.GP2924@thunk.org>
-References: <AANLkTikjhsA0ooZAkS4zhaMrFidOgpjuk54cTxu30Xb5@mail.gmail.com>
+Subject: Re: orphan cleanup on readonly fs will corrupt future fs!
+Date: Mon, 28 Feb 2011 00:48:41 -0500
+Message-ID: <20110228054841.GR2924@thunk.org>
+References: <AANLkTi=_QBgDutcb7h2XHpjHR6k-4Rj-r6zryMXaNn6e@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
+Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
+	Eric Sandeen <sandeen@redhat.com>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:49782 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:49785 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754436Ab1B1QFc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Feb 2011 11:05:32 -0500
+	id S1754436Ab1B1QFe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Feb 2011 11:05:34 -0500
 Content-Disposition: inline
-In-Reply-To: <AANLkTikjhsA0ooZAkS4zhaMrFidOgpjuk54cTxu30Xb5@mail.gmail.com>
+In-Reply-To: <AANLkTi=_QBgDutcb7h2XHpjHR6k-4Rj-r6zryMXaNn6e@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Feb 27, 2011 at 11:54:28AM +0200, Amir Goldstein wrote:
-> nblocks is passed into ext4_truncate_restart_trans() from
-> ext4_ext_truncate_extend_restart() with a value different from the default
-> blocks_for_truncate(), but is being ignored.
+On Sat, Feb 26, 2011 at 08:21:47PM +0200, Amir Goldstein wrote:
+> Hi guys,
 > 
-> The two other calls to ext4_truncate_restart_trans() already pass the
-> default value, which is then being recalculated inside the function.
+> I have just realized something very disturbing -
+> that orphan cleanup is not being skipped on readonly mount of ext4/ext3.
 > 
-> Fix the problem by using the passed argument.
+> I know that journal recovery is done on readonly mount
+> and there is problem with that, since nothing happens
+> in the fs level.
 > 
-> Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
+> But orphan cleanup deletes inodes and frees blocks and that
+> could be very bad for some RO_COMPAT features, SNAPSHOT
+> and BIGALLOC to name two.
 
-Thanks, added to the ext4 patch queue.
+Yes, good point.  Fortunately it won't be a problem for the BIGALLOC
+feature, since other changes in the superblock will cause the kernel's
+sanity checks to refuse to mount it until we teach future kernels how
+not to freak out when s_blocks_per_group > blocksize * 8, for example.
 
-							- Ted
+But yes, this is something we should fix.
+
+						- Ted
