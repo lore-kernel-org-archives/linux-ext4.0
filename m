@@ -1,46 +1,39 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 29402] kernel panics while running ffsb scalability workloads
- on 2.6.38-rc1 through -rc5
-Date: Mon, 28 Feb 2011 18:07:39 GMT
-Message-ID: <201102281807.p1SI7dKZ031883@demeter1.kernel.org>
-References: <bug-29402-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext3: skip orphan cleanup on rocompat fs
+Date: Mon, 28 Feb 2011 19:09:50 +0100
+Message-ID: <20110228180950.GD20805@quack.suse.cz>
+References: <AANLkTimLAL7hPL+Yb392hyVAWEfHtObv7WwjzKt2awur@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Theodore Tso <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:39452 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753325Ab1B1SHk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Feb 2011 13:07:40 -0500
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p1SI7dlo031884
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 28 Feb 2011 18:07:39 GMT
-In-Reply-To: <bug-29402-13602@https.bugzilla.kernel.org/>
+Received: from cantor2.suse.de ([195.135.220.15]:36242 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753064Ab1B1SJw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Feb 2011 13:09:52 -0500
+Content-Disposition: inline
+In-Reply-To: <AANLkTimLAL7hPL+Yb392hyVAWEfHtObv7WwjzKt2awur@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=29402
+On Sat 26-02-11 22:40:19, Amir Goldstein wrote:
+> Orphan cleanup is currently executed even on readonly mount.
+> It deletes inodes and frees blocks, which could be very bad for some
+> RO_COMPAT features, HAS_SNAPSHOT to name one.
+> 
+> Now the damage is done, because current stock kernels may
+> corrupt future fs with readonly compatible features,
+> when doing orphan cleanup.
+> 
+> This patch skips the orphan cleanup if readonly compatible features
+> would prevent the fs from being mounted (or remounted) readwrite.
+  Thanks Amir. I actually took the version Ted committed to ext4 and ported
+it for ext3. Anyway, the patch is in my tree.
 
-
-
-
-
---- Comment #12 from Eric Whitney <eric.whitney@hp.com>  2011-02-28 18:07:38 ---
-Hi Lukas:
-
-The quick and dirty patch I attached on 26 Feb successfully passed 36 hours of
-testing on ext4, ext4 nojournal, and ext4 mblk_io_submit filesystems using the
-ffsb scalability workloads.  That was a total of 135 ffsb runs.  The original
-panic appeared on average after two runs.
-
-At any rate, hopefully this is a useful data point.  I'd be happy to test your
-more polished patch in the same manner.
-
-Thanks,
-Eric
+								Honza
 
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
