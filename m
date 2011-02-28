@@ -1,48 +1,62 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: optimize ext4_bio_write_page() when no extent conversion is needed
-Date: Mon, 28 Feb 2011 13:13:03 -0500
-Message-ID: <1298916783-31621-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext3: skip orphan cleanup on rocompat fs
+Date: Mon, 28 Feb 2011 19:22:01 +0100
+Message-ID: <20110228182201.GE20805@quack.suse.cz>
+References: <AANLkTimLAL7hPL+Yb392hyVAWEfHtObv7WwjzKt2awur@mail.gmail.com>
+ <20110228101454.GE4834@bitwizard.nl>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Amir Goldstein <amir73il@gmail.com>, Jan Kara <jack@suse.cz>,
+	Theodore Tso <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Rogier Wolff <R.E.Wolff@BitWizard.nl>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:37710 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751377Ab1B1SNJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Feb 2011 13:13:09 -0500
+Received: from cantor2.suse.de ([195.135.220.15]:36507 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753899Ab1B1SWD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Feb 2011 13:22:03 -0500
+Content-Disposition: inline
+In-Reply-To: <20110228101454.GE4834@bitwizard.nl>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If no extent conversion is required, wake up any processes waiting for
-the page's writeback to be complete and free the ext4_io_end structure
-directly in ext4_end_bio() instead of dropping it on the linked list
-(which requires taking a spinlock to queue and dequeue the io_end
-structure), and waiting for the workqueue to do this work.
+On Mon 28-02-11 11:14:55, Rogier Wolff wrote:
+> 
+> On Sat, Feb 26, 2011 at 10:40:19PM +0200, Amir Goldstein wrote:
+> > This patch skips the orphan cleanup if readonly compatible features
+> > would prevent the fs from being mounted (or remounted) readwrite.
+> 
+> I use the "mount readonly" option to, for instance, view/check the
+> filesystem to determine wether or not I need to fsck first. I use the
+> "readonly" feature to prevent the mounting to be a mistake-prone
+> situation. It prevents e.g. applications from dropping temporary files
+> in my current directory.
+> 
+> Every time fsck or such a cleanup does something, there is the option
+> of the cleanup or fixup being wrong. When you honour the "readonly"
+> request from the user, the careful user can go back to the situation
+> where he/she started.
+> 
+> If the cleanup/fixup is really neccesary, do so in in-core buffers of
+  Mounting (even read-only) without recovering the journal will give you a
+view of a corrupted filesystem. Usually not what you want (although I agree
+with you that there are occasions where this *is* what you want).
 
-This removes an extra scheduling delay before process waiting for an
-fsync() to complete gets woken up, and it also reduces the CPU
-overhead for a random write workload.
+> the filesystem. Write the infrastructure that allows us to have dirty
+> buffers that MAY NOT (yet?!?) be written to the device. This will also
+> solve the problem of journal recovery on readonly mount of a root
+> filesystem. when it has been fscked, and it's remounted rw, we can
+> remove the ban on the writeback of the dirty buffers.
+  Yes, this would be a nice feature but noone ever got to implementing it.
+You are welcome to contribute it :).
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/page-io.c |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
+> So I stronly disagree with your patch: It should not only prevent the
+> cleanup when writing is not allows due to ro-compat situation, but
+> also when requested by the user.
+  As Amir said, the patch is trivial and a clear improvement. So it goes
+in.
 
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index d5c391f..0cfd03e 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -259,6 +259,11 @@ static void ext4_end_bio(struct bio *bio, int error)
- 			     bi_sector >> (inode->i_blkbits - 9));
- 	}
- 
-+	if (!(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
-+		ext4_free_io_end(io_end);
-+		return;
-+	}
-+
- 	/* Add the io_end to per-inode completed io list*/
- 	spin_lock_irqsave(&EXT4_I(inode)->i_completed_io_lock, flags);
- 	list_add_tail(&io_end->list, &EXT4_I(inode)->i_completed_io_list);
+								Honza
 -- 
-1.7.3.1
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
