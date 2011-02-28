@@ -1,61 +1,53 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: orphan cleanup on readonly fs will corrupt future fs!
-Date: Mon, 28 Feb 2011 09:05:30 -0600
-Message-ID: <4D6BB9BA.3050000@redhat.com>
-References: <AANLkTi=_QBgDutcb7h2XHpjHR6k-4Rj-r6zryMXaNn6e@mail.gmail.com>
+Subject: Re: ext2/3/4: punch support?
+Date: Mon, 28 Feb 2011 09:17:54 -0600
+Message-ID: <4D6BBCA2.8030104@redhat.com>
+References: <AANLkTimyu6A=LgF8pit6So6JkPrScFLB42U3NwBJq7mv@mail.gmail.com>	<20110228131118.GA18193@dhcp231-156.rdu.redhat.com> <AANLkTimwpoi6agwO4q8qhOcohhSnYFrKhFOCnk0BuTEC@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	Andreas Dilger <adilger@dilger.ca>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Amir Goldstein <amir73il@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48552 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754487Ab1B1PFi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Feb 2011 10:05:38 -0500
-In-Reply-To: <AANLkTi=_QBgDutcb7h2XHpjHR6k-4Rj-r6zryMXaNn6e@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Josef Bacik <josef@redhat.com>, Theodore Tso <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+To: Dave Young <hidave.darkstar@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <AANLkTimwpoi6agwO4q8qhOcohhSnYFrKhFOCnk0BuTEC@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2/26/11 12:21 PM, Amir Goldstein wrote:
-> Hi guys,
+On 2/28/11 8:29 AM, Dave Young wrote:
+> On Mon, Feb 28, 2011 at 9:11 PM, Josef Bacik <josef@redhat.com> wrote:
+>> On Mon, Feb 28, 2011 at 03:03:40PM +0800, Dave Young wrote:
+>>> Hi, josef and ext guys
+>>>
+>>> Do you have any plan with ext4 hole punching support? And the
+>>> fallocate for ext2/3?
+>>>
+>>> What's the obstacle to work on this? could someone tell the status of
+>>> this issue?
+>>
+>> There is no obstacle, just nobody has bothered to do it.  If you want to do it
+>> go for it.  Thanks,
 > 
-> I have just realized something very disturbing -
-> that orphan cleanup is not being skipped on readonly mount of ext4/ext3.
-> 
-> I know that journal recovery is done on readonly mount
-> and there is problem with that, since nothing happens
-> in the fs level.
-> 
-> But orphan cleanup deletes inodes and frees blocks and that
-> could be very bad for some RO_COMPAT features, SNAPSHOT
-> and BIGALLOC to name two.
+> Yes, I want to do some kvm image space discard stuff,
+> I use ext4 as my filesystem, but currently only xfs support something
+> like trim/discard.
 
-One thing to note is that if the device itself is readonly,
-both journal recovery and orphan processing will be skipped,
-if I recall...
+As Lukas said, ext4 & ext3 support various forms of trim/discard already.
+
+But that's different from punch...
+
+And as for fallocate on ext3, you need somewhere to put the metadata to indicate a block is allocated but not written.  This was a lot more straightforward for ext4, since it describes a large range of blocks with a single extent structure.
 
 -Eric
 
-> I am not so sure why orphan cleanup is so important for readonly
-> mount in the first place?
+> I know general knowledge about ext filesystem, but nearly new to ext4 code,
+> could you give some hint where to start?
 > 
-> Now the damage has been done, because current stock kernels will
-> corrupt future fs with SNAPSHOT and BIGALLOC features
-> (unless Ted backs up from the decision to make BIGALLOC RO_COMPAT...)
-> 
-> I think that we should skip orphan cleanup on readonly mount ASAP and try
-> to push this fix to as many stable/maint kernels out there, before the
-> problem gets worse.
-> 
-> Can anyway see a problem with skipping orphan cleanup?
-> Maybe there is a problem with later remount read-write?
-> 
-> I would spend time more time to investigate these questions,
-> but I find this problem too disturbing and urgent to wait until I find
-> the time to do so...
-> 
-> Amir.
-
+> --
+> Thanks
+> dave
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
