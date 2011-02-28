@@ -1,70 +1,47 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 12/17]fs:jbd Remove one to many n's in a word.
-Date: Mon, 28 Feb 2011 19:25:21 +0100
-Message-ID: <20110228182521.GF20805@quack.suse.cz>
-References: <1298781250-2718-1-git-send-email-justinmattock@gmail.com>
- <1298781250-2718-13-git-send-email-justinmattock@gmail.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/2] mksparse: build sparse file from compressed
+ e2image file.
+Date: Mon, 28 Feb 2011 13:26:04 -0500
+Message-ID: <20110228182604.GC28617@thunk.org>
+References: <1298860514-615-1-git-send-email-hao.bigrat@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: trivial@kernel.org, linux-kernel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: "Justin P. Mattock" <justinmattock@gmail.com>
+Cc: linux-ext4@vger.kernel.org, Robin Dong <sanbai@taobao.com>
+To: Robin Dong <hao.bigrat@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:46272 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753325Ab1B1SZZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Feb 2011 13:25:25 -0500
+Received: from li9-11.members.linode.com ([67.18.176.11]:43307 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752577Ab1B1S0H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Feb 2011 13:26:07 -0500
 Content-Disposition: inline
-In-Reply-To: <1298781250-2718-13-git-send-email-justinmattock@gmail.com>
+In-Reply-To: <1298860514-615-1-git-send-email-hao.bigrat@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat 26-02-11 20:34:05, Justin P. Mattock wrote:
-> The Patch below removes one to many "n's" in a word.. 
-  Thanks. Merged.
+On Mon, Feb 28, 2011 at 10:35:13AM +0800, Robin Dong wrote:
+> From: Robin Dong <sanbai@taobao.com>
+> 
+> [Purpose]
+> After we make a image-file by e2image like:
+> #e2image -r /dev/hda1 - | bzip2 > hda1.bz2
+> we copy the bz2 file to remote host and extract it:
+> #bunzip2 hda1.bz2 
+> the unzipped hda1 file will not be a sparse file and the space occupied
+> by it is as large as the real /dev/hda1 filesystem.
+> 
+> Therefore a tool to transform a raw-file to a sparse-file is necessary.
+> This Patch is a first attempt to provide such a tool which is called
+> 'mksparse' so far.
 
-							Honza
+I guess you didn't find /usr/src/e2fsprogs/contrib/make-sparse.c file
+that I had written a while back.  I never did write a man page or
+usage manual, or the rest of the niceties that go into a supported
+program, but it's there.  :-)
 
-> 
-> Signed-off-by: Justin P. Mattock <justinmattock@gmail.com>
-> CC: Andrew Morton <akpm@linux-foundation.org> 
-> CC: Jan Kara <jack@suse.cz> 
-> CC: linux-ext4@vger.kernel.org
-> ---
->  fs/jbd/journal.c  |    2 +-
->  fs/jbd2/journal.c |    2 +-
->  2 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-> index da1b5e4..eb11601 100644
-> --- a/fs/jbd/journal.c
-> +++ b/fs/jbd/journal.c
-> @@ -839,7 +839,7 @@ journal_t * journal_init_inode (struct inode *inode)
->  	err = journal_bmap(journal, 0, &blocknr);
->  	/* If that failed, give up */
->  	if (err) {
-> -		printk(KERN_ERR "%s: Cannnot locate journal superblock\n",
-> +		printk(KERN_ERR "%s: Cannot locate journal superblock\n",
->  		       __func__);
->  		goto out_err;
->  	}
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index 97e7346..90407b8 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -991,7 +991,7 @@ journal_t * jbd2_journal_init_inode (struct inode *inode)
->  	err = jbd2_journal_bmap(journal, 0, &blocknr);
->  	/* If that failed, give up */
->  	if (err) {
-> -		printk(KERN_ERR "%s: Cannnot locate journal superblock\n",
-> +		printk(KERN_ERR "%s: Cannot locate journal superblock\n",
->  		       __func__);
->  		goto out_err;
->  	}
-> -- 
-> 1.7.4.1
-> 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+I've never been completely convinced this was functionality was one
+that should be included in the e2fsprogs as a supported program and
+shipped with distributions.  It is useful, though, and I've certainly
+used make-sparse.c many times in the past, so I'm willing to be
+convinced otherwise.
+
+						- Ted
