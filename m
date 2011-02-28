@@ -1,39 +1,48 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext3: skip orphan cleanup on rocompat fs
-Date: Mon, 28 Feb 2011 19:09:50 +0100
-Message-ID: <20110228180950.GD20805@quack.suse.cz>
-References: <AANLkTimLAL7hPL+Yb392hyVAWEfHtObv7WwjzKt2awur@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Theodore Tso <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Amir Goldstein <amir73il@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: optimize ext4_bio_write_page() when no extent conversion is needed
+Date: Mon, 28 Feb 2011 13:13:03 -0500
+Message-ID: <1298916783-31621-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:36242 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753064Ab1B1SJw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Feb 2011 13:09:52 -0500
-Content-Disposition: inline
-In-Reply-To: <AANLkTimLAL7hPL+Yb392hyVAWEfHtObv7WwjzKt2awur@mail.gmail.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:37710 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751377Ab1B1SNJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Feb 2011 13:13:09 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat 26-02-11 22:40:19, Amir Goldstein wrote:
-> Orphan cleanup is currently executed even on readonly mount.
-> It deletes inodes and frees blocks, which could be very bad for some
-> RO_COMPAT features, HAS_SNAPSHOT to name one.
-> 
-> Now the damage is done, because current stock kernels may
-> corrupt future fs with readonly compatible features,
-> when doing orphan cleanup.
-> 
-> This patch skips the orphan cleanup if readonly compatible features
-> would prevent the fs from being mounted (or remounted) readwrite.
-  Thanks Amir. I actually took the version Ted committed to ext4 and ported
-it for ext3. Anyway, the patch is in my tree.
+If no extent conversion is required, wake up any processes waiting for
+the page's writeback to be complete and free the ext4_io_end structure
+directly in ext4_end_bio() instead of dropping it on the linked list
+(which requires taking a spinlock to queue and dequeue the io_end
+structure), and waiting for the workqueue to do this work.
 
-								Honza
+This removes an extra scheduling delay before process waiting for an
+fsync() to complete gets woken up, and it also reduces the CPU
+overhead for a random write workload.
 
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/page-io.c |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
+
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index d5c391f..0cfd03e 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -259,6 +259,11 @@ static void ext4_end_bio(struct bio *bio, int error)
+ 			     bi_sector >> (inode->i_blkbits - 9));
+ 	}
+ 
++	if (!(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
++		ext4_free_io_end(io_end);
++		return;
++	}
++
+ 	/* Add the io_end to per-inode completed io list*/
+ 	spin_lock_irqsave(&EXT4_I(inode)->i_completed_io_lock, flags);
+ 	list_add_tail(&io_end->list, &EXT4_I(inode)->i_completed_io_list);
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.3.1
+
