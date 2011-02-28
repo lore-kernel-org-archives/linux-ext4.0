@@ -1,59 +1,61 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: ext4 corruption
-Date: Mon, 28 Feb 2011 09:01:54 -0600
-Message-ID: <4D6BB8E2.7080106@redhat.com>
-References: <AANLkTin5hN-gnpmgntApSSrWVWJPQqK99tPJtfmFn5++@mail.gmail.com>	<C5B8C496-E8F1-4BF7-9A51-373C0C63E357@mit.edu> <AANLkTimcKiKgKTVft9N+OVHd5-N+-AscSoimdOfkoBt9@mail.gmail.com>
+Subject: Re: orphan cleanup on readonly fs will corrupt future fs!
+Date: Mon, 28 Feb 2011 09:05:30 -0600
+Message-ID: <4D6BB9BA.3050000@redhat.com>
+References: <AANLkTi=_QBgDutcb7h2XHpjHR6k-4Rj-r6zryMXaNn6e@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: "Bill Huey (hui)" <bill.huey@gmail.com>
+Cc: Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	Andreas Dilger <adilger@dilger.ca>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38969 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48552 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754510Ab1B1PB7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Feb 2011 10:01:59 -0500
-In-Reply-To: <AANLkTimcKiKgKTVft9N+OVHd5-N+-AscSoimdOfkoBt9@mail.gmail.com>
+	id S1754487Ab1B1PFi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Feb 2011 10:05:38 -0500
+In-Reply-To: <AANLkTi=_QBgDutcb7h2XHpjHR6k-4Rj-r6zryMXaNn6e@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2/26/11 5:13 AM, Bill Huey (hui) wrote:
-> Theodore,
+On 2/26/11 12:21 PM, Amir Goldstein wrote:
+> Hi guys,
 > 
-> I did run fsck.ext4 on the file system. It cleared a bunch of errors
-> and but it's still showing various problems.
+> I have just realized something very disturbing -
+> that orphan cleanup is not being skipped on readonly mount of ext4/ext3.
 > 
-> Another log of the file system. USB->SATA problems ?
-> ---------------------------------
+> I know that journal recovery is done on readonly mount
+> and there is problem with that, since nothing happens
+> in the fs level.
 > 
-> Feb 22 19:23:31 finfin kernel: [    2.402463] sd 6:0:0:0: [sdb]
-> 3907029168 512-byte logical blocks: (2.00 TB/1.81 TiB)
-> Feb 22 19:23:31 finfin kernel: [    2.403585] sd 6:0:0:0: [sdb] Write
-> Protect is off
-> Feb 22 19:23:31 finfin kernel: [    2.405920]  sdb:
-> Feb 22 19:23:31 finfin kernel: [    2.819633]  sdb1
-> Feb 22 19:23:31 finfin kernel: [    2.821592] sd 6:0:0:0: [sdb]
-> Attached SCSI disk
-> Feb 22 19:27:40 finfin kernel: [  263.857108]  sdb: sdb1
-> Feb 22 20:03:18 finfin kernel: [ 2402.182269] EXT4-fs (sdb1): mounted
-> filesystem with ordered data mode. Opts: (null)
-> Feb 25 03:49:40 finfin kernel: [203184.800029] EXT4-fs (sdb1):
-> warning: mounting fs with errors, running e2fsck is recommended
+> But orphan cleanup deletes inodes and frees blocks and that
+> could be very bad for some RO_COMPAT features, SNAPSHOT
+> and BIGALLOC to name two.
 
-this must not have been post-fsck, if it still is mounting with errors...?
-
-...
-
-> Feb 25 21:51:47 finfin kernel: [59900.021575] EXT4-fs (sdb1): mounted
-> filesystem with ordered data mode. Opts: (null)
-> Feb 26 02:19:27 finfin kernel: [75959.826438] sd 6:0:0:0: [sdb]
-> Unhandled error code
-> Feb 26 02:19:27 finfin kernel: [75959.826444] sd 6:0:0:0: [sdb]
-> Result: hostbyte=DID_NO_CONNECT driverbyte=DRIVER_OK
-> Feb 26 02:19:27 finfin kernel: [75959.826450] sd 6:0:0:0: [sdb] CDB:
-> Read(10): 28 00 ac 44 00 3f 00 00 08 00
-
-and this does indeed look like storage problems, ext4 problems are
-probably secondary.
+One thing to note is that if the device itself is readonly,
+both journal recovery and orphan processing will be skipped,
+if I recall...
 
 -Eric
+
+> I am not so sure why orphan cleanup is so important for readonly
+> mount in the first place?
+> 
+> Now the damage has been done, because current stock kernels will
+> corrupt future fs with SNAPSHOT and BIGALLOC features
+> (unless Ted backs up from the decision to make BIGALLOC RO_COMPAT...)
+> 
+> I think that we should skip orphan cleanup on readonly mount ASAP and try
+> to push this fix to as many stable/maint kernels out there, before the
+> problem gets worse.
+> 
+> Can anyway see a problem with skipping orphan cleanup?
+> Maybe there is a problem with later remount read-write?
+> 
+> I would spend time more time to investigate these questions,
+> but I find this problem too disturbing and urgent to wait until I find
+> the time to do so...
+> 
+> Amir.
+
