@@ -1,65 +1,59 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: ext2/3/4: punch support?
-Date: Mon, 28 Feb 2011 15:50:09 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1102281549050.5172@dhcp-27-109.brq.redhat.com>
-References: <AANLkTimyu6A=LgF8pit6So6JkPrScFLB42U3NwBJq7mv@mail.gmail.com> <20110228131118.GA18193@dhcp231-156.rdu.redhat.com> <AANLkTimwpoi6agwO4q8qhOcohhSnYFrKhFOCnk0BuTEC@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: ext4 corruption
+Date: Mon, 28 Feb 2011 09:01:54 -0600
+Message-ID: <4D6BB8E2.7080106@redhat.com>
+References: <AANLkTin5hN-gnpmgntApSSrWVWJPQqK99tPJtfmFn5++@mail.gmail.com>	<C5B8C496-E8F1-4BF7-9A51-373C0C63E357@mit.edu> <AANLkTimcKiKgKTVft9N+OVHd5-N+-AscSoimdOfkoBt9@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="571140353-850269878-1298904612=:5172"
-Cc: Josef Bacik <josef@redhat.com>, Theodore Tso <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-To: Dave Young <hidave.darkstar@gmail.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: "Bill Huey (hui)" <bill.huey@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:23829 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:38969 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754118Ab1B1OuP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Feb 2011 09:50:15 -0500
-In-Reply-To: <AANLkTimwpoi6agwO4q8qhOcohhSnYFrKhFOCnk0BuTEC@mail.gmail.com>
+	id S1754510Ab1B1PB7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Feb 2011 10:01:59 -0500
+In-Reply-To: <AANLkTimcKiKgKTVft9N+OVHd5-N+-AscSoimdOfkoBt9@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
-
---571140353-850269878-1298904612=:5172
-Content-Type: TEXT/PLAIN; charset=UTF-8
-Content-Transfer-Encoding: 8BIT
-
-On Mon, 28 Feb 2011, Dave Young wrote:
-
-> On Mon, Feb 28, 2011 at 9:11 PM, Josef Bacik <josef@redhat.com> wrote:
-> > On Mon, Feb 28, 2011 at 03:03:40PM +0800, Dave Young wrote:
-> >> Hi, josef and ext guys
-> >>
-> >> Do you have any plan with ext4 hole punching support? And the
-> >> fallocate for ext2/3?
-> >>
-> >> What's the obstacle to work on this? could someone tell the status of
-> >> this issue?
-> >
-> > There is no obstacle, just nobody has bothered to do it.  If you want to do it
-> > go for it.  Thanks,
+On 2/26/11 5:13 AM, Bill Huey (hui) wrote:
+> Theodore,
 > 
-> Yes, I want to do some kvm image space discard stuff,
-> I use ext4 as my filesystem, but currently only xfs support something
-> like trim/discard.
-
-Ext4 supports discard as well, actually batched discard support was
-added into ext4 before xfs :)
-
-Thanks!
--Lukas
-
+> I did run fsck.ext4 on the file system. It cleared a bunch of errors
+> and but it's still showing various problems.
 > 
-> I know general knowledge about ext filesystem, but nearly new to ext4 code,
-> could you give some hint where to start?
+> Another log of the file system. USB->SATA problems ?
+> ---------------------------------
 > 
-> --
-> Thanks
-> dave
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
---571140353-850269878-1298904612=:5172--
+> Feb 22 19:23:31 finfin kernel: [    2.402463] sd 6:0:0:0: [sdb]
+> 3907029168 512-byte logical blocks: (2.00 TB/1.81 TiB)
+> Feb 22 19:23:31 finfin kernel: [    2.403585] sd 6:0:0:0: [sdb] Write
+> Protect is off
+> Feb 22 19:23:31 finfin kernel: [    2.405920]  sdb:
+> Feb 22 19:23:31 finfin kernel: [    2.819633]  sdb1
+> Feb 22 19:23:31 finfin kernel: [    2.821592] sd 6:0:0:0: [sdb]
+> Attached SCSI disk
+> Feb 22 19:27:40 finfin kernel: [  263.857108]  sdb: sdb1
+> Feb 22 20:03:18 finfin kernel: [ 2402.182269] EXT4-fs (sdb1): mounted
+> filesystem with ordered data mode. Opts: (null)
+> Feb 25 03:49:40 finfin kernel: [203184.800029] EXT4-fs (sdb1):
+> warning: mounting fs with errors, running e2fsck is recommended
+
+this must not have been post-fsck, if it still is mounting with errors...?
+
+...
+
+> Feb 25 21:51:47 finfin kernel: [59900.021575] EXT4-fs (sdb1): mounted
+> filesystem with ordered data mode. Opts: (null)
+> Feb 26 02:19:27 finfin kernel: [75959.826438] sd 6:0:0:0: [sdb]
+> Unhandled error code
+> Feb 26 02:19:27 finfin kernel: [75959.826444] sd 6:0:0:0: [sdb]
+> Result: hostbyte=DID_NO_CONNECT driverbyte=DRIVER_OK
+> Feb 26 02:19:27 finfin kernel: [75959.826450] sd 6:0:0:0: [sdb] CDB:
+> Read(10): 28 00 ac 44 00 3f 00 00 08 00
+
+and this does indeed look like storage problems, ext4 problems are
+probably secondary.
+
+-Eric
