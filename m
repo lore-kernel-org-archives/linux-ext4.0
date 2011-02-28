@@ -1,58 +1,34 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: [PATCH] ext3: skip orphan cleanup on rocompat fs
-Date: Mon, 28 Feb 2011 15:10:25 +0200
-Message-ID: <AANLkTinofyYH02WT=mx4m_sD_4FoUxPQD7OJT8UZh5_b@mail.gmail.com>
-References: <AANLkTimLAL7hPL+Yb392hyVAWEfHtObv7WwjzKt2awur@mail.gmail.com>
-	<20110228101454.GE4834@bitwizard.nl>
+From: Josef Bacik <josef@redhat.com>
+Subject: Re: ext2/3/4: punch support?
+Date: Mon, 28 Feb 2011 08:11:18 -0500
+Message-ID: <20110228131118.GA18193@dhcp231-156.rdu.redhat.com>
+References: <AANLkTimyu6A=LgF8pit6So6JkPrScFLB42U3NwBJq7mv@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Jan Kara <jack@suse.cz>, Theodore Tso <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Rogier Wolff <R.E.Wolff@bitwizard.nl>
+Content-Type: text/plain; charset=us-ascii
+Cc: josef@redhat.com, Theodore Tso <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+To: Dave Young <hidave.darkstar@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:45065 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754035Ab1B1NK0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Feb 2011 08:10:26 -0500
-Received: by qyk7 with SMTP id 7so2227354qyk.19
-        for <linux-ext4@vger.kernel.org>; Mon, 28 Feb 2011 05:10:26 -0800 (PST)
-In-Reply-To: <20110228101454.GE4834@bitwizard.nl>
+Received: from mx1.redhat.com ([209.132.183.28]:12490 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753871Ab1B1NQ4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Feb 2011 08:16:56 -0500
+Content-Disposition: inline
+In-Reply-To: <AANLkTimyu6A=LgF8pit6So6JkPrScFLB42U3NwBJq7mv@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 28, 2011 at 12:14 PM, Rogier Wolff <R.E.Wolff@bitwizard.nl> wrote:
->
-> On Sat, Feb 26, 2011 at 10:40:19PM +0200, Amir Goldstein wrote:
->> This patch skips the orphan cleanup if readonly compatible features
->> would prevent the fs from being mounted (or remounted) readwrite.
->
-> I use the "mount readonly" option to, for instance, view/check the
-> filesystem to determine wether or not I need to fsck first. I use the
-> "readonly" feature to prevent the mounting to be a mistake-prone
-> situation. It prevents e.g. applications from dropping temporary files
-> in my current directory.
->
-> Every time fsck or such a cleanup does something, there is the option
-> of the cleanup or fixup being wrong. When you honour the "readonly"
-> request from the user, the careful user can go back to the situation
-> where he/she started.
->
-> If the cleanup/fixup is really neccesary, do so in in-core buffers of
-> the filesystem. Write the infrastructure that allows us to have dirty
-> buffers that MAY NOT (yet?!?) be written to the device. This will also
-> solve the problem of journal recovery on readonly mount of a root
-> filesystem. when it has been fscked, and it's remounted rw, we can
-> remove the ban on the writeback of the dirty buffers.
->
-> So I stronly disagree with your patch: It should not only prevent the
-> cleanup when writing is not allows due to ro-compat situation, but
-> also when requested by the user.
->
+On Mon, Feb 28, 2011 at 03:03:40PM +0800, Dave Young wrote:
+> Hi, josef and ext guys
+> 
+> Do you have any plan with ext4 hole punching support? And the
+> fallocate for ext2/3?
+> 
+> What's the obstacle to work on this? could someone tell the status of
+> this issue?
 
-I am not disagreeing with your disagreement, but implementing what
-you desire has more implications than my patch, so I rather that my
-patch gets merged, because it is mostly-harmless and we can continue
-the discussion, whether or not file systems need to honor the readonly
-mount option to the word in parallel.
+There is no obstacle, just nobody has bothered to do it.  If you want to do it
+go for it.  Thanks,
 
-Amir.
+Josef
