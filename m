@@ -1,34 +1,45 @@
-From: Ted Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-Subject: Re: [PATCH -V5 00/24]  New ACL format for better NFSv4 acl
- interoperability
-Date: Mon, 28 Feb 2011 16:11:45 -0500
-Message-ID: <20110228211145.GG28617@thunk.org>
-References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: ext4 corruption
+Date: Mon, 28 Feb 2011 17:55:59 -0500
+Message-ID: <20110228225559.GK28617@thunk.org>
+References: <AANLkTin5hN-gnpmgntApSSrWVWJPQqK99tPJtfmFn5++@mail.gmail.com>
+ <C5B8C496-E8F1-4BF7-9A51-373C0C63E357@mit.edu>
+ <AANLkTimcKiKgKTVft9N+OVHd5-N+-AscSoimdOfkoBt9@mail.gmail.com>
+ <AANLkTik22qfqzi4nPhvXRinzEDPDZ+UQFYT98eKK+aau@mail.gmail.com>
+ <20110228044307.GQ2924@thunk.org>
+ <AANLkTimoODjtQY2mmfgnPMisEA+kUNeEnGryL1CMgAFM@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: sfrench-r/Jw6+rmf7HQT0dZR+AlfA@public.gmane.org, agruen-63ez5xqkn6DQT0dZR+AlfA@public.gmane.org, dilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org,
-	sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org, jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: "Aneesh Kumar K.V" <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: linux-ext4@vger.kernel.org
+To: "Bill Huey (hui)" <bill.huey@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:56217 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752675Ab1B1W4C (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Feb 2011 17:56:02 -0500
 Content-Disposition: inline
-In-Reply-To: <1298469131-16555-1-git-send-email-aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <AANLkTimoODjtQY2mmfgnPMisEA+kUNeEnGryL1CMgAFM@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Aneesh,
+On Mon, Feb 28, 2011 at 12:18:16PM -0800, Bill Huey (hui) wrote:
+> What ever is in the latest Ubuntu maverick, 2.6.35 for the kernel.
+> 
+> The only thing that makes it not looking like it was a storage problem
+> is this line that comes before the SATA error:
+> 
+> -----
+> Feb 25 04:41:26 finfin kernel: [206290.181230] JBD: Spotted dirty
+> metadata buffer (dev = sdb1, blocknr = 0). There's a risk of
+> filesystem corruption in case of system crash.
+> -----
 
-What is the current status of this patch series?  I seem to remember
-that Christoph and Al Viro had some objections; have those been
-cleared yet?  If not, can you summarize what their objections are?
+There are a few places where we update the superblock bypassing the
+journal layer.  (For example, when we set the RO_COMPAT_LARGE_FILE
+feature flag if it wasn't previously set).  Those should be cleaned
+up, but it's not related to the rest of the scary-looking corruption
+which you saw.  The worst that might happen is specific superblock
+update might get lost (i.e., the RO_COMPAT_LARGE_FILE feature flag) on
+a crash before we commit some other superblock change to the journal.
 
-To be honest I haven't been paying super close attention to this patch
-series, and I'm curious what needs to happen with it one way or
-another.
-
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+  	       	  	      	    	       - Ted
