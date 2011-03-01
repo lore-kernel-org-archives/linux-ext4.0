@@ -1,54 +1,59 @@
-From: "Bill Huey (hui)" <bill.huey@gmail.com>
-Subject: Re: ext4 corruption
-Date: Mon, 28 Feb 2011 15:45:51 -0800
-Message-ID: <AANLkTim3Q+Q0AKQ46ANRL2fiuK6-_ESiNnaU+nfAvYoE@mail.gmail.com>
-References: <AANLkTin5hN-gnpmgntApSSrWVWJPQqK99tPJtfmFn5++@mail.gmail.com>
-	<C5B8C496-E8F1-4BF7-9A51-373C0C63E357@mit.edu>
-	<AANLkTimcKiKgKTVft9N+OVHd5-N+-AscSoimdOfkoBt9@mail.gmail.com>
-	<AANLkTik22qfqzi4nPhvXRinzEDPDZ+UQFYT98eKK+aau@mail.gmail.com>
-	<20110228044307.GQ2924@thunk.org>
-	<AANLkTimoODjtQY2mmfgnPMisEA+kUNeEnGryL1CMgAFM@mail.gmail.com>
-	<20110228225559.GK28617@thunk.org>
+From: Allison Henderson <achender@linux.vnet.ibm.com>
+Subject: Re: ext2/3/4: punch support?
+Date: Mon, 28 Feb 2011 17:59:30 -0700
+Message-ID: <4D6C44F2.9050800@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:54470 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753212Ab1B1Xpx convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Feb 2011 18:45:53 -0500
-Received: by bwz15 with SMTP id 15so4162370bwz.19
-        for <linux-ext4@vger.kernel.org>; Mon, 28 Feb 2011 15:45:52 -0800 (PST)
-In-Reply-To: <20110228225559.GK28617@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Dave Young <hidave.darkstar@gmail.com>, josef@redhat.com,
+	linux-ext4@vger.kernel.org, linux-ext4-owner@vger.kernel.org,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Theodore Tso <tytso@mit.edu>
+To: Josef Bacik <josef@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Yeah, it was just a standard mkfs so I doubt that option was
-specified. The important thing for me here was to at least let you
-folks know about it so that you can determine if this is significant
-or not.
+Hi All,
 
+I've actually already started on a patch set for punch hole support in ext4.  I've sent them out on the ltc-fsdev mailing list for review.  I had planned to spend another week or two running it through some more debug cases before sending it to the ext4 mailing list though.
 
-Thanks
+Allison Henderson
 
-bill
+linux-ext4-owner@vger.kernel.org wrote on 02/28/2011 06:11:18 AM:
 
-On Mon, Feb 28, 2011 at 2:55 PM, Ted Ts'o <tytso@mit.edu> wrote:
-> There are a few places where we update the superblock bypassing the
-> journal layer. =C2=A0(For example, when we set the RO_COMPAT_LARGE_FI=
-LE
-> feature flag if it wasn't previously set). =C2=A0Those should be clea=
-ned
-> up, but it's not related to the rest of the scary-looking corruption
-> which you saw. =C2=A0The worst that might happen is specific superblo=
-ck
-> update might get lost (i.e., the RO_COMPAT_LARGE_FILE feature flag) o=
-n
-> a crash before we commit some other superblock change to the journal.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Josef Bacik <josef@redhat.com> 
+> Sent by: linux-ext4-owner@vger.kernel.org
+> 
+> 02/28/2011 06:11 AM
+> 
+> To
+> 
+> Dave Young <hidave.darkstar@gmail.com>
+> 
+> cc
+> 
+> josef@redhat.com, Theodore Tso <tytso@mit.edu>, linux-
+> ext4@vger.kernel.org, Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+> 
+> Subject
+> 
+> Re: ext2/3/4: punch support?
+> 
+> On Mon, Feb 28, 2011 at 03:03:40PM +0800, Dave Young wrote:
+> > Hi, josef and ext guys
+> > 
+> > Do you have any plan with ext4 hole punching support? And the
+> > fallocate for ext2/3?
+> > 
+> > What's the obstacle to work on this? could someone tell the status of
+> > this issue?
+> 
+> There is no obstacle, just nobody has bothered to do it.  If you want to do it
+> go for it.  Thanks,
+> 
+> Josef
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
