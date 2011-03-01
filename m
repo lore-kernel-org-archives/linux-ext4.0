@@ -1,316 +1,613 @@
-From: Dave Young <hidave.darkstar@gmail.com>
-Subject: Re: [Ext4 punch hole 3/5] Ext4 Punch Hole Support: Punch out extents
-Date: Tue, 1 Mar 2011 15:38:09 +0800
-Message-ID: <AANLkTikt00Po8C4AGQgq7tUi3-XzWtZd-Z-pVd6VZ3PQ@mail.gmail.com>
-References: <4D6C633F.4000608@linux.vnet.ibm.com>
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: Re: [Ext4 punch hole 4/5] Ext4 Punch Hole Support: Enable Punch Hole
+Date: Tue, 1 Mar 2011 10:20:26 +0200
+Message-ID: <AANLkTi=Y1m=oH6zms-vsZE9iHwYd2q7Seuo+KcHCFQv-@mail.gmail.com>
+References: <4D6C634C.8050308@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: base64
-Cc: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: Allison Henderson <achender@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:48444 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751100Ab1CAHiK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Mar 2011 02:38:10 -0500
-Received: by vxi39 with SMTP id 39so3938854vxi.19
-        for <linux-ext4@vger.kernel.org>; Mon, 28 Feb 2011 23:38:09 -0800 (PST)
-In-Reply-To: <4D6C633F.4000608@linux.vnet.ibm.com>
+Received: from mail-qy0-f181.google.com ([209.85.216.181]:55535 "EHLO
+	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755519Ab1CAIU1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Mar 2011 03:20:27 -0500
+Received: by qyg14 with SMTP id 14so4114773qyg.19
+        for <linux-ext4@vger.kernel.org>; Tue, 01 Mar 2011 00:20:26 -0800 (PST)
+In-Reply-To: <4D6C634C.8050308@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-T24gVHVlLCBNYXIgMSwgMjAxMSBhdCAxMTowOCBBTSwgQWxsaXNvbiBIZW5kZXJzb24KPGFjaGVu
-ZGVyQGxpbnV4LnZuZXQuaWJtLmNvbT4gd3JvdGU6Cj4gVGhpcyBwYXRjaCBtb2RpZmVzIHRoZSB0
-cnVuY2F0ZSByb3V0aW5lcyB0byBzdXBwb3J0IGhvbGUgcHVuY2hpbmcKPiBCZWxvdyBpcyBhIGJy
-aWVmIHN1bW1hcnkgb2YgdGhlIHBhY3RoZXMgY2hhbmdlczoKPgo+IC0gQWRkZWQgbmV3IGZ1bmN0
-aW9uICJleHRfZXh0NF9ybV9sZWFmX3B1bmNoX2hvbGUiLgo+IMKgIMKgIMKgIMKgVGhpcyByb3V0
-aW5lIGlzIHZlcnkgc2ltaWxhciB0byBleHRfZXh0NF9ybV9sZWFmIGV4Y2VwdCB0aGF0Cj4gwqAg
-wqAgwqAgwqBpdCBwdW5jaGVzIGEgaG9sZSBpbiBhIGxlYWYgaW5zdGVhZCBvZiBqdXN0IHJlbW92
-aW5nIHRoZSB0YWlsCj4gwqAgwqAgwqAgwqBvciByZW1vdmluZyB0aGUgZW50aXJlIGxlYWYgYWxs
-IHRvZ2V0aGVyCgpUaGVzZSB0d28gZnVuY3Rpb25zIGFyZSBhbG1vc3QgZHVwbGljYXRlLAptZXJn
-ZSB0aGVtIGFzIG9uZSBmdW5jdGlvbiB3b3VsZCBiZSBiZXR0ZXIKCkFsc28gYXMgQW5kcmVhcyBE
-aWxnZXIgc2FpZCBjb2Rpbmcgc3R5bGUgcHJvYmxlbXMgbmVlZCBmaXggYXMgd2VsbAoKPgo+IC0g
-SW1wbGVtZW50ZWQgdGhlICJyZW1vdmUgaGVhZCIgY2FzZSBpbiB0aGUgZXh0X3JlbW92ZV9ibG9j
-a3Mgcm91dGluZQo+IMKgIMKgIMKgIMKgVGhpcyByb3V0aW5lIGlzIHVzZWQgYnkgZXh0X2V4dDRf
-cm1fbGVhZiB0byByZW1vdmUgdGhlIHRhaWwKPiDCoCDCoCDCoCDCoG9mIGFuIGV4dGVudCBkdXJp
-bmcgYSB0cnVuY2F0ZS4gwqBUaGUgbmV3IGV4dF9leHQ0X3JtX2xlYWZfcHVuY2hfaG9sZQo+IMKg
-IMKgIMKgIMKgcm91dGluZSB3aWxsIG5vdyBhbHNvIHVzZSBpdCB0byByZW1vdmUgdGhlIGhlYWQg
-b2YgYW4gZXh0ZW50IGluIHRoZQo+IMKgIMKgIMKgIMKgY2FzZSB0aGF0IHRoZSBob2xlIGNvdmVy
-cyBhIHJlZ2lvbiBvZiBibG9ja3MgYXQgdGhlIGJlZ2lubmluZwo+IMKgIMKgIMKgIMKgb2YgYW4g
-ZXh0ZW50Lgo+Cj4gLSBBZGRlZCAic3RvcCIgcGFyYW0gdG8gZXh0NF9leHRfcmVtb3ZlX3NwYWNl
-IHJvdXRpbmUKPiDCoCDCoCDCoCDCoFRoaXMgZnVuY3Rpb24gaGFzIGJlZW4gbW9kaWZpZWQgdG8g
-YWNjZXB0IGEgc3RvcCBwYXJhbWV0ZXIuIMKgSWYgc3RvcAo+IMKgIMKgIMKgIMKgaXMgbm90IEVY
-VF9NQVhfQkxPQ0ssIHRoZSByb3V0aW5lIHdpbGwgY2FsbCBleHRfZXh0NF9ybV9sZWFmX3B1bmNo
-X2hvbGUKPiDCoCDCoCDCoCDCoGluc3RlYWQgb2YgZXh0X2V4dDRfcm1fbGVhZi4KPgo+IC0gQWRk
-ZWQgbmV3ICJleHQ0X2V4dF9yZWxlYXNlX2Jsb2NrcyIgcm91dGluZQo+IMKgIMKgIMKgIMKgVGhp
-cyByb3V0aW5lIGlzIGJhc2ljYWxseSB0aGUgZXh0NF9leHRfdHJ1bmNhdGUgcm91dGluZSwgYnV0
-Cj4gwqAgwqAgwqAgwqBtb2RpZmllZCB0byBhY2NlcHQgYSAic3RvcCIgcGFyYW0gaW4gYWRkaXRp
-b24gdG8gInN0YXJ0Ii4gwqBUaGUgZXhpc3RpbmcKPiDCoCDCoCDCoCDCoGV4dDRfZXh0X3RydW5j
-YXRlIHJvdXRpbmUgaGFzIG5vdyBiZWNvbWUgYSB3cmFwcGVyIHRvIHRoaXMKPiDCoCDCoCDCoCDC
-oGZ1bmN0aW9uLiDCoFRoZSBzdG9wIHBhcmFtZXRlciBqdXN0IHBhc3NlZCB0aHJvdWdoIHRvIGV4
-dDRfZXh0X3JlbW92ZV9zcGFjZQo+Cj4gU2lnbmVkLW9mZi1ieTogQWxsaXNvbiBIZW5kZXJzb24g
-PGFjaGVuZGVyQHVzLmlibS5jb20+Cj4gLS0tCj4gOjEwMDY0NCAxMDA2NDQgYWIyZTQyZS4uLiBl
-ZmJjM2VmLi4uIE0gwqBmcy9leHQ0L2V4dGVudHMuYwo+IMKgZnMvZXh0NC9leHRlbnRzLmMgfCDC
-oDI2NSArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyst
-LQo+IMKgMSBmaWxlcyBjaGFuZ2VkLCAyNTYgaW5zZXJ0aW9ucygrKSwgOSBkZWxldGlvbnMoLSkK
-Pgo+IGRpZmYgLS1naXQgYS9mcy9leHQ0L2V4dGVudHMuYyBiL2ZzL2V4dDQvZXh0ZW50cy5jCj4g
-aW5kZXggYWIyZTQyZS4uZWZiYzNlZiAxMDA2NDQKPiAtLS0gYS9mcy9leHQ0L2V4dGVudHMuYwo+
-ICsrKyBiL2ZzL2V4dDQvZXh0ZW50cy5jCj4gQEAgLTIxNTksOCArMjE1OSwxNiBAQCBzdGF0aWMg
-aW50IGV4dDRfcmVtb3ZlX2Jsb2NrcyhoYW5kbGVfdCAqaGFuZGxlLCBzdHJ1Y3QgaW5vZGUgKmlu
-b2RlLAo+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgZXh0NF9mcmVlX2Jsb2NrcyhoYW5kbGUsIGlu
-b2RlLCAwLCBzdGFydCwgbnVtLCBmbGFncyk7Cj4gwqAgwqAgwqAgwqB9IGVsc2UgaWYgKGZyb20g
-PT0gbGUzMl90b19jcHUoZXgtPmVlX2Jsb2NrKQo+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
-ICYmIHRvIDw9IGxlMzJfdG9fY3B1KGV4LT5lZV9ibG9jaykgKyBlZV9sZW4gLSAxKSB7Cj4gLSDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCBwcmludGsoS0VSTl9JTkZPICJzdHJhbmdlIHJlcXVlc3Q6IHJl
-bW92YWwgJXUtJXUgZnJvbSAldToldVxuIiwKPiAtIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
-IMKgIMKgIGZyb20sIHRvLCBsZTMyX3RvX2NwdShleC0+ZWVfYmxvY2spLCBlZV9sZW4pOwo+ICsg
-wqAgwqAgwqAgwqAgwqAgwqAgwqAgLyogaGVhZCByZW1vdmFsICovCj4gKyDCoCDCoCDCoCDCoCDC
-oCDCoCDCoCBleHQ0X2xibGtfdCBudW07Cj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCBleHQ0X2Zz
-YmxrX3Qgc3RhcnQ7Cj4gKwo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgbnVtID0gdG8gLSBmcm9t
-Owo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgc3RhcnQgPSBleHQ0X2V4dF9wYmxvY2soZXgpOwo+
-ICsKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGV4dF9kZWJ1ZygiZnJlZSBmaXJzdCAldSBibG9j
-a3Mgc3RhcnRpbmcgJWxsdVxuIiwgbnVtLCBzdGFydCk7Cj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDC
-oCBleHQ0X2ZyZWVfYmxvY2tzKGhhbmRsZSwgaW5vZGUsIDAsIHN0YXJ0LCBudW0sIGZsYWdzKTsK
-PiArCj4gwqAgwqAgwqAgwqB9IGVsc2Ugewo+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgcHJpbnRr
-KEtFUk5fSU5GTyAic3RyYW5nZSByZXF1ZXN0OiByZW1vdmFsKDIpICIKPiDCoCDCoCDCoCDCoCDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCIldS0ldSBmcm9tICV1OiV1XG4iLAo+
-IEBAIC0yNDAxLDYgKzI0MDksMjE0IEBAIG91dDoKPiDCoH0KPgo+IMKgLyoKPiArICogZXh0NF9l
-eHRfcm1fbGVhZl9wdW5jaF9ob2xlKCkgUmVtb3ZlcyB0aGUgZXh0ZW50cyBhc3NvY2lhdGVkIHdp
-dGggdGhlCj4gKyAqIGJsb2NrcyBhcHBlYXJpbmcgYmV0d2VlbiAic3RhcnQiIGFuZCAic3RvcCIs
-IGFuZCBzcGxpdHMgdGhlIGV4dGVudHMKPiArICogaWYgInN0YXJ0IiBhbmQgInN0b3AiIGFwcGVh
-ciBpbiB0aGUgc2FtZSBleHRlbnQKPiArICovCj4gK3N0YXRpYyBpbnQKPiArZXh0NF9leHRfcm1f
-bGVhZl9wdW5jaF9ob2xlKGhhbmRsZV90ICpoYW5kbGUsIHN0cnVjdCBpbm9kZSAqaW5vZGUsCj4g
-KyDCoCDCoCDCoCDCoCDCoCDCoCDCoCBzdHJ1Y3QgZXh0NF9leHRfcGF0aCAqcGF0aCwgZXh0NF9s
-YmxrX3Qgc3RhcnQsIGV4dDRfbGJsa190IHN0b3ApCj4gK3sKPiArIMKgIMKgIMKgIGludCBlcnIg
-PSAwLCBjb3JyZWN0X2luZGV4ID0gMDsKPiArIMKgIMKgIMKgIGludCBkZXB0aCA9IGV4dF9kZXB0
-aChpbm9kZSksIGNyZWRpdHM7Cj4gKyDCoCDCoCDCoCBzdHJ1Y3QgZXh0NF9leHRlbnRfaGVhZGVy
-ICplaDsKPiArIMKgIMKgIMKgIGV4dDRfbGJsa190IGEsIGIsIGJsb2NrOwo+ICsgwqAgwqAgwqAg
-dW5zaWduZWQgaW50IG51bTsKPiArIMKgIMKgIMKgIGV4dDRfbGJsa190IGV4X2VlX2Jsb2NrOwo+
-ICsgwqAgwqAgwqAgdW5zaWduZWQgc2hvcnQgZXhfZWVfbGVuOwo+ICsgwqAgwqAgwqAgdW5zaWdu
-ZWQgaW50IHVuaW5pdGlhbGl6ZWQgPSAwOwo+ICsgwqAgwqAgwqAgc3RydWN0IGV4dDRfZXh0ZW50
-ICpleCwgKmlfZXg7Cj4gKwo+ICsgwqAgwqAgwqAgLyogdGhlIGhlYWRlciBtdXN0IGJlIGNoZWNr
-ZWQgYWxyZWFkeSBpbiBleHQ0X2V4dF9yZW1vdmVfc3BhY2UoKSAqLwo+ICsgwqAgwqAgwqAgZXh0
-X2RlYnVnKCJ0cnVuY2F0ZSBzaW5jZSAldSBpbiBsZWFmXG4iLCBzdGFydCk7Cj4gKyDCoCDCoCDC
-oCBpZiAoIXBhdGhbZGVwdGhdLnBfaGRyKQo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgcGF0aFtk
-ZXB0aF0ucF9oZHIgPSBleHRfYmxvY2tfaGRyKHBhdGhbZGVwdGhdLnBfYmgpOwo+ICsKPiArIMKg
-IMKgIMKgIGVoID0gcGF0aFtkZXB0aF0ucF9oZHI7Cj4gKyDCoCDCoCDCoCBpZiAodW5saWtlbHko
-cGF0aFtkZXB0aF0ucF9oZHIgPT0gTlVMTCkpIHsKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIEVY
-VDRfRVJST1JfSU5PREUoaW5vZGUsICJwYXRoWyVkXS5wX2hkciA9PSBOVUxMIiwgZGVwdGgpOwo+
-ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgcmV0dXJuIC1FSU87Cj4gKyDCoCDCoCDCoCB9Cj4gKwo+
-ICsgwqAgwqAgwqAgLyogZmluZCB3aGVyZSB0byBzdGFydCByZW1vdmluZyAqLwo+ICsgwqAgwqAg
-wqAgZXggPSBFWFRfTEFTVF9FWFRFTlQoZWgpOwo+ICsKPiArIMKgIMKgIMKgIGV4X2VlX2Jsb2Nr
-ID0gbGUzMl90b19jcHUoZXgtPmVlX2Jsb2NrKTsKPiArIMKgIMKgIMKgIGV4X2VlX2xlbiA9IGV4
-dDRfZXh0X2dldF9hY3R1YWxfbGVuKGV4KTsKPiArCj4gKyDCoCDCoCDCoCB3aGlsZSAoZXggPj0g
-RVhUX0ZJUlNUX0VYVEVOVChlaCkgJiYKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
-IMKgIGV4X2VlX2Jsb2NrICsgZXhfZWVfbGVuID4gc3RhcnQgKSB7Cj4gKyDCoCDCoCDCoCDCoCDC
-oCDCoCDCoCBpZiAoZXh0NF9leHRfaXNfdW5pbml0aWFsaXplZChleCkpCj4gKyDCoCDCoCDCoCDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCB1bmluaXRpYWxpemVkID0gMTsKPiArIMKgIMKgIMKgIMKg
-IMKgIMKgIMKgIGVsc2UKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIHVuaW5p
-dGlhbGl6ZWQgPSAwOwo+ICsKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGV4dF9kZWJ1ZygicmVt
-b3ZlIGV4dCAldTpbJWRdJWRcbiIsIGV4X2VlX2Jsb2NrLAo+ICsgwqAgwqAgwqAgwqAgwqAgwqAg
-wqAgwqAgwqAgwqAgwqAgwqB1bmluaXRpYWxpemVkLCBleF9lZV9sZW4pOwo+ICsgwqAgwqAgwqAg
-wqAgwqAgwqAgwqAgcGF0aFtkZXB0aF0ucF9leHQgPSBleDsKPiArCj4gKyDCoCDCoCDCoCDCoCDC
-oCDCoCDCoCBhID0gZXhfZWVfYmxvY2sgPiBzdGFydCA/IGV4X2VlX2Jsb2NrIDogc3RhcnQ7Cj4g
-KyDCoCDCoCDCoCDCoCDCoCDCoCDCoCBiID0gZXhfZWVfYmxvY2srZXhfZWVfbGVuIC0gMSA8IHN0
-b3AgPyBleF9lZV9ibG9jaytleF9lZV9sZW4gLSAxIDogc3RvcDsKPiArCj4gKyDCoCDCoCDCoCDC
-oCDCoCDCoCDCoCBleHRfZGVidWcoIiDCoGJvcmRlciAldToldVxuIiwgYSwgYik7Cj4gKwo+ICsg
-wqAgwqAgwqAgwqAgwqAgwqAgwqAgLyogSWYgdGhpcyBleHRlbnQgaXMgYmV5b25kIHRoZSBlbmQg
-b2YgdGhlIGhvbGUsIHNraXAgaXQgwqAqLwo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgaWYoc3Rv
-cCA8PSBleF9lZV9ibG9jayl7Cj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBl
-eC0tOwo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgZXhfZWVfYmxvY2sgPSBs
-ZTMyX3RvX2NwdShleC0+ZWVfYmxvY2spOwo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAg
-wqAgwqAgZXhfZWVfbGVuID0gZXh0NF9leHRfZ2V0X2FjdHVhbF9sZW4oZXgpOwo+ICsgwqAgwqAg
-wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgY29udGludWU7Cj4gKyDCoCDCoCDCoCDCoCDCoCDC
-oCDCoCB9Cj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCBlbHNlIGlmIChhICE9IGV4X2VlX2Jsb2Nr
-ICYmIGIgIT0gZXhfZWVfYmxvY2sgKyBleF9lZV9sZW4gLSAxKSB7Cj4gKyDCoCDCoCDCoCDCoCDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCAvKgo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAg
-wqAgwqAqIElmIHRoaXMgaXMgYSB0cnVuY2F0ZSwgdGhlbiB0aGlzIGNvbmRpdGlvbiBzaG91bGQK
-PiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgKiBuZXZlciBoYXBwZW4gYmVj
-YXNlIGF0IGxlYXN0IG9uZSBvZiB0aGUgZW5kIHBvaW50cwo+ICsgwqAgwqAgwqAgwqAgwqAgwqAg
-wqAgwqAgwqAgwqAgwqAgwqAqIG5lZWRzIHRvIGJlIG9uIHRoZSBlZGdlIG9mIHRoZSBleHRlbnQu
-Cj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCovCj4gKyDCoCDCoCDCoCDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBpZihzdG9wID09IEVYVF9NQVhfQkxPQ0spewo+ICsgwqAg
-wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgZXh0X2RlYnVnKCIgwqBi
-YWQgdHJ1bmNhdGUgJXU6JXVcbiIsIHN0YXJ0LCBzdG9wKTsKPiArIMKgIMKgIMKgIMKgIMKgIMKg
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGJsb2NrID0gMDsKPiArIMKgIMKgIMKgIMKgIMKg
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIG51bSA9IDA7Cj4gKyDCoCDCoCDCoCDCoCDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBlcnIgPSAtRUlPOwo+ICsgwqAgwqAgwqAg
-wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgZ290byBvdXQ7Cj4gKyDCoCDCoCDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCB9Cj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
-oCDCoCDCoCAvKgo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAqIGVsc2Ug
-dGhpcyBpcyBhIGhvbGUgcHVuY2gsIHNvIHRoZSBleHRlbnQgbmVlZHMgdG8KPiArIMKgIMKgIMKg
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgKiBiZSBzcGxpdCBzaW5jZSBuZWl0aGVyIGVkZ2Ug
-b2YgdGhlIGhvbGUgaXMgb24gdGhlCj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
-oCDCoCogZXh0ZW50IGVkZ2UKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
-Ki8KPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGVsc2V7Cj4gKyDCoCDCoCDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBlcnIgPSBleHQ0X3NwbGl0X2V4
-dGVudHMoaGFuZGxlLGlub2RlLCBiLHBhdGgsMCk7Cj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBpZihlcnIpCj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBnb3RvIG91dDsKPiArCj4gKyDCoCDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBleF9lZV9sZW4gPSBleHQ0
-X2V4dF9nZXRfYWN0dWFsX2xlbihleCk7Cj4gKwo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAg
-wqAgwqAgwqAgwqAgwqAgwqAgwqAgYiA9IGV4X2VlX2Jsb2NrK2V4X2VlX2xlbiAtIDEgPCBzdG9w
-ID8gZXhfZWVfYmxvY2srZXhfZWVfbGVuIC0gMSA6IHN0b3A7Cj4gKwo+ICsgwqAgwqAgwqAgwqAg
-wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgLyogVGhlbiByZW1vdmUgdGFpbCBvZiB0
-aGlzIGV4dGVudCAqLwo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAg
-wqAgwqAgYmxvY2sgPSBleF9lZV9ibG9jazsKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
-IMKgIMKgIMKgIMKgIMKgIMKgIG51bSA9IGEgLSBibG9jazsKPiArIMKgIMKgIMKgIMKgIMKgIMKg
-IMKgIMKgIMKgIMKgIMKgIH0KPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIH0KPiArIMKgIMKgIMKg
-IMKgIMKgIMKgIMKgIGVsc2UgaWYgKGEgIT0gZXhfZWVfYmxvY2spIHsKPiArIMKgIMKgIMKgIMKg
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgIC8qIHJlbW92ZSB0YWlsIG9mIHRoZSBleHRlbnQgKi8KPiAr
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGJsb2NrID0gZXhfZWVfYmxvY2s7Cj4g
-KyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBudW0gPSBhIC0gYmxvY2s7Cj4gKyDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCB9Cj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCBlbHNlIGlmIChi
-ICE9IGV4X2VlX2Jsb2NrICsgZXhfZWVfbGVuIC0gMSkgewo+ICsgwqAgwqAgwqAgwqAgwqAgwqAg
-wqAgwqAgwqAgwqAgwqAgLyogcmVtb3ZlIGhlYWQgb2YgdGhlIGV4dGVudCAqLwo+ICsgwqAgwqAg
-wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgYmxvY2sgPSBiOwo+ICsgwqAgwqAgwqAgwqAgwqAg
-wqAgwqAgwqAgwqAgwqAgwqAgbnVtID0gwqBleF9lZV9ibG9jaytleF9lZV9sZW4gLSBiOwo+ICsK
-PiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIC8qIElmIHRoaXMgaXMgYSB0cnVu
-Y2F0ZSwgdGhpcyBjb25kaXRpb24gc2hvdWxkIG5ldmVyIGhhcHBlbiAqLwo+ICsgwqAgwqAgwqAg
-wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgaWYoc3RvcCA9PSBFWFRfTUFYX0JMT0NLKXsKPiArIMKg
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGVyciA9IC1FSU87Cj4g
-KyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBnb3RvIG91dDsK
-PiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIH0KPiArIMKgIMKgIMKgIMKgIMKg
-IMKgIMKgIH0KPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGVsc2Ugewo+ICsgwqAgwqAgwqAgwqAg
-wqAgwqAgwqAgwqAgwqAgwqAgwqAgLyogcmVtb3ZlIHdob2xlIGV4dGVudDogZXhjZWxsZW50ISAq
-Lwo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgYmxvY2sgPSBleF9lZV9ibG9j
-azsKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIG51bSA9IDA7Cj4gKyDCoCDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBpZiAoYSAhPSBleF9lZV9ibG9jayl7Cj4gKyDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBlcnIgPSAtRUlPOwo+
-ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgZ290byBvdXQ7
-Cj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCB9Cj4gKwo+ICsgwqAgwqAgwqAg
-wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgaWYgKGIgIT0gZXhfZWVfYmxvY2sgKyBleF9lZV9sZW4g
-LSAxKXsKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGVy
-ciA9IC1FSU87Cj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
-oCBnb3RvIG91dDsKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIH0KPiArIMKg
-IMKgIMKgIMKgIMKgIMKgIMKgIH0KPiArCj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCAvKgo+ICsg
-wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAqIDMgZm9yIGxlYWYsIHNiLCBhbmQgaW5vZGUgcGx1cyAy
-IChibWFwIGFuZCBncm91cAo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAqIGRlc2NyaXB0b3Ip
-IGZvciBlYWNoIGJsb2NrIGdyb3VwOyBhc3N1bWUgdHdvIGJsb2NrCj4gKyDCoCDCoCDCoCDCoCDC
-oCDCoCDCoCDCoCogZ3JvdXBzIHBsdXMgZXhfZWVfbGVuL2Jsb2Nrc19wZXJfYmxvY2tfZ3JvdXAg
-Zm9yCj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCogdGhlIHdvcnN0IGNhc2UKPiArIMKgIMKg
-IMKgIMKgIMKgIMKgIMKgIMKgKi8KPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGNyZWRpdHMgPSA3
-ICsgMiooZXhfZWVfbGVuL0VYVDRfQkxPQ0tTX1BFUl9HUk9VUChpbm9kZS0+aV9zYikpOwo+ICsg
-wqAgwqAgwqAgwqAgwqAgwqAgwqAgaWYgKGV4ID09IEVYVF9GSVJTVF9FWFRFTlQoZWgpKSB7Cj4g
-KyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBjb3JyZWN0X2luZGV4ID0gMTsKPiAr
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGNyZWRpdHMgKz0gKGV4dF9kZXB0aChp
-bm9kZSkpICsgMTsKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIH0KPiArIMKgIMKgIMKgIMKgIMKg
-IMKgIMKgIGNyZWRpdHMgKz0gRVhUNF9NQVhRVU9UQVNfVFJBTlNfQkxPQ0tTKGlub2RlLT5pX3Ni
-KTsKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGVyciA9IGV4dDRfZXh0X3RydW5jYXRlX2V4dGVu
-ZF9yZXN0YXJ0KGhhbmRsZSwgaW5vZGUsIGNyZWRpdHMpOwo+ICsgwqAgwqAgwqAgwqAgwqAgwqAg
-wqAgaWYgKGVycikKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGdvdG8gb3V0
-Owo+ICsKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGVyciA9IGV4dDRfZXh0X2dldF9hY2Nlc3Mo
-aGFuZGxlLCBpbm9kZSwgcGF0aCArIGRlcHRoKTsKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGlm
-IChlcnIpCj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBnb3RvIG91dDsKPiAr
-Cj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCBlcnIgPSBleHQ0X3JlbW92ZV9ibG9ja3MoaGFuZGxl
-LCBpbm9kZSwgZXgsIGEsIGIpOwo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgaWYgKGVycikKPiAr
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGdvdG8gb3V0Owo+ICsKPiArIMKgIMKg
-IMKgIMKgIMKgIMKgIMKgIGV4LT5lZV9ibG9jayA9IGNwdV90b19sZTMyKGJsb2NrKTsKPiArIMKg
-IMKgIMKgIMKgIMKgIMKgIMKgIGV4LT5lZV9sZW4gPSBjcHVfdG9fbGUxNihudW0pOwo+ICsKPiAr
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgIC8qCj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCogSWYg
-dGhpcyB3YXMgYSBoZWFkIHJlbW92YWwsIHRoZW4gd2UgbmVlZCB0byB1cGRhdGUKPiArIMKgIMKg
-IMKgIMKgIMKgIMKgIMKgIMKgKiB0aGUgcGh5c2ljYWwgYmxvY2sgc2luY2UgaXQgaXMgbm93IGF0
-IGEgZGlmZmVyZW50Cj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCogbG9jYXRpb24KPiArIMKg
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgKi8KPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGlmIChibG9j
-ayAhPSBleF9lZV9ibG9jaykKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGV4
-dDRfZXh0X3N0b3JlX3BibG9jayhleCwgZXh0NF9leHRfcGJsb2NrKGV4KSsoYi1hKSApOwo+ICsK
-PiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIC8qCj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCog
-RG8gbm90IG1hcmsgdW5pbml0aWFsaXplZCBpZiBhbGwgdGhlIGJsb2NrcyBpbiB0aGUKPiArIMKg
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgKiBleHRlbnQgaGF2ZSBiZWVuIHJlbW92ZWQuCj4gKyDCoCDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCovCj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCBpZiAodW5pbml0
-aWFsaXplZCAmJiBudW0pCj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBleHQ0
-X2V4dF9tYXJrX3VuaW5pdGlhbGl6ZWQoZXgpOwo+ICsKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKg
-IGVyciA9IGV4dDRfZXh0X2RpcnR5KGhhbmRsZSwgaW5vZGUsIHBhdGggKyBkZXB0aCk7Cj4gKyDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCBpZiAoZXJyKQo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAg
-wqAgwqAgwqAgZ290byBvdXQ7Cj4gKwo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgZXh0X2RlYnVn
-KCJuZXcgZXh0ZW50OiAldToldTolbGx1XG4iLCBibG9jaywgbnVtLAo+ICsgwqAgwqAgwqAgwqAg
-wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgZXh0NF9leHRfcGJsb2NrKGV4KSk7Cj4g
-Kwo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgaWYgKG51bSA9PSAwKSB7Cj4gKwo+ICsgwqAgwqAg
-wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgLyoKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
-IMKgIMKgIMKgIMKgKiBGb3IgaG9sZSBwdW5jaGluZywgd2UgbmVlZCB0byBzY29vdCBhbGwgdGhl
-Cj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCogZXh0ZW50cyB1cCBzbyB0
-aGF0IHdlIGRvbnQgaGF2ZSBibGFuayBleHRlbnRzCj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
-oCDCoCDCoCDCoCDCoCogaW4gdGhlIG1pZGRsZQo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAg
-wqAgwqAgwqAgwqAqLwo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgZm9yKGlf
-ZXggPSBleDsgaV9leCA8IEVYVF9MQVNUX0VYVEVOVChlaCk7IGlfZXgrKyl7Cj4gKyDCoCDCoCDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBtZW1jcHkoaV9leCwgaV9leCsx
-LCBzaXplb2Yoc3RydWN0IGV4dDRfZXh0ZW50KSk7Cj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
-oCDCoCDCoCDCoCB9Cj4gKwo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgLyog
-bm93IGdldCByaWQgb2YgdGhlIGV4dGVudCBhdCB0aGUgZW5kIMKgKi8KPiArIMKgIMKgIMKgIMKg
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgIG1lbXNldChpX2V4LCAwLCBzaXplb2Yoc3RydWN0IGV4dDRf
-ZXh0ZW50KSk7Cj4gKwo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgbGUxNl9h
-ZGRfY3B1KCZlaC0+ZWhfZW50cmllcywgLTEpOwo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgfQo+
-ICsKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGV4LS07Cj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDC
-oCBleF9lZV9ibG9jayA9IGxlMzJfdG9fY3B1KGV4LT5lZV9ibG9jayk7Cj4gKyDCoCDCoCDCoCDC
-oCDCoCDCoCDCoCBleF9lZV9sZW4gPSBleHQ0X2V4dF9nZXRfYWN0dWFsX2xlbihleCk7Cj4gKwo+
-ICsgwqAgwqAgwqAgfQo+ICsKPiArIMKgIMKgIMKgIGlmIChjb3JyZWN0X2luZGV4ICYmIGVoLT5l
-aF9lbnRyaWVzKQo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgZXJyID0gZXh0NF9leHRfY29ycmVj
-dF9pbmRleGVzKGhhbmRsZSwgaW5vZGUsIHBhdGgpOwo+ICsKPiArIMKgIMKgIMKgIC8qCj4gKyDC
-oCDCoCDCoCDCoCogSWYgdGhpcyBsZWFmIGlzIGZyZWUsIHRoZW4gd2Ugc2hvdWxkCj4gKyDCoCDC
-oCDCoCDCoCogcmVtb3ZlIGl0IGZyb20gaW5kZXggYmxvY2sgYWJvdmUKPiArIMKgIMKgIMKgIMKg
-Ki8KPiArIMKgIMKgIMKgIGlmIChlcnIgPT0gMCAmJiBlaC0+ZWhfZW50cmllcyA9PSAwICYmIHBh
-dGhbZGVwdGhdLnBfYmggIT0gTlVMTCkKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGVyciA9IGV4
-dDRfZXh0X3JtX2lkeChoYW5kbGUsIGlub2RlLCBwYXRoICsgZGVwdGgpOwo+ICsKPiArb3V0Ogo+
-ICsgwqAgwqAgwqAgcmV0dXJuIGVycjsKPiArfQo+ICsKPiArLyoKPiDCoCogZXh0NF9leHRfbW9y
-ZV90b19ybToKPiDCoCogcmV0dXJucyAxIGlmIGN1cnJlbnQgaW5kZXggaGFzIHRvIGJlIGZyZWVk
-IChldmVuIHBhcnRpYWwpCj4gwqAqLwo+IEBAIC0yNDIxLDcgKzI2MzcsNyBAQCBleHQ0X2V4dF9t
-b3JlX3RvX3JtKHN0cnVjdCBleHQ0X2V4dF9wYXRoICpwYXRoKQo+IMKgIMKgIMKgIMKgcmV0dXJu
-IDE7Cj4gwqB9Cj4KPiAtc3RhdGljIGludCBleHQ0X2V4dF9yZW1vdmVfc3BhY2Uoc3RydWN0IGlu
-b2RlICppbm9kZSwgZXh0NF9sYmxrX3Qgc3RhcnQpCj4gK3N0YXRpYyBpbnQgZXh0NF9leHRfcmVt
-b3ZlX3NwYWNlKHN0cnVjdCBpbm9kZSAqaW5vZGUsIGV4dDRfbGJsa190IHN0YXJ0LCBleHQ0X2xi
-bGtfdCBzdG9wKQo+IMKgewo+IMKgIMKgIMKgIMKgc3RydWN0IHN1cGVyX2Jsb2NrICpzYiA9IGlu
-b2RlLT5pX3NiOwo+IMKgIMKgIMKgIMKgaW50IGRlcHRoID0gZXh0X2RlcHRoKGlub2RlKTsKPiBA
-QCAtMjQ2MCw3ICsyNjc2LDEwIEBAIGFnYWluOgo+IMKgIMKgIMKgIMKgd2hpbGUgKGkgPj0gMCAm
-JiBlcnIgPT0gMCkgewo+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgaWYgKGkgPT0gZGVwdGgpIHsK
-PiDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoC8qIHRoaXMgaXMgbGVhZiBibG9j
-ayAqLwo+IC0gwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgZXJyID0gZXh0NF9leHRf
-cm1fbGVhZihoYW5kbGUsIGlub2RlLCBwYXRoLCBzdGFydCk7Cj4gKyDCoCDCoCDCoCDCoCDCoCDC
-oCDCoCDCoCDCoCDCoCDCoCBpZihzdG9wID09IEVYVF9NQVhfQkxPQ0spCj4gKyDCoCDCoCDCoCDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBlcnIgPSBleHQ0X2V4dF9ybV9sZWFm
-KGhhbmRsZSwgaW5vZGUsIHBhdGgsIHN0YXJ0KTsKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
-IMKgIMKgIMKgIGVsc2UKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
-IMKgIMKgIGVyciA9IGV4dDRfZXh0X3JtX2xlYWZfcHVuY2hfaG9sZShoYW5kbGUsIGlub2RlLCBw
-YXRoLCBzdGFydCwgc3RvcCk7Cj4gwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAv
-KiByb290IGxldmVsIGhhcyBwX2JoID09IE5VTEwsIGJyZWxzZSgpIGVhdHMgdGhpcyAqLwo+IMKg
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgYnJlbHNlKHBhdGhbaV0ucF9iaCk7Cj4g
-wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqBwYXRoW2ldLnBfYmggPSBOVUxMOwo+
-IEBAIC0zNjI3LDExICszODQ2LDIzIEBAIG91dDI6Cj4gwqAgwqAgwqAgwqByZXR1cm4gZXJyID8g
-ZXJyIDogYWxsb2NhdGVkOwo+IMKgfQo+Cj4gLXZvaWQgZXh0NF9leHRfdHJ1bmNhdGUoc3RydWN0
-IGlub2RlICppbm9kZSkKPiArLyoKPiArICogZXh0NF9leHRfcmVsZWFzZV9ibG9ja3MKPiArICoK
-PiArICogUmVsZWFzZXMgdGhlIGJsb2NrcyBpbiBhIGZpbGUgc3RhcnRpbmcgYXQgYmxvY2sgInN0
-YXJ0Igo+ICsgKiBhbmQgZW5kaW5nIGF0IGJsb2NrICJzdG9wIi4gwqBQYXNzIEVYVF9NQVhfQkxP
-Q0sKPiArICogZm9yICJzdG9wIiB0byBqdXN0IHRydW5jYXRlIHRoZSBmaWxlIHRvIHRoZQo+ICsg
-KiAic3RhcnQiIGJsb2NrCj4gKyAqCj4gKyAqIEBpbm9kZTogVGhlIGlub2RlIG9mIHRoZSBmaWxl
-IHRvIHJlbGVhc2UgYmxvY2tzIGZyb20KPiArICogQHN0YXJ0OiBUaGUgc3RhcnRpbmcgYmxvY2sg
-b2YgdGhlIGhvbGUKPiArICogQHN0b3A6IMKgVGhlIGVuZGluZyBibG9jayBvZiB0aGUgaG9sZQo+
-ICsgKgo+ICsgKi8KPiArc3RhdGljIHZvaWQgZXh0NF9leHRfcmVsZWFzZV9ibG9ja3Moc3RydWN0
-IGlub2RlICppbm9kZSwgZXh0NF9sYmxrX3Qgc3RhcnQsIGV4dDRfbGJsa190IHN0b3ApCj4gwqB7
-Cj4gwqAgwqAgwqAgwqBzdHJ1Y3QgYWRkcmVzc19zcGFjZSAqbWFwcGluZyA9IGlub2RlLT5pX21h
-cHBpbmc7Cj4gwqAgwqAgwqAgwqBzdHJ1Y3Qgc3VwZXJfYmxvY2sgKnNiID0gaW5vZGUtPmlfc2I7
-Cj4gLSDCoCDCoCDCoCBleHQ0X2xibGtfdCBsYXN0X2Jsb2NrOwo+IMKgIMKgIMKgIMKgaGFuZGxl
-X3QgKmhhbmRsZTsKPiDCoCDCoCDCoCDCoGludCBlcnIgPSAwOwo+Cj4gQEAgLTM2NzAsOSArMzkw
-MSw3IEBAIHZvaWQgZXh0NF9leHRfdHJ1bmNhdGUoc3RydWN0IGlub2RlICppbm9kZSkKPiDCoCDC
-oCDCoCDCoEVYVDRfSShpbm9kZSktPmlfZGlza3NpemUgPSBpbm9kZS0+aV9zaXplOwo+IMKgIMKg
-IMKgIMKgZXh0NF9tYXJrX2lub2RlX2RpcnR5KGhhbmRsZSwgaW5vZGUpOwo+Cj4gLSDCoCDCoCDC
-oCBsYXN0X2Jsb2NrID0gKGlub2RlLT5pX3NpemUgKyBzYi0+c19ibG9ja3NpemUgLSAxKQo+IC0g
-wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgPj4gRVhUNF9CTE9DS19TSVpFX0JJVFMo
-c2IpOwo+IC0gwqAgwqAgwqAgZXJyID0gZXh0NF9leHRfcmVtb3ZlX3NwYWNlKGlub2RlLCBsYXN0
-X2Jsb2NrKTsKPiArIMKgIMKgIMKgIGVyciA9IGV4dDRfZXh0X3JlbW92ZV9zcGFjZShpbm9kZSwg
-c3RhcnQsIHN0b3ApOwo+Cj4gwqAgwqAgwqAgwqAvKiBJbiBhIG11bHRpLXRyYW5zYWN0aW9uIHRy
-dW5jYXRlLCB3ZSBvbmx5IG1ha2UgdGhlIGZpbmFsCj4gwqAgwqAgwqAgwqAgKiB0cmFuc2FjdGlv
-biBzeW5jaHJvbm91cy4KPiBAQCAtMzY5OCw2ICszOTI3LDI0IEBAIG91dF9zdG9wOgo+IMKgfQo+
-Cj4gwqAvKgo+ICsgKiBleHQ0X2V4dF90cnVuY2F0ZQo+ICsgKgo+ICsgKiBUcnVuY2F0ZSB0aGUg
-ZmlsZSB0byB0aGUgY3VycmVudCBpX3NpemUKPiArICoKPiArICogQGlub2RlOiBUaGUgZmlsZSBp
-bm9kZQo+ICsgKi8KPiArdm9pZCBleHQ0X2V4dF90cnVuY2F0ZShzdHJ1Y3QgaW5vZGUgKmlub2Rl
-KQo+ICt7Cj4gKyDCoCDCoCDCoCBzdHJ1Y3Qgc3VwZXJfYmxvY2sgKnNiID0gaW5vZGUtPmlfc2I7
-Cj4gKyDCoCDCoCDCoCBleHQ0X2xibGtfdCBsYXN0X2Jsb2NrOwo+ICsKPiArIMKgIMKgIMKgIGxh
-c3RfYmxvY2sgPSAoaW5vZGUtPmlfc2l6ZSArIHNiLT5zX2Jsb2Nrc2l6ZSAtIDEpCj4gKyDCoCDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCA+PiBFWFQ0X0JMT0NLX1NJWkVfQklUUyhzYik7
-Cj4gKwo+ICsgwqAgwqAgwqAgZXh0NF9leHRfcmVsZWFzZV9ibG9ja3MoaW5vZGUsIGxhc3RfYmxv
-Y2ssIEVYVF9NQVhfQkxPQ0spOwo+ICsKPiArfQo+ICsvKgo+IMKgKiBleHQ0X2V4dF9jb252ZXJ0
-X2Jsb2Nrc191bmluaXQoKQo+IMKgKiBDb252ZXJ0cyBhIHJhbmdlIG9mIGJsb2NrcyB0byB1bmlu
-aXRpYWxpemVkCj4gwqAqCj4gLS0KPiAxLjcuMQo+Cj4KPiAtLQo+IFRvIHVuc3Vic2NyaWJlIGZy
-b20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1leHQ0IiBpbgo+
-IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnCj4gTW9y
-ZSBtYWpvcmRvbW8gaW5mbyBhdCDCoGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWlu
-Zm8uaHRtbAo+CgoKCi0tIApSZWdhcmRzCmRhdmUK
+On Tue, Mar 1, 2011 at 5:09 AM, Allison Henderson
+<achender@linux.vnet.ibm.com> wrote:
+> This patch adds the =A0new "ext4_punch_hole" "ext4_ext_punch_hole" ro=
+utines.
+>
+> fallocate has been modified to call ext4_punch_hole when the punch ho=
+le
+> flag is passed. =A0At the moment, we only support punching holes in
+> extents, so this routine is pretty much a wrapper for the ext4_ext_pu=
+nch_hole
+> routine.
+>
+> The ext4_ext_punch_hole routine zeros out the pages that are
+> covered by the hole. =A0The blocks to be punched out
+> are then identified as mapped, delayed, or already punched out.
+> The blocks that mapped are the converted to into uninitialized
+> extents. =A0The blocks are then punched out using the
+> "ext4_ext_release_blocks" routine.
+>
+> Some minor utility functions have also been added.
+> A new ext4_ext_lookup_hole routine is used by
+> ext4_ext_punch_hole to check if a range of blocks
+> have already been punched out.
+>
+> A new ext4_ext_test_block_flag has also been
+> added to identify the state of a block (ie mapped,
+> delayed, ect)
+>
+> Signed-off-by: Allison Henderson <achender@us.ibm.com>
+> ---
+> :100644 100644 43a5772... aeb86d6... M =A0fs/ext4/ext4.h
+> :100644 100644 efbc3ef... 5713258... M =A0fs/ext4/extents.c
+> :100644 100644 28c9137... 493c908... M =A0fs/ext4/inode.c
+> =A0fs/ext4/ext4.h =A0 =A0| =A0 =A02 +
+> =A0fs/ext4/extents.c | =A0321 +++++++++++++++++++++++++++++++++++++++=
++++++++++++++-
+> =A0fs/ext4/inode.c =A0 | =A0 26 +++++
+> =A03 files changed, 345 insertions(+), 4 deletions(-)
+>
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 43a5772..aeb86d6 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1729,6 +1729,7 @@ extern int ext4_change_inode_journal_flag(struc=
+t inode *, int);
+> =A0extern int ext4_get_inode_loc(struct inode *, struct ext4_iloc *);
+> =A0extern int ext4_can_truncate(struct inode *inode);
+> =A0extern void ext4_truncate(struct inode *);
+> +extern long =A0ext4_punch_hole(struct inode *inode,loff_t offset, lo=
+ff_t length);
+> =A0extern int ext4_truncate_restart_trans(handle_t *, struct inode *,=
+ int nblocks);
+> =A0extern void ext4_set_inode_flags(struct inode *);
+> =A0extern void ext4_get_inode_flags(struct ext4_inode_info *);
+> @@ -2066,6 +2067,7 @@ extern int ext4_ext_index_trans_blocks(struct i=
+node *inode, int nrblocks,
+> =A0extern int ext4_ext_map_blocks(handle_t *handle, struct inode *ino=
+de,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct ex=
+t4_map_blocks *map, int flags);
+> =A0extern void ext4_ext_truncate(struct inode *);
+> +extern void ext4_ext_punch_hole(struct inode *inode, loff_t offset, =
+loff_t length);
+> =A0extern void ext4_ext_init(struct super_block *);
+> =A0extern void ext4_ext_release(struct super_block *);
+> =A0extern long ext4_fallocate(struct file *file, int mode, loff_t off=
+set,
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index efbc3ef..5713258 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -2776,6 +2776,154 @@ out:
+> =A0}
+>
+> =A0/*
+> + * lookup_hole()
+> + * Returns the numbers of consecutive blocks starting at "start"
+> + * that are not contained within an extent
+> + */
+> +static int ext4_ext_lookup_hole(struct inode *inode, ext4_lblk_t sta=
+rt){
+> + =A0 =A0struct super_block *sb =3D inode->i_sb;
+> + =A0 =A0 =A0 int depth =3D ext_depth(inode);
+> + =A0 =A0 =A0 struct ext4_ext_path *path;
+> + =A0 =A0 =A0 struct ext4_extent_header *eh;
+> + =A0 =A0 =A0 struct ext4_extent *ex;
+> + =A0 =A0 =A0 struct buffer_head *bh;
+> + =A0 =A0 =A0 ext4_lblk_t last_block;
+> + =A0 =A0 =A0 handle_t *handle;
+> + =A0 =A0 =A0 int i, err;
+> +
+> + =A0 =A0 =A0 ext_debug("lookup hole since %u\n", start);
+> +
+> + =A0 =A0 =A0 /* Make sure start is valid */
+> + =A0 =A0 =A0 last_block =3D inode->i_size >> EXT4_BLOCK_SIZE_BITS(sb=
+);
+> + =A0 =A0 =A0 if(start >=3D last_block)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 return -EIO;
+> +
+> + =A0 =A0 =A0 handle =3D ext4_journal_start(inode, depth + 1);
+> + =A0 =A0 =A0 if (IS_ERR(handle))
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return PTR_ERR(handle);
+
+This is strange. The name of the functions implies it is a readonly ope=
+ration,
+so why is a transaction needed?
+You should probably document the reason for that and specify the change=
+s
+which this function may apply.
+
+> +
+> + =A0 =A0 =A0 /*
+> + =A0 =A0 =A0 =A0* We start scanning from right side, looking for
+> + =A0 =A0 =A0 =A0* the left most block contained in the leaf, and
+> + =A0 =A0 =A0 =A0* stopping when "start" is crossed.
+> + =A0 =A0 =A0 =A0*/
+> + =A0 =A0 =A0 depth =3D ext_depth(inode);
+> + =A0 =A0 =A0 path =3D kzalloc(sizeof(struct ext4_ext_path) * (depth =
++ 1), GFP_NOFS);
+> + =A0 =A0 =A0 if (path =3D=3D NULL) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_journal_stop(handl=
+e);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return -ENOMEM;
+> + =A0 =A0 =A0 }
+> + =A0 =A0 =A0 path[0].p_depth =3D depth;
+> + =A0 =A0 =A0 path[0].p_hdr =3D ext_inode_hdr(inode);
+> + =A0 =A0 =A0 if (ext4_ext_check(inode, path[0].p_hdr, depth)) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 err =3D -EIO;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out;
+> + =A0 =A0 =A0 }
+> + =A0 =A0 =A0 i =3D err =3D 0;
+> +
+> + =A0 =A0 =A0 while (i >=3D 0 && err =3D=3D 0) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (i =3D=3D depth) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* this is leaf block *=
+/
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 eh =3D path[i].p_hdr;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (eh !=3D NULL){
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (eh-=
+>eh_entries =3D=3D 0){
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 err =3D -EIO;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 goto out;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ex =3D =
+EXT_LAST_EXTENT(eh);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 while (=
+ex !=3D NULL && ex >=3D EXT_FIRST_EXTENT(eh)){
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 /*
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0* If the entire extent apears before start
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0* then we have passed the hole.
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0*/
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 if(ex->ee_block + ex->ee_len <=3D start)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 goto out;
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 /*
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0* If the start of the extent appears after
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0* or on start, then mark this as the edge
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0* of the hole
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0*/
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 if(ex->ee_block >=3D start)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 last_block =3D ex->ee_block;
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 /*
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0* If the extent contains start, then there
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0* is no hole.
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0*/
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 else if(ex->ee_block + ex->ee_len > start){
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 last_block =3D start;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 goto out;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 }
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 ex--;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* root level has p_bh =
+=3D=3D NULL, brelse() eats this */
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 brelse(path[i].p_bh);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 path[i].p_bh =3D NULL;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 i--;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 continue;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* this is index block */
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!path[i].p_hdr)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 path[i].p_hdr =3D ext_b=
+lock_hdr(path[i].p_bh);
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!path[i].p_idx) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* this level hasn't be=
+en touched yet */
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 path[i].p_idx =3D EXT_L=
+AST_INDEX(path[i].p_hdr);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 path[i].p_block =3D le1=
+6_to_cpu(path[i].p_hdr->eh_entries)+1;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext_debug("init index p=
+tr: hdr 0x%p, num %d\n",
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 path[i].p_hdr,
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 le16_to_cpu(path[i].p_h=
+dr->eh_entries));
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 else {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* we were already here=
+, see at next index */
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 path[i].p_idx--;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext_debug("level %d - index, first 0x%p=
+, cur 0x%p\n",
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 i, EXT_FIRST_INDEX(path[i].p_hdr),
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 path[i].p_idx);
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* go to the next level */
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext_debug("move to level %d (block %llu=
+)\n",
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 i + 1, =
+ext4_idx_pblock(path[i].p_idx));
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 memset(path + i + 1, 0, sizeof(*path));
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 bh =3D sb_bread(sb, ext4_idx_pblock(pat=
+h[i].p_idx));
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!bh) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 err =3D -EIO;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 break;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (WARN_ON(i + 1 > depth)) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 err =3D -EIO;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 break;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (ext4_ext_check(inode, ext_block_hdr=
+(bh), depth - i - 1)) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 err =3D -EIO;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 break;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 path[i + 1].p_bh =3D bh;
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 i++;
+> +
+> + =A0 =A0 =A0 }
+> +out:
+> + =A0 =A0 =A0 ext4_ext_drop_refs(path);
+> + =A0 =A0 =A0 kfree(path);
+> + =A0 =A0 =A0 ext4_journal_stop(handle);
+> +
+> + =A0 =A0 =A0 return err ? err : last_block - start;
+> +
+> +}
+> +
+> +/*
+> =A0* called at mount time
+> =A0*/
+> =A0void ext4_ext_init(struct super_block *sb)
+> @@ -4029,6 +4177,172 @@ next:
+> =A0 =A0 =A0 =A0return ret;
+> =A0}
+>
+> +/*
+> + * ext4_ext_test_block_flag
+> + * Tests the buffer head associated with the given block
+> + * to see if the state contains flag
+> + *
+> + * @inode: =A0The inode of the given file
+> + * @block: =A0The block to test
+> + * @flag: =A0 The flag to check for
+> + *
+> + * Returns 0 on sucess or negative on err
+> + */
+> +static int ext4_ext_test_block_flag(struct inode *inode, ext4_lblk_t=
+ block, enum bh_state_bits flag){
+
+(style) open { in new line.
+
+> + =A0 =A0 =A0 struct buffer_head *bh;
+> + =A0 =A0 =A0 struct page *page;
+> + =A0 =A0 =A0 struct address_space *mapping =3D inode->i_mapping;
+> + =A0 =A0 =A0 loff_t block_offset;
+> + =A0 =A0 =A0 int i, ret;
+> + =A0 =A0 =A0 unsigned long flag_mask =3D 1 << flag;
+> +
+> + =A0 =A0 =A0 block_offset =3D block << EXT4_BLOCK_SIZE_BITS(inode->i=
+_sb);
+> + =A0 =A0 =A0 page =3D find_or_create_page(mapping, block_offset >> P=
+AGE_CACHE_SHIFT,
+> + =A0 =A0 =A0 mapping_gfp_mask(mapping) & ~__GFP_FS);
+> +
+> + =A0 =A0 =A0 if (!page)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 return -EIO;
+> +
+> + =A0 =A0 =A0 if (!page_has_buffers(page))
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 create_empty_buffers(page, EXT4_BLOCK_S=
+IZE(inode->i_sb), 0);
+> +
+> + =A0 =A0 =A0 /* advance to the buffer that has the block offset =A0*=
+/
+> + =A0 =A0 =A0 bh =3D page_buffers(page);
+> + =A0 =A0 =A0 for (i =3D 0; i < block_offset; i+=3DEXT4_BLOCK_SIZE(in=
+ode->i_sb)) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 bh =3D bh->b_this_page;
+> + =A0 =A0 =A0 }
+> +
+> + =A0 =A0 =A0 if(bh->b_state & flag_mask)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 ret =3D 0;
+> + =A0 =A0 =A0 else
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 ret =3D -1;
+> +
+> + =A0 =A0 =A0 unlock_page(page);
+> + =A0 =A0 =A0 page_cache_release(page);
+> +
+> + =A0 =A0 =A0 return ret;
+> +
+> +}
+> +
+> +/*
+> + * ext4_ext_punch_hole
+> + *
+> + * Punches a hole of "length" bytes in a file starting
+> + * at byte "offset"
+> + *
+> + * @inode: =A0The inode of the file to punch a hole in
+> + * @offset: The starting byte offset of the hole
+> + * @length: The length of the hole
+> + *
+> + */
+> +void ext4_ext_punch_hole(struct inode *inode, loff_t offset, loff_t =
+length)
+> +{
+> + =A0 =A0 =A0 struct super_block *sb =3D inode->i_sb;
+> + =A0 =A0 =A0 ext4_lblk_t first_block, last_block, num_blocks, iblock=
+ =3D 0;
+> + =A0 =A0 =A0 struct address_space *mapping =3D inode->i_mapping;
+> + =A0 =A0 =A0 struct ext4_map_blocks map;
+> + =A0 =A0 =A0 handle_t *handle;
+> + =A0 =A0 =A0 loff_t first_block_offset, last_block_offset, block_len=
+;
+> + =A0 =A0 =A0 int get_blocks_flags, err, ret =3D 0;
+> +
+> + =A0 =A0 =A0 first_block =3D (offset + sb->s_blocksize - 1)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 >> EXT4_BLOCK_SIZE_BITS=
+(sb);
+> + =A0 =A0 =A0 last_block =3D (offset+length) =A0>> EXT4_BLOCK_SIZE_BI=
+TS(sb);
+> +
+> + =A0 =A0 =A0 first_block_offset =3D first_block << EXT4_BLOCK_SIZE_B=
+ITS(sb);
+> + =A0 =A0 =A0 last_block_offset =3D last_block << EXT4_BLOCK_SIZE_BIT=
+S(sb);
+> +
+> + =A0 =A0 =A0 err =3D ext4_writepage_trans_blocks(inode);
+
+1. (style) err is not an appropriate name (even though is it
+convenient to reuse it)
+2. did you check if ext4_writepage_trans_blocks(inode) covers the credi=
+ts
+    needed for splitting 1 extent into 3? I suppose it does if it also
+being used
+    when converting a middle part of an uninitialized extent, but I
+didn't check.
+
+> + =A0 =A0 =A0 handle =3D ext4_journal_start(inode, err);
+> + =A0 =A0 =A0 if (IS_ERR(handle))
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 return;
+> +
+> + =A0 =A0 =A0 /*
+> + =A0 =A0 =A0 =A0* Now we need to zero out the un block aligned data.
+> + =A0 =A0 =A0 =A0* If the file is smaller than a block, just
+> + =A0 =A0 =A0 =A0* zero out the middle and return
+> + =A0 =A0 =A0 =A0*/
+> + =A0 =A0 =A0 if(first_block > last_block)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_block_zero_page_range(handle, mapp=
+ing, offset, length);
+> + =A0 =A0 =A0 else{
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* zero out the head of the hole before=
+ the first block */
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 block_len =A0=3D first_block_offset - o=
+ffset;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if(block_len > 0)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_block_zero_page_ra=
+nge(handle, mapping, offset, block_len);
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* zero out the tail of the hole after =
+the last block */
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 block_len =3D offset + length - last_bl=
+ock_offset;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if(block_len > 0)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_block_zero_page_ra=
+nge(handle, mapping,
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 last_block_offset, block_len);
+> + =A0 =A0 =A0 }
+> +
+> + =A0 =A0 =A0 /* If there are no blocks to remove, return now */
+> + =A0 =A0 =A0 if(first_block >=3D last_block){
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_journal_stop(handle);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 return;
+> + =A0 =A0 =A0 }
+> +
+> + =A0 =A0 =A0 /* Clear pages associated with the hole */
+> + =A0 =A0 =A0 if (mapping->nrpages)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 invalidate_inode_pages2_range(mapping, =
+offset >> PAGE_CACHE_SHIFT,
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 (offset+length) >> PAGE_CACHE_SHIFT );
+> +
+> +
+> + =A0 =A0 =A0 /* Loop over all the blocks and identify blocks that ne=
+ed to be punched out */
+> + =A0 =A0 =A0 iblock =3D first_block;
+> + =A0 =A0 =A0 while(iblock < last_block){
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 map.m_lblk =3D iblock;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 map.m_len =3D last_block - iblock;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 ret =3D ext4_map_blocks(handle, inode, =
+&map, 0);
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* If the blocks are mapped, release th=
+em */
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if(ret > 0){
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 num_blocks =3D ret;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_ext_convert_blocks=
+_uninit(inode, handle, iblock, num_blocks);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_ext_release_blocks=
+(inode, iblock, iblock+num_blocks);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto next;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 /*
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* If they are not mapped
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* check to see if they are punched o=
+ut
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0*/
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 ret =3D ext4_ext_lookup_hole(inode, ibl=
+ock);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if(ret > 0){
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 num_blocks =3D ret;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto next;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 /*
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* If the block could not be mapped, =
+and
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* its not already punched out,
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* check to see if the block is delay=
+ed
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0*/
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if(ext4_ext_test_block_flag(inode, iblo=
+ck, BH_Delay) =3D=3D 0){
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 get_blocks_flags =3D EX=
+T4_GET_BLOCKS_CREATE | EXT4_GET_BLOCKS_DELALLOC_RESERVE;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ret =3D ext4_map_blocks=
+(handle, inode, &map, get_blocks_flags);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* If the blocks are fo=
+und, release them */
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if(ret > 0){
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 num_blo=
+cks =3D ret;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_ex=
+t_release_blocks(inode, iblock, iblock+num_blocks);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto ne=
+xt;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* If the block cannot be identified, j=
+ust skip it */
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 num_blocks =3D 1;
+> +
+> +next:
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 iblock+=3Dnum_blocks;
+> + =A0 =A0 =A0 }
+> + =A0 =A0 =A0 ext4_mark_inode_dirty(handle, inode);
+> +
+> + =A0 =A0 =A0 ext4_journal_stop(handle);
+> +
+> +}
+> +
+>
+> =A0static void ext4_falloc_update_inode(struct inode *inode,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0int mo=
+de, loff_t new_size, int update_ctime)
+> @@ -4079,10 +4393,6 @@ long ext4_fallocate(struct file *file, int mod=
+e, loff_t offset, loff_t len)
+> =A0 =A0 =A0 =A0struct ext4_map_blocks map;
+> =A0 =A0 =A0 =A0unsigned int credits, blkbits =3D inode->i_blkbits;
+>
+> - =A0 =A0 =A0 /* We only support the FALLOC_FL_KEEP_SIZE mode */
+> - =A0 =A0 =A0 if (mode & ~FALLOC_FL_KEEP_SIZE)
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 return -EOPNOTSUPP;
+> -
+> =A0 =A0 =A0 =A0/*
+> =A0 =A0 =A0 =A0 * currently supporting (pre)allocate mode for extent-=
+based
+> =A0 =A0 =A0 =A0 * files _only_
+> @@ -4090,6 +4400,9 @@ long ext4_fallocate(struct file *file, int mode=
+, loff_t offset, loff_t len)
+> =A0 =A0 =A0 =A0if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))=
+)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return -EOPNOTSUPP;
+>
+> + =A0 =A0 =A0 if (mode & FALLOC_FL_PUNCH_HOLE)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 return ext4_punch_hole(inode, offset, l=
+en);
+> +
+> =A0 =A0 =A0 =A0map.m_lblk =3D offset >> blkbits;
+> =A0 =A0 =A0 =A0/*
+> =A0 =A0 =A0 =A0 * We can't just convert len to max_blocks because
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 28c9137..493c908 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4487,6 +4487,32 @@ int ext4_can_truncate(struct inode *inode)
+> =A0}
+>
+> =A0/*
+> + * ext4_punch_hole: punches a hole in a file by releaseing the block=
+s
+> + * associated with the given offset and length
+> + *
+> + * @inode: =A0File inode
+> + * @offset: The offset where the hole will begin
+> + * @len: =A0 =A0The length of the hole
+> + *
+> + * Returns: 0 on sucess or negative on failure
+> + */
+> +
+> +long =A0ext4_punch_hole(struct inode *inode, loff_t offset, loff_t l=
+ength)
+> +{
+> +
+> + =A0 =A0 =A0 if (!S_ISREG(inode->i_mode)=3D=3D1)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return -ENOTSUPP;
+
+(style) please drop the =3D=3D 1. I am not even sure that !(0) is
+guarantied to return 1...
+
+> +
+> + =A0 =A0 =A0 if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 //TODO: Add support for non extent hole=
+ punching
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 return -ENOTSUPP;
+> + =A0 =A0 =A0 }
+> +
+> + =A0 =A0 =A0 ext4_ext_punch_hole(inode, offset, length);
+> + =A0 =A0 =A0 return 0;
+> +}
+> +
+> +/*
+> =A0* ext4_truncate()
+> =A0*
+> =A0* We block out ext4_get_block() block instantiations across the en=
+tire
+> --
+> 1.7.1
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
