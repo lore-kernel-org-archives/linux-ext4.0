@@ -1,51 +1,71 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: [Ext4 punch hole 1/5] Ext4 Punch Hole Support: Convert Blocks
- to Uninit Exts
-Date: Mon, 28 Feb 2011 22:51:17 -0700
-Message-ID: <4D6C8955.4070806@linux.vnet.ibm.com>
-References: <4D6C6318.2010105@linux.vnet.ibm.com> <AANLkTin0YQyt=2iJk22zG+w8-rNy42=7ErJ21xKNevi_@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [Ext4 punch hole 1/5] Ext4 Punch Hole Support: Convert Blocks to Uninit Exts
+Date: Mon, 28 Feb 2011 23:42:48 -0700
+Message-ID: <02A57041-5FC1-419D-89D2-47D541616DD4@dilger.ca>
+References: <4D6C6318.2010105@linux.vnet.ibm.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
 Cc: linux-ext4@vger.kernel.org
-To: Dave Young <hidave.darkstar@gmail.com>
+To: Allison Henderson <achender@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:38450 "EHLO e9.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753013Ab1CAFvS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Mar 2011 00:51:18 -0500
-Received: from d01dlp01.pok.ibm.com (d01dlp01.pok.ibm.com [9.56.224.56])
-	by e9.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p215PGIV030684
-	for <linux-ext4@vger.kernel.org>; Tue, 1 Mar 2011 00:25:16 -0500
-Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
-	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id D981838C8036
-	for <linux-ext4@vger.kernel.org>; Tue,  1 Mar 2011 00:51:16 -0500 (EST)
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p215pHe2346094
-	for <linux-ext4@vger.kernel.org>; Tue, 1 Mar 2011 00:51:17 -0500
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p215pH6m022898
-	for <linux-ext4@vger.kernel.org>; Tue, 1 Mar 2011 00:51:17 -0500
-In-Reply-To: <AANLkTin0YQyt=2iJk22zG+w8-rNy42=7ErJ21xKNevi_@mail.gmail.com>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:25723 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754346Ab1CAGmu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Mar 2011 01:42:50 -0500
+In-Reply-To: <4D6C6318.2010105@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2/28/2011 10:42 PM, Dave Young wrote:
-> On Tue, Mar 1, 2011 at 11:08 AM, Allison Henderson
-> <achender@linux.vnet.ibm.com>  wrote:
->> Hi All!
->>
->> This is the patch series for ext4 punch hole that I have been working on.
->> There is still a little more debugging that I would like to do with it,
->> but I've had some requests to see the patch, so I'm sending it out a bit
->> early.  Any feed back is appreciated.  Thx!
-> 
-> patch 5/5 is not sent?
-> 
+On 2011-02-28, at 8:08 PM, Allison Henderson wrote:
+> This first patch adds a function to convert a range of blocks
+> to an uninitialized extent.  This function will
+> be used to first convert the blocks to extents before
+> punching them out.
 
-Hi there,
+This was proposed as a separate function for FALLOCATE by Dave Chinner (based on XFS_IOC_ZERO_RANGE), so this is useful as a standalone function.
 
-Sorry, patch 5 was a debug patch.  It does not add any extra function. Please ignore the 5. Thx!
+> +/*
+> + * ext4_split_extents() Splits a given extent at the block "split"
+> + * @handle: The journal handle
+> + * @inode: The file inode
+> + * @split: The block where the extent will be split
+> + * @path: The path to the extent
+> + * @flags: flags used to insert the new extent
+> + */
+> +static int ext4_split_extents(handle_t *handle,
+> +					struct inode *inode,
+> +					ext4_lblk_t split,
+> +					struct ext4_ext_path *path,
+> +					int flags)
 
-Allison Henderson
+Isn't this already done when converting an uninitialized extent into a regular extent when it is being written to?  Hmm, ext4_ext_convert_to_initialized() is splitting the extent, but it is doing that "by hand".  It might make sense to convert ext4_ext_convert_to_initialized() to use this routine, but this depends on whether it makes the code simpler or not.
+
+> +	/* if the block is not actually in the extent, go to out */
+> +	if(split > ee_block+ee_len || split < ee_block)
+> +		goto out;
+
+Is this actually needed?
+
+> +	ext_debug("The new block is %llu, the orig block is: %llu\n", newblock, origblock);  
+
+(style) please wrap lines at 80 columns.  This patch should be run through checkpatch.pl, which should catch issues like this.
+ 
+> +	if(EXT_LAST_EXTENT(eh) >=  EXT_MAX_EXTENT(eh)){
+> +
+> +	/* otherwise just scoot all ther other extents down  */
+> +	else{
+> +		for(i_ex = EXT_LAST_EXTENT(eh); i_ex > ex1; i_ex-- ){
+> +			memcpy(i_ex+1, i_ex, sizeof(struct ext4_extent));
+> +		}
+> +		memcpy(ex1+1, ex2, sizeof(struct ext4_extent));
+
+(style) the whitespace in several other places is also not following the Linux coding style
+
+
+Cheers, Andreas
+
+
+
+
 
