@@ -1,109 +1,116 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [Ext4 punch hole 1/5] Ext4 Punch Hole Support: Convert Blocks
- to Uninit Exts
-Date: Tue, 01 Mar 2011 15:16:10 -0800
-Message-ID: <1299021370.6761.493.camel@mingming-laptop>
-References: <4D6C6318.2010105@linux.vnet.ibm.com>
-	 <02A57041-5FC1-419D-89D2-47D541616DD4@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: Ext4 kernel patches ready for benchmarking
+Date: Tue, 01 Mar 2011 19:55:39 -0500
+Message-ID: <E1PuaLr-0001dQ-Hr@tytso-glaptop>
+Cc: linux-ext4@vger.kernel.org
+To: Eric Whitney <eric.whitney@hp.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e35.co.us.ibm.com ([32.97.110.153]:54579 "EHLO
-	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757148Ab1CAXQS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Mar 2011 18:16:18 -0500
-Received: from d03relay05.boulder.ibm.com (d03relay05.boulder.ibm.com [9.17.195.107])
-	by e35.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p21N1UgS024863
-	for <linux-ext4@vger.kernel.org>; Tue, 1 Mar 2011 16:01:30 -0700
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p21NGF9Y103370
-	for <linux-ext4@vger.kernel.org>; Tue, 1 Mar 2011 16:16:15 -0700
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p21NGEHc007432
-	for <linux-ext4@vger.kernel.org>; Tue, 1 Mar 2011 16:16:14 -0700
-In-Reply-To: <02A57041-5FC1-419D-89D2-47D541616DD4@dilger.ca>
+Received: from li9-11.members.linode.com ([67.18.176.11]:49361 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757226Ab1CBAzq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Mar 2011 19:55:46 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 2011-02-28 at 23:42 -0700, Andreas Dilger wrote:
-> On 2011-02-28, at 8:08 PM, Allison Henderson wrote:
-> > This first patch adds a function to convert a range of blocks
-> > to an uninitialized extent.  This function will
-> > be used to first convert the blocks to extents before
-> > punching them out.
-> 
-> This was proposed as a separate function for FALLOCATE by Dave Chinner (based on XFS_IOC_ZERO_RANGE), so this is useful as a standalone function.
-> 
-> > +/*
-> > + * ext4_split_extents() Splits a given extent at the block "split"
-> > + * @handle: The journal handle
-> > + * @inode: The file inode
-> > + * @split: The block where the extent will be split
-> > + * @path: The path to the extent
-> > + * @flags: flags used to insert the new extent
-> > + */
-> > +static int ext4_split_extents(handle_t *handle,
-> > +					struct inode *inode,
-> > +					ext4_lblk_t split,
-> > +					struct ext4_ext_path *path,
-> > +					int flags)
-> 
-> Isn't this already done when converting an uninitialized extent into a regular extent when it is being written to?  Hmm, ext4_ext_convert_to_initialized() is splitting the extent, but it is doing that "by hand".  It might make sense to convert ext4_ext_convert_to_initialized() to use this routine, but this depends on whether it makes the code simpler or not.
-> 
+Hi Eric (and the rest of the ext4 development team),
 
-Yes, the ext4_ext_convert_to_initialized() and
-ext4_split_unwritten_extents() both does similar thing, split the
-extents to prepare for filling unwritten extents...which is opposite
-than punching holes.  these two functions should be merged/factor out
-the same code first.
+I still have some ext4 patches to merge, but all or most of the ones
+that should affect performance are in the ext4 tree now.  You can get
+them via
 
-ext4_ext_convert_to_initialized() handles write to unwritten extents for
-buffered IO case, which does the zerout optimization for filling holes
-to small area handling(avoid frequent convert to initizatlized). And it
-does the optimization to try to merge extents with neighbors if
-possible. Those two are not needed for punch holes.
+   git fetch git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git \
+		for-enw-benchmark
 
-ext4_split_unwritten_extents() is more straightforward to reuse for
-punch hole(no need for merge with neighbors, no need to zero out for
-optimization) -- for punch hole, just opposite the logic in
-ext4_split_unwritten_extents().
+This patch series is based off of 2.6.38-rc5, plus one fixup commit,
+3abb17e82f: "vfs: fix BUG_ON() in fs/namei.c:1461", which shouldn't be
+performance relevant (FFSB doesn't use symlinks, which is probably why
+you haven't noticed any problems).
 
+This patch series has passed a large number of xfstests runs using 4k
+and 1k block sizes.  I am currently using this patch set merged with
+2.6.38-rc7 on my laptop, and it "feels" faster, but could be becauses of
+other optimizations and improvements that went in post-2.6.38, and it
+could be because I've enabled CONFIG_SCHED_AUTOGROUP, not just the ext4
+improvements :-)  --- although commit b616844 could very well help
+synchronous write workloads.
 
-> > +	/* if the block is not actually in the extent, go to out */
-> > +	if(split > ee_block+ee_len || split < ee_block)
-> > +		goto out;
-> 
-> Is this actually needed?
-> 
-> > +	ext_debug("The new block is %llu, the orig block is: %llu\n", newblock, origblock);  
-> 
-> (style) please wrap lines at 80 columns.  This patch should be run through checkpatch.pl, which should catch issues like this.
-> 
-> > +	if(EXT_LAST_EXTENT(eh) >=  EXT_MAX_EXTENT(eh)){
-> > +
-> > +	/* otherwise just scoot all ther other extents down  */
-> > +	else{
-> > +		for(i_ex = EXT_LAST_EXTENT(eh); i_ex > ex1; i_ex-- ){
-> > +			memcpy(i_ex+1, i_ex, sizeof(struct ext4_extent));
-> > +		}
-> > +		memcpy(ex1+1, ex2, sizeof(struct ext4_extent));
-> 
-> (style) the whitespace in several other places is also not following the Linux coding style
-> 
-> 
-> Cheers, Andreas
-> 
-> 
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+A short summary of patches in for-enw-bencmark can be found below.  A
+"P" indicates patches that will hopefully help improve performance.  A
+"B" indicates that it's a bug fix (addresses a hang, crash, or potential
+data corruption --- the last is the FIEMAP fix, only if you are using a
+new coreutils).  The rest are cleanups, or fixups in error path
+handling.
 
+Note!  Just because a patch isn't listed here doesn't mean it won't get
+merged in the next merge window.  It just means that I've reached a
+convenient stopping point, and since I'm headed up to the Heavenly Ski
+Resort in Lake Tahoe with a good part of the Google prod kernel team
+tomorrow, and most of the performance-impactful changes have been merged
+at this point, I thought this would be a good place to summarize where
+we are at, and give Eric a stable patch set for performance testing.
 
+						- Ted
+
+Alexander V. Lukyanov (1):
+      [5dbd571] ext4: allow inode_readahead_blks=0 (linux-2.6.37)
+
+Amir Goldstein (2):
+      [8e8eaab] ext4: use the nblocks arg to ext4_truncate_restart_trans()
+      [d39195c] ext4: skip orphan cleanup if fs has unknown ROCOMPAT features
+
+Coly Li (5):
+      [84b775a] ext4: code cleanup in mb_find_buddy()
+      [235772d] ext4: remove unncessary call mb_find_buddy() in debugging code
+      [7c78605] mballoc: add comments to ext4_mb_mark_free_simple()
+      [58696f3] ext4: clarify description of ac_g_ex in struct ext4_allocation_context
+    P [5a54b2f] ext4: mballoc: don't replace the current preallocation group unnecessarily
+
+Curt Wohlgemuth (2):
+    B [e0fd9b9] ext4: mark multi-page IO complete on mapping failure
+    B [c7f5938] ext4: fix ext4_da_block_invalidatepages() to handle page range properly
+
+Eric Sandeen (1):
+      [ea66333] ext4: enable acls and user_xattr by default
+
+Lukas Czerner (4):
+      [6f9524e] ext4: update ext4 documentation
+      [0b75a84] ext4: mark file-local functions and variables as static
+      [4143179] ext4: check if device support discard in FITRIM ioctl
+      [5c2ed62] ext4: Adjust minlen with discard_granularity in the FITRIM ioctl
+
+Manish Katiyar (1):
+      [32a9bb5] ext4: fix missing iput of root inode for some mount error paths
+
+Peter Huewe (1):
+      [7dc5761] ext4: Fix sparse warning: Using plain integer as NULL pointer
+
+Theodore Ts'o (11):
+      [da48894] ext4: fix compile warnings with EXT4FS_DEBUG enabled
+    P [6fd7a46] ext4: enable mblk_io_submit by default
+      [8eb9e5c] ext4: fold __mpage_da_writepage() into write_cache_pages_da()
+      [4f01b02] ext4: simple cleanups to write_cache_pages_da()
+    P [9749895] ext4: clear the dirty bit for a page in writeback at the last minute
+    P [ee6ecbc] ext4: remove page_skipped hackery in ext4_da_writepages()
+    P [78aaced] ext4: don't lock the next page in write_cache_pages if not needed
+      [168fc02] ext4: move setup of the mpd structure to write_cache_pages_da()
+    B [a54aa76] ext4: don't leave PageWriteback set after memory failure
+      [4dd89fc] ext4: suppress verbose debugging information if malloc-debug is off
+    P [b616844] ext4: optimize ext4_bio_write_page() when no extent conversion is needed
+
+Yongqiang Yang (1):
+    B [6d9c85e] ext4: make FIEMAP and delayed allocation play well together
+
+ Documentation/ABI/testing/sysfs-fs-ext4 |   13 +-
+ Documentation/filesystems/ext4.txt      |  207 +++++++++++++++++++-
+ fs/ext4/extents.c                       |  195 ++++++++++++++----
+ fs/ext4/ialloc.c                        |    2 +-
+ fs/ext4/inode.c                         |  339 ++++++++++++-------------------
+ fs/ext4/ioctl.c                         |    6 +
+ fs/ext4/mballoc.c                       |   21 ++-
+ fs/ext4/mballoc.h                       |    2 +-
+ fs/ext4/migrate.c                       |   10 +-
+ fs/ext4/page-io.c                       |   13 +-
+ fs/ext4/resize.c                        |    4 +-
+ fs/ext4/super.c                         |   44 +++--
+ fs/ext4/xattr.c                         |    2 +-
+ 13 files changed, 561 insertions(+), 297 deletions(-)
