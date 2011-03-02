@@ -1,83 +1,46 @@
-From: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
-Subject: Re: [PATCH -V5 00/24]  New ACL format for better NFSv4 acl
- interoperability
-Date: Wed, 2 Mar 2011 13:58:47 -0500
-Message-ID: <20110302185847.GA3524@fieldses.org>
-References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <20110228211145.GG28617@thunk.org>
- <87oc5vgwqr.fsf@linux.vnet.ibm.com>
- <20110302154943.GB29136@fieldses.org>
- <87ei6pza5v.fsf@linux.vnet.ibm.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [Ext4 punch hole 1/5] Ext4 Punch Hole Support: Convert Blocks
+ to Uninit Exts
+Date: Thu, 3 Mar 2011 07:23:13 +1100
+Message-ID: <20110302202313.GA15097@dastard>
+References: <4D6C6318.2010105@linux.vnet.ibm.com>
+ <02A57041-5FC1-419D-89D2-47D541616DD4@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ted Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, sfrench-r/Jw6+rmf7HQT0dZR+AlfA@public.gmane.org, agruen-63ez5xqkn6DQT0dZR+AlfA@public.gmane.org,
-	dilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org, sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: "Aneesh Kumar K. V" <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
+	linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:55344 "EHLO
+	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754997Ab1CBUXQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Mar 2011 15:23:16 -0500
 Content-Disposition: inline
-In-Reply-To: <87ei6pza5v.fsf-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <02A57041-5FC1-419D-89D2-47D541616DD4@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 02, 2011 at 11:17:56PM +0530, Aneesh Kumar K. V wrote:
-> On Wed, 2 Mar 2011 10:49:43 -0500, "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org> wrote:
-> > On Tue, Mar 01, 2011 at 12:20:36PM +0530, Aneesh Kumar K. V wrote:
-> > > On Mon, 28 Feb 2011 16:11:45 -0500, "Ted Ts'o" <tytso-3s7WtUTddSA@public.gmane.org> wrote:
-> > > > Hi Aneesh,
-> > > > 
-> > > > What is the current status of this patch series?  I seem to remember
-> > > > that Christoph and Al Viro had some objections; have those been
-> > > > cleared yet?  If not, can you summarize what their objections are?
-> > > 
-> > > The main objection raised was the use of may_delete and may_create inode
-> > > operations callback. They are gone now and we have MAY_* flags as
-> > > favoured by Al Viro.  The new MAY_* flags added are 
-> > > 
-> > > #define MAY_CREATE_FILE 128
-> > > #define MAY_CREATE_DIR 256
-> > > #define MAY_DELETE_CHILD 512
-> > > #define MAY_DELETE_SELF 1024
-> > > #define MAY_TAKE_OWNERSHIP 2048
-> > > #define MAY_CHMOD 4096
-> > > #define MAY_SET_TIMES 8192
-> > > 
-> > > 
-> > > > 
-> > > > To be honest I haven't been paying super close attention to this patch
-> > > > series, and I'm curious what needs to happen with it one way or
-> > > > another.
-> > > > 
-> > > 
-> > > IMHO we are ready to get first 11 patches upstream in the next merge
-> > > window. ie the below set of patches.
-> > 
-> > Why aren't all of them ready?
-> > 
+On Mon, Feb 28, 2011 at 11:42:48PM -0700, Andreas Dilger wrote:
+> On 2011-02-28, at 8:08 PM, Allison Henderson wrote:
+> > This first patch adds a function to convert a range of blocks
+> > to an uninitialized extent.  This function will
+> > be used to first convert the blocks to extents before
+> > punching them out.
 > 
-> All except how to enable richacl in local file system is ready. I
-> actually floated two ideas in the patch series
-> 
-> 1) mount option
-> 2) Ext4 compat flags.
+> This was proposed as a separate function for FALLOCATE by Dave
+> Chinner (based on XFS_IOC_ZERO_RANGE), so this is useful as a
+> standalone function.
 
-The choice of ACL format is a persistant property of the filesystem, not
-of a single mount of the filesystem: for example, people can't try out
-richacls for one mount and then decide to revert bacak to posix acls.
+XFS_IOC_ZERO_RANGE converts a range to unwritten extents, not
+uninitialised extents. An uninitialised extent is one that is
+allocated but had not data written to it (i.e. contains stale data),
+while an unwritten/preallocated extent is guaranteed to contain
+zeros.  This may be just a terminology issue, but we should try to
+use the same jargon across all filesystems...
 
-(Right?)  So I'm assuming we should use the latter--but I don't
-understand what ext4 compat flags are.... Is there some disadvantage to
-using them?
+Cheers,
 
---b.
-
-> 
-> If we can get to decide which one, then the entire set can go in. We also
-> want others to review the richacl format. If that cannot be completed by
-> next merge window there is no reason to prevent the vfs changes from
-> going in. VFS changes are independent of richacl format.
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
