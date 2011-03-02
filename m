@@ -1,43 +1,73 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PULL REQUEST] Fix for ext2 fs corruption under rename load
-Date: Wed, 2 Mar 2011 11:13:17 +0100
-Message-ID: <20110302101317.GB7496@quack.suse.cz>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH -V5 00/24]  New ACL format for better NFSv4 acl
+ interoperability
+Date: Wed, 2 Mar 2011 10:49:43 -0500
+Message-ID: <20110302154943.GB29136@fieldses.org>
+References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <20110228211145.GG28617@thunk.org>
+ <87oc5vgwqr.fsf@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Ted Ts'o <tytso@mit.edu>, sfrench@us.ibm.com, agruen@linbit.com,
+	dilger.kernel@dilger.ca, sandeen@redhat.com, jlayton@redhat.com,
+	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:52146 "EHLO mx1.suse.de"
+Received: from fieldses.org ([174.143.236.118]:42835 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756355Ab1CBKNS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 2 Mar 2011 05:13:18 -0500
+	id S1750959Ab1CBPt7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 2 Mar 2011 10:49:59 -0500
 Content-Disposition: inline
+In-Reply-To: <87oc5vgwqr.fsf@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello Linus,
+On Tue, Mar 01, 2011 at 12:20:36PM +0530, Aneesh Kumar K. V wrote:
+> On Mon, 28 Feb 2011 16:11:45 -0500, "Ted Ts'o" <tytso@mit.edu> wrote:
+> > Hi Aneesh,
+> > 
+> > What is the current status of this patch series?  I seem to remember
+> > that Christoph and Al Viro had some objections; have those been
+> > cleared yet?  If not, can you summarize what their objections are?
+> 
+> The main objection raised was the use of may_delete and may_create inode
+> operations callback. They are gone now and we have MAY_* flags as
+> favoured by Al Viro.  The new MAY_* flags added are 
+> 
+> #define MAY_CREATE_FILE 128
+> #define MAY_CREATE_DIR 256
+> #define MAY_DELETE_CHILD 512
+> #define MAY_DELETE_SELF 1024
+> #define MAY_TAKE_OWNERSHIP 2048
+> #define MAY_CHMOD 4096
+> #define MAY_SET_TIMES 8192
+> 
+> 
+> > 
+> > To be honest I haven't been paying super close attention to this patch
+> > series, and I'm curious what needs to happen with it one way or
+> > another.
+> > 
+> 
+> IMHO we are ready to get first 11 patches upstream in the next merge
+> window. ie the below set of patches.
 
-  could you please pull from
+Why aren't all of them ready?
 
-git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs-2.6.git
-for_linus
+--b.
 
-to get a fix for a long-standing ext2 bug causing fs corruption. The
-corruption isn't severe (only i_nlink gets corrupted) but still it isn't
-nice thus I push the fix this late in the cycle.
-
-The full shortlog is:
-
-Josh Hunt (1):
-      ext2: Fix link count corruption under heavy link+rename load
-
-The diffstat is
-
- fs/ext2/namei.c |    9 ++-------
- 1 files changed, 2 insertions(+), 7 deletions(-)
-
-							Thanks
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> 
+> vfs: Make acl_permission_check() work for richacls
+> vfs: Add permission flags for setting file attributes
+> vfs: Make the inode passed to inode_change_ok non-const
+> vfs: Add delete child and delete self permission flags
+> vfs: Add new file and directory create permission flags
+> vfs: Optimize out IS_RICHACL() if CONFIG_FS_RICHACL is not defined
+> vfs: Add IS_RICHACL() test for richacl support
+> vfs: Add generic IS_ACL() test for acl support
+> vfs: Add a comment to inode_permission()
+> vfs: Pass all mask flags down to iop->check_acl
+> vfs: Indicate that the permission functions take all the MAY_* flags
+> 
+> -aneesh
