@@ -1,116 +1,320 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: Ext4 kernel patches ready for benchmarking
-Date: Tue, 01 Mar 2011 19:55:39 -0500
-Message-ID: <E1PuaLr-0001dQ-Hr@tytso-glaptop>
-Cc: linux-ext4@vger.kernel.org
-To: Eric Whitney <eric.whitney@hp.com>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [Ext4 punch hole 1/5] Ext4 Punch Hole Support: Convert Blocks
+ to Uninit Exts
+Date: Tue, 01 Mar 2011 17:32:09 -0800
+Message-ID: <1299029529.6761.642.camel@mingming-laptop>
+References: <4D6C6318.2010105@linux.vnet.ibm.com>
+	 <AANLkTikrKpKUhJ=uW0JYmi1t4j1qZw5F4AKGPosn57by@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Eric Sandeen <sandeen@redhat.com>
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:49361 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757226Ab1CBAzq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Mar 2011 19:55:46 -0500
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:49322 "EHLO e1.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756575Ab1CBBcO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Mar 2011 20:32:14 -0500
+Received: from d01dlp01.pok.ibm.com (d01dlp01.pok.ibm.com [9.56.224.56])
+	by e1.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p221MULx027624
+	for <linux-ext4@vger.kernel.org>; Tue, 1 Mar 2011 20:22:31 -0500
+Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id E916438C8038
+	for <linux-ext4@vger.kernel.org>; Tue,  1 Mar 2011 20:32:12 -0500 (EST)
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p221WDE5408668
+	for <linux-ext4@vger.kernel.org>; Tue, 1 Mar 2011 20:32:13 -0500
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p221WCWl024367
+	for <linux-ext4@vger.kernel.org>; Tue, 1 Mar 2011 20:32:13 -0500
+In-Reply-To: <AANLkTikrKpKUhJ=uW0JYmi1t4j1qZw5F4AKGPosn57by@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Eric (and the rest of the ext4 development team),
+On Tue, 2011-03-01 at 11:30 +0200, Amir Goldstein wrote:
+> On Tue, Mar 1, 2011 at 5:08 AM, Allison Henderson
+> <achender@linux.vnet.ibm.com> wrote:
+> > Hi All!
+> >
+> > This is the patch series for ext4 punch hole that I have been working on.
+> > There is still a little more debugging that I would like to do with it,
+> > but I've had some requests to see the patch, so I'm sending it out a bit
+> > early.  Any feed back is appreciated.  Thx!
+> 
+> Hi Allison,
+> 
+> Very nice work!
+> 
+> One meta comment is related to locking considerations with direct I/O.
+> I am not all that familiar with all direct I/O paths (i.e. dioread_nolock),
+> but I smell a possible race with holes initiation via direct I/O.
+> 
+> The thing with direct I/O is that you have no flags to test the state
+> of the block (did Eric just add a hash table to cope with another issue?).
+> Direct I/O writes outside i_size are synchronous (i.e. i_mutex is held until
+> I/O completion), but inside i_size, they may be a-synchronous.
+> The case of initiating holes is currently handled with DIO_SKIP_HOLES
+> by falling back to buffered I/O, although it could be handled by allocating
+> an uninitialized extent.
 
-I still have some ext4 patches to merge, but all or most of the ones
-that should affect performance are in the ext4 tree now.  You can get
-them via
+This has been changed. We now have real direct IO filling holes. Blocks
+allocated for holes are marked as uninitialized extents first, after DIO
+is completed, those uninitialized extents are converted to initialized.
 
-   git fetch git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git \
-		for-enw-benchmark
+> The case of writing to falloced space in handled by converting extents to
+> initialized at async I/O completion.
+> 
+> I am not sure there a race with hole punching here and I am not even sure
+> that the description above is totally accurate (?), but it's a dark corner,
+> which should to be reviewed carefully.
+> 
 
-This patch series is based off of 2.6.38-rc5, plus one fixup commit,
-3abb17e82f: "vfs: fix BUG_ON() in fs/namei.c:1461", which shouldn't be
-performance relevant (FFSB doesn't use symlinks, which is probably why
-you haven't noticed any problems).
+The exsiting fallocate call which does allocation takes care of truncate
+&regular allocation (DIO or buffered IO) by holding i_mutex lock. The
+get_blocks() routines should takes care of concurrent modification of
+the allocation tree with i_data_sem. I haven't check carefully yet, but
+we should make sure allocation tree modification via punch hole also
+hold the i_data_sem as well, to prevent race with truncate/writepages.
 
-This patch series has passed a large number of xfstests runs using 4k
-and 1k block sizes.  I am currently using this patch set merged with
-2.6.38-rc7 on my laptop, and it "feels" faster, but could be becauses of
-other optimizations and improvements that went in post-2.6.38, and it
-could be because I've enabled CONFIG_SCHED_AUTOGROUP, not just the ext4
-improvements :-)  --- although commit b616844 could very well help
-synchronous write workloads.
+> >
+> > This first patch adds a function to convert a range of blocks
+> > to an uninitialized extent.  This function will
+> > be used to first convert the blocks to extents before
+> > punching them out.
+> >
+> > This function also adds a routine to split an extent at
+> > a given block.  This routine is used when a range of
+> > blocks to be converted is only partially contained in
+> > an extent.
+> >
+> > Signed-off-by: Allison Henderson <achender@us.ibm.com>
+> > ---
+> > :100644 100644 7516fb9... ab2e42e... M  fs/ext4/extents.c
+> >  fs/ext4/extents.c |  185 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+> >  1 files changed, 185 insertions(+), 0 deletions(-)
+> >
+> > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> > index 7516fb9..ab2e42e 100644
+> > --- a/fs/ext4/extents.c
+> > +++ b/fs/ext4/extents.c
+> > @@ -2169,6 +2169,105 @@ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
+> >        return 0;
+> >  }
+> >
+> > +/*
+> > + * ext4_split_extents() Splits a given extent at the block "split"
+> > + * @handle: The journal handle
+> > + * @inode: The file inode
+> > + * @split: The block where the extent will be split
+> > + * @path: The path to the extent
+> > + * @flags: flags used to insert the new extent
+> > + */
+> > +static int ext4_split_extents(handle_t *handle,
+> > +                                       struct inode *inode,
+> > +                                       ext4_lblk_t split,
+> > +                                       struct ext4_ext_path *path,
+> > +                                       int flags)
+> > +{
+> > +       struct ext4_extent *ex, newex, orig_ex, *i_ex;
+> > +       struct ext4_extent *ex1 = NULL;
+> > +       struct ext4_extent *ex2 = NULL;
+> > +       struct ext4_extent_header *eh;
+> > +       ext4_lblk_t ee_block;
+> > +       unsigned int ee_len, depth;
+> > +       ext4_fsblk_t newblock, origblock;
+> > +       int err = 0;
+> > +
+> > +       ext_debug("ext4_split_extent: inode %lu, split %u\n", inode->i_ino, split);
+> > +       ext4_ext_show_leaf(inode, path);
+> > +
+> > +       depth = ext_depth(inode);
+> > +       eh = path[depth].p_hdr;
+> > +       ex = path[depth].p_ext;
+> > +       ee_block = le32_to_cpu(ex->ee_block);
+> > +       ee_len = ext4_ext_get_actual_len(ex);
+> > +
+> > +       /* if the block is not actually in the extent, go to out */
+> > +       if(split > ee_block+ee_len || split < ee_block)
+> > +               goto out;
+> > +
+> > +       origblock = ee_block + ext4_ext_pblock(ex);
+> > +       newblock = split - ee_block + ext4_ext_pblock(ex);
+> > +       ext_debug("The new block is %llu, the orig block is: %llu\n", newblock, origblock);
+> > +
+> > +       /* save original block in case split fails */
+> > +       orig_ex.ee_block = ex->ee_block;
+> > +       orig_ex.ee_len   = cpu_to_le16(ee_len);
+> > +       ext4_ext_store_pblock(&orig_ex, ext4_ext_pblock(ex));
+> > +
+> > +       err = ext4_ext_get_access(handle, inode, path + depth);
+> > +       if (err)
+> > +               goto out;
+> > +
+> > +       ex1 = ex;
+> > +       ex1->ee_len = cpu_to_le16(split-ee_block);
+> > +
+> > +       ex2 = &newex;
+> > +       ex2->ee_len = cpu_to_le16(ee_len-(split-ee_block));
+> > +       ex2->ee_block = split;
+> > +       ext4_ext_store_pblock(ex2, newblock);
+> > +
+> > +       if (ex1->ee_block != ex2->ee_block)
+> > +               goto insert;
+> > +
+> > +       /* Mark modified extent as dirty */
+> > +       err = ext4_ext_dirty(handle, inode, path + depth);
+> > +       ext_debug("out here\n");
+> > +       goto out;
+> > +insert:
+> > +
+> > +       /*
+> > +        * If this leaf cannot fit in any more extents
+> > +        * insert it into another leaf
+> > +        */
+> > +       if(EXT_LAST_EXTENT(eh) >=  EXT_MAX_EXTENT(eh)){
+> > +               err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
+> > +               if (err)
+> > +                       goto fix_extent_len;
+> > +       }
+> > +
+> > +       /* otherwise just scoot all ther other extents down  */
+> > +       else{
+> > +               for(i_ex = EXT_LAST_EXTENT(eh); i_ex > ex1; i_ex-- ){
+> > +                       memcpy(i_ex+1, i_ex, sizeof(struct ext4_extent));
+> > +               }
+> > +               memcpy(ex1+1, ex2, sizeof(struct ext4_extent));
+> > +               eh->eh_entries++;
+> > +       }
+> > +
+> > +out:
+> > +       ext4_ext_show_leaf(inode, path);
+> > +       return err;
+> > +
+> > +fix_extent_len:
+> > +       ex->ee_block = orig_ex.ee_block;
+> > +       ex->ee_len   = orig_ex.ee_len;
+> > +       ext4_ext_store_pblock(ex, ext4_ext_pblock(&orig_ex));
+> > +       ext4_ext_mark_uninitialized(ex);
+> > +       ext4_ext_dirty(handle, inode, path + depth);
+> > +
+> > +       return err;
+> > +}
+> > +
+> >  static int
+> >  ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+> >                struct ext4_ext_path *path, ext4_lblk_t start)
+> > @@ -3598,6 +3697,92 @@ out_stop:
+> >        ext4_journal_stop(handle);
+> >  }
+> >
+> > +/*
+> > + * ext4_ext_convert_blocks_uninit()
+> > + * Converts a range of blocks to uninitialized
+> > + *
+> > + * @inode:  The files inode
+> > + * @handle: The journal handle
+> 
+> 
+> (style) in all other functions, @handle comes before @inode
+> I'm sorry, but this hurts my eyes :-)
+> 
+> > + * @lblock: The logical block where the conversion will start
+> > + * @len:    The max number of blocks to convert
+> > + *
+> > + * Returns the number of blocks successfully converted
+> > + */
+> > +static int ext4_ext_convert_blocks_uninit(struct inode *inode, handle_t *handle, ext4_lblk_t lblock, ext4_lblk_t len){
+> > +
+> > +       ext4_lblk_t ee_block, iblock;
+> > +       struct ext4_ext_path *path;
+> > +       struct ext4_extent *ex;
+> > +       unsigned int ee_len;
+> > +       int ret, err = 0;
+> > +
+> > +       iblock = lblock;
+> > +       while(iblock < lblock+len){
+> > +
+> > +               path = ext4_ext_find_extent(inode, lblock, NULL);
+> > +
+> > +               if(path == NULL)
+> > +                       goto next;
+> > +
+> > +               err = ext4_ext_get_access(handle, inode, path);
+> > +               if(err < 0)
+> > +                       goto next;
+> > +
+> > +               ex = path->p_ext;
+> > +               if(ex == NULL)
+> > +                       goto next;
+> > +
+> > +               ee_block = le32_to_cpu(ex->ee_block);
+> > +               ee_len = ext4_ext_get_actual_len(ex);
+> > +
+> > +               /*
+> > +                * If the block is in the middle of the extent,
+> > +                * split the extent to remove the head.
+> > +                * Then find the new extent that contains the block
+> > +                */
+> > +               if(ee_block < iblock){
+> > +                       err = ext4_split_extents(handle, inode, iblock, path, 0);
+> > +                       if(err)
+> > +                               goto next;
+> > +
+> > +                       path = ext4_ext_find_extent(inode, iblock, NULL);
+> > +
+> > +                       if(path == NULL)
+> > +                               goto next;
+> > +
+> > +                       ex = path->p_ext;
+> > +                       if(ex == NULL)
+> > +                               goto next;
+> > +
+> > +                       ee_block = le32_to_cpu(ex->ee_block);
+> > +                       ee_len = ext4_ext_get_actual_len(ex);
+> > +
+> > +               }
+> > +
+> > +               /* If the extent exceeds len, split the extent to remove the tail */
+> > +               if(ee_len > len){
+> > +                       err = ext4_split_extents(handle, inode, lblock+len, path, 0);
+> > +                       if(err)
+> > +                               goto next;
+> > +
+> > +                       ee_len = ext4_ext_get_actual_len(ex);
+> > +               }
+> > +
+> > +               /* Mark the extent uninitialized */
+> > +               ext4_ext_mark_uninitialized(ex);
+> > +
+> > +               iblock+=ex->ee_len;
+> > +               ret+=ex->ee_len;
+> > +               continue;
+> > +next:
+> > +               /* If the extent for this block cannot be found, skip it */
+> > +               iblock++;
+> > +       }
+> > +
+> > +       return ret;
+> > +}
+> > +
+> > +
+> >  static void ext4_falloc_update_inode(struct inode *inode,
+> >                                int mode, loff_t new_size, int update_ctime)
+> >  {
+> > --
+> > 1.7.1
+> >
+> >
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-A short summary of patches in for-enw-bencmark can be found below.  A
-"P" indicates patches that will hopefully help improve performance.  A
-"B" indicates that it's a bug fix (addresses a hang, crash, or potential
-data corruption --- the last is the FIEMAP fix, only if you are using a
-new coreutils).  The rest are cleanups, or fixups in error path
-handling.
 
-Note!  Just because a patch isn't listed here doesn't mean it won't get
-merged in the next merge window.  It just means that I've reached a
-convenient stopping point, and since I'm headed up to the Heavenly Ski
-Resort in Lake Tahoe with a good part of the Google prod kernel team
-tomorrow, and most of the performance-impactful changes have been merged
-at this point, I thought this would be a good place to summarize where
-we are at, and give Eric a stable patch set for performance testing.
-
-						- Ted
-
-Alexander V. Lukyanov (1):
-      [5dbd571] ext4: allow inode_readahead_blks=0 (linux-2.6.37)
-
-Amir Goldstein (2):
-      [8e8eaab] ext4: use the nblocks arg to ext4_truncate_restart_trans()
-      [d39195c] ext4: skip orphan cleanup if fs has unknown ROCOMPAT features
-
-Coly Li (5):
-      [84b775a] ext4: code cleanup in mb_find_buddy()
-      [235772d] ext4: remove unncessary call mb_find_buddy() in debugging code
-      [7c78605] mballoc: add comments to ext4_mb_mark_free_simple()
-      [58696f3] ext4: clarify description of ac_g_ex in struct ext4_allocation_context
-    P [5a54b2f] ext4: mballoc: don't replace the current preallocation group unnecessarily
-
-Curt Wohlgemuth (2):
-    B [e0fd9b9] ext4: mark multi-page IO complete on mapping failure
-    B [c7f5938] ext4: fix ext4_da_block_invalidatepages() to handle page range properly
-
-Eric Sandeen (1):
-      [ea66333] ext4: enable acls and user_xattr by default
-
-Lukas Czerner (4):
-      [6f9524e] ext4: update ext4 documentation
-      [0b75a84] ext4: mark file-local functions and variables as static
-      [4143179] ext4: check if device support discard in FITRIM ioctl
-      [5c2ed62] ext4: Adjust minlen with discard_granularity in the FITRIM ioctl
-
-Manish Katiyar (1):
-      [32a9bb5] ext4: fix missing iput of root inode for some mount error paths
-
-Peter Huewe (1):
-      [7dc5761] ext4: Fix sparse warning: Using plain integer as NULL pointer
-
-Theodore Ts'o (11):
-      [da48894] ext4: fix compile warnings with EXT4FS_DEBUG enabled
-    P [6fd7a46] ext4: enable mblk_io_submit by default
-      [8eb9e5c] ext4: fold __mpage_da_writepage() into write_cache_pages_da()
-      [4f01b02] ext4: simple cleanups to write_cache_pages_da()
-    P [9749895] ext4: clear the dirty bit for a page in writeback at the last minute
-    P [ee6ecbc] ext4: remove page_skipped hackery in ext4_da_writepages()
-    P [78aaced] ext4: don't lock the next page in write_cache_pages if not needed
-      [168fc02] ext4: move setup of the mpd structure to write_cache_pages_da()
-    B [a54aa76] ext4: don't leave PageWriteback set after memory failure
-      [4dd89fc] ext4: suppress verbose debugging information if malloc-debug is off
-    P [b616844] ext4: optimize ext4_bio_write_page() when no extent conversion is needed
-
-Yongqiang Yang (1):
-    B [6d9c85e] ext4: make FIEMAP and delayed allocation play well together
-
- Documentation/ABI/testing/sysfs-fs-ext4 |   13 +-
- Documentation/filesystems/ext4.txt      |  207 +++++++++++++++++++-
- fs/ext4/extents.c                       |  195 ++++++++++++++----
- fs/ext4/ialloc.c                        |    2 +-
- fs/ext4/inode.c                         |  339 ++++++++++++-------------------
- fs/ext4/ioctl.c                         |    6 +
- fs/ext4/mballoc.c                       |   21 ++-
- fs/ext4/mballoc.h                       |    2 +-
- fs/ext4/migrate.c                       |   10 +-
- fs/ext4/page-io.c                       |   13 +-
- fs/ext4/resize.c                        |    4 +-
- fs/ext4/super.c                         |   44 +++--
- fs/ext4/xattr.c                         |    2 +-
- 13 files changed, 561 insertions(+), 297 deletions(-)
