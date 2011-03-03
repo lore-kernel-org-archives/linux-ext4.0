@@ -1,34 +1,48 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH v2] ext4: Fix a BUG in mb_mark_used during trim.
-Date: Thu, 3 Mar 2011 10:38:56 -0500
-Message-ID: <20110303153856.GA32087@infradead.org>
-References: <alpine.LFD.2.00.1103031117210.8737@dhcp-27-109.brq.redhat.com>
- <1299160774-2337-1-git-send-email-tm@tao.ma>
- <20110303141109.GB16191@infradead.org>
- <4D6FB4CF.4040202@tao.ma>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 29402] kernel panics while running ffsb scalability workloads
+ on 2.6.38-rc1 through -rc5
+Date: Thu, 3 Mar 2011 18:58:17 GMT
+Message-ID: <201103031858.p23IwHbV026286@demeter1.kernel.org>
+References: <bug-29402-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Tao Ma <tm@tao.ma>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:53329 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753051Ab1CCPi4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Mar 2011 10:38:56 -0500
-Content-Disposition: inline
-In-Reply-To: <4D6FB4CF.4040202@tao.ma>
+Received: from demeter1.kernel.org ([140.211.167.39]:33020 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757224Ab1CCS6k (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Mar 2011 13:58:40 -0500
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p23IwK24026323
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 3 Mar 2011 18:58:20 GMT
+In-Reply-To: <bug-29402-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 03, 2011 at 11:33:35PM +0800, Tao Ma wrote:
-> Actually these numbers are related to the block size of a ext4 volume.
-> To be more specific, with the above number, we have
-> first_block + block_len > EXT4_BLOCKS_PER_GROUP while
-> block_len < EXT4_BLOCKS_PER_GROUP.
-> So do you think it is generic enough for a test case in xfstests
-> since now this
-> tool kit is also used to test xfs and btrfs?
+https://bugzilla.kernel.org/show_bug.cgi?id=29402
 
-xfstests also allows filesystem-specific tests.  Most of the specific
-tests are for xfs, but there are few for udf right now as well.
 
+
+
+
+--- Comment #14 from Eric Whitney <eric.whitney@hp.com>  2011-03-03 18:58:15 ---
+Hi Lukas:
+
+Your "Possible fix no. 2" passed 36 hours of extended testing using the ffsb
+scalability test suite on a modified 2.6.35-rc5 kernel with ext4, ext4
+nojournal, and ext4 mblk filesystems.  The patch survived 135 ffsb runs where
+an average of two runs were sufficient to produce the bug originally. 
+
+I think your fix is good and ought to be submitted.  Please feel free to add my
+Reported-by/Tested-by if you wish.
+
+I'll follow up and retest once this patch makes it to mainline.
+
+Thanks very much,
+Eric
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
