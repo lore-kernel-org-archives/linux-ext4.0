@@ -1,48 +1,75 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14972] [regression] msync() call on ext4 causes disk thrashing
-Date: Thu, 3 Mar 2011 11:25:04 GMT
-Message-ID: <201103031125.p23BP4wI003946@demeter2.kernel.org>
-References: <bug-14972-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+From: Tao Ma <tm@tao.ma>
+Subject: [PATCH v2] ext4: Fix a BUG in mb_mark_used during trim.
+Date: Thu,  3 Mar 2011 21:59:34 +0800
+Message-ID: <1299160774-2337-1-git-send-email-tm@tao.ma>
+References: <alpine.LFD.2.00.1103031117210.8737@dhcp-27-109.brq.redhat.com>
+Cc: Lukas Czerner <lczerner@redhat.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:55895 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757770Ab1CCLZE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Mar 2011 06:25:04 -0500
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p23BP4jC003947
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 3 Mar 2011 11:25:04 GMT
-In-Reply-To: <bug-14972-13602@https.bugzilla.kernel.org/>
+Received: from oproxy1-pub.bluehost.com ([66.147.249.253]:54605 "HELO
+	oproxy1-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1758280Ab1CCN7x (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Mar 2011 08:59:53 -0500
+In-Reply-To: <alpine.LFD.2.00.1103031117210.8737@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=14972
+From: Tao Ma <boyu.mt@taobao.com>
 
+In a bs=4096 volume, if we call FITRIM with the following parameter as
+fstrim_range(start = 102400, len = 134144000, minlen = 10240),
+we will trigger a BUG_ON.
+BUG_ON(start + len > (e4b->bd_sb->s_blocksize << 3));
 
-Sergiy Zuban <s.zuban@gmail.com> changed:
+Mar  4 00:55:52 boyu-tm kernel: ------------[ cut here ]------------
+Mar  4 00:55:52 boyu-tm kernel: kernel BUG at fs/ext4/mballoc.c:1506!
+Mar  4 01:21:09 boyu-tm kernel: Code: d4 00 00 00 00 49 89 fe 8b 56 0c 44 8b 7e 04 89 55 c4 48 8b 4f 28 89 d6 44 01 fe 48 63 d6 48 8b 41 18 48 c1 e0 03 48 39 c2 76 04 <0f> 0b eb fe 48 8b 55 b0 8b 47 34 3b 42 08 74 04 0f 0b eb fe 48
+Mar  4 01:21:09 boyu-tm kernel: RIP  [<ffffffffa053eb42>] mb_mark_used+0x47/0x26c [ext4]
+Mar  4 01:21:09 boyu-tm kernel:  RSP <ffff880121e45c38>
+Mar  4 01:21:09 boyu-tm kernel: ---[ end trace 9f461696f6a9dcf2 ]---
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |s.zuban@gmail.com
+The reason is that in ext4_trim_fs, the last_block is checked wrongly.
+if (len >= EXT4_BLOCKS_PER_GROUP(sb))
+	len -= (EXT4_BLOCKS_PER_GROUP(sb) - first_block);
+else
+	last_block = first_block + len;
 
+So if len < EXT4_BLOCKS_PER_GROUP while first_block + len > EXT4_BLOCKS_PER_GROUP,
+last_block will be set to a overflow value which exceeds EXT4_BLOCKS_PER_GROUP.
 
+This patch fixes it and adjusts len accordingly.
 
+Cc: Lukas Czerner <lczerner@redhat.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+---
+ fs/ext4/mballoc.c |   11 ++++++++---
+ 1 files changed, 8 insertions(+), 3 deletions(-)
 
---- Comment #12 from Sergiy Zuban <s.zuban@gmail.com>  2011-03-03 11:25:02 ---
-due to bad implementation of some apps/libs this bug cause continual disk
-access (HDD led is always ON) and possible disk damage. Is there a chance to
-somehow speed up release of fix for this bug (it's been reported over a year
-ago)? I believe the first step to change status to CONFIRMED.
-
-Many people noticed unusual disk activity after upgrade to ext4:
-https://bbs.archlinux.org/viewtopic.php?pid=692073
-http://bugs.winehq.org/show_bug.cgi?id=24044#c13
-http://www.justlinux.com/forum/showthread.php?p=891737
-
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 29d7d17..290b36c 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4889,10 +4889,15 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ 			break;
+ 		}
+ 
+-		if (len >= EXT4_BLOCKS_PER_GROUP(sb))
+-			len -= (EXT4_BLOCKS_PER_GROUP(sb) - first_block);
+-		else
++		/*
++		 * For all the groups except the last one, last block will
++		 * always be EXT4_BLOCKS_PER_GROUP(sb), so we only need to
++		 * change it for the last group in which case start +
++		 * len < EXT4_BLOCKS_PER_GROUP(sb).
++		 */
++		if (first_block + len < EXT4_BLOCKS_PER_GROUP(sb))
+ 			last_block = first_block + len;
++		len -= last_block - first_block;
+ 
+ 		if (e4b.bd_info->bb_free >= minlen) {
+ 			cnt = ext4_trim_all_free(sb, &e4b, first_block,
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.6.3.GIT
+
