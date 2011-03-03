@@ -1,55 +1,130 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: [PATCH] ext4: Use sing thread to perform DIO unwritten convertion
-Date: Thu, 03 Mar 2011 11:29:54 -0800
-Message-ID: <1299180594.2826.6.camel@mingming-laptop>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH v2] Check for immutable flag in fallocate path
+Date: Fri, 4 Mar 2011 08:39:03 +1100
+Message-ID: <20110303213903.GL15097@dastard>
+References: <4D6221B8.9040303@gmail.com>
+ <4D6F5473.2070709@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	cluster-devel@redhat.com, xfs@oss.sgi.com,
+	Linux FS Devel <linux-fsdevel@vger.kernel.org>
+To: Marco Stornelli <marco.stornelli@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:38591 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758471Ab1CCT35 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Mar 2011 14:29:57 -0500
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e34.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p23JIL2V014578
-	for <linux-ext4@vger.kernel.org>; Thu, 3 Mar 2011 12:18:21 -0700
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id p23JTuOI116408
-	for <linux-ext4@vger.kernel.org>; Thu, 3 Mar 2011 12:29:56 -0700
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p23JTujG032123
-	for <linux-ext4@vger.kernel.org>; Thu, 3 Mar 2011 12:29:56 -0700
-Received: from [9.48.56.176] (sig-9-48-56-176.mts.ibm.com [9.48.56.176])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p23JTuvL032117
-	for <linux-ext4@vger.kernel.org>; Thu, 3 Mar 2011 12:29:56 -0700
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:60757 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1758859Ab1CCVjM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Mar 2011 16:39:12 -0500
+Content-Disposition: inline
+In-Reply-To: <4D6F5473.2070709@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-While running ext4 testing on multiple core, we found there are per cpu ext4-dio-unwritten threads processing
-conversion from unwritten extents to written for IOs completed from async direct IO patch.
-Per filesystem is enough, we don't need per cpu threads to work on conversion.
+On Thu, Mar 03, 2011 at 09:42:27AM +0100, Marco Stornelli wrote:
+> From: Marco Stornelli <marco.stornelli@gmail.com>
+> 
+> All fs must check for the immutable flag in their fallocate callback.
+> It's possible to have a race condition in this scenario: an application
+> open a file in read/write and it does something, meanwhile root set the
+> immutable flag on the file, the application at that point can call
+> fallocate with success. Only Ocfs2 check for the immutable flag at the
+> moment.
+> 
+> Signed-off-by: Marco Stornelli <marco.stornelli@gmail.com>
+> ---
+> Patch is against 2.6.38-rc5
+> 
+> ChangeLog
+> v2: Added the check for append-only file for XFS
+> v1: First draft
+> 
+> --- linux-2.6.38-rc5-orig/fs/ext4/extents.c	2011-02-16 04:23:45.000000000 +0100
+> +++ linux-2.6.38-rc5/fs/ext4/extents.c	2011-02-21 08:43:37.000000000 +0100
+> @@ -3670,6 +3670,12 @@ long ext4_fallocate(struct file *file, i
+>  	 */
+>  	credits = ext4_chunk_trans_blocks(inode, max_blocks);
+>  	mutex_lock(&inode->i_mutex);
+> +
+> +	if (IS_IMMUTABLE(inode)) {
+> +		mutex_unlock(&inode->i_mutex);
+> +		return -EPERM;
+> +	}
+> +
+>  	ret = inode_newsize_ok(inode, (len + offset));
+>  	if (ret) {
+>  		mutex_unlock(&inode->i_mutex);
+> --- linux-2.6.38-rc5-orig/fs/btrfs/file.c	2011-02-16 04:23:45.000000000 +0100
+> +++ linux-2.6.38-rc5/fs/btrfs/file.c	2011-02-21 08:55:58.000000000 +0100
+> @@ -1289,6 +1289,12 @@ static long btrfs_fallocate(struct file
+>  	btrfs_wait_ordered_range(inode, alloc_start, alloc_end - alloc_start);
+>  
+>  	mutex_lock(&inode->i_mutex);
+> +
+> +	if (IS_IMMUTABLE(inode)) {
+> +		ret = -EPERM;
+> +		goto out;
+> +	}
+> +
+>  	ret = inode_newsize_ok(inode, alloc_end);
+>  	if (ret)
+>  		goto out;
+> --- linux-2.6.38-rc5-orig/fs/gfs2/file.c	2011-02-16 04:23:45.000000000 +0100
+> +++ linux-2.6.38-rc5/fs/gfs2/file.c	2011-02-21 09:09:17.000000000 +0100
+> @@ -797,6 +797,11 @@ static long gfs2_fallocate(struct file *
+>  	if (unlikely(error))
+>  		goto out_uninit;
+>  
+> +	if (IS_IMMUTABLE(inode)) {
+> +		error = -EPERM;
+> +		goto out_unlock;
+> +	}
+> +
+>  	if (!gfs2_write_alloc_required(ip, offset, len))
+>  		goto out_unlock;
+>  
+> --- ./linux-2.6.38-rc5/fs/xfs/linux-2.6/xfs_file.c	2011-02-16 04:23:45.000000000 +0100
+> +++ ./linux-2.6.38-rc5/fs/xfs/linux-2.6/xfs_file.c	2011-03-03 09:25:32.000000000 +0100
+> @@ -906,8 +906,18 @@ xfs_file_fallocate(
+>  
+>  	xfs_ilock(ip, XFS_IOLOCK_EXCL);
+>  
+> -	if (mode & FALLOC_FL_PUNCH_HOLE)
+> +	if (mode & FALLOC_FL_PUNCH_HOLE) {
+>  		cmd = XFS_IOC_UNRESVSP;
+> +		if (IS_APPEND(inode)) {
+> +			error = -EPERM;
+> +			goto out_unlock;
+> +		}
+> +	}
 
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
----
- fs/ext4/super.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+WTF?  Why does append mode have any effect on whether we can punch
+holes in a file or not? There's no justification for adding this in
+the commit message. Why is it even in a patch that is for checking
+immutable inodes? What is the point of adding it, when all that will
+happen is people will switch to XFS_IOC_UNRESVSP which has never had
+this limitation?
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index f6a318f..c76a6a5 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3509,7 +3509,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	percpu_counter_set(&sbi->s_dirtyblocks_counter, 0);
- 
- no_journal:
--	EXT4_SB(sb)->dio_unwritten_wq = create_workqueue("ext4-dio-unwritten");
-+	EXT4_SB(sb)->dio_unwritten_wq = create_singlethread_workqueue("ext4-dio-unwritten");
- 	if (!EXT4_SB(sb)->dio_unwritten_wq) {
- 		printk(KERN_ERR "EXT4-fs: failed to create DIO workqueue\n");
- 		goto failed_mount_wq;
+And this asks bigger questions - why would you allow preallocate
+anywhere but at or beyond EOF on an append mode inode? You can only
+append to the file, so if you're going to add limitations based on
+the append flag, you need to think this through a bit more....
+
+> +
+> +	if (IS_IMMUTABLE(inode)) {
+> +		error = -EPERM;
+> +		goto out_unlock;
+> +	}
+
+Also, like Christoph said, these checks belong in the generic code,
+not in every filesystem. The same checks have to be made for every
+filesystem, so they should be done before calling out the
+filesystems regardless of what functionality the filesystem actually
+supports.
+
+Cheers,
+
+Dave.
 -- 
-1.6.3.3
-
-
-
+Dave Chinner
+david@fromorbit.com
