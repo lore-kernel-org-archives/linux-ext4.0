@@ -1,119 +1,48 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: Fix a BUG in mb_mark_used during trim.
-Date: Thu, 3 Mar 2011 11:17:46 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1103031117210.8737@dhcp-27-109.brq.redhat.com>
-References: <1299144832-5123-1-git-send-email-tm@tao.ma> <alpine.LFD.2.00.1103031053380.8737@dhcp-27-109.brq.redhat.com> <4D6F69B2.3060408@tao.ma>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14972] [regression] msync() call on ext4 causes disk thrashing
+Date: Thu, 3 Mar 2011 11:25:04 GMT
+Message-ID: <201103031125.p23BP4wI003946@demeter2.kernel.org>
+References: <bug-14972-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	"Theodore Ts'o" <tytso@mit.edu>
-To: Tao Ma <tm@tao.ma>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:9683 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751767Ab1CCKRw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 3 Mar 2011 05:17:52 -0500
-In-Reply-To: <4D6F69B2.3060408@tao.ma>
+Received: from demeter2.kernel.org ([140.211.167.42]:55895 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757770Ab1CCLZE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Mar 2011 06:25:04 -0500
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p23BP4jC003947
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 3 Mar 2011 11:25:04 GMT
+In-Reply-To: <bug-14972-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 3 Mar 2011, Tao Ma wrote:
+https://bugzilla.kernel.org/show_bug.cgi?id=14972
 
-> On 03/03/2011 06:01 PM, Lukas Czerner wrote:
-> > On Thu, 3 Mar 2011, Tao Ma wrote:
-> > 
-> >    
-> > > From: Tao Ma<boyu.mt@taobao.com>
-> > > 
-> > > In a bs=4096 volume, if we call FITRIM with the following parameter as
-> > > fstrim_range(start = 102400, len = 134144000, minlen = 10240),
-> > > we will trigger a BUG_ON.
-> > > BUG_ON(start + len>  (e4b->bd_sb->s_blocksize<<  3));
-> > > 
-> > > Mar  4 00:55:52 boyu-tm kernel: ------------[ cut here ]------------
-> > > Mar  4 00:55:52 boyu-tm kernel: kernel BUG at fs/ext4/mballoc.c:1506!
-> > > Mar  4 01:21:09 boyu-tm kernel: Code: d4 00 00 00 00 49 89 fe 8b 56 0c 44
-> > > 8b 7e 04 89 55 c4 48 8b 4f 28 89 d6 44 01 fe 48 63 d6 48 8b 41 18 48 c1 e0
-> > > 03 48 39 c2 76 04<0f>  0b eb fe 48 8b 55 b0 8b 47 34 3b 42 08 74 04 0f 0b
-> > > eb fe 48
-> > > Mar  4 01:21:09 boyu-tm kernel: RIP  [<ffffffffa053eb42>]
-> > > mb_mark_used+0x47/0x26c [ext4]
-> > > Mar  4 01:21:09 boyu-tm kernel:  RSP<ffff880121e45c38>
-> > > Mar  4 01:21:09 boyu-tm kernel: ---[ end trace 9f461696f6a9dcf2 ]---
-> > > 
-> > > The reason is that in ext4_trim_fs, the last_block is checked wrongly.
-> > > if (len>= EXT4_BLOCKS_PER_GROUP(sb))
-> > > 	len -= (EXT4_BLOCKS_PER_GROUP(sb) - first_block);
-> > > else
-> > > 	last_block = first_block + len;
-> > > 
-> > > So if len<  EXT4_BLOCKS_PER_GROUP while first_block + len>
-> > > EXT4_BLOCKS_PER_GROUP,
-> > > last_block will be set to a overflow value which exceeds
-> > > EXT4_BLOCKS_PER_GROUP.
-> > > 
-> > > This patch fixes it and adjusts len accordingly.
-> > >      
-> > Oh, thanks for spotting this. One comment though.
-> > 
-> >    
-> > > Cc: "Theodore Ts'o"<tytso@mit.edu>
-> > > Signed-off-by: Tao Ma<boyu.mt@taobao.com>
-> > > ---
-> > >   fs/ext4/mballoc.c |    5 +++--
-> > >   1 files changed, 3 insertions(+), 2 deletions(-)
-> > > 
-> > > diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> > > index 29d7d17..ed63c3e 100644
-> > > --- a/fs/ext4/mballoc.c
-> > > +++ b/fs/ext4/mballoc.c
-> > > @@ -4889,10 +4889,11 @@ int ext4_trim_fs(struct super_block *sb, struct
-> > > fstrim_range *range)
-> > >   			break;
-> > >   		}
-> > > 
-> > > -		if (len>= EXT4_BLOCKS_PER_GROUP(sb))
-> > > -			len -= (EXT4_BLOCKS_PER_GROUP(sb) - first_block);
-> > > +		if (first_block + len>= EXT4_BLOCKS_PER_GROUP(sb))
-> > > +			last_block = EXT4_BLOCKS_PER_GROUP(sb);
-> > >   		else
-> > >   			last_block = first_block + len;
-> > >      
-> > Since last_block would not change until the last group, can we simplify
-> > the condition ?
-> > 
-> > 		if (first_block + len<  EXT4_BLOCKS_PER_GROUP(sb))
-> > 			last_block = first_block + len;
-> >    
-> yes, it should work. But it is a bit tricky. And I guess we need a comment
-> here
-> to describe the situation. Otherwise, the people who read the code would
-> consider
-> why last_block won't be reset in case first _block + len >=
-> EXT4_BLOCKS_PER_GROUP
-> every time. Agree?
 
-Agree, comment would be useful.
+Sergiy Zuban <s.zuban@gmail.com> changed:
 
-Thanks!
--Lukas
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |s.zuban@gmail.com
 
-> >    
-> > > +		len -= last_block - first_block;
-> > > 
-> > >   		if (e4b.bd_info->bb_free>= minlen) {
-> > >   			cnt = ext4_trim_all_free(sb,&e4b, first_block,
-> > > 
-> > >      
-> > Thanks!
-> > -Lukas
-> >    
-> Regards,
-> Tao
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+
+
+
+--- Comment #12 from Sergiy Zuban <s.zuban@gmail.com>  2011-03-03 11:25:02 ---
+due to bad implementation of some apps/libs this bug cause continual disk
+access (HDD led is always ON) and possible disk damage. Is there a chance to
+somehow speed up release of fix for this bug (it's been reported over a year
+ago)? I believe the first step to change status to CONFIRMED.
+
+Many people noticed unusual disk activity after upgrade to ext4:
+https://bbs.archlinux.org/viewtopic.php?pid=692073
+http://bugs.winehq.org/show_bug.cgi?id=24044#c13
+http://www.justlinux.com/forum/showthread.php?p=891737
 
 -- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
