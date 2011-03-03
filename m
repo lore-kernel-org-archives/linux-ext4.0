@@ -1,100 +1,66 @@
-From: Marco Stornelli <marco.stornelli@gmail.com>
-Subject: [PATCH v2] Check for immutable flag in fallocate path
-Date: Thu, 03 Mar 2011 09:42:27 +0100
-Message-ID: <4D6F5473.2070709@gmail.com>
-References: <4D6221B8.9040303@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	cluster-devel@redhat.com, xfs@oss.sgi.com,
-	Linux FS Devel <linux-fsdevel@vger.kernel.org>
-To: Linux Kernel <linux-kernel@vger.kernel.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <4D6221B8.9040303@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Tao Ma <tm@tao.ma>
+Subject: [PATCH] ext4: Fix a BUG in mb_mark_used during trim.
+Date: Thu,  3 Mar 2011 17:33:52 +0800
+Message-ID: <1299144832-5123-1-git-send-email-tm@tao.ma>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cpoproxy2-pub.bluehost.com ([67.222.39.38]:54013 "HELO
+	cpoproxy2-pub.bluehost.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1753153Ab1CCJeO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Mar 2011 04:34:14 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Marco Stornelli <marco.stornelli@gmail.com>
+From: Tao Ma <boyu.mt@taobao.com>
 
-All fs must check for the immutable flag in their fallocate callback.
-It's possible to have a race condition in this scenario: an application
-open a file in read/write and it does something, meanwhile root set the
-immutable flag on the file, the application at that point can call
-fallocate with success. Only Ocfs2 check for the immutable flag at the
-moment.
+In a bs=4096 volume, if we call FITRIM with the following parameter as
+fstrim_range(start = 102400, len = 134144000, minlen = 10240),
+we will trigger a BUG_ON.
+BUG_ON(start + len > (e4b->bd_sb->s_blocksize << 3));
 
-Signed-off-by: Marco Stornelli <marco.stornelli@gmail.com>
+Mar  4 00:55:52 boyu-tm kernel: ------------[ cut here ]------------
+Mar  4 00:55:52 boyu-tm kernel: kernel BUG at fs/ext4/mballoc.c:1506!
+Mar  4 01:21:09 boyu-tm kernel: Code: d4 00 00 00 00 49 89 fe 8b 56 0c 44 8b 7e 04 89 55 c4 48 8b 4f 28 89 d6 44 01 fe 48 63 d6 48 8b 41 18 48 c1 e0 03 48 39 c2 76 04 <0f> 0b eb fe 48 8b 55 b0 8b 47 34 3b 42 08 74 04 0f 0b eb fe 48
+Mar  4 01:21:09 boyu-tm kernel: RIP  [<ffffffffa053eb42>] mb_mark_used+0x47/0x26c [ext4]
+Mar  4 01:21:09 boyu-tm kernel:  RSP <ffff880121e45c38>
+Mar  4 01:21:09 boyu-tm kernel: ---[ end trace 9f461696f6a9dcf2 ]---
+
+The reason is that in ext4_trim_fs, the last_block is checked wrongly.
+if (len >= EXT4_BLOCKS_PER_GROUP(sb))
+	len -= (EXT4_BLOCKS_PER_GROUP(sb) - first_block);
+else
+	last_block = first_block + len;
+
+So if len < EXT4_BLOCKS_PER_GROUP while first_block + len > EXT4_BLOCKS_PER_GROUP,
+last_block will be set to a overflow value which exceeds EXT4_BLOCKS_PER_GROUP.
+
+This patch fixes it and adjusts len accordingly.
+
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
-Patch is against 2.6.38-rc5
+ fs/ext4/mballoc.c |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
 
-ChangeLog
-v2: Added the check for append-only file for XFS
-v1: First draft
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 29d7d17..ed63c3e 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4889,10 +4889,11 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ 			break;
+ 		}
+ 
+-		if (len >= EXT4_BLOCKS_PER_GROUP(sb))
+-			len -= (EXT4_BLOCKS_PER_GROUP(sb) - first_block);
++		if (first_block + len >= EXT4_BLOCKS_PER_GROUP(sb))
++			last_block = EXT4_BLOCKS_PER_GROUP(sb);
+ 		else
+ 			last_block = first_block + len;
++		len -= last_block - first_block;
+ 
+ 		if (e4b.bd_info->bb_free >= minlen) {
+ 			cnt = ext4_trim_all_free(sb, &e4b, first_block,
+-- 
+1.6.3.GIT
 
---- linux-2.6.38-rc5-orig/fs/ext4/extents.c	2011-02-16 04:23:45.000000000 +0100
-+++ linux-2.6.38-rc5/fs/ext4/extents.c	2011-02-21 08:43:37.000000000 +0100
-@@ -3670,6 +3670,12 @@ long ext4_fallocate(struct file *file, i
- 	 */
- 	credits = ext4_chunk_trans_blocks(inode, max_blocks);
- 	mutex_lock(&inode->i_mutex);
-+
-+	if (IS_IMMUTABLE(inode)) {
-+		mutex_unlock(&inode->i_mutex);
-+		return -EPERM;
-+	}
-+
- 	ret = inode_newsize_ok(inode, (len + offset));
- 	if (ret) {
- 		mutex_unlock(&inode->i_mutex);
---- linux-2.6.38-rc5-orig/fs/btrfs/file.c	2011-02-16 04:23:45.000000000 +0100
-+++ linux-2.6.38-rc5/fs/btrfs/file.c	2011-02-21 08:55:58.000000000 +0100
-@@ -1289,6 +1289,12 @@ static long btrfs_fallocate(struct file
- 	btrfs_wait_ordered_range(inode, alloc_start, alloc_end - alloc_start);
- 
- 	mutex_lock(&inode->i_mutex);
-+
-+	if (IS_IMMUTABLE(inode)) {
-+		ret = -EPERM;
-+		goto out;
-+	}
-+
- 	ret = inode_newsize_ok(inode, alloc_end);
- 	if (ret)
- 		goto out;
---- linux-2.6.38-rc5-orig/fs/gfs2/file.c	2011-02-16 04:23:45.000000000 +0100
-+++ linux-2.6.38-rc5/fs/gfs2/file.c	2011-02-21 09:09:17.000000000 +0100
-@@ -797,6 +797,11 @@ static long gfs2_fallocate(struct file *
- 	if (unlikely(error))
- 		goto out_uninit;
- 
-+	if (IS_IMMUTABLE(inode)) {
-+		error = -EPERM;
-+		goto out_unlock;
-+	}
-+
- 	if (!gfs2_write_alloc_required(ip, offset, len))
- 		goto out_unlock;
- 
---- ./linux-2.6.38-rc5/fs/xfs/linux-2.6/xfs_file.c	2011-02-16 04:23:45.000000000 +0100
-+++ ./linux-2.6.38-rc5/fs/xfs/linux-2.6/xfs_file.c	2011-03-03 09:25:32.000000000 +0100
-@@ -906,8 +906,18 @@ xfs_file_fallocate(
- 
- 	xfs_ilock(ip, XFS_IOLOCK_EXCL);
- 
--	if (mode & FALLOC_FL_PUNCH_HOLE)
-+	if (mode & FALLOC_FL_PUNCH_HOLE) {
- 		cmd = XFS_IOC_UNRESVSP;
-+		if (IS_APPEND(inode)) {
-+			error = -EPERM;
-+			goto out_unlock;
-+		}
-+	}
-+
-+	if (IS_IMMUTABLE(inode)) {
-+		error = -EPERM;
-+		goto out_unlock;
-+	}
- 
- 	/* check the new inode size is valid before allocating */
- 	if (!(mode & FALLOC_FL_KEEP_SIZE) &&
