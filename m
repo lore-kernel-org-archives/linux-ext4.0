@@ -1,45 +1,63 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [Ext4 punch hole 1/5] Ext4 Punch Hole Support: Convert Blocks to Uninit Exts
-Date: Thu, 3 Mar 2011 09:27:27 -0500
-Message-ID: <CEC1AE6D-C518-471D-BC2B-C29F1269DA5A@mit.edu>
-References: <4D6C6318.2010105@linux.vnet.ibm.com> <02A57041-5FC1-419D-89D2-47D541616DD4@dilger.ca> <20110302202313.GA15097@dastard>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@dilger.ca>,
-	Allison Henderson <achender@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
+From: Tao Ma <tm@tao.ma>
+Subject: [PATCH] ext3: Fix an overflow in ext3_trim_fs.
+Date: Thu,  3 Mar 2011 22:58:37 +0800
+Message-ID: <1299164317-6400-1-git-send-email-tm@tao.ma>
+Cc: Lukas Czerner <lczerner@redhat.com>, Jan Kara <jack@suse.cz>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DMZ-MAILSEC-SCANNER-2.MIT.EDU ([18.9.25.13]:65411 "EHLO
-	dmz-mailsec-scanner-2.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758331Ab1CCOg2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Mar 2011 09:36:28 -0500
-In-Reply-To: <20110302202313.GA15097@dastard>
+Received: from oproxy3-pub.bluehost.com ([69.89.21.8]:49078 "HELO
+	oproxy3-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751325Ab1CCO6s (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Mar 2011 09:58:48 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+From: Tao Ma <boyu.mt@taobao.com>
 
-On Mar 2, 2011, at 3:23 PM, Dave Chinner wrote:
+In a bs=4096 volume, if we call FITRIM with the following parameter as
+fstrim_range(start = 102400, len = 134144000, minlen = 10240), with the
+following code:
+if (len >= EXT3_BLOCKS_PER_GROUP(sb))
+        len -= (EXT3_BLOCKS_PER_GROUP(sb) - first_block);
+else
+        last_block = first_block + len;
 
-> 
-> XFS_IOC_ZERO_RANGE converts a range to unwritten extents, not
-> uninitialised extents. An uninitialised extent is one that is
-> allocated but had not data written to it (i.e. contains stale data),
-> while an unwritten/preallocated extent is guaranteed to contain
-> zeros.  This may be just a terminology issue, but we should try to
-> use the same jargon across all filesystems...
+So if len < EXT3_BLOCKS_PER_GROUP while first_block + len >
+EXT3_BLOCKS_PER_GROUP, last_block will be set to an overflow value
+which exceeds EXT3_BLOCKS_PER_GROUP.
 
-What is the difference from the user's perspective?  If the read from
-from an uninitialized extent, what do they get back?   And if the read
-from an unwritten extent, what do they get back?   In ext4, in both
-cases we would return all zero's.
+This patch fixes it and adjusts len and last_block accordingly.
 
-For XFS, why is it important to maintain the distinction between these
-two concept?
+Cc: Lukas Czerner <lczerner@redhat.com>
+Cc: Jan Kara <jack@suse.cz>
+Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+---
+ fs/ext3/balloc.c |   11 ++++++++---
+ 1 files changed, 8 insertions(+), 3 deletions(-)
 
-Just trying to understand,
-
--- Ted
-
+diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
+index 045995c..5e012fe 100644
+--- a/fs/ext3/balloc.c
++++ b/fs/ext3/balloc.c
+@@ -2129,10 +2129,15 @@ int ext3_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ 		if (free_blocks < minlen)
+ 			continue;
+ 
+-		if (len >= EXT3_BLOCKS_PER_GROUP(sb))
+-			len -= (EXT3_BLOCKS_PER_GROUP(sb) - first_block);
+-		else
++		/*
++		 * For all the groups except the last one, last block will
++		 * always be EXT3_BLOCKS_PER_GROUP(sb), so we only need to
++		 * change it for the last group in which case first_block +
++		 * len < EXT3_BLOCKS_PER_GROUP(sb).
++		 */
++		if (first_block + len < EXT3_BLOCKS_PER_GROUP(sb))
+ 			last_block = first_block + len;
++		len -= last_block - first_block;
+ 
+ 		ret = ext3_trim_all_free(sb, group, first_block,
+ 					last_block, minlen);
+-- 
+1.6.3.GIT
 
