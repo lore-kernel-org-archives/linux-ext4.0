@@ -1,73 +1,101 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH V2] ext3: Always set dx_node's fake_dirent explicitly.
-Date: Fri, 4 Mar 2011 15:23:46 -0700
-Message-ID: <19B19E0F-3843-454C-81AF-4EBB245A034E@dilger.ca>
-References: <4D71615D.30306@redhat.com> <4D7161D8.8010509@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v1082)
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH -V5 00/24]  New ACL format for better NFSv4 acl
+ interoperability
+Date: Fri, 4 Mar 2011 19:32:15 -0500
+Message-ID: <20110305003214.GF21260@fieldses.org>
+References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <20110228211145.GG28617@thunk.org>
+ <87oc5vgwqr.fsf@linux.vnet.ibm.com>
+ <20110302154943.GB29136@fieldses.org>
+ <87ei6pza5v.fsf@linux.vnet.ibm.com>
+ <20110302185847.GA3524@fieldses.org>
+ <871v2nw4q0.fsf@linux.vnet.ibm.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>, Lachlan McIlroy <lmcilroy@redhat.com>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: Ted Ts'o <tytso@mit.edu>, sfrench@us.ibm.com, agruen@linbit.com,
+	dilger.kernel@dilger.ca, sandeen@redhat.com, jlayton@redhat.com,
+	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:10400 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932278Ab1CDWXr convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Mar 2011 17:23:47 -0500
-In-Reply-To: <4D7161D8.8010509@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:40795 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751587Ab1CEAcb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 4 Mar 2011 19:32:31 -0500
+Content-Disposition: inline
+In-Reply-To: <871v2nw4q0.fsf@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-03-04, at 3:04 PM, Eric Sandeen wrote:
-> (crossport of 1f7bebb9e911d870fa8f997ddff838e82b5715ea
-> by Andreas Schlick <schlick@lavabit.com>)
+On Fri, Mar 04, 2011 at 04:08:15PM +0530, Aneesh Kumar K. V wrote:
+> On Wed, 2 Mar 2011 13:58:47 -0500, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > On Wed, Mar 02, 2011 at 11:17:56PM +0530, Aneesh Kumar K. V wrote:
+> > > On Wed, 2 Mar 2011 10:49:43 -0500, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > On Tue, Mar 01, 2011 at 12:20:36PM +0530, Aneesh Kumar K. V wrote:
+> > > > > On Mon, 28 Feb 2011 16:11:45 -0500, "Ted Ts'o" <tytso@mit.edu> wrote:
+> > > > > > Hi Aneesh,
+> > > > > > 
+> > > > > > What is the current status of this patch series?  I seem to remember
+> > > > > > that Christoph and Al Viro had some objections; have those been
+> > > > > > cleared yet?  If not, can you summarize what their objections are?
+> > > > > 
+> > > > > The main objection raised was the use of may_delete and may_create inode
+> > > > > operations callback. They are gone now and we have MAY_* flags as
+> > > > > favoured by Al Viro.  The new MAY_* flags added are 
+> > > > > 
+> > > > > #define MAY_CREATE_FILE 128
+> > > > > #define MAY_CREATE_DIR 256
+> > > > > #define MAY_DELETE_CHILD 512
+> > > > > #define MAY_DELETE_SELF 1024
+> > > > > #define MAY_TAKE_OWNERSHIP 2048
+> > > > > #define MAY_CHMOD 4096
+> > > > > #define MAY_SET_TIMES 8192
+> > > > > 
+> > > > > 
+> > > > > > 
+> > > > > > To be honest I haven't been paying super close attention to this patch
+> > > > > > series, and I'm curious what needs to happen with it one way or
+> > > > > > another.
+> > > > > > 
+> > > > > 
+> > > > > IMHO we are ready to get first 11 patches upstream in the next merge
+> > > > > window. ie the below set of patches.
+> > > > 
+> > > > Why aren't all of them ready?
+> > > > 
+> > > 
+> > > All except how to enable richacl in local file system is ready. I
+> > > actually floated two ideas in the patch series
+> > > 
+> > > 1) mount option
+> > > 2) Ext4 compat flags.
+> > 
+> > The choice of ACL format is a persistant property of the filesystem, not
+> > of a single mount of the filesystem: for example, people can't try out
+> > richacls for one mount and then decide to revert bacak to posix acls.
+> > 
+> > (Right?)  So I'm assuming we should use the latter--but I don't
+> > understand what ext4 compat flags are.... Is there some disadvantage to
+> > using them?
+> > 
 > 
-> When ext3_dx_add_entry() has to split an index node, it has to ensure that
-> name_len of dx_node's fake_dirent is also zero, because otherwise e2fsck
-> won't recognise it as an intermediate htree node and consider the htree to
-> be corrupted.
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> ---
+> We already have a mount option to enable posix acl (-o acl|noacl). So
+> along the same line should we have -o richacl|norichacl or should we
+> have richacl as a ext4 compat flag EXT4_FEATURE_COMPAT_RICHACL. The
+> compat feature can be enabled via tune2fs for an already created file
+> system. Once the compat feature is enabled a -o acl mount option cause
+> the richacl access check to be enabled. That can also result in
+> mapping the existing posix acl in the file system to richacl and
+> using mapped richacl for access restriction. With compat flag once set
+> we will never be able to mount the file system again to use posix acl
+> access restriction. (We cannot map richacl to posixacl because richacl
+> support advanced access masks)
 
-Should also be sent to stable I think.
+Sounds fine to me.  I'm not sure you answered my question.  Is there any
+disadvantage to doing it this way?
 
-> (V2: fix subject and commit and formatting)
-> 
-> While it's a simple one liner, this took me forever to (re-)find.
-> 
-> kill_ext3_now++;
-> 
-> That is all. ;)
-> 
-> diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
-> index b27ba71..75c968e 100644
-> --- a/fs/ext3/namei.c
-> +++ b/fs/ext3/namei.c
-> @@ -1540,8 +1540,8 @@ static int ext3_dx_add_entry(handle_t *handle, struct dentry *dentry,
-> 			goto cleanup;
-> 		node2 = (struct dx_node *)(bh2->b_data);
-> 		entries2 = node2->entries;
-> +		memset(&node2->fake, 0, sizeof(struct fake_dirent));
-> 		node2->fake.rec_len = ext3_rec_len_to_disk(sb->s_blocksize);
-> -		node2->fake.inode = 0;
-> 		BUFFER_TRACE(frame->bh, "get_write_access");
-> 		err = ext3_journal_get_write_access(handle, frame->bh);
-> 		if (err)
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--b.
 
-
-Cheers, Andreas
-
-
-
-
-
+> With mount option (-o richacl) we can still mount the file system with
+> -o acl which implies we will have to ignore the richacl associated with
+> files and only evaluate the posix acl stored.
