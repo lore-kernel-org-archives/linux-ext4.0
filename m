@@ -1,46 +1,45 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: ditching e4b->alloc_semp
-Date: Sat, 5 Mar 2011 11:06:56 -0500
-Message-ID: <20110305160656.GA3505@thunk.org>
-References: <AANLkTikSLsuiZGYaUKtQnMQNZ6Pj=K_RDkYtpK98ujy1@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 25832] kernel crashes upon resume if usb devices are removed
+ when suspended
+Date: Sun, 6 Mar 2011 10:25:47 GMT
+Message-ID: <201103061025.p26APlm0018823@demeter2.kernel.org>
+References: <bug-25832-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Amir Goldstein <amir73il@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:42823 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753580Ab1CFANf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 5 Mar 2011 19:13:35 -0500
-Content-Disposition: inline
-In-Reply-To: <AANLkTikSLsuiZGYaUKtQnMQNZ6Pj=K_RDkYtpK98ujy1@mail.gmail.com>
+Received: from demeter2.kernel.org ([140.211.167.42]:52216 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751811Ab1CFKZs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Mar 2011 05:25:48 -0500
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p26APlsq018824
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Sun, 6 Mar 2011 10:25:47 GMT
+In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 21, 2011 at 10:02:44PM +0200, Amir Goldstein wrote:
-> 
-> 1. (AKA easy lane) use a single page (or more) per block group.
-> this will increase the memory usage for 1K blocks fs and for 2K block fs
-> on 8K page system, but are these use cases really that common?
+https://bugzilla.kernel.org/show_bug.cgi?id=25832
 
-The most common use cases will be 4k block file system on 16k page
-systems, which show up on PowerPC and Itanium systems.
 
-> 2. (AKA hard lane) attach buffer heads to buddy page and use
-> buffer_uptodate() and buffer_lock() instead of PageUptodate() and lock_page()
-> to initialize buddy cache of groups that share the same page.
 
-How about this; use lock_page() to guarantee exclusive access to the
-shared buddy bitmap, and then define a new bit in
-ext4_group_info->bb_state to indicate whether or not a particular
-block group has been initialized.  If the page has gotten flushed from
-memory, so that it is not present at all (i.e., find_get_page returns
-NULL), then iterate over all of the groups to clear the
-EXT4_GROUP_INFO_BUDDY_INIT bit.
 
-If the page is returned by find_get_page(), then all you need to do is
-check the EXT4_GROUP_INFO_BUDDY_INIT bit to discover whether or not or
-not the buddy bitmap needs to be initialized.
 
-							- Ted
+--- Comment #38 from rocko <rockorequin@hotmail.com>  2011-03-06 10:25:46 ---
+The syslog shows that, for whatever reason, sometimes processes do try and
+access files on the drives after they are removed. Messages to this effect
+typically appear if the kernel _doesn't_ crash.
+
+Is it possible that there might be a sync/locking problem here that leads to
+the crash? eg could the crash occur if a process tries to access the removed
+drive while the kernel is in the process of unmounting it? Perhaps this would
+explain why the crash is more likely to happen on resume (ie when many
+processes are waking up and presumably more likely to try and access files) and
+when multiple drives are removed (ie when the kernel is likely to be more busy
+trying to unmount the missing drives).
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
