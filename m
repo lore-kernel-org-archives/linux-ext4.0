@@ -1,57 +1,55 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH V2] ext3: Always set dx_node's fake_dirent explicitly.
-Date: Mon, 07 Mar 2011 10:32:21 -0600
-Message-ID: <4D750895.4080503@redhat.com>
-References: <4D71615D.30306@redhat.com> <4D7161D8.8010509@redhat.com> <20110307162647.GB3663@quack.suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 29312] Unmounting fails even after the underlying device is
+ long gone
+Date: Mon, 7 Mar 2011 20:39:34 GMT
+Message-ID: <201103072039.p27KdY5V013813@demeter2.kernel.org>
+References: <bug-29312-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Lachlan McIlroy <lmcilroy@redhat.com>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39919 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751184Ab1CGQcZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 Mar 2011 11:32:25 -0500
-In-Reply-To: <20110307162647.GB3663@quack.suse.cz>
+Received: from demeter2.kernel.org ([140.211.167.42]:54435 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752658Ab1CGUje (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Mar 2011 15:39:34 -0500
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p27KdY5r013817
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 7 Mar 2011 20:39:34 GMT
+In-Reply-To: <bug-29312-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 3/7/11 10:26 AM, Jan Kara wrote:
-> On Fri 04-03-11 16:04:08, Eric Sandeen wrote:
->> (crossport of 1f7bebb9e911d870fa8f997ddff838e82b5715ea
->> by Andreas Schlick <schlick@lavabit.com>)
->>
->> When ext3_dx_add_entry() has to split an index node, it has to ensure that
->> name_len of dx_node's fake_dirent is also zero, because otherwise e2fsck
->> won't recognise it as an intermediate htree node and consider the htree to
->> be corrupted.
->>     
->> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
->   Thanks. Merged - and added CC to stable@kernel.org as Andreas suggested.
+https://bugzilla.kernel.org/show_bug.cgi?id=29312
 
-Thanks!
 
--Eric
 
->> While it's a simple one liner, this took me forever to (re-)find.
->   I feel with you :).
+
+
+--- Comment #1 from Rafael J. Wysocki <rjw@sisk.pl>  2011-03-07 20:39:33 ---
+On Monday, March 07, 2011, Bart Van Assche wrote:
+> On Sun, Mar 6, 2011 at 1:10 PM, Rafael J. Wysocki <rjw@sisk.pl> wrote:
+> >
+> > This message has been generated automatically as a part of a summary report
+> > of recent regressions.
+> >
+> > The following bug entry is on the current list of known regressions
+> > from 2.6.37.  Please verify if it still should be listed and let the tracking team
+> > know (either way).
+> >
+> >
+> > Bug-Entry       : http://bugzilla.kernel.org/show_bug.cgi?id=29312
+> > Subject         : Unmounting fails even after the underlying device is long gone
+> > Submitter       : Bart Van Assche <bart.vanassche@gmail.com>
+> > Date            : 2011-02-17 19:20 (18 days old)
 > 
-> 								Honza
->>
->> diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
->> index b27ba71..75c968e 100644
->> --- a/fs/ext3/namei.c
->> +++ b/fs/ext3/namei.c
->> @@ -1540,8 +1540,8 @@ static int ext3_dx_add_entry(handle_t *handle, struct dentry *dentry,
->>  			goto cleanup;
->>  		node2 = (struct dx_node *)(bh2->b_data);
->>  		entries2 = node2->entries;
->> +		memset(&node2->fake, 0, sizeof(struct fake_dirent));
->>  		node2->fake.rec_len = ext3_rec_len_to_disk(sb->s_blocksize);
->> -		node2->fake.inode = 0;
->>  		BUFFER_TRACE(frame->bh, "get_write_access");
->>  		err = ext3_journal_get_write_access(handle, frame->bh);
->>  		if (err)
+> Unmounting works fine again with 2.6.38-rc7+, but I see now a huge
+> number of error messages in the system log:
+> # grep -c '^Mar  7 18:37:4.* kernel: sd 6:0:0:0: rejecting I/O to
+> offline device$' /var/log/messages
+> 4987
 
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
