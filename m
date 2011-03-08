@@ -1,164 +1,54 @@
-From: Alex Elder <aelder@sgi.com>
-Subject: Re: [PATCH] xfstests: add fallocate calls to fsx
-Date: Tue, 08 Mar 2011 14:00:47 -0600
-Message-ID: <1299614447.2716.32.camel@doink>
-References: <4D6BDC2A.4020308@redhat.com>
-Reply-To: aelder@sgi.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: xfs-oss <xfs@oss.sgi.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from relay3.sgi.com ([192.48.152.1]:48084 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1755447Ab1CHUAs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 Mar 2011 15:00:48 -0500
-In-Reply-To: <4D6BDC2A.4020308@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [LSF/FS TOPIC] Journal guided RAID resync
+Date: Tue, 8 Mar 2011 13:28:11 -0700
+Message-ID: <D0E540E7-B1D0-4C89-BD0C-262915EE8A28@dilger.ca>
+References: <AANLkTik72=3h4T=MNnaqLFdfYHraYp8T=eaNyijFiY9f@mail.gmail.com>
+Mime-Version: 1.0 (iPhone Mail 8C148a)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: Amir Goldstein <amir73il@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <AANLkTik72=3h4T=MNnaqLFdfYHraYp8T=eaNyijFiY9f@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 2011-02-28 at 11:32 -0600, Eric Sandeen wrote:
-> (Sending one more time, hoping for a real reviewed-by) :)
+[I've removed LSF-PC from the CC list, since I believe the attendee/topic selection is long past]
+
+One reason that we didn't use this patch is that it is essentially the opposite of "ordered" mode when it comes to data reliability. It requires that the journal be updated with the blocks to be modified _before_ the data blocks are written. 
+
+This means that stale data may be exposed to userspace in case of a crash, unless a two-phase commit is done where the declare blocks are committed to one transaction, and only after that the data blocks are written.
+
+ The other option is a WAFL mode where writes are done into RAID stripe-aligned free space so that parity loss is not harmful to existing data. This is not unreasonable with mballoc for new blocks, but not necessarily overwrites. It may tie in with snapshots nicely, since it has the same COW requirements. 
+
+Cheers, Andreas
+
+On 2011-03-08, at 8:35, Amir Goldstein <amir73il@gmail.com> wrote:
+
+> Hi All,
 > 
-> Add random runtime fallocate calls to fsx (vs. the existing
-> preallocate file at start of run).
-
-Whoops.  I'm not sure what keyboard shortcut I hit
-on that last one but I managed to fire off that
-message before I'd actually written it.  Here's another
-try.
-
-Bottom line is, this looks good to me, but I do have
-a few things for you to consider before you commit it.
-
-Reviewed-by: Alex Elder <aelder@sgi.com>
-
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> ---
-
-. . .
-
-> diff --git a/ltp/fsx.c b/ltp/fsx.c
-> index 1167d72..b95431e 100644
-> --- a/ltp/fsx.c
-> +++ b/ltp/fsx.c
-
-
-> @@ -105,6 +109,11 @@ long	numops = -1;			/* -N flag */
->  int	randomoplen = 1;		/* -O flag disables it */
->  int	seed = 1;			/* -S flag */
->  int     mapped_writes = 1;              /* -W flag disables */
-> +#ifdef FALLOCATE
-> +int     fallocate_calls = 1;            /* -F flag disables */
-> +#else
-> +int     fallocate_calls = 0;            /* -F flag disables */
-> +#endif
-
-I think you should just skip the conditional initialization
-here and just assign it the value 1.  (I point out below
-what I suggest you do instead.)
-
->  int 	mapped_reads = 1;		/* -R flag disables it */
->  int	fsxgoodfd = 0;
->  int	o_direct;			/* -Z */
-
-. . .
-
-> @@ -845,22 +921,33 @@ test(void)
->  		prt("%lu...\n", testcalls);
->  
->  	/*
-> -	 * READ:	op = 0
-> -	 * WRITE:	op = 1
-> -	 * MAPREAD:     op = 2
-> -	 * TRUNCATE:	op = 3
-> -	 * MAPWRITE:    op = 3 or 4
-> +	 *                 lite  !lite
-> +	 * READ:	op = 0	   0
-> +	 * WRITE:	op = 1     1
-> +	 * MAPREAD:     op = 2     2
-> +	 * TRUNCATE:	op = -     3
-> +	 * MAPWRITE:    op = 3     4
-> +	 * FALLOCATE:   op = -     5
->  	 */
->  	if (lite ? 0 : op == 3 && (style & 1) == 0) /* vanilla truncate? */
->  		dotruncate(random() % maxfilelen);
->  	else {
->  		if (randomoplen)
->  			size = random() % (maxoplen+1);
-> +
-> +		/* truncate */
->  		if (lite ? 0 : op == 3)
-
-This is not huge, but I personally would rather see these
-comments *inside* the block they're describing.  So the
-"truncate" comment would go here, ...
-
->  			dotruncate(size);
->  		else {
->  			offset = random();
-> -			if (op == 1 || op == (lite ? 3 : 4)) {
-> +			/* fallocate */
-> +			if (op == 5) {
-
-...the "fallocate" comment would go here...
-> +				offset %= maxfilelen;
-> +				if (offset + size > maxfilelen)
-> +					size = maxfilelen - offset;
-> +				dofallocate(offset, size);
-> +			/* write / mapwrite */
-> +			} else if (op == 1 || op == (lite ? 3 : 4)) {
-
-...the "write / mapwrite" comment would go here...
-
->  				offset %= maxfilelen;
->  				if (offset + size > maxfilelen)
->  					size = maxfilelen - offset;
-> @@ -868,6 +955,7 @@ test(void)
->  					domapwrite(offset, size);
->  				else
->  					dowrite(offset, size);
-> +			/* read / mapread */
->  			} else {
-
-...and the "read / mapread" comment would go here.
-
->  				if (file_size)
->  					offset %= file_size;
-
-. . .
-
-> @@ -1331,6 +1425,16 @@ main(int argc, char **argv)
->  	} else 
->  		check_trunc_hack();
->  
-> +#ifdef FALLOCATE
-> +	if (!lite && fallocate_calls) {
-> +		if (fallocate(fd, 0, 0, 1) && errno == EOPNOTSUPP) {
-> +			warn("main: filesystem does not support fallocate, disabling");
-> +			fallocate_calls = 0;
-> +		} else
-> +			ftruncate(fd, 0);
-> +	}
-
-Add this here (rather than the conditional initialization
-on top):
-
-#else /* ! FALLOCATE */
-	fallocate_calls = 0;
-
-> +#endif
-> +
->  	while (numops == -1 || numops--)
->  		test();
->  
+> I have picked up the old ext3/jbd patches a while ago and
+> was trying to figure out how difficult would it be to port them
+> to ext4/jbd2.
 > 
-> _______________________________________________
-> xfs mailing list
-> xfs@oss.sgi.com
-> http://oss.sgi.com/mailman/listinfo/xfs
-
-
-
+> The gain from these patches to anyone using software RAID
+> should be clear, see:
+> http://lwn.net/Articles/363490/
+> 
+> What is not clear to me at this point is what are the
+> performance implications, if any, of withholding "declared" data
+> writeback until journal commit.
+> 
+> I also did not get to estimating the effort involved in the porting
+> to ext4/jbd2. The absence of ext3/jbd "dirty data" buffers list is
+> going to be one of the issues to deal with.
+> 
+> Does anyone out there have interest in pushing this forward?
+> 
+> Amir.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
