@@ -1,68 +1,41 @@
-From: Dave Young <hidave.darkstar@gmail.com>
-Subject: Re: [Ext4 punch hole 1/5] Ext4 Punch Hole Support: Convert Blocks to
- Uninit Exts
-Date: Thu, 10 Mar 2011 13:40:13 +0800
-Message-ID: <AANLkTikvw7AEPdLtfc6+4KpJQHM8maACsh1+s9P6==kB@mail.gmail.com>
-References: <4D6C6318.2010105@linux.vnet.ibm.com>
+From: Rogier Wolff <R.E.Wolff@BitWizard.nl>
+Subject: Time for "mkdir" on ext3.
+Date: Thu, 10 Mar 2011 08:11:19 +0100
+Message-ID: <20110310071119.GF31710@bitwizard.nl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Allison Henderson <achender@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f181.google.com ([209.85.216.181]:51902 "EHLO
-	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751166Ab1CJFkO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Mar 2011 00:40:14 -0500
-Received: by qyg14 with SMTP id 14so1135125qyg.19
-        for <linux-ext4@vger.kernel.org>; Wed, 09 Mar 2011 21:40:13 -0800 (PST)
-In-Reply-To: <4D6C6318.2010105@linux.vnet.ibm.com>
+Received: from cust-95-128-94-82.breedbanddelft.nl ([95.128.94.82]:43709 "HELO
+	abra2.bitwizard.nl" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with SMTP id S1750893Ab1CJHLW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Mar 2011 02:11:22 -0500
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 1, 2011 at 11:08 AM, Allison Henderson
-<achender@linux.vnet.ibm.com> wrote:
-> Hi All!
->
-> This is the patch series for ext4 punch hole that I have been working=
- on.
-> There is still a little more debugging that I would like to do with i=
-t,
-> but I've had some requests to see the patch, so I'm sending it out a =
-bit
-> early. =C2=A0Any feed back is appreciated. =C2=A0Thx!
->
 
-Hi, aliison
+Hi,
 
-Do you have new version of the patchset which address the comments here=
-?
-If they are not ready to send to list, you can send to me, I would like=
- to test.
+I have an ext3 filesystem. When I "cp -lr" a big tree there, it turns
+out that the "mkdir" calls take the bulk of the time. IIRC there are
+325000 directories (and 4 million files). Each mkdir call takes about
+50ms (*), so that accounts for about 4.5 hours of the running time.
 
-I tested this patchset for kvm guest image cleanup.
-Host ext4 + guest ext4
-guest side use lukas's fstrim tool, host side use a modified version
-of Christoph's qemu block discard patch
+Would ext4 perform significantly better?
 
-there's many error like following:
-[62834.936374] EXT4-fs error (device sda7): ext4_ext_lookup_hole:2907:
-inode #1310744: comm qemu-system-x86: bad header/extent: invalid magic
-- magic 0, entries 0, max 256(0), depth 256(0)
-[62834.936616] EXT4-fs error (device sda7): ext4_ext_lookup_hole:2907:
-inode #1310744: comm qemu-system-x86: bad header/extent: invalid magic
-- magic 0, entries 0, max 256(0), depth 256(0)
-bad header/extent: invalid magic - magic 0, entries 0, max 256(0), dept=
-h 256(0)
-Then host pc hangs there.
+	Roger.
 
-BTW, host xfs + guest ext4 works well for me.
+(*) I forgot about this Email while it was still in my editor. Now a
+day layter the mkdir calls all take around 17ms, and things run about
+3x faster. On the other hand it's been running for over 5 hours. And
+yesterday I've seen a streak of >100ms mkdir calls... So apparently
+it depends on "something".... 
 
---
-Thanks
-Dave
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
+**    Delftechpark 26 2628 XH  Delft, The Netherlands. KVK: 27239233    **
+*-- BitWizard writes Linux device drivers for any device you may have! --*
+Q: It doesn't work. A: Look buddy, doesn't work is an ambiguous statement. 
+Does it sit on the couch all day? Is it unemployed? Please be specific! 
+Define 'it' and what it isn't doing. --------- Adapted from lxrbot FAQ
