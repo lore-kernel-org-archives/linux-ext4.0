@@ -1,53 +1,51 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] ext4: don't kfree uninitialized s_group_info members
-Date: Thu, 10 Mar 2011 17:03:15 -0600
-Message-ID: <4D7958B3.8070309@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 29402] kernel panics while running ffsb scalability workloads
+ on 2.6.38-rc1 through -rc5
+Date: Fri, 11 Mar 2011 08:13:07 GMT
+Message-ID: <201103110813.p2B8D70I016703@demeter2.kernel.org>
+References: <bug-29402-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: dame_eugene@mail.ru
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34546 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751272Ab1CJXDU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 10 Mar 2011 18:03:20 -0500
+Received: from demeter2.kernel.org ([140.211.167.42]:49343 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751488Ab1CKINI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Mar 2011 03:13:08 -0500
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p2B8D70X016715
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Mar 2011 08:13:07 GMT
+In-Reply-To: <bug-29402-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Per kernel.org bugzilla #30872 we may call kfree on uninitialized
-members of the s_group_info array.  We can avoid this by kzalloc'ing
-the array, and only freeing them on the error path if they are
-non-zero.
+https://bugzilla.kernel.org/show_bug.cgi?id=29402
 
-This doesn't entirely solve the oops on mount if we fail down this
-path; failed_mount4: frees the sbi, for one, which gets referenced
-later in the failed mount paths - I haven't worked that out yet.
 
-Reported-by: Eugene A. Shatokhin <dame_eugene@mail.ru>
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+Lukas Czerner <lczerner@redhat.com> changed:
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index d1fe09a..e56befe 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2381,7 +2381,7 @@ static int ext4_mb_init_backend(struct super_block *sb)
- 	/* An 8TB filesystem with 64-bit pointers requires a 4096 byte
- 	 * kmalloc. A 128kb malloc should suffice for a 256TB filesystem.
- 	 * So a two level scheme suffices for now. */
--	sbi->s_group_info = kmalloc(array_size, GFP_KERNEL);
-+	sbi->s_group_info = kzalloc(array_size, GFP_KERNEL);
- 	if (sbi->s_group_info == NULL) {
- 		printk(KERN_ERR "EXT4-fs: can't allocate buddy meta group\n");
- 		return -ENOMEM;
-@@ -2412,7 +2412,8 @@ err_freebuddy:
- 		kmem_cache_free(cachep, ext4_get_group_info(sb, i));
- 	i = num_meta_group_infos;
- 	while (i-- > 0)
--		kfree(sbi->s_group_info[i]);
-+		if (sbi->s_group_info[i])
-+			kfree(sbi->s_group_info[i]);
- 	iput(sbi->s_buddy_cache);
- err_freesgi:
- 	kfree(sbi->s_group_info);
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+  Attachment #49642|0                           |1
+        is obsolete|                            |
+
+
+
+
+--- Comment #18 from Lukas Czerner <lczerner@redhat.com>  2011-03-11 08:13:05 ---
+Created an attachment (id=50622)
+ --> (https://bugzilla.kernel.org/attachment.cgi?id=50622)
+Simplification to avoid bad ordering
+
+This is new version of the bug fix, which has been tested by Eric Whitney and
+posted (https://patchwork.kernel.org/patch/627671/).
+
+Quoting Eric:
+"No panics, another full pass through the ffsb workloads on the three ext4
+variants without trouble, and the system logs are clean as well."
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
