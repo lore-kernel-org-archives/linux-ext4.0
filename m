@@ -1,51 +1,93 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 29402] kernel panics while running ffsb scalability workloads
- on 2.6.38-rc1 through -rc5
-Date: Fri, 11 Mar 2011 08:13:07 GMT
-Message-ID: <201103110813.p2B8D70I016703@demeter2.kernel.org>
-References: <bug-29402-13602@https.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] filefrag: count optimize non-verbose mode; count 0 extents
+ properly when verbose
+Date: Fri, 11 Mar 2011 09:01:38 -0600
+Message-ID: <4D7A3952.8020903@redhat.com>
+References: <4CEC4C86.1030806@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: p@draigbrady.com
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:49343 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751488Ab1CKINI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Mar 2011 03:13:08 -0500
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p2B8D70X016715
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 11 Mar 2011 08:13:07 GMT
-In-Reply-To: <bug-29402-13602@https.bugzilla.kernel.org/>
+Received: from mx1.redhat.com ([209.132.183.28]:40240 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751553Ab1CKPBm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 11 Mar 2011 10:01:42 -0500
+In-Reply-To: <4CEC4C86.1030806@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=29402
+On 11/23/10 5:21 PM, Eric Sandeen wrote:
+> # rm -f a; touch a; filefrag -v a
+>=20
+> yields 1 extent when it should be 0.  Without -v, 0 is returned.
+>=20
+> Fix this up by special-casing no extents returned in verbose
+> mode; skip printing the header for the columns too, since there
+> are no columns to print.
+>=20
+> Also, in nonverbose mode we can set fm_extent_count to 0
+> so that FIEMAP will just query the extent count without gathering
+> details; as it is today I think a non-verbose query may under-report
+> the extent count once "count" extents have been filled in.
+>=20
+> Addresses-redhat-bugzilla: 653234
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
+Ted, ping on this one?  Looks like it got lost.  I noticed this when
+P=E1draig Brady filed another red hat bug for the same issue,
+saying that he had also sent you a patch...
 
-Lukas Czerner <lczerner@redhat.com> changed:
+-Eric
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-  Attachment #49642|0                           |1
-        is obsolete|                            |
+> ---
+>=20
+> diff --git a/misc/filefrag.c b/misc/filefrag.c
+> index bd4486d..a48b9b0 100644
+> --- a/misc/filefrag.c
+> +++ b/misc/filefrag.c
+> @@ -194,7 +194,14 @@ static int filefrag_fiemap(int fd, int blk_shift=
+, int *num_extents)
+>  	do {
+>  		fiemap->fm_length =3D ~0ULL;
+>  		fiemap->fm_flags =3D flags;
+> -		fiemap->fm_extent_count =3D count;
+> +		/*
+> +		 * If fm_extent_count =3D=3D 0, FIEMAP returns count of
+> +		 * extents found without filling in details.
+> +		 */
+> +		if (!verbose)
+> +			fiemap->fm_extent_count =3D 0;
+> +		else
+> +			fiemap->fm_extent_count =3D count;
+>  		rc =3D ioctl(fd, FS_IOC_FIEMAP, (unsigned long) fiemap);
+>  		if (rc < 0) {
+>  			if (errno =3D=3D EBADR && fiemap_incompat_printed =3D=3D 0) {
+> @@ -206,6 +213,14 @@ static int filefrag_fiemap(int fd, int blk_shift=
+, int *num_extents)
+>  		}
+> =20
+>  		if (verbose && !fiemap_header_printed) {
+> +			/*
+> +			 * No extents on first call?
+> +			 * Skip header and show 0 extents.
+> +			 */
+> +			if (fiemap->fm_mapped_extents =3D=3D 0) {
+> +				*num_extents =3D 0;
+> +				goto out;
+> +			}
+>  			printf(" ext %*s %*s %*s length flags\n", logical_width,
+>  			       "logical", physical_width, "physical",
+>  			       physical_width, "expected");
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-
-
-
---- Comment #18 from Lukas Czerner <lczerner@redhat.com>  2011-03-11 08:13:05 ---
-Created an attachment (id=50622)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=50622)
-Simplification to avoid bad ordering
-
-This is new version of the bug fix, which has been tested by Eric Whitney and
-posted (https://patchwork.kernel.org/patch/627671/).
-
-Quoting Eric:
-"No panics, another full pass through the ffsb workloads on the three ext4
-variants without trouble, and the system logs are clean as well."
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
