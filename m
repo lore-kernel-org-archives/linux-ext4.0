@@ -1,24 +1,34 @@
-From: Dave Young <hidave.darkstar@gmail.com>
-Subject: Re: [Bug 30872] New: Calling kfree() for uninitialized pointer in ext4_mb_init_backend()
-Date: Mon, 14 Mar 2011 18:07:57 +0800
-Message-ID: <AANLkTinp_Omm7rmb1TUer=KgqJK_tbHdJ4e-BCT=_sYt@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 30872] Calling kfree() for uninitialized pointer in
+ ext4_mb_init_backend()
+Date: Mon, 14 Mar 2011 10:08:22 GMT
+Message-ID: <201103141008.p2EA8M38013378@demeter2.kernel.org>
 References: <bug-30872-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:37028 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750792Ab1CNKH6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Mar 2011 06:07:58 -0400
-Received: by qwk3 with SMTP id 3so1123036qwk.19
-        for <linux-ext4@vger.kernel.org>; Mon, 14 Mar 2011 03:07:57 -0700 (PDT)
+Received: from demeter2.kernel.org ([140.211.167.42]:47109 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750792Ab1CNKIX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Mar 2011 06:08:23 -0400
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p2EA8MgZ013379
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 14 Mar 2011 10:08:23 GMT
 In-Reply-To: <bug-30872-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+https://bugzilla.kernel.org/show_bug.cgi?id=3D30872
+
+
+
+
+
+--- Comment #1 from Dave Young <hidave.darkstar@gmail.com>  2011-03-14 =
+10:08:20 ---
 On Thu, Mar 10, 2011 at 10:21 PM,  <bugzilla-daemon@bugzilla.kernel.org=
 > wrote:
 > https://bugzilla.kernel.org/show_bug.cgi?id=3D30872
@@ -191,12 +201,11 @@ ail
 ml
 >
 
-
-
 --=20
-Regards
-dave
---
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=3Demai=
+l
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.--
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
 the body of a message to majordomo@vger.kernel.org
