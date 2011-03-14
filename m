@@ -1,143 +1,99 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: Why do we initialize block bitmaps in ext4_new_inode()
-Date: Mon, 14 Mar 2011 21:13:10 +0200
-Message-ID: <AANLkTikcsteV8Fatf-8uydyhYaNXxQgQHSsy3BdhBjXE@mail.gmail.com>
-References: <E1PzBop-0007a0-BN@tytso-glaptop>
+From: Hugh Dickins <hughd@google.com>
+Subject: ext4 deep stack with mark_page_dirty reclaim
+Date: Mon, 14 Mar 2011 12:20:52 -0700 (PDT)
+Message-ID: <alpine.LSU.2.00.1103141156190.3220@sister.anvils>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org
 To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f181.google.com ([209.85.216.181]:37353 "EHLO
-	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754952Ab1CNTNM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Mar 2011 15:13:12 -0400
-Received: by qyg14 with SMTP id 14so4662499qyg.19
-        for <linux-ext4@vger.kernel.org>; Mon, 14 Mar 2011 12:13:11 -0700 (PDT)
-In-Reply-To: <E1PzBop-0007a0-BN@tytso-glaptop>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <owner-linux-mm@kvack.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Mar 14, 2011 at 7:44 PM, Theodore Ts'o <tytso@mit.edu> wrote:
->
-> Is there some subtle reason why ext4_new_inode() checked for
-> uninitialized block bitmaps and initialized the block bitmaps in
-> ext4_new_inode(). =A0It's not immediately needed in that function, an=
-d I
-> don't see any reason why initializing the inode table or inode
-> allocation bitmap requires initializing the block bitmap.
->
-> Am I missing something?
+When testing something else on 2.6.38-rc8 last night,
+I hit this x86_64 stack overflow.  I've never had one before,
+it seems worth reporting.  kdb was in, I jotted it down by hand
+(the notifier part of it will be notifying kdb of the fault).
+CONFIG_DEBUG_STACK_OVERFLOW and DEBUG_STACK_USAGE were not set.
 
-If you are, then I am missing it too.
-Was there ever a time when uninit_bg meant something other than it mean=
-s today?
-Like wasn't it used by fsck for fast inode scan of ext3?
-Does it mater anything for fsck if the block bitmap is not initialized
-and the inode bitmap is?
+I should disclose that I have a hack in which may make my stack
+frames slightly larger than they should be: check against yours.
+So it may not be an overflow for anyone else, but still a trace
+to worry about.
 
+The faulting address has a stray 2 in it: presumably from when
+the stack descended into the thread_info and got corrupted.
 
+BUG: unable to handle kernel paging request at ffff88027a704060
+IP: vprintk+0x100
+Thread overran stack, or stack corrupted
+ffff88007a7040a8 notifier_call_chain+0x40
+ffff88007a704108 __atomic_notifier_call_chain+0x48
+ffff88007a704148 __die+0x48
+ffff88007a7041a8 die+0x50
+ffff88007a7041e8 do_general_protection+0x168
+ffff88007a704248 general_protection+0x1f
+ffff88007a704338 schedule+0x25a
+ffff88007a7044a8 io_schedule+0x35
+ffff88007a7044c8 get_request_wait+0xc6
+ffff88007a704568 __make_request+0x36d
+ffff88007a7045d8 generic_make_request+0x2f2
+ffff88007a7046a8 submit_bio+0xe1
+ffff88007a704738 swap_writepage+0xa3
+ffff88007a704788 pageout+0x151
+ffff88007a704808 shrink_page_list+0x2db
+ffff88007a7048b8 shrink_inactive_list+0x2d3
+ffff88007a7049b8 shrink_zone+0x17d
+ffff88007a704a98 shrink_zones+0x0xa3
+ffff88007a704b18 do_try_to_free_pages+0x87
+ffff88007a704ba8 try_to_free_mem_cgroup_pages+0x8e
+ffff88007a704c18 mem_cgroup_hierarchical_reclaim+0x220
+ffff88007a704cc8 mem_cgroup_do_charge+0xdc
+ffff88007a704d48 __mem_cgroup_try_charge+0x19c
+ffff88007a704dc8 mem_cgroup_charge_common+0xa8
+ffff88007a704e48 mem_cgroup_cache_charge+0x19a
+ffff88007a704ec8 add_to_page_cache_locked+0x57
+ffff88007a704f28 add_to_page_cache_lru+0x3e
+ffff88007a704f78 find_or_create_page+0x69
+ffff88007a704fe8 grow_dev_page+0x4a
+ffff88007a705048 grow_buffers+0x41
+ffff88007a705088 __getblk_slow+0xd7
+ffff88007a7050d8 __getblk+0x44
+ffff88007a705128 __ext4_get_inode_loc+0x12c
+ffff88007a7051d8 ext4_get_inode_loc+0x30
+ffff88007a705208 ext4_reserve_inode_write+0x21
+ffff88007a705258 ext4_mark_inode_dirty+0x3b
+ffff88007a7052f8 ext4_dirty_inode+0x3e
+ffff88007a705338 __mark_inode_dirty+0x32
+linux/fs.h       mark_inode_dirty
+linux/quotaops.h dquot_alloc_space
+linux/quotaops.h dquot_alloc_block
+ffff88007a705388 ext4_mb_new_blocks+0xc2
+ffff88007a705418 ext4_alloc_blocks+0x189
+ffff88007a7054e8 ext4_alloc_branch+0x73
+ffff88007a7055b8 ext4_ind_map_blocks+0x148
+ffff88007a7056c8 ext4_map_blocks+0x148
+ffff88007a705738 ext4_getblk+0x5f
+ffff88007a7057c8 ext4_bread+0x36
+ffff88007a705828 ext4_append+0x52
+ffff88007a705888 do_split+0x5b
+ffff88007a705968 ext4_dx_add_entry+0x4b4
+ffff88007a705a98 ext4_add_entry+0x7c
+ffff88007a705b48 ext4_add_nondir+0x2e
+ffff88007a705b98 ext4_create+0xf5
+ffff88007a705c28 vfs_create+0x83
+ffff88007a705c88 __open_namei_create+0x59
+ffff88007a705ce8 do_last+0x13b
+ffff88007a705d58 do_filp_open+0x2ae
+ffff88007a705ed8 do_sys_open+0x72
+ffff88007a705f58 sys_open+0x27
 
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0- Ted
->
->
-> From ff15031626d5f10ba1256c0c7a3818ca12205b55 Mon Sep 17 00:00:00 200=
-1
-> From: Theodore Ts'o <tytso@mit.edu>
-> Date: Mon, 14 Mar 2011 13:37:36 -0400
-> Subject: [PATCH] ext4: Remove block bitmap initialization in ext4_new=
-_inode()
->
-> We are initializing the block bitmap in ext4_new_inode(), and as far
-> as I can tell, there's no reason to do it. =A0So remove it to simplif=
-y
-> things.
->
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
-> =A0fs/ext4/ialloc.c | =A0 36 ------------------------------------
-> =A01 files changed, 0 insertions(+), 36 deletions(-)
->
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index 2fd3b0e..f79432a 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -936,42 +936,6 @@ repeat_in_this_group:
-> =A0 =A0 =A0 =A0goto out;
->
-> =A0got:
-> - =A0 =A0 =A0 /* We may have to initialize the block bitmap if it isn=
-'t already */
-> - =A0 =A0 =A0 if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMP=
-AT_GDT_CSUM) &&
-> - =A0 =A0 =A0 =A0 =A0 gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINI=
-T)) {
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct buffer_head *block_bitmap_bh;
-> -
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 block_bitmap_bh =3D ext4_read_block_bit=
-map(sb, group);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 BUFFER_TRACE(block_bitmap_bh, "get bloc=
-k bitmap access");
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 err =3D ext4_journal_get_write_access(h=
-andle, block_bitmap_bh);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (err) {
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 brelse(block_bitmap_bh)=
-;
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto fail;
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
-> -
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 free =3D 0;
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_lock_group(sb, group);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* recheck and clear flag under lock if=
- we still need to */
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (gdp->bg_flags & cpu_to_le16(EXT4_BG=
-_BLOCK_UNINIT)) {
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 free =3D ext4_free_bloc=
-ks_after_init(sb, group, gdp);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 gdp->bg_flags &=3D cpu_=
-to_le16(~EXT4_BG_BLOCK_UNINIT);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_free_blks_set(sb, =
-gdp, free);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 gdp->bg_checksum =3D ex=
-t4_group_desc_csum(sbi, group,
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 gdp);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_unlock_group(sb, group);
-> -
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* Don't need to dirty bitmap block if =
-we didn't change it */
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (free) {
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 BUFFER_TRACE(block_bitm=
-ap_bh, "dirty block bitmap");
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 err =3D ext4_handle_dir=
-ty_metadata(handle,
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 NULL, block_bitmap_bh);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
-> -
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 brelse(block_bitmap_bh);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (err)
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto fail;
-> - =A0 =A0 =A0 }
-> =A0 =A0 =A0 =A0BUFFER_TRACE(group_desc_bh, "call ext4_handle_dirty_me=
-tadata");
-> =A0 =A0 =A0 =A0err =3D ext4_handle_dirty_metadata(handle, NULL, group=
-_desc_bh);
-> =A0 =A0 =A0 =A0if (err)
-> --
-> 1.7.3.1
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+Hugh
+
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
