@@ -1,96 +1,43 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: ext4 deep stack with mark_page_dirty reclaim
-Date: Mon, 14 Mar 2011 16:46:27 -0400
-Message-ID: <20110314204627.GB8120@thunk.org>
-References: <alpine.LSU.2.00.1103141156190.3220@sister.anvils>
+From: Phillip Susi <psusi@cfl.rr.com>
+Subject: Re: Large directories and poor order correlation
+Date: Mon, 14 Mar 2011 16:52:21 -0400
+Message-ID: <4D7E8005.4030201@cfl.rr.com>
+References: <4D7E7990.90209@cfl.rr.com> <4D7E7C7F.1040509@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-mm@kvack.org
-To: Hugh Dickins <hughd@google.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:53618 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751310Ab1CNUqc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 Mar 2011 16:46:32 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LSU.2.00.1103141156190.3220@sister.anvils>
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.122]:34202 "EHLO
+	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751368Ab1CNUw2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Mar 2011 16:52:28 -0400
+In-Reply-To: <4D7E7C7F.1040509@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 14, 2011 at 12:20:52PM -0700, Hugh Dickins wrote:
-> When testing something else on 2.6.38-rc8 last night,
-> I hit this x86_64 stack overflow.  I've never had one before,
-> it seems worth reporting.  kdb was in, I jotted it down by hand
-> (the notifier part of it will be notifying kdb of the fault).
-> CONFIG_DEBUG_STACK_OVERFLOW and DEBUG_STACK_USAGE were not set.
+On 3/14/2011 4:37 PM, Eric Sandeen wrote:
+> On 3/14/11 3:24 PM, Phillip Susi wrote:
+>> Shouldn't copying or extracting or otherwise populating a large
+>> directory of many small files at the same time result in a strong
+>> correlation between the order the names appear in the directory, and the
+>> order their data blocks are stored on disk, and thus, read performance
+>> should not be negatively impacted by fragmentation?
 > 
-> I should disclose that I have a hack in which may make my stack
-> frames slightly larger than they should be: check against yours.
-> So it may not be an overflow for anyone else, but still a trace
-> to worry about.
+> No, because htree (dir_index) dirs returns names in hash-value
+> order, not inode number order.  i.e. "at random."
 
-Here's the trace translated to the stack space used by each function.
-There are a few piggy ext4 functions that we can try to shrink, but
-the real problem is just how deep the whole stack is getting.
+I thought that the htree was used to look up names, but the normal
+directory was used to enumerate them?  In other words, the htree speeds
+up opening a single file, but slows down traversing the entire
+directory, so should not be used there.
 
->From the syscall to the lowest-level ext4 function is 3712 bytes, and
-everything from there to the schedule() which then triggered the GPF
-was another 3728 of stack space....
+Also isn't htree only enabled for large directories?  I still see crummy
+correlation for small ( < 100 files, even one with only 8 entries )
+directories.
 
-				- Ted
+It seems unreasonable to ask applications to read all directory entries,
+then sort them by inode number to achieve reasonable performance.  This
+seems like something the fs should be doing.
 
- 240 schedule+0x25a
- 368 io_schedule+0x35
-  32 get_request_wait+0xc6
- 160 __make_request+0x36d
- 112 generic_make_request+0x2f2
- 208 submit_bio+0xe1
- 144 swap_writepage+0xa3
-  80 pageout+0x151
- 128 shrink_page_list+0x2db
- 176 shrink_inactive_list+0x2d3
- 256 shrink_zone+0x17d
- 224 shrink_zones+0x0xa3
- 128 do_try_to_free_pages+0x87
- 144 try_to_free_mem_cgroup_pages+0x8e
- 112 mem_cgroup_hierarchical_reclaim+0x220
- 176 mem_cgroup_do_charge+0xdc
- 128 __mem_cgroup_try_charge+0x19c
- 128 mem_cgroup_charge_common+0xa8
- 128 mem_cgroup_cache_charge+0x19a
- 128 add_to_page_cache_locked+0x57
-  96 add_to_page_cache_lru+0x3e
-  80 find_or_create_page+0x69
- 112 grow_dev_page+0x4a
-  96 grow_buffers+0x41
-  64 __getblk_slow+0xd7
-  80 __getblk+0x44
-  80 __ext4_get_inode_loc+0x12c
- 176 ext4_get_inode_loc+0x30
-  48 ext4_reserve_inode_write+0x21
-  80 ext4_mark_inode_dirty+0x3b
- 160 ext4_dirty_inode+0x3e
-  64 __mark_inode_dirty+0x32
-  80 linux/fs.h       mark_inode_dirty
-   0 linux/quotaops.h dquot_alloc_space
-   0 linux/quotaops.h dquot_alloc_block
-   0 ext4_mb_new_blocks+0xc2
- 144 ext4_alloc_blocks+0x189
- 208 ext4_alloc_branch+0x73
- 208 ext4_ind_map_blocks+0x148
- 272 ext4_map_blocks+0x148
- 112 ext4_getblk+0x5f
- 144 ext4_bread+0x36
-  96 ext4_append+0x52
-  96 do_split+0x5b
- 224 ext4_dx_add_entry+0x4b4
- 304 ext4_add_entry+0x7c
- 176 ext4_add_nondir+0x2e
-  80 ext4_create+0xf5
- 144 vfs_create+0x83
-  96 __open_namei_create+0x59
-  96 do_last+0x13b
- 112 do_filp_open+0x2ae
- 384 do_sys_open+0x72
- 128 sys_open+0x27
