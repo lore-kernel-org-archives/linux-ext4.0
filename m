@@ -1,51 +1,81 @@
-From: Ted Ts'o <tytso@mit.edu>
+From: Phillip Susi <psusi@cfl.rr.com>
 Subject: Re: Large directories and poor order correlation
-Date: Tue, 15 Mar 2011 13:18:43 -0400
-Message-ID: <20110315171843.GI8120@thunk.org>
-References: <4D7E7990.90209@cfl.rr.com>
- <4D7E7C7F.1040509@redhat.com>
- <8239molspy.fsf@mid.bfk.de>
- <4C11D2E5-75CD-4A9F-A534-EEC16CDD836B@mit.edu>
- <20110315133327.GG22577@bitwizard.nl>
+Date: Tue, 15 Mar 2011 15:08:53 -0400
+Message-ID: <4D7FB945.1070209@cfl.rr.com>
+References: <4D7E7990.90209@cfl.rr.com> <4D7E7C7F.1040509@redhat.com> <4D7E8005.4030201@cfl.rr.com> <20110314215249.GE8120@thunk.org> <4D7EA83D.20400@cfl.rr.com> <20110315001448.GG8120@thunk.org> <4D7F7134.7080209@cfl.rr.com> <20110315170827.GH8120@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Florian Weimer <fweimer@bfk.de>, Eric Sandeen <sandeen@redhat.com>,
-	Phillip Susi <psusi@cfl.rr.com>,
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Eric Sandeen <sandeen@redhat.com>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Rogier Wolff <R.E.Wolff@BitWizard.nl>
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:57144 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758053Ab1CORSy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Mar 2011 13:18:54 -0400
-Content-Disposition: inline
-In-Reply-To: <20110315133327.GG22577@bitwizard.nl>
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:38651 "EHLO
+	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752342Ab1COTJD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Mar 2011 15:09:03 -0400
+In-Reply-To: <20110315170827.GH8120@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 15, 2011 at 02:33:27PM +0100, Rogier Wolff wrote:
-> IMHO, the most important part is "up to and including the stat". It
-> should be possible to get the directory, and inode info all inside the
-> same "16Mb" part of the disk. This would result in (after a few seeks)
-> the rest of the accesses coming from the disk's cache.
+On 3/15/2011 1:08 PM, Ted Ts'o wrote:
+> No, because the directory blocks are the leaf nodes, and in the case
+> of a node split, we need to copy half of the directory entries in one
+> block, and move it to a newly allocated block.  If readdir() was
+> traversing the linear directory entries, and had already traversed
+> that directory block that needs to split, then you'll return those
+> directory entries that got copied into a new leaf (i.e., new directory
+> block) a second time.
 
-It depends on your workload.  In the case of dpkg, everything fits in
-cache (usually) so after the first operation this is no longer a
-concern.  But all of the data blocks of /var/lib/dpkg/info/* is huge,
-since not using a real database means that a 4k block is consumed for
-300 bytes of data, so fitting all of the data blocks in memory
-generally doesn't work, which is why the dpkg folks are sorting by
-block number.
+When you split the htree node, aren't you just moving around the
+"deleted entries"?  So the normal names remain in the same order so
+readdir() doesn't have a problem when it is ignoring the htree entries
+and just walking the normal names?
 
-> This would mean that you should allocate directory blocks from the end
-> PREVIOUS block group.... 
+Also, how do you deal with this when you do end up re balancing the
+htree during a readdir()?  I would think that keeping that straight
+would be much more difficult than handling the problem with linear
+directory entries.
 
-We do something else, which is we group all directory blocks together
-at the beginning of each flex_bg.  This tends to reduce free space
-fragmentation, and it helps to optimize for large files that are
-bigger than a block group, and where you want to have contiguous
-regions larger than a bg --- so breaking up the space every bg is not
-a great idea.  Again, with general purpose file systems you can't just
-optimize for one thing, and life is full of tradeoffs.
+Why was the htree hidden inside the normal directory structure anyway?
 
-      	   	    	    	       	    - Ted
+> Unless some files get deleted in between.  Now depending on the
+> "holes" in the directory blocks, where the new directory entries are
+> added, even in the non-htree case, could either be wherever an empty
+> directory entry could be found, or in the worst case, we might need to
+> allocate a new block and that new directory entry gets added to the
+> end of the block.
+
+Right, but on an otherwise idle system, when you make all the files at
+once via rsync or untaring an archive, this shouldn't happen and they
+should be ( generally ) in ascending order, shouldn't they?
+
+> I suggest that you try some experiments, using both dir_index and
+> non-dir_index file systems, and then looking at the directory using
+> the debugfs "ls" and "htree_dump" commands.  Either believe me, or
+> learn how things really work.  :-)
+
+Now THAT sounds interesting.  Is this documented somewhere?
+
+Also, why can't chattr set/clear the 'I' flag?  Is it just a runtime
+combersome thing?  So setting and clearing the flag with debugfs
+followed by a fsck should do the trick?  And when is it automatically
+enabled?
+
+> I suppose we could allocate up to some tunable amount worth of
+> directory space, say 64k or 128k, and do the sorting inside the
+> kernel.  We then have to live with the fact that each badly behaved
+> program which calls opendir(), and then a single readdir(), and then
+> stops, will consume 128k of non-swappable kernel memory until the
+> process gets killed.  A process which does this thousands of times
+> could potentially carry out a resource exhaustion attack on the
+> system.  Which we could then try to patch over, by say creating a new
+> resource limit of the number of directories a process can keep open at
+> a time, but then the attacker could just fork some additional child
+> processes....
+
+I think you are right in that if sorting is to be done at
+opendir()/readdir() time, then it should be done in libc, not the
+kernel, but it would be even better if the fs made some effort store the
+entries in a good order so no sorting is needed at all.
+
