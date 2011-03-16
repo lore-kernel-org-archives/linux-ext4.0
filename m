@@ -1,47 +1,50 @@
-From: Robin Dong <hao.bigrat@gmail.com>
-Subject: [PATCH] ext4: critical info format fix in __acquire
-Date: Wed, 16 Mar 2011 17:37:25 +0800
-Message-ID: <1300268245-18752-1-git-send-email-hao.bigrat@gmail.com>
-Cc: Robin Dong <sanbai@taobao.com>, stable-commits@vger.kernel.org
-To: linux-ext4@vger.kernel.org
+From: Coly Li <colyli@gmail.com>
+Subject: Re: [PATCH] ext4: critical info format fix in __acquire
+Date: Wed, 16 Mar 2011 18:42:33 +0800
+Message-ID: <4D809419.1020508@gmail.com>
+References: <1300268245-18752-1-git-send-email-hao.bigrat@gmail.com>
+Reply-To: colyli@gmail.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, Robin Dong <sanbai@taobao.com>
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:58205 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752445Ab1CPJhf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Mar 2011 05:37:35 -0400
+Received: from oproxy3-pub.bluehost.com ([69.89.21.8]:60965 "HELO
+	oproxy3-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1752270Ab1CPKOs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Mar 2011 06:14:48 -0400
+In-Reply-To: <1300268245-18752-1-git-send-email-hao.bigrat@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Robin Dong <sanbai@taobao.com>
+On 2011=E5=B9=B403=E6=9C=8816=E6=97=A5 17:37, Robin Dong Wrote:
+> From: Robin Dong<sanbai@taobao.com>
+>
+> When we do performence-testing on ext4 filesystem, we observe a warni=
+ng
+[snip]
 
-When we do performence-testing on ext4 filesystem, we observe a warning
-like this:
+This bug is found on upstream 2.6.36 kernel. We ran a 2.6.36 kernel on =
+the online system with 8 Ext4 file systems. 2 of=20
+them are mounted with delayed allocation feature. This warning is only =
+observed on delayed allocation enabled Ext4 file=20
+systems.
 
-[ 1684.113205] EXT4-fs error (device sda7): ext4_mb_generate_buddy:718: group 259825901 blocks in bitmap, 26057 in gd
+This issue is not easy to reproduce, on two servers with 2.6.36 kenrel =
++ ext4, after running 110+ days, the error starts=20
+to appear on kernel log. When check the error log, we found the info fo=
+rmat should be fixed, that's how this patch comes.
 
-indeed, it should be
+=46or the bug mentioned in Robin's patch, we will start another thread =
+to discuss.
 
-group 2598, 25901 blocks in bitmap, 26057 in gd.
+Thanks.
 
-Reviewed-by: Coly Li <bosong.ly@taobao.com>
-Signed-off-by: Robin Dong <sanbai@taobao.com>
----
- fs/ext4/super.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index f6a318f..bb38475 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -594,7 +594,7 @@ __acquires(bitlock)
- 
- 	vaf.fmt = fmt;
- 	vaf.va = &args;
--	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: group %u",
-+	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: group %u, ",
- 	       sb->s_id, function, line, grp);
- 	if (ino)
- 		printk(KERN_CONT "inode %lu: ", ino);
--- 
-1.7.3.5
-
+Coly Li
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
