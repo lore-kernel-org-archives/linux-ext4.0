@@ -1,307 +1,105 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: [Ext4 punch hole 3/5] Ext4 Punch Hole Support: Enable Kernel
- Space Fiemap
-Date: Wed, 16 Mar 2011 12:08:20 -0700
-Message-ID: <4D810AA4.7010003@linux.vnet.ibm.com>
-References: <4D7FD792.3080101@linux.vnet.ibm.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 31222] New: kernel BUG at fs/ext4/mballoc.c:3141
+Date: Wed, 16 Mar 2011 19:32:25 GMT
+Message-ID: <bug-31222-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e7.ny.us.ibm.com ([32.97.182.137]:45959 "EHLO e7.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752483Ab1CPTI3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 Mar 2011 15:08:29 -0400
-Received: from d01dlp01.pok.ibm.com (d01dlp01.pok.ibm.com [9.56.224.56])
-	by e7.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p2GIlUT4031568
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Mar 2011 14:47:30 -0400
-Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
-	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 6841B38C8038
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Mar 2011 15:08:24 -0400 (EDT)
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p2GJ8RSq128590
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Mar 2011 15:08:27 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p2GJ8Qxx020592
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Mar 2011 15:08:26 -0400
-Received: from [9.48.99.205] (sig-9-48-99-205.mts.ibm.com [9.48.99.205])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p2GJ8Ohd020269
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Mar 2011 15:08:25 -0400
-In-Reply-To: <4D7FD792.3080101@linux.vnet.ibm.com>
+Received: from demeter2.kernel.org ([140.211.167.42]:52231 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752483Ab1CPTc0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Mar 2011 15:32:26 -0400
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p2GJWP9x021002
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Mar 2011 19:32:25 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 3/15/2011 2:18 PM, Allison Henderson wrote:
-> This patch modifies the existing fiemap routines to
-> make them usable by internal kernel functions.
-> The existing fiemap routines were not suitable for
-> internal use, because they assume that the data they
-> collect needs to be copied to user space.
-> 
-> The existing ext4_ext_fiemap_cb routine has been renamed to
-> ext4_ext_fiemap and modified to store its findings in a
-> fiemap_extent poitner passed in by the calling function.
-> 
-> A simpler ext4_ext_fiemap_cb routine has been added that
-> is simply a wrapper to this function and copies the
-> found results to the appropriate space (ie kernel
-> space or user space) based on a flag parameter.
-> 
-> Lastly two top level wrapper functions have been added:
-> ext4_ext_fiemap_cb_kern() and ext4_ext_fiemap_cb_user()
-> These two functions implement the required function
-> signature needed by ext4_ext_walk_space().  Any function
-> that needs to collect fiemap information can now call
-> ext4_ext_walk_space() and pass one of these two functions
-> as the call back.  These two functions basically just call
-> the general purpose ext4_ext_fiemap_cb and pass it the
-> respective space flag for user space or kernel space.
-> 
-> These new fiemap modifications will be used by the hole
-> punch routines to identify when an extent is already
-> punched out.
-> 
-> Signed-off-by: Allison Henderson<achender@us.ibm.com>
-> ---
-> :100644 100644 2e29abb... 1093cc1... M	fs/ext4/ext4_extents.h
-> :100644 100644 b78b41f... dacb0a1... M	fs/ext4/extents.c
->   fs/ext4/ext4_extents.h |    4 +
->   fs/ext4/extents.c      |  177 ++++++++++++++++++++++++++++++++++++++++++++----
->   2 files changed, 168 insertions(+), 13 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-> index 2e29abb..1093cc1 100644
-> --- a/fs/ext4/ext4_extents.h
-> +++ b/fs/ext4/ext4_extents.h
-> @@ -132,6 +132,10 @@ typedef int (*ext_prepare_callback)(struct inode *, struct ext4_ext_path *,
->   #define EXT_CONTINUE   0
->   #define EXT_BREAK      1
->   #define EXT_REPEAT     2
-> +#define EXT_FOUND_HOLE 3
-> +
-> +#define EXT_USER_SPACE 0
-> +#define EXT_KERN_SPACE 1
->    /* Maximum logical block in a file; ext4_extent's ee_block is __le32 */
->   #define EXT_MAX_BLOCK	0xffffffff
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index b78b41f..dacb0a1 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -3985,12 +3985,79 @@ int ext4_convert_unwritten_extents(struct inode *inode, loff_t offset,
->   	return ret>  0 ? ret2 : ret;
->   }
->   +
-> +/**
-> + * ext4_fiemap_fill_next_extent - Fiemap helper function
-> + * @fieinfo:    Fiemap context passed into ->fiemap
-> + * @logical:    Extent logical start offset, in bytes
-> + * @phys:       Extent physical start offset, in bytes
-> + * @len:        Extent length, in bytes
-> + * @flags:      FIEMAP_EXTENT flags that describe this extent
-> + *
-> + * Similar to fiemap_fill_next_extent, but for internal
-> + * use.  This function will populate extent info as passed in via
-> + * arguments, but fieinfo is assumed to be kernel space memory
-> + * not user space memory.  On sucess, extent count
-> + * on fieinfo is incremented.
-> + *
-> + * Returns 0 on success, -errno on error, 1 if this was the last
-> + * extent that will fit in user array.
-> + */
-> +
-> +static int ext4_fiemap_fill_next_extent(struct fiemap_extent_info *fieinfo,
-> +				u64 logical, u64 phys, u64 len, u32 flags)
-> +{
-> +	struct fiemap_extent *dest;
-> +	int ret = 0;
-> +
-> +	dest = fieinfo->fi_extents_start;
-> +
-> +	/* only count the extents */
-> +	if (fieinfo->fi_extents_max == 0) {
-> +		fieinfo->fi_extents_mapped++;
-> +		ret = (flags&  FIEMAP_EXTENT_LAST) ? 1 : 0;
-> +		return ret;
-> +	}
-> +
-> +	if (fieinfo->fi_extents_mapped>= fieinfo->fi_extents_max)
-> +		return 1;
-> +
-> +	if (flags&  FIEMAP_EXTENT_DELALLOC)
-> +		flags |= FIEMAP_EXTENT_UNKNOWN;
-> +	if (flags&  FIEMAP_EXTENT_DATA_ENCRYPTED)
-> +		flags |= FIEMAP_EXTENT_ENCODED;
-> +	if (flags&  (FIEMAP_EXTENT_DATA_TAIL|FIEMAP_EXTENT_DATA_INLINE))
-> +		flags |= FIEMAP_EXTENT_NOT_ALIGNED;
-> +
-> +	dest += fieinfo->fi_extents_mapped;
-> +
-> +	memset(dest, 0, sizeof(struct fiemap_extent));
-> +	dest->fe_logical = logical;
-> +	dest->fe_physical = phys;
-> +	dest->fe_length = len;
-> +	dest->fe_flags = flags;
-> +
-> +	fieinfo->fi_extents_mapped++;
-> +	if (fieinfo->fi_extents_mapped == fieinfo->fi_extents_max)
-> +		return 1;
-> +	ret = (flags&  FIEMAP_EXTENT_LAST) ? 1 : 0;
-> +	return ret;
-> +}
-> +
->   /*
-> - * Callback function called for each extent to gather FIEMAP information.
-> + * ext4_ext_fiemap()
-> + * Function used by fiemap call back functions
-> + * to gather FIEMAP information for each extent
-> + *
-> + * @inode:  The files inode
-> + * @newex:  Specifies the blocks to search for
-> + * @ex:     The extent to gather information about
-> + * @result: Pointer to structure to hold the results
->    */
-> -static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
-> -		       struct ext4_ext_cache *newex, struct ext4_extent *ex,
-> -		       void *data)
-> +static int ext4_ext_fiemap(struct inode *inode,
-> +			struct ext4_ext_cache *newex,
-> +			struct ext4_extent *ex,
-> +			struct fiemap_extent *result)
->   {
->   	__u64	logical;
->   	__u64	physical;
-> @@ -3998,7 +4065,6 @@ static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
->   	loff_t	size;
->   	__u32	flags = 0;
->   	int		ret = 0;
-> -	struct fiemap_extent_info *fieinfo = data;
->   	unsigned char blksize_bits;
->    	blksize_bits = inode->i_sb->s_blocksize_bits;
-> @@ -4047,7 +4113,7 @@ out:
->   					page_cache_release(pages[index]);
->   				/* just a hole. */
->   				kfree(pages);
-> -				return EXT_CONTINUE;
-> +				return EXT_FOUND_HOLE;
->   			}
->    			/* Try to find the 1st mapped buffer. */
-> @@ -4160,15 +4226,100 @@ found_delayed_extent:
->   	if (logical + length>= size)
->   		flags |= FIEMAP_EXTENT_LAST;
->   -	ret = fiemap_fill_next_extent(fieinfo, logical, physical,
-> -					length, flags);
-> -	if (ret<  0)
-> -		return ret;
-> -	if (ret == 1)
-> -		return EXT_BREAK;
-> +
-> +	result->fe_logical = logical;
-> +	result->fe_physical = physical;
-> +	result->fe_length = length;
-> +	result->fe_flags = flags;
-> +
->   	return EXT_CONTINUE;
->   }
->   +/*
-> + * ext4_ext_fiemap_cb()
-> + * General purpose callback function called for each extent to
-> + * gather FIEMAP information. The "space" parameter may be set to
-> + * EXT_USER_SPACE to indicate that "data" refers to user space
-> + * memory, or EXT_KERN_SPACE to indicate that it is kernel space
-> + * memory
-> + *
-> + * @inode:  The files inode
-> + * @newex:  Specifies the blocks to search for
-> + * @ex:     The extent to gather information about
-> + * @data:   Pointer to a struct fiemap_extent to hold the result
-> + * @space:  Indicates if data points to user space or kernel space
-> + */
-> +static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_cache *newex,
-> +			struct ext4_extent *ex, void *data, unsigned int space)
-> +{
-> +	struct fiemap_extent_info *fieinfo = data;
-> +	struct fiemap_extent result;
-> +	int ret = 0;
-> +
-> +	memset(&result, 0, sizeof(result));
-> +	ret = ext4_ext_fiemap(inode, newex, ex,&result);
-> +
-> +	/* If fiemap found a hole, dont bother filling out the fieinfo */
-> +	if (ret == EXT_FOUND_HOLE)
-> +		return EXT_CONTINUE;
-> +
-> +	/* If it found something to report, then fill out the fieinfo */
-> +	if (ret == EXT_CONTINUE) {
-> +		if (space == EXT_KERN_SPACE)
-> +			ret = ext4_fiemap_fill_next_extent(fieinfo,
-> +				result.fe_logical, result.fe_physical,
-> +				result.fe_length, result.fe_flags);
-> +
-> +		else if (space == EXT_USER_SPACE)
-> +			ret = fiemap_fill_next_extent(fieinfo,
-> +				result.fe_logical, result.fe_physical,
-> +				result.fe_length, result.fe_flags);
-> +		else
-> +			return -ENOTSUPP;
-> +
-> +		if (ret<  0)
-> +			return ret;
-> +		if (ret == 1)
-> +			return EXT_BREAK;
-> +		return EXT_CONTINUE;
-> +	}
-> +
-> +	return ret;
-> +}
-> +
-> +/*
-> + * ext4_ext_fiemap_cb_kern()
-> + * Kernel space callback function called for each extent to
-> + * gather FIEMAP information. This callback should be used
-> + * by internal functions that need to collect fiemap info
-> + * that does not need to be transferd to user space memory
-> + */
-> +static int ext4_ext_fiemap_cb_kern(struct inode *inode,
-> +				struct ext4_ext_path *path,
-> +				struct ext4_ext_cache *newex,
-> +				struct ext4_extent *ex,
-> +				void *data)
-> +{
-> +	return ext4_ext_fiemap_cb(inode, newex, ex, data, EXT_KERN_SPACE);
-> +}
-> +
-> +/*
-> + * ext4_ext_fiemap_cb_user()
-> + * User space callback function called for each extent to
-> + * gather FIEMAP information. This callback should be used
-> + * for gathering fiemap info that needs to be transfered to
-> + * user space memory
-> + */
-> +static int ext4_ext_fiemap_cb_user(struct inode *inode,
-> +				struct ext4_ext_path *path,
-> +				struct ext4_ext_cache *newex,
-> +				struct ext4_extent *ex,
-> +				void *data)
-> +{
-> +	return ext4_ext_fiemap_cb(inode, newex, ex, data, EXT_USER_SPACE);
-> +}
-> +
-> +
->   /* fiemap flags we can handle specified here */
->   #define EXT4_FIEMAP_FLAGS	(FIEMAP_FLAG_SYNC|FIEMAP_FLAG_XATTR)
->   @@ -4238,7 +4389,7 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
->   		 * ext4_ext_fiemap_cb will push extents back to user.
->   		 */
->   		error = ext4_ext_walk_space(inode, start_blk, len_blks,
-> -					  ext4_ext_fiemap_cb, fieinfo);
-> +					  ext4_ext_fiemap_cb_user, fieinfo);
->   	}
->    	return error;
+https://bugzilla.kernel.org/show_bug.cgi?id=31222
 
-Hi all, 
+           Summary: kernel BUG at fs/ext4/mballoc.c:3141
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.37
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: high
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: etele_@freemail.hu
+        Regression: No
 
-Just an update on this patch.  There has been some discussion as to whether we should be modifying the fiemap routines
-or adding a flag to ext4_ext_map_blocks in order to look up holes.  After seeing the fiemap solution, we think that it would be more efficient and less complex to add a flag to ext4_ext_map_blocks.  So I will be working on an updated patch set that uses a map_blocks flag instead of walk_space to identify holes.
 
-Allison Henderson
+The Linux system that I'm running made a stack trace in the logs, and I was
+unable to access the file system where the stack trace happened.
+I could only reboot the system with "reboot -f -n" options.
+
+
+[1357032.081397] ------------[ cut here ]------------
+[1357032.081402] kernel BUG at fs/ext4/mballoc.c:3141!
+[1357032.081404] invalid opcode: 0000 [#1] SMP
+[1357032.081407] last sysfs file: /sys/block/sda/sda5/stat
+[1357032.081408] Modules linked in: ipt_LOG ipt_MASQUERADE xt_state iptable_nat
+nf_nat nf_conntrack_ipv4 nf_conntrack nf_defrag_ipv4 xt_tcpudp iptable_filter
+ip_tables x_tables usb_storage tun fuse multipath coretemp w83627ehf hwmon_vid
+loop raid456 async_pq async_xor xor async_memcpy async_raid6_recov raid6_pq
+async_tx md_mod usblp rtc_cmos rtc_core rtc_lib i2c_i801 shpchp pci_hotplug
+intel_agp intel_gtt agpgart psmouse i2c_core serio_raw evdev pcspkr button
+usbhid uhci_hcd r8169 ehci_hcd sd_mod usbcore [last unloaded: scsi_wait_scan]
+[1357032.081436]
+[1357032.081439] Pid: 1110, comm: flush-8:0 Not tainted 2.6.37-etele-v1.1 #2
+G43Twins-FullHD/To Be Filled By O.E.M.
+[1357032.081442] EIP: 0060:[<c10ef07b>] EFLAGS: 00010293 CPU: 1
+[1357032.081447] EIP is at ext4_mb_use_inode_pa+0xe8/0xfd
+[1357032.081449] EAX: 00000012 EBX: f275de00 ECX: 017d02de EDX: 00000000
+[1357032.081451] ESI: 017d0000 EDI: 00000000 EBP: f48cfb4c ESP: f48cfb28
+[1357032.081453]  DS: 007b ES: 007b FS: 00d8 GS: 0000 SS: 0068
+[1357032.081456] Process flush-8:0 (pid: 1110, ti=f48ce000 task=f54c7830
+task.ti=f48ce000)
+[1357032.081457] Stack:
+[1357032.081459]  017d02de 00000000 f275de00 017d02ca 00000000 00000014
+f275de00 e2031794
+[1357032.081463]  f48cfc38 f48cfb8c c10f1490 f101ba00 c79f8400 00000014
+017d02ca ed554348
+[1357032.081468]  226258e8 00000000 f13c9400 0c001000 000002ca f275de00
+000072ca ed554348
+[1357032.081472] Call Trace:
+[1357032.081476]  [<c10f1490>] ? ext4_mb_use_preallocated+0x1dc/0x1f7
+[1357032.081479]  [<c10f4dde>] ? ext4_mb_new_blocks+0x168/0x3a2
+[1357032.081482]  [<c10ed1ce>] ? ext4_ext_map_blocks+0x89a/0xbd0
+[1357032.081485]  [<c11362ae>] ? submit_bio+0x92/0x99
+[1357032.081488]  [<c10d839c>] ? ext4_map_blocks+0xda/0x169
+[1357032.081491]  [<c10d8521>] ? mpage_da_map_and_submit+0xf6/0x986
+[1357032.081494]  [<c107ef6b>] ? cache_alloc_refill+0x56/0x441
+[1357032.081498]  [<c1142e50>] ? radix_tree_gang_lookup_tag_slot+0x76/0x95
+[1357032.081502]  [<c1060fe7>] ? find_get_pages_tag+0x2d/0xc2
+[1357032.081505]  [<c1067797>] ? pagevec_lookup_tag+0x1c/0x25
+[1357032.081508]  [<c10db9ef>] ? ext4_da_writepages+0x771/0x920
+[1357032.081512]  [<c10db27e>] ? ext4_da_writepages+0x0/0x920
+[1357032.081514]  [<c106657d>] ? do_writepages+0x1c/0x28
+[1357032.081518]  [<c10980c2>] ? writeback_single_inode+0x8d/0x183
+[1357032.081520]  [<c1098502>] ? writeback_sb_inodes+0x82/0xe5
+[1357032.081522]  [<c1098792>] ? writeback_inodes_wb+0xcc/0xdc
+[1357032.081525]  [<c10988f1>] ? wb_writeback+0x14f/0x1b4
+[1357032.081527]  [<c1098a38>] ? wb_do_writeback+0xe2/0x10a
+[1357032.081530]  [<c1098b0b>] ? bdi_writeback_thread+0x48/0x108
+[1357032.081532]  [<c1098ac3>] ? bdi_writeback_thread+0x0/0x108
+[1357032.081536]  [<c103a800>] ? kthread+0x64/0x69
+[1357032.081538]  [<c103a79c>] ? kthread+0x0/0x69
+[1357032.081541]  [<c1002db6>] ? kernel_thread_helper+0x6/0x1a
+[1357032.081542] Code: d3 8b 55 e4 03 4d e8 13 5d ec 8b 42 30 99 01 f0 11 fa 39
+d3 72 0a 77 04 39 c1 76 04 0f 0b eb fe 8b 5d e4 8b 43 34 3b 45 f0 7d 04 <0f> 0b
+eb fe 8b 75 e4 2b 45 f0 89 46 34 8d 65 f4 5b 5e 5f 5d c3
+[1357032.081564] EIP: [<c10ef07b>] ext4_mb_use_inode_pa+0xe8/0xfd SS:ESP
+0068:f48cfb28
+[1357032.081569] ---[ end trace da01771ce1681d32 ]---
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
