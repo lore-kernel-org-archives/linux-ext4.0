@@ -1,48 +1,47 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: [PATCH]: e2fsprogs m_* self tests no longer pass
-Date: Wed, 16 Mar 2011 03:17:32 -0600
-Message-ID: <D3ADD1DC-674F-4EFB-A82C-9C331F2830BA@whamcloud.com>
-References: <AANLkTikX2u+tz7e39tb8abRuXtiLDusKpjAf9vZ1tYUU@mail.gmail.com> <alpine.LFD.2.00.1103011046240.3874@dhcp-27-109.brq.redhat.com> <AANLkTing03byqyWRXbS+AJjHuyZCaJaHczHmVMoW+MBB@mail.gmail.com> <F6277800-7506-4613-B9D8-F180191F4ABB@whamcloud.com> <alpine.LFD.2.00.1103160910520.21429@dhcp-27-109.brq.redhat.com>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "Ted Ts'o" <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	Bruce Cassidy <bruce@whamcloud.com>
-To: Lukas Czerner <lczerner@redhat.com>
+From: Robin Dong <hao.bigrat@gmail.com>
+Subject: [PATCH] ext4: critical info format fix in __acquire
+Date: Wed, 16 Mar 2011 17:37:25 +0800
+Message-ID: <1300268245-18752-1-git-send-email-hao.bigrat@gmail.com>
+Cc: Robin Dong <sanbai@taobao.com>, stable-commits@vger.kernel.org
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yi0-f46.google.com ([209.85.218.46]:62371 "EHLO
-	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752003Ab1CPJRg convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Mar 2011 05:17:36 -0400
-Received: by yia27 with SMTP id 27so573941yia.19
-        for <linux-ext4@vger.kernel.org>; Wed, 16 Mar 2011 02:17:35 -0700 (PDT)
-In-Reply-To: <alpine.LFD.2.00.1103160910520.21429@dhcp-27-109.brq.redhat.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:58205 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752445Ab1CPJhf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Mar 2011 05:37:35 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-03-16, at 2:14 AM, Lukas Czerner wrote:
-> On Tue, 15 Mar 2011, Andreas Dilger wrote:
->> Only display the "Discarding device blocks:" status bar if discard is actually implemented in the IO manager and in the kernel.  Otherwise, there is no correct test result that will work in all environments.  I'd prefer not to print an error message for the majority of devices that do not support discard, since this is confusing.
->> 
->> Signed-off-by: Andreas Dilger <adilger@dilger.ca>
-> 
-> Hi Andreas,
-> 
-> thanks for the patch, it looks good, I have almost the same one in my tree
-> :). I was wondering if we have any way to tell if the device support discard
-> or not from the user-space, I did not found any reliable way (other than
-> actually call BLKDISCARD and see).
+From: Robin Dong <sanbai@taobao.com>
 
-I was originally going to add a CHANNEL_FLAGS_DISCARD flag to the iomanager, but just setting this if BLKDISCARD is defined does not determine if the kernel or disk device has support for TRIM/UNMAP.  Since the only way to check this AFAICS is to call BLKDISCARD I changed the code as seen in the patch.
+When we do performence-testing on ext4 filesystem, we observe a warning
+like this:
 
-It wouldn't be terrible to set or clear the CHANNEL_FLAGS_DISCARD flag for a device depending on whether io_channel_discard() succeeds, but I suspect there will be few cases where discard is called multiple times on the same device.
+[ 1684.113205] EXT4-fs error (device sda7): ext4_mb_generate_buddy:718: group 259825901 blocks in bitmap, 26057 in gd
 
-Cheers, Andreas
---
-Andreas Dilger 
-Principal Engineer
-Whamcloud, Inc.
+indeed, it should be
 
+group 2598, 25901 blocks in bitmap, 26057 in gd.
 
+Reviewed-by: Coly Li <bosong.ly@taobao.com>
+Signed-off-by: Robin Dong <sanbai@taobao.com>
+---
+ fs/ext4/super.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index f6a318f..bb38475 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -594,7 +594,7 @@ __acquires(bitlock)
+ 
+ 	vaf.fmt = fmt;
+ 	vaf.va = &args;
+-	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: group %u",
++	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: group %u, ",
+ 	       sb->s_id, function, line, grp);
+ 	if (ino)
+ 		printk(KERN_CONT "inode %lu: ", ino);
+-- 
+1.7.3.5
 
