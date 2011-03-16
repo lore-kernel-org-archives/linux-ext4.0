@@ -1,122 +1,102 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: [Ext4 punch hole 2/5] Ext4 Punch Hole Support: Clear Hole
-Date: Tue, 15 Mar 2011 14:41:42 -0700
-Message-ID: <4D7FDD16.6070706@linux.vnet.ibm.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: Large directories and poor order correlation
+Date: Tue, 15 Mar 2011 21:50:21 -0400
+Message-ID: <20110316015021.GK8120@thunk.org>
+References: <4D7E7990.90209@cfl.rr.com>
+ <4D7E7C7F.1040509@redhat.com>
+ <4D7E8005.4030201@cfl.rr.com>
+ <20110314215249.GE8120@thunk.org>
+ <4D7EA83D.20400@cfl.rr.com>
+ <20110315001448.GG8120@thunk.org>
+ <4D7F7134.7080209@cfl.rr.com>
+ <20110315170827.GH8120@thunk.org>
+ <4D7FB945.1070209@cfl.rr.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Phillip Susi <psusi@cfl.rr.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e32.co.us.ibm.com ([32.97.110.150]:43601 "EHLO
-	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752230Ab1COVln (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Mar 2011 17:41:43 -0400
-Received: from d03relay03.boulder.ibm.com (d03relay03.boulder.ibm.com [9.17.195.228])
-	by e32.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p2FLV3Dl018249
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Mar 2011 15:31:03 -0600
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p2FLfhS6089282
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Mar 2011 15:41:43 -0600
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p2FLfggq003641
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Mar 2011 15:41:42 -0600
-Received: from [9.11.169.120] (IBM-3CEFE379E05.tucson.ibm.com [9.11.169.120])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p2FLfgdS003624
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Mar 2011 15:41:42 -0600
+Received: from li9-11.members.linode.com ([67.18.176.11]:43041 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750761Ab1CPBu2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Mar 2011 21:50:28 -0400
+Content-Disposition: inline
+In-Reply-To: <4D7FB945.1070209@cfl.rr.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Sorry, I think my mail client converted tabs to spaces on the first two patches.  Please disregard the first two.
+On Tue, Mar 15, 2011 at 03:08:53PM -0400, Phillip Susi wrote:
+> 
+> When you split the htree node, aren't you just moving around the
+> "deleted entries"?  So the normal names remain in the same order so
+> readdir() doesn't have a problem when it is ignoring the htree entries
+> and just walking the normal names?
 
+No, because the leaf entries of the htree are the actual directory
+entries in the directory block.
 
+> Why was the htree hidden inside the normal directory structure anyway?
 
-This patch adds routines needed to zero out the
-unblock aligned data of the hole.
+So that we had full backwards compatibility with ext2.  I had planned
+this feature in advance, and ext2 (and pre-htree ext3 implementations)
+would clear the htree flag if they tried to modify an htree directory.
+Since the leaf nodes (which are the ones that get split) are normal
+directory blocks, and interior nodes of the tree are directory blocks
+that have what appears to ext2 to be a deleted directory entry
+covering the entire block, it's fully backwards compatible with
+ext2/older ext3 systems.
 
-The existing ext4_block_truncate_page routine that
-is used to zero out unblock aligned data from truncate
-has been modified to accept a length parameter, and
-renamed to ext4_block_zero_page_range.
+> > Unless some files get deleted in between.  Now depending on the
+> > "holes" in the directory blocks, where the new directory entries are
+> > added, even in the non-htree case, could either be wherever an empty
+> > directory entry could be found, or in the worst case, we might need to
+> > allocate a new block and that new directory entry gets added to the
+> > end of the block.
+> 
+> Right, but on an otherwise idle system, when you make all the files at
+> once via rsync or untaring an archive, this shouldn't happen and they
+> should be ( generally ) in ascending order, shouldn't they?
 
-The function can now be used to zero out the
-head of a block, the tail of a block, or the middle
-of a block.  The existing ext4_block_truncate_page
-has now become a wrapper to this function
+If the directory is freshly created, yes.  But over time, if you are
+adding and deleting files, such as a Maildir directory, this will not
+be the case forever.
 
-Signed-off-by: Allison Henderson <achender@us.ibm.com>
----
-:100644 100644 3aa0b72... c722e31... M	fs/ext4/ext4.h
-:100644 100644 67e7a3c... 78c5bc4... M	fs/ext4/inode.c
- fs/ext4/ext4.h  |    2 ++
- fs/ext4/inode.c |   33 +++++++++++++++++++++++++++++++--
- 2 files changed, 33 insertions(+), 2 deletions(-)
+> > I suggest that you try some experiments, using both dir_index and
+> > non-dir_index file systems, and then looking at the directory using
+> > the debugfs "ls" and "htree_dump" commands.  Either believe me, or
+> > learn how things really work.  :-)
+> 
+> Now THAT sounds interesting.  Is this documented somewhere?
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 3aa0b72..c722e31 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1738,6 +1738,8 @@ extern int ext4_writepage_trans_blocks(struct inode *);
- extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
- extern int ext4_block_truncate_page(handle_t *handle,
- 		struct address_space *mapping, loff_t from);
-+extern int ext4_block_zero_page_range(handle_t *handle,
-+		struct address_space *mapping, loff_t from, loff_t length);
- extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
- extern qsize_t *ext4_get_reserved_space(struct inode *inode);
- extern void ext4_da_update_reserve_space(struct inode *inode,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 67e7a3c..78c5bc4 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3907,9 +3907,30 @@ void ext4_set_aops(struct inode *inode)
- int ext4_block_truncate_page(handle_t *handle,
- 		struct address_space *mapping, loff_t from)
- {
-+	unsigned offset = from & (PAGE_CACHE_SIZE-1);
-+	unsigned length;
-+	unsigned blocksize;
-+	struct inode *inode = mapping->host;
-+
-+	blocksize = inode->i_sb->s_blocksize;
-+	length = blocksize - (offset & (blocksize - 1));
-+
-+	return ext4_block_zero_page_range(handle, mapping, from, length);
-+}
-+
-+/*
-+ * ext4_block_zero_page_range() zeros out a mapping of length 'length'
-+ * starting from file offset 'from'.  The range to be zero'd must
-+ * be contained with in one block.  If the specified range exceeds
-+ * the end of the block it will be shortened to end of the block
-+ * that cooresponds to 'from'
-+ */
-+int ext4_block_zero_page_range(handle_t *handle,
-+		struct address_space *mapping, loff_t from, loff_t length)
-+{
- 	ext4_fsblk_t index = from >> PAGE_CACHE_SHIFT;
- 	unsigned offset = from & (PAGE_CACHE_SIZE-1);
--	unsigned blocksize, length, pos;
-+	unsigned blocksize, max, pos;
- 	ext4_lblk_t iblock;
- 	struct inode *inode = mapping->host;
- 	struct buffer_head *bh;
-@@ -3922,7 +3943,15 @@ int ext4_block_truncate_page(handle_t *handle,
- 		return -EINVAL;
- 
- 	blocksize = inode->i_sb->s_blocksize;
--	length = blocksize - (offset & (blocksize - 1));
-+	max = blocksize - (offset & (blocksize - 1));
-+
-+	/*
-+	 * correct length if it does not fall between
-+	 * 'from' and the end of the block
-+	 */
-+	if (length > max || length < 0)
-+		length = max;
-+
- 	iblock = index << (PAGE_CACHE_SHIFT - inode->i_sb->s_blocksize_bits);
- 
- 	if (!page_has_buffers(page))
--- 
-1.7.1
+The debugfs man page has some documentation.
 
+> Also, why can't chattr set/clear the 'I' flag?  Is it just a runtime
+> combersome thing?  So setting and clearing the flag with debugfs
+> followed by a fsck should do the trick?  And when is it automatically
+> enabled?
+
+You can't clear the 'I' flag because I didn't want to bother getting
+the locking right so that it would be safe.  And turning off the 'I'
+flag isn't going to help, since the directory entries are scrambled
+anyway --- again, because the leaf nodes of the htree *are* normal
+directory blocks.  Turning the 'I' flag on would require reindexing
+the whole directory, which would be a major headache.  You'd have to
+lock out all directory accesses, and then do a full copy operation ---
+and remember, a directory could be potentially many megabytes, and
+kernel memory is non-swappable.
+
+> I think you are right in that if sorting is to be done at
+> opendir()/readdir() time, then it should be done in libc, not the
+> kernel, but it would be even better if the fs made some effort store the
+> entries in a good order so no sorting is needed at all.
+
+The problem is that we have to store them in hash tree order so the
+lookups happen correctly.  We could have done what JFS does, which is
+to keep three separate b-trees for its directories, and where every
+single time you add or modify a file, you have to update multiple
+btrees.  But, (a) this would have required an non-backwards compatible
+file system format change from ext2/older ext3 file systems, and (b)
+the extra b-trees updates are their own source of overhead.
+
+    	  	  	      	    	       - Ted
