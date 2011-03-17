@@ -1,138 +1,224 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 3/4] Add bitmap configuration interface
-Date: Thu, 17 Mar 2011 15:03:27 -0600
-Message-ID: <B2BCB67B-A28D-4EB6-B731-D556C7B5126C@dilger.ca>
-References: <1300387821-21705-1-git-send-email-lczerner@redhat.com> <1300387821-21705-4-git-send-email-lczerner@redhat.com>
+Subject: Re: [PATCH 4/4] Add macro to enable collecting bitmap statistics
+Date: Thu, 17 Mar 2011 15:19:52 -0600
+Message-ID: <F0C2C526-39CC-4832-A418-9028996B9CEE@dilger.ca>
+References: <1300387821-21705-1-git-send-email-lczerner@redhat.com> <1300387821-21705-5-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0 (Apple Message framework v1082)
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 8BIT
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, sandeen@redhat.com
 To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:44812 "EHLO
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:47615 "EHLO
 	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755558Ab1CQVD3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Mar 2011 17:03:29 -0400
-In-Reply-To: <1300387821-21705-4-git-send-email-lczerner@redhat.com>
+	with ESMTP id S1755473Ab1CQVTy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Mar 2011 17:19:54 -0400
+In-Reply-To: <1300387821-21705-5-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 On 2011-03-17, at 12:50 PM, Lukas Czerner wrote:
-> Add a possibility for user to configure what bitmap backed will be used
-> for what bitmap. It is also useful for testing and benchmarking
-> different bitmap backends and its behaviour.
+> This commit adds a new preprocessor macro BMAP_STATS, which can be
+> defined in ext2fs.h. Setting this macro, the code for statistic
+> collection of bitmap handling is enabled and once the bitmap shall be
+> freed collected information is printed to the stderr.
 > 
-> Setting can be done via usual config file with new section [bitmaps]
-> with subnames defining particular bitmaps. Argument is simply number of
-> the backend. All backends are defined in ext2fsP.h like this:
+> This feature is especially useful for better understanding how e2fsprogs
+> tools (mainly e2fsck) treats bitmaps and what bitmap backend can be most
+> suitable for particular bitmap. Backend itself (if implemented) can
+> provide statistics of its own as well.
 > 
-> enum ext2fs_bmap_backends {
-> 		EXT2FS_BMAP64_BITARRAY = 0,
-> 		EXT2FS_BMAP64_RBTREE,
-> 		EXT2FS_BMAP64_COUNT,
-> };
+> I was thinking about enabling this feature simply by setting program
+> parameter, however collecting of the statistic, even conditional, means
+> unnecessary overhead. And since information provided is usually relevant
+> only for e2fsprogs developers, I decided to use preprocessor macro
+> instead.
+
+Being able to turn this on/off at runtime without needing to recompile is pretty important.  It is fine to allow it to be #ifdef out entirely, but if it is enabled it is good to be able to turn it on/off via the command-line.
+
+> @@ -245,8 +260,8 @@ errcode_t ext2fs_alloc_generic_bmap(ext2_filsys fs, errcode_t magic,
 > 
-> Here is an example of bitmap configuration, with the list of all
-> supported bitmaps.
-> 
-> [bitmaps]
-> 	generic_bitmap = 1
-> 	inode_used_map = 1
-> 	inode_bad_map = 1
+> 	retval = bitmap->bitmap_ops->new_bmap(fs, bitmap);
+> 	if (retval) {
+> -		ext2fs_free_mem(&bitmap);
+> 		ext2fs_free_mem(&bitmap->description);
+> +		ext2fs_free_mem(&bitmap);
 
-I wonder if this is enough just for debugging (presumably very few people will actually set this) or if there should be some symbolic constants used, like "bitmap", "rbtree", ...?  That avoids exposing arbitrary internal constants to userspace, that will need to be preserved indefinitely.
+This looks like a bug in the upstream code that should be submitted separately.  However, I don't see this bug in my tree (it is correctly ordered already), and I don't see it being introduced by your patches...  It again makes me wonder which branch these patches are against.
 
-Also useful would be a "default =" option that changes all of the unspecified bitmap types at once, to avoid the need to list all bitmaps explicitly (which may change over time), or possibly if "inode_map=" and "block_map=" are specified they become the default types for all other unspecified inode and block bitmaps?
+> +	fprintf(stderr, "\n[+] %s bitmap\n", bmap_defs[stats->type].descr);
+> +	fprintf(stderr, "=================================================\n");
+> +	fprintf(stderr, "%16d type\n%16d backend\n",
+> +		stats->type, bmap_defs[stats->type].backend);
+> +	fprintf(stderr, "%16d bits long\n",
+> +		bitmap->real_end - bitmap->start);
+> +	fprintf(stderr, "%16lu copy_bmap\n%16lu resize_bmap\n",
+> +		stats->copy_count, stats->resize_count);
+> +	fprintf(stderr, "%16lu mark bmap\n%16lu unmark_bmap\n",
+> +		stats->mark_count, stats->unmark_count);
+> +	fprintf(stderr, "%16lu test_bmap\n%16lu mark_bmap_extent\n",
+> +		stats->test_count, stats->mark_ext_count);
+> +	fprintf(stderr, "%16lu unmark_bmap_extent\n"
+> +		"%16lu test_clear_bmap_extent\n",
+> +		stats->unmark_ext_count, stats->test_ext_count);
+> +	fprintf(stderr, "%16lu set_bmap_range\n%16lu set_bmap_range\n",
+> +		stats->set_range_count, stats->get_range_count);
+> +	fprintf(stderr, "%16lu clear_bmap\n%16lu contiguous bit test (%.2f%)\n",
+> +		stats->clear_count, stats->test_seq, test_seq_perc);
+> +	fprintf(stderr, "%16lu contiguous bit mark (%.2f%)\n"
+> +		"%16lu bits tested backwards (%.2f%)\n",
+> +		stats->mark_seq, mark_seq_perc,
+> +		stats->test_back, test_back_perc);
+> +	fprintf(stderr, "%16lu bits marked backwards (%.2f%)\n"
+> +		"%16.2f seconds in use\n",
+> +		stats->mark_back, mark_back_perc, inuse);
+> +}
 
-> This feature requires interface change of ext2fs_alloc_generic_bmap()
-> and its definition now is:
-> 
-> errcode_t ext2fs_alloc_generic_bmap(ext2_filsys fs, errcode_t magic,
-> 				    int type, __u64 start, __u64 end,
-> 				    __u64 real_end,
-> 				    ext2fs_generic_bitmap *ret)
+This should include the amount of memory used by the bitmap, which is one of the most important stats for this code.
 
-I was going to write that this will break the ABI/API for e2fsprogs, so probably is not acceptable to Ted.  However, looking at the "master" branch, I see that it already has an "int type" argument, along with 64-bit arguments.
-
-What branch is this patch series against?
-
-> -errcode_t ext2fs_allocate_inode_bitmap(ext2_filsys fs,
-> -				       const char *descr,
-> +errcode_t ext2fs_allocate_inode_bitmap(ext2_filsys fs, int type,
-> 				       ext2fs_inode_bitmap *ret)
-> {
-
-Ah, unlike your comment above, this is changing the ext2fs_allocate_{block,inode}_bitmap() functions, which definitely will break the ABI/API.  The other confusing thing is that since the number of parameters hasn't changed (size unchanged on 32-bit) then this wouldn't break the ABI totally and it would only cause a crash if the bitmap allocation failed and "type" is interpreted as a char * pointer.
-
-One option is to have a separate helper function that changes the default bitmap type in ext2_filsys (maybe separate defaults for inode and block bitmaps), and then call that before this function.  Not ideal, but doesn't change the ABI/API, and is sufficient for most uses.  Alternately, it would be possible to declare a new ext2fs_allocate_{block,inode}_bitmap2() function that has this new parameter, and make ext2fs_allocate_{block,inode}_bmap() call it with the default bitmap type.
-
-> 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
-> +	if (type >= EXT2_BMAP_COUNT || type < 0)
-> +		return EINVAL;
-
-Is EINVAL a valid error return for libext2fs?  Anything returning an errcode_t should probably be using a new EXT2_ET_INVALID_BITMAP_TYPE error defined in lib/ext2fs/ext2_err.et.in.
-
-> +enum ext2_bitmap_type {
-> +	EXT2_GENERIC_MAP		=0,
-> +	EXT2_INODE_USED_MAP,		/* Inodes which are in use */
-> +	EXT2_INODE_BAD_MAP,		/* Inodes which are bad somehow */
-> +	EXT2_INODE_DIR_MAP,		/* Inodes which are directories */
-> +	EXT2_INODE_BB_MAP,		/* Inodes which are in bad blocks */
-> +	EXT2_INODE_IMAGIC_MAP,		/* AFS inodes */
-
-	EXT2_INODE_IMAGIC_MAP,		/* Inodes disconnected but used by AFS */
-
-> +	EXT2_INODE_REG_MAP,		/* Inodes which are regular files*/
-> +	EXT2_INODE_MAP,
-> +	EXT2_INODE_DUP_MAP,
-> +	EXT2_INODE_DONE_MAP,
-> +	EXT2_INODE_LOOP_MAP,
-
-Would be nice to have comments for the rest of these as well.  I renamed a couple to be consistent with _INODE_ or _BLOCK_ in each name.  Let's see:
-
-	EXT2_INODE_MAP,			/* Inodes in use */
-	EXT2_INODE_DUP_MAP,		/* Inodes with duplicate block usage */
-	EXT2_INODE_DONE_MAP,		/* Dirs linked to root during e2fsck */
-	EXT2_INODE_LOOP_MAP,		/* Dirs hit in path walk for e2fsck*/
-
-	EXT2_BLOCK_MAP,			/* Blocks in use */
-	EXT2_BLOCK_BAD_MAP,		/* Blocks marked bad via badblocks */
-	EXT2_BLOCK_SCRAMBLE,		/* Blocks scrambled for e2image */
-	EXT2_BLOCK_TO_MOVE,		/* Blocks to move for resize2fs */
-	EXT2_BLOCK_RESERVED,		/* Blocks reserved for resize2fs */
-	EXT2_BLOCK_METADATA,		/* Blocks for metadata for resize2fs */
-
-	EXT2_BLOCK_EMPTY_DIR,		/* Blocks for lost+found expansion */
-	EXT2_INODE_EMPTY_DIR_MAP,	/* ??? */
-	EXT2_BLOCK_CHECK_DESC_MAP,      /* Blocks used for group descriptors */
-	EXT2_BLOCK_TOUCHED_MAP,		/* Blocks accessed during tst_iscan */
-
-> +	EXT2_BMAP_COUNT,		/* Stop mark */
-> +};
-
-It isn't quite clear whether we need to have explicit block bitmap definitions for programs like tst_iscan.  If it isn't possible for a program to allocate arbitrary bitmaps without having to register them first, it will really be a pain.  I'd instead suggest that the "type" just default to EXT2_BLOCK_MAP for obscure bitmaps like "TOUCHED_MAP", and again allow specifying a bitmap name.
-
-> -#define EXT2FS_BMAP64_BITARRAY	1
-> -#define EXT2FS_BMAP64_RBTREE	2
-> +enum ext2fs_bmap_backends {
-> +	EXT2FS_BMAP64_BITARRAY = 0,
-> +	EXT2FS_BMAP64_RBTREE,
-> +	EXT2FS_BMAP64_COUNT,
-
-For debugging purposes, it is preferable to have an enum not contain "0" as a valid value, since that allows one to see if the bitmap type is being specified correctly, or if it is unset.  Maybe EXT2FS_BMAP64_UNSET = 0?
-
-> +static char *ext2_bmap_profile_value[EXT2_BMAP_COUNT] = {
-> +	[EXT2_GENERIC_MAP] = "generic_bitmap",
-> +	[EXT2_INODE_USED_MAP] = "inode_used_map",
-> +	[EXT2_INODE_BAD_MAP] = "inode_bad_map",
+> +#endif
 > +
-> +const
-> +static struct ext2_bmap_definition ext2_bmap_default[EXT2_BMAP_COUNT] = {
-> +	[EXT2_GENERIC_MAP] = {EXT2_DEFAULT_BITMAP_BACKEND, "generic bitmap"},
-> +	[EXT2_INODE_USED_MAP] = {EXT2_DEFAULT_BITMAP_BACKEND, "in-use inode map"},
-> +	[EXT2_INODE_BAD_MAP] = {EXT2_DEFAULT_BITMAP_BACKEND, "bad inode map"},
+> void ext2fs_free_generic_bmap(ext2fs_generic_bitmap bmap)
+> {
+> 	if (!bmap)
+> @@ -267,6 +338,16 @@ void ext2fs_free_generic_bmap(ext2fs_generic_bitmap bmap)
+> 	if (!EXT2FS_IS_64_BITMAP(bmap))
+> 		return;
+> 
+> +#ifdef BMAP_STATS
+> +	if (gettimeofday(&bmap->stats.destroyed,
+> +			 (struct timezone *) NULL) == -1) {
+> +		perror("gettimeofday");
+> +		return;
+> +	}
+> +	ext2fs_print_bmap_statistics(bmap);
+> +	bmap->bitmap_ops->print_stats(bmap);
+> +#endif
+> +
+> 	bmap->bitmap_ops->free_bmap(bmap);
+> 
+> 	if (bmap->description) {
+> @@ -300,6 +381,17 @@ errcode_t ext2fs_copy_generic_bmap(ext2fs_generic_bitmap src,
+> 		return retval;
+> 	memset(new_bmap, 0, sizeof(struct ext2fs_struct_generic_bitmap));
+> 
+> +
+> +#ifdef BMAP_STATS
+> +	src->stats.copy_count++;
+> +	if (gettimeofday(&new_bmap->stats.created,
+> +			 (struct timezone *) NULL) == -1) {
+> +		perror("gettimeofday");
+> +		return 1;
+> +	}
+> +	new_bmap->stats.type = src->stats.type;
+> +#endif
+> +
+> 	/* Copy all the high-level parts over */
+> 	new_bmap->magic = src->magic;
+> 	new_bmap->fs = src->fs;
+> @@ -346,6 +438,8 @@ errcode_t ext2fs_resize_generic_bmap(ext2fs_generic_bitmap bmap,
+> 	if (!EXT2FS_IS_64_BITMAP(bmap))
+> 		return EINVAL;
+> 
+> +	INC_STAT(bmap, resize_count);
+> +
+> 	return bmap->bitmap_ops->resize_bmap(bmap, new_end, new_real_end);
+> }
+> 
+> @@ -432,6 +526,15 @@ int ext2fs_mark_generic_bmap(ext2fs_generic_bitmap bitmap,
+> 	if (!EXT2FS_IS_64_BITMAP(bitmap))
+> 		return 0;
+> 
+> +#ifdef BMAP_STATS
+> +	if (arg == bitmap->stats.last_marked + 1)
+> +		bitmap->stats.mark_seq++;
+> +	if (arg < bitmap->stats.last_marked)
+> +		bitmap->stats.mark_back++;
+> +	bitmap->stats.last_marked = arg;
+> +	bitmap->stats.mark_count++;
+> +#endif
+> +
+> 	if ((arg < bitmap->start) || (arg > bitmap->end)) {
+> 		warn_bitmap(bitmap, EXT2FS_MARK_ERROR, arg);
+> 		return 0;
+> @@ -458,6 +561,8 @@ int ext2fs_unmark_generic_bmap(ext2fs_generic_bitmap bitmap,
+> 	if (!EXT2FS_IS_64_BITMAP(bitmap))
+> 		return 0;
+> 
+> +	INC_STAT(bitmap, unmark_count);
+> +
+> 	if ((arg < bitmap->start) || (arg > bitmap->end)) {
+> 		warn_bitmap(bitmap, EXT2FS_UNMARK_ERROR, arg);
+> 		return 0;
+> @@ -484,6 +589,15 @@ int ext2fs_test_generic_bmap(ext2fs_generic_bitmap bitmap,
+> 	if (!EXT2FS_IS_64_BITMAP(bitmap))
+> 		return 0;
+> 
+> +#ifdef BMAP_STATS
+> +	bitmap->stats.test_count++;
+> +	if (arg == bitmap->stats.last_tested + 1)
+> +		bitmap->stats.test_seq++;
+> +	if (arg < bitmap->stats.last_tested)
+> +		bitmap->stats.test_back++;
+> +	bitmap->stats.last_tested = arg;
+> +#endif
+> +
+> 	if ((arg < bitmap->start) || (arg > bitmap->end)) {
+> 		warn_bitmap(bitmap, EXT2FS_TEST_ERROR, arg);
+> 		return 0;
+> @@ -512,6 +626,8 @@ errcode_t ext2fs_set_generic_bmap_range(ext2fs_generic_bitmap bmap,
+> 	if (!EXT2FS_IS_64_BITMAP(bmap))
+> 		return EINVAL;
+> 
+> +	INC_STAT(bmap, set_range_count);
+> +
+> 	return bmap->bitmap_ops->set_bmap_range(bmap, start, num, in);
+> }
+> 
+> @@ -535,6 +651,8 @@ errcode_t ext2fs_get_generic_bmap_range(ext2fs_generic_bitmap bmap,
+> 	if (!EXT2FS_IS_64_BITMAP(bmap))
+> 		return EINVAL;
+> 
+> +	INC_STAT(bmap, get_range_count);
+> +
+> 	return bmap->bitmap_ops->get_bmap_range(bmap, start, num, out);
+> }
+> 
+> @@ -606,6 +724,8 @@ int ext2fs_test_block_bitmap_range2(ext2fs_block_bitmap bmap,
+> 	if (!EXT2FS_IS_64_BITMAP(bmap))
+> 		return EINVAL;
+> 
+> +	INC_STAT(bmap, test_ext_count);
+> +
+> 	return bmap->bitmap_ops->test_clear_bmap_extent(bmap, block, num);
+> }
+> 
+> @@ -628,6 +748,8 @@ void ext2fs_mark_block_bitmap_range2(ext2fs_block_bitmap bmap,
+> 	if (!EXT2FS_IS_64_BITMAP(bmap))
+> 		return;
+> 
+> +	INC_STAT(bmap, mark_ext_count);
+> +
+> 	if ((block < bmap->start) || (block+num-1 > bmap->end)) {
+> 		ext2fs_warn_bitmap(EXT2_ET_BAD_BLOCK_MARK, block,
+> 				   bmap->description);
+> @@ -656,6 +778,8 @@ void ext2fs_unmark_block_bitmap_range2(ext2fs_block_bitmap bmap,
+> 	if (!EXT2FS_IS_64_BITMAP(bmap))
+> 		return;
+> 
+> +	INC_STAT(bmap, unmark_ext_count);
+> +
+> 	if ((block < bmap->start) || (block+num-1 > bmap->end)) {
+> 		ext2fs_warn_bitmap(EXT2_ET_BAD_BLOCK_UNMARK, block,
+> 				   bmap->description);
+> -- 
+> 1.7.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-It is cumbersome to have to update 3 places for each bitmap.  Could we just get rid of ext2_bmap_profile_value[] and only use ext2_bmap_default[]?  Also, the strings here have now lost their i18n for error messages.
 
 Cheers, Andreas
 
