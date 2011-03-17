@@ -1,94 +1,709 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: ditching e4b->alloc_semp
-Date: Thu, 17 Mar 2011 18:13:49 +0200
-Message-ID: <AANLkTima8ZC99JAQvcZQ=WuCyZgWCdVzg3qkLpZ7+_eq@mail.gmail.com>
-References: <AANLkTikSLsuiZGYaUKtQnMQNZ6Pj=K_RDkYtpK98ujy1@mail.gmail.com>
-	<20110305160656.GA3505@thunk.org>
-	<AANLkTikW04brZ549=29N1Yan=GH29BN4WSVrA7erR_F6@mail.gmail.com>
-	<20110307040810.GE11120@thunk.org>
-	<AANLkTimS8X+Mm70-atAL7sZkpTgpakO05KdSTG1h6vK8@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Ted Ts'o" <tytso@mit.edu>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 1/4 v2] e2fsprogs: Add rbtree library
+Date: Thu, 17 Mar 2011 19:50:18 +0100
+Message-ID: <1300387821-21705-2-git-send-email-lczerner@redhat.com>
+References: <1300387821-21705-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, sandeen@redhat.com,
+	Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f181.google.com ([209.85.216.181]:51989 "EHLO
-	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754792Ab1CQQNu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Mar 2011 12:13:50 -0400
-Received: by qyg14 with SMTP id 14so2626349qyg.19
-        for <linux-ext4@vger.kernel.org>; Thu, 17 Mar 2011 09:13:49 -0700 (PDT)
-In-Reply-To: <AANLkTimS8X+Mm70-atAL7sZkpTgpakO05KdSTG1h6vK8@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:64889 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754954Ab1CQSum (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 Mar 2011 14:50:42 -0400
+In-Reply-To: <1300387821-21705-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 7, 2011 at 7:52 AM, Amir Goldstein <amir73il@gmail.com> wro=
-te:
-> On Mon, Mar 7, 2011 at 6:08 AM, Ted Ts'o <tytso@mit.edu> wrote:
->> On Sun, Mar 06, 2011 at 10:15:41PM +0200, Amir Goldstein wrote:
->>>
->>> That sounds about right, but why do I need a new bit?
->>> Why can't I use EXT4_GROUP_INFO_NEED_INIT_BIT to tell me the exact
->>> same thing?
->>
->> The current meaning of NEED_INIT_BIT is that it indicates that the
->> group has been initialized once since the file system has been
->> mounted. =A0It is used by ext4_mb_good_group() to know whether it ca=
-n
->> rely on ext4_group_info->bb_free, ext4_group_info->bb_fragments,
->> ext4_group_info->bb_largest_free_order, et. al, without needing to
->> reload the buddy bitmap.
->>
->> We added this so that even if memory pressure has forced the buddy
->> bitmap and block allocation bitmaps out of memory, we have enough
->> information in the ext4_group_info summary array that we can quickly
->> decide whether or not a group is a likely good candidate to be
->> examined more closely to have the necessary free blocks. =A0Without =
-this
->> (relatively recent) change, the mballoc code might potentially need =
-to
->> read in tens if not hundreds of block allocation bitmaps only to fin=
-d
->> that it didn't have enough contiguous blocks, and then the memory
->> pressure would push the block bitmap out of memory again.... and fil=
-e
->> system performance would go into the toilet.
->>
->
-> Right... we need it.
-> I also wanted to examine if clearing the NEED_INIT_BIT on add_group_b=
-locks
-> is really necessary.
-> Couldn't the buddy bitmap of partial group be initialized with all
-> blocks at the end
-> "used", similar to the block bitmap itself?
-> Then add_group_blocks() could just "free" the extra added blocks.
->
+This commit adds rbtree library into e2fsprogs so it can be used for
+various internal data structures. The rbtree implementation is ripped of
+kernel rbtree implementation with small changes needed for it to work
+outside kernel.
 
-I have started to look into removing down_write(&grp->alloc_sem) from
-ext4_add_group_blocks(), because until I remove it, I won't be able to =
-get rid
-of down_read(&e4b->alloc_semp) and I don't see how I can use the page_l=
-ock()
-and grp->bb_state bits semantics alone.
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ lib/ext2fs/Makefile.in |   11 +-
+ lib/ext2fs/rbtree.c    |  451 ++++++++++++++++++++++++++++++++++++++++++++++++
+ lib/ext2fs/rbtree.h    |  179 +++++++++++++++++++
+ 3 files changed, 639 insertions(+), 2 deletions(-)
+ create mode 100644 lib/ext2fs/rbtree.c
+ create mode 100644 lib/ext2fs/rbtree.h
 
-As long as the NEED_INIT_BIT is a clear-only flag the semantics work,
-but when ext4_add_group_blocks() sets the bit, we may have a task holdi=
-ng
-a reference to buddy page and another trying to initialize it (under pa=
-ge_lock).
-I don't suppose you meant holding page_lock() for the entire allocation=
-=2E
+diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
+index 9c1c273..b24a53a 100644
+--- a/lib/ext2fs/Makefile.in
++++ b/lib/ext2fs/Makefile.in
+@@ -80,7 +80,8 @@ OBJS= $(DEBUGFS_LIB_OBJS) $(RESIZE_LIB_OBJS) $(E2IMAGE_LIB_OBJS) \
+ 	unix_io.o \
+ 	unlink.o \
+ 	valid_blk.o \
+-	version.o
++	version.o \
++	rbtree.o
+ 
+ SRCS= ext2_err.c \
+ 	$(srcdir)/alloc.c \
+@@ -155,7 +156,8 @@ SRCS= ext2_err.c \
+ 	$(srcdir)/unlink.c \
+ 	$(srcdir)/valid_blk.c \
+ 	$(srcdir)/version.c \
+-	$(srcdir)/write_bb_file.c
++	$(srcdir)/write_bb_file.c \
++	$(srcdir)/rbtree.c \
+ 
+ HFILES= bitops.h ext2fs.h ext2_io.h ext2_fs.h ext2_ext_attr.h ext3_extents.h \
+ 	tdb.h
+@@ -762,3 +764,8 @@ write_bb_file.o: $(srcdir)/write_bb_file.c $(srcdir)/ext2_fs.h \
+  $(srcdir)/ext2_fs.h $(srcdir)/ext3_extents.h $(top_srcdir)/lib/et/com_err.h \
+  $(srcdir)/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h \
+  $(srcdir)/ext2_ext_attr.h $(srcdir)/bitops.h
++rbtree.o: $(srcdir)/rbtree.c $(srcdir)/ext2_fs.h \
++ $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fs.h \
++ $(srcdir)/ext2_fs.h $(srcdir)/ext3_extents.h $(top_srcdir)/lib/et/com_err.h \
++ $(srcdir)/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h \
++ $(srcdir)/ext2_ext_attr.h $(srcdir)/bitops.h
+diff --git a/lib/ext2fs/rbtree.c b/lib/ext2fs/rbtree.c
+new file mode 100644
+index 0000000..0b638cf
+--- /dev/null
++++ b/lib/ext2fs/rbtree.c
+@@ -0,0 +1,451 @@
++/*
++  Red Black Trees
++  (C) 1999  Andrea Arcangeli <andrea@suse.de>
++  (C) 2002  David Woodhouse <dwmw2@infradead.org>
++
++  This program is free software; you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation; either version 2 of the License, or
++  (at your option) any later version.
++
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License
++  along with this program; if not, write to the Free Software
++  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++
++  linux/lib/rbtree.c
++*/
++
++#include "rbtree.h"
++
++static void __rb_rotate_left(struct rb_node *node, struct rb_root *root)
++{
++	struct rb_node *right = node->rb_right;
++	struct rb_node *parent = rb_parent(node);
++
++	if ((node->rb_right = right->rb_left))
++		rb_set_parent(right->rb_left, node);
++	right->rb_left = node;
++
++	rb_set_parent(right, parent);
++
++	if (parent)
++	{
++		if (node == parent->rb_left)
++			parent->rb_left = right;
++		else
++			parent->rb_right = right;
++	}
++	else
++		root->rb_node = right;
++	rb_set_parent(node, right);
++}
++
++static void __rb_rotate_right(struct rb_node *node, struct rb_root *root)
++{
++	struct rb_node *left = node->rb_left;
++	struct rb_node *parent = rb_parent(node);
++
++	if ((node->rb_left = left->rb_right))
++		rb_set_parent(left->rb_right, node);
++	left->rb_right = node;
++
++	rb_set_parent(left, parent);
++
++	if (parent)
++	{
++		if (node == parent->rb_right)
++			parent->rb_right = left;
++		else
++			parent->rb_left = left;
++	}
++	else
++		root->rb_node = left;
++	rb_set_parent(node, left);
++}
++
++void rb_insert_color(struct rb_node *node, struct rb_root *root)
++{
++	struct rb_node *parent, *gparent;
++
++	while ((parent = rb_parent(node)) && rb_is_red(parent))
++	{
++		gparent = rb_parent(parent);
++
++		if (parent == gparent->rb_left)
++		{
++			{
++				register struct rb_node *uncle = gparent->rb_right;
++				if (uncle && rb_is_red(uncle))
++				{
++					rb_set_black(uncle);
++					rb_set_black(parent);
++					rb_set_red(gparent);
++					node = gparent;
++					continue;
++				}
++			}
++
++			if (parent->rb_right == node)
++			{
++				register struct rb_node *tmp;
++				__rb_rotate_left(parent, root);
++				tmp = parent;
++				parent = node;
++				node = tmp;
++			}
++
++			rb_set_black(parent);
++			rb_set_red(gparent);
++			__rb_rotate_right(gparent, root);
++		} else {
++			{
++				register struct rb_node *uncle = gparent->rb_left;
++				if (uncle && rb_is_red(uncle))
++				{
++					rb_set_black(uncle);
++					rb_set_black(parent);
++					rb_set_red(gparent);
++					node = gparent;
++					continue;
++				}
++			}
++
++			if (parent->rb_left == node)
++			{
++				register struct rb_node *tmp;
++				__rb_rotate_right(parent, root);
++				tmp = parent;
++				parent = node;
++				node = tmp;
++			}
++
++			rb_set_black(parent);
++			rb_set_red(gparent);
++			__rb_rotate_left(gparent, root);
++		}
++	}
++
++	rb_set_black(root->rb_node);
++}
++
++static void __rb_erase_color(struct rb_node *node, struct rb_node *parent,
++			     struct rb_root *root)
++{
++	struct rb_node *other;
++
++	while ((!node || rb_is_black(node)) && node != root->rb_node)
++	{
++		if (parent->rb_left == node)
++		{
++			other = parent->rb_right;
++			if (rb_is_red(other))
++			{
++				rb_set_black(other);
++				rb_set_red(parent);
++				__rb_rotate_left(parent, root);
++				other = parent->rb_right;
++			}
++			if ((!other->rb_left || rb_is_black(other->rb_left)) &&
++			    (!other->rb_right || rb_is_black(other->rb_right)))
++			{
++				rb_set_red(other);
++				node = parent;
++				parent = rb_parent(node);
++			}
++			else
++			{
++				if (!other->rb_right || rb_is_black(other->rb_right))
++				{
++					rb_set_black(other->rb_left);
++					rb_set_red(other);
++					__rb_rotate_right(other, root);
++					other = parent->rb_right;
++				}
++				rb_set_color(other, rb_color(parent));
++				rb_set_black(parent);
++				rb_set_black(other->rb_right);
++				__rb_rotate_left(parent, root);
++				node = root->rb_node;
++				break;
++			}
++		}
++		else
++		{
++			other = parent->rb_left;
++			if (rb_is_red(other))
++			{
++				rb_set_black(other);
++				rb_set_red(parent);
++				__rb_rotate_right(parent, root);
++				other = parent->rb_left;
++			}
++			if ((!other->rb_left || rb_is_black(other->rb_left)) &&
++			    (!other->rb_right || rb_is_black(other->rb_right)))
++			{
++				rb_set_red(other);
++				node = parent;
++				parent = rb_parent(node);
++			}
++			else
++			{
++				if (!other->rb_left || rb_is_black(other->rb_left))
++				{
++					rb_set_black(other->rb_right);
++					rb_set_red(other);
++					__rb_rotate_left(other, root);
++					other = parent->rb_left;
++				}
++				rb_set_color(other, rb_color(parent));
++				rb_set_black(parent);
++				rb_set_black(other->rb_left);
++				__rb_rotate_right(parent, root);
++				node = root->rb_node;
++				break;
++			}
++		}
++	}
++	if (node)
++		rb_set_black(node);
++}
++
++void rb_erase(struct rb_node *node, struct rb_root *root)
++{
++	struct rb_node *child, *parent;
++	int color;
++
++	if (!node->rb_left)
++		child = node->rb_right;
++	else if (!node->rb_right)
++		child = node->rb_left;
++	else
++	{
++		struct rb_node *old = node, *left;
++
++		node = node->rb_right;
++		while ((left = node->rb_left) != NULL)
++			node = left;
++
++		if (rb_parent(old)) {
++			if (rb_parent(old)->rb_left == old)
++				rb_parent(old)->rb_left = node;
++			else
++				rb_parent(old)->rb_right = node;
++		} else
++			root->rb_node = node;
++
++		child = node->rb_right;
++		parent = rb_parent(node);
++		color = rb_color(node);
++
++		if (parent == old) {
++			parent = node;
++		} else {
++			if (child)
++				rb_set_parent(child, parent);
++			parent->rb_left = child;
++
++			node->rb_right = old->rb_right;
++			rb_set_parent(old->rb_right, node);
++		}
++
++		node->rb_parent_color = old->rb_parent_color;
++		node->rb_left = old->rb_left;
++		rb_set_parent(old->rb_left, node);
++
++		goto color;
++	}
++
++	parent = rb_parent(node);
++	color = rb_color(node);
++
++	if (child)
++		rb_set_parent(child, parent);
++	if (parent)
++	{
++		if (parent->rb_left == node)
++			parent->rb_left = child;
++		else
++			parent->rb_right = child;
++	}
++	else
++		root->rb_node = child;
++
++ color:
++	if (color == RB_BLACK)
++		__rb_erase_color(child, parent, root);
++}
++
++static void rb_augment_path(struct rb_node *node, rb_augment_f func, void *data)
++{
++	struct rb_node *parent;
++
++up:
++	func(node, data);
++	parent = rb_parent(node);
++	if (!parent)
++		return;
++
++	if (node == parent->rb_left && parent->rb_right)
++		func(parent->rb_right, data);
++	else if (parent->rb_left)
++		func(parent->rb_left, data);
++
++	node = parent;
++	goto up;
++}
++
++/*
++ * after inserting @node into the tree, update the tree to account for
++ * both the new entry and any damage done by rebalance
++ */
++void rb_augment_insert(struct rb_node *node, rb_augment_f func, void *data)
++{
++	if (node->rb_left)
++		node = node->rb_left;
++	else if (node->rb_right)
++		node = node->rb_right;
++
++	rb_augment_path(node, func, data);
++}
++
++/*
++ * before removing the node, find the deepest node on the rebalance path
++ * that will still be there after @node gets removed
++ */
++struct rb_node *rb_augment_erase_begin(struct rb_node *node)
++{
++	struct rb_node *deepest;
++
++	if (!node->rb_right && !node->rb_left)
++		deepest = rb_parent(node);
++	else if (!node->rb_right)
++		deepest = node->rb_left;
++	else if (!node->rb_left)
++		deepest = node->rb_right;
++	else {
++		deepest = rb_next(node);
++		if (deepest->rb_right)
++			deepest = deepest->rb_right;
++		else if (rb_parent(deepest) != node)
++			deepest = rb_parent(deepest);
++	}
++
++	return deepest;
++}
++
++/*
++ * after removal, update the tree to account for the removed entry
++ * and any rebalance damage.
++ */
++void rb_augment_erase_end(struct rb_node *node, rb_augment_f func, void *data)
++{
++	if (node)
++		rb_augment_path(node, func, data);
++}
++
++/*
++ * This function returns the first node (in sort order) of the tree.
++ */
++struct rb_node *rb_first(const struct rb_root *root)
++{
++	struct rb_node	*n;
++
++	n = root->rb_node;
++	if (!n)
++		return NULL;
++	while (n->rb_left)
++		n = n->rb_left;
++	return n;
++}
++
++struct rb_node *rb_last(const struct rb_root *root)
++{
++	struct rb_node	*n;
++
++	n = root->rb_node;
++	if (!n)
++		return NULL;
++	while (n->rb_right)
++		n = n->rb_right;
++	return n;
++}
++
++struct rb_node *rb_next(const struct rb_node *node)
++{
++	struct rb_node *parent;
++
++	if (rb_parent(node) == node)
++		return NULL;
++
++	/* If we have a right-hand child, go down and then left as far
++	   as we can. */
++	if (node->rb_right) {
++		node = node->rb_right;
++		while (node->rb_left)
++			node=node->rb_left;
++		return (struct rb_node *)node;
++	}
++
++	/* No right-hand children.  Everything down and left is
++	   smaller than us, so any 'next' node must be in the general
++	   direction of our parent. Go up the tree; any time the
++	   ancestor is a right-hand child of its parent, keep going
++	   up. First time it's a left-hand child of its parent, said
++	   parent is our 'next' node. */
++	while ((parent = rb_parent(node)) && node == parent->rb_right)
++		node = parent;
++
++	return parent;
++}
++
++struct rb_node *rb_prev(const struct rb_node *node)
++{
++	struct rb_node *parent;
++
++	if (rb_parent(node) == node)
++		return NULL;
++
++	/* If we have a left-hand child, go down and then right as far
++	   as we can. */
++	if (node->rb_left) {
++		node = node->rb_left;
++		while (node->rb_right)
++			node=node->rb_right;
++		return (struct rb_node *)node;
++	}
++
++	/* No left-hand children. Go up till we find an ancestor which
++	   is a right-hand child of its parent */
++	while ((parent = rb_parent(node)) && node == parent->rb_left)
++		node = parent;
++
++	return parent;
++}
++
++void rb_replace_node(struct rb_node *victim, struct rb_node *new,
++		     struct rb_root *root)
++{
++	struct rb_node *parent = rb_parent(victim);
++
++	/* Set the surrounding nodes to point to the replacement */
++	if (parent) {
++		if (victim == parent->rb_left)
++			parent->rb_left = new;
++		else
++			parent->rb_right = new;
++	} else {
++		root->rb_node = new;
++	}
++	if (victim->rb_left)
++		rb_set_parent(victim->rb_left, new);
++	if (victim->rb_right)
++		rb_set_parent(victim->rb_right, new);
++
++	/* Copy the pointers/colour from the victim to the replacement */
++	*new = *victim;
++}
+diff --git a/lib/ext2fs/rbtree.h b/lib/ext2fs/rbtree.h
+new file mode 100644
+index 0000000..8820e28
+--- /dev/null
++++ b/lib/ext2fs/rbtree.h
+@@ -0,0 +1,179 @@
++/*
++  Red Black Trees
++  (C) 1999  Andrea Arcangeli <andrea@suse.de>
++
++  This program is free software; you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation; either version 2 of the License, or
++  (at your option) any later version.
++
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License
++  along with this program; if not, write to the Free Software
++  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++
++  linux/include/linux/rbtree.h
++
++  To use rbtrees you'll have to implement your own insert and search cores.
++  This will avoid us to use callbacks and to drop drammatically performances.
++  I know it's not the cleaner way,  but in C (not in C++) to get
++  performances and genericity...
++
++  Some example of insert and search follows here. The search is a plain
++  normal search over an ordered tree. The insert instead must be implemented
++  in two steps: First, the code must insert the element in order as a red leaf
++  in the tree, and then the support library function rb_insert_color() must
++  be called. Such function will do the not trivial work to rebalance the
++  rbtree, if necessary.
++
++-----------------------------------------------------------------------
++static inline struct page * rb_search_page_cache(struct inode * inode,
++						 unsigned long offset)
++{
++	struct rb_node * n = inode->i_rb_page_cache.rb_node;
++	struct page * page;
++
++	while (n)
++	{
++		page = rb_entry(n, struct page, rb_page_cache);
++
++		if (offset < page->offset)
++			n = n->rb_left;
++		else if (offset > page->offset)
++			n = n->rb_right;
++		else
++			return page;
++	}
++	return NULL;
++}
++
++static inline struct page * __rb_insert_page_cache(struct inode * inode,
++						   unsigned long offset,
++						   struct rb_node * node)
++{
++	struct rb_node ** p = &inode->i_rb_page_cache.rb_node;
++	struct rb_node * parent = NULL;
++	struct page * page;
++
++	while (*p)
++	{
++		parent = *p;
++		page = rb_entry(parent, struct page, rb_page_cache);
++
++		if (offset < page->offset)
++			p = &(*p)->rb_left;
++		else if (offset > page->offset)
++			p = &(*p)->rb_right;
++		else
++			return page;
++	}
++
++	rb_link_node(node, parent, p);
++
++	return NULL;
++}
++
++static inline struct page * rb_insert_page_cache(struct inode * inode,
++						 unsigned long offset,
++						 struct rb_node * node)
++{
++	struct page * ret;
++	if ((ret = __rb_insert_page_cache(inode, offset, node)))
++		goto out;
++	rb_insert_color(node, &inode->i_rb_page_cache);
++ out:
++	return ret;
++}
++-----------------------------------------------------------------------
++*/
++
++#ifndef	_LINUX_RBTREE_H
++#define	_LINUX_RBTREE_H
++
++#include <stdlib.h>
++
++#undef offsetof
++#ifdef __compiler_offsetof
++#define offsetof(TYPE,MEMBER) __compiler_offsetof(TYPE,MEMBER)
++#else
++#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
++#endif
++
++#define container_of(ptr, type, member) ({			\
++	const typeof( ((type *)0)->member ) *__mptr = (ptr);	\
++	(type *)( (char *)__mptr - offsetof(type,member) );})
++
++struct rb_node
++{
++	unsigned long  rb_parent_color;
++#define	RB_RED		0
++#define	RB_BLACK	1
++	struct rb_node *rb_right;
++	struct rb_node *rb_left;
++} __attribute__((aligned(sizeof(long))));
++    /* The alignment might seem pointless, but allegedly CRIS needs it */
++
++struct rb_root
++{
++	struct rb_node *rb_node;
++};
++
++
++#define rb_parent(r)   ((struct rb_node *)((r)->rb_parent_color & ~3))
++#define rb_color(r)   ((r)->rb_parent_color & 1)
++#define rb_is_red(r)   (!rb_color(r))
++#define rb_is_black(r) rb_color(r)
++#define rb_set_red(r)  do { (r)->rb_parent_color &= ~1; } while (0)
++#define rb_set_black(r)  do { (r)->rb_parent_color |= 1; } while (0)
++
++static inline void rb_set_parent(struct rb_node *rb, struct rb_node *p)
++{
++	rb->rb_parent_color = (rb->rb_parent_color & 3) | (unsigned long)p;
++}
++static inline void rb_set_color(struct rb_node *rb, int color)
++{
++	rb->rb_parent_color = (rb->rb_parent_color & ~1) | color;
++}
++
++#define RB_ROOT	(struct rb_root) { NULL, }
++#define	rb_entry(ptr, type, member) container_of(ptr, type, member)
++
++#define RB_EMPTY_ROOT(root)	((root)->rb_node == NULL)
++#define RB_EMPTY_NODE(node)	(rb_parent(node) == node)
++#define RB_CLEAR_NODE(node)	(rb_set_parent(node, node))
++
++extern void rb_insert_color(struct rb_node *, struct rb_root *);
++extern void rb_erase(struct rb_node *, struct rb_root *);
++
++typedef void (*rb_augment_f)(struct rb_node *node, void *data);
++
++extern void rb_augment_insert(struct rb_node *node,
++			      rb_augment_f func, void *data);
++extern struct rb_node *rb_augment_erase_begin(struct rb_node *node);
++extern void rb_augment_erase_end(struct rb_node *node,
++				 rb_augment_f func, void *data);
++
++/* Find logical next and previous nodes in a tree */
++extern struct rb_node *rb_next(const struct rb_node *);
++extern struct rb_node *rb_prev(const struct rb_node *);
++extern struct rb_node *rb_first(const struct rb_root *);
++extern struct rb_node *rb_last(const struct rb_root *);
++
++/* Fast replacement of a single node without remove/rebalance/add/rebalance */
++extern void rb_replace_node(struct rb_node *victim, struct rb_node *new,
++			    struct rb_root *root);
++
++static inline void rb_link_node(struct rb_node * node, struct rb_node * parent,
++				struct rb_node ** rb_link)
++{
++	node->rb_parent_color = (unsigned long )parent;
++	node->rb_left = node->rb_right = NULL;
++
++	*rb_link = node;
++}
++
++#endif	/* _LINUX_RBTREE_H */
+-- 
+1.7.4
 
-So unless you have a better idea, I will try to implement the "add grou=
-p blocks
-by freeing them" paradigm.
-
-Amir.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
