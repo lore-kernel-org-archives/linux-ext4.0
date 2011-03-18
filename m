@@ -1,63 +1,60 @@
-From: Rogier Wolff <R.E.Wolff@BitWizard.nl>
-Subject: mkdir performance.
-Date: Fri, 18 Mar 2011 09:57:42 +0100
-Message-ID: <20110318085742.GA20480@bitwizard.nl>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH 1/4 v2] e2fsprogs: Add rbtree library
+Date: Fri, 18 Mar 2011 10:46:13 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1103181041230.4087@dhcp-27-109.brq.redhat.com>
+References: <1300387821-21705-1-git-send-email-lczerner@redhat.com> <1300387821-21705-2-git-send-email-lczerner@redhat.com> <C0759906-5B2F-4A73-9248-4C1B1897F4EB@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, sandeen@redhat.com
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cust-95-128-94-82.breedbanddelft.nl ([95.128.94.82]:49330 "HELO
-	abra2.bitwizard.nl" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with SMTP id S1756408Ab1CRI5o (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Mar 2011 04:57:44 -0400
-Content-Disposition: inline
+Received: from mx1.redhat.com ([209.132.183.28]:4165 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932336Ab1CRJqU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Mar 2011 05:46:20 -0400
+In-Reply-To: <C0759906-5B2F-4A73-9248-4C1B1897F4EB@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Thu, 17 Mar 2011, Andreas Dilger wrote:
 
-Hi Guys, 
+> On 2011-03-17, at 12:50 PM, Lukas Czerner wrote:
+> > +#undef offsetof
+> > +#ifdef __compiler_offsetof
+> > +#define offsetof(TYPE,MEMBER) __compiler_offsetof(TYPE,MEMBER)
+> > +#else
+> > +#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
+> > +#endif
+> 
+> This may as well go into a more common header like lib/ext2fs/ext2fs.h, since I see offsetof() is #defined 5 separate times in the e2fsprogs code already.
+> 
+> > +#define container_of(ptr, type, member) ({			\
+> > +	const typeof( ((type *)0)->member ) *__mptr = (ptr);	\
+> > +	(type *)( (char *)__mptr - offsetof(type,member) );})
+> 
+> Same.
+> 
+> > +#define rb_parent(r)   ((struct rb_node *)((r)->rb_parent_color & ~3))
+> > +#define rb_color(r)   ((r)->rb_parent_color & 1)
+> > +#define rb_is_red(r)   (!rb_color(r))
+> > +#define rb_is_black(r) rb_color(r)
+> > +#define rb_set_red(r)  do { (r)->rb_parent_color &= ~1; } while (0)
+> > +#define rb_set_black(r)  do { (r)->rb_parent_color |= 1; } while (0)
+> > +
+> > +#define RB_ROOT	(struct rb_root) { NULL, }
+> > +#define	rb_entry(ptr, type, member) container_of(ptr, type, member)
+> 
+> The indenting here is a bit broken, but I see it is the same in the upstream kernel code, so it probably shouldn't be changed just for e2fsprogs.
+> 
+> 
+> Cheers, Andreas
+> 
 
-I'm seeing more and more mkdir performance problems.
+Hi Andreas,
 
-On the big partition where I most often NEED the performance an
-strace -tttT mkdir asdlkfj results in: 
+thank you for the review! You're right I'll move those macros into
+lib/ext2fs/ext2fs.h
 
-1300437461.968657 mkdir("asdklfj", 0777) = 0 <0.065133>
-
-On my homedir (older machine) the same mkdir is a lot faster:
-
-1300437428.294018 mkdir("asdklfj", 0777) = 0 <0.003813>
-
-Only 3 milliseconds. Ten times faster! That would be great!
-
-On my local workstation I get: 
-
-1300437803.200227 mkdir("askldjf", 0777) = 0 <0.000092>
-
-92 microseconds. even 30 times faster than that!
-
-That 65 milliseconds. For just one it's not that bad. Not even
-noticable. In my current (data-recovery) project I have (/ my client
-has) about 30000 directories. This means that to do the recovery I
-wait an additional 32 minutes just for all the mkdirs.
-
-But I'm not waiting just once for "all the mkdirs". During the course
-of a datarecovery I reconstruct the tree many times over, making
-backups of the current state over and over again. In this project I've
-been waiting that half hour over ten times, so it's cost me over 5
-hours in productivity.
-
-IIRC, a fix was available, right?
-
-To "fix" this, all I need to do is to switch to the most recent
-kernel, right? Or was the fix not yet integrated with Linus?
-
-	Roger. 
-
--- 
-** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
-**    Delftechpark 26 2628 XH  Delft, The Netherlands. KVK: 27239233    **
-*-- BitWizard writes Linux device drivers for any device you may have! --*
-Q: It doesn't work. A: Look buddy, doesn't work is an ambiguous statement. 
-Does it sit on the couch all day? Is it unemployed? Please be specific! 
-Define 'it' and what it isn't doing. --------- Adapted from lxrbot FAQ
+Thanks!
+-Lukas
