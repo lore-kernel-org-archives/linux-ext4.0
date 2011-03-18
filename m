@@ -1,172 +1,53 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 2/4 v2] e2fsprogs: Add rbtree backend for bitmaps, use
- it instead of bitarrays
-Date: Fri, 18 Mar 2011 10:55:38 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1103181046370.4087@dhcp-27-109.brq.redhat.com>
-References: <1300387821-21705-1-git-send-email-lczerner@redhat.com> <1300387821-21705-3-git-send-email-lczerner@redhat.com> <1C50C58A-4A2A-4BAC-918D-054E0BD0EE1A@dilger.ca>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, sandeen@redhat.com
-To: Andreas Dilger <adilger@dilger.ca>
+From: Robin Dong <hao.bigrat@gmail.com>
+Subject: [PATCH] ext4: critical info format fix in __ext4_grp_locked_error
+Date: Fri, 18 Mar 2011 17:58:03 +0800
+Message-ID: <1300442283-31421-1-git-send-email-hao.bigrat@gmail.com>
+Cc: Robin Dong <sanbai@taobao.com>, Tao Ma <boyu.mt@taobao.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:8356 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932384Ab1CRJzp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 18 Mar 2011 05:55:45 -0400
-In-Reply-To: <1C50C58A-4A2A-4BAC-918D-054E0BD0EE1A@dilger.ca>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:42145 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932414Ab1CRJ6O (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Mar 2011 05:58:14 -0400
+Received: by iyb26 with SMTP id 26so3794054iyb.19
+        for <linux-ext4@vger.kernel.org>; Fri, 18 Mar 2011 02:58:14 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 17 Mar 2011, Andreas Dilger wrote:
+From: Robin Dong <sanbai@taobao.com>
 
-> On 2011-03-17, at 12:50 PM, Lukas Czerner wrote:
-> > +++ b/lib/ext2fs/blkmap64_rb.c
-> > +struct bmap_rb_extent {
-> > +	struct rb_node node;
-> > +	__u64 start;
-> > +	__u32 count;
-> > +};
-> 
-> On 32-bit machines (where memory consumption is even more critical) this will pack better by arranging it with "count" aligned with rb_parent_color:
-> 
-> struct bmap_rb_extent {
-> 	__u64 start;
-> 	__u32 count;
-> 	struct rb_node node;
-> };
-> 
-> That will give a leaf size of 24 bytes on a 32-bit arch, instead of 32 bytes with padding.  On a 64-bit arch it won't make any difference.
+When we do performence-testing on ext4 filesystem, we observe a warning like this:
 
-Oh, of course, do not know how I missed that.
+"[ 1684.113205] EXT4-fs error (device sda7): ext4_mb_generate_buddy:718: group 259825901 blocks in bitmap, 26057 in gd"
 
-> 
-> > static errcode_t rb_resize_bmap(ext2fs_generic_bitmap bmap,
-> > +				__u64 new_end, __u64 new_real_end)
-> > +{
-> > +	struct ext2fs_rb_private *bp;
-> > +
-> > +	if (new_real_end >= bmap->real_end) {
-> > +		bmap->end = new_end;
-> > +		bmap->real_end = new_real_end;
-> > +		return 0;
-> > +	}
-> > +
-> > +	bp = (struct ext2fs_rb_private *) bmap->private;
-> > +	*bp->rcursor = NULL;
-> > +	*bp->wcursor = NULL;
-> > +
-> > +	/* truncate tree to new_real_end size */
-> > +	rb_truncate(new_real_end, &bp->root);
-> > +
-> > +	bmap->end = new_end;
-> > +	bmap->real_end = new_real_end;
-> > +	return 0;
-> > +
-> > +}
-> 
-> This might be a bit better written as:
-> 
-> static errcode_t rb_resize_bmap(ext2fs_generic_bitmap bmap,
-> 				__u64 new_end, __u64 new_real_end)
-> {
-> 	struct ext2fs_rb_private *bp;
-> 
-> 	if (new_real_end < bmap->real_end) {
-> 		bp = (struct ext2fs_rb_private *)bmap->private;
-> 		*bp->rcursor = NULL;
-> 		*bp->wcursor = NULL;
-> 
-> 		/* truncate tree to new_real_end size */
-> 		rb_truncate(new_real_end, &bp->root);
-> 	}
-> 
-> 	bmap->end = new_end;
-> 	bmap->real_end = new_real_end;
-> 	return 0;
-> 
-> }
+indeed, it should be
 
-Right that's definitely better.
+"group 2598, 25901 blocks in bitmap, 26057 in gd"
 
-> 
-> > +inline static int
-> > +rb_test_bit(struct ext2fs_rb_private *bp, __u64 bit)
-> > +{
-> > +	struct bmap_rb_extent *rcursor;
-> > +	struct rb_node *parent = NULL;
-> > +	struct rb_node **n = &bp->root.rb_node;
-> > +	struct bmap_rb_extent *ext;
-> > +	int i=0;
-> > +
-> > +	rcursor = *bp->rcursor;
-> > +	if (!rcursor)
-> > +		goto search_tree;
-> > +
-> > +	if (bit >= rcursor->start && bit < rcursor->start + rcursor->count)
-> > +		return 1;
-> > +
-> > +	rcursor = *bp->wcursor;
-> > +	if (!rcursor)
-> > +		goto search_tree;
-> > +
-> > +	if (bit >= rcursor->start && bit < rcursor->start + rcursor->count)
-> > +		return 1;
-> > +
-> > +search_tree:
-> > +
-> > +	while (*n) {
-> > +		parent = *n;
-> > +		ext = rb_entry(parent, struct bmap_rb_extent, node);
-> > +		if (bit < ext->start)
-> > +			n = &(*n)->rb_left;
-> > +		else if (bit >= (ext->start + ext->count))
-> > +			n = &(*n)->rb_right;
-> > +		else {
-> > +			*bp->rcursor = ext;
-> > +			return 1;
-> > +		}
-> > +	}
-> > +	return 0;
-> > +}
-> 
-> This seems quite large for a static inline?  I guess it is only called by a single function, so maybe not a big deal.
+This bug is found on upstream 2.6.36 kernel. We ran a 2.6.36 kernel on the online system with 8 Ext4 file systems. 2 of them are mounted with delayed allocation feature. This warning is only observed on delayed allocation enabled Ext4 file systems.
 
-It is actually called for two functions and since this is the most
-called function, I think this it is worth it (there is approx. 1%
-performance boost bound with this).
+This issue is not easy to reproduce, on two servers with 2.6.36 kenrel + ext4, after running 110+ days, the error starts to appear on kernel log. When check the error log, we found the info format should be fixed, that's how this patch comes.
 
-> 
-> > +inline
-> > +static int rb_test_bmap(ext2fs_generic_bitmap bitmap, __u64 arg)
-> > +{
-> > +	struct ext2fs_rb_private *bp;
-> > +
-> > +	bp = (struct ext2fs_rb_private *) bitmap->private;
-> > +	arg -= bitmap->start;
-> > +
-> > +	return rb_test_bit(bp, arg);
-> > +}
-> 
-> This definitely doesn't make sense to be static inline, since its only use is by ext2_bitmap_ops table, so it can't possibly be inline...
+Reviewed-by: Coly Li <bosong.ly@taobao.com>
+Cc: Tao Ma <boyu.mt@taobao.com>
+Signed-off-by: Robin Dong <sanbai@taobao.com>
+---
+ fs/ext4/super.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-Right, I'll fix that.
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index f6a318f..bb38475 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -594,7 +594,7 @@ __acquires(bitlock)
+ 
+ 	vaf.fmt = fmt;
+ 	vaf.va = &args;
+-	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: group %u",
++	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: group %u, ",
+ 	       sb->s_id, function, line, grp);
+ 	if (ino)
+ 		printk(KERN_CONT "inode %lu: ", ino);
+-- 
+1.7.3.5
 
-> 
-> > @@ -158,6 +161,7 @@ void ext2fs_free_generic_bmap(ext2fs_generic_bitmap bmap)
-> > 		bmap->description = 0;
-> > 	}
-> > 	bmap->magic = 0;
-> > +	ext2fs_free_mem(&bmap);
-> > }
-> 
-> This is really a defect in the original e2fsprogs, so it might make sense to submit it independently in case Ted isn't going to apply this patch right away.
-
-Yes, somehow I forgot about that. Thanks.
-
-> 
-> Cheers, Andreas
-> 
-
-Thanks!
--Lukas
