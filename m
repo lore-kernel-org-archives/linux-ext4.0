@@ -1,275 +1,120 @@
 From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: [Ext4 punch hole 1/4 v4] Ext4 Punch Hole Support: Convert Blocks
- to Uninit Exts
-Date: Fri, 18 Mar 2011 20:03:44 -0700
-Message-ID: <4D841D10.80900@linux.vnet.ibm.com>
+Subject: [Ext4 punch hole 2/4 v4] Ext4 Punch Hole Support: Clear Hole
+Date: Fri, 18 Mar 2011 20:03:57 -0700
+Message-ID: <4D841D1D.2050005@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e32.co.us.ibm.com ([32.97.110.150]:52178 "EHLO
-	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755534Ab1CSDDp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Mar 2011 23:03:45 -0400
-Received: from d03relay05.boulder.ibm.com (d03relay05.boulder.ibm.com [9.17.195.107])
-	by e32.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p2J2r1MK016549
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Mar 2011 20:53:01 -0600
+Received: from e34.co.us.ibm.com ([32.97.110.152]:34608 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756095Ab1CSDD7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Mar 2011 23:03:59 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e34.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p2J2q8Fp006241
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Mar 2011 20:52:08 -0600
 Received: from d03av05.boulder.ibm.com (d03av05.boulder.ibm.com [9.17.195.85])
-	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p2J33hgp103582
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Mar 2011 21:03:43 -0600
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id p2J33uix116378
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Mar 2011 21:03:56 -0600
 Received: from d03av05.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av05.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p2J33hFO022940
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Mar 2011 21:03:43 -0600
+	by d03av05.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p2J33u6g023485
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Mar 2011 21:03:56 -0600
 Received: from [9.11.169.111] (IBM-3CEFE379E05.tucson.ibm.com [9.11.169.111])
-	by d03av05.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p2J33g0p022927
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Mar 2011 21:03:42 -0600
+	by d03av05.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p2J33uSm023474
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Mar 2011 21:03:56 -0600
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds a function to convert a range of blocks
-to an uninitialized extent.  This function will
-be used to first convert the blocks to extents before
-punching them out.
+This patch adds routines needed to zero out the
+unblock aligned data of the hole.
 
-This function also adds a routine to split an extent at
-a given block.  This routine is used when a range of
-blocks to be converted is only partially contained in
-an extent.
+The existing ext4_block_truncate_page routine that
+is used to zero out unblock aligned data from truncate
+has been modified to accept a length parameter, and
+renamed to ext4_block_zero_page_range.
+
+The function can now be used to zero out the
+head of a block, the tail of a block, or the middle
+of a block.  The existing ext4_block_truncate_page
+has now become a wrapper to this function
 
 Signed-off-by: Allison Henderson <achender@us.ibm.com>
 ---
-:100644 100644 9375e7c... b78b41f... M	fs/ext4/extents.c
- fs/ext4/extents.c |  209 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 209 insertions(+), 0 deletions(-)
+:100644 100644 3aa0b72... c722e31... M	fs/ext4/ext4.h
+:100644 100644 67e7a3c... 78c5bc4... M	fs/ext4/inode.c
+  fs/ext4/ext4.h  |    2 ++
+  fs/ext4/inode.c |   33 +++++++++++++++++++++++++++++++--
+  2 files changed, 33 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 9375e7c..b78b41f 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2169,6 +2169,109 @@ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
- 	return 0;
- }
- 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 3aa0b72..c722e31 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1738,6 +1738,8 @@ extern int ext4_writepage_trans_blocks(struct 
+inode *);
+  extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
+  extern int ext4_block_truncate_page(handle_t *handle,
+  		struct address_space *mapping, loff_t from);
++extern int ext4_block_zero_page_range(handle_t *handle,
++		struct address_space *mapping, loff_t from, loff_t length);
+  extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct 
+vm_fault *vmf);
+  extern qsize_t *ext4_get_reserved_space(struct inode *inode);
+  extern void ext4_da_update_reserve_space(struct inode *inode,
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 67e7a3c..78c5bc4 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3907,9 +3907,30 @@ void ext4_set_aops(struct inode *inode)
+  int ext4_block_truncate_page(handle_t *handle,
+  		struct address_space *mapping, loff_t from)
+  {
++	unsigned offset = from & (PAGE_CACHE_SIZE-1);
++	unsigned length;
++	unsigned blocksize;
++	struct inode *inode = mapping->host;
++
++	blocksize = inode->i_sb->s_blocksize;
++	length = blocksize - (offset & (blocksize - 1));
++
++	return ext4_block_zero_page_range(handle, mapping, from, length);
++}
++
 +/*
-+ * ext4_split_extents() Splits a given extent at the block "split"
-+ * @handle: The journal handle
-+ * @inode: The file inode
-+ * @split: The block where the extent will be split
-+ * @path: The path to the extent
-+ * @flags: flags used to insert the new extent
++ * ext4_block_zero_page_range() zeros out a mapping of length 'length'
++ * starting from file offset 'from'.  The range to be zero'd must
++ * be contained with in one block.  If the specified range exceeds
++ * the end of the block it will be shortened to end of the block
++ * that cooresponds to 'from'
 + */
-+static int ext4_split_extents(handle_t *handle,
-+					struct inode *inode,
-+					ext4_lblk_t split,
-+					struct ext4_ext_path *path,
-+					int flags)
++int ext4_block_zero_page_range(handle_t *handle,
++		struct address_space *mapping, loff_t from, loff_t length)
 +{
-+	struct ext4_extent *ex, newex, orig_ex;
-+	struct ext4_extent *ex1 = NULL;
-+	struct ext4_extent *ex2 = NULL;
-+	struct ext4_extent_header *eh;
-+	ext4_lblk_t ee_block;
-+	unsigned int ee_len, depth;
-+	ext4_fsblk_t newblock, origblock;
-+	int err = 0;
-+
-+	ext_debug("ext4_split_extent: inode %lu, split %u\n",
-+				inode->i_ino, split);
-+	ext4_ext_show_leaf(inode, path);
-+
-+	depth = ext_depth(inode);
-+	eh = path[depth].p_hdr;
-+	ex = path[depth].p_ext;
-+	ee_block = le32_to_cpu(ex->ee_block);
-+	ee_len = ext4_ext_get_actual_len(ex);
-+
-+	/* if the block is not actually in the extent, go to out */
-+	if (split > ee_block+ee_len || split < ee_block)
-+		goto out;
-+
-+	origblock = ee_block + ext4_ext_pblock(ex);
-+	newblock = split - ee_block + ext4_ext_pblock(ex);
-+	ext_debug("The new block is %llu, the orig block is: %llu\n",
-+				newblock, origblock);
-+
-+	/* save original block in case split fails */
-+	orig_ex.ee_block = ex->ee_block;
-+	orig_ex.ee_len   = cpu_to_le16(ee_len);
-+	ext4_ext_store_pblock(&orig_ex, ext4_ext_pblock(ex));
-+
-+	err = ext4_ext_get_access(handle, inode, path + depth);
-+	if (err)
-+		goto out;
-+
-+	ex1 = ex;
-+	ex1->ee_len = cpu_to_le16(split-ee_block);
-+
-+	ex2 = &newex;
-+	ex2->ee_len = cpu_to_le16(ee_len-(split-ee_block));
-+	ex2->ee_block = split;
-+	ext4_ext_store_pblock(ex2, newblock);
-+
-+	if (ex1->ee_block == ex2->ee_block) {
-+		/* Mark modified extent as dirty */
-+		err = ext4_ext_dirty(handle, inode, path + depth);
-+		ext_debug("out here\n");
-+		goto out;
-+	}
+  	ext4_fsblk_t index = from >> PAGE_CACHE_SHIFT;
+  	unsigned offset = from & (PAGE_CACHE_SIZE-1);
+-	unsigned blocksize, length, pos;
++	unsigned blocksize, max, pos;
+  	ext4_lblk_t iblock;
+  	struct inode *inode = mapping->host;
+  	struct buffer_head *bh;
+@@ -3922,7 +3943,15 @@ int ext4_block_truncate_page(handle_t *handle,
+  		return -EINVAL;
+
+  	blocksize = inode->i_sb->s_blocksize;
+-	length = blocksize - (offset & (blocksize - 1));
++	max = blocksize - (offset & (blocksize - 1));
 +
 +	/*
-+	 * If this leaf cannot fit in any more extents
-+	 * insert it into another leaf
++	 * correct length if it does not fall between
++	 * 'from' and the end of the block
 +	 */
-+	if (EXT_LAST_EXTENT(eh) >=  EXT_MAX_EXTENT(eh)) {
-+		err = ext4_ext_insert_extent(handle, inode, path,
-+				&newex, flags);
-+		if (err)
-+			goto fix_extent_len;
++	if (length > max || length < 0)
++		length = max;
 +
-+		depth = ext_depth(inode);
-+		path = ext4_ext_find_extent(inode, split, path);
-+	}
-+
-+	/* otherwise just scoot all ther other extents down  */
-+	else{
-+		memmove(ex1+2, ex1+1,
-+			(EXT_LAST_EXTENT(eh) - ex1) *
-+			sizeof(struct ext4_extent));
-+		memcpy(ex1+1, ex2, sizeof(struct ext4_extent));
-+		le16_add_cpu(&(eh->eh_entries), 1);
-+	}
-+
-+out:
-+	ext4_ext_show_leaf(inode, path);
-+	return err;
-+
-+fix_extent_len:
-+	ex->ee_block = orig_ex.ee_block;
-+	ex->ee_len   = orig_ex.ee_len;
-+	ext4_ext_store_pblock(ex, ext4_ext_pblock(&orig_ex));
-+	ext4_ext_mark_uninitialized(ex);
-+	ext4_ext_dirty(handle, inode, path + depth);
-+
-+	return err;
-+}
-+
- static int
- ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 		struct ext4_ext_path *path, ext4_lblk_t start)
-@@ -3598,6 +3701,112 @@ out_stop:
- 	ext4_journal_stop(handle);
- }
- 
-+/*
-+ * ext4_ext_convert_blocks_uninit()
-+ * Converts a range of blocks to uninitialized
-+ *
-+ * @handle: The journal handle
-+ * @inode:  The files inode
-+ * @lblock: The logical block where the conversion will start
-+ * @len:    The max number of blocks to convert
-+ *
-+ * Returns the number of blocks successfully converted
-+ */
-+static int ext4_ext_convert_blocks_uninit(handle_t *handle,
-+				struct inode *inode,
-+				ext4_lblk_t lblock,
-+				ext4_lblk_t len){
-+
-+	ext4_lblk_t ee_block, iblock, blocks_checked;
-+	struct ext4_ext_path *path;
-+	struct ext4_extent *ex;
-+	unsigned int ee_len;
-+	int ret = 0;
-+	int err = 0;
-+
-+	iblock = lblock;
-+	while (iblock < lblock+len) {
-+		blocks_checked = 1;
-+		path = ext4_ext_find_extent(inode, iblock, NULL);
-+
-+		if (path == NULL)
-+			goto next;
-+
-+		err = ext4_ext_get_access(handle, inode, path);
-+		if (err < 0)
-+			goto next;
-+
-+		ex = path->p_ext;
-+		if (ex == NULL)
-+			goto next;
-+
-+		ee_block = le32_to_cpu(ex->ee_block);
-+		ee_len = ext4_ext_get_actual_len(ex);
-+
-+		if (ee_block > iblock ||
-+			ee_block+ee_len <= iblock)
-+			goto next;
-+
-+		/*
-+		 * If the block is in the middle of the extent,
-+		 * split the extent to remove the head.
-+		 * Then find the new extent that contains the block
-+		 */
-+		if (ee_block < iblock) {
-+			err = ext4_split_extents(handle, inode,
-+						iblock, path, 0);
-+
-+			if (err)
-+				goto next;
-+
-+			/* Release this path before we get the next one */
-+			ext4_ext_drop_refs(path);
-+			kfree(path);
-+
-+			path = ext4_ext_find_extent(inode, iblock, NULL);
-+
-+			if (path == NULL)
-+				goto next;
-+
-+			ex = path->p_ext;
-+			if (ex == NULL)
-+				goto next;
-+
-+			ee_block = le32_to_cpu(ex->ee_block);
-+			ee_len = ext4_ext_get_actual_len(ex);
-+		}
-+
-+		/*
-+		 * If the extent exceeds len, split
-+		 * the extent to remove the tail
-+		 */
-+		if (ee_len > len) {
-+			err = ext4_split_extents(handle, inode,
-+					lblock+len, path, 0);
-+
-+			if (err)
-+				goto next;
-+
-+			ee_len = ext4_ext_get_actual_len(ex);
-+		}
-+
-+		/* Mark the extent uninitialized */
-+		ext4_ext_mark_uninitialized(ex);
-+
-+		blocks_checked = ee_len;
-+		ret += ee_len;
-+next:
-+		if (path) {
-+			ext4_ext_drop_refs(path);
-+			kfree(path);
-+		}
-+		iblock += blocks_checked;
-+	}
-+
-+	return ret;
-+}
-+
-+
- static void ext4_falloc_update_inode(struct inode *inode,
- 				int mode, loff_t new_size, int update_ctime)
- {
+  	iblock = index << (PAGE_CACHE_SHIFT - inode->i_sb->s_blocksize_bits);
+
+  	if (!page_has_buffers(page))
 -- 
 1.7.1
 
