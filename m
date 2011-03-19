@@ -1,268 +1,187 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH, RFC 09/12] ext4: teach ext4_ext_map_blocks() about the bigalloc feature
-Date: Sat, 19 Mar 2011 17:28:34 -0400
-Message-ID: <1300570117-24048-10-git-send-email-tytso@mit.edu>
+Subject: [PATCH, RFC 06/12] ext4: split out ext4_free_blocks_after_init()
+Date: Sat, 19 Mar 2011 17:28:31 -0400
+Message-ID: <1300570117-24048-7-git-send-email-tytso@mit.edu>
 References: <1300570117-24048-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:52244 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:52250 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757590Ab1CSVhY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1757596Ab1CSVhY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sat, 19 Mar 2011 17:37:24 -0400
 In-Reply-To: <1300570117-24048-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If we need to allocate a new block in ext4_ext_map_blocks(), the
-function needs to see if the cluster has already been allocated.
+The function ext4_free_blocks_after_init() used to be a #define of
+ext4_init_block_bitmap().  This actually made it difficult to
+understand how the function worked, and made it hard make changes to
+support clusters.  So as an initial cleanup, I've separated out the
+functionality of initializing block bitmap from calculating the number
+of free blocks in the new block group.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/extents.c |  132 +++++++++++++++++++++++++++++++++++++++++++++++-----
- 1 files changed, 119 insertions(+), 13 deletions(-)
+ fs/ext4/balloc.c |  105 ++++++++++++++++++++++++++---------------------------
+ fs/ext4/ext4.h   |   13 ++++---
+ 2 files changed, 59 insertions(+), 59 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 9ea1bc6..3221b79 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -1273,7 +1273,8 @@ static int ext4_ext_search_left(struct inode *inode,
-  */
- static int ext4_ext_search_right(struct inode *inode,
- 				 struct ext4_ext_path *path,
--				 ext4_lblk_t *logical, ext4_fsblk_t *phys)
-+				 ext4_lblk_t *logical, ext4_fsblk_t *phys,
-+				 struct ext4_extent **ret_ex)
- {
- 	struct buffer_head *bh = NULL;
- 	struct ext4_extent_header *eh;
-@@ -1315,9 +1316,7 @@ static int ext4_ext_search_right(struct inode *inode,
- 				return -EIO;
- 			}
- 		}
--		*logical = le32_to_cpu(ex->ee_block);
--		*phys = ext4_ext_pblock(ex);
--		return 0;
-+		goto found_extent;
- 	}
- 
- 	if (unlikely(*logical < (le32_to_cpu(ex->ee_block) + ee_len))) {
-@@ -1330,9 +1329,7 @@ static int ext4_ext_search_right(struct inode *inode,
- 	if (ex != EXT_LAST_EXTENT(path[depth].p_hdr)) {
- 		/* next allocated block in this leaf */
- 		ex++;
--		*logical = le32_to_cpu(ex->ee_block);
--		*phys = ext4_ext_pblock(ex);
--		return 0;
-+		goto found_extent;
- 	}
- 
- 	/* go up and search for index to the right */
-@@ -1375,9 +1372,12 @@ got_index:
- 		return -EIO;
- 	}
- 	ex = EXT_FIRST_EXTENT(eh);
-+found_extent:
- 	*logical = le32_to_cpu(ex->ee_block);
- 	*phys = ext4_ext_pblock(ex);
--	put_bh(bh);
-+	*ret_ex = ex;
-+	if (bh)
-+		put_bh(bh);
- 	return 0;
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index c608fda..5b60c8b 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -100,74 +100,73 @@ static unsigned int num_blocks_in_group(struct super_block *sb,
+ 		return EXT4_BLOCKS_PER_GROUP(sb);
  }
  
-@@ -1606,7 +1606,8 @@ static int ext4_ext_try_to_merge(struct inode *inode,
-  * such that there will be no overlap, and then returns 1.
-  * If there is no overlap found, it returns 0.
-  */
--static unsigned int ext4_ext_check_overlap(struct inode *inode,
-+static unsigned int ext4_ext_check_overlap(struct ext4_sb_info *sbi,
-+					   struct inode *inode,
- 					   struct ext4_extent *newext,
- 					   struct ext4_ext_path *path)
+-/* Initializes an uninitialized block bitmap if given, and returns the
+- * number of blocks free in the group. */
+-unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
+-		 ext4_group_t block_group, struct ext4_group_desc *gdp)
++/* Initializes an uninitialized block bitmap */
++void ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
++			    ext4_group_t block_group,
++			    struct ext4_group_desc *gdp)
  {
-@@ -1620,6 +1621,7 @@ static unsigned int ext4_ext_check_overlap(struct inode *inode,
- 	if (!path[depth].p_ext)
- 		goto out;
- 	b2 = le32_to_cpu(path[depth].p_ext->ee_block);
-+	b2 &= ~(sbi->s_cluster_ratio - 1);
+ 	unsigned int bit, bit_max = num_base_meta_blocks(sb, block_group);
+-	ext4_group_t ngroups = ext4_get_groups_count(sb);
+-	unsigned group_blocks = num_blocks_in_group(sb, block_group);
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-
+-	if (bh) {
+-		J_ASSERT_BH(bh, buffer_locked(bh));
+-
+-		/* If checksum is bad mark all blocks used to prevent allocation
+-		 * essentially implementing a per-group read-only flag. */
+-		if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
+-			ext4_error(sb, "Checksum bad for group %u",
+-					block_group);
+-			ext4_free_blks_set(sb, gdp, 0);
+-			ext4_free_inodes_set(sb, gdp, 0);
+-			ext4_itable_unused_set(sb, gdp, 0);
+-			memset(bh->b_data, 0xff, sb->s_blocksize);
+-			return 0;
+-		}
+-		memset(bh->b_data, 0, sb->s_blocksize);
++	ext4_fsblk_t start, tmp;
++	int flex_bg = 0;
++
++	J_ASSERT_BH(bh, buffer_locked(bh));
++
++	/* If checksum is bad mark all blocks used to prevent allocation
++	 * essentially implementing a per-group read-only flag. */
++	if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
++		ext4_error(sb, "Checksum bad for group %u", block_group);
++		ext4_free_blks_set(sb, gdp, 0);
++		ext4_free_inodes_set(sb, gdp, 0);
++		ext4_itable_unused_set(sb, gdp, 0);
++		memset(bh->b_data, 0xff, sb->s_blocksize);
++		return;
+ 	}
++	memset(bh->b_data, 0, sb->s_blocksize);
  
- 	/*
- 	 * get the next allocated block if the extent in the path
-@@ -3274,6 +3276,82 @@ out2:
+-	if (bh) {
+-		ext4_fsblk_t start, tmp;
+-		int flex_bg = 0;
++	for (bit = 0; bit < bit_max; bit++)
++		ext4_set_bit(bit, bh->b_data);
+ 
+-		for (bit = 0; bit < bit_max; bit++)
+-			ext4_set_bit(bit, bh->b_data);
++	start = ext4_group_first_block_no(sb, block_group);
+ 
+-		start = ext4_group_first_block_no(sb, block_group);
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
++		flex_bg = 1;
+ 
+-		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
+-					      EXT4_FEATURE_INCOMPAT_FLEX_BG))
+-			flex_bg = 1;
++	/* Set bits for block and inode bitmaps, and inode table */
++	tmp = ext4_block_bitmap(sb, gdp);
++	if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
++		ext4_set_bit(tmp - start, bh->b_data);
+ 
+-		/* Set bits for block and inode bitmaps, and inode table */
+-		tmp = ext4_block_bitmap(sb, gdp);
+-		if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
+-			ext4_set_bit(tmp - start, bh->b_data);
++	tmp = ext4_inode_bitmap(sb, gdp);
++	if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
++		ext4_set_bit(tmp - start, bh->b_data);
+ 
+-		tmp = ext4_inode_bitmap(sb, gdp);
++	tmp = ext4_inode_table(sb, gdp);
++	for (; tmp < ext4_inode_table(sb, gdp) +
++		     sbi->s_itb_per_group; tmp++) {
+ 		if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
+ 			ext4_set_bit(tmp - start, bh->b_data);
+-
+-		tmp = ext4_inode_table(sb, gdp);
+-		for (; tmp < ext4_inode_table(sb, gdp) +
+-				sbi->s_itb_per_group; tmp++) {
+-			if (!flex_bg ||
+-				ext4_block_in_group(sb, tmp, block_group))
+-				ext4_set_bit(tmp - start, bh->b_data);
+-		}
+-		/*
+-		 * Also if the number of blocks within the group is
+-		 * less than the blocksize * 8 ( which is the size
+-		 * of bitmap ), set rest of the block bitmap to 1
+-		 */
+-		ext4_mark_bitmap_end(group_blocks, sb->s_blocksize * 8,
+-				     bh->b_data);
+ 	}
+-	return group_blocks - bit_max -
+-		ext4_group_used_meta_blocks(sb, block_group, gdp);
++	/*
++	 * Also if the number of blocks within the group is less than
++	 * the blocksize * 8 ( which is the size of bitmap ), set rest
++	 * of the block bitmap to 1
++	 */
++	ext4_mark_bitmap_end(num_blocks_in_group(sb, block_group),
++			     sb->s_blocksize * 8, bh->b_data);
  }
+ 
++/* Return the number of free blocks in a block group.  It is used when
++ * the block bitmap is uninitialized, so we can't just count the bits
++ * in the bitmap. */
++unsigned ext4_free_blocks_after_init(struct super_block *sb,
++				     ext4_group_t block_group,
++				     struct ext4_group_desc *gdp)
++{
++	return num_blocks_in_group(sb, block_group) -
++		num_base_meta_blocks(sb, block_group) -
++		ext4_group_used_meta_blocks(sb, block_group, gdp);
++}
  
  /*
-+ * get_implied_cluster_alloc - check to see if the requested
-+ * allocation (in the map structure) overlaps with a cluster already
-+ * allocated in an extent.
-+ *	@map	The requested lblk->pblk mapping
-+ *	@c_len	The number of blocks in a cluster
-+ *	@ex	The extent structure which might contain an implied
-+ *			cluster allocation
-+ *
-+ * This function is called by ext4_ext_map_blocks() after we failed to
-+ * find blocks that were already in the inode's extent tree.  Hence,
-+ * we know that the beginning of the requested region cannot overlap
-+ * the extent from the inode's extent tree.  There are two cases we
-+ * want to catch.  The first is this case:
-+ *
-+ *		 |--- cluster # N--|
-+ *    |--- extent ---|	|---- requested region ---|
-+ *			|==========|
-+ *
-+ * The second case that we need to test for is this one:
-+ *
-+ *   |--------- cluster # N ----------------|
-+ *	   |--- requested region --|   |------- extent ----|
-+ *	   |=======================|
-+ *
-+ * In each case, we need to return the extent labelled as "|====|"
-+ * from cluster #N.
-+ */
-+static int get_implied_cluster_alloc(struct ext4_sb_info *sbi,
-+				     struct ext4_map_blocks *map,
-+				     struct ext4_extent *ex)
-+{
-+	ext4_lblk_t c_offset = map->m_lblk & (sbi->s_cluster_ratio-1);
-+	ext4_lblk_t ex_cluster_start, ex_cluster_end;
-+	ext4_lblk_t rr_cluster_start, rr_cluster_end;
-+	ext4_lblk_t ee_block = le32_to_cpu(ex->ee_block);
-+	ext4_fsblk_t ee_start = ext4_ext_pblock(ex);
-+	unsigned short ee_len = ext4_ext_get_actual_len(ex);
-+
-+	if (!c_offset)
-+		return 0;
-+
-+	/* The extent passed in that we are trying to match */
-+	ex_cluster_start = EXT4_B2C(sbi, ee_block);
-+	ex_cluster_end = EXT4_B2C(sbi, ee_block + ee_len - 1);
-+
-+	/* The requested region passed into ext4_map_blocks() */
-+	rr_cluster_start = EXT4_B2C(sbi, map->m_lblk);
-+	rr_cluster_end = EXT4_B2C(sbi, map->m_lblk + map->m_len - 1);
-+
-+	if ((rr_cluster_start == ex_cluster_end) ||
-+	    (rr_cluster_start == ex_cluster_start)) {
-+		if (rr_cluster_start == ex_cluster_end)
-+			ee_start += ee_len - 1;
-+		map->m_pblk = (ee_start & ~(sbi->s_cluster_ratio - 1)) +
-+			c_offset;
-+		map->m_len = min(map->m_len,
-+				 (unsigned) sbi->s_cluster_ratio - c_offset);
-+		/*
-+		 * Check for and handle this case:
-+		 *
-+		 *   |--------- cluster # N-------------|
-+		 *		       |------- extent ----|
-+		 *	   |--- requested region ---|
-+		 *	   |===========|
-+		 */
-+
-+		if ((map->m_lblk < ee_block) &&
-+		    (map->m_lblk + map->m_len > ee_block))
-+			map->m_len = ee_block - map->m_lblk;
-+		return 1;
-+	}
-+	return 0;
-+}
-+
-+
-+/*
-  * Block allocation/map/preallocation routine for extents based files
-  *
-  *
-@@ -3296,12 +3374,14 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- {
- 	struct ext4_ext_path *path = NULL;
- 	struct ext4_extent_header *eh;
--	struct ext4_extent newex, *ex;
-+	struct ext4_extent newex, *ex, *ex2;
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	ext4_fsblk_t newblock;
- 	int err = 0, depth, ret;
- 	unsigned int allocated = 0;
- 	struct ext4_allocation_request ar;
- 	ext4_io_end_t *io = EXT4_I(inode)->cur_aio_dio;
-+	ext4_lblk_t cluster_offset;
+  * The free blocks are managed by bitmaps.  A file system contains several
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 94a7a7b..0eb7407 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1662,12 +1662,13 @@ extern struct ext4_group_desc * ext4_get_group_desc(struct super_block * sb,
+ extern int ext4_should_retry_alloc(struct super_block *sb, int *retries);
+ struct buffer_head *ext4_read_block_bitmap(struct super_block *sb,
+ 				      ext4_group_t block_group);
+-extern unsigned ext4_init_block_bitmap(struct super_block *sb,
+-				       struct buffer_head *bh,
+-				       ext4_group_t group,
+-				       struct ext4_group_desc *desc);
+-#define ext4_free_blocks_after_init(sb, group, desc)			\
+-		ext4_init_block_bitmap(sb, NULL, group, desc)
++extern void ext4_init_block_bitmap(struct super_block *sb,
++				   struct buffer_head *bh,
++				   ext4_group_t group,
++				   struct ext4_group_desc *desc);
++extern unsigned ext4_free_blocks_after_init(struct super_block *sb,
++					    ext4_group_t block_group,
++					    struct ext4_group_desc *gdp);
  
- 	ext_debug("blocks %u/%u requested for inode %lu\n",
- 		  map->m_lblk, map->m_len, inode->i_ino);
-@@ -3398,9 +3478,21 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 		ext4_ext_put_gap_in_cache(inode, path, map->m_lblk);
- 		goto out2;
- 	}
-+
- 	/*
- 	 * Okay, we need to do block allocation.
- 	 */
-+	cluster_offset = map->m_lblk & (sbi->s_cluster_ratio-1);
-+	/*
-+	 * If we are doing bigalloc, check to see if the extent returned
-+	 * by ext4_find_extent() implies a cluster we can use.
-+	 */
-+	if (cluster_offset && ex &&
-+	    get_implied_cluster_alloc(sbi, map, ex)) {
-+		ar.len = allocated = map->m_len;
-+		newblock = map->m_pblk;
-+		goto got_allocated_blocks;
-+	}
- 
- 	/* find neighbour allocated blocks */
- 	ar.lleft = map->m_lblk;
-@@ -3408,10 +3500,20 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	if (err)
- 		goto out2;
- 	ar.lright = map->m_lblk;
--	err = ext4_ext_search_right(inode, path, &ar.lright, &ar.pright);
-+	ex2 = 0;
-+	err = ext4_ext_search_right(inode, path, &ar.lright, &ar.pright, &ex2);
- 	if (err)
- 		goto out2;
- 
-+	/* Check if the extent after searching to the right implies a
-+	 * cluster we can use. */
-+	if (cluster_offset && ex2 &&
-+	    get_implied_cluster_alloc(sbi, map, ex2)) {
-+		ar.len = allocated = map->m_len;
-+		newblock = map->m_pblk;
-+		goto got_allocated_blocks;
-+	}
-+
- 	/*
- 	 * See if request is beyond maximum number of blocks we can have in
- 	 * a single extent. For an initialized extent this limit is
-@@ -3428,7 +3530,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	/* Check if we can really insert (m_lblk)::(m_lblk + m_len) extent */
- 	newex.ee_block = cpu_to_le32(map->m_lblk);
- 	newex.ee_len = cpu_to_le16(map->m_len);
--	err = ext4_ext_check_overlap(inode, &newex, path);
-+	err = ext4_ext_check_overlap(sbi, inode, &newex, path);
- 	if (err)
- 		allocated = ext4_ext_get_actual_len(&newex);
- 	else
-@@ -3438,7 +3540,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	ar.inode = inode;
- 	ar.goal = ext4_ext_find_goal(inode, path, map->m_lblk);
- 	ar.logical = map->m_lblk;
--	ar.len = allocated;
-+	ar.len = EXT4_NUM_B2C(sbi, allocated);
- 	if (S_ISREG(inode->i_mode))
- 		ar.flags = EXT4_MB_HINT_DATA;
- 	else
-@@ -3449,7 +3551,11 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 		goto out2;
- 	ext_debug("allocate new block: goal %llu, found %llu/%u\n",
- 		  ar.goal, newblock, allocated);
-+	ar.len <<= sbi->s_cluster_bits;
-+	if (ar.len > allocated)
-+		ar.len = allocated;
- 
-+got_allocated_blocks:
- 	/* try to insert new extent into found leaf and return */
- 	ext4_ext_store_pblock(&newex, newblock);
- 	newex.ee_len = cpu_to_le16(ar.len);
+ /* dir.c */
+ extern int __ext4_check_dir_entry(const char *, unsigned int, struct inode *,
 -- 
 1.7.3.1
 
