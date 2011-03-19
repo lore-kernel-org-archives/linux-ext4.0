@@ -1,53 +1,150 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH, RFC 11/12] ext4: tune mballoc's default group prealloc size for bigalloc file systems
-Date: Sat, 19 Mar 2011 17:28:36 -0400
-Message-ID: <1300570117-24048-12-git-send-email-tytso@mit.edu>
+Subject: [PATCH, RFC 05/12] ext4: factor out block group accounting into functions
+Date: Sat, 19 Mar 2011 17:28:30 -0400
+Message-ID: <1300570117-24048-6-git-send-email-tytso@mit.edu>
 References: <1300570117-24048-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:52238 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:52240 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757597Ab1CSVhX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1757599Ab1CSVhX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sat, 19 Mar 2011 17:37:23 -0400
 In-Reply-To: <1300570117-24048-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The default group preallocation size had been previously set to 512
-blocks/clusters, regardless of the block/cluster size.  This is
-probably too big for large cluster sizes.  So adjust the default so
-that it is 2 megabytes or 32 clusters, whichever is larger.
----
- fs/ext4/mballoc.c |   15 ++++++++++++++-
- 1 files changed, 14 insertions(+), 1 deletions(-)
+This makes it easier to understand how ext4_init_block_bitmap() works,
+and it will assist when we split out ext4_free_blocks_after_init() in
+the next commit.
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 02f099f..ad4a6eb 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2529,7 +2529,20 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
- 	sbi->s_mb_stats = MB_DEFAULT_STATS;
- 	sbi->s_mb_stream_request = MB_DEFAULT_STREAM_THRESHOLD;
- 	sbi->s_mb_order2_reqs = MB_DEFAULT_ORDER2_REQS;
--	sbi->s_mb_group_prealloc = MB_DEFAULT_GROUP_PREALLOC;
-+	/*
-+	 * The default group preallocation is 512, which for 4k block
-+	 * sizes translates to 2 megabytes.  However for bigalloc file
-+	 * systems, this is probably too big (i.e, if the cluster size
-+	 * is 1 megabyte, then group preallocation size becomes half a
-+	 * gigabyte!).  As a default, we will keep a two megabyte
-+	 * group pralloc size for cluster sizes up to 64k, and after
-+	 * that, we will force a minimum group preallocation size of
-+	 * 32 clusters.  This translates to 8 megs when the cluster
-+	 * size is 256k, and 32 megs when the cluster size is 1 meg,
-+	 * which seems reasonable as a default.
-+	 */
-+	sbi->s_mb_group_prealloc = max(MB_DEFAULT_GROUP_PREALLOC >>
-+				       sbi->s_cluster_bits, 32);
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/balloc.c |   80 ++++++++++++++++++++++++++++++++---------------------
+ 1 files changed, 48 insertions(+), 32 deletions(-)
+
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index adf96b8..c608fda 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -21,6 +21,9 @@
+ #include "ext4_jbd2.h"
+ #include "mballoc.h"
  
- 	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
- 	if (sbi->s_locality_groups == NULL) {
++static unsigned int num_base_meta_blocks(struct super_block *sb,
++					 ext4_group_t block_group);
++
+ /*
+  * balloc.c contains the blocks allocation and deallocation routines
+  */
+@@ -81,14 +84,30 @@ static int ext4_group_used_meta_blocks(struct super_block *sb,
+ 	return used_blocks;
+ }
+ 
++static unsigned int num_blocks_in_group(struct super_block *sb,
++					ext4_group_t block_group)
++{
++	if (block_group == ext4_get_groups_count(sb) - 1) {
++		/*
++		 * Even though mke2fs always initializes the first and
++		 * last group, just in case some other tool was used,
++		 * we need to make sure we calculate the right free
++		 * blocks.
++		 */
++		return ext4_blocks_count(EXT4_SB(sb)->s_es) -
++			ext4_group_first_block_no(sb, block_group);
++	} else
++		return EXT4_BLOCKS_PER_GROUP(sb);
++}
++
+ /* Initializes an uninitialized block bitmap if given, and returns the
+  * number of blocks free in the group. */
+ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
+ 		 ext4_group_t block_group, struct ext4_group_desc *gdp)
+ {
+-	int bit, bit_max;
++	unsigned int bit, bit_max = num_base_meta_blocks(sb, block_group);
+ 	ext4_group_t ngroups = ext4_get_groups_count(sb);
+-	unsigned free_blocks, group_blocks;
++	unsigned group_blocks = num_blocks_in_group(sb, block_group);
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 
+ 	if (bh) {
+@@ -108,35 +127,6 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
+ 		memset(bh->b_data, 0, sb->s_blocksize);
+ 	}
+ 
+-	/* Check for superblock and gdt backups in this group */
+-	bit_max = ext4_bg_has_super(sb, block_group);
+-
+-	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_META_BG) ||
+-	    block_group < le32_to_cpu(sbi->s_es->s_first_meta_bg) *
+-			  sbi->s_desc_per_block) {
+-		if (bit_max) {
+-			bit_max += ext4_bg_num_gdb(sb, block_group);
+-			bit_max +=
+-				le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks);
+-		}
+-	} else { /* For META_BG_BLOCK_GROUPS */
+-		bit_max += ext4_bg_num_gdb(sb, block_group);
+-	}
+-
+-	if (block_group == ngroups - 1) {
+-		/*
+-		 * Even though mke2fs always initialize first and last group
+-		 * if some other tool enabled the EXT4_BG_BLOCK_UNINIT we need
+-		 * to make sure we calculate the right free blocks
+-		 */
+-		group_blocks = ext4_blocks_count(sbi->s_es) -
+-			ext4_group_first_block_no(sb, ngroups - 1);
+-	} else {
+-		group_blocks = EXT4_BLOCKS_PER_GROUP(sb);
+-	}
+-
+-	free_blocks = group_blocks - bit_max;
+-
+ 	if (bh) {
+ 		ext4_fsblk_t start, tmp;
+ 		int flex_bg = 0;
+@@ -174,7 +164,8 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
+ 		ext4_mark_bitmap_end(group_blocks, sb->s_blocksize * 8,
+ 				     bh->b_data);
+ 	}
+-	return free_blocks - ext4_group_used_meta_blocks(sb, block_group, gdp);
++	return group_blocks - bit_max -
++		ext4_group_used_meta_blocks(sb, block_group, gdp);
+ }
+ 
+ 
+@@ -741,3 +732,28 @@ unsigned long ext4_bg_num_gdb(struct super_block *sb, ext4_group_t group)
+ 
+ }
+ 
++/*
++ * This function returns the number of file system metadata blocks at
++ * the beginning of a block group, including the reserved gdt blocks.
++ */
++static unsigned int num_base_meta_blocks(struct super_block *sb,
++					 ext4_group_t block_group)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	int num;
++
++	/* Check for superblock and gdt backups in this group */
++	num = ext4_bg_has_super(sb, block_group);
++
++	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_META_BG) ||
++	    block_group < le32_to_cpu(sbi->s_es->s_first_meta_bg) *
++			  sbi->s_desc_per_block) {
++		if (num) {
++			num += ext4_bg_num_gdb(sb, block_group);
++			num += le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks);
++		}
++	} else { /* For META_BG_BLOCK_GROUPS */
++		num += ext4_bg_num_gdb(sb, block_group);
++	}
++	return num;
++}
 -- 
 1.7.3.1
 
