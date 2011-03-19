@@ -1,166 +1,53 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH, RFC 02/12] ext4: enforce bigalloc restrictions (e.g., no online resizing, etc.)
-Date: Sat, 19 Mar 2011 17:28:27 -0400
-Message-ID: <1300570117-24048-3-git-send-email-tytso@mit.edu>
+Subject: [PATCH, RFC 11/12] ext4: tune mballoc's default group prealloc size for bigalloc file systems
+Date: Sat, 19 Mar 2011 17:28:36 -0400
+Message-ID: <1300570117-24048-12-git-send-email-tytso@mit.edu>
 References: <1300570117-24048-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:52252 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:52238 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757610Ab1CSVhY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 19 Mar 2011 17:37:24 -0400
+	id S1757597Ab1CSVhX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 19 Mar 2011 17:37:23 -0400
 In-Reply-To: <1300570117-24048-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-At least initially if the bigalloc feature is enabled, we will not
-support non-extent mapped inodes, online reisizing, online defrag, or
-the FITRIM ioctl.  This simplifies the initial implementation.
-
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+The default group preallocation size had been previously set to 512
+blocks/clusters, regardless of the block/cluster size.  This is
+probably too big for large cluster sizes.  So adjust the default so
+that it is 2 megabytes or 32 clusters, whichever is larger.
 ---
- fs/ext4/inode.c |    7 +++++++
- fs/ext4/ioctl.c |   33 +++++++++++++++++++++++++++++----
- fs/ext4/super.c |    7 +++++++
- 3 files changed, 43 insertions(+), 4 deletions(-)
+ fs/ext4/mballoc.c |   15 ++++++++++++++-
+ 1 files changed, 14 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 67e7a3c..3bf751c 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1008,6 +1008,13 @@ static int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
- 	/*
- 	 * Okay, we need to do block allocation.
- 	*/
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+				       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
-+		EXT4_ERROR_INODE(inode, "Can't allocate blocks for "
-+				 "non-extent mapped inodes with bigalloc");
-+		return -ENOSPC;
-+	}
-+
- 	goal = ext4_find_goal(inode, map->m_lblk, partial);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 02f099f..ad4a6eb 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2529,7 +2529,20 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
+ 	sbi->s_mb_stats = MB_DEFAULT_STATS;
+ 	sbi->s_mb_stream_request = MB_DEFAULT_STREAM_THRESHOLD;
+ 	sbi->s_mb_order2_reqs = MB_DEFAULT_ORDER2_REQS;
+-	sbi->s_mb_group_prealloc = MB_DEFAULT_GROUP_PREALLOC;
++	/*
++	 * The default group preallocation is 512, which for 4k block
++	 * sizes translates to 2 megabytes.  However for bigalloc file
++	 * systems, this is probably too big (i.e, if the cluster size
++	 * is 1 megabyte, then group preallocation size becomes half a
++	 * gigabyte!).  As a default, we will keep a two megabyte
++	 * group pralloc size for cluster sizes up to 64k, and after
++	 * that, we will force a minimum group preallocation size of
++	 * 32 clusters.  This translates to 8 megs when the cluster
++	 * size is 256k, and 32 megs when the cluster size is 1 meg,
++	 * which seems reasonable as a default.
++	 */
++	sbi->s_mb_group_prealloc = max(MB_DEFAULT_GROUP_PREALLOC >>
++				       sbi->s_cluster_bits, 32);
  
- 	/* the number of blocks need to allocate for [d,t]indirect blocks */
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index c052c9f..1231e25 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -21,6 +21,7 @@
- long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- {
- 	struct inode *inode = filp->f_dentry->d_inode;
-+	struct super_block *sb = inode->i_sb;
- 	struct ext4_inode_info *ei = EXT4_I(inode);
- 	unsigned int flags;
- 
-@@ -183,7 +184,6 @@ setversion_out:
- 		 * Returns 1 if it slept, else zero.
- 		 */
- 		{
--			struct super_block *sb = inode->i_sb;
- 			DECLARE_WAITQUEUE(wait, current);
- 			int ret = 0;
- 
-@@ -199,7 +199,6 @@ setversion_out:
- #endif
- 	case EXT4_IOC_GROUP_EXTEND: {
- 		ext4_fsblk_t n_blocks_count;
--		struct super_block *sb = inode->i_sb;
- 		int err, err2=0;
- 
- 		if (!capable(CAP_SYS_RESOURCE))
-@@ -212,6 +211,13 @@ setversion_out:
- 		if (err)
- 			return err;
- 
-+		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+			       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "Online resizing not supported with bigalloc");
-+			return -EOPNOTSUPP;
-+		}
-+
- 		err = ext4_group_extend(sb, EXT4_SB(sb)->s_es, n_blocks_count);
- 		if (EXT4_SB(sb)->s_journal) {
- 			jbd2_journal_lock_updates(EXT4_SB(sb)->s_journal);
-@@ -252,6 +258,13 @@ setversion_out:
- 		if (err)
- 			goto mext_out;
- 
-+		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+			       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "Online defrag not supported with bigalloc");
-+			return -EOPNOTSUPP;
-+		}
-+
- 		err = ext4_move_extents(filp, donor_filp, me.orig_start,
- 					me.donor_start, me.len, &me.moved_len);
- 		mnt_drop_write(filp->f_path.mnt);
-@@ -268,7 +281,6 @@ mext_out:
- 
- 	case EXT4_IOC_GROUP_ADD: {
- 		struct ext4_new_group_data input;
--		struct super_block *sb = inode->i_sb;
- 		int err, err2=0;
- 
- 		if (!capable(CAP_SYS_RESOURCE))
-@@ -282,6 +294,13 @@ mext_out:
- 		if (err)
- 			return err;
- 
-+		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+			       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "Online resizing not supported with bigalloc");
-+			return -EOPNOTSUPP;
-+		}
-+
- 		err = ext4_group_add(sb, &input);
- 		if (EXT4_SB(sb)->s_journal) {
- 			jbd2_journal_lock_updates(EXT4_SB(sb)->s_journal);
-@@ -333,7 +352,6 @@ mext_out:
- 
- 	case FITRIM:
- 	{
--		struct super_block *sb = inode->i_sb;
- 		struct request_queue *q = bdev_get_queue(sb->s_bdev);
- 		struct fstrim_range range;
- 		int ret = 0;
-@@ -344,6 +362,13 @@ mext_out:
- 		if (!blk_queue_discard(q))
- 			return -EOPNOTSUPP;
- 
-+		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+			       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "FITRIM not supported with bigalloc");
-+			return -EOPNOTSUPP;
-+		}
-+
- 		if (copy_from_user(&range, (struct fstrim_range *)arg,
- 		    sizeof(range)))
- 			return -EFAULT;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 7273728..f9b25cd 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2593,6 +2593,13 @@ static int ext4_feature_set_ok(struct super_block *sb, int readonly)
- 			return 0;
- 		}
- 	}
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_BIGALLOC) &&
-+	    !EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS)) {
-+		ext4_msg(sb, KERN_ERR,
-+			 "Can't support bigalloc feature without "
-+			 "extents feature\n");
-+		return 0;
-+	}
- 	return 1;
- }
- 
+ 	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
+ 	if (sbi->s_locality_groups == NULL) {
 -- 
 1.7.3.1
 
