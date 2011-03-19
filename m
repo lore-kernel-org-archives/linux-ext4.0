@@ -1,187 +1,79 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH, RFC 06/12] ext4: split out ext4_free_blocks_after_init()
-Date: Sat, 19 Mar 2011 17:28:31 -0400
-Message-ID: <1300570117-24048-7-git-send-email-tytso@mit.edu>
+Subject: [PATCH, RFC 10/12] ext4: teach ext4_statfs() to deal with clusters if bigalloc is enabled
+Date: Sat, 19 Mar 2011 17:28:35 -0400
+Message-ID: <1300570117-24048-11-git-send-email-tytso@mit.edu>
 References: <1300570117-24048-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:52250 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:54110 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757596Ab1CSVhY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 19 Mar 2011 17:37:24 -0400
+	id S1757594Ab1CSVnE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 19 Mar 2011 17:43:04 -0400
 In-Reply-To: <1300570117-24048-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The function ext4_free_blocks_after_init() used to be a #define of
-ext4_init_block_bitmap().  This actually made it difficult to
-understand how the function worked, and made it hard make changes to
-support clusters.  So as an initial cleanup, I've separated out the
-functionality of initializing block bitmap from calculating the number
-of free blocks in the new block group.
-
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/balloc.c |  105 ++++++++++++++++++++++++++---------------------------
- fs/ext4/ext4.h   |   13 ++++---
- 2 files changed, 59 insertions(+), 59 deletions(-)
+ fs/ext4/super.c |   35 +++++++++++++++++++++++------------
+ 1 files changed, 23 insertions(+), 12 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index c608fda..5b60c8b 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -100,74 +100,73 @@ static unsigned int num_blocks_in_group(struct super_block *sb,
- 		return EXT4_BLOCKS_PER_GROUP(sb);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index f9b25cd..24964da 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4438,15 +4438,33 @@ restore_opts:
+ 	return err;
  }
  
--/* Initializes an uninitialized block bitmap if given, and returns the
-- * number of blocks free in the group. */
--unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
--		 ext4_group_t block_group, struct ext4_group_desc *gdp)
-+/* Initializes an uninitialized block bitmap */
-+void ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
-+			    ext4_group_t block_group,
-+			    struct ext4_group_desc *gdp)
++/*
++ * Note: calculating the overhead so we can be compatible with
++ * historical BSD practice is quite difficult in the face of
++ * clusters/bigalloc.  This is because multiple metadata blocks from
++ * different block group can end up in the same allocation cluster.
++ * Calculating the exact overhead in the face of clustered allocation
++ * requires either O(all block bitmaps) in memory or O(number of block
++ * groups**2) in time.  We will still calculate the superblock for
++ * older file systems --- and if we come across with a bigalloc file
++ * system with zero in s_overhead_blocks the estimate will be close to
++ * correct especially for very large cluster sizes --- but for newer
++ * file systems, it's better to calculate this figure once at mkfs
++ * time, and store it in the superblock.  If the superblock value is
++ * present (even for non-bigalloc file systems), we will use it.
++ */
+ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
  {
- 	unsigned int bit, bit_max = num_base_meta_blocks(sb, block_group);
--	ext4_group_t ngroups = ext4_get_groups_count(sb);
--	unsigned group_blocks = num_blocks_in_group(sb, block_group);
+ 	struct super_block *sb = dentry->d_sb;
  	struct ext4_sb_info *sbi = EXT4_SB(sb);
--
--	if (bh) {
--		J_ASSERT_BH(bh, buffer_locked(bh));
--
--		/* If checksum is bad mark all blocks used to prevent allocation
--		 * essentially implementing a per-group read-only flag. */
--		if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
--			ext4_error(sb, "Checksum bad for group %u",
--					block_group);
--			ext4_free_blks_set(sb, gdp, 0);
--			ext4_free_inodes_set(sb, gdp, 0);
--			ext4_itable_unused_set(sb, gdp, 0);
--			memset(bh->b_data, 0xff, sb->s_blocksize);
--			return 0;
--		}
--		memset(bh->b_data, 0, sb->s_blocksize);
-+	ext4_fsblk_t start, tmp;
-+	int flex_bg = 0;
-+
-+	J_ASSERT_BH(bh, buffer_locked(bh));
-+
-+	/* If checksum is bad mark all blocks used to prevent allocation
-+	 * essentially implementing a per-group read-only flag. */
-+	if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
-+		ext4_error(sb, "Checksum bad for group %u", block_group);
-+		ext4_free_blks_set(sb, gdp, 0);
-+		ext4_free_inodes_set(sb, gdp, 0);
-+		ext4_itable_unused_set(sb, gdp, 0);
-+		memset(bh->b_data, 0xff, sb->s_blocksize);
-+		return;
- 	}
-+	memset(bh->b_data, 0, sb->s_blocksize);
+ 	struct ext4_super_block *es = sbi->s_es;
++	struct ext4_group_desc *gdp;
+ 	u64 fsid;
  
--	if (bh) {
--		ext4_fsblk_t start, tmp;
--		int flex_bg = 0;
-+	for (bit = 0; bit < bit_max; bit++)
-+		ext4_set_bit(bit, bh->b_data);
+ 	if (test_opt(sb, MINIX_DF)) {
+ 		sbi->s_overhead_last = 0;
++	} else if (es->s_overhead_blocks) {
++		sbi->s_overhead_last = le32_to_cpu(es->s_overhead_blocks);
+ 	} else if (sbi->s_blocks_last != ext4_blocks_count(es)) {
+ 		ext4_group_t i, ngroups = ext4_get_groups_count(sb);
+ 		ext4_fsblk_t overhead = 0;
+@@ -4461,24 +4479,16 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
+ 		 * All of the blocks before first_data_block are
+ 		 * overhead
+ 		 */
+-		overhead = le32_to_cpu(es->s_first_data_block);
++		overhead = EXT4_B2C(sbi, le32_to_cpu(es->s_first_data_block));
  
--		for (bit = 0; bit < bit_max; bit++)
--			ext4_set_bit(bit, bh->b_data);
-+	start = ext4_group_first_block_no(sb, block_group);
- 
--		start = ext4_group_first_block_no(sb, block_group);
-+	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
-+		flex_bg = 1;
- 
--		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
--					      EXT4_FEATURE_INCOMPAT_FLEX_BG))
--			flex_bg = 1;
-+	/* Set bits for block and inode bitmaps, and inode table */
-+	tmp = ext4_block_bitmap(sb, gdp);
-+	if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
-+		ext4_set_bit(tmp - start, bh->b_data);
- 
--		/* Set bits for block and inode bitmaps, and inode table */
--		tmp = ext4_block_bitmap(sb, gdp);
--		if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
--			ext4_set_bit(tmp - start, bh->b_data);
-+	tmp = ext4_inode_bitmap(sb, gdp);
-+	if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
-+		ext4_set_bit(tmp - start, bh->b_data);
- 
--		tmp = ext4_inode_bitmap(sb, gdp);
-+	tmp = ext4_inode_table(sb, gdp);
-+	for (; tmp < ext4_inode_table(sb, gdp) +
-+		     sbi->s_itb_per_group; tmp++) {
- 		if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
- 			ext4_set_bit(tmp - start, bh->b_data);
--
--		tmp = ext4_inode_table(sb, gdp);
--		for (; tmp < ext4_inode_table(sb, gdp) +
--				sbi->s_itb_per_group; tmp++) {
--			if (!flex_bg ||
--				ext4_block_in_group(sb, tmp, block_group))
--				ext4_set_bit(tmp - start, bh->b_data);
--		}
--		/*
--		 * Also if the number of blocks within the group is
--		 * less than the blocksize * 8 ( which is the size
--		 * of bitmap ), set rest of the block bitmap to 1
--		 */
--		ext4_mark_bitmap_end(group_blocks, sb->s_blocksize * 8,
--				     bh->b_data);
- 	}
--	return group_blocks - bit_max -
--		ext4_group_used_meta_blocks(sb, block_group, gdp);
-+	/*
-+	 * Also if the number of blocks within the group is less than
-+	 * the blocksize * 8 ( which is the size of bitmap ), set rest
-+	 * of the block bitmap to 1
-+	 */
-+	ext4_mark_bitmap_end(num_blocks_in_group(sb, block_group),
-+			     sb->s_blocksize * 8, bh->b_data);
- }
- 
-+/* Return the number of free blocks in a block group.  It is used when
-+ * the block bitmap is uninitialized, so we can't just count the bits
-+ * in the bitmap. */
-+unsigned ext4_free_blocks_after_init(struct super_block *sb,
-+				     ext4_group_t block_group,
-+				     struct ext4_group_desc *gdp)
-+{
-+	return num_blocks_in_group(sb, block_group) -
-+		num_base_meta_blocks(sb, block_group) -
-+		ext4_group_used_meta_blocks(sb, block_group, gdp);
-+}
- 
- /*
-  * The free blocks are managed by bitmaps.  A file system contains several
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 94a7a7b..0eb7407 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1662,12 +1662,13 @@ extern struct ext4_group_desc * ext4_get_group_desc(struct super_block * sb,
- extern int ext4_should_retry_alloc(struct super_block *sb, int *retries);
- struct buffer_head *ext4_read_block_bitmap(struct super_block *sb,
- 				      ext4_group_t block_group);
--extern unsigned ext4_init_block_bitmap(struct super_block *sb,
--				       struct buffer_head *bh,
--				       ext4_group_t group,
--				       struct ext4_group_desc *desc);
--#define ext4_free_blocks_after_init(sb, group, desc)			\
--		ext4_init_block_bitmap(sb, NULL, group, desc)
-+extern void ext4_init_block_bitmap(struct super_block *sb,
-+				   struct buffer_head *bh,
-+				   ext4_group_t group,
-+				   struct ext4_group_desc *desc);
-+extern unsigned ext4_free_blocks_after_init(struct super_block *sb,
-+					    ext4_group_t block_group,
-+					    struct ext4_group_desc *gdp);
- 
- /* dir.c */
- extern int __ext4_check_dir_entry(const char *, unsigned int, struct inode *,
--- 
-1.7.3.1
-
+ 		/*
+-		 * Add the overhead attributed to the superblock and
+-		 * block group descriptors.  If the sparse superblocks
+-		 * feature is turned on, then not all groups have this.
++		 * Add the overhead found in each block group
+ 		 */
+ 		for (i = 0; i < ngroups; i++) {
+-			overhead += ext4_bg_has_super(sb, i) +
+-				ext4_bg_num_gdb(sb, i);
++			gdp = ext4_get_group_desc(sb, i, NULL);
++			overhead += ext4_num_overhead_clusters(sb, i, gdp);
+ 			cond_resched();
+ 		}
