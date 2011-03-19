@@ -1,154 +1,72 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH, RFC 03/12] ext4: Convert instances of EXT4_BLOCKS_PER_GROUP to EXT4_CLUSTERS_PER_GROUP
-Date: Sat, 19 Mar 2011 17:28:28 -0400
-Message-ID: <1300570117-24048-4-git-send-email-tytso@mit.edu>
+Subject: [PATCH, RFC 04/12] ext4: Remove block bitmap initialization in ext4_new_inode()
+Date: Sat, 19 Mar 2011 17:28:29 -0400
+Message-ID: <1300570117-24048-5-git-send-email-tytso@mit.edu>
 References: <1300570117-24048-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:52248 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:52246 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757608Ab1CSVhY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1757603Ab1CSVhY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sat, 19 Mar 2011 17:37:24 -0400
 In-Reply-To: <1300570117-24048-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Change the places in fs/ext4/mballoc.c where EXT4_BLOCKS_PER_GROUP are
-used to indicate the number of bits in a block bitmap (which is really
-a cluster allocation bitmap in bigalloc file systems).  There are
-still some places in the ext4 codebase where usage of
-EXT4_BLOCKS_PER_GROUP needs to be audited/fixed, in code paths that
-aren't used given the initial restricted assumptions for bigalloc.
-These will need to be fixed before we can relax those restrictions.
+We are initializing the block bitmap in ext4_new_inode(), and as far
+as I can tell, there's no reason to do it.  So remove it to simplify
+things.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/mballoc.c |   34 +++++++++++++++++-----------------
- 1 files changed, 17 insertions(+), 17 deletions(-)
+ fs/ext4/ialloc.c |   37 -------------------------------------
+ 1 files changed, 0 insertions(+), 37 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 2f6f0dd..02f099f 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -651,7 +651,7 @@ static void ext4_mb_mark_free_simple(struct super_block *sb,
- 	ext4_grpblk_t chunk;
- 	unsigned short border;
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index a679a48..88ad0e3 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -815,7 +815,6 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode,
+ 	int ret2, err = 0;
+ 	struct inode *ret;
+ 	ext4_group_t i;
+-	int free = 0;
+ 	static int once = 1;
+ 	ext4_group_t flex_group;
  
--	BUG_ON(len > EXT4_BLOCKS_PER_GROUP(sb));
-+	BUG_ON(len > EXT4_CLUSTERS_PER_GROUP(sb));
+@@ -936,42 +935,6 @@ repeat_in_this_group:
+ 	goto out;
  
- 	border = 2 << sb->s_blocksize_bits;
- 
-@@ -703,7 +703,7 @@ void ext4_mb_generate_buddy(struct super_block *sb,
- 				void *buddy, void *bitmap, ext4_group_t group)
- {
- 	struct ext4_group_info *grp = ext4_get_group_info(sb, group);
--	ext4_grpblk_t max = EXT4_BLOCKS_PER_GROUP(sb);
-+	ext4_grpblk_t max = EXT4_CLUSTERS_PER_GROUP(sb);
- 	ext4_grpblk_t i = 0;
- 	ext4_grpblk_t first;
- 	ext4_grpblk_t len;
-@@ -1680,8 +1680,8 @@ static void ext4_mb_measure_extent(struct ext4_allocation_context *ac,
- 	struct ext4_free_extent *gex = &ac->ac_g_ex;
- 
- 	BUG_ON(ex->fe_len <= 0);
--	BUG_ON(ex->fe_len > EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
--	BUG_ON(ex->fe_start >= EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
-+	BUG_ON(ex->fe_len > EXT4_CLUSTERS_PER_GROUP(ac->ac_sb));
-+	BUG_ON(ex->fe_start >= EXT4_CLUSTERS_PER_GROUP(ac->ac_sb));
- 	BUG_ON(ac->ac_status != AC_STATUS_CONTINUE);
- 
- 	ac->ac_found++;
-@@ -1879,8 +1879,8 @@ void ext4_mb_complex_scan_group(struct ext4_allocation_context *ac,
- 
- 	while (free && ac->ac_status == AC_STATUS_CONTINUE) {
- 		i = mb_find_next_zero_bit(bitmap,
--						EXT4_BLOCKS_PER_GROUP(sb), i);
--		if (i >= EXT4_BLOCKS_PER_GROUP(sb)) {
-+						EXT4_CLUSTERS_PER_GROUP(sb), i);
-+		if (i >= EXT4_CLUSTERS_PER_GROUP(sb)) {
- 			/*
- 			 * IF we have corrupt bitmap, we won't find any
- 			 * free blocks even though group info says we
-@@ -1943,7 +1943,7 @@ void ext4_mb_scan_aligned(struct ext4_allocation_context *ac,
- 	do_div(a, sbi->s_stripe);
- 	i = (a * sbi->s_stripe) - first_group_block;
- 
--	while (i < EXT4_BLOCKS_PER_GROUP(sb)) {
-+	while (i < EXT4_CLUSTERS_PER_GROUP(sb)) {
- 		if (!mb_test_bit(i, bitmap)) {
- 			max = mb_find_extent(e4b, 0, i, sbi->s_stripe, &ex);
- 			if (max >= sbi->s_stripe) {
-@@ -3071,7 +3071,7 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
- 	}
- 	BUG_ON(start + size <= ac->ac_o_ex.fe_logical &&
- 			start > ac->ac_o_ex.fe_logical);
--	BUG_ON(size <= 0 || size > EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
-+	BUG_ON(size <= 0 || size > EXT4_CLUSTERS_PER_GROUP(ac->ac_sb));
- 
- 	/* now prepare goal request */
- 
-@@ -3724,7 +3724,7 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
- 	}
- 
- 	if (needed == 0)
--		needed = EXT4_BLOCKS_PER_GROUP(sb) + 1;
-+		needed = EXT4_CLUSTERS_PER_GROUP(sb) + 1;
- 
- 	INIT_LIST_HEAD(&list);
- repeat:
-@@ -4039,8 +4039,8 @@ ext4_mb_initialize_context(struct ext4_allocation_context *ac,
- 	len = ar->len;
- 
- 	/* just a dirty hack to filter too big requests  */
--	if (len >= EXT4_BLOCKS_PER_GROUP(sb) - 10)
--		len = EXT4_BLOCKS_PER_GROUP(sb) - 10;
-+	if (len >= EXT4_CLUSTERS_PER_GROUP(sb) - 10)
-+		len = EXT4_CLUSTERS_PER_GROUP(sb) - 10;
- 
- 	/* start searching from the goal */
- 	goal = ar->goal;
-@@ -4579,8 +4579,8 @@ do_more:
- 	 * Check to see if we are freeing blocks across a group
- 	 * boundary.
- 	 */
--	if (bit + count > EXT4_BLOCKS_PER_GROUP(sb)) {
--		overflow = bit + count - EXT4_BLOCKS_PER_GROUP(sb);
-+	if (bit + count > EXT4_CLUSTERS_PER_GROUP(sb)) {
-+		overflow = bit + count - EXT4_CLUSTERS_PER_GROUP(sb);
- 		count -= overflow;
- 	}
- 	bitmap_bh = ext4_read_block_bitmap(sb, block_group);
-@@ -4844,7 +4844,7 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
- 	minlen = range->minlen >> sb->s_blocksize_bits;
- 	trimmed = 0;
- 
--	if (unlikely(minlen > EXT4_BLOCKS_PER_GROUP(sb)))
-+	if (unlikely(minlen > EXT4_CLUSTERS_PER_GROUP(sb)))
- 		return -EINVAL;
- 	if (start < first_data_blk) {
- 		len -= first_data_blk - start;
-@@ -4857,7 +4857,7 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
- 	ext4_get_group_no_and_offset(sb, (ext4_fsblk_t) (start + len),
- 				     &last_group, &last_block);
- 	last_group = (last_group > ngroups - 1) ? ngroups - 1 : last_group;
--	last_block = EXT4_BLOCKS_PER_GROUP(sb);
-+	last_block = EXT4_CLUSTERS_PER_GROUP(sb);
- 
- 	if (first_group > last_group)
- 		return -EINVAL;
-@@ -4870,8 +4870,8 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
- 			break;
- 		}
- 
--		if (len >= EXT4_BLOCKS_PER_GROUP(sb))
--			len -= (EXT4_BLOCKS_PER_GROUP(sb) - first_block);
-+		if (len >= EXT4_CLUSTERS_PER_GROUP(sb))
-+			len -= (EXT4_CLUSTERS_PER_GROUP(sb) - first_block);
- 		else
- 			last_block = first_block + len;
- 
--- 
-1.7.3.1
-
+ got:
+-	/* We may have to initialize the block bitmap if it isn't already */
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM) &&
+-	    gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+-		struct buffer_head *block_bitmap_bh;
+-
+-		block_bitmap_bh = ext4_read_block_bitmap(sb, group);
+-		BUFFER_TRACE(block_bitmap_bh, "get block bitmap access");
+-		err = ext4_journal_get_write_access(handle, block_bitmap_bh);
+-		if (err) {
+-			brelse(block_bitmap_bh);
+-			goto fail;
+-		}
+-
+-		free = 0;
+-		ext4_lock_group(sb, group);
+-		/* recheck and clear flag under lock if we still need to */
+-		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+-			free = ext4_free_blocks_after_init(sb, group, gdp);
+-			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
+-			ext4_free_blks_set(sb, gdp, free);
+-			gdp->bg_checksum = ext4_group_desc_csum(sbi, group,
+-								gdp);
+-		}
+-		ext4_unlock_group(sb, group);
+-
+-		/* Don't need to dirty bitmap block if we didn't change it */
+-		if (free) {
+-			BUFFER_TRACE(block_bitmap_bh, "dirty block bitmap");
+-			err = ext4_handle_dirty_metadata(handle,
+-							NULL, block_bitmap_bh);
+-		}
