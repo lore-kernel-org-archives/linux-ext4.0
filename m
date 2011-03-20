@@ -1,48 +1,45 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: Initialize fsync transaction ids in ext4_new_inode()
-Date: Sun, 20 Mar 2011 19:47:30 -0400
-Message-ID: <1300664850-11252-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 31542] ext4 : "No space left on the device" persists even when
+ I deleted more than 40GB of data
+Date: Sun, 20 Mar 2011 23:55:14 GMT
+Message-ID: <201103202355.p2KNtEwK017143@demeter1.kernel.org>
+References: <bug-31542-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:59400 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751849Ab1CTXrf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 20 Mar 2011 19:47:35 -0400
+Received: from demeter1.kernel.org ([140.211.167.39]:35565 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751832Ab1CTXzR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Mar 2011 19:55:17 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p2KNtF5L017144
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Sun, 20 Mar 2011 23:55:15 GMT
+In-Reply-To: <bug-31542-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When allocating a new inode, we need to make sure i_sync_tid and
-i_datasync_tid are initialized.  Otherwise, one or both of these two
-values could be left initialized to zero, which could potentially
-result in BUG_ON in jbd2_journal_commit_transaction.
+https://bugzilla.kernel.org/show_bug.cgi?id=3D31542
 
-(This could happen by having journal->commit_request getting set to
-zero, which could wake up the kjournald process even though there is
-no running transaction, which then causes a BUG_ON via the
-J_ASSERT(j_ruinning_transaction != NULL) statement.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ialloc.c |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
+Jarom=C3=ADr C=C3=A1p=C3=ADk <tavvva@volny.cz> changed:
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 2fd3b0e..a679a48 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -1054,6 +1054,11 @@ got:
- 		}
- 	}
- 
-+	if (ext4_handle_valid(handle)) {
-+		ei->i_sync_tid = handle->h_transaction->t_tid;
-+		ei->i_datasync_tid = handle->h_transaction->t_tid;
-+	}
-+
- 	err = ext4_mark_inode_dirty(handle, inode);
- 	if (err) {
- 		ext4_std_error(sb, err);
--- 
-1.7.3.1
+           What    |Removed                     |Added
+-----------------------------------------------------------------------=
+-----
+             Status|RESOLVED                    |CLOSED
 
+
+
+
+--=20
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=3Demai=
+l
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
