@@ -1,65 +1,52 @@
 From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 31542] New: ext4 : "No space left on the device" persists even
- when I deleted more than 40GB of data
-Date: Sun, 20 Mar 2011 23:08:53 GMT
-Message-ID: <bug-31542-13602@https.bugzilla.kernel.org/>
+Subject: [Bug 31542] ext4 : "No space left on the device" persists even when
+ I deleted more than 40GB of data
+Date: Sun, 20 Mar 2011 23:27:12 GMT
+Message-ID: <201103202327.p2KNRCxC002966@demeter1.kernel.org>
+References: <bug-31542-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:54886 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751807Ab1CTXIy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Mar 2011 19:08:54 -0400
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p2KN8reQ006978
+Received: from demeter1.kernel.org ([140.211.167.39]:58338 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751752Ab1CTX1N convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Mar 2011 19:27:13 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p2KNRCLG002967
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sun, 20 Mar 2011 23:08:53 GMT
+	for <linux-ext4@vger.kernel.org>; Sun, 20 Mar 2011 23:27:12 GMT
+In-Reply-To: <bug-31542-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=31542
-
-           Summary: ext4 : "No space left on the device" persists even
-                    when I deleted more than 40GB of data
-           Product: File System
-           Version: 2.5
-    Kernel Version: 2.6.37.2
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: high
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: tavvva@volny.cz
-        Regression: No
+https://bugzilla.kernel.org/show_bug.cgi?id=3D31542
 
 
-1.) I recently filled my data partition full and got an error dialog, that
-there's no space left on the device (Resume, Retry, Skip, Abort, ... don't
-remember exactly)
-2.) I used different terminal in order to move some of the big files (more than
-40GB in total) from the affected partition to a different harddrive. But df was
-still showing 0 bytes available.
-3.) Even of that I tried to resume the copying mentioned in point 1.) and it
-worked ... the copying was finished successfuly. What a magic!
-4.) The situation changed after the reboot. I cannot copy new files to the
-affected partition anymore even if there must be at least 30GB of space left.
 
-This is what df returns:
--------------------------
-Filesystem    1K-blocks    Used        Available    Use%    Mounted on
-/dev/md6    1209519868    1175334268    0        100%    /mnt/data
 
-The difference between total and used blocks gives more than 32GB and I'm sure
-that yesterday this space was filled with data.
 
-I'm willing to do any non-destructive tests and collect any debug logs You need
-in order to find the root cause of this issue.
+--- Comment #1 from Jarom=C3=ADr C=C3=A1p=C3=ADk <tavvva@volny.cz>  201=
+1-03-20 23:27:10 ---
+NOTE : Unfortunately I was performing the mentioned scenario on Mandriv=
+a Linux
+with the latest Mandriva desktop kernel [2.6.33-7mnb2] (and I know You =
+don't
+like non-Vanilla kernels even if they almost don't differ from Vanilla)=
+, but I
+truly believe, that this problem comes from the mainline and therefore =
+it's
+present in the mainline too.=20
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+The issue persists even when I try Vanilla 2.6.37.2 ...
+
+--=20
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=3Demai=
+l
 ------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+You are watching the assignee of the bug.--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
