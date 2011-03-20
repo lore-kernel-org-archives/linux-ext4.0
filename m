@@ -1,101 +1,116 @@
 From: amir73il@users.sourceforge.net
-Subject: [PATCH 2/5] ext4: implement ext4_add_groupblocks() by freeing blocks
-Date: Sun, 20 Mar 2011 23:32:47 +0200
-Message-ID: <1300656770-14994-3-git-send-email-amir73il@users.sourceforge.net>
+Subject: [PATCH 4/5] ext4: teach ext4_mb_init_cache() to skip uptodate buddy caches
+Date: Sun, 20 Mar 2011 23:32:49 +0200
+Message-ID: <1300656770-14994-5-git-send-email-amir73il@users.sourceforge.net>
 References: <1300656770-14994-1-git-send-email-amir73il@users.sourceforge.net>
 Cc: linux-ext4@vger.kernel.org, Amir Goldstein <amir73il@users.sf.net>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-fx0-f46.google.com ([209.85.161.46]:39539 "EHLO
 	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751349Ab1CTVeT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Mar 2011 17:34:19 -0400
+	with ESMTP id S1751349Ab1CTVek (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Mar 2011 17:34:40 -0400
 Received: by mail-fx0-f46.google.com with SMTP id 17so5008530fxm.19
-        for <linux-ext4@vger.kernel.org>; Sun, 20 Mar 2011 14:34:18 -0700 (PDT)
+        for <linux-ext4@vger.kernel.org>; Sun, 20 Mar 2011 14:34:39 -0700 (PDT)
 In-Reply-To: <1300656770-14994-1-git-send-email-amir73il@users.sourceforge.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Amir Goldstein <amir73il@users.sf.net>
 
-The old imlementation used to take grp->alloc_sem and set the
-GROUP_NEED_INIT flag, so that the buddy cache would be reloaded.
+After online resize which adds new groups, some of the groups
+in a buddy page may be initialized and uptodate, while other
+(new ones) may be uninitialized.
 
-The new implementation updates the buddy cache by freeing the added
-blocks and making them available for use, so there is no need to
-reload the buddy cache and there is no need to take grp->alloc_sem.
+The indication for init of new block groups is when ext4_mb_init_cache()
+is called with an uptodate buddy page. In this case, initialized groups
+on that buddy page must be skipped when initializing the buddy cache.
 
 Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
 ---
- fs/ext4/mballoc.c |   31 +++++++++++++++++--------------
- 1 files changed, 17 insertions(+), 14 deletions(-)
+ fs/ext4/mballoc.c |   33 +++++++++++++++++++++++++--------
+ 1 files changed, 25 insertions(+), 8 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index c15f667..c7c9288 100644
+index ab0be17..302c928 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -4724,6 +4724,7 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
- 	unsigned int i;
- 	struct ext4_group_desc *desc;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct ext4_buddy e4b;
- 	int err = 0, ret, blk_free_count;
- 	ext4_grpblk_t blocks_freed;
- 	struct ext4_group_info *grp;
-@@ -4775,15 +4776,10 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
- 	err = ext4_journal_get_write_access(handle, gd_bh);
- 	if (err)
- 		goto error_return;
--	/*
--	 * make sure we don't allow a parallel init on other groups in the
--	 * same buddy cache
--	 */
--	down_write(&grp->alloc_sem);
-+
- 	for (i = 0, blocks_freed = 0; i < count; i++) {
- 		BUFFER_TRACE(bitmap_bh, "clear bit");
--		if (!ext4_clear_bit_atomic(ext4_group_lock_ptr(sb, block_group),
--						bit + i, bitmap_bh->b_data)) {
-+		if (!mb_test_bit(bit + i, bitmap_bh->b_data)) {
- 			ext4_error(sb, "bit already cleared for block %llu",
- 				   (ext4_fsblk_t)(block + i));
- 			BUFFER_TRACE(bitmap_bh, "bit already cleared");
-@@ -4791,7 +4787,19 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
- 			blocks_freed++;
- 		}
- 	}
-+
-+	err = ext4_mb_load_buddy(sb, block_group, &e4b);
-+	if (err)
-+		goto error_return;
-+
-+	/*
-+	 * need to update group_info->bb_free and bitmap
-+	 * with group lock held. generate_buddy look at
-+	 * them with group lock_held
-+	 */
- 	ext4_lock_group(sb, block_group);
-+	mb_clear_bits(bitmap_bh->b_data, bit, count);
-+	mb_free_blocks(NULL, &e4b, bit, count);
- 	blk_free_count = blocks_freed + ext4_free_blks_count(sb, desc);
- 	ext4_free_blks_set(sb, desc, blk_free_count);
- 	desc->bg_checksum = ext4_group_desc_csum(sbi, block_group, desc);
-@@ -4803,13 +4811,8 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
- 		atomic_add(blocks_freed,
- 			   &sbi->s_flex_groups[flex_group].free_blocks);
- 	}
--	/*
--	 * request to reload the buddy with the
--	 * new bitmap information
--	 */
--	set_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &(grp->bb_state));
--	grp->bb_free += blocks_freed;
--	up_write(&grp->alloc_sem);
-+
-+	ext4_mb_unload_buddy(&e4b);
+@@ -787,6 +787,7 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
+ 	struct inode *inode;
+ 	char *data;
+ 	char *bitmap;
++	struct ext4_group_info *grinfo;
  
- 	/* We dirtied the bitmap block */
- 	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
+ 	mb_debug(1, "init page %lu\n", page->index);
+ 
+@@ -819,6 +820,18 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
+ 		if (first_group + i >= ngroups)
+ 			break;
+ 
++		grinfo = ext4_get_group_info(sb, first_group + i);
++		/*
++		 * If page is uptodate then we came here after online resize
++		 * which added some new uninitialized group info structs, so
++		 * we must skip all initialized uptodate buddies on the page,
++		 * which may be currently in use by an allocating task.
++		 */
++		if (PageUptodate(page) && !EXT4_MB_GRP_NEED_INIT(grinfo)) {
++			bh[i] = NULL;
++			continue;
++		}
++
+ 		err = -EIO;
+ 		desc = ext4_get_group_desc(sb, first_group + i, NULL);
+ 		if (desc == NULL)
+@@ -871,21 +884,23 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
+ 	}
+ 
+ 	/* wait for I/O completion */
+-	for (i = 0; i < groups_per_page && bh[i]; i++)
+-		wait_on_buffer(bh[i]);
++	for (i = 0; i < groups_per_page; i++)
++		if (bh[i])
++			wait_on_buffer(bh[i]);
+ 
+ 	err = -EIO;
+-	for (i = 0; i < groups_per_page && bh[i]; i++)
+-		if (!buffer_uptodate(bh[i]))
++	for (i = 0; i < groups_per_page; i++)
++		if (bh[i] && !buffer_uptodate(bh[i]))
+ 			goto out;
+ 
+ 	err = 0;
+ 	first_block = page->index * blocks_per_page;
+-	/* init the page  */
+-	memset(page_address(page), 0xff, PAGE_CACHE_SIZE);
+ 	for (i = 0; i < blocks_per_page; i++) {
+ 		int group;
+-		struct ext4_group_info *grinfo;
++
++		if (!bh[i])
++			/* skip initialized uptodate buddy */
++			continue;
+ 
+ 		group = (first_block + i) >> 1;
+ 		if (group >= ngroups)
+@@ -919,6 +934,8 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
+ 			 * incore got set to the group block bitmap below
+ 			 */
+ 			ext4_lock_group(sb, group);
++			/* init the buddy */
++			memset(data, 0xff, blocksize);
+ 			ext4_mb_generate_buddy(sb, data, incore, group);
+ 			ext4_unlock_group(sb, group);
+ 			incore = NULL;
+@@ -948,7 +965,7 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
+ 
+ out:
+ 	if (bh) {
+-		for (i = 0; i < groups_per_page && bh[i]; i++)
++		for (i = 0; i < groups_per_page; i++)
+ 			brelse(bh[i]);
+ 		if (bh != &bhs)
+ 			kfree(bh);
 -- 
 1.7.0.4
 
