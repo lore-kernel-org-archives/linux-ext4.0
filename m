@@ -1,116 +1,140 @@
 From: amir73il@users.sourceforge.net
-Subject: [PATCH 4/5] ext4: teach ext4_mb_init_cache() to skip uptodate buddy caches
-Date: Sun, 20 Mar 2011 23:32:49 +0200
-Message-ID: <1300656770-14994-5-git-send-email-amir73il@users.sourceforge.net>
+Subject: [PATCH 5/5] ext4: remove alloc_semp
+Date: Sun, 20 Mar 2011 23:32:50 +0200
+Message-ID: <1300656770-14994-6-git-send-email-amir73il@users.sourceforge.net>
 References: <1300656770-14994-1-git-send-email-amir73il@users.sourceforge.net>
 Cc: linux-ext4@vger.kernel.org, Amir Goldstein <amir73il@users.sf.net>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-fx0-f46.google.com ([209.85.161.46]:39539 "EHLO
 	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751349Ab1CTVek (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Mar 2011 17:34:40 -0400
+	with ESMTP id S1751349Ab1CTVew (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Mar 2011 17:34:52 -0400
 Received: by mail-fx0-f46.google.com with SMTP id 17so5008530fxm.19
-        for <linux-ext4@vger.kernel.org>; Sun, 20 Mar 2011 14:34:39 -0700 (PDT)
+        for <linux-ext4@vger.kernel.org>; Sun, 20 Mar 2011 14:34:51 -0700 (PDT)
 In-Reply-To: <1300656770-14994-1-git-send-email-amir73il@users.sourceforge.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Amir Goldstein <amir73il@users.sf.net>
 
-After online resize which adds new groups, some of the groups
-in a buddy page may be initialized and uptodate, while other
-(new ones) may be uninitialized.
-
-The indication for init of new block groups is when ext4_mb_init_cache()
-is called with an uptodate buddy page. In this case, initialized groups
-on that buddy page must be skipped when initializing the buddy cache.
+After taking care of all group init races, all that remains is to
+remove alloc_semp from ext4_allocation_context and ext4_buddy structs.
 
 Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
 ---
- fs/ext4/mballoc.c |   33 +++++++++++++++++++++++++--------
- 1 files changed, 25 insertions(+), 8 deletions(-)
+ fs/ext4/mballoc.c |   31 +------------------------------
+ fs/ext4/mballoc.h |    6 ------
+ 2 files changed, 1 insertions(+), 36 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index ab0be17..302c928 100644
+index 302c928..e4932c5 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -787,6 +787,7 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
- 	struct inode *inode;
- 	char *data;
- 	char *bitmap;
-+	struct ext4_group_info *grinfo;
+@@ -1130,24 +1130,8 @@ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
+ 	e4b->bd_group = group;
+ 	e4b->bd_buddy_page = NULL;
+ 	e4b->bd_bitmap_page = NULL;
+-	e4b->alloc_semp = &grp->alloc_sem;
+-
+-	/* Take the read lock on the group alloc
+-	 * sem. This would make sure a parallel
+-	 * ext4_mb_init_group happening on other
+-	 * groups mapped by the page is blocked
+-	 * till we are done with allocation
+-	 */
+-repeat_load_buddy:
+-	down_read(e4b->alloc_semp);
  
- 	mb_debug(1, "init page %lu\n", page->index);
- 
-@@ -819,6 +820,18 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
- 		if (first_group + i >= ngroups)
- 			break;
- 
-+		grinfo = ext4_get_group_info(sb, first_group + i);
-+		/*
-+		 * If page is uptodate then we came here after online resize
-+		 * which added some new uninitialized group info structs, so
-+		 * we must skip all initialized uptodate buddies on the page,
-+		 * which may be currently in use by an allocating task.
-+		 */
-+		if (PageUptodate(page) && !EXT4_MB_GRP_NEED_INIT(grinfo)) {
-+			bh[i] = NULL;
-+			continue;
-+		}
-+
- 		err = -EIO;
- 		desc = ext4_get_group_desc(sb, first_group + i, NULL);
- 		if (desc == NULL)
-@@ -871,21 +884,23 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
+ 	if (unlikely(EXT4_MB_GRP_NEED_INIT(grp))) {
+-		/* we need to check for group need init flag
+-		 * with alloc_semp held so that we can be sure
+-		 * that new blocks didn't get added to the group
+-		 * when we are loading the buddy cache
+-		 */
+-		up_read(e4b->alloc_semp);
+ 		/*
+ 		 * we need full data about the group
+ 		 * to make a good selection
+@@ -1155,7 +1139,6 @@ repeat_load_buddy:
+ 		ret = ext4_mb_init_group(sb, group);
+ 		if (ret)
+ 			return ret;
+-		goto repeat_load_buddy;
  	}
  
- 	/* wait for I/O completion */
--	for (i = 0; i < groups_per_page && bh[i]; i++)
--		wait_on_buffer(bh[i]);
-+	for (i = 0; i < groups_per_page; i++)
-+		if (bh[i])
-+			wait_on_buffer(bh[i]);
+ 	/*
+@@ -1245,9 +1228,6 @@ err:
+ 		page_cache_release(e4b->bd_buddy_page);
+ 	e4b->bd_buddy = NULL;
+ 	e4b->bd_bitmap = NULL;
+-
+-	/* Done with the buddy cache */
+-	up_read(e4b->alloc_semp);
+ 	return ret;
+ }
  
- 	err = -EIO;
--	for (i = 0; i < groups_per_page && bh[i]; i++)
--		if (!buffer_uptodate(bh[i]))
-+	for (i = 0; i < groups_per_page; i++)
-+		if (bh[i] && !buffer_uptodate(bh[i]))
- 			goto out;
+@@ -1257,9 +1237,6 @@ static void ext4_mb_unload_buddy(struct ext4_buddy *e4b)
+ 		page_cache_release(e4b->bd_bitmap_page);
+ 	if (e4b->bd_buddy_page)
+ 		page_cache_release(e4b->bd_buddy_page);
+-	/* Done with the buddy cache */
+-	if (e4b->alloc_semp)
+-		up_read(e4b->alloc_semp);
+ }
  
- 	err = 0;
- 	first_block = page->index * blocks_per_page;
--	/* init the page  */
--	memset(page_address(page), 0xff, PAGE_CACHE_SIZE);
- 	for (i = 0; i < blocks_per_page; i++) {
- 		int group;
--		struct ext4_group_info *grinfo;
-+
-+		if (!bh[i])
-+			/* skip initialized uptodate buddy */
-+			continue;
  
- 		group = (first_block + i) >> 1;
- 		if (group >= ngroups)
-@@ -919,6 +934,8 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
- 			 * incore got set to the group block bitmap below
- 			 */
- 			ext4_lock_group(sb, group);
-+			/* init the buddy */
-+			memset(data, 0xff, blocksize);
- 			ext4_mb_generate_buddy(sb, data, incore, group);
- 			ext4_unlock_group(sb, group);
- 			incore = NULL;
-@@ -948,7 +965,7 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
- 
- out:
- 	if (bh) {
--		for (i = 0; i < groups_per_page && bh[i]; i++)
-+		for (i = 0; i < groups_per_page; i++)
- 			brelse(bh[i]);
- 		if (bh != &bhs)
- 			kfree(bh);
+@@ -1572,9 +1549,6 @@ static void ext4_mb_use_best_found(struct ext4_allocation_context *ac,
+ 	get_page(ac->ac_bitmap_page);
+ 	ac->ac_buddy_page = e4b->bd_buddy_page;
+ 	get_page(ac->ac_buddy_page);
+-	/* on allocation we use ac to track the held semaphore */
+-	ac->alloc_semp =  e4b->alloc_semp;
+-	e4b->alloc_semp = NULL;
+ 	/* store last allocated for subsequent stream allocation */
+ 	if (ac->ac_flags & EXT4_MB_STREAM_ALLOC) {
+ 		spin_lock(&sbi->s_md_lock);
+@@ -4192,15 +4166,12 @@ static int ext4_mb_release_context(struct ext4_allocation_context *ac)
+ 			spin_unlock(&pa->pa_lock);
+ 		}
+ 	}
+-	if (ac->alloc_semp)
+-		up_read(ac->alloc_semp);
+ 	if (pa) {
+ 		/*
+ 		 * We want to add the pa to the right bucket.
+ 		 * Remove it from the list and while adding
+ 		 * make sure the list to which we are adding
+-		 * doesn't grow big.  We need to release
+-		 * alloc_semp before calling ext4_mb_add_n_trim()
++		 * doesn't grow big.
+ 		 */
+ 		if ((pa->pa_type == MB_GROUP_PA) && likely(pa->pa_free)) {
+ 			spin_lock(pa->pa_obj_lock);
+diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+index 22bd4d7..20b5e7b 100644
+--- a/fs/ext4/mballoc.h
++++ b/fs/ext4/mballoc.h
+@@ -193,11 +193,6 @@ struct ext4_allocation_context {
+ 	__u8 ac_op;		/* operation, for history only */
+ 	struct page *ac_bitmap_page;
+ 	struct page *ac_buddy_page;
+-	/*
+-	 * pointer to the held semaphore upon successful
+-	 * block allocation
+-	 */
+-	struct rw_semaphore *alloc_semp;
+ 	struct ext4_prealloc_space *ac_pa;
+ 	struct ext4_locality_group *ac_lg;
+ };
+@@ -215,7 +210,6 @@ struct ext4_buddy {
+ 	struct super_block *bd_sb;
+ 	__u16 bd_blkbits;
+ 	ext4_group_t bd_group;
+-	struct rw_semaphore *alloc_semp;
+ };
+ #define EXT4_MB_BITMAP(e4b)	((e4b)->bd_bitmap)
+ #define EXT4_MB_BUDDY(e4b)	((e4b)->bd_buddy)
 -- 
 1.7.0.4
 
