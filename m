@@ -1,279 +1,65 @@
-From: amir73il@users.sourceforge.net
-Subject: [PATCH 3/5] ext4: synchronize ext4_mb_init_group() with buddy page lock
-Date: Sun, 20 Mar 2011 23:32:48 +0200
-Message-ID: <1300656770-14994-4-git-send-email-amir73il@users.sourceforge.net>
-References: <1300656770-14994-1-git-send-email-amir73il@users.sourceforge.net>
-Cc: linux-ext4@vger.kernel.org, Amir Goldstein <amir73il@users.sf.net>
-To: tytso@mit.edu
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 31542] New: ext4 : "No space left on the device" persists even
+ when I deleted more than 40GB of data
+Date: Sun, 20 Mar 2011 23:08:53 GMT
+Message-ID: <bug-31542-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:59040 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751349Ab1CTVgR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Mar 2011 17:36:17 -0400
-Received: by fxm17 with SMTP id 17so5009554fxm.19
-        for <linux-ext4@vger.kernel.org>; Sun, 20 Mar 2011 14:36:15 -0700 (PDT)
-In-Reply-To: <1300656770-14994-1-git-send-email-amir73il@users.sourceforge.net>
+Received: from demeter2.kernel.org ([140.211.167.42]:54886 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751807Ab1CTXIy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Mar 2011 19:08:54 -0400
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p2KN8reQ006978
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Sun, 20 Mar 2011 23:08:53 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Amir Goldstein <amir73il@users.sf.net>
+https://bugzilla.kernel.org/show_bug.cgi?id=31542
 
-The old routines ext4_mb_[get|put]_buddy_cache_lock(), which used
-to take grp->alloc_sem for all groups on the buddy page have been
-replaced with the routines ext4_mb_[get|put]_buddy_page_lock().
+           Summary: ext4 : "No space left on the device" persists even
+                    when I deleted more than 40GB of data
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.37.2
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: high
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: tavvva@volny.cz
+        Regression: No
 
-The new routines take both buddy and bitmap page locks to protect
-against concurrent init of groups on the same buddy page.
 
-The GROUP_NEED_INIT flag is tested again under page lock to check
-if the group was initialized by another caller.
+1.) I recently filled my data partition full and got an error dialog, that
+there's no space left on the device (Resume, Retry, Skip, Abort, ... don't
+remember exactly)
+2.) I used different terminal in order to move some of the big files (more than
+40GB in total) from the affected partition to a different harddrive. But df was
+still showing 0 bytes available.
+3.) Even of that I tried to resume the copying mentioned in point 1.) and it
+worked ... the copying was finished successfuly. What a magic!
+4.) The situation changed after the reboot. I cannot copy new files to the
+affected partition anymore even if there must be at least 30GB of space left.
 
-Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
----
- fs/ext4/mballoc.c |  177 +++++++++++++++++++----------------------------------
- 1 files changed, 63 insertions(+), 114 deletions(-)
+This is what df returns:
+-------------------------
+Filesystem    1K-blocks    Used        Available    Use%    Mounted on
+/dev/md6    1209519868    1175334268    0        100%    /mnt/data
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index c7c9288..ab0be17 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -957,22 +957,21 @@ out:
- }
- 
- /*
-- * lock the group_info alloc_sem of all the groups
-- * belonging to the same buddy cache page. This
-- * make sure other parallel operation on the buddy
-- * cache doesn't happen  whild holding the buddy cache
-- * lock
-+ * Lock the buddy and bitmap pages. This make sure other parallel init_group
-+ * on the same buddy page doesn't happen whild holding the buddy page lock.
-+ * Return locked buddy and bitmap pages on e4b struct. If buddy and bitmap
-+ * are on the same page e4b->bd_buddy_page is NULL and return value is 0.
-  */
--static int ext4_mb_get_buddy_cache_lock(struct super_block *sb,
--					ext4_group_t group)
-+static int ext4_mb_get_buddy_page_lock(struct super_block *sb,
-+		ext4_group_t group, struct ext4_buddy *e4b)
- {
--	int i;
--	int block, pnum;
-+	struct inode *inode = EXT4_SB(sb)->s_buddy_cache;
-+	int block, pnum, poff;
- 	int blocks_per_page;
--	int groups_per_page;
--	ext4_group_t ngroups = ext4_get_groups_count(sb);
--	ext4_group_t first_group;
--	struct ext4_group_info *grp;
-+	struct page *page;
-+
-+	e4b->bd_buddy_page = NULL;
-+	e4b->bd_bitmap_page = NULL;
- 
- 	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
- 	/*
-@@ -982,57 +981,40 @@ static int ext4_mb_get_buddy_cache_lock(struct super_block *sb,
- 	 */
- 	block = group * 2;
- 	pnum = block / blocks_per_page;
--	first_group = pnum * blocks_per_page / 2;
--
--	groups_per_page = blocks_per_page >> 1;
--	if (groups_per_page == 0)
--		groups_per_page = 1;
--	/* read all groups the page covers into the cache */
--	for (i = 0; i < groups_per_page; i++) {
-+	poff = block % blocks_per_page;
-+	page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
-+	if (!page)
-+		return -EIO;
-+	BUG_ON(page->mapping != inode->i_mapping);
-+	e4b->bd_bitmap_page = page;
-+	e4b->bd_bitmap = page_address(page) + (poff * sb->s_blocksize);
- 
--		if ((first_group + i) >= ngroups)
--			break;
--		grp = ext4_get_group_info(sb, first_group + i);
--		/* take all groups write allocation
--		 * semaphore. This make sure there is
--		 * no block allocation going on in any
--		 * of that groups
--		 */
--		down_write_nested(&grp->alloc_sem, i);
-+	if (blocks_per_page >= 2) {
-+		/* buddy and bitmap are on the same page */
-+		return 0;
- 	}
--	return i;
-+
-+	block++;
-+	pnum = block / blocks_per_page;
-+	poff = block % blocks_per_page;
-+	page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
-+	if (!page)
-+		return -EIO;
-+	BUG_ON(page->mapping != inode->i_mapping);
-+	e4b->bd_buddy_page = page;
-+	return 0;
- }
- 
--static void ext4_mb_put_buddy_cache_lock(struct super_block *sb,
--					 ext4_group_t group, int locked_group)
-+static void ext4_mb_put_buddy_page_lock(struct ext4_buddy *e4b)
- {
--	int i;
--	int block, pnum;
--	int blocks_per_page;
--	ext4_group_t first_group;
--	struct ext4_group_info *grp;
--
--	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
--	/*
--	 * the buddy cache inode stores the block bitmap
--	 * and buddy information in consecutive blocks.
--	 * So for each group we need two blocks.
--	 */
--	block = group * 2;
--	pnum = block / blocks_per_page;
--	first_group = pnum * blocks_per_page / 2;
--	/* release locks on all the groups */
--	for (i = 0; i < locked_group; i++) {
--
--		grp = ext4_get_group_info(sb, first_group + i);
--		/* take all groups write allocation
--		 * semaphore. This make sure there is
--		 * no block allocation going on in any
--		 * of that groups
--		 */
--		up_write(&grp->alloc_sem);
-+	if (e4b->bd_bitmap_page) {
-+		unlock_page(e4b->bd_bitmap_page);
-+		page_cache_release(e4b->bd_bitmap_page);
-+	}
-+	if (e4b->bd_buddy_page) {
-+		unlock_page(e4b->bd_buddy_page);
-+		page_cache_release(e4b->bd_buddy_page);
- 	}
--
- }
- 
- /*
-@@ -1044,93 +1026,60 @@ static noinline_for_stack
- int ext4_mb_init_group(struct super_block *sb, ext4_group_t group)
- {
- 
--	int ret = 0;
--	void *bitmap;
--	int blocks_per_page;
--	int block, pnum, poff;
--	int num_grp_locked = 0;
- 	struct ext4_group_info *this_grp;
--	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	struct inode *inode = sbi->s_buddy_cache;
--	struct page *page = NULL, *bitmap_page = NULL;
-+	struct ext4_buddy e4b;
-+	struct page *page;
-+	int ret = 0;
- 
- 	mb_debug(1, "init group %u\n", group);
--	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
- 	this_grp = ext4_get_group_info(sb, group);
- 	/*
- 	 * This ensures that we don't reinit the buddy cache
- 	 * page which map to the group from which we are already
- 	 * allocating. If we are looking at the buddy cache we would
- 	 * have taken a reference using ext4_mb_load_buddy and that
--	 * would have taken the alloc_sem lock.
-+	 * would have pinned buddy page to page cache.
- 	 */
--	num_grp_locked =  ext4_mb_get_buddy_cache_lock(sb, group);
--	if (!EXT4_MB_GRP_NEED_INIT(this_grp)) {
-+	ret = ext4_mb_get_buddy_page_lock(sb, group, &e4b);
-+	if (ret || !EXT4_MB_GRP_NEED_INIT(this_grp)) {
- 		/*
- 		 * somebody initialized the group
- 		 * return without doing anything
- 		 */
--		ret = 0;
- 		goto err;
- 	}
--	/*
--	 * the buddy cache inode stores the block bitmap
--	 * and buddy information in consecutive blocks.
--	 * So for each group we need two blocks.
--	 */
--	block = group * 2;
--	pnum = block / blocks_per_page;
--	poff = block % blocks_per_page;
--	page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
--	if (page) {
--		BUG_ON(page->mapping != inode->i_mapping);
--		ret = ext4_mb_init_cache(page, NULL);
--		if (ret) {
--			unlock_page(page);
--			goto err;
--		}
--		unlock_page(page);
--	}
--	if (page == NULL || !PageUptodate(page)) {
-+
-+	page = e4b.bd_bitmap_page;
-+	ret = ext4_mb_init_cache(page, NULL);
-+	if (ret)
-+		goto err;
-+	if (!PageUptodate(page)) {
- 		ret = -EIO;
- 		goto err;
- 	}
- 	mark_page_accessed(page);
--	bitmap_page = page;
--	bitmap = page_address(page) + (poff * sb->s_blocksize);
- 
--	/* init buddy cache */
--	block++;
--	pnum = block / blocks_per_page;
--	poff = block % blocks_per_page;
--	page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
--	if (page == bitmap_page) {
-+	if (e4b.bd_buddy_page == NULL) {
- 		/*
- 		 * If both the bitmap and buddy are in
- 		 * the same page we don't need to force
- 		 * init the buddy
- 		 */
--		unlock_page(page);
--	} else if (page) {
--		BUG_ON(page->mapping != inode->i_mapping);
--		ret = ext4_mb_init_cache(page, bitmap);
--		if (ret) {
--			unlock_page(page);
--			goto err;
--		}
--		unlock_page(page);
-+		ret = 0;
-+		goto err;
- 	}
--	if (page == NULL || !PageUptodate(page)) {
-+	/* init buddy cache */
-+	page = e4b.bd_buddy_page;
-+	ret = ext4_mb_init_cache(page, e4b.bd_bitmap);
-+	if (ret)
-+		goto err;
-+	if (!PageUptodate(page)) {
- 		ret = -EIO;
- 		goto err;
- 	}
- 	mark_page_accessed(page);
- err:
--	ext4_mb_put_buddy_cache_lock(sb, group, num_grp_locked);
--	if (bitmap_page)
--		page_cache_release(bitmap_page);
--	if (page)
--		page_cache_release(page);
-+	ext4_mb_put_buddy_page_lock(&e4b);
- 	return ret;
- }
- 
+The difference between total and used blocks gives more than 32GB and I'm sure
+that yesterday this space was filled with data.
+
+I'm willing to do any non-destructive tests and collect any debug logs You need
+in order to find the root cause of this issue.
+
 -- 
-1.7.0.4
-
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
