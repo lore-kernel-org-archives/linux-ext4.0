@@ -1,140 +1,279 @@
 From: amir73il@users.sourceforge.net
-Subject: [PATCH 5/5] ext4: remove alloc_semp
-Date: Sun, 20 Mar 2011 23:32:50 +0200
-Message-ID: <1300656770-14994-6-git-send-email-amir73il@users.sourceforge.net>
+Subject: [PATCH 3/5] ext4: synchronize ext4_mb_init_group() with buddy page lock
+Date: Sun, 20 Mar 2011 23:32:48 +0200
+Message-ID: <1300656770-14994-4-git-send-email-amir73il@users.sourceforge.net>
 References: <1300656770-14994-1-git-send-email-amir73il@users.sourceforge.net>
 Cc: linux-ext4@vger.kernel.org, Amir Goldstein <amir73il@users.sf.net>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:39539 "EHLO
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:59040 "EHLO
 	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751349Ab1CTVew (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Mar 2011 17:34:52 -0400
-Received: by mail-fx0-f46.google.com with SMTP id 17so5008530fxm.19
-        for <linux-ext4@vger.kernel.org>; Sun, 20 Mar 2011 14:34:51 -0700 (PDT)
+	with ESMTP id S1751349Ab1CTVgR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Mar 2011 17:36:17 -0400
+Received: by fxm17 with SMTP id 17so5009554fxm.19
+        for <linux-ext4@vger.kernel.org>; Sun, 20 Mar 2011 14:36:15 -0700 (PDT)
 In-Reply-To: <1300656770-14994-1-git-send-email-amir73il@users.sourceforge.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Amir Goldstein <amir73il@users.sf.net>
 
-After taking care of all group init races, all that remains is to
-remove alloc_semp from ext4_allocation_context and ext4_buddy structs.
+The old routines ext4_mb_[get|put]_buddy_cache_lock(), which used
+to take grp->alloc_sem for all groups on the buddy page have been
+replaced with the routines ext4_mb_[get|put]_buddy_page_lock().
+
+The new routines take both buddy and bitmap page locks to protect
+against concurrent init of groups on the same buddy page.
+
+The GROUP_NEED_INIT flag is tested again under page lock to check
+if the group was initialized by another caller.
 
 Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
 ---
- fs/ext4/mballoc.c |   31 +------------------------------
- fs/ext4/mballoc.h |    6 ------
- 2 files changed, 1 insertions(+), 36 deletions(-)
+ fs/ext4/mballoc.c |  177 +++++++++++++++++++----------------------------------
+ 1 files changed, 63 insertions(+), 114 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 302c928..e4932c5 100644
+index c7c9288..ab0be17 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -1130,24 +1130,8 @@ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
- 	e4b->bd_group = group;
- 	e4b->bd_buddy_page = NULL;
- 	e4b->bd_bitmap_page = NULL;
--	e4b->alloc_semp = &grp->alloc_sem;
--
--	/* Take the read lock on the group alloc
--	 * sem. This would make sure a parallel
--	 * ext4_mb_init_group happening on other
--	 * groups mapped by the page is blocked
--	 * till we are done with allocation
--	 */
--repeat_load_buddy:
--	down_read(e4b->alloc_semp);
+@@ -957,22 +957,21 @@ out:
+ }
  
- 	if (unlikely(EXT4_MB_GRP_NEED_INIT(grp))) {
--		/* we need to check for group need init flag
--		 * with alloc_semp held so that we can be sure
--		 * that new blocks didn't get added to the group
--		 * when we are loading the buddy cache
--		 */
--		up_read(e4b->alloc_semp);
- 		/*
- 		 * we need full data about the group
- 		 * to make a good selection
-@@ -1155,7 +1139,6 @@ repeat_load_buddy:
- 		ret = ext4_mb_init_group(sb, group);
- 		if (ret)
- 			return ret;
--		goto repeat_load_buddy;
- 	}
+ /*
+- * lock the group_info alloc_sem of all the groups
+- * belonging to the same buddy cache page. This
+- * make sure other parallel operation on the buddy
+- * cache doesn't happen  whild holding the buddy cache
+- * lock
++ * Lock the buddy and bitmap pages. This make sure other parallel init_group
++ * on the same buddy page doesn't happen whild holding the buddy page lock.
++ * Return locked buddy and bitmap pages on e4b struct. If buddy and bitmap
++ * are on the same page e4b->bd_buddy_page is NULL and return value is 0.
+  */
+-static int ext4_mb_get_buddy_cache_lock(struct super_block *sb,
+-					ext4_group_t group)
++static int ext4_mb_get_buddy_page_lock(struct super_block *sb,
++		ext4_group_t group, struct ext4_buddy *e4b)
+ {
+-	int i;
+-	int block, pnum;
++	struct inode *inode = EXT4_SB(sb)->s_buddy_cache;
++	int block, pnum, poff;
+ 	int blocks_per_page;
+-	int groups_per_page;
+-	ext4_group_t ngroups = ext4_get_groups_count(sb);
+-	ext4_group_t first_group;
+-	struct ext4_group_info *grp;
++	struct page *page;
++
++	e4b->bd_buddy_page = NULL;
++	e4b->bd_bitmap_page = NULL;
  
+ 	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
  	/*
-@@ -1245,9 +1228,6 @@ err:
- 		page_cache_release(e4b->bd_buddy_page);
- 	e4b->bd_buddy = NULL;
- 	e4b->bd_bitmap = NULL;
+@@ -982,57 +981,40 @@ static int ext4_mb_get_buddy_cache_lock(struct super_block *sb,
+ 	 */
+ 	block = group * 2;
+ 	pnum = block / blocks_per_page;
+-	first_group = pnum * blocks_per_page / 2;
 -
--	/* Done with the buddy cache */
--	up_read(e4b->alloc_semp);
+-	groups_per_page = blocks_per_page >> 1;
+-	if (groups_per_page == 0)
+-		groups_per_page = 1;
+-	/* read all groups the page covers into the cache */
+-	for (i = 0; i < groups_per_page; i++) {
++	poff = block % blocks_per_page;
++	page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
++	if (!page)
++		return -EIO;
++	BUG_ON(page->mapping != inode->i_mapping);
++	e4b->bd_bitmap_page = page;
++	e4b->bd_bitmap = page_address(page) + (poff * sb->s_blocksize);
+ 
+-		if ((first_group + i) >= ngroups)
+-			break;
+-		grp = ext4_get_group_info(sb, first_group + i);
+-		/* take all groups write allocation
+-		 * semaphore. This make sure there is
+-		 * no block allocation going on in any
+-		 * of that groups
+-		 */
+-		down_write_nested(&grp->alloc_sem, i);
++	if (blocks_per_page >= 2) {
++		/* buddy and bitmap are on the same page */
++		return 0;
+ 	}
+-	return i;
++
++	block++;
++	pnum = block / blocks_per_page;
++	poff = block % blocks_per_page;
++	page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
++	if (!page)
++		return -EIO;
++	BUG_ON(page->mapping != inode->i_mapping);
++	e4b->bd_buddy_page = page;
++	return 0;
+ }
+ 
+-static void ext4_mb_put_buddy_cache_lock(struct super_block *sb,
+-					 ext4_group_t group, int locked_group)
++static void ext4_mb_put_buddy_page_lock(struct ext4_buddy *e4b)
+ {
+-	int i;
+-	int block, pnum;
+-	int blocks_per_page;
+-	ext4_group_t first_group;
+-	struct ext4_group_info *grp;
+-
+-	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
+-	/*
+-	 * the buddy cache inode stores the block bitmap
+-	 * and buddy information in consecutive blocks.
+-	 * So for each group we need two blocks.
+-	 */
+-	block = group * 2;
+-	pnum = block / blocks_per_page;
+-	first_group = pnum * blocks_per_page / 2;
+-	/* release locks on all the groups */
+-	for (i = 0; i < locked_group; i++) {
+-
+-		grp = ext4_get_group_info(sb, first_group + i);
+-		/* take all groups write allocation
+-		 * semaphore. This make sure there is
+-		 * no block allocation going on in any
+-		 * of that groups
+-		 */
+-		up_write(&grp->alloc_sem);
++	if (e4b->bd_bitmap_page) {
++		unlock_page(e4b->bd_bitmap_page);
++		page_cache_release(e4b->bd_bitmap_page);
++	}
++	if (e4b->bd_buddy_page) {
++		unlock_page(e4b->bd_buddy_page);
++		page_cache_release(e4b->bd_buddy_page);
+ 	}
+-
+ }
+ 
+ /*
+@@ -1044,93 +1026,60 @@ static noinline_for_stack
+ int ext4_mb_init_group(struct super_block *sb, ext4_group_t group)
+ {
+ 
+-	int ret = 0;
+-	void *bitmap;
+-	int blocks_per_page;
+-	int block, pnum, poff;
+-	int num_grp_locked = 0;
+ 	struct ext4_group_info *this_grp;
+-	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	struct inode *inode = sbi->s_buddy_cache;
+-	struct page *page = NULL, *bitmap_page = NULL;
++	struct ext4_buddy e4b;
++	struct page *page;
++	int ret = 0;
+ 
+ 	mb_debug(1, "init group %u\n", group);
+-	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
+ 	this_grp = ext4_get_group_info(sb, group);
+ 	/*
+ 	 * This ensures that we don't reinit the buddy cache
+ 	 * page which map to the group from which we are already
+ 	 * allocating. If we are looking at the buddy cache we would
+ 	 * have taken a reference using ext4_mb_load_buddy and that
+-	 * would have taken the alloc_sem lock.
++	 * would have pinned buddy page to page cache.
+ 	 */
+-	num_grp_locked =  ext4_mb_get_buddy_cache_lock(sb, group);
+-	if (!EXT4_MB_GRP_NEED_INIT(this_grp)) {
++	ret = ext4_mb_get_buddy_page_lock(sb, group, &e4b);
++	if (ret || !EXT4_MB_GRP_NEED_INIT(this_grp)) {
+ 		/*
+ 		 * somebody initialized the group
+ 		 * return without doing anything
+ 		 */
+-		ret = 0;
+ 		goto err;
+ 	}
+-	/*
+-	 * the buddy cache inode stores the block bitmap
+-	 * and buddy information in consecutive blocks.
+-	 * So for each group we need two blocks.
+-	 */
+-	block = group * 2;
+-	pnum = block / blocks_per_page;
+-	poff = block % blocks_per_page;
+-	page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
+-	if (page) {
+-		BUG_ON(page->mapping != inode->i_mapping);
+-		ret = ext4_mb_init_cache(page, NULL);
+-		if (ret) {
+-			unlock_page(page);
+-			goto err;
+-		}
+-		unlock_page(page);
+-	}
+-	if (page == NULL || !PageUptodate(page)) {
++
++	page = e4b.bd_bitmap_page;
++	ret = ext4_mb_init_cache(page, NULL);
++	if (ret)
++		goto err;
++	if (!PageUptodate(page)) {
+ 		ret = -EIO;
+ 		goto err;
+ 	}
+ 	mark_page_accessed(page);
+-	bitmap_page = page;
+-	bitmap = page_address(page) + (poff * sb->s_blocksize);
+ 
+-	/* init buddy cache */
+-	block++;
+-	pnum = block / blocks_per_page;
+-	poff = block % blocks_per_page;
+-	page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
+-	if (page == bitmap_page) {
++	if (e4b.bd_buddy_page == NULL) {
+ 		/*
+ 		 * If both the bitmap and buddy are in
+ 		 * the same page we don't need to force
+ 		 * init the buddy
+ 		 */
+-		unlock_page(page);
+-	} else if (page) {
+-		BUG_ON(page->mapping != inode->i_mapping);
+-		ret = ext4_mb_init_cache(page, bitmap);
+-		if (ret) {
+-			unlock_page(page);
+-			goto err;
+-		}
+-		unlock_page(page);
++		ret = 0;
++		goto err;
+ 	}
+-	if (page == NULL || !PageUptodate(page)) {
++	/* init buddy cache */
++	page = e4b.bd_buddy_page;
++	ret = ext4_mb_init_cache(page, e4b.bd_bitmap);
++	if (ret)
++		goto err;
++	if (!PageUptodate(page)) {
+ 		ret = -EIO;
+ 		goto err;
+ 	}
+ 	mark_page_accessed(page);
+ err:
+-	ext4_mb_put_buddy_cache_lock(sb, group, num_grp_locked);
+-	if (bitmap_page)
+-		page_cache_release(bitmap_page);
+-	if (page)
+-		page_cache_release(page);
++	ext4_mb_put_buddy_page_lock(&e4b);
  	return ret;
  }
  
-@@ -1257,9 +1237,6 @@ static void ext4_mb_unload_buddy(struct ext4_buddy *e4b)
- 		page_cache_release(e4b->bd_bitmap_page);
- 	if (e4b->bd_buddy_page)
- 		page_cache_release(e4b->bd_buddy_page);
--	/* Done with the buddy cache */
--	if (e4b->alloc_semp)
--		up_read(e4b->alloc_semp);
- }
- 
- 
-@@ -1572,9 +1549,6 @@ static void ext4_mb_use_best_found(struct ext4_allocation_context *ac,
- 	get_page(ac->ac_bitmap_page);
- 	ac->ac_buddy_page = e4b->bd_buddy_page;
- 	get_page(ac->ac_buddy_page);
--	/* on allocation we use ac to track the held semaphore */
--	ac->alloc_semp =  e4b->alloc_semp;
--	e4b->alloc_semp = NULL;
- 	/* store last allocated for subsequent stream allocation */
- 	if (ac->ac_flags & EXT4_MB_STREAM_ALLOC) {
- 		spin_lock(&sbi->s_md_lock);
-@@ -4192,15 +4166,12 @@ static int ext4_mb_release_context(struct ext4_allocation_context *ac)
- 			spin_unlock(&pa->pa_lock);
- 		}
- 	}
--	if (ac->alloc_semp)
--		up_read(ac->alloc_semp);
- 	if (pa) {
- 		/*
- 		 * We want to add the pa to the right bucket.
- 		 * Remove it from the list and while adding
- 		 * make sure the list to which we are adding
--		 * doesn't grow big.  We need to release
--		 * alloc_semp before calling ext4_mb_add_n_trim()
-+		 * doesn't grow big.
- 		 */
- 		if ((pa->pa_type == MB_GROUP_PA) && likely(pa->pa_free)) {
- 			spin_lock(pa->pa_obj_lock);
-diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
-index 22bd4d7..20b5e7b 100644
---- a/fs/ext4/mballoc.h
-+++ b/fs/ext4/mballoc.h
-@@ -193,11 +193,6 @@ struct ext4_allocation_context {
- 	__u8 ac_op;		/* operation, for history only */
- 	struct page *ac_bitmap_page;
- 	struct page *ac_buddy_page;
--	/*
--	 * pointer to the held semaphore upon successful
--	 * block allocation
--	 */
--	struct rw_semaphore *alloc_semp;
- 	struct ext4_prealloc_space *ac_pa;
- 	struct ext4_locality_group *ac_lg;
- };
-@@ -215,7 +210,6 @@ struct ext4_buddy {
- 	struct super_block *bd_sb;
- 	__u16 bd_blkbits;
- 	ext4_group_t bd_group;
--	struct rw_semaphore *alloc_semp;
- };
- #define EXT4_MB_BITMAP(e4b)	((e4b)->bd_bitmap)
- #define EXT4_MB_BUDDY(e4b)	((e4b)->bd_buddy)
 -- 
 1.7.0.4
 
