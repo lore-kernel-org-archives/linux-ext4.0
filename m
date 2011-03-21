@@ -1,63 +1,52 @@
-From: Rogier Wolff <R.E.Wolff@BitWizard.nl>
-Subject: Re: [PATCH, RFC 00/12] bigalloc patchset
-Date: Mon, 21 Mar 2011 12:31:19 +0100
-Message-ID: <20110321113119.GA16292@bitwizard.nl>
-References: <1300570117-24048-1-git-send-email-tytso@mit.edu> <5427513F-76B9-4315-AC17-4BF35B290B18@dilger.ca>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH, RFC 03/12] ext4: Convert instances of
+ EXT4_BLOCKS_PER_GROUP to EXT4_CLUSTERS_PER_GROUP
+Date: Mon, 21 Mar 2011 09:12:11 -0400
+Message-ID: <20110321131211.GH4135@thunk.org>
+References: <1300570117-24048-1-git-send-email-tytso@mit.edu>
+ <1300570117-24048-4-git-send-email-tytso@mit.edu>
+ <AANLkTik962xWpBCaFgfu9Xm0YkPJ8+RwTJH9Oj48Wh2r@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger.kernel@dilger.ca>
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cust-95-128-94-82.breedbanddelft.nl ([95.128.94.82]:34351 "HELO
-	abra2.bitwizard.nl" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with SMTP id S1753194Ab1CULbV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Mar 2011 07:31:21 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:50605 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753334Ab1CUNMP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 21 Mar 2011 09:12:15 -0400
 Content-Disposition: inline
-In-Reply-To: <5427513F-76B9-4315-AC17-4BF35B290B18@dilger.ca>
+In-Reply-To: <AANLkTik962xWpBCaFgfu9Xm0YkPJ8+RwTJH9Oj48Wh2r@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 21, 2011 at 09:55:07AM +0100, Andreas Dilger wrote:
+On Sun, Mar 20, 2011 at 12:26:57PM +0200, Amir Goldstein wrote:
+> If I am not mistaken, while 'bit' was already converted to cluster units,
+> 'count' is still in block units.
+> 
+> I think ext4_free_blocks() need to do 2 things:
+> 1. convert 'count' to clusters (after issuing journal_forget())
+> 2. round 'bit' up (and round 'count' down) if start block is not
+> on cluster boundary, so truncate/punch hole, will not free a
+> cluster when it's 'base' block is still allocated.
 
-> Unfortunately, the overhead of allocating a whole cluster for every
-> index block and every directory is fairly high.  For Lustre it
-> matters very little, since there are only a handful of directories
-> (under 40) on the data filesystems where this would be used and the
-> real directory tree is located on a different metadata filesystem
-> which probably wouldn't use this feature, but for most "normal"
-> users this overhead may become prohibitive.  That is why I've been
-> trying to think of a way to allow sub-cluster allocations for these
-> uses.
+Good catch!  It's actually more complicated than that, though.
+Whether or not we can free the first and the last cluster in an
+unaligned extent is going to depend on whether or not there are any
+blocks still in use --- which is something that has to be communicated
+by extents.c, since mballoc has no way of knowing this.  (Consider
+what happens with sparse blocks.)  What I think I'm going to have to
+do is to teach truncate to check to see whether this is an unaligned
+truncate, and if so, whether there are any blocks still left used.  If
+so, it will need to pass a flag to ext4_free_blocks() to tell it to
+skip the first incomplete cluster.
 
-FYI, one filesystem I know has a neat trick that works well (IMHO). 
+Similarly, when the punch code lands, we'll need to worry about this
+at the end of the region which gets "punched" out, and we'll need a
+similar flag telling ext4_free_blocks() whether or not to release the
+last incomplete cluster.
 
-Whenever you have a file or a "tail-of-a-file" that is smaller than a
-cluster, you allocate it from a special file that contains all
-tails-of-files that are a specific size.
+Thanks for catching this; I have a bit more coding work to do to deal
+with this case.
 
-That filesystem happened to have 64k clusters and 512byte
-tail-file-granularity. So it had 128 files that contained the tails of
-all possible differt sizes.
-
-In our case I would suggest using a sequence something like: 
-4k, 8k, 12k, 16k, 24k, 32k, 48k 64k, 96k, 128k and so on. 
-
-That way with about 15 tail-files we are reasonably efficient (never
-having more than 4k or 33% allocated over the filesize). Also, adding
-8k to a 128k file doesn't require moving the whole file from one spot
-in the filesystem to another, which would be required if we were to 
-enumerate all 4k-multiples up to 1M. 
-
-The higher bits of the block numbers will indicate that it refers to a
-tail-block blocknumber, and in which tail-file to look for the
-tail-block.
-
-	Roger. 
-
--- 
-** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
-**    Delftechpark 26 2628 XH  Delft, The Netherlands. KVK: 27239233    **
-*-- BitWizard writes Linux device drivers for any device you may have! --*
-Q: It doesn't work. A: Look buddy, doesn't work is an ambiguous statement. 
-Does it sit on the couch all day? Is it unemployed? Please be specific! 
-Define 'it' and what it isn't doing. --------- Adapted from lxrbot FAQ
+						- Ted
