@@ -1,32 +1,217 @@
-From: Arnd Bergmann <arnd@arndb.de>
-Subject: Re: [RFC 4/5] MMC: Adjust unaligned write accesses.
-Date: Mon, 21 Mar 2011 20:05:37 +0100
-Message-ID: <201103212005.37108.arnd@arndb.de>
-References: <1299718449-15172-1-git-send-email-andreiw@motorola.com> <AANLkTik0DkQa7NrGbpSVVAkhQ4O9+kenPSr2dP=+Ej94@mail.gmail.com> <C0A67981-AF1A-40FF-91BA-93ECF6F72B58@dilger.ca>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH, RFC 01/12] ext4: read-only support for bigalloc file
+ systems
+Date: Mon, 21 Mar 2011 20:35:20 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1103212024460.3724@dhcp-27-109.brq.redhat.com>
+References: <1300570117-24048-1-git-send-email-tytso@mit.edu> <1300570117-24048-2-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: Andrei Warkentin <andreiw@motorola.com>, linux-mmc@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-mmc-owner@vger.kernel.org>
-In-Reply-To: <C0A67981-AF1A-40FF-91BA-93ECF6F72B58@dilger.ca>
-Sender: linux-mmc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:19220 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751541Ab1CUTfY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 21 Mar 2011 15:35:24 -0400
+In-Reply-To: <1300570117-24048-2-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Monday 21 March 2011 19:03:09 Andreas Dilger wrote:
-> Note that mballoc was specifically designed to handle allocation
-> requests that are aligned on RAID stripe boundaries, so it should
-> be able to handle this for MMC as well.  What is needed is to tell
-> the filesystem what the underlying alignment is.  That can be done
-> at format time with mke2fs or afterward with tune2fs by using the
-> "-E stripe_width" option.
+On Sat, 19 Mar 2011, Theodore Ts'o wrote:
 
-Ah, that sounds useful. So would I set the stripe_width to the
-erase block size, and the block group size to a multiple of that?
+> This adds supports for bigalloc file systems.  It teaches the mount
+> code just enough about bigalloc superblock fields that it will mount
+> the file system without freaking out that the number of blocks per
+> group is too big.
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+>  fs/ext4/ext4.h  |   18 ++++++++++++++--
+>  fs/ext4/super.c |   58 +++++++++++++++++++++++++++++++++++++++++++++++-------
+>  2 files changed, 65 insertions(+), 11 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 3aa0b72..94a7a7b 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -231,12 +231,16 @@ struct ext4_io_submit {
+>  #define EXT4_MAX_BLOCK_LOG_SIZE		16
+>  #ifdef __KERNEL__
+>  # define EXT4_BLOCK_SIZE(s)		((s)->s_blocksize)
+> +# define EXT4_CLUSTER_SIZE(s)		(EXT4_SB(s)->s_clustersize)
+>  #else
+> +# define EXT2_CLUSTER_SIZE(s)		(EXT2_MIN_BLOCK_SIZE << \
+> +						(s)->s_log_cluster_size)
+>  # define EXT4_BLOCK_SIZE(s)		(EXT4_MIN_BLOCK_SIZE << (s)->s_log_block_size)
+>  #endif
+>  #define	EXT4_ADDR_PER_BLOCK(s)		(EXT4_BLOCK_SIZE(s) / sizeof(__u32))
+>  #ifdef __KERNEL__
+>  # define EXT4_BLOCK_SIZE_BITS(s)	((s)->s_blocksize_bits)
+> +# define EXT4_CLUSTER_SIZE_BITS(s)	(EXT4_SB(s)->s_clustersize_bits)
+>  #else
+>  # define EXT4_BLOCK_SIZE_BITS(s)	((s)->s_log_block_size + 10)
+>  #endif
+> @@ -302,6 +306,7 @@ struct flex_groups {
+>  #define EXT4_DESC_SIZE(s)		(EXT4_SB(s)->s_desc_size)
+>  #ifdef __KERNEL__
+>  # define EXT4_BLOCKS_PER_GROUP(s)	(EXT4_SB(s)->s_blocks_per_group)
+> +# define EXT4_CLUSTERS_PER_GROUP(s)	(EXT4_SB(s)->s_clusters_per_group)
+>  # define EXT4_DESC_PER_BLOCK(s)		(EXT4_SB(s)->s_desc_per_block)
+>  # define EXT4_INODES_PER_GROUP(s)	(EXT4_SB(s)->s_inodes_per_group)
+>  # define EXT4_DESC_PER_BLOCK_BITS(s)	(EXT4_SB(s)->s_desc_per_block_bits)
+> @@ -957,9 +962,9 @@ struct ext4_super_block {
+>  /*10*/	__le32	s_free_inodes_count;	/* Free inodes count */
+>  	__le32	s_first_data_block;	/* First Data Block */
+>  	__le32	s_log_block_size;	/* Block size */
+> -	__le32	s_obso_log_frag_size;	/* Obsoleted fragment size */
+> +	__le32	s_log_cluster_size;	/* Allocation cluster size */
+>  /*20*/	__le32	s_blocks_per_group;	/* # Blocks per group */
+> -	__le32	s_obso_frags_per_group;	/* Obsoleted fragments per group */
+> +	__le32	s_clusters_per_group;	/* # Clusters per group */
+>  	__le32	s_inodes_per_group;	/* # Inodes per group */
+>  	__le32	s_mtime;		/* Mount time */
+>  /*30*/	__le32	s_wtime;		/* Write time */
+> @@ -1055,7 +1060,10 @@ struct ext4_super_block {
+>  	__u8	s_last_error_func[32];	/* function where the error happened */
+>  #define EXT4_S_ERR_END offsetof(struct ext4_super_block, s_mount_opts)
+>  	__u8	s_mount_opts[64];
+> -	__le32	s_reserved[112];        /* Padding to the end of the block */
+> +	__le32	s_usr_quota_inum;	/* inode for tracking user quota */
+> +	__le32	s_grp_quota_inum;	/* inode for tracking group quota */
+> +	__le32	s_overhead_blocks;	/* overhead blocks/clusters in fs */
+> +	__le32  s_reserved[109];        /* Padding to the end of the block */
+>  };
+>  
+>  #define EXT4_S_ERR_LEN (EXT4_S_ERR_END - EXT4_S_ERR_START)
+> @@ -1075,6 +1083,7 @@ struct ext4_sb_info {
+>  	unsigned long s_desc_size;	/* Size of a group descriptor in bytes */
+>  	unsigned long s_inodes_per_block;/* Number of inodes per block */
+>  	unsigned long s_blocks_per_group;/* Number of blocks in a group */
+> +	unsigned long s_clusters_per_group; /* Number of clusters in a group */
+>  	unsigned long s_inodes_per_group;/* Number of inodes in a group */
+>  	unsigned long s_itb_per_group;	/* Number of inode table blocks per group */
+>  	unsigned long s_gdb_count;	/* Number of group descriptor blocks */
+> @@ -1083,6 +1092,8 @@ struct ext4_sb_info {
+>  	ext4_group_t s_blockfile_groups;/* Groups acceptable for non-extent files */
+>  	unsigned long s_overhead_last;  /* Last calculated overhead */
+>  	unsigned long s_blocks_last;    /* Last seen block count */
+> +	unsigned int s_cluster_ratio;	/* Number of blocks per group */
+> +	unsigned int s_cluster_bits;	/* log2 of s_cluster_ratio */
+>  	loff_t s_bitmap_maxbytes;	/* max bytes for bitmap files */
+>  	struct buffer_head * s_sbh;	/* Buffer containing the super block */
+>  	struct ext4_super_block *s_es;	/* Pointer to the super block in the buffer */
+> @@ -1338,6 +1349,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+>  #define EXT4_FEATURE_RO_COMPAT_GDT_CSUM		0x0010
+>  #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
+>  #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
+> +#define EXT4_FEATURE_RO_COMPAT_BIGALLOC		0x0200
+>  
+>  #define EXT4_FEATURE_INCOMPAT_COMPRESSION	0x0001
+>  #define EXT4_FEATURE_INCOMPAT_FILETYPE		0x0002
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index b357c27..7273728 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1875,7 +1875,7 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
+>  		res = MS_RDONLY;
+>  	}
+>  	if (read_only)
+> -		return res;
+> +		goto done;
+>  	if (!(sbi->s_mount_state & EXT4_VALID_FS))
+>  		ext4_msg(sb, KERN_WARNING, "warning: mounting unchecked fs, "
+>  			 "running e2fsck is recommended");
+> @@ -1906,6 +1906,7 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
+>  		EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+>  
+>  	ext4_commit_super(sb, 1);
+> +done:
+>  	if (test_opt(sb, DEBUG))
+>  		printk(KERN_INFO "[EXT4 FS bs=%lu, gc=%u, "
+>  				"bpg=%lu, ipg=%lu, mo=%04x, mo2=%04x]\n",
 
-Does this also work in (rare) cases where the erase block size is
-not a power of two?
+Maybe this is a bit nitpicky, but should not this be rather done in
+separate commit as it has nothing to do with bigalloc ?
 
-	Arnd
+> @@ -3022,10 +3023,10 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  	char *cp;
+>  	const char *descr;
+>  	int ret = -ENOMEM;
+> -	int blocksize;
+> +	int blocksize, clustersize;
+>  	unsigned int db_count;
+>  	unsigned int i;
+> -	int needs_recovery, has_huge_files;
+> +	int needs_recovery, has_huge_files, has_bigalloc;
+>  	__u64 blocks_count;
+>  	int err;
+>  	unsigned int journal_ioprio = DEFAULT_JOURNAL_IOPRIO;
+> @@ -3276,12 +3277,53 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  		sb->s_dirt = 1;
+>  	}
+>  
+> -	if (sbi->s_blocks_per_group > blocksize * 8) {
+> -		ext4_msg(sb, KERN_ERR,
+> -		       "#blocks per group too big: %lu",
+> -		       sbi->s_blocks_per_group);
+> -		goto failed_mount;
+> +	/* Handle clustersize */
+> +	clustersize = BLOCK_SIZE << le32_to_cpu(es->s_log_cluster_size);
+> +	has_bigalloc = EXT4_HAS_RO_COMPAT_FEATURE(sb,
+> +				EXT4_FEATURE_RO_COMPAT_BIGALLOC);
+> +	if (has_bigalloc) {
+> +		if (clustersize < blocksize) {
+> +			ext4_msg(sb, KERN_ERR,
+> +				 "cluster size (%d) smaller than "
+> +				 "block size (%d)", clustersize, blocksize);
+> +			goto failed_mount;
+> +		}
+> +		sbi->s_cluster_bits = le32_to_cpu(es->s_log_cluster_size) -
+> +			le32_to_cpu(es->s_log_block_size);
+> +		sbi->s_clusters_per_group =
+> +			le32_to_cpu(es->s_clusters_per_group);
+> +		if (sbi->s_clusters_per_group > blocksize * 8) {
+> +			ext4_msg(sb, KERN_ERR,
+> +				 "#clusters per group too big: %lu",
+> +				 sbi->s_clusters_per_group);
+> +			goto failed_mount;
+> +		}
+> +		if (sbi->s_blocks_per_group !=
+> +		    (sbi->s_clusters_per_group * (clustersize / blocksize))) {
+> +			ext4_msg(sb, KERN_ERR, "blocks per group (%lu) and "
+> +				 "clusters per group (%lu) inconsistent",
+> +				 sbi->s_blocks_per_group,
+> +				 sbi->s_clusters_per_group);
+> +			goto failed_mount;
+> +		}
+> +	} else {
+> +		if (clustersize != blocksize) {
+> +			ext4_warning(sb, "fragment/cluster size (%d) != "
+> +				     "block size (%d)", clustersize,
+> +				     blocksize);
+> +			clustersize = blocksize;
+
+I wonder if we should continue at this point, because something
+definitely went wrong as it has not biballoc feature but yet
+s_log_cluster_size does not match s_log_block_size which means
+definitely corruption or an error somewhere.
+
+> +		}
+> +		if (sbi->s_blocks_per_group > blocksize * 8) {
+> +			ext4_msg(sb, KERN_ERR,
+> +				 "#blocks per group too big: %lu",
+> +				 sbi->s_blocks_per_group);
+> +			goto failed_mount;
+> +		}
+> +		sbi->s_clusters_per_group = sbi->s_blocks_per_group;
+> +		sbi->s_cluster_bits = 0;
+>  	}
+> +	sbi->s_cluster_ratio = clustersize / blocksize;
+> +
+>  	if (sbi->s_inodes_per_group > blocksize * 8) {
+>  		ext4_msg(sb, KERN_ERR,
+>  		       "#inodes per group too big: %lu",
+> 
+
+Thanks!
+-Lukas
