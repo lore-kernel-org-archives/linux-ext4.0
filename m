@@ -1,22 +1,22 @@
 From: bugzilla-daemon@bugzilla.kernel.org
 Subject: [Bug 31542] ext4 : "No space left on the device" persists even when
  I deleted more than 40GB of data
-Date: Sun, 20 Mar 2011 23:55:14 GMT
-Message-ID: <201103202355.p2KNtEwK017143@demeter1.kernel.org>
+Date: Mon, 21 Mar 2011 00:05:17 GMT
+Message-ID: <201103210005.p2L05H2i021909@demeter1.kernel.org>
 References: <bug-31542-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:35565 "EHLO
+Received: from demeter1.kernel.org ([140.211.167.39]:40382 "EHLO
 	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751832Ab1CTXzR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Mar 2011 19:55:17 -0400
+	with ESMTP id S1752057Ab1CUAFS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Mar 2011 20:05:18 -0400
 Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p2KNtF5L017144
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p2L05HRP021910
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sun, 20 Mar 2011 23:55:15 GMT
+	for <linux-ext4@vger.kernel.org>; Mon, 21 Mar 2011 00:05:18 GMT
 In-Reply-To: <bug-31542-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -24,15 +24,17 @@ List-ID: <linux-ext4.vger.kernel.org>
 https://bugzilla.kernel.org/show_bug.cgi?id=3D31542
 
 
-Jarom=C3=ADr C=C3=A1p=C3=ADk <tavvva@volny.cz> changed:
-
-           What    |Removed                     |Added
------------------------------------------------------------------------=
------
-             Status|RESOLVED                    |CLOSED
 
 
 
+--- Comment #5 from Jarom=C3=ADr C=C3=A1p=C3=ADk <tavvva@volny.cz>  201=
+1-03-21 00:05:16 ---
+Yep .... I've already resolved/closed.
+But ... that points to the unintuitive df output, where the reserved pa=
+rt
+should be displayed. At the moment I don't know if that's easily possib=
+le, but
+I'll check that and create an enhancement ticket if so.
 
 --=20
 Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=3Demai=
