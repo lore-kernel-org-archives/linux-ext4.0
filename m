@@ -1,47 +1,22 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 31542] ext4 : "No space left on the device" persists even when
- I deleted more than 40GB of data
-Date: Mon, 21 Mar 2011 00:05:17 GMT
-Message-ID: <201103210005.p2L05H2i021909@demeter1.kernel.org>
-References: <bug-31542-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/2] add the b_cow_tid field to journal_head struct
+Date: Sun, 20 Mar 2011 21:14:19 -0400
+Message-ID: <20110321011419.GA4135@thunk.org>
+References: <AANLkTikduxunBSq0z6BuXJVHXJMzeTUfexz2H71_J6BR@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:40382 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752057Ab1CUAFS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Mar 2011 20:05:18 -0400
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p2L05HRP021910
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 21 Mar 2011 00:05:18 GMT
-In-Reply-To: <bug-31542-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:49310 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752057Ab1CUBOY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 20 Mar 2011 21:14:24 -0400
+Content-Disposition: inline
+In-Reply-To: <AANLkTikduxunBSq0z6BuXJVHXJMzeTUfexz2H71_J6BR@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=3D31542
+I've added this patch to the ext4 patch queue.
 
-
-
-
-
---- Comment #5 from Jarom=C3=ADr C=C3=A1p=C3=ADk <tavvva@volny.cz>  201=
-1-03-21 00:05:16 ---
-Yep .... I've already resolved/closed.
-But ... that points to the unintuitive df output, where the reserved pa=
-rt
-should be displayed. At the moment I don't know if that's easily possib=
-le, but
-I'll check that and create an enhancement ticket if so.
-
---=20
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=3Demai=
-l
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.--
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+     	   	      	     	  - Ted
