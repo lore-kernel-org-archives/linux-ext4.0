@@ -1,41 +1,36 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16380] ext2 driver "hangs" for a few seconds when trying to
- write a lot of data to a freshly RW mounted FS
-Date: Tue, 22 Mar 2011 22:05:26 GMT
-Message-ID: <201103222205.p2MM5QSc017444@demeter1.kernel.org>
-References: <bug-16380-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH, RFC 10/12] ext4: teach ext4_statfs() to deal with
+ clusters if bigalloc is enabled
+Date: Tue, 22 Mar 2011 18:09:21 -0400
+Message-ID: <20110322220921.GD3907@thunk.org>
+References: <1300570117-24048-1-git-send-email-tytso@mit.edu>
+ <1300570117-24048-11-git-send-email-tytso@mit.edu>
+ <alpine.LFD.2.00.1103212115360.3724@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:36616 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932413Ab1CVWF1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Mar 2011 18:05:27 -0400
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p2MM5Qv8017445
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 22 Mar 2011 22:05:27 GMT
-In-Reply-To: <bug-16380-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:53488 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755416Ab1CVWJZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 22 Mar 2011 18:09:25 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1103212115360.3724@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16380
+On Mon, Mar 21, 2011 at 09:17:30PM +0100, Lukas Czerner wrote:
+> 
+> overhead is in clusters units, but
+> 
+> >  		smp_wmb();
+> >  		sbi->s_blocks_last = ext4_blocks_count(es);
+> > @@ -4489,6 +4499,7 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
+> >  	buf->f_blocks = ext4_blocks_count(es) - sbi->s_overhead_last;
+> 
+> here it seems to be treated as blocks if I am not missing something.
 
+Oops, good point!  Thanks for catching that.
 
-Artem S. Tashkinov <t.artem@mailcity.com> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-            Summary|Loop devices act strangely  |ext2 driver "hangs" for a
-                   |in 2.6.35                   |few seconds when trying to
-                   |                            |write a lot of data to a
-                   |                            |freshly RW mounted FS
-
-
-
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+					- Ted
