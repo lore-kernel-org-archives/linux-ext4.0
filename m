@@ -1,47 +1,56 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: don't kfree uninitialized s_group_info members
-Date: Mon, 21 Mar 2011 21:27:05 -0400
-Message-ID: <20110322012705.GA3907@thunk.org>
-References: <4D7958B3.8070309@redhat.com>
+Subject: Re: [PATCH] ext4: add more tracepoints and change to use
+ MAJOR/MINOR dev macros
+Date: Mon, 21 Mar 2011 21:50:27 -0400
+Message-ID: <20110322015027.GB3907@thunk.org>
+References: <20110318021325.85D814206C@ruihe.smo.corp.google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>, dame_eugene@mail.ru
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: Jiaying Zhang <jiayingz@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:41105 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:53556 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754737Ab1CVB1H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 Mar 2011 21:27:07 -0400
+	id S1756269Ab1CVBua (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 21 Mar 2011 21:50:30 -0400
 Content-Disposition: inline
-In-Reply-To: <4D7958B3.8070309@redhat.com>
+In-Reply-To: <20110318021325.85D814206C@ruihe.smo.corp.google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 10, 2011 at 05:03:15PM -0600, Eric Sandeen wrote:
-> Per kernel.org bugzilla #30872 we may call kfree on uninitialized
-> members of the s_group_info array.  We can avoid this by kzalloc'ing
-> the array, and only freeing them on the error path if they are
-> non-zero.
+Added to the ext4 patch queue.  After running pahole, though, I'm
+still noticing a lot of holes in the ftrace structures:
+
+struct ftrace_raw_ext4_load_inode {
+        struct trace_entry         ent;                  /*     0    12 */
+
+        /* XXX 4 bytes hole, try to pack */
+
+        ino_t                      ino;                  /*    16     8 */
+        dev_t                      dev;                  /*    24     4 */
+        char                       __data[0];            /*    28     0 */
+
+        /* size: 32, cachelines: 1 */
+        /* sum members: 24, holes: 1, sum holes: 4 */
+        /* padding: 4 */
+        /* last cacheline: 32 bytes */
+};      /* definitions: 1 */
+
+Simply by swapping the ino and dev fields means that we'll save 4
+bytes for this event.
+
+						- Ted
+
+On Thu, Mar 17, 2011 at 07:13:25PM -0700, Jiaying Zhang wrote:
+> ext4: add more tracepoints and change to use MAJOR/MINOR dev macros
 > 
-> This doesn't entirely solve the oops on mount if we fail down this
-> path; failed_mount4: frees the sbi, for one, which gets referenced
-> later in the failed mount paths - I haven't worked that out yet.
+> - Add more ext4 tracepoints.
+> - Change ext4 tracepoints to use dev_t field with MAJOR/MINOR macros
+> so that we can save 4 bytes on certain platforms.
+> - Add sync_mode to ext4_da_writepages, ext4_da_write_pages, and
+> ext4_da_writepages_result tracepoints. Also remove for_reclaim
+> field from ext4_da_writepages since it is usually not very useful.
 > 
-> Reported-by: Eugene A. Shatokhin <dame_eugene@mail.ru>
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> Signed-off-by: Jiaying Zhang <jiayingz@google.com>
 
-Added to the ext4 patch tree, although I've dropped the second patch
-hunk, since it's OK to call kfree on a NULL pointers:
 
-> @@ -2412,7 +2412,8 @@ err_freebuddy:
->  		kmem_cache_free(cachep, ext4_get_group_info(sb, i));
->  	i = num_meta_group_infos;
->  	while (i-- > 0)
-> -		kfree(sbi->s_group_info[i]);
-> +		if (sbi->s_group_info[i])
-> +			kfree(sbi->s_group_info[i]);
->  	iput(sbi->s_buddy_cache);
->  err_freesgi:
->  	kfree(sbi->s_group_info);
-
-							- Ted
