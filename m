@@ -1,59 +1,47 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: critical info format fix in
- __ext4_grp_locked_error
-Date: Mon, 21 Mar 2011 20:47:39 -0400
-Message-ID: <20110322004739.GJ4135@thunk.org>
-References: <1300442283-31421-1-git-send-email-hao.bigrat@gmail.com>
+Subject: Re: [PATCH] ext4: don't kfree uninitialized s_group_info members
+Date: Mon, 21 Mar 2011 21:27:05 -0400
+Message-ID: <20110322012705.GA3907@thunk.org>
+References: <4D7958B3.8070309@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Robin Dong <sanbai@taobao.com>,
-	Tao Ma <boyu.mt@taobao.com>
-To: Robin Dong <hao.bigrat@gmail.com>
+Cc: ext4 development <linux-ext4@vger.kernel.org>, dame_eugene@mail.ru
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:35117 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:41105 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754660Ab1CVAro (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 Mar 2011 20:47:44 -0400
+	id S1754737Ab1CVB1H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 21 Mar 2011 21:27:07 -0400
 Content-Disposition: inline
-In-Reply-To: <1300442283-31421-1-git-send-email-hao.bigrat@gmail.com>
+In-Reply-To: <4D7958B3.8070309@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Applied to the ext4 patch queue.
-
-On Fri, Mar 18, 2011 at 05:58:03PM +0800, Robin Dong wrote:
-> From: Robin Dong <sanbai@taobao.com>
+On Thu, Mar 10, 2011 at 05:03:15PM -0600, Eric Sandeen wrote:
+> Per kernel.org bugzilla #30872 we may call kfree on uninitialized
+> members of the s_group_info array.  We can avoid this by kzalloc'ing
+> the array, and only freeing them on the error path if they are
+> non-zero.
 > 
-> When we do performence-testing on ext4 filesystem, we observe a warning like this:
+> This doesn't entirely solve the oops on mount if we fail down this
+> path; failed_mount4: frees the sbi, for one, which gets referenced
+> later in the failed mount paths - I haven't worked that out yet.
 > 
-> "[ 1684.113205] EXT4-fs error (device sda7): ext4_mb_generate_buddy:718: group 259825901 blocks in bitmap, 26057 in gd"
-> 
-> indeed, it should be
-> 
-> "group 2598, 25901 blocks in bitmap, 26057 in gd"
+> Reported-by: Eugene A. Shatokhin <dame_eugene@mail.ru>
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-Note that the next two paragraphs don't really belong in a commit
-description.  It's best if you put this kind of stuff after the
-signed-off-by lines, with a "---" separating the commit description, like this:
+Added to the ext4 patch tree, although I've dropped the second patch
+hunk, since it's OK to call kfree on a NULL pointers:
 
-Signed off by: Ty Coon <tycoon@gmail.com>
----
-Stuff that explains the context of the patch
+> @@ -2412,7 +2412,8 @@ err_freebuddy:
+>  		kmem_cache_free(cachep, ext4_get_group_info(sb, i));
+>  	i = num_meta_group_infos;
+>  	while (i-- > 0)
+> -		kfree(sbi->s_group_info[i]);
+> +		if (sbi->s_group_info[i])
+> +			kfree(sbi->s_group_info[i]);
+>  	iput(sbi->s_buddy_cache);
+>  err_freesgi:
+>  	kfree(sbi->s_group_info);
 
-diff --git ....
-
-> This bug is found on upstream 2.6.36 kernel. We ran a 2.6.36 kernel
-> on the online system with 8 Ext4 file systems. 2 of them are mounted
-> with delayed allocation feature. This warning is only observed on
-> delayed allocation enabled Ext4 file systems.
-> 
-> This issue is not easy to reproduce, on two servers with 2.6.36
-> kenrel + ext4, after running 110+ days, the error starts to appear
-> on kernel log. When check the error log, we found the info format
-> should be fixed, that's how this patch comes.
-
-Can you send more information about what sort of workloads your
-servers are under, and any other information about how to reproduce
-it?
-
-						- Ted
+							- Ted
