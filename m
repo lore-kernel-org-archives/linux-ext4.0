@@ -1,47 +1,48 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: [PATCH]: e2fsprogs m_* self tests no longer pass
-Date: Tue, 22 Mar 2011 17:16:38 +0100
-Message-ID: <6898685A-0ADF-4AF1-8823-E4663A32983D@whamcloud.com>
-References: <AANLkTikX2u+tz7e39tb8abRuXtiLDusKpjAf9vZ1tYUU@mail.gmail.com> <alpine.LFD.2.00.1103011046240.3874@dhcp-27-109.brq.redhat.com> <AANLkTing03byqyWRXbS+AJjHuyZCaJaHczHmVMoW+MBB@mail.gmail.com> <F6277800-7506-4613-B9D8-F180191F4ABB@whamcloud.com> <20110319202929.GA9875@thunk.org>
-Mime-Version: 1.0 (Apple Message framework v1082)
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH, RFC 01/12] ext4: read-only support for bigalloc file
+ systems
+Date: Tue, 22 Mar 2011 13:02:20 -0400
+Message-ID: <20110322170220.GC3907@thunk.org>
+References: <1300570117-24048-1-git-send-email-tytso@mit.edu>
+ <1300570117-24048-2-git-send-email-tytso@mit.edu>
+ <alpine.LFD.2.00.1103212024460.3724@dhcp-27-109.brq.redhat.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Lukas Czerner <lczerner@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	Bruce Cassidy <bruce@whamcloud.com>
-To: Ted Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:50359 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753030Ab1CVQQm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Mar 2011 12:16:42 -0400
-Received: by eyx24 with SMTP id 24so1869336eyx.19
-        for <linux-ext4@vger.kernel.org>; Tue, 22 Mar 2011 09:16:41 -0700 (PDT)
-In-Reply-To: <20110319202929.GA9875@thunk.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:57118 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751615Ab1CVRCY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 22 Mar 2011 13:02:24 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1103212024460.3724@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-03-19, at 9:29 PM, Ted Ts'o wrote:
-> On Tue, Mar 15, 2011 at 01:50:48PM -0600, Andreas Dilger wrote:
->> Only display the "Discarding device blocks:" status bar if discard
->> is actually implemented in the IO manager and in the kernel.
->> Otherwise, there is no correct test result that will work in all
->> environments.  I'd prefer not to print an error message for the
->> majority of devices that do not support discard, since this is
->> confusing.
+On Mon, Mar 21, 2011 at 08:35:20PM +0100, Lukas Czerner wrote:
 > 
-> I believe this should be fixed already by commit aa07cb79b0, which is
-> in the e2fsprogs master and next branches.  Can you confirm?
+> Maybe this is a bit nitpicky, but should not this be rather done in
+> separate commit as it has nothing to do with bigalloc ?
 
-It looks like it will do the same thing, though I don't know what the semantics are for doing a 0-length discard.  I'm reluctant to do an operation like this that may not have well-defined semantics (e.g. return EINVAL for this case).
+Perhaps.  The reason why I had it was because I wanted to see the
+blocks per group information when I was testing a read-only bigalloc
+mount.  I'll grant this is tenuous; I suppose I could separate out
+these two patch hunks into a separate patch, but I didn't think it was
+really worth it.
 
-My patch only does the requested discard, and checks the return of the first call.  It still makes sense to print an error for anything other than EXT2_ET_UNIMPLEMENTED instead of silently hiding the error.
+> 
+> I wonder if we should continue at this point, because something
+> definitely went wrong as it has not biballoc feature but yet
+> s_log_cluster_size does not match s_log_block_size which means
+> definitely corruption or an error somewhere.
 
-Cheers, Andreas
---
-Andreas Dilger 
-Principal Engineer
-Whamcloud, Inc.
+I considered this, but I was just paranoid because I didn't want to
+change anything in the !bigalloc case.  There was one or two users who
+reported that somehow the second 512 byte sector was containing
+garbage, and nothing had cared in the past, but when we first broke
+into the second 512 bytes of the superblock we did have some
+complaints, so that's why I decided to err on the side of
+conservatism.
 
-
-
+						- Ted
