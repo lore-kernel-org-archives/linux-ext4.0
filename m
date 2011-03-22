@@ -1,47 +1,59 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [RFC 4/5] MMC: Adjust unaligned write accesses.
-Date: Tue, 22 Mar 2011 00:58:12 +0100
-Message-ID: <7BE97618-725C-4BFA-9FE5-59C893BDA097@dilger.ca>
-References: <1299718449-15172-1-git-send-email-andreiw@motorola.com> <AANLkTik0DkQa7NrGbpSVVAkhQ4O9+kenPSr2dP=+Ej94@mail.gmail.com> <C0A67981-AF1A-40FF-91BA-93ECF6F72B58@dilger.ca> <201103212005.37108.arnd@arndb.de>
-Mime-Version: 1.0 (Apple Message framework v1082)
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: critical info format fix in
+ __ext4_grp_locked_error
+Date: Mon, 21 Mar 2011 20:47:39 -0400
+Message-ID: <20110322004739.GJ4135@thunk.org>
+References: <1300442283-31421-1-git-send-email-hao.bigrat@gmail.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Andrei Warkentin <andreiw@motorola.com>, linux-mmc@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Arnd Bergmann <arnd@arndb.de>
+Cc: linux-ext4@vger.kernel.org, Robin Dong <sanbai@taobao.com>,
+	Tao Ma <boyu.mt@taobao.com>
+To: Robin Dong <hao.bigrat@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:31773 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754802Ab1CVADM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Mar 2011 20:03:12 -0400
-In-Reply-To: <201103212005.37108.arnd@arndb.de>
+Received: from li9-11.members.linode.com ([67.18.176.11]:35117 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754660Ab1CVAro (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 21 Mar 2011 20:47:44 -0400
+Content-Disposition: inline
+In-Reply-To: <1300442283-31421-1-git-send-email-hao.bigrat@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-03-21, at 8:05 PM, Arnd Bergmann wrote:
-> On Monday 21 March 2011 19:03:09 Andreas Dilger wrote:
->> Note that mballoc was specifically designed to handle allocation
->> requests that are aligned on RAID stripe boundaries, so it should
->> be able to handle this for MMC as well.  What is needed is to tell
->> the filesystem what the underlying alignment is.  That can be done
->> at format time with mke2fs or afterward with tune2fs by using the
->> "-E stripe_width" option.
+Applied to the ext4 patch queue.
+
+On Fri, Mar 18, 2011 at 05:58:03PM +0800, Robin Dong wrote:
+> From: Robin Dong <sanbai@taobao.com>
 > 
-> Ah, that sounds useful. So would I set the stripe_width to the
-> erase block size, and the block group size to a multiple of that?
+> When we do performence-testing on ext4 filesystem, we observe a warning like this:
+> 
+> "[ 1684.113205] EXT4-fs error (device sda7): ext4_mb_generate_buddy:718: group 259825901 blocks in bitmap, 26057 in gd"
+> 
+> indeed, it should be
+> 
+> "group 2598, 25901 blocks in bitmap, 26057 in gd"
 
-When you write "block group size" do you mean the ext4 block group?  Then yes it would help.  You could also consider setting the flex_bg size to a multiple of this, so that the bitmap blocks are grouped as a multiple of this size.  However, they may not be aligned correctly, which needs extra effort that isn't obvious.  
+Note that the next two paragraphs don't really belong in a commit
+description.  It's best if you put this kind of stuff after the
+signed-off-by lines, with a "---" separating the commit description, like this:
 
-I think it would be nice to have mke2fs take the stripe_width and/or flex_bg factor into account when sizing/aligning the bitmaps, but it doesn't yet.
+Signed off by: Ty Coon <tycoon@gmail.com>
+---
+Stuff that explains the context of the patch
 
-> Does this also work in (rare) cases where the erase block size is
-> not a power of two?
+diff --git ....
 
-It does (or is supposed to), but that isn't code that is exercised very much (most installations use a power-of-two size).
+> This bug is found on upstream 2.6.36 kernel. We ran a 2.6.36 kernel
+> on the online system with 8 Ext4 file systems. 2 of them are mounted
+> with delayed allocation feature. This warning is only observed on
+> delayed allocation enabled Ext4 file systems.
+> 
+> This issue is not easy to reproduce, on two servers with 2.6.36
+> kenrel + ext4, after running 110+ days, the error starts to appear
+> on kernel log. When check the error log, we found the info format
+> should be fixed, that's how this patch comes.
 
-Cheers, Andreas
+Can you send more information about what sort of workloads your
+servers are under, and any other information about how to reproduce
+it?
 
-
-
-
-
+						- Ted
