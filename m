@@ -1,126 +1,47 @@
-From: Arnd Bergmann <arnd@arndb.de>
-Subject: Re: [RFC 4/5] MMC: Adjust unaligned write accesses.
-Date: Tue, 22 Mar 2011 16:44:03 +0100
-Message-ID: <201103221644.03832.arnd@arndb.de>
-References: <1299718449-15172-1-git-send-email-andreiw@motorola.com> <201103221456.32151.arnd@arndb.de> <EB125185-EDE4-4618-A94E-D1C71810D3AB@dilger.ca>
-Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: Andrei Warkentin <andreiw@motorola.com>, linux-mmc@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+From: Andreas Dilger <adilger@whamcloud.com>
+Subject: Re: [PATCH]: e2fsprogs m_* self tests no longer pass
+Date: Tue, 22 Mar 2011 17:16:38 +0100
+Message-ID: <6898685A-0ADF-4AF1-8823-E4663A32983D@whamcloud.com>
+References: <AANLkTikX2u+tz7e39tb8abRuXtiLDusKpjAf9vZ1tYUU@mail.gmail.com> <alpine.LFD.2.00.1103011046240.3874@dhcp-27-109.brq.redhat.com> <AANLkTing03byqyWRXbS+AJjHuyZCaJaHczHmVMoW+MBB@mail.gmail.com> <F6277800-7506-4613-B9D8-F180191F4ABB@whamcloud.com> <20110319202929.GA9875@thunk.org>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Lukas Czerner <lczerner@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	Bruce Cassidy <bruce@whamcloud.com>
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.17.10]:65054 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752445Ab1CVPoJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Mar 2011 11:44:09 -0400
-In-Reply-To: <EB125185-EDE4-4618-A94E-D1C71810D3AB@dilger.ca>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:50359 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753030Ab1CVQQm convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Mar 2011 12:16:42 -0400
+Received: by eyx24 with SMTP id 24so1869336eyx.19
+        for <linux-ext4@vger.kernel.org>; Tue, 22 Mar 2011 09:16:41 -0700 (PDT)
+In-Reply-To: <20110319202929.GA9875@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tuesday 22 March 2011, Andreas Dilger wrote:
-> On 2011-03-22, at 2:56 PM, Arnd Bergmann wrote:
-> > On Tuesday 22 March 2011, Andreas Dilger wrote:
-> >> On 2011-03-21, at 8:05 PM, Arnd Bergmann wrote:
-> > 
-> > * On cards that can only write to a single erase block at a time,
-> > should I make the block group size the same as the as the erase
-> > block? I suppose writing both block bitmaps, inode and data to
-> > separate erase blocks would create multiple eraseblock
-> > read-modify-write cycles for every single file otherwise.
+On 2011-03-19, at 9:29 PM, Ted Ts'o wrote:
+> On Tue, Mar 15, 2011 at 01:50:48PM -0600, Andreas Dilger wrote:
+>> Only display the "Discarding device blocks:" status bar if discard
+>> is actually implemented in the IO manager and in the kernel.
+>> Otherwise, there is no correct test result that will work in all
+>> environments.  I'd prefer not to print an error message for the
+>> majority of devices that do not support discard, since this is
+>> confusing.
 > 
-> That doesn't seem like a very good idea.  It will significantly limit
-> the size of the filesystem, and will cause a lot of overhead (two bitmaps
-> per group for only a handful of blocks).
+> I believe this should be fixed already by commit aa07cb79b0, which is
+> in the e2fsprogs master and next branches.  Can you confirm?
 
-I'm willing to spend a little space overhead in return for one
-or two orders of magnitude in performance and life expectancy
-for the card ;-)
+It looks like it will do the same thing, though I don't know what the semantics are for doing a 0-length discard.  I'm reluctant to do an operation like this that may not have well-defined semantics (e.g. return EINVAL for this case).
 
-A typical case is that a single-page (16KB) write to the currently
-open erase block takes 1ms, but since writing to another erase block
-requires a garbage-collection (erase-rewrite 4 MB), it takes 500 ms,
-just like the following access to the first erase block, which
-has now been closed.
+My patch only does the requested discard, and checks the return of the first call.  It still makes sense to print an error for anything other than EXT2_ET_UNIMPLEMENTED instead of silently hiding the error.
 
-Every erase cycle ages the drive, and on some cheap ones, you only
-have about 2000 guaranteed erases per erase block!
+Cheers, Andreas
+--
+Andreas Dilger 
+Principal Engineer
+Whamcloud, Inc.
 
-> > * Is it guaranteed that inode bitmap, inode, block bitmap and
-> > blocks are always written in low-to-high sector order within
-> > one ext4 block group? A lot of the drives will do a garbage-collect
-> > step (adding hundreds of miliseconds) every time you move back
-> > inside of the eraseblock.
-> 
-> Generally, yes.  I don't think there is a hard guarantee,
-> but the block device elevator will sort the blocks.
 
-Ok. 
- 
-> > * Is there any way to make ext4 use effective blocks larger
-> > than 4 KB? The most common size for a NAND flash page is 16
-> > KB right (effectively, ignoring what the hardware does), so
-> > it would be good to never write smaller.
-> 
-> You may be interested in Ted's bigalloc patchset.  This will force
-> block allocation to be at a power-of-two multiple of the blocksize,
-> so it could be 16kB or whatever.  However, this is inefficient if
-> the average filesize is not large enough.
 
-Is it just a performance/space tradeoff, or is there also a
-performance overhead in this?
-
-> > * Calling TRIM on SD cards is probably counterproductive unless
-> > you trim entire erase blocks. Is that even possible with ext4,
-> > assuming that we use block group == erase block?
-> 
-> That is already the case, if the underlying storage reports the
-> erase block size to the filesystem.
-
-Ok, I should try to find out how this is done on SD cards.
-The hardware interface allows erasing 512 byte sectors, so
-we might be reporting that instead.
- 
-> > * Is there a way to put the journal into specific parts of the
-> > drive? Almost all SD cards have an area in the second 4 MB
-> > (more for larger cards) that can be written using random access
-> > without forcing garbage collection on other parts.
-> 
-> That would need a small patch to mke2fs.  I've been interested in
-> this also for other reasons, but haven't had time to work on it. 
-> It will likely need only some small adjustments to 
-> ext2fs_add_journal_inode() to allow passing the goal block, and
-> write_journal_inode() to use the goal block instead of its internal
-> heuristic.  The default location of the journal inode was previously
-> moved from the beginning of the filesystem to the middle of the
-> filesystem for performance reasons, so this is mostly already handled.
-
-Ok. It was previously suggested to put an external journal on a
-4 MB partition for experimenting with this. I hope I can back this
-up with performance numbers soon.
-
-> Well, the large erase block size is not in itself a problem, but
-> if the devices do not use the reported erase block size internally,
-> there is nothing much that ext4 or the rest of the kernel can do
-> about it, since it has no other way of knowing what the real erase
-> block size is.
-
-For SDHC cards, the typical case is that they are reasonably efficient
-when you use the reported size, because they are tested that way.
-A lot of cards use 2MiB internally but report 4MiB, which is fine
-as long as you write the 4MB consecutively and don't alternate
-between the two halves.
-
-The split into three erase blocks of (4 MiB / 3) is on low-end
-SanDisk cards, and I believe it has mostly advantages and will
-work well if we use the reported 4 MB.
-
-The 4128 KiB erase blocks are on a USB stick, and those devices
-do not report any erase block size at all.
-
-I have written a tool to detect the actual erase block size,
-and perhaps that could be integrated into mke2fs and similar
-tools.
-
-	Arnd
