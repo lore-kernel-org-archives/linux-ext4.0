@@ -1,33 +1,49 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: unused variables cleanup in check_eofblocks_fl
- and ext4_ext_map_blocks
-Date: Wed, 23 Mar 2011 14:10:18 -0400
-Message-ID: <20110323181018.GA2548@thunk.org>
-References: <20110322115126.GB5086@swordfish.minsk.epam.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 31742] got a "kernel BUG at fs/dcache.c:440!"
+Date: Wed, 23 Mar 2011 19:31:22 GMT
+Message-ID: <201103231931.p2NJVM6r031948@demeter1.kernel.org>
+References: <bug-31742-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Sergey Senozhatsky <sergey.senozhatsky@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:58749 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932316Ab1CWSK1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Mar 2011 14:10:27 -0400
-Content-Disposition: inline
-In-Reply-To: <20110322115126.GB5086@swordfish.minsk.epam.com>
+Received: from demeter1.kernel.org ([140.211.167.39]:55332 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932706Ab1CWTbW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Mar 2011 15:31:22 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p2NJVMQJ031949
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 23 Mar 2011 19:31:22 GMT
+In-Reply-To: <bug-31742-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 22, 2011 at 01:51:26PM +0200, Sergey Senozhatsky wrote:
-> ext4 extents cleanup:
-> 
->   . remove unused `*ex' from check_eofblocks_fl
->   . remove unused `*eh' from ext4_ext_map_blocks
-> 
-> 
-> Signed-off-by: Sergey Senozhatsky <sergey.senozhatsky@gmail.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=31742
 
-Added to the ext4 patch queue, thanks.
 
-				- Ted
+Theodore Tso <tytso@mit.edu> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
+     Kernel Version|2.6.28                      |2.6.38
+
+
+
+
+--- Comment #4 from Theodore Tso <tytso@mit.edu>  2011-03-23 19:31:19 ---
+Can you replicate the problem, or was this a once-off?
+
+Can you say more about your hardware configuration?  Was this on an SMP
+machine?
+
+Looking at the stack trace, this looks more like a VFS level issue than
+something within ext4. 
+
+-- Ted
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
