@@ -1,56 +1,55 @@
-From: Valerie Aurora <valerie.aurora@gmail.com>
-Subject: [PATCH 11/74] ext2: Split ext2_add_entry() from ext2_add_link()
-Date: Tue, 22 Mar 2011 18:58:47 -0700
-Message-ID: <1300845590-14184-12-git-send-email-valerie.aurora@gmail.com>
-References: <1300845590-14184-1-git-send-email-valerie.aurora@gmail.com>
-Cc: viro@zeniv.linux.org.uk, Valerie Aurora <vaurora@redhat.com>,
-	Jan Kara <jack@suse.cz>, linux-ext4@kernel.org,
-	Valerie Aurora <valerie.aurora@gmail.com>
-To: linux-fsdevel@vger.kernel.org, linux@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1300845590-14184-1-git-send-email-valerie.aurora@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Sedat Dilek <sedat.dilek@googlemail.com>
+Subject: Re: [ext4] Multiple page-io submission (Option "mblk_io_submit")
+Date: Wed, 23 Mar 2011 08:32:28 +0100
+Message-ID: <AANLkTi=4k7QrtPg1B7bbzNzVMjj_aKwq99+DByQo2BP6@mail.gmail.com>
+References: <AANLkTinXsDN4Bhp9_kcbeu6BNMADTSBVN_6+nn63w+kW@mail.gmail.com>
+	<20110209183816.GD9533@thunk.org>
+Reply-To: sedat.dilek@gmail.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: "s.dilek" <s.dilek@jpberlin.de>
+To: "Ted Ts'o" <tytso@mit.edu>, sedat.dilek@gmail.com,
+	Curt Wohlgemuth <curtw@google.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	LKML <linux-kernel@vg
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:48658 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754517Ab1CWHc3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Mar 2011 03:32:29 -0400
+In-Reply-To: <20110209183816.GD9533@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Valerie Aurora <vaurora@redhat.com>
+On Wed, Feb 9, 2011 at 7:38 PM, Ted Ts'o <tytso@mit.edu> wrote:
+> On Tue, Feb 08, 2011 at 06:30:29PM +0100, Sedat Dilek wrote:
+>> Hi,
+>>
+>> while looking at pending patches in ext4.git#{master, for_linus}, I
+>> saw "ext4: Fix data corruption with multi-block writepages support"
+>> which should fix [2] according to text in the commit-body.
+>>
+>> Are you planning to turn on "multiple page-io submission" again by
+>> default (as is was disabled in "ext4: Turn off multiple page-io
+>> submission by default" [3])?
+>
+> I'm planning on turning it on by default post 2.6.38, during the
+> 2.6.39-rc1 merge window. =C2=A0That's me being paranoid, since this i=
+s so
+> late in the -rc cycle for 2.6.38.
+>
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 =C2=A0- Ted
+>
 
-Allow future code to use the guts of ext2_add_link().
+Ping!
+(As the merge-window is still open.)
 
-Cc: Jan Kara <jack@suse.cz>
-Cc: linux-ext4@kernel.org
-Signed-off-by: Valerie Aurora <valerie.aurora@gmail.com>
----
- fs/ext2/dir.c |   10 ++++++----
- 1 files changed, 6 insertions(+), 4 deletions(-)
-
-diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-index 79987ab..74b23b0 100644
---- a/fs/ext2/dir.c
-+++ b/fs/ext2/dir.c
-@@ -480,10 +480,7 @@ void ext2_set_link(struct inode *dir, struct ext2_dir_entry_2 *de,
- 	mark_inode_dirty(dir);
- }
- 
--/*
-- *	Parent is locked.
-- */
--int ext2_add_link (struct dentry *dentry, struct inode *inode)
-+int ext2_add_entry (struct dentry *dentry, struct inode *inode)
- {
- 	struct inode *dir = dentry->d_parent->d_inode;
- 	const char *name = dentry->d_name.name;
-@@ -579,6 +576,11 @@ out_unlock:
- 	goto out_put;
- }
- 
-+int ext2_add_link (struct dentry *dentry, struct inode *inode)
-+{
-+	return ext2_add_entry(dentry, inode);
-+}
-+
- /*
-  * ext2_delete_entry deletes a directory entry by merging it with the
-  * previous entry. Page is up-to-date. Releases the page.
--- 
-1.7.0.4
-
+- Sedat -
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
