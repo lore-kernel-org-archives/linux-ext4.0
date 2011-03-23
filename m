@@ -1,58 +1,36 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH, RFC 01/12] ext4: read-only support for bigalloc file
- systems
-Date: Wed, 23 Mar 2011 11:28:14 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1103231122530.1486@dhcp-27-109.brq.redhat.com>
-References: <1300570117-24048-1-git-send-email-tytso@mit.edu> <1300570117-24048-2-git-send-email-tytso@mit.edu> <alpine.LFD.2.00.1103212024460.3724@dhcp-27-109.brq.redhat.com> <20110322170220.GC3907@thunk.org>
+Subject: Discard request and write counters
+Date: Wed, 23 Mar 2011 14:07:40 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1103231352250.1486@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28474 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751109Ab1CWK2S (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Mar 2011 06:28:18 -0400
-In-Reply-To: <20110322170220.GC3907@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	"Theodore Ts'o" <tytso@mit.edu>, Eric Sandeen <esandeen@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 22 Mar 2011, Ted Ts'o wrote:
+Hello,
 
-> On Mon, Mar 21, 2011 at 08:35:20PM +0100, Lukas Czerner wrote:
-> > 
-> > Maybe this is a bit nitpicky, but should not this be rather done in
-> > separate commit as it has nothing to do with bigalloc ?
-> 
-> Perhaps.  The reason why I had it was because I wanted to see the
-> blocks per group information when I was testing a read-only bigalloc
-> mount.  I'll grant this is tenuous; I suppose I could separate out
-> these two patch hunks into a separate patch, but I didn't think it was
-> really worth it.
-> 
-> > 
-> > I wonder if we should continue at this point, because something
-> > definitely went wrong as it has not biballoc feature but yet
-> > s_log_cluster_size does not match s_log_block_size which means
-> > definitely corruption or an error somewhere.
-> 
-> I considered this, but I was just paranoid because I didn't want to
-> change anything in the !bigalloc case.  There was one or two users who
-> reported that somehow the second 512 byte sector was containing
-> garbage, and nothing had cared in the past, but when we first broke
-> into the second 512 bytes of the superblock we did have some
-> complaints, so that's why I decided to err on the side of
-> conservatism.
+I have noticed that we do treat discard requests (REQ_DISCARD) as write
+requests which is probably right, but it has the side effect of
+increasing write counters as well (disk_stats->sectors[1]) which leads
+to confusing result.
 
-Right, I can see your point. So maybe we should add this check to e2fsck
-to set the s_log_cluster_size properly if bigalloc is not set.
+For example in ext4 filesystem we have counter s_kbytes_written which
+stores amount of kbytes written to the filesystem throughout its
+lifetime. Now, if you mount the filesystem with -o discard mount option,
+which means that with every commit blocks used by unlinked files are
+discarded, you'll get approx. twice as many kb writes as it should be
+(if you delete every file you have previously written of course).
 
-> 
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+So this means that with -o discard the ext4 s_kbytes_written counter is
+no longer reliable. Now the question is how to fix that ? Should the
+users of the disk_stats->sectors[1] count with this behaviour as the
+REQ_DISCARD is treated as write and should be accounted for, or should
+we change that in block layer and do not count REQ_DISCARD as write in
+the first place ?
 
+Thanks!
 -Lukas
