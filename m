@@ -1,49 +1,32 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 31742] got a "kernel BUG at fs/dcache.c:440!"
-Date: Wed, 23 Mar 2011 19:31:22 GMT
-Message-ID: <201103231931.p2NJVM6r031948@demeter1.kernel.org>
-References: <bug-31742-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2] ext4: Fix a BUG in mb_mark_used during trim.
+Date: Wed, 23 Mar 2011 15:47:19 -0400
+Message-ID: <20110323194719.GB2548@thunk.org>
+References: <alpine.LFD.2.00.1103031117210.8737@dhcp-27-109.brq.redhat.com>
+ <1299160774-2337-1-git-send-email-tm@tao.ma>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:55332 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932706Ab1CWTbW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Mar 2011 15:31:22 -0400
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p2NJVMQJ031949
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 23 Mar 2011 19:31:22 GMT
-In-Reply-To: <bug-31742-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:47085 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932845Ab1CWTra (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 23 Mar 2011 15:47:30 -0400
+Content-Disposition: inline
+In-Reply-To: <1299160774-2337-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=31742
+Thanks, added to the ext4 patch queue.  My apologies for the delay.
 
+	      	     	  	- Ted
 
-Theodore Tso <tytso@mit.edu> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
-     Kernel Version|2.6.28                      |2.6.38
-
-
-
-
---- Comment #4 from Theodore Tso <tytso@mit.edu>  2011-03-23 19:31:19 ---
-Can you replicate the problem, or was this a once-off?
-
-Can you say more about your hardware configuration?  Was this on an SMP
-machine?
-
-Looking at the stack trace, this looks more like a VFS level issue than
-something within ext4. 
-
--- Ted
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+On Thu, Mar 03, 2011 at 09:59:34PM +0800, Tao Ma wrote:
+> From: Tao Ma <boyu.mt@taobao.com>
+> 
+> In a bs=4096 volume, if we call FITRIM with the following parameter as
+> fstrim_range(start = 102400, len = 134144000, minlen = 10240),
+> we will trigger a BUG_ON.
+> BUG_ON(start + len > (e4b->bd_sb->s_blocksize << 3));
+> 
