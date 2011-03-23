@@ -1,21 +1,21 @@
 From: bugzilla-daemon@bugzilla.kernel.org
 Subject: [Bug 31742] got a "kernel BUG at fs/dcache.c:440!"
-Date: Wed, 23 Mar 2011 15:18:03 GMT
-Message-ID: <201103231518.p2NFI3kV030598@demeter1.kernel.org>
+Date: Wed, 23 Mar 2011 15:20:24 GMT
+Message-ID: <201103231520.p2NFKOAo032093@demeter1.kernel.org>
 References: <bug-31742-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:43544 "EHLO
+Received: from demeter1.kernel.org ([140.211.167.39]:44063 "EHLO
 	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932870Ab1CWPSE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Mar 2011 11:18:04 -0400
+	with ESMTP id S932963Ab1CWPUZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Mar 2011 11:20:25 -0400
 Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p2NFI37E030600
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p2NFKO5t032094
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 23 Mar 2011 15:18:03 GMT
+	for <linux-ext4@vger.kernel.org>; Wed, 23 Mar 2011 15:20:25 GMT
 In-Reply-To: <bug-31742-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -26,11 +26,11 @@ https://bugzilla.kernel.org/show_bug.cgi?id=3D31742
 
 
 
---- Comment #2 from Mathias R=C3=BCdiger <ruediger@blueboot.org>  2011-=
-03-23 15:18:02 ---
-Created an attachment (id=3D51762)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=3D51762)
-Python script used
+--- Comment #3 from Mathias R=C3=BCdiger <ruediger@blueboot.org>  2011-=
+03-23 15:20:22 ---
+Created an attachment (id=3D51772)
+ --> (https://bugzilla.kernel.org/attachment.cgi?id=3D51772)
+kernel config (2.6.38+)
 
 --=20
 Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=3Demai=
