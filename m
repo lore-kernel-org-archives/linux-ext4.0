@@ -1,56 +1,47 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: xfstests: failure to umount ext4
-Date: Wed, 23 Mar 2011 09:57:52 -0500
-Message-ID: <4D8A0A70.9030201@redhat.com>
-References: <AANLkTi=NKxmvJx_oEpdeMtfU9ePv4ofG5PjCuh23RJ+A@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 31742] New: got a "kernel BUG at fs/dcache.c:440!"
+Date: Wed, 23 Mar 2011 15:14:31 GMT
+Message-ID: <bug-31742-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: XFS <xfs@oss.sgi.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Amir Goldstein <amir73il@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57831 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932712Ab1CWO6G (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Mar 2011 10:58:06 -0400
-In-Reply-To: <AANLkTi=NKxmvJx_oEpdeMtfU9ePv4ofG5PjCuh23RJ+A@mail.gmail.com>
+Received: from demeter2.kernel.org ([140.211.167.42]:57721 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932997Ab1CWPOc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Mar 2011 11:14:32 -0400
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p2NFEVJt011184
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 23 Mar 2011 15:14:31 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 3/23/11 9:36 AM, Amir Goldstein wrote:
-> On Wed, Mar 23, 2011 at 4:03 PM, Amir Goldstein <amir73il@gmail.com> wrote:
->>
->> I've been running xfstests on ext4 and I always get annoying failures to umount:
->>
->> 213 8s ... 31s
->> umount: /mnt/test/ext4: device is busy.
->>        (In some cases useful info about processes that use
->>         the device is found by lsof(8) or fuser(1))
->>
->> post 198 mostly fails to umount as well.
->> and post 124 always fails to umount.
->>
->> My server is Ubuntu 10.10, running kernel 2.6.38.
->>
->> Is there any known issue about this? because I could find it on google
->> or on the XFS list.
->>
-> 
-> Hi All,
-> 
-> Has anyone seen these failures when running xfstests on ext4?
-> My test and scratch partitions are dedicated for xfstests.
+https://bugzilla.kernel.org/show_bug.cgi?id=31742
 
-I've not seen it, can you investigate with lsof etc?
+           Summary: got a "kernel BUG at fs/dcache.c:440!"
+           Product: File System
+           Version: 2.5
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: ruediger@blueboot.org
+        Regression: No
 
-They both work for me on a quick test, anyway, on a .38
-kernel.
 
-What are you using for your partitions under test?
- 
--Eric
+While traversing /usr with a python script, i got a message saying "kernel
+BUG". Its the first time i got something like this in the last 12 years using
+linux, so i guessed, i should report it. The message is attached as a jpeg.
 
-> Thanks,
-> Amir.
+so long
+Mathias
 
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
