@@ -1,55 +1,58 @@
-From: Sedat Dilek <sedat.dilek@googlemail.com>
-Subject: Re: [ext4] Multiple page-io submission (Option "mblk_io_submit")
-Date: Wed, 23 Mar 2011 08:32:28 +0100
-Message-ID: <AANLkTi=4k7QrtPg1B7bbzNzVMjj_aKwq99+DByQo2BP6@mail.gmail.com>
-References: <AANLkTinXsDN4Bhp9_kcbeu6BNMADTSBVN_6+nn63w+kW@mail.gmail.com>
-	<20110209183816.GD9533@thunk.org>
-Reply-To: sedat.dilek@gmail.com
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH, RFC 01/12] ext4: read-only support for bigalloc file
+ systems
+Date: Wed, 23 Mar 2011 11:28:14 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1103231122530.1486@dhcp-27-109.brq.redhat.com>
+References: <1300570117-24048-1-git-send-email-tytso@mit.edu> <1300570117-24048-2-git-send-email-tytso@mit.edu> <alpine.LFD.2.00.1103212024460.3724@dhcp-27-109.brq.redhat.com> <20110322170220.GC3907@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "s.dilek" <s.dilek@jpberlin.de>
-To: "Ted Ts'o" <tytso@mit.edu>, sedat.dilek@gmail.com,
-	Curt Wohlgemuth <curtw@google.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	LKML <linux-kernel@vg
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:48658 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754517Ab1CWHc3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Mar 2011 03:32:29 -0400
-In-Reply-To: <20110209183816.GD9533@thunk.org>
+Received: from mx1.redhat.com ([209.132.183.28]:28474 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751109Ab1CWK2S (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 23 Mar 2011 06:28:18 -0400
+In-Reply-To: <20110322170220.GC3907@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 9, 2011 at 7:38 PM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Tue, Feb 08, 2011 at 06:30:29PM +0100, Sedat Dilek wrote:
->> Hi,
->>
->> while looking at pending patches in ext4.git#{master, for_linus}, I
->> saw "ext4: Fix data corruption with multi-block writepages support"
->> which should fix [2] according to text in the commit-body.
->>
->> Are you planning to turn on "multiple page-io submission" again by
->> default (as is was disabled in "ext4: Turn off multiple page-io
->> submission by default" [3])?
->
-> I'm planning on turning it on by default post 2.6.38, during the
-> 2.6.39-rc1 merge window. =C2=A0That's me being paranoid, since this i=
-s so
-> late in the -rc cycle for 2.6.38.
->
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 =C2=A0 =C2=A0 =C2=A0- Ted
->
+On Tue, 22 Mar 2011, Ted Ts'o wrote:
 
-Ping!
-(As the merge-window is still open.)
+> On Mon, Mar 21, 2011 at 08:35:20PM +0100, Lukas Czerner wrote:
+> > 
+> > Maybe this is a bit nitpicky, but should not this be rather done in
+> > separate commit as it has nothing to do with bigalloc ?
+> 
+> Perhaps.  The reason why I had it was because I wanted to see the
+> blocks per group information when I was testing a read-only bigalloc
+> mount.  I'll grant this is tenuous; I suppose I could separate out
+> these two patch hunks into a separate patch, but I didn't think it was
+> really worth it.
+> 
+> > 
+> > I wonder if we should continue at this point, because something
+> > definitely went wrong as it has not biballoc feature but yet
+> > s_log_cluster_size does not match s_log_block_size which means
+> > definitely corruption or an error somewhere.
+> 
+> I considered this, but I was just paranoid because I didn't want to
+> change anything in the !bigalloc case.  There was one or two users who
+> reported that somehow the second 512 byte sector was containing
+> garbage, and nothing had cared in the past, but when we first broke
+> into the second 512 bytes of the superblock we did have some
+> complaints, so that's why I decided to err on the side of
+> conservatism.
 
-- Sedat -
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Right, I can see your point. So maybe we should add this check to e2fsck
+to set the s_log_cluster_size properly if bigalloc is not set.
+
+> 
+> 						- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
+-Lukas
