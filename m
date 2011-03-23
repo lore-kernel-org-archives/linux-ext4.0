@@ -1,55 +1,55 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: Discard request and write counters
-Date: Thu, 24 Mar 2011 10:40:20 +1100
-Message-ID: <20110323234020.GH26611@dastard>
-References: <alpine.LFD.2.00.1103231352250.1486@dhcp-27-109.brq.redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 31742] got a "kernel BUG at fs/dcache.c:440!"
+Date: Wed, 23 Mar 2011 23:45:52 GMT
+Message-ID: <201103232345.p2NNjq7h012768@demeter1.kernel.org>
+References: <bug-31742-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jens Axboe <axboe@kernel.dk>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Eric Sandeen <esandeen@redhat.com>
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:39207 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932896Ab1CWXkd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Mar 2011 19:40:33 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1103231352250.1486@dhcp-27-109.brq.redhat.com>
+Received: from demeter1.kernel.org ([140.211.167.39]:48441 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932945Ab1CWXpz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Mar 2011 19:45:55 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p2NNjqKX012769
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 23 Mar 2011 23:45:52 GMT
+In-Reply-To: <bug-31742-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 23, 2011 at 02:07:40PM +0100, Lukas Czerner wrote:
-> Hello,
-> 
-> I have noticed that we do treat discard requests (REQ_DISCARD) as write
-> requests which is probably right, but it has the side effect of
-> increasing write counters as well (disk_stats->sectors[1]) which leads
-> to confusing result.
-> 
-> For example in ext4 filesystem we have counter s_kbytes_written which
-> stores amount of kbytes written to the filesystem throughout its
-> lifetime. Now, if you mount the filesystem with -o discard mount option,
-> which means that with every commit blocks used by unlinked files are
-> discarded, you'll get approx. twice as many kb writes as it should be
-> (if you delete every file you have previously written of course).
-> 
-> So this means that with -o discard the ext4 s_kbytes_written counter is
-> no longer reliable. Now the question is how to fix that ? Should the
-> users of the disk_stats->sectors[1] count with this behaviour as the
-> REQ_DISCARD is treated as write and should be accounted for, or should
-> we change that in block layer and do not count REQ_DISCARD as write in
-> the first place ?
+https://bugzilla.kernel.org/show_bug.cgi?id=3D31742
 
-IMO discard needs to be accounted separately in new counters.
-Discards are not writes, but knowing how much data is being
-discarded along with read and write stats is definitely useful
-information about the IO load the device is under.
 
-Cheers,
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+
+
+--- Comment #5 from Mathias R=C3=BCdiger <ruediger@blueboot.org>  2011-=
+03-23 23:45:49 ---
+Yes i can replicate the problem. Start the script, wait a second and of=
+f you
+go.
+
+I am using a Thinkpad X61 Tablet
+(http://www.thinkwiki.org/wiki/Category:X61_Tablet) with Intels L7300. =
+Its a
+SMP machine.=20
+
+I also thought that fs/dcache.c isn't ext4 specific, but i didn't know =
+where to
+put the bugreport.
+
+
+Mathias
+
+--=20
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=3Demai=
+l
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
