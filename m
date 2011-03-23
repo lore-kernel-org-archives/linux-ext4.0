@@ -1,84 +1,47 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: xfstests: failure to umount ext4
-Date: Wed, 23 Mar 2011 10:45:24 -0500
-Message-ID: <4D8A1594.5060505@redhat.com>
-References: <AANLkTi=NKxmvJx_oEpdeMtfU9ePv4ofG5PjCuh23RJ+A@mail.gmail.com>	<4D8A0A70.9030201@redhat.com> <AANLkTi=JvL6LoL=VOrHoiQKheqzDrVwOQtWAkumzaBk5@mail.gmail.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: remove the duplicate set_buffer_mapped() for
+ ext4_da_get_block_prep()
+Date: Wed, 23 Mar 2011 14:05:45 -0400
+Message-ID: <20110323180545.GA27946@thunk.org>
+References: <1298360438-9521-1-git-send-email-feng.tang@intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: XFS <xfs@oss.sgi.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Amir Goldstein <amir73il@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Feng Tang <feng.tang@intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:1030 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754517Ab1CWPp2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Mar 2011 11:45:28 -0400
-In-Reply-To: <AANLkTi=JvL6LoL=VOrHoiQKheqzDrVwOQtWAkumzaBk5@mail.gmail.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:49242 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755392Ab1CWSFt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 23 Mar 2011 14:05:49 -0400
+Content-Disposition: inline
+In-Reply-To: <1298360438-9521-1-git-send-email-feng.tang@intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 3/23/11 10:33 AM, Amir Goldstein wrote:
-> On Wed, Mar 23, 2011 at 4:57 PM, Eric Sandeen <sandeen@redhat.com> wrote:
->> On 3/23/11 9:36 AM, Amir Goldstein wrote:
->>> On Wed, Mar 23, 2011 at 4:03 PM, Amir Goldstein <amir73il@gmail.com> wrote:
->>>>
->>>> I've been running xfstests on ext4 and I always get annoying failures to umount:
->>>>
->>>> 213 8s ... 31s
->>>> umount: /mnt/test/ext4: device is busy.
->>>>        (In some cases useful info about processes that use
->>>>         the device is found by lsof(8) or fuser(1))
->>>>
->>>> post 198 mostly fails to umount as well.
->>>> and post 124 always fails to umount.
->>>>
->>>> My server is Ubuntu 10.10, running kernel 2.6.38.
->>>>
->>>> Is there any known issue about this? because I could find it on google
->>>> or on the XFS list.
->>>>
->>>
->>> Hi All,
->>>
->>> Has anyone seen these failures when running xfstests on ext4?
->>> My test and scratch partitions are dedicated for xfstests.
->>
->> I've not seen it, can you investigate with lsof etc?
-> 
-> OK. I have not given complete information.
-> It does not fail indefinably. I can umount the fs immediately after the failure.
-> Only the test fails because fsck sees a mounted fs.
-> There must be a bit of a delay in the umount that causes the problem.
-> 
->>
->> They both work for me on a quick test, anyway, on a .38
->> kernel.
-> 
-> Problem existed for me in .37 as well. I don't think it is kernel (or
-> fs) related.
-> I think it is a system problem, but I fall short of ideas how to fix it.
-> 
->>
->> What are you using for your partitions under test?
->>
-> 
-> Currently, I have /dev/sda5,6,7,8.
-> I used to work with LVM, but lstat64 didn't like the /dev/mapper links,
-> so I switched to raw partitions.
-> Although I was puzzled that xfstests could not work over LVM partitions
-> It could when I changed lstat64 to stat64, but then I changed it back
-> thinking it was causing my problems.
+Thanks, added to the ext4 patch tree.
 
-I tried to fix lvm, once, but all the dev symlinks vs. mtab vs.
-/proc/mounts was a rat's nest, and I gave up... :)
+						- Ted
 
--Eric
- 
->> -Eric
->>
->>> Thanks,
->>> Amir.
->>
->>
-
+On Tue, Feb 22, 2011 at 03:40:38PM +0800, Feng Tang wrote:
+> The map_bh() called right before it already set the buffer_head to mapped.
+> 
+> Signed-off-by: Feng Tang <feng.tang@intel.com>
+> ---
+>  fs/ext4/inode.c |    1 -
+>  1 files changed, 0 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 9f7f9e4..6fe60f5 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -2597,7 +2597,6 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
+>  		 * for partial write.
+>  		 */
+>  		set_buffer_new(bh);
+> -		set_buffer_mapped(bh);
+>  	}
+>  	return 0;
+>  }
+> -- 
+> 1.7.0.4
+> 
