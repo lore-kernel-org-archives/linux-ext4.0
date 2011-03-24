@@ -1,140 +1,50 @@
-From: amir73il@users.sourceforge.net
-Subject: [PATCH v2 5/5] ext4: remove alloc_semp
-Date: Thu, 24 Mar 2011 18:58:13 +0200
-Message-ID: <1300985893-4371-6-git-send-email-amir73il@users.sourceforge.net>
-References: <1300985893-4371-1-git-send-email-amir73il@users.sourceforge.net>
-Cc: linux-ext4@vger.kernel.org, Amir Goldstein <amir73il@users.sf.net>
-To: tytso@mit.edu
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 25832] kernel crashes upon resume if usb devices are removed
+ when suspended
+Date: Thu, 24 Mar 2011 23:06:07 GMT
+Message-ID: <201103242306.p2ON67HC025785@demeter1.kernel.org>
+References: <bug-25832-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:35792 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751480Ab1CXQ6i (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Mar 2011 12:58:38 -0400
-Received: by mail-bw0-f46.google.com with SMTP id 15so226774bwz.19
-        for <linux-ext4@vger.kernel.org>; Thu, 24 Mar 2011 09:58:37 -0700 (PDT)
-In-Reply-To: <1300985893-4371-1-git-send-email-amir73il@users.sourceforge.net>
+Received: from demeter1.kernel.org ([140.211.167.39]:35131 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933783Ab1CXXGI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Mar 2011 19:06:08 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p2ON67dP025786
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 24 Mar 2011 23:06:07 GMT
+In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Amir Goldstein <amir73il@users.sf.net>
+https://bugzilla.kernel.org/show_bug.cgi?id=25832
 
-After taking care of all group init races, all that remains is to
-remove alloc_semp from ext4_allocation_context and ext4_buddy structs.
 
-Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
----
- fs/ext4/mballoc.c |   31 +------------------------------
- fs/ext4/mballoc.h |    6 ------
- 2 files changed, 1 insertions(+), 36 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 1ddb92b..5449b1a 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1130,24 +1130,8 @@ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
- 	e4b->bd_group = group;
- 	e4b->bd_buddy_page = NULL;
- 	e4b->bd_bitmap_page = NULL;
--	e4b->alloc_semp = &grp->alloc_sem;
--
--	/* Take the read lock on the group alloc
--	 * sem. This would make sure a parallel
--	 * ext4_mb_init_group happening on other
--	 * groups mapped by the page is blocked
--	 * till we are done with allocation
--	 */
--repeat_load_buddy:
--	down_read(e4b->alloc_semp);
- 
- 	if (unlikely(EXT4_MB_GRP_NEED_INIT(grp))) {
--		/* we need to check for group need init flag
--		 * with alloc_semp held so that we can be sure
--		 * that new blocks didn't get added to the group
--		 * when we are loading the buddy cache
--		 */
--		up_read(e4b->alloc_semp);
- 		/*
- 		 * we need full data about the group
- 		 * to make a good selection
-@@ -1155,7 +1139,6 @@ repeat_load_buddy:
- 		ret = ext4_mb_init_group(sb, group);
- 		if (ret)
- 			return ret;
--		goto repeat_load_buddy;
- 	}
- 
- 	/*
-@@ -1245,9 +1228,6 @@ err:
- 		page_cache_release(e4b->bd_buddy_page);
- 	e4b->bd_buddy = NULL;
- 	e4b->bd_bitmap = NULL;
--
--	/* Done with the buddy cache */
--	up_read(e4b->alloc_semp);
- 	return ret;
- }
- 
-@@ -1257,9 +1237,6 @@ static void ext4_mb_unload_buddy(struct ext4_buddy *e4b)
- 		page_cache_release(e4b->bd_bitmap_page);
- 	if (e4b->bd_buddy_page)
- 		page_cache_release(e4b->bd_buddy_page);
--	/* Done with the buddy cache */
--	if (e4b->alloc_semp)
--		up_read(e4b->alloc_semp);
- }
- 
- 
-@@ -1572,9 +1549,6 @@ static void ext4_mb_use_best_found(struct ext4_allocation_context *ac,
- 	get_page(ac->ac_bitmap_page);
- 	ac->ac_buddy_page = e4b->bd_buddy_page;
- 	get_page(ac->ac_buddy_page);
--	/* on allocation we use ac to track the held semaphore */
--	ac->alloc_semp =  e4b->alloc_semp;
--	e4b->alloc_semp = NULL;
- 	/* store last allocated for subsequent stream allocation */
- 	if (ac->ac_flags & EXT4_MB_STREAM_ALLOC) {
- 		spin_lock(&sbi->s_md_lock);
-@@ -4192,15 +4166,12 @@ static int ext4_mb_release_context(struct ext4_allocation_context *ac)
- 			spin_unlock(&pa->pa_lock);
- 		}
- 	}
--	if (ac->alloc_semp)
--		up_read(ac->alloc_semp);
- 	if (pa) {
- 		/*
- 		 * We want to add the pa to the right bucket.
- 		 * Remove it from the list and while adding
- 		 * make sure the list to which we are adding
--		 * doesn't grow big.  We need to release
--		 * alloc_semp before calling ext4_mb_add_n_trim()
-+		 * doesn't grow big.
- 		 */
- 		if ((pa->pa_type == MB_GROUP_PA) && likely(pa->pa_free)) {
- 			spin_lock(pa->pa_obj_lock);
-diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
-index 22bd4d7..20b5e7b 100644
---- a/fs/ext4/mballoc.h
-+++ b/fs/ext4/mballoc.h
-@@ -193,11 +193,6 @@ struct ext4_allocation_context {
- 	__u8 ac_op;		/* operation, for history only */
- 	struct page *ac_bitmap_page;
- 	struct page *ac_buddy_page;
--	/*
--	 * pointer to the held semaphore upon successful
--	 * block allocation
--	 */
--	struct rw_semaphore *alloc_semp;
- 	struct ext4_prealloc_space *ac_pa;
- 	struct ext4_locality_group *ac_lg;
- };
-@@ -215,7 +210,6 @@ struct ext4_buddy {
- 	struct super_block *bd_sb;
- 	__u16 bd_blkbits;
- 	ext4_group_t bd_group;
--	struct rw_semaphore *alloc_semp;
- };
- #define EXT4_MB_BITMAP(e4b)	((e4b)->bd_bitmap)
- #define EXT4_MB_BUDDY(e4b)	((e4b)->bd_buddy)
+
+
+--- Comment #50 from rocko <rockorequin@hotmail.com>  2011-03-24 23:06:05 ---
+For a time I thought I had tracked the problem down to a single 500 GB ext4
+hard drive, because it became possible to able to reliably and quickly
+reproduce the crash in my VM by simply simulating USB plug/unplug - it was
+crashing on the third or fourth simulated unplug. Then after I ran fsck on the
+drive it was much harder to reproduce the crash (I didn't manage to reproduce
+it in ten separate attempts, each with hundreds of plugs/unplugs). 
+
+I removed the drive completely from the system and had no crashes for over a
+week, until this morning when 2.6.38.1 crashed upon resume (of course after I
+had removed the drives during suspend).
+
+Is it possible something in the ext4 drivers would try to access a removed
+drive that is has some sort of misconfiguration (ie one that is fixed by an
+fsck) and cause the crash? ie Seeing as how an fsck made the problem apparently
+'go away' for a while? It would explain why more drives increase the chances of
+a crash.
+
 -- 
-1.7.0.4
-
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
