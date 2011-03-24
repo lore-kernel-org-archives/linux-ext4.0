@@ -1,63 +1,49 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: [PATCH] ext3: skip orphan cleanup on rocompat fs
-Date: Thu, 24 Mar 2011 12:34:05 +0200
-Message-ID: <AANLkTi=xJNKei5Q_kvEMQ6usLhE6jgy6pmbGBq93gALU@mail.gmail.com>
-References: <AANLkTimLAL7hPL+Yb392hyVAWEfHtObv7WwjzKt2awur@mail.gmail.com>
-	<20110228180950.GD20805@quack.suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v1] ext3:Fix credits computing for ordered mode.
+Date: Thu, 24 Mar 2011 12:33:10 +0100
+Message-ID: <20110324113310.GC27322@quack.suse.cz>
+References: <1300927719-27383-1-git-send-email-xiaoqiangnk@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Tso <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>
-To: stable@kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: jack@suse.cz, linux-ext4@vger.kernel.org
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:38397 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751685Ab1CXKeG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Mar 2011 06:34:06 -0400
-Received: by qwk3 with SMTP id 3so6536308qwk.19
-        for <linux-ext4@vger.kernel.org>; Thu, 24 Mar 2011 03:34:05 -0700 (PDT)
-In-Reply-To: <20110228180950.GD20805@quack.suse.cz>
+Received: from cantor.suse.de ([195.135.220.2]:50472 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751944Ab1CXLdN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 24 Mar 2011 07:33:13 -0400
+Content-Disposition: inline
+In-Reply-To: <1300927719-27383-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Thu 24-03-11 08:48:39, Yongqiang Yang wrote:
+> Orginal computing ignores indirects themselves in ordered mode.
+  Thanks. Merged into my tree.
 
-Please apply commit ce654b37 to any stable kernel out there.
-
-The relevant ext4 patch is in Ted's tree and has not reached mainline y=
-et.
-Ted, can you please add CC: stable to my patch.
-
-Thanks,
-Amir.
-
-On Mon, Feb 28, 2011 at 8:09 PM, Jan Kara <jack@suse.cz> wrote:
-> On Sat 26-02-11 22:40:19, Amir Goldstein wrote:
->> Orphan cleanup is currently executed even on readonly mount.
->> It deletes inodes and frees blocks, which could be very bad for some
->> RO_COMPAT features, HAS_SNAPSHOT to name one.
->>
->> Now the damage is done, because current stock kernels may
->> corrupt future fs with readonly compatible features,
->> when doing orphan cleanup.
->>
->> This patch skips the orphan cleanup if readonly compatible features
->> would prevent the fs from being mounted (or remounted) readwrite.
-> =A0Thanks Amir. I actually took the version Ted committed to ext4 and=
- ported
-> it for ext3. Anyway, the patch is in my tree.
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0Honza
->
-> --
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+								Honza
+> 
+> Signed-off-by:Yongqiang Yang <xiaoqiangnk@gmail.com>
+> ---
+>  fs/ext3/inode.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+> index ae94f6d..7f5db46 100644
+> --- a/fs/ext3/inode.c
+> +++ b/fs/ext3/inode.c
+> @@ -3294,7 +3294,7 @@ static int ext3_writepage_trans_blocks(struct inode *inode)
+>  	if (ext3_should_journal_data(inode))
+>  		ret = 3 * (bpp + indirects) + 2;
+>  	else
+> -		ret = 2 * (bpp + indirects) + 2;
+> +		ret = 2 * (bpp + indirects) + indirects + 2;
+>  
+>  #ifdef CONFIG_QUOTA
+>  	/* We know that structure was already allocated during dquot_initialize so
+> -- 
+> 1.7.4
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
