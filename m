@@ -1,45 +1,49 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH] ext4:Fix credits computing for indirect mapped files.
-Date: Fri, 25 Mar 2011 21:10:05 +0800
-Message-ID: <1301058605-29978-1-git-send-email-xiaoqiangnk@gmail.com>
-Cc: linux-ext4@vger.kernel.org, Yongqiang Yang <xiaoqiangnk@gmail.com>
-To: tytso@mit.edu
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [GIT PULL] ext4 update for 2.6.39-rc1
+Date: Fri, 25 Mar 2011 10:02:48 -0700
+Message-ID: <AANLkTi=aKLhtuuMtd=KZ8YBykCp=yJ-KPAJ3jKQq0jQW@mail.gmail.com>
+References: <E1Q2wpD-0002It-CE@tytso-glaptop>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>, Tejun Heo <tj@kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:40508 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750982Ab1CYNHW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Mar 2011 09:07:22 -0400
-Received: by iwn34 with SMTP id 34so1041996iwn.19
-        for <linux-ext4@vger.kernel.org>; Fri, 25 Mar 2011 06:07:22 -0700 (PDT)
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:44211 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754673Ab1CYRDr convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 Mar 2011 13:03:47 -0400
+In-Reply-To: <E1Q2wpD-0002It-CE@tytso-glaptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Either the first block or the last one could be not aligned with
-block boundary, 1 block is needed to fix it.
+On Thu, Mar 24, 2011 at 7:32 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+>
+> Please pull from:
+>
+> =A0git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_l=
+inus
+>
+> to get the ext4 updates for the 2.6.39 merge window.
 
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
----
- fs/ext4/inode.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+Ok, guys, can you verify my merge? In one branch, we had Tejun change
+it to use "alloc_workqueue()", and in another, ext4 switched from
+create_workqueue() to create_singlethread_workqueue().
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 67e7a3c..7193f23 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5380,11 +5380,11 @@ static int ext4_indirect_trans_blocks(struct inode *inode, int nrblocks,
- 	if (chunk) {
- 		/*
- 		 * With N contiguous data blocks, it need at most
--		 * N/EXT4_ADDR_PER_BLOCK(inode->i_sb) indirect blocks
-+		 * N/EXT4_ADDR_PER_BLOCK(inode->i_sb) + 1 indirect blocks
- 		 * 2 dindirect blocks
- 		 * 1 tindirect block
- 		 */
--		indirects = nrblocks / EXT4_ADDR_PER_BLOCK(inode->i_sb);
-+		indirects = nrblocks / EXT4_ADDR_PER_BLOCK(inode->i_sb) + 1;
- 		return indirects + 3;
- 	}
- 	/*
--- 
-1.7.4
+My resolution was to use WQ_UNBOUND in allow_workqueue() in the
+resulting merge, which I think should be semantically the correct
+resolve. But the commit message in the create_singlethread_workqueue()
+change seems to imply that the single-threadedness isn't a
+_correctness_ issue as much as it is just a "we don't need multiple
+threads" issue, so maybe the WQ_UNBOUND isn't necessary. So WQ_UNBOUND
+may or may not be a good idea.
 
+Regardless, please give it a look, ok?
+
+                    Linus
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
