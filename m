@@ -1,85 +1,106 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: fsck.ext4 taking months
-Date: Mon, 28 Mar 2011 11:47:30 -0400
-Message-ID: <20110328154730.GD21075@thunk.org>
-References: <4D8F1F75.8010201@psi5.com>
+From: Oren Elrad <elrad@brandeis.edu>
+Subject: [PATCH] mke2fs reserved_ratio default value is nonsensical
+Date: Mon, 28 Mar 2011 14:02:43 -0400
+Message-ID: <AANLkTi=7jMS=yq4-72_CvcyGHuWWV6ixEKtk501wnxUz@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Christian Brandt <brandtc@psi5.com>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:55413 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753477Ab1C1Prf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Mar 2011 11:47:35 -0400
-Content-Disposition: inline
-In-Reply-To: <4D8F1F75.8010201@psi5.com>
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:64543 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754351Ab1C1SDZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Mar 2011 14:03:25 -0400
+Received: by vxi39 with SMTP id 39so2508376vxi.19
+        for <linux-ext4@vger.kernel.org>; Mon, 28 Mar 2011 11:03:24 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Mar 27, 2011 at 01:28:53PM +0200, Christian Brandt wrote:
-> Situation: External 500GB drive holds lots of snapshots using lots of
-> hard links made by rsync --link-dest. The controller went bad and
-> destroyed superblock and directory structures. The drive contains
-> roughly a million files and four complete directory-tree-snapshots with
-> each roughly a million hardlinks.
+Undesired behavior; mke2fs defaults to reserving 5% of the volume for
+the root user. 5% of a 2TB volume is 100GB. The rationale for root
+reservation (syslogd, etc...) does not require 100GB. As volumes get
+larger, this default makes less and less sense.
 
-As Ric said, this is a configuration that can take a long time to
-fsck, mainly due to swapping (it's fairly memory intensive).  But
-500GB isn't *that* big.  The larger problem is that a lot more than
-just superblock and directory structures got destroyed:
+Proposal; If the user does not specify their preferred reserve_ratio
+on the command-line (-m), use the less of 5% or MAX_RSRV_SIZE. I
+propose 10GiB as a sensible maximum default reservation for root.
 
-> File ??? (Inode #123456, modify time Wed Jul 22 16:20:23 2009)
->   block Nr. 6144 double block(s), used with four file(s):
->     <filesystem metadata>
->     ??? (Inode #123457, mod time Wed Jul 22 16:20:23 2009)
->     ??? (Inode #123458, mod time Wed Jul 22 16:20:23 2009)
->     ...
-> multiply claimed block map? Yes
+Patch: Follows and http://capsid.brandeis.edu/~elrad/e2fsprog.gitdiff
 
-This means that you have very badly damaged inode tables.  You either
-have garbage written into the inode table, or inode table blocks
-written to the wrong location on disk, or both.  (I'd guess most
-likely both).
+Tested on the latest git+patch, RHEL5 (2.6.18-194.17.1.el5) with a
+12TB volume (which would reserve 600GB under the default!):
 
-> Is there an adhoc method of getting my data back faster?
+# /root/e2fsprogs/misc/mke2fs -T ext4 -L scratch /dev/sdd1
+[...]
+OS type: Linux
+Block size=4096 (log=2)
+Fragment size=4096 (log=2)
+Stride=0 blocks, Stripe width=0 blocks
+732422144 inodes, 2929671159 blocks
+2621440 blocks (0.09%) reserved for the super user
+[...]
 
-What's your high level goal?  If this is a backup device, how badly do
-you need the old snapshots?   
+Oren Elrad
+Dept. of Physics
+Brandeis University
 
-> Is the slow performance with lots of hard links a known issue?
+---- Patch follows ----
 
-Lots of hard links will cause a large memory usage requirement.  This
-is a problem primarily on 32-bit systems, particularly (ahem) "value"
-NAS systems that don't have a lot of physical memory to begin with.
-On 64-bit systems, you can either install enough physical memory that
-this won't be a problem, or you can enable swap, in which case you
-might end up swapping a lot (which will cause things to be slow) but
-it should finish.
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 9798b88..0ff3785 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -108,6 +108,8 @@ profile_t	profile;
+ int sys_page_size = 4096;
+ int linux_version_code = 0;
 
-We do have a workaround for people who just can't add the physical
-memory, which inolves adding a [scratch_files] section in e2fsck, and
-that does cause slow performance.  There has been some work on
-improving that lately, by tuning the use of the tdb library we are
-using.  But if you haven't specifically enabled this workaround, it's
-prboably not an issue.
++static const unsigned long long MAX_RSRV_SIZE = 10ULL * (1 << 30); // 10 GiB
++
+ static void usage(void)
+ {
+ 	fprintf(stderr, _("Usage: %s [-c|-l filename] [-b block-size] "
+@@ -1154,7 +1156,7 @@ static void PRS(int argc, char *argv[])
+ 	int		inode_ratio = 0;
+ 	int		inode_size = 0;
+ 	unsigned long	flex_bg_size = 0;
+-	double		reserved_ratio = 5.0;
++	double		reserved_ratio = -1.0; // Default: lesser of 5%, MAX_RSRV_SIZE
+ 	int		lsector_size = 0, psector_size = 0;
+ 	int		show_version_only = 0;
+ 	unsigned long long num_inodes = 0; /* unsigned long long to catch
+too-large input */
+@@ -1893,9 +1895,17 @@ profile_error:
 
-I think what you're running into is the a problem caused by very badly
-corrupted inode tables, and the work to keep track of the
-double-allocated blocks is slowing things down.  We've improved things
-a lot in this area, so we're O(n log n) in number of multiply claimed
-blocks, instead of O(n^2), but if N is sufficiently large, this can
-still be problematic.
+ 	/*
+ 	 * Calculate number of blocks to reserve
++	 * If reserved_ratio >= 0.0, it was passed as an argument, use it as-is
++	 * If reserved_ratio < 0.0, no argument was passed, choose the
+lesser of 5%, MAX_RSRV_SIZE
+ 	 */
+-	ext2fs_r_blocks_count_set(&fs_param, reserved_ratio *
+-				  ext2fs_blocks_count(&fs_param) / 100.0);
++	if ( reserved_ratio >= 0.0 ) {
++		ext2fs_r_blocks_count_set(&fs_param, reserved_ratio *
++					  ext2fs_blocks_count(&fs_param) / 100.0);
++	} else {
++		const blk64_t r_blk_count = ext2fs_blocks_count(&fs_param) / 20.0;
++		const blk64_t max_r_blk_count = MAX_RSRV_SIZE / blocksize;
++		ext2fs_r_blocks_count_set(&fs_param, (r_blk_count < max_r_blk_count
+? r_blk_count : max_r_blk_count));
++	}
+ }
 
-There are patches that I've never had time to vet and merge that will
-try to use hueristics to determine if an inode table block is hopeless
-garbage, and if so, to skip the inode table block entirely.  This will
-speed up e2fsck's performance in these situations, and the risk of
-perhaps skipping some valid data that could have otherwise been
-recovered.
+ static int should_do_undo(const char *name)
 
-So where are you at this point?  Have you completed running the fsck,
-and simply wanted to let us know?  Do you need assistance in trying to
-recover this disk?
+By making a contribution to this project, I certify that:
 
-							- Ted
+	(a) The contribution was created in whole or in part by me and I
+            have the right to submit it under the open source license
+            indicated in the file;
+
+	(d) I understand and agree that this project and the contribution
+	    are public and that a record of the contribution (including all
+	    personal information I submit with it, including my sign-off) is
+	    maintained indefinitely and may be redistributed consistent with
+	    this project or the open source license(s) involved.
+
+Signed-off-by: Oren M Elrad <elrad@brandeis.edu>
