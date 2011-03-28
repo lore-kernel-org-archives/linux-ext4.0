@@ -1,49 +1,85 @@
-From: Tao Ma <tm@tao.ma>
-Subject: [PATCH] ext4: Use s_inodes_per_block directly in __ext4_get_inode_loc.
-Date: Mon, 28 Mar 2011 23:41:13 +0800
-Message-ID: <1301326873-9551-2-git-send-email-tm@tao.ma>
-References: <1301326873-9551-1-git-send-email-tm@tao.ma>
-To: linux-ext4@vger.kernel.org
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: fsck.ext4 taking months
+Date: Mon, 28 Mar 2011 11:47:30 -0400
+Message-ID: <20110328154730.GD21075@thunk.org>
+References: <4D8F1F75.8010201@psi5.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Christian Brandt <brandtc@psi5.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy2-pub.bluehost.com ([67.222.39.60]:40638 "HELO
-	oproxy2-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1754588Ab1C1Plj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Mar 2011 11:41:39 -0400
-Received: from [221.217.31.156] (helo=taoma-laptop2.localdomain6)
-	by box585.bluehost.com with esmtpsa (TLSv1:AES256-SHA:256)
-	(Exim 4.69)
-	(envelope-from <tm@tao.ma>)
-	id 1Q4EZV-0006CL-3t
-	for linux-ext4@vger.kernel.org; Mon, 28 Mar 2011 09:41:38 -0600
-In-Reply-To: <1301326873-9551-1-git-send-email-tm@tao.ma>
+Received: from li9-11.members.linode.com ([67.18.176.11]:55413 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753477Ab1C1Prf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Mar 2011 11:47:35 -0400
+Content-Disposition: inline
+In-Reply-To: <4D8F1F75.8010201@psi5.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Tao Ma <boyu.mt@taobao.com>
+On Sun, Mar 27, 2011 at 01:28:53PM +0200, Christian Brandt wrote:
+> Situation: External 500GB drive holds lots of snapshots using lots of
+> hard links made by rsync --link-dest. The controller went bad and
+> destroyed superblock and directory structures. The drive contains
+> roughly a million files and four complete directory-tree-snapshots with
+> each roughly a million hardlinks.
 
-In __ext4_get_inode_loc, we calculate inodes_per_block every time
-by EXT4_BLOCK_SIZE(sb) / EXT4_INODE_SIZE(sb). AFAICS, this function
-is really a hot path for ext4, so we'd better use s_inodes_per_block
-directly instead of calculating every time.
+As Ric said, this is a configuration that can take a long time to
+fsck, mainly due to swapping (it's fairly memory intensive).  But
+500GB isn't *that* big.  The larger problem is that a lot more than
+just superblock and directory structures got destroyed:
 
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
----
- fs/ext4/inode.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+> File ??? (Inode #123456, modify time Wed Jul 22 16:20:23 2009)
+>   block Nr. 6144 double block(s), used with four file(s):
+>     <filesystem metadata>
+>     ??? (Inode #123457, mod time Wed Jul 22 16:20:23 2009)
+>     ??? (Inode #123458, mod time Wed Jul 22 16:20:23 2009)
+>     ...
+> multiply claimed block map? Yes
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 1a86282..326efd9 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4605,7 +4605,7 @@ static int __ext4_get_inode_loc(struct inode *inode,
- 	/*
- 	 * Figure out the offset within the block group inode table
- 	 */
--	inodes_per_block = (EXT4_BLOCK_SIZE(sb) / EXT4_INODE_SIZE(sb));
-+	inodes_per_block = EXT4_SB(sb)->s_inodes_per_block;
- 	inode_offset = ((inode->i_ino - 1) %
- 			EXT4_INODES_PER_GROUP(sb));
- 	block = ext4_inode_table(sb, gdp) + (inode_offset / inodes_per_block);
--- 
-1.7.4
+This means that you have very badly damaged inode tables.  You either
+have garbage written into the inode table, or inode table blocks
+written to the wrong location on disk, or both.  (I'd guess most
+likely both).
 
+> Is there an adhoc method of getting my data back faster?
+
+What's your high level goal?  If this is a backup device, how badly do
+you need the old snapshots?   
+
+> Is the slow performance with lots of hard links a known issue?
+
+Lots of hard links will cause a large memory usage requirement.  This
+is a problem primarily on 32-bit systems, particularly (ahem) "value"
+NAS systems that don't have a lot of physical memory to begin with.
+On 64-bit systems, you can either install enough physical memory that
+this won't be a problem, or you can enable swap, in which case you
+might end up swapping a lot (which will cause things to be slow) but
+it should finish.
+
+We do have a workaround for people who just can't add the physical
+memory, which inolves adding a [scratch_files] section in e2fsck, and
+that does cause slow performance.  There has been some work on
+improving that lately, by tuning the use of the tdb library we are
+using.  But if you haven't specifically enabled this workaround, it's
+prboably not an issue.
+
+I think what you're running into is the a problem caused by very badly
+corrupted inode tables, and the work to keep track of the
+double-allocated blocks is slowing things down.  We've improved things
+a lot in this area, so we're O(n log n) in number of multiply claimed
+blocks, instead of O(n^2), but if N is sufficiently large, this can
+still be problematic.
+
+There are patches that I've never had time to vet and merge that will
+try to use hueristics to determine if an inode table block is hopeless
+garbage, and if so, to skip the inode table block entirely.  This will
+speed up e2fsck's performance in these situations, and the risk of
+perhaps skipping some valid data that could have otherwise been
+recovered.
+
+So where are you at this point?  Have you completed running the fsck,
+and simply wanted to let us know?  Do you need assistance in trying to
+recover this disk?
+
+							- Ted
