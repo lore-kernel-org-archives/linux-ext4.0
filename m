@@ -1,61 +1,58 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH v2] ext4: Remove redundant check for first_not_zeroed in
- ext4_register_li_request.
-Date: Mon, 28 Mar 2011 16:13:05 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1103281611530.3158@dhcp-27-109.brq.redhat.com>
-References: <1301321153-3171-1-git-send-email-tm@tao.ma>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: fsck.ext4 taking months
+Date: Mon, 28 Mar 2011 10:43:30 -0400
+Message-ID: <4D909E92.4080209@redhat.com>
+References: <4D8F1F75.8010201@psi5.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>
-To: Tao Ma <tm@tao.ma>
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Christian Brandt <brandtc@psi5.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:5898 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:36555 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754445Ab1C1ONK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Mar 2011 10:13:10 -0400
-In-Reply-To: <1301321153-3171-1-git-send-email-tm@tao.ma>
+	id S1754577Ab1C1Onf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Mar 2011 10:43:35 -0400
+In-Reply-To: <4D8F1F75.8010201@psi5.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 28 Mar 2011, Tao Ma wrote:
+On 03/27/2011 07:28 AM, Christian Brandt wrote:
+> Situation: External 500GB drive holds lots of snapshots using lots of
+> hard links made by rsync --link-dest. The controller went bad and
+> destroyed superblock and directory structures. The drive contains
+> roughly a million files and four complete directory-tree-snapshots with
+> each roughly a million hardlinks.
+>
+> Tried
+>
+> e2fsck 1.41.12 (17-May-2010)
+>          Benutze EXT2FS Library version 1.41.12, 17-May-2010
+>
+> e2fsck 1.41.11 (14-Mar-2010)
+>          Benutze EXT2FS Library version 1.41.11, 14-Mar-2010
+>
+> Symptoms: fsck.ext4 -y -f takes nearly a month to fix the structures on
+> a P4@2,8Ghz, with very little access to the drive and 100% cpu use.
+>
+> output of fsck looks much like this:
+>
+> File ??? (Inode #123456, modify time Wed Jul 22 16:20:23 2009)
+>    block Nr. 6144 double block(s), used with four file(s):
+>      <filesystem metadata>
+>      ??? (Inode #123457, mod time Wed Jul 22 16:20:23 2009)
+>      ??? (Inode #123458, mod time Wed Jul 22 16:20:23 2009)
+>      ...
+> multiply claimed block map? Yes
+>
+> Is there an adhoc method of getting my data back faster?
+>
+> Is the slow performance with lots of hard links a known issue?
+>
 
-> From: Tao Ma <boyu.mt@taobao.com>
-> 
-> We have checked first_not_zeroed == ngroups already above,
-> so remove this redundant check.
-> 
-> sbi->s_li_request = NULL above is also removed since
-> it is NULL already.
-> 
-> Cc: Lukas Czerner <lczerner@redhat.com>
-> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
-> ---
->  fs/ext4/super.c |    9 +--------
->  1 files changed, 1 insertions(+), 8 deletions(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 2d1378f..c5a48dc 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -2948,15 +2948,8 @@ static int ext4_register_li_request(struct super_block *sb,
->  
->  	if (first_not_zeroed == ngroups ||
->  	    (sb->s_flags & MS_RDONLY) ||
-> -	    !test_opt(sb, INIT_INODE_TABLE)) {
-> -		sbi->s_li_request = NULL;
-> +	    !test_opt(sb, INIT_INODE_TABLE))
->  		return 0;
-> -	}
-> -
-> -	if (first_not_zeroed == ngroups) {
-> -		sbi->s_li_request = NULL;
-> -		return 0;
-> -	}
->  
->  	elr = ext4_li_request_new(sb, first_not_zeroed);
->  	if (!elr)
-> 
+Sounds like a configuration that might well require lots of memory to cache your 
+allocated inodes, etc. How much memory do you have in the box running fsck? Any 
+sense (vmstat, etc) what the box is spending its time doing?
 
-The patch look good, thanks for cleaning that up.
+Ric
 
--Lukas
