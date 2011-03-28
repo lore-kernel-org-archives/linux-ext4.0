@@ -1,41 +1,38 @@
-From: Tao Ma <tm@tao.ma>
-Subject: [PATCH] ext4: Remove redundant check for first_not_zeroed in ext4_register_li_request.
-Date: Mon, 28 Mar 2011 15:50:22 +0800
-Message-ID: <1301298622-4014-1-git-send-email-tm@tao.ma>
+From: Christoph Bartoschek <bartoschek@or.uni-bonn.de>
+Subject: Ext4 quota support
+Date: Mon, 28 Mar 2011 10:57:15 +0200
+Message-ID: <4D904D6B.2020201@or.uni-bonn.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
+Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy3-pub.bluehost.com ([69.89.21.8]:43208 "HELO
-	oproxy3-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752860Ab1C1Hui (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Mar 2011 03:50:38 -0400
-Received: from [114.251.86.0] (helo=taoma-linux.taobao.ali.com)
-	by box585.bluehost.com with esmtpsa (TLSv1:AES256-SHA:256)
-	(Exim 4.69)
-	(envelope-from <tm@tao.ma>)
-	id 1Q47Dg-0005Uf-4X
-	for linux-ext4@vger.kernel.org; Mon, 28 Mar 2011 01:50:36 -0600
+Received: from brical.or.uni-bonn.de ([131.220.141.99]:35102 "EHLO
+	brical.or.uni-bonn.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752509Ab1C1JYl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Mar 2011 05:24:41 -0400
+Received: from wse04.or.uni-bonn.de (bg-1.or.uni-bonn.de [131.220.141.100])
+	by brical.or.uni-bonn.de (Postfix) with ESMTP id 98AB73B6D6
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Mar 2011 10:57:15 +0200 (CEST)
+Received: from imap.or.uni-bonn.de (mailserver.or.uni-bonn.de [131.220.143.135])
+	by wse04.or.uni-bonn.de (Postfix) with ESMTP id 0BFB2EB19
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Mar 2011 10:57:16 +0200 (CEST)
+Received: from barney.bruehl.pontohonk.de (wse00.or.uni-bonn.de [131.220.143.130])
+	by imap.or.uni-bonn.de (Postfix) with ESMTPS id E32361FF3C
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Mar 2011 10:57:15 +0200 (CEST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Tao Ma <boyu.mt@taobao.com>
+Hi,
 
-We have checked first_not_zeroed == ngroups already above,
-so remove this redundant check.
+today we had to reboot one of our fileservers with ext4. Unfortunately 
+it decided to run a quotacheck on restart. We are now waiting till it 
+checked several TB of data.
 
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
----
- fs/ext4/super.c |    5 -----
- 1 files changed, 0 insertions(+), 5 deletions(-)
+My question is: Is there a reason why the quotacheck started although 
+the server was shut down cleanly?
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 2d1378f..37448a7 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2953,11 +2953,6 @@ static int ext4_register_li_request(struct super_block *sb,
- 		return 0;
- 	}
- 
--	if (first_not_zeroed == ngroups) {
--		sbi->s_li_request = NULL;
--		return 0;
--	}
+Another question: Is the first class quota support in ext4 somthing to 
+be expected soon or should we better use another filesystem like XFS?
+
+Christoph
