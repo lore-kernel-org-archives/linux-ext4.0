@@ -1,27 +1,53 @@
-From: "Ivan Arabadzhiev" <intelrullz@stoar08.com>
-Subject: subject
-Date: Mon, 28 Mar 2011 14:12:20 +0300
-Message-ID: <op.vs1v2uimugfnb7@ls4f-d830>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: Remove redundant check for first_not_zeroed in
+ ext4_register_li_request.
+Date: Mon, 28 Mar 2011 14:33:38 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1103281433180.3158@dhcp-27-109.brq.redhat.com>
+References: <1301298622-4014-1-git-send-email-tm@tao.ma>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1251; format=flowed; delsp=yes
-Content-Transfer-Encoding: 8bit
-To: linux-ext4@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from novsite.com ([87.120.7.82]:53658 "EHLO novsite.com"
+Received: from mx1.redhat.com ([209.132.183.28]:7198 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751051Ab1C1Lps (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Mar 2011 07:45:48 -0400
-Received: from novsite.com (unknown [127.0.0.1])
-	by novsite.com (Postfix) with ESMTP id A8F38199EC068
-	for <linux-ext4@vger.kernel.org>; Mon, 28 Mar 2011 11:04:18 +0000 (UTC)
-Received: from ls4f-d830 (unknown [82.137.72.33])
-	by novsite.com (Postfix) with ESMTP
-	for <linux-ext4@vger.kernel.org>; Mon, 28 Mar 2011 11:04:18 +0000 (UTC)
+	id S1753764Ab1C1Mdn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Mar 2011 08:33:43 -0400
+In-Reply-To: <1301298622-4014-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-reg
+On Mon, 28 Mar 2011, Tao Ma wrote:
 
--- 
-Sanity is a sin!
-http://www.thevenusproject.com/images/stories/venusfaq.pdf
+> From: Tao Ma <boyu.mt@taobao.com>
+> 
+> We have checked first_not_zeroed == ngroups already above,
+> so remove this redundant check.
+> 
+> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+> ---
+>  fs/ext4/super.c |    5 -----
+>  1 files changed, 0 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 2d1378f..37448a7 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -2953,11 +2953,6 @@ static int ext4_register_li_request(struct super_block *sb,
+>  		return 0;
+>  	}
+>  
+> -	if (first_not_zeroed == ngroups) {
+> -		sbi->s_li_request = NULL;
+> -		return 0;
+> -	}
+> -
+>  	elr = ext4_li_request_new(sb, first_not_zeroed);
+>  	if (!elr)
+>  		return -ENOMEM;
+> 
+
+Patch looks good.
+
+Thanks!
+-Lukas
