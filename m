@@ -1,43 +1,47 @@
 From: Christian Brandt <brandtc@psi5.com>
 Subject: Re: fsck.ext4 taking months
-Date: Tue, 29 Mar 2011 22:26:54 +0200
-Message-ID: <4D92408E.7090008@psi5.com>
-References: <4D8F1F75.8010201@psi5.com> <4D909E92.4080209@redhat.com> <20110329060300.GA27142@bitwizard.nl>
+Date: Wed, 30 Mar 2011 00:02:10 +0200
+Message-ID: <4D9256E2.4040603@psi5.com>
+References: <4D8F1F75.8010201@psi5.com> <20110328154730.GD21075@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Ric Wheeler <rwheeler@redhat.com>, linux-ext4@vger.kernel.org
-To: Rogier Wolff <R.E.Wolff@BitWizard.nl>
+Cc: linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-out.m-online.net ([212.18.0.9]:45806 "EHLO
+Received: from mail-out.m-online.net ([212.18.0.10]:35777 "EHLO
 	mail-out.m-online.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753138Ab1C2U04 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Mar 2011 16:26:56 -0400
-In-Reply-To: <20110329060300.GA27142@bitwizard.nl>
+	with ESMTP id S1751319Ab1C2WCN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Mar 2011 18:02:13 -0400
+In-Reply-To: <20110328154730.GD21075@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Am 29.03.2011 08:03, schrieb Rogier Wolff:
+Am 28.03.2011 17:47, schrieb Ted Ts'o:
 
->>> >>> Is the slow performance with lots of hard links a known issue?
-> >
-> > Yes, it is a known issue.
+ Hi Ted,
 
- At least its not my fault :-) thanks for the info.
+> So where are you at this point?  Have you completed running the fsck,
+> and simply wanted to let us know?  Do you need assistance in trying to
+> recover this disk?
 
-> > You get to test my patch. :-)
-> >
-> > I strongly suspect that (just like me) sometime in the past you've
-> > seen e2fsck run out of memory and were advised to enable the
-> > on-disk-databases.
+ The fsck is still running in its sixth day.
 
- Something like that... The drive has been formatted recently but a bad
-controller corrupted vital information upon mount and some more on the
-next fsck. I Ctrl-C pretty fast when I saw lots of rather confusing
-kernel errors between fsck output. This could have left the drive in a
-similiar state, couldn't it?
+ The data itself would be still very handy but I have got most from an
+older backup meanwhile.
 
--- Christian Brandt
+ Can stopping fsck.ext4 now damage things even more?
 
- life is short and in most cases it ends with death but my tombstone
-will carry the hiscore
+ The patches mentioned, do they apply to the fsck.ext4-source? What do I
+need to compile, are kernel-headers, build-essential and basic knowledge
+about patch+make fine?
+
+ While getting the data back fast would be nifty I am already at the
+point I'll just try to get experience out of the situation, not
+necesserily my data.
+
+-- 
+Christian Brandt
+
+ life is short and in most cases it ends with death
+ but my tombstone will carry the hiscore
