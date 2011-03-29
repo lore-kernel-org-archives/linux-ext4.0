@@ -1,54 +1,70 @@
 From: Tao Ma <tm@tao.ma>
-Subject: Re: breaking ext4 to test recovery
-Date: Tue, 29 Mar 2011 11:10:39 +0800
-Message-ID: <4D914DAF.6060600@tao.ma>
-References: <25B374CC0D9DFB4698BB331F82CD0CF20D61B8@wdscexbe08.sc.wdc.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Daniel Taylor <Daniel.Taylor@wdc.com>
+Subject: [PATCH] ext4: Init timer earlier to avoid a kernel panic in __save_error_info.
+Date: Tue, 29 Mar 2011 12:11:12 +0800
+Message-ID: <1301371872-7097-1-git-send-email-tm@tao.ma>
+Cc: sliedes@cc.hut.fi
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy1-pub.bluehost.com ([66.147.249.253]:53492 "HELO
-	oproxy1-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1754802Ab1C2DKa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Mar 2011 23:10:30 -0400
-In-Reply-To: <25B374CC0D9DFB4698BB331F82CD0CF20D61B8@wdscexbe08.sc.wdc.com>
+Received: from oproxy3-pub.bluehost.com ([69.89.21.8]:40959 "HELO
+	oproxy3-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1750821Ab1C2ELP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Mar 2011 00:11:15 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 03/29/2011 10:45 AM, Daniel Taylor wrote:
-> I would like to be able to break our ext4 file system
-> (specifically corrupt the journal) to be sure that we
-> can automatically notice the problem and attempt an
-> autonomous fix.
-> 
-> dumpe2fs tells me the inode, but not, that I can see, the
-> blocks where the journal exists (for "dd"ing junk to it).
-yeah, AFAICS, you can corrupt it by dd.
-As for the journal, normally the journal file uses the inode no 8.
-So use
-debugfs -R 'stat <8>' /dev/sdx.
-Then you will get the disk layout of your journal.
-In my box, it looks as:
+From: Tao Ma <boyu.mt@taobao.com>
 
-Inode: 8   Type: regular    Mode:  0600   Flags: 0x80000
-Generation: 0    Version: 0x00000000:00000000
-User:     0   Group:     0   Size: 33554432
-File ACL: 0    Directory ACL: 0
-Links: 1   Blockcount: 65536
-Fragment:  Address: 0    Number: 0    Size: 0
- ctime: 0x4d86f9ad:00000000 -- Mon Mar 21 15:09:33 2011
- atime: 0x4d86f9ad:00000000 -- Mon Mar 21 15:09:33 2011
- mtime: 0x4d86f9ad:00000000 -- Mon Mar 21 15:09:33 2011
-crtime: 0x4d86f9ad:00000000 -- Mon Mar 21 15:09:33 2011
-Size of extra inode fields: 28
-EXTENTS:
-(0-8191): 131072-139263
+During mount, when we fail to open journal inode or root inode, the
+__save_error_info will mod_timer. But actually s_err_report isn't
+initialized yet and the kernel oops. The detailed information can
+be found https://bugzilla.kernel.org/show_bug.cgi?id=32082.
 
-So see, you get the file's physical block number of that file
-131072-139263.
-Now corrupt the file as you wish with dd. ;)
+The best way is to check whether the timer s_err_report is initialized
+or not. But it seems that in include/linux/timer.h, we can't find a
+good function to check the status of this timer, so this patch just
+move the initializtion of s_err_report earlier so that we can avoid
+the kernel panic. The corresponding del_timer is also added in the
+error path.
 
-Regards,
-Tao
+Reported-by: Sami Liedes <sliedes@cc.hut.fi>
+Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+---
+ fs/ext4/super.c |    8 +++++---
+ 1 files changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 22546ad..ae91210 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3385,6 +3385,10 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	get_random_bytes(&sbi->s_next_generation, sizeof(u32));
+ 	spin_lock_init(&sbi->s_next_gen_lock);
+ 
++	init_timer(&sbi->s_err_report);
++	sbi->s_err_report.function = print_daily_error_info;
++	sbi->s_err_report.data = (unsigned long) sb;
++
+ 	err = percpu_counter_init(&sbi->s_freeblocks_counter,
+ 			ext4_count_free_blocks(sb));
+ 	if (!err) {
+@@ -3646,9 +3650,6 @@ no_journal:
+ 		 "Opts: %s%s%s", descr, sbi->s_es->s_mount_opts,
+ 		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data);
+ 
+-	init_timer(&sbi->s_err_report);
+-	sbi->s_err_report.function = print_daily_error_info;
+-	sbi->s_err_report.data = (unsigned long) sb;
+ 	if (es->s_error_count)
+ 		mod_timer(&sbi->s_err_report, jiffies + 300*HZ); /* 5 minutes */
+ 
+@@ -3672,6 +3673,7 @@ failed_mount_wq:
+ 		sbi->s_journal = NULL;
+ 	}
+ failed_mount3:
++	del_timer(&sbi->s_err_report);
+ 	if (sbi->s_flex_groups) {
+ 		if (is_vmalloc_addr(sbi->s_flex_groups))
+ 			vfree(sbi->s_flex_groups);
+-- 
+1.6.3.GIT
+
