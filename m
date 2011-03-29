@@ -1,70 +1,43 @@
-From: Tao Ma <tm@tao.ma>
-Subject: [PATCH] ext4: Init timer earlier to avoid a kernel panic in __save_error_info.
-Date: Tue, 29 Mar 2011 12:11:12 +0800
-Message-ID: <1301371872-7097-1-git-send-email-tm@tao.ma>
-Cc: sliedes@cc.hut.fi
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 32082] ext4: oops when mounting intentionally corrupted
+ filesystem
+Date: Tue, 29 Mar 2011 04:15:41 GMT
+Message-ID: <201103290415.p2T4FfdR008069@demeter2.kernel.org>
+References: <bug-32082-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy3-pub.bluehost.com ([69.89.21.8]:40959 "HELO
-	oproxy3-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1750821Ab1C2ELP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Mar 2011 00:11:15 -0400
+Received: from demeter2.kernel.org ([140.211.167.42]:60406 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750774Ab1C2EPm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Mar 2011 00:15:42 -0400
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p2T4Fgan008160
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 29 Mar 2011 04:15:42 GMT
+In-Reply-To: <bug-32082-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Tao Ma <boyu.mt@taobao.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=32082
 
-During mount, when we fail to open journal inode or root inode, the
-__save_error_info will mod_timer. But actually s_err_report isn't
-initialized yet and the kernel oops. The detailed information can
-be found https://bugzilla.kernel.org/show_bug.cgi?id=32082.
 
-The best way is to check whether the timer s_err_report is initialized
-or not. But it seems that in include/linux/timer.h, we can't find a
-good function to check the status of this timer, so this patch just
-move the initializtion of s_err_report earlier so that we can avoid
-the kernel panic. The corresponding del_timer is also added in the
-error path.
+Tao Ma <tm@tao.ma> changed:
 
-Reported-by: Sami Liedes <sliedes@cc.hut.fi>
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
----
- fs/ext4/super.c |    8 +++++---
- 1 files changed, 5 insertions(+), 3 deletions(-)
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tm@tao.ma
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 22546ad..ae91210 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3385,6 +3385,10 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	get_random_bytes(&sbi->s_next_generation, sizeof(u32));
- 	spin_lock_init(&sbi->s_next_gen_lock);
- 
-+	init_timer(&sbi->s_err_report);
-+	sbi->s_err_report.function = print_daily_error_info;
-+	sbi->s_err_report.data = (unsigned long) sb;
-+
- 	err = percpu_counter_init(&sbi->s_freeblocks_counter,
- 			ext4_count_free_blocks(sb));
- 	if (!err) {
-@@ -3646,9 +3650,6 @@ no_journal:
- 		 "Opts: %s%s%s", descr, sbi->s_es->s_mount_opts,
- 		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data);
- 
--	init_timer(&sbi->s_err_report);
--	sbi->s_err_report.function = print_daily_error_info;
--	sbi->s_err_report.data = (unsigned long) sb;
- 	if (es->s_error_count)
- 		mod_timer(&sbi->s_err_report, jiffies + 300*HZ); /* 5 minutes */
- 
-@@ -3672,6 +3673,7 @@ failed_mount_wq:
- 		sbi->s_journal = NULL;
- 	}
- failed_mount3:
-+	del_timer(&sbi->s_err_report);
- 	if (sbi->s_flex_groups) {
- 		if (is_vmalloc_addr(sbi->s_flex_groups))
- 			vfree(sbi->s_flex_groups);
+
+
+
+--- Comment #1 from Tao Ma <tm@tao.ma>  2011-03-29 04:15:40 ---
+Hi Sami, please check this patch. It should resolve your problem. It works here
+now.
+http://marc.info/?l=linux-ext4&m=130137187707414&w=2
+
 -- 
-1.6.3.GIT
-
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
