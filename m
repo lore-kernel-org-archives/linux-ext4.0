@@ -1,80 +1,97 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 32182] New: EXT4-fs error: bad header/extent
-Date: Tue, 29 Mar 2011 16:47:47 GMT
-Message-ID: <bug-32182-13602@https.bugzilla.kernel.org/>
+From: Oren Elrad <elrad@brandeis.edu>
+Subject: Re: [PATCH] mke2fs reserved_ratio default value is nonsensical
+Date: Tue, 29 Mar 2011 12:57:11 -0400
+Message-ID: <AANLkTint3VFwKYSoy6NeZFS82F65Dc-bOo2OxCFm+yDN@mail.gmail.com>
+References: <AANLkTi=7jMS=yq4-72_CvcyGHuWWV6ixEKtk501wnxUz@mail.gmail.com>
+ <4D90CE41.4030209@redhat.com> <4731EEFB-561D-4393-81C9-B550F45964C6@mit.edu> <4D91FA25.1080402@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:35280 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750750Ab1C2Qrs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Mar 2011 12:47:48 -0400
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p2TGllGP032343
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 29 Mar 2011 16:47:47 GMT
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:62754 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751782Ab1C2Q5w convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Mar 2011 12:57:52 -0400
+Received: by vws1 with SMTP id 1so307739vws.19
+        for <linux-ext4@vger.kernel.org>; Tue, 29 Mar 2011 09:57:51 -0700 (PDT)
+In-Reply-To: <4D91FA25.1080402@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=32182
+On Tue, Mar 29, 2011 at 11:26 AM, Eric Sandeen <sandeen@redhat.com> wro=
+te:
+>
+> On 3/29/11 9:05 AM, Theodore Tso wrote:
+> >
+> > On Mar 28, 2011, at 2:06 PM, Eric Sandeen wrote:
+> >>
+> >> No other fs that I know of enforces this "don't fill the fs to
+> >> capacity" common sense programatically, though.
+> >
+> > Actually, we (ext2) copied this from the BSD Fast File System (FFS)
+> > which used a default MINFREE of 10%. =A0 For ext2 we decided to bri=
+ng
+> > it down to 5%. =A0 FreeBSD currently uses 8% as their default free
+> > ratio.
+>
+> Clearly I don't know enough filesystems, I guess ;)
+>
+> Should have said "linux filesystem" perhaps.
+>
+> > The decrease does seem to be relative to the percentage of free
+> > space, from empirical experience, although no one I know of has don=
+e
+> > a formal analysis of the slowdown. =A0 A lot depends on your worklo=
+ad,
+> > how much memory pressure you place on your system, etc. =A0I've
+> > actually started seeing slowdowns starting as early as 80% full whe=
+n
+> > you're trying to allocate large chunks (1M to 8M) at a time, althou=
+gh
+> > this isn't something where I've gathered hard data; just what I've
+> > noticed from looking at different systems and their performance
+> > characteristics.
+> >
+> > Fortunately disks are cheap, and lots of people end up buying far
+> > more disk space than they need, and so they naturally keep their fi=
+le
+> > systems well under 75-80% full.
+> >
+> > If someone wants to add some tuning parameters to mke2fs.conf, so
+> > they can set their own personal default free ratios, or even
+> > min_reserved_blocks and max_reserved_blocks settings, that's probab=
+ly
+> > a reasonable patch to e2fsprogs that I'd be willing to accept.
+>
+> Hm I thought I had sent that, but it was only for the other two
+> semi-controversial behaviors. =A0:)
+>
+> I agree, it seems like at least a decent first step to make it
+> more site/admin-configurable.
+>
+> -Eric
+>
 
-           Summary: EXT4-fs error: bad header/extent
-           Product: File System
-           Version: 2.5
-    Kernel Version: 2.6.38.1
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: high
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: ramses.rommel@gmail.com
-        Regression: No
+Thanks all for the informative replies.
 
+I never meant to suggest that 5% is a bad default as a general matter
+(but I dropped the ball communicating that); I agree entirely that
+non-root users should not be able to degrade performance by filling up
+the disk and that 5% is a very good default choice.
 
-I started noticing ext4-fs errors in my dmesg output, they look like this:
+My only (admittedly unsupported) claim was that past some **fixed**
+value there is little gain from reserving more space independently of
+the size of the volume. When I get a chance, I will try to design a
+benchmark to test that claim (having a few spare 12TB volumes helps)
+but I fear the results will depend heavily on the usage pattern.
 
-EXT4-fs error (device sda2): ext4_ext_check_inode:428: inode #3760218: comm
-dropbox: bad header/extent: invalid magic - magic 0, entries 0, max 0(0), depth
-0(0)
-EXT4-fs error (device sda2): ext4_ext_check_inode:428: inode #3760208: comm
-dropbox: bad header/extent: invalid magic - magic 0, entries 0, max 0(0), depth
-0(0)
-EXT4-fs error (device sda2): ext4_ext_check_inode:428: inode #3760218: comm
-thunderbird-bin: bad header/extent: invalid magic - magic 0, entries 0, max
-0(0), depth 0(0)
-EXT4-fs error (device sda2): ext4_ext_check_inode:428: inode #3760208: comm
-thunderbird-bin: bad header/extent: invalid magic - magic 0, entries 0, max
-0(0), depth 0(0)
-
-I fsck'ed the partition which showed nothing but the regular output but said
-the file system was modified, after a reboot the same errors returned though.
-I'm using e2fsprogs 1.41.14 and linux 2.6.38.1 and after a downgrade to linux
-2.6.37.5 the errors kept reappearing (I'll test 2.6.38.2 soon but I didn't find
-commit messages that seemed relevant).
-
-I ran debugfs on one of the inodes:
-
-% debugfs -R 'stat <3760208>' /dev/disk/by-label/home
-debugfs 1.41.14 (22-Dec-2010)
-Inode: 3760208   Type: regular    Mode:  0644   Flags: 0x80000
-Generation: 231468018    Version: 0x00000001
-User:  1000   Group:   100   Size: 42
-File ACL: 0    Directory ACL: 0
-Links: 1   Blockcount: 0
-Fragment:  Address: 0    Number: 0    Size: 0
-ctime: 0x4b2a09ff -- Thu Dec 17 11:37:51 2009
-atime: 0x4d909367 -- Mon Mar 28 15:55:51 2011
-mtime: 0x490976f8 -- Thu Oct 30 09:57:28 2008
-EXTENTS:
-
-I'm not sure what extra info to give you, but I'd be glad to provide stuff you
-need to reproduce/fix this.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Oren Elrad
+Dept. of Physics
+Brandeis University
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
