@@ -1,134 +1,71 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 32122] New: Kernel BUG on accessing intentionally corrupted
- filesystem
-Date: Tue, 29 Mar 2011 10:48:20 GMT
-Message-ID: <bug-32122-13602@https.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: breaking ext4 to test recovery
+Date: Tue, 29 Mar 2011 08:50:18 -0500
+Message-ID: <4D91E39A.3000800@redhat.com>
+References: <25B374CC0D9DFB4698BB331F82CD0CF20D61B8@wdscexbe08.sc.wdc.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Daniel Taylor <Daniel.Taylor@wdc.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:48268 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752285Ab1C2KsV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Mar 2011 06:48:21 -0400
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p2TAmKLJ030647
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 29 Mar 2011 10:48:20 GMT
+Received: from mx1.redhat.com ([209.132.183.28]:21269 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752788Ab1C2NuU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 29 Mar 2011 09:50:20 -0400
+In-Reply-To: <25B374CC0D9DFB4698BB331F82CD0CF20D61B8@wdscexbe08.sc.wdc.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=32122
+On 3/28/11 9:45 PM, Daniel Taylor wrote:
+> I would like to be able to break our ext4 file system
+> (specifically corrupt the journal) to be sure that we
+> can automatically notice the problem and attempt an
+> autonomous fix.
+> 
+> dumpe2fs tells me the inode, but not, that I can see, the
+> blocks where the journal exists (for "dd"ing junk to it).
+> 
+> Is there any debug tool that would let me deliberately
+> break the file system (at least, trash the journal)?
+> 
+> If not, is there a hint for figuring out the block(s) of
+> the journal so I can stomp it?
+> 
+> The kernel is in an embedded machine, so it's a little old
+> 2.6.32.11 and e2fsprogs/libs 1.41.12-2 (Lenny)
 
-           Summary: Kernel BUG on accessing intentionally corrupted
-                    filesystem
-           Product: File System
-           Version: 2.5
-    Kernel Version: 2.6.38.2 + patch for #32082
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: sliedes@cc.hut.fi
-        Regression: No
+As Tao Ma said, you can stat <8> in debugfs to see the journal
+blocks.
 
+Another tool which can be useful for this sort of thing is
+fsfuzzer.  It writes garbage; using dd to write zeros actually
+might be "nice" corruption.
 
-Created an attachment (id=52432)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=52432)
-Test ext4 file system (intentionally corrupted)
+But are you trying to test in-kernel recovery, or e2fsck, after
+you corrupt the journal?  Or both?
 
-Accessing the attached (intentionally corrupted) ext4 filesystem causes a
-kernel BUG at fs/ext4/extents.c:1943.
+I assume you'd start with a filesystem with a dirty log,
+corrupt that log, and then what, fsck it, or try to mount it?
 
-The kernel is vanilla 2.6.38.2 with the patch from #32082 comment 1 applied to
-fix another (most likely entirely distinct) ext4 bug. I run the kernel under
-KVM x86-64.
+How are you generating your fs w/ dirty log?
 
-Steps to reproduce:
+(xfs has an ioctl to abruptly "stop" the fs as if it had crashed,
+that would be very useful in extN as well).
 
-1. bunzip2 hdb.337.bz2
-2. mount hdb.337 /mnt -t ext4 -o errors=continue
-3. cd /mnt
-4. cp -R doc doc2
-[BUG]
+Another thing which could use lots more testing in the wild is
+simple journal recovery; nothing is corrupted, but the drive got
+unplugged or the system lost power while the fs was under load;
+see if a mount; umount; fsck and/or if a fsck; mount; umount; fsck finds
+errors.
 
-Here's the output:
+(the former will test in-kernel log recovery, the latter will test
+log recovery in e2fsck).
 
-------------------------------------------------------------
-fstest:~# mount /dev/vdb /mnt -t ext4 errors=continue
-[   84.599961] EXT4-fs (vdb): mounted filesystem with ordered data mode. Opts:
-errors=continue
-fstest:~# cd /mnt
-fstest:/mnt# ls
-dev  doc  lost+found
-fstest:/mnt# cp -R doc doc2
-EXT4-fs error (device vdb): ext4_mb_generate_buddy:731: group 06074 blocks in
-bitmap, 6075 in gd
-EXT4-fs error (device vdb): ext4_mb_generate_buddy:731: group 11892 blocks in
-bitmap, 1891 in gd
-EXT4-fs error (device vdb): ext4_ext_check_inode:428: inode #1334: comm cp: bad
-header/extent: invalid eh_entries - magic f30a, entries 32769, max 4(4), depth
-0(0)
-cp: cannot stat `doc/acpid/examples': Input/output error
-------------[ cut here ]------------
-kernel BUG at fs/ext4/extents.c:1943!
-invalid opcode: 0000 [#1] 
-last sysfs file: 
-CPU 0 
-Pid: 1851, comm: cp Not tainted 2.6.38.2 #4 Bochs Bochs
-RIP: 0010:[<ffffffff811f68f1>]  [<ffffffff811f68f1>]
-ext4_ext_put_in_cache+0x71/0x80
-RSP: 0000:ffff880004c2f768  EFLAGS: 00010246
-RAX: 0000000000000000 RBX: 0000000000000000 RCX: 000000000000087d
-RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffff8800050fe3b0
-RBP: ffff880004c2f798 R08: 0000000000000000 R09: 0000000000000000
-R10: 0000000000000000 R11: 000000000000087d R12: 0000000000000000
-R13: ffff8800050fe3b0 R14: ffff8800050fe260 R15: 000000000000087d
-FS:  0000000000000000(0000) GS:ffffffff8221e000(0063) knlGS:00000000f7579700
-CS:  0010 DS: 002b ES: 002b CR0: 000000008005003b
-CR2: 00000000ffe67dac CR3: 0000000004c14000 CR4: 00000000000006b0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Process cp (pid: 1851, threadinfo ffff880004c2e000, task ffff8800056d8ff0)
-Stack:
- ffff8800050fe260 ffff880007aa9ba0 ffff880004c2f9a8 ffff8800050fe3b0
- ffff8800050fe260 ffff8800050fe26c ffff880004c2f928 ffffffff811f8983
- 000000000000020a ffff88000577b6a8 ffff880004c2f838 0000000000000018
-Call Trace:
- [<ffffffff811f8983>] ext4_ext_map_blocks+0x173/0x26e0
- [<ffffffff811d9272>] ext4_map_blocks+0x72/0x280
- [<ffffffff811d9520>] _ext4_get_block+0xa0/0x150
- [<ffffffff811d9611>] ext4_get_block+0x11/0x20
- [<ffffffff81126d4a>] do_mpage_readpage+0x43a/0x5b0
- [<ffffffff810b3c8a>] ? add_to_page_cache_locked+0xca/0x110
- [<ffffffff8112761c>] mpage_readpages+0xfc/0x160
- [<ffffffff811d9600>] ? ext4_get_block+0x0/0x20
- [<ffffffff811d9600>] ? ext4_get_block+0x0/0x20
- [<ffffffff811d4d08>] ext4_readpages+0x18/0x20
- [<ffffffff810bdcac>] __do_page_cache_readahead+0x19c/0x280
- [<ffffffff810bdbbd>] ? __do_page_cache_readahead+0xad/0x280
- [<ffffffff810bdfdc>] ra_submit+0x1c/0x20
- [<ffffffff810be0fd>] ondemand_readahead+0x11d/0x2c0
- [<ffffffff810be2ce>] page_cache_sync_readahead+0x2e/0x40
- [<ffffffff810b55e9>] generic_file_aio_read+0x4c9/0x6f0
- [<ffffffff810f1a72>] do_sync_read+0xd2/0x110
- [<ffffffff8153a6e3>] ? security_file_permission+0x93/0xb0
- [<ffffffff810f2192>] vfs_read+0xc2/0x180
- [<ffffffff810f252c>] sys_read+0x4c/0x90
- [<ffffffff81033642>] ia32_sysret+0x0/0x5
-Code: 89 a5 b4 05 00 00 4d 89 bd a8 05 00 00 4c 89 f7 e8 75 a0 9e 00 48 8b 5d
-d8 4c 8b 65 e0 4c 8b 6d e8 4c 8b 75 f0 4c 8b 7d f8 c9 c3 <0f> 0b 66 66 66 66 2e
-0f 1f 84 00 00 00 00 00 55 31 c0 48 89 e5 
-RIP  [<ffffffff811f68f1>] ext4_ext_put_in_cache+0x71/0x80
- RSP <ffff880004c2f768>
----[ end trace af6e1f4d49d6021f ]---
-------------------------------------------------------------
+-Eric
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+> Dan Taylor
+> Sr. Staff Engineer
+> WD Branded Products
+> 949.672.7761 
+
