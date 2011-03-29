@@ -1,62 +1,46 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Rogier Wolff <R.E.Wolff@BitWizard.nl>
 Subject: Re: [PATCH] mke2fs reserved_ratio default value is nonsensical
-Date: Tue, 29 Mar 2011 10:26:29 -0500
-Message-ID: <4D91FA25.1080402@redhat.com>
-References: <AANLkTi=7jMS=yq4-72_CvcyGHuWWV6ixEKtk501wnxUz@mail.gmail.com> <4D90CE41.4030209@redhat.com> <4731EEFB-561D-4393-81C9-B550F45964C6@mit.edu>
+Date: Tue, 29 Mar 2011 18:00:11 +0200
+Message-ID: <20110329160011.GB16888@bitwizard.nl>
+References: <AANLkTi=7jMS=yq4-72_CvcyGHuWWV6ixEKtk501wnxUz@mail.gmail.com> <4D90CE41.4030209@redhat.com> <4731EEFB-561D-4393-81C9-B550F45964C6@mit.edu> <4D91FA25.1080402@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Oren Elrad <elrad@brandeis.edu>, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Tso <tytso@mit.edu>, Oren Elrad <elrad@brandeis.edu>,
+	linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:63065 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750991Ab1C2P0h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 29 Mar 2011 11:26:37 -0400
-In-Reply-To: <4731EEFB-561D-4393-81C9-B550F45964C6@mit.edu>
+Received: from cust-95-128-94-82.breedbanddelft.nl ([95.128.94.82]:47201 "HELO
+	abra2.bitwizard.nl" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with SMTP id S1751651Ab1C2QAR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Mar 2011 12:00:17 -0400
+Content-Disposition: inline
+In-Reply-To: <4D91FA25.1080402@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 3/29/11 9:05 AM, Theodore Tso wrote:
-> 
-> On Mar 28, 2011, at 2:06 PM, Eric Sandeen wrote:
->> 
->> No other fs that I know of enforces this "don't fill the fs to
->> capacity" common sense programatically, though.
-> 
-> Actually, we (ext2) copied this from the BSD Fast File System (FFS)
-> which used a default MINFREE of 10%.   For ext2 we decided to bring
-> it down to 5%.   FreeBSD currently uses 8% as their default free
-> ratio.
+On Tue, Mar 29, 2011 at 10:26:29AM -0500, Eric Sandeen wrote:
+> I agree, it seems like at least a decent first step to make it
+> more site/admin-configurable. 
 
-Clearly I don't know enough filesystems, I guess ;)
+If the filesystem developers (that's us on this mailing list) decide
+that 5% is a good tradeoff between "wasted space" and "performance
+when the FS fills up", I think we should leave it as it is. If 
+users really want to fill up their fs to the rim, they can do so 
+"as root". Or they can tune the fs. 
 
-Should have said "linux filesystem" perhaps.
+If you make it configurable, it becomes too easy to create a badly
+performing filesystem. 
 
-> The decrease does seem to be relative to the percentage of free
-> space, from empirical experience, although no one I know of has done
-> a formal analysis of the slowdown.   A lot depends on your workload,
-> how much memory pressure you place on your system, etc.  I've
-> actually started seeing slowdowns starting as early as 80% full when
-> you're trying to allocate large chunks (1M to 8M) at a time, although
-> this isn't something where I've gathered hard data; just what I've
-> noticed from looking at different systems and their performance
-> characteristics.
-> 
-> Fortunately disks are cheap, and lots of people end up buying far
-> more disk space than they need, and so they naturally keep their file
-> systems well under 75-80% full.
-> 
-> If someone wants to add some tuning parameters to mke2fs.conf, so
-> they can set their own personal default free ratios, or even
-> min_reserved_blocks and max_reserved_blocks settings, that's probably
-> a reasonable patch to e2fsprogs that I'd be willing to accept. 
+People who don't understand the reasons behind the "reserved for root"
+percentage will then be tempted to change the default for their system
+to zero, and later complain about the bad performance they are getting. 
 
-Hm I thought I had sent that, but it was only for the other two
-semi-controversial behaviors.  :)
+	Roger. 
 
-I agree, it seems like at least a decent first step to make it
-more site/admin-configurable. 
-
--Eric
-
+-- 
+** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
+**    Delftechpark 26 2628 XH  Delft, The Netherlands. KVK: 27239233    **
+*-- BitWizard writes Linux device drivers for any device you may have! --*
+Q: It doesn't work. A: Look buddy, doesn't work is an ambiguous statement. 
+Does it sit on the couch all day? Is it unemployed? Please be specific! 
+Define 'it' and what it isn't doing. --------- Adapted from lxrbot FAQ
