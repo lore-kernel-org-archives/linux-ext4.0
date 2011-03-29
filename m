@@ -1,71 +1,166 @@
 From: Rogier Wolff <R.E.Wolff@BitWizard.nl>
-Subject: Re: fsck.ext4 taking months
-Date: Tue, 29 Mar 2011 08:03:00 +0200
-Message-ID: <20110329060300.GA27142@bitwizard.nl>
-References: <4D8F1F75.8010201@psi5.com> <4D909E92.4080209@redhat.com>
+Subject: Re: [PATCH] mke2fs reserved_ratio default value is nonsensical
+Date: Tue, 29 Mar 2011 08:41:14 +0200
+Message-ID: <20110329064114.GD27142@bitwizard.nl>
+References: <AANLkTi=7jMS=yq4-72_CvcyGHuWWV6ixEKtk501wnxUz@mail.gmail.com> <4D90CE41.4030209@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="EVF5PPMfhYS0aIcm"
-Cc: Christian Brandt <brandtc@psi5.com>, linux-ext4@vger.kernel.org
-To: Ric Wheeler <rwheeler@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Oren Elrad <elrad@brandeis.edu>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cust-95-128-94-82.breedbanddelft.nl ([95.128.94.82]:42010 "HELO
+Received: from cust-95-128-94-82.breedbanddelft.nl ([95.128.94.82]:39422 "HELO
 	abra2.bitwizard.nl" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with SMTP id S1752739Ab1C2GDD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Mar 2011 02:03:03 -0400
+	with SMTP id S1750774Ab1C2GlQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Mar 2011 02:41:16 -0400
 Content-Disposition: inline
-In-Reply-To: <4D909E92.4080209@redhat.com>
+In-Reply-To: <4D90CE41.4030209@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Mon, Mar 28, 2011 at 01:06:57PM -0500, Eric Sandeen wrote:
+> On 3/28/11 1:02 PM, Oren Elrad wrote:
+> > Undesired behavior; mke2fs defaults to reserving 5% of the volume for
+> > the root user. 5% of a 2TB volume is 100GB. The rationale for root
+> > reservation (syslogd, etc...) does not require 100GB. As volumes get
+> > larger, this default makes less and less sense.
+> > 
+> > Proposal; If the user does not specify their preferred reserve_ratio
+> > on the command-line (-m), use the less of 5% or MAX_RSRV_SIZE. I
+> > propose 10GiB as a sensible maximum default reservation for root.
+> > 
+> > Patch: Follows and http://capsid.brandeis.edu/~elrad/e2fsprog.gitdiff
+> > 
+> > Tested on the latest git+patch, RHEL5 (2.6.18-194.17.1.el5) with a
+> > 12TB volume (which would reserve 600GB under the default!):
+> 
+> There's been a bit of debate about this; is the space really saved
+> for root, or is it to stop the allocator from going off the rails
+> when the fs nears capacity?  Both, really.
+> 
+> I don't really have a horse in the race, but the complaint has certainly
+> come up before... it's just important to realize that the space isn't 
+> only there for root's eventual use.
+> 
+> No other fs that I know of enforces this "don't fill the fs to capacity" 
+> common sense programatically, though.
 
---EVF5PPMfhYS0aIcm
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+That could very well be because other filesystems don't much have the
+big penalty that unix-like filesystems have when the fs fills to
+capacity.
 
-On Mon, Mar 28, 2011 at 10:43:30AM -0400, Ric Wheeler wrote:
-> On 03/27/2011 07:28 AM, Christian Brandt wrote:
-> >Situation: External 500GB drive holds lots of snapshots using lots of
-> >hard links made by rsync --link-dest. The controller went bad and
-> >destroyed superblock and directory structures. The drive contains
-> >roughly a million files and four complete directory-tree-snapshots with
-> >each roughly a million hardlinks.
-> >
-> >Tried
-> >
-> >e2fsck 1.41.12 (17-May-2010)
-> >         Benutze EXT2FS Library version 1.41.12, 17-May-2010
-> >
-> >e2fsck 1.41.11 (14-Mar-2010)
-> >         Benutze EXT2FS Library version 1.41.11, 14-Mar-2010
-> >
-> >Symptoms: fsck.ext4 -y -f takes nearly a month to fix the structures on
-> >a P4@2,8Ghz, with very little access to the drive and 100% cpu use.
-> >
-> >output of fsck looks much like this:
-> >
-> >File ??? (Inode #123456, modify time Wed Jul 22 16:20:23 2009)
-> >   block Nr. 6144 double block(s), used with four file(s):
-> >     <filesystem metadata>
-> >     ??? (Inode #123457, mod time Wed Jul 22 16:20:23 2009)
-> >     ??? (Inode #123458, mod time Wed Jul 22 16:20:23 2009)
-> >     ...
-> >multiply claimed block map? Yes
-> >
-> >Is there an adhoc method of getting my data back faster?
-> >
-> >Is the slow performance with lots of hard links a known issue?
+The effect shows I think on my work-filesystem: There mkdir now takes
+tens of milliseconds instead of microseconds. That sort of performance
+degradation should be prevented by a 5 or 10% free-space buffer. 
 
-Yes, it is a known issue. 
+The idea is that if most block groups are filled to 95%, you'll have a
+block group with free space nearby, so searching for free blocks will
+always be fast.
 
-You get to test my patch. :-)
+On the other extreme: if 95% of the block groups are completely full,
+the other 5% of block groups will be completely empty. So you'll have
+no trouble finding free space there.
 
-I strongly suspect that (just like me) sometime in the past you've
-seen e2fsck run out of memory and were advised to enable the
-on-disk-databases.
+Eric has a patch to fix my mkdir troubles (hopefully) which I can't
+test because I have production data there. And it's too much to run
+backups. I have therefore been forced to choose "use RAID5" as the
+data security policy for that data. (which is an improvement over "use
+RAID0" which we used until a year ago or so).
+
+It is a conscious choice, because besides that we would like to keep
+the data, we NEED it to be fast as well. (and on the other hand, we
+can't invest lots of money).
 
 	Roger. 
 
 
+
+> 
+> -Eric
+> 
+> > # /root/e2fsprogs/misc/mke2fs -T ext4 -L scratch /dev/sdd1
+> > [...]
+> > OS type: Linux
+> > Block size=4096 (log=2)
+> > Fragment size=4096 (log=2)
+> > Stride=0 blocks, Stripe width=0 blocks
+> > 732422144 inodes, 2929671159 blocks
+> > 2621440 blocks (0.09%) reserved for the super user
+> > [...]
+> > 
+> > Oren Elrad
+> > Dept. of Physics
+> > Brandeis University
+> > 
+> > ---- Patch follows ----
+> > 
+> > diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+> > index 9798b88..0ff3785 100644
+> > --- a/misc/mke2fs.c
+> > +++ b/misc/mke2fs.c
+> > @@ -108,6 +108,8 @@ profile_t	profile;
+> >  int sys_page_size = 4096;
+> >  int linux_version_code = 0;
+> > 
+> > +static const unsigned long long MAX_RSRV_SIZE = 10ULL * (1 << 30); // 10 GiB
+> > +
+> >  static void usage(void)
+> >  {
+> >  	fprintf(stderr, _("Usage: %s [-c|-l filename] [-b block-size] "
+> > @@ -1154,7 +1156,7 @@ static void PRS(int argc, char *argv[])
+> >  	int		inode_ratio = 0;
+> >  	int		inode_size = 0;
+> >  	unsigned long	flex_bg_size = 0;
+> > -	double		reserved_ratio = 5.0;
+> > +	double		reserved_ratio = -1.0; // Default: lesser of 5%, MAX_RSRV_SIZE
+> >  	int		lsector_size = 0, psector_size = 0;
+> >  	int		show_version_only = 0;
+> >  	unsigned long long num_inodes = 0; /* unsigned long long to catch
+> > too-large input */
+> > @@ -1893,9 +1895,17 @@ profile_error:
+> > 
+> >  	/*
+> >  	 * Calculate number of blocks to reserve
+> > +	 * If reserved_ratio >= 0.0, it was passed as an argument, use it as-is
+> > +	 * If reserved_ratio < 0.0, no argument was passed, choose the
+> > lesser of 5%, MAX_RSRV_SIZE
+> >  	 */
+> > -	ext2fs_r_blocks_count_set(&fs_param, reserved_ratio *
+> > -				  ext2fs_blocks_count(&fs_param) / 100.0);
+> > +	if ( reserved_ratio >= 0.0 ) {
+> > +		ext2fs_r_blocks_count_set(&fs_param, reserved_ratio *
+> > +					  ext2fs_blocks_count(&fs_param) / 100.0);
+> > +	} else {
+> > +		const blk64_t r_blk_count = ext2fs_blocks_count(&fs_param) / 20.0;
+> > +		const blk64_t max_r_blk_count = MAX_RSRV_SIZE / blocksize;
+> > +		ext2fs_r_blocks_count_set(&fs_param, (r_blk_count < max_r_blk_count
+> > ? r_blk_count : max_r_blk_count));
+> > +	}
+> >  }
+> > 
+> >  static int should_do_undo(const char *name)
+> > 
+> > By making a contribution to this project, I certify that:
+> > 
+> > 	(a) The contribution was created in whole or in part by me and I
+> >             have the right to submit it under the open source license
+> >             indicated in the file;
+> > 
+> > 	(d) I understand and agree that this project and the contribution
+> > 	    are public and that a record of the contribution (including all
+> > 	    personal information I submit with it, including my sign-off) is
+> > 	    maintained indefinitely and may be redistributed consistent with
+> > 	    this project or the open source license(s) involved.
+> > 
+> > Signed-off-by: Oren M Elrad <elrad@brandeis.edu>
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 -- 
 ** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
@@ -74,78 +169,3 @@ on-disk-databases.
 Q: It doesn't work. A: Look buddy, doesn't work is an ambiguous statement. 
 Does it sit on the couch all day? Is it unemployed? Please be specific! 
 Define 'it' and what it isn't doing. --------- Adapted from lxrbot FAQ
-
---EVF5PPMfhYS0aIcm
-Content-Type: text/x-diff; charset=us-ascii
-Content-Disposition: attachment; filename="tdb_init_fix.diff"
-
-diff --git a/e2fsck/dirinfo.c b/e2fsck/dirinfo.c
-index 901235c..9b29f23 100644
---- a/e2fsck/dirinfo.c
-+++ b/e2fsck/dirinfo.c
-@@ -62,7 +62,7 @@ static void setup_tdb(e2fsck_t ctx, ext2_ino_t num_dirs)
- 	uuid_unparse(ctx->fs->super->s_uuid, uuid);
- 	sprintf(db->tdb_fn, "%s/%s-dirinfo-XXXXXX", tdb_dir, uuid);
- 	fd = mkstemp(db->tdb_fn);
--	db->tdb = tdb_open(db->tdb_fn, 0, TDB_CLEAR_IF_FIRST,
-+	db->tdb = tdb_open(db->tdb_fn, 999931, TDB_NOLOCK | TDB_NOSYNC,
- 			   O_RDWR | O_CREAT | O_TRUNC, 0600);
- 	close(fd);
- }
-diff --git a/lib/ext2fs/icount.c b/lib/ext2fs/icount.c
-index bec0f5f..bdd5b26 100644
---- a/lib/ext2fs/icount.c
-+++ b/lib/ext2fs/icount.c
-@@ -173,6 +173,19 @@ static void uuid_unparse(void *uu, char *out)
- 		uuid.node[3], uuid.node[4], uuid.node[5]);
- }
- 
-+static unsigned int my_tdb_hash(TDB_DATA *key)
-+{
-+        unsigned int value;      /* Used to compute the hash value.  */
-+        int   i;        /* Used to cycle through random values. */
-+
-+        /* initial value 0 is as good as any one. */
-+        for (value = 0, i=0; i < key->dsize; i++)
-+                value = value * 256 + key->dptr[i] + (value >> 24) * 241;
-+
-+        return value;
-+}
-+
-+
- errcode_t ext2fs_create_icount_tdb(ext2_filsys fs, char *tdb_dir,
- 				   int flags, ext2_icount_t *ret)
- {
-@@ -180,6 +193,7 @@ errcode_t ext2fs_create_icount_tdb(ext2_filsys fs, char *tdb_dir,
- 	errcode_t	retval;
- 	char 		*fn, uuid[40];
- 	int		fd;
-+	int		hash_size;
- 
- 	retval = alloc_icount(fs, flags,  &icount);
- 	if (retval)
-@@ -192,9 +206,20 @@ errcode_t ext2fs_create_icount_tdb(ext2_filsys fs, char *tdb_dir,
- 	sprintf(fn, "%s/%s-icount-XXXXXX", tdb_dir, uuid);
- 	fd = mkstemp(fn);
- 
-+	/* 
-+	hash_size should be on the same order of the number of entries actually
-+	used. The tdb default used to be 131 which gives us a big performance 
-+	penalty with normal inode numbers. We now trust the superblock. If it's 
-+	wrong, don't worry, tdb will manage, it will just cost a little bit more 
-+	CPUtime. 
-+	If the hash function is good and distributes the values uniformly across 
-+	the 32bit output space, it doesn't really matter that we didn't chose a
-+	prime.  The default tdb hash function is pretty worthless. Someone didn't 
-+	read Knuth. */
-+	hash_size = fs->super->s_inodes_count - fs->super->s_free_inodes_count;
- 	icount->tdb_fn = fn;
--	icount->tdb = tdb_open(fn, 0, TDB_CLEAR_IF_FIRST,
--			       O_RDWR | O_CREAT | O_TRUNC, 0600);
-+	icount->tdb = tdb_open_ex(fn, hash_size, TDB_NOLOCK | TDB_NOSYNC,
-+			       O_RDWR | O_CREAT | O_TRUNC, 0600, NULL, my_tdb_hash);
- 	if (icount->tdb) {
- 		close(fd);
- 		*ret = icount;
-
---EVF5PPMfhYS0aIcm--
