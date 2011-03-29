@@ -1,62 +1,62 @@
-From: Rogier Wolff <R.E.Wolff@BitWizard.nl>
-Subject: Re: breaking ext4 to test recovery
-Date: Tue, 29 Mar 2011 16:33:05 +0200
-Message-ID: <20110329143305.GA6057@bitwizard.nl>
-References: <25B374CC0D9DFB4698BB331F82CD0CF20D61B8@wdscexbe08.sc.wdc.com> <4D91E39A.3000800@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] mke2fs reserved_ratio default value is nonsensical
+Date: Tue, 29 Mar 2011 10:26:29 -0500
+Message-ID: <4D91FA25.1080402@redhat.com>
+References: <AANLkTi=7jMS=yq4-72_CvcyGHuWWV6ixEKtk501wnxUz@mail.gmail.com> <4D90CE41.4030209@redhat.com> <4731EEFB-561D-4393-81C9-B550F45964C6@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Daniel Taylor <Daniel.Taylor@wdc.com>, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Oren Elrad <elrad@brandeis.edu>, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cust-95-128-94-82.breedbanddelft.nl ([95.128.94.82]:55258 "HELO
-	abra2.bitwizard.nl" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with SMTP id S1751348Ab1C2OdN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Mar 2011 10:33:13 -0400
-Content-Disposition: inline
-In-Reply-To: <4D91E39A.3000800@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:63065 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750991Ab1C2P0h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 29 Mar 2011 11:26:37 -0400
+In-Reply-To: <4731EEFB-561D-4393-81C9-B550F45964C6@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 29, 2011 at 08:50:18AM -0500, Eric Sandeen wrote:
-> Another tool which can be useful for this sort of thing is
-> fsfuzzer.  It writes garbage; using dd to write zeros actually
-> might be "nice" corruption.
+On 3/29/11 9:05 AM, Theodore Tso wrote:
+> 
+> On Mar 28, 2011, at 2:06 PM, Eric Sandeen wrote:
+>> 
+>> No other fs that I know of enforces this "don't fill the fs to
+>> capacity" common sense programatically, though.
+> 
+> Actually, we (ext2) copied this from the BSD Fast File System (FFS)
+> which used a default MINFREE of 10%.   For ext2 we decided to bring
+> it down to 5%.   FreeBSD currently uses 8% as their default free
+> ratio.
 
-Besides writing blocks of "random data", you could write blocks with a
-small percentage of bits (byte) set to non-zero, or just toggle a
-configurable number of bits (bytes). This is slightly more devious than just
-"random data".
+Clearly I don't know enough filesystems, I guess ;)
 
-If you try to verify the integrity of a block full of random data, you
-can quickly determine that it is completely bogus (I don't think that
-e2fsck already exploits this as I've seen it get this wrong).
+Should have said "linux filesystem" perhaps.
 
-If you have an indirect block, and it contains: 
+> The decrease does seem to be relative to the percentage of free
+> space, from empirical experience, although no one I know of has done
+> a formal analysis of the slowdown.   A lot depends on your workload,
+> how much memory pressure you place on your system, etc.  I've
+> actually started seeing slowdowns starting as early as 80% full when
+> you're trying to allocate large chunks (1M to 8M) at a time, although
+> this isn't something where I've gathered hard data; just what I've
+> noticed from looking at different systems and their performance
+> characteristics.
+> 
+> Fortunately disks are cheap, and lots of people end up buying far
+> more disk space than they need, and so they naturally keep their file
+> systems well under 75-80% full.
+> 
+> If someone wants to add some tuning parameters to mke2fs.conf, so
+> they can set their own personal default free ratios, or even
+> min_reserved_blocks and max_reserved_blocks settings, that's probably
+> a reasonable patch to e2fsprogs that I'd be willing to accept. 
 
-00000  72 6f 6f 74 3a 78 3a 30   3a 30 3a 72 6f 6f 74 3a   root:x:0:0:root:
-00010  2f 72 6f 6f 74 3a 2f 62   69 6e 2f 62 61 73 68 0a   /root:/bin/bash.
-00020  64 61 65 6d 6f 6e 3a 78   3a 31 3a 31 3a 64 61 65   daemon:x:1:1:dae
-00030  6d 6f 6e 3a 2f 75 73 72   2f 73 62 69 6e 3a 2f 62   mon:/usr/sbin:/b
-00040  69 6e 2f 73 68 0a 62 69   6e 3a 78 3a 32 3a 32 3a   in/sh.bin:x:2:2:
-00050  62 69 6e 3a 2f 62 69 6e   3a 2f 62 69 6e 2f 73 68   bin:/bin:/bin/sh
-00060  0a 73 79 73 3a 78 3a 33   3a 33 3a 73 79 73 3a 2f   .sys:x:3:3:sys:/
-00070  64 65 76 3a 2f 62 69 6e   2f 73 68 0a 73 79 6e 63   dev:/bin/sh.sync
-00080  3a 78 3a 34 3a 36 35 35   33 34 3a 73 79 6e 63 3a   :x:4:65534:sync:
-00090  2f 62 69 6e 3a 2f 62 69   6e 2f 73 79 6e 63 0a 67   /bin:/bin/sync.g
+Hm I thought I had sent that, but it was only for the other two
+semi-controversial behaviors.  :)
 
-You can see that the block numbers that are represented here are all
-bad. In this case, one of the options should be to discard the whole
-indirect block. If you happen to find a few "valid" block numbers
-here, they are likely to be bogus. It is counterproductive to check
-those for duplicate allocation, or to mark them as used if they happen
-to be free.
+I agree, it seems like at least a decent first step to make it
+more site/admin-configurable. 
 
-	Roger. 
+-Eric
 
--- 
-** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
-**    Delftechpark 26 2628 XH  Delft, The Netherlands. KVK: 27239233    **
-*-- BitWizard writes Linux device drivers for any device you may have! --*
-Q: It doesn't work. A: Look buddy, doesn't work is an ambiguous statement. 
-Does it sit on the couch all day? Is it unemployed? Please be specific! 
-Define 'it' and what it isn't doing. --------- Adapted from lxrbot FAQ
