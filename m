@@ -1,95 +1,61 @@
-From: Oren Elrad <elrad@brandeis.edu>
-Subject: Re: [PATCH] mke2fs reserved_ratio default value is nonsensical
-Date: Tue, 29 Mar 2011 12:57:11 -0400
-Message-ID: <AANLkTint3VFwKYSoy6NeZFS82F65Dc-bOo2OxCFm+yDN@mail.gmail.com>
-References: <AANLkTi=7jMS=yq4-72_CvcyGHuWWV6ixEKtk501wnxUz@mail.gmail.com>
- <4D90CE41.4030209@redhat.com> <4731EEFB-561D-4393-81C9-B550F45964C6@mit.edu> <4D91FA25.1080402@redhat.com>
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: breaking ext4 to test recovery
+Date: Tue, 29 Mar 2011 13:33:51 -0400
+Message-ID: <AANLkTinJ4-PPTi0q76fThmq9a_qe1PadVueObPtRLruY@mail.gmail.com>
+References: <25B374CC0D9DFB4698BB331F82CD0CF20D61B8@wdscexbe08.sc.wdc.com>
+ <4D91E39A.3000800@redhat.com> <20110329143305.GA6057@bitwizard.nl>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: unlisted-recipients:; (no To-header on input)
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Daniel Taylor <Daniel.Taylor@wdc.com>,
+	linux-ext4@vger.kernel.org
+To: Rogier Wolff <R.E.Wolff@bitwizard.nl>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:62754 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751782Ab1C2Q5w convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Mar 2011 12:57:52 -0400
-Received: by vws1 with SMTP id 1so307739vws.19
-        for <linux-ext4@vger.kernel.org>; Tue, 29 Mar 2011 09:57:51 -0700 (PDT)
-In-Reply-To: <4D91FA25.1080402@redhat.com>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:39260 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752636Ab1C2ReL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Mar 2011 13:34:11 -0400
+Received: by iwn34 with SMTP id 34so371456iwn.19
+        for <linux-ext4@vger.kernel.org>; Tue, 29 Mar 2011 10:34:11 -0700 (PDT)
+In-Reply-To: <20110329143305.GA6057@bitwizard.nl>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 29, 2011 at 11:26 AM, Eric Sandeen <sandeen@redhat.com> wro=
-te:
+On Tue, Mar 29, 2011 at 10:33 AM, Rogier Wolff <R.E.Wolff@bitwizard.nl>=
+ wrote:
+> On Tue, Mar 29, 2011 at 08:50:18AM -0500, Eric Sandeen wrote:
+>> Another tool which can be useful for this sort of thing is
+>> fsfuzzer. =A0It writes garbage; using dd to write zeros actually
+>> might be "nice" corruption.
 >
-> On 3/29/11 9:05 AM, Theodore Tso wrote:
-> >
-> > On Mar 28, 2011, at 2:06 PM, Eric Sandeen wrote:
-> >>
-> >> No other fs that I know of enforces this "don't fill the fs to
-> >> capacity" common sense programatically, though.
-> >
-> > Actually, we (ext2) copied this from the BSD Fast File System (FFS)
-> > which used a default MINFREE of 10%. =A0 For ext2 we decided to bri=
-ng
-> > it down to 5%. =A0 FreeBSD currently uses 8% as their default free
-> > ratio.
->
-> Clearly I don't know enough filesystems, I guess ;)
->
-> Should have said "linux filesystem" perhaps.
->
-> > The decrease does seem to be relative to the percentage of free
-> > space, from empirical experience, although no one I know of has don=
-e
-> > a formal analysis of the slowdown. =A0 A lot depends on your worklo=
-ad,
-> > how much memory pressure you place on your system, etc. =A0I've
-> > actually started seeing slowdowns starting as early as 80% full whe=
-n
-> > you're trying to allocate large chunks (1M to 8M) at a time, althou=
-gh
-> > this isn't something where I've gathered hard data; just what I've
-> > noticed from looking at different systems and their performance
-> > characteristics.
-> >
-> > Fortunately disks are cheap, and lots of people end up buying far
-> > more disk space than they need, and so they naturally keep their fi=
-le
-> > systems well under 75-80% full.
-> >
-> > If someone wants to add some tuning parameters to mke2fs.conf, so
-> > they can set their own personal default free ratios, or even
-> > min_reserved_blocks and max_reserved_blocks settings, that's probab=
-ly
-> > a reasonable patch to e2fsprogs that I'd be willing to accept.
->
-> Hm I thought I had sent that, but it was only for the other two
-> semi-controversial behaviors. =A0:)
->
-> I agree, it seems like at least a decent first step to make it
-> more site/admin-configurable.
->
-> -Eric
->
+> Besides writing blocks of "random data", you could write blocks with =
+a
+> small percentage of bits (byte) set to non-zero, or just toggle a
+> configurable number of bits (bytes). This is slightly more devious th=
+an just
+> "random data".
 
-Thanks all for the informative replies.
+I don't know what exactly is being tested, but "hdparm
+--make-bad-sector" can be used to create a media error on a specific
+sector.
 
-I never meant to suggest that 5% is a bad default as a general matter
-(but I dropped the ball communicating that); I agree entirely that
-non-root users should not be able to degrade performance by filling up
-the disk and that 5% is a very good default choice.
+Thus allowing you to simulate a sector failing in the middle of the jou=
+rnal.
 
-My only (admittedly unsupported) claim was that past some **fixed**
-value there is little gain from reserving more space independently of
-the size of the volume. When I get a chance, I will try to design a
-benchmark to test that claim (having a few spare 12TB volumes helps)
-but I fear the results will depend heavily on the usage pattern.
+I assume that is a relevant test.
 
-Oren Elrad
-Dept. of Physics
-Brandeis University
+fyi: --repair-sector undoes the damage.  You may need to follow that
+with a normal write to put legit data there.
+
+If you try a normal data write without first repairing, the drive
+should mark the sector permanently bad and remap that sector to a
+spare sector.
+
+I have only used these tools with raw drives, no partitions, etc.  So
+I've never had to worry about data loss, etc.
+
+Greg
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
