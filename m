@@ -1,87 +1,48 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: kernel BUG at fs/jbd2/transaction.c:1086!
-Date: Thu, 31 Mar 2011 19:14:36 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1103311910080.3522@dhcp-27-109.brq.redhat.com>
-References: <alpine.LFD.2.00.1103301651240.17917@dhcp-27-109.brq.redhat.com> <20110331164319.GG21524@quack.suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 25352] resizing ext4 will corrupt filesystem
+Date: Thu, 31 Mar 2011 19:24:10 GMT
+Message-ID: <201103311924.p2VJOAkM028050@demeter1.kernel.org>
+References: <bug-25352-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, Eric Sandeen <esandeen@redhat.com>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:4470 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758573Ab1CaROo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 31 Mar 2011 13:14:44 -0400
-In-Reply-To: <20110331164319.GG21524@quack.suse.cz>
+Received: from demeter1.kernel.org ([140.211.167.39]:37407 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759019Ab1CaTYL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Mar 2011 15:24:11 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p2VJOAHR028051
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 31 Mar 2011 19:24:10 GMT
+In-Reply-To: <bug-25352-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 31 Mar 2011, Jan Kara wrote:
+https://bugzilla.kernel.org/show_bug.cgi?id=25352
 
-> On Wed 30-03-11 17:32:06, Lukas Czerner wrote:
-> > Hello,
-> > 
-> > I have hit BUG_ON while running xfstest 234 in the loop
-> > on the ext4. Backtrace below .
-> > 
-> > I thought that this problem was solved with
-> > 67eeb5685d2a211c0252ac7884142e503c759500 however it is still present.
-> > I might be a bit hard to hit, but once you run
-> > 
-> > while true; do sync; sleep 0.3; done
-> > 
-> > concurrently it is reproducible almost all the time. I have tried to
-> > understand what is going on but only thing I can see is this course
-> > of action:
-> > 
-> > ext4_write_dquot
-> >   ext4_journal_start <- h_buffer_credits = 2
-> >   dquot_commit
-> >     v2_write_dquot
-> >       qtree_write_dquot
-> >         ext4_quota_write
-> >           ext4_handle_dirty_metadata	<- this takes one block reserved
-> > 	  				   for journal
-> > 					   h_buffer_credits--
-> >     v2_write_file_info
-> >       ext4_quota_write
-> >         ext4_handle_dirty_metadata	<- this takes second block reserved
-> > 	  				   for journal
-> > 					   h_buffer_credits--
-> >   ext4_journal_stop
-> > 
-> > However apparently I am missing something, because according to the
-> > backtrace the second call of jbd2_journal_dirty_metadata() may end up
-> > with BUG_ON -> J_ASSERT_JH(jh, handle->h_buffer_credits > 0);
-> > 
-> > So someone else is touching our handle apparently, but I go not exacly
-> > know what is going on. From my simple debugging printk information I
-> > have put with before ext4_handle_dirty_metadata() in ext4_quota_write()
-> > we can see:
-> > 
-> > [  226.450263] ext4_quota_write: len 48, off 5136, type 0 h_ref 1
-> > credits 2
-> > [  226.458950] ext4_quota_write: len 24, off 8, type 0 h_ref 1 credits 0
-> > 
-> > It is clear someone changed handle between v2_write_dquot() and
-> > v2_write_file_info() does anyone have idea what is going on ?
->   It's simpler than that I believe. ext4_write_dquot() does also
->         inode->i_mtime = inode->i_ctime = CURRENT_TIME;
->         ext4_mark_inode_dirty(handle, inode);
-> and that eats another credit. Looking at the comment before
-> EXT4_QUOTA_TRANS_BLOCKS, we in fact counted with inode and data update but
-> didn't count with the info update. It's actually a race that we ended up
-> doing info update in our transaction - someone marked info dirty and before
-> he managed to write it, we went in, saw the dirty flag and wrote it for
-> him. So the attached patch should fix the problem for you.
-> 
-> 									Honza
-> 
 
-Hrm, I have been cracking my head with this bug and miss the obvious
-ext4_mark_inode_dirty(). Thanks Honzo, I'll test the patch and let you
-know.
 
-Thanks!
--Lukas
+
+
+--- Comment #17 from Martin Steigerwald <Martin@Lichtvoll.de>  2011-03-31 19:24:08 ---
+Well I pretty much think that it was the same resize bug, but then it might as
+well have been the BIOS thing (although I doubt it).
+
+FWIW it was one machine, that ThinkPad T42, but different fsck.ext4 runs. When
+the fsck.ext4 ran till the out of memory error the filesystem was unmountable
+afterwards. When I quitted it before I was able to mount it.
+
+Sorry for not using LANG=C with fsck.ext4, but at that time all I wanted is to
+have my data back - nothing else mattered.
+
+Anyway should I face an issue like that again, I will open a reparate bug
+report and only hint that it might be the same problem as some other bug. I
+also try to remember to use LANG=C.
+
+So leave closed - I believe I hit that resize bug and all is well again.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
