@@ -1,97 +1,262 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: breaking ext4 to test recovery
-Date: Thu, 31 Mar 2011 12:22:40 -1000
-Message-ID: <9FF11C19-1C9F-4CF4-80C3-CDF0FB8D5E47@dilger.ca>
-References: <25B374CC0D9DFB4698BB331F82CD0CF20D61B8@wdscexbe08.sc.wdc.com> <4D91E39A.3000800@redhat.com> <20110329143305.GA6057@bitwizard.nl> <63C35C25-AC8A-49AC-B1C4-CC1FDC13F3A5@whamcloud.com>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Rogier Wolff <R.E.Wolff@BitWizard.nl>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Daniel Taylor <Daniel.Taylor@wdc.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@whamcloud.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: kernel BUG at fs/jbd2/transaction.c:1086!
+Date: Fri, 1 Apr 2011 00:23:06 +0200
+Message-ID: <20110331222306.GI21524@quack.suse.cz>
+References: <alpine.LFD.2.00.1103301651240.17917@dhcp-27-109.brq.redhat.com>
+ <20110331164319.GG21524@quack.suse.cz>
+ <alpine.LFD.2.00.1103312255270.3020@dhcp-27-109.brq.redhat.com>
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="JP+T4n/bALQSJXh8"
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org, tytso@mit.edu,
+	Eric Sandeen <esandeen@redhat.com>
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:38192 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751664Ab1CaWWr convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Mar 2011 18:22:47 -0400
-In-Reply-To: <63C35C25-AC8A-49AC-B1C4-CC1FDC13F3A5@whamcloud.com>
+Received: from cantor2.suse.de ([195.135.220.15]:54754 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751664Ab1CaWXJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 31 Mar 2011 18:23:09 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1103312255270.3020@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-03-31, at 12:11 PM, Andreas Dilger wrote:
-> There is a patch we have in the Lustre version of e2fsprogs called "ibadness" that has e2fsck track the number of errors hit for each inode, and if an inode exceeds a threshold of errors then e2fsck will offer to clear the inode instead of making small fixes to turn a garbage inode into something that looks half correct.
 
-http://git.whamcloud.com/?p=tools/e2fsprogs.git;a=blob_plain;f=patches/e2fsprogs-ibadness-counter.patch;hb=8dd11ed9bdf0914d57d78d0c387bd21f747c1d29
+--JP+T4n/bALQSJXh8
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-> One of the tests that we developed for this feature was to write both random garbage into the filesystem, as well as copying data blocks from one part of the filesystem to another. This is much more difficult to fix because there may be random inode blocks that have what looks like valid inodes in them, but they are in the wrong location.
-
-This one is already in the e2fsprogs upstream "f_random_corruption", though it could stand some improvements.
-
-> When/if we get proper block checksums this kind of corruption would be easily detected, because the checksum (which hopefully includes the block number) would be wrong even if the data looks sane. 
+On Thu 31-03-11 22:59:24, Lukas Czerner wrote:
+> On Thu, 31 Mar 2011, Jan Kara wrote:
 > 
-> Cheers, Andreas
+> > On Wed 30-03-11 17:32:06, Lukas Czerner wrote:
+> > > Hello,
+> > > 
+> > > I have hit BUG_ON while running xfstest 234 in the loop
+> > > on the ext4. Backtrace below .
+> > > 
+> > > I thought that this problem was solved with
+> > > 67eeb5685d2a211c0252ac7884142e503c759500 however it is still present.
+> > > I might be a bit hard to hit, but once you run
+> > > 
+> > > while true; do sync; sleep 0.3; done
+> > > 
+> > > concurrently it is reproducible almost all the time. I have tried to
+> > > understand what is going on but only thing I can see is this course
+> > > of action:
+> > > 
+> > > ext4_write_dquot
+> > >   ext4_journal_start <- h_buffer_credits = 2
+> > >   dquot_commit
+> > >     v2_write_dquot
+> > >       qtree_write_dquot
+> > >         ext4_quota_write
+> > >           ext4_handle_dirty_metadata	<- this takes one block reserved
+> > > 	  				   for journal
+> > > 					   h_buffer_credits--
+> > >     v2_write_file_info
+> > >       ext4_quota_write
+> > >         ext4_handle_dirty_metadata	<- this takes second block reserved
+> > > 	  				   for journal
+> > > 					   h_buffer_credits--
+> > >   ext4_journal_stop
+> > > 
+> > > However apparently I am missing something, because according to the
+> > > backtrace the second call of jbd2_journal_dirty_metadata() may end up
+> > > with BUG_ON -> J_ASSERT_JH(jh, handle->h_buffer_credits > 0);
+> > > 
+> > > So someone else is touching our handle apparently, but I go not exacly
+> > > know what is going on. From my simple debugging printk information I
+> > > have put with before ext4_handle_dirty_metadata() in ext4_quota_write()
+> > > we can see:
+> > > 
+> > > [  226.450263] ext4_quota_write: len 48, off 5136, type 0 h_ref 1
+> > > credits 2
+> > > [  226.458950] ext4_quota_write: len 24, off 8, type 0 h_ref 1 credits 0
+> > > 
+> > > It is clear someone changed handle between v2_write_dquot() and
+> > > v2_write_file_info() does anyone have idea what is going on ?
+> >   It's simpler than that I believe. ext4_write_dquot() does also
+> >         inode->i_mtime = inode->i_ctime = CURRENT_TIME;
+> >         ext4_mark_inode_dirty(handle, inode);
+> > and that eats another credit. Looking at the comment before
+> > EXT4_QUOTA_TRANS_BLOCKS, we in fact counted with inode and data update but
+> > didn't count with the info update. It's actually a race that we ended up
+> > doing info update in our transaction - someone marked info dirty and before
+> > he managed to write it, we went in, saw the dirty flag and wrote it for
+> > him. So the attached patch should fix the problem for you.
+> > 
 > 
-> On 2011-03-29, at 4:33 AM, Rogier Wolff <R.E.Wolff@BitWizard.nl> wrote:
+> The patch fixes the problem, you can add
 > 
->> On Tue, Mar 29, 2011 at 08:50:18AM -0500, Eric Sandeen wrote:
->>> Another tool which can be useful for this sort of thing is
->>> fsfuzzer.  It writes garbage; using dd to write zeros actually
->>> might be "nice" corruption.
->> 
->> Besides writing blocks of "random data", you could write blocks with a
->> small percentage of bits (byte) set to non-zero, or just toggle a
->> configurable number of bits (bytes). This is slightly more devious than just
->> "random data".
->> 
->> If you try to verify the integrity of a block full of random data, you
->> can quickly determine that it is completely bogus (I don't think that
->> e2fsck already exploits this as I've seen it get this wrong).
->> 
->> If you have an indirect block, and it contains: 
->> 
->> 00000  72 6f 6f 74 3a 78 3a 30   3a 30 3a 72 6f 6f 74 3a   root:x:0:0:root:
->> 00010  2f 72 6f 6f 74 3a 2f 62   69 6e 2f 62 61 73 68 0a   /root:/bin/bash.
->> 00020  64 61 65 6d 6f 6e 3a 78   3a 31 3a 31 3a 64 61 65   daemon:x:1:1:dae
->> 00030  6d 6f 6e 3a 2f 75 73 72   2f 73 62 69 6e 3a 2f 62   mon:/usr/sbin:/b
->> 00040  69 6e 2f 73 68 0a 62 69   6e 3a 78 3a 32 3a 32 3a   in/sh.bin:x:2:2:
->> 00050  62 69 6e 3a 2f 62 69 6e   3a 2f 62 69 6e 2f 73 68   bin:/bin:/bin/sh
->> 00060  0a 73 79 73 3a 78 3a 33   3a 33 3a 73 79 73 3a 2f   .sys:x:3:3:sys:/
->> 00070  64 65 76 3a 2f 62 69 6e   2f 73 68 0a 73 79 6e 63   dev:/bin/sh.sync
->> 00080  3a 78 3a 34 3a 36 35 35   33 34 3a 73 79 6e 63 3a   :x:4:65534:sync:
->> 00090  2f 62 69 6e 3a 2f 62 69   6e 2f 73 79 6e 63 0a 67   /bin:/bin/sync.g
->> 
->> You can see that the block numbers that are represented here are all
->> bad. In this case, one of the options should be to discard the whole
->> indirect block. If you happen to find a few "valid" block numbers
->> here, they are likely to be bogus. It is counterproductive to check
->> those for duplicate allocation, or to mark them as used if they happen
->> to be free.
->> 
->>  Roger. 
->> 
->> -- 
->> ** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
->> **    Delftechpark 26 2628 XH  Delft, The Netherlands. KVK: 27239233    **
->> *-- BitWizard writes Linux device drivers for any device you may have! --*
->> Q: It doesn't work. A: Look buddy, doesn't work is an ambiguous statement. 
->> Does it sit on the couch all day? Is it unemployed? Please be specific! 
->> Define 'it' and what it isn't doing. --------- Adapted from lxrbot FAQ
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Reported-and-tested-by: Lukas Czerner <lczerner@redhat.com>
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Ted, could you pick this up ASAP ? Also I think this needs to go into
+> stable as well.
+  I'll merge it from my tree next week, OK? I don't think there's so much
+hurry as the bug has been there for years and you're the first one to
+report it :).
+
+BTW, I've also created the patch below which can slightly improve
+performance of quotas on ext4. The modification of the inode was
+unnecessary as well... Ted, can you merge this patch? It's independent from
+the previous one.
+
+								Honza
+--
+>From 51741760fe3682ea37bd264471f897bda9d5bd6d Mon Sep 17 00:00:00 2001
+From: Jan Kara <jack@suse.cz>
+Date: Thu, 31 Mar 2011 23:12:14 +0200
+Subject: [PATCH] ext4: Remove unnecessary [cm]time update of quota file
+
+It is not necessary to update [cm]time of quota file on each quota file
+write and it wastes journal space and IO throughput with inode writes. So
+just remove the updating from ext4_quota_write() and only update times when
+quotas are being turned off. Userspace cannot get anything reliable from
+quota files while they are used by the kernel anyway.
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/ext4_jbd2.h |    4 ++--
+ fs/ext4/super.c     |   16 ++++++++++++++--
+ 2 files changed, 16 insertions(+), 4 deletions(-)
+
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index d8b992e..3163583 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -86,8 +86,8 @@
+ 
+ #ifdef CONFIG_QUOTA
+ /* Amount of blocks needed for quota update - we know that the structure was
+- * allocated so we need to update only inode+data */
+-#define EXT4_QUOTA_TRANS_BLOCKS(sb) (test_opt(sb, QUOTA) ? 2 : 0)
++ * allocated so we need to update only data block */
++#define EXT4_QUOTA_TRANS_BLOCKS(sb) (test_opt(sb, QUOTA) ? 1 : 0)
+ /* Amount of blocks needed for quota insert/delete - we do some block writes
+  * but inode, sb and group updates are done only once */
+ #define EXT4_QUOTA_INIT_BLOCKS(sb) (test_opt(sb, QUOTA) ? (DQUOT_INIT_ALLOC*\
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 1f0acd4..baee1b4 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4608,11 +4608,24 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
+ 
+ static int ext4_quota_off(struct super_block *sb, int type)
+ {
++	struct inode *inode = sb_dqopt(sb)->files[type];
++	handle_t *handle;
++
+ 	/* Force all delayed allocation blocks to be allocated.
+ 	 * Caller already holds s_umount sem */
+ 	if (test_opt(sb, DELALLOC))
+ 		sync_filesystem(sb);
+ 
++	/* Update modification times of quota files when userspace can
++	 * start looking at them */
++	handle = ext4_journal_start(inode, 1);
++	if (IS_ERR(handle))
++		goto out;
++	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
++	ext4_mark_inode_dirty(handle, inode);
++	ext4_journal_stop(handle);
++
++out:
+ 	return dquot_quota_off(sb, type);
+ }
+ 
+@@ -4708,9 +4721,8 @@ out:
+ 	if (inode->i_size < off + len) {
+ 		i_size_write(inode, off + len);
+ 		EXT4_I(inode)->i_disksize = inode->i_size;
++		ext4_mark_inode_dirty(handle, inode);
+ 	}
+-	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
+-	ext4_mark_inode_dirty(handle, inode);
+ 	mutex_unlock(&inode->i_mutex);
+ 	return len;
+ }
+-- 
+1.7.1
 
 
-Cheers, Andreas
+--JP+T4n/bALQSJXh8
+Content-Type: text/x-patch; charset=us-ascii
+Content-Disposition: attachment; filename="0001-ext4-Remove-unnecessary-cm-time-update-of-quota-file.patch"
+
+>From 51741760fe3682ea37bd264471f897bda9d5bd6d Mon Sep 17 00:00:00 2001
+From: Jan Kara <jack@suse.cz>
+Date: Thu, 31 Mar 2011 23:12:14 +0200
+Subject: [PATCH] ext4: Remove unnecessary [cm]time update of quota file
+
+It is not necessary to update [cm]time of quota file on each quota file
+write and it wastes journal space and IO throughput with inode writes. So
+just remove the updating from ext4_quota_write() and only update times when
+quotas are being turned off. Userspace cannot get anything reliable from
+quota files while they are used by the kernel anyway.
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/ext4_jbd2.h |    4 ++--
+ fs/ext4/super.c     |   16 ++++++++++++++--
+ 2 files changed, 16 insertions(+), 4 deletions(-)
+
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index d8b992e..3163583 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -86,8 +86,8 @@
+ 
+ #ifdef CONFIG_QUOTA
+ /* Amount of blocks needed for quota update - we know that the structure was
+- * allocated so we need to update only inode+data */
+-#define EXT4_QUOTA_TRANS_BLOCKS(sb) (test_opt(sb, QUOTA) ? 2 : 0)
++ * allocated so we need to update only data block */
++#define EXT4_QUOTA_TRANS_BLOCKS(sb) (test_opt(sb, QUOTA) ? 1 : 0)
+ /* Amount of blocks needed for quota insert/delete - we do some block writes
+  * but inode, sb and group updates are done only once */
+ #define EXT4_QUOTA_INIT_BLOCKS(sb) (test_opt(sb, QUOTA) ? (DQUOT_INIT_ALLOC*\
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 1f0acd4..baee1b4 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4608,11 +4608,24 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
+ 
+ static int ext4_quota_off(struct super_block *sb, int type)
+ {
++	struct inode *inode = sb_dqopt(sb)->files[type];
++	handle_t *handle;
++
+ 	/* Force all delayed allocation blocks to be allocated.
+ 	 * Caller already holds s_umount sem */
+ 	if (test_opt(sb, DELALLOC))
+ 		sync_filesystem(sb);
+ 
++	/* Update modification times of quota files when userspace can
++	 * start looking at them */
++	handle = ext4_journal_start(inode, 1);
++	if (IS_ERR(handle))
++		goto out;
++	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
++	ext4_mark_inode_dirty(handle, inode);
++	ext4_journal_stop(handle);
++
++out:
+ 	return dquot_quota_off(sb, type);
+ }
+ 
+@@ -4708,9 +4721,8 @@ out:
+ 	if (inode->i_size < off + len) {
+ 		i_size_write(inode, off + len);
+ 		EXT4_I(inode)->i_disksize = inode->i_size;
++		ext4_mark_inode_dirty(handle, inode);
+ 	}
+-	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
+-	ext4_mark_inode_dirty(handle, inode);
+ 	mutex_unlock(&inode->i_mutex);
+ 	return len;
+ }
+-- 
+1.7.1
 
 
-
-
-
+--JP+T4n/bALQSJXh8--
