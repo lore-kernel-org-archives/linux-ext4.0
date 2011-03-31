@@ -1,105 +1,64 @@
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
  to a deadlock
-Date: Thu, 31 Mar 2011 21:03:55 +0900
-Message-ID: <4D946DAB.3010107@jp.fujitsu.com>
-References: <20110207205325.FB6A.61FB500B@jp.fujitsu.com> <20110215160630.GH17313@quack.suse.cz> <20110215170352.GE4255@thunk.org> <20110215172954.GK17313@quack.suse.cz> <20110216081746.54d146d1.toshi.okajima@jp.fujitsu.com> <20110216145627.GB5592@quack.suse.cz> <4D5C9B1B.2050304@jp.fujitsu.com> <20110217104552.GD4947@quack.suse.cz> <20110328170628.ffe314fb.toshi.okajima@jp.fujitsu.com> <20110330141205.GC22349@quack.suse.cz>
-Reply-To: toshi.okajima@jp.fujitsu.com
+Date: Thu, 31 Mar 2011 09:04:13 -0500
+Message-ID: <4D9489DD.6080602@redhat.com>
+References: <20110207205325.FB6A.61FB500B@jp.fujitsu.com>	<20110215160630.GH17313@quack.suse.cz>	<20110215170352.GE4255@thunk.org>	<20110215172954.GK17313@quack.suse.cz>	<20110216081746.54d146d1.toshi.okajima@jp.fujitsu.com>	<20110216145627.GB5592@quack.suse.cz>	<4D5C9B1B.2050304@jp.fujitsu.com>	<20110217104552.GD4947@quack.suse.cz>	<20110328170628.ffe314fb.toshi.okajima@jp.fujitsu.com>	<20110330141205.GC22349@quack.suse.cz> <AANLkTi=jTSEXsRJE+zzNvvTfFmqdAY42na8vm22NJefz@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Ted Ts'o <tytso@mit.edu>,
+Cc: Jan Kara <jack@suse.cz>, Amir Goldstein <amir73il@gmail.com>,
+	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
+	"Ted Ts'o" <tytso@mit.edu>,
 	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fgwmail5.fujitsu.co.jp ([192.51.44.35]:49946 "EHLO
-	fgwmail5.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757375Ab1CaMC2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Mar 2011 08:02:28 -0400
-In-Reply-To: <20110330141205.GC22349@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <AANLkTi=jTSEXsRJE+zzNvvTfFmqdAY42na8vm22NJefz@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi, thanks for your reviewing.
+On 3/31/11 3:37 AM, Yongqiang Yang wrote:
 
-(2011/03/30 23:12), Jan Kara wrote:
->    Hello,
->
-> On Mon 28-03-11 17:06:28, Toshiyuki Okajima wrote:
->> On Thu, 17 Feb 2011 11:45:52 +0100
->> Jan Kara<jack@suse.cz>  wrote:
->>> On Thu 17-02-11 12:50:51, Toshiyuki Okajima wrote:
->>>> (2011/02/16 23:56), Jan Kara wrote:
->>>>> On Wed 16-02-11 08:17:46, Toshiyuki Okajima wrote:
->>>>>> On Tue, 15 Feb 2011 18:29:54 +0100
->>>>>> Jan Kara<jack@suse.cz>   wrote:
->>>>>>> On Tue 15-02-11 12:03:52, Ted Ts'o wrote:
->>>>>>>> On Tue, Feb 15, 2011 at 05:06:30PM +0100, Jan Kara wrote:
-<SNIP>
->> I have deeply continued to examined the root cause of this problem, then
->> I found it.
->>
->> It is that we can write a memory which is mmaped to a file. Then the memory
->> becomes "DIRTY" so then the flusher thread (ex. wb_do_writeback) tries to
->> "writeback" the memory.
->>
->> Therefore, the root cause of this hangup is not only ext4 component (with
->> delayed allocation feature) but also writeback mechanism for mmap. If you
->> use the other filesystem, you can write something to the filesystem though
->> you have freezed the filesystem.
+> in ext3, ext3_freeze() prevents journal from being updated by
+> lock_journal_updates(), ext3_unfreeze() allow journal to be updated by
+> unlock_journal_updates().
+> 
+> in ext4, however, before ext4_freeze() returns, it unlock journal, and
+> ext4 prevents journal from being updated by s_frozen. s_frozen is in
+> an upper layer, so it is out control of ext4 and deadlock is easy to
+> happen.
+> 
+> Could someone explain why ext4 does like above but not follow ext3?
+> 
+> Yongqiang.
 
->    Well, you can write something only in the caches, not to the on disk
-> image. So it's not a problem as such.
-My reproducer uses the loopback device(/dev/loopX). By using it, I have confirmed that
-we can write in not only the caches but also the loopback device. However,
-I don't still confirm that we can write to the real device(/dev/sdaX).
+That was me, I think ...
 
->
->> A sample problem is attached on this mail.  Try to execute it then you can
->> confirm that we can write some data to your filesystem while freezing the
->> filesystem.
->> (If you change FS variable in go.sh from ext3 to ext4 and you execute
->> "fsfreeze -u mnt" manually on other prompt, you can also confirm this deadlock.)
->>
->> I think the best approach to fix this problem is to let users not to write
->> memory which is mapped to a certain file while the filesystem is freezing.
->> However, it is very difficult to control users not to write memory which has
->> been already mapped to the file.
->    It is actually possible. In case of ext4, you could add a check (+ wait)
-> in ext4_page_mkwrite() whether the filesystem is frozen or in the process
-> of being frozen and if so, wait for it to get unfrozen. The only tough
-> problem here might be the locking as ext4_page_mkwrite() is called with
-> mmap_sem held and I'm not sure we can take s_umount with mmap_sem held.
-> But you'd have to fix all filesystems (and all paths possibly creating
-> dirty data) in this way.
->
+commit 6b0310fbf087ad6e9e3b8392adca97cd77184084
+Author: Eric Sandeen <sandeen@redhat.com>
+Date:   Sun May 16 02:00:00 2010 -0400
 
->> Therefore, I think there is only actual method that we stop writeback thread
->> to resolve the mmap problem. Also, by this fix, the original problem
->> (ext4 delayed write vs unfreeze) can be solved.
->    Hmm, I had a look at the code again and think we could fix the issue
-> cleanly (i.e. all possible users of s_umount) as follows: The lock
-> ordering will be
->    s_umount ->  "fs frozen"
-> and there will be a new mutex s_freeze_mutex protecting changes of
-> s_frozen.
->
-> freeze_bdev() already observes this lock ordering, it will only take
-> s_freeze_mutex for the changes of s_frozen values. The only other code
-> that is relevant for the lock ordering is thaw_super() (the freezing
-> process is not expected to reenter kernel for the frozen filesystem).
-> In thaw_super() we could take s_freeze_mutex, do all the thawing work,
-> set s_frozen, release s_freeze_mutex and put superblock reference.
->
+    ext4: don't return to userspace after freezing the fs with a mutex held
 
-> So something like the patch below - it seems to work for me, can you test
-> it please?
-I think your patch looks good, so, the original problem seems to be solved.
-OK, I will test your patch.
-This weekend I cannot test it. So, I will reply next week.
+    ext4_freeze() used jbd2_journal_lock_updates() which takes
+    the j_barrier mutex, and then returns to userspace.  The
+    kernel does not like this:
 
-Thanks,
-Toshiyuki Okajima
+    ================================================
+    [ BUG: lock held when returning to user space! ]
+    ------------------------------------------------
+    lvcreate/1075 is leaving the kernel with locks still held!
+    1 lock held by lvcreate/1075:
+     #0:  (&journal->j_barrier){+.+...}, at: [<ffffffff811c6214>]
+    jbd2_journal_lock_updates+0xe1/0xf0
 
+    Use vfs_check_frozen() added to ext4_journal_start_sb() and
+    ext4_force_commit() instead.
+
+    Addresses-Red-Hat-Bugzilla: #568503
+
+
+    Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
