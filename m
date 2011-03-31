@@ -1,124 +1,105 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due to
- a deadlock
-Date: Thu, 31 Mar 2011 16:48:39 +0800
-Message-ID: <AANLkTin52MfegV=r5=CaDmaVLT6xyH9LZ4MKr8SUaXpB@mail.gmail.com>
-References: <20110207205325.FB6A.61FB500B@jp.fujitsu.com>
-	<20110215160630.GH17313@quack.suse.cz>
-	<20110215170352.GE4255@thunk.org>
-	<20110215172954.GK17313@quack.suse.cz>
-	<20110216081746.54d146d1.toshi.okajima@jp.fujitsu.com>
-	<20110216145627.GB5592@quack.suse.cz>
-	<4D5C9B1B.2050304@jp.fujitsu.com>
-	<20110217104552.GD4947@quack.suse.cz>
-	<20110328170628.ffe314fb.toshi.okajima@jp.fujitsu.com>
-	<20110330141205.GC22349@quack.suse.cz>
-	<AANLkTi=jTSEXsRJE+zzNvvTfFmqdAY42na8vm22NJefz@mail.gmail.com>
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
+ to a deadlock
+Date: Thu, 31 Mar 2011 21:03:55 +0900
+Message-ID: <4D946DAB.3010107@jp.fujitsu.com>
+References: <20110207205325.FB6A.61FB500B@jp.fujitsu.com> <20110215160630.GH17313@quack.suse.cz> <20110215170352.GE4255@thunk.org> <20110215172954.GK17313@quack.suse.cz> <20110216081746.54d146d1.toshi.okajima@jp.fujitsu.com> <20110216145627.GB5592@quack.suse.cz> <4D5C9B1B.2050304@jp.fujitsu.com> <20110217104552.GD4947@quack.suse.cz> <20110328170628.ffe314fb.toshi.okajima@jp.fujitsu.com> <20110330141205.GC22349@quack.suse.cz>
+Reply-To: toshi.okajima@jp.fujitsu.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
-	"Ted Ts'o" <tytso@mit.edu>,
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Ted Ts'o <tytso@mit.edu>,
 	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>, Amir Goldstein <amir73il@gmail.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yi0-f46.google.com ([209.85.218.46]:38519 "EHLO
-	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752884Ab1CaIsk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Mar 2011 04:48:40 -0400
-In-Reply-To: <AANLkTi=jTSEXsRJE+zzNvvTfFmqdAY42na8vm22NJefz@mail.gmail.com>
+Received: from fgwmail5.fujitsu.co.jp ([192.51.44.35]:49946 "EHLO
+	fgwmail5.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757375Ab1CaMC2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Mar 2011 08:02:28 -0400
+In-Reply-To: <20110330141205.GC22349@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 31, 2011 at 4:37 PM, Yongqiang Yang <xiaoqiangnk@gmail.com>=
- wrote:
-> Hi everyone,
->
-> Amir met a deadlock when he tested ext4 with snapshot. =A0The deadloc=
-k
-> was reported on
-> https://github.com/amir73il/ext4-snapshots/commit/56396185d922a73524a=
-091b545e665543abf741a.
-> =A0It is difficult to reproduce the deadlock. =A0There is a deadlock
-> reported on http://www.spinics.net/lists/linux-ext4/msg23018.html.
-> Actually, these two deadlocks come from a same source.
->
-> Below are my analysis on the 1st one. =A0Mail is not a good place to
-> describe parallel processes. =A0I have submitted the analysis to
-> https://github.com/YANGYongqiang/ext4-snapshots/blob/9e0ae9ae9907125e=
-6bf45aa91db296d4cc041b17/fs/ext4/BUGS#L143.
-> =A0It is much more readable.
->
-> -- deadlock in ext4 with snapshot
-> =A0 =A0 =A0 ext4 with snapshot calls freeze_super() to bring
-> =A0 =A0 =A0 a fs be in a clean state when a user takes a snapshot.
->
-> =A0 =A0 freeze =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0truncate =A0 =A0 =A0=
- =A0 =A0 =A0 =A0kjournald
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0| =A0ext4_ext_truncate =A0 =A0=
- |
-> =A0 =A0freeze_super() =A0| =A0 starts a handle =A0 =A0 =A0|
-> =A0 =A0sets s_frozen =A0 | =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0|
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0| =A0ext4_ext_truncate =A0 =A0=
- |
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0| =A0holds i_data_sem =A0 =A0 =
-=A0|
-> =A0ext4_freeze() =A0 =A0 | =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0| =A0 commit_transaction()
-> =A0 wait for updates | =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
-| =A0 waits for i_data_sem
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0| =A0ext4_free_blocks =A0 =A0 =
-=A0|
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0| =A0calls dquot_free_block|
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0| =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-=A0 =A0 =A0 =A0 =A0|
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0| =A0dquot_free_block call |
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0| =A0ext4_dirty_inode =A0 =A0 =
-=A0|
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0| =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-=A0 =A0 =A0 =A0 =A0|
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0| =A0ext4_dirty_inode =A0 =A0 =
-=A0|
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0| =A0trys to start a handle|
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0| =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-=A0 =A0 =A0 =A0 =A0|
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0| =A0block due to s_frozen |
->
-> in ext3, ext3_freeze() prevents journal from being updated by
-> lock_journal_updates(), ext3_unfreeze() allow journal to be updated b=
-y
-> unlock_journal_updates().
->
-> in ext4, however, before ext4_freeze() returns, it unlock journal, an=
-d
-> ext4 prevents journal from being updated by s_frozen. s_frozen is in
-> an upper layer, so it is out control of ext4 and deadlock is easy to
-> happen.
+Hi, thanks for your reviewing.
 
-Virtually,  it is not right to block ext4_journal_start_sb() before we
-confirm that current thread has no a active handle. But ext4 does like
-that. Deadlock is thus easy to happen.   Right?
+(2011/03/30 23:12), Jan Kara wrote:
+>    Hello,
+>
+> On Mon 28-03-11 17:06:28, Toshiyuki Okajima wrote:
+>> On Thu, 17 Feb 2011 11:45:52 +0100
+>> Jan Kara<jack@suse.cz>  wrote:
+>>> On Thu 17-02-11 12:50:51, Toshiyuki Okajima wrote:
+>>>> (2011/02/16 23:56), Jan Kara wrote:
+>>>>> On Wed 16-02-11 08:17:46, Toshiyuki Okajima wrote:
+>>>>>> On Tue, 15 Feb 2011 18:29:54 +0100
+>>>>>> Jan Kara<jack@suse.cz>   wrote:
+>>>>>>> On Tue 15-02-11 12:03:52, Ted Ts'o wrote:
+>>>>>>>> On Tue, Feb 15, 2011 at 05:06:30PM +0100, Jan Kara wrote:
+<SNIP>
+>> I have deeply continued to examined the root cause of this problem, then
+>> I found it.
+>>
+>> It is that we can write a memory which is mmaped to a file. Then the memory
+>> becomes "DIRTY" so then the flusher thread (ex. wb_do_writeback) tries to
+>> "writeback" the memory.
+>>
+>> Therefore, the root cause of this hangup is not only ext4 component (with
+>> delayed allocation feature) but also writeback mechanism for mmap. If you
+>> use the other filesystem, you can write something to the filesystem though
+>> you have freezed the filesystem.
+
+>    Well, you can write something only in the caches, not to the on disk
+> image. So it's not a problem as such.
+My reproducer uses the loopback device(/dev/loopX). By using it, I have confirmed that
+we can write in not only the caches but also the loopback device. However,
+I don't still confirm that we can write to the real device(/dev/sdaX).
 
 >
-> Could someone explain why ext4 does like above but not follow ext3?
+>> A sample problem is attached on this mail.  Try to execute it then you can
+>> confirm that we can write some data to your filesystem while freezing the
+>> filesystem.
+>> (If you change FS variable in go.sh from ext3 to ext4 and you execute
+>> "fsfreeze -u mnt" manually on other prompt, you can also confirm this deadlock.)
+>>
+>> I think the best approach to fix this problem is to let users not to write
+>> memory which is mapped to a certain file while the filesystem is freezing.
+>> However, it is very difficult to control users not to write memory which has
+>> been already mapped to the file.
+>    It is actually possible. In case of ext4, you could add a check (+ wait)
+> in ext4_page_mkwrite() whether the filesystem is frozen or in the process
+> of being frozen and if so, wait for it to get unfrozen. The only tough
+> problem here might be the locking as ext4_page_mkwrite() is called with
+> mmap_sem held and I'm not sure we can take s_umount with mmap_sem held.
+> But you'd have to fix all filesystems (and all paths possibly creating
+> dirty data) in this way.
 >
-> Yongqiang.
-> --
-> Best Wishes
-> Yongqiang Yang
+
+>> Therefore, I think there is only actual method that we stop writeback thread
+>> to resolve the mmap problem. Also, by this fix, the original problem
+>> (ext4 delayed write vs unfreeze) can be solved.
+>    Hmm, I had a look at the code again and think we could fix the issue
+> cleanly (i.e. all possible users of s_umount) as follows: The lock
+> ordering will be
+>    s_umount ->  "fs frozen"
+> and there will be a new mutex s_freeze_mutex protecting changes of
+> s_frozen.
+>
+> freeze_bdev() already observes this lock ordering, it will only take
+> s_freeze_mutex for the changes of s_frozen values. The only other code
+> that is relevant for the lock ordering is thaw_super() (the freezing
+> process is not expected to reenter kernel for the frozen filesystem).
+> In thaw_super() we could take s_freeze_mutex, do all the thawing work,
+> set s_frozen, release s_freeze_mutex and put superblock reference.
 >
 
+> So something like the patch below - it seems to work for me, can you test
+> it please?
+I think your patch looks good, so, the original problem seems to be solved.
+OK, I will test your patch.
+This weekend I cannot test it. So, I will reply next week.
 
+Thanks,
+Toshiyuki Okajima
 
---=20
-Best Wishes
-Yongqiang Yang
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
