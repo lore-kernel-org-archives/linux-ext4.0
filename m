@@ -1,222 +1,229 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH v0 RFC]  ext4: Fix a bug in ext4_journal_start_sb().
-Date: Fri,  1 Apr 2011 16:44:53 +0800
-Message-ID: <1301647493-13163-1-git-send-email-xiaoqiangnk@gmail.com>
-Cc: linux-ext4@vger.kernel.org, Yongqiang Yang <xiaoqiangnk@gmail.com>
-To: jack@suse.cz, sandeen@redhat.com, tytso@mit.edu
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: Re: kernel BUG at fs/jbd2/transaction.c:1086!
+Date: Fri, 1 Apr 2011 02:54:42 -0700
+Message-ID: <AANLkTin0L8JZgdC-NT5GdX+5_H_DbJWVak8-Mvcn+suc@mail.gmail.com>
+References: <alpine.LFD.2.00.1103301651240.17917@dhcp-27-109.brq.redhat.com>
+	<20110331164319.GG21524@quack.suse.cz>
+	<alpine.LFD.2.00.1103312255270.3020@dhcp-27-109.brq.redhat.com>
+	<20110331222306.GI21524@quack.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, Eric Sandeen <esandeen@redhat.com>
+To: Jan Kara <jack@suse.cz>, Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:39682 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753088Ab1DAImk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Apr 2011 04:42:40 -0400
-Received: by iwn34 with SMTP id 34so3264781iwn.19
-        for <linux-ext4@vger.kernel.org>; Fri, 01 Apr 2011 01:42:39 -0700 (PDT)
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:65193 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755313Ab1DAJyn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Apr 2011 05:54:43 -0400
+Received: by qyk7 with SMTP id 7so202322qyk.19
+        for <linux-ext4@vger.kernel.org>; Fri, 01 Apr 2011 02:54:42 -0700 (PDT)
+In-Reply-To: <20110331222306.GI21524@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4_journal_start_sb() should not prevent active handle from being
-started due to s_frozen.  Otherwise, deadlock is easy to happen, below
-is a situation.
+On Thu, Mar 31, 2011 at 3:23 PM, Jan Kara <jack@suse.cz> wrote:
+> On Thu 31-03-11 22:59:24, Lukas Czerner wrote:
+>> On Thu, 31 Mar 2011, Jan Kara wrote:
+>>
+>> > On Wed 30-03-11 17:32:06, Lukas Czerner wrote:
+>> > > Hello,
+>> > >
+>> > > I have hit BUG_ON while running xfstest 234 in the loop
+>> > > on the ext4. Backtrace below .
+>> > >
+>> > > I thought that this problem was solved with
+>> > > 67eeb5685d2a211c0252ac7884142e503c759500 however it is still pre=
+sent.
+>> > > I might be a bit hard to hit, but once you run
+>> > >
+>> > > while true; do sync; sleep 0.3; done
+>> > >
+>> > > concurrently it is reproducible almost all the time. I have trie=
+d to
+>> > > understand what is going on but only thing I can see is this cou=
+rse
+>> > > of action:
+>> > >
+>> > > ext4_write_dquot
+>> > > =A0 ext4_journal_start <- h_buffer_credits =3D 2
+>> > > =A0 dquot_commit
+>> > > =A0 =A0 v2_write_dquot
+>> > > =A0 =A0 =A0 qtree_write_dquot
+>> > > =A0 =A0 =A0 =A0 ext4_quota_write
+>> > > =A0 =A0 =A0 =A0 =A0 ext4_handle_dirty_metadata =A0 =A0 =A0<- thi=
+s takes one block reserved
+>> > > =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
+=A0 =A0 =A0for journal
+>> > > =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
+=A0 =A0 =A0h_buffer_credits--
+>> > > =A0 =A0 v2_write_file_info
+>> > > =A0 =A0 =A0 ext4_quota_write
+>> > > =A0 =A0 =A0 =A0 ext4_handle_dirty_metadata =A0 =A0 =A0 =A0<- thi=
+s takes second block reserved
+>> > > =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
+=A0 =A0 =A0for journal
+>> > > =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
+=A0 =A0 =A0h_buffer_credits--
+>> > > =A0 ext4_journal_stop
+>> > >
+>> > > However apparently I am missing something, because according to =
+the
+>> > > backtrace the second call of jbd2_journal_dirty_metadata() may e=
+nd up
+>> > > with BUG_ON -> J_ASSERT_JH(jh, handle->h_buffer_credits > 0);
+>> > >
+>> > > So someone else is touching our handle apparently, but I go not =
+exacly
+>> > > know what is going on. From my simple debugging printk informati=
+on I
+>> > > have put with before ext4_handle_dirty_metadata() in ext4_quota_=
+write()
+>> > > we can see:
+>> > >
+>> > > [ =A0226.450263] ext4_quota_write: len 48, off 5136, type 0 h_re=
+f 1
+>> > > credits 2
+>> > > [ =A0226.458950] ext4_quota_write: len 24, off 8, type 0 h_ref 1=
+ credits 0
+>> > >
+>> > > It is clear someone changed handle between v2_write_dquot() and
+>> > > v2_write_file_info() does anyone have idea what is going on ?
+>> > =A0 It's simpler than that I believe. ext4_write_dquot() does also
+>> > =A0 =A0 =A0 =A0 inode->i_mtime =3D inode->i_ctime =3D CURRENT_TIME=
+;
+>> > =A0 =A0 =A0 =A0 ext4_mark_inode_dirty(handle, inode);
+>> > and that eats another credit. Looking at the comment before
+>> > EXT4_QUOTA_TRANS_BLOCKS, we in fact counted with inode and data up=
+date but
+>> > didn't count with the info update. It's actually a race that we en=
+ded up
+>> > doing info update in our transaction - someone marked info dirty a=
+nd before
+>> > he managed to write it, we went in, saw the dirty flag and wrote i=
+t for
+>> > him. So the attached patch should fix the problem for you.
+>> >
+>>
+>> The patch fixes the problem, you can add
+>>
+>> Reported-and-tested-by: Lukas Czerner <lczerner@redhat.com>
+>>
+>> Ted, could you pick this up ASAP ? Also I think this needs to go int=
+o
+>> stable as well.
+> =A0I'll merge it from my tree next week, OK? I don't think there's so=
+ much
+> hurry as the bug has been there for years and you're the first one to
+> report it :).
+>
+> BTW, I've also created the patch below which can slightly improve
+> performance of quotas on ext4. The modification of the inode was
+> unnecessary as well... Ted, can you merge this patch? It's independen=
+t from
+> the previous one.
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0Honza
+> --
+> From 51741760fe3682ea37bd264471f897bda9d5bd6d Mon Sep 17 00:00:00 200=
+1
+> From: Jan Kara <jack@suse.cz>
+> Date: Thu, 31 Mar 2011 23:12:14 +0200
+> Subject: [PATCH] ext4: Remove unnecessary [cm]time update of quota fi=
+le
+>
+> It is not necessary to update [cm]time of quota file on each quota fi=
+le
+> write and it wastes journal space and IO throughput with inode writes=
+=2E So
+> just remove the updating from ext4_quota_write() and only update time=
+s when
+> quotas are being turned off. Userspace cannot get anything reliable f=
+rom
+> quota files while they are used by the kernel anyway.
+>
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+> =A0fs/ext4/ext4_jbd2.h | =A0 =A04 ++--
+> =A0fs/ext4/super.c =A0 =A0 | =A0 16 ++++++++++++++--
+> =A02 files changed, 16 insertions(+), 4 deletions(-)
+>
+> diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+> index d8b992e..3163583 100644
+> --- a/fs/ext4/ext4_jbd2.h
+> +++ b/fs/ext4/ext4_jbd2.h
+> @@ -86,8 +86,8 @@
+>
+> =A0#ifdef CONFIG_QUOTA
+> =A0/* Amount of blocks needed for quota update - we know that the str=
+ucture was
+> - * allocated so we need to update only inode+data */
+> -#define EXT4_QUOTA_TRANS_BLOCKS(sb) (test_opt(sb, QUOTA) ? 2 : 0)
+> + * allocated so we need to update only data block */
+> +#define EXT4_QUOTA_TRANS_BLOCKS(sb) (test_opt(sb, QUOTA) ? 1 : 0)
 
-======================================================================
-     freeze         |       truncate             |      kjournald
-======================================================================
-                    |  ext4_ext_truncate()       |
-    freeze_super()  |   starts a handle          |
-    sets s_frozen   |                            |
-                    |  ext4_ext_truncate()       |
-                    |  holds i_data_sem          |
-  ext4_freeze()     |                            |   commit_transaction()
-  waits for updates |                            |   waits for i_data_sem
-                    |  ext4_free_blocks()        |
-                    |  calls dquot_free_block()  |
-                    |                            |
-                    |  dquot_free_blocks()       |
-                    |  calls ext4_dirty_inode()  |
-                    |                            |
-                    |  ext4_dirty_inode()        |
-                    |  trys to start an active   |
-                    |  handle                    |
-                    |                            |
-                    |  block due to s_frozen     |
-=======================================================================
+Cool :-)
+Yongqiang,
+Now we only need to account for 2 (user+group) snapshot quota credits f=
+or COW.
 
-Messages reported by Amir:
-while running phoronix test suite and taking a snapshot every 10 seconds,
-the following hang happened during tiobench [64MB Random Write - 32 Threads]:
-
-[20868.207441] snapshot: snapshot (913) created
-[21000.040021] [Hardware Error]: Machine check events logged
-[21001.300039] INFO: task jbd2/sda6-8:3560 blocked for more than 120 seconds.
-[21001.300043] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables
-this message.
-[21001.300048] jbd2/sda6-8     D 0000000000000000     0  3560      2 0x00000000
-[21001.300055]  ffff880037a8fce0 0000000000000046 0000000000000000
-ffff880100000000
-[21001.300063]  0000000000014000 ffff880037a1bf40 ffff880037a1c2c0
-ffff880037a8ffd8
-[21001.300070]  ffff880037a1c2c8 0000000000014000 ffff880037a8e010
-0000000000014000
-[21001.300078] Call Trace:
-[21001.300089]  [<ffffffff8124ebcc>] jbd2_journal_commit_transaction+
-0x1cc/0x15d0
-[21001.300095]  [<ffffffff815bea70>] ? _raw_spin_unlock_irq+0x30/0x40
-[21001.300102]  [<ffffffff810746dc>] ? lock_timer_base+0x3c/0x70
-[21001.300108]  [<ffffffff81075ae0>] ? try_to_del_timer_sync+0x90/0x100
-[21001.300113]  [<ffffffff81088d30>] ? autoremove_wake_function+0x0/0x40
-[21001.300118]  [<ffffffff81075bf2>] ? del_timer_sync+0xa2/0xe0
-[21001.300123]  [<ffffffff81075b50>] ? del_timer_sync+0x0/0xe0
-[21001.300129]  [<ffffffff81254b71>] kjournald2+0xc1/0x220
-[21001.300133]  [<ffffffff81088d30>] ? autoremove_wake_function+0x0/0x40
-[21001.300138]  [<ffffffff81254ab0>] ? kjournald2+0x0/0x220
-[21001.300143]  [<ffffffff810887d6>] kthread+0xb6/0xc0
-[21001.300149]  [<ffffffff8100ce24>] kernel_thread_helper+0x4/0x10
-[21001.300154]  [<ffffffff815bea70>] ? _raw_spin_unlock_irq+0x30/0x40
-[21001.300158]  [<ffffffff815bf054>] ? restore_args+0x0/0x30
-[21001.300163]  [<ffffffff81088720>] ? kthread+0x0/0xc0
-[21001.300167]  [<ffffffff8100ce20>] ? kernel_thread_helper+0x0/0x10
-[21001.300171] INFO: lockdep is turned off.
-[21001.300175] INFO: task tiotest:6277 blocked for more than 120 seconds.
-[21001.300178] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables
-this message.
-[21001.300182] tiotest         D 0000000000000000     0  6277   6276 0x00000000
-[21001.300188]  ffff88003789d9d8 0000000000000046 ffff88005b87a068
-0000000000000002
-[21001.300196]  0000000000014000 ffff8800ac435ee0 ffff8800ac436260
-ffff88003789dfd8
-[21001.300203]  ffff8800ac436268 0000000000014000 ffff88003789c010
-0000000000014000
-[21001.300211] Call Trace:
-[21001.300216]  [<ffffffff81088fe0>] ? prepare_to_wait+0x60/0x90
-[21001.300236]  [<ffffffffa0297745>] __next4_journal_start+0x85/0x1d0 [next4]
-[21001.300241]  [<ffffffff815beb1b>] ? _raw_spin_unlock+0x2b/0x40
-[21001.300246]  [<ffffffff81088d30>] ? autoremove_wake_function+0x0/0x40
-[21001.300259]  [<ffffffffa027d98e>] next4_dirty_inode+0x2e/0x70 [next4]
-[21001.300266]  [<ffffffff811942e8>] __mark_inode_dirty+0x38/0x220
-[21001.300283]  [<ffffffffa02af022>] __next4_free_blocks+0xb42/0xeb0 [next4]
-[21001.300300]  [<ffffffffa02a297e>] next4_ext_truncate+0x8ce/0xa90 [next4]
-[21001.300315]  [<ffffffffa0283921>] next4_truncate+0x601/0x860 [next4]
-[21001.300331]  [<ffffffffa02a6da3>] ? __next4_handle_dirty_metadata+0x83/0x1d0
-[next4]
-[21001.300344]  [<ffffffffa027ccc0>] ? next4_mark_iloc_dirty+0x480/0x6b0 [next4]
-[21001.300358]  [<ffffffffa027d7b6>] ? next4_mark_inode_dirty+0xa6/0x250 [next4]
-[21001.300372]  [<ffffffffa0285c00>] next4_evict_inode+0x3a0/0x490 [next4]
-[21001.300378]  [<ffffffff81186c44>] evict+0x24/0xb0
-[21001.300382]  [<ffffffff811872a6>] iput+0x1f6/0x2f0
-[21001.300388]  [<ffffffff8117b06f>] do_unlinkat+0x11f/0x1e0
-[21001.300394]  [<ffffffff815be0d9>] ? trace_hardirqs_on_thunk+0x3a/0x3f
-[21001.300399]  [<ffffffff8117b146>] sys_unlink+0x16/0x20
-[21001.300405]  [<ffffffff8100bf82>] system_call_fastpath+0x16/0x1b
-[21001.300408] INFO: lockdep is turned off.
-[21001.300411] INFO: task chsnap:6510 blocked for more than 120 seconds.
-[21001.300414] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables
-this message.
-[21001.300418] chsnap          D 0000000000000000     0  6510   6481 0x00000000
-[21001.300424]  ffff8800ac2ffba8 0000000000000046 0000000000000000
-ffff880107fe5688
-[21001.300431]  0000000000014000 ffff8800ac599fa0 ffff8800ac59a320
-[21001.300439]  ffff8800ac59a328 0000000000014000 ffff8800ac2fe010
-0000000000014000
-[21001.300447] Call Trace:
-[21001.300452]  [<ffffffff8124cc55>] jbd2_journal_lock_updates+0x95/0x100
-[21001.300457]  [<ffffffff81088d30>] ? autoremove_wake_function+0x0/0x40
-[21001.300473]  [<ffffffffa0295756>] next4_freeze+0x46/0xa0 [next4]
-[21001.300479]  [<ffffffff811a27e4>] ? __sync_blockdev+0x24/0x50
-[21001.300484]  [<ffffffff8116ec2d>] freeze_super+0x7d/0x100
-[21001.300500]  [<ffffffffa02bbe48>] next4_snapshot_take+0x268/0xa70 [next4]
-[21001.300506]  [<ffffffff8124c910>] ? jbd2_journal_stop+0x1e0/0x2c0
-[21001.300520]  [<ffffffffa0287558>] next4_ioctl+0xc28/0xcc0 [next4]
-[21001.300527]  [<ffffffff812f66b4>] ? do_raw_spin_lock+0x54/0x150
-[21001.300532]  [<ffffffff8117e175>] do_vfs_ioctl+0xa5/0x5a0
-[21001.300537]  [<ffffffff8109e6ad>] ? trace_hardirqs_on+0xd/0x10
-[21001.300542]  [<ffffffff8116dc5c>] ? fget_light+0x1ec/0x370
-[21001.300547]  [<ffffffff8117e711>] sys_ioctl+0xa1/0xb0
-[21001.300552]  [<ffffffff8100bf82>] system_call_fastpath+0x16/0x1b
-[21001.300555] INFO: lockdep is turned off.
-
-Reported-by: Amir Goldstein <amir73il@users.sf.net>
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
----
- fs/ext4/super.c |   49 ++++++++++++++++++++++++++++++++++++++-----------
- 1 files changed, 38 insertions(+), 11 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index ccfa686..f35b53e 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -242,27 +242,49 @@ static void ext4_put_nojournal(handle_t *handle)
-  * journal_end calls result in the superblock being marked dirty, so
-  * that sync() will call the filesystem's write_super callback if
-  * appropriate.
-+ *
-+ * To avoid j_barrier hold in userspace when a user calls freeze(),
-+ * ext4 prevents a new handle from being started by s_frozen, which
-+ * is in an upper layer.
-  */
- handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
- {
- 	journal_t *journal;
-+	handle_t  *handle;
- 
- 	if (sb->s_flags & MS_RDONLY)
- 		return ERR_PTR(-EROFS);
- 
--	vfs_check_frozen(sb, SB_FREEZE_TRANS);
--	/* Special case here: if the journal has aborted behind our
--	 * backs (eg. EIO in the commit thread), then we still need to
--	 * take the FS itself readonly cleanly. */
- 	journal = EXT4_SB(sb)->s_journal;
--	if (journal) {
--		if (is_journal_aborted(journal)) {
--			ext4_abort(sb, "Detected aborted journal");
--			return ERR_PTR(-EROFS);
--		}
--		return jbd2_journal_start(journal, nblocks);
-+	if (!journal)
-+		/*
-+		 * Under no-journal mode, vfs_check_frozen() is not neeed.
-+		 */
-+		return ext4_get_nojournal();
-+
-+	/*
-+	 * Before vfs_check_frozen(), the current handle should be allowed
-+	 * to finish, otherwise deadlock would happen when the filesystem
-+	 * is freezed && active handles are not stopped.
-+	 */
-+	handle = ext4_journal_current_handle();
-+	if (handle) {
-+		BUG_ON(!(handle->h_transaction->t_journal == journal));
-+		handle->h_ref++;
-+		return handle;
- 	}
--	return ext4_get_nojournal();
-+
-+	/*
-+	 * Special case here: if the journal has aborted behind our
-+	 * backs (eg. EIO in the commit thread), then we still need to
-+	 * take the FS itself readonly cleanly.
-+	 */
-+	vfs_check_frozen(sb, SB_FREEZE_TRANS);
-+	if (is_journal_aborted(journal)) {
-+		ext4_abort(sb, "Detected aborted journal");
-+		return ERR_PTR(-EROFS);
-+	}
-+	return jbd2_journal_start(journal, nblocks);
- }
- 
- /*
-@@ -4131,6 +4153,11 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
- /*
-  * LVM calls this function before a (read-only) snapshot is created.  This
-  * gives us a chance to flush the journal completely and mark the fs clean.
-+ *
-+ * Note that only this function cannot bring a filesystem to be in a clean
-+ * state independently, because ext4 prevents a new handle from being started
-+ * by @sb->s_frozen, which stays in an upper layer.  It thus needs help from
-+ * the upper layer.
-  */
- static int ext4_freeze(struct super_block *sb)
- {
--- 
-1.7.4
-
+> =A0/* Amount of blocks needed for quota insert/delete - we do some bl=
+ock writes
+> =A0* but inode, sb and group updates are done only once */
+> =A0#define EXT4_QUOTA_INIT_BLOCKS(sb) (test_opt(sb, QUOTA) ? (DQUOT_I=
+NIT_ALLOC*\
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 1f0acd4..baee1b4 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -4608,11 +4608,24 @@ static int ext4_quota_on(struct super_block *=
+sb, int type, int format_id,
+>
+> =A0static int ext4_quota_off(struct super_block *sb, int type)
+> =A0{
+> + =A0 =A0 =A0 struct inode *inode =3D sb_dqopt(sb)->files[type];
+> + =A0 =A0 =A0 handle_t *handle;
+> +
+> =A0 =A0 =A0 =A0/* Force all delayed allocation blocks to be allocated=
+=2E
+> =A0 =A0 =A0 =A0 * Caller already holds s_umount sem */
+> =A0 =A0 =A0 =A0if (test_opt(sb, DELALLOC))
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0sync_filesystem(sb);
+>
+> + =A0 =A0 =A0 /* Update modification times of quota files when usersp=
+ace can
+> + =A0 =A0 =A0 =A0* start looking at them */
+> + =A0 =A0 =A0 handle =3D ext4_journal_start(inode, 1);
+> + =A0 =A0 =A0 if (IS_ERR(handle))
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out;
+> + =A0 =A0 =A0 inode->i_mtime =3D inode->i_ctime =3D CURRENT_TIME;
+> + =A0 =A0 =A0 ext4_mark_inode_dirty(handle, inode);
+> + =A0 =A0 =A0 ext4_journal_stop(handle);
+> +
+> +out:
+> =A0 =A0 =A0 =A0return dquot_quota_off(sb, type);
+> =A0}
+>
+> @@ -4708,9 +4721,8 @@ out:
+> =A0 =A0 =A0 =A0if (inode->i_size < off + len) {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0i_size_write(inode, off + len);
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT4_I(inode)->i_disksize =3D inode->i=
+_size;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_mark_inode_dirty(handle, inode);
+> =A0 =A0 =A0 =A0}
+> - =A0 =A0 =A0 inode->i_mtime =3D inode->i_ctime =3D CURRENT_TIME;
+> - =A0 =A0 =A0 ext4_mark_inode_dirty(handle, inode);
+> =A0 =A0 =A0 =A0mutex_unlock(&inode->i_mutex);
+> =A0 =A0 =A0 =A0return len;
+> =A0}
+> --
+> 1.7.1
+>
+>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
