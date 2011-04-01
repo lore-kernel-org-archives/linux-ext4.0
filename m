@@ -1,58 +1,83 @@
-From: Ric Wheeler <ricwheeler@gmail.com>
-Subject: Re: breaking ext4 to test recovery
-Date: Fri, 01 Apr 2011 11:52:13 -0400
-Message-ID: <4D95F4AD.2090804@gmail.com>
-References: <25B374CC0D9DFB4698BB331F82CD0CF20D61B8@wdscexbe08.sc.wdc.com> <4D91E39A.3000800@redhat.com> <6617927D-7C9C-4D02-97FD-C9CC75609448@dilger.ca> <4D9503C0.8080804@redhat.com> <alpine.LFD.2.00.1104011724140.3151@dhcp-27-109.brq.redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 32442] New: Higher Priority CPU-bound Processes Cause
+ Filesystem Lockup
+Date: Fri, 1 Apr 2011 16:06:08 GMT
+Message-ID: <bug-32442-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Andreas Dilger <adilger@dilger.ca>,
-	Daniel Taylor <Daniel.Taylor@wdc.com>,
-	linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:51098 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754723Ab1DAPwR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Apr 2011 11:52:17 -0400
-Received: by ywj3 with SMTP id 3so1456853ywj.19
-        for <linux-ext4@vger.kernel.org>; Fri, 01 Apr 2011 08:52:17 -0700 (PDT)
-In-Reply-To: <alpine.LFD.2.00.1104011724140.3151@dhcp-27-109.brq.redhat.com>
+Received: from demeter2.kernel.org ([140.211.167.42]:43771 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757798Ab1DAQGJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Apr 2011 12:06:09 -0400
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p31G68om004094
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 1 Apr 2011 16:06:08 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 04/01/2011 11:26 AM, Lukas Czerner wrote:
-> On Thu, 31 Mar 2011, Eric Sandeen wrote:
->
->> On 3/31/11 5:21 PM, Andreas Dilger wrote:
->>
->>> We have a kernel patch "dev_read_only" that we use with Lustre to
->>> disable writes to the block device while the device is in use.  This
->>> allows simulating crashes at arbitrary points in the code or test
->>> scripts.  It was based on Andrew Morton's test harness that he used
->>> for ext3 recovery testing back when it was being ported to the 2.4
->>> kernel.
->>>
->>> http://git.whamcloud.com/?p=fs/lustre-release.git;a=blob_plain;f=lustre/kernel_patches/patches/dev_read_only-2.6.32-rhel6.patch;hb=HEAD
->>>
->>>   The best part of this patch is that it works with any block device,
->>> can simulate power failure w/o any need for automated power control,
->>> and once the block device is unused (all buffers and references
->>> dropped) it can be re-activated safely.
->> It won't simulate a lost write cache though, will it?
-> That's a very good question, I would like to know if there is any way at
-> all to force the device to drop the write cache. That would really help
-> the power failure testing filesystems.
->
-> -Lukas
->
+https://bugzilla.kernel.org/show_bug.cgi?id=32442
 
-Write cache behavior can be really mysterious. Small writes (say single 4K 
-blocks) might stay in cache and not get written for a very long time while 
-large, streaming writes might bypass the write cache entirely.
+           Summary: Higher Priority CPU-bound Processes Cause Filesystem
+                    Lockup
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.37.3
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: high
+          Priority: P1
+         Component: ext3
+        AssignedTo: fs_ext3@kernel-bugs.osdl.org
+        ReportedBy: dmoldenhauer@sxpanalytics.com
+        Regression: No
 
-It would be neat to be able to simulate these odd things for failure testing :)
 
-Ric
+Created an attachment (id=52972)
+ --> (https://bugzilla.kernel.org/attachment.cgi?id=52972)
+test program (tar gz)
 
+There seems to be a problem somewhere between scheduling and filesystems where
+a CPU-bound compute process (no file I/O) with higher-than-normal priority
+(such as SCHED_RR 1 (-2)) that is running on cpuX will cause a default priority
+process that is running on cpuY to block indefinitely on file access (such as
+write(fd,...)).  Not only does this process block on file access, but every
+process in the system that tries to access any file on the same volume will
+also be blocked indefinitely until the higher-than-normal-priority process is
+either killed or is temporarily put to sleep. Access to files on other volumes
+remains unaffected (works fine while the volume in question is "locked up").
+
+It seems that if the higher-than-normal-priority process is changed to run at
+default priority, the system does not lock up. The odd part about this all is
+that this higher-than-normal-priority process doesn't do any file I/O at all,
+yet changing its priority can cause a lockup of the entire filesystem. My guess
+is that there is some filesystem-specific work that has to be done in the
+background, and that it's attempting to do so at normal priority, and never
+getting a chance to since the user process would preempt it.
+
+We first noticed the behavior with production software, and I have been able to
+create a test utility that reproduces the lockup. The source for the test
+program is attached (we've ran it on recent Intel and AMD-based servers with 8
+to 48 cores - with similar lockups on all).
+
+The test utility fork()'s into two processes, one process runs at minimum
+SCHED_FIFO priority and just does "math", while the other process runs at
+default priority and attempts file write()'s. Each process is bound to a unique
+CPU.
+
+Problem was first noticed on 2.6.29.6, has happened on 2.6.33.7, and is very
+reproducible on 2.6.37.3 (vanilla).
+
+(the attached test is nice enough to sleep every 10 seconds (for 2 seconds) to
+give you a chance to kill it)
+
+I can provide additional information if needed.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
