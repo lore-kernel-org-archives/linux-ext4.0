@@ -1,144 +1,101 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
- to a deadlock
-Date: Thu, 31 Mar 2011 18:53:02 -0500
-Message-ID: <4D9513DE.4060003@redhat.com>
-References: <20110207205325.FB6A.61FB500B@jp.fujitsu.com> <20110215160630.GH17313@quack.suse.cz> <20110215170352.GE4255@thunk.org> <20110215172954.GK17313@quack.suse.cz> <20110216081746.54d146d1.toshi.okajima@jp.fujitsu.com> <20110216145627.GB5592@quack.suse.cz> <4D5C9B1B.2050304@jp.fujitsu.com> <20110217104552.GD4947@quack.suse.cz> <20110328170628.ffe314fb.toshi.okajima@jp.fujitsu.com> <20110331234050.GD2904@dastard>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [Lsf-pc] [LSF/FS TOPIC] Ext4 snapshots status update
+Date: Fri, 01 Apr 2011 02:10:09 +0200
+Message-ID: <1301616609.26686.25.camel@lade.trondhjem.org>
+References: <AANLkTink6o249JivXiETT6JnANNcikNqGGfr8+McDQsM@mail.gmail.com>
+	 <20110204002043.GA15658@noexit>
+	 <AANLkTimuR-oOprBR7Xkehx01ojrdxYOmgqdnX7wNbpt6@mail.gmail.com>
+	 <20110330003429.GA32669@noexit>
+	 <AANLkTi=vReDmq22=kKieJp9uaeAVC-VXj8VjHWQfXaDp@mail.gmail.com>
+	 <1301485711-sup-3080@think>
+	 <AANLkTim+7hUX0rsusDTvBNGKOU6bwA=8AGT9EM1+z7hu@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
-	Jan Kara <jack@suse.cz>, "Ted Ts'o" <tytso@mit.edu>,
-	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+Cc: Chris Mason <chris.mason@oracle.com>,
+	lsf-pc <lsf-pc@lists.linuxfoundation.org>,
+	Joel Becker <jlbec@evilplan.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Josef Bacik <josef@redhat.com>
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:62165 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:33171 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751664Ab1CaXxO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 31 Mar 2011 19:53:14 -0400
-In-Reply-To: <20110331234050.GD2904@dastard>
+	id S1759531Ab1DAAK0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Mar 2011 20:10:26 -0400
+In-Reply-To: <AANLkTim+7hUX0rsusDTvBNGKOU6bwA=8AGT9EM1+z7hu@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 3/31/11 6:40 PM, Dave Chinner wrote:
-> On Mon, Mar 28, 2011 at 05:06:28PM +0900, Toshiyuki Okajima wrote:
->> Hi.
->>
->> On Thu, 17 Feb 2011 11:45:52 +0100
->> Jan Kara <jack@suse.cz> wrote:
->>> On Thu 17-02-11 12:50:51, Toshiyuki Okajima wrote:
->>>> (2011/02/16 23:56), Jan Kara wrote:
->>>>> On Wed 16-02-11 08:17:46, Toshiyuki Okajima wrote:
->>>>>> On Tue, 15 Feb 2011 18:29:54 +0100
->>>>>> Jan Kara<jack@suse.cz>  wrote:
->>>>>>> On Tue 15-02-11 12:03:52, Ted Ts'o wrote:
->>>>>>>> On Tue, Feb 15, 2011 at 05:06:30PM +0100, Jan Kara wrote:
->>>>>>>>> Thanks for detailed analysis. Indeed this is a bug. Whenever we do IO
->>>>>>>>> under s_umount semaphore, we are prone to deadlock like the one you
->>>>>>>>> describe above.
->>>>>>>>
->>>>>>>> One of the fundamental problems here is that the freeze and thaw
->>>>>>>> routines are using down_write(&sb->s_umount) for two purposes.  The
->>>>>>>> first is to prevent the resume/thaw from racing with a umount (which
->>>>>>>> it could do just as well by taking a read lock), but the second is to
->>>>>>>> prevent the resume/thaw code from racing with itself.  That's the core
->>>>>>>> fundamental problem here.
->>>>>>>>
->>>>>>>> So I think we can solve this by introduce a new mutex, s_freeze, and
->>>>>>>> having the the resume/thaw first take the s_freeze mutex and then
->>>>>>>> second take a read lock on the s_umount.
->>>>>>>   Sadly this does not quite work because even down_read(&sb->s_umount)
->>>>>>> in thaw_super() can block if there is another process that tries to acquire
->>>>>>> s_umount for writing - a situation like:
->>>>>>>   TASK 1 (e.g. flusher)		TASK 2	(e.g. remount)		TASK 3 (unfreeze)
->>>>>>> down_read(&sb->s_umount)
->>>>>>>   block on s_frozen
->>>>>>> 				down_write(&sb->s_umount)
->>>>>>> 				  -blocked
->>>>>>> 								down_read(&sb->s_umount)
->>>>>>> 								  -blocked
->>>>>>> behind the write access...
->>>>>>>
->>>>>>> The only working solution I see is to check for frozen filesystem before
->>>>>>> taking s_umount semaphore which seems rather ugly (but might be bearable if
->>>>>>> we did so in some well described wrapper).
->>>>>> I created the patch that you imagine yesterday.
->>>>>>
->>>>>> I got a reproducer from Mizuma-san yesterday, and then I executed it on the kernel
->>>>>> without a fixed patch. After an hour, I confirmed that this deadlock happened.
->>>>>>
->>>>>> However, on the kernel with a fixed patch, this deadlock doesn't still happen
->>>>>> after 12 hours passed.
->>>>>>
->>>>>> The patch for linux-2.6.38-rc4 is as follows:
->>>>>> ---
->>>>>>  fs/fs-writeback.c |    2 +-
->>>>>>  1 files changed, 1 insertions(+), 1 deletions(-)
->>>>>>
->>>>>> diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
->>>>>> index 59c6e49..1c9a05e 100644
->>>>>> --- a/fs/fs-writeback.c
->>>>>> +++ b/fs/fs-writeback.c
->>>>>> @@ -456,7 +456,7 @@ static bool pin_sb_for_writeback(struct super_block *sb)
->>>>>>         spin_unlock(&sb_lock);
->>>>>>
->>>>>>         if (down_read_trylock(&sb->s_umount)) {
->>>>>> -               if (sb->s_root)
->>>>>> +               if (sb->s_frozen == SB_UNFROZEN&&  sb->s_root)
->>>>>>                         return true;
->>>>>>                 up_read(&sb->s_umount);
->>>>
->>>>>   So this is something along the lines I thought but it actually won't work
->>>>> for example if sync(1) is run while the filesystem is frozen (that takes
->>>>> s_umount semaphore in a different place). And generally, I'm not convinced
->>>>> there are not other places that try to do IO while holding s_umount
->>>>> semaphore...
->>>> OK. I understand.
->>>>
->>>> This code only fixes the case for the following path:
->>>> writeback_inodes_wb
->>>> -> ext4_da_writepages
->>>>    -> ext4_journal_start_sb
->>>>       -> vfs_check_frozen
->>>> But, the code doesn't fix the other cases.
->>>>
->>>> We must modify the local filesystem part in order to fix all cases...?
->>>   Yes, possibly. But most importantly we should first find clear locking
->>> rules for frozen filesystem that avoid deadlocks like the one above. And
->>> the freezing / unfreezing code might become subtle for that reason, that's
->>> fine, but it would be really good to avoid any complicated things for the
->>> code in the rest of the VFS / filesystems.
->> I have deeply continued to examined the root cause of this problem, then 
->> I found it.
->>
->> It is that we can write a memory which is mmaped to a file. Then the memory 
->> becomes "DIRTY" so then the flusher thread (ex. wb_do_writeback) tries to
->> "writeback" the memory. 
+On Wed, 2011-03-30 at 14:08 +0200, Amir Goldstein wrote:
+> On Wed, Mar 30, 2011 at 1:50 PM, Chris Mason <chris.mason@oracle.com> wrote:
+> > Excerpts from Amir Goldstein's message of 2011-03-30 00:16:45 -0400:
+> >> On Wed, Mar 30, 2011 at 2:34 AM, Joel Becker <jlbec@evilplan.org> wrote:
+> >> > On Wed, Mar 23, 2011 at 10:19:38PM +0200, Amir Goldstein wrote:
+> >> >> On Fri, Feb 4, 2011 at 2:20 AM, Joel Becker <jlbec@evilplan.org> wrote:
+> >> >> > On Fri, Feb 04, 2011 at 12:33:39AM +0200, Amir Goldstein wrote:
+> >> >> >        I've already got a design for a front-end snapshot program that
+> >> >> > implements a policy on top this generic behavior.  This design would
+> >> >> > cover both first-class and hidden style snapshots, because it assume
+> >> >> > snapshots are in a distinct namespace.  I haven't gotten around to
+> >> >> > implementing it yet, but btrfs and other snapshottable filesystems were
+> >> >> > part of the design goal.
+> >> >>
+> >> >> Any chance of getting a copy of that design of yours, to get a head start
+> >> >> for LSF?
+> >> >
+> >> >        Yeah, I owe it to you.  It wasn't a written-down thing, it was a
+> >> > hammered-out-in-our-heads thing among some ocfs2 developers.  I'm going
+> >> > to braindump here to get us going.  First, I'll speak to your points.
+> >> >
+> >> >> Here are some other generic snapshot related topics we may want to discuss:
+> >> >>
+> >> >> 1. Collaborating the use of inode flags COW_FL, NOCOW_FL, suggested by Chris.
+> >> >
+> >> >        I'm unsure where these fit, perhaps because I missed the
+> >> > discussion between Chris and you.  ocfs2 has the inode flag
+> >> > OCFS2_REFCOUNTED_FL to signify a refcount tree is attached to the inode.
+> >> > This is ocfs2's structure for maintaining extent reference counts.  Is
+> >> > your COW_FL the same?  Or is it a permission flag?  NOCOW_FL sounds
+> >> > like: "Set this flag on the inode and it will prevent CoW."
+> >>
+> >> I don't have a use for COW_FL, since my snapshots are volume level snapshots.
+> >> I intend to use NOCOW_FL to mark an inode as an "island" of NOCOW
+> >> blocks in the volume.
+> >> Maybe Chris or Josef can elaborate of the flags intended use in btrfs.
+> >
+> > NOWCOW_FL in btrfs means to directly overwrite blocks (and not do crcs)
+> > unless the block has another reference.  If there is another reference,
+> > we COW once to honor the snapshot and then continue in NOCOW mode.
+> >
+> > I'm kind of worried about your NOCOW island idea, maybe we can talk more
+> > about that next week.  It seems like it will lead to a lot of admin
+> > surprises.
+> >
 > 
-> Then surely the issue is that .page_mkwrite is not checking that the
-> filesystem is frozen before allowing the page fault to continue and
-> dirty the page?
+> Yes, that's something to talk about.
+> My desire for NOCOW comes from lack of sub volume granularity
+> in ext4 snapshots.
 > 
->> I think the best approach to fix this problem is to let users not to write
->> memory which is mapped to a certain file while the filesystem is freezing. 
->> However, it is very difficult to control users not to write memory which has 
->> been already mapped to the file.
+> My NOCOW design states that NOCOW flag cannot be toggled on a regular file.
+> like a snapshot file, a NOCOW file must be born and die NOCOW, to avoid
+> admin surprises. NOCOW directories (which ARE COWed) are were NOCOW
+> files are born.
 > 
-> If you don't allow the page to be dirtied in the fist place, then
-> nothing needs to be done to the writeback path because there is
-> nothing dirty for it to write back.
+> Using this scheme, an admin can exclude->include->exclude directory sub trees
+> from snapshots.
 
-I floated 
+OK. I'd like to schedule a general talk about the state of snapshots and
+future improvements. I'm assuming you would like to lead the debate.
 
-[PATCH, RFC] check for frozen filesystems in the mmap path
+Cheers
+  Trond
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-a long time ago, but it went nowhere; maybe time to revive that approach.
-
--Eric
-
-> Cheers,
-> 
-> Dave.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
