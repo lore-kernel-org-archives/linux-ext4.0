@@ -1,36 +1,53 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 32482] "htree_dirblock_to_tree:586: inode 260099: block
- 1056737" message after every boot
-Date: Sat, 2 Apr 2011 08:09:08 GMT
-Message-ID: <201104020809.p32898qx029144@demeter2.kernel.org>
-References: <bug-32482-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+From: Zhu Yanhai <zhu.yanhai@gmail.com>
+Subject: [PATCH] jbd2: Move bdget out of critical section
+Date: Sat,  2 Apr 2011 17:01:16 +0800
+Message-ID: <1301734876-22207-1-git-send-email-gaoyang.zyh@taobao.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
+	Zhu Yanhai <gaoyang.zyh@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:50203 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751895Ab1DBIJI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Apr 2011 04:09:08 -0400
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p32898qE029145
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sat, 2 Apr 2011 08:09:08 GMT
-In-Reply-To: <bug-32482-13602@https.bugzilla.kernel.org/>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:35338 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755317Ab1DBI6j (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Apr 2011 04:58:39 -0400
+Received: by iyb14 with SMTP id 14so4311810iyb.19
+        for <linux-ext4@vger.kernel.org>; Sat, 02 Apr 2011 01:58:39 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=32482
+bdget() should not be called when we hold spinlocks since
+it might sleep.
 
+Signed-off-by: Zhu Yanhai <gaoyang.zyh@taobao.com>
+---
+ fs/jbd2/journal.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-
-
-
---- Comment #7 from Tom <egokillsall@gmail.com>  2011-04-02 08:09:06 ---
-Oh well, just got a SIGSEGV from aptitude.. Reboot and everything is fine
-again. Something can be incompatible with something in this laptop I feel..
-
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 90407b8..33dd3ef 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -2413,10 +2413,12 @@ const char *jbd2_dev_to_name(dev_t device)
+ 	new_dev = kmalloc(sizeof(struct devname_cache), GFP_KERNEL);
+ 	if (!new_dev)
+ 		return "NODEV-ALLOCFAILURE"; /* Something non-NULL */
++	bd = bdget(device);
+ 	spin_lock(&devname_cache_lock);
+ 	if (devcache[i]) {
+ 		if (devcache[i]->device == device) {
+ 			kfree(new_dev);
++			bdput(bd);
+ 			ret = devcache[i]->devname;
+ 			spin_unlock(&devname_cache_lock);
+ 			return ret;
+@@ -2425,7 +2427,6 @@ const char *jbd2_dev_to_name(dev_t device)
+ 	}
+ 	devcache[i] = new_dev;
+ 	devcache[i]->device = device;
+-	bd = bdget(device);
+ 	if (bd) {
+ 		bdevname(bd, devcache[i]->devname);
+ 		bdput(bd);
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.7.4
+
