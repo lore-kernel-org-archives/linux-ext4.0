@@ -1,49 +1,50 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: breaking ext4 to test recovery
-Date: Fri, 1 Apr 2011 16:15:34 -1000
-Message-ID: <06ABAED6-3569-4A30-816B-6A7A53A652D1@dilger.ca>
-References: <25B374CC0D9DFB4698BB331F82CD0CF20D61B8@wdscexbe08.sc.wdc.com> <4D91E39A.3000800@redhat.com> <6617927D-7C9C-4D02-97FD-C9CC75609448@dilger.ca> <4D9503C0.8080804@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Daniel Taylor <Daniel.Taylor@wdc.com>,
-	"linux-ext4@vger.kernel.org development" <linux-ext4@vger.kernel.org>,
-	Johann Lombardi <johann@whamcloud.com>
-To: Eric Sandeen <sandeen@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 32482] "htree_dirblock_to_tree:586: inode 260099: block
+ 1056737" message after every boot
+Date: Sat, 2 Apr 2011 07:58:10 GMT
+Message-ID: <201104020758.p327wAMh010746@demeter1.kernel.org>
+References: <bug-32482-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:37071 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752091Ab1DBCPm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Apr 2011 22:15:42 -0400
-In-Reply-To: <4D9503C0.8080804@redhat.com>
+Received: from demeter1.kernel.org ([140.211.167.39]:44939 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753031Ab1DBH6L (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Apr 2011 03:58:11 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p327wAf7010748
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Sat, 2 Apr 2011 07:58:10 GMT
+In-Reply-To: <bug-32482-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-03-31, at 12:44 PM, Eric Sandeen wrote:
-> On 3/31/11 5:21 PM, Andreas Dilger wrote:
->> We have a kernel patch "dev_read_only" that we use with Lustre to
->> disable writes to the block device while the device is in use.  This
->> allows simulating crashes at arbitrary points in the code or test
->> scripts.  It was based on Andrew Morton's test harness that he used
->> for ext3 recovery testing back when it was being ported to the 2.4
->> kernel.
->> 
->> http://git.whamcloud.com/?p=fs/lustre-release.git;a=blob_plain;f=lustre/kernel_patches/patches/dev_read_only-2.6.32-rhel6.patch;hb=HEAD
->> 
->> The best part of this patch is that it works with any block device,
->> can simulate power failure w/o any need for automated power control,
->> and once the block device is unused (all buffers and references
->> dropped) it can be re-activated safely.
-> 
-> It won't simulate a lost write cache though, will it?
-
-I'm not sure what you mean.  Since the patch works at the block device layer (in __generic_make_request()) it will drop the write at the time it is submitted to the device, not when it is put into the cache.
-
-That said, I notice in the linux git repo a line that is in the same place as our patch "if (should_fail_request(bio))" which looks like it might have similar functionality when CONFIG_FAIL_MAKE_REQUEST is enabled.  I'm not sure what kernel version it was added in.  It looks like it is possible to fail the IOs some fraction of the time, or permanently, by writing something into /sys/block/{dev}/fail.
-
-Cheers, Andreas
+https://bugzilla.kernel.org/show_bug.cgi?id=32482
 
 
 
 
 
+--- Comment #6 from Tom <egokillsall@gmail.com>  2011-04-02 07:58:08 ---
+Thanks for your input Eric; yes, fsck is happy all the time (also with -fcc
+flags). Find -xdev -inum 260099 shows nothing either, but in the past there was
+possibly something there, so it makes sense regarding 'past stuff reminder'.
+Anyway it would be *a bit more helpful* if it would tell us something about
+it's *cool* behaviour, or at least some hint about some action I'd be able to
+pop to clean things up.
+De ja vu in the aspect of SMART, because n-2 of my n drives suffer from lovely
+errors like 'uncorrectable' (because of bad cabling what got solved of course)
+and 'write_dma' (right after I pulled the laptop out of the factory sealed box)
+and such.
+However this drive is one out of the ones without any error, and the long
+self-test ran on it shows zero faults.
+Memtest also passes all the time. At night.
+
+Anything I can do to 'reset' this thing, or maybe some other recommendation I
+should give a go?
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
