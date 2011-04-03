@@ -1,34 +1,35 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: breaking ext4 to test recovery
-Date: Sat, 2 Apr 2011 08:50:38 -1000
-Message-ID: <A5567907-0FC9-4552-9282-F7B4B7E1113D@whamcloud.com>
-References: <25B374CC0D9DFB4698BB331F82CD0CF20D61B8@wdscexbe08.sc.wdc.com> <4D91E39A.3000800@redhat.com> <6617927D-7C9C-4D02-97FD-C9CC75609448@dilger.ca> <4D9503C0.8080804@redhat.com> <06ABAED6-3569-4A30-816B-6A7A53A652D1@dilger.ca> <4D9718BB.2070005@gmail.com>
-Mime-Version: 1.0 (iPhone Mail 8F190)
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: Bug#615998: linux-image-2.6.32-5-xen-amd64: Repeatable "kernel
+ BUG 	at fs/jbd2/commit.c:534" from Postfix on ext4
+Date: Sat, 2 Apr 2011 22:02:27 -0400
+Message-ID: <20110403020227.GA19963@thunk.org>
+References: <20110301165239.3310.43806.reportbug@support.exmeritus.com>
+ <BE4EC1DF-4DFC-4B94-923D-0197B16BD7B4@boeing.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Daniel Taylor <Daniel.Taylor@wdc.com>,
-	"linux-ext4@vger.kernel.org development" <linux-ext4@vger.kernel.org>,
-	Johann Lombardi <johann@whamcloud.com>
-To: Ric Wheeler <ricwheeler@gmail.com>
+Cc: "615998@bugs.debian.org" <615998@bugs.debian.org>,
+	"Livingston, John A" <john.a.livingston@boeing.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Sachin Sant <sachinp@in.ibm.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: "Moffett, Kyle D" <Kyle.D.Moffett@boeing.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pw0-f46.google.com ([209.85.160.46]:51980 "EHLO
-	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757066Ab1DCAqz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Apr 2011 20:46:55 -0400
-Received: by pwi15 with SMTP id 15so974323pwi.19
-        for <linux-ext4@vger.kernel.org>; Sat, 02 Apr 2011 17:46:54 -0700 (PDT)
-In-Reply-To: <4D9718BB.2070005@gmail.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:50513 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753610Ab1DCCCg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 2 Apr 2011 22:02:36 -0400
+Content-Disposition: inline
+In-Reply-To: <BE4EC1DF-4DFC-4B94-923D-0197B16BD7B4@boeing.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-04-02, at 2:38 AM, Ric Wheeler <ricwheeler@gmail.com> wrote:
-> The device mapper developers are looking at having a device mapper target that can be used as a hot block cache - say given a S-ATA disk and a PCI-e SSD, you would store the hot blocks on the PCI-e card.
+Hi Kyle,
 
-There was a patch posted around December called bcache which did this same thing. I don't recall if it was a DM  target or not. 
+Sorry for not following up sooner.  Are you still able to reproduce
+this failure?  If I set up an identical Debian stable instance on
+EC-2, am I likely to reproduce it myself?  Do you have a package list
+or EC2 base image I can use as a starting point?
 
-> What might be a great simulation would be to have a way to destroy that cache, assuming we could get a cache policy that simulates some reasonable, disk like caching policy :)
+Thanks,
 
-The one difficulty with DM targets is that they cannot be used with non DM devices. That was one of the advantages of EVMS (if anyone remembers that) - it could work with any existing block device. 
-
-Cheers, Andreas
+						- Ted
