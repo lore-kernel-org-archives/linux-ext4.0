@@ -1,44 +1,112 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: bug#8411: due to missing sync even on 2.6.39, cp fails to copy an odd file
-Date: Sun, 3 Apr 2011 06:46:09 -0400
-Message-ID: <4F38B379-26DC-4E8D-AD8C-2C0E5D3D4E86@mit.edu>
-References: <87fwq0gay0.fsf@rho.meyering.net> <4D9724AC.2070009@draigBrady.com> <8739m0g3u7.fsf@rho.meyering.net> <87d3l4edb1.fsf@rho.meyering.net> <20110402230005.GL21075@thunk.org> <4D9847F5.8030804@draigBrady.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=iso-8859-1
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: Re: Is this a bug?
+Date: Sun, 3 Apr 2011 22:51:39 +0800
+Message-ID: <BANLkTimpp7YeAWh-Eq8vKVAXAv=qKQgWew@mail.gmail.com>
+References: <BANLkTinPYj7_qpKcZgp3Oya1LXzcbfBczQ@mail.gmail.com>
+	<BANLkTimc3LC19vzjuvL4QyXcjrGAQgnqJA@mail.gmail.com>
+	<BANLkTimEAtVeHge52Sj9F6=mh6jo2KB5hQ@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jim Meyering <jim@meyering.net>, 8411@debbugs.gnu.org,
-	linux-ext4@vger.kernel.org
-To: =?iso-8859-1?Q?P=E1draig_Brady?= <P@draigBrady.com>
+Cc: Amir Goldstein <amir73il@gmail.com>, linux-ext4@vger.kernel.org
+To: Ding Dinghua <dingdinghua85@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DMZ-MAILSEC-SCANNER-1.MIT.EDU ([18.9.25.12]:64351 "EHLO
-	dmz-mailsec-scanner-1.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750961Ab1DCKqS convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 3 Apr 2011 06:46:18 -0400
-In-Reply-To: <4D9847F5.8030804@draigBrady.com>
+Received: from mail-pw0-f46.google.com ([209.85.160.46]:57399 "EHLO
+	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751048Ab1DCOvk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 3 Apr 2011 10:51:40 -0400
+Received: by pwi15 with SMTP id 15so1079543pwi.19
+        for <linux-ext4@vger.kernel.org>; Sun, 03 Apr 2011 07:51:39 -0700 (PDT)
+In-Reply-To: <BANLkTimEAtVeHge52Sj9F6=mh6jo2KB5hQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Sun, Apr 3, 2011 at 5:24 PM, Ding Dinghua <dingdinghua85@gmail.com> =
+wrote:
+> 2011/4/3 Amir Goldstein <amir73il@gmail.com>:
+>> On Sat, Apr 2, 2011 at 1:05 AM, Ding Dinghua <dingdinghua85@gmail.co=
+m> wrote:
+>>> When truncate files and free blocks, the following codes make me pu=
+zzled:
+>>>
+>>> void ext4_free_blocks(handle_t *handle, struct inode *inode,
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0struct buffer_head *bh, =
+ext4_fsblk_t block,
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0unsigned long count, int=
+ flags)
+>>> {
+>>> =A0 =A0 =A0 =A0if (flags & EXT4_FREE_BLOCKS_FORGET) {
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0struct buffer_head *tbh =3D bh;
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0int i;
+>>>
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0BUG_ON(bh && (count > 1));
+>>>
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0for (i =3D 0; i < count; i++) {
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (!bh)
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0tbh =
+=3D sb_find_get_block(inode->i_sb,
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0block + i);
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (unlikely(!tbh))
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0cont=
+inue;
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext4_forget(handle, =
+flags & EXT4_FREE_BLOCKS_METADATA,
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0inode, tbh, block + i);
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+>>> =A0 =A0 =A0 =A0}
+>>> }
+>>>
+>>> I notice that ext4_forget mainly do two things:
+>>> =A0 =A0a) =A0call jbd2_journa_forget to forget the modification of =
+some buffer head
+>>> =A0 =A0b) =A0or deal with the revoke issue
+>>> however, if we are freeing data blocks && ext4_forget get into bran=
+ch a),
+>>
+>> Simple. we don't pass the FORGET flag when freeing data blocks,
+>> only when freeing metadata blocks, which may have been journalled
+>> already.
+>> I am not sure about the journal=3Ddata case through.
+> Thanks for reply. The reason for me to dip into this issue is journal=
+=3Ddata mode.
+I think data processing in journal=3Ddata mode is similar to metadata
+processing in joutnal=3Dordered mode.
+>>
+>>> tbh is not the buffer_head which journal took care of in ext4_write=
+_begin,
+>>> so i'm puzzled with this.
+>>>
+>>> Could anyone explain it to me? Thanks.
+>>>
+>>> --
+>>> Ding Dinghua
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-ext=
+4" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at =A0http://vger.kernel.org/majordomo-info.htm=
+l
+>>>
+>>
+>
+>
+>
+> --
+> Ding Dinghua
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
 
-On Apr 3, 2011, at 6:12 AM, P=E1draig Brady wrote:
-
-> So this fix is not in 2.6.38?
-> It was committed before 2.6.38-rc6 was released,
-> and I would have thought it appropriate for 2.6.38 :(
-> Anyway I guess that we now have to assume that there
-> can be 2.6.38 kernels in the wild with this issue,
-> even if the stable branch does get the fix soon.
 
 
-Yeah, the patch was complicated enough that I was concerned about pushi=
-ng it that late in the 2.6.38 development cycle.   When I was told that=
- this feature was in a pre-release shellutils, I made the call not to t=
-ry to rush things....  We can get it into a 2.6.38 stable release fairl=
-y quickly.
-
--- Ted
-
-
+--=20
+Best Wishes
+Yongqiang Yang
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
