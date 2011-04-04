@@ -1,41 +1,50 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: kernel BUG at fs/jbd2/transaction.c:1086!
-Date: Mon, 4 Apr 2011 13:25:16 -0400
-Message-ID: <20110404172516.GA2832@thunk.org>
-References: <alpine.LFD.2.00.1103301651240.17917@dhcp-27-109.brq.redhat.com>
- <20110331164319.GG21524@quack.suse.cz>
- <alpine.LFD.2.00.1103312255270.3020@dhcp-27-109.brq.redhat.com>
- <20110331222306.GI21524@quack.suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] e2fsprogs: don't set stripe/stride to 1 block in mkfs
+Date: Mon, 04 Apr 2011 15:11:52 -0400
+Message-ID: <4D9A17F8.4000406@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	Eric Sandeen <esandeen@redhat.com>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Zeev Tarantov <zeev.tarantov@gmail.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:34320 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753673Ab1DDRZT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 4 Apr 2011 13:25:19 -0400
-Content-Disposition: inline
-In-Reply-To: <20110331222306.GI21524@quack.suse.cz>
+Received: from mx1.redhat.com ([209.132.183.28]:47812 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754682Ab1DDTLy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 4 Apr 2011 15:11:54 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Apr 01, 2011 at 12:23:06AM +0200, Jan Kara wrote:
-> > Ted, could you pick this up ASAP ? Also I think this needs to go into
-> > stable as well.
->   I'll merge it from my tree next week, OK? I don't think there's so much
-> hurry as the bug has been there for years and you're the first one to
-> report it :).
+Block devices may set minimum or optimal IO hints equal to
+blocksize; in this case there is really nothing for ext4
+to do with this information (i.e. search for a block-aligned
+allocation?) so don't set fs geometry with single-block
+values.
 
-Agreed, your first patch was quota specific and I'd much rather have
-it go through the quota tree.
+Zeev also reported that with a block-sized stripe, the
+ext4 allocator spends time spinning in ext4_mb_scan_aligned(),
+oddly enough.
 
-> BTW, I've also created the patch below which can slightly improve
-> performance of quotas on ext4. The modification of the inode was
-> unnecessary as well... Ted, can you merge this patch? It's independent from
-> the previous one.
+Reported-by: Zeev Tarantov <zeev.tarantov@gmail.com>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-Yup, I've added to the ext4 patch queue.
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 9798b88..74b838c 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -1135,8 +1135,11 @@ static int get_device_geometry(const char *file,
+ 	if ((opt_io == 0) && (psector_size > blocksize))
+ 		opt_io = psector_size;
+ 
+-	fs_param->s_raid_stride = min_io / blocksize;
+-	fs_param->s_raid_stripe_width = opt_io / blocksize;
++	/* setting stripe/stride to blocksize is pointless */
++	if (min_io > blocksize)
++		fs_param->s_raid_stride = min_io / blocksize;
++	if (opt_io > blocksize)
++		fs_param->s_raid_stripe_width = opt_io / blocksize;
+ 
+ 	rc = blkid_topology_get_alignment_offset(tp);
+ out:
 
-						- Ted
