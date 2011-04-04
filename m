@@ -1,52 +1,37 @@
-From: "Moffett, Kyle D" <Kyle.D.Moffett@boeing.com>
-Subject: Re: Bug#615998: linux-image-2.6.32-5-xen-amd64: Repeatable 	"kernel
- BUG 	at fs/jbd2/commit.c:534" from Postfix on ext4
-Date: Mon, 4 Apr 2011 15:51:56 -0500
-Message-ID: <10D1C3AA-79A9-4766-BA4D-44446DE82B93@boeing.com>
-References: <20110301165239.3310.43806.reportbug@support.exmeritus.com><BE4EC1DF-4DFC-4B94-923D-0197B16BD7B4@boeing.com>
- <20110403020227.GA19963@thunk.org>
- <15E8241A-37A0-4438-849E-A157A376C7F1@boeing.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Fix a double free in ext4_register_li_request.
+Date: Mon, 4 Apr 2011 17:08:32 -0400
+Message-ID: <20110404210832.GC2832@thunk.org>
+References: <1301297857-3839-1-git-send-email-tm@tao.ma>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: "615998@bugs.debian.org" <615998@bugs.debian.org>,
-	"Livingston, John A" <john.a.livingston@boeing.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Sachin Sant <sachinp@in.ibm.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, stable@kernel.org
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from slb-smtpout-01.boeing.com ([130.76.64.48]:34620 "EHLO
-	slb-smtpout-01.boeing.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755651Ab1DDUw4 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Apr 2011 16:52:56 -0400
-In-Reply-To: <15E8241A-37A0-4438-849E-A157A376C7F1@boeing.com>
-Content-Language: en-US
+Received: from li9-11.members.linode.com ([67.18.176.11]:50198 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755428Ab1DDVIf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 4 Apr 2011 17:08:35 -0400
+Content-Disposition: inline
+In-Reply-To: <1301297857-3839-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Apr 04, 2011, at 10:24, Moffett, Kyle D wrote:
-> On Apr 02, 2011, at 22:02, Ted Ts'o wrote:
->> Sorry for not following up sooner.  Are you still able to reproduce
->> this failure?  If I set up an identical Debian stable instance on
->> EC-2, am I likely to reproduce it myself?  Do you have a package list
->> or EC2 base image I can use as a starting point?
+On Mon, Mar 28, 2011 at 03:37:37PM +0800, Tao Ma wrote:
+> From: Tao Ma <boyu.mt@taobao.com>
 > 
-> I'll need to check on this.
+> In ext4_register_li_request, we malloc a ext4_li_request and
+> inserts it into ext4_li_info->li_request_list. In case of any
+> error later, we free it in the end. But if we have some error
+> in ext4_run_lazyinit_thread, the whole li_request_list will be
+> dropped and freed in it. So we will double free this ext4_li_request.
 > 
-> Unfortunately it was not a trivial process to install Debian "squeeze" onto an EC2 instance; it took a couple ugly Perl scripts, a patched Debian-Installer, and several manual post-install-but-before-reboot steps (like fixing up GRUB 0.99).  One of these days I may get time to update all that to the official "wheezy" release and submit bug reports.
+> This patch just sets elr to NULL after it is inserted to the list
+> so that the latter kfree won't double free it.
 > 
-> I have an exact image of the failing instance, but it has proprietary data on it and if I stand up an old copy I need to be careful not to actually let it send all the queued emails :-D.
-> 
-> It's probably easier for me to halt email delivery and clone the working instance and try to reproduce from there.  If I recall, the (easily undone) workaround was to remount from "data=journal" to "data=ordered" on a couple filesystems.  It may take a day or two to get this done, though.
-> 
-> If it comes down to it I also have a base image (from "squeeze" as of 9 months ago) that could be made public after updating with new SSH keys.
+> Cc: stable@kernel.org
+> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 
-Bah...
+Thanks, I've added this to the ext4 tree for 2.6.39-rcX.
 
-I went back to the old image that was crashing every boot before and I can't find any way to make it crash at all now...
-
-If I manage to reproduce it again later I'll send you another email.
-
-Cheers,
-Kyle Moffett
+	     	   	       	    - Ted
