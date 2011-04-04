@@ -1,78 +1,52 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4:Fix credits computing for indirect mapped files.
-Date: Mon, 4 Apr 2011 15:39:35 -0400
-Message-ID: <20110404193935.GB2832@thunk.org>
-References: <1301058605-29978-1-git-send-email-xiaoqiangnk@gmail.com>
+From: "Moffett, Kyle D" <Kyle.D.Moffett@boeing.com>
+Subject: Re: Bug#615998: linux-image-2.6.32-5-xen-amd64: Repeatable 	"kernel
+ BUG 	at fs/jbd2/commit.c:534" from Postfix on ext4
+Date: Mon, 4 Apr 2011 15:51:56 -0500
+Message-ID: <10D1C3AA-79A9-4766-BA4D-44446DE82B93@boeing.com>
+References: <20110301165239.3310.43806.reportbug@support.exmeritus.com><BE4EC1DF-4DFC-4B94-923D-0197B16BD7B4@boeing.com>
+ <20110403020227.GA19963@thunk.org>
+ <15E8241A-37A0-4438-849E-A157A376C7F1@boeing.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+Cc: "615998@bugs.debian.org" <615998@bugs.debian.org>,
+	"Livingston, John A" <john.a.livingston@boeing.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Sachin Sant <sachinp@in.ibm.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:47680 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755198Ab1DDTji (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 4 Apr 2011 15:39:38 -0400
-Content-Disposition: inline
-In-Reply-To: <1301058605-29978-1-git-send-email-xiaoqiangnk@gmail.com>
+Received: from slb-smtpout-01.boeing.com ([130.76.64.48]:34620 "EHLO
+	slb-smtpout-01.boeing.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755651Ab1DDUw4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Apr 2011 16:52:56 -0400
+In-Reply-To: <15E8241A-37A0-4438-849E-A157A376C7F1@boeing.com>
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Mar 25, 2011 at 09:10:05PM +0800, Yongqiang Yang wrote:
-> Either the first block or the last one could be not aligned with
-> block boundary, 1 block is needed to fix it.
+On Apr 04, 2011, at 10:24, Moffett, Kyle D wrote:
+> On Apr 02, 2011, at 22:02, Ted Ts'o wrote:
+>> Sorry for not following up sooner.  Are you still able to reproduce
+>> this failure?  If I set up an identical Debian stable instance on
+>> EC-2, am I likely to reproduce it myself?  Do you have a package list
+>> or EC2 base image I can use as a starting point?
 > 
-> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+> I'll need to check on this.
+> 
+> Unfortunately it was not a trivial process to install Debian "squeeze" onto an EC2 instance; it took a couple ugly Perl scripts, a patched Debian-Installer, and several manual post-install-but-before-reboot steps (like fixing up GRUB 0.99).  One of these days I may get time to update all that to the official "wheezy" release and submit bug reports.
+> 
+> I have an exact image of the failing instance, but it has proprietary data on it and if I stand up an old copy I need to be careful not to actually let it send all the queued emails :-D.
+> 
+> It's probably easier for me to halt email delivery and clone the working instance and try to reproduce from there.  If I recall, the (easily undone) workaround was to remount from "data=journal" to "data=ordered" on a couple filesystems.  It may take a day or two to get this done, though.
+> 
+> If it comes down to it I also have a base image (from "squeeze" as of 9 months ago) that could be made public after updating with new SSH keys.
 
-Thanks for the patch submission!
+Bah...
 
-I further modified the patch to make the commit description a bit
-clearer, and to fix an additional bug that I noticed while reviewing
-your patch.
+I went back to the old image that was crashing every boot before and I can't find any way to make it crash at all now...
 
-					- Ted
+If I manage to reproduce it again later I'll send you another email.
 
->From fa0dfea6882a833a70f04b3089a751f75c0d03f6 Mon Sep 17 00:00:00 2001
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Date: Mon, 4 Apr 2011 15:38:38 -0400
-Subject: [PATCH] ext4: fix credits computing for indirect mapped files
-
-When writing a contiguous set of blocks, two indirect blocks could be
-needed depending on how the blocks are aligned, so we need to increase
-the number of credits needed by one.
-
-[ Also fixed a another bug which could further underestimate the
-  number of journal credits needed by 1; the code was using integer
-  division instead of DIV_ROUND_UP() -- tytso]
-
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/inode.c |   11 +++++------
- 1 files changed, 5 insertions(+), 6 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 1a86282..7d11e02 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5398,13 +5398,12 @@ static int ext4_indirect_trans_blocks(struct inode *inode, int nrblocks,
- 	/* if nrblocks are contiguous */
- 	if (chunk) {
- 		/*
--		 * With N contiguous data blocks, it need at most
--		 * N/EXT4_ADDR_PER_BLOCK(inode->i_sb) indirect blocks
--		 * 2 dindirect blocks
--		 * 1 tindirect block
-+		 * With N contiguous data blocks, we need at most
-+		 * N/EXT4_ADDR_PER_BLOCK(inode->i_sb) + 1 indirect blocks,
-+		 * 2 dindirect blocks, and 1 tindirect block
- 		 */
--		indirects = nrblocks / EXT4_ADDR_PER_BLOCK(inode->i_sb);
--		return indirects + 3;
-+		return DIV_ROUND_UP(nrblocks,
-+				    EXT4_ADDR_PER_BLOCK(inode->i_sb)) + 4;
- 	}
- 	/*
- 	 * if nrblocks are not contiguous, worse case, each block touch
--- 
-1.7.3.1
-
+Cheers,
+Kyle Moffett
