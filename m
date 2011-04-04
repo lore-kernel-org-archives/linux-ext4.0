@@ -1,35 +1,41 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] jbd2: Move bdget out of critical section
-Date: Mon, 4 Apr 2011 12:36:34 -0400
-Message-ID: <20110404163634.GD4706@thunk.org>
-References: <1301734876-22207-1-git-send-email-gaoyang.zyh@taobao.com>
+Subject: Re: kernel BUG at fs/jbd2/transaction.c:1086!
+Date: Mon, 4 Apr 2011 13:25:16 -0400
+Message-ID: <20110404172516.GA2832@thunk.org>
+References: <alpine.LFD.2.00.1103301651240.17917@dhcp-27-109.brq.redhat.com>
+ <20110331164319.GG21524@quack.suse.cz>
+ <alpine.LFD.2.00.1103312255270.3020@dhcp-27-109.brq.redhat.com>
+ <20110331222306.GI21524@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Jan Kara <jack@suse.cz>, Zhu Yanhai <gaoyang.zyh@taobao.com>
-To: Zhu Yanhai <zhu.yanhai@gmail.com>
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	Eric Sandeen <esandeen@redhat.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33950 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:34320 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753154Ab1DDQgi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 4 Apr 2011 12:36:38 -0400
+	id S1753673Ab1DDRZT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 4 Apr 2011 13:25:19 -0400
 Content-Disposition: inline
-In-Reply-To: <1301734876-22207-1-git-send-email-gaoyang.zyh@taobao.com>
+In-Reply-To: <20110331222306.GI21524@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Apr 02, 2011 at 05:01:16PM +0800, Zhu Yanhai wrote:
-> bdget() should not be called when we hold spinlocks since
-> it might sleep.
-> 
-> Signed-off-by: Zhu Yanhai <gaoyang.zyh@taobao.com>
+On Fri, Apr 01, 2011 at 12:23:06AM +0200, Jan Kara wrote:
+> > Ted, could you pick this up ASAP ? Also I think this needs to go into
+> > stable as well.
+>   I'll merge it from my tree next week, OK? I don't think there's so much
+> hurry as the bug has been there for years and you're the first one to
+> report it :).
 
-I've added the patch to the patch queue.  Technically we should never
-have a problem, though, since we only use this for the journal inode,
-which is not going to be a fresly created inode.  So I don't think we
-should ever hit the paths that will result in the kernel sleeping.
-But I agree it's better to move it out, if for no other reason to make
-life easier for static checkers.
+Agreed, your first patch was quota specific and I'd much rather have
+it go through the quota tree.
 
-          	       	     	       	    - Ted
+> BTW, I've also created the patch below which can slightly improve
+> performance of quotas on ext4. The modification of the inode was
+> unnecessary as well... Ted, can you merge this patch? It's independent from
+> the previous one.
+
+Yup, I've added to the ext4 patch queue.
+
+						- Ted
