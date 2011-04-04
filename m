@@ -1,42 +1,42 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 25832] kernel crashes upon resume if usb devices are removed
- when suspended
-Date: Tue, 5 Apr 2011 15:17:03 GMT
-Message-ID: <201104051517.p35FH3og013190@demeter2.kernel.org>
-References: <bug-25832-13602@https.bugzilla.kernel.org/>
+From: "WEB MAIL SERVICE" <accountaccess14@hotmail.com>
+Subject: Dear Webmail/E-mail user
+Date: Mon, 4 Apr 2011 17:13:23 -0400 (EDT)
+Message-ID: <2343.115.242.246.16.1301951603.squirrel__48641.1951053471$1302020776$gmane$org@115.242.246.16>
+Reply-To: alertweb333@hotmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:38198 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753255Ab1DEPRE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Apr 2011 11:17:04 -0400
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p35FH3X0013191
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 5 Apr 2011 15:17:03 GMT
-In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
+Received: from dedicated.stoinet.com ([72.4.160.228]:40039 "EHLO
+	dedicated.stoinet.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751310Ab1DEQZD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Apr 2011 12:25:03 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=25832
 
 
 
+Dear Account Owner.
 
+This mail is to inform all our {Web Mail} users that we will be upgrading
+our site in a couple of days from now. So you as a Subscriber of our site
+you are required send us your Email account details so as to enable us
+know if you are still making use of your mail box if you still do to add
+more space to you. Further be informed that we will be deleting all mail
+account that is not functioning so as to create more space for new user.
 
---- Comment #57 from rocko <rockorequin@hotmail.com>  2011-04-05 15:17:02 ---
-Ok. I only mentioned it because by chance I saw
-https://lkml.org/lkml/2011/4/3/70, which mentioned a patch to usbhid/hiddev.c
-at
-http://git.kernel.org/?p=linux/kernel/git/jikos/hid.git;a=commitdiff;h=9c9e54a8df0be48aa359744f412377cc55c3b7d2.
-The patch says "This obviously lead to memory corruptions at device disconnect
-time", which of course looks a lot like the issue I'm getting, so I thought
-perhaps there might have been other problems introduced when the BKL was
-removed.
+you will have to confirm your webmail account details by providing the
+following:
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.NetID:....................................
+2.Password:...................................
+3.Date of Birth:...............................
+
+Failure to do this will immediately render your email address deactivated
+from our database.
+
+Thank you for using our WEB SERVICE !
+FROM THE WEB MAIL SUPPORT TEAM
+
