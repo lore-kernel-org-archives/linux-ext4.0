@@ -1,113 +1,73 @@
-From: Curt Wohlgemuth <curtw@google.com>
-Subject: Re: [PATCH] ext4: sync the directory inode in ext4_sync_parent()
-Date: Tue, 5 Apr 2011 12:43:51 -0700
-Message-ID: <BANLkTin2VdByS23f0Gg-m77wUr3RVYgkiQ@mail.gmail.com>
-References: <1302031663-13547-1-git-send-email-curtw@google.com>
-	<4D9B6F0A.5080705@redhat.com>
+From: "Moffett, Kyle D" <Kyle.D.Moffett@boeing.com>
+Subject: Re: Bug#615998: linux-image-2.6.32-5-xen-amd64: Repeatable
+ 	"kernelBUG 	at fs/jbd2/commit.c:534" from Postfix on ext4
+Date: Tue, 5 Apr 2011 14:44:04 -0500
+Message-ID: <26AE8923-4DEA-43FF-8F79-1D5AA665A344@boeing.com>
+References: <20110301165239.3310.43806.reportbug@support.exmeritus.com><BE4E
+ C1DF-4DFC-4B94-923D-0197B16BD7B4@boeing.com><20110403020227.GA19963@thunk.o
+ rg><15E8241A-37A0-4438-849E-A157A376C7F1@boeing.com><20110405001542.GE2832@
+ thunk.org><8658F8EE-A52D-4405-A1F3-C0247AB3EA6D@boeing.com>
+ <20110405190738.GF2832@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+Cc: "615998@bugs.debian.org" <615998@bugs.debian.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Sachin Sant <sachinp@in.ibm.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([74.125.121.67]:61405 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752856Ab1DETny convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Apr 2011 15:43:54 -0400
-Received: from hpaq11.eem.corp.google.com (hpaq11.eem.corp.google.com [172.25.149.11])
-	by smtp-out.google.com with ESMTP id p35JhrnY015440
-	for <linux-ext4@vger.kernel.org>; Tue, 5 Apr 2011 12:43:53 -0700
-Received: from qyk10 (qyk10.prod.google.com [10.241.83.138])
-	by hpaq11.eem.corp.google.com with ESMTP id p35JgtUg025375
-	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=NOT)
-	for <linux-ext4@vger.kernel.org>; Tue, 5 Apr 2011 12:43:52 -0700
-Received: by qyk10 with SMTP id 10so618333qyk.11
-        for <linux-ext4@vger.kernel.org>; Tue, 05 Apr 2011 12:43:51 -0700 (PDT)
-In-Reply-To: <4D9B6F0A.5080705@redhat.com>
+Received: from slb-smtpout-01.boeing.com ([130.76.64.48]:60744 "EHLO
+	slb-smtpout-01.boeing.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752856Ab1DETod convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Apr 2011 15:44:33 -0400
+In-Reply-To: <20110405190738.GF2832@thunk.org>
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Eric:
+On Apr 05, 2011, at 15:07, Ted Ts'o wrote:
+> On Tue, Apr 05, 2011 at 10:30:11AM -0500, Moffett, Kyle D wrote:
+>> Well, the base image is essentially a somewhat basic Debian "squeeze"
+>> for EC2 with our SSH public keys and a couple generic customizations
+>> applied.  It does not have Postfix installed or configured, so there
+>> would be some work involved.
+> 
+> Well, if you can share that image in AWS with the ssh keys stripped
+> out it would save me a bunch of time.  I assume it's not setup to
+> automatically set ssh keys and pass them back to AWS like the generic
+> images can?
 
-On Tue, Apr 5, 2011 at 12:35 PM, Eric Sandeen <sandeen@redhat.com> wrot=
-e:
-> On 4/5/11 12:27 PM, Curt Wohlgemuth wrote:
->> ext4 has taken the stance that, in the absence of a journal,
->> when an fsync/fdatasync of an inode is done, the parent
->> directory should be sync'ed if this inode entry is new.
->> ext4_sync_parent(), which implements this, does indeed sync
->> the dirent pages for parent directories, but it does not
->> sync the directory *inode*. =A0This patch fixes this.
->>
->> I tested this using a power fail test, which panics a
->> machine running a file server getting requests from a
->> client. =A0Without this patch, on about every other test run,
->> the server is missing many, many files that had been synced.
->> With this patch, on > 6 runs, I see zero files being lost.
->>
->> Signed-off-by: Curt Wohlgemuth <curtw@google.com>
->> ---
->> =A0fs/ext4/fsync.c | =A0 11 ++++++++++-
->> =A01 files changed, 10 insertions(+), 1 deletions(-)
->>
->> diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
->> index 7f74019..a276348 100644
->> --- a/fs/ext4/fsync.c
->> +++ b/fs/ext4/fsync.c
->> @@ -128,6 +128,7 @@ extern int ext4_flush_completed_IO(struct inode =
-*inode)
->> =A0static void ext4_sync_parent(struct inode *inode)
->> =A0{
->> =A0 =A0 =A0 struct dentry *dentry =3D NULL;
->> + =A0 =A0 int ret;
->>
->> =A0 =A0 =A0 while (inode && ext4_test_inode_state(inode, EXT4_STATE_=
-NEWENTRY)) {
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_clear_inode_state(inode, EXT4_STATE=
-_NEWENTRY);
->> @@ -136,7 +137,15 @@ static void ext4_sync_parent(struct inode *inod=
-e)
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!dentry || !dentry->d_parent || !den=
-try->d_parent->d_inode)
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 break;
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 inode =3D dentry->d_parent->d_inode;
->> - =A0 =A0 =A0 =A0 =A0 =A0 sync_mapping_buffers(inode->i_mapping);
->> + =A0 =A0 =A0 =A0 =A0 =A0 ret =3D sync_mapping_buffers(inode->i_mapp=
-ing);
->> + =A0 =A0 =A0 =A0 =A0 =A0 if (! ret) {
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct writeback_control w=
-bc =3D {
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 .sync_mode=
- =3D WB_SYNC_ALL,
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 .nr_to_wri=
-te =3D 0, /* metadata-only; caller
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0takes care of data */
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 };
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 (void)sync_inode(inode, &w=
-bc);
->
-> I know ext4_sync_parent was a void already, but why don't we send err=
-ors back up through ext4_sync_file?
+Well, the generic images just download to ~root/.ssh/authorized_keys
+from http://169.254.169.254/meta-data/public-keys/0/openssh-key
 
-Well, you could argue that a failure to sync the parent shouldn't
-cause the inode's fsync() to fail, but I probably wouldn't :-) .  I'll
-resend a patch that implements this.
+They don't really "generate" a keypair themselves, that's just what
+AWS does and provides the pubkey via that URL.  The 169.254.169.254 is
+just the link-local address for some virtualization infrastructure
+software.  These days they even let you upload your own pubkey.
 
-Thanks,
-Curt
+Unfortunately our images don't do that download, although the patched
+D-I image does do that when initially setting up the network console.
 
->
-> -Eric
->
->> + =A0 =A0 =A0 =A0 =A0 =A0 }
->> =A0 =A0 =A0 }
->> =A0}
->>
->
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+If you send me an SSH key and AWS account number in private email then
+I will cook an updated image and share it out to you.
+
+
+>> I also didn't see any problems with the system at all until the
+>> queue got backed up with ~100-120 stuck emails.  After Postfix tried
+>> and failed to deliver a bunch of emails I would get the OOPS.
+> 
+> Yeah, what I'd probably try to do is install postfix and then send a
+> few hundred messages to foobar@example.com and see if I can repro the OOPS.
+
+Not sure if it's related, but the particular SMTP error that was
+causing things to back up in the first place was by the remote server
+rejecting emails via SMTP errors after a *successful* connection.
+
+
+> Thanks for investigating!
+
+Thanks for debugging!
+
+Cheers,
+Kyle Moffett
