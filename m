@@ -1,119 +1,119 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] e2fsprogs: don't set stripe/stride to 1 block in mkfs
-Date: Tue, 05 Apr 2011 15:21:18 -0700
-Message-ID: <4D9B95DE.6050408@redhat.com>
-References: <4D9A17F8.4000406@redhat.com> <F8519658-E9FA-4DD5-9980-59006CDACC8C@dilger.ca> <4D9B45AB.8000208@redhat.com> <4D9B49A6.7000709@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v1] ext4:Allow an active handle to be started when
+ freezing.
+Date: Wed, 6 Apr 2011 00:26:30 +0200
+Message-ID: <20110405222630.GB8531@quack.suse.cz>
+References: <BANLkTikqLrAyVaULk5UQsM7TzGk73ihsKg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Zeev Tarantov <zeev.tarantov@gmail.com>
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ted Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46813 "EHLO mx1.redhat.com"
+Received: from cantor.suse.de ([195.135.220.2]:57889 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752027Ab1DEWVW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 5 Apr 2011 18:21:22 -0400
-In-Reply-To: <4D9B49A6.7000709@redhat.com>
+	id S1753472Ab1DEW0e (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 5 Apr 2011 18:26:34 -0400
+Content-Disposition: inline
+In-Reply-To: <BANLkTikqLrAyVaULk5UQsM7TzGk73ihsKg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 4/5/11 9:56 AM, Eric Sandeen wrote:
-> On 4/5/11 9:39 AM, Eric Sandeen wrote:
->> On 4/5/11 1:10 AM, Andreas Dilger wrote:
->>> On 2011-04-04, at 9:11 AM, Eric Sandeen wrote:
->>>> Block devices may set minimum or optimal IO hints equal to
->>>> blocksize; in this case there is really nothing for ext4
->>>> to do with this information (i.e. search for a block-aligned
->>>> allocation?) so don't set fs geometry with single-block
->>>> values.
->>>>
->>>> Zeev also reported that with a block-sized stripe, the
->>>> ext4 allocator spends time spinning in ext4_mb_scan_aligned(),
->>>> oddly enough.
->>>>
->>>> Reported-by: Zeev Tarantov <zeev.tarantov@gmail.com>
->>>> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
->>>> ---
->>>>
->>>> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
->>>> index 9798b88..74b838c 100644
->>>> --- a/misc/mke2fs.c
->>>> +++ b/misc/mke2fs.c
->>>> @@ -1135,8 +1135,11 @@ static int get_device_geometry(const char *file,
->>>> 	if ((opt_io == 0) && (psector_size > blocksize))
->>>> 		opt_io = psector_size;
->>>>
->>>> -	fs_param->s_raid_stride = min_io / blocksize;
->>>> -	fs_param->s_raid_stripe_width = opt_io / blocksize;
->>>> +	/* setting stripe/stride to blocksize is pointless */
->>>> +	if (min_io > blocksize)
->>>> +		fs_param->s_raid_stride = min_io / blocksize;
->>>> +	if (opt_io > blocksize)
->>>> +		fs_param->s_raid_stripe_width = opt_io / blocksize;
->>>
->>> I don't think it is harmful to specify an mballoc alignment that is
->>> an even multiple of the underlying device IO size (e.g. at least
->>> 256kB or 512kB).
->>>
->>> If the underlying device (e.g. zram) is reporting 16kB or 64kB opt_io
->>> size because that is PAGE_SIZE, but blocksize is 4kB, then we will
->>> have the same performance problem again.> 
->>> Cheers, Andreas
->>
->> I need to look into why ext4_mb_scan_aligned is so inefficient for a block-sized stripe.
->>
->> In practice I don't think we've seen this problem with stripe size at 4 or 8 or 16 blocks; it may just be less apparent.  I think the function steps through by stripe-sized units, and if that is 1 block, it's a lot of stepping.  
->>
->>         while (i < EXT4_BLOCKS_PER_GROUP(sb)) {
->> ...
->>                 if (!mb_test_bit(i, bitmap)) {
+On Tue 05-04-11 15:47:25, Yongqiang Yang wrote:
+> v0->v1:
+>   check s_frozen in nojournal case only if there is no an active handle.
+>   get reference to an active handle by jbd2_journal_start().
 > 
-> Offhand I think maybe mb_find_next_zero_bit would be more efficient.
+> ext4_journal_start_sb() should not prevent an active handle from being
+> started due to s_frozen.  Otherwise, deadlock is easy to happen, below
+> is a situation.
 > 
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -1939,16 +1939,14 @@ void ext4_mb_scan_aligned(struct ext4_allocation_context *ac,
->         i = (a * sbi->s_stripe) - first_group_block;
->  
->         while (i < EXT4_BLOCKS_PER_GROUP(sb)) {
-> -               if (!mb_test_bit(i, bitmap)) {
-> -                       max = mb_find_extent(e4b, 0, i, sbi->s_stripe, &ex);
-> -                       if (max >= sbi->s_stripe) {
-> -                               ac->ac_found++;
-> -                               ac->ac_b_ex = ex;
-> -                               ext4_mb_use_best_found(ac, e4b);
-> -                               break;
-> -                       }
-> +               i = mb_find_next_zero_bit(bitmap, EXT4_BLOCKS_PER_GROUP(sb), i);
-> +               max = mb_find_extent(e4b, 0, i, sbi->s_stripe, &ex);
-> +               if (max >= sbi->s_stripe) {
-> +                       ac->ac_found++;
-> +                       ac->ac_b_ex = ex;
-> +                       ext4_mb_use_best_found(ac, e4b);
-> +                       break;
->                 }
-> -               i += sbi->s_stripe;
->         }
->  }
+> ================================================
+>      freeze         |       truncate
+> ================================================
+>                     |  ext4_ext_truncate()
+>     freeze_super()  |   starts a handle
+>     sets s_frozen   |
+>                     |  ext4_ext_truncate()
+>                     |  holds i_data_sem
+>   ext4_freeze()     |
+>   waits for updates |
+>                     |  ext4_free_blocks()
+>                     |  calls dquot_free_block()
+>                     |
+>                     |  dquot_free_blocks()
+>                     |  calls ext4_dirty_inode()
+>                     |
+>                     |  ext4_dirty_inode()
+>                     |  trys to start an active
+>                     |  handle
+>                     |
+>                     |  block due to s_frozen
+> ================================================
 > 
-> totally untested, but I think we have better ways to step through the bitmap.
+> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+> Reported-by: Amir Goldstein <amir73il@users.sf.net>
+> Reviewed-by: Jan Kara <jack@suse.cz>
+  The usual workflow is that you add 'Reviewed-by' tag to the patch only
+after you send a version of a patch the person agrees to and explicitely
+says you can add a tag - for example I write something like "You can add
+Reviewed-by: Jan Kara <jack@suse.cz>"
+when I agree to the tag being added.
 
-I tested it ;)
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index ccfa686..53920bd 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -242,27 +242,45 @@ static void ext4_put_nojournal(handle_t *handle)
+>   * journal_end calls result in the superblock being marked dirty, so
+>   * that sync() will call the filesystem's write_super callback if
+>   * appropriate.
+> + *
+> + * To avoid j_barrier hold in userspace when a user calls freeze(),
+> + * ext4 prevents a new handle from being started by s_frozen, which
+> + * is in an upper layer.
+>   */
+>  handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
+>  {
+>  	journal_t *journal;
+> +	handle_t  *handle;
+> 
+>  	if (sb->s_flags & MS_RDONLY)
+>  		return ERR_PTR(-EROFS);
+> 
+> -	vfs_check_frozen(sb, SB_FREEZE_TRANS);
+> -	/* Special case here: if the journal has aborted behind our
+> -	 * backs (eg. EIO in the commit thread), then we still need to
+> -	 * take the FS itself readonly cleanly. */
+>  	journal = EXT4_SB(sb)->s_journal;
+> -	if (journal) {
+> -		if (is_journal_aborted(journal)) {
+> -			ext4_abort(sb, "Detected aborted journal");
+> -			return ERR_PTR(-EROFS);
+> -		}
+> -		return jbd2_journal_start(journal, nblocks);
+> +	handle = ext4_journal_current_handle();
+> +
+> +	/*
+> +	 * Before vfs_check_frozen(), the current handle should be allowed
+> +	 * to finish, otherwise deadlock would happen when the filesystem
+> +	 * is freezed && active handles are not stopped.
+> +	 */
+> +	if (!journal) {
+> +		if (!handle)
+> +			vfs_check_frozen(sb, SB_FREEZE_TRANS);
+> +		return ext4_get_nojournal();
+>  	}
+> -	return ext4_get_nojournal();
+> +
+> +	if (!handle)
+> +		vfs_check_frozen(sb, SB_FREEZE_TRANS);
+  This test is the same for 'nojournal' case so you can move it before the
+!journal test. Otherwise the patch looks OK to me. So now you can add
+Reviewed-by: Jan Kara <jack@suse.cz>
+line :)
 
-Seems to work fine, though I probably should see how things actually got allocated.
-
-Creating an fs with 1-block stripes & widths as with the original report, and copying a (built) 2.6 linux kernel tree, it took about 7 minutes, and looped in the while() loop above 328215171 times.
-
-With the patch above, it took 6m30s, and looped 25055 times.
-
-For a filesystem with no stripe/stride set, it took 6m26s.
-
-Hm, but subsequent tests w/ the tiny stripe set came around 6m30s as well.  So there's no obvious speedup.
-
-Still, avoiding all that looping seems beneficial, I can send a patch after I make sure allocation is still happening as expected.
-
-Zeev, if you'd like to test that patch above with your profiling, that'd be awesome.
-
-Thanks,
--Eric
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
