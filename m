@@ -1,137 +1,33 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH v2] ext4:Allow an active handle to be started when freezing.
-Date: Tue, 5 Apr 2011 19:19:02 +0800
-Message-ID: <BANLkTinuQ5Z1LSS+-s8+EqQ4aWSMqqiU2w@mail.gmail.com>
+From: Zhang Huan <zhhuan@gmail.com>
+Subject: Re: potential memory leak on transaction commit
+Date: Tue, 5 Apr 2011 20:35:35 +0800
+Message-ID: <BANLkTin6PyfO+z7+ospeiPYrLnBOce3E2g@mail.gmail.com>
+References: <alpine.LFD.2.02.1103081849430.6414@zhanghuan.nrchpc.ac.cn>
+ <AANLkTi=ZPGd6scA8u3eSCzq1jgZWZdxs0p4p5knd2bN5@mail.gmail.com> <20110404221009.GD2832@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-ext4@vger.kernel.org
 To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pw0-f46.google.com ([209.85.160.46]:44596 "EHLO
-	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752886Ab1DELTD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Apr 2011 07:19:03 -0400
-Received: by pwi15 with SMTP id 15so120726pwi.19
-        for <linux-ext4@vger.kernel.org>; Tue, 05 Apr 2011 04:19:03 -0700 (PDT)
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:38087 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753278Ab1DEMfv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Apr 2011 08:35:51 -0400
+Received: by pzk9 with SMTP id 9so122870pzk.19
+        for <linux-ext4@vger.kernel.org>; Tue, 05 Apr 2011 05:35:50 -0700 (PDT)
+In-Reply-To: <20110404221009.GD2832@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-v2->v1:
-  - rearrange code.
+On Tue, Apr 5, 2011 at 06:10, Ted Ts'o <tytso@mit.edu> wrote:
+>
+> If you could send me an acknowledgement that it would be OK to add a
+>
+> Signed-off-by: Zhang Huan <zhhuan@gmail.com>
+>
+> line to your patch, it would be much appreciated.
+>
 
-v0->v1:
-  - check s_frozen in nojournal case only if there is no an active handle.
-  - get reference to an active handle by jbd2_journal_start().
+Yes. please go ahead.
 
-ext4_journal_start_sb() should not prevent an active handle from being
-started due to s_frozen.  Otherwise, deadlock is easy to happen, below
-is a situation.
-
-================================================
-     freeze         |       truncate
-================================================
-                    |  ext4_ext_truncate()
-    freeze_super()  |   starts a handle
-    sets s_frozen   |
-                    |  ext4_ext_truncate()
-                    |  holds i_data_sem
-  ext4_freeze()     |
-  waits for updates |
-                    |  ext4_free_blocks()
-                    |  calls dquot_free_block()
-                    |
-                    |  dquot_free_blocks()
-                    |  calls ext4_dirty_inode()
-                    |
-                    |  ext4_dirty_inode()
-                    |  trys to start an active
-                    |  handle
-                    |
-                    |  block due to s_frozen
-================================================
-
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Reported-by: Amir Goldstein <amir73il@users.sf.net>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
----
- fs/ext4/super.c |   44 +++++++++++++++++++++++++++++++++-----------
- 1 files changed, 33 insertions(+), 11 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index ccfa686..7fc6c2a 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -242,27 +242,44 @@ static void ext4_put_nojournal(handle_t *handle)
-  * journal_end calls result in the superblock being marked dirty, so
-  * that sync() will call the filesystem's write_super callback if
-  * appropriate.
-+ *
-+ * To avoid j_barrier hold in userspace when a user calls freeze(),
-+ * ext4 prevents a new handle from being started by s_frozen, which
-+ * is in an upper layer.
-  */
- handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
- {
- 	journal_t *journal;
-+	handle_t  *handle;
-
- 	if (sb->s_flags & MS_RDONLY)
- 		return ERR_PTR(-EROFS);
-
--	vfs_check_frozen(sb, SB_FREEZE_TRANS);
--	/* Special case here: if the journal has aborted behind our
--	 * backs (eg. EIO in the commit thread), then we still need to
--	 * take the FS itself readonly cleanly. */
- 	journal = EXT4_SB(sb)->s_journal;
--	if (journal) {
--		if (is_journal_aborted(journal)) {
--			ext4_abort(sb, "Detected aborted journal");
--			return ERR_PTR(-EROFS);
--		}
--		return jbd2_journal_start(journal, nblocks);
-+	handle = ext4_journal_current_handle();
-+
-+	/*
-+	 * If a handle has been started, it should be allowed to
-+	 * finish, otherwise deadlock could happen between freeze
-+	 * and others(e.g. truncate) due to the restart of the
-+	 * journal handle if the filesystem is forzen and active
-+	 * handles are not stopped.
-+	 */
-+	if (!handle)
-+		vfs_check_frozen(sb, SB_FREEZE_TRANS);
-+
-+	if (!journal)
-+		return ext4_get_nojournal();
-+	/*
-+	 * Special case here: if the journal has aborted behind our
-+	 * backs (eg. EIO in the commit thread), then we still need to
-+	 * take the FS itself readonly cleanly.
-+	 */
-+	if (is_journal_aborted(journal)) {
-+		ext4_abort(sb, "Detected aborted journal");
-+		return ERR_PTR(-EROFS);
- 	}
--	return ext4_get_nojournal();
-+	return jbd2_journal_start(journal, nblocks);
- }
-
- /*
-@@ -4131,6 +4148,11 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
- /*
-  * LVM calls this function before a (read-only) snapshot is created.  This
-  * gives us a chance to flush the journal completely and mark the fs clean.
-+ *
-+ * Note that only this function cannot bring a filesystem to be in a clean
-+ * state independently, because ext4 prevents a new handle from being started
-+ * by @sb->s_frozen, which stays in an upper layer.  It thus needs help from
-+ * the upper layer.
-  */
- static int ext4_freeze(struct super_block *sb)
- {
--- 
-1.7.4
+Zhang Huan
