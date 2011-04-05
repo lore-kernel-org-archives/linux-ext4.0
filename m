@@ -1,76 +1,110 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Bug#615998: linux-image-2.6.32-5-xen-amd64: Repeatable "kernel
- BUG 	at fs/jbd2/commit.c:534" from Postfix on ext4
-Date: Mon, 4 Apr 2011 20:15:42 -0400
-Message-ID: <20110405001542.GE2832@thunk.org>
-References: <20110301165239.3310.43806.reportbug@support.exmeritus.com>
- <BE4EC1DF-4DFC-4B94-923D-0197B16BD7B4@boeing.com>
- <20110403020227.GA19963@thunk.org>
- <15E8241A-37A0-4438-849E-A157A376C7F1@boeing.com>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: Re: [PATCH] ext4:Fix credits computing for indirect mapped files.
+Date: Tue, 5 Apr 2011 13:02:24 +0800
+Message-ID: <BANLkTi=Qx5cwr21YW-G9VkGCA+xDm2WbEQ@mail.gmail.com>
+References: <1301058605-29978-1-git-send-email-xiaoqiangnk@gmail.com>
+	<20110404193935.GB2832@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "615998@bugs.debian.org" <615998@bugs.debian.org>,
-	"Livingston, John A" <john.a.livingston@boeing.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Sachin Sant <sachinp@in.ibm.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: "Moffett, Kyle D" <Kyle.D.Moffett@boeing.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:43383 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750815Ab1DEAPs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 4 Apr 2011 20:15:48 -0400
-Content-Disposition: inline
-In-Reply-To: <15E8241A-37A0-4438-849E-A157A376C7F1@boeing.com>
+Received: from mail-px0-f179.google.com ([209.85.212.179]:41116 "EHLO
+	mail-px0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750847Ab1DEFCY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Apr 2011 01:02:24 -0400
+Received: by pxi2 with SMTP id 2so13256pxi.10
+        for <linux-ext4@vger.kernel.org>; Mon, 04 Apr 2011 22:02:24 -0700 (PDT)
+In-Reply-To: <20110404193935.GB2832@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 04, 2011 at 09:24:28AM -0500, Moffett, Kyle D wrote:
-> 
-> Unfortunately it was not a trivial process to install Debian
-> "squeeze" onto an EC2 instance; it took a couple ugly Perl scripts,
-> a patched Debian-Installer, and several manual
-> post-install-but-before-reboot steps (like fixing up GRUB 0.99).
-> One of these days I may get time to update all that to the official
-> "wheezy" release and submit bug reports.
+On Tue, Apr 5, 2011 at 3:39 AM, Ted Ts'o <tytso@mit.edu> wrote:
+> On Fri, Mar 25, 2011 at 09:10:05PM +0800, Yongqiang Yang wrote:
+>> Either the first block or the last one could be not aligned with
+>> block boundary, 1 block is needed to fix it.
+>>
+>> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+>
+> Thanks for the patch submission!
+>
+> I further modified the patch to make the commit description a bit
+> clearer, and to fix an additional bug that I noticed while reviewing
+> your patch.
+Thank you.
 
-Sigh, I was whoping someone was maintaining semi-official EC2 images
-for Debian, much like alestic has been maintaining for Ubuntu.  (Hmm,
-actually, he has EC2 images for Lenny and Etch, but unfortunately not
-for squeeze.  Sigh....)
+Yongqiang.
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0- Ted
+>
+> From fa0dfea6882a833a70f04b3089a751f75c0d03f6 Mon Sep 17 00:00:00 200=
+1
+> From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+> Date: Mon, 4 Apr 2011 15:38:38 -0400
+> Subject: [PATCH] ext4: fix credits computing for indirect mapped file=
+s
+>
+> When writing a contiguous set of blocks, two indirect blocks could be
+> needed depending on how the blocks are aligned, so we need to increas=
+e
+> the number of credits needed by one.
+>
+> [ Also fixed a another bug which could further underestimate the
+> =A0number of journal credits needed by 1; the code was using integer
+> =A0division instead of DIV_ROUND_UP() -- tytso]
+>
+> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+> =A0fs/ext4/inode.c | =A0 11 +++++------
+> =A01 files changed, 5 insertions(+), 6 deletions(-)
+>
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 1a86282..7d11e02 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -5398,13 +5398,12 @@ static int ext4_indirect_trans_blocks(struct =
+inode *inode, int nrblocks,
+> =A0 =A0 =A0 =A0/* if nrblocks are contiguous */
+> =A0 =A0 =A0 =A0if (chunk) {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/*
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* With N contiguous data blocks, it =
+need at most
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* N/EXT4_ADDR_PER_BLOCK(inode->i_sb)=
+ indirect blocks
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* 2 dindirect blocks
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* 1 tindirect block
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* With N contiguous data blocks, we =
+need at most
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* N/EXT4_ADDR_PER_BLOCK(inode->i_sb)=
+ + 1 indirect blocks,
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* 2 dindirect blocks, and 1 tindirec=
+t block
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 */
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 indirects =3D nrblocks / EXT4_ADDR_PER_=
+BLOCK(inode->i_sb);
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 return indirects + 3;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 return DIV_ROUND_UP(nrblocks,
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ EXT4_ADDR_PER_BLOCK(inode->i_sb)) + 4;
+> =A0 =A0 =A0 =A0}
+> =A0 =A0 =A0 =A0/*
+> =A0 =A0 =A0 =A0 * if nrblocks are not contiguous, worse case, each bl=
+ock touch
+> --
+> 1.7.3.1
+>
+>
 
-> It's probably easier for me to halt email delivery and clone the
-> working instance and try to reproduce from there.  If I recall, the
-> (easily undone) workaround was to remount from "data=journal" to
-> "data=ordered" on a couple filesystems.  It may take a day or two to
-> get this done, though.
 
-Couple of questions which might give me some clues: (a) was this a
-natively formatted ext4 file system, or a ext3 file system which was
-later converted to ext4?  (b) How big are the files/directories
-involved?  In particular, how big is the Postfix mail queue directory,
-and it is an extent-based directory?  (what does lsattr on the mail
-queue directory report) As far as file sizes, does it matter how big
-the e-mail messages are, and are there any other database files that
-postgress might be touching at the time that you get the OOPS?
 
-I have found a bug in ext4 where we were underestimating how many
-journal credits were needed when modifying direct/indirect-mapped
-files (which would be seen on ext4 if you had a ext3 file system that
-was converted to start using extents; but old, pre-existing
-directories wouldn't be converted), which is why I'm asking the
-question about whether this was an ext2/ext3 file system which was
-converted to use ext4.
-
-I have a patch to fix it, but backporting it into a kernel which will
-work with EC2 is not something I've done before.  Can anyone point me
-at a web page that gives me the quick cheat sheet?
-
-> If it comes down to it I also have a base image (from "squeeze" as of 9 months ago) that could be made public after updating with new SSH keys. 
-
-If we can reproduce the problem on that base image it would be really
-great!  I have an Amazon AWS account; contact me when you have an
-image you want to share, if you want to share it just with my AWS
-account id, instead of sharing it publically...
-
-      	  	    		   	   	 - Ted
+--=20
+Best Wishes
+Yongqiang Yang
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
