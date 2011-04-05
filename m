@@ -1,37 +1,41 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: potential memory leak on transaction commit
-Date: Tue, 5 Apr 2011 19:27:30 -0400
-Message-ID: <20110405232730.GJ2832@thunk.org>
-References: <alpine.LFD.2.02.1103081849430.6414@zhanghuan.nrchpc.ac.cn>
- <AANLkTi=ZPGd6scA8u3eSCzq1jgZWZdxs0p4p5knd2bN5@mail.gmail.com>
- <20110404221009.GD2832@thunk.org>
- <BANLkTin6PyfO+z7+ospeiPYrLnBOce3E2g@mail.gmail.com>
+Subject: Re: [PATCH] ext4: Init timer earlier to avoid a kernel panic in
+ __save_error_info.
+Date: Tue, 5 Apr 2011 19:58:11 -0400
+Message-ID: <20110405235811.GK2832@thunk.org>
+References: <1301371872-7097-1-git-send-email-tm@tao.ma>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Zhang Huan <zhhuan@gmail.com>
+Cc: linux-ext4@vger.kernel.org, sliedes@cc.hut.fi
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33644 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:43593 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750984Ab1DEX1c (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 5 Apr 2011 19:27:32 -0400
+	id S1752469Ab1DEX6P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 5 Apr 2011 19:58:15 -0400
 Content-Disposition: inline
-In-Reply-To: <BANLkTin6PyfO+z7+ospeiPYrLnBOce3E2g@mail.gmail.com>
+In-Reply-To: <1301371872-7097-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 05, 2011 at 08:35:35PM +0800, Zhang Huan wrote:
-> On Tue, Apr 5, 2011 at 06:10, Ted Ts'o <tytso@mit.edu> wrote:
-> >
-> > If you could send me an acknowledgement that it would be OK to add a
-> >
-> > Signed-off-by: Zhang Huan <zhhuan@gmail.com>
-> >
-> > line to your patch, it would be much appreciated.
-> >
+On Tue, Mar 29, 2011 at 12:11:12PM +0800, Tao Ma wrote:
+> From: Tao Ma <boyu.mt@taobao.com>
 > 
-> Yes. please go ahead.
+> During mount, when we fail to open journal inode or root inode, the
+> __save_error_info will mod_timer. But actually s_err_report isn't
+> initialized yet and the kernel oops. The detailed information can
+> be found https://bugzilla.kernel.org/show_bug.cgi?id=32082.
+> 
+> The best way is to check whether the timer s_err_report is initialized
+> or not. But it seems that in include/linux/timer.h, we can't find a
+> good function to check the status of this timer, so this patch just
+> move the initializtion of s_err_report earlier so that we can avoid
+> the kernel panic. The corresponding del_timer is also added in the
+> error path.
+> 
+> Reported-by: Sami Liedes <sliedes@cc.hut.fi>
+> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 
-Thanks, I've added your patch to the ext4 patch queue.
+Thanks, I've added this patch to the ext4 patch queue.
 
 	     	   	      	     - Ted
