@@ -1,145 +1,137 @@
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
- to a deadlock
-Date: Tue, 05 Apr 2011 19:44:53 +0900
-Message-ID: <4D9AF2A5.30804@jp.fujitsu.com>
-References: <20110207205325.FB6A.61FB500B@jp.fujitsu.com> <20110215160630.GH17313@quack.suse.cz> <20110215170352.GE4255@thunk.org> <20110215172954.GK17313@quack.suse.cz> <20110216081746.54d146d1.toshi.okajima@jp.fujitsu.com> <20110216145627.GB5592@quack.suse.cz> <4D5C9B1B.2050304@jp.fujitsu.com> <20110217104552.GD4947@quack.suse.cz> <20110328170628.ffe314fb.toshi.okajima@jp.fujitsu.com> <20110331234050.GD2904@dastard>
-Reply-To: toshi.okajima@jp.fujitsu.com
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: [PATCH v2] ext4:Allow an active handle to be started when freezing.
+Date: Tue, 5 Apr 2011 19:19:02 +0800
+Message-ID: <BANLkTinuQ5Z1LSS+-s8+EqQ4aWSMqqiU2w@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, Ted Ts'o <tytso@mit.edu>,
-	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	sandeen@redhat.com
-To: Dave Chinner <david@fromorbit.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fgwmail6.fujitsu.co.jp ([192.51.44.36]:35093 "EHLO
-	fgwmail6.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751563Ab1DEKnT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Apr 2011 06:43:19 -0400
-In-Reply-To: <20110331234050.GD2904@dastard>
+Received: from mail-pw0-f46.google.com ([209.85.160.46]:44596 "EHLO
+	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752886Ab1DELTD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Apr 2011 07:19:03 -0400
+Received: by pwi15 with SMTP id 15so120726pwi.19
+        for <linux-ext4@vger.kernel.org>; Tue, 05 Apr 2011 04:19:03 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi.
+v2->v1:
+  - rearrange code.
 
-(2011/04/01 8:40), Dave Chinner wrote:
-> On Mon, Mar 28, 2011 at 05:06:28PM +0900, Toshiyuki Okajima wrote:
->> Hi.
->>
->> On Thu, 17 Feb 2011 11:45:52 +0100
->> Jan Kara<jack@suse.cz>  wrote:
->>> On Thu 17-02-11 12:50:51, Toshiyuki Okajima wrote:
->>>> (2011/02/16 23:56), Jan Kara wrote:
->>>>> On Wed 16-02-11 08:17:46, Toshiyuki Okajima wrote:
->>>>>> On Tue, 15 Feb 2011 18:29:54 +0100
->>>>>> Jan Kara<jack@suse.cz>   wrote:
->>>>>>> On Tue 15-02-11 12:03:52, Ted Ts'o wrote:
->>>>>>>> On Tue, Feb 15, 2011 at 05:06:30PM +0100, Jan Kara wrote:
->>>>>>>>> Thanks for detailed analysis. Indeed this is a bug. Whenever we do IO
->>>>>>>>> under s_umount semaphore, we are prone to deadlock like the one you
->>>>>>>>> describe above.
->>>>>>>>
->>>>>>>> One of the fundamental problems here is that the freeze and thaw
->>>>>>>> routines are using down_write(&sb->s_umount) for two purposes.  The
->>>>>>>> first is to prevent the resume/thaw from racing with a umount (which
->>>>>>>> it could do just as well by taking a read lock), but the second is to
->>>>>>>> prevent the resume/thaw code from racing with itself.  That's the core
->>>>>>>> fundamental problem here.
->>>>>>>>
->>>>>>>> So I think we can solve this by introduce a new mutex, s_freeze, and
->>>>>>>> having the the resume/thaw first take the s_freeze mutex and then
->>>>>>>> second take a read lock on the s_umount.
->>>>>>>    Sadly this does not quite work because even down_read(&sb->s_umount)
->>>>>>> in thaw_super() can block if there is another process that tries to acquire
->>>>>>> s_umount for writing - a situation like:
->>>>>>>    TASK 1 (e.g. flusher)		TASK 2	(e.g. remount)		TASK 3 (unfreeze)
->>>>>>> down_read(&sb->s_umount)
->>>>>>>    block on s_frozen
->>>>>>> 				down_write(&sb->s_umount)
->>>>>>> 				  -blocked
->>>>>>> 								down_read(&sb->s_umount)
->>>>>>> 								  -blocked
->>>>>>> behind the write access...
->>>>>>>
->>>>>>> The only working solution I see is to check for frozen filesystem before
->>>>>>> taking s_umount semaphore which seems rather ugly (but might be bearable if
->>>>>>> we did so in some well described wrapper).
->>>>>> I created the patch that you imagine yesterday.
->>>>>>
->>>>>> I got a reproducer from Mizuma-san yesterday, and then I executed it on the kernel
->>>>>> without a fixed patch. After an hour, I confirmed that this deadlock happened.
->>>>>>
->>>>>> However, on the kernel with a fixed patch, this deadlock doesn't still happen
->>>>>> after 12 hours passed.
->>>>>>
->>>>>> The patch for linux-2.6.38-rc4 is as follows:
->>>>>> ---
->>>>>>   fs/fs-writeback.c |    2 +-
->>>>>>   1 files changed, 1 insertions(+), 1 deletions(-)
->>>>>>
->>>>>> diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
->>>>>> index 59c6e49..1c9a05e 100644
->>>>>> --- a/fs/fs-writeback.c
->>>>>> +++ b/fs/fs-writeback.c
->>>>>> @@ -456,7 +456,7 @@ static bool pin_sb_for_writeback(struct super_block *sb)
->>>>>>          spin_unlock(&sb_lock);
->>>>>>
->>>>>>          if (down_read_trylock(&sb->s_umount)) {
->>>>>> -               if (sb->s_root)
->>>>>> +               if (sb->s_frozen == SB_UNFROZEN&&   sb->s_root)
->>>>>>                          return true;
->>>>>>                  up_read(&sb->s_umount);
->>>>
->>>>>    So this is something along the lines I thought but it actually won't work
->>>>> for example if sync(1) is run while the filesystem is frozen (that takes
->>>>> s_umount semaphore in a different place). And generally, I'm not convinced
->>>>> there are not other places that try to do IO while holding s_umount
->>>>> semaphore...
->>>> OK. I understand.
->>>>
->>>> This code only fixes the case for the following path:
->>>> writeback_inodes_wb
->>>> ->  ext4_da_writepages
->>>>     ->  ext4_journal_start_sb
->>>>        ->  vfs_check_frozen
->>>> But, the code doesn't fix the other cases.
->>>>
->>>> We must modify the local filesystem part in order to fix all cases...?
->>>    Yes, possibly. But most importantly we should first find clear locking
->>> rules for frozen filesystem that avoid deadlocks like the one above. And
->>> the freezing / unfreezing code might become subtle for that reason, that's
->>> fine, but it would be really good to avoid any complicated things for the
->>> code in the rest of the VFS / filesystems.
->> I have deeply continued to examined the root cause of this problem, then
->> I found it.
->>
->> It is that we can write a memory which is mmaped to a file. Then the memory
->> becomes "DIRTY" so then the flusher thread (ex. wb_do_writeback) tries to
->> "writeback" the memory.
->
-> Then surely the issue is that .page_mkwrite is not checking that the
-> filesystem is frozen before allowing the page fault to continue and
-> dirty the page?
->
->> I think the best approach to fix this problem is to let users not to write
->> memory which is mapped to a certain file while the filesystem is freezing.
->> However, it is very difficult to control users not to write memory which has
->> been already mapped to the file.
->
+v0->v1:
+  - check s_frozen in nojournal case only if there is no an active handle.
+  - get reference to an active handle by jbd2_journal_start().
 
-> If you don't allow the page to be dirtied in the fist place, then
-> nothing needs to be done to the writeback path because there is
-> nothing dirty for it to write back.
-OK. We can block the write operation by not allowing the page to be
-dirtied in the first place.
+ext4_journal_start_sb() should not prevent an active handle from being
+started due to s_frozen.  Otherwise, deadlock is easy to happen, below
+is a situation.
 
-But we can not easily stop writing the page which is *already mapped*
-in the next place. Therefore I think writing back such pages can
-be blocked only in the flusher thread.
+================================================
+     freeze         |       truncate
+================================================
+                    |  ext4_ext_truncate()
+    freeze_super()  |   starts a handle
+    sets s_frozen   |
+                    |  ext4_ext_truncate()
+                    |  holds i_data_sem
+  ext4_freeze()     |
+  waits for updates |
+                    |  ext4_free_blocks()
+                    |  calls dquot_free_block()
+                    |
+                    |  dquot_free_blocks()
+                    |  calls ext4_dirty_inode()
+                    |
+                    |  ext4_dirty_inode()
+                    |  trys to start an active
+                    |  handle
+                    |
+                    |  block due to s_frozen
+================================================
 
-Thanks,
-Toshiyuki Okajima
+Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Reported-by: Amir Goldstein <amir73il@users.sf.net>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
+Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+---
+ fs/ext4/super.c |   44 +++++++++++++++++++++++++++++++++-----------
+ 1 files changed, 33 insertions(+), 11 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index ccfa686..7fc6c2a 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -242,27 +242,44 @@ static void ext4_put_nojournal(handle_t *handle)
+  * journal_end calls result in the superblock being marked dirty, so
+  * that sync() will call the filesystem's write_super callback if
+  * appropriate.
++ *
++ * To avoid j_barrier hold in userspace when a user calls freeze(),
++ * ext4 prevents a new handle from being started by s_frozen, which
++ * is in an upper layer.
+  */
+ handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
+ {
+ 	journal_t *journal;
++	handle_t  *handle;
+
+ 	if (sb->s_flags & MS_RDONLY)
+ 		return ERR_PTR(-EROFS);
+
+-	vfs_check_frozen(sb, SB_FREEZE_TRANS);
+-	/* Special case here: if the journal has aborted behind our
+-	 * backs (eg. EIO in the commit thread), then we still need to
+-	 * take the FS itself readonly cleanly. */
+ 	journal = EXT4_SB(sb)->s_journal;
+-	if (journal) {
+-		if (is_journal_aborted(journal)) {
+-			ext4_abort(sb, "Detected aborted journal");
+-			return ERR_PTR(-EROFS);
+-		}
+-		return jbd2_journal_start(journal, nblocks);
++	handle = ext4_journal_current_handle();
++
++	/*
++	 * If a handle has been started, it should be allowed to
++	 * finish, otherwise deadlock could happen between freeze
++	 * and others(e.g. truncate) due to the restart of the
++	 * journal handle if the filesystem is forzen and active
++	 * handles are not stopped.
++	 */
++	if (!handle)
++		vfs_check_frozen(sb, SB_FREEZE_TRANS);
++
++	if (!journal)
++		return ext4_get_nojournal();
++	/*
++	 * Special case here: if the journal has aborted behind our
++	 * backs (eg. EIO in the commit thread), then we still need to
++	 * take the FS itself readonly cleanly.
++	 */
++	if (is_journal_aborted(journal)) {
++		ext4_abort(sb, "Detected aborted journal");
++		return ERR_PTR(-EROFS);
+ 	}
+-	return ext4_get_nojournal();
++	return jbd2_journal_start(journal, nblocks);
+ }
+
+ /*
+@@ -4131,6 +4148,11 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
+ /*
+  * LVM calls this function before a (read-only) snapshot is created.  This
+  * gives us a chance to flush the journal completely and mark the fs clean.
++ *
++ * Note that only this function cannot bring a filesystem to be in a clean
++ * state independently, because ext4 prevents a new handle from being started
++ * by @sb->s_frozen, which stays in an upper layer.  It thus needs help from
++ * the upper layer.
+  */
+ static int ext4_freeze(struct super_block *sb)
+ {
+-- 
+1.7.4
