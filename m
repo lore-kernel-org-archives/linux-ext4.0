@@ -1,93 +1,92 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH v1] ext4:Allow an active handle to be started when freezing.
-Date: Mon, 4 Apr 2011 22:31:40 -1000
-Message-ID: <C844B01E-FFBA-4D92-8587-1FE81B630863@dilger.ca>
-References: <BANLkTikqLrAyVaULk5UQsM7TzGk73ihsKg@mail.gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Ted Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+From: Zeev Tarantov <zeev.tarantov@gmail.com>
+Subject: Re: [PATCH] e2fsprogs: don't set stripe/stride to 1 block in mkfs
+Date: Tue, 5 Apr 2011 11:43:01 +0300
+Message-ID: <BANLkTikNXr9R+odfKMnYGWNqDBYtu0ZTvw@mail.gmail.com>
+References: <4D9A17F8.4000406@redhat.com> <F8519658-E9FA-4DD5-9980-59006CDACC8C@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:39002 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752504Ab1DEIbm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Apr 2011 04:31:42 -0400
-In-Reply-To: <BANLkTikqLrAyVaULk5UQsM7TzGk73ihsKg@mail.gmail.com>
+Received: from mail-pv0-f174.google.com ([74.125.83.174]:45607 "EHLO
+	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750963Ab1DEInV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Apr 2011 04:43:21 -0400
+Received: by pvg12 with SMTP id 12so60209pvg.19
+        for <linux-ext4@vger.kernel.org>; Tue, 05 Apr 2011 01:43:21 -0700 (PDT)
+In-Reply-To: <F8519658-E9FA-4DD5-9980-59006CDACC8C@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-04-04, at 9:47 PM, Yongqiang Yang wrote:
-> handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
-> {
-> +	handle = ext4_journal_current_handle();
-> +
-> +	/*
-> +	 * Before vfs_check_frozen(), the current handle should be allowed
-> +	 * to finish, otherwise deadlock would happen when the filesystem
-> +	 * is freezed && active handles are not stopped.
-> +	 */
-> +	if (!journal) {
-> +		if (!handle)
-> +			vfs_check_frozen(sb, SB_FREEZE_TRANS);
-> +		return ext4_get_nojournal();
-> 	}
-> +
-> +	if (!handle)
-> +		vfs_check_frozen(sb, SB_FREEZE_TRANS);
+On Tue, Apr 5, 2011 at 11:10, Andreas Dilger <adilger@dilger.ca> wrote:
+> On 2011-04-04, at 9:11 AM, Eric Sandeen wrote:
+>> Block devices may set minimum or optimal IO hints equal to
+>> blocksize; in this case there is really nothing for ext4
+>> to do with this information (i.e. search for a block-aligned
+>> allocation?) so don't set fs geometry with single-block
+>> values.
+>>
+>> Zeev also reported that with a block-sized stripe, the
+>> ext4 allocator spends time spinning in ext4_mb_scan_aligned(),
+>> oddly enough.
+>>
+>> Reported-by: Zeev Tarantov <zeev.tarantov@gmail.com>
+>> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+>> ---
+>>
+>> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+>> index 9798b88..74b838c 100644
+>> --- a/misc/mke2fs.c
+>> +++ b/misc/mke2fs.c
+>> @@ -1135,8 +1135,11 @@ static int get_device_geometry(const char *fi=
+le,
+>> =A0 =A0 =A0 if ((opt_io =3D=3D 0) && (psector_size > blocksize))
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 opt_io =3D psector_size;
+>>
+>> - =A0 =A0 fs_param->s_raid_stride =3D min_io / blocksize;
+>> - =A0 =A0 fs_param->s_raid_stripe_width =3D opt_io / blocksize;
+>> + =A0 =A0 /* setting stripe/stride to blocksize is pointless */
+>> + =A0 =A0 if (min_io > blocksize)
+>> + =A0 =A0 =A0 =A0 =A0 =A0 fs_param->s_raid_stride =3D min_io / block=
+size;
+>> + =A0 =A0 if (opt_io > blocksize)
+>> + =A0 =A0 =A0 =A0 =A0 =A0 fs_param->s_raid_stripe_width =3D opt_io /=
+ blocksize;
+>
+> I don't think it is harmful to specify an mballoc alignment that is a=
+n even multiple of the underlying device IO size (e.g. at least 256kB o=
+r 512kB).
+>
+> If the underlying device (e.g. zram) is reporting 16kB or 64kB opt_io=
+ size because that is PAGE_SIZE, but blocksize is 4kB, then we will hav=
+e the same performance problem again.
 
-This is probably easier to read by putting the !handle check/code together,
-with a minor fixup to the comment as well:
+I think I'm not understanding you. Are you objecting to the patch? If s=
+o, why?
+If io block is an even multiple of fs blocks, then mballoc really does
+need to use the fancier aligning code (though for a ratio that is a
+power of two, it shouldn't need to be slow).
+In your example, If PAGE_SIZE is 16k and zram reports min and opt io
+size as 16k but fs block is 4k, then Eric Sandeen's new code will set
+stride and stripe to 4, as it should. Then mballoc will really need to
+align blocks in groups of 4 and spending time doing that is not a
+performance problem.
 
-	/*
-	 * If a handle has already been started, it should be allowed to
-	 * finish, otherwise deadlock could happen between freeze and
-	 * truncate due to the restart of the journal handle if the
-	 * filesystem is frozen and active handles are not stopped.
-	 */
-	if (!handle) {
-		vfs_check_frozen(sb, SB_FREEZE_TRANS);
-		if (!journal)
-			return ext4_get_nojournal();
-	}
+This patch is only meant to _not_ set stripe and stride to 1, which
+cannot help block allocation and does in fact cause the kernel to
+spend more cpu time because it does not detect the degenerate case.
+Making the allocator faster in the case of a ratio that is a power of
+two is the work of a different patch someone may want to write.
+Using larger fs blocks in case the underlying block device prefers
+larger io blocks is the work of the admin, I think.
 
-	/*
-	 * Special case here: if the journal has aborted behind our
-	 * backs (eg. EIO in the commit thread), then we still need to
-	 * take the FS itself readonly cleanly.
-	 */
-	if (is_journal_aborted(journal)) {
-		ext4_abort(sb, "Detected aborted journal");
-		return ERR_PTR(-EROFS);
-	}
-	return jbd2_journal_start(journal, nblocks);
-}
+> Cheers, Andreas
 
-> /*
-> @@ -4131,6 +4149,11 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
-> /*
-> * LVM calls this function before a (read-only) snapshot is created.  This
-> * gives us a chance to flush the journal completely and mark the fs clean.
-> + *
-> + * Note that only this function cannot bring a filesystem to be in a clean
-> + * state independently, because ext4 prevents a new handle from being started
-> + * by @sb->s_frozen, which stays in an upper layer.  It thus needs help from
-> + * the upper layer.
-> */
-> static int ext4_freeze(struct super_block *sb)
-> {
-> -- 
-> 1.7.4
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
-Cheers, Andreas
-
-
-
-
-
+-Z.T.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
