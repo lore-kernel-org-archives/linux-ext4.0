@@ -1,33 +1,42 @@
-From: Zhang Huan <zhhuan@gmail.com>
-Subject: Re: potential memory leak on transaction commit
-Date: Tue, 5 Apr 2011 20:35:35 +0800
-Message-ID: <BANLkTin6PyfO+z7+ospeiPYrLnBOce3E2g@mail.gmail.com>
-References: <alpine.LFD.2.02.1103081849430.6414@zhanghuan.nrchpc.ac.cn>
- <AANLkTi=ZPGd6scA8u3eSCzq1jgZWZdxs0p4p5knd2bN5@mail.gmail.com> <20110404221009.GD2832@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 25832] kernel crashes upon resume if usb devices are removed
+ when suspended
+Date: Tue, 5 Apr 2011 15:17:03 GMT
+Message-ID: <201104051517.p35FH3og013190@demeter2.kernel.org>
+References: <bug-25832-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:38087 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753278Ab1DEMfv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Apr 2011 08:35:51 -0400
-Received: by pzk9 with SMTP id 9so122870pzk.19
-        for <linux-ext4@vger.kernel.org>; Tue, 05 Apr 2011 05:35:50 -0700 (PDT)
-In-Reply-To: <20110404221009.GD2832@thunk.org>
+Received: from demeter2.kernel.org ([140.211.167.42]:38198 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753255Ab1DEPRE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Apr 2011 11:17:04 -0400
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p35FH3X0013191
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 5 Apr 2011 15:17:03 GMT
+In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 5, 2011 at 06:10, Ted Ts'o <tytso@mit.edu> wrote:
->
-> If you could send me an acknowledgement that it would be OK to add a
->
-> Signed-off-by: Zhang Huan <zhhuan@gmail.com>
->
-> line to your patch, it would be much appreciated.
->
+https://bugzilla.kernel.org/show_bug.cgi?id=25832
 
-Yes. please go ahead.
 
-Zhang Huan
+
+
+
+--- Comment #57 from rocko <rockorequin@hotmail.com>  2011-04-05 15:17:02 ---
+Ok. I only mentioned it because by chance I saw
+https://lkml.org/lkml/2011/4/3/70, which mentioned a patch to usbhid/hiddev.c
+at
+http://git.kernel.org/?p=linux/kernel/git/jikos/hid.git;a=commitdiff;h=9c9e54a8df0be48aa359744f412377cc55c3b7d2.
+The patch says "This obviously lead to memory corruptions at device disconnect
+time", which of course looks a lot like the issue I'm getting, so I thought
+perhaps there might have been other problems introduced when the BKL was
+removed.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
