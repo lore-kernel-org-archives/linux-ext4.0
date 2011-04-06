@@ -1,100 +1,46 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: sync the directory inode in ext4_sync_parent()
-Date: Wed, 6 Apr 2011 17:01:26 -0400
-Message-ID: <20110406210126.GO2832@thunk.org>
-References: <1302045844-23678-1-git-send-email-curtw@google.com>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: [PATCH 0/2] Add inode checksum support to ext4
+Date: Wed, 6 Apr 2011 15:44:10 -0700
+Message-ID: <20110406224410.GB24354@tux1.beaverton.ibm.com>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Curt Wohlgemuth <curtw@google.com>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:48561 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751075Ab1DFVBl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 Apr 2011 17:01:41 -0400
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:50183 "EHLO e5.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752996Ab1DFWoK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 6 Apr 2011 18:44:10 -0400
 Content-Disposition: inline
-In-Reply-To: <1302045844-23678-1-git-send-email-curtw@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Curt,
+Hi all,
 
-Thanks, accepted into the tree.  I made a few tiny stylistic changes
-(mainly by replacing "goto out" with "break").
+I spent last week analyzing a client's corrupted ext3 image to see if I could
+determine what had gone wrong and caused the filesystem to blow apart.  As best
+as I could tell, a data block got miswritten into a different sector ... which
+happened to be an indirect block.  Some time later the indirect block, which
+now pointed at one of the inode tables (among other things that shouldn't ever
+become file data) was loaded as part of a file write, which caused that inode
+table to be blown to smithereens.  Just for fun I tried reading from one of
+these busted-inode files and ... failed to encounter any errors.  Somehow, they
+didn't find it funny that ext3 would read block numbers from a table with the
+contents "ibm.com" with a straight face.  Fortunately there were backups. :)
 
-       		     	 	       	 - Ted
+The client at this point asked if ext4 would do a better job of sanity
+checking, which got me to wonder why ext4 checksums block groups but not
+inodes.  It's on Ted's todo list, but apparently nobody wrote any patch, so I
+did.  The following two patches are a first draft of adding inode checksum
+support to both the kernel driver and to the various e2fsprogs.
 
->From 8429a2e121372395f25d80a486ef065e77139ebb Mon Sep 17 00:00:00 2001
-From: Curt Wohlgemuth <curtw@google.com>
-Date: Wed, 6 Apr 2011 16:57:09 -0400
-Subject: [PATCH] ext4: sync the directory inode in ext4_sync_parent()
+If you have an existing ext* fs with 256-byte inodes, you ought to be able to
+"tune2fs -O inode_csum /dev/XXX", fsck /dev/XXX, and mount the filesystem with
+checksumming enabled.  It seems to work for me (i386/x86-64), but I'm looking
+for comments for improvement and perhaps some more testing (ppc64 is still
+building).  This inode checksum feature is not enabled by default.
 
-ext4 has taken the stance that, in the absence of a journal,
-when an fsync/fdatasync of an inode is done, the parent
-directory should be sync'ed if this inode entry is new.
-ext4_sync_parent(), which implements this, does indeed sync
-the dirent pages for parent directories, but it does not
-sync the directory *inode*.  This patch fixes this.
-
-Also now return error status from ext4_sync_parent().
-
-I tested this using a power fail test, which panics a
-machine running a file server getting requests from a
-client.  Without this patch, on about every other test run,
-the server is missing many, many files that had been synced.
-With this patch, on > 6 runs, I see zero files being lost.
-
-Signed-off-by: Curt Wohlgemuth <curtw@google.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/fsync.c |   17 ++++++++++++++---
- 1 files changed, 14 insertions(+), 3 deletions(-)
-
-diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-index 7f74019..b1f9b5f 100644
---- a/fs/ext4/fsync.c
-+++ b/fs/ext4/fsync.c
-@@ -125,9 +125,11 @@ extern int ext4_flush_completed_IO(struct inode *inode)
-  * the parent directory's parent as well, and so on recursively, if
-  * they are also freshly created.
-  */
--static void ext4_sync_parent(struct inode *inode)
-+static int ext4_sync_parent(struct inode *inode)
- {
-+	struct writeback_control wbc;
- 	struct dentry *dentry = NULL;
-+	int ret = 0;
- 
- 	while (inode && ext4_test_inode_state(inode, EXT4_STATE_NEWENTRY)) {
- 		ext4_clear_inode_state(inode, EXT4_STATE_NEWENTRY);
-@@ -136,8 +138,17 @@ static void ext4_sync_parent(struct inode *inode)
- 		if (!dentry || !dentry->d_parent || !dentry->d_parent->d_inode)
- 			break;
- 		inode = dentry->d_parent->d_inode;
--		sync_mapping_buffers(inode->i_mapping);
-+		ret = sync_mapping_buffers(inode->i_mapping);
-+		if (ret)
-+			break;
-+		memset(&wbc, 0, sizeof(wbc));
-+		wbc.sync_mode = WB_SYNC_ALL;
-+		wbc.nr_to_write = 0;         /* only write out the inode */
-+		ret = sync_inode(inode, &wbc);
-+		if (ret)
-+			break;
- 	}
-+	return ret;
- }
- 
- /*
-@@ -176,7 +187,7 @@ int ext4_sync_file(struct file *file, int datasync)
- 	if (!journal) {
- 		ret = generic_file_fsync(file, datasync);
- 		if (!ret && !list_empty(&inode->i_dentry))
--			ext4_sync_parent(inode);
-+			ret = ext4_sync_parent(inode);
- 		goto out;
- 	}
- 
--- 
-1.7.3.1
-
+--D
