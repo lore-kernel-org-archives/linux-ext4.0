@@ -1,134 +1,170 @@
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+From: Dave Chinner <david@fromorbit.com>
 Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
  to a deadlock
-Date: Wed, 06 Apr 2011 14:09:14 +0900
-Message-ID: <4D9BF57A.6030705@jp.fujitsu.com>
-References: <20110215170352.GE4255@thunk.org> <20110215172954.GK17313@quack.suse.cz> <20110216081746.54d146d1.toshi.okajima@jp.fujitsu.com> <20110216145627.GB5592@quack.suse.cz> <4D5C9B1B.2050304@jp.fujitsu.com> <20110217104552.GD4947@quack.suse.cz> <20110328170628.ffe314fb.toshi.okajima@jp.fujitsu.com> <20110330141205.GC22349@quack.suse.cz> <4D946DAB.3010107@jp.fujitsu.com> <4D9AEE28.4000003@jp.fujitsu.com> <20110405225428.GD8531@quack.suse.cz>
-Reply-To: toshi.okajima@jp.fujitsu.com
+Date: Wed, 6 Apr 2011 15:40:05 +1000
+Message-ID: <20110406054005.GD31057@dastard>
+References: <20110215160630.GH17313@quack.suse.cz>
+ <20110215170352.GE4255@thunk.org>
+ <20110215172954.GK17313@quack.suse.cz>
+ <20110216081746.54d146d1.toshi.okajima@jp.fujitsu.com>
+ <20110216145627.GB5592@quack.suse.cz>
+ <4D5C9B1B.2050304@jp.fujitsu.com>
+ <20110217104552.GD4947@quack.suse.cz>
+ <20110328170628.ffe314fb.toshi.okajima@jp.fujitsu.com>
+ <20110331234050.GD2904@dastard>
+ <20110401140856.GA5311@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Ted Ts'o <tytso@mit.edu>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
+	Ted Ts'o <tytso@mit.edu>,
 	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	sandeen@redhat.com
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20110405225428.GD8531@quack.suse.cz>
+Content-Disposition: inline
+In-Reply-To: <20110401140856.GA5311@quack.suse.cz>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi.
+On Fri, Apr 01, 2011 at 04:08:56PM +0200, Jan Kara wrote:
+> On Fri 01-04-11 10:40:50, Dave Chinner wrote:
+> > On Mon, Mar 28, 2011 at 05:06:28PM +0900, Toshiyuki Okajima wrote:
+> > > On Thu, 17 Feb 2011 11:45:52 +0100
+> > > Jan Kara <jack@suse.cz> wrote:
+> > > > On Thu 17-02-11 12:50:51, Toshiyuki Okajima wrote:
+> > > > > (2011/02/16 23:56), Jan Kara wrote:
+> > > > > >On Wed 16-02-11 08:17:46, Toshiyuki Okajima wrote:
+> > > > > >>On Tue, 15 Feb 2011 18:29:54 +0100
+> > > > > >>Jan Kara<jack@suse.cz>  wrote:
+> > > > > >>>On Tue 15-02-11 12:03:52, Ted Ts'o wrote:
+> > > > > >>>>On Tue, Feb 15, 2011 at 05:06:30PM +0100, Jan Kara wrote:
+> > > > > >>>>>Thanks for detailed analysis. Indeed this is a bug. Whenever we do IO
+> > > > > >>>>>under s_umount semaphore, we are prone to deadlock like the one you
+> > > > > >>>>>describe above.
+> > > > > >>>>
+> > > > > >>>>One of the fundamental problems here is that the freeze and thaw
+> > > > > >>>>routines are using down_write(&sb->s_umount) for two purposes.  The
+> > > > > >>>>first is to prevent the resume/thaw from racing with a umount (which
+> > > > > >>>>it could do just as well by taking a read lock), but the second is to
+> > > > > >>>>prevent the resume/thaw code from racing with itself.  That's the core
+> > > > > >>>>fundamental problem here.
+> > > > > >>>>
+> > > > > >>>>So I think we can solve this by introduce a new mutex, s_freeze, and
+> > > > > >>>>having the the resume/thaw first take the s_freeze mutex and then
+> > > > > >>>>second take a read lock on the s_umount.
+> > > > > >>>   Sadly this does not quite work because even down_read(&sb->s_umount)
+> > > > > >>>in thaw_super() can block if there is another process that tries to acquire
+> > > > > >>>s_umount for writing - a situation like:
+> > > > > >>>   TASK 1 (e.g. flusher)		TASK 2	(e.g. remount)		TASK 3 (unfreeze)
+> > > > > >>>down_read(&sb->s_umount)
+> > > > > >>>   block on s_frozen
+> > > > > >>>				down_write(&sb->s_umount)
+> > > > > >>>				  -blocked
+> > > > > >>>								down_read(&sb->s_umount)
+> > > > > >>>								  -blocked
+> > > > > >>>behind the write access...
+> > > > > >>>
+> > > > > >>>The only working solution I see is to check for frozen filesystem before
+> > > > > >>>taking s_umount semaphore which seems rather ugly (but might be bearable if
+> > > > > >>>we did so in some well described wrapper).
+> > > > > >>I created the patch that you imagine yesterday.
+> > > > > >>
+> > > > > >>I got a reproducer from Mizuma-san yesterday, and then I executed it on the kernel
+> > > > > >>without a fixed patch. After an hour, I confirmed that this deadlock happened.
+> > > > > >>
+> > > > > >>However, on the kernel with a fixed patch, this deadlock doesn't still happen
+> > > > > >>after 12 hours passed.
+> > > > > >>
+> > > > > >>The patch for linux-2.6.38-rc4 is as follows:
+> > > > > >>---
+> > > > > >>  fs/fs-writeback.c |    2 +-
+> > > > > >>  1 files changed, 1 insertions(+), 1 deletions(-)
+> > > > > >>
+> > > > > >>diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+> > > > > >>index 59c6e49..1c9a05e 100644
+> > > > > >>--- a/fs/fs-writeback.c
+> > > > > >>+++ b/fs/fs-writeback.c
+> > > > > >>@@ -456,7 +456,7 @@ static bool pin_sb_for_writeback(struct super_block *sb)
+> > > > > >>         spin_unlock(&sb_lock);
+> > > > > >>
+> > > > > >>         if (down_read_trylock(&sb->s_umount)) {
+> > > > > >>-               if (sb->s_root)
+> > > > > >>+               if (sb->s_frozen == SB_UNFROZEN&&  sb->s_root)
+> > > > > >>                         return true;
+> > > > > >>                 up_read(&sb->s_umount);
+> > > > > 
+> > > > > >   So this is something along the lines I thought but it actually won't work
+> > > > > >for example if sync(1) is run while the filesystem is frozen (that takes
+> > > > > >s_umount semaphore in a different place). And generally, I'm not convinced
+> > > > > >there are not other places that try to do IO while holding s_umount
+> > > > > >semaphore...
+> > > > > OK. I understand.
+> > > > > 
+> > > > > This code only fixes the case for the following path:
+> > > > > writeback_inodes_wb
+> > > > > -> ext4_da_writepages
+> > > > >    -> ext4_journal_start_sb
+> > > > >       -> vfs_check_frozen
+> > > > > But, the code doesn't fix the other cases.
+> > > > > 
+> > > > > We must modify the local filesystem part in order to fix all cases...?
+> > > >   Yes, possibly. But most importantly we should first find clear locking
+> > > > rules for frozen filesystem that avoid deadlocks like the one above. And
+> > > > the freezing / unfreezing code might become subtle for that reason, that's
+> > > > fine, but it would be really good to avoid any complicated things for the
+> > > > code in the rest of the VFS / filesystems.
+> > > I have deeply continued to examined the root cause of this problem, then 
+> > > I found it.
+> > > 
+> > > It is that we can write a memory which is mmaped to a file. Then the memory 
+> > > becomes "DIRTY" so then the flusher thread (ex. wb_do_writeback) tries to
+> > > "writeback" the memory. 
+> > 
+> > Then surely the issue is that .page_mkwrite is not checking that the
+> > filesystem is frozen before allowing the page fault to continue and
+> > dirty the page?
+>   And is this a bug? That isn't clear to me...
 
-(2011/04/06 7:54), Jan Kara wrote:
-> On Tue 05-04-11 19:25:44, Toshiyuki Okajima wrote:
->> (2011/03/31 21:03), Toshiyuki Okajima wrote:
->>> Hi, thanks for your reviewing.
->>>
->>> (2011/03/30 23:12), Jan Kara wrote:
->>>> Hello,
->>>>
->>>> On Mon 28-03-11 17:06:28, Toshiyuki Okajima wrote:
->>>>> On Thu, 17 Feb 2011 11:45:52 +0100
->>>>> Jan Kara<jack@suse.cz>  wrote:
->>>>>> On Thu 17-02-11 12:50:51, Toshiyuki Okajima wrote:
->>>>>>> (2011/02/16 23:56), Jan Kara wrote:
->>>>>>>> On Wed 16-02-11 08:17:46, Toshiyuki Okajima wrote:
->>>>>>>>> On Tue, 15 Feb 2011 18:29:54 +0100
->>>>>>>>> Jan Kara<jack@suse.cz>  wrote:
->>>>>>>>>> On Tue 15-02-11 12:03:52, Ted Ts'o wrote:
->>>>>>>>>>> On Tue, Feb 15, 2011 at 05:06:30PM +0100, Jan Kara wrote:
->>> <SNIP>
->>>>> I have deeply continued to examined the root cause of this problem, then
->>>>> I found it.
->>>>>
->>>>> It is that we can write a memory which is mmaped to a file. Then the memory
->>>>> becomes "DIRTY" so then the flusher thread (ex. wb_do_writeback) tries to
->>>>> "writeback" the memory.
->>>>>
->>>>> Therefore, the root cause of this hangup is not only ext4 component (with
->>>>> delayed allocation feature) but also writeback mechanism for mmap. If you
->>>>> use the other filesystem, you can write something to the filesystem though
->>>>> you have freezed the filesystem.
->>>
->>>> Well, you can write something only in the caches, not to the on disk
->>>> image. So it's not a problem as such.
->>> My reproducer uses the loopback device(/dev/loopX). By using it, I have confirmed that
->>> we can write in not only the caches but also the loopback device. However,
->>> I don't still confirm that we can write to the real device(/dev/sdaX).
->>>
->>>>
->>>>> A sample problem is attached on this mail. Try to execute it then you can
->>>>> confirm that we can write some data to your filesystem while freezing the
->>>>> filesystem.
->>>>> (If you change FS variable in go.sh from ext3 to ext4 and you execute
->>>>> "fsfreeze -u mnt" manually on other prompt, you can also confirm this deadlock.)
->>>>>
->>>>> I think the best approach to fix this problem is to let users not to write
->>>>> memory which is mapped to a certain file while the filesystem is freezing.
->>>>> However, it is very difficult to control users not to write memory which has
->>>>> been already mapped to the file.
->>>> It is actually possible. In case of ext4, you could add a check (+ wait)
->>>> in ext4_page_mkwrite() whether the filesystem is frozen or in the process
->>>> of being frozen and if so, wait for it to get unfrozen. The only tough
->>>> problem here might be the locking as ext4_page_mkwrite() is called with
->>>> mmap_sem held and I'm not sure we can take s_umount with mmap_sem held.
->>>> But you'd have to fix all filesystems (and all paths possibly creating
->>>> dirty data) in this way.
->>>>
->>>
->>>>> Therefore, I think there is only actual method that we stop writeback thread
->>>>> to resolve the mmap problem. Also, by this fix, the original problem
->>>>> (ext4 delayed write vs unfreeze) can be solved.
->>>> Hmm, I had a look at the code again and think we could fix the issue
->>>> cleanly (i.e. all possible users of s_umount) as follows: The lock
->>>> ordering will be
->>>> s_umount ->  "fs frozen"
->>>> and there will be a new mutex s_freeze_mutex protecting changes of
->>>> s_frozen.
->>>>
->>>> freeze_bdev() already observes this lock ordering, it will only take
->>>> s_freeze_mutex for the changes of s_frozen values. The only other code
->>>> that is relevant for the lock ordering is thaw_super() (the freezing
->>>> process is not expected to reenter kernel for the frozen filesystem).
->>>> In thaw_super() we could take s_freeze_mutex, do all the thawing work,
->>>> set s_frozen, release s_freeze_mutex and put superblock reference.
->>>>
->>>
->>>> So something like the patch below - it seems to work for me, can you test
->>>> it please?
->>> I think your patch looks good, so, the original problem seems to be solved.
->>> OK, I will test your patch.
->>> This weekend I cannot test it. So, I will reply next week.
->> I have tested whether Mizuma-san's reproducer can cause to deadlock with your
->> patch. And then any problems didn't hit while the reproducer was running.
->>
->> I think your patch solves the original deadlock problem which is reported by
->> Mizuma-san.
->    Good. Thanks.
->
->>> Reported-by: Toshiyuki Okajima<toshi.okajima@jp.fujitsu.com>
->>> Signed-off-by: Jan Kara<jack@suse.cz>
->>> ---
->>> fs/super.c         |   40 ++++++++++++++++++++++++++++++++++------
->>> include/linux/fs.h |    1 +
->>> 2 files changed, 35 insertions(+), 6 deletions(-)
->>
+Given the semantics of a frozen filesystem, letting any object be
+dirtied while frozen (be it an inode, a page, a metadata block, etc)
+is definitely a bug.
 
->> However, I think a write which causes the deadlock is from mmapped dirty
->> pages. So, I guess we also need to fix in the mmap path while fsfreezing.
->    Why? If you dirty a page, writeback thread can come and try to write it -
-> which blocks - but now that does not matter...
-I have not understood the code around writeback thread very much...
-Please explain me the concrete function name which blocks some writes?
+The way the freeze code is architected is that incoming dirtying
+events are prevented so that the writeback side does not need to
+care about the frozen state of the filesystem at all. The freeze
+operation is supposed to block new dirtiers, then flush all dirty
+objects resulting in everything being clean in the filesystem.
 
-Mizuma-san's reproducer also writes the data which maps to the file (mmap).
-The original problem happens after the fsfreeze operation is done.
-I understand the normal write operation (not mmap) can be blocked while
-fsfreezing. So, I guess we don't always block all the write operation
-while fsfreezing.
+Hence if no objects are being dirtied, then there should never be
+any need to block writeback threads due to the filesytem being
+frozen because, by definition, there should be no work for them to
+do. Hence if objects are being dirtied while the filesystem is
+frozen, then that is a bug.
 
-Thanks
-Toshiyuki Okajima
+> > > I think the best approach to fix this problem is to let users not to write
+> > > memory which is mapped to a certain file while the filesystem is freezing. 
+> > > However, it is very difficult to control users not to write memory which has 
+> > > been already mapped to the file.
+> > 
+> > If you don't allow the page to be dirtied in the fist place, then
+> > nothing needs to be done to the writeback path because there is
+> > nothing dirty for it to write back.
+>   Sure but that's only the problem he was able to hit. But generally,
+> there's a problem with needing s_umount for unfreezing because it isn't
+> clear there aren't other code paths which can block with s_umount held
+> waiting for fs to get unfrozen. And these code paths would cause the same
+> deadlock. That's why I chose to get rid of s_umount during thawing.
 
+Holding the s_umount lock while checking if frozen and sleeping
+is essentially an ABBA lock inversion bug that can bite in many more
+places that just thawing the filesystem. . Any where this is done
+should be fixed, so I don't think just removing the s_umount lock
+from the thaw path is sufficient to avoid problems.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
