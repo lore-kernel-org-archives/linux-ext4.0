@@ -1,162 +1,134 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [PATCH v1] ext4:Allow an active handle to be started when freezing.
-Date: Wed, 6 Apr 2011 08:52:40 +0800
-Message-ID: <BANLkTikzAgN=D1UOd9FgKt5A5Qwf_4nevg@mail.gmail.com>
-References: <BANLkTikqLrAyVaULk5UQsM7TzGk73ihsKg@mail.gmail.com>
-	<20110405222630.GB8531@quack.suse.cz>
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
+ to a deadlock
+Date: Wed, 06 Apr 2011 14:09:14 +0900
+Message-ID: <4D9BF57A.6030705@jp.fujitsu.com>
+References: <20110215170352.GE4255@thunk.org> <20110215172954.GK17313@quack.suse.cz> <20110216081746.54d146d1.toshi.okajima@jp.fujitsu.com> <20110216145627.GB5592@quack.suse.cz> <4D5C9B1B.2050304@jp.fujitsu.com> <20110217104552.GD4947@quack.suse.cz> <20110328170628.ffe314fb.toshi.okajima@jp.fujitsu.com> <20110330141205.GC22349@quack.suse.cz> <4D946DAB.3010107@jp.fujitsu.com> <4D9AEE28.4000003@jp.fujitsu.com> <20110405225428.GD8531@quack.suse.cz>
+Reply-To: toshi.okajima@jp.fujitsu.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Ted Ts'o" <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Ted Ts'o <tytso@mit.edu>,
+	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	sandeen@redhat.com
 To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:51105 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752102Ab1DFAwm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Apr 2011 20:52:42 -0400
-Received: by wya21 with SMTP id 21so836294wya.19
-        for <linux-ext4@vger.kernel.org>; Tue, 05 Apr 2011 17:52:41 -0700 (PDT)
-In-Reply-To: <20110405222630.GB8531@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20110405225428.GD8531@quack.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Apr 6, 2011 at 6:26 AM, Jan Kara <jack@suse.cz> wrote:
-> On Tue 05-04-11 15:47:25, Yongqiang Yang wrote:
->> v0->v1:
->> =A0 check s_frozen in nojournal case only if there is no an active h=
-andle.
->> =A0 get reference to an active handle by jbd2_journal_start().
+Hi.
+
+(2011/04/06 7:54), Jan Kara wrote:
+> On Tue 05-04-11 19:25:44, Toshiyuki Okajima wrote:
+>> (2011/03/31 21:03), Toshiyuki Okajima wrote:
+>>> Hi, thanks for your reviewing.
+>>>
+>>> (2011/03/30 23:12), Jan Kara wrote:
+>>>> Hello,
+>>>>
+>>>> On Mon 28-03-11 17:06:28, Toshiyuki Okajima wrote:
+>>>>> On Thu, 17 Feb 2011 11:45:52 +0100
+>>>>> Jan Kara<jack@suse.cz>  wrote:
+>>>>>> On Thu 17-02-11 12:50:51, Toshiyuki Okajima wrote:
+>>>>>>> (2011/02/16 23:56), Jan Kara wrote:
+>>>>>>>> On Wed 16-02-11 08:17:46, Toshiyuki Okajima wrote:
+>>>>>>>>> On Tue, 15 Feb 2011 18:29:54 +0100
+>>>>>>>>> Jan Kara<jack@suse.cz>  wrote:
+>>>>>>>>>> On Tue 15-02-11 12:03:52, Ted Ts'o wrote:
+>>>>>>>>>>> On Tue, Feb 15, 2011 at 05:06:30PM +0100, Jan Kara wrote:
+>>> <SNIP>
+>>>>> I have deeply continued to examined the root cause of this problem, then
+>>>>> I found it.
+>>>>>
+>>>>> It is that we can write a memory which is mmaped to a file. Then the memory
+>>>>> becomes "DIRTY" so then the flusher thread (ex. wb_do_writeback) tries to
+>>>>> "writeback" the memory.
+>>>>>
+>>>>> Therefore, the root cause of this hangup is not only ext4 component (with
+>>>>> delayed allocation feature) but also writeback mechanism for mmap. If you
+>>>>> use the other filesystem, you can write something to the filesystem though
+>>>>> you have freezed the filesystem.
+>>>
+>>>> Well, you can write something only in the caches, not to the on disk
+>>>> image. So it's not a problem as such.
+>>> My reproducer uses the loopback device(/dev/loopX). By using it, I have confirmed that
+>>> we can write in not only the caches but also the loopback device. However,
+>>> I don't still confirm that we can write to the real device(/dev/sdaX).
+>>>
+>>>>
+>>>>> A sample problem is attached on this mail. Try to execute it then you can
+>>>>> confirm that we can write some data to your filesystem while freezing the
+>>>>> filesystem.
+>>>>> (If you change FS variable in go.sh from ext3 to ext4 and you execute
+>>>>> "fsfreeze -u mnt" manually on other prompt, you can also confirm this deadlock.)
+>>>>>
+>>>>> I think the best approach to fix this problem is to let users not to write
+>>>>> memory which is mapped to a certain file while the filesystem is freezing.
+>>>>> However, it is very difficult to control users not to write memory which has
+>>>>> been already mapped to the file.
+>>>> It is actually possible. In case of ext4, you could add a check (+ wait)
+>>>> in ext4_page_mkwrite() whether the filesystem is frozen or in the process
+>>>> of being frozen and if so, wait for it to get unfrozen. The only tough
+>>>> problem here might be the locking as ext4_page_mkwrite() is called with
+>>>> mmap_sem held and I'm not sure we can take s_umount with mmap_sem held.
+>>>> But you'd have to fix all filesystems (and all paths possibly creating
+>>>> dirty data) in this way.
+>>>>
+>>>
+>>>>> Therefore, I think there is only actual method that we stop writeback thread
+>>>>> to resolve the mmap problem. Also, by this fix, the original problem
+>>>>> (ext4 delayed write vs unfreeze) can be solved.
+>>>> Hmm, I had a look at the code again and think we could fix the issue
+>>>> cleanly (i.e. all possible users of s_umount) as follows: The lock
+>>>> ordering will be
+>>>> s_umount ->  "fs frozen"
+>>>> and there will be a new mutex s_freeze_mutex protecting changes of
+>>>> s_frozen.
+>>>>
+>>>> freeze_bdev() already observes this lock ordering, it will only take
+>>>> s_freeze_mutex for the changes of s_frozen values. The only other code
+>>>> that is relevant for the lock ordering is thaw_super() (the freezing
+>>>> process is not expected to reenter kernel for the frozen filesystem).
+>>>> In thaw_super() we could take s_freeze_mutex, do all the thawing work,
+>>>> set s_frozen, release s_freeze_mutex and put superblock reference.
+>>>>
+>>>
+>>>> So something like the patch below - it seems to work for me, can you test
+>>>> it please?
+>>> I think your patch looks good, so, the original problem seems to be solved.
+>>> OK, I will test your patch.
+>>> This weekend I cannot test it. So, I will reply next week.
+>> I have tested whether Mizuma-san's reproducer can cause to deadlock with your
+>> patch. And then any problems didn't hit while the reproducer was running.
 >>
->> ext4_journal_start_sb() should not prevent an active handle from bei=
-ng
->> started due to s_frozen. =A0Otherwise, deadlock is easy to happen, b=
-elow
->> is a situation.
->>
->> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D
->> =A0 =A0 =A0freeze =A0 =A0 =A0 =A0 | =A0 =A0 =A0 truncate
->> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 | =A0ext4_ext_truncate()
->> =A0 =A0 freeze_super() =A0| =A0 starts a handle
->> =A0 =A0 sets s_frozen =A0 |
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 | =A0ext4_ext_truncate()
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 | =A0holds i_data_sem
->> =A0 ext4_freeze() =A0 =A0 |
->> =A0 waits for updates |
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 | =A0ext4_free_blocks()
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 | =A0calls dquot_free_block(=
-)
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 |
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 | =A0dquot_free_blocks()
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 | =A0calls ext4_dirty_inode(=
-)
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 |
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 | =A0ext4_dirty_inode()
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 | =A0trys to start an active
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 | =A0handle
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 |
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 | =A0block due to s_frozen
->> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D
->>
->> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
->> Reported-by: Amir Goldstein <amir73il@users.sf.net>
->> Reviewed-by: Jan Kara <jack@suse.cz>
-> =A0The usual workflow is that you add 'Reviewed-by' tag to the patch =
-only
-> after you send a version of a patch the person agrees to and explicit=
-ely
-> says you can add a tag - for example I write something like "You can =
-add
-> Reviewed-by: Jan Kara <jack@suse.cz>"
-> when I agree to the tag being added.
-I see.  Thank you.
+>> I think your patch solves the original deadlock problem which is reported by
+>> Mizuma-san.
+>    Good. Thanks.
 >
->> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
->> index ccfa686..53920bd 100644
->> --- a/fs/ext4/super.c
->> +++ b/fs/ext4/super.c
->> @@ -242,27 +242,45 @@ static void ext4_put_nojournal(handle_t *handl=
-e)
->> =A0 * journal_end calls result in the superblock being marked dirty,=
- so
->> =A0 * that sync() will call the filesystem's write_super callback if
->> =A0 * appropriate.
->> + *
->> + * To avoid j_barrier hold in userspace when a user calls freeze(),
->> + * ext4 prevents a new handle from being started by s_frozen, which
->> + * is in an upper layer.
->> =A0 */
->> =A0handle_t *ext4_journal_start_sb(struct super_block *sb, int nbloc=
-ks)
->> =A0{
->> =A0 =A0 =A0 journal_t *journal;
->> + =A0 =A0 handle_t =A0*handle;
+>>> Reported-by: Toshiyuki Okajima<toshi.okajima@jp.fujitsu.com>
+>>> Signed-off-by: Jan Kara<jack@suse.cz>
+>>> ---
+>>> fs/super.c         |   40 ++++++++++++++++++++++++++++++++++------
+>>> include/linux/fs.h |    1 +
+>>> 2 files changed, 35 insertions(+), 6 deletions(-)
 >>
->> =A0 =A0 =A0 if (sb->s_flags & MS_RDONLY)
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 return ERR_PTR(-EROFS);
->>
->> - =A0 =A0 vfs_check_frozen(sb, SB_FREEZE_TRANS);
->> - =A0 =A0 /* Special case here: if the journal has aborted behind ou=
-r
->> - =A0 =A0 =A0* backs (eg. EIO in the commit thread), then we still n=
-eed to
->> - =A0 =A0 =A0* take the FS itself readonly cleanly. */
->> =A0 =A0 =A0 journal =3D EXT4_SB(sb)->s_journal;
->> - =A0 =A0 if (journal) {
->> - =A0 =A0 =A0 =A0 =A0 =A0 if (is_journal_aborted(journal)) {
->> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_abort(sb, "Detected a=
-borted journal");
->> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return ERR_PTR(-EROFS);
->> - =A0 =A0 =A0 =A0 =A0 =A0 }
->> - =A0 =A0 =A0 =A0 =A0 =A0 return jbd2_journal_start(journal, nblocks=
-);
->> + =A0 =A0 handle =3D ext4_journal_current_handle();
->> +
->> + =A0 =A0 /*
->> + =A0 =A0 =A0* Before vfs_check_frozen(), the current handle should =
-be allowed
->> + =A0 =A0 =A0* to finish, otherwise deadlock would happen when the f=
-ilesystem
->> + =A0 =A0 =A0* is freezed && active handles are not stopped.
->> + =A0 =A0 =A0*/
->> + =A0 =A0 if (!journal) {
->> + =A0 =A0 =A0 =A0 =A0 =A0 if (!handle)
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 vfs_check_frozen(sb, SB_FR=
-EEZE_TRANS);
->> + =A0 =A0 =A0 =A0 =A0 =A0 return ext4_get_nojournal();
->> =A0 =A0 =A0 }
->> - =A0 =A0 return ext4_get_nojournal();
->> +
->> + =A0 =A0 if (!handle)
->> + =A0 =A0 =A0 =A0 =A0 =A0 vfs_check_frozen(sb, SB_FREEZE_TRANS);
-> =A0This test is the same for 'nojournal' case so you can move it befo=
-re the
-> !journal test. Otherwise the patch looks OK to me. So now you can add
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> line :)
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
-Honza
-> --
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
->
 
+>> However, I think a write which causes the deadlock is from mmapped dirty
+>> pages. So, I guess we also need to fix in the mmap path while fsfreezing.
+>    Why? If you dirty a page, writeback thread can come and try to write it -
+> which blocks - but now that does not matter...
+I have not understood the code around writeback thread very much...
+Please explain me the concrete function name which blocks some writes?
 
+Mizuma-san's reproducer also writes the data which maps to the file (mmap).
+The original problem happens after the fsfreeze operation is done.
+I understand the normal write operation (not mmap) can be blocked while
+fsfreezing. So, I guess we don't always block all the write operation
+while fsfreezing.
 
---=20
-Best Wishes
-Yongqiang Yang
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Thanks
+Toshiyuki Okajima
+
