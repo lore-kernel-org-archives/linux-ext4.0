@@ -1,185 +1,121 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
- to a deadlock
-Date: Wed, 6 Apr 2011 08:18:56 +0200
-Message-ID: <20110406061856.GC23285@quack.suse.cz>
-References: <20110215170352.GE4255@thunk.org>
- <20110215172954.GK17313@quack.suse.cz>
- <20110216081746.54d146d1.toshi.okajima@jp.fujitsu.com>
- <20110216145627.GB5592@quack.suse.cz>
- <4D5C9B1B.2050304@jp.fujitsu.com>
- <20110217104552.GD4947@quack.suse.cz>
- <20110328170628.ffe314fb.toshi.okajima@jp.fujitsu.com>
- <20110331234050.GD2904@dastard>
- <20110401140856.GA5311@quack.suse.cz>
- <20110406054005.GD31057@dastard>
+From: Zeev Tarantov <zeev.tarantov@gmail.com>
+Subject: Re: [PATCH] e2fsprogs: don't set stripe/stride to 1 block in mkfs
+Date: Wed, 6 Apr 2011 09:51:56 +0300
+Message-ID: <BANLkTi=wnyvf2T5KDo5NQkjLw4aTHPUz9w@mail.gmail.com>
+References: <4D9A17F8.4000406@redhat.com> <F8519658-E9FA-4DD5-9980-59006CDACC8C@dilger.ca>
+ <4D9B45AB.8000208@redhat.com> <4D9B49A6.7000709@redhat.com> <4D9B95DE.6050408@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
-	Ted Ts'o <tytso@mit.edu>,
-	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20110406054005.GD31057@dastard>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-px0-f179.google.com ([209.85.212.179]:61087 "EHLO
+	mail-px0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754487Ab1DFGwR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Apr 2011 02:52:17 -0400
+Received: by pxi2 with SMTP id 2so666956pxi.10
+        for <linux-ext4@vger.kernel.org>; Tue, 05 Apr 2011 23:52:16 -0700 (PDT)
+In-Reply-To: <4D9B95DE.6050408@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 06-04-11 15:40:05, Dave Chinner wrote:
-> On Fri, Apr 01, 2011 at 04:08:56PM +0200, Jan Kara wrote:
-> > On Fri 01-04-11 10:40:50, Dave Chinner wrote:
-> > > On Mon, Mar 28, 2011 at 05:06:28PM +0900, Toshiyuki Okajima wrote:
-> > > > On Thu, 17 Feb 2011 11:45:52 +0100
-> > > > Jan Kara <jack@suse.cz> wrote:
-> > > > > On Thu 17-02-11 12:50:51, Toshiyuki Okajima wrote:
-> > > > > > (2011/02/16 23:56), Jan Kara wrote:
-> > > > > > >On Wed 16-02-11 08:17:46, Toshiyuki Okajima wrote:
-> > > > > > >>On Tue, 15 Feb 2011 18:29:54 +0100
-> > > > > > >>Jan Kara<jack@suse.cz>  wrote:
-> > > > > > >>>On Tue 15-02-11 12:03:52, Ted Ts'o wrote:
-> > > > > > >>>>On Tue, Feb 15, 2011 at 05:06:30PM +0100, Jan Kara wrote:
-> > > > > > >>>>>Thanks for detailed analysis. Indeed this is a bug. Whenever we do IO
-> > > > > > >>>>>under s_umount semaphore, we are prone to deadlock like the one you
-> > > > > > >>>>>describe above.
-> > > > > > >>>>
-> > > > > > >>>>One of the fundamental problems here is that the freeze and thaw
-> > > > > > >>>>routines are using down_write(&sb->s_umount) for two purposes.  The
-> > > > > > >>>>first is to prevent the resume/thaw from racing with a umount (which
-> > > > > > >>>>it could do just as well by taking a read lock), but the second is to
-> > > > > > >>>>prevent the resume/thaw code from racing with itself.  That's the core
-> > > > > > >>>>fundamental problem here.
-> > > > > > >>>>
-> > > > > > >>>>So I think we can solve this by introduce a new mutex, s_freeze, and
-> > > > > > >>>>having the the resume/thaw first take the s_freeze mutex and then
-> > > > > > >>>>second take a read lock on the s_umount.
-> > > > > > >>>   Sadly this does not quite work because even down_read(&sb->s_umount)
-> > > > > > >>>in thaw_super() can block if there is another process that tries to acquire
-> > > > > > >>>s_umount for writing - a situation like:
-> > > > > > >>>   TASK 1 (e.g. flusher)		TASK 2	(e.g. remount)		TASK 3 (unfreeze)
-> > > > > > >>>down_read(&sb->s_umount)
-> > > > > > >>>   block on s_frozen
-> > > > > > >>>				down_write(&sb->s_umount)
-> > > > > > >>>				  -blocked
-> > > > > > >>>								down_read(&sb->s_umount)
-> > > > > > >>>								  -blocked
-> > > > > > >>>behind the write access...
-> > > > > > >>>
-> > > > > > >>>The only working solution I see is to check for frozen filesystem before
-> > > > > > >>>taking s_umount semaphore which seems rather ugly (but might be bearable if
-> > > > > > >>>we did so in some well described wrapper).
-> > > > > > >>I created the patch that you imagine yesterday.
-> > > > > > >>
-> > > > > > >>I got a reproducer from Mizuma-san yesterday, and then I executed it on the kernel
-> > > > > > >>without a fixed patch. After an hour, I confirmed that this deadlock happened.
-> > > > > > >>
-> > > > > > >>However, on the kernel with a fixed patch, this deadlock doesn't still happen
-> > > > > > >>after 12 hours passed.
-> > > > > > >>
-> > > > > > >>The patch for linux-2.6.38-rc4 is as follows:
-> > > > > > >>---
-> > > > > > >>  fs/fs-writeback.c |    2 +-
-> > > > > > >>  1 files changed, 1 insertions(+), 1 deletions(-)
-> > > > > > >>
-> > > > > > >>diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-> > > > > > >>index 59c6e49..1c9a05e 100644
-> > > > > > >>--- a/fs/fs-writeback.c
-> > > > > > >>+++ b/fs/fs-writeback.c
-> > > > > > >>@@ -456,7 +456,7 @@ static bool pin_sb_for_writeback(struct super_block *sb)
-> > > > > > >>         spin_unlock(&sb_lock);
-> > > > > > >>
-> > > > > > >>         if (down_read_trylock(&sb->s_umount)) {
-> > > > > > >>-               if (sb->s_root)
-> > > > > > >>+               if (sb->s_frozen == SB_UNFROZEN&&  sb->s_root)
-> > > > > > >>                         return true;
-> > > > > > >>                 up_read(&sb->s_umount);
-> > > > > > 
-> > > > > > >   So this is something along the lines I thought but it actually won't work
-> > > > > > >for example if sync(1) is run while the filesystem is frozen (that takes
-> > > > > > >s_umount semaphore in a different place). And generally, I'm not convinced
-> > > > > > >there are not other places that try to do IO while holding s_umount
-> > > > > > >semaphore...
-> > > > > > OK. I understand.
-> > > > > > 
-> > > > > > This code only fixes the case for the following path:
-> > > > > > writeback_inodes_wb
-> > > > > > -> ext4_da_writepages
-> > > > > >    -> ext4_journal_start_sb
-> > > > > >       -> vfs_check_frozen
-> > > > > > But, the code doesn't fix the other cases.
-> > > > > > 
-> > > > > > We must modify the local filesystem part in order to fix all cases...?
-> > > > >   Yes, possibly. But most importantly we should first find clear locking
-> > > > > rules for frozen filesystem that avoid deadlocks like the one above. And
-> > > > > the freezing / unfreezing code might become subtle for that reason, that's
-> > > > > fine, but it would be really good to avoid any complicated things for the
-> > > > > code in the rest of the VFS / filesystems.
-> > > > I have deeply continued to examined the root cause of this problem, then 
-> > > > I found it.
-> > > > 
-> > > > It is that we can write a memory which is mmaped to a file. Then the memory 
-> > > > becomes "DIRTY" so then the flusher thread (ex. wb_do_writeback) tries to
-> > > > "writeback" the memory. 
-> > > 
-> > > Then surely the issue is that .page_mkwrite is not checking that the
-> > > filesystem is frozen before allowing the page fault to continue and
-> > > dirty the page?
-> >   And is this a bug? That isn't clear to me...
-> 
-> Given the semantics of a frozen filesystem, letting any object be
-> dirtied while frozen (be it an inode, a page, a metadata block, etc)
-> is definitely a bug.
->
-> The way the freeze code is architected is that incoming dirtying
-> events are prevented so that the writeback side does not need to
-> care about the frozen state of the filesystem at all. The freeze
-> operation is supposed to block new dirtiers, then flush all dirty
-> objects resulting in everything being clean in the filesystem.
-> 
-> Hence if no objects are being dirtied, then there should never be
-> any need to block writeback threads due to the filesytem being
-> frozen because, by definition, there should be no work for them to
-> do. Hence if objects are being dirtied while the filesystem is
-> frozen, then that is a bug.
-  OK, after some thought I start to agree with you that it would be nice
-if we didn't allow the pages to be dirtied at the first place. Otherwise
-things get a bit fragile as writing a data block does *not* need a
-transaction start as such (we just happen to do it in all code paths)...
+On Wed, Apr 6, 2011 at 01:21, Eric Sandeen <sandeen@redhat.com> wrote:
+> Zeev, if you'd like to test that patch above with your profiling, that'd be awesome.
 
-> > > > I think the best approach to fix this problem is to let users not to write
-> > > > memory which is mapped to a certain file while the filesystem is freezing. 
-> > > > However, it is very difficult to control users not to write memory which has 
-> > > > been already mapped to the file.
-> > > 
-> > > If you don't allow the page to be dirtied in the fist place, then
-> > > nothing needs to be done to the writeback path because there is
-> > > nothing dirty for it to write back.
-> >   Sure but that's only the problem he was able to hit. But generally,
-> > there's a problem with needing s_umount for unfreezing because it isn't
-> > clear there aren't other code paths which can block with s_umount held
-> > waiting for fs to get unfrozen. And these code paths would cause the same
-> > deadlock. That's why I chose to get rid of s_umount during thawing.
-> 
-> Holding the s_umount lock while checking if frozen and sleeping
-> is essentially an ABBA lock inversion bug that can bite in many more
-> places that just thawing the filesystem.  Any where this is done should
-> be fixed, so I don't think just removing the s_umount lock from the thaw
-> path is sufficient to avoid problems.
-  That's easily said but hard to do - any transaction start in ext3/4 may
-block on filesystem being frozen (this seems to be similar for XFS as I'm
-looking into the code) and transaction start traditionally nests inside
-s_umount (and basically there's no way around that since sync() calls your
-fs code with s_umount held). So I'm afraid we are not going to get rid of
-this ABBA dependency unless we declare that s_umount ranks above filesystem
-being frozen - but surely I'm open to suggestions.
+My wall-clock timings are strange and I disregard them.
+On a desktop with X turned off and perf recording system-wide, I trust
+the profile to show everything.
 
-Another possibility is just to hide the problem e.g. by checking for frozen
-filesystem whenever we try to get s_umount. But that looks a bit ugly to
-me.
+In the no-stride case, I don't think you've made it any worse.
+In the stripe=stride=1, it went from:
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+[ perf record: Woken up 13 times to write data ]
+[ perf record: Captured and wrote 3.163 MB perf.data (~138211 samples) ]
+# Events: 14K cycles
+#
+# Overhead         Command          Shared Object
+             Symbol
+# ........  ..............  .....................
+.......................................
+#
+    13.08%            gzip  gzip                   [.] zip
+    12.65%     flush-253:0  [kernel.kallsyms]      [k] ext4_mb_scan_aligned
+    12.46%            gzip  gzip                   [.] treat_file.part.4.2264
+     9.34%     flush-253:0  [csnappy_compress]     [k] snappy_compress_fragment
+     5.47%          md5sum  md5sum                 [.] digest_file.isra.2.2089
+     4.70%          md5sum  [csnappy_decompress]   [k]
+snappy_decompress_noheader
+     4.29%          md5sum  md5sum                 [.] 0x2fe7
+     2.16%            gzip  libc-2.13.so           [.] __memcpy_ssse3
+     1.79%     flush-253:0  [kernel.kallsyms]      [k] memcpy
+     1.52%             tar  [kernel.kallsyms]      [k] copy_user_generic_string
+     1.08%             tar  [kernel.kallsyms]      [k] _raw_spin_lock
+     1.00%            gzip  [kernel.kallsyms]      [k] copy_user_generic_string
+     0.87%     flush-253:0  [kernel.kallsyms]      [k] __memset
+     0.58%          md5sum  md5sum                 [.] __libc_csu_init
+     0.54%          md5sum  [zram]                 [k] zram_make_request
+     0.50%          md5sum  [kernel.kallsyms]      [k] copy_user_generic_string
+     0.45%             tar  [kernel.kallsyms]      [k] ext4_mark_iloc_dirty
+     0.44%             tar  [kernel.kallsyms]      [k] __memset
+     0.39%            gzip  gzip                   [.] treat_stdin.2262
+     0.35%            gzip  gzip                   [.] treat_file.2267
+     0.33%         swapper  [kernel.kallsyms]      [k] mwait_idle
+     0.28%              dd  [kernel.kallsyms]      [k] system_call
+     0.26%          md5sum  [kernel.kallsyms]      [k] memcpy
+     0.25%     flush-253:0  [zram]                 [k] zram_make_request
+     0.25%     flush-253:0  [kernel.kallsyms]      [k] _raw_spin_lock
+     0.23%             tar  [kernel.kallsyms]      [k] ext4_mb_scan_aligned
+     0.22%            gzip  gzip                   [.] compress_block.2644.2190
+     0.20%             tar  [kernel.kallsyms]      [k] __find_get_block
+
+to:
+
+[ perf record: Woken up 12 times to write data ]
+[ perf record: Captured and wrote 3.091 MB perf.data (~135042 samples) ]
+# Events: 13K cycles
+#
+# Overhead      Command          Shared Object
+        Symbol
+# ........  ...........  .....................
+.....................................
+#
+    15.10%         gzip  gzip                   [.] zip
+    14.70%         gzip  gzip                   [.] treat_file.part.4.2264
+    11.10%  flush-253:0  [csnappy_compress]     [k] snappy_compress_fragment
+     6.12%       md5sum  md5sum                 [.] digest_file.isra.2.2089
+     5.44%       md5sum  [csnappy_decompress]   [k] snappy_decompress_noheader
+     5.10%       md5sum  md5sum                 [.] 0x3262
+     2.42%         gzip  libc-2.13.so           [.] __memcpy_ssse3
+     2.03%  flush-253:0  [kernel.kallsyms]      [k] memcpy
+     1.52%          tar  [kernel.kallsyms]      [k] copy_user_generic_string
+     1.13%         gzip  [kernel.kallsyms]      [k] copy_user_generic_string
+     0.80%  flush-253:0  [kernel.kallsyms]      [k] __memset
+     0.62%       md5sum  md5sum                 [.] __libc_csu_init
+     0.60%       md5sum  [zram]                 [k] zram_make_request
+     0.57%         gzip  gzip                   [.] treat_stdin.2262
+     0.56%       md5sum  [kernel.kallsyms]      [k] copy_user_generic_string
+     0.55%          tar  [kernel.kallsyms]      [k] __memset
+     0.49%          tar  [kernel.kallsyms]      [k] ext4_mark_iloc_dirty
+     0.39%       md5sum  [kernel.kallsyms]      [k] memcpy
+     0.37%         gzip  gzip                   [.] treat_file.2267
+     0.37%      swapper  [kernel.kallsyms]      [k] mwait_idle
+     0.28%           dd  [kernel.kallsyms]      [k] system_call
+     0.28%  flush-253:0  [kernel.kallsyms]      [k] _raw_spin_lock
+     0.25%         gzip  gzip                   [.] compress_block.2644.2190
+     0.22%  flush-253:0  [kernel.kallsyms]      [k] ext4_mark_iloc_dirty
+     0.22%          tar  [kernel.kallsyms]      [k] __ext4_get_inode_loc
+     0.22%          tar  [kernel.kallsyms]      [k] _raw_spin_lock
+     0.21%          tar  [kernel.kallsyms]      [k] mark_page_accessed
+     0.20%          tar  [kernel.kallsyms]      [k] __find_get_block
+     0.20%          tar  tar                    [.] contains_dot_dot
+
+So that's great, but I still don't want mke2fs to set a stripe and
+stride of 1, because that's silly - no code improvement in the
+allocator is ever going to be able to use that information.
+
+> Thanks,
+> -Eric
+
+Thank you!
+-Z.T.
