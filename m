@@ -1,64 +1,41 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
- to a deadlock
-Date: Thu, 7 Apr 2011 08:59:23 +1000
-Message-ID: <20110406225922.GI31057@dastard>
-References: <20110216145627.GB5592@quack.suse.cz>
- <4D5C9B1B.2050304@jp.fujitsu.com>
- <20110217104552.GD4947@quack.suse.cz>
- <20110328170628.ffe314fb.toshi.okajima@jp.fujitsu.com>
- <20110331234050.GD2904@dastard>
- <20110401140856.GA5311@quack.suse.cz>
- <20110406054005.GD31057@dastard>
- <20110406061856.GC23285@quack.suse.cz>
- <20110406112135.GE31057@dastard>
- <20110406134428.GA17705@infradead.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 25832] kernel crashes upon resume if usb devices are removed
+ when suspended
+Date: Wed, 6 Apr 2011 23:01:31 GMT
+Message-ID: <201104062301.p36N1VCF028899@demeter1.kernel.org>
+References: <bug-25832-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
-	Ted Ts'o <tytso@mit.edu>,
-	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:59468 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752813Ab1DFW7h (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Apr 2011 18:59:37 -0400
-Content-Disposition: inline
-In-Reply-To: <20110406134428.GA17705@infradead.org>
+Received: from demeter1.kernel.org ([140.211.167.39]:36306 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756708Ab1DFXBm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Apr 2011 19:01:42 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p36N1cZa028950
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 6 Apr 2011 23:01:38 GMT
+In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 06, 2011 at 09:44:28AM -0400, Christoph Hellwig wrote:
-> On Wed, Apr 06, 2011 at 09:21:35PM +1000, Dave Chinner wrote:
-> > Sure, but the question must be asked - why is ext3/4 even starting a
-> > transaction on a clean filesystem during sync? A frozen filesystem,
-> > by definition, is a clean filesytem, and therefore sync calls of any
-> > kind should not be trying to write to the FS or start transactions.
-> > XFS does this just fine, so I'd consider such behaviour on a frozen
-> > filesystem a bug in ext3/4...
-> 
-> XFS does have one special case for this.  When writing the dummy log
-> record at the end of the freeze process we use _xfs_alloc_trans to
-> bypass the frozen filesystem check as we have to write out this record
-> when the filesystem already is frozen.  But that's after the main
-> sync with its normal transactions.
+https://bugzilla.kernel.org/show_bug.cgi?id=25832
 
-Right, that is a special case in the _freeze process_ (i.e. before
-we've declared the FS frozen), not a normal operation on a frozen
-filesystem.
 
-If you want to list exceptions (i.e. where we explicitly avoid
-writes to frozen fs), look for xfs_fs_writeable(), which stops
-various write operations from proceeding when the fs is either
-frozen, read-only or shut down.
 
-Cheers,
 
-Dave.
+
+--- Comment #58 from rocko <rockorequin@hotmail.com>  2011-04-06 23:00:52 ---
+I reproduced the problem removing/inserting an SD card in the SD card reader
+(SD Host controller: Ricoh Co Ltd R5C822 SD/SDIO/MMC/MS/MSPro Host Adapter (rev
+22), but only if it has an ext4 file system on it. I couldn't make it happen at
+all with a vfat file system on it - I tried 30 times or so with the vfat card,
+but it happened on just the third removal of the ext4 file system.
+
+So it does seem to be an ext3/4 issue rather than a USB-related issue.
+
 -- 
-Dave Chinner
-david@fromorbit.com
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
