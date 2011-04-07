@@ -1,7 +1,7 @@
 From: "Mr. Michael Goeghegen" <info@mail.com>
 Subject: (unknown)
-Date: Thu,  7 Apr 2011 10:36:22 +0100
-Message-ID: <1302168982.4d9d859685d72__15303.5151226961$1302266512$gmane$org@www.bitsnet.com.br>
+Date: Thu,  7 Apr 2011 10:36:29 +0100
+Message-ID: <1302168989.4d9d859db91bf__32370.8477583297$1302267196$gmane$org@www.bitsnet.com.br>
 Reply-To: mr.michael_goeghegen@ymail.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
@@ -9,10 +9,10 @@ Content-Transfer-Encoding: 7BIT
 Cc: recipient list not shown:;
 To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail2.bitsnet.com.br ([200.252.189.137]:50722 "EHLO
+Received: from mail2.bitsnet.com.br ([200.252.189.137]:52726 "EHLO
 	cacau.bitsnet.com.br" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756617Ab1DHMlh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Apr 2011 08:41:37 -0400
+	with ESMTP id S1756227Ab1DHMxI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Apr 2011 08:53:08 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
