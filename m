@@ -1,161 +1,128 @@
-From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: [PATCH 11/11] e4defrag: Remove unnecessary code
-Date: Fri, 08 Apr 2011 16:53:22 +0900
-Message-ID: <4D9EBEF2.4040508@sx.jp.nec.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-To: ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:58578 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754302Ab1DHIOP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Apr 2011 04:14:15 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Andreas Dilger <adilger.kernel@dilger.ca>
+Subject: Re: [PATCH 1/2] ext4: Calculate and verify inode checksums
+Date: Fri, 8 Apr 2011 02:58:27 -0600
+Message-ID: <86716762-8041-4209-961C-5C0BAB139C5B@dilger.ca>
+References: <20110406224410.GB24354@tux1.beaverton.ibm.com> <20110406224547.GT32706@tux1.beaverton.ibm.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: djwong@us.ibm.com
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20110406224547.GT32706@tux1.beaverton.ibm.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Remove unused header include, duplicate code, and so on.
+On 2011-04-06, at 4:45 PM, Darrick J. Wong wrote:
+> This patch introduces to ext4 the ability to calculate and verify inode
+> checksums.  This requires the use of a new ro compatibility flag and some
+> accompanying e2fsprogs patches to provide the relevant features in tune2fs and
+> e2fsck.
+> 
+> Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+> ---
+> 
+> fs/ext4/ext4.h  |    6 ++++--
+> fs/ext4/inode.c |   52 +++++++++++++++++++++++++++++++++++++++++++++++++++-
+> 2 files changed, 55 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 4daaf2b..8815928 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -617,7 +617,7 @@ struct ext4_inode {
+> 		} masix2;
+> 	} osd2;				/* OS dependent 2 */
+> 	__le16	i_extra_isize;
+> -	__le16	i_pad1;
+> +	__le16  i_checksum;		/* crc16(sb_uuid+inodenum+inode) */
 
-Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
----
- misc/e4defrag.c |   53 +++++++++++------------------------------------------
- 1 file changed, 11 insertions(+), 42 deletions(-)
-diff --git a/misc/e4defrag.c b/misc/e4defrag.c
-index 76e84a2..11810a3 100644
---- a/misc/e4defrag.c
-+++ b/misc/e4defrag.c
-@@ -19,25 +19,17 @@
- #define _GNU_SOURCE
- #endif
- 
--#include <ctype.h>
--#include <dirent.h>
--#include <endian.h>
- #include <errno.h>
- #include <fcntl.h>
- #include <ftw.h>
--#include <limits.h>
- #include <mntent.h>
- #include <stdio.h>
--#include <stdlib.h>
--#include <string.h>
- #include <unistd.h>
- #include <linux/fs.h>
- #include <sys/ioctl.h>
- #include <sys/mman.h>
- #include <sys/stat.h>
- #include <sys/statfs.h>
--#include <sys/syscall.h>
--#include <sys/vfs.h>
- 
- #include "e2p/e2p.h"
- #include "ext2fs/ext2_types.h"
-@@ -325,15 +317,14 @@ static int is_ext4(const char *file)
- 		strncpy(lost_found_dir, mnt->mnt_dir, PATH_MAX);
- 	}
- 
--	endmntent(fp);
--	if (strcmp(mnt_type, FS_EXT4) == 0) {
--		FREE(mnt_type);
--		return 0;
--	} else {
--		FREE(mnt_type);
-+	ret = strcmp(mnt_type, FS_EXT4);
-+	if (ret)
- 		PRINT_ERR_MSG(NGMSG_EXT4);
--		return -1;
--	}
-+
-+	endmntent(fp);
-+	FREE(mnt_type);
-+
-+	return ret ? -1 : 0;
- }
- 
- /*
-@@ -371,9 +362,6 @@ static int page_in_core(int fd, struct move_extent defrag_data,
- 	void	*page = NULL;
- 	loff_t	offset, end_offset, length;
- 
--	if (vec == NULL || *vec != NULL)
--		return -1;
--
- 	/* In mmap, offset should be a multiple of the page size */
- 	offset = (loff_t)defrag_data.orig_start * block_size;
- 	length = (loff_t)defrag_data.len * block_size;
-@@ -498,7 +486,6 @@ static int file_frag_count(int fd)
- 	 * ioctl just get file fragment count.
- 	 */
- 	memset(&fiemap_buf, 0, sizeof(struct fiemap));
--	fiemap_buf.fm_start = 0;
- 	fiemap_buf.fm_length = FIEMAP_MAX_OFFSET;
- 	fiemap_buf.fm_flags |= FIEMAP_FLAG_SYNC;
- 
-@@ -824,8 +811,6 @@ static void print_progress(const char *file, loff_t start, loff_t file_size)
- 	printf("\033[79;0H\033[K[%u/%u]%s:\t%3d%%",
- 		defraged_file_count, total_count, file, min(percent, 100));
- 	fflush(stdout);
--
--	return;
- }
- 
- /*
-@@ -1018,14 +1003,6 @@ static int file_defrag(const char *file, const struct stat64 *buf,
- 	if (file_check(fd, file, file_frags_start, blk_count) < 0)
- 		goto out;
- 
--	if (fsync(fd) < 0) {
--		if (mode_flag & DETAIL) {
--			PRINT_FILE_NAME(file);
--			PRINT_ERR_MSG_WITH_ERRNO("Failed to sync(fsync)");
--		}
--		goto out;
--	}
--
- 	/*
- 	 * Calculate the threshold of perfection.
- 	 * NOTE: 2048 means the maximum block region of mballoc.
-@@ -1209,9 +1186,6 @@ int main(int argc, char *argv[])
- 	struct stat64	buf;
- 
- 	/* Parse arguments */
--	if (argc == 1)
--		goto out;
--
- 	while ((opt = getopt(argc, argv, "v")) != EOF) {
- 		switch (opt) {
- 		case 'v':
-@@ -1270,7 +1244,6 @@ int main(int argc, char *argv[])
- 				continue;
- 			}
- 			arg_type = DIRNAME;
--			strncpy(dir_name, argv[i], strnlen(argv[i], PATH_MAX));
- 		} else if (S_ISREG(buf.st_mode)) {
- 			/* Regular file */
- 			arg_type = FILENAME;
-@@ -1299,17 +1272,16 @@ int main(int argc, char *argv[])
- 
- 		switch (arg_type) {
- 		case DIRNAME: {
--			int mount_dir_len = 0;
--			mount_dir_len = strnlen(lost_found_dir, PATH_MAX);
-+			int mount_dir_len = strnlen(lost_found_dir, PATH_MAX);
- 
- 			strncat(lost_found_dir, "/lost+found",
- 				PATH_MAX - strnlen(lost_found_dir, PATH_MAX));
- 
--			/* Not the case("e4defrag  mount_piont_dir") */
-+			/* Not the case("e4defrag  mount_point_dir") */
- 			if (dir_name[mount_dir_len] != '\0') {
- 				/*
--				 * "e4defrag mount_piont_dir/lost+found"
--				 * or "e4defrag mount_piont_dir/lost+found/"
-+				 * "e4defrag mount_point_dir/lost+found"
-+				 * or "e4defrag mount_point_dir/lost+found/"
- 				 */
- 				if (strncmp(lost_found_dir, dir_name,
- 					    strnlen(lost_found_dir,
-@@ -1322,9 +1294,6 @@ int main(int argc, char *argv[])
- 					PRINT_FILE_NAME(argv[i]);
- 					continue;
- 				}
+In previous discussions, we thought about using part/all of the l_i_reserved2 field to store the inode checksum.  The inode checksum is important enough to warrant a field in the core inode, so that it also works on upgraded filesystems.
+
+> +static __le16 ext4_inode_csum(struct inode *inode, struct ext4_inode *raw)
+> +{
+> +	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+> +	struct ext4_inode_info *ei = EXT4_I(inode);
+> +	int offset = offsetof(struct ext4_inode, i_checksum);
+> +	__le32 inum = cpu_to_le32(inode->i_ino);
+> +	__u16 crc = 0;
+> +
+> +	if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+> +		EXT4_FEATURE_RO_COMPAT_INODE_CSUM) &&
+> +	    le16_to_cpu(raw->i_extra_isize) >= 4) {
+
+If this field remains in the large part of the inode, then this check is incorrect.  i_extra_isize is itself only valid if (s_inode_size is > EXT4_GOOD_OLD_INODE_SIZE), otherwise it points at the next inode's i_mode.
+
+Also, instead of hard-coding ">= 4" here, it would be better to use EXT4_FITS_IN_INODE(raw, EXT4_I(inode), i_checksum).  Probably no reason to put "ei" on the stack at all.
+
+> +		crc = crc16(~0, sbi->s_es->s_uuid, sizeof(sbi->s_es->s_uuid));
+> +		crc = crc16(crc, (__u8 *)&inum, sizeof(inum));
+> +		crc = crc16(crc, (__u8 *)raw, offset);
+> +		offset += sizeof(raw->i_checksum); /* skip checksum */
+> +		/* for checksum of struct ext4_inode do the rest...*/
+> +		if (ei->i_extra_isize > 4)
+> +			crc = crc16(crc, (__u8 *)raw + offset,
+> +				    ei->i_extra_isize - 4);
+
+
+> +	}
+> +
+> +	return cpu_to_le16(crc);
+> +}
+> +
+> +static int ext4_inode_csum_verify(struct inode *inode, struct ext4_inode *raw)
+> +{
+> +	if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+> +		EXT4_FEATURE_RO_COMPAT_INODE_CSUM) &&
+> +	    (raw->i_checksum != ext4_inode_csum(inode, raw)))
+> +		return 0;
+> +
+> +	return 1;
+> +}
+> +
+> static inline int ext4_begin_ordered_truncate(struct inode *inode,
+> 					      loff_t new_size)
+> {
+> @@ -4802,7 +4837,8 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+> 	struct ext4_inode *raw_inode;
+> 	struct ext4_inode_info *ei;
+> 	struct inode *inode;
+> -	journal_t *journal = EXT4_SB(sb)->s_journal;
+> +	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> +	journal_t *journal = sbi->s_journal;
+> 	long ret;
+> 	int block;
+> 
+> @@ -4916,6 +4952,14 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+> 	} else
+> 		ei->i_extra_isize = 0;
+> 
+> +	if (!ext4_inode_csum_verify(inode, raw_inode)) {
+> +		EXT4_ERROR_INODE(inode, "checksum invalid (%u != %u)",
+> +		       le16_to_cpu(ext4_inode_csum(inode, raw_inode)),
+> +		       le16_to_cpu(raw_inode->i_checksum));
+> +		ret = -EIO;
+> +		goto bad_inode;
+> +	}
+> +
+> 	EXT4_INODE_GET_XTIME(i_ctime, inode, raw_inode);
+> 	EXT4_INODE_GET_XTIME(i_mtime, inode, raw_inode);
+> 	EXT4_INODE_GET_XTIME(i_atime, inode, raw_inode);
+> @@ -5138,6 +5182,12 @@ static int ext4_do_update_inode(handle_t *handle,
+> 			raw_inode->i_version_hi =
+> 			cpu_to_le32(inode->i_version >> 32);
+> 		raw_inode->i_extra_isize = cpu_to_le16(ei->i_extra_isize);
+> +
+> +		if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+> +			EXT4_FEATURE_RO_COMPAT_INODE_CSUM) &&
+> +		    EXT4_FITS_IN_INODE(raw_inode, ei, i_checksum))
+> +			raw_inode->i_checksum =
+> +				ext4_inode_csum(inode, raw_inode);
+> 	}
+> 
+> 	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
+
+
+Cheers, Andreas
