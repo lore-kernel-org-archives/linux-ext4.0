@@ -1,141 +1,172 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
- to a deadlock
-Date: Fri, 8 Apr 2011 23:33:05 +0200
-Message-ID: <20110408213305.GF16729@quack.suse.cz>
-References: <4D5C9B1B.2050304@jp.fujitsu.com>
- <20110217104552.GD4947@quack.suse.cz>
- <20110328170628.ffe314fb.toshi.okajima@jp.fujitsu.com>
- <20110331234050.GD2904@dastard>
- <20110401140856.GA5311@quack.suse.cz>
- <20110406054005.GD31057@dastard>
- <20110406061856.GC23285@quack.suse.cz>
- <20110406112135.GE31057@dastard>
- <20110406174001.GB28689@quack.suse.cz>
- <20110406225401.GH31057@dastard>
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: Re: [RFC] exclude bitmap and 32bit bitmap cheksum fields
+Date: Fri, 8 Apr 2011 14:45:22 -0700
+Message-ID: <BANLkTimORTWEYTiQu9SFthG_nQrvdQ=anQ@mail.gmail.com>
+References: <BANLkTimV8qQUNDM2Sx+jOo+DWV-3NSpsuw@mail.gmail.com>
+	<85609C33-2A88-4BAE-9512-0E627CD257B8@whamcloud.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
-	Ted Ts'o <tytso@mit.edu>,
-	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Theodore Tso <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@whamcloud.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:60374 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753401Ab1DHVdP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 8 Apr 2011 17:33:15 -0400
-Content-Disposition: inline
-In-Reply-To: <20110406225401.GH31057@dastard>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:41324 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757264Ab1DHVpY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Apr 2011 17:45:24 -0400
+Received: by yxs7 with SMTP id 7so1592236yxs.19
+        for <linux-ext4@vger.kernel.org>; Fri, 08 Apr 2011 14:45:23 -0700 (PDT)
+In-Reply-To: <85609C33-2A88-4BAE-9512-0E627CD257B8@whamcloud.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 07-04-11 08:54:01, Dave Chinner wrote:
-> On Wed, Apr 06, 2011 at 07:40:01PM +0200, Jan Kara wrote:
-> > On Wed 06-04-11 21:21:35, Dave Chinner wrote:
-> > > On Wed, Apr 06, 2011 at 08:18:56AM +0200, Jan Kara wrote:
-> > > > On Wed 06-04-11 15:40:05, Dave Chinner wrote:
-> > > > > On Fri, Apr 01, 2011 at 04:08:56PM +0200, Jan Kara wrote:
-> > > > > > On Fri 01-04-11 10:40:50, Dave Chinner wrote:
-> > > > > > > If you don't allow the page to be dirtied in the fist place, then
-> > > > > > > nothing needs to be done to the writeback path because there is
-> > > > > > > nothing dirty for it to write back.
-> > > > > >   Sure but that's only the problem he was able to hit. But generally,
-> > > > > > there's a problem with needing s_umount for unfreezing because it isn't
-> > > > > > clear there aren't other code paths which can block with s_umount held
-> > > > > > waiting for fs to get unfrozen. And these code paths would cause the same
-> > > > > > deadlock. That's why I chose to get rid of s_umount during thawing.
-> > > > > 
-> > > > > Holding the s_umount lock while checking if frozen and sleeping
-> > > > > is essentially an ABBA lock inversion bug that can bite in many more
-> > > > > places that just thawing the filesystem.  Any where this is done should
-> > > > > be fixed, so I don't think just removing the s_umount lock from the thaw
-> > > > > path is sufficient to avoid problems.
-> > > >   That's easily said but hard to do - any transaction start in ext3/4 may
-> > > > block on filesystem being frozen (this seems to be similar for XFS as I'm
-> > > > looking into the code) and transaction start traditionally nests inside
-> > > > s_umount (and basically there's no way around that since sync() calls your
-> > > > fs code with s_umount held).
-> > > 
-> > > Sure, but the question must be asked - why is ext3/4 even starting a
-> > > transaction on a clean filesystem during sync? A frozen filesystem,
-> > > by definition, is a clean filesytem, and therefore sync calls of any
-> > > kind should not be trying to write to the FS or start transactions.
-> > > XFS does this just fine, so I'd consider such behaviour on a frozen
-> > > filesystem a bug in ext3/4...
-> >   But by this you are essentially agreeing that the lock inversion is there
-> > in principle. We just hide it by relying on the fact that no code path
-> > trying to change anything with s_umount held (which is the right lock
-> > ordering) gets called while the fs is frozen.  And that is fragile.
-> 
-> It's just another lock ordering rule. i.e. don't sleep on a frozen
-> filesystem with s_umount held.  It's no more fragile than the many
-> other lock ordering rules we have.
-  Except that for all the filesystems transaction start => sleep on a
-frozen filesystem and in some code paths we have s_umount held while doing
-a transaction start. So I don't buy the argument that it's just another
-normal locking rule because normally we require that all the code paths
-follow correct lock ordering. Now we have some paths (like sync) which do
-not follow the correct lock ordering and we just make sure they are not
-called if they could cause deadlocks by other means...
+On Fri, Apr 8, 2011 at 1:37 PM, Andreas Dilger <adilger@whamcloud.com> =
+wrote:
+> On 2011-04-08, at 12:00 PM, Amir Goldstein <amir73il@gmail.com> wrote=
+:
+>> Following our conversation, here is a proposal how to squeeze:
+>> - 32bit exclude bitmap block address
+>> - 32bit block+exclude bitmap checksum
+>> - 32bit inode bitmap checksum
+>> into the reaming 8 bytes in the group descriptor.
+>>
+>> The idea is that the 16bit persistent free inode/block counters
+>> are redundant to the inode/block bitmap information
+>> and are needed in 2 use cases:
+>> 1. sanity checks on fsck
+>> 2. quick load of in-memory counters
+>>
+>> The first use case is nulled by the introduction of inode/block bitm=
+ap
+>> checksums.
+>> The second use case can be bypassed with no substantial penalty:
+>> in-memory counters can be calculated on first inode/block bitmap acc=
+ess,
+>> when the GRP_NEED_INIT (or another) flag is set in the group_info st=
+ruct,
+>> just like their cousins, the buddy bitmap counters.
+>
+> I disagree with this assumption. The group descriptor free block and =
+inode counters are very important to avoid loading the bitmaps in the f=
+irst place. There are very significant performance impacts from loading=
+ all of the bitmaps from disk, which is why even recently the buddy des=
+criptors have added in-memory fields for the largest available extent i=
+n each group.
 
-> > Actually, I've looked for a while and if you call quotactl(), it will get
-> > s_umount and then tell filesystem to update quota information which blocks
-> > inside the fs waiting for filesystem being unfrozen => deadlock.
-> 
-> Which is a bug according to the above locking rule.
-  Yes, I was just trying to demonstrate that the locking rule changes
-"block until the fs is unfrozen" into "kernel is deadlocked" in an
-unexpected places... fsync_bdev() is another case which deadlocks
-currently.
+d@#*! I keep forgetting about that aspect.
+well, we can use a single persistent bit to specify BG_INODE_FULL
+and a single bit to specify BG_BLOCK_FULL, but that doesn't cover the
+test ext4_free_inodes_count(sb, desc) >=3D avefreei.
+all the rest of the tests currently only test for non-zero value
+before loading the (inode or block) bitmap.
 
-> > We can
-> > change this code path to wait for frozen filesystem before taking s_umount
-> > that essentially it just reinstates my point - it't fragile and IMHO we
-> > need some more consistent way to handle this...
-> > 
-> > > > So I'm afraid we are not going to get rid of
-> > > > this ABBA dependency unless we declare that s_umount ranks above filesystem
-> > > > being frozen - but surely I'm open to suggestions.
-> > > 
-> > > Not sure I understand what you are saying there - this is already
-> > > the case, isn't it? i.e. it has to be held exclusive to freeze a
-> > > filesystem...
-> >   Not really. We freeze the fs under s_umount but freezing essentially
-> > implements trylock semantics while setting s_frozen so that does not really
-> > establish any lock dependency. What establishes lock dependency is the
-> > thawing path which blocks on s_umount while the filesystem is still frozen.
-> > And this dependency is the other way around - i.e., freezing above
-> > s_umount. This is why I was messing with thawing code to fix this...
-> 
-> It's just the tip of the iceberg. If we allow s_umount to be held
-> while waiting on a frozen filesystem, we open ouselves up to all
-> manner of problems. Such as umount hanging on a frozen fs,
-> (which means a shutdown with a frozen filesystem will hang), it can
-> hang sync, it can hang memory reclaim, it can hang in any path that
-> takes s_umount and hence do all sorts of bad things.
-  I see. The umount hang (especially in the shutdown case) is not nice.
-Direct reclaim won't be blocked AFAICS if we stop dirtying pages while the
-fs is frozen (which, as I already wrote, I agree is not a good thing to do
-after some thought). Since you can block while accessing the frozen
-filesystem anyway (because of atime updates or just because of writing
-process waiting with i_mutex held for fs to be unfrozen) I'm not sure how
-much worse it would be if s_umount lock would be another lock with which
-we can wait for fs to get unfrozen...
+Andreas, did you have a chance to look at the patches  I posted to
+remove alloc_semp?
+The patches are available online on github:
+https://github.com/amir73il/ext4-snapshots/commits/alloc_semp/
 
-> Yes, unthawing the filesystem will get things moving again with your
-> patch, but my point is that it simply does not address the problems
-> caused by the bad behaviour that has already occurred while the FS
-> is frozen. Fixing the thaw code in this way is like shooting the
-> messenger - it doesn't fix the problems being reported.
-  I don't there has been any too bad behavior - you tried to access frozen
-filesystem and you got blocked. But OK, I'll invest some more thought into
-how to not block with s_umount held without sprinkling frozen checks over
-the tree...
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+>
+>> diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+>> index 0deb554..5cbaeb2 100644
+>> --- a/lib/ext2fs/ext2_fs.h
+>> +++ b/lib/ext2fs/ext2_fs.h
+>> @@ -153,11 +153,11 @@ struct ext2_group_desc
+>> =A0 =A0__u32 =A0 =A0bg_block_bitmap; =A0 =A0/* Blocks bitmap block *=
+/
+>> =A0 =A0__u32 =A0 =A0bg_inode_bitmap; =A0 =A0/* Inodes bitmap block *=
+/
+>> =A0 =A0__u32 =A0 =A0bg_inode_table; =A0 =A0 =A0 =A0/* Inodes table b=
+lock */
+>> - =A0 =A0__u16 =A0 =A0bg_free_blocks_count; =A0 =A0/* Free blocks co=
+unt */
+>> - =A0 =A0__u16 =A0 =A0bg_free_inodes_count; =A0 =A0/* Free inodes co=
+unt */
+>> + =A0 =A0__u32 =A0 =A0bg_exclude_bitmap; =A0 =A0/* Exclude bitmap bl=
+ock */
+>> =A0 =A0__u16 =A0 =A0bg_used_dirs_count; =A0 =A0/* Directories count =
+*/
+>> =A0 =A0__u16 =A0 =A0bg_flags;
+>> - =A0 =A0__u32 =A0 =A0bg_reserved[2];
+>> + =A0 =A0__u32 =A0 =A0bg_block_bitmap_csum; =A0 =A0/* Blocks+exclude=
+ bitmap checksum */
+>> + =A0 =A0__u32 =A0 =A0bg_inode_bitmap_csum; =A0 =A0/* Inodes bitmap =
+checksum */
+>> =A0 =A0__u16 =A0 =A0bg_itable_unused; =A0 =A0/* Unused inodes count =
+*/
+>> =A0 =A0__u16 =A0 =A0bg_checksum; =A0 =A0 =A0 =A0/* crc16(s_uuid+grou=
+o_num+group_desc)*/
+>> };
+>> @@ -170,18 +170,17 @@ struct ext4_group_desc
+>> =A0 =A0__u32 =A0 =A0bg_block_bitmap; =A0 =A0/* Blocks bitmap block *=
+/
+>> =A0 =A0__u32 =A0 =A0bg_inode_bitmap; =A0 =A0/* Inodes bitmap block *=
+/
+>> =A0 =A0__u32 =A0 =A0bg_inode_table; =A0 =A0 =A0 =A0/* Inodes table b=
+lock */
+>> - =A0 =A0__u16 =A0 =A0bg_free_blocks_count; =A0 =A0/* Free blocks co=
+unt */
+>> - =A0 =A0__u16 =A0 =A0bg_free_inodes_count; =A0 =A0/* Free inodes co=
+unt */
+>> + =A0 =A0__u32 =A0 =A0bg_exclude_bitmap; =A0 =A0/* Exclude bitmap bl=
+ock */
+>> =A0 =A0__u16 =A0 =A0bg_used_dirs_count; =A0 =A0/* Directories count =
+*/
+>> =A0 =A0__u16 =A0 =A0bg_flags;
+>> - =A0 =A0__u32 =A0 =A0bg_reserved[2];
+>> + =A0 =A0__u32 =A0 =A0bg_block_bitmap_csum; =A0 =A0/* Blocks+exclude=
+ bitmap checksum */
+>> + =A0 =A0__u32 =A0 =A0bg_inode_bitmap_csum; =A0 =A0/* Inodes bitmap =
+checksum */
+>> =A0 =A0__u16 =A0 =A0bg_itable_unused; =A0 =A0/* Unused inodes count =
+*/
+>> =A0 =A0__u16 =A0 =A0bg_checksum; =A0 =A0 =A0 =A0/* crc16(s_uuid+grou=
+o_num+group_desc)*/
+>> =A0 =A0__u32 =A0 =A0bg_block_bitmap_hi; =A0 =A0/* Blocks bitmap bloc=
+k MSB */
+>> =A0 =A0__u32 =A0 =A0bg_inode_bitmap_hi; =A0 =A0/* Inodes bitmap bloc=
+k MSB */
+>> =A0 =A0__u32 =A0 =A0bg_inode_table_hi; =A0 =A0/* Inodes table block =
+MSB */
+>> - =A0 =A0__u16 =A0 =A0bg_free_blocks_count_hi;/* Free blocks count M=
+SB */
+>> - =A0 =A0__u16 =A0 =A0bg_free_inodes_count_hi;/* Free inodes count M=
+SB */
+>> + =A0 =A0__u32 =A0 =A0bg_exclude_bitmap; =A0 =A0/* Exclude bitmap bl=
+ock MSB */
+>> =A0 =A0__u16 =A0 =A0bg_used_dirs_count_hi; =A0 =A0/* Directories cou=
+nt MSB */
+>> =A0 =A0__u16 =A0 bg_pad;
+>> =A0 =A0__u32 =A0 =A0bg_reserved2[3];
+>> @@ -190,6 +189,7 @@ struct ext4_group_desc
+>> #define EXT2_BG_INODE_UNINIT =A0 =A00x0001 /* Inode table/bitmap not=
+ initialized */
+>> #define EXT2_BG_BLOCK_UNINIT =A0 =A00x0002 /* Block bitmap not initi=
+alized */
+>> #define EXT2_BG_INODE_ZEROED =A0 =A00x0004 /* On-disk itable initial=
+ized to zero */
+>> +#define EXT2_BG_EXCLUDE_UNINIT =A0 =A00x0008 /* Exclude bitmap not =
+initialized */
+>>
+>> /*
+>> =A0* Data structures used by the directory indexing feature
+>> @@ -751,6 +751,7 @@ struct ext2_super_block {
+>> #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK =A0 =A00x0020
+>> #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE =A0 =A00x0040
+>> #define EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT =A0 =A00x0080
+>> +#define EXT4_FEATURE_RO_COMPAT_BITMAP_CSUM =A0 =A00x0100
+>>
+>> #define EXT2_FEATURE_INCOMPAT_COMPRESSION =A0 =A00x0001
+>> #define EXT2_FEATURE_INCOMPAT_FILETYPE =A0 =A0 =A0 =A00x0002
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4=
+" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
