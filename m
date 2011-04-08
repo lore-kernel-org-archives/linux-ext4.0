@@ -1,130 +1,82 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: [RFC] exclude bitmap and 32bit bitmap cheksum fields
-Date: Fri, 8 Apr 2011 11:53:39 -0700
-Message-ID: <4966647B-F65E-4C30-9990-73DAA12EF89B@gmail.com>
-References: <BANLkTimV8qQUNDM2Sx+jOo+DWV-3NSpsuw@mail.gmail.com> <4D9F57C4.4010306@tao.ma>
-Mime-Version: 1.0 (iPhone Mail 7D11)
-Content-Type: text/plain;
-	charset=us-ascii;
-	format=flowed;
-	delsp=yes
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Tao Ma <tm@tao.ma>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [PATCH 1/2] ext4: Calculate and verify inode checksums
+Date: Fri, 8 Apr 2011 12:12:48 -0700
+Message-ID: <20110408191250.GD24354@tux1.beaverton.ibm.com>
+References: <20110406224410.GB24354@tux1.beaverton.ibm.com> <20110406224547.GT32706@tux1.beaverton.ibm.com> <86716762-8041-4209-961C-5C0BAB139C5B@dilger.ca>
+Reply-To: djwong@us.ibm.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:52535 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757098Ab1DHSxa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Apr 2011 14:53:30 -0400
-Received: by pzk9 with SMTP id 9so1333767pzk.19
-        for <linux-ext4@vger.kernel.org>; Fri, 08 Apr 2011 11:53:29 -0700 (PDT)
-In-Reply-To: <4D9F57C4.4010306@tao.ma>
+Received: from e34.co.us.ibm.com ([32.97.110.152]:45177 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757516Ab1DHTMx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Apr 2011 15:12:53 -0400
+Content-Disposition: inline
+In-Reply-To: <86716762-8041-4209-961C-5C0BAB139C5B@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri, Apr 08, 2011 at 02:58:27AM -0600, Andreas Dilger wrote:
+> On 2011-04-06, at 4:45 PM, Darrick J. Wong wrote:
+> > This patch introduces to ext4 the ability to calculate and verify inode
+> > checksums.  This requires the use of a new ro compatibility flag and some
+> > accompanying e2fsprogs patches to provide the relevant features in tune2fs and
+> > e2fsck.
+> > 
+> > Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+> > ---
+> > 
+> > fs/ext4/ext4.h  |    6 ++++--
+> > fs/ext4/inode.c |   52 +++++++++++++++++++++++++++++++++++++++++++++++++++-
+> > 2 files changed, 55 insertions(+), 3 deletions(-)
+> > 
+> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> > index 4daaf2b..8815928 100644
+> > --- a/fs/ext4/ext4.h
+> > +++ b/fs/ext4/ext4.h
+> > @@ -617,7 +617,7 @@ struct ext4_inode {
+> > 		} masix2;
+> > 	} osd2;				/* OS dependent 2 */
+> > 	__le16	i_extra_isize;
+> > -	__le16	i_pad1;
+> > +	__le16  i_checksum;		/* crc16(sb_uuid+inodenum+inode) */
+> 
+> In previous discussions, we thought about using part/all of the l_i_reserved2
+> field to store the inode checksum.  The inode checksum is important enough to
+> warrant a field in the core inode, so that it also works on upgraded
+> filesystems.
 
+Hmm, yes, I better like using that field too, it'll simplify the code.  Does
+anyone know which of the s_creator_os codes map to the Linux format?  I'm going
+to guess 1 and 2 don't... for now I suppose the mount code can check for a
+Linux creator code if the inode checksum feature is set, and fail the mount if
+it finds 1 or 2.  I'm not sure which version of the osd2 union FreeBSD or
+"Lites" use.
 
-Sent from my iPhone
+> > +static __le16 ext4_inode_csum(struct inode *inode, struct ext4_inode *raw)
+> > +{
+> > +	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+> > +	struct ext4_inode_info *ei = EXT4_I(inode);
+> > +	int offset = offsetof(struct ext4_inode, i_checksum);
+> > +	__le32 inum = cpu_to_le32(inode->i_ino);
+> > +	__u16 crc = 0;
+> > +
+> > +	if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+> > +		EXT4_FEATURE_RO_COMPAT_INODE_CSUM) &&
+> > +	    le16_to_cpu(raw->i_extra_isize) >= 4) {
+> 
+> If this field remains in the large part of the inode, then this check is
+> incorrect.  i_extra_isize is itself only valid if (s_inode_size is >
+> EXT4_GOOD_OLD_INODE_SIZE), otherwise it points at the next inode's i_mode.
+> 
+> Also, instead of hard-coding ">= 4" here, it would be better to use
+> EXT4_FITS_IN_INODE(raw, EXT4_I(inode), i_checksum).  Probably no reason to
+> put "ei" on the stack at all.
 
-On 08/04/2011, at 11:45, Tao Ma <tm@tao.ma> wrote:
+As always, thank you for the feedback!
 
-> Hi Amir,
-> On 04/09/2011 02:00 AM, Amir Goldstein wrote:
->> Hi Ted,
->>
->> Following our conversation, here is a proposal how to squeeze:
->> - 32bit exclude bitmap block address
->> - 32bit block+exclude bitmap checksum
->> - 32bit inode bitmap checksum
->> into the reaming 8 bytes in the group descriptor.
->>
->> The idea is that the 16bit persistent free inode/block counters
->> are redundant to the inode/block bitmap information
->> and are needed in 2 use cases:
->> 1. sanity checks on fsck
->> 2. quick load of in-memory counters
->>
->> The first use case is nulled by the introduction of inode/block  
->> bitmap
->> checksums.
->> The second use case can be bypassed with no substantial penalty:
->> in-memory counters can be calculated on first inode/block bitmap  
->> access,
->> when the GRP_NEED_INIT (or another) flag is set in the group_info  
->> struct,
->> just like their cousins, the buddy bitmap counters.
->>
->> Amir.
->>
->> diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
->> index 0deb554..5cbaeb2 100644
->> --- a/lib/ext2fs/ext2_fs.h
->> +++ b/lib/ext2fs/ext2_fs.h
->> @@ -153,11 +153,11 @@ struct ext2_group_desc
->>    __u32    bg_block_bitmap;    /* Blocks bitmap block */
->>    __u32    bg_inode_bitmap;    /* Inodes bitmap block */
->>    __u32    bg_inode_table;        /* Inodes table block */
->> -    __u16    bg_free_blocks_count;    /* Free blocks count */
->> -    __u16    bg_free_inodes_count;    /* Free inodes count */
->> +    __u32    bg_exclude_bitmap;    /* Exclude bitmap block */
->>    __u16    bg_used_dirs_count;    /* Directories count */
->>    __u16    bg_flags;
->> -    __u32    bg_reserved[2];
->> +    __u32    bg_block_bitmap_csum;    /* Blocks+exclude bitmap  
->> checksum */
->> +    __u32    bg_inode_bitmap_csum;    /* Inodes bitmap checksum */
->>    __u16    bg_itable_unused;    /* Unused inodes count */
->>    __u16    bg_checksum;        /* crc16(s_uuid+grouo_num 
->> +group_desc)*/
->> };
->> @@ -170,18 +170,17 @@ struct ext4_group_desc
->>    __u32    bg_block_bitmap;    /* Blocks bitmap block */
->>    __u32    bg_inode_bitmap;    /* Inodes bitmap block */
->>    __u32    bg_inode_table;        /* Inodes table block */
->> -    __u16    bg_free_blocks_count;    /* Free blocks count */
->> -    __u16    bg_free_inodes_count;    /* Free inodes count */
->> +    __u32    bg_exclude_bitmap;    /* Exclude bitmap block */
->>    __u16    bg_used_dirs_count;    /* Directories count */
->>    __u16    bg_flags;
->> -    __u32    bg_reserved[2];
->> +    __u32    bg_block_bitmap_csum;    /* Blocks+exclude bitmap  
->> checksum */
->> +    __u32    bg_inode_bitmap_csum;    /* Inodes bitmap checksum */
->>    __u16    bg_itable_unused;    /* Unused inodes count */
->>    __u16    bg_checksum;        /* crc16(s_uuid+grouo_num 
->> +group_desc)*/
->>    __u32    bg_block_bitmap_hi;    /* Blocks bitmap block MSB */
->>    __u32    bg_inode_bitmap_hi;    /* Inodes bitmap block MSB */
->>    __u32    bg_inode_table_hi;    /* Inodes table block MSB */
->> -    __u16    bg_free_blocks_count_hi;/* Free blocks count MSB */
->> -    __u16    bg_free_inodes_count_hi;/* Free inodes count MSB */
->> +    __u32    bg_exclude_bitmap;    /* Exclude bitmap block MSB */
->>    __u16    bg_used_dirs_count_hi;    /* Directories count MSB */
->>    __u16   bg_pad;
->>    __u32    bg_reserved2[3];
->> @@ -190,6 +189,7 @@ struct ext4_group_desc
->> #define EXT2_BG_INODE_UNINIT    0x0001 /* Inode table/bitmap not  
->> initialized */
->> #define EXT2_BG_BLOCK_UNINIT    0x0002 /* Block bitmap not  
->> initialized */
->> #define EXT2_BG_INODE_ZEROED    0x0004 /* On-disk itable  
->> initialized to zero */
->> +#define EXT2_BG_EXCLUDE_UNINIT    0x0008 /* Exclude bitmap not  
->> initialized */
->>
->> /*
->>  * Data structures used by the directory indexing feature
->> @@ -751,6 +751,7 @@ struct ext2_super_block {
->> #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK    0x0020
->> #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE    0x0040
->> #define EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT    0x0080
->> +#define EXT4_FEATURE_RO_COMPAT_BITMAP_CSUM    0x0100
-> I guess this should be in FEATURE_INCOMPAT, not RO_COMPAT?
-> Since you have changed free_{inodes, blocks}_count to exclude_map. an
-> old kernel will interpret these values wrongly.
-I don't think the counters matter for read only mount
-
->
-> Regards,
-> Tao
+--D
