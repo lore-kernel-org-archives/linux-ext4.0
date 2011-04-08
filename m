@@ -1,88 +1,99 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] filefrag: count optimize non-verbose mode; count 0 extents
- properly when verbose
-Date: Fri, 08 Apr 2011 09:44:33 -0700
-Message-ID: <4D9F3B71.2050808@redhat.com>
-References: <4CEC4C86.1030806@redhat.com>
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: [RFC] exclude bitmap and 32bit bitmap cheksum fields
+Date: Fri, 8 Apr 2011 11:00:07 -0700
+Message-ID: <BANLkTimV8qQUNDM2Sx+jOo+DWV-3NSpsuw@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:62439 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752701Ab1DHQof (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 8 Apr 2011 12:44:35 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p38GiZ6u001344
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Fri, 8 Apr 2011 12:44:35 -0400
-Received: from Liberator-563.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p38GiYYu030330
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 8 Apr 2011 12:44:34 -0400
-In-Reply-To: <4CEC4C86.1030806@redhat.com>
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:41747 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757348Ab1DHSAI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Apr 2011 14:00:08 -0400
+Received: by qwk3 with SMTP id 3so2241950qwk.19
+        for <linux-ext4@vger.kernel.org>; Fri, 08 Apr 2011 11:00:07 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/23/10 3:21 PM, Eric Sandeen wrote:
-> # rm -f a; touch a; filefrag -v a
-> 
-> yields 1 extent when it should be 0.  Without -v, 0 is returned.
-> 
-> Fix this up by special-casing no extents returned in verbose
-> mode; skip printing the header for the columns too, since there
-> are no columns to print.
-> 
-> Also, in nonverbose mode we can set fm_extent_count to 0
-> so that FIEMAP will just query the extent count without gathering
-> details; as it is today I think a non-verbose query may under-report
-> the extent count once "count" extents have been filled in.
-> 
-> Addresses-redhat-bugzilla: 653234
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Hi Ted,
 
-ping^3
+Following our conversation, here is a proposal how to squeeze:
+- 32bit exclude bitmap block address
+- 32bit block+exclude bitmap checksum
+- 32bit inode bitmap checksum
+into the reaming 8 bytes in the group descriptor.
 
-> ---
-> 
-> diff --git a/misc/filefrag.c b/misc/filefrag.c
-> index bd4486d..a48b9b0 100644
-> --- a/misc/filefrag.c
-> +++ b/misc/filefrag.c
-> @@ -194,7 +194,14 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents)
->  	do {
->  		fiemap->fm_length = ~0ULL;
->  		fiemap->fm_flags = flags;
-> -		fiemap->fm_extent_count = count;
-> +		/*
-> +		 * If fm_extent_count == 0, FIEMAP returns count of
-> +		 * extents found without filling in details.
-> +		 */
-> +		if (!verbose)
-> +			fiemap->fm_extent_count = 0;
-> +		else
-> +			fiemap->fm_extent_count = count;
->  		rc = ioctl(fd, FS_IOC_FIEMAP, (unsigned long) fiemap);
->  		if (rc < 0) {
->  			if (errno == EBADR && fiemap_incompat_printed == 0) {
-> @@ -206,6 +213,14 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents)
->  		}
->  
->  		if (verbose && !fiemap_header_printed) {
-> +			/*
-> +			 * No extents on first call?
-> +			 * Skip header and show 0 extents.
-> +			 */
-> +			if (fiemap->fm_mapped_extents == 0) {
-> +				*num_extents = 0;
-> +				goto out;
-> +			}
->  			printf(" ext %*s %*s %*s length flags\n", logical_width,
->  			       "logical", physical_width, "physical",
->  			       physical_width, "expected");
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The idea is that the 16bit persistent free inode/block counters
+are redundant to the inode/block bitmap information
+and are needed in 2 use cases:
+1. sanity checks on fsck
+2. quick load of in-memory counters
 
+The first use case is nulled by the introduction of inode/block bitmap
+checksums.
+The second use case can be bypassed with no substantial penalty:
+in-memory counters can be calculated on first inode/block bitmap access,
+when the GRP_NEED_INIT (or another) flag is set in the group_info struct,
+just like their cousins, the buddy bitmap counters.
+
+Amir.
+
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index 0deb554..5cbaeb2 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -153,11 +153,11 @@ struct ext2_group_desc
+ 	__u32	bg_block_bitmap;	/* Blocks bitmap block */
+ 	__u32	bg_inode_bitmap;	/* Inodes bitmap block */
+ 	__u32	bg_inode_table;		/* Inodes table block */
+-	__u16	bg_free_blocks_count;	/* Free blocks count */
+-	__u16	bg_free_inodes_count;	/* Free inodes count */
++	__u32	bg_exclude_bitmap;	/* Exclude bitmap block */
+ 	__u16	bg_used_dirs_count;	/* Directories count */
+ 	__u16	bg_flags;
+-	__u32	bg_reserved[2];
++	__u32	bg_block_bitmap_csum;	/* Blocks+exclude bitmap checksum */
++	__u32	bg_inode_bitmap_csum;	/* Inodes bitmap checksum */
+ 	__u16	bg_itable_unused;	/* Unused inodes count */
+ 	__u16	bg_checksum;		/* crc16(s_uuid+grouo_num+group_desc)*/
+ };
+@@ -170,18 +170,17 @@ struct ext4_group_desc
+ 	__u32	bg_block_bitmap;	/* Blocks bitmap block */
+ 	__u32	bg_inode_bitmap;	/* Inodes bitmap block */
+ 	__u32	bg_inode_table;		/* Inodes table block */
+-	__u16	bg_free_blocks_count;	/* Free blocks count */
+-	__u16	bg_free_inodes_count;	/* Free inodes count */
++	__u32	bg_exclude_bitmap;	/* Exclude bitmap block */
+ 	__u16	bg_used_dirs_count;	/* Directories count */
+ 	__u16	bg_flags;
+-	__u32	bg_reserved[2];
++	__u32	bg_block_bitmap_csum;	/* Blocks+exclude bitmap checksum */
++	__u32	bg_inode_bitmap_csum;	/* Inodes bitmap checksum */
+ 	__u16	bg_itable_unused;	/* Unused inodes count */
+ 	__u16	bg_checksum;		/* crc16(s_uuid+grouo_num+group_desc)*/
+ 	__u32	bg_block_bitmap_hi;	/* Blocks bitmap block MSB */
+ 	__u32	bg_inode_bitmap_hi;	/* Inodes bitmap block MSB */
+ 	__u32	bg_inode_table_hi;	/* Inodes table block MSB */
+-	__u16	bg_free_blocks_count_hi;/* Free blocks count MSB */
+-	__u16	bg_free_inodes_count_hi;/* Free inodes count MSB */
++	__u32	bg_exclude_bitmap;	/* Exclude bitmap block MSB */
+ 	__u16	bg_used_dirs_count_hi;	/* Directories count MSB */
+ 	__u16   bg_pad;
+ 	__u32	bg_reserved2[3];
+@@ -190,6 +189,7 @@ struct ext4_group_desc
+ #define EXT2_BG_INODE_UNINIT	0x0001 /* Inode table/bitmap not initialized */
+ #define EXT2_BG_BLOCK_UNINIT	0x0002 /* Block bitmap not initialized */
+ #define EXT2_BG_INODE_ZEROED	0x0004 /* On-disk itable initialized to zero */
++#define EXT2_BG_EXCLUDE_UNINIT	0x0008 /* Exclude bitmap not initialized */
+
+ /*
+  * Data structures used by the directory indexing feature
+@@ -751,6 +751,7 @@ struct ext2_super_block {
+ #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
+ #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
+ #define EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT	0x0080
++#define EXT4_FEATURE_RO_COMPAT_BITMAP_CSUM	0x0100
+
+ #define EXT2_FEATURE_INCOMPAT_COMPRESSION	0x0001
+ #define EXT2_FEATURE_INCOMPAT_FILETYPE		0x0002
