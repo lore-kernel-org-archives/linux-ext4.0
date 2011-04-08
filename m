@@ -1,84 +1,78 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCH 2/2] e2fsprogs: Add support for toggling, verifying,
-	and fixing inode checksums
-Date: Fri, 8 Apr 2011 12:25:30 -0700
-Message-ID: <20110408192530.GE24354@tux1.beaverton.ibm.com>
-References: <20110406224410.GB24354@tux1.beaverton.ibm.com> <20110406224733.GU32706@tux1.beaverton.ibm.com> <A63BE624-6F88-432C-A029-C7A0DF6C2894@dilger.ca>
-Reply-To: djwong@us.ibm.com
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [PATCH 0/2] Add inode checksum support to ext4
+Date: Fri, 08 Apr 2011 12:27:48 -0700
+Message-ID: <1302290868.4461.7.camel@mingming-laptop>
+References: <20110406224410.GB24354@tux1.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
 Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
 	linux-ext4 <linux-ext4@vger.kernel.org>,
 	linux-kernel <linux-kernel@vger.kernel.org>
-To: Andreas Dilger <adilger.kernel@dilger.ca>
+To: djwong@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:54950 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756293Ab1DHTZj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Apr 2011 15:25:39 -0400
-Content-Disposition: inline
-In-Reply-To: <A63BE624-6F88-432C-A029-C7A0DF6C2894@dilger.ca>
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:34021 "EHLO e3.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757763Ab1DHT2h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 8 Apr 2011 15:28:37 -0400
+In-Reply-To: <20110406224410.GB24354@tux1.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Apr 08, 2011 at 03:14:04AM -0600, Andreas Dilger wrote:
-> On 2011-04-06, at 4:47 PM, Darrick J. Wong wrote:
-> > This patch adds to tune2fs the ability to toggle the inode checksum rocompat
-> > feature flag, to e2fsck the ability to verify and correct inode checksums, and
-> > to debugfs the ability to dump inode checksums.
-> > 
-> > Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
-> > ---
-> > @@ -729,6 +729,13 @@ void e2fsck_pass1(e2fsck_t ctx)
-> > +		/* Check for invalid inode checksum */
-> > +		if (!ext2fs_inode_csum_verify(fs, ino,
-> > +			(struct ext2_inode_large *)inode) &&
-> > +		    fix_problem(ctx, PR_1_INODE_CSUM_INVALID, &pctx))
-> > +			e2fsck_write_inode_full(ctx, ino, inode,
-> > +				sizeof(struct ext2_inode_large), "pass1");
+On Wed, 2011-04-06 at 15:44 -0700, Darrick J. Wong wrote:
+> Hi all,
 > 
-> If we just correct the checksum when it is found to be incorrect, then there
-> is relatively little benefit in having it at all?  The default action in this
-> case would likely be to declare the inode invalid and clears it, but there
-> also needs to be a fallback option that declares the only checksum invalid
-> and corrects it. 
+> I spent last week analyzing a client's corrupted ext3 image to see if I could
+> determine what had gone wrong and caused the filesystem to blow apart.  As best
+> as I could tell, a data block got miswritten into a different sector ... which
+> happened to be an indirect block.  Some time later the indirect block, which
+> now pointed at one of the inode tables (among other things that shouldn't ever
+> become file data) was loaded as part of a file write, which caused that inode
+> table to be blown to smithereens.  Just for fun I tried reading from one of
+> these busted-inode files and ... failed to encounter any errors.  Somehow, they
+> didn't find it funny that ext3 would read block numbers from a table with the
+> contents "ibm.com" with a straight face.  Fortunately there were backups. :)
 > 
-> Do you have an e2fsck testcase for this code, to show that it detects/fixes
-> inodes with data corruption, and to fix the checksums after the ROCOMPAT flag
-> is set the first time?
-
-Not yet; I suspected that some clarification of exactly that issue was needed.
-It looks to me that in general the checksum will be zero for the "flag is
-enabled but no checksum has yet been provided" case, and nonzero in the "inode
-is corrupt" case.  So if e2fsck sees zero it'd first ask to correct the
-checksum, and if it sees nonzero it'll first ask to clear the inode.  If the
-user answers no to the first question, e2fsck can then propose the second
-option.
-
-> With the "ibadness" patch in our tree, the bad checksum should be a
-> significant factor in marking the inode as garbage, but possibly not enough
-> to have it thrown out if there are no other errors in the inode.
-
-Or e2fsck could use that heuristic; which tree is the ibadness patch in?
-Google shows a patch from 2008, but no recent discussion.
-
-Something along the lines of: if the inode is not very bad, ask first to fix
-the checksum and second to clear the inode; if the inode seems bad, ask first
-to clear it and second to fix the checksum.
-
-> > @@ -890,6 +890,11 @@ static struct e2fsck_problem problem_table[] = {
-> > 	     "(size %Is, lblk %r)\n"),
-> > 	  PROMPT_CLEAR, PR_PREEN_OK },
-> > 
-> > +	/* Fast symlink has EXTENTS_FL set */
-> > +	{ PR_1_INODE_CSUM_INVALID,
-> > +	  N_("inode %i checksum invalid.  "),
+> The client at this point asked if ext4 would do a better job of sanity
+> checking, which got me to wonder why ext4 checksums block groups but not
+> inodes.  It's on Ted's todo list, but apparently nobody wrote any patch, so I
+> did.  The following two patches are a first draft of adding inode checksum
+> support to both the kernel driver and to the various e2fsprogs.
 > 
-> The comment for each problem should exactly mirror the text that is printed.
-> In this case, you haven't used the abbreviations "@i" and "@n", which would
-> normally make it much harder to search for this error string in the code, but
-> also simplifies the translation of the message.
 
-Oops, comment blooper that was a thinko on my part.  What would the @n be for?
+We had some discussion about this week at SF (at the ext4 bof at the
+linux colloboration summit). Beyond checksumming the inode itself, it
+would be more useful to checksum the extent indexing blocks, as the ext3
+corruption actually happen at the indirect block.  
 
---D
+The idea is to reduce the eh_max (the max # of extents stored in this
+block) to save some space to store the checksums in the block, 
+
+/*
+ * Each block (leaves and indexes), even inode-stored has header.
+ */
+struct ext4_extent_header {
+        __le16  eh_magic;       /* probably will support different
+formats */
+        __le16  eh_entries;     /* number of valid entries */
+        __le16  eh_max;         /* capacity of store in entries */
+        __le16  eh_depth;       /* has tree real underlying blocks? */
+        __le32  eh_generation;  /* generation of the tree */
+};
+This would make us a RO feature to checksum the leaves and indexes
+blocks too.
+
+> If you have an existing ext* fs with 256-byte inodes, you ought to be able to
+> "tune2fs -O inode_csum /dev/XXX", fsck /dev/XXX, and mount the filesystem with
+> checksumming enabled.  It seems to work for me (i386/x86-64), but I'm looking
+> for comments for improvement and perhaps some more testing (ppc64 is still
+> building).  This inode checksum feature is not enabled by default.
+> 
+> --D
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
