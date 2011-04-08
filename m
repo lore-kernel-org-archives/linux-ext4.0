@@ -1,109 +1,83 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: Allow indirect-block file to grow the file size
- to max file size
-Date: Thu, 07 Apr 2011 11:24:30 -0700
-Message-ID: <4D9E015E.5010009@redhat.com>
-References: <4D143B0D.2030302@sx.jp.nec.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>
-To: Kazuya Mio <k-mio@sx.jp.nec.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] e2fsprogs: don't set stripe/stride to 1 block in mkfs
+Date: Thu, 7 Apr 2011 18:13:23 -0600
+Message-ID: <73371424-8E17-4BF4-BBF8-BA4E9B9EA7C1@dilger.ca>
+References: <4D9A17F8.4000406@redhat.com> <F8519658-E9FA-4DD5-9980-59006CDACC8C@dilger.ca> <4D9B45AB.8000208@redhat.com> <4D9B49A6.7000709@redhat.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Zeev Tarantov <zeev.tarantov@gmail.com>,
+	Alex Zhuravlev <bzzz@whamcloud.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:26277 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752301Ab1DGSYg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 7 Apr 2011 14:24:36 -0400
-In-Reply-To: <4D143B0D.2030302@sx.jp.nec.com>
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:44908 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757140Ab1DHAN2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Apr 2011 20:13:28 -0400
+In-Reply-To: <4D9B49A6.7000709@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 12/23/10 10:17 PM, Kazuya Mio wrote:
-> Hi,
-> 
-> We can create 4402345721856 byte file with indirect block mapping.
-> However, if we grow an indirect-block file to the size with ftruncate(),
-> we can see the ext4 warning. The following patch fixes this problem.
 
-Ted, ping^2 on this one?
+On 2011-04-05, at 10:56 AM, Eric Sandeen wrote:
 
--Eric
+> On 4/5/11 9:39 AM, Eric Sandeen wrote:
+>> Andreas Dilger wrote:
+>>> I don't think it is harmful to specify an mballoc alignment that is
+>>> an even multiple of the underlying device IO size (e.g. at least
+>>> 256kB or 512kB).
+>>> 
+>>> If the underlying device (e.g. zram) is reporting 16kB or 64kB opt_io
+>>> size because that is PAGE_SIZE, but blocksize is 4kB, then we will
+>>> have the same performance problem again.> 
+>>> Cheers, Andreas
+>> 
+>> I need to look into why ext4_mb_scan_aligned is so inefficient for a block-sized stripe.
+>> 
+>> In practice I don't think we've seen this problem with stripe size at 4 or 8 or 16 blocks; it may just be less apparent.  I think the function steps through by stripe-sized units, and if that is 1 block, it's a lot of stepping.  
+>> 
+>>        while (i < EXT4_BLOCKS_PER_GROUP(sb)) {
+>> ...
+>>                if (!mb_test_bit(i, bitmap)) {
+> 
+> Offhand I think maybe mb_find_next_zero_bit would be more efficient.
+> 
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -1939,16 +1939,14 @@ void ext4_mb_scan_aligned(struct ext4_allocation_context *ac,
+>        i = (a * sbi->s_stripe) - first_group_block;
+> 
+>        while (i < EXT4_BLOCKS_PER_GROUP(sb)) {
+> -               if (!mb_test_bit(i, bitmap)) {
+> -                       max = mb_find_extent(e4b, 0, i, sbi->s_stripe, &ex);
+> -                       if (max >= sbi->s_stripe) {
+> -                               ac->ac_found++;
+> -                               ac->ac_b_ex = ex;
+> -                               ext4_mb_use_best_found(ac, e4b);
+> -                               break;
+> -                       }
+> +               i = mb_find_next_zero_bit(bitmap, EXT4_BLOCKS_PER_GROUP(sb), i);
+> +               max = mb_find_extent(e4b, 0, i, sbi->s_stripe, &ex);
+> +               if (max >= sbi->s_stripe) {
+> +                       ac->ac_found++;
+> +                       ac->ac_b_ex = ex;
+> +                       ext4_mb_use_best_found(ac, e4b);
+> +                       break;
+>                }
+> -               i += sbi->s_stripe;
+>        }
+> }
+> 
+> totally untested, but I think we have better ways to step through the bitmap.
 
-> How to reproduce:
-> # dd if=/dev/zero of=/mnt/mp1/hoge bs=1 count=0 seek=4402345721856
-> 0+0 records in
-> 0+0 records out
-> 0 bytes (0 B) copied, 0.000221428 s, 0.0 kB/s
-> # tail -n 1 /var/log/messages
-> Nov 25 15:10:27 test kernel: EXT4-fs warning (device sda8): ext4_block_to_path:345: block 1074791436 > max in inode 12
-> 
-> Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
-> ---
->  fs/ext4/inode.c |   23 +++++++++++++++++------
->  1 file changed, 17 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 05a0790..c429753 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4677,8 +4677,8 @@ void ext4_truncate(struct inode *inode)
->  	Indirect chain[4];
->  	Indirect *partial;
->  	__le32 nr = 0;
-> -	int n;
-> -	ext4_lblk_t last_block;
-> +	int n = 0;
-> +	ext4_lblk_t last_block, max_block;
->  	unsigned blocksize = inode->i_sb->s_blocksize;
->  
->  	if (!ext4_can_truncate(inode))
-> @@ -4700,14 +4700,18 @@ void ext4_truncate(struct inode *inode)
->  
->  	last_block = (inode->i_size + blocksize-1)
->  					>> EXT4_BLOCK_SIZE_BITS(inode->i_sb);
-> +	max_block = (EXT4_SB(inode->i_sb)->s_bitmap_maxbytes + blocksize-1)
-> +					>> EXT4_BLOCK_SIZE_BITS(inode->i_sb);
->  
->  	if (inode->i_size & (blocksize - 1))
->  		if (ext4_block_truncate_page(handle, mapping, inode->i_size))
->  			goto out_stop;
->  
-> -	n = ext4_block_to_path(inode, last_block, offsets, NULL);
-> -	if (n == 0)
-> -		goto out_stop;	/* error */
-> +	if (last_block != max_block) {
-> +		n = ext4_block_to_path(inode, last_block, offsets, NULL);
-> +		if (n == 0)
-> +			goto out_stop;	/* error */
-> +	}
->  
->  	/*
->  	 * OK.  This truncate is going to happen.  We add the inode to the
-> @@ -4738,7 +4742,13 @@ void ext4_truncate(struct inode *inode)
->  	 */
->  	ei->i_disksize = inode->i_size;
->  
-> -	if (n == 1) {		/* direct blocks */
-> +	if (last_block == max_block) {
-> +		/*
-> +		 * It is unnecessary to free any data blocks if last_block is
-> +		 * equal to the indirect block limit.
-> +		 */
-> +		goto out_unlock;
-> +	} else if (n == 1) {		/* direct blocks */
->  		ext4_free_data(handle, inode, NULL, i_data+offsets[0],
->  			       i_data + EXT4_NDIR_BLOCKS);
->  		goto do_indirects;
-> @@ -4798,6 +4808,7 @@ do_indirects:
->  		;
->  	}
->  
-> +out_unlock:
->  	up_write(&ei->i_data_sem);
->  	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
->  	ext4_mark_inode_dirty(handle, inode);
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+This changes the allocation completely, AFAICS.  Instead of doing checks for chunks of free space aligned on sbi->s_stripe boundaries, it is instead finding the first free space of size s_stripe regardless of alignment.  That is not good for RAID back-ends, and is the primary reason for ext4_mb_scan_aligned() to exist.
+
+I think my original assertion holds - that regardless of what the "optimal IO" size reported by the underlying device, doing larger allocations at the mballoc level that are even multiples of this size isn't harmful.  That avoids not only the performance impact of 4kB-sized "optimal IO", but also the (lesser) impact of 8kB-64kB "optimal IO" allocations as well.
+
+Cheers, Andreas
+
+
+
+
 
