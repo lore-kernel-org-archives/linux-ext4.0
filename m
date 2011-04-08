@@ -1,218 +1,102 @@
 From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: [PATCH 01/11] libe2p: Add new function get_fragment_score()
-Date: Fri, 08 Apr 2011 16:51:03 +0900
-Message-ID: <4D9EBE67.3010603@sx.jp.nec.com>
+Subject: [PATCH 02/11] filefrag: Output fragmentation score
+Date: Fri, 08 Apr 2011 16:51:53 +0900
+Message-ID: <4D9EBE99.5060703@sx.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
 To: ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:56070 "EHLO
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:56158 "EHLO
 	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932099Ab1DHIGZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Apr 2011 04:06:25 -0400
+	with ESMTP id S932099Ab1DHIGg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Apr 2011 04:06:36 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds get_fragment_score() to libe2p. get_fragment_score() returns
-the fragmentation score. It shows the percentage of extents whose size is
-smaller than the input argument "threshold".
+This patch adds the fragmentation score to the output of filefrag.
+The threshold that shows whether a fragment is good or not comes from
+"blocksize * 8 - 2048". "blocksize * 8 - 2048" is the maximum number of
+contiguous blocks which we can get from empty blockgroup containing some
+metadata blocks.
 
-However, there are some cases that cannot be merged into a next extent.
-The following extents are excepted from the calculation of fragmentation score:
-- The extent whose initialize status is different from the next extent
-- There is a hole between the extent and its next extent
-- The extent is a tail
+For example, filefrag shows fragmentation score as follows:
+
+# filefrag /mnt/mp1/testfile
+/mnt/mp1/testfile: 4 extents found
+Fragmentation score: 33 (found a little bit fragmentation)
 
 Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
 ---
- lib/e2p/Makefile.in      |    6 +
- lib/e2p/e2p.h            |    2 
- lib/e2p/fragment_score.c |  142 +++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 148 insertions(+), 2 deletions(-)
-diff --git a/lib/e2p/Makefile.in b/lib/e2p/Makefile.in
-index 9775a98..c62a81d 100644
---- a/lib/e2p/Makefile.in
-+++ b/lib/e2p/Makefile.in
-@@ -19,7 +19,7 @@ all::	e2p.pc
- OBJS=		feature.o fgetflags.o fsetflags.o fgetversion.o fsetversion.o \
- 		getflags.o getversion.o hashstr.o iod.o ls.o mntopts.o \
- 		parse_num.o pe.o pf.o ps.o setflags.o setversion.o uuid.o \
--		ostype.o percent.o
-+		ostype.o percent.o fragment_score.o
+ misc/Makefile.in |    4 ++--
+ misc/filefrag.c  |   28 ++++++++++++++++++++++++++++
+ 2 files changed, 30 insertions(+), 2 deletions(-)
+diff --git a/misc/Makefile.in b/misc/Makefile.in
+index 86ee53f..19eaa43 100644
+--- a/misc/Makefile.in
++++ b/misc/Makefile.in
+@@ -306,9 +306,9 @@ e2freefrag: $(E2FREEFRAG_OBJS)
+ 	$(E) "	LD $@"
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -o e2freefrag $(E2FREEFRAG_OBJS) $(LIBS)
  
- SRCS=		$(srcdir)/feature.c $(srcdir)/fgetflags.c \
- 		$(srcdir)/fsetflags.c $(srcdir)/fgetversion.c \
-@@ -28,7 +28,7 @@ SRCS=		$(srcdir)/feature.c $(srcdir)/fgetflags.c \
- 		$(srcdir)/ls.c $(srcdir)/mntopts.c $(srcdir)/parse_num.c \
- 		$(srcdir)/pe.c $(srcdir)/pf.c $(srcdir)/ps.c \
- 		$(srcdir)/setflags.c $(srcdir)/setversion.c $(srcdir)/uuid.c \
--		$(srcdir)/ostype.c $(srcdir)/percent.c
-+		$(srcdir)/ostype.c $(srcdir)/percent.c $(srcdir)/fragment_score.c
- HFILES= e2p.h
+-filefrag: $(FILEFRAG_OBJS)
++filefrag: $(FILEFRAG_OBJS) $(DEPLIBS_E2P)
+ 	$(E) "	LD $@"
+-	$(Q) $(CC) $(ALL_LDFLAGS) -o filefrag $(FILEFRAG_OBJS) 
++	$(Q) $(CC) $(ALL_LDFLAGS) -o filefrag $(FILEFRAG_OBJS) $(DEPLIBS_E2P)
  
- LIBRARY= libe2p
-@@ -162,3 +162,5 @@ ostype.o: $(srcdir)/ostype.c $(srcdir)/e2p.h \
-  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h
- percent.o: $(srcdir)/percent.c $(srcdir)/e2p.h \
-  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h
-+fragment_score.o: $(srcdir)/fragment_score.c $(srcdir)/e2p.h \
-+ $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h
-diff --git a/lib/e2p/e2p.h b/lib/e2p/e2p.h
-index 4a68dd9..52a8e51 100644
---- a/lib/e2p/e2p.h
-+++ b/lib/e2p/e2p.h
-@@ -72,3 +72,5 @@ char *e2p_os2string(int os_type);
- int e2p_string2os(char *str);
+ filefrag.profiled: $(PROFILED_FILEFRAG_OBJS)
+ 	$(E) "	LD $@"
+diff --git a/misc/filefrag.c b/misc/filefrag.c
+index d604b6c..a1fab13 100644
+--- a/misc/filefrag.c
++++ b/misc/filefrag.c
+@@ -41,6 +41,7 @@ extern int optind;
+ #include <linux/fd.h>
+ #include <ext2fs/ext2_types.h>
+ #include <ext2fs/fiemap.h>
++#include "e2p/e2p.h"
  
- unsigned int e2p_percent(int percent, unsigned int base);
+ int verbose = 0;
+ int no_bs = 0;		/* Don't use the files blocksize, use 1K blocksize */
+@@ -267,6 +268,7 @@ static void frag_report(const char *filename)
+ 	int		is_ext2 = 0;
+ 	static int	once = 1;
+ 	unsigned int	flags;
++	int score;
+ 	int rc;
+ 
+ #ifdef HAVE_OPEN64
+@@ -367,6 +369,32 @@ static void frag_report(const char *filename)
+ 			(expected>1) ? "s" : "");
+ 	else
+ 		fputc('\n', stdout);
 +
-+int get_fragment_score(int fd, size_t threshold);
-diff --git a/lib/e2p/fragment_score.c b/lib/e2p/fragment_score.c
-new file mode 100644
-index 0000000..3ad21b9
---- /dev/null
-+++ b/lib/e2p/fragment_score.c
-@@ -0,0 +1,142 @@
-+/*
-+ * fragment_score.c --- Get file fragmentation score on ext4 filesystem.
-+ *
-+ * Copyright (C) 2011	Kazuya Mio <k-mio@sx.jp.nec.com>
-+ *			NEC Software Tohoku, Ltd.
-+ *
-+ * %Begin-Header%
-+ * This file may be redistributed under the terms of the GNU Library
-+ * General Public License, version 2.
-+ * %End-Header%
-+ */
++	if (!xattr_map) {
++		/*
++		 * Get the fragmentation score.
++		 * NOTE: 2048 means the maximum block region of mballoc.
++		 */
++		score = get_fragment_score(fd,
++			(fsinfo.f_bsize * 8 - 2048) * fsinfo.f_bsize);
 +
-+#define _LARGEFILE64_SOURCE
-+
-+#if HAVE_ERRNO_H
-+#include <errno.h>
-+#endif
-+#include <unistd.h>
-+#include <string.h>
-+#include <sys/ioctl.h>
-+#include <sys/types.h>
-+#include <sys/stat.h>
-+#include <sys/vfs.h>
-+
-+#include <ext2fs/ext2_types.h>
-+#include <ext2fs/fiemap.h>
-+
-+#include "e2p.h"
-+
-+#define	EXT3_IOC_GETFLAGS		_IOR('f', 1, long)
-+
-+#ifdef HAVE_FSTAT64
-+#define FSTAT		fstat64
-+#define STRUCT_STAT	struct stat64
-+#else
-+#define FSTAT		fstat
-+#define STRUCT_STAT	struct stat
-+#endif
-+
-+static int is_target_extent(struct fiemap_extent *cur_fm_ext,
-+			     struct fiemap_extent *next_fm_ext)
-+{
-+	/* Check a hole between the extent */
-+	if ((cur_fm_ext->fe_logical + cur_fm_ext->fe_length)
-+		< next_fm_ext->fe_logical)
-+		return 0;
-+	/* Check a defference of unwritten flag */
-+	if ((cur_fm_ext->fe_flags & FIEMAP_EXTENT_UNWRITTEN)
-+		!= (next_fm_ext->fe_flags & FIEMAP_EXTENT_UNWRITTEN))
-+		return 0;
-+
-+	/* target extent */
-+	return 1;
-+}
-+
-+int get_fragment_score(int fd, size_t threshold)
-+{
-+	unsigned int	flags = 0;
-+	STRUCT_STAT	fileinfo;
-+	struct statfs	fsinfo;
-+	char buf[4096] = "";
-+	struct fiemap *fiemap = (struct fiemap *)buf;
-+	struct fiemap_extent *fm_ext = &fiemap->fm_extents[0];
-+	struct fiemap_extent prev_fm_ext;
-+	int count = (sizeof(buf) - sizeof(*fiemap)) /
-+			sizeof(struct fiemap_extent);
-+	int tot_extents = 0;
-+	int frag_extents = 0;
-+	unsigned int i;
-+	int first = 1, last = 0;
-+
-+	if (FSTAT(fd, &fileinfo) < 0 ||
-+	    fstatfs(fd, &fsinfo) < 0)
-+		return -1;
-+	if (ioctl(fd, EXT3_IOC_GETFLAGS, &flags) < 0)
-+		flags = 0;
-+
-+	/*
-+	 * Return an error if the target file is not the following cases.
-+	 * - regular file
-+	 * - extent format file on ext4 filesystem
-+	 */
-+	if (!S_ISREG(fileinfo.st_mode) ||
-+	    fsinfo.f_type != EXT2_SUPER_MAGIC ||
-+	    !(flags & EXT4_EXTENTS_FL)) {
-+		errno = EOPNOTSUPP;
-+		return -1;
++		/*
++		 * Print fragmentation score with some comments
++		 * 0-30 no problem, 31-55 a little bit fragmented,
++		 * 56- needs defrag
++		 */
++		if (score < 0)
++			;
++		else if (score <= 30)
++			printf("Fragmentation score: %d (no problem)\n", score);
++		else if (score <= 55)
++			printf("Fragmentation score: %d "
++				"(found a little bit fragmentation)\n", score);
++		else
++			printf("Fragmentation score: %d "
++				"(need to do e4defrag command)\n", score);
 +	}
 +
-+	memset(fiemap, 0, sizeof(struct fiemap));
-+	fiemap->fm_start = 0;
-+	fiemap->fm_length = ~0ULL;
-+	fiemap->fm_extent_count = count;
-+
-+	do {
-+		fiemap->fm_flags = 0;
-+		if (ioctl(fd, FS_IOC_FIEMAP, (unsigned long) fiemap) < 0)
-+			return -1;
-+
-+		/* If 0 extents are returned, then more ioctls are not needed */
-+		if (fiemap->fm_mapped_extents == 0)
-+			break;
-+
-+		if (first != 0)
-+			first = 0;
-+		else {
-+			/* Check the last extent gotten by previous FIEMAP */
-+			if (is_target_extent(&prev_fm_ext, &fm_ext[0])) {
-+				tot_extents++;
-+				if (prev_fm_ext.fe_length < threshold)
-+					frag_extents++;
-+			}
-+		}
-+
-+		for (i = 0; i < fiemap->fm_mapped_extents; i++) {
-+			if (fm_ext[i].fe_flags & FIEMAP_EXTENT_LAST) {
-+				last = 1;
-+				continue;
-+			}
-+
-+			if (fiemap->fm_mapped_extents - 1 == i) {
-+				memcpy(&prev_fm_ext, &fm_ext[i],
-+					sizeof(struct fiemap_extent));
-+				continue;
-+			}
-+
-+			/* Check target extent */
-+			if (!is_target_extent(&fm_ext[i], &fm_ext[i+1]))
-+				continue;
-+
-+			tot_extents++;
-+
-+			if (fm_ext[i].fe_length < threshold)
-+				frag_extents++;
-+		}
-+
-+		fiemap->fm_start = (fm_ext[i-1].fe_logical +
-+				    fm_ext[i-1].fe_length);
-+	} while (last == 0);
-+
-+	return tot_extents == 0 ? 0 : (100 * frag_extents) / tot_extents;
-+}
+ 	close(fd);
+ 	once = 0;
+ }
