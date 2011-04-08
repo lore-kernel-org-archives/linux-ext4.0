@@ -1,40 +1,88 @@
-From: "Mr. Michael Goeghegen" <info@mail.com>
-Subject: (unknown)
-Date: Thu,  7 Apr 2011 10:36:29 +0100
-Message-ID: <1302168989.4d9d859db91bf__32370.8477583297$1302267196$gmane$org@www.bitsnet.com.br>
-Reply-To: mr.michael_goeghegen@ymail.com
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] filefrag: count optimize non-verbose mode; count 0 extents
+ properly when verbose
+Date: Fri, 08 Apr 2011 09:44:33 -0700
+Message-ID: <4D9F3B71.2050808@redhat.com>
+References: <4CEC4C86.1030806@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: recipient list not shown:;
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail2.bitsnet.com.br ([200.252.189.137]:52726 "EHLO
-	cacau.bitsnet.com.br" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756227Ab1DHMxI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Apr 2011 08:53:08 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:62439 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752701Ab1DHQof (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 8 Apr 2011 12:44:35 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p38GiZ6u001344
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Fri, 8 Apr 2011 12:44:35 -0400
+Received: from Liberator-563.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p38GiYYu030330
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 8 Apr 2011 12:44:34 -0400
+In-Reply-To: <4CEC4C86.1030806@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Attn,
+On 11/23/10 3:21 PM, Eric Sandeen wrote:
+> # rm -f a; touch a; filefrag -v a
+> 
+> yields 1 extent when it should be 0.  Without -v, 0 is returned.
+> 
+> Fix this up by special-casing no extents returned in verbose
+> mode; skip printing the header for the columns too, since there
+> are no columns to print.
+> 
+> Also, in nonverbose mode we can set fm_extent_count to 0
+> so that FIEMAP will just query the extent count without gathering
+> details; as it is today I think a non-verbose query may under-report
+> the extent count once "count" extents have been filled in.
+> 
+> Addresses-redhat-bugzilla: 653234
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-This proposal is addressed directly to you as a private obligation required of
-you and should be treated as utmost secrete. I got your details from my
-private search after a careful review.
+ping^3
 
-I am Mr. Michael Goeghegan CBE, and chief executive of HSBC Holdings PLC. I
-have a confidential brief for you, I am asking for your partnership in re-
-profiling some funds. please get back to me for more information, if you are
-interested. You can read more about my biography on this link below.
+> ---
+> 
+> diff --git a/misc/filefrag.c b/misc/filefrag.c
+> index bd4486d..a48b9b0 100644
+> --- a/misc/filefrag.c
+> +++ b/misc/filefrag.c
+> @@ -194,7 +194,14 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents)
+>  	do {
+>  		fiemap->fm_length = ~0ULL;
+>  		fiemap->fm_flags = flags;
+> -		fiemap->fm_extent_count = count;
+> +		/*
+> +		 * If fm_extent_count == 0, FIEMAP returns count of
+> +		 * extents found without filling in details.
+> +		 */
+> +		if (!verbose)
+> +			fiemap->fm_extent_count = 0;
+> +		else
+> +			fiemap->fm_extent_count = count;
+>  		rc = ioctl(fd, FS_IOC_FIEMAP, (unsigned long) fiemap);
+>  		if (rc < 0) {
+>  			if (errno == EBADR && fiemap_incompat_printed == 0) {
+> @@ -206,6 +213,14 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents)
+>  		}
+>  
+>  		if (verbose && !fiemap_header_printed) {
+> +			/*
+> +			 * No extents on first call?
+> +			 * Skip header and show 0 extents.
+> +			 */
+> +			if (fiemap->fm_mapped_extents == 0) {
+> +				*num_extents = 0;
+> +				goto out;
+> +			}
+>  			printf(" ext %*s %*s %*s length flags\n", logical_width,
+>  			       "logical", physical_width, "physical",
+>  			       physical_width, "expected");
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-http://en.wikipedia.org/wiki/Michael_Geoghegan
-Regards,
-Mr. Michael Goeghegen.
-
-
-
-
-
-
-----------------------------------------------------------------
-This message was sent using IMP, the Internet Messaging Program.
