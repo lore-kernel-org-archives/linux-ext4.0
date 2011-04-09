@@ -1,75 +1,85 @@
-From: Andreas Dilger <adilger@dilger.ca>
+From: Roman Mamedov <rm@romanrm.ru>
 Subject: Re: tune2fs can't be used on a mounted ext4, or...?
-Date: Sat, 9 Apr 2011 15:30:42 -0600
-Message-ID: <14B9D41F-4D38-4F01-97E9-17E86DA578FC@dilger.ca>
+Date: Sun, 10 Apr 2011 03:50:05 +0600
+Message-ID: <20110410035005.64f565e3@natsu>
 References: <20110410003954.4108b9c9@natsu>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
+	<14B9D41F-4D38-4F01-97E9-17E86DA578FC@dilger.ca>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/n0RhOXw4KHcGWB8PQ/+hhq9"; protocol="application/pgp-signature"
 Cc: linux-ext4@vger.kernel.org, linux-raid@vger.kernel.org
-To: Roman Mamedov <rm@romanrm.ru>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:41959 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755684Ab1DIVao convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 9 Apr 2011 17:30:44 -0400
-In-Reply-To: <20110410003954.4108b9c9@natsu>
+Received: from luna.romanrm.ru ([199.19.226.215]:59732 "EHLO luna.romanrm.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754221Ab1DIVui (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 9 Apr 2011 17:50:38 -0400
+In-Reply-To: <14B9D41F-4D38-4F01-97E9-17E86DA578FC@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-04-09, at 12:39 PM, Roman Mamedov wrote:
-> Here's what happened. I reshaped my RAID5 to a RAID6 and a larger disk count.
-> Then I ran "resize2fs /dev/md0". It successfully enlarged the filesystem
-> online (that took a couple of hours, I think).
+--Sig_/n0RhOXw4KHcGWB8PQ/+hhq9
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-The online resize shouldn't take more than a few minutes, unless the disk is crazy busy and you are going from 16GB to 16TB or something.
+On Sat, 9 Apr 2011 15:30:42 -0600
+Andreas Dilger <adilger@dilger.ca> wrote:
 
-> Since my count of disks changed, I thought I should change the array stripe
-> width. Then, while still not unmounting the filesystem, I did:
-> 
->  tune2fs -E stripe_width=48 /dev/md0
+> The online resize shouldn't take more than a few minutes, unless the disk=
+ is
+> crazy busy and you are going from 16GB to 16TB or something.
 
-This does nothing more than set a field in the superblock, and it only gives a hint to the allocator to align the files on multiples of 48-block boundaries.
+I was resizing from 4 TB to 6 TB, and during the time (okay, maybe it was j=
+ust
+an hour) I saw disk free space slowly increase at about 1 GB per couple of
+seconds. RAID6 also was in a degraded state (one disk missing), so maybe
+that's why it was slower than it should usually be.
 
-> Then I started copying files from another array to the one on which the above
-> operations were conducted. I did:
-> 
->  cp -Rp /mnt/array1/data/* /mnt/array2/new-data/
+> > Then I started copying files from another array to the one on which the
+> > above operations were conducted. I did:
+> >=20
+> >  cp -Rp /mnt/array1/data/* /mnt/array2/new-data/
+>=20
+> What kernel version do you have, and what version of coreutils?  Is this
+> perhaps a bleeding-edge kernel/coreutils with the "FIEMAP" bug?
 
-What kernel version do you have, and what version of coreutils?  Is this perhaps a bleeding-edge kernel/coreutils with the "FIEMAP" bug?
+Kernel version 2.6.38.2, cp (GNU coreutils) 8.5.
 
-> This completed successfully. No errors on the console, silence in dmesg.
-> 
-> Then I thought I'd verify the destination, just to be sure. Luckily, I have
-> checksums stored in almost every directory as .SFV files (created with "cfv").
-> 
-> And some checksums did not match. On a closer investigation, it appears like
-> some files deep down in the directory tree (and with a rare occurence,
-> something like one file in a thousand) were truncated during copying. E.g.
-> they'd have size of 188 MB instead of 349 MB, or 128 MB instead of 170 MB.
-> Some files (originally less than 1 MB in size) just had zero-length on the
-> destination.
+Also, what I didn't mention in my previous post, is that during that sessio=
+n I
+also had one E-Mail message which was just received by the mail client (not
+copied from another disk via cp or otherwise) truncate too. The mail client=
+ is
+claws-mail and it stores individual messages on disk as regular files, a fi=
+le
+per message, and that one file was 0 bytes in size. At first I didn't think=
+ it
+was related, but it looks like all disk access is/was affected, not just
+cp/coreutils.
 
-Were the source files that had problems recently written themselves in this case?
+> Were the source files that had problems recently written themselves in th=
+is
+> case?
 
-> Other than these truncations, there is NO corruption of data inside any of the
-> files. Which kinda rules out CRC-style errors in controller/disk/cable.
-> 
-> So.. this is completely puzzling to me, and I suspect either a kernel bug, or
-> my mistake, and tune2fs cannot modify a mounted FS (however it did NOT show any
-> warning that the FS was mounted, and if this is the case, it should've
-> absolutely refused to operate on a mounted FS).
-> 
-> Any ideas? :)
-> 
-> -- 
-> With respect,
-> Roman
+Recently, as in "while on 2.6.38x kernels", or "in the past N minutes"?
+Latter - definitely not (except for that one E-Mail mentioned above), forme=
+r -
+maybe, but unlikely.
 
+--=20
+With respect,
+Roman
 
-Cheers, Andreas
+--Sig_/n0RhOXw4KHcGWB8PQ/+hhq9
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
 
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
 
+iEYEARECAAYFAk2g1I0ACgkQTLKSvz+PZwiCMgCcCJzksTQ58jcSNq7W6nzyq4LL
+0h4AoJfvPdqxFh0+/MvRoR9b+h8cV+wt
+=Rhf+
+-----END PGP SIGNATURE-----
 
-
-
+--Sig_/n0RhOXw4KHcGWB8PQ/+hhq9--
