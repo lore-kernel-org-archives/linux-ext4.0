@@ -1,31 +1,119 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: Does ext4 send FUA to flush disk cache
-Date: Sun, 10 Apr 2011 08:17:58 -0400
-Message-ID: <DE099CBA-6478-4651-B3E5-F406D0C11C3D@mit.edu>
-References: <BANLkTikmryaO5r012VwsNzhcaaVQ_4QfzA@mail.gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org
-To: Mark Busheman <markbusheman@gmail.com>
+From: "Jzfkqx" <benkertsqmj@yahoo.it>
+Subject: 8567-Z
+Date: Sun, 10 Apr 2011 21:30:20 +0800
+Message-ID: <322889.50967.bm@smtp132.mail.ukl.yahoo.com>
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="----=ydiou129_4322_175662918.821793"
+To: "linux-cifs-client" <linux-cifs-client@lists.samba.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DMZ-MAILSEC-SCANNER-2.MIT.EDU ([18.9.25.13]:48511 "EHLO
-	dmz-mailsec-scanner-2.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753382Ab1DJMRq convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 10 Apr 2011 08:17:46 -0400
-In-Reply-To: <BANLkTikmryaO5r012VwsNzhcaaVQ_4QfzA@mail.gmail.com>
+Received: from nm15-vm0.bullet.mail.ukl.yahoo.com ([217.146.183.252]:29033
+	"HELO nm15-vm0.bullet.mail.ukl.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1753415Ab1DJNhb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 10 Apr 2011 09:37:31 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
-On Apr 8, 2011, at 6:02 PM, Mark Busheman wrote:
+This is a multi-part message in MIME format.
 
-> I plan to use data=journal option with ext4. Would like to know if
-> ext4 send FUA (Forced Unit Access)
-> to flush the disk cache?
+------=ydiou129_4322_175662918.821793
+Content-Type: text/plain;
+	charset="GB2312"
+Content-Transfer-Encoding: base64
 
-FUA doesn't cause a cache flush.   Ext4 does send cache flush commands, or barriers, to make sure the data written to disk is flushed all the way down to the disk platters on transaction commits.
+MTI2LmNvbQ0KNDY4MDM1NzkxNDY4MDI1Nw==
 
--- Ted
+------=ydiou129_4322_175662918.821793
+Content-Type: image/gif;
+	name="Hms_9484.gif"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+	filename="Hms_9484.gif"
 
+R0lGODdh2AGoAHcAACwAAAAA2AGoAIcAAAAAADMAAGYAAJkAAMwAAP8AMwAAMzMAM2YAM5kAM8wA
+M/8AZgAAZjMAZmYAZpkAZswAZv8AmQAAmTMAmWYAmZkAmcwAmf8AzAAAzDMAzGYAzJkAzMwAzP8A
+/wAA/zMA/2YA/5kA/8wA//8zAAAzADMzAGYzAJkzAMwzAP8zMwAzMzMzM2YzM5kzM8wzM/8zZgAz
+ZjMzZmYzZpkzZswzZv8zmQAzmTMzmWYzmZkzmcwzmf8zzAAzzDMzzGYzzJkzzMwzzP8z/wAz/zMz
+/2Yz/5kz/8wz//9mAABmADNmAGZmAJlmAMxmAP9mMwBmMzNmM2ZmM5lmM8xmM/9mZgBmZjNmZmZm
+ZplmZsxmZv9mmQBmmTNmmWZmmZlmmcxmmf9mzABmzDNmzGZmzJlmzMxmzP9m/wBm/zNm/2Zm/5lm
+/8xm//+ZAACZADOZAGaZAJmZAMyZAP+ZMwCZMzOZM2aZM5mZM8yZM/+ZZgCZZjOZZmaZZpmZZsyZ
+Zv+ZmQCZmTOZmWaZmZmZmcyZmf+ZzACZzDOZzGaZzJmZzMyZzP+Z/wCZ/zOZ/2aZ/5mZ/8yZ///M
+AADMADPMAGbMAJnMAMzMAP/MMwDMMzPMM2bMM5nMM8zMM//MZgDMZjPMZmbMZpnMZszMZv/MmQDM
+mTPMmWbMmZnMmczMmf/MzADMzDPMzGbMzJnMzMzMzP/M/wDM/zPM/2bM/5nM/8zM////AAD/ADP/
+AGb/AJn/AMz/AP//MwD/MzP/M2b/M5n/M8z/M///ZgD/ZjP/Zmb/Zpn/Zsz/Zv//mQD/mTP/mWb/
+mZn/mcz/mf//zAD/zDP/zGb/zJn/zMz/zP///wD//zP//2b//5n//8z///8AAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAI/wATCRxI
+sKDBgwgTKlzIsKHDhxAjSpxIsaLFixgzatzIsaPHjyBDihxJsqTJkyhTqly5EAAAljBjypxJs6bN
+mydf4tzJs6fPn0CDStQptKjRo0iTKkXo8qVLgU+hRpVKcOrBpgOjNiW6tKvXr2CX6hwLtWwismfN
+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
+
+------=ydiou129_4322_175662918.821793--
