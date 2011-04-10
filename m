@@ -1,72 +1,82 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [Bug 32972] New: EXT4 causes corrupt BitTorrent downloads
-Date: Sun, 10 Apr 2011 22:30:13 +0800
-Message-ID: <BANLkTikQa3UaBVVFdrvzwUcdR_qvOPcmFw@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 32972] EXT4 causes corrupt BitTorrent downloads
+Date: Sun, 10 Apr 2011 14:30:38 GMT
+Message-ID: <201104101430.p3AEUcIJ011641@demeter1.kernel.org>
 References: <bug-32972-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: bugzilla-daemon@bugzilla.kernel.org, damien@grassart.com,
-	feng.tang@intel.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pv0-f174.google.com ([74.125.83.174]:50610 "EHLO
-	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753016Ab1DJOaN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 10 Apr 2011 10:30:13 -0400
-Received: by pvg12 with SMTP id 12so1733349pvg.19
-        for <linux-ext4@vger.kernel.org>; Sun, 10 Apr 2011 07:30:13 -0700 (PDT)
+Received: from demeter1.kernel.org ([140.211.167.39]:54370 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753029Ab1DJOaj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 10 Apr 2011 10:30:39 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p3AEUcGK011642
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Sun, 10 Apr 2011 14:30:38 GMT
 In-Reply-To: <bug-32972-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+https://bugzilla.kernel.org/show_bug.cgi?id=3D32972
+
+
+
+
+
+--- Comment #1 from Anonymous Emailer <anonymous@kernel-bugs.osdl.org> =
+ 2011-04-10 14:30:37 ---
+Reply-To: xiaoqiangnk@gmail.com
+
 Ah, it is a wrong fix.
 
 original code:
-	map_bh(bh, inode->i_sb, map.m_pblk);
-	bh->b_state =3D (bh->b_state & ~EXT4_MAP_FLAGS) | map.m_flags;
+    map_bh(bh, inode->i_sb, map.m_pblk);
+    bh->b_state =3D (bh->b_state & ~EXT4_MAP_FLAGS) | map.m_flags;
 
-	if (buffer_unwritten(bh)) {
-		/* A delayed write to unwritten bh should be marked
-		 * new and mapped.  Mapped ensures that we don't do
-		 * get_block multiple times when we write to the same
-		 * offset and new ensures that we do proper zero out
-		 * for partial write.
-		 */
-		set_buffer_new(bh);
-		set_buffer_mapped(bh);
-	}
+    if (buffer_unwritten(bh)) {
+        /* A delayed write to unwritten bh should be marked
+         * new and mapped.  Mapped ensures that we don't do
+         * get_block multiple times when we write to the same
+         * offset and new ensures that we do proper zero out
+         * for partial write.
+         */
+        set_buffer_new(bh);
+        set_buffer_mapped(bh);
+    }
 
 after the patch:
-	map_bh(bh, inode->i_sb, map.m_pblk);
-	bh->b_state =3D (bh->b_state & ~EXT4_MAP_FLAGS) | map.m_flags;
+    map_bh(bh, inode->i_sb, map.m_pblk);
+    bh->b_state =3D (bh->b_state & ~EXT4_MAP_FLAGS) | map.m_flags;
 
-	if (buffer_unwritten(bh)) {
-		/* A delayed write to unwritten bh should be marked
-		 * new and mapped.  Mapped ensures that we don't do
-		 * get_block multiple times when we write to the same
-		 * offset and new ensures that we do proper zero out
-		 * for partial write.
-		 */
-		set_buffer_new(bh);
-	}
+    if (buffer_unwritten(bh)) {
+        /* A delayed write to unwritten bh should be marked
+         * new and mapped.  Mapped ensures that we don't do
+         * get_block multiple times when we write to the same
+         * offset and new ensures that we do proper zero out
+         * for partial write.
+         */
+        set_buffer_new(bh);
+    }
 
 Actually, mapped flag is cleared by statement:
-	bh->b_state =3D (bh->b_state & ~EXT4_MAP_FLAGS) | map.m_flags;
+    bh->b_state =3D (bh->b_state & ~EXT4_MAP_FLAGS) | map.m_flags;
 
 So the right code should be=EF=BC=9A
 
-	bh->b_state =3D (bh->b_state & ~EXT4_MAP_FLAGS) | map.m_flags;
-	map_bh(bh, inode->i_sb, map.m_pblk);
-	if (buffer_unwritten(bh)) {
-		/* A delayed write to unwritten bh should be marked
-		 * new and mapped.  Mapped ensures that we don't do
-		 * get_block multiple times when we write to the same
-		 * offset and new ensures that we do proper zero out
-		 * for partial write.
-		 */
-		set_buffer_new(bh);
-	}
+    bh->b_state =3D (bh->b_state & ~EXT4_MAP_FLAGS) | map.m_flags;
+    map_bh(bh, inode->i_sb, map.m_pblk);
+    if (buffer_unwritten(bh)) {
+        /* A delayed write to unwritten bh should be marked
+         * new and mapped.  Mapped ensures that we don't do
+         * get_block multiple times when we write to the same
+         * offset and new ensures that we do proper zero out
+         * for partial write.
+         */
+        set_buffer_new(bh);
+    }
 
 
 
@@ -156,12 +166,11 @@ ail
 ml
 >
 
-
-
 --=20
-Best Wishes
-Yongqiang Yang
---
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=3Demai=
+l
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.--
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
 the body of a message to majordomo@vger.kernel.org
