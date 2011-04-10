@@ -1,119 +1,81 @@
-From: "Jzfkqx" <benkertsqmj@yahoo.it>
-Subject: 8567-Z
-Date: Sun, 10 Apr 2011 21:30:20 +0800
-Message-ID: <322889.50967.bm@smtp132.mail.ukl.yahoo.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 32972] New: EXT4 causes corrupt BitTorrent downloads
+Date: Sun, 10 Apr 2011 13:44:39 GMT
+Message-ID: <bug-32972-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="----=ydiou129_4322_175662918.821793"
-To: "linux-cifs-client" <linux-cifs-client@lists.samba.org>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nm15-vm0.bullet.mail.ukl.yahoo.com ([217.146.183.252]:29033
-	"HELO nm15-vm0.bullet.mail.ukl.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1753415Ab1DJNhb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 10 Apr 2011 09:37:31 -0400
+Received: from demeter1.kernel.org ([140.211.167.39]:54107 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753510Ab1DJNok (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 10 Apr 2011 09:44:40 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p3ADidh3020719
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Sun, 10 Apr 2011 13:44:39 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+https://bugzilla.kernel.org/show_bug.cgi?id=32972
 
-This is a multi-part message in MIME format.
+           Summary: EXT4 causes corrupt BitTorrent downloads
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.39-rc2+
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: high
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: damien@grassart.com
+                CC: feng.tang@intel.com
+        Regression: Yes
 
-------=ydiou129_4322_175662918.821793
-Content-Type: text/plain;
-	charset="GB2312"
-Content-Transfer-Encoding: base64
 
-MTI2LmNvbQ0KNDY4MDM1NzkxNDY4MDI1Nw==
+Using the Transmission BitTorrent client (version 2.11) with the most recent
+kernel (2.6.39-rc2+), any torrent I try to download is corrupt. By using
+Transmission's "Verify Local Data" functionality, I am able to reproduce this
+consistently. During verification, the percent complete will reverse itself as
+the verification process invalidates pieces that were just downloaded.
 
-------=ydiou129_4322_175662918.821793
-Content-Type: image/gif;
-	name="Hms_9484.gif"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
-	filename="Hms_9484.gif"
+I was able to bisect the issue and track it down to this commit:
 
-R0lGODdh2AGoAHcAACwAAAAA2AGoAIcAAAAAADMAAGYAAJkAAMwAAP8AMwAAMzMAM2YAM5kAM8wA
-M/8AZgAAZjMAZmYAZpkAZswAZv8AmQAAmTMAmWYAmZkAmcwAmf8AzAAAzDMAzGYAzJkAzMwAzP8A
-/wAA/zMA/2YA/5kA/8wA//8zAAAzADMzAGYzAJkzAMwzAP8zMwAzMzMzM2YzM5kzM8wzM/8zZgAz
-ZjMzZmYzZpkzZswzZv8zmQAzmTMzmWYzmZkzmcwzmf8zzAAzzDMzzGYzzJkzzMwzzP8z/wAz/zMz
-/2Yz/5kz/8wz//9mAABmADNmAGZmAJlmAMxmAP9mMwBmMzNmM2ZmM5lmM8xmM/9mZgBmZjNmZmZm
-ZplmZsxmZv9mmQBmmTNmmWZmmZlmmcxmmf9mzABmzDNmzGZmzJlmzMxmzP9m/wBm/zNm/2Zm/5lm
-/8xm//+ZAACZADOZAGaZAJmZAMyZAP+ZMwCZMzOZM2aZM5mZM8yZM/+ZZgCZZjOZZmaZZpmZZsyZ
-Zv+ZmQCZmTOZmWaZmZmZmcyZmf+ZzACZzDOZzGaZzJmZzMyZzP+Z/wCZ/zOZ/2aZ/5mZ/8yZ///M
-AADMADPMAGbMAJnMAMzMAP/MMwDMMzPMM2bMM5nMM8zMM//MZgDMZjPMZmbMZpnMZszMZv/MmQDM
-mTPMmWbMmZnMmczMmf/MzADMzDPMzGbMzJnMzMzMzP/M/wDM/zPM/2bM/5nM/8zM////AAD/ADP/
-AGb/AJn/AMz/AP//MwD/MzP/M2b/M5n/M8z/M///ZgD/ZjP/Zmb/Zpn/Zsz/Zv//mQD/mTP/mWb/
-mZn/mcz/mf//zAD/zDP/zGb/zJn/zMz/zP///wD//zP//2b//5n//8z///8AAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAI/wATCRxI
-sKDBgwgTKlzIsKHDhxAjSpxIsaLFixgzatzIsaPHjyBDihxJsqTJkyhTqly5EAAAljBjypxJs6bN
-mydf4tzJs6fPn0CDStQptKjRo0iTKkXo8qVLgU+hRpVKcOrBpgOjNiW6tKvXr2CX6hwLtWwismfN
-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
+commit 6de9843dab3f2a1d4d66d80aa9e5782f80977d20
+Author: Feng Tang <feng.tang@intel.com>
+Date:   Wed Mar 23 14:05:03 2011 -0400
 
-------=ydiou129_4322_175662918.821793--
+    ext4: remove redundant set_buffer_mapped() in ext4_da_get_block_prep()
+
+    The map_bh() call will have already set the buffer_head to mapped.
+
+    Signed-off-by: Feng Tang <feng.tang@intel.com>
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f44307a..dec10e2 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2502,7 +2502,6 @@ static int ext4_da_get_block_prep(struct inode *inode,
+sector_t iblock,
+                 * for partial write.
+                 */
+                set_buffer_new(bh);
+-               set_buffer_mapped(bh);
+        }
+        return 0;
+ }
+
+
+I confirmed that reverting this commit makes the problem go away.
+
+Thanks,
+-Damien
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
