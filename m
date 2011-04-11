@@ -1,30 +1,33 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: recursive mtime patches
-Date: Mon, 11 Apr 2011 16:37:57 +0300
-Message-ID: <BANLkTim6NYYnr+m4mqawSD4-Mbbzj699hQ@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+From: Michael Ubell <ubell@mindspring.com>
+Subject: Reads atomic with respect to writes?
+Date: Mon, 11 Apr 2011 10:24:22 -0700
+Message-ID: <8DD4E915-014E-4D2A-AC59-1347A375C5AA@mindspring.com>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:49866 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751007Ab1DKNh6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Apr 2011 09:37:58 -0400
-Received: by qyk7 with SMTP id 7so1253111qyk.19
-        for <linux-ext4@vger.kernel.org>; Mon, 11 Apr 2011 06:37:57 -0700 (PDT)
+Received: from elasmtp-masked.atl.sa.earthlink.net ([209.86.89.68]:45678 "EHLO
+	elasmtp-masked.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754483Ab1DKRYY convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Apr 2011 13:24:24 -0400
+Received: from [67.101.147.52] (helo=[10.0.0.110])
+	by elasmtp-masked.atl.sa.earthlink.net with esmtpsa (TLSv1:AES128-SHA:128)
+	(Exim 4.67)
+	(envelope-from <ubell@mindspring.com>)
+	id 1Q9Kqe-0006v2-8K
+	for linux-ext4@vger.kernel.org; Mon, 11 Apr 2011 13:24:24 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Jan,
+POSIX states in http://pubs.opengroup.org/onlinepubs/9699919799/functions/read.html
+	I/O is intended to be atomic to ordinary files and pipes and FIFOs. Atomic means that all the bytes from a single operation that started out together end up together, without interleaving from other I/O operations.
 
-Do you have an uptodate version of your recursive mtime patches?
-The only version I can find online is the original series from 2007.
+Is this supported by the ext4 implementation?
 
-I am interested in the patches for indexdb-like application,
-so persistence after crash is also important for my use case.
-Your patches would require the application to perform a full
-directory scan after crash, right?
+To be more specific:  If I call the read() API with a nbyte value 65536 (at an offset of a multiple of 65536) and at the same time a write() call of 65536 bytes at the same offset is happening will ext4 guarantee that the read will see either the 65536 bytes in the file before the write operation started or the 65536 bytes in the file after the write completed?
 
-Thanks,
-Amir.
+Unix file systems have always had this semantic and there are applications which depend on it.
+
+
