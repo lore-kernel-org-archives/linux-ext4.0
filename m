@@ -1,59 +1,40 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [GIT PULL] ext4 fixes for 2.6.39-rc3
-Date: Mon, 11 Apr 2011 09:03:09 -0400
-Message-ID: <E1Q9Glp-0000bw-N4@tytso-glaptop>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33872 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751371Ab1DKNDO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 11 Apr 2011 09:03:14 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: tune2fs can't be used on a mounted ext4, or...?
+Date: Mon, 11 Apr 2011 09:10:08 -0400
+Message-ID: <20110411131008.GB5802@thunk.org>
+References: <20110410003954.4108b9c9@natsu>
+ <14B9D41F-4D38-4F01-97E9-17E86DA578FC@dilger.ca>
+ <20110410035005.64f565e3@natsu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org,
+	linux-raid@vger.kernel.org
+To: Roman Mamedov <rm@romanrm.ru>
+Return-path: <linux-raid-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20110410035005.64f565e3@natsu>
+Sender: linux-raid-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Linus,
+Hi Roman,
 
-Please pull from:
+Your symptoms don't sound familiar to me, other than the standard
+concerns about hardware induced file system inconsistency problems.
+Have you checked your logs carefully to make sure there weren't any
+hardware errors reported?  If this is a hardware RAID system, is it
+regularly doing disk scrubbing?  Has the hardware RAID reported
+anything unusual?  How long have you been running in a degraded RAID 6
+state?
 
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
+And have you tried shutting down the system and running fsck to make
+sure there weren't any file system corruption problems?  When's the
+last time you've run fsck on the system?
 
-to get the following ext4 bug/regression fixes for the 2.6.39.
+If this is an LVM system, I'd strongly suggest that you set aside
+space you can take a snapshot, and then regularly take a snapshot, and
+then run fsck on the snapshot.  If any problems are noted, you can
+then schedule downtime and fsck the entire system.
 
-Thanks!!
+Regards,
 
-                                        - Ted
-
-Curt Wohlgemuth (1):
-      ext4: sync the directory inode in ext4_sync_parent()
-
-Jan Kara (1):
-      ext4: remove unnecessary [cm]time update of quota file
-
-Kazuya Mio (1):
-      ext4: Allow indirect-block file to grow the file size to max file size
-
-Tao Ma (2):
-      ext4: fix a double free in ext4_register_li_request
-      ext4: init timer earlier to avoid a kernel panic in __save_error_info
-
-Theodore Ts'o (1):
-      ext4: fix data corruption regression by reverting commit 6de9843dab3f
-
-Yongqiang Yang (2):
-      ext4: fix credits computing for indirect mapped files
-      ext4: allow an active handle to be started when freezing
-
-Zhang Huan (1):
-      jbd2: fix potential memory leak on transaction commit
-
-Zhu Yanhai (1):
-      jbd2: move bdget out of critical section
-
- fs/ext4/ext4_jbd2.h |    4 +-
- fs/ext4/fsync.c     |   17 +++++++++--
- fs/ext4/inode.c     |   35 ++++++++++++++++--------
- fs/ext4/super.c     |   74 ++++++++++++++++++++++++++++++++++++++++-----------
- fs/jbd2/commit.c    |    4 ++-
- fs/jbd2/journal.c   |    3 +-
- 6 files changed, 102 insertions(+), 35 deletions(-)
+						- Ted
