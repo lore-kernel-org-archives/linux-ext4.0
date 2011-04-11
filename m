@@ -1,40 +1,30 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: tune2fs can't be used on a mounted ext4, or...?
-Date: Mon, 11 Apr 2011 09:10:08 -0400
-Message-ID: <20110411131008.GB5802@thunk.org>
-References: <20110410003954.4108b9c9@natsu>
- <14B9D41F-4D38-4F01-97E9-17E86DA578FC@dilger.ca>
- <20110410035005.64f565e3@natsu>
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: recursive mtime patches
+Date: Mon, 11 Apr 2011 16:37:57 +0300
+Message-ID: <BANLkTim6NYYnr+m4mqawSD4-Mbbzj699hQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org,
-	linux-raid@vger.kernel.org
-To: Roman Mamedov <rm@romanrm.ru>
-Return-path: <linux-raid-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20110410035005.64f565e3@natsu>
-Sender: linux-raid-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:49866 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751007Ab1DKNh6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Apr 2011 09:37:58 -0400
+Received: by qyk7 with SMTP id 7so1253111qyk.19
+        for <linux-ext4@vger.kernel.org>; Mon, 11 Apr 2011 06:37:57 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Roman,
+Hi Jan,
 
-Your symptoms don't sound familiar to me, other than the standard
-concerns about hardware induced file system inconsistency problems.
-Have you checked your logs carefully to make sure there weren't any
-hardware errors reported?  If this is a hardware RAID system, is it
-regularly doing disk scrubbing?  Has the hardware RAID reported
-anything unusual?  How long have you been running in a degraded RAID 6
-state?
+Do you have an uptodate version of your recursive mtime patches?
+The only version I can find online is the original series from 2007.
 
-And have you tried shutting down the system and running fsck to make
-sure there weren't any file system corruption problems?  When's the
-last time you've run fsck on the system?
+I am interested in the patches for indexdb-like application,
+so persistence after crash is also important for my use case.
+Your patches would require the application to perform a full
+directory scan after crash, right?
 
-If this is an LVM system, I'd strongly suggest that you set aside
-space you can take a snapshot, and then regularly take a snapshot, and
-then run fsck on the snapshot.  If any problems are noted, you can
-then schedule downtime and fsck the entire system.
-
-Regards,
-
-						- Ted
+Thanks,
+Amir.
