@@ -1,30 +1,53 @@
-From: "GET BACK TO ME IMMEDIATELY" <googleservice@terra.es>
-Subject: GET BACK TO ME IMMEDIATELY
-Date: Sun, 10 Apr 2011 19:24:37 +0000 (UTC)
-Message-ID: <20110410152331.ACDDE29E7EAA__24541.9808118188$1302463477$gmane$org@mail.alsa.co.cr>
-Reply-To: <googleservice@terra.es>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [Bug 32972] New: EXT4 causes corrupt BitTorrent downloads
+Date: Sun, 10 Apr 2011 21:46:25 -0400
+Message-ID: <20110411014625.GA5802@thunk.org>
+References: <bug-32972-13602@https.bugzilla.kernel.org/>
+ <BANLkTikQa3UaBVVFdrvzwUcdR_qvOPcmFw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="Windows-1251"
-Content-Transfer-Encoding: 7bit
-To: undisclosed-recipients:;
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: bugzilla-daemon@bugzilla.kernel.org, damien@grassart.com,
+	feng.tang@intel.com, linux-ext4@vger.kernel.org
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from logistix.cr ([201.201.66.140]:5288 "EHLO mail.alsa.co.cr"
-	rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754091Ab1DJTY1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 10 Apr 2011 15:24:27 -0400
-Date: Fri, 29 Apr 2011 05:51:55 +0200
+Received: from li9-11.members.linode.com ([67.18.176.11]:35310 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751820Ab1DKBqf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 10 Apr 2011 21:46:35 -0400
+Content-Disposition: inline
+In-Reply-To: <BANLkTikQa3UaBVVFdrvzwUcdR_qvOPcmFw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello 
+On Sun, Apr 10, 2011 at 10:30:13PM +0800, Yongqiang Yang wrote:
+> So the right code should be=EF=BC=9A
+>=20
+> 	bh->b_state =3D (bh->b_state & ~EXT4_MAP_FLAGS) | map.m_flags;
+> 	map_bh(bh, inode->i_sb, map.m_pblk);
+> 	if (buffer_unwritten(bh)) {
+> 		/* A delayed write to unwritten bh should be marked
+> 		 * new and mapped.  Mapped ensures that we don't do
+> 		 * get_block multiple times when we write to the same
+> 		 * offset and new ensures that we do proper zero out
+> 		 * for partial write.
+> 		 */
+> 		set_buffer_new(bh);
+> 	}
 
-I wish to ask for your consent for a partnership project that I would want both of us to execute mutually which is beneficial. However my name is Mr. Rodney Smith. Kindly get back to me to confirm the receipt of this massage so that I will give you full details of the project.
+Actually, I'm much more comfortable backing out commit 6de9843da
+entirely.  The above is *not* equivalent to what we had before ---
+consider the case where ext4_map_blocks returns !EXT4_MAP_MAPPED &&=20
+!EXT4_MAP_UNWRITTEN.
 
-Send your reply to my private email at rodney_smith@ibibo.com 
+I don't *think* this should happen in the case where ext4_map_blocks
+returns a value > 0, but the fact that it's not obvious, means I'd
+much rather keep things the way that they are.  It's not like dropping
+the set_buffer_mapped(bh) was saving anything measurable anyway....
 
-I am waiting for your permission.
-
-Warm regards
-Mr. Rodney Smith
-Email:smithrodney@ibibo.com
+						- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
