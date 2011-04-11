@@ -1,27 +1,33 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [Bug 32972] New: EXT4 causes corrupt BitTorrent downloads
-Date: Mon, 11 Apr 2011 09:50:06 +0800
-Message-ID: <BANLkTim3Bg08cC9Cn+JWj-73Z5_AAUF6xg@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 32972] EXT4 causes corrupt BitTorrent downloads
+Date: Mon, 11 Apr 2011 01:50:39 GMT
+Message-ID: <201104110150.p3B1odwO003558@demeter1.kernel.org>
 References: <bug-32972-13602@https.bugzilla.kernel.org/>
-	<BANLkTikQa3UaBVVFdrvzwUcdR_qvOPcmFw@mail.gmail.com>
-	<20110411014625.GA5802@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: bugzilla-daemon@bugzilla.kernel.org, damien@grassart.com,
-	feng.tang@intel.com, linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-px0-f179.google.com ([209.85.212.179]:36213 "EHLO
-	mail-px0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752543Ab1DKBuH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 10 Apr 2011 21:50:07 -0400
-Received: by pxi2 with SMTP id 2so2733158pxi.10
-        for <linux-ext4@vger.kernel.org>; Sun, 10 Apr 2011 18:50:06 -0700 (PDT)
-In-Reply-To: <20110411014625.GA5802@thunk.org>
+Received: from demeter1.kernel.org ([140.211.167.39]:53303 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752543Ab1DKBuk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 10 Apr 2011 21:50:40 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p3B1od7M003559
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 11 Apr 2011 01:50:39 GMT
+In-Reply-To: <bug-32972-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+https://bugzilla.kernel.org/show_bug.cgi?id=3D32972
+
+
+
+
+
+--- Comment #4 from Yongqiang Yang <xiaoqiangnk@gmail.com>  2011-04-11 =
+01:50:38 ---
 On Mon, Apr 11, 2011 at 9:46 AM, Ted Ts'o <tytso@mit.edu> wrote:
 > On Sun, Apr 10, 2011 at 10:30:13PM +0800, Yongqiang Yang wrote:
 >> So the right code should be=EF=BC=9A
@@ -64,12 +70,11 @@ Yongqiang
 =C2=A0 =C2=A0 =C2=A0 =C2=A0- Ted
 >
 
-
-
 --=20
-Best Wishes
-Yongqiang Yang
---
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=3Demai=
+l
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.--
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
 the body of a message to majordomo@vger.kernel.org
