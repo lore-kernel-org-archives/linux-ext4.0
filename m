@@ -1,44 +1,41 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: recursive mtime patches
-Date: Tue, 12 Apr 2011 17:48:30 +0200
-Message-ID: <20110412154830.GF5246@quack.suse.cz>
-References: <BANLkTim6NYYnr+m4mqawSD4-Mbbzj699hQ@mail.gmail.com>
+From: Mark Lord <kernel@teksavvy.com>
+Subject: CONFIG_EXT4_USE_FOR_EXT23:  rootfs shows as ext2 instead of ext4
+Date: Tue, 12 Apr 2011 13:25:08 -0400
+Message-ID: <4DA48AF4.5080803@teksavvy.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Amir Goldstein <amir73il@gmail.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+To: Linux Kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:49023 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755899Ab1DLPsb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Apr 2011 11:48:31 -0400
-Content-Disposition: inline
-In-Reply-To: <BANLkTim6NYYnr+m4mqawSD4-Mbbzj699hQ@mail.gmail.com>
+Received: from ironport2-out.teksavvy.com ([206.248.154.183]:55234 "EHLO
+	ironport2-out.pppoe.ca" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753272Ab1DLRZM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Apr 2011 13:25:12 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi,
+Ted et al.
 
-On Mon 11-04-11 16:37:57, Amir Goldstein wrote:
-> Do you have an uptodate version of your recursive mtime patches?
-> The only version I can find online is the original series from 2007.
-  I've put latest version (against 2.6.37) to
-http://beta.suse.com/private/jack/recursive_mtime/
+I've only just noticed this, so I have no idea how long it has been this way.
 
-> I am interested in the patches for indexdb-like application,
-> so persistence after crash is also important for my use case.
-> Your patches would require the application to perform a full
-> directory scan after crash, right?
-  OK, it depends. Currently, even mtime updates are not reliable (data can
-be written to a file while mtime update is not yet committed).  Recursive
-modification stamps have possibly larger race windows but I haven't really
-tried how much (I just know that even mtime races are not that hard to
-trigger if you try). So it really depends on how big reliability do you
-expect and I personally don't find much value in just rescanning and
-checking for mtime after a crash. Reading all the data and doing checksum
-certainly has more value but at a high cost.
+When I build a kernel with CONFIG_EXT4_USE_FOR_EXT23=y and boot from it,
+the ext4 root filesystem shows up as "ext2" mode, rather than "ext4".
 
-							Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+This looks very wrong to me, and quite dangerous.
+
+Eg.  I test it by building my own kernel (2.6.38.2), with ext4 built-in,
+no initramfs required, and boot:
+
+    root=/dev/sda1 init=/bin/bash
+    ...
+    $ mount /proc
+    $ cat /proc/mounts
+    /dev/root / ext2 ro,relatime,barrier=1,data=ordered 0 0
+
+So.. it shows "ext2" instead of "ext4".  That really looks like a bug.
+Especially since it appears to be using journaling regardless.
+
+Building the kernel without CONFIG_EXT4_USE_FOR_EXT23
+results in a proper "ext4" mount entry in /proc/mounts.
+
