@@ -1,58 +1,47 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: Does ext4 send FUA to flush disk cache
-Date: Tue, 12 Apr 2011 00:40:18 -0400
-Message-ID: <20110412044018.GA4245@infradead.org>
-References: <BANLkTikmryaO5r012VwsNzhcaaVQ_4QfzA@mail.gmail.com>
- <DE099CBA-6478-4651-B3E5-F406D0C11C3D@mit.edu>
- <20110411231606.GA9406@infradead.org>
- <20110412021423.GC3682@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 32082] ext4: oops when mounting intentionally corrupted
+ filesystem
+Date: Tue, 12 Apr 2011 09:19:44 GMT
+Message-ID: <201104120919.p3C9JiYH023816@demeter1.kernel.org>
+References: <bug-32082-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Mark Busheman <markbusheman@gmail.com>,
-	linux-ext4@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:36322 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750907Ab1DLEkU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Apr 2011 00:40:20 -0400
-Content-Disposition: inline
-In-Reply-To: <20110412021423.GC3682@thunk.org>
+Received: from demeter1.kernel.org ([140.211.167.39]:50468 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754059Ab1DLJTo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Apr 2011 05:19:44 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p3C9JiFL023817
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 12 Apr 2011 09:19:44 GMT
+In-Reply-To: <bug-32082-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 11, 2011 at 10:14:23PM -0400, Ted Ts'o wrote:
-> Ah, Jens pushed a patch that I hadn't noticed that appears to
-> optionally use FUA for the commit block.  Thanks for pointing that
-> out.
+https://bugzilla.kernel.org/show_bug.cgi?id=32082
 
-The commits actually are from Tejun:
 
-commit 797e7dbbee0a91fa1349192f18ad5c454997d876
-Author: Tejun Heo <htejun@gmail.com>
-Date:   Fri Jan 6 09:51:03 2006 +0100
+Florian Mickler <florian@mickler.org> changed:
 
-    [BLOCK] reimplement handling of barrier request
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |florian@mickler.org
 
-    Reimplement handling of barrier requests.
-	        
-     * Flexible handling to deal with various capabilities of
-       target devices.
-     * Retry support for falling back.
-     * Tagged queues which don't support ordered tag can do ordered.
-				      
-    Signed-off-by: Tejun Heo <htejun@gmail.com>
-    Signed-off-by: Jens Axboe <axboe@suse.de>
 
-commit 007365ad60387df30f02f01fdc2b6e6432f6c265
-Author: Tejun Heo <htejun@gmail.com>
-Date:   Fri Jan 6 09:53:52 2006 +0100
 
-    [BLOCK] scsi: add FUA support to sd
 
-    Add FUA support for barriers to SCSI disk.
+--- Comment #3 from Florian Mickler <florian@mickler.org>  2011-04-12 09:19:42 ---
+A patch referencing this bug report has been merged in v2.6.39-rc3:
 
-    Signed-off-by: Tejun Heo <htejun@gmail.com>
-    Signed-off-by: Jens Axboe <axboe@suse.de>
+commit 0449641130f5652b344ef6fa39fa019d7e94660a
+Author: Tao Ma <boyu.mt@taobao.com>
+Date:   Tue Apr 5 19:55:28 2011 -0400
 
+    ext4: init timer earlier to avoid a kernel panic in __save_error_info
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
