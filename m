@@ -1,77 +1,44 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: [RFC] on-line resize with flex_bg and exclude_bitmap
-Date: Tue, 12 Apr 2011 14:27:06 +0300
-Message-ID: <BANLkTimfddp_6LkfCMfAe_SA2wa3t3jrMQ@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: recursive mtime patches
+Date: Tue, 12 Apr 2011 17:48:30 +0200
+Message-ID: <20110412154830.GF5246@quack.suse.cz>
+References: <BANLkTim6NYYnr+m4mqawSD4-Mbbzj699hQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:46988 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751703Ab1DLL1G (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Apr 2011 07:27:06 -0400
-Received: by qyk7 with SMTP id 7so1904388qyk.19
-        for <linux-ext4@vger.kernel.org>; Tue, 12 Apr 2011 04:27:06 -0700 (PDT)
+Received: from cantor.suse.de ([195.135.220.2]:49023 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755899Ab1DLPsb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Apr 2011 11:48:31 -0400
+Content-Disposition: inline
+In-Reply-To: <BANLkTim6NYYnr+m4mqawSD4-Mbbzj699hQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+  Hi,
 
-I realized another issue regarding exclude bitmap compatibility.
-the exiting EXT4_IOC_GROUP_ADD ioctl doesn't pass a field for the location
-of exclude_bitmap block, so we need to either allocate exclude_bitmap in kernel
-or define a new ioctl, which passes the exclude_bitmap to kernel.
+On Mon 11-04-11 16:37:57, Amir Goldstein wrote:
+> Do you have an uptodate version of your recursive mtime patches?
+> The only version I can find online is the original series from 2007.
+  I've put latest version (against 2.6.37) to
+http://beta.suse.com/private/jack/recursive_mtime/
 
-If we are going to go with the latter solution, we may want to add
-support for flex_bg
-layout for the new ioctl, so following is my proposal for
-EXT4_IOC_FLEX_GROUP_ADD:
+> I am interested in the patches for indexdb-like application,
+> so persistence after crash is also important for my use case.
+> Your patches would require the application to perform a full
+> directory scan after crash, right?
+  OK, it depends. Currently, even mtime updates are not reliable (data can
+be written to a file while mtime update is not yet committed).  Recursive
+modification stamps have possibly larger race windows but I haven't really
+tried how much (I just know that even mtime races are not that hard to
+trigger if you try). So it really depends on how big reliability do you
+expect and I personally don't find much value in just rescanning and
+checking for mtime after a crash. Reading all the data and doing checksum
+certainly has more value but at a high cost.
 
-1. As far as online resize and mkfs are concerned, we always allocate all
-group descriptors of a flex bg at the same time.
-
-2. If there is not enough space for all flex_bg metadata in the last group,
-the last group will be dropped.
-
-3. The new flex group input will assume all bitmaps of the same type are
-consecutive, so only the address of the first bitmap is needed as input.
-
-struct ext4_new_flex_group_input {
-        __u32 group;            /* Group number for this data */
-        __u64 block_bitmap;     /* Absolute block number of first
-block bitmap */
-        __u64 exclude_bitmap;     /* Absolute block number of first
-exclude bitmap */
-        __u64 inode_bitmap;     /* Absolute block number of first
-inode bitmap */
-        __u64 inode_table;      /* Absolute block number of first
-inode table start */
-        __u32 blocks_count;     /* Total number of blocks in this flex group */
-        __u16 reserved_blocks;  /* Number of reserved blocks in this
-flex group */
-        __u16 flex_size;            /* Number of groups in the flex group */
-};
-
-4. ext4_group_extend() should be the same except we need to allow extending
-within the last flex bg, but not necessarily the last block group.
-
-
-To look at this from a different angle, if you imagine that the flex
-group is just
-a big group, whose bitmaps and group descriptor are flex_size times bigger and
-where ext4_new_flex_group_input encodes the info of the big descriptor,
-then this design is identical to the current implementation of online resize.
-
-What I will do, if you agree to this design, is use the new ioctl,
-with flex_size = 1
-to pass the exclude_bitmap in online resize and enforce flex_size == 1
-in kernel.
-Then later we can teach resize2fs and the kernel to extend flex groups properly
-using the new ioctl.
-
-What do you think?
-Can you think of another way I can support exclude_bitmap and online resize,
-without the need for a new ioctl?
-
-Amir.
+							Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
