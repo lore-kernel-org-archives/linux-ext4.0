@@ -1,81 +1,58 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: recursive mtime patches
-Date: Wed, 13 Apr 2011 21:16:40 +0200
-Message-ID: <BANLkTinO7G1YxZCP1-PXG5Nvyas=QdAunQ@mail.gmail.com>
-References: <BANLkTim6NYYnr+m4mqawSD4-Mbbzj699hQ@mail.gmail.com>
-	<20110412154830.GF5246@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:41260 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756198Ab1DMTQl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Apr 2011 15:16:41 -0400
-Received: by qwk3 with SMTP id 3so500966qwk.19
-        for <linux-ext4@vger.kernel.org>; Wed, 13 Apr 2011 12:16:40 -0700 (PDT)
-In-Reply-To: <20110412154830.GF5246@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: CONFIG_EXT4_USE_FOR_EXT23:  rootfs shows as ext2 instead of ext4
+Date: Wed, 13 Apr 2011 17:00:34 -0400
+Message-ID: <5A35771F-49B6-491E-B012-DBE68907E382@mit.edu>
+References: <4DA48AF4.5080803@teksavvy.com> <20110413004938.GE3682@thunk.org> <4DA5AEBE.6060705@teksavvy.com>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Mark Lord <kernel@teksavvy.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <4DA5AEBE.6060705@teksavvy.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 12, 2011 at 5:48 PM, Jan Kara <jack@suse.cz> wrote:
-> =A0Hi,
->
-> On Mon 11-04-11 16:37:57, Amir Goldstein wrote:
->> Do you have an uptodate version of your recursive mtime patches?
->> The only version I can find online is the original series from 2007.
-> =A0I've put latest version (against 2.6.37) to
-> http://beta.suse.com/private/jack/recursive_mtime/
->
 
-Thanks, I'll see if we can use it for our application.
+On Apr 13, 2011, at 10:10 AM, Mark Lord wrote:
 
->> I am interested in the patches for indexdb-like application,
->> so persistence after crash is also important for my use case.
->> Your patches would require the application to perform a full
->> directory scan after crash, right?
-> =A0OK, it depends. Currently, even mtime updates are not reliable (da=
-ta can
-> be written to a file while mtime update is not yet committed). =A0Rec=
-ursive
+> 
+> It is dangerous if it really has mounted an ext4 as ext2;
+> the on-disk formats are not 100% compatible.
+> 
+> I don't know what it is doing, so it looks quite dangerous.
+> Perhaps it really did mount as ext4 though, in which case not.
 
-Yes, good point.
 
-> modification stamps have possibly larger race windows but I haven't r=
-eally
-> tried how much (I just know that even mtime races are not that hard t=
-o
-> trigger if you try). So it really depends on how big reliability do y=
-ou
-> expect and I personally don't find much value in just rescanning and
-> checking for mtime after a crash. Reading all the data and doing chec=
-ksum
-> certainly has more value but at a high cost.
->
+As the config option name: CONFIG_EXT4_USE_FOR_EXT23 
+might mave suggested to you, what this means is that we are 
+using the ext4 file system for ext2/3 file systems.   So yes, we are
+using the ext4 file system driver when the ext2 file system is 
+requested.   Since the kernel tries mounting the "ext2" file system
+first, since we are using the ext4 file system driver, it succeeds,
+and since it was mounted when the requested name was "ext2",
+that is what is recorded in the mount table.
 
-What do you thing about the approach to store recursively modified dir =
-inodes in
-a journal "modified inode descriptor block" and update the recursive mt=
-ime of
-those dirs on journal recovery?
+It's not dangerous at all.   Again, as you can tell if you were to actually
+look at your .config carefully, the ext2 file system was not compiled
+into your kernel at all.   Ext4 will only try masquerading as ext2 if
+CONFIG_EXT2_FS is disabled.  So it couldn't have possibly been 
+using ext2 code, if you thought about it for a second.
 
-I would also consider to use a mount option rec_mtime and then just
-store recursive
-mtime in the directory's inode mtime instead of an extended attribute.
-That doesn't break any contract with user space, it's just a re-interpr=
-etation
-of the dir modification notion.
+I can write up a patch which explicitly tests for feature flags that go
+beyond ext2 as of a particular version, and if so, refuse the mount
+when ext4 is masquerading as ext2, and do the same for ext3.   I
+probably will do this to avoid user questions, when I have some 
+spare time.
 
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0Honza
-> --
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+However, please note that this will have no actual effect on how
+anything int he kernel will behave --- none ---- except for a one
+character change in /proc/mounts: s/2/4/.   (This is because the
+kernel will now try ext2, and fail, try ext3 and fail, and then succeed
+when the exact same file system driver is used.  Oh, it might also
+extend the boot time by a few milliseconds.)
+
+Have I made it clear enough now to assuage your fears?
+
+-- Ted
