@@ -1,58 +1,51 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: CONFIG_EXT4_USE_FOR_EXT23:  rootfs shows as ext2 instead of ext4
-Date: Wed, 13 Apr 2011 17:00:34 -0400
-Message-ID: <5A35771F-49B6-491E-B012-DBE68907E382@mit.edu>
-References: <4DA48AF4.5080803@teksavvy.com> <20110413004938.GE3682@thunk.org> <4DA5AEBE.6060705@teksavvy.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
+From: Jan Kara <jack@suse.cz>
+Subject: Re: recursive mtime patches
+Date: Wed, 13 Apr 2011 23:39:37 +0200
+Message-ID: <20110413213937.GB4648@quack.suse.cz>
+References: <BANLkTim6NYYnr+m4mqawSD4-Mbbzj699hQ@mail.gmail.com>
+ <20110412154830.GF5246@quack.suse.cz>
+ <BANLkTinO7G1YxZCP1-PXG5Nvyas=QdAunQ@mail.gmail.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Mark Lord <kernel@teksavvy.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <4DA5AEBE.6060705@teksavvy.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Jan Kara <jack@suse.cz>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Amir Goldstein <amir73il@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:45382 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932906Ab1DMVji (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 13 Apr 2011 17:39:38 -0400
+Content-Disposition: inline
+In-Reply-To: <BANLkTinO7G1YxZCP1-PXG5Nvyas=QdAunQ@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-
-On Apr 13, 2011, at 10:10 AM, Mark Lord wrote:
-
+On Wed 13-04-11 21:16:40, Amir Goldstein wrote:
+> On Tue, Apr 12, 2011 at 5:48 PM, Jan Kara <jack@suse.cz> wrote:
+> > modification stamps have possibly larger race windows but I haven't really
+> > tried how much (I just know that even mtime races are not that hard to
+> > trigger if you try). So it really depends on how big reliability do you
+> > expect and I personally don't find much value in just rescanning and
+> > checking for mtime after a crash. Reading all the data and doing checksum
+> > certainly has more value but at a high cost.
+> >
 > 
-> It is dangerous if it really has mounted an ext4 as ext2;
-> the on-disk formats are not 100% compatible.
-> 
-> I don't know what it is doing, so it looks quite dangerous.
-> Perhaps it really did mount as ext4 though, in which case not.
+> What do you thing about the approach to store recursively modified dir inodes in
+> a journal "modified inode descriptor block" and update the recursive mtime of
+> those dirs on journal recovery?
+  The trouble is you don't know the number of directories that may need
+to have timestamp updated - you find that out only as you travel upwards.
+So it's hard to reserve any fixed space for this.
 
+> I would also consider to use a mount option rec_mtime and then just
+> store recursive
+> mtime in the directory's inode mtime instead of an extended attribute.
+> That doesn't break any contract with user space, it's just a re-interpretation
+> of the dir modification notion.
+  It breaks POSIX specification - POSIX pretty much specifies when mtime is
+supposed to be changed - so I'm not sure we really want to do that... 
 
-As the config option name: CONFIG_EXT4_USE_FOR_EXT23 
-might mave suggested to you, what this means is that we are 
-using the ext4 file system for ext2/3 file systems.   So yes, we are
-using the ext4 file system driver when the ext2 file system is 
-requested.   Since the kernel tries mounting the "ext2" file system
-first, since we are using the ext4 file system driver, it succeeds,
-and since it was mounted when the requested name was "ext2",
-that is what is recorded in the mount table.
-
-It's not dangerous at all.   Again, as you can tell if you were to actually
-look at your .config carefully, the ext2 file system was not compiled
-into your kernel at all.   Ext4 will only try masquerading as ext2 if
-CONFIG_EXT2_FS is disabled.  So it couldn't have possibly been 
-using ext2 code, if you thought about it for a second.
-
-I can write up a patch which explicitly tests for feature flags that go
-beyond ext2 as of a particular version, and if so, refuse the mount
-when ext4 is masquerading as ext2, and do the same for ext3.   I
-probably will do this to avoid user questions, when I have some 
-spare time.
-
-However, please note that this will have no actual effect on how
-anything int he kernel will behave --- none ---- except for a one
-character change in /proc/mounts: s/2/4/.   (This is because the
-kernel will now try ext2, and fail, try ext3 and fail, and then succeed
-when the exact same file system driver is used.  Oh, it might also
-extend the boot time by a few milliseconds.)
-
-Have I made it clear enough now to assuage your fears?
-
--- Ted
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
