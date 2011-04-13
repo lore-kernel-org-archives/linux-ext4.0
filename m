@@ -1,40 +1,45 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 32972] EXT4 causes corrupt BitTorrent downloads
-Date: Wed, 13 Apr 2011 19:03:37 GMT
-Message-ID: <201104131903.p3DJ3baM029224@demeter2.kernel.org>
-References: <bug-32972-13602@https.bugzilla.kernel.org/>
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: [RFC] exclude_bitmap and uninit_bg features
+Date: Wed, 13 Apr 2011 21:03:46 +0200
+Message-ID: <BANLkTimmRQtOiH2iunJczQOhxkB4uoCJ2g@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:54781 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757875Ab1DMTDh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Apr 2011 15:03:37 -0400
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p3DJ3bWV029225
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Apr 2011 19:03:37 GMT
-In-Reply-To: <bug-32972-13602@https.bugzilla.kernel.org/>
+Received: from mail-qy0-f181.google.com ([209.85.216.181]:35627 "EHLO
+	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757056Ab1DMTDr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Apr 2011 15:03:47 -0400
+Received: by qyg14 with SMTP id 14so598945qyg.19
+        for <linux-ext4@vger.kernel.org>; Wed, 13 Apr 2011 12:03:46 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=32972
+Hi Ted,
 
+I have been exploring the possibility to make exclude bitmap a compat feature
+and I think I have come to a dead end with ext4_init_block_bitmap().
 
-Giacomo Catenazzi <cate@cateee.net> changed:
+On old kernels, this function will disregard the exclude bitmap block and leave
+it free in the block bitmap.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |cate@cateee.net
+So that leaves us with the less attractive option to make it rocompat,
+which leads to the following dilemma:
+Once exclude bitmap is allocated by new mkfs or added by new tune2fs,
+the fs can no longer be mounted by an older kernel.
+How can we solve that problem?
 
+We could use 2 features:
+EXT4_FEATURE_COMPAT_EXCLUDE_BITMAP /* exclude bitmap is allocated */
+EXT4_FEATURE_RO_COMPAT_UNINIT_EXCLUDE /* uninit_bg and exclude_bitmap are set */
 
+New mkfs can allocate exclude bitmaps for uninit groups and set the 2
+features by default.
+tune2fs -O ^uninit_exclude can init all groups and remove the rocompat feature,
+making the fs available for old kernels, while keeping the exclude
+bitmap intact.
 
+Does that make sense to you?
 
---- Comment #8 from Giacomo Catenazzi <cate@cateee.net>  2011-04-13 19:03:34 ---
-*** Bug 33112 has been marked as a duplicate of this bug. ***
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Amir.
