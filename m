@@ -1,31 +1,40 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: add support for multiple mount protection
-Date: Tue, 12 Apr 2011 16:44:01 -0500
-Message-ID: <4DA4C7A1.8040903@redhat.com>
-References: <1302631493-9778-1-git-send-email-johann@whamcloud.com> <4DA4B885.6020004@redhat.com> <4DA4C705.9060502@fastmail.fm>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: CONFIG_EXT4_USE_FOR_EXT23:  rootfs shows as ext2 instead of
+ ext4
+Date: Tue, 12 Apr 2011 20:49:38 -0400
+Message-ID: <20110413004938.GE3682@thunk.org>
+References: <4DA48AF4.5080803@teksavvy.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: Johann Lombardi <johann@whamcloud.com>, linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger@whamcloud.com>
-To: Bernd Schubert <bernd.schubert@fastmail.fm>
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Mark Lord <kernel@teksavvy.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33396 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932677Ab1DLVoG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Apr 2011 17:44:06 -0400
-In-Reply-To: <4DA4C705.9060502@fastmail.fm>
+Received: from li9-11.members.linode.com ([67.18.176.11]:42599 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756910Ab1DMAtm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Apr 2011 20:49:42 -0400
+Content-Disposition: inline
+In-Reply-To: <4DA48AF4.5080803@teksavvy.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 4/12/11 4:41 PM, Bernd Schubert wrote:
+On Tue, Apr 12, 2011 at 01:25:08PM -0400, Mark Lord wrote:
+> Ted et al.
+> 
+> I've only just noticed this, so I have no idea how long it has been this way.
+> 
+> When I build a kernel with CONFIG_EXT4_USE_FOR_EXT23=y and boot from it,
+> the ext4 root filesystem shows up as "ext2" mode, rather than "ext4".
+> 
+> This looks very wrong to me, and quite dangerous.
 
-> So please, let this patch go in.
+It's a cosemtic bug, I agree, but I'm not sure why you consider it
+dangerous.
 
-Well, it's not up to me :)
+CONFIG_EXT4_USE_FOR_EXT23 means that ext4 registers itself as ext2
+and/or ext3, if ext2 and/or ext3 are not configured into the kernel.
+Since the kernel tries to mount the file system as ext2, ext3, and
+then ext4, and uses whichever one works first.
 
--Eric
- 
-> Thanks,
-> Bernd
-
+						- Ted
