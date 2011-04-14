@@ -1,60 +1,55 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: [PATCH REC 0/3] ext4:Factor common code from convert and split unwritten.
-Date: Thu, 14 Apr 2011 17:36:22 +0300
-Message-ID: <BANLkTin0Vk-Q3jXV4rcJDkTPW9UVcB_reg@mail.gmail.com>
-References: <1302759651-21222-1-git-send-email-xiaoqiangnk@gmail.com>
-	<20110414141424.GG3682@thunk.org>
+From: =?ISO-8859-1?Q?P=E1draig_Brady?= <P@draigBrady.com>
+Subject: Re: Files full of zeros with coreutils-8.11 and xfs (FIEMAP related?)
+Date: Thu, 14 Apr 2011 15:59:31 +0100
+Message-ID: <4DA70BD3.1070409@draigBrady.com>
+References: <20110414102608.GA1678@x4.trippels.de>	<20110414120635.GB1678@x4.trippels.de>
+	<20110414140222.GB1679@x4.trippels.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>, linux-ext4@vger.kernel.org,
-	achender@linux.vnet.ibm.com, cmm@us.ibm.com
-To: "Ted Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ew0-f46.google.com ([209.85.215.46]:59139 "EHLO
-	mail-ew0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758830Ab1DNOgX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Apr 2011 10:36:23 -0400
-Received: by ewy4 with SMTP id 4so471710ewy.19
-        for <linux-ext4@vger.kernel.org>; Thu, 14 Apr 2011 07:36:22 -0700 (PDT)
-In-Reply-To: <20110414141424.GG3682@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Transfer-Encoding: 8bit
+Cc: coreutils-mXXj517/zsQ@public.gmane.org, Markus Trippelsdorf <markus-xp2qqqlHh3xzoYq+O6RWwA@public.gmane.org>
+To: xfs-oss <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org>
+In-Reply-To: <20110414140222.GB1679-tLCgZGx+iJ+kxVt8IV0GqQ@public.gmane.org>
+List-Unsubscribe: <http://lists.gnu.org/mailman/options/coreutils>,
+	<mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=unsubscribe>
+List-Archive: </archive/html/coreutils>
+List-Post: <mailto:coreutils-mXXj517/zsQ@public.gmane.org>
+List-Help: <mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=help>
+List-Subscribe: <http://lists.gnu.org/mailman/listinfo/coreutils>,
+	<mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=subscribe>
+Errors-To: coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org
+Sender: coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Apr 14, 2011 at 5:14 PM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Wed, Apr 13, 2011 at 10:40:48PM -0700, Yongqiang Yang wrote:
->> These patches factor common code from ext4_ext_convert_to_initialize=
-d() and
->> ext4_split_unwritten_extents(), so that extent-move-on-write in snap=
-shot and
->> punch-hole can be built on the common code as well.
+On 14/04/11 15:02, Markus Trippelsdorf wrote:
+>>> Hi Pádraig,
+>>>
+>>> here you go:
+>>> + filefrag -v unwritten.withdata                                                                                                                     
+>>> Filesystem type is: ef53                                                                                                                             
+>>> File size of unwritten.withdata is 5120 (2 blocks, blocksize 4096)                                                                                   
+>>>  ext logical physical expected length flags                                                                                                          
+>>>    0       0   274432            2560 unwritten,eof                                                                                                  
+>>> unwritten.withdata: 1 extent found
+>>>
+>>> Please notice that this also happens with ext4 on the same kernel. 
+>>> Btrfs is fine.
 >>
->> ext4:Add a function merging extent right and left.
->> ext4:Add two functions splitting an extent.
->> ext4:Reimplement convert and split_unwritten.
->
-> Hi Yongqiang,
->
-> I'd like to hear back from Mingming and Allison about whether these
-> patches conflict with their punch patches, since my understanding was
-> they were planning on doing very similar things (and at least would b=
-e
-> working in the very similar parts of the code).
->
-> I agree that the extents code here could definitely use this cleanup,
-> and I'm really glad that you worked on this; thank you! =A0I just wan=
-t
-> to make sure work you are doing is coordinated with the work that
-> Allison and Mingming are working on.
->
+> `filefrag -vs` fixes the issue on both xfs and ext4.
 
-I did tell Mingming the patches are coming her way on LSF,
-so she should be expecting them.
-I hope Allison and Mingming like the results too :-)
+So in summary, currently on (2.6.39-rc3), the following
+will (usually?) report a single unwritten extent,
+on both ext4 and xfs
 
-Amir.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+  fallocate -l 10MiB -n k
+  dd count=10 if=/dev/urandom conv=notrunc iflag=fullblock of=k
+  filefrag -v k # grep for an extent without unwritten || fail
+
+This particular issue has been discussed so far at:
+http://debbugs.gnu.org/cgi/bugreport.cgi?bug=8411
+Note there it was stated there that ext4 had this
+fixed as of 2.6.39-rc1, so maybe there is something lurking?
+
+cheers,
+Pádraig.
