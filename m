@@ -1,92 +1,91 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: recursive mtime patches
-Date: Thu, 14 Apr 2011 10:12:26 +0300
-Message-ID: <BANLkTi=NDb0U0z1C4UEE2oHvE8fVBVDp=Q@mail.gmail.com>
-References: <BANLkTim6NYYnr+m4mqawSD4-Mbbzj699hQ@mail.gmail.com>
-	<20110412154830.GF5246@quack.suse.cz>
-	<BANLkTinO7G1YxZCP1-PXG5Nvyas=QdAunQ@mail.gmail.com>
-	<20110413213937.GB4648@quack.suse.cz>
+From: Yang Rui Rui <ruirui.r.yang@tieto.com>
+Subject: Re: [PATCH] ext4: release page cache in ext4_mb_load_buddy error
+ path
+Date: Thu, 14 Apr 2011 15:29:38 +0800
+Message-ID: <4DA6A262.6060202@tieto.com>
+References: <20110414064441.GA3499@darkstar> <BANLkTinPupXGmYTq16hcgexdUP+czYRc4A@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=UTF-8;
+	format=flowed
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+Cc: Yang Ruirui R <ruirui.r.yang@tietoenator.com>,
+	"tytso@mit.edu" <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:55260 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757612Ab1DNHM1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Apr 2011 03:12:27 -0400
-Received: by gxk21 with SMTP id 21so597357gxk.19
-        for <linux-ext4@vger.kernel.org>; Thu, 14 Apr 2011 00:12:27 -0700 (PDT)
-In-Reply-To: <20110413213937.GB4648@quack.suse.cz>
+Received: from ebb05.tieto.com ([131.207.168.36]:58975 "EHLO ebb05.tieto.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752445Ab1DNHSr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 Apr 2011 03:18:47 -0400
+In-Reply-To: <BANLkTinPupXGmYTq16hcgexdUP+czYRc4A@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Apr 14, 2011 at 12:39 AM, Jan Kara <jack@suse.cz> wrote:
-> On Wed 13-04-11 21:16:40, Amir Goldstein wrote:
->> On Tue, Apr 12, 2011 at 5:48 PM, Jan Kara <jack@suse.cz> wrote:
->> > modification stamps have possibly larger race windows but I haven'=
-t really
->> > tried how much (I just know that even mtime races are not that har=
-d to
->> > trigger if you try). So it really depends on how big reliability d=
-o you
->> > expect and I personally don't find much value in just rescanning a=
-nd
->> > checking for mtime after a crash. Reading all the data and doing c=
-hecksum
->> > certainly has more value but at a high cost.
->> >
+Hi,
+
+Thanks for your comment. BTW, why linux-kernel mainling list is removed=
+ from cc?
+Is it ext4 list prefer or something else?
+
+On 04/14/2011 03:01 PM, Amir Goldstein wrote:
+> Hi Yang ,
+>
+> The patch looks correct, but in my opinion a nicer fix would be to se=
+t
+> e4b->bd_bitmap_page =3D page;
+> or
+> e4b->bd_buddy_page =3D page;
+> right after assigning a new value to the temp variable 'page'.
+> and keeping the cleanup code in the error path as it is.
+>
+> It's a matter of taste and code readability.
+
+I agree with you for common case, but this function is not so readable =
+already.
+Two many if conditions and indent. I would prefer just fix this problem=
+ as this patch.
+Then rewrite the function as more small size functions for example the =
+get page part.
+
+>
+> Amir.
+>
+> On Thu, Apr 14, 2011 at 9:44 AM, Yang Ruirui<ruirui.r.yang@tieto.com>=
+  wrote:
+>> Add missing page_cache_release in the error path of ext4_mb_load_bud=
+dy
 >>
->> What do you thing about the approach to store recursively modified d=
-ir inodes in
->> a journal "modified inode descriptor block" and update the recursive=
- mtime of
->> those dirs on journal recovery?
-> =A0The trouble is you don't know the number of directories that may n=
-eed
-> to have timestamp updated - you find that out only as you travel upwa=
-rds.
-> So it's hard to reserve any fixed space for this.
->
-
-True, but you can save *so* many inode numbers in just one descriptor
-block and in case of an overflow, we can just pass a hint to the top le=
-vel
-application to do a full directory scan, so I hardly see that as a big =
-problem.
-
-I did not check how the "journal guided RAID resync" patches deal
-with the same issue, but they store all modified data block numbers
-in descriptor blocks, which is a lot more than just modified inodes.
-
->> I would also consider to use a mount option rec_mtime and then just
->> store recursive
->> mtime in the directory's inode mtime instead of an extended attribut=
-e.
->> That doesn't break any contract with user space, it's just a re-inte=
-rpretation
->> of the dir modification notion.
-> =A0It breaks POSIX specification - POSIX pretty much specifies when m=
-time is
-> supposed to be changed - so I'm not sure we really want to do that...
-
-I disagree, POSIX doesn't forbid a user space daemon from touching dire=
-ctory
-inodes and updating their mtime. The rec_mtime feature should be treate=
-d as
-a little kernel "daemon" which propagates information to user space by =
-touching
-recursively modified directories.
+>> Signed-off-by: Yang Ruirui<ruirui.r.yang@tieto.com>
+>> ---
+>> =EF=BF=BDfs/ext4/mballoc.c | =EF=BF=BD =EF=BF=BD2 ++
+>> =EF=BF=BD1 file changed, 2 insertions(+)
+>>
+>> --- linux-2.6.orig/fs/ext4/mballoc.c =EF=BF=BD =EF=BF=BD2011-04-14 1=
+4:04:48.000000000 +0800
+>> +++ linux-2.6/fs/ext4/mballoc.c 2011-04-14 14:33:28.702958245 +0800
+>> @@ -1273,6 +1273,8 @@ repeat_load_buddy:
+>> =EF=BF=BD =EF=BF=BD =EF=BF=BD =EF=BF=BDreturn 0;
+>>
+>> =EF=BF=BDerr:
+>> + =EF=BF=BD =EF=BF=BD =EF=BF=BD if (page)
+>> + =EF=BF=BD =EF=BF=BD =EF=BF=BD =EF=BF=BD =EF=BF=BD =EF=BF=BD =EF=BF=
+=BD page_cache_release(page);
+>> =EF=BF=BD =EF=BF=BD =EF=BF=BD =EF=BF=BDif (e4b->bd_bitmap_page)
+>> =EF=BF=BD =EF=BF=BD =EF=BF=BD =EF=BF=BD =EF=BF=BD =EF=BF=BD =EF=BF=BD=
+ =EF=BF=BDpage_cache_release(e4b->bd_bitmap_page);
+>> =EF=BF=BD =EF=BF=BD =EF=BF=BD =EF=BF=BDif (e4b->bd_buddy_page)
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4=
+" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at =EF=BF=BDhttp://vger.kernel.org/majordomo-inf=
+o.html
+>>
 
 
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0Honza
-> --
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
->
+--=20
+Thanks
+Yang Ruirui
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
