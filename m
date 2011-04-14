@@ -1,133 +1,217 @@
-From: =?ISO-8859-1?Q?P=E1draig_Brady?= <P@draigBrady.com>
-Subject: Re: Files full of zeros with coreutils-8.11 and xfs (FIEMAP related?)
-Date: Fri, 15 Apr 2011 00:29:46 +0100
-Message-ID: <4DA7836A.5040604@draigBrady.com>
-References: <20110414102608.GA1678@x4.trippels.de> <20110414120635.GB1678@x4.trippels.de> <20110414140222.GB1679@x4.trippels.de> <4DA70BD3.1070409@draigBrady.com> <4DA717B2.3020305@sandeen.net> <20110414225904.GK21395@dastard>
+From: Minchan Kim <minchan.kim@gmail.com>
+Subject: Re: [PATCH V8 4/8] mm/fs: add hooks to support cleancache
+Date: Fri, 15 Apr 2011 08:37:49 +0900
+Message-ID: <BANLkTimEbtY8F6bpsfhfQ770ao9Hn7Spww@mail.gmail.com>
+References: <20110414211732.GA27761@ca-server1.us.oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Eric Sandeen <sandeen@sandeen.net>, linux-ext4@vger.kernel.org,
-	coreutils@gnu.org, Markus Trippelsdorf <markus@trippelsdorf.de>,
-	xfs-oss <xfs@oss.sgi.com>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail1.slb.deg.dub.stisp.net ([84.203.253.98]:2445 "HELO
-	mail1.slb.deg.dub.stisp.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1752090Ab1DNXb3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 Apr 2011 19:31:29 -0400
-In-Reply-To: <20110414225904.GK21395@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+Cc: chris.mason@oracle.com, viro@zeniv.linux.org.uk, akpm@linux-foundation.org,
+	adilger.kernel@dilger.ca, tytso@mit.edu, mfasheh@suse.com, jlbec@evilplan.org,
+	matthew@wil.cx, linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	ocfs2-devel@oss.oracle.com, linux-mm@kvack.org, hch@infradead.org,
+	ngupta@vflare.org, jeremy@goop.org, JBeulich@novell.com,
+	kurt.hackel@oracle.com, npiggin@kernel.dk, dave.mccracken@oracle.com,
+	riel@redhat.com, avi@redhat.com, konrad.wilk@oracle.com, mel@csn.ul.ie,
+	yinghan@google.com, gthelen@google.com, torvalds@linux-foundation.org
+To: Dan Magenheimer <dan.magenheimer@oracle.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20110414211732.GA27761@ca-server1.us.oracle.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 14/04/11 23:59, Dave Chinner wrote:
-> On Thu, Apr 14, 2011 at 10:50:10AM -0500, Eric Sandeen wrote:
->> On 4/14/11 9:59 AM, P=E1draig Brady wrote:
->>> On 14/04/11 15:02, Markus Trippelsdorf wrote:
->>>>>> Hi P=E1draig,
->>>>>>
->>>>>> here you go:
->>>>>> + filefrag -v unwritten.withdata                                =
-                                                                       =
-             =20
->>>>>> Filesystem type is: ef53                                        =
-                                                                       =
-             =20
->>>>>> File size of unwritten.withdata is 5120 (2 blocks, blocksize 409=
-6)                                                                     =
-             =20
->>>>>>  ext logical physical expected length flags                     =
-                                                                       =
-             =20
->>>>>>    0       0   274432            2560 unwritten,eof             =
-                                                                       =
-             =20
->>>>>> unwritten.withdata: 1 extent found
->>>>>>
->>>>>> Please notice that this also happens with ext4 on the same kerne=
-l.=20
->>>>>> Btrfs is fine.
->>>>>
->>>> `filefrag -vs` fixes the issue on both xfs and ext4.
->>>
->>> So in summary, currently on (2.6.39-rc3), the following
->>> will (usually?) report a single unwritten extent,
->>> on both ext4 and xfs
->>>
->>>   fallocate -l 10MiB -n k
->>>   dd count=3D10 if=3D/dev/urandom conv=3Dnotrunc iflag=3Dfullblock =
-of=3Dk
->>>   filefrag -v k # grep for an extent without unwritten || fail
->>
->> right, that's what I see too in testing.
->>
->> But would the coreutils install have done a preallocation of the des=
-tination file?
->>
->> Otherwise this looks like a different bug...
->>
->>> This particular issue has been discussed so far at:
->>> http://debbugs.gnu.org/cgi/bugreport.cgi?bug=3D8411
->>> Note there it was stated there that ext4 had this
->>> fixed as of 2.6.39-rc1, so maybe there is something lurking?
->>
->> ext4 got a fix, but not xfs, I guess.  My poor brain can't remember,=
- I think I started looking into it, but it's clearly still broken.
->>
->> Still, I don't know for sure what happened to Markus - did something=
- preallocate, in his case?
->=20
-> Unwritten extent mapping behaves in an unexpected way due to
-> buffered writeback not occurring immediately. Extent conversion
-> doesn't occur until the data is on disk, and for buffered IO you
-> need an fdatasync to ensure that has occurred.
->=20
-> That is:=20
->=20
-> $ xfs_io -f -c "resvsp 0 10m" -c "pwrite 0 5120" -c "bmap -vp" /mnt/t=
-est/foo
-> wrote 5120/5120 bytes at offset 0
-> 5 KiB, 2 ops; 0.0000 sec (62.600 MiB/sec and 25641.0256 ops/sec)
-> /mnt/test/foo:
->  EXT: FILE-OFFSET      BLOCK-RANGE      AG AG-OFFSET        TOTAL FLA=
-GS
->    0: [0..20479]:      268984..289463    0 (268984..289463) 20480 100=
-00
->=20
-> Data has not been written yet, so it is still unwritten. The same
-> test with a fsync shows:
->=20
-> $ sudo xfs_io -f -c "resvsp 0 10m" -c "pwrite 0 5120" -c fsync -c "bm=
-ap -vp" /mnt/test/foo
-> wrote 5120/5120 bytes at offset 0
-> 5 KiB, 2 ops; 0.0000 sec (87.193 MiB/sec and 35714.2857 ops/sec)
-> /mnt/test/foo:
->  EXT: FILE-OFFSET      BLOCK-RANGE      AG AG-OFFSET        TOTAL FLA=
-GS
->    0: [0..15]:         268984..268999    0 (268984..268999)    16 000=
-00
->    1: [16..20479]:     269000..289463    0 (269000..289463) 20464 100=
-00
->=20
-> Everything is fine.
->=20
-> So this seems like an application error to me. If you are going to
-> use fiemap to determine what ranges to copy, then you have to
-> fdatasync the source file first to guarantee that preallocated
-> extents have been converted to written state before mapping the
-> file....
+Hi Dan,
 
-Well IMHO there should be a difference between
-knowing where you are going to write, and actually writing to disk.
-I.E. one shouldn't need to write the whole way to the device
-before returning a valid fiemap.  If a particular file system
-implementation needs to sync to return a valid fiemap,
-then it should be implicit.
+On Fri, Apr 15, 2011 at 6:17 AM, Dan Magenheimer
+<dan.magenheimer@oracle.com> wrote:
+> [PATCH V8 4/8] mm/fs: add hooks to support cleancache
+>
+> This fourth patch of eight in this cleancache series provides the
+> core hooks in VFS for: initializing cleancache per filesystem;
+> capturing clean pages reclaimed by page cache; attempting to get
+> pages from cleancache before filesystem read; and ensuring coherency
+> between pagecache, disk, and cleancache. =C2=A0Note that the placement
+> of these hooks was stable from 2.6.18 to 2.6.38; a minor semantic
+> change was required due to a patchset in 2.6.39.
+>
+> All hooks become no-ops if CONFIG_CLEANCACHE is unset, or become
+> a check of a boolean global if CONFIG_CLEANCACHE is set but no
+> cleancache "backend" has claimed cleancache_ops.
+>
+> Details and a FAQ can be found in Documentation/vm/cleancache.txt
+>
+> [v8: minchan.kim@gmail.com: adapt to new remove_from_page_cache function]
+> Signed-off-by: Chris Mason <chris.mason@oracle.com>
+> Signed-off-by: Dan Magenheimer <dan.magenheimer@oracle.com>
+> Reviewed-by: Jeremy Fitzhardinge <jeremy@goop.org>
+> Reviewed-by: Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>
+> Cc: Andrew Morton <akpm@linux-foundation.org>
+> Cc: Al Viro <viro@ZenIV.linux.org.uk>
+> Cc: Matthew Wilcox <matthew@wil.cx>
+> Cc: Nick Piggin <npiggin@kernel.dk>
+> Cc: Mel Gorman <mel@csn.ul.ie>
+> Cc: Rik Van Riel <riel@redhat.com>
+> Cc: Jan Beulich <JBeulich@novell.com>
+> Cc: Andreas Dilger <adilger@sun.com>
+> Cc: Ted Ts'o <tytso@mit.edu>
+> Cc: Mark Fasheh <mfasheh@suse.com>
+> Cc: Joel Becker <joel.becker@oracle.com>
+> Cc: Nitin Gupta <ngupta@vflare.org>
+>
+> ---
+>
+> Diffstat:
+> =C2=A0fs/buffer.c =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0| =C2=A0 =C2=A05 +++++
+> =C2=A0fs/mpage.c =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 | =C2=A0 =C2=A07 +++++++
+> =C2=A0fs/super.c =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 | =C2=A0 =C2=A03 +++
+> =C2=A0mm/filemap.c =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
+=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 | =C2=A0 11 +++++++++++
+> =C2=A0mm/truncate.c =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
+=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0| =C2=A0 =C2=A06 ++++++
+> =C2=A05 files changed, 32 insertions(+)
+>
+> --- linux-2.6.39-rc3/fs/super.c 2011-04-11 18:21:51.000000000 -0600
+> +++ linux-2.6.39-rc3-cleancache/fs/super.c =C2=A0 =C2=A0 =C2=A02011-04-13=
+ 17:08:09.175853426 -0600
+> @@ -31,6 +31,7 @@
+> =C2=A0#include <linux/mutex.h>
+> =C2=A0#include <linux/backing-dev.h>
+> =C2=A0#include <linux/rculist_bl.h>
+> +#include <linux/cleancache.h>
+> =C2=A0#include "internal.h"
+>
+>
+> @@ -112,6 +113,7 @@ static struct super_block *alloc_super(s
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0s->s_maxbytes =3D =
+MAX_NON_LFS;
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0s->s_op =3D &defau=
+lt_op;
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0s->s_time_gran =3D=
+ 1000000000;
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 s->cleancache_poolid =
+=3D -1;
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0}
+> =C2=A0out:
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0return s;
+> @@ -177,6 +179,7 @@ void deactivate_locked_super(struct supe
+> =C2=A0{
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0struct file_system_type *fs =3D s->s_type;
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0if (atomic_dec_and_test(&s->s_active)) {
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 cleancache_flush_fs(s)=
+;
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0fs->kill_sb(s);
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0/*
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 * We need to call=
+ rcu_barrier so all the delayed rcu free
+> --- linux-2.6.39-rc3/fs/buffer.c =C2=A0 =C2=A0 =C2=A0 =C2=A02011-04-11 18=
+:21:51.000000000 -0600
+> +++ linux-2.6.39-rc3-cleancache/fs/buffer.c =C2=A0 =C2=A0 2011-04-13 17:0=
+7:24.700917174 -0600
+> @@ -41,6 +41,7 @@
+> =C2=A0#include <linux/bitops.h>
+> =C2=A0#include <linux/mpage.h>
+> =C2=A0#include <linux/bit_spinlock.h>
+> +#include <linux/cleancache.h>
+>
+> =C2=A0static int fsync_buffers_list(spinlock_t *lock, struct list_head *l=
+ist);
+>
+> @@ -269,6 +270,10 @@ void invalidate_bdev(struct block_device
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0invalidate_bh_lrus();
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0lru_add_drain_all(); =C2=A0 =C2=A0/* make sure=
+ all lru add caches are flushed */
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0invalidate_mapping_pages(mapping, 0, -1);
+> + =C2=A0 =C2=A0 =C2=A0 /* 99% of the time, we don't need to flush the cle=
+ancache on the bdev.
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0* But, for the strange corners, lets be caut=
+ious
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0*/
+> + =C2=A0 =C2=A0 =C2=A0 cleancache_flush_inode(mapping);
+> =C2=A0}
+> =C2=A0EXPORT_SYMBOL(invalidate_bdev);
+>
+> --- linux-2.6.39-rc3/fs/mpage.c 2011-04-11 18:21:51.000000000 -0600
+> +++ linux-2.6.39-rc3-cleancache/fs/mpage.c =C2=A0 =C2=A0 =C2=A02011-04-13=
+ 17:07:24.706913410 -0600
+> @@ -27,6 +27,7 @@
+> =C2=A0#include <linux/writeback.h>
+> =C2=A0#include <linux/backing-dev.h>
+> =C2=A0#include <linux/pagevec.h>
+> +#include <linux/cleancache.h>
+>
+> =C2=A0/*
+> =C2=A0* I/O completion handler for multipage BIOs.
+> @@ -271,6 +272,12 @@ do_mpage_readpage(struct bio *bio, struc
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0SetPageMappedToDis=
+k(page);
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0}
+>
+> + =C2=A0 =C2=A0 =C2=A0 if (fully_mapped && blocks_per_page =3D=3D 1 && !P=
+ageUptodate(page) &&
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 cleancache_get_page(page) =3D=3D 0) =
+{
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 SetPageUptodate(page);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 goto confused;
+> + =C2=A0 =C2=A0 =C2=A0 }
+> +
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0/*
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 * This page will go to BIO. =C2=A0Do we need =
+to send this BIO off first?
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 */
+> --- linux-2.6.39-rc3/mm/filemap.c =C2=A0 =C2=A0 =C2=A0 2011-04-11 18:21:5=
+1.000000000 -0600
+> +++ linux-2.6.39-rc3-cleancache/mm/filemap.c =C2=A0 =C2=A02011-04-13 17:0=
+9:46.367852002 -0600
+> @@ -34,6 +34,7 @@
+> =C2=A0#include <linux/hardirq.h> /* for BUG_ON(!in_atomic()) only */
+> =C2=A0#include <linux/memcontrol.h>
+> =C2=A0#include <linux/mm_inline.h> /* for page_is_file_cache() */
+> +#include <linux/cleancache.h>
+> =C2=A0#include "internal.h"
+>
+> =C2=A0/*
+> @@ -118,6 +119,16 @@ void __delete_from_page_cache(struct pag
+> =C2=A0{
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0struct address_space *mapping =3D page->mappin=
+g;
+>
+> + =C2=A0 =C2=A0 =C2=A0 /*
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0* if we're uptodate, flush out into the clea=
+ncache, otherwise
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0* invalidate any existing cleancache entries=
+. =C2=A0We can't leave
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0* stale data around in the cleancache once o=
+ur page is gone
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0*/
+> + =C2=A0 =C2=A0 =C2=A0 if (PageUptodate(page) && PageMappedToDisk(page))
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 cleancache_put_page(pa=
+ge);
+> + =C2=A0 =C2=A0 =C2=A0 else
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 cleancache_flush_page(=
+mapping, page);
+> +
 
-cheers,
-P=E1draig.
+First of all, thanks for resolving conflict with my patch.
+
+Before I suggested a thing about cleancache_flush_page, cleancache_flush_in=
+ode.
+
+what's the meaning of flush's semantic?
+I thought it means invalidation.
+AFAIC, how about change flush with invalidate?
+
+
+--=20
+Kind regards,
+Minchan Kim
+
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
