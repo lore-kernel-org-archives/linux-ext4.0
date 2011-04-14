@@ -1,37 +1,43 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: CONFIG_EXT4_USE_FOR_EXT23:  rootfs shows as ext2 instead of ext4
-Date: Thu, 14 Apr 2011 08:47:16 -0400
-Message-ID: <A3BD1EBC-DB1D-4BE2-9C1B-2CB7FBFFB82B@mit.edu>
-References: <4DA48AF4.5080803@teksavvy.com> <20110413004938.GE3682@thunk.org> <4DA5AEBE.6060705@teksavvy.com> <5A35771F-49B6-491E-B012-DBE68907E382@mit.edu> <4DA64F1B.4070803@teksavvy.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH REC 0/3] ext4:Factor common code from convert and split
+ unwritten.
+Date: Thu, 14 Apr 2011 10:14:24 -0400
+Message-ID: <20110414141424.GG3682@thunk.org>
+References: <1302759651-21222-1-git-send-email-xiaoqiangnk@gmail.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Mark Lord <kernel@teksavvy.com>
+Cc: linux-ext4@vger.kernel.org, achender@linux.vnet.ibm.com,
+	cmm@us.ibm.com
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DMZ-MAILSEC-SCANNER-6.MIT.EDU ([18.7.68.35]:44891 "EHLO
-	dmz-mailsec-scanner-6.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754540Ab1DNMrV convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 Apr 2011 08:47:21 -0400
-In-Reply-To: <4DA64F1B.4070803@teksavvy.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:42411 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757200Ab1DNOO3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 Apr 2011 10:14:29 -0400
+Content-Disposition: inline
+In-Reply-To: <1302759651-21222-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, Apr 13, 2011 at 10:40:48PM -0700, Yongqiang Yang wrote:
+> These patches factor common code from ext4_ext_convert_to_initialized() and
+> ext4_split_unwritten_extents(), so that extent-move-on-write in snapshot and
+> punch-hole can be built on the common code as well.
+> 
+> ext4:Add a function merging extent right and left.
+> ext4:Add two functions splitting an extent.
+> ext4:Reimplement convert and split_unwritten.
 
-On Apr 13, 2011, at 9:34 PM, Mark Lord wrote:
+Hi Yongqiang,
 
-> But far far less obvious is why the kernel reports
-> having mounted my ext4 filesystem as "ext2",
-> and what exactly it means by that.
+I'd like to hear back from Mingming and Allison about whether these
+patches conflict with their punch patches, since my understanding was
+they were planning on doing very similar things (and at least would be
+working in the very similar parts of the code).
 
-Because the kernel reports the type that it successfully matched against when the mount succeeded, and in order for ext4 to take over ext2, it calls register_filesystem() as ext2.   Since the kernel (a) tries mounting the root file system as ext2 (it tries blindly until it succeeds), (b) when ext4 is taking care of ext2 mounts, an filesystem with ext4 features can be mounted by the ext4 file system driver, (c) the base VFS layer controls what types is listed, and since it succeeded when it tried mounting as ext2, it reports it as ext2.
+I agree that the extents code here could definitely use this cleanup,
+and I'm really glad that you worked on this; thank you!  I just want
+to make sure work you are doing is coordinated with the work that
+Allison and Mingming are working on.
 
-In other words, what the kernel reports is not what file system driver is currently servicing your block device, but the name of the fs type first succeeded when the root file system mount did a brute-force search.  (BTW, some distributions may use an initrd that uses a more sophisticated userspace fs probing logic that will correctly determine that the file system is really an ext4 file system, and explicitly request an ext4 mount, and then the kernel will report that it was mounted with an ext4 fs type.)   The brute-force search nature of the kernel can potentially get you in trouble, since if a block device was originally formatted as a FAT file system, and then later reformatted as some other file system, such as btrfs, ext4, xfs, etc.,  in theory, depending on the order the kernel tri
- es its brute force search, it could conceivably get things wrong.  This is a long-known problem, and we mostly work around it by making the mkfs programs zero out enough data blocks that it's unlikely that a reused block device might get mistaken as something else.
-
-I repeat; this is a cosmetic issue _only_.   I suspect most users won't be looking that closely at what the kernel outputs, but I agree it's something that we should fix.   OK?
-
--- Ted
-
+						- Ted
