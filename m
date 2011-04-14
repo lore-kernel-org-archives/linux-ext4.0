@@ -1,60 +1,89 @@
-From: Milton Miller <miltonm@bga.com>
-Subject: [PATCH] ext4: register ext2 and ext3 alias after ext4
-Date: Thu, 14 Apr 2011 10:41:23 -0500
-Message-ID: <ext4-masq@mdm.bga.com>
-References: <4DA48AF4.5080803@teksavvy.com>
-	<20110413004938.GE3682@thunk.org>
-	<4DA5ADA6.5060301@teksavvy.com>
-	<5A35771F-49B6-491E-B012-DBE68907E382@mit.edu>
-Cc: <linux-kernel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
-	Joel Becker <jlbec@evilplan.org>, "Ted Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	"John Stoffel" <john@stoffel.org>,
-	Ric Wheeler <ricwheeler@gmail.com>
-To: Mark Lord <kernel@teksavvy.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20110413223005.GB6821@noexit>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Eric Sandeen <sandeen-+82itfer+wXR7s880joybQ@public.gmane.org>
+Subject: Re: Files full of zeros with coreutils-8.11 and xfs (FIEMAP related?)
+Date: Thu, 14 Apr 2011 10:50:10 -0500
+Message-ID: <4DA717B2.3020305@sandeen.net>
+References: <20110414102608.GA1678@x4.trippels.de>	<20110414120635.GB1678@x4.trippels.de>	<20110414140222.GB1679@x4.trippels.de>
+	<4DA70BD3.1070409@draigBrady.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
+Cc: linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, coreutils-mXXj517/zsQ@public.gmane.org,
+	Markus Trippelsdorf <markus-xp2qqqlHh3xzoYq+O6RWwA@public.gmane.org>, xfs-oss <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>
+To: =?ISO-8859-1?Q?P=E1draig_Brady?= <P@draigBrady.com>
+Return-path: <coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org>
+In-Reply-To: <4DA70BD3.1070409-V8g9lnOeT5ydJdNcDFJN0w@public.gmane.org>
+List-Unsubscribe: <http://lists.gnu.org/mailman/options/coreutils>,
+	<mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=unsubscribe>
+List-Archive: </archive/html/coreutils>
+List-Post: <mailto:coreutils-mXXj517/zsQ@public.gmane.org>
+List-Help: <mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=help>
+List-Subscribe: <http://lists.gnu.org/mailman/listinfo/coreutils>,
+	<mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=subscribe>
+Errors-To: coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org
+Sender: coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-The intent of CONFIG_EXT4_USE_FOR_EXT23 is to provide an alias so
-that the ext4 module is sufficient even if user space calls out ext2.
-However, it currently registers the alias names before registering ext4.
-This means they show up first in /proc/filesystems and ext3 and ext4
-formatted file systems show up in the mount list as ext4.
+On 4/14/11 9:59 AM, P=E1draig Brady wrote:
+> On 14/04/11 15:02, Markus Trippelsdorf wrote:
+>>>> Hi P=E1draig,
+>>>>
+>>>> here you go:
+>>>> + filefrag -v unwritten.withdata                                    =
+                                                                         =
+       =20
+>>>> Filesystem type is: ef53                                            =
+                                                                         =
+       =20
+>>>> File size of unwritten.withdata is 5120 (2 blocks, blocksize 4096)  =
+                                                                         =
+       =20
+>>>>  ext logical physical expected length flags                         =
+                                                                         =
+       =20
+>>>>    0       0   274432            2560 unwritten,eof                 =
+                                                                         =
+       =20
+>>>> unwritten.withdata: 1 extent found
+>>>>
+>>>> Please notice that this also happens with ext4 on the same kernel.=20
+>>>> Btrfs is fine.
+>>>
+>> `filefrag -vs` fixes the issue on both xfs and ext4.
+>=20
+> So in summary, currently on (2.6.39-rc3), the following
+> will (usually?) report a single unwritten extent,
+> on both ext4 and xfs
+>=20
+>   fallocate -l 10MiB -n k
+>   dd count=3D10 if=3D/dev/urandom conv=3Dnotrunc iflag=3Dfullblock of=3D=
+k
+>   filefrag -v k # grep for an extent without unwritten || fail
 
-Register the filesystem aliases after ext4 so they show as ext4 until the
-filesystems is filtered.  This will avoid users or tools configuring a
-kernel with just ext2 and wondering why there system broke.  Also register
-in the same order as listed in fs/Makefile.
+right, that's what I see too in testing.
 
-Signed-off-by: Milton Miller <miltonm@bga.com>
----
+But would the coreutils install have done a preallocation of the destinat=
+ion file?
 
-Untested but simple code movement.  Mark will you please test?
+Otherwise this looks like a different bug...
 
-Is it safe to initialize ext4_li_info and ext4_li_mtx after we register
-the filesystem?  What keeps the init after the first call to mount
-a filesystem?
+> This particular issue has been discussed so far at:
+> http://debbugs.gnu.org/cgi/bugreport.cgi?bug=3D8411
+> Note there it was stated there that ext4 had this
+> fixed as of 2.6.39-rc1, so maybe there is something lurking?
 
-I checked unregister_filesystem and it is safe when the file system
-type is and is not registered.
+ext4 got a fix, but not xfs, I guess.  My poor brain can't remember, I th=
+ink I started looking into it, but it's clearly still broken.
 
-Index: work.git/fs/ext4/super.c
-===================================================================
---- work.git.orig/fs/ext4/super.c	2011-04-14 09:26:43.250066794 -0500
-+++ work.git/fs/ext4/super.c	2011-04-14 09:29:53.220061521 -0500
-@@ -4898,11 +4898,11 @@ static int __init ext4_init_fs(void)
- 	err = init_inodecache();
- 	if (err)
- 		goto out1;
--	register_as_ext2();
--	register_as_ext3();
- 	err = register_filesystem(&ext4_fs_type);
- 	if (err)
- 		goto out;
-+	register_as_ext3();
-+	register_as_ext2();
- 
- 	ext4_li_info = NULL;
- 	mutex_init(&ext4_li_mtx);
+Still, I don't know for sure what happened to Markus - did something prea=
+llocate, in his case?
+
+-Eric
+=20
+> cheers,
+> P=E1draig.
+>=20
+> _______________________________________________
+> xfs mailing list
+> xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org
+> http://oss.sgi.com/mailman/listinfo/xfs
+>=20
