@@ -1,43 +1,24 @@
-From: Shaohua Li <shaohua.li@intel.com>
-Subject: [PATCH]ext4: delete dead code
-Date: Thu, 14 Apr 2011 10:10:32 +0800
-Message-ID: <1302747032.3981.181.camel@sli10-conroe>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Ted Ts'o <tytso@mit.edu>, Tejun Heo <tj@kernel.org>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: [PATCH REC 0/3] ext4:Factor common code from convert and split unwritten.
+Date: Wed, 13 Apr 2011 22:40:48 -0700
+Message-ID: <1302759651-21222-1-git-send-email-xiaoqiangnk@gmail.com>
+Cc: achender@linux.vnet.ibm.com, cmm@us.ibm.com
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga11.intel.com ([192.55.52.93]:56831 "EHLO mga11.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752580Ab1DNCK4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Apr 2011 22:10:56 -0400
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:54504 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753880Ab1DNFml (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Apr 2011 01:42:41 -0400
+Received: by iyb14 with SMTP id 14so1156431iyb.19
+        for <linux-ext4@vger.kernel.org>; Wed, 13 Apr 2011 22:42:40 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-percpu_counter_sum_positive never returns negative.
+These patches factor common code from ext4_ext_convert_to_initialized() and
+ext4_split_unwritten_extents(), so that extent-move-on-write in snapshot and
+punch-hole can be built on the common code as well.
 
-Signed-off-by: Shaohua Li <shaohua.li@intel.com>
-
----
- fs/ext4/balloc.c |    5 -----
- 1 file changed, 5 deletions(-)
-
-Index: linux/fs/ext4/balloc.c
-===================================================================
---- linux.orig/fs/ext4/balloc.c	2011-04-12 16:22:59.000000000 +0800
-+++ linux/fs/ext4/balloc.c	2011-04-13 13:23:01.000000000 +0800
-@@ -507,11 +507,6 @@ static int ext4_has_free_blocks(struct e
- 						EXT4_FREEBLOCKS_WATERMARK) {
- 		free_blocks  = percpu_counter_sum_positive(fbc);
- 		dirty_blocks = percpu_counter_sum_positive(dbc);
--		if (dirty_blocks < 0) {
--			printk(KERN_CRIT "Dirty block accounting "
--					"went wrong %lld\n",
--					(long long)dirty_blocks);
--		}
- 	}
- 	/* Check whether we have space after
- 	 * accounting for current dirty blocks & root reserved blocks.
-
+ext4:Add a function merging extent right and left.
+ext4:Add two functions splitting an extent.
+ext4:Reimplement convert and split_unwritten.
 
