@@ -1,165 +1,58 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH RFC 1/3] ext4:Add a function merging extent right and
- left.
-Date: Thu, 14 Apr 2011 12:03:07 -0700
-Message-ID: <1302807787.3408.25.camel@mingming-laptop>
-References: <1302759651-21222-1-git-send-email-xiaoqiangnk@gmail.com>
-	 <1302759651-21222-2-git-send-email-xiaoqiangnk@gmail.com>
+From: =?ISO-8859-1?Q?P=E1draig_Brady?= <P@draigBrady.com>
+Subject: Re: Files full of zeros with coreutils-8.11 and xfs (FIEMAP related?)
+Date: Thu, 14 Apr 2011 20:13:53 +0100
+Message-ID: <4DA74771.5010103@draigBrady.com>
+References: <20110414102608.GA1678@x4.trippels.de>	<20110414120635.GB1678@x4.trippels.de>	<20110414140222.GB1679@x4.trippels.de>	<4DA70BD3.1070409@draigBrady.com> <4DA717B2.3020305@sandeen.net>	<4DA7182B.8050409@draigBrady.com> <878vvcspz0.fsf@rho.meyering.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, achender@linux.vnet.ibm.com
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Eric Sandeen <sandeen@sandeen.net>, linux-ext4@vger.kernel.org,
+	coreutils@gnu.org, Markus Trippelsdorf <markus@trippelsdorf.de>,
+	xfs-oss <xfs@oss.sgi.com>
+To: Jim Meyering <jim@meyering.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e33.co.us.ibm.com ([32.97.110.151]:50417 "EHLO
-	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932582Ab1DNTDP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Apr 2011 15:03:15 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e33.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p3EIuQHp005474
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Apr 2011 12:56:26 -0600
-Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id p3EJ3EcD097812
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Apr 2011 13:03:14 -0600
-Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av04.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p3EJ3D2X017380
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Apr 2011 13:03:13 -0600
-In-Reply-To: <1302759651-21222-2-git-send-email-xiaoqiangnk@gmail.com>
+Received: from mail1.slb.deg.dub.stisp.net ([84.203.253.98]:3829 "HELO
+	mail1.slb.deg.dub.stisp.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1759172Ab1DNTPh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 Apr 2011 15:15:37 -0400
+In-Reply-To: <878vvcspz0.fsf@rho.meyering.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 2011-04-13 at 22:40 -0700, Yongqiang Yang wrote:
-> 1] Rename ext4_ext_try_to_merge() to ext4_ext_try_to_merge_right().
-> 
-> 2] Add a new function ext4_ext_try_to_merge() which tries to merge
->    an extent both left and right.
-> 
-> 3] Use the new function in ext4_ext_convert_unwritten_endio() and
->    ext4_ext_insert_extent().
-> 
-> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-> ---
->  fs/ext4/extents.c |   65 ++++++++++++++++++++++++++++------------------------
->  1 files changed, 35 insertions(+), 30 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index dd2cb50..11f30d2 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -1563,7 +1563,7 @@ ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
->   * Returns 0 if the extents (ex and ex+1) were _not_ merged and returns
->   * 1 if they got merged.
->   */
-> -static int ext4_ext_try_to_merge(struct inode *inode,
-> +static int ext4_ext_try_to_merge_right(struct inode *inode,
->  				 struct ext4_ext_path *path,
->  				 struct ext4_extent *ex)
->  {
-> @@ -1603,6 +1603,31 @@ static int ext4_ext_try_to_merge(struct inode *inode,
->  }
-> 
->  /*
-> + * This function tries to merge the @ex extent to neighbours in the tree.
-> + * return 1 if merge left else 0.
-> + */
-> +static int ext4_ext_try_to_merge(struct inode *inode,
-> +				  struct ext4_ext_path *path,
-> +				  struct ext4_extent *ex) {
-> +	struct ext4_extent_header *eh;
-> +	unsigned int depth;
-> +	int merge_done = 0;
-> +	int ret = 0;
-> +
-> +	depth = ext_depth(inode);
-> +	BUG_ON(path[depth].p_hdr == NULL);
-> +	eh = path[depth].p_hdr;
-> +
-> +	if (ex > EXT_FIRST_EXTENT(eh))
-> +		merge_done = ext4_ext_try_to_merge_right(inode, path, ex - 1);
-> +
-> +	if (!merge_done)
-> +		ret = ext4_ext_try_to_merge_right(inode, path, ex);
-> +
+On 14/04/11 18:27, Jim Meyering wrote:
+>=20
+> FYI, I see the same failure now using ext3 (and but not w/ext4)
+> with rawhide's 2.6.39-0.rc2.git0.0.fc16.x86_64:
+>=20
+>   + df -t ext3 .
 
-Is there any reason not to merge right after merge left? The old code
-does both, I think.
+Not with ext3 ...
 
-> +	return ret;
-> +}
-> +
-> +/*
->   * check if a portion of the "newext" extent overlaps with an
->   * existing extent.
->   *
-> @@ -3039,6 +3064,7 @@ fix_extent_len:
->  	ext4_ext_dirty(handle, inode, path + depth);
->  	return err;
->  }
-> +
->  static int ext4_convert_unwritten_extents_endio(handle_t *handle,
->  					      struct inode *inode,
->  					      struct ext4_ext_path *path)
-> @@ -3047,46 +3073,25 @@ static int ext4_convert_unwritten_extents_endio(handle_t *handle,
->  	struct ext4_extent_header *eh;
->  	int depth;
->  	int err = 0;
-> -	int ret = 0;
-> 
->  	depth = ext_depth(inode);
->  	eh = path[depth].p_hdr;
->  	ex = path[depth].p_ext;
-> 
-> +	ext_debug("ext4_convert_unwritten_extents_endio: inode %lu, logical"
-> +		"block %llu, max_blocks %u\n", inode->i_ino,
-> +		(unsigned long long)le32_to_cpu(ex->ee_block),
-> +		ext4_ext_get_actual_len(ex));
-> +
->  	err = ext4_ext_get_access(handle, inode, path + depth);
->  	if (err)
->  		goto out;
->  	/* first mark the extent as initialized */
->  	ext4_ext_mark_initialized(ex);
-> 
-> -	/*
-> -	 * We have to see if it can be merged with the extent
-> -	 * on the left.
-> -	 */
-> -	if (ex > EXT_FIRST_EXTENT(eh)) {
-> -		/*
-> -		 * To merge left, pass "ex - 1" to try_to_merge(),
-> -		 * since it merges towards right _only_.
-> -		 */
-> -		ret = ext4_ext_try_to_merge(inode, path, ex - 1);
-> -		if (ret) {
-> -			err = ext4_ext_correct_indexes(handle, inode, path);
-> -			if (err)
-> -				goto out;
-> -			depth = ext_depth(inode);
-> -			ex--;
-> -		}
-> -	}
-> -	/*
-> -	 * Try to Merge towards right.
-> -	 */
-> -	ret = ext4_ext_try_to_merge(inode, path, ex);
-> -	if (ret) {
-> -		err = ext4_ext_correct_indexes(handle, inode, path);
-> -		if (err)
-> -			goto out;
-> -		depth = ext_depth(inode);
-> -	}
-> +	/* correct indexes is nt needed becasue borders are not changed */
-> +	ext4_ext_try_to_merge(inode, path, ex);
-> +
+>   + mkfs -t ext4 -F blob
 
-Ah, so you discovered an issue -- currently ext4 can't merge across the
-index block borders. that's a pity. This might need to fix up,
-especially with split is going to be heavily used in punch hole,
-snapshots, direct IO handling holes.
+=2E.. but with ext4 loop back
 
+>   + perl -e 'BEGIN { $n =3D 1 * 1024; *F =3D *STDOUT }' -e 'for (1..1=
+) { sysseek (*F, $n, 1)' -e '&& syswrite (*F, chr($_)x$n) or die "$!"}'
 
->  	/* Mark modified extent as dirty */
->  	err = ext4_ext_dirty(handle, inode, path + depth);
->  out:
+>   + cp --sparse=3Dalways j1 j2
+>   + cmp j1 j2
+>   j1 j2 differ: char 1, line 1     <<<<=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D
 
+But there was no preallocation done above.
+So this was the original sync issue, which doesn't seem to be working :=
+(
+Is there a chance the rawhide kernel hasn't included that change?
+Unlikely as it's 2.6.39-rc2.
 
+cheers,
+P=E1draig.
+
+p.s. I will do some checking with ext3 to ensure everything is OK
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
