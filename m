@@ -1,58 +1,50 @@
-From: =?ISO-8859-1?Q?P=E1draig_Brady?= <P@draigBrady.com>
+From: Jim Meyering <jim-Oxw1nKZkIVjk1uMJSBkQmQ@public.gmane.org>
 Subject: Re: Files full of zeros with coreutils-8.11 and xfs (FIEMAP related?)
-Date: Thu, 14 Apr 2011 20:13:53 +0100
-Message-ID: <4DA74771.5010103@draigBrady.com>
-References: <20110414102608.GA1678@x4.trippels.de>	<20110414120635.GB1678@x4.trippels.de>	<20110414140222.GB1679@x4.trippels.de>	<4DA70BD3.1070409@draigBrady.com> <4DA717B2.3020305@sandeen.net>	<4DA7182B.8050409@draigBrady.com> <878vvcspz0.fsf@rho.meyering.net>
+Date: Thu, 14 Apr 2011 21:39:39 +0200
+Message-ID: <8739lksjus.fsf@rho.meyering.net>
+References: <20110414102608.GA1678@x4.trippels.de>
+	<20110414120635.GB1678@x4.trippels.de>
+	<20110414140222.GB1679@x4.trippels.de>
+	<4DA70BD3.1070409@draigBrady.com> <4DA717B2.3020305@sandeen.net>
+	<4DA7182B.8050409@draigBrady.com> <878vvcspz0.fsf@rho.meyering.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Eric Sandeen <sandeen@sandeen.net>, linux-ext4@vger.kernel.org,
-	coreutils@gnu.org, Markus Trippelsdorf <markus@trippelsdorf.de>,
-	xfs-oss <xfs@oss.sgi.com>
-To: Jim Meyering <jim@meyering.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail1.slb.deg.dub.stisp.net ([84.203.253.98]:3829 "HELO
-	mail1.slb.deg.dub.stisp.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1759172Ab1DNTPh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 Apr 2011 15:15:37 -0400
-In-Reply-To: <878vvcspz0.fsf@rho.meyering.net>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain
+Cc: linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Eric Sandeen <sandeen-+82itfer+wXR7s880joybQ@public.gmane.org>,
+	coreutils-mXXj517/zsQ@public.gmane.org, Markus Trippelsdorf <markus-xp2qqqlHh3xzoYq+O6RWwA@public.gmane.org>,
+	xfs-oss <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>
+To: =?iso-8859-1?Q?P=E1draig?= Brady <P@draigBrady.com>
+Return-path: <coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org>
+In-Reply-To: <878vvcspz0.fsf-CybKA8TIZ99x3y/oJEDuiw@public.gmane.org> (Jim Meyering's message of
+	"Thu, 14 Apr 2011 19:27:31 +0200")
+List-Unsubscribe: <http://lists.gnu.org/mailman/options/coreutils>,
+	<mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=unsubscribe>
+List-Archive: </archive/html/coreutils>
+List-Post: <mailto:coreutils-mXXj517/zsQ@public.gmane.org>
+List-Help: <mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=help>
+List-Subscribe: <http://lists.gnu.org/mailman/listinfo/coreutils>,
+	<mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=subscribe>
+Errors-To: coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org
+Sender: coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 14/04/11 18:27, Jim Meyering wrote:
->=20
+Jim Meyering wrote:
+...
 > FYI, I see the same failure now using ext3 (and but not w/ext4)
 > with rawhide's 2.6.39-0.rc2.git0.0.fc16.x86_64:
->=20
+
+Correction.
+The failure below is not on ext3, but on a loopback-mounted
+ext4 file system.
+
+The test detected that the current FS was ext3 -- and it's known
+that this test is not useful on ext3 -- and since I was running it
+as root, it creates a loopback ext4 file system on which to run the test.
+
 >   + df -t ext3 .
+>   + require_root_
+>   + uid_is_privileged_
+>   ++ id -u
+>   + my_uid=0
 
-Not with ext3 ...
-
->   + mkfs -t ext4 -F blob
-
-=2E.. but with ext4 loop back
-
->   + perl -e 'BEGIN { $n =3D 1 * 1024; *F =3D *STDOUT }' -e 'for (1..1=
-) { sysseek (*F, $n, 1)' -e '&& syswrite (*F, chr($_)x$n) or die "$!"}'
-
->   + cp --sparse=3Dalways j1 j2
->   + cmp j1 j2
->   j1 j2 differ: char 1, line 1     <<<<=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D
-
-But there was no preallocation done above.
-So this was the original sync issue, which doesn't seem to be working :=
-(
-Is there a chance the rawhide kernel hasn't included that change?
-Unlikely as it's 2.6.39-rc2.
-
-cheers,
-P=E1draig.
-
-p.s. I will do some checking with ext3 to ensure everything is OK
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+However, other strange things are happening here.
+I'm investigating.
