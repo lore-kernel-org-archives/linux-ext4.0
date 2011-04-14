@@ -1,27 +1,27 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+From: Amir Goldstein <amir73il@gmail.com>
 Subject: Re: [PATCH REC 0/3] ext4:Factor common code from convert and split unwritten.
-Date: Thu, 14 Apr 2011 22:34:38 +0800
-Message-ID: <BANLkTim9okgKc1omQ5dAvTHDrhfA_bpODw@mail.gmail.com>
+Date: Thu, 14 Apr 2011 17:36:22 +0300
+Message-ID: <BANLkTin0Vk-Q3jXV4rcJDkTPW9UVcB_reg@mail.gmail.com>
 References: <1302759651-21222-1-git-send-email-xiaoqiangnk@gmail.com>
 	<20110414141424.GG3682@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, achender@linux.vnet.ibm.com,
-	cmm@us.ibm.com
+Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>, linux-ext4@vger.kernel.org,
+	achender@linux.vnet.ibm.com, cmm@us.ibm.com
 To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-px0-f179.google.com ([209.85.212.179]:35136 "EHLO
-	mail-px0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754034Ab1DNOej convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Apr 2011 10:34:39 -0400
-Received: by pxi2 with SMTP id 2so960603pxi.10
-        for <linux-ext4@vger.kernel.org>; Thu, 14 Apr 2011 07:34:38 -0700 (PDT)
+Received: from mail-ew0-f46.google.com ([209.85.215.46]:59139 "EHLO
+	mail-ew0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758830Ab1DNOgX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Apr 2011 10:36:23 -0400
+Received: by ewy4 with SMTP id 4so471710ewy.19
+        for <linux-ext4@vger.kernel.org>; Thu, 14 Apr 2011 07:36:22 -0700 (PDT)
 In-Reply-To: <20110414141424.GG3682@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Apr 14, 2011 at 10:14 PM, Ted Ts'o <tytso@mit.edu> wrote:
+On Thu, Apr 14, 2011 at 5:14 PM, Ted Ts'o <tytso@mit.edu> wrote:
 > On Wed, Apr 13, 2011 at 10:40:48PM -0700, Yongqiang Yang wrote:
 >> These patches factor common code from ext4_ext_convert_to_initialize=
 d() and
@@ -46,27 +46,13 @@ e
 t
 > to make sure work you are doing is coordinated with the work that
 > Allison and Mingming are working on.
-
-I knew it and Mingming told me that common code should be factor out
-in previous emails.  so I cced patches to Mingming and Allison.
-extent-move-on-write in ext4-snapshots needs a function splitting an
-initialized extent.
-
-These patches indeed need advices, reviews  and even tests from
-Mingming and Allison.
-
-Thank you,
-Yongqiang.
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0- Ted
 >
 
+I did tell Mingming the patches are coming her way on LSF,
+so she should be expecting them.
+I hope Allison and Mingming like the results too :-)
 
-
---=20
-Best Wishes
-Yongqiang Yang
+Amir.
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
