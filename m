@@ -1,396 +1,146 @@
-From: Dan Magenheimer <dan.magenheimer@oracle.com>
-Subject: [PATCH] xen: cleancache shim to Xen Transcendent Memory
-Date: Thu, 14 Apr 2011 14:20:02 -0700
-Message-ID: <20110414212002.GA27846__21800.5470153459$1302816213$gmane$org@ca-server1.us.oracle.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: Files full of zeros with coreutils-8.11 and xfs (FIEMAP related?)
+Date: Fri, 15 Apr 2011 08:59:04 +1000
+Message-ID: <20110414225904.GK21395@dastard>
+References: <20110414102608.GA1678@x4.trippels.de>
+	<20110414120635.GB1678@x4.trippels.de>
+	<20110414140222.GB1679@x4.trippels.de>
+	<4DA70BD3.1070409@draigBrady.com> <4DA717B2.3020305@sandeen.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: chris.mason@oracle.com, viro@zeniv.linux.org.uk,
-	akpm@linux-foundation.org, adilger.kernel@dilger.ca, tytso@mit.edu,
-	mfasheh@suse.com, jlbec@evilplan.org, matthew@wil.cx,
-	linux-btrfs@
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:23852 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752773Ab1DNVXU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Apr 2011 17:23:20 -0400
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+Cc: linux-ext4@vger.kernel.org,
+        =?iso-8859-1?Q?P=E1draig?= Brady <P@draigBrady.com>, coreutils@gnu.org,
+        Markus Trippelsdorf <markus@trippelsdorf.de>,
+        xfs-oss <xfs@oss.sgi.com>
+To: Eric Sandeen <sandeen@sandeen.net>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <4DA717B2.3020305@sandeen.net>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Sender: xfs-bounces@oss.sgi.com
+Errors-To: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-[PATCH] xen: cleancache shim to Xen Transcendent Memory
+On Thu, Apr 14, 2011 at 10:50:10AM -0500, Eric Sandeen wrote:
+> On 4/14/11 9:59 AM, P=E1draig Brady wrote:
+> > On 14/04/11 15:02, Markus Trippelsdorf wrote:
+> >>>> Hi P=E1draig,
+> >>>>
+> >>>> here you go:
+> >>>> + filefrag -v unwritten.withdata                                    =
+                                                                           =
+      =
 
-This patch provides a shim between the kernel-internal cleancache
-API (see Documentation/mm/cleancache.txt) and the Xen Transcendent
-Memory ABI (see http://oss.oracle.com/projects/tmem).
+> >>>> Filesystem type is: ef53                                            =
+                                                                           =
+      =
 
-Xen tmem provides "hypervisor RAM" as an ephemeral page-oriented
-pseudo-RAM store for cleancache pages, shared cleancache pages,
-and frontswap pages.  Tmem provides enterprise-quality concurrency,
-full save/restore and live migration support, compression
-and deduplication.
+> >>>> File size of unwritten.withdata is 5120 (2 blocks, blocksize 4096)  =
+                                                                           =
+      =
 
-A presentation showing up to 8% faster performance and up to 52%
-reduction in sectors read on a kernel compile workload, despite
-aggressive in-kernel page reclamation ("self-ballooning") can be
-found at:
+> >>>>  ext logical physical expected length flags                         =
+                                                                           =
+      =
 
-http://oss.oracle.com/projects/tmem/dist/documentation/presentations/TranscendentMemoryXenSummit2010.pdf
+> >>>>    0       0   274432            2560 unwritten,eof                 =
+                                                                           =
+      =
 
-Signed-off-by: Dan Magenheimer <dan.magenheimer@oracle.com>
-Reviewed-by: Jeremy Fitzhardinge <jeremy@goop.org>
-Cc: Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>
-Cc: Matthew Wilcox <matthew@wil.cx>
-Cc: Nick Piggin <npiggin@kernel.dk>
-Cc: Mel Gorman <mel@csn.ul.ie>
-Cc: Rik Van Riel <riel@redhat.com>
-Cc: Jan Beulich <JBeulich@novell.com>
-Cc: Chris Mason <chris.mason@oracle.com>
-Cc: Andreas Dilger <adilger@sun.com>
-Cc: Ted Ts'o <tytso@mit.edu>
-Cc: Mark Fasheh <mfasheh@suse.com>
-Cc: Joel Becker <joel.becker@oracle.com>
-Cc: Nitin Gupta <ngupta@vflare.org>
+> >>>> unwritten.withdata: 1 extent found
+> >>>>
+> >>>> Please notice that this also happens with ext4 on the same kernel. =
 
----
+> >>>> Btrfs is fine.
+> >>>
+> >> `filefrag -vs` fixes the issue on both xfs and ext4.
+> > =
 
-Diffstat:
- arch/x86/include/asm/xen/hypercall.h     |    7 
- drivers/xen/Makefile                     |    1 
- drivers/xen/tmem.c                       |  264 +++++++++++++++++++++
- include/xen/interface/xen.h              |   22 +
- 4 files changed, 294 insertions(+)
+> > So in summary, currently on (2.6.39-rc3), the following
+> > will (usually?) report a single unwritten extent,
+> > on both ext4 and xfs
+> > =
 
-diff -Napur -X linux-2.6.39-rc3/Documentation/dontdiff linux-2.6.39-rc3-cleancache/arch/x86/include/asm/xen/hypercall.h linux-2.6.39-rc3-cleancache-xen/arch/x86/include/asm/xen/hypercall.h
---- linux-2.6.39-rc3-cleancache/arch/x86/include/asm/xen/hypercall.h	2011-04-11 18:21:51.000000000 -0600
-+++ linux-2.6.39-rc3-cleancache-xen/arch/x86/include/asm/xen/hypercall.h	2011-04-14 09:54:19.210857901 -0600
-@@ -447,6 +447,13 @@ HYPERVISOR_hvm_op(int op, void *arg)
-        return _hypercall2(unsigned long, hvm_op, op, arg);
- }
- 
-+static inline int
-+HYPERVISOR_tmem_op(
-+	struct tmem_op *op)
-+{
-+	return _hypercall1(int, tmem_op, op);
-+}
-+
- static inline void
- MULTI_fpu_taskswitch(struct multicall_entry *mcl, int set)
- {
-diff -Napur -X linux-2.6.39-rc3/Documentation/dontdiff linux-2.6.39-rc3-cleancache/drivers/xen/Makefile linux-2.6.39-rc3-cleancache-xen/drivers/xen/Makefile
---- linux-2.6.39-rc3-cleancache/drivers/xen/Makefile	2011-04-11 18:21:51.000000000 -0600
-+++ linux-2.6.39-rc3-cleancache-xen/drivers/xen/Makefile	2011-04-14 09:54:19.236096051 -0600
-@@ -1,5 +1,6 @@
- obj-y	+= grant-table.o features.o events.o manage.o balloon.o
- obj-y	+= xenbus/
-+obj-y	+= tmem.o
- 
- nostackp := $(call cc-option, -fno-stack-protector)
- CFLAGS_features.o			:= $(nostackp)
-diff -Napur -X linux-2.6.39-rc3/Documentation/dontdiff linux-2.6.39-rc3-cleancache/drivers/xen/tmem.c linux-2.6.39-rc3-cleancache-xen/drivers/xen/tmem.c
---- linux-2.6.39-rc3-cleancache/drivers/xen/tmem.c	1969-12-31 17:00:00.000000000 -0700
-+++ linux-2.6.39-rc3-cleancache-xen/drivers/xen/tmem.c	2011-04-14 09:54:19.236917913 -0600
-@@ -0,0 +1,264 @@
-+/*
-+ * Xen implementation for transcendent memory (tmem)
-+ *
-+ * Copyright (C) 2009-2010 Oracle Corp.  All rights reserved.
-+ * Author: Dan Magenheimer
-+ */
-+
-+#include <linux/kernel.h>
-+#include <linux/types.h>
-+#include <linux/init.h>
-+#include <linux/pagemap.h>
-+#include <linux/cleancache.h>
-+
-+#include <xen/xen.h>
-+#include <xen/interface/xen.h>
-+#include <asm/xen/hypercall.h>
-+#include <asm/xen/page.h>
-+#include <asm/xen/hypervisor.h>
-+
-+#define TMEM_CONTROL               0
-+#define TMEM_NEW_POOL              1
-+#define TMEM_DESTROY_POOL          2
-+#define TMEM_NEW_PAGE              3
-+#define TMEM_PUT_PAGE              4
-+#define TMEM_GET_PAGE              5
-+#define TMEM_FLUSH_PAGE            6
-+#define TMEM_FLUSH_OBJECT          7
-+#define TMEM_READ                  8
-+#define TMEM_WRITE                 9
-+#define TMEM_XCHG                 10
-+
-+/* Bits for HYPERVISOR_tmem_op(TMEM_NEW_POOL) */
-+#define TMEM_POOL_PERSIST          1
-+#define TMEM_POOL_SHARED           2
-+#define TMEM_POOL_PAGESIZE_SHIFT   4
-+#define TMEM_VERSION_SHIFT        24
-+
-+
-+struct tmem_pool_uuid {
-+	u64 uuid_lo;
-+	u64 uuid_hi;
-+};
-+
-+struct tmem_oid {
-+	u64 oid[3];
-+};
-+
-+#define TMEM_POOL_PRIVATE_UUID	{ 0, 0 }
-+
-+/* flags for tmem_ops.new_pool */
-+#define TMEM_POOL_PERSIST          1
-+#define TMEM_POOL_SHARED           2
-+
-+/* xen tmem foundation ops/hypercalls */
-+
-+static inline int xen_tmem_op(u32 tmem_cmd, u32 tmem_pool, struct tmem_oid oid,
-+	u32 index, unsigned long gmfn, u32 tmem_offset, u32 pfn_offset, u32 len)
-+{
-+	struct tmem_op op;
-+	int rc = 0;
-+
-+	op.cmd = tmem_cmd;
-+	op.pool_id = tmem_pool;
-+	op.u.gen.oid[0] = oid.oid[0];
-+	op.u.gen.oid[1] = oid.oid[1];
-+	op.u.gen.oid[2] = oid.oid[2];
-+	op.u.gen.index = index;
-+	op.u.gen.tmem_offset = tmem_offset;
-+	op.u.gen.pfn_offset = pfn_offset;
-+	op.u.gen.len = len;
-+	set_xen_guest_handle(op.u.gen.gmfn, (void *)gmfn);
-+	rc = HYPERVISOR_tmem_op(&op);
-+	return rc;
-+}
-+
-+static int xen_tmem_new_pool(struct tmem_pool_uuid uuid,
-+				u32 flags, unsigned long pagesize)
-+{
-+	struct tmem_op op;
-+	int rc = 0, pageshift;
-+
-+	for (pageshift = 0; pagesize != 1; pageshift++)
-+		pagesize >>= 1;
-+	flags |= (pageshift - 12) << TMEM_POOL_PAGESIZE_SHIFT;
-+	flags |= TMEM_SPEC_VERSION << TMEM_VERSION_SHIFT;
-+	op.cmd = TMEM_NEW_POOL;
-+	op.u.new.uuid[0] = uuid.uuid_lo;
-+	op.u.new.uuid[1] = uuid.uuid_hi;
-+	op.u.new.flags = flags;
-+	rc = HYPERVISOR_tmem_op(&op);
-+	return rc;
-+}
-+
-+/* xen generic tmem ops */
-+
-+static int xen_tmem_put_page(u32 pool_id, struct tmem_oid oid,
-+			     u32 index, unsigned long pfn)
-+{
-+	unsigned long gmfn = xen_pv_domain() ? pfn_to_mfn(pfn) : pfn;
-+
-+	return xen_tmem_op(TMEM_PUT_PAGE, pool_id, oid, index,
-+		gmfn, 0, 0, 0);
-+}
-+
-+static int xen_tmem_get_page(u32 pool_id, struct tmem_oid oid,
-+			     u32 index, unsigned long pfn)
-+{
-+	unsigned long gmfn = xen_pv_domain() ? pfn_to_mfn(pfn) : pfn;
-+
-+	return xen_tmem_op(TMEM_GET_PAGE, pool_id, oid, index,
-+		gmfn, 0, 0, 0);
-+}
-+
-+static int xen_tmem_flush_page(u32 pool_id, struct tmem_oid oid, u32 index)
-+{
-+	return xen_tmem_op(TMEM_FLUSH_PAGE, pool_id, oid, index,
-+		0, 0, 0, 0);
-+}
-+
-+static int xen_tmem_flush_object(u32 pool_id, struct tmem_oid oid)
-+{
-+	return xen_tmem_op(TMEM_FLUSH_OBJECT, pool_id, oid, 0, 0, 0, 0, 0);
-+}
-+
-+static int xen_tmem_destroy_pool(u32 pool_id)
-+{
-+	struct tmem_oid oid = { { 0 } };
-+
-+	return xen_tmem_op(TMEM_DESTROY_POOL, pool_id, oid, 0, 0, 0, 0, 0);
-+}
-+
-+int tmem_enabled;
-+
-+static int __init enable_tmem(char *s)
-+{
-+	tmem_enabled = 1;
-+	return 1;
-+}
-+
-+__setup("tmem", enable_tmem);
-+
-+/* cleancache ops */
-+
-+static void tmem_cleancache_put_page(int pool, struct cleancache_filekey key,
-+				     pgoff_t index, struct page *page)
-+{
-+	u32 ind = (u32) index;
-+	struct tmem_oid oid = *(struct tmem_oid *)&key;
-+	unsigned long pfn = page_to_pfn(page);
-+
-+	if (pool < 0)
-+		return;
-+	if (ind != index)
-+		return;
-+	mb(); /* ensure page is quiescent; tmem may address it with an alias */
-+	(void)xen_tmem_put_page((u32)pool, oid, ind, pfn);
-+}
-+
-+static int tmem_cleancache_get_page(int pool, struct cleancache_filekey key,
-+				    pgoff_t index, struct page *page)
-+{
-+	u32 ind = (u32) index;
-+	struct tmem_oid oid = *(struct tmem_oid *)&key;
-+	unsigned long pfn = page_to_pfn(page);
-+	int ret;
-+
-+	/* translate return values to linux semantics */
-+	if (pool < 0)
-+		return -1;
-+	if (ind != index)
-+		return -1;
-+	ret = xen_tmem_get_page((u32)pool, oid, ind, pfn);
-+	if (ret == 1)
-+		return 0;
-+	else
-+		return -1;
-+}
-+
-+static void tmem_cleancache_flush_page(int pool, struct cleancache_filekey key,
-+				       pgoff_t index)
-+{
-+	u32 ind = (u32) index;
-+	struct tmem_oid oid = *(struct tmem_oid *)&key;
-+
-+	if (pool < 0)
-+		return;
-+	if (ind != index)
-+		return;
-+	(void)xen_tmem_flush_page((u32)pool, oid, ind);
-+}
-+
-+static void tmem_cleancache_flush_inode(int pool, struct cleancache_filekey key)
-+{
-+	struct tmem_oid oid = *(struct tmem_oid *)&key;
-+
-+	if (pool < 0)
-+		return;
-+	(void)xen_tmem_flush_object((u32)pool, oid);
-+}
-+
-+static void tmem_cleancache_flush_fs(int pool)
-+{
-+	if (pool < 0)
-+		return;
-+	(void)xen_tmem_destroy_pool((u32)pool);
-+}
-+
-+static int tmem_cleancache_init_fs(size_t pagesize)
-+{
-+	struct tmem_pool_uuid uuid_private = TMEM_POOL_PRIVATE_UUID;
-+
-+	return xen_tmem_new_pool(uuid_private, 0, pagesize);
-+}
-+
-+static int tmem_cleancache_init_shared_fs(char *uuid, size_t pagesize)
-+{
-+	struct tmem_pool_uuid shared_uuid;
-+
-+	shared_uuid.uuid_lo = *(u64 *)uuid;
-+	shared_uuid.uuid_hi = *(u64 *)(&uuid[8]);
-+	return xen_tmem_new_pool(shared_uuid, TMEM_POOL_SHARED, pagesize);
-+}
-+
-+static int use_cleancache = 1;
-+
-+static int __init no_cleancache(char *s)
-+{
-+	use_cleancache = 0;
-+	return 1;
-+}
-+
-+__setup("nocleancache", no_cleancache);
-+
-+static struct cleancache_ops tmem_cleancache_ops = {
-+	.put_page = tmem_cleancache_put_page,
-+	.get_page = tmem_cleancache_get_page,
-+	.flush_page = tmem_cleancache_flush_page,
-+	.flush_inode = tmem_cleancache_flush_inode,
-+	.flush_fs = tmem_cleancache_flush_fs,
-+	.init_shared_fs = tmem_cleancache_init_shared_fs,
-+	.init_fs = tmem_cleancache_init_fs
-+};
-+
-+static int __init xen_tmem_init(void)
-+{
-+	struct cleancache_ops old_ops;
-+
-+	if (!xen_domain())
-+		return 0;
-+#ifdef CONFIG_CLEANCACHE
-+	BUG_ON(sizeof(struct cleancache_filekey) != sizeof(struct tmem_oid));
-+	if (tmem_enabled && use_cleancache) {
-+		char *s = "";
-+		old_ops = cleancache_register_ops(&tmem_cleancache_ops);
-+		if (old_ops.init_fs != NULL)
-+			s = " (WARNING: cleancache_ops overridden)";
-+		printk(KERN_INFO "cleancache enabled, RAM provided by "
-+				 "Xen Transcendent Memory%s\n", s);
-+	}
-+#endif
-+	return 0;
-+}
-+
-+module_init(xen_tmem_init)
-diff -Napur -X linux-2.6.39-rc3/Documentation/dontdiff linux-2.6.39-rc3-cleancache/include/xen/interface/xen.h linux-2.6.39-rc3-cleancache-xen/include/xen/interface/xen.h
---- linux-2.6.39-rc3-cleancache/include/xen/interface/xen.h	2011-04-11 18:21:51.000000000 -0600
-+++ linux-2.6.39-rc3-cleancache-xen/include/xen/interface/xen.h	2011-04-14 09:54:19.237875256 -0600
-@@ -58,6 +58,7 @@
- #define __HYPERVISOR_event_channel_op     32
- #define __HYPERVISOR_physdev_op           33
- #define __HYPERVISOR_hvm_op               34
-+#define __HYPERVISOR_tmem_op              38
- 
- /* Architecture-specific hypercall definitions. */
- #define __HYPERVISOR_arch_0               48
-@@ -461,6 +462,27 @@ typedef uint8_t xen_domain_handle_t[16];
- #define __mk_unsigned_long(x) x ## UL
- #define mk_unsigned_long(x) __mk_unsigned_long(x)
- 
-+#define TMEM_SPEC_VERSION 1
-+
-+struct tmem_op {
-+	uint32_t cmd;
-+	int32_t pool_id;
-+	union {
-+		struct {  /* for cmd == TMEM_NEW_POOL */
-+			uint64_t uuid[2];
-+			uint32_t flags;
-+		} new;
-+		struct {
-+			uint64_t oid[3];
-+			uint32_t index;
-+			uint32_t tmem_offset;
-+			uint32_t pfn_offset;
-+			uint32_t len;
-+			GUEST_HANDLE(void) gmfn; /* guest machine page frame */
-+		} gen;
-+	} u;
-+};
-+
- #else /* __ASSEMBLY__ */
- 
- /* In assembly code we cannot use C numeric constant suffixes. */
+> >   fallocate -l 10MiB -n k
+> >   dd count=3D10 if=3D/dev/urandom conv=3Dnotrunc iflag=3Dfullblock of=
+=3Dk
+> >   filefrag -v k # grep for an extent without unwritten || fail
+> =
+
+> right, that's what I see too in testing.
+> =
+
+> But would the coreutils install have done a preallocation of the destinat=
+ion file?
+> =
+
+> Otherwise this looks like a different bug...
+> =
+
+> > This particular issue has been discussed so far at:
+> > http://debbugs.gnu.org/cgi/bugreport.cgi?bug=3D8411
+> > Note there it was stated there that ext4 had this
+> > fixed as of 2.6.39-rc1, so maybe there is something lurking?
+> =
+
+> ext4 got a fix, but not xfs, I guess.  My poor brain can't remember, I th=
+ink I started looking into it, but it's clearly still broken.
+> =
+
+> Still, I don't know for sure what happened to Markus - did something prea=
+llocate, in his case?
+
+Unwritten extent mapping behaves in an unexpected way due to
+buffered writeback not occurring immediately. Extent conversion
+doesn't occur until the data is on disk, and for buffered IO you
+need an fdatasync to ensure that has occurred.
+
+That is: =
+
+
+$ xfs_io -f -c "resvsp 0 10m" -c "pwrite 0 5120" -c "bmap -vp" /mnt/test/foo
+wrote 5120/5120 bytes at offset 0
+5 KiB, 2 ops; 0.0000 sec (62.600 MiB/sec and 25641.0256 ops/sec)
+/mnt/test/foo:
+ EXT: FILE-OFFSET      BLOCK-RANGE      AG AG-OFFSET        TOTAL FLAGS
+   0: [0..20479]:      268984..289463    0 (268984..289463) 20480 10000
+
+Data has not been written yet, so it is still unwritten. The same
+test with a fsync shows:
+
+$ sudo xfs_io -f -c "resvsp 0 10m" -c "pwrite 0 5120" -c fsync -c "bmap -vp=
+" /mnt/test/foo
+wrote 5120/5120 bytes at offset 0
+5 KiB, 2 ops; 0.0000 sec (87.193 MiB/sec and 35714.2857 ops/sec)
+/mnt/test/foo:
+ EXT: FILE-OFFSET      BLOCK-RANGE      AG AG-OFFSET        TOTAL FLAGS
+   0: [0..15]:         268984..268999    0 (268984..268999)    16 00000
+   1: [16..20479]:     269000..289463    0 (269000..289463) 20464 10000
+
+Everything is fine.
+
+So this seems like an application error to me. If you are going to
+use fiemap to determine what ranges to copy, then you have to
+fdatasync the source file first to guarantee that preallocated
+extents have been converted to written state before mapping the
+file....
+
+Cheers,
+
+Dave.
+-- =
+
+Dave Chinner
+david@fromorbit.com
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
