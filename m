@@ -1,165 +1,74 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: Files full of zeros with coreutils-8.11 and xfs (FIEMAP
- related?)
-Date: Fri, 15 Apr 2011 10:09:40 +1000
-Message-ID: <20110415000940.GL21395@dastard>
-References: <20110414102608.GA1678@x4.trippels.de>
- <20110414120635.GB1678@x4.trippels.de>
- <20110414140222.GB1679@x4.trippels.de>
- <4DA70BD3.1070409@draigBrady.com>
- <4DA717B2.3020305@sandeen.net>
- <20110414225904.GK21395@dastard>
- <4DA7836A.5040604@draigBrady.com>
+From: Mark Lord <kernel@teksavvy.com>
+Subject: Re: [PATCH] ext4: register ext2 and ext3 alias after ext4
+Date: Thu, 14 Apr 2011 21:07:33 -0400
+Message-ID: <4DA79A55.4040507@teksavvy.com>
+References: <4DA48AF4.5080803@teksavvy.com>	<20110413004938.GE3682@thunk.org>	<4DA5ADA6.5060301@teksavvy.com>	<5A35771F-49B6-491E-B012-DBE68907E382@mit.edu> <ext4-masq@mdm.bga.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Eric Sandeen <sandeen@sandeen.net>, linux-ext4@vger.kernel.org,
-	coreutils@gnu.org, Markus Trippelsdorf <markus@trippelsdorf.de>,
-	xfs-oss <xfs@oss.sgi.com>
-To: =?iso-8859-1?Q?P=E1draig?= Brady <P@draigBrady.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Joel Becker <jlbec@evilplan.org>, Ted Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	John Stoffel <john@stoffel.org>,
+	Ric Wheeler <ricwheeler@gmail.com>
+To: Milton Miller <miltonm@bga.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:54903 "EHLO
-	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753820Ab1DOAJt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 Apr 2011 20:09:49 -0400
-Content-Disposition: inline
-In-Reply-To: <4DA7836A.5040604@draigBrady.com>
+Received: from ironport2-out.teksavvy.com ([206.248.154.183]:54374 "EHLO
+	ironport2-out.pppoe.ca" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752167Ab1DOBHf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Apr 2011 21:07:35 -0400
+In-Reply-To: <ext4-masq@mdm.bga.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Apr 15, 2011 at 12:29:46AM +0100, P=E1draig Brady wrote:
-> On 14/04/11 23:59, Dave Chinner wrote:
-> > On Thu, Apr 14, 2011 at 10:50:10AM -0500, Eric Sandeen wrote:
-> >> On 4/14/11 9:59 AM, P=E1draig Brady wrote:
-> >>> On 14/04/11 15:02, Markus Trippelsdorf wrote:
-> >>>>>> Hi P=E1draig,
-> >>>>>>
-> >>>>>> here you go:
-> >>>>>> + filefrag -v unwritten.withdata                              =
-                                                                       =
-               =20
-> >>>>>> Filesystem type is: ef53                                      =
-                                                                       =
-               =20
-> >>>>>> File size of unwritten.withdata is 5120 (2 blocks, blocksize 4=
-096)                                                                   =
-               =20
-> >>>>>>  ext logical physical expected length flags                   =
-                                                                       =
-               =20
-> >>>>>>    0       0   274432            2560 unwritten,eof           =
-                                                                       =
-               =20
-> >>>>>> unwritten.withdata: 1 extent found
-> >>>>>>
-> >>>>>> Please notice that this also happens with ext4 on the same ker=
-nel.=20
-> >>>>>> Btrfs is fine.
-> >>>>>
-> >>>> `filefrag -vs` fixes the issue on both xfs and ext4.
-> >>>
-> >>> So in summary, currently on (2.6.39-rc3), the following
-> >>> will (usually?) report a single unwritten extent,
-> >>> on both ext4 and xfs
-> >>>
-> >>>   fallocate -l 10MiB -n k
-> >>>   dd count=3D10 if=3D/dev/urandom conv=3Dnotrunc iflag=3Dfullbloc=
-k of=3Dk
-> >>>   filefrag -v k # grep for an extent without unwritten || fail
-> >>
-> >> right, that's what I see too in testing.
-> >>
-> >> But would the coreutils install have done a preallocation of the d=
-estination file?
-> >>
-> >> Otherwise this looks like a different bug...
-> >>
-> >>> This particular issue has been discussed so far at:
-> >>> http://debbugs.gnu.org/cgi/bugreport.cgi?bug=3D8411
-> >>> Note there it was stated there that ext4 had this
-> >>> fixed as of 2.6.39-rc1, so maybe there is something lurking?
-> >>
-> >> ext4 got a fix, but not xfs, I guess.  My poor brain can't remembe=
-r, I think I started looking into it, but it's clearly still broken.
-> >>
-> >> Still, I don't know for sure what happened to Markus - did somethi=
-ng preallocate, in his case?
-> >=20
-> > Unwritten extent mapping behaves in an unexpected way due to
-> > buffered writeback not occurring immediately. Extent conversion
-> > doesn't occur until the data is on disk, and for buffered IO you
-> > need an fdatasync to ensure that has occurred.
-> >=20
-> > That is:=20
-> >=20
-> > $ xfs_io -f -c "resvsp 0 10m" -c "pwrite 0 5120" -c "bmap -vp" /mnt=
-/test/foo
-> > wrote 5120/5120 bytes at offset 0
-> > 5 KiB, 2 ops; 0.0000 sec (62.600 MiB/sec and 25641.0256 ops/sec)
-> > /mnt/test/foo:
-> >  EXT: FILE-OFFSET      BLOCK-RANGE      AG AG-OFFSET        TOTAL F=
-LAGS
-> >    0: [0..20479]:      268984..289463    0 (268984..289463) 20480 1=
-0000
-> >=20
-> > Data has not been written yet, so it is still unwritten. The same
-> > test with a fsync shows:
-> >=20
-> > $ sudo xfs_io -f -c "resvsp 0 10m" -c "pwrite 0 5120" -c fsync -c "=
-bmap -vp" /mnt/test/foo
-> > wrote 5120/5120 bytes at offset 0
-> > 5 KiB, 2 ops; 0.0000 sec (87.193 MiB/sec and 35714.2857 ops/sec)
-> > /mnt/test/foo:
-> >  EXT: FILE-OFFSET      BLOCK-RANGE      AG AG-OFFSET        TOTAL F=
-LAGS
-> >    0: [0..15]:         268984..268999    0 (268984..268999)    16 0=
-0000
-> >    1: [16..20479]:     269000..289463    0 (269000..289463) 20464 1=
-0000
-> >=20
-> > Everything is fine.
-> >=20
-> > So this seems like an application error to me. If you are going to
-> > use fiemap to determine what ranges to copy, then you have to
-> > fdatasync the source file first to guarantee that preallocated
-> > extents have been converted to written state before mapping the
-> > file....
->=20
-> Well IMHO there should be a difference between
-> knowing where you are going to write, and actually writing to disk.
-> I.E. one shouldn't need to write the whole way to the device
-> before returning a valid fiemap.  If a particular file system
-> implementation needs to sync to return a valid fiemap,
-> then it should be implicit.
+On 11-04-14 11:41 AM, Milton Miller wrote:
+> The intent of CONFIG_EXT4_USE_FOR_EXT23 is to provide an alias so
+> that the ext4 module is sufficient even if user space calls out ext2.
+> However, it currently registers the alias names before registering ext4.
+> This means they show up first in /proc/filesystems and ext3 and ext4
+> formatted file systems show up in the mount list as ext4.
 
-No, this was explicitly laid out in the fiemap interface discussions
-- it's up to the applicaiton to decide if it needs to do a sync
-first. That's what the FIEMAP_FLAG_SYNC control flag is for.
-This forces the fiemap call to do a fsync _before_ getting the
-mapping. If you want to know the exact layout of the file is, then
-you must use this flag.
+Shouldn't that say:
 
-Even so, it is recognised that this is racy - any use of the block
-map has a time-of-read-to-time-of-use race condition that means you
-have to _verify_ the copy after it completes. FYI, that's what
-xfs_fsr does when copying based on extent maps - if the inode has
-changed in _any way_ during the copy, it aborts the copy of that
-file.
+  This means they show up first in /proc/filesystems, causing ext3 and
+  ext4 formatted file systems to show up in the mount list as ext2.
 
-i.e. using fiemap for copying is at best a *hint* about the regions
-that need copying, and it is in no way a guarantee that you'll get
-all the information you need to make accurate copy even if you do
-use the synchronous variant.
+Thanks.  Other than that, it all looks good here with ext2 and ext4
+file systems.  I didn't try an ext3 filesystem, but with it being between
+the other two, I expect it to also be fine.
 
-Cheers,
-
-Dave.
---=20
-Dave Chinner
-david@fromorbit.com
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Register the filesystem aliases after ext4 so they show as ext4 until the
+> filesystems is filtered.  This will avoid users or tools configuring a
+> kernel with just ext2 and wondering why there system broke.  Also register
+> in the same order as listed in fs/Makefile.
+> 
+> Signed-off-by: Milton Miller <miltonm@bga.com>
+> ---
+> 
+> Untested but simple code movement.  Mark will you please test?
+> 
+> Is it safe to initialize ext4_li_info and ext4_li_mtx after we register
+> the filesystem?  What keeps the init after the first call to mount
+> a filesystem?
+> 
+> I checked unregister_filesystem and it is safe when the file system
+> type is and is not registered.
+> 
+> Index: work.git/fs/ext4/super.c
+> ===================================================================
+> --- work.git.orig/fs/ext4/super.c	2011-04-14 09:26:43.250066794 -0500
+> +++ work.git/fs/ext4/super.c	2011-04-14 09:29:53.220061521 -0500
+> @@ -4898,11 +4898,11 @@ static int __init ext4_init_fs(void)
+>  	err = init_inodecache();
+>  	if (err)
+>  		goto out1;
+> -	register_as_ext2();
+> -	register_as_ext3();
+>  	err = register_filesystem(&ext4_fs_type);
+>  	if (err)
+>  		goto out;
+> +	register_as_ext3();
+> +	register_as_ext2();
+>  
+>  	ext4_li_info = NULL;
+>  	mutex_init(&ext4_li_mtx);
