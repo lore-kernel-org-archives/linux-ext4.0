@@ -1,42 +1,156 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: Files full of zeros with coreutils-8.11 and xfs (FIEMAP related?)
-Date: Fri, 15 Apr 2011 13:26:03 -0400
-Message-ID: <20110415172603.GA20086@infradead.org>
-References: <20110414120635.GB1678@x4.trippels.de>
- <20110414140222.GB1679@x4.trippels.de>
- <4DA70BD3.1070409@draigBrady.com>
- <4DA717B2.3020305@sandeen.net>
- <20110414225904.GK21395@dastard>
- <4DA7836A.5040604@draigBrady.com>
- <20110415000940.GL21395@dastard>
- <87sjtjq4ir.fsf@rho.meyering.net>
- <20110415171629.GA9088@infradead.org>
- <4DA87F43.5040807@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
+ to a deadlock
+Date: Fri, 15 Apr 2011 19:37:34 +0200
+Message-ID: <20110415173734.GD5432@quack.suse.cz>
+References: <4D946DAB.3010107@jp.fujitsu.com>
+ <4D9AEE28.4000003@jp.fujitsu.com>
+ <20110405225428.GD8531@quack.suse.cz>
+ <4D9BF57A.6030705@jp.fujitsu.com>
+ <20110406055708.GB23285@quack.suse.cz>
+ <4D9C18DF.90803@jp.fujitsu.com>
+ <20110406174617.GC28689@quack.suse.cz>
+ <4DA84A7B.3040403@jp.fujitsu.com>
+ <20110415171310.GB5432@quack.suse.cz>
+ <4DA87D92.4090404@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Jim Meyering <jim@meyering.net>,
-	Eric Sandeen <sandeen@sandeen.net>,
-	Dave Chinner <david@fromorbit.com>, xfs-oss <xfs@oss.sgi.com>,
-	coreutils@gnu.org, linux-ext4@vger.kernel.org,
-	Markus Trippelsdorf <markus@trippelsdorf.de>
-To: Eric Blake <eblake@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:47958 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754601Ab1DOR0H (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Apr 2011 13:26:07 -0400
+Cc: Jan Kara <jack@suse.cz>,
+	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
+	Ted Ts'o <tytso@mit.edu>,
+	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <4DA87F43.5040807@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <4DA87D92.4090404@redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Apr 15, 2011 at 11:24:19AM -0600, Eric Blake wrote:
-> Would it be worth borrowing from Solaris' semantics and adding SEEK_HOLE
-> and SEEK_DATA to lseek(2), as a higher level (less-detailed, but easier
-> to define and easier to use) interface for discovering the regions of a
-> file that only contain NUL bytes?
+On Fri 15-04-11 12:17:06, Eric Sandeen wrote:
+> On 4/15/11 12:13 PM, Jan Kara wrote:
+> >   Hello,
+> > 
+> > On Fri 15-04-11 22:39:07, Toshiyuki Okajima wrote:
+> >>>   For ext3 or ext4 without delayed allocation we block inside writepage()
+> >>> function. But as I wrote to Dave Chinner, ->page_mkwrite() should probably
+> >>> get modified to block while minor-faulting the page on frozen fs because
+> >>> when blocks are already allocated we may skip starting a transaction and so
+> >>> we could possibly modify the filesystem.
+> >> OK. I think ->page_mkwrite() should also block writing the minor-faulting pages.
+> >>
+> >> (minor-pagefault)
+> >> -> do_wp_page()
+> >>    -> page_mkwrite(= ext4_mkwrite())
+> >>       => BLOCK!
+> >>
+> >> (major-pagefault)
+> >> -> do_liner_fault()
+> >>    -> page_mkwrite(= ext4_mkwrite())
+> >>       => BLOCK!
+> >>
+> >>>
+> >>>>>> Mizuma-san's reproducer also writes the data which maps to the file (mmap).
+> >>>>>> The original problem happens after the fsfreeze operation is done.
+> >>>>>> I understand the normal write operation (not mmap) can be blocked while
+> >>>>>> fsfreezing. So, I guess we don't always block all the write operation
+> >>>>>> while fsfreezing.
+> >>>>>   Technically speaking, we block all the transaction starts which means we
+> >>>>> end up blocking all the writes from going to disk. But that does not mean
+> >>>>> we block all the writes from going to in-memory cache - as you properly
+> >>>>> note the mmap case is one of such exceptions.
+> >>>> Hm, I also think we can allow the writes to in-memory cache but we can't allow
+> >>>> the writes to disk while fsfreezing. I am considering that mmap path can
+> >>>> write to disk while fsfreezing because this deadlock problem happens after
+> >>>> fsfreeze operation is done...
+> >>>   I'm sorry I don't understand now - are you speaking about the case above
+> >>> when writepage() does not wait for filesystem being frozen or something
+> >>> else?
+> >> Sorry, I didn't understand around the page fault path.
+> >> So, I had read the kernel source code around it, then I maybe understand...
+> >>
+> >> I worry whether we can update the file data in mmap case while fsfreezing.
+> >> Of course, I understand that we can write to in-memory cache, and it is not a
+> >> problem. However, if we can write to disk while fsfreezing, it is a problem.
+> >> So, I summarize the cases whether we can write to disk or not.
+> >>
+> >> --------------------------------------------------------------------------
+> >> Cases (Whether we can write the data mmapped to the file on the disk
+> >> while fsfreezing)
+> >>
+> >> [1] One of the page which has been mmapped is not bound. And
+> >>  the page is not allocated yet. (major fault?)
+> >>
+> >>    (1) user dirtys a page
+> >>    (2) a page fault occurs (do_page_fault)
+> >>    (3) __do_falut is called.
+> >>    (4) ext4_page_mkwrite is called
+> >>    (5) ext4_write_begin is called
+> >>    (6) ext4_journal_start_sb       => We can STOP!
+> >>
+> >> [2] One of the page which has been mmapped is not bound. But
+> >>  the page is already allocated, and the buffer_heads of the page
+> >>  are not mapped (BH_Mapped).  (minor fault?)
+> >>
+> >>    (1) user dirtys a page
+> >>    (2) a page fault occurs (do_page_fault)
+> >>    (3) do_wp_page is called.
+> >>    (4) ext4_page_mkwrite is called
+> >>    (5) ext4_write_begin is called
+> >>    (6) ext4_journal_start_sb       => We can STOP!
+> >>
+> >> [3] One of the page which has been mmapped is not bound. But
+> >>  the page is already allocated, and the buffer_heads of the page
+> >>  are mapped (BH_Mapped).  (minor fault?)
+> >>
+> >>    (1) user dirtys a page
+> >>    (2) a page fault occurs (do_page_fault)
+> >>    (3) do_wp_page is called.
+> >>    (4) ext4_page_mkwrite is called
+> >>    * Cannot block the dirty page to be written because all bh is mapped.
+> >>    (5) user munmaps the page (munmap)
+> >>    (6) zap_pte_range dirtys the page (struct page) which is pte_dirtyed.
+> >>    (7) writeback thread writes the page (struct page) to disk
+> >>                                            => We cannot STOP!
+> >>
+> >> [4] One of the page which has been mmapped is bound. And
+> >>  the page is already allocated.
+> >>
+> >>    (1) user dirtys a page
+> >>    ( ) no page fault occurs
+> >>    (2) user munmaps the page (munmap)
+> >>    (3) zap_pte_range dirtys the page (struct page) which is pte_dirtyed.
+> >>    (4) writeback thread writes the page (struct page) to disk
+> >>                                            => We cannot STOP!
+> >> --------------------------------------------------------------------------
+> >>
+> >> So, we can block the cases [1], [2].
+> >> But I think we cannot block the cases [3], [4] now.
+> >> If fixing the page_mkwrite, we can also block the case [3].
+> >> But the case [4] is not blocked because no page fault occurs
+> >> when we dirty the mmapped page.
+> >>
+> >> Therefore, to repair this problem, we need to fix the cases [3], [4].
+> >> I think we must modify the writeback thread to fix the case [4].
+> >   The trick here is that when we write a page to disk, we write-protect
+> > the page (you seem to call this that "the page is bound", I'm not sure why).
+> > So we are guaranteed to receive a minor fault (case [3]) if user tries to
+> > modify a page after we finish writeback while freezing the filesystem.
+> > So principially all we need to do is just wait in ext4_page_mkwrite().
+> 
+> I've been kind of absent from this thread, sorry, but why would we wait in ext4_page_mkwrite(), rather than in mm/memory.c prior to any page_mkwrite call on any fs?
+> 
+> no frozen fs should be able to dirty & write pages via mmap, right?
+  I have not put that much thought to it but locking might be kind of
+tricky in the generic code. We have to be sure that freezing waits for
+the page which is just being faulted. That means we have to take page lock
+(now writepage() called during fs_freeze will wait for us), check whether
+fs is frozen. If yes, unlock page, do vfs_check_frozen(), and retry. This
+call sequence is much better suited for block_page_mkwrite() than for
+code in memory.c I think.
 
-Yes, I've already suggested that both in this thread and on IRC.
-
-For efficient copies it's the only usable interface.
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
