@@ -1,15 +1,14 @@
 From: Dan Magenheimer <dan.magenheimer@oracle.com>
-Subject: RE: [PATCH V8 4/8] mm/fs: add hooks to support cleancache
-Date: Fri, 15 Apr 2011 11:53:28 -0700 (PDT)
-Message-ID: <040a7fa3-14dd-4960-a296-cfdd061e015f@default>
-References: <83ef8b69-f041-43e6-a5a9-880ff3da26f2@default>
- <20110415081054.79a164d3.akpm@linux-foundation.org
- 871v135xvj.fsf@devron.myhome.or.jp>
+Subject: RE: [PATCH V8 1/8] mm/fs: cleancache documentation
+Date: Fri, 15 Apr 2011 12:37:11 -0700 (PDT)
+Message-ID: <67d72d8f-9809-4e43-9e90-417d4eb14db1@default>
+References: <20110414211601.GA27691@ca-server1.us.oracle.com
+ 87mxjr4a6o.fsf@devron.myhome.or.jp>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: quoted-printable
-Cc: Minchan Kim <minchan.kim@gmail.com>, Chris Mason <chris.mason@oracle.com>,
-        viro@zeniv.linux.org.uk, adilger.kernel@dilger.ca, tytso@mit.edu,
+Cc: Chris Mason <chris.mason@oracle.com>, viro@zeniv.linux.org.uk,
+        akpm@linux-foundation.org, adilger.kernel@dilger.ca, tytso@mit.edu,
         mfasheh@suse.com, jlbec@evilplan.org, matthew@wil.cx,
         linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -22,154 +21,48 @@ Cc: Minchan Kim <minchan.kim@gmail.com>, Chris Mason <chris.mason@oracle.com>,
         avi@redhat.com, Konrad Wilk
  <konrad.wilk@oracle.com>, mel@csn.ul.ie,
         yinghan@google.com, gthelen@google.com, torvalds@linux-foundation.org
-To: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-        Andrew Morton
- <akpm@linux-foundation.org>
+To: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
 Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <871v135xvj.fsf@devron.myhome.or.jp>
+In-Reply-To: <87mxjr4a6o.fsf@devron.myhome.or.jp>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-> From: OGAWA Hirofumi [mailto:hirofumi@mail.parknet.co.jp]
->=20
-> Andrew Morton <akpm@linux-foundation.org> writes:
->=20
-> >> > Before I suggested a thing about cleancache_flush_page,
-> >> > cleancache_flush_inode.
-> >> >
-> >> > what's the meaning of flush's semantic?
-> >> > I thought it means invalidation.
-> >> > AFAIC, how about change flush with invalidate?
-> >>
-> >> I'm not sure the words "flush" and "invalidate" are defined
-> >> precisely or used consistently everywhere in computer
-> >> science, but I think that "invalidate" is to destroy
-> >> a "pointer" to some data, but not necessarily destroy the
-> >> data itself.   And "flush" means to actually remove
-> >> the data.  So one would "invalidate a mapping" but one
-> >> would "flush a cache".
-> >>
-> >> Since cleancache_flush_page and cleancache_flush_inode
-> >> semantically remove data from cleancache, I think flush
-> >> is a better name than invalidate.
-> >>
-> >> Does that make sense?
-> >
-> > nope ;)
-> >
-> > Kernel code freely uses "flush" to refer to both invalidation and to
-> > writeback, sometimes in confusing ways.  In this case,
-> > cleancache_flush_inode and cleancache_flush_page rather sound like
-> they
-> > might write those things to backing store.
->=20
-> I'd like to mention about *_{get,put}_page too. In linux get/put is not
-> meaning read/write. There is {get,put}_page those are refcount stuff
-> (Yeah, and I felt those methods does refcount by quick read. But it
-> seems to be false. There is no xen codes, so I don't know actually
-> though.).
->=20
-> And I agree, I also think the needing thing is consistency on the linux
-> codes (term).
->=20
-> Thanks.
-> --
-> OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Hi Hirofumi-san --
 
-Hmmm, yes, that's a point of confusion also.  No, cleancache put/get
-do not have any relationship with reference counting.
+> Another question: why can't this enable/disable per sb, e.g. via mount
+> options? (I have the interest the cache stuff like this by SSD on
+> physical systems like dragonfly's swapcache.)
 
-Andrew, I wonder if you would be so kind as to read the following
-and make a "ruling".  If you determine a preferable set of names,
-I will abide by your decision and repost (if necessary).
+This would be useful and could be added later if individual
+filesystems choose to add the mount functionality.  My goal with
+this patchset is to enable only minimal functionality so
+that other kernel developers can build on it.
 
-The problem is this: The English language has a limited number
-of words that can be used to represent data motion and mapping
-and most/all of them are already used in the kernel, often,
-to quote Andrew, "in confusing ways."  Complicating this, I
-think the semantics of the cleancache operations are different
-from the semantics of any other kernel operation... intentionally
-so, because the value of cleancache is a direct result of those
-differing semantics.  And the cleancache semantics
-are fairly complex (again intentionally) so a single function
-name can't possibly describe the semantics.
+> Well, anyway, I guess force enabling this for mostly unused sb can just
+> add cache-write overhead and call for unpleasing reclaim to backend
+> (because of limited space of backend) like updatedb.
 
-The cleancache operations are:
-- put (page)
-- get (page)
-- flush page
-- flush inode
-- init fs
-- flush fs
+If the sb is mostly unused, there should be few puts.  But you
+are correct that if the backend has only very limited space,
+cleancache adds cost and has little value.  On these systems,
+cleancache should probably be disabled.  However, the cost
+is very small so leaving it enabled may not even show a
+measureable performance impact.
 
-I think these names are reasonable representations of the
-semantics of the operations performed... but I'm not a kernel
-expert so there is certainly room for disagreement.  Though I
-absolutely recognize the importance of a "name", I am primarily
-interested in merging the semantics of the operations and
-would happily accept any name that kernel developers could
-agree on.  However, I fear that there will be NO name that
-will satisfy all, so would prefer to keep the existing names.
-If some renaming is eventually agreed upon, this could be done
-post-merge.
+> And already there is in FAQ though, I also have interest about async
+> interface because of SDD backend (I'm not sure for now though). Is
+> there any plan like SSD backend?
 
-Here's a brief description of the semantics:
+Yes, I think an SSD backend is very interesting, especially
+if the SSD is "very near" to the processor so that it can
+be used as a RAM extension rather than as an I/O device.
 
-The cleancache operation currently known as "put" has the
-following semantics:  If *possible*, please take the data
-contained in the pageframe referred to by this struct page
-into cleancache and associate it with the filesystem-determined
-"handle" derived from the struct page.
+The existing cleancache hooks will work for this and I am
+working on a cleancache backend called RAMster that will
+be a good foundation to access other asynchronous devices.
+See: http://marc.info/?l=3Dlinux-mm&m=3D130013567810410&w=3D2=20
 
-The cleancache operation currently known as "get" has the
-following semantics:  Derive the filesystem-determined handle
-from this struct page.  If cleancache contains a page matching
-that handle, recreate the page of data from cleancache and
-place the results in the pageframe referred to by the
-struct page.  Then delete in cleancache any record of the
-handle and any data associated with it, so that a
-subsequent "get" will no longer find a match for the handle;
-any space used for the data can also be freed.
-
-(Note that "take the data" and "recreate the page of data" are
-similar in semantics to "copy to" and "copy from", but since
-the cleancache operation may perform an "inflight" transformation
-on the data, and "copy" usually means a byte-for-byte replication,
-the word "copy" is also misleading.)
-
-The cleancache operation currently known as "flush" has the
-following semantics:  Derive the filesystem-determined handle
-from this struct page and struct mapping.  If cleancache
-contains a page matching that handle, delete in cleancache any
-record of the handle and any data associated with it, so that a
-subsequent "get" will no longer find a match for the handle;
-any space used for the data can also be freed
-
-The cleancache operation currently known as "flush inode" has
-the following semantics: Derive the filesystem-determined filekey
-from this struct mapping.  If cleancache contains ANY handles
-matching that filekey, delete in cleancache any record of
-any matching handle and any data associated with those handles;
-any space used for the data can also be freed.
-
-The cleancache operation currently known as "init fs" has
-the following semantics: Create a unique poolid to refer
-to this filesystem and save it in the superblock's
-cleancache_poolid field.
-
-The cleancache operation currently known as "flush fs" has
-the following semantics: Get the cleancache_poolid field
-from this superblock.  If cleancache contains ANY handles
-associated with that poolid, delete in cleancache any
-record of any matching handles and any data associated with
-those handles; any space used for the data can also be freed.
-Also, set the superblock's cleancache_poolid to be invalid
-and, in cleancache, recycle the poolid so a subsequent init_fs
-operation can reuse it.
-
-That's all!
-
-Thanks,
+Thanks for your feedback!
 Dan
 
 --
