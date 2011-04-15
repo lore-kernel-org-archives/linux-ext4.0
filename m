@@ -1,45 +1,56 @@
-From: Ian Campbell <Ian.Campbell@citrix.com>
-Subject: Re: [PATCH] xen: cleancache shim to Xen Transcendent Memory
-Date: Fri, 15 Apr 2011 23:02:15 +0100
-Message-ID: <1302904935.22658.9.camel@localhost.localdomain>
-References: <20110414212002.GA27846@ca-server1.us.oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: <chris.mason@oracle.com>, <viro@zeniv.linux.org.uk>,
-	<akpm@linux-foundation.org>, <adilger.kernel@dilger.ca>, <tytso@mit.edu>,
-	<mfasheh@suse.com>, <jlbec@evilplan.org>, <matthew@wil.cx>,
-	<linux-btrfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-	<linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
-	<ocfs2-devel@oss.oracle.com>, <linux-mm@kvack.org>, <hch@infradead.org>,
-	<ngupta@vflare.org>, <jeremy@goop.org>, <JBeulich@novell.com>,
-	<kurt.hackel@oracle.com>, <npiggin@kernel.dk>, <dave.mccracken@oracle.com>,
-	<riel@redhat.com>, <avi@redhat.com>, <konrad.wilk@oracle.com>,
-	<mel@csn.ul.ie>, <yinghan@google.com>, <gthelen@google.com>,
-	<torvalds@linux-foundation.org>
-To: Dan Magenheimer <dan.magenheimer@oracle.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20110414212002.GA27846@ca-server1.us.oracle.com>
-Sender: owner-linux-mm@kvack.org
+From: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+Subject: Re: Files full of zeros with coreutils-8.11 and xfs (FIEMAP related?)
+Date: Fri, 15 Apr 2011 16:28:37 -0600
+Message-ID: <DD59E27A-FD96-4983-A274-B76CCE99AE7A@dilger.ca>
+References: <20110414120635.GB1678@x4.trippels.de>
+	<20110414140222.GB1679@x4.trippels.de>
+	<4DA70BD3.1070409@draigBrady.com>
+	<4DA717B2.3020305@sandeen.net> <20110414225904.GK21395@dastard>
+	<4DA7836A.5040604@draigBrady.com> <20110415000940.GL21395@dastard>
+	<87sjtjq4ir.fsf@rho.meyering.net>
+	<20110415171629.GA9088@infradead.org> <4DA87F43.5040807@redhat.com>
+	<20110415172603.GA20086@infradead.org>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: quoted-printable
+Cc: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, Eric Sandeen <sandeen-+82itfer+wXR7s880joybQ@public.gmane.org>,
+	xfs-oss <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>, coreutils-mXXj517/zsQ@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Markus Trippelsdorf <markus-xp2qqqlHh3xzoYq+O6RWwA@public.gmane.org>
+To: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Return-path: <coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org>
+In-Reply-To: <20110415172603.GA20086-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+List-Unsubscribe: <http://lists.gnu.org/mailman/options/coreutils>,
+	<mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=unsubscribe>
+List-Archive: </archive/html/coreutils>
+List-Post: <mailto:coreutils-mXXj517/zsQ@public.gmane.org>
+List-Help: <mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=help>
+List-Subscribe: <http://lists.gnu.org/mailman/listinfo/coreutils>,
+	<mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=subscribe>
+Errors-To: coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org
+Sender: coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 2011-04-14 at 14:20 -0700, Dan Magenheimer wrote:
-> [PATCH] xen: cleancache shim to Xen Transcendent Memory
-> 
-> This patch provides a shim between the kernel-internal cleancache
-> API (see Documentation/mm/cleancache.txt) and the Xen Transcendent
-> Memory ABI (see http://oss.oracle.com/projects/tmem).
+On 2011-04-15, at 11:26 AM, Christoph Hellwig wrote:
+> On Fri, Apr 15, 2011 at 11:24:19AM -0600, Eric Blake wrote:
+>> Would it be worth borrowing from Solaris' semantics and adding =
+SEEK_HOLE
+>> and SEEK_DATA to lseek(2), as a higher level (less-detailed, but =
+easier
+>> to define and easier to use) interface for discovering the regions of =
+a
+>> file that only contain NUL bytes?
+>=20
+> Yes, I've already suggested that both in this thread and on IRC.
+>=20
+> For efficient copies it's the only usable interface.
 
-There's no need to build this into a kernel which doesn't have
-cleancache (or one of the other frontends), is there? I think there
-should be a Kconfig option (even if its not a user visible one) with the
-appropriate depends/selects.
+I suspect that these bugs would have still existed whether the interface =
+is SEEK_HOLE/SEEK_DATA, or FIEMAP.  The main problem is that the =
+delalloc pages were not accounted for correctly during layout traversal.
 
-Ian.
+For ext4 I think it is sufficient to add another case to =
+ext4_ext_fiemap_cb() to check the pagecache for unmapped pages when it =
+finds an uninitialized extent on disk.  This will be very similar to the =
+fix for finding holes in the on-disk mapping.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Cheers, Andreas
