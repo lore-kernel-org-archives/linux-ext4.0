@@ -1,203 +1,146 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH RFC 1/3] ext4:Add a function merging extent right and
- left.
-Date: Fri, 15 Apr 2011 09:39:33 -0700
-Message-ID: <1302885573.2901.13.camel@mingming-laptop>
-References: <1302759651-21222-1-git-send-email-xiaoqiangnk@gmail.com>
-	 <1302759651-21222-2-git-send-email-xiaoqiangnk@gmail.com>
-	 <1302807787.3408.25.camel@mingming-laptop>
-	 <BANLkTindru2SnxLLFwb7bMxnkuhwP9MH2g@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
+ to a deadlock
+Date: Fri, 15 Apr 2011 19:13:10 +0200
+Message-ID: <20110415171310.GB5432@quack.suse.cz>
+References: <20110328170628.ffe314fb.toshi.okajima@jp.fujitsu.com>
+ <20110330141205.GC22349@quack.suse.cz>
+ <4D946DAB.3010107@jp.fujitsu.com>
+ <4D9AEE28.4000003@jp.fujitsu.com>
+ <20110405225428.GD8531@quack.suse.cz>
+ <4D9BF57A.6030705@jp.fujitsu.com>
+ <20110406055708.GB23285@quack.suse.cz>
+ <4D9C18DF.90803@jp.fujitsu.com>
+ <20110406174617.GC28689@quack.suse.cz>
+ <4DA84A7B.3040403@jp.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, achender@linux.vnet.ibm.com
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Ted Ts'o <tytso@mit.edu>,
+	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	sandeen@redhat.com
+To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e7.ny.us.ibm.com ([32.97.182.137]:51959 "EHLO e7.ny.us.ibm.com"
+Received: from cantor2.suse.de ([195.135.220.15]:40390 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752947Ab1DOQjm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 15 Apr 2011 12:39:42 -0400
-Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
-	by e7.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p3FGHeUk014755
-	for <linux-ext4@vger.kernel.org>; Fri, 15 Apr 2011 12:17:40 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p3FGdbQL2654236
-	for <linux-ext4@vger.kernel.org>; Fri, 15 Apr 2011 12:39:37 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p3FGdaBM007643
-	for <linux-ext4@vger.kernel.org>; Fri, 15 Apr 2011 13:39:37 -0300
-In-Reply-To: <BANLkTindru2SnxLLFwb7bMxnkuhwP9MH2g@mail.gmail.com>
+	id S1752005Ab1DORNN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 15 Apr 2011 13:13:13 -0400
+Content-Disposition: inline
+In-Reply-To: <4DA84A7B.3040403@jp.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2011-04-15 at 09:12 +0800, Yongqiang Yang wrote:
-> On Fri, Apr 15, 2011 at 3:03 AM, Mingming Cao <cmm@us.ibm.com> wrote:
-> > On Wed, 2011-04-13 at 22:40 -0700, Yongqiang Yang wrote:
-> >> 1] Rename ext4_ext_try_to_merge() to ext4_ext_try_to_merge_right().
-> >>
-> >> 2] Add a new function ext4_ext_try_to_merge() which tries to merge
-> >>    an extent both left and right.
-> >>
-> >> 3] Use the new function in ext4_ext_convert_unwritten_endio() and
-> >>    ext4_ext_insert_extent().
-> >>
-> >> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-> >> ---
-> >>  fs/ext4/extents.c |   65 ++++++++++++++++++++++++++++------------------------
-> >>  1 files changed, 35 insertions(+), 30 deletions(-)
-> >>
-> >> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> >> index dd2cb50..11f30d2 100644
-> >> --- a/fs/ext4/extents.c
-> >> +++ b/fs/ext4/extents.c
-> >> @@ -1563,7 +1563,7 @@ ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
-> >>   * Returns 0 if the extents (ex and ex+1) were _not_ merged and returns
-> >>   * 1 if they got merged.
-> >>   */
-> >> -static int ext4_ext_try_to_merge(struct inode *inode,
-> >> +static int ext4_ext_try_to_merge_right(struct inode *inode,
-> >>                                struct ext4_ext_path *path,
-> >>                                struct ext4_extent *ex)
-> >>  {
-> >> @@ -1603,6 +1603,31 @@ static int ext4_ext_try_to_merge(struct inode *inode,
-> >>  }
-> >>
-> >>  /*
-> >> + * This function tries to merge the @ex extent to neighbours in the tree.
-> >> + * return 1 if merge left else 0.
-> >> + */
-> >> +static int ext4_ext_try_to_merge(struct inode *inode,
-> >> +                               struct ext4_ext_path *path,
-> >> +                               struct ext4_extent *ex) {
-> >> +     struct ext4_extent_header *eh;
-> >> +     unsigned int depth;
-> >> +     int merge_done = 0;
-> >> +     int ret = 0;
-> >> +
-> >> +     depth = ext_depth(inode);
-> >> +     BUG_ON(path[depth].p_hdr == NULL);
-> >> +     eh = path[depth].p_hdr;
-> >> +
-> >> +     if (ex > EXT_FIRST_EXTENT(eh))
-> >> +             merge_done = ext4_ext_try_to_merge_right(inode, path, ex - 1);
-> >> +
-> >> +     if (!merge_done)
-> >> +             ret = ext4_ext_try_to_merge_right(inode, path, ex);
-> >> +
-> >
-> > Is there any reason not to merge right after merge left? The old code
-> > does both, I think.
-> What does merge left do?  Actually it does as merge right, it merge
-> ex-1 to right until no more merges can be done.  So if merge to right
-> happens then, ex,ex+1 has been tried to merge also.
-> 
+  Hello,
 
-Yep, you are right, the merge is always merge toward right. 
-
+On Fri 15-04-11 22:39:07, Toshiyuki Okajima wrote:
+> >   For ext3 or ext4 without delayed allocation we block inside writepage()
+> >function. But as I wrote to Dave Chinner, ->page_mkwrite() should probably
+> >get modified to block while minor-faulting the page on frozen fs because
+> >when blocks are already allocated we may skip starting a transaction and so
+> >we could possibly modify the filesystem.
+> OK. I think ->page_mkwrite() should also block writing the minor-faulting pages.
+> 
+> (minor-pagefault)
+> -> do_wp_page()
+>    -> page_mkwrite(= ext4_mkwrite())
+>       => BLOCK!
+> 
+> (major-pagefault)
+> -> do_liner_fault()
+>    -> page_mkwrite(= ext4_mkwrite())
+>       => BLOCK!
+> 
 > >
-> >> +     return ret;
-> >> +}
-> >> +
-> >> +/*
-> >>   * check if a portion of the "newext" extent overlaps with an
-> >>   * existing extent.
-> >>   *
-> >> @@ -3039,6 +3064,7 @@ fix_extent_len:
-> >>       ext4_ext_dirty(handle, inode, path + depth);
-> >>       return err;
-> >>  }
-> >> +
-> >>  static int ext4_convert_unwritten_extents_endio(handle_t *handle,
-> >>                                             struct inode *inode,
-> >>                                             struct ext4_ext_path *path)
-> >> @@ -3047,46 +3073,25 @@ static int ext4_convert_unwritten_extents_endio(handle_t *handle,
-> >>       struct ext4_extent_header *eh;
-> >>       int depth;
-> >>       int err = 0;
-> >> -     int ret = 0;
-> >>
-> >>       depth = ext_depth(inode);
-> >>       eh = path[depth].p_hdr;
-> >>       ex = path[depth].p_ext;
-> >>
-> >> +     ext_debug("ext4_convert_unwritten_extents_endio: inode %lu, logical"
-> >> +             "block %llu, max_blocks %u\n", inode->i_ino,
-> >> +             (unsigned long long)le32_to_cpu(ex->ee_block),
-> >> +             ext4_ext_get_actual_len(ex));
-> >> +
-> >>       err = ext4_ext_get_access(handle, inode, path + depth);
-> >>       if (err)
-> >>               goto out;
-> >>       /* first mark the extent as initialized */
-> >>       ext4_ext_mark_initialized(ex);
-> >>
-> >> -     /*
-> >> -      * We have to see if it can be merged with the extent
-> >> -      * on the left.
-> >> -      */
-> >> -     if (ex > EXT_FIRST_EXTENT(eh)) {
-> >> -             /*
-> >> -              * To merge left, pass "ex - 1" to try_to_merge(),
-> >> -              * since it merges towards right _only_.
-> >> -              */
-> >> -             ret = ext4_ext_try_to_merge(inode, path, ex - 1);
-> >> -             if (ret) {
-> >> -                     err = ext4_ext_correct_indexes(handle, inode, path);
-> >> -                     if (err)
-> >> -                             goto out;
-> >> -                     depth = ext_depth(inode);
-> >> -                     ex--;
-> >> -             }
-> >> -     }
-> >> -     /*
-> >> -      * Try to Merge towards right.
-> >> -      */
-> >> -     ret = ext4_ext_try_to_merge(inode, path, ex);
-> >> -     if (ret) {
-> >> -             err = ext4_ext_correct_indexes(handle, inode, path);
-> >> -             if (err)
-> >> -                     goto out;
-> >> -             depth = ext_depth(inode);
-> >> -     }
-> >> +     /* correct indexes is nt needed becasue borders are not changed */
-> >> +     ext4_ext_try_to_merge(inode, path, ex);
-> >> +
-> >
-> > Ah, so you discovered an issue -- currently ext4 can't merge across the
-> > index block borders. that's a pity. This might need to fix up,
-> Yes, currently borders are changed only in one case that storing an
-> extent to an empty leaf.
+> >>>>Mizuma-san's reproducer also writes the data which maps to the file (mmap).
+> >>>>The original problem happens after the fsfreeze operation is done.
+> >>>>I understand the normal write operation (not mmap) can be blocked while
+> >>>>fsfreezing. So, I guess we don't always block all the write operation
+> >>>>while fsfreezing.
+> >>>   Technically speaking, we block all the transaction starts which means we
+> >>>end up blocking all the writes from going to disk. But that does not mean
+> >>>we block all the writes from going to in-memory cache - as you properly
+> >>>note the mmap case is one of such exceptions.
+> >>Hm, I also think we can allow the writes to in-memory cache but we can't allow
+> >>the writes to disk while fsfreezing. I am considering that mmap path can
+> >>write to disk while fsfreezing because this deadlock problem happens after
+> >>fsfreeze operation is done...
+> >   I'm sorry I don't understand now - are you speaking about the case above
+> >when writepage() does not wait for filesystem being frozen or something
+> >else?
+> Sorry, I didn't understand around the page fault path.
+> So, I had read the kernel source code around it, then I maybe understand...
 > 
-> I think the patch which enable merging across index block should be
-> independent on these patches.
+> I worry whether we can update the file data in mmap case while fsfreezing.
+> Of course, I understand that we can write to in-memory cache, and it is not a
+> problem. However, if we can write to disk while fsfreezing, it is a problem.
+> So, I summarize the cases whether we can write to disk or not.
 > 
+> --------------------------------------------------------------------------
+> Cases (Whether we can write the data mmapped to the file on the disk
+> while fsfreezing)
+> 
+> [1] One of the page which has been mmapped is not bound. And
+>  the page is not allocated yet. (major fault?)
+> 
+>    (1) user dirtys a page
+>    (2) a page fault occurs (do_page_fault)
+>    (3) __do_falut is called.
+>    (4) ext4_page_mkwrite is called
+>    (5) ext4_write_begin is called
+>    (6) ext4_journal_start_sb       => We can STOP!
+> 
+> [2] One of the page which has been mmapped is not bound. But
+>  the page is already allocated, and the buffer_heads of the page
+>  are not mapped (BH_Mapped).  (minor fault?)
+> 
+>    (1) user dirtys a page
+>    (2) a page fault occurs (do_page_fault)
+>    (3) do_wp_page is called.
+>    (4) ext4_page_mkwrite is called
+>    (5) ext4_write_begin is called
+>    (6) ext4_journal_start_sb       => We can STOP!
+> 
+> [3] One of the page which has been mmapped is not bound. But
+>  the page is already allocated, and the buffer_heads of the page
+>  are mapped (BH_Mapped).  (minor fault?)
+> 
+>    (1) user dirtys a page
+>    (2) a page fault occurs (do_page_fault)
+>    (3) do_wp_page is called.
+>    (4) ext4_page_mkwrite is called
+>    * Cannot block the dirty page to be written because all bh is mapped.
+>    (5) user munmaps the page (munmap)
+>    (6) zap_pte_range dirtys the page (struct page) which is pte_dirtyed.
+>    (7) writeback thread writes the page (struct page) to disk
+>                                            => We cannot STOP!
+> 
+> [4] One of the page which has been mmapped is bound. And
+>  the page is already allocated.
+> 
+>    (1) user dirtys a page
+>    ( ) no page fault occurs
+>    (2) user munmaps the page (munmap)
+>    (3) zap_pte_range dirtys the page (struct page) which is pte_dirtyed.
+>    (4) writeback thread writes the page (struct page) to disk
+>                                            => We cannot STOP!
+> --------------------------------------------------------------------------
+> 
+> So, we can block the cases [1], [2].
+> But I think we cannot block the cases [3], [4] now.
+> If fixing the page_mkwrite, we can also block the case [3].
+> But the case [4] is not blocked because no page fault occurs
+> when we dirty the mmapped page.
+> 
+> Therefore, to repair this problem, we need to fix the cases [3], [4].
+> I think we must modify the writeback thread to fix the case [4].
+  The trick here is that when we write a page to disk, we write-protect
+the page (you seem to call this that "the page is bound", I'm not sure why).
+So we are guaranteed to receive a minor fault (case [3]) if user tries to
+modify a page after we finish writeback while freezing the filesystem.
+So principially all we need to do is just wait in ext4_page_mkwrite().
 
-Sure.
-
-> 
-> > especially with split is going to be heavily used in punch hole,
-> > snapshots, direct IO handling holes.
-> What does direct IO here refer to?  It seems I am missing something.
-> 
-> These patches involves ext4_ext_convrt_to_initialized() in buffer
-> write case, and split_unwritten_extents() and
-> convert_to_initialized_endio() in direct IO case.
-> 
-
-The plit_unwritten_extents() and convert_to_initialized_endio() were
-added to support direct IO on holes/fallocated space. That's what I am
-referring to above.
-
-> >
-> >
-> >>       /* Mark modified extent as dirty */
-> >>       err = ext4_ext_dirty(handle, inode, path + depth);
-> >>  out:
-> >
-> >
-> >
-> 
-> 
-> 
-
-
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
