@@ -1,142 +1,81 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
- to a deadlock
-Date: Fri, 15 Apr 2011 12:17:06 -0500
-Message-ID: <4DA87D92.4090404@redhat.com>
-References: <20110328170628.ffe314fb.toshi.okajima@jp.fujitsu.com> <20110330141205.GC22349@quack.suse.cz> <4D946DAB.3010107@jp.fujitsu.com> <4D9AEE28.4000003@jp.fujitsu.com> <20110405225428.GD8531@quack.suse.cz> <4D9BF57A.6030705@jp.fujitsu.com> <20110406055708.GB23285@quack.suse.cz> <4D9C18DF.90803@jp.fujitsu.com> <20110406174617.GC28689@quack.suse.cz> <4DA84A7B.3040403@jp.fujitsu.com> <20110415171310.GB5432@quack.suse.cz>
+From: Eric Blake <eblake-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: Files full of zeros with coreutils-8.11 and xfs (FIEMAP related?)
+Date: Fri, 15 Apr 2011 11:24:19 -0600
+Message-ID: <4DA87F43.5040807@redhat.com>
+References: <20110414102608.GA1678@x4.trippels.de>	<20110414120635.GB1678@x4.trippels.de>	<20110414140222.GB1679@x4.trippels.de>	<4DA70BD3.1070409@draigBrady.com>
+	<4DA717B2.3020305@sandeen.net>	<20110414225904.GK21395@dastard>
+	<4DA7836A.5040604@draigBrady.com>	<20110415000940.GL21395@dastard>
+	<87sjtjq4ir.fsf@rho.meyering.net>
+	<20110415171629.GA9088@infradead.org>
 Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha256;
+	protocol="application/pgp-signature";
+	boundary="------------enigD99D3507C9612B7769610428"
+Cc: Eric Sandeen <sandeen-+82itfer+wXR7s880joybQ@public.gmane.org>, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+	xfs-oss <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>, coreutils-mXXj517/zsQ@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Markus Trippelsdorf <markus-xp2qqqlHh3xzoYq+O6RWwA@public.gmane.org>
+To: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Return-path: <coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org>
+In-Reply-To: <20110415171629.GA9088-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+List-Unsubscribe: <http://lists.gnu.org/mailman/options/coreutils>,
+	<mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=unsubscribe>
+List-Archive: </archive/html/coreutils>
+List-Post: <mailto:coreutils-mXXj517/zsQ@public.gmane.org>
+List-Help: <mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=help>
+List-Subscribe: <http://lists.gnu.org/mailman/listinfo/coreutils>,
+	<mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=subscribe>
+Errors-To: coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org
+Sender: coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
+
+This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
+--------------enigD99D3507C9612B7769610428
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
-	"Ted Ts'o" <tytso@mit.edu>,
-	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28695 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753998Ab1DORRR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 15 Apr 2011 13:17:17 -0400
-In-Reply-To: <20110415171310.GB5432@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Transfer-Encoding: quoted-printable
 
-On 4/15/11 12:13 PM, Jan Kara wrote:
->   Hello,
-> 
-> On Fri 15-04-11 22:39:07, Toshiyuki Okajima wrote:
->>>   For ext3 or ext4 without delayed allocation we block inside writepage()
->>> function. But as I wrote to Dave Chinner, ->page_mkwrite() should probably
->>> get modified to block while minor-faulting the page on frozen fs because
->>> when blocks are already allocated we may skip starting a transaction and so
->>> we could possibly modify the filesystem.
->> OK. I think ->page_mkwrite() should also block writing the minor-faulting pages.
->>
->> (minor-pagefault)
->> -> do_wp_page()
->>    -> page_mkwrite(= ext4_mkwrite())
->>       => BLOCK!
->>
->> (major-pagefault)
->> -> do_liner_fault()
->>    -> page_mkwrite(= ext4_mkwrite())
->>       => BLOCK!
->>
->>>
->>>>>> Mizuma-san's reproducer also writes the data which maps to the file (mmap).
->>>>>> The original problem happens after the fsfreeze operation is done.
->>>>>> I understand the normal write operation (not mmap) can be blocked while
->>>>>> fsfreezing. So, I guess we don't always block all the write operation
->>>>>> while fsfreezing.
->>>>>   Technically speaking, we block all the transaction starts which means we
->>>>> end up blocking all the writes from going to disk. But that does not mean
->>>>> we block all the writes from going to in-memory cache - as you properly
->>>>> note the mmap case is one of such exceptions.
->>>> Hm, I also think we can allow the writes to in-memory cache but we can't allow
->>>> the writes to disk while fsfreezing. I am considering that mmap path can
->>>> write to disk while fsfreezing because this deadlock problem happens after
->>>> fsfreeze operation is done...
->>>   I'm sorry I don't understand now - are you speaking about the case above
->>> when writepage() does not wait for filesystem being frozen or something
->>> else?
->> Sorry, I didn't understand around the page fault path.
->> So, I had read the kernel source code around it, then I maybe understand...
->>
->> I worry whether we can update the file data in mmap case while fsfreezing.
->> Of course, I understand that we can write to in-memory cache, and it is not a
->> problem. However, if we can write to disk while fsfreezing, it is a problem.
->> So, I summarize the cases whether we can write to disk or not.
->>
->> --------------------------------------------------------------------------
->> Cases (Whether we can write the data mmapped to the file on the disk
->> while fsfreezing)
->>
->> [1] One of the page which has been mmapped is not bound. And
->>  the page is not allocated yet. (major fault?)
->>
->>    (1) user dirtys a page
->>    (2) a page fault occurs (do_page_fault)
->>    (3) __do_falut is called.
->>    (4) ext4_page_mkwrite is called
->>    (5) ext4_write_begin is called
->>    (6) ext4_journal_start_sb       => We can STOP!
->>
->> [2] One of the page which has been mmapped is not bound. But
->>  the page is already allocated, and the buffer_heads of the page
->>  are not mapped (BH_Mapped).  (minor fault?)
->>
->>    (1) user dirtys a page
->>    (2) a page fault occurs (do_page_fault)
->>    (3) do_wp_page is called.
->>    (4) ext4_page_mkwrite is called
->>    (5) ext4_write_begin is called
->>    (6) ext4_journal_start_sb       => We can STOP!
->>
->> [3] One of the page which has been mmapped is not bound. But
->>  the page is already allocated, and the buffer_heads of the page
->>  are mapped (BH_Mapped).  (minor fault?)
->>
->>    (1) user dirtys a page
->>    (2) a page fault occurs (do_page_fault)
->>    (3) do_wp_page is called.
->>    (4) ext4_page_mkwrite is called
->>    * Cannot block the dirty page to be written because all bh is mapped.
->>    (5) user munmaps the page (munmap)
->>    (6) zap_pte_range dirtys the page (struct page) which is pte_dirtyed.
->>    (7) writeback thread writes the page (struct page) to disk
->>                                            => We cannot STOP!
->>
->> [4] One of the page which has been mmapped is bound. And
->>  the page is already allocated.
->>
->>    (1) user dirtys a page
->>    ( ) no page fault occurs
->>    (2) user munmaps the page (munmap)
->>    (3) zap_pte_range dirtys the page (struct page) which is pte_dirtyed.
->>    (4) writeback thread writes the page (struct page) to disk
->>                                            => We cannot STOP!
->> --------------------------------------------------------------------------
->>
->> So, we can block the cases [1], [2].
->> But I think we cannot block the cases [3], [4] now.
->> If fixing the page_mkwrite, we can also block the case [3].
->> But the case [4] is not blocked because no page fault occurs
->> when we dirty the mmapped page.
->>
->> Therefore, to repair this problem, we need to fix the cases [3], [4].
->> I think we must modify the writeback thread to fix the case [4].
->   The trick here is that when we write a page to disk, we write-protect
-> the page (you seem to call this that "the page is bound", I'm not sure why).
-> So we are guaranteed to receive a minor fault (case [3]) if user tries to
-> modify a page after we finish writeback while freezing the filesystem.
-> So principially all we need to do is just wait in ext4_page_mkwrite().
+On 04/15/2011 11:16 AM, Christoph Hellwig wrote:
+> On Fri, Apr 15, 2011 at 10:53:48AM +0200, Jim Meyering wrote:
+>> Can you or anyone else point to authoritative documentation
+>> (or even a summary of those "discussions") of FIEMAP semantics?
+>=20
+> A large part of the problem is that there's none and the semantics
+> is a hode-podge of random flags that mostly make little sense
+> outside of fs developers debugging the layout that we created.  The
+> closest to a description is Documentation/filesystems/fiemap.txt
+> in the kernel tree, but that doesn't document most of the delicate
+> points.
 
-I've been kind of absent from this thread, sorry, but why would we wait in ext4_page_mkwrite(), rather than in mm/memory.c prior to any page_mkwrite call on any fs?
+Would it be worth borrowing from Solaris' semantics and adding SEEK_HOLE
+and SEEK_DATA to lseek(2), as a higher level (less-detailed, but easier
+to define and easier to use) interface for discovering the regions of a
+file that only contain NUL bytes?  FIEMAP is a great interface at
+exposing everything possible, but coreutils doesn't necessarily need all
+that complexity just for determining when it is safe to skip over a
+portion of a file that is either unallocated or unchanged from the
+initial 0 contents.
 
-no frozen fs should be able to dirty & write pages via mmap, right?
+--=20
+Eric Blake   eblake-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org    +1-801-349-2682
+Libvirt virtualization library http://libvirt.org
 
--Eric
- 
-> 								Honza
 
+--------------enigD99D3507C9612B7769610428
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+Comment: Public key at http://people.redhat.com/eblake/eblake.gpg
+Comment: Using GnuPG with Fedora - http://enigmail.mozdev.org/
+
+iQEcBAEBCAAGBQJNqH9DAAoJEKeha0olJ0Nql8sH/0k7s6dpcKOMaJPWHvPcV4PI
+eAHboTT6J6t4Z2zovlFLyO4THFPa6Ib9KA8hENqHPQ4VOAeGeeqp+2ACrJXjwSaG
+nxe1u3gDGR/DTC2psJys/cjA+6oaIJubTUHIPMrdTVjwjYysdyHBaromTCHxXN+c
+VLn+fjo+O/pPFGDYD37aXzhgTJBvpacUSltfN/sdae4ap+u6LQB53eV8u9Arm7lH
+BS8RcV16srDVjR9W+Vw2eEkgmZAG20NtM+SjXz6did8iX5e8KDS8nEdAIbVbOCy4
+7Vy0D2B9ak5b3mwFGV+7n/nF35A3LLNlmdP4NGGQLvdwlfMBMxdMgEB8LreVpf8=
+=JVjL
+-----END PGP SIGNATURE-----
+
+--------------enigD99D3507C9612B7769610428--
