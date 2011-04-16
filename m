@@ -1,66 +1,104 @@
-From: Dan Magenheimer <dan.magenheimer@oracle.com>
-Subject: RE: [PATCH] xen: cleancache shim to Xen Transcendent Memory
-Date: Fri, 15 Apr 2011 15:53:47 -0700 (PDT)
-Message-ID: <5d23c6c4-5d68-4c2e-af24-2a08f592cb8e@default>
-References: <20110414212002.GA27846@ca-server1.us.oracle.com
- 1302904935.22658.9.camel@localhost.localdomain>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: Files full of zeros with coreutils-8.11 and xfs (FIEMAP
+ related?)
+Date: Sat, 16 Apr 2011 10:25:00 +1000
+Message-ID: <20110416002500.GO21395@dastard>
+References: <4DA70BD3.1070409@draigBrady.com>
+ <4DA717B2.3020305@sandeen.net>
+ <20110414225904.GK21395@dastard>
+ <4DA7836A.5040604@draigBrady.com>
+ <20110415000940.GL21395@dastard>
+ <87sjtjq4ir.fsf@rho.meyering.net>
+ <20110415171629.GA9088@infradead.org>
+ <4DA87F43.5040807@redhat.com>
+ <20110415172603.GA20086@infradead.org>
+ <DD59E27A-FD96-4983-A274-B76CCE99AE7A@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: quoted-printable
-Cc: Chris Mason <chris.mason@oracle.com>, viro@zeniv.linux.org.uk,
-        akpm@linux-foundation.org, adilger.kernel@dilger.ca, tytso@mit.edu,
-        mfasheh@suse.com, jlbec@evilplan.org, matthew@wil.cx,
-        linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        ocfs2-devel@oss.oracle.com, linux-mm@kvack.org, hch@infradead.org,
-        ngupta@vflare.org, jeremy@goop.org, JBeulich@novell.com,
-        Kurt Hackel
- <kurt.hackel@oracle.com>, npiggin@kernel.dk,
-        Dave Mccracken
- <dave.mccracken@oracle.com>, riel@redhat.com,
-        avi@redhat.com, Konrad Wilk
- <konrad.wilk@oracle.com>, mel@csn.ul.ie,
-        yinghan@google.com, gthelen@google.com, torvalds@linux-foundation.org
-To: Ian Campbell <Ian.Campbell@citrix.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1302904935.22658.9.camel@localhost.localdomain>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Eric Blake <eblake@redhat.com>,
+	Jim Meyering <jim@meyering.net>,
+	Eric Sandeen <sandeen@sandeen.net>, xfs-oss <xfs@oss.sgi.com>,
+	coreutils@gnu.org, linux-ext4@vger.kernel.org,
+	Markus Trippelsdorf <markus@trippelsdorf.de>
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:18330 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752420Ab1DPAZG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 15 Apr 2011 20:25:06 -0400
+Content-Disposition: inline
+In-Reply-To: <DD59E27A-FD96-4983-A274-B76CCE99AE7A@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> From: Ian Campbell [mailto:Ian.Campbell@citrix.com]
-> Sent: Friday, April 15, 2011 4:02 PM
-> Subject: Re: [PATCH] xen: cleancache shim to Xen Transcendent Memory
->=20
-> On Thu, 2011-04-14 at 14:20 -0700, Dan Magenheimer wrote:
-> > [PATCH] xen: cleancache shim to Xen Transcendent Memory
-> >
-> > This patch provides a shim between the kernel-internal cleancache
-> > API (see Documentation/mm/cleancache.txt) and the Xen Transcendent
-> > Memory ABI (see http://oss.oracle.com/projects/tmem).
->=20
-> There's no need to build this into a kernel which doesn't have
-> cleancache (or one of the other frontends), is there? I think there
-> should be a Kconfig option (even if its not a user visible one) with
-> the appropriate depends/selects.
+On Fri, Apr 15, 2011 at 04:28:37PM -0600, Andreas Dilger wrote:
+> On 2011-04-15, at 11:26 AM, Christoph Hellwig wrote:
+> > On Fri, Apr 15, 2011 at 11:24:19AM -0600, Eric Blake wrote:
+> >> Would it be worth borrowing from Solaris' semantics and adding SEEK_HOLE
+> >> and SEEK_DATA to lseek(2), as a higher level (less-detailed, but easier
+> >> to define and easier to use) interface for discovering the regions of a
+> >> file that only contain NUL bytes?
+> > 
+> > Yes, I've already suggested that both in this thread and on IRC.
+> > 
+> > For efficient copies it's the only usable interface.
+> 
+> I suspect that these bugs would have still existed whether the
+> interface is SEEK_HOLE/SEEK_DATA, or FIEMAP.  The main problem is
+> that the delalloc pages were not accounted for correctly during
+> layout traversal..
 
-Yes, you're right.  It should eventually depend on
+It's not delalloc that is the problem - XFS accounts for them just
+fine in the extent map when asked. However, XFS does speculative
+delayed allocation over regions that contain no data, so if the
+core-utils folk are assuming that delalloc extents contain data and
+need to be copied, they're in for a nasty surprise.
 
-CONFIG_CLEANCACHE || CONFIG_FRONTSWAP
+However, every example I've seen in this thread has had to do with
+unwritten extents not changing state when data is written into the
+page cache. i.e. people are struggling with the expected behaviour
+of unwritten extents.
 
-though there's no sense merging this xen cleancache
-shim at all unless/until Linus merges cleancache
-(and hopefully later some evolution of frontswap).
+That is, unwritten extent remain unwritten extents until data has
+been _physically_ written to them. If there is data in the page
+cache over the unwritten extent, it is still an unwritten extent.
+If the system crashes while in this state, then the extent _must_
+remain an unwritten extent after recovery, otherwise it exposes
+stale data.
 
-And once cleancache (and/or frontswap) is merged,
-there's very little reason NOT to enable one or
-both on a Xen guest kernel.
+Further, using FIEMAP to determine where the data is that needs
+copying is extremely fragile. What happens when FIEMAP grows a
+different type of extent that contains data? cp will break, because
+it doesn't think it needs to copy data in extents of an unknown
+type. Or it will break because it thinks it needs to copy it and
+there's something in it that should not be copied.
 
-Thanks,
-Dan
+Also, cp shoul dnot be trying to replicate the physical layout of
+the file when copying it - that's for the filesystem to decide and
+having userspace try to do this is a sure recipe for causing severe
+filesystem fragmentation. The filesystems already do an excellent
+job of optimising allocation - userspace should not be trying to
+second guess what is optimal layout for the filesystem.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Fundamentally, what the core-utils guys want is FIEMAP to tell them
+where data is in the file, regardless of whether it is in memory or
+on disk. That is not what FIEMAP is intended for and matches
+SEEK_HOLE/SEEK_DATA precisely.
+
+SEEK_HOLE/SEEK_DATA have very well understood semantics and is
+designed specifically for optimising acceess to sparse files. This
+interface abstracts all the details of how different filesystems
+store their data so the application doesn't need to care about it.
+The API is so, so much simpler to use and understand, to. And if the
+filesystem has data in cache over an unwritten extent, then by
+definition it's still data to be returned by SEEK_DATA. If it fails
+to return the range as such then the implementation is broken.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
