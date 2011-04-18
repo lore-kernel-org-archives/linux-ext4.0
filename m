@@ -1,80 +1,154 @@
-From: Ian Campbell <Ian.Campbell@eu.citrix.com>
-Subject: RE: [PATCH] xen: cleancache shim to Xen Transcendent Memory
-Date: Mon, 18 Apr 2011 17:03:47 +0100
-Message-ID: <1303142627.5997.125.camel@zakaz.uk.xensource.com>
-References: <20110414212002.GA27846@ca-server1.us.oracle.com>
-	 <1302904935.22658.9.camel@localhost.localdomain>
-	 <5d23c6c4-5d68-4c2e-af24-2a08f592cb8e@default 1303116441.5997.107.camel@zakaz.uk.xensource.com>
-	 <276f7410-ff4d-4a3b-ab9c-fd1b5fe8c952@default>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Chris Mason <chris.mason@oracle.com>, <viro@zeniv.linux.org.uk>,
-	<akpm@linux-foundation.org>, <adilger.kernel@dilger.ca>,
-	<tytso@mit.edu>, <mfasheh@suse.com>, <jlbec@evilplan.org>,
-	<matthew@wil.cx>, <linux-btrfs@vger.kernel.org>,
-	<linux-kernel@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
-	<linux-ext4@vger.kernel.org>, <ocfs2-devel@oss.oracle.com>,
-	<linux-mm@kvack.org>, <hch@infradead.org>, <ngupta@vflare.org>,
-	<jeremy@goop.org>, <JBeulich@novell.com>,
-	Kurt Hackel <kurt.hackel@oracle.com>, <npiggin@kernel.dk>,
-	Dave Mccracken <dave.mccracken@oracle.com>, <riel@redhat.com>,
-	<avi@redhat.com>, Konrad Wilk <konrad.wilk@oracle.com>,
-	<mel@csn.ul.ie>, <yinghan@google.com>, <gthelen@google.com>,
-	<torvalds@linux-foundation.org>
-To: Dan Magenheimer <dan.magenheimer@oracle.com>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-In-Reply-To: <276f7410-ff4d-4a3b-ab9c-fd1b5fe8c952@default>
-Sender: linux-btrfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH] ext4: ext4_trim_fs() load buddy only when it is needed
+Date: Mon, 18 Apr 2011 18:32:31 +0200
+Message-ID: <1303144351-15614-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, lczerner@redhat.com
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:11588 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755685Ab1DRQdM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 18 Apr 2011 12:33:12 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 2011-04-18 at 07:12 -0700, Dan Magenheimer wrote:
-> > From: Ian Campbell [mailto:Ian.Campbell@eu.citrix.com]
-> > > >
-> > > > On Thu, 2011-04-14 at 14:20 -0700, Dan Magenheimer wrote:
-> > > >
-> > > > There's no need to build this into a kernel which doesn't have
-> > > > cleancache (or one of the other frontends), is there? I think there
-> > > > should be a Kconfig option (even if its not a user visible one)
-> > with
-> > > > the appropriate depends/selects.
-> > >
-> > > Yes, you're right.  It should eventually depend on
-> > >
-> > > CONFIG_CLEANCACHE || CONFIG_FRONTSWAP
-> > >
-> > > though there's no sense merging this xen cleancache
-> > > shim at all unless/until Linus merges cleancache
-> > > (and hopefully later some evolution of frontswap).
-> > 
-> > Cleancache isn't in already? I thought I saw references to it in
-> > drivers/staging?
-> 
-> Linus said he would review it after 2.6.39-rc1 was released,
-> but has neither given thumbs up nor thumbs down so I'm
-> assuming he didn't have time and it will be reconsidered
-> for 2.6.40.  This latest patchset (V8) is updated in linux-next.
-> 
-> Yes, zcache is in driver/staging and has references to it.
-> I guess that proves the chicken comes before the egg...
-> or was it vice versa? :-)
+Currently we are loading buddy ext4_mb_load_buddy() for every block
+group we are going through in ext4_trim_fs() in many cases just to find
+out that there is not enough space to be bothered with. As Amir Goldstein
+suggested we can use bb_free information directly from ext4_group_info.
 
-Ah, I didn't realise that the relaxations associated with staging
-allowed for unsatisfiable (due to the other half being out of tree)
-Kconfig items as well.
+This commit removes ext4_mb_load_buddy() from ext4_trim_fs() and rather
+get the ext4_group_info via ext4_get_group_info() and use the bb_free
+information directly from that. This avoids unnecessary call to load
+buddy in the case the group does not have enough free space to trim.
+Loading buddy is now moved to ext4_trim_all_free().
+
+Tested by me with xfstests 251.
+
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/mballoc.c |   48 ++++++++++++++++++++++++++----------------------
+ 1 files changed, 26 insertions(+), 22 deletions(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index d8a16ee..776d7a8 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4760,20 +4760,25 @@ static int ext4_trim_extent(struct super_block *sb, int start, int count,
+  * the group buddy bitmap. This is done until whole group is scanned.
+  */
+ static ext4_grpblk_t
+-ext4_trim_all_free(struct super_block *sb, struct ext4_buddy *e4b,
+-		ext4_grpblk_t start, ext4_grpblk_t max, ext4_grpblk_t minblocks)
++ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
++		   ext4_grpblk_t start, ext4_grpblk_t max,
++		   ext4_grpblk_t minblocks)
+ {
+ 	void *bitmap;
+ 	ext4_grpblk_t next, count = 0;
+-	ext4_group_t group;
++	struct ext4_buddy e4b;
+ 	int ret = 0;
  
-> > > And once cleancache (and/or frontswap) is merged,
-> > > there's very little reason NOT to enable one or
-> > > both on a Xen guest kernel.
-> > 
-> > There are software knobs to allow the host- and guest-admin to opt in
-> > or out as they desire though, right?
-> 
-> Definitely.  Both Xen and a Linux guest have runtime
-> options, which currently default to off.
-
-Good to know, thanks!
-
-Ian.
-
+-	BUG_ON(e4b == NULL);
++	ret = ext4_mb_load_buddy(sb, group, &e4b);
++	if (ret) {
++		ext4_error(sb, "Error in loading buddy "
++				"information for %u", group);
++		return ret;
++	}
+ 
+-	bitmap = e4b->bd_bitmap;
+-	group = e4b->bd_group;
+-	start = (e4b->bd_info->bb_first_free > start) ?
+-		e4b->bd_info->bb_first_free : start;
++	bitmap = e4b.bd_bitmap;
++	start = (e4b.bd_info->bb_first_free > start) ?
++		e4b.bd_info->bb_first_free : start;
+ 	ext4_lock_group(sb, group);
+ 
+ 	while (start < max) {
+@@ -4784,7 +4789,7 @@ ext4_trim_all_free(struct super_block *sb, struct ext4_buddy *e4b,
+ 
+ 		if ((next - start) >= minblocks) {
+ 			ret = ext4_trim_extent(sb, start,
+-				next - start, group, e4b);
++				next - start, group, &e4b);
+ 			if (ret < 0)
+ 				break;
+ 			count += next - start;
+@@ -4802,10 +4807,11 @@ ext4_trim_all_free(struct super_block *sb, struct ext4_buddy *e4b,
+ 			ext4_lock_group(sb, group);
+ 		}
+ 
+-		if ((e4b->bd_info->bb_free - count) < minblocks)
++		if ((e4b.bd_info->bb_free - count) < minblocks)
+ 			break;
+ 	}
+ 	ext4_unlock_group(sb, group);
++	ext4_mb_unload_buddy(&e4b);
+ 
+ 	ext4_debug("trimmed %d blocks in the group %d\n",
+ 		count, group);
+@@ -4830,11 +4836,11 @@ ext4_trim_all_free(struct super_block *sb, struct ext4_buddy *e4b,
+  */
+ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ {
+-	struct ext4_buddy e4b;
++	struct ext4_group_info *grp;
+ 	ext4_group_t first_group, last_group;
+ 	ext4_group_t group, ngroups = ext4_get_groups_count(sb);
+ 	ext4_grpblk_t cnt = 0, first_block, last_block;
+-	uint64_t start, len, minlen, trimmed;
++	uint64_t start, len, minlen, trimmed = 0;
+ 	ext4_fsblk_t first_data_blk =
+ 			le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
+ 	int ret = 0;
+@@ -4842,7 +4848,6 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ 	start = range->start >> sb->s_blocksize_bits;
+ 	len = range->len >> sb->s_blocksize_bits;
+ 	minlen = range->minlen >> sb->s_blocksize_bits;
+-	trimmed = 0;
+ 
+ 	if (unlikely(minlen > EXT4_BLOCKS_PER_GROUP(sb)))
+ 		return -EINVAL;
+@@ -4863,11 +4868,12 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ 		return -EINVAL;
+ 
+ 	for (group = first_group; group <= last_group; group++) {
+-		ret = ext4_mb_load_buddy(sb, group, &e4b);
+-		if (ret) {
+-			ext4_error(sb, "Error in loading buddy "
+-					"information for %u", group);
+-			break;
++		grp = ext4_get_group_info(sb, group);
++		/* We only do this if the grp has never been initialized */
++		if (unlikely(EXT4_MB_GRP_NEED_INIT(grp))) {
++			ret = ext4_mb_init_group(sb, group);
++			if (ret)
++				break;
+ 		}
+ 
+ 		/*
+@@ -4880,16 +4886,14 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ 			last_block = first_block + len;
+ 		len -= last_block - first_block;
+ 
+-		if (e4b.bd_info->bb_free >= minlen) {
+-			cnt = ext4_trim_all_free(sb, &e4b, first_block,
++		if (grp->bb_free >= minlen) {
++			cnt = ext4_trim_all_free(sb, group, first_block,
+ 						last_block, minlen);
+ 			if (cnt < 0) {
+ 				ret = cnt;
+-				ext4_mb_unload_buddy(&e4b);
+ 				break;
+ 			}
+ 		}
+-		ext4_mb_unload_buddy(&e4b);
+ 		trimmed += cnt;
+ 		first_block = 0;
+ 	}
+-- 
+1.7.4.2
 
