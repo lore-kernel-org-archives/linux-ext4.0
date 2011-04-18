@@ -1,146 +1,90 @@
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
- to a deadlock
-Date: Mon, 18 Apr 2011 18:05:01 +0900
-Message-ID: <4DABFEBD.7030102@jp.fujitsu.com>
-References: <20110328170628.ffe314fb.toshi.okajima@jp.fujitsu.com> <20110330141205.GC22349@quack.suse.cz> <4D946DAB.3010107@jp.fujitsu.com> <4D9AEE28.4000003@jp.fujitsu.com> <20110405225428.GD8531@quack.suse.cz> <4D9BF57A.6030705@jp.fujitsu.com> <20110406055708.GB23285@quack.suse.cz> <4D9C18DF.90803@jp.fujitsu.com> <20110406174617.GC28689@quack.suse.cz> <4DA84A7B.3040403@jp.fujitsu.com> <20110415171310.GB5432@quack.suse.cz>
+From: Coly Li <i@coly.li>
+Subject: Re: [PATCH 1/2] E2fsprogs: use the generic inode flags
+Date: Mon, 18 Apr 2011 19:15:41 +0800
+Message-ID: <4DAC1D5D.3020506@coly.li>
+References: <4DA2A0CC.9000301@cn.fujitsu.com> <4DABEA36.5060007@cn.fujitsu.com> <4DABF93E.1030504@coly.li> <4DABFDF0.9060608@cn.fujitsu.com>
+Reply-To: i@coly.li
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: toshi.okajima@jp.fujitsu.com, Ted Ts'o <tytso@mit.edu>,
-	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	sandeen@redhat.com
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: ext4 <linux-ext4@vger.kernel.org>,
+	Linux Btrfs <linux-btrfs@vger.kernel.org>,
+	tytso <tytso@mit.edu>, Chris Mason <chris.mason@oracle.com>
+To: liubo <liubo2009@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fgwmail6.fujitsu.co.jp ([192.51.44.36]:43795 "EHLO
-	fgwmail6.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752096Ab1DRJDQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Apr 2011 05:03:16 -0400
-In-Reply-To: <20110415171310.GB5432@quack.suse.cz>
+Received: from oproxy1-pub.bluehost.com ([66.147.249.253]:36765 "HELO
+	oproxy1-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1754227Ab1DRKqI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Apr 2011 06:46:08 -0400
+In-Reply-To: <4DABFDF0.9060608@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On 2011=E5=B9=B404=E6=9C=8818=E6=97=A5 17:01, liubo Wrote:
+> On 04/18/2011 04:41 PM, Coly Li wrote:
+>> On 2011=E5=B9=B404=E6=9C=8818=E6=97=A5 15:37, liubo Wrote:
+>>> Signed-off-by: Liu Bo <liubo2009@cn.fujitsu.com>
+>>> ---
+>>>  debugfs/htree.c        |    2 +-
+>>>  e2fsck/pass1.c         |   22 +++++++++++-----------
+>>>  e2fsck/pass2.c         |    2 +-
+>>>  e2fsck/pass4.c         |    2 +-
+>>>  e2fsck/rehash.c        |    4 ++--
+>>>  ext2ed/inode_com.c     |   14 +++++++-------
+>>>  lib/e2p/fgetflags.c    |    6 +++---
+>>>  lib/e2p/fsetflags.c    |    6 +++---
+>>>  lib/e2p/getflags.c     |    6 +++---
+>>>  lib/e2p/pf.c           |   34 +++++++++++++++++-----------------
+>>>  lib/e2p/setflags.c     |    6 +++---
+>>>  lib/ext2fs/ext2_fs.h   |   44 ++++++++++++++++++++++--------------=
+--------
+>>>  lib/ext2fs/link.c      |    4 ++--
+>>>  lib/ext2fs/mkjournal.c |    2 +-
+>>>  misc/chattr.c          |   26 +++++++++++++-------------
+>>>  misc/tune2fs.c         |    2 +-
+>>>  16 files changed, 91 insertions(+), 91 deletions(-)
+>>> [snip]
+>>
+>> Hi Bo,
+>>
+>> Could you please to introduce the motivation of this patch set a lit=
+tle bit more? Thanks.
+>>
+>=20
+> Hi Li,
+>=20
+> Since we want to control COW and compression attribute on a per file =
+or per directory basis,
+> and find that the generic command "chattr" is the "Mr Right".
+>=20
+> Currently only btrfs supports both, of course.
+>=20
+> With these patches, we can do the followings:
+>=20
+> c: compress
+> C: nocow
+>=20
+> set compress & nocow:
+>=20
+> # ./misc/chattr -V +c +C /mnt/btrfs/dir/
+> chattr 1.41.14 (22-Dec-2010)
+> Flags of /mnt/btrfs/dir/ set as --------c------C
+>=20
+> # ./misc/lsattr -d /mnt/btrfs/dir/
+> --------c------C /mnt/btrfs/dir/
+>=20
 
-(2011/04/16 2:13), Jan Kara wrote:
->    Hello,
->
-> On Fri 15-04-11 22:39:07, Toshiyuki Okajima wrote:
->>>    For ext3 or ext4 without delayed allocation we block inside writepage()
->>> function. But as I wrote to Dave Chinner, ->page_mkwrite() should probably
->>> get modified to block while minor-faulting the page on frozen fs because
->>> when blocks are already allocated we may skip starting a transaction and so
->>> we could possibly modify the filesystem.
->> OK. I think ->page_mkwrite() should also block writing the minor-faulting pages.
->>
->> (minor-pagefault)
->> ->  do_wp_page()
->>     ->  page_mkwrite(= ext4_mkwrite())
->>        =>  BLOCK!
->>
->> (major-pagefault)
->> ->  do_liner_fault()
->>     ->  page_mkwrite(= ext4_mkwrite())
->>        =>  BLOCK!
->>
->>>
->>>>>> Mizuma-san's reproducer also writes the data which maps to the file (mmap).
->>>>>> The original problem happens after the fsfreeze operation is done.
->>>>>> I understand the normal write operation (not mmap) can be blocked while
->>>>>> fsfreezing. So, I guess we don't always block all the write operation
->>>>>> while fsfreezing.
->>>>>    Technically speaking, we block all the transaction starts which means we
->>>>> end up blocking all the writes from going to disk. But that does not mean
->>>>> we block all the writes from going to in-memory cache - as you properly
->>>>> note the mmap case is one of such exceptions.
->>>> Hm, I also think we can allow the writes to in-memory cache but we can't allow
->>>> the writes to disk while fsfreezing. I am considering that mmap path can
->>>> write to disk while fsfreezing because this deadlock problem happens after
->>>> fsfreeze operation is done...
->>>    I'm sorry I don't understand now - are you speaking about the case above
->>> when writepage() does not wait for filesystem being frozen or something
->>> else?
->> Sorry, I didn't understand around the page fault path.
->> So, I had read the kernel source code around it, then I maybe understand...
->>
->> I worry whether we can update the file data in mmap case while fsfreezing.
->> Of course, I understand that we can write to in-memory cache, and it is not a
->> problem. However, if we can write to disk while fsfreezing, it is a problem.
->> So, I summarize the cases whether we can write to disk or not.
->>
->> --------------------------------------------------------------------------
->> Cases (Whether we can write the data mmapped to the file on the disk
->> while fsfreezing)
->>
->> [1] One of the page which has been mmapped is not bound. And
->>   the page is not allocated yet. (major fault?)
->>
->>     (1) user dirtys a page
->>     (2) a page fault occurs (do_page_fault)
->>     (3) __do_falut is called.
->>     (4) ext4_page_mkwrite is called
->>     (5) ext4_write_begin is called
->>     (6) ext4_journal_start_sb       =>  We can STOP!
->>
->> [2] One of the page which has been mmapped is not bound. But
->>   the page is already allocated, and the buffer_heads of the page
->>   are not mapped (BH_Mapped).  (minor fault?)
->>
->>     (1) user dirtys a page
->>     (2) a page fault occurs (do_page_fault)
->>     (3) do_wp_page is called.
->>     (4) ext4_page_mkwrite is called
->>     (5) ext4_write_begin is called
->>     (6) ext4_journal_start_sb       =>  We can STOP!
->>
->> [3] One of the page which has been mmapped is not bound. But
->>   the page is already allocated, and the buffer_heads of the page
->>   are mapped (BH_Mapped).  (minor fault?)
->>
->>     (1) user dirtys a page
->>     (2) a page fault occurs (do_page_fault)
->>     (3) do_wp_page is called.
->>     (4) ext4_page_mkwrite is called
->>     * Cannot block the dirty page to be written because all bh is mapped.
->>     (5) user munmaps the page (munmap)
->>     (6) zap_pte_range dirtys the page (struct page) which is pte_dirtyed.
->>     (7) writeback thread writes the page (struct page) to disk
->>                                             =>  We cannot STOP!
->>
->> [4] One of the page which has been mmapped is bound. And
->>   the page is already allocated.
->>
->>     (1) user dirtys a page
->>     ( ) no page fault occurs
->>     (2) user munmaps the page (munmap)
->>     (3) zap_pte_range dirtys the page (struct page) which is pte_dirtyed.
->>     (4) writeback thread writes the page (struct page) to disk
->>                                             =>  We cannot STOP!
->> --------------------------------------------------------------------------
->>
->> So, we can block the cases [1], [2].
->> But I think we cannot block the cases [3], [4] now.
->> If fixing the page_mkwrite, we can also block the case [3].
->> But the case [4] is not blocked because no page fault occurs
->> when we dirty the mmapped page.
->>
->> Therefore, to repair this problem, we need to fix the cases [3], [4].
->> I think we must modify the writeback thread to fix the case [4].
->    The trick here is that when we write a page to disk, we write-protect
-> the page (you seem to call this that "the page is bound", I'm not sure why).
-Hm, I want to understand how to write-protect the page under fsfreezing.
-But, anyway, I understand we don't need to consider the case [4].
+Thank you for the explaining. Now I understand this patch set is to mak=
+e chattr of e2fsprogs to support a
+(currently-only) btrfs feature.
 
-> So we are guaranteed to receive a minor fault (case [3]) if user tries to
-> modify a page after we finish writeback while freezing the filesystem.
-> So principially all we need to do is just wait in ext4_page_mkwrite().
-OK. I understand.
-Are there any concrete ideas to fix this?
-For ext4, we can rescue from the case [3] by modifying ext4_page_mkwrite().
-But for ext3 or other FSs, we must implement ->page_mkwrite() to prevent it?
+It seems chattr and lsattr is not an ext[234] only utilities any more..=
+=2E
 
-Thanks,
-Toshiyuki Okajima
-
+--=20
+Coly Li
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
