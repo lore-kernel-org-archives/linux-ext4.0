@@ -1,10 +1,9 @@
 From: Dave Chinner <david@fromorbit.com>
 Subject: Re: Files full of zeros with coreutils-8.11 and xfs (FIEMAP
  related?)
-Date: Mon, 18 Apr 2011 10:35:53 +1000
-Message-ID: <20110418003553.GR21395@dastard>
-References: <20110414120635.GB1678@x4.trippels.de>
- <20110414140222.GB1679@x4.trippels.de>
+Date: Mon, 18 Apr 2011 10:40:40 +1000
+Message-ID: <20110418004040.GS21395@dastard>
+References: <20110414140222.GB1679@x4.trippels.de>
  <4DA70BD3.1070409@draigBrady.com>
  <4DA717B2.3020305@sandeen.net>
  <20110414225904.GK21395@dastard>
@@ -12,94 +11,55 @@ References: <20110414120635.GB1678@x4.trippels.de>
  <20110415000940.GL21395@dastard>
  <76FFF648-CA02-494B-A862-566C66A8CB82@dilger.ca>
  <20110416005040.GP21395@dastard>
- <BANLkTikEeXcvjgREoRCgriWAhZfnxJVtKQ@mail.gmail.com>
+ <E7438588-5C5A-42B9-9B6C-FADF7CAC6D3A@dilger.ca>
+ <4EEEA16E-1FDB-4430-A372-8F8701196E4C@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: Andreas Dilger <adilger@dilger.ca>,
-	=?iso-8859-1?Q?P=E1draig?= Brady <P@draigbrady.com>,
+	=?iso-8859-1?Q?P=E1draig?= Brady <P@draigBrady.com>,
 	Eric Sandeen <sandeen@sandeen.net>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
 	"coreutils@gnu.org" <coreutils@gnu.org>,
 	Markus Trippelsdorf <markus@trippelsdorf.de>,
 	xfs-oss <xfs@oss.sgi.com>
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:4482 "EHLO
-	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752429Ab1DRAgA (ORCPT
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:62422 "EHLO
+	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752445Ab1DRAkp (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 17 Apr 2011 20:36:00 -0400
+	Sun, 17 Apr 2011 20:40:45 -0400
 Content-Disposition: inline
-In-Reply-To: <BANLkTikEeXcvjgREoRCgriWAhZfnxJVtKQ@mail.gmail.com>
+In-Reply-To: <4EEEA16E-1FDB-4430-A372-8F8701196E4C@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Apr 16, 2011 at 02:05:51PM +0800, Yongqiang Yang wrote:
-> On Sat, Apr 16, 2011 at 8:50 AM, Dave Chinner <david@fromorbit.com> w=
-rote:
-> > On Thu, Apr 14, 2011 at 11:01:04PM -0600, Andreas Dilger wrote:
-> >> On 2011-04-14, at 6:09 PM, Dave Chinner <david@fromorbit.com>
-> >> wrote:
-> >> > No, this was explicitly laid out in the fiemap interface
-> >> > discussions - it's up to the applicaiton to decide if it needs
-> >> > to do a sync first. That's what the FIEMAP_FLAG_SYNC control
-> >> > flag is for. =A0This forces the fiemap call to do a fsync _befor=
-e_
-> >> > getting the mapping. If you want to know the exact layout of the
-> >> > file is, then you must use this flag.
-> >> >
-> >> > Even so, it is recognised that this is racy - any use of the
-> >> > block map has a time-of-read-to-time-of-use race condition that
-> >> > means you have to _verify_ the copy after it completes. FYI,
-> >> > that's what xfs_fsr does when copying based on extent maps - if
-> >> > the inode has changed in _any way_ during the copy, it aborts
-> >> > the copy of that file.
-> >> >
-> >> > i.e. using fiemap for copying is at best a *hint* about the
-> >> > regions that need copying, and it is in no way a guarantee that
-> >> > you'll get all the information you need to make accurate copy
-> >> > even if you do use the synchronous variant.
-> >>
-> >> I would tend to agree with P=E1draig. If there is data in the
-> >> mapping (regardless of whether it is on disk or not), the FIEMAP
-> >> should return this to the caller. =A0The SYNC flag is only intende=
-d
-> >> to flush the data to disk for tools that are doing
-> >> direct-to-disk operations on the data.
-> >
-> > What you are suggesting is that FIEMAP needs to be page cache
-> > coherent, and that is far, far away from the intended use of the
-> > interface. Even consiering that you need to looking for active page=
-s
-> > in the page cache when mapping extents say to me that you are
-> > doing something very wrong.
-> >
-> > Unwritten extents remain unwritten until the data is physically
-> > written to them. Therefore, to change their state, you need to sync
-> No, buffered writes change their state without sync.
-
-They shouldn't.
-
-> > the data covering the range. =A0_Lying_ about whether an extent is =
-in
-> > the unwritten state is a really bad precedence to set, especially a=
-s
-> > it is then guaranteed to change state when a crash occurs (Why did
-> > recovery zero out my file? FIEMAP said it contained data before my
-> > system crashed!).
+On Sat, Apr 16, 2011 at 08:21:28AM -0400, Theodore Tso wrote:
 >=20
-> All filesystems have metadata in memory which is not flushed to
-> permanent storage. e.g. if a extent exists in memory, but itself and
-> corresponding data are not flushed to permanent storage.
+> On Apr 16, 2011, at 1:11 AM, Andreas Dilger wrote:
+>=20
+> > In that case, it means cp should just always use FIEMAP_FLAG_SYNC, =
+which is fine.=20
+>=20
+> Except that if someone is copying a large delay allocated file, it wi=
+ll cause=20
+> the file to immediately snapped to disk, which might not be the great=
+est
+> thing in the world.=20
 
-Sure, but in the case of unwritten extents, XFS does not change the
-metadata state in memory until *after the physical IO is completed*.
-I'm pretty sure that btrfs is the same.
+Obvious workaround - if the initial fiemap call shows unwritten
+extents, redo it with the sync flag set. Though that assume=D1=95 that
+you can trust things like delalloc extents to only cover the range
+that valid data exists in. Which, of course, you can't assume,
+either. :/
 
-IOWs, despite the fact that a buffered write has occurred, no
-metadata has changed state in memory, and the extents are still
-unwritten in both memory and on disk....
+> Christoph is write, SEEK_HOLE and SEEK_DATA are
+> a much better API for what cp woulld lke to do.  Unfortunately it has=
+n't
+> been implemented yet in the VFS...
+
+Agreed, SEEK_HOLE/SEEK_DATA is the right way to solve this problem.
 
 Cheers,
 
