@@ -1,58 +1,73 @@
-From: Coly Li <i@coly.li>
-Subject: Re: [PATCH 1/2] E2fsprogs: use the generic inode flags
-Date: Mon, 18 Apr 2011 16:41:34 +0800
-Message-ID: <4DABF93E.1030504@coly.li>
-References: <4DA2A0CC.9000301@cn.fujitsu.com> <4DABEA36.5060007@cn.fujitsu.com>
-Reply-To: i@coly.li
+From: Ian Campbell <Ian.Campbell@eu.citrix.com>
+Subject: RE: [PATCH] xen: cleancache shim to Xen Transcendent Memory
+Date: Mon, 18 Apr 2011 09:47:21 +0100
+Message-ID: <1303116441.5997.107.camel@zakaz.uk.xensource.com>
+References: <20110414212002.GA27846@ca-server1.us.oracle.com 1302904935.22658.9.camel@localhost.localdomain>
+	 <5d23c6c4-5d68-4c2e-af24-2a08f592cb8e@default>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: ext4 <linux-ext4@vger.kernel.org>,
-	Linux Btrfs <linux-btrfs@vger.kernel.org>,
-	tytso <tytso@mit.edu>, Chris Mason <chris.mason@oracle.com>
-To: liubo <liubo2009@cn.fujitsu.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy2-pub.bluehost.com ([67.222.39.60]:34441 "HELO
-	oproxy2-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753379Ab1DRIME (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Apr 2011 04:12:04 -0400
-In-Reply-To: <4DABEA36.5060007@cn.fujitsu.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: Chris Mason <chris.mason@oracle.com>, "viro@zeniv.linux.org.uk"
+	<viro@zeniv.linux.org.uk>, "akpm@linux-foundation.org"
+	<akpm@linux-foundation.org>, "adilger.kernel@dilger.ca"
+	<adilger.kernel@dilger.ca>, "tytso@mit.edu" <tytso@mit.edu>,
+	"mfasheh@suse.com" <mfasheh@suse.com>, "jlbec@evilplan.org"
+	<jlbec@evilplan.org>, "matthew@wil.cx" <matthew@wil.cx>,
+	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"ocfs2-devel@oss.oracle.com" <ocfs2-devel@oss.oracle.com>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>, "hch@infradead.org"
+	<hch@infradead.org>, "ngupta@vflare.org" <ngupta@vflare.org>,
+	"jeremy@goop.org" <jeremy@goop.org>, "JBeulich@novell.com"
+	<JBeulich@novell.com>, Kurt Hackel <ku
+To: Dan Magenheimer <dan.magenheimer@oracle.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <5d23c6c4-5d68-4c2e-af24-2a08f592cb8e@default>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2011=E5=B9=B404=E6=9C=8818=E6=97=A5 15:37, liubo Wrote:
->=20
-> Signed-off-by: Liu Bo <liubo2009@cn.fujitsu.com>
-> ---
->  debugfs/htree.c        |    2 +-
->  e2fsck/pass1.c         |   22 +++++++++++-----------
->  e2fsck/pass2.c         |    2 +-
->  e2fsck/pass4.c         |    2 +-
->  e2fsck/rehash.c        |    4 ++--
->  ext2ed/inode_com.c     |   14 +++++++-------
->  lib/e2p/fgetflags.c    |    6 +++---
->  lib/e2p/fsetflags.c    |    6 +++---
->  lib/e2p/getflags.c     |    6 +++---
->  lib/e2p/pf.c           |   34 +++++++++++++++++-----------------
->  lib/e2p/setflags.c     |    6 +++---
->  lib/ext2fs/ext2_fs.h   |   44 ++++++++++++++++++++++----------------=
-------
->  lib/ext2fs/link.c      |    4 ++--
->  lib/ext2fs/mkjournal.c |    2 +-
->  misc/chattr.c          |   26 +++++++++++++-------------
->  misc/tune2fs.c         |    2 +-
->  16 files changed, 91 insertions(+), 91 deletions(-)
-> [snip]
+On Fri, 2011-04-15 at 23:53 +0100, Dan Magenheimer wrote:
+> > From: Ian Campbell [mailto:Ian.Campbell@citrix.com]
+> > Sent: Friday, April 15, 2011 4:02 PM
+> > Subject: Re: [PATCH] xen: cleancache shim to Xen Transcendent Memory
+> > 
+> > On Thu, 2011-04-14 at 14:20 -0700, Dan Magenheimer wrote:
+> > > [PATCH] xen: cleancache shim to Xen Transcendent Memory
+> > >
+> > > This patch provides a shim between the kernel-internal cleancache
+> > > API (see Documentation/mm/cleancache.txt) and the Xen Transcendent
+> > > Memory ABI (see http://oss.oracle.com/projects/tmem).
+> > 
+> > There's no need to build this into a kernel which doesn't have
+> > cleancache (or one of the other frontends), is there? I think there
+> > should be a Kconfig option (even if its not a user visible one) with
+> > the appropriate depends/selects.
+> 
+> Yes, you're right.  It should eventually depend on
+> 
+> CONFIG_CLEANCACHE || CONFIG_FRONTSWAP
+> 
+> though there's no sense merging this xen cleancache
+> shim at all unless/until Linus merges cleancache
+> (and hopefully later some evolution of frontswap).
 
-Hi Bo,
+Cleancache isn't in already? I thought I saw references to it in
+drivers/staging?
 
-Could you please to introduce the motivation of this patch set a little=
- bit more? Thanks.
+> And once cleancache (and/or frontswap) is merged,
+> there's very little reason NOT to enable one or
+> both on a Xen guest kernel.
 
---=20
-Coly Li
+There are software knobs to allow the host- and guest-admin to opt in or
+out as they desire though, right?
+
+Ian.
+
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
