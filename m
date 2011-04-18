@@ -1,154 +1,210 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] ext4: ext4_trim_fs() load buddy only when it is needed
-Date: Mon, 18 Apr 2011 18:32:31 +0200
-Message-ID: <1303144351-15614-1-git-send-email-lczerner@redhat.com>
-Cc: tytso@mit.edu, lczerner@redhat.com
+Subject: [PATCH] ext4: Make reads/writes atomic with i_rwlock semaphore
+Date: Mon, 18 Apr 2011 21:21:32 +0200
+Message-ID: <1303154492-25446-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, esandeen@redhat.com, adilger@dilger.ca,
+	Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:11588 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:30308 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755685Ab1DRQdM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Apr 2011 12:33:12 -0400
+	id S1756523Ab1DRTVq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 18 Apr 2011 15:21:46 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently we are loading buddy ext4_mb_load_buddy() for every block
-group we are going through in ext4_trim_fs() in many cases just to find
-out that there is not enough space to be bothered with. As Amir Goldstein
-suggested we can use bb_free information directly from ext4_group_info.
+Currently concurrent reads/writes are atomic only wrt individual pages,
+however are not on the system call. This may cause read() to return data
+mixed from several different writes, which I do not think it is good
+approach. We might argue that application doing this is broken, but
+actually this is something we can easily do on filesystem level without
+significant performance issues, so we can be consistent. Also POSIX
+mentions this as well and XFS filesystem already has this feature.
 
-This commit removes ext4_mb_load_buddy() from ext4_trim_fs() and rather
-get the ext4_group_info via ext4_get_group_info() and use the bb_free
-information directly from that. This avoids unnecessary call to load
-buddy in the case the group does not have enough free space to trim.
-Loading buddy is now moved to ext4_trim_all_free().
+This commit adds new rw_semaphore into ext4_inode structure. We take
+read lock every time we read data from a file (via ext4_file_read() or
+ext4_file_splice_read()) and also when we write data in direct io mode,
+since in this mode application should know exactly what it is doing.
+Then we take write lock when we write into a file (via ext4_file_write()
+and ext4_file_splice_write()), except the direct io when we take read
+lock and unaligned direct io which is already serialized in different
+manner. Also we are locking ext4_truncate() as well so we are consistent
+and preserve atomicity.
 
-Tested by me with xfstests 251.
+This should not have any significant performance impact since we still
+allow concurrent reads from the same inode and concurrent writes are
+serialized already by i_mutex. The only type of load which will feel the
+performance hit is the case of writing into an inode while reading from
+it and vice versa. In this case, if reads/writes are exclusive it might
+not need locking, however tracking this would be expensive.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- fs/ext4/mballoc.c |   48 ++++++++++++++++++++++++++----------------------
- 1 files changed, 26 insertions(+), 22 deletions(-)
+ fs/ext4/ext4.h  |    5 ++++
+ fs/ext4/file.c  |   58 ++++++++++++++++++++++++++++++++++++++++++++++++++----
+ fs/ext4/inode.c |    7 ++++++
+ fs/ext4/super.c |    1 +
+ 4 files changed, 66 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index d8a16ee..776d7a8 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4760,20 +4760,25 @@ static int ext4_trim_extent(struct super_block *sb, int start, int count,
-  * the group buddy bitmap. This is done until whole group is scanned.
-  */
- static ext4_grpblk_t
--ext4_trim_all_free(struct super_block *sb, struct ext4_buddy *e4b,
--		ext4_grpblk_t start, ext4_grpblk_t max, ext4_grpblk_t minblocks)
-+ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
-+		   ext4_grpblk_t start, ext4_grpblk_t max,
-+		   ext4_grpblk_t minblocks)
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 4daaf2b..037857c 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -858,6 +858,11 @@ struct ext4_inode_info {
+ 	 */
+ 	tid_t i_sync_tid;
+ 	tid_t i_datasync_tid;
++
++	/*
++	 * Semaphore forcing read/write atomicity
++	 */
++	struct rw_semaphore i_rwlock;
+ };
+ 
+ /*
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 7b80d54..6c7ed94 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -94,7 +94,7 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+ 		unsigned long nr_segs, loff_t pos)
  {
- 	void *bitmap;
- 	ext4_grpblk_t next, count = 0;
--	ext4_group_t group;
-+	struct ext4_buddy e4b;
- 	int ret = 0;
+ 	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
+-	int unaligned_aio = 0;
++	int unaligned_aio = 0, direct_io = 0;
+ 	int ret;
  
--	BUG_ON(e4b == NULL);
-+	ret = ext4_mb_load_buddy(sb, group, &e4b);
-+	if (ret) {
-+		ext4_error(sb, "Error in loading buddy "
-+				"information for %u", group);
-+		return ret;
-+	}
- 
--	bitmap = e4b->bd_bitmap;
--	group = e4b->bd_group;
--	start = (e4b->bd_info->bb_first_free > start) ?
--		e4b->bd_info->bb_first_free : start;
-+	bitmap = e4b.bd_bitmap;
-+	start = (e4b.bd_info->bb_first_free > start) ?
-+		e4b.bd_info->bb_first_free : start;
- 	ext4_lock_group(sb, group);
- 
- 	while (start < max) {
-@@ -4784,7 +4789,7 @@ ext4_trim_all_free(struct super_block *sb, struct ext4_buddy *e4b,
- 
- 		if ((next - start) >= minblocks) {
- 			ret = ext4_trim_extent(sb, start,
--				next - start, group, e4b);
-+				next - start, group, &e4b);
- 			if (ret < 0)
- 				break;
- 			count += next - start;
-@@ -4802,10 +4807,11 @@ ext4_trim_all_free(struct super_block *sb, struct ext4_buddy *e4b,
- 			ext4_lock_group(sb, group);
- 		}
- 
--		if ((e4b->bd_info->bb_free - count) < minblocks)
-+		if ((e4b.bd_info->bb_free - count) < minblocks)
- 			break;
+ 	/*
+@@ -117,6 +117,7 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+ 	} else if (unlikely((iocb->ki_filp->f_flags & O_DIRECT) &&
+ 		   !is_sync_kiocb(iocb))) {
+ 		unaligned_aio = ext4_unaligned_aio(inode, iov, nr_segs, pos);
++		direct_io = 1;
  	}
- 	ext4_unlock_group(sb, group);
-+	ext4_mb_unload_buddy(&e4b);
  
- 	ext4_debug("trimmed %d blocks in the group %d\n",
- 		count, group);
-@@ -4830,11 +4836,11 @@ ext4_trim_all_free(struct super_block *sb, struct ext4_buddy *e4b,
-  */
- int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
- {
--	struct ext4_buddy e4b;
-+	struct ext4_group_info *grp;
- 	ext4_group_t first_group, last_group;
- 	ext4_group_t group, ngroups = ext4_get_groups_count(sb);
- 	ext4_grpblk_t cnt = 0, first_block, last_block;
--	uint64_t start, len, minlen, trimmed;
-+	uint64_t start, len, minlen, trimmed = 0;
- 	ext4_fsblk_t first_data_blk =
- 			le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
- 	int ret = 0;
-@@ -4842,7 +4848,6 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
- 	start = range->start >> sb->s_blocksize_bits;
- 	len = range->len >> sb->s_blocksize_bits;
- 	minlen = range->minlen >> sb->s_blocksize_bits;
--	trimmed = 0;
+ 	/* Unaligned direct AIO must be serialized; see comment above */
+@@ -131,12 +132,19 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+ 				 inode->i_ino, current->comm);
+ 		mutex_lock(ext4_aio_mutex(inode));
+ 		ext4_aiodio_wait(inode);
+-	}
++	} else if (unlikely(direct_io))
++		down_read(&EXT4_I(inode)->i_rwlock);
++	else
++		down_write(&EXT4_I(inode)->i_rwlock);
  
- 	if (unlikely(minlen > EXT4_BLOCKS_PER_GROUP(sb)))
- 		return -EINVAL;
-@@ -4863,11 +4868,12 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
- 		return -EINVAL;
+ 	ret = generic_file_aio_write(iocb, iov, nr_segs, pos);
  
- 	for (group = first_group; group <= last_group; group++) {
--		ret = ext4_mb_load_buddy(sb, group, &e4b);
--		if (ret) {
--			ext4_error(sb, "Error in loading buddy "
--					"information for %u", group);
--			break;
-+		grp = ext4_get_group_info(sb, group);
-+		/* We only do this if the grp has never been initialized */
-+		if (unlikely(EXT4_MB_GRP_NEED_INIT(grp))) {
-+			ret = ext4_mb_init_group(sb, group);
-+			if (ret)
-+				break;
- 		}
+ 	if (unaligned_aio)
+ 		mutex_unlock(ext4_aio_mutex(inode));
++	else if (unlikely(direct_io))
++		up_read(&EXT4_I(inode)->i_rwlock);
++	else
++		up_write(&EXT4_I(inode)->i_rwlock);
  
- 		/*
-@@ -4880,16 +4886,14 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
- 			last_block = first_block + len;
- 		len -= last_block - first_block;
+ 	return ret;
+ }
+@@ -252,11 +260,51 @@ loff_t ext4_llseek(struct file *file, loff_t offset, int origin)
+ 	return offset;
+ }
  
--		if (e4b.bd_info->bb_free >= minlen) {
--			cnt = ext4_trim_all_free(sb, &e4b, first_block,
-+		if (grp->bb_free >= minlen) {
-+			cnt = ext4_trim_all_free(sb, group, first_block,
- 						last_block, minlen);
- 			if (cnt < 0) {
- 				ret = cnt;
--				ext4_mb_unload_buddy(&e4b);
- 				break;
- 			}
- 		}
--		ext4_mb_unload_buddy(&e4b);
- 		trimmed += cnt;
- 		first_block = 0;
- 	}
++static ssize_t
++ext4_file_read(struct kiocb *iocb, const struct iovec *iov,
++	       unsigned long nr_segs, loff_t pos)
++{
++	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
++	ssize_t size;
++
++	down_read(&EXT4_I(inode)->i_rwlock);
++	size = generic_file_aio_read(iocb, iov, nr_segs, pos);
++	up_read(&EXT4_I(inode)->i_rwlock);
++	return size;
++}
++
++ssize_t ext4_file_splice_read(struct file *in, loff_t *ppos,
++			      struct pipe_inode_info *pipe, size_t len,
++			      unsigned int flags)
++{
++	struct inode *inode = in->f_mapping->host;
++	ssize_t size;
++
++	down_read(&EXT4_I(inode)->i_rwlock);
++	size = generic_file_splice_read(in, ppos, pipe, len, flags);
++	up_read(&EXT4_I(inode)->i_rwlock);
++	return size;
++}
++
++ssize_t ext4_file_splice_write(struct pipe_inode_info *pipe,
++			       struct file *out, loff_t *ppos, size_t len,
++			       unsigned int flags)
++{
++	struct inode *inode = out->f_mapping->host;
++	ssize_t size;
++
++	down_write(&EXT4_I(inode)->i_rwlock);
++	size = generic_file_splice_write(pipe, out, ppos, len, flags);
++	up_write(&EXT4_I(inode)->i_rwlock);
++	return size;
++}
++
++
+ const struct file_operations ext4_file_operations = {
+ 	.llseek		= ext4_llseek,
+ 	.read		= do_sync_read,
+ 	.write		= do_sync_write,
+-	.aio_read	= generic_file_aio_read,
++	.aio_read	= ext4_file_read,
+ 	.aio_write	= ext4_file_write,
+ 	.unlocked_ioctl = ext4_ioctl,
+ #ifdef CONFIG_COMPAT
+@@ -266,8 +314,8 @@ const struct file_operations ext4_file_operations = {
+ 	.open		= ext4_file_open,
+ 	.release	= ext4_release_file,
+ 	.fsync		= ext4_sync_file,
+-	.splice_read	= generic_file_splice_read,
+-	.splice_write	= generic_file_splice_write,
++	.splice_read	= ext4_file_splice_read,
++	.splice_write	= ext4_file_splice_write,
+ 	.fallocate	= ext4_fallocate,
+ };
+ 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f2fa5e8..769ab0f 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4482,6 +4482,12 @@ void ext4_truncate(struct inode *inode)
+ 		goto out_stop;
+ 
+ 	/*
++	 * We should block reads/writes to that inode so we are sure we are
++	 * consistent and reads/writes remain atomic.
++	 */
++	down_write(&EXT4_I(inode)->i_rwlock);
++
++	/*
+ 	 * From here we block out all ext4_get_block() callers who want to
+ 	 * modify the block allocation tree.
+ 	 */
+@@ -4566,6 +4572,7 @@ do_indirects:
+ 
+ out_unlock:
+ 	up_write(&ei->i_data_sem);
++	up_write(&EXT4_I(inode)->i_rwlock);
+ 	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
+ 	ext4_mark_inode_dirty(handle, inode);
+ 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 8553dfb..2dbe86a 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -895,6 +895,7 @@ static void init_once(void *foo)
+ 	init_rwsem(&ei->xattr_sem);
+ #endif
+ 	init_rwsem(&ei->i_data_sem);
++	init_rwsem(&ei->i_rwlock);
+ 	inode_init_once(&ei->vfs_inode);
+ }
+ 
 -- 
 1.7.4.2
 
