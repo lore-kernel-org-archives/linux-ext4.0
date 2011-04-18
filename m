@@ -1,156 +1,201 @@
-From: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
-Subject: Re: Files full of zeros with coreutils-8.11 and xfs (FIEMAP related?)
-Date: Sun, 17 Apr 2011 20:45:56 -0600
-Message-ID: <6C89E159-A5F6-4A06-A3D2-273BE4CFB9B5@dilger.ca>
-References: <20110414140222.GB1679@x4.trippels.de>
-	<4DA70BD3.1070409@draigBrady.com>
-	<4DA717B2.3020305@sandeen.net> <20110414225904.GK21395@dastard>
-	<4DA7836A.5040604@draigBrady.com> <20110415000940.GL21395@dastard>
-	<76FFF648-CA02-494B-A862-566C66A8CB82@dilger.ca>
-	<20110416005040.GP21395@dastard>
-	<E7438588-5C5A-42B9-9B6C-FADF7CAC6D3A@dilger.ca>
-	<4EEEA16E-1FDB-4430-A372-8F8701196E4C@mit.edu>
-	<20110418004040.GS21395@dastard>
-Mime-Version: 1.0 (iPhone Mail 8G4)
-Content-Type: multipart/alternative;
-	boundary=Apple-Mail-5-517528027
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso-DPNOqEs/LNQ@public.gmane.org>, Eric Sandeen <sandeen-+82itfer+wXR7s880joybQ@public.gmane.org>,
-	xfs-oss <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>, "coreutils-mXXj517/zsQ@public.gmane.org" <coreutils-mXXj517/zsQ@public.gmane.org>,
-	"linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Markus Trippelsdorf <markus-xp2qqqlHh3xzoYq+O6RWwA@public.gmane.org>
-To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-Return-path: <coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org>
-In-Reply-To: <20110418004040.GS21395@dastard>
-List-Unsubscribe: <http://lists.gnu.org/mailman/options/coreutils>,
-	<mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=unsubscribe>
-List-Archive: </archive/html/coreutils>
-List-Post: <mailto:coreutils-mXXj517/zsQ@public.gmane.org>
-List-Help: <mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=help>
-List-Subscribe: <http://lists.gnu.org/mailman/listinfo/coreutils>,
-	<mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=subscribe>
-Errors-To: coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org
-Sender: coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org
+From: Minchan Kim <minchan.kim@gmail.com>
+Subject: Re: [PATCH V8 4/8] mm/fs: add hooks to support cleancache
+Date: Mon, 18 Apr 2011 14:32:08 +0900
+Message-ID: <BANLkTikDQ_PuYPJEZRX_24uUi1DYWbvpzQ@mail.gmail.com>
+References: <83ef8b69-f041-43e6-a5a9-880ff3da26f2@default>
+	<871v135xvj.fsf@devron.myhome.or.jp>
+	<040a7fa3-14dd-4960-a296-cfdd061e015f@default>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+Cc: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>, Andrew Morton <akpm@linux-foundation.org>,
+	Chris Mason <chris.mason@oracle.com>, viro@zeniv.linux.org.uk, adilger.kernel@dilger.ca,
+	tytso@mit.edu, mfasheh@suse.com, jlbec@evilplan.org, matthew@wil.cx,
+	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	ocfs2-devel@oss.oracle.com, linux-mm@kvack.org, hch@infradead.org,
+	ngupta@vflare.org, jeremy@goop.org, JBeulich@novell.com,
+	Kurt Hackel <kurt.hackel@oracle.com>, npiggin@kernel.dk,
+	Dave Mccracken <dave.mccracken@oracle.com>, riel@redhat.com, avi@redhat.com,
+	Konrad Wilk <konrad.wilk@oracle.com>, mel@csn.ul.ie, yinghan@google.com,
+	gthelen@google.com, torvalds@linux-foundation.org
+To: Dan Magenheimer <dan.magenheimer@oracle.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <040a7fa3-14dd-4960-a296-cfdd061e015f@default>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Sat, Apr 16, 2011 at 3:53 AM, Dan Magenheimer
+<dan.magenheimer@oracle.com> wrote:
+>> From: OGAWA Hirofumi [mailto:hirofumi@mail.parknet.co.jp]
+>>
+>> Andrew Morton <akpm@linux-foundation.org> writes:
+>>
+>> >> > Before I suggested a thing about cleancache_flush_page,
+>> >> > cleancache_flush_inode.
+>> >> >
+>> >> > what's the meaning of flush's semantic?
+>> >> > I thought it means invalidation.
+>> >> > AFAIC, how about change flush with invalidate?
+>> >>
+>> >> I'm not sure the words "flush" and "invalidate" are defined
+>> >> precisely or used consistently everywhere in computer
+>> >> science, but I think that "invalidate" is to destroy
+>> >> a "pointer" to some data, but not necessarily destroy the
+>> >> data itself. =C2=A0 And "flush" means to actually remove
+>> >> the data. =C2=A0So one would "invalidate a mapping" but one
+>> >> would "flush a cache".
+>> >>
+>> >> Since cleancache_flush_page and cleancache_flush_inode
+>> >> semantically remove data from cleancache, I think flush
+>> >> is a better name than invalidate.
+>> >>
+>> >> Does that make sense?
+>> >
+>> > nope ;)
+>> >
+>> > Kernel code freely uses "flush" to refer to both invalidation and to
+>> > writeback, sometimes in confusing ways. =C2=A0In this case,
+>> > cleancache_flush_inode and cleancache_flush_page rather sound like
+>> they
+>> > might write those things to backing store.
+>>
+>> I'd like to mention about *_{get,put}_page too. In linux get/put is not
+>> meaning read/write. There is {get,put}_page those are refcount stuff
+>> (Yeah, and I felt those methods does refcount by quick read. But it
+>> seems to be false. There is no xen codes, so I don't know actually
+>> though.).
+>>
+>> And I agree, I also think the needing thing is consistency on the linux
+>> codes (term).
+>>
+>> Thanks.
+>> --
+>> OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+>
+> Hmmm, yes, that's a point of confusion also. =C2=A0No, cleancache put/get
+> do not have any relationship with reference counting.
+>
+> Andrew, I wonder if you would be so kind as to read the following
+> and make a "ruling". =C2=A0If you determine a preferable set of names,
+> I will abide by your decision and repost (if necessary).
+>
+> The problem is this: The English language has a limited number
+> of words that can be used to represent data motion and mapping
+> and most/all of them are already used in the kernel, often,
+> to quote Andrew, "in confusing ways." =C2=A0Complicating this, I
+> think the semantics of the cleancache operations are different
+> from the semantics of any other kernel operation... intentionally
+> so, because the value of cleancache is a direct result of those
+> differing semantics. =C2=A0And the cleancache semantics
+> are fairly complex (again intentionally) so a single function
+> name can't possibly describe the semantics.
+>
+> The cleancache operations are:
+> - put (page)
+> - get (page)
+> - flush page
+> - flush inode
+> - init fs
+> - flush fs
+>
+> I think these names are reasonable representations of the
+> semantics of the operations performed... but I'm not a kernel
+> expert so there is certainly room for disagreement. =C2=A0Though I
+> absolutely recognize the importance of a "name", I am primarily
+> interested in merging the semantics of the operations and
+> would happily accept any name that kernel developers could
+> agree on. =C2=A0However, I fear that there will be NO name that
+> will satisfy all, so would prefer to keep the existing names.
+> If some renaming is eventually agreed upon, this could be done
+> post-merge.
+>
+> Here's a brief description of the semantics:
+>
+> The cleancache operation currently known as "put" has the
+> following semantics: =C2=A0If *possible*, please take the data
+> contained in the pageframe referred to by this struct page
+> into cleancache and associate it with the filesystem-determined
+> "handle" derived from the struct page.
+>
+> The cleancache operation currently known as "get" has the
+> following semantics: =C2=A0Derive the filesystem-determined handle
+> from this struct page. =C2=A0If cleancache contains a page matching
+> that handle, recreate the page of data from cleancache and
+> place the results in the pageframe referred to by the
+> struct page. =C2=A0Then delete in cleancache any record of the
+> handle and any data associated with it, so that a
+> subsequent "get" will no longer find a match for the handle;
+> any space used for the data can also be freed.
+>
+> (Note that "take the data" and "recreate the page of data" are
+> similar in semantics to "copy to" and "copy from", but since
+> the cleancache operation may perform an "inflight" transformation
+> on the data, and "copy" usually means a byte-for-byte replication,
+> the word "copy" is also misleading.)
+>
+> The cleancache operation currently known as "flush" has the
+> following semantics: =C2=A0Derive the filesystem-determined handle
+> from this struct page and struct mapping. =C2=A0If cleancache
+> contains a page matching that handle, delete in cleancache any
+> record of the handle and any data associated with it, so that a
+> subsequent "get" will no longer find a match for the handle;
+> any space used for the data can also be freed
+>
+> The cleancache operation currently known as "flush inode" has
+> the following semantics: Derive the filesystem-determined filekey
+> from this struct mapping. =C2=A0If cleancache contains ANY handles
+> matching that filekey, delete in cleancache any record of
+> any matching handle and any data associated with those handles;
+> any space used for the data can also be freed.
+>
+> The cleancache operation currently known as "init fs" has
+> the following semantics: Create a unique poolid to refer
+> to this filesystem and save it in the superblock's
+> cleancache_poolid field.
+>
+> The cleancache operation currently known as "flush fs" has
+> the following semantics: Get the cleancache_poolid field
+> from this superblock. =C2=A0If cleancache contains ANY handles
+> associated with that poolid, delete in cleancache any
+> record of any matching handles and any data associated with
+> those handles; any space used for the data can also be freed.
+> Also, set the superblock's cleancache_poolid to be invalid
+> and, in cleancache, recycle the poolid so a subsequent init_fs
+> operation can reuse it.
+>
+> That's all!
+>
+> Thanks,
+> Dan
+>
 
---Apple-Mail-5-517528027
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=utf-8
+At least, I didn't confused your semantics except just flush. That's
+why I suggested only flush but after seeing your explaining, there is
+another thing I want to change. The get/put is common semantic of
+reference counting in kernel but in POV your semantics, it makes sense
+to me but get has a exclusive semantic so I want to represent it with
+API name. Maybe cleancache_get_page_exclusive.
 
-On 2011-04-17, at 6:40 PM, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org> wrote:
-> On Sat, Apr 16, 2011 at 08:21:28AM -0400, Theodore Tso wrote:
->>=20
->> On Apr 16, 2011, at 1:11 AM, Andreas Dilger wrote:
->>> In that case, it means cp should just always use FIEMAP_FLAG_SYNC, which=
- is fine.=20
->>=20
->> Except that if someone is copying a large delay allocated file, it will c=
-ause=20
->> the file to immediately snapped to disk, which might not be the greatest
->> thing in the world.=20
->=20
-> Obvious workaround - if the initial fiemap call shows unwritten
-> extents, redo it with the sync flag set. Though that assume=D1=95 that
-> you can trust things like delalloc extents to only cover the range
-> that valid data exists in. Which, of course, you can't assume,
-> either. :/
+The summary is that I don't want to change all API name. Just two thing.
+(I am not sure you and others agree on me. It's just suggestion).
 
-Always passing FIEMAP_FLAG_SYNC is fine in this case. It should only do anyt=
-hing if there is unwritten data, which is the only case we are concerned wit=
-h at this point.  In any case, this is a simple solution for coreutils until=
- such a time that a more complex solution is added in the kernel (if ever).
+1. cleancache_flush_page -> cleancache_[invalidate|remove]_page
+2. cleancache_get_page -> cleancache_get_page_exclusive
 
->> Christoph is write, SEEK_HOLE and SEEK_DATA are
->> a much better API for what cp woulld lke to do.  Unfortunately it hasn't
->> been implemented yet in the VFS...
->=20
-> Agreed, SEEK_HOLE/SEEK_DATA is the right way to solve this problem.
+BTW, Nice description.
+Please include it in documentation if we can't reach the conclusion.
+It will help others to understand semantic of cleancache.
 
-I don't see how this will change the problem in any meaningful way. There wi=
-ll still need to be code that is traversing the on-disk mapping, and also ke=
-eping it coherent with unwritten data in the page cache.
+Thanks, Dan.
 
-Since FIEMAP already exists for most Linux filesystems, it probably makes se=
-nse to implement SEEK_{HOLE,DATA} by calling FIEMAP to get the disk mapping i=
-n the first place.
+--=20
+Kind regards,
+Minchan Kim
 
-I agree that SEEK_{HOLE,DATA} is an easier programming interface, and probab=
-ly what cp, tar, etc should use, once it is implemented.=20
-
-Cheers, Andreas=
-
---Apple-Mail-5-517528027
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/html;
-	charset=utf-8
-
-<html><body bgcolor=3D"#FFFFFF"><div><span class=3D"Apple-style-span" style=3D=
-"-webkit-tap-highlight-color: rgba(26, 26, 26, 0.296875); -webkit-compositio=
-n-fill-color: rgba(175, 192, 227, 0.230469); -webkit-composition-frame-color=
-: rgba(77, 128, 180, 0.230469); ">On 2011-04-17, at 6:40 PM, Dave Chinner &l=
-t;<a href=3D"mailto:david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org">david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org</a>&gt; wrote:<=
-/span></div><div></div><blockquote type=3D"cite"><div><span>On Sat, Apr 16, 2=
-011 at 08:21:28AM -0400, Theodore Tso wrote:</span><blockquote type=3D"cite"=
-><span>On Apr 16, 2011, at 1:11 AM, Andreas Dilger wrote:</span></blockquote=
-><blockquote type=3D"cite"><blockquote type=3D"cite"><span>In that case, it m=
-eans cp should just always use FIEMAP_FLAG_SYNC, which is fine. </span><br><=
-/blockquote></blockquote><blockquote type=3D"cite"><span></span><br></blockq=
-uote><blockquote type=3D"cite"><span>Except that if someone is copying a lar=
-ge delay allocated file, it will cause </span><br></blockquote><blockquote t=
-ype=3D"cite"><span>the file to immediately snapped to disk, which might not b=
-e the greatest</span><br></blockquote><blockquote type=3D"cite"><span>thing i=
-n the world. </span><br></blockquote><span></span><br><span>Obvious workarou=
-nd - if the initial fiemap call shows unwritten</span><br><span>extents, red=
-o it with the sync flag set. Though that assume=D1=95 that</span><br><span>y=
-ou can trust things like delalloc extents to only cover the range</span><br>=
-<span>that valid data exists in. Which, of course, you can't assume,</span><=
-br><span>either. :/</span><br></div></blockquote><div><br></div>Always passi=
-ng&nbsp;<span class=3D"Apple-style-span" style=3D"-webkit-tap-highlight-colo=
-r: rgba(26, 26, 26, 0.292969); -webkit-composition-fill-color: rgba(175, 192=
-, 227, 0.230469); -webkit-composition-frame-color: rgba(77, 128, 180, 0.2304=
-69); ">FIEMAP_FLAG_SYNC is fine in this case. It should only do anything if t=
-here is unwritten data, which is the only case we are concerned with at this=
- point. &nbsp;In any case, this is a simple solution for coreutils until suc=
-h a time that a more complex solution is added in the kernel (if ever).</spa=
-n><div><span class=3D"Apple-style-span" style=3D"-webkit-tap-highlight-color=
-: rgba(26, 26, 26, 0.292969); -webkit-composition-fill-color: rgba(175, 192,=
- 227, 0.230469); -webkit-composition-frame-color: rgba(77, 128, 180, 0.23046=
-9);"><br></span><blockquote type=3D"cite"><div><blockquote type=3D"cite"><sp=
-an>Christoph is write, SEEK_HOLE and SEEK_DATA are</span><br></blockquote><b=
-lockquote type=3D"cite"><span>a much better API for what cp woulld lke to do=
-. &nbsp;Unfortunately it hasn't</span><br></blockquote><blockquote type=3D"c=
-ite"><span>been implemented yet in the VFS...</span><br></blockquote><span><=
-/span><br><span>Agreed, SEEK_HOLE/SEEK_DATA is the right way to solve this p=
-roblem.</span><font class=3D"Apple-style-span" color=3D"#000000"><font class=
-=3D"Apple-style-span" color=3D"#0023A3"><br></font></font></div></blockquote=
-><br></div><div>I don't see how this will change the problem in any meaningf=
-ul way. There will still need to be code that is traversing the on-disk mapp=
-ing, and also keeping it coherent with unwritten data in the page cache.</di=
-v><div><br></div><div>Since FIEMAP already exists for most Linux filesystems=
-, it probably makes s<span class=3D"Apple-style-span" style=3D"-webkit-tap-h=
-ighlight-color: rgba(26, 26, 26, 0.296875); -webkit-composition-fill-color: r=
-gba(175, 192, 227, 0.230469); -webkit-composition-frame-color: rgba(77, 128,=
- 180, 0.230469); ">ense to implement SEEK_{HOLE,DATA} by calling FIEMAP to g=
-et the disk mapping in the first place.</span></div><div><span class=3D"Appl=
-e-style-span" style=3D"-webkit-tap-highlight-color: rgba(26, 26, 26, 0.29687=
-5); -webkit-composition-fill-color: rgba(175, 192, 227, 0.230469); -webkit-c=
-omposition-frame-color: rgba(77, 128, 180, 0.230469); "><br></span></div><di=
-v><span class=3D"Apple-style-span" style=3D"-webkit-tap-highlight-color: rgb=
-a(26, 26, 26, 0.296875); -webkit-composition-fill-color: rgba(175, 192, 227,=
- 0.230469); -webkit-composition-frame-color: rgba(77, 128, 180, 0.230469); "=
->I agree that&nbsp;</span><span class=3D"Apple-style-span" style=3D"-webkit-=
-tap-highlight-color: rgba(26, 26, 26, 0.292969); -webkit-composition-fill-co=
-lor: rgba(175, 192, 227, 0.230469); -webkit-composition-frame-color: rgba(77=
-, 128, 180, 0.230469); ">SEEK_{HOLE,DATA} is an easier programming interface=
-, and probably what cp, tar, etc should use, once it is implemented.&nbsp;</=
-span></div><div><span class=3D"Apple-style-span" style=3D"-webkit-tap-highli=
-ght-color: rgba(26, 26, 26, 0.292969); -webkit-composition-fill-color: rgba(=
-175, 192, 227, 0.230469); -webkit-composition-frame-color: rgba(77, 128, 180=
-, 0.230469); "><br></span></div><div><span class=3D"Apple-style-span" style=3D=
-"-webkit-tap-highlight-color: rgba(26, 26, 26, 0.292969); -webkit-compositio=
-n-fill-color: rgba(175, 192, 227, 0.230469); -webkit-composition-frame-color=
-: rgba(77, 128, 180, 0.230469); ">Cheers, Andreas</span></div></body></html>=
-
---Apple-Mail-5-517528027--
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
