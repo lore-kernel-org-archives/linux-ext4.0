@@ -1,269 +1,156 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [Ext4 punch hole 5/6 v5] Ext4 Punch Hole Support: Map blocks
- punch hole flag
-Date: Tue, 19 Apr 2011 16:35:48 +0800
-Message-ID: <BANLkTinaFDetbwu-Y6afPgiRAzwarvtGJg@mail.gmail.com>
-References: <4DAD3D05.8000103@linux.vnet.ibm.com>
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
+ to a deadlock
+Date: Tue, 19 Apr 2011 18:43:16 +0900
+Message-ID: <4DAD5934.1030901@jp.fujitsu.com>
+References: <4D946DAB.3010107@jp.fujitsu.com> <4D9AEE28.4000003@jp.fujitsu.com> <20110405225428.GD8531@quack.suse.cz> <4D9BF57A.6030705@jp.fujitsu.com> <20110406055708.GB23285@quack.suse.cz> <4D9C18DF.90803@jp.fujitsu.com> <20110406174617.GC28689@quack.suse.cz> <4DA84A7B.3040403@jp.fujitsu.com> <20110415171310.GB5432@quack.suse.cz> <4DABFEBD.7030102@jp.fujitsu.com> <20110418105105.GB5557@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Allison Henderson <achender@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f52.google.com ([209.85.210.52]:63778 "EHLO
-	mail-pz0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752833Ab1DSImu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Apr 2011 04:42:50 -0400
-Received: by pzk12 with SMTP id 12so3875178pzk.11
-        for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 01:42:50 -0700 (PDT)
-In-Reply-To: <4DAD3D05.8000103@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: toshi.okajima@jp.fujitsu.com, Ted Ts'o <tytso@mit.edu>,
+	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	sandeen@redhat.com
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20110418105105.GB5557@quack.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 19, 2011 at 3:43 PM, Allison Henderson
-<achender@linux.vnet.ibm.com> wrote:
-> This patch adds a new flag to map blocks that specifies
-> the given range of blocks should be punched out. =A0Extents
-> are first converted to uninitialized extents before they are
-> punched out. Because punching a hole may require that the
-> extent be split, it is possible that the splitting may need
-> more blocks than are available. =A0To deal with this, reserved
-> blocks are temporarily borrowed to allow the split to proceed.
-> The borrowed blocks are then returned after the hole punch has
-> released more blocks.
->
-> The routine then returns the number of blocks successfully
-> punched out.
->
-> Signed-off-by: Allison Henderson <achender@us.ibm.com>
-> ---
-> :100644 100644 e3a721a... d97bc87... M =A0fs/ext4/extents.c
-> =A0fs/ext4/extents.c | =A0 99 +++++++++++++++++++++++++++++++++++++++=
-++++++++------
-> =A01 files changed, 88 insertions(+), 11 deletions(-)
->
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index e3a721a..d97bc87 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -3456,15 +3456,19 @@ int ext4_ext_map_blocks(handle_t *handle, str=
-uct inode *inode,
-> =A0 =A0 =A0 =A0ext4_fsblk_t newblock =3D 0;
-> =A0 =A0 =A0 =A0int err =3D 0, depth, ret;
-> =A0 =A0 =A0 =A0unsigned int allocated =3D 0;
-> + =A0 =A0 =A0 unsigned int punched_out =3D 0;
-> + =A0 =A0 =A0 unsigned int result =3D 0;
-> =A0 =A0 =A0 =A0struct ext4_allocation_request ar;
-> =A0 =A0 =A0 =A0ext4_io_end_t *io =3D EXT4_I(inode)->cur_aio_dio;
-> + =A0 =A0 =A0 struct ext4_map_blocks punch_map;
->
-> =A0 =A0 =A0 =A0ext_debug("blocks %u/%u requested for inode %lu\n",
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0map->m_lblk, map->m_len, inode->i_=
-ino);
-> =A0 =A0 =A0 =A0trace_ext4_ext_map_blocks_enter(inode, map->m_lblk, ma=
-p->m_len, flags);
->
-> =A0 =A0 =A0 =A0/* check in cache */
-> - =A0 =A0 =A0 if (ext4_ext_in_cache(inode, map->m_lblk, &newex)) {
-> + =A0 =A0 =A0 if (ext4_ext_in_cache(inode, map->m_lblk, &newex) &&
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 ((flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT=
-) =3D=3D 0)) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (!newex.ee_start_lo && !newex.ee_st=
-art_hi) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if ((flags & EXT4_GET_=
-BLOCKS_CREATE) =3D=3D 0) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/*
-> @@ -3529,16 +3533,85 @@ int ext4_ext_map_blocks(handle_t *handle, str=
-uct inode *inode,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext_debug("%u fit into=
- %u:%d -> %llu\n", map->m_lblk,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ee=
-_block, ee_len, newblock);
->
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* Do not put uninitial=
-ized extent in the cache */
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!ext4_ext_is_uninit=
-ialized(ex)) {
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_ex=
-t_put_in_cache(inode, ee_block,
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ee_len, ee_start);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto ou=
-t;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if ((flags & EXT4_GET_B=
-LOCKS_PUNCH_OUT_EXT) =3D=3D 0) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /*
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* Do=
- not put uninitialized extent
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* in=
- the cache
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0*/
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!ex=
-t4_ext_is_uninitialized(ex)) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 ext4_ext_put_in_cache(inode, ee_block,
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 ee_len, ee_start);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 goto out;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ret =3D=
- ext4_ext_handle_uninitialized_extents(
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 handle, inode, map, path, flags,
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 allocated, newblock);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return =
-ret;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ret =3D ext4_ext_handle=
-_uninitialized_extents(handle,
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 inode, map, path, flags, allocated,
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 newblock);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return ret;
-> +
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /*
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* Punch out the map =
-length, but only to the
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* end of the extent
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0*/
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 punched_out =3D allocat=
-ed < map->m_len ?
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 allocat=
-ed : map->m_len;
-> +
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /*
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* Sense extents need=
- to be converted to
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* uninitialized, the=
-y must fit in an
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* uninitialized exte=
-nt
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0*/
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (punched_out > EXT_U=
-NINIT_MAX_LEN)
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 punched=
-_out =3D EXT_UNINIT_MAX_LEN;
-> +
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 punch_map.m_lblk =3D ma=
-p->m_lblk;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 punch_map.m_pblk =3D ne=
-wblock;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 punch_map.m_len =3D pun=
-ched_out;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 punch_map.m_flags =3D 0=
-;
-> +
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* Check to see if the =
-extent needs to be split */
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (punch_map.m_len !=3D=
- ee_len ||
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 punch_m=
-ap.m_lblk !=3D ee_block) {
-> +
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ret =3D=
- ext4_ext_split_extents(handle, inode,
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 &punch_=
-map, path,
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 EXT4_GE=
-T_BLOCKS_PRE_IO |
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 EXT4_HA=
-S_FREE_BLKS_USE_ROOTBLKS,
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 0);
-> +
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (ret=
- < 0) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 err =3D ret;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 goto out2;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /*
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* fi=
-nd extent for the block at
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* th=
-e start of the hole
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0*/
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_ex=
-t_drop_refs(path);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 kfree(p=
-ath);
-> +
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 path =3D=
- ext4_ext_find_extent(inode,
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 map->m_=
-lblk, NULL);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (IS_=
-ERR(path)) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 err =3D PTR_ERR(path);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 path =3D NULL;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 goto out2;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
-> +
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 depth =3D=
- ext_depth(inode);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ex =3D =
-path[depth].p_ext;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ee_len =
-=3D ext4_ext_get_actual_len(ex);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ee_bloc=
-k =3D le32_to_cpu(ex->ee_block);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ee_star=
-t =3D ext4_ext_pblock(ex);
-> +
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
-> +
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_ext_mark_uninitial=
-ized(ex);
-Is this change journaled?
+Hi,
 
-> +
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 err =3D ext4_ext_remove=
-_space(inode, map->m_lblk,
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 map->m_=
-lblk + punched_out);
-> +
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out2;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
-> =A0 =A0 =A0 =A0}
->
-> @@ -3683,7 +3756,11 @@ out2:
-> =A0 =A0 =A0 =A0}
-> =A0 =A0 =A0 =A0trace_ext4_ext_map_blocks_exit(inode, map->m_lblk,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0newblock, map->m_len, err ? err : allo=
-cated);
-> - =A0 =A0 =A0 return err ? err : allocated;
-> +
-> + =A0 =A0 =A0 result =3D (flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) ?
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 punched_out : allocated=
-;
-> +
-> + =A0 =A0 =A0 return err ? err : result;
-> =A0}
->
-> =A0void ext4_ext_truncate(struct inode *inode)
-> --
-> 1.7.1
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
+(2011/04/18 19:51), Jan Kara wrote:
+> On Mon 18-04-11 18:05:01, Toshiyuki Okajima wrote:
+>>> On Fri 15-04-11 22:39:07, Toshiyuki Okajima wrote:
+>>>>>    For ext3 or ext4 without delayed allocation we block inside writepage()
+>>>>> function. But as I wrote to Dave Chinner, ->page_mkwrite() should probably
+>>>>> get modified to block while minor-faulting the page on frozen fs because
+>>>>> when blocks are already allocated we may skip starting a transaction and so
+>>>>> we could possibly modify the filesystem.
+>>>> OK. I think ->page_mkwrite() should also block writing the minor-faulting pages.
+>>>>
+>>>> (minor-pagefault)
+>>>> ->   do_wp_page()
+>>>>     ->   page_mkwrite(= ext4_mkwrite())
+>>>>        =>   BLOCK!
+>>>>
+>>>> (major-pagefault)
+>>>> ->   do_liner_fault()
+>>>>     ->   page_mkwrite(= ext4_mkwrite())
+>>>>        =>   BLOCK!
+>>>>
+>>>>>
+>>>>>>>> Mizuma-san's reproducer also writes the data which maps to the file (mmap).
+>>>>>>>> The original problem happens after the fsfreeze operation is done.
+>>>>>>>> I understand the normal write operation (not mmap) can be blocked while
+>>>>>>>> fsfreezing. So, I guess we don't always block all the write operation
+>>>>>>>> while fsfreezing.
+>>>>>>>    Technically speaking, we block all the transaction starts which means we
+>>>>>>> end up blocking all the writes from going to disk. But that does not mean
+>>>>>>> we block all the writes from going to in-memory cache - as you properly
+>>>>>>> note the mmap case is one of such exceptions.
+>>>>>> Hm, I also think we can allow the writes to in-memory cache but we can't allow
+>>>>>> the writes to disk while fsfreezing. I am considering that mmap path can
+>>>>>> write to disk while fsfreezing because this deadlock problem happens after
+>>>>>> fsfreeze operation is done...
+>>>>>    I'm sorry I don't understand now - are you speaking about the case above
+>>>>> when writepage() does not wait for filesystem being frozen or something
+>>>>> else?
+>>>> Sorry, I didn't understand around the page fault path.
+>>>> So, I had read the kernel source code around it, then I maybe understand...
+>>>>
+>>>> I worry whether we can update the file data in mmap case while fsfreezing.
+>>>> Of course, I understand that we can write to in-memory cache, and it is not a
+>>>> problem. However, if we can write to disk while fsfreezing, it is a problem.
+>>>> So, I summarize the cases whether we can write to disk or not.
+>>>>
+>>>> --------------------------------------------------------------------------
+>>>> Cases (Whether we can write the data mmapped to the file on the disk
+>>>> while fsfreezing)
+>>>>
+>>>> [1] One of the page which has been mmapped is not bound. And
+>>>>   the page is not allocated yet. (major fault?)
+>>>>
+>>>>     (1) user dirtys a page
+>>>>     (2) a page fault occurs (do_page_fault)
+>>>>     (3) __do_falut is called.
+>>>>     (4) ext4_page_mkwrite is called
+>>>>     (5) ext4_write_begin is called
+>>>>     (6) ext4_journal_start_sb       =>   We can STOP!
+>>>>
+>>>> [2] One of the page which has been mmapped is not bound. But
+>>>>   the page is already allocated, and the buffer_heads of the page
+>>>>   are not mapped (BH_Mapped).  (minor fault?)
+>>>>
+>>>>     (1) user dirtys a page
+>>>>     (2) a page fault occurs (do_page_fault)
+>>>>     (3) do_wp_page is called.
+>>>>     (4) ext4_page_mkwrite is called
+>>>>     (5) ext4_write_begin is called
+>>>>     (6) ext4_journal_start_sb       =>   We can STOP!
+>>>>
+>>>> [3] One of the page which has been mmapped is not bound. But
+>>>>   the page is already allocated, and the buffer_heads of the page
+>>>>   are mapped (BH_Mapped).  (minor fault?)
+>>>>
+>>>>     (1) user dirtys a page
+>>>>     (2) a page fault occurs (do_page_fault)
+>>>>     (3) do_wp_page is called.
+>>>>     (4) ext4_page_mkwrite is called
+>>>>     * Cannot block the dirty page to be written because all bh is mapped.
+>>>>     (5) user munmaps the page (munmap)
+>>>>     (6) zap_pte_range dirtys the page (struct page) which is pte_dirtyed.
+>>>>     (7) writeback thread writes the page (struct page) to disk
+>>>>                                             =>   We cannot STOP!
+>>>>
+>>>> [4] One of the page which has been mmapped is bound. And
+>>>>   the page is already allocated.
+>>>>
+>>>>     (1) user dirtys a page
+>>>>     ( ) no page fault occurs
+>>>>     (2) user munmaps the page (munmap)
+>>>>     (3) zap_pte_range dirtys the page (struct page) which is pte_dirtyed.
+>>>>     (4) writeback thread writes the page (struct page) to disk
+>>>>                                             =>   We cannot STOP!
+>>>> --------------------------------------------------------------------------
+>>>>
+>>>> So, we can block the cases [1], [2].
+>>>> But I think we cannot block the cases [3], [4] now.
+>>>> If fixing the page_mkwrite, we can also block the case [3].
+>>>> But the case [4] is not blocked because no page fault occurs
+>>>> when we dirty the mmapped page.
+>>>>
+>>>> Therefore, to repair this problem, we need to fix the cases [3], [4].
+>>>> I think we must modify the writeback thread to fix the case [4].
+>>>    The trick here is that when we write a page to disk, we write-protect
+>>> the page (you seem to call this that "the page is bound", I'm not sure why).
+>> Hm, I want to understand how to write-protect the page under fsfreezing.
+>    Look at what page_mkclean() called from clear_page_dirty_for_io() does...
+Thanks. I'll read that.
 
+>
+>> But, anyway, I understand we don't need to consider the case [4].
+>    Yes.
+>
+>>> So we are guaranteed to receive a minor fault (case [3]) if user tries to
+>>> modify a page after we finish writeback while freezing the filesystem.
+>>> So principially all we need to do is just wait in ext4_page_mkwrite().
+>> OK. I understand.
+>> Are there any concrete ideas to fix this?
+>> For ext4, we can rescue from the case [3] by modifying ext4_page_mkwrite().
+>    Yes.
+>
+>> But for ext3 or other FSs, we must implement ->page_mkwrite() to prevent it?
+>    Sadly I don't see a simple way to fix this issue for all filesystems at
+> once. Implementing proper wait in block_page_mkwrite() should fix the issue
+> for xfs. Other filesystems like GFS2 or Btrfs will have to be fixed
+> separately as ext4. For ext3, we'd have to add ->page_mkwrite() support. I
+> have patches for this already for some time but I have to get to properly
+> testing them in more exotic conditions like 64k pages...
+OK. I understand the current status of your works to fix the problem which
+can be written with some data at mmap path while fsfreezing.
 
+Thanks,
+Toshiyuki Okajima
 
---=20
-Best Wishes
-Yongqiang Yang
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
