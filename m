@@ -1,60 +1,81 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: Ext4 Punch Hole Support: Change summary and test case summary
-Date: Tue, 19 Apr 2011 13:41:06 -0700
-Message-ID: <4DADF362.1040300@linux.vnet.ibm.com>
-References: <4DAD3BD7.3080107@linux.vnet.ibm.com> <F28E8BBB-A8B7-44AA-A84C-DB247B2A88CC@dilger.ca>
+From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Subject: Re: Files full of zeros with coreutils-8.11 and xfs (FIEMAP related?)
+Date: Wed, 20 Apr 2011 07:08:25 +1000
+Message-ID: <20110419210825.GJ23985@dastard>
+References: <20110416005040.GP21395@dastard>
+	<E7438588-5C5A-42B9-9B6C-FADF7CAC6D3A@dilger.ca>
+	<4EEEA16E-1FDB-4430-A372-8F8701196E4C@mit.edu>
+	<20110418004040.GS21395@dastard>
+	<6C89E159-A5F6-4A06-A3D2-273BE4CFB9B5@dilger.ca>
+	<BANLkTin=WEpSf6ddiOMNMOpCPP-wiEttSw@mail.gmail.com>
+	<20110419034455.GB23985@dastard>
+	<BANLkTinjh968ECqAobQ677hnV5yzke1ncw@mail.gmail.com>
+	<20110419074538.GG23985@dastard> <20110419140909.GD3030@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:53151 "EHLO e1.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751959Ab1DSUlL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 19 Apr 2011 16:41:11 -0400
-Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
-	by e1.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p3JKUVtV002608
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 16:30:31 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p3JKf94c307720
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 16:41:09 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p3JKf8pt024746
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 16:41:08 -0400
-In-Reply-To: <F28E8BBB-A8B7-44AA-A84C-DB247B2A88CC@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, Eric Sandeen <sandeen-+82itfer+wXR7s880joybQ@public.gmane.org>,
+	Yongqiang Yang <xiaoqiangnk-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, xfs-oss <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
+	"coreutils-mXXj517/zsQ@public.gmane.org" <coreutils-mXXj517/zsQ@public.gmane.org>,
+	"linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Markus Trippelsdorf <markus-xp2qqqlHh3xzoYq+O6RWwA@public.gmane.org>
+To: Ted Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
+Return-path: <coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20110419140909.GD3030-AKGzg7BKzIDYtjvyW6yDsg@public.gmane.org>
+List-Unsubscribe: <http://lists.gnu.org/mailman/options/coreutils>,
+	<mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=unsubscribe>
+List-Archive: </archive/html/coreutils>
+List-Post: <mailto:coreutils-mXXj517/zsQ@public.gmane.org>
+List-Help: <mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=help>
+List-Subscribe: <http://lists.gnu.org/mailman/listinfo/coreutils>,
+	<mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=subscribe>
+Errors-To: coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org
+Sender: coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 4/19/2011 1:29 AM, Andreas Dilger wrote:
-> On 2011-04-19, at 1:37 AM, Allison Henderson wrote:
->> Big Hole Test
->> ---------------------------------------------------------------
->> A hole large hole is punched in a large file (exact file size=638169088 bytes, exact hole size = 638150422 bytes, offset = 6144 bytes),
->> resulting in all but 5 blocks being punched out (2 in the front, 3 in the back).  This test case verifies that the code can properly
->> punch out a hole covering multiple extents.
->>
->> This test is successful when the following conditions are met:
->> - File frag shows extents only for the first two blocks and the last 3 blocks
->> - The test file contains zeros from bytes 6144 to 638156566
->> (* ls and df is not measured here because some blocks will still be reserved
->> as index blocks causing the consumed space to be appear larger)
->
-> Shouldn't the remaining two extents fit inside the inode, so there is no need for index blocks, or does the extent removal code not shrink the index blocks?
->
-> Cheers, Andreas
->
->
->
->
->
-Hi there,
+On Tue, Apr 19, 2011 at 10:09:09AM -0400, Ted Ts'o wrote:
+> On Tue, Apr 19, 2011 at 05:45:38PM +1000, Dave Chinner wrote:
+> > You are *not listening*. There is no #2. FIEMAP returns the extent
+> > state _on disk_ at the time of the call.
+> 
+> Dave, you're being rather strident about your insistence about what
+> FIEMAP's semantics are. 
 
-It turns out that it does not.  At one point I spent a good chunk of 
-time trying to figure out why the file size was not the number I had 
-expected, and found out that there was an index block that was still 
-there.  I also found out a normal truncate does the same thing.  A large 
-file truncated down to a small file ended up occupying more space than 
-an empty file that was grown to the same size.  Since this behavior was 
-existing though, we have put this task on our back log as a separate 
-work item.
+The bit about the page cache state being relevant? That's what I was
+refering to here.
+
+> Part of the problem here is that it's *not*
+> clear or settled.
+> 
+> If it really is the state _on_ _disk_, does XFS really have a DELALLOC
+> bit _on_ _disk_?
+
+Sigh. No.
+
+This whole thing blew up because of unwritten extent behaviour when
+there is dirty page cache covering and unwritten extent. Delalloc
+was not the issue - what I said is absolutely true for unwritten
+extents.  Somewhere in the middle someone started talking about
+delalloc extents and conflating their behaviour with unwritten
+extents, but I continued to talk about unwritten extents and
+cached pages.
+
+Even so, for delalloc extents the dirty page state in the page cache
+is irrelevant. I've said earlier that XFS delalloc extents can span
+regions that have no page cache state - they don't get reported as
+holes by FIEMAP because they are tracked as delalloc. IOWs, like
+unwritten extents, you can't rely on delalloc extents to tell you
+where the data is in the file.
+
+So, it logically follws that you need to use the SYNC flag for both
+unwritten extents and delalloc extents to find out where there data
+realy lies by converting them to real, written extents. i.e. the
+only extents you can trust contain data from FIEMAP are the real
+extents on disk....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
