@@ -1,290 +1,184 @@
 From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: [Ext4 punch hole 4/6 v5] Ext4 Punch Hole Support: Punch out extents
-Date: Tue, 19 Apr 2011 00:42:51 -0700
-Message-ID: <4DAD3CFB.3060308@linux.vnet.ibm.com>
+Subject: [Ext4 punch hole 5/6 v5] Ext4 Punch Hole Support: Map blocks punch
+ hole flag
+Date: Tue, 19 Apr 2011 00:43:01 -0700
+Message-ID: <4DAD3D05.8000103@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e8.ny.us.ibm.com ([32.97.182.138]:58237 "EHLO e8.ny.us.ibm.com"
+Received: from e7.ny.us.ibm.com ([32.97.182.137]:48952 "EHLO e7.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751399Ab1DSHmz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 19 Apr 2011 03:42:55 -0400
+	id S1751399Ab1DSHnG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 19 Apr 2011 03:43:06 -0400
 Received: from d01relay07.pok.ibm.com (d01relay07.pok.ibm.com [9.56.227.147])
-	by e8.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p3J7HQQ2017294
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 03:17:26 -0400
+	by e7.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p3J7Ku5L030052
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 03:20:56 -0400
 Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p3J7gspM2560046
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 03:42:54 -0400
+	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p3J7h51T2580638
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 03:43:05 -0400
 Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p3J7gsG2028136
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 03:42:54 -0400
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p3J7h5NB028531
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 03:43:05 -0400
 Received: from [9.48.114.155] (sig-9-48-114-155.mts.ibm.com [9.48.114.155])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p3J7gs0P028115
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 03:42:54 -0400
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p3J7h4lL028474
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 03:43:04 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch modifies the truncate routines to support hole punching
-Below is a brief summary of the patches changes:
+This patch adds a new flag to map blocks that specifies
+the given range of blocks should be punched out.  Extents
+are first converted to uninitialized extents before they are
+punched out. Because punching a hole may require that the
+extent be split, it is possible that the splitting may need
+more blocks than are available.  To deal with this, reserved
+blocks are temporarily borrowed to allow the split to proceed.
+The borrowed blocks are then returned after the hole punch has
+released more blocks.
 
-- Added end param to ext_ext4_rm_leaf
-        This function has been modified to accept an end parameter
-        which enables it to punch holes in leafs instead of just
-        truncating them.
-
-- Implemented the "remove head" case in the ext_remove_blocks routine
-        This routine is used by ext_ext4_rm_leaf to remove the tail
-        of an extent during a truncate.  The new ext_ext4_rm_leaf
-        routine will now also use it to remove the head of an extent in the
-        case that the hole covers a region of blocks at the beginning
-        of an extent.
-
-- Added "end" param to ext4_ext_remove_space routine
-        This function has been modified to accept a stop parameter, which
-        is passed through to ext4_ext_rm_leaf.
+The routine then returns the number of blocks successfully
+punched out.
 
 Signed-off-by: Allison Henderson <achender@us.ibm.com>
 ---
-:100644 100644 4d9f06d... e3a721a... M	fs/ext4/extents.c
- fs/ext4/extents.c |  152 ++++++++++++++++++++++++++++++++++++++++++++++-------
- 1 files changed, 133 insertions(+), 19 deletions(-)
+:100644 100644 e3a721a... d97bc87... M	fs/ext4/extents.c
+ fs/ext4/extents.c |   99 +++++++++++++++++++++++++++++++++++++++++++++++------
+ 1 files changed, 88 insertions(+), 11 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 4d9f06d..e3a721a 100644
+index e3a721a..d97bc87 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -2175,8 +2175,16 @@ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
- 		ext4_free_blocks(handle, inode, NULL, start, num, flags);
- 	} else if (from == le32_to_cpu(ex->ee_block)
- 		   && to <= le32_to_cpu(ex->ee_block) + ee_len - 1) {
--		printk(KERN_INFO "strange request: removal %u-%u from %u:%u\n",
--			from, to, le32_to_cpu(ex->ee_block), ee_len);
-+		/* head removal */
-+		ext4_lblk_t num;
-+		ext4_fsblk_t start;
-+
-+		num = to - from;
-+		start = ext4_ext_pblock(ex);
-+
-+		ext_debug("free first %u blocks starting %llu\n", num, start);
-+		ext4_free_blocks(handle, inode, 0, start, num, flags);
-+
- 	} else {
- 		printk(KERN_INFO "strange request: removal(2) "
- 				"%u-%u from %u:%u\n",
-@@ -2185,9 +2193,22 @@ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
- 	return 0;
- }
+@@ -3456,15 +3456,19 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ 	ext4_fsblk_t newblock = 0;
+ 	int err = 0, depth, ret;
+ 	unsigned int allocated = 0;
++	unsigned int punched_out = 0;
++	unsigned int result = 0;
+ 	struct ext4_allocation_request ar;
+ 	ext4_io_end_t *io = EXT4_I(inode)->cur_aio_dio;
++	struct ext4_map_blocks punch_map;
  
-+
-+/*
-+ * ext4_ext_rm_leaf() Removes the extents associated with the
-+ * blocks appearing between "start" and "end", and splits the extents
-+ * if "start" and "end" appear in the same extent
-+ *
-+ * @handle: The journal handle
-+ * @inode:  The files inode
-+ * @path:   The path to the leaf
-+ * @start:  The first block to remove
-+ * @end:   The last block to remove
-+ */
- static int
- ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
--		struct ext4_ext_path *path, ext4_lblk_t start)
-+		struct ext4_ext_path *path, ext4_lblk_t start,
-+		ext4_lblk_t end)
- {
- 	int err = 0, correct_index = 0;
- 	int depth = ext_depth(inode), credits;
-@@ -2198,6 +2219,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 	unsigned short ex_ee_len;
- 	unsigned uninitialized = 0;
- 	struct ext4_extent *ex;
-+	struct ext4_map_blocks map;
+ 	ext_debug("blocks %u/%u requested for inode %lu\n",
+ 		  map->m_lblk, map->m_len, inode->i_ino);
+ 	trace_ext4_ext_map_blocks_enter(inode, map->m_lblk, map->m_len, flags);
  
- 	/* the header must be checked already in ext4_ext_remove_space() */
- 	ext_debug("truncate since %u in leaf\n", start);
-@@ -2227,31 +2249,94 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 		path[depth].p_ext = ex;
+ 	/* check in cache */
+-	if (ext4_ext_in_cache(inode, map->m_lblk, &newex)) {
++	if (ext4_ext_in_cache(inode, map->m_lblk, &newex) &&
++		((flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) == 0)) {
+ 		if (!newex.ee_start_lo && !newex.ee_start_hi) {
+ 			if ((flags & EXT4_GET_BLOCKS_CREATE) == 0) {
+ 				/*
+@@ -3529,16 +3533,85 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ 			ext_debug("%u fit into %u:%d -> %llu\n", map->m_lblk,
+ 				  ee_block, ee_len, newblock);
  
- 		a = ex_ee_block > start ? ex_ee_block : start;
--		b = ex_ee_block + ex_ee_len - 1 < EXT_MAX_BLOCK ?
--			ex_ee_block + ex_ee_len - 1 : EXT_MAX_BLOCK;
-+		b = ex_ee_block+ex_ee_len - 1 < end ?
-+			ex_ee_block+ex_ee_len - 1 : end;
- 
- 		ext_debug("  border %u:%u\n", a, b);
- 
--		if (a != ex_ee_block && b != ex_ee_block + ex_ee_len - 1) {
--			block = 0;
--			num = 0;
--			BUG();
-+		/* If this extent is beyond the end of the hole, skip it */
-+		if (end <= ex_ee_block) {
-+			ex--;
-+			ex_ee_block = le32_to_cpu(ex->ee_block);
-+			ex_ee_len = ext4_ext_get_actual_len(ex);
-+			continue;
-+		} else if (a != ex_ee_block &&
-+			b != ex_ee_block + ex_ee_len - 1) {
-+			/*
-+			 * If this is a truncate, then this condition should
-+			 * never happen because at least one of the end points
-+			 * needs to be on the edge of the extent.
-+			 */
-+			if (end == EXT_MAX_BLOCK) {
-+				ext_debug("  bad truncate %u:%u\n",
-+						start, end);
-+				block = 0;
-+				num = 0;
-+				err = -EIO;
-+				goto out;
-+			}
-+			/*
-+			 * else this is a hole punch, so the extent needs to
-+			 * be split since neither edge of the hole is on the
-+			 * extent edge
-+			 */
-+			else{
-+				map.m_pblk = ext4_ext_pblock(ex);
-+				map.m_lblk = ex_ee_block;
-+				map.m_len = b - ex_ee_block;
-+
-+				err = ext4_ext_split_extents(handle,
-+					inode, &map, path,
-+					EXT4_GET_BLOCKS_PRE_IO, 0);
-+
-+				if (err < 0)
-+					goto out;
-+
-+				ex_ee_len = ext4_ext_get_actual_len(ex);
-+
-+				b = ex_ee_block+ex_ee_len - 1 < end ?
-+					ex_ee_block+ex_ee_len - 1 : end;
-+
-+				/* Then remove tail of this extent */
-+				block = ex_ee_block;
-+				num = a - block;
-+			}
- 		} else if (a != ex_ee_block) {
- 			/* remove tail of the extent */
- 			block = ex_ee_block;
- 			num = a - block;
- 		} else if (b != ex_ee_block + ex_ee_len - 1) {
- 			/* remove head of the extent */
--			block = a;
--			num = b - a;
--			/* there is no "make a hole" API yet */
--			BUG();
-+			block = b;
-+			num =  ex_ee_block + ex_ee_len - b;
-+
-+			/*
-+			 * If this is a truncate, this condition
-+			 * should never happen
-+			 */
-+			if (end == EXT_MAX_BLOCK) {
-+				ext_debug("  bad truncate %u:%u\n",
-+					start, end);
-+				err = -EIO;
-+				goto out;
-+			}
- 		} else {
- 			/* remove whole extent: excellent! */
- 			block = ex_ee_block;
- 			num = 0;
--			BUG_ON(a != ex_ee_block);
--			BUG_ON(b != ex_ee_block + ex_ee_len - 1);
-+			if (a != ex_ee_block) {
-+				ext_debug("  bad truncate %u:%u\n",
-+					start, end);
-+				err = -EIO;
-+				goto out;
-+			}
-+
-+			if (b != ex_ee_block + ex_ee_len - 1) {
-+				ext_debug("  bad truncate %u:%u\n",
-+					start, end);
-+				err = -EIO;
-+				goto out;
-+			}
- 		}
- 
- 		/*
-@@ -2282,7 +2367,13 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 		if (num == 0) {
- 			/* this extent is removed; mark slot entirely unused */
- 			ext4_ext_store_pblock(ex, 0);
--			le16_add_cpu(&eh->eh_entries, -1);
-+		} else if (block != ex_ee_block) {
-+			/*
-+			 * If this was a head removal, then we need to update
-+			 * the physical block since it is now at a different
-+			 * location
-+			 */
-+			ext4_ext_store_pblock(ex, ext4_ext_pblock(ex) + (b-a));
- 		}
- 
- 		ex->ee_block = cpu_to_le32(block);
-@@ -2298,6 +2389,27 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 		if (err)
- 			goto out;
- 
-+		/*
-+		 * If the extent was completely released,
-+		 * we need to remove it from the leaf
-+		 */
-+		if (num == 0) {
-+			if (end != EXT_MAX_BLOCK) {
+-			/* Do not put uninitialized extent in the cache */
+-			if (!ext4_ext_is_uninitialized(ex)) {
+-				ext4_ext_put_in_cache(inode, ee_block,
+-							ee_len, ee_start);
+-				goto out;
++			if ((flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) == 0) {
 +				/*
-+				 * For hole punching, we need to scoot all the
-+				 * extents up when an extent is removed so that
-+				 * we dont have blank extents in the middle
++				 * Do not put uninitialized extent
++				 * in the cache
 +				 */
-+				memmove(ex, ex+1, (EXT_LAST_EXTENT(eh) - ex) *
-+					sizeof(struct ext4_extent));
++				if (!ext4_ext_is_uninitialized(ex)) {
++					ext4_ext_put_in_cache(inode, ee_block,
++						ee_len, ee_start);
++					goto out;
++				}
++				ret = ext4_ext_handle_uninitialized_extents(
++					handle, inode, map, path, flags,
++					allocated, newblock);
++				return ret;
+ 			}
+-			ret = ext4_ext_handle_uninitialized_extents(handle,
+-					inode, map, path, flags, allocated,
+-					newblock);
+-			return ret;
 +
-+				/* Now get rid of the one at the end */
-+				memset(EXT_LAST_EXTENT(eh), 0,
-+					sizeof(struct ext4_extent));
++			/*
++			 * Punch out the map length, but only to the
++			 * end of the extent
++			 */
++			punched_out = allocated < map->m_len ?
++				allocated : map->m_len;
++
++			/*
++			 * Sense extents need to be converted to
++			 * uninitialized, they must fit in an
++			 * uninitialized extent
++			 */
++			if (punched_out > EXT_UNINIT_MAX_LEN)
++				punched_out = EXT_UNINIT_MAX_LEN;
++
++			punch_map.m_lblk = map->m_lblk;
++			punch_map.m_pblk = newblock;
++			punch_map.m_len = punched_out;
++			punch_map.m_flags = 0;
++
++			/* Check to see if the extent needs to be split */
++			if (punch_map.m_len != ee_len ||
++				punch_map.m_lblk != ee_block) {
++
++				ret = ext4_ext_split_extents(handle, inode,
++				&punch_map, path,
++				EXT4_GET_BLOCKS_PRE_IO |
++				EXT4_HAS_FREE_BLKS_USE_ROOTBLKS,
++				0);
++
++				if (ret < 0) {
++					err = ret;
++					goto out2;
++				}
++				/*
++				 * find extent for the block at
++				 * the start of the hole
++				 */
++				ext4_ext_drop_refs(path);
++				kfree(path);
++
++				path = ext4_ext_find_extent(inode,
++				map->m_lblk, NULL);
++				if (IS_ERR(path)) {
++					err = PTR_ERR(path);
++					path = NULL;
++					goto out2;
++				}
++
++				depth = ext_depth(inode);
++				ex = path[depth].p_ext;
++				ee_len = ext4_ext_get_actual_len(ex);
++				ee_block = le32_to_cpu(ex->ee_block);
++				ee_start = ext4_ext_pblock(ex);
++
 +			}
-+			le16_add_cpu(&eh->eh_entries, -1);
-+		}
 +
- 		ext_debug("new extent: %u:%u:%llu\n", block, num,
- 				ext4_ext_pblock(ex));
- 		ex--;
-@@ -2338,7 +2450,8 @@ ext4_ext_more_to_rm(struct ext4_ext_path *path)
- 	return 1;
++			ext4_ext_mark_uninitialized(ex);
++
++			err = ext4_ext_remove_space(inode, map->m_lblk,
++				map->m_lblk + punched_out);
++
++			goto out2;
+ 		}
+ 	}
+ 
+@@ -3683,7 +3756,11 @@ out2:
+ 	}
+ 	trace_ext4_ext_map_blocks_exit(inode, map->m_lblk,
+ 		newblock, map->m_len, err ? err : allocated);
+-	return err ? err : allocated;
++
++	result = (flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) ?
++			punched_out : allocated;
++
++	return err ? err : result;
  }
  
--static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
-+static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
-+				ext4_lblk_t end)
- {
- 	struct super_block *sb = inode->i_sb;
- 	int depth = ext_depth(inode);
-@@ -2377,7 +2490,8 @@ again:
- 	while (i >= 0 && err == 0) {
- 		if (i == depth) {
- 			/* this is leaf block */
--			err = ext4_ext_rm_leaf(handle, inode, path, start);
-+			err = ext4_ext_rm_leaf(handle, inode, path,
-+					start, end);
- 			/* root level has p_bh == NULL, brelse() eats this */
- 			brelse(path[i].p_bh);
- 			path[i].p_bh = NULL;
-@@ -3617,7 +3731,7 @@ void ext4_ext_truncate(struct inode *inode)
- 
- 	last_block = (inode->i_size + sb->s_blocksize - 1)
- 			>> EXT4_BLOCK_SIZE_BITS(sb);
--	err = ext4_ext_remove_space(inode, last_block);
-+	err = ext4_ext_remove_space(inode, last_block, EXT_MAX_BLOCK);
- 
- 	/* In a multi-transaction truncate, we only make the final
- 	 * transaction synchronous.
+ void ext4_ext_truncate(struct inode *inode)
 -- 
 1.7.1
 
