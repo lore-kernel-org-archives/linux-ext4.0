@@ -1,156 +1,63 @@
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
- to a deadlock
-Date: Tue, 19 Apr 2011 18:43:16 +0900
-Message-ID: <4DAD5934.1030901@jp.fujitsu.com>
-References: <4D946DAB.3010107@jp.fujitsu.com> <4D9AEE28.4000003@jp.fujitsu.com> <20110405225428.GD8531@quack.suse.cz> <4D9BF57A.6030705@jp.fujitsu.com> <20110406055708.GB23285@quack.suse.cz> <4D9C18DF.90803@jp.fujitsu.com> <20110406174617.GC28689@quack.suse.cz> <4DA84A7B.3040403@jp.fujitsu.com> <20110415171310.GB5432@quack.suse.cz> <4DABFEBD.7030102@jp.fujitsu.com> <20110418105105.GB5557@quack.suse.cz>
+From: Eric Sandeen <sandeen@sandeen.net>
+Subject: Re: Files full of zeros with coreutils-8.11 and xfs (FIEMAP related?)
+Date: Tue, 19 Apr 2011 09:05:24 -0500
+Message-ID: <4DAD96A4.40008@sandeen.net>
+References: <20110415000940.GL21395@dastard>	<76FFF648-CA02-494B-A862-566C66A8CB82@dilger.ca>	<20110416005040.GP21395@dastard>	<E7438588-5C5A-42B9-9B6C-FADF7CAC6D3A@dilger.ca>	<4EEEA16E-1FDB-4430-A372-8F8701196E4C@mit.edu>	<20110418004040.GS21395@dastard>	<6C89E159-A5F6-4A06-A3D2-273BE4CFB9B5@dilger.ca>	<BANLkTin=WEpSf6ddiOMNMOpCPP-wiEttSw@mail.gmail.com>	<20110419034455.GB23985@dastard>	<BANLkTinjh968ECqAobQ677hnV5yzke1ncw@mail.gmail.com>	<20110419074538.GG23985@dastard> <BANLkTinozFL1Q5BmWr=7=Pua+0g_BciVvA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-Cc: toshi.okajima@jp.fujitsu.com, Ted Ts'o <tytso@mit.edu>,
-	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	sandeen@redhat.com
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20110418105105.GB5557@quack.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Dave Chinner <david@fromorbit.com>,
+	Andreas Dilger <adilger@dilger.ca>,
+	Theodore Tso <tytso@mit.edu>, xfs-oss <xfs@oss.sgi.com>,
+	"coreutils@gnu.org" <coreutils@gnu.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	=?UTF-8?B?UMOhZHJhaWcgQnJhZHk=?= <P@draigbrady.com>,
+	Markus Trippelsdorf <markus@trippelsdorf.de>
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from sandeen.net ([63.231.237.45]:52629 "EHLO mail.sandeen.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751573Ab1DSOFL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 19 Apr 2011 10:05:11 -0400
+In-Reply-To: <BANLkTinozFL1Q5BmWr=7=Pua+0g_BciVvA@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On 4/19/11 3:11 AM, Yongqiang Yang wrote:
+> On Tue, Apr 19, 2011 at 3:45 PM, Dave Chinner <david@fromorbit.com> wrote:
+>> On Tue, Apr 19, 2011 at 02:53:20PM +0800, Yongqiang Yang wrote:
 
-(2011/04/18 19:51), Jan Kara wrote:
-> On Mon 18-04-11 18:05:01, Toshiyuki Okajima wrote:
->>> On Fri 15-04-11 22:39:07, Toshiyuki Okajima wrote:
->>>>>    For ext3 or ext4 without delayed allocation we block inside writepage()
->>>>> function. But as I wrote to Dave Chinner, ->page_mkwrite() should probably
->>>>> get modified to block while minor-faulting the page on frozen fs because
->>>>> when blocks are already allocated we may skip starting a transaction and so
->>>>> we could possibly modify the filesystem.
->>>> OK. I think ->page_mkwrite() should also block writing the minor-faulting pages.
->>>>
->>>> (minor-pagefault)
->>>> ->   do_wp_page()
->>>>     ->   page_mkwrite(= ext4_mkwrite())
->>>>        =>   BLOCK!
->>>>
->>>> (major-pagefault)
->>>> ->   do_liner_fault()
->>>>     ->   page_mkwrite(= ext4_mkwrite())
->>>>        =>   BLOCK!
->>>>
->>>>>
->>>>>>>> Mizuma-san's reproducer also writes the data which maps to the file (mmap).
->>>>>>>> The original problem happens after the fsfreeze operation is done.
->>>>>>>> I understand the normal write operation (not mmap) can be blocked while
->>>>>>>> fsfreezing. So, I guess we don't always block all the write operation
->>>>>>>> while fsfreezing.
->>>>>>>    Technically speaking, we block all the transaction starts which means we
->>>>>>> end up blocking all the writes from going to disk. But that does not mean
->>>>>>> we block all the writes from going to in-memory cache - as you properly
->>>>>>> note the mmap case is one of such exceptions.
->>>>>> Hm, I also think we can allow the writes to in-memory cache but we can't allow
->>>>>> the writes to disk while fsfreezing. I am considering that mmap path can
->>>>>> write to disk while fsfreezing because this deadlock problem happens after
->>>>>> fsfreeze operation is done...
->>>>>    I'm sorry I don't understand now - are you speaking about the case above
->>>>> when writepage() does not wait for filesystem being frozen or something
->>>>> else?
->>>> Sorry, I didn't understand around the page fault path.
->>>> So, I had read the kernel source code around it, then I maybe understand...
->>>>
->>>> I worry whether we can update the file data in mmap case while fsfreezing.
->>>> Of course, I understand that we can write to in-memory cache, and it is not a
->>>> problem. However, if we can write to disk while fsfreezing, it is a problem.
->>>> So, I summarize the cases whether we can write to disk or not.
->>>>
->>>> --------------------------------------------------------------------------
->>>> Cases (Whether we can write the data mmapped to the file on the disk
->>>> while fsfreezing)
->>>>
->>>> [1] One of the page which has been mmapped is not bound. And
->>>>   the page is not allocated yet. (major fault?)
->>>>
->>>>     (1) user dirtys a page
->>>>     (2) a page fault occurs (do_page_fault)
->>>>     (3) __do_falut is called.
->>>>     (4) ext4_page_mkwrite is called
->>>>     (5) ext4_write_begin is called
->>>>     (6) ext4_journal_start_sb       =>   We can STOP!
->>>>
->>>> [2] One of the page which has been mmapped is not bound. But
->>>>   the page is already allocated, and the buffer_heads of the page
->>>>   are not mapped (BH_Mapped).  (minor fault?)
->>>>
->>>>     (1) user dirtys a page
->>>>     (2) a page fault occurs (do_page_fault)
->>>>     (3) do_wp_page is called.
->>>>     (4) ext4_page_mkwrite is called
->>>>     (5) ext4_write_begin is called
->>>>     (6) ext4_journal_start_sb       =>   We can STOP!
->>>>
->>>> [3] One of the page which has been mmapped is not bound. But
->>>>   the page is already allocated, and the buffer_heads of the page
->>>>   are mapped (BH_Mapped).  (minor fault?)
->>>>
->>>>     (1) user dirtys a page
->>>>     (2) a page fault occurs (do_page_fault)
->>>>     (3) do_wp_page is called.
->>>>     (4) ext4_page_mkwrite is called
->>>>     * Cannot block the dirty page to be written because all bh is mapped.
->>>>     (5) user munmaps the page (munmap)
->>>>     (6) zap_pte_range dirtys the page (struct page) which is pte_dirtyed.
->>>>     (7) writeback thread writes the page (struct page) to disk
->>>>                                             =>   We cannot STOP!
->>>>
->>>> [4] One of the page which has been mmapped is bound. And
->>>>   the page is already allocated.
->>>>
->>>>     (1) user dirtys a page
->>>>     ( ) no page fault occurs
->>>>     (2) user munmaps the page (munmap)
->>>>     (3) zap_pte_range dirtys the page (struct page) which is pte_dirtyed.
->>>>     (4) writeback thread writes the page (struct page) to disk
->>>>                                             =>   We cannot STOP!
->>>> --------------------------------------------------------------------------
->>>>
->>>> So, we can block the cases [1], [2].
->>>> But I think we cannot block the cases [3], [4] now.
->>>> If fixing the page_mkwrite, we can also block the case [3].
->>>> But the case [4] is not blocked because no page fault occurs
->>>> when we dirty the mmapped page.
->>>>
->>>> Therefore, to repair this problem, we need to fix the cases [3], [4].
->>>> I think we must modify the writeback thread to fix the case [4].
->>>    The trick here is that when we write a page to disk, we write-protect
->>> the page (you seem to call this that "the page is bound", I'm not sure why).
->> Hm, I want to understand how to write-protect the page under fsfreezing.
->    Look at what page_mkclean() called from clear_page_dirty_for_io() does...
-Thanks. I'll read that.
 
->
->> But, anyway, I understand we don't need to consider the case [4].
->    Yes.
->
->>> So we are guaranteed to receive a minor fault (case [3]) if user tries to
->>> modify a page after we finish writeback while freezing the filesystem.
->>> So principially all we need to do is just wait in ext4_page_mkwrite().
->> OK. I understand.
->> Are there any concrete ideas to fix this?
->> For ext4, we can rescue from the case [3] by modifying ext4_page_mkwrite().
->    Yes.
->
->> But for ext3 or other FSs, we must implement ->page_mkwrite() to prevent it?
->    Sadly I don't see a simple way to fix this issue for all filesystems at
-> once. Implementing proper wait in block_page_mkwrite() should fix the issue
-> for xfs. Other filesystems like GFS2 or Btrfs will have to be fixed
-> separately as ext4. For ext3, we'd have to add ->page_mkwrite() support. I
-> have patches for this already for some time but I have to get to properly
-> testing them in more exotic conditions like 64k pages...
-OK. I understand the current status of your works to fix the problem which
-can be written with some data at mmap path while fsfreezing.
+...
 
-Thanks,
-Toshiyuki Okajima
+>>> I think there are 2 ways to provide a definite definition for FIEMAP
+>>> for all filesystems:
+>>>
+>>> 1. FIEMAP returns extent state on disk.
+>>> 2. FIEMAP returns extent both in memory and on disk.
+>>
+>> You are *not listening*. There is no #2. FIEMAP returns the extent
+>> state _on disk_ at the time of the call. If you want it to reflect
+>> the in-memory state at the time of the call (for data or metadata),
+>> you *must* use the the SYNC flag to convert that in-memory state to
+>> on-disk state, which FIEMAP then reports just fine.
+> 
+> Sorry for being dense.
+> 
+> I think delayed extent is an exception. because it is not on the disk.
+> 
+> Yongqiang.
 
+I don't think you're being dense, I think that the interface specification is just messed up.
+
+By including flags for both unwritten and delalloc in the interface, we have hopelessly intertwined on-disk and in-memory state.
+
+If you preallocate 1M and then do a buffered IO to that same range without a sync, and then a fiemap, what on earth should the interface return?
+
+Writing the first part of that testcase is simple but I have no idea what the correct behavior is.
+
+(FIEMAP_EXTENT_UNWRITTEN|FIEMAP_EXTENT_DELALLOC) ? that makes no sense.  But no other combination of flags makes sense to me either, unless we get into tortured redefinitions of what "delalloc" means.
+
+And if we can't say what it -should- return.... well, too bad for coreutils.  :(
+
+-Eric
