@@ -1,207 +1,202 @@
-From: Mingming Cao <cmm@us.ibm.com>
+From: Allison Henderson <achender@linux.vnet.ibm.com>
 Subject: Re: [Ext4 punch hole 5/6 v5] Ext4 Punch Hole Support: Map blocks
  punch hole flag
-Date: Tue, 19 Apr 2011 10:48:25 -0700
-Message-ID: <1303235305.2534.5.camel@mingming-laptop>
-References: <4DAD3D05.8000103@linux.vnet.ibm.com>
-	 <BANLkTinaFDetbwu-Y6afPgiRAzwarvtGJg@mail.gmail.com>
+Date: Tue, 19 Apr 2011 10:48:36 -0700
+Message-ID: <4DADCAF4.8000402@linux.vnet.ibm.com>
+References: <4DAD3D05.8000103@linux.vnet.ibm.com> <BANLkTinaFDetbwu-Y6afPgiRAzwarvtGJg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
 To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:35302 "EHLO e9.ny.us.ibm.com"
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:43830 "EHLO e4.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752378Ab1DSRsp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 19 Apr 2011 13:48:45 -0400
+	id S1752608Ab1DSSQi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 19 Apr 2011 14:16:38 -0400
 Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
-	by e9.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p3JHKNDa011955
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 13:20:23 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p3JHmXPp1147116
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 13:48:33 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p3JHmUiB029023
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 13:48:32 -0400
+	by e4.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p3JHuPVl012796
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 13:56:25 -0400
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p3JIGP3x2523140
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 14:16:25 -0400
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p3JIDDBN007469
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 15:16:24 -0300
 In-Reply-To: <BANLkTinaFDetbwu-Y6afPgiRAzwarvtGJg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 2011-04-19 at 16:35 +0800, Yongqiang Yang wrote:
+On 4/19/2011 1:35 AM, Yongqiang Yang wrote:
 > On Tue, Apr 19, 2011 at 3:43 PM, Allison Henderson
-> <achender@linux.vnet.ibm.com> wrote:
-> > This patch adds a new flag to map blocks that specifies
-> > the given range of blocks should be punched out.  Extents
-> > are first converted to uninitialized extents before they are
-> > punched out. Because punching a hole may require that the
-> > extent be split, it is possible that the splitting may need
-> > more blocks than are available.  To deal with this, reserved
-> > blocks are temporarily borrowed to allow the split to proceed.
-> > The borrowed blocks are then returned after the hole punch has
-> > released more blocks.
-> >
-> > The routine then returns the number of blocks successfully
-> > punched out.
-> >
-> > Signed-off-by: Allison Henderson <achender@us.ibm.com>
-> > ---
-> > :100644 100644 e3a721a... d97bc87... M  fs/ext4/extents.c
-> >  fs/ext4/extents.c |   99 +++++++++++++++++++++++++++++++++++++++++++++++------
-> >  1 files changed, 88 insertions(+), 11 deletions(-)
-> >
-> > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> > index e3a721a..d97bc87 100644
-> > --- a/fs/ext4/extents.c
-> > +++ b/fs/ext4/extents.c
-> > @@ -3456,15 +3456,19 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
-> >        ext4_fsblk_t newblock = 0;
-> >        int err = 0, depth, ret;
-> >        unsigned int allocated = 0;
-> > +       unsigned int punched_out = 0;
-> > +       unsigned int result = 0;
-> >        struct ext4_allocation_request ar;
-> >        ext4_io_end_t *io = EXT4_I(inode)->cur_aio_dio;
-> > +       struct ext4_map_blocks punch_map;
-> >
-> >        ext_debug("blocks %u/%u requested for inode %lu\n",
-> >                  map->m_lblk, map->m_len, inode->i_ino);
-> >        trace_ext4_ext_map_blocks_enter(inode, map->m_lblk, map->m_len, flags);
-> >
-> >        /* check in cache */
-> > -       if (ext4_ext_in_cache(inode, map->m_lblk, &newex)) {
-> > +       if (ext4_ext_in_cache(inode, map->m_lblk, &newex) &&
-> > +               ((flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) == 0)) {
-> >                if (!newex.ee_start_lo && !newex.ee_start_hi) {
-> >                        if ((flags & EXT4_GET_BLOCKS_CREATE) == 0) {
-> >                                /*
-> > @@ -3529,16 +3533,85 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
-> >                        ext_debug("%u fit into %u:%d -> %llu\n", map->m_lblk,
-> >                                  ee_block, ee_len, newblock);
-> >
-> > -                       /* Do not put uninitialized extent in the cache */
-> > -                       if (!ext4_ext_is_uninitialized(ex)) {
-> > -                               ext4_ext_put_in_cache(inode, ee_block,
-> > -                                                       ee_len, ee_start);
-> > -                               goto out;
-> > +                       if ((flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) == 0) {
-> > +                               /*
-> > +                                * Do not put uninitialized extent
-> > +                                * in the cache
-> > +                                */
-> > +                               if (!ext4_ext_is_uninitialized(ex)) {
-> > +                                       ext4_ext_put_in_cache(inode, ee_block,
-> > +                                               ee_len, ee_start);
-> > +                                       goto out;
-> > +                               }
-> > +                               ret = ext4_ext_handle_uninitialized_extents(
-> > +                                       handle, inode, map, path, flags,
-> > +                                       allocated, newblock);
-> > +                               return ret;
-> >                        }
-> > -                       ret = ext4_ext_handle_uninitialized_extents(handle,
-> > -                                       inode, map, path, flags, allocated,
-> > -                                       newblock);
-> > -                       return ret;
-> > +
-> > +                       /*
-> > +                        * Punch out the map length, but only to the
-> > +                        * end of the extent
-> > +                        */
-> > +                       punched_out = allocated < map->m_len ?
-> > +                               allocated : map->m_len;
-> > +
-> > +                       /*
-> > +                        * Sense extents need to be converted to
-> > +                        * uninitialized, they must fit in an
-> > +                        * uninitialized extent
-> > +                        */
-> > +                       if (punched_out > EXT_UNINIT_MAX_LEN)
-> > +                               punched_out = EXT_UNINIT_MAX_LEN;
-> > +
-> > +                       punch_map.m_lblk = map->m_lblk;
-> > +                       punch_map.m_pblk = newblock;
-> > +                       punch_map.m_len = punched_out;
-> > +                       punch_map.m_flags = 0;
-> > +
-> > +                       /* Check to see if the extent needs to be split */
-> > +                       if (punch_map.m_len != ee_len ||
-> > +                               punch_map.m_lblk != ee_block) {
-> > +
-> > +                               ret = ext4_ext_split_extents(handle, inode,
-> > +                               &punch_map, path,
-> > +                               EXT4_GET_BLOCKS_PRE_IO |
-> > +                               EXT4_HAS_FREE_BLKS_USE_ROOTBLKS,
-> > +                               0);
-> > +
-> > +                               if (ret < 0) {
-> > +                                       err = ret;
-> > +                                       goto out2;
-> > +                               }
-> > +                               /*
-> > +                                * find extent for the block at
-> > +                                * the start of the hole
-> > +                                */
-> > +                               ext4_ext_drop_refs(path);
-> > +                               kfree(path);
-> > +
-> > +                               path = ext4_ext_find_extent(inode,
-> > +                               map->m_lblk, NULL);
-> > +                               if (IS_ERR(path)) {
-> > +                                       err = PTR_ERR(path);
-> > +                                       path = NULL;
-> > +                                       goto out2;
-> > +                               }
-> > +
-> > +                               depth = ext_depth(inode);
-> > +                               ex = path[depth].p_ext;
-> > +                               ee_len = ext4_ext_get_actual_len(ex);
-> > +                               ee_block = le32_to_cpu(ex->ee_block);
-> > +                               ee_start = ext4_ext_pblock(ex);
-> > +
-> > +                       }
-> > +
-> > +                       ext4_ext_mark_uninitialized(ex);
+> <achender@linux.vnet.ibm.com>  wrote:
+>> This patch adds a new flag to map blocks that specifies
+>> the given range of blocks should be punched out.  Extents
+>> are first converted to uninitialized extents before they are
+>> punched out. Because punching a hole may require that the
+>> extent be split, it is possible that the splitting may need
+>> more blocks than are available.  To deal with this, reserved
+>> blocks are temporarily borrowed to allow the split to proceed.
+>> The borrowed blocks are then returned after the hole punch has
+>> released more blocks.
+>>
+>> The routine then returns the number of blocks successfully
+>> punched out.
+>>
+>> Signed-off-by: Allison Henderson<achender@us.ibm.com>
+>> ---
+>> :100644 100644 e3a721a... d97bc87... M  fs/ext4/extents.c
+>>   fs/ext4/extents.c |   99 +++++++++++++++++++++++++++++++++++++++++++++++------
+>>   1 files changed, 88 insertions(+), 11 deletions(-)
+>>
+>> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+>> index e3a721a..d97bc87 100644
+>> --- a/fs/ext4/extents.c
+>> +++ b/fs/ext4/extents.c
+>> @@ -3456,15 +3456,19 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+>>         ext4_fsblk_t newblock = 0;
+>>         int err = 0, depth, ret;
+>>         unsigned int allocated = 0;
+>> +       unsigned int punched_out = 0;
+>> +       unsigned int result = 0;
+>>         struct ext4_allocation_request ar;
+>>         ext4_io_end_t *io = EXT4_I(inode)->cur_aio_dio;
+>> +       struct ext4_map_blocks punch_map;
+>>
+>>         ext_debug("blocks %u/%u requested for inode %lu\n",
+>>                   map->m_lblk, map->m_len, inode->i_ino);
+>>         trace_ext4_ext_map_blocks_enter(inode, map->m_lblk, map->m_len, flags);
+>>
+>>         /* check in cache */
+>> -       if (ext4_ext_in_cache(inode, map->m_lblk,&newex)) {
+>> +       if (ext4_ext_in_cache(inode, map->m_lblk,&newex)&&
+>> +               ((flags&  EXT4_GET_BLOCKS_PUNCH_OUT_EXT) == 0)) {
+>>                 if (!newex.ee_start_lo&&  !newex.ee_start_hi) {
+>>                         if ((flags&  EXT4_GET_BLOCKS_CREATE) == 0) {
+>>                                 /*
+>> @@ -3529,16 +3533,85 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+>>                         ext_debug("%u fit into %u:%d ->  %llu\n", map->m_lblk,
+>>                                   ee_block, ee_len, newblock);
+>>
+>> -                       /* Do not put uninitialized extent in the cache */
+>> -                       if (!ext4_ext_is_uninitialized(ex)) {
+>> -                               ext4_ext_put_in_cache(inode, ee_block,
+>> -                                                       ee_len, ee_start);
+>> -                               goto out;
+>> +                       if ((flags&  EXT4_GET_BLOCKS_PUNCH_OUT_EXT) == 0) {
+>> +                               /*
+>> +                                * Do not put uninitialized extent
+>> +                                * in the cache
+>> +                                */
+>> +                               if (!ext4_ext_is_uninitialized(ex)) {
+>> +                                       ext4_ext_put_in_cache(inode, ee_block,
+>> +                                               ee_len, ee_start);
+>> +                                       goto out;
+>> +                               }
+>> +                               ret = ext4_ext_handle_uninitialized_extents(
+>> +                                       handle, inode, map, path, flags,
+>> +                                       allocated, newblock);
+>> +                               return ret;
+>>                         }
+>> -                       ret = ext4_ext_handle_uninitialized_extents(handle,
+>> -                                       inode, map, path, flags, allocated,
+>> -                                       newblock);
+>> -                       return ret;
+>> +
+>> +                       /*
+>> +                        * Punch out the map length, but only to the
+>> +                        * end of the extent
+>> +                        */
+>> +                       punched_out = allocated<  map->m_len ?
+>> +                               allocated : map->m_len;
+>> +
+>> +                       /*
+>> +                        * Sense extents need to be converted to
+>> +                        * uninitialized, they must fit in an
+>> +                        * uninitialized extent
+>> +                        */
+>> +                       if (punched_out>  EXT_UNINIT_MAX_LEN)
+>> +                               punched_out = EXT_UNINIT_MAX_LEN;
+>> +
+>> +                       punch_map.m_lblk = map->m_lblk;
+>> +                       punch_map.m_pblk = newblock;
+>> +                       punch_map.m_len = punched_out;
+>> +                       punch_map.m_flags = 0;
+>> +
+>> +                       /* Check to see if the extent needs to be split */
+>> +                       if (punch_map.m_len != ee_len ||
+>> +                               punch_map.m_lblk != ee_block) {
+>> +
+>> +                               ret = ext4_ext_split_extents(handle, inode,
+>> +&punch_map, path,
+>> +                               EXT4_GET_BLOCKS_PRE_IO |
+>> +                               EXT4_HAS_FREE_BLKS_USE_ROOTBLKS,
+>> +                               0);
+>> +
+>> +                               if (ret<  0) {
+>> +                                       err = ret;
+>> +                                       goto out2;
+>> +                               }
+>> +                               /*
+>> +                                * find extent for the block at
+>> +                                * the start of the hole
+>> +                                */
+>> +                               ext4_ext_drop_refs(path);
+>> +                               kfree(path);
+>> +
+>> +                               path = ext4_ext_find_extent(inode,
+>> +                               map->m_lblk, NULL);
+>> +                               if (IS_ERR(path)) {
+>> +                                       err = PTR_ERR(path);
+>> +                                       path = NULL;
+>> +                                       goto out2;
+>> +                               }
+>> +
+>> +                               depth = ext_depth(inode);
+>> +                               ex = path[depth].p_ext;
+>> +                               ee_len = ext4_ext_get_actual_len(ex);
+>> +                               ee_block = le32_to_cpu(ex->ee_block);
+>> +                               ee_start = ext4_ext_pblock(ex);
+>> +
+>> +                       }
+>> +
+>> +                       ext4_ext_mark_uninitialized(ex);
 > Is this change journaled?
+Hi there, 
+
+Yes, the ext4_ext_map_blocks routine requires a journal handle as a parameter, so the calling function is required to set up the journal.
+
 > 
-
-Looks like so, ext4_ext_map_blocks() takes journal handle as argument,
-the ext4 punch hole code reserve the journal credits before calling
-ext4_ext_map_blocks().
-
-
-> > +
-> > +                       err = ext4_ext_remove_space(inode, map->m_lblk,
-> > +                               map->m_lblk + punched_out);
-> > +
-> > +                       goto out2;
-> >                }
-> >        }
-> >
-> > @@ -3683,7 +3756,11 @@ out2:
-> >        }
-> >        trace_ext4_ext_map_blocks_exit(inode, map->m_lblk,
-> >                newblock, map->m_len, err ? err : allocated);
-> > -       return err ? err : allocated;
-> > +
-> > +       result = (flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) ?
-> > +                       punched_out : allocated;
-> > +
-> > +       return err ? err : result;
-> >  }
-> >
-> >  void ext4_ext_truncate(struct inode *inode)
-> > --
-> > 1.7.1
-> >
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >
+>> +
+>> +                       err = ext4_ext_remove_space(inode, map->m_lblk,
+>> +                               map->m_lblk + punched_out);
+>> +
+>> +                       goto out2;
+>>                 }
+>>         }
+>>
+>> @@ -3683,7 +3756,11 @@ out2:
+>>         }
+>>         trace_ext4_ext_map_blocks_exit(inode, map->m_lblk,
+>>                 newblock, map->m_len, err ? err : allocated);
+>> -       return err ? err : allocated;
+>> +
+>> +       result = (flags&  EXT4_GET_BLOCKS_PUNCH_OUT_EXT) ?
+>> +                       punched_out : allocated;
+>> +
+>> +       return err ? err : result;
+>>   }
+>>
+>>   void ext4_ext_truncate(struct inode *inode)
+>> --
+>> 1.7.1
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
 > 
 > 
 > 
-
 
