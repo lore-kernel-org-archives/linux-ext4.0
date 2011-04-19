@@ -1,195 +1,245 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: Files full of zeros with coreutils-8.11 and xfs (FIEMAP related?)
-Date: Tue, 19 Apr 2011 14:53:20 +0800
-Message-ID: <BANLkTinjh968ECqAobQ677hnV5yzke1ncw@mail.gmail.com>
-References: <20110414225904.GK21395@dastard>
-	<4DA7836A.5040604@draigBrady.com>
-	<20110415000940.GL21395@dastard>
-	<76FFF648-CA02-494B-A862-566C66A8CB82@dilger.ca>
-	<20110416005040.GP21395@dastard>
-	<E7438588-5C5A-42B9-9B6C-FADF7CAC6D3A@dilger.ca>
-	<4EEEA16E-1FDB-4430-A372-8F8701196E4C@mit.edu>
-	<20110418004040.GS21395@dastard>
-	<6C89E159-A5F6-4A06-A3D2-273BE4CFB9B5@dilger.ca>
-	<BANLkTin=WEpSf6ddiOMNMOpCPP-wiEttSw@mail.gmail.com>
-	<20110419034455.GB23985@dastard>
+From: Allison Henderson <achender@linux.vnet.ibm.com>
+Subject: Ext4 Punch Hole Support: Change summary and test case summary
+Date: Tue, 19 Apr 2011 00:37:59 -0700
+Message-ID: <4DAD3BD7.3080107@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andreas Dilger <adilger@dilger.ca>, Theodore Tso <tytso@mit.edu>,
-	Eric Sandeen <sandeen@sandeen.net>, xfs-oss <xfs@oss.sgi.com>,
-	"coreutils@gnu.org" <coreutils@gnu.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	=?ISO-8859-1?Q?P=E1draig_Brady?= <P@draigbrady.com>,
-	Markus Trippelsdorf <markus@trippelsdorf.de>
-To: Dave Chinner <david@fromorbit.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pv0-f174.google.com ([74.125.83.174]:42439 "EHLO
-	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751943Ab1DSGxV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Apr 2011 02:53:21 -0400
-Received: by pvg12 with SMTP id 12so2478087pvg.19
-        for <linux-ext4@vger.kernel.org>; Mon, 18 Apr 2011 23:53:20 -0700 (PDT)
-In-Reply-To: <20110419034455.GB23985@dastard>
+Received: from e7.ny.us.ibm.com ([32.97.182.137]:48426 "EHLO e7.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750795Ab1DSHiE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 19 Apr 2011 03:38:04 -0400
+Received: from d01relay05.pok.ibm.com (d01relay05.pok.ibm.com [9.56.227.237])
+	by e7.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p3J7Fsj9027549
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 03:15:54 -0400
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p3J7c3nr159256
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 03:38:03 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p3J7c3c3012870
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 03:38:03 -0400
+Received: from [9.48.114.155] (sig-9-48-114-155.mts.ibm.com [9.48.114.155])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p3J7c21a012792
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 03:38:02 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 19, 2011 at 11:44 AM, Dave Chinner <david@fromorbit.com> wr=
-ote:
-> On Tue, Apr 19, 2011 at 09:58:15AM +0800, Yongqiang Yang wrote:
->> On Mon, Apr 18, 2011 at 10:45 AM, Andreas Dilger <adilger@dilger.ca>=
- wrote:
->> > On 2011-04-17, at 6:40 PM, Dave Chinner <david@fromorbit.com> wrot=
-e:
->> >
->> > On Sat, Apr 16, 2011 at 08:21:28AM -0400, Theodore Tso wrote:
->> >
->> > On Apr 16, 2011, at 1:11 AM, Andreas Dilger wrote:
->> >
->> > In that case, it means cp should just always use FIEMAP_FLAG_SYNC,=
- which is
->> > fine.
->> >
->> > Except that if someone is copying a large delay allocated file, it=
- will
->> > cause
->> >
->> > the file to immediately snapped to disk, which might not be the gr=
-eatest
->> >
->> > thing in the world.
->> >
->> > Obvious workaround - if the initial fiemap call shows unwritten
->> > extents, redo it with the sync flag set. Though that assume=D1=95 =
-that
->> > you can trust things like delalloc extents to only cover the range
->> > that valid data exists in. Which, of course, you can't assume,
->> > either. :/
->> >
->> > Always passing=C2=A0FIEMAP_FLAG_SYNC is fine in this case. It shou=
-ld only do
->> > anything if there is unwritten data, which is the only case we are=
- concerned
->> > with at this point. =C2=A0In any case, this is a simple solution f=
-or coreutils
->> > until such a time that a more complex solution is added in the ker=
-nel (if
->> > ever).
->> >
->> > Christoph is write, SEEK_HOLE and SEEK_DATA are
->> >
->> > a much better API for what cp woulld lke to do. =C2=A0Unfortunatel=
-y it hasn't
->> >
->> > been implemented yet in the VFS...
->> >
->> > Agreed, SEEK_HOLE/SEEK_DATA is the right way to solve this problem=
-=2E
->> >
->> > I don't see how this will change the problem in any meaningful way=
-=2E There
->> > will still need to be code that is traversing the on-disk mapping,=
- and also
->> > keeping it coherent with unwritten data in the page cache.
->>
->> It seems that we are being messed up by page cache and disk.
->> Unwritten flag returned from FIEMAP indicates blocks on disk are not
->> written, but it does not say if there is data in page cache. =C2=A0S=
-o
->> FIEMAP itself just tells user the map on disk. =C2=A0However there i=
-s an
->> exception for delayed allocation, =C2=A0FIEMAP tells users the data =
-is in
->> page cache.
->
-> No, FIEMAP does not tell the user there is data in the page cache.
-> It tells there user there is a delayed allocation extent. For XFS, a
-> delayed allocation extent can cover a range _greater_ than there is
-> data in the page cache - we do allocation allignment, speculative
-> allocation and other tricks to avoid fragmentation via
-> delayed allocation. When XFSs says there is a delalloc extent, it is
-> simply showing the in-memory representation of the extent. if you
-> want to know where the data in the page cache actually is, you need
-> to sync the file to disk to get those ranges converted to real
-> extents. This is how xfs_bmap has worked for 15 years....
->
->> Maybe FIEMAP should return all known messages for unwritten extent, =
-if
->> unwritten data exists in page cache, FIEMAP should let users know th=
-at
->> data is in page cache and space on disk has been preallocated, but
->> data has not been flushed into disk. =C2=A0Actually, delayed allocat=
-ion has
->> done like this. Then user-space applications can determine how to do=
-=2E
->> Taking cp as an example, it will copy from page cache rather ignore
->> it.
->
-> Once again, FIEMAP is for showing the filesystem's current extent
-> state, not the page cache state. Ext4 may implement FIEMAP by doing
-> page cache walks, but that is a filesystem specific implementation
-> detail.
->
->> We need a definite definition for FIEMAP, in other words, it tells
->> users map on disk or both disk and page cache.
->
-> We already have a definition - and it has nothing to do with the
-> page cache state.
->
->> If the former one is taken, then FIEMAP should not consider
->> delayed allocation.
->
-> Not at all. the delayed allocation extent is a first class extent
-> type in XFS and it is reported directly from the extent list. Your
-> viewpoint is very ext4-specific and ignores the fact that other
-> filesystems were doing this sort of mapping long before even ext3
-> (let alone ext4) was a glint in the designer's eye....
->
->> otherwise, FIEMAP should return all known messages for unwritten cas=
-e
->> like delayed allocation.
->
-> See my previous comments about extents being unwritten until data is
-> physically written to them.
-Understood, thank you for your explanation.
+Hi All,
 
-Ok.  Let's look at it from a higher view.  What you described about
-extent state is specific to xfs.
+Here is the latest version of the punch hole patch for ext4.  There have been a lot of revisions and tests since the last patch that was sent.  It looks like some parts of it may conflict with the "[PATCH RFC 2/3] ext4:Add two functions splitting an extent" patch, so we will still need to work that part out.  But I wanted to keep people updated and get some feed back.  Here is a quick list of the big changes since v4:
 
-I think there are 2 ways to provide a definite definition for FIEMAP
-for all filesystems:
+- The first patch adds a flag to ext4_has_free_blocks which enables the use of reserved blocks.  
+Since the extents may need to be split during the punch hole process, it is possible that it may require more blocks than are available.  This new flag will allow a punch hole to proceed even if the disk is full.
 
-1. FIEMAP returns extent state on disk.
-2. FIEMAP returns extent both in memory and on disk.
+- The code for splitting an extent has been simplified into a new ext4_split_unwritten_extents flag.  
+The ext4_split_extents function from the first patch in v4 has been removed.
 
-Now, the question comes in case 2.   How to define extent's state in
-memory? Every filesystem has its own implementation regarding extent
-in memory, especially for delayed and unwritten extents, and I think
-they are all reasonable. For example, ext4 without delayed allocation
-change unwritten extents to written ones immediately in memory, while
-the changing is delayed until flush time in delayed allocation case.
+- The code for finding and punching out blocks in an extent has been moved in the the ext4_ext_map_blocks function, and invoked with a new punch hole flag.  
 
-It seems that there are only 1 way to provide a definite definition of
-in-memory-extent - FIEMAP should return what an user has written.
-this works for all filesystems.
+- The code that converts the extent to uninitialized has also been moved into the ext4_ext_map_blocks function with the new punch hole code, 
+so the ext4_ext_convert_blocks_uninit function from the first patch in v4 has been removed
 
-Yongqiang.
->
-> Cheers,
->
-> Dave.
-> --
-> Dave Chinner
-> david@fromorbit.com
->
+
+Also, here is a list of test cases that were done to help find any bugs.  
+These test cases were initially created to be used with a debug patch to help ensure that the new code paths behave as expected, but we plan to turn them in new test cases for xfstests and ltp after we have 
+the punch hole code wrapped up.
+
+
+Small Hole Test
+---------------------------------------------------------------
+A hole is punched in a 10K file from bytes 8180 to 16216 resulting in one block being removed,
+and the non block aligned data to be cleared.  
+
+This test is a general purpose punch hole test to verify that the code can successfully
+split the extents, and remove the affected blocks, as well as clearing the associated pages
+
+This test successful when the following conditions are met:
+- ls shows that the file now occupies one less block
+- df shows there is one more block available
+- File frag shows that the second block is absent from the extents
+- The test file contains zeros from bytes 8180 to 16216
+
+
+Cold Cache Test
+---------------------------------------------------------------
+This test is similar to the Small Hole Test, but the drive is unmounted and remounted before 
+the hole is punched out to make sure that there are no pages in the cache. This test verifies
+that the hole contains zeros even when the pages are cold.
+This test is successful when the same conditions as the Small Hole Test are met.
+
+
+Dirty Data Test
+---------------------------------------------------------------
+This test is similar to the Small Hole Test, but the file is not copied to the test area.  Instead
+a new file is created, and the data is written into the file.  This test verifies
+that the hole contains zeros even when the pages are dirty.  
+This test is successful when the same conditions as the Small Hole Test are met.
+
+
+Big Hole Test
+---------------------------------------------------------------
+A hole large hole is punched in a large file (exact file size=638169088 bytes, exact hole size = 638150422 bytes, offset = 6144 bytes), 
+resulting in all but 5 blocks being punched out (2 in the front, 3 in the back).  This test case verifies that the code can properly
+punch out a hole covering multiple extents.
+
+This test is successful when the following conditions are met:
+- File frag shows extents only for the first two blocks and the last 3 blocks
+- The test file contains zeros from bytes 6144 to 638156566
+(* ls and df is not measured here because some blocks will still be reserved as index
+ blocks causing the consumed space to be appear larger)
+
+
+Big Hole Removal Test
+---------------------------------------------------------------
+This test is similar to the Big Hole Test, but the file is deleted after the hole is punched out.
+
+This test is successful when the following conditions are met:
+- df shows that the number of available blocks is the same before the test file is copied 
+  into the file system, and after the file is deleted
+
+
+First Byte Hole Test
+---------------------------------------------------------------
+This test cases punches a hole in 10K file from bytes 0 to 8180 resulting in one block being removed at the 
+beginning of the file.  This test verifies that the code appropriately handles punching holes appearing at the 
+beginning of the file.
+
+This test is successful when the following conditions are met:
+- File frag shows that the first extent starts at block one
+- ls shows that the file now occupies one less block
+- df shows there is one more block available
+- The first 8180 bytes of the file contains zeros
+
+
+Last Block Hole Test
+---------------------------------------------------------------
+This test cases punches a hole in 10K file from bytes 32768 to 40960 resulting in a hole that extends to the end
+of the file.  This test verifies that the code appropriately handles removing blocks at the end of the file
+
+This test is successful when the following conditions are met:
+- File frag shows that the last extent only extends to block 8
+- ls shows that the file now occupies two less blocks
+- df shows there are two more block available
+- The file contains zeros between bytes 32768 to 40960
+
+
+Extended Last Block Hole Test
+---------------------------------------------------------------
+This test cases punches a hole in 10K file from bytes 32768 to 45056 resulting in a hole that extends beyond 
+the end of the file.  This test verifies that the code appropriately handles removing blocks beyond the end of the file
+
+This test is successful when the following conditions are met:
+- File frag shows that the last extent only extends to block 8
+- ls shows that the file now occupies two less blocks
+- df shows there are two more block available
+-The file contains zeros between bytes 32768 to 40960
+
+
+One block hole test
+---------------------------------------------------------------
+This test punches a hole in a file that is only one block in size from byte 1024 to 3072
+This test is successful when the following conditions are met:
+-ls, df, and filefrag show no changes before and after the hole punch
+-The file contains zeros between bytes 1024 and 3072
 
 
 
---=20
-Best Wishes
-Yongqiang Yang
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Off Edge Hole Test
+---------------------------------------------------------------
+This test case punched a hole that is beyond the edge of the file.
+This test is successful when ls, df, filefrag and the file contents show no changes
+
+
+
+Delayed Allocation Hole Test
+---------------------------------------------------------------
+This test is similar to the Small Hole Test, but the file is not sync'd to the disk before the hole is punched out.
+
+This test is successful when the following conditions are met:
+- ls shows that the file now occupies one less block
+- df shows there is one more block available
+- File frag shows that the second block is absent from the extents, and the first and last extents are delayed
+- The test file contains zeros from bytes 8180 to 16216
+
+
+Pre allocation Hole Test
+---------------------------------------------------------------
+This test is similar to the Small Hole Test, but the file is preallocated before the hole is punched out.
+
+This test is successfull when the following conditions are met:
+- ls shows that the file now occupies one less block
+- df shows there is one more block available
+- File frag shows that the second block is absent from the extents, and the first and last extents are unwritten
+- The test file contains zeros from bytes 8180 to 16216
+
+
+
+
+Multi Hole Test
+---------------------------------------------------------------
+This test verifies the code ability to handle existing holes
+The test punches out 3 consecutive overlapping holes in a 10K file:
+Hole 1: offset 8192, length 8192
+Hole 2: offset 8192, length 8192
+Hole 3: offset 8180, length 8192
+Hole 4: offset 8204, length 8192
+Hole 5: offset 12288, length 12288
+
+After each hole punch, output from ls, df and file frag are shown.
+
+This test is successful when the following conditions are met:
+- Hole 1 shows the following changes:
+	- ls shows that the file now occupies two less blocks
+	- df shows there is two more blocks available
+	- File frag shows that the second and third blocks are absent from the extents
+	- The test file contains zeros from bytes 8192 to 16384
+- Hole 2 shows no changes in ls, df, filefrag or file contents.
+- Hole 3 shows no changes in ls, df, filefrag but the file contents should be zeroed out between 8192 and 16372
+- Hole 5 shows no changes in ls, df, filefrag but the file contents should be zeroed out between 8180 and 16396
+- Hole 5 shows that the hole has increased by two blocks for ls, df, and filefrag.  
+  The file contents should be zeroed out between 8180 and 24576
+
+
+Multi Hole Test Front
+---------------------------------------------------------------
+This test verifies the code ability to handle existing holes at the front of the file.
+The test punches two 8192 byte holes starting at byte 0.
+
+This test is successful when the following conditions are met:
+- Hole 1 shows the following changes:
+	- ls shows that the file now occupies two less blocks
+	- df shows there are two more block available
+	- File frag shows that the first extent starts at block 2
+	- The test file contains zeros from bytes 0 to 8192
+- Hole 2 shows no changes in ls, df, filefrag or file contents.
+
+
+
+Multi Hole Delayed Test
+---------------------------------------------------------------
+This test verifies the code ability to handle existing holes in delayed blocks.
+This test is similar to the Delayed Allocation Hole Test, but the hole is punched twice
+
+This test is successful when the following conditions are met:
+- ls shows that the file now occupies one less block
+- df shows there is one more block available
+- File frag shows that the second block is absent from the extents, and the first and last extents are delayed
+- The test file contains zeros from bytes 8180 to 16216
+
+
+
+ENOSPC Hole Test
+---------------------------------------------------------------
+This test case was created to show that the punch hole can proceed even if the disk is full.  This test case fills the file system as much as possible, and then proceeds to punch out every other two blocks of the largest file, refilling the file system after each hole.  With out the ext4_has_free_blocks  
+flag to enable the use of reserved blocks, the ENOSPC error was encountered after about 333 iterations.  This test case is considered passed after 5000 successful hole punches.
+
+FSX Stress Test
+---------------------------------------------------------------
+To help track down any unidentified bugs, a copy of the fsx stress code was obtained from xfstests, and modified to include hole punching as part of it  
+test operation.  This test is considered complete after 100000 successful file operations
+
+
+
+
