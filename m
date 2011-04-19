@@ -1,69 +1,106 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Files full of zeros with coreutils-8.11 and xfs (FIEMAP
- related?)
-Date: Tue, 19 Apr 2011 12:01:14 -0400
-Message-ID: <20110419160114.GE3030@thunk.org>
-References: <E7438588-5C5A-42B9-9B6C-FADF7CAC6D3A@dilger.ca>
- <4EEEA16E-1FDB-4430-A372-8F8701196E4C@mit.edu>
- <20110418004040.GS21395@dastard>
- <6C89E159-A5F6-4A06-A3D2-273BE4CFB9B5@dilger.ca>
- <BANLkTin=WEpSf6ddiOMNMOpCPP-wiEttSw@mail.gmail.com>
- <20110419034455.GB23985@dastard>
- <BANLkTinjh968ECqAobQ677hnV5yzke1ncw@mail.gmail.com>
- <20110419074538.GG23985@dastard>
- <20110419140909.GD3030@thunk.org>
- <4DAD987F.5000506@sandeen.net>
+From: Jim Meyering <jim@meyering.net>
+Subject: loopback-mounted ext4 sees hole-filling (on rawhide, but not F15)
+Date: Tue, 19 Apr 2011 18:16:43 +0200
+Message-ID: <87mxjmz05w.fsf@rho.meyering.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	Andreas Dilger <adilger@dilger.ca>, xfs-oss <xfs@oss.sgi.com>,
-	"coreutils@gnu.org" <coreutils@gnu.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	=?iso-8859-1?Q?P=E1draig?= Brady <P@draigbrady.com>,
-	Markus Trippelsdorf <markus@trippelsdorf.de>
-To: Eric Sandeen <sandeen@sandeen.net>
+Content-Type: text/plain
+To: ext <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:50900 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751862Ab1DSQBY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 19 Apr 2011 12:01:24 -0400
-Content-Disposition: inline
-In-Reply-To: <4DAD987F.5000506@sandeen.net>
+Received: from smtp1-g21.free.fr ([212.27.42.1]:36505 "EHLO smtp1-g21.free.fr"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752176Ab1DSQQv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 19 Apr 2011 12:16:51 -0400
+Received: from mx.meyering.net (unknown [82.230.74.64])
+	by smtp1-g21.free.fr (Postfix) with ESMTP id BC4129401F3
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 18:16:44 +0200 (CEST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 19, 2011 at 09:13:19AM -0500, Eric Sandeen wrote:
-> 
-> But I too am confused about Dave's assertion that it only reflects ondisk state when we have that pesky delalloc flag.
-> 
-> Whose idea was that, anyway? ;)
-> 
-> I'd certainly buy the argument that it -should- only reflect ondisk state, and we should nuke the delalloc flag from orbit, if we could, though.
+When I run the following script on rawhide (2.6.39-0.rc3.git2.0.fc16.x86_64)
+it shows that a file with holes sometimes ends up with some non-NUL bytes
+where the holes should be.
 
-I see three options of how we can clarify FIEMAP's semantics:
+For best results, run it in an empty directory, preferably on a tmpfs FS.
+I've run it on ext4, too.
 
-1) We define it as only reflecting ondisk state, and nuke the delalloc
-flag from orbit.
+It creates a 4MB ext4 file system, mounts it, and writes two files,
+one with holes, the other identical, but with NULs instead,
+and then runs sync, compares the two files, and unmounts
+and removes the temporary file and the mount point directory.
 
-2) We state that if the file is currently has unflushed pages in the
-page cache, and FIEMAP_FLAG_SYNC is not passed, whether or not extents
-return the DELALLOC flag or how they handle the UNWRITTEN flag is
-undefined.
+The key is that it unlinks the backing file after mounting
+and before writing the files.
 
-3) We state that FIEMAP is supposed to return information which
-reflects the union of the on-disk and page cache state, with all that
-this implies.
+=====================================
+#!/bin/sh
+set -e
+dd if=/dev/zero of=blob bs=4k count=1000 >/dev/null 2>&1
+mkdir mnt
+mkfs -q -t ext4 -F blob
+mount -oloop blob mnt
 
-All of these are internally consistent definitions --- we need to
-chose one, document, and then tell the shellutils folks what they
-should do.
+# Removing the backing file is key.
+rm -f blob
+cwd=$PWD
+cd mnt
 
-In the case of #1 and #2, we really need to implement support for
-SEEK_HOLE/SEEK_DATA for userspace programs like cp who want to know
-this information.
+# Create a reference file.  Just like the following one,
+# but with explicit NULs in place of holes.
+perl -e '$n=1024; for (1..71) { print "\0"x$n, chr($_)x$n };' \
+  -e 'close *STDOUT or die "$!"' > ref
 
-Do we all agree on the problem statement, at least?  If so, then we
-can try to come consensus on what is the appropriate solution. 
+# Seek 1KB, write 1KB of data, seek 1KB, write 1KB of data, etc....
+perl -e '$n = 1 * 1024; *F = *STDOUT;' \
+  -e 'for (1..71) { sysseek (*F, $n, 1)' \
+  -e '&& syswrite (*F, chr($_)x$n) or die "$!"}' > j1
 
-    	   		     	     - Ted
+# filefrag -vs j1
+
+sync
+cmp -s ref j1 && fail=0 || { cmp -l ref j1|head -20; fail=1; }
+
+cd /; umount "$cwd/mnt"
+rm -rf "$cwd/blob" "$cwd/mnt"
+
+exit $fail
+=====================================
+
+Interestingly, if you remove the "sync", it exits 0 every time.
+
+Beware that sometimes you (accidentally?) get
+all NUL blocks, so the script does occasionally exit 0.
+To demonstrate, I turned off the cmp -l ...|head bit and ran it
+for a while, printing only exit status:
+
+    $ while :; do /t/loop-bug; printf $?; done
+    110101111111111111111111111111101111110111111111111111101111111110101111101^C
+    [Exit 130 (INT)]
+
+Jim
+
+P.S., this all started because I accidentally removed a backing
+file, and that made some in-progress FIEMAP-related tests fail.
+
+PPS, here's sample output, when it exits nonzero:
+
+  # bash /t/bug-demo                                                    :
+       9   0  41
+      17   0 240
+      18   0 216
+      19   0 125
+      20   0   1
+      29   0   3
+      30   0   3
+      31   0   3
+      32   0   3
+      33   0 142
+      34   0  40
+      35   0 155
+      36   0 156
+      37   0 164
+      39   0 142
+      41   0  41
+      49   0 146
+      50   0 141
+      51   0 151
+      52   0 154
