@@ -1,307 +1,188 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: [Ext4 punch hole 6/6 v4] Ext4 Punch Hole Support: Enable Punch Hole
-Date: Tue, 19 Apr 2011 00:43:31 -0700
-Message-ID: <4DAD3D23.7010203@linux.vnet.ibm.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: Files full of zeros with coreutils-8.11 and xfs (FIEMAP
+ related?)
+Date: Tue, 19 Apr 2011 17:45:38 +1000
+Message-ID: <20110419074538.GG23985@dastard>
+References: <20110415000940.GL21395@dastard>
+ <76FFF648-CA02-494B-A862-566C66A8CB82@dilger.ca>
+ <20110416005040.GP21395@dastard>
+ <E7438588-5C5A-42B9-9B6C-FADF7CAC6D3A@dilger.ca>
+ <4EEEA16E-1FDB-4430-A372-8F8701196E4C@mit.edu>
+ <20110418004040.GS21395@dastard>
+ <6C89E159-A5F6-4A06-A3D2-273BE4CFB9B5@dilger.ca>
+ <BANLkTin=WEpSf6ddiOMNMOpCPP-wiEttSw@mail.gmail.com>
+ <20110419034455.GB23985@dastard>
+ <BANLkTinjh968ECqAobQ677hnV5yzke1ncw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Andreas Dilger <adilger@dilger.ca>, Theodore Tso <tytso@mit.edu>,
+	Eric Sandeen <sandeen@sandeen.net>, xfs-oss <xfs@oss.sgi.com>,
+	"coreutils@gnu.org" <coreutils@gnu.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	=?iso-8859-1?Q?P=E1draig?= Brady <P@draigbrady.com>,
+	Markus Trippelsdorf <markus@trippelsdorf.de>
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:56884 "EHLO e1.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751399Ab1DSHnf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 19 Apr 2011 03:43:35 -0400
-Received: from d01relay05.pok.ibm.com (d01relay05.pok.ibm.com [9.56.227.237])
-	by e1.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p3J7WuB9022442
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 03:32:56 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p3J7hYjq180644
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 03:43:34 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p3J7hYIj030294
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 03:43:34 -0400
-Received: from [9.48.114.155] (sig-9-48-114-155.mts.ibm.com [9.48.114.155])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p3J7hXFo030268
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 03:43:34 -0400
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:53521 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751911Ab1DSHpv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 19 Apr 2011 03:45:51 -0400
+Content-Disposition: inline
+In-Reply-To: <BANLkTinjh968ECqAobQ677hnV5yzke1ncw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds new routines: "ext4_punch_hole" "ext4_ext_punch_hole"
+On Tue, Apr 19, 2011 at 02:53:20PM +0800, Yongqiang Yang wrote:
+> On Tue, Apr 19, 2011 at 11:44 AM, Dave Chinner <david@fromorbit.com> =
+wrote:
+> > On Tue, Apr 19, 2011 at 09:58:15AM +0800, Yongqiang Yang wrote:
+> >> On Mon, Apr 18, 2011 at 10:45 AM, Andreas Dilger <adilger@dilger.c=
+a> wrote:
+> >> > On 2011-04-17, at 6:40 PM, Dave Chinner <david@fromorbit.com> wr=
+ote:
+> >> >
+> >> > On Sat, Apr 16, 2011 at 08:21:28AM -0400, Theodore Tso wrote:
+> >> >
+> >> > On Apr 16, 2011, at 1:11 AM, Andreas Dilger wrote:
+> >> >
+> >> > In that case, it means cp should just always use FIEMAP_FLAG_SYN=
+C, which is
+> >> > fine.
+> >> >
+> >> > Except that if someone is copying a large delay allocated file, =
+it will
+> >> > cause
+> >> >
+> >> > the file to immediately snapped to disk, which might not be the =
+greatest
+> >> >
+> >> > thing in the world.
+> >> >
+> >> > Obvious workaround - if the initial fiemap call shows unwritten
+> >> > extents, redo it with the sync flag set. Though that assume=D1=95=
+ that
+> >> > you can trust things like delalloc extents to only cover the ran=
+ge
+> >> > that valid data exists in. Which, of course, you can't assume,
+> >> > either. :/
+> >> >
+> >> > Always passing=C2=A0FIEMAP_FLAG_SYNC is fine in this case. It sh=
+ould only do
+> >> > anything if there is unwritten data, which is the only case we a=
+re concerned
+> >> > with at this point. =C2=A0In any case, this is a simple solution=
+ for coreutils
+> >> > until such a time that a more complex solution is added in the k=
+ernel (if
+> >> > ever).
+> >> >
+> >> > Christoph is write, SEEK_HOLE and SEEK_DATA are
+> >> >
+> >> > a much better API for what cp woulld lke to do. =C2=A0Unfortunat=
+ely it hasn't
+> >> >
+> >> > been implemented yet in the VFS...
+> >> >
+> >> > Agreed, SEEK_HOLE/SEEK_DATA is the right way to solve this probl=
+em.
+> >> >
+> >> > I don't see how this will change the problem in any meaningful w=
+ay. There
+> >> > will still need to be code that is traversing the on-disk mappin=
+g, and also
+> >> > keeping it coherent with unwritten data in the page cache.
+> >>
+> >> It seems that we are being messed up by page cache and disk.
+> >> Unwritten flag returned from FIEMAP indicates blocks on disk are n=
+ot
+> >> written, but it does not say if there is data in page cache. =C2=A0=
+So
+> >> FIEMAP itself just tells user the map on disk. =C2=A0However there=
+ is an
+> >> exception for delayed allocation, =C2=A0FIEMAP tells users the dat=
+a is in
+> >> page cache.
+> >
+> > No, FIEMAP does not tell the user there is data in the page cache.
+> > It tells there user there is a delayed allocation extent. For XFS, =
+a
+> > delayed allocation extent can cover a range _greater_ than there is
+> > data in the page cache - we do allocation allignment, speculative
+> > allocation and other tricks to avoid fragmentation via
+> > delayed allocation. When XFSs says there is a delalloc extent, it i=
+s
+> > simply showing the in-memory representation of the extent. if you
+> > want to know where the data in the page cache actually is, you need
+> > to sync the file to disk to get those ranges converted to real
+> > extents. This is how xfs_bmap has worked for 15 years....
+> >
+> >> Maybe FIEMAP should return all known messages for unwritten extent=
+, if
+> >> unwritten data exists in page cache, FIEMAP should let users know =
+that
+> >> data is in page cache and space on disk has been preallocated, but
+> >> data has not been flushed into disk. =C2=A0Actually, delayed alloc=
+ation has
+> >> done like this. Then user-space applications can determine how to =
+do.
+> >> Taking cp as an example, it will copy from page cache rather ignor=
+e
+> >> it.
+> >
+> > Once again, FIEMAP is for showing the filesystem's current extent
+> > state, not the page cache state. Ext4 may implement FIEMAP by doing
+> > page cache walks, but that is a filesystem specific implementation
+> > detail.
+> >
+> >> We need a definite definition for FIEMAP, in other words, it tells
+> >> users map on disk or both disk and page cache.
+> >
+> > We already have a definition - and it has nothing to do with the
+> > page cache state.
+> >
+> >> If the former one is taken, then FIEMAP should not consider
+> >> delayed allocation.
+> >
+> > Not at all. the delayed allocation extent is a first class extent
+> > type in XFS and it is reported directly from the extent list. Your
+> > viewpoint is very ext4-specific and ignores the fact that other
+> > filesystems were doing this sort of mapping long before even ext3
+> > (let alone ext4) was a glint in the designer's eye....
+> >
+> >> otherwise, FIEMAP should return all known messages for unwritten c=
+ase
+> >> like delayed allocation.
+> >
+> > See my previous comments about extents being unwritten until data i=
+s
+> > physically written to them.
+> Understood, thank you for your explanation.
+>=20
+> Ok.  Let's look at it from a higher view.  What you described about
+> extent state is specific to xfs.
+>=20
+> I think there are 2 ways to provide a definite definition for FIEMAP
+> for all filesystems:
+>=20
+> 1. FIEMAP returns extent state on disk.
+> 2. FIEMAP returns extent both in memory and on disk.
 
-fallocate has been modified to call ext4_punch_hole when the punch hole
-flag is passed.  At the moment, we only support punching holes in
-extents, so this routine is pretty much a wrapper for the ext4_ext_punch_hole
-routine.
+You are *not listening*. There is no #2. FIEMAP returns the extent
+state _on disk_ at the time of the call. If you want it to reflect
+the in-memory state at the time of the call (for data or metadata),
+you *must* use the the SYNC flag to convert that in-memory state to
+on-disk state, which FIEMAP then reports just fine.
 
-The ext4_ext_punch_hole routine first completes all
-outstanding writes with the associated pages, and then releases
-them.  The unblock aligned data is zeroed, and all blocks in
-between are punched out.
+Cheers,
 
-Signed-off-by: Allison Henderson <achender@us.ibm.com>
----
-:100644 100644 6b64a79... 007f254... M	fs/ext4/ext4.h
-:100644 100644 d97bc87... b05d79c... M	fs/ext4/extents.c
-:100644 100644 09fc53b... 9df5056... M	fs/ext4/inode.c
- fs/ext4/ext4.h    |    3 +
- fs/ext4/extents.c |  175 +++++++++++++++++++++++++++++++++++++++++++++++++++-
- fs/ext4/inode.c   |   25 ++++++++
- 3 files changed, 199 insertions(+), 4 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 6b64a79..007f254 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1744,6 +1744,7 @@ extern int ext4_change_inode_journal_flag(struct inode *, int);
- extern int ext4_get_inode_loc(struct inode *, struct ext4_iloc *);
- extern int ext4_can_truncate(struct inode *inode);
- extern void ext4_truncate(struct inode *);
-+extern int ext4_punch_hole(struct file *file, loff_t offset, loff_t length);
- extern int ext4_truncate_restart_trans(handle_t *, struct inode *, int nblocks);
- extern void ext4_set_inode_flags(struct inode *);
- extern void ext4_get_inode_flags(struct ext4_inode_info *);
-@@ -2081,6 +2082,8 @@ extern int ext4_ext_index_trans_blocks(struct inode *inode, int nrblocks,
- extern int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 			       struct ext4_map_blocks *map, int flags);
- extern void ext4_ext_truncate(struct inode *);
-+extern int ext4_ext_punch_hole(struct file *file, loff_t offset,
-+				loff_t length);
- extern void ext4_ext_init(struct super_block *);
- extern void ext4_ext_release(struct super_block *);
- extern long ext4_fallocate(struct file *file, int mode, loff_t offset,
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index d97bc87..b05d79c 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3882,10 +3882,6 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
- 	struct ext4_map_blocks map;
- 	unsigned int credits, blkbits = inode->i_blkbits;
- 
--	/* We only support the FALLOC_FL_KEEP_SIZE mode */
--	if (mode & ~FALLOC_FL_KEEP_SIZE)
--		return -EOPNOTSUPP;
--
- 	/*
- 	 * currently supporting (pre)allocate mode for extent-based
- 	 * files _only_
-@@ -3893,6 +3889,13 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
- 	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
- 		return -EOPNOTSUPP;
- 
-+	/* Return error if mode is not supported */
-+	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
-+		return -EOPNOTSUPP;
-+
-+	if (mode & FALLOC_FL_PUNCH_HOLE)
-+		return ext4_punch_hole(file, offset, len);
-+
- 	trace_ext4_fallocate_enter(inode, offset, len, mode);
- 	map.m_lblk = offset >> blkbits;
- 	/*
-@@ -4274,3 +4277,167 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 	return error;
- }
- 
-+/*
-+ * ext4_ext_punch_hole
-+ *
-+ * Punches a hole of "length" bytes in a file starting
-+ * at byte "offset"
-+ *
-+ * @inode:  The inode of the file to punch a hole in
-+ * @offset: The starting byte offset of the hole
-+ * @length: The length of the hole
-+ *
-+ * Returns the number of blocks removed or negative on err
-+ */
-+int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
-+{
-+	struct inode *inode = file->f_path.dentry->d_inode;
-+	struct super_block *sb = inode->i_sb;
-+	struct ext4_extent cache_ex;
-+	ext4_lblk_t first_block, last_block, num_blocks, iblock, max_blocks;
-+	struct address_space *mapping = inode->i_mapping;
-+	struct ext4_map_blocks map;
-+	handle_t *handle;
-+	loff_t first_block_offset, last_block_offset, block_len;
-+	loff_t first_page, last_page, first_page_offset, last_page_offset;
-+	int ret, credits, blocks_released, err = 0;
-+
-+	first_block = (offset + sb->s_blocksize - 1)
-+			>> EXT4_BLOCK_SIZE_BITS(sb);
-+	last_block = (offset + length) >> EXT4_BLOCK_SIZE_BITS(sb);
-+
-+	first_block_offset = first_block
-+			<< EXT4_BLOCK_SIZE_BITS(sb);
-+	last_block_offset = last_block << EXT4_BLOCK_SIZE_BITS(sb);
-+
-+	first_page = (offset + PAGE_CACHE_SIZE - 1)
-+			>> PAGE_CACHE_SHIFT;
-+	last_page = (offset + length) >> PAGE_CACHE_SHIFT;
-+
-+	first_page_offset = first_page
-+			<< PAGE_CACHE_SHIFT;
-+	last_page_offset = last_page << PAGE_CACHE_SHIFT;
-+
-+	/*
-+	 * Write out all dirty pages to avoid race conditions
-+	 * Then release them.
-+	 */
-+	if (mapping->nrpages && mapping_tagged(mapping,
-+		PAGECACHE_TAG_DIRTY)){
-+		err = filemap_write_and_wait_range(mapping,
-+			first_page_offset == 0 ? 0 : first_page_offset-1,
-+			last_page_offset);
-+
-+			if (err)
-+				return err;
-+	}
-+
-+	/* Now release the pages */
-+	if (last_page_offset > first_page_offset) {
-+		truncate_inode_pages_range(mapping, first_page_offset,
-+			last_page_offset-1);
-+	}
-+
-+	/* finish any pending end_io work */
-+	ext4_flush_completed_IO(inode);
-+
-+	credits = ext4_writepage_trans_blocks(inode);
-+	handle = ext4_journal_start(inode, credits);
-+	if (IS_ERR(handle))
-+		return PTR_ERR(handle);
-+
-+	err = ext4_orphan_add(handle, inode);
-+	if (err)
-+		goto out;
-+
-+	/*
-+	 * Now we need to zero out the un block aligned data.
-+	 * If the file is smaller than a block, just
-+	 * zero out the middle
-+	 */
-+	if (first_block > last_block)
-+		ext4_block_zero_page_range(handle, mapping, offset, length);
-+	else {
-+		/* zero out the head of the hole before the first block */
-+		block_len  = first_block_offset - offset;
-+		if (block_len > 0)
-+			ext4_block_zero_page_range(handle, mapping,
-+				offset, block_len);
-+
-+		/* zero out the tail of the hole after the last block */
-+		block_len = offset + length - last_block_offset;
-+		if (block_len > 0) {
-+			ext4_block_zero_page_range(handle, mapping,
-+				last_block_offset, block_len);
-+		}
-+	}
-+
-+	/* If there are no blocks to remove, return now */
-+	if (first_block >= last_block)
-+		goto out;
-+
-+	down_write(&EXT4_I(inode)->i_data_sem);
-+	ext4_ext_invalidate_cache(inode);
-+	ext4_discard_preallocations(inode);
-+
-+	/*
-+	 * Loop over all the blocks and identify blocks
-+	 * that need to be punched out
-+	 */
-+	iblock = first_block;
-+	blocks_released = 0;
-+	while (iblock < last_block) {
-+		max_blocks = last_block - iblock;
-+		num_blocks = 1;
-+		memset(&map, 0, sizeof(map));
-+		map.m_lblk = iblock;
-+		map.m_len = max_blocks;
-+		ret = ext4_ext_map_blocks(handle, inode, &map,
-+			EXT4_GET_BLOCKS_PUNCH_OUT_EXT);
-+
-+		if (ret > 0) {
-+			blocks_released += ret;
-+			num_blocks = ret;
-+		} else if (ret == 0) {
-+			/*
-+			 * If map blocks could not find the block,
-+			 * then it is in a hole.  If the hole was
-+			 * not already cached, then map blocks should
-+			 * put it in the cache.  So we can get the hole
-+			 * out of the cache
-+			 */
-+			memset(&cache_ex, 0, sizeof(cache_ex));
-+			if ((ext4_ext_in_cache(inode, iblock, &cache_ex)) &&
-+				(!cache_ex.ee_start_lo &&
-+				!cache_ex.ee_start_hi)) {
-+
-+				/* The hole is cached */
-+				num_blocks = (cache_ex.ee_block +
-+						cache_ex.ee_len) -
-+						iblock;
-+			}
-+		} else {
-+			/* Block lookup error */
-+			ext_debug("Block lookup failed");
-+		}
-+
-+		iblock += num_blocks;
-+	}
-+
-+	if (blocks_released > 0) {
-+		ext4_ext_invalidate_cache(inode);
-+		ext4_discard_preallocations(inode);
-+	}
-+
-+	if (IS_SYNC(inode))
-+		ext4_handle_sync(handle);
-+
-+	up_write(&EXT4_I(inode)->i_data_sem);
-+
-+out:
-+	ext4_orphan_del(handle, inode);
-+	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
-+	ext4_mark_inode_dirty(handle, inode);
-+	ext4_journal_stop(handle);
-+	return err;
-+}
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 09fc53b..9df5056 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4420,6 +4420,31 @@ int ext4_can_truncate(struct inode *inode)
- }
- 
- /*
-+ * ext4_punch_hole: punches a hole in a file by releaseing the blocks
-+ * associated with the given offset and length
-+ *
-+ * @inode:  File inode
-+ * @offset: The offset where the hole will begin
-+ * @len:    The length of the hole
-+ *
-+ * Returns: 0 on sucess or negative on failure
-+ */
-+
-+int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
-+{
-+	struct inode *inode = file->f_path.dentry->d_inode;
-+	if (!S_ISREG(inode->i_mode))
-+		return -ENOTSUPP;
-+
-+	if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
-+		/* TODO: Add support for non extent hole punching */
-+		return -ENOTSUPP;
-+	}
-+
-+	return ext4_ext_punch_hole(file, offset, length);
-+}
-+
-+/*
-  * ext4_truncate()
-  *
-  * We block out ext4_get_block() block instantiations across the entire
--- 
-1.7.1
-
+Dave.
+--=20
+Dave Chinner
+david@fromorbit.com
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
