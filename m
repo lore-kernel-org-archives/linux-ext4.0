@@ -1,202 +1,122 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: [Ext4 punch hole 5/6 v5] Ext4 Punch Hole Support: Map blocks
- punch hole flag
-Date: Tue, 19 Apr 2011 10:48:36 -0700
-Message-ID: <4DADCAF4.8000402@linux.vnet.ibm.com>
-References: <4DAD3D05.8000103@linux.vnet.ibm.com> <BANLkTinaFDetbwu-Y6afPgiRAzwarvtGJg@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: loopback-mounted ext4 sees hole-filling (on rawhide, but not
+ F15)
+Date: Tue, 19 Apr 2011 13:34:20 -0500
+Message-ID: <4DADD5AC.8020207@redhat.com>
+References: <87mxjmz05w.fsf@rho.meyering.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Cc: ext <linux-ext4@vger.kernel.org>
+To: Jim Meyering <jim@meyering.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:43830 "EHLO e4.ny.us.ibm.com"
+Received: from mx1.redhat.com ([209.132.183.28]:12720 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752608Ab1DSSQi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 19 Apr 2011 14:16:38 -0400
-Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
-	by e4.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p3JHuPVl012796
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 13:56:25 -0400
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p3JIGP3x2523140
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 14:16:25 -0400
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p3JIDDBN007469
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Apr 2011 15:16:24 -0300
-In-Reply-To: <BANLkTinaFDetbwu-Y6afPgiRAzwarvtGJg@mail.gmail.com>
+	id S1752663Ab1DSSeY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 19 Apr 2011 14:34:24 -0400
+In-Reply-To: <87mxjmz05w.fsf@rho.meyering.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 4/19/2011 1:35 AM, Yongqiang Yang wrote:
-> On Tue, Apr 19, 2011 at 3:43 PM, Allison Henderson
-> <achender@linux.vnet.ibm.com>  wrote:
->> This patch adds a new flag to map blocks that specifies
->> the given range of blocks should be punched out.  Extents
->> are first converted to uninitialized extents before they are
->> punched out. Because punching a hole may require that the
->> extent be split, it is possible that the splitting may need
->> more blocks than are available.  To deal with this, reserved
->> blocks are temporarily borrowed to allow the split to proceed.
->> The borrowed blocks are then returned after the hole punch has
->> released more blocks.
->>
->> The routine then returns the number of blocks successfully
->> punched out.
->>
->> Signed-off-by: Allison Henderson<achender@us.ibm.com>
->> ---
->> :100644 100644 e3a721a... d97bc87... M  fs/ext4/extents.c
->>   fs/ext4/extents.c |   99 +++++++++++++++++++++++++++++++++++++++++++++++------
->>   1 files changed, 88 insertions(+), 11 deletions(-)
->>
->> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
->> index e3a721a..d97bc87 100644
->> --- a/fs/ext4/extents.c
->> +++ b/fs/ext4/extents.c
->> @@ -3456,15 +3456,19 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
->>         ext4_fsblk_t newblock = 0;
->>         int err = 0, depth, ret;
->>         unsigned int allocated = 0;
->> +       unsigned int punched_out = 0;
->> +       unsigned int result = 0;
->>         struct ext4_allocation_request ar;
->>         ext4_io_end_t *io = EXT4_I(inode)->cur_aio_dio;
->> +       struct ext4_map_blocks punch_map;
->>
->>         ext_debug("blocks %u/%u requested for inode %lu\n",
->>                   map->m_lblk, map->m_len, inode->i_ino);
->>         trace_ext4_ext_map_blocks_enter(inode, map->m_lblk, map->m_len, flags);
->>
->>         /* check in cache */
->> -       if (ext4_ext_in_cache(inode, map->m_lblk,&newex)) {
->> +       if (ext4_ext_in_cache(inode, map->m_lblk,&newex)&&
->> +               ((flags&  EXT4_GET_BLOCKS_PUNCH_OUT_EXT) == 0)) {
->>                 if (!newex.ee_start_lo&&  !newex.ee_start_hi) {
->>                         if ((flags&  EXT4_GET_BLOCKS_CREATE) == 0) {
->>                                 /*
->> @@ -3529,16 +3533,85 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
->>                         ext_debug("%u fit into %u:%d ->  %llu\n", map->m_lblk,
->>                                   ee_block, ee_len, newblock);
->>
->> -                       /* Do not put uninitialized extent in the cache */
->> -                       if (!ext4_ext_is_uninitialized(ex)) {
->> -                               ext4_ext_put_in_cache(inode, ee_block,
->> -                                                       ee_len, ee_start);
->> -                               goto out;
->> +                       if ((flags&  EXT4_GET_BLOCKS_PUNCH_OUT_EXT) == 0) {
->> +                               /*
->> +                                * Do not put uninitialized extent
->> +                                * in the cache
->> +                                */
->> +                               if (!ext4_ext_is_uninitialized(ex)) {
->> +                                       ext4_ext_put_in_cache(inode, ee_block,
->> +                                               ee_len, ee_start);
->> +                                       goto out;
->> +                               }
->> +                               ret = ext4_ext_handle_uninitialized_extents(
->> +                                       handle, inode, map, path, flags,
->> +                                       allocated, newblock);
->> +                               return ret;
->>                         }
->> -                       ret = ext4_ext_handle_uninitialized_extents(handle,
->> -                                       inode, map, path, flags, allocated,
->> -                                       newblock);
->> -                       return ret;
->> +
->> +                       /*
->> +                        * Punch out the map length, but only to the
->> +                        * end of the extent
->> +                        */
->> +                       punched_out = allocated<  map->m_len ?
->> +                               allocated : map->m_len;
->> +
->> +                       /*
->> +                        * Sense extents need to be converted to
->> +                        * uninitialized, they must fit in an
->> +                        * uninitialized extent
->> +                        */
->> +                       if (punched_out>  EXT_UNINIT_MAX_LEN)
->> +                               punched_out = EXT_UNINIT_MAX_LEN;
->> +
->> +                       punch_map.m_lblk = map->m_lblk;
->> +                       punch_map.m_pblk = newblock;
->> +                       punch_map.m_len = punched_out;
->> +                       punch_map.m_flags = 0;
->> +
->> +                       /* Check to see if the extent needs to be split */
->> +                       if (punch_map.m_len != ee_len ||
->> +                               punch_map.m_lblk != ee_block) {
->> +
->> +                               ret = ext4_ext_split_extents(handle, inode,
->> +&punch_map, path,
->> +                               EXT4_GET_BLOCKS_PRE_IO |
->> +                               EXT4_HAS_FREE_BLKS_USE_ROOTBLKS,
->> +                               0);
->> +
->> +                               if (ret<  0) {
->> +                                       err = ret;
->> +                                       goto out2;
->> +                               }
->> +                               /*
->> +                                * find extent for the block at
->> +                                * the start of the hole
->> +                                */
->> +                               ext4_ext_drop_refs(path);
->> +                               kfree(path);
->> +
->> +                               path = ext4_ext_find_extent(inode,
->> +                               map->m_lblk, NULL);
->> +                               if (IS_ERR(path)) {
->> +                                       err = PTR_ERR(path);
->> +                                       path = NULL;
->> +                                       goto out2;
->> +                               }
->> +
->> +                               depth = ext_depth(inode);
->> +                               ex = path[depth].p_ext;
->> +                               ee_len = ext4_ext_get_actual_len(ex);
->> +                               ee_block = le32_to_cpu(ex->ee_block);
->> +                               ee_start = ext4_ext_pblock(ex);
->> +
->> +                       }
->> +
->> +                       ext4_ext_mark_uninitialized(ex);
-> Is this change journaled?
-Hi there, 
+On 4/19/11 11:16 AM, Jim Meyering wrote:
+> When I run the following script on rawhide (2.6.39-0.rc3.git2.0.fc16.x86_64)
+> it shows that a file with holes sometimes ends up with some non-NUL bytes
+> where the holes should be.
+> 
+> For best results, run it in an empty directory, preferably on a tmpfs FS.
+> I've run it on ext4, too.
+> 
+> It creates a 4MB ext4 file system, mounts it, and writes two files,
+> one with holes, the other identical, but with NULs instead,
+> and then runs sync, compares the two files, and unmounts
+> and removes the temporary file and the mount point directory.
+> 
+> The key is that it unlinks the backing file after mounting
+> and before writing the files.
 
-Yes, the ext4_ext_map_blocks routine requires a journal handle as a parameter, so the calling function is required to set up the journal.
+I've found that disabling mblk_io_submit by adding ",nomblk_io_submit"
+to the mount options in the testcase fixes this corruption case.
 
+(6fd7a46781999c32f423025767e43b349b967d57 ext4: enable mblk_io_submit by default
+turned it back on by default after the last corruption was found & fixed)
+
+-Eric
+
+> =====================================
+> #!/bin/sh
+> set -e
+> dd if=/dev/zero of=blob bs=4k count=1000 >/dev/null 2>&1
+> mkdir mnt
+> mkfs -q -t ext4 -F blob
+> mount -oloop blob mnt
 > 
->> +
->> +                       err = ext4_ext_remove_space(inode, map->m_lblk,
->> +                               map->m_lblk + punched_out);
->> +
->> +                       goto out2;
->>                 }
->>         }
->>
->> @@ -3683,7 +3756,11 @@ out2:
->>         }
->>         trace_ext4_ext_map_blocks_exit(inode, map->m_lblk,
->>                 newblock, map->m_len, err ? err : allocated);
->> -       return err ? err : allocated;
->> +
->> +       result = (flags&  EXT4_GET_BLOCKS_PUNCH_OUT_EXT) ?
->> +                       punched_out : allocated;
->> +
->> +       return err ? err : result;
->>   }
->>
->>   void ext4_ext_truncate(struct inode *inode)
->> --
->> 1.7.1
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+> # Removing the backing file is key.
+> rm -f blob
+> cwd=$PWD
+> cd mnt
 > 
+> # Create a reference file.  Just like the following one,
+> # but with explicit NULs in place of holes.
+> perl -e '$n=1024; for (1..71) { print "\0"x$n, chr($_)x$n };' \
+>   -e 'close *STDOUT or die "$!"' > ref
 > 
+> # Seek 1KB, write 1KB of data, seek 1KB, write 1KB of data, etc....
+> perl -e '$n = 1 * 1024; *F = *STDOUT;' \
+>   -e 'for (1..71) { sysseek (*F, $n, 1)' \
+>   -e '&& syswrite (*F, chr($_)x$n) or die "$!"}' > j1
 > 
+> # filefrag -vs j1
+> 
+> sync
+> cmp -s ref j1 && fail=0 || { cmp -l ref j1|head -20; fail=1; }
+> 
+> cd /; umount "$cwd/mnt"
+> rm -rf "$cwd/blob" "$cwd/mnt"
+> 
+> exit $fail
+> =====================================
+> 
+> Interestingly, if you remove the "sync", it exits 0 every time.
+> 
+> Beware that sometimes you (accidentally?) get
+> all NUL blocks, so the script does occasionally exit 0.
+> To demonstrate, I turned off the cmp -l ...|head bit and ran it
+> for a while, printing only exit status:
+> 
+>     $ while :; do /t/loop-bug; printf $?; done
+>     110101111111111111111111111111101111110111111111111111101111111110101111101^C
+>     [Exit 130 (INT)]
+> 
+> Jim
+> 
+> P.S., this all started because I accidentally removed a backing
+> file, and that made some in-progress FIEMAP-related tests fail.
+> 
+> PPS, here's sample output, when it exits nonzero:
+> 
+>   # bash /t/bug-demo                                                    :
+>        9   0  41
+>       17   0 240
+>       18   0 216
+>       19   0 125
+>       20   0   1
+>       29   0   3
+>       30   0   3
+>       31   0   3
+>       32   0   3
+>       33   0 142
+>       34   0  40
+>       35   0 155
+>       36   0 156
+>       37   0 164
+>       39   0 142
+>       41   0  41
+>       49   0 146
+>       50   0 141
+>       51   0 151
+>       52   0 154
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
