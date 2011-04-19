@@ -1,210 +1,139 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] ext4: Make reads/writes atomic with i_rwlock semaphore
-Date: Mon, 18 Apr 2011 21:21:32 +0200
-Message-ID: <1303154492-25446-1-git-send-email-lczerner@redhat.com>
-Cc: tytso@mit.edu, esandeen@redhat.com, adilger@dilger.ca,
-	Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: Re: Files full of zeros with coreutils-8.11 and xfs (FIEMAP related?)
+Date: Tue, 19 Apr 2011 09:58:15 +0800
+Message-ID: <BANLkTin=WEpSf6ddiOMNMOpCPP-wiEttSw@mail.gmail.com>
+References: <20110414140222.GB1679@x4.trippels.de>
+	<4DA70BD3.1070409@draigBrady.com>
+	<4DA717B2.3020305@sandeen.net>
+	<20110414225904.GK21395@dastard>
+	<4DA7836A.5040604@draigBrady.com>
+	<20110415000940.GL21395@dastard>
+	<76FFF648-CA02-494B-A862-566C66A8CB82@dilger.ca>
+	<20110416005040.GP21395@dastard>
+	<E7438588-5C5A-42B9-9B6C-FADF7CAC6D3A@dilger.ca>
+	<4EEEA16E-1FDB-4430-A372-8F8701196E4C@mit.edu>
+	<20110418004040.GS21395@dastard>
+	<6C89E159-A5F6-4A06-A3D2-273BE4CFB9B5@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Dave Chinner <david@fromorbit.com>, Theodore Tso <tytso@mit.edu>,
+	Eric Sandeen <sandeen@sandeen.net>, xfs-oss <xfs@oss.sgi.com>,
+	"coreutils@gnu.org" <coreutils@gnu.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	=?ISO-8859-1?Q?P=E1draig_Brady?= <P@draigbrady.com>,
+	Markus Trippelsdorf <markus@trippelsdorf.de>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:30308 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756523Ab1DRTVq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Apr 2011 15:21:46 -0400
+Received: from mail-pv0-f174.google.com ([74.125.83.174]:56307 "EHLO
+	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753843Ab1DSB6W convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Apr 2011 21:58:22 -0400
+Received: by pvg12 with SMTP id 12so2388146pvg.19
+        for <linux-ext4@vger.kernel.org>; Mon, 18 Apr 2011 18:58:22 -0700 (PDT)
+In-Reply-To: <6C89E159-A5F6-4A06-A3D2-273BE4CFB9B5@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently concurrent reads/writes are atomic only wrt individual pages,
-however are not on the system call. This may cause read() to return data
-mixed from several different writes, which I do not think it is good
-approach. We might argue that application doing this is broken, but
-actually this is something we can easily do on filesystem level without
-significant performance issues, so we can be consistent. Also POSIX
-mentions this as well and XFS filesystem already has this feature.
+On Mon, Apr 18, 2011 at 10:45 AM, Andreas Dilger <adilger@dilger.ca> wr=
+ote:
+> On 2011-04-17, at 6:40 PM, Dave Chinner <david@fromorbit.com> wrote:
+>
+> On Sat, Apr 16, 2011 at 08:21:28AM -0400, Theodore Tso wrote:
+>
+> On Apr 16, 2011, at 1:11 AM, Andreas Dilger wrote:
+>
+> In that case, it means cp should just always use FIEMAP_FLAG_SYNC, wh=
+ich is
+> fine.
+>
+> Except that if someone is copying a large delay allocated file, it wi=
+ll
+> cause
+>
+> the file to immediately snapped to disk, which might not be the great=
+est
+>
+> thing in the world.
+>
+> Obvious workaround - if the initial fiemap call shows unwritten
+> extents, redo it with the sync flag set. Though that assume=D1=95 tha=
+t
+> you can trust things like delalloc extents to only cover the range
+> that valid data exists in. Which, of course, you can't assume,
+> either. :/
+>
+> Always passing=C2=A0FIEMAP_FLAG_SYNC is fine in this case. It should =
+only do
+> anything if there is unwritten data, which is the only case we are co=
+ncerned
+> with at this point. =C2=A0In any case, this is a simple solution for =
+coreutils
+> until such a time that a more complex solution is added in the kernel=
+ (if
+> ever).
+>
+> Christoph is write, SEEK_HOLE and SEEK_DATA are
+>
+> a much better API for what cp woulld lke to do. =C2=A0Unfortunately i=
+t hasn't
+>
+> been implemented yet in the VFS...
+>
+> Agreed, SEEK_HOLE/SEEK_DATA is the right way to solve this problem.
+>
+> I don't see how this will change the problem in any meaningful way. T=
+here
+> will still need to be code that is traversing the on-disk mapping, an=
+d also
+> keeping it coherent with unwritten data in the page cache.
 
-This commit adds new rw_semaphore into ext4_inode structure. We take
-read lock every time we read data from a file (via ext4_file_read() or
-ext4_file_splice_read()) and also when we write data in direct io mode,
-since in this mode application should know exactly what it is doing.
-Then we take write lock when we write into a file (via ext4_file_write()
-and ext4_file_splice_write()), except the direct io when we take read
-lock and unaligned direct io which is already serialized in different
-manner. Also we are locking ext4_truncate() as well so we are consistent
-and preserve atomicity.
+It seems that we are being messed up by page cache and disk.
+Unwritten flag returned from FIEMAP indicates blocks on disk are not
+written, but it does not say if there is data in page cache.  So
+=46IEMAP itself just tells user the map on disk.  However there is an
+exception for delayed allocation,  FIEMAP tells users the data is in
+page cache.
 
-This should not have any significant performance impact since we still
-allow concurrent reads from the same inode and concurrent writes are
-serialized already by i_mutex. The only type of load which will feel the
-performance hit is the case of writing into an inode while reading from
-it and vice versa. In this case, if reads/writes are exclusive it might
-not need locking, however tracking this would be expensive.
+Maybe FIEMAP should return all known messages for unwritten extent, if
+unwritten data exists in page cache, FIEMAP should let users know that
+data is in page cache and space on disk has been preallocated, but
+data has not been flushed into disk.  Actually, delayed allocation has
+done like this. Then user-space applications can determine how to do.
+Taking cp as an example, it will copy from page cache rather ignore
+it.
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- fs/ext4/ext4.h  |    5 ++++
- fs/ext4/file.c  |   58 ++++++++++++++++++++++++++++++++++++++++++++++++++----
- fs/ext4/inode.c |    7 ++++++
- fs/ext4/super.c |    1 +
- 4 files changed, 66 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 4daaf2b..037857c 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -858,6 +858,11 @@ struct ext4_inode_info {
- 	 */
- 	tid_t i_sync_tid;
- 	tid_t i_datasync_tid;
-+
-+	/*
-+	 * Semaphore forcing read/write atomicity
-+	 */
-+	struct rw_semaphore i_rwlock;
- };
- 
- /*
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 7b80d54..6c7ed94 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -94,7 +94,7 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
- 		unsigned long nr_segs, loff_t pos)
- {
- 	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
--	int unaligned_aio = 0;
-+	int unaligned_aio = 0, direct_io = 0;
- 	int ret;
- 
- 	/*
-@@ -117,6 +117,7 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
- 	} else if (unlikely((iocb->ki_filp->f_flags & O_DIRECT) &&
- 		   !is_sync_kiocb(iocb))) {
- 		unaligned_aio = ext4_unaligned_aio(inode, iov, nr_segs, pos);
-+		direct_io = 1;
- 	}
- 
- 	/* Unaligned direct AIO must be serialized; see comment above */
-@@ -131,12 +132,19 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
- 				 inode->i_ino, current->comm);
- 		mutex_lock(ext4_aio_mutex(inode));
- 		ext4_aiodio_wait(inode);
--	}
-+	} else if (unlikely(direct_io))
-+		down_read(&EXT4_I(inode)->i_rwlock);
-+	else
-+		down_write(&EXT4_I(inode)->i_rwlock);
- 
- 	ret = generic_file_aio_write(iocb, iov, nr_segs, pos);
- 
- 	if (unaligned_aio)
- 		mutex_unlock(ext4_aio_mutex(inode));
-+	else if (unlikely(direct_io))
-+		up_read(&EXT4_I(inode)->i_rwlock);
-+	else
-+		up_write(&EXT4_I(inode)->i_rwlock);
- 
- 	return ret;
- }
-@@ -252,11 +260,51 @@ loff_t ext4_llseek(struct file *file, loff_t offset, int origin)
- 	return offset;
- }
- 
-+static ssize_t
-+ext4_file_read(struct kiocb *iocb, const struct iovec *iov,
-+	       unsigned long nr_segs, loff_t pos)
-+{
-+	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
-+	ssize_t size;
-+
-+	down_read(&EXT4_I(inode)->i_rwlock);
-+	size = generic_file_aio_read(iocb, iov, nr_segs, pos);
-+	up_read(&EXT4_I(inode)->i_rwlock);
-+	return size;
-+}
-+
-+ssize_t ext4_file_splice_read(struct file *in, loff_t *ppos,
-+			      struct pipe_inode_info *pipe, size_t len,
-+			      unsigned int flags)
-+{
-+	struct inode *inode = in->f_mapping->host;
-+	ssize_t size;
-+
-+	down_read(&EXT4_I(inode)->i_rwlock);
-+	size = generic_file_splice_read(in, ppos, pipe, len, flags);
-+	up_read(&EXT4_I(inode)->i_rwlock);
-+	return size;
-+}
-+
-+ssize_t ext4_file_splice_write(struct pipe_inode_info *pipe,
-+			       struct file *out, loff_t *ppos, size_t len,
-+			       unsigned int flags)
-+{
-+	struct inode *inode = out->f_mapping->host;
-+	ssize_t size;
-+
-+	down_write(&EXT4_I(inode)->i_rwlock);
-+	size = generic_file_splice_write(pipe, out, ppos, len, flags);
-+	up_write(&EXT4_I(inode)->i_rwlock);
-+	return size;
-+}
-+
-+
- const struct file_operations ext4_file_operations = {
- 	.llseek		= ext4_llseek,
- 	.read		= do_sync_read,
- 	.write		= do_sync_write,
--	.aio_read	= generic_file_aio_read,
-+	.aio_read	= ext4_file_read,
- 	.aio_write	= ext4_file_write,
- 	.unlocked_ioctl = ext4_ioctl,
- #ifdef CONFIG_COMPAT
-@@ -266,8 +314,8 @@ const struct file_operations ext4_file_operations = {
- 	.open		= ext4_file_open,
- 	.release	= ext4_release_file,
- 	.fsync		= ext4_sync_file,
--	.splice_read	= generic_file_splice_read,
--	.splice_write	= generic_file_splice_write,
-+	.splice_read	= ext4_file_splice_read,
-+	.splice_write	= ext4_file_splice_write,
- 	.fallocate	= ext4_fallocate,
- };
- 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index f2fa5e8..769ab0f 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4482,6 +4482,12 @@ void ext4_truncate(struct inode *inode)
- 		goto out_stop;
- 
- 	/*
-+	 * We should block reads/writes to that inode so we are sure we are
-+	 * consistent and reads/writes remain atomic.
-+	 */
-+	down_write(&EXT4_I(inode)->i_rwlock);
-+
-+	/*
- 	 * From here we block out all ext4_get_block() callers who want to
- 	 * modify the block allocation tree.
- 	 */
-@@ -4566,6 +4572,7 @@ do_indirects:
- 
- out_unlock:
- 	up_write(&ei->i_data_sem);
-+	up_write(&EXT4_I(inode)->i_rwlock);
- 	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
- 	ext4_mark_inode_dirty(handle, inode);
- 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 8553dfb..2dbe86a 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -895,6 +895,7 @@ static void init_once(void *foo)
- 	init_rwsem(&ei->xattr_sem);
- #endif
- 	init_rwsem(&ei->i_data_sem);
-+	init_rwsem(&ei->i_rwlock);
- 	inode_init_once(&ei->vfs_inode);
- }
- 
--- 
-1.7.4.2
+We need a definite definition for FIEMAP, in other words, it tells
+users map on disk or both disk and page cache.
 
+If the former one is taken, then FIEMAP should not consider delayed all=
+ocation.
+otherwise, FIEMAP should return all known messages for unwritten case
+like delayed allocation.
+
+> Since FIEMAP already exists for most Linux filesystems, it probably m=
+akes
+> sense to implement SEEK_{HOLE,DATA} by calling FIEMAP to get the disk
+> mapping in the first place.
+> I agree that=C2=A0SEEK_{HOLE,DATA} is an easier programming interface=
+, and
+> probably what cp, tar, etc should use, once it is implemented.
+> Cheers, Andreas
+> _______________________________________________
+> xfs mailing list
+> xfs@oss.sgi.com
+> http://oss.sgi.com/mailman/listinfo/xfs
+>
+>
+
+
+
+--=20
+Best Wishes
+Yongqiang Yang
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
