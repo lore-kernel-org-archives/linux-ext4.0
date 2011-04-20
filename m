@@ -1,48 +1,235 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH RFC 2/3] ext4:Add two functions splitting an extent.
-Date: Wed, 20 Apr 2011 12:13:06 -0600
-Message-ID: <2C83027B-2CAC-4599-883E-3A683411CB7E@dilger.ca>
-References: <1302759651-21222-1-git-send-email-xiaoqiangnk@gmail.com> <1302759651-21222-3-git-send-email-xiaoqiangnk@gmail.com> <4DAF1635.7070406@linux.vnet.ibm.com>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>, linux-ext4@vger.kernel.org,
-	cmm@us.ibm.com
-To: Allison Henderson <achender@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:61853 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750839Ab1DTSNH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Apr 2011 14:13:07 -0400
-In-Reply-To: <4DAF1635.7070406@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Chris Mason <chris.mason@oracle.com>
+Subject: buffered writeback torture program
+Date: Wed, 20 Apr 2011 14:23:29 -0400
+Message-ID: <1303322378-sup-1722@think>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+Cc: axboe@kernel.dk
+To: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com,
+	jack@suse.cz
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2011-04-20, at 11:21 AM, Allison Henderson wrote:
-> I've been working on trying to get the punch hole patch to work with with these new changes, but it looks like some test cases are not passing at the moment, so I'm trying track down where the issues are.  I had to make some adjustments to this patch to fix one of the test cases.  Here is what I did:
-> 
-> ---
-> :100644 100644 ee2dda3... c7d763d... M  fs/ext4/extents.c
-> fs/ext4/extents.c |    6 +++---
-> 1 files changed, 3 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index ee2dda3..c7d763d 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -2717,12 +2717,12 @@ static int ext4_split_extent(handle_t *handle,
->        ee_len = ext4_ext_get_actual_len(ex);
->        uninitialized = ext4_ext_is_uninitialized(ex);
-> 
-> +       flags1 = flags;
-> +       flags1 |= EXT4_GET_BLOCKS_PRE_IO;
+Hi everyone,
 
-Can you please use normal C style: "flags1 = flags | EXT4_GET_BLOCKS_PRE_IO;"
+I dug out my old fsync latency tester to make sure Jens' new plugging
+code hadn't caused regressions.  This started off as a program Ted wrote
+during the firefox dark times, and I added some more code to saturate
+spindles with random IO.
 
+The basic idea is:
 
-Cheers, Andreas
+1) make a nice big sequential 8GB file
+2) fork a process doing random buffered writes inside that file
+3) overwrite a second 4K file in a loop, doing fsyncs as you go.
 
+The test program times how long each write and fsync take in step three.
+The idea is that if we have problems with concurrent buffered writes and
+fsyncs, then all of our fsyncs will get stuck behind the random IO
+writeback and our latencies will be high.
 
+For a while, xfs, btrfs and ext4 did really well at this test.  Our
+fsync latencies were very small and we all sent down synchronous IO that
+the elevator dispatched straight to the drive.
+
+Things have changed though, both xfs and ext4 have grown code to do
+dramatically more IO than write_cache_pages has asked for (I'm pretty
+sure I told everyone this was a good idea at the time).  When doing
+sequential writes, this is a great idea.  When doing random IO, it leads
+to unbound stalls in balance_dirty_pages.
+
+Here's an example run on xfs:
+
+# fsync-tester
+setting up random write file
+done setting up random write file
+starting fsync run
+starting random io!
+write time 0.0009s fsync time: 2.0142s
+write time 128.9305s fsync time: 2.6046s
+run done 2 fsyncs total, killing random writer
+
+In this case the 128s spent in write was on a single 4K overwrite on a
+4K file.
+
+ext4 is doing a blanket increase on wbc->nr_to_write, while xfs is
+pushing down any other IO inside the same extent as the writepage it
+just serviced.  The test program ends up being a worst case for both of
+them.
+
+I honestly don't know what the right answer is here, but I'd say we
+should be backing off our nr_to_write bumps if we notice a lot of random
+IO.
+
+Btrfs does bump wbc->nr_to_write as well, but only as far as we have
+sequential IO to process.  We also end up throttling the random IO
+harder because it is a worst case for our delayed allocation reservation
+code.
+
+The test program is below, and can also be found at:
+
+http://oss.oracle.com/~mason/fsync-tester.c
+
+Usage: gcc -Wall -o fsync-tester fsync-tester.c
+
+mkfs.your_favorite /dev/xxx
+mount /dev/xxx /mnt
+cd /mnt
+fsync-tester
+
+It creates a single 8GB file and one 4K file, so your FS must be at
+least that big.
+
+-chris
+
+/*
+ * fsync-tester.c
+ *
+ * Written by Theodore Ts'o, 3/21/09.  Updated by Chris Mason to include
+ * the random writer thread
+ *
+ * This file may be redistributed under the terms of the GNU Public
+ * License, version 2.
+ */
+#define _FILE_OFFSET_BITS 64
+#define _XOPEN_SOURCE 500
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/wait.h>
+#include <signal.h>
+#include <time.h>
+#include <fcntl.h>
+#include <string.h>
+
+#define SIZE (32768*32)
+static char bigbuf[4096];
+
+static float timeval_subtract(struct timeval *tv1, struct timeval *tv2)
+{
+	return ((tv1->tv_sec - tv2->tv_sec) +
+		((float) (tv1->tv_usec - tv2->tv_usec)) / 1000000);
+}
+
+static void random_io(int fd, loff_t total)
+{
+	loff_t cur = 0;
+	int ret;
+
+	/* just some constant so our runs are always the same */
+	srand(4096);
+	while(1) {
+		/*
+		 * we want a random offset into the file,
+		 * but rand only returns max in.  So we make
+		 * it a random block number instead, and multiply
+		 * by 4096.
+		 */
+		cur = rand();
+		cur = (cur * 4096) % (total - 4096);
+
+		/* align our offset  to 4k */
+		cur = cur / 4096;
+		cur = cur * 4096;
+		ret = pwrite(fd, bigbuf, 4096, cur);
+		if (ret < 4096) {
+			fprintf(stderr, "short write ret %d cur %llu\n",
+				ret, (unsigned long long)cur);
+			exit(1);
+		}
+	}
+}
+
+int main(int argc, char **argv)
+{
+	int	fd;
+	struct timeval tv, tv2, start;
+	char buf[SIZE];
+	pid_t pid;
+	loff_t total = ((loff_t)8) * 1024 * 1024 * 1024;
+	loff_t cur = 0;
+	int rand_fd;
+	int ret;
+	int i;
+	int status;
+	struct stat st;
+
+	memset(bigbuf, 0, 4096);
+
+	rand_fd = open("fsync-tester.rnd-file", O_WRONLY|O_CREAT);
+	if (rand_fd < 0) {
+		perror("open");
+		exit(1);
+	}
+
+	ret = fstat(rand_fd, &st);
+	if (ret < 0) {
+		perror("fstat");
+		exit(1);
+	}
+
+	if (st.st_size < total) {
+		printf("setting up random write file\n");
+		while(cur < total) {
+			ret = write(rand_fd, bigbuf, 4096);
+			if (ret <= 0) {
+				fprintf(stderr, "short write\n");
+				exit(1);
+			}
+			cur += ret;
+		}
+		printf("done setting up random write file\n");
+	}
+
+	fd = open("fsync-tester.tst-file", O_WRONLY|O_CREAT);
+	if (fd < 0) {
+		perror("open");
+		exit(1);
+	}
+	memset(buf, 'a', SIZE);
+
+	pid = fork();
+	if (pid == 0) {
+		printf("starting random io!\n");
+		random_io(rand_fd, total);
+		exit(0);
+	}
+
+	close(rand_fd);
+
+	gettimeofday(&start, NULL);
+	printf("starting fsync run\n");
+	for(i = 0; i < 60; i++) {
+		float pwrite_time;
+
+		gettimeofday(&tv2, NULL);
+		pwrite(fd, buf, SIZE, 0);
+		gettimeofday(&tv, NULL);
+
+		pwrite_time = timeval_subtract(&tv, &tv2);
+
+		fsync(fd);
+		gettimeofday(&tv2, NULL);
+
+		printf("write time: %5.4fs fsync time: %5.4fs\n", pwrite_time,
+		       timeval_subtract(&tv2, &tv));
+
+		if (timeval_subtract(&tv2, &start) > 60)
+			break;
+		sleep(4);
+	}
+	printf("run done %d fsyncs total, killing random writer\n", i + 1);
+	fflush(stdout);
+	kill(pid, SIGTERM);
+	wait(&status);
+
+	return 0;
+}
 
 
 
