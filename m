@@ -1,63 +1,108 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: [PATCH RFC 2/3] ext4:Add two functions splitting an extent.
-Date: Wed, 20 Apr 2011 13:52:38 -0700
-Message-ID: <4DAF4796.80707@linux.vnet.ibm.com>
-References: <1302759651-21222-1-git-send-email-xiaoqiangnk@gmail.com> <1302759651-21222-3-git-send-email-xiaoqiangnk@gmail.com> <4DAF1635.7070406@linux.vnet.ibm.com> <2C83027B-2CAC-4599-883E-3A683411CB7E@dilger.ca>
+From: Vivek Goyal <vgoyal@redhat.com>
+Subject: Re: buffered writeback torture program
+Date: Wed, 20 Apr 2011 18:06:26 -0400
+Message-ID: <20110420220626.GL29872@redhat.com>
+References: <1303322378-sup-1722@think>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>, linux-ext4@vger.kernel.org,
-	cmm@us.ibm.com
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com,
+	jack@suse.cz, axboe@kernel.dk
+To: Chris Mason <chris.mason@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:36808 "EHLO e4.ny.us.ibm.com"
+Received: from mx1.redhat.com ([209.132.183.28]:56867 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756324Ab1DTUwp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 20 Apr 2011 16:52:45 -0400
-Received: from d01relay05.pok.ibm.com (d01relay05.pok.ibm.com [9.56.227.237])
-	by e4.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p3KKWWrr003664
-	for <linux-ext4@vger.kernel.org>; Wed, 20 Apr 2011 16:32:32 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p3KKqiRD189892
-	for <linux-ext4@vger.kernel.org>; Wed, 20 Apr 2011 16:52:44 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p3KKqixH026207
-	for <linux-ext4@vger.kernel.org>; Wed, 20 Apr 2011 16:52:44 -0400
-In-Reply-To: <2C83027B-2CAC-4599-883E-3A683411CB7E@dilger.ca>
+	id S1753388Ab1DTWGh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 20 Apr 2011 18:06:37 -0400
+Content-Disposition: inline
+In-Reply-To: <1303322378-sup-1722@think>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 4/20/2011 11:13 AM, Andreas Dilger wrote:
-> On 2011-04-20, at 11:21 AM, Allison Henderson wrote:
->> I've been working on trying to get the punch hole patch to work with with these new changes, but it looks like some test cases are not passing at the moment, so I'm trying track down where the issues are.  I had to make some adjustments to this patch to fix one of the test cases.  Here is what I did:
->>
->> ---
->> :100644 100644 ee2dda3... c7d763d... M  fs/ext4/extents.c
->> fs/ext4/extents.c |    6 +++---
->> 1 files changed, 3 insertions(+), 3 deletions(-)
->>
->> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
->> index ee2dda3..c7d763d 100644
->> --- a/fs/ext4/extents.c
->> +++ b/fs/ext4/extents.c
->> @@ -2717,12 +2717,12 @@ static int ext4_split_extent(handle_t *handle,
->>         ee_len = ext4_ext_get_actual_len(ex);
->>         uninitialized = ext4_ext_is_uninitialized(ex);
->>
->> +       flags1 = flags;
->> +       flags1 |= EXT4_GET_BLOCKS_PRE_IO;
+On Wed, Apr 20, 2011 at 02:23:29PM -0400, Chris Mason wrote:
+> Hi everyone,
 > 
-> Can you please use normal C style: "flags1 = flags | EXT4_GET_BLOCKS_PRE_IO;"
+> I dug out my old fsync latency tester to make sure Jens' new plugging
+> code hadn't caused regressions.  This started off as a program Ted wrote
+> during the firefox dark times, and I added some more code to saturate
+> spindles with random IO.
 > 
+> The basic idea is:
 > 
-> Cheers, Andreas
+> 1) make a nice big sequential 8GB file
+> 2) fork a process doing random buffered writes inside that file
+> 3) overwrite a second 4K file in a loop, doing fsyncs as you go.
 > 
+> The test program times how long each write and fsync take in step three.
+> The idea is that if we have problems with concurrent buffered writes and
+> fsyncs, then all of our fsyncs will get stuck behind the random IO
+> writeback and our latencies will be high.
 > 
+> For a while, xfs, btrfs and ext4 did really well at this test.  Our
+> fsync latencies were very small and we all sent down synchronous IO that
+> the elevator dispatched straight to the drive.
 > 
+> Things have changed though, both xfs and ext4 have grown code to do
+> dramatically more IO than write_cache_pages has asked for (I'm pretty
+> sure I told everyone this was a good idea at the time).  When doing
+> sequential writes, this is a great idea.  When doing random IO, it leads
+> to unbound stalls in balance_dirty_pages.
 > 
+> Here's an example run on xfs:
 > 
-Hi again,
+> # fsync-tester
+> setting up random write file
+> done setting up random write file
+> starting fsync run
+> starting random io!
+> write time 0.0009s fsync time: 2.0142s
+> write time 128.9305s fsync time: 2.6046s
+> run done 2 fsyncs total, killing random writer
+> 
+> In this case the 128s spent in write was on a single 4K overwrite on a
+> 4K file.
 
-I realize after I sent the note that maybe the caller is still expected to pass EXT4_GET_BLOCKS_PRE_IO in the flags parameter if it is supposed to be used in both ext4_split_extent_at cases.  That also fixes that particular failing test case. So maybe we wont need the extra fix if that is how the code is intended to work.  In any case though, yes "flags1 = flags | EXT4_GET_BLOCKS_PRE_IO;" does seem a bit cleaner. 
+Chris, You seem to be doing 1MB (32768*32) writes on fsync file instead of 4K.
+I changed the size to 4K still not much difference though.
 
-Allison Henderson
+Once the program has exited because of high write time, i restarted it and
+this time I don't see high write times.
+
+First run
+---------
+# ./a.out 
+setting up random write file
+done setting up random write file
+starting fsync run
+starting random io!
+write time: 0.0006s fsync time: 0.3400s
+write time: 63.3270s fsync time: 0.3760s
+run done 2 fsyncs total, killing random writer
+
+Second run
+----------
+# ./a.out 
+starting fsync run
+starting random io!
+write time: 0.0006s fsync time: 0.5359s
+write time: 0.0007s fsync time: 0.3559s
+write time: 0.0009s fsync time: 0.3113s
+write time: 0.0008s fsync time: 0.4336s
+write time: 0.0009s fsync time: 0.3780s
+write time: 0.0008s fsync time: 0.3114s
+write time: 0.0009s fsync time: 0.3225s
+write time: 0.0009s fsync time: 0.3891s
+write time: 0.0009s fsync time: 0.4336s
+write time: 0.0009s fsync time: 0.4225s
+write time: 0.0009s fsync time: 0.4114s
+write time: 0.0007s fsync time: 0.4004s
+
+Not sure why would that happen.
+
+I am wondering why pwrite/fsync process was throttled. It did not have any
+pages in page cache and it shouldn't have hit the task dirty limits. Does that
+mean per task dirty limit logic does not work or I am completely missing
+the root cause of the problem.
+
+Thanks
+Vivek
