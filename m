@@ -1,64 +1,121 @@
-From: Jim Meyering <jim-Oxw1nKZkIVjk1uMJSBkQmQ@public.gmane.org>
-Subject: Re: Files full of zeros with coreutils-8.11 and xfs (FIEMAP related?)
-Date: Thu, 21 Apr 2011 22:12:02 +0200
-Message-ID: <87fwpbqs8d.fsf@rho.meyering.net>
-References: <20110414225904.GK21395@dastard> <4DA7836A.5040604@draigBrady.com>
-	<20110415000940.GL21395@dastard>
-	<76FFF648-CA02-494B-A862-566C66A8CB82@dilger.ca>
-	<20110416005040.GP21395@dastard>
-	<E7438588-5C5A-42B9-9B6C-FADF7CAC6D3A@dilger.ca>
-	<4EEEA16E-1FDB-4430-A372-8F8701196E4C@mit.edu>
-	<20110418004040.GS21395@dastard>
-	<6C89E159-A5F6-4A06-A3D2-273BE4CFB9B5@dilger.ca>
-	<BANLkTin=WEpSf6ddiOMNMOpCPP-wiEttSw@mail.gmail.com>
-	<20110419025949.GA3030@thunk.org> <4DACFBEB.9040909@sandeen.net>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: buffered writeback torture program
+Date: Thu, 21 Apr 2011 22:44:34 +0200
+Message-ID: <20110421204434.GF4476@quack.suse.cz>
+References: <1303322378-sup-1722@think>
+ <20110420220626.GL29872@redhat.com>
+ <1303383609-sup-2330@think>
+ <1303399343-sup-9292@think>
+ <20110421165529.GE4476@quack.suse.cz>
+ <1303404971-sup-7825@think>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, Ted Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
-	Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, Yongqiang Yang <xiaoqiangnk-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
-	xfs-oss <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>, "coreutils-mXXj517/zsQ@public.gmane.org" <coreutils-mXXj517/zsQ@public.gmane.org>,
-	"linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Markus Trippelsdorf <markus-xp2qqqlHh3xzoYq+O6RWwA@public.gmane.org>
-To: Eric Sandeen <sandeen-+82itfer+wXR7s880joybQ@public.gmane.org>
-Return-path: <coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org>
-In-Reply-To: <4DACFBEB.9040909-+82itfer+wXR7s880joybQ@public.gmane.org> (Eric Sandeen's message of "Mon,
-	18 Apr 2011 22:05:15 -0500")
-List-Unsubscribe: <https://lists.gnu.org/mailman/options/coreutils>,
-	<mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=unsubscribe>
-List-Archive: </archive/html/coreutils>
-List-Post: <mailto:coreutils-mXXj517/zsQ@public.gmane.org>
-List-Help: <mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.gnu.org/mailman/listinfo/coreutils>,
-	<mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=subscribe>
-Errors-To: coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org
-Sender: coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Vivek Goyal <vgoyal@redhat.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>, xfs <xfs@oss.sgi.com>,
+	axboe <axboe@kernel.dk>
+To: Chris Mason <chris.mason@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor.suse.de ([195.135.220.2]:35172 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753407Ab1DUUog (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 Apr 2011 16:44:36 -0400
+Content-Disposition: inline
+In-Reply-To: <1303404971-sup-7825@think>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Eric Sandeen wrote:
-> On 4/18/11 9:59 PM, Ted Ts'o wrote:
-> ...
->> Maybe coreutils will need to use FIEMAP_FLAG_SYNC initially, since
->> it's the only way to guarantee correct behaviour for XFS.  But I would
->> really rather that be the long-term way we leave things!
->
-> XFS ... or ext4:
->
-> # xfs_io -Ff -c "falloc 0 1m" -c "pwrite 0 512k" testfile;
-> /root/fiemap-test testfile
-> wrote 524288/524288 bytes at offset 0
-> 512 KiB, 128 ops; 0.0000 sec (161.342 MiB/sec and 41303.6463 ops/sec)
-> start 0 length -1 flags 0x0 count 32
-> ext: 0 logical: [ 0..  255] phys: 34048..  34303 flags: 0x801 tot: 256
->
-> # uname -r
-> 2.6.39-0.rc3.git2.0.fc16.x86_64
->
-> Above is on ext4.  It behaves exactly like XFS in my testing; data in
-> the page cache does not cause fiemap to return anything other than
-> "unwritten" for preallocated extents.
+On Thu 21-04-11 12:57:17, Chris Mason wrote:
+> Excerpts from Jan Kara's message of 2011-04-21 12:55:29 -0400:
+> > On Thu 21-04-11 11:25:41, Chris Mason wrote:
+> > > Excerpts from Chris Mason's message of 2011-04-21 07:09:11 -0400:
+> > > > Excerpts from Vivek Goyal's message of 2011-04-20 18:06:26 -0400:
+> > > > > > 
+> > > > > > In this case the 128s spent in write was on a single 4K overwrite on a
+> > > > > > 4K file.
+> > > > > 
+> > > > > Chris, You seem to be doing 1MB (32768*32) writes on fsync file instead of 4K.
+> > > > > I changed the size to 4K still not much difference though.
+> > > > 
+> > > > Whoops, I had that change made locally but didn't get it copied out.
+> > > > 
+> > > > > 
+> > > > > Once the program has exited because of high write time, i restarted it and
+> > > > > this time I don't see high write times.
+> > > > 
+> > > > I see this for some of my runs as well.
+> > > > 
+> > > > > 
+> > > > > First run
+> > > > > ---------
+> > > > > # ./a.out 
+> > > > > setting up random write file
+> > > > > done setting up random write file
+> > > > > starting fsync run
+> > > > > starting random io!
+> > > > > write time: 0.0006s fsync time: 0.3400s
+> > > > > write time: 63.3270s fsync time: 0.3760s
+> > > > > run done 2 fsyncs total, killing random writer
+> > > > > 
+> > > > > Second run
+> > > > > ----------
+> > > > > # ./a.out 
+> > > > > starting fsync run
+> > > > > starting random io!
+> > > > > write time: 0.0006s fsync time: 0.5359s
+> > > > > write time: 0.0007s fsync time: 0.3559s
+> > > > > write time: 0.0009s fsync time: 0.3113s
+> > > > > write time: 0.0008s fsync time: 0.4336s
+> > > > > write time: 0.0009s fsync time: 0.3780s
+> > > > > write time: 0.0008s fsync time: 0.3114s
+> > > > > write time: 0.0009s fsync time: 0.3225s
+> > > > > write time: 0.0009s fsync time: 0.3891s
+> > > > > write time: 0.0009s fsync time: 0.4336s
+> > > > > write time: 0.0009s fsync time: 0.4225s
+> > > > > write time: 0.0009s fsync time: 0.4114s
+> > > > > write time: 0.0007s fsync time: 0.4004s
+> > > > > 
+> > > > > Not sure why would that happen.
+> > > > > 
+> > > > > I am wondering why pwrite/fsync process was throttled. It did not have any
+> > > > > pages in page cache and it shouldn't have hit the task dirty limits. Does that
+> > > > > mean per task dirty limit logic does not work or I am completely missing
+> > > > > the root cause of the problem.
+> > > > 
+> > > > I haven't traced it to see.  This test box only has 1GB of ram, so the
+> > > > dirty ratios can be very tight.
+> > > 
+> > > Oh, I see now.  The test program first creates the file with a big
+> > > streaming write.  So the task doing the streaming writes gets nailed
+> > > with the per-task dirty accounting because it is making a ton of dirty
+> > > data.
+> > > 
+> > > Then the task forks the random writer to do all the random IO.
+> > > 
+> > > Then the original pid goes back to do the fsyncs on the new file.
+> > > 
+> > > So, in the original run, we get stuffed into balance_dirty_pages because
+> > > the per-task limits show we've done a lot of dirties.
+> > > 
+> > > In all later runs, the file already exists, so our fsyncing process
+> > > hasn't done much dirtying at all.  Looks like the VM is doing something
+> > > sane, we just get nailed with big random IO.
+> >   Ok, so there isn't a problem with fsync() as such if I understand it
+> > right. We just block tasks in balance_dirty_pages() for a *long* time
+> > because it takes long time to write out that dirty IO and we make it even
+> > worse by trying to writeout more on behalf of the throttled task. Am I
+> > right? The IO-less throttling will solve this regardless of patchset we
+> > choose so I wouldn't be too worried about the problem now.
+> 
+> You're right.  With one small exception, we probably do want to rotor
+> out of the random buffered writes in hopes of finding some sequential IO
+> even with the IO-less dirty throttling.
+  Flusher thread should do this - it writes at most 1024 pages (as much as
+->writepages call does) from the big file and then put inode to b_more_io
+queue and go on with the next dirty inode. So if there is some sequential
+IO as well, we should get to it...
 
-Thanks for the feedback.
-In case anyone wants to test or review,
-I've just made a coreutils snapshot:
-
-  http://thread.gmane.org/gmane.comp.gnu.coreutils.general/1108
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
