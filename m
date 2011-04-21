@@ -1,28 +1,25 @@
-From: Vivek Goyal <vgoyal@redhat.com>
+From: Jan Kara <jack@suse.cz>
 Subject: Re: buffered writeback torture program
-Date: Thu, 21 Apr 2011 11:35:47 -0400
-Message-ID: <20110421153547.GF8192@redhat.com>
+Date: Thu, 21 Apr 2011 18:55:29 +0200
+Message-ID: <20110421165529.GE4476@quack.suse.cz>
 References: <1303322378-sup-1722@think>
  <20110420220626.GL29872@redhat.com>
  <1303383609-sup-2330@think>
  <1303399343-sup-9292@think>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+Cc: Vivek Goyal <vgoyal@redhat.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	linux-ext4 <linux-ext4@vger.kernel.org>, xfs <xfs@oss.sgi.com>,
 	jack <jack@suse.cz>, axboe <axboe@kernel.dk>
 To: Chris Mason <chris.mason@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:24747 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750915Ab1DUPgF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Apr 2011 11:36:05 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
 In-Reply-To: <1303399343-sup-9292@think>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Apr 21, 2011 at 11:25:41AM -0400, Chris Mason wrote:
+On Thu 21-04-11 11:25:41, Chris Mason wrote:
 > Excerpts from Chris Mason's message of 2011-04-21 07:09:11 -0400:
 > > Excerpts from Vivek Goyal's message of 2011-04-20 18:06:26 -0400:
 > > > > 
@@ -95,10 +92,14 @@ On Thu, Apr 21, 2011 at 11:25:41AM -0400, Chris Mason wrote:
 > In all later runs, the file already exists, so our fsyncing process
 > hasn't done much dirtying at all.  Looks like the VM is doing something
 > sane, we just get nailed with big random IO.
+  Ok, so there isn't a problem with fsync() as such if I understand it
+right. We just block tasks in balance_dirty_pages() for a *long* time
+because it takes long time to write out that dirty IO and we make it even
+worse by trying to writeout more on behalf of the throttled task. Am I
+right? The IO-less throttling will solve this regardless of patchset we
+choose so I wouldn't be too worried about the problem now.
 
-Ok, that makes sense. So initial file creation accounted lots of buffered
-IO to this process hence VM thinks it has crossed it dirty limits and later
-this task comes with 4K write and gets throttled.
-
-Thanks
-Vivek
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
