@@ -1,406 +1,114 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: [PATCH RFC 3/3] ext4:Reimplement convert and split_unwritten.
-Date: Thu, 21 Apr 2011 14:13:37 -0700
-Message-ID: <4DB09E01.6030209@linux.vnet.ibm.com>
-References: <1302759651-21222-1-git-send-email-xiaoqiangnk@gmail.com> <1302759651-21222-4-git-send-email-xiaoqiangnk@gmail.com> <4DAFEAAB.8040809@linux.vnet.ibm.com> <BANLkTi=Pndb_Fg7Q5XPFvAHowQ0j_6mpQA@mail.gmail.com>
+From: Curt Wohlgemuth <curtw@google.com>
+Subject: Re: ext4: 1k-blocksize loopback corruption without removing backing file
+Date: Thu, 21 Apr 2011 15:54:53 -0700
+Message-ID: <BANLkTik3TZB7eaPOAxADHZ=9k540WjrYHg@mail.gmail.com>
+References: <87k4ensbn6.fsf@rho.meyering.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, cmm@us.ibm.com
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: ext <linux-ext4@vger.kernel.org>
+To: Jim Meyering <jim@meyering.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e35.co.us.ibm.com ([32.97.110.153]:55471 "EHLO
-	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752836Ab1DUVNq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Apr 2011 17:13:46 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e35.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p3LKvPOV028587
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Apr 2011 14:57:25 -0600
-Received: from d03av05.boulder.ibm.com (d03av05.boulder.ibm.com [9.17.195.85])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id p3LLDd9G194384
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Apr 2011 15:13:40 -0600
-Received: from d03av05.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av05.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p3LLDcIW017410
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Apr 2011 15:13:39 -0600
-In-Reply-To: <BANLkTi=Pndb_Fg7Q5XPFvAHowQ0j_6mpQA@mail.gmail.com>
+Received: from smtp-out.google.com ([74.125.121.67]:6464 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755576Ab1DUWy6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Apr 2011 18:54:58 -0400
+Received: from hpaq11.eem.corp.google.com (hpaq11.eem.corp.google.com [172.25.149.11])
+	by smtp-out.google.com with ESMTP id p3LMsvU9013307
+	for <linux-ext4@vger.kernel.org>; Thu, 21 Apr 2011 15:54:57 -0700
+Received: from qyk35 (qyk35.prod.google.com [10.241.83.163])
+	by hpaq11.eem.corp.google.com with ESMTP id p3LMstuU027344
+	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Thu, 21 Apr 2011 15:54:56 -0700
+Received: by qyk35 with SMTP id 35so139293qyk.20
+        for <linux-ext4@vger.kernel.org>; Thu, 21 Apr 2011 15:54:55 -0700 (PDT)
+In-Reply-To: <87k4ensbn6.fsf@rho.meyering.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 4/21/2011 2:10 AM, Yongqiang Yang wrote:
-> On Thu, Apr 21, 2011 at 4:28 PM, Allison Henderson
-> <achender@linux.vnet.ibm.com>  wrote:
->> On 4/13/2011 10:40 PM, Yongqiang Yang wrote:
->>> convert and split unwritten are reimplemented based on ext4_split_extent()
->>> added in last patch.
->>>
->>> Signed-off-by: Yongqiang Yang<xiaoqiangnk@gmail.com>
->>> ---
->>>    fs/ext4/extents.c |  483 ++++++++--------------------------------------------
->>>    1 files changed, 75 insertions(+), 408 deletions(-)
->>>
->>> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
->>> index 1756e0f..ee2dda3 100644
->>> --- a/fs/ext4/extents.c
->>> +++ b/fs/ext4/extents.c
->>> @@ -2770,17 +2770,13 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
->>>                                           struct ext4_map_blocks *map,
->>>                                           struct ext4_ext_path *path)
->>>    {
->>> +     struct ext4_map_blocks split_map;
->>> +     struct ext4_extent zero_ex;
->>> +     struct ext4_extent *ex;
->>>        ext4_lblk_t ee_block, eof_block;
->>>        unsigned int allocated, ee_len, depth;
->>>        int err = 0;
->>> +     int split_flag = 0;
->>>
->>>        ext_debug("ext4_ext_convert_to_initialized: inode %lu, logical"
->>>                "block %llu, max_blocks %u\n", inode->i_ino,
->>> @@ -2792,280 +2788,90 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
->>>                eof_block = map->m_lblk + map->m_len;
->>>
->>>        depth = ext_depth(inode);
->>>        ex = path[depth].p_ext;
->>>        ee_block = le32_to_cpu(ex->ee_block);
->>>        ee_len = ext4_ext_get_actual_len(ex);
->>>        allocated = ee_len - (map->m_lblk - ee_block);
->>>
->>> +     WARN_ON(map->m_lblk<    ee_block);
->>>        /*
->>>         * It is safe to convert extent to initialized via explicit
->>>         * zeroout only if extent is fully insde i_size or new_size.
->>>         */
->>> +     split_flag |= ee_block + ee_len<= eof_block ? EXT4_EXT_MAY_ZEROOUT : 0;
->>>
->>>        /* If extent has less than 2*EXT4_EXT_ZERO_LEN zerout directly */
->>> +     if (ee_len<= 2*EXT4_EXT_ZERO_LEN&&
->>> +         (EXT4_EXT_MAY_ZEROOUT&    split_flag)) {
->>> +             zero_ex.ee_block = ex->ee_block;
->>> +             zero_ex.ee_len = cpu_to_le16(map->m_lblk - ee_block);
->>> +             ext4_ext_store_pblock(&zero_ex, ext4_ext_pblock(ex));
->>> +             err = ext4_ext_zeroout(inode,&zero_ex);
-> Hi,
-> 
-> Sorry, this is a bug.  We should zero out two extents [ee_block,
-> map->m_lblk) and [map->m_lblk + map->m_len, ee_block + ee_len).
-> Original ext4 code zero out whole extent ex.  Could you try to have a
-> test which zero out whole extent like below.
->                err = ext4_ext_zeroout(inode,ex);
-> 
-> ext4_ext_zeroout() wait until all zero IOs are finished.  Slowness may
-> come from two ext4_ext_zeroout()s.
-> 
-> BTW:  we can optimize ext4_ext_zeroout() by zeroing out pages in page
-> cache and marking the pages dirty.  What's your opinion?
-> 
-> Thank you,
-> Yongqiang.
-> 
->> Hi again,
->>
->> I am working on trying to get the code to pass the fsx stress test.  If I add this snippet of code here, it seems to fix most of the tests, but it is very slow.  So this may not be the best solution yet.  But I thought if updated you with what I found we might be able to come up with a better solution.
->>
->>                 if((map->m_lblk + map->m_len)<  ee_block + ee_len){
->>                         zero_ex.ee_block = map->m_lblk + map->m_len;
->>                         zero_ex.ee_len = cpu_to_le16(ee_len - (map->m_lblk + map->m_len));
->>                         ext4_ext_store_pblock(&zero_ex, ext4_ext_pblock(ex)+(map->m_lblk - ee_block)+ map->m_len);
->>                         err = ext4_ext_zeroout(inode,&zero_ex);
->>                         if (err) {
->>                                 goto out;
->>                         }
->>                 }
->>
->> At the moment, the test fails because a portion of the test file does not get zeroed out when it should.  The punch hole code needs to flush the pages before it punches out any blocks.  It uses the filemap_write_and_wait_range routine, which eventually calls ext4_ext_convert_to_initialized.  The bug only appears to show up when flushing out the middle of an unwritten extent. The two halves on either side are supposed to get zeroed out or split off, but it looks like one of them was not getting zeroed out.  This snippet seems to fix that, but I'm not yet sure why it's so slow.
->>
->>>                err = ext4_ext_get_access(handle, inode, path + depth);
->>>                if (err)
->>>                        goto out;
->>> +             ext4_ext_mark_initialized(ex);
->>> +             ext4_ext_try_to_merge(inode, path, ex);
->>> +             err = ext4_ext_dirty(handle, inode, path + depth);
->>> +             goto out;
->>>        }
->>> +
->>>        /*
->>> +      * four cases:
->>> +      * 1. split the extent into three extents.
->>> +      * 2. split the extent into two extents, zeroout the first half.
->>> +      * 3. split the extent into two extents, zeroout the second half.
->>> +      * 4. split the extent into two extents with out zeroout.
->>>         */
->>> +     split_map.m_lblk = map->m_lblk;
->>> +     split_map.m_len = map->m_len;
->>> +
->>> +     if (allocated>    map->m_len) {
->>> +             if (allocated<= EXT4_EXT_ZERO_LEN&&
->>> +                 (EXT4_EXT_MAY_ZEROOUT&    split_flag)) {
->>> +                     /* case 3 */
->>> +                     zero_ex.ee_block =
->>> +                                      cpu_to_le32(map->m_lblk + map->m_len);
->>> +                     zero_ex.ee_len = cpu_to_le16(allocated - map->m_len);
->>> +                     ext4_ext_store_pblock(&zero_ex,
->>> +                             ext4_ext_pblock(ex) + map->m_lblk - ee_block);
->>> +                     err = ext4_ext_zeroout(inode,&zero_ex);
->>>                        if (err)
->>>                                goto out;
->>> +                     split_map.m_lblk = map->m_lblk;
->>> +                     split_map.m_len = allocated;
->>> +             } else if ((map->m_lblk - ee_block + map->m_len<
->>> +                        EXT4_EXT_ZERO_LEN)&&
->>> +                        (EXT4_EXT_MAY_ZEROOUT&    split_flag)) {
->>> +                     /* case 2 */
->>> +                     if (map->m_lblk != ee_block) {
->>> +                             zero_ex.ee_block = ex->ee_block;
->>> +                             zero_ex.ee_len = cpu_to_le16(map->m_lblk -
->>> +                                                     ee_block);
->>> +                             ext4_ext_store_pblock(&zero_ex,
->>> +                                                   ext4_ext_pblock(ex));
->>> +                             err = ext4_ext_zeroout(inode,&zero_ex);
->>> +                             if (err)
->>> +                                     goto out;
->>> +                     }
->>> +
->>> +                     allocated = map->m_lblk - ee_block + map->m_len;
->>> +
->>> +                     split_map.m_lblk = ee_block;
->>> +                     split_map.m_len = allocated;
->>>                }
->>>        }
->>> +
->>> +     allocated = ext4_split_extent(handle, inode, path,
->>> +&split_map, split_flag, 0);
->>> +     if (allocated<    0)
->>> +             err = allocated;
->>> +
->>>    out:
->>>        return err ? err : allocated;
->>>    }
->>>
->>>    /*
->>> @@ -3096,15 +2902,11 @@ static int ext4_split_unwritten_extents(handle_t *handle,
->>>                                        struct ext4_ext_path *path,
->>>                                        int flags)
->>>    {
->>> -     struct ext4_extent *ex, newex, orig_ex;
->>> -     struct ext4_extent *ex1 = NULL;
->>> -     struct ext4_extent *ex2 = NULL;
->>> -     struct ext4_extent *ex3 = NULL;
->>> -     ext4_lblk_t ee_block, eof_block;
->>> -     unsigned int allocated, ee_len, depth;
->>> -     ext4_fsblk_t newblock;
->>> -     int err = 0;
->>> -     int may_zeroout;
->>> +     ext4_lblk_t eof_block;
->>> +     ext4_lblk_t ee_block;
->>> +     struct ext4_extent *ex;
->>> +     unsigned int ee_len;
->>> +     int split_flag = 0, depth;
->>>
->>>        ext_debug("ext4_split_unwritten_extents: inode %lu, logical"
->>>                "block %llu, max_blocks %u\n", inode->i_ino,
->>> @@ -3114,155 +2916,20 @@ static int ext4_split_unwritten_extents(handle_t *handle,
->>>                inode->i_sb->s_blocksize_bits;
->>>        if (eof_block<    map->m_lblk + map->m_len)
->>>                eof_block = map->m_lblk + map->m_len;
->>> -
->>> -     depth = ext_depth(inode);
->>> -     ex = path[depth].p_ext;
->>> -     ee_block = le32_to_cpu(ex->ee_block);
->>> -     ee_len = ext4_ext_get_actual_len(ex);
->>> -     allocated = ee_len - (map->m_lblk - ee_block);
->>> -     newblock = map->m_lblk - ee_block + ext4_ext_pblock(ex);
->>> -
->>> -     ex2 = ex;
->>> -     orig_ex.ee_block = ex->ee_block;
->>> -     orig_ex.ee_len   = cpu_to_le16(ee_len);
->>> -     ext4_ext_store_pblock(&orig_ex, ext4_ext_pblock(ex));
->>> -
->>>        /*
->>>         * It is safe to convert extent to initialized via explicit
->>>         * zeroout only if extent is fully insde i_size or new_size.
->>>         */
->>> -     may_zeroout = ee_block + ee_len<= eof_block;
->>> -
->>> -     /*
->>> -      * If the uninitialized extent begins at the same logical
->>> -      * block where the write begins, and the write completely
->>> -      * covers the extent, then we don't need to split it.
->>> -      */
->>> -     if ((map->m_lblk == ee_block)&&    (allocated<= map->m_len))
->>> -             return allocated;
->>> -
->>> -     err = ext4_ext_get_access(handle, inode, path + depth);
->>> -     if (err)
->>> -             goto out;
->>> -     /* ex1: ee_block to map->m_lblk - 1 : uninitialized */
->>> -     if (map->m_lblk>    ee_block) {
->>> -             ex1 = ex;
->>> -             ex1->ee_len = cpu_to_le16(map->m_lblk - ee_block);
->>> -             ext4_ext_mark_uninitialized(ex1);
->>> -             ex2 =&newex;
->>> -     }
->>> -     /*
->>> -      * for sanity, update the length of the ex2 extent before
->>> -      * we insert ex3, if ex1 is NULL. This is to avoid temporary
->>> -      * overlap of blocks.
->>> -      */
->>> -     if (!ex1&&    allocated>    map->m_len)
->>> -             ex2->ee_len = cpu_to_le16(map->m_len);
->>> -     /* ex3: to ee_block + ee_len : uninitialised */
->>> -     if (allocated>    map->m_len) {
->>> -             unsigned int newdepth;
->>> -             ex3 =&newex;
->>> -             ex3->ee_block = cpu_to_le32(map->m_lblk + map->m_len);
->>> -             ext4_ext_store_pblock(ex3, newblock + map->m_len);
->>> -             ex3->ee_len = cpu_to_le16(allocated - map->m_len);
->>> -             ext4_ext_mark_uninitialized(ex3);
->>> -             err = ext4_ext_insert_extent(handle, inode, path, ex3, flags);
->>> -             if (err == -ENOSPC&&    may_zeroout) {
->>> -                     err =  ext4_ext_zeroout(inode,&orig_ex);
->>> -                     if (err)
->>> -                             goto fix_extent_len;
->>> -                     /* update the extent length and mark as initialized */
->>> -                     ex->ee_block = orig_ex.ee_block;
->>> -                     ex->ee_len   = orig_ex.ee_len;
->>> -                     ext4_ext_store_pblock(ex, ext4_ext_pblock(&orig_ex));
->>> -                     ext4_ext_dirty(handle, inode, path + depth);
->>> -                     /* zeroed the full extent */
->>> -                     /* blocks available from map->m_lblk */
->>> -                     return allocated;
->>> -
->>> -             } else if (err)
->>> -                     goto fix_extent_len;
->>> -             /*
->>> -              * The depth, and hence eh&    ex might change
->>> -              * as part of the insert above.
->>> -              */
->>> -             newdepth = ext_depth(inode);
->>> -             /*
->>> -              * update the extent length after successful insert of the
->>> -              * split extent
->>> -              */
->>> -             ee_len -= ext4_ext_get_actual_len(ex3);
->>> -             orig_ex.ee_len = cpu_to_le16(ee_len);
->>> -             may_zeroout = ee_block + ee_len<= eof_block;
->>> -
->>> -             depth = newdepth;
->>> -             ext4_ext_drop_refs(path);
->>> -             path = ext4_ext_find_extent(inode, map->m_lblk, path);
->>> -             if (IS_ERR(path)) {
->>> -                     err = PTR_ERR(path);
->>> -                     goto out;
->>> -             }
->>> -             ex = path[depth].p_ext;
->>> -             if (ex2 !=&newex)
->>> -                     ex2 = ex;
->>> -
->>> -             err = ext4_ext_get_access(handle, inode, path + depth);
->>> -             if (err)
->>> -                     goto out;
->>> +     depth = ext_depth(inode);
->>> +     ex = path[depth].p_ext;
->>> +     ee_block = le32_to_cpu(ex->ee_block);
->>> +     ee_len = ext4_ext_get_actual_len(ex);
->>>
->>> -             allocated = map->m_len;
->>> -     }
->>> -     /*
->>> -      * If there was a change of depth as part of the
->>> -      * insertion of ex3 above, we need to update the length
->>> -      * of the ex1 extent again here
->>> -      */
->>> -     if (ex1&&    ex1 != ex) {
->>> -             ex1 = ex;
->>> -             ex1->ee_len = cpu_to_le16(map->m_lblk - ee_block);
->>> -             ext4_ext_mark_uninitialized(ex1);
->>> -             ex2 =&newex;
->>> -     }
->>> -     /*
->>> -      * ex2: map->m_lblk to map->m_lblk + map->m_len-1 : to be written
->>> -      * using direct I/O, uninitialised still.
->>> -      */
->>> -     ex2->ee_block = cpu_to_le32(map->m_lblk);
->>> -     ext4_ext_store_pblock(ex2, newblock);
->>> -     ex2->ee_len = cpu_to_le16(allocated);
->>> -     ext4_ext_mark_uninitialized(ex2);
->>> -     if (ex2 != ex)
->>> -             goto insert;
->>> -     /* Mark modified extent as dirty */
->>> -     err = ext4_ext_dirty(handle, inode, path + depth);
->>> -     ext_debug("out here\n");
->>> -     goto out;
->>> -insert:
->>> -     err = ext4_ext_insert_extent(handle, inode, path,&newex, flags);
->>> -     if (err == -ENOSPC&&    may_zeroout) {
->>> -             err =  ext4_ext_zeroout(inode,&orig_ex);
->>> -             if (err)
->>> -                     goto fix_extent_len;
->>> -             /* update the extent length and mark as initialized */
->>> -             ex->ee_block = orig_ex.ee_block;
->>> -             ex->ee_len   = orig_ex.ee_len;
->>> -             ext4_ext_store_pblock(ex, ext4_ext_pblock(&orig_ex));
->>> -             ext4_ext_dirty(handle, inode, path + depth);
->>> -             /* zero out the first half */
->>> -             return allocated;
->>> -     } else if (err)
->>> -             goto fix_extent_len;
->>> -out:
->>> -     ext4_ext_show_leaf(inode, path);
->>> -     return err ? err : allocated;
->>> +     split_flag |= ee_block + ee_len<= eof_block ? EXT4_EXT_MAY_ZEROOUT : 0;
->>> +     split_flag |= EXT4_EXT_MARK_UNINIT2;
->>>
->>> -fix_extent_len:
->>> -     ex->ee_block = orig_ex.ee_block;
->>> -     ex->ee_len   = orig_ex.ee_len;
->>> -     ext4_ext_store_pblock(ex, ext4_ext_pblock(&orig_ex));
->>> -     ext4_ext_mark_uninitialized(ex);
->>> -     ext4_ext_dirty(handle, inode, path + depth);
->>> -     return err;
->>> +     flags |= EXT4_GET_BLOCKS_PRE_IO;
->>> +     return ext4_split_extent(handle, inode, path, map, split_flag, flags);
->>>    }
->>>
->>>    static int ext4_convert_unwritten_extents_endio(handle_t *handle,
->>
->>
-> 
-> 
-> 
+As Eric mentions, disabling mblk_io_submit makes this work.
 
-Hi there,
+I've reproduced this on my system, and I'm testing a fix for it which
+I'll try to post tomorrow.  It's limited to block size < page size
+partitions.
 
-That seems to have done the trick.  Here is a patch that you can apply to your last patch:
+Curt
 
-Signed-off-by: Allison Henderson <achender@us.ibm.com>
----
-:100644 100644 ee2dda3... 00e9e4f... M	fs/ext4/extents.c
- fs/ext4/extents.c |    5 +----
- 1 files changed, 1 insertions(+), 4 deletions(-)
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index ee2dda3..00e9e4f 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2803,10 +2803,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 	/* If extent has less than 2*EXT4_EXT_ZERO_LEN zerout directly */
- 	if (ee_len <= 2*EXT4_EXT_ZERO_LEN &&
- 	    (EXT4_EXT_MAY_ZEROOUT & split_flag)) {
--		zero_ex.ee_block = ex->ee_block;
--		zero_ex.ee_len = cpu_to_le16(map->m_lblk - ee_block);
--		ext4_ext_store_pblock(&zero_ex, ext4_ext_pblock(ex));
--		err = ext4_ext_zeroout(inode, &zero_ex);
-+		err = ext4_ext_zeroout(inode, ex);
- 		if (err)
- 			goto out;
- 
--- 
-1.7.1
-
-
-As for the zero out code, I am not as familiar with that code, but I did take a look at it, and it does look like zeroing out pages would be a lot faster than zeroing out blocks.  I seem to have a good set up here for debugging, so if you have some more optimizations you would like to put in, I would be happy to run them through here.  For now, I will hold on to my punch hole code until I get an updated copy of your patch set.  Once we have all that done, I will submit another copy of punch hole that applies on top of your patch set.  Thx!
-
-Allison Henderson
-
-
-
+On Thu, Apr 21, 2011 at 11:27 AM, Jim Meyering <jim@meyering.net> wrote=
+:
+> Much like this report,
+>
+> =A0 =A0loopback-mounted ext4 sees hole-filling (on rawhide, but not F=
+15)
+> =A0 =A0http://thread.gmane.org/gmane.comp.file-systems.ext4/24454
+>
+> but not requiring that one remove the backing file, this script shows=
+ the
+> same sort of corruption with a loopback-ext4-in-loopback-ext4 file sy=
+stem:
+> [Note these FS are small enough that they get a blocksize of 1024 by =
+default.
+> =A0When I specify -b 2048 or 4096, the problem goes away. ]
+>
+> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> #!/bin/sh
+> set -e
+> dd if=3D/dev/zero of=3Dblob bs=3D9k count=3D1000 >/dev/null 2>&1
+> mkdir mnt
+> mkfs -q -t ext4 -F blob
+> mount -oloop blob mnt
+>
+> c1=3D$PWD
+> cd mnt
+>
+> dd if=3D/dev/zero of=3Dblob bs=3D4k count=3D1000 >/dev/null 2>&1
+> mkdir m2
+> mkfs -q -t ext4 -F blob
+> mount -oloop blob m2
+>
+> c2=3D$PWD
+> cd m2
+>
+> # Create a reference file. =A0Just like the following one,
+> # but with explicit NULs in place of holes.
+> perl -e '$n=3D1024; for (1..71) { print "\0"x$n, chr($_)x$n };' \
+> =A0-e 'close *STDOUT or die "$!"' > ref
+>
+> # Seek 1KB, write 1KB of data, seek 1KB, write 1KB of data, etc....
+> perl -e '$n =3D 1 * 1024; *F =3D *STDOUT;' \
+> =A0-e 'for (1..71) { sysseek (*F, $n, 1)' \
+> =A0-e '&& syswrite (*F, chr($_)x$n) or die "$!"}' > j1
+>
+> # filefrag -vs j1
+>
+> sync
+> cmp -s ref j1 && fail=3D0 || fail=3D1
+>
+> cd /
+> umount "$c2/m2" "$c1/mnt"
+> rm -rf "$c1/blob" "$c1/mnt"
+>
+> exit $fail
+> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+>
+> This shows that it fails most of the time for me in tmpfs on a rawhid=
+e
+> guest (2.6.39-0.rc3.git2.0.fc16.x86_64) running on an F15 host. =A0YM=
+WV.
+>
+> =A0 =A0$ while :; do ./ext4-bug; printf $?; done
+> =A0 =A0111111110111111110111111011111111110101111111111
+> =A0 =A0[Exit 130 (INT)]
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
