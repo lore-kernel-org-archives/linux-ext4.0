@@ -1,101 +1,112 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: protect bb_first_free in ext4_trim_all_free() with
- group lock
-Date: Thu, 21 Apr 2011 13:10:31 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1104211304480.14126@dhcp-27-109.brq.redhat.com>
-References: <alpine.LFD.2.00.1104211135540.4399@dhcp-27-109.brq.redhat.com> <1303381596-13758-1-git-send-email-lczerner@redhat.com> <20110421110120.GB11901@bitwizard.nl>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
-To: Rogier Wolff <R.E.Wolff@BitWizard.nl>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:31854 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752848Ab1DULKg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Apr 2011 07:10:36 -0400
-In-Reply-To: <20110421110120.GB11901@bitwizard.nl>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Chris Mason <chris.mason@oracle.com>
+Subject: Re: buffered writeback torture program
+Date: Thu, 21 Apr 2011 07:09:11 -0400
+Message-ID: <1303383609-sup-2330@think>
+References: <1303322378-sup-1722@think> <20110420220626.GL29872@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>, xfs <xfs@oss.sgi.com>,
+	jack <jack@suse.cz>, axboe <axboe@kernel.dk>
+To: Vivek Goyal <vgoyal@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-reply-to: <20110420220626.GL29872@redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 21 Apr 2011, Rogier Wolff wrote:
-
-> 
-> Hi Lukas, 
-
-Hi Rogier,
-
-> 
-> IMHO, I think it was written intentionally like that. You do as much
-> as you can outside "having the lock", especially these "search" things
-> are written this way. Doing it this way means that there is less
-> lock-contention when things get busy.
-> 
-> Now I agree that this one statement without any function calls is
-> going to be reasonably fast on any modern hardware...
-> 
-> 	Roger. 
-> 
-> 
->  	bitmap = e4b.bd_bitmap;
-> +
-> +	/* we take the lock AFTER this statement because if it
-> +	   gets modified under us we'll correct later. */ 
-
-The comment is not right. We do not correct it later in the case that
-some space was freed and we still have the old value, hence skipping the
-difference between the old and the new bb_first_free. As I mentioned in
-the description this is not a big deal, but the fix is simple enough and
-there is absolutely no "slowdown" in moving one simple condition into
-critical section.
-
-Thanks!
--Lukas
-
->  	start = (e4b.bd_info->bb_first_free > start) ?
->  		e4b.bd_info->bb_first_free : start;
-> 	ext4_lock_group(sb, group);
->  
->  	while (start < max) {
->  		start = mb_find_next_zero_bit(bitmap, max, start);
-> 
-> 
-> On Thu, Apr 21, 2011 at 12:26:36PM +0200, Lukas Czerner wrote:
-> > We should protect reading bd_info->bb_first_free with the group lock
-> > because otherwise we might miss some free blocks. This is not a big deal
-> > at all, but the change to do right thing is really simple, so lets do
-> > that.
+Excerpts from Vivek Goyal's message of 2011-04-20 18:06:26 -0400:
+> On Wed, Apr 20, 2011 at 02:23:29PM -0400, Chris Mason wrote:
+> > Hi everyone,
 > > 
-> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> > ---
-> >  fs/ext4/mballoc.c |    4 ++--
-> >  1 files changed, 2 insertions(+), 2 deletions(-)
+> > I dug out my old fsync latency tester to make sure Jens' new plugging
+> > code hadn't caused regressions.  This started off as a program Ted wrote
+> > during the firefox dark times, and I added some more code to saturate
+> > spindles with random IO.
 > > 
-> > diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> > index 776d7a8..804232a 100644
-> > --- a/fs/ext4/mballoc.c
-> > +++ b/fs/ext4/mballoc.c
-> > @@ -4775,11 +4775,11 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
-> >  				"information for %u", group);
-> >  		return ret;
-> >  	}
-> > -
-> >  	bitmap = e4b.bd_bitmap;
-> > +
-> > +	ext4_lock_group(sb, group);
-> >  	start = (e4b.bd_info->bb_first_free > start) ?
-> >  		e4b.bd_info->bb_first_free : start;
-> > -	ext4_lock_group(sb, group);
-> >  
-> >  	while (start < max) {
-> >  		start = mb_find_next_zero_bit(bitmap, max, start);
-> > -- 
-> > 1.7.4.4
+> > The basic idea is:
 > > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 1) make a nice big sequential 8GB file
+> > 2) fork a process doing random buffered writes inside that file
+> > 3) overwrite a second 4K file in a loop, doing fsyncs as you go.
+> > 
+> > The test program times how long each write and fsync take in step three.
+> > The idea is that if we have problems with concurrent buffered writes and
+> > fsyncs, then all of our fsyncs will get stuck behind the random IO
+> > writeback and our latencies will be high.
+> > 
+> > For a while, xfs, btrfs and ext4 did really well at this test.  Our
+> > fsync latencies were very small and we all sent down synchronous IO that
+> > the elevator dispatched straight to the drive.
+> > 
+> > Things have changed though, both xfs and ext4 have grown code to do
+> > dramatically more IO than write_cache_pages has asked for (I'm pretty
+> > sure I told everyone this was a good idea at the time).  When doing
+> > sequential writes, this is a great idea.  When doing random IO, it leads
+> > to unbound stalls in balance_dirty_pages.
+> > 
+> > Here's an example run on xfs:
+> > 
+> > # fsync-tester
+> > setting up random write file
+> > done setting up random write file
+> > starting fsync run
+> > starting random io!
+> > write time 0.0009s fsync time: 2.0142s
+> > write time 128.9305s fsync time: 2.6046s
+> > run done 2 fsyncs total, killing random writer
+> > 
+> > In this case the 128s spent in write was on a single 4K overwrite on a
+> > 4K file.
 > 
-> 
+> Chris, You seem to be doing 1MB (32768*32) writes on fsync file instead of 4K.
+> I changed the size to 4K still not much difference though.
 
--- 
+Whoops, I had that change made locally but didn't get it copied out.
+
+> 
+> Once the program has exited because of high write time, i restarted it and
+> this time I don't see high write times.
+
+I see this for some of my runs as well.
+
+> 
+> First run
+> ---------
+> # ./a.out 
+> setting up random write file
+> done setting up random write file
+> starting fsync run
+> starting random io!
+> write time: 0.0006s fsync time: 0.3400s
+> write time: 63.3270s fsync time: 0.3760s
+> run done 2 fsyncs total, killing random writer
+> 
+> Second run
+> ----------
+> # ./a.out 
+> starting fsync run
+> starting random io!
+> write time: 0.0006s fsync time: 0.5359s
+> write time: 0.0007s fsync time: 0.3559s
+> write time: 0.0009s fsync time: 0.3113s
+> write time: 0.0008s fsync time: 0.4336s
+> write time: 0.0009s fsync time: 0.3780s
+> write time: 0.0008s fsync time: 0.3114s
+> write time: 0.0009s fsync time: 0.3225s
+> write time: 0.0009s fsync time: 0.3891s
+> write time: 0.0009s fsync time: 0.4336s
+> write time: 0.0009s fsync time: 0.4225s
+> write time: 0.0009s fsync time: 0.4114s
+> write time: 0.0007s fsync time: 0.4004s
+> 
+> Not sure why would that happen.
+> 
+> I am wondering why pwrite/fsync process was throttled. It did not have any
+> pages in page cache and it shouldn't have hit the task dirty limits. Does that
+> mean per task dirty limit logic does not work or I am completely missing
+> the root cause of the problem.
+
+I haven't traced it to see.  This test box only has 1GB of ram, so the
+dirty ratios can be very tight.
+
+-chris
