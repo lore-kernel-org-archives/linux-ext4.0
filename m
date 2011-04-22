@@ -1,112 +1,88 @@
-From: Keith Mannthey <kmannth@us.ibm.com>
-Subject: Re: Quick EXT4 discard question
-Date: Fri, 22 Apr 2011 09:08:20 -0700
-Message-ID: <1303488500.1389.139.camel@keith-laptop>
-References: <1303433101.1389.132.camel@keith-laptop>
-	 <4DB0E7AA.6070007@tao.ma> <1303440294.1389.136.camel@keith-laptop>
-	 <4DB0EDB1.2070506@tao.ma>
-	 <alpine.LFD.2.00.1104220940540.4415@dhcp-27-109.brq.redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Tao Ma <tm@tao.ma>, linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
+From: Curt Wohlgemuth <curtw@google.com>
+Subject: [PATCH] ext4: Don't set PageUptodate in ext4_end_bio()
+Date: Fri, 22 Apr 2011 10:51:58 -0700
+Message-ID: <1303494718-13444-1-git-send-email-curtw@google.com>
+Cc: jim@meyering.net, cmm@us.ibm.com,
+	Curt Wohlgemuth <curtw@google.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:51243 "EHLO e5.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756048Ab1DVQIW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 22 Apr 2011 12:08:22 -0400
-Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
-	by e5.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p3MFg9fR019851
-	for <linux-ext4@vger.kernel.org>; Fri, 22 Apr 2011 11:42:09 -0400
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p3MG8Mf1039664
-	for <linux-ext4@vger.kernel.org>; Fri, 22 Apr 2011 12:08:22 -0400
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p3MC86NE013148
-	for <linux-ext4@vger.kernel.org>; Fri, 22 Apr 2011 09:08:07 -0300
-In-Reply-To: <alpine.LFD.2.00.1104220940540.4415@dhcp-27-109.brq.redhat.com>
+Received: from smtp-out.google.com ([216.239.44.51]:11371 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756236Ab1DVRwS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Apr 2011 13:52:18 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2011-04-22 at 09:44 +0200, Lukas Czerner wrote:
-> On Fri, 22 Apr 2011, Tao Ma wrote:
-> 
-> > On 04/22/2011 10:44 AM, Keith Mannthey wrote:
-> > > On Fri, 2011-04-22 at 10:27 +0800, Tao Ma wrote:
-> > >> On 04/22/2011 08:45 AM, Keith Mannthey wrote:
-> > >>> Hello,
-> > >>>   I am using some Intel SSD drives with 2.6.38.2. 
-> > >>>
-> > >>>
-> > >>> /proc/scsi/scsi identifies them as: 
-> > >>>
-> > >>> "
-> > >>> Host: scsi4 Channel: 00 Id: 04 Lun: 00
-> > >>>   Vendor: ATA      Model: INTEL SSDSA2M080 Rev: 02M3
-> > >>>   Type:   Direct-Access                    ANSI  SCSI revision: 05
-> > >>> "
-> > >>>
-> > >>> Sometimes I am see the following messages that indicate discard is
-> > >>> disabled during runtime:  
-> > >>>
-> > >>> Relevant dmesg:
-> > >>>
-> > >>> ...
-> > >>> EXT4-fs (sdw): mounted filesystem with ordered data mode. Opts: nobarrier,discard
-> > >>> EXT4...... 
-> > >>>
-> > >>> .... (some time later) 
-> > >>>
-> > >>> EXT4-fs warning (device sdw): release_blocks_on_commit:2672: discard not supported, disabling
-> > >>> EXT4-fs warning (device sds): release_blocks_on_commit:2672: discard not supported, disabling
-> > >>> EXT4-fs warning (device sdt): release_blocks_on_commit:2672: discard not supported, disabling
-> > >>> EXT4-fs warning (device sdu): release_blocks_on_commit:2672: discard not supported, disabling
-> > >>> EXT4-fs warning (device sdv): release_blocks_on_commit:2672: discard not supported, disabling
-> > >> Please check whether your ssd works with discard or whether your ssd
-> > >> firmware has the ability to do so.
-> > >> I used an SSDSA2M160(I guess you are using the same type as me except
-> > >> the volume size is 80g, but you have to find it out from intel side) and
-> > >> after I upgraded my firmware to the new version(you can download it from
-> > >> intel site), it supports discard now.
-> > > 
-> > > 
-> > > Firmware is up to date as of a few weeks ago.  It is 02M3 which still
-> > > looks to be the current version. 
-> > ok...
-> > So please check whether your device supports discard or not.
-> > Intel has a tool named Intel SSD Toolbox, and it can check the status of
-> > your ssd, but the bad thing is that it seems to only have a windows
-> > version...
-> 
-> Actually you can query that with hdparm -I /path/to/the/device and you
-> should see something like
-> 
-> *   Data Set Management TRIM supported
-> 
-> in the output.
+In the bio completion routine, we should not be setting
+PageUptodate at all -- it's set at sys_write() time, and is
+unaffected by success/failure of the write to disk.
 
-I see 
+This can cause a page corruption bug when
 
-*	Data Set Management TRIM supported
-...
-*	Deterministic read after TRIM
+      block size < page size
 
-set on my devices. 
+if we have only written a single block -- we might end up
+setting the entire PageUptodate, which will cause subsequent
+reads to get bad data.
 
-Thanks,
-  Keith 
+Signed-off-by: Curt Wohlgemuth <curtw@google.com>
+Reported-by: Jim Meyering <jim@meyering.net>
+Reported-by: Hugh Dickins <hughd@google.com>
+Cc: Mingming Cao <cmm@us.ibm.com>
+---
+ fs/ext4/page-io.c |   41 +++++------------------------------------
+ 1 files changed, 5 insertions(+), 36 deletions(-)
 
-
-> Thanks!
-> -Lukas
-> 
-> > 
-> > Regards,
-> > Tao
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index b6dbd05..76bbe6a 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -202,47 +202,16 @@ static void ext4_end_bio(struct bio *bio, int error)
+ 
+ 	for (i = 0; i < io_end->num_io_pages; i++) {
+ 		struct page *page = io_end->pages[i]->p_page;
+-		struct buffer_head *bh, *head;
+-		int partial_write = 0;
++		struct buffer_head *head;
+ 
+ 		head = page_buffers(page);
+-		if (error)
+-			SetPageError(page);
+ 		BUG_ON(!head);
+-		if (head->b_size != PAGE_CACHE_SIZE) {
+-			loff_t offset;
+-			loff_t io_end_offset = io_end->offset + io_end->size;
+-
+-			offset = (sector_t) page->index << PAGE_CACHE_SHIFT;
+-			bh = head;
+-			do {
+-				if ((offset >= io_end->offset) &&
+-				    (offset+bh->b_size <= io_end_offset)) {
+-					if (error)
+-						buffer_io_error(bh);
+-
+-				}
+-				if (buffer_delay(bh))
+-					partial_write = 1;
+-				else if (!buffer_mapped(bh))
+-					clear_buffer_dirty(bh);
+-				else if (buffer_dirty(bh))
+-					partial_write = 1;
+-				offset += bh->b_size;
+-				bh = bh->b_this_page;
+-			} while (bh != head);
++		if (error) {
++			SetPageError(page);
++			buffer_io_error(head);
++			set_bit(AS_EIO, &page->mapping->flags);
+ 		}
+ 
+-		/*
+-		 * If this is a partial write which happened to make
+-		 * all buffers uptodate then we can optimize away a
+-		 * bogus readpage() for the next read(). Here we
+-		 * 'discover' whether the page went uptodate as a
+-		 * result of this (potentially partial) write.
+-		 */
+-		if (!partial_write)
+-			SetPageUptodate(page);
