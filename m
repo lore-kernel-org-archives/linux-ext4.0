@@ -1,37 +1,85 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 25832] kernel crashes upon resume if usb devices are removed
- when suspended
-Date: Fri, 22 Apr 2011 06:00:58 GMT
-Message-ID: <201104220600.p3M60wVA002224@demeter1.kernel.org>
-References: <bug-25832-13602@https.bugzilla.kernel.org/>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: Quick EXT4 discard question
+Date: Fri, 22 Apr 2011 09:44:55 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1104220940540.4415@dhcp-27-109.brq.redhat.com>
+References: <1303433101.1389.132.camel@keith-laptop>  <4DB0E7AA.6070007@tao.ma> <1303440294.1389.136.camel@keith-laptop> <4DB0EDB1.2070506@tao.ma>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Keith Mannthey <kmannth@us.ibm.com>, linux-ext4@vger.kernel.org
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:47336 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751569Ab1DVGA7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Apr 2011 02:00:59 -0400
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p3M60wDs002225
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 22 Apr 2011 06:00:58 GMT
-In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
+Received: from mx1.redhat.com ([209.132.183.28]:53643 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751746Ab1DVHpL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 22 Apr 2011 03:45:11 -0400
+In-Reply-To: <4DB0EDB1.2070506@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=25832
+On Fri, 22 Apr 2011, Tao Ma wrote:
 
+> On 04/22/2011 10:44 AM, Keith Mannthey wrote:
+> > On Fri, 2011-04-22 at 10:27 +0800, Tao Ma wrote:
+> >> On 04/22/2011 08:45 AM, Keith Mannthey wrote:
+> >>> Hello,
+> >>>   I am using some Intel SSD drives with 2.6.38.2. 
+> >>>
+> >>>
+> >>> /proc/scsi/scsi identifies them as: 
+> >>>
+> >>> "
+> >>> Host: scsi4 Channel: 00 Id: 04 Lun: 00
+> >>>   Vendor: ATA      Model: INTEL SSDSA2M080 Rev: 02M3
+> >>>   Type:   Direct-Access                    ANSI  SCSI revision: 05
+> >>> "
+> >>>
+> >>> Sometimes I am see the following messages that indicate discard is
+> >>> disabled during runtime:  
+> >>>
+> >>> Relevant dmesg:
+> >>>
+> >>> ...
+> >>> EXT4-fs (sdw): mounted filesystem with ordered data mode. Opts: nobarrier,discard
+> >>> EXT4...... 
+> >>>
+> >>> .... (some time later) 
+> >>>
+> >>> EXT4-fs warning (device sdw): release_blocks_on_commit:2672: discard not supported, disabling
+> >>> EXT4-fs warning (device sds): release_blocks_on_commit:2672: discard not supported, disabling
+> >>> EXT4-fs warning (device sdt): release_blocks_on_commit:2672: discard not supported, disabling
+> >>> EXT4-fs warning (device sdu): release_blocks_on_commit:2672: discard not supported, disabling
+> >>> EXT4-fs warning (device sdv): release_blocks_on_commit:2672: discard not supported, disabling
+> >> Please check whether your ssd works with discard or whether your ssd
+> >> firmware has the ability to do so.
+> >> I used an SSDSA2M160(I guess you are using the same type as me except
+> >> the volume size is 80g, but you have to find it out from intel side) and
+> >> after I upgraded my firmware to the new version(you can download it from
+> >> intel site), it supports discard now.
+> > 
+> > 
+> > Firmware is up to date as of a few weeks ago.  It is 02M3 which still
+> > looks to be the current version. 
+> ok...
+> So please check whether your device supports discard or not.
+> Intel has a tool named Intel SSD Toolbox, and it can check the status of
+> your ssd, but the bad thing is that it seems to only have a windows
+> version...
 
+Actually you can query that with hdparm -I /path/to/the/device and you
+should see something like
 
+*   Data Set Management TRIM supported
 
+in the output.
 
---- Comment #59 from rocko <rockorequin@hotmail.com>  2011-04-22 06:00:52 ---
-This is still an issue in both 2.6.38.3 and 2.6.39-rc4. Fairly frequently,
-complete and catastrophic failure of the kernel occurs when I remove an ext3 or
-ext4 USB drive.
+Thanks!
+-Lukas
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+> 
+> Regards,
+> Tao
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
