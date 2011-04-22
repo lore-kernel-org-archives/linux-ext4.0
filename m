@@ -1,88 +1,38 @@
-From: Curt Wohlgemuth <curtw@google.com>
-Subject: [PATCH] ext4: Don't set PageUptodate in ext4_end_bio()
-Date: Fri, 22 Apr 2011 10:51:58 -0700
-Message-ID: <1303494718-13444-1-git-send-email-curtw@google.com>
-Cc: jim@meyering.net, cmm@us.ibm.com,
-	Curt Wohlgemuth <curtw@google.com>
-To: linux-ext4@vger.kernel.org
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: Quick EXT4 discard question
+Date: Fri, 22 Apr 2011 15:59:44 -0400
+Message-ID: <BANLkTikW+E14XdObMALKejEWCrxnbKn=8g@mail.gmail.com>
+References: <1303433101.1389.132.camel@keith-laptop>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-ext4@vger.kernel.org
+To: Keith Mannthey <kmannth@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.44.51]:11371 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756236Ab1DVRwS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Apr 2011 13:52:18 -0400
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:54588 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752969Ab1DVUAF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Apr 2011 16:00:05 -0400
+Received: by bwz15 with SMTP id 15so600515bwz.19
+        for <linux-ext4@vger.kernel.org>; Fri, 22 Apr 2011 13:00:04 -0700 (PDT)
+In-Reply-To: <1303433101.1389.132.camel@keith-laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In the bio completion routine, we should not be setting
-PageUptodate at all -- it's set at sys_write() time, and is
-unaffected by success/failure of the write to disk.
+On Thu, Apr 21, 2011 at 8:45 PM, Keith Mannthey <kmannth@us.ibm.com> wrote:
+<snip>
+> I am new to SSDs and discard is there something else I need to do to
+> make these drives work as expected?
 
-This can cause a page corruption bug when
+Keith,
 
-      block size < page size
+If you're new to SSD trim, you might want to read this SUSE wiki page.
 
-if we have only written a single block -- we might end up
-setting the entire PageUptodate, which will cause subsequent
-reads to get bad data.
+http://en.opensuse.org/SDB:SSD_discard_%28trim%29_support
 
-Signed-off-by: Curt Wohlgemuth <curtw@google.com>
-Reported-by: Jim Meyering <jim@meyering.net>
-Reported-by: Hugh Dickins <hughd@google.com>
-Cc: Mingming Cao <cmm@us.ibm.com>
----
- fs/ext4/page-io.c |   41 +++++------------------------------------
- 1 files changed, 5 insertions(+), 36 deletions(-)
+(I wrote most of it, but I tried to keep it factual.)
 
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index b6dbd05..76bbe6a 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -202,47 +202,16 @@ static void ext4_end_bio(struct bio *bio, int error)
- 
- 	for (i = 0; i < io_end->num_io_pages; i++) {
- 		struct page *page = io_end->pages[i]->p_page;
--		struct buffer_head *bh, *head;
--		int partial_write = 0;
-+		struct buffer_head *head;
- 
- 		head = page_buffers(page);
--		if (error)
--			SetPageError(page);
- 		BUG_ON(!head);
--		if (head->b_size != PAGE_CACHE_SIZE) {
--			loff_t offset;
--			loff_t io_end_offset = io_end->offset + io_end->size;
--
--			offset = (sector_t) page->index << PAGE_CACHE_SHIFT;
--			bh = head;
--			do {
--				if ((offset >= io_end->offset) &&
--				    (offset+bh->b_size <= io_end_offset)) {
--					if (error)
--						buffer_io_error(bh);
--
--				}
--				if (buffer_delay(bh))
--					partial_write = 1;
--				else if (!buffer_mapped(bh))
--					clear_buffer_dirty(bh);
--				else if (buffer_dirty(bh))
--					partial_write = 1;
--				offset += bh->b_size;
--				bh = bh->b_this_page;
--			} while (bh != head);
-+		if (error) {
-+			SetPageError(page);
-+			buffer_io_error(head);
-+			set_bit(AS_EIO, &page->mapping->flags);
- 		}
- 
--		/*
--		 * If this is a partial write which happened to make
--		 * all buffers uptodate then we can optimize away a
--		 * bogus readpage() for the next read(). Here we
--		 * 'discover' whether the page went uptodate as a
--		 * result of this (potentially partial) write.
--		 */
--		if (!partial_write)
--			SetPageUptodate(page);
+For reference, it talks some about opensuse 11.2 and 11.3 but you can
+just think of those as older kernels.  (11.4 just came out and has a
+2.6.37 kernel.)
+
+Greg
