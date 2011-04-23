@@ -1,43 +1,46 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 25832] kernel crashes when a mounted ext3/4 file system is
- physically removed
-Date: Sat, 23 Apr 2011 04:12:31 GMT
-Message-ID: <201104230412.p3N4CVUK029027@demeter2.kernel.org>
-References: <bug-25832-13602@https.bugzilla.kernel.org/>
+From: Girish Shilamkar <girish.shilamkar@oracle.com>
+Subject: Re: Quick EXT4 discard question
+Date: Fri, 22 Apr 2011 23:41:20 -0700 (PDT)
+Message-ID: <5c2e924f-c9e3-43f3-838d-a19d623d552a@default>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8BIT
+To: <greg.freemyer@gmail.com>, <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:42167 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750906Ab1DWEMb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 23 Apr 2011 00:12:31 -0400
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p3N4CV2V029028
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sat, 23 Apr 2011 04:12:31 GMT
-In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:57909 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751852Ab1DWGlZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 23 Apr 2011 02:41:25 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=25832
 
+----- greg.freemyer@gmail.com wrote:
 
-
-
-
---- Comment #66 from rocko <rockorequin@hotmail.com>  2011-04-23 04:12:30 ---
-FYI, I reproduced it on the second attempt at suspend/resume with 2.6.38.4. I
-was slightly hopeful it might be fixed as some of the patches seemed to be
-addressing this kind of situation.
-
-I had a thought about the consistency of the logs: I think the ones related to
-this bug might be consistent, it's just that I've posted logs that might be due
-to different bugs entirely. The ntfs/fuse one turned out to be another bug, for
-instance. It's possible the logs from 2.6.36-rc1 were caused by a number of of
-other bugs, rc1 being in all likelihood the least robust of any kernel release.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+> On Thu, Apr 21, 2011 at 8:45 PM, Keith Mannthey <kmannth@us.ibm.com>
+> wrote:
+> <snip>
+> > I am new to SSDs and discard is there something else I need to do
+> to
+> > make these drives work as expected?
+> 
+> Keith,
+> 
+> If you're new to SSD trim, you might want to read this SUSE wiki
+> page.
+> 
+> http://en.opensuse.org/SDB:SSD_discard_%28trim%29_support
+> 
+> (I wrote most of it, but I tried to keep it factual.)
+> 
+> For reference, it talks some about opensuse 11.2 and 11.3 but you can
+> just think of those as older kernels.  (11.4 just came out and has a
+> 2.6.37 kernel.)
+> 
+> Greg
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
