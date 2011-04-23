@@ -1,7 +1,7 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH RFC v1 1/5] ext4:Add a function merging extent right and left.
-Date: Sat, 23 Apr 2011 01:44:15 -0700
-Message-ID: <1303548259-28311-2-git-send-email-xiaoqiangnk@gmail.com>
+Subject: [PATCH RFC v1 4/5] ext4: Add a function ext4_ext_zeroout_mem().
+Date: Sat, 23 Apr 2011 01:44:18 -0700
+Message-ID: <1303548259-28311-5-git-send-email-xiaoqiangnk@gmail.com>
 References: <1303548259-28311-1-git-send-email-xiaoqiangnk@gmail.com>
 Cc: achender@linux.vnet.ibm.com, cmm@us.ibm.com,
 	Yongqiang Yang <xiaoqiangnk@gmail.com>
@@ -9,135 +9,102 @@ To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-pv0-f174.google.com ([74.125.83.174]:54962 "EHLO
 	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752730Ab1DWIrH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 23 Apr 2011 04:47:07 -0400
+	with ESMTP id S1752752Ab1DWIrN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 23 Apr 2011 04:47:13 -0400
 Received: by mail-pv0-f174.google.com with SMTP id 12so602376pvg.19
-        for <linux-ext4@vger.kernel.org>; Sat, 23 Apr 2011 01:47:07 -0700 (PDT)
+        for <linux-ext4@vger.kernel.org>; Sat, 23 Apr 2011 01:47:13 -0700 (PDT)
 In-Reply-To: <1303548259-28311-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-1] Rename ext4_ext_try_to_merge() to ext4_ext_try_to_merge_right().
-
-2] Add a new function ext4_ext_try_to_merge() which tries to merge
-   an extent both left and right.
-
-3] Use the new function in ext4_ext_convert_unwritten_endio() and
-   ext4_ext_insert_extent().
+ext4_ext_zeroout_mem() zero out blocks in mem.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/extents.c |   65 ++++++++++++++++++++++++++++------------------------
- 1 files changed, 35 insertions(+), 30 deletions(-)
+ fs/ext4/extents.c |   70 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 70 insertions(+), 0 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index dd2cb50..11f30d2 100644
+index 9e7c7b3..30663b6 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -1563,7 +1563,7 @@ ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
-  * Returns 0 if the extents (ex and ex+1) were _not_ merged and returns
-  * 1 if they got merged.
-  */
--static int ext4_ext_try_to_merge(struct inode *inode,
-+static int ext4_ext_try_to_merge_right(struct inode *inode,
- 				 struct ext4_ext_path *path,
- 				 struct ext4_extent *ex)
- {
-@@ -1603,6 +1603,31 @@ static int ext4_ext_try_to_merge(struct inode *inode,
+@@ -2555,6 +2555,76 @@ static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
  }
  
  /*
-+ * This function tries to merge the @ex extent to neighbours in the tree.
-+ * return 1 if merge left else 0.
++ * ext4_ext_zeroout_mem() zero specified pages in page cache.
++ * this function is used by ext4_ext_convert_to_initialized() to
++ * zeroout small extents.
++ *
++ * @inode: the file inode
++ * @ex: the extent to be zeroout
++ *
++ * return 0 on success
 + */
-+static int ext4_ext_try_to_merge(struct inode *inode,
-+				  struct ext4_ext_path *path,
-+				  struct ext4_extent *ex) {
-+	struct ext4_extent_header *eh;
-+	unsigned int depth;
-+	int merge_done = 0;
-+	int ret = 0;
++static int ext4_ext_zeroout_mem(struct inode *inode,
++				  struct ext4_extent *ex)
++{
++	ext4_fsblk_t pblk;
++	ext4_lblk_t lblk;
++	ext4_lblk_t end;
++	struct page *page;
++	struct buffer_head *bh;
++	struct block_device *bdev;
++	pgoff_t index;
++	unsigned blocksize, blks_per_page_bits;
 +
-+	depth = ext_depth(inode);
-+	BUG_ON(path[depth].p_hdr == NULL);
-+	eh = path[depth].p_hdr;
++	bdev = inode->i_sb->s_bdev;
 +
-+	if (ex > EXT_FIRST_EXTENT(eh))
-+		merge_done = ext4_ext_try_to_merge_right(inode, path, ex - 1);
++	blocksize = 1 << inode->i_blkbits;
++	blks_per_page_bits = PAGE_CACHE_SHIFT - inode->i_blkbits;
 +
-+	if (!merge_done)
-+		ret = ext4_ext_try_to_merge_right(inode, path, ex);
++	pblk = ext4_ext_pblock(ex);
++	lblk = le32_to_cpu(ex->ee_block);
++	end = lblk + ext4_ext_get_actual_len(ex);
 +
-+	return ret;
++	while (lblk < end) {
++		struct ext4_extent ext;
++		char *kaddr;
++
++		/* grab page */
++		index = lblk >> blks_per_page_bits;
++		page = grab_cache_page_write_begin(inode->i_mapping,
++						   index, AOP_FLAG_NOFS);
++		if (!page) {
++			ext.ee_block = cpu_to_le32(lblk);
++			ext.ee_len = cpu_to_le16(end - lblk);
++			ext4_ext_store_pblock(&ext, pblk);
++			return ext4_ext_zeroout(inode, &ext);
++		}
++
++		/* map buffers, mark dirty */
++		if (!page_has_buffers(page))
++			create_empty_buffers(page, blocksize, 0);
++
++		kaddr = kmap_atomic(page, KM_USER0);
++		bh = page_buffers(page);
++		do {
++			unmap_underlying_metadata(bdev, pblk);
++			memset(kaddr, 0, blocksize);
++			map_bh(bh, inode->i_sb, pblk++);
++			set_buffer_uptodate(bh);
++			mark_buffer_dirty(bh);
++			bh = bh->b_this_page;
++			lblk++;
++		} while (bh != page_buffers(page) && lblk < end);
++		kunmap_atomic(kaddr, KM_USER0);
++
++		unlock_page(page);
++		page_cache_release(page);
++	}
++
++	return 0;
 +}
 +
 +/*
-  * check if a portion of the "newext" extent overlaps with an
-  * existing extent.
-  *
-@@ -3039,6 +3064,7 @@ fix_extent_len:
- 	ext4_ext_dirty(handle, inode, path + depth);
- 	return err;
- }
-+
- static int ext4_convert_unwritten_extents_endio(handle_t *handle,
- 					      struct inode *inode,
- 					      struct ext4_ext_path *path)
-@@ -3047,46 +3073,25 @@ static int ext4_convert_unwritten_extents_endio(handle_t *handle,
- 	struct ext4_extent_header *eh;
- 	int depth;
- 	int err = 0;
--	int ret = 0;
- 
- 	depth = ext_depth(inode);
- 	eh = path[depth].p_hdr;
- 	ex = path[depth].p_ext;
- 
-+	ext_debug("ext4_convert_unwritten_extents_endio: inode %lu, logical"
-+		"block %llu, max_blocks %u\n", inode->i_ino,
-+		(unsigned long long)le32_to_cpu(ex->ee_block),
-+		ext4_ext_get_actual_len(ex));
-+
- 	err = ext4_ext_get_access(handle, inode, path + depth);
- 	if (err)
- 		goto out;
- 	/* first mark the extent as initialized */
- 	ext4_ext_mark_initialized(ex);
- 
--	/*
--	 * We have to see if it can be merged with the extent
--	 * on the left.
--	 */
--	if (ex > EXT_FIRST_EXTENT(eh)) {
--		/*
--		 * To merge left, pass "ex - 1" to try_to_merge(),
--		 * since it merges towards right _only_.
--		 */
--		ret = ext4_ext_try_to_merge(inode, path, ex - 1);
--		if (ret) {
--			err = ext4_ext_correct_indexes(handle, inode, path);
--			if (err)
--				goto out;
--			depth = ext_depth(inode);
--			ex--;
--		}
--	}
--	/*
--	 * Try to Merge towards right.
--	 */
--	ret = ext4_ext_try_to_merge(inode, path, ex);
--	if (ret) {
--		err = ext4_ext_correct_indexes(handle, inode, path);
--		if (err)
--			goto out;
--		depth = ext_depth(inode);
--	}
-+	/* correct indexes is nt needed becasue borders are not changed */
-+	ext4_ext_try_to_merge(inode, path, ex);
-+
- 	/* Mark modified extent as dirty */
- 	err = ext4_ext_dirty(handle, inode, path + depth);
- out:
+  * used by extent splitting.
+  */
+ #define EXT4_EXT_MAY_ZEROOUT	0x1  /* safe to zeroout if split fails \
 -- 
 1.7.4.4
 
