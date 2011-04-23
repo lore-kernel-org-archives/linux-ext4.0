@@ -1,46 +1,37 @@
-From: Girish Shilamkar <girish.shilamkar@oracle.com>
-Subject: Re: Quick EXT4 discard question
-Date: Fri, 22 Apr 2011 23:41:20 -0700 (PDT)
-Message-ID: <5c2e924f-c9e3-43f3-838d-a19d623d552a@default>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8BIT
-To: <greg.freemyer@gmail.com>, <linux-ext4@vger.kernel.org>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: [PATCH RFC v1 0/5]Factor common code from convert and split unwritten.
+Date: Sat, 23 Apr 2011 01:44:14 -0700
+Message-ID: <1303548259-28311-1-git-send-email-xiaoqiangnk@gmail.com>
+Cc: achender@linux.vnet.ibm.com, cmm@us.ibm.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:57909 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751852Ab1DWGlZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 23 Apr 2011 02:41:25 -0400
-Content-Disposition: inline
+Received: from mail-pv0-f174.google.com ([74.125.83.174]:54962 "EHLO
+	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752216Ab1DWIrF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 23 Apr 2011 04:47:05 -0400
+Received: by pvg12 with SMTP id 12so602376pvg.19
+        for <linux-ext4@vger.kernel.org>; Sat, 23 Apr 2011 01:47:05 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+v0->v1:
+   fix a bug in ext4_ext_convert_to_initialized() reported by
+   Allison <achender@linux.vnet.ibm.com>.
 
------ greg.freemyer@gmail.com wrote:
+   optimize ext4_ext_convert_to_initialized().
 
-> On Thu, Apr 21, 2011 at 8:45 PM, Keith Mannthey <kmannth@us.ibm.com>
-> wrote:
-> <snip>
-> > I am new to SSDs and discard is there something else I need to do
-> to
-> > make these drives work as expected?
-> 
-> Keith,
-> 
-> If you're new to SSD trim, you might want to read this SUSE wiki
-> page.
-> 
-> http://en.opensuse.org/SDB:SSD_discard_%28trim%29_support
-> 
-> (I wrote most of it, but I tried to keep it factual.)
-> 
-> For reference, it talks some about opensuse 11.2 and 11.3 but you can
-> just think of those as older kernels.  (11.4 just came out and has a
-> 2.6.37 kernel.)
-> 
-> Greg
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- factor common code
+   These patches factor common code from ext4_ext_convert_to_initialized() and
+   ext4_split_unwritten_extents() so that extent-move-on-write in snapshot and
+   punch hole can be built on the common code.
+
+-- optimization
+   the 4th and the 5th patch optimize ext4_ext_convert_to_initialized() by
+   zeroing out in memory.
+
+
+[PATCH RFC v1 1/5] ext4:Add a function merging extent right and left.
+[PATCH RFC v1 2/5] ext4:Add two functions splitting an extent.
+[PATCH RFC v1 3/5] ext4:Reimplement convert and split_unwritten.
+[PATCH RFC v1 4/5] ext4: Add a function ext4_ext_zeroout_mem().
+[PATCH RFC v1 5/5] ext4: optimize ext4_ext_convert_to_initialized().
