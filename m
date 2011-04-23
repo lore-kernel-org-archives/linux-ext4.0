@@ -1,7 +1,7 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH RFC v1 5/5] ext4: optimize ext4_ext_convert_to_initialized().
-Date: Sat, 23 Apr 2011 01:44:19 -0700
-Message-ID: <1303548259-28311-6-git-send-email-xiaoqiangnk@gmail.com>
+Subject: [PATCH RFC v1 2/5] ext4:Add two functions splitting an extent.
+Date: Sat, 23 Apr 2011 01:44:16 -0700
+Message-ID: <1303548259-28311-3-git-send-email-xiaoqiangnk@gmail.com>
 References: <1303548259-28311-1-git-send-email-xiaoqiangnk@gmail.com>
 Cc: achender@linux.vnet.ibm.com, cmm@us.ibm.com,
 	Yongqiang Yang <xiaoqiangnk@gmail.com>
@@ -9,102 +9,227 @@ To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-pz0-f46.google.com ([209.85.210.46]:33766 "EHLO
 	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752752Ab1DWIrQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 23 Apr 2011 04:47:16 -0400
-Received: by mail-pz0-f46.google.com with SMTP id 9so600853pzk.19
-        for <linux-ext4@vger.kernel.org>; Sat, 23 Apr 2011 01:47:15 -0700 (PDT)
+	with ESMTP id S1752730Ab1DWIrJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 23 Apr 2011 04:47:09 -0400
+Received: by pzk9 with SMTP id 9so600853pzk.19
+        for <linux-ext4@vger.kernel.org>; Sat, 23 Apr 2011 01:47:09 -0700 (PDT)
 In-Reply-To: <1303548259-28311-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-1] Rename ext4_ext_zroout() to ext4_ext_zeroout_dev().
+v0 -> v1:
+   -- coding style
+   -- try to merge extents in zeroout case too.
 
-2] Optimize ext4_ext_convert_to_initialized() by using
-   ext4_ext_zeroout_mem().
+1] Add a function named ext4_split_extent_at() which splits an extent
+   into two extents at given logical block.
+
+2] Add a function called ext4_split_extent() which splits an extent
+   into three extents.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/extents.c |   32 ++++++++++++++++++++++++--------
- 1 files changed, 24 insertions(+), 8 deletions(-)
+ fs/ext4/extents.c |  187 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 187 insertions(+), 0 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 30663b6..0fc4ca1 100644
+index 11f30d2..db1d67c 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -2538,7 +2538,7 @@ void ext4_ext_release(struct super_block *sb)
+@@ -2554,6 +2554,193 @@ static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
+ 	return ret;
  }
  
- /* FIXME!! we need to try to merge to left or right after zero-out  */
--static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
-+static int ext4_ext_zeroout_dev(struct inode *inode, struct ext4_extent *ex)
- {
- 	ext4_fsblk_t ee_pblock;
- 	unsigned int ee_len;
-@@ -2597,7 +2597,7 @@ static int ext4_ext_zeroout_mem(struct inode *inode,
- 			ext.ee_block = cpu_to_le32(lblk);
- 			ext.ee_len = cpu_to_le16(end - lblk);
- 			ext4_ext_store_pblock(&ext, pblk);
--			return ext4_ext_zeroout(inode, &ext);
-+			return ext4_ext_zeroout_dev(inode, &ext);
- 		}
- 
- 		/* map buffers, mark dirty */
-@@ -2725,7 +2725,7 @@ static int ext4_split_extent_at(handle_t *handle,
- 
- 	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
- 	if (err == -ENOSPC && (EXT4_EXT_MAY_ZEROOUT & split_flag)) {
--		err = ext4_ext_zeroout(inode, &orig_ex);
-+		err = ext4_ext_zeroout_dev(inode, &orig_ex);
- 		if (err)
- 			goto fix_extent_len;
- 		/* update the extent length and mark as initialized */
-@@ -2860,9 +2860,25 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 	/* If extent has less than 2*EXT4_EXT_ZERO_LEN zerout directly */
- 	if (ee_len <= 2*EXT4_EXT_ZERO_LEN &&
- 	    (EXT4_EXT_MAY_ZEROOUT & split_flag)) {
--		err = ext4_ext_zeroout(inode, ex);
--		if (err)
--			goto out;
-+		if (map->m_lblk > ee_block) {
-+			zero_ex.ee_block = ex->ee_block;
-+			zero_ex.ee_len = cpu_to_le16(map->m_lblk - ee_block);
-+			ext4_ext_store_pblock(&zero_ex, ext4_ext_pblock(ex));
-+			err = ext4_ext_zeroout_mem(inode, &zero_ex);
-+			if (err)
-+				goto out;
-+		}
++/*
++ * used by extent splitting.
++ */
++#define EXT4_EXT_MAY_ZEROOUT	0x1  /* safe to zeroout if split fails \
++					due to ENOSPC */
++#define EXT4_EXT_MARK_UNINIT1	0x2  /* mark first half uninitialized */
++#define EXT4_EXT_MARK_UNINIT2	0x4  /* mark second half uninitialized */
 +
-+		if (map->m_lblk + map->m_len < ee_block + ee_len) {
-+			zero_ex.ee_block = cpu_to_le32(map->m_lblk +
-+						       map->m_len);
-+			zero_ex.ee_len = cpu_to_le16(allocated - map->m_len);
-+			ext4_ext_store_pblock(&zero_ex, ext4_ext_pblock(ex) +
-+					(map->m_lblk - ee_block) + map->m_len);
-+			err = ext4_ext_zeroout_mem(inode, &zero_ex);
-+			if (err)
-+				goto out;
-+		}
- 
- 		err = ext4_ext_get_access(handle, inode, path + depth);
- 		if (err)
-@@ -2892,7 +2908,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 			zero_ex.ee_len = cpu_to_le16(allocated - map->m_len);
- 			ext4_ext_store_pblock(&zero_ex,
- 				ext4_ext_pblock(ex) + map->m_lblk - ee_block);
--			err = ext4_ext_zeroout(inode, &zero_ex);
-+			err = ext4_ext_zeroout_mem(inode, &zero_ex);
- 			if (err)
- 				goto out;
- 			split_map.m_lblk = map->m_lblk;
-@@ -2907,7 +2923,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 							ee_block);
- 				ext4_ext_store_pblock(&zero_ex,
- 						      ext4_ext_pblock(ex));
--				err = ext4_ext_zeroout(inode, &zero_ex);
-+				err = ext4_ext_zeroout_mem(inode, &zero_ex);
- 				if (err)
- 					goto out;
- 			}
++/*
++ * ext4_split_extent_at() splits an extent at given block.
++ *
++ * @handle: the journal handle
++ * @inode: the file inode
++ * @path: the path to the extent
++ * @split: the logical block where the extent is splitted.
++ * @split_flags: indicates if the extent could be zeroout if split fails, and
++ *		 the states(init or uninit) of new extents.
++ * @flags: flags used to insert new extent to extent tree.
++ *
++ *
++ * Splits extent [a, b] into two extents [a, @split) and [@split, b], states
++ * of which are deterimined by split_flag.
++ *
++ * There are two cases:
++ *  a> the extent are splitted into two extent.
++ *  b> split is not needed, and just mark the extent.
++ *
++ * return 0 on success.
++ */
++static int ext4_split_extent_at(handle_t *handle,
++			     struct inode *inode,
++			     struct ext4_ext_path *path,
++			     ext4_lblk_t split,
++			     int split_flag,
++			     int flags)
++{
++	ext4_fsblk_t newblock;
++	ext4_lblk_t ee_block;
++	struct ext4_extent *ex, newex, orig_ex;
++	struct ext4_extent *ex2 = NULL;
++	unsigned int ee_len, depth;
++	int err = 0;
++
++	ext_debug("ext4_split_extents_at: inode %lu, logical"
++		"block %llu\n", inode->i_ino, (unsigned long long)split);
++
++	ext4_ext_show_leaf(inode, path);
++
++	depth = ext_depth(inode);
++	ex = path[depth].p_ext;
++	ee_block = le32_to_cpu(ex->ee_block);
++	ee_len = ext4_ext_get_actual_len(ex);
++	newblock = split - ee_block + ext4_ext_pblock(ex);
++
++	BUG_ON(split < ee_block || split >= (ee_block + ee_len));
++
++	err = ext4_ext_get_access(handle, inode, path + depth);
++	if (err)
++		goto out;
++
++	if (split == ee_block) {
++		/*
++		 * case b: block @split is the block that the extent begins with
++		 * then we just change the state of the extent, and splitting
++		 * is not needed.
++		 */
++		if (split_flag & EXT4_EXT_MARK_UNINIT2)
++			ext4_ext_mark_uninitialized(ex);
++		else
++			ext4_ext_mark_initialized(ex);
++
++		if (!(flags & EXT4_GET_BLOCKS_PRE_IO))
++			ext4_ext_try_to_merge(inode, path, ex);
++
++		err = ext4_ext_dirty(handle, inode, path + depth);
++		goto out;
++	}
++
++	/* case a */
++	memcpy(&orig_ex, ex, sizeof(orig_ex));
++	ex->ee_len = cpu_to_le16(split - ee_block);
++	if (split_flag & EXT4_EXT_MARK_UNINIT1)
++		ext4_ext_mark_uninitialized(ex);
++
++	/*
++	 * path may lead to new leaf, not to original leaf any more
++	 * after ext4_ext_insert_extent() returns,
++	 */
++	err = ext4_ext_dirty(handle, inode, path + depth);
++	if (err)
++		goto fix_extent_len;
++
++	ex2 = &newex;
++	ex2->ee_block = cpu_to_le32(split);
++	ex2->ee_len   = cpu_to_le16(ee_len - (split - ee_block));
++	ext4_ext_store_pblock(ex2, newblock);
++	if (split_flag & EXT4_EXT_MARK_UNINIT2)
++		ext4_ext_mark_uninitialized(ex2);
++
++	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
++	if (err == -ENOSPC && (EXT4_EXT_MAY_ZEROOUT & split_flag)) {
++		err = ext4_ext_zeroout(inode, &orig_ex);
++		if (err)
++			goto fix_extent_len;
++		/* update the extent length and mark as initialized */
++		ex->ee_len = cpu_to_le32(ee_len);
++		ext4_ext_try_to_merge(inode, path, ex);
++		err = ext4_ext_dirty(handle, inode, path + depth);
++		goto out;
++	} else if (err)
++		goto fix_extent_len;
++
++out:
++	ext4_ext_show_leaf(inode, path);
++	return err;
++
++fix_extent_len:
++	ex->ee_len = orig_ex.ee_len;
++	ext4_ext_dirty(handle, inode, path + depth);
++	return err;
++}
++
++/*
++ * ext4_split_extents() splits an extent and mark extent which is covered
++ * by @map as split_flags indicates
++ *
++ * It may result in splitting the extent into multiple extents (upto three)
++ * There are three possibilities:
++ *   a> There is no split required
++ *   b> Splits in two extents: Split is happening at either end of the extent
++ *   c> Splits in three extents: Somone is splitting in middle of the extent
++ *
++ */
++static int ext4_split_extent(handle_t *handle,
++			      struct inode *inode,
++			      struct ext4_ext_path *path,
++			      struct ext4_map_blocks *map,
++			      int split_flag,
++			      int flags)
++{
++	ext4_lblk_t ee_block;
++	struct ext4_extent *ex;
++	unsigned int ee_len, depth;
++	int err = 0;
++	int uninitialized;
++	int split_flag1, flags1;
++
++	depth = ext_depth(inode);
++	ex = path[depth].p_ext;
++	ee_block = le32_to_cpu(ex->ee_block);
++	ee_len = ext4_ext_get_actual_len(ex);
++	uninitialized = ext4_ext_is_uninitialized(ex);
++
++	if (map->m_lblk + map->m_len < ee_block + ee_len) {
++		split_flag1 = split_flag & EXT4_EXT_MAY_ZEROOUT ?
++			      EXT4_EXT_MAY_ZEROOUT : 0;
++		flags1 = flags | EXT4_GET_BLOCKS_PRE_IO;
++		if (uninitialized)
++			split_flag1 |= EXT4_EXT_MARK_UNINIT1 |
++				       EXT4_EXT_MARK_UNINIT2;
++		err = ext4_split_extent_at(handle, inode, path,
++				map->m_lblk + map->m_len, split_flag1, flags1);
++	}
++
++	ext4_ext_drop_refs(path);
++	path = ext4_ext_find_extent(inode, map->m_lblk, path);
++	if (IS_ERR(path))
++		return PTR_ERR(path);
++
++	if (map->m_lblk >= ee_block) {
++		split_flag1 = split_flag & EXT4_EXT_MAY_ZEROOUT ?
++			      EXT4_EXT_MAY_ZEROOUT : 0;
++		if (uninitialized)
++			split_flag1 |= EXT4_EXT_MARK_UNINIT1;
++		if (split_flag & EXT4_EXT_MARK_UNINIT2)
++			split_flag1 |= EXT4_EXT_MARK_UNINIT2;
++		err = ext4_split_extent_at(handle, inode, path,
++				map->m_lblk, split_flag1, flags);
++		if (err)
++			goto out;
++	}
++
++	ext4_ext_show_leaf(inode, path);
++out:
++	return err ? err : map->m_len;
++}
++
+ #define EXT4_EXT_ZERO_LEN 7
+ /*
+  * This function is called by ext4_ext_map_blocks() if someone tries to write
 -- 
 1.7.4.4
 
