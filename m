@@ -1,157 +1,179 @@
 From: Manish Katiyar <mkatiyar@gmail.com>
-Subject: [PATCH 1/5] jbd2: Pass extra bool parameter in journal routines to
- specify if its ok to fail the journal transaction allocation.
-Date: Sun, 24 Apr 2011 17:10:41 -0700
-Message-ID: <BANLkTinNUxt_Bj0JErLVDbh=73JHzzS9=w@mail.gmail.com>
+Subject: [PATCH 2/5] ext4 : Update low level ext4 journal routines to specify
+ gfp_mask for transaction allocation.
+Date: Sun, 24 Apr 2011 17:13:18 -0700
+Message-ID: <BANLkTinfvAXWwjtMnYRBL5JHLmYJGhS-aQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary=001636833ec4ea6d0e04a1b30a06
-Cc: Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: multipart/mixed; boundary=00163649a3ad474d4e04a1b3144c
+Cc: Manish Katiyar <manish.katiyar@in.ibm.com>,
+	Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>
 To: ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:43162 "EHLO
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:32863 "EHLO
 	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757803Ab1DYALC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Apr 2011 20:11:02 -0400
-Received: by qyk7 with SMTP id 7so505969qyk.19
-        for <linux-ext4@vger.kernel.org>; Sun, 24 Apr 2011 17:11:01 -0700 (PDT)
+	with ESMTP id S1757834Ab1DYANj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Apr 2011 20:13:39 -0400
+Received: by qyk7 with SMTP id 7so506389qyk.19
+        for <linux-ext4@vger.kernel.org>; Sun, 24 Apr 2011 17:13:38 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---001636833ec4ea6d0e04a1b30a06
+--00163649a3ad474d4e04a1b3144c
 Content-Type: text/plain; charset=ISO-8859-1
 
-Pass extra bool parameter in journal routines to specify if its ok to
-fail the journal transaction allocation. If 'true' is passed
-transaction allocation is done through GFP_KERNEL  and ENOMEM is
-returned else GFP_NOFS is used.
+Update low level ext4 journal routines to pass an extra parameter
+to journal allocation routines to specify whether transaction allocation
+can fail or not. With this patch ext4_journal_start() can fail due to
+ENOMEM. Added a new interface ext4_journal_start_tryhard() which isn't
+supposed to fail and keep retrying till the allocation succeeds.
 
 
 Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
 ---
- fs/jbd2/transaction.c |   12 +++++++-----
- include/linux/jbd2.h  |    4 ++--
- 2 files changed, 9 insertions(+), 7 deletions(-)
+ fs/ext4/ext4_jbd2.h |    8 +++++++-
+ fs/ext4/super.c     |   15 +++++++++++++--
+ 2 files changed, 20 insertions(+), 3 deletions(-)
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 05fa77a..b02d6a4 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -349,9 +349,10 @@ handle_t *jbd2__journal_start(journal_t *journal,
-int nblocks, int gfp_mask)
- EXPORT_SYMBOL(jbd2__journal_start);
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index d0f5353..ee6385c 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -162,6 +162,7 @@ int __ext4_handle_dirty_super(const char *where,
+unsigned int line,
+ 	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb))
 
+ handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks);
++handle_t *ext4_journal_start_sb_tryhard(struct super_block *sb, int nblocks);
+ int __ext4_journal_stop(const char *where, unsigned int line,
+handle_t *handle);
 
--handle_t *jbd2_journal_start(journal_t *journal, int nblocks)
-+handle_t *jbd2_journal_start(journal_t *journal, int nblocks, bool errok)
- {
--	return jbd2__journal_start(journal, nblocks, GFP_NOFS);
-+	return jbd2__journal_start(journal, nblocks,
-+				   errok ? GFP_KERNEL : GFP_NOFS);
+ #define EXT4_NOJOURNAL_MAX_REF_COUNT ((unsigned long) 4096)
+@@ -207,6 +208,11 @@ static inline handle_t *ext4_journal_start(struct
+inode *inode, int nblocks)
+ 	return ext4_journal_start_sb(inode->i_sb, nblocks);
  }
- EXPORT_SYMBOL(jbd2_journal_start);
 
-@@ -483,9 +484,10 @@ int jbd2__journal_restart(handle_t *handle, int
-nblocks, int gfp_mask)
- EXPORT_SYMBOL(jbd2__journal_restart);
++static inline handle_t *ext4_journal_start_tryhard(struct inode
+*inode, int nblocks)
++{
++	return ext4_journal_start_sb_tryhard(inode->i_sb, nblocks);
++}
++
+ #define ext4_journal_stop(handle) \
+ 	__ext4_journal_stop(__func__, __LINE__, (handle))
 
-
--int jbd2_journal_restart(handle_t *handle, int nblocks)
-+int jbd2_journal_restart(handle_t *handle, int nblocks, bool errok)
+@@ -225,7 +231,7 @@ static inline int ext4_journal_extend(handle_t
+*handle, int nblocks)
+ static inline int ext4_journal_restart(handle_t *handle, int nblocks)
  {
--	return jbd2__journal_restart(handle, nblocks, GFP_NOFS);
-+	return jbd2__journal_restart(handle, nblocks,
-+				     errok ? GFP_KERNEL : GFP_NOFS);
+ 	if (ext4_handle_valid(handle))
+-		return jbd2_journal_restart(handle, nblocks);
++		return jbd2_journal_restart(handle, nblocks, false);
+ 	return 0;
  }
- EXPORT_SYMBOL(jbd2_journal_restart);
 
-@@ -1436,7 +1438,7 @@ int jbd2_journal_force_commit(journal_t *journal)
- 	handle_t *handle;
- 	int ret;
-
--	handle = jbd2_journal_start(journal, 1);
-+	handle = jbd2_journal_start(journal, 1, false);
- 	if (IS_ERR(handle)) {
- 		ret = PTR_ERR(handle);
- 	} else {
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index a32dcae..a64aced 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1103,9 +1103,9 @@ static inline handle_t *journal_current_handle(void)
-  * Register buffer modifications against the current transaction.
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 8553dfb..03eac6a 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -247,7 +247,8 @@ static void ext4_put_nojournal(handle_t *handle)
+  * ext4 prevents a new handle from being started by s_frozen, which
+  * is in an upper layer.
   */
+-handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
++static handle_t *__ext4_journal_start_sb(struct super_block *sb,
++					 int nblocks, bool errok)
+ {
+ 	journal_t *journal;
+ 	handle_t  *handle;
+@@ -279,7 +280,17 @@ handle_t *ext4_journal_start_sb(struct
+super_block *sb, int nblocks)
+ 		ext4_abort(sb, "Detected aborted journal");
+ 		return ERR_PTR(-EROFS);
+ 	}
+-	return jbd2_journal_start(journal, nblocks);
++	return jbd2_journal_start(journal, nblocks, errok);
++}
++
++handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
++{
++	return __ext4_journal_start_sb(sb, nblocks, true);
++}
++
++handle_t *ext4_journal_start_sb_tryhard(struct super_block *sb, int nblocks)
++{
++	return __ext4_journal_start_sb(sb, nblocks, false);
+ }
 
--extern handle_t *jbd2_journal_start(journal_t *, int nblocks);
-+extern handle_t *jbd2_journal_start(journal_t *, int nblocks, bool errok);
- extern handle_t *jbd2__journal_start(journal_t *, int nblocks, int gfp_mask);
--extern int	 jbd2_journal_restart(handle_t *, int nblocks);
-+extern int	 jbd2_journal_restart(handle_t *, int nblocks, bool errok);
- extern int	 jbd2__journal_restart(handle_t *, int nblocks, int gfp_mask);
- extern int	 jbd2_journal_extend (handle_t *, int nblocks);
- extern int	 jbd2_journal_get_write_access(handle_t *, struct buffer_head *);
+ /*
 -- 
 1.7.1
-
 
 -- 
 Thanks -
 Manish
 
---001636833ec4ea6d0e04a1b30a06
+--00163649a3ad474d4e04a1b3144c
 Content-Type: text/x-patch; charset=US-ASCII;
-	name="0001-Pass-extra-bool-parameter-in-journal-routines-to-spe.patch"
+	name="0002-Update-low-level-ext4-journal-routines-to-pass-an-ex.patch"
 Content-Disposition: attachment;
-	filename="0001-Pass-extra-bool-parameter-in-journal-routines-to-spe.patch"
+	filename="0002-Update-low-level-ext4-journal-routines-to-pass-an-ex.patch"
 Content-Transfer-Encoding: base64
-X-Attachment-Id: f_gmwnhyci0
+X-Attachment-Id: f_gmwnjtrf0
 
-RnJvbSBjOWVkYmQ4ZDFkYTAyYWRhMjYxNWFjZWMzZTMwODNiNDY2OWY2ZDllIE1vbiBTZXAgMTcg
+RnJvbSAzNjVkMjljZDhkNWIxMzllMzMyOTY1YTUzNmRkMzgwZTY1NmJiZDE1IE1vbiBTZXAgMTcg
 MDA6MDA6MDAgMjAwMQpGcm9tOiBNYW5pc2ggS2F0aXlhciA8bWthdGl5YXJAZ21haWwuY29tPgpE
-YXRlOiBTdW4sIDI0IEFwciAyMDExIDAwOjE0OjU0IC0wNzAwClN1YmplY3Q6IFtQQVRDSCAxLzVd
-IFBhc3MgZXh0cmEgYm9vbCBwYXJhbWV0ZXIgaW4gam91cm5hbCByb3V0aW5lcyB0byBzcGVjaWZ5
-IGlmIGl0cyBvayB0byBmYWlsIHRoZSBqb3VybmFsIHRyYW5zYWN0aW9uIGFsbG9jYXRpb24uIElm
-ICd0cnVlJyBpcyBwYXNzZWQgdHJhbnNhY3Rpb24gYWxsb2NhdGlvbiBpcyBkb25lIHRocm91Z2gg
-R0ZQX0tFUk5FTCBlbHNlIEdGUF9OT0ZTIGlzIHVzZWQuCgpTaWduZWQtb2ZmLWJ5OiBNYW5pc2gg
-S2F0aXlhciA8bWthdGl5YXJAZ21haWwuY29tPgotLS0KIGZzL2piZDIvdHJhbnNhY3Rpb24uYyB8
-ICAgMTIgKysrKysrKy0tLS0tCiBpbmNsdWRlL2xpbnV4L2piZDIuaCAgfCAgICA0ICsrLS0KIDIg
-ZmlsZXMgY2hhbmdlZCwgOSBpbnNlcnRpb25zKCspLCA3IGRlbGV0aW9ucygtKQoKZGlmZiAtLWdp
-dCBhL2ZzL2piZDIvdHJhbnNhY3Rpb24uYyBiL2ZzL2piZDIvdHJhbnNhY3Rpb24uYwppbmRleCAw
-NWZhNzdhLi5iMDJkNmE0IDEwMDY0NAotLS0gYS9mcy9qYmQyL3RyYW5zYWN0aW9uLmMKKysrIGIv
-ZnMvamJkMi90cmFuc2FjdGlvbi5jCkBAIC0zNDksOSArMzQ5LDEwIEBAIGhhbmRsZV90ICpqYmQy
-X19qb3VybmFsX3N0YXJ0KGpvdXJuYWxfdCAqam91cm5hbCwgaW50IG5ibG9ja3MsIGludCBnZnBf
-bWFzaykKIEVYUE9SVF9TWU1CT0woamJkMl9fam91cm5hbF9zdGFydCk7CiAKIAotaGFuZGxlX3Qg
-KmpiZDJfam91cm5hbF9zdGFydChqb3VybmFsX3QgKmpvdXJuYWwsIGludCBuYmxvY2tzKQoraGFu
-ZGxlX3QgKmpiZDJfam91cm5hbF9zdGFydChqb3VybmFsX3QgKmpvdXJuYWwsIGludCBuYmxvY2tz
-LCBib29sIGVycm9rKQogewotCXJldHVybiBqYmQyX19qb3VybmFsX3N0YXJ0KGpvdXJuYWwsIG5i
-bG9ja3MsIEdGUF9OT0ZTKTsKKwlyZXR1cm4gamJkMl9fam91cm5hbF9zdGFydChqb3VybmFsLCBu
-YmxvY2tzLAorCQkJCSAgIGVycm9rID8gR0ZQX0tFUk5FTCA6IEdGUF9OT0ZTKTsKIH0KIEVYUE9S
-VF9TWU1CT0woamJkMl9qb3VybmFsX3N0YXJ0KTsKIApAQCAtNDgzLDkgKzQ4NCwxMCBAQCBpbnQg
-amJkMl9fam91cm5hbF9yZXN0YXJ0KGhhbmRsZV90ICpoYW5kbGUsIGludCBuYmxvY2tzLCBpbnQg
-Z2ZwX21hc2spCiBFWFBPUlRfU1lNQk9MKGpiZDJfX2pvdXJuYWxfcmVzdGFydCk7CiAKIAotaW50
-IGpiZDJfam91cm5hbF9yZXN0YXJ0KGhhbmRsZV90ICpoYW5kbGUsIGludCBuYmxvY2tzKQoraW50
-IGpiZDJfam91cm5hbF9yZXN0YXJ0KGhhbmRsZV90ICpoYW5kbGUsIGludCBuYmxvY2tzLCBib29s
-IGVycm9rKQogewotCXJldHVybiBqYmQyX19qb3VybmFsX3Jlc3RhcnQoaGFuZGxlLCBuYmxvY2tz
-LCBHRlBfTk9GUyk7CisJcmV0dXJuIGpiZDJfX2pvdXJuYWxfcmVzdGFydChoYW5kbGUsIG5ibG9j
-a3MsCisJCQkJICAgICBlcnJvayA/IEdGUF9LRVJORUwgOiBHRlBfTk9GUyk7CiB9CiBFWFBPUlRf
-U1lNQk9MKGpiZDJfam91cm5hbF9yZXN0YXJ0KTsKIApAQCAtMTQzNiw3ICsxNDM4LDcgQEAgaW50
-IGpiZDJfam91cm5hbF9mb3JjZV9jb21taXQoam91cm5hbF90ICpqb3VybmFsKQogCWhhbmRsZV90
-ICpoYW5kbGU7CiAJaW50IHJldDsKIAotCWhhbmRsZSA9IGpiZDJfam91cm5hbF9zdGFydChqb3Vy
-bmFsLCAxKTsKKwloYW5kbGUgPSBqYmQyX2pvdXJuYWxfc3RhcnQoam91cm5hbCwgMSwgZmFsc2Up
-OwogCWlmIChJU19FUlIoaGFuZGxlKSkgewogCQlyZXQgPSBQVFJfRVJSKGhhbmRsZSk7CiAJfSBl
-bHNlIHsKZGlmZiAtLWdpdCBhL2luY2x1ZGUvbGludXgvamJkMi5oIGIvaW5jbHVkZS9saW51eC9q
-YmQyLmgKaW5kZXggYTMyZGNhZS4uYTY0YWNlZCAxMDA2NDQKLS0tIGEvaW5jbHVkZS9saW51eC9q
-YmQyLmgKKysrIGIvaW5jbHVkZS9saW51eC9qYmQyLmgKQEAgLTExMDMsOSArMTEwMyw5IEBAIHN0
-YXRpYyBpbmxpbmUgaGFuZGxlX3QgKmpvdXJuYWxfY3VycmVudF9oYW5kbGUodm9pZCkKICAqIFJl
-Z2lzdGVyIGJ1ZmZlciBtb2RpZmljYXRpb25zIGFnYWluc3QgdGhlIGN1cnJlbnQgdHJhbnNhY3Rp
-b24uCiAgKi8KIAotZXh0ZXJuIGhhbmRsZV90ICpqYmQyX2pvdXJuYWxfc3RhcnQoam91cm5hbF90
-ICosIGludCBuYmxvY2tzKTsKK2V4dGVybiBoYW5kbGVfdCAqamJkMl9qb3VybmFsX3N0YXJ0KGpv
-dXJuYWxfdCAqLCBpbnQgbmJsb2NrcywgYm9vbCBlcnJvayk7CiBleHRlcm4gaGFuZGxlX3QgKmpi
-ZDJfX2pvdXJuYWxfc3RhcnQoam91cm5hbF90ICosIGludCBuYmxvY2tzLCBpbnQgZ2ZwX21hc2sp
-OwotZXh0ZXJuIGludAkgamJkMl9qb3VybmFsX3Jlc3RhcnQoaGFuZGxlX3QgKiwgaW50IG5ibG9j
-a3MpOworZXh0ZXJuIGludAkgamJkMl9qb3VybmFsX3Jlc3RhcnQoaGFuZGxlX3QgKiwgaW50IG5i
-bG9ja3MsIGJvb2wgZXJyb2spOwogZXh0ZXJuIGludAkgamJkMl9fam91cm5hbF9yZXN0YXJ0KGhh
-bmRsZV90ICosIGludCBuYmxvY2tzLCBpbnQgZ2ZwX21hc2spOwogZXh0ZXJuIGludAkgamJkMl9q
-b3VybmFsX2V4dGVuZCAoaGFuZGxlX3QgKiwgaW50IG5ibG9ja3MpOwogZXh0ZXJuIGludAkgamJk
-Ml9qb3VybmFsX2dldF93cml0ZV9hY2Nlc3MoaGFuZGxlX3QgKiwgc3RydWN0IGJ1ZmZlcl9oZWFk
-ICopOwotLSAKMS43LjEKCg==
---001636833ec4ea6d0e04a1b30a06--
+YXRlOiBTdW4sIDI0IEFwciAyMDExIDE2OjQ5OjQ4IC0wNzAwClN1YmplY3Q6IFtQQVRDSCAyLzVd
+IFVwZGF0ZSBsb3cgbGV2ZWwgZXh0NCBqb3VybmFsIHJvdXRpbmVzIHRvIHBhc3MgYW4gZXh0cmEg
+cGFyYW10ZXIKIHRvIGpvdXJuYWwgYWxsb2NhdGlvbiByb3V0aW5lcyB0byBzcGVjaWZ5IHdoZXRo
+ZXIgdHJhbnNhY3Rpb24gYWxsb2NhdGlvbgogY2FuIGZhaWwgb3Igbm90LiBXaXRoIHRoaXMgcGF0
+Y2ggZXh0NF9qb3VybmFsX3N0YXJ0KCkgY2FuIGZhaWwgZHVlIHRvCiBFTk9NRU0uIEFkZGVkIGEg
+bmV3IGludGVyZmFjZSBleHQ0X2pvdXJuYWxfc3RhcnRfdHJ5aGFyZCgpIHdoaWNoIGlzbid0CiBz
+dXBwb3NlZCB0byBmYWlsIGFuZCBrZWVwIHJldHJ5aW5nIHRpbGwgdGhlIGFsbG9jYXRpb24gc3Vj
+Y2VlZHMuCgoKU2lnbmVkLW9mZi1ieTogTWFuaXNoIEthdGl5YXIgPG1rYXRpeWFyQGdtYWlsLmNv
+bT4KLS0tCiBmcy9leHQ0L2V4dDRfamJkMi5oIHwgICAgOCArKysrKysrLQogZnMvZXh0NC9zdXBl
+ci5jICAgICB8ICAgMTUgKysrKysrKysrKysrKy0tCiAyIGZpbGVzIGNoYW5nZWQsIDIwIGluc2Vy
+dGlvbnMoKyksIDMgZGVsZXRpb25zKC0pCgpkaWZmIC0tZ2l0IGEvZnMvZXh0NC9leHQ0X2piZDIu
+aCBiL2ZzL2V4dDQvZXh0NF9qYmQyLmgKaW5kZXggZDBmNTM1My4uZWU2Mzg1YyAxMDA2NDQKLS0t
+IGEvZnMvZXh0NC9leHQ0X2piZDIuaAorKysgYi9mcy9leHQ0L2V4dDRfamJkMi5oCkBAIC0xNjIs
+NiArMTYyLDcgQEAgaW50IF9fZXh0NF9oYW5kbGVfZGlydHlfc3VwZXIoY29uc3QgY2hhciAqd2hl
+cmUsIHVuc2lnbmVkIGludCBsaW5lLAogCV9fZXh0NF9oYW5kbGVfZGlydHlfc3VwZXIoX19mdW5j
+X18sIF9fTElORV9fLCAoaGFuZGxlKSwgKHNiKSkKIAogaGFuZGxlX3QgKmV4dDRfam91cm5hbF9z
+dGFydF9zYihzdHJ1Y3Qgc3VwZXJfYmxvY2sgKnNiLCBpbnQgbmJsb2Nrcyk7CitoYW5kbGVfdCAq
+ZXh0NF9qb3VybmFsX3N0YXJ0X3NiX3RyeWhhcmQoc3RydWN0IHN1cGVyX2Jsb2NrICpzYiwgaW50
+IG5ibG9ja3MpOwogaW50IF9fZXh0NF9qb3VybmFsX3N0b3AoY29uc3QgY2hhciAqd2hlcmUsIHVu
+c2lnbmVkIGludCBsaW5lLCBoYW5kbGVfdCAqaGFuZGxlKTsKIAogI2RlZmluZSBFWFQ0X05PSk9V
+Uk5BTF9NQVhfUkVGX0NPVU5UICgodW5zaWduZWQgbG9uZykgNDA5NikKQEAgLTIwNyw2ICsyMDgs
+MTEgQEAgc3RhdGljIGlubGluZSBoYW5kbGVfdCAqZXh0NF9qb3VybmFsX3N0YXJ0KHN0cnVjdCBp
+bm9kZSAqaW5vZGUsIGludCBuYmxvY2tzKQogCXJldHVybiBleHQ0X2pvdXJuYWxfc3RhcnRfc2Io
+aW5vZGUtPmlfc2IsIG5ibG9ja3MpOwogfQogCitzdGF0aWMgaW5saW5lIGhhbmRsZV90ICpleHQ0
+X2pvdXJuYWxfc3RhcnRfdHJ5aGFyZChzdHJ1Y3QgaW5vZGUgKmlub2RlLCBpbnQgbmJsb2NrcykK
+K3sKKwlyZXR1cm4gZXh0NF9qb3VybmFsX3N0YXJ0X3NiX3RyeWhhcmQoaW5vZGUtPmlfc2IsIG5i
+bG9ja3MpOworfQorCiAjZGVmaW5lIGV4dDRfam91cm5hbF9zdG9wKGhhbmRsZSkgXAogCV9fZXh0
+NF9qb3VybmFsX3N0b3AoX19mdW5jX18sIF9fTElORV9fLCAoaGFuZGxlKSkKIApAQCAtMjI1LDcg
+KzIzMSw3IEBAIHN0YXRpYyBpbmxpbmUgaW50IGV4dDRfam91cm5hbF9leHRlbmQoaGFuZGxlX3Qg
+KmhhbmRsZSwgaW50IG5ibG9ja3MpCiBzdGF0aWMgaW5saW5lIGludCBleHQ0X2pvdXJuYWxfcmVz
+dGFydChoYW5kbGVfdCAqaGFuZGxlLCBpbnQgbmJsb2NrcykKIHsKIAlpZiAoZXh0NF9oYW5kbGVf
+dmFsaWQoaGFuZGxlKSkKLQkJcmV0dXJuIGpiZDJfam91cm5hbF9yZXN0YXJ0KGhhbmRsZSwgbmJs
+b2Nrcyk7CisJCXJldHVybiBqYmQyX2pvdXJuYWxfcmVzdGFydChoYW5kbGUsIG5ibG9ja3MsIGZh
+bHNlKTsKIAlyZXR1cm4gMDsKIH0KIApkaWZmIC0tZ2l0IGEvZnMvZXh0NC9zdXBlci5jIGIvZnMv
+ZXh0NC9zdXBlci5jCmluZGV4IDg1NTNkZmIuLjAzZWFjNmEgMTAwNjQ0Ci0tLSBhL2ZzL2V4dDQv
+c3VwZXIuYworKysgYi9mcy9leHQ0L3N1cGVyLmMKQEAgLTI0Nyw3ICsyNDcsOCBAQCBzdGF0aWMg
+dm9pZCBleHQ0X3B1dF9ub2pvdXJuYWwoaGFuZGxlX3QgKmhhbmRsZSkKICAqIGV4dDQgcHJldmVu
+dHMgYSBuZXcgaGFuZGxlIGZyb20gYmVpbmcgc3RhcnRlZCBieSBzX2Zyb3plbiwgd2hpY2gKICAq
+IGlzIGluIGFuIHVwcGVyIGxheWVyLgogICovCi1oYW5kbGVfdCAqZXh0NF9qb3VybmFsX3N0YXJ0
+X3NiKHN0cnVjdCBzdXBlcl9ibG9jayAqc2IsIGludCBuYmxvY2tzKQorc3RhdGljIGhhbmRsZV90
+ICpfX2V4dDRfam91cm5hbF9zdGFydF9zYihzdHJ1Y3Qgc3VwZXJfYmxvY2sgKnNiLAorCQkJCQkg
+aW50IG5ibG9ja3MsIGJvb2wgZXJyb2spCiB7CiAJam91cm5hbF90ICpqb3VybmFsOwogCWhhbmRs
+ZV90ICAqaGFuZGxlOwpAQCAtMjc5LDcgKzI4MCwxNyBAQCBoYW5kbGVfdCAqZXh0NF9qb3VybmFs
+X3N0YXJ0X3NiKHN0cnVjdCBzdXBlcl9ibG9jayAqc2IsIGludCBuYmxvY2tzKQogCQlleHQ0X2Fi
+b3J0KHNiLCAiRGV0ZWN0ZWQgYWJvcnRlZCBqb3VybmFsIik7CiAJCXJldHVybiBFUlJfUFRSKC1F
+Uk9GUyk7CiAJfQotCXJldHVybiBqYmQyX2pvdXJuYWxfc3RhcnQoam91cm5hbCwgbmJsb2Nrcyk7
+CisJcmV0dXJuIGpiZDJfam91cm5hbF9zdGFydChqb3VybmFsLCBuYmxvY2tzLCBlcnJvayk7Cit9
+CisgCitoYW5kbGVfdCAqZXh0NF9qb3VybmFsX3N0YXJ0X3NiKHN0cnVjdCBzdXBlcl9ibG9jayAq
+c2IsIGludCBuYmxvY2tzKQoreworCXJldHVybiBfX2V4dDRfam91cm5hbF9zdGFydF9zYihzYiwg
+bmJsb2NrcywgdHJ1ZSk7Cit9CisKK2hhbmRsZV90ICpleHQ0X2pvdXJuYWxfc3RhcnRfc2JfdHJ5
+aGFyZChzdHJ1Y3Qgc3VwZXJfYmxvY2sgKnNiLCBpbnQgbmJsb2NrcykKK3sKKwlyZXR1cm4gX19l
+eHQ0X2pvdXJuYWxfc3RhcnRfc2Ioc2IsIG5ibG9ja3MsIGZhbHNlKTsKIH0KIAogLyoKLS0gCjEu
+Ny4xCgo=
+--00163649a3ad474d4e04a1b3144c--
