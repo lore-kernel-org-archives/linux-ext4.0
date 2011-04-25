@@ -1,150 +1,116 @@
-From: Zhao Cai <zhaocai@me.com>
-Subject: Re: ext4_put_super is not called during system shutdown or restart
-Date: Mon, 25 Apr 2011 16:43:01 -0400
-Message-ID: <D9710D79-4BC6-485C-865B-11C445D47C06@me.com>
-References: <BEC5ADCE-0B2E-4CE2-8654-9D2F7B787684@me.com>
- <4DB584B0.3000101@redhat.com>
- <BANLkTimPBdtoNgu2OgUmqj=WHK6JUooFcA@mail.gmail.com>
- <D949F3DA-E240-4BCF-A213-E4745FFE5D99@me.com> <4DB59D03.7020707@redhat.com>
- <F4A9E9C5-21DE-44A9-AA83-285BF5279345@me.com>
- <05B9E852-8558-4A57-B386-E29EBC16595C@me.com> <4DB5D715.3040809@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Amir Goldstein <amir73il@gmail.com>,
-	ext4 mailing list <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+From: Curt Wohlgemuth <curtw@google.com>
+Subject: [PATCH v3] ext4: Don't set PageUptodate in ext4_end_bio()
+Date: Mon, 25 Apr 2011 13:23:19 -0700
+Message-ID: <1303762999-20541-1-git-send-email-curtw@google.com>
+Cc: jim@meyering.net, cmm@us.ibm.com, hughd@google.com, tytso@mit.edu,
+	Curt Wohlgemuth <curtw@google.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from asmtpout028.mac.com ([17.148.16.103]:38295 "EHLO
-	asmtpout028.mac.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932311Ab1DYUng convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Apr 2011 16:43:36 -0400
-Received: from cai-zhao-2.umelst.maine.edu ([130.111.219.42])
- by asmtp028.mac.com
- (Oracle Communications Messaging Exchange Server 7u4-20.01 64bit (built Nov 21
- 2010)) with ESMTPSA id <0LK800E9H6VQJT40@asmtp028.mac.com> for
- linux-ext4@vger.kernel.org; Mon, 25 Apr 2011 13:43:04 -0700 (PDT)
-In-reply-to: <4DB5D715.3040809@redhat.com>
+Received: from smtp-out.google.com ([216.239.44.51]:51069 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756298Ab1DYUXn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Apr 2011 16:23:43 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Apr 25, 2011, at 4:18 PM, Eric Sandeen wrote:
+In the bio completion routine, we should not be setting
+PageUptodate at all -- it's set at sys_write() time, and is
+unaffected by success/failure of the write to disk.
 
-> On 4/25/11 3:07 PM, Zhao Cai wrote:
->> In that case, how to make sure all the jbd2 transactions are fininsh=
-ed before reboot? is it ext4_freeze and jbd2_journal_flush?
->=20
-> the remount readonly path should do this, I think.
->=20
-> ext4_remount
-> 	ext4_mark_recovery_complete
-> 		jbd2_journal_lock_updates
-> 		jbd2_journal_flush
->=20
-> -Eric
->>=20
-Thanks, Eric. I appreciate your very prompt help. That clarify my quest=
-ion.
+This can cause a page corruption bug when
 
--Zhao
+    block size < page size
 
->>=20
->>=20
->>=20
->> On Apr 25, 2011, at 12:12 PM, Zhao Cai wrote:
->>=20
->>> On Apr 25, 2011, at 12:10 PM, Eric Sandeen wrote:
->>>=20
->>>> On 4/25/11 11:05 AM, Zhao Cai wrote:
->>>>> Sorry, my mistake. It happens only when ext4 is the root file sys=
-tem.=20
->>>>=20
->>>> that makes sense, since root is never actually unmounted; it just =
-goes to readonly.
->>>>=20
->>>> -Eric
->>>=20
->>> Thanks. That means it is designed to be like this!
->>>=20
->>>>> -Zhao
->>>>>=20
->>>>>=20
->>>>> On Apr 25, 2011, at 11:02 AM, Amir Goldstein wrote:
->>>>>=20
->>>>>> On Monday, April 25, 2011, Eric Sandeen <sandeen@redhat.com> wro=
-te:
->>>>>>> On 4/24/11 11:12 PM, Zhao Cai wrote:
->>>>>>>> I would appreciate if anyone can give me an answer. Is it desi=
-gned to
->>>>>>>> be like this?
->>>>>>>>=20
->>>>>>>> Detailed situation: The system is ubuntu 11.04 installed in VM=
-ware. I
->>>>>>>> notice that ext4_put_super() is called when I unmount a non-ro=
-ot ext4
->>>>>>>> partition. But it is not when I restart or shutdown the system=
-=2E
->>>>>>>=20
->>>>>>> Even for a non-root filesystem?
->>>>>>>=20
->>>>>>> I don't know if ubuntu does anything special, but I would expec=
-t that during a system shutdown, non-root filesystems would be unmounte=
-d, and you'd get put_super called.  Unless the fs is busy and it can't =
-be unmounted for some reason...
->>>>>>=20
->>>>>> This strangely reminds me of my report that xfstests sometimes f=
-ails
->>>>>> to umount on Ubuntu 10.10.
->>>>>> But I could be just trying to hold on to the hope of somebody el=
-se
->>>>>> solving my problems...
->>>>>>=20
->>>>>>>=20
->>>>>>> -Eric
->>>>>>>=20
->>>>>>>> Thanks=E3=80=82
->>>>>>>>=20
->>>>>>>> -- All the best,
->>>>>>>>=20
->>>>>>>> Zhao Cai
->>>>>>>>=20
->>>>>>>>=20
->>>>>>>> -- To unsubscribe from this list: send the line "unsubscribe
->>>>>>>> linux-ext4" in the body of a message to majordomo@vger.kernel.=
-org
->>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.=
-html
->>>>>>>=20
->>>>>>> --
->>>>>>> To unsubscribe from this list: send the line "unsubscribe linux=
--ext4" in
->>>>>>> the body of a message to majordomo@vger.kernel.org
->>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.h=
-tml
->>>>>>>=20
->>>>>=20
->>>>=20
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-ex=
-t4" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>=20
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-ext=
-4" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>=20
->=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+if we have only written a single block -- we might end up
+setting the entire PageUptodate, which will cause subsequent
+reads to get bad data.
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+This commit also takes the opportunity to clean up error
+handling in ext4_end_bio(), and remove some extraneous code:
+
+   - fixes ext4_end_bio() to set AS_EIO in the
+     page->mapping->flags on error, which was left out by
+     mistake.
+   - remove the clear_buffer_dirty() call on unmapped
+     buffers for each page.
+   - consolidate page/buffer error handling in a single
+     section.
+
+Signed-off-by: Curt Wohlgemuth <curtw@google.com>
+Reported-by: Jim Meyering <jim@meyering.net>
+Reported-by: Hugh Dickins <hughd@google.com>
+Cc: Mingming Cao <cmm@us.ibm.com>
+---
+Changlog since v2:
+- Removed clear_buffer_dirty() call
+- Consolidated error handling for pages and buffer heads
+- Loop over BHs in a page even for page size == block size, so
+  we emit the correct error for such a case.
+
+Changlog since v1:
+- Added commit message text about setting AS_EIO for the
+ page on error.
+- Continue to loop over all BHs in a page and emit unique
+ errors for each of them.
+---
+ fs/ext4/page-io.c |   39 +++++++++++----------------------------
+ 1 files changed, 11 insertions(+), 28 deletions(-)
+
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index b6dbd05..7bb8f76 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -203,46 +203,29 @@ static void ext4_end_bio(struct bio *bio, int error)
+ 	for (i = 0; i < io_end->num_io_pages; i++) {
+ 		struct page *page = io_end->pages[i]->p_page;
+ 		struct buffer_head *bh, *head;
+-		int partial_write = 0;
++		loff_t offset;
++		loff_t io_end_offset;
+ 
+-		head = page_buffers(page);
+-		if (error)
++		if (error) {
+ 			SetPageError(page);
+-		BUG_ON(!head);
+-		if (head->b_size != PAGE_CACHE_SIZE) {
+-			loff_t offset;
+-			loff_t io_end_offset = io_end->offset + io_end->size;
++			set_bit(AS_EIO, &page->mapping->flags);
++			head = page_buffers(page);
++			BUG_ON(!head);
++
++			io_end_offset = io_end->offset + io_end->size;
+ 
+ 			offset = (sector_t) page->index << PAGE_CACHE_SHIFT;
+ 			bh = head;
+ 			do {
+ 				if ((offset >= io_end->offset) &&
+-				    (offset+bh->b_size <= io_end_offset)) {
+-					if (error)
+-						buffer_io_error(bh);
+-
+-				}
+-				if (buffer_delay(bh))
+-					partial_write = 1;
+-				else if (!buffer_mapped(bh))
+-					clear_buffer_dirty(bh);
+-				else if (buffer_dirty(bh))
+-					partial_write = 1;
++				    (offset+bh->b_size <= io_end_offset))
++					buffer_io_error(bh);
++
+ 				offset += bh->b_size;
+ 				bh = bh->b_this_page;
+ 			} while (bh != head);
+ 		}
+ 
+-		/*
+-		 * If this is a partial write which happened to make
+-		 * all buffers uptodate then we can optimize away a
+-		 * bogus readpage() for the next read(). Here we
+-		 * 'discover' whether the page went uptodate as a
+-		 * result of this (potentially partial) write.
+-		 */
+-		if (!partial_write)
+-			SetPageUptodate(page);
