@@ -1,100 +1,47 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: Need of revoke mechanism in JBD
-Date: Tue, 26 Apr 2011 11:27:20 -0600
-Message-ID: <05811D05-1E14-4EA9-B9A4-BA4DD5B1D986@dilger.ca>
-References: <4DB68257.4070407@gmail.com> <BANLkTikuNB8m3-X8BXVcL2OCqQiZwRCbQA@mail.gmail.com> <BANLkTikV4nU4Zc4OxNa6q8wDtM7cLUF_ig@mail.gmail.com> <4DB6A2B0.7050708@gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Ding Dinghua <dingdinghua85@gmail.com>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	linux-ext4@vger.kernel.org
-To: Niraj Kulkarni <kulkarniniraj14@gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 25832] kernel crashes when a mounted ext3/4 file system is
+ physically removed
+Date: Tue, 26 Apr 2011 18:15:03 GMT
+Message-ID: <201104261815.p3QIF3CF028959@demeter1.kernel.org>
+References: <bug-25832-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:47096 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757637Ab1DZR1W convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Apr 2011 13:27:22 -0400
-In-Reply-To: <4DB6A2B0.7050708@gmail.com>
+Received: from demeter1.kernel.org ([140.211.167.39]:59775 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757921Ab1DZSPF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Apr 2011 14:15:05 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p3QIF3Xf028960
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 26 Apr 2011 18:15:03 GMT
+In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-04-26, at 4:47 AM, Niraj Kulkarni wrote:
-> If I am thinking correctly, journal would be checkpointed  on
-> filesystem unmount calls.
-> This implies the given scenario would be pretty rare.
-> 
-> ie first filesystem should be mounted in full-journal mode, and
-> crashed prior to checkpoint.
-> then it should be remounted in no-journalled-data mode without
-> recovery and again remounted in full journalled mode with recovery.
-
-It shouldn't be possible to mount the filesystem in no-journal mode
-without doing journal recovery.  The filesystem sets an INCOMPAT_RECOVER
-flag when the journal has any transactions in it, and the journal should
-be replayed before the filesystem is finished mounting.
-
-Looking at ext4_fill_super() the "noload" mount option is used to avoid
-loading the journal even if there is a journal (COMPAT_HAS_JOURNAL is set),
-but if INCOMPAT_RECOVER is set the filesystem will refuse to mount.
-
-
-> On Tuesday 26 April 2011 02:53 PM, Ding Dinghua wrote:
->> I think it's not only a performance issue but more important, a
->> correctness issue.
->> Revoke table is used for preventing the wrong replay of journal which
->> cause data corruption:
->> If block A has been journalled its modification, committed to journal
->> and hasn't been checkpointed,
->> and in later transactions block A is freed and reused for data in
->> no-journalled-data mode, then If
->> we don't have revoke table which recording the releasing event, replay
->> of journal will overwrite the new data,
->> which causing data corruption.
->> 
->> 2011/4/26 Yongqiang Yang<xiaoqiangnk@gmail.com>:
->>> AFAIK, it can accelerate the recovering process.  If a block is in the
->>> revoke table of a transaction t1 and t1 is committed, then the there
->>> is no need to recover the block in transactions which is earlier than
->>> t1.
->>> 
->>> On Tue, Apr 26, 2011 at 4:29 PM, Niraj Kulkarni
->>> <kulkarniniraj14@gmail.com>  wrote:
->>>> Hi all,
->>>>      I am new to fs development. I am trying to modify the journal structure
->>>> of JBD. While analyzing the code, I could understand most of the things, but
->>>> I am not able to understand the need of revoke mechanism. Can anybody
->>>> enlighten me on this issue?
->>>> 
->>>> Regards
->>>> Niraj
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>> 
->>> 
->>> 
->>> --
->>> Best Wishes
->>> Yongqiang Yang
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>> 
->> 
->> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
-Cheers, Andreas
+https://bugzilla.kernel.org/show_bug.cgi?id=25832
 
 
 
 
 
+--- Comment #78 from Alan Stern <stern@rowland.harvard.edu>  2011-04-26 18:15:00 ---
+I can report triggering a similar problem -- once.  I attached a USB drive with
+an ext4 filesystem, mounted it, read a file from it, unbound usb-storage, and
+then unmounted it.  No desktop was running at the time.  About a second later I
+got a nasty crash -- an unending stream of log messages scrolling up the
+console, with no way to stop it other than powering off the machine.
+
+So then I rebuilt the test kernel to add netconsole support, and I have not
+been able to trigger the problem since.
+
+It wouldn't be at all suprising to find out that this bug lies not in the
+filesystem code but somewhere lower, such as the block layer or even the SCSI
+core.  It seems to have a large random component as well as a delayed impact. 
+Rocko is able to trigger it a lot more reproducibly.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
