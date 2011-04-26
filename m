@@ -1,55 +1,182 @@
-From: <Martin_Zielinski@McAfee.com>
-Subject: RE: 2.6.32 ext3 assertion j_running_transaction != NULL fails in
- commit.c
-Date: Tue, 26 Apr 2011 07:45:33 -0500
-Message-ID: <BCB84D936723884B91E4CC5CA0A7C54AA4F6D085B8@EMEADALEXMB1.corp.nai.org>
-References: <BCB84D936723884B91E4CC5CA0A7C54AA4F6D082BE@EMEADALEXMB1.corp.nai.org>
- <20110425231454.GB9486@thunk.org>
- <BCB84D936723884B91E4CC5CA0A7C54AA4F6D08501@EMEADALEXMB1.corp.nai.org>
- <20110426122338.GE9486@thunk.org>
+From: Curt Wohlgemuth <curtw@google.com>
+Subject: Re: [PATCH v3] ext4: Don't set PageUptodate in ext4_end_bio()
+Date: Tue, 26 Apr 2011 08:37:19 -0700
+Message-ID: <BANLkTikKNY4ksntoxVEEyTAhKOC-ymng8A@mail.gmail.com>
+References: <1303762999-20541-1-git-send-email-curtw@google.com>
+	<4194C4D6-BE86-42CA-BBB4-A8A0E7E94EAC@dilger.ca>
+	<BANLkTim0_yS_zHEs9sksFq4u_FFEHGO+7g@mail.gmail.com>
+	<BANLkTikA83YP4p3JL=SFqNAnNzvPSaC7Bg@mail.gmail.com>
+	<EBD186D7-7A9A-4EA4-AB05-D1E9CF2D5006@dilger.ca>
+	<BANLkTi=K=ui2oyB_+H77Kkb=NXW+7MjY1A@mail.gmail.com>
+	<BANLkTinuX21XfDCsrH0M8htB6Nkzo4kO=A@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="Windows-1252"
-Content-Transfer-Encoding: 8BIT
-Cc: <linux-ext4@vger.kernel.org>
-To: <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org,
+	jim@meyering.net, cmm@us.ibm.com, hughd@google.com, tytso@mit.edu
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from dalsmrelay2.nai.com ([205.227.136.216]:56904 "EHLO
-	dalsmrelay2.nai.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753200Ab1DZMuM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Apr 2011 08:50:12 -0400
-In-Reply-To: <20110426122338.GE9486@thunk.org>
-Content-Language: en-US
+Received: from smtp-out.google.com ([74.125.121.67]:56579 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752168Ab1DZPhY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Apr 2011 11:37:24 -0400
+Received: from wpaz13.hot.corp.google.com (wpaz13.hot.corp.google.com [172.24.198.77])
+	by smtp-out.google.com with ESMTP id p3QFbLXr031182
+	for <linux-ext4@vger.kernel.org>; Tue, 26 Apr 2011 08:37:21 -0700
+Received: from qwi4 (qwi4.prod.google.com [10.241.195.4])
+	by wpaz13.hot.corp.google.com with ESMTP id p3QFarC8001583
+	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Tue, 26 Apr 2011 08:37:20 -0700
+Received: by qwi4 with SMTP id 4so755821qwi.1
+        for <linux-ext4@vger.kernel.org>; Tue, 26 Apr 2011 08:37:19 -0700 (PDT)
+In-Reply-To: <BANLkTinuX21XfDCsrH0M8htB6Nkzo4kO=A@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I will port the jbd2 debugging code to jbd an will try to get the new kernel into production.
-After a reboot we will have to wait several weeks. (Strange: all machines failed within 72 hours).
+On Mon, Apr 25, 2011 at 11:59 PM, Yongqiang Yang <xiaoqiangnk@gmail.com=
+> wrote:
+> On Tue, Apr 26, 2011 at 12:32 PM, Curt Wohlgemuth <curtw@google.com> =
+wrote:
+>> On Mon, Apr 25, 2011 at 5:58 PM, Andreas Dilger <adilger@dilger.ca> =
+wrote:
+>>> On 2011-04-25, at 5:20 PM, Curt Wohlgemuth wrote:
+>>>> On Mon, Apr 25, 2011 at 3:45 PM, Curt Wohlgemuth <curtw@google.com=
+> wrote:
+>>>>> On Mon, Apr 25, 2011 at 3:40 PM, Andreas Dilger <adilger@dilger.c=
+a> wrote:
+>>>>>> On 2011-04-25, at 2:23 PM, Curt Wohlgemuth wrote:
+>>>>>>> In the bio completion routine, we should not be setting
+>>>>>>> PageUptodate at all -- it's set at sys_write() time, and is
+>>>>>>> unaffected by success/failure of the write to disk.
+>>>>>>>
+>>>>>>> This can cause a page corruption bug when
+>>>>>>>
+>>>>>>> =A0 =A0block size < page size
+>>>>>>>
+>>>>>>> @@ -203,46 +203,29 @@ static void ext4_end_bio(struct bio *bio,=
+ int error)
+>>>>>>> - =A0 =A0 =A0 =A0 =A0 =A0 /*
+>>>>>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0* If this is a partial write which=
+ happened to make
+>>>>>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0* all buffers uptodate then we can=
+ optimize away a
+>>>>>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0* bogus readpage() for the next re=
+ad(). Here we
+>>>>>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0* 'discover' whether the page went=
+ uptodate as a
+>>>>>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0* result of this (potentially part=
+ial) write.
+>>>>>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0*/
+>>>>>>> - =A0 =A0 =A0 =A0 =A0 =A0 if (!partial_write)
+>>>>>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 SetPageUptodate(page)=
+;
+>>>>>>> -
+>>>>>>
+>>>>>> I think this is the important part of the code - if there is a r=
+ead-after-write for a file that was written in "blocksize" units (block=
+size < pagesize), does the page get set uptodate when all of the blocks=
+ have been written and/or the writing is at EOF? =A0Otherwise, a read-a=
+fter-write will always cause data to be fetched from disk needlessly, e=
+ven though the uptodate information is already in cache.
+>>>>>
+>>>>> Hmm, that's a good question. =A0I would kind of doubt that the pa=
+ge
+>>>>> would be marked uptodate when the final block was written, and th=
+is
+>>>>> might be what the code above was trying to do. =A0It wasn't doing=
+ it
+>>>>> correctly :-), but it might have possibly avoided the extra read =
+when
+>>>>> it there was no error.
+>>>>>
+>>>>> I'll look at this some more, and see if I can't test for your sce=
+nario
+>>>>> above. =A0Perhaps at least checking that all BHs in the page are =
+mapped
+>>>>> + uptodate =3D> SetPageUptodate would not be out of line.
+>>>>
+>>>> My testing is now showing the read coming through after writing to=
+ the
+>>>> 4 blocks of a 4K file, using 1K blocksize.
+>>>
+>>> Sorry, but could you please clarify? =A0Does "read coming through" =
+mean that there is an IO sent to the disk, or that the page is uptodate=
+ and the read is handled from the page cache?
+>>
+>> Wow, even I don't understand what I wrote above...
+>>
+>> What I meant to write was: =A0In my experiments, I do *not* see a re=
+ad
+>> going down to disk after the writes for the individual blocks. =A0I
+>> basically did this:
+>>
+>> ---------------------------
+>> dd if=3D/dev/zero of=3Dbar bs=3D1k count=3D1 seek=3D3 conv=3Dnotrunc
+>> dd if=3D/dev/zero of=3Dbar bs=3D1k count=3D1 seek=3D0 conv=3Dnotrunc
+>> dd if=3D/dev/zero of=3Dbar bs=3D1k count=3D1 seek=3D1 conv=3Dnotrunc
+>> dd if=3D/dev/zero of=3Dbar bs=3D1k count=3D1 seek=3D2 conv=3Dnotrunc
+>>
+>> sync
+> try to evict all cache pages
+> echo 1 > proc/sys/vm/drop_caches
 
-With sqlite I can currently produce ~10.000.000 commits in one hour with a program that does nothing else.
-I doubt that it is possible to have an overflow in such a short time that we are observing.
-Maybe the __log_start_commit commit call comes with a corrupt target id from elsewhere. But your patch will catch that, too.
+But this won't prove anything.  Andreas was worried about an
+extraneous read from disk when the page in the page cache was in fact
+up to date.  If we evict the page cache, then we *better* read from
+disk...
 
-Cheers,
-Martin
+Curt
 
------Original Message-----
-From: Ted Ts'o [mailto:tytso@mit.edu] 
-Sent: Dienstag, 26. April 2011 14:24
-To: Zielinski, Martin
-Cc: linux-ext4@vger.kernel.org
-Subject: Re: 2.6.32 ext3 assertion j_running_transaction != NULL fails in commit.c
-
-On Tue, Apr 26, 2011 at 04:07:11AM -0500, Martin_Zielinski@mcafee.com wrote:
-> Ted!
-> Thank you a lot!
-> We observed this bug on ~10 out of 40 machines after an uptime from about 3 weeks. All run under comparable conditions.
-> I will have a closer look on the debugfs output to verify if the situation can  happen within this short time range. Additionally we installed a crash kernel and I changed the BUG into a panic(). 
-> So I will be able to look at the journal structure if this happens again.
-
-If you would be willing to install the debugging code that is in the
-jbd2 patch into the jbd patch, and this put this on your production
-machines, that would be really great.  I can send you a revised jbd
-patch if that would help (the debugging in code in jbd2 should move
-over to the jbd patch really simply).
-
-							- Ted
+>
+>>
+>> dd if=3Dbar of=3Dfoo bs=3D1k count=3D4
+>> ---------------------------
+>>
+>>>
+>>>> =A0And it seems to me that
+>>>> this is taken care of in __block_commit_write(), which is called f=
+rom
+>>>> all the .write_end callbacks for ext4, at least.
+>>>
+>>> It does indeed look like that should be handling this case. =A0It w=
+ould be good to verify that this is still true with your patch, just in=
+ case theory and reality don't align.
+>>
+>> I see the same *non-read from disk* with 1k blocks both with my patc=
+h,
+>> and with a vanilla kernel.
+>>
+>> Thanks,
+>> Curt
+>>
+>>>
+>>> Cheers, Andreas
+>>>
+>>>
+>>>
+>>>
+>>>
+>>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4=
+" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>>
+>
+>
+>
+> --
+> Best Wishes
+> Yongqiang Yang
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
