@@ -1,105 +1,100 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: 2.6.32 ext3 assertion j_running_transaction != NULL fails in
- commit.c
-Date: Tue, 26 Apr 2011 13:20:57 -0400
-Message-ID: <20110426172057.GH9486@thunk.org>
-References: <BCB84D936723884B91E4CC5CA0A7C54AA4F6D082BE@EMEADALEXMB1.corp.nai.org>
- <20110425231454.GB9486@thunk.org>
- <BCB84D936723884B91E4CC5CA0A7C54AA4F6D08501@EMEADALEXMB1.corp.nai.org>
- <20110426122338.GE9486@thunk.org>
- <BCB84D936723884B91E4CC5CA0A7C54AA4F6D085B8@EMEADALEXMB1.corp.nai.org>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: Need of revoke mechanism in JBD
+Date: Tue, 26 Apr 2011 11:27:20 -0600
+Message-ID: <05811D05-1E14-4EA9-B9A4-BA4DD5B1D986@dilger.ca>
+References: <4DB68257.4070407@gmail.com> <BANLkTikuNB8m3-X8BXVcL2OCqQiZwRCbQA@mail.gmail.com> <BANLkTikV4nU4Zc4OxNa6q8wDtM7cLUF_ig@mail.gmail.com> <4DB6A2B0.7050708@gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Martin_Zielinski@mcafee.com
+Content-Transfer-Encoding: 8BIT
+Cc: Ding Dinghua <dingdinghua85@gmail.com>,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	linux-ext4@vger.kernel.org
+To: Niraj Kulkarni <kulkarniniraj14@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38240 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751544Ab1DZRVB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Apr 2011 13:21:01 -0400
-Content-Disposition: inline
-In-Reply-To: <BCB84D936723884B91E4CC5CA0A7C54AA4F6D085B8@EMEADALEXMB1.corp.nai.org>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:47096 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757637Ab1DZR1W convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Apr 2011 13:27:22 -0400
+In-Reply-To: <4DB6A2B0.7050708@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 26, 2011 at 07:45:33AM -0500, Martin_Zielinski@mcafee.com wrote:
+On 2011-04-26, at 4:47 AM, Niraj Kulkarni wrote:
+> If I am thinking correctly, journal would be checkpointed  on
+> filesystem unmount calls.
+> This implies the given scenario would be pretty rare.
+> 
+> ie first filesystem should be mounted in full-journal mode, and
+> crashed prior to checkpoint.
+> then it should be remounted in no-journalled-data mode without
+> recovery and again remounted in full journalled mode with recovery.
 
-> I will port the jbd2 debugging code to jbd an will try to get the
-> new kernel into production.  After a reboot we will have to wait
-> several weeks. (Strange: all machines failed within 72 hours).
+It shouldn't be possible to mount the filesystem in no-journal mode
+without doing journal recovery.  The filesystem sets an INCOMPAT_RECOVER
+flag when the journal has any transactions in it, and the journal should
+be replayed before the filesystem is finished mounting.
 
-Great, thanks.
+Looking at ext4_fill_super() the "noload" mount option is used to avoid
+loading the journal even if there is a journal (COMPAT_HAS_JOURNAL is set),
+but if INCOMPAT_RECOVER is set the filesystem will refuse to mount.
 
-> With sqlite I can currently produce ~10.000.000 commits in one hour
-> with a program that does nothing else.  I doubt that it is possible
-> to have an overflow in such a short time that we are observing.
-> Maybe the __log_start_commit commit call comes with a corrupt target
-> id from elsewhere. But your patch will catch that, too.
 
-Agreed; that's why I don't really believe the wraparound theory.  For
-your convenience, this is the revised (cleaned up) patch for the
-ext3/jbd (it just cleans up how we print the warning).
+> On Tuesday 26 April 2011 02:53 PM, Ding Dinghua wrote:
+>> I think it's not only a performance issue but more important, a
+>> correctness issue.
+>> Revoke table is used for preventing the wrong replay of journal which
+>> cause data corruption:
+>> If block A has been journalled its modification, committed to journal
+>> and hasn't been checkpointed,
+>> and in later transactions block A is freed and reused for data in
+>> no-journalled-data mode, then If
+>> we don't have revoke table which recording the releasing event, replay
+>> of journal will overwrite the new data,
+>> which causing data corruption.
+>> 
+>> 2011/4/26 Yongqiang Yang<xiaoqiangnk@gmail.com>:
+>>> AFAIK, it can accelerate the recovering process.  If a block is in the
+>>> revoke table of a transaction t1 and t1 is committed, then the there
+>>> is no need to recover the block in transactions which is earlier than
+>>> t1.
+>>> 
+>>> On Tue, Apr 26, 2011 at 4:29 PM, Niraj Kulkarni
+>>> <kulkarniniraj14@gmail.com>  wrote:
+>>>> Hi all,
+>>>>      I am new to fs development. I am trying to modify the journal structure
+>>>> of JBD. While analyzing the code, I could understand most of the things, but
+>>>> I am not able to understand the need of revoke mechanism. Can anybody
+>>>> enlighten me on this issue?
+>>>> 
+>>>> Regards
+>>>> Niraj
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>> 
+>>> 
+>>> 
+>>> --
+>>> Best Wishes
+>>> Yongqiang Yang
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>> 
+>> 
+>> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-						- Ted
 
-commit 4ea00445c7f5d3dfa6219262598a2a8319df07c7
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Tue Apr 26 13:14:55 2011 -0400
+Cheers, Andreas
 
-    jbd: fix fsync() tid wraparound bug
-    
-    If an application program does not make any changes to the indirect
-    blocks or extent tree, i_datasync_tid will not get updated.  If there
-    are enough commits (i.e., 2**31) such that tid_geq()'s calculations
-    wrap, and there isn't a currently active transaction at the time of
-    the fdatasync() call, this can end up triggering a BUG_ON in
-    fs/jbd/commit.c:
-    
-    	J_ASSERT(journal->j_running_transaction != NULL);
-    
-    It's pretty rare that this can happen, since it requires the use of
-    fdatasync() plus *very* frequent and excessive use of fsync().  But
-    with the right workload, it can.
-    
-    We fix this by replacing the use of tid_geq() with an equality test,
-    since there's only one valid transaction id that we is valid for us to
-    wait until it is commited: namely, the currently running transaction
-    (if it exists).
-    
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-index b3713af..1b71ce6 100644
---- a/fs/jbd/journal.c
-+++ b/fs/jbd/journal.c
-@@ -437,9 +437,12 @@ int __log_space_left(journal_t *journal)
- int __log_start_commit(journal_t *journal, tid_t target)
- {
- 	/*
--	 * Are we already doing a recent enough commit?
-+	 * The only transaction we can possibly wait upon is the
-+	 * currently running transaction (if it exists).  Otherwise,
-+	 * the target tid must be an old one.
- 	 */
--	if (!tid_geq(journal->j_commit_request, target)) {
-+	if (journal->j_running_transaction &&
-+	    journal->j_running_transaction->t_tid == target) {
- 		/*
- 		 * We want a new commit: OK, mark the request and wakeup the
- 		 * commit thread.  We do _not_ do the commit ourselves.
-@@ -451,7 +454,14 @@ int __log_start_commit(journal_t *journal, tid_t target)
- 			  journal->j_commit_sequence);
- 		wake_up(&journal->j_wait_commit);
- 		return 1;
--	}
-+	} else if (!tid_geq(journal->j_commit_request, target))
-+		/* This should never happen, but if it does, preserve
-+		   the evidence before kjournald goes into a loop and
-+		   increments j_commit_sequence beyond all recognition. */
-+		WARN(1, "jbd: bad log_start_commit: %u %u %u %u\n",
-+		     journal->j_commit_request, journal->j_commit_sequence,
-+		     target, journal->j_running_transaction ? 
-+		     journal->j_running_transaction->t_tid : 0);
- 	return 0;
- }
- 
+
+
+
