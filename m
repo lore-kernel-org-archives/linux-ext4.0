@@ -1,155 +1,105 @@
-From: Dan Magenheimer <dan.magenheimer@oracle.com>
-Subject: RE: [PATCH V8 4/8] mm/fs: add hooks to support cleancache
-Date: Tue, 26 Apr 2011 09:00:44 -0700 (PDT)
-Message-ID: <e721b63e-5854-468b-bacb-3c7a75ee4321@default>
-References: <83ef8b69-f041-43e6-a5a9-880ff3da26f2@default>
- <871v135xvj.fsf@devron.myhome.or.jp>
- <040a7fa3-14dd-4960-a296-cfdd061e015f@default
- BANLkTikDQ_PuYPJEZRX_24uUi1DYWbvpzQ@mail.gmail.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: 2.6.32 ext3 assertion j_running_transaction != NULL fails in
+ commit.c
+Date: Tue, 26 Apr 2011 13:20:57 -0400
+Message-ID: <20110426172057.GH9486@thunk.org>
+References: <BCB84D936723884B91E4CC5CA0A7C54AA4F6D082BE@EMEADALEXMB1.corp.nai.org>
+ <20110425231454.GB9486@thunk.org>
+ <BCB84D936723884B91E4CC5CA0A7C54AA4F6D08501@EMEADALEXMB1.corp.nai.org>
+ <20110426122338.GE9486@thunk.org>
+ <BCB84D936723884B91E4CC5CA0A7C54AA4F6D085B8@EMEADALEXMB1.corp.nai.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Cc: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-        Andrew Morton
- <akpm@linux-foundation.org>,
-        Chris Mason <chris.mason@oracle.com>, viro@zeniv.linux.org.uk,
-        adilger.kernel@dilger.ca, tytso@mit.edu, mfasheh@suse.com,
-        jlbec@evilplan.org, matthew@wil.cx, linux-btrfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
-        linux-mm@kvack.org, hch@infradead.org, ngupta@vflare.org,
-        jeremy@goop.org, JBeulich@novell.com,
-        Kurt Hackel
- <kurt.hackel@oracle.com>, npiggin@kernel.dk,
-        Dave Mccracken
- <dave.mccracken@oracle.com>, riel@redhat.com,
-        avi@redhat.com, Konrad Wilk
- <konrad.wilk@oracle.com>, mel@csn.ul.ie,
-        yinghan@google.com, gthelen@google.com, torvalds@linux-foundation.org
-To: Minchan Kim <minchan.kim@gmail.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <BANLkTikDQ_PuYPJEZRX_24uUi1DYWbvpzQ@mail.gmail.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Martin_Zielinski@mcafee.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:38240 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751544Ab1DZRVB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Apr 2011 13:21:01 -0400
+Content-Disposition: inline
+In-Reply-To: <BCB84D936723884B91E4CC5CA0A7C54AA4F6D085B8@EMEADALEXMB1.corp.nai.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> From: Minchan Kim [mailto:minchan.kim@gmail.com]
-> On Sat, Apr 16, 2011 at 3:53 AM, Dan Magenheimer
-> <dan.magenheimer@oracle.com> wrote:
-> >> From: OGAWA Hirofumi [mailto:hirofumi@mail.parknet.co.jp]
-> >>
-> >> Andrew Morton <akpm@linux-foundation.org> writes:
-> >>
-> > Andrew, I wonder if you would be so kind as to read the following
-> > and make a "ruling". =C2=A0If you determine a preferable set of names,
-> > I will abide by your decision and repost (if necessary).
-> >
-> > The problem is this: The English language has a limited number
-> > of words that can be used to represent data motion and mapping
-> > and most/all of them are already used in the kernel, often,
-> > to quote Andrew, "in confusing ways." =C2=A0Complicating this, I
-> > think the semantics of the cleancache operations are different
-> > from the semantics of any other kernel operation... intentionally
-> > so, because the value of cleancache is a direct result of those
-> > differing semantics. =C2=A0And the cleancache semantics
-> > are fairly complex (again intentionally) so a single function
-> > name can't possibly describe the semantics.
-> >
-> > The cleancache operations are:
-> > - put (page)
-> > - get (page)
-> > - flush page
-> > - flush inode
-> > - init fs
-> > - flush fs
-> >
-> > I think these names are reasonable representations of the
-> > semantics of the operations performed... but I'm not a kernel
-> > expert so there is certainly room for disagreement. =C2=A0Though I
-> > absolutely recognize the importance of a "name", I am primarily
-> > interested in merging the semantics of the operations and
-> > would happily accept any name that kernel developers could
-> > agree on. =C2=A0However, I fear that there will be NO name that
-> > will satisfy all, so would prefer to keep the existing names.
-> > If some renaming is eventually agreed upon, this could be done
-> > post-merge.
-> >
-> > Here's a brief description of the semantics:
-> >     :
-> >  <semantics for other operations elided>
-> >     :
-> > The cleancache operation currently known as "get" has the
-> > following semantics: =C2=A0Derive the filesystem-determined handle
-> > from this struct page. =C2=A0If cleancache contains a page matching
-> > that handle, recreate the page of data from cleancache and
-> > place the results in the pageframe referred to by the
-> > struct page. =C2=A0Then delete in cleancache any record of the
-> > handle and any data associated with it, so that a
-> > subsequent "get" will no longer find a match for the handle;
-> > any space used for the data can also be freed.
-> >     :
-> >  <semantics for other operations elided>
-> >     :
->=20
-> At least, I didn't confused your semantics except just flush. That's
-> why I suggested only flush but after seeing your explaining, there is
-> another thing I want to change. The get/put is common semantic of
-> reference counting in kernel but in POV your semantics, it makes sense
-> to me but get has a exclusive semantic so I want to represent it with
-> API name. Maybe cleancache_get_page_exclusive.
->=20
-> The summary is that I don't want to change all API name. Just two
-> thing.
-> (I am not sure you and others agree on me. It's just suggestion).
->=20
-> 1. cleancache_flush_page -> cleancache_[invalidate|remove]_page
-> 2. cleancache_get_page -> cleancache_get_page_exclusive
->=20
+On Tue, Apr 26, 2011 at 07:45:33AM -0500, Martin_Zielinski@mcafee.com wrote:
 
-Hi Minchan --
+> I will port the jbd2 debugging code to jbd an will try to get the
+> new kernel into production.  After a reboot we will have to wait
+> several weeks. (Strange: all machines failed within 72 hours).
 
-Thanks for continuing to be interested in this and sorry for my
-delayed response.
+Great, thanks.
 
-Actually, your comment about "get_page_exclusive" points out an
-incompleteness in my description of the semantics for
-cleancache_get_page.
+> With sqlite I can currently produce ~10.000.000 commits in one hour
+> with a program that does nothing else.  I doubt that it is possible
+> to have an overflow in such a short time that we are observing.
+> Maybe the __log_start_commit commit call comes with a corrupt target
+> id from elsewhere. But your patch will catch that, too.
 
-First, I forgot to list cleancache_init_shared_fs, which is
-the equivalent of cleancache_init_fs but used for clustered
-filesystems.  (Support is included in the patch for ocfs2 but
-I haven't played with it in quite some time and my focus has
-been on the other filesystems, so it slipped my mind :-}
+Agreed; that's why I don't really believe the wraparound theory.  For
+your convenience, this is the revised (cleaned up) patch for the
+ext3/jbd (it just cleans up how we print the warning).
 
-The cleancache_get_page operation has a slightly different semantics
-depending on which of the init_fs calls was used.  However, the
-location of the cleancache_get_page hook is the same regardless
-of the fs, so the name of the operation must represent both
-semantics.  In the case of init_fs (non-shared), the behavior
-of cleancache_get_page is that the get is "destructive"; the page
-is removed from cleancache on a successful get.  In the case of
-a init_shared_fs, however, the get is "non-destructive"; the
-page is NOT removed from cleancache.  When cleancache contains
-pages from multiple kernels (e.g. Xen guests or different machines
-in a RAMster cluster), this semantic difference can make a big
-performance difference for a clustered filesystem.  Since zcache
-only contains pages for a single kernel, the difference is moot.
+						- Ted
 
-Because of this, I am hesitant to add "exclusive" to the
-end of the name of the operation.
+commit 4ea00445c7f5d3dfa6219262598a2a8319df07c7
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Tue Apr 26 13:14:55 2011 -0400
 
-> BTW, Nice description.
-> Please include it in documentation if we can't reach the conclusion.
-> It will help others to understand semantic of cleancache.
+    jbd: fix fsync() tid wraparound bug
+    
+    If an application program does not make any changes to the indirect
+    blocks or extent tree, i_datasync_tid will not get updated.  If there
+    are enough commits (i.e., 2**31) such that tid_geq()'s calculations
+    wrap, and there isn't a currently active transaction at the time of
+    the fdatasync() call, this can end up triggering a BUG_ON in
+    fs/jbd/commit.c:
+    
+    	J_ASSERT(journal->j_running_transaction != NULL);
+    
+    It's pretty rare that this can happen, since it requires the use of
+    fdatasync() plus *very* frequent and excessive use of fsync().  But
+    with the right workload, it can.
+    
+    We fix this by replacing the use of tid_geq() with an equality test,
+    since there's only one valid transaction id that we is valid for us to
+    wait until it is commited: namely, the currently running transaction
+    (if it exists).
+    
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-Thanks!  Nearly all of the description already exists in various
-places in the patch but I agree that it would be good if I add
-a new section to the Documentation file with the exact semantics.
-
-Dan
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+index b3713af..1b71ce6 100644
+--- a/fs/jbd/journal.c
++++ b/fs/jbd/journal.c
+@@ -437,9 +437,12 @@ int __log_space_left(journal_t *journal)
+ int __log_start_commit(journal_t *journal, tid_t target)
+ {
+ 	/*
+-	 * Are we already doing a recent enough commit?
++	 * The only transaction we can possibly wait upon is the
++	 * currently running transaction (if it exists).  Otherwise,
++	 * the target tid must be an old one.
+ 	 */
+-	if (!tid_geq(journal->j_commit_request, target)) {
++	if (journal->j_running_transaction &&
++	    journal->j_running_transaction->t_tid == target) {
+ 		/*
+ 		 * We want a new commit: OK, mark the request and wakeup the
+ 		 * commit thread.  We do _not_ do the commit ourselves.
+@@ -451,7 +454,14 @@ int __log_start_commit(journal_t *journal, tid_t target)
+ 			  journal->j_commit_sequence);
+ 		wake_up(&journal->j_wait_commit);
+ 		return 1;
+-	}
++	} else if (!tid_geq(journal->j_commit_request, target))
++		/* This should never happen, but if it does, preserve
++		   the evidence before kjournald goes into a loop and
++		   increments j_commit_sequence beyond all recognition. */
++		WARN(1, "jbd: bad log_start_commit: %u %u %u %u\n",
++		     journal->j_commit_request, journal->j_commit_sequence,
++		     target, journal->j_running_transaction ? 
++		     journal->j_running_transaction->t_tid : 0);
+ 	return 0;
+ }
+ 
