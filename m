@@ -1,58 +1,91 @@
-From: Colin Ian King <colin.king.lkml@gmail.com>
-Subject: Re: [BUG] fatal hang untarring 90GB file, possibly writeback
- related.
-Date: Thu, 28 Apr 2011 12:36:30 +0100
-Message-ID: <1303990590.2081.9.camel@lenovo>
-References: <1303920553.2583.7.camel@mulgrave.site>
-	 <1303921583-sup-4021@think> <1303923000.2583.8.camel@mulgrave.site>
-	 <1303923177-sup-2603@think> <1303924902.2583.13.camel@mulgrave.site>
-	 <1303925374-sup-7968@think>  <1303926637.2583.17.camel@mulgrave.site>
-	 <1303934716.2583.22.camel@mulgrave.site>
-Reply-To: colin.king@canonical.com
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [Ext4 punch hole 1/6 v5] Ext4 Punch Hole Support: Add flag to
+ ext4_has_free_blocks
+Date: Thu, 28 Apr 2011 14:08:59 +0200
+Message-ID: <20110428120859.GA1696@quack.suse.cz>
+References: <4DAD3C98.3050308@linux.vnet.ibm.com>
+ <BANLkTi=1PEcextZ03RXXHixzHtav1m2tfQ@mail.gmail.com>
+ <BANLkTi=kX8Roeq1oDUqqYp76ihNfsrLKSg@mail.gmail.com>
+ <BANLkTinPejmzuWukBLFj__NDdAoq+uwphg@mail.gmail.com>
+ <4DB88012.8010305@linux.vnet.ibm.com>
+ <BANLkTinb9MpjMRAoOhUi-TG1zJVJKkm19g@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Chris Mason <chris.mason@oracle.com>, linux-fsdevel
- <linux-fsdevel@vger.kernel.org>, linux-mm <linux-mm@kvack.org>,
- linux-kernel <linux-kernel@vger.kernel.org>, linux-ext4
- <linux-ext4@vger.kernel.org>
-To: James Bottomley <James.Bottomley@suse.de>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1303934716.2583.22.camel@mulgrave.site>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	linux-ext4@vger.kernel.org, Mingming Cao <cmm@us.ibm.com>,
+	Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	Eric Sandeen <sandeen@redhat.com>
+To: Amir Goldstein <amir73il@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:39508 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751541Ab1D1MJC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 Apr 2011 08:09:02 -0400
+Content-Disposition: inline
+In-Reply-To: <BANLkTinb9MpjMRAoOhUi-TG1zJVJKkm19g@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-One more data point to add, I've been looking at an identical issue when
-copying large amounts of data.  I bisected this - and the lockups occur
-with commit 
-3e7d344970673c5334cf7b5bb27c8c0942b06126 - before that I don't see the
-issue. With this commit, my file copy test locks up after ~8-10
-iterations, before this commit I can copy > 100 times and don't see the
-lockup.
+On Thu 28-04-11 09:28:53, Amir Goldstein wrote:
+> On Wed, Apr 27, 2011 at 11:44 PM, Allison Henderson
+> <achender@linux.vnet.ibm.com> wrote:
+> > On 4/25/2011 10:44 AM, Amir Goldstein wrote:
+> > Hi All,
+> >
+> > I did some looking around with the idea of using an allocation_requ=
+est
+> > instead of a flags parameter, but I noticed that ext4_new_meta_bloc=
+ks is
+> > already setting up an allocation_request to pass to ext4_mb_new_blo=
+cks.
+> > =A0Would it make sense then that we add an "ar_flags" parameter ins=
+tead of a
+> > "flag" or another "ar" parameter? =A0That way, ext4_new_meta_blocks=
+ can just
+> > add the flags to the ar that it already has, and we wouldn't have t=
+o change
+> > the ext4_mb_new_blocks parameters. =A0And then USE_ROOTBLKS can be =
+added on to
+> > the EXT4_MB_HINT scheme instead of starting a new scheme. =A0That w=
+ould avoid
+> > the extra ar initializing. What does everybody think? =A0Would this=
+ work for
+> > the HINT_COWING flag?
+>=20
+> I think this would be perfect.
+> ext4_new_meta_blocks() is not much more than a helper to setup the ar=
+ struct,
+> so passing 'flags' (in that context I see no reason to call it
+> ar_flags) to it makes sense.
+> The important thing is that USE_ROOTBLKS is added to the EXT4_MB_HINT=
+ scheme
+> and passed all the way down to has_free_blocks with the 'ar' struct.
+>=20
+> This discussion makes me wonder (CC'ing Jan and Eric for that), wasn'=
+t
+> there ever an intention
+> to allow the use of reserved space for allocation of any metadata blo=
+cks?
+  Not that I know of.
 
-On Wed, 2011-04-27 at 15:05 -0500, James Bottomley wrote:
-> On Wed, 2011-04-27 at 12:50 -0500, James Bottomley wrote:
-> > To test the theory, Chris asked me to try with data=ordered.
-> > Unfortunately, the deadlock still shows up.  This is what I get.
-> 
-> As another data point: I'm trying the same kernel with CONFIG_PREEMPT
-> enabled.  This time the deadlock doesn't happen.  Instead, kswapd0 gets
-> pegged at 99% CPU for much of the untar, but it does eventually
-> complete.
-> 
-> James
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
+> The use case is delayed allocation combined with async mmap writes.
+> Do we always account for enough metadata blocks when doing delayed al=
+location?
+> Both for extent and indirect mapped files?
+  Yes, both should make appropriate upper estimates on the number of ne=
+eded
+blocks and reserve that amount. With indirect blocks it's kind of trick=
+y
+but the code should be correct.
 
-
+								Honza
+--=20
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
 --
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
