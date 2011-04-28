@@ -1,65 +1,83 @@
-From: Mike Snitzer <snitzer@redhat.com>
-Subject: do not disable ext4 discards on first discard failure? [was: Re: dm
- snapshot: ignore discards issued to the snapshot-origin target]
-Date: Thu, 28 Apr 2011 16:59:36 -0400
-Message-ID: <20110428205935.GA24979@redhat.com>
-References: <20110412234706.GA11244@redhat.com>
- <20cf301cbef67d323104a0c2ff52@google.com>
- <20110413224025.GA18589@redhat.com>
- <20110413234854.GA19793@redhat.com>
- <20110426173213.GA19604@redhat.com>
- <20110428001912.GA14659@redhat.com>
- <20110428075355.GA2190@infradead.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Strange behavior when attempting to convert a file to extents
+ using chattr
+Date: Thu, 28 Apr 2011 16:05:12 -0500
+Message-ID: <4DB9D688.3080905@redhat.com>
+References: <BANLkTikHomLCTM307W0ergoOX8PH5x_JBA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: dm-devel@redhat.com, DarkNovaNick@gmail.com, linux-lvm@redhat.com,
-	sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Peter Uchno <peter.uchno@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:14893 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:32602 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932595Ab1D1U7u (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Apr 2011 16:59:50 -0400
-Content-Disposition: inline
-In-Reply-To: <20110428075355.GA2190@infradead.org>
+	id S1751149Ab1D1VFP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 Apr 2011 17:05:15 -0400
+In-Reply-To: <BANLkTikHomLCTM307W0ergoOX8PH5x_JBA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-[cc'ing linux-ext4]
-
-On Thu, Apr 28 2011 at  3:53am -0400,
-Christoph Hellwig <hch@infradead.org> wrote:
-
-> On Wed, Apr 27, 2011 at 08:19:13PM -0400, Mike Snitzer wrote:
-> > Discards pose a problem for the snapshot-origin target because they are
-> > treated as writes.  Treating a discard as a write would trigger a
-> > copyout to the snapshot.  Such copyout can prove too costly in the face
-> > of otherwise benign scenarios (e.g. create a snapshot and then mkfs.ext4
-> > the origin -- mkfs.ext4 discards the entire volume by default, which
-> > would copyout the entire origin volume to the snapshot).
+On 4/28/11 3:14 PM, Peter Uchno wrote:
+> Hello,
+> I recently converted an ext3 filesystem to ext4 in the hopes of
+> performance increases. However, I ran into a snag:
 > 
-> You also need to make sure that we don't claim discard_zeroes_data for
-> the origin volume in this case.  Especially as ext4 started to rely
-> on this actually working (very bad idea IMHO, but that's another story)
+> In theory, chattr can be used to convert a file to extents using
+> "chattr +e foo". However, on my system (Archlinux, kernel 2.6.37.4),
+> the behavior of this command is unexpected. Given a file baz created
+> when the filesystem was still ext3 (and thus not using extents),
+> "chattr +e baz" returns zero but "lsattr baz" reveals the file is not
+> using extents. Run "chattr +e baz" a second time, the same thing
+> happens. A third time, however, it comes back with:
+>     "chattr: Input/output error while setting flags on baz"
+> and an error in the kernel log:
+>     attempt to access beyond end of device
+>     loop1: rw=0, want=204802, limit=204800
+> The file is still not using extents and remounting the filesystem
+> doesn't seem to change much. Running e2fsck on the filesystem after
+> unmounting it comes back with some errors. Letting it fix them and
+> then mounting the FS up again shows that the file is now using
+> extents.
+> I attempted this on an Arch system with both kernels 2.6.37.4 and
+> 2.6.38.4 and was able to recreate it by creating a small loopback
+> filesystem using dd, making a few files on it, converting the FS to
+> ext4 using "tune2fs -O extents,uninit_bg,dir_index /tmp/fs.ext; e2fsck
+> -fDC0 /tmp/fs.ext", and then mounting it again as ext4 and attempting
+> the conversion to extents with chattr. However, on a debian system
+> with kernel 2.6.32.5, it works as intended (chattr +e bar; lsattr bar
+> reveals the file converted to extents). I ran strace on the chattr
+> command on the Arch system and came up with the following:
+> 
+> http://pastebin.com/EpwhLF3t
+> for the first attempt at running the command;
+> http://pastebin.com/qB7DiDgF
+> for the second try; and
+> http://pastebin.com/jjAdPtBr
+> for the final attempt.
+> 
+> After doing so, running e2fsck on the filesystem revealed the following:
+> 
+> http://pastebin.com/83q60Wik
+> 
+> And after mounting the filesystem again, the file is now using extents.
+> 
+> My kernel config, if it is of interest, is at:
+> http://pastebin.com/uk1Hs53P
+> 
+> I'm using e2fsprogs 1.41.14. The Debian system (where it works
+> normally) has e2fsprogs 1.41.12.
+> 
+> I'm not sure what would cause the filesystem to behave in this
+> fashion. Does anyone have any insights?
 
-Eric Sandeen helped me see that having the DM snapshot-origin target
-return success but actually ignore discards is just bad form.
+I can't speak directly to the problem because I haven't investigated, but I can tell you that chattr +e foo is probably almost never tested.
 
-Especially when you consider that this exercise was motivated by the
-fact that ext4 will disable discards on the first discard failure, see:
-http://www.redhat.com/archives/dm-devel/2011-April/msg00070.html
+If any other ext4 dev does test it, speak up. :)
 
-Eric and I think it is best to revert this commit:
-a30eec2 ext4: stop issuing discards if not supported by device
+And I would strongly suggest that if you want an ext4 filesystem, mkfs.ext4 and migratind data to it is the best route to a consistent, featureful, well-tested setup.
 
-(though ideally ext4 would still WARN_ONCE per superblock with something
- like: "discard failed, please consider disabling discard support")
+-Eric
 
-1) The user asked for discards (with '-o discard' mount option)
-   - what is the real harm in coninuing to issue them even if it _seems_
-     they aren't supported?
-2) assuming the entire block device uniformly supports discards can
-   be flawed (a DM device's discard support can vary based on logical
-   offset).
-
-Thoughts?
+> Regards,
+> Peter
