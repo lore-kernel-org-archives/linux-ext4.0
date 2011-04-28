@@ -1,143 +1,71 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: [PATCH RFC v1 0/5]Factor common code from convert and split unwritten.
-Date: Thu, 28 Apr 2011 12:51:19 -0700
-Message-ID: <4DB9C537.9060100@linux.vnet.ibm.com>
-References: <1303548259-28311-1-git-send-email-xiaoqiangnk@gmail.com> <4DB71844.5030103@linux.vnet.ibm.com> <BANLkTi=7VsvPGztFtAOFh5trGZ0dHH7rWQ@mail.gmail.com> <4DB7B8F7.9020306@linux.vnet.ibm.com> <BANLkTikWzUgmiRQ6_g+UKjbB5QNSBDnRog@mail.gmail.com>
+From: James Bottomley <James.Bottomley@suse.de>
+Subject: Re: [BUG] fatal hang untarring 90GB file, possibly writeback
+ related.
+Date: Thu, 28 Apr 2011 14:59:27 -0500
+Message-ID: <1304020767.2598.21.camel@mulgrave.site>
+References: <1303990590.2081.9.camel@lenovo>
+	 <20110428135228.GC1696@quack.suse.cz> <20110428140725.GX4658@suse.de>
+	 <1304000714.2598.0.camel@mulgrave.site> <20110428150827.GY4658@suse.de>
+	 <1304006499.2598.5.camel@mulgrave.site>
+	 <1304009438.2598.9.camel@mulgrave.site>
+	 <1304009778.2598.10.camel@mulgrave.site> <20110428171826.GZ4658@suse.de>
+	 <1304015436.2598.19.camel@mulgrave.site>  <20110428192104.GA4658@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, cmm@us.ibm.com
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:35849 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756370Ab1D1Tvd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Apr 2011 15:51:33 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e34.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p3SJdD1L023453
-	for <linux-ext4@vger.kernel.org>; Thu, 28 Apr 2011 13:39:13 -0600
-Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id p3SJpQwV156014
-	for <linux-ext4@vger.kernel.org>; Thu, 28 Apr 2011 13:51:27 -0600
-Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av04.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p3SJpNQ8001284
-	for <linux-ext4@vger.kernel.org>; Thu, 28 Apr 2011 13:51:25 -0600
-In-Reply-To: <BANLkTikWzUgmiRQ6_g+UKjbB5QNSBDnRog@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Jan Kara <jack@suse.cz>, colin.king@canonical.com,
+	Chris Mason <chris.mason@oracle.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-mm <linux-mm@kvack.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>, mgorman@novell.com
+To: Mel Gorman <mgorman@suse.de>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20110428192104.GA4658@suse.de>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 4/27/2011 11:05 PM, Yongqiang Yang wrote:
-> Hi Allison,
->
-> Could you send punch hole patch and fsx(if you modified it) to me?  I
-> can not reproduce the bug on my system without punch hole.
->
-> Thank you,
-> Yongqiang.
->
+On Thu, 2011-04-28 at 20:21 +0100, Mel Gorman wrote:
+> On Thu, Apr 28, 2011 at 01:30:36PM -0500, James Bottomley wrote:
+> > > Way hey, cgroups are also in the mix. How jolly.
+> > > 
+> > > Is systemd a common element of the machines hitting this bug by any
+> > > chance?
+> > 
+> > Well, yes, the bug report is against FC15, which needs cgroups for
+> > systemd.
+> > 
+> 
+> Ok although we do not have direct evidence that it's the problem yet. A
+> broken shrinker could just mean we are also trying to aggressively
+> reclaim in cgroups.
+> 
+> > > The remaining traces seem to be follow-on damage related to the three
+> > > issues of "shrinkers are bust in some manner" causing "we are not
+> > > getting over the min watermark" and as a side-show "we are spending lots
+> > > of time doing something unspecified but unhelpful in cgroups".
+> > 
+> > Heh, well find a way for me to verify this: I can't turn off cgroups
+> > because systemd then won't work and the machine won't boot ...
+> > 
+> 
+> Same testcase, same kernel but a distro that is not using systemd to
+> verify if cgroups are the problem. Not ideal I know. When I'm back
+> online Tuesday, I'll try reproducing this on a !Fedora distribution. In
+> the meantime, the following untested hatchet job might spit out
+> which shrinker we are getting stuck in. It is also breaking out of
+> the shrink_slab loop so it'd even be interesting to see if the bug
+> is mitigated in any way.
 
-Sure, I have a patch for fsx to enable fallocate, and another patch that 
-adds punch hole to the test suite.  Right now I'm just working on
-  getting our patches through the fsx that only has fallocate enabled. 
-I thought it might be best if we work out all the bugs with that first 
-before we deal with the more complex tests.
+Actually, talking to Chris, I think I can get the system up using
+init=/bin/bash without systemd, so I can try the no cgroup config.
 
-Also, I have a debug patch that fits on top of the punch hole patch. 
-Initially I hadn't planned to send it out, but maybe it might help you 
-so I will include it too.
+> diff --git a/mm/vmscan.c b/mm/vmscan.c
+> index c74a501..ed99104 100644
 
-Allison Henderson
+In the mean time, this patch produces:
 
-> On Wed, Apr 27, 2011 at 2:34 PM, Allison Henderson
-> <achender@linux.vnet.ibm.com>  wrote:
->> On 4/26/2011 9:48 PM, Yongqiang Yang wrote:
->>>
->>> On Wed, Apr 27, 2011 at 3:08 AM, Allison Henderson
->>> <achender@linux.vnet.ibm.com>    wrote:
->>>>
->>>> On 4/23/2011 1:44 AM, Yongqiang Yang wrote:
->>>>>
->>>>> v0->v1:
->>>>>     fix a bug in ext4_ext_convert_to_initialized() reported by
->>>>>     Allison<achender@linux.vnet.ibm.com>.
->>>>>
->>>>>     optimize ext4_ext_convert_to_initialized().
->>>>>
->>>>> -- factor common code
->>>>>     These patches factor common code from
->>>>> ext4_ext_convert_to_initialized()
->>>>> and
->>>>>     ext4_split_unwritten_extents() so that extent-move-on-write in
->>>>> snapshot
->>>>> and
->>>>>     punch hole can be built on the common code.
->>>>>
->>>>> -- optimization
->>>>>     the 4th and the 5th patch optimize ext4_ext_convert_to_initialized()
->>>>> by
->>>>>     zeroing out in memory.
->>>>>
->>>>>
->>>>> [PATCH RFC v1 1/5] ext4:Add a function merging extent right and left.
->>>>> [PATCH RFC v1 2/5] ext4:Add two functions splitting an extent.
->>>>> [PATCH RFC v1 3/5] ext4:Reimplement convert and split_unwritten.
->>>>> [PATCH RFC v1 4/5] ext4: Add a function ext4_ext_zeroout_mem().
->>>>> [PATCH RFC v1 5/5] ext4: optimize ext4_ext_convert_to_initialized().
->>>>> --
->>>>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>
->>>> Hi there,
->>>>
->>>> Just an update on your patch set.  Im am working on getting the punch
->>>> hole
->>>> patch to work with this new set, but I'm am having trouble getting it
->>>> through the stress test.  It gets up to around 48265 file operations, and
->>>> then hangs. So I am currently trying to narrow down the problem.  It
->>>> looks
->>>> like it does it with or with out the extra punch hole patches, but you
->>>> may
->>>> need to enable fallocate in the fsx Makefile to recreate the problem.  I
->>>> will keep you posted if I find any more clues.
->>>
->>> Hi,
->>>
->>> Could you tell me how to get fsx?  I can not find that.
->>
->> Hi there,
->>
->> I believe you can find it in both xfstests and ltp.  The one I am using I
->> got from xfstests here:
->>
->> http://xfs.org/index.php/Getting_the_latest_source_code
->>
->> Once you have it configured and built, there is a sub folder called ltp.
->>   Execute this command from that folder:
->>
->> ./fsx -d -b 1 -N 100000 -S 1 /mnt/ext4MntPt/holePunch/testFile
->>
->> Where "/mnt/ext4MntPt/holePunch/testFile" is a file on an ext4 file system.
->>   It should then try to run through 100000 random file operations, but get
->> stuck on number 48256.
->>
->> If you do not see any fallocate operations running, you may have to go
->> enable it in the ltp/Makefile.  I had to change "ifeq ($(HAVE_FALLOCATE),
->> true)" to "ifeq ($(HAVE_FALLOCATE), yes)" to allow the extra fallocate code
->> to compile in.  Let me know if you have any trouble recreating the bug.
->>
->>>
->>> Thank you,
->>> Yongqiang.
->>>>
->>>> Allison Henderson
->>>>
->>>
->>>
->>>
->>
->>
->
->
->
+(that's nothing ... apparently the trace doesn't activate when kswapd
+goes mad).
 
+James
