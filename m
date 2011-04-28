@@ -1,91 +1,65 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [Ext4 punch hole 1/6 v5] Ext4 Punch Hole Support: Add flag to
- ext4_has_free_blocks
-Date: Thu, 28 Apr 2011 14:08:59 +0200
-Message-ID: <20110428120859.GA1696@quack.suse.cz>
-References: <4DAD3C98.3050308@linux.vnet.ibm.com>
- <BANLkTi=1PEcextZ03RXXHixzHtav1m2tfQ@mail.gmail.com>
- <BANLkTi=kX8Roeq1oDUqqYp76ihNfsrLKSg@mail.gmail.com>
- <BANLkTinPejmzuWukBLFj__NDdAoq+uwphg@mail.gmail.com>
- <4DB88012.8010305@linux.vnet.ibm.com>
- <BANLkTinb9MpjMRAoOhUi-TG1zJVJKkm19g@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	linux-ext4@vger.kernel.org, Mingming Cao <cmm@us.ibm.com>,
-	Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	Eric Sandeen <sandeen@redhat.com>
-To: Amir Goldstein <amir73il@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:39508 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751541Ab1D1MJC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Apr 2011 08:09:02 -0400
-Content-Disposition: inline
-In-Reply-To: <BANLkTinb9MpjMRAoOhUi-TG1zJVJKkm19g@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Chris Mason <chris.mason@oracle.com>
+Subject: Re: [BUG] fatal hang untarring 90GB file, possibly writeback related.
+Date: Thu, 28 Apr 2011 08:29:29 -0400
+Message-ID: <1303993705-sup-5213@think>
+References: <1303920553.2583.7.camel@mulgrave.site> <1303921583-sup-4021@think> <1303923000.2583.8.camel@mulgrave.site> <1303923177-sup-2603@think> <1303924902.2583.13.camel@mulgrave.site> <1303925374-sup-7968@think> <1303926637.2583.17.camel@mulgrave.site> <1303934716.2583.22.camel@mulgrave.site> <1303990590.2081.9.camel@lenovo>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+Cc: James Bottomley <james.bottomley@suse.de>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-mm <linux-mm@kvack.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>
+To: Colin Ian King <colin.king.lkml@gmail.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-reply-to: <1303990590.2081.9.camel@lenovo>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu 28-04-11 09:28:53, Amir Goldstein wrote:
-> On Wed, Apr 27, 2011 at 11:44 PM, Allison Henderson
-> <achender@linux.vnet.ibm.com> wrote:
-> > On 4/25/2011 10:44 AM, Amir Goldstein wrote:
-> > Hi All,
-> >
-> > I did some looking around with the idea of using an allocation_requ=
-est
-> > instead of a flags parameter, but I noticed that ext4_new_meta_bloc=
-ks is
-> > already setting up an allocation_request to pass to ext4_mb_new_blo=
-cks.
-> > =A0Would it make sense then that we add an "ar_flags" parameter ins=
-tead of a
-> > "flag" or another "ar" parameter? =A0That way, ext4_new_meta_blocks=
- can just
-> > add the flags to the ar that it already has, and we wouldn't have t=
-o change
-> > the ext4_mb_new_blocks parameters. =A0And then USE_ROOTBLKS can be =
-added on to
-> > the EXT4_MB_HINT scheme instead of starting a new scheme. =A0That w=
-ould avoid
-> > the extra ar initializing. What does everybody think? =A0Would this=
- work for
-> > the HINT_COWING flag?
->=20
-> I think this would be perfect.
-> ext4_new_meta_blocks() is not much more than a helper to setup the ar=
- struct,
-> so passing 'flags' (in that context I see no reason to call it
-> ar_flags) to it makes sense.
-> The important thing is that USE_ROOTBLKS is added to the EXT4_MB_HINT=
- scheme
-> and passed all the way down to has_free_blocks with the 'ar' struct.
->=20
-> This discussion makes me wonder (CC'ing Jan and Eric for that), wasn'=
-t
-> there ever an intention
-> to allow the use of reserved space for allocation of any metadata blo=
-cks?
-  Not that I know of.
-
-> The use case is delayed allocation combined with async mmap writes.
-> Do we always account for enough metadata blocks when doing delayed al=
-location?
-> Both for extent and indirect mapped files?
-  Yes, both should make appropriate upper estimates on the number of ne=
-eded
-blocks and reserve that amount. With indirect blocks it's kind of trick=
-y
-but the code should be correct.
-
-								Honza
---=20
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+Excerpts from Colin Ian King's message of 2011-04-28 07:36:30 -0400:
+> One more data point to add, I've been looking at an identical issue whe=
 n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> copying large amounts of data.  I bisected this - and the lockups occur
+> with commit=20
+> 3e7d344970673c5334cf7b5bb27c8c0942b06126 - before that I don't see the
+> issue. With this commit, my file copy test locks up after ~8-10
+> iterations, before this commit I can copy > 100 times and don't see the
+> lockup.
+
+Well, that's really interesting.  I tried with compaction on here and
+couldn't trigger it, but this (very very lightly) tested patch might
+help.
+
+It moves the writeout throttle before the goto restart, and also makes
+sure we do at least one cond_resched before we loop.
+
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 6771ea7..cb08b41 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -1934,12 +1934,14 @@ restart:
+ 	if (inactive_anon_is_low(zone, sc))
+ 		shrink_active_list(SWAP_CLUSTER_MAX, zone, sc, priority, 0);
+=20
++	throttle_vm_writeout(sc->gfp_mask);
++
+ 	/* reclaim/compaction might need reclaim to continue */
+ 	if (should_continue_reclaim(zone, nr_reclaimed,
+-					sc->nr_scanned - nr_scanned, sc))
++					sc->nr_scanned - nr_scanned, sc)) {
++		cond_resched();
+ 		goto restart;
+-
+-	throttle_vm_writeout(sc->gfp_mask);
++	}
+ }
+=20
+ /*
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter=
+.ca/
+Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
