@@ -1,79 +1,65 @@
-From: Mel Gorman <mgorman@suse.de>
-Subject: Re: [BUG] fatal hang untarring 90GB file, possibly writeback related.
-Date: Thu, 28 Apr 2011 21:27:01 +0100
-Message-ID: <20110428202701.GB4658@suse.de>
-References: <20110428140725.GX4658@suse.de>
- <1304000714.2598.0.camel@mulgrave.site>
- <20110428150827.GY4658@suse.de>
- <1304006499.2598.5.camel@mulgrave.site>
- <1304009438.2598.9.camel@mulgrave.site>
- <1304009778.2598.10.camel@mulgrave.site>
- <20110428171826.GZ4658@suse.de>
- <1304015436.2598.19.camel@mulgrave.site>
- <20110428192104.GA4658@suse.de>
- <1304020767.2598.21.camel@mulgrave.site>
+From: Mike Snitzer <snitzer@redhat.com>
+Subject: do not disable ext4 discards on first discard failure? [was: Re: dm
+ snapshot: ignore discards issued to the snapshot-origin target]
+Date: Thu, 28 Apr 2011 16:59:36 -0400
+Message-ID: <20110428205935.GA24979@redhat.com>
+References: <20110412234706.GA11244@redhat.com>
+ <20cf301cbef67d323104a0c2ff52@google.com>
+ <20110413224025.GA18589@redhat.com>
+ <20110413234854.GA19793@redhat.com>
+ <20110426173213.GA19604@redhat.com>
+ <20110428001912.GA14659@redhat.com>
+ <20110428075355.GA2190@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: Jan Kara <jack@suse.cz>, colin.king@canonical.com,
-	Chris Mason <chris.mason@oracle.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-mm <linux-mm@kvack.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>, mgorman@novell.com
-To: James Bottomley <James.Bottomley@suse.de>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: dm-devel@redhat.com, DarkNovaNick@gmail.com, linux-lvm@redhat.com,
+	sandeen@redhat.com, linux-ext4@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:14893 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932595Ab1D1U7u (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 Apr 2011 16:59:50 -0400
 Content-Disposition: inline
-In-Reply-To: <1304020767.2598.21.camel@mulgrave.site>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20110428075355.GA2190@infradead.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Apr 28, 2011 at 02:59:27PM -0500, James Bottomley wrote:
-> On Thu, 2011-04-28 at 20:21 +0100, Mel Gorman wrote:
-> > On Thu, Apr 28, 2011 at 01:30:36PM -0500, James Bottomley wrote:
-> > > > Way hey, cgroups are also in the mix. How jolly.
-> > > > 
-> > > > Is systemd a common element of the machines hitting this bug by any
-> > > > chance?
-> > > 
-> > > Well, yes, the bug report is against FC15, which needs cgroups for
-> > > systemd.
-> > > 
-> > 
-> > Ok although we do not have direct evidence that it's the problem yet. A
-> > broken shrinker could just mean we are also trying to aggressively
-> > reclaim in cgroups.
-> > 
-> > > > The remaining traces seem to be follow-on damage related to the three
-> > > > issues of "shrinkers are bust in some manner" causing "we are not
-> > > > getting over the min watermark" and as a side-show "we are spending lots
-> > > > of time doing something unspecified but unhelpful in cgroups".
-> > > 
-> > > Heh, well find a way for me to verify this: I can't turn off cgroups
-> > > because systemd then won't work and the machine won't boot ...
-> > > 
-> > 
-> > Same testcase, same kernel but a distro that is not using systemd to
-> > verify if cgroups are the problem. Not ideal I know. When I'm back
-> > online Tuesday, I'll try reproducing this on a !Fedora distribution. In
-> > the meantime, the following untested hatchet job might spit out
-> > which shrinker we are getting stuck in. It is also breaking out of
-> > the shrink_slab loop so it'd even be interesting to see if the bug
-> > is mitigated in any way.
-> 
-> Actually, talking to Chris, I think I can get the system up using
-> init=/bin/bash without systemd, so I can try the no cgroup config.
-> 
-> > diff --git a/mm/vmscan.c b/mm/vmscan.c
-> > index c74a501..ed99104 100644
-> 
-> In the mean time, this patch produces:
-> 
-> (that's nothing ... apparently the trace doesn't activate when kswapd
-> goes mad).
-> 
+[cc'ing linux-ext4]
 
-Or is looping there for shorter than we expect. HZ/10?
+On Thu, Apr 28 2011 at  3:53am -0400,
+Christoph Hellwig <hch@infradead.org> wrote:
 
--- 
-Mel Gorman
-SUSE Labs
+> On Wed, Apr 27, 2011 at 08:19:13PM -0400, Mike Snitzer wrote:
+> > Discards pose a problem for the snapshot-origin target because they are
+> > treated as writes.  Treating a discard as a write would trigger a
+> > copyout to the snapshot.  Such copyout can prove too costly in the face
+> > of otherwise benign scenarios (e.g. create a snapshot and then mkfs.ext4
+> > the origin -- mkfs.ext4 discards the entire volume by default, which
+> > would copyout the entire origin volume to the snapshot).
+> 
+> You also need to make sure that we don't claim discard_zeroes_data for
+> the origin volume in this case.  Especially as ext4 started to rely
+> on this actually working (very bad idea IMHO, but that's another story)
+
+Eric Sandeen helped me see that having the DM snapshot-origin target
+return success but actually ignore discards is just bad form.
+
+Especially when you consider that this exercise was motivated by the
+fact that ext4 will disable discards on the first discard failure, see:
+http://www.redhat.com/archives/dm-devel/2011-April/msg00070.html
+
+Eric and I think it is best to revert this commit:
+a30eec2 ext4: stop issuing discards if not supported by device
+
+(though ideally ext4 would still WARN_ONCE per superblock with something
+ like: "discard failed, please consider disabling discard support")
+
+1) The user asked for discards (with '-o discard' mount option)
+   - what is the real harm in coninuing to issue them even if it _seems_
+     they aren't supported?
+2) assuming the entire block device uniformly supports discards can
+   be flawed (a DM device's discard support can vary based on logical
+   offset).
+
+Thoughts?
