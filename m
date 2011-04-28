@@ -1,37 +1,58 @@
-From: Chris Mason <chris.mason@oracle.com>
+From: Mel Gorman <mgorman@suse.de>
 Subject: Re: [BUG] fatal hang untarring 90GB file, possibly writeback related.
-Date: Thu, 28 Apr 2011 10:04:34 -0400
-Message-ID: <1303999415-sup-362@think>
-References: <1303920553.2583.7.camel@mulgrave.site> <1303921583-sup-4021@think> <1303923000.2583.8.camel@mulgrave.site> <1303923177-sup-2603@think> <1303924902.2583.13.camel@mulgrave.site> <1303925374-sup-7968@think> <1303926637.2583.17.camel@mulgrave.site> <1303934716.2583.22.camel@mulgrave.site> <1303990590.2081.9.camel@lenovo> <1303993705-sup-5213@think> <1303998140.2081.11.camel@lenovo> <1303998300-sup-4941@think> <1303999282.2081.15.camel@lenovo>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
-Cc: James Bottomley <james.bottomley@suse.de>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-mm <linux-mm@kvack.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-To: Colin Ian King <colin.king@ubuntu.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-reply-to: <1303999282.2081.15.camel@lenovo>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Date: Thu, 28 Apr 2011 15:07:25 +0100
+Message-ID: <20110428140725.GX4658@suse.de>
+References: <1303920553.2583.7.camel@mulgrave.site>
+ <1303921583-sup-4021@think>
+ <1303923000.2583.8.camel@mulgrave.site>
+ <1303923177-sup-2603@think>
+ <1303924902.2583.13.camel@mulgrave.site>
+ <1303925374-sup-7968@think>
+ <1303926637.2583.17.camel@mulgrave.site>
+ <1303934716.2583.22.camel@mulgrave.site>
+ <1303990590.2081.9.camel@lenovo>
+ <20110428135228.GC1696@quack.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-15
+Cc: colin.king@canonical.com,
+	James Bottomley <James.Bottomley@suse.de>,
+	Chris Mason <chris.mason@oracle.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-mm <linux-mm@kvack.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>, mgorman@novell.com
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor.suse.de ([195.135.220.2]:56550 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760397Ab1D1OH3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 Apr 2011 10:07:29 -0400
+Content-Disposition: inline
+In-Reply-To: <20110428135228.GC1696@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Excerpts from Colin Ian King's message of 2011-04-28 10:01:22 -0400:
->=20
-> > Could you post the soft lockups you're seeing?
->=20
-> As requested, attached
+On Thu, Apr 28, 2011 at 03:52:28PM +0200, Jan Kara wrote:
+> On Thu 28-04-11 12:36:30, Colin Ian King wrote:
+> > One more data point to add, I've been looking at an identical issue when
+> > copying large amounts of data.  I bisected this - and the lockups occur
+> > with commit 
+> > 3e7d344970673c5334cf7b5bb27c8c0942b06126 - before that I don't see the
+> > issue. With this commit, my file copy test locks up after ~8-10
+> > iterations, before this commit I can copy > 100 times and don't see the
+> > lockup.
+>   Adding Mel to CC, I guess he'll be interested. Mel, it seems this commit
+> of yours causes kswapd on non-preempt kernels spin for a *long* time...
+> 
 
-These are not good, but they aren't the lockup James was seeing.  Were
-these messages with my patch?  If yes, please post the messages from
-without my patch.
+I'm still thinking about the traces which do not point the finger
+directly at compaction per-se but it's possible that the change means
+kswapd is not reclaiming like it should be.
 
--chris
+To test this theory, does applying
+[d527caf2: mm: compaction: prevent kswapd compacting memory to reduce
+CPU usage] help?
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter=
-.ca/
-Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
+-- 
+Mel Gorman
+SUSE Labs
