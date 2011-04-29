@@ -1,55 +1,139 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/2] ext4: Fix fs corruption when make_indexed_dir() fails
-Date: Fri, 29 Apr 2011 23:23:32 +0200
-Message-ID: <1304112212-23417-1-git-send-email-jack@suse.cz>
+Subject: [PATCH 2/2] ext4: Fix deadlock in ext4_symlink() in ENOSPC conditions
+Date: Fri, 29 Apr 2011 23:24:45 +0200
+Message-ID: <1304112285-23477-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:46769 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:46805 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751061Ab1D2VXl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 29 Apr 2011 17:23:41 -0400
+	id S1751061Ab1D2VY4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 29 Apr 2011 17:24:56 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When make_indexed_dir() fails (e.g. because of ENOSPC) after it has allocated
-block for index tree root, we did not properly mark all changed buffers dirty.
-This lead to only some of these buffers being written out and thus effectively
-corrupting the directory.
+ext4_symlink() cannot call __page_symlink() with transaction open.
+__page_symlink() calls ext4_write_begin() which can wait for transaction commit
+if we are running out of space thus causing a deadlock. Also error recovery in
+ext4_truncate_failed_write() does not count with the transaction being already
+started (although I'm not aware of any particular deadlock here).
 
-Fix the issue by marking all changed data dirty even in the error failure case.
+Fix the problem by stopping a transaction before calling __page_symlink()
+(we have to be careful and put inode to orphan list so that it gets deleted
+in case of crash) and starting another one after __page_symlink() returns
+for addition of symlink into a directory.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/namei.c |   14 ++++++++++++--
- 1 files changed, 12 insertions(+), 2 deletions(-)
+ fs/ext4/namei.c |   66 +++++++++++++++++++++++++++++++++++++++++++++---------
+ 1 files changed, 55 insertions(+), 11 deletions(-)
 
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 67fd0b0..cadf04b 100644
+index cadf04b..3c7a06e 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -1414,9 +1414,19 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
- 	frame->bh = bh;
- 	bh = bh2;
- 	de = do_split(handle,dir, &bh, frame, &hinfo, &retval);
--	dx_release (frames);
--	if (!(de))
-+	if (!de) {
-+		/*
-+		 * Even if the block split failed, we have to properly write
-+		 * out all the changes we did so far. Otherwise we can end up
-+		 * with corrupted filesystem.
-+		 */
-+		ext4_mark_inode_dirty(handle, dir);
-+		ext4_handle_dirty_metadata(handle, dir, frame->bh);
-+		ext4_handle_dirty_metadata(handle, dir, bh);
-+		dx_release(frames);
- 		return retval;
-+	}
-+	dx_release(frames);
+@@ -2250,6 +2250,7 @@ static int ext4_symlink(struct inode *dir,
+ 	handle_t *handle;
+ 	struct inode *inode;
+ 	int l, err, retries = 0;
++	int credits;
  
- 	retval = add_dirent_to_buf(handle, dentry, inode, de, bh);
- 	brelse(bh);
+ 	l = strlen(symname)+1;
+ 	if (l > dir->i_sb->s_blocksize)
+@@ -2257,10 +2258,26 @@ static int ext4_symlink(struct inode *dir,
+ 
+ 	dquot_initialize(dir);
+ 
++	if (l > EXT4_N_BLOCKS * 4) {
++		/*
++		 * For non-fast symlinks, we just allocate inode and put it on
++		 * orphan list in the first transaction => we need bitmap,
++		 * group descriptor, sb, inode block, quota blocks.
++		 */
++		credits = 4 + EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb);
++	} else {
++		/*
++		 * Fast symlink. We have to add entry to directory
++		 * (EXT4_DATA_TRANS_BLOCKS + EXT4_INDEX_EXTRA_TRANS_BLOCKS),
++		 * allocate new inode (bitmap, group descriptor, inode block,
++		 * quota blocks, sb is already counted in previous macros).
++		 */
++		credits = EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
++			  EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
++			  EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb);
++	}
+ retry:
+-	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+-					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 5 +
+-					EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
++	handle = ext4_journal_start(dir, credits);
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
+@@ -2273,21 +2290,44 @@ retry:
+ 	if (IS_ERR(inode))
+ 		goto out_stop;
+ 
+-	if (l > sizeof(EXT4_I(inode)->i_data)) {
++	if (l > EXT4_N_BLOCKS * 4) {
+ 		inode->i_op = &ext4_symlink_inode_operations;
+ 		ext4_set_aops(inode);
+ 		/*
+-		 * page_symlink() calls into ext4_prepare/commit_write.
+-		 * We have a transaction open.  All is sweetness.  It also sets
+-		 * i_size in generic_commit_write().
++		 * We cannot call page_symlink() with transaction started
++		 * because it calls into ext4_write_begin() which can wait
++		 * for transaction commit if we are running out of space
++		 * and thus we deadlock. So we have to stop transaction now
++		 * and restart it when symlink contents is written.
++		 * 
++		 * To keep fs consistent in case of crash, we have to put inode
++		 * to orphan list in the mean time.
+ 		 */
++		drop_nlink(inode);
++		err = ext4_orphan_add(handle, inode);
++		ext4_journal_stop(handle);
++		if (err)
++			goto err_drop_inode;
+ 		err = __page_symlink(inode, symname, l, 1);
++		if (err)
++			goto err_drop_inode;
++		/*
++		 * Now inode is being linked into dir (EXT4_DATA_TRANS_BLOCKS
++		 * + EXT4_INDEX_EXTRA_TRANS_BLOCKS), inode is also modified
++		 */
++		handle = ext4_journal_start(dir,
++				EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
++				EXT4_INDEX_EXTRA_TRANS_BLOCKS + 1);
++		if (IS_ERR(handle)) {
++			err = PTR_ERR(handle);
++			goto err_drop_inode;
++		}
++		inc_nlink(inode);
++		err = ext4_orphan_del(handle, inode);
+ 		if (err) {
++			ext4_journal_stop(handle);
+ 			clear_nlink(inode);
+-			unlock_new_inode(inode);
+-			ext4_mark_inode_dirty(handle, inode);
+-			iput(inode);
+-			goto out_stop;
++			goto err_drop_inode;
+ 		}
+ 	} else {
+ 		/* clear the extent format for fast symlink */
+@@ -2303,6 +2343,10 @@ out_stop:
+ 	if (err == -ENOSPC && ext4_should_retry_alloc(dir->i_sb, &retries))
+ 		goto retry;
+ 	return err;
++err_drop_inode:
++	unlock_new_inode(inode);
++	iput(inode);
++	return err;
+ }
+ 
+ static int ext4_link(struct dentry *old_dentry,
 -- 
 1.7.1
 
