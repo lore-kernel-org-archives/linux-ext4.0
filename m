@@ -1,81 +1,78 @@
-From: James Bottomley <James.Bottomley@suse.de>
-Subject: Re: [BUG] fatal hang untarring 90GB file, possibly writeback
- related.
-Date: Fri, 29 Apr 2011 10:02:36 -0500
-Message-ID: <1304089357.2559.4.camel@mulgrave.site>
-References: <20110428140725.GX4658@suse.de>
-	 <1304000714.2598.0.camel@mulgrave.site> <20110428150827.GY4658@suse.de>
-	 <1304006499.2598.5.camel@mulgrave.site>
-	 <1304009438.2598.9.camel@mulgrave.site>
-	 <1304009778.2598.10.camel@mulgrave.site> <20110428171826.GZ4658@suse.de>
-	 <1304015436.2598.19.camel@mulgrave.site> <20110428192104.GA4658@suse.de>
-	 <1304020767.2598.21.camel@mulgrave.site>  <20110428202701.GB4658@suse.de>
+From: Ray Morris <support@bettercgi.com>
+Subject: Re: [linux-lvm] [dm-devel] do not disable ext4 discards on first
+ discard failure? [was: Re: dm snapshot: ignore discards issued to the
+ snapshot-origin target]
+Date: Fri, 29 Apr 2011 10:13:25 -0500
+Message-ID: <20110429101325.1e0f57ec@bettercgi.com>
+References: <20110412234706.GA11244@redhat.com>
+	<20cf301cbef67d323104a0c2ff52@google.com>
+	<20110413224025.GA18589@redhat.com>
+	<20110413234854.GA19793@redhat.com>
+	<20110426173213.GA19604@redhat.com>
+	<20110428001912.GA14659@redhat.com>
+	<20110428075355.GA2190@infradead.org>
+	<20110428205935.GA24979@redhat.com>
+	<alpine.LFD.2.00.1104291117510.5496@dhcp-27-109.brq.redhat.com>
+	<20110429122454.GL32370@agk-dp.fab.redhat.com>
+	<20110429122906.GA7381@infradead.org>
+	<4DBACB23.80607@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, colin.king@canonical.com,
-	Chris Mason <chris.mason@oracle.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-mm <linux-mm@kvack.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>, mgorman@novell.com
-To: Mel Gorman <mgorman@suse.de>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20110428202701.GB4658@suse.de>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: sandeen@redhat.com, Christoph Hellwig <hch@infradead.org>,
+	Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+	DarkNovaNick@gmail.com, Lukas Czerner <lczerner@redhat.com>,
+	linux-ext4@vger.kernel.org
+To: LVM general discussion and development <linux-lvm@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ps536.phatservers.com ([216.17.105.202]:44814 "EHLO
+	ps536.phatservers.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759891Ab1D2QRJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Apr 2011 12:17:09 -0400
+In-Reply-To: <4DBACB23.80607@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 2011-04-28 at 21:27 +0100, Mel Gorman wrote:
-> On Thu, Apr 28, 2011 at 02:59:27PM -0500, James Bottomley wrote:
-> > On Thu, 2011-04-28 at 20:21 +0100, Mel Gorman wrote:
-> > > On Thu, Apr 28, 2011 at 01:30:36PM -0500, James Bottomley wrote:
-> > > > > Way hey, cgroups are also in the mix. How jolly.
-> > > > > 
-> > > > > Is systemd a common element of the machines hitting this bug by any
-> > > > > chance?
-> > > > 
-> > > > Well, yes, the bug report is against FC15, which needs cgroups for
-> > > > systemd.
-> > > > 
-> > > 
-> > > Ok although we do not have direct evidence that it's the problem yet. A
-> > > broken shrinker could just mean we are also trying to aggressively
-> > > reclaim in cgroups.
-> > > 
-> > > > > The remaining traces seem to be follow-on damage related to the three
-> > > > > issues of "shrinkers are bust in some manner" causing "we are not
-> > > > > getting over the min watermark" and as a side-show "we are spending lots
-> > > > > of time doing something unspecified but unhelpful in cgroups".
-> > > > 
-> > > > Heh, well find a way for me to verify this: I can't turn off cgroups
-> > > > because systemd then won't work and the machine won't boot ...
-> > > > 
-> > > 
-> > > Same testcase, same kernel but a distro that is not using systemd to
-> > > verify if cgroups are the problem. Not ideal I know. When I'm back
-> > > online Tuesday, I'll try reproducing this on a !Fedora distribution. In
-> > > the meantime, the following untested hatchet job might spit out
-> > > which shrinker we are getting stuck in. It is also breaking out of
-> > > the shrink_slab loop so it'd even be interesting to see if the bug
-> > > is mitigated in any way.
-> > 
-> > Actually, talking to Chris, I think I can get the system up using
-> > init=/bin/bash without systemd, so I can try the no cgroup config.
-> > 
-> > > diff --git a/mm/vmscan.c b/mm/vmscan.c
-> > > index c74a501..ed99104 100644
-> > 
-> > In the mean time, this patch produces:
-> > 
-> > (that's nothing ... apparently the trace doesn't activate when kswapd
-> > goes mad).
-> > 
+> On 4/29/11 7:29 AM, Christoph Hellwig wrote:
+> > no one else picked up that stupid idea.  If ext4 wants to
+> > misbehave for that just let them..
 > 
-> Or is looping there for shorter than we expect. HZ/10?
+> It was my "stupid idea," and I'm ok with reverting it ;)
+> 
+> -Eric
 
-Still doesn't print anything, even with HZ/10.
+http://www.google.com/search?q=how+to+remove+foot+from+mouth
+-- 
+Ray Morris
+support@bettercgi.com
 
-James
+Strongbox - The next generation in site security:
+http://www.bettercgi.com/strongbox/
+
+Throttlebox - Intelligent Bandwidth Control
+http://www.bettercgi.com/throttlebox/
+
+Strongbox / Throttlebox affiliate program:
+http://www.bettercgi.com/affiliates/user/register.php
 
 
+
+
+On Fri, 29 Apr 2011 09:28:51 -0500
+Eric Sandeen <sandeen@redhat.com> wrote:
+
+> On 4/29/11 7:29 AM, Christoph Hellwig wrote:
+> > FYI, that disable discard on failure seems to be an ext4 special
+> > and no one else picked up that stupid idea.  If ext4 wants to
+> > misbehave for that just let them..
+> 
+> It was my "stupid idea," and I'm ok with reverting it ;)
+> 
+> -Eric
+> _______________________________________________
+> linux-lvm mailing list
+> linux-lvm@redhat.com
+> https://www.redhat.com/mailman/listinfo/linux-lvm
+> read the LVM HOW-TO at http://tldp.org/HOWTO/LVM-HOWTO/
+> 
 
