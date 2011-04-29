@@ -1,72 +1,55 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: Need of revoke mechanism in JBD
-Date: Fri, 29 Apr 2011 22:45:23 +0300
-Message-ID: <BANLkTin35yOg+ndy3i4vTT7RHxtFso+HCA@mail.gmail.com>
-References: <4DB68257.4070407@gmail.com>
-	<BANLkTikuNB8m3-X8BXVcL2OCqQiZwRCbQA@mail.gmail.com>
-	<BANLkTikV4nU4Zc4OxNa6q8wDtM7cLUF_ig@mail.gmail.com>
-	<20110426122558.GF9486@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Ding Dinghua <dingdinghua85@gmail.com>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	Niraj Kulkarni <kulkarniniraj14@gmail.com>,
-	linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 1/2] ext4: Fix fs corruption when make_indexed_dir() fails
+Date: Fri, 29 Apr 2011 23:23:32 +0200
+Message-ID: <1304112212-23417-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ew0-f46.google.com ([209.85.215.46]:35044 "EHLO
-	mail-ew0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760869Ab1D2TpZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Apr 2011 15:45:25 -0400
-Received: by ewy4 with SMTP id 4so1245284ewy.19
-        for <linux-ext4@vger.kernel.org>; Fri, 29 Apr 2011 12:45:24 -0700 (PDT)
-In-Reply-To: <20110426122558.GF9486@thunk.org>
+Received: from cantor2.suse.de ([195.135.220.15]:46769 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751061Ab1D2VXl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 29 Apr 2011 17:23:41 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 26, 2011 at 3:25 PM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Tue, Apr 26, 2011 at 05:23:21PM +0800, Ding Dinghua wrote:
->> I think it's not only a performance issue but more important, a
->> correctness issue.
->> Revoke table is used for preventing the wrong replay of journal whic=
-h
->> cause data corruption:
->> If block A has been journalled its modification, committed to journa=
-l
->> and hasn't been checkpointed,
->> and in later transactions block A is freed and reused for data in
->> no-journalled-data mode, then If
->> we don't have revoke table which recording the releasing event, repl=
-ay
->> of journal will overwrite the new data,
->> which causing data corruption.
->
-> Yes, this is correct. =A0It should be covered fairly well in Stephen
-> Tweedie's, "Journaling the ext2fs file system" paper, which you can
-> find at:
->
-> https://ext4.wiki.kernel.org/index.php/Publications
+When make_indexed_dir() fails (e.g. because of ENOSPC) after it has allocated
+block for index tree root, we did not properly mark all changed buffers dirty.
+This lead to only some of these buffers being written out and thus effectively
+corrupting the directory.
 
-Actually, the original paper has no mention of revoke records.
-I went out to look for useful documentation on journal forget/revoke
-and came back empty handed as well.
+Fix the issue by marking all changed data dirty even in the error failure case.
 
->
-> if you'd like more details.
->
-> Hope this helps!
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/namei.c |   14 ++++++++++++--
+ 1 files changed, 12 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 67fd0b0..cadf04b 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1414,9 +1414,19 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
+ 	frame->bh = bh;
+ 	bh = bh2;
+ 	de = do_split(handle,dir, &bh, frame, &hinfo, &retval);
+-	dx_release (frames);
+-	if (!(de))
++	if (!de) {
++		/*
++		 * Even if the block split failed, we have to properly write
++		 * out all the changes we did so far. Otherwise we can end up
++		 * with corrupted filesystem.
++		 */
++		ext4_mark_inode_dirty(handle, dir);
++		ext4_handle_dirty_metadata(handle, dir, frame->bh);
++		ext4_handle_dirty_metadata(handle, dir, bh);
++		dx_release(frames);
+ 		return retval;
++	}
++	dx_release(frames);
+ 
+ 	retval = add_dirent_to_buf(handle, dentry, inode, de, bh);
+ 	brelse(bh);
+-- 
+1.7.1
+
