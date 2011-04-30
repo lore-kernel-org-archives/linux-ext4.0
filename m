@@ -1,61 +1,110 @@
-From: Niraj Kulkarni <kulkarniniraj14@gmail.com>
-Subject: Re: Need of revoke mechanism in JBD
-Date: Sat, 30 Apr 2011 07:36:49 +0530
-Message-ID: <4DBB6EB9.40100@gmail.com>
-References: <4DB68257.4070407@gmail.com>	<BANLkTikuNB8m3-X8BXVcL2OCqQiZwRCbQA@mail.gmail.com>	<BANLkTikV4nU4Zc4OxNa6q8wDtM7cLUF_ig@mail.gmail.com>	<20110426122558.GF9486@thunk.org> <BANLkTin35yOg+ndy3i4vTT7RHxtFso+HCA@mail.gmail.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/2] jbd: fix fsync() tid wraparound bug
+Date: Sat, 30 Apr 2011 13:17:11 -0400
+Message-ID: <20110430171711.GA2819@thunk.org>
+References: <20110425231454.GB9486@thunk.org>
+ <1303777411-1316-2-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Ted Ts'o <tytso@mit.edu>, Ding Dinghua <dingdinghua85@gmail.com>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	linux-ext4@vger.kernel.org
-To: Amir Goldstein <amir73il@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Martin_Zielinski@McAfee.com
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pv0-f174.google.com ([74.125.83.174]:33945 "EHLO
-	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754379Ab1D3CG6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Apr 2011 22:06:58 -0400
-Received: by pvg12 with SMTP id 12so2515450pvg.19
-        for <linux-ext4@vger.kernel.org>; Fri, 29 Apr 2011 19:06:58 -0700 (PDT)
-In-Reply-To: <BANLkTin35yOg+ndy3i4vTT7RHxtFso+HCA@mail.gmail.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:57411 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755062Ab1EAR6E (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 1 May 2011 13:58:04 -0400
+Content-Disposition: inline
+In-Reply-To: <1303777411-1316-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Saturday 30 April 2011 01:15 AM, Amir Goldstein wrote:
-> On Tue, Apr 26, 2011 at 3:25 PM, Ted Ts'o<tytso@mit.edu>  wrote:
->> On Tue, Apr 26, 2011 at 05:23:21PM +0800, Ding Dinghua wrote:
->>> I think it's not only a performance issue but more important, a
->>> correctness issue.
->>> Revoke table is used for preventing the wrong replay of journal which
->>> cause data corruption:
->>> If block A has been journalled its modification, committed to journal
->>> and hasn't been checkpointed,
->>> and in later transactions block A is freed and reused for data in
->>> no-journalled-data mode, then If
->>> we don't have revoke table which recording the releasing event, replay
->>> of journal will overwrite the new data,
->>> which causing data corruption.
->> Yes, this is correct.  It should be covered fairly well in Stephen
->> Tweedie's, "Journaling the ext2fs file system" paper, which you can
->> find at:
->>
->> https://ext4.wiki.kernel.org/index.php/Publications
-> Actually, the original paper has no mention of revoke records.
-> I went out to look for useful documentation on journal forget/revoke
-> and came back empty handed as well.
->
->> if you'd like more details.
->>
->> Hope this helps!
->>
->>                                                 - Ted
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
-Yes, I tried some other papers too, but no use. Anyway I've figured out 
-that for my change, I dont need any kind of journalling related 
-facilities, so I am going to bypass it completely.
+Hi Jan,
 
-Niraj
+I don't know if you've been following this thread, but I was wondering
+if you could review this patch, (a) for inclusion in the ext3 tree,
+and (b) because I'd appreciate a second pair of eyes looking at this
+patch, since I intend to push similar change to jbd2.
+
+I'm not entirely convinced this is caused by tid's wrapping around,
+since that would be a huge number of commits, but if it's not that,
+somehow i_datasync_tid or i_sync_tid is either getting corrupted or
+not getting set --- and I have no idea how that could be happening.
+This patch should at least avoid the system from crashing when we hit
+the case, and harmlessly handle the situation --- with at the worst
+case, an journal commit that wouldn't otherwise be needed.
+
+As background, I've been on this bug for months now, as it's been
+reported to me as occasionally happening on Android devices that have
+been using ext4.  Since I hadn't seen any reports of this in the field
+in the x86 world, and this code hadn't changed in a long, long time, I
+had originally assumed it was an ARM-specific bug.  However, recently,
+Martin Zielinski (on this thread) has reported this problem on an x86
+system --- and on a x86 system to boot.
+
+Martin suspects it may have to do with sqllite --- which is consistent
+with I've seen, since I believe Android devices use sqllite quite
+heavily as well.
+
+				- Ted
+
+jbd: fix fsync() tid wraparound bug
+
+If an application program does not make any changes to the indirect
+blocks or extent tree, i_datasync_tid will not get updated.  If there
+are enough commits (i.e., 2**31) such that tid_geq()'s calculations
+wrap, and there isn't a currently active transaction at the time of
+the fdatasync() call, this can end up triggering a BUG_ON in
+fs/jbd/commit.c:
+
+	J_ASSERT(journal->j_running_transaction != NULL);
+
+It's pretty rare that this can happen, since it requires the use of
+fdatasync() plus *very* frequent and excessive use of fsync().  But
+with the right workload, it can.
+
+We fix this by replacing the use of tid_geq() with an equality test,
+since there's only one valid transaction id that we is valid for us to
+wait until it is commited: namely, the currently running transaction
+(if it exists).
+
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/jbd/journal.c |   16 +++++++++++++---
+ 1 files changed, 13 insertions(+), 3 deletions(-)
+
+diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+index b3713af..1b71ce6 100644
+--- a/fs/jbd/journal.c
++++ b/fs/jbd/journal.c
+@@ -437,9 +437,12 @@ int __log_space_left(journal_t *journal)
+ int __log_start_commit(journal_t *journal, tid_t target)
+ {
+ 	/*
+-	 * Are we already doing a recent enough commit?
++	 * The only transaction we can possibly wait upon is the
++	 * currently running transaction (if it exists).  Otherwise,
++	 * the target tid must be an old one.
+ 	 */
+-	if (!tid_geq(journal->j_commit_request, target)) {
++	if (journal->j_running_transaction &&
++	    journal->j_running_transaction->t_tid == target) {
+ 		/*
+ 		 * We want a new commit: OK, mark the request and wakeup the
+ 		 * commit thread.  We do _not_ do the commit ourselves.
+@@ -451,7 +454,14 @@ int __log_start_commit(journal_t *journal, tid_t target)
+ 			  journal->j_commit_sequence);
+ 		wake_up(&journal->j_wait_commit);
+ 		return 1;
+-	}
++	} else if (!tid_geq(journal->j_commit_request, target))
++		/* This should never happen, but if it does, preserve
++		   the evidence before kjournald goes into a loop and
++		   increments j_commit_sequence beyond all recognition. */
++		WARN(1, "jbd: bad log_start_commit: %u %u %u %u\n",
++		     journal->j_commit_request, journal->j_commit_sequence,
++		     target, journal->j_running_transaction ? 
++		     journal->j_running_transaction->t_tid : 0);
+ 	return 0;
+ }
+ 
