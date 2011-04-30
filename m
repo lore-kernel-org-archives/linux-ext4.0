@@ -1,139 +1,61 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/2] ext4: Fix deadlock in ext4_symlink() in ENOSPC conditions
-Date: Fri, 29 Apr 2011 23:24:45 +0200
-Message-ID: <1304112285-23477-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
+From: Niraj Kulkarni <kulkarniniraj14@gmail.com>
+Subject: Re: Need of revoke mechanism in JBD
+Date: Sat, 30 Apr 2011 07:36:49 +0530
+Message-ID: <4DBB6EB9.40100@gmail.com>
+References: <4DB68257.4070407@gmail.com>	<BANLkTikuNB8m3-X8BXVcL2OCqQiZwRCbQA@mail.gmail.com>	<BANLkTikV4nU4Zc4OxNa6q8wDtM7cLUF_ig@mail.gmail.com>	<20110426122558.GF9486@thunk.org> <BANLkTin35yOg+ndy3i4vTT7RHxtFso+HCA@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Ted Ts'o <tytso@mit.edu>, Ding Dinghua <dingdinghua85@gmail.com>,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	linux-ext4@vger.kernel.org
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:46805 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751061Ab1D2VY4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 29 Apr 2011 17:24:56 -0400
+Received: from mail-pv0-f174.google.com ([74.125.83.174]:33945 "EHLO
+	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754379Ab1D3CG6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Apr 2011 22:06:58 -0400
+Received: by pvg12 with SMTP id 12so2515450pvg.19
+        for <linux-ext4@vger.kernel.org>; Fri, 29 Apr 2011 19:06:58 -0700 (PDT)
+In-Reply-To: <BANLkTin35yOg+ndy3i4vTT7RHxtFso+HCA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4_symlink() cannot call __page_symlink() with transaction open.
-__page_symlink() calls ext4_write_begin() which can wait for transaction commit
-if we are running out of space thus causing a deadlock. Also error recovery in
-ext4_truncate_failed_write() does not count with the transaction being already
-started (although I'm not aware of any particular deadlock here).
+On Saturday 30 April 2011 01:15 AM, Amir Goldstein wrote:
+> On Tue, Apr 26, 2011 at 3:25 PM, Ted Ts'o<tytso@mit.edu>  wrote:
+>> On Tue, Apr 26, 2011 at 05:23:21PM +0800, Ding Dinghua wrote:
+>>> I think it's not only a performance issue but more important, a
+>>> correctness issue.
+>>> Revoke table is used for preventing the wrong replay of journal which
+>>> cause data corruption:
+>>> If block A has been journalled its modification, committed to journal
+>>> and hasn't been checkpointed,
+>>> and in later transactions block A is freed and reused for data in
+>>> no-journalled-data mode, then If
+>>> we don't have revoke table which recording the releasing event, replay
+>>> of journal will overwrite the new data,
+>>> which causing data corruption.
+>> Yes, this is correct.  It should be covered fairly well in Stephen
+>> Tweedie's, "Journaling the ext2fs file system" paper, which you can
+>> find at:
+>>
+>> https://ext4.wiki.kernel.org/index.php/Publications
+> Actually, the original paper has no mention of revoke records.
+> I went out to look for useful documentation on journal forget/revoke
+> and came back empty handed as well.
+>
+>> if you'd like more details.
+>>
+>> Hope this helps!
+>>
+>>                                                 - Ted
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+Yes, I tried some other papers too, but no use. Anyway I've figured out 
+that for my change, I dont need any kind of journalling related 
+facilities, so I am going to bypass it completely.
 
-Fix the problem by stopping a transaction before calling __page_symlink()
-(we have to be careful and put inode to orphan list so that it gets deleted
-in case of crash) and starting another one after __page_symlink() returns
-for addition of symlink into a directory.
-
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/namei.c |   66 +++++++++++++++++++++++++++++++++++++++++++++---------
- 1 files changed, 55 insertions(+), 11 deletions(-)
-
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index cadf04b..3c7a06e 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2250,6 +2250,7 @@ static int ext4_symlink(struct inode *dir,
- 	handle_t *handle;
- 	struct inode *inode;
- 	int l, err, retries = 0;
-+	int credits;
- 
- 	l = strlen(symname)+1;
- 	if (l > dir->i_sb->s_blocksize)
-@@ -2257,10 +2258,26 @@ static int ext4_symlink(struct inode *dir,
- 
- 	dquot_initialize(dir);
- 
-+	if (l > EXT4_N_BLOCKS * 4) {
-+		/*
-+		 * For non-fast symlinks, we just allocate inode and put it on
-+		 * orphan list in the first transaction => we need bitmap,
-+		 * group descriptor, sb, inode block, quota blocks.
-+		 */
-+		credits = 4 + EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb);
-+	} else {
-+		/*
-+		 * Fast symlink. We have to add entry to directory
-+		 * (EXT4_DATA_TRANS_BLOCKS + EXT4_INDEX_EXTRA_TRANS_BLOCKS),
-+		 * allocate new inode (bitmap, group descriptor, inode block,
-+		 * quota blocks, sb is already counted in previous macros).
-+		 */
-+		credits = EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
-+			  EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
-+			  EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb);
-+	}
- retry:
--	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
--					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 5 +
--					EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
-+	handle = ext4_journal_start(dir, credits);
- 	if (IS_ERR(handle))
- 		return PTR_ERR(handle);
- 
-@@ -2273,21 +2290,44 @@ retry:
- 	if (IS_ERR(inode))
- 		goto out_stop;
- 
--	if (l > sizeof(EXT4_I(inode)->i_data)) {
-+	if (l > EXT4_N_BLOCKS * 4) {
- 		inode->i_op = &ext4_symlink_inode_operations;
- 		ext4_set_aops(inode);
- 		/*
--		 * page_symlink() calls into ext4_prepare/commit_write.
--		 * We have a transaction open.  All is sweetness.  It also sets
--		 * i_size in generic_commit_write().
-+		 * We cannot call page_symlink() with transaction started
-+		 * because it calls into ext4_write_begin() which can wait
-+		 * for transaction commit if we are running out of space
-+		 * and thus we deadlock. So we have to stop transaction now
-+		 * and restart it when symlink contents is written.
-+		 * 
-+		 * To keep fs consistent in case of crash, we have to put inode
-+		 * to orphan list in the mean time.
- 		 */
-+		drop_nlink(inode);
-+		err = ext4_orphan_add(handle, inode);
-+		ext4_journal_stop(handle);
-+		if (err)
-+			goto err_drop_inode;
- 		err = __page_symlink(inode, symname, l, 1);
-+		if (err)
-+			goto err_drop_inode;
-+		/*
-+		 * Now inode is being linked into dir (EXT4_DATA_TRANS_BLOCKS
-+		 * + EXT4_INDEX_EXTRA_TRANS_BLOCKS), inode is also modified
-+		 */
-+		handle = ext4_journal_start(dir,
-+				EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
-+				EXT4_INDEX_EXTRA_TRANS_BLOCKS + 1);
-+		if (IS_ERR(handle)) {
-+			err = PTR_ERR(handle);
-+			goto err_drop_inode;
-+		}
-+		inc_nlink(inode);
-+		err = ext4_orphan_del(handle, inode);
- 		if (err) {
-+			ext4_journal_stop(handle);
- 			clear_nlink(inode);
--			unlock_new_inode(inode);
--			ext4_mark_inode_dirty(handle, inode);
--			iput(inode);
--			goto out_stop;
-+			goto err_drop_inode;
- 		}
- 	} else {
- 		/* clear the extent format for fast symlink */
-@@ -2303,6 +2343,10 @@ out_stop:
- 	if (err == -ENOSPC && ext4_should_retry_alloc(dir->i_sb, &retries))
- 		goto retry;
- 	return err;
-+err_drop_inode:
-+	unlock_new_inode(inode);
-+	iput(inode);
-+	return err;
- }
- 
- static int ext4_link(struct dentry *old_dentry,
--- 
-1.7.1
-
+Niraj
