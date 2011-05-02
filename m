@@ -1,68 +1,55 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
- to a deadlock
-Date: Mon, 2 May 2011 16:20:55 +0200
-Message-ID: <20110502142055.GF4556@quack.suse.cz>
-References: <20110406054005.GD31057@dastard>
- <20110406061856.GC23285@quack.suse.cz>
- <20110406112135.GE31057@dastard>
- <4DBE746F.3090707@ubuntu.com>
- <20110502105629.GA4556@quack.suse.cz>
- <4DBE9537.4050708@ubuntu.com>
- <20110502122055.GB5855@quack.suse.cz>
- <4DBEA3DF.1060306@ubuntu.com>
- <20110502131619.GC5855@quack.suse.cz>
- <20110502132204.GA7708@infradead.org>
+From: "Martin K. Petersen" <martin.petersen@oracle.com>
+Subject: Re: do not disable ext4 discards on first discard
+	failure? [was: Re: dm snapshot: ignore discards issued to the
+	snapshot-origin target]
+Date: Mon, 02 May 2011 10:20:54 -0400
+Message-ID: <yq1bozl420p.fsf@sermon.lab.mkp.net>
+References: <20110413224025.GA18589@redhat.com>
+	<20110413234854.GA19793@redhat.com>
+	<20110426173213.GA19604@redhat.com>
+	<20110428001912.GA14659@redhat.com>
+	<20110428075355.GA2190@infradead.org>
+	<20110428205935.GA24979@redhat.com>
+	<alpine.LFD.2.00.1104291117510.5496@dhcp-27-109.brq.redhat.com>
+	<20110429122454.GL32370@agk-dp.fab.redhat.com>
+	<alpine.LFD.2.00.1105020857030.3778@dhcp-27-109.brq.redhat.com>
+	<20110502081308.GC8642@agk-dp.fab.redhat.com>
+	<20110502081925.GA11312@infradead.org>
+	<alpine.LFD.2.00.1105021217080.3778@dhcp-27-109.brq.redhat.com>
+Reply-To: device-mapper development <dm-devel@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	Surbhi Palande <surbhi.palande@ubuntu.com>,
-	Dave Chinner <david@fromorbit.com>,
-	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
-	Ted Ts'o <tytso@mit.edu>,
-	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20110502132204.GA7708@infradead.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: sandeen@redhat.com, Mike Snitzer <snitzer@redhat.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        device-mapper development <dm-devel@redhat.com>,
+        DarkNovaNick@gmail.com, linux-lvm@redhat.com,
+        linux-ext4@vger.kernel.org, Alasdair G Kergon <agk@redhat.com>
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <dm-devel-bounces@redhat.com>
+In-Reply-To: <alpine.LFD.2.00.1105021217080.3778@dhcp-27-109.brq.redhat.com>
+	(Lukas Czerner's message of "Mon, 2 May 2011 12:24:33 +0200 (CEST)")
+List-Unsubscribe: <https://www.redhat.com/mailman/options/dm-devel>,
+	<mailto:dm-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/dm-devel>
+List-Post: <mailto:dm-devel@redhat.com>
+List-Help: <mailto:dm-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
+	<mailto:dm-devel-request@redhat.com?subject=subscribe>
+Sender: dm-devel-bounces@redhat.com
+Errors-To: dm-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon 02-05-11 09:22:04, Christoph Hellwig wrote:
-> On Mon, May 02, 2011 at 03:16:19PM +0200, Jan Kara wrote:
-> > Dave, Christoph, any opinions on this?
-> 
-> The busyloop in xfs_quiesce_attr which waits for all active transactions
-> to finish is supposed to fix this issue.
-  Hmm, but what prevents the following race?
+>>>>> "Lukas" == Lukas Czerner <lczerner@redhat.com> writes:
 
-  Thread 1					Thread 2
-..
-xfs_trans_alloc()
-  xfs_wait_for_freeze(mp, SB_FREEZE_TRANS);
-						freeze_super()
-						  ...
-						  xfs_fs_freeze()
-						    ...
-						    xfs_quiesce_attr()
-						    ...
-  _xfs_trans_alloc()
-    atomic_inc(&mp->m_active_trans);
-    ... goes on modifying the filesystem
+Lukas> So I gave it a try. First of all the device composed of SSD and
+Lukas> spinning disk does export discard_support information properly,
+Lukas> however it also advertise discard_zeroes_data which is wrong and
+Lukas> possibly dangerous and should be fixed!
 
-  It seems to be a similar problem as in ext4 - the atomic_inc() and
-vfs_check_frozen() are in the wrong order...
+I can't reproduce this here. If I mix discard and non-discard devices
+things work correctly. discard_zeroes_data also gets cleared if I mix
+discard-capable drives where one zeroes and one doesn't.
 
-> Note that XFS traditionally expects a two stage freeze process where
-> we first freeze new VFS-level writes, then flush the caches and then
-> stop transactions, wait for them to finish and do the remainder of
-> the freeze process, but I really messed that process up when moving
-> the sequence to generic code.  Funnily enough it seems to work
-> neverless.
-
-								Honza
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Martin K. Petersen	Oracle Linux Engineering
