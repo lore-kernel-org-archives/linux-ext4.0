@@ -1,53 +1,43 @@
-From: Johann Lombardi <johann@whamcloud.com>
-Subject: Re: [PATCH] ext4: add support for multiple mount protection
-Date: Mon, 2 May 2011 15:43:38 +0200
-Message-ID: <20110502134338.GB14743@granier.hd.free.fr>
-References: <1302631493-9778-1-git-send-email-johann@whamcloud.com>
- <4DA4A5E3.4080803@itwm.fraunhofer.de>
+From: "Martin K. Petersen" <martin.petersen@oracle.com>
+Subject: Re: [dm-devel] do not disable ext4 discards on first discard failure? [was: Re: dm snapshot: ignore discards issued to the snapshot-origin target]
+Date: Mon, 02 May 2011 09:48:44 -0400
+Message-ID: <yq1vcxt43ib.fsf@sermon.lab.mkp.net>
+References: <20110413224025.GA18589@redhat.com>
+	<20110413234854.GA19793@redhat.com>
+	<20110426173213.GA19604@redhat.com>
+	<20110428001912.GA14659@redhat.com>
+	<20110428075355.GA2190@infradead.org>
+	<20110428205935.GA24979@redhat.com>
+	<alpine.LFD.2.00.1104291117510.5496@dhcp-27-109.brq.redhat.com>
+	<20110429122454.GL32370@agk-dp.fab.redhat.com>
+	<alpine.LFD.2.00.1105020857030.3778@dhcp-27-109.brq.redhat.com>
+	<20110502081308.GC8642@agk-dp.fab.redhat.com>
+	<20110502081925.GA11312@infradead.org>
+	<alpine.LFD.2.00.1105021217080.3778@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@whamcloud.com>
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Content-Type: text/plain
+Cc: Christoph Hellwig <hch@infradead.org>,
+	device-mapper development <dm-devel@redhat.com>,
+	Alasdair G Kergon <agk@redhat.com>, sandeen@redhat.com,
+	Mike Snitzer <snitzer@redhat.com>, DarkNovaNick@gmail.com,
+	linux-lvm@redhat.com, linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:64441 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754561Ab1EBNnl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 May 2011 09:43:41 -0400
-Received: by wwa36 with SMTP id 36so6349431wwa.1
-        for <linux-ext4@vger.kernel.org>; Mon, 02 May 2011 06:43:40 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <4DA4A5E3.4080803@itwm.fraunhofer.de>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:48184 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757061Ab1EBNs7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 May 2011 09:48:59 -0400
+In-Reply-To: <alpine.LFD.2.00.1105021217080.3778@dhcp-27-109.brq.redhat.com>
+	(Lukas Czerner's message of "Mon, 2 May 2011 12:24:33 +0200 (CEST)")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Bernd,
+>>>>> "Lukas" == Lukas Czerner <lczerner@redhat.com> writes:
 
-On Tue, Apr 12, 2011 at 09:20:03PM +0200, Bernd Schubert wrote:
-> >+#define EXT4_MMP_UPDATE_INTERVAL   1
-> 
-> this define is nowhere used (e2fsprogs already sets the
-> update-interval in the superblock).
+Lukas> however it also advertise discard_zeroes_data which is wrong and
+Lukas> possibly dangerous and should be fixed!
 
-Indeed, i have removed it.
+That shouldn't happen. I'll have a look...
 
-> And it is also too small, which may cause a huge performance issue
-> (please remember my corresponding lustre bugzilla...).
-
-The patches i have just sent increase the update interval to 5s and decrease the multiplier used to compute the check interval from 5 to 2.
-
-> Once you are going to post the e2fsprogs patch, could you please
-> also take care of the 2TiB mmp-block read limitation bug (please see
-> another Lustre bugzilla )?
-
-The updated e2fsprogs & kernel patches use blk64_t/ext4_fsblk_t, so this should work now. I will give this a try ASAP.
-
-> It also would be nice to explain somewhere (and not hidden in the
-> code) what is the difference between "update interval" and "check
-> interval".
-
-Done.
-
-Thanks for the feedback.
-
-Cheers,
-Johann
+-- 
+Martin K. Petersen	Oracle Linux Engineering
