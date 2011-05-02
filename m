@@ -1,65 +1,195 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH 4/4] ext3: Implement delayed allocation on page_mkwrite
- time
-Date: Mon, 2 May 2011 15:29:17 -0700
-Message-ID: <20110502152917.550d2475.akpm@linux-foundation.org>
-References: <1304369816-14545-1-git-send-email-jack@suse.cz>
-	<1304369816-14545-5-git-send-email-jack@suse.cz>
-	<20110502141230.4a7640f9.akpm@linux-foundation.org>
-	<20110502222020.GB14889@quack.suse.cz>
+From: Allison Henderson <achender@linux.vnet.ibm.com>
+Subject: Re: [XFS Punch Hole 1/1] XFS Add Punch Hole Testing to FSX
+Date: Mon, 02 May 2011 15:39:58 -0700
+Message-ID: <4DBF32BE.70009@linux.vnet.ibm.com>
+References: <4DBF02FF.608@linux.vnet.ibm.com> <4DBF0498.6070905@redhat.com> <4DBF0789.3090808@redhat.com> <61E784AC-2E07-41DC-A65C-0C1B766A4A6F@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	xfs-oss <xfs@oss.sgi.com>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:54703 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755424Ab1EBW3u (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 May 2011 18:29:50 -0400
-In-Reply-To: <20110502222020.GB14889@quack.suse.cz>
+Received: from e7.ny.us.ibm.com ([32.97.182.137]:56117 "EHLO e7.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751646Ab1EBWkJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 May 2011 18:40:09 -0400
+In-Reply-To: <61E784AC-2E07-41DC-A65C-0C1B766A4A6F@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 3 May 2011 00:20:20 +0200
-Jan Kara <jack@suse.cz> wrote:
+On 5/2/2011 1:29 PM, Andreas Dilger wrote:
+> On 5/2/11 2:16 PM, Allison Henderson wrote:
+>> This patch adds punch hole tests to the fsx
+>> stress test.  The test is performed through
+>> the fallocate call by randomly choosing to
+>> use the punch hole flag when running the
+>> fallocate test.  Regions that have
+>> been punched out should contain zeros, so
+>> the expected file contents buffer is updated
+>> to contain zeros when a hole is punched out.
+>>
+>> Signed-off-by: Allison Henderson<achender@us.ibm.com>
+>> ---
+>> :100644 100644 32cd380... d424941... M	ltp/Makefile
+>> :100644 100644 fe072d3... 4f54ef6... M	ltp/fsx.c
+>> ltp/Makefile |    2 +-
+>> ltp/fsx.c    |   73 ++++++++++++++++++++++++++++++++++++++++++++++++---------
+>> 2 files changed, 62 insertions(+), 13 deletions(-)
+>>
+>> diff --git a/ltp/Makefile b/ltp/Makefile
+>> index 32cd380..d424941 100644
+>> --- a/ltp/Makefile
+>> +++ b/ltp/Makefile
+>> @@ -27,7 +27,7 @@ LCFLAGS += -DAIO
+>> LLDLIBS += -laio -lpthread
+>> endif
+>>
+>> -ifeq ($(HAVE_FALLOCATE), true)
+>> +ifeq ($(HAVE_FALLOCATE), yes)
+>>
+> 
+>> LCFLAGS += -DFALLOCATE
+>> endif
+>>
+>> diff --git a/ltp/fsx.c b/ltp/fsx.c
+>> index fe072d3..4f54ef6 100644
+>> --- a/ltp/fsx.c
+>> +++ b/ltp/fsx.c
+>> @@ -207,7 +207,8 @@ logdump(void)
+>> {
+>> 	int	i, count, down;
+>> 	struct log_entry	*lp;
+>> -	char *falloc_type[3] = {"PAST_EOF", "EXTENDING", "INTERIOR"};
+>> +	char *falloc_type[4] = {"PAST_EOF", "EXTENDING", "INTERIOR",
+>> +				"PUNCH_HOLE"};
+>>
+>> 	prt("LOG DUMP (%d total operations):\n", logcount);
+>> 	if (logcount<  LOGSIZE) {
+>> @@ -791,7 +792,11 @@ dofallocate(unsigned offset, unsigned length)
+>> {
+>> 	unsigned end_offset;
+>> 	int keep_size;
+>> -
+>> +	int max_offset = 0;
+>> +	int max_len = 0;
+>> +	int punch_hole = 0;
+>> +	int mode = 0;
+>> +	char *op_name;
+>>          if (length == 0) {
+>>                  if (!quiet&&  testcalls>  simulatedopcount)
+>>                          prt("skipping zero length fallocate\n");
+>> @@ -799,11 +804,31 @@ dofallocate(unsigned offset, unsigned length)
+>>                  return;
+>>          }
+>>
+>> +#ifdef FALLOC_FL_PUNCH_HOLE
+>> +	punch_hole = random() % 2;
+>> +	/* Keep size must be set for punch hole */
+>> +	if (punch_hole) {
+>> +		keep_size = 1;
+>> +		mode = FALLOC_FL_PUNCH_HOLE;
+>> +	} else
+>> +		keep_size = random() % 2;
+>> +#else
+>> 	keep_size = random() % 2;
+>> +#endif
+>> +
+>> +	if (keep_size)
+>> +		mode |= FALLOC_FL_KEEP_SIZE;
+>> +
+>> +	if (punch_hole&&  file_size<= (loff_t)offset) {
+>> +		if (!quiet&&  testcalls>  simulatedopcount)
+>> +			prt("skipping hole punch off the end of the file\n");
+>> +		log4(OP_SKIPPED, OP_FALLOCATE, offset, length);
+>> +		return;
+>> +	}
+> 
+> Isn't a hole punch off the end of the file is just a truncate?  I think that is a valid test case, since punch(newsize, ~0ULL) should be identical to truncate(newsize). In that case, "keep_size" would affect whether the file size is left alone, or it is now "newsize", so I don't think it should always be set to run with keep_size = 1 for FALLOC_FL_PUNCH_HOLE operations.
 
-> On Mon 02-05-11 14:12:30, Andrew Morton wrote:
-> > On Mon,  2 May 2011 22:56:56 +0200
-> > Jan Kara <jack@suse.cz> wrote:
-> > 
-> > > So far, ext3 was allocating necessary blocks for mmapped writes when
-> > > writepage() was called. There are several issues with this. The worst
-> > > being that user is allowed to arbitrarily exceed disk quotas because
-> > > writepage() is called from flusher thread context (which is root) and thus
-> > > quota limits are ignored. Another bad consequence is that data is just lost
-> > > if we find there's no space on the filesystem during ->writepage() time.
-> > > 
-> > > We solve these issues by implementing block reservation in page_mkwrite()
-> > > callback. We don't want to really allocate blocks on page_mkwrite() time
-> > > because for random writes via mmap (as seen for example with applications using
-> > > BerkeleyDB) it results in much more fragmented files and thus much worse
-> > > performance. So we allocate indirect blocks and reserve space for data block in
-> > > page_mkwrite() and do the allocation of data block from writepage().
-> > 
-> > Yes, instantiating the metadata and accounting the data is a good
-> > approach.  The file layout will be a bit suboptimal, but surely that
-> > will be a minor thing.
-> > 
-> > But boy, it's a complicated patch!  Are we really sure that we want to
-> > make changes this extensive to our antiquated old fs?  Or do we just
-> > say "yeah, it's broken with quotas - use ext4"?
->   The patch isn't trivial, I agree (although it's mostly straightforward).
-> Regarding telling users to switch to ext4 - it seems a bit harsh to me
-> to ask people to switch to ext4 as a response to a (possibly security)
-> issue they uncover. Because for most admins switching to ext4 will require
-> some non-trivial testing I presume. Of course, the counterweight is the
-> possibility of new bugs introduced to the code by my patch.
+Hi there, 
 
-Yes.
+Well actually punch hole requires that the keep size flag be set when using the punch hole flag, so it's not quite the same as truncate.  The punch hole operation does not modify the length of the file, it only changes whether or not the specified blocks are allocated.  So a hole that extends off the end of the file would cause the last few blocks of the file to be released, but the length of the file would not shrink.  The above code snippet though is checking to see if the entire hole is off the edge of the file.  For example, the file is 3 blocks in length, but we are trying to punch out blocks 5 though 7.  This operation would have no effect, so we skip it here.
 
-> But after some
-> considerations I've decided it's worth it and and fixed the bug...
+Allison Henderson
 
-Well.  How did you come to that decision?  Are real users hurting from
-this problem?  What's the real-world case for fixing it?
+> 
+>> 	end_offset = keep_size ? 0 : offset + length;
+>>
+>> -	if (end_offset>  biggest) {
+>> +	if ((end_offset>  biggest)&&  !punch_hole) {
+>> 		biggest = end_offset;
+>> 		if (!quiet&&  testcalls>  simulatedopcount)
+>> 			prt("fallocating to largest ever: 0x%x\n", end_offset);
+>> @@ -811,13 +836,15 @@ dofallocate(unsigned offset, unsigned length)
+>>
+>> 	/*
+>> 	 * last arg:
+>> -	 * 	1: allocate past EOF
+>> -	 * 	2: extending prealloc
+>> -	 * 	3: interior prealloc
+>> +	 *      0: allocate past EOF
+>> +	 *      1: extending prealloc
+>> +	 *      2: interior prealloc
+>> +	 *      3: punch hole
+>> 	 */
+>> -	log4(OP_FALLOCATE, offset, length, (end_offset>  file_size) ? (keep_size ? 1 : 2) : 3);
+>> +	log4(OP_FALLOCATE, offset, length, punch_hole ? 3 :
+>> +			(end_offset>  file_size) ? (keep_size ? 0 : 1) : 2);
+>>
+>> -	if (end_offset>  file_size) {
+>> +	if (((loff_t)end_offset>  file_size)&&  !punch_hole) {
+>> 		memset(good_buf + file_size, '\0', end_offset - file_size);
+>> 		file_size = end_offset;
+>> 	}
+>> @@ -827,13 +854,35 @@ dofallocate(unsigned offset, unsigned length)
+>> 	
+>> 	if ((progressinterval&&  testcalls % progressinterval == 0) ||
+>> 	    (debug&&  (monitorstart == -1 || monitorend == -1 ||
+>> -		      end_offset<= monitorend)))
+>> -		prt("%lu falloc\tfrom 0x%x to 0x%x\n", testcalls, offset, length);
+>> -	if (fallocate(fd, keep_size ? FALLOC_FL_KEEP_SIZE : 0, (loff_t)offset, (loff_t)length) == -1) {
+>> -	        prt("fallocate: %x to %x\n", offset, length);
+>> +		      end_offset<= monitorend))) {
+>> +#ifdef FALLOC_FL_PUNCH_HOLE
+>> +		op_name = (mode&  FALLOC_FL_PUNCH_HOLE) ?
+>> +			"punch hole" : "falloc";
+>> +#else
+>> +		op_name = "falloc";
+>> +#endif
+>> +		prt("%lu %s\tfrom 0x%x to 0x%x, (0x%x bytes)\n", testcalls,
+>> +			op_name, offset, offset+length, length);
+>> +	}
+>> +	if (fallocate(fd, mode, (loff_t)offset, (loff_t)length) == -1) {
+>> +#ifdef FALLOC_FL_PUNCH_HOLE
+>> +		op_name = (mode&  FALLOC_FL_PUNCH_HOLE) ?
+>> +			"punch hole" : "fallocate";
+>> +#else
+>> +		op_name = "fallocate";
+>> +#endif
+>> +
+>> +		prt("%s: %x to %x\n", op_name, offset, length);
+>> 		prterr("dofallocate: fallocate");
+>> 		report_failure(161);
+>> 	}
+>> +
+>> +	if (punch_hole) {
+>> +		max_offset = offset<  file_size ? offset : file_size;
+>> +		max_len = max_offset + length<= file_size ? length :
+>> +				file_size - max_offset;
+>> +		memset(good_buf + max_offset, '\0', max_len);
+>> +	}
+>> }
+>> #else
+>> void
+> 
+> 
+> Cheers, Andreas
+> 
+> 
+> 
+> 
+> 
+
