@@ -1,122 +1,84 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/2] jbd: fix fsync() tid wraparound bug
-Date: Mon, 2 May 2011 17:07:58 +0200
-Message-ID: <20110502150758.GH4556@quack.suse.cz>
-References: <20110425231454.GB9486@thunk.org>
- <1303777411-1316-2-git-send-email-tytso@mit.edu>
- <20110430171711.GA2819@thunk.org>
+Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
+ to a deadlock
+Date: Mon, 2 May 2011 18:23:34 +0200
+Message-ID: <20110502162334.GJ4556@quack.suse.cz>
+References: <20110406112135.GE31057@dastard>
+ <4DBE746F.3090707@ubuntu.com>
+ <20110502105629.GA4556@quack.suse.cz>
+ <4DBE9537.4050708@ubuntu.com>
+ <20110502122055.GB5855@quack.suse.cz>
+ <4DBEA3DF.1060306@ubuntu.com>
+ <20110502131619.GC5855@quack.suse.cz>
+ <20110502132204.GA7708@infradead.org>
+ <20110502142055.GF4556@quack.suse.cz>
+ <20110502144155.GA8045@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Jan Kara <jack@suse.cz>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Martin_Zielinski@McAfee.com
-To: Ted Ts'o <tytso@mit.edu>
+	Surbhi Palande <surbhi.palande@ubuntu.com>,
+	Dave Chinner <david@fromorbit.com>,
+	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
+	Ted Ts'o <tytso@mit.edu>,
+	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:49886 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:53476 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751710Ab1EBPIB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 May 2011 11:08:01 -0400
+	id S1752944Ab1EBQXh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 May 2011 12:23:37 -0400
 Content-Disposition: inline
-In-Reply-To: <20110430171711.GA2819@thunk.org>
+In-Reply-To: <20110502144155.GA8045@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi Ted,
-
-On Sat 30-04-11 13:17:11, Ted Tso wrote:
-> I don't know if you've been following this thread, but I was wondering
-> if you could review this patch, (a) for inclusion in the ext3 tree,
-> and (b) because I'd appreciate a second pair of eyes looking at this
-> patch, since I intend to push similar change to jbd2.
-  Thanks for forwarding. For some reason I got unsubscribed from linux-ext4
-a while ago and didn't notice this since linux-fsdevel goes into the same
-mailbox.
-
-> I'm not entirely convinced this is caused by tid's wrapping around,
-> since that would be a huge number of commits, but if it's not that,
-> somehow i_datasync_tid or i_sync_tid is either getting corrupted or
-> not getting set --- and I have no idea how that could be happening.
-> This patch should at least avoid the system from crashing when we hit
-> the case, and harmlessly handle the situation --- with at the worst
-> case, an journal commit that wouldn't otherwise be needed.
-  The patch looks OK in any case. I'll take it in my tree. It would take
-about 24 days of constant 1000 trans/s load to trigger this. That's a quite
-heavy load but not so unrealistic with today's HW.
-
-> As background, I've been on this bug for months now, as it's been
-> reported to me as occasionally happening on Android devices that have
-> been using ext4.  Since I hadn't seen any reports of this in the field
-> in the x86 world, and this code hadn't changed in a long, long time, I
-> had originally assumed it was an ARM-specific bug.  However, recently,
-> Martin Zielinski (on this thread) has reported this problem on an x86
-> system --- and on a x86 system to boot.
+On Mon 02-05-11 10:41:55, Christoph Hellwig wrote:
+> On Mon, May 02, 2011 at 04:20:55PM +0200, Jan Kara wrote:
+> >   Hmm, but what prevents the following race?
+> > 
+> >   Thread 1					Thread 2
+> > ..
+> > xfs_trans_alloc()
+> >   xfs_wait_for_freeze(mp, SB_FREEZE_TRANS);
+> > 						freeze_super()
 > 
-> Martin suspects it may have to do with sqllite --- which is consistent
-> with I've seen, since I believe Android devices use sqllite quite
-> heavily as well.
-  Yeah, it may be.
+>                                                   sb->s_frozen = SB_FREEZE_TRANS;
+> > 						  ...
+> > 						  xfs_fs_freeze()
+> > 						    ...
+> > 						    xfs_quiesce_attr()
+> 
+> 						      waits for all active
+> 						      transactions
+> 
+> > 						    ...
+> 
+>    xfs_trans_alloc
+>      -> blocks in xfs_wait_for_freeze
+  But why should it block when xfs_wait_for_freeze() gets called before
+freeze_super() gets called? The other thread calls freeze_super() just
+after xfs_wait_for_freeze() in thread 1 and before _xfs_trans_alloc() gets
+called.  Or am I missing some serialization somewhere?
+
+>      (thus doesn't get to _xfs_trans_alloc)
+> 
+> >   _xfs_trans_alloc()
+> >     atomic_inc(&mp->m_active_trans);
+> >     ... goes on modifying the filesystem
+> > 
+> >   It seems to be a similar problem as in ext4 - the atomic_inc() and
+> > vfs_check_frozen() are in the wrong order...
+> 
+> I can't see the problem in this scheme.  Note that we want
+> _xfs_trans_alloc to be able to create a transaction for
+> xfs_fs_log_dummy, so that we can write the dummy log record after
+> freezing out all other transactions, so that one is special cased
+> and doesn't do the xfs_wait_for_freeze.
+  OK.
 
 								Honza
-> jbd: fix fsync() tid wraparound bug
-> 
-> If an application program does not make any changes to the indirect
-> blocks or extent tree, i_datasync_tid will not get updated.  If there
-> are enough commits (i.e., 2**31) such that tid_geq()'s calculations
-> wrap, and there isn't a currently active transaction at the time of
-> the fdatasync() call, this can end up triggering a BUG_ON in
-> fs/jbd/commit.c:
-> 
-> 	J_ASSERT(journal->j_running_transaction != NULL);
-> 
-> It's pretty rare that this can happen, since it requires the use of
-> fdatasync() plus *very* frequent and excessive use of fsync().  But
-> with the right workload, it can.
-> 
-> We fix this by replacing the use of tid_geq() with an equality test,
-> since there's only one valid transaction id that we is valid for us to
-> wait until it is commited: namely, the currently running transaction
-> (if it exists).
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/jbd/journal.c |   16 +++++++++++++---
->  1 files changed, 13 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-> index b3713af..1b71ce6 100644
-> --- a/fs/jbd/journal.c
-> +++ b/fs/jbd/journal.c
-> @@ -437,9 +437,12 @@ int __log_space_left(journal_t *journal)
->  int __log_start_commit(journal_t *journal, tid_t target)
->  {
->  	/*
-> -	 * Are we already doing a recent enough commit?
-> +	 * The only transaction we can possibly wait upon is the
-> +	 * currently running transaction (if it exists).  Otherwise,
-> +	 * the target tid must be an old one.
->  	 */
-> -	if (!tid_geq(journal->j_commit_request, target)) {
-> +	if (journal->j_running_transaction &&
-> +	    journal->j_running_transaction->t_tid == target) {
->  		/*
->  		 * We want a new commit: OK, mark the request and wakeup the
->  		 * commit thread.  We do _not_ do the commit ourselves.
-> @@ -451,7 +454,14 @@ int __log_start_commit(journal_t *journal, tid_t target)
->  			  journal->j_commit_sequence);
->  		wake_up(&journal->j_wait_commit);
->  		return 1;
-> -	}
-> +	} else if (!tid_geq(journal->j_commit_request, target))
-> +		/* This should never happen, but if it does, preserve
-> +		   the evidence before kjournald goes into a loop and
-> +		   increments j_commit_sequence beyond all recognition. */
-> +		WARN(1, "jbd: bad log_start_commit: %u %u %u %u\n",
-> +		     journal->j_commit_request, journal->j_commit_sequence,
-> +		     target, journal->j_running_transaction ? 
-> +		     journal->j_running_transaction->t_tid : 0);
->  	return 0;
->  }
->  
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
