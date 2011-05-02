@@ -1,144 +1,68 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 1/2] ext4: Use schedule_timeout_interruptible() for waiting in lazyinit thread
-Date: Mon,  2 May 2011 13:22:44 +0200
-Message-ID: <1304335365-13892-1-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 2/2] ext4: Remove unnecessary wait_event ext4_run_lazyinit_thread()
+Date: Mon,  2 May 2011 13:22:45 +0200
+Message-ID: <1304335365-13892-2-git-send-email-lczerner@redhat.com>
+References: <1304335365-13892-1-git-send-email-lczerner@redhat.com>
 Cc: tytso@mit.edu, sandeen@redhat.com, lczerner@redhat.com
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40593 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:25994 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754517Ab1EBLW6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 May 2011 07:22:58 -0400
+	id S1754517Ab1EBLXA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 May 2011 07:23:00 -0400
+In-Reply-To: <1304335365-13892-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In order to make lazyinit eat approx. 10% of io bandwidth at max, we are
-sleeping between zeroing each single inode table. For that purpose we
-are using timer which wakes up thread when it expires. It is set via
-add_timer() and this may cause troubles in the case that thread has been
-woken up earlier and in next iteration we call add_timer() on still
-running timer hence hitting BUG_ON in add_timer(). We could fix that by
-using mod_timer() instead however we can use
-schedule_timeout_interruptible() for waiting and hence simplifying
-things a lot.
-
-This commit exchange the old "waiting mechanism" with simple
-schedule_timeout_interruptible(), setting the time to sleep. Hence we do
-not longer need li_wait_daemon waiting queue and others, so get rid of
-it.
-
-This solves Red Hat bug 699708.
+For some reason we have been waiting for lazyinit thread to start in the
+ext4_run_lazyinit_thread() but it is not needed anymore so get rid of
+it. We can also remove li_task and li_wait_task since it is not used
+anymore.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- fs/ext4/ext4.h  |    4 ----
- fs/ext4/super.c |   26 +++-----------------------
- 2 files changed, 3 insertions(+), 27 deletions(-)
+ fs/ext4/ext4.h  |    2 --
+ fs/ext4/super.c |   10 ----------
+ 2 files changed, 0 insertions(+), 12 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 4daaf2b..1e37c09 100644
+index 1e37c09..8689f97 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1590,12 +1590,8 @@ void ext4_get_group_no_and_offset(struct super_block *sb, ext4_fsblk_t blocknr,
+@@ -1590,8 +1590,6 @@ void ext4_get_group_no_and_offset(struct super_block *sb, ext4_fsblk_t blocknr,
   */
  struct ext4_lazy_init {
  	unsigned long		li_state;
--
--	wait_queue_head_t	li_wait_daemon;
- 	wait_queue_head_t	li_wait_task;
--	struct timer_list	li_timer;
- 	struct task_struct	*li_task;
--
+-	wait_queue_head_t	li_wait_task;
+-	struct task_struct	*li_task;
  	struct list_head	li_request_list;
  	struct mutex		li_list_mtx;
  };
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 8553dfb..daf3300 100644
+index daf3300..2ea8315 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -2659,12 +2659,6 @@ static void print_daily_error_info(unsigned long arg)
- 	mod_timer(&sbi->s_err_report, jiffies + 24*60*60*HZ);  /* Once a day */
- }
- 
--static void ext4_lazyinode_timeout(unsigned long data)
--{
--	struct task_struct *p = (struct task_struct *)data;
--	wake_up_process(p);
--}
--
- /* Find next suitable group and run ext4_init_inode_table */
- static int ext4_run_li_request(struct ext4_li_request *elr)
- {
-@@ -2712,7 +2706,7 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
- 
- /*
-  * Remove lr_request from the list_request and free the
-- * request tructure. Should be called with li_list_mtx held
-+ * request structure. Should be called with li_list_mtx held
-  */
- static void ext4_remove_li_request(struct ext4_li_request *elr)
- {
-@@ -2757,13 +2751,9 @@ static int ext4_lazyinit_thread(void *arg)
- 	struct list_head *pos, *n;
- 	struct ext4_li_request *elr;
- 	unsigned long next_wakeup;
--	DEFINE_WAIT(wait);
+@@ -2754,9 +2754,6 @@ static int ext4_lazyinit_thread(void *arg)
  
  	BUG_ON(NULL == eli);
  
--	eli->li_timer.data = (unsigned long)current;
--	eli->li_timer.function = ext4_lazyinode_timeout;
+-	eli->li_task = current;
+-	wake_up(&eli->li_wait_task);
 -
- 	eli->li_task = current;
- 	wake_up(&eli->li_wait_task);
- 
-@@ -2803,13 +2793,8 @@ cont_thread:
- 			continue;
- 		}
- 
--		eli->li_timer.expires = next_wakeup;
--		add_timer(&eli->li_timer);
--		prepare_to_wait(&eli->li_wait_daemon, &wait,
--				TASK_INTERRUPTIBLE);
--		if (time_before(jiffies, next_wakeup))
--			schedule();
--		finish_wait(&eli->li_wait_daemon, &wait);
-+		schedule_timeout_interruptible(next_wakeup - jiffies);
-+
- 		if (kthread_should_stop()) {
- 			ext4_clear_request_list();
- 			goto exit_thread;
-@@ -2833,12 +2818,10 @@ exit_thread:
+ cont_thread:
+ 	while (true) {
+ 		next_wakeup = MAX_JIFFY_OFFSET;
+@@ -2818,9 +2815,6 @@ exit_thread:
  		goto cont_thread;
  	}
  	mutex_unlock(&eli->li_list_mtx);
--	del_timer_sync(&ext4_li_info->li_timer);
- 	eli->li_task = NULL;
- 	wake_up(&eli->li_wait_task);
- 
+-	eli->li_task = NULL;
+-	wake_up(&eli->li_wait_task);
+-
  	kfree(ext4_li_info);
--	ext4_lazyinit_task = NULL;
  	ext4_li_info = NULL;
  	mutex_unlock(&ext4_li_mtx);
- 
-@@ -2866,7 +2849,6 @@ static int ext4_run_lazyinit_thread(void)
- 	if (IS_ERR(ext4_lazyinit_task)) {
- 		int err = PTR_ERR(ext4_lazyinit_task);
- 		ext4_clear_request_list();
--		del_timer_sync(&ext4_li_info->li_timer);
- 		kfree(ext4_li_info);
- 		ext4_li_info = NULL;
- 		printk(KERN_CRIT "EXT4: error %d creating inode table "
-@@ -2915,9 +2897,7 @@ static int ext4_li_info_new(void)
- 	INIT_LIST_HEAD(&eli->li_request_list);
- 	mutex_init(&eli->li_list_mtx);
- 
--	init_waitqueue_head(&eli->li_wait_daemon);
- 	init_waitqueue_head(&eli->li_wait_task);
--	init_timer(&eli->li_timer);
- 	eli->li_state |= EXT4_LAZYINIT_QUIT;
- 
- 	ext4_li_info = eli;
--- 
-1.7.4.4
-
+@@ -2857,8 +2851,6 @@ static int ext4_run_lazyinit_thread(void)
+ 		return err;
+ 	}
+ 	ext4_li_info->li_state |= EXT4_LAZYINIT_RUNNING;
