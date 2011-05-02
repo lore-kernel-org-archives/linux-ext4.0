@@ -1,43 +1,47 @@
-From: "Martin K. Petersen" <martin.petersen@oracle.com>
-Subject: Re: [dm-devel] do not disable ext4 discards on first discard failure? [was: Re: dm snapshot: ignore discards issued to the snapshot-origin target]
-Date: Mon, 02 May 2011 09:48:44 -0400
-Message-ID: <yq1vcxt43ib.fsf@sermon.lab.mkp.net>
-References: <20110413224025.GA18589@redhat.com>
-	<20110413234854.GA19793@redhat.com>
-	<20110426173213.GA19604@redhat.com>
-	<20110428001912.GA14659@redhat.com>
-	<20110428075355.GA2190@infradead.org>
-	<20110428205935.GA24979@redhat.com>
-	<alpine.LFD.2.00.1104291117510.5496@dhcp-27-109.brq.redhat.com>
-	<20110429122454.GL32370@agk-dp.fab.redhat.com>
-	<alpine.LFD.2.00.1105020857030.3778@dhcp-27-109.brq.redhat.com>
-	<20110502081308.GC8642@agk-dp.fab.redhat.com>
-	<20110502081925.GA11312@infradead.org>
-	<alpine.LFD.2.00.1105021217080.3778@dhcp-27-109.brq.redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
+ to a deadlock
+Date: Mon, 02 May 2011 09:01:50 -0500
+Message-ID: <4DBEB94E.5040901@redhat.com>
+References: <20110217104552.GD4947@quack.suse.cz> <20110328170628.ffe314fb.toshi.okajima@jp.fujitsu.com> <20110331234050.GD2904@dastard> <20110401140856.GA5311@quack.suse.cz> <20110406054005.GD31057@dastard> <20110406061856.GC23285@quack.suse.cz> <20110406112135.GE31057@dastard> <4DBE746F.3090707@ubuntu.com> <20110502105629.GA4556@quack.suse.cz> <4DBE9537.4050708@ubuntu.com> <20110502122055.GB5855@quack.suse.cz> <4DBEA3DF.1060306@ubuntu.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Christoph Hellwig <hch@infradead.org>,
-	device-mapper development <dm-devel@redhat.com>,
-	Alasdair G Kergon <agk@redhat.com>, sandeen@redhat.com,
-	Mike Snitzer <snitzer@redhat.com>, DarkNovaNick@gmail.com,
-	linux-lvm@redhat.com, linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, Dave Chinner <david@fromorbit.com>,
+	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
+	"Ted Ts'o" <tytso@mit.edu>,
+	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: surbhi.palande@ubuntu.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:48184 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757061Ab1EBNs7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 May 2011 09:48:59 -0400
-In-Reply-To: <alpine.LFD.2.00.1105021217080.3778@dhcp-27-109.brq.redhat.com>
-	(Lukas Czerner's message of "Mon, 2 May 2011 12:24:33 +0200 (CEST)")
+Received: from mx1.redhat.com ([209.132.183.28]:43310 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752965Ab1EBOCG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 May 2011 10:02:06 -0400
+In-Reply-To: <4DBEA3DF.1060306@ubuntu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
->>>>> "Lukas" == Lukas Czerner <lczerner@redhat.com> writes:
+On 5/2/11 7:30 AM, Surbhi Palande wrote:
 
-Lukas> however it also advertise discard_zeroes_data which is wrong and
-Lukas> possibly dangerous and should be fixed!
+...
 
-That shouldn't happen. I'll have a look...
+> Yes, but ext4_freeze() also calls jbd2_journal_unlock_updates(journal) which decrements the  j_barrier_count (which was previously updated/incremented in jbd2_journal_lock_updates) ? before it returns. So after this call a new transaction/handle can be accepted/started.
+> 
+> A comment in ext4_freeze() says:
+> /* we rely on s_frozen to stop further updates */
+> (before calling jbd2_journal_unlock_updates())
 
--- 
-Martin K. Petersen	Oracle Linux Engineering
+that was me; 
+
+commit 6b0310fbf087ad6e9e3b8392adca97cd77184084
+Author: Eric Sandeen <sandeen@redhat.com>
+Date:   Sun May 16 02:00:00 2010 -0400
+
+    ext4: don't return to userspace after freezing the fs with a mutex held
+
+
+otherwise we return to userspace holding a mutex :(
+
+-Eric
