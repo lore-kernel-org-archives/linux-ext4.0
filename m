@@ -1,96 +1,67 @@
-From: Mike Snitzer <snitzer@redhat.com>
-Subject: Re: do not disable ext4 discards on first discard failure? [was: Re:
- dm snapshot: ignore discards issued to the snapshot-origin target]
-Date: Mon, 2 May 2011 10:58:11 -0400
-Message-ID: <20110502145807.GA32155@redhat.com>
-References: <20110428075355.GA2190@infradead.org>
- <20110428205935.GA24979@redhat.com>
- <alpine.LFD.2.00.1104291117510.5496@dhcp-27-109.brq.redhat.com>
- <20110429122454.GL32370@agk-dp.fab.redhat.com>
- <alpine.LFD.2.00.1105020857030.3778@dhcp-27-109.brq.redhat.com>
- <20110502081308.GC8642@agk-dp.fab.redhat.com>
- <20110502081925.GA11312@infradead.org>
- <alpine.LFD.2.00.1105021217080.3778@dhcp-27-109.brq.redhat.com>
- <yq1bozl420p.fsf@sermon.lab.mkp.net>
- <alpine.LFD.2.00.1105021631590.3778@dhcp-27-109.brq.redhat.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: do not disable ext4 discards on first discard failure? [was:
+ Re: dm snapshot: ignore discards issued to the snapshot-origin target]
+Date: Mon, 2 May 2011 16:58:23 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1105021654190.6828@dhcp-27-109.brq.redhat.com>
+References: <20110426173213.GA19604@redhat.com> <20110428001912.GA14659@redhat.com> <20110428075355.GA2190@infradead.org> <20110428205935.GA24979@redhat.com> <alpine.LFD.2.00.1104291117510.5496@dhcp-27-109.brq.redhat.com> <20110429122454.GL32370@agk-dp.fab.redhat.com>
+ <alpine.LFD.2.00.1105020857030.3778@dhcp-27-109.brq.redhat.com> <20110502081308.GC8642@agk-dp.fab.redhat.com> <20110502081925.GA11312@infradead.org> <alpine.LFD.2.00.1105021217080.3778@dhcp-27-109.brq.redhat.com> <20110502124803.GA31034@redhat.com>
+ <alpine.LFD.2.00.1105021458480.3778@dhcp-27-109.brq.redhat.com> <4DBEC3F4.3050804@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	device-mapper development <dm-devel@redhat.com>,
-	Alasdair G Kergon <agk@redhat.com>, sandeen@redhat.com,
-	DarkNovaNick@gmail.com, linux-lvm@redhat.com,
-	linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>,
+	Mike Snitzer <snitzer@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>, DarkNovaNick@gmail.com,
+	linux-lvm@redhat.com, linux-ext4@vger.kernel.org,
+	Alasdair G Kergon <agk@redhat.com>,
+	device-mapper development <dm-devel@redhat.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:14011 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:33775 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757285Ab1EBO6X (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 May 2011 10:58:23 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1105021631590.3778@dhcp-27-109.brq.redhat.com>
+	id S1757285Ab1EBO6f (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 May 2011 10:58:35 -0400
+In-Reply-To: <4DBEC3F4.3050804@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 02 2011 at 10:39am -0400,
-Lukas Czerner <lczerner@redhat.com> wrote:
+On Mon, 2 May 2011, Eric Sandeen wrote:
 
-> On Mon, 2 May 2011, Martin K. Petersen wrote:
->=20
-> > >>>>> "Lukas" =3D=3D Lukas Czerner <lczerner@redhat.com> writes:
-> >=20
-> > Lukas> So I gave it a try. First of all the device composed of SSD =
-and
-> > Lukas> spinning disk does export discard_support information proper=
-ly,
-> > Lukas> however it also advertise discard_zeroes_data which is wrong=
- and
-> > Lukas> possibly dangerous and should be fixed!
-> >=20
-> > I can't reproduce this here. If I mix discard and non-discard devic=
-es
-> > things work correctly. discard_zeroes_data also gets cleared if I m=
-ix
-> > discard-capable drives where one zeroes and one doesn't.
-> >=20
-> >=20
->=20
-> [root@trim ~]# hdparm -I /dev/sdb | grep -i trim
-> [root@trim ~]# cat /sys/block/sdb/queue/discard_zeroes_data
-> 0
-> [root@trim ~]# hdparm -I /dev/sdd | grep -i trim
->            *    Data Set Management TRIM supported
->            *    Deterministic read after TRIM
-> [root@trim ~]# cat /sys/block/sdd/queue/discard_zeroes_data=20
-> 1
-> [root@trim ~]# pvcreate /dev/sdd1=20
->   Physical volume "/dev/sdd1" successfully created
-> [root@trim ~]# pvcreate /dev/sdb3=20
->   Physical volume "/dev/sdb3" successfully created
-> [root@trim ~]# vgcreate vg_test /dev/sdd1 /dev/sdb3=20
->   Volume group "vg_test" successfully created
-> [root@trim ~]# lvcreate -L 3500M vg_test
->   Logical volume "lvol0" created
-> [root@trim ~]# ls -lah /dev/mapper/vg_test-lvol0=20
-> lrwxrwxrwx. 1 root root 7  2.=C2=A0kv=C4=9B 10.30 /dev/mapper/vg_test=
--lvol0 -> ../dm-0
-> [root@trim ~]# cat /sys/block/dm-0/queue/discard_zeroes_data=20
-> 1
+> On 5/2/11 8:05 AM, Lukas Czerner wrote:
+> > On Mon, 2 May 2011, Mike Snitzer wrote:
+> 
+> ...
+> 
+> >> The blkdev_issue_discard() change you propose could be fine (mask
+> >> EOPNOTSUPP return if device advertises support for discards) -- though
+> >> Eric said we shouldn't ever say we did something when we didn't.
+> > 
+> > Exactly, so we should not say that it is not supported when it is, but
+> > we just hit the "wrong" part of the device:) I would just very much like
+> > to keep the abstraction of having one consistent device underneath the
+> > file system and not deal with several devices, or regions with different
+> > behaviour in the file system itself (let the pixies underneath deal with
+> > that, after all not all of us are btrfs:))
+> 
+> I still think we need to stick with the simple rule: "EOPNOTSUPP returned for a particular bio means that it is not supported for that particular bio" - I don't know what else we can do, without creating an ambiguity...
 
-Hmm, Strange considering DM just uses blk_stack_limits().
+I agree, but we do not care about bios in file system. We need to know
+whether the device itself supports it or not. Also consider BLKDISCARD
+ioctl(), now as it is it's completely broken on such dm devices, because
+you are not able to use it due to -EOPNOTSUPP first time you hit the
+device which does not support it, but it can very well be just a small
+part of dm device.
 
-As Martin said, current blk_stack_limits() code is fine:
-t->discard_zeroes_data &=3D b->discard_zeroes_data;
+Again, it does not make sense to return -EOPNOTSUPP from
+blkdev_issue_discard() when the device actually supports it.
 
-> So I assume it got fixes just recently ?. I'll give it a try with the
-> up-to-date kernel.
+-Lukas
 
-Hasn't changed at all since it was introduced:
-98262f2 v2.6.33-rc1 block: Allow devices to indicate whether discarded =
-blocks are zeroed
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> This does, however, suck for the layer calling in to a complex device.
+> 
+> What is the overhead for sending discard bios down to a device that does not support it?
+> 
+> -Eric
+> 
+
+-- 
