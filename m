@@ -1,66 +1,43 @@
-From: "Martin K. Petersen" <martin.petersen@oracle.com>
-Subject: Re: [dm-devel] do not disable ext4 discards on first discard failure? [was: Re: dm snapshot: ignore discards issued to the snapshot-origin target]
-Date: Mon, 02 May 2011 12:58:34 -0400
-Message-ID: <yq1tydd2g5h.fsf@sermon.lab.mkp.net>
-References: <20110413224025.GA18589@redhat.com>
-	<20110413234854.GA19793@redhat.com>
-	<20110426173213.GA19604@redhat.com>
-	<20110428001912.GA14659@redhat.com>
-	<20110428075355.GA2190@infradead.org>
-	<20110428205935.GA24979@redhat.com>
-	<alpine.LFD.2.00.1104291117510.5496@dhcp-27-109.brq.redhat.com>
-	<20110429122454.GL32370@agk-dp.fab.redhat.com>
-	<alpine.LFD.2.00.1105020857030.3778@dhcp-27-109.brq.redhat.com>
-	<20110502081308.GC8642@agk-dp.fab.redhat.com>
-	<20110502081925.GA11312@infradead.org>
-	<alpine.LFD.2.00.1105021217080.3778@dhcp-27-109.brq.redhat.com>
-	<yq1bozl420p.fsf@sermon.lab.mkp.net>
-	<alpine.LFD.2.00.1105021631590.3778@dhcp-27-109.brq.redhat.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/2] jbd: fix fsync() tid wraparound bug
+Date: Mon, 2 May 2011 14:29:45 -0400
+Message-ID: <20110502182945.GG2819@thunk.org>
+References: <20110425231454.GB9486@thunk.org>
+ <1303777411-1316-2-git-send-email-tytso@mit.edu>
+ <20110430171711.GA2819@thunk.org>
+ <20110502150758.GH4556@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	device-mapper development <dm-devel@redhat.com>,
-	Alasdair G Kergon <agk@redhat.com>, sandeen@redhat.com,
-	Mike Snitzer <snitzer@redhat.com>, DarkNovaNick@gmail.com,
-	linux-lvm@redhat.com, linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Martin_Zielinski@McAfee.com
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:62672 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750805Ab1EBQ6u (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 May 2011 12:58:50 -0400
-In-Reply-To: <alpine.LFD.2.00.1105021631590.3778@dhcp-27-109.brq.redhat.com>
-	(Lukas Czerner's message of "Mon, 2 May 2011 16:39:31 +0200 (CEST)")
+Received: from li9-11.members.linode.com ([67.18.176.11]:38512 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752287Ab1EBS3v (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 May 2011 14:29:51 -0400
+Content-Disposition: inline
+In-Reply-To: <20110502150758.GH4556@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
->>>>> "Lukas" == Lukas Czerner <lczerner@redhat.com> writes:
+On Mon, May 02, 2011 at 05:07:58PM +0200, Jan Kara wrote:
+>   The patch looks OK in any case. I'll take it in my tree.
+Great, thanks.
 
-Lukas,
+> It would take
+> about 24 days of constant 1000 trans/s load to trigger this. That's a quite
+> heavy load but not so unrealistic with today's HW.
 
-Lukas> [root@trim ~]# lvcreate -L 3500M vg_test
-Lukas>   Logical volume "lvol0" created
+True; but one of the reason why I'm not sure I believe that is this
+bug is showing up on some Android devices, where (a) 1000 trans/second
+*is* a not just a huge load, but almost impossible to believe, and (b)
+if we really are doing 2**31 commits, we would be wearing out the
+flash storage being used on the Android devices!  (And we're seeing a
+handful of failures every week from the testers who participate in a
+kerneloops-like reporting system.)
 
-Ok, so here's what I think is going on. You're creating a linear target
-which happens to fit inside the first PV.
+So while I would very much like to believe that it's caused by a tid
+wrap, I'm worried there is another bug hiding here....
 
-Here's two devices. One that supports discard_zeroes_data=1 (8:17) and
-one that doesn't (8:49).
-
-# dmsetup table 
-foo-bar: 0 1032192 striped 2 32 8:17 384 8:49 384
-foo-baz: 0 106496 linear 8:17 516480
-
-# grep . /sys/block/d*/queue/discard_z*
-/sys/block/dm-0/queue/discard_zeroes_data:0
-/sys/block/dm-1/queue/discard_zeroes_data:1
-
-LV foo/bar (dm-0) is striped, straddling two devices with incompatible
-values. Hence 0.
-
-LV foo/baz (dm-1) is linear and fits inside the first PV. Thus it has
-discard_zeroes_data=1.
-
--- 
-Martin K. Petersen	Oracle Linux Engineering
+    		      	 	     	    - Ted
