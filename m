@@ -1,91 +1,142 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: do not disable ext4 discards on first discard failure? [was:
- Re: dm snapshot: ignore discards issued to the snapshot-origin target]
-Date: Mon, 2 May 2011 15:05:30 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1105021458480.3778@dhcp-27-109.brq.redhat.com>
-References: <20110426173213.GA19604@redhat.com> <20110428001912.GA14659@redhat.com> <20110428075355.GA2190@infradead.org> <20110428205935.GA24979@redhat.com> <alpine.LFD.2.00.1104291117510.5496@dhcp-27-109.brq.redhat.com> <20110429122454.GL32370@agk-dp.fab.redhat.com>
- <alpine.LFD.2.00.1105020857030.3778@dhcp-27-109.brq.redhat.com> <20110502081308.GC8642@agk-dp.fab.redhat.com> <20110502081925.GA11312@infradead.org> <alpine.LFD.2.00.1105021217080.3778@dhcp-27-109.brq.redhat.com> <20110502124803.GA31034@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
+ to a deadlock
+Date: Mon, 2 May 2011 15:16:19 +0200
+Message-ID: <20110502131619.GC5855@quack.suse.cz>
+References: <20110331234050.GD2904@dastard>
+ <20110401140856.GA5311@quack.suse.cz>
+ <20110406054005.GD31057@dastard>
+ <20110406061856.GC23285@quack.suse.cz>
+ <20110406112135.GE31057@dastard>
+ <4DBE746F.3090707@ubuntu.com>
+ <20110502105629.GA4556@quack.suse.cz>
+ <4DBE9537.4050708@ubuntu.com>
+ <20110502122055.GB5855@quack.suse.cz>
+ <4DBEA3DF.1060306@ubuntu.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>, sandeen@redhat.com,
-	DarkNovaNick@gmail.com, linux-lvm@redhat.com,
-	linux-ext4@vger.kernel.org, Alasdair G Kergon <agk@redhat.com>,
-	device-mapper development <dm-devel@redhat.com>
-To: Mike Snitzer <snitzer@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:26004 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758214Ab1EBNFq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 May 2011 09:05:46 -0400
-In-Reply-To: <20110502124803.GA31034@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Dave Chinner <david@fromorbit.com>,
+	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
+	Ted Ts'o <tytso@mit.edu>,
+	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Christoph Hellwig <hch@infradead.org>
+To: Surbhi Palande <surbhi.palande@ubuntu.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <4DBEA3DF.1060306@ubuntu.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 2 May 2011, Mike Snitzer wrote:
-
-> On Mon, May 02 2011 at  6:24am -0400,
-> Lukas Czerner <lczerner@redhat.com> wrote:
+On Mon 02-05-11 15:30:23, Surbhi Palande wrote:
+> On 05/02/2011 03:20 PM, Jan Kara wrote:
+> >On Mon 02-05-11 14:27:51, Surbhi Palande wrote:
+> >>On 05/02/2011 01:56 PM, Jan Kara wrote:
+> >>>On Mon 02-05-11 12:07:59, Surbhi Palande wrote:
+> >>>>On 04/06/2011 02:21 PM, Dave Chinner wrote:
+> >>>>>On Wed, Apr 06, 2011 at 08:18:56AM +0200, Jan Kara wrote:
+> >>>>>>On Wed 06-04-11 15:40:05, Dave Chinner wrote:
+> >>>>>>>On Fri, Apr 01, 2011 at 04:08:56PM +0200, Jan Kara wrote:
+> >>>>>>>>On Fri 01-04-11 10:40:50, Dave Chinner wrote:
+> >>>>>>>>>If you don't allow the page to be dirtied in the fist place, then
+> >>>>>>>>>nothing needs to be done to the writeback path because there is
+> >>>>>>>>>nothing dirty for it to write back.
+> >>>>>>>>   Sure but that's only the problem he was able to hit. But generally,
+> >>>>>>>>there's a problem with needing s_umount for unfreezing because it isn't
+> >>>>>>>>clear there aren't other code paths which can block with s_umount held
+> >>>>>>>>waiting for fs to get unfrozen. And these code paths would cause the same
+> >>>>>>>>deadlock. That's why I chose to get rid of s_umount during thawing.
+> >>>>>>>Holding the s_umount lock while checking if frozen and sleeping
+> >>>>>>>is essentially an ABBA lock inversion bug that can bite in many more
+> >>>>>>>places that just thawing the filesystem.  Any where this is done should
+> >>>>>>>be fixed, so I don't think just removing the s_umount lock from the thaw
+> >>>>>>>path is sufficient to avoid problems.
+> >>>>>>   That's easily said but hard to do - any transaction start in ext3/4 may
+> >>>>>>block on filesystem being frozen (this seems to be similar for XFS as I'm
+> >>>>>>looking into the code) and transaction start traditionally nests inside
+> >>>>>>s_umount (and basically there's no way around that since sync() calls your
+> >>>>>>fs code with s_umount held).
+> >>>>>Sure, but the question must be asked - why is ext3/4 even starting a
+> >>>>>transaction on a clean filesystem during sync? A frozen filesystem,
+> >>>>>by definition, is a clean filesytem, and therefore sync calls of any
+> >>>>>kind should not be trying to write to the FS or start transactions.
+> >>>>>XFS does this just fine, so I'd consider such behaviour on a frozen
+> >>>>>filesystem a bug in ext3/4...
+> >>>>I had a look at the xfs code for seeing how this is done.
+> >>>>xfs_file_aio_write()
+> >>>>   xfs_wait_for_freeze()
+> >>>>     vfs_check_frozen()
+> >>>>So xfs_file_aio_write() writes to buffers when the FS is not frozen.
+> >>>>
+> >>>>Now, I want to know what stops the following scenario from happening:
+> >>>>--------------------
+> >>>>xfs_file_aio_write()
+> >>>>   xfs_wait_for_freeze()
+> >>>>     vfs_check_frozen()
+> >>>>At this point F.S was not frozen, so the next instruction in the
+> >>>>xfs_file_aio_write() will be executed next.
+> >>>>However at this point (i.e after checking if F.S is frozen) the
+> >>>>write process gets pre-empted and say the _freeze_ process gets
+> >>>>control.
+> >>>>
+> >>>>Now the F.S freezes and the write process gets the control back. And
+> >>>>so we end up writing to the page cache when the F.S is frozen.
+> >>>>--------------------
+> >>>>
+> >>>>Can anyone please enlighten me on how&   why this premption is _not_
+> >>>>possible?
+> >>Thanks for your reply.
+> >>>   XFS works similarly as ext4 in this regard I believe. They have the log
+> >>>frozen in xfs_freeze() so if the race you describe above happens, either
+> >>>the writing process gets caught waiting for log to unfreeze
+> >>Agreed.
+> >>>  or it manages
+> >>>to start a transaction and then freezing process waits for transaction to
+> >>>finish before it can proceed with freezing. I'm not sure why is there the
+> >>>check in xfs_file_aio_write()...
+> >>>
+> >>>			
+> >>I am sorry, but I don't understand how this will happen - i.e I
+> >>can't understand what stops freeze_super() (or ext4_freeze) from
+> >>freezing a superblock (as the write process stopped just before
+> >>writing anything for this transaction and has not taken any locks?)
+> >   So ext4_freeze() does
+> >jbd2_journal_lock_updates(journal)
+> >   which waits for all running transactions to finish and updates
+> >j_barrier_count which stops any news ones from proceeding (check
+> >function start_this_handle()).
+> >
+> Yes, but ext4_freeze() also calls
+> jbd2_journal_unlock_updates(journal) which decrements the
+> j_barrier_count (which was previously updated/incremented in
+> jbd2_journal_lock_updates) ? before it returns. So after this call a
+> new transaction/handle can be accepted/started.
 > 
-> > On Mon, 2 May 2011, Christoph Hellwig wrote:
-> > 
-> > > On Mon, May 02, 2011 at 09:13:08AM +0100, Alasdair G Kergon wrote:
-> > > > On Mon, May 02, 2011 at 09:16:21AM +0200, Lukas Czerner wrote:
-> > > > > However when we have dm device where part of the device supports
-> > > > > discard due to underlying hardware capability we just can not return
-> > > > > EOPNOTSUPP from blkdev_issue_discard, because it is just not true! 
-> > > > 
-> > > > EOPNOTSUPP from dm means the operation was not supported on that *one* bio.
-> > > > It does *not* tell you anything in general about the device, or whether
-> > > > you'd get the same error from different bios in future.
-> > > 
-> > > Exactly.  We already have the information in the queue limits to tell
-> > > the filesystem if discard is supported at all or not.
-> > > 
-> > 
-> > So I gave it a try. First of all the device composed of SSD and spinning
-> > disk does export discard_support information properly, however it also
-> > advertise discard_zeroes_data which is wrong and possibly dangerous and
-> > should be fixed!
-> 
-> You're effectively advocating that blk_stack_limits() needs to clear the
-> topmost device's discard_zeroes_data flag if any one bottom device does
-> not have discard_zeroes_data.
+> A comment in ext4_freeze() says:
+> /* we rely on s_frozen to stop further updates */
+> (before calling jbd2_journal_unlock_updates())
+  Ah, drat, you're right. I've missed this other part. It's the problem
+that if you expect to see something, you'll see it regardless of the real
+code ;).
 
-Exactly.
+The fact is we do vfs_check_frozen() in ext4_journal_start_sb() but indeed
+it's still racy (although the race window is relatively small) because the
+filesystem can become frozen the instant after we check vfs_check_frozen().
+Commit 6b0310fb broke it for ext4.
 
-> 
-> > And second of all, strictly speaking if EOPNOTSUPP from dm means that
-> > operation was not supported on that *one* bio, blkdev_issue_discard()
-> > should handle that and do not return EOPNOTSUPP further if queue limits
-> > tells that device has discard support. Is this acceptable solution for
-> > you guys ? I can make that change since I am changing blkdev_issue_discard()
-> > anyway. Or, we can make that change in filesystem where we disable
-> > discard on mount time, when we notice that discard mount option was
-> > specified, but the device does not support it (we should probably do
-> > this regardless on blkdev_issue_discard() change).
-> 
-> The blkdev_issue_discard() change you propose could be fine (mask
-> EOPNOTSUPP return if device advertises support for discards) -- though
-> Eric said we shouldn't ever say we did something when we didn't.
+I guess the code was mostly copied from XFS which seems to have the same
+problem in xfs_trans_alloc() since the git history beginning. I see two
+ways to fix this - either fix ext4/xfs to check s_frozen after starting
+a transaction and if the filesystem is being frozen, we stop the
+transaction, wait for fs to get unfrozen, and restart. Another option is
+to create an analogous logic using a atomic counter of write ops in vfs
+that could be used by all filesystems. We'd just have to replace
+vfs_check_frozen() with vfs_start_write() and add vfs_stop_write() at
+appropriate places...
 
-Exactly, so we should not say that it is not supported when it is, but
-we just hit the "wrong" part of the device:) I would just very much like
-to keep the abstraction of having one consistent device underneath the
-file system and not deal with several devices, or regions with different
-behaviour in the file system itself (let the pixies underneath deal with
-that, after all not all of us are btrfs:))
-
-> 
-> But that blkdev_issue_discard() change is really only safe if the
-> discard_zeroes_data flag is cleared by blk_stack_limits() if finds
-> inconsistent discard_zeroes_data support.
-
-Agreed
-
-> 
-> Mike
-> 
-
-Thanks!
--Lukas
+Dave, Christoph, any opinions on this?
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
