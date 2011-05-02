@@ -1,44 +1,53 @@
-From: Surbhi Palande <surbhi.palande@ubuntu.com>
-Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
- to a deadlock
-Date: Mon, 02 May 2011 16:27:39 +0300
-Message-ID: <4DBEB14B.70208@ubuntu.com>
-References: <20110406054005.GD31057@dastard> <20110406061856.GC23285@quack.suse.cz> <20110406112135.GE31057@dastard> <4DBE746F.3090707@ubuntu.com> <20110502105629.GA4556@quack.suse.cz> <4DBE9537.4050708@ubuntu.com> <20110502122055.GB5855@quack.suse.cz> <4DBEA3DF.1060306@ubuntu.com> <20110502131619.GC5855@quack.suse.cz> <4DBEB025.90704@ubuntu.com> <20110502132449.GB7708@infradead.org>
-Reply-To: surbhi.palande@ubuntu.com
+From: Johann Lombardi <johann@whamcloud.com>
+Subject: Re: [PATCH] ext4: add support for multiple mount protection
+Date: Mon, 2 May 2011 15:43:38 +0200
+Message-ID: <20110502134338.GB14743@granier.hd.free.fr>
+References: <1302631493-9778-1-git-send-email-johann@whamcloud.com>
+ <4DA4A5E3.4080803@itwm.fraunhofer.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, Dave Chinner <david@fromorbit.com>,
-	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
-	Ted Ts'o <tytso@mit.edu>,
-	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@whamcloud.com>
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from adelie.canonical.com ([91.189.90.139]:48376 "EHLO
-	adelie.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757606Ab1EBN1t (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 May 2011 09:27:49 -0400
-In-Reply-To: <20110502132449.GB7708@infradead.org>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:64441 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754561Ab1EBNnl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 May 2011 09:43:41 -0400
+Received: by wwa36 with SMTP id 36so6349431wwa.1
+        for <linux-ext4@vger.kernel.org>; Mon, 02 May 2011 06:43:40 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <4DA4A5E3.4080803@itwm.fraunhofer.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/02/2011 04:24 PM, Christoph Hellwig wrote:
-> On Mon, May 02, 2011 at 04:22:45PM +0300, Surbhi Palande wrote:
->> This has another advantage, that it rightfully does not let you
->> update the access time when the F.S is frozen (touch_atime called
->> from a read path when the F.S is frozen) Otherwise we also need to
->> fix this path.
-> In most filesystens atime updates aren't transactional.  They just
-> get written into inode->i_atime, and at some later point when the
-> VFS tries to clean the inode it gets writtent back, either through
-> a transaction or not.
->
-Yes, agreed. But then when a F.S is frozen the inode should not be 
-dirtied? Right? So this has to be fixed?
-Also, in ext4, I think that updating atime starts a transaction.
+Hi Bernd,
 
-Warm Regards,
-Surbhi
+On Tue, Apr 12, 2011 at 09:20:03PM +0200, Bernd Schubert wrote:
+> >+#define EXT4_MMP_UPDATE_INTERVAL   1
+> 
+> this define is nowhere used (e2fsprogs already sets the
+> update-interval in the superblock).
 
+Indeed, i have removed it.
+
+> And it is also too small, which may cause a huge performance issue
+> (please remember my corresponding lustre bugzilla...).
+
+The patches i have just sent increase the update interval to 5s and decrease the multiplier used to compute the check interval from 5 to 2.
+
+> Once you are going to post the e2fsprogs patch, could you please
+> also take care of the 2TiB mmp-block read limitation bug (please see
+> another Lustre bugzilla )?
+
+The updated e2fsprogs & kernel patches use blk64_t/ext4_fsblk_t, so this should work now. I will give this a try ASAP.
+
+> It also would be nice to explain somewhere (and not hidden in the
+> code) what is the difference between "update interval" and "check
+> interval".
+
+Done.
+
+Thanks for the feedback.
+
+Cheers,
+Johann
