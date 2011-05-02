@@ -1,52 +1,47 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Need of revoke mechanism in JBD
-Date: Mon, 2 May 2011 10:43:55 -0400
-Message-ID: <20110502144355.GF2819@thunk.org>
-References: <4DB68257.4070407@gmail.com>
- <BANLkTikuNB8m3-X8BXVcL2OCqQiZwRCbQA@mail.gmail.com>
- <BANLkTikV4nU4Zc4OxNa6q8wDtM7cLUF_ig@mail.gmail.com>
- <20110426122558.GF9486@thunk.org>
- <BANLkTin35yOg+ndy3i4vTT7RHxtFso+HCA@mail.gmail.com>
- <20110501222813.GD2819@thunk.org>
- <BANLkTimaR0n-YmtBe6xWKCkOc+PoBNa72w@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: do not disable ext4 discards on first discard failure? [was:
+ Re: dm snapshot: ignore discards issued to the snapshot-origin target]
+Date: Mon, 02 May 2011 09:47:16 -0500
+Message-ID: <4DBEC3F4.3050804@redhat.com>
+References: <20110426173213.GA19604@redhat.com> <20110428001912.GA14659@redhat.com> <20110428075355.GA2190@infradead.org> <20110428205935.GA24979@redhat.com> <alpine.LFD.2.00.1104291117510.5496@dhcp-27-109.brq.redhat.com> <20110429122454.GL32370@agk-dp.fab.redhat.com> <alpine.LFD.2.00.1105020857030.3778@dhcp-27-109.brq.redhat.com> <20110502081308.GC8642@agk-dp.fab.redhat.com> <20110502081925.GA11312@infradead.org> <alpine.LFD.2.00.1105021217080.3778@dhcp-27-109.brq.redhat.com> <20110502124803.GA31034@redhat.com> <alpine.LFD.2.00.1105021458480.3778@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ding Dinghua <dingdinghua85@gmail.com>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	Niraj Kulkarni <kulkarniniraj14@gmail.com>,
-	linux-ext4@vger.kernel.org
-To: Amir Goldstein <amir73il@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Mike Snitzer <snitzer@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>, DarkNovaNick@gmail.com,
+	linux-lvm@redhat.com, linux-ext4@vger.kernel.org,
+	Alasdair G Kergon <agk@redhat.com>,
+	device-mapper development <dm-devel@redhat.com>
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:36355 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757909Ab1EBOn4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 May 2011 10:43:56 -0400
-Content-Disposition: inline
-In-Reply-To: <BANLkTimaR0n-YmtBe6xWKCkOc+PoBNa72w@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:49584 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758812Ab1EBOr0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 May 2011 10:47:26 -0400
+In-Reply-To: <alpine.LFD.2.00.1105021458480.3778@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 02, 2011 at 01:42:48PM +0300, Amir Goldstein wrote:
+On 5/2/11 8:05 AM, Lukas Czerner wrote:
+> On Mon, 2 May 2011, Mike Snitzer wrote:
+
+...
+
+>> The blkdev_issue_discard() change you propose could be fine (mask
+>> EOPNOTSUPP return if device advertises support for discards) -- though
+>> Eric said we shouldn't ever say we did something when we didn't.
 > 
-> Clearly, at the time of this talk, revoke code was still on the design table
-> and committed_data is not mentioned, so either it was not introduced yet
-> or just wasn't in the scope of the talk.
+> Exactly, so we should not say that it is not supported when it is, but
+> we just hit the "wrong" part of the device:) I would just very much like
+> to keep the abstraction of having one consistent device underneath the
+> file system and not deal with several devices, or regions with different
+> behaviour in the file system itself (let the pixies underneath deal with
+> that, after all not all of us are btrfs:))
 
-No, the revoke code was already implemented when he gave the talk.
+I still think we need to stick with the simple rule: "EOPNOTSUPP returned for a particular bio means that it is not supported for that particular bio" - I don't know what else we can do, without creating an ambiguity...
 
-   "The way we're doing that in EXT3 is that deleting metadata can
-   cause a revoke record to be written into the journal. And when you
-   do the replay of the journal, the very first pass of the journal
-   recovery, we look for all of the revoke records and make sure that
-   any data that's been revoked is never, ever replayed. And so that
-   deals with that particular case."
+This does, however, suck for the layer calling in to a complex device.
 
-Stephen gave the talk in July, 2000.  Journal support was first
-supported in e2fsprogs 1.20 (released May 2000), and we fixed a bug in
-the revoke handling in e2fsprogs 1.21 (released June 2000).  Data
-journalling mode (only) came first, and was working by late 1999;
-indeed we couldn't do ordered or writeback journaling at all until we
-had support for the revoke handling, for reasons which he explained in
-his talk.
+What is the overhead for sending discard bios down to a device that does not support it?
 
-						- Ted
+-Eric
