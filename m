@@ -1,71 +1,101 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: Need of revoke mechanism in JBD
-Date: Mon, 2 May 2011 13:42:48 +0300
-Message-ID: <BANLkTimaR0n-YmtBe6xWKCkOc+PoBNa72w@mail.gmail.com>
-References: <4DB68257.4070407@gmail.com>
-	<BANLkTikuNB8m3-X8BXVcL2OCqQiZwRCbQA@mail.gmail.com>
-	<BANLkTikV4nU4Zc4OxNa6q8wDtM7cLUF_ig@mail.gmail.com>
-	<20110426122558.GF9486@thunk.org>
-	<BANLkTin35yOg+ndy3i4vTT7RHxtFso+HCA@mail.gmail.com>
-	<20110501222813.GD2819@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
+ to a deadlock
+Date: Mon, 2 May 2011 12:56:29 +0200
+Message-ID: <20110502105629.GA4556@quack.suse.cz>
+References: <20110216145627.GB5592@quack.suse.cz>
+ <4D5C9B1B.2050304@jp.fujitsu.com>
+ <20110217104552.GD4947@quack.suse.cz>
+ <20110328170628.ffe314fb.toshi.okajima@jp.fujitsu.com>
+ <20110331234050.GD2904@dastard>
+ <20110401140856.GA5311@quack.suse.cz>
+ <20110406054005.GD31057@dastard>
+ <20110406061856.GC23285@quack.suse.cz>
+ <20110406112135.GE31057@dastard>
+ <4DBE746F.3090707@ubuntu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Ding Dinghua <dingdinghua85@gmail.com>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	Niraj Kulkarni <kulkarniniraj14@gmail.com>,
-	linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
+	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
+	Ted Ts'o <tytso@mit.edu>,
+	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Surbhi Palande <surbhi.palande@ubuntu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:58571 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757240Ab1EBKmv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 May 2011 06:42:51 -0400
-Received: by eyx24 with SMTP id 24so1695882eyx.19
-        for <linux-ext4@vger.kernel.org>; Mon, 02 May 2011 03:42:50 -0700 (PDT)
-In-Reply-To: <20110501222813.GD2819@thunk.org>
+Received: from cantor.suse.de ([195.135.220.2]:52722 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757817Ab1EBK4d (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 May 2011 06:56:33 -0400
+Content-Disposition: inline
+In-Reply-To: <4DBE746F.3090707@ubuntu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 2, 2011 at 1:28 AM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Fri, Apr 29, 2011 at 10:45:23PM +0300, Amir Goldstein wrote:
->>
->> Actually, the original paper has no mention of revoke records.
->> I went out to look for useful documentation on journal forget/revoke
->> and came back empty handed as well.
->
-> Stephen Tweedie gave a talk back in 2000 which covered revoke records=
-=2E
-> There's a transcript of his talk here:
->
-> http://olstrans.sourceforge.net/release/OLS2000-ext3/OLS2000-ext3.htm=
-l
->
-> The link to the audio file of the talk is dead, but I managed to find
-> a copy of the mp3 file on Google. =A0To make sure it doesn't get lost
-> I've made a copy of it. =A0The original and the copy can be found at:
->
-> http://ftp.gnumonks.org/pub/congress-talks/ols2000/high/cd1/2000-07-2=
-0_15-05-22_A_64.mp3
-> ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/presentations/2000=
--07-20_15-05-22_A_64.mp3
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0- Ted
->
+On Mon 02-05-11 12:07:59, Surbhi Palande wrote:
+> On 04/06/2011 02:21 PM, Dave Chinner wrote:
+> >On Wed, Apr 06, 2011 at 08:18:56AM +0200, Jan Kara wrote:
+> >>On Wed 06-04-11 15:40:05, Dave Chinner wrote:
+> >>>On Fri, Apr 01, 2011 at 04:08:56PM +0200, Jan Kara wrote:
+> >>>>On Fri 01-04-11 10:40:50, Dave Chinner wrote:
+> >>>>>If you don't allow the page to be dirtied in the fist place, then
+> >>>>>nothing needs to be done to the writeback path because there is
+> >>>>>nothing dirty for it to write back.
+> >>>>   Sure but that's only the problem he was able to hit. But generally,
+> >>>>there's a problem with needing s_umount for unfreezing because it isn't
+> >>>>clear there aren't other code paths which can block with s_umount held
+> >>>>waiting for fs to get unfrozen. And these code paths would cause the same
+> >>>>deadlock. That's why I chose to get rid of s_umount during thawing.
+> >>>
+> >>>Holding the s_umount lock while checking if frozen and sleeping
+> >>>is essentially an ABBA lock inversion bug that can bite in many more
+> >>>places that just thawing the filesystem.  Any where this is done should
+> >>>be fixed, so I don't think just removing the s_umount lock from the thaw
+> >>>path is sufficient to avoid problems.
+> >>   That's easily said but hard to do - any transaction start in ext3/4 may
+> >>block on filesystem being frozen (this seems to be similar for XFS as I'm
+> >>looking into the code) and transaction start traditionally nests inside
+> >>s_umount (and basically there's no way around that since sync() calls your
+> >>fs code with s_umount held).
+> >
+> >Sure, but the question must be asked - why is ext3/4 even starting a
+> >transaction on a clean filesystem during sync? A frozen filesystem,
+> >by definition, is a clean filesytem, and therefore sync calls of any
+> >kind should not be trying to write to the FS or start transactions.
+> >XFS does this just fine, so I'd consider such behaviour on a frozen
+> >filesystem a bug in ext3/4...
+> 
+> I had a look at the xfs code for seeing how this is done.
+> xfs_file_aio_write()
+>   xfs_wait_for_freeze()
+>     vfs_check_frozen()
+> So xfs_file_aio_write() writes to buffers when the FS is not frozen.
+> 
+> Now, I want to know what stops the following scenario from happening:
+> --------------------
+> xfs_file_aio_write()
+>   xfs_wait_for_freeze()
+>     vfs_check_frozen()
+> At this point F.S was not frozen, so the next instruction in the
+> xfs_file_aio_write() will be executed next.
+> However at this point (i.e after checking if F.S is frozen) the
+> write process gets pre-empted and say the _freeze_ process gets
+> control.
+> 
+> Now the F.S freezes and the write process gets the control back. And
+> so we end up writing to the page cache when the F.S is frozen.
+> --------------------
+> 
+> Can anyone please enlighten me on how & why this premption is _not_
+> possible?
+  XFS works similarly as ext4 in this regard I believe. They have the log
+frozen in xfs_freeze() so if the race you describe above happens, either
+the writing process gets caught waiting for log to unfreeze or it manages
+to start a transaction and then freezing process waits for transaction to
+finish before it can proceed with freezing. I'm not sure why is there the
+check in xfs_file_aio_write()...
 
-Thanks for that! It was an interesting read, a little piece of history =
-for me.
-
-Clearly, at the time of this talk, revoke code was still on the design =
-table
-and committed_data is not mentioned, so either it was not introduced ye=
-t
-or just wasn't in the scope of the talk.
-
-Amir.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
