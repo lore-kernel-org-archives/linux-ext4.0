@@ -1,60 +1,51 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: Ext4 Punch Hole Support: Change summary and test case summary
-Date: Tue, 19 Apr 2011 10:49:33 -0700
-Message-ID: <1303235373.2534.8.camel@mingming-laptop>
-References: <4DAD3BD7.3080107@linux.vnet.ibm.com>
-	 <F28E8BBB-A8B7-44AA-A84C-DB247B2A88CC@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [Bug 34302] Errors from kjournald
+Date: Tue, 3 May 2011 10:59:26 -0600
+Message-ID: <47364D7F-9BF3-4E0D-9F00-425C3061043C@dilger.ca>
+References: <bug-34302-13602@https.bugzilla.kernel.org/> <201105031627.p43GRRQo017978@demeter1.kernel.org>
+Mime-Version: 1.0 (iPhone Mail 8H7)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "bugzilla-daemon@bugzilla.kernel.org"
+	<bugzilla-daemon@bugzilla.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:53570 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753913Ab1ECQ4x (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 May 2011 12:56:53 -0400
-Received: from d01relay05.pok.ibm.com (d01relay05.pok.ibm.com [9.56.227.237])
-	by e2.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p43Gb7Fe019876
-	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 12:37:07 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p43GugSB100596
-	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 12:56:42 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p43GugqA014104
-	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 13:56:42 -0300
-In-Reply-To: <F28E8BBB-A8B7-44AA-A84C-DB247B2A88CC@dilger.ca>
+Received: from shawmail.shawcable.com ([64.59.128.220]:3664 "EHLO
+	mail.shawcable.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754013Ab1ECQ7Y convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 May 2011 12:59:24 -0400
+In-Reply-To: <201105031627.p43GRRQo017978@demeter1.kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 2011-04-19 at 02:29 -0600, Andreas Dilger wrote:
-> On 2011-04-19, at 1:37 AM, Allison Henderson wrote:
-> > Big Hole Test
-> > ---------------------------------------------------------------
-> > A hole large hole is punched in a large file (exact file size=638169088 bytes, exact hole size = 638150422 bytes, offset = 6144 bytes), 
-> > resulting in all but 5 blocks being punched out (2 in the front, 3 in the back).  This test case verifies that the code can properly
-> > punch out a hole covering multiple extents.
-> > 
-> > This test is successful when the following conditions are met:
-> > - File frag shows extents only for the first two blocks and the last 3 blocks
-> > - The test file contains zeros from bytes 6144 to 638156566
-> > (* ls and df is not measured here because some blocks will still be reserved
-> > as index blocks causing the consumed space to be appear larger)
+On 2011-05-03, at 10:27 AM, bugzilla-daemon@bugzilla.kernel.org wrote:
+> The final message of concern was 
 > 
-> Shouldn't the remaining two extents fit inside the inode, so there is no need for index blocks, or does the extent removal code not shrink the index blocks?
-> 
+> May  3 01:40:09 fawkes kernel: [309464.781078] ata8.00: exception Emask 0x0
+> SAct 0x2 SErr 0x0 action 0x6 frozen
+> May  3 01:40:09 fawkes kernel: [309464.781091] ata8.00: failed command: READ
+> FPDMA QUEUED
+> May  3 01:40:09 fawkes kernel: [309464.781107] ata8.00: cmd
+> 60/08:08:47:0a:ab/00:00:45:00:00/40 tag 1 ncq 4096 in
+> May  3 01:40:09 fawkes kernel: [309464.781111]          res
+> 40/00:00:00:00:00/00:00:00:00:00/00 Emask 0x4 (timeout)
+> May  3 01:40:09 fawkes kernel: [309464.781118] ata8.00: status: { DRDY }
+> May  3 01:40:09 fawkes kernel: [309464.781131] ata8: hard resetting link
+> May  3 01:40:10 fawkes kernel: [309465.112103] ata8: SATA link up 6.0 Gbps
+> (SStatus 133 SControl 300)
+> May  3 01:40:10 fawkes kernel: [309465.119531] ata8.00: configured for UDMA/133
+> May  3 01:40:10 fawkes kernel: [309465.119543] ata8.00: device reported invalid
+> CHS sector 0
+> May  3 01:40:10 fawkes kernel: [309465.119559] ata8: EH complete
 
-It seems so, the extent removal code today not shrink the index blocks 
-> Cheers, Andreas
-> 
-> 
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+This looks like a problem with your disk. 
 
+> I am not 100% sure which disk ata8 corresponds to.  I tried looking through the
+> boot log to figure out the device assignments, but it was a bit confusing, It
+> appears that ata8.00 is one of the source raid disks.  If so, I wonder why it
+> got reset?
 
+One possibility is if the source disks share the SATA controller with the target they may both be blocked at the same time.  
+
+Cheers, Andreas
