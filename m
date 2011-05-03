@@ -1,40 +1,43 @@
-From: "Martin K. Petersen" <martin.petersen@oracle.com>
-Subject: Re: Is it possible for the ext4/btrfs file system to pass some context related info to low level block driver?
-Date: Tue, 03 May 2011 09:43:29 -0400
-Message-ID: <yq1mxj32932.fsf@sermon.lab.mkp.net>
-References: <CE761E84DADF2947A4AF22FB8D97A47358E28022@shsmsx501.ccr.corp.intel.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: your mail
+Date: Tue, 3 May 2011 15:46:36 +0200
+Message-ID: <20110503134636.GA6009@quack.suse.cz>
+References: <4DBFE09E.5070805@canonical.com>
+ <1304428117-6195-1-git-send-email-surbhi.palande@canonical.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "linux-btrfs\@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
-	"linux-ext4\@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-mmc\@vger.kernel.org" <linux-mmc@vger.kernel.org>
-To: "Gao\, Yunpeng" <yunpeng.gao@intel.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:46505 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752547Ab1ECNnm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 May 2011 09:43:42 -0400
-In-Reply-To: <CE761E84DADF2947A4AF22FB8D97A47358E28022@shsmsx501.ccr.corp.intel.com>
-	(Yunpeng Gao's message of "Tue, 3 May 2011 10:44:07 +0800")
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: jack@suse.cz, toshi.okajima@jp.fujitsu.com, tytso@mit.edu,
+	m.mizuma@jp.fujitsu.com, adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	sandeen@redhat.com
+To: Surbhi Palande <surbhi.palande@canonical.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1304428117-6195-1-git-send-email-surbhi.palande@canonical.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
->>>>> "Yunpeng" == Gao, Yunpeng <yunpeng.gao@intel.com> writes:
+On Tue 03-05-11 16:08:36, Surbhi Palande wrote:
+> On munmap() zap_pte_range() is called which dirties the PTE dirty pages as
+> Toshiyuki pointed out.
+> 
+> zap_pte_range()
+>   mapping->a_ops->set_page_dirty (= ext4_journalled_set_page_dirty)  
+> 
+> So, I think that it is here that we should do the checking for a ext4 F.S
+> frozen state and also prevent a parallel ext4 F.S freeze from happening.
+> 
+> Attaching a patch for initial review. Please do let me know your thoughts! 
+  This is definitely the wrong place. ->set_page_dirty() callbacks are
+called with various locks held and the page need not be locked (thus
+dereferencing page->mapping is oopsable). Moreover this particular callback
+is called only in data=journal mode.
 
-Yunpeng> So, my question is, is there any plan or discussion on
-Yunpeng> supporting this feature (passing data type info to low level
-Yunpeng> block device driver) on file system developments? Especially
-Yunpeng> for ext4/btrfs, since now they are very hot in Linux? Thanks.
+Believe me, the right place is page_mkwrite() - you have to catch the
+read-only => read-write page transition. Once the page is mapped
+read-write, you've already lost the race.
 
-Yes, I have been working on some changes that allow us to tag bios and
-pass the information out to storage. These patches have been on the back
-burner for a while due to other commitments. But I'll dig them out and
-post them later. We just discussed them a couple of weeks ago at the
-Linux Storage Workshop.
-
-In the meantime: Can you point me to the relevant eMMC stuff so I can
-see how many tiers or classes we have to work with there?
-
+								Honza
 -- 
-Martin K. Petersen	Oracle Linux Engineering
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
