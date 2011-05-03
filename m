@@ -1,186 +1,219 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 11/19] ext4: teach ext4_ext_truncate() about the bigalloc feature
-Date: Tue,  3 May 2011 18:24:41 -0400
-Message-ID: <1304461490-11056-12-git-send-email-tytso@mit.edu>
+Subject: [PATCH 12/19] ext4: convert s_freeblocks_counter to s_freeclusters_counter
+Date: Tue,  3 May 2011 18:24:42 -0400
+Message-ID: <1304461490-11056-13-git-send-email-tytso@mit.edu>
 References: <1304461490-11056-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:58128 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:58132 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752138Ab1ECWY4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1753093Ab1ECWY4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 3 May 2011 18:24:56 -0400
 In-Reply-To: <1304461490-11056-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When we are truncating (as opposed unlinking) a file, we need to worry
-about partial truncates of a file, especially in the light of sparse
-files.  The changes here make sure that arbitrary truncates of sparse
-files works correctly.  Yeah, it's messy.
-
-Note that these functions will need to be revisted when the punch
-ioctl is integrated --- in fact this commit will probably have merge
-conflicts with the punch changes which Allison Henders and the IBM LTC
-have been working on.  I will need to fix this up when either patch
-hits mainline.
+Convert the percpu counter s_freeblocks_counter in struct
+ext4_super_info to be s_freeclusters_counter.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/extents.c |   82 ++++++++++++++++++++++++++++++++++++++++++++++------
- 1 files changed, 72 insertions(+), 10 deletions(-)
+ fs/ext4/balloc.c  |    9 +++++----
+ fs/ext4/ext4.h    |    2 +-
+ fs/ext4/ialloc.c  |    3 ++-
+ fs/ext4/inode.c   |    6 ++++--
+ fs/ext4/mballoc.c |    4 ++--
+ fs/ext4/resize.c  |    4 ++--
+ fs/ext4/super.c   |   18 ++++++++++--------
+ 7 files changed, 26 insertions(+), 20 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 2730508..a051adf 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2156,14 +2156,39 @@ int ext4_ext_index_trans_blocks(struct inode *inode, int nrblocks, int chunk)
- }
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index a0a86ce..c0b74ca 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -495,7 +495,8 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
+ 	ext4_free_blks_set(sb, desc, blk_free_count);
+ 	desc->bg_checksum = ext4_group_desc_csum(sbi, block_group, desc);
+ 	ext4_unlock_group(sb, block_group);
+-	percpu_counter_add(&sbi->s_freeblocks_counter, blocks_freed);
++	percpu_counter_add(&sbi->s_freeclusters_counter,
++			   EXT4_B2C(sbi, blocks_freed));
  
- static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
--				struct ext4_extent *ex,
--				ext4_lblk_t from, ext4_lblk_t to)
-+			      struct ext4_extent *ex,
-+			      ext4_fsblk_t *partial_cluster,
-+			      ext4_lblk_t from, ext4_lblk_t to)
+ 	if (sbi->s_log_groups_per_flex) {
+ 		ext4_group_t flex_group = ext4_flex_group(sbi, block_group);
+@@ -537,16 +538,16 @@ error_return:
+ static int ext4_has_free_blocks(struct ext4_sb_info *sbi, s64 nblocks)
  {
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	unsigned short ee_len =  ext4_ext_get_actual_len(ex);
-+	ext4_fsblk_t pblk;
- 	int flags = EXT4_FREE_BLOCKS_FORGET;
+ 	s64 free_blocks, dirty_blocks, root_blocks;
+-	struct percpu_counter *fbc = &sbi->s_freeblocks_counter;
++	struct percpu_counter *fcc = &sbi->s_freeclusters_counter;
+ 	struct percpu_counter *dbc = &sbi->s_dirtyblocks_counter;
  
- 	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
- 		flags |= EXT4_FREE_BLOCKS_METADATA;
-+	/*
-+	 * For bigalloc file systems, we never free a partial cluster
-+	 * at the beginning of the extent.  Instead, we make a note
-+	 * that we tried freeing the cluster, and check to see if we
-+	 * need to free it on a subsequent call to ext4_remove_blocks,
-+	 * or at the end of the ext4_truncate() operation.
-+	 */
-+	flags |= EXT4_FREE_BLOCKS_NOFREE_FIRST_CLUSTER;
-+
-+	/*
-+	 * If we have a partial cluster, and it's different from the
-+	 * cluster of the last block, we need to explicitly free the
-+	 * partial cluster here.
-+	 */
-+	pblk = ext4_ext_pblock(ex) + ee_len - 1;
-+	if (*partial_cluster && (EXT4_B2C(sbi, pblk) != *partial_cluster)) {
-+		ext4_free_blocks(handle, inode, NULL,
-+				 EXT4_C2B(sbi, *partial_cluster),
-+				 sbi->s_cluster_ratio, flags);
-+		*partial_cluster = 0;
-+	}
-+
- #ifdef EXTENTS_STATS
- 	{
- 		struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-@@ -2183,12 +2208,24 @@ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
- 	    && to == le32_to_cpu(ex->ee_block) + ee_len - 1) {
- 		/* tail removal */
- 		ext4_lblk_t num;
--		ext4_fsblk_t start;
+-	free_blocks  = percpu_counter_read_positive(fbc);
++	free_blocks  = EXT4_C2B(sbi, percpu_counter_read_positive(fcc));
+ 	dirty_blocks = percpu_counter_read_positive(dbc);
+ 	root_blocks = ext4_r_blocks_count(sbi->s_es);
  
- 		num = le32_to_cpu(ex->ee_block) + ee_len - from;
--		start = ext4_ext_pblock(ex) + ee_len - num;
--		ext_debug("free last %u blocks starting %llu\n", num, start);
--		ext4_free_blocks(handle, inode, NULL, start, num, flags);
-+		pblk = ext4_ext_pblock(ex) + ee_len - num;
-+		ext_debug("free last %u blocks starting %llu\n", num, pblk);
-+		ext4_free_blocks(handle, inode, NULL, pblk, num, flags);
-+		/*
-+		 * If the block range to be freed didn't start at the
-+		 * beginning of a cluster, and we removed the entire
-+		 * extent, save the partial cluster here, since we
-+		 * might need to delete if we determine that the
-+		 * truncate operation has removed all of the blocks in
-+		 * the cluster.
-+		 */
-+		if (pblk & (sbi->s_cluster_ratio - 1) &&
-+		    (ee_len == num))
-+			*partial_cluster = EXT4_B2C(sbi, pblk);
-+		else
-+			*partial_cluster = 0;
- 	} else if (from == le32_to_cpu(ex->ee_block)
- 		   && to <= le32_to_cpu(ex->ee_block) + ee_len - 1) {
- 		printk(KERN_INFO "strange request: removal %u-%u from %u:%u\n",
-@@ -2203,8 +2240,10 @@ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
+ 	if (free_blocks - (nblocks + root_blocks + dirty_blocks) <
+ 						EXT4_FREEBLOCKS_WATERMARK) {
+-		free_blocks  = percpu_counter_sum_positive(fbc);
++		free_blocks  = EXT4_C2B(sbi, percpu_counter_sum_positive(fcc));
+ 		dirty_blocks = percpu_counter_sum_positive(dbc);
+ 	}
+ 	/* Check whether we have space after
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 6cf000a..35441b3 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1127,7 +1127,7 @@ struct ext4_sb_info {
+ 	u32 s_hash_seed[4];
+ 	int s_def_hash_version;
+ 	int s_hash_unsigned;	/* 3 if hash should be signed, 0 if not */
+-	struct percpu_counter s_freeblocks_counter;
++	struct percpu_counter s_freeclusters_counter;
+ 	struct percpu_counter s_freeinodes_counter;
+ 	struct percpu_counter s_dirs_counter;
+ 	struct percpu_counter s_dirtyblocks_counter;
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index d0770b6..d95a157 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -490,7 +490,8 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
  
- static int
- ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
--		struct ext4_ext_path *path, ext4_lblk_t start)
-+		 struct ext4_ext_path *path, ext4_fsblk_t *partial_cluster,
-+		 ext4_lblk_t start)
- {
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	int err = 0, correct_index = 0;
- 	int depth = ext_depth(inode), credits;
- 	struct ext4_extent_header *eh;
-@@ -2291,7 +2330,8 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 		if (err)
- 			goto out;
+ 	freei = percpu_counter_read_positive(&sbi->s_freeinodes_counter);
+ 	avefreei = freei / ngroups;
+-	freeb = percpu_counter_read_positive(&sbi->s_freeblocks_counter);
++	freeb = EXT4_C2B(sbi,
++		percpu_counter_read_positive(&sbi->s_freeclusters_counter));
+ 	avefreeb = freeb;
+ 	do_div(avefreeb, ngroups);
+ 	ndirs = percpu_counter_read_positive(&sbi->s_dirs_counter);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index df7ce6a..cc5910d 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2211,7 +2211,8 @@ static void ext4_print_free_blocks(struct inode *inode)
+ 	       ext4_count_free_blocks(inode->i_sb));
+ 	printk(KERN_CRIT "Free/Dirty block details\n");
+ 	printk(KERN_CRIT "free_blocks=%lld\n",
+-	       (long long) percpu_counter_sum(&sbi->s_freeblocks_counter));
++	       (long long) EXT4_C2B(EXT4_SB(inode->i_sb),
++		percpu_counter_sum(&sbi->s_freeclusters_counter)));
+ 	printk(KERN_CRIT "dirty_blocks=%lld\n",
+ 	       (long long) percpu_counter_sum(&sbi->s_dirtyblocks_counter));
+ 	printk(KERN_CRIT "Block reservation details\n");
+@@ -3087,7 +3088,8 @@ static int ext4_nonda_switch(struct super_block *sb)
+ 	 * Delalloc need an accurate free block accounting. So switch
+ 	 * to non delalloc when we are near to error range.
+ 	 */
+-	free_blocks  = percpu_counter_read_positive(&sbi->s_freeblocks_counter);
++	free_blocks  = EXT4_C2B(sbi,
++		percpu_counter_read_positive(&sbi->s_freeclusters_counter));
+ 	dirty_blocks = percpu_counter_read_positive(&sbi->s_dirtyblocks_counter);
+ 	if (2 * free_blocks < 3 * dirty_blocks ||
+ 		free_blocks < (dirty_blocks + EXT4_FREEBLOCKS_WATERMARK)) {
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index e9fe35d..7a9cbe1 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2864,7 +2864,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, ac->ac_b_ex.fe_group, gdp);
  
--		err = ext4_remove_blocks(handle, inode, ex, a, b);
-+		err = ext4_remove_blocks(handle, inode, ex, partial_cluster,
-+					 a, b);
- 		if (err)
- 			goto out;
+ 	ext4_unlock_group(sb, ac->ac_b_ex.fe_group);
+-	percpu_counter_sub(&sbi->s_freeblocks_counter, ac->ac_b_ex.fe_len);
++	percpu_counter_sub(&sbi->s_freeclusters_counter, ac->ac_b_ex.fe_len);
+ 	/*
+ 	 * Now reduce the dirty block count also. Should not go negative
+ 	 */
+@@ -4712,7 +4712,7 @@ do_more:
+ 	ext4_free_blks_set(sb, gdp, ret);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
+ 	ext4_unlock_group(sb, block_group);
+-	percpu_counter_add(&sbi->s_freeblocks_counter, count);
++	percpu_counter_add(&sbi->s_freeclusters_counter, count_clusters);
  
-@@ -2299,7 +2339,8 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 			/* this extent is removed; mark slot entirely unused */
- 			ext4_ext_store_pblock(ex, 0);
- 			le16_add_cpu(&eh->eh_entries, -1);
--		}
-+		} else
-+			*partial_cluster = 0;
+ 	if (sbi->s_log_groups_per_flex) {
+ 		ext4_group_t flex_group = ext4_flex_group(sbi, block_group);
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 80bbc9c..405c1cb 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -919,8 +919,8 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 		input->reserved_blocks);
  
- 		ex->ee_block = cpu_to_le32(block);
- 		ex->ee_len = cpu_to_le16(num);
-@@ -2324,6 +2365,25 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 	if (correct_index && eh->eh_entries)
- 		err = ext4_ext_correct_indexes(handle, inode, path);
+ 	/* Update the free space counts */
+-	percpu_counter_add(&sbi->s_freeblocks_counter,
+-			   input->free_blocks_count);
++	percpu_counter_add(&sbi->s_freeclusters_counter,
++			   EXT4_B2C(sbi, input->free_blocks_count));
+ 	percpu_counter_add(&sbi->s_freeinodes_counter,
+ 			   EXT4_INODES_PER_GROUP(sb));
  
-+	/*
-+	 * If there is still a entry in the leaf node, check to see if
-+	 * it references the partial cluster.  This is the only place
-+	 * where it could; if it doesn't, we can free the cluster.
-+	 */
-+	if (*partial_cluster && ex >= EXT_FIRST_EXTENT(eh) &&
-+	    (EXT4_B2C(sbi, ext4_ext_pblock(ex) + ex_ee_len - 1) !=
-+	     *partial_cluster)) {
-+		int flags = EXT4_FREE_BLOCKS_FORGET;
-+
-+		if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
-+			flags |= EXT4_FREE_BLOCKS_METADATA;
-+
-+		ext4_free_blocks(handle, inode, NULL,
-+				 EXT4_C2B(sbi, *partial_cluster),
-+				 sbi->s_cluster_ratio, flags);
-+		*partial_cluster = 0;
-+	}
-+
- 	/* if this leaf is free, then we should
- 	 * remove it from index block above */
- 	if (err == 0 && eh->eh_entries == 0 && path[depth].p_bh != NULL)
-@@ -2359,6 +2419,7 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
- 	struct super_block *sb = inode->i_sb;
- 	int depth = ext_depth(inode);
- 	struct ext4_ext_path *path;
-+	ext4_fsblk_t partial_cluster = 0;
- 	handle_t *handle;
- 	int i, err;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 5ae1712..6b4a3f4 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -793,7 +793,7 @@ static void ext4_put_super(struct super_block *sb)
+ 		vfree(sbi->s_flex_groups);
+ 	else
+ 		kfree(sbi->s_flex_groups);
+-	percpu_counter_destroy(&sbi->s_freeblocks_counter);
++	percpu_counter_destroy(&sbi->s_freeclusters_counter);
+ 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+ 	percpu_counter_destroy(&sbi->s_dirs_counter);
+ 	percpu_counter_destroy(&sbi->s_dirtyblocks_counter);
+@@ -3499,7 +3499,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	sbi->s_err_report.function = print_daily_error_info;
+ 	sbi->s_err_report.data = (unsigned long) sb;
  
-@@ -2393,7 +2454,8 @@ again:
- 	while (i >= 0 && err == 0) {
- 		if (i == depth) {
- 			/* this is leaf block */
--			err = ext4_ext_rm_leaf(handle, inode, path, start);
-+			err = ext4_ext_rm_leaf(handle, inode, path,
-+					       &partial_cluster, start);
- 			/* root level has p_bh == NULL, brelse() eats this */
- 			brelse(path[i].p_bh);
- 			path[i].p_bh = NULL;
+-	err = percpu_counter_init(&sbi->s_freeblocks_counter,
++	err = percpu_counter_init(&sbi->s_freeclusters_counter,
+ 			ext4_count_free_blocks(sb));
+ 	if (!err) {
+ 		err = percpu_counter_init(&sbi->s_freeinodes_counter,
+@@ -3621,7 +3621,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	 * The journal may have updated the bg summary counts, so we
+ 	 * need to update the global counters.
+ 	 */
+-	percpu_counter_set(&sbi->s_freeblocks_counter,
++	percpu_counter_set(&sbi->s_freeclusters_counter,
+ 			   ext4_count_free_blocks(sb));
+ 	percpu_counter_set(&sbi->s_freeinodes_counter,
+ 			   ext4_count_free_inodes(sb));
+@@ -3790,7 +3790,7 @@ failed_mount3:
+ 		else
+ 			kfree(sbi->s_flex_groups);
+ 	}
+-	percpu_counter_destroy(&sbi->s_freeblocks_counter);
++	percpu_counter_destroy(&sbi->s_freeclusters_counter);
+ 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+ 	percpu_counter_destroy(&sbi->s_dirs_counter);
+ 	percpu_counter_destroy(&sbi->s_dirtyblocks_counter);
+@@ -4114,8 +4114,9 @@ static int ext4_commit_super(struct super_block *sb, int sync)
+ 	else
+ 		es->s_kbytes_written =
+ 			cpu_to_le64(EXT4_SB(sb)->s_kbytes_written);
+-	ext4_free_blocks_count_set(es, percpu_counter_sum_positive(
+-					   &EXT4_SB(sb)->s_freeblocks_counter));
++	ext4_free_blocks_count_set(es,
++			EXT4_C2B(EXT4_SB(sb), percpu_counter_sum_positive(
++				&EXT4_SB(sb)->s_freeclusters_counter)));
+ 	es->s_free_inodes_count =
+ 		cpu_to_le32(percpu_counter_sum_positive(
+ 				&EXT4_SB(sb)->s_freeinodes_counter));
+@@ -4562,8 +4563,9 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
+ 	buf->f_type = EXT4_SUPER_MAGIC;
+ 	buf->f_bsize = sb->s_blocksize;
+ 	buf->f_blocks = ext4_blocks_count(es) - sbi->s_overhead_last;
+-	buf->f_bfree = percpu_counter_sum_positive(&sbi->s_freeblocks_counter) -
+-		       percpu_counter_sum_positive(&sbi->s_dirtyblocks_counter);
++	buf->f_bfree = EXT4_C2B(sbi,
++		percpu_counter_sum_positive(&sbi->s_freeclusters_counter)) -
++		percpu_counter_sum_positive(&sbi->s_dirtyblocks_counter);
+ 	buf->f_bavail = buf->f_bfree - ext4_r_blocks_count(es);
+ 	if (buf->f_bfree < ext4_r_blocks_count(es))
+ 		buf->f_bavail = 0;
 -- 
 1.7.3.1
 
