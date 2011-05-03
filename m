@@ -1,181 +1,186 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
- to a deadlock
-Date: Tue, 03 May 2011 15:14:34 -0500
-Message-ID: <4DC0622A.3090201@redhat.com>
-References: <20110331234050.GD2904@dastard> <20110401140856.GA5311@quack.suse.cz> <20110406054005.GD31057@dastard> <20110406061856.GC23285@quack.suse.cz> <20110406112135.GE31057@dastard> <4DBE746F.3090707@ubuntu.com> <20110502105629.GA4556@quack.suse.cz> <4DBE9537.4050708@ubuntu.com> <20110502122055.GB5855@quack.suse.cz> <4DBEA3DF.1060306@ubuntu.com> <20110502131619.GC5855@quack.suse.cz> <4DBEB025.90704@ubuntu.com> <4DBEB9E7.9070407@redhat.com> <4DBFAE44.2080000@ubuntu.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, Dave Chinner <david@fromorbit.com>,
-	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
-	"Ted Ts'o" <tytso@mit.edu>,
-	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Christoph Hellwig <hch@infradead.org>
-To: surbhi.palande@ubuntu.com
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 03/19] ext4: convert instances of EXT4_BLOCKS_PER_GROUP to EXT4_CLUSTERS_PER_GROUP
+Date: Tue,  3 May 2011 18:24:33 -0400
+Message-ID: <1304461490-11056-4-git-send-email-tytso@mit.edu>
+References: <1304461490-11056-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:19086 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752856Ab1ECUPD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 May 2011 16:15:03 -0400
-In-Reply-To: <4DBFAE44.2080000@ubuntu.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:58109 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752138Ab1ECWYx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 May 2011 18:24:53 -0400
+In-Reply-To: <1304461490-11056-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 5/3/11 2:27 AM, Surbhi Palande wrote:
-> On 05/02/2011 05:04 PM, Eric Sandeen wrote:
->> On 5/2/11 8:22 AM, Surbhi Palande wrote:
->>> On 05/02/2011 04:16 PM, Jan Kara wrote:
->>>> On Mon 02-05-11 15:30:23, Surbhi Palande wrote:
->>>>> On 05/02/2011 03:20 PM, Jan Kara wrote:
->>>>>> On Mon 02-05-11 14:27:51, Surbhi Palande wrote:
->>>>>>> On 05/02/2011 01:56 PM, Jan Kara wrote:
->>>>>>>> On Mon 02-05-11 12:07:59, Surbhi Palande wrote:
->>>>>>>>> On 04/06/2011 02:21 PM, Dave Chinner wrote:
->>>>>>>>>> On Wed, Apr 06, 2011 at 08:18:56AM +0200, Jan Kara wrote:
->>>>>>>>>>> On Wed 06-04-11 15:40:05, Dave Chinner wrote:
->>>>>>>>>>>> On Fri, Apr 01, 2011 at 04:08:56PM +0200, Jan Kara wrote:
->>>>>>>>>>>>> On Fri 01-04-11 10:40:50, Dave Chinner wrote:
->>>>>>>>>>>>>> If you don't allow the page to be dirtied in the fist place, then
->>>>>>>>>>>>>> nothing needs to be done to the writeback path because there is
->>>>>>>>>>>>>> nothing dirty for it to write back.
->>>>>>>>>>>>>     Sure but that's only the problem he was able to hit. But generally,
->>>>>>>>>>>>> there's a problem with needing s_umount for unfreezing because it isn't
->>>>>>>>>>>>> clear there aren't other code paths which can block with s_umount held
->>>>>>>>>>>>> waiting for fs to get unfrozen. And these code paths would cause the same
->>>>>>>>>>>>> deadlock. That's why I chose to get rid of s_umount during thawing.
->>>>>>>>>>>> Holding the s_umount lock while checking if frozen and sleeping
->>>>>>>>>>>> is essentially an ABBA lock inversion bug that can bite in many more
->>>>>>>>>>>> places that just thawing the filesystem.  Any where this is done should
->>>>>>>>>>>> be fixed, so I don't think just removing the s_umount lock from the thaw
->>>>>>>>>>>> path is sufficient to avoid problems.
->>>>>>>>>>>     That's easily said but hard to do - any transaction start in ext3/4 may
->>>>>>>>>>> block on filesystem being frozen (this seems to be similar for XFS as I'm
->>>>>>>>>>> looking into the code) and transaction start traditionally nests inside
->>>>>>>>>>> s_umount (and basically there's no way around that since sync() calls your
->>>>>>>>>>> fs code with s_umount held).
->>>>>>>>>> Sure, but the question must be asked - why is ext3/4 even starting a
->>>>>>>>>> transaction on a clean filesystem during sync? A frozen filesystem,
->>>>>>>>>> by definition, is a clean filesytem, and therefore sync calls of any
->>>>>>>>>> kind should not be trying to write to the FS or start transactions.
->>>>>>>>>> XFS does this just fine, so I'd consider such behaviour on a frozen
->>>>>>>>>> filesystem a bug in ext3/4...
->>>>>>>>> I had a look at the xfs code for seeing how this is done.
->>>>>>>>> xfs_file_aio_write()
->>>>>>>>>     xfs_wait_for_freeze()
->>>>>>>>>       vfs_check_frozen()
->>>>>>>>> So xfs_file_aio_write() writes to buffers when the FS is not frozen.
->>>>>>>>>
->>>>>>>>> Now, I want to know what stops the following scenario from happening:
->>>>>>>>> --------------------
->>>>>>>>> xfs_file_aio_write()
->>>>>>>>>     xfs_wait_for_freeze()
->>>>>>>>>       vfs_check_frozen()
->>>>>>>>> At this point F.S was not frozen, so the next instruction in the
->>>>>>>>> xfs_file_aio_write() will be executed next.
->>>>>>>>> However at this point (i.e after checking if F.S is frozen) the
->>>>>>>>> write process gets pre-empted and say the _freeze_ process gets
->>>>>>>>> control.
->>>>>>>>>
->>>>>>>>> Now the F.S freezes and the write process gets the control back. And
->>>>>>>>> so we end up writing to the page cache when the F.S is frozen.
->>>>>>>>> --------------------
->>>>>>>>>
->>>>>>>>> Can anyone please enlighten me on how&     why this premption is _not_
->>>>>>>>> possible?
->>>>>>> Thanks for your reply.
->>>>>>>>     XFS works similarly as ext4 in this regard I believe. They have the log
->>>>>>>> frozen in xfs_freeze() so if the race you describe above happens, either
->>>>>>>> the writing process gets caught waiting for log to unfreeze
->>>>>>> Agreed.
->>>>>>>>    or it manages
->>>>>>>> to start a transaction and then freezing process waits for transaction to
->>>>>>>> finish before it can proceed with freezing. I'm not sure why is there the
->>>>>>>> check in xfs_file_aio_write()...
->>>>>>>>
->>>>>>>>
->>>>>>> I am sorry, but I don't understand how this will happen - i.e I
->>>>>>> can't understand what stops freeze_super() (or ext4_freeze) from
->>>>>>> freezing a superblock (as the write process stopped just before
->>>>>>> writing anything for this transaction and has not taken any locks?)
->>>>>>     So ext4_freeze() does
->>>>>> jbd2_journal_lock_updates(journal)
->>>>>>     which waits for all running transactions to finish and updates
->>>>>> j_barrier_count which stops any news ones from proceeding (check
->>>>>> function start_this_handle()).
->>>>>>
->>>>> Yes, but ext4_freeze() also calls
->>>>> jbd2_journal_unlock_updates(journal) which decrements the
->>>>> j_barrier_count (which was previously updated/incremented in
->>>>> jbd2_journal_lock_updates) ? before it returns. So after this call a
->>>>> new transaction/handle can be accepted/started.
->>>>>
->>>>> A comment in ext4_freeze() says:
->>>>> /* we rely on s_frozen to stop further updates */
->>>>> (before calling jbd2_journal_unlock_updates())
->>>>     Ah, drat, you're right. I've missed this other part. It's the problem
->>>> that if you expect to see something, you'll see it regardless of the real
->>>> code ;).
->>>>
->>>> The fact is we do vfs_check_frozen() in ext4_journal_start_sb() but indeed
->>>> it's still racy (although the race window is relatively small) because the
->>>> filesystem can become frozen the instant after we check vfs_check_frozen().
->>>> Commit 6b0310fb broke it for ext4.
->>>>
->>>> I guess the code was mostly copied from XFS which seems to have the same
->>>> problem in xfs_trans_alloc() since the git history beginning. I see two
->>>> ways to fix this - either fix ext4/xfs to check s_frozen after starting
->>>> a transaction and if the filesystem is being frozen, we stop the
->>>> transaction, wait for fs to get unfrozen, and restart. Another option is
->>>> to create an analogous logic using a atomic counter of write ops in vfs
->>>> that could be used by all filesystems. We'd just have to replace
->>>> vfs_check_frozen() with vfs_start_write() and add vfs_stop_write() at
->>>> appropriate places...
->>> How about calling  jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
->>> from ext4_unfreeze()?
->> we used to have that, but holding it locked until then means we exit the kernel
->> with a mutex held, which is pretty icky.
->>
->>      ================================================
->>      [ BUG: lock held when returning to user space! ]
->>      ------------------------------------------------
->>      lvcreate/1075 is leaving the kernel with locks still held!
->>      1 lock held by lvcreate/1075:
->>       #0:  (&journal->j_barrier){+.+...}, at: [<ffffffff811c6214>]
->>      jbd2_journal_lock_updates+0xe1/0xf0
->>
->>
->> -Eric
-> Should this not be reverted? I think that its a lot easier to stop a transaction between a freeze and a thaw that way! If you agree, can I send a patch for the same?
+Change the places in fs/ext4/mballoc.c where EXT4_BLOCKS_PER_GROUP are
+used to indicate the number of bits in a block bitmap (which is really
+a cluster allocation bitmap in bigalloc file systems).  There are
+still some places in the ext4 codebase where usage of
+EXT4_BLOCKS_PER_GROUP needs to be audited/fixed, in code paths that
+aren't used given the initial restricted assumptions for bigalloc.
+These will need to be fixed before we can relax those restrictions.
 
-Only if you want the kernel to start spewing "BUG!" messages again...
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/mballoc.c |   48 ++++++++++++++++++++++++------------------------
+ 1 files changed, 24 insertions(+), 24 deletions(-)
 
--Eric
-
-> Thanks!
-> 
-> Warm Regards,
-> Surbhi.
-> 
-> 
->>> So that indeed no transactions can be started before unfreeze is called.
->>>
->>> This has another advantage, that it rightfully does not let you update the access time when the F.S is frozen (touch_atime called from a read path when the F.S is frozen) Otherwise we also need to fix this path.
->>>
->>> Warm Regards,
->>> Surbhi.
->>>
->>>> Dave, Christoph, any opinions on this?
->>>>                                  Honza
->>> -- 
->>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> -- 
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 730c1a7..fb9e1aa 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -651,7 +651,7 @@ static void ext4_mb_mark_free_simple(struct super_block *sb,
+ 	ext4_grpblk_t chunk;
+ 	unsigned short border;
+ 
+-	BUG_ON(len > EXT4_BLOCKS_PER_GROUP(sb));
++	BUG_ON(len > EXT4_CLUSTERS_PER_GROUP(sb));
+ 
+ 	border = 2 << sb->s_blocksize_bits;
+ 
+@@ -703,7 +703,7 @@ void ext4_mb_generate_buddy(struct super_block *sb,
+ 				void *buddy, void *bitmap, ext4_group_t group)
+ {
+ 	struct ext4_group_info *grp = ext4_get_group_info(sb, group);
+-	ext4_grpblk_t max = EXT4_BLOCKS_PER_GROUP(sb);
++	ext4_grpblk_t max = EXT4_CLUSTERS_PER_GROUP(sb);
+ 	ext4_grpblk_t i = 0;
+ 	ext4_grpblk_t first;
+ 	ext4_grpblk_t len;
+@@ -1682,8 +1682,8 @@ static void ext4_mb_measure_extent(struct ext4_allocation_context *ac,
+ 	struct ext4_free_extent *gex = &ac->ac_g_ex;
+ 
+ 	BUG_ON(ex->fe_len <= 0);
+-	BUG_ON(ex->fe_len > EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
+-	BUG_ON(ex->fe_start >= EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
++	BUG_ON(ex->fe_len > EXT4_CLUSTERS_PER_GROUP(ac->ac_sb));
++	BUG_ON(ex->fe_start >= EXT4_CLUSTERS_PER_GROUP(ac->ac_sb));
+ 	BUG_ON(ac->ac_status != AC_STATUS_CONTINUE);
+ 
+ 	ac->ac_found++;
+@@ -1881,8 +1881,8 @@ void ext4_mb_complex_scan_group(struct ext4_allocation_context *ac,
+ 
+ 	while (free && ac->ac_status == AC_STATUS_CONTINUE) {
+ 		i = mb_find_next_zero_bit(bitmap,
+-						EXT4_BLOCKS_PER_GROUP(sb), i);
+-		if (i >= EXT4_BLOCKS_PER_GROUP(sb)) {
++						EXT4_CLUSTERS_PER_GROUP(sb), i);
++		if (i >= EXT4_CLUSTERS_PER_GROUP(sb)) {
+ 			/*
+ 			 * IF we have corrupt bitmap, we won't find any
+ 			 * free blocks even though group info says we
+@@ -1945,7 +1945,7 @@ void ext4_mb_scan_aligned(struct ext4_allocation_context *ac,
+ 	do_div(a, sbi->s_stripe);
+ 	i = (a * sbi->s_stripe) - first_group_block;
+ 
+-	while (i < EXT4_BLOCKS_PER_GROUP(sb)) {
++	while (i < EXT4_CLUSTERS_PER_GROUP(sb)) {
+ 		if (!mb_test_bit(i, bitmap)) {
+ 			max = mb_find_extent(e4b, 0, i, sbi->s_stripe, &ex);
+ 			if (max >= sbi->s_stripe) {
+@@ -3067,7 +3067,7 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
+ 	}
+ 	BUG_ON(start + size <= ac->ac_o_ex.fe_logical &&
+ 			start > ac->ac_o_ex.fe_logical);
+-	BUG_ON(size <= 0 || size > EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
++	BUG_ON(size <= 0 || size > EXT4_CLUSTERS_PER_GROUP(ac->ac_sb));
+ 
+ 	/* now prepare goal request */
+ 
+@@ -3720,7 +3720,7 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
+ 	}
+ 
+ 	if (needed == 0)
+-		needed = EXT4_BLOCKS_PER_GROUP(sb) + 1;
++		needed = EXT4_CLUSTERS_PER_GROUP(sb) + 1;
+ 
+ 	INIT_LIST_HEAD(&list);
+ repeat:
+@@ -4035,8 +4035,8 @@ ext4_mb_initialize_context(struct ext4_allocation_context *ac,
+ 	len = ar->len;
+ 
+ 	/* just a dirty hack to filter too big requests  */
+-	if (len >= EXT4_BLOCKS_PER_GROUP(sb) - 10)
+-		len = EXT4_BLOCKS_PER_GROUP(sb) - 10;
++	if (len >= EXT4_CLUSTERS_PER_GROUP(sb) - 10)
++		len = EXT4_CLUSTERS_PER_GROUP(sb) - 10;
+ 
+ 	/* start searching from the goal */
+ 	goal = ar->goal;
+@@ -4575,8 +4575,8 @@ do_more:
+ 	 * Check to see if we are freeing blocks across a group
+ 	 * boundary.
+ 	 */
+-	if (bit + count > EXT4_BLOCKS_PER_GROUP(sb)) {
+-		overflow = bit + count - EXT4_BLOCKS_PER_GROUP(sb);
++	if (bit + count > EXT4_CLUSTERS_PER_GROUP(sb)) {
++		overflow = bit + count - EXT4_CLUSTERS_PER_GROUP(sb);
+ 		count -= overflow;
+ 	}
+ 	bitmap_bh = ext4_read_block_bitmap(sb, block_group);
+@@ -4819,7 +4819,7 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ 	struct ext4_buddy e4b;
+ 	ext4_group_t first_group, last_group;
+ 	ext4_group_t group, ngroups = ext4_get_groups_count(sb);
+-	ext4_grpblk_t cnt = 0, first_block, last_block;
++	ext4_grpblk_t cnt = 0, first_cluster, last_cluster;
+ 	uint64_t start, len, minlen, trimmed;
+ 	ext4_fsblk_t first_data_blk =
+ 			le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
+@@ -4830,7 +4830,7 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ 	minlen = range->minlen >> sb->s_blocksize_bits;
+ 	trimmed = 0;
+ 
+-	if (unlikely(minlen > EXT4_BLOCKS_PER_GROUP(sb)))
++	if (unlikely(minlen > EXT4_CLUSTERS_PER_GROUP(sb)))
+ 		return -EINVAL;
+ 	if (start < first_data_blk) {
+ 		len -= first_data_blk - start;
+@@ -4839,11 +4839,11 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ 
+ 	/* Determine first and last group to examine based on start and len */
+ 	ext4_get_group_no_and_offset(sb, (ext4_fsblk_t) start,
+-				     &first_group, &first_block);
++				     &first_group, &first_cluster);
+ 	ext4_get_group_no_and_offset(sb, (ext4_fsblk_t) (start + len),
+-				     &last_group, &last_block);
++				     &last_group, &last_cluster);
+ 	last_group = (last_group > ngroups - 1) ? ngroups - 1 : last_group;
+-	last_block = EXT4_BLOCKS_PER_GROUP(sb);
++	last_cluster = EXT4_CLUSTERS_PER_GROUP(sb);
+ 
+ 	if (first_group > last_group)
+ 		return -EINVAL;
+@@ -4862,13 +4862,13 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ 		 * change it for the last group in which case start +
+ 		 * len < EXT4_BLOCKS_PER_GROUP(sb).
+ 		 */
+-		if (first_block + len < EXT4_BLOCKS_PER_GROUP(sb))
+-			last_block = first_block + len;
+-		len -= last_block - first_block;
++		if (first_cluster + len < EXT4_CLUSTERS_PER_GROUP(sb))
++			last_cluster = first_cluster + len;
++		len -= last_cluster - first_cluster;
+ 
+ 		if (e4b.bd_info->bb_free >= minlen) {
+-			cnt = ext4_trim_all_free(sb, &e4b, first_block,
+-						last_block, minlen);
++			cnt = ext4_trim_all_free(sb, &e4b, first_cluster,
++						last_cluster, minlen);
+ 			if (cnt < 0) {
+ 				ret = cnt;
+ 				ext4_mb_unload_buddy(&e4b);
+@@ -4877,7 +4877,7 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ 		}
+ 		ext4_mb_unload_buddy(&e4b);
+ 		trimmed += cnt;
+-		first_block = 0;
++		first_cluster = 0;
+ 	}
+ 	range->len = trimmed * sb->s_blocksize;
+ 
+-- 
+1.7.3.1
 
