@@ -1,201 +1,45 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 01/19] ext4: read-only support for bigalloc file systems
-Date: Tue,  3 May 2011 18:24:31 -0400
-Message-ID: <1304461490-11056-2-git-send-email-tytso@mit.edu>
-References: <1304461490-11056-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: Factor common code from convert and split-unwritten.
+Date: Tue, 3 May 2011 18:25:40 -0400
+Message-ID: <20110503222540.GA2831@thunk.org>
+References: <1304388301-9452-1-git-send-email-xiaoqiangnk@gmail.com>
+ <BANLkTi=R+3NhsykOhHrmhVEOsuS5uf4BoQ@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, achender@linux.vnet.ibm.com,
+	cmm@us.ibm.com
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:58104 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:58153 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752312Ab1ECWYx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 May 2011 18:24:53 -0400
-In-Reply-To: <1304461490-11056-1-git-send-email-tytso@mit.edu>
+	id S1752249Ab1ECWZn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 May 2011 18:25:43 -0400
+Content-Disposition: inline
+In-Reply-To: <BANLkTi=R+3NhsykOhHrmhVEOsuS5uf4BoQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This adds supports for bigalloc file systems.  It teaches the mount
-code just enough about bigalloc superblock fields that it will mount
-the file system without freaking out that the number of blocks per
-group is too big.
+On Tue, May 03, 2011 at 10:35:42AM +0800, Yongqiang Yang wrote:
+> Hi Ted,
+> 
+> The patch series has been tested by Allison with punch hole patch series.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ext4.h  |   18 ++++++++++++++--
- fs/ext4/super.c |   58 +++++++++++++++++++++++++++++++++++++++++++++++-------
- 2 files changed, 65 insertions(+), 11 deletions(-)
+Hi Yongqiang,
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 076c5d2..b973af6 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -231,12 +231,16 @@ struct ext4_io_submit {
- #define EXT4_MAX_BLOCK_LOG_SIZE		16
- #ifdef __KERNEL__
- # define EXT4_BLOCK_SIZE(s)		((s)->s_blocksize)
-+# define EXT4_CLUSTER_SIZE(s)		(EXT4_SB(s)->s_clustersize)
- #else
- # define EXT4_BLOCK_SIZE(s)		(EXT4_MIN_BLOCK_SIZE << (s)->s_log_block_size)
-+# define EXT2_CLUSTER_SIZE(s)		(EXT2_MIN_BLOCK_SIZE << \
-+						(s)->s_log_cluster_size)
- #endif
- #define	EXT4_ADDR_PER_BLOCK(s)		(EXT4_BLOCK_SIZE(s) / sizeof(__u32))
- #ifdef __KERNEL__
- # define EXT4_BLOCK_SIZE_BITS(s)	((s)->s_blocksize_bits)
-+# define EXT4_CLUSTER_SIZE_BITS(s)	(EXT4_SB(s)->s_clustersize_bits)
- #else
- # define EXT4_BLOCK_SIZE_BITS(s)	((s)->s_log_block_size + 10)
- #endif
-@@ -302,6 +306,7 @@ struct flex_groups {
- #define EXT4_DESC_SIZE(s)		(EXT4_SB(s)->s_desc_size)
- #ifdef __KERNEL__
- # define EXT4_BLOCKS_PER_GROUP(s)	(EXT4_SB(s)->s_blocks_per_group)
-+# define EXT4_CLUSTERS_PER_GROUP(s)	(EXT4_SB(s)->s_clusters_per_group)
- # define EXT4_DESC_PER_BLOCK(s)		(EXT4_SB(s)->s_desc_per_block)
- # define EXT4_INODES_PER_GROUP(s)	(EXT4_SB(s)->s_inodes_per_group)
- # define EXT4_DESC_PER_BLOCK_BITS(s)	(EXT4_SB(s)->s_desc_per_block_bits)
-@@ -957,9 +962,9 @@ struct ext4_super_block {
- /*10*/	__le32	s_free_inodes_count;	/* Free inodes count */
- 	__le32	s_first_data_block;	/* First Data Block */
- 	__le32	s_log_block_size;	/* Block size */
--	__le32	s_obso_log_frag_size;	/* Obsoleted fragment size */
-+	__le32	s_log_cluster_size;	/* Allocation cluster size */
- /*20*/	__le32	s_blocks_per_group;	/* # Blocks per group */
--	__le32	s_obso_frags_per_group;	/* Obsoleted fragments per group */
-+	__le32	s_clusters_per_group;	/* # Clusters per group */
- 	__le32	s_inodes_per_group;	/* # Inodes per group */
- 	__le32	s_mtime;		/* Mount time */
- /*30*/	__le32	s_wtime;		/* Write time */
-@@ -1055,7 +1060,10 @@ struct ext4_super_block {
- 	__u8	s_last_error_func[32];	/* function where the error happened */
- #define EXT4_S_ERR_END offsetof(struct ext4_super_block, s_mount_opts)
- 	__u8	s_mount_opts[64];
--	__le32	s_reserved[112];        /* Padding to the end of the block */
-+	__le32	s_usr_quota_inum;	/* inode for tracking user quota */
-+	__le32	s_grp_quota_inum;	/* inode for tracking group quota */
-+	__le32	s_overhead_clusters;	/* overhead blocks/clusters in fs */
-+	__le32  s_reserved[109];        /* Padding to the end of the block */
- };
- 
- #define EXT4_S_ERR_LEN (EXT4_S_ERR_END - EXT4_S_ERR_START)
-@@ -1075,6 +1083,7 @@ struct ext4_sb_info {
- 	unsigned long s_desc_size;	/* Size of a group descriptor in bytes */
- 	unsigned long s_inodes_per_block;/* Number of inodes per block */
- 	unsigned long s_blocks_per_group;/* Number of blocks in a group */
-+	unsigned long s_clusters_per_group; /* Number of clusters in a group */
- 	unsigned long s_inodes_per_group;/* Number of inodes in a group */
- 	unsigned long s_itb_per_group;	/* Number of inode table blocks per group */
- 	unsigned long s_gdb_count;	/* Number of group descriptor blocks */
-@@ -1083,6 +1092,8 @@ struct ext4_sb_info {
- 	ext4_group_t s_blockfile_groups;/* Groups acceptable for non-extent files */
- 	unsigned long s_overhead_last;  /* Last calculated overhead */
- 	unsigned long s_blocks_last;    /* Last seen block count */
-+	unsigned int s_cluster_ratio;	/* Number of blocks per cluster */
-+	unsigned int s_cluster_bits;	/* log2 of s_cluster_ratio */
- 	loff_t s_bitmap_maxbytes;	/* max bytes for bitmap files */
- 	struct buffer_head * s_sbh;	/* Buffer containing the super block */
- 	struct ext4_super_block *s_es;	/* Pointer to the super block in the buffer */
-@@ -1338,6 +1349,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
- #define EXT4_FEATURE_RO_COMPAT_GDT_CSUM		0x0010
- #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
- #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
-+#define EXT4_FEATURE_RO_COMPAT_BIGALLOC		0x0200
- 
- #define EXT4_FEATURE_INCOMPAT_COMPRESSION	0x0001
- #define EXT4_FEATURE_INCOMPAT_FILETYPE		0x0002
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index cb22783..3f82b79 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1908,7 +1908,7 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
- 		res = MS_RDONLY;
- 	}
- 	if (read_only)
--		return res;
-+		goto done;
- 	if (!(sbi->s_mount_state & EXT4_VALID_FS))
- 		ext4_msg(sb, KERN_WARNING, "warning: mounting unchecked fs, "
- 			 "running e2fsck is recommended");
-@@ -1939,6 +1939,7 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
- 		EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
- 
- 	ext4_commit_super(sb, 1);
-+done:
- 	if (test_opt(sb, DEBUG))
- 		printk(KERN_INFO "[EXT4 FS bs=%lu, gc=%u, "
- 				"bpg=%lu, ipg=%lu, mo=%04x, mo2=%04x]\n",
-@@ -3061,10 +3062,10 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	char *cp;
- 	const char *descr;
- 	int ret = -ENOMEM;
--	int blocksize;
-+	int blocksize, clustersize;
- 	unsigned int db_count;
- 	unsigned int i;
--	int needs_recovery, has_huge_files;
-+	int needs_recovery, has_huge_files, has_bigalloc;
- 	__u64 blocks_count;
- 	int err;
- 	unsigned int journal_ioprio = DEFAULT_JOURNAL_IOPRIO;
-@@ -3337,12 +3338,53 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		sb->s_dirt = 1;
- 	}
- 
--	if (sbi->s_blocks_per_group > blocksize * 8) {
--		ext4_msg(sb, KERN_ERR,
--		       "#blocks per group too big: %lu",
--		       sbi->s_blocks_per_group);
--		goto failed_mount;
-+	/* Handle clustersize */
-+	clustersize = BLOCK_SIZE << le32_to_cpu(es->s_log_cluster_size);
-+	has_bigalloc = EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+				EXT4_FEATURE_RO_COMPAT_BIGALLOC);
-+	if (has_bigalloc) {
-+		if (clustersize < blocksize) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "cluster size (%d) smaller than "
-+				 "block size (%d)", clustersize, blocksize);
-+			goto failed_mount;
-+		}
-+		sbi->s_cluster_bits = le32_to_cpu(es->s_log_cluster_size) -
-+			le32_to_cpu(es->s_log_block_size);
-+		sbi->s_clusters_per_group =
-+			le32_to_cpu(es->s_clusters_per_group);
-+		if (sbi->s_clusters_per_group > blocksize * 8) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "#clusters per group too big: %lu",
-+				 sbi->s_clusters_per_group);
-+			goto failed_mount;
-+		}
-+		if (sbi->s_blocks_per_group !=
-+		    (sbi->s_clusters_per_group * (clustersize / blocksize))) {
-+			ext4_msg(sb, KERN_ERR, "blocks per group (%lu) and "
-+				 "clusters per group (%lu) inconsistent",
-+				 sbi->s_blocks_per_group,
-+				 sbi->s_clusters_per_group);
-+			goto failed_mount;
-+		}
-+	} else {
-+		if (clustersize != blocksize) {
-+			ext4_warning(sb, "fragment/cluster size (%d) != "
-+				     "block size (%d)", clustersize,
-+				     blocksize);
-+			clustersize = blocksize;
-+		}
-+		if (sbi->s_blocks_per_group > blocksize * 8) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "#blocks per group too big: %lu",
-+				 sbi->s_blocks_per_group);
-+			goto failed_mount;
-+		}
-+		sbi->s_clusters_per_group = sbi->s_blocks_per_group;
-+		sbi->s_cluster_bits = 0;
- 	}
-+	sbi->s_cluster_ratio = clustersize / blocksize;
-+
- 	if (sbi->s_inodes_per_group > blocksize * 8) {
- 		ext4_msg(sb, KERN_ERR,
- 		       "#inodes per group too big: %lu",
--- 
-1.7.3.1
+I've committed your patches, and doing a lot of testing, I've promoted
+them to the ext4 master branch on the ext4 tree:
 
+git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
+
+As we discussed on the two last ext4 conference calls, the master
+branch is now stable (I'm not going to ever rewind that branch), so
+it's a stable point for people to develop against.
+
+The ext4 patch queue is now exported on the "dev" branch, as well as
+(as a quilt tree) at:
+
+git://repo.or.cz/ext4-patch-queue.git
+
+Many thanks for your patches!
+
+						- Ted
