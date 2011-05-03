@@ -1,275 +1,633 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 17/19] ext4: Rename ext4_free_blks_{count,set}() to refer to clusters
-Date: Tue,  3 May 2011 18:24:47 -0400
-Message-ID: <1304461490-11056-18-git-send-email-tytso@mit.edu>
+Subject: [E2FSPROGS PATCH] Interim patches for e2fsprogs
+Date: Tue,  3 May 2011 18:24:50 -0400
+Message-ID: <1304461490-11056-21-git-send-email-tytso@mit.edu>
 References: <1304461490-11056-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:58140 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:58146 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753099Ab1ECWY5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 May 2011 18:24:57 -0400
+	id S1753134Ab1ECWY6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 May 2011 18:24:58 -0400
 In-Reply-To: <1304461490-11056-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The field bg_free_free_blocks_count_{lo,high} in the block group
-descriptor has been repurposed to hold the number of free clusters for
-bigalloc functions.  So rename the functions so it makes it easier to
-read and audit the block allocation and block freeing code.
+These are patches that allow mke2fs, dumpe2fs, and debugfs to work
+with bigalloc file systems.  E2fsck will blindly accept bigalloc file
+systems, and return success so long as the kernel hasn't marked the
+file system as containing errors (this was so I could test the kernel
+patches with xfstests, relying on ext4's internal sanity checks to
+detect file system corruption problems).
 
-Note: at this point in bigalloc development we doesn't support
-online-resize, so this also makes it really obvious all of the places
-we need to fix up to add support for online resize.
+NOT-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/balloc.c  |   12 ++++++------
- fs/ext4/ext4.h    |    9 +++++----
- fs/ext4/ialloc.c  |   14 +++++++-------
- fs/ext4/mballoc.c |   18 +++++++++---------
- fs/ext4/resize.c  |    2 +-
- fs/ext4/super.c   |   10 +++++-----
- 6 files changed, 33 insertions(+), 32 deletions(-)
-
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 7779c7b..171dd6a 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -168,7 +168,7 @@ void ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 	 * essentially implementing a per-group read-only flag. */
- 	if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
- 		ext4_error(sb, "Checksum bad for group %u", block_group);
--		ext4_free_blks_set(sb, gdp, 0);
-+		ext4_free_group_clusters_set(sb, gdp, 0);
- 		ext4_free_inodes_set(sb, gdp, 0);
- 		ext4_itable_unused_set(sb, gdp, 0);
- 		memset(bh->b_data, 0xff, sb->s_blocksize);
-@@ -491,8 +491,8 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
- 		}
+diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+index 73cc2cf..fbcc878 100644
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -1316,6 +1316,24 @@ print_unsupp_features:
  	}
- 	ext4_lock_group(sb, block_group);
--	blk_free_count = blocks_freed + ext4_free_blks_count(sb, desc);
--	ext4_free_blks_set(sb, desc, blk_free_count);
-+	blk_free_count = blocks_freed + ext4_free_group_clusters(sb, desc);
-+	ext4_free_group_clusters_set(sb, desc, blk_free_count);
- 	desc->bg_checksum = ext4_group_desc_csum(sbi, block_group, desc);
- 	ext4_unlock_group(sb, block_group);
- 	percpu_counter_add(&sbi->s_freeclusters_counter,
-@@ -669,7 +669,7 @@ ext4_fsblk_t ext4_count_free_blocks(struct super_block *sb)
- 		gdp = ext4_get_group_desc(sb, i, NULL);
- 		if (!gdp)
- 			continue;
--		desc_count += ext4_free_blks_count(sb, gdp);
-+		desc_count += ext4_free_group_clusters(sb, gdp);
- 		brelse(bitmap_bh);
- 		bitmap_bh = ext4_read_block_bitmap(sb, i);
- 		if (bitmap_bh == NULL)
-@@ -677,7 +677,7 @@ ext4_fsblk_t ext4_count_free_blocks(struct super_block *sb)
+ #endif
  
- 		x = ext4_count_free(bitmap_bh, sb->s_blocksize);
- 		printk(KERN_DEBUG "group %u: stored = %d, counted = %u\n",
--			i, ext4_free_blks_count(sb, gdp), x);
-+			i, ext4_free_group_clusters(sb, gdp), x);
- 		bitmap_count += x;
- 	}
- 	brelse(bitmap_bh);
-@@ -691,7 +691,7 @@ ext4_fsblk_t ext4_count_free_blocks(struct super_block *sb)
- 		gdp = ext4_get_group_desc(sb, i, NULL);
- 		if (!gdp)
- 			continue;
--		desc_count += ext4_free_blks_count(sb, gdp);
-+		desc_count += ext4_free_group_clusters(sb, gdp);
- 	}
++	/* HACK HACK HACK */
++	if (sb->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_BIGALLOC) {
++		if (sb->s_state & EXT2_ERROR_FS) {
++			printf("File system has bigalloc feature and "
++			       "kernel found a problem\n"
++			       "This version of e2fsck can't fix it.  :-(\n\n");
++			exit(FSCK_UNCORRECTED);
++		}
++		printf("File system has bigalloc feature and this version "
++		       "of e2fsck doesn't yet\n"
++		       "understand bigalloc.  Fortunately, it is in "
++		       "'Don't Worry, Be Happy' mode\n"
++		       "so we can run xfstests.\n\n"
++		       "There will be cake.  And it will be delicious "
++		       "and moist.\n\n");
++		exit(FSCK_OK);
++	}
++			
+ 	/*
+ 	 * If the user specified a specific superblock, presumably the
+ 	 * master superblock has been trashed.  So we mark the
+diff --git a/lib/ext2fs/bmap64.h b/lib/ext2fs/bmap64.h
+index b0aa84c..cfbdfd6 100644
+--- a/lib/ext2fs/bmap64.h
++++ b/lib/ext2fs/bmap64.h
+@@ -31,6 +31,10 @@ struct ext2fs_struct_generic_bitmap {
+ 	 ((bmap)->magic == EXT2_ET_MAGIC_BLOCK_BITMAP64) || \
+ 	 ((bmap)->magic == EXT2_ET_MAGIC_INODE_BITMAP64))
  
- 	return desc_count;
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index c7d3eea..cd2ba30 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1852,8 +1852,8 @@ extern ext4_fsblk_t ext4_inode_bitmap(struct super_block *sb,
- 				      struct ext4_group_desc *bg);
- extern ext4_fsblk_t ext4_inode_table(struct super_block *sb,
- 				     struct ext4_group_desc *bg);
--extern __u32 ext4_free_blks_count(struct super_block *sb,
--				struct ext4_group_desc *bg);
-+extern __u32 ext4_free_group_clusters(struct super_block *sb,
-+				      struct ext4_group_desc *bg);
- extern __u32 ext4_free_inodes_count(struct super_block *sb,
- 				 struct ext4_group_desc *bg);
- extern __u32 ext4_used_dirs_count(struct super_block *sb,
-@@ -1866,8 +1866,9 @@ extern void ext4_inode_bitmap_set(struct super_block *sb,
- 				  struct ext4_group_desc *bg, ext4_fsblk_t blk);
- extern void ext4_inode_table_set(struct super_block *sb,
- 				 struct ext4_group_desc *bg, ext4_fsblk_t blk);
--extern void ext4_free_blks_set(struct super_block *sb,
--			       struct ext4_group_desc *bg, __u32 count);
-+extern void ext4_free_group_clusters_set(struct super_block *sb,
-+					 struct ext4_group_desc *bg,
-+					 __u32 count);
- extern void ext4_free_inodes_set(struct super_block *sb,
- 				struct ext4_group_desc *bg, __u32 count);
- extern void ext4_used_dirs_set(struct super_block *sb,
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index c93255d..afe7c50 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -78,7 +78,7 @@ static unsigned ext4_init_inode_bitmap(struct super_block *sb,
- 	 * allocation, essentially implementing a per-group read-only flag. */
- 	if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
- 		ext4_error(sb, "Checksum bad for group %u", block_group);
--		ext4_free_blks_set(sb, gdp, 0);
-+		ext4_free_group_clusters_set(sb, gdp, 0);
- 		ext4_free_inodes_set(sb, gdp, 0);
- 		ext4_itable_unused_set(sb, gdp, 0);
- 		memset(bh->b_data, 0xff, sb->s_blocksize);
-@@ -322,8 +322,8 @@ static int find_group_dir(struct super_block *sb, struct inode *parent,
- 		if (ext4_free_inodes_count(sb, desc) < avefreei)
- 			continue;
- 		if (!best_desc ||
--		    (ext4_free_blks_count(sb, desc) >
--		     ext4_free_blks_count(sb, best_desc))) {
-+		    (ext4_free_group_clusters(sb, desc) >
-+		     ext4_free_group_clusters(sb, best_desc))) {
- 			*best_group = group;
- 			best_desc = desc;
- 			ret = 0;
-@@ -434,7 +434,7 @@ static void get_orlov_stats(struct super_block *sb, ext4_group_t g,
- 	desc = ext4_get_group_desc(sb, g, NULL);
- 	if (desc) {
- 		stats->free_inodes = ext4_free_inodes_count(sb, desc);
--		stats->free_clusters = ext4_free_blks_count(sb, desc);
-+		stats->free_clusters = ext4_free_group_clusters(sb, desc);
- 		stats->used_dirs = ext4_used_dirs_count(sb, desc);
- 	} else {
- 		stats->free_inodes = 0;
-@@ -662,7 +662,7 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
- 	*group = parent_group;
- 	desc = ext4_get_group_desc(sb, *group, NULL);
- 	if (desc && ext4_free_inodes_count(sb, desc) &&
--			ext4_free_blks_count(sb, desc))
-+	    ext4_free_group_clusters(sb, desc))
- 		return 0;
++/* Bitmap flags */
++
++#define EXT2_BMFLAG_CLUSTER 0x0001
++
+ struct ext2_bitmap_ops {
+ 	int	type;
+ 	/* Generic bmap operators */
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index a89e33b..3557792 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -228,9 +228,13 @@ struct ext2_dx_countlimit {
+ 
+ #define EXT2_BLOCKS_PER_GROUP(s)	(EXT2_SB(s)->s_blocks_per_group)
+ #define EXT2_INODES_PER_GROUP(s)	(EXT2_SB(s)->s_inodes_per_group)
++#define EXT2_CLUSTERS_PER_GROUP(s)	(EXT2_SB(s)->s_clusters_per_group)
+ #define EXT2_INODES_PER_BLOCK(s)	(EXT2_BLOCK_SIZE(s)/EXT2_INODE_SIZE(s))
+ /* limits imposed by 16-bit value gd_free_{blocks,inode}_count */
+-#define EXT2_MAX_BLOCKS_PER_GROUP(s)	((1 << 16) - 8)
++#define EXT2_MAX_BLOCKS_PER_GROUP(s)	(((1 << 16) - 8) *	\
++					 (EXT2_CLUSTER_SIZE(s) / \
++					  EXT2_BLOCK_SIZE(s)))
++#define EXT2_MAX_CLUSTERS_PER_GROUP(s)	((1 << 16) - 8)
+ #define EXT2_MAX_INODES_PER_GROUP(s)	((1 << 16) - EXT2_INODES_PER_BLOCK(s))
+ #ifdef __KERNEL__
+ #define EXT2_DESC_PER_BLOCK(s)		(EXT2_SB(s)->s_desc_per_block)
+@@ -695,7 +699,8 @@ struct ext2_super_block {
+ #define EXT2_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
+ 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK| \
+-					 EXT2_FEATURE_RO_COMPAT_BTREE_DIR)
++					 EXT2_FEATURE_RO_COMPAT_BTREE_DIR| \
++					 EXT4_FEATURE_RO_COMPAT_BIGALLOC)
+ 
+ /*
+  * Default values for user and/or group using reserved blocks
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index d3eb31d..fafb9fe 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -207,7 +207,6 @@ struct struct_ext2_filsys {
+ 	char *				device_name;
+ 	struct ext2_super_block	* 	super;
+ 	unsigned int			blocksize;
+-	int				clustersize;
+ 	dgrp_t				group_desc_count;
+ 	unsigned long			desc_blocks;
+ 	struct opaque_ext2_group_desc *	group_desc;
+@@ -232,7 +231,9 @@ struct struct_ext2_filsys {
+ 	/*
+ 	 * Reserved for future expansion
+ 	 */
+-	__u32				reserved[7];
++	__u32				clustersize;
++	__u32				cluster_bits;
++	__u32				reserved[6];
  
  	/*
-@@ -686,7 +686,7 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
- 			*group -= ngroups;
- 		desc = ext4_get_group_desc(sb, *group, NULL);
- 		if (desc && ext4_free_inodes_count(sb, desc) &&
--				ext4_free_blks_count(sb, desc))
-+		    ext4_free_group_clusters(sb, desc))
- 			return 0;
+ 	 * Reserved for the use of the calling application.
+@@ -553,7 +554,8 @@ typedef struct ext2_icount *ext2_icount_t;
+ 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE|\
+ 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK|\
+ 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|\
+-					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM)
++					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM|\
++					 EXT4_FEATURE_RO_COMPAT_BIGALLOC)
+ 
+ /*
+  * These features are only allowed if EXT2_FLAG_SOFTSUPP_FEATURES is passed
+@@ -562,6 +564,17 @@ typedef struct ext2_icount *ext2_icount_t;
+ #define EXT2_LIB_SOFTSUPP_INCOMPAT	(0)
+ #define EXT2_LIB_SOFTSUPP_RO_COMPAT	(EXT4_FEATURE_RO_COMPAT_BIGALLOC)
+ 
++
++/* Translate a block number to a cluster number */
++#define EXT2FS_CLUSTER_RATIO(fs)	(1 << (fs)->cluster_bits)
++#define EXT2FS_CLUSTER_MASK(fs)		(EXT2FS_CLUSTER_RATIO(fs) - 1)
++#define EXT2FS_B2C(fs, blk)		((blk) >> (fs)->cluster_bits)
++/* Translate a cluster number to a block number */
++#define EXT2FS_C2B(fs, cluster)		((cluster) << (fs)->cluster_bits)
++/* Translate # of blks to # of clusters */
++#define EXT2FS_NUM_B2C(fs, blks)	(((blks) + EXT2FS_CLUSTER_MASK(fs)) >> \
++					 (fs)->cluster_bits)
++
+ /*
+  * function prototypes
+  */
+diff --git a/lib/ext2fs/gen_bitmap64.c b/lib/ext2fs/gen_bitmap64.c
+index df095ac..b25ac54 100644
+--- a/lib/ext2fs/gen_bitmap64.c
++++ b/lib/ext2fs/gen_bitmap64.c
+@@ -34,7 +34,7 @@
+  *
+  * In order maintain ABI compatibility with programs that don't
+  * understand about 64-bit blocks/inodes,
+- * ext2fs_allocate_inode_bitmap() and ext2fs_allocate_block_bitmap()
++ * ext2fs_allocate_inode_bitmap() and ext2fs_allocate_block_bitmap()
+  * will create old-style bitmaps unless the application passes the
+  * flag EXT2_FLAG_64BITS to ext2fs_open().  If this flag is
+  * passed, then we know the application has been recompiled, so we can
+@@ -559,3 +559,85 @@ int ext2fs_warn_bitmap32(ext2fs_generic_bitmap bitmap, const char *func)
+ 			"called %s with 64-bit bitmap", func);
+ #endif
+ }
++
++errcode_t ext2fs_allocate_cluster_bitmap(ext2_filsys fs,
++					 const char *descr,
++					 ext2fs_block_bitmap *ret)
++{
++	__u64		start, end, real_end;
++	errcode_t	retval;
++
++	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
++
++	if (!(fs->flags & EXT2_FLAG_64BITS))
++		return EXT2_ET_CANT_USE_LEGACY_BITMAPS;
++		
++	fs->write_bitmaps = ext2fs_write_bitmaps;
++
++	start = (fs->super->s_first_data_block >>
++		 EXT2_CLUSTER_SIZE_BITS(fs->super));
++	end = EXT2FS_NUM_B2C(fs, ext2fs_blocks_count(fs->super)) - 1;
++	real_end = ((__u64) EXT2_CLUSTERS_PER_GROUP(fs->super)
++		    * (__u64) fs->group_desc_count)-1 + start;
++
++	retval = ext2fs_alloc_generic_bmap(fs,
++					   EXT2_ET_MAGIC_BLOCK_BITMAP64,
++					   EXT2FS_BMAP64_BITARRAY,
++					   start, end, real_end, descr, ret);
++	if (retval)
++		return retval;
++
++	(*ret)->flags = EXT2_BMFLAG_CLUSTER;
++
++	printf("Returning 0...\n");
++	return 0;
++}
++
++int ext2fs_is_cluster_bitmap(ext2fs_block_bitmap bm)
++{
++	if (EXT2FS_IS_32_BITMAP(bm))
++		return 0;
++
++	return (bm->flags & EXT2_BMFLAG_CLUSTER);
++}
++
++errcode_t ext2fs_convert_to_cluster_bitmap(ext2_filsys fs,
++					  ext2fs_block_bitmap bmap,
++					  ext2fs_block_bitmap *ret)
++{
++	ext2fs_block_bitmap	cmap;
++	errcode_t		retval;
++	blk64_t			i, j, b_end, c_end;
++	int			n;
++
++	retval = ext2fs_allocate_cluster_bitmap(fs, "converted cluster bitmap",
++						ret);
++	if (retval)
++		return retval;
++
++	cmap = *ret;
++	i = bmap->start;
++	b_end = bmap->end;
++	bmap->end = bmap->real_end;
++	j = cmap->start;
++	c_end = cmap->end;
++	cmap->end = cmap->real_end;
++	n = 0;
++	while (i < bmap->real_end) {
++		if (ext2fs_test_block_bitmap2(bmap, i)) {
++			ext2fs_mark_block_bitmap2(cmap, j);
++			i += EXT2FS_CLUSTER_RATIO(fs) - n;
++			j++;
++			n = 0;
++			continue;
++		}
++		i++; n++;
++		if (n >= EXT2FS_CLUSTER_RATIO(fs)) {
++			j++;
++			n = 0;
++		}
++	}
++	bmap->end = b_end;
++	cmap->end = c_end;
++	return 0;
++}
+diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
+index e1f229b..4200f86 100644
+--- a/lib/ext2fs/initialize.c
++++ b/lib/ext2fs/initialize.c
+@@ -94,6 +94,7 @@ errcode_t ext2fs_initialize(const char *name, int flags,
+ 	blk_t		numblocks;
+ 	int		rsv_gdt;
+ 	int		csum_flag;
++	int		bigalloc_flag;
+ 	int		io_flags;
+ 	char		*buf = 0;
+ 	char		c;
+@@ -134,12 +135,25 @@ errcode_t ext2fs_initialize(const char *name, int flags,
+ 
+ #define set_field(field, default) (super->field = param->field ? \
+ 				   param->field : (default))
++#define assign_field(field)	(super->field = param->field)
+ 
+ 	super->s_magic = EXT2_SUPER_MAGIC;
+ 	super->s_state = EXT2_VALID_FS;
+ 
+-	set_field(s_log_block_size, 0);	/* default blocksize: 1024 bytes */
+-	set_field(s_log_cluster_size, 0);
++	bigalloc_flag = EXT2_HAS_RO_COMPAT_FEATURE(param,
++				   EXT4_FEATURE_RO_COMPAT_BIGALLOC);
++
++	assign_field(s_log_block_size);
++
++	if (bigalloc_flag) {
++		set_field(s_log_cluster_size, super->s_log_block_size+4);
++		if (super->s_log_block_size > super->s_log_cluster_size) {
++			retval = EXT2_ET_INVALID_ARGUMENT;
++			goto cleanup;
++		}
++	} else
++		super->s_log_cluster_size = super->s_log_block_size;
++
+ 	set_field(s_first_data_block, super->s_log_block_size ? 0 : 1);
+ 	set_field(s_max_mnt_count, 0);
+ 	set_field(s_errors, EXT2_ERRORS_DEFAULT);
+@@ -183,14 +197,37 @@ errcode_t ext2fs_initialize(const char *name, int flags,
+ 
+ 	fs->blocksize = EXT2_BLOCK_SIZE(super);
+ 	fs->clustersize = EXT2_CLUSTER_SIZE(super);
++	fs->cluster_bits = super->s_log_cluster_size - super->s_log_block_size;
++
++	if (bigalloc_flag) {
++		if (param->s_blocks_per_group &&
++		    param->s_clusters_per_group &&
++		    ((param->s_clusters_per_group * EXT2FS_CLUSTER_RATIO(fs)) !=
++		     param->s_blocks_per_group)) {
++			retval = EXT2_ET_INVALID_ARGUMENT;
++			goto cleanup;
++		}
++		if (param->s_clusters_per_group)
++			assign_field(s_clusters_per_group);
++		else if (param->s_blocks_per_group)
++			super->s_clusters_per_group = 
++				param->s_blocks_per_group /
++				EXT2FS_CLUSTER_RATIO(fs);
++		else
++			super->s_clusters_per_group = fs->blocksize * 8;
++		if (super->s_clusters_per_group > EXT2_MAX_CLUSTERS_PER_GROUP(super))
++			super->s_blocks_per_group = EXT2_MAX_CLUSTERS_PER_GROUP(super);
++		super->s_blocks_per_group = EXT2FS_C2B(fs,
++				       super->s_clusters_per_group);
++	} else {
++		set_field(s_blocks_per_group, fs->blocksize * 8);
++		if (super->s_blocks_per_group > EXT2_MAX_BLOCKS_PER_GROUP(super))
++			super->s_blocks_per_group = EXT2_MAX_BLOCKS_PER_GROUP(super);
++		super->s_clusters_per_group = super->s_blocks_per_group;
++	}
+ 
+-	/* default: (fs->blocksize*8) blocks/group, up to 2^16 (GDT limit) */
+-	set_field(s_blocks_per_group, fs->blocksize * 8);
+-	if (super->s_blocks_per_group > EXT2_MAX_BLOCKS_PER_GROUP(super))
+-		super->s_blocks_per_group = EXT2_MAX_BLOCKS_PER_GROUP(super);
+-	super->s_clusters_per_group = super->s_blocks_per_group;
+-
+-	ext2fs_blocks_count_set(super, ext2fs_blocks_count(param));
++	ext2fs_blocks_count_set(super, ext2fs_blocks_count(param) &
++				~((blk64_t) EXT2FS_CLUSTER_MASK(fs)));
+ 	ext2fs_r_blocks_count_set(super, ext2fs_r_blocks_count(param));
+ 	if (ext2fs_r_blocks_count(super) >= ext2fs_blocks_count(param)) {
+ 		retval = EXT2_ET_INVALID_ARGUMENT;
+@@ -246,7 +283,7 @@ retry:
+ 	 */
+ 	ipg = ext2fs_div_ceil(super->s_inodes_count, fs->group_desc_count);
+ 	if (ipg > fs->blocksize * 8) {
+-		if (super->s_blocks_per_group >= 256) {
++		if (!bigalloc_flag && super->s_blocks_per_group >= 256) {
+ 			/* Try again with slightly different parameters */
+ 			super->s_blocks_per_group -= 8;
+ 			ext2fs_blocks_count_set(super,
+diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+index 90abed1..106ecf1 100644
+--- a/lib/ext2fs/openfs.c
++++ b/lib/ext2fs/openfs.c
+@@ -251,6 +251,8 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
+ 		goto cleanup;
  	}
+ 	fs->clustersize = EXT2_CLUSTER_SIZE(fs->super);
++	fs->cluster_bits = fs->super->s_log_cluster_size -
++		fs->super->s_log_block_size;
+ 	fs->inode_blocks_per_group = ((EXT2_INODES_PER_GROUP(fs->super) *
+ 				       EXT2_INODE_SIZE(fs->super) +
+ 				       EXT2_BLOCK_SIZE(fs->super) - 1) /
+diff --git a/lib/ext2fs/rw_bitmaps.c b/lib/ext2fs/rw_bitmaps.c
+index 3031b7d..c579f3a 100644
+--- a/lib/ext2fs/rw_bitmaps.c
++++ b/lib/ext2fs/rw_bitmaps.c
+@@ -37,7 +37,7 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
+ 	char 		*block_buf, *inode_buf;
+ 	int		csum_flag = 0;
+ 	blk64_t		blk;
+-	blk64_t		blk_itr = fs->super->s_first_data_block;
++	blk64_t		blk_itr = EXT2FS_B2C(fs, fs->super->s_first_data_block);
+ 	ext2_ino_t	ino_itr = 1;
  
-@@ -959,7 +959,7 @@ got:
- 		/* recheck and clear flag under lock if we still need to */
- 		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
- 			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
--			ext4_free_blks_set(sb, gdp,
-+			ext4_free_group_clusters_set(sb, gdp,
- 				ext4_free_blocks_after_init(sb, group, gdp));
- 			gdp->bg_checksum = ext4_group_desc_csum(sbi, group,
- 								gdp);
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 4f8494d..3b0d87c 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2314,7 +2314,7 @@ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
- 			ext4_free_blocks_after_init(sb, group, desc);
- 	} else {
- 		meta_group_info[i]->bb_free =
--			ext4_free_blks_count(sb, desc);
-+			ext4_free_group_clusters(sb, desc);
- 	}
+ 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
+@@ -51,7 +51,7 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
  
- 	INIT_LIST_HEAD(&meta_group_info[i]->bb_prealloc_list);
-@@ -2830,7 +2830,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 		goto out_err;
+ 	inode_nbytes = block_nbytes = 0;
+ 	if (do_block) {
+-		block_nbytes = EXT2_BLOCKS_PER_GROUP(fs->super) / 8;
++		block_nbytes = EXT2_CLUSTERS_PER_GROUP(fs->super) / 8;
+ 		retval = ext2fs_get_memalign(fs->blocksize, fs->blocksize,
+ 					     &block_buf);
+ 		if (retval)
+@@ -83,9 +83,10 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
  
- 	ext4_debug("using block group %u(%d)\n", ac->ac_b_ex.fe_group,
--			ext4_free_blks_count(sb, gdp));
-+			ext4_free_group_clusters(sb, gdp));
- 
- 	err = ext4_journal_get_write_access(handle, gdp_bh);
- 	if (err)
-@@ -2869,12 +2869,12 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 	mb_set_bits(bitmap_bh->b_data, ac->ac_b_ex.fe_start,ac->ac_b_ex.fe_len);
- 	if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
- 		gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
--		ext4_free_blks_set(sb, gdp,
--					ext4_free_blocks_after_init(sb,
--					ac->ac_b_ex.fe_group, gdp));
-+		ext4_free_group_clusters_set(sb, gdp,
-+					     ext4_free_blocks_after_init(sb,
-+						ac->ac_b_ex.fe_group, gdp));
- 	}
--	len = ext4_free_blks_count(sb, gdp) - ac->ac_b_ex.fe_len;
--	ext4_free_blks_set(sb, gdp, len);
-+	len = ext4_free_group_clusters(sb, gdp) - ac->ac_b_ex.fe_len;
-+	ext4_free_group_clusters_set(sb, gdp, len);
- 	gdp->bg_checksum = ext4_group_desc_csum(sbi, ac->ac_b_ex.fe_group, gdp);
- 
- 	ext4_unlock_group(sb, ac->ac_b_ex.fe_group);
-@@ -4722,8 +4722,8 @@ do_more:
- 		mb_free_blocks(inode, &e4b, bit, count_clusters);
- 	}
- 
--	ret = ext4_free_blks_count(sb, gdp) + count_clusters;
--	ext4_free_blks_set(sb, gdp, ret);
-+	ret = ext4_free_group_clusters(sb, gdp) + count_clusters;
-+	ext4_free_group_clusters_set(sb, gdp, ret);
- 	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
- 	ext4_unlock_group(sb, block_group);
- 	percpu_counter_add(&sbi->s_freeclusters_counter, count_clusters);
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index cef49d3..14b66ba 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -853,7 +853,7 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
- 	ext4_block_bitmap_set(sb, gdp, input->block_bitmap); /* LV FIXME */
- 	ext4_inode_bitmap_set(sb, gdp, input->inode_bitmap); /* LV FIXME */
- 	ext4_inode_table_set(sb, gdp, input->inode_table); /* LV FIXME */
--	ext4_free_blks_set(sb, gdp, input->free_blocks_count);
-+	ext4_free_group_clusters_set(sb, gdp, input->free_blocks_count);
- 	ext4_free_inodes_set(sb, gdp, EXT4_INODES_PER_GROUP(sb));
- 	gdp->bg_flags = cpu_to_le16(EXT4_BG_INODE_ZEROED);
- 	gdp->bg_checksum = ext4_group_desc_csum(sbi, input->group, gdp);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index e5a2e52..30b7c81 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -133,8 +133,8 @@ ext4_fsblk_t ext4_inode_table(struct super_block *sb,
- 		 (ext4_fsblk_t)le32_to_cpu(bg->bg_inode_table_hi) << 32 : 0);
+ 		if (i == fs->group_desc_count - 1) {
+ 			/* Force bitmap padding for the last group */
+-			nbits = ((ext2fs_blocks_count(fs->super)
+-				  - (__u64) fs->super->s_first_data_block)
+-				 % (__u64) EXT2_BLOCKS_PER_GROUP(fs->super));
++			nbits = EXT2FS_NUM_B2C(fs,
++				      (ext2fs_blocks_count(fs->super) -
++				       (__u64) fs->super->s_first_data_block)) %
++				(__u64) EXT2_CLUSTERS_PER_GROUP(fs->super);
+ 			if (nbits)
+ 				for (j = nbits; j < fs->blocksize * 8; j++)
+ 					ext2fs_set_bit(j, block_buf);
+@@ -141,13 +142,13 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
+ 	char *block_bitmap = 0, *inode_bitmap = 0;
+ 	char *buf;
+ 	errcode_t retval;
+-	int block_nbytes = EXT2_BLOCKS_PER_GROUP(fs->super) / 8;
++	int block_nbytes = EXT2_CLUSTERS_PER_GROUP(fs->super) / 8;
+ 	int inode_nbytes = EXT2_INODES_PER_GROUP(fs->super) / 8;
+ 	int csum_flag = 0;
+ 	int do_image = fs->flags & EXT2_FLAG_IMAGE_FILE;
+ 	unsigned int	cnt;
+ 	blk64_t	blk;
+-	blk64_t	blk_itr = fs->super->s_first_data_block;
++	blk64_t	blk_itr = EXT2FS_B2C(fs, fs->super->s_first_data_block);
+ 	blk64_t   blk_cnt;
+ 	ext2_ino_t ino_itr = 1;
+ 	ext2_ino_t ino_cnt;
+@@ -219,7 +220,7 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
+ 		}
+ 		blk = (fs->image_header->offset_blockmap /
+ 		       fs->blocksize);
+-		blk_cnt = (blk64_t)EXT2_BLOCKS_PER_GROUP(fs->super) *
++		blk_cnt = (blk64_t)EXT2_CLUSTERS_PER_GROUP(fs->super) *
+ 			fs->group_desc_count;
+ 		while (block_nbytes > 0) {
+ 			retval = io_channel_read_blk64(fs->image_io, blk++,
+diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
+index c01ffe5..97ce503 100644
+--- a/misc/dumpe2fs.c
++++ b/misc/dumpe2fs.c
+@@ -71,25 +71,26 @@ static void print_range(unsigned long long a, unsigned long long b)
+ 		printf("%llu-%llu", a, b);
  }
  
--__u32 ext4_free_blks_count(struct super_block *sb,
--			      struct ext4_group_desc *bg)
-+__u32 ext4_free_group_clusters(struct super_block *sb,
-+			       struct ext4_group_desc *bg)
+-static void print_free (unsigned long group, char * bitmap,
+-			unsigned long nbytes, unsigned long offset)
++static void print_free(unsigned long group, char * bitmap,
++		       unsigned long nbytes, unsigned long offset, int ratio)
  {
- 	return le16_to_cpu(bg->bg_free_blocks_count_lo) |
- 		(EXT4_DESC_SIZE(sb) >= EXT4_MIN_DESC_SIZE_64BIT ?
-@@ -189,8 +189,8 @@ void ext4_inode_table_set(struct super_block *sb,
- 		bg->bg_inode_table_hi = cpu_to_le32(blk >> 32);
+ 	int p = 0;
+ 	unsigned long i;
+ 	unsigned long j;
+ 
++	offset /= ratio;
+ 	offset += group * nbytes;
+ 	for (i = 0; i < nbytes; i++)
+ 		if (!in_use (bitmap, i))
+ 		{
+ 			if (p)
+ 				printf (", ");
+-			print_number(i + offset);
++			print_number((i + offset) * ratio);
+ 			for (j = i; j < nbytes && !in_use (bitmap, j); j++)
+ 				;
+ 			if (--j != i) {
+ 				fputc('-', stdout);
+-				print_number(j + offset);
++				print_number((j + offset) * ratio);
+ 				i = j;
+ 			}
+ 			p = 1;
+@@ -153,7 +154,7 @@ static void list_desc (ext2_filsys fs)
+ 	blk64_t		blk_itr = fs->super->s_first_data_block;
+ 	ext2_ino_t	ino_itr = 1;
+ 
+-	block_nbytes = EXT2_BLOCKS_PER_GROUP(fs->super) / 8;
++	block_nbytes = EXT2_CLUSTERS_PER_GROUP(fs->super) / 8;
+ 	inode_nbytes = EXT2_INODES_PER_GROUP(fs->super) / 8;
+ 
+ 	if (fs->block_map)
+@@ -238,18 +239,19 @@ static void list_desc (ext2_filsys fs)
+ 			fputs(_("  Free blocks: "), stdout);
+ 			ext2fs_get_block_bitmap_range2(fs->block_map,
+ 				 blk_itr, block_nbytes << 3, block_bitmap);
+-			print_free (i, block_bitmap,
+-				    fs->super->s_blocks_per_group,
+-				    fs->super->s_first_data_block);
++			print_free(i, block_bitmap,
++				   fs->super->s_clusters_per_group,
++				   fs->super->s_first_data_block,
++				   EXT2FS_CLUSTER_RATIO(fs));
+ 			fputc('\n', stdout);
+-			blk_itr += fs->super->s_blocks_per_group;
++			blk_itr += fs->super->s_clusters_per_group;
+ 		}
+ 		if (inode_bitmap) {
+ 			fputs(_("  Free inodes: "), stdout);
+ 			ext2fs_get_inode_bitmap_range2(fs->inode_map,
+ 				 ino_itr, inode_nbytes << 3, inode_bitmap);
+-			print_free (i, inode_bitmap,
+-				    fs->super->s_inodes_per_group, 1);
++			print_free(i, inode_bitmap,
++				   fs->super->s_inodes_per_group, 1, 1);
+ 			fputc('\n', stdout);
+ 			ino_itr += fs->super->s_inodes_per_group;
+ 		}
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 9798b88..f77c92e 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -815,7 +815,8 @@ static __u32 ok_features[3] = {
+ 		EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
+ 		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
+ 		EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|
+-		EXT4_FEATURE_RO_COMPAT_GDT_CSUM
++		EXT4_FEATURE_RO_COMPAT_GDT_CSUM|
++		EXT4_FEATURE_RO_COMPAT_BIGALLOC
+ };
+ 
+ 
+@@ -1252,7 +1253,7 @@ profile_error:
+ 	}
+ 
+ 	while ((c = getopt (argc, argv,
+-		    "b:cf:g:G:i:jl:m:no:qr:s:t:vE:FI:J:KL:M:N:O:R:ST:U:V")) != EOF) {
++		    "b:cg:i:jl:m:no:qr:s:t:vC:E:FG:I:J:KL:M:N:O:R:ST:U:V")) != EOF) {
+ 		switch (c) {
+ 		case 'b':
+ 			blocksize = strtol(optarg, &tmp, 0);
+@@ -1275,17 +1276,17 @@ profile_error:
+ 		case 'c':	/* Check for bad blocks */
+ 			cflag++;
+ 			break;
+-		case 'f':
++		case 'C':
+ 			size = strtoul(optarg, &tmp, 0);
+-			if (size < EXT2_MIN_BLOCK_SIZE ||
+-			    size > EXT2_MAX_BLOCK_SIZE || *tmp) {
++			if (size < EXT2_MIN_CLUSTER_SIZE ||
++			    size > EXT2_MAX_CLUSTER_SIZE || *tmp) {
+ 				com_err(program_name, 0,
+ 					_("invalid fragment size - %s"),
+ 					optarg);
+ 				exit(1);
+ 			}
+-			fprintf(stderr, _("Warning: fragments not supported.  "
+-			       "Ignoring -f option\n"));
++			fs_param.s_log_cluster_size =
++				int_log2(size >> EXT2_MIN_CLUSTER_LOG_SIZE);
+ 			break;
+ 		case 'g':
+ 			fs_param.s_blocks_per_group = strtoul(optarg, &tmp, 0);
+@@ -1515,8 +1516,6 @@ profile_error:
+ 		check_plausibility(device_name);
+ 	check_mount(device_name, force, _("filesystem"));
+ 
+-	fs_param.s_log_cluster_size = fs_param.s_log_block_size;
+-
+ 	/* Determine the size of the device (if possible) */
+ 	if (noaction && fs_blocks_count) {
+ 		dev_size = fs_blocks_count;
+@@ -1752,16 +1751,24 @@ profile_error:
+ 		}
+ 	}
+ 
++	fs_param.s_log_block_size =
++		int_log2(blocksize >> EXT2_MIN_BLOCK_LOG_SIZE);
++	if (fs_param.s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_BIGALLOC) {
++		if (fs_param.s_log_cluster_size == 0)
++			fs_param.s_log_cluster_size =
++				fs_param.s_log_block_size + 4;
++	} else
++		fs_param.s_log_cluster_size = fs_param.s_log_block_size;
++
+ 	if (inode_ratio == 0) {
+ 		inode_ratio = get_int_from_profile(fs_types, "inode_ratio",
+ 						   8192);
+ 		if (inode_ratio < blocksize)
+ 			inode_ratio = blocksize;
++		if (inode_ratio < EXT2_CLUSTER_SIZE(&fs_param))
++			inode_ratio = EXT2_CLUSTER_SIZE(&fs_param);
+ 	}
+ 
+-	fs_param.s_log_cluster_size = fs_param.s_log_block_size =
+-		int_log2(blocksize >> EXT2_MIN_BLOCK_LOG_SIZE);
+-
+ #ifdef HAVE_BLKID_PROBE_GET_TOPOLOGY
+ 	retval = get_device_geometry(device_name, &fs_param, psector_size);
+ 	if (retval < 0) {
+@@ -2049,6 +2056,33 @@ static int mke2fs_discard_device(ext2_filsys fs)
+ 	return retval;
  }
  
--void ext4_free_blks_set(struct super_block *sb,
--			  struct ext4_group_desc *bg, __u32 count)
-+void ext4_free_group_clusters_set(struct super_block *sb,
-+				  struct ext4_group_desc *bg, __u32 count)
++static fix_cluster_bg_counts(ext2_filsys fs)
++{
++	blk64_t	cluster, num_clusters, tot_free;
++	int	grp_free, num_free, group, num;
++
++	num_clusters = EXT2FS_B2C(fs, ext2fs_blocks_count(fs->super));
++	tot_free = num_free = num = group = grp_free = 0;
++	for (cluster = EXT2FS_B2C(fs, fs->super->s_first_data_block);
++	     cluster < num_clusters; cluster++) {
++		if (!ext2fs_test_block_bitmap2(fs->block_map, cluster)) {
++			grp_free++;
++			tot_free++;
++		}
++		num++;
++		if ((num == fs->super->s_clusters_per_group) ||
++		    (cluster == num_clusters-1)) {
++			printf("Group %d has free #: %d\n", group, grp_free);
++			ext2fs_bg_free_blocks_count_set(fs, group, grp_free);
++			ext2fs_group_desc_csum_set(fs, group);
++			num = 0;
++			grp_free = 0;
++			group++;
++		}
++	}
++	ext2fs_free_blocks_count_set(fs->super, tot_free);
++}
++
+ int main (int argc, char *argv[])
  {
- 	bg->bg_free_blocks_count_lo = cpu_to_le16((__u16)count);
- 	if (EXT4_DESC_SIZE(sb) >= EXT4_MIN_DESC_SIZE_64BIT)
-@@ -1992,7 +1992,7 @@ static int ext4_fill_flex_info(struct super_block *sb)
- 		flex_group = ext4_flex_group(sbi, i);
- 		atomic_add(ext4_free_inodes_count(sb, gdp),
- 			   &sbi->s_flex_groups[flex_group].free_inodes);
--		atomic_add(ext4_free_blks_count(sb, gdp),
-+		atomic_add(ext4_free_group_clusters(sb, gdp),
- 			   &sbi->s_flex_groups[flex_group].free_clusters);
- 		atomic_add(ext4_used_dirs_count(sb, gdp),
- 			   &sbi->s_flex_groups[flex_group].used_dirs);
--- 
-1.7.3.1
-
+ 	errcode_t	retval = 0;
+@@ -2367,6 +2401,17 @@ int main (int argc, char *argv[])
+ 	}
+ no_journal:
+ 
++	if (EXT2_HAS_RO_COMPAT_FEATURE(&fs_param,
++				       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
++		ext2fs_block_bitmap cluster_map;
++
++		retval = ext2fs_convert_to_cluster_bitmap(fs, fs->block_map,
++							 &cluster_map);
++		ext2fs_free_block_bitmap(fs->block_map);
++		fs->block_map = cluster_map;
++		fix_cluster_bg_counts(fs);
++	}
++
+ 	if (!quiet)
+ 		printf(_("Writing superblocks and "
+ 		       "filesystem accounting information: "));
+diff --git a/version.h b/version.h
+index 7005be1..7747e26 100644
+--- a/version.h
++++ b/version.h
+@@ -7,5 +7,5 @@
+  * file may be redistributed under the GNU Public License v2.
+  */
+ 
+-#define E2FSPROGS_VERSION "1.41.14"
+-#define E2FSPROGS_DATE "22-Dec-2010"
++#define E2FSPROGS_VERSION "1.42.BIGALLOC-2"
++#define E2FSPROGS_DATE "22-Apr-2011"
