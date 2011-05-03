@@ -1,69 +1,118 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 34302] Errors from kjournald
-Date: Tue, 3 May 2011 16:27:27 GMT
-Message-ID: <201105031627.p43GRRQo017978@demeter1.kernel.org>
-References: <bug-34302-13602@https.bugzilla.kernel.org/>
+From: Allison Henderson <achender@linux.vnet.ibm.com>
+Subject: [Ext4 punch hole 2/5 v6]
+Date: Tue, 03 May 2011 09:47:55 -0700
+Message-ID: <4DC031BB.2020005@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:39306 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753399Ab1ECQ11 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 May 2011 12:27:27 -0400
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p43GRRYa017979
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 16:27:27 GMT
-In-Reply-To: <bug-34302-13602@https.bugzilla.kernel.org/>
+Received: from e34.co.us.ibm.com ([32.97.110.152]:56310 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753867Ab1ECQsB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 May 2011 12:48:01 -0400
+Received: from d03relay03.boulder.ibm.com (d03relay03.boulder.ibm.com [9.17.195.228])
+	by e34.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p43GZcNI012115
+	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 10:35:38 -0600
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p43GluXc088074
+	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 10:47:56 -0600
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p43GluID027683
+	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 10:47:56 -0600
+Received: from [9.65.15.245] (sig-9-65-15-245.mts.ibm.com [9.65.15.245])
+	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p43GltOE027628
+	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 10:47:55 -0600
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=34302
+This patch adds routines needed to zero out the
+unblock aligned data of the hole.
 
+The existing ext4_block_truncate_page routine that
+is used to zero out unblock aligned data from truncate
+has been modified to accept a length parameter, and
+renamed to ext4_block_zero_page_range.
 
+The function can now be used to zero out the
+head of a block, the tail of a block, or the middle
+of a block.  The existing ext4_block_truncate_page
+has now become a wrapper to this function
 
+Signed-off-by: Allison Henderson <achender@us.ibm.com>
+---
+:100644 100644 5639fdf... 45136d8... M	fs/ext4/ext4.h
+:100644 100644 a04128f... dc45631... M	fs/ext4/inode.c
+ fs/ext4/ext4.h  |    2 ++
+ fs/ext4/inode.c |   33 +++++++++++++++++++++++++++++++--
+ 2 files changed, 33 insertions(+), 2 deletions(-)
 
-
---- Comment #2 from Tom Moore <tmoore@spatial.ca>  2011-05-03 16:27:25 ---
-Yes, it appears that there is additional in the syslog that is not in the
-messages file (sorry about that).
-
-May  3 01:02:25 fawkes kernel: [307200.700498] INFO: task kjournald:6416
-blocked for more than 120 seconds.
-May  3 01:02:25 fawkes kernel: [307200.700506] "echo 0 >
-/proc/sys/kernel/hung_task_timeout_secs" disables this message.
-
-The machine was doing a full backup of about 1Tb of data at the time using
-backuppc, so that might be the reason that the journal could not keep up.  It
-is possible that something else in the crontab also kicked off at around that
-time.  I am a bit confused by the messages however.  The backup source is 2
-SATA 3 (6Gbs) disks in a Raid-1 config; the backup target is 1 SATA2 (3gbs)
-disk.  The final message of concern was 
-
-May  3 01:40:09 fawkes kernel: [309464.781078] ata8.00: exception Emask 0x0
-SAct 0x2 SErr 0x0 action 0x6 frozen
-May  3 01:40:09 fawkes kernel: [309464.781091] ata8.00: failed command: READ
-FPDMA QUEUED
-May  3 01:40:09 fawkes kernel: [309464.781107] ata8.00: cmd
-60/08:08:47:0a:ab/00:00:45:00:00/40 tag 1 ncq 4096 in
-May  3 01:40:09 fawkes kernel: [309464.781111]          res
-40/00:00:00:00:00/00:00:00:00:00/00 Emask 0x4 (timeout)
-May  3 01:40:09 fawkes kernel: [309464.781118] ata8.00: status: { DRDY }
-May  3 01:40:09 fawkes kernel: [309464.781131] ata8: hard resetting link
-May  3 01:40:10 fawkes kernel: [309465.112103] ata8: SATA link up 6.0 Gbps
-(SStatus 133 SControl 300)
-May  3 01:40:10 fawkes kernel: [309465.119531] ata8.00: configured for UDMA/133
-May  3 01:40:10 fawkes kernel: [309465.119543] ata8.00: device reported invalid
-CHS sector 0
-May  3 01:40:10 fawkes kernel: [309465.119559] ata8: EH complete
-
-I am not 100% sure which disk ata8 corresponds to.  I tried looking through the
-boot log to figure out the device assignments, but it was a bit confusing, It
-appears that ata8.00 is one of the source raid disks.  If so, I wonder why it
-got reset?
-
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 5639fdf..45136d8 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1743,6 +1743,8 @@ extern int ext4_writepage_trans_blocks(struct inode *);
+ extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
+ extern int ext4_block_truncate_page(handle_t *handle,
+ 		struct address_space *mapping, loff_t from);
++extern int ext4_block_zero_page_range(handle_t *handle,
++		struct address_space *mapping, loff_t from, loff_t length);
+ extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
+ extern qsize_t *ext4_get_reserved_space(struct inode *inode);
+ extern void ext4_da_update_reserve_space(struct inode *inode,
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index a04128f..dc45631 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3915,9 +3915,30 @@ void ext4_set_aops(struct inode *inode)
+ int ext4_block_truncate_page(handle_t *handle,
+ 		struct address_space *mapping, loff_t from)
+ {
++	unsigned offset = from & (PAGE_CACHE_SIZE-1);
++	unsigned length;
++	unsigned blocksize;
++	struct inode *inode = mapping->host;
++
++	blocksize = inode->i_sb->s_blocksize;
++	length = blocksize - (offset & (blocksize - 1));
++
++	return ext4_block_zero_page_range(handle, mapping, from, length);
++}
++
++/*
++ * ext4_block_zero_page_range() zeros out a mapping of length 'length'
++ * starting from file offset 'from'.  The range to be zero'd must
++ * be contained with in one block.  If the specified range exceeds
++ * the end of the block it will be shortened to end of the block
++ * that cooresponds to 'from'
++ */
++int ext4_block_zero_page_range(handle_t *handle,
++		struct address_space *mapping, loff_t from, loff_t length)
++{
+ 	ext4_fsblk_t index = from >> PAGE_CACHE_SHIFT;
+ 	unsigned offset = from & (PAGE_CACHE_SIZE-1);
+-	unsigned blocksize, length, pos;
++	unsigned blocksize, max, pos;
+ 	ext4_lblk_t iblock;
+ 	struct inode *inode = mapping->host;
+ 	struct buffer_head *bh;
+@@ -3930,7 +3951,15 @@ int ext4_block_truncate_page(handle_t *handle,
+ 		return -EINVAL;
+ 
+ 	blocksize = inode->i_sb->s_blocksize;
+-	length = blocksize - (offset & (blocksize - 1));
++	max = blocksize - (offset & (blocksize - 1));
++
++	/*
++	 * correct length if it does not fall between
++	 * 'from' and the end of the block
++	 */
++	if (length > max || length < 0)
++		length = max;
++
+ 	iblock = index << (PAGE_CACHE_SHIFT - inode->i_sb->s_blocksize_bits);
+ 
+ 	if (!page_has_buffers(page))
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.7.1
+
