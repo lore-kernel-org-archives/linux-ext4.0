@@ -1,183 +1,350 @@
 From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: [Ext4 punch hole 4/5 v6] Ext4 Punch Hole Support: Map blocks punch
- hole flag
-Date: Tue, 03 May 2011 09:48:01 -0700
-Message-ID: <4DC031C1.4050703@linux.vnet.ibm.com>
+Subject: [Ext4 punch hole 1/5 v6] Ext4 Punch Hole Support: Add flag to ext4_has_free_blocks
+Date: Tue, 03 May 2011 09:47:52 -0700
+Message-ID: <4DC031B8.2060605@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:58620 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753773Ab1ECQsM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 May 2011 12:48:12 -0400
-Received: from d03relay01.boulder.ibm.com (d03relay01.boulder.ibm.com [9.17.195.226])
-	by e36.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p43GgTcv000886
-	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 10:42:29 -0600
+Received: from e34.co.us.ibm.com ([32.97.110.152]:56329 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753630Ab1ECQsG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 May 2011 12:48:06 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e34.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p43GZhwh012200
+	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 10:35:43 -0600
 Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay01.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p43Gm5St145600
-	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 10:48:05 -0600
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id p43GluuM148272
+	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 10:48:00 -0600
 Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p43Gm22K028081
-	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 10:48:02 -0600
+	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p43GltQC027674
+	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 10:47:56 -0600
 Received: from [9.65.15.245] (sig-9-65-15-245.mts.ibm.com [9.65.15.245])
-	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p43Gm1k5028057
-	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 10:48:02 -0600
+	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p43Glqk8027425
+	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 10:47:52 -0600
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds a new flag to map blocks that specifies
-the given range of blocks should be punched out.  Extents
-are first converted to uninitialized extents before they are
-punched out. Because punching a hole may require that the
-extent be split, it is possible that the splitting may need
-more blocks than are available.  To deal with this, reserved
-blocks are temporarily borrowed to allow the split to proceed.
-The borrowed blocks are then returned after the hole punch has
-released more blocks.
+v5->v6:
+The flag that this patch adds has been changed
+to use a new EXt4_MB_* flag instead of adding
+a new flag set
 
-The routine then returns the number of blocks successfully
-punched out.
+This patch adds an allocation request  flag to the
+ext4_has_free_blocks function which
+enables the use of reserved blocks.  This will allow
+a punch hole to proceed even if the disk is full.
+Punching a hole may require additional blocks to first
+split the extents.  The blocks will be reclaimed after
+the punch hole completes.
+
+Because ext4_has_free_blocks is a low level function,
+the flag needs to be passed down through several
+functions listed below:
+
+ext4_ext_insert_extent
+ext4_ext_create_new_leaf
+ext4_ext_grow_indepth
+ext4_ext_split
+ext4_ext_new_meta_block
+ext4_mb_new_blocks
+ext4_claim_free_blocks
+ext4_has_free_blocks
 
 Signed-off-by: Allison Henderson <achender@us.ibm.com>
 ---
-:100644 100644 0afb746... 7f0fcc1... M	fs/ext4/extents.c
- fs/ext4/extents.c |   98 +++++++++++++++++++++++++++++++++++++++++++++++------
- 1 files changed, 87 insertions(+), 11 deletions(-)
+:100644 100644 97b970e... 5944fca... M	fs/ext4/balloc.c
+:100644 100644 4daaf2b... 5639fdf... M	fs/ext4/ext4.h
+:100644 100644 9e7c7b3... 7398a59... M	fs/ext4/extents.c
+:100644 100644 1a86282... a04128f... M	fs/ext4/inode.c
+:100644 100644 a5837a8... cbd81ca... M	fs/ext4/mballoc.c
+:100644 100644 b545ca1... 2d9b12c... M	fs/ext4/xattr.c
+ fs/ext4/balloc.c  |   17 +++++++++++------
+ fs/ext4/ext4.h    |   11 ++++++++---
+ fs/ext4/extents.c |   30 ++++++++++++++++++++----------
+ fs/ext4/inode.c   |    4 ++--
+ fs/ext4/mballoc.c |   16 ++++++++++++----
+ fs/ext4/xattr.c   |    2 +-
+ 6 files changed, 54 insertions(+), 26 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 0afb746..7f0fcc1 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3290,15 +3290,19 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	ext4_fsblk_t newblock = 0;
- 	int err = 0, depth, ret;
- 	unsigned int allocated = 0;
-+	unsigned int punched_out = 0;
-+	unsigned int result = 0;
- 	struct ext4_allocation_request ar;
- 	ext4_io_end_t *io = EXT4_I(inode)->cur_aio_dio;
-+	struct ext4_map_blocks punch_map;
- 
- 	ext_debug("blocks %u/%u requested for inode %lu\n",
- 		  map->m_lblk, map->m_len, inode->i_ino);
- 	trace_ext4_ext_map_blocks_enter(inode, map->m_lblk, map->m_len, flags);
- 
- 	/* check in cache */
--	if (ext4_ext_in_cache(inode, map->m_lblk, &newex)) {
-+	if (ext4_ext_in_cache(inode, map->m_lblk, &newex) &&
-+		((flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) == 0)) {
- 		if (!newex.ee_start_lo && !newex.ee_start_hi) {
- 			if ((flags & EXT4_GET_BLOCKS_CREATE) == 0) {
- 				/*
-@@ -3363,16 +3367,84 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 			ext_debug("%u fit into %u:%d -> %llu\n", map->m_lblk,
- 				  ee_block, ee_len, newblock);
- 
--			/* Do not put uninitialized extent in the cache */
--			if (!ext4_ext_is_uninitialized(ex)) {
--				ext4_ext_put_in_cache(inode, ee_block,
--							ee_len, ee_start);
--				goto out;
-+			if ((flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) == 0) {
-+				/*
-+				 * Do not put uninitialized extent
-+				 * in the cache
-+				 */
-+				if (!ext4_ext_is_uninitialized(ex)) {
-+					ext4_ext_put_in_cache(inode, ee_block,
-+						ee_len, ee_start);
-+					goto out;
-+				}
-+				ret = ext4_ext_handle_uninitialized_extents(
-+					handle, inode, map, path, flags,
-+					allocated, newblock);
-+				return ret;
- 			}
--			ret = ext4_ext_handle_uninitialized_extents(handle,
--					inode, map, path, flags, allocated,
--					newblock);
--			return ret;
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 97b970e..5944fca 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -493,7 +493,8 @@ error_return:
+  * Check if filesystem has nblocks free & available for allocation.
+  * On success return 1, return 0 on failure.
+  */
+-static int ext4_has_free_blocks(struct ext4_sb_info *sbi, s64 nblocks)
++static int ext4_has_free_blocks(struct ext4_sb_info *sbi,
++				s64 nblocks, unsigned int flags)
+ {
+ 	s64 free_blocks, dirty_blocks, root_blocks;
+ 	struct percpu_counter *fbc = &sbi->s_freeblocks_counter;
+@@ -522,7 +523,9 @@ static int ext4_has_free_blocks(struct ext4_sb_info *sbi, s64 nblocks)
+ 	/* Hm, nope.  Are (enough) root reserved blocks available? */
+ 	if (sbi->s_resuid == current_fsuid() ||
+ 	    ((sbi->s_resgid != 0) && in_group_p(sbi->s_resgid)) ||
+-	    capable(CAP_SYS_RESOURCE)) {
++	    capable(CAP_SYS_RESOURCE) ||
++		(flags & EXT4_MB_USE_ROOT_BLOCKS)) {
 +
-+			/*
-+			 * Punch out the map length, but only to the
-+			 * end of the extent
-+			 */
-+			punched_out = allocated < map->m_len ?
-+				allocated : map->m_len;
-+
-+			/*
-+			 * Sense extents need to be converted to
-+			 * uninitialized, they must fit in an
-+			 * uninitialized extent
-+			 */
-+			if (punched_out > EXT_UNINIT_MAX_LEN)
-+				punched_out = EXT_UNINIT_MAX_LEN;
-+
-+			punch_map.m_lblk = map->m_lblk;
-+			punch_map.m_pblk = newblock;
-+			punch_map.m_len = punched_out;
-+			punch_map.m_flags = 0;
-+
-+			/* Check to see if the extent needs to be split */
-+			if (punch_map.m_len != ee_len ||
-+				punch_map.m_lblk != ee_block) {
-+
-+				ret = ext4_split_extent(handle, inode,
-+				path, &punch_map, 0,
-+				EXT4_GET_BLOCKS_PUNCH_OUT_EXT |
-+				EXT4_GET_BLOCKS_PRE_IO);
-+
-+				if (ret < 0) {
-+					err = ret;
-+					goto out2;
-+				}
-+				/*
-+				 * find extent for the block at
-+				 * the start of the hole
-+				 */
-+				ext4_ext_drop_refs(path);
-+				kfree(path);
-+
-+				path = ext4_ext_find_extent(inode,
-+				map->m_lblk, NULL);
-+				if (IS_ERR(path)) {
-+					err = PTR_ERR(path);
-+					path = NULL;
-+					goto out2;
-+				}
-+
-+				depth = ext_depth(inode);
-+				ex = path[depth].p_ext;
-+				ee_len = ext4_ext_get_actual_len(ex);
-+				ee_block = le32_to_cpu(ex->ee_block);
-+				ee_start = ext4_ext_pblock(ex);
-+
-+			}
-+
-+			ext4_ext_mark_uninitialized(ex);
-+
-+			err = ext4_ext_remove_space(inode, map->m_lblk,
-+				map->m_lblk + punched_out);
-+
-+			goto out2;
- 		}
+ 		if (free_blocks >= (nblocks + dirty_blocks))
+ 			return 1;
  	}
- 
-@@ -3517,7 +3589,11 @@ out2:
- 	}
- 	trace_ext4_ext_map_blocks_exit(inode, map->m_lblk,
- 		newblock, map->m_len, err ? err : allocated);
--	return err ? err : allocated;
-+
-+	result = (flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) ?
-+			punched_out : allocated;
-+
-+	return err ? err : result;
+@@ -531,9 +534,9 @@ static int ext4_has_free_blocks(struct ext4_sb_info *sbi, s64 nblocks)
  }
  
- void ext4_ext_truncate(struct inode *inode)
+ int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
+-						s64 nblocks)
++					s64 nblocks, unsigned int flags)
+ {
+-	if (ext4_has_free_blocks(sbi, nblocks)) {
++	if (ext4_has_free_blocks(sbi, nblocks, flags)) {
+ 		percpu_counter_add(&sbi->s_dirtyblocks_counter, nblocks);
+ 		return 0;
+ 	} else
+@@ -554,7 +557,7 @@ int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
+  */
+ int ext4_should_retry_alloc(struct super_block *sb, int *retries)
+ {
+-	if (!ext4_has_free_blocks(EXT4_SB(sb), 1) ||
++	if (!ext4_has_free_blocks(EXT4_SB(sb), 1, 0) ||
+ 	    (*retries)++ > 3 ||
+ 	    !EXT4_SB(sb)->s_journal)
+ 		return 0;
+@@ -577,7 +580,8 @@ int ext4_should_retry_alloc(struct super_block *sb, int *retries)
+  * error stores in errp pointer
+  */
+ ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
+-		ext4_fsblk_t goal, unsigned long *count, int *errp)
++		ext4_fsblk_t goal, unsigned long *count, int *errp,
++		unsigned int flags)
+ {
+ 	struct ext4_allocation_request ar;
+ 	ext4_fsblk_t ret;
+@@ -587,6 +591,7 @@ ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
+ 	ar.inode = inode;
+ 	ar.goal = goal;
+ 	ar.len = count ? *count : 1;
++	ar.flags = flags;
+ 
+ 	ret = ext4_mb_new_blocks(handle, &ar, errp);
+ 	if (count)
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 4daaf2b..5639fdf 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -108,7 +108,8 @@ typedef unsigned int ext4_group_t;
+ #define EXT4_MB_DELALLOC_RESERVED	0x0400
+ /* We are doing stream allocation */
+ #define EXT4_MB_STREAM_ALLOC		0x0800
+-
++/* Use reserved root blocks if needed */
++#define EXT4_MB_USE_ROOT_BLOCKS		0x1000
+ 
+ struct ext4_allocation_request {
+ 	/* target inode for block we're allocating */
+@@ -512,6 +513,8 @@ struct ext4_new_group_data {
+ 	/* Convert extent to initialized after IO complete */
+ #define EXT4_GET_BLOCKS_IO_CONVERT_EXT		(EXT4_GET_BLOCKS_CONVERT|\
+ 					 EXT4_GET_BLOCKS_CREATE_UNINIT_EXT)
++	/* Punch out blocks of an extent */
++#define EXT4_GET_BLOCKS_PUNCH_OUT_EXT		0x0020
+ 
+ /*
+  * Flags used by ext4_free_blocks
+@@ -1638,8 +1641,10 @@ extern int ext4_bg_has_super(struct super_block *sb, ext4_group_t group);
+ extern unsigned long ext4_bg_num_gdb(struct super_block *sb,
+ 			ext4_group_t group);
+ extern ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
+-			ext4_fsblk_t goal, unsigned long *count, int *errp);
+-extern int ext4_claim_free_blocks(struct ext4_sb_info *sbi, s64 nblocks);
++			ext4_fsblk_t goal, unsigned long *count,
++			int *errp, unsigned int flags);
++extern int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
++					s64 nblocks, unsigned int flags);
+ extern void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
+ 				ext4_fsblk_t block, unsigned long count);
+ extern ext4_fsblk_t ext4_count_free_blocks(struct super_block *);
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 9e7c7b3..7398a59 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -192,12 +192,13 @@ static ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
+ static ext4_fsblk_t
+ ext4_ext_new_meta_block(handle_t *handle, struct inode *inode,
+ 			struct ext4_ext_path *path,
+-			struct ext4_extent *ex, int *err)
++			struct ext4_extent *ex, int *err, unsigned int flags)
+ {
+ 	ext4_fsblk_t goal, newblock;
+ 
+ 	goal = ext4_ext_find_goal(inode, path, le32_to_cpu(ex->ee_block));
+-	newblock = ext4_new_meta_blocks(handle, inode, goal, NULL, err);
++	newblock = ext4_new_meta_blocks(handle, inode, goal,
++			NULL, err, flags);
+ 	return newblock;
+ }
+ 
+@@ -793,7 +794,8 @@ static int ext4_ext_insert_index(handle_t *handle, struct inode *inode,
+  */
+ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 				struct ext4_ext_path *path,
+-				struct ext4_extent *newext, int at)
++				struct ext4_extent *newext, int at,
++				unsigned int flags)
+ {
+ 	struct buffer_head *bh = NULL;
+ 	int depth = ext_depth(inode);
+@@ -847,7 +849,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 	ext_debug("allocate %d blocks for indexes/leaf\n", depth - at);
+ 	for (a = 0; a < depth - at; a++) {
+ 		newblock = ext4_ext_new_meta_block(handle, inode, path,
+-						   newext, &err);
++						   newext, &err, flags);
+ 		if (newblock == 0)
+ 			goto cleanup;
+ 		ablocks[a] = newblock;
+@@ -1057,7 +1059,8 @@ cleanup:
+  */
+ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
+ 					struct ext4_ext_path *path,
+-					struct ext4_extent *newext)
++					struct ext4_extent *newext,
++					unsigned int flags)
+ {
+ 	struct ext4_ext_path *curp = path;
+ 	struct ext4_extent_header *neh;
+@@ -1065,7 +1068,8 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
+ 	ext4_fsblk_t newblock;
+ 	int err = 0;
+ 
+-	newblock = ext4_ext_new_meta_block(handle, inode, path, newext, &err);
++	newblock = ext4_ext_new_meta_block(handle, inode, path,
++		newext, &err, flags);
+ 	if (newblock == 0)
+ 		return err;
+ 
+@@ -1141,7 +1145,8 @@ out:
+  */
+ static int ext4_ext_create_new_leaf(handle_t *handle, struct inode *inode,
+ 					struct ext4_ext_path *path,
+-					struct ext4_extent *newext)
++					struct ext4_extent *newext,
++					unsigned int flags)
+ {
+ 	struct ext4_ext_path *curp;
+ 	int depth, i, err = 0;
+@@ -1161,7 +1166,7 @@ repeat:
+ 	if (EXT_HAS_FREE_INDEX(curp)) {
+ 		/* if we found index with free entry, then use that
+ 		 * entry: create all needed subtree and add new leaf */
+-		err = ext4_ext_split(handle, inode, path, newext, i);
++		err = ext4_ext_split(handle, inode, path, newext, i, flags);
+ 		if (err)
+ 			goto out;
+ 
+@@ -1174,7 +1179,8 @@ repeat:
+ 			err = PTR_ERR(path);
+ 	} else {
+ 		/* tree is full, time to grow in depth */
+-		err = ext4_ext_grow_indepth(handle, inode, path, newext);
++		err = ext4_ext_grow_indepth(handle, inode, path,
++			newext, flags);
+ 		if (err)
+ 			goto out;
+ 
+@@ -1693,6 +1699,7 @@ int ext4_ext_insert_extent(handle_t *handle, struct inode *inode,
+ 	int depth, len, err;
+ 	ext4_lblk_t next;
+ 	unsigned uninitialized = 0;
++	int flags = 0;
+ 
+ 	if (unlikely(ext4_ext_get_actual_len(newext) == 0)) {
+ 		EXT4_ERROR_INODE(inode, "ext4_ext_get_actual_len(newext) == 0");
+@@ -1767,7 +1774,10 @@ repeat:
+ 	 * There is no free space in the found leaf.
+ 	 * We're gonna add a new leaf in the tree.
+ 	 */
+-	err = ext4_ext_create_new_leaf(handle, inode, path, newext);
++	if (flag & EXT4_GET_BLOCKS_PUNCH_OUT_EXT)
++		flags = EXT4_MB_USE_ROOT_BLOCKS;
++	err = ext4_ext_create_new_leaf(handle, inode, path,
++		newext, flags);
+ 	if (err)
+ 		goto cleanup;
+ 	depth = ext_depth(inode);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 1a86282..a04128f 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -640,7 +640,7 @@ static int ext4_alloc_blocks(handle_t *handle, struct inode *inode,
+ 		count = target;
+ 		/* allocating blocks for indirect blocks and direct blocks */
+ 		current_block = ext4_new_meta_blocks(handle, inode,
+-							goal, &count, err);
++							goal, &count, err, 0);
+ 		if (*err)
+ 			goto failed_out;
+ 
+@@ -1930,7 +1930,7 @@ repeat:
+ 	 * We do still charge estimated metadata to the sb though;
+ 	 * we cannot afford to run out of free blocks.
+ 	 */
+-	if (ext4_claim_free_blocks(sbi, md_needed + 1)) {
++	if (ext4_claim_free_blocks(sbi, md_needed + 1, 0)) {
+ 		dquot_release_reservation_block(inode, 1);
+ 		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
+ 			yield();
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index a5837a8..cbd81ca 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4303,7 +4303,9 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 		 * there is enough free blocks to do block allocation
+ 		 * and verify allocation doesn't exceed the quota limits.
+ 		 */
+-		while (ar->len && ext4_claim_free_blocks(sbi, ar->len)) {
++		while (ar->len &&
++			ext4_claim_free_blocks(sbi, ar->len, ar->flags)) {
++
+ 			/* let others to free the space */
+ 			yield();
+ 			ar->len = ar->len >> 1;
+@@ -4313,9 +4315,15 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 			return 0;
+ 		}
+ 		reserv_blks = ar->len;
+-		while (ar->len && dquot_alloc_block(ar->inode, ar->len)) {
+-			ar->flags |= EXT4_MB_HINT_NOPREALLOC;
+-			ar->len--;
++		if (ar->flags & EXT4_MB_USE_ROOT_BLOCKS) {
++			dquot_alloc_block_nofail(ar->inode, ar->len);
++		} else {
++			while (ar->len &&
++				dquot_alloc_block(ar->inode, ar->len)) {
++
++				ar->flags |= EXT4_MB_HINT_NOPREALLOC;
++				ar->len--;
++			}
+ 		}
+ 		inquota = ar->len;
+ 		if (ar->len == 0) {
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index b545ca1..2d9b12c 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -821,7 +821,7 @@ inserted:
+ 				goal = goal & EXT4_MAX_BLOCK_FILE_PHYS;
+ 
+ 			block = ext4_new_meta_blocks(handle, inode,
+-						  goal, NULL, &error);
++						  goal, NULL, &error, 0);
+ 			if (error)
+ 				goto cleanup;
+ 
 -- 
 1.7.1
 
