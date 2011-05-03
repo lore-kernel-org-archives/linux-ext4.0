@@ -1,283 +1,201 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 06/19] ext4: bigalloc changes to block bitmap initialization functions
-Date: Tue,  3 May 2011 18:24:36 -0400
-Message-ID: <1304461490-11056-7-git-send-email-tytso@mit.edu>
+Subject: [PATCH 01/19] ext4: read-only support for bigalloc file systems
+Date: Tue,  3 May 2011 18:24:31 -0400
+Message-ID: <1304461490-11056-2-git-send-email-tytso@mit.edu>
 References: <1304461490-11056-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:58117 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:58104 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752948Ab1ECWYy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 May 2011 18:24:54 -0400
+	id S1752312Ab1ECWYx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 May 2011 18:24:53 -0400
 In-Reply-To: <1304461490-11056-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add bigalloc support to ext4_init_block_bitmap() and
-ext4_free_blocks_after_init().
+This adds supports for bigalloc file systems.  It teaches the mount
+code just enough about bigalloc superblock fields that it will mount
+the file system without freaking out that the number of blocks per
+group is too big.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/balloc.c |  131 +++++++++++++++++++++++++++++++++++++-----------------
- fs/ext4/ext4.h   |   13 +++++
- 2 files changed, 103 insertions(+), 41 deletions(-)
+ fs/ext4/ext4.h  |   18 ++++++++++++++--
+ fs/ext4/super.c |   58 +++++++++++++++++++++++++++++++++++++++++++++++-------
+ 2 files changed, 65 insertions(+), 11 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 99ea977..332854c 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -23,9 +23,6 @@
- 
- #include <trace/events/ext4.h>
- 
--static unsigned int num_base_meta_blocks(struct super_block *sb,
--					 ext4_group_t block_group);
--
- /*
-  * balloc.c contains the blocks allocation and deallocation routines
-  */
-@@ -58,37 +55,87 @@ static int ext4_block_in_group(struct super_block *sb, ext4_fsblk_t block,
- 	return 0;
- }
- 
--static int ext4_group_used_meta_blocks(struct super_block *sb,
--				       ext4_group_t block_group,
--				       struct ext4_group_desc *gdp)
-+/* Return the number of clusters used for file system metadata; this
-+ * represents the overhead needed by the file system.
-+ */
-+unsigned ext4_num_overhead_clusters(struct super_block *sb,
-+				    ext4_group_t block_group,
-+				    struct ext4_group_desc *gdp)
- {
--	ext4_fsblk_t tmp;
-+	unsigned num_clusters;
-+	int block_cluster = -1, inode_cluster = -1, itbl_cluster = -1, i, c;
-+	ext4_fsblk_t start = ext4_group_first_block_no(sb, block_group);
-+	ext4_fsblk_t itbl_blk;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	/* block bitmap, inode bitmap, and inode table blocks */
--	int used_blocks = sbi->s_itb_per_group + 2;
- 
--	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG)) {
--		if (!ext4_block_in_group(sb, ext4_block_bitmap(sb, gdp),
--					block_group))
--			used_blocks--;
--
--		if (!ext4_block_in_group(sb, ext4_inode_bitmap(sb, gdp),
--					block_group))
--			used_blocks--;
--
--		tmp = ext4_inode_table(sb, gdp);
--		for (; tmp < ext4_inode_table(sb, gdp) +
--				sbi->s_itb_per_group; tmp++) {
--			if (!ext4_block_in_group(sb, tmp, block_group))
--				used_blocks -= 1;
-+	/* This is the number of clusters used by the superblock,
-+	 * block group descriptors, and reserved block group
-+	 * descriptor blocks */
-+	num_clusters = ext4_num_base_meta_clusters(sb, block_group);
-+
-+	/*
-+	 * For the allocation bitmaps and inode table, we first need
-+	 * to check to see if the block is in the block group.  If it
-+	 * is, then check to see if the cluster is already accounted
-+	 * for in the clusters used for the base metadata cluster, or
-+	 * if we can increment the base metadata cluster to include
-+	 * that block.  Otherwise, we will have to track the cluster
-+	 * used for the allocation bitmap or inode table explicitly.
-+	 * Normally all of these blocks are contiguous, so the special
-+	 * case handling shouldn't be necessary except for *very*
-+	 * unusual file system layouts.
-+	 */
-+	if (ext4_block_in_group(sb, ext4_block_bitmap(sb, gdp), block_group)) {
-+		block_cluster = EXT4_B2C(sbi, (start -
-+					       ext4_block_bitmap(sb, gdp)));
-+		if (block_cluster < num_clusters)
-+			block_cluster = -1;
-+		else if (block_cluster == num_clusters) {
-+			num_clusters++;
-+			block_cluster = -1;
-+		}
-+	}
-+
-+	if (ext4_block_in_group(sb, ext4_inode_bitmap(sb, gdp), block_group)) {
-+		inode_cluster = EXT4_B2C(sbi,
-+					 start - ext4_inode_bitmap(sb, gdp));
-+		if (inode_cluster < num_clusters)
-+			inode_cluster = -1;
-+		else if (inode_cluster == num_clusters) {
-+			num_clusters++;
-+			inode_cluster = -1;
-+		}
-+	}
-+
-+	itbl_blk = ext4_inode_table(sb, gdp);
-+	for (i = 0; i < sbi->s_itb_per_group; i++) {
-+		if (ext4_block_in_group(sb, itbl_blk + i, block_group)) {
-+			c = EXT4_B2C(sbi, start - itbl_blk + i);
-+			if ((c < num_clusters) || (c == inode_cluster) ||
-+			    (c == block_cluster) || (c == itbl_cluster))
-+				continue;
-+			if (c == num_clusters) {
-+				num_clusters++;
-+				continue;
-+			}
-+			num_clusters++;
-+			itbl_cluster = c;
- 		}
- 	}
--	return used_blocks;
-+
-+	if (block_cluster != -1)
-+		num_clusters++;
-+	if (inode_cluster != -1)
-+		num_clusters++;
-+
-+	return num_clusters;
- }
- 
--static unsigned int num_blocks_in_group(struct super_block *sb,
--					ext4_group_t block_group)
-+static unsigned int num_clusters_in_group(struct super_block *sb,
-+					  ext4_group_t block_group)
- {
-+	unsigned int blocks;
-+
- 	if (block_group == ext4_get_groups_count(sb) - 1) {
- 		/*
- 		 * Even though mke2fs always initializes the first and
-@@ -96,10 +143,11 @@ static unsigned int num_blocks_in_group(struct super_block *sb,
- 		 * we need to make sure we calculate the right free
- 		 * blocks.
- 		 */
--		return ext4_blocks_count(EXT4_SB(sb)->s_es) -
-+		blocks = ext4_blocks_count(EXT4_SB(sb)->s_es) -
- 			ext4_group_first_block_no(sb, block_group);
- 	} else
--		return EXT4_BLOCKS_PER_GROUP(sb);
-+		blocks = EXT4_BLOCKS_PER_GROUP(sb);
-+	return EXT4_NUM_B2C(EXT4_SB(sb), blocks);
- }
- 
- /* Initializes an uninitialized block bitmap */
-@@ -107,7 +155,7 @@ void ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 			    ext4_group_t block_group,
- 			    struct ext4_group_desc *gdp)
- {
--	unsigned int bit, bit_max = num_base_meta_blocks(sb, block_group);
-+	unsigned int bit, bit_max;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	ext4_fsblk_t start, tmp;
- 	int flex_bg = 0;
-@@ -126,6 +174,7 @@ void ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 	}
- 	memset(bh->b_data, 0, sb->s_blocksize);
- 
-+	bit_max = ext4_num_base_meta_clusters(sb, block_group);
- 	for (bit = 0; bit < bit_max; bit++)
- 		ext4_set_bit(bit, bh->b_data);
- 
-@@ -137,24 +186,25 @@ void ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 	/* Set bits for block and inode bitmaps, and inode table */
- 	tmp = ext4_block_bitmap(sb, gdp);
- 	if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
--		ext4_set_bit(tmp - start, bh->b_data);
-+		ext4_set_bit(EXT4_B2C(sbi, tmp - start), bh->b_data);
- 
- 	tmp = ext4_inode_bitmap(sb, gdp);
- 	if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
--		ext4_set_bit(tmp - start, bh->b_data);
-+		ext4_set_bit(EXT4_B2C(sbi, tmp - start), bh->b_data);
- 
- 	tmp = ext4_inode_table(sb, gdp);
- 	for (; tmp < ext4_inode_table(sb, gdp) +
- 		     sbi->s_itb_per_group; tmp++) {
- 		if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
--			ext4_set_bit(tmp - start, bh->b_data);
-+			ext4_set_bit(EXT4_B2C(sbi, tmp - start), bh->b_data);
- 	}
-+
- 	/*
- 	 * Also if the number of blocks within the group is less than
- 	 * the blocksize * 8 ( which is the size of bitmap ), set rest
- 	 * of the block bitmap to 1
- 	 */
--	ext4_mark_bitmap_end(num_blocks_in_group(sb, block_group),
-+	ext4_mark_bitmap_end(num_clusters_in_group(sb, block_group),
- 			     sb->s_blocksize * 8, bh->b_data);
- }
- 
-@@ -165,9 +215,8 @@ unsigned ext4_free_blocks_after_init(struct super_block *sb,
- 				     ext4_group_t block_group,
- 				     struct ext4_group_desc *gdp)
- {
--	return num_blocks_in_group(sb, block_group) -
--		num_base_meta_blocks(sb, block_group) -
--		ext4_group_used_meta_blocks(sb, block_group, gdp);
-+	return num_clusters_in_group(sb, block_group) - 
-+		ext4_num_overhead_clusters(sb, block_group, gdp);
- }
- 
- /*
-@@ -730,14 +779,14 @@ unsigned long ext4_bg_num_gdb(struct super_block *sb, ext4_group_t group)
- }
- 
- /*
-- * This function returns the number of file system metadata blocks at
-+ * This function returns the number of file system metadata clusters at
-  * the beginning of a block group, including the reserved gdt blocks.
-  */
--static unsigned int num_base_meta_blocks(struct super_block *sb,
--					 ext4_group_t block_group)
-+unsigned ext4_num_base_meta_clusters(struct super_block *sb,
-+				     ext4_group_t block_group)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	int num;
-+	unsigned num;
- 
- 	/* Check for superblock and gdt backups in this group */
- 	num = ext4_bg_has_super(sb, block_group);
-@@ -752,5 +801,5 @@ static unsigned int num_base_meta_blocks(struct super_block *sb,
- 	} else { /* For META_BG_BLOCK_GROUPS */
- 		num += ext4_bg_num_gdb(sb, block_group);
- 	}
--	return num;
-+	return EXT4_NUM_B2C(sbi, num);
- }
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index f66a566..9fe03c0 100644
+index 076c5d2..b973af6 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -258,6 +258,14 @@ struct ext4_io_submit {
+@@ -231,12 +231,16 @@ struct ext4_io_submit {
+ #define EXT4_MAX_BLOCK_LOG_SIZE		16
+ #ifdef __KERNEL__
+ # define EXT4_BLOCK_SIZE(s)		((s)->s_blocksize)
++# define EXT4_CLUSTER_SIZE(s)		(EXT4_SB(s)->s_clustersize)
+ #else
+ # define EXT4_BLOCK_SIZE(s)		(EXT4_MIN_BLOCK_SIZE << (s)->s_log_block_size)
++# define EXT2_CLUSTER_SIZE(s)		(EXT2_MIN_BLOCK_SIZE << \
++						(s)->s_log_cluster_size)
  #endif
- #define EXT4_BLOCK_ALIGN(size, blkbits)		ALIGN((size), (1 << (blkbits)))
+ #define	EXT4_ADDR_PER_BLOCK(s)		(EXT4_BLOCK_SIZE(s) / sizeof(__u32))
+ #ifdef __KERNEL__
+ # define EXT4_BLOCK_SIZE_BITS(s)	((s)->s_blocksize_bits)
++# define EXT4_CLUSTER_SIZE_BITS(s)	(EXT4_SB(s)->s_clustersize_bits)
+ #else
+ # define EXT4_BLOCK_SIZE_BITS(s)	((s)->s_log_block_size + 10)
+ #endif
+@@ -302,6 +306,7 @@ struct flex_groups {
+ #define EXT4_DESC_SIZE(s)		(EXT4_SB(s)->s_desc_size)
+ #ifdef __KERNEL__
+ # define EXT4_BLOCKS_PER_GROUP(s)	(EXT4_SB(s)->s_blocks_per_group)
++# define EXT4_CLUSTERS_PER_GROUP(s)	(EXT4_SB(s)->s_clusters_per_group)
+ # define EXT4_DESC_PER_BLOCK(s)		(EXT4_SB(s)->s_desc_per_block)
+ # define EXT4_INODES_PER_GROUP(s)	(EXT4_SB(s)->s_inodes_per_group)
+ # define EXT4_DESC_PER_BLOCK_BITS(s)	(EXT4_SB(s)->s_desc_per_block_bits)
+@@ -957,9 +962,9 @@ struct ext4_super_block {
+ /*10*/	__le32	s_free_inodes_count;	/* Free inodes count */
+ 	__le32	s_first_data_block;	/* First Data Block */
+ 	__le32	s_log_block_size;	/* Block size */
+-	__le32	s_obso_log_frag_size;	/* Obsoleted fragment size */
++	__le32	s_log_cluster_size;	/* Allocation cluster size */
+ /*20*/	__le32	s_blocks_per_group;	/* # Blocks per group */
+-	__le32	s_obso_frags_per_group;	/* Obsoleted fragments per group */
++	__le32	s_clusters_per_group;	/* # Clusters per group */
+ 	__le32	s_inodes_per_group;	/* # Inodes per group */
+ 	__le32	s_mtime;		/* Mount time */
+ /*30*/	__le32	s_wtime;		/* Write time */
+@@ -1055,7 +1060,10 @@ struct ext4_super_block {
+ 	__u8	s_last_error_func[32];	/* function where the error happened */
+ #define EXT4_S_ERR_END offsetof(struct ext4_super_block, s_mount_opts)
+ 	__u8	s_mount_opts[64];
+-	__le32	s_reserved[112];        /* Padding to the end of the block */
++	__le32	s_usr_quota_inum;	/* inode for tracking user quota */
++	__le32	s_grp_quota_inum;	/* inode for tracking group quota */
++	__le32	s_overhead_clusters;	/* overhead blocks/clusters in fs */
++	__le32  s_reserved[109];        /* Padding to the end of the block */
+ };
  
-+/* Translate a block number to a cluster number */
-+#define EXT4_B2C(sbi, blk)	((blk) >> (sbi)->s_cluster_bits)
-+/* Translate a cluster number to a block number */
-+#define EXT4_C2B(sbi, cluster)	((cluster) << (sbi)->s_cluster_bits)
-+/* Translate # of blks to # of clusters */
-+#define EXT4_NUM_B2C(sbi, blks)	(((blks) + (sbi)->s_cluster_ratio - 1) >> \
-+				 (sbi)->s_cluster_bits)
+ #define EXT4_S_ERR_LEN (EXT4_S_ERR_END - EXT4_S_ERR_START)
+@@ -1075,6 +1083,7 @@ struct ext4_sb_info {
+ 	unsigned long s_desc_size;	/* Size of a group descriptor in bytes */
+ 	unsigned long s_inodes_per_block;/* Number of inodes per block */
+ 	unsigned long s_blocks_per_group;/* Number of blocks in a group */
++	unsigned long s_clusters_per_group; /* Number of clusters in a group */
+ 	unsigned long s_inodes_per_group;/* Number of inodes in a group */
+ 	unsigned long s_itb_per_group;	/* Number of inode table blocks per group */
+ 	unsigned long s_gdb_count;	/* Number of group descriptor blocks */
+@@ -1083,6 +1092,8 @@ struct ext4_sb_info {
+ 	ext4_group_t s_blockfile_groups;/* Groups acceptable for non-extent files */
+ 	unsigned long s_overhead_last;  /* Last calculated overhead */
+ 	unsigned long s_blocks_last;    /* Last seen block count */
++	unsigned int s_cluster_ratio;	/* Number of blocks per cluster */
++	unsigned int s_cluster_bits;	/* log2 of s_cluster_ratio */
+ 	loff_t s_bitmap_maxbytes;	/* max bytes for bitmap files */
+ 	struct buffer_head * s_sbh;	/* Buffer containing the super block */
+ 	struct ext4_super_block *s_es;	/* Pointer to the super block in the buffer */
+@@ -1338,6 +1349,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+ #define EXT4_FEATURE_RO_COMPAT_GDT_CSUM		0x0010
+ #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
+ #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
++#define EXT4_FEATURE_RO_COMPAT_BIGALLOC		0x0200
+ 
+ #define EXT4_FEATURE_INCOMPAT_COMPRESSION	0x0001
+ #define EXT4_FEATURE_INCOMPAT_FILETYPE		0x0002
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index cb22783..3f82b79 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1908,7 +1908,7 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
+ 		res = MS_RDONLY;
+ 	}
+ 	if (read_only)
+-		return res;
++		goto done;
+ 	if (!(sbi->s_mount_state & EXT4_VALID_FS))
+ 		ext4_msg(sb, KERN_WARNING, "warning: mounting unchecked fs, "
+ 			 "running e2fsck is recommended");
+@@ -1939,6 +1939,7 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
+ 		EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+ 
+ 	ext4_commit_super(sb, 1);
++done:
+ 	if (test_opt(sb, DEBUG))
+ 		printk(KERN_INFO "[EXT4 FS bs=%lu, gc=%u, "
+ 				"bpg=%lu, ipg=%lu, mo=%04x, mo2=%04x]\n",
+@@ -3061,10 +3062,10 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	char *cp;
+ 	const char *descr;
+ 	int ret = -ENOMEM;
+-	int blocksize;
++	int blocksize, clustersize;
+ 	unsigned int db_count;
+ 	unsigned int i;
+-	int needs_recovery, has_huge_files;
++	int needs_recovery, has_huge_files, has_bigalloc;
+ 	__u64 blocks_count;
+ 	int err;
+ 	unsigned int journal_ioprio = DEFAULT_JOURNAL_IOPRIO;
+@@ -3337,12 +3338,53 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		sb->s_dirt = 1;
+ 	}
+ 
+-	if (sbi->s_blocks_per_group > blocksize * 8) {
+-		ext4_msg(sb, KERN_ERR,
+-		       "#blocks per group too big: %lu",
+-		       sbi->s_blocks_per_group);
+-		goto failed_mount;
++	/* Handle clustersize */
++	clustersize = BLOCK_SIZE << le32_to_cpu(es->s_log_cluster_size);
++	has_bigalloc = EXT4_HAS_RO_COMPAT_FEATURE(sb,
++				EXT4_FEATURE_RO_COMPAT_BIGALLOC);
++	if (has_bigalloc) {
++		if (clustersize < blocksize) {
++			ext4_msg(sb, KERN_ERR,
++				 "cluster size (%d) smaller than "
++				 "block size (%d)", clustersize, blocksize);
++			goto failed_mount;
++		}
++		sbi->s_cluster_bits = le32_to_cpu(es->s_log_cluster_size) -
++			le32_to_cpu(es->s_log_block_size);
++		sbi->s_clusters_per_group =
++			le32_to_cpu(es->s_clusters_per_group);
++		if (sbi->s_clusters_per_group > blocksize * 8) {
++			ext4_msg(sb, KERN_ERR,
++				 "#clusters per group too big: %lu",
++				 sbi->s_clusters_per_group);
++			goto failed_mount;
++		}
++		if (sbi->s_blocks_per_group !=
++		    (sbi->s_clusters_per_group * (clustersize / blocksize))) {
++			ext4_msg(sb, KERN_ERR, "blocks per group (%lu) and "
++				 "clusters per group (%lu) inconsistent",
++				 sbi->s_blocks_per_group,
++				 sbi->s_clusters_per_group);
++			goto failed_mount;
++		}
++	} else {
++		if (clustersize != blocksize) {
++			ext4_warning(sb, "fragment/cluster size (%d) != "
++				     "block size (%d)", clustersize,
++				     blocksize);
++			clustersize = blocksize;
++		}
++		if (sbi->s_blocks_per_group > blocksize * 8) {
++			ext4_msg(sb, KERN_ERR,
++				 "#blocks per group too big: %lu",
++				 sbi->s_blocks_per_group);
++			goto failed_mount;
++		}
++		sbi->s_clusters_per_group = sbi->s_blocks_per_group;
++		sbi->s_cluster_bits = 0;
+ 	}
++	sbi->s_cluster_ratio = clustersize / blocksize;
 +
- /*
-  * Structure of a blocks group descriptor
-  */
-@@ -1684,6 +1692,11 @@ extern void ext4_init_block_bitmap(struct super_block *sb,
- extern unsigned ext4_free_blocks_after_init(struct super_block *sb,
- 					    ext4_group_t block_group,
- 					    struct ext4_group_desc *gdp);
-+extern unsigned ext4_num_base_meta_clusters(struct super_block *sb,
-+					    ext4_group_t block_group);
-+extern unsigned ext4_num_overhead_clusters(struct super_block *sb,
-+					   ext4_group_t block_group,
-+					   struct ext4_group_desc *gdp);
- 
- /* dir.c */
- extern int __ext4_check_dir_entry(const char *, unsigned int, struct inode *,
+ 	if (sbi->s_inodes_per_group > blocksize * 8) {
+ 		ext4_msg(sb, KERN_ERR,
+ 		       "#inodes per group too big: %lu",
 -- 
 1.7.3.1
 
