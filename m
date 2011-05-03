@@ -1,61 +1,28 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: Factor common code from convert and split-unwritten.
-Date: Tue, 3 May 2011 10:35:42 +0800
-Message-ID: <BANLkTi=R+3NhsykOhHrmhVEOsuS5uf4BoQ@mail.gmail.com>
-References: <1304388301-9452-1-git-send-email-xiaoqiangnk@gmail.com>
+From: "Gao, Yunpeng" <yunpeng.gao@intel.com>
+Subject: Is it possible for the ext4/btrfs file system to pass some context
+ related info to low level block driver?
+Date: Tue, 3 May 2011 10:44:07 +0800
+Message-ID: <CE761E84DADF2947A4AF22FB8D97A47358E28022@shsmsx501.ccr.corp.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, achender@linux.vnet.ibm.com,
-	cmm@us.ibm.com
-To: tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:50273 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753014Ab1ECCfn convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 May 2011 22:35:43 -0400
-Received: by vws1 with SMTP id 1so4701493vws.19
-        for <linux-ext4@vger.kernel.org>; Mon, 02 May 2011 19:35:42 -0700 (PDT)
-In-Reply-To: <1304388301-9452-1-git-send-email-xiaoqiangnk@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-mmc@vger.kernel.org" <linux-mmc@vger.kernel.org>
+To: "linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Return-path: <linux-mmc-owner@vger.kernel.org>
+Content-Language: en-US
+Sender: linux-mmc-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Ted,
+Currently, some new storage devices have the ability to do performance optimizations according to the type of data payload - say, file system metadata, time-stamps, sequential write in some granularity, random write and so on.
 
-The patch series has been tested by Allison with punch hole patch serie=
-s.
+For example, the latest eMMC 4.5 device can support the so-called 'Context Management' and 'Data Tag Mechanism' features. By receiving the information of payload data type, the eMMC 4.5 device can improve the access rate during the following read and update operations and offer a more reliable and robust storage.
 
-Yongqiang.
+And obviously, to enable these kind of advanced features of storage device, it needs not only the low level block device driver supports, but also the file system supports since files system knows more info about the data type of the payload. But currently, seems there are no file systems implemented these kind of supports yet.
 
-On Tue, May 3, 2011 at 10:04 AM, Yongqiang Yang <xiaoqiangnk@gmail.com>=
- wrote:
-> v1->v2:
-> =A0 Remove optimization in v1.
->
-> v0->v1:
-> =A0 Fix a bug in ext4_ext_convert_to_initialized() reported by
-> =A0 Allison Henderson <achender@linux.vnet.ibm.com>
->
-> =A0 optimize ext4_ext_convert_to_initialized().
->
-> The patch series factor common code from ext4_ext_convert_to_initiali=
-zed()
-> and ext4_split_unwritten_extents() so that extent-move-on-write in sn=
-apshot
-> and punch-hole can be built on the common code.
->
-> [PATCH v2 1/3] ext4:Add a function merging extent right and left.
-> [PATCH v2 2/3] ext4:Add two functions splitting an extent.
-> [PATCH v2 3/3] ext4:Reimplement convert and split_unwritten.
->
+So, my question is, is there any plan or discussion on supporting this feature (passing data type info to low level block device driver) on file system developments? Especially for ext4/btrfs, since now they are very hot in Linux? Thanks.
 
 
-
---=20
-Best Wishes
-Yongqiang Yang
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Regards,
+Yunpeng Gao
