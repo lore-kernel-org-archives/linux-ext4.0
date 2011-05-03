@@ -1,144 +1,236 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH v2 1/3] ext4:Add a function merging extent right and left.
-Date: Mon,  2 May 2011 19:04:59 -0700
-Message-ID: <1304388301-9452-2-git-send-email-xiaoqiangnk@gmail.com>
+Subject: [PATCH v2 2/3] ext4:Add two functions splitting an extent.
+Date: Mon,  2 May 2011 19:05:00 -0700
+Message-ID: <1304388301-9452-3-git-send-email-xiaoqiangnk@gmail.com>
 References: <1304388301-9452-1-git-send-email-xiaoqiangnk@gmail.com>
 Cc: tytso@mit.edu, achender@linux.vnet.ibm.com, cmm@us.ibm.com,
 	Yongqiang Yang <xiaoqiangnk@gmail.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-px0-f170.google.com ([209.85.212.170]:55352 "EHLO
-	mail-px0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751592Ab1ECCI6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 May 2011 22:08:58 -0400
-Received: by mail-px0-f170.google.com with SMTP id 19so2589779pxi.1
-        for <linux-ext4@vger.kernel.org>; Mon, 02 May 2011 19:08:57 -0700 (PDT)
+Received: from mail-pv0-f174.google.com ([74.125.83.174]:40112 "EHLO
+	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751691Ab1ECCJB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 May 2011 22:09:01 -0400
+Received: by pvg12 with SMTP id 12so3434125pvg.19
+        for <linux-ext4@vger.kernel.org>; Mon, 02 May 2011 19:09:00 -0700 (PDT)
 In-Reply-To: <1304388301-9452-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-1] Rename ext4_ext_try_to_merge() to ext4_ext_try_to_merge_right().
+v0 -> v1:
+   -- coding style
+   -- try to merge extents in zeroout case too.
 
-2] Add a new function ext4_ext_try_to_merge() which tries to merge
-   an extent both left and right.
+1] Add a function named ext4_split_extent_at() which splits an extent
+   into two extents at given logical block.
 
-3] Use the new function in ext4_ext_convert_unwritten_endio() and
-   ext4_ext_insert_extent().
+2] Add a function called ext4_split_extent() which splits an extent
+   into three extents.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Tested-by: Allison Henderson <achender@linux.vnet.ibm.com>
 ---
- fs/ext4/extents.c |   65 ++++++++++++++++++++++++++++------------------------
- 1 files changed, 35 insertions(+), 30 deletions(-)
+ fs/ext4/extents.c |  187 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 187 insertions(+), 0 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index dd2cb50..11f30d2 100644
+index 11f30d2..db1d67c 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -1563,7 +1563,7 @@ ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
-  * Returns 0 if the extents (ex and ex+1) were _not_ merged and returns
-  * 1 if they got merged.
-  */
--static int ext4_ext_try_to_merge(struct inode *inode,
-+static int ext4_ext_try_to_merge_right(struct inode *inode,
- 				 struct ext4_ext_path *path,
- 				 struct ext4_extent *ex)
- {
-@@ -1603,6 +1603,31 @@ static int ext4_ext_try_to_merge(struct inode *inode,
+@@ -2554,6 +2554,193 @@ static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
+ 	return ret;
  }
  
- /*
-+ * This function tries to merge the @ex extent to neighbours in the tree.
-+ * return 1 if merge left else 0.
++/*
++ * used by extent splitting.
 + */
-+static int ext4_ext_try_to_merge(struct inode *inode,
-+				  struct ext4_ext_path *path,
-+				  struct ext4_extent *ex) {
-+	struct ext4_extent_header *eh;
-+	unsigned int depth;
-+	int merge_done = 0;
-+	int ret = 0;
++#define EXT4_EXT_MAY_ZEROOUT	0x1  /* safe to zeroout if split fails \
++					due to ENOSPC */
++#define EXT4_EXT_MARK_UNINIT1	0x2  /* mark first half uninitialized */
++#define EXT4_EXT_MARK_UNINIT2	0x4  /* mark second half uninitialized */
++
++/*
++ * ext4_split_extent_at() splits an extent at given block.
++ *
++ * @handle: the journal handle
++ * @inode: the file inode
++ * @path: the path to the extent
++ * @split: the logical block where the extent is splitted.
++ * @split_flags: indicates if the extent could be zeroout if split fails, and
++ *		 the states(init or uninit) of new extents.
++ * @flags: flags used to insert new extent to extent tree.
++ *
++ *
++ * Splits extent [a, b] into two extents [a, @split) and [@split, b], states
++ * of which are deterimined by split_flag.
++ *
++ * There are two cases:
++ *  a> the extent are splitted into two extent.
++ *  b> split is not needed, and just mark the extent.
++ *
++ * return 0 on success.
++ */
++static int ext4_split_extent_at(handle_t *handle,
++			     struct inode *inode,
++			     struct ext4_ext_path *path,
++			     ext4_lblk_t split,
++			     int split_flag,
++			     int flags)
++{
++	ext4_fsblk_t newblock;
++	ext4_lblk_t ee_block;
++	struct ext4_extent *ex, newex, orig_ex;
++	struct ext4_extent *ex2 = NULL;
++	unsigned int ee_len, depth;
++	int err = 0;
++
++	ext_debug("ext4_split_extents_at: inode %lu, logical"
++		"block %llu\n", inode->i_ino, (unsigned long long)split);
++
++	ext4_ext_show_leaf(inode, path);
 +
 +	depth = ext_depth(inode);
-+	BUG_ON(path[depth].p_hdr == NULL);
-+	eh = path[depth].p_hdr;
++	ex = path[depth].p_ext;
++	ee_block = le32_to_cpu(ex->ee_block);
++	ee_len = ext4_ext_get_actual_len(ex);
++	newblock = split - ee_block + ext4_ext_pblock(ex);
 +
-+	if (ex > EXT_FIRST_EXTENT(eh))
-+		merge_done = ext4_ext_try_to_merge_right(inode, path, ex - 1);
++	BUG_ON(split < ee_block || split >= (ee_block + ee_len));
 +
-+	if (!merge_done)
-+		ret = ext4_ext_try_to_merge_right(inode, path, ex);
++	err = ext4_ext_get_access(handle, inode, path + depth);
++	if (err)
++		goto out;
 +
-+	return ret;
++	if (split == ee_block) {
++		/*
++		 * case b: block @split is the block that the extent begins with
++		 * then we just change the state of the extent, and splitting
++		 * is not needed.
++		 */
++		if (split_flag & EXT4_EXT_MARK_UNINIT2)
++			ext4_ext_mark_uninitialized(ex);
++		else
++			ext4_ext_mark_initialized(ex);
++
++		if (!(flags & EXT4_GET_BLOCKS_PRE_IO))
++			ext4_ext_try_to_merge(inode, path, ex);
++
++		err = ext4_ext_dirty(handle, inode, path + depth);
++		goto out;
++	}
++
++	/* case a */
++	memcpy(&orig_ex, ex, sizeof(orig_ex));
++	ex->ee_len = cpu_to_le16(split - ee_block);
++	if (split_flag & EXT4_EXT_MARK_UNINIT1)
++		ext4_ext_mark_uninitialized(ex);
++
++	/*
++	 * path may lead to new leaf, not to original leaf any more
++	 * after ext4_ext_insert_extent() returns,
++	 */
++	err = ext4_ext_dirty(handle, inode, path + depth);
++	if (err)
++		goto fix_extent_len;
++
++	ex2 = &newex;
++	ex2->ee_block = cpu_to_le32(split);
++	ex2->ee_len   = cpu_to_le16(ee_len - (split - ee_block));
++	ext4_ext_store_pblock(ex2, newblock);
++	if (split_flag & EXT4_EXT_MARK_UNINIT2)
++		ext4_ext_mark_uninitialized(ex2);
++
++	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
++	if (err == -ENOSPC && (EXT4_EXT_MAY_ZEROOUT & split_flag)) {
++		err = ext4_ext_zeroout(inode, &orig_ex);
++		if (err)
++			goto fix_extent_len;
++		/* update the extent length and mark as initialized */
++		ex->ee_len = cpu_to_le32(ee_len);
++		ext4_ext_try_to_merge(inode, path, ex);
++		err = ext4_ext_dirty(handle, inode, path + depth);
++		goto out;
++	} else if (err)
++		goto fix_extent_len;
++
++out:
++	ext4_ext_show_leaf(inode, path);
++	return err;
++
++fix_extent_len:
++	ex->ee_len = orig_ex.ee_len;
++	ext4_ext_dirty(handle, inode, path + depth);
++	return err;
 +}
 +
 +/*
-  * check if a portion of the "newext" extent overlaps with an
-  * existing extent.
-  *
-@@ -3039,6 +3064,7 @@ fix_extent_len:
- 	ext4_ext_dirty(handle, inode, path + depth);
- 	return err;
- }
++ * ext4_split_extents() splits an extent and mark extent which is covered
++ * by @map as split_flags indicates
++ *
++ * It may result in splitting the extent into multiple extents (upto three)
++ * There are three possibilities:
++ *   a> There is no split required
++ *   b> Splits in two extents: Split is happening at either end of the extent
++ *   c> Splits in three extents: Somone is splitting in middle of the extent
++ *
++ */
++static int ext4_split_extent(handle_t *handle,
++			      struct inode *inode,
++			      struct ext4_ext_path *path,
++			      struct ext4_map_blocks *map,
++			      int split_flag,
++			      int flags)
++{
++	ext4_lblk_t ee_block;
++	struct ext4_extent *ex;
++	unsigned int ee_len, depth;
++	int err = 0;
++	int uninitialized;
++	int split_flag1, flags1;
 +
- static int ext4_convert_unwritten_extents_endio(handle_t *handle,
- 					      struct inode *inode,
- 					      struct ext4_ext_path *path)
-@@ -3047,46 +3073,25 @@ static int ext4_convert_unwritten_extents_endio(handle_t *handle,
- 	struct ext4_extent_header *eh;
- 	int depth;
- 	int err = 0;
--	int ret = 0;
- 
- 	depth = ext_depth(inode);
- 	eh = path[depth].p_hdr;
- 	ex = path[depth].p_ext;
- 
-+	ext_debug("ext4_convert_unwritten_extents_endio: inode %lu, logical"
-+		"block %llu, max_blocks %u\n", inode->i_ino,
-+		(unsigned long long)le32_to_cpu(ex->ee_block),
-+		ext4_ext_get_actual_len(ex));
++	depth = ext_depth(inode);
++	ex = path[depth].p_ext;
++	ee_block = le32_to_cpu(ex->ee_block);
++	ee_len = ext4_ext_get_actual_len(ex);
++	uninitialized = ext4_ext_is_uninitialized(ex);
 +
- 	err = ext4_ext_get_access(handle, inode, path + depth);
- 	if (err)
- 		goto out;
- 	/* first mark the extent as initialized */
- 	ext4_ext_mark_initialized(ex);
- 
--	/*
--	 * We have to see if it can be merged with the extent
--	 * on the left.
--	 */
--	if (ex > EXT_FIRST_EXTENT(eh)) {
--		/*
--		 * To merge left, pass "ex - 1" to try_to_merge(),
--		 * since it merges towards right _only_.
--		 */
--		ret = ext4_ext_try_to_merge(inode, path, ex - 1);
--		if (ret) {
--			err = ext4_ext_correct_indexes(handle, inode, path);
--			if (err)
--				goto out;
--			depth = ext_depth(inode);
--			ex--;
--		}
--	}
--	/*
--	 * Try to Merge towards right.
--	 */
--	ret = ext4_ext_try_to_merge(inode, path, ex);
--	if (ret) {
--		err = ext4_ext_correct_indexes(handle, inode, path);
--		if (err)
--			goto out;
--		depth = ext_depth(inode);
--	}
-+	/* correct indexes is nt needed becasue borders are not changed */
-+	ext4_ext_try_to_merge(inode, path, ex);
++	if (map->m_lblk + map->m_len < ee_block + ee_len) {
++		split_flag1 = split_flag & EXT4_EXT_MAY_ZEROOUT ?
++			      EXT4_EXT_MAY_ZEROOUT : 0;
++		flags1 = flags | EXT4_GET_BLOCKS_PRE_IO;
++		if (uninitialized)
++			split_flag1 |= EXT4_EXT_MARK_UNINIT1 |
++				       EXT4_EXT_MARK_UNINIT2;
++		err = ext4_split_extent_at(handle, inode, path,
++				map->m_lblk + map->m_len, split_flag1, flags1);
++	}
 +
- 	/* Mark modified extent as dirty */
- 	err = ext4_ext_dirty(handle, inode, path + depth);
- out:
++	ext4_ext_drop_refs(path);
++	path = ext4_ext_find_extent(inode, map->m_lblk, path);
++	if (IS_ERR(path))
++		return PTR_ERR(path);
++
++	if (map->m_lblk >= ee_block) {
++		split_flag1 = split_flag & EXT4_EXT_MAY_ZEROOUT ?
++			      EXT4_EXT_MAY_ZEROOUT : 0;
++		if (uninitialized)
++			split_flag1 |= EXT4_EXT_MARK_UNINIT1;
++		if (split_flag & EXT4_EXT_MARK_UNINIT2)
++			split_flag1 |= EXT4_EXT_MARK_UNINIT2;
++		err = ext4_split_extent_at(handle, inode, path,
++				map->m_lblk, split_flag1, flags);
++		if (err)
++			goto out;
++	}
++
++	ext4_ext_show_leaf(inode, path);
++out:
++	return err ? err : map->m_len;
++}
++
+ #define EXT4_EXT_ZERO_LEN 7
+ /*
+  * This function is called by ext4_ext_map_blocks() if someone tries to write
 -- 
 1.7.4.4
 
