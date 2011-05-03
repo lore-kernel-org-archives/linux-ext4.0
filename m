@@ -1,150 +1,72 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 04/19] ext4: factor out block group accounting into functions
-Date: Tue,  3 May 2011 18:24:34 -0400
-Message-ID: <1304461490-11056-5-git-send-email-tytso@mit.edu>
-References: <1304461490-11056-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 00/19] V2 Bigalloc patches
+Date: Tue,  3 May 2011 18:24:30 -0400
+Message-ID: <1304461490-11056-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:58112 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:58103 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752403Ab1ECWYx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752823Ab1ECWYx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 3 May 2011 18:24:53 -0400
-In-Reply-To: <1304461490-11056-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This makes it easier to understand how ext4_init_block_bitmap() works,
-and it will assist when we split out ext4_free_blocks_after_init() in
-the next commit.
+This is the revised bigalloc patches.  This version survives xfstests
+with the -o block_validity mount option.  I've attached the e2fsprogs
+patches needed so that we can create an bigalloc filesystem.  This is
+**not** the final version of the e2fsprogs changes.  Those are currently
+in process of being developed.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/balloc.c |   80 ++++++++++++++++++++++++++++++++---------------------
- 1 files changed, 48 insertions(+), 32 deletions(-)
+This is primarily because some folks at the file system summit wanted to
+see the in-progress patches.
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 9c6cd51..743acec 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -23,6 +23,9 @@
- 
- #include <trace/events/ext4.h>
- 
-+static unsigned int num_base_meta_blocks(struct super_block *sb,
-+					 ext4_group_t block_group);
-+
- /*
-  * balloc.c contains the blocks allocation and deallocation routines
-  */
-@@ -83,14 +86,30 @@ static int ext4_group_used_meta_blocks(struct super_block *sb,
- 	return used_blocks;
- }
- 
-+static unsigned int num_blocks_in_group(struct super_block *sb,
-+					ext4_group_t block_group)
-+{
-+	if (block_group == ext4_get_groups_count(sb) - 1) {
-+		/*
-+		 * Even though mke2fs always initializes the first and
-+		 * last group, just in case some other tool was used,
-+		 * we need to make sure we calculate the right free
-+		 * blocks.
-+		 */
-+		return ext4_blocks_count(EXT4_SB(sb)->s_es) -
-+			ext4_group_first_block_no(sb, block_group);
-+	} else
-+		return EXT4_BLOCKS_PER_GROUP(sb);
-+}
-+
- /* Initializes an uninitialized block bitmap if given, and returns the
-  * number of blocks free in the group. */
- unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 		 ext4_group_t block_group, struct ext4_group_desc *gdp)
- {
--	int bit, bit_max;
-+	unsigned int bit, bit_max = num_base_meta_blocks(sb, block_group);
- 	ext4_group_t ngroups = ext4_get_groups_count(sb);
--	unsigned free_blocks, group_blocks;
-+	unsigned group_blocks = num_blocks_in_group(sb, block_group);
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 
- 	if (bh) {
-@@ -110,35 +129,6 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 		memset(bh->b_data, 0, sb->s_blocksize);
- 	}
- 
--	/* Check for superblock and gdt backups in this group */
--	bit_max = ext4_bg_has_super(sb, block_group);
--
--	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_META_BG) ||
--	    block_group < le32_to_cpu(sbi->s_es->s_first_meta_bg) *
--			  sbi->s_desc_per_block) {
--		if (bit_max) {
--			bit_max += ext4_bg_num_gdb(sb, block_group);
--			bit_max +=
--				le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks);
--		}
--	} else { /* For META_BG_BLOCK_GROUPS */
--		bit_max += ext4_bg_num_gdb(sb, block_group);
--	}
--
--	if (block_group == ngroups - 1) {
--		/*
--		 * Even though mke2fs always initialize first and last group
--		 * if some other tool enabled the EXT4_BG_BLOCK_UNINIT we need
--		 * to make sure we calculate the right free blocks
--		 */
--		group_blocks = ext4_blocks_count(sbi->s_es) -
--			ext4_group_first_block_no(sb, ngroups - 1);
--	} else {
--		group_blocks = EXT4_BLOCKS_PER_GROUP(sb);
--	}
--
--	free_blocks = group_blocks - bit_max;
--
- 	if (bh) {
- 		ext4_fsblk_t start, tmp;
- 		int flex_bg = 0;
-@@ -176,7 +166,8 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 		ext4_mark_bitmap_end(group_blocks, sb->s_blocksize * 8,
- 				     bh->b_data);
- 	}
--	return free_blocks - ext4_group_used_meta_blocks(sb, block_group, gdp);
-+	return group_blocks - bit_max -
-+		ext4_group_used_meta_blocks(sb, block_group, gdp);
- }
- 
- 
-@@ -739,3 +730,28 @@ unsigned long ext4_bg_num_gdb(struct super_block *sb, ext4_group_t group)
- 
- }
- 
-+/*
-+ * This function returns the number of file system metadata blocks at
-+ * the beginning of a block group, including the reserved gdt blocks.
-+ */
-+static unsigned int num_base_meta_blocks(struct super_block *sb,
-+					 ext4_group_t block_group)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	int num;
-+
-+	/* Check for superblock and gdt backups in this group */
-+	num = ext4_bg_has_super(sb, block_group);
-+
-+	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_META_BG) ||
-+	    block_group < le32_to_cpu(sbi->s_es->s_first_meta_bg) *
-+			  sbi->s_desc_per_block) {
-+		if (num) {
-+			num += ext4_bg_num_gdb(sb, block_group);
-+			num += le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks);
-+		}
-+	} else { /* For META_BG_BLOCK_GROUPS */
-+		num += ext4_bg_num_gdb(sb, block_group);
-+	}
-+	return num;
-+}
+This patch set is based off of the current ext4 "master" branch.  (There
+is a bigalloc branch on the ext4 tree which also contains these
+commits.)  These patches **will** conflict with the punch patches from
+Allison and Mingming, so this patch set will definitely be changing
+after I pull in the punch patches into the ext4 tree.
+
+							- Ted
+
+Theodore Ts'o (19):
+  ext4: read-only support for bigalloc file systems
+  ext4: enforce bigalloc restrictions (e.g., no online resizing, etc.)
+  ext4: convert instances of EXT4_BLOCKS_PER_GROUP to
+    EXT4_CLUSTERS_PER_GROUP
+  ext4: factor out block group accounting into functions
+  ext4: split out ext4_free_blocks_after_init()
+  ext4: bigalloc changes to block bitmap initialization functions
+  ext4: convert block group-relative offsets to use clusters
+  ext4: teach mballoc preallocation code about bigalloc clusters
+  ext4: teach ext4_free_blocks() about bigalloc and clusters
+  ext4: teach ext4_ext_map_blocks() about the bigalloc feature
+  ext4: teach ext4_ext_truncate() about the bigalloc feature
+  ext4: convert s_freeblocks_counter to s_freeclusters_counter
+  ext4: convert the free_blocks field in s_flex_groups to be
+    free_clusters
+  ext4: teach ext4_statfs() to deal with clusters if bigalloc is
+    enabled
+  ext4: tune mballoc's default group prealloc size for bigalloc file
+    systems
+  ext4: enable mounting bigalloc as read/write
+  ext4: Rename ext4_free_blks_{count,set}() to refer to clusters
+  ext4: rename ext4_count_free_blocks() to ext4_count_free_clusters()
+  ext4: rename ext4_free_blocks_after_init() to
+    ext4_free_clusters_after_init()
+
+ fs/ext4/balloc.c  |  302 ++++++++++++++++++++++++++++++++---------------------
+ fs/ext4/ext4.h    |   64 ++++++++---
+ fs/ext4/extents.c |  241 +++++++++++++++++++++++++++++++++++++-----
+ fs/ext4/ialloc.c  |   72 ++++++-------
+ fs/ext4/inode.c   |   19 +++-
+ fs/ext4/ioctl.c   |   33 +++++-
+ fs/ext4/mballoc.c |  256 ++++++++++++++++++++++++++++-----------------
+ fs/ext4/mballoc.h |    9 +-
+ fs/ext4/resize.c  |   10 +-
+ fs/ext4/super.c   |  139 ++++++++++++++++++-------
+ 10 files changed, 792 insertions(+), 353 deletions(-)
+
 -- 
 1.7.3.1
 
