@@ -1,67 +1,186 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 07/19] ext4: convert block group-relative offsets to use clusters
-Date: Tue,  3 May 2011 18:24:37 -0400
-Message-ID: <1304461490-11056-8-git-send-email-tytso@mit.edu>
+Subject: [PATCH 11/19] ext4: teach ext4_ext_truncate() about the bigalloc feature
+Date: Tue,  3 May 2011 18:24:41 -0400
+Message-ID: <1304461490-11056-12-git-send-email-tytso@mit.edu>
 References: <1304461490-11056-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:58119 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:58128 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752403Ab1ECWYy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 May 2011 18:24:54 -0400
+	id S1752138Ab1ECWY4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 May 2011 18:24:56 -0400
 In-Reply-To: <1304461490-11056-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Certain parts of the ext4 code base, primarily in mballoc.c, use a
-block group number and offset from the beginning of the block group.
-This offset is invariably used to index into the allocation bitmap, so
-change the offset to be denominated in units of clusters.
+When we are truncating (as opposed unlinking) a file, we need to worry
+about partial truncates of a file, especially in the light of sparse
+files.  The changes here make sure that arbitrary truncates of sparse
+files works correctly.  Yeah, it's messy.
+
+Note that these functions will need to be revisted when the punch
+ioctl is integrated --- in fact this commit will probably have merge
+conflicts with the punch changes which Allison Henders and the IBM LTC
+have been working on.  I will need to fix this up when either patch
+hits mainline.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/balloc.c  |    6 ++++--
- fs/ext4/mballoc.h |    3 ++-
- 2 files changed, 6 insertions(+), 3 deletions(-)
+ fs/ext4/extents.c |   82 ++++++++++++++++++++++++++++++++++++++++++++++------
+ 1 files changed, 72 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 332854c..a0a86ce 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -28,7 +28,8 @@
-  */
- 
- /*
-- * Calculate the block group number and offset, given a block number
-+ * Calculate the block group number and offset into the block/cluster
-+ * allocation bitmap, given a block number
-  */
- void ext4_get_group_no_and_offset(struct super_block *sb, ext4_fsblk_t blocknr,
- 		ext4_group_t *blockgrpp, ext4_grpblk_t *offsetp)
-@@ -37,7 +38,8 @@ void ext4_get_group_no_and_offset(struct super_block *sb, ext4_fsblk_t blocknr,
- 	ext4_grpblk_t offset;
- 
- 	blocknr = blocknr - le32_to_cpu(es->s_first_data_block);
--	offset = do_div(blocknr, EXT4_BLOCKS_PER_GROUP(sb));
-+	offset = do_div(blocknr, EXT4_BLOCKS_PER_GROUP(sb)) >>
-+		EXT4_SB(sb)->s_cluster_bits;
- 	if (offsetp)
- 		*offsetp = offset;
- 	if (blockgrpp)
-diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
-index 22bd4d7..1a75182 100644
---- a/fs/ext4/mballoc.h
-+++ b/fs/ext4/mballoc.h
-@@ -223,6 +223,7 @@ struct ext4_buddy {
- static inline ext4_fsblk_t ext4_grp_offs_to_block(struct super_block *sb,
- 					struct ext4_free_extent *fex)
- {
--	return ext4_group_first_block_no(sb, fex->fe_group) + fex->fe_start;
-+	return ext4_group_first_block_no(sb, fex->fe_group) +
-+		(fex->fe_start << EXT4_SB(sb)->s_cluster_bits);
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 2730508..a051adf 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2156,14 +2156,39 @@ int ext4_ext_index_trans_blocks(struct inode *inode, int nrblocks, int chunk)
  }
- #endif
+ 
+ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
+-				struct ext4_extent *ex,
+-				ext4_lblk_t from, ext4_lblk_t to)
++			      struct ext4_extent *ex,
++			      ext4_fsblk_t *partial_cluster,
++			      ext4_lblk_t from, ext4_lblk_t to)
+ {
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 	unsigned short ee_len =  ext4_ext_get_actual_len(ex);
++	ext4_fsblk_t pblk;
+ 	int flags = EXT4_FREE_BLOCKS_FORGET;
+ 
+ 	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
+ 		flags |= EXT4_FREE_BLOCKS_METADATA;
++	/*
++	 * For bigalloc file systems, we never free a partial cluster
++	 * at the beginning of the extent.  Instead, we make a note
++	 * that we tried freeing the cluster, and check to see if we
++	 * need to free it on a subsequent call to ext4_remove_blocks,
++	 * or at the end of the ext4_truncate() operation.
++	 */
++	flags |= EXT4_FREE_BLOCKS_NOFREE_FIRST_CLUSTER;
++
++	/*
++	 * If we have a partial cluster, and it's different from the
++	 * cluster of the last block, we need to explicitly free the
++	 * partial cluster here.
++	 */
++	pblk = ext4_ext_pblock(ex) + ee_len - 1;
++	if (*partial_cluster && (EXT4_B2C(sbi, pblk) != *partial_cluster)) {
++		ext4_free_blocks(handle, inode, NULL,
++				 EXT4_C2B(sbi, *partial_cluster),
++				 sbi->s_cluster_ratio, flags);
++		*partial_cluster = 0;
++	}
++
+ #ifdef EXTENTS_STATS
+ 	{
+ 		struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+@@ -2183,12 +2208,24 @@ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
+ 	    && to == le32_to_cpu(ex->ee_block) + ee_len - 1) {
+ 		/* tail removal */
+ 		ext4_lblk_t num;
+-		ext4_fsblk_t start;
+ 
+ 		num = le32_to_cpu(ex->ee_block) + ee_len - from;
+-		start = ext4_ext_pblock(ex) + ee_len - num;
+-		ext_debug("free last %u blocks starting %llu\n", num, start);
+-		ext4_free_blocks(handle, inode, NULL, start, num, flags);
++		pblk = ext4_ext_pblock(ex) + ee_len - num;
++		ext_debug("free last %u blocks starting %llu\n", num, pblk);
++		ext4_free_blocks(handle, inode, NULL, pblk, num, flags);
++		/*
++		 * If the block range to be freed didn't start at the
++		 * beginning of a cluster, and we removed the entire
++		 * extent, save the partial cluster here, since we
++		 * might need to delete if we determine that the
++		 * truncate operation has removed all of the blocks in
++		 * the cluster.
++		 */
++		if (pblk & (sbi->s_cluster_ratio - 1) &&
++		    (ee_len == num))
++			*partial_cluster = EXT4_B2C(sbi, pblk);
++		else
++			*partial_cluster = 0;
+ 	} else if (from == le32_to_cpu(ex->ee_block)
+ 		   && to <= le32_to_cpu(ex->ee_block) + ee_len - 1) {
+ 		printk(KERN_INFO "strange request: removal %u-%u from %u:%u\n",
+@@ -2203,8 +2240,10 @@ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
+ 
+ static int
+ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+-		struct ext4_ext_path *path, ext4_lblk_t start)
++		 struct ext4_ext_path *path, ext4_fsblk_t *partial_cluster,
++		 ext4_lblk_t start)
+ {
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 	int err = 0, correct_index = 0;
+ 	int depth = ext_depth(inode), credits;
+ 	struct ext4_extent_header *eh;
+@@ -2291,7 +2330,8 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+ 		if (err)
+ 			goto out;
+ 
+-		err = ext4_remove_blocks(handle, inode, ex, a, b);
++		err = ext4_remove_blocks(handle, inode, ex, partial_cluster,
++					 a, b);
+ 		if (err)
+ 			goto out;
+ 
+@@ -2299,7 +2339,8 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+ 			/* this extent is removed; mark slot entirely unused */
+ 			ext4_ext_store_pblock(ex, 0);
+ 			le16_add_cpu(&eh->eh_entries, -1);
+-		}
++		} else
++			*partial_cluster = 0;
+ 
+ 		ex->ee_block = cpu_to_le32(block);
+ 		ex->ee_len = cpu_to_le16(num);
+@@ -2324,6 +2365,25 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+ 	if (correct_index && eh->eh_entries)
+ 		err = ext4_ext_correct_indexes(handle, inode, path);
+ 
++	/*
++	 * If there is still a entry in the leaf node, check to see if
++	 * it references the partial cluster.  This is the only place
++	 * where it could; if it doesn't, we can free the cluster.
++	 */
++	if (*partial_cluster && ex >= EXT_FIRST_EXTENT(eh) &&
++	    (EXT4_B2C(sbi, ext4_ext_pblock(ex) + ex_ee_len - 1) !=
++	     *partial_cluster)) {
++		int flags = EXT4_FREE_BLOCKS_FORGET;
++
++		if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
++			flags |= EXT4_FREE_BLOCKS_METADATA;
++
++		ext4_free_blocks(handle, inode, NULL,
++				 EXT4_C2B(sbi, *partial_cluster),
++				 sbi->s_cluster_ratio, flags);
++		*partial_cluster = 0;
++	}
++
+ 	/* if this leaf is free, then we should
+ 	 * remove it from index block above */
+ 	if (err == 0 && eh->eh_entries == 0 && path[depth].p_bh != NULL)
+@@ -2359,6 +2419,7 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
+ 	struct super_block *sb = inode->i_sb;
+ 	int depth = ext_depth(inode);
+ 	struct ext4_ext_path *path;
++	ext4_fsblk_t partial_cluster = 0;
+ 	handle_t *handle;
+ 	int i, err;
+ 
+@@ -2393,7 +2454,8 @@ again:
+ 	while (i >= 0 && err == 0) {
+ 		if (i == depth) {
+ 			/* this is leaf block */
+-			err = ext4_ext_rm_leaf(handle, inode, path, start);
++			err = ext4_ext_rm_leaf(handle, inode, path,
++					       &partial_cluster, start);
+ 			/* root level has p_bh == NULL, brelse() eats this */
+ 			brelse(path[i].p_bh);
+ 			path[i].p_bh = NULL;
 -- 
 1.7.3.1
 
