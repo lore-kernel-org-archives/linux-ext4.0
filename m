@@ -1,72 +1,166 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 00/19] V2 Bigalloc patches
-Date: Tue,  3 May 2011 18:24:30 -0400
-Message-ID: <1304461490-11056-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 02/19] ext4: enforce bigalloc restrictions (e.g., no online resizing, etc.)
+Date: Tue,  3 May 2011 18:24:32 -0400
+Message-ID: <1304461490-11056-3-git-send-email-tytso@mit.edu>
+References: <1304461490-11056-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:58103 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:58105 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752823Ab1ECWYx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752249Ab1ECWYx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 3 May 2011 18:24:53 -0400
+In-Reply-To: <1304461490-11056-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is the revised bigalloc patches.  This version survives xfstests
-with the -o block_validity mount option.  I've attached the e2fsprogs
-patches needed so that we can create an bigalloc filesystem.  This is
-**not** the final version of the e2fsprogs changes.  Those are currently
-in process of being developed.
+At least initially if the bigalloc feature is enabled, we will not
+support non-extent mapped inodes, online resizing, online defrag, or
+the FITRIM ioctl.  This simplifies the initial implementation.
 
-This is primarily because some folks at the file system summit wanted to
-see the in-progress patches.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/inode.c |    7 +++++++
+ fs/ext4/ioctl.c |   33 +++++++++++++++++++++++++++++----
+ fs/ext4/super.c |    7 +++++++
+ 3 files changed, 43 insertions(+), 4 deletions(-)
 
-This patch set is based off of the current ext4 "master" branch.  (There
-is a bigalloc branch on the ext4 tree which also contains these
-commits.)  These patches **will** conflict with the punch patches from
-Allison and Mingming, so this patch set will definitely be changing
-after I pull in the punch patches into the ext4 tree.
-
-							- Ted
-
-Theodore Ts'o (19):
-  ext4: read-only support for bigalloc file systems
-  ext4: enforce bigalloc restrictions (e.g., no online resizing, etc.)
-  ext4: convert instances of EXT4_BLOCKS_PER_GROUP to
-    EXT4_CLUSTERS_PER_GROUP
-  ext4: factor out block group accounting into functions
-  ext4: split out ext4_free_blocks_after_init()
-  ext4: bigalloc changes to block bitmap initialization functions
-  ext4: convert block group-relative offsets to use clusters
-  ext4: teach mballoc preallocation code about bigalloc clusters
-  ext4: teach ext4_free_blocks() about bigalloc and clusters
-  ext4: teach ext4_ext_map_blocks() about the bigalloc feature
-  ext4: teach ext4_ext_truncate() about the bigalloc feature
-  ext4: convert s_freeblocks_counter to s_freeclusters_counter
-  ext4: convert the free_blocks field in s_flex_groups to be
-    free_clusters
-  ext4: teach ext4_statfs() to deal with clusters if bigalloc is
-    enabled
-  ext4: tune mballoc's default group prealloc size for bigalloc file
-    systems
-  ext4: enable mounting bigalloc as read/write
-  ext4: Rename ext4_free_blks_{count,set}() to refer to clusters
-  ext4: rename ext4_count_free_blocks() to ext4_count_free_clusters()
-  ext4: rename ext4_free_blocks_after_init() to
-    ext4_free_clusters_after_init()
-
- fs/ext4/balloc.c  |  302 ++++++++++++++++++++++++++++++++---------------------
- fs/ext4/ext4.h    |   64 ++++++++---
- fs/ext4/extents.c |  241 +++++++++++++++++++++++++++++++++++++-----
- fs/ext4/ialloc.c  |   72 ++++++-------
- fs/ext4/inode.c   |   19 +++-
- fs/ext4/ioctl.c   |   33 +++++-
- fs/ext4/mballoc.c |  256 ++++++++++++++++++++++++++++-----------------
- fs/ext4/mballoc.h |    9 +-
- fs/ext4/resize.c  |   10 +-
- fs/ext4/super.c   |  139 ++++++++++++++++++-------
- 10 files changed, 792 insertions(+), 353 deletions(-)
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f2fa5e8..df7ce6a 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1009,6 +1009,13 @@ static int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
+ 	/*
+ 	 * Okay, we need to do block allocation.
+ 	*/
++	if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
++				       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
++		EXT4_ERROR_INODE(inode, "Can't allocate blocks for "
++				 "non-extent mapped inodes with bigalloc");
++		return -ENOSPC;
++	}
++
+ 	goal = ext4_find_goal(inode, map->m_lblk, partial);
+ 
+ 	/* the number of blocks need to allocate for [d,t]indirect blocks */
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 808c554..dcd0916 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -21,6 +21,7 @@
+ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ {
+ 	struct inode *inode = filp->f_dentry->d_inode;
++	struct super_block *sb = inode->i_sb;
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	unsigned int flags;
+ 
+@@ -183,7 +184,6 @@ setversion_out:
+ 		 * Returns 1 if it slept, else zero.
+ 		 */
+ 		{
+-			struct super_block *sb = inode->i_sb;
+ 			DECLARE_WAITQUEUE(wait, current);
+ 			int ret = 0;
+ 
+@@ -199,7 +199,6 @@ setversion_out:
+ #endif
+ 	case EXT4_IOC_GROUP_EXTEND: {
+ 		ext4_fsblk_t n_blocks_count;
+-		struct super_block *sb = inode->i_sb;
+ 		int err, err2=0;
+ 
+ 		if (!capable(CAP_SYS_RESOURCE))
+@@ -212,6 +211,13 @@ setversion_out:
+ 		if (err)
+ 			return err;
+ 
++		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
++			       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
++			ext4_msg(sb, KERN_ERR,
++				 "Online resizing not supported with bigalloc");
++			return -EOPNOTSUPP;
++		}
++
+ 		err = ext4_group_extend(sb, EXT4_SB(sb)->s_es, n_blocks_count);
+ 		if (EXT4_SB(sb)->s_journal) {
+ 			jbd2_journal_lock_updates(EXT4_SB(sb)->s_journal);
+@@ -252,6 +258,13 @@ setversion_out:
+ 		if (err)
+ 			goto mext_out;
+ 
++		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
++			       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
++			ext4_msg(sb, KERN_ERR,
++				 "Online defrag not supported with bigalloc");
++			return -EOPNOTSUPP;
++		}
++
+ 		err = ext4_move_extents(filp, donor_filp, me.orig_start,
+ 					me.donor_start, me.len, &me.moved_len);
+ 		mnt_drop_write(filp->f_path.mnt);
+@@ -268,7 +281,6 @@ mext_out:
+ 
+ 	case EXT4_IOC_GROUP_ADD: {
+ 		struct ext4_new_group_data input;
+-		struct super_block *sb = inode->i_sb;
+ 		int err, err2=0;
+ 
+ 		if (!capable(CAP_SYS_RESOURCE))
+@@ -282,6 +294,13 @@ mext_out:
+ 		if (err)
+ 			return err;
+ 
++		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
++			       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
++			ext4_msg(sb, KERN_ERR,
++				 "Online resizing not supported with bigalloc");
++			return -EOPNOTSUPP;
++		}
++
+ 		err = ext4_group_add(sb, &input);
+ 		if (EXT4_SB(sb)->s_journal) {
+ 			jbd2_journal_lock_updates(EXT4_SB(sb)->s_journal);
+@@ -333,7 +352,6 @@ mext_out:
+ 
+ 	case FITRIM:
+ 	{
+-		struct super_block *sb = inode->i_sb;
+ 		struct request_queue *q = bdev_get_queue(sb->s_bdev);
+ 		struct fstrim_range range;
+ 		int ret = 0;
+@@ -344,6 +362,13 @@ mext_out:
+ 		if (!blk_queue_discard(q))
+ 			return -EOPNOTSUPP;
+ 
++		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
++			       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
++			ext4_msg(sb, KERN_ERR,
++				 "FITRIM not supported with bigalloc");
++			return -EOPNOTSUPP;
++		}
++
+ 		if (copy_from_user(&range, (struct fstrim_range *)arg,
+ 		    sizeof(range)))
+ 			return -EFAULT;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 3f82b79..5ae1712 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2626,6 +2626,13 @@ static int ext4_feature_set_ok(struct super_block *sb, int readonly)
+ 			return 0;
+ 		}
+ 	}
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_BIGALLOC) &&
++	    !EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS)) {
++		ext4_msg(sb, KERN_ERR,
++			 "Can't support bigalloc feature without "
++			 "extents feature\n");
++		return 0;
++	}
+ 	return 1;
+ }
+ 
 -- 
 1.7.3.1
 
