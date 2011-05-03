@@ -1,249 +1,225 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 13/19] ext4: convert the free_blocks field in s_flex_groups to be free_clusters
-Date: Tue,  3 May 2011 18:24:43 -0400
-Message-ID: <1304461490-11056-14-git-send-email-tytso@mit.edu>
+Subject: [PATCH 05/19] ext4: split out ext4_free_blocks_after_init()
+Date: Tue,  3 May 2011 18:24:35 -0400
+Message-ID: <1304461490-11056-6-git-send-email-tytso@mit.edu>
 References: <1304461490-11056-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:58130 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:58113 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753085Ab1ECWY4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 May 2011 18:24:56 -0400
+	id S1752917Ab1ECWYy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 May 2011 18:24:54 -0400
 In-Reply-To: <1304461490-11056-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Convert the free_blocks to be free_clusters to make the final revised
-bigalloc changes easier to read/understand.
+The function ext4_free_blocks_after_init() used to be a #define of
+ext4_init_block_bitmap().  This actually made it difficult to
+understand how the function worked, and made it hard make changes to
+support clusters.  So as an initial cleanup, I've separated out the
+functionality of initializing block bitmap from calculating the number
+of free blocks in the new block group.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/balloc.c  |    4 ++--
- fs/ext4/ext4.h    |    2 +-
- fs/ext4/ialloc.c  |   40 +++++++++++++++++++++-------------------
- fs/ext4/mballoc.c |    5 +++--
- fs/ext4/resize.c  |    4 ++--
- fs/ext4/super.c   |    2 +-
- 6 files changed, 30 insertions(+), 27 deletions(-)
+ fs/ext4/balloc.c |  105 ++++++++++++++++++++++++++---------------------------
+ fs/ext4/ext4.h   |   13 ++++---
+ fs/ext4/ialloc.c |   19 +++-------
+ 3 files changed, 65 insertions(+), 72 deletions(-)
 
 diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index c0b74ca..7779c7b 100644
+index 743acec..99ea977 100644
 --- a/fs/ext4/balloc.c
 +++ b/fs/ext4/balloc.c
-@@ -500,8 +500,8 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
+@@ -102,74 +102,73 @@ static unsigned int num_blocks_in_group(struct super_block *sb,
+ 		return EXT4_BLOCKS_PER_GROUP(sb);
+ }
  
- 	if (sbi->s_log_groups_per_flex) {
- 		ext4_group_t flex_group = ext4_flex_group(sbi, block_group);
--		atomic_add(blocks_freed,
--			   &sbi->s_flex_groups[flex_group].free_blocks);
-+		atomic_add(EXT4_B2C(sbi, blocks_freed),
-+			   &sbi->s_flex_groups[flex_group].free_clusters);
+-/* Initializes an uninitialized block bitmap if given, and returns the
+- * number of blocks free in the group. */
+-unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
+-		 ext4_group_t block_group, struct ext4_group_desc *gdp)
++/* Initializes an uninitialized block bitmap */
++void ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
++			    ext4_group_t block_group,
++			    struct ext4_group_desc *gdp)
+ {
+ 	unsigned int bit, bit_max = num_base_meta_blocks(sb, block_group);
+-	ext4_group_t ngroups = ext4_get_groups_count(sb);
+-	unsigned group_blocks = num_blocks_in_group(sb, block_group);
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-
+-	if (bh) {
+-		J_ASSERT_BH(bh, buffer_locked(bh));
+-
+-		/* If checksum is bad mark all blocks used to prevent allocation
+-		 * essentially implementing a per-group read-only flag. */
+-		if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
+-			ext4_error(sb, "Checksum bad for group %u",
+-					block_group);
+-			ext4_free_blks_set(sb, gdp, 0);
+-			ext4_free_inodes_set(sb, gdp, 0);
+-			ext4_itable_unused_set(sb, gdp, 0);
+-			memset(bh->b_data, 0xff, sb->s_blocksize);
+-			return 0;
+-		}
+-		memset(bh->b_data, 0, sb->s_blocksize);
++	ext4_fsblk_t start, tmp;
++	int flex_bg = 0;
++
++	J_ASSERT_BH(bh, buffer_locked(bh));
++
++	/* If checksum is bad mark all blocks used to prevent allocation
++	 * essentially implementing a per-group read-only flag. */
++	if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
++		ext4_error(sb, "Checksum bad for group %u", block_group);
++		ext4_free_blks_set(sb, gdp, 0);
++		ext4_free_inodes_set(sb, gdp, 0);
++		ext4_itable_unused_set(sb, gdp, 0);
++		memset(bh->b_data, 0xff, sb->s_blocksize);
++		return;
  	}
- 	/*
- 	 * request to reload the buddy with the
++	memset(bh->b_data, 0, sb->s_blocksize);
+ 
+-	if (bh) {
+-		ext4_fsblk_t start, tmp;
+-		int flex_bg = 0;
++	for (bit = 0; bit < bit_max; bit++)
++		ext4_set_bit(bit, bh->b_data);
+ 
+-		for (bit = 0; bit < bit_max; bit++)
+-			ext4_set_bit(bit, bh->b_data);
++	start = ext4_group_first_block_no(sb, block_group);
+ 
+-		start = ext4_group_first_block_no(sb, block_group);
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
++		flex_bg = 1;
+ 
+-		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
+-					      EXT4_FEATURE_INCOMPAT_FLEX_BG))
+-			flex_bg = 1;
++	/* Set bits for block and inode bitmaps, and inode table */
++	tmp = ext4_block_bitmap(sb, gdp);
++	if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
++		ext4_set_bit(tmp - start, bh->b_data);
+ 
+-		/* Set bits for block and inode bitmaps, and inode table */
+-		tmp = ext4_block_bitmap(sb, gdp);
+-		if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
+-			ext4_set_bit(tmp - start, bh->b_data);
++	tmp = ext4_inode_bitmap(sb, gdp);
++	if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
++		ext4_set_bit(tmp - start, bh->b_data);
+ 
+-		tmp = ext4_inode_bitmap(sb, gdp);
++	tmp = ext4_inode_table(sb, gdp);
++	for (; tmp < ext4_inode_table(sb, gdp) +
++		     sbi->s_itb_per_group; tmp++) {
+ 		if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
+ 			ext4_set_bit(tmp - start, bh->b_data);
+-
+-		tmp = ext4_inode_table(sb, gdp);
+-		for (; tmp < ext4_inode_table(sb, gdp) +
+-				sbi->s_itb_per_group; tmp++) {
+-			if (!flex_bg ||
+-				ext4_block_in_group(sb, tmp, block_group))
+-				ext4_set_bit(tmp - start, bh->b_data);
+-		}
+-		/*
+-		 * Also if the number of blocks within the group is
+-		 * less than the blocksize * 8 ( which is the size
+-		 * of bitmap ), set rest of the block bitmap to 1
+-		 */
+-		ext4_mark_bitmap_end(group_blocks, sb->s_blocksize * 8,
+-				     bh->b_data);
+ 	}
+-	return group_blocks - bit_max -
+-		ext4_group_used_meta_blocks(sb, block_group, gdp);
++	/*
++	 * Also if the number of blocks within the group is less than
++	 * the blocksize * 8 ( which is the size of bitmap ), set rest
++	 * of the block bitmap to 1
++	 */
++	ext4_mark_bitmap_end(num_blocks_in_group(sb, block_group),
++			     sb->s_blocksize * 8, bh->b_data);
+ }
+ 
++/* Return the number of free blocks in a block group.  It is used when
++ * the block bitmap is uninitialized, so we can't just count the bits
++ * in the bitmap. */
++unsigned ext4_free_blocks_after_init(struct super_block *sb,
++				     ext4_group_t block_group,
++				     struct ext4_group_desc *gdp)
++{
++	return num_blocks_in_group(sb, block_group) -
++		num_base_meta_blocks(sb, block_group) -
++		ext4_group_used_meta_blocks(sb, block_group, gdp);
++}
+ 
+ /*
+  * The free blocks are managed by bitmaps.  A file system contains several
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 35441b3..57e7255 100644
+index b973af6..f66a566 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -297,7 +297,7 @@ struct ext4_group_desc
+@@ -1677,12 +1677,13 @@ extern struct ext4_group_desc * ext4_get_group_desc(struct super_block * sb,
+ extern int ext4_should_retry_alloc(struct super_block *sb, int *retries);
+ struct buffer_head *ext4_read_block_bitmap(struct super_block *sb,
+ 				      ext4_group_t block_group);
+-extern unsigned ext4_init_block_bitmap(struct super_block *sb,
+-				       struct buffer_head *bh,
+-				       ext4_group_t group,
+-				       struct ext4_group_desc *desc);
+-#define ext4_free_blocks_after_init(sb, group, desc)			\
+-		ext4_init_block_bitmap(sb, NULL, group, desc)
++extern void ext4_init_block_bitmap(struct super_block *sb,
++				   struct buffer_head *bh,
++				   ext4_group_t group,
++				   struct ext4_group_desc *desc);
++extern unsigned ext4_free_blocks_after_init(struct super_block *sb,
++					    ext4_group_t block_group,
++					    struct ext4_group_desc *gdp);
  
- struct flex_groups {
- 	atomic_t free_inodes;
--	atomic_t free_blocks;
-+	atomic_t free_clusters;
- 	atomic_t used_dirs;
- };
- 
+ /* dir.c */
+ extern int __ext4_check_dir_entry(const char *, unsigned int, struct inode *,
 diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index d95a157..c93255d 100644
+index 21bb2f6..d0770b6 100644
 --- a/fs/ext4/ialloc.c
 +++ b/fs/ext4/ialloc.c
-@@ -346,7 +346,7 @@ static int find_group_flex(struct super_block *sb, struct inode *parent,
- 	int flex_size = ext4_flex_bg_size(sbi);
- 	ext4_group_t best_flex = parent_fbg_group;
- 	int blocks_per_flex = sbi->s_blocks_per_group * flex_size;
--	int flexbg_free_blocks;
-+	int flexbg_free_clusters;
- 	int flex_freeb_ratio;
- 	ext4_group_t n_fbg_groups;
+@@ -816,7 +816,6 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode,
+ 	int ret2, err = 0;
+ 	struct inode *ret;
  	ext4_group_t i;
-@@ -355,8 +355,9 @@ static int find_group_flex(struct super_block *sb, struct inode *parent,
- 		sbi->s_log_groups_per_flex;
+-	int free = 0;
+ 	static int once = 1;
+ 	ext4_group_t flex_group;
  
- find_close_to_parent:
--	flexbg_free_blocks = atomic_read(&flex_group[best_flex].free_blocks);
--	flex_freeb_ratio = flexbg_free_blocks * 100 / blocks_per_flex;
-+	flexbg_free_clusters = atomic_read(&flex_group[best_flex].free_clusters);
-+	flex_freeb_ratio = EXT4_C2B(sbi, flexbg_free_clusters) * 100 /
-+		blocks_per_flex;
- 	if (atomic_read(&flex_group[best_flex].free_inodes) &&
- 	    flex_freeb_ratio > free_block_ratio)
- 		goto found_flexbg;
-@@ -370,8 +371,9 @@ find_close_to_parent:
- 		if (i == parent_fbg_group || i == parent_fbg_group - 1)
- 			continue;
- 
--		flexbg_free_blocks = atomic_read(&flex_group[i].free_blocks);
--		flex_freeb_ratio = flexbg_free_blocks * 100 / blocks_per_flex;
-+		flexbg_free_clusters = atomic_read(&flex_group[i].free_clusters);
-+		flex_freeb_ratio = EXT4_C2B(sbi, flexbg_free_clusters) * 100 /
-+			blocks_per_flex;
- 
- 		if (flex_freeb_ratio > free_block_ratio &&
- 		    (atomic_read(&flex_group[i].free_inodes))) {
-@@ -380,14 +382,14 @@ find_close_to_parent:
+@@ -950,26 +949,20 @@ got:
+ 			goto fail;
  		}
  
- 		if ((atomic_read(&flex_group[best_flex].free_inodes) == 0) ||
--		    ((atomic_read(&flex_group[i].free_blocks) >
--		      atomic_read(&flex_group[best_flex].free_blocks)) &&
-+		    ((atomic_read(&flex_group[i].free_clusters) >
-+		      atomic_read(&flex_group[best_flex].free_clusters)) &&
- 		     atomic_read(&flex_group[i].free_inodes)))
- 			best_flex = i;
- 	}
+-		free = 0;
+-		ext4_lock_group(sb, group);
++		BUFFER_TRACE(block_bitmap_bh, "dirty block bitmap");
++		err = ext4_handle_dirty_metadata(handle, NULL, block_bitmap_bh);
++		brelse(block_bitmap_bh);
++
+ 		/* recheck and clear flag under lock if we still need to */
+ 		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+-			free = ext4_free_blocks_after_init(sb, group, gdp);
+ 			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
+-			ext4_free_blks_set(sb, gdp, free);
++			ext4_free_blks_set(sb, gdp,
++				ext4_free_blocks_after_init(sb, group, gdp));
+ 			gdp->bg_checksum = ext4_group_desc_csum(sbi, group,
+ 								gdp);
+ 		}
+ 		ext4_unlock_group(sb, group);
  
- 	if (!atomic_read(&flex_group[best_flex].free_inodes) ||
--	    !atomic_read(&flex_group[best_flex].free_blocks))
-+	    !atomic_read(&flex_group[best_flex].free_clusters))
- 		return -1;
- 
- found_flexbg:
-@@ -407,7 +409,7 @@ out:
- 
- struct orlov_stats {
- 	__u32 free_inodes;
--	__u32 free_blocks;
-+	__u32 free_clusters;
- 	__u32 used_dirs;
- };
- 
-@@ -424,7 +426,7 @@ static void get_orlov_stats(struct super_block *sb, ext4_group_t g,
- 
- 	if (flex_size > 1) {
- 		stats->free_inodes = atomic_read(&flex_group[g].free_inodes);
--		stats->free_blocks = atomic_read(&flex_group[g].free_blocks);
-+		stats->free_clusters = atomic_read(&flex_group[g].free_clusters);
- 		stats->used_dirs = atomic_read(&flex_group[g].used_dirs);
- 		return;
- 	}
-@@ -432,11 +434,11 @@ static void get_orlov_stats(struct super_block *sb, ext4_group_t g,
- 	desc = ext4_get_group_desc(sb, g, NULL);
- 	if (desc) {
- 		stats->free_inodes = ext4_free_inodes_count(sb, desc);
--		stats->free_blocks = ext4_free_blks_count(sb, desc);
-+		stats->free_clusters = ext4_free_blks_count(sb, desc);
- 		stats->used_dirs = ext4_used_dirs_count(sb, desc);
- 	} else {
- 		stats->free_inodes = 0;
--		stats->free_blocks = 0;
-+		stats->free_clusters = 0;
- 		stats->used_dirs = 0;
- 	}
- }
-@@ -471,10 +473,10 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
- 	ext4_group_t real_ngroups = ext4_get_groups_count(sb);
- 	int inodes_per_group = EXT4_INODES_PER_GROUP(sb);
- 	unsigned int freei, avefreei;
--	ext4_fsblk_t freeb, avefreeb;
-+	ext4_fsblk_t freeb, avefreec;
- 	unsigned int ndirs;
- 	int max_dirs, min_inodes;
--	ext4_grpblk_t min_blocks;
-+	ext4_grpblk_t min_clusters;
- 	ext4_group_t i, grp, g, ngroups;
- 	struct ext4_group_desc *desc;
- 	struct orlov_stats stats;
-@@ -492,8 +494,8 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
- 	avefreei = freei / ngroups;
- 	freeb = EXT4_C2B(sbi,
- 		percpu_counter_read_positive(&sbi->s_freeclusters_counter));
--	avefreeb = freeb;
--	do_div(avefreeb, ngroups);
-+	avefreec = freeb;
-+	do_div(avefreec, ngroups);
- 	ndirs = percpu_counter_read_positive(&sbi->s_dirs_counter);
- 
- 	if (S_ISDIR(mode) &&
-@@ -519,7 +521,7 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
- 				continue;
- 			if (stats.free_inodes < avefreei)
- 				continue;
--			if (stats.free_blocks < avefreeb)
-+			if (stats.free_clusters < avefreec)
- 				continue;
- 			grp = g;
- 			ret = 0;
-@@ -557,7 +559,7 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
- 	min_inodes = avefreei - inodes_per_group*flex_size / 4;
- 	if (min_inodes < 1)
- 		min_inodes = 1;
--	min_blocks = avefreeb - EXT4_BLOCKS_PER_GROUP(sb)*flex_size / 4;
-+	min_clusters = avefreec - EXT4_CLUSTERS_PER_GROUP(sb)*flex_size / 4;
- 
- 	/*
- 	 * Start looking in the flex group where we last allocated an
-@@ -576,7 +578,7 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
- 			continue;
- 		if (stats.free_inodes < min_inodes)
- 			continue;
--		if (stats.free_blocks < min_blocks)
-+		if (stats.free_clusters < min_clusters)
- 			continue;
- 		goto found_flex_bg;
- 	}
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 7a9cbe1..a7af56c 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2876,7 +2876,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 		ext4_group_t flex_group = ext4_flex_group(sbi,
- 							  ac->ac_b_ex.fe_group);
- 		atomic_sub(ac->ac_b_ex.fe_len,
--			   &sbi->s_flex_groups[flex_group].free_blocks);
-+			   &sbi->s_flex_groups[flex_group].free_clusters);
- 	}
- 
- 	err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
-@@ -4716,7 +4716,8 @@ do_more:
- 
- 	if (sbi->s_log_groups_per_flex) {
- 		ext4_group_t flex_group = ext4_flex_group(sbi, block_group);
--		atomic_add(count, &sbi->s_flex_groups[flex_group].free_blocks);
-+		atomic_add(count_clusters,
-+			   &sbi->s_flex_groups[flex_group].free_clusters);
- 	}
- 
- 	ext4_mb_unload_buddy(&e4b);
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 405c1cb..cef49d3 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -928,8 +928,8 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
- 	    sbi->s_log_groups_per_flex) {
- 		ext4_group_t flex_group;
- 		flex_group = ext4_flex_group(sbi, input->group);
--		atomic_add(input->free_blocks_count,
--			   &sbi->s_flex_groups[flex_group].free_blocks);
-+		atomic_add(EXT4_B2C(sbi, input->free_blocks_count),
-+			   &sbi->s_flex_groups[flex_group].free_clusters);
- 		atomic_add(EXT4_INODES_PER_GROUP(sb),
- 			   &sbi->s_flex_groups[flex_group].free_inodes);
- 	}
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 6b4a3f4..002511e 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1993,7 +1993,7 @@ static int ext4_fill_flex_info(struct super_block *sb)
- 		atomic_add(ext4_free_inodes_count(sb, gdp),
- 			   &sbi->s_flex_groups[flex_group].free_inodes);
- 		atomic_add(ext4_free_blks_count(sb, gdp),
--			   &sbi->s_flex_groups[flex_group].free_blocks);
-+			   &sbi->s_flex_groups[flex_group].free_clusters);
- 		atomic_add(ext4_used_dirs_count(sb, gdp),
- 			   &sbi->s_flex_groups[flex_group].used_dirs);
- 	}
--- 
-1.7.3.1
-
+-		/* Don't need to dirty bitmap block if we didn't change it */
+-		if (free) {
+-			BUFFER_TRACE(block_bitmap_bh, "dirty block bitmap");
+-			err = ext4_handle_dirty_metadata(handle,
+-							NULL, block_bitmap_bh);
+-		}
