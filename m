@@ -1,55 +1,183 @@
 From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Ext4 Punch Hole v6 Change Summary
-Date: Tue, 03 May 2011 09:47:48 -0700
-Message-ID: <4DC031B4.4040603@linux.vnet.ibm.com>
+Subject: [Ext4 punch hole 4/5 v6] Ext4 Punch Hole Support: Map blocks punch
+ hole flag
+Date: Tue, 03 May 2011 09:48:01 -0700
+Message-ID: <4DC031C1.4050703@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e32.co.us.ibm.com ([32.97.110.150]:57184 "EHLO
-	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753630Ab1ECQsI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 May 2011 12:48:08 -0400
-Received: from d03relay03.boulder.ibm.com (d03relay03.boulder.ibm.com [9.17.195.228])
-	by e32.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p43GapsO005994
-	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 10:36:51 -0600
+Received: from e36.co.us.ibm.com ([32.97.110.154]:58620 "EHLO
+	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753773Ab1ECQsM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 May 2011 12:48:12 -0400
+Received: from d03relay01.boulder.ibm.com (d03relay01.boulder.ibm.com [9.17.195.226])
+	by e36.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p43GgTcv000886
+	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 10:42:29 -0600
 Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p43Gm2DZ127896
-	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 10:48:03 -0600
+	by d03relay01.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p43Gm5St145600
+	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 10:48:05 -0600
 Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p43GlrwA027517
-	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 10:47:53 -0600
+	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p43Gm22K028081
+	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 10:48:02 -0600
 Received: from [9.65.15.245] (sig-9-65-15-245.mts.ibm.com [9.65.15.245])
-	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p43GlmU1026844
-	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 10:47:49 -0600
+	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p43Gm1k5028057
+	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 10:48:02 -0600
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi All,
+This patch adds a new flag to map blocks that specifies
+the given range of blocks should be punched out.  Extents
+are first converted to uninitialized extents before they are
+punched out. Because punching a hole may require that the
+extent be split, it is possible that the splitting may need
+more blocks than are available.  To deal with this, reserved
+blocks are temporarily borrowed to allow the split to proceed.
+The borrowed blocks are then returned after the hole punch has
+released more blocks.
 
-Here is the latest copy of punch hole for ext4.  This copy has been 
-modified to apply on top of Yongqiang's v2 patch set that revises the 
-split extents routines.  So the patch that used to modify the split 
-extents routines (patch 2/6 of punch hole v5) has been removed.  I have 
-tested this combination of patch sets against the same tests I used for 
-v5 and they all look good.  Thx Yongqiang for all your work :)
+The routine then returns the number of blocks successfully
+punched out.
 
-Some other things that changed between v5 and v6:
+Signed-off-by: Allison Henderson <achender@us.ibm.com>
+---
+:100644 100644 0afb746... 7f0fcc1... M	fs/ext4/extents.c
+ fs/ext4/extents.c |   98 +++++++++++++++++++++++++++++++++++++++++++++++------
+ 1 files changed, 87 insertions(+), 11 deletions(-)
 
-patch 1/5:
-The flag that this patch adds has been changed to use new EXT4_MB flag 
-instead of creating a new set of flags
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 0afb746..7f0fcc1 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3290,15 +3290,19 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ 	ext4_fsblk_t newblock = 0;
+ 	int err = 0, depth, ret;
+ 	unsigned int allocated = 0;
++	unsigned int punched_out = 0;
++	unsigned int result = 0;
+ 	struct ext4_allocation_request ar;
+ 	ext4_io_end_t *io = EXT4_I(inode)->cur_aio_dio;
++	struct ext4_map_blocks punch_map;
+ 
+ 	ext_debug("blocks %u/%u requested for inode %lu\n",
+ 		  map->m_lblk, map->m_len, inode->i_ino);
+ 	trace_ext4_ext_map_blocks_enter(inode, map->m_lblk, map->m_len, flags);
+ 
+ 	/* check in cache */
+-	if (ext4_ext_in_cache(inode, map->m_lblk, &newex)) {
++	if (ext4_ext_in_cache(inode, map->m_lblk, &newex) &&
++		((flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) == 0)) {
+ 		if (!newex.ee_start_lo && !newex.ee_start_hi) {
+ 			if ((flags & EXT4_GET_BLOCKS_CREATE) == 0) {
+ 				/*
+@@ -3363,16 +3367,84 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ 			ext_debug("%u fit into %u:%d -> %llu\n", map->m_lblk,
+ 				  ee_block, ee_len, newblock);
+ 
+-			/* Do not put uninitialized extent in the cache */
+-			if (!ext4_ext_is_uninitialized(ex)) {
+-				ext4_ext_put_in_cache(inode, ee_block,
+-							ee_len, ee_start);
+-				goto out;
++			if ((flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) == 0) {
++				/*
++				 * Do not put uninitialized extent
++				 * in the cache
++				 */
++				if (!ext4_ext_is_uninitialized(ex)) {
++					ext4_ext_put_in_cache(inode, ee_block,
++						ee_len, ee_start);
++					goto out;
++				}
++				ret = ext4_ext_handle_uninitialized_extents(
++					handle, inode, map, path, flags,
++					allocated, newblock);
++				return ret;
+ 			}
+-			ret = ext4_ext_handle_uninitialized_extents(handle,
+-					inode, map, path, flags, allocated,
+-					newblock);
+-			return ret;
++
++			/*
++			 * Punch out the map length, but only to the
++			 * end of the extent
++			 */
++			punched_out = allocated < map->m_len ?
++				allocated : map->m_len;
++
++			/*
++			 * Sense extents need to be converted to
++			 * uninitialized, they must fit in an
++			 * uninitialized extent
++			 */
++			if (punched_out > EXT_UNINIT_MAX_LEN)
++				punched_out = EXT_UNINIT_MAX_LEN;
++
++			punch_map.m_lblk = map->m_lblk;
++			punch_map.m_pblk = newblock;
++			punch_map.m_len = punched_out;
++			punch_map.m_flags = 0;
++
++			/* Check to see if the extent needs to be split */
++			if (punch_map.m_len != ee_len ||
++				punch_map.m_lblk != ee_block) {
++
++				ret = ext4_split_extent(handle, inode,
++				path, &punch_map, 0,
++				EXT4_GET_BLOCKS_PUNCH_OUT_EXT |
++				EXT4_GET_BLOCKS_PRE_IO);
++
++				if (ret < 0) {
++					err = ret;
++					goto out2;
++				}
++				/*
++				 * find extent for the block at
++				 * the start of the hole
++				 */
++				ext4_ext_drop_refs(path);
++				kfree(path);
++
++				path = ext4_ext_find_extent(inode,
++				map->m_lblk, NULL);
++				if (IS_ERR(path)) {
++					err = PTR_ERR(path);
++					path = NULL;
++					goto out2;
++				}
++
++				depth = ext_depth(inode);
++				ex = path[depth].p_ext;
++				ee_len = ext4_ext_get_actual_len(ex);
++				ee_block = le32_to_cpu(ex->ee_block);
++				ee_start = ext4_ext_pblock(ex);
++
++			}
++
++			ext4_ext_mark_uninitialized(ex);
++
++			err = ext4_ext_remove_space(inode, map->m_lblk,
++				map->m_lblk + punched_out);
++
++			goto out2;
+ 		}
+ 	}
+ 
+@@ -3517,7 +3589,11 @@ out2:
+ 	}
+ 	trace_ext4_ext_map_blocks_exit(inode, map->m_lblk,
+ 		newblock, map->m_len, err ? err : allocated);
+-	return err ? err : allocated;
++
++	result = (flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) ?
++			punched_out : allocated;
++
++	return err ? err : result;
+ }
+ 
+ void ext4_ext_truncate(struct inode *inode)
+-- 
+1.7.1
 
-patch 5/5:
-New function "ext4_ext_check_cache" has been added.  It is similar to 
-ext4_ext_in_cache but it accepts a ext4_ext_cache parameter instead of a 
-ext4_extent.  After letting one of my test cases run overnight, I found 
-a bug that was caused by the ext4_ext_in_cache routine trying to copy a 
-ext4_ext_cache field into a ext4_extent field that was too small to 
-contain it.  So the new ext4_ext_check_cache corrects this.
-
-That's pretty much all of the changes between the sets.  As always feed 
-back is appreciated.  Thx all!
-
-Allison Henderson
