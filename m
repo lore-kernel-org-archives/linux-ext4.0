@@ -1,47 +1,61 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 25832] kernel crashes when a mounted ext3/4 file system is
- physically removed
-Date: Tue, 3 May 2011 02:19:44 GMT
-Message-ID: <201105030219.p432JiW9005620@demeter2.kernel.org>
-References: <bug-25832-13602@https.bugzilla.kernel.org/>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: Re: Factor common code from convert and split-unwritten.
+Date: Tue, 3 May 2011 10:35:42 +0800
+Message-ID: <BANLkTi=R+3NhsykOhHrmhVEOsuS5uf4BoQ@mail.gmail.com>
+References: <1304388301-9452-1-git-send-email-xiaoqiangnk@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, achender@linux.vnet.ibm.com,
+	cmm@us.ibm.com
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:45919 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754415Ab1ECCTp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 May 2011 22:19:45 -0400
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p432JiKh005621
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 02:19:44 GMT
-In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:50273 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753014Ab1ECCfn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 May 2011 22:35:43 -0400
+Received: by vws1 with SMTP id 1so4701493vws.19
+        for <linux-ext4@vger.kernel.org>; Mon, 02 May 2011 19:35:42 -0700 (PDT)
+In-Reply-To: <1304388301-9452-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=25832
+Hi Ted,
+
+The patch series has been tested by Allison with punch hole patch serie=
+s.
+
+Yongqiang.
+
+On Tue, May 3, 2011 at 10:04 AM, Yongqiang Yang <xiaoqiangnk@gmail.com>=
+ wrote:
+> v1->v2:
+> =A0 Remove optimization in v1.
+>
+> v0->v1:
+> =A0 Fix a bug in ext4_ext_convert_to_initialized() reported by
+> =A0 Allison Henderson <achender@linux.vnet.ibm.com>
+>
+> =A0 optimize ext4_ext_convert_to_initialized().
+>
+> The patch series factor common code from ext4_ext_convert_to_initiali=
+zed()
+> and ext4_split_unwritten_extents() so that extent-move-on-write in sn=
+apshot
+> and punch-hole can be built on the common code.
+>
+> [PATCH v2 1/3] ext4:Add a function merging extent right and left.
+> [PATCH v2 2/3] ext4:Add two functions splitting an extent.
+> [PATCH v2 3/3] ext4:Reimplement convert and split_unwritten.
+>
 
 
 
-
-
---- Comment #79 from rocko <rockorequin@hotmail.com>  2011-05-03 02:19:42 ---
-Created an attachment (id=56272)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=56272)
-oops log for null pointer dereference 2.6.39-rc5
-
-Still present in 2.6.39-rc5 (log attached).
-
-Yes, I can readily reproduce this bug in a VM with my current ext4 USB test key
-- the attached log is from a fresh install of Ubuntu 11.04 amd64 in VirtualBox
-4.0.6, with the kernel upgraded to 2.6.39-rc5.
-
-Fwiw, 2.6.39-rc5 behaved a bit differently from 2.6.38: the system reported
-issues with eg /dev/sdb1 and I started seeing multiple mountpoints in the
-desktop that I couldn't unmount (/media/disk, /media/disk_, /media/disk__).
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+--=20
+Best Wishes
+Yongqiang Yang
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
