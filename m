@@ -1,41 +1,65 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 16/19] ext4: enable mounting bigalloc as read/write
-Date: Tue,  3 May 2011 18:24:46 -0400
-Message-ID: <1304461490-11056-17-git-send-email-tytso@mit.edu>
+Subject: [PATCH 15/19] ext4: tune mballoc's default group prealloc size for bigalloc file systems
+Date: Tue,  3 May 2011 18:24:45 -0400
+Message-ID: <1304461490-11056-16-git-send-email-tytso@mit.edu>
 References: <1304461490-11056-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:58139 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:58136 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752823Ab1ECWY5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1753109Ab1ECWY5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 3 May 2011 18:24:57 -0400
 In-Reply-To: <1304461490-11056-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Now that we have implemented all of the changes needed for bigalloc,
-we can finally enable it!
+The default group preallocation size had been previously set to 512
+blocks/clusters, regardless of the block/cluster size.  This is
+probably too big for large cluster sizes.  So adjust the default so
+that it is 2 megabytes or 32 clusters, whichever is larger.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+ fs/ext4/mballoc.c |   18 ++++++++++++++++--
+ 1 files changed, 16 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 57e7255..c7d3eea 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1401,7 +1401,8 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
- 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK | \
- 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE | \
- 					 EXT4_FEATURE_RO_COMPAT_BTREE_DIR |\
--					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE)
-+					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE |\
-+					 EXT4_FEATURE_RO_COMPAT_BIGALLOC)
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index a7af56c..4f8494d 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -126,7 +126,8 @@
+  * list. In case of inode preallocation we follow a list of heuristics
+  * based on file size. This can be found in ext4_mb_normalize_request. If
+  * we are doing a group prealloc we try to normalize the request to
+- * sbi->s_mb_group_prealloc. Default value of s_mb_group_prealloc is
++ * sbi->s_mb_group_prealloc.  The default value of s_mb_group_prealloc is
++ * dependent on the cluster size; for non-bigalloc file systems, it is
+  * 512 blocks. This can be tuned via
+  * /sys/fs/ext4/<partition/mb_group_prealloc. The value is represented in
+  * terms of number of blocks. If we have mounted the file system with -O
+@@ -2531,7 +2532,20 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
+ 	sbi->s_mb_stats = MB_DEFAULT_STATS;
+ 	sbi->s_mb_stream_request = MB_DEFAULT_STREAM_THRESHOLD;
+ 	sbi->s_mb_order2_reqs = MB_DEFAULT_ORDER2_REQS;
+-	sbi->s_mb_group_prealloc = MB_DEFAULT_GROUP_PREALLOC;
++	/*
++	 * The default group preallocation is 512, which for 4k block
++	 * sizes translates to 2 megabytes.  However for bigalloc file
++	 * systems, this is probably too big (i.e, if the cluster size
++	 * is 1 megabyte, then group preallocation size becomes half a
++	 * gigabyte!).  As a default, we will keep a two megabyte
++	 * group pralloc size for cluster sizes up to 64k, and after
++	 * that, we will force a minimum group preallocation size of
++	 * 32 clusters.  This translates to 8 megs when the cluster
++	 * size is 256k, and 32 megs when the cluster size is 1 meg,
++	 * which seems reasonable as a default.
++	 */
++	sbi->s_mb_group_prealloc = max(MB_DEFAULT_GROUP_PREALLOC >>
++				       sbi->s_cluster_bits, 32);
  
- /*
-  * Default values for user and/or group using reserved blocks
+ 	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
+ 	if (sbi->s_locality_groups == NULL) {
 -- 
 1.7.3.1
 
