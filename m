@@ -1,178 +1,139 @@
-From: Surbhi Palande <surbhi.palande@ubuntu.com>
+From: Surbhi Palande <surbhi.palande@canonical.com>
 Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
  to a deadlock
-Date: Tue, 03 May 2011 10:27:00 +0300
-Message-ID: <4DBFAE44.2080000@ubuntu.com>
-References: <20110331234050.GD2904@dastard> <20110401140856.GA5311@quack.suse.cz> <20110406054005.GD31057@dastard> <20110406061856.GC23285@quack.suse.cz> <20110406112135.GE31057@dastard> <4DBE746F.3090707@ubuntu.com> <20110502105629.GA4556@quack.suse.cz> <4DBE9537.4050708@ubuntu.com> <20110502122055.GB5855@quack.suse.cz> <4DBEA3DF.1060306@ubuntu.com> <20110502131619.GC5855@quack.suse.cz> <4DBEB025.90704@ubuntu.com> <4DBEB9E7.9070407@redhat.com>
-Reply-To: surbhi.palande@ubuntu.com
+Date: Tue, 03 May 2011 11:06:49 +0300
+Message-ID: <4DBFB799.50302@canonical.com>
+References: <4D9BF57A.6030705@jp.fujitsu.com>	<20110406055708.GB23285@quack.suse.cz>	<4D9C18DF.90803@jp.fujitsu.com>	<20110406174617.GC28689@quack.suse.cz>	<4DA84A7B.3040403@jp.fujitsu.com>	<20110415171310.GB5432@quack.suse.cz>	<4DABFEBD.7030102@jp.fujitsu.com>	<20110418105105.GB5557@quack.suse.cz>	<4DAD5934.1030901@jp.fujitsu.com>	<20110422155839.3295e8e8.toshi.okajima@jp.fujitsu.com>	<20110422221025.GF2977@quack.suse.cz> <20110425152858.a9edfe58.toshi.okajima@jp.fujitsu.com>
+Reply-To: surbhi.palande@canonical.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, Dave Chinner <david@fromorbit.com>,
-	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
-	Ted Ts'o <tytso@mit.edu>,
+Cc: Jan Kara <jack@suse.cz>, Ted Ts'o <tytso@mit.edu>,
 	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Christoph Hellwig <hch@infradead.org>
-To: Eric Sandeen <sandeen@redhat.com>
+	sandeen@redhat.com
+To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from adelie.canonical.com ([91.189.90.139]:44492 "EHLO
+Received: from adelie.canonical.com ([91.189.90.139]:39609 "EHLO
 	adelie.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750907Ab1ECH1T (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 May 2011 03:27:19 -0400
-In-Reply-To: <4DBEB9E7.9070407@redhat.com>
+	with ESMTP id S1750881Ab1ECIG7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 May 2011 04:06:59 -0400
+In-Reply-To: <20110425152858.a9edfe58.toshi.okajima@jp.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/02/2011 05:04 PM, Eric Sandeen wrote:
-> On 5/2/11 8:22 AM, Surbhi Palande wrote:
->> On 05/02/2011 04:16 PM, Jan Kara wrote:
->>> On Mon 02-05-11 15:30:23, Surbhi Palande wrote:
->>>> On 05/02/2011 03:20 PM, Jan Kara wrote:
->>>>> On Mon 02-05-11 14:27:51, Surbhi Palande wrote:
->>>>>> On 05/02/2011 01:56 PM, Jan Kara wrote:
->>>>>>> On Mon 02-05-11 12:07:59, Surbhi Palande wrote:
->>>>>>>> On 04/06/2011 02:21 PM, Dave Chinner wrote:
->>>>>>>>> On Wed, Apr 06, 2011 at 08:18:56AM +0200, Jan Kara wrote:
->>>>>>>>>> On Wed 06-04-11 15:40:05, Dave Chinner wrote:
->>>>>>>>>>> On Fri, Apr 01, 2011 at 04:08:56PM +0200, Jan Kara wrote:
->>>>>>>>>>>> On Fri 01-04-11 10:40:50, Dave Chinner wrote:
->>>>>>>>>>>>> If you don't allow the page to be dirtied in the fist place, then
->>>>>>>>>>>>> nothing needs to be done to the writeback path because there is
->>>>>>>>>>>>> nothing dirty for it to write back.
->>>>>>>>>>>>     Sure but that's only the problem he was able to hit. But generally,
->>>>>>>>>>>> there's a problem with needing s_umount for unfreezing because it isn't
->>>>>>>>>>>> clear there aren't other code paths which can block with s_umount held
->>>>>>>>>>>> waiting for fs to get unfrozen. And these code paths would cause the same
->>>>>>>>>>>> deadlock. That's why I chose to get rid of s_umount during thawing.
->>>>>>>>>>> Holding the s_umount lock while checking if frozen and sleeping
->>>>>>>>>>> is essentially an ABBA lock inversion bug that can bite in many more
->>>>>>>>>>> places that just thawing the filesystem.  Any where this is done should
->>>>>>>>>>> be fixed, so I don't think just removing the s_umount lock from the thaw
->>>>>>>>>>> path is sufficient to avoid problems.
->>>>>>>>>>     That's easily said but hard to do - any transaction start in ext3/4 may
->>>>>>>>>> block on filesystem being frozen (this seems to be similar for XFS as I'm
->>>>>>>>>> looking into the code) and transaction start traditionally nests inside
->>>>>>>>>> s_umount (and basically there's no way around that since sync() calls your
->>>>>>>>>> fs code with s_umount held).
->>>>>>>>> Sure, but the question must be asked - why is ext3/4 even starting a
->>>>>>>>> transaction on a clean filesystem during sync? A frozen filesystem,
->>>>>>>>> by definition, is a clean filesytem, and therefore sync calls of any
->>>>>>>>> kind should not be trying to write to the FS or start transactions.
->>>>>>>>> XFS does this just fine, so I'd consider such behaviour on a frozen
->>>>>>>>> filesystem a bug in ext3/4...
->>>>>>>> I had a look at the xfs code for seeing how this is done.
->>>>>>>> xfs_file_aio_write()
->>>>>>>>     xfs_wait_for_freeze()
->>>>>>>>       vfs_check_frozen()
->>>>>>>> So xfs_file_aio_write() writes to buffers when the FS is not frozen.
->>>>>>>>
->>>>>>>> Now, I want to know what stops the following scenario from happening:
->>>>>>>> --------------------
->>>>>>>> xfs_file_aio_write()
->>>>>>>>     xfs_wait_for_freeze()
->>>>>>>>       vfs_check_frozen()
->>>>>>>> At this point F.S was not frozen, so the next instruction in the
->>>>>>>> xfs_file_aio_write() will be executed next.
->>>>>>>> However at this point (i.e after checking if F.S is frozen) the
->>>>>>>> write process gets pre-empted and say the _freeze_ process gets
->>>>>>>> control.
->>>>>>>>
->>>>>>>> Now the F.S freezes and the write process gets the control back. And
->>>>>>>> so we end up writing to the page cache when the F.S is frozen.
->>>>>>>> --------------------
->>>>>>>>
->>>>>>>> Can anyone please enlighten me on how&     why this premption is _not_
->>>>>>>> possible?
->>>>>> Thanks for your reply.
->>>>>>>     XFS works similarly as ext4 in this regard I believe. They have the log
->>>>>>> frozen in xfs_freeze() so if the race you describe above happens, either
->>>>>>> the writing process gets caught waiting for log to unfreeze
->>>>>> Agreed.
->>>>>>>    or it manages
->>>>>>> to start a transaction and then freezing process waits for transaction to
->>>>>>> finish before it can proceed with freezing. I'm not sure why is there the
->>>>>>> check in xfs_file_aio_write()...
->>>>>>>
->>>>>>>
->>>>>> I am sorry, but I don't understand how this will happen - i.e I
->>>>>> can't understand what stops freeze_super() (or ext4_freeze) from
->>>>>> freezing a superblock (as the write process stopped just before
->>>>>> writing anything for this transaction and has not taken any locks?)
->>>>>     So ext4_freeze() does
->>>>> jbd2_journal_lock_updates(journal)
->>>>>     which waits for all running transactions to finish and updates
->>>>> j_barrier_count which stops any news ones from proceeding (check
->>>>> function start_this_handle()).
->>>>>
->>>> Yes, but ext4_freeze() also calls
->>>> jbd2_journal_unlock_updates(journal) which decrements the
->>>> j_barrier_count (which was previously updated/incremented in
->>>> jbd2_journal_lock_updates) ? before it returns. So after this call a
->>>> new transaction/handle can be accepted/started.
->>>>
->>>> A comment in ext4_freeze() says:
->>>> /* we rely on s_frozen to stop further updates */
->>>> (before calling jbd2_journal_unlock_updates())
->>>     Ah, drat, you're right. I've missed this other part. It's the problem
->>> that if you expect to see something, you'll see it regardless of the real
->>> code ;).
+On 04/25/2011 09:28 AM, Toshiyuki Okajima wrote:
+> Hi.
+>
+> On Sat, 23 Apr 2011 00:10:25 +0200
+> Jan Kara<jack@suse.cz>  wrote:
+>> On Fri 22-04-11 15:58:39, Toshiyuki Okajima wrote:
+>>> I have confirmed that the following patch works fine while my or
+>>> Mizuma-san's reproducer is running. Therefore,
+>>>   we can block to write the data, which is mmapped to a file, into a disk
+>>> by a page-fault while fsfreezing.
 >>>
->>> The fact is we do vfs_check_frozen() in ext4_journal_start_sb() but indeed
->>> it's still racy (although the race window is relatively small) because the
->>> filesystem can become frozen the instant after we check vfs_check_frozen().
->>> Commit 6b0310fb broke it for ext4.
+>>> I think this patch fixes the following two problems:
+>>> - A deadlock occurs between ext4_da_writepages() (called from
+>>> writeback_inodes_wb) and thaw_super(). (reported by Mizuma-san)
+>>> - We can also write the data, which is mmapped to a file,
+>>>    into a disk while fsfreezing (ext3/ext4).
+>>>                                         (reported by me)
 >>>
->>> I guess the code was mostly copied from XFS which seems to have the same
->>> problem in xfs_trans_alloc() since the git history beginning. I see two
->>> ways to fix this - either fix ext4/xfs to check s_frozen after starting
->>> a transaction and if the filesystem is being frozen, we stop the
->>> transaction, wait for fs to get unfrozen, and restart. Another option is
->>> to create an analogous logic using a atomic counter of write ops in vfs
->>> that could be used by all filesystems. We'd just have to replace
->>> vfs_check_frozen() with vfs_start_write() and add vfs_stop_write() at
->>> appropriate places...
->> How about calling  jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
->> from ext4_unfreeze()?
-> we used to have that, but holding it locked until then means we exit the kernel
-> with a mutex held, which is pretty icky.
+>>> Please examine this patch.
+>>    Thanks for the patch. The ext3 part is not as easy as this. You cannot
+>> really get i_alloc_sem in ext3_page_mkwrite() because mmap_sem is already
+>> held by page fault code and i_alloc_sem should be acquired before it (yes I
+>> know, ext4 already has this bug which should be fixed when I get to it).
+>> Also you'll find that performance of random writers via mmap (which is
+>> relatively common) is going to be rather bad with this patch (because the
+>> file will be heavily fragmented). We have to be more clever which is
+>> exactly why it's taking me so long with my patch :) But tests are already
+>> running so if everything goes fine, I should have patches to submit next
+>> week.
+> OK, I'll wait your patch. :)
 >
->      ================================================
->      [ BUG: lock held when returning to user space! ]
->      ------------------------------------------------
->      lvcreate/1075 is leaving the kernel with locks still held!
->      1 lock held by lvcreate/1075:
->       #0:  (&journal->j_barrier){+.+...}, at: [<ffffffff811c6214>]
->      jbd2_journal_lock_updates+0xe1/0xf0
+>>
+>> The ext4 part looks correct. I'd just also like to have some comments about
+>> how freeze handling is done because it's kind of subtle.
 >
->
-> -Eric
-Should this not be reverted? I think that its a lot easier to stop a 
-transaction between a freeze and a thaw that way! If you agree, can I 
-send a patch for the same?
+> How about this?
 
-Thanks!
+
+We can have a race here too - since we are only checking if the F.S is 
+in a frozen state or not at _that_ point. We are _not_ preventing a F.S 
+freeze from happening _after_ this point. So here is what can happen:
+
+Key:
+(tx: time at xth unit)
+
+Scenario:
+
+Task 1: mmapped write - (case: page mapped to disk and is in page cache)
+t1) ext4_page_mkwrite()
+t2)   vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
+t3) ---- Preempted ----
+
+
+Task 2: Freeze Task
+t4) freezes the super block...
+...(continues)....
+tn) the page cache is clean and the F.S is frozen. Freeze has completed 
+execution.
+
+Task1: mmapped write - (case: page mapped to disk and is in page cache)
+tn+1)ext4_page_mkwrite() returns 0. The write to the mmapped page 
+continues with writing to a page in the page cache when the F.S is 
+frozen! So after the vfs_check_frozen() we _are_ susceptible to 
+"dirtying the page cache when F.S is frozen"
+
+In this case we are not protected by a transaction. Are we?
 
 Warm Regards,
 Surbhi.
 
 
->> So that indeed no transactions can be started before unfreeze is called.
->>
->> This has another advantage, that it rightfully does not let you update the access time when the F.S is frozen (touch_atime called from a read path when the F.S is frozen) Otherwise we also need to fix this path.
->>
->> Warm Regards,
->> Surbhi.
->>
->>> Dave, Christoph, any opinions on this?
->>>                                  Honza
->> -- 
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+>
+> Thanks,
+> Toshiyuki Okajima
+>
+> ----------------------------------------------------------------------------------------------------
+> Subject: [PATCH] ext4: prevent the mmapped page flushing to disk while fsfreezing
+>
+> Signed-off-by: Toshiyuki Okajima<toshi.okajima@jp.fujitsu.com>
+> ---
+>   fs/ext4/inode.c |   10 +++++++++-
+>   1 files changed, 9 insertions(+), 1 deletions(-)
+>
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index f2fa5e8..411b177 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -5812,7 +5812,7 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+>   	}
+>   	ret = 0;
+>   	if (PageMappedToDisk(page))
+> -		goto out_unlock;
+> +		goto out_frozen;
+>
+>   	if (page->index == size>>  PAGE_CACHE_SHIFT)
+>   		len = size&  ~PAGE_CACHE_MASK;
+> @@ -5830,6 +5830,14 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+>   		if (!walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
+>   					ext4_bh_unmapped)) {
+>   			unlock_page(page);
+> +out_frozen:
+> +			/*
+> +			 * We must wait here while the filesystem is being
+> +			 * frozen otherwise a flushing thread can write this
+> +			 * page to the disk (we can update the filesystem even
+> +			 * if it is frozen).
+> +			 */
+> +			vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
+>   			goto out_unlock;
+>   		}
+>   	}
 
