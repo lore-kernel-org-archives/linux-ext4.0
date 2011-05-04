@@ -1,210 +1,254 @@
 From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: [Ext4 punch hole 4/5 v6] Ext4 Punch Hole Support: Map blocks
- punch hole flag
-Date: Tue, 03 May 2011 20:15:29 -0700
-Message-ID: <4DC0C4D1.4070200@linux.vnet.ibm.com>
-References: <4DC031C1.4050703@linux.vnet.ibm.com> <1304467948.3069.6.camel@mingming-laptop>
+Subject: [XFS Tests Punch Hole 1/1 v2]   Add Punch Hole Testing to FSX
+Date: Tue, 03 May 2011 21:50:56 -0700
+Message-ID: <4DC0DB30.6060601@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Mingming Cao <cmm@us.ibm.com>
+To: xfs-oss <xfs@oss.sgi.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:60583 "EHLO e3.ny.us.ibm.com"
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:32877 "EHLO e2.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751870Ab1EDDPd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 May 2011 23:15:33 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e3.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p442s2QK004936
-	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 22:54:02 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p443FWCD225570
-	for <linux-ext4@vger.kernel.org>; Tue, 3 May 2011 23:15:32 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p443FV4B007140
-	for <linux-ext4@vger.kernel.org>; Wed, 4 May 2011 00:15:31 -0300
-In-Reply-To: <1304467948.3069.6.camel@mingming-laptop>
+	id S1751122Ab1EDEvA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 May 2011 00:51:00 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 5/3/2011 5:12 PM, Mingming Cao wrote:
-> On Tue, 2011-05-03 at 09:48 -0700, Allison Henderson wrote:
->> This patch adds a new flag to map blocks that specifies
->> the given range of blocks should be punched out.  Extents
->> are first converted to uninitialized extents before they are
->> punched out. Because punching a hole may require that the
->> extent be split, it is possible that the splitting may need
->> more blocks than are available.  To deal with this, reserved
->> blocks are temporarily borrowed to allow the split to proceed.
->> The borrowed blocks are then returned after the hole punch has
->> released more blocks.
->>
-> Just want to make sure that in the case of ENOSPC, the reserved root
-> blocks are used/consumed to allow extent being splitted and then punch
-> hole being proceeded. The reserved blocks, if I understand right, is
-> being used, not returned back. No?
->
-> Mingming
+This patch adds punch hole tests to the fsx
+stress test. The test is performed through
+the fallocate call by randomly choosing to
+use the punch hole flag when running the
+fallocate test. Regions that have
+been punched out should contain zeros, so
+the expected file contents buffer is updated
+to contain zeros when a hole is punched out.
 
-Hi there,
+v0 -> v1:
+Corrections to the Makefile have been backed out.
+This patch needs to be applied on top of
+the "xfstests: clean up fallocate configuration tests"
+patch
 
-That's correct, the last line of the description should have probably 
-been removed to avoid confusion.  To clarify for others, in an earlier 
-version of the set before we had this flag, we had code to convert root 
-blocks to user blocks when there was not enough blocks to split the 
-extents, and then the blocks would be converted back after the punch 
-hole had free'd up more user blocks. But there was concern that this 
-would cause a race condition with other processes also trying to 
-allocate user blocks, so we took that code out and added this flag 
-instead.  The flag only allows consumption of the root blocks, there is 
-no logic for converting the blocks back anymore.  The blocks are just 
-returned to the pool normally when the remove space routines release them.
+The punch hole tests can be disabled with the
+-H flag, and will also be disabled if it is
+detected that the filesystem does not support
+punch hole
 
-Allison Henderson
+Signed-off-by: Allison Henderson <achender@us.ibm.com>
+---
+:100644 100644 fe072d3... 8978ef1... M	ltp/fsx.c
+  ltp/fsx.c |  111 
+++++++++++++++++++++++++++++++++++++++++++++++++++++--------
+  1 files changed, 96 insertions(+), 15 deletions(-)
 
->
->
->> The routine then returns the number of blocks successfully
->> punched out.
->>
->> Signed-off-by: Allison Henderson<achender@us.ibm.com>
->> ---
->> :100644 100644 0afb746... 7f0fcc1... M	fs/ext4/extents.c
->>   fs/ext4/extents.c |   98 +++++++++++++++++++++++++++++++++++++++++++++++------
->>   1 files changed, 87 insertions(+), 11 deletions(-)
->>
->> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
->> index 0afb746..7f0fcc1 100644
->> --- a/fs/ext4/extents.c
->> +++ b/fs/ext4/extents.c
->> @@ -3290,15 +3290,19 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
->>   	ext4_fsblk_t newblock = 0;
->>   	int err = 0, depth, ret;
->>   	unsigned int allocated = 0;
->> +	unsigned int punched_out = 0;
->> +	unsigned int result = 0;
->>   	struct ext4_allocation_request ar;
->>   	ext4_io_end_t *io = EXT4_I(inode)->cur_aio_dio;
->> +	struct ext4_map_blocks punch_map;
->>
->>   	ext_debug("blocks %u/%u requested for inode %lu\n",
->>   		  map->m_lblk, map->m_len, inode->i_ino);
->>   	trace_ext4_ext_map_blocks_enter(inode, map->m_lblk, map->m_len, flags);
->>
->>   	/* check in cache */
->> -	if (ext4_ext_in_cache(inode, map->m_lblk,&newex)) {
->> +	if (ext4_ext_in_cache(inode, map->m_lblk,&newex)&&
->> +		((flags&  EXT4_GET_BLOCKS_PUNCH_OUT_EXT) == 0)) {
->>   		if (!newex.ee_start_lo&&  !newex.ee_start_hi) {
->>   			if ((flags&  EXT4_GET_BLOCKS_CREATE) == 0) {
->>   				/*
->> @@ -3363,16 +3367,84 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
->>   			ext_debug("%u fit into %u:%d ->  %llu\n", map->m_lblk,
->>   				  ee_block, ee_len, newblock);
->>
->> -			/* Do not put uninitialized extent in the cache */
->> -			if (!ext4_ext_is_uninitialized(ex)) {
->> -				ext4_ext_put_in_cache(inode, ee_block,
->> -							ee_len, ee_start);
->> -				goto out;
->> +			if ((flags&  EXT4_GET_BLOCKS_PUNCH_OUT_EXT) == 0) {
->> +				/*
->> +				 * Do not put uninitialized extent
->> +				 * in the cache
->> +				 */
->> +				if (!ext4_ext_is_uninitialized(ex)) {
->> +					ext4_ext_put_in_cache(inode, ee_block,
->> +						ee_len, ee_start);
->> +					goto out;
->> +				}
->> +				ret = ext4_ext_handle_uninitialized_extents(
->> +					handle, inode, map, path, flags,
->> +					allocated, newblock);
->> +				return ret;
->>   			}
->> -			ret = ext4_ext_handle_uninitialized_extents(handle,
->> -					inode, map, path, flags, allocated,
->> -					newblock);
->> -			return ret;
->> +
->> +			/*
->> +			 * Punch out the map length, but only to the
->> +			 * end of the extent
->> +			 */
->> +			punched_out = allocated<  map->m_len ?
->> +				allocated : map->m_len;
->> +
->> +			/*
->> +			 * Sense extents need to be converted to
->> +			 * uninitialized, they must fit in an
->> +			 * uninitialized extent
->> +			 */
->> +			if (punched_out>  EXT_UNINIT_MAX_LEN)
->> +				punched_out = EXT_UNINIT_MAX_LEN;
->> +
->> +			punch_map.m_lblk = map->m_lblk;
->> +			punch_map.m_pblk = newblock;
->> +			punch_map.m_len = punched_out;
->> +			punch_map.m_flags = 0;
->> +
->> +			/* Check to see if the extent needs to be split */
->> +			if (punch_map.m_len != ee_len ||
->> +				punch_map.m_lblk != ee_block) {
->> +
->> +				ret = ext4_split_extent(handle, inode,
->> +				path,&punch_map, 0,
->> +				EXT4_GET_BLOCKS_PUNCH_OUT_EXT |
->> +				EXT4_GET_BLOCKS_PRE_IO);
->> +
->> +				if (ret<  0) {
->> +					err = ret;
->> +					goto out2;
->> +				}
->> +				/*
->> +				 * find extent for the block at
->> +				 * the start of the hole
->> +				 */
->> +				ext4_ext_drop_refs(path);
->> +				kfree(path);
->> +
->> +				path = ext4_ext_find_extent(inode,
->> +				map->m_lblk, NULL);
->> +				if (IS_ERR(path)) {
->> +					err = PTR_ERR(path);
->> +					path = NULL;
->> +					goto out2;
->> +				}
->> +
->> +				depth = ext_depth(inode);
->> +				ex = path[depth].p_ext;
->> +				ee_len = ext4_ext_get_actual_len(ex);
->> +				ee_block = le32_to_cpu(ex->ee_block);
->> +				ee_start = ext4_ext_pblock(ex);
->> +
->> +			}
->> +
->> +			ext4_ext_mark_uninitialized(ex);
->> +
->> +			err = ext4_ext_remove_space(inode, map->m_lblk,
->> +				map->m_lblk + punched_out);
->> +
->> +			goto out2;
->>   		}
->>   	}
->>
->> @@ -3517,7 +3589,11 @@ out2:
->>   	}
->>   	trace_ext4_ext_map_blocks_exit(inode, map->m_lblk,
->>   		newblock, map->m_len, err ? err : allocated);
->> -	return err ? err : allocated;
->> +
->> +	result = (flags&  EXT4_GET_BLOCKS_PUNCH_OUT_EXT) ?
->> +			punched_out : allocated;
->> +
->> +	return err ? err : result;
->>   }
->>
->>   void ext4_ext_truncate(struct inode *inode)
->
->
+diff --git a/ltp/fsx.c b/ltp/fsx.c
+index fe072d3..8978ef1 100644
+--- a/ltp/fsx.c
++++ b/ltp/fsx.c
+@@ -110,6 +110,7 @@ int	randomoplen = 1;		/* -O flag disables it */
+  int	seed = 1;			/* -S flag */
+  int     mapped_writes = 1;              /* -W flag disables */
+  int     fallocate_calls = 1;            /* -F flag disables */
++int     punch_hole_calls = 1;           /* -H flag disables */
+  int 	mapped_reads = 1;		/* -R flag disables it */
+  int	fsxgoodfd = 0;
+  int	o_direct;			/* -Z */
+@@ -207,7 +208,8 @@ logdump(void)
+  {
+  	int	i, count, down;
+  	struct log_entry	*lp;
+-	char *falloc_type[3] = {"PAST_EOF", "EXTENDING", "INTERIOR"};
++	char *falloc_type[4] = {"PAST_EOF", "EXTENDING", "INTERIOR",
++				"PUNCH_HOLE"};
+
+  	prt("LOG DUMP (%d total operations):\n", logcount);
+  	if (logcount < LOGSIZE) {
+@@ -791,6 +793,11 @@ dofallocate(unsigned offset, unsigned length)
+  {
+  	unsigned end_offset;
+  	int keep_size;
++	int max_offset = 0;
++	int max_len = 0;
++	int mode = 0;
++	char *op_name;
++	int punch_hole = 0;
+
+          if (length == 0) {
+                  if (!quiet && testcalls > simulatedopcount)
+@@ -799,11 +806,37 @@ dofallocate(unsigned offset, unsigned length)
+                  return;
+          }
+
++#ifdef FALLOC_FL_PUNCH_HOLE
++	if (fallocate_calls && !punch_hole_calls)
++		punch_hole = 0;
++	else if (!fallocate_calls && punch_hole_calls)
++		punch_hole = 1;
++	else
++		punch_hole = random() % 2;
++
++	/* Keep size must be set for punch hole */
++	if (punch_hole) {
++		keep_size = 1;
++		mode = FALLOC_FL_PUNCH_HOLE;
++	} else
++		keep_size = random() % 2;
++#else
+  	keep_size = random() % 2;
++#endif
++
++	if (keep_size)
++		mode |= FALLOC_FL_KEEP_SIZE;
++
++	if (punch_hole && file_size <= (loff_t)offset) {
++		if (!quiet && testcalls > simulatedopcount)
++			prt("skipping hole punch off the end of the file\n");
++		log4(OP_SKIPPED, OP_FALLOCATE, offset, length);
++		return;
++	}
+
+  	end_offset = keep_size ? 0 : offset + length;
+
+-	if (end_offset > biggest) {
++	if ((end_offset > biggest) && !punch_hole) {
+  		biggest = end_offset;
+  		if (!quiet && testcalls > simulatedopcount)
+  			prt("fallocating to largest ever: 0x%x\n", end_offset);
+@@ -811,13 +844,15 @@ dofallocate(unsigned offset, unsigned length)
+
+  	/*
+  	 * last arg:
+-	 * 	1: allocate past EOF
+-	 * 	2: extending prealloc
+-	 * 	3: interior prealloc
++	 *      0: allocate past EOF
++	 *      1: extending prealloc
++	 *      2: interior prealloc
++	 *      3: punch hole
+  	 */
+-	log4(OP_FALLOCATE, offset, length, (end_offset > file_size) ? 
+(keep_size ? 1 : 2) : 3);
++	log4(OP_FALLOCATE, offset, length, punch_hole ? 3 :
++			(end_offset > file_size) ? (keep_size ? 0 : 1) : 2);
+
+-	if (end_offset > file_size) {
++	if (((loff_t)end_offset > file_size) && !punch_hole) {
+  		memset(good_buf + file_size, '\0', end_offset - file_size);
+  		file_size = end_offset;
+  	}
+@@ -827,13 +862,35 @@ dofallocate(unsigned offset, unsigned length)
+  	
+  	if ((progressinterval && testcalls % progressinterval == 0) ||
+  	    (debug && (monitorstart == -1 || monitorend == -1 ||
+-		      end_offset <= monitorend)))
+-		prt("%lu falloc\tfrom 0x%x to 0x%x\n", testcalls, offset, length);
+-	if (fallocate(fd, keep_size ? FALLOC_FL_KEEP_SIZE : 0, (loff_t)offset, 
+(loff_t)length) == -1) {
+-	        prt("fallocate: %x to %x\n", offset, length);
++		      end_offset <= monitorend))) {
++#ifdef FALLOC_FL_PUNCH_HOLE
++		op_name = (mode & FALLOC_FL_PUNCH_HOLE) ?
++			"punch hole" : "falloc";
++#else
++		op_name = "falloc";
++#endif
++		prt("%lu %s\tfrom 0x%x to 0x%x, (0x%x bytes)\n", testcalls,
++			op_name, offset, offset+length, length);
++	}
++	if (fallocate(fd, mode, (loff_t)offset, (loff_t)length) == -1) {
++#ifdef FALLOC_FL_PUNCH_HOLE
++		op_name = (mode & FALLOC_FL_PUNCH_HOLE) ?
++			"punch hole" : "fallocate";
++#else
++		op_name = "fallocate";
++#endif
++
++		prt("%s: %x to %x\n", op_name, offset, length);
+  		prterr("dofallocate: fallocate");
+  		report_failure(161);
+  	}
++
++	if (punch_hole) {
++		max_offset = offset < file_size ? offset : file_size;
++		max_len = max_offset + length <= file_size ? length :
++				file_size - max_offset;
++		memset(good_buf + max_offset, '\0', max_len);
++	}
+  }
+  #else
+  void
+@@ -895,8 +952,8 @@ test(void)
+  	unsigned long	offset;
+  	unsigned long	size = maxoplen;
+  	unsigned long	rv = random();
+-	unsigned long	op = rv % (3 + !lite + mapped_writes + fallocate_calls);
+-
++	unsigned long	op = rv % (3 + !lite + mapped_writes +
++		(fallocate_calls || punch_hole_calls));
+          /* turn off the map read if necessary */
+
+          if (op == 2 && !mapped_reads)
+@@ -1013,6 +1070,9 @@ usage(void)
+  #ifdef FALLOCATE
+  "	-F: Do not use fallocate (preallocation) calls\n"
+  #endif
++#ifdef FALLOC_FL_PUNCH_HOLE
++"       -H: Do not use punch hole calls\n"
++#endif
+  "	-L: fsxLite - no file creations & no file size changes\n\
+  	-N numops: total # operations to do (default infinity)\n\
+  	-O: use oplen (see -o flag) for every op (default random)\n\
+@@ -1179,7 +1239,7 @@ main(int argc, char **argv)
+
+  	setvbuf(stdout, (char *)0, _IOLBF, 0); /* line buffered stdout */
+
+-	while ((ch = getopt(argc, argv, 
+"b:c:dfl:m:no:p:qr:s:t:w:xyAD:FLN:OP:RS:WZ"))
++	while ((ch = getopt(argc, argv, 
+"b:c:dfl:m:no:p:qr:s:t:w:xyAD:FHLN:OP:RS:WZ"))
+  	       != EOF)
+  		switch (ch) {
+  		case 'b':
+@@ -1276,6 +1336,9 @@ main(int argc, char **argv)
+  		case 'F':
+  			fallocate_calls = 0;
+  			break;
++		case 'H':
++			punch_hole_calls = 0;
++			break;
+  		case 'L':
+  		        lite = 1;
+  			break;
+@@ -1426,8 +1489,26 @@ main(int argc, char **argv)
+  		if (fallocate(fd, 0, 0, 1) && errno == EOPNOTSUPP) {
+  			warn("main: filesystem does not support fallocate, disabling");
+  			fallocate_calls = 0;
+-		} else
++			/*
++			 * punch hole depends on fallocate,
++			 * so turn punch hole off too
++			 */
++			punch_hole_calls = 0;
++		} else {
++#ifdef FALLOC_FL_PUNCH_HOLE
++			if (fallocate(fd,
++				FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE,
++				0, 1) && errno == EOPNOTSUPP) {
++				warn("main: filesystem does not support"
++					" fallocate punch hole, disabling");
++				punch_hole_calls = 0;
++			}
++#else
++			punch_hole_calls = 0;
++#endif
++
+  			ftruncate(fd, 0);
++		}
+  	}
+  #else /* ! FALLOCATE */
+  	fallocate_calls = 0;
+-- 
+1.7.1
 
