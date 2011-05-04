@@ -1,254 +1,35 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: [XFS Tests Punch Hole 1/1 v2]   Add Punch Hole Testing to FSX
-Date: Tue, 03 May 2011 21:50:56 -0700
-Message-ID: <4DC0DB30.6060601@linux.vnet.ibm.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 25832] kernel crashes when a mounted ext3/4 file system is
+ physically removed
+Date: Wed, 4 May 2011 07:36:52 GMT
+Message-ID: <201105040736.p447aqHS002760@demeter2.kernel.org>
+References: <bug-25832-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: xfs-oss <xfs@oss.sgi.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:32877 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751122Ab1EDEvA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 May 2011 00:51:00 -0400
+Received: from demeter2.kernel.org ([140.211.167.42]:44356 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750982Ab1EDHgx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 May 2011 03:36:53 -0400
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p447aqpw002762
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 4 May 2011 07:36:52 GMT
+In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds punch hole tests to the fsx
-stress test. The test is performed through
-the fallocate call by randomly choosing to
-use the punch hole flag when running the
-fallocate test. Regions that have
-been punched out should contain zeros, so
-the expected file contents buffer is updated
-to contain zeros when a hole is punched out.
+https://bugzilla.kernel.org/show_bug.cgi?id=25832
 
-v0 -> v1:
-Corrections to the Makefile have been backed out.
-This patch needs to be applied on top of
-the "xfstests: clean up fallocate configuration tests"
-patch
 
-The punch hole tests can be disabled with the
--H flag, and will also be disabled if it is
-detected that the filesystem does not support
-punch hole
 
-Signed-off-by: Allison Henderson <achender@us.ibm.com>
----
-:100644 100644 fe072d3... 8978ef1... M	ltp/fsx.c
-  ltp/fsx.c |  111 
-++++++++++++++++++++++++++++++++++++++++++++++++++++--------
-  1 files changed, 96 insertions(+), 15 deletions(-)
 
-diff --git a/ltp/fsx.c b/ltp/fsx.c
-index fe072d3..8978ef1 100644
---- a/ltp/fsx.c
-+++ b/ltp/fsx.c
-@@ -110,6 +110,7 @@ int	randomoplen = 1;		/* -O flag disables it */
-  int	seed = 1;			/* -S flag */
-  int     mapped_writes = 1;              /* -W flag disables */
-  int     fallocate_calls = 1;            /* -F flag disables */
-+int     punch_hole_calls = 1;           /* -H flag disables */
-  int 	mapped_reads = 1;		/* -R flag disables it */
-  int	fsxgoodfd = 0;
-  int	o_direct;			/* -Z */
-@@ -207,7 +208,8 @@ logdump(void)
-  {
-  	int	i, count, down;
-  	struct log_entry	*lp;
--	char *falloc_type[3] = {"PAST_EOF", "EXTENDING", "INTERIOR"};
-+	char *falloc_type[4] = {"PAST_EOF", "EXTENDING", "INTERIOR",
-+				"PUNCH_HOLE"};
 
-  	prt("LOG DUMP (%d total operations):\n", logcount);
-  	if (logcount < LOGSIZE) {
-@@ -791,6 +793,11 @@ dofallocate(unsigned offset, unsigned length)
-  {
-  	unsigned end_offset;
-  	int keep_size;
-+	int max_offset = 0;
-+	int max_len = 0;
-+	int mode = 0;
-+	char *op_name;
-+	int punch_hole = 0;
+--- Comment #80 from rocko <rockorequin@hotmail.com>  2011-05-04 07:36:48 ---
+The null pointer dereference still happens in 2.6.39-rc6.
 
-          if (length == 0) {
-                  if (!quiet && testcalls > simulatedopcount)
-@@ -799,11 +806,37 @@ dofallocate(unsigned offset, unsigned length)
-                  return;
-          }
-
-+#ifdef FALLOC_FL_PUNCH_HOLE
-+	if (fallocate_calls && !punch_hole_calls)
-+		punch_hole = 0;
-+	else if (!fallocate_calls && punch_hole_calls)
-+		punch_hole = 1;
-+	else
-+		punch_hole = random() % 2;
-+
-+	/* Keep size must be set for punch hole */
-+	if (punch_hole) {
-+		keep_size = 1;
-+		mode = FALLOC_FL_PUNCH_HOLE;
-+	} else
-+		keep_size = random() % 2;
-+#else
-  	keep_size = random() % 2;
-+#endif
-+
-+	if (keep_size)
-+		mode |= FALLOC_FL_KEEP_SIZE;
-+
-+	if (punch_hole && file_size <= (loff_t)offset) {
-+		if (!quiet && testcalls > simulatedopcount)
-+			prt("skipping hole punch off the end of the file\n");
-+		log4(OP_SKIPPED, OP_FALLOCATE, offset, length);
-+		return;
-+	}
-
-  	end_offset = keep_size ? 0 : offset + length;
-
--	if (end_offset > biggest) {
-+	if ((end_offset > biggest) && !punch_hole) {
-  		biggest = end_offset;
-  		if (!quiet && testcalls > simulatedopcount)
-  			prt("fallocating to largest ever: 0x%x\n", end_offset);
-@@ -811,13 +844,15 @@ dofallocate(unsigned offset, unsigned length)
-
-  	/*
-  	 * last arg:
--	 * 	1: allocate past EOF
--	 * 	2: extending prealloc
--	 * 	3: interior prealloc
-+	 *      0: allocate past EOF
-+	 *      1: extending prealloc
-+	 *      2: interior prealloc
-+	 *      3: punch hole
-  	 */
--	log4(OP_FALLOCATE, offset, length, (end_offset > file_size) ? 
-(keep_size ? 1 : 2) : 3);
-+	log4(OP_FALLOCATE, offset, length, punch_hole ? 3 :
-+			(end_offset > file_size) ? (keep_size ? 0 : 1) : 2);
-
--	if (end_offset > file_size) {
-+	if (((loff_t)end_offset > file_size) && !punch_hole) {
-  		memset(good_buf + file_size, '\0', end_offset - file_size);
-  		file_size = end_offset;
-  	}
-@@ -827,13 +862,35 @@ dofallocate(unsigned offset, unsigned length)
-  	
-  	if ((progressinterval && testcalls % progressinterval == 0) ||
-  	    (debug && (monitorstart == -1 || monitorend == -1 ||
--		      end_offset <= monitorend)))
--		prt("%lu falloc\tfrom 0x%x to 0x%x\n", testcalls, offset, length);
--	if (fallocate(fd, keep_size ? FALLOC_FL_KEEP_SIZE : 0, (loff_t)offset, 
-(loff_t)length) == -1) {
--	        prt("fallocate: %x to %x\n", offset, length);
-+		      end_offset <= monitorend))) {
-+#ifdef FALLOC_FL_PUNCH_HOLE
-+		op_name = (mode & FALLOC_FL_PUNCH_HOLE) ?
-+			"punch hole" : "falloc";
-+#else
-+		op_name = "falloc";
-+#endif
-+		prt("%lu %s\tfrom 0x%x to 0x%x, (0x%x bytes)\n", testcalls,
-+			op_name, offset, offset+length, length);
-+	}
-+	if (fallocate(fd, mode, (loff_t)offset, (loff_t)length) == -1) {
-+#ifdef FALLOC_FL_PUNCH_HOLE
-+		op_name = (mode & FALLOC_FL_PUNCH_HOLE) ?
-+			"punch hole" : "fallocate";
-+#else
-+		op_name = "fallocate";
-+#endif
-+
-+		prt("%s: %x to %x\n", op_name, offset, length);
-  		prterr("dofallocate: fallocate");
-  		report_failure(161);
-  	}
-+
-+	if (punch_hole) {
-+		max_offset = offset < file_size ? offset : file_size;
-+		max_len = max_offset + length <= file_size ? length :
-+				file_size - max_offset;
-+		memset(good_buf + max_offset, '\0', max_len);
-+	}
-  }
-  #else
-  void
-@@ -895,8 +952,8 @@ test(void)
-  	unsigned long	offset;
-  	unsigned long	size = maxoplen;
-  	unsigned long	rv = random();
--	unsigned long	op = rv % (3 + !lite + mapped_writes + fallocate_calls);
--
-+	unsigned long	op = rv % (3 + !lite + mapped_writes +
-+		(fallocate_calls || punch_hole_calls));
-          /* turn off the map read if necessary */
-
-          if (op == 2 && !mapped_reads)
-@@ -1013,6 +1070,9 @@ usage(void)
-  #ifdef FALLOCATE
-  "	-F: Do not use fallocate (preallocation) calls\n"
-  #endif
-+#ifdef FALLOC_FL_PUNCH_HOLE
-+"       -H: Do not use punch hole calls\n"
-+#endif
-  "	-L: fsxLite - no file creations & no file size changes\n\
-  	-N numops: total # operations to do (default infinity)\n\
-  	-O: use oplen (see -o flag) for every op (default random)\n\
-@@ -1179,7 +1239,7 @@ main(int argc, char **argv)
-
-  	setvbuf(stdout, (char *)0, _IOLBF, 0); /* line buffered stdout */
-
--	while ((ch = getopt(argc, argv, 
-"b:c:dfl:m:no:p:qr:s:t:w:xyAD:FLN:OP:RS:WZ"))
-+	while ((ch = getopt(argc, argv, 
-"b:c:dfl:m:no:p:qr:s:t:w:xyAD:FHLN:OP:RS:WZ"))
-  	       != EOF)
-  		switch (ch) {
-  		case 'b':
-@@ -1276,6 +1336,9 @@ main(int argc, char **argv)
-  		case 'F':
-  			fallocate_calls = 0;
-  			break;
-+		case 'H':
-+			punch_hole_calls = 0;
-+			break;
-  		case 'L':
-  		        lite = 1;
-  			break;
-@@ -1426,8 +1489,26 @@ main(int argc, char **argv)
-  		if (fallocate(fd, 0, 0, 1) && errno == EOPNOTSUPP) {
-  			warn("main: filesystem does not support fallocate, disabling");
-  			fallocate_calls = 0;
--		} else
-+			/*
-+			 * punch hole depends on fallocate,
-+			 * so turn punch hole off too
-+			 */
-+			punch_hole_calls = 0;
-+		} else {
-+#ifdef FALLOC_FL_PUNCH_HOLE
-+			if (fallocate(fd,
-+				FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE,
-+				0, 1) && errno == EOPNOTSUPP) {
-+				warn("main: filesystem does not support"
-+					" fallocate punch hole, disabling");
-+				punch_hole_calls = 0;
-+			}
-+#else
-+			punch_hole_calls = 0;
-+#endif
-+
-  			ftruncate(fd, 0);
-+		}
-  	}
-  #else /* ! FALLOCATE */
-  	fallocate_calls = 0;
 -- 
-1.7.1
-
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
