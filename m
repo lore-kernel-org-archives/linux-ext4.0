@@ -1,53 +1,215 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: Is it possible for the ext4/btrfs file system to pass some context related info to low level block driver?
-Date: Wed, 4 May 2011 08:51:39 -0600
-Message-ID: <60C31100-5694-4CA9-A778-91CB15915052@dilger.ca>
-References: <CE761E84DADF2947A4AF22FB8D97A47358E28022@shsmsx501.ccr.corp.intel.com> <yq1mxj32932.fsf@sermon.lab.mkp.net> <CE761E84DADF2947A4AF22FB8D97A47358EE526A@shsmsx501.ccr.corp.intel.com>
-Mime-Version: 1.0 (iPhone Mail 8H7)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
+From: "Martin K. Petersen" <martin.petersen@oracle.com>
+Subject: Re: [dm-devel] do not disable ext4 discards on first discard failure? [was: Re: dm snapshot: ignore discards issued to the snapshot-origin target]
+Date: Wed, 04 May 2011 11:10:26 -0400
+Message-ID: <yq1wri6zel9.fsf@sermon.lab.mkp.net>
+References: <20110413224025.GA18589@redhat.com>
+	<20110413234854.GA19793@redhat.com>
+	<20110426173213.GA19604@redhat.com>
+	<20110428001912.GA14659@redhat.com>
+	<20110428075355.GA2190@infradead.org>
+	<20110428205935.GA24979@redhat.com>
+	<alpine.LFD.2.00.1104291117510.5496@dhcp-27-109.brq.redhat.com>
+	<20110429122454.GL32370@agk-dp.fab.redhat.com>
+	<alpine.LFD.2.00.1105020857030.3778@dhcp-27-109.brq.redhat.com>
+	<20110502081308.GC8642@agk-dp.fab.redhat.com>
+	<20110502081925.GA11312@infradead.org>
+	<alpine.LFD.2.00.1105021217080.3778@dhcp-27-109.brq.redhat.com>
+	<yq1bozl420p.fsf@sermon.lab.mkp.net>
+	<alpine.LFD.2.00.1105021631590.3778@dhcp-27-109.brq.redhat.com>
+	<yq1tydd2g5h.fsf@sermon.lab.mkp.net>
+	<alpine.LFD.2.00.1105031036090.4250@dhcp-27-109.brq.redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain
 Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
-	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-mmc@vger.kernel.org" <linux-mmc@vger.kernel.org>
-To: "Gao, Yunpeng" <yunpeng.gao@intel.com>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-In-Reply-To: <CE761E84DADF2947A4AF22FB8D97A47358EE526A@shsmsx501.ccr.corp.intel.com>
-Sender: linux-btrfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+	Christoph Hellwig <hch@infradead.org>,
+	device-mapper development <dm-devel@redhat.com>,
+	Alasdair G Kergon <agk@redhat.com>, sandeen@redhat.com,
+	Mike Snitzer <snitzer@redhat.com>, DarkNovaNick@gmail.com,
+	linux-lvm@redhat.com, linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:23195 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754281Ab1EDPKv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 May 2011 11:10:51 -0400
+In-Reply-To: <alpine.LFD.2.00.1105031036090.4250@dhcp-27-109.brq.redhat.com>
+	(Lukas Czerner's message of "Tue, 3 May 2011 10:57:19 +0200 (CEST)")
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-05-04, at 5:45 AM, "Gao, Yunpeng" <yunpeng.gao@intel.com> wrote:
->> Yes, I have been working on some changes that allow us to tag bios and
->> pass the information out to storage. These patches have been on the back
->> burner for a while due to other commitments. But I'll dig them out and
->> post them later. We just discussed them a couple of weeks ago at the
->> Linux Storage Workshop.
-> 
-> That's great! Thanks for the update and look forward to your patches.
-> 
->> In the meantime: Can you point me to the relevant eMMC stuff so I can
->> see how many tiers or classes we have to work with there?
->> 
-> I'm investigating on add some eMMC 4.5 features support in current Linux mmc driver (drivers/mmc).
-> The Linux mmc driver register the eMMC device as a normal Linux block device. So, it can get all the Linux block layer bio flags.
-> 
-> To below eMMC 4.5 new features:
-> 
-> Data Tag:
-> 'The mechanism permits the device to receive from the host information about specific data types (for instance file system metadata, time-stamps, configuration parameters, etc.). The information is conveyed before a write multiple blocks operation at well defined addresses. By receiving this information the device can improve the access rate during the following read and update operations and offer a more reliable and robust storage.'
-> 
-> I guess the exist block layer flag REQ_META can be used to notify the low level block driver/device to execute the Data Tag feature. But don't know why currently most of Linux file systems don't use the REQ_META flag at all (seems only gfs2 uses it now).
+>>>>> "Lukas" == Lukas Czerner <lczerner@redhat.com> writes:
 
-I was aware of REQ_META, but I didn't know there was any benefit to using it. I think it would be easy to set REQ_META on all ext4 metadata if there was a reason to do so. 
+Lukas> Nevertheless there is something weird going on, because even when
+Lukas> I create striped volume I get this:
 
-> Context Management:
-> 'To better differentiate between large sequential operations and small random operations, and to improve multitasking support, contexts can be associated with groups of read or write commands ... A context can be seen as an active session, configured for a specific read/write pattern (e.g. sequential in some granularity). Multiple read or write commands are associated with this context to create some logical association between them, to allow device to optimize performance.'
-> 
-> To my understanding, to support this feature, it needs file system (or application?) to notify the low level driver that the following data access will be large sequential read/write operations.
-> And I'm not sure is it possible for file system to pass this kind of information to low level driver? Any idea?
+Could you please try the following patch? It has a bunch of small tweaks
+to the discard stack in it. I'll split it up before posting for real but
+I'd like to know if it fixes your issue...
 
-A simple way to do this would be to use the inode number as the context, so writes to the same inode are grouped together. Another possibility is the PID, though that is less clearly correct (e.g. if tar is extracting a buch of files, are they all related or not).
 
-Cheers, Andreas
+block/libata/scsi: Various logical block provisioning fixes
+
+ - Add sysfs documentation for the discard topology parameters
+
+ - Fix discard stacking problem
+
+ - Switch our libata SAT over to using the WRITE SAME limits
+
+ - UNMAP alignment needs to be converted to bytes
+
+ - Only report alignment and zeroes_data if the device supports discard
+
+Reported-by: Lukas Czerner <lczerner@redhat.com>
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
+
+diff --git a/Documentation/ABI/testing/sysfs-block b/Documentation/ABI/testing/sysfs-block
+index 4873c75..c1eb41c 100644
+--- a/Documentation/ABI/testing/sysfs-block
++++ b/Documentation/ABI/testing/sysfs-block
+@@ -142,3 +142,67 @@ Description:
+ 		with the previous I/O request are enabled. When set to 2,
+ 		all merge tries are disabled. The default value is 0 -
+ 		which enables all types of merge tries.
++
++What:		/sys/block/<disk>/discard_alignment
++Date:		May 2011
++Contact:	Martin K. Petersen <martin.petersen@oracle.com>
++Description:
++		Devices that support discard functionality may
++		internally allocate space in units that are bigger than
++		the exported logical block size. The discard_alignment
++		parameter indicates how many bytes the beginning of the
++		device is offset from the internal allocation unit's
++		natural alignment.
++
++What:		/sys/block/<disk>/<partition>/discard_alignment
++Date:		May 2011
++Contact:	Martin K. Petersen <martin.petersen@oracle.com>
++Description:
++		Devices that support discard functionality may
++		internally allocate space in units that are bigger than
++		the exported logical block size. The discard_alignment
++		parameter indicates how many bytes the beginning of the
++		partition is offset from the internal allocation unit's
++		natural alignment.
++
++What:		/sys/block/<disk>/queue/discard_granularity
++Date:		May 2011
++Contact:	Martin K. Petersen <martin.petersen@oracle.com>
++Description:
++		Devices that support discard functionality may
++		internally allocate space using units that are bigger
++		than the logical block size. The discard_granularity
++		parameter indicates the size of the internal allocation
++		unit in bytes if reported by the device. Otherwise the
++		discard_granularity will be set to match the device's
++		physical block size. A discard_granularity of 0 means
++		that the device does not support discard functionality.
++
++What:		/sys/block/<disk>/queue/discard_max_bytes
++Date:		May 2011
++Contact:	Martin K. Petersen <martin.petersen@oracle.com>
++Description:
++		Devices that support discard functionality may have
++		internal limits on the number of bytes that can be
++		trimmed or unmapped in a single operation. Some storage
++		protocols also have inherent limits on the number of
++		blocks that can be described in a single command. The
++		discard_max_bytes parameter is set by the device driver
++		to the maximum number of bytes that can be discarded in
++		a single operation. Discard requests issued to the
++		device must not exceed this limit. A discard_max_bytes
++		value of 0 means that the device does not support
++		discard functionality.
++
++What:		/sys/block/<disk>/queue/discard_zeroes_data
++Date:		May 2011
++Contact:	Martin K. Petersen <martin.petersen@oracle.com>
++Description:
++		Devices that support discard functionality may return
++		stale or random data when a previously discarded block
++		is read back. This can cause problems if the filesystem
++		expects discarded blocks to be explicitly cleared. If a
++		device reports that it deterministically returns zeroes
++		when a discarded area is read the discard_zeroes_data
++		parameter will be set to one. Otherwise it will be 0 and
++		the result of reading a discarded area is undefined.
+diff --git a/block/blk-settings.c b/block/blk-settings.c
+index 1fa7692..42d3bf5 100644
+--- a/block/blk-settings.c
++++ b/block/blk-settings.c
+@@ -120,7 +120,7 @@ void blk_set_default_limits(struct queue_limits *lim)
+ 	lim->discard_granularity = 0;
+ 	lim->discard_alignment = 0;
+ 	lim->discard_misaligned = 0;
+-	lim->discard_zeroes_data = -1;
++	lim->discard_zeroes_data = 1;
+ 	lim->logical_block_size = lim->physical_block_size = lim->io_min = 512;
+ 	lim->bounce_pfn = (unsigned long)(BLK_BOUNCE_ANY >> PAGE_SHIFT);
+ 	lim->alignment_offset = 0;
+@@ -166,6 +166,7 @@ void blk_queue_make_request(struct request_queue *q, make_request_fn *mfn)
+ 
+ 	blk_set_default_limits(&q->limits);
+ 	blk_queue_max_hw_sectors(q, BLK_SAFE_MAX_SECTORS);
++	q->limits.discard_zeroes_data = 0;
+ 
+ 	/*
+ 	 * by default assume old behaviour and bounce for any highmem page
+diff --git a/drivers/ata/libata-scsi.c b/drivers/ata/libata-scsi.c
+index e2f57e9e..30ea95f 100644
+--- a/drivers/ata/libata-scsi.c
++++ b/drivers/ata/libata-scsi.c
+@@ -2138,7 +2138,7 @@ static unsigned int ata_scsiop_inq_b0(struct ata_scsi_args *args, u8 *rbuf)
+ 	 * with the unmap bit set.
+ 	 */
+ 	if (ata_id_has_trim(args->id)) {
+-		put_unaligned_be32(65535 * 512 / 8, &rbuf[20]);
++		put_unaligned_be64(65535 * 512 / 8, &rbuf[36]);
+ 		put_unaligned_be32(1, &rbuf[28]);
+ 	}
+ 
+diff --git a/drivers/scsi/sd.c b/drivers/scsi/sd.c
+index bd0806e..cc081dd 100644
+--- a/drivers/scsi/sd.c
++++ b/drivers/scsi/sd.c
+@@ -490,7 +490,8 @@ static void sd_config_discard(struct scsi_disk *sdkp, unsigned int mode)
+ 	unsigned int max_blocks = 0;
+ 
+ 	q->limits.discard_zeroes_data = sdkp->lbprz;
+-	q->limits.discard_alignment = sdkp->unmap_alignment;
++	q->limits.discard_alignment = sdkp->unmap_alignment *
++		(logical_block_size >> 9);
+ 	q->limits.discard_granularity =
+ 		max(sdkp->physical_block_size,
+ 		    sdkp->unmap_granularity * logical_block_size);
+diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+index 2ad95fa..1416e3c 100644
+--- a/include/linux/blkdev.h
++++ b/include/linux/blkdev.h
+@@ -257,7 +257,7 @@ struct queue_limits {
+ 	unsigned char		misaligned;
+ 	unsigned char		discard_misaligned;
+ 	unsigned char		cluster;
+-	signed char		discard_zeroes_data;
++	unsigned char		discard_zeroes_data;
+ };
+ 
+ struct request_queue
+@@ -1066,13 +1066,16 @@ static inline int queue_limit_discard_alignment(struct queue_limits *lim, sector
+ {
+ 	unsigned int alignment = (sector << 9) & (lim->discard_granularity - 1);
+ 
++	if (!lim->max_discard_sectors)
++		return 0;
++
+ 	return (lim->discard_granularity + lim->discard_alignment - alignment)
+ 		& (lim->discard_granularity - 1);
+ }
+ 
+ static inline unsigned int queue_discard_zeroes_data(struct request_queue *q)
+ {
+-	if (q->limits.discard_zeroes_data == 1)
++	if (q->limits.max_discard_sectors && q->limits.discard_zeroes_data == 1)
+ 		return 1;
+ 
+ 	return 0;
