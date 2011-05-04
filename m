@@ -1,73 +1,116 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/2] jbd: fix fsync() tid wraparound bug
-Date: Wed, 4 May 2011 23:55:12 +0200
-Message-ID: <20110504215512.GJ6968@quack.suse.cz>
-References: <20110425231454.GB9486@thunk.org>
- <1303777411-1316-2-git-send-email-tytso@mit.edu>
- <20110430171711.GA2819@thunk.org>
- <20110502150758.GH4556@quack.suse.cz>
- <20110502182945.GG2819@thunk.org>
- <20110502190441.GK4556@quack.suse.cz>
- <20110502213113.GI2819@thunk.org>
- <BCB84D936723884B91E4CC5CA0A7C54AA4F95A9F32@EMEADALEXMB1.corp.nai.org>
+Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
+ to a deadlock
+Date: Thu, 5 May 2011 00:48:24 +0200
+Message-ID: <20110504224824.GO6968@quack.suse.cz>
+References: <4D9C18DF.90803@jp.fujitsu.com>
+ <20110406174617.GC28689@quack.suse.cz>
+ <4DA84A7B.3040403@jp.fujitsu.com>
+ <20110415171310.GB5432@quack.suse.cz>
+ <4DABFEBD.7030102@jp.fujitsu.com>
+ <4DBFE09E.5070805@canonical.com>
+ <20110503151948.GB6009@quack.suse.cz>
+ <4DC14201.6090009@canonical.com>
+ <20110504191912.GB6968@quack.suse.cz>
+ <4DC1C67B.3030801@canonical.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, jack@suse.cz, linux-ext4@vger.kernel.org
-To: Martin_Zielinski@McAfee.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:37021 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753673Ab1EDVzO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 May 2011 17:55:14 -0400
+Cc: Jan Kara <jack@suse.cz>,
+	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
+	Ted Ts'o <tytso@mit.edu>,
+	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	sandeen@redhat.com
+To: Surbhi Palande <surbhi.palande@canonical.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <BCB84D936723884B91E4CC5CA0A7C54AA4F95A9F32@EMEADALEXMB1.corp.nai.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <4DC1C67B.3030801@canonical.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed 04-05-11 09:21:04, Martin_Zielinski@McAfee.com wrote:
-> Here's an update.
-> In my first post I was not aware of the implementation of tid_gt.
-> I agree that 2 and a half billion commits on an SD card are - hmph -
-> unlikely
-  <snip>
-
-> gdb) p *journal
-> $4 = {j_flags = 16, j_errno = 0, j_sb_buffer = 0xffff88031f156dc8, 
->   j_superblock = 0xffff88031f876000, j_format_version = 2, j_state_lock = {raw_lock = {
->       slock = 2874125135}}, j_barrier_count = 0, j_barrier = {count = {counter = 1}, wait_lock = {
->       raw_lock = {slock = 0}}, wait_list = {next = 0xffff88031e6c4638, 
->       prev = 0xffff88031e6c4638}, owner = 0x0}, j_running_transaction = 0x0, 
->   j_committing_transaction = 0x0, j_checkpoint_transactions = 0xffff88031bd16b40,
-> ...
-> j_tail_sequence = 2288011385, j_transaction_sequence = 2288014068, 
->   j_commit_sequence = 2288014067, j_commit_request = 140530417,
-> ...
->   j_wbuf = 0xffff88031de98000, j_wbufsize = 512, j_last_sync_writer = 4568, 
->   j_average_commit_time = 69247, j_private = 0xffff88031fd49400}
-  <snip>
-
-> (gdb) p ((struct ext3_inode_info*)(0xffff88031f0c0758-0xd0))->i_sync_tid
-> $5 = {counter = -2006954411}
-> (gdb) p ((struct ext3_inode_info*)(0xffff88031f0c0758-0xd0))->i_datasync_tid
-> $3 = {counter = 140530417}
+On Thu 05-05-11 00:34:51, Surbhi Palande wrote:
+> On 05/04/2011 10:19 PM, Jan Kara wrote:
+> >On Wed 04-05-11 15:09:37, Surbhi Palande wrote:
+> >>On 05/03/2011 06:19 PM, Jan Kara wrote:
+> >>>On Tue 03-05-11 14:01:50, Surbhi Palande wrote:
+> >>>>What happens in the case as follows:
+> >>>>
+> >>>>Task 1: Mmapped writes
+> >>>>t1)ext4_page_mkwrite()
+> >>>>   t2) ext4_write_begin() (FS is thawed so we proceed)
+> >>>>   t3) ext4_write_end() (journal is stopped now)
+> >>>>-----Pre-empted-----
+> >>>>
+> >>>>
+> >>>>Task 2: Freeze Task
+> >>>>t4) freezes the super block...
+> >>>>...(continues)....
+> >>>>tn) the page cache is clean and the F.S is frozen. Freeze has
+> >>>>completed execution.
+> >>>>
+> >>>>Task 1: Mmapped writes
+> >>>>tn+1) ext4_page_mkwrite() returns 0.
+> >>>>tn+2) __do_fault() gets control, code gets executed.
+> >>>>tn+3) _do_fault() marks the page dirty if the intent is to write to
+> >>>>a file based page which faulted.
+> >>>>
+> >>>>So you end up dirtying the page cache when the F.S is frozen? No?
+> >>>   You are right ext4_page_mkrite() as currently implemented has problems.
+> >>>You have to return the page locked (and check for frozen fs with page lock
+> >>>held) to avoid races.
+> >>>
+> >>>If you check for frozen fs with page lock held, you are guaranteed that
+> >>>freezing code must wait for the page to get unlocked before proceeding. And
+> >>>before the page is unlocked, it is marked dirty by the pagefault code which
+> >>>makes freezing code write the page and writeprotect it again. So everything
+> >>>will be safe.
+> >>For the locked page to be a part of the freeze initiated sync,
+> >>should its owner inode not be dirtied? The page fault handler
+> >>dirties the page, but who ensures that the inode is dirtied at this
+> >>point?
+> Well, I mean it as follows:
 > 
-> > j_commit_request = 140530417
+> Doesn't the writeback code (invoked via sync_filesystem(sb)) write
+> all the dirty pages of all the _dirty_ inodes of a superblock?
 > 
-> So it *is* a datasync from sqlite. And your fix will catch it. 
-> I still don't understand, where this number comes from. 
-  Ok, so i_datasync_tid got corrupted. But look at the numbers in hex:
-i_datasync_tid==140530417==0x86052F1
-and
-i_commit_sequence==2288014067==0x886052F3
+> So in the window from the point where ext4_page_mkwrite returns to
+> __do_fault() _till_ you mark the inode dirty (in
+> __mark_inode_dirty()), you can have a race with freeze i.e if freeze
+> happens meanwhile, then the sync initiated by freeze will not
+> consider this locked page as the owner inode is _clean_ (or not
+> dirtied yet) at that point?
+  Ah, I see. That's actually a good point! Thanks for persistence. So we
+should also dirty the page before checking for frozen fs.
 
-So it's a single bit error - we lost the highest bit of the number. Are you
-getting the cores from different machines? Otherwise I'd suspect the HW.
-If it's not HW I'm at loss what can cause it... You can try moving
-i_datasync_tid to a different place in struct ext3_inode_info so that we
-can rule out / confirm whether some code external to i_datasync_tid
-handling is just causing random memory corruption...
+> Key: tx: time at unit x
+> 
+> P1: mmapped writes
+> t1) __do_page_fault()
+>    t2) ext4_page_mkwrite()
+>       // owner inode of the page is in _clean_ state - not yet dirtied
+>    --- pre-empted---
+> 
+> P2: Freeze_super
+> tn) freeze_super gets control
+> freezes the F.S, skips the owner inode as it is in the clean state.
+> syncs all the other dirty inodes. page cache is now clean.
+> 
+> 
+> P1: mmapped writes (resume)
+> tn+x)__do_page_fault() gets control back:
+>    tn+x+1) set_page_dirty()
+>      tn+x+2) __set_page_dirty_buffers()
+>         tn+x+3) __set_page_dirty()
+>  	   tn+x+4) radix_tree_tag_set(page, PAGECACHE_TAG_DIRTY)
+> 
+> So don't we end up dirtying the page cache when the F.S is frozen?
+> 
+> Again, apologies if I understood the writeback code or something else wrong!
+  No, you understood it right. Just your previous email was too generic so
+I have not thought about this particular race.
 
-								Honza
+									Honza
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
