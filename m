@@ -1,169 +1,127 @@
-From: Surbhi Palande <surbhi.palande@canonical.com>
-Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
- to a deadlock
-Date: Wed, 04 May 2011 15:09:37 +0300
-Message-ID: <4DC14201.6090009@canonical.com>
-References: <4D9AEE28.4000003@jp.fujitsu.com> <20110405225428.GD8531@quack.suse.cz> <4D9BF57A.6030705@jp.fujitsu.com> <20110406055708.GB23285@quack.suse.cz> <4D9C18DF.90803@jp.fujitsu.com> <20110406174617.GC28689@quack.suse.cz> <4DA84A7B.3040403@jp.fujitsu.com> <20110415171310.GB5432@quack.suse.cz> <4DABFEBD.7030102@jp.fujitsu.com> <4DBFE09E.5070805@canonical.com> <20110503151948.GB6009@quack.suse.cz>
-Reply-To: surbhi.palande@canonical.com
+From: <Martin_Zielinski@McAfee.com>
+Subject: RE: [PATCH 2/2] jbd: fix fsync() tid wraparound bug
+Date: Wed, 4 May 2011 09:21:04 -0500
+Message-ID: <BCB84D936723884B91E4CC5CA0A7C54AA4F95A9F32@EMEADALEXMB1.corp.nai.org>
+References: <20110425231454.GB9486@thunk.org>
+ <1303777411-1316-2-git-send-email-tytso@mit.edu>
+ <20110430171711.GA2819@thunk.org> <20110502150758.GH4556@quack.suse.cz>
+ <20110502182945.GG2819@thunk.org> <20110502190441.GK4556@quack.suse.cz>
+ <20110502213113.GI2819@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
-	Ted Ts'o <tytso@mit.edu>,
-	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	sandeen@redhat.com
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset="Windows-1252"
+Content-Transfer-Encoding: 8BIT
+Cc: <linux-ext4@vger.kernel.org>
+To: <tytso@mit.edu>, <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from adelie.canonical.com ([91.189.90.139]:43692 "EHLO
-	adelie.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754529Ab1EDMJt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 May 2011 08:09:49 -0400
-In-Reply-To: <20110503151948.GB6009@quack.suse.cz>
+Received: from dalsmrelay2.nai.com ([205.227.136.216]:43869 "EHLO
+	dalsmrelay2.nai.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753715Ab1EDOWQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 May 2011 10:22:16 -0400
+In-Reply-To: <20110502213113.GI2819@thunk.org>
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/03/2011 06:19 PM, Jan Kara wrote:
-> On Tue 03-05-11 14:01:50, Surbhi Palande wrote:
->> On 04/18/2011 12:05 PM, Toshiyuki Okajima wrote:
->>> (2011/04/16 2:13), Jan Kara wrote:
->>>> Hello,
->>>>
->>>> On Fri 15-04-11 22:39:07, Toshiyuki Okajima wrote:
->>>>>> For ext3 or ext4 without delayed allocation we block inside writepage()
->>>>>> function. But as I wrote to Dave Chinner, ->page_mkwrite() should
->>>>>> probably
->>>>>> get modified to block while minor-faulting the page on frozen fs
->>>>>> because
->>>>>> when blocks are already allocated we may skip starting a transaction
->>>>>> and so
->>>>>> we could possibly modify the filesystem.
->>>>> OK. I think ->page_mkwrite() should also block writing the
->>>>> minor-faulting pages.
->>>>>
->>>>> (minor-pagefault)
->>>>> ->  do_wp_page()
->>>>> ->  page_mkwrite(= ext4_mkwrite())
->>>>> =>  BLOCK!
->>>>>
->>>>> (major-pagefault)
->>>>> ->  do_liner_fault()
->>>>> ->  page_mkwrite(= ext4_mkwrite())
->>>>> =>  BLOCK!
->>>>>
->>>>>>
->>>>>>>>> Mizuma-san's reproducer also writes the data which maps to the
->>>>>>>>> file (mmap).
->>>>>>>>> The original problem happens after the fsfreeze operation is done.
->>>>>>>>> I understand the normal write operation (not mmap) can be blocked
->>>>>>>>> while
->>>>>>>>> fsfreezing. So, I guess we don't always block all the write
->>>>>>>>> operation
->>>>>>>>> while fsfreezing.
->>>>>>>> Technically speaking, we block all the transaction starts which
->>>>>>>> means we
->>>>>>>> end up blocking all the writes from going to disk. But that does
->>>>>>>> not mean
->>>>>>>> we block all the writes from going to in-memory cache - as you
->>>>>>>> properly
->>>>>>>> note the mmap case is one of such exceptions.
->>>>>>> Hm, I also think we can allow the writes to in-memory cache but we
->>>>>>> can't allow
->>>>>>> the writes to disk while fsfreezing. I am considering that mmap
->>>>>>> path can
->>>>>>> write to disk while fsfreezing because this deadlock problem
->>>>>>> happens after
->>>>>>> fsfreeze operation is done...
->>>>>> I'm sorry I don't understand now - are you speaking about the case
->>>>>> above
->>>>>> when writepage() does not wait for filesystem being frozen or something
->>>>>> else?
->>>>> Sorry, I didn't understand around the page fault path.
->>>>> So, I had read the kernel source code around it, then I maybe
->>>>> understand...
->>>>>
->>>>> I worry whether we can update the file data in mmap case while
->>>>> fsfreezing.
->>>>> Of course, I understand that we can write to in-memory cache, and it
->>>>> is not a
->>>>> problem. However, if we can write to disk while fsfreezing, it is a
->>>>> problem.
->>>>> So, I summarize the cases whether we can write to disk or not.
->>>>>
->>>>> --------------------------------------------------------------------------
->>>>>
->>>>> Cases (Whether we can write the data mmapped to the file on the disk
->>>>> while fsfreezing)
->>>>>
->>>>> [1] One of the page which has been mmapped is not bound. And
->>>>> the page is not allocated yet. (major fault?)
->>>>>
->>>>> (1) user dirtys a page
->>>>> (2) a page fault occurs (do_page_fault)
->>>>> (3) __do_falut is called.
->>>>> (4) ext4_page_mkwrite is called
->>>>> (5) ext4_write_begin is called
->>>>> (6) ext4_journal_start_sb =>  We can STOP!
->>>>>
->>>>> [2] One of the page which has been mmapped is not bound. But
->>>>> the page is already allocated, and the buffer_heads of the page
->>>>> are not mapped (BH_Mapped). (minor fault?)
->>>>>
->>>>> (1) user dirtys a page
->>>>> (2) a page fault occurs (do_page_fault)
->>>>> (3) do_wp_page is called.
->>>>> (4) ext4_page_mkwrite is called
->>>>> (5) ext4_write_begin is called
->>>>> (6) ext4_journal_start_sb =>  We can STOP!
->>
->> What happens in the case as follows:
->>
->> Task 1: Mmapped writes
->> t1)ext4_page_mkwrite()
->>    t2) ext4_write_begin() (FS is thawed so we proceed)
->>    t3) ext4_write_end() (journal is stopped now)
->> -----Pre-empted-----
->>
->>
->> Task 2: Freeze Task
->> t4) freezes the super block...
->> ...(continues)....
->> tn) the page cache is clean and the F.S is frozen. Freeze has
->> completed execution.
->>
->> Task 1: Mmapped writes
->> tn+1) ext4_page_mkwrite() returns 0.
->> tn+2) __do_fault() gets control, code gets executed.
->> tn+3) _do_fault() marks the page dirty if the intent is to write to
->> a file based page which faulted.
->>
->> So you end up dirtying the page cache when the F.S is frozen? No?
->    You are right ext4_page_mkrite() as currently implemented has problems.
-> You have to return the page locked (and check for frozen fs with page lock
-> held) to avoid races.
->
-> If you check for frozen fs with page lock held, you are guaranteed that
-> freezing code must wait for the page to get unlocked before proceeding. And
-> before the page is unlocked, it is marked dirty by the pagefault code which
-> makes freezing code write the page and writeprotect it again. So everything
-> will be safe.
-For the locked page to be a part of the freeze initiated sync, should 
-its owner inode not be dirtied? The page fault handler dirties the page, 
-but who ensures that the inode is dirtied at this point?
+Here's an update.
+In my first post I was not aware of the implementation of tid_gt.
+I agree that 2 and a half billion commits on an SD card are - hmph - unlikely
 
-Thanks!
+The kernels with the patch is not yet installed because we recently provided a kernel with a panic() instead of J_ASSERT and a crashkernel. 
+We now have 5 cores all showing the same behavior in j_commit_sequence vs. j_commit_request.
 
-Warm Regards,
-Surbhi.
+What the cores show (snipped):
+(gdb) bt
+#0  crash_setup_regs (regs=0x0) at /usr/src/debug/linux-2.6.32/arch/x86/include/asm/kexec.h:127
+#1  crash_kexec (regs=0x0) at kernel/kexec.c:1076
+#2  0xffffffff81048872 in panic (fmt=0xffffffff818bdb95 "running transaction is NULL")
+    at kernel/panic.c:82
+#3  0xffffffff81159b79 in journal_commit_transaction (journal=0xffff88031e6c4600)
+    at fs/jbd/commit.c:347
+#4  0xffffffff8115de49 in kjournald (arg=<value optimized out>) at fs/jbd/journal.c:150
+#5  0xffffffff8105fccf in kthread (_create=<value optimized out>) at kernel/kthread.c:78
+#6  0xffffffff8100c9da in ?? ()
+#7  0x0000000000000000 in ?? ()
 
+gdb) p *journal
+$4 = {j_flags = 16, j_errno = 0, j_sb_buffer = 0xffff88031f156dc8, 
+  j_superblock = 0xffff88031f876000, j_format_version = 2, j_state_lock = {raw_lock = {
+      slock = 2874125135}}, j_barrier_count = 0, j_barrier = {count = {counter = 1}, wait_lock = {
+      raw_lock = {slock = 0}}, wait_list = {next = 0xffff88031e6c4638, 
+      prev = 0xffff88031e6c4638}, owner = 0x0}, j_running_transaction = 0x0, 
+  j_committing_transaction = 0x0, j_checkpoint_transactions = 0xffff88031bd16b40,
+...
+j_tail_sequence = 2288011385, j_transaction_sequence = 2288014068, 
+  j_commit_sequence = 2288014067, j_commit_request = 140530417,
+...
+  j_wbuf = 0xffff88031de98000, j_wbufsize = 512, j_last_sync_writer = 4568, 
+  j_average_commit_time = 69247, j_private = 0xffff88031fd49400}
 
+Means that j_commit_request would be considered to be greater than j_commit_sequence and trigger a commit.
 
->
-> Doing this cleanly requires some cleanups to ext4_page_mkwrite() (but
-> stable pages during writeback need that as well so it's a reasonable thing
-> to do). So something like attached patches should do what's needed - it's
-> lightly tested with fsx in delalloc, nodelalloc, and data=journal configs.
->
-> 								Honza
+The j_last_sync_writer has a promising backtrace:
 
+crash> bt 4568
+PID: 4568   TASK: ffff8802c38ce300  CPU: 8   COMMAND: "core"
+ #0 [ffff8802c38d1da8] schedule at ffffffff8159f5e8
+ #1 [ffff8802c38d1e50] log_wait_commit at ffffffff8115d4a1
+ #2 [ffff8802c38d1ec0] ext3_sync_file at ffffffff8113c589
+ #3 [ffff8802c38d1ef0] vfs_fsync_range at ffffffff81105588
+ #4 [ffff8802c38d1f30] vfs_fsync at ffffffff81105612
+ #5 [ffff8802c38d1f40] do_fsync at ffffffff81105646
+ #6 [ffff8802c38d1f70] sys_fdatasync at ffffffff8110566a
+ #7 [ffff8802c38d1f80] system_call_fastpath at ffffffff8100ba2b
+    RIP: 00007f5be9bd6587  RSP: 0000000047386f38  RFLAGS: 00010202
+    RAX: 000000000000004b  RBX: ffffffff8100ba2b  RCX: 0000000000000000
+    RDX: 0000000000000000  RSI: 0000000000000000  RDI: 00000000000000f7
+    RBP: 00007f5aecf23cc8   R8: 00007f5bc54e56a0   R9: 00000000000011d8
+    R10: 0000000001c01800  R11: 0000000000000202  R12: ffffffff8110566a
+    R13: ffff8802c38d1f78  R14: 00007f5aecf23b98  R15: 0000000000000000
+    ORIG_RAX: 000000000000004b  CS: 0033  SS: 002b
+
+To make a long story short: The inode did not carry the j_commit_request tid.
+
+But:
+crash> foreach files
+...
+247 ffff88031e65bb00 ffff88026c3ea540 ffff88031f0c0758 REG  /opt/data/users/user.db
+...
+(this is an sqlite database)
+
+And:
+(gdb) p ((struct ext3_inode_info*)(0xffff88031f0c0758-0xd0))->i_sync_tid
+$5 = {counter = -2006954411}
+(gdb) p ((struct ext3_inode_info*)(0xffff88031f0c0758-0xd0))->i_datasync_tid
+$3 = {counter = 140530417}
+
+> j_commit_request = 140530417
+
+So it *is* a datasync from sqlite. And your fix will catch it. 
+I still don't understand, where this number comes from. 
+
+Unfortunately I cannot provide the core files as they are coming from customers. 
+But if there is anything I can do to provide further information, please let me know.
+
+Cheers,
+Martin
+
+-----Original Message-----
+From: Ted Ts'o [mailto:tytso@mit.edu] 
+Sent: Montag, 2. Mai 2011 23:31
+To: Jan Kara
+Cc: Ext4 Developers List; Zielinski, Martin
+Subject: Re: [PATCH 2/2] jbd: fix fsync() tid wraparound bug
+
+On Mon, May 02, 2011 at 09:04:41PM +0200, Jan Kara wrote:
+>   Ah, OK. I didn't know it's so many reports. Indeed it looks like there's
+> another bug. But then the WARN you have added should tell us more about
+> who's causing the problem, right?
+
+That's the hope.  I'm not sure WARNs get logged in Android's reporting
+system.  I need to work the Android folks to figure this out.  Worst
+case I may have to turn the WARN into a BUG for them (although it may
+be tough to convince them to make such a change).  I'm hoping though
+that the debugging information from Martin's machines will also come
+through with some useful information that will allow us to root cause
+whatever is causing this to happen.
+
+							- Ted
