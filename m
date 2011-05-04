@@ -1,107 +1,156 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: your mail
-Date: Wed, 4 May 2011 21:24:36 +0200
-Message-ID: <20110504192436.GC6968@quack.suse.cz>
-References: <4DBFE09E.5070805@canonical.com>
- <1304428117-6195-1-git-send-email-surbhi.palande@canonical.com>
- <20110503134636.GA6009@quack.suse.cz>
- <4DC009A9.20308@canonical.com>
- <20110503153632.GC6009@quack.suse.cz>
- <4DC022B4.5030906@canonical.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 1/2] ext4: Use schedule_timeout_interruptible() for waiting
+ in lazyinit thread
+Date: Wed, 04 May 2011 16:13:30 -0500
+Message-ID: <4DC1C17A.8090703@redhat.com>
+References: <1304335365-13892-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, toshi.okajima@jp.fujitsu.com,
-	tytso@mit.edu, m.mizuma@jp.fujitsu.com, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	sandeen@redhat.com
-To: Surbhi Palande <surbhi.palande@canonical.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:32813 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:24796 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754492Ab1EDTYj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 May 2011 15:24:39 -0400
-Content-Disposition: inline
-In-Reply-To: <4DC022B4.5030906@canonical.com>
+	id S1753954Ab1EDVPK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 May 2011 17:15:10 -0400
+In-Reply-To: <1304335365-13892-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 03-05-11 18:43:48, Surbhi Palande wrote:
-> On 05/03/2011 06:36 PM, Jan Kara wrote:
-> >On Tue 03-05-11 16:56:57, Surbhi Palande wrote:
-> >>On 05/03/2011 04:46 PM, Jan Kara wrote:
-> >>>On Tue 03-05-11 16:08:36, Surbhi Palande wrote:
-> >>
-> >>Sorry for missing the subject line :(
-> >>>>On munmap() zap_pte_range() is called which dirties the PTE dirty pages as
-> >>>>Toshiyuki pointed out.
-> >>>>
-> >>>>zap_pte_range()
-> >>>>   mapping->a_ops->set_page_dirty (= ext4_journalled_set_page_dirty)
-> >>>>
-> >>>>So, I think that it is here that we should do the checking for a ext4 F.S
-> >>>>frozen state and also prevent a parallel ext4 F.S freeze from happening.
-> >>>>
-> >>>>Attaching a patch for initial review. Please do let me know your thoughts!
-> >>>   This is definitely the wrong place. ->set_page_dirty() callbacks are
-> >>>called with various locks held and the page need not be locked (thus
-> >>>dereferencing page->mapping is oopsable). Moreover this particular callback
-> >>>is called only in data=journal mode.
-> >>Ok! Thanks for that!
-> >>
-> >>>
-> >>>Believe me, the right place is page_mkwrite() - you have to catch the
-> >>>read-only =>   read-write page transition. Once the page is mapped
-> >>>read-write, you've already lost the race.
-> >>
-> >>My only point is:
-> >>1) something should prevent the freeze from happening. We cant
-> >>merely check the vfs_check_frozen()?
-> >   Yes, I agree - see my other email with patches.
-> >
-> >>And this should be done where the page is marked dirty.Also, I
-> >>thought that the page is marked read-write only in the page table in
-> >>the __do_page_fault()? i.e the zap_pte_range() marks them dirty in
-> >>the page cache? Is this understanding right?
-> >   The page can become dirty either because it was written via standard
-> >write - write_begin is responsible for reliable check here - or it was
-> >written via mmap - here we rely on page_mkwrite to do a reliable check -
-> >it is analogous to write_begin callback. There should be no other way
-> >to dirty a page.
-> >
-> >With dirty bits it is a bit complicated. We have two of them in fact. One
-> >in page table entry maintained by mmu and one in page structure maintained
-> >by kernel. Some functions (such as zap_pte_range()) copy the dirty bits
-> >from page table into struct page. This is a lazy process so page can in
-> >principle have new data without a dirty bit set in struct page because we
-> >have not yet copied the dirty bit from page table. Only at moments where it
-> >is important (like when we want to unmap the page, or throw away the page,
-> >or so), we make sure struct page and page table bits are in sync.
-> >
-> >Another subtle thing you need not be aware of it that when we clear page
-> >dirty bit, we also writeprotect the page. So we are guaranteed to get a
-> >page fault when the page is written to again.
-> >
-> >>IMHO, whatever code dirties the page in the page cache should call a
-> >>F.S specific function and let it _prevent_ a fsfreeze while the page
-> >>is getting dirtied, so that a freeze called after this point flushes
-> >>this page!
-> >   Agreed, that's what code in write_begin() and page_mkwrite() should
-> >achieve.
-> >								Honza
-> Thanks a lot for the wonderful explanation :)
+On 5/2/11 6:22 AM, Lukas Czerner wrote:
+> In order to make lazyinit eat approx. 10% of io bandwidth at max, we are
+> sleeping between zeroing each single inode table. For that purpose we
+> are using timer which wakes up thread when it expires. It is set via
+> add_timer() and this may cause troubles in the case that thread has been
+> woken up earlier and in next iteration we call add_timer() on still
+> running timer hence hitting BUG_ON in add_timer(). We could fix that by
+> using mod_timer() instead however we can use
+> schedule_timeout_interruptible() for waiting and hence simplifying
+> things a lot.
 > 
-> How about the revert : i.e calling  jbd2_journal_unlock_updates()
-> from ext4_unfreeze() instead of the ext4_freeze()? Do you agree to
-> that?
-  Sorry, I don't agree with revert. We could talk about changing
-jbd2_journal_unlock_updates() to not return with mutex held (and handle
-synchronization of locked journal operations differently) as an alternative
-to doing "freeze" reference counting. But returning with mutex held to user
-space is no-go. It will cause problems in lockdep, violates kernel locking
-rules, and generally is a bad programming ;).
+> This commit exchange the old "waiting mechanism" with simple
+> schedule_timeout_interruptible(), setting the time to sleep. Hence we do
+> not longer need li_wait_daemon waiting queue and others, so get rid of
+> it.
+> 
+> This solves Red Hat bug 699708.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> ---
+>  fs/ext4/ext4.h  |    4 ----
+>  fs/ext4/super.c |   26 +++-----------------------
+>  2 files changed, 3 insertions(+), 27 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 4daaf2b..1e37c09 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1590,12 +1590,8 @@ void ext4_get_group_no_and_offset(struct super_block *sb, ext4_fsblk_t blocknr,
+>   */
+>  struct ext4_lazy_init {
+>  	unsigned long		li_state;
+> -
+> -	wait_queue_head_t	li_wait_daemon;
+>  	wait_queue_head_t	li_wait_task;
+> -	struct timer_list	li_timer;
+>  	struct task_struct	*li_task;
+> -
+>  	struct list_head	li_request_list;
+>  	struct mutex		li_list_mtx;
+>  };
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 8553dfb..daf3300 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -2659,12 +2659,6 @@ static void print_daily_error_info(unsigned long arg)
+>  	mod_timer(&sbi->s_err_report, jiffies + 24*60*60*HZ);  /* Once a day */
+>  }
+>  
+> -static void ext4_lazyinode_timeout(unsigned long data)
+> -{
+> -	struct task_struct *p = (struct task_struct *)data;
+> -	wake_up_process(p);
+> -}
+> -
+>  /* Find next suitable group and run ext4_init_inode_table */
+>  static int ext4_run_li_request(struct ext4_li_request *elr)
+>  {
+> @@ -2712,7 +2706,7 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
+>  
+>  /*
+>   * Remove lr_request from the list_request and free the
+> - * request tructure. Should be called with li_list_mtx held
+> + * request structure. Should be called with li_list_mtx held
+>   */
+>  static void ext4_remove_li_request(struct ext4_li_request *elr)
+>  {
+> @@ -2757,13 +2751,9 @@ static int ext4_lazyinit_thread(void *arg)
+>  	struct list_head *pos, *n;
+>  	struct ext4_li_request *elr;
+>  	unsigned long next_wakeup;
+> -	DEFINE_WAIT(wait);
+>  
+>  	BUG_ON(NULL == eli);
+>  
+> -	eli->li_timer.data = (unsigned long)current;
+> -	eli->li_timer.function = ext4_lazyinode_timeout;
+> -
+>  	eli->li_task = current;
+>  	wake_up(&eli->li_wait_task);
+>  
+> @@ -2803,13 +2793,8 @@ cont_thread:
+>  			continue;
+>  		}
+>  
+> -		eli->li_timer.expires = next_wakeup;
+> -		add_timer(&eli->li_timer);
+> -		prepare_to_wait(&eli->li_wait_daemon, &wait,
+> -				TASK_INTERRUPTIBLE);
+> -		if (time_before(jiffies, next_wakeup))
+> -			schedule();
+> -		finish_wait(&eli->li_wait_daemon, &wait);
+> +		schedule_timeout_interruptible(next_wakeup - jiffies);
 
-								Honza
+Jeff asked whether this can wrap.  I think it can?
 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Do we need to do the trick of delta = (long)next_wakeup - (long)jiffies to make sure we don't schedule out forever if jiffies has wrapped and next_wakeup has not?  Or maybe I'm behind on my jiffy-math.... :(
+
+-Eric
+
+> +
+>  		if (kthread_should_stop()) {
+>  			ext4_clear_request_list();
+>  			goto exit_thread;
+> @@ -2833,12 +2818,10 @@ exit_thread:
+>  		goto cont_thread;
+>  	}
+>  	mutex_unlock(&eli->li_list_mtx);
+> -	del_timer_sync(&ext4_li_info->li_timer);
+>  	eli->li_task = NULL;
+>  	wake_up(&eli->li_wait_task);
+>  
+>  	kfree(ext4_li_info);
+> -	ext4_lazyinit_task = NULL;
+>  	ext4_li_info = NULL;
+>  	mutex_unlock(&ext4_li_mtx);
+>  
+> @@ -2866,7 +2849,6 @@ static int ext4_run_lazyinit_thread(void)
+>  	if (IS_ERR(ext4_lazyinit_task)) {
+>  		int err = PTR_ERR(ext4_lazyinit_task);
+>  		ext4_clear_request_list();
+> -		del_timer_sync(&ext4_li_info->li_timer);
+>  		kfree(ext4_li_info);
+>  		ext4_li_info = NULL;
+>  		printk(KERN_CRIT "EXT4: error %d creating inode table "
+> @@ -2915,9 +2897,7 @@ static int ext4_li_info_new(void)
+>  	INIT_LIST_HEAD(&eli->li_request_list);
+>  	mutex_init(&eli->li_list_mtx);
+>  
+> -	init_waitqueue_head(&eli->li_wait_daemon);
+>  	init_waitqueue_head(&eli->li_wait_task);
+> -	init_timer(&eli->li_timer);
+>  	eli->li_state |= EXT4_LAZYINIT_QUIT;
+>  
+>  	ext4_li_info = eli;
+
