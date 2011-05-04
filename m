@@ -1,173 +1,107 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
- to a deadlock
-Date: Wed, 4 May 2011 21:19:12 +0200
-Message-ID: <20110504191912.GB6968@quack.suse.cz>
-References: <4D9BF57A.6030705@jp.fujitsu.com>
- <20110406055708.GB23285@quack.suse.cz>
- <4D9C18DF.90803@jp.fujitsu.com>
- <20110406174617.GC28689@quack.suse.cz>
- <4DA84A7B.3040403@jp.fujitsu.com>
- <20110415171310.GB5432@quack.suse.cz>
- <4DABFEBD.7030102@jp.fujitsu.com>
- <4DBFE09E.5070805@canonical.com>
- <20110503151948.GB6009@quack.suse.cz>
- <4DC14201.6090009@canonical.com>
+Subject: Re: your mail
+Date: Wed, 4 May 2011 21:24:36 +0200
+Message-ID: <20110504192436.GC6968@quack.suse.cz>
+References: <4DBFE09E.5070805@canonical.com>
+ <1304428117-6195-1-git-send-email-surbhi.palande@canonical.com>
+ <20110503134636.GA6009@quack.suse.cz>
+ <4DC009A9.20308@canonical.com>
+ <20110503153632.GC6009@quack.suse.cz>
+ <4DC022B4.5030906@canonical.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
-	Ted Ts'o <tytso@mit.edu>,
-	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
+Cc: Jan Kara <jack@suse.cz>, toshi.okajima@jp.fujitsu.com,
+	tytso@mit.edu, m.mizuma@jp.fujitsu.com, adilger.kernel@dilger.ca,
 	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	sandeen@redhat.com
 To: Surbhi Palande <surbhi.palande@canonical.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:60889 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:32813 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754647Ab1EDTTQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 May 2011 15:19:16 -0400
+	id S1754492Ab1EDTYj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 May 2011 15:24:39 -0400
 Content-Disposition: inline
-In-Reply-To: <4DC14201.6090009@canonical.com>
+In-Reply-To: <4DC022B4.5030906@canonical.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 04-05-11 15:09:37, Surbhi Palande wrote:
-> On 05/03/2011 06:19 PM, Jan Kara wrote:
-> >On Tue 03-05-11 14:01:50, Surbhi Palande wrote:
-> >>On 04/18/2011 12:05 PM, Toshiyuki Okajima wrote:
-> >>>(2011/04/16 2:13), Jan Kara wrote:
-> >>>>Hello,
+On Tue 03-05-11 18:43:48, Surbhi Palande wrote:
+> On 05/03/2011 06:36 PM, Jan Kara wrote:
+> >On Tue 03-05-11 16:56:57, Surbhi Palande wrote:
+> >>On 05/03/2011 04:46 PM, Jan Kara wrote:
+> >>>On Tue 03-05-11 16:08:36, Surbhi Palande wrote:
+> >>
+> >>Sorry for missing the subject line :(
+> >>>>On munmap() zap_pte_range() is called which dirties the PTE dirty pages as
+> >>>>Toshiyuki pointed out.
 > >>>>
-> >>>>On Fri 15-04-11 22:39:07, Toshiyuki Okajima wrote:
-> >>>>>>For ext3 or ext4 without delayed allocation we block inside writepage()
-> >>>>>>function. But as I wrote to Dave Chinner, ->page_mkwrite() should
-> >>>>>>probably
-> >>>>>>get modified to block while minor-faulting the page on frozen fs
-> >>>>>>because
-> >>>>>>when blocks are already allocated we may skip starting a transaction
-> >>>>>>and so
-> >>>>>>we could possibly modify the filesystem.
-> >>>>>OK. I think ->page_mkwrite() should also block writing the
-> >>>>>minor-faulting pages.
-> >>>>>
-> >>>>>(minor-pagefault)
-> >>>>>->  do_wp_page()
-> >>>>>->  page_mkwrite(= ext4_mkwrite())
-> >>>>>=>  BLOCK!
-> >>>>>
-> >>>>>(major-pagefault)
-> >>>>>->  do_liner_fault()
-> >>>>>->  page_mkwrite(= ext4_mkwrite())
-> >>>>>=>  BLOCK!
-> >>>>>
-> >>>>>>
-> >>>>>>>>>Mizuma-san's reproducer also writes the data which maps to the
-> >>>>>>>>>file (mmap).
-> >>>>>>>>>The original problem happens after the fsfreeze operation is done.
-> >>>>>>>>>I understand the normal write operation (not mmap) can be blocked
-> >>>>>>>>>while
-> >>>>>>>>>fsfreezing. So, I guess we don't always block all the write
-> >>>>>>>>>operation
-> >>>>>>>>>while fsfreezing.
-> >>>>>>>>Technically speaking, we block all the transaction starts which
-> >>>>>>>>means we
-> >>>>>>>>end up blocking all the writes from going to disk. But that does
-> >>>>>>>>not mean
-> >>>>>>>>we block all the writes from going to in-memory cache - as you
-> >>>>>>>>properly
-> >>>>>>>>note the mmap case is one of such exceptions.
-> >>>>>>>Hm, I also think we can allow the writes to in-memory cache but we
-> >>>>>>>can't allow
-> >>>>>>>the writes to disk while fsfreezing. I am considering that mmap
-> >>>>>>>path can
-> >>>>>>>write to disk while fsfreezing because this deadlock problem
-> >>>>>>>happens after
-> >>>>>>>fsfreeze operation is done...
-> >>>>>>I'm sorry I don't understand now - are you speaking about the case
-> >>>>>>above
-> >>>>>>when writepage() does not wait for filesystem being frozen or something
-> >>>>>>else?
-> >>>>>Sorry, I didn't understand around the page fault path.
-> >>>>>So, I had read the kernel source code around it, then I maybe
-> >>>>>understand...
-> >>>>>
-> >>>>>I worry whether we can update the file data in mmap case while
-> >>>>>fsfreezing.
-> >>>>>Of course, I understand that we can write to in-memory cache, and it
-> >>>>>is not a
-> >>>>>problem. However, if we can write to disk while fsfreezing, it is a
-> >>>>>problem.
-> >>>>>So, I summarize the cases whether we can write to disk or not.
-> >>>>>
-> >>>>>--------------------------------------------------------------------------
-> >>>>>
-> >>>>>Cases (Whether we can write the data mmapped to the file on the disk
-> >>>>>while fsfreezing)
-> >>>>>
-> >>>>>[1] One of the page which has been mmapped is not bound. And
-> >>>>>the page is not allocated yet. (major fault?)
-> >>>>>
-> >>>>>(1) user dirtys a page
-> >>>>>(2) a page fault occurs (do_page_fault)
-> >>>>>(3) __do_falut is called.
-> >>>>>(4) ext4_page_mkwrite is called
-> >>>>>(5) ext4_write_begin is called
-> >>>>>(6) ext4_journal_start_sb =>  We can STOP!
-> >>>>>
-> >>>>>[2] One of the page which has been mmapped is not bound. But
-> >>>>>the page is already allocated, and the buffer_heads of the page
-> >>>>>are not mapped (BH_Mapped). (minor fault?)
-> >>>>>
-> >>>>>(1) user dirtys a page
-> >>>>>(2) a page fault occurs (do_page_fault)
-> >>>>>(3) do_wp_page is called.
-> >>>>>(4) ext4_page_mkwrite is called
-> >>>>>(5) ext4_write_begin is called
-> >>>>>(6) ext4_journal_start_sb =>  We can STOP!
+> >>>>zap_pte_range()
+> >>>>   mapping->a_ops->set_page_dirty (= ext4_journalled_set_page_dirty)
+> >>>>
+> >>>>So, I think that it is here that we should do the checking for a ext4 F.S
+> >>>>frozen state and also prevent a parallel ext4 F.S freeze from happening.
+> >>>>
+> >>>>Attaching a patch for initial review. Please do let me know your thoughts!
+> >>>   This is definitely the wrong place. ->set_page_dirty() callbacks are
+> >>>called with various locks held and the page need not be locked (thus
+> >>>dereferencing page->mapping is oopsable). Moreover this particular callback
+> >>>is called only in data=journal mode.
+> >>Ok! Thanks for that!
 > >>
-> >>What happens in the case as follows:
+> >>>
+> >>>Believe me, the right place is page_mkwrite() - you have to catch the
+> >>>read-only =>   read-write page transition. Once the page is mapped
+> >>>read-write, you've already lost the race.
 > >>
-> >>Task 1: Mmapped writes
-> >>t1)ext4_page_mkwrite()
-> >>   t2) ext4_write_begin() (FS is thawed so we proceed)
-> >>   t3) ext4_write_end() (journal is stopped now)
-> >>-----Pre-empted-----
-> >>
-> >>
-> >>Task 2: Freeze Task
-> >>t4) freezes the super block...
-> >>...(continues)....
-> >>tn) the page cache is clean and the F.S is frozen. Freeze has
-> >>completed execution.
-> >>
-> >>Task 1: Mmapped writes
-> >>tn+1) ext4_page_mkwrite() returns 0.
-> >>tn+2) __do_fault() gets control, code gets executed.
-> >>tn+3) _do_fault() marks the page dirty if the intent is to write to
-> >>a file based page which faulted.
-> >>
-> >>So you end up dirtying the page cache when the F.S is frozen? No?
-> >   You are right ext4_page_mkrite() as currently implemented has problems.
-> >You have to return the page locked (and check for frozen fs with page lock
-> >held) to avoid races.
+> >>My only point is:
+> >>1) something should prevent the freeze from happening. We cant
+> >>merely check the vfs_check_frozen()?
+> >   Yes, I agree - see my other email with patches.
 > >
-> >If you check for frozen fs with page lock held, you are guaranteed that
-> >freezing code must wait for the page to get unlocked before proceeding. And
-> >before the page is unlocked, it is marked dirty by the pagefault code which
-> >makes freezing code write the page and writeprotect it again. So everything
-> >will be safe.
-> For the locked page to be a part of the freeze initiated sync,
-> should its owner inode not be dirtied? The page fault handler
-> dirties the page, but who ensures that the inode is dirtied at this
-> point?
-  Follow the path from set_page_dirty() -> __set_page_dirty_buffers()
--> __set_page_dirty() -> __mark_inode_dirty(mapping->host, I_DIRTY_PAGES);
-
-  More code reading would save you (and me) some typing ;).
+> >>And this should be done where the page is marked dirty.Also, I
+> >>thought that the page is marked read-write only in the page table in
+> >>the __do_page_fault()? i.e the zap_pte_range() marks them dirty in
+> >>the page cache? Is this understanding right?
+> >   The page can become dirty either because it was written via standard
+> >write - write_begin is responsible for reliable check here - or it was
+> >written via mmap - here we rely on page_mkwrite to do a reliable check -
+> >it is analogous to write_begin callback. There should be no other way
+> >to dirty a page.
+> >
+> >With dirty bits it is a bit complicated. We have two of them in fact. One
+> >in page table entry maintained by mmu and one in page structure maintained
+> >by kernel. Some functions (such as zap_pte_range()) copy the dirty bits
+> >from page table into struct page. This is a lazy process so page can in
+> >principle have new data without a dirty bit set in struct page because we
+> >have not yet copied the dirty bit from page table. Only at moments where it
+> >is important (like when we want to unmap the page, or throw away the page,
+> >or so), we make sure struct page and page table bits are in sync.
+> >
+> >Another subtle thing you need not be aware of it that when we clear page
+> >dirty bit, we also writeprotect the page. So we are guaranteed to get a
+> >page fault when the page is written to again.
+> >
+> >>IMHO, whatever code dirties the page in the page cache should call a
+> >>F.S specific function and let it _prevent_ a fsfreeze while the page
+> >>is getting dirtied, so that a freeze called after this point flushes
+> >>this page!
+> >   Agreed, that's what code in write_begin() and page_mkwrite() should
+> >achieve.
+> >								Honza
+> Thanks a lot for the wonderful explanation :)
+> 
+> How about the revert : i.e calling  jbd2_journal_unlock_updates()
+> from ext4_unfreeze() instead of the ext4_freeze()? Do you agree to
+> that?
+  Sorry, I don't agree with revert. We could talk about changing
+jbd2_journal_unlock_updates() to not return with mutex held (and handle
+synchronization of locked journal operations differently) as an alternative
+to doing "freeze" reference counting. But returning with mutex held to user
+space is no-go. It will cause problems in lockdep, violates kernel locking
+rules, and generally is a bad programming ;).
 
 								Honza
+
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
