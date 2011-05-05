@@ -1,50 +1,62 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext2: fix error msg when mounting fs with too-large
- blocksize
-Date: Thu, 5 May 2011 13:23:21 +0200
-Message-ID: <20110505112321.GB5323@quack.suse.cz>
-References: <1304563444-4842-1-git-send-email-sanbai@taobao.com>
+From: =?ISO-8859-1?Q?P=E1draig_Brady?= <P@draigBrady.com>
+Subject: Re: Files full of zeros with coreutils-8.11 and xfs (FIEMAP related?)
+Date: Thu, 05 May 2011 12:29:04 +0100
+Message-ID: <4DC28A00.7010309@draigBrady.com>
+References: <20110414102608.GA1678@x4.trippels.de>	<20110414120635.GB1678@x4.trippels.de>	<20110414140222.GB1679@x4.trippels.de>	<4DA70BD3.1070409@draigBrady.com>	<4DA717B2.3020305@sandeen.net>	<4DA7182B.8050409@draigBrady.com>	<4DA71920.9@sandeen.net>	<BANLkTikW72q_2pEoVTmag8+gMsCcZ-fR8w@mail.gmail.com>
+	<BANLkTimoLeWMJgNFGW+zdeUeJyZ-_+8fMQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Robin Dong <sanbai@taobao.com>,
-	Jan Kara <jack@suse.cz>
-To: Robin Dong <hao.bigrat@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:56627 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753790Ab1EELXY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 May 2011 07:23:24 -0400
-Content-Disposition: inline
-In-Reply-To: <1304563444-4842-1-git-send-email-sanbai@taobao.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 8bit
+Cc: linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Eric Sandeen <sandeen-+82itfer+wXR7s880joybQ@public.gmane.org>,
+	coreutils-mXXj517/zsQ@public.gmane.org, Markus Trippelsdorf <markus-xp2qqqlHh3xzoYq+O6RWwA@public.gmane.org>,
+	xfs-oss <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>
+To: Yongqiang Yang <xiaoqiangnk-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Return-path: <coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org>
+In-Reply-To: <BANLkTimoLeWMJgNFGW+zdeUeJyZ-_+8fMQ-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+List-Unsubscribe: <https://lists.gnu.org/mailman/options/coreutils>,
+	<mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=unsubscribe>
+List-Archive: </archive/html/coreutils>
+List-Post: <mailto:coreutils-mXXj517/zsQ@public.gmane.org>
+List-Help: <mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.gnu.org/mailman/listinfo/coreutils>,
+	<mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=subscribe>
+Errors-To: coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org
+Sender: coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu 05-05-11 10:44:04, Robin Dong wrote:
-> When ext2 mounts a filesystem, it attempts to set the block device
-> blocksize with a call to sb_set_blocksize, which can fail for
-> several reasons.  The current failure message in ext2 prints:
+On 14/04/11 17:10, Yongqiang Yang wrote:
+> Hi,
 > 
->   EXT2-fs (loop1): error: blocksize is too small
+> I am off my working computer.  Maybe below fix could fix the problem.
 > 
-> which is not correct in all cases.  This can be demonstrated
-> by creating a filesystem with
-> 
->   # mkfs.ext2 -b 8192
-> 
-> on a 4k page system, and attempting to mount it.
-> 
-> Change the error message to a more generic:
-> 
->   EXT2-fs (loop1): bad blocksize 8192
-> 
-> to match the error message in ext3.
-> 
-> Signed-off-by: Robin Dong <sanbai@taobao.com>
-> Reviewed-by: Coly Li <bosong.ly@taobao.com>
-> Reviewed-by: Eric Sandeen <sandeen@redhat.com>
-  Thanks. Merged into my tree.
+> fs/ext4/extent.c
+> static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
+> 1877                 } else if (block >= le32_to_cpu(ex->ee_block)) {
+> 1878                         /*
+> 1879                          * some part of requested space is covered
+> 1880                          * by found extent
+> 1881                          */
+> 1882                         start = block;
+> 1883                         end = le32_to_cpu(ex->ee_block)
+> 1884                                 + ext4_ext_get_actual_len(ex);
+> 1885                         if (block + num < end)
+> 1886                                 end = block + num;
+>        +                        if (!ext4_ext_is_uninitialized(ex))
+> 1887                         exists = 1;
+> 1888                 } else {
+> 1889                         BUG();
+> 1890                 }
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Hi,
+
+To follow up on the above.  I'm under the impression
+that ext4 is expected to return extents for what
+is written, irrespective of whether it's reached the
+disk or not. I.E. the preallocation case where this fails
+was an oversite, for which the above might fix.
+
+So is the above summary correct, and has there
+been any more thoughts on a fix?
+
+cheers,
+Pádraig.
