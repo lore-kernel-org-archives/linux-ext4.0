@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.cz>
 Subject: Re: [PATCH 2/2] jbd: fix fsync() tid wraparound bug
-Date: Thu, 5 May 2011 17:43:48 +0200
-Message-ID: <20110505154348.GK5323@quack.suse.cz>
+Date: Thu, 5 May 2011 17:53:29 +0200
+Message-ID: <20110505155329.GL5323@quack.suse.cz>
 References: <20110425231454.GB9486@thunk.org>
  <1303777411-1316-2-git-send-email-tytso@mit.edu>
  <20110430171711.GA2819@thunk.org>
@@ -11,31 +11,68 @@ References: <20110425231454.GB9486@thunk.org>
  <20110502213113.GI2819@thunk.org>
  <BCB84D936723884B91E4CC5CA0A7C54AA4F95A9F32@EMEADALEXMB1.corp.nai.org>
  <20110504215512.GJ6968@quack.suse.cz>
- <BCB84D936723884B91E4CC5CA0A7C54AA4F95AA27F@EMEADALEXMB1.corp.nai.org>
+ <BCB84D936723884B91E4CC5CA0A7C54AA4F95AA264@EMEADALEXMB1.corp.nai.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: jack@suse.cz, tytso@mit.edu, linux-ext4@vger.kernel.org
 To: Martin_Zielinski@McAfee.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:39146 "EHLO mx2.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:56683 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754589Ab1EEPnu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 May 2011 11:43:50 -0400
+	id S1751913Ab1EEPxc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 May 2011 11:53:32 -0400
 Content-Disposition: inline
-In-Reply-To: <BCB84D936723884B91E4CC5CA0A7C54AA4F95AA27F@EMEADALEXMB1.corp.nai.org>
+In-Reply-To: <BCB84D936723884B91E4CC5CA0A7C54AA4F95AA264@EMEADALEXMB1.corp.nai.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 05-05-11 09:55:22, Martin_Zielinski@McAfee.com wrote:
-> Hello once more.
-> I have one concern against the patch:
-> If the situation is triggered again and again, the patch would produce lots of output.
-> Maybe it's better to use WARN_ONCE.
-  Yes, probably it will. Changed to WARN_ONCE in the JBD patch.
+On Thu 05-05-11 09:11:22, Martin_Zielinski@McAfee.com wrote:
+> It is not a hardware bug and very unlikely a race condition or random
+> memory corruption.  We have 7 machines that failed with an uptime of
+> 12-13 days.  12 days earlier about 5 different machines failed after the
+> same uptime. All machines were rebooted after this issue.
+> 
+> In 5 out of 7 cores the commit request number come from the same sqlite
+> database.  In 2 cores I could not find an inode or file structure
+> pointing to this database and hence it could not be verified that the
+> request number comes from this database inode.
+> 
+> I'm not so sure about the bit error. Some have the hi-bit set, some not.
+> Due to the implementation of tid_gt() I would  expect that the numbers
+> differ in the high bit.  The condition produces a wrong result, if the
+> difference between the numbers is greater than INT_MAX.
+   Yes, sorry. I was confused yesterday. The numbers are exactly such as
+they should be when an application constantly calls fdatasync() without
+modifying file metadata. 
+ 
+> The sequence / request numbers / difference INT_MAX + x:
+> 886052f3 / 086052f1 / 3
+> 61d305fe / e1ce83f4 / 295434
+> 887d10c8 / 087acf05 / 147908
+> 8e3d0b25 / 0e374365 / 378817
+> 702d4061 / f02a5e0b / 189014
+> 73d6775a / f3d67756 / 4
+> 824846ad / 024846ab / 2
+> 
+V On some of the machines we traced the commit_sequence for a short time.
+> However no indication could be found the logs, that a datasync was
+> triggered with always the same tid.
+> 
+> Result example:
+> 
+> Uptime 5 days, 33 min : commit_sequence: 1135688364
+> Uptime 12 days,  2:40 : commit_sequence: 1960701710
+> 
+> 825013346 commits in 170 hours
+> 
+> 4853019 commits per hour => 442 hours or 18 days to have INT_MAX commits.
+  Yes. In your case it seems we really wrap-around tid. I'll push the fix
+to Linus in the next merge window and then it will go also to -stable
+kernels. Thanks for your testing!
 
-								Honza
+									Honza
 > -----Original Message-----
-> From: Jan Kara [mailto:jack@suse.cz] 
+> From: Jan Kara [mailto:jack@suse.cz]
 > Sent: Mittwoch, 4. Mai 2011 23:55
 > To: Zielinski, Martin
 > Cc: tytso@mit.edu; jack@suse.cz; linux-ext4@vger.kernel.org
@@ -49,17 +86,17 @@ On Thu 05-05-11 09:55:22, Martin_Zielinski@McAfee.com wrote:
 >   <snip>
 > 
 > > gdb) p *journal
-> > $4 = {j_flags = 16, j_errno = 0, j_sb_buffer = 0xffff88031f156dc8, 
+> > $4 = {j_flags = 16, j_errno = 0, j_sb_buffer = 0xffff88031f156dc8,
 > >   j_superblock = 0xffff88031f876000, j_format_version = 2, j_state_lock = {raw_lock = {
 > >       slock = 2874125135}}, j_barrier_count = 0, j_barrier = {count = {counter = 1}, wait_lock = {
-> >       raw_lock = {slock = 0}}, wait_list = {next = 0xffff88031e6c4638, 
-> >       prev = 0xffff88031e6c4638}, owner = 0x0}, j_running_transaction = 0x0, 
+> >       raw_lock = {slock = 0}}, wait_list = {next = 0xffff88031e6c4638,
+> >       prev = 0xffff88031e6c4638}, owner = 0x0}, j_running_transaction = 0x0,
 > >   j_committing_transaction = 0x0, j_checkpoint_transactions = 0xffff88031bd16b40,
 > > ...
-> > j_tail_sequence = 2288011385, j_transaction_sequence = 2288014068, 
+> > j_tail_sequence = 2288011385, j_transaction_sequence = 2288014068,
 > >   j_commit_sequence = 2288014067, j_commit_request = 140530417,
 > > ...
-> >   j_wbuf = 0xffff88031de98000, j_wbufsize = 512, j_last_sync_writer = 4568, 
+> >   j_wbuf = 0xffff88031de98000, j_wbufsize = 512, j_last_sync_writer = 4568,
 > >   j_average_commit_time = 69247, j_private = 0xffff88031fd49400}
 >   <snip>
 > 
@@ -67,11 +104,11 @@ On Thu 05-05-11 09:55:22, Martin_Zielinski@McAfee.com wrote:
 > > $5 = {counter = -2006954411}
 > > (gdb) p ((struct ext3_inode_info*)(0xffff88031f0c0758-0xd0))->i_datasync_tid
 > > $3 = {counter = 140530417}
-> > 
+> >
 > > > j_commit_request = 140530417
-> > 
-> > So it *is* a datasync from sqlite. And your fix will catch it. 
-> > I still don't understand, where this number comes from. 
+> >
+> > So it *is* a datasync from sqlite. And your fix will catch it.
+> > I still don't understand, where this number comes from.
 >   Ok, so i_datasync_tid got corrupted. But look at the numbers in hex:
 > i_datasync_tid==140530417==0x86052F1
 > and
@@ -84,8 +121,8 @@ On Thu 05-05-11 09:55:22, Martin_Zielinski@McAfee.com wrote:
 > can rule out / confirm whether some code external to i_datasync_tid
 > handling is just causing random memory corruption...
 > 
-> 								Honza
-> -- 
+>                                                                 Honza
+> --
 > Jan Kara <jack@suse.cz>
 > SUSE Labs, CR
 -- 
