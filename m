@@ -1,96 +1,75 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: Files full of zeros with coreutils-8.11 and xfs (FIEMAP related?)
-Date: Thu, 5 May 2011 19:47:29 +0800
-Message-ID: <BANLkTikM4kekeaa2EQTtP02ondKL1X3+3g@mail.gmail.com>
-References: <20110414102608.GA1678@x4.trippels.de>
-	<20110414120635.GB1678@x4.trippels.de>
-	<20110414140222.GB1679@x4.trippels.de>
-	<4DA70BD3.1070409@draigBrady.com>
-	<4DA717B2.3020305@sandeen.net>
-	<4DA7182B.8050409@draigBrady.com>
-	<4DA71920.9@sandeen.net>
-	<BANLkTikW72q_2pEoVTmag8+gMsCcZ-fR8w@mail.gmail.com>
-	<BANLkTimoLeWMJgNFGW+zdeUeJyZ-_+8fMQ@mail.gmail.com>
-	<4DC28A00.7010309@draigBrady.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] jbd2: take j_list_lock when checking b_jlist in
+ do_get_write_access.
+Date: Thu, 5 May 2011 14:09:04 +0200
+Message-ID: <20110505120904.GC5323@quack.suse.cz>
+References: <1304589436-14860-1-git-send-email-tm@tao.ma>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Eric Sandeen <sandeen@sandeen.net>, xfs-oss <xfs@oss.sgi.com>,
-	linux-ext4@vger.kernel.org, coreutils@gnu.org,
-	Markus Trippelsdorf <markus@trippelsdorf.de>
-To: =?ISO-8859-1?Q?P=E1draig_Brady?= <P@draigbrady.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Jan Kara <jack@suse.cz>
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:53309 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751947Ab1EELra convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 May 2011 07:47:30 -0400
-Received: by vxi39 with SMTP id 39so2204166vxi.19
-        for <linux-ext4@vger.kernel.org>; Thu, 05 May 2011 04:47:29 -0700 (PDT)
-In-Reply-To: <4DC28A00.7010309@draigBrady.com>
+Received: from cantor2.suse.de ([195.135.220.15]:58631 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751599Ab1EEMJH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 May 2011 08:09:07 -0400
+Content-Disposition: inline
+In-Reply-To: <1304589436-14860-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2011/5/5 P=E1draig Brady <P@draigbrady.com>:
-> On 14/04/11 17:10, Yongqiang Yang wrote:
->> Hi,
->>
->> I am off my working computer. =A0Maybe below fix could fix the probl=
-em.
->>
->> fs/ext4/extent.c
->> static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t bloc=
-k,
->> 1877 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 } else if (block >=3D le32_to_c=
-pu(ex->ee_block)) {
->> 1878 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /*
->> 1879 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* some part =
-of requested space is covered
->> 1880 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* by found e=
-xtent
->> 1881 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0*/
->> 1882 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 start =3D block=
-;
->> 1883 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 end =3D le32_to=
-_cpu(ex->ee_block)
->> 1884 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- + ext4_ext_get_actual_len(ex);
->> 1885 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (block + num=
- < end)
->> 1886 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- end =3D block + num;
->> =A0 =A0 =A0 =A0+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (=
-!ext4_ext_is_uninitialized(ex))
->> 1887 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 exists =3D 1;
->> 1888 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 } else {
->> 1889 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 BUG();
->> 1890 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
->
-> Hi,
->
-> To follow up on the above. =A0I'm under the impression
-> that ext4 is expected to return extents for what
-> is written, irrespective of whether it's reached the
-> disk or not. I.E. the preallocation case where this fails
-No.  It just returns extent info now - allocated extents and delayed
-extents.  In the preallocation case, it returns unwritten extents.
-And the code above does not work.
+  Hello,
 
-> was an oversite, for which the above might fix.
->
-> So is the above summary correct, and has there
-> been any more thoughts on a fix?
->
-> cheers,
-> P=E1draig.
->
+On Thu 05-05-11 17:57:16, Tao Ma wrote:
+> From: Tao Ma <boyu.mt@taobao.com>
+> 
+> In do_get_write_access, we check journal_head->b_jlist and if it
+> is BJ_Shadow, we will sleep until we remove it from t_shadow_list
+> in jbd2_journal_commit_transaction, but it isn't protected by any
+> lock. So if we uses some cached b_jlist and before schedule,
+> jbd2_journal_commit_transaction has already waken up all
+> the waiting thread. As a result, this thread will never be waken up.
+  I had a look at the code and I think it's more complicated than this.
+The code is:
+       prepare_to_wait(wqh, &wait.wait, TASK_UNINTERRUPTIBLE);
+       if (jh->b_jlist != BJ_Shadow)
+              break;
+       schedule();
 
+You're right that jh->b_jlist != BJ_Shadow test is done without any lock.
+But prepare_to_wait() does set_current_state() which implies a memory
+barrier. The comment there says:
+/*
+ * set_current_state() includes a barrier so that the write of current->state
+ * is correctly serialised wrt the caller's subsequent test of whether to
+ * actually sleep:
+ *
+ *      set_current_state(TASK_UNINTERRUPTIBLE);
+ *      if (do_i_need_to_sleep())
+ *              schedule();
+ *
+ * If the caller does not need such serialisation then use __set_current_state()
+ */
+So we are guaranteed that either we see that jh->b_jlist != BJ_Shadow or
+the waking process sees us in the wait queue and removes us.
 
+Well, not quite. The waking code is:
+        journal_file_buffer(jh, commit_transaction, BJ_Forget);
+        /* Wake up any transactions which were waiting for this
+           IO to complete */
+        wake_up_bit(&bh->b_state, BH_Unshadow);
+And that's where the problem actually is. Even the comment before
+wake_up_bit() warns that:
+ * In order for this to function properly, as it uses waitqueue_active()
+ * internally, some kind of memory barrier must be done prior to calling
+ * this. Typically, this will be smp_mb__after_clear_bit(), but in some
+ * cases where bitflags are manipulated non-atomically under a lock, one
+ * may need to use a less regular barrier, such fs/inode.c's smp_mb(),
+ * because spin_unlock() does not guarantee a memory barrier.
+I'll send proper fix in a moment.
 
---=20
-Best Wishes
-Yongqiang Yang
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
