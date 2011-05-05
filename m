@@ -1,61 +1,93 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] jbd2: Fix forever sleeping process in do_get_write_access()
-Date: Thu, 05 May 2011 08:49:14 -0500
-Message-ID: <4DC2AADA.9070708@redhat.com>
-References: <1304597439-7185-1-git-send-email-jack@suse.cz>
+From: Surbhi Palande <surbhi.palande@canonical.com>
+Subject: Re: [RFC][PATCH] Re: [BUG] ext4: cannot unfreeze a filesystem due
+ to a deadlock
+Date: Thu, 05 May 2011 17:01:09 +0300
+Message-ID: <4DC2ADA5.5080400@canonical.com>
+References: <4DA84A7B.3040403@jp.fujitsu.com> <20110415171310.GB5432@quack.suse.cz> <4DABFEBD.7030102@jp.fujitsu.com> <4DBFE09E.5070805@canonical.com> <20110503151948.GB6009@quack.suse.cz> <4DC14201.6090009@canonical.com> <20110504191912.GB6968@quack.suse.cz> <4DC1C67B.3030801@canonical.com> <20110504224824.GO6968@quack.suse.cz> <4DC23E65.7080507@canonical.com> <20110505111806.GA5323@quack.suse.cz>
+Reply-To: surbhi.palande@canonical.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, Tao Ma <tm@tao.ma>, linux-ext4@vger.kernel.org
+Cc: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
+	Ted Ts'o <tytso@mit.edu>,
+	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	sandeen@redhat.com
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48526 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753640Ab1EENtV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 May 2011 09:49:21 -0400
-In-Reply-To: <1304597439-7185-1-git-send-email-jack@suse.cz>
+Received: from adelie.canonical.com ([91.189.90.139]:42117 "EHLO
+	adelie.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750889Ab1EEOBU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 May 2011 10:01:20 -0400
+In-Reply-To: <20110505111806.GA5323@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 5/5/11 7:10 AM, Jan Kara wrote:
-> In do_get_write_access() we wait on BH_Unshadow bit for buffer to get
-> from shadow state. The waking code in journal_commit_transaction() has
-> a bug because it does not issue a memory barrier after the buffer is moved
-> from the shadow state and before wake_up_bit() is called. Thus a waitqueue
-> check can happen before the buffer is actually moved from the shadow state
-> and waiting process may never be woken. Fix the problem by issuing proper
-> barrier.
+On 05/05/2011 02:18 PM, Jan Kara wrote:
+> On Thu 05-05-11 09:06:29, Surbhi Palande wrote:
+>> On 05/05/2011 01:48 AM, Jan Kara wrote:
+>>> On Thu 05-05-11 00:34:51, Surbhi Palande wrote:
+>>>> On 05/04/2011 10:19 PM, Jan Kara wrote:
+>>>>> On Wed 04-05-11 15:09:37, Surbhi Palande wrote:
+>>>>>> On 05/03/2011 06:19 PM, Jan Kara wrote:
+>>>>>>> On Tue 03-05-11 14:01:50, Surbhi Palande wrote:
+>>>>>>>> What happens in the case as follows:
+>>>>>>>>
+>>>>>>>> Task 1: Mmapped writes
+>>>>>>>> t1)ext4_page_mkwrite()
+>>>>>>>>    t2) ext4_write_begin() (FS is thawed so we proceed)
+>>>>>>>>    t3) ext4_write_end() (journal is stopped now)
+>>>>>>>> -----Pre-empted-----
+>>>>>>>>
+>>>>>>>>
+>>>>>>>> Task 2: Freeze Task
+>>>>>>>> t4) freezes the super block...
+>>>>>>>> ...(continues)....
+>>>>>>>> tn) the page cache is clean and the F.S is frozen. Freeze has
+>>>>>>>> completed execution.
+>>>>>>>>
+>>>>>>>> Task 1: Mmapped writes
+>>>>>>>> tn+1) ext4_page_mkwrite() returns 0.
+>>>>>>>> tn+2) __do_fault() gets control, code gets executed.
+>>>>>>>> tn+3) _do_fault() marks the page dirty if the intent is to write to
+>>>>>>>> a file based page which faulted.
+>>>>>>>>
+>>>>>>>> So you end up dirtying the page cache when the F.S is frozen? No?
+>>>>>>>    You are right ext4_page_mkrite() as currently implemented has problems.
+>>>>>>> You have to return the page locked (and check for frozen fs with page lock
+>>>>>>> held) to avoid races.
+>>>>>>>
+>>>>>>> If you check for frozen fs with page lock held, you are guaranteed that
+>>>>>>> freezing code must wait for the page to get unlocked before proceeding. And
+>>>>>>> before the page is unlocked, it is marked dirty by the pagefault code which
+>>>>>>> makes freezing code write the page and writeprotect it again. So everything
+>>>>>>> will be safe.
+>>>>>> For the locked page to be a part of the freeze initiated sync,
+>>>>>> should its owner inode not be dirtied? The page fault handler
+>>>>>> dirties the page, but who ensures that the inode is dirtied at this
+>>>>>> point?
+>>>> Well, I mean it as follows:
+>>>>
+>>>> Doesn't the writeback code (invoked via sync_filesystem(sb)) write
+>>>> all the dirty pages of all the _dirty_ inodes of a superblock?
+>>>>
+>>>> So in the window from the point where ext4_page_mkwrite returns to
+>>>> __do_fault() _till_ you mark the inode dirty (in
+>>>> __mark_inode_dirty()), you can have a race with freeze i.e if freeze
+>>>> happens meanwhile, then the sync initiated by freeze will not
+>>>> consider this locked page as the owner inode is _clean_ (or not
+>>>> dirtied yet) at that point?
+>>>    Ah, I see. That's actually a good point! Thanks for persistence. So we
+>>> should also dirty the page before checking for frozen fs.
+>>
+>> Should we not also dirty the inode? IMHO, marking an inode will be
+>> racy as well!
+>    Marking the page dirty marks the inode dirty as well as I've explained in my
+> previous emails. So I'm missing what you are concerned about...
 
-needed for jbd/commit.c as well, I guess?
+Yes you are right! There is no other concern - setting the page dirty 
+will be racy.
 
--Eric
-
-> Reported-by: Tao Ma <boyu.mt@taobao.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/jbd2/commit.c |    9 +++++++--
->  1 files changed, 7 insertions(+), 2 deletions(-)
-> 
->  Analogous JBD fix has been queued in my tree...
-> 
-> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-> index 2e5d370..3a958c7 100644
-> --- a/fs/jbd2/commit.c
-> +++ b/fs/jbd2/commit.c
-> @@ -768,8 +768,13 @@ wait_for_iobuf:
->                     required. */
->  		JBUFFER_TRACE(jh, "file as BJ_Forget");
->  		jbd2_journal_file_buffer(jh, commit_transaction, BJ_Forget);
-> -		/* Wake up any transactions which were waiting for this
-> -		   IO to complete */
-> +		/*
-> +		 * Wake up any transactions which were waiting for this IO to
-> +		 * complete. The barrier must be here so that changes by
-> +		 * jbd2_journal_file_buffer() take effect before wake_up_bit()
-> +		 * does the waitqueue check.
-> +		 */
-> +		smp_mb();
->  		wake_up_bit(&bh->b_state, BH_Unshadow);
->  		JBUFFER_TRACE(jh, "brelse shadowed buffer");
->  		__brelse(bh);
-
+Warm Regards,
+Surbhi.
