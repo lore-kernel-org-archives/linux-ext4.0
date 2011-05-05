@@ -1,88 +1,97 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: resize4fs: File too large while trying to determine filesystem
- size
-Date: Thu, 05 May 2011 15:14:30 -0500
-Message-ID: <4DC30526.8000809@redhat.com>
-References: <4DC2FF1D.6040903@slac.stanford.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Ling Ho <ling@slac.stanford.edu>
+From: Josef Bacik <josef@redhat.com>
+Subject: [PATCH 1/3 v3] fs: add SEEK_HOLE and SEEK_DATA flags
+Date: Thu,  5 May 2011 16:16:56 -0400
+Message-ID: <1304626619-1588-1-git-send-email-josef@redhat.com>
+To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	viro@ZenIV.linux.org.uk
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:18846 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:19673 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751297Ab1EEUOi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 May 2011 16:14:38 -0400
-In-Reply-To: <4DC2FF1D.6040903@slac.stanford.edu>
+	id S1751718Ab1EEURD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 May 2011 16:17:03 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 5/5/11 2:48 PM, Ling Ho wrote:
-> Hi,
-> 
-> I am trying to resize a ext4 filesystem. I am using e4fsprogs
-> 1.41.12.
-> 
-> My device is actually 17TB. I can live with just using 16TB of it if
-> that's what's supported. But when I tried to increase the size by
-> specifying the size, I get this error:
-> 
-> # resize4fs /dev/sdb 16000G resize4fs 1.41.12 (17-May-2010) 
-> resize4fs: File too large while trying to determine filesystem size #
-> resize4fs /dev/sdb 15000G resize4fs 1.41.12 (17-May-2010) resize4fs:
-> File too large while trying to determine filesystem size
+This just gets us ready to support the SEEK_HOLE and SEEK_DATA flags.  Turns out
+using fiemap in things like cp cause more problems than it solves, so lets try
+and give userspace an interface that doesn't suck.  So we have
 
-resize4fs indicates that you are on a Red Hat Enterprise Linux 5 system,
-so this may go better through your Red Hat support contacts.
+-SEEK_HOLE: move the file position to the start of the next hole greater than or
+equal to the start of the suplied offset.  This is how solaris defines it, so
+thats how it will work for us.  The only trick is preallocated space.  Some
+filesystems will be able to safely differentiate between prealloced space and
+soon to be converted prealloced space, so preallocated space could easily be
+considered a hole.  At the same time some file systems will not be able to make
+this differentiation and so for safety will not treat preallocated space as a
+hole.
 
-I have some open bugs similar to
+-SEEK_DATA: this is obviously a little more self-explanatory.  Again the only
+ambiguity comes in with preallocated extents.  If you have an fs that can't
+reliably tell that the preallocated extent is in the process of turning into a
+real extent, it is correct for SEEK_DATA to park you at a preallocated extent.
 
-Bug 654093 - [6.0]The resize2fs command fails to run on a 16TiB filesystem.
-
-which was fixed in RHEL6.1.
-
-> 
-> I also tried 16T and 15T, and get the same thing.
-
-Well, the issue is that the device itself is more than 16T, and the e2fsprogs
-tools won't even touch it; e2fsprogs has never released more than 32-bit
-support.  I would recommend resizing your device to something small enough
-for e2fsprogs to handle.
+In the generic case we will just assume the entire file is data and there is a
+virtual hole at i_size, so SEEK_DATA will return -ENXIO unless you provide an
+offset of 0 and the file size is larger than 0, and SEEK_HOLE will put you at
+i_size unless pos is larger or equal to i_size.
 
 Thanks,
--Eric
 
-> # cat /proc/partitions
-> major minor  #blocks  name
-> 
->    8     0  243163136 sda
->    8     1   16779861 sda1
->    8     2    6289447 sda2
->    8     3    6289447 sda3
->    8     4          0 sda4
->    8     5    4192933 sda5
->    8     6    4192933 sda6
->    8     7    4192933 sda7
->    8     8  201222126 sda8
->    8    16 17560535040 sdb 
-> 
-> # df
-> Filesystem           1K-blocks      Used Available Use% Mounted on
-> /dev/sda1             16253924   9484080   5930852  62% /
-> /dev/sda8            194917600  66106672 118749824  36% /u1
-> /dev/sda6              4061540     83700   3768196   3% /tmp
-> /dev/sda3              6092388    221168   5556748   4% /opt
-> /dev/sda2              6092388   4701480   1076436  82% /var
-> /dev/sda5              4061540     73800   3778096   2% /var/tmp
-> tmpfs                 16481060         0  16481060   0% /dev/shm
-> /dev/sdb             2880829872 1505086604 1229405476  56% /u2
+Signed-off-by: Josef Bacik <josef@redhat.com>
+---
+v2->v3:
+-Fixed i_mutex unlock screw up
+-Just use inode->i_size
+-Make the comments clear that we mean the next hole
+ fs/read_write.c    |   18 ++++++++++++++++++
+ include/linux/fs.h |    4 +++-
+ 2 files changed, 21 insertions(+), 1 deletions(-)
 
-> 
-> Can someone suggest I am doing wrong?
-> 
-> Thanks, ... ling -- To unsubscribe from this list: send the line
-> "unsubscribe linux-ext4" in the body of a message to
-> majordomo@vger.kernel.org More majordomo info at
-> http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/read_write.c b/fs/read_write.c
+index 5520f8a..af9cc51 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -64,6 +64,24 @@ generic_file_llseek_unlocked(struct file *file, loff_t offset, int origin)
+ 			return file->f_pos;
+ 		offset += file->f_pos;
+ 		break;
++	case SEEK_DATA:
++		/*
++		 * In the generic case the entire file is data, so data only
++		 * starts at position 0 provided the file has an i_size,
++		 * otherwise it's an empty file and will always be ENXIO.
++		 */
++		if (offset != 0 || inode->i_size == 0)
++			return -ENXIO;
++		break;
++	case SEEK_HOLE:
++		/*
++		 * There is a virtual hole at the end of the file, so as long as
++		 * offset isn't i_size or larger, return i_size.
++		 */
++		if (offset >= inode->i_size)
++			return -ENXIO;
++		offset = inode->i_size;
++		break;
+ 	}
+ 
+ 	if (offset < 0 && !unsigned_offsets(file))
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index dbd860a..185b278 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -31,7 +31,9 @@
+ #define SEEK_SET	0	/* seek relative to beginning of file */
+ #define SEEK_CUR	1	/* seek relative to current file position */
+ #define SEEK_END	2	/* seek relative to end of file */
+-#define SEEK_MAX	SEEK_END
++#define SEEK_HOLE	3	/* seek to the next hole */
++#define SEEK_DATA	4	/* seek to the next data */
++#define SEEK_MAX	SEEK_DATA
+ 
+ struct fstrim_range {
+ 	__u64 start;
+-- 
+1.7.2.3
 
