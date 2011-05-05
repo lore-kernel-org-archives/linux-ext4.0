@@ -1,130 +1,56 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/2] jbd: fix fsync() tid wraparound bug
-Date: Thu, 5 May 2011 17:53:29 +0200
-Message-ID: <20110505155329.GL5323@quack.suse.cz>
-References: <20110425231454.GB9486@thunk.org>
- <1303777411-1316-2-git-send-email-tytso@mit.edu>
- <20110430171711.GA2819@thunk.org>
- <20110502150758.GH4556@quack.suse.cz>
- <20110502182945.GG2819@thunk.org>
- <20110502190441.GK4556@quack.suse.cz>
- <20110502213113.GI2819@thunk.org>
- <BCB84D936723884B91E4CC5CA0A7C54AA4F95A9F32@EMEADALEXMB1.corp.nai.org>
- <20110504215512.GJ6968@quack.suse.cz>
- <BCB84D936723884B91E4CC5CA0A7C54AA4F95AA264@EMEADALEXMB1.corp.nai.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.cz, tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Martin_Zielinski@McAfee.com
+From: Tao Ma <tm@tao.ma>
+Subject: [PATCH] jbd/jbd2: remove obsolete summarise_journal_usage.
+Date: Thu,  5 May 2011 23:54:19 +0800
+Message-ID: <1304610859-480-1-git-send-email-tm@tao.ma>
+Cc: Jan Kara <jack@suse.cz>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:56683 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751913Ab1EEPxc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 May 2011 11:53:32 -0400
-Content-Disposition: inline
-In-Reply-To: <BCB84D936723884B91E4CC5CA0A7C54AA4F95AA264@EMEADALEXMB1.corp.nai.org>
+Received: from oproxy7-pub.bluehost.com ([67.222.55.9]:36026 "HELO
+	oproxy7-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751913Ab1EEPyg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 May 2011 11:54:36 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 05-05-11 09:11:22, Martin_Zielinski@McAfee.com wrote:
-> It is not a hardware bug and very unlikely a race condition or random
-> memory corruption.  We have 7 machines that failed with an uptime of
-> 12-13 days.  12 days earlier about 5 different machines failed after the
-> same uptime. All machines were rebooted after this issue.
-> 
-> In 5 out of 7 cores the commit request number come from the same sqlite
-> database.  In 2 cores I could not find an inode or file structure
-> pointing to this database and hence it could not be verified that the
-> request number comes from this database inode.
-> 
-> I'm not so sure about the bit error. Some have the hi-bit set, some not.
-> Due to the implementation of tid_gt() I would  expect that the numbers
-> differ in the high bit.  The condition produces a wrong result, if the
-> difference between the numbers is greater than INT_MAX.
-   Yes, sorry. I was confused yesterday. The numbers are exactly such as
-they should be when an application constantly calls fdatasync() without
-modifying file metadata. 
- 
-> The sequence / request numbers / difference INT_MAX + x:
-> 886052f3 / 086052f1 / 3
-> 61d305fe / e1ce83f4 / 295434
-> 887d10c8 / 087acf05 / 147908
-> 8e3d0b25 / 0e374365 / 378817
-> 702d4061 / f02a5e0b / 189014
-> 73d6775a / f3d67756 / 4
-> 824846ad / 024846ab / 2
-> 
-V On some of the machines we traced the commit_sequence for a short time.
-> However no indication could be found the logs, that a datasync was
-> triggered with always the same tid.
-> 
-> Result example:
-> 
-> Uptime 5 days, 33 min : commit_sequence: 1135688364
-> Uptime 12 days,  2:40 : commit_sequence: 1960701710
-> 
-> 825013346 commits in 170 hours
-> 
-> 4853019 commits per hour => 442 hours or 18 days to have INT_MAX commits.
-  Yes. In your case it seems we really wrap-around tid. I'll push the fix
-to Linus in the next merge window and then it will go also to -stable
-kernels. Thanks for your testing!
+From: Tao Ma <boyu.mt@taobao.com>
 
-									Honza
-> -----Original Message-----
-> From: Jan Kara [mailto:jack@suse.cz]
-> Sent: Mittwoch, 4. Mai 2011 23:55
-> To: Zielinski, Martin
-> Cc: tytso@mit.edu; jack@suse.cz; linux-ext4@vger.kernel.org
-> Subject: Re: [PATCH 2/2] jbd: fix fsync() tid wraparound bug
-> 
-> On Wed 04-05-11 09:21:04, Martin_Zielinski@McAfee.com wrote:
-> > Here's an update.
-> > In my first post I was not aware of the implementation of tid_gt.
-> > I agree that 2 and a half billion commits on an SD card are - hmph -
-> > unlikely
->   <snip>
-> 
-> > gdb) p *journal
-> > $4 = {j_flags = 16, j_errno = 0, j_sb_buffer = 0xffff88031f156dc8,
-> >   j_superblock = 0xffff88031f876000, j_format_version = 2, j_state_lock = {raw_lock = {
-> >       slock = 2874125135}}, j_barrier_count = 0, j_barrier = {count = {counter = 1}, wait_lock = {
-> >       raw_lock = {slock = 0}}, wait_list = {next = 0xffff88031e6c4638,
-> >       prev = 0xffff88031e6c4638}, owner = 0x0}, j_running_transaction = 0x0,
-> >   j_committing_transaction = 0x0, j_checkpoint_transactions = 0xffff88031bd16b40,
-> > ...
-> > j_tail_sequence = 2288011385, j_transaction_sequence = 2288014068,
-> >   j_commit_sequence = 2288014067, j_commit_request = 140530417,
-> > ...
-> >   j_wbuf = 0xffff88031de98000, j_wbufsize = 512, j_last_sync_writer = 4568,
-> >   j_average_commit_time = 69247, j_private = 0xffff88031fd49400}
->   <snip>
-> 
-> > (gdb) p ((struct ext3_inode_info*)(0xffff88031f0c0758-0xd0))->i_sync_tid
-> > $5 = {counter = -2006954411}
-> > (gdb) p ((struct ext3_inode_info*)(0xffff88031f0c0758-0xd0))->i_datasync_tid
-> > $3 = {counter = 140530417}
-> >
-> > > j_commit_request = 140530417
-> >
-> > So it *is* a datasync from sqlite. And your fix will catch it.
-> > I still don't understand, where this number comes from.
->   Ok, so i_datasync_tid got corrupted. But look at the numbers in hex:
-> i_datasync_tid==140530417==0x86052F1
-> and
-> i_commit_sequence==2288014067==0x886052F3
-> 
-> So it's a single bit error - we lost the highest bit of the number. Are you
-> getting the cores from different machines? Otherwise I'd suspect the HW.
-> If it's not HW I'm at loss what can cause it... You can try moving
-> i_datasync_tid to a different place in struct ext3_inode_info so that we
-> can rule out / confirm whether some code external to i_datasync_tid
-> handling is just causing random memory corruption...
-> 
->                                                                 Honza
-> --
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+summarise_journal_usage seems to be obsolete for a long time,
+so remove it.
+
+Cc: Jan Kara <jack@suse.cz>
+Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+---
+ fs/jbd/commit.c  |    6 ------
+ fs/jbd2/commit.c |    6 ------
+ 2 files changed, 0 insertions(+), 12 deletions(-)
+
+diff --git a/fs/jbd/commit.c b/fs/jbd/commit.c
+index 69b1804..9cbf9e4 100644
+--- a/fs/jbd/commit.c
++++ b/fs/jbd/commit.c
+@@ -302,12 +302,6 @@ void journal_commit_transaction(journal_t *journal)
+ 	 * all outstanding updates to complete.
+ 	 */
+ 
+-#ifdef COMMIT_STATS
+-	spin_lock(&journal->j_list_lock);
+-	summarise_journal_usage(journal);
+-	spin_unlock(&journal->j_list_lock);
+-#endif
+-
+ 	/* Do we need to erase the effects of a prior journal_flush? */
+ 	if (journal->j_flags & JFS_FLUSHED) {
+ 		jbd_debug(3, "super block updated\n");
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 6e28000..29148a8 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -338,12 +338,6 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	 * all outstanding updates to complete.
+ 	 */
+ 
+-#ifdef COMMIT_STATS
+-	spin_lock(&journal->j_list_lock);
+-	summarise_journal_usage(journal);
+-	spin_unlock(&journal->j_list_lock);
+-#endif
