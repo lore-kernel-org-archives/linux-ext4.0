@@ -1,169 +1,66 @@
-From: Surbhi Palande <surbhi.palande@canonical.com>
-Subject: [PATCH] Adding support to freeze and unfreeze a journal
-Date: Fri,  6 May 2011 18:20:31 +0300
-Message-ID: <1304695231-11335-2-git-send-email-surbhi.palande@canonical.com>
-References: <20110504192436.GC6968@quack.suse.cz>
-Cc: toshi.okajima@jp.fujitsu.com, tytso@mit.edu,
-	m.mizuma@jp.fujitsu.com, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	sandeen@redhat.com
-To: jack@suse.cz
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20110504192436.GC6968@quack.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: Mel Gorman <mgorman@suse.de>
+Subject: Re: [BUG] fatal hang untarring 90GB file, possibly writeback related.
+Date: Fri, 6 May 2011 16:44:44 +0100
+Message-ID: <20110506154444.GG6591@suse.de>
+References: <20110428171826.GZ4658@suse.de>
+ <1304015436.2598.19.camel@mulgrave.site>
+ <20110428192104.GA4658@suse.de>
+ <1304020767.2598.21.camel@mulgrave.site>
+ <1304025145.2598.24.camel@mulgrave.site>
+ <1304030629.2598.42.camel@mulgrave.site>
+ <20110503091320.GA4542@novell.com>
+ <1304431982.2576.5.camel@mulgrave.site>
+ <1304432553.2576.10.camel@mulgrave.site>
+ <20110506074224.GB6591@suse.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-15
+Cc: Mel Gorman <mgorman@novell.com>, Jan Kara <jack@suse.cz>,
+	colin.king@canonical.com, Chris Mason <chris.mason@oracle.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-mm <linux-mm@kvack.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: James Bottomley <James.Bottomley@suse.de>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20110506074224.GB6591@suse.de>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-The journal should be frozen when a F.S freezes. What this means is that till
-the F.S is thawed again, no new transactions should be accepted by the
-journal. When the F.S thaws, inturn it should thaw the journal and this should
-allow the journal to resume accepting new transactions.
-While the F.S has frozen the journal, the clients of journal on calling
-jbd2_journal_start() will sleep on a wait queue. Thawing the journal will wake
-up the sleeping clients and journalling can progress normally.
+On Fri, May 06, 2011 at 08:42:24AM +0100, Mel Gorman wrote:
+> 
+> 1. High-order allocations? You machine is using i915 and RPC, something
+>    neither of my test machine uses. i915 is potentially a source for
+>    high-order allocations. I'm attaching a perl script. Please run it as
+>    ./watch-highorder.pl --output /tmp/highorders.txt
+>    while you are running tar. When kswapd is running for about 30
+>    seconds, interrupt it with ctrl+c twice in quick succession and
+>    post /tmp/highorders.txt
+> 
 
-Signed-off-by: Surbhi Palande <surbhi.palande@canonical.com>
----
- fs/ext4/super.c       |   20 ++++++--------------
- fs/jbd2/journal.c     |    1 +
- fs/jbd2/transaction.c |   36 ++++++++++++++++++++++++++++++++++++
- include/linux/jbd2.h  |    9 +++++++++
- 4 files changed, 52 insertions(+), 14 deletions(-)
+Colin send me this information for his test case at least and I see
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 8553dfb..796aa4c 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4179,23 +4179,15 @@ static int ext4_freeze(struct super_block *sb)
- 
- 	journal = EXT4_SB(sb)->s_journal;
- 
--	/* Now we set up the journal barrier. */
--	jbd2_journal_lock_updates(journal);
--
-+	error = jbd2_journal_freeze(journal);
- 	/*
--	 * Don't clear the needs_recovery flag if we failed to flush
-+	 * Don't clear the needs_recovery flag if we failed to freeze
- 	 * the journal.
- 	 */
--	error = jbd2_journal_flush(journal);
--	if (error < 0)
--		goto out;
--
--	/* Journal blocked and flushed, clear needs_recovery flag. */
--	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
--	error = ext4_commit_super(sb, 1);
--out:
--	/* we rely on s_frozen to stop further updates */
--	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
-+	if (error >= 0) {
-+		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
-+		error = ext4_commit_super(sb, 1);
-+	}
- 	return error;
- }
- 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index e0ec3db..5e46333 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -842,6 +842,7 @@ static journal_t * journal_init_common (void)
- 	init_waitqueue_head(&journal->j_wait_checkpoint);
- 	init_waitqueue_head(&journal->j_wait_commit);
- 	init_waitqueue_head(&journal->j_wait_updates);
-+	init_waitqueue_head(&journal->j_wait_frozen);
- 	mutex_init(&journal->j_barrier);
- 	mutex_init(&journal->j_checkpoint_mutex);
- 	spin_lock_init(&journal->j_revoke_lock);
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 05fa77a..ad5a5df 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -171,6 +171,13 @@ repeat:
- 				journal->j_barrier_count == 0);
- 		goto repeat;
- 	}
-+	/* dont let a new handle start when a journal is frozen.
-+	 * jbd2_journal_freeze calls jbd2_journal_unlock_updates() only after
-+	 * the jflags indicate that the journal is frozen. So if the
-+	 * j_barrier_count is 0, then check if this was made 0 by the freezing
-+	 * process
-+	 */
-+	jbd2_check_frozen(journal);
- 
- 	if (!journal->j_running_transaction) {
- 		read_unlock(&journal->j_state_lock);
-@@ -489,6 +496,35 @@ int jbd2_journal_restart(handle_t *handle, int nblocks)
- }
- EXPORT_SYMBOL(jbd2_journal_restart);
- 
-+int jbd2_journal_freeze(journal_t *journal)
-+{
-+	int error = 0;
-+	/* Now we set up the journal barrier. */
-+	jbd2_journal_lock_updates(journal);
-+
-+	/*
-+	 * Don't clear the needs_recovery flag if we failed to flush
-+	 * the journal.
-+	 */
-+	error = jbd2_journal_flush(journal);
-+	if (error >= 0) {
-+		write_lock(&journal->j_state_lock);
-+		journal->j_flags = journal->j_flags | JBD2_FROZEN;
-+		write_unlock(&journal->j_state_lock);
-+	}
-+	jbd2_journal_unlock_updates(journal);
-+	return error;
-+}
-+
-+void jbd2_journal_thaw(journal_t * journal)
-+{
-+	write_lock(&journal->j_state_lock);
-+	journal->j_flags = journal->j_flags &= ~JBD2_FROZEN;
-+	write_unlock(&journal->j_state_lock);
-+	wake_up(&journal->j_wait_frozen);
-+}
-+
-+
- /**
-  * void jbd2_journal_lock_updates () - establish a transaction barrier.
-  * @journal:  Journal to establish a barrier on.
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index a32dcae..31d6c23 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -835,6 +835,9 @@ struct journal_s
- 	/* Wait queue to wait for updates to complete */
- 	wait_queue_head_t	j_wait_updates;
- 
-+	/* Wait queue to wait for journal to thaw*/
-+	wait_queue_head_t	j_wait_frozen;
-+
- 	/* Semaphore for locking against concurrent checkpoints */
- 	struct mutex		j_checkpoint_mutex;
- 
-@@ -1013,7 +1016,11 @@ struct journal_s
- #define JBD2_ABORT_ON_SYNCDATA_ERR	0x040	/* Abort the journal on file
- 						 * data write error in ordered
- 						 * mode */
-+#define JBD2_FROZEN	0x080   /* Journal thread is frozen as the filesystem is frozen */
-+
- 
-+#define jbd2_check_frozen(journal)	\
-+		wait_event(journal->j_wait_frozen, ((journal->j_flags & JBD2_FROZEN) != JBD2_FROZEN))
- /*
-  * Function declarations for the journaling transaction and buffer
-  * management
-@@ -1121,6 +1128,8 @@ extern void	 jbd2_journal_invalidatepage(journal_t *,
- 				struct page *, unsigned long);
- extern int	 jbd2_journal_try_to_free_buffers(journal_t *, struct page *, gfp_t);
- extern int	 jbd2_journal_stop(handle_t *);
-+extern int	 jbd2_journal_freeze(journal_t *);
-+extern void	 jbd2_journal_thaw(journal_t *);
- extern int	 jbd2_journal_flush (journal_t *);
- extern void	 jbd2_journal_lock_updates (journal_t *);
- extern void	 jbd2_journal_unlock_updates (journal_t *);
+11932 instances order=1 normal gfp_flags=GFP_NOWARN|GFP_NORETRY|GFP_COMP|GFP_NOMEMALLOC
+ => alloc_pages_current+0xa5/0x110 <ffffffff81149ef5>
+ => new_slab+0x1f5/0x290 <ffffffff81153645>
+ => __slab_alloc+0x262/0x390 <ffffffff81155192>
+ => kmem_cache_alloc+0x115/0x120 <ffffffff81155ab5>
+ => mempool_alloc_slab+0x15/0x20 <ffffffff8110e705>
+ => mempool_alloc+0x59/0x140 <ffffffff8110ea49>
+ => bio_alloc_bioset+0x3e/0xf0 <ffffffff811976ae>
+ => bio_alloc+0x15/0x30 <ffffffff81197805>
+
+Colin and James: Did you happen to switch from SLAB to SLUB between
+2.6.37 and 2.6.38? My own tests were against SLAB which might be why I
+didn't see the problem. Am restarting the tests with SLUB.
+
 -- 
-1.7.1
+Mel Gorman
+SUSE Labs
 
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
