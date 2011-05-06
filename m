@@ -1,34 +1,169 @@
 From: Surbhi Palande <surbhi.palande@canonical.com>
-Subject: [RFC][PATCH] Do not accept a new handle when the F.S is frozen
-Date: Fri,  6 May 2011 18:20:30 +0300
-Message-ID: <1304695231-11335-1-git-send-email-surbhi.palande@canonical.com>
+Subject: [PATCH] Adding support to freeze and unfreeze a journal
+Date: Fri,  6 May 2011 18:20:31 +0300
+Message-ID: <1304695231-11335-2-git-send-email-surbhi.palande@canonical.com>
 References: <20110504192436.GC6968@quack.suse.cz>
 Cc: toshi.okajima@jp.fujitsu.com, tytso@mit.edu,
 	m.mizuma@jp.fujitsu.com, adilger.kernel@dilger.ca,
 	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	sandeen@redhat.com
 To: jack@suse.cz
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from adelie.canonical.com ([91.189.90.139]:51602 "EHLO
-	adelie.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755024Ab1EFPUp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 May 2011 11:20:45 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <20110504192436.GC6968@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-This patch adds a flag which indicates that the journal is frozen or not and
-introduces two new functions jbd2_journal_freeze and jbd2_journal_thaw which
-should be called when the F.S freezes and thaws respectively. 
-A new handle can only be started now when the barrier count is 0 and when the
-journal is not in a frozen state. While the journal is in a frozen state,
-trying to start a new handle would put the process on wait queue. Thawing the
-journal would wake up all the processes waiting on this wait queue.
+The journal should be frozen when a F.S freezes. What this means is that till
+the F.S is thawed again, no new transactions should be accepted by the
+journal. When the F.S thaws, inturn it should thaw the journal and this should
+allow the journal to resume accepting new transactions.
+While the F.S has frozen the journal, the clients of journal on calling
+jbd2_journal_start() will sleep on a wait queue. Thawing the journal will wake
+up the sleeping clients and journalling can progress normally.
 
-I have lightly tested this patch. Sending it here for initial review. Please
-do let me know your inputs. Thanks a lot!
+Signed-off-by: Surbhi Palande <surbhi.palande@canonical.com>
+---
+ fs/ext4/super.c       |   20 ++++++--------------
+ fs/jbd2/journal.c     |    1 +
+ fs/jbd2/transaction.c |   36 ++++++++++++++++++++++++++++++++++++
+ include/linux/jbd2.h  |    9 +++++++++
+ 4 files changed, 52 insertions(+), 14 deletions(-)
 
-Warm Regards,
-Surbhi.
-
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 8553dfb..796aa4c 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4179,23 +4179,15 @@ static int ext4_freeze(struct super_block *sb)
+ 
+ 	journal = EXT4_SB(sb)->s_journal;
+ 
+-	/* Now we set up the journal barrier. */
+-	jbd2_journal_lock_updates(journal);
+-
++	error = jbd2_journal_freeze(journal);
+ 	/*
+-	 * Don't clear the needs_recovery flag if we failed to flush
++	 * Don't clear the needs_recovery flag if we failed to freeze
+ 	 * the journal.
+ 	 */
+-	error = jbd2_journal_flush(journal);
+-	if (error < 0)
+-		goto out;
+-
+-	/* Journal blocked and flushed, clear needs_recovery flag. */
+-	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+-	error = ext4_commit_super(sb, 1);
+-out:
+-	/* we rely on s_frozen to stop further updates */
+-	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
++	if (error >= 0) {
++		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
++		error = ext4_commit_super(sb, 1);
++	}
+ 	return error;
+ }
+ 
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index e0ec3db..5e46333 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -842,6 +842,7 @@ static journal_t * journal_init_common (void)
+ 	init_waitqueue_head(&journal->j_wait_checkpoint);
+ 	init_waitqueue_head(&journal->j_wait_commit);
+ 	init_waitqueue_head(&journal->j_wait_updates);
++	init_waitqueue_head(&journal->j_wait_frozen);
+ 	mutex_init(&journal->j_barrier);
+ 	mutex_init(&journal->j_checkpoint_mutex);
+ 	spin_lock_init(&journal->j_revoke_lock);
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 05fa77a..ad5a5df 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -171,6 +171,13 @@ repeat:
+ 				journal->j_barrier_count == 0);
+ 		goto repeat;
+ 	}
++	/* dont let a new handle start when a journal is frozen.
++	 * jbd2_journal_freeze calls jbd2_journal_unlock_updates() only after
++	 * the jflags indicate that the journal is frozen. So if the
++	 * j_barrier_count is 0, then check if this was made 0 by the freezing
++	 * process
++	 */
++	jbd2_check_frozen(journal);
+ 
+ 	if (!journal->j_running_transaction) {
+ 		read_unlock(&journal->j_state_lock);
+@@ -489,6 +496,35 @@ int jbd2_journal_restart(handle_t *handle, int nblocks)
+ }
+ EXPORT_SYMBOL(jbd2_journal_restart);
+ 
++int jbd2_journal_freeze(journal_t *journal)
++{
++	int error = 0;
++	/* Now we set up the journal barrier. */
++	jbd2_journal_lock_updates(journal);
++
++	/*
++	 * Don't clear the needs_recovery flag if we failed to flush
++	 * the journal.
++	 */
++	error = jbd2_journal_flush(journal);
++	if (error >= 0) {
++		write_lock(&journal->j_state_lock);
++		journal->j_flags = journal->j_flags | JBD2_FROZEN;
++		write_unlock(&journal->j_state_lock);
++	}
++	jbd2_journal_unlock_updates(journal);
++	return error;
++}
++
++void jbd2_journal_thaw(journal_t * journal)
++{
++	write_lock(&journal->j_state_lock);
++	journal->j_flags = journal->j_flags &= ~JBD2_FROZEN;
++	write_unlock(&journal->j_state_lock);
++	wake_up(&journal->j_wait_frozen);
++}
++
++
+ /**
+  * void jbd2_journal_lock_updates () - establish a transaction barrier.
+  * @journal:  Journal to establish a barrier on.
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index a32dcae..31d6c23 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -835,6 +835,9 @@ struct journal_s
+ 	/* Wait queue to wait for updates to complete */
+ 	wait_queue_head_t	j_wait_updates;
+ 
++	/* Wait queue to wait for journal to thaw*/
++	wait_queue_head_t	j_wait_frozen;
++
+ 	/* Semaphore for locking against concurrent checkpoints */
+ 	struct mutex		j_checkpoint_mutex;
+ 
+@@ -1013,7 +1016,11 @@ struct journal_s
+ #define JBD2_ABORT_ON_SYNCDATA_ERR	0x040	/* Abort the journal on file
+ 						 * data write error in ordered
+ 						 * mode */
++#define JBD2_FROZEN	0x080   /* Journal thread is frozen as the filesystem is frozen */
++
+ 
++#define jbd2_check_frozen(journal)	\
++		wait_event(journal->j_wait_frozen, ((journal->j_flags & JBD2_FROZEN) != JBD2_FROZEN))
+ /*
+  * Function declarations for the journaling transaction and buffer
+  * management
+@@ -1121,6 +1128,8 @@ extern void	 jbd2_journal_invalidatepage(journal_t *,
+ 				struct page *, unsigned long);
+ extern int	 jbd2_journal_try_to_free_buffers(journal_t *, struct page *, gfp_t);
+ extern int	 jbd2_journal_stop(handle_t *);
++extern int	 jbd2_journal_freeze(journal_t *);
++extern void	 jbd2_journal_thaw(journal_t *);
+ extern int	 jbd2_journal_flush (journal_t *);
+ extern void	 jbd2_journal_lock_updates (journal_t *);
+ extern void	 jbd2_journal_unlock_updates (journal_t *);
+-- 
+1.7.1
 
