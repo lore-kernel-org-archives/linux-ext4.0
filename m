@@ -1,60 +1,189 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [PATCH] ext4: remove redundant 'extern' keyword for function-definition
-Date: Fri, 6 May 2011 06:50:12 -0400
-Message-ID: <811F6CB9-D7EB-41BA-B403-6530A5BF7234@mit.edu>
-References: <1304669967-5677-1-git-send-email-sanbai@taobao.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org, Robin Dong <sanbai@taobao.com>
-To: Robin Dong <hao.bigrat@gmail.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH 1/2] ext4: Use schedule_timeout_interruptible() for
+ waiting in lazyinit thread
+Date: Fri, 6 May 2011 13:13:25 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1105061305551.5122@dhcp-27-109.brq.redhat.com>
+References: <1304335365-13892-1-git-send-email-lczerner@redhat.com> <4DC1C17A.8090703@redhat.com>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DMZ-MAILSEC-SCANNER-1.MIT.EDU ([18.9.25.12]:53458 "EHLO
-	dmz-mailsec-scanner-1.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752325Ab1EFKuR convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 6 May 2011 06:50:17 -0400
-In-Reply-To: <1304669967-5677-1-git-send-email-sanbai@taobao.com>
+Received: from mx1.redhat.com ([209.132.183.28]:35853 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753646Ab1EFLNb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 6 May 2011 07:13:31 -0400
+In-Reply-To: <4DC1C17A.8090703@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I don't really see the point to removing redundant keywords
-like this.   To my mind, it's like fixing whitespaces.   If we are 
-making changes to that part of the code, it's good to fix it,
-and I'd rather not introduce such things in new code, but
-as far as fixing code like this, i don't think an extra "extern"
-is that harmful that it's worth fixing up.
+On Wed, 4 May 2011, Eric Sandeen wrote:
 
-What do other people think?
-
--- Ted
-
-
-On May 6, 2011, at 4:19 AM, Robin Dong wrote:
-
-> Signed-off-by: Robin Dong <sanbai@taobao.com>
-> ---
-> fs/ext4/ialloc.c |    2 +-
-> 1 files changed, 1 insertions(+), 1 deletions(-)
+> On 5/2/11 6:22 AM, Lukas Czerner wrote:
+> > In order to make lazyinit eat approx. 10% of io bandwidth at max, we are
+> > sleeping between zeroing each single inode table. For that purpose we
+> > are using timer which wakes up thread when it expires. It is set via
+> > add_timer() and this may cause troubles in the case that thread has been
+> > woken up earlier and in next iteration we call add_timer() on still
+> > running timer hence hitting BUG_ON in add_timer(). We could fix that by
+> > using mod_timer() instead however we can use
+> > schedule_timeout_interruptible() for waiting and hence simplifying
+> > things a lot.
+> > 
+> > This commit exchange the old "waiting mechanism" with simple
+> > schedule_timeout_interruptible(), setting the time to sleep. Hence we do
+> > not longer need li_wait_daemon waiting queue and others, so get rid of
+> > it.
+> > 
+> > This solves Red Hat bug 699708.
+> > 
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> > ---
+> >  fs/ext4/ext4.h  |    4 ----
+> >  fs/ext4/super.c |   26 +++-----------------------
+> >  2 files changed, 3 insertions(+), 27 deletions(-)
+> > 
+> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> > index 4daaf2b..1e37c09 100644
+> > --- a/fs/ext4/ext4.h
+> > +++ b/fs/ext4/ext4.h
+> > @@ -1590,12 +1590,8 @@ void ext4_get_group_no_and_offset(struct super_block *sb, ext4_fsblk_t blocknr,
+> >   */
+> >  struct ext4_lazy_init {
+> >  	unsigned long		li_state;
+> > -
+> > -	wait_queue_head_t	li_wait_daemon;
+> >  	wait_queue_head_t	li_wait_task;
+> > -	struct timer_list	li_timer;
+> >  	struct task_struct	*li_task;
+> > -
+> >  	struct list_head	li_request_list;
+> >  	struct mutex		li_list_mtx;
+> >  };
+> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> > index 8553dfb..daf3300 100644
+> > --- a/fs/ext4/super.c
+> > +++ b/fs/ext4/super.c
+> > @@ -2659,12 +2659,6 @@ static void print_daily_error_info(unsigned long arg)
+> >  	mod_timer(&sbi->s_err_report, jiffies + 24*60*60*HZ);  /* Once a day */
+> >  }
+> >  
+> > -static void ext4_lazyinode_timeout(unsigned long data)
+> > -{
+> > -	struct task_struct *p = (struct task_struct *)data;
+> > -	wake_up_process(p);
+> > -}
+> > -
+> >  /* Find next suitable group and run ext4_init_inode_table */
+> >  static int ext4_run_li_request(struct ext4_li_request *elr)
+> >  {
+> > @@ -2712,7 +2706,7 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
+> >  
+> >  /*
+> >   * Remove lr_request from the list_request and free the
+> > - * request tructure. Should be called with li_list_mtx held
+> > + * request structure. Should be called with li_list_mtx held
+> >   */
+> >  static void ext4_remove_li_request(struct ext4_li_request *elr)
+> >  {
+> > @@ -2757,13 +2751,9 @@ static int ext4_lazyinit_thread(void *arg)
+> >  	struct list_head *pos, *n;
+> >  	struct ext4_li_request *elr;
+> >  	unsigned long next_wakeup;
+> > -	DEFINE_WAIT(wait);
+> >  
+> >  	BUG_ON(NULL == eli);
+> >  
+> > -	eli->li_timer.data = (unsigned long)current;
+> > -	eli->li_timer.function = ext4_lazyinode_timeout;
+> > -
+> >  	eli->li_task = current;
+> >  	wake_up(&eli->li_wait_task);
+> >  
+> > @@ -2803,13 +2793,8 @@ cont_thread:
+> >  			continue;
+> >  		}
+> >  
+> > -		eli->li_timer.expires = next_wakeup;
+> > -		add_timer(&eli->li_timer);
+> > -		prepare_to_wait(&eli->li_wait_daemon, &wait,
+> > -				TASK_INTERRUPTIBLE);
+> > -		if (time_before(jiffies, next_wakeup))
+> > -			schedule();
+> > -		finish_wait(&eli->li_wait_daemon, &wait);
+> > +		schedule_timeout_interruptible(next_wakeup - jiffies);
 > 
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index 21bb2f6..ace7aef 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -1235,7 +1235,7 @@ unsigned long ext4_count_dirs(struct super_block * sb)
->  * inode allocation from the current group, so we take alloc_sem lock, to
->  * block ext4_claim_inode until we are finished.
->  */
-> -extern int ext4_init_inode_table(struct super_block *sb, ext4_group_t group,
-> +int ext4_init_inode_table(struct super_block *sb, ext4_group_t group,
-> 				 int barrier)
-> {
-> 	struct ext4_group_info *grp = ext4_get_group_info(sb, group);
-> -- 
-> 1.7.1
+> Jeff asked whether this can wrap.  I think it can?
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Do we need to do the trick of delta = (long)next_wakeup - (long)jiffies to make sure we don't schedule out forever if jiffies has wrapped and next_wakeup has not?  Or maybe I'm behind on my jiffy-math.... :(
+> 
+> -Eric
 
+Ok, you're right. Since jiffies variable is volatile it can change any
+time, hence it can wrap just after the if (time_before(jiffies, next_wakeup))
+condition which is pretty tight window, but it is there.
+
+So what about this ?
+
+...
+	unsigned long next_wakeup, current;
+...
+
+		current = jiffies;
+		if ((time_after_eq(current, next_wakeup)) ||
+		    (MAX_JIFFY_OFFSET == next_wakeup)) {
+			cond_resched();
+			continue;
+		}
+
+		schedule_timeout_interruptible(next_wakeup - current);
+...
+
+I think that this is the best solution which does not require additional
+condition, which the "(long)" trick would require anyway (since you can
+end up with negative value in the case that jiffies wrapped).
+
+Thanks!
+-Lukas
+
+> 
+> > +
+> >  		if (kthread_should_stop()) {
+> >  			ext4_clear_request_list();
+> >  			goto exit_thread;
+> > @@ -2833,12 +2818,10 @@ exit_thread:
+> >  		goto cont_thread;
+> >  	}
+> >  	mutex_unlock(&eli->li_list_mtx);
+> > -	del_timer_sync(&ext4_li_info->li_timer);
+> >  	eli->li_task = NULL;
+> >  	wake_up(&eli->li_wait_task);
+> >  
+> >  	kfree(ext4_li_info);
+> > -	ext4_lazyinit_task = NULL;
+> >  	ext4_li_info = NULL;
+> >  	mutex_unlock(&ext4_li_mtx);
+> >  
+> > @@ -2866,7 +2849,6 @@ static int ext4_run_lazyinit_thread(void)
+> >  	if (IS_ERR(ext4_lazyinit_task)) {
+> >  		int err = PTR_ERR(ext4_lazyinit_task);
+> >  		ext4_clear_request_list();
+> > -		del_timer_sync(&ext4_li_info->li_timer);
+> >  		kfree(ext4_li_info);
+> >  		ext4_li_info = NULL;
+> >  		printk(KERN_CRIT "EXT4: error %d creating inode table "
+> > @@ -2915,9 +2897,7 @@ static int ext4_li_info_new(void)
+> >  	INIT_LIST_HEAD(&eli->li_request_list);
+> >  	mutex_init(&eli->li_list_mtx);
+> >  
+> > -	init_waitqueue_head(&eli->li_wait_daemon);
+> >  	init_waitqueue_head(&eli->li_wait_task);
+> > -	init_timer(&eli->li_timer);
+> >  	eli->li_state |= EXT4_LAZYINIT_QUIT;
+> >  
+> >  	ext4_li_info = eli;
+> 
+> 
+
+-- 
