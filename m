@@ -1,109 +1,163 @@
-From: Mel Gorman <mgorman@suse.de>
-Subject: Re: [BUG] fatal hang untarring 90GB file, possibly writeback related.
-Date: Fri, 6 May 2011 12:42:45 +0100
-Message-ID: <20110506114245.GE6591@suse.de>
-References: <20110428171826.GZ4658@suse.de>
- <1304015436.2598.19.camel@mulgrave.site>
- <20110428192104.GA4658@suse.de>
- <1304020767.2598.21.camel@mulgrave.site>
- <1304025145.2598.24.camel@mulgrave.site>
- <1304030629.2598.42.camel@mulgrave.site>
- <20110503091320.GA4542@novell.com>
- <1304431982.2576.5.camel@mulgrave.site>
- <1304432553.2576.10.camel@mulgrave.site>
- <20110506074224.GB6591@suse.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: Mel Gorman <mgorman@novell.com>, Jan Kara <jack@suse.cz>,
-	colin.king@canonical.com, Chris Mason <chris.mason@oracle.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-mm <linux-mm@kvack.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: James Bottomley <James.Bottomley@suse.de>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: [PATCH] ext4:Teach ext4_ext_split to caculate extents efficiently.
+Date: Fri,  6 May 2011 21:20:09 +0800
+Message-ID: <1304688009-10014-1-git-send-email-xiaoqiangnk@gmail.com>
+Cc: tytso@mit.edu, Yongqiang Yang <xiaoqiangnk@gmail.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:40783 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756391Ab1EFLmt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 6 May 2011 07:42:49 -0400
-Content-Disposition: inline
-In-Reply-To: <20110506074224.GB6591@suse.de>
+Received: from mail-pv0-f174.google.com ([74.125.83.174]:37127 "EHLO
+	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754795Ab1EFNUU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 May 2011 09:20:20 -0400
+Received: by pvg12 with SMTP id 12so1424614pvg.19
+        for <linux-ext4@vger.kernel.org>; Fri, 06 May 2011 06:20:19 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 06, 2011 at 08:42:24AM +0100, Mel Gorman wrote:
-> On Tue, May 03, 2011 at 09:22:33AM -0500, James Bottomley wrote:
-> > On Tue, 2011-05-03 at 09:13 -0500, James Bottomley wrote:
-> > > I've got a ftrace output of kswapd ... it's 500k compressed, so I'll
-> > > send under separate cover.
-> > 
-> > Here it is ... it's under 2.6.38.4 vanilla, but the code is similar. 
-> > 
-> 
-> I was quiet because I was off trying to reproduce this but not having
-> much luck. It doesn't seem directly related to filesystems or
-> cgroups. For example, here is what I see with ext4 without cgroups
-> 
->                 2.6.34-vanilla    2.6.37-vanilla    2.6.38-vanilla       rc6-vanilla
-> download tar           70 ( 0.00%)   68 ( 2.94%)   69 ( 1.45%)   70 ( 0.00%)
-> unpack tar            601 ( 0.00%)  605 (-0.66%)  604 (-0.50%)  605 (-0.66%)
-> copy source files     319 ( 0.00%)  321 (-0.62%)  320 (-0.31%)  332 (-3.92%)
-> create tarfile       1368 ( 0.00%) 1372 (-0.29%) 1371 (-0.22%) 1363 ( 0.37%)
-> delete source dirs     21 ( 0.00%)   21 ( 0.00%)   23 (-8.70%)   22 (-4.55%)
-> expand tar            263 ( 0.00%)  261 ( 0.77%)  257 ( 2.33%)  259 ( 1.54%)
-> 
-> (all results are in seconds)
-> 
-> When running in cgroups, the results are similar - bit slower but
-> not remarkably so. ext3 is slower but not enough to count as the bug.
-> 
-> The trace you posted is very short but kswapd is not going to sleep
-> in it. It's less than a seconds worth on different cpus so it's hard
-> to draw any conclusion from it other than sleeping_prematurely()
-> is often deciding that kswapd should not sleep.
-> 
-> So lets consider what keeps it awake.
-> 
-> 1. High-order allocations? You machine is using i915 and RPC, something
->    neither of my test machine uses. i915 is potentially a source for
->    high-order allocations. I'm attaching a perl script. Please run it as
->    ./watch-highorder.pl --output /tmp/highorders.txt
->    while you are running tar. When kswapd is running for about 30
->    seconds, interrupt it with ctrl+c twice in quick succession and
->    post /tmp/highorders.txt
-> 
-> 2. All unreclaimable is not being set or we are not balancing at all.
->    Can you post the output of sysrq+m while the machine is struggling
->    please?
-> 
-> 3. Slab may not be shrinking for some reason. Can you run a shell
->    script like this during the whole test and record its output please?
-> 
->    #!/bin/bash
->    while [ 1 ]; do
-> 	   echo time: `date +%s`
-> 	   cat /proc/vmstat
-> 	   sleep 2
->    done
-> 
->    Similarly if this is a slab issue, it'd be nice to know who it is so
-> 
->    #!/bin/bash
->    while [ 1 ]; do
-> 	   echo time: `date +%s`
-> 	   cat /proc/slabinfo
-> 	   sleep $MONITOR_UPDATE_FREQUENCY
->    done
-> 
-> 4. Lets get a better look at what is going on in kswapd
-> 
->    echo 1 > /sys/kernel/debug/tracing/events/vmscan/enable
->    cat /sys/kernel/debug/tracing/trace_pipe > vmscan-ftrace.txt
-> 
+ext4_ext_split can caculate extents to be moved in an efficient
+way showed by this patch.
 
-Also, could you test the patch at https://lkml.org/lkml/2011/3/5/121
-please?
+Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+---
+ fs/ext4/extents.c |   84 +++++++++++++++++++++++++++++------------------------
+ 1 files changed, 46 insertions(+), 38 deletions(-)
 
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index e363f21..baf846f 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -474,9 +474,43 @@ static void ext4_ext_show_leaf(struct inode *inode, struct ext4_ext_path *path)
+ 	}
+ 	ext_debug("\n");
+ }
++
++static void ext4_ext_show_move(struct inode *inode, struct ext4_ext_path *path,
++			ext4_fsblk_t newblock, int level)
++{
++	int depth = ext_depth(inode);
++	struct ext4_extent *ex;
++
++	if (depth != level) {
++		struct ext4_extent_idx *idx;
++		idx = path[level].p_idx;
++		while (idx <= EXT_MAX_INDEX(path[level].p_hdr)) {
++			ext_debug("%d: move %d:%llu in new index %llu\n", level,
++					le32_to_cpu(idx->ei_block),
++					ext4_idx_pblock(idx),
++					newblock);
++			idx++;
++		}
++
++		return;
++	}
++
++	ex = path[depth].p_ext;
++	while (ex <= EXT_MAX_EXTENT(path[depth].p_hdr)) {
++		ext_debug("move %d:%llu:[%d]%d in new leaf %llu\n",
++				le32_to_cpu(ex->ee_block),
++				ext4_ext_pblock(ex),
++				ext4_ext_is_uninitialized(ex),
++				ext4_ext_get_actual_len(ex),
++				newblock);
++		ex++;
++	}
++}
++
+ #else
+ #define ext4_ext_show_path(inode, path)
+ #define ext4_ext_show_leaf(inode, path)
++#define ext4_ext_show_move(inode, path, newblock, level)
+ #endif
+ 
+ void ext4_ext_drop_refs(struct ext4_ext_path *path)
+@@ -799,7 +833,6 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 	int depth = ext_depth(inode);
+ 	struct ext4_extent_header *neh;
+ 	struct ext4_extent_idx *fidx;
+-	struct ext4_extent *ex;
+ 	int i = at, k, m, a;
+ 	ext4_fsblk_t newblock, oldblock;
+ 	__le32 border;
+@@ -876,7 +909,6 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 	neh->eh_max = cpu_to_le16(ext4_ext_space_block(inode, 0));
+ 	neh->eh_magic = EXT4_EXT_MAGIC;
+ 	neh->eh_depth = 0;
+-	ex = EXT_FIRST_EXTENT(neh);
+ 
+ 	/* move remainder of path[depth] to the new leaf */
+ 	if (unlikely(path[depth].p_hdr->eh_entries !=
+@@ -888,25 +920,12 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 		goto cleanup;
+ 	}
+ 	/* start copy from next extent */
+-	/* TODO: we could do it by single memmove */
+-	m = 0;
+-	path[depth].p_ext++;
+-	while (path[depth].p_ext <=
+-			EXT_MAX_EXTENT(path[depth].p_hdr)) {
+-		ext_debug("move %d:%llu:[%d]%d in new leaf %llu\n",
+-				le32_to_cpu(path[depth].p_ext->ee_block),
+-				ext4_ext_pblock(path[depth].p_ext),
+-				ext4_ext_is_uninitialized(path[depth].p_ext),
+-				ext4_ext_get_actual_len(path[depth].p_ext),
+-				newblock);
+-		/*memmove(ex++, path[depth].p_ext++,
+-				sizeof(struct ext4_extent));
+-		neh->eh_entries++;*/
+-		path[depth].p_ext++;
+-		m++;
+-	}
++	m = EXT_MAX_EXTENT(path[depth].p_hdr) - path[depth].p_ext++;
++	ext4_ext_show_move(inode, path, newblock, depth);
+ 	if (m) {
+-		memmove(ex, path[depth].p_ext-m, sizeof(struct ext4_extent)*m);
++		struct ext4_extent *ex;
++		ex = EXT_FIRST_EXTENT(neh);
++		memmove(ex, path[depth].p_ext, sizeof(struct ext4_extent) * m);
+ 		le16_add_cpu(&neh->eh_entries, m);
+ 	}
+ 
+@@ -968,12 +987,8 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 
+ 		ext_debug("int.index at %d (block %llu): %u -> %llu\n",
+ 				i, newblock, le32_to_cpu(border), oldblock);
+-		/* copy indexes */
+-		m = 0;
+-		path[i].p_idx++;
+ 
+-		ext_debug("cur 0x%p, last 0x%p\n", path[i].p_idx,
+-				EXT_MAX_INDEX(path[i].p_hdr));
++		/* move remainder of path[i] to the new index block */
+ 		if (unlikely(EXT_MAX_INDEX(path[i].p_hdr) !=
+ 					EXT_LAST_INDEX(path[i].p_hdr))) {
+ 			EXT4_ERROR_INODE(inode,
+@@ -982,20 +997,13 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 			err = -EIO;
+ 			goto cleanup;
+ 		}
+-		while (path[i].p_idx <= EXT_MAX_INDEX(path[i].p_hdr)) {
+-			ext_debug("%d: move %d:%llu in new index %llu\n", i,
+-					le32_to_cpu(path[i].p_idx->ei_block),
+-					ext4_idx_pblock(path[i].p_idx),
+-					newblock);
+-			/*memmove(++fidx, path[i].p_idx++,
+-					sizeof(struct ext4_extent_idx));
+-			neh->eh_entries++;
+-			BUG_ON(neh->eh_entries > neh->eh_max);*/
+-			path[i].p_idx++;
+-			m++;
+-		}
++		/* start copy indexes */
++		m = EXT_MAX_INDEX(path[i].p_hdr) - path[i].p_idx++;
++		ext_debug("cur 0x%p, last 0x%p\n", path[i].p_idx,
++				EXT_MAX_INDEX(path[i].p_hdr));
++		ext4_ext_show_move(inode, path, newblock, i);
+ 		if (m) {
+-			memmove(++fidx, path[i].p_idx - m,
++			memmove(++fidx, path[i].p_idx,
+ 				sizeof(struct ext4_extent_idx) * m);
+ 			le16_add_cpu(&neh->eh_entries, m);
+ 		}
 -- 
-Mel Gorman
-SUSE Labs
+1.7.5.1
+
