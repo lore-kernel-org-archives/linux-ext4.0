@@ -1,53 +1,52 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: remove redundant 'extern' keyword for function-definition
-Date: Fri, 06 May 2011 11:19:18 -0500
-Message-ID: <4DC41F86.1070405@redhat.com>
-References: <1304669967-5677-1-git-send-email-sanbai@taobao.com> <811F6CB9-D7EB-41BA-B403-6530A5BF7234@mit.edu> <alpine.LFD.2.00.1105061326200.5122@dhcp-27-109.brq.redhat.com>
+From: James Bottomley <James.Bottomley@suse.de>
+Subject: Re: [BUG] fatal hang untarring 90GB file, possibly writeback
+ related.
+Date: Fri, 06 May 2011 14:14:37 -0500
+Message-ID: <1304709277.12427.29.camel@mulgrave.site>
+References: <20110428171826.GZ4658@suse.de>
+	 <1304015436.2598.19.camel@mulgrave.site> <20110428192104.GA4658@suse.de>
+	 <1304020767.2598.21.camel@mulgrave.site>
+	 <1304025145.2598.24.camel@mulgrave.site>
+	 <1304030629.2598.42.camel@mulgrave.site> <20110503091320.GA4542@novell.com>
+	 <1304431982.2576.5.camel@mulgrave.site>
+	 <1304432553.2576.10.camel@mulgrave.site> <20110506074224.GB6591@suse.de>
+	 <20110506154444.GG6591@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@MIT.EDU>, Robin Dong <hao.bigrat@gmail.com>,
-	linux-ext4@vger.kernel.org, Robin Dong <sanbai@taobao.com>
-To: Lukas Czerner <lczerner@redhat.com>
+Cc: Mel Gorman <mgorman@novell.com>, Jan Kara <jack@suse.cz>,
+	colin.king@canonical.com, Chris Mason <chris.mason@oracle.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-mm <linux-mm@kvack.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Mel Gorman <mgorman@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:4201 "EHLO mx1.redhat.com"
+Received: from cantor.suse.de ([195.135.220.2]:43587 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932189Ab1EFQT3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 6 May 2011 12:19:29 -0400
-In-Reply-To: <alpine.LFD.2.00.1105061326200.5122@dhcp-27-109.brq.redhat.com>
+	id S1751096Ab1EFTOn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 6 May 2011 15:14:43 -0400
+In-Reply-To: <20110506154444.GG6591@suse.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 5/6/11 6:36 AM, Lukas Czerner wrote:
-> On Fri, 6 May 2011, Theodore Tso wrote:
-> 
->> I don't really see the point to removing redundant keywords
->> like this.   To my mind, it's like fixing whitespaces.   If we are 
->> making changes to that part of the code, it's good to fix it,
->> and I'd rather not introduce such things in new code, but
->> as far as fixing code like this, i don't think an extra "extern"
->> is that harmful that it's worth fixing up.
->>
->> What do other people think?
-> 
-> Agreed! And since I am going to make some changes in lazyinit code anyway,
-> I can very well make that change (and of course give Robin the credit for
-> it:).
-> 
-> On the other hand I do not see a *huge* problem with commits like that, but
-> it is just additional unnecessary commit. Usually people complain that
-> git blame need some more digging with commits like this changing
-> otherwise perfectly sane code, but when one is going to make that change
-> when making some changes "at that area" it would mess up git blame
-> anyway.
-> 
-> Thanks!
-> -Lukas
+On Fri, 2011-05-06 at 16:44 +0100, Mel Gorman wrote:
+> Colin and James: Did you happen to switch from SLAB to SLUB between
+> 2.6.37 and 2.6.38? My own tests were against SLAB which might be why I
+> didn't see the problem. Am restarting the tests with SLUB.
 
-FWIW, I had noticed this too, and there is another one in fsync.c:
+Aargh ... I'm an idiot.  I should have thought of SLUB immediately ...
+it's been causing oopses since debian switched to it.
 
-fsync.c:extern int ext4_flush_completed_IO(struct inode *inode)
+So I recompiled the 2.6.38.4 stable kernel with SLAB instead of SLUB and
+the problem goes away ... at least from three untar runs on a loaded
+box ... of course it could manifest a few ms after I send this email ...
 
-so, next time someone touches that code... ;)
+There are material differences, as well: SLAB isn't taking my system
+down to very low memory on the untar ... it's keeping about 0.5Gb listed
+as free.  SLUB took that to under 100kb, so it could just be that SLAB
+isn't wandering as close to the cliff edge?
 
--Eric
+James
+
+
