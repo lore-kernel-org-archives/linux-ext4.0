@@ -1,163 +1,34 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH] ext4:Teach ext4_ext_split to caculate extents efficiently.
-Date: Fri,  6 May 2011 21:20:09 +0800
-Message-ID: <1304688009-10014-1-git-send-email-xiaoqiangnk@gmail.com>
-Cc: tytso@mit.edu, Yongqiang Yang <xiaoqiangnk@gmail.com>
-To: linux-ext4@vger.kernel.org
+From: Surbhi Palande <surbhi.palande@canonical.com>
+Subject: [RFC][PATCH] Do not accept a new handle when the F.S is frozen
+Date: Fri,  6 May 2011 18:20:30 +0300
+Message-ID: <1304695231-11335-1-git-send-email-surbhi.palande@canonical.com>
+References: <20110504192436.GC6968@quack.suse.cz>
+Cc: toshi.okajima@jp.fujitsu.com, tytso@mit.edu,
+	m.mizuma@jp.fujitsu.com, adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	sandeen@redhat.com
+To: jack@suse.cz
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pv0-f174.google.com ([74.125.83.174]:37127 "EHLO
-	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754795Ab1EFNUU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 May 2011 09:20:20 -0400
-Received: by pvg12 with SMTP id 12so1424614pvg.19
-        for <linux-ext4@vger.kernel.org>; Fri, 06 May 2011 06:20:19 -0700 (PDT)
+Received: from adelie.canonical.com ([91.189.90.139]:51602 "EHLO
+	adelie.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755024Ab1EFPUp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 May 2011 11:20:45 -0400
+In-Reply-To: <20110504192436.GC6968@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4_ext_split can caculate extents to be moved in an efficient
-way showed by this patch.
+This patch adds a flag which indicates that the journal is frozen or not and
+introduces two new functions jbd2_journal_freeze and jbd2_journal_thaw which
+should be called when the F.S freezes and thaws respectively. 
+A new handle can only be started now when the barrier count is 0 and when the
+journal is not in a frozen state. While the journal is in a frozen state,
+trying to start a new handle would put the process on wait queue. Thawing the
+journal would wake up all the processes waiting on this wait queue.
 
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
----
- fs/ext4/extents.c |   84 +++++++++++++++++++++++++++++------------------------
- 1 files changed, 46 insertions(+), 38 deletions(-)
+I have lightly tested this patch. Sending it here for initial review. Please
+do let me know your inputs. Thanks a lot!
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index e363f21..baf846f 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -474,9 +474,43 @@ static void ext4_ext_show_leaf(struct inode *inode, struct ext4_ext_path *path)
- 	}
- 	ext_debug("\n");
- }
-+
-+static void ext4_ext_show_move(struct inode *inode, struct ext4_ext_path *path,
-+			ext4_fsblk_t newblock, int level)
-+{
-+	int depth = ext_depth(inode);
-+	struct ext4_extent *ex;
-+
-+	if (depth != level) {
-+		struct ext4_extent_idx *idx;
-+		idx = path[level].p_idx;
-+		while (idx <= EXT_MAX_INDEX(path[level].p_hdr)) {
-+			ext_debug("%d: move %d:%llu in new index %llu\n", level,
-+					le32_to_cpu(idx->ei_block),
-+					ext4_idx_pblock(idx),
-+					newblock);
-+			idx++;
-+		}
-+
-+		return;
-+	}
-+
-+	ex = path[depth].p_ext;
-+	while (ex <= EXT_MAX_EXTENT(path[depth].p_hdr)) {
-+		ext_debug("move %d:%llu:[%d]%d in new leaf %llu\n",
-+				le32_to_cpu(ex->ee_block),
-+				ext4_ext_pblock(ex),
-+				ext4_ext_is_uninitialized(ex),
-+				ext4_ext_get_actual_len(ex),
-+				newblock);
-+		ex++;
-+	}
-+}
-+
- #else
- #define ext4_ext_show_path(inode, path)
- #define ext4_ext_show_leaf(inode, path)
-+#define ext4_ext_show_move(inode, path, newblock, level)
- #endif
- 
- void ext4_ext_drop_refs(struct ext4_ext_path *path)
-@@ -799,7 +833,6 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
- 	int depth = ext_depth(inode);
- 	struct ext4_extent_header *neh;
- 	struct ext4_extent_idx *fidx;
--	struct ext4_extent *ex;
- 	int i = at, k, m, a;
- 	ext4_fsblk_t newblock, oldblock;
- 	__le32 border;
-@@ -876,7 +909,6 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
- 	neh->eh_max = cpu_to_le16(ext4_ext_space_block(inode, 0));
- 	neh->eh_magic = EXT4_EXT_MAGIC;
- 	neh->eh_depth = 0;
--	ex = EXT_FIRST_EXTENT(neh);
- 
- 	/* move remainder of path[depth] to the new leaf */
- 	if (unlikely(path[depth].p_hdr->eh_entries !=
-@@ -888,25 +920,12 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
- 		goto cleanup;
- 	}
- 	/* start copy from next extent */
--	/* TODO: we could do it by single memmove */
--	m = 0;
--	path[depth].p_ext++;
--	while (path[depth].p_ext <=
--			EXT_MAX_EXTENT(path[depth].p_hdr)) {
--		ext_debug("move %d:%llu:[%d]%d in new leaf %llu\n",
--				le32_to_cpu(path[depth].p_ext->ee_block),
--				ext4_ext_pblock(path[depth].p_ext),
--				ext4_ext_is_uninitialized(path[depth].p_ext),
--				ext4_ext_get_actual_len(path[depth].p_ext),
--				newblock);
--		/*memmove(ex++, path[depth].p_ext++,
--				sizeof(struct ext4_extent));
--		neh->eh_entries++;*/
--		path[depth].p_ext++;
--		m++;
--	}
-+	m = EXT_MAX_EXTENT(path[depth].p_hdr) - path[depth].p_ext++;
-+	ext4_ext_show_move(inode, path, newblock, depth);
- 	if (m) {
--		memmove(ex, path[depth].p_ext-m, sizeof(struct ext4_extent)*m);
-+		struct ext4_extent *ex;
-+		ex = EXT_FIRST_EXTENT(neh);
-+		memmove(ex, path[depth].p_ext, sizeof(struct ext4_extent) * m);
- 		le16_add_cpu(&neh->eh_entries, m);
- 	}
- 
-@@ -968,12 +987,8 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
- 
- 		ext_debug("int.index at %d (block %llu): %u -> %llu\n",
- 				i, newblock, le32_to_cpu(border), oldblock);
--		/* copy indexes */
--		m = 0;
--		path[i].p_idx++;
- 
--		ext_debug("cur 0x%p, last 0x%p\n", path[i].p_idx,
--				EXT_MAX_INDEX(path[i].p_hdr));
-+		/* move remainder of path[i] to the new index block */
- 		if (unlikely(EXT_MAX_INDEX(path[i].p_hdr) !=
- 					EXT_LAST_INDEX(path[i].p_hdr))) {
- 			EXT4_ERROR_INODE(inode,
-@@ -982,20 +997,13 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
- 			err = -EIO;
- 			goto cleanup;
- 		}
--		while (path[i].p_idx <= EXT_MAX_INDEX(path[i].p_hdr)) {
--			ext_debug("%d: move %d:%llu in new index %llu\n", i,
--					le32_to_cpu(path[i].p_idx->ei_block),
--					ext4_idx_pblock(path[i].p_idx),
--					newblock);
--			/*memmove(++fidx, path[i].p_idx++,
--					sizeof(struct ext4_extent_idx));
--			neh->eh_entries++;
--			BUG_ON(neh->eh_entries > neh->eh_max);*/
--			path[i].p_idx++;
--			m++;
--		}
-+		/* start copy indexes */
-+		m = EXT_MAX_INDEX(path[i].p_hdr) - path[i].p_idx++;
-+		ext_debug("cur 0x%p, last 0x%p\n", path[i].p_idx,
-+				EXT_MAX_INDEX(path[i].p_hdr));
-+		ext4_ext_show_move(inode, path, newblock, i);
- 		if (m) {
--			memmove(++fidx, path[i].p_idx - m,
-+			memmove(++fidx, path[i].p_idx,
- 				sizeof(struct ext4_extent_idx) * m);
- 			le16_add_cpu(&neh->eh_entries, m);
- 		}
--- 
-1.7.5.1
+Warm Regards,
+Surbhi.
+
 
