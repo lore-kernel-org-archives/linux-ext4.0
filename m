@@ -1,82 +1,109 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: remove redundant 'extern' keyword for
- function-definition
-Date: Fri, 6 May 2011 13:36:18 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1105061326200.5122@dhcp-27-109.brq.redhat.com>
-References: <1304669967-5677-1-git-send-email-sanbai@taobao.com> <811F6CB9-D7EB-41BA-B403-6530A5BF7234@mit.edu>
+From: Mel Gorman <mgorman@suse.de>
+Subject: Re: [BUG] fatal hang untarring 90GB file, possibly writeback related.
+Date: Fri, 6 May 2011 12:42:45 +0100
+Message-ID: <20110506114245.GE6591@suse.de>
+References: <20110428171826.GZ4658@suse.de>
+ <1304015436.2598.19.camel@mulgrave.site>
+ <20110428192104.GA4658@suse.de>
+ <1304020767.2598.21.camel@mulgrave.site>
+ <1304025145.2598.24.camel@mulgrave.site>
+ <1304030629.2598.42.camel@mulgrave.site>
+ <20110503091320.GA4542@novell.com>
+ <1304431982.2576.5.camel@mulgrave.site>
+ <1304432553.2576.10.camel@mulgrave.site>
+ <20110506074224.GB6591@suse.de>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Robin Dong <hao.bigrat@gmail.com>, linux-ext4@vger.kernel.org,
-	Robin Dong <sanbai@taobao.com>
-To: Theodore Tso <tytso@MIT.EDU>
+Content-Type: text/plain; charset=iso-8859-15
+Cc: Mel Gorman <mgorman@novell.com>, Jan Kara <jack@suse.cz>,
+	colin.king@canonical.com, Chris Mason <chris.mason@oracle.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-mm <linux-mm@kvack.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: James Bottomley <James.Bottomley@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32436 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:40783 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756394Ab1EFLg3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 6 May 2011 07:36:29 -0400
-In-Reply-To: <811F6CB9-D7EB-41BA-B403-6530A5BF7234@mit.edu>
+	id S1756391Ab1EFLmt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 6 May 2011 07:42:49 -0400
+Content-Disposition: inline
+In-Reply-To: <20110506074224.GB6591@suse.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 6 May 2011, Theodore Tso wrote:
-
-> I don't really see the point to removing redundant keywords
-> like this.   To my mind, it's like fixing whitespaces.   If we are 
-> making changes to that part of the code, it's good to fix it,
-> and I'd rather not introduce such things in new code, but
-> as far as fixing code like this, i don't think an extra "extern"
-> is that harmful that it's worth fixing up.
-> 
-> What do other people think?
-
-Agreed! And since I am going to make some changes in lazyinit code anyway,
-I can very well make that change (and of course give Robin the credit for
-it:).
-
-On the other hand I do not see a *huge* problem with commits like that, but
-it is just additional unnecessary commit. Usually people complain that
-git blame need some more digging with commits like this changing
-otherwise perfectly sane code, but when one is going to make that change
-when making some changes "at that area" it would mess up git blame
-anyway.
-
-Thanks!
--Lukas
-
-> 
-> -- Ted
-> 
-> 
-> On May 6, 2011, at 4:19 AM, Robin Dong wrote:
-> 
-> > Signed-off-by: Robin Dong <sanbai@taobao.com>
-> > ---
-> > fs/ext4/ialloc.c |    2 +-
-> > 1 files changed, 1 insertions(+), 1 deletions(-)
+On Fri, May 06, 2011 at 08:42:24AM +0100, Mel Gorman wrote:
+> On Tue, May 03, 2011 at 09:22:33AM -0500, James Bottomley wrote:
+> > On Tue, 2011-05-03 at 09:13 -0500, James Bottomley wrote:
+> > > I've got a ftrace output of kswapd ... it's 500k compressed, so I'll
+> > > send under separate cover.
 > > 
-> > diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> > index 21bb2f6..ace7aef 100644
-> > --- a/fs/ext4/ialloc.c
-> > +++ b/fs/ext4/ialloc.c
-> > @@ -1235,7 +1235,7 @@ unsigned long ext4_count_dirs(struct super_block * sb)
-> >  * inode allocation from the current group, so we take alloc_sem lock, to
-> >  * block ext4_claim_inode until we are finished.
-> >  */
-> > -extern int ext4_init_inode_table(struct super_block *sb, ext4_group_t group,
-> > +int ext4_init_inode_table(struct super_block *sb, ext4_group_t group,
-> > 				 int barrier)
-> > {
-> > 	struct ext4_group_info *grp = ext4_get_group_info(sb, group);
-> > -- 
-> > 1.7.1
+> > Here it is ... it's under 2.6.38.4 vanilla, but the code is similar. 
 > > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> I was quiet because I was off trying to reproduce this but not having
+> much luck. It doesn't seem directly related to filesystems or
+> cgroups. For example, here is what I see with ext4 without cgroups
 > 
+>                 2.6.34-vanilla    2.6.37-vanilla    2.6.38-vanilla       rc6-vanilla
+> download tar           70 ( 0.00%)   68 ( 2.94%)   69 ( 1.45%)   70 ( 0.00%)
+> unpack tar            601 ( 0.00%)  605 (-0.66%)  604 (-0.50%)  605 (-0.66%)
+> copy source files     319 ( 0.00%)  321 (-0.62%)  320 (-0.31%)  332 (-3.92%)
+> create tarfile       1368 ( 0.00%) 1372 (-0.29%) 1371 (-0.22%) 1363 ( 0.37%)
+> delete source dirs     21 ( 0.00%)   21 ( 0.00%)   23 (-8.70%)   22 (-4.55%)
+> expand tar            263 ( 0.00%)  261 ( 0.77%)  257 ( 2.33%)  259 ( 1.54%)
+> 
+> (all results are in seconds)
+> 
+> When running in cgroups, the results are similar - bit slower but
+> not remarkably so. ext3 is slower but not enough to count as the bug.
+> 
+> The trace you posted is very short but kswapd is not going to sleep
+> in it. It's less than a seconds worth on different cpus so it's hard
+> to draw any conclusion from it other than sleeping_prematurely()
+> is often deciding that kswapd should not sleep.
+> 
+> So lets consider what keeps it awake.
+> 
+> 1. High-order allocations? You machine is using i915 and RPC, something
+>    neither of my test machine uses. i915 is potentially a source for
+>    high-order allocations. I'm attaching a perl script. Please run it as
+>    ./watch-highorder.pl --output /tmp/highorders.txt
+>    while you are running tar. When kswapd is running for about 30
+>    seconds, interrupt it with ctrl+c twice in quick succession and
+>    post /tmp/highorders.txt
+> 
+> 2. All unreclaimable is not being set or we are not balancing at all.
+>    Can you post the output of sysrq+m while the machine is struggling
+>    please?
+> 
+> 3. Slab may not be shrinking for some reason. Can you run a shell
+>    script like this during the whole test and record its output please?
+> 
+>    #!/bin/bash
+>    while [ 1 ]; do
+> 	   echo time: `date +%s`
+> 	   cat /proc/vmstat
+> 	   sleep 2
+>    done
+> 
+>    Similarly if this is a slab issue, it'd be nice to know who it is so
+> 
+>    #!/bin/bash
+>    while [ 1 ]; do
+> 	   echo time: `date +%s`
+> 	   cat /proc/slabinfo
+> 	   sleep $MONITOR_UPDATE_FREQUENCY
+>    done
+> 
+> 4. Lets get a better look at what is going on in kswapd
+> 
+>    echo 1 > /sys/kernel/debug/tracing/events/vmscan/enable
+>    cat /sys/kernel/debug/tracing/trace_pipe > vmscan-ftrace.txt
+> 
+
+Also, could you test the patch at https://lkml.org/lkml/2011/3/5/121
+please?
+
+-- 
+Mel Gorman
+SUSE Labs
