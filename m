@@ -1,135 +1,111 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [Ext4 punch hole 3/5 v6] Ext4 Punch Hole Support: Punch out extents
-Date: Fri, 6 May 2011 09:57:00 +0800
-Message-ID: <BANLkTimZ10gzsYmEFK0q3=8gLNFjHwYs7w@mail.gmail.com>
-References: <4DC031BE.8070807@linux.vnet.ibm.com>
-	<BANLkTi=yXiv0emuC7h9eUGs1AiJNv1aWNw@mail.gmail.com>
-	<4DC34AC1.8090505@linux.vnet.ibm.com>
+From: Mel Gorman <mgorman@suse.de>
+Subject: Re: [BUG] fatal hang untarring 90GB file, possibly writeback related.
+Date: Fri, 6 May 2011 08:42:24 +0100
+Message-ID: <20110506074224.GB6591@suse.de>
+References: <1304009778.2598.10.camel@mulgrave.site>
+ <20110428171826.GZ4658@suse.de>
+ <1304015436.2598.19.camel@mulgrave.site>
+ <20110428192104.GA4658@suse.de>
+ <1304020767.2598.21.camel@mulgrave.site>
+ <1304025145.2598.24.camel@mulgrave.site>
+ <1304030629.2598.42.camel@mulgrave.site>
+ <20110503091320.GA4542@novell.com>
+ <1304431982.2576.5.camel@mulgrave.site>
+ <1304432553.2576.10.camel@mulgrave.site>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Allison Henderson <achender@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=iso-8859-15
+Cc: Mel Gorman <mgorman@novell.com>, Jan Kara <jack@suse.cz>,
+	colin.king@canonical.com, Chris Mason <chris.mason@oracle.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-mm <linux-mm@kvack.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: James Bottomley <James.Bottomley@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:65180 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754878Ab1EFB5B convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 May 2011 21:57:01 -0400
-Received: by vxi39 with SMTP id 39so2918287vxi.19
-        for <linux-ext4@vger.kernel.org>; Thu, 05 May 2011 18:57:00 -0700 (PDT)
-In-Reply-To: <4DC34AC1.8090505@linux.vnet.ibm.com>
+Received: from cantor.suse.de ([195.135.220.2]:51032 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754041Ab1EFHma (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 6 May 2011 03:42:30 -0400
+Content-Disposition: inline
+In-Reply-To: <1304432553.2576.10.camel@mulgrave.site>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
->> Hi there,
->>
->> Sorry for so late voice.
->>
->> ext4_ext_remove_space() are supposed to be used by truncate, so it
->> remove blocks from EOF to start as indicated by while-loop. =A0 Now =
-it
->> has an end, so I think we'd better limit the while loop from the end
->> to the start, but not from EOF to the start.
->>
->> we can achieve this by assigning path right before while-loop.
->
-> Hi there,
->
-> Well, I tried setting the path using find_extent, but it doesnt look =
-like it
-> quite worked out. Could you expand a little more on this? =A0It is no=
-t
-> immediately clear to me how we can do this by setting path. =A0It loo=
-ks like
-> path is an array of paths that keep track of where we are in the tree=
-=2E =A0The
-> current sequence of paths represent the current location, but I dont =
-know
-> how we could set up a particular sequence of paths with out walking i=
-nto the
-> tree to know what it is. =A0I think the while loop just detects when =
-the
-> search has come back around to top of the tree. If I understand the c=
-ode
-> correctly, we would need a sequence of the paths starting at the =A0d=
-eepest
-> path that can still descend to all the extents in the hole, and the s=
-equence
-> would need to end at the path that points to the extent that contains=
- the
-> end of the hole. Thus limiting the search to only that subtree that s=
-pans
-> the hole. =A0At least that is my interpretation of the code. =A0It th=
-at correct,
-> or maybe there is something I missed?
-Correct.
->
-> If that is how it works, maybe what we could do instead check
-> (path[i].p_idx->ei_block < end) when deciding weather or not to desce=
-nd? =A0I
-> think that would get rid of needlessly walking space that is beyond t=
-he end
-> of the hole. =A0And then when we return from the ext4_ext_rm_leaf, we=
- can
-> check to see if the leaf contains extents appearing before the hole, =
-and
-> then quit out if it does. =A0Does that sound correct? =A0Thx!
-Yes, it's applicable and easier.
+On Tue, May 03, 2011 at 09:22:33AM -0500, James Bottomley wrote:
+> On Tue, 2011-05-03 at 09:13 -0500, James Bottomley wrote:
+> > I've got a ftrace output of kswapd ... it's 500k compressed, so I'll
+> > send under separate cover.
+> 
+> Here it is ... it's under 2.6.38.4 vanilla, but the code is similar. 
+> 
 
-find_extent doe not work, because path.p_block is used to another
-thing, it is different from find_extent.
+I was quiet because I was off trying to reproduce this but not having
+much luck. It doesn't seem directly related to filesystems or
+cgroups. For example, here is what I see with ext4 without cgroups
 
-Setting path just can control end, start can not be controlled this way=
-=2E
+                2.6.34-vanilla    2.6.37-vanilla    2.6.38-vanilla       rc6-vanilla
+download tar           70 ( 0.00%)   68 ( 2.94%)   69 ( 1.45%)   70 ( 0.00%)
+unpack tar            601 ( 0.00%)  605 (-0.66%)  604 (-0.50%)  605 (-0.66%)
+copy source files     319 ( 0.00%)  321 (-0.62%)  320 (-0.31%)  332 (-3.92%)
+create tarfile       1368 ( 0.00%) 1372 (-0.29%) 1371 (-0.22%) 1363 ( 0.37%)
+delete source dirs     21 ( 0.00%)   21 ( 0.00%)   23 (-8.70%)   22 (-4.55%)
+expand tar            263 ( 0.00%)  261 ( 0.77%)  257 ( 2.33%)  259 ( 1.54%)
 
-Yongqiang.
+(all results are in seconds)
 
->
-> Allison Henderson
->
->>
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/* root level has p_=
-bh =3D=3D NULL, brelse() eats this
->>> */
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0brelse(path[i].p_bh)=
-;
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0path[i].p_bh =3D NUL=
-L;
->>> @@ -3443,7 +3565,7 @@ void ext4_ext_truncate(struct inode *inode)
->>>
->>> =A0 =A0 =A0 =A0last_block =3D (inode->i_size + sb->s_blocksize - 1)
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0>> =A0EXT4_BLOCK_SIZ=
-E_BITS(sb);
->>> - =A0 =A0 =A0 err =3D ext4_ext_remove_space(inode, last_block);
->>> + =A0 =A0 =A0 err =3D ext4_ext_remove_space(inode, last_block, EXT_=
-MAX_BLOCK);
->>>
->>> =A0 =A0 =A0 =A0/* In a multi-transaction truncate, we only make the=
- final
->>> =A0 =A0 =A0 =A0 * transaction synchronous.
->>> --
->>> 1.7.1
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-ext=
-4" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at =A0http://vger.kernel.org/majordomo-info.htm=
-l
->>>
->>
->>
->>
->
->
+When running in cgroups, the results are similar - bit slower but
+not remarkably so. ext3 is slower but not enough to count as the bug.
 
+The trace you posted is very short but kswapd is not going to sleep
+in it. It's less than a seconds worth on different cpus so it's hard
+to draw any conclusion from it other than sleeping_prematurely()
+is often deciding that kswapd should not sleep.
 
+So lets consider what keeps it awake.
 
---=20
-Best Wishes
-Yongqiang Yang
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+1. High-order allocations? You machine is using i915 and RPC, something
+   neither of my test machine uses. i915 is potentially a source for
+   high-order allocations. I'm attaching a perl script. Please run it as
+   ./watch-highorder.pl --output /tmp/highorders.txt
+   while you are running tar. When kswapd is running for about 30
+   seconds, interrupt it with ctrl+c twice in quick succession and
+   post /tmp/highorders.txt
+
+2. All unreclaimable is not being set or we are not balancing at all.
+   Can you post the output of sysrq+m while the machine is struggling
+   please?
+
+3. Slab may not be shrinking for some reason. Can you run a shell
+   script like this during the whole test and record its output please?
+
+   #!/bin/bash
+   while [ 1 ]; do
+	   echo time: `date +%s`
+	   cat /proc/vmstat
+	   sleep 2
+   done
+
+   Similarly if this is a slab issue, it'd be nice to know who it is so
+
+   #!/bin/bash
+   while [ 1 ]; do
+	   echo time: `date +%s`
+	   cat /proc/slabinfo
+	   sleep $MONITOR_UPDATE_FREQUENCY
+   done
+
+4. Lets get a better look at what is going on in kswapd
+
+   echo 1 > /sys/kernel/debug/tracing/events/vmscan/enable
+   cat /sys/kernel/debug/tracing/trace_pipe > vmscan-ftrace.txt
+
+Out of curiousity, what's the exact machine you are testing on
+because I want to see what sort of hardware combination triggers
+this problem? Is the tar local or is it copied over NFS? What is the
+configuration of the disk or partition you are copying to?
+
+Thanks
+
+-- 
+Mel Gorman
+SUSE Labs
