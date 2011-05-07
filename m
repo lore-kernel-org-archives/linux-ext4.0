@@ -1,209 +1,249 @@
-From: Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: [PATCH] Adding support to freeze and unfreeze a journal
-Date: Fri, 6 May 2011 14:56:42 -0600
-Message-ID: <AA6B40F6-33A1-4C0B-8F80-71509FFF106E@dilger.ca>
-References: <20110504192436.GC6968@quack.suse.cz> <1304695231-11335-2-git-send-email-surbhi.palande@canonical.com>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: jack@suse.cz, toshi.okajima@jp.fujitsu.com, tytso@mit.edu,
-	m.mizuma@jp.fujitsu.com, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, sandeen@redhat.com
-To: Surbhi Palande <surbhi.palande@canonical.com>
+From: "Amir G." <amir73il@users.sourceforge.net>
+Subject: Re: mounting ext3 with another superblock doesn't work?
+Date: Sat, 7 May 2011 10:38:38 +0300
+Message-ID: <BANLkTi=njeXFvoh1NDP1a1Ajiy5nWSeiFg@mail.gmail.com>
+References: <031c613316176c32f09748706a086be2@imap.dd24.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Mike Swanson <mikeonthecomputer@gmail.com>
+To: Christoph Anton Mitterer <calestyo@scientia.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:9733 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750779Ab1EFU4p convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 May 2011 16:56:45 -0400
-In-Reply-To: <1304695231-11335-2-git-send-email-surbhi.palande@canonical.com>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:36125 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752544Ab1EGHik convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 7 May 2011 03:38:40 -0400
+Received: by eyx24 with SMTP id 24so1164648eyx.19
+        for <linux-ext4@vger.kernel.org>; Sat, 07 May 2011 00:38:39 -0700 (PDT)
+In-Reply-To: <031c613316176c32f09748706a086be2@imap.dd24.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On May 6, 2011, at 09:20, Surbhi Palande wrote:
-> The journal should be frozen when a F.S freezes. What this means is that till
-> the F.S is thawed again, no new transactions should be accepted by the
-> journal. When the F.S thaws, inturn it should thaw the journal and this should
-> allow the journal to resume accepting new transactions.
-> While the F.S has frozen the journal, the clients of journal on calling
-> jbd2_journal_start() will sleep on a wait queue. Thawing the journal will wake
-> up the sleeping clients and journalling can progress normally.
-> 
-> Signed-off-by: Surbhi Palande <surbhi.palande@canonical.com>
+Hi Christoph,
 
-I think this is not a good patch as-is, see below.
+=46irst, sending this question to linux-ext4 is your best bet.
+Second, I have this email from Mike, who had the exact same problem.
+I gave him some advice (off the list for some reason).
 
-> ---
-> fs/ext4/super.c       |   20 ++++++--------------
-> fs/jbd2/journal.c     |    1 +
-> fs/jbd2/transaction.c |   36 ++++++++++++++++++++++++++++++++++++
-> include/linux/jbd2.h  |    9 +++++++++
-> 4 files changed, 52 insertions(+), 14 deletions(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 8553dfb..796aa4c 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -4179,23 +4179,15 @@ static int ext4_freeze(struct super_block *sb)
-> 
-> 	journal = EXT4_SB(sb)->s_journal;
-> 
-> -	/* Now we set up the journal barrier. */
-> -	jbd2_journal_lock_updates(journal);
-> -
-> +	error = jbd2_journal_freeze(journal);
-> 	/*
-> -	 * Don't clear the needs_recovery flag if we failed to flush
-> +	 * Don't clear the needs_recovery flag if we failed to freeze
-> 	 * the journal.
-> 	 */
-> -	error = jbd2_journal_flush(journal);
-> -	if (error < 0)
-> -		goto out;
-> -
-> -	/* Journal blocked and flushed, clear needs_recovery flag. */
-> -	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
-> -	error = ext4_commit_super(sb, 1);
-> -out:
-> -	/* we rely on s_frozen to stop further updates */
-> -	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
-> +	if (error >= 0) {
-> +		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
-> +		error = ext4_commit_super(sb, 1);
-> +	}
-> 	return error;
-> }
-> 
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index e0ec3db..5e46333 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -842,6 +842,7 @@ static journal_t * journal_init_common (void)
-> 	init_waitqueue_head(&journal->j_wait_checkpoint);
-> 	init_waitqueue_head(&journal->j_wait_commit);
-> 	init_waitqueue_head(&journal->j_wait_updates);
-> +	init_waitqueue_head(&journal->j_wait_frozen);
-> 	mutex_init(&journal->j_barrier);
-> 	mutex_init(&journal->j_checkpoint_mutex);
-> 	spin_lock_init(&journal->j_revoke_lock);
-> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-> index 05fa77a..ad5a5df 100644
-> --- a/fs/jbd2/transaction.c
-> +++ b/fs/jbd2/transaction.c
-> @@ -171,6 +171,13 @@ repeat:
-> 				journal->j_barrier_count == 0);
-> 		goto repeat;
-> 	}
-> +	/* dont let a new handle start when a journal is frozen.
-> +	 * jbd2_journal_freeze calls jbd2_journal_unlock_updates() only after
-> +	 * the jflags indicate that the journal is frozen. So if the
-> +	 * j_barrier_count is 0, then check if this was made 0 by the freezing
-> +	 * process
-> +	 */
-> +	jbd2_check_frozen(journal);
+So you can do one 2 things:
+1. take comfort that you are not alone
+2. ask Mike if my advice helped him or if he found other ways to
+overcome the problem. I think he used an LVM snapshot to make
+some experiments before actually making changing to the fs.
 
-This is called with read_lock(&journal->j_state_lock) held, so it seems that
-the thread entering start_this_handle() will hold the j_state_lock the entire
-time the journal is frozen.  But, see below in jbd2_journal_thaw()...
+Your situation may be even better off than Mike's.
+If you really hit ctrl-C after overwriting only super block and inode b=
+lock #0,
+then you haven't really lost much 'information'
+the super block and inode block #0 from a new formatted fs, should cont=
+ain
+roughly the exact same 'information', the only exception is files (not
+directories) created
+at the root dir. those file inodes information would have been been los=
+t.
 
-> 	if (!journal->j_running_transaction) {
-> 		read_unlock(&journal->j_state_lock);
-> @@ -489,6 +496,35 @@ int jbd2_journal_restart(handle_t *handle, int nblocks)
-> }
-> EXPORT_SYMBOL(jbd2_journal_restart);
-> 
-> +int jbd2_journal_freeze(journal_t *journal)
-> +{
-> +	int error = 0;
-> +	/* Now we set up the journal barrier. */
-> +	jbd2_journal_lock_updates(journal);
-> +
-> +	/*
-> +	 * Don't clear the needs_recovery flag if we failed to flush
-> +	 * the journal.
-> +	 */
-> +	error = jbd2_journal_flush(journal);
-> +	if (error >= 0) {
-> +		write_lock(&journal->j_state_lock);
-> +		journal->j_flags = journal->j_flags | JBD2_FROZEN;
-> +		write_unlock(&journal->j_state_lock);
-> +	}
-> +	jbd2_journal_unlock_updates(journal);
-> +	return error;
-> +}
-> +
-> +void jbd2_journal_thaw(journal_t * journal)
-> +{
-> +	write_lock(&journal->j_state_lock);
-> +	journal->j_flags = journal->j_flags &= ~JBD2_FROZEN;
-> +	write_unlock(&journal->j_state_lock);
+Again, if you have a way to make a full backup of your drive,
+before doing any experiments, that would be wise...
+Also, when you attempt to mount the fs, better try readonly mount.
+If there are lost files or your drive, you don't want to overwrite thei=
+r data.
 
-... this code needs to get a write lock j_state_lock in order to unfreeze the
-journal.  It seems that this would deadlock as soon as you actually had some
-situation where a transaction is being started while the journal is frozen?
+Good luck,
+Amir.
 
-> +	wake_up(&journal->j_wait_frozen);
-> +}
-> +
-> +
-> /**
->  * void jbd2_journal_lock_updates () - establish a transaction barrier.
->  * @journal:  Journal to establish a barrier on.
-> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> index a32dcae..31d6c23 100644
-> --- a/include/linux/jbd2.h
-> +++ b/include/linux/jbd2.h
-> @@ -835,6 +835,9 @@ struct journal_s
-> 	/* Wait queue to wait for updates to complete */
-> 	wait_queue_head_t	j_wait_updates;
-> 
-> +	/* Wait queue to wait for journal to thaw*/
-> +	wait_queue_head_t	j_wait_frozen;
-> +
-> 	/* Semaphore for locking against concurrent checkpoints */
-> 	struct mutex		j_checkpoint_mutex;
-> 
-> @@ -1013,7 +1016,11 @@ struct journal_s
-> #define JBD2_ABORT_ON_SYNCDATA_ERR	0x040	/* Abort the journal on file
-> 						 * data write error in ordered
-> 						 * mode */
-> +#define JBD2_FROZEN	0x080   /* Journal thread is frozen as the filesystem is frozen */
-> +
-> 
-> +#define jbd2_check_frozen(journal)	\
-> +		wait_event(journal->j_wait_frozen, ((journal->j_flags & JBD2_FROZEN) != JBD2_FROZEN))
-
-It seems that what is needed here is to check the JBD2_FROZEN state under
-lock (so that it is not racing with the flag being set) but drop the lock,
-wait, and retry if the journal was actually frozen.  Since "goto label" is
-ugly from within a macro, this probably needs to be open-coded at the caller in start_this_handle(), something like:
-
-	if (journal->j_flags & JBD2_FROZEN) {
-		read_unlock(&journal->j_state_lock);
-		wait_event(journal->j_wait_frozen, journal->j_flags&JBD2_FROZEN);
-		goto repeat;
-	}
-
-This opens the question of whether it is SMP safe to check j_flags without any kind of barrier or lock held?  I think in this case we are fine, since the above code jumps back to "repeat" to re-verify j_flags under j_state_lock, so there is no race on the state.
-
->  * Function declarations for the journaling transaction and buffer
->  * management
-> @@ -1121,6 +1128,8 @@ extern void	 jbd2_journal_invalidatepage(journal_t *,
-> 				struct page *, unsigned long);
-> extern int	 jbd2_journal_try_to_free_buffers(journal_t *, struct page *, gfp_t);
-> extern int	 jbd2_journal_stop(handle_t *);
-> +extern int	 jbd2_journal_freeze(journal_t *);
-> +extern void	 jbd2_journal_thaw(journal_t *);
-> extern int	 jbd2_journal_flush (journal_t *);
-> extern void	 jbd2_journal_lock_updates (journal_t *);
-> extern void	 jbd2_journal_unlock_updates (journal_t *);
-> -- 
-> 1.7.1
-> 
+---------- Forwarded message ----------
+=46rom: Amir Goldstein <amir73il@gmail.com>
+Date: Sun, Dec 19, 2010 at 11:01 PM
+Subject: Re: Accidental mkfs.ext4 on wrong volume already formatted wit=
+h ext4...
+To: Mike Swanson <mikeonthecomputer@gmail.com>
 
 
-Cheers, Andreas
+On Sat, Dec 18, 2010 at 12:12 PM, Mike Swanson
+<mikeonthecomputer@gmail.com> wrote:
+> Hey,
+>
+> In some stupid late night adventures, I accidentally ran mke2fs on my
+> normal /home volume (1.3TB, about 600GB used....) rather than a new
+> volume I had intended... I quickly realized my mistake and did ^C
+> though I'm not sure what my options are now for possible recovery....
+>
+> # mkfs.ext4 /dev/freedom/home
+> mke2fs 1.41.12 (17-May-2010)
+> Filesystem label=3D
+> OS type: Linux
+> Block size=3D4096 (log=3D2)
+> Fragment size=3D4096 (log=3D2)
+> Stride=3D0 blocks, Stripe width=3D0 blocks
+> 85196800 inodes, 340787200 blocks
+> 17039360 blocks (5.00%) reserved for the super user
+> First data block=3D0
+> Maximum filesystem blocks=3D0
+> 10400 block groups
+> 32768 blocks per group, 32768 fragments per group
+> 8192 inodes per group
+> Superblock backups stored on blocks:
+> =A0 =A0 =A0 =A032768, 98304, 163840, 229376, 294912, 819200, 884736, =
+1605632, 2654208,
+> =A0 =A0 =A0 =A04096000, 7962624, 11239424, 20480000, 23887872, 716636=
+16, 78675968,
+> =A0 =A0 =A0 =A0102400000, 214990848
+>
+> Writing inode tables: ^C 41/10400
+> #
+>
+> "dumpe2fs -o superblock=3D20480000" seems to give the old superblock
+> metadata still... filesystem create time, last write, etc, though
+> running e2fsck results in this:
+> # e2fsck -n -b 20480000 /dev/freedom/home
+> e2fsck 1.41.12 (17-May-2010)
+> Superblock has an invalid journal (inode 8).
+> Clear? no
+>
+> e2fsck: Illegal inode number while checking ext3 journal for /dev/fre=
+edom/home
+>
+>
+> I'm in a panic and I don't know what to do.. if anyone can help
+> recover data from this accident it would be much appreciated
+
+Oh, what a mess...
+
+I cannot offer you much, but I will try to assess your situation and
+offer some tips I would try.
+I do not offer fixing tools nor have those tips ever been tested by mys=
+elf.
+I do hope that I am not mumbling nonsense and planting fake hopes...
+
+It appear from the logs, that you have wiped the super block and all
+of it's backups
+and the first 41 block groups inode tables.
+
+Maybe you have a working copy of your super block and maybe you don't,
+but assuming you know the parameters you used to format the partition
+in the first place, recovering a sane super block shouldn't be too hard=
+=2E
+I think Fsck can fix the most of the fields later (???)
+The real problem is the lost inodes.
+
+What you know for sure is that you have wiped the root inode (2)
+resize inode (7), journal inode (8) and every file
+which was ever created in the root directory.
+
+So suppose you have the ability to format a file system , which looks t=
+he same
+as your file system when it was created (using same mkfs parameters and
+preferably the same mkfs version), you can use that to copy a sane vers=
+ion
+of root, resize, and journal inodes.
+
+The journal inode should be identical to the one you wiped (it never
+changes after mkfs).
+The resize inode also never changes unless you did online resize, but
+it can be fixed by fsck.
+The root inode (containing the root directory) will now contain just
+one block, but
+hopefully that is the same block as in your file system, so if you may
+be able to recover some
+files or more importantly, the directories under root, which lead to
+the entire un-wiped file system.
+
+I would even try to manually allocate the next 11 adjacent blocks to
+the root inode,
+which may contain more root directory entries.
+
+If all that fails and you still want to manually fix your file system,
+the directories under root, should be the first inode in some block
+group inode table,
+and it's parent directory =A0is the root inode.
+There may be a utility that can use that info to recover a file
+system, but I don't know it.
+
+I hope any of this helps.
+Good luck,
+Amir.
 
 
 
-
-
+On Sat, May 7, 2011 at 3:09 AM, Christoph Anton Mitterer
+<calestyo@scientia.net> wrote:
+> Hi.
+>
+> Few minutes ago, being too tired, I unfortunately did a mkfs.ext3 on =
+an
+> already existing ext3 fs (instead of fsck.ext3).
+> It unfortunately didn't warn me that there's already an fs on it but
+> started right away with it's evil work[0] until I ^C-ed it[0] in pani=
+c.
+>
+> I know this list is about devel, but unfortunately I don't know a bet=
+ter
+> place to ask experts (sorry).
+>
+>
+> When I scan the fs with testdisk it seems to find some superblocks, h=
+aving
+> the old fs label:
+> superblock 32768, blocksize=3D4096 [data1]
+> superblock 98304, blocksize=3D4096 [data1]
+> superblock 163840, blocksize=3D4096 [data1]
+> superblock 229376, blocksize=3D4096 [data1]
+> superblock 294912, blocksize=3D4096 [data1]
+> superblock 819200, blocksize=3D4096 [data1]
+> superblock 884736, blocksize=3D4096 [data1]
+> superblock 1605632, blocksize=3D4096 [data1]
+> superblock 2654208, blocksize=3D4096 [data1]
+> superblock 4096000, blocksize=3D4096 [data1]
+>
+> Could it be that these are still valid ones?
+>
+> When I try to mount e.g.:
+> # mount -t ext3 -o sb=3D$((32768*4)) /dev/sdc1 /mnt/
+> mount: wrong fs type, bad option, bad superblock on /dev/sdc1,
+> =A0 =A0 =A0 missing codepage or helper program, or other error
+> =A0 =A0 =A0 In some cases useful info is found in syslog - try
+> =A0 =A0 =A0 dmesg | tail =A0or so
+>
+> ...it doesn't work however.
+>
+> Any ideas?
+>
+> Thanks,
+> Chris.
+>
+> btw: Please CC me as I'm off list.
+>
+>
+> [0]mke2fs 1.41.12 (17-May-2010)
+> Filesystem label=3D
+> OS type: Linux
+> Block size=3D4096 (log=3D2)
+> Fragment size=3D4096 (log=3D2)
+> Stride=3D0 blocks, Stripe width=3D0 blocks
+> 45793280 inodes, 183143000 blocks
+> 9157150 blocks (5.00%) reserved for the super user
+> First data block=3D0
+> Maximum filesystem blocks=3D4294967296
+> 5590 block groups
+> 32768 blocks per group, 32768 fragments per group
+> 8192 inodes per group
+> Superblock backups stored on blocks:
+> =A0 =A0 =A0 =A032768, 98304, 163840, 229376, 294912, 819200, 884736, =
+1605632, 2654208,
+> =A0 =A0 =A0 =A04096000, 7962624, 11239424, 20480000, 23887872, 716636=
+16, 78675968,
+> =A0 =A0 =A0 =A0102400000
+>
+> Writing inode tables: ^C00/5590
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdev=
+el" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
