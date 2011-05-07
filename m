@@ -1,58 +1,55 @@
-From: Christoph Anton Mitterer <calestyo@scientia.net>
-Subject: Re: mounting ext3 with another superblock doesn't =?UTF-8?Q?work=3F?=
-Date: Sat, 07 May 2011 22:03:39 +0000
-Message-ID: <6f43bed530a6412344f7b30e42a89d23@imap.dd24.net>
-References: <031c613316176c32f09748706a086be2@imap.dd24.net> <23AF51ED-8130-4401-94FE-93CF36E8E1C1@dilger.ca>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH V2] filefrag: count 0 extents properly when verbose
+Date: Sat, 7 May 2011 18:45:24 -0400
+Message-ID: <20110507224524.GB6046@thunk.org>
+References: <4CEC4C86.1030806@redhat.com>
+ <4D9F3B71.2050808@redhat.com>
+ <569EBA4C-A6BB-4E64-88B9-F2F946891B56@dilger.ca>
+ <4DC2EA94.8040100@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-Cc: <linux-ext4@vger.kernel.org>, <adilger@dilger.ca>,
-	<amir73il@users.sourceforge.net>
-To: <linux-fsdevel@vger.kernel.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <23AF51ED-8130-4401-94FE-93CF36E8E1C1@dilger.ca>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:36043 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756233Ab1EGWp2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 7 May 2011 18:45:28 -0400
+Content-Disposition: inline
+In-Reply-To: <4DC2EA94.8040100@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi folks.
+On Thu, May 05, 2011 at 01:21:08PM -0500, Eric Sandeen wrote:
+> # rm -f a; touch a; filefrag a
+> /boot/a: 0 extents found
+> 
+> works properly, but
+> 
+> # rm -f a; touch a; filefrag -v a
+> Filesystem type is: ef53
+> Filesystem cylinder groups is approximately 61
+> File size of a is 0 (0 blocks, blocksize 1024)
+>  ext logical physical expected length flags
+> a: 1 extent found
+> 
+> yields 1 extent when it should be 0.
+> 
+> Fix this up by special-casing no extents returned in verbose
+> mode; skip printing the header for the columns too, since there
+> are no columns to print.
+> 
+> Also, in nonverbose mode we can set fm_extent_count to 0
+> so that FIEMAP will just query the extent count without gathering
+> details; clarify this with a comment.
+> 
+> Addresses-redhat-bugzilla: 653234
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-What I did then yesterday night, was a
+Thanks, 
 
-fsck.ext3 -b 32768 -B4096 device
+applied to the maint branch (which will then get pulled to
+master/next) of e2fsprogs.
 
-There were MANY errors... (nearly all of them, that wouldn't be
-automatically corrected e.g. by -p).
-
-
-"Something" actually came back, though I cannot say (and probably never
-will, as there are millions) whether everything came back and/or whether
-the files are internally corrupted.
-
-The problem is that the old directory structure was not recovered, but
-_everything_ went into lost+found, some files directly in it (not with
-their correct names but #xxxxxx numbers) and also many directories (also
-with #xxxxxx numbers as names).
-The directories however do contain at least some subtrees of the original
-filesystem hierarchy (I mean with the correct names).
-
-I guess there's no (automatic) way now, to get the full directory
-structure as before, is there?
-
-
-Of course I have some backups but unfortunately dating back to last
-October (yes, I know, I'm stupid and deserved it ^^)...
-
-Will try now to use fdupes and/or rdfind, to sort out all files that are
-equal between backup and rescue fs and manually check and move back the
-others (a work of some months probably ^^).
-
-
-It's not that I wanna blame others (I mean being stupid is my fault), but
-e2fsprogs' mkfs is really missing a check whether any known
-filesystem/partition type/container (luks, lvm, mdadm, etc.) is already on
-device (and a -force switch),... IIRC xfsprogs already do this more or
-less.
-
-
-Thanks and cheers,
-Chris.
+					- Ted
