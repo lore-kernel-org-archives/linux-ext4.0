@@ -1,36 +1,45 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] jbd2: Fix forever sleeping process in
- do_get_write_access()
-Date: Sun, 8 May 2011 19:14:49 -0400
-Message-ID: <20110508231449.GF15585@thunk.org>
-References: <1304597439-7185-1-git-send-email-jack@suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Tao Ma <tm@tao.ma>, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] jbd2: only print the debugging information for tid wraparound once
+Date: Sun,  8 May 2011 19:38:35 -0400
+Message-ID: <1304897915-8538-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:44789 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:37308 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753501Ab1EHXOz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 8 May 2011 19:14:55 -0400
-Content-Disposition: inline
-In-Reply-To: <1304597439-7185-1-git-send-email-jack@suse.cz>
+	id S1752333Ab1EHXih (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 8 May 2011 19:38:37 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 05, 2011 at 02:10:39PM +0200, Jan Kara wrote:
-> In do_get_write_access() we wait on BH_Unshadow bit for buffer to get
-> from shadow state. The waking code in journal_commit_transaction() has
-> a bug because it does not issue a memory barrier after the buffer is moved
-> from the shadow state and before wake_up_bit() is called. Thus a waitqueue
-> check can happen before the buffer is actually moved from the shadow state
-> and waiting process may never be woken. Fix the problem by issuing proper
-> barrier.
-> 
-> Reported-by: Tao Ma <boyu.mt@taobao.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
+If we somehow wrap, we don't want to keep printing the warning message
+over and over again.
 
-Thanks, I've added this to the ext4 tree.  (Currently in the dev
-branch, pending testing.)
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/jbd2/journal.c |    9 +++++----
+ 1 files changed, 5 insertions(+), 4 deletions(-)
 
-					- Ted
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 8c10004..cd2d341 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -500,10 +500,11 @@ int __jbd2_log_start_commit(journal_t *journal, tid_t target)
+ 		/* This should never happen, but if it does, preserve
+ 		   the evidence before kjournald goes into a loop and
+ 		   increments j_commit_sequence beyond all recognition. */
+-		WARN(1, "jbd: bad log_start_commit: %u %u %u %u\n",
+-		     journal->j_commit_request, journal->j_commit_sequence,
+-		     target, journal->j_running_transaction ? 
+-		     journal->j_running_transaction->t_tid : 0);
++		WARN_ONCE(1, "jbd: bad log_start_commit: %u %u %u %u\n",
++			  journal->j_commit_request,
++			  journal->j_commit_sequence,
++			  target, journal->j_running_transaction ? 
++			  journal->j_running_transaction->t_tid : 0);
+ 	return 0;
+ }
+ 
+-- 
+1.7.3.1
+
