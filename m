@@ -1,95 +1,61 @@
-From: Christoph Anton Mitterer <calestyo@scientia.net>
-Subject: errors in =?UTF-8?Q?ext=34=5Fmb=5Fgenerate=5Fbuddy=20and=20ext=34=5Fremou?=
- =?UTF-8?Q?nt?=
-Date: Sun, 08 May 2011 00:56:19 +0000
-Message-ID: <f93bc5d54d25e080b5438bcdc3af8f84@imap.dd24.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-To: <linux-ext4@vger.kernel.org>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH V2] filefrag: count 0 extents properly when verbose
+Date: Sat, 7 May 2011 21:35:19 -0600
+Message-ID: <C30EEA83-4D04-44BE-A21E-696A6A4A735A@dilger.ca>
+References: <4CEC4C86.1030806@redhat.com> <4D9F3B71.2050808@redhat.com> <569EBA4C-A6BB-4E64-88B9-F2F946891B56@dilger.ca> <4DC2EA94.8040100@redhat.com> <20110507224524.GB6046@thunk.org>
+Mime-Version: 1.0 (iPhone Mail 8H7)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailgw02.dd24.net ([193.46.215.43]:35517 "EHLO
-	mailgw02.dd24.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752669Ab1EHA4t (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 7 May 2011 20:56:49 -0400
-Received: from localhost (amavis01.dd24.net [192.168.1.111])
-	by mailgw02.dd24.net (Postfix) with ESMTP id E67C0354231
-	for <linux-ext4@vger.kernel.org>; Sun,  8 May 2011 00:56:47 +0000 (GMT)
-Received: from mailgw02.dd24.net ([192.168.1.197])
-	by localhost (amavis01.dd24.net [192.168.1.105]) (amavisd-new, port 10197)
-	with ESMTP id HDvVj2GsnTrH for <linux-ext4@vger.kernel.org>;
-	Sun,  8 May 2011 00:56:43 +0000 (GMT)
-Received: from webmail.dd24.net (webmail01.dd24.net [193.46.215.65])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mailgw02.dd24.net (Postfix) with ESMTPSA id D983D35422C
-	for <linux-ext4@vger.kernel.org>; Sun,  8 May 2011 00:56:43 +0000 (GMT)
+Received: from to5email.gprs.rogers.com ([74.198.8.2]:56837 "EHLO
+	to5email2.gprs.rogers.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750952Ab1EHDzN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 7 May 2011 23:55:13 -0400
+In-Reply-To: <20110507224524.GB6046@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi.
+I was going to comment on this on Friday and supply a new patch but got distracted. There is actually a cleaner way to implement this, by initializing the extent count to zero, and always incrementing it inside the inner loop. That simplifies the case when there are no extents returned by FIEMAP.
 
-I've had several crashes recently, which lead to things like these:
-May  6 00:23:53 heisenberg kernel: [   31.941036] EXT4-fs (dm-2):
-ext4_orphan_cleanup: deleting unreferenced inode 2016253
-May  6 00:23:53 heisenberg kernel: [   31.941049] EXT4-fs (dm-2):
-ext4_orphan_cleanup: deleting unreferenced inode 2016250
-May  6 00:23:53 heisenberg kernel: [   31.941073] EXT4-fs (dm-2):
-ext4_orphan_cleanup: deleting unreferenced inode 2016249
-May  6 00:23:53 heisenberg kernel: [   31.941106] EXT4-fs (dm-2):
-ext4_orphan_cleanup: deleting unreferenced inode 2016248
-May  6 00:23:53 heisenberg kernel: [   31.941120] EXT4-fs (dm-2):
-ext4_orphan_cleanup: deleting unreferenced inode 2016247
-May  6 00:23:53 heisenberg kernel: [   31.941135] EXT4-fs (dm-2):
-ext4_orphan_cleanup: deleting unreferenced inode 2016240
-May  6 00:23:53 heisenberg kernel: [   31.941158] EXT4-fs (dm-2):
-ext4_orphan_cleanup: deleting unreferenced inode 2016239
-May  6 00:23:53 heisenberg kernel: [   31.941168] EXT4-fs (dm-2):
-ext4_orphan_cleanup: deleting unreferenced inode 2016238
-May  6 00:23:53 heisenberg kernel: [   31.941174] EXT4-fs (dm-2):
-ext4_orphan_cleanup: deleting unreferenced inode 2016237
-May  6 00:23:53 heisenberg kernel: [   31.941180] EXT4-fs (dm-2):
-ext4_orphan_cleanup: deleting unreferenced inode 2016236
-May  6 00:23:53 heisenberg kernel: [   31.941190] EXT4-fs (dm-2):
-ext4_orphan_cleanup: deleting unreferenced inode 2016235
-May  6 00:23:53 heisenberg kernel: [   31.941200] EXT4-fs (dm-2):
-ext4_orphan_cleanup: deleting unreferenced inode 2016234
-May  6 00:23:53 heisenberg kernel: [   31.941212] EXT4-fs (dm-2):
-ext4_orphan_cleanup: deleting unreferenced inode 2016233
-May  6 00:23:53 heisenberg kernel: [   31.941217] EXT4-fs (dm-2):
-ext4_orphan_cleanup: deleting unreferenced inode 2016232
-May  6 00:23:53 heisenberg kernel: [   31.941228] EXT4-fs (dm-2):
-ext4_orphan_cleanup: deleting unreferenced inode 2016231
+I'm sure I'll get around to sending an updated patch at some point, and will clean up this section at the same time. 
 
-... and some (at least to me) worrying questions during fsck.
+Cheers, Andreas
 
-However, I constantly get these errors:
-[  331.744025] EXT4-fs (dm-2): error count: 10
-[  331.744030] EXT4-fs (dm-2): initial error at 1304673122:
-ext4_mb_generate_buddy:731
-[  331.744034] EXT4-fs (dm-2): last error at 1304673124: ext4_remount:4250
-... (probably) when reading some files. I guess it's reading files, at
-least it happens during a debsums run (checks the package sums of more or
-less all Debian packages installed).
-Also the numbers in the errors above, are (at least until know, and as far
-as I looked after it) the same.
+On 2011-05-07, at 4:45 PM, Ted Ts'o <tytso@mit.edu> wrote:
 
-It also happens (as far as I can see) only once, i.e. if the error has
-already occurred, and I do e.g. my debsums again, it's not printed again.
-
-fsck runs through fine (but quite quick; yes - of course - I've used -f)
-
-Any ideas? (Please CC me as I'm off list).
-
-
-Cheers,
-Chris.
-
-
-btw:
-This (occuring in the host's kernel log and not the VM's)
-[  325.655192] EXT4-fs (dm-2): Unaligned AIO/DIO on inode 1060986 by
-VirtualBox; performance will be poor.
-means that the blocks of the the guest are not aligned to the blocks of
-the host, right?
-But why is it only printed once?
+> On Thu, May 05, 2011 at 01:21:08PM -0500, Eric Sandeen wrote:
+>> # rm -f a; touch a; filefrag a
+>> /boot/a: 0 extents found
+>> 
+>> works properly, but
+>> 
+>> # rm -f a; touch a; filefrag -v a
+>> Filesystem type is: ef53
+>> Filesystem cylinder groups is approximately 61
+>> File size of a is 0 (0 blocks, blocksize 1024)
+>> ext logical physical expected length flags
+>> a: 1 extent found
+>> 
+>> yields 1 extent when it should be 0.
+>> 
+>> Fix this up by special-casing no extents returned in verbose
+>> mode; skip printing the header for the columns too, since there
+>> are no columns to print.
+>> 
+>> Also, in nonverbose mode we can set fm_extent_count to 0
+>> so that FIEMAP will just query the extent count without gathering
+>> details; clarify this with a comment.
+>> 
+>> Addresses-redhat-bugzilla: 653234
+>> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> 
+> Thanks, 
+> 
+> applied to the maint branch (which will then get pulled to
+> master/next) of e2fsprogs.
+> 
+>                    - Ted
