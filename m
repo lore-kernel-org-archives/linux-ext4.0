@@ -1,53 +1,56 @@
-From: Tao Ma <tm@tao.ma>
-Subject: [PATCH] mke2fs: Make s_inodes_per_group >= 8 in ext2fs_initialize.
-Date: Mon,  9 May 2011 23:38:42 +0800
-Message-ID: <1304955522-4148-1-git-send-email-tm@tao.ma>
-To: linux-ext4@vger.kernel.org
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH] mke2fs: Avoid segmentation fault in
+ ext2fs_alloc_generic_bmap.
+Date: Mon, 9 May 2011 17:45:28 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1105091743330.3694@dhcp-27-109.brq.redhat.com>
+References: <1304955207-4066-1-git-send-email-tm@tao.ma>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy8-pub.bluehost.com ([69.89.22.20]:37972 "HELO
-	oproxy8-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752105Ab1EIPpi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 May 2011 11:45:38 -0400
-Received: from [114.251.86.0] (helo=taoma-linux.taobao.ali.com)
-	by box585.bluehost.com with esmtpsa (TLSv1:AES256-SHA:256)
-	(Exim 4.69)
-	(envelope-from <tm@tao.ma>)
-	id 1QJSXx-0004uL-0Q
-	for linux-ext4@vger.kernel.org; Mon, 09 May 2011 09:38:58 -0600
+Received: from mx1.redhat.com ([209.132.183.28]:50318 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751943Ab1EIPpe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 May 2011 11:45:34 -0400
+In-Reply-To: <1304955207-4066-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Tao Ma <boyu.mt@taobao.com>
+On Mon, 9 May 2011, Tao Ma wrote:
 
-current mkfs.ext4 fails if we tried with the following parameters.
-mkfs.ext4  -m 0 -N 16 -O ^has_journal,^resize_inode,^uninit_bg,extent,meta_bg -b 1024 /dev/sdb3
-It will cause segfault, but it is caused by another issue. See my patch
-"mke2fs: Avoid segmentation fault in ext2fs_alloc_generic_bmap". And
-with that patch, the mkfs.ext4 will fail with the error:
-/dev/sdb3: Memory allocation failed while setting up superblock
+> From: Tao Ma <boyu.mt@taobao.com>
+> 
+> In case of error, ext2fs_alloc_generic_bmap free the memory
+> in the wrong order. So change it to free description first
+> and then the bitmap.
+> 
+> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+> ---
+>  lib/ext2fs/gen_bitmap64.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/lib/ext2fs/gen_bitmap64.c b/lib/ext2fs/gen_bitmap64.c
+> index df095ac..8b9e4c5 100644
+> --- a/lib/ext2fs/gen_bitmap64.c
+> +++ b/lib/ext2fs/gen_bitmap64.c
+> @@ -129,8 +129,8 @@ errcode_t ext2fs_alloc_generic_bmap(ext2_filsys fs, errcode_t magic,
+>  
+>  	retval = bitmap->bitmap_ops->new_bmap(fs, bitmap);
+>  	if (retval) {
+> -		ext2fs_free_mem(&bitmap);
+>  		ext2fs_free_mem(&bitmap->description);
+> +		ext2fs_free_mem(&bitmap);
+>  		return retval;
+>  	}
 
-The reason is that in ext2fs_initialize, we align s_inodes_per_group
-to 8, but fails to consider the case that s_inodes_per_group < 8.
-So make at least 8 inodes for s_inodes_per_group.
+I have actually sent the same patch a while ago:
 
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
----
- lib/ext2fs/initialize.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+http://www.spinics.net/lists/linux-ext4/msg23763.html
 
-diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
-index e1f229b..4706773 100644
---- a/lib/ext2fs/initialize.c
-+++ b/lib/ext2fs/initialize.c
-@@ -282,6 +282,8 @@ ipg_retry:
- 	 * multiple of 8.  This is needed to simplify the bitmap
- 	 * splicing code.
- 	 */
-+	if (super->s_inodes_per_group < 8)
-+		super->s_inodes_per_group = 8;
- 	super->s_inodes_per_group &= ~7;
- 	fs->inode_blocks_per_group = (((super->s_inodes_per_group *
- 					EXT2_INODE_SIZE(super)) +
--- 
-1.6.3.GIT
+but Ted have not picked up this yet.
 
+-Lukas
+
+>  
+> 
