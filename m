@@ -1,7 +1,7 @@
 From: amir73il@users.sourceforge.net
-Subject: [PATCH RFC 22/30] ext4: snapshot journaled - bypass to save credits
-Date: Mon,  9 May 2011 19:41:40 +0300
-Message-ID: <1304959308-11122-23-git-send-email-amir73il@users.sourceforge.net>
+Subject: [PATCH RFC 25/30] ext4: snapshot race conditions - concurrent COW operations
+Date: Mon,  9 May 2011 19:41:43 +0300
+Message-ID: <1304959308-11122-26-git-send-email-amir73il@users.sourceforge.net>
 References: <1304959308-11122-1-git-send-email-amir73il@users.sourceforge.net>
 Cc: tytso@mit.edu, Amir Goldstein <amir73il@users.sf.net>,
 	Yongqiang Yang <xiaoqiangnk@gmail.com>
@@ -9,99 +9,89 @@ To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-ww0-f44.google.com ([74.125.82.44]:35313 "EHLO
 	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753521Ab1EIQoR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 May 2011 12:44:17 -0400
+	with ESMTP id S1753684Ab1EIQo0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 May 2011 12:44:26 -0400
 Received: by mail-ww0-f44.google.com with SMTP id 36so5955868wwa.1
-        for <linux-ext4@vger.kernel.org>; Mon, 09 May 2011 09:44:16 -0700 (PDT)
+        for <linux-ext4@vger.kernel.org>; Mon, 09 May 2011 09:44:25 -0700 (PDT)
 In-Reply-To: <1304959308-11122-1-git-send-email-amir73il@users.sourceforge.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Amir Goldstein <amir73il@users.sf.net>
 
-Don't journal COW bitmap indirect blocks to save journal credits.
-On very few COW operations (i.e., first block group access after
-snapshot take), there may be up to 3 extra blocks allocated for the
-active snapshot (i.e., COW bitmap block and up to 2 indirect blocks).
-Taking these 2 indorect blocks into account on every COW operation
-would further increase the transaction's COW credits factor.
-Instead, we choose to pay a small performance penalty on these few
-COW bitmap operations and wait until they are synced to disk.
+Wait for pending COW operations to complete.
+When concurrent tasks try to COW the same buffer, the task that takes
+the active snapshot i_data_sem is elected as the the COWing task.
+The COWing task allocates a new snapshot block and creates a buffer
+cache entry with ref_count=1 for that new block.  It then locks the
+new buffer and marks it with the buffer_new flag.  The rest of the
+tasks wait (in msleep(1) loop), until the buffer_new flag is cleared.
+The COWing task copies the source buffer into the 'new' buffer,
+unlocks it, clears the new_buffer flag and drops its reference count.
+On active snapshot readpage, the buffer cache is checked.
+If a 'new' buffer entry is found, the reader task waits until the
+buffer_new flag is cleared and then copies the 'new' buffer directly
+into the snapshot file page.
+The sleep loop method was copied from LVM snapshot code, which does
+the same thing to deal with these (rare) races without wait queues.
 
 Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/inode.c |   31 +++++++++++++++++++++++++++----
- 1 files changed, 27 insertions(+), 4 deletions(-)
+ fs/ext4/inode.c |   26 ++++++++++++++++++++++++++
+ 1 files changed, 26 insertions(+), 0 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4bc60f1..d23743a 100644
+index d23743a..794b29f 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -835,7 +835,8 @@ static int ext4_alloc_branch_cow(handle_t *handle, struct inode *inode,
- 		branch[n].bh = bh;
- 		lock_buffer(bh);
- 		BUFFER_TRACE(bh, "call get_create_access");
--		err = ext4_journal_get_create_access(handle, bh);
-+		if (!SNAPMAP_ISSYNC(flags))
-+			err = ext4_journal_get_create_access(handle, bh);
- 		if (err) {
- 			/* Don't brelse(bh) here; it's done in
- 			 * ext4_journal_forget() below */
-@@ -862,7 +863,21 @@ static int ext4_alloc_branch_cow(handle_t *handle, struct inode *inode,
- 		unlock_buffer(bh);
+@@ -1049,6 +1049,7 @@ static int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
+ 	int depth;
+ 	int count = 0;
+ 	ext4_fsblk_t first_block = 0;
++	struct buffer_head *sbh = NULL;
  
- 		BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
--		err = ext4_handle_dirty_metadata(handle, inode, bh);
+ 	J_ASSERT(!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)));
+ 	J_ASSERT(handle != NULL || (flags & EXT4_GET_BLOCKS_CREATE) == 0);
+@@ -1154,6 +1155,25 @@ static int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
+ 	if (err)
+ 		goto cleanup;
+ 
++	if (SNAPMAP_ISCOW(flags)) {
 +		/*
-+		 * When accessing a block group for the first time, the
-+		 * block bitmap is the first block to be copied to the
-+		 * snapshot.  We don't want to reserve journal credits for
-+		 * the indirect blocks that map the bitmap copy (the COW
-+		 * bitmap), so instead of writing through the journal, we
-+		 * sync the indirect blocks directly to disk.  Of course,
-+		 * this is not good for performance but it only happens once
-+		 * per snapshot/blockgroup.
++		 * COWing block or creating COW bitmap.
++		 * we now have exclusive access to the COW destination block
++		 * and we are about to create the snapshot block mapping
++		 * and make it public.
++		 * grab the buffer cache entry and mark it new
++		 * to indicate a pending COW operation.
++		 * the refcount for the buffer cache will be released
++		 * when the COW operation is either completed or canceled.
 +		 */
-+		if (SNAPMAP_ISSYNC(flags)) {
-+			mark_buffer_dirty(bh);
-+			sync_dirty_buffer(bh);
-+		} else
-+			err = ext4_handle_dirty_metadata(handle, inode, bh);
- 		if (err)
- 			goto failed;
- 	}
-@@ -871,6 +886,9 @@ static int ext4_alloc_branch_cow(handle_t *handle, struct inode *inode,
- failed:
- 	/* Allocation failed, free what we already allocated */
- 	ext4_free_blocks(handle, inode, NULL, new_blocks[0], 1, 0);
-+	/* If we bypassed journal, we don't need to forget any block */
-+	if (SNAPMAP_ISSYNC(flags))
-+		n = 1;
- 	for (i = 1; i <= n ; i++) {
- 		/*
- 		 * branch[i].bh is newly allocated, so there is no
-@@ -966,13 +984,18 @@ static int ext4_splice_branch_cow(handle_t *handle, struct inode *inode,
- 
- err_out:
- 	for (i = 1; i <= num; i++) {
-+		int forget = EXT4_FREE_BLOCKS_FORGET;
++		sbh = sb_getblk(inode->i_sb, le32_to_cpu(chain[depth-1].key));
++		if (!sbh) {
++			err = -EIO;
++			goto cleanup;
++		}
++		ext4_snapshot_start_pending_cow(sbh);
++	}
 +
-+		/* If we bypassed journal, we don't need to forget */
-+		if (SNAPMAP_ISSYNC(flags))
-+			forget = 0;
-+
- 		/*
- 		 * branch[i].bh is newly allocated, so there is no
- 		 * need to revoke the block, which is why we don't
- 		 * need to set EXT4_FREE_BLOCKS_METADATA.
- 		 */
--		ext4_free_blocks(handle, inode, where[i].bh, 0, 1,
--				 EXT4_FREE_BLOCKS_FORGET);
-+		ext4_free_blocks(handle, inode, where[i].bh, 0, 1, forget);
- 	}
- 	if (SNAPMAP_ISMOVE(flags))
- 		/* don't charge snapshot file owner if move failed */
+ 	if (map->m_flags & EXT4_MAP_REMAP) {
+ 		map->m_len = count;
+ 		/* move old block to snapshot */
+@@ -1197,6 +1217,12 @@ got_it:
+ 	/* Clean up and exit */
+ 	partial = chain + depth - 1;	/* the whole chain */
+ cleanup:
++	/* cancel pending COW operation on failure to alloc snapshot block */
++	if (SNAPMAP_ISCOW(flags)) {
++		if (err < 0 && sbh)
++			ext4_snapshot_end_pending_cow(sbh);
++		brelse(sbh);
++	}
+ 	while (partial > chain) {
+ 		BUFFER_TRACE(partial->bh, "call brelse");
+ 		brelse(partial->bh);
 -- 
 1.7.0.4
 
