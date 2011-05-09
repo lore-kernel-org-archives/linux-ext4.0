@@ -1,23 +1,26 @@
-From: Jan Kara <jack@suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: [PATCH v3] Adding support to freeze and unfreeze a journal
-Date: Mon, 9 May 2011 17:08:52 +0200
-Message-ID: <20110509150852.GQ4122@quack.suse.cz>
-References: <4DC7F0E4.5070507@canonical.com>
- <1304952692-3858-1-git-send-email-surbhi.palande@canonical.com>
+Date: Mon, 09 May 2011 10:23:21 -0500
+Message-ID: <4DC806E9.1070806@redhat.com>
+References: <4DC7F0E4.5070507@canonical.com> <1304952692-3858-1-git-send-email-surbhi.palande@canonical.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 Cc: jack@suse.cz, marco.stornelli@gmail.com, adilger.kernel@dilger.ca,
 	toshi.okajima@jp.fujitsu.com, tytso@mit.edu,
-	m.mizuma@jp.fujitsu.com, sandeen@redhat.com,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+	m.mizuma@jp.fujitsu.com, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
 To: Surbhi Palande <surbhi.palande@canonical.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:10527 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752505Ab1EIPXc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 May 2011 11:23:32 -0400
 In-Reply-To: <1304952692-3858-1-git-send-email-surbhi.palande@canonical.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 09-05-11 17:51:32, Surbhi Palande wrote:
+On 5/9/11 9:51 AM, Surbhi Palande wrote:
 > The journal should be frozen when a F.S freezes. What this means is that till
 > the F.S is thawed again, no new transactions should be accepted by the
 > journal. When the F.S thaws, inturn it should thaw the journal and this should
@@ -25,12 +28,15 @@ On Mon 09-05-11 17:51:32, Surbhi Palande wrote:
 > While the F.S has frozen the journal, the clients of journal on calling
 > jbd2_journal_start() will sleep on a wait queue. Thawing the journal will wake
 > up the sleeping clients and journalling can progress normally.
-  The patch looks fine. I'd just add here a scheme of the race which can
-happen if we don't really freeze the journal and rely on vfs... You can add:
-Acked-by: Jan Kara <jack@suse.cz>
 
-									Honza
-> 
+Can I ask how this was tested?
+
+Ideally anything you found useful for testing should probably be integrated
+into the xfstests test suite so that we don't regresss in the future.
+
+thanks,
+-Eric
+
 > Signed-off-by: Surbhi Palande <surbhi.palande@canonical.com>
 > ---
 > Changes since the last patch:
@@ -192,9 +198,4 @@ Acked-by: Jan Kara <jack@suse.cz>
 >  extern int	 jbd2_journal_flush (journal_t *);
 >  extern void	 jbd2_journal_lock_updates (journal_t *);
 >  extern void	 jbd2_journal_unlock_updates (journal_t *);
-> -- 
-> 1.7.1
-> 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+
