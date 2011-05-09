@@ -1,53 +1,43 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/1] Null Pointer when make_indexed_dir returns -ENOSPC
-Date: Mon, 9 May 2011 13:03:29 +0200
-Message-ID: <20110509110329.GF4122@quack.suse.cz>
-References: <4DC5DBB3.9030207@linux.vnet.ibm.com>
+Subject: Re: [PATCH] jbd/jbd2: remove obsolete summarise_journal_usage.
+Date: Mon, 9 May 2011 13:05:25 +0200
+Message-ID: <20110509110525.GG4122@quack.suse.cz>
+References: <1304610859-480-1-git-send-email-tm@tao.ma>
+ <20110505161454.GM5323@quack.suse.cz>
+ <20110509001441.GA4138@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>
-To: Allison Henderson <achender@linux.vnet.ibm.com>
+Cc: Jan Kara <jack@suse.cz>, Tao Ma <tm@tao.ma>,
+	linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:51824 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:51849 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752272Ab1EILDg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 May 2011 07:03:36 -0400
+	id S1751678Ab1EILF1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 May 2011 07:05:27 -0400
 Content-Disposition: inline
-In-Reply-To: <4DC5DBB3.9030207@linux.vnet.ibm.com>
+In-Reply-To: <20110509001441.GA4138@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat 07-05-11 16:54:27, Allison Henderson wrote:
-> Fix for a null pointer bug found while running punch hole tests
+On Sun 08-05-11 20:14:41, Ted Tso wrote:
+> On Thu, May 05, 2011 at 06:14:54PM +0200, Jan Kara wrote:
+> > On Thu 05-05-11 23:54:19, Tao Ma wrote:
+> > > From: Tao Ma <boyu.mt@taobao.com>
+> > > 
+> > > summarise_journal_usage seems to be obsolete for a long time,
+> > > so remove it.
+> >   Yes. Added to my tree. Thanks.
 > 
-> Signed-off-by: Allison Henderson <achender@us.ibm.com>
-> ---
-> :100644 100644 3c7a06e... 3302a6c... M	fs/ext4/namei.c
->  fs/ext4/namei.c |    3 ++-
->  1 files changed, 2 insertions(+), 1 deletions(-)
+> Hi Jan,
 > 
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index 3c7a06e..3302a6c 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -1422,7 +1422,8 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
->  		 */
->  		ext4_mark_inode_dirty(handle, dir);
->  		ext4_handle_dirty_metadata(handle, dir, frame->bh);
-> -		ext4_handle_dirty_metadata(handle, dir, bh);
-> +		if (bh)
-> +			ext4_handle_dirty_metadata(handle, dir, bh);
-  I'm puzzled - bh here is bh2 from the beginning of the function and we
-check it for being NULL after we ext4_append() it. So how can this happen?
+> Did you take the whole patch (removing it for both jbd and jbd2) or
+> just for jbd?  I'm fine either way, I just want to know if I need to
+> worry about this patch.
+  I've taken both jbd and jbd2 parts (as I figured it's trivial enough and
+won't conflict with anything anyway).
 
-									Honza
->  		dx_release(frames);
->  		return retval;
->  	}
-> -- 
-> 1.7.1
-> 
+								Honza
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
