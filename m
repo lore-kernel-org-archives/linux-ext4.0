@@ -1,129 +1,158 @@
 From: amir73il@users.sourceforge.net
-Subject: [PATCH RFC 28/30] ext4: snapshot cleanup
-Date: Mon,  9 May 2011 19:41:46 +0300
-Message-ID: <1304959308-11122-29-git-send-email-amir73il@users.sourceforge.net>
+Subject: [PATCH RFC 29/30] ext4: snapshot cleanup - shrink deleted snapshots
+Date: Mon,  9 May 2011 19:41:47 +0300
+Message-ID: <1304959308-11122-30-git-send-email-amir73il@users.sourceforge.net>
 References: <1304959308-11122-1-git-send-email-amir73il@users.sourceforge.net>
 Cc: tytso@mit.edu, Amir Goldstein <amir73il@users.sf.net>,
 	Yongqiang Yang <xiaoqiangnk@gmail.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:35313 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753684Ab1EIQod (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 May 2011 12:44:33 -0400
-Received: by mail-ww0-f44.google.com with SMTP id 36so5955868wwa.1
-        for <linux-ext4@vger.kernel.org>; Mon, 09 May 2011 09:44:32 -0700 (PDT)
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:33538 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753803Ab1EIQof (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 May 2011 12:44:35 -0400
+Received: by mail-wy0-f174.google.com with SMTP id 21so4026020wya.19
+        for <linux-ext4@vger.kernel.org>; Mon, 09 May 2011 09:44:34 -0700 (PDT)
 In-Reply-To: <1304959308-11122-1-git-send-email-amir73il@users.sourceforge.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Amir Goldstein <amir73il@users.sf.net>
 
-Cleanup snapshots list and reclaim unused blocks of deleted snapshots.
-Oldest snapshot can be removed from list and its blocks can be freed.
-Non-oldest snapshots have to be shrunk and merged before they can be
-removed from the list.  All snapshot blocks must be excluded in order
-to properly shrink/merge deleted old snapshots.
+Free blocks of deleted snapshots, which are not in use by an older
+non-deleted snapshot.  Shrinking helps reclaiming disk space
+while older snapshots are currently in use (enabled).
+We modify the indirect inode truncate helper functions so that they
+can be used by the snapshot cleanup functions to free blocks
+selectively according to a COW bitmap buffer.
 
 Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/ext4.h  |   16 ++++++++++++++++
- fs/ext4/inode.c |   19 +++++++++++--------
- 2 files changed, 27 insertions(+), 8 deletions(-)
+ fs/ext4/ext4.h  |   10 ++++++++++
+ fs/ext4/inode.c |   51 +++++++++++++++++++++++++++++++++++++--------------
+ 2 files changed, 47 insertions(+), 14 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 37c608b..7650515 100644
+index 7650515..07629ce 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1748,6 +1748,12 @@ struct ext4_features {
- 	struct completion f_kobj_unregister;
- };
- 
-+typedef struct {
-+	__le32	*p;
-+	__le32	key;
-+	struct buffer_head *bh;
-+} Indirect;
+@@ -1905,6 +1905,16 @@ extern void ext4_free_branches(handle_t *handle, struct inode *inode,
+ 				struct buffer_head *parent_bh,
+ 				__le32 *first, __le32 *last,
+ 				int depth);
++extern void ext4_free_data_cow(handle_t *handle, struct inode *inode,
++			   struct buffer_head *this_bh,
++			   __le32 *first, __le32 *last,
++			   const char *bitmap, int bit,
++			   int *pfreed_blocks);
 +
- /*
-  * Function prototypes
-  */
-@@ -1889,6 +1895,16 @@ extern void ext4_da_update_reserve_space(struct inode *inode,
- /* snapshot_inode.c */
- extern int ext4_snapshot_readpage(struct file *file, struct page *page);
- 
-+extern int ext4_block_to_path(struct inode *inode,
-+			      ext4_lblk_t i_block,
-+			      ext4_lblk_t offsets[4], int *boundary);
-+extern Indirect *ext4_get_branch(struct inode *inode, int depth,
-+				 ext4_lblk_t  *offsets,
-+				 Indirect chain[4], int *err);
-+extern void ext4_free_branches(handle_t *handle, struct inode *inode,
-+				struct buffer_head *parent_bh,
-+				__le32 *first, __le32 *last,
-+				int depth);
++#define ext4_free_data(handle, inode, bh, first, last)		\
++	ext4_free_data_cow(handle, inode, bh, first, last,	\
++			    NULL, 0, NULL)
++
  /* ioctl.c */
  extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
  extern long ext4_compat_ioctl(struct file *, unsigned int, unsigned long);
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 794b29f..d46da6a 100644
+index d46da6a..e3bfee2 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -176,6 +176,14 @@ int ext4_truncate_restart_trans(handle_t *handle, struct inode *inode,
- 	 */
- 	BUG_ON(EXT4_JOURNAL(inode) == NULL);
- 	jbd_debug(2, "restarting handle %p\n", handle);
-+	/*
-+	 * Snapshot shrink/merge/clean do not take i_data_sem, so we cannot
-+	 * release it here. Luckily, snapshot files are not writable,
-+	 * so deadlock with ext4_map_blocks on writepage is impossible.
-+	 * Snapshot files also don't have preallocations.
-+	 */
-+	if (ext4_snapshot_file(inode))
-+		return ext4_journal_restart(handle, nblocks);
- 	up_write(&EXT4_I(inode)->i_data_sem);
- 	ret = ext4_journal_restart(handle, nblocks);
- 	down_write(&EXT4_I(inode)->i_data_sem);
-@@ -281,11 +289,6 @@ no_delete:
- 	ext4_clear_inode(inode);	/* We must guarantee clearing of inode... */
- }
- 
--typedef struct {
--	__le32	*p;
--	__le32	key;
--	struct buffer_head *bh;
--} Indirect;
- 
- static inline void add_chain(Indirect *p, struct buffer_head *bh, __le32 *v)
- {
-@@ -324,7 +327,7 @@ static inline void add_chain(Indirect *p, struct buffer_head *bh, __le32 *v)
-  * get there at all.
+@@ -4546,11 +4546,15 @@ no_top:
+  * Return 0 on success, 1 on invalid block range
+  * and < 0 on fatal error.
   */
+-static int ext4_clear_blocks(handle_t *handle, struct inode *inode,
+-			     struct buffer_head *bh,
+-			     ext4_fsblk_t block_to_free,
+-			     unsigned long count, __le32 *first,
+-			     __le32 *last)
++/*
++ * ext4_clear_blocks_cow - Zero a number of block pointers (consult COW bitmap)
++ * @bitmap:	COW bitmap to consult when shrinking deleted snapshot
++ * @bit:	bit number representing the @first block
++ */
++static int ext4_clear_blocks_cow(handle_t *handle, struct inode *inode,
++		struct buffer_head *bh, ext4_fsblk_t block_to_free,
++		unsigned long count, __le32 *first, __le32 *last,
++		const char *bitmap, int bit)
+ {
+ 	__le32 *p;
+ 	int	flags = EXT4_FREE_BLOCKS_FORGET | EXT4_FREE_BLOCKS_VALIDATED;
+@@ -4590,8 +4594,12 @@ static int ext4_clear_blocks(handle_t *handle, struct inode *inode,
+ 		}
+ 	}
  
--static int ext4_block_to_path(struct inode *inode,
-+int ext4_block_to_path(struct inode *inode,
- 			      ext4_lblk_t i_block,
- 			      ext4_lblk_t offsets[4], int *boundary)
- {
-@@ -440,7 +443,7 @@ static int __ext4_check_blockref(const char *function, unsigned int line,
-  *      Need to be called with
-  *      down_read(&EXT4_I(inode)->i_data_sem)
+-	for (p = first; p < last; p++)
++	for (p = first; p < last; p++) {
++		if (*p && bitmap && ext4_test_bit(bit + (p - first), bitmap))
++			/* don't free block used by older snapshot */
++			continue;
+ 		*p = 0;
++	}
+ 
+ 	ext4_free_blocks(handle, inode, NULL, block_to_free, count, flags);
+ 	return 0;
+@@ -4619,9 +4627,17 @@ out_err:
+  * @this_bh will be %NULL if @first and @last point into the inode's direct
+  * block pointers.
   */
--static Indirect *ext4_get_branch(struct inode *inode, int depth,
-+Indirect *ext4_get_branch(struct inode *inode, int depth,
- 				 ext4_lblk_t  *offsets,
- 				 Indirect chain[4], int *err)
+-static void ext4_free_data(handle_t *handle, struct inode *inode,
++/*
++ * ext4_free_data_cow - free a list of data blocks (consult COW bitmap)
++ * @bitmap:	   COW bitmap to consult when shrinking deleted snapshot
++ * @bit:	   bit number representing the @first block
++ * @pfreed_blocks: return number of freed blocks
++ */
++void ext4_free_data_cow(handle_t *handle, struct inode *inode,
+ 			   struct buffer_head *this_bh,
+-			   __le32 *first, __le32 *last)
++			   __le32 *first, __le32 *last,
++			   const char *bitmap, int bit,
++			   int *pfreed_blocks)
  {
-@@ -4702,7 +4705,7 @@ static void ext4_free_data(handle_t *handle, struct inode *inode,
-  *	stored as little-endian 32-bit) and updating @inode->i_blocks
-  *	appropriately.
-  */
--static void ext4_free_branches(handle_t *handle, struct inode *inode,
-+void ext4_free_branches(handle_t *handle, struct inode *inode,
- 			       struct buffer_head *parent_bh,
- 			       __le32 *first, __le32 *last, int depth)
- {
+ 	ext4_fsblk_t block_to_free = 0;    /* Starting block # of a run */
+ 	unsigned long count = 0;	    /* Number of blocks in the run */
+@@ -4645,6 +4661,11 @@ static void ext4_free_data(handle_t *handle, struct inode *inode,
+ 
+ 	for (p = first; p < last; p++) {
+ 		nr = le32_to_cpu(*p);
++		if (nr && bitmap && ext4_test_bit(bit + (p - first), bitmap))
++			/* don't free block used by older snapshot */
++			nr = 0;
++		if (nr && pfreed_blocks)
++			++(*pfreed_blocks);
+ 		if (nr) {
+ 			/* accumulate blocks to free if they're contiguous */
+ 			if (count == 0) {
+@@ -4654,9 +4675,10 @@ static void ext4_free_data(handle_t *handle, struct inode *inode,
+ 			} else if (nr == block_to_free + count) {
+ 				count++;
+ 			} else {
+-				err = ext4_clear_blocks(handle, inode, this_bh,
+-						        block_to_free, count,
+-						        block_to_free_p, p);
++				err = ext4_clear_blocks_cow(handle, inode,
++					       this_bh, block_to_free, count,
++					       block_to_free_p, p, bitmap,
++					       bit + (block_to_free_p - first));
+ 				if (err)
+ 					break;
+ 				block_to_free = nr;
+@@ -4666,9 +4688,10 @@ static void ext4_free_data(handle_t *handle, struct inode *inode,
+ 		}
+ 	}
+ 
+-	if (!err && count > 0)
+-		err = ext4_clear_blocks(handle, inode, this_bh, block_to_free,
+-					count, block_to_free_p, p);
++	if (count > 0)
++		err = ext4_clear_blocks_cow(handle, inode, this_bh,
++				block_to_free, count, block_to_free_p, p,
++				bitmap, bit + (block_to_free_p - first));
+ 	if (err < 0)
+ 		/* fatal error */
+ 		return;
 -- 
 1.7.0.4
 
