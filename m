@@ -1,65 +1,54 @@
-From: Jan Kara <jack@suse.cz>
+From: Rogier Wolff <R.E.Wolff@BitWizard.nl>
 Subject: Re: mounting ext3 with another superblock doesn't work?
-Date: Mon, 9 May 2011 14:06:08 +0200
-Message-ID: <20110509120608.GK4122@quack.suse.cz>
-References: <031c613316176c32f09748706a086be2@imap.dd24.net>
- <23AF51ED-8130-4401-94FE-93CF36E8E1C1@dilger.ca>
- <6f43bed530a6412344f7b30e42a89d23@imap.dd24.net>
+Date: Mon, 9 May 2011 14:43:22 +0200
+Message-ID: <20110509124322.GB306@bitwizard.nl>
+References: <031c613316176c32f09748706a086be2@imap.dd24.net> <23AF51ED-8130-4401-94FE-93CF36E8E1C1@dilger.ca> <6f43bed530a6412344f7b30e42a89d23@imap.dd24.net> <20110509120608.GK4122@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+Cc: Christoph Anton Mitterer <calestyo@scientia.net>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	adilger@dilger.ca, amir73il@users.sourceforge.net
-To: Christoph Anton Mitterer <calestyo@scientia.net>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cust-95-128-94-82.breedbanddelft.nl ([95.128.94.82]:52105 "HELO
+	abra2.bitwizard.nl" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with SMTP id S1752881Ab1EIMuE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 May 2011 08:50:04 -0400
 Content-Disposition: inline
-In-Reply-To: <6f43bed530a6412344f7b30e42a89d23@imap.dd24.net>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20110509120608.GK4122@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi,
+On Mon, May 09, 2011 at 02:06:08PM +0200, Jan Kara wrote:
+> > e2fsprogs' mkfs is really missing a check whether any known
+> > filesystem/partition type/container (luks, lvm, mdadm, etc.) is already on
+> > device (and a -force switch),... IIRC xfsprogs already do this more or
+> > less.
 
-On Sat 07-05-11 22:03:39, Christoph Anton Mitterer wrote:
-> What I did then yesterday night, was a
-> 
-> fsck.ext3 -b 32768 -B4096 device
-> 
-> There were MANY errors... (nearly all of them, that wouldn't be
-> automatically corrected e.g. by -p).
-> 
-> 
-> "Something" actually came back, though I cannot say (and probably never
-> will, as there are millions) whether everything came back and/or whether
-> the files are internally corrupted.
-> 
-> The problem is that the old directory structure was not recovered, but
-> _everything_ went into lost+found, some files directly in it (not with
-> their correct names but #xxxxxx numbers) and also many directories (also
-> with #xxxxxx numbers as names).
-> The directories however do contain at least some subtrees of the original
-> filesystem hierarchy (I mean with the correct names).
-> 
-> I guess there's no (automatic) way now, to get the full directory
-> structure as before, is there?
-  No, not really. Actually, contents of the files should be generally OK
-because mkfs overwrites only inodes. So you have lost some files and
-directories but once you have a file, it should be OK.
+>   Yes, that would be reasonable although it might break some
+>   people's scripts. But probably worth it anyway.
 
-> Of course I have some backups but unfortunately dating back to last
-> October (yes, I know, I'm stupid and deserved it ^^)...
-> 
-> Will try now to use fdupes and/or rdfind, to sort out all files that are
-> equal between backup and rescue fs and manually check and move back the
-> others (a work of some months probably ^^).
-> 
-> It's not that I wanna blame others (I mean being stupid is my fault), but
-> e2fsprogs' mkfs is really missing a check whether any known
-> filesystem/partition type/container (luks, lvm, mdadm, etc.) is already on
-> device (and a -force switch),... IIRC xfsprogs already do this more or
-> less.
-  Yes, that would be reasonable although it might break some people's
-scripts. But probably worth it anyway.
+This is a difficult change.... 
 
-								Honza
+Some GUI install things already perform this check and after asking
+confirmation from the user will just execute:
+
+	mkfs.ext3 /dev/....
+
+and expect it to make the filesystem. 
+
+So you could add an option: 
+	--check _for_existing_filesystem
+
+But then it is quite likely that people running it manually will
+forget to add the option....
+
+	Roger. 
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
+**    Delftechpark 26 2628 XH  Delft, The Netherlands. KVK: 27239233    **
+*-- BitWizard writes Linux device drivers for any device you may have! --*
+Q: It doesn't work. A: Look buddy, doesn't work is an ambiguous statement. 
+Does it sit on the couch all day? Is it unemployed? Please be specific! 
+Define 'it' and what it isn't doing. --------- Adapted from lxrbot FAQ
