@@ -1,325 +1,200 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/2] ext4: move ext4_add_groupblocks() to mballoc.c
-Date: Mon,  9 May 2011 10:59:29 -0400
-Message-ID: <1304953170-32637-1-git-send-email-tytso@mit.edu>
-References: <20110509145453.GB19811@thunk.org>
-Cc: Amir Goldstein <amir73il@users.sf.net>,
-	"Theodore Ts'o" <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:51933 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750902Ab1EIO7d (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 May 2011 10:59:33 -0400
-In-Reply-To: <20110509145453.GB19811@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v3] Adding support to freeze and unfreeze a journal
+Date: Mon, 9 May 2011 17:08:52 +0200
+Message-ID: <20110509150852.GQ4122@quack.suse.cz>
+References: <4DC7F0E4.5070507@canonical.com>
+ <1304952692-3858-1-git-send-email-surbhi.palande@canonical.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: jack@suse.cz, marco.stornelli@gmail.com, adilger.kernel@dilger.ca,
+	toshi.okajima@jp.fujitsu.com, tytso@mit.edu,
+	m.mizuma@jp.fujitsu.com, sandeen@redhat.com,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Surbhi Palande <surbhi.palande@canonical.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1304952692-3858-1-git-send-email-surbhi.palande@canonical.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Amir Goldstein <amir73il@users.sf.net>
+On Mon 09-05-11 17:51:32, Surbhi Palande wrote:
+> The journal should be frozen when a F.S freezes. What this means is that till
+> the F.S is thawed again, no new transactions should be accepted by the
+> journal. When the F.S thaws, inturn it should thaw the journal and this should
+> allow the journal to resume accepting new transactions.
+> While the F.S has frozen the journal, the clients of journal on calling
+> jbd2_journal_start() will sleep on a wait queue. Thawing the journal will wake
+> up the sleeping clients and journalling can progress normally.
+  The patch looks fine. I'd just add here a scheme of the race which can
+happen if we don't really freeze the journal and rely on vfs... You can add:
+Acked-by: Jan Kara <jack@suse.cz>
 
-In preparation for the next patch, the function ext4_add_groupblocks()
-is moved to mballoc.c, where it could use some static functions.
-
-Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/balloc.c  |  124 -----------------------------------------------------
- fs/ext4/ext4.h    |    4 +-
- fs/ext4/mballoc.c |  124 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 126 insertions(+), 126 deletions(-)
-
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 9c6cd51..b2d10da 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -362,130 +362,6 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
- }
- 
- /**
-- * ext4_add_groupblocks() -- Add given blocks to an existing group
-- * @handle:			handle to this transaction
-- * @sb:				super block
-- * @block:			start physcial block to add to the block group
-- * @count:			number of blocks to free
-- *
-- * This marks the blocks as free in the bitmap. We ask the
-- * mballoc to reload the buddy after this by setting group
-- * EXT4_GROUP_INFO_NEED_INIT_BIT flag
-- */
--void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
--			 ext4_fsblk_t block, unsigned long count)
--{
--	struct buffer_head *bitmap_bh = NULL;
--	struct buffer_head *gd_bh;
--	ext4_group_t block_group;
--	ext4_grpblk_t bit;
--	unsigned int i;
--	struct ext4_group_desc *desc;
--	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	int err = 0, ret, blk_free_count;
--	ext4_grpblk_t blocks_freed;
--	struct ext4_group_info *grp;
--
--	ext4_debug("Adding block(s) %llu-%llu\n", block, block + count - 1);
--
--	ext4_get_group_no_and_offset(sb, block, &block_group, &bit);
--	grp = ext4_get_group_info(sb, block_group);
--	/*
--	 * Check to see if we are freeing blocks across a group
--	 * boundary.
--	 */
--	if (bit + count > EXT4_BLOCKS_PER_GROUP(sb)) {
--		goto error_return;
--	}
--	bitmap_bh = ext4_read_block_bitmap(sb, block_group);
--	if (!bitmap_bh)
--		goto error_return;
--	desc = ext4_get_group_desc(sb, block_group, &gd_bh);
--	if (!desc)
--		goto error_return;
--
--	if (in_range(ext4_block_bitmap(sb, desc), block, count) ||
--	    in_range(ext4_inode_bitmap(sb, desc), block, count) ||
--	    in_range(block, ext4_inode_table(sb, desc), sbi->s_itb_per_group) ||
--	    in_range(block + count - 1, ext4_inode_table(sb, desc),
--		     sbi->s_itb_per_group)) {
--		ext4_error(sb, "Adding blocks in system zones - "
--			   "Block = %llu, count = %lu",
--			   block, count);
--		goto error_return;
--	}
--
--	/*
--	 * We are about to add blocks to the bitmap,
--	 * so we need undo access.
--	 */
--	BUFFER_TRACE(bitmap_bh, "getting undo access");
--	err = ext4_journal_get_undo_access(handle, bitmap_bh);
--	if (err)
--		goto error_return;
--
--	/*
--	 * We are about to modify some metadata.  Call the journal APIs
--	 * to unshare ->b_data if a currently-committing transaction is
--	 * using it
--	 */
--	BUFFER_TRACE(gd_bh, "get_write_access");
--	err = ext4_journal_get_write_access(handle, gd_bh);
--	if (err)
--		goto error_return;
--	/*
--	 * make sure we don't allow a parallel init on other groups in the
--	 * same buddy cache
--	 */
--	down_write(&grp->alloc_sem);
--	for (i = 0, blocks_freed = 0; i < count; i++) {
--		BUFFER_TRACE(bitmap_bh, "clear bit");
--		if (!ext4_clear_bit_atomic(ext4_group_lock_ptr(sb, block_group),
--						bit + i, bitmap_bh->b_data)) {
--			ext4_error(sb, "bit already cleared for block %llu",
--				   (ext4_fsblk_t)(block + i));
--			BUFFER_TRACE(bitmap_bh, "bit already cleared");
--		} else {
--			blocks_freed++;
--		}
--	}
--	ext4_lock_group(sb, block_group);
--	blk_free_count = blocks_freed + ext4_free_blks_count(sb, desc);
--	ext4_free_blks_set(sb, desc, blk_free_count);
--	desc->bg_checksum = ext4_group_desc_csum(sbi, block_group, desc);
--	ext4_unlock_group(sb, block_group);
--	percpu_counter_add(&sbi->s_freeblocks_counter, blocks_freed);
--
--	if (sbi->s_log_groups_per_flex) {
--		ext4_group_t flex_group = ext4_flex_group(sbi, block_group);
--		atomic_add(blocks_freed,
--			   &sbi->s_flex_groups[flex_group].free_blocks);
--	}
--	/*
--	 * request to reload the buddy with the
--	 * new bitmap information
--	 */
--	set_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &(grp->bb_state));
--	grp->bb_free += blocks_freed;
--	up_write(&grp->alloc_sem);
--
--	/* We dirtied the bitmap block */
--	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
--	err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
--
--	/* And the group descriptor block */
--	BUFFER_TRACE(gd_bh, "dirtied group descriptor block");
--	ret = ext4_handle_dirty_metadata(handle, NULL, gd_bh);
--	if (!err)
--		err = ret;
--
--error_return:
--	brelse(bitmap_bh);
--	ext4_std_error(sb, err);
--	return;
--}
--
--/**
-  * ext4_has_free_blocks()
-  * @sbi:	in-core super block structure.
-  * @nblocks:	number of needed blocks
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 076c5d2..47986ae 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1655,8 +1655,6 @@ extern unsigned long ext4_bg_num_gdb(struct super_block *sb,
- extern ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
- 			ext4_fsblk_t goal, unsigned long *count, int *errp);
- extern int ext4_claim_free_blocks(struct ext4_sb_info *sbi, s64 nblocks);
--extern void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
--				ext4_fsblk_t block, unsigned long count);
- extern ext4_fsblk_t ext4_count_free_blocks(struct super_block *);
- extern void ext4_check_blocks_bitmap(struct super_block *);
- extern struct ext4_group_desc * ext4_get_group_desc(struct super_block * sb,
-@@ -1721,6 +1719,8 @@ extern void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 			     unsigned long count, int flags);
- extern int ext4_mb_add_groupinfo(struct super_block *sb,
- 		ext4_group_t i, struct ext4_group_desc *desc);
-+extern void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
-+				ext4_fsblk_t block, unsigned long count);
- extern int ext4_trim_fs(struct super_block *, struct fstrim_range *);
- 
- /* inode.c */
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 730c1a7..92aa05d 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4700,6 +4700,130 @@ error_return:
- }
- 
- /**
-+ * ext4_add_groupblocks() -- Add given blocks to an existing group
-+ * @handle:			handle to this transaction
-+ * @sb:				super block
-+ * @block:			start physcial block to add to the block group
-+ * @count:			number of blocks to free
-+ *
-+ * This marks the blocks as free in the bitmap. We ask the
-+ * mballoc to reload the buddy after this by setting group
-+ * EXT4_GROUP_INFO_NEED_INIT_BIT flag
-+ */
-+void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
-+			 ext4_fsblk_t block, unsigned long count)
-+{
-+	struct buffer_head *bitmap_bh = NULL;
-+	struct buffer_head *gd_bh;
-+	ext4_group_t block_group;
-+	ext4_grpblk_t bit;
-+	unsigned int i;
-+	struct ext4_group_desc *desc;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	int err = 0, ret, blk_free_count;
-+	ext4_grpblk_t blocks_freed;
-+	struct ext4_group_info *grp;
-+
-+	ext4_debug("Adding block(s) %llu-%llu\n", block, block + count - 1);
-+
-+	ext4_get_group_no_and_offset(sb, block, &block_group, &bit);
-+	grp = ext4_get_group_info(sb, block_group);
-+	/*
-+	 * Check to see if we are freeing blocks across a group
-+	 * boundary.
-+	 */
-+	if (bit + count > EXT4_BLOCKS_PER_GROUP(sb)) {
-+		goto error_return;
-+	}
-+	bitmap_bh = ext4_read_block_bitmap(sb, block_group);
-+	if (!bitmap_bh)
-+		goto error_return;
-+	desc = ext4_get_group_desc(sb, block_group, &gd_bh);
-+	if (!desc)
-+		goto error_return;
-+
-+	if (in_range(ext4_block_bitmap(sb, desc), block, count) ||
-+	    in_range(ext4_inode_bitmap(sb, desc), block, count) ||
-+	    in_range(block, ext4_inode_table(sb, desc), sbi->s_itb_per_group) ||
-+	    in_range(block + count - 1, ext4_inode_table(sb, desc),
-+		     sbi->s_itb_per_group)) {
-+		ext4_error(sb, "Adding blocks in system zones - "
-+			   "Block = %llu, count = %lu",
-+			   block, count);
-+		goto error_return;
-+	}
-+
-+	/*
-+	 * We are about to add blocks to the bitmap,
-+	 * so we need undo access.
-+	 */
-+	BUFFER_TRACE(bitmap_bh, "getting undo access");
-+	err = ext4_journal_get_undo_access(handle, bitmap_bh);
-+	if (err)
-+		goto error_return;
-+
-+	/*
-+	 * We are about to modify some metadata.  Call the journal APIs
-+	 * to unshare ->b_data if a currently-committing transaction is
-+	 * using it
-+	 */
-+	BUFFER_TRACE(gd_bh, "get_write_access");
-+	err = ext4_journal_get_write_access(handle, gd_bh);
-+	if (err)
-+		goto error_return;
-+	/*
-+	 * make sure we don't allow a parallel init on other groups in the
-+	 * same buddy cache
-+	 */
-+	down_write(&grp->alloc_sem);
-+	for (i = 0, blocks_freed = 0; i < count; i++) {
-+		BUFFER_TRACE(bitmap_bh, "clear bit");
-+		if (!ext4_clear_bit_atomic(ext4_group_lock_ptr(sb, block_group),
-+						bit + i, bitmap_bh->b_data)) {
-+			ext4_error(sb, "bit already cleared for block %llu",
-+				   (ext4_fsblk_t)(block + i));
-+			BUFFER_TRACE(bitmap_bh, "bit already cleared");
-+		} else {
-+			blocks_freed++;
-+		}
-+	}
-+	ext4_lock_group(sb, block_group);
-+	blk_free_count = blocks_freed + ext4_free_blks_count(sb, desc);
-+	ext4_free_blks_set(sb, desc, blk_free_count);
-+	desc->bg_checksum = ext4_group_desc_csum(sbi, block_group, desc);
-+	ext4_unlock_group(sb, block_group);
-+	percpu_counter_add(&sbi->s_freeblocks_counter, blocks_freed);
-+
-+	if (sbi->s_log_groups_per_flex) {
-+		ext4_group_t flex_group = ext4_flex_group(sbi, block_group);
-+		atomic_add(blocks_freed,
-+			   &sbi->s_flex_groups[flex_group].free_blocks);
-+	}
-+	/*
-+	 * request to reload the buddy with the
-+	 * new bitmap information
-+	 */
-+	set_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &(grp->bb_state));
-+	grp->bb_free += blocks_freed;
-+	up_write(&grp->alloc_sem);
-+
-+	/* We dirtied the bitmap block */
-+	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
-+	err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
-+
-+	/* And the group descriptor block */
-+	BUFFER_TRACE(gd_bh, "dirtied group descriptor block");
-+	ret = ext4_handle_dirty_metadata(handle, NULL, gd_bh);
-+	if (!err)
-+		err = ret;
-+
-+error_return:
-+	brelse(bitmap_bh);
-+	ext4_std_error(sb, err);
-+	return;
-+}
-+
-+/**
-  * ext4_trim_extent -- function to TRIM one single free extent in the group
-  * @sb:		super block for the file system
-  * @start:	starting block of the free extent in the alloc. group
+									Honza
+> 
+> Signed-off-by: Surbhi Palande <surbhi.palande@canonical.com>
+> ---
+> Changes since the last patch:
+> * Changed to the shorter forms of expressions eg: x |= y
+> * removed the unnecessary barrier
+> 
+>  fs/ext4/super.c       |   20 ++++++--------------
+>  fs/jbd2/journal.c     |    1 +
+>  fs/jbd2/transaction.c |   42 ++++++++++++++++++++++++++++++++++++++++++
+>  include/linux/jbd2.h  |   10 ++++++++++
+>  4 files changed, 59 insertions(+), 14 deletions(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 8553dfb..796aa4c 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -4179,23 +4179,15 @@ static int ext4_freeze(struct super_block *sb)
+>  
+>  	journal = EXT4_SB(sb)->s_journal;
+>  
+> -	/* Now we set up the journal barrier. */
+> -	jbd2_journal_lock_updates(journal);
+> -
+> +	error = jbd2_journal_freeze(journal);
+>  	/*
+> -	 * Don't clear the needs_recovery flag if we failed to flush
+> +	 * Don't clear the needs_recovery flag if we failed to freeze
+>  	 * the journal.
+>  	 */
+> -	error = jbd2_journal_flush(journal);
+> -	if (error < 0)
+> -		goto out;
+> -
+> -	/* Journal blocked and flushed, clear needs_recovery flag. */
+> -	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+> -	error = ext4_commit_super(sb, 1);
+> -out:
+> -	/* we rely on s_frozen to stop further updates */
+> -	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
+> +	if (error >= 0) {
+> +		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+> +		error = ext4_commit_super(sb, 1);
+> +	}
+>  	return error;
+>  }
+>  
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index e0ec3db..5e46333 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -842,6 +842,7 @@ static journal_t * journal_init_common (void)
+>  	init_waitqueue_head(&journal->j_wait_checkpoint);
+>  	init_waitqueue_head(&journal->j_wait_commit);
+>  	init_waitqueue_head(&journal->j_wait_updates);
+> +	init_waitqueue_head(&journal->j_wait_frozen);
+>  	mutex_init(&journal->j_barrier);
+>  	mutex_init(&journal->j_checkpoint_mutex);
+>  	spin_lock_init(&journal->j_revoke_lock);
+> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> index 05fa77a..b040293 100644
+> --- a/fs/jbd2/transaction.c
+> +++ b/fs/jbd2/transaction.c
+> @@ -171,6 +171,17 @@ repeat:
+>  				journal->j_barrier_count == 0);
+>  		goto repeat;
+>  	}
+> +	/* dont let a new handle start when a journal is frozen.
+> +	 * jbd2_journal_freeze calls jbd2_journal_unlock_updates() only after
+> +	 * the jflags indicate that the journal is frozen. So if the
+> +	 * j_barrier_count is 0, then check if this was made 0 by the freezing
+> +	 * process
+> +	 */
+> +	if (journal->j_flags & JBD2_FROZEN) {
+> +		read_unlock(&journal->j_state_lock);
+> +		jbd2_check_frozen(journal);
+> +		goto repeat;
+> +	}
+>  
+>  	if (!journal->j_running_transaction) {
+>  		read_unlock(&journal->j_state_lock);
+> @@ -489,6 +500,37 @@ int jbd2_journal_restart(handle_t *handle, int nblocks)
+>  }
+>  EXPORT_SYMBOL(jbd2_journal_restart);
+>  
+> +int jbd2_journal_freeze(journal_t *journal)
+> +{
+> +	int error = 0;
+> +	/* Now we set up the journal barrier. */
+> +	jbd2_journal_lock_updates(journal);
+> +
+> +	/*
+> +	 * Don't clear the needs_recovery flag if we failed to flush
+> +	 * the journal.
+> +	 */
+> +	error = jbd2_journal_flush(journal);
+> +	if (error >= 0) {
+> +		write_lock(&journal->j_state_lock);
+> +		journal->j_flags |= JBD2_FROZEN;
+> +		write_unlock(&journal->j_state_lock);
+> +	}
+> +	jbd2_journal_unlock_updates(journal);
+> +	return error;
+> +}
+> +EXPORT_SYMBOL(jbd2_journal_freeze);
+> +
+> +void jbd2_journal_thaw(journal_t * journal)
+> +{
+> +	write_lock(&journal->j_state_lock);
+> +	journal->j_flags &= ~JBD2_FROZEN;
+> +	write_unlock(&journal->j_state_lock);
+> +	wake_up(&journal->j_wait_frozen);
+> +}
+> +EXPORT_SYMBOL(jbd2_journal_thaw);
+> +
+> +
+>  /**
+>   * void jbd2_journal_lock_updates () - establish a transaction barrier.
+>   * @journal:  Journal to establish a barrier on.
+> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> index a32dcae..c7885b2 100644
+> --- a/include/linux/jbd2.h
+> +++ b/include/linux/jbd2.h
+> @@ -718,6 +718,7 @@ jbd2_time_diff(unsigned long start, unsigned long end)
+>   * @j_wait_checkpoint:  Wait queue to trigger checkpointing
+>   * @j_wait_commit: Wait queue to trigger commit
+>   * @j_wait_updates: Wait queue to wait for updates to complete
+> + * @j_wait_frozen: Wait queue to wait for journal to thaw
+>   * @j_checkpoint_mutex: Mutex for locking against concurrent checkpoints
+>   * @j_head: Journal head - identifies the first unused block in the journal
+>   * @j_tail: Journal tail - identifies the oldest still-used block in the
+> @@ -835,6 +836,9 @@ struct journal_s
+>  	/* Wait queue to wait for updates to complete */
+>  	wait_queue_head_t	j_wait_updates;
+>  
+> +	/* Wait queue to wait for journal to thaw*/
+> +	wait_queue_head_t	j_wait_frozen;
+> +
+>  	/* Semaphore for locking against concurrent checkpoints */
+>  	struct mutex		j_checkpoint_mutex;
+>  
+> @@ -1013,7 +1017,11 @@ struct journal_s
+>  #define JBD2_ABORT_ON_SYNCDATA_ERR	0x040	/* Abort the journal on file
+>  						 * data write error in ordered
+>  						 * mode */
+> +#define JBD2_FROZEN	0x080   /* Journal thread is frozen as the filesystem is frozen */
+> +
+>  
+> +#define jbd2_check_frozen(journal)	\
+> +		wait_event(journal->j_wait_frozen, (journal->j_flags & JBD2_FROZEN))
+>  /*
+>   * Function declarations for the journaling transaction and buffer
+>   * management
+> @@ -1121,6 +1129,8 @@ extern void	 jbd2_journal_invalidatepage(journal_t *,
+>  				struct page *, unsigned long);
+>  extern int	 jbd2_journal_try_to_free_buffers(journal_t *, struct page *, gfp_t);
+>  extern int	 jbd2_journal_stop(handle_t *);
+> +extern int	 jbd2_journal_freeze(journal_t *);
+> +extern void	 jbd2_journal_thaw(journal_t *);
+>  extern int	 jbd2_journal_flush (journal_t *);
+>  extern void	 jbd2_journal_lock_updates (journal_t *);
+>  extern void	 jbd2_journal_unlock_updates (journal_t *);
+> -- 
+> 1.7.1
+> 
 -- 
-1.7.3.1
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
