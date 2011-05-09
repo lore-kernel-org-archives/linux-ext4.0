@@ -1,84 +1,65 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/1] Null Pointer when make_indexed_dir returns -ENOSPC
-Date: Mon, 9 May 2011 13:36:32 +0200
-Message-ID: <20110509113632.GJ4122@quack.suse.cz>
-References: <4DC5DBB3.9030207@linux.vnet.ibm.com>
- <20110509110329.GF4122@quack.suse.cz>
- <BANLkTi=hSeN4mb8x9vu4DfBb-us_ocaqXw@mail.gmail.com>
- <20110509113052.GI4122@quack.suse.cz>
- <BANLkTinv=c+mXvnirHtCzfuk0eK913dVtQ@mail.gmail.com>
+Subject: Re: mounting ext3 with another superblock doesn't work?
+Date: Mon, 9 May 2011 14:06:08 +0200
+Message-ID: <20110509120608.GK4122@quack.suse.cz>
+References: <031c613316176c32f09748706a086be2@imap.dd24.net>
+ <23AF51ED-8130-4401-94FE-93CF36E8E1C1@dilger.ca>
+ <6f43bed530a6412344f7b30e42a89d23@imap.dd24.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack@suse.cz>,
-	Allison Henderson <achender@linux.vnet.ibm.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:43691 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751668Ab1EILge (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 May 2011 07:36:34 -0400
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	adilger@dilger.ca, amir73il@users.sourceforge.net
+To: Christoph Anton Mitterer <calestyo@scientia.net>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <BANLkTinv=c+mXvnirHtCzfuk0eK913dVtQ@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <6f43bed530a6412344f7b30e42a89d23@imap.dd24.net>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon 09-05-11 19:33:19, Yongqiang Yang wrote:
-> On Mon, May 9, 2011 at 7:30 PM, Jan Kara <jack@suse.cz> wrote:
-> > On Mon 09-05-11 19:18:37, Yongqiang Yang wrote:
-> >> On Mon, May 9, 2011 at 7:03 PM, Jan Kara <jack@suse.cz> wrote:
-> >> > On Sat 07-05-11 16:54:27, Allison Henderson wrote:
-> >> >> Fix for a null pointer bug found while running punch hole tests
-> >> >>
-> >> >> Signed-off-by: Allison Henderson <achender@us.ibm.com>
-> >> >> ---
-> >> >> :100644 100644 3c7a06e... 3302a6c... M =A0 =A0 =A0 =A0fs/ext4/n=
-amei.c
-> >> >> =A0fs/ext4/namei.c | =A0 =A03 ++-
-> >> >> =A01 files changed, 2 insertions(+), 1 deletions(-)
-> >> >>
-> >> >> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> >> >> index 3c7a06e..3302a6c 100644
-> >> >> --- a/fs/ext4/namei.c
-> >> >> +++ b/fs/ext4/namei.c
-> >> >> @@ -1422,7 +1422,8 @@ static int make_indexed_dir(handle_t *han=
-dle, struct dentry *dentry,
-> >> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0*/
-> >> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_mark_inode_dirty(handle, dir);
-> >> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_handle_dirty_metadata(handle, =
-dir, frame->bh);
-> >> >> - =A0 =A0 =A0 =A0 =A0 =A0 ext4_handle_dirty_metadata(handle, di=
-r, bh);
-> >> >> + =A0 =A0 =A0 =A0 =A0 =A0 if (bh)
-> >> >> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_handle_dirty_met=
-adata(handle, dir, bh);
-> >> > =A0I'm puzzled - bh here is bh2 from the beginning of the functi=
-on and we
-> >> > check it for being NULL after we ext4_append() it. So how can th=
-is happen?
-> >> do_split() encounters a journal error and set bh to NULL before re=
-turning.
-> > Ah, I see. But then you just reintroduced the bug I was trying to f=
-ix. So
-> > either do_split() has to do the marking of buffer dirty, or we have=
- to do
-> > it before calllig do_split(), or do_split() has to be changed and n=
-ot
-> > release passed buffer (and the two callers have to do it - which th=
-ey seem
-> > to do anyway). I don't mind either way but your fix is wrong.
-> The fix is made by Allison not me, I think Allison will have a look a=
-t
-> the thread.
-  Right, sorry. I was addressing Allison, not you of course ;).
+  Hi,
+
+On Sat 07-05-11 22:03:39, Christoph Anton Mitterer wrote:
+> What I did then yesterday night, was a
+> 
+> fsck.ext3 -b 32768 -B4096 device
+> 
+> There were MANY errors... (nearly all of them, that wouldn't be
+> automatically corrected e.g. by -p).
+> 
+> 
+> "Something" actually came back, though I cannot say (and probably never
+> will, as there are millions) whether everything came back and/or whether
+> the files are internally corrupted.
+> 
+> The problem is that the old directory structure was not recovered, but
+> _everything_ went into lost+found, some files directly in it (not with
+> their correct names but #xxxxxx numbers) and also many directories (also
+> with #xxxxxx numbers as names).
+> The directories however do contain at least some subtrees of the original
+> filesystem hierarchy (I mean with the correct names).
+> 
+> I guess there's no (automatic) way now, to get the full directory
+> structure as before, is there?
+  No, not really. Actually, contents of the files should be generally OK
+because mkfs overwrites only inodes. So you have lost some files and
+directories but once you have a file, it should be OK.
+
+> Of course I have some backups but unfortunately dating back to last
+> October (yes, I know, I'm stupid and deserved it ^^)...
+> 
+> Will try now to use fdupes and/or rdfind, to sort out all files that are
+> equal between backup and rescue fs and manually check and move back the
+> others (a work of some months probably ^^).
+> 
+> It's not that I wanna blame others (I mean being stupid is my fault), but
+> e2fsprogs' mkfs is really missing a check whether any known
+> filesystem/partition type/container (luks, lvm, mdadm, etc.) is already on
+> device (and a -force switch),... IIRC xfsprogs already do this more or
+> less.
+  Yes, that would be reasonable although it might break some people's
+scripts. But probably worth it anyway.
 
 								Honza
---=20
+-- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
