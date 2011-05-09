@@ -1,147 +1,92 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: backporting ext4 to 2.6.27
-Date: Mon, 9 May 2011 18:52:48 -0400
-Message-ID: <BANLkTinYoendEHf=fOtnoS=QyrVXJZZnqg@mail.gmail.com>
-References: <86980.98056.qm@web95210.mail.in2.yahoo.com> <20110509160548.GC19811@thunk.org>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: [PATCHSET v3.1 0/7] data integrity: Stabilize pages during writeback
+	for various fses
+Date: Mon, 09 May 2011 16:03:18 -0700
+Message-ID: <20110509230318.19566.66202.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: puru sothaman <r.puru@yahoo.co.in>, linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:58753 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932436Ab1EIWxt convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 May 2011 18:53:49 -0400
-Received: by bwz15 with SMTP id 15so4373103bwz.19
-        for <linux-ext4@vger.kernel.org>; Mon, 09 May 2011 15:53:47 -0700 (PDT)
-In-Reply-To: <20110509160548.GC19811@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: Jens Axboe <axboe@kernel.dk>,
+        "Martin K. Petersen" <martin.petersen@oracle.com>,
+        Jeff Layton <jlayton@redhat.com>, Dave Chinner <david@fromorbit.com>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        Dave Hansen <dave@linux.vnet.ibm.com>,
+        Christoph Hellwig <hch@infradead.org>, linux-mm@kvack.org,
+        Chris Mason <chris.mason@oracle.com>, Joel Becker <jlbec@evilplan.org>,
+        linux-scsi <linux-scsi@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4@vger.kernel.org, Mingming Cao <mcao@us.ibm.com>
+To: Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        "Darrick J. Wong" <
+Return-path: <owner-linux-mm@kvack.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 9, 2011 at 12:05 PM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Mon, May 09, 2011 at 08:16:09PM +0530, puru sothaman wrote:
->> Hi,
->>
->> =A0 =A0I am using 2.6.27.18 kernel.Currently the ext4 support in ker=
-nel
->>is experimental version.I need a stable version ext4 patches for the
->>above kernel.Can anyone help me in backporting the stable ext4
->>patches for 2.6.27 kernel.
->
-> Backporting patches to an ancient kernel like 2.6.27 is one of those
-> painful things that get done by people who are paid to do so --- it's
-> hard to find volunteers willing to do such a grungy task....
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 - Ted
+Hi all,
 
-Puru,
+This is v3.1 of the stable-page-writes patchset for ext4/3/2, xfs, and fat.
+The purpose of this patchset is to prohibit processes from writing on memory
+pages that are currently being written to disk because certain storage setups
+(e.g. SCSI disks with DIF integrity checksums) will fail a write if the page
+contents don't match the checksum.  btrfs already guarantees page stability, so
+it does not use these changes.
 
-As far as I know, 2.6.27 is not supported for any of the current
-security patches.
+The technique used is fairly simple -- whenever a page is about to become
+writable (either because of a write fault to a mapped page, or a buffered write
+is in progress), wait for the page writeback flag to be clear, indicating that
+the page is not being written to disk.  This means that it is necessary (1) to
+add wait for writeback code to grab_cache_page_write_begin to take care of
+buffered writes, and (2) all filesystems must have a page_mkwrite that locks a
+page, waits for writeback, and returns the locked page.  For filesystems that
+piggyback on the generic block_page_mkwrite, the patchset adds the writeback
+wait to that function; for filesystems that do not use the page_mkwrite hook at
+all, the patchset provides a stub page_mkwrite.
 
-openSUSE as an example 100% stopped back-porting security patches to
-it in Jan 2011 I believe.  I don't know how many ext4 patches they or
-the community backported prior to that.  As you said, it was
-experimental ...
+I ran my write-after-checksum ("wac") reproducer program to try to create the
+DIF checksum errors by madly rewriting the same memory pages.  In fact, I tried
+the following combinations against ext2/3/4, xfs, btrfs, and vfat:
 
-You can find the latest openSUSE 2.6.27 kernel source here:
-https://build.opensuse.org/package/files?package=3Dkernel-source&projec=
-t=3DDISCONTINUED%3AopenSUSE%3A11.1%3AUpdate
+a. 64 write() threads + sync_file_range
+b. 64 mmap write threads + msync
+c. 32 write() threads + sync_file_range + 32 mmap write threads + msync
+d. Same as C, but with all threads in directio mode
+e. Same as A, but with all threads in directio mode
+f. Same as B, but with all threads in directio mode
 
-If you look at series.conf in particular, you can see they advanced as
-far as the 2.6.27.56 stable kernel.
+After running profiles A-F for 30 minutes each on 6 different machines, ext2,
+ext4, xfs, and vfat reported no errors.  ext3 still has a lingering failure
+case (which I will touch on briefly later) and btrfs eventually reports -ENOSPC
+and fails the test, though it does that even without any of the patches applied.
 
-Then they were reverting a few things from the official tree:
+To assess the performance impact of stable page writes, I moved to a disk that
+doesn't have DIF support so that I could measure just the impact of waiting for
+writeback.  I first ran wac with 64 threads madly scribbling on a 64k file and
+saw about a 12 percent performance decrease.  I then reran the wac program with
+64 threads and a 64MB file and saw about the same performance numbers.  As I
+suspected, the patchset only seems to impact workloads that rewrite the same
+memory page frequently.
 
-    patches.kernel.org/revert-ext4-changes-in-2.6.27.48.patch
-    patches.kernel.org/revert-ext4-changes-in-2.6.27.47.patch
-    patches.kernel.org/revert-vfs-remove-the-range_cont-writeback-mode.=
--in-2.6.27.47.patch
-    patches.kernel.org/revert-ext4-changes-in-2.6.27.19-and-2.6.27.20-a=
-nd-2.6.27.25.patch
+I am still chasing down what exactly is broken in ext3.  data=writeback mode
+passes with no failures.  data=ordered, however, does not pass; my current
+suspicion is that jbd is calling submit_bh on data buffers but doesn't call
+page_mkclean to kick the userspace programs off the page before writing it.
 
+Per various comments regarding v3 of this patchset, I've integrated his
+suggestions, reworked the patch descriptions to make it clearer which ones
+touch all the filesystems and which ones are to fix remaining holes in specific
+filesystems, and expanded the scope of filesystems that got fixed.
 
-Then in addition they were applying:
+As always, questions and comments are welcome; and thank you to all the
+previous reviewers of this patchset.  I am also soliciting people's opinions on
+whether or not these patches could go upstream for .40.
 
-# ext2/ext3
-    ########################################################
-    patches.suse/ext3-barrier-default
-    patches.suse/ext2-fsync-err
-    patches.fixes/ext3-mark-super-uptodate
-    patches.fixes/ext3_false_EIO_fix.diff
-    patches.fixes/ext2_mtime_update_on_rename.diff
+--D
 
-    ########################################################
-    # ext4
-    ########################################################
-    patches.fixes/ext4-fixes-2.6.28-rc8.patch
-    patches.fixes/ext4-mballoc-preallocate.patch
-    patches.fixes/ext4-use-a-fake-block-number-for-delayed-new-buffer_h=
-ead
-    patches.fixes/ext4-fix-sub-block-zeroing-for-preallocated-writes
-    patches.fixes/ext4-clear-unwritten-flag-after-extent-initialization
-    patches.fixes/ext4-avoid-corrupting-the-uninitialized-bit-in-the-ex=
-tent-during-truncate
-    patches.fixes/ext4-avoid-divide-by-zero-when-trying-to-mount-a-corr=
-upted-file-system
-
-    patches.fixes/ext4-fix-i_flags-access-in-ext4_da_writepages_trans_b=
-locks
-    patches.fixes/ext4-fix-potential-buffer-head-leak-when-add_dirent_t=
-o_buf-returns-enospc
-    patches.fixes/ext4-fix-uninit-block-bitmap-initialization-when-s_me=
-ta_first_bg-is-non-zero
-    patches.fixes/ext4-journal-all-modifications-in-ext4_xattr_set_hand=
-le
-    patches.fixes/ext4-make-sure-directory-and-symlink-blocks-are-revok=
-ed
-    patches.fixes/ext4-plug-a-buffer_head-leak-in-an-error-path-of-ext4=
-_iget
-    patches.fixes/ext4-return-the-ptr_err-of-the-correct-pointer-in-set=
-up_new_group_blocks
-    patches.fixes/jbd2-fix-race-between-write_metadata_buffer-and-get_w=
-rite_access
-    patches.fixes/jbd2-add-enomem-checking-in-and-for-jbd2_journal_writ=
-e_metadata_buffer
-    patches.fixes/percpu_counter-fbc_batch-should-be-a-variable-ext4
-    patches.fixes/ext4-consolidate-in_range-definitions
-
-You should find all of those patches in the link I posted.
-
- (See files:
-                               patches.kernel.org.tar.bz2,
-                               patches.suse.tar.bz2,
-                               patches.fixes.tar.bz2
-)
-
-In fact, all of the patches to go from 2.6.27 to 2.6.27.56 should be
-in the patches.kernel.org.tar.bz2 file.
-
-I don't know how 'stable' that makes the 2.6.27 kernels ext4
-implementation, but you can see ext4 got a lot of patches even though
-it was officially experimental.
-
-One thing it definitely doesn't do is add any backports that have come
-out since the first of the year.  And I doubt any of the other distros
-are doing that either.
-
-fyi:
-
-The stable patches are back-ported to 2.6.32 I believe.  That kernel
-has also been designated by SUSE and Red Hat as a long term support
-kernel, so it gets lots of security patches.
-
-Can't you upgrade to it at least.
-
-If so, you can likely stick with it for a couple more years and get a
-full set of security patches as part of the pay-off.
-
-Good Luck
-Greg
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
