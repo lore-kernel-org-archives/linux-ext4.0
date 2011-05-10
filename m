@@ -1,77 +1,226 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCHSET v3.1 0/7] data integrity: Stabilize pages during
- writeback for various fses
-Date: Tue, 10 May 2011 16:54:21 +0200
-Message-ID: <20110510145421.GJ4402@quack.suse.cz>
-References: <20110509230318.19566.66202.stgit@elm3c44.beaverton.ibm.com>
- <87tyd31fkc.fsf@devron.myhome.or.jp>
- <20110510123819.GB4402@quack.suse.cz>
- <87hb924s2x.fsf@devron.myhome.or.jp>
- <20110510132953.GE4402@quack.suse.cz>
- <878vue4qjb.fsf@devron.myhome.or.jp>
- <87zkmu3b2i.fsf@devron.myhome.or.jp>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, "Darrick J. Wong" <djwong@us.ibm.com>,
-	Theodore Tso <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Jens Axboe <axboe@kernel.dk>,
-	"Martin K. Petersen" <martin.petersen@oracle.com>,
-	Jeff Layton <jlayton@redhat.com>, Dave Chinner <david@fromorbit.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Dave Hansen <dave@linux.vnet.ibm.com>,
-	Christoph Hellwig <hch@infradead.org>, linux-mm@kvack.org,
-	Chris Mason <chris.mason@oracle.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	linux-scsi <linux-scsi@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Mingming Cao <mcao@us.ibm.com>
-To: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <87zkmu3b2i.fsf@devron.myhome.or.jp>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: Surbhi Palande <surbhi.palande@canonical.com>
+Subject: [PATCH] Adding support to freeze and unfreeze a journal
+Date: Tue, 10 May 2011 18:07:50 +0300
+Message-ID: <1305040070-2343-1-git-send-email-surbhi.palande@canonical.com>
+References: <20110509150852.GQ4122@quack.suse.cz>
+Cc: marco.stornelli@gmail.com, adilger.kernel@dilger.ca,
+	toshi.okajima@jp.fujitsu.com, tytso@mit.edu,
+	m.mizuma@jp.fujitsu.com, sandeen@redhat.com,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: jack@suse.cz
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from adelie.canonical.com ([91.189.90.139]:44097 "EHLO
+	adelie.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753257Ab1EJPIC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 May 2011 11:08:02 -0400
+In-Reply-To: <20110509150852.GQ4122@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 10-05-11 23:05:41, OGAWA Hirofumi wrote:
-> OGAWA Hirofumi <hirofumi@mail.parknet.co.jp> writes:
-> 
-> > Jan Kara <jack@suse.cz> writes:
-> >
-> >>> I see. So many block layer stuff sounds like broken on corner case? If
-> >>> so, I more feel this approach should be temporary workaround, and should
-> >>> use another less-blocking approach.
-> >>   Not many but some... The alternative to less blocking approach is to do
-> >> copy-out before a page is submitted for IO (or various middle ground
-> >> alternatives of doing sometimes copyout, sometimes blocking...). That costs
-> >> some performance as well. We talked about it at LSF and the approach
-> >> Darrick is implementing was considered the least intrusive. There's really
-> >> no way to fix these corner cases and keep performance.
-> >
-> > You already considered, to copy only if page was writeback (like
-> > copy-on-write). I.e. if page is on I/O, copy, then switch the page for
-> > writing new data.
-> 
-> missed question mark in here.
-> 
-> Did you already consider, to copy only if page was writeback (like
-> copy-on-write)? I.e. if page is on I/O, copy, then switch the page for
-> writing new data.
-  Yes, that was considered as well. We'd have to essentially migrate the
-page that is under writeback and should be written to. You are going to pay
-the cost of page allocation, copy, increased memory & cache pressure.
-Depending on your backing storage and workload this may or may not be better
-than waiting for IO...
+The journal should be frozen when a F.S freezes. What this means is that till
+the F.S is thawed again, no new transactions should be accepted by the
+journal. When the F.S thaws, inturn it should thaw the journal and this should
+allow the journal to resume accepting new transactions.
+While the F.S has frozen the journal, the clients of journal on calling
+jbd2_journal_start() will sleep on a wait queue. Thawing the journal will wake
+up the sleeping clients and journalling can progress normally.
 
-								Honza
+An example of the race condition that can happen without this patch is as
+follows:
 
+Say the F.S is thawed when we begin. Let tx be the time at unit x
+
+P1: Process doing an aio write
+t1) ext4_file_write()
+  t2) generic_file_aio_write()
+    t3) __generic_file_aio_write()
+      // F.S is not frozen, so we do not block in the next check.
+      t4) vfs_check_frozen()
+      t5) generic_write_checks()
+----------------- Prempted------------------
+
+P2: Process that does fs freeze
+
+t6) freeze_super()
+  t7) sync_filesystem()
+  t8) sync_blockdev()
+  t9) sb->s_op->freeze_fs() (= ext4_freeze)
+    t10) jbd2_journal_lock_updates()
+    t11) jbd2_journal_flush()
+    // Need to unlock the journal before returning to user space.
+    t12) jbd2_journal_unlock_updates()
+    // Journal is unlocked and so we can start accepting new transactions now.
+
+// freezing process completes execution. Page cache is now clean and should
+// remain clean till the F.S is frozen.
+--------------------------------------------
+
+P1: writing process gets the control back
+t13) generic_file_buffered_write()
+  t14) generic_perform_write()
+    t15) a_ops->write_begin() (= ext4_write_begin)
+      t16) ext4_journal_start()
+	// New handle is started. We do not block here! Write continues
+	// dirtying the page cache while the F.S is frozen!
+
+Signed-off-by: Surbhi Palande <surbhi.palande@canonical.com>
+Acked-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/super.c       |   20 ++++++--------------
+ fs/jbd2/journal.c     |    1 +
+ fs/jbd2/transaction.c |   42 ++++++++++++++++++++++++++++++++++++++++++
+ include/linux/jbd2.h  |   10 ++++++++++
+ 4 files changed, 59 insertions(+), 14 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 8553dfb..796aa4c 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4179,23 +4179,15 @@ static int ext4_freeze(struct super_block *sb)
+ 
+ 	journal = EXT4_SB(sb)->s_journal;
+ 
+-	/* Now we set up the journal barrier. */
+-	jbd2_journal_lock_updates(journal);
+-
++	error = jbd2_journal_freeze(journal);
+ 	/*
+-	 * Don't clear the needs_recovery flag if we failed to flush
++	 * Don't clear the needs_recovery flag if we failed to freeze
+ 	 * the journal.
+ 	 */
+-	error = jbd2_journal_flush(journal);
+-	if (error < 0)
+-		goto out;
+-
+-	/* Journal blocked and flushed, clear needs_recovery flag. */
+-	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+-	error = ext4_commit_super(sb, 1);
+-out:
+-	/* we rely on s_frozen to stop further updates */
+-	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
++	if (error >= 0) {
++		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
++		error = ext4_commit_super(sb, 1);
++	}
+ 	return error;
+ }
+ 
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index e0ec3db..5e46333 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -842,6 +842,7 @@ static journal_t * journal_init_common (void)
+ 	init_waitqueue_head(&journal->j_wait_checkpoint);
+ 	init_waitqueue_head(&journal->j_wait_commit);
+ 	init_waitqueue_head(&journal->j_wait_updates);
++	init_waitqueue_head(&journal->j_wait_frozen);
+ 	mutex_init(&journal->j_barrier);
+ 	mutex_init(&journal->j_checkpoint_mutex);
+ 	spin_lock_init(&journal->j_revoke_lock);
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 05fa77a..b040293 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -171,6 +171,17 @@ repeat:
+ 				journal->j_barrier_count == 0);
+ 		goto repeat;
+ 	}
++	/* dont let a new handle start when a journal is frozen.
++	 * jbd2_journal_freeze calls jbd2_journal_unlock_updates() only after
++	 * the jflags indicate that the journal is frozen. So if the
++	 * j_barrier_count is 0, then check if this was made 0 by the freezing
++	 * process
++	 */
++	if (journal->j_flags & JBD2_FROZEN) {
++		read_unlock(&journal->j_state_lock);
++		jbd2_check_frozen(journal);
++		goto repeat;
++	}
+ 
+ 	if (!journal->j_running_transaction) {
+ 		read_unlock(&journal->j_state_lock);
+@@ -489,6 +500,37 @@ int jbd2_journal_restart(handle_t *handle, int nblocks)
+ }
+ EXPORT_SYMBOL(jbd2_journal_restart);
+ 
++int jbd2_journal_freeze(journal_t *journal)
++{
++	int error = 0;
++	/* Now we set up the journal barrier. */
++	jbd2_journal_lock_updates(journal);
++
++	/*
++	 * Don't clear the needs_recovery flag if we failed to flush
++	 * the journal.
++	 */
++	error = jbd2_journal_flush(journal);
++	if (error >= 0) {
++		write_lock(&journal->j_state_lock);
++		journal->j_flags |= JBD2_FROZEN;
++		write_unlock(&journal->j_state_lock);
++	}
++	jbd2_journal_unlock_updates(journal);
++	return error;
++}
++EXPORT_SYMBOL(jbd2_journal_freeze);
++
++void jbd2_journal_thaw(journal_t * journal)
++{
++	write_lock(&journal->j_state_lock);
++	journal->j_flags &= ~JBD2_FROZEN;
++	write_unlock(&journal->j_state_lock);
++	wake_up(&journal->j_wait_frozen);
++}
++EXPORT_SYMBOL(jbd2_journal_thaw);
++
++
+ /**
+  * void jbd2_journal_lock_updates () - establish a transaction barrier.
+  * @journal:  Journal to establish a barrier on.
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index a32dcae..c7885b2 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -718,6 +718,7 @@ jbd2_time_diff(unsigned long start, unsigned long end)
+  * @j_wait_checkpoint:  Wait queue to trigger checkpointing
+  * @j_wait_commit: Wait queue to trigger commit
+  * @j_wait_updates: Wait queue to wait for updates to complete
++ * @j_wait_frozen: Wait queue to wait for journal to thaw
+  * @j_checkpoint_mutex: Mutex for locking against concurrent checkpoints
+  * @j_head: Journal head - identifies the first unused block in the journal
+  * @j_tail: Journal tail - identifies the oldest still-used block in the
+@@ -835,6 +836,9 @@ struct journal_s
+ 	/* Wait queue to wait for updates to complete */
+ 	wait_queue_head_t	j_wait_updates;
+ 
++	/* Wait queue to wait for journal to thaw*/
++	wait_queue_head_t	j_wait_frozen;
++
+ 	/* Semaphore for locking against concurrent checkpoints */
+ 	struct mutex		j_checkpoint_mutex;
+ 
+@@ -1013,7 +1017,11 @@ struct journal_s
+ #define JBD2_ABORT_ON_SYNCDATA_ERR	0x040	/* Abort the journal on file
+ 						 * data write error in ordered
+ 						 * mode */
++#define JBD2_FROZEN	0x080   /* Journal thread is frozen as the filesystem is frozen */
++
+ 
++#define jbd2_check_frozen(journal)	\
++		wait_event(journal->j_wait_frozen, (journal->j_flags & JBD2_FROZEN))
+ /*
+  * Function declarations for the journaling transaction and buffer
+  * management
+@@ -1121,6 +1129,8 @@ extern void	 jbd2_journal_invalidatepage(journal_t *,
+ 				struct page *, unsigned long);
+ extern int	 jbd2_journal_try_to_free_buffers(journal_t *, struct page *, gfp_t);
+ extern int	 jbd2_journal_stop(handle_t *);
++extern int	 jbd2_journal_freeze(journal_t *);
++extern void	 jbd2_journal_thaw(journal_t *);
+ extern int	 jbd2_journal_flush (journal_t *);
+ extern void	 jbd2_journal_lock_updates (journal_t *);
+ extern void	 jbd2_journal_unlock_updates (journal_t *);
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.1
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
