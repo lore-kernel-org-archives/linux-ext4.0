@@ -1,53 +1,67 @@
-From: Sage Weil <sage@newdream.net>
-Subject: [PATCH 12/18] ext3: remove unnecessary dentry_unhash on rmdir/rename_dir
-Date: Mon,  9 May 2011 21:43:30 -0700
-Message-ID: <1305002616-16782-13-git-send-email-sage@newdream.net>
-References: <1305002616-16782-1-git-send-email-sage@newdream.net>
-Cc: Sage Weil <sage@newdream.net>, Jan Kara <jack@suse.cz>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-To: viro@ZenIV.linux.org.uk, hch@lst.de, linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1305002616-16782-1-git-send-email-sage@newdream.net>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: Colin Ian King <colin.king@ubuntu.com>
+Subject: Re: [BUG] fatal hang untarring 90GB file, possibly writeback
+ related.
+Date: Tue, 10 May 2011 07:37:42 +0200
+Message-ID: <1305005862.1937.2.camel@hpmini>
+References: <20110428171826.GZ4658@suse.de>
+	 <1304015436.2598.19.camel@mulgrave.site> <20110428192104.GA4658@suse.de>
+	 <1304020767.2598.21.camel@mulgrave.site>
+	 <1304025145.2598.24.camel@mulgrave.site>
+	 <1304030629.2598.42.camel@mulgrave.site> <20110503091320.GA4542@novell.com>
+	 <1304431982.2576.5.camel@mulgrave.site>
+	 <1304432553.2576.10.camel@mulgrave.site> <20110506074224.GB6591@suse.de>
+	 <20110506154444.GG6591@suse.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: James Bottomley <James.Bottomley@suse.de>, Mel Gorman
+ <mgorman@novell.com>,  Jan Kara <jack@suse.cz>, Chris Mason
+ <chris.mason@oracle.com>, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+ linux-mm <linux-mm@kvack.org>, linux-kernel <linux-kernel@vger.kernel.org>,
+ linux-ext4 <linux-ext4@vger.kernel.org>
+To: Mel Gorman <mgorman@suse.de>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20110506154444.GG6591@suse.de>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-ext3 has no problems with lingering references to unlinked directory
-inodes.
+On Fri, 2011-05-06 at 16:44 +0100, Mel Gorman wrote:
+> On Fri, May 06, 2011 at 08:42:24AM +0100, Mel Gorman wrote:
+> > 
+> > 1. High-order allocations? You machine is using i915 and RPC, something
+> >    neither of my test machine uses. i915 is potentially a source for
+> >    high-order allocations. I'm attaching a perl script. Please run it as
+> >    ./watch-highorder.pl --output /tmp/highorders.txt
+> >    while you are running tar. When kswapd is running for about 30
+> >    seconds, interrupt it with ctrl+c twice in quick succession and
+> >    post /tmp/highorders.txt
+> > 
+> 
+> Colin send me this information for his test case at least and I see
+> 
+> 11932 instances order=1 normal gfp_flags=GFP_NOWARN|GFP_NORETRY|GFP_COMP|GFP_NOMEMALLOC
+>  => alloc_pages_current+0xa5/0x110 <ffffffff81149ef5>
+>  => new_slab+0x1f5/0x290 <ffffffff81153645>
+>  => __slab_alloc+0x262/0x390 <ffffffff81155192>
+>  => kmem_cache_alloc+0x115/0x120 <ffffffff81155ab5>
+>  => mempool_alloc_slab+0x15/0x20 <ffffffff8110e705>
+>  => mempool_alloc+0x59/0x140 <ffffffff8110ea49>
+>  => bio_alloc_bioset+0x3e/0xf0 <ffffffff811976ae>
+>  => bio_alloc+0x15/0x30 <ffffffff81197805>
+> 
+> Colin and James: Did you happen to switch from SLAB to SLUB between
+> 2.6.37 and 2.6.38? My own tests were against SLAB which might be why I
+> didn't see the problem. Am restarting the tests with SLUB.
 
-CC: Jan Kara <jack@suse.cz>
-CC: Andrew Morton <akpm@linux-foundation.org>
-CC: Andreas Dilger <adilger.kernel@dilger.ca>
-CC: linux-ext4@vger.kernel.org
-Signed-off-by: Sage Weil <sage@newdream.net>
----
- fs/ext3/namei.c |    5 -----
- 1 files changed, 0 insertions(+), 5 deletions(-)
+So I tested with SLAB instead of SLUB and I reliably ran my copy test
+for 4+ hours with several hundred iterations of the test.  (Apologies
+for taking time to respond, but I was travelling).
+> 
 
-diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
-index f89b1d4..32f3b86 100644
---- a/fs/ext3/namei.c
-+++ b/fs/ext3/namei.c
-@@ -2074,8 +2074,6 @@ static int ext3_rmdir (struct inode * dir, struct dentry *dentry)
- 	struct ext3_dir_entry_2 * de;
- 	handle_t *handle;
- 
--	dentry_unhash(dentry);
--
- 	/* Initialize quotas before so that eventual writes go in
- 	 * separate transaction */
- 	dquot_initialize(dir);
-@@ -2298,9 +2296,6 @@ static int ext3_rename (struct inode * old_dir, struct dentry *old_dentry,
- 	struct ext3_dir_entry_2 * old_de, * new_de;
- 	int retval, flush_file = 0;
- 
--	if (new_dentry->d_inode && S_ISDIR(new_dentry->d_inode->i_mode))
--		dentry_unhash(new_dentry);
--
- 	dquot_initialize(old_dir);
- 	dquot_initialize(new_dir);
- 
--- 
-1.7.1
 
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
