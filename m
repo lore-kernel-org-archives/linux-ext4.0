@@ -1,158 +1,35 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/3] ext4: Rewrite ext4_page_mkwrite() to return locked page
-Date: Wed, 11 May 2011 00:29:33 +0200
-Message-ID: <1305066574-1573-3-git-send-email-jack@suse.cz>
-References: <1305066574-1573-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1305066574-1573-1-git-send-email-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 25832] kernel crashes when a mounted ext3/4 file system is
+ physically removed
+Date: Tue, 10 May 2011 23:27:58 GMT
+Message-ID: <201105102327.p4ANRwtf006769@demeter2.kernel.org>
+References: <bug-25832-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter2.kernel.org ([140.211.167.42]:60608 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752836Ab1EJX16 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 May 2011 19:27:58 -0400
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p4ANRw5Z006770
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 10 May 2011 23:27:58 GMT
+In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-ext4_page_mkwrite() does not return page locked. This makes it hard
-to avoid races with filesystem freezing code (so that we don't leave
-writeable page on a frozen fs) or writeback code (so that we allow page
-to be stable during writeback).
+https://bugzilla.kernel.org/show_bug.cgi?id=25832
 
-Also the current code uses i_alloc_sem to avoid races with truncate but that
-seems to be the wrong locking order according to lock ordering documented in
-mm/rmap.c.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/inode.c |   98 ++++++++++++++++++++++++++++++++-----------------------
- 1 files changed, 57 insertions(+), 41 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index f2fa5e8..04b164d 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5793,66 +5793,82 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
- 	struct page *page = vmf->page;
- 	loff_t size;
- 	unsigned long len;
--	int ret = -EINVAL;
--	void *fsdata;
-+	int ret;
- 	struct file *file = vma->vm_file;
- 	struct inode *inode = file->f_path.dentry->d_inode;
- 	struct address_space *mapping = inode->i_mapping;
-+	handle_t *handle;
-+	get_block_t *get_block;
-+	int retries = 0;
- 
--	/*
--	 * Get i_alloc_sem to stop truncates messing with the inode. We cannot
--	 * get i_mutex because we are already holding mmap_sem.
--	 */
--	down_read(&inode->i_alloc_sem);
-+	/* Delalloc case is easy... */
-+	if (test_opt(inode->i_sb, DELALLOC) &&
-+	    !ext4_should_journal_data(inode) &&
-+	    !ext4_nonda_switch(inode->i_sb)) {
-+		do {
-+			ret = __block_page_mkwrite(vma, vmf,
-+						   ext4_da_get_block_prep);
-+		} while (ret == -ENOSPC &&
-+		       ext4_should_retry_alloc(inode->i_sb, &retries));
-+		goto out_ret;
-+	}
-+
-+	lock_page(page);
- 	size = i_size_read(inode);
--	if (page->mapping != mapping || size <= page_offset(page)
--	    || !PageUptodate(page)) {
--		/* page got truncated from under us? */
--		goto out_unlock;
-+	/* Page got truncated from under us? */
-+	if (page->mapping != mapping || page_offset(page) > size) {
-+		unlock_page(page);
-+		ret = VM_FAULT_NOPAGE;
-+		goto out;
- 	}
--	ret = 0;
--	if (PageMappedToDisk(page))
--		goto out_unlock;
- 
- 	if (page->index == size >> PAGE_CACHE_SHIFT)
- 		len = size & ~PAGE_CACHE_MASK;
- 	else
- 		len = PAGE_CACHE_SIZE;
--
--	lock_page(page);
- 	/*
--	 * return if we have all the buffers mapped. This avoid
--	 * the need to call write_begin/write_end which does a
--	 * journal_start/journal_stop which can block and take
--	 * long time
-+	 * Return if we have all the buffers mapped. This avoids the need to do
-+	 * journal_start/journal_stop which can block and take a long time
- 	 */
- 	if (page_has_buffers(page)) {
- 		if (!walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
- 					ext4_bh_unmapped)) {
--			unlock_page(page);
--			goto out_unlock;
-+			ret = VM_FAULT_LOCKED;
-+			goto out;
- 		}
- 	}
- 	unlock_page(page);
--	/*
--	 * OK, we need to fill the hole... Do write_begin write_end
--	 * to do block allocation/reservation.We are not holding
--	 * inode.i__mutex here. That allow * parallel write_begin,
--	 * write_end call. lock_page prevent this from happening
--	 * on the same page though
--	 */
--	ret = mapping->a_ops->write_begin(file, mapping, page_offset(page),
--			len, AOP_FLAG_UNINTERRUPTIBLE, &page, &fsdata);
--	if (ret < 0)
--		goto out_unlock;
--	ret = mapping->a_ops->write_end(file, mapping, page_offset(page),
--			len, len, page, fsdata);
--	if (ret < 0)
--		goto out_unlock;
--	ret = 0;
--out_unlock:
--	if (ret)
-+	/* OK, we need to fill the hole... */
-+	if (ext4_should_dioread_nolock(inode))
-+		get_block = ext4_get_block_write;
-+	else
-+		get_block = ext4_get_block;
-+retry_alloc:
-+	handle = ext4_journal_start(inode, ext4_writepage_trans_blocks(inode));
-+	if (IS_ERR(handle)) {
- 		ret = VM_FAULT_SIGBUS;
--	up_read(&inode->i_alloc_sem);
-+		goto out;
-+	}
-+	ret = __block_page_mkwrite(vma, vmf, get_block);
-+	if (ret == VM_FAULT_LOCKED && ext4_should_journal_data(inode)) {
-+		if (walk_page_buffers(handle, page_buffers(page), 0,
-+			  PAGE_CACHE_SIZE, NULL, do_journal_get_write_access)) {
-+			unlock_page(page);
-+			ret = VM_FAULT_SIGBUS;
-+			goto out;
-+		}
-+		ext4_set_inode_state(inode, EXT4_STATE_JDATA);
-+	}
-+	ext4_journal_stop(handle);
-+	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-+		goto retry_alloc;
-+out_ret:
-+	if (ret < 0) {
-+		if (ret == -ENOMEM)
-+			ret = VM_FAULT_OOM;
-+		else
-+			ret = VM_FAULT_SIGBUS;
-+	}
-+out:
- 	return ret;
- }
+
+
+--- Comment #81 from rocko <rockorequin@hotmail.com>  2011-05-10 23:27:56 ---
+Still present in 2.6.39-rc7.
+
 -- 
-1.7.1
-
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
