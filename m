@@ -1,55 +1,113 @@
-From: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
-Subject: Re: [PATCHSET v3.1 0/7] data integrity: Stabilize pages during writeback for various fses
-Date: Tue, 10 May 2011 22:52:10 +0900
-Message-ID: <874o524q9h.fsf@devron.myhome.or.jp>
-References: <20110509230318.19566.66202.stgit@elm3c44.beaverton.ibm.com>
-	<87tyd31fkc.fsf@devron.myhome.or.jp>
-	<20110510133603.GA5823@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "Darrick J. Wong" <djwong@us.ibm.com>, Theodore Tso <tytso@mit.edu>,
-        Jan Kara <jack@suse.cz>, Alexander Viro <viro@zeniv.linux.org.uk>,
-        Jens Axboe <axboe@kernel.dk>,
-        "Martin K. Petersen" <martin.petersen@oracle.com>,
-        Jeff Layton <jlayton@redhat.com>, Dave Chinner <david@fromorbit.com>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        Dave Hansen <dave@linux.vnet.ibm.com>, linux-mm@kvack.org,
-        Chris Mason <chris.mason@oracle.com>, Joel Becker <jlbec@evilplan.org>,
-        linux-scsi <linux-scsi@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4@vger.kernel.org, Mingming Cao <mcao@us.ibm.com>
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20110510133603.GA5823@infradead.org> (Christoph Hellwig's
-	message of "Tue, 10 May 2011 09:36:03 -0400")
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: The new ext4 git tree re-org
+Date: Tue, 10 May 2011 09:56:40 -0400
+Message-ID: <E1QJnQW-0002Lg-Ls@tytso-glaptop>
+Cc: Stephen Rothwell <sfr@canb.auug.org.au>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:44300 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932315Ab1EJN4o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 May 2011 09:56:44 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Christoph Hellwig <hch@infradead.org> writes:
 
-> On Tue, May 10, 2011 at 10:59:15AM +0900, OGAWA Hirofumi wrote:
->> I'd like to know those patches are on what state. Waiting in writeback
->> page makes slower, like you mentioned it (I guess it would more
->> noticeable if device was slower that like FAT uses). And I think
->> currently it doesn't help anything others for blk-integrity stuff
->> (without other technic, it doesn't help FS consistency)?
->
-> It only makes things slower if we rewrite a region in a file that is
-> currently undergoing writeback. I'd be interested to know about real
-> life applications doing that, and if they really are badly affect we
-> should help them to work around that in userspace, e.g. by adding a
-> fadvice will rewrite call that might be used to never write back that
-> regions without an explicit fsync call.
+I've uploaded an updated dev branch to the ext4 tree.  Compared to the
+previous version of dev branch, I've removed my modified version of
+Allison's "NULL pointer when make_indexed_dir returns -ENOSPC" patch,
+and I've added Amir's alloc_semp removal patches.  I'm still in the
+process of reviewing those patches; I've included them to make it easier
+for I and others to test them.
 
-Isn't it reallocated blocks too, and metadata too?
+For those folks who aren't regular attendees of the weekly ext4
+conference call[1], and so would have missed the announcement, we've
+made a change in how the branchs of the ext4 tree are organized.  The
+master branch of the ext4 tree is now non-rewinding, so it should be
+considered a stable place to do patch development, or as a starting
+point to start git branches.  The dev branch is backed by the ext4 patch
+queue, and is subject to being rewound, mainly when a patch gets yanked
+because testing or further review has discovered problems.  Please feel
+free to test the dev branch, but if you use it as a base for
+development, especially using git, please be aware that the dev branch
+is subject to being rewound and rebased.
 
-Thanks.
--- 
-OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+[1] If you want to attent the conference call, please talk to me or
+Mingming Cao.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Stephen, could you change the linux-next tree so that it pulls from the
+ext4.git's "dev" branch, instead of the "next" branch?   Many thanks!!
+
+Here are some convenient URL's (use the http://.. URL for web browsing,
+and the git://... URL for git pull or git clone commands):
+
+* The ext4 tree:
+	http://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
+	git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
+
+* The ext4 patch queue (note: new URL):
+	https://github.com/tytso/ext4-patch-queue/commits/master
+	git://github.com/tytso/ext4-patch-queue.git
+
+* The e2fsprogs git tree (note in particular the maint, next, and master
+  branches):
+	http://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+	git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+
+The next patch series that are scheduled to land in dev are Allison's
+"punch" patches, which has made several rounds on the ext4 list.  My
+intentions are to start reviewing and integrating those patches into the
+dev tree on Wednesday.  If other people have any concerns, I'd
+appreciate any reviews or comments before then.
+
+						- Ted
+
+% git shortlog master..dev
+Amerigo Wang (1):
+      ext4: remove redundant #ifdef in super.c
+
+Amir Goldstein (5):
+      ext4: move ext4_add_groupblocks() to mballoc.c
+      ext4: implement ext4_add_groupblocks() by freeing blocks
+      ext4: synchronize ext4_mb_init_group() with buddy page lock
+      ext4: teach ext4_mb_init_cache() to skip uptodate buddy caches
+      ext4: remove alloc_semp
+
+Jan Kara (1):
+      jbd2: Fix forever sleeping process in do_get_write_access()
+
+Tao Ma (3):
+      ext4: use EXT4FS_DEBUG instead of EXT4_DEBUG in fsync.c
+      ext4: use s_inodes_per_block directly in __ext4_get_inode_loc
+      ext4: remove redundant check for first_not_zeroed in ext4_register_li_requ
+
+Theodore Ts'o (2):
+      jbd2: only print the debugging information for tid wraparound once
+      ext4: remove unneeded ext4_journal_get_undo_access
+
+% git shortlog origin..master
+Curt Wohlgemuth (1):
+      ext4: don't set PageUptodate in ext4_end_bio()
+
+Jan Kara (2):
+      ext4: Fix fs corruption when make_indexed_dir() fails
+      ext4: fix deadlock in ext4_symlink() in ENOSPC conditions
+
+Shaohua Li (1):
+      ext4: remove dead code in ext4_has_free_blocks()
+
+Theodore Ts'o (5):
+      ext4: check for ext[23] file system features when mounting as ext[23]
+      ext4: ignore errors when issuing discards
+      ext4: remove obsolete mount options from ext4's documentation
+      jbd2: fix fsync() tid wraparound bug
+      ext4: set extents flag when migrating file to use extents
+
+Yang Ruirui (1):
+      ext4: release page cache in ext4_mb_load_buddy error path
+
+Yongqiang Yang (3):
+      ext4: add a function merging extents right and left
+      ext4: add ext4_split_extent_at() and ext4_split_extent()
+      ext4: reimplement convert and split_unwritten
+
