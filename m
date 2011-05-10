@@ -1,62 +1,82 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4:Fix a bug in 6d9c85eb.
-Date: Tue, 10 May 2011 14:34:09 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1105101432180.4184@dhcp-27-109.brq.redhat.com>
-References: <1305027117-936-1-git-send-email-xiaoqiangnk@gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCHSET v3.1 0/7] data integrity: Stabilize pages during
+ writeback for various fses
+Date: Tue, 10 May 2011 14:38:19 +0200
+Message-ID: <20110510123819.GB4402@quack.suse.cz>
+References: <20110509230318.19566.66202.stgit@elm3c44.beaverton.ibm.com>
+ <87tyd31fkc.fsf@devron.myhome.or.jp>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:21478 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756347Ab1EJMeR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 May 2011 08:34:17 -0400
-In-Reply-To: <1305027117-936-1-git-send-email-xiaoqiangnk@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Darrick J. Wong" <djwong@us.ibm.com>,
+	Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Jens Axboe <axboe@kernel.dk>,
+	"Martin K. Petersen" <martin.petersen@oracle.com>,
+	Jeff Layton <jlayton@redhat.com>, Dave Chinner <david@fromorbit.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Dave Hansen <dave@linux.vnet.ibm.com>,
+	Christoph Hellwig <hch@infradead.org>, linux-mm@kvack.org,
+	Chris Mason <chris.mason@oracle.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	linux-scsi <linux-scsi@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, Mingming Cao <mcao@us.ibm.com>
+To: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <87tyd31fkc.fsf@devron.myhome.or.jp>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 10 May 2011, Yongqiang Yang wrote:
-
-The commit subject is really useless, could you be more specific ? and
-possibly more descriptive in commit description ?
-
-Thanks!
--Lukas
-
-> In case blocksize < pagesize, ext4_ext_fiemap_cb need to ignore
-> blocks which are not in request range.
+On Tue 10-05-11 10:59:15, OGAWA Hirofumi wrote:
+> "Darrick J. Wong" <djwong@us.ibm.com> writes:
 > 
-> BUG description:
-> xfstests 225 ended in a endless loop without this patch
-> when blocksize < pagesize.
+> > To assess the performance impact of stable page writes, I moved to a disk that
+> > doesn't have DIF support so that I could measure just the impact of waiting for
+> > writeback.  I first ran wac with 64 threads madly scribbling on a 64k file and
+> > saw about a 12 percent performance decrease.  I then reran the wac program with
+> > 64 threads and a 64MB file and saw about the same performance numbers.  As I
+> > suspected, the patchset only seems to impact workloads that rewrite the same
+> > memory page frequently.
+> >
+> > I am still chasing down what exactly is broken in ext3.  data=writeback mode
+> > passes with no failures.  data=ordered, however, does not pass; my current
+> > suspicion is that jbd is calling submit_bh on data buffers but doesn't call
+> > page_mkclean to kick the userspace programs off the page before writing it.
+> >
+> > Per various comments regarding v3 of this patchset, I've integrated his
+> > suggestions, reworked the patch descriptions to make it clearer which ones
+> > touch all the filesystems and which ones are to fix remaining holes in specific
+> > filesystems, and expanded the scope of filesystems that got fixed.
+> >
+> > As always, questions and comments are welcome; and thank you to all the
+> > previous reviewers of this patchset.  I am also soliciting people's opinions on
+> > whether or not these patches could go upstream for .40.
 > 
-> Reported-by: Amir Goldstein <amir73il@users.sf.net>
-> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-> ---
->  fs/ext4/extents.c |    7 ++++++-
->  1 files changed, 6 insertions(+), 1 deletions(-)
+> I'd like to know those patches are on what state. Waiting in writeback
+> page makes slower, like you mentioned it (I guess it would more
+> noticeable if device was slower that like FAT uses). And I think
+> currently it doesn't help anything others for blk-integrity stuff
+> (without other technic, it doesn't help FS consistency)?
 > 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index e363f21..ec37109 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -3718,9 +3718,14 @@ out:
->  
->  			bh = head;
->  			do {
-> +				if (end < newex->ec_block)
-> +					/* The buffer is not in
-> +					 * the request range.
-> +					 */
-> +					continue;
->  				if (buffer_mapped(bh)) {
->  					/* get the 1st mapped buffer. */
-> -					if (end > newex->ec_block +
-> +					if (end >= newex->ec_block +
->  						newex->ec_len)
->  						/* The buffer is out of
->  						 * the request range.
+> So, why is this locking stuff enabled always? I think it would be better
+> to enable only if blk-integrity stuff was enabled.
 > 
+> If it was more sophisticate but more complex stuff (e.g. use
+> copy-on-write technic for it), I would agree always enable though.
+  Well, also software RAID generally needs this feature (so that parity
+information / mirror can be properly kept in sync). Not that I'd advocate
+that this feature must be always enabled, it's just that there are also
+other users besides blk-integrity.
 
+								Honza
 -- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
