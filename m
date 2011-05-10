@@ -1,411 +1,71 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [Ext4 punch hole 5/5 v7] Ext4 Punch Hole Support: Enable Punch
- Hole
-Date: Mon, 09 May 2011 17:55:24 -0700
-Message-ID: <1304988924.2543.12.camel@mingming-laptop>
-References: <4DC5DBAA.5040206@linux.vnet.ibm.com>
+From: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Subject: Re: [PATCHSET v3.1 0/7] data integrity: Stabilize pages during writeback for various fses
+Date: Tue, 10 May 2011 10:59:15 +0900
+Message-ID: <87tyd31fkc.fsf@devron.myhome.or.jp>
+References: <20110509230318.19566.66202.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Allison Henderson <achender@linux.vnet.ibm.com>
+Content-Type: text/plain
+Cc: Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Jens Axboe <axboe@kernel.dk>,
+	"Martin K. Petersen" <martin.petersen@oracle.com>,
+	Jeff Layton <jlayton@redhat.com>,
+	Dave Chinner <david@fromorbit.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Dave Hansen <dave@linux.vnet.ibm.com>,
+	Christoph Hellwig <hch@infradead.org>, linux-mm@kvack.org,
+	Chris Mason <chris.mason@oracle.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	linux-scsi <linux-scsi@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, Mingming Cao <mcao@us.ibm.com>
+To: "Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e39.co.us.ibm.com ([32.97.110.160]:45518 "EHLO
-	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755976Ab1EJAzd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 May 2011 20:55:33 -0400
-Received: from d03relay01.boulder.ibm.com (d03relay01.boulder.ibm.com [9.17.195.226])
-	by e39.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p4A0fhpv017115
-	for <linux-ext4@vger.kernel.org>; Mon, 9 May 2011 18:41:43 -0600
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay01.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p4A0tQdC133990
-	for <linux-ext4@vger.kernel.org>; Mon, 9 May 2011 18:55:26 -0600
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p4A0tQID027432
-	for <linux-ext4@vger.kernel.org>; Mon, 9 May 2011 18:55:26 -0600
-In-Reply-To: <4DC5DBAA.5040206@linux.vnet.ibm.com>
+Received: from mail.parknet.co.jp ([210.171.160.6]:38884 "EHLO
+	mail.parknet.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751775Ab1EJB70 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 May 2011 21:59:26 -0400
+In-Reply-To: <20110509230318.19566.66202.stgit@elm3c44.beaverton.ibm.com>
+	(Darrick J. Wong's message of "Mon, 09 May 2011 16:03:18 -0700")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, 2011-05-07 at 16:54 -0700, Allison Henderson wrote:
-> This patch adds new routines: "ext4_punch_hole" "ext4_ext_punch_hole"
-> and "ext4_ext_check_cache"
-> 
-> fallocate has been modified to call ext4_punch_hole when the punch hole
-> flag is passed.  At the moment, we only support punching holes in
-> extents, so this routine is pretty much a wrapper for the ext4_ext_punch_hole
-> routine.
-> 
-> The ext4_ext_punch_hole routine first completes all
-> outstanding writes with the associated pages, and then releases
-> them.  The unblock aligned data is zeroed, and all blocks in
-> between are punched out.
-> 
-> The ext4_ext_check_cache routine is very similar to
-> ext4_ext_in_cache except it accepts a ext4_ext_cache
-> parameter instead of a ext4_extent parameter.  This routine
-> is used by ext4_ext_punch_hole to check and see if a block
-> in a hole that has been cached.  The ext4_ext_cache parameter
-> is necessary because the members ext4_extent structure are
-> not large enough to hold a 32 bit value.  The existing
-> ext4_ext_in_cache routine has become a wrapper to this
-> new function.
-> 
-> Signed-off-by: Allison Henderson <achender@us.ibm.com>
+"Darrick J. Wong" <djwong@us.ibm.com> writes:
 
-Looks the same as last version. you could add my reviewed-by
+> To assess the performance impact of stable page writes, I moved to a disk that
+> doesn't have DIF support so that I could measure just the impact of waiting for
+> writeback.  I first ran wac with 64 threads madly scribbling on a 64k file and
+> saw about a 12 percent performance decrease.  I then reran the wac program with
+> 64 threads and a 64MB file and saw about the same performance numbers.  As I
+> suspected, the patchset only seems to impact workloads that rewrite the same
+> memory page frequently.
+>
+> I am still chasing down what exactly is broken in ext3.  data=writeback mode
+> passes with no failures.  data=ordered, however, does not pass; my current
+> suspicion is that jbd is calling submit_bh on data buffers but doesn't call
+> page_mkclean to kick the userspace programs off the page before writing it.
+>
+> Per various comments regarding v3 of this patchset, I've integrated his
+> suggestions, reworked the patch descriptions to make it clearer which ones
+> touch all the filesystems and which ones are to fix remaining holes in specific
+> filesystems, and expanded the scope of filesystems that got fixed.
+>
+> As always, questions and comments are welcome; and thank you to all the
+> previous reviewers of this patchset.  I am also soliciting people's opinions on
+> whether or not these patches could go upstream for .40.
 
-Reviewed-by: Mingming Cao <cmm@us.ibm.com>
-> ---
-> :100644 100644 95efb4e... a1137cd... M	fs/ext4/ext4.h
-> :100644 100644 9c3c008... 21cb680... M	fs/ext4/extents.c
-> :100644 100644 8ce382d... a8c23ec... M	fs/ext4/inode.c
->  fs/ext4/ext4.h    |    3 +
->  fs/ext4/extents.c |  240 ++++++++++++++++++++++++++++++++++++++++++++++++++---
->  fs/ext4/inode.c   |   25 ++++++
->  3 files changed, 257 insertions(+), 11 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 95efb4e..a1137cd 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1749,6 +1749,7 @@ extern int ext4_change_inode_journal_flag(struct inode *, int);
->  extern int ext4_get_inode_loc(struct inode *, struct ext4_iloc *);
->  extern int ext4_can_truncate(struct inode *inode);
->  extern void ext4_truncate(struct inode *);
-> +extern int ext4_punch_hole(struct file *file, loff_t offset, loff_t length);
->  extern int ext4_truncate_restart_trans(handle_t *, struct inode *, int nblocks);
->  extern void ext4_set_inode_flags(struct inode *);
->  extern void ext4_get_inode_flags(struct ext4_inode_info *);
-> @@ -2086,6 +2087,8 @@ extern int ext4_ext_index_trans_blocks(struct inode *inode, int nrblocks,
->  extern int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
->  			       struct ext4_map_blocks *map, int flags);
->  extern void ext4_ext_truncate(struct inode *);
-> +extern int ext4_ext_punch_hole(struct file *file, loff_t offset,
-> +				loff_t length);
->  extern void ext4_ext_init(struct super_block *);
->  extern void ext4_ext_release(struct super_block *);
->  extern long ext4_fallocate(struct file *file, int mode, loff_t offset,
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 9c3c008..21cb680 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -2045,12 +2045,23 @@ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
->  }
-> 
->  /*
-> + * ext4_ext_in_cache()
-> + * Checks to see if the given block is in the cache.
-> + * If it is, the cached extent is stored in the given
-> + * cache extent pointer.  If the cached extent is a hole,
-> + * this routine should be used instead of
-> + * ext4_ext_in_cache if the calling function needs to
-> + * know the size of the hole.
-> + *
-> + * @inode: The files inode
-> + * @block: The block to look for in the cache
-> + * @ex:    Pointer where the cached extent will be stored
-> + *         if it contains block
-> + *
->   * Return 0 if cache is invalid; 1 if the cache is valid
->   */
-> -static int
-> -ext4_ext_in_cache(struct inode *inode, ext4_lblk_t block,
-> -			struct ext4_extent *ex)
-> -{
-> +static int ext4_ext_check_cache(struct inode *inode, ext4_lblk_t block,
-> +	struct ext4_ext_cache *ex){
->  	struct ext4_ext_cache *cex;
->  	int ret = 0;
-> 
-> @@ -2065,9 +2076,7 @@ ext4_ext_in_cache(struct inode *inode, ext4_lblk_t block,
->  		goto errout;
-> 
->  	if (in_range(block, cex->ec_block, cex->ec_len)) {
-> -		ex->ee_block = cpu_to_le32(cex->ec_block);
-> -		ext4_ext_store_pblock(ex, cex->ec_start);
-> -		ex->ee_len = cpu_to_le16(cex->ec_len);
-> +		memcpy(ex, cex, sizeof(struct ext4_ext_cache));
->  		ext_debug("%u cached by %u:%u:%llu\n",
->  				block,
->  				cex->ec_block, cex->ec_len, cex->ec_start);
-> @@ -2079,6 +2088,37 @@ errout:
->  }
-> 
->  /*
-> + * ext4_ext_in_cache()
-> + * Checks to see if the given block is in the cache.
-> + * If it is, the cached extent is stored in the given
-> + * extent pointer.
-> + *
-> + * @inode: The files inode
-> + * @block: The block to look for in the cache
-> + * @ex:    Pointer where the cached extent will be stored
-> + *         if it contains block
-> + *
-> + * Return 0 if cache is invalid; 1 if the cache is valid
-> + */
-> +static int
-> +ext4_ext_in_cache(struct inode *inode, ext4_lblk_t block,
-> +			struct ext4_extent *ex)
-> +{
-> +	struct ext4_ext_cache cex;
-> +	int ret = 0;
-> +
-> +	if (ext4_ext_check_cache(inode, block, &cex)) {
-> +		ex->ee_block = cpu_to_le32(cex.ec_block);
-> +		ext4_ext_store_pblock(ex, cex.ec_start);
-> +		ex->ee_len = cpu_to_le16(cex.ec_len);
-> +		ret = 1;
-> +	}
-> +
-> +	return ret;
-> +}
-> +
-> +
-> +/*
->   * ext4_ext_rm_idx:
->   * removes index from the index block.
->   * It's used in truncate case only, thus all requests are for
-> @@ -3740,10 +3780,6 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
->  	struct ext4_map_blocks map;
->  	unsigned int credits, blkbits = inode->i_blkbits;
-> 
-> -	/* We only support the FALLOC_FL_KEEP_SIZE mode */
-> -	if (mode & ~FALLOC_FL_KEEP_SIZE)
-> -		return -EOPNOTSUPP;
-> -
->  	/*
->  	 * currently supporting (pre)allocate mode for extent-based
->  	 * files _only_
-> @@ -3751,6 +3787,13 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
->  	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
->  		return -EOPNOTSUPP;
-> 
-> +	/* Return error if mode is not supported */
-> +	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
-> +		return -EOPNOTSUPP;
-> +
-> +	if (mode & FALLOC_FL_PUNCH_HOLE)
-> +		return ext4_punch_hole(file, offset, len);
-> +
->  	trace_ext4_fallocate_enter(inode, offset, len, mode);
->  	map.m_lblk = offset >> blkbits;
->  	/*
-> @@ -4132,3 +4175,178 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
->  	return error;
->  }
-> 
-> +/*
-> + * ext4_ext_punch_hole
-> + *
-> + * Punches a hole of "length" bytes in a file starting
-> + * at byte "offset"
-> + *
-> + * @inode:  The inode of the file to punch a hole in
-> + * @offset: The starting byte offset of the hole
-> + * @length: The length of the hole
-> + *
-> + * Returns the number of blocks removed or negative on err
-> + */
-> +int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
-> +{
-> +	struct inode *inode = file->f_path.dentry->d_inode;
-> +	struct super_block *sb = inode->i_sb;
-> +	struct ext4_ext_cache cache_ex;
-> +	ext4_lblk_t first_block, last_block, num_blocks, iblock, max_blocks;
-> +	struct address_space *mapping = inode->i_mapping;
-> +	struct ext4_map_blocks map;
-> +	handle_t *handle;
-> +	loff_t first_block_offset, last_block_offset, block_len;
-> +	loff_t first_page, last_page, first_page_offset, last_page_offset;
-> +	int ret, credits, blocks_released, err = 0;
-> +
-> +	first_block = (offset + sb->s_blocksize - 1)
-> +			>> EXT4_BLOCK_SIZE_BITS(sb);
-> +	last_block = (offset + length) >> EXT4_BLOCK_SIZE_BITS(sb);
-> +
-> +	first_block_offset = first_block
-> +			<< EXT4_BLOCK_SIZE_BITS(sb);
-> +	last_block_offset = last_block << EXT4_BLOCK_SIZE_BITS(sb);
-> +
-> +	first_page = (offset + PAGE_CACHE_SIZE - 1)
-> +			>> PAGE_CACHE_SHIFT;
-> +	last_page = (offset + length) >> PAGE_CACHE_SHIFT;
-> +
-> +	first_page_offset = first_page
-> +			<< PAGE_CACHE_SHIFT;
-> +	last_page_offset = last_page << PAGE_CACHE_SHIFT;
-> +
-> +	/*
-> +	 * Write out all dirty pages to avoid race conditions
-> +	 * Then release them.
-> +	 */
-> +	if (mapping->nrpages && mapping_tagged(mapping,
-> +		PAGECACHE_TAG_DIRTY)){
-> +		err = filemap_write_and_wait_range(mapping,
-> +			first_page_offset == 0 ? 0 : first_page_offset-1,
-> +			last_page_offset);
-> +
-> +			if (err)
-> +				return err;
-> +	}
-> +
-> +	/* Now release the pages */
-> +	if (last_page_offset > first_page_offset) {
-> +		truncate_inode_pages_range(mapping, first_page_offset,
-> +			last_page_offset-1);
-> +	}
-> +
-> +	/* finish any pending end_io work */
-> +	ext4_flush_completed_IO(inode);
-> +
-> +	credits = ext4_writepage_trans_blocks(inode);
-> +	handle = ext4_journal_start(inode, credits);
-> +	if (IS_ERR(handle))
-> +		return PTR_ERR(handle);
-> +
-> +	err = ext4_orphan_add(handle, inode);
-> +	if (err)
-> +		goto out;
-> +
-> +	/*
-> +	 * Now we need to zero out the un block aligned data.
-> +	 * If the file is smaller than a block, just
-> +	 * zero out the middle
-> +	 */
-> +	if (first_block > last_block)
-> +		ext4_block_zero_page_range(handle, mapping, offset, length);
-> +	else {
-> +		/* zero out the head of the hole before the first block */
-> +		block_len  = first_block_offset - offset;
-> +		if (block_len > 0)
-> +			ext4_block_zero_page_range(handle, mapping,
-> +				offset, block_len);
-> +
-> +		/* zero out the tail of the hole after the last block */
-> +		block_len = offset + length - last_block_offset;
-> +		if (block_len > 0) {
-> +			ext4_block_zero_page_range(handle, mapping,
-> +				last_block_offset, block_len);
-> +		}
-> +	}
-> +
-> +	/* If there are no blocks to remove, return now */
-> +	if (first_block >= last_block)
-> +		goto out;
-> +
-> +	down_write(&EXT4_I(inode)->i_data_sem);
-> +	ext4_ext_invalidate_cache(inode);
-> +	ext4_discard_preallocations(inode);
-> +
-> +	/*
-> +	 * Loop over all the blocks and identify blocks
-> +	 * that need to be punched out
-> +	 */
-> +	iblock = first_block;
-> +	blocks_released = 0;
-> +	while (iblock < last_block) {
-> +		max_blocks = last_block - iblock;
-> +		num_blocks = 1;
-> +		memset(&map, 0, sizeof(map));
-> +		map.m_lblk = iblock;
-> +		map.m_len = max_blocks;
-> +		ret = ext4_ext_map_blocks(handle, inode, &map,
-> +			EXT4_GET_BLOCKS_PUNCH_OUT_EXT);
-> +
-> +		if (ret > 0) {
-> +			blocks_released += ret;
-> +			num_blocks = ret;
-> +		} else if (ret == 0) {
-> +			/*
-> +			 * If map blocks could not find the block,
-> +			 * then it is in a hole.  If the hole was
-> +			 * not already cached, then map blocks should
-> +			 * put it in the cache.  So we can get the hole
-> +			 * out of the cache
-> +			 */
-> +			memset(&cache_ex, 0, sizeof(cache_ex));
-> +			if ((ext4_ext_check_cache(inode, iblock, &cache_ex)) &&
-> +				!cache_ex.ec_start) {
-> +
-> +				/* The hole is cached */
-> +				num_blocks = cache_ex.ec_block +
-> +				cache_ex.ec_len - iblock;
-> +
-> +			} else {
-> +				/* The block could not be identified */
-> +				err = -EIO;
-> +				break;
-> +			}
-> +		} else {
-> +			/* Map blocks error */
-> +			err = ret;
-> +			break;
-> +		}
-> +
-> +		if (num_blocks == 0) {
-> +			/* This condition should never happen */
-> +			ext_debug("Block lookup failed");
-> +			err = -EIO;
-> +			break;
-> +		}
-> +
-> +		iblock += num_blocks;
-> +	}
-> +
-> +	if (blocks_released > 0) {
-> +		ext4_ext_invalidate_cache(inode);
-> +		ext4_discard_preallocations(inode);
-> +	}
-> +
-> +	if (IS_SYNC(inode))
-> +		ext4_handle_sync(handle);
-> +
-> +	up_write(&EXT4_I(inode)->i_data_sem);
-> +
-> +out:
-> +	ext4_orphan_del(handle, inode);
-> +	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
-> +	ext4_mark_inode_dirty(handle, inode);
-> +	ext4_journal_stop(handle);
-> +	return err;
-> +}
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 8ce382d..a8c23ec 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4421,6 +4421,31 @@ int ext4_can_truncate(struct inode *inode)
->  }
-> 
->  /*
-> + * ext4_punch_hole: punches a hole in a file by releaseing the blocks
-> + * associated with the given offset and length
-> + *
-> + * @inode:  File inode
-> + * @offset: The offset where the hole will begin
-> + * @len:    The length of the hole
-> + *
-> + * Returns: 0 on sucess or negative on failure
-> + */
-> +
-> +int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
-> +{
-> +	struct inode *inode = file->f_path.dentry->d_inode;
-> +	if (!S_ISREG(inode->i_mode))
-> +		return -ENOTSUPP;
-> +
-> +	if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
-> +		/* TODO: Add support for non extent hole punching */
-> +		return -ENOTSUPP;
-> +	}
-> +
-> +	return ext4_ext_punch_hole(file, offset, length);
-> +}
-> +
-> +/*
->   * ext4_truncate()
->   *
->   * We block out ext4_get_block() block instantiations across the entire
+I'd like to know those patches are on what state. Waiting in writeback
+page makes slower, like you mentioned it (I guess it would more
+noticeable if device was slower that like FAT uses). And I think
+currently it doesn't help anything others for blk-integrity stuff
+(without other technic, it doesn't help FS consistency)?
 
+So, why is this locking stuff enabled always? I think it would be better
+to enable only if blk-integrity stuff was enabled.
 
+If it was more sophisticate but more complex stuff (e.g. use
+copy-on-write technic for it), I would agree always enable though.
+
+Thanks.
+-- 
+OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
