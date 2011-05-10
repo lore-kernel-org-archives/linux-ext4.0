@@ -1,117 +1,150 @@
-From: James Bottomley <James.Bottomley@HansenPartnership.com>
-Subject: Re: [BUG] fatal hang untarring 90GB file, possibly writeback
- related.
-Date: Tue, 10 May 2011 12:29:13 -0500
-Message-ID: <1305048553.6737.28.camel@mulgrave.site>
-References: <1304432553.2576.10.camel@mulgrave.site>
-	 <20110506074224.GB6591@suse.de> <20110506080728.GC6591@suse.de>
-	 <1304964980.4865.53.camel@mulgrave.site> <20110510102141.GA4149@novell.com>
-	 <1305036064.6737.8.camel@mulgrave.site> <20110510143509.GD4146@suse.de>
-	 <1305041397.6737.12.camel@mulgrave.site>
-	 <1305043052.6737.17.camel@mulgrave.site>
-	 <1305047154.6737.22.camel@mulgrave.site>  <20110510171726.GE4146@suse.de>
+From: Hugh Dickins <hughd@google.com>
+Subject: Re: [PATCH v3] ext4: Don't set PageUptodate in ext4_end_bio()
+Date: Tue, 10 May 2011 10:41:56 -0700 (PDT)
+Message-ID: <alpine.LSU.2.00.1105101037440.1243@sister.anvils>
+References: <1303762999-20541-1-git-send-email-curtw@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Mel Gorman <mgorman@novell.com>, Jan Kara <jack@suse.cz>,
-	colin.king@canonical.com, Chris Mason <chris.mason@oracle.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-mm <linux-mm@kvack.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Mel Gorman <mgorman@suse.de>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org, Jim Meyering <jim@meyering.net>,
+	Mingming Cao <cmm@us.ibm.com>,
+	Curt Wohlgemuth <curtw@google.com>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bedivere.hansenpartnership.com ([66.63.167.143]:41695 "EHLO
-	bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750704Ab1EJR3U (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 May 2011 13:29:20 -0400
-In-Reply-To: <20110510171726.GE4146@suse.de>
+Received: from smtp-out.google.com ([216.239.44.51]:6989 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750775Ab1EJRl5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 May 2011 13:41:57 -0400
+Received: from wpaz5.hot.corp.google.com (wpaz5.hot.corp.google.com [172.24.198.69])
+	by smtp-out.google.com with ESMTP id p4AHfuMK002275
+	for <linux-ext4@vger.kernel.org>; Tue, 10 May 2011 10:41:56 -0700
+Received: from pwi15 (pwi15.prod.google.com [10.241.219.15])
+	by wpaz5.hot.corp.google.com with ESMTP id p4AHfsgM015373
+	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Tue, 10 May 2011 10:41:55 -0700
+Received: by pwi15 with SMTP id 15so3815439pwi.5
+        for <linux-ext4@vger.kernel.org>; Tue, 10 May 2011 10:41:54 -0700 (PDT)
+In-Reply-To: <1303762999-20541-1-git-send-email-curtw@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 2011-05-10 at 18:17 +0100, Mel Gorman wrote:
-> On Tue, May 10, 2011 at 12:05:54PM -0500, James Bottomley wrote:
-> > On Tue, 2011-05-10 at 15:57 +0000, James Bottomley wrote:
-> > > On Tue, 2011-05-10 at 10:29 -0500, James Bottomley wrote:
-> > > > On Tue, 2011-05-10 at 15:35 +0100, Mel Gorman wrote:
-> > > > > On Tue, May 10, 2011 at 09:01:04AM -0500, James Bottomley wrote:
-> > > > > > On Tue, 2011-05-10 at 11:21 +0100, Mel Gorman wrote:
-> > > > > > > I really would like to hear if the fix makes a big difference or
-> > > > > > > if we need to consider forcing SLUB high-order allocations bailing
-> > > > > > > at the first sign of trouble (e.g. by masking out __GFP_WAIT in
-> > > > > > > allocate_slab). Even with the fix applied, kswapd might be waking up
-> > > > > > > less but processes will still be getting stalled in direct compaction
-> > > > > > > and direct reclaim so it would still be jittery.
-> > > > > > 
-> > > > > > "the fix" being this
-> > > > > > 
-> > > > > > https://lkml.org/lkml/2011/3/5/121
-> > > > > > 
-> > > > > 
-> > > > > Drop this for the moment. It was a long shot at best and there is little
-> > > > > evidence the problem is in this area.
-> > > > > 
-> > > > > I'm attaching two patches. The first is the NO_KSWAPD one to stop
-> > > > > kswapd being woken up by SLUB using speculative high-orders. The second
-> > > > > one is more drastic and prevents slub entering direct reclaim or
-> > > > > compaction. It applies on top of patch 1. These are both untested and
-> > > > > afraid are a bit rushed as well :(
-> > > > 
-> > > > Preliminary results with both patches applied still show kswapd
-> > > > periodically going up to 99% but it doesn't stay there, it comes back
-> > > > down again (and, obviously, the system doesn't hang).
-> > > 
-> > > This is a second run with the watch highorders.
-> > > 
-> > > At the end of the run, the system hung temporarily and now comes back
-> > > with CPU3 spinning in all system time at kswapd shrink_slab
-> > 
-> > Here's a trace in the same situation with the ftrace stack entries
-> > bumped to 16 as requested on IRC.  There was no hang for this one.
-> > 
-> 
-> Ok, so the bulk of the high-order allocs are coming from
-> 
-> > 140162 instances order=1 normal gfp_flags=GFP_NOWARN|GFP_NORETRY|GFP_COMP|GFP_NOMEMALLOC|
-> >  => __alloc_pages_nodemask+0x754/0x792 <ffffffff810dc0de>
-> >  => alloc_pages_current+0xbe/0xd8 <ffffffff81105459>
-> >  => alloc_slab_page+0x1c/0x4d <ffffffff8110c5fe>
-> >  => new_slab+0x50/0x199 <ffffffff8110dc48>
-> >  => __slab_alloc+0x24a/0x328 <ffffffff8146ab86>
-> >  => kmem_cache_alloc+0x77/0x105 <ffffffff8110e450>
-> >  => mempool_alloc_slab+0x15/0x17 <ffffffff810d6e85>
-> >  => mempool_alloc+0x68/0x116 <ffffffff810d70fa>
-> >  => bio_alloc_bioset+0x35/0xc3 <ffffffff81144dd8>
-> >  => bio_alloc+0x15/0x24 <ffffffff81144ef5>
-> >  => submit_bh+0x6d/0x105 <ffffffff811409f6>
-> >  => __block_write_full_page+0x1e7/0x2d7 <ffffffff81141fac>
-> >  => block_write_full_page_endio+0x8a/0x97 <ffffffff81143671>
-> >  => block_write_full_page+0x15/0x17 <ffffffff81143693>
-> >  => mpage_da_submit_io+0x31a/0x395 <ffffffff811935d8>
-> >  => mpage_da_map_and_submit+0x2ca/0x2e0 <ffffffff81196e88>
-> > 
-> 
-> That at least is in line with the large untar and absolves i915
-> from being the main cause of trouble. The lack of the hang implies
-> that SLUB doing high order allocations is stressing the system too
-> much and needs to be more willing to fall back to order-0 although
-> it does not adequately explain why it hung as opposed to just being
-> incredible slow.
-> 
-> I'm also still concerned with the reports of getting stuck in a heavy
-> loop on the i915 shrinker so will try again reproducing this locally
-> with a greater focus on something X related happening at the same time.
-> 
-> One thing at a time though, SLUB needs to be less aggressive so I'll
-> prepare a series in the morning, have another go at generating data
-> and see what shakes out.
+On Mon, 25 Apr 2011, Curt Wohlgemuth wrote:
 
-As a final data point, I tried slub_max_order=0.  kswapd is much more
-quiescent (it calms down to nothing).  It shows spikes of up to 70% and
-once up to 99% though, but it doesn't go up to 99% and stay there like
-it did previously.  This is just with top, so it's a bit inaccurate.
+> In the bio completion routine, we should not be setting
+> PageUptodate at all -- it's set at sys_write() time, and is
+> unaffected by success/failure of the write to disk.
+> 
+> This can cause a page corruption bug when
+> 
+>     block size < page size
+> 
+> if we have only written a single block -- we might end up
+> setting the entire PageUptodate, which will cause subsequent
+> reads to get bad data.
+> 
+> This commit also takes the opportunity to clean up error
+> handling in ext4_end_bio(), and remove some extraneous code:
+> 
+>    - fixes ext4_end_bio() to set AS_EIO in the
+>      page->mapping->flags on error, which was left out by
+>      mistake.
+>    - remove the clear_buffer_dirty() call on unmapped
+>      buffers for each page.
+>    - consolidate page/buffer error handling in a single
+>      section.
+> 
+> Signed-off-by: Curt Wohlgemuth <curtw@google.com>
+> Reported-by: Jim Meyering <jim@meyering.net>
+> Reported-by: Hugh Dickins <hughd@google.com>
+> Cc: Mingming Cao <cmm@us.ibm.com>
+> ---
+> Changlog since v2:
+> - Removed clear_buffer_dirty() call
+> - Consolidated error handling for pages and buffer heads
+> - Loop over BHs in a page even for page size == block size, so
+>   we emit the correct error for such a case.
+> 
+> Changlog since v1:
+> - Added commit message text about setting AS_EIO for the
+>  page on error.
+> - Continue to loop over all BHs in a page and emit unique
+>  errors for each of them.
+> ---
+>  fs/ext4/page-io.c |   39 +++++++++++----------------------------
+>  1 files changed, 11 insertions(+), 28 deletions(-)
+> 
+> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+> index b6dbd05..7bb8f76 100644
+> --- a/fs/ext4/page-io.c
+> +++ b/fs/ext4/page-io.c
+> @@ -203,46 +203,29 @@ static void ext4_end_bio(struct bio *bio, int error)
+>  	for (i = 0; i < io_end->num_io_pages; i++) {
+>  		struct page *page = io_end->pages[i]->p_page;
+>  		struct buffer_head *bh, *head;
+> -		int partial_write = 0;
+> +		loff_t offset;
+> +		loff_t io_end_offset;
+>  
+> -		head = page_buffers(page);
+> -		if (error)
+> +		if (error) {
+>  			SetPageError(page);
+> -		BUG_ON(!head);
+> -		if (head->b_size != PAGE_CACHE_SIZE) {
+> -			loff_t offset;
+> -			loff_t io_end_offset = io_end->offset + io_end->size;
+> +			set_bit(AS_EIO, &page->mapping->flags);
+> +			head = page_buffers(page);
+> +			BUG_ON(!head);
+> +
+> +			io_end_offset = io_end->offset + io_end->size;
+>  
+>  			offset = (sector_t) page->index << PAGE_CACHE_SHIFT;
+>  			bh = head;
+>  			do {
+>  				if ((offset >= io_end->offset) &&
+> -				    (offset+bh->b_size <= io_end_offset)) {
+> -					if (error)
+> -						buffer_io_error(bh);
+> -
+> -				}
+> -				if (buffer_delay(bh))
+> -					partial_write = 1;
+> -				else if (!buffer_mapped(bh))
+> -					clear_buffer_dirty(bh);
+> -				else if (buffer_dirty(bh))
+> -					partial_write = 1;
+> +				    (offset+bh->b_size <= io_end_offset))
+> +					buffer_io_error(bh);
+> +
+>  				offset += bh->b_size;
+>  				bh = bh->b_this_page;
+>  			} while (bh != head);
+>  		}
+>  
+> -		/*
+> -		 * If this is a partial write which happened to make
+> -		 * all buffers uptodate then we can optimize away a
+> -		 * bogus readpage() for the next read(). Here we
+> -		 * 'discover' whether the page went uptodate as a
+> -		 * result of this (potentially partial) write.
+> -		 */
+> -		if (!partial_write)
+> -			SetPageUptodate(page);
+> -
+>  		put_io_page(io_end->pages[i]);
+>  	}
+>  	io_end->num_io_pages = 0;
+> -- 
+> 1.7.3.1
 
-James
+I'm concerned that we've reached -rc7, with Linus planning on 2.6.39
+release next week, but Curt's fix above to the mblk_io corruption bug
+seems to have fallen through the cracks.
 
+I've been including it in all my testing over the last two weeks: it
+works fine - and because of my own tmpfs bug, I even got to see its
+error messages :)  Adding in the patch is easy enough for me,
+but surely we don't want others to stumble into this bug.
 
+Thanks,
+Hugh
