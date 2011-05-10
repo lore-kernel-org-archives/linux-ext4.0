@@ -1,78 +1,93 @@
 From: "Amir G." <amir73il@users.sourceforge.net>
-Subject: Re: [PATCH v2 5/5] ext4: remove alloc_semp
-Date: Tue, 10 May 2011 21:20:58 +0300
-Message-ID: <BANLkTimQbrOVDpgZGmhT9-rzMWEjVgkf4A@mail.gmail.com>
+Subject: Re: [PATCHSET v2] ext4: removal of alloc_sem locks from block
+ allocation paths
+Date: Tue, 10 May 2011 21:30:16 +0300
+Message-ID: <BANLkTimuBxQCQa3437ZzB0ynAmuWhTduLQ@mail.gmail.com>
 References: <1300985893-4371-1-git-send-email-amir73il@users.sourceforge.net>
-	<1300985893-4371-6-git-send-email-amir73il@users.sourceforge.net>
-	<20110510132910.GA6933@thunk.org>
+	<alpine.LFD.2.00.1105101543570.17175@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, Yongqiang Yang <xiaoqiangnk@gmail.com>
-To: "Ted Ts'o" <tytso@mit.edu>
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:42286 "EHLO
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:63794 "EHLO
 	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751679Ab1EJSU7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 May 2011 14:20:59 -0400
-Received: by vxi39 with SMTP id 39so6899746vxi.19
-        for <linux-ext4@vger.kernel.org>; Tue, 10 May 2011 11:20:58 -0700 (PDT)
-In-Reply-To: <20110510132910.GA6933@thunk.org>
+	with ESMTP id S1751148Ab1EJSaR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 May 2011 14:30:17 -0400
+Received: by vxi39 with SMTP id 39so6906454vxi.19
+        for <linux-ext4@vger.kernel.org>; Tue, 10 May 2011 11:30:16 -0700 (PDT)
+In-Reply-To: <alpine.LFD.2.00.1105101543570.17175@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 10, 2011 at 4:29 PM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Thu, Mar 24, 2011 at 06:58:13PM +0200, amir73il@users.sourceforge.=
-net wrote:
->> From: Amir Goldstein <amir73il@users.sf.net>
->>
->> After taking care of all group init races, all that remains is to
->> remove alloc_semp from ext4_allocation_context and ext4_buddy struct=
-s.
->>
->> Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
+On Tue, May 10, 2011 at 4:48 PM, Lukas Czerner <lczerner@redhat.com> wr=
+ote:
+> On Thu, 24 Mar 2011, amir73il@users.sourceforge.net wrote:
 >
-> Hey Amir,
+>> The purpose of this patch set is the removal of grp->alloc_sem locks
+>> from block allocation paths.
+>>
+>> The resulting code is cleaner and should perform better in concurren=
+t
+>> allocating tasks workloads.
+> Hi Amir,
 >
-> What sort of testing have you done with this patch series? =A0In
-> particular, have you tried doing online resizes while the file system
-> is heavily loaded?
+> Do you have any performance numbers indicating performance improvemen=
+t
+> in concurrent allocations ? The only point where I can see taking
+> write semaphore is in filesystem resize code. Or am I missing somethi=
+ng ?
 
-I have tested many small resizes, not block group aligned and added
-debug prints in mballoc.c to verify that in-memory bb_free and group_de=
-sc
-bg_free_blocks remain in sync.
+Yes, you are. down_write is also taken when initializing a block group
+buddy cache for the first time (NEED_INIT flag is set).
+Anyway, I do NOT have any performance number since this wasn't the purp=
+ose of
+this work. This work was done for snapshots, but I do think that as I w=
+rote:
+1. The resulting code is cleaner
+2. Getting rid of an unneeded semaphore in allocation path can only do =
+good
+to performance, but I certainly don't have the kind of high scalability=
+ testing
+setup to show the performance improvements if there are any.
 
-Sorry, I did not run the same tests under heavy load.
-I would think that one would need to know exactly how to load his
-system to make that load relevant to this test, rather than blindly
-fsstressing the system.
-If you have specific ideas for testing please let us know.
-I think Yongqiang could run these tests.
-
-Regarding the "risk" of online resize with this patch,
-if you look at ext4_add_groupblocks() in it's new form,
-you will surely notice that it is an exact replica of ext4_free_blocks(=
+>
+> Thanks!
+> -Lukas
+>
+>>
+>> I ran several xfstests runs with these patches (4K and 1K block size=
+).
+>> I tried several online resizes and verifyed that both in-core and on=
+-disk
+>> group counters are correct.
+>>
+>> v2->v1:
+>> - fix silly bug in patch 4/5 that triggers BUG_ON(incore =3D=3D NULL=
 )
-with lots of irrelevant code removed, so the code path of online resize=
-,
-is essentially the same as the code patch of freeing any range of block=
-s
-with regards to buddy cache init and locks.
-
-It was actually possible to alter ext4_free_blocks() a bit and reuse it
-to do most of the work done by ext4_add_groupblocks(), but I did not
-want to make these changes to ext4_free_blocks(). it's your call if
-you think that would be better off.
-
-Anyway, I was kind of hoping for another pair of eyes to validate my ch=
-anges
-when I first posted these patches. So what do you say?
-Does the core change to synchronize ext4_mb_init_group() by locking
-the buddy pages look reasonable to you?
-You were the one who suggested that approach in the first place.
-
-Amir.
+>> - replace get_undo_access() with get_write_access()
+>> - ran xfstests with block size 1K (where 2 groups share a buddy page=
+)
+>>
+>> [PATCH v2 1/5] ext4: move ext4_add_groupblocks() to mballoc.c
+>> [PATCH v2 2/5] ext4: implement ext4_add_groupblocks() by freeing blo=
+cks
+>> [PATCH v2 3/5] ext4: synchronize ext4_mb_init_group() with buddy pag=
+e lock
+>> [PATCH v2 4/5] ext4: teach ext4_mb_init_cache() to skip uptodate bud=
+dy caches
+>> [PATCH v2 5/5] ext4: remove alloc_semp
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4=
+" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>>
+>
+> --
+>
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
