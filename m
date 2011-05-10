@@ -1,226 +1,115 @@
-From: Surbhi Palande <surbhi.palande@canonical.com>
-Subject: [PATCH] Adding support to freeze and unfreeze a journal
-Date: Tue, 10 May 2011 18:07:50 +0300
-Message-ID: <1305040070-2343-1-git-send-email-surbhi.palande@canonical.com>
-References: <20110509150852.GQ4122@quack.suse.cz>
-Cc: marco.stornelli@gmail.com, adilger.kernel@dilger.ca,
-	toshi.okajima@jp.fujitsu.com, tytso@mit.edu,
-	m.mizuma@jp.fujitsu.com, sandeen@redhat.com,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: jack@suse.cz
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: Re: [PATCH v2] ext4:Let ext4_ext_fiemap_cb() handle blocks before
+ request range correctly.
+Date: Tue, 10 May 2011 23:08:47 +0800
+Message-ID: <BANLkTi=G+cwRLLPTqP0F7OKN-1d8yNZqLA@mail.gmail.com>
+References: <1305036366-1228-1-git-send-email-xiaoqiangnk@gmail.com>
+	<alpine.LFD.2.00.1105101620590.18016@dhcp-27-109.brq.redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from adelie.canonical.com ([91.189.90.139]:44097 "EHLO
-	adelie.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753257Ab1EJPIC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 May 2011 11:08:02 -0400
-In-Reply-To: <20110509150852.GQ4122@quack.suse.cz>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:43291 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932814Ab1EJPIs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 May 2011 11:08:48 -0400
+Received: by vws1 with SMTP id 1so568437vws.19
+        for <linux-ext4@vger.kernel.org>; Tue, 10 May 2011 08:08:47 -0700 (PDT)
+In-Reply-To: <alpine.LFD.2.00.1105101620590.18016@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The journal should be frozen when a F.S freezes. What this means is that till
-the F.S is thawed again, no new transactions should be accepted by the
-journal. When the F.S thaws, inturn it should thaw the journal and this should
-allow the journal to resume accepting new transactions.
-While the F.S has frozen the journal, the clients of journal on calling
-jbd2_journal_start() will sleep on a wait queue. Thawing the journal will wake
-up the sleeping clients and journalling can progress normally.
+On Tue, May 10, 2011 at 10:35 PM, Lukas Czerner <lczerner@redhat.com> w=
+rote:
+> On Tue, 10 May 2011, Yongqiang Yang wrote:
+>
+>> v1->v2:
+>> =A0 Add more specific description.
+>>
+>> To get delayed-extent information, ext4_ext_fiemap_cb() lookups page=
+cache,
+>> it thus collects information starting from a page's head block.
+>> If blockszie < pagesize, the beginning blocks of a page may lie befo=
+re the
+>> range. =A0ext4_ext_fiemap_cb() should proceed ignoring them, because=
+ they
+>> has been handled before.
+>
+> Thanks for the description, but I have one question below.
+>
+>>
+>> Reported-by: Amir Goldstein <amir73il@users.sf.net>
+>> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+>> ---
+>> =A0fs/ext4/extents.c | =A0 =A07 ++++++-
+>> =A01 files changed, 6 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+>> index e363f21..ec37109 100644
+>> --- a/fs/ext4/extents.c
+>> +++ b/fs/ext4/extents.c
+>> @@ -3718,9 +3718,14 @@ out:
+>>
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 bh =3D head;
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 do {
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (end < =
+newex->ec_block)
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 /* The buffer is not in
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0* the request range.
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0*/
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 continue;
+> So if the condition is true, then we might leave the loop, because (b=
+h =3D=3D
+> head) in the first iteration, is that desired behavior? Also if we hi=
+t
+> this condition in other than first iteration we will spin forever. I =
+do
+> not think this is right. How did you tested this case ?
+You are right.  Maybe the patch sent out is not same as the patch with
+which I tested.  What a stupid error!
+I am not sure what happened now.  I will check the patch with which I
+tested tomorrow.
 
-An example of the race condition that can happen without this patch is as
-follows:
+My working tree passed xfstests 225 in both 1k blocksize and 4k
+blocksize cases.
 
-Say the F.S is thawed when we begin. Let tx be the time at unit x
+Sorry!
 
-P1: Process doing an aio write
-t1) ext4_file_write()
-  t2) generic_file_aio_write()
-    t3) __generic_file_aio_write()
-      // F.S is not frozen, so we do not block in the next check.
-      t4) vfs_check_frozen()
-      t5) generic_write_checks()
------------------ Prempted------------------
+Yongqiang.
+>
+> Thanks!
+> -Lukas
+>
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (buff=
+er_mapped(bh)) {
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
+=A0 =A0 /* get the 1st mapped buffer. */
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 if (end > newex->ec_block +
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 if (end >=3D newex->ec_block +
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
+=A0 =A0 =A0 =A0 =A0 =A0 newex->ec_len)
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
+=A0 =A0 =A0 =A0 =A0 =A0 /* The buffer is out of
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
+=A0 =A0 =A0 =A0 =A0 =A0 =A0* the request range.
+>>
+>
 
-P2: Process that does fs freeze
 
-t6) freeze_super()
-  t7) sync_filesystem()
-  t8) sync_blockdev()
-  t9) sb->s_op->freeze_fs() (= ext4_freeze)
-    t10) jbd2_journal_lock_updates()
-    t11) jbd2_journal_flush()
-    // Need to unlock the journal before returning to user space.
-    t12) jbd2_journal_unlock_updates()
-    // Journal is unlocked and so we can start accepting new transactions now.
 
-// freezing process completes execution. Page cache is now clean and should
-// remain clean till the F.S is frozen.
---------------------------------------------
-
-P1: writing process gets the control back
-t13) generic_file_buffered_write()
-  t14) generic_perform_write()
-    t15) a_ops->write_begin() (= ext4_write_begin)
-      t16) ext4_journal_start()
-	// New handle is started. We do not block here! Write continues
-	// dirtying the page cache while the F.S is frozen!
-
-Signed-off-by: Surbhi Palande <surbhi.palande@canonical.com>
-Acked-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/super.c       |   20 ++++++--------------
- fs/jbd2/journal.c     |    1 +
- fs/jbd2/transaction.c |   42 ++++++++++++++++++++++++++++++++++++++++++
- include/linux/jbd2.h  |   10 ++++++++++
- 4 files changed, 59 insertions(+), 14 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 8553dfb..796aa4c 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4179,23 +4179,15 @@ static int ext4_freeze(struct super_block *sb)
- 
- 	journal = EXT4_SB(sb)->s_journal;
- 
--	/* Now we set up the journal barrier. */
--	jbd2_journal_lock_updates(journal);
--
-+	error = jbd2_journal_freeze(journal);
- 	/*
--	 * Don't clear the needs_recovery flag if we failed to flush
-+	 * Don't clear the needs_recovery flag if we failed to freeze
- 	 * the journal.
- 	 */
--	error = jbd2_journal_flush(journal);
--	if (error < 0)
--		goto out;
--
--	/* Journal blocked and flushed, clear needs_recovery flag. */
--	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
--	error = ext4_commit_super(sb, 1);
--out:
--	/* we rely on s_frozen to stop further updates */
--	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
-+	if (error >= 0) {
-+		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
-+		error = ext4_commit_super(sb, 1);
-+	}
- 	return error;
- }
- 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index e0ec3db..5e46333 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -842,6 +842,7 @@ static journal_t * journal_init_common (void)
- 	init_waitqueue_head(&journal->j_wait_checkpoint);
- 	init_waitqueue_head(&journal->j_wait_commit);
- 	init_waitqueue_head(&journal->j_wait_updates);
-+	init_waitqueue_head(&journal->j_wait_frozen);
- 	mutex_init(&journal->j_barrier);
- 	mutex_init(&journal->j_checkpoint_mutex);
- 	spin_lock_init(&journal->j_revoke_lock);
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 05fa77a..b040293 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -171,6 +171,17 @@ repeat:
- 				journal->j_barrier_count == 0);
- 		goto repeat;
- 	}
-+	/* dont let a new handle start when a journal is frozen.
-+	 * jbd2_journal_freeze calls jbd2_journal_unlock_updates() only after
-+	 * the jflags indicate that the journal is frozen. So if the
-+	 * j_barrier_count is 0, then check if this was made 0 by the freezing
-+	 * process
-+	 */
-+	if (journal->j_flags & JBD2_FROZEN) {
-+		read_unlock(&journal->j_state_lock);
-+		jbd2_check_frozen(journal);
-+		goto repeat;
-+	}
- 
- 	if (!journal->j_running_transaction) {
- 		read_unlock(&journal->j_state_lock);
-@@ -489,6 +500,37 @@ int jbd2_journal_restart(handle_t *handle, int nblocks)
- }
- EXPORT_SYMBOL(jbd2_journal_restart);
- 
-+int jbd2_journal_freeze(journal_t *journal)
-+{
-+	int error = 0;
-+	/* Now we set up the journal barrier. */
-+	jbd2_journal_lock_updates(journal);
-+
-+	/*
-+	 * Don't clear the needs_recovery flag if we failed to flush
-+	 * the journal.
-+	 */
-+	error = jbd2_journal_flush(journal);
-+	if (error >= 0) {
-+		write_lock(&journal->j_state_lock);
-+		journal->j_flags |= JBD2_FROZEN;
-+		write_unlock(&journal->j_state_lock);
-+	}
-+	jbd2_journal_unlock_updates(journal);
-+	return error;
-+}
-+EXPORT_SYMBOL(jbd2_journal_freeze);
-+
-+void jbd2_journal_thaw(journal_t * journal)
-+{
-+	write_lock(&journal->j_state_lock);
-+	journal->j_flags &= ~JBD2_FROZEN;
-+	write_unlock(&journal->j_state_lock);
-+	wake_up(&journal->j_wait_frozen);
-+}
-+EXPORT_SYMBOL(jbd2_journal_thaw);
-+
-+
- /**
-  * void jbd2_journal_lock_updates () - establish a transaction barrier.
-  * @journal:  Journal to establish a barrier on.
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index a32dcae..c7885b2 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -718,6 +718,7 @@ jbd2_time_diff(unsigned long start, unsigned long end)
-  * @j_wait_checkpoint:  Wait queue to trigger checkpointing
-  * @j_wait_commit: Wait queue to trigger commit
-  * @j_wait_updates: Wait queue to wait for updates to complete
-+ * @j_wait_frozen: Wait queue to wait for journal to thaw
-  * @j_checkpoint_mutex: Mutex for locking against concurrent checkpoints
-  * @j_head: Journal head - identifies the first unused block in the journal
-  * @j_tail: Journal tail - identifies the oldest still-used block in the
-@@ -835,6 +836,9 @@ struct journal_s
- 	/* Wait queue to wait for updates to complete */
- 	wait_queue_head_t	j_wait_updates;
- 
-+	/* Wait queue to wait for journal to thaw*/
-+	wait_queue_head_t	j_wait_frozen;
-+
- 	/* Semaphore for locking against concurrent checkpoints */
- 	struct mutex		j_checkpoint_mutex;
- 
-@@ -1013,7 +1017,11 @@ struct journal_s
- #define JBD2_ABORT_ON_SYNCDATA_ERR	0x040	/* Abort the journal on file
- 						 * data write error in ordered
- 						 * mode */
-+#define JBD2_FROZEN	0x080   /* Journal thread is frozen as the filesystem is frozen */
-+
- 
-+#define jbd2_check_frozen(journal)	\
-+		wait_event(journal->j_wait_frozen, (journal->j_flags & JBD2_FROZEN))
- /*
-  * Function declarations for the journaling transaction and buffer
-  * management
-@@ -1121,6 +1129,8 @@ extern void	 jbd2_journal_invalidatepage(journal_t *,
- 				struct page *, unsigned long);
- extern int	 jbd2_journal_try_to_free_buffers(journal_t *, struct page *, gfp_t);
- extern int	 jbd2_journal_stop(handle_t *);
-+extern int	 jbd2_journal_freeze(journal_t *);
-+extern void	 jbd2_journal_thaw(journal_t *);
- extern int	 jbd2_journal_flush (journal_t *);
- extern void	 jbd2_journal_lock_updates (journal_t *);
- extern void	 jbd2_journal_unlock_updates (journal_t *);
--- 
-1.7.1
-
+--=20
+Best Wishes
+Yongqiang Yang
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
