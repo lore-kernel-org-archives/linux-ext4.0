@@ -1,70 +1,156 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 3/3] ext4: Block mmapped writes while the fs is frozen
-Date: Wed, 11 May 2011 00:29:34 +0200
-Message-ID: <1305066574-1573-4-git-send-email-jack@suse.cz>
+Subject: [PATCH 2/3] ext4: Rewrite ext4_page_mkwrite() to return locked page
+Date: Wed, 11 May 2011 00:29:33 +0200
+Message-ID: <1305066574-1573-3-git-send-email-jack@suse.cz>
 References: <1305066574-1573-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:34352 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752765Ab1EJW3u (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 May 2011 18:29:50 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1305066574-1573-1-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-We should not allow file modification via mmap while the filesystem is
-frozen. So block in ext4_page_mkwrite() while the filesystem is frozen.
+ext4_page_mkwrite() does not return page locked. This makes it hard
+to avoid races with filesystem freezing code (so that we don't leave
+writeable page on a frozen fs) or writeback code (so that we allow page
+to be stable during writeback).
 
-We have to check for frozen filesystem with the page marked dirty and under
-page lock with which we then return from ext4_page_mkwrite(). Only that way we
-cannot race with writeback done by freezing code - either we mark the page
-dirty after the writeback has started, see freezing in progress and block, or
-writeback will wait for our page lock which is released only when the fault is
-done and then writeback will writeout and writeprotect the page again.
+Also the current code uses i_alloc_sem to avoid races with truncate but that
+seems to be the wrong locking order according to lock ordering documented in
+mm/rmap.c.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c |   20 ++++++++++++++++++++
- 1 files changed, 20 insertions(+), 0 deletions(-)
+ fs/ext4/inode.c |   98 ++++++++++++++++++++++++++++++++-----------------------
+ 1 files changed, 57 insertions(+), 41 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 04b164d..a7e13b6 100644
+index f2fa5e8..04b164d 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -5801,6 +5801,12 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
- 	get_block_t *get_block;
- 	int retries = 0;
+@@ -5793,66 +5793,82 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	struct page *page = vmf->page;
+ 	loff_t size;
+ 	unsigned long len;
+-	int ret = -EINVAL;
+-	void *fsdata;
++	int ret;
+ 	struct file *file = vma->vm_file;
+ 	struct inode *inode = file->f_path.dentry->d_inode;
+ 	struct address_space *mapping = inode->i_mapping;
++	handle_t *handle;
++	get_block_t *get_block;
++	int retries = 0;
  
-+restart:
-+	/*
-+	 * This check is racy but catches the common case. The check at the
-+	 * end of this function is reliable.
-+	 */
-+	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
- 	/* Delalloc case is easy... */
- 	if (test_opt(inode->i_sb, DELALLOC) &&
- 	    !ext4_should_journal_data(inode) &&
-@@ -5870,5 +5876,19 @@ out_ret:
- 			ret = VM_FAULT_SIGBUS;
- 	}
- out:
-+	/*
-+	 * Freezing in progress? We check after the page is marked dirty and
-+	 * with page lock held so if the test here fails, we are sure freezing
-+	 * code will wait during syncing until the page fault is done - at that
-+	 * point page will be dirty and unlocked so freezing code will write it
-+	 * and writeprotect it again.
-+	 */
-+	if (ret == VM_FAULT_LOCKED) {
-+		set_page_dirty(page);
-+		if (inode->i_sb->s_frozen != SB_UNFROZEN) {
-+			unlock_page(page);
-+			goto restart;
-+		}
+-	/*
+-	 * Get i_alloc_sem to stop truncates messing with the inode. We cannot
+-	 * get i_mutex because we are already holding mmap_sem.
+-	 */
+-	down_read(&inode->i_alloc_sem);
++	/* Delalloc case is easy... */
++	if (test_opt(inode->i_sb, DELALLOC) &&
++	    !ext4_should_journal_data(inode) &&
++	    !ext4_nonda_switch(inode->i_sb)) {
++		do {
++			ret = __block_page_mkwrite(vma, vmf,
++						   ext4_da_get_block_prep);
++		} while (ret == -ENOSPC &&
++		       ext4_should_retry_alloc(inode->i_sb, &retries));
++		goto out_ret;
 +	}
++
++	lock_page(page);
+ 	size = i_size_read(inode);
+-	if (page->mapping != mapping || size <= page_offset(page)
+-	    || !PageUptodate(page)) {
+-		/* page got truncated from under us? */
+-		goto out_unlock;
++	/* Page got truncated from under us? */
++	if (page->mapping != mapping || page_offset(page) > size) {
++		unlock_page(page);
++		ret = VM_FAULT_NOPAGE;
++		goto out;
+ 	}
+-	ret = 0;
+-	if (PageMappedToDisk(page))
+-		goto out_unlock;
+ 
+ 	if (page->index == size >> PAGE_CACHE_SHIFT)
+ 		len = size & ~PAGE_CACHE_MASK;
+ 	else
+ 		len = PAGE_CACHE_SIZE;
+-
+-	lock_page(page);
+ 	/*
+-	 * return if we have all the buffers mapped. This avoid
+-	 * the need to call write_begin/write_end which does a
+-	 * journal_start/journal_stop which can block and take
+-	 * long time
++	 * Return if we have all the buffers mapped. This avoids the need to do
++	 * journal_start/journal_stop which can block and take a long time
+ 	 */
+ 	if (page_has_buffers(page)) {
+ 		if (!walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
+ 					ext4_bh_unmapped)) {
+-			unlock_page(page);
+-			goto out_unlock;
++			ret = VM_FAULT_LOCKED;
++			goto out;
+ 		}
+ 	}
+ 	unlock_page(page);
+-	/*
+-	 * OK, we need to fill the hole... Do write_begin write_end
+-	 * to do block allocation/reservation.We are not holding
+-	 * inode.i__mutex here. That allow * parallel write_begin,
+-	 * write_end call. lock_page prevent this from happening
+-	 * on the same page though
+-	 */
+-	ret = mapping->a_ops->write_begin(file, mapping, page_offset(page),
+-			len, AOP_FLAG_UNINTERRUPTIBLE, &page, &fsdata);
+-	if (ret < 0)
+-		goto out_unlock;
+-	ret = mapping->a_ops->write_end(file, mapping, page_offset(page),
+-			len, len, page, fsdata);
+-	if (ret < 0)
+-		goto out_unlock;
+-	ret = 0;
+-out_unlock:
+-	if (ret)
++	/* OK, we need to fill the hole... */
++	if (ext4_should_dioread_nolock(inode))
++		get_block = ext4_get_block_write;
++	else
++		get_block = ext4_get_block;
++retry_alloc:
++	handle = ext4_journal_start(inode, ext4_writepage_trans_blocks(inode));
++	if (IS_ERR(handle)) {
+ 		ret = VM_FAULT_SIGBUS;
+-	up_read(&inode->i_alloc_sem);
++		goto out;
++	}
++	ret = __block_page_mkwrite(vma, vmf, get_block);
++	if (ret == VM_FAULT_LOCKED && ext4_should_journal_data(inode)) {
++		if (walk_page_buffers(handle, page_buffers(page), 0,
++			  PAGE_CACHE_SIZE, NULL, do_journal_get_write_access)) {
++			unlock_page(page);
++			ret = VM_FAULT_SIGBUS;
++			goto out;
++		}
++		ext4_set_inode_state(inode, EXT4_STATE_JDATA);
++	}
++	ext4_journal_stop(handle);
++	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
++		goto retry_alloc;
++out_ret:
++	if (ret < 0) {
++		if (ret == -ENOMEM)
++			ret = VM_FAULT_OOM;
++		else
++			ret = VM_FAULT_SIGBUS;
++	}
++out:
  	return ret;
  }
 -- 
