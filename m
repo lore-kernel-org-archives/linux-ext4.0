@@ -1,150 +1,98 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 3/5] ocfs2: Update ocfs2 routines to use the updated
- journal routines to specify gfp_mask for transaction allocation.
-Date: Wed, 11 May 2011 17:56:15 +0200
-Message-ID: <20110511155615.GI5057@quack.suse.cz>
-References: <BANLkTi=H5zs9KnrUtXd=Q4uz3rTFGzfqhg@mail.gmail.com>
+From: Allison Henderson <achender@linux.vnet.ibm.com>
+Subject: Re: ext4_ext_convert_to_initialized bug found in extended FSX testing
+Date: Wed, 11 May 2011 00:17:26 -0700
+Message-ID: <4DCA3806.2020609@linux.vnet.ibm.com>
+References: <4DC97C32.2020203@linux.vnet.ibm.com> <BANLkTi=jjVcy9WQvNfYwPVNw-+t4M5WbFw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 <linux-ext4@vger.kernel.org>,
-	Manish Katiyar <manish.katiyar@in.ibm.com>,
-	Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>
-To: Manish Katiyar <mkatiyar@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:32875 "EHLO mx2.suse.de"
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:36945 "EHLO e4.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756197Ab1EKP4R (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 May 2011 11:56:17 -0400
-Content-Disposition: inline
-In-Reply-To: <BANLkTi=H5zs9KnrUtXd=Q4uz3rTFGzfqhg@mail.gmail.com>
+	id S1754402Ab1EKP6d (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 May 2011 11:58:33 -0400
+Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
+	by e4.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p4B6umoG007734
+	for <linux-ext4@vger.kernel.org>; Wed, 11 May 2011 02:56:48 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p4B7HTE8052864
+	for <linux-ext4@vger.kernel.org>; Wed, 11 May 2011 03:17:29 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p4B7HS5L021357
+	for <linux-ext4@vger.kernel.org>; Wed, 11 May 2011 04:17:29 -0300
+In-Reply-To: <BANLkTi=jjVcy9WQvNfYwPVNw-+t4M5WbFw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun 24-04-11 17:15:35, Manish Katiyar wrote:
-> Update ocfs2 routines to use the updated journal routines passing an
-> extra parameter to specify whether transaction allocation can fail or
-> not.
-  This should be included in the first patch. Also I don't think there's a
-need for special helpers since they are called from one / two sites anyway.
+On 5/10/2011 6:47 PM, Yongqiang Yang wrote:
+> On Wed, May 11, 2011 at 1:56 AM, Allison Henderson
+> <achender@linux.vnet.ibm.com>  wrote:
+>> Hi All,
+>>
+>> We've been trying to get punch hole through some extended fsx tests, and I ran across some other tests that were failing because the test file contained zeros where it shouldn't.  I made this fix to the ext4_ext_convert_to_initialized
+>
+> What do you mean zeros here?
+> Some useful data is zeroed?
 
-								Honza 
-> 
-> Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
-> ---
->  fs/ocfs2/journal.c |   16 +++++++++++++---
->  1 files changed, 13 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ocfs2/journal.c b/fs/ocfs2/journal.c
-> index b141a44..51c60be 100644
-> --- a/fs/ocfs2/journal.c
-> +++ b/fs/ocfs2/journal.c
-> @@ -338,6 +338,16 @@ finally:
->  	return status;
->  }
-> 
-> +static handle_t *ocfs2_journal_start(journal_t *journal, int blocks)
-> +{
-> +	return jbd2_journal_start(journal, blocks, false);
-> +}
-> +
-> +static int ocfs2_journal_restart(handle_t *handle, int blocks)
-> +{
-> +	return jbd2_journal_restart(handle, blocks, false);
-> +}
-> +
->  handle_t *ocfs2_start_trans(struct ocfs2_super *osb, int max_buffs)
->  {
->  	journal_t *journal = osb->journal->j_journal;
-> @@ -353,11 +363,11 @@ handle_t *ocfs2_start_trans(struct ocfs2_super
-> *osb, int max_buffs)
-> 
->  	/* Nested transaction? Just return the handle... */
->  	if (journal_current_handle())
-> -		return jbd2_journal_start(journal, max_buffs);
-> +		return ocfs2_journal_start(journal, max_buffs);
-> 
->  	down_read(&osb->journal->j_trans_barrier);
-> 
-> -	handle = jbd2_journal_start(journal, max_buffs);
-> +	handle = ocfs2_journal_start(journal, max_buffs);
->  	if (IS_ERR(handle)) {
->  		up_read(&osb->journal->j_trans_barrier);
-> 
-> @@ -437,7 +447,7 @@ int ocfs2_extend_trans(handle_t *handle, int nblocks)
-> 
->  	if (status > 0) {
->  		trace_ocfs2_extend_trans_restart(old_nblocks + nblocks);
-> -		status = jbd2_journal_restart(handle,
-> +		status = ocfs2_journal_restart(handle,
->  					      old_nblocks + nblocks);
->  		if (status < 0) {
->  			mlog_errno(status);
-> -- 
-> 1.7.1
-> 
-> 
-> -- 
-> Thanks -
-> Manish
+Oh sorry, I phrased that wrong.  The test was failing because it did not 
+contain zeros when it should have.  I traced it down to a map write 
+operation that was trying to write data in an extent that had been 
+created unwritten by a previous fallocate.  The unwritten extent had to 
+be split, but the last part of the extent was not zero'd out all the 
+way, so it was causing some erroneous data to show up after the region 
+that was being written.  This fix appears to correct it though.
 
-> From bb95830b270fce043b5b901d53d391189ee96878 Mon Sep 17 00:00:00 2001
-> From: Manish Katiyar <mkatiyar@gmail.com>
-> Date: Sun, 24 Apr 2011 00:27:31 -0700
-> Subject: [PATCH 3/5] Update ocfs routines to use the updated journal routines passing an extra parameter to specify whether transaction allocation can fail or not.
-> 
-> Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
-> ---
->  fs/ocfs2/journal.c |   16 +++++++++++++---
->  1 files changed, 13 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ocfs2/journal.c b/fs/ocfs2/journal.c
-> index b141a44..51c60be 100644
-> --- a/fs/ocfs2/journal.c
-> +++ b/fs/ocfs2/journal.c
-> @@ -338,6 +338,16 @@ finally:
->  	return status;
->  }
->  
-> +static handle_t *ocfs2_journal_start(journal_t *journal, int blocks)
-> +{
-> +	return jbd2_journal_start(journal, blocks, false);
-> +}
-> +
-> +static int ocfs2_journal_restart(handle_t *handle, int blocks)
-> +{
-> +	return jbd2_journal_restart(handle, blocks, false);
-> +}
-> +
->  handle_t *ocfs2_start_trans(struct ocfs2_super *osb, int max_buffs)
->  {
->  	journal_t *journal = osb->journal->j_journal;
-> @@ -353,11 +363,11 @@ handle_t *ocfs2_start_trans(struct ocfs2_super *osb, int max_buffs)
->  
->  	/* Nested transaction? Just return the handle... */
->  	if (journal_current_handle())
-> -		return jbd2_journal_start(journal, max_buffs);
-> +		return ocfs2_journal_start(journal, max_buffs);
->  
->  	down_read(&osb->journal->j_trans_barrier);
->  
-> -	handle = jbd2_journal_start(journal, max_buffs);
-> +	handle = ocfs2_journal_start(journal, max_buffs);
->  	if (IS_ERR(handle)) {
->  		up_read(&osb->journal->j_trans_barrier);
->  
-> @@ -437,7 +447,7 @@ int ocfs2_extend_trans(handle_t *handle, int nblocks)
->  
->  	if (status > 0) {
->  		trace_ocfs2_extend_trans_restart(old_nblocks + nblocks);
-> -		status = jbd2_journal_restart(handle,
-> +		status = ocfs2_journal_restart(handle,
->  					      old_nblocks + nblocks);
->  		if (status < 0) {
->  			mlog_errno(status);
-> -- 
-> 1.7.1
-> 
+Allison Henderson
 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+>
+> and the test has been running smooth for about an hour now.
+> Yongqiang, this one looks like it may have been associated with the
+> split extents clean up patch.  Would you mind taking a look at this
+> fix and giving it your ok if it looks good?  Thx!
+>>
+>> Signed-off-by: Allison Henderson<achender@us.ibm.com>
+>> ---
+>> :100644 100644 e363f21... ce69450... M  fs/ext4/extents.c
+>>   fs/ext4/extents.c |    3 ++-
+>>   1 files changed, 2 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+>> index e363f21..ce69450 100644
+>> --- a/fs/ext4/extents.c
+>> +++ b/fs/ext4/extents.c
+>> @@ -2819,7 +2819,8 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>>                         /* case 3 */
+>>                         zero_ex.ee_block =
+>>                                          cpu_to_le32(map->m_lblk + map->m_len);
+>> -                       zero_ex.ee_len = cpu_to_le16(allocated - map->m_len);
+>> +                       zero_ex.ee_len = cpu_to_le16(ee_len -
+>> +                                               allocated - map->m_len);
+> The logic is that we splits [ee_block, ee_block + ee_len) into
+> [ee_block, map->m_blk) that is uninitialized and [map->m_blk, ee_block
+> + ee_len) that is initialized.   We need to zero [map->m_lblk +
+> map->m_len, ee_block + ee_len).
+> and [map->m_lblk, map->m_lblk + map->m_len) is zeroed by upper layer
+> because of MAP_NEW flag.
+>
+> Right logic?
+>
+>
+> I can not see the error and the meaning of ee_len - allocated - map->m_len.
+>
+> Thanks,
+> Yongqiang.
+>
+>
+>>                         ext4_ext_store_pblock(&zero_ex,
+>>                                 ext4_ext_pblock(ex) + map->m_lblk - ee_block);
+>>                         err = ext4_ext_zeroout(inode,&zero_ex);
+>> --
+>> 1.7.1
+>>
+>>
+>
+>
+>
+
