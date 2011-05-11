@@ -1,48 +1,55 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 0/3] Rewrite ext4_page_mkwrite, fix fs freezing
-Date: Wed, 11 May 2011 19:03:17 +0200
-Message-ID: <20110511170317.GM5057@quack.suse.cz>
-References: <1305066574-1573-1-git-send-email-jack@suse.cz>
- <20110511003012.GC6933@thunk.org>
- <20110511092752.GA5057@quack.suse.cz>
- <20110511164836.GG18929@tux1.beaverton.ibm.com>
+From: Kazuya Mio <k-mio@sx.jp.nec.com>
+Subject: [PATCH] ext4: Fix max file size of extent format file
+Date: Wed, 11 May 2011 17:08:38 +0900
+Message-ID: <4DCA4406.4030601@sx.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Ted Ts'o <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: "Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20110511164836.GG18929@tux1.beaverton.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+To: ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from TYO200.gate.nec.co.jp ([202.32.8.215]:59910 "EHLO
+	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751169Ab1EKR03 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 May 2011 13:26:29 -0400
+Received: from tyo202.gate.nec.co.jp ([10.7.69.202])
+	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id p4B8FT0g003723
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 11 May 2011 17:15:29 +0900 (JST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 11-05-11 09:48:36, Darrick J. Wong wrote:
-> On Wed, May 11, 2011 at 11:27:52AM +0200, Jan Kara wrote:
-> > On Tue 10-05-11 20:30:12, Ted Tso wrote:
-> > > On Wed, May 11, 2011 at 12:29:31AM +0200, Jan Kara wrote:
-> > > > 
-> > > >   following three patches reimplement ext4_page_mkwrite() so that it returns
-> > > > locked pages (which is necessary for stable pages work and also for fixing of
-> > > > freezing code). As a bonus we also avoid taking i_alloc_sem as it's not
-> > > > necessary and use generic block_page_mkwrite() helper. The common delalloc
-> > > > path should be more straightforward now.
-> > > 
-> > > How does this relate to Darrick Wong's patches?  Are your patches in
-> > > addition to or instead of his?
-> >   It's in addition to those (although with my patches, a generic change to
-> > block_page_mkwrite() would be enough for ext4). If you plan to merge those
-> > now, I can rediff on top of those patches.
-> 
-> Just to be clear, your new __block_page_mkwrite still needs a patch to call
-> wait_on_page_writeback to provide stable page writes, correct?
-  Correct.
+We hit BUG_ON in ext4_ext_put_gap_in_cache() while creating a file
+whose size is the max file size of extent format. Because the extent cache
+length is 0 when we allocate two blocks to the file offset 2^32-2, and then
+the offset 2^32-1. To fix it, we decrease the max file size to
+(2^32-2)*blocksize. In this way, we would be able to allocate a block up to
+the offset 2^32-2. I think there is no data loss because we can read all files
+created before applying this patch.
 
-> I think we'd still need a wait_on_page_writeback for the "all buffers are
-> mapped" VM_FAULT_LOCKED exit from ext4_page_mkwrite?
-  Ah, right, I forgot about that one.
+How to reproduce:
+I'm running 2.6.39-rc6. Note that i386 architecture and 4KB blocksize cannot
+reproduce this problem.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+# dd if=/dev/zero of=/mnt/mp1/file bs=<blocksize> count=1 seek=$((2**32-2))
+# sync
+# dd if=/dev/zero of=/mnt/mp1/file bs=<blocksize> count=1 seek=$((2**32-1))
+
+Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
+---
+ fs/ext4/super.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 8553dfb..fce0249 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2248,8 +2248,8 @@ static loff_t ext4_max_size(int blkbits, int has_huge_files)
+ 
+ 	/* 32-bit extent-start container, ee_block */
+ 	res = 1LL << 32;
+-	res <<= blkbits;
+ 	res -= 1;
++	res <<= blkbits;
+ 
+ 	/* Sanity check against vm- & vfs- imposed limits */
+ 	if (res > upper_limit)
+
