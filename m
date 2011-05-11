@@ -1,55 +1,80 @@
-From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: [PATCH] ext4: Fix max file size of extent format file
-Date: Wed, 11 May 2011 17:08:38 +0900
-Message-ID: <4DCA4406.4030601@sx.jp.nec.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] debugfs: document htree-related commands in man page
+Date: Wed, 11 May 2011 11:49:07 -0500
+Message-ID: <4DCABE03.7040300@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO200.gate.nec.co.jp ([202.32.8.215]:59910 "EHLO
-	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751169Ab1EKR03 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 May 2011 13:26:29 -0400
-Received: from tyo202.gate.nec.co.jp ([10.7.69.202])
-	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id p4B8FT0g003723
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 11 May 2011 17:15:29 +0900 (JST)
+Received: from mx1.redhat.com ([209.132.183.28]:29011 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753558Ab1EKR17 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 May 2011 13:27:59 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p4BHRvJw030883
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Wed, 11 May 2011 13:27:59 -0400
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id p4BGn749020147
+	(version=TLSv1/SSLv3 cipher=AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 11 May 2011 12:49:08 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We hit BUG_ON in ext4_ext_put_gap_in_cache() while creating a file
-whose size is the max file size of extent format. Because the extent cache
-length is 0 when we allocate two blocks to the file offset 2^32-2, and then
-the offset 2^32-1. To fix it, we decrease the max file size to
-(2^32-2)*blocksize. In this way, we would be able to allocate a block up to
-the offset 2^32-2. I think there is no data loss because we can read all files
-created before applying this patch.
+The debugfs commands dirsearch, dx_hash, and htree_dump were
+never documented in the man page.  Do so.
 
-How to reproduce:
-I'm running 2.6.39-rc6. Note that i386 architecture and 4KB blocksize cannot
-reproduce this problem.
-
-# dd if=/dev/zero of=/mnt/mp1/file bs=<blocksize> count=1 seek=$((2**32-2))
-# sync
-# dd if=/dev/zero of=/mnt/mp1/file bs=<blocksize> count=1 seek=$((2**32-1))
-
-Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
- fs/ext4/super.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 8553dfb..fce0249 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2248,8 +2248,8 @@ static loff_t ext4_max_size(int blkbits, int has_huge_files)
- 
- 	/* 32-bit extent-start container, ee_block */
- 	res = 1LL << 32;
--	res <<= blkbits;
- 	res -= 1;
-+	res <<= blkbits;
- 
- 	/* Sanity check against vm- & vfs- imposed limits */
- 	if (res > upper_limit)
+
+Please feel free to check my manpage-fu, as well as checking
+for accurate descriptions of these commands, thanks...
+
+diff --git a/debugfs/debugfs.8.in b/debugfs/debugfs.8.in
+index 41c73fd..f5deb7a 100644
+--- a/debugfs/debugfs.8.in
++++ b/debugfs/debugfs.8.in
+@@ -187,6 +187,12 @@ master superblock.
+ Clear the contents of the inode 
+ .IR file .
+ .TP
++.I dirsearch filespec filename
++Search the directory
++.I filespec
++for
++.IR filename .
++.TP
+ .I dump [-p] filespec out_file
+ Dump the contents of the inode 
+ .I filespec
+@@ -199,6 +205,16 @@ option is given set the owner, group and permissions information on
+ to match 
+ .IR filespec .
+ .TP
++.I dx_hash [-h hash_alg] [-s hash_seed] filename
++Calculate the directory hash of
++.IR filename .
++The hash algorithm specified with
++.I -h
++may be "legacy" "half_md4" or "tea".
++The hash seed specified with
++.I -s
++must be in UUID format.
++.TP
+ .I dump_extents [-n] [-l] filespec
+ Dump the the extent tree of the inode
+ .IR filespec .
+@@ -264,6 +280,11 @@ Free the inode specified by
+ Print a list of commands understood by 
+ .BR debugfs .
+ .TP
++.I htree_dump filespec
++Dump the hash-indexed directory
++.IR filespec ,
++showing its tree structure.
++.TP
+ .I icheck block ...
+ Print a listing of the inodes which use the one or more blocks specified
+ on the command line.
 
