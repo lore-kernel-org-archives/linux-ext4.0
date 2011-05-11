@@ -1,101 +1,218 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 4/4] ext3: Implement delayed allocation on page_mkwrite
- time
-Date: Wed, 11 May 2011 17:38:41 +0200
-Message-ID: <20110511153841.GG5057@quack.suse.cz>
-References: <1304369816-14545-1-git-send-email-jack@suse.cz>
- <1304369816-14545-5-git-send-email-jack@suse.cz>
- <20110502141230.4a7640f9.akpm@linux-foundation.org>
- <20110502222020.GB14889@quack.suse.cz>
- <20110502152917.550d2475.akpm@linux-foundation.org>
- <20110503170948.GE6009@quack.suse.cz>
+Subject: Re: [PATCH 2/5] ext4 : Update low level ext4 journal routines to
+ specify gfp_mask for transaction allocation.
+Date: Wed, 11 May 2011 18:04:47 +0200
+Message-ID: <20110511160447.GJ5057@quack.suse.cz>
+References: <BANLkTinfvAXWwjtMnYRBL5JHLmYJGhS-aQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+Cc: ext4 <linux-ext4@vger.kernel.org>,
+	Manish Katiyar <manish.katiyar@in.ibm.com>,
+	Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>
+To: Manish Katiyar <mkatiyar@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:52237 "EHLO mx1.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:52474 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756512Ab1EKP6S (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 May 2011 11:58:18 -0400
+	id S1755625Ab1EKQEt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 May 2011 12:04:49 -0400
 Content-Disposition: inline
-In-Reply-To: <20110503170948.GE6009@quack.suse.cz>
+In-Reply-To: <BANLkTinfvAXWwjtMnYRBL5JHLmYJGhS-aQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 03-05-11 19:09:48, Jan Kara wrote:
-> On Mon 02-05-11 15:29:17, Andrew Morton wrote:
-> > On Tue, 3 May 2011 00:20:20 +0200
-> > Jan Kara <jack@suse.cz> wrote:
-> > > On Mon 02-05-11 14:12:30, Andrew Morton wrote:
-> > > > On Mon,  2 May 2011 22:56:56 +0200
-> > > > Jan Kara <jack@suse.cz> wrote:
-> > > > 
-> > > > > So far, ext3 was allocating necessary blocks for mmapped writes when
-> > > > > writepage() was called. There are several issues with this. The worst
-> > > > > being that user is allowed to arbitrarily exceed disk quotas because
-> > > > > writepage() is called from flusher thread context (which is root) and thus
-> > > > > quota limits are ignored. Another bad consequence is that data is just lost
-> > > > > if we find there's no space on the filesystem during ->writepage() time.
-> > > > > 
-> > > > > We solve these issues by implementing block reservation in page_mkwrite()
-> > > > > callback. We don't want to really allocate blocks on page_mkwrite() time
-> > > > > because for random writes via mmap (as seen for example with applications using
-> > > > > BerkeleyDB) it results in much more fragmented files and thus much worse
-> > > > > performance. So we allocate indirect blocks and reserve space for data block in
-> > > > > page_mkwrite() and do the allocation of data block from writepage().
-> > > > 
-> > > > Yes, instantiating the metadata and accounting the data is a good
-> > > > approach.  The file layout will be a bit suboptimal, but surely that
-> > > > will be a minor thing.
-> > > > 
-> > > > But boy, it's a complicated patch!  Are we really sure that we want to
-> > > > make changes this extensive to our antiquated old fs?  Or do we just
-> > > > say "yeah, it's broken with quotas - use ext4"?
-> > >   The patch isn't trivial, I agree (although it's mostly straightforward).
-> > > Regarding telling users to switch to ext4 - it seems a bit harsh to me
-> > > to ask people to switch to ext4 as a response to a (possibly security)
-> > > issue they uncover. Because for most admins switching to ext4 will require
-> > > some non-trivial testing I presume. Of course, the counterweight is the
-> > > possibility of new bugs introduced to the code by my patch.
-> > 
-> > Yes.
-> > 
-> > > But after some
-> > > considerations I've decided it's worth it and and fixed the bug...
-> > 
-> > Well.  How did you come to that decision?
->   So my thoughts were: If a company runs a hosting or similar service and
-> some load either inadvertedly or even maliciously triggers this bug, your
-> systems can be DOSed. That's bad and you need to fix that ASAP. From my
-> experience with our SLE customers, they are willing to listen to advices
-> such as fs choice when they plan a system deployment. After that they
-> vehemently refuse any major change (and fs driver change is a major one).
-> So I'm quite certain they'd rather accept this largish ext3 change.
-> Finally, admittedly, I didn't think the patch will end up so large.
-> 
-> Looking into the patch, I could split off some cleanups and code
-> reorganizations which are 20-30% of the patch but it probably does not make
-> sense to split it more. What I think is a plus of the patch is that there
-> are only two code paths that really change - ext3_get_blocks() has two new
-> cases how it is called (to allocate only indirect blocks and to allocate
-> already reserved data block) and trucate path which has to do more work to
-> check whether indirect block can be removed.
->   
-> > Are real users hurting from this problem?
->   I've got a report of this from NEC
-> (http://ns3.spinics.net/lists/linux-ext4/msg20239.html) and OpenVZ people
-> were also concerned
-> (http://ns3.spinics.net/lists/linux-ext4/msg20288.html). I think there was
-> one more report of this problem but I can't find it now. So yes, there are
-> users who care.
-> 
-> >  What's the real-world case for fixing it?
->   Sorry, I don't understand the question (or how it is different from the
-> previous one).
-  Andrew, does this change your opinion in any way?
+On Sun 24-04-11 17:13:18, Manish Katiyar wrote:
+> Update low level ext4 journal routines to pass an extra parameter
+> to journal allocation routines to specify whether transaction allocation
+> can fail or not. With this patch ext4_journal_start() can fail due to
+> ENOMEM. Added a new interface ext4_journal_start_tryhard() which isn't
+> supposed to fail and keep retrying till the allocation succeeds.
+  As I wrote in a comment in the comment to the first patch, first just
+make ext4_journal_start_sb() and similar functions pass false as a part of
+the first patch.
+
+Then it would be better to create a new function that passes true - the
+name does not really matter since it will be removed later in the series
+but it will help the review process. You can call it
+ext4_journal_start_sb_enomem() or whatever. This way we keep backward
+compatibility because currently all call sites really expect the retry
+behavior. Then in the patch you can switch safe call sites to use _enomem
+variant and at the end of the series as a separate patch you just do
+renaming - ext4_journal_start_sb() becomes ext4_journal_start_sb_tryhard()
+and ext4_journal_start_sb_enomem() becomes ext4_journal_start_sb().
 
 								Honza
+
+> Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+> ---
+>  fs/ext4/ext4_jbd2.h |    8 +++++++-
+>  fs/ext4/super.c     |   15 +++++++++++++--
+>  2 files changed, 20 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+> index d0f5353..ee6385c 100644
+> --- a/fs/ext4/ext4_jbd2.h
+> +++ b/fs/ext4/ext4_jbd2.h
+> @@ -162,6 +162,7 @@ int __ext4_handle_dirty_super(const char *where,
+> unsigned int line,
+>  	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb))
+> 
+>  handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks);
+> +handle_t *ext4_journal_start_sb_tryhard(struct super_block *sb, int nblocks);
+>  int __ext4_journal_stop(const char *where, unsigned int line,
+> handle_t *handle);
+> 
+>  #define EXT4_NOJOURNAL_MAX_REF_COUNT ((unsigned long) 4096)
+> @@ -207,6 +208,11 @@ static inline handle_t *ext4_journal_start(struct
+> inode *inode, int nblocks)
+>  	return ext4_journal_start_sb(inode->i_sb, nblocks);
+>  }
+> 
+> +static inline handle_t *ext4_journal_start_tryhard(struct inode
+> *inode, int nblocks)
+> +{
+> +	return ext4_journal_start_sb_tryhard(inode->i_sb, nblocks);
+> +}
+> +
+>  #define ext4_journal_stop(handle) \
+>  	__ext4_journal_stop(__func__, __LINE__, (handle))
+> 
+> @@ -225,7 +231,7 @@ static inline int ext4_journal_extend(handle_t
+> *handle, int nblocks)
+>  static inline int ext4_journal_restart(handle_t *handle, int nblocks)
+>  {
+>  	if (ext4_handle_valid(handle))
+> -		return jbd2_journal_restart(handle, nblocks);
+> +		return jbd2_journal_restart(handle, nblocks, false);
+>  	return 0;
+>  }
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 8553dfb..03eac6a 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -247,7 +247,8 @@ static void ext4_put_nojournal(handle_t *handle)
+>   * ext4 prevents a new handle from being started by s_frozen, which
+>   * is in an upper layer.
+>   */
+> -handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
+> +static handle_t *__ext4_journal_start_sb(struct super_block *sb,
+> +					 int nblocks, bool errok)
+>  {
+>  	journal_t *journal;
+>  	handle_t  *handle;
+> @@ -279,7 +280,17 @@ handle_t *ext4_journal_start_sb(struct
+> super_block *sb, int nblocks)
+>  		ext4_abort(sb, "Detected aborted journal");
+>  		return ERR_PTR(-EROFS);
+>  	}
+> -	return jbd2_journal_start(journal, nblocks);
+> +	return jbd2_journal_start(journal, nblocks, errok);
+> +}
+> +
+> +handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
+> +{
+> +	return __ext4_journal_start_sb(sb, nblocks, true);
+> +}
+> +
+> +handle_t *ext4_journal_start_sb_tryhard(struct super_block *sb, int nblocks)
+> +{
+> +	return __ext4_journal_start_sb(sb, nblocks, false);
+>  }
+> 
+>  /*
+> -- 
+> 1.7.1
+> 
+> -- 
+> Thanks -
+> Manish
+
+> From 365d29cd8d5b139e332965a536dd380e656bbd15 Mon Sep 17 00:00:00 2001
+> From: Manish Katiyar <mkatiyar@gmail.com>
+> Date: Sun, 24 Apr 2011 16:49:48 -0700
+> Subject: [PATCH 2/5] Update low level ext4 journal routines to pass an extra paramter
+>  to journal allocation routines to specify whether transaction allocation
+>  can fail or not. With this patch ext4_journal_start() can fail due to
+>  ENOMEM. Added a new interface ext4_journal_start_tryhard() which isn't
+>  supposed to fail and keep retrying till the allocation succeeds.
+> 
+> 
+> Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+> ---
+>  fs/ext4/ext4_jbd2.h |    8 +++++++-
+>  fs/ext4/super.c     |   15 +++++++++++++--
+>  2 files changed, 20 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+> index d0f5353..ee6385c 100644
+> --- a/fs/ext4/ext4_jbd2.h
+> +++ b/fs/ext4/ext4_jbd2.h
+> @@ -162,6 +162,7 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
+>  	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb))
+>  
+>  handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks);
+> +handle_t *ext4_journal_start_sb_tryhard(struct super_block *sb, int nblocks);
+>  int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle);
+>  
+>  #define EXT4_NOJOURNAL_MAX_REF_COUNT ((unsigned long) 4096)
+> @@ -207,6 +208,11 @@ static inline handle_t *ext4_journal_start(struct inode *inode, int nblocks)
+>  	return ext4_journal_start_sb(inode->i_sb, nblocks);
+>  }
+>  
+> +static inline handle_t *ext4_journal_start_tryhard(struct inode *inode, int nblocks)
+> +{
+> +	return ext4_journal_start_sb_tryhard(inode->i_sb, nblocks);
+> +}
+> +
+>  #define ext4_journal_stop(handle) \
+>  	__ext4_journal_stop(__func__, __LINE__, (handle))
+>  
+> @@ -225,7 +231,7 @@ static inline int ext4_journal_extend(handle_t *handle, int nblocks)
+>  static inline int ext4_journal_restart(handle_t *handle, int nblocks)
+>  {
+>  	if (ext4_handle_valid(handle))
+> -		return jbd2_journal_restart(handle, nblocks);
+> +		return jbd2_journal_restart(handle, nblocks, false);
+>  	return 0;
+>  }
+>  
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 8553dfb..03eac6a 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -247,7 +247,8 @@ static void ext4_put_nojournal(handle_t *handle)
+>   * ext4 prevents a new handle from being started by s_frozen, which
+>   * is in an upper layer.
+>   */
+> -handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
+> +static handle_t *__ext4_journal_start_sb(struct super_block *sb,
+> +					 int nblocks, bool errok)
+>  {
+>  	journal_t *journal;
+>  	handle_t  *handle;
+> @@ -279,7 +280,17 @@ handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
+>  		ext4_abort(sb, "Detected aborted journal");
+>  		return ERR_PTR(-EROFS);
+>  	}
+> -	return jbd2_journal_start(journal, nblocks);
+> +	return jbd2_journal_start(journal, nblocks, errok);
+> +}
+> + 
+> +handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
+> +{
+> +	return __ext4_journal_start_sb(sb, nblocks, true);
+> +}
+> +
+> +handle_t *ext4_journal_start_sb_tryhard(struct super_block *sb, int nblocks)
+> +{
+> +	return __ext4_journal_start_sb(sb, nblocks, false);
+>  }
+>  
+>  /*
+> -- 
+> 1.7.1
+> 
+
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
