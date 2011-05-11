@@ -1,72 +1,88 @@
-From: David Rientjes <rientjes@google.com>
-Subject: Re: [PATCH 2/3] mm: slub: Do not take expensive steps for SLUBs
- speculative high-order allocations
-Date: Wed, 11 May 2011 13:38:44 -0700 (PDT)
-Message-ID: <alpine.DEB.2.00.1105111312020.9346@chino.kir.corp.google.com>
-References: <1305127773-10570-1-git-send-email-mgorman@suse.de> <1305127773-10570-3-git-send-email-mgorman@suse.de>
+From: James Bottomley <James.Bottomley@HansenPartnership.com>
+Subject: Re: [PATCH 3/3] mm: slub: Default slub_max_order to 0
+Date: Wed, 11 May 2011 15:53:11 -0500
+Message-ID: <1305147191.2606.51.camel@mulgrave.site>
+References: <1305127773-10570-1-git-send-email-mgorman@suse.de>
+	 <1305127773-10570-4-git-send-email-mgorman@suse.de>
+	 <alpine.DEB.2.00.1105111314310.9346@chino.kir.corp.google.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-        James Bottomley <James.Bottomley@hansenpartnership.com>,
-        Colin King <colin.king@canonical.com>,
-        Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
-        Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
-        Christoph Lameter <cl@linux.com>, Pekka Enberg <penberg@kernel.org>,
-        Rik van Riel <riel@redhat.com>, Johannes Weiner <hannes@cmpxchg.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-mm <linux-mm@kvack.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-To: Mel Gorman <mgorman@suse.de>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1305127773-10570-3-git-send-email-mgorman@suse.de>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: Mel Gorman <mgorman@suse.de>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Colin King <colin.king@canonical.com>,
+	Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
+	Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
+	Christoph Lameter <cl@linux.com>,
+	Pekka Enberg <penberg@kernel.org>,
+	Rik van Riel <riel@redhat.com>,
+	Johannes Weiner <hannes@cmpxchg.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-mm <linux-mm@kvack.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: David Rientjes <rientjes@google.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bedivere.hansenpartnership.com ([66.63.167.143]:59356 "EHLO
+	bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755635Ab1EKUxQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 May 2011 16:53:16 -0400
+In-Reply-To: <alpine.DEB.2.00.1105111314310.9346@chino.kir.corp.google.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 11 May 2011, Mel Gorman wrote:
+On Wed, 2011-05-11 at 13:38 -0700, David Rientjes wrote:
+> On Wed, 11 May 2011, Mel Gorman wrote:
+> 
+> > To avoid locking and per-cpu overhead, SLUB optimisically uses
+> > high-order allocations up to order-3 by default and falls back to
+> > lower allocations if they fail. While care is taken that the caller
+> > and kswapd take no unusual steps in response to this, there are
+> > further consequences like shrinkers who have to free more objects to
+> > release any memory. There is anecdotal evidence that significant time
+> > is being spent looping in shrinkers with insufficient progress being
+> > made (https://lkml.org/lkml/2011/4/28/361) and keeping kswapd awake.
+> > 
+> > SLUB is now the default allocator and some bug reports have been
+> > pinned down to SLUB using high orders during operations like
+> > copying large amounts of data. SLUBs use of high-orders benefits
+> > applications that are sized to memory appropriately but this does not
+> > necessarily apply to large file servers or desktops.  This patch
+> > causes SLUB to use order-0 pages like SLAB does by default.
+> > There is further evidence that this keeps kswapd's usage lower
+> > (https://lkml.org/lkml/2011/5/10/383).
+> > 
+> 
+> This is going to severely impact slub's performance for applications on 
+> machines with plenty of memory available where fragmentation isn't a 
+> concern when allocating from caches with large object sizes (even 
+> changing the min order of kamlloc-256 from 1 to 0!) by default for users 
+> who don't use slub_max_order=3 on the command line.  SLUB relies heavily 
+> on allocating from the cpu slab and freeing to the cpu slab to avoid the 
+> slowpaths, so higher order slabs are important for its performance.
+> 
+> I can get numbers for a simple netperf TCP_RR benchmark with this change 
+> applied to show the degradation on a server with >32GB of RAM with this 
+> patch applied.
+> 
+> It would be ideal if this default could be adjusted based on the amount of 
+> memory available in the smallest node to determine whether we're concerned 
+> about making higher order allocations.  (Using the smallest node as a 
+> metric so that mempolicies and cpusets don't get unfairly biased against.)  
+> With the previous changes in this patchset, specifically avoiding waking 
+> kswapd and doing compaction for the higher order allocs before falling 
+> back to the min order, it shouldn't be devastating to try an order-3 alloc 
+> that will fail quickly.
 
-> diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-> index 9f8a97b..057f1e2 100644
-> --- a/mm/page_alloc.c
-> +++ b/mm/page_alloc.c
-> @@ -1972,6 +1972,7 @@ gfp_to_alloc_flags(gfp_t gfp_mask)
->  {
->  	int alloc_flags = ALLOC_WMARK_MIN | ALLOC_CPUSET;
->  	const gfp_t wait = gfp_mask & __GFP_WAIT;
-> +	const gfp_t can_wake_kswapd = !(gfp_mask & __GFP_NO_KSWAPD);
->  
->  	/* __GFP_HIGH is assumed to be the same as ALLOC_HIGH to save a branch. */
->  	BUILD_BUG_ON(__GFP_HIGH != (__force gfp_t) ALLOC_HIGH);
-> @@ -1984,7 +1985,7 @@ gfp_to_alloc_flags(gfp_t gfp_mask)
->  	 */
->  	alloc_flags |= (__force int) (gfp_mask & __GFP_HIGH);
->  
-> -	if (!wait) {
-> +	if (!wait && can_wake_kswapd) {
->  		/*
->  		 * Not worth trying to allocate harder for
->  		 * __GFP_NOMEMALLOC even if it can't schedule.
-> diff --git a/mm/slub.c b/mm/slub.c
-> index 98c358d..1071723 100644
-> --- a/mm/slub.c
-> +++ b/mm/slub.c
-> @@ -1170,7 +1170,8 @@ static struct page *allocate_slab(struct kmem_cache *s, gfp_t flags, int node)
->  	 * Let the initial higher-order allocation fail under memory pressure
->  	 * so we fall-back to the minimum order allocation.
->  	 */
-> -	alloc_gfp = (flags | __GFP_NOWARN | __GFP_NORETRY | __GFP_NO_KSWAPD) & ~__GFP_NOFAIL;
-> +	alloc_gfp = (flags | __GFP_NOWARN | __GFP_NORETRY | __GFP_NO_KSWAPD) &
-> +			~(__GFP_NOFAIL | __GFP_WAIT);
+So my testing has shown that simply booting the kernel with
+slub_max_order=0 makes the hang I'm seeing go away.  This definitely
+implicates the higher order allocations in the kswapd problem.  I think
+it would be wise not to make it the default until we can sort out the
+root cause.
 
-__GFP_NORETRY is a no-op without __GFP_WAIT.
+James
 
->  
->  	page = alloc_slab_page(alloc_gfp, node, oo);
->  	if (unlikely(!page)) {
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+
+
