@@ -1,66 +1,44 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] debugfs: remove unused htree_dump "-l" argument
-Date: Wed, 11 May 2011 11:46:19 -0500
-Message-ID: <4DCABD5B.8040403@redhat.com>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [PATCH 0/3] Rewrite ext4_page_mkwrite, fix fs freezing
+Date: Wed, 11 May 2011 09:48:36 -0700
+Message-ID: <20110511164836.GG18929@tux1.beaverton.ibm.com>
+References: <1305066574-1573-1-git-send-email-jack@suse.cz> <20110511003012.GC6933@thunk.org> <20110511092752.GA5057@quack.suse.cz>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Ted Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52628 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753791Ab1EKQqV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 May 2011 12:46:21 -0400
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p4BGkLph017030
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Wed, 11 May 2011 12:46:21 -0400
-Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p4BGkJSh014345
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 11 May 2011 12:46:20 -0400
+Received: from e38.co.us.ibm.com ([32.97.110.159]:38721 "EHLO
+	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757740Ab1EKQss (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 May 2011 12:48:48 -0400
+Content-Disposition: inline
+In-Reply-To: <20110511092752.GA5057@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The long_opt / -l argument was apparently never implemented,
-so remove it and associated argument parsing.
+On Wed, May 11, 2011 at 11:27:52AM +0200, Jan Kara wrote:
+> On Tue 10-05-11 20:30:12, Ted Tso wrote:
+> > On Wed, May 11, 2011 at 12:29:31AM +0200, Jan Kara wrote:
+> > > 
+> > >   following three patches reimplement ext4_page_mkwrite() so that it returns
+> > > locked pages (which is necessary for stable pages work and also for fixing of
+> > > freezing code). As a bonus we also avoid taking i_alloc_sem as it's not
+> > > necessary and use generic block_page_mkwrite() helper. The common delalloc
+> > > path should be more straightforward now.
+> > 
+> > How does this relate to Darrick Wong's patches?  Are your patches in
+> > addition to or instead of his?
+>   It's in addition to those (although with my patches, a generic change to
+> block_page_mkwrite() would be enough for ext4). If you plan to merge those
+> now, I can rediff on top of those patches.
 
-This slightly changes the (undocumented) behavior because it
-no longer defaults to cwd if no filespec is specified...
+Just to be clear, your new __block_page_mkwrite still needs a patch to call
+wait_on_page_writeback to provide stable page writes, correct?
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+I think we'd still need a wait_on_page_writeback for the "all buffers are
+mapped" VM_FAULT_LOCKED exit from ext4_page_mkwrite?
 
-diff --git a/debugfs/htree.c b/debugfs/htree.c
-index 08f9749..b829e25 100644
---- a/debugfs/htree.c
-+++ b/debugfs/htree.c
-@@ -197,8 +197,6 @@ void do_htree_dump(int argc, char *argv[])
- {
- 	ext2_ino_t	ino;
- 	struct ext2_inode inode;
--	int		c;
--	int		long_opt = 0;
- 	blk64_t		blk;
- 	char		*buf = NULL;
- 	struct 		ext2_dx_root_info  *rootnode;
-@@ -211,28 +209,7 @@ void do_htree_dump(int argc, char *argv[])
- 
- 	pager = open_pager();
- 
--	reset_getopt();
--	while ((c = getopt (argc, argv, "l")) != EOF) {
--		switch (c) {
--		case 'l':
--			long_opt++;
--			break;
--		default:
--			goto print_usage;
--		}
--	}
--
--	if (argc > optind+1) {
--	print_usage:
--		com_err(0, 0, "Usage: htree_dump [-l] file");
--		goto errout;
--	}
+--D
