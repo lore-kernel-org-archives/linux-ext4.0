@@ -1,120 +1,189 @@
-From: "Amir G." <amir73il@users.sourceforge.net>
-Subject: Re: [PATCH 0/3] Rewrite ext4_page_mkwrite, fix fs freezing
-Date: Wed, 11 May 2011 13:15:36 +0300
-Message-ID: <BANLkTik7pmNpiWR4jZAZALf58S+015dYAw@mail.gmail.com>
-References: <1305066574-1573-1-git-send-email-jack@suse.cz>
-	<BANLkTinLxrarrb0W2eA-=ZM=2LbA33qiZA@mail.gmail.com>
-	<20110511094311.GB5057@quack.suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/5] jbd2: Pass extra bool parameter in journal
+ routines to specify if its ok to fail the journal transaction allocation.
+Date: Wed, 11 May 2011 17:54:47 +0200
+Message-ID: <20110511155447.GH5057@quack.suse.cz>
+References: <BANLkTinNUxt_Bj0JErLVDbh=73JHzzS9=w@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20110511094311.GB5057@quack.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>,
+	Theodore Ts'o <tytso@mit.edu>
+To: Manish Katiyar <mkatiyar@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:32827 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755413Ab1EKPyt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 May 2011 11:54:49 -0400
+Content-Disposition: inline
+In-Reply-To: <BANLkTinNUxt_Bj0JErLVDbh=73JHzzS9=w@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 11, 2011 at 12:43 PM, Jan Kara <jack@suse.cz> wrote:
-> =A0Hi Amir,
->
-> On Wed 11-05-11 10:33:17, Amir G. wrote:
->> Can you provide a bit of a wider scope review of how this related to=
- the
->> work on stable pages.
-> =A0It is related in the sense that Darrick had to return locked page =
-from
-> ext4_page_mkwrite() to avoid races and the result (although working) =
-is
-> really like scratching your left ear with your right hand (not sure i=
-f
-> English has this idiom ;). So with my patches, what Darrick needs to =
-do is
-> simply achieved by updating block_page_mkwrite() (__block_page_mkwrit=
-e() in
-> fact).
->
->> For example, when to the pages get unlocked?
-> =A0That's handled by mm code in mm/memory.c. You can read do_wp_page(=
-) but
-> it's not a light reading ;)
+  Hi,
 
-This is why I asked for the cheat sheet ;-)
+  sorry I got to your patches with a delay. One general note - please do
+not attach patches. It is enough to have them in the email...
 
->
->> If the pages supposed to be stable during writeback, how is this rel=
-ated
->> to returning locked pages from page_mkwrite?
-> =A0Returning locked page is needed to avoid races with page writeback=
- - for
-> stable pages we want to do wait_on_page_writeback() to be sure that t=
-here's
-> no IO happening while we make the page writeable for user. But once w=
-e
-> release page lock, writepage can come and start the writeback. The ba=
-sic
-> scheme of the race we want to avoid is:
-> =A0do_wp_page()
-> =A0 =A0ext4_page_mkwrite()
-> =A0 =A0 =A0wait_on_page_writeback()
-> =A0 =A0 =A0unlock_page()
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0clear_page_dirty_for_io()
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0page_mkclean()
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0writepage()
-> =A0 =A0maybe_mkwrite()
->
-> Because this results in writeable page under writeback... We have to =
-make
-> sure page_mkclean() happens *after* maybe_mkwrite() from do_wp_page()=
- in
-> this scenario.
->
->> Is the page going to stay locked until writeback?
-> =A0No, until the page fault is finished.
->
->> Do I understand correctly that a page will be marked read-only after
->> writeback completes, so page_mkwrite will be called again on next wr=
-ite?
-> =A0Page is marked read-only before writeback is started in
-> clear_page_dirty_for_io().
+On Sun 24-04-11 17:10:41, Manish Katiyar wrote:
+> Pass extra bool parameter in journal routines to specify if its ok to
+> fail the journal transaction allocation. If 'true' is passed
+> transaction allocation is done through GFP_KERNEL  and ENOMEM is
+> returned else GFP_NOFS is used.
+  Please, do not mix error handling with gfp masks. Instead just rename
+jbd2__journal_start() to jbd2_journal_start() and change gfp_mask parameter
+to "bool errok". Use GFP_NOFS gfp mask for start_this_handle(). Noone
+uses jbd2__journal_start() and it was mainly added to make it possible to
+specify that start_this_handle() can fail but IMHO it's a hack.
 
-OK. that makes sense. I wasn't sure my move-on-write hook,
-which is called from ext4_page_mkwrite() is going to be called on every
-writeback.
-The use case is:
-data =3D mmap(file);
-data[0] =3D 1;
-take snapshot 1;
-data[0] =3D 2;
-take snapshot 2;
-data[0] =3D 3;
-=2E..
+Also your patch series should be bisectable - that means it must compile
+and run after any of the patches. So you cannot really change
+jbd2_journal_start() prototype without changing all the filesystems using
+it. In this case, just include in this patch a simple change for ext4 and
+ocfs2 to pass 'false' in the additional argument.
 
-That use case doesn't specify when writeback of first page of file happ=
-ens
-and I don't care which version of data[0] is seen by the snapshots, as =
-long
-as the snapshot view is internally consistent (it doesn't change over t=
-ime or
-after reboot).
+								Honza
 
-So if ext4_page_mkwrite() is called after every writeback and the page =
-is stable
-during writeback, snapshots should be OK.
+> Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+> ---
+>  fs/jbd2/transaction.c |   12 +++++++-----
+>  include/linux/jbd2.h  |    4 ++--
+>  2 files changed, 9 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> index 05fa77a..b02d6a4 100644
+> --- a/fs/jbd2/transaction.c
+> +++ b/fs/jbd2/transaction.c
+> @@ -349,9 +349,10 @@ handle_t *jbd2__journal_start(journal_t *journal,
+> int nblocks, int gfp_mask)
+>  EXPORT_SYMBOL(jbd2__journal_start);
+> 
+> 
+> -handle_t *jbd2_journal_start(journal_t *journal, int nblocks)
+> +handle_t *jbd2_journal_start(journal_t *journal, int nblocks, bool errok)
+>  {
+> -	return jbd2__journal_start(journal, nblocks, GFP_NOFS);
+> +	return jbd2__journal_start(journal, nblocks,
+> +				   errok ? GFP_KERNEL : GFP_NOFS);
+>  }
+>  EXPORT_SYMBOL(jbd2_journal_start);
+> 
+> @@ -483,9 +484,10 @@ int jbd2__journal_restart(handle_t *handle, int
+> nblocks, int gfp_mask)
+>  EXPORT_SYMBOL(jbd2__journal_restart);
+> 
+> 
+> -int jbd2_journal_restart(handle_t *handle, int nblocks)
+> +int jbd2_journal_restart(handle_t *handle, int nblocks, bool errok)
+>  {
+> -	return jbd2__journal_restart(handle, nblocks, GFP_NOFS);
+> +	return jbd2__journal_restart(handle, nblocks,
+> +				     errok ? GFP_KERNEL : GFP_NOFS);
+>  }
+>  EXPORT_SYMBOL(jbd2_journal_restart);
+> 
+> @@ -1436,7 +1438,7 @@ int jbd2_journal_force_commit(journal_t *journal)
+>  	handle_t *handle;
+>  	int ret;
+> 
+> -	handle = jbd2_journal_start(journal, 1);
+> +	handle = jbd2_journal_start(journal, 1, false);
+>  	if (IS_ERR(handle)) {
+>  		ret = PTR_ERR(handle);
+>  	} else {
+> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> index a32dcae..a64aced 100644
+> --- a/include/linux/jbd2.h
+> +++ b/include/linux/jbd2.h
+> @@ -1103,9 +1103,9 @@ static inline handle_t *journal_current_handle(void)
+>   * Register buffer modifications against the current transaction.
+>   */
+> 
+> -extern handle_t *jbd2_journal_start(journal_t *, int nblocks);
+> +extern handle_t *jbd2_journal_start(journal_t *, int nblocks, bool errok);
+>  extern handle_t *jbd2__journal_start(journal_t *, int nblocks, int gfp_mask);
+> -extern int	 jbd2_journal_restart(handle_t *, int nblocks);
+> +extern int	 jbd2_journal_restart(handle_t *, int nblocks, bool errok);
+>  extern int	 jbd2__journal_restart(handle_t *, int nblocks, int gfp_mask);
+>  extern int	 jbd2_journal_extend (handle_t *, int nblocks);
+>  extern int	 jbd2_journal_get_write_access(handle_t *, struct buffer_head *);
+> -- 
+> 1.7.1
+> 
+> 
+> -- 
+> Thanks -
+> Manish
 
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0Honza
-> --
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> From c9edbd8d1da02ada2615acec3e3083b4669f6d9e Mon Sep 17 00:00:00 2001
+> From: Manish Katiyar <mkatiyar@gmail.com>
+> Date: Sun, 24 Apr 2011 00:14:54 -0700
+> Subject: [PATCH 1/5] Pass extra bool parameter in journal routines to specify if its ok to fail the journal transaction allocation. If 'true' is passed transaction allocation is done through GFP_KERNEL else GFP_NOFS is used.
+> 
+> Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+> ---
+>  fs/jbd2/transaction.c |   12 +++++++-----
+>  include/linux/jbd2.h  |    4 ++--
+>  2 files changed, 9 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> index 05fa77a..b02d6a4 100644
+> --- a/fs/jbd2/transaction.c
+> +++ b/fs/jbd2/transaction.c
+> @@ -349,9 +349,10 @@ handle_t *jbd2__journal_start(journal_t *journal, int nblocks, int gfp_mask)
+>  EXPORT_SYMBOL(jbd2__journal_start);
+>  
+>  
+> -handle_t *jbd2_journal_start(journal_t *journal, int nblocks)
+> +handle_t *jbd2_journal_start(journal_t *journal, int nblocks, bool errok)
+>  {
+> -	return jbd2__journal_start(journal, nblocks, GFP_NOFS);
+> +	return jbd2__journal_start(journal, nblocks,
+> +				   errok ? GFP_KERNEL : GFP_NOFS);
+>  }
+>  EXPORT_SYMBOL(jbd2_journal_start);
+>  
+> @@ -483,9 +484,10 @@ int jbd2__journal_restart(handle_t *handle, int nblocks, int gfp_mask)
+>  EXPORT_SYMBOL(jbd2__journal_restart);
+>  
+>  
+> -int jbd2_journal_restart(handle_t *handle, int nblocks)
+> +int jbd2_journal_restart(handle_t *handle, int nblocks, bool errok)
+>  {
+> -	return jbd2__journal_restart(handle, nblocks, GFP_NOFS);
+> +	return jbd2__journal_restart(handle, nblocks,
+> +				     errok ? GFP_KERNEL : GFP_NOFS);
+>  }
+>  EXPORT_SYMBOL(jbd2_journal_restart);
+>  
+> @@ -1436,7 +1438,7 @@ int jbd2_journal_force_commit(journal_t *journal)
+>  	handle_t *handle;
+>  	int ret;
+>  
+> -	handle = jbd2_journal_start(journal, 1);
+> +	handle = jbd2_journal_start(journal, 1, false);
+>  	if (IS_ERR(handle)) {
+>  		ret = PTR_ERR(handle);
+>  	} else {
+> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> index a32dcae..a64aced 100644
+> --- a/include/linux/jbd2.h
+> +++ b/include/linux/jbd2.h
+> @@ -1103,9 +1103,9 @@ static inline handle_t *journal_current_handle(void)
+>   * Register buffer modifications against the current transaction.
+>   */
+>  
+> -extern handle_t *jbd2_journal_start(journal_t *, int nblocks);
+> +extern handle_t *jbd2_journal_start(journal_t *, int nblocks, bool errok);
+>  extern handle_t *jbd2__journal_start(journal_t *, int nblocks, int gfp_mask);
+> -extern int	 jbd2_journal_restart(handle_t *, int nblocks);
+> +extern int	 jbd2_journal_restart(handle_t *, int nblocks, bool errok);
+>  extern int	 jbd2__journal_restart(handle_t *, int nblocks, int gfp_mask);
+>  extern int	 jbd2_journal_extend (handle_t *, int nblocks);
+>  extern int	 jbd2_journal_get_write_access(handle_t *, struct buffer_head *);
+> -- 
+> 1.7.1
+> 
+
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
