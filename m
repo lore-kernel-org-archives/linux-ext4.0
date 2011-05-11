@@ -1,98 +1,101 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: ext4_ext_convert_to_initialized bug found in extended FSX testing
-Date: Wed, 11 May 2011 00:17:26 -0700
-Message-ID: <4DCA3806.2020609@linux.vnet.ibm.com>
-References: <4DC97C32.2020203@linux.vnet.ibm.com> <BANLkTi=jjVcy9WQvNfYwPVNw-+t4M5WbFw@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 4/4] ext3: Implement delayed allocation on page_mkwrite
+ time
+Date: Wed, 11 May 2011 17:38:41 +0200
+Message-ID: <20110511153841.GG5057@quack.suse.cz>
+References: <1304369816-14545-1-git-send-email-jack@suse.cz>
+ <1304369816-14545-5-git-send-email-jack@suse.cz>
+ <20110502141230.4a7640f9.akpm@linux-foundation.org>
+ <20110502222020.GB14889@quack.suse.cz>
+ <20110502152917.550d2475.akpm@linux-foundation.org>
+ <20110503170948.GE6009@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:36945 "EHLO e4.ny.us.ibm.com"
+Received: from cantor.suse.de ([195.135.220.2]:52237 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754402Ab1EKP6d (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 May 2011 11:58:33 -0400
-Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
-	by e4.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p4B6umoG007734
-	for <linux-ext4@vger.kernel.org>; Wed, 11 May 2011 02:56:48 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p4B7HTE8052864
-	for <linux-ext4@vger.kernel.org>; Wed, 11 May 2011 03:17:29 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p4B7HS5L021357
-	for <linux-ext4@vger.kernel.org>; Wed, 11 May 2011 04:17:29 -0300
-In-Reply-To: <BANLkTi=jjVcy9WQvNfYwPVNw-+t4M5WbFw@mail.gmail.com>
+	id S1756512Ab1EKP6S (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 May 2011 11:58:18 -0400
+Content-Disposition: inline
+In-Reply-To: <20110503170948.GE6009@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 5/10/2011 6:47 PM, Yongqiang Yang wrote:
-> On Wed, May 11, 2011 at 1:56 AM, Allison Henderson
-> <achender@linux.vnet.ibm.com>  wrote:
->> Hi All,
->>
->> We've been trying to get punch hole through some extended fsx tests, and I ran across some other tests that were failing because the test file contained zeros where it shouldn't.  I made this fix to the ext4_ext_convert_to_initialized
->
-> What do you mean zeros here?
-> Some useful data is zeroed?
+On Tue 03-05-11 19:09:48, Jan Kara wrote:
+> On Mon 02-05-11 15:29:17, Andrew Morton wrote:
+> > On Tue, 3 May 2011 00:20:20 +0200
+> > Jan Kara <jack@suse.cz> wrote:
+> > > On Mon 02-05-11 14:12:30, Andrew Morton wrote:
+> > > > On Mon,  2 May 2011 22:56:56 +0200
+> > > > Jan Kara <jack@suse.cz> wrote:
+> > > > 
+> > > > > So far, ext3 was allocating necessary blocks for mmapped writes when
+> > > > > writepage() was called. There are several issues with this. The worst
+> > > > > being that user is allowed to arbitrarily exceed disk quotas because
+> > > > > writepage() is called from flusher thread context (which is root) and thus
+> > > > > quota limits are ignored. Another bad consequence is that data is just lost
+> > > > > if we find there's no space on the filesystem during ->writepage() time.
+> > > > > 
+> > > > > We solve these issues by implementing block reservation in page_mkwrite()
+> > > > > callback. We don't want to really allocate blocks on page_mkwrite() time
+> > > > > because for random writes via mmap (as seen for example with applications using
+> > > > > BerkeleyDB) it results in much more fragmented files and thus much worse
+> > > > > performance. So we allocate indirect blocks and reserve space for data block in
+> > > > > page_mkwrite() and do the allocation of data block from writepage().
+> > > > 
+> > > > Yes, instantiating the metadata and accounting the data is a good
+> > > > approach.  The file layout will be a bit suboptimal, but surely that
+> > > > will be a minor thing.
+> > > > 
+> > > > But boy, it's a complicated patch!  Are we really sure that we want to
+> > > > make changes this extensive to our antiquated old fs?  Or do we just
+> > > > say "yeah, it's broken with quotas - use ext4"?
+> > >   The patch isn't trivial, I agree (although it's mostly straightforward).
+> > > Regarding telling users to switch to ext4 - it seems a bit harsh to me
+> > > to ask people to switch to ext4 as a response to a (possibly security)
+> > > issue they uncover. Because for most admins switching to ext4 will require
+> > > some non-trivial testing I presume. Of course, the counterweight is the
+> > > possibility of new bugs introduced to the code by my patch.
+> > 
+> > Yes.
+> > 
+> > > But after some
+> > > considerations I've decided it's worth it and and fixed the bug...
+> > 
+> > Well.  How did you come to that decision?
+>   So my thoughts were: If a company runs a hosting or similar service and
+> some load either inadvertedly or even maliciously triggers this bug, your
+> systems can be DOSed. That's bad and you need to fix that ASAP. From my
+> experience with our SLE customers, they are willing to listen to advices
+> such as fs choice when they plan a system deployment. After that they
+> vehemently refuse any major change (and fs driver change is a major one).
+> So I'm quite certain they'd rather accept this largish ext3 change.
+> Finally, admittedly, I didn't think the patch will end up so large.
+> 
+> Looking into the patch, I could split off some cleanups and code
+> reorganizations which are 20-30% of the patch but it probably does not make
+> sense to split it more. What I think is a plus of the patch is that there
+> are only two code paths that really change - ext3_get_blocks() has two new
+> cases how it is called (to allocate only indirect blocks and to allocate
+> already reserved data block) and trucate path which has to do more work to
+> check whether indirect block can be removed.
+>   
+> > Are real users hurting from this problem?
+>   I've got a report of this from NEC
+> (http://ns3.spinics.net/lists/linux-ext4/msg20239.html) and OpenVZ people
+> were also concerned
+> (http://ns3.spinics.net/lists/linux-ext4/msg20288.html). I think there was
+> one more report of this problem but I can't find it now. So yes, there are
+> users who care.
+> 
+> >  What's the real-world case for fixing it?
+>   Sorry, I don't understand the question (or how it is different from the
+> previous one).
+  Andrew, does this change your opinion in any way?
 
-Oh sorry, I phrased that wrong.  The test was failing because it did not 
-contain zeros when it should have.  I traced it down to a map write 
-operation that was trying to write data in an extent that had been 
-created unwritten by a previous fallocate.  The unwritten extent had to 
-be split, but the last part of the extent was not zero'd out all the 
-way, so it was causing some erroneous data to show up after the region 
-that was being written.  This fix appears to correct it though.
-
-Allison Henderson
-
->
-> and the test has been running smooth for about an hour now.
-> Yongqiang, this one looks like it may have been associated with the
-> split extents clean up patch.  Would you mind taking a look at this
-> fix and giving it your ok if it looks good?  Thx!
->>
->> Signed-off-by: Allison Henderson<achender@us.ibm.com>
->> ---
->> :100644 100644 e363f21... ce69450... M  fs/ext4/extents.c
->>   fs/ext4/extents.c |    3 ++-
->>   1 files changed, 2 insertions(+), 1 deletions(-)
->>
->> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
->> index e363f21..ce69450 100644
->> --- a/fs/ext4/extents.c
->> +++ b/fs/ext4/extents.c
->> @@ -2819,7 +2819,8 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
->>                         /* case 3 */
->>                         zero_ex.ee_block =
->>                                          cpu_to_le32(map->m_lblk + map->m_len);
->> -                       zero_ex.ee_len = cpu_to_le16(allocated - map->m_len);
->> +                       zero_ex.ee_len = cpu_to_le16(ee_len -
->> +                                               allocated - map->m_len);
-> The logic is that we splits [ee_block, ee_block + ee_len) into
-> [ee_block, map->m_blk) that is uninitialized and [map->m_blk, ee_block
-> + ee_len) that is initialized.   We need to zero [map->m_lblk +
-> map->m_len, ee_block + ee_len).
-> and [map->m_lblk, map->m_lblk + map->m_len) is zeroed by upper layer
-> because of MAP_NEW flag.
->
-> Right logic?
->
->
-> I can not see the error and the meaning of ee_len - allocated - map->m_len.
->
-> Thanks,
-> Yongqiang.
->
->
->>                         ext4_ext_store_pblock(&zero_ex,
->>                                 ext4_ext_pblock(ex) + map->m_lblk - ee_block);
->>                         err = ext4_ext_zeroout(inode,&zero_ex);
->> --
->> 1.7.1
->>
->>
->
->
->
-
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
