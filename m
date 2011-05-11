@@ -1,225 +1,69 @@
-From: Surbhi Palande <surbhi.palande@canonical.com>
-Subject: Re: [PATCH v3] Adding support to freeze and unfreeze a journal
-Date: Wed, 11 May 2011 10:06:43 +0300
-Message-ID: <4DCA3583.7010904@canonical.com>
-References: <4DC7F0E4.5070507@canonical.com> <1304952692-3858-1-git-send-email-surbhi.palande@canonical.com> <4DC806E9.1070806@redhat.com>
-Reply-To: surbhi.palande@canonical.com
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH 4/4] ext3: Implement delayed allocation on page_mkwrite
+ time
+Date: Wed, 11 May 2011 12:52:07 -0700
+Message-ID: <20110511125207.58d7e9d0.akpm@linux-foundation.org>
+References: <1304369816-14545-1-git-send-email-jack@suse.cz>
+	<1304369816-14545-5-git-send-email-jack@suse.cz>
+	<20110502141230.4a7640f9.akpm@linux-foundation.org>
+	<20110502222020.GB14889@quack.suse.cz>
+	<20110502152917.550d2475.akpm@linux-foundation.org>
+	<20110503170948.GE6009@quack.suse.cz>
+	<20110511153841.GG5057@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: jack@suse.cz, marco.stornelli@gmail.com, adilger.kernel@dilger.ca,
-	toshi.okajima@jp.fujitsu.com, tytso@mit.edu,
-	m.mizuma@jp.fujitsu.com, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <4DC806E9.1070806@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:58207 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750814Ab1EKTwN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 May 2011 15:52:13 -0400
+In-Reply-To: <20110511153841.GG5057@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Eric,
+On Wed, 11 May 2011 17:38:41 +0200
+Jan Kara <jack@suse.cz> wrote:
 
-On 05/09/2011 06:23 PM, Eric Sandeen wrote:
-> On 5/9/11 9:51 AM, Surbhi Palande wrote:
->> The journal should be frozen when a F.S freezes. What this means is that till
->> the F.S is thawed again, no new transactions should be accepted by the
->> journal. When the F.S thaws, inturn it should thaw the journal and this should
->> allow the journal to resume accepting new transactions.
->> While the F.S has frozen the journal, the clients of journal on calling
->> jbd2_journal_start() will sleep on a wait queue. Thawing the journal will wake
->> up the sleeping clients and journalling can progress normally.
->
-> Can I ask how this was tested?
+> > > > considerations I've decided it's worth it and and fixed the bug...
+> > > 
+> > > Well.  How did you come to that decision?
+> >   So my thoughts were: If a company runs a hosting or similar service and
+> > some load either inadvertedly or even maliciously triggers this bug, your
+> > systems can be DOSed. That's bad and you need to fix that ASAP. From my
+> > experience with our SLE customers, they are willing to listen to advices
+> > such as fs choice when they plan a system deployment. After that they
+> > vehemently refuse any major change (and fs driver change is a major one).
+> > So I'm quite certain they'd rather accept this largish ext3 change.
+> > Finally, admittedly, I didn't think the patch will end up so large.
+> > 
+> > Looking into the patch, I could split off some cleanups and code
+> > reorganizations which are 20-30% of the patch but it probably does not make
+> > sense to split it more. What I think is a plus of the patch is that there
+> > are only two code paths that really change - ext3_get_blocks() has two new
+> > cases how it is called (to allocate only indirect blocks and to allocate
+> > already reserved data block) and trucate path which has to do more work to
+> > check whether indirect block can be removed.
+> >   
+> > > Are real users hurting from this problem?
+> >   I've got a report of this from NEC
+> > (http://ns3.spinics.net/lists/linux-ext4/msg20239.html) and OpenVZ people
+> > were also concerned
+> > (http://ns3.spinics.net/lists/linux-ext4/msg20288.html). I think there was
+> > one more report of this problem but I can't find it now. So yes, there are
+> > users who care.
+> > 
+> > >  What's the real-world case for fixing it?
+> >   Sorry, I don't understand the question (or how it is different from the
+> > previous one).
+>   Andrew, does this change your opinion in any way?
 
-Yes! I did the following on an ext4 fs mount:
-1. fsfreeze -f $MNT
-2. dd if=/dev/zero of=$MNT/file count=10 bs=1024 &
-3. sync
-4. fsfreeze -u $MNT
+I didn't actually have an opinion - I was checking, as usual, that the
+proposed change passes the cost-vs-benefit test.
 
-If the dd blocks on the start_handle, then the page cache is clean and 
-sync should have nothing to write and everything will work fine. But 
-otherwise this should sequence should create a deadlock.
-
-I have attempted to create a patch for xfs-test. Shall send it out as a 
-reply to this email soon!
-
-Warm Regards,
-Surbhi.
-
-
-
->
-> Ideally anything you found useful for testing should probably be integrated
-> into the xfstests test suite so that we don't regresss in the future.
->
-> thanks,
-> -Eric
->
->> Signed-off-by: Surbhi Palande<surbhi.palande@canonical.com>
->> ---
->> Changes since the last patch:
->> * Changed to the shorter forms of expressions eg: x |= y
->> * removed the unnecessary barrier
->>
->>   fs/ext4/super.c       |   20 ++++++--------------
->>   fs/jbd2/journal.c     |    1 +
->>   fs/jbd2/transaction.c |   42 ++++++++++++++++++++++++++++++++++++++++++
->>   include/linux/jbd2.h  |   10 ++++++++++
->>   4 files changed, 59 insertions(+), 14 deletions(-)
->>
->> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
->> index 8553dfb..796aa4c 100644
->> --- a/fs/ext4/super.c
->> +++ b/fs/ext4/super.c
->> @@ -4179,23 +4179,15 @@ static int ext4_freeze(struct super_block *sb)
->>
->>   	journal = EXT4_SB(sb)->s_journal;
->>
->> -	/* Now we set up the journal barrier. */
->> -	jbd2_journal_lock_updates(journal);
->> -
->> +	error = jbd2_journal_freeze(journal);
->>   	/*
->> -	 * Don't clear the needs_recovery flag if we failed to flush
->> +	 * Don't clear the needs_recovery flag if we failed to freeze
->>   	 * the journal.
->>   	 */
->> -	error = jbd2_journal_flush(journal);
->> -	if (error<  0)
->> -		goto out;
->> -
->> -	/* Journal blocked and flushed, clear needs_recovery flag. */
->> -	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
->> -	error = ext4_commit_super(sb, 1);
->> -out:
->> -	/* we rely on s_frozen to stop further updates */
->> -	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
->> +	if (error>= 0) {
->> +		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
->> +		error = ext4_commit_super(sb, 1);
->> +	}
->>   	return error;
->>   }
->>
->> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
->> index e0ec3db..5e46333 100644
->> --- a/fs/jbd2/journal.c
->> +++ b/fs/jbd2/journal.c
->> @@ -842,6 +842,7 @@ static journal_t * journal_init_common (void)
->>   	init_waitqueue_head(&journal->j_wait_checkpoint);
->>   	init_waitqueue_head(&journal->j_wait_commit);
->>   	init_waitqueue_head(&journal->j_wait_updates);
->> +	init_waitqueue_head(&journal->j_wait_frozen);
->>   	mutex_init(&journal->j_barrier);
->>   	mutex_init(&journal->j_checkpoint_mutex);
->>   	spin_lock_init(&journal->j_revoke_lock);
->> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
->> index 05fa77a..b040293 100644
->> --- a/fs/jbd2/transaction.c
->> +++ b/fs/jbd2/transaction.c
->> @@ -171,6 +171,17 @@ repeat:
->>   				journal->j_barrier_count == 0);
->>   		goto repeat;
->>   	}
->> +	/* dont let a new handle start when a journal is frozen.
->> +	 * jbd2_journal_freeze calls jbd2_journal_unlock_updates() only after
->> +	 * the jflags indicate that the journal is frozen. So if the
->> +	 * j_barrier_count is 0, then check if this was made 0 by the freezing
->> +	 * process
->> +	 */
->> +	if (journal->j_flags&  JBD2_FROZEN) {
->> +		read_unlock(&journal->j_state_lock);
->> +		jbd2_check_frozen(journal);
->> +		goto repeat;
->> +	}
->>
->>   	if (!journal->j_running_transaction) {
->>   		read_unlock(&journal->j_state_lock);
->> @@ -489,6 +500,37 @@ int jbd2_journal_restart(handle_t *handle, int nblocks)
->>   }
->>   EXPORT_SYMBOL(jbd2_journal_restart);
->>
->> +int jbd2_journal_freeze(journal_t *journal)
->> +{
->> +	int error = 0;
->> +	/* Now we set up the journal barrier. */
->> +	jbd2_journal_lock_updates(journal);
->> +
->> +	/*
->> +	 * Don't clear the needs_recovery flag if we failed to flush
->> +	 * the journal.
->> +	 */
->> +	error = jbd2_journal_flush(journal);
->> +	if (error>= 0) {
->> +		write_lock(&journal->j_state_lock);
->> +		journal->j_flags |= JBD2_FROZEN;
->> +		write_unlock(&journal->j_state_lock);
->> +	}
->> +	jbd2_journal_unlock_updates(journal);
->> +	return error;
->> +}
->> +EXPORT_SYMBOL(jbd2_journal_freeze);
->> +
->> +void jbd2_journal_thaw(journal_t * journal)
->> +{
->> +	write_lock(&journal->j_state_lock);
->> +	journal->j_flags&= ~JBD2_FROZEN;
->> +	write_unlock(&journal->j_state_lock);
->> +	wake_up(&journal->j_wait_frozen);
->> +}
->> +EXPORT_SYMBOL(jbd2_journal_thaw);
->> +
->> +
->>   /**
->>    * void jbd2_journal_lock_updates () - establish a transaction barrier.
->>    * @journal:  Journal to establish a barrier on.
->> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
->> index a32dcae..c7885b2 100644
->> --- a/include/linux/jbd2.h
->> +++ b/include/linux/jbd2.h
->> @@ -718,6 +718,7 @@ jbd2_time_diff(unsigned long start, unsigned long end)
->>    * @j_wait_checkpoint:  Wait queue to trigger checkpointing
->>    * @j_wait_commit: Wait queue to trigger commit
->>    * @j_wait_updates: Wait queue to wait for updates to complete
->> + * @j_wait_frozen: Wait queue to wait for journal to thaw
->>    * @j_checkpoint_mutex: Mutex for locking against concurrent checkpoints
->>    * @j_head: Journal head - identifies the first unused block in the journal
->>    * @j_tail: Journal tail - identifies the oldest still-used block in the
->> @@ -835,6 +836,9 @@ struct journal_s
->>   	/* Wait queue to wait for updates to complete */
->>   	wait_queue_head_t	j_wait_updates;
->>
->> +	/* Wait queue to wait for journal to thaw*/
->> +	wait_queue_head_t	j_wait_frozen;
->> +
->>   	/* Semaphore for locking against concurrent checkpoints */
->>   	struct mutex		j_checkpoint_mutex;
->>
->> @@ -1013,7 +1017,11 @@ struct journal_s
->>   #define JBD2_ABORT_ON_SYNCDATA_ERR	0x040	/* Abort the journal on file
->>   						 * data write error in ordered
->>   						 * mode */
->> +#define JBD2_FROZEN	0x080   /* Journal thread is frozen as the filesystem is frozen */
->> +
->>
->> +#define jbd2_check_frozen(journal)	\
->> +		wait_event(journal->j_wait_frozen, (journal->j_flags&  JBD2_FROZEN))
->>   /*
->>    * Function declarations for the journaling transaction and buffer
->>    * management
->> @@ -1121,6 +1129,8 @@ extern void	 jbd2_journal_invalidatepage(journal_t *,
->>   				struct page *, unsigned long);
->>   extern int	 jbd2_journal_try_to_free_buffers(journal_t *, struct page *, gfp_t);
->>   extern int	 jbd2_journal_stop(handle_t *);
->> +extern int	 jbd2_journal_freeze(journal_t *);
->> +extern void	 jbd2_journal_thaw(journal_t *);
->>   extern int	 jbd2_journal_flush (journal_t *);
->>   extern void	 jbd2_journal_lock_updates (journal_t *);
->>   extern void	 jbd2_journal_unlock_updates (journal_t *);
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Yes, if real users are hitting the problem in real life then that
+strengthens the case for fixing it.
 
