@@ -1,80 +1,59 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] debugfs: document htree-related commands in man page
-Date: Wed, 11 May 2011 11:49:07 -0500
-Message-ID: <4DCABE03.7040300@redhat.com>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [PATCHSET v3.1 0/7] data integrity: Stabilize pages during
+	writeback for various fses
+Date: Wed, 11 May 2011 11:19:01 -0700
+Message-ID: <20110511181901.GK20579@tux1.beaverton.ibm.com>
+References: <20110509230318.19566.66202.stgit@elm3c44.beaverton.ibm.com> <20110510125124.GD4402@quack.suse.cz>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Tso <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+	Jens Axboe <axboe@kernel.dk>,
+	"Martin K. Petersen" <martin.petersen@oracle.com>,
+	Jeff Layton <jlayton@redhat.com>,
+	Dave Chinner <david@fromorbit.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Dave Hansen <dave@linux.vnet.ibm.com>,
+	Christoph Hellwig <hch@infradead.org>, linux-mm@kvack.org,
+	Chris Mason <chris.mason@oracle.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	linux-scsi <linux-scsi@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, Mingming Cao <mcao@us.ibm.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:29011 "EHLO mx1.redhat.com"
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:34909 "EHLO e3.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753558Ab1EKR17 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 May 2011 13:27:59 -0400
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p4BHRvJw030883
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Wed, 11 May 2011 13:27:59 -0400
-Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id p4BGn749020147
-	(version=TLSv1/SSLv3 cipher=AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 11 May 2011 12:49:08 -0400
+	id S1751331Ab1EKSTF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 May 2011 14:19:05 -0400
+Content-Disposition: inline
+In-Reply-To: <20110510125124.GD4402@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The debugfs commands dirsearch, dx_hash, and htree_dump were
-never documented in the man page.  Do so.
+On Tue, May 10, 2011 at 02:51:24PM +0200, Jan Kara wrote:
+> On Mon 09-05-11 16:03:18, Darrick J. Wong wrote:
+> > I am still chasing down what exactly is broken in ext3.  data=writeback mode
+> > passes with no failures.  data=ordered, however, does not pass; my current
+> > suspicion is that jbd is calling submit_bh on data buffers but doesn't call
+> > page_mkclean to kick the userspace programs off the page before writing it.
+>   Yes, ext3 in data=ordered mode writes pages from
+> journal_commit_transaction() via submit_bh() without clearing page dirty
+> bits thus page_mkclean() is not called for these pages. Frankly, do you
+> really want to bother with adding support for ext2 and ext3? People can use
+> ext4 as a fs driver when they want to start using blk-integrity support.
+> Especially ext2 patch looks really painful and just from a quick look I can
+> see code e.g. in fs/ext2/namei.c which isn't handled by your patch yet.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+Yeah, I agree that ext2 is ugly and ext3/jbd might be more painful.  Are there
+any other code that wants stable pages that's already running with ext3?  In
+this months-long discussion I've heard that encryption and raid also like
+stable pages during writes.  Have those users been broken this whole time, or
+have they been stabilizing pages themselves?
 
-Please feel free to check my manpage-fu, as well as checking
-for accurate descriptions of these commands, thanks...
+I suppose we can cross the "ext3 fails horribly on DIF" bridge when someone
+complains about it.  Possibly we could try to steer them to btrfs.
 
-diff --git a/debugfs/debugfs.8.in b/debugfs/debugfs.8.in
-index 41c73fd..f5deb7a 100644
---- a/debugfs/debugfs.8.in
-+++ b/debugfs/debugfs.8.in
-@@ -187,6 +187,12 @@ master superblock.
- Clear the contents of the inode 
- .IR file .
- .TP
-+.I dirsearch filespec filename
-+Search the directory
-+.I filespec
-+for
-+.IR filename .
-+.TP
- .I dump [-p] filespec out_file
- Dump the contents of the inode 
- .I filespec
-@@ -199,6 +205,16 @@ option is given set the owner, group and permissions information on
- to match 
- .IR filespec .
- .TP
-+.I dx_hash [-h hash_alg] [-s hash_seed] filename
-+Calculate the directory hash of
-+.IR filename .
-+The hash algorithm specified with
-+.I -h
-+may be "legacy" "half_md4" or "tea".
-+The hash seed specified with
-+.I -s
-+must be in UUID format.
-+.TP
- .I dump_extents [-n] [-l] filespec
- Dump the the extent tree of the inode
- .IR filespec .
-@@ -264,6 +280,11 @@ Free the inode specified by
- Print a list of commands understood by 
- .BR debugfs .
- .TP
-+.I htree_dump filespec
-+Dump the hash-indexed directory
-+.IR filespec ,
-+showing its tree structure.
-+.TP
- .I icheck block ...
- Print a listing of the inodes which use the one or more blocks specified
- on the command line.
-
+--D
