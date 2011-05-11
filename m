@@ -1,200 +1,120 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH v2] mke2fs: Allow specifying reserved_ratio via
- mke2fs.conf
-Date: Wed, 11 May 2011 10:06:33 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1105111006190.3666@dhcp-27-109.brq.redhat.com>
-References: <1305064291-14963-1-git-send-email-adityakali@google.com>
+From: "Amir G." <amir73il@users.sourceforge.net>
+Subject: Re: [PATCH 0/3] Rewrite ext4_page_mkwrite, fix fs freezing
+Date: Wed, 11 May 2011 13:15:36 +0300
+Message-ID: <BANLkTik7pmNpiWR4jZAZALf58S+015dYAw@mail.gmail.com>
+References: <1305066574-1573-1-git-send-email-jack@suse.cz>
+	<BANLkTinLxrarrb0W2eA-=ZM=2LbA33qiZA@mail.gmail.com>
+	<20110511094311.GB5057@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: tytso@mit.edu, lczerner@redhat.com, linux-ext4@vger.kernel.org
-To: Aditya Kali <adityakali@google.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:29827 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752916Ab1EKPgx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 May 2011 11:36:53 -0400
-In-Reply-To: <1305064291-14963-1-git-send-email-adityakali@google.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20110511094311.GB5057@quack.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 10 May 2011, Aditya Kali wrote:
+On Wed, May 11, 2011 at 12:43 PM, Jan Kara <jack@suse.cz> wrote:
+> =A0Hi Amir,
+>
+> On Wed 11-05-11 10:33:17, Amir G. wrote:
+>> Can you provide a bit of a wider scope review of how this related to=
+ the
+>> work on stable pages.
+> =A0It is related in the sense that Darrick had to return locked page =
+from
+> ext4_page_mkwrite() to avoid races and the result (although working) =
+is
+> really like scratching your left ear with your right hand (not sure i=
+f
+> English has this idiom ;). So with my patches, what Darrick needs to =
+do is
+> simply achieved by updating block_page_mkwrite() (__block_page_mkwrit=
+e() in
+> fact).
+>
+>> For example, when to the pages get unlocked?
+> =A0That's handled by mm code in mm/memory.c. You can read do_wp_page(=
+) but
+> it's not a light reading ;)
 
-> This patch adds support for specifying 'reserved_ratio' (percent blocks
-> reserved for super user, same as '-m' command line option) in mke2fs.conf.
-> It adds profile_get_double function in profile.c that allows reading
-> floating point values from profile files.
+This is why I asked for the cheat sheet ;-)
 
-The patch looks good, thanks!
+>
+>> If the pages supposed to be stable during writeback, how is this rel=
+ated
+>> to returning locked pages from page_mkwrite?
+> =A0Returning locked page is needed to avoid races with page writeback=
+ - for
+> stable pages we want to do wait_on_page_writeback() to be sure that t=
+here's
+> no IO happening while we make the page writeable for user. But once w=
+e
+> release page lock, writepage can come and start the writeback. The ba=
+sic
+> scheme of the race we want to avoid is:
+> =A0do_wp_page()
+> =A0 =A0ext4_page_mkwrite()
+> =A0 =A0 =A0wait_on_page_writeback()
+> =A0 =A0 =A0unlock_page()
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0clear_page_dirty_for_io()
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0page_mkclean()
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0writepage()
+> =A0 =A0maybe_mkwrite()
+>
+> Because this results in writeable page under writeback... We have to =
+make
+> sure page_mkclean() happens *after* maybe_mkwrite() from do_wp_page()=
+ in
+> this scenario.
+>
+>> Is the page going to stay locked until writeback?
+> =A0No, until the page fault is finished.
+>
+>> Do I understand correctly that a page will be marked read-only after
+>> writeback completes, so page_mkwrite will be called again on next wr=
+ite?
+> =A0Page is marked read-only before writeback is started in
+> clear_page_dirty_for_io().
 
--Lukas
+OK. that makes sense. I wasn't sure my move-on-write hook,
+which is called from ext4_page_mkwrite() is going to be called on every
+writeback.
+The use case is:
+data =3D mmap(file);
+data[0] =3D 1;
+take snapshot 1;
+data[0] =3D 2;
+take snapshot 2;
+data[0] =3D 3;
+=2E..
 
-> 
-> Signed-off-by: Aditya Kali <adityakali@google.com>
-> ---
->  e2fsck/profile.c      |   37 +++++++++++++++++++++++++++++++++++++
->  e2fsck/profile.h      |    5 +++++
->  misc/mke2fs.c         |   26 +++++++++++++++++++++++++-
->  misc/mke2fs.conf.5.in |   12 ++++++++++++
->  tests/mke2fs.conf.in  |    1 +
->  5 files changed, 80 insertions(+), 1 deletions(-)
-> 
-> diff --git a/e2fsck/profile.c b/e2fsck/profile.c
-> index 5e9dc53..327bfb4 100644
-> --- a/e2fsck/profile.c
-> +++ b/e2fsck/profile.c
-> @@ -1596,6 +1596,43 @@ profile_get_uint(profile_t profile, const char *name, const char *subname,
->  	return 0;
->  }
->  
-> +errcode_t
-> +profile_get_double(profile_t profile, const char *name, const char *subname,
-> +		   const char *subsubname, double def_val, double *ret_double)
-> +{
-> +	const char	*value;
-> +	errcode_t	  retval;
-> +	char        *end_value;
-> +	double      double_val;
-> +
-> +	*ret_double = def_val;
-> +	if (profile == 0)
-> +		return 0;
-> +
-> +	retval = profile_get_value(profile, name, subname, subsubname, &value);
-> +	if (retval == PROF_NO_SECTION || retval == PROF_NO_RELATION) {
-> +		*ret_double = def_val;
-> +		return 0;
-> +	} else if (retval)
-> +		return retval;
-> +
-> +	if (value[0] == 0)
-> +		/* Empty string is no good.  */
-> +		return PROF_BAD_INTEGER;
-> +	errno = 0;
-> +	double_val = strtod(value, &end_value);
-> +
-> +	/* Overflow or underflow.  */
-> +	if (errno != 0)
-> +		return PROF_BAD_INTEGER;
-> +	/* Garbage in string.  */
-> +	if (end_value != value + strlen(value))
-> +		return PROF_BAD_INTEGER;
-> +
-> +	*ret_double = double_val;
-> +	return 0;
-> +}
-> +
->  static const char *const conf_yes[] = {
->      "y", "yes", "true", "t", "1", "on",
->      0,
-> diff --git a/e2fsck/profile.h b/e2fsck/profile.h
-> index 0c17732..4cc10eb 100644
-> --- a/e2fsck/profile.h
-> +++ b/e2fsck/profile.h
-> @@ -78,6 +78,11 @@ long profile_get_uint
->  		const char *subsubname, unsigned int def_val,
->  		unsigned int *ret_int);
->  
-> +long profile_get_double
-> +	(profile_t profile, const char *name, const char *subname,
-> +		const char *subsubname, double def_val,
-> +		double *ret_float);
-> +
->  long profile_get_boolean
->  	(profile_t profile, const char *name, const char *subname,
->  			const char *subsubname, int def_val,
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index 23f8c10..313423b 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -1072,6 +1072,18 @@ static int get_int_from_profile(char **fs_types, const char *opt, int def_val)
->  	return ret;
->  }
->  
-> +static double get_double_from_profile(char **fs_types, const char *opt,
-> +				      double def_val)
-> +{
-> +	double ret;
-> +	char **cpp;
-> +
-> +	profile_get_double(profile, "defaults", opt, 0, def_val, &ret);
-> +	for (cpp = fs_types; *cpp; cpp++)
-> +		profile_get_double(profile, "fs_types", *cpp, opt, ret, &ret);
-> +	return ret;
-> +}
-> +
->  static int get_bool_from_profile(char **fs_types, const char *opt, int def_val)
->  {
->  	int ret;
-> @@ -1144,7 +1156,7 @@ static void PRS(int argc, char *argv[])
->  	int		inode_ratio = 0;
->  	int		inode_size = 0;
->  	unsigned long	flex_bg_size = 0;
-> -	double		reserved_ratio = 5.0;
-> +	double		reserved_ratio = -1.0;
->  	int		lsector_size = 0, psector_size = 0;
->  	int		show_version_only = 0;
->  	unsigned long long num_inodes = 0; /* unsigned long long to catch too-large input */
-> @@ -1667,6 +1679,18 @@ profile_error:
->  			EXT3_FEATURE_COMPAT_HAS_JOURNAL;
->  	}
->  
-> +	/* Get reserved_ratio from profile if not specified on cmd line. */
-> +	if (reserved_ratio < 0.0) {
-> +		reserved_ratio = get_double_from_profile(
-> +					fs_types, "reserved_ratio", 5.0);
-> +		if (reserved_ratio > 50 || reserved_ratio < 0) {
-> +			com_err(program_name, 0,
-> +				_("invalid reserved blocks percent - %lf"),
-> +				reserved_ratio);
-> +			exit(1);
-> +		}
-> +	}
-> +
->  	if (fs_param.s_feature_incompat &
->  	    EXT3_FEATURE_INCOMPAT_JOURNAL_DEV) {
->  		reserved_ratio = 0;
-> diff --git a/misc/mke2fs.conf.5.in b/misc/mke2fs.conf.5.in
-> index 2e8b585..0136e39 100644
-> --- a/misc/mke2fs.conf.5.in
-> +++ b/misc/mke2fs.conf.5.in
-> @@ -168,6 +168,13 @@ specify one on the command line, and the filesystem-type
->  specific section of the configuration file does not specify a default
->  inode size.
->  .TP
-> +.I reserved_ratio
-> +This relation specifies the default percentage of filesystem blocks
-> +reserved for the super-user, if the user does not
-> +specify one on the command line, and the filesystem-type
-> +specific section of the configuration file does not specify a default
-> +reserved ratio. This value can be a floating point number.
-> +.TP
->  .I undo_dir
->  This relation specifies the directory where the undo file should be
->  stored.  It can be overridden via the
-> @@ -353,6 +360,11 @@ specify one on the command line.
->  This relation specifies the default inode size if the user does not
->  specify one on the command line.
->  .TP
-> +.I reserved_ratio
-> +This relation specifies the default percentage of filesystem blocks
-> +reserved for the super-user, if the user does not specify one on the command
-> +line.
-> +.TP
->  .I hash_alg
->  This relation specifies the default hash algorithm used for the
->  new filesystems with hashed b-tree directories.  Valid algorithms
-> diff --git a/tests/mke2fs.conf.in b/tests/mke2fs.conf.in
-> index 070d5d5..fbe2e2a 100644
-> --- a/tests/mke2fs.conf.in
-> +++ b/tests/mke2fs.conf.in
-> @@ -3,6 +3,7 @@
->  	blocksize = 4096
->  	inode_size = 256
->  	inode_ratio = 16384
-> +	reserved_ratio = 5.0
->  	enable_periodic_fsck = true
->  	lazy_itable_init = false
->  	default_mntopts = ^acl
-> 
+That use case doesn't specify when writeback of first page of file happ=
+ens
+and I don't care which version of data[0] is seen by the snapshots, as =
+long
+as the snapshot view is internally consistent (it doesn't change over t=
+ime or
+after reboot).
 
--- 
+So if ext4_page_mkwrite() is called after every writeback and the page =
+is stable
+during writeback, snapshots should be OK.
+
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0Honza
+> --
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
+>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
