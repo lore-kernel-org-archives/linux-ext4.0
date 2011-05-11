@@ -1,111 +1,84 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/5] jbd2: Pass extra bool parameter in journal
- routines to specify if its ok to fail the journal transaction allocation.
-Date: Wed, 11 May 2011 17:54:47 +0200
-Message-ID: <20110511155447.GH5057@quack.suse.cz>
-References: <BANLkTinNUxt_Bj0JErLVDbh=73JHzzS9=w@mail.gmail.com>
+Subject: Re: [PATCH 3/5] ocfs2: Update ocfs2 routines to use the updated
+ journal routines to specify gfp_mask for transaction allocation.
+Date: Wed, 11 May 2011 17:56:15 +0200
+Message-ID: <20110511155615.GI5057@quack.suse.cz>
+References: <BANLkTi=H5zs9KnrUtXd=Q4uz3rTFGzfqhg@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>,
-	Theodore Ts'o <tytso@mit.edu>
+Cc: ext4 <linux-ext4@vger.kernel.org>,
+	Manish Katiyar <manish.katiyar@in.ibm.com>,
+	Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>
 To: Manish Katiyar <mkatiyar@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:32827 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:32875 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755413Ab1EKPyt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 May 2011 11:54:49 -0400
+	id S1756197Ab1EKP4R (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 May 2011 11:56:17 -0400
 Content-Disposition: inline
-In-Reply-To: <BANLkTinNUxt_Bj0JErLVDbh=73JHzzS9=w@mail.gmail.com>
+In-Reply-To: <BANLkTi=H5zs9KnrUtXd=Q4uz3rTFGzfqhg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi,
+On Sun 24-04-11 17:15:35, Manish Katiyar wrote:
+> Update ocfs2 routines to use the updated journal routines passing an
+> extra parameter to specify whether transaction allocation can fail or
+> not.
+  This should be included in the first patch. Also I don't think there's a
+need for special helpers since they are called from one / two sites anyway.
 
-  sorry I got to your patches with a delay. One general note - please do
-not attach patches. It is enough to have them in the email...
-
-On Sun 24-04-11 17:10:41, Manish Katiyar wrote:
-> Pass extra bool parameter in journal routines to specify if its ok to
-> fail the journal transaction allocation. If 'true' is passed
-> transaction allocation is done through GFP_KERNEL  and ENOMEM is
-> returned else GFP_NOFS is used.
-  Please, do not mix error handling with gfp masks. Instead just rename
-jbd2__journal_start() to jbd2_journal_start() and change gfp_mask parameter
-to "bool errok". Use GFP_NOFS gfp mask for start_this_handle(). Noone
-uses jbd2__journal_start() and it was mainly added to make it possible to
-specify that start_this_handle() can fail but IMHO it's a hack.
-
-Also your patch series should be bisectable - that means it must compile
-and run after any of the patches. So you cannot really change
-jbd2_journal_start() prototype without changing all the filesystems using
-it. In this case, just include in this patch a simple change for ext4 and
-ocfs2 to pass 'false' in the additional argument.
-
-								Honza
-
+								Honza 
+> 
 > Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
 > ---
->  fs/jbd2/transaction.c |   12 +++++++-----
->  include/linux/jbd2.h  |    4 ++--
->  2 files changed, 9 insertions(+), 7 deletions(-)
+>  fs/ocfs2/journal.c |   16 +++++++++++++---
+>  1 files changed, 13 insertions(+), 3 deletions(-)
 > 
-> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-> index 05fa77a..b02d6a4 100644
-> --- a/fs/jbd2/transaction.c
-> +++ b/fs/jbd2/transaction.c
-> @@ -349,9 +349,10 @@ handle_t *jbd2__journal_start(journal_t *journal,
-> int nblocks, int gfp_mask)
->  EXPORT_SYMBOL(jbd2__journal_start);
-> 
-> 
-> -handle_t *jbd2_journal_start(journal_t *journal, int nblocks)
-> +handle_t *jbd2_journal_start(journal_t *journal, int nblocks, bool errok)
->  {
-> -	return jbd2__journal_start(journal, nblocks, GFP_NOFS);
-> +	return jbd2__journal_start(journal, nblocks,
-> +				   errok ? GFP_KERNEL : GFP_NOFS);
+> diff --git a/fs/ocfs2/journal.c b/fs/ocfs2/journal.c
+> index b141a44..51c60be 100644
+> --- a/fs/ocfs2/journal.c
+> +++ b/fs/ocfs2/journal.c
+> @@ -338,6 +338,16 @@ finally:
+>  	return status;
 >  }
->  EXPORT_SYMBOL(jbd2_journal_start);
 > 
-> @@ -483,9 +484,10 @@ int jbd2__journal_restart(handle_t *handle, int
-> nblocks, int gfp_mask)
->  EXPORT_SYMBOL(jbd2__journal_restart);
-> 
-> 
-> -int jbd2_journal_restart(handle_t *handle, int nblocks)
-> +int jbd2_journal_restart(handle_t *handle, int nblocks, bool errok)
+> +static handle_t *ocfs2_journal_start(journal_t *journal, int blocks)
+> +{
+> +	return jbd2_journal_start(journal, blocks, false);
+> +}
+> +
+> +static int ocfs2_journal_restart(handle_t *handle, int blocks)
+> +{
+> +	return jbd2_journal_restart(handle, blocks, false);
+> +}
+> +
+>  handle_t *ocfs2_start_trans(struct ocfs2_super *osb, int max_buffs)
 >  {
-> -	return jbd2__journal_restart(handle, nblocks, GFP_NOFS);
-> +	return jbd2__journal_restart(handle, nblocks,
-> +				     errok ? GFP_KERNEL : GFP_NOFS);
->  }
->  EXPORT_SYMBOL(jbd2_journal_restart);
+>  	journal_t *journal = osb->journal->j_journal;
+> @@ -353,11 +363,11 @@ handle_t *ocfs2_start_trans(struct ocfs2_super
+> *osb, int max_buffs)
 > 
-> @@ -1436,7 +1438,7 @@ int jbd2_journal_force_commit(journal_t *journal)
->  	handle_t *handle;
->  	int ret;
+>  	/* Nested transaction? Just return the handle... */
+>  	if (journal_current_handle())
+> -		return jbd2_journal_start(journal, max_buffs);
+> +		return ocfs2_journal_start(journal, max_buffs);
 > 
-> -	handle = jbd2_journal_start(journal, 1);
-> +	handle = jbd2_journal_start(journal, 1, false);
+>  	down_read(&osb->journal->j_trans_barrier);
+> 
+> -	handle = jbd2_journal_start(journal, max_buffs);
+> +	handle = ocfs2_journal_start(journal, max_buffs);
 >  	if (IS_ERR(handle)) {
->  		ret = PTR_ERR(handle);
->  	} else {
-> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> index a32dcae..a64aced 100644
-> --- a/include/linux/jbd2.h
-> +++ b/include/linux/jbd2.h
-> @@ -1103,9 +1103,9 @@ static inline handle_t *journal_current_handle(void)
->   * Register buffer modifications against the current transaction.
->   */
+>  		up_read(&osb->journal->j_trans_barrier);
 > 
-> -extern handle_t *jbd2_journal_start(journal_t *, int nblocks);
-> +extern handle_t *jbd2_journal_start(journal_t *, int nblocks, bool errok);
->  extern handle_t *jbd2__journal_start(journal_t *, int nblocks, int gfp_mask);
-> -extern int	 jbd2_journal_restart(handle_t *, int nblocks);
-> +extern int	 jbd2_journal_restart(handle_t *, int nblocks, bool errok);
->  extern int	 jbd2__journal_restart(handle_t *, int nblocks, int gfp_mask);
->  extern int	 jbd2_journal_extend (handle_t *, int nblocks);
->  extern int	 jbd2_journal_get_write_access(handle_t *, struct buffer_head *);
+> @@ -437,7 +447,7 @@ int ocfs2_extend_trans(handle_t *handle, int nblocks)
+> 
+>  	if (status > 0) {
+>  		trace_ocfs2_extend_trans_restart(old_nblocks + nblocks);
+> -		status = jbd2_journal_restart(handle,
+> +		status = ocfs2_journal_restart(handle,
+>  					      old_nblocks + nblocks);
+>  		if (status < 0) {
+>  			mlog_errno(status);
 > -- 
 > 1.7.1
 > 
@@ -114,72 +87,60 @@ ocfs2 to pass 'false' in the additional argument.
 > Thanks -
 > Manish
 
-> From c9edbd8d1da02ada2615acec3e3083b4669f6d9e Mon Sep 17 00:00:00 2001
+> From bb95830b270fce043b5b901d53d391189ee96878 Mon Sep 17 00:00:00 2001
 > From: Manish Katiyar <mkatiyar@gmail.com>
-> Date: Sun, 24 Apr 2011 00:14:54 -0700
-> Subject: [PATCH 1/5] Pass extra bool parameter in journal routines to specify if its ok to fail the journal transaction allocation. If 'true' is passed transaction allocation is done through GFP_KERNEL else GFP_NOFS is used.
+> Date: Sun, 24 Apr 2011 00:27:31 -0700
+> Subject: [PATCH 3/5] Update ocfs routines to use the updated journal routines passing an extra parameter to specify whether transaction allocation can fail or not.
 > 
 > Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
 > ---
->  fs/jbd2/transaction.c |   12 +++++++-----
->  include/linux/jbd2.h  |    4 ++--
->  2 files changed, 9 insertions(+), 7 deletions(-)
+>  fs/ocfs2/journal.c |   16 +++++++++++++---
+>  1 files changed, 13 insertions(+), 3 deletions(-)
 > 
-> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-> index 05fa77a..b02d6a4 100644
-> --- a/fs/jbd2/transaction.c
-> +++ b/fs/jbd2/transaction.c
-> @@ -349,9 +349,10 @@ handle_t *jbd2__journal_start(journal_t *journal, int nblocks, int gfp_mask)
->  EXPORT_SYMBOL(jbd2__journal_start);
->  
->  
-> -handle_t *jbd2_journal_start(journal_t *journal, int nblocks)
-> +handle_t *jbd2_journal_start(journal_t *journal, int nblocks, bool errok)
->  {
-> -	return jbd2__journal_start(journal, nblocks, GFP_NOFS);
-> +	return jbd2__journal_start(journal, nblocks,
-> +				   errok ? GFP_KERNEL : GFP_NOFS);
+> diff --git a/fs/ocfs2/journal.c b/fs/ocfs2/journal.c
+> index b141a44..51c60be 100644
+> --- a/fs/ocfs2/journal.c
+> +++ b/fs/ocfs2/journal.c
+> @@ -338,6 +338,16 @@ finally:
+>  	return status;
 >  }
->  EXPORT_SYMBOL(jbd2_journal_start);
 >  
-> @@ -483,9 +484,10 @@ int jbd2__journal_restart(handle_t *handle, int nblocks, int gfp_mask)
->  EXPORT_SYMBOL(jbd2__journal_restart);
->  
->  
-> -int jbd2_journal_restart(handle_t *handle, int nblocks)
-> +int jbd2_journal_restart(handle_t *handle, int nblocks, bool errok)
+> +static handle_t *ocfs2_journal_start(journal_t *journal, int blocks)
+> +{
+> +	return jbd2_journal_start(journal, blocks, false);
+> +}
+> +
+> +static int ocfs2_journal_restart(handle_t *handle, int blocks)
+> +{
+> +	return jbd2_journal_restart(handle, blocks, false);
+> +}
+> +
+>  handle_t *ocfs2_start_trans(struct ocfs2_super *osb, int max_buffs)
 >  {
-> -	return jbd2__journal_restart(handle, nblocks, GFP_NOFS);
-> +	return jbd2__journal_restart(handle, nblocks,
-> +				     errok ? GFP_KERNEL : GFP_NOFS);
->  }
->  EXPORT_SYMBOL(jbd2_journal_restart);
+>  	journal_t *journal = osb->journal->j_journal;
+> @@ -353,11 +363,11 @@ handle_t *ocfs2_start_trans(struct ocfs2_super *osb, int max_buffs)
 >  
-> @@ -1436,7 +1438,7 @@ int jbd2_journal_force_commit(journal_t *journal)
->  	handle_t *handle;
->  	int ret;
+>  	/* Nested transaction? Just return the handle... */
+>  	if (journal_current_handle())
+> -		return jbd2_journal_start(journal, max_buffs);
+> +		return ocfs2_journal_start(journal, max_buffs);
 >  
-> -	handle = jbd2_journal_start(journal, 1);
-> +	handle = jbd2_journal_start(journal, 1, false);
+>  	down_read(&osb->journal->j_trans_barrier);
+>  
+> -	handle = jbd2_journal_start(journal, max_buffs);
+> +	handle = ocfs2_journal_start(journal, max_buffs);
 >  	if (IS_ERR(handle)) {
->  		ret = PTR_ERR(handle);
->  	} else {
-> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> index a32dcae..a64aced 100644
-> --- a/include/linux/jbd2.h
-> +++ b/include/linux/jbd2.h
-> @@ -1103,9 +1103,9 @@ static inline handle_t *journal_current_handle(void)
->   * Register buffer modifications against the current transaction.
->   */
+>  		up_read(&osb->journal->j_trans_barrier);
 >  
-> -extern handle_t *jbd2_journal_start(journal_t *, int nblocks);
-> +extern handle_t *jbd2_journal_start(journal_t *, int nblocks, bool errok);
->  extern handle_t *jbd2__journal_start(journal_t *, int nblocks, int gfp_mask);
-> -extern int	 jbd2_journal_restart(handle_t *, int nblocks);
-> +extern int	 jbd2_journal_restart(handle_t *, int nblocks, bool errok);
->  extern int	 jbd2__journal_restart(handle_t *, int nblocks, int gfp_mask);
->  extern int	 jbd2_journal_extend (handle_t *, int nblocks);
->  extern int	 jbd2_journal_get_write_access(handle_t *, struct buffer_head *);
+> @@ -437,7 +447,7 @@ int ocfs2_extend_trans(handle_t *handle, int nblocks)
+>  
+>  	if (status > 0) {
+>  		trace_ocfs2_extend_trans_restart(old_nblocks + nblocks);
+> -		status = jbd2_journal_restart(handle,
+> +		status = ocfs2_journal_restart(handle,
+>  					      old_nblocks + nblocks);
+>  		if (status < 0) {
+>  			mlog_errno(status);
 > -- 
 > 1.7.1
 > 
