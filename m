@@ -1,47 +1,45 @@
-From: Niraj Kulkarni <kulkarniniraj14@gmail.com>
-Subject: JBD commmit : Get list of all 'to be written' buffers in advance
-Date: Thu, 12 May 2011 19:52:21 +0530
-Message-ID: <4DCBED1D.2010109@gmail.com>
+From: Christoph Lameter <cl@linux.com>
+Subject: Re: [PATCH 3/3] mm: slub: Default slub_max_order to 0
+Date: Thu, 12 May 2011 09:43:21 -0500 (CDT)
+Message-ID: <alpine.DEB.2.00.1105120942050.24560@router.home>
+References: <1305127773-10570-1-git-send-email-mgorman@suse.de> <1305127773-10570-4-git-send-email-mgorman@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-px0-f173.google.com ([209.85.212.173]:47045 "EHLO
-	mail-px0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752293Ab1ELOX7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 May 2011 10:23:59 -0400
-Received: by pxi16 with SMTP id 16so1035165pxi.4
-        for <linux-ext4@vger.kernel.org>; Thu, 12 May 2011 07:23:59 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+  James Bottomley <James.Bottomley@HansenPartnership.com>,
+  Colin King <colin.king@canonical.com>,
+  Raghavendra D Prabhu <raghu.prabhu13@gmail.com>, Jan Kara <jack@suse.cz>,
+  Chris Mason <chris.mason@oracle.com>, Pekka Enberg <penberg@kernel.org>,
+  Rik van Riel <riel@redhat.com>, Johannes Weiner <hannes@cmpxchg.org>,
+  linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+  linux-mm <linux-mm@kvack.org>, linux-kernel <linux-kernel@vger.kernel.org>,
+  linux-ext4 <linux-ext4@vger.kernel.org>
+To: Mel Gorman <mgorman@suse.de>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1305127773-10570-4-git-send-email-mgorman@suse.de>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi all,
-          I am trying to implement a concept called Transactional Flash 
-(http://www.usenix.org/event/osdi08/tech/full_papers/prabhakaran/prabhakaran_html/) 
+On Wed, 11 May 2011, Mel Gorman wrote:
 
-          in which all writes are flushed to disk (in this case Flash) 
-as a circular linked list of pages. No journaling mechanisms are used.
-           For that I am trying to get list of all buffers to be written 
-(metadata or data) before actually writing them. I thought of 2 
-approaches :
+> --- a/mm/slub.c
+> +++ b/mm/slub.c
+> @@ -2198,7 +2198,7 @@ EXPORT_SYMBOL(kmem_cache_free);
+>   * take the list_lock.
+>   */
+>  static int slub_min_order;
+> -static int slub_max_order = PAGE_ALLOC_COSTLY_ORDER;
+> +static int slub_max_order;
 
-1. Get conservative list of all buffers before flushing any of them 
-(before commit phase 2) in journal_commit_transaction function.
-      Problem : Metadata writes use temporary buffers which are 
-allocated just before write.
+If we really need to do this then do not push this down to zero please.
+SLAB uses order 1 for the meax. Lets at least keep it theere.
 
-2. Instead of submitting buffers straightaway, collect all of them ( 
-data + metadata ) and flush them in end.
-      Problem :  i.   Possibility of blocking after data buffers are  
-collected but before metadata buffer collection.
-                            Since data buffers are locked, this may lead 
-to deadlock. (I am not sure if it is spinlock)
+We have been using SLUB for a long time. Why is this issue arising now?
+Due to compaction etc making reclaim less efficient?
 
-                       ii.   Not able to differentiate between metadata 
-buffers and Descriptor buffers.
-
-
-Can anybody please help me in this regard?
-
-Niraj
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
