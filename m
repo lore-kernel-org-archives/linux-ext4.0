@@ -1,51 +1,71 @@
-From: Pekka Enberg <penberg@kernel.org>
-Subject: Re: [PATCH 3/3] mm: slub: Default slub_max_order to 0
-Date: Thu, 12 May 2011 20:11:05 +0300
-Message-ID: <BANLkTimDsJDht76Vm7auNqT2gncjpEKZQw@mail.gmail.com>
+From: Andrea Arcangeli <aarcange@redhat.com>
+Subject: Re: [PATCH 2/3] mm: slub: Do not take expensive steps for SLUBs
+ speculative high-order allocations
+Date: Thu, 12 May 2011 19:25:14 +0200
+Message-ID: <20110512172514.GI11579@random.random>
 References: <1305127773-10570-1-git-send-email-mgorman@suse.de>
-	<1305127773-10570-4-git-send-email-mgorman@suse.de>
-	<alpine.DEB.2.00.1105120942050.24560@router.home>
-	<1305213359.2575.46.camel@mulgrave.site>
-	<alpine.DEB.2.00.1105121024350.26013@router.home>
-	<1305214993.2575.50.camel@mulgrave.site>
-	<20110512154649.GB4559@redhat.com>
-	<1305216023.2575.54.camel@mulgrave.site>
-	<alpine.DEB.2.00.1105121121120.26013@router.home>
-	<1305217843.2575.57.camel@mulgrave.site>
-	<BANLkTi=MD+voG1i7uDyueV22_daGHPRdqw@mail.gmail.com>
+ <1305127773-10570-3-git-send-email-mgorman@suse.de>
+ <alpine.DEB.2.00.1105111312020.9346@chino.kir.corp.google.com>
+ <20110511211043.GB17898@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Christoph Lameter <cl@linux.com>, Dave Jones <davej@redhat.com>, Mel Gorman <mgorman@suse.de>,
-	Andrew Morton <akpm@linux-foundation.org>, Colin King <colin.king@canonical.com>,
-	Raghavendra D Prabhu <raghu.prabhu13@gmail.com>, Jan Kara <jack@suse.cz>,
-	Chris Mason <chris.mason@oracle.com>, Rik van Riel <riel@redhat.com>,
-	Johannes Weiner <hannes@cmpxchg.org>, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-mm <linux-mm@kvack.org>, linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>, Andrea Arcangeli <aarcange@redhat.com>
-To: James Bottomley <James.Bottomley@hansenpartnership.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: David Rientjes <rientjes@google.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        James Bottomley <James.Bottomley@hansenpartnership.com>,
+        Colin King <colin.king@canonical.com>,
+        Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
+        Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
+        Christoph Lameter <cl@linux.com>, Pekka Enberg <penberg@kernel.org>,
+        Rik van Riel <riel@redhat.com>, Johannes Weiner <hannes@cmpxchg.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-mm <linux-mm@kvack.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>
+To: Mel Gorman <mgorman@suse.de>
 Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <BANLkTi=MD+voG1i7uDyueV22_daGHPRdqw@mail.gmail.com>
+Content-Disposition: inline
+In-Reply-To: <20110511211043.GB17898@suse.de>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, May 12, 2011 at 8:06 PM, Pekka Enberg <penberg@kernel.org> wrote:
-> On Thu, May 12, 2011 at 7:30 PM, James Bottomley
-> <James.Bottomley@hansenpartnership.com> wrote:
->> So suggest an alternative root cause and a test to expose it.
->
-> Is your .config available somewhere, btw?
+Hi,
 
-If it's this:
+On Wed, May 11, 2011 at 10:10:43PM +0100, Mel Gorman wrote:
+> > > diff --git a/mm/slub.c b/mm/slub.c
+> > > index 98c358d..1071723 100644
+> > > --- a/mm/slub.c
+> > > +++ b/mm/slub.c
+> > > @@ -1170,7 +1170,8 @@ static struct page *allocate_slab(struct kmem_cache *s, gfp_t flags, int node)
+> > >  	 * Let the initial higher-order allocation fail under memory pressure
+> > >  	 * so we fall-back to the minimum order allocation.
+> > >  	 */
+> > > -	alloc_gfp = (flags | __GFP_NOWARN | __GFP_NORETRY | __GFP_NO_KSWAPD) & ~__GFP_NOFAIL;
+> > > +	alloc_gfp = (flags | __GFP_NOWARN | __GFP_NORETRY | __GFP_NO_KSWAPD) &
+> > > +			~(__GFP_NOFAIL | __GFP_WAIT);
+> > 
+> > __GFP_NORETRY is a no-op without __GFP_WAIT.
+> > 
+> 
+> True. I'll remove it in a V2 but I won't respin just yet.
 
-http://pkgs.fedoraproject.org/gitweb/?p=kernel.git;a=blob_plain;f=config-x86_64-generic;hb=HEAD
+Nothing wrong and no performance difference with clearing
+__GFP_NORETRY too, if something it doesn't make sense for a caller to
+use __GFP_NOFAIL without __GFP_WAIT so the original version above
+looks cleaner. I like this change overall to only poll the buddy
+allocator without spinning kswapd and without invoking lumpy reclaim.
 
-I'd love to see what happens if you disable
+Like you noted in the first mail, compaction was disabled, and very
+bad behavior is expected without it unless GFP_ATOMIC|__GFP_NO_KSWAPD
+is set (that was the way I had to use before disabling lumpy
+compaction when first developing THP too for the same reasons).
 
-CONFIG_TRANSPARENT_HUGEPAGE=y
-
-because that's going to reduce high order allocations as well, no?
-
-                        Pekka
+But when compaction enabled slub could try to only clear __GFP_NOFAIL
+and leave __GFP_WAIT and no bad behavior should happen... but it's
+probably slower so I prefer to clear __GFP_WAIT too (for THP
+compaction is worth it because the allocation is generally long lived,
+but for slub allocations like tiny skb the allocation can be extremely
+short lived so it's unlikely to be worth it). So this way compaction
+is then invoked only by the minimal order allocation later if needed.
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
