@@ -1,63 +1,77 @@
-From: Andrea Arcangeli <aarcange@redhat.com>
-Subject: Re: [PATCH 3/3] mm: slub: Default slub_max_order to 0
-Date: Thu, 12 May 2011 19:51:04 +0200
-Message-ID: <20110512175104.GM11579@random.random>
-References: <alpine.DEB.2.00.1105120942050.24560@router.home>
- <1305213359.2575.46.camel@mulgrave.site>
- <alpine.DEB.2.00.1105121024350.26013@router.home>
- <1305214993.2575.50.camel@mulgrave.site>
- <20110512154649.GB4559@redhat.com>
- <1305216023.2575.54.camel@mulgrave.site>
- <alpine.DEB.2.00.1105121121120.26013@router.home>
- <1305217843.2575.57.camel@mulgrave.site>
- <BANLkTi=MD+voG1i7uDyueV22_daGHPRdqw@mail.gmail.com>
- <BANLkTimDsJDht76Vm7auNqT2gncjpEKZQw@mail.gmail.com>
+From: Allison Henderson <achender@linux.vnet.ibm.com>
+Subject: [PATCH v2] NULL pointer when make_indexed_dir returns -ENOSPC
+Date: Thu, 12 May 2011 10:59:20 -0700
+Message-ID: <4DCC1FF8.6040103@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: James Bottomley <James.Bottomley@hansenpartnership.com>,
-        Christoph Lameter <cl@linux.com>, Dave Jones <davej@redhat.com>,
-        Mel Gorman <mgorman@suse.de>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Colin King <colin.king@canonical.com>,
-        Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
-        Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
-        Rik van Riel <riel@redhat.com>, Johannes Weiner <hannes@cmpxchg.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-mm <linux-mm@kvack.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-To: Pekka Enberg <penberg@kernel.org>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <BANLkTimDsJDht76Vm7auNqT2gncjpEKZQw@mail.gmail.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e31.co.us.ibm.com ([32.97.110.149]:58685 "EHLO
+	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758223Ab1ELR7t (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 May 2011 13:59:49 -0400
+Received: from d03relay05.boulder.ibm.com (d03relay05.boulder.ibm.com [9.17.195.107])
+	by e31.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p4CHhUkX028488
+	for <linux-ext4@vger.kernel.org>; Thu, 12 May 2011 11:43:31 -0600
+Received: from d03av05.boulder.ibm.com (d03av05.boulder.ibm.com [9.17.195.85])
+	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p4CHxOvp336408
+	for <linux-ext4@vger.kernel.org>; Thu, 12 May 2011 11:59:36 -0600
+Received: from d03av05.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av05.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p4CHxMJu010494
+	for <linux-ext4@vger.kernel.org>; Thu, 12 May 2011 11:59:22 -0600
+Received: from [9.11.169.103] (IBM-3CEFE379E05.tucson.ibm.com [9.11.169.103])
+	by d03av05.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p4CHxMES010485
+	for <linux-ext4@vger.kernel.org>; Thu, 12 May 2011 11:59:22 -0600
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 12, 2011 at 08:11:05PM +0300, Pekka Enberg wrote:
-> If it's this:
-> 
-> http://pkgs.fedoraproject.org/gitweb/?p=kernel.git;a=blob_plain;f=config-x86_64-generic;hb=HEAD
-> 
-> I'd love to see what happens if you disable
-> 
-> CONFIG_TRANSPARENT_HUGEPAGE=y
-> 
-> because that's going to reduce high order allocations as well, no?
+Hi all,
 
-Well THP forces COMPACTION=y so lumpy won't risk to be activated. I
-got once a complaint asking not to make THP force COMPACTION=y (there
-is no real dependency here, THP will just call alloc_pages with
-__GFP_NO_KSWAPD and order 9, or 10 on x86-nopae), but I preferred to
-keep it forced exactly to avoid issues like these when THP is on. If
-even order 3 is causing troubles (which doesn't immediately make lumpy
-activated, it only activates when priority is < DEF_PRIORITY-2, so
-after 2 loops failing to reclaim nr_to_reclaim pages), imagine what
-was happening at order 9 every time firefox, gcc and mutt allocated
-memory ;).
+I wasnt sure if people were expecting a v2 for this one, but I noticed 
+the modified version of v1 was removed from the tree, so I am assuming 
+we needed v2?  This one handles marking the buffer dirty before calling 
+do split to avoid the null pointer.  It introduces a little overhead, 
+but the only other option would be to introduce a new flag set to 
+do_split.  But if there's any one that would prefer the flags to this 
+solution, please let me know.  Thx! :)
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Allison Henderson
+
+
+Signed-off-by: Allison Henderson <achender@us.ibm.com>
+
+---
+:100644 100644 3c7a06e... b754b77... M	fs/ext4/namei.c
+  fs/ext4/namei.c |    6 ++++--
+  1 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 3c7a06e..b754b77 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1413,6 +1413,10 @@ static int make_indexed_dir(handle_t *handle, 
+struct dentry *dentry,
+  	frame->at = entries;
+  	frame->bh = bh;
+  	bh = bh2;
++
++	ext4_handle_dirty_metadata(handle, dir, frame->bh);
++	ext4_handle_dirty_metadata(handle, dir, bh);
++
+  	de = do_split(handle,dir, &bh, frame, &hinfo, &retval);
+  	if (!de) {
+  		/*
+@@ -1421,8 +1425,6 @@ static int make_indexed_dir(handle_t *handle, 
+struct dentry *dentry,
+  		 * with corrupted filesystem.
+  		 */
+  		ext4_mark_inode_dirty(handle, dir);
+-		ext4_handle_dirty_metadata(handle, dir, frame->bh);
+-		ext4_handle_dirty_metadata(handle, dir, bh);
+  		dx_release(frames);
+  		return retval;
+  	}
+-- 
+1.7.1
+
