@@ -1,9 +1,8 @@
 From: Andrea Arcangeli <aarcange@redhat.com>
 Subject: Re: [PATCH 3/3] mm: slub: Default slub_max_order to 0
-Date: Thu, 12 May 2011 19:46:41 +0200
-Message-ID: <20110512174641.GL11579@random.random>
-References: <1305127773-10570-4-git-send-email-mgorman@suse.de>
- <alpine.DEB.2.00.1105120942050.24560@router.home>
+Date: Thu, 12 May 2011 19:51:04 +0200
+Message-ID: <20110512175104.GM11579@random.random>
+References: <alpine.DEB.2.00.1105120942050.24560@router.home>
  <1305213359.2575.46.camel@mulgrave.site>
  <alpine.DEB.2.00.1105121024350.26013@router.home>
  <1305214993.2575.50.camel@mulgrave.site>
@@ -11,51 +10,50 @@ References: <1305127773-10570-4-git-send-email-mgorman@suse.de>
  <1305216023.2575.54.camel@mulgrave.site>
  <alpine.DEB.2.00.1105121121120.26013@router.home>
  <1305217843.2575.57.camel@mulgrave.site>
- <alpine.DEB.2.00.1105121144320.27324@router.home>
+ <BANLkTi=MD+voG1i7uDyueV22_daGHPRdqw@mail.gmail.com>
+ <BANLkTimDsJDht76Vm7auNqT2gncjpEKZQw@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: James Bottomley <James.Bottomley@HansenPartnership.com>,
-        Dave Jones <davej@redhat.com>, Mel Gorman <mgorman@suse.de>,
+Cc: James Bottomley <James.Bottomley@hansenpartnership.com>,
+        Christoph Lameter <cl@linux.com>, Dave Jones <davej@redhat.com>,
+        Mel Gorman <mgorman@suse.de>,
         Andrew Morton <akpm@linux-foundation.org>,
         Colin King <colin.king@canonical.com>,
         Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
         Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
-        Pekka Enberg <penberg@kernel.org>, Rik van Riel <riel@redhat.com>,
-        Johannes Weiner <hannes@cmpxchg.org>,
+        Rik van Riel <riel@redhat.com>, Johannes Weiner <hannes@cmpxchg.org>,
         linux-fsdevel <linux-fsdevel@vger.kernel.org>,
         linux-mm <linux-mm@kvack.org>,
         linux-kernel <linux-kernel@vger.kernel.org>,
         linux-ext4 <linux-ext4@vger.kernel.org>
-To: Christoph Lameter <cl@linux.com>
+To: Pekka Enberg <penberg@kernel.org>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <alpine.DEB.2.00.1105121144320.27324@router.home>
+In-Reply-To: <BANLkTimDsJDht76Vm7auNqT2gncjpEKZQw@mail.gmail.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, May 12, 2011 at 11:48:19AM -0500, Christoph Lameter wrote:
-> Try order = 1 which gives you SLAB like interaction with the page
-> allocator. Then we at least know that it is the order 2 and 3 allocs that
-> are the problem and not something else.
+On Thu, May 12, 2011 at 08:11:05PM +0300, Pekka Enberg wrote:
+> If it's this:
+> 
+> http://pkgs.fedoraproject.org/gitweb/?p=kernel.git;a=blob_plain;f=config-x86_64-generic;hb=HEAD
+> 
+> I'd love to see what happens if you disable
+> 
+> CONFIG_TRANSPARENT_HUGEPAGE=y
+> 
+> because that's going to reduce high order allocations as well, no?
 
-order 1 should work better, because it's less likely we end up here
-(which leaves RECLAIM_MODE_LUMPYRECLAIM on and then see what happens
-at the top of page_check_references())
-
-   else if (sc->order && priority < DEF_PRIORITY - 2)
-   	sc->reclaim_mode |= syncmode;
-
-with order 1 more likely we end up here as enough pages are freed for
-order 1 and we're safe:
-
-     else
-	sc->reclaim_mode = RECLAIM_MODE_SINGLE | RECLAIM_MODE_ASYNC;
-
-None of these issue should materialize with COMPACTION=n. Even
-__GFP_WAIT can be left enabled to run compaction without expecting
-adverse behavior, but running compaction may still not be worth it for
-small systems where the benefit of having order 1/2/3 allocation may
-not outweight the cost of compaction itself.
+Well THP forces COMPACTION=y so lumpy won't risk to be activated. I
+got once a complaint asking not to make THP force COMPACTION=y (there
+is no real dependency here, THP will just call alloc_pages with
+__GFP_NO_KSWAPD and order 9, or 10 on x86-nopae), but I preferred to
+keep it forced exactly to avoid issues like these when THP is on. If
+even order 3 is causing troubles (which doesn't immediately make lumpy
+activated, it only activates when priority is < DEF_PRIORITY-2, so
+after 2 loops failing to reclaim nr_to_reclaim pages), imagine what
+was happening at order 9 every time firefox, gcc and mutt allocated
+memory ;).
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
