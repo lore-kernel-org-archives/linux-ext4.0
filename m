@@ -1,49 +1,58 @@
 From: Andrea Arcangeli <aarcange@redhat.com>
-Subject: Re: [PATCH 0/3] Reduce impact to overall system of SLUB using
- high-order allocations
-Date: Thu, 12 May 2011 20:04:57 +0200
-Message-ID: <20110512180457.GO11579@random.random>
-References: <1305127773-10570-1-git-send-email-mgorman@suse.de>
- <1305149960.2606.53.camel@mulgrave.site>
- <alpine.DEB.2.00.1105111527490.24003@chino.kir.corp.google.com>
- <1305153267.2606.57.camel@mulgrave.site>
+Subject: Re: [PATCH 3/3] mm: slub: Default slub_max_order to 0
+Date: Thu, 12 May 2011 20:09:21 +0200
+Message-ID: <20110512180921.GP11579@random.random>
+References: <alpine.DEB.2.00.1105121024350.26013@router.home>
+ <1305214993.2575.50.camel@mulgrave.site>
+ <20110512154649.GB4559@redhat.com>
+ <1305216023.2575.54.camel@mulgrave.site>
+ <alpine.DEB.2.00.1105121121120.26013@router.home>
+ <1305217843.2575.57.camel@mulgrave.site>
+ <BANLkTi=MD+voG1i7uDyueV22_daGHPRdqw@mail.gmail.com>
+ <BANLkTimDsJDht76Vm7auNqT2gncjpEKZQw@mail.gmail.com>
+ <20110512175104.GM11579@random.random>
+ <alpine.DEB.2.00.1105121302240.28493@router.home>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: David Rientjes <rientjes@google.com>, Mel Gorman <mgorman@suse.de>,
+Cc: Pekka Enberg <penberg@kernel.org>,
+        James Bottomley <James.Bottomley@hansenpartnership.com>,
+        Dave Jones <davej@redhat.com>, Mel Gorman <mgorman@suse.de>,
         Andrew Morton <akpm@linux-foundation.org>,
         Colin King <colin.king@canonical.com>,
         Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
         Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
-        Christoph Lameter <cl@linux.com>, Pekka Enberg <penberg@kernel.org>,
         Rik van Riel <riel@redhat.com>, Johannes Weiner <hannes@cmpxchg.org>,
         linux-fsdevel <linux-fsdevel@vger.kernel.org>,
         linux-mm <linux-mm@kvack.org>,
         linux-kernel <linux-kernel@vger.kernel.org>,
         linux-ext4 <linux-ext4@vger.kernel.org>
-To: James Bottomley <James.Bottomley@HansenPartnership.com>
+To: Christoph Lameter <cl@linux.com>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <1305153267.2606.57.camel@mulgrave.site>
+In-Reply-To: <alpine.DEB.2.00.1105121302240.28493@router.home>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi James!
+On Thu, May 12, 2011 at 01:03:05PM -0500, Christoph Lameter wrote:
+> On Thu, 12 May 2011, Andrea Arcangeli wrote:
+> 
+> > even order 3 is causing troubles (which doesn't immediately make lumpy
+> > activated, it only activates when priority is < DEF_PRIORITY-2, so
+> > after 2 loops failing to reclaim nr_to_reclaim pages), imagine what
+> 
+> That is a significant change for SLUB with the merge of the compaction
+> code.
 
-On Wed, May 11, 2011 at 05:34:27PM -0500, James Bottomley wrote:
-> Yes, but only once in all the testing.  With patches 1 and 2 the hang is
-
-Weird patch 2 makes the large order allocation without ~__GFP_WAIT, so
-even COMPACTION=y/n shouldn't matter anymore. Am I misreading
-something Mel?
-
-Removing ~__GFP_WAIT from patch 2 (and adding ~__GFP_REPEAT as a
-correctness improvement) and setting COMPACTION=y also should work ok.
-
-Removing ~__GFP_WAIT from patch 2 and setting COMPACTION=n is expected
-not to work well.
-
-But compaction should only make the difference if you remove
-~__GFP_WAIT from patch 2.
+Even before compaction was posted, I had to shut off lumpy reclaim or
+it'd hang all the time with frequent order 9 allocations. Maybe lumpy
+was better before, maybe lumpy "improved" its reliability recently,
+but definitely it wasn't performing well. That definitely applies to
+>=2.6.32 (I had to nuke lumpy from it, and only keep compaction
+enabled, pretty much like upstream with COMPACTION=y). I think I never
+tried earlier lumpy code than 2.6.32, maybe it was less aggressive
+back then, I don't exclude it but I thought the whole notion of lumpy
+was to takedown everything in the way, which usually leads to process
+hanging in swapins or pageins for frequent used memory.
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
