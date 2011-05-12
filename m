@@ -1,64 +1,47 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] Attempt to sync the fsstress writes to a frozen F.S
-Date: Thu, 12 May 2011 09:22:54 -0500
-Message-ID: <4DCBED3E.4020302@redhat.com>
-References: <4DCA3583.7010904@canonical.com> <1305097841-2308-1-git-send-email-surbhi.palande@canonical.com>
+From: Niraj Kulkarni <kulkarniniraj14@gmail.com>
+Subject: JBD commmit : Get list of all 'to be written' buffers in advance
+Date: Thu, 12 May 2011 19:52:21 +0530
+Message-ID: <4DCBED1D.2010109@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: jack@suse.cz, marco.stornelli@gmail.com, adilger.kernel@dilger.ca,
-	toshi.okajima@jp.fujitsu.com, tytso@mit.edu,
-	m.mizuma@jp.fujitsu.com, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, xfs-oss <xfs@oss.sgi.com>
-To: Surbhi Palande <surbhi.palande@canonical.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50164 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755202Ab1ELOXJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 May 2011 10:23:09 -0400
-In-Reply-To: <1305097841-2308-1-git-send-email-surbhi.palande@canonical.com>
+Received: from mail-px0-f173.google.com ([209.85.212.173]:47045 "EHLO
+	mail-px0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752293Ab1ELOX7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 May 2011 10:23:59 -0400
+Received: by pxi16 with SMTP id 16so1035165pxi.4
+        for <linux-ext4@vger.kernel.org>; Thu, 12 May 2011 07:23:59 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 5/11/11 2:10 AM, Surbhi Palande wrote:
-> While the fsstress background writes are busy dirtying the page cache, if a
-> fsfreeze happens then the background writes should stall. A sync should then
-> not have any data to sync to the FS. If it does have any data to sync then
-> sync will cause a deadlock by holding the s_umount write semaphore and waiting
-> in the wait queue for the FS to thaw, whereas the F.S can never thaw without
-> getting the s_umount write semaphore.
-> 
-> Signed-off-by: Surbhi Palande <surbhi.palande@canonical.com>
+Hi all,
+          I am trying to implement a concept called Transactional Flash 
+(http://www.usenix.org/event/osdi08/tech/full_papers/prabhakaran/prabhakaran_html/) 
 
-Seems ok to me.  In the future, when sending xfstests patches,
-if you can add "xfstests" to the subject, and cc: the xfs list,
-it'd be great.
+          in which all writes are flushed to disk (in this case Flash) 
+as a circular linked list of pages. No journaling mechanisms are used.
+           For that I am trying to get list of all buffers to be written 
+(metadata or data) before actually writing them. I thought of 2 
+approaches :
 
-I presume that this test does fail for you without your fixes?
+1. Get conservative list of all buffers before flushing any of them 
+(before commit phase 2) in journal_commit_transaction function.
+      Problem : Metadata writes use temporary buffers which are 
+allocated just before write.
 
-I'll see if anyone on the xfs list has comments and if not, I can check this in.
+2. Instead of submitting buffers straightaway, collect all of them ( 
+data + metadata ) and flush them in end.
+      Problem :  i.   Possibility of blocking after data buffers are  
+collected but before metadata buffer collection.
+                            Since data buffers are locked, this may lead 
+to deadlock. (I am not sure if it is spinlock)
 
-Thanks,
--Eric
+                       ii.   Not able to differentiate between metadata 
+buffers and Descriptor buffers.
 
-> ---
->  068 |    5 +++++
->  1 files changed, 5 insertions(+), 0 deletions(-)
-> 
-> diff --git a/068 b/068
-> index 82c1a4e..b9ac58d 100755
-> --- a/068
-> +++ b/068
-> @@ -101,6 +101,11 @@ do
->  	    tee -a $seq.full
->  	sleep 2
->  
-> +	# there should be nothing to sync at this point. This may hang in case
-> +	# of fsstress background writes dirtying the page cache while the F.S is frozen
-> +	sync &
-> +	sleep 2
-> +
->  	echo "*** thawing  \$SCRATCH_MNT" | tee -a $seq.full
->  	xfs_freeze -u "$SCRATCH_MNT" | tee -a $seq.full
->  	[ $? != 0 ] && echo xfs_freeze -u "$SCRATCH_MNT" failed | \
 
+Can anybody please help me in this regard?
+
+Niraj
