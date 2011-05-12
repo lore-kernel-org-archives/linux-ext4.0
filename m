@@ -1,70 +1,51 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCHSET v3.1 0/7] data integrity: Stabilize pages during
- writeback for various fses
-Date: Thu, 12 May 2011 11:42:55 +0200
-Message-ID: <20110512094255.GA4690@quack.suse.cz>
-References: <20110509230318.19566.66202.stgit@elm3c44.beaverton.ibm.com>
- <20110510125124.GD4402@quack.suse.cz>
- <20110511181901.GK20579@tux1.beaverton.ibm.com>
+From: Pekka Enberg <penberg@cs.helsinki.fi>
+Subject: Re: [PATCH 0/3] Reduce impact to overall system of SLUB using high-order
+ allocations
+Date: Thu, 12 May 2011 14:13:44 +0300
+Message-ID: <4DCBC0E8.5020609@cs.helsinki.fi>
+References: <1305127773-10570-1-git-send-email-mgorman@suse.de>	 <1305149960.2606.53.camel@mulgrave.site>	 <alpine.DEB.2.00.1105111527490.24003@chino.kir.corp.google.com> <1305153267.2606.57.camel@mulgrave.site>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Theodore Tso <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-	Jens Axboe <axboe@kernel.dk>,
-	"Martin K. Petersen" <martin.petersen@oracle.com>,
-	Jeff Layton <jlayton@redhat.com>, Dave Chinner <david@fromorbit.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Dave Hansen <dave@linux.vnet.ibm.com>,
-	Christoph Hellwig <hch@infradead.org>, linux-mm@kvack.org,
-	Chris Mason <chris.mason@oracle.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	linux-scsi <linux-scsi@vger.kernel.org>,
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: David Rientjes <rientjes@google.com>, Mel Gorman <mgorman@suse.de>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Colin King <colin.king@canonical.com>,
+	Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
+	Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
+	Christoph Lameter <cl@linux.com>,
+	Rik van Riel <riel@redhat.com>,
+	Johannes Weiner <hannes@cmpxchg.org>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Mingming Cao <mcao@us.ibm.com>
-To: "Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20110511181901.GK20579@tux1.beaverton.ibm.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+	linux-mm <linux-mm@kvack.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: James Bottomley <James.Bottomley@HansenPartnership.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from courier.cs.helsinki.fi ([128.214.9.1]:51184 "EHLO
+	mail.cs.helsinki.fi" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752079Ab1ELLNp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 May 2011 07:13:45 -0400
+In-Reply-To: <1305153267.2606.57.camel@mulgrave.site>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 11-05-11 11:19:01, Darrick J. Wong wrote:
-> On Tue, May 10, 2011 at 02:51:24PM +0200, Jan Kara wrote:
-> > On Mon 09-05-11 16:03:18, Darrick J. Wong wrote:
-> > > I am still chasing down what exactly is broken in ext3.  data=writeback mode
-> > > passes with no failures.  data=ordered, however, does not pass; my current
-> > > suspicion is that jbd is calling submit_bh on data buffers but doesn't call
-> > > page_mkclean to kick the userspace programs off the page before writing it.
-> >   Yes, ext3 in data=ordered mode writes pages from
-> > journal_commit_transaction() via submit_bh() without clearing page dirty
-> > bits thus page_mkclean() is not called for these pages. Frankly, do you
-> > really want to bother with adding support for ext2 and ext3? People can use
-> > ext4 as a fs driver when they want to start using blk-integrity support.
-> > Especially ext2 patch looks really painful and just from a quick look I can
-> > see code e.g. in fs/ext2/namei.c which isn't handled by your patch yet.
-> 
-> Yeah, I agree that ext2 is ugly and ext3/jbd might be more painful.  Are there
-> any other code that wants stable pages that's already running with ext3?  In
-> this months-long discussion I've heard that encryption and raid also like
-> stable pages during writes.  Have those users been broken this whole time, or
-> have they been stabilizing pages themselves?
-  I believe part of them has been broken (e.g. raid) and part of them do
-copy-out so they were OK.
+On 5/12/11 1:34 AM, James Bottomley wrote:
+> On Wed, 2011-05-11 at 15:28 -0700, David Rientjes wrote:
+>> On Wed, 11 May 2011, James Bottomley wrote:
+>>
+>>> OK, I confirm that I can't seem to break this one.  No hangs visible,
+>>> even when loading up the system with firefox, evolution, the usual
+>>> massive untar, X and even a distribution upgrade.
+>>>
+>>> You can add my tested-by
+>>>
+>> Your system still hangs with patches 1 and 2 only?
+> Yes, but only once in all the testing.  With patches 1 and 2 the hang is
+> much harder to reproduce, but it still seems to be present if I hit it
+> hard enough.
 
-> I suppose we can cross the "ext3 fails horribly on DIF" bridge when someone
-> complains about it.  Possibly we could try to steer them to btrfs.
-  Well, btrfs might be a bit too advantageous for production servers but
-ext4 would be definitely viable for them.
+Patches 1-2 look reasonable to me. I'm not completely convinced of patch 
+3, though. Why are we seeing these problems now? This has been in 
+mainline for a long time already. Shouldn't we fix kswapd?
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+                         Pekka
