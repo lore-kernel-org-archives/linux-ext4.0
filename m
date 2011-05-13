@@ -1,65 +1,58 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Regression with ext4 in kernel 2.6.39-rc7? (Was: testing ext4
- master branch)
-Date: Fri, 13 May 2011 10:25:18 -0500
-Message-ID: <4DCD4D5E.6050307@redhat.com>
-References: <BANLkTikW57S9emEFG9w9RXvq5O7v_MrsYw@mail.gmail.com> <20110513145608.GA21165@thunk.org>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH -V5 00/24]  New ACL format for better NFSv4 acl interoperability
+Date: Fri, 13 May 2011 21:10:09 +0530
+Message-ID: <87zkmqobhi.fsf@linux.vnet.ibm.com>
+References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20110228211145.GG28617@thunk.org> <E1QKJAl-00DGc7-EB@intern.SerNet.DE>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Amir Goldstein <amir73il@gmail.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: =?utf-8?Q?Bj=C3=B6rn?= JACKE <bj@SerNet.DE>,
+	"Ted Ts'o" <tytso@mit.edu>, sfrench@us.ibm.com, agruen@linbit.com,
+	dilger.kernel@dilger.ca, sandeen@redhat.com, bfields@fieldses.org,
+	jlay
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:11757 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751366Ab1EMPZZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 13 May 2011 11:25:25 -0400
-In-Reply-To: <20110513145608.GA21165@thunk.org>
+Received: from e23smtp07.au.ibm.com ([202.81.31.140]:37921 "EHLO
+	e23smtp07.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754049Ab1EMPk1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 May 2011 11:40:27 -0400
+In-Reply-To: <E1QKJAl-00DGc7-EB@intern.SerNet.DE>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 5/13/11 9:56 AM, Ted Ts'o wrote:
-> On Fri, May 13, 2011 at 12:17:03PM +0300, Amir Goldstein wrote:
->>
->> Can anyone try to reproduce the error with xfstest 005 and the crash
->> with xfstest 232?
-> 
-> Xfstest #5 broke because of a change in the VFS, which now allows up
-> to 40 nested symlinks.  So that's a matter of your xfstests being too
-> old.
-> 
-> The version of xfstests I've been using on my KVM box is too old to
-> have test 232, so I haven't been able to test it.  I've been trying to
-> use a newer version of xfstests, but xfstests doesn't build on either
-> Ubuntu 10.04 (LTS), Debian stable, or Debian unstable, due to the use
-> of newer XFS ioctl's and xfsctl's that aren't defined in the system
-> header files.  The fact that it doesn't work on Ubuntu LTS and Stable
-> is not that surprising, I suppose, but I was a bit disappointed that
-> it doesn't work on Debian unstable.
+On Thu, 12 May 2011 00:16:13 +0200, Bj=C3=B6rn JACKE <bj@SerNet.DE> wro=
+te:
+> Hi,
+>=20
+> On 2011-02-28 at 16:11 -0500 Ted Ts'o sent off:
+> > What is the current status of this patch series?  I seem to remembe=
+r
+> > that Christoph and Al Viro had some objections; have those been
+> > cleared yet?  If not, can you summarize what their objections are?
+> >=20
+> > To be honest I haven't been paying super close attention to this pa=
+tch
+> > series, and I'm curious what needs to happen with it one way or
+> > another.
+>=20
+> after the discussion of this path submission thread are there any maj=
+or or
+> minor issues left that prevent these to go upstream? I'd really love =
+to see
+> NFSv4 ACLs being available on Linux, too.
+>=20
 
-I missed that bug report :)  If you can send me the details of the
-failures we can probably add configure tests for any new ioctls
-that are causing build failures.
+I updated richaclv23 branch at=20
 
-> Since I don't have a Fedora system handy --- which header file are
-> things like "struct xfs_flock64" supposed to be defined these days?
+http://git.kernel.org/?p=3Dlinux/kernel/git/kvaneesh/linux-richacl.git;=
+a=3Dsummary
 
-Hm, well, on my Fedora system, /usr/include/xfs/xfs_fs.h, from xfsprogs-devel.
+which is rebased against latest linus tree.  The changes pass richacl
+test against local file system. I am yet to test richacl on NFS
+client. Once i get the results i will repost the series again.=20
 
-I don't think that has changed in a very long time...
-
-I also package an xfsprogs-qa-devel which has some additional pieces in
-it to support xfstests.  Debian could do the same ... "make install-qa"
-in xfsprogs puts those bits into the root.
-
--Eric
-
->        	    	    		 	     - Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+-aneesh
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
