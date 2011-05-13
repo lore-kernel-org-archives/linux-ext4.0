@@ -1,23 +1,22 @@
 From: Mel Gorman <mgorman@suse.de>
 Subject: Re: [PATCH 3/3] mm: slub: Default slub_max_order to 0
-Date: Fri, 13 May 2011 10:49:58 +0100
-Message-ID: <20110513094958.GA3569@suse.de>
-References: <alpine.DEB.2.00.1105121024350.26013@router.home>
+Date: Fri, 13 May 2011 11:05:56 +0100
+Message-ID: <20110513100556.GB3569@suse.de>
+References: <1305127773-10570-4-git-send-email-mgorman@suse.de>
+ <alpine.DEB.2.00.1105120942050.24560@router.home>
+ <1305213359.2575.46.camel@mulgrave.site>
+ <alpine.DEB.2.00.1105121024350.26013@router.home>
  <1305214993.2575.50.camel@mulgrave.site>
- <20110512154649.GB4559@redhat.com>
- <1305216023.2575.54.camel@mulgrave.site>
- <alpine.DEB.2.00.1105121121120.26013@router.home>
- <1305217843.2575.57.camel@mulgrave.site>
- <BANLkTi=MD+voG1i7uDyueV22_daGHPRdqw@mail.gmail.com>
- <BANLkTimDsJDht76Vm7auNqT2gncjpEKZQw@mail.gmail.com>
- <alpine.DEB.2.00.1105121232110.28493@router.home>
- <20110512180018.GN11579@random.random>
+ <1305215742.27848.40.camel@jaguar>
+ <1305225467.2575.66.camel@mulgrave.site>
+ <1305229447.2575.71.camel@mulgrave.site>
+ <1305230652.2575.72.camel@mulgrave.site>
+ <BANLkTindTdL9a4VxZk_AXrWLQf6QWqjz5g@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-15
-Cc: Christoph Lameter <cl@linux.com>,
-	Pekka Enberg <penberg@kernel.org>,
-	James Bottomley <James.Bottomley@hansenpartnership.com>,
-	Dave Jones <davej@redhat.com>,
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: James Bottomley <James.Bottomley@hansenpartnership.com>,
+	Christoph Lameter <cl@linux.com>,
 	Andrew Morton <akpm@linux-foundation.org>,
 	Colin King <colin.king@canonical.com>,
 	Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
@@ -28,33 +27,40 @@ Cc: Christoph Lameter <cl@linux.com>,
 	linux-mm <linux-mm@kvack.org>,
 	linux-kernel <linux-kernel@vger.kernel.org>,
 	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Andrea Arcangeli <aarcange@redhat.com>
+To: Pekka Enberg <penberg@kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:36157 "EHLO mx1.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:45495 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758804Ab1EMJuG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 13 May 2011 05:50:06 -0400
+	id S1756311Ab1EMKGE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 13 May 2011 06:06:04 -0400
 Content-Disposition: inline
-In-Reply-To: <20110512180018.GN11579@random.random>
+In-Reply-To: <BANLkTindTdL9a4VxZk_AXrWLQf6QWqjz5g@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 12, 2011 at 08:00:18PM +0200, Andrea Arcangeli wrote:
-> <SNIP>
->
-> BTW, it comes to mind in patch 2, SLUB should clear __GFP_REPEAT too
-> (not only __GFP_NOFAIL). Clearing __GFP_WAIT may be worth it or not
-> with COMPACTION=y, definitely good idea to clear __GFP_WAIT unless
-> lumpy is restricted to __GFP_REPEAT|__GFP_NOFAIL.
+On Fri, May 13, 2011 at 09:16:24AM +0300, Pekka Enberg wrote:
+> Hi,
+>=20
+> On Thu, May 12, 2011 at 11:04 PM, James Bottomley
+> <James.Bottomley@hansenpartnership.com> wrote:
+> > Confirmed, I'm afraid ... I can trigger the problem with all three
+> > patches under PREEMPT. =A0It's not a hang this time, it's just kswa=
+pd
+> > taking 100% system time on 1 CPU and it won't calm down after I unl=
+oad
+> > the system.
+>=20
+> OK, that's good to know. I'd still like to take patches 1-2, though. =
+Mel?
+>=20
 
-This is in V2 (unreleased, testing in progress and was running
-overnight). I noticed that clearing __GFP_REPEAT is required for
-reclaim/compaction if direct reclaimers from SLUB are to return false in
-should_continue_reclaim() and bail out from high-order allocation
-properly. As it is, there is a possibility for slub high-order direct
-reclaimers to loop in reclaim/compaction for a long time. This is
-only important when CONFIG_COMPACTION=y.
+Wait for a V2 please. __GFP_REPEAT should also be removed.
 
--- 
+--=20
 Mel Gorman
 SUSE Labs
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
