@@ -1,47 +1,60 @@
-From: Sedat Dilek <sedat.dilek@googlemail.com>
-Subject: Re: Regression with ext4 in kernel 2.6.39-rc7? (Was: testing ext4
- master branch)
-Date: Fri, 13 May 2011 11:27:18 +0200
-Message-ID: <BANLkTinnRNT6vG3JQ7j8p1Acg92_caHDOQ@mail.gmail.com>
-References: <BANLkTikW57S9emEFG9w9RXvq5O7v_MrsYw@mail.gmail.com>
-Reply-To: sedat.dilek@gmail.com
+From: Mel Gorman <mgorman@suse.de>
+Subject: Re: [PATCH 3/3] mm: slub: Default slub_max_order to 0
+Date: Fri, 13 May 2011 10:49:58 +0100
+Message-ID: <20110513094958.GA3569@suse.de>
+References: <alpine.DEB.2.00.1105121024350.26013@router.home>
+ <1305214993.2575.50.camel@mulgrave.site>
+ <20110512154649.GB4559@redhat.com>
+ <1305216023.2575.54.camel@mulgrave.site>
+ <alpine.DEB.2.00.1105121121120.26013@router.home>
+ <1305217843.2575.57.camel@mulgrave.site>
+ <BANLkTi=MD+voG1i7uDyueV22_daGHPRdqw@mail.gmail.com>
+ <BANLkTimDsJDht76Vm7auNqT2gncjpEKZQw@mail.gmail.com>
+ <alpine.DEB.2.00.1105121232110.28493@router.home>
+ <20110512180018.GN11579@random.random>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: Amir Goldstein <amir73il@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <BANLkTikW57S9emEFG9w9RXvq5O7v_MrsYw@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=iso-8859-15
+Cc: Christoph Lameter <cl@linux.com>,
+	Pekka Enberg <penberg@kernel.org>,
+	James Bottomley <James.Bottomley@hansenpartnership.com>,
+	Dave Jones <davej@redhat.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Colin King <colin.king@canonical.com>,
+	Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
+	Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
+	Rik van Riel <riel@redhat.com>,
+	Johannes Weiner <hannes@cmpxchg.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-mm <linux-mm@kvack.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Andrea Arcangeli <aarcange@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor.suse.de ([195.135.220.2]:36157 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758804Ab1EMJuG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 13 May 2011 05:50:06 -0400
+Content-Disposition: inline
+In-Reply-To: <20110512180018.GN11579@random.random>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 13, 2011 at 11:17 AM, Amir Goldstein <amir73il@gmail.com> wrote:
-> Hi All,
+On Thu, May 12, 2011 at 08:00:18PM +0200, Andrea Arcangeli wrote:
+> <SNIP>
 >
-> I double checked myself and made a clean build of 2.6.39-rc7
-> and I am still getting this crash below with xfstest 232.
-> All xfstests used to pass when I was runing kernel 2.6.38, so
-> this must be a regression.
->
-> Unfortunately, I cannot double check there is no crash with previous kernel,
-> because I lost connection with my test server and there is no one to
-> push the reset button over the weekend.
->
-> Can anyone try to reproduce the error with xfstest 005 and the crash
-> with xfstest 232?
->
-> Thanks,
-> Amir.
->
+> BTW, it comes to mind in patch 2, SLUB should clear __GFP_REPEAT too
+> (not only __GFP_NOFAIL). Clearing __GFP_WAIT may be worth it or not
+> with COMPACTION=y, definitely good idea to clear __GFP_WAIT unless
+> lumpy is restricted to __GFP_REPEAT|__GFP_NOFAIL.
 
-Please attach your kernel-config for reproducible testing!
+This is in V2 (unreleased, testing in progress and was running
+overnight). I noticed that clearing __GFP_REPEAT is required for
+reclaim/compaction if direct reclaimers from SLUB are to return false in
+should_continue_reclaim() and bail out from high-order allocation
+properly. As it is, there is a possibility for slub high-order direct
+reclaimers to loop in reclaim/compaction for a long time. This is
+only important when CONFIG_COMPACTION=y.
 
-Is this really with 2.6.39-rc7 vanilla kernel (no extra patches!)?
-
-Which xfstest (GIT) version is this?
-Which versions of xfs{progs, -libs, dump}?
-
-Here I am on i386 and can help with testing if this helps.
-
-- Sedat -
+-- 
+Mel Gorman
+SUSE Labs
