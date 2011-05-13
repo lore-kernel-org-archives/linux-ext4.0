@@ -1,339 +1,124 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [PATCH v2 2/3] ext4:Add two functions splitting an extent.
-Date: Fri, 13 May 2011 10:45:51 +0800
-Message-ID: <BANLkTimZMoMNXOOWBxX3mk7eaLFAycY2kg@mail.gmail.com>
-References: <1304388301-9452-1-git-send-email-xiaoqiangnk@gmail.com>
-	<1304388301-9452-3-git-send-email-xiaoqiangnk@gmail.com>
-	<1305235906.9708.81.camel@mingming-laptop>
-	<BANLkTi=1vtGBea0aLZXxy9+oKtZ7Og_NUQ@mail.gmail.com>
+Subject: Re: [PATCH v2] ext4:Let ext4_ext_fiemap_cb() handle blocks before
+ request range correctly.
+Date: Fri, 13 May 2011 11:40:02 +0800
+Message-ID: <BANLkTi=BJ+OQx4Eb3VLUzGWSGLf12j-9wA@mail.gmail.com>
+References: <1305036366-1228-1-git-send-email-xiaoqiangnk@gmail.com>
+	<alpine.LFD.2.00.1105101620590.18016@dhcp-27-109.brq.redhat.com>
+	<BANLkTi=G+cwRLLPTqP0F7OKN-1d8yNZqLA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu,
-	achender@linux.vnet.ibm.com
-To: Mingming Cao <cmm@us.ibm.com>
+Cc: Eric Sandeen <sandeen@sandeen.net>, josef@redhat.com,
+	linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:47417 "EHLO
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:44104 "EHLO
 	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751026Ab1EMCpw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 May 2011 22:45:52 -0400
-Received: by vws1 with SMTP id 1so1557604vws.19
-        for <linux-ext4@vger.kernel.org>; Thu, 12 May 2011 19:45:51 -0700 (PDT)
-In-Reply-To: <BANLkTi=1vtGBea0aLZXxy9+oKtZ7Og_NUQ@mail.gmail.com>
+	with ESMTP id S1753720Ab1EMDkE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 May 2011 23:40:04 -0400
+Received: by vws1 with SMTP id 1so1574979vws.19
+        for <linux-ext4@vger.kernel.org>; Thu, 12 May 2011 20:40:03 -0700 (PDT)
+In-Reply-To: <BANLkTi=G+cwRLLPTqP0F7OKN-1d8yNZqLA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 13, 2011 at 10:25 AM, Yongqiang Yang <xiaoqiangnk@gmail.com=
+On Tue, May 10, 2011 at 11:08 PM, Yongqiang Yang <xiaoqiangnk@gmail.com=
 > wrote:
-> On Fri, May 13, 2011 at 5:31 AM, Mingming Cao <cmm@us.ibm.com> wrote:
->> On Mon, 2011-05-02 at 19:05 -0700, Yongqiang Yang wrote:
->>> v0 -> v1:
->>> =A0 =A0-- coding style
->>> =A0 =A0-- try to merge extents in zeroout case too.
+> On Tue, May 10, 2011 at 10:35 PM, Lukas Czerner <lczerner@redhat.com>=
+ wrote:
+>> On Tue, 10 May 2011, Yongqiang Yang wrote:
+>>
+>>> v1->v2:
+>>> =A0 Add more specific description.
 >>>
->>> 1] Add a function named ext4_split_extent_at() which splits an exte=
-nt
->>> =A0 =A0into two extents at given logical block.
+>>> To get delayed-extent information, ext4_ext_fiemap_cb() lookups pag=
+ecache,
+>>> it thus collects information starting from a page's head block.
+>>> If blockszie < pagesize, the beginning blocks of a page may lie bef=
+ore the
+>>> range. =A0ext4_ext_fiemap_cb() should proceed ignoring them, becaus=
+e they
+>>> has been handled before.
+>>
+>> Thanks for the description, but I have one question below.
+>>
 >>>
->>> 2] Add a function called ext4_split_extent() which splits an extent
->>> =A0 =A0into three extents.
->>>
+>>> Reported-by: Amir Goldstein <amir73il@users.sf.net>
 >>> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
->>> Tested-by: Allison Henderson <achender@linux.vnet.ibm.com>
 >>> ---
->>> =A0fs/ext4/extents.c | =A0187 +++++++++++++++++++++++++++++++++++++=
-++++++++++++++++
->>> =A01 files changed, 187 insertions(+), 0 deletions(-)
+>>> =A0fs/ext4/extents.c | =A0 =A07 ++++++-
+>>> =A01 files changed, 6 insertions(+), 1 deletions(-)
 >>>
 >>> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
->>> index 11f30d2..db1d67c 100644
+>>> index e363f21..ec37109 100644
 >>> --- a/fs/ext4/extents.c
 >>> +++ b/fs/ext4/extents.c
->>> @@ -2554,6 +2554,193 @@ static int ext4_ext_zeroout(struct inode *i=
-node, struct ext4_extent *ex)
->>> =A0 =A0 =A0 return ret;
->>> =A0}
+>>> @@ -3718,9 +3718,14 @@ out:
 >>>
->>> +/*
->>> + * used by extent splitting.
->>> + */
->>> +#define EXT4_EXT_MAY_ZEROOUT 0x1 =A0/* safe to zeroout if split fa=
-ils \
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 bh =3D head;
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 do {
+>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (end <=
+ newex->ec_block)
 >>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 due to ENOSPC */
->>> +#define EXT4_EXT_MARK_UNINIT1 =A0 =A0 =A0 =A00x2 =A0/* mark first =
-half uninitialized */
->>> +#define EXT4_EXT_MARK_UNINIT2 =A0 =A0 =A0 =A00x4 =A0/* mark second=
- half uninitialized */
->>> +
->>> +/*
->>> + * ext4_split_extent_at() splits an extent at given block.
->>> + *
->>> + * @handle: the journal handle
->>> + * @inode: the file inode
->>> + * @path: the path to the extent
->>> + * @split: the logical block where the extent is splitted.
->>> + * @split_flags: indicates if the extent could be zeroout if split=
- fails, and
->>> + * =A0 =A0 =A0 =A0 =A0 =A0the states(init or uninit) of new extent=
-s.
->>> + * @flags: flags used to insert new extent to extent tree.
->>> + *
->>> + *
->>> + * Splits extent [a, b] into two extents [a, @split) and [@split, =
-b], states
->>> + * of which are deterimined by split_flag.
->>> + *
->>> + * There are two cases:
->>> + * =A0a> the extent are splitted into two extent.
->>> + * =A0b> split is not needed, and just mark the extent.
->>> + *
->>> + * return 0 on success.
->>> + */
->>> +static int ext4_split_extent_at(handle_t *handle,
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0struct inode *=
-inode,
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0struct ext4_ex=
-t_path *path,
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext4_lblk_t sp=
-lit,
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0int split_flag=
-,
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0int flags)
->>> +{
->>> + =A0 =A0 ext4_fsblk_t newblock;
->>> + =A0 =A0 ext4_lblk_t ee_block;
->>> + =A0 =A0 struct ext4_extent *ex, newex, orig_ex;
->>> + =A0 =A0 struct ext4_extent *ex2 =3D NULL;
->>> + =A0 =A0 unsigned int ee_len, depth;
->>> + =A0 =A0 int err =3D 0;
->>> +
->>> + =A0 =A0 ext_debug("ext4_split_extents_at: inode %lu, logical"
->>> + =A0 =A0 =A0 =A0 =A0 =A0 "block %llu\n", inode->i_ino, (unsigned l=
-ong long)split);
->>> +
->>> + =A0 =A0 ext4_ext_show_leaf(inode, path);
->>> +
->>> + =A0 =A0 depth =3D ext_depth(inode);
->>> + =A0 =A0 ex =3D path[depth].p_ext;
->>> + =A0 =A0 ee_block =3D le32_to_cpu(ex->ee_block);
->>> + =A0 =A0 ee_len =3D ext4_ext_get_actual_len(ex);
->>> + =A0 =A0 newblock =3D split - ee_block + ext4_ext_pblock(ex);
->>> +
->>> + =A0 =A0 BUG_ON(split < ee_block || split >=3D (ee_block + ee_len)=
-);
->>> +
->>> + =A0 =A0 err =3D ext4_ext_get_access(handle, inode, path + depth);
->>> + =A0 =A0 if (err)
->>> + =A0 =A0 =A0 =A0 =A0 =A0 goto out;
->>> +
->>> + =A0 =A0 if (split =3D=3D ee_block) {
->>> + =A0 =A0 =A0 =A0 =A0 =A0 /*
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0* case b: block @split is the block th=
-at the extent begins with
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0* then we just change the state of the=
- extent, and splitting
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0* is not needed.
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0*/
->>> + =A0 =A0 =A0 =A0 =A0 =A0 if (split_flag & EXT4_EXT_MARK_UNINIT2)
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_ext_mark_uninitializ=
-ed(ex);
->>> + =A0 =A0 =A0 =A0 =A0 =A0 else
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_ext_mark_initialized=
-(ex);
->>> +
->>> + =A0 =A0 =A0 =A0 =A0 =A0 if (!(flags & EXT4_GET_BLOCKS_PRE_IO))
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_ext_try_to_merge(ino=
-de, path, ex);
->>> +
->>> + =A0 =A0 =A0 =A0 =A0 =A0 err =3D ext4_ext_dirty(handle, inode, pat=
-h + depth);
->>> + =A0 =A0 =A0 =A0 =A0 =A0 goto out;
->>> + =A0 =A0 }
->>> +
->>> + =A0 =A0 /* case a */
->>> + =A0 =A0 memcpy(&orig_ex, ex, sizeof(orig_ex));
->>> + =A0 =A0 ex->ee_len =3D cpu_to_le16(split - ee_block);
->>> + =A0 =A0 if (split_flag & EXT4_EXT_MARK_UNINIT1)
->>> + =A0 =A0 =A0 =A0 =A0 =A0 ext4_ext_mark_uninitialized(ex);
->>> +
->>> + =A0 =A0 /*
->>> + =A0 =A0 =A0* path may lead to new leaf, not to original leaf any =
-more
->>> + =A0 =A0 =A0* after ext4_ext_insert_extent() returns,
->>> + =A0 =A0 =A0*/
->>> + =A0 =A0 err =3D ext4_ext_dirty(handle, inode, path + depth);
->>> + =A0 =A0 if (err)
->>> + =A0 =A0 =A0 =A0 =A0 =A0 goto fix_extent_len;
->>> +
->>> + =A0 =A0 ex2 =3D &newex;
->>> + =A0 =A0 ex2->ee_block =3D cpu_to_le32(split);
->>> + =A0 =A0 ex2->ee_len =A0 =3D cpu_to_le16(ee_len - (split - ee_bloc=
-k));
->>> + =A0 =A0 ext4_ext_store_pblock(ex2, newblock);
->>> + =A0 =A0 if (split_flag & EXT4_EXT_MARK_UNINIT2)
->>> + =A0 =A0 =A0 =A0 =A0 =A0 ext4_ext_mark_uninitialized(ex2);
->>> +
->>> + =A0 =A0 err =3D ext4_ext_insert_extent(handle, inode, path, &newe=
-x, flags);
->>> + =A0 =A0 if (err =3D=3D -ENOSPC && (EXT4_EXT_MAY_ZEROOUT & split_f=
-lag)) {
->>> + =A0 =A0 =A0 =A0 =A0 =A0 err =3D ext4_ext_zeroout(inode, &orig_ex)=
-;
->>> + =A0 =A0 =A0 =A0 =A0 =A0 if (err)
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto fix_extent_len;
->>> + =A0 =A0 =A0 =A0 =A0 =A0 /* update the extent length and mark as i=
-nitialized */
->>> + =A0 =A0 =A0 =A0 =A0 =A0 ex->ee_len =3D cpu_to_le32(ee_len);
->>> + =A0 =A0 =A0 =A0 =A0 =A0 ext4_ext_try_to_merge(inode, path, ex);
->>> + =A0 =A0 =A0 =A0 =A0 =A0 err =3D ext4_ext_dirty(handle, inode, pat=
-h + depth);
->>> + =A0 =A0 =A0 =A0 =A0 =A0 goto out;
->>> + =A0 =A0 } else if (err)
->>> + =A0 =A0 =A0 =A0 =A0 =A0 goto fix_extent_len;
->>> +
->>> +out:
->>> + =A0 =A0 ext4_ext_show_leaf(inode, path);
->>> + =A0 =A0 return err;
->>> +
->>> +fix_extent_len:
->>> + =A0 =A0 ex->ee_len =3D orig_ex.ee_len;
->>> + =A0 =A0 ext4_ext_dirty(handle, inode, path + depth);
->>> + =A0 =A0 return err;
->>> +}
->>> +
->>> +/*
->>> + * ext4_split_extents() splits an extent and mark extent which is =
-covered
->>> + * by @map as split_flags indicates
->>> + *
->>> + * It may result in splitting the extent into multiple extents (up=
-to three)
->>> + * There are three possibilities:
->>> + * =A0 a> There is no split required
->>> + * =A0 b> Splits in two extents: Split is happening at either end =
-of the extent
->>> + * =A0 c> Splits in three extents: Somone is splitting in middle o=
-f the extent
->>> + *
->>> + */
->>> +static int ext4_split_extent(handle_t *handle,
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct inode =
-*inode,
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct ext4_e=
-xt_path *path,
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct ext4_m=
-ap_blocks *map,
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 int split_fla=
-g,
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 int flags)
->>> +{
->>> + =A0 =A0 ext4_lblk_t ee_block;
->>> + =A0 =A0 struct ext4_extent *ex;
->>> + =A0 =A0 unsigned int ee_len, depth;
->>> + =A0 =A0 int err =3D 0;
->>> + =A0 =A0 int uninitialized;
->>> + =A0 =A0 int split_flag1, flags1;
->>> +
->>> + =A0 =A0 depth =3D ext_depth(inode);
->>> + =A0 =A0 ex =3D path[depth].p_ext;
->>> + =A0 =A0 ee_block =3D le32_to_cpu(ex->ee_block);
->>> + =A0 =A0 ee_len =3D ext4_ext_get_actual_len(ex);
->>> + =A0 =A0 uninitialized =3D ext4_ext_is_uninitialized(ex);
->>> +
->>> + =A0 =A0 if (map->m_lblk + map->m_len < ee_block + ee_len) {
->>> + =A0 =A0 =A0 =A0 =A0 =A0 split_flag1 =3D split_flag & EXT4_EXT_MAY=
-_ZEROOUT ?
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 EXT4_EXT_MAY_=
-ZEROOUT : 0;
->>> + =A0 =A0 =A0 =A0 =A0 =A0 flags1 =3D flags | EXT4_GET_BLOCKS_PRE_IO=
-;
->>> + =A0 =A0 =A0 =A0 =A0 =A0 if (uninitialized)
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 split_flag1 |=3D EXT4_EXT=
-_MARK_UNINIT1 |
+ =A0 /* The buffer is not in
 >>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0EXT4_EXT_MARK_UNINIT2;
->>> + =A0 =A0 =A0 =A0 =A0 =A0 err =3D ext4_split_extent_at(handle, inod=
-e, path,
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 map->m_lb=
-lk + map->m_len, split_flag1, flags1);
->>> + =A0 =A0 }
->>> +
-> Thank you for looking into the patch.
+ =A0 =A0* the request range.
+>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0*/
+>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 continue;
+>> So if the condition is true, then we might leave the loop, because (=
+bh =3D=3D
+>> head) in the first iteration, is that desired behavior? Also if we h=
+it
+>> this condition in other than first iteration we will spin forever. I=
+ do
+>> not think this is right. How did you tested this case ?
+> You are right. =A0Maybe the patch sent out is not same as the patch w=
+ith
+> which I tested. =A0What a stupid error!
+> I am not sure what happened now. =A0I will check the patch with which=
+ I
+> tested tomorrow.
 >
-> First, I think I need to explain split_flag added in the patch. =A0Th=
-ere
-> are three flags in split_flag1.
+> My working tree passed xfstests 225 in both 1k blocksize and 4k
+> blocksize cases.
+I checked the code I tested with.  Indeed I tested with this ugly
+patch and xfstests 225 passed.  I tested again and results were same '
+PASSED'.
+
+I had a look into xfstests 225 and found that there are problems in
+xfstests 225 so it can not find the bug induced by this ugly patch.
+It seems that current xfstests 225 has a lot of problems.
+
+I am fixing xfstests 225 to enable it find this bug.
+
+Yongqiang.
+
 >
-> 1.EXT4_EXT_MAY_ZEROOUT means whole extent can be zeroouted instead of
-> splitting when splitting fails due to ENOSPACE;
+> Sorry!
 >
-> 2.EXT4_EXT_MARK_UNINIT1 indicates that the 1st part extent should be
-> marked uninitialized, otherwise initialized.
->
-> 3.EXT4_EXT_MARK_UNINIT2 is similar to EXT4_EXT_MARK_UNINIT1, only
-> difference is that it has effect on the 2nd extent.
+> Yongqiang.
 >>
->> Hmm, I could not see the zeroout extent gets marked as initialized h=
-ere.
->> Nothing wrong to expose the wrong data, but certainly we are not tak=
-e
->> advantage of zero out, =A0Perhaps I missed something?
->
-> Here the extent [ee_block, ee_block + ee_len) is split into two
-> extents [ee_block, map->m_lblk + map->m_len) and [map->m_lblk +
-> map->m_len, ee_block + ee_len), which are marked same as ex.
+>> Thanks!
+>> -Lukas
 >>
->> It would be nice to add some comments to describe the difference of
->> split_flag1, flags1, flags:-) Thanks.
->>
->> Also, I think we miss error handling here. What if the first split
->> failed and return error here? we still proceed to to do next split? =
-I
->> think we should go to the err exit, isnt?
-> Yes, error handling is missed.
->>
->>
->>> + =A0 =A0 ext4_ext_drop_refs(path);
->>> + =A0 =A0 path =3D ext4_ext_find_extent(inode, map->m_lblk, path);
->>> + =A0 =A0 if (IS_ERR(path))
->>> + =A0 =A0 =A0 =A0 =A0 =A0 return PTR_ERR(path);
->>> +
->>> + =A0 =A0 if (map->m_lblk >=3D ee_block) {
-When map->m_lblk =3D=3D ee_block, [ee_block, ee_block + ee_len) is trea=
-ted
-as 2nd extent.
->>> + =A0 =A0 =A0 =A0 =A0 =A0 split_flag1 =3D split_flag & EXT4_EXT_MAY=
-_ZEROOUT ?
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 EXT4_EXT_MAY_=
-ZEROOUT : 0;
->>> + =A0 =A0 =A0 =A0 =A0 =A0 if (uninitialized)
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 split_flag1 |=3D EXT4_EXT=
-_MARK_UNINIT1;
->>> + =A0 =A0 =A0 =A0 =A0 =A0 if (split_flag & EXT4_EXT_MARK_UNINIT2)
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 split_flag1 |=3D EXT4_EXT=
-_MARK_UNINIT2;
-> Up to now, zeroout part will be marked initialized.
->>> + =A0 =A0 =A0 =A0 =A0 =A0 err =3D ext4_split_extent_at(handle, inod=
-e, path,
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 map->m_lb=
-lk, split_flag1, flags);
->>> + =A0 =A0 =A0 =A0 =A0 =A0 if (err)
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out;
->>> + =A0 =A0 }
->
->>> +
->>> + =A0 =A0 ext4_ext_show_leaf(inode, path);
->>> +out:
->>> + =A0 =A0 return err ? err : map->m_len;
->>> +}
->>> +
->>> =A0#define EXT4_EXT_ZERO_LEN 7
->>> =A0/*
->>> =A0 * This function is called by ext4_ext_map_blocks() if someone t=
-ries to write
->>
->>
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (buf=
+fer_mapped(bh)) {
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 /* get the 1st mapped buffer. */
+>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 if (end > newex->ec_block +
+>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 if (end >=3D newex->ec_block +
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 newex->ec_len)
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 /* The buffer is out of
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 =A0* the request range.
+>>>
 >>
 >
 >
