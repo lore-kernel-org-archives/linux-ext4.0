@@ -1,9 +1,9 @@
 From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: Regression with ext4 in kernel 2.6.39-rc7? (Was: testing ext4
  master branch)
-Date: Fri, 13 May 2011 12:28:13 -0500
-Message-ID: <4DCD6A2D.30504@redhat.com>
-References: <BANLkTikW57S9emEFG9w9RXvq5O7v_MrsYw@mail.gmail.com>	<20110513145608.GA21165@thunk.org>	<4DCD4D5E.6050307@redhat.com> <BANLkTim8ihBNzxxkoTwigKMQB1xHToevdQ@mail.gmail.com>
+Date: Fri, 13 May 2011 12:31:56 -0500
+Message-ID: <4DCD6B0C.9050805@redhat.com>
+References: <BANLkTikW57S9emEFG9w9RXvq5O7v_MrsYw@mail.gmail.com>	<20110513145608.GA21165@thunk.org>	<4DCD4D5E.6050307@redhat.com> <BANLkTim8ihBNzxxkoTwigKMQB1xHToevdQ@mail.gmail.com> <4DCD6A2D.30504@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
@@ -12,61 +12,29 @@ Cc: Theodore Tso <tytso@mit.edu>,
 	Jan Kara <jack@suse.cz>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>
 To: Amir Goldstein <amir73il@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50191 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932999Ab1EMR2i (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 13 May 2011 13:28:38 -0400
-In-Reply-To: <BANLkTim8ihBNzxxkoTwigKMQB1xHToevdQ@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <4DCD6A2D.30504@redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 5/13/11 12:25 PM, Amir Goldstein wrote:
-> On Fri, May 13, 2011 at 6:25 PM, Eric Sandeen <sandeen@redhat.com> wrote:
->> On 5/13/11 9:56 AM, Ted Ts'o wrote:
->>> On Fri, May 13, 2011 at 12:17:03PM +0300, Amir Goldstein wrote:
->>>>
->>>> Can anyone try to reproduce the error with xfstest 005 and the crash
->>>> with xfstest 232?
->>>
->>> Xfstest #5 broke because of a change in the VFS, which now allows up
->>> to 40 nested symlinks.  So that's a matter of your xfstests being too
->>> old.
->>>
->>> The version of xfstests I've been using on my KVM box is too old to
->>> have test 232, so I haven't been able to test it.  I've been trying to
->>> use a newer version of xfstests, but xfstests doesn't build on either
->>> Ubuntu 10.04 (LTS), Debian stable, or Debian unstable, due to the use
->>> of newer XFS ioctl's and xfsctl's that aren't defined in the system
->>> header files.  The fact that it doesn't work on Ubuntu LTS and Stable
->>> is not that surprising, I suppose, but I was a bit disappointed that
->>> it doesn't work on Debian unstable.
->>
->> I missed that bug report :)  If you can send me the details of the
->> failures we can probably add configure tests for any new ioctls
->> that are causing build failures.
->>
->>> Since I don't have a Fedora system handy --- which header file are
->>> things like "struct xfs_flock64" supposed to be defined these days?
->>
->> Hm, well, on my Fedora system, /usr/include/xfs/xfs_fs.h, from xfsprogs-devel.
->>
->> I don't think that has changed in a very long time...
->>
->> I also package an xfsprogs-qa-devel which has some additional pieces in
->> it to support xfstests.  Debian could do the same ... "make install-qa"
->> in xfsprogs puts those bits into the root.
->>
+On 5/13/11 12:28 PM, Eric Sandeen wrote:
+>> After xfstests failed to build on Ubuntu 10.10,  I followed the advice omitted
+>> > by the build script to run "make install-qa", to solve the problem.
+>> > It took me a while to figure exactly where I should run the command,
+>> > but in the end I pulled the xfsprogs tree, ran "make; make install;
+>> > make install-qa"
+>> > and from there on things were looking better.
+> I can ask Nathan if he can package the qa bits for debian.
 > 
-> After xfstests failed to build on Ubuntu 10.10,  I followed the advice omitted
-> by the build script to run "make install-qa", to solve the problem.
-> It took me a while to figure exactly where I should run the command,
-> but in the end I pulled the xfsprogs tree, ran "make; make install;
-> make install-qa"
-> and from there on things were looking better.
+> Or, you all could just use Fedora ;)
+> 
+> -Eric
 
-I can ask Nathan if he can package the qa bits for debian.
+oh, or maybe all those files are already in xfslibs-dev:
 
-Or, you all could just use Fedora ;)
+http://packages.debian.org/lenny/amd64/xfslibs-dev/filelist
+
+Can someone who has encountered xfstests build problems send a bug report to the xfs list please?
+I'm sure we can get it sorted.
 
 -Eric
