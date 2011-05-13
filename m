@@ -1,44 +1,74 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Regression with ext4 in kernel 2.6.39-rc7? (Was: testing ext4
- master branch)
-Date: Fri, 13 May 2011 10:56:08 -0400
-Message-ID: <20110513145608.GA21165@thunk.org>
-References: <BANLkTikW57S9emEFG9w9RXvq5O7v_MrsYw@mail.gmail.com>
+From: James Bottomley <James.Bottomley@HansenPartnership.com>
+Subject: Re: [PATCH 0/4] Reduce impact to overall system of SLUB using
+ high-order allocations V2
+Date: Fri, 13 May 2011 10:19:44 -0500
+Message-ID: <1305299984.2611.37.camel@mulgrave.site>
+References: <1305295404-12129-1-git-send-email-mgorman@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: Amir Goldstein <amir73il@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:47726 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757522Ab1EMO4M (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 13 May 2011 10:56:12 -0400
-Content-Disposition: inline
-In-Reply-To: <BANLkTikW57S9emEFG9w9RXvq5O7v_MrsYw@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: Andrew Morton <akpm@linux-foundation.org>, Colin King
+ <colin.king@canonical.com>, Raghavendra D Prabhu
+ <raghu.prabhu13@gmail.com>,  Jan Kara <jack@suse.cz>, Chris Mason
+ <chris.mason@oracle.com>, Christoph Lameter <cl@linux.com>,  Pekka Enberg
+ <penberg@kernel.org>, Rik van Riel <riel@redhat.com>, Johannes Weiner
+ <hannes@cmpxchg.org>,  linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+ linux-mm <linux-mm@kvack.org>, linux-kernel <linux-kernel@vger.kernel.org>,
+ linux-ext4 <linux-ext4@vger.kernel.org>
+To: Mel Gorman <mgorman@suse.de>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1305295404-12129-1-git-send-email-mgorman@suse.de>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, May 13, 2011 at 12:17:03PM +0300, Amir Goldstein wrote:
+On Fri, 2011-05-13 at 15:03 +0100, Mel Gorman wrote:
+> Changelog since V1
+>   o kswapd should sleep if need_resched
+>   o Remove __GFP_REPEAT from GFP flags when speculatively using high
+>     orders so direct/compaction exits earlier
+>   o Remove __GFP_NORETRY for correctness
+>   o Correct logic in sleeping_prematurely
+>   o Leave SLUB using the default slub_max_order
 > 
-> Can anyone try to reproduce the error with xfstest 005 and the crash
-> with xfstest 232?
+> There are a few reports of people experiencing hangs when copying
+> large amounts of data with kswapd using a large amount of CPU which
+> appear to be due to recent reclaim changes.
+> 
+> SLUB using high orders is the trigger but not the root cause as SLUB
+> has been using high orders for a while. The following four patches
+> aim to fix the problems in reclaim while reducing the cost for SLUB
+> using those high orders.
+> 
+> Patch 1 corrects logic introduced by commit [1741c877: mm:
+> 	kswapd: keep kswapd awake for high-order allocations until
+> 	a percentage of the node is balanced] to allow kswapd to
+> 	go to sleep when balanced for high orders.
+> 
+> Patch 2 prevents kswapd waking up in response to SLUBs speculative
+> 	use of high orders.
+> 
+> Patch 3 further reduces the cost by prevent SLUB entering direct
+> 	compaction or reclaim paths on the grounds that falling
+> 	back to order-0 should be cheaper.
+> 
+> Patch 4 notes that even when kswapd is failing to keep up with
+> 	allocation requests, it should still go to sleep when its
+> 	quota has expired to prevent it spinning.
 
-Xfstest #5 broke because of a change in the VFS, which now allows up
-to 40 nested symlinks.  So that's a matter of your xfstests being too
-old.
+This all works fine for me ... three untar runs and no kswapd hangs or
+pegging the CPU at 99% ... in fact, kswapd rarely gets over 20%
 
-The version of xfstests I've been using on my KVM box is too old to
-have test 232, so I haven't been able to test it.  I've been trying to
-use a newer version of xfstests, but xfstests doesn't build on either
-Ubuntu 10.04 (LTS), Debian stable, or Debian unstable, due to the use
-of newer XFS ioctl's and xfsctl's that aren't defined in the system
-header files.  The fact that it doesn't work on Ubuntu LTS and Stable
-is not that surprising, I suppose, but I was a bit disappointed that
-it doesn't work on Debian unstable.
+This isn't as good as the kswapd sleeping_prematurely() throttling
+patch.  For total CPU time on a three 90GB untar run, it's about 64s of
+CPU time with your patch rather than 6s, but that's vastly better than
+the 15 minutes of CPU time kswapd was taking even under PREEMPT.
 
-Since I don't have a Fedora system handy --- which header file are
-things like "struct xfs_flock64" supposed to be defined these days?
+James
 
-       	    	    		 	     - Ted
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
