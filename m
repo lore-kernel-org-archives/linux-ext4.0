@@ -1,88 +1,65 @@
-From: Christoph Lameter <cl@linux.com>
-Subject: Re: [PATCH 0/4] Reduce impact to overall system of SLUB using
- high-order allocations V2
-Date: Fri, 13 May 2011 10:21:46 -0500 (CDT)
-Message-ID: <alpine.DEB.2.00.1105131009530.24193@router.home>
-References: <1305295404-12129-1-git-send-email-mgorman@suse.de>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Regression with ext4 in kernel 2.6.39-rc7? (Was: testing ext4
+ master branch)
+Date: Fri, 13 May 2011 10:25:18 -0500
+Message-ID: <4DCD4D5E.6050307@redhat.com>
+References: <BANLkTikW57S9emEFG9w9RXvq5O7v_MrsYw@mail.gmail.com> <20110513145608.GA21165@thunk.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	James Bottomley <James.Bottomley@HansenPartnership.com>,
-	Colin King <colin.king@canonical.com>,
-	Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
-	Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
-	Pekka Enberg <penberg@kernel.org>,
-	Rik van Riel <riel@redhat.com>,
-	Johannes Weiner <hannes@cmpxchg.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-mm <linux-mm@kvack.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Mel Gorman <mgorman@suse.de>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Amir Goldstein <amir73il@gmail.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp101.prem.mail.ac4.yahoo.com ([76.13.13.40]:26912 "HELO
-	smtp101.prem.mail.ac4.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1752988Ab1EMPVv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 13 May 2011 11:21:51 -0400
-In-Reply-To: <1305295404-12129-1-git-send-email-mgorman@suse.de>
+Received: from mx1.redhat.com ([209.132.183.28]:11757 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751366Ab1EMPZZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 13 May 2011 11:25:25 -0400
+In-Reply-To: <20110513145608.GA21165@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 13 May 2011, Mel Gorman wrote:
+On 5/13/11 9:56 AM, Ted Ts'o wrote:
+> On Fri, May 13, 2011 at 12:17:03PM +0300, Amir Goldstein wrote:
+>>
+>> Can anyone try to reproduce the error with xfstest 005 and the crash
+>> with xfstest 232?
+> 
+> Xfstest #5 broke because of a change in the VFS, which now allows up
+> to 40 nested symlinks.  So that's a matter of your xfstests being too
+> old.
+> 
+> The version of xfstests I've been using on my KVM box is too old to
+> have test 232, so I haven't been able to test it.  I've been trying to
+> use a newer version of xfstests, but xfstests doesn't build on either
+> Ubuntu 10.04 (LTS), Debian stable, or Debian unstable, due to the use
+> of newer XFS ioctl's and xfsctl's that aren't defined in the system
+> header files.  The fact that it doesn't work on Ubuntu LTS and Stable
+> is not that surprising, I suppose, but I was a bit disappointed that
+> it doesn't work on Debian unstable.
 
-> SLUB using high orders is the trigger but not the root cause as SLUB
-> has been using high orders for a while. The following four patches
-> aim to fix the problems in reclaim while reducing the cost for SLUB
-> using those high orders.
->
-> Patch 1 corrects logic introduced by commit [1741c877: mm:
-> 	kswapd: keep kswapd awake for high-order allocations until
-> 	a percentage of the node is balanced] to allow kswapd to
-> 	go to sleep when balanced for high orders.
+I missed that bug report :)  If you can send me the details of the
+failures we can probably add configure tests for any new ioctls
+that are causing build failures.
 
-The above looks good.
+> Since I don't have a Fedora system handy --- which header file are
+> things like "struct xfs_flock64" supposed to be defined these days?
 
-> Patch 2 prevents kswapd waking up in response to SLUBs speculative
-> 	use of high orders.
+Hm, well, on my Fedora system, /usr/include/xfs/xfs_fs.h, from xfsprogs-devel.
 
-Not sure if that is necessary since it seems that we triggered kswapd
-before? Why not continue to do it? Once kswapd has enough higher order
-pages kswapd should no longer be triggered right?
+I don't think that has changed in a very long time...
 
-> Patch 3 further reduces the cost by prevent SLUB entering direct
-> 	compaction or reclaim paths on the grounds that falling
-> 	back to order-0 should be cheaper.
+I also package an xfsprogs-qa-devel which has some additional pieces in
+it to support xfstests.  Debian could do the same ... "make install-qa"
+in xfsprogs puts those bits into the root.
 
-Its cheaper for reclaim path true but more expensive in terms of SLUBs
-management costs of the data and it also increases the memory wasted. A
-higher order means denser packing of objects less page management
-overhead. Fallback is not for free. Reasonable effort should be made to
-allocate the page order requested.
+-Eric
 
-> Patch 4 notes that even when kswapd is failing to keep up with
-> 	allocation requests, it should still go to sleep when its
-> 	quota has expired to prevent it spinning.
-
-Looks good too.
-
-Overall, it looks like the compaction logic and the modifications to
-reclaim introduced recently with the intend to increase the amount of
-physically contiguous memory is not working as expected.
-
-SLUBs chance of getting higher order pages should be *increasing* as a
-result of these changes. The above looks like the chances are decreasing
-now.
-
-This is a matter of future concern. The metadata management overhead
-in the kernel is continually increasing since memory sizes keep growing
-and we typically manage memory in 4k chunks. Through large allocation
-sizes we can reduce that management overhead but we can only do this if we
-have an effective way of defragmenting memory to get longer contiguous
-chunks that can be managed to a single page struct.
-
-Please make sure that compaction and related measures really work properly.
-
-The patches suggest that the recent modifications are not improving the
-situation.
+>        	    	    		 	     - Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
