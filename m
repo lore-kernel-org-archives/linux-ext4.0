@@ -1,589 +1,382 @@
-From: Johann Lombardi <johann@whamcloud.com>
-Subject: [PATCH] ext4: add support for multiple mount protection
-Date: Fri, 13 May 2011 17:38:05 -0700
-Message-ID: <1305333485-17140-1-git-send-email-johann@whamcloud.com>
-Cc: Johann Lombardi <johann@whamcloud.com>,
-	Andreas Dilger <adilger@whamcloud.com>
-To: linux-ext4@vger.kernel.org
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: [PATCH] xfstests:Make 225 compare map and fiemap at each block.
+Date: Sat, 14 May 2011 11:47:24 +0800
+Message-ID: <BANLkTi=ra8eKxqstqFqDWHYsQpVx66c8BQ@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com
+To: Eric Sandeen <sandeen@sandeen.net>, josef@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:41770 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758522Ab1ENAi1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 May 2011 20:38:27 -0400
-Received: by iwn34 with SMTP id 34so2669018iwn.19
-        for <linux-ext4@vger.kernel.org>; Fri, 13 May 2011 17:38:26 -0700 (PDT)
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:45613 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759855Ab1ENDrZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 May 2011 23:47:25 -0400
+Received: by vxi39 with SMTP id 39so2242780vxi.19
+        for <linux-ext4@vger.kernel.org>; Fri, 13 May 2011 20:47:24 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Prevent an ext4 filesystem from being mounted multiple times.
-A sequence number is stored on disk and is periodically updated (every 5
-seconds by default) by a mounted filesystem.
-At mount time, we now wait for s_mmp_update_interval seconds to make sure
-that the MMP sequence does not change.
-In case of failure, the nodename, bdevname and the time at which the MMP
-block was last updated is displayed.
-Move all mmp code to a dedicated file (mmp.c).
+Hi All,
 
-Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
-Signed-off-by: Johann Lombardi <johann@whamcloud.com>
+Due to my carelessness, I induced a ugly patch to ext4's fiemap, but
+225 could not find it.  So I looked into the 225 and could not figure out
+logic in compare_map_and_fiemap(), which seemed to mixed extents with
+blocks.  Then I made 225 compare map and fiemap at each block, the new
+225 can find another bug in ext4's fiemap.
+
+The new 225 works well on ext3 and ext4 with both 1K and 4K block. However,
+it report fiemap error on xfs with 4K block.  My working tree is 2.6.39-rc3
+pulled from Ted's tree. The error message is as follows.
+
+ QA output created by 225
+ fiemap run without preallocation, with sync
++map is 'DDHDHHDHHDHDDHDDHDDHHDHDDHDDDDDDHHDDDHHHHDH
+DDDDDDDDHDDHHHDDDHDDHHDDDDDDHHHHHHDDHHHHHDHDHDHDD
+DHDDHD'
++logical: [       0..      15] phys:       12..      27 flags: 0x000 tot: 16
++logical: [      17..      31] phys:       29..      43 flags: 0x000 tot: 15
++logical: [      34..      63] phys:       46..      75 flags: 0x000 tot: 30
++logical: [      65..      95] phys:       77..     107 flags: 0x001 tot: 31
++Problem comparing fiemap and map
+ fiemap run without preallocation or sync
++map is 'DDHDHHDHHDHDDHDDHDDHHDHDDHDDDDDDHHDDDHHHHDH
+DDDDDDDDHDDHHHDDDHDDHHDDDDDDHHHHHHDDHHHHHDHDHDHDD
+DHDDHD'
++logical: [       0..      15] phys:        0..      15 flags: 0x006 tot: 16
++Problem comparing fiemap and map
+Ran: 225
+Failures: 225
+Failed 1 of 1 tests
+
+I am not sure this is a bug in new 225 or xfs.
+
+Yongqiang.
+
+Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/Makefile |    3 +-
- fs/ext4/ext4.h   |   76 ++++++++++++-
- fs/ext4/mmp.c    |  351 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/super.c  |   18 +++-
- 4 files changed, 444 insertions(+), 4 deletions(-)
- create mode 100644 fs/ext4/mmp.c
+ src/fiemap-tester.c |  223 ++++++++++++++++++++++++++++----------------------
+ 1 files changed, 125 insertions(+), 98 deletions(-)
 
-diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
-index c947e36..0410946 100644
---- a/fs/ext4/Makefile
-+++ b/fs/ext4/Makefile
-@@ -6,7 +6,8 @@ obj-$(CONFIG_EXT4_FS) += ext4.o
- 
- ext4-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o page-io.o \
- 		ioctl.o namei.o super.o symlink.o hash.o resize.o extents.o \
--		ext4_jbd2.o migrate.o mballoc.o block_validity.o move_extent.o
-+		ext4_jbd2.o migrate.o mballoc.o block_validity.o move_extent.o \
-+		mmp.o
- 
- ext4-$(CONFIG_EXT4_FS_XATTR)		+= xattr.o xattr_user.o xattr_trusted.o
- ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 4daaf2b..5e1ce1d 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1028,7 +1028,7 @@ struct ext4_super_block {
- 	__le16	s_want_extra_isize; 	/* New inodes should reserve # bytes */
- 	__le32	s_flags;		/* Miscellaneous flags */
- 	__le16  s_raid_stride;		/* RAID stride */
--	__le16  s_mmp_interval;         /* # seconds to wait in MMP checking */
-+	__le16  s_mmp_update_interval;  /* # seconds to wait in MMP checking */
- 	__le64  s_mmp_block;            /* Block for multi-mount protection */
- 	__le32  s_raid_stripe_width;    /* blocks on all data disks (N*stride)*/
- 	__u8	s_log_groups_per_flex;  /* FLEX_BG group size */
-@@ -1201,6 +1201,9 @@ struct ext4_sb_info {
- 	struct ext4_li_request *s_li_request;
- 	/* Wait multiplier for lazy initialization thread */
- 	unsigned int s_li_wait_mult;
-+
-+	/* Kernel thread for multiple mount protection */
-+	struct task_struct *s_mmp_tsk;
- };
- 
- static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
-@@ -1357,7 +1360,8 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
- 					 EXT4_FEATURE_INCOMPAT_META_BG| \
- 					 EXT4_FEATURE_INCOMPAT_EXTENTS| \
- 					 EXT4_FEATURE_INCOMPAT_64BIT| \
--					 EXT4_FEATURE_INCOMPAT_FLEX_BG)
-+					 EXT4_FEATURE_INCOMPAT_FLEX_BG| \
-+					 EXT4_FEATURE_INCOMPAT_MMP)
- #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
- 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
- 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
-@@ -1615,6 +1619,67 @@ struct ext4_features {
- };
- 
- /*
-+ * This structure will be used for multiple mount protection. It will be
-+ * written into the block number saved in the s_mmp_block field in the
-+ * superblock. Programs that check MMP should assume that if
-+ * SEQ_FSCK (or any unknown code above SEQ_MAX) is present then it is NOT safe
-+ * to use the filesystem, regardless of how old the timestamp is.
-+ */
-+#define EXT4_MMP_MAGIC     0x004D4D50U /* ASCII for MMP */
-+#define EXT4_MMP_SEQ_CLEAN 0xFF4D4D50U /* mmp_seq value for clean unmount */
-+#define EXT4_MMP_SEQ_FSCK  0xE24D4D50U /* mmp_seq value when being fscked */
-+#define EXT4_MMP_SEQ_MAX   0xE24D4D4FU /* maximum valid mmp_seq value */
-+
-+struct mmp_struct {
-+	__le32	mmp_magic;		/* Magic number for MMP */
-+	__le32	mmp_seq;		/* Sequence no. updated periodically */
-+
-+	/*
-+	 * mmp_time, mmp_nodename & mmp_bdevname are only used for information
-+	 * purposes and do not affect the correctness of the algorithm
-+	 */
-+	__le64	mmp_time;		/* Time last updated */
-+	char	mmp_nodename[64];	/* Node which last updated MMP block */
-+	char	mmp_bdevname[32];	/* Bdev which last updated MMP block */
-+
-+	/*
-+	 * mmp_check_interval is used to verify if the MMP block has been
-+	 * updated on the block device. The value is updated based on the
-+	 * maximum time to write the MMP block during an update cycle.
-+	 */
-+	__le16	mmp_check_interval;
-+
-+	__le16	mmp_pad1;
-+	__le32	mmp_pad2[227];
-+};
-+
-+/* arguments passed to the mmp thread */
-+struct mmpd_data {
-+	struct buffer_head *bh; /* bh from initial read_mmp_block() */
-+	struct super_block *sb;  /* super block of the fs */
-+};
-+
-+/*
-+ * Check interval multiplier
-+ * The MMP block is written every update interval and initially checked every
-+ * update interval x the multiplier (the value is then adapted based on the
-+ * write latency). The reason is that writes can be delayed under load and we
-+ * don't want readers to incorrectly assume that the filesystem is no longer
-+ * in use.
-+ */
-+#define EXT4_MMP_CHECK_MULT		2UL
-+
-+/*
-+ * Minimum interval for MMP checking in seconds.
-+ */
-+#define EXT4_MMP_MIN_CHECK_INTERVAL	5UL
-+
-+/*
-+ * Maximum interval for MMP checking in seconds.
-+ */
-+#define EXT4_MMP_MAX_CHECK_INTERVAL	300UL
-+
-+/*
-  * Function prototypes
+diff --git a/src/fiemap-tester.c b/src/fiemap-tester.c
+index 1663f84..99bb5ce 100644
+--- a/src/fiemap-tester.c
++++ b/src/fiemap-tester.c
+@@ -14,6 +14,9 @@
+  * You should have received a copy of the GNU General Public License
+  * along with this program; if not, write the Free Software Foundation,
+  * Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++ *
++ * Compare map and fiemap at each block,
++ * Yongqiang Yang <xiaoqiangnk@gmail.com>, 2011
   */
- 
-@@ -1788,6 +1853,10 @@ extern void __ext4_warning(struct super_block *, const char *, unsigned int,
- 						       __LINE__, ## message)
- extern void ext4_msg(struct super_block *, const char *, const char *, ...)
- 	__attribute__ ((format (printf, 3, 4)));
-+extern void __dump_mmp_msg(struct super_block *, struct mmp_struct *mmp,
-+			   const char *, unsigned int, const char *);
-+#define dump_mmp_msg(sb, mmp, msg)	__dump_mmp_msg(sb, mmp, __func__, \
-+						       __LINE__, msg)
- extern void __ext4_grp_locked_error(const char *, unsigned int, \
- 				    struct super_block *, ext4_group_t, \
- 				    unsigned long, ext4_fsblk_t, \
-@@ -2092,6 +2161,9 @@ extern int ext4_bio_write_page(struct ext4_io_submit *io,
- 			       int len,
- 			       struct writeback_control *wbc);
- 
-+/* mmp.c */
-+extern int ext4_multi_mount_protect(struct super_block *, ext4_fsblk_t);
-+
- /* BH_Uninit flag: blocks are allocated but uninitialized on disk */
- enum ext4_state_bits {
- 	BH_Uninit	/* blocks are allocated but uninitialized on disk */
-diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
-new file mode 100644
-index 0000000..0832fd3
---- /dev/null
-+++ b/fs/ext4/mmp.c
-@@ -0,0 +1,351 @@
-+#include <linux/fs.h>
-+#include <linux/random.h>
-+#include <linux/buffer_head.h>
-+#include <linux/utsname.h>
-+#include <linux/kthread.h>
-+
-+#include "ext4.h"
-+
-+/*
-+ * Write the MMP block using WRITE_SYNC to try to get the block on-disk
-+ * faster.
-+ */
-+static int write_mmp_block(struct buffer_head *bh)
-+{
-+	mark_buffer_dirty(bh);
-+	lock_buffer(bh);
-+	bh->b_end_io = end_buffer_write_sync;
-+	get_bh(bh);
-+	submit_bh(WRITE_SYNC, bh);
-+	wait_on_buffer(bh);
-+	if (unlikely(!buffer_uptodate(bh)))
-+		return 1;
-+
-+	return 0;
-+}
-+
-+/*
-+ * Read the MMP block. It _must_ be read from disk and hence we clear the
-+ * uptodate flag on the buffer.
-+ */
-+static int read_mmp_block(struct super_block *sb, struct buffer_head **bh,
-+			  ext4_fsblk_t mmp_block)
-+{
-+	struct mmp_struct *mmp;
-+
-+	if (*bh)
-+		clear_buffer_uptodate(*bh);
-+
-+	/* This would be sb_bread(sb, mmp_block), except we need to be sure
-+	 * that the MD RAID device cache has been bypassed, and that the read
-+	 * is not blocked in the elevator. */
-+	if (!*bh)
-+		*bh = sb_getblk(sb, mmp_block);
-+	if (*bh) {
-+		get_bh(*bh);
-+		lock_buffer(*bh);
-+		(*bh)->b_end_io = end_buffer_read_sync;
-+		submit_bh(READ_SYNC, *bh);
-+		wait_on_buffer(*bh);
-+		if (!buffer_uptodate(*bh)) {
-+			brelse(*bh);
-+			*bh = NULL;
-+		}
-+	}
-+	if (!*bh) {
-+		ext4_warning(sb, "Error while reading MMP block %llu",
-+		             mmp_block);
-+		return -EIO;
-+	}
-+
-+	mmp = (struct mmp_struct *)((*bh)->b_data);
-+	if (le32_to_cpu(mmp->mmp_magic) != EXT4_MMP_MAGIC)
-+		return -EINVAL;
-+
-+	return 0;
-+}
-+
-+/*
-+ * Dump as much information as possible to help the admin.
-+ */
-+void __dump_mmp_msg(struct super_block *sb, struct mmp_struct *mmp,
-+		    const char *function, unsigned int line, const char *msg)
-+{
-+	__ext4_warning(sb, function, line, msg);
-+	__ext4_warning(sb, function, line,
-+		       "MMP failure info: last update time: %llu, last update "
-+		       "node: %s, last update device: %s\n",
-+		       (long long unsigned int) le64_to_cpu(mmp->mmp_time),
-+		       mmp->mmp_nodename, mmp->mmp_bdevname);
-+}
-+
-+/*
-+ * kmmpd will update the MMP sequence every s_mmp_update_interval seconds
-+ */
-+static int kmmpd(void *data)
-+{
-+	struct super_block *sb = ((struct mmpd_data *) data)->sb;
-+	struct buffer_head *bh = ((struct mmpd_data *) data)->bh;
-+	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
-+	struct mmp_struct *mmp;
-+	ext4_fsblk_t mmp_block;
-+	u32 seq = 0;
-+	unsigned long failed_writes = 0;
-+	int mmp_update_interval = le16_to_cpu(es->s_mmp_update_interval);
-+	unsigned mmp_check_interval;
-+	unsigned long last_update_time;
-+	unsigned long diff;
-+	int retval;
-+
-+	mmp_block = le64_to_cpu(es->s_mmp_block);
-+	mmp = (struct mmp_struct *)(bh->b_data);
-+	mmp->mmp_time = cpu_to_le64(get_seconds());
-+	/*
-+	 * Start with the higher mmp_check_interval and reduce it if
-+	 * the MMP block is being updated on time.
-+	 */
-+	mmp_check_interval = max(EXT4_MMP_CHECK_MULT * mmp_update_interval,
-+				 EXT4_MMP_MIN_CHECK_INTERVAL);
-+	mmp->mmp_check_interval = cpu_to_le16(mmp_check_interval);
-+	bdevname(bh->b_bdev, mmp->mmp_bdevname);
-+
-+	memcpy(mmp->mmp_nodename, init_utsname()->sysname,
-+	       sizeof(mmp->mmp_nodename));
-+
-+	while (!kthread_should_stop()) {
-+		if (++seq > EXT4_MMP_SEQ_MAX)
-+			seq = 1;
-+
-+		mmp->mmp_seq = cpu_to_le32(seq);
-+		mmp->mmp_time = cpu_to_le64(get_seconds());
-+		last_update_time = jiffies;
-+
-+		retval = write_mmp_block(bh);
-+		/*
-+		 * Don't spew too many error messages. Print one every
-+		 * (s_mmp_update_interval * 60) seconds.
-+		 */
-+		if (retval && (failed_writes % 60) == 0) {
-+			ext4_error(sb, "Error writing to MMP block");
-+			failed_writes++;
-+		}
-+
-+		if (!(le32_to_cpu(es->s_feature_incompat) &
-+		    EXT4_FEATURE_INCOMPAT_MMP)) {
-+			ext4_warning(sb, "kmmpd being stopped since MMP feature"
-+				     " has been disabled.");
-+			EXT4_SB(sb)->s_mmp_tsk = NULL;
-+			goto failed;
-+		}
-+
-+		if (sb->s_flags & MS_RDONLY) {
-+			ext4_warning(sb, "kmmpd being stopped since filesystem "
-+				     "has been remounted as readonly.");
-+			EXT4_SB(sb)->s_mmp_tsk = NULL;
-+			goto failed;
-+		}
-+
-+		diff = jiffies - last_update_time;
-+		if (diff < mmp_update_interval * HZ)
-+			schedule_timeout_interruptible(mmp_update_interval *
-+						       HZ - diff);
-+
-+		/*
-+		 * We need to make sure that more than mmp_check_interval
-+		 * seconds have not passed since writing. If that has happened
-+		 * we need to check if the MMP block is as we left it.
-+		 */
-+		diff = jiffies - last_update_time;
-+		if (diff > mmp_check_interval * HZ) {
-+			struct buffer_head *bh_check = NULL;
-+			struct mmp_struct *mmp_check;
-+
-+			retval = read_mmp_block(sb, &bh_check, mmp_block);
-+			if (retval) {
-+				ext4_error(sb, "error reading MMP data: %d",
-+					   retval);
-+
-+				EXT4_SB(sb)->s_mmp_tsk = NULL;
-+				goto failed;
-+			}
-+
-+			mmp_check = (struct mmp_struct *)(bh_check->b_data);
-+			if (mmp->mmp_seq != mmp_check->mmp_seq ||
-+			    memcmp(mmp->mmp_nodename, mmp_check->mmp_nodename,
-+				   sizeof(mmp->mmp_nodename))) {
-+				dump_mmp_msg(sb, mmp_check,
-+					     "Error while updating MMP info. "
-+					     "The filesystem seems to have been"
-+					     " multiply mounted.");
-+				ext4_error(sb, "abort");
-+				goto failed;
-+			}
-+			put_bh(bh_check);
-+		}
-+
-+		 /*
-+		 * Adjust the mmp_check_interval depending on how much time
-+		 * it took for the MMP block to be written.
-+		 */
-+		mmp_check_interval = max(min(EXT4_MMP_CHECK_MULT * diff / HZ,
-+					     EXT4_MMP_MAX_CHECK_INTERVAL),
-+					 EXT4_MMP_MIN_CHECK_INTERVAL);
-+		mmp->mmp_check_interval = cpu_to_le16(mmp_check_interval);
-+	}
-+
-+	/*
-+	 * Unmount seems to be clean.
-+	 */
-+	mmp->mmp_seq = cpu_to_le32(EXT4_MMP_SEQ_CLEAN);
-+	mmp->mmp_time = cpu_to_le64(get_seconds());
-+
-+	retval = write_mmp_block(bh);
-+
-+failed:
-+	kfree(data);
-+	brelse(bh);
-+	return retval;
-+}
-+
-+/*
-+ * Get a random new sequence number but make sure it is not greater than
-+ * EXT4_MMP_SEQ_MAX.
-+ */
-+static unsigned int mmp_new_seq(void)
-+{
-+	u32 new_seq;
-+
-+	do {
-+		get_random_bytes(&new_seq, sizeof(u32));
-+	} while (new_seq > EXT4_MMP_SEQ_MAX);
-+
-+	return new_seq;
-+}
-+
-+/*
-+ * Protect the filesystem from being mounted more than once.
-+ */
-+int ext4_multi_mount_protect(struct super_block *sb,
-+				    ext4_fsblk_t mmp_block)
-+{
-+	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
-+	struct buffer_head *bh = NULL;
-+	struct mmp_struct *mmp = NULL;
-+	struct mmpd_data *mmpd_data;
-+	u32 seq;
-+	unsigned int mmp_check_interval = le16_to_cpu(es->s_mmp_update_interval);
-+	unsigned int wait_time = 0;
-+	int retval;
-+
-+	if (mmp_block < le32_to_cpu(es->s_first_data_block) ||
-+	    mmp_block >= ext4_blocks_count(es)) {
-+		ext4_warning(sb, "Invalid MMP block in superblock");
-+		goto failed;
-+	}
-+
-+	retval = read_mmp_block(sb, &bh, mmp_block);
-+	if (retval)
-+		goto failed;
-+
-+	mmp = (struct mmp_struct *)(bh->b_data);
-+
-+	if (mmp_check_interval < EXT4_MMP_MIN_CHECK_INTERVAL)
-+		mmp_check_interval = EXT4_MMP_MIN_CHECK_INTERVAL;
-+
-+	/*
-+	 * If check_interval in MMP block is larger, use that instead of
-+	 * update_interval from the superblock.
-+	 */
-+	if (mmp->mmp_check_interval > mmp_check_interval)
-+		mmp_check_interval = mmp->mmp_check_interval;
-+
-+	seq = le32_to_cpu(mmp->mmp_seq);
-+	if (seq == EXT4_MMP_SEQ_CLEAN)
-+		goto skip;
-+
-+	if (seq == EXT4_MMP_SEQ_FSCK) {
-+		dump_mmp_msg(sb, mmp, "fsck is running on the filesystem");
-+		goto failed;
-+	}
-+
-+	wait_time = min(mmp_check_interval * 2 + 1,
-+			mmp_check_interval + 60);
-+
-+	/* Print MMP interval if more than 20 secs. */
-+	if (wait_time > EXT4_MMP_MIN_CHECK_INTERVAL * 4)
-+		ext4_warning(sb, "MMP interval %u higher than expected, please"
-+		             " wait.\n", wait_time * 2);
-+
-+	if (schedule_timeout_interruptible(HZ * wait_time) != 0) {
-+		ext4_warning(sb, "MMP startup interrupted, failing mount\n");
-+		goto failed;
-+	}
-+
-+	retval = read_mmp_block(sb, &bh, mmp_block);
-+	if (retval)
-+		goto failed;
-+	mmp = (struct mmp_struct *)(bh->b_data);
-+	if (seq != le32_to_cpu(mmp->mmp_seq)) {
-+		dump_mmp_msg(sb, mmp,
-+			     "Device is already active on another node.");
-+		goto failed;
-+	}
-+
-+skip:
-+	/*
-+	 * write a new random sequence number.
-+	 */
-+	mmp->mmp_seq = seq = cpu_to_le32(mmp_new_seq());
-+
-+	retval = write_mmp_block(bh);
-+	if (retval)
-+		goto failed;
-+
-+	/*
-+	 * wait for MMP interval and check mmp_seq.
-+	 */
-+	if (schedule_timeout_interruptible(HZ * wait_time) != 0) {
-+		ext4_warning(sb, "MMP startup interrupted, failing mount\n");
-+		goto failed;
-+	}
-+
-+	retval = read_mmp_block(sb, &bh, mmp_block);
-+	if (retval)
-+		goto failed;
-+	mmp = (struct mmp_struct *)(bh->b_data);
-+	if (seq != le32_to_cpu(mmp->mmp_seq)) {
-+		dump_mmp_msg(sb, mmp,
-+			     "Device is already active on another node.");
-+		goto failed;
-+	}
-+
-+	mmpd_data = kmalloc(sizeof(struct mmpd_data), GFP_KERNEL);
-+	if (!mmpd_data) {
-+		ext4_warning(sb, "not enough memory for mmpd_data");
-+		goto failed;
-+	}
-+	mmpd_data->sb = sb;
-+	mmpd_data->bh = bh;
-+
-+	/*
-+	 * Start a kernel thread to update the MMP block periodically.
-+	 */
-+	EXT4_SB(sb)->s_mmp_tsk = kthread_run(kmmpd, mmpd_data, "kmmpd-%s",
-+					     bdevname(bh->b_bdev,
-+						      mmp->mmp_bdevname));
-+	if (IS_ERR(EXT4_SB(sb)->s_mmp_tsk)) {
-+		EXT4_SB(sb)->s_mmp_tsk = NULL;
-+		kfree(mmpd_data);
-+		ext4_warning(sb, "Unable to create kmmpd thread for %s.",
-+			     sb->s_id);
-+		goto failed;
-+	}
-+
-+	return 0;
-+
-+failed:
-+	brelse(bh);
-+	return 1;
-+}
-+
-+
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 8553dfb..c23d328 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -806,6 +806,8 @@ static void ext4_put_super(struct super_block *sb)
- 		invalidate_bdev(sbi->journal_bdev);
- 		ext4_blkdev_remove(sbi);
- 	}
-+	if (sbi->s_mmp_tsk)
-+		kthread_stop(sbi->s_mmp_tsk);
- 	sb->s_fs_info = NULL;
- 	/*
- 	 * Now that we are completely done shutting down the
-@@ -3459,6 +3461,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 			  EXT4_HAS_INCOMPAT_FEATURE(sb,
- 				    EXT4_FEATURE_INCOMPAT_RECOVER));
- 
-+	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_MMP) &&
-+	    !(sb->s_flags & MS_RDONLY))
-+		if (ext4_multi_mount_protect(sb, le64_to_cpu(es->s_mmp_block)))
-+			goto failed_mount3;
-+
- 	/*
- 	 * The first inode we look at is the journal inode.  Don't try
- 	 * root first: it may be modified in the journal!
-@@ -3707,6 +3714,8 @@ failed_mount3:
- 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
- 	percpu_counter_destroy(&sbi->s_dirs_counter);
- 	percpu_counter_destroy(&sbi->s_dirtyblocks_counter);
-+	if (sbi->s_mmp_tsk)
-+		kthread_stop(sbi->s_mmp_tsk);
- failed_mount2:
- 	for (i = 0; i < db_count; i++)
- 		brelse(sbi->s_group_desc[i]);
-@@ -4242,7 +4251,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 	int enable_quota = 0;
- 	ext4_group_t g;
- 	unsigned int journal_ioprio = DEFAULT_JOURNAL_IOPRIO;
--	int err;
-+	int err = 0;
- #ifdef CONFIG_QUOTA
- 	int i;
- #endif
-@@ -4368,6 +4377,13 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 				goto restore_opts;
- 			if (!ext4_setup_super(sb, es, 0))
- 				sb->s_flags &= ~MS_RDONLY;
-+			if (EXT4_HAS_INCOMPAT_FEATURE(sb,
-+						     EXT4_FEATURE_INCOMPAT_MMP))
-+				if (ext4_multi_mount_protect(sb,
-+						le64_to_cpu(es->s_mmp_block))) {
-+					err = -EROFS;
-+					goto restore_opts;
-+				}
- 			enable_quota = 1;
- 		}
- 	}
--- 
-1.7.4.1
 
+ #include <stdio.h>
+@@ -57,7 +60,7 @@ generate_file_mapping(int blocks, int prealloc)
+ 	int num_types = 2, cur_block = 0;
+ 	int i = 0;
+
+-	map = malloc(sizeof(char) * blocks);
++	map = malloc(sizeof(char) * (blocks + 1));
+ 	if (!map)
+ 		return NULL;
+
+@@ -80,7 +83,8 @@ generate_file_mapping(int blocks, int prealloc)
+ 		}
+ 		cur_block++;
+ 	}
+-
++	
++	map[blocks] = 0;
+ 	return map;
+ }
+
+@@ -247,55 +251,36 @@ check_flags(struct fiemap *fiemap, int blocksize)
+ }
+
+ static int
+-check_data(struct fiemap *fiemap, __u64 logical_offset, int blocksize,
++check_data(struct fiemap_extent * extent ,  __u64 logical_offset, int
+blocksize,
+ 	   int last, int prealloc)
+ {
+-	struct fiemap_extent *extent;
+-	__u64 orig_offset = logical_offset;
+-	int c, found = 0;
+-
+-	for (c = 0; c < fiemap->fm_mapped_extents; c++) {
+-		__u64 start, end;
+-		extent = &fiemap->fm_extents[c];
+-
+-		start = extent->fe_logical;
+-		end = extent->fe_logical + extent->fe_length;
+-
+-		if (logical_offset > end)
+-			continue;
+-
+-		if (logical_offset + blocksize < start)
+-			break;
+-
+-		if (logical_offset >= start &&
+-		    logical_offset < end) {
+-			if (prealloc &&
+-			    !(extent->fe_flags & FIEMAP_EXTENT_UNWRITTEN)) {
+-				printf("ERROR: preallocated extent is not "
+-				       "marked with FIEMAP_EXTENT_UNWRITTEN: "
+-				       "%llu\n",
+-				       (unsigned long long)
+-				       (start / blocksize));
+-				return -1;
+-			}
+-
+-			if (logical_offset + blocksize > end) {
+-				logical_offset = end+1;
+-				continue;
+-			} else {
+-				found = 1;
+-				break;
+-			}
++	int found = 0;
++	__u64 start, end;
++
++	start = extent->fe_logical;
++	end = extent->fe_logical + extent->fe_length;
++
++	if (logical_offset >= start &&
++	    logical_offset < end) {
++		if (prealloc &&
++		    !(extent->fe_flags & FIEMAP_EXTENT_UNWRITTEN)) {
++			printf("ERROR: preallocated extent is not "
++			       "marked with FIEMAP_EXTENT_UNWRITTEN: "
++			       "%llu\n",
++			       (unsigned long long)
++			       (start / blocksize));
++			return -1;
+ 		}
++		found = 1;
+ 	}
+-
++	
+ 	if (!found) {
+ 		printf("ERROR: couldn't find extent at %llu\n",
+-		       (unsigned long long)(orig_offset / blocksize));
++		       (unsigned long long)(logical_offset / blocksize));
+ 	} else if (last &&
+-		   !(fiemap->fm_extents[c].fe_flags & FIEMAP_EXTENT_LAST)) {
++		   !(extent->fe_flags & FIEMAP_EXTENT_LAST)) {
+ 		printf("ERROR: last extent not marked as last: %llu\n",
+-		       (unsigned long long)(orig_offset / blocksize));
++		       (unsigned long long)(logical_offset / blocksize));
+ 		found = 0;
+ 	}
+
+@@ -370,37 +355,26 @@ check_weird_fs_hole(int fd, __u64
+logical_offset, int blocksize)
+ }
+
+ static int
+-check_hole(struct fiemap *fiemap, int fd, __u64 logical_offset, int blocksize)
++check_hole(struct fiemap_extent *extent, int fd, __u64
+logical_offset, int blocksize)
+ {
+-	struct fiemap_extent *extent;
+-	int c;
++	__u64 start, end;
+
+-	for (c = 0; c < fiemap->fm_mapped_extents; c++) {
+-		__u64 start, end;
+-		extent = &fiemap->fm_extents[c];
++	start = extent->fe_logical;
++	end = extent->fe_logical + extent->fe_length;
+
+-		start = extent->fe_logical;
+-		end = extent->fe_logical + extent->fe_length;
++	if (logical_offset >= start &&
++	    logical_offset < end) {
+
+-		if (logical_offset > end)
+-			continue;
+-		if (logical_offset + blocksize < start)
+-			break;
++		if (check_weird_fs_hole(fd, logical_offset,
++					blocksize) == 0)
++			return 0;
+
+-		if (logical_offset >= start &&
+-		    logical_offset < end) {
+-
+-			if (check_weird_fs_hole(fd, logical_offset,
+-						blocksize) == 0)
+-				break;
+-
+-			printf("ERROR: found an allocated extent where a hole "
+-			       "should be: %llu\n",
+-			       (unsigned long long)(start / blocksize));
+-			return -1;
+-		}
++		printf("ERROR: found an allocated extent where a hole "
++		       "should be: %llu\n",
++		       (unsigned long long)(start / blocksize));
++		return -1;
+ 	}
+-
++	
+ 	return 0;
+ }
+
+@@ -423,9 +397,11 @@ compare_fiemap_and_map(int fd, char *map, int
+blocks, int blocksize, int syncfil
+ {
+ 	struct fiemap *fiemap;
+ 	char *fiebuf;
+-	int blocks_to_map, ret, cur_extent = 0, last_data;
++	int blocks_to_map, ret, last_data = -1;
+ 	__u64 map_start, map_length;
+ 	int i, c;
++	int cur_block = 0;
++	int last_found = 0;
+
+ 	if (query_fiemap_count(fd, blocks, blocksize) < 0)
+ 		return -1;
+@@ -451,8 +427,11 @@ compare_fiemap_and_map(int fd, char *map, int
+blocks, int blocksize, int syncfil
+ 	fiemap->fm_extent_count = blocks_to_map;
+ 	fiemap->fm_mapped_extents = 0;
+
++	/* check fiemap by looking at each block. */
+ 	do {
+-		fiemap->fm_start = map_start;
++		int nr_extents;
++
++		fiemap->fm_start = cur_block * blocksize;
+ 		fiemap->fm_length = map_length;
+
+ 		ret = ioctl(fd, FS_IOC_FIEMAP, (unsigned long)fiemap);
+@@ -465,45 +444,93 @@ compare_fiemap_and_map(int fd, char *map, int
+blocks, int blocksize, int syncfil
+ 		if (check_flags(fiemap, blocksize))
+ 			goto error;
+
+-		for (i = cur_extent, c = 1; i < blocks; i++, c++) {
+-			__u64 logical_offset = i * blocksize;
++		nr_extents = fiemap->fm_mapped_extents;
++		if (nr_extents == 0) {
++			int block = cur_block + (map_length - 1)/ blocksize;
++			for (; cur_block <= block && cur_block < blocks; cur_block++) {
++				/* check hole */
++				if (map[cur_block] != 'H') {
++					printf("ERROR: map[%d] should not be "
++					       "a hole\n", cur_block);
++					goto error;
++				}
++			}
++			continue;
++		}
+
+-			if (c > fiemap->fm_mapped_extents) {
+-				i++;
+-				break;
++		for (c = 0; c < nr_extents; c++) {
++			__u64 offset;
++			int block;
++			struct fiemap_extent *extent;
++
++			if (last_found) {
++				printf("ERROR: there is extent after"
++				       "the last extent\n");
++				goto error;
+ 			}
+
+-			switch (map[i]) {
+-			case 'D':
+-				if (check_data(fiemap, logical_offset,
+-					       blocksize, last_data == i, 0))
+-					goto error;
+-				break;
+-			case 'H':
+-				if (check_hole(fiemap, fd, logical_offset,
+-					       blocksize))
+-					goto error;
+-				break;
+-			case 'P':
+-				if (check_data(fiemap, logical_offset,
+-					       blocksize, last_data == i, 1))
++			extent = &fiemap->fm_extents[c];
++			offset = extent->fe_logical;
++			block = offset / blocksize;
++
++			/* check hole. */
++			for (; cur_block < block; cur_block++) {
++				if (map[cur_block] != 'H') {
++					printf("ERROR: map[%d] should not be "
++					       "a hole\n", cur_block);
+ 					goto error;
+-				break;
+-			default:
+-				printf("ERROR: weird value in map: %c\n",
+-				       map[i]);
++				}
++			}
++
++			offset = extent->fe_logical + extent->fe_length;
++			block = offset / blocksize;
++
++			if (block > blocks) {
++				printf("ERROR: there are extents beyond EOF\n");
+ 				goto error;
+ 			}
++
++			/* check data */
++			for (; cur_block < block; cur_block++) {
++				offset = (__u64)cur_block * blocksize;
++				last_found = (last_data == cur_block);
++				switch (map[cur_block]) {
++				case 'D':
++					if (check_data(extent, offset,
++						       blocksize, last_found, 0))
++						goto error;
++					break;
++				case 'H':
++					if (check_hole(extent, fd, offset,
++						       blocksize));
++						goto error;
++					break;
++
++				case 'P':
++					if (check_data(extent, offset,
++						       blocksize, last_found, 1))
++						goto error;
++					break;
++				default:
++					printf("ERROR: weird value in map: %c\n",
++					       map[i]);
++					goto error;
++				}
++			}
+ 		}
+-		cur_extent = i;
+-		map_start = i * blocksize;
+-	} while (cur_extent < blocks);
++	} while (cur_block < blocks);
+
+-	ret = 0;
+-	return ret;
++	if (!last_found && last_data != -1) {
++		printf("ERROR: find no last extent\n");
++		goto error;
++	}
++
++	free(fiebuf);
++	return 0;
+ error:
+ 	printf("map is '%s'\n", map);
+ 	show_extents(fiemap, blocksize);
++	free(fiebuf);
+ 	return -1;
+ }
+
+-- 
+1.7.5.1
+
+-- 
+Best Wishes
+Yongqiang Yang
