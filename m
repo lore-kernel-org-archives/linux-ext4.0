@@ -1,62 +1,41 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: [PATCH v2] ext4: ext4_ext_convert_to_initialized bug found in extended
- FSX testing
-Date: Fri, 13 May 2011 23:03:05 -0700
-Message-ID: <4DCE1B19.9070503@linux.vnet.ibm.com>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: [PATCH] ext4:Make ext4_split_extent() handle error correctly.
+Date: Sat, 14 May 2011 15:05:05 +0800
+Message-ID: <BANLkTintPx6Tugitnodou++sLR1m6SOunA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	Mingming Cao <cmm@us.ibm.com>, Theodore Tso <tytso@mit.edu>
+Cc: Mingming Cao <cmm@us.ibm.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:39889 "EHLO e3.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751373Ab1ENGDS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 14 May 2011 02:03:18 -0400
-Received: from d01relay05.pok.ibm.com (d01relay05.pok.ibm.com [9.56.227.237])
-	by e3.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p4E5fRH7022350
-	for <linux-ext4@vger.kernel.org>; Sat, 14 May 2011 01:41:27 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p4E63Chn101488
-	for <linux-ext4@vger.kernel.org>; Sat, 14 May 2011 02:03:13 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p4E63C20018489
-	for <linux-ext4@vger.kernel.org>; Sat, 14 May 2011 02:03:12 -0400
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:48697 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750875Ab1ENHFG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 14 May 2011 03:05:06 -0400
+Received: by vxi39 with SMTP id 39so2281082vxi.19
+        for <linux-ext4@vger.kernel.org>; Sat, 14 May 2011 00:05:05 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all,
-
-After applying this patch, the fsx test has been able to run ok all 
-day (about 12hrs). So I think it's safe to send it out now.  Thx all!
-
-Allison Henderson
-
-Signed-off-by: Allison Henderson <achender@us.ibm.com>
-
+Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
-:100644 100644 e363f21... 5f243da... M	fs/ext4/extents.c
- fs/ext4/extents.c |    9 ++++-----
- 1 files changed, 4 insertions(+), 5 deletions(-)
+ fs/ext4/extents.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index e363f21..5f243da 100644
+index e363f21..b7b667f 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -2818,8 +2818,8 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 		    (EXT4_EXT_MAY_ZEROOUT & split_flag)) {
- 			/* case 3 */
- 			zero_ex.ee_block =
--					 cpu_to_le32(map->m_lblk + map->m_len);
--			zero_ex.ee_len = cpu_to_le16(allocated - map->m_len);
-+					 cpu_to_le32(map->m_lblk);
-+			zero_ex.ee_len = cpu_to_le16(allocated);
- 			ext4_ext_store_pblock(&zero_ex,
- 				ext4_ext_pblock(ex) + map->m_lblk - ee_block);
- 			err = ext4_ext_zeroout(inode, &zero_ex);
-@@ -2842,10 +2842,9 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 					goto out;
- 			}
- 
--			allocated = map->m_lblk - ee_block + map->m_len;
+@@ -2716,6 +2716,8 @@ static int ext4_split_extent(handle_t *handle,
+ 				       EXT4_EXT_MARK_UNINIT2;
+ 		err = ext4_split_extent_at(handle, inode, path,
+ 				map->m_lblk + map->m_len, split_flag1, flags1);
++		if (err)
++			goto out;
+ 	}
+
+ 	ext4_ext_drop_refs(path);
+-- 
+1.7.5.1
+
+--
