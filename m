@@ -1,62 +1,52 @@
-From: Andrea Arcangeli <aarcange@redhat.com>
-Subject: Re: [PATCH 3/3] mm: slub: Default slub_max_order to 0
-Date: Sun, 15 May 2011 18:39:06 +0200
-Message-ID: <20110515163906.GB25981@random.random>
-References: <1305214993.2575.50.camel@mulgrave.site>
- <20110512154649.GB4559@redhat.com>
- <1305216023.2575.54.camel@mulgrave.site>
- <alpine.DEB.2.00.1105121121120.26013@router.home>
- <1305217843.2575.57.camel@mulgrave.site>
- <BANLkTi=MD+voG1i7uDyueV22_daGHPRdqw@mail.gmail.com>
- <BANLkTimDsJDht76Vm7auNqT2gncjpEKZQw@mail.gmail.com>
- <alpine.DEB.2.00.1105121232110.28493@router.home>
- <20110512180018.GN11579@random.random>
- <20110513094958.GA3569@suse.de>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 35162] New: Kernel BUG when syncing ext2 if USB stick is
+ removed
+Date: Sun, 15 May 2011 17:36:32 GMT
+Message-ID: <bug-35162-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Lameter <cl@linux.com>, Pekka Enberg <penberg@kernel.org>,
-        James Bottomley <James.Bottomley@hansenpartnership.com>,
-        Dave Jones <davej@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Colin King <colin.king@canonical.com>,
-        Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
-        Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
-        Rik van Riel <riel@redhat.com>, Johannes Weiner <hannes@cmpxchg.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-mm <linux-mm@kvack.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-To: Mel Gorman <mgorman@suse.de>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20110513094958.GA3569@suse.de>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter2.kernel.org ([140.211.167.42]:42354 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751242Ab1EORgc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 15 May 2011 13:36:32 -0400
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p4FHaWaJ028199
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Sun, 15 May 2011 17:36:32 GMT
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 13, 2011 at 10:49:58AM +0100, Mel Gorman wrote:
-> On Thu, May 12, 2011 at 08:00:18PM +0200, Andrea Arcangeli wrote:
-> > <SNIP>
-> >
-> > BTW, it comes to mind in patch 2, SLUB should clear __GFP_REPEAT too
-> > (not only __GFP_NOFAIL). Clearing __GFP_WAIT may be worth it or not
-> > with COMPACTION=y, definitely good idea to clear __GFP_WAIT unless
-> > lumpy is restricted to __GFP_REPEAT|__GFP_NOFAIL.
-> 
-> This is in V2 (unreleased, testing in progress and was running
-> overnight). I noticed that clearing __GFP_REPEAT is required for
-> reclaim/compaction if direct reclaimers from SLUB are to return false in
-> should_continue_reclaim() and bail out from high-order allocation
-> properly. As it is, there is a possibility for slub high-order direct
-> reclaimers to loop in reclaim/compaction for a long time. This is
-> only important when CONFIG_COMPACTION=y.
+https://bugzilla.kernel.org/show_bug.cgi?id=35162
 
-Agreed. However I don't expect anyone to allocate from slub(/slab)
-with __GFP_REPEAT so it's probably only theoretical but more correct
-indeed ;).
+           Summary: Kernel BUG when syncing ext2 if USB stick is removed
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.38.6
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext2
+        AssignedTo: fs_ext2@kernel-bugs.osdl.org
+        ReportedBy: maciej.rutecki@gmail.com
+                CC: rjw@sisk.pl, maciej.rutecki@gmail.com
+        Regression: Yes
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+
+Subject    : Kernel BUG when syncing ext2 if USB stick is removed
+Submitter  : Torsten Hilbrich <torsten.hilbrich@secunet.com>
+Date       : 2011-05-12 14:54
+Message-ID : 4DCBF4B0.10607@secunet.com
+References : http://marc.info/?l=linux-kernel&m=130521215329005&w=2
+
+This entry is being used for tracking a regression from 2.6.38. Please don't
+close it until the problem is fixed in the mainline.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
