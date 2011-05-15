@@ -1,31 +1,39 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] debugfs: remove unused htree_dump "-l" argument
-Date: Sat, 14 May 2011 23:39:43 -0400
-Message-ID: <20110515033943.GI21165@thunk.org>
-References: <4DCABD5B.8040403@redhat.com>
+Subject: Re: [PATCH v2] NULL pointer when make_indexed_dir returns -ENOSPC
+Date: Sun, 15 May 2011 00:21:08 -0400
+Message-ID: <20110515042108.GJ21165@thunk.org>
+References: <4DCC1FF8.6040103@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Allison Henderson <achender@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:49915 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:44698 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755260Ab1EODjp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 14 May 2011 23:39:45 -0400
+	id S1751216Ab1EOEVS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 15 May 2011 00:21:18 -0400
 Content-Disposition: inline
-In-Reply-To: <4DCABD5B.8040403@redhat.com>
+In-Reply-To: <4DCC1FF8.6040103@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 11, 2011 at 11:46:19AM -0500, Eric Sandeen wrote:
-> The long_opt / -l argument was apparently never implemented,
-> so remove it and associated argument parsing.
+On Thu, May 12, 2011 at 10:59:20AM -0700, Allison Henderson wrote:
+> Hi all,
 > 
-> This slightly changes the (undocumented) behavior because it
-> no longer defaults to cwd if no filespec is specified...
+> I wasnt sure if people were expecting a v2 for this one, but I
+> noticed the modified version of v1 was removed from the tree, so I
+> am assuming we needed v2?  This one handles marking the buffer dirty
+> before calling do split to avoid the null pointer.  It introduces a
+> little overhead, but the only other option would be to introduce a
+> new flag set to do_split.  But if there's any one that would prefer
+> the flags to this solution, please let me know.  Thx! :)
 > 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> Allison Henderson
+> 
+> Signed-off-by: Allison Henderson <achender@us.ibm.com>
 
-Thanks, added to the e2fsprogs "next" branch.
+Applied, thanks.  In the future, I'd appreciate it if you resent the
+patch with a formal commit description.  I recreated the commit
+description from the older patch in this case.
 
-					- Ted
+	    	     	   	    	 - Ted
