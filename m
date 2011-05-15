@@ -1,39 +1,31 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] mke2fs: Make s_inodes_per_group >= 8 in
- ext2fs_initialize.
-Date: Sat, 14 May 2011 23:28:58 -0400
-Message-ID: <20110515032858.GF21165@thunk.org>
-References: <1304955522-4148-1-git-send-email-tm@tao.ma>
+Subject: Re: [PATCH v2] mke2fs: Allow specifying reserved_ratio via
+ mke2fs.conf
+Date: Sat, 14 May 2011 23:35:12 -0400
+Message-ID: <20110515033512.GG21165@thunk.org>
+References: <1305064291-14963-1-git-send-email-adityakali@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Tao Ma <tm@tao.ma>
+Cc: lczerner@redhat.com, linux-ext4@vger.kernel.org
+To: Aditya Kali <adityakali@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:55042 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:35068 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753650Ab1EOD3D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 14 May 2011 23:29:03 -0400
+	id S1753932Ab1EODfW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 14 May 2011 23:35:22 -0400
 Content-Disposition: inline
-In-Reply-To: <1304955522-4148-1-git-send-email-tm@tao.ma>
+In-Reply-To: <1305064291-14963-1-git-send-email-adityakali@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 09, 2011 at 11:38:42PM +0800, Tao Ma wrote:
-> From: Tao Ma <boyu.mt@taobao.com>
+On Tue, May 10, 2011 at 02:51:31PM -0700, Aditya Kali wrote:
+> This patch adds support for specifying 'reserved_ratio' (percent blocks
+> reserved for super user, same as '-m' command line option) in mke2fs.conf.
+> It adds profile_get_double function in profile.c that allows reading
+> floating point values from profile files.
 > 
-> current mkfs.ext4 fails if we tried with the following parameters.
-> mkfs.ext4  -m 0 -N 16 -O ^has_journal,^resize_inode,^uninit_bg,extent,meta_bg -b 1024 /dev/sdb3
-> It will cause segfault, but it is caused by another issue. See my patch
-> "mke2fs: Avoid segmentation fault in ext2fs_alloc_generic_bmap". And
-> with that patch, the mkfs.ext4 will fail with the error:
-> /dev/sdb3: Memory allocation failed while setting up superblock
-> 
-> The reason is that in ext2fs_initialize, we align s_inodes_per_group
-> to 8, but fails to consider the case that s_inodes_per_group < 8.
-> So make at least 8 inodes for s_inodes_per_group.
-> 
-> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+> Signed-off-by: Aditya Kali <adityakali@google.com>
 
-Thanks, I've added this to the "next" branch of e2fsprogs.
+Thanks, I've added this patch to the e2fsprogs "next" branch.
 
-	     	   	       	      - Ted
+	     	   	      	     	       - Ted
