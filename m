@@ -1,39 +1,57 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2] NULL pointer when make_indexed_dir returns -ENOSPC
-Date: Sun, 15 May 2011 00:21:08 -0400
-Message-ID: <20110515042108.GJ21165@thunk.org>
-References: <4DCC1FF8.6040103@linux.vnet.ibm.com>
+From: KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>
+Subject: Re: [PATCH 4/4] mm: vmscan: If kswapd has been running too long,
+ allow it to sleep
+Date: Sun, 15 May 2011 19:27:12 +0900
+Message-ID: <4DCFAA80.7040109@jp.fujitsu.com>
+References: <1305295404-12129-1-git-send-email-mgorman@suse.de> <1305295404-12129-5-git-send-email-mgorman@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Allison Henderson <achender@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: akpm@linux-foundation.org, James.Bottomley@HansenPartnership.com,
+	colin.king@canonical.com, raghu.prabhu13@gmail.com, jack@suse.cz,
+	chris.mason@oracle.com, cl@linux.com, penberg@kernel.org,
+	riel@redhat.com, hannes@cmpxchg.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: mgorman@suse.de
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:44698 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751216Ab1EOEVS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 15 May 2011 00:21:18 -0400
-Content-Disposition: inline
-In-Reply-To: <4DCC1FF8.6040103@linux.vnet.ibm.com>
+Received: from fgwmail6.fujitsu.co.jp ([192.51.44.36]:56322 "EHLO
+	fgwmail6.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754491Ab1EOK0E (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 15 May 2011 06:26:04 -0400
+In-Reply-To: <1305295404-12129-5-git-send-email-mgorman@suse.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 12, 2011 at 10:59:20AM -0700, Allison Henderson wrote:
-> Hi all,
+(2011/05/13 23:03), Mel Gorman wrote:
+> Under constant allocation pressure, kswapd can be in the situation where
+> sleeping_prematurely() will always return true even if kswapd has been
+> running a long time. Check if kswapd needs to be scheduled.
 > 
-> I wasnt sure if people were expecting a v2 for this one, but I
-> noticed the modified version of v1 was removed from the tree, so I
-> am assuming we needed v2?  This one handles marking the buffer dirty
-> before calling do split to avoid the null pointer.  It introduces a
-> little overhead, but the only other option would be to introduce a
-> new flag set to do_split.  But if there's any one that would prefer
-> the flags to this solution, please let me know.  Thx! :)
+> Signed-off-by: Mel Gorman<mgorman@suse.de>
+> ---
+>   mm/vmscan.c |    4 ++++
+>   1 files changed, 4 insertions(+), 0 deletions(-)
 > 
-> Allison Henderson
+> diff --git a/mm/vmscan.c b/mm/vmscan.c
+> index af24d1e..4d24828 100644
+> --- a/mm/vmscan.c
+> +++ b/mm/vmscan.c
+> @@ -2251,6 +2251,10 @@ static bool sleeping_prematurely(pg_data_t *pgdat, int order, long remaining,
+>   	unsigned long balanced = 0;
+>   	bool all_zones_ok = true;
 > 
-> Signed-off-by: Allison Henderson <achender@us.ibm.com>
+> +	/* If kswapd has been running too long, just sleep */
+> +	if (need_resched())
+> +		return false;
+> +
 
-Applied, thanks.  In the future, I'd appreciate it if you resent the
-patch with a formal commit description.  I recreated the commit
-description from the older patch in this case.
+Hmm... I don't like this patch so much. because this code does
 
-	    	     	   	    	 - Ted
+- don't sleep if kswapd got context switch at shrink_inactive_list
+- sleep if kswapd didn't
+
+It seems to be semi random behavior.
+
+
+
