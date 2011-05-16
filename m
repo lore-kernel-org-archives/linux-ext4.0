@@ -1,68 +1,65 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Slowness on ext4 master branch (Was: The new ext4 git tree re-org)
-Date: Mon, 16 May 2011 10:06:01 -0500
-Message-ID: <4DD13D59.20802@redhat.com>
-References: <BANLkTi=ZgVsPRKE8tQZ=s6qjTLuYopMBBg@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Amir Goldstein <amir73il@gmail.com>
+From: Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 0/2] Eliminate hangs when using frequent high-order allocations V3
+Date: Mon, 16 May 2011 16:06:55 +0100
+Message-ID: <1305558417-24354-1-git-send-email-mgorman@suse.de>
+Cc: James Bottomley <James.Bottomley@HansenPartnership.com>,
+	Colin King <colin.king@canonical.com>,
+	Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
+	Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
+	Christoph Lameter <cl@linux.com>,
+	Pekka Enberg <penberg@kernel.org>,
+	Rik van Riel <riel@redhat.com>,
+	Johannes Weiner <hannes@cmpxchg.org>,
+	Minchan Kim <minchan.kim@gmail.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-mm <linux-mm@kvack.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	stable <stable@kernel.org>, Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:10161 "EHLO mx1.redhat.com"
+Received: from cantor.suse.de ([195.135.220.2]:56485 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753788Ab1EPPGF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 May 2011 11:06:05 -0400
-In-Reply-To: <BANLkTi=ZgVsPRKE8tQZ=s6qjTLuYopMBBg@mail.gmail.com>
+	id S1755697Ab1EPPHB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 May 2011 11:07:01 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 5/14/11 1:49 PM, Amir Goldstein wrote:
-> On Wed, May 11, 2011 at 9:59 PM, Amir Goldstein <amir73il@gmail.com> wrote:
->> On Tue, May 10, 2011 at 4:56 PM, Theodore Ts'o <tytso@mit.edu> wrote:
->>>
->>> I've uploaded an updated dev branch to the ext4 tree.  Compared to the
->>> previous version of dev branch, I've removed my modified version of
->>> Allison's "NULL pointer when make_indexed_dir returns -ENOSPC" patch,
->>> and I've added Amir's alloc_semp removal patches.  I'm still in the
->>> process of reviewing those patches; I've included them to make it easier
->>> for I and others to test them.
->>>
->>
->> I have a general question regarding testing for next merge window.
->> What kernel do you usually use when testing the dev branch?
->> I started writing an xfstest to test online resize and filesystem
->> filling in parallel, based on test 224 (Delayed allocation at ENOSPC test).
->> I started running test 224 on a kernel built from ext4/master
->> and it seemed to run too slow. looking at the waiting tasks
->> it looked like it could be related to I/O less throttling.
->> Since ext4/master is based on 2.6.39-rc3, I figured maybe I am running
->> a buggy kernel, so I merged 2.6.39-rc7 to ext4/master to build a new kernel.
->>
->> Am I going in the right direction at all?
->> I have a dedicated server for tests (X64_64 quad core), so it you would
->> like me to run some xfstest runs with specific configuration, or certain
->> patches applied, please let me know.
->>
->>
-> 
-> So now that I know I am not hearing voices, I guess test 224 is also too new
-> to be tested by many people.
+Changelog since V2
+  o Drop all SLUB latency-reducing patches.
 
-I hope not, it was committed over a year ago :)
+Changelog since V1
+  o kswapd should sleep if need_resched
+  o Remove __GFP_REPEAT from GFP flags when speculatively using high
+    orders so direct/compaction exits earlier
+  o Remove __GFP_NORETRY for correctness
+  o Correct logic in sleeping_prematurely
+  o Leave SLUB using the default slub_max_order
 
-If it does enospc, ext4 gets into the flushing & syncing mode as things
-fill up, so maybe something changed in that area?
+There are a few reports of people experiencing hangs when copying
+large amounts of data with kswapd using a large amount of CPU which
+appear to be due to recent reclaim changes. SLUB using high orders
+is the trigger but not the root cause as SLUB has been using high
+orders for a while. The root cause was bugs introduced into reclaim
+which are addressed by the following two patches.
 
--Eric
+Patch 1 corrects logic introduced by commit [1741c877: mm:
+	kswapd: keep kswapd awake for high-order allocations until
+	a percentage of the node is balanced] to allow kswapd to
+	go to sleep when balanced for high orders.
 
-> The good news is that test 224 runs smoothly on kernel 2.6.39-rc7.
-> on ext4 master branch is either hung or took too long time for me to wait.
-> I will try to find the offending commit on Monday.
-> 
-> Amir.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Patch 2 notes that even when kswapd is failing to keep up with
+	allocation requests, it should still go to sleep when its
+	quota has expired to prevent it spinning.
+
+This version drops the patches whereby SLUB avoids expensive steps in
+the page allocator, reclaim and compaction due to a lack of agreement
+on whether it was an appropriate step or not and not being critical
+to resolve the hang. Chris Wood reports that these two patches in
+isolation are sufficient to prevent the system hanging.
+
+These should be also considered for -stable for 2.6.38.
+
+-- 
+1.7.3.4
 
