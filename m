@@ -1,139 +1,90 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: [PATCH] ext4: fix NULL pointer dereference in ext4_quota_off
-Date: Mon, 16 May 2011 12:31:15 +0300
-Message-ID: <BANLkTin4vEQZ4W5LQT36U3BVxWG4VeDZYw@mail.gmail.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: do not normalize block requests from fallocate.
+Date: Mon, 16 May 2011 11:39:50 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1105161135260.3670@dhcp-27-109.brq.redhat.com>
+References: <1305321545-17214-1-git-send-email-haldar@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:56945 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753029Ab1EPJbQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 May 2011 05:31:16 -0400
-Received: by vxi39 with SMTP id 39so3002981vxi.19
-        for <linux-ext4@vger.kernel.org>; Mon, 16 May 2011 02:31:16 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Vivek Haldar <haldar@google.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1305321545-17214-1-git-send-email-haldar@google.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-This fixes a bug in commit 21f97697 (ext4: remove unnecessary [cm]time
-update of quota file)
+On Fri, 13 May 2011, Vivek Haldar wrote:
 
-The above commit was merged for 2.6.39-rc3 and introduced a crash
-in xfstest 232 (Run fsstress with quotas enabled and verify accounted
-quotas in the end).
+> Currently, an fallocate request of size slightly larger than a power of
+> 2 is turned into two block requests, each a power of 2, with the extra
+> blocks pre-allocated for future use. When an application calls
+> fallocate, it already has an idea about how large the file may grow so
+> there is usually little benefit to reserve extra blocks on the
+> preallocation list. This reduces disk fragmentation.
+> 
+> Tested: fsstress. Also verified manually that fallocat'ed files are
+> contiguously laid out with this change (whereas without it they begin at
+> power-of-2 boundaries, leaving blocks in between). CPU usage of
+> fallocate is not appreciably higher. In a tight fallocate loop, CPU
+> usage hovers between 5%-8% with this change, and 5%-7% without it.
 
-Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
----
+Hi Vivek,
 
-This fix solves the crash on my system, but the test still fails with the
-following output:
+the patch looks good, but I do not understand why you are introducing
+new #define when you can simply use EXT4_MB_HINT_NOPREALLOC and then in
+the ext4_ext_map_blocks() just do :
 
-QA output created by 232
+ar.flags |= (flags & EXT4_MB_HINT_NOPREALLOC)
 
-Testing fsstress
+and you do not need to introduce new condition. Am I missing something ?
 
-fsstress -n 2000 -d outdir -p 7
-seed = S
-Comparing user usage
-3a4,493
-> #1        --    2456       0       0             13     0     0
-> #10       --       0       0       0              1     0     0
-> #10098    --     556       0       0              1     0     0
-> #1023     --      20       0       0              1     0     0
-> #10253    --       0       0       0              1     0     0
-> #1026286  --       4       0       0              1     0     0
-> #103086187 --       4       0       0              1     0     0
-> #1036     --       0       0       0              1     0     0
-> #1052282  --       4       0       0              1     0     0
-> #1057     --     260       0       0              1     0     0
+Thanks!
+-Lukas
 
-I checked with kernel 2.6.38 and the test passes.
-I also tried reverting the commit, but the test still fails.
+> 
+> Signed-off-by: Vivek Haldar <haldar@google.com>
+> ---
+>  fs/ext4/ext4.h    |    2 ++
+>  fs/ext4/extents.c |    5 ++++-
+>  2 files changed, 6 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 076c5d2..e606d34 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -512,6 +512,8 @@ struct ext4_new_group_data {
+>  	/* Convert extent to initialized after IO complete */
+>  #define EXT4_GET_BLOCKS_IO_CONVERT_EXT		(EXT4_GET_BLOCKS_CONVERT|\
+>  					 EXT4_GET_BLOCKS_CREATE_UNINIT_EXT)
+> +	/* Don't normalize when fallocat'ing */
+> +#define EXT4_GET_BLOCKS_NO_NORMALIZE		0x0020
+>  
+>  /*
+>   * Flags used by ext4_free_blocks
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index e363f21..f02dd52 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -3304,6 +3304,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+>  	else
+>  		/* disable in-core preallocation for non-regular files */
+>  		ar.flags = 0;
+> +	if (flags & EXT4_GET_BLOCKS_NO_NORMALIZE)
+> +		ar.flags |= EXT4_MB_HINT_NOPREALLOC;
+>  	newblock = ext4_mb_new_blocks(handle, &ar, &err);
+>  	if (!newblock)
+>  		goto out2;
+> @@ -3549,7 +3551,8 @@ retry:
+>  			break;
+>  		}
+>  		ret = ext4_map_blocks(handle, inode, &map,
+> -				      EXT4_GET_BLOCKS_CREATE_UNINIT_EXT);
+> +				      EXT4_GET_BLOCKS_CREATE_UNINIT_EXT |
+> +				      EXT4_GET_BLOCKS_NO_NORMALIZE);
+>  		if (ret <= 0) {
+>  #ifdef EXT4FS_DEBUG
+>  			WARN_ON(ret <= 0);
+> 
 
-In any case, the fix resolved the following crash:
-
-[ 1319.112544] EXT4-fs (sda8): mounted filesystem with ordered data
-mode. Opts: acl,user_xattr,usrquota,grpquota
-[ 1319.270023] EXT4-fs (sda8): re-mounted. Opts: (null)
-[ 1319.271464] EXT4-fs (sda8): re-mounted. Opts: (null)
-[ 1368.214854] BUG: unable to handle kernel NULL pointer dereference
-at 0000000000000018
-[ 1368.219348] IP: [<ffffffff8122e152>] ext4_quota_off+0x42/0xd0
-[ 1368.221628] PGD 0
-[ 1368.222978] Oops: 0000 [#2] SMP
-[ 1368.222978] last sysfs file:
-/sys/devices/system/cpu/cpu3/cache/index2/shared_cpu_map
-[ 1368.222978] CPU 0
-[ 1368.222978] Modules linked in: binfmt_misc parport_pc ppdev
-snd_hda_codec_realtek snd_hda_intel snd_hda_codec i915 snd_hwdep
-snd_pcm drm_kms_helper drm snd_seq_midi snd_rawmidi e1000e
-snd_seq_midi_event i2c_algo_bit snd_seq lp firewire_ohci firewire_core
-snd_timer snd_seq_device snd soundcore snd_page_alloc psmouse parport
-pata_marvell usbhid hid video intel_agp intel_gtt tpm_tis crc_itu_t
-serio_raw tpm tpm_bios
-[ 1368.222978]
-[ 1368.222978] Pid: 2691, comm: quotaon Tainted: G   M  D
-2.6.39-rc7 #9                  /DQ35JO
-[ 1368.222978] RIP: 0010:[<ffffffff8122e152>]  [<ffffffff8122e152>]
-ext4_quota_off+0x42/0xd0
-[ 1368.222978] RSP: 0018:ffff8800c4bb3e28  EFLAGS: 00010292
-[ 1368.222978] RAX: 0000000000000000 RBX: 0000000000000000 RCX: 0000000000000018
-[ 1368.222978] RDX: 0000000000000000 RSI: 0000000000000001 RDI: 0000000000000246
-[ 1368.222978] RBP: ffff8800c4bb3e48 R08: 0000000000000001 R09: 0000000000000000
-[ 1368.222978] R10: 0000000000000000 R11: 0000000000000000 R12: ffff880114576000
-[ 1368.222978] R13: ffff880114576000 R14: 0000000000000001 R15: 0000000000000000
-[ 1368.222978] FS:  00007f5c2bf97720(0000) GS:ffff88012bc00000(0000)
-knlGS:0000000000000000
-[ 1368.222978] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-[ 1368.222978] CR2: 0000000000000018 CR3: 00000000c693f000 CR4: 00000000000006f0
-[ 1368.222978] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-[ 1368.222978] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-[ 1368.222978] Process quotaon (pid: 2691, threadinfo
-ffff8800c4bb2000, task ffff880116bc5ee0)
-[ 1368.222978] Stack:
-[ 1368.222978]  0000000000800003 0000000000000001 ffff880114576000
-00000000ffffffda
-[ 1368.222978]  ffff8800c4bb3ef8 ffffffff811c9e05 0000000000000000
-0000000000000000
-[ 1368.222978]  ffff8800c4bb3e78 ffff880114576068 ffff880115009800
-ffff880114576068
-[ 1368.222978] Call Trace:
-[ 1368.222978]  [<ffffffff811c9e05>] do_quotactl+0x4e5/0x560
-[ 1368.222978]  [<ffffffff815d376c>] ? down_read+0x4c/0x70
-[ 1368.222978]  [<ffffffff811711cf>] ? get_super+0x9f/0xd0
-[ 1368.222978]  [<ffffffff81189f78>] ? iput+0x48/0x200
-[ 1368.222978]  [<ffffffff811c9f4c>] sys_quotactl+0xcc/0x1a0
-[ 1368.222978]  [<ffffffff8116be26>] ? filp_close+0x66/0x90
-[ 1368.222978]  [<ffffffff812fd76e>] ? trace_hardirqs_on_thunk+0x3a/0x3f
-[ 1368.222978]  [<ffffffff815dd2c2>] system_call_fastpath+0x16/0x1b
-[ 1368.222978] Code: 89 74 24 18 0f 1f 44 00 00 48 63 c6 49 89 fc 41
-89 f6 48 8b 9c c7 60 03 00 00 48 8b 87 90 04 00 00 f6 40 73 08 0f 85
-7e 00 00 00
-[ 1368.222978]  8b 7b 18 be 01 00 00 00 e8 c0 fb ff ff 48 3d 00 f0 ff ff 49
-[ 1368.222978] RIP  [<ffffffff8122e152>] ext4_quota_off+0x42/0xd0
-[ 1368.222978]  RSP <ffff8800c4bb3e28>
-[ 1368.222978] CR2: 0000000000000018
-[ 1368.310246] ---[ end trace 62a147f050ade229 ]---
-
-
- fs/ext4/super.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index fc827bb..2689351 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4681,6 +4681,9 @@ static int ext4_quota_off(struct super_block
-*sb, int type)
- 	if (test_opt(sb, DELALLOC))
- 		sync_filesystem(sb);
-
-+	if (!inode)
-+		goto out;
-+
- 	/* Update modification times of quota files when userspace can
- 	 * start looking at them */
- 	handle = ext4_journal_start(inode, 1);
 -- 
-1.7.4.1
