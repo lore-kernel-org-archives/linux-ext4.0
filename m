@@ -1,65 +1,59 @@
 From: Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 0/2] Eliminate hangs when using frequent high-order allocations V3
-Date: Mon, 16 May 2011 16:06:55 +0100
-Message-ID: <1305558417-24354-1-git-send-email-mgorman@suse.de>
+Subject: [PATCH 1/2] mm: vmscan: Correct use of pgdat_balanced in sleeping_prematurely
+Date: Mon, 16 May 2011 16:06:56 +0100
+Message-ID: <1305558417-24354-2-git-send-email-mgorman@suse.de>
+References: <1305558417-24354-1-git-send-email-mgorman@suse.de>
 Cc: James Bottomley <James.Bottomley@HansenPartnership.com>,
 	Colin King <colin.king@canonical.com>,
 	Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
 	Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
-	Christoph Lameter <cl@linux.com>,
-	Pekka Enberg <penberg@kernel.org>,
-	Rik van Riel <riel@redhat.com>,
-	Johannes Weiner <hannes@cmpxchg.org>,
+	Christoph Lameter <cl@linux.com>, Pekka Enberg <penberg@kernel.org>,
+	Rik van Riel <riel@redhat.com>, Johannes Weiner <hannes@cmpxchg.org>,
 	Minchan Kim <minchan.kim@gmail.com>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	linux-mm <linux-mm@kvack.org>,
 	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	stable <stable@kernel.org>, Mel Gorman <mgorman@suse.de>
+	linux-ext4 <linux-ext4@vger.kernel.org>, stable <stable@kernel.org>,
+	Mel Gorman <mgorman@suse.de>
 To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:56485 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755697Ab1EPPHB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 May 2011 11:07:01 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1305558417-24354-1-git-send-email-mgorman@suse.de>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Changelog since V2
-  o Drop all SLUB latency-reducing patches.
+From: Johannes Weiner <hannes@cmpxchg.org>
 
-Changelog since V1
-  o kswapd should sleep if need_resched
-  o Remove __GFP_REPEAT from GFP flags when speculatively using high
-    orders so direct/compaction exits earlier
-  o Remove __GFP_NORETRY for correctness
-  o Correct logic in sleeping_prematurely
-  o Leave SLUB using the default slub_max_order
+Johannes Weiner poined out that the logic in commit [1741c877: mm:
+kswapd: keep kswapd awake for high-order allocations until a percentage
+of the node is balanced] is backwards. Instead of allowing kswapd to go
+to sleep when balancing for high order allocations, it keeps it kswapd
+running uselessly.
 
-There are a few reports of people experiencing hangs when copying
-large amounts of data with kswapd using a large amount of CPU which
-appear to be due to recent reclaim changes. SLUB using high orders
-is the trigger but not the root cause as SLUB has been using high
-orders for a while. The root cause was bugs introduced into reclaim
-which are addressed by the following two patches.
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+Reviewed-by: Rik van Riel <riel@redhat.com>
+---
+ mm/vmscan.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-Patch 1 corrects logic introduced by commit [1741c877: mm:
-	kswapd: keep kswapd awake for high-order allocations until
-	a percentage of the node is balanced] to allow kswapd to
-	go to sleep when balanced for high orders.
-
-Patch 2 notes that even when kswapd is failing to keep up with
-	allocation requests, it should still go to sleep when its
-	quota has expired to prevent it spinning.
-
-This version drops the patches whereby SLUB avoids expensive steps in
-the page allocator, reclaim and compaction due to a lack of agreement
-on whether it was an appropriate step or not and not being critical
-to resolve the hang. Chris Wood reports that these two patches in
-isolation are sufficient to prevent the system hanging.
-
-These should be also considered for -stable for 2.6.38.
-
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index f6b435c..af24d1e 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -2286,7 +2286,7 @@ static bool sleeping_prematurely(pg_data_t *pgdat, int order, long remaining,
+ 	 * must be balanced
+ 	 */
+ 	if (order)
+-		return pgdat_balanced(pgdat, balanced, classzone_idx);
++		return !pgdat_balanced(pgdat, balanced, classzone_idx);
+ 	else
+ 		return !all_zones_ok;
+ }
 -- 
 1.7.3.4
 
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
