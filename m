@@ -1,10 +1,10 @@
 From: Johannes Weiner <hannes@cmpxchg.org>
-Subject: Re: [PATCH 1/2] mm: vmscan: Correct use of pgdat_balanced in
- sleeping_prematurely
-Date: Mon, 16 May 2011 17:26:08 +0200
-Message-ID: <20110516152608.GT16531@cmpxchg.org>
+Subject: Re: [PATCH 2/2] mm: vmscan: If kswapd has been running too long,
+ allow it to sleep
+Date: Mon, 16 May 2011 17:26:49 +0200
+Message-ID: <20110516152649.GU16531@cmpxchg.org>
 References: <1305558417-24354-1-git-send-email-mgorman@suse.de>
- <1305558417-24354-2-git-send-email-mgorman@suse.de>
+ <1305558417-24354-3-git-send-email-mgorman@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Andrew Morton <akpm@linux-foundation.org>,
@@ -21,23 +21,19 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
 To: Mel Gorman <mgorman@suse.de>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <1305558417-24354-2-git-send-email-mgorman@suse.de>
+In-Reply-To: <1305558417-24354-3-git-send-email-mgorman@suse.de>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 16, 2011 at 04:06:56PM +0100, Mel Gorman wrote:
-> From: Johannes Weiner <hannes@cmpxchg.org>
-> 
-> Johannes Weiner poined out that the logic in commit [1741c877: mm:
-> kswapd: keep kswapd awake for high-order allocations until a percentage
-> of the node is balanced] is backwards. Instead of allowing kswapd to go
-> to sleep when balancing for high order allocations, it keeps it kswapd
-> running uselessly.
+On Mon, May 16, 2011 at 04:06:57PM +0100, Mel Gorman wrote:
+> Under constant allocation pressure, kswapd can be in the situation where
+> sleeping_prematurely() will always return true even if kswapd has been
+> running a long time. Check if kswapd needs to be scheduled.
 > 
 > Signed-off-by: Mel Gorman <mgorman@suse.de>
-> Reviewed-by: Rik van Riel <riel@redhat.com>
+> Acked-by: Rik van Riel <riel@redhat.com>
 
-Signed-off-by: Johannes Weiner <hannes@cmpxchg.org>
+Acked-by: Johannes Weiner <hannes@cmpxchg.org>
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
