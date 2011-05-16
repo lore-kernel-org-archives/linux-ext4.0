@@ -1,147 +1,103 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: fix NULL pointer dereference in ext4_quota_off
-Date: Mon, 16 May 2011 11:49:22 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1105161148010.3670@dhcp-27-109.brq.redhat.com>
-References: <BANLkTin4vEQZ4W5LQT36U3BVxWG4VeDZYw@mail.gmail.com>
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: Re: Regression with ext4 in kernel 2.6.39-rc7? (Was: testing ext4
+ master branch)
+Date: Mon, 16 May 2011 12:59:56 +0300
+Message-ID: <BANLkTi=i+BT7k_0G5f=amqjSo+mFjeZ+BQ@mail.gmail.com>
+References: <BANLkTikW57S9emEFG9w9RXvq5O7v_MrsYw@mail.gmail.com>
+	<20110513145608.GA21165@thunk.org>
+	<4DCD4D5E.6050307@redhat.com>
+	<BANLkTim8ihBNzxxkoTwigKMQB1xHToevdQ@mail.gmail.com>
+	<20110513224949.GB21165@thunk.org>
+	<BANLkTimA4JYROuQqe0+7UF7_Ti5rhZRrtA@mail.gmail.com>
+	<21756A13-BE43-4B46-BDC9-F5C456476FFC@gmail.com>
+	<20110516094324.GA5344@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
-To: Amir Goldstein <amir73il@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: "Ted Ts'o" <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:17899 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753195Ab1EPJt2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 May 2011 05:49:28 -0400
-In-Reply-To: <BANLkTin4vEQZ4W5LQT36U3BVxWG4VeDZYw@mail.gmail.com>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:47846 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753976Ab1EPJ76 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 May 2011 05:59:58 -0400
+In-Reply-To: <20110516094324.GA5344@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 16 May 2011, Amir Goldstein wrote:
+On Mon, May 16, 2011 at 12:43 PM, Jan Kara <jack@suse.cz> wrote:
+> On Sat 14-05-11 13:16:25, Amir Goldstein wrote:
+>> Sent from my iPhone
+>>
+>> On 14/05/2011, at 10:11, Amir Goldstein <amir73il@gmail.com> wrote:
+>>
+>> >On Sat, May 14, 2011 at 1:49 AM, Ted Ts'o <tytso@mit.edu> wrote:
+>> >>On Fri, May 13, 2011 at 08:25:02PM +0300, Amir Goldstein wrote:
+>> >>>
+>> >>>After xfstests failed to build on Ubuntu 10.10, I followed the
+>> >>>advice omitted by the build script to run "make install-qa", to
+>> >>>solve the problem. =A0It took me a while to figure exactly where =
+I
+>> >>>should run the command, but in the end I pulled the xfsprogs tree=
+,
+>> >>>ran "make; make install; make install-qa" and from there on thing=
+s
+>> >>>were looking better.
+>> >>
+>> >>I did that, but fsstress doesn't pull in the needed xfs/xfs_fs.h
+>> >>header file. =A0So it still dies.
+>> >>
+>> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 - Ted
+>> >>
+>> >
+>> >Well, anyway, the regression has to be from commit =A021f97697:
+>> >
+>> >ext4: remove unnecessary [cm]time update of quota file
+>> >
+>> >because before that commit ext4_quota_off() was too short to
+>> >have a bug at ext4_quota_off+0x42/0xd0.
+>> >
+>> >Jan, where are you? don't make me debug this...
+>>
+>> So I guess that Jan's patch is missing
+>> If (!inode)
+>> =A0 =A0 goto out;
+> =A0Exactly, that is it. I cannot trigger the problem anymore with the=
+ patch.
+> I just wonder how come you've spotted the problem because test 232 do=
+es not
+> trigger the problem for me -
 
-> This fixes a bug in commit 21f97697 (ext4: remove unnecessary [cm]time
-> update of quota file)
-> 
-> The above commit was merged for 2.6.39-rc3 and introduced a crash
-> in xfstest 232 (Run fsstress with quotas enabled and verify accounted
-> quotas in the end).
-> 
-> Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
-> ---
-> 
-> This fix solves the crash on my system, but the test still fails with the
-> following output:
-> 
-> QA output created by 232
-> 
-> Testing fsstress
-> 
-> fsstress -n 2000 -d outdir -p 7
-> seed = S
-> Comparing user usage
-> 3a4,493
-> > #1        --    2456       0       0             13     0     0
-> > #10       --       0       0       0              1     0     0
-> > #10098    --     556       0       0              1     0     0
-> > #1023     --      20       0       0              1     0     0
-> > #10253    --       0       0       0              1     0     0
-> > #1026286  --       4       0       0              1     0     0
-> > #103086187 --       4       0       0              1     0     0
-> > #1036     --       0       0       0              1     0     0
-> > #1052282  --       4       0       0              1     0     0
-> > #1057     --     260       0       0              1     0     0
-> 
-> I checked with kernel 2.6.38 and the test passes.
-> I also tried reverting the commit, but the test still fails.
-> 
-> In any case, the fix resolved the following crash:
-> 
-> [ 1319.112544] EXT4-fs (sda8): mounted filesystem with ordered data
-> mode. Opts: acl,user_xattr,usrquota,grpquota
-> [ 1319.270023] EXT4-fs (sda8): re-mounted. Opts: (null)
-> [ 1319.271464] EXT4-fs (sda8): re-mounted. Opts: (null)
-> [ 1368.214854] BUG: unable to handle kernel NULL pointer dereference
-> at 0000000000000018
-> [ 1368.219348] IP: [<ffffffff8122e152>] ext4_quota_off+0x42/0xd0
-> [ 1368.221628] PGD 0
-> [ 1368.222978] Oops: 0000 [#2] SMP
-> [ 1368.222978] last sysfs file:
-> /sys/devices/system/cpu/cpu3/cache/index2/shared_cpu_map
-> [ 1368.222978] CPU 0
-> [ 1368.222978] Modules linked in: binfmt_misc parport_pc ppdev
-> snd_hda_codec_realtek snd_hda_intel snd_hda_codec i915 snd_hwdep
-> snd_pcm drm_kms_helper drm snd_seq_midi snd_rawmidi e1000e
-> snd_seq_midi_event i2c_algo_bit snd_seq lp firewire_ohci firewire_core
-> snd_timer snd_seq_device snd soundcore snd_page_alloc psmouse parport
-> pata_marvell usbhid hid video intel_agp intel_gtt tpm_tis crc_itu_t
-> serio_raw tpm tpm_bios
-> [ 1368.222978]
-> [ 1368.222978] Pid: 2691, comm: quotaon Tainted: G   M  D
-> 2.6.39-rc7 #9                  /DQ35JO
-> [ 1368.222978] RIP: 0010:[<ffffffff8122e152>]  [<ffffffff8122e152>]
-> ext4_quota_off+0x42/0xd0
-> [ 1368.222978] RSP: 0018:ffff8800c4bb3e28  EFLAGS: 00010292
-> [ 1368.222978] RAX: 0000000000000000 RBX: 0000000000000000 RCX: 0000000000000018
-> [ 1368.222978] RDX: 0000000000000000 RSI: 0000000000000001 RDI: 0000000000000246
-> [ 1368.222978] RBP: ffff8800c4bb3e48 R08: 0000000000000001 R09: 0000000000000000
-> [ 1368.222978] R10: 0000000000000000 R11: 0000000000000000 R12: ffff880114576000
-> [ 1368.222978] R13: ffff880114576000 R14: 0000000000000001 R15: 0000000000000000
-> [ 1368.222978] FS:  00007f5c2bf97720(0000) GS:ffff88012bc00000(0000)
-> knlGS:0000000000000000
-> [ 1368.222978] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> [ 1368.222978] CR2: 0000000000000018 CR3: 00000000c693f000 CR4: 00000000000006f0
-> [ 1368.222978] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> [ 1368.222978] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> [ 1368.222978] Process quotaon (pid: 2691, threadinfo
-> ffff8800c4bb2000, task ffff880116bc5ee0)
-> [ 1368.222978] Stack:
-> [ 1368.222978]  0000000000800003 0000000000000001 ffff880114576000
-> 00000000ffffffda
-> [ 1368.222978]  ffff8800c4bb3ef8 ffffffff811c9e05 0000000000000000
-> 0000000000000000
-> [ 1368.222978]  ffff8800c4bb3e78 ffff880114576068 ffff880115009800
-> ffff880114576068
-> [ 1368.222978] Call Trace:
-> [ 1368.222978]  [<ffffffff811c9e05>] do_quotactl+0x4e5/0x560
-> [ 1368.222978]  [<ffffffff815d376c>] ? down_read+0x4c/0x70
-> [ 1368.222978]  [<ffffffff811711cf>] ? get_super+0x9f/0xd0
-> [ 1368.222978]  [<ffffffff81189f78>] ? iput+0x48/0x200
-> [ 1368.222978]  [<ffffffff811c9f4c>] sys_quotactl+0xcc/0x1a0
-> [ 1368.222978]  [<ffffffff8116be26>] ? filp_close+0x66/0x90
-> [ 1368.222978]  [<ffffffff812fd76e>] ? trace_hardirqs_on_thunk+0x3a/0x3f
-> [ 1368.222978]  [<ffffffff815dd2c2>] system_call_fastpath+0x16/0x1b
-> [ 1368.222978] Code: 89 74 24 18 0f 1f 44 00 00 48 63 c6 49 89 fc 41
-> 89 f6 48 8b 9c c7 60 03 00 00 48 8b 87 90 04 00 00 f6 40 73 08 0f 85
-> 7e 00 00 00
-> [ 1368.222978]  8b 7b 18 be 01 00 00 00 e8 c0 fb ff ff 48 3d 00 f0 ff ff 49
-> [ 1368.222978] RIP  [<ffffffff8122e152>] ext4_quota_off+0x42/0xd0
-> [ 1368.222978]  RSP <ffff8800c4bb3e28>
-> [ 1368.222978] CR2: 0000000000000018
-> [ 1368.310246] ---[ end trace 62a147f050ade229 ]---
-> 
-> 
->  fs/ext4/super.c |    3 +++
->  1 files changed, 3 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index fc827bb..2689351 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -4681,6 +4681,9 @@ static int ext4_quota_off(struct super_block
-> *sb, int type)
->  	if (test_opt(sb, DELALLOC))
->  		sync_filesystem(sb);
-> 
-> +	if (!inode)
-> +		goto out;
+It does not surprise me.
+As I wrote earlier, my system (Ubuntu 11.4) is behaving strange.
+Some tests fail the fsck at the end, because the filesystem fails to um=
+ount
+immediately after the test (lsof shows nothing and manual umount succee=
+ds).
+It's probably the cause for 232 test to fail (even after the crash was =
+fixed)
+and the cause for quotaoff to be called without quotaon in test 232 on
+my system.
 
-Just out of curiosity, why would the quota inode be NULL ?
-
-Thanks!
--Lukas
-
-> +
->  	/* Update modification times of quota files when userspace can
->  	 * start looking at them */
->  	handle = ext4_journal_start(inode, 1);
-> 
+> it is triggered when you run quotaoff without
+> running quotaon and that does not happen with test 232.. Anyway, with=
+ the
+> attached patch running quotaoff on filesystem without quotas turned o=
+n
+> works fine whereas previously it oopsed.
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+Honza
+> --
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
+>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
