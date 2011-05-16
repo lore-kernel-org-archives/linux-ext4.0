@@ -1,48 +1,68 @@
-From: Tao Ma <tm@tao.ma>
-Subject: [PATCH] ext4: Don't warn about mnt_count after the first mount of a new mkfsed volume.
-Date: Mon, 16 May 2011 22:53:23 +0800
-Message-ID: <1305557603-4596-1-git-send-email-tm@tao.ma>
-To: linux-ext4@vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Slowness on ext4 master branch (Was: The new ext4 git tree re-org)
+Date: Mon, 16 May 2011 10:06:01 -0500
+Message-ID: <4DD13D59.20802@redhat.com>
+References: <BANLkTi=ZgVsPRKE8tQZ=s6qjTLuYopMBBg@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy1-pub.bluehost.com ([66.147.249.253]:60070 "HELO
-	oproxy1-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1755619Ab1EPOxn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 May 2011 10:53:43 -0400
-Received: from [221.217.35.127] (helo=taoma-laptop2.localdomain6)
-	by box585.bluehost.com with esmtpsa (TLSv1:AES256-SHA:256)
-	(Exim 4.69)
-	(envelope-from <tm@tao.ma>)
-	id 1QLzAy-0004Hq-J5
-	for linux-ext4@vger.kernel.org; Mon, 16 May 2011 08:53:42 -0600
+Received: from mx1.redhat.com ([209.132.183.28]:10161 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753788Ab1EPPGF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 May 2011 11:06:05 -0400
+In-Reply-To: <BANLkTi=ZgVsPRKE8tQZ=s6qjTLuYopMBBg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Tao Ma <boyu.mt@taobao.com>
+On 5/14/11 1:49 PM, Amir Goldstein wrote:
+> On Wed, May 11, 2011 at 9:59 PM, Amir Goldstein <amir73il@gmail.com> wrote:
+>> On Tue, May 10, 2011 at 4:56 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+>>>
+>>> I've uploaded an updated dev branch to the ext4 tree.  Compared to the
+>>> previous version of dev branch, I've removed my modified version of
+>>> Allison's "NULL pointer when make_indexed_dir returns -ENOSPC" patch,
+>>> and I've added Amir's alloc_semp removal patches.  I'm still in the
+>>> process of reviewing those patches; I've included them to make it easier
+>>> for I and others to test them.
+>>>
+>>
+>> I have a general question regarding testing for next merge window.
+>> What kernel do you usually use when testing the dev branch?
+>> I started writing an xfstest to test online resize and filesystem
+>> filling in parallel, based on test 224 (Delayed allocation at ENOSPC test).
+>> I started running test 224 on a kernel built from ext4/master
+>> and it seemed to run too slow. looking at the waiting tasks
+>> it looked like it could be related to I/O less throttling.
+>> Since ext4/master is based on 2.6.39-rc3, I figured maybe I am running
+>> a buggy kernel, so I merged 2.6.39-rc7 to ext4/master to build a new kernel.
+>>
+>> Am I going in the right direction at all?
+>> I have a dedicated server for tests (X64_64 quad core), so it you would
+>> like me to run some xfstest runs with specific configuration, or certain
+>> patches applied, please let me know.
+>>
+>>
+> 
+> So now that I know I am not hearing voices, I guess test 224 is also too new
+> to be tested by many people.
 
-Currently, if we mkfs a new ext4 volume and mount it for the first time,
-we will get the warning in the message like
-warning: maximal mount count reached, running e2fsck is recommended
+I hope not, it was committed over a year ago :)
 
-It is really misleading. So change the check so that it wouldn't warn in that case.
+If it does enospc, ext4 gets into the flushing & syncing mode as things
+fill up, so maybe something changed in that area?
 
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
----
- fs/ext4/super.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+-Eric
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index e29535c..92166b7 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1900,7 +1900,7 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
- 		ext4_msg(sb, KERN_WARNING,
- 			 "warning: mounting fs with errors, "
- 			 "running e2fsck is recommended");
--	else if ((__s16) le16_to_cpu(es->s_max_mnt_count) >= 0 &&
-+	else if ((__s16) le16_to_cpu(es->s_max_mnt_count) > 0 &&
- 		 le16_to_cpu(es->s_mnt_count) >=
- 		 (unsigned short) (__s16) le16_to_cpu(es->s_max_mnt_count))
- 		ext4_msg(sb, KERN_WARNING,
--- 
-1.7.4
+> The good news is that test 224 runs smoothly on kernel 2.6.39-rc7.
+> on ext4 master branch is either hung or took too long time for me to wait.
+> I will try to find the offending commit on Monday.
+> 
+> Amir.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
