@@ -1,58 +1,67 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCHSET v3.1 0/7] data integrity: Stabilize pages during
-	writeback for various fses
-Date: Mon, 16 May 2011 13:55:35 -0700
-Message-ID: <20110516205535.GP20579@tux1.beaverton.ibm.com>
-References: <20110509230318.19566.66202.stgit@elm3c44.beaverton.ibm.com> <20110516190427.GN20579@tux1.beaverton.ibm.com> <20110516202710.GA32630@infradead.org>
-Reply-To: djwong@us.ibm.com
+From: David Rientjes <rientjes@google.com>
+Subject: Re: [PATCH 3/3] mm: slub: Default slub_max_order to 0
+Date: Mon, 16 May 2011 14:03:33 -0700 (PDT)
+Message-ID: <alpine.DEB.2.00.1105161356140.4353@chino.kir.corp.google.com>
+References: <1305127773-10570-1-git-send-email-mgorman@suse.de> <1305127773-10570-4-git-send-email-mgorman@suse.de> <alpine.DEB.2.00.1105111314310.9346@chino.kir.corp.google.com> <20110512173628.GJ11579@random.random>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-	Jens Axboe <axboe@kernel.dk>,
-	"Martin K. Petersen" <martin.petersen@oracle.com>,
-	Jeff Layton <jlayton@redhat.com>,
-	Dave Chinner <david@fromorbit.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Dave Hansen <dave@linux.vnet.ibm.com>, linux-mm@kvack.org,
-	Chris Mason <chris.mason@oracle.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	linux-scsi <linux-scsi@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Mingming Cao <mcao@us.ibm.com>
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-scsi-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20110516202710.GA32630@infradead.org>
-Sender: linux-scsi-owner@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Mel Gorman <mgorman@suse.de>, Andrew Morton <akpm@linux-foundation.org>,
+        James Bottomley <James.Bottomley@hansenpartnership.com>,
+        Colin King <colin.king@canonical.com>,
+        Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
+        Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
+        Christoph Lameter <cl@linux.com>, Pekka Enberg <penberg@kernel.org>,
+        Rik van Riel <riel@redhat.com>, Johannes Weiner <hannes@cmpxchg.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-mm <linux-mm@kvack.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>
+To: Andrea Arcangeli <aarcange@redhat.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20110512173628.GJ11579@random.random>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 16, 2011 at 04:27:10PM -0400, Christoph Hellwig wrote:
-> Whay about just sending the VFS patches to Al
+On Thu, 12 May 2011, Andrea Arcangeli wrote:
 
-Al was in the To: list of all 7 patches.
+> On Wed, May 11, 2011 at 01:38:47PM -0700, David Rientjes wrote:
+> > kswapd and doing compaction for the higher order allocs before falling 
+> 
+> Note that patch 2 disabled compaction by clearing __GFP_WAIT.
+> 
+> What you describe here would be patch 2 without the ~__GFP_WAIT
+> addition (so keeping only ~GFP_NOFAIL).
+> 
 
-> instead of talking about it on a totally irrelevant call that doesn't include
-> the important stakeholders?  FS-specific patches can go through the fs
-> maintainers independently.
+It's out of context, my sentence was:
 
-The maintainers (ext4/ext2/vfat) were also in the To: list.
+"With the previous changes in this patchset, specifically avoiding waking 
+kswapd and doing compaction for the higher order allocs before falling 
+back to the min order..."
 
-Trouble is, MAINTAINERS says this:
+meaning this patchset avoids waking kswapd and avoids doing compaction.
 
-MEMORY MANAGEMENT
-L:      linux-mm@kvack.org
-W:      http://www.linux-mm.org
-S:      Maintained
-F:      include/linux/mm.h
-F:      mm/
+> Not clearing __GFP_WAIT when compaction is enabled is possible and
+> shouldn't result in bad behavior (if compaction is not enabled with
+> current SLUB it's hard to imagine how it could perform decently if
+> there's fragmentation). You should try to benchmark to see if it's
+> worth it on the large NUMA systems with heavy network traffic (for
+> normal systems I doubt compaction is worth it but I'm not against
+> trying to keep it enabled just in case).
+> 
 
-There's a list, but no specific contact person.  That's why I had to start
-asking around about who actually pushes mm changes to Linus.
+The fragmentation isn't the only issue with the netperf TCP_RR benchmark, 
+the problem is that the slub slowpath is being used >95% of the time on 
+every allocation and free for the very large number of kmalloc-256 and 
+kmalloc-2K caches.  Those caches are order 1 and 3, respectively, on my 
+system by default, but the page allocator seldomly gets invoked for such a 
+benchmark after the partial lists are populated: the overhead is from the 
+per-node locking required in the slowpath to traverse the partial lists.  
+See the data I presented two years ago: http://lkml.org/lkml/2009/3/30/15.
 
-As for Al Viro, he's still listed as the VFS maintainer; isn't he resting?
-I guess he did nominate you for the holding off of morons (like me). :)
-
---D
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
