@@ -1,141 +1,166 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 0/3 v2] Add qcow2 support
-Date: Mon, 16 May 2011 17:43:21 +0200
-Message-ID: <1305560604-31877-1-git-send-email-lczerner@redhat.com>
-Cc: tytso@mit.edu, sandeen@redhat.com
+Subject: [PATCH 2/3 v2] e2image: Support for conversion QCOW2 image into raw
+Date: Mon, 16 May 2011 17:43:23 +0200
+Message-ID: <1305560604-31877-3-git-send-email-lczerner@redhat.com>
+References: <1305560604-31877-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, sandeen@redhat.com,
+	Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:20821 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:4023 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756247Ab1EPPng (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 May 2011 11:43:36 -0400
+	id S1756396Ab1EPPnj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 May 2011 11:43:39 -0400
+In-Reply-To: <1305560604-31877-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
+This commit adds support for converting QCOW2 image created previously
+with e2image into raw image. The QCOW2 image is detected automatically,
+so there is not new option. Just use following command:
 
-it has been a while since I have posted this last time. Noone seems to care
-very much, but I think this is really useful feature for e2image so I give
-it a try once more.
+  e2image -r image.qcow image.raw
 
-These patches adds a qcow2 support to e2image. We all know how painful! is
-using e2image on huge filesystems, especially when you need to transfer 
-the images. Qcow2 images are different, due to its format it is not sparse
-yet, it is space efficient because it packs all used file system metadata
-close together, hence avoiding sparseness. So it is really easy to generate,
-trasfer and convert qcow2 images.
+No that this tool is aimed to quickly convert qcow2 image created with
+e2image into raw image. In order to improve speed we are doing some
+assumption I believe might not be true for regular qcow2 images. So it
+was not tested with regular QCOW2 images and it might not work with
+them. The intention of this tool is only convert images previously
+created by e2image.
 
-Now in order to check the image, or use debugfs you have to convert it into
-the qcow2 image. Unlike targzipping it is *A LOT* faster, however you still
-have to have the space for the raw image, but I do not see that as a big
-problem and hey it is a HUGE improvement from what we have today! However
-it would be possible to create new iomanager which does understand qcow2
-format directly, but I am not going to do that, since there is no library
-and it would mean copy/change and maintain part of qemu code and I do not
-think this is worth it. But anyone interested in this, feel free to look
-at it.
+Note that there is nothing special with QCOW2 images created by e2images
+and it can be used with tools like qemu-img, or qemu-nbd without any
+problems.
 
-Also, remember that if you really do not want to convert the image
-because of file size limit, or whatever, you can always use qemu-nbd to
-attach qcow2 image into nbd block device and use that as regular device.
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ lib/ext2fs/qcow2.c |    3 ++-
+ misc/e2image.8.in  |    4 ++++
+ misc/e2image.c     |   43 ++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 48 insertions(+), 2 deletions(-)
 
-
-[ Note that the last patch (#3) might not make it into the list, because
-it contains new tests and file system images and it is 1.2MB big. If you
-would like to see it please let me know and I will send it to you directly ]
-
-Now here are some numbers:
---------------------------
-
-I have 6TB raid composed of four drives and I flooded it with lots and
-lots of files (copying /usr/share over and over again) and even created
-some big files (1M, 20M, 1G, 10G) so the number of used inodes on the
-filesystem is 10928139. I am using e2fsck form top of the master branch.
-
-Before each step I run:
-sync; echo 3 > /proc/sys/vm/drop_caches
-
-exporting raw image:
-time .//misc/e2image -r /dev/mapper/vg_raid-lv_stripe image.raw
-
-        real    12m3.798s
-        user    2m53.116s
-        sys     3m38.430s
-
-        6,0G    image.raw
-
-exporting qcow2 image
-time .//misc/e2image -Q /dev/mapper/vg_raid-lv_stripe image.qcow2
-e2image 1.41.14 (22-Dec-2010)
-
-        real    11m55.574s
-        user    2m50.521s
-        sys     3m41.515s
-
-        6,1G    image.qcow2
-
-So we can see that the running time is essentially the same, so there is
-no crazy overhead in creating qcow2 image. Note that qcow2 image is
-slightly bigger because of all the qcow2 related metadata and it's size
-really depends on the size of the device. Also I tried to see how long
-does it take to export bzipped2 raw image, but it is running almost one
-day now, so it is not even comparable.
-
-e2fsck on the device:
-time .//e2fsck/e2fsck -fn /dev/mapper/vg_raid-lv_stripe
-
-        real    3m9.400s
-        user    0m47.558s
-        sys     0m15.098s
-
-e2fsck on the raw image:
-time .//e2fsck/e2fsck -fn image.raw
-
-        real    2m36.767s
-        user    0m47.613s
-        sys     0m8.403s
-
-We can see that e2fsck on the raw image is a bit faster, but that is
-obvious since the drive does not have to seek so much (right?).
-
-Now converting qcow2 image into raw image:
-time .//misc/e2image -r image.qcow2 image.qcow2.raw
-
-        real    1m23.486s
-        user    0m0.704s
-        sys     0m22.574s
-
-It is hard to say if it is "quite fast" or not. But I would say it is
-not terribly slow either. Just out of curiosity, I have tried to convert
-raw->qcow2 with qemu-img convert tool:
-
-time qemu-img convert -O raw image.qcow2 image.qemu.raw
-..it is running almost an hour now, so it is not comparable as well :)
-
-
-
-Please review!
-
-Thanks!
--Lukas
-
-
+diff --git a/lib/ext2fs/qcow2.c b/lib/ext2fs/qcow2.c
+index 17eab38..9ac050b 100644
+--- a/lib/ext2fs/qcow2.c
++++ b/lib/ext2fs/qcow2.c
+@@ -209,9 +209,10 @@ int qcow2_write_raw_image(int qcow2_fd, int raw_fd,
+ 	}
+ 
+ 	/* Resize the output image to the filesystem size */
+-	if (lseek(raw_fd, img.image_size, SEEK_SET) < 0)
++	if (lseek(raw_fd, img.image_size - 1, SEEK_SET) < 0)
+ 		return errno;
+ 
++	memset(copy_buf, 0, 1);
+ 	size = write(raw_fd, copy_buf, 1);
+ 	if (size != 1)
+ 		return errno;
+diff --git a/misc/e2image.8.in b/misc/e2image.8.in
+index 4a28580..6f31dd1 100644
+--- a/misc/e2image.8.in
++++ b/misc/e2image.8.in
+@@ -131,6 +131,10 @@ the
+ option will prevent analysis of problems related to hash-tree indexed
+ directories.
+ .PP
++Note that this will work even if you substitute "/dev/hda1" for another raw
++disk image, or QCOW2 image previously created by
++.BR e2image .
++.PP
+ .SH QCOW2 IMAGE FILES
+ The 
+ .B \-Q
+diff --git a/misc/e2image.c b/misc/e2image.c
+index 6dc78d3..d749981 100644
+--- a/misc/e2image.c
++++ b/misc/e2image.c
+@@ -1229,16 +1229,33 @@ static void install_image(char *device, char *image_fn, int type)
+ 	exit (0);
+ }
+ 
++static struct ext2_qcow2_hdr *check_qcow2_image(int *fd, char *name)
++{
++
++#ifdef HAVE_OPEN64
++	*fd = open64(name, O_RDONLY, 0600);
++#else
++	*fd = open(name, O_RDONLY, 0600);
++#endif
++	if (*fd < 0)
++		return NULL;
++
++	return qcow2_read_header(*fd, name);
++}
++
+ int main (int argc, char ** argv)
+ {
+ 	int c;
+ 	errcode_t retval;
+ 	ext2_filsys fs;
+ 	char *image_fn;
++	struct ext2_qcow2_hdr *header = NULL;
+ 	int open_flag = EXT2_FLAG_64BITS;
+ 	int img_type = 0;
+ 	int flags = 0;
++	int qcow2_fd = 0;
+ 	int fd = 0;
++	int ret = 0;
+ 
+ #ifdef ENABLE_NLS
+ 	setlocale(LC_MESSAGES, "");
+@@ -1282,6 +1299,14 @@ int main (int argc, char ** argv)
+ 		exit (0);
+ 	}
+ 
++	if (img_type & IMAGE_RAW) {
++		header = check_qcow2_image(&qcow2_fd, device_name);
++		if (header) {
++			flags |= IS_QCOW2_FLAG;
++			goto skip_device;
++		}
++	}
++
+ 	retval = ext2fs_open (device_name, open_flag, 0, 0,
+ 			      unix_io_manager, &fs);
+         if (retval) {
+@@ -1291,6 +1316,7 @@ int main (int argc, char ** argv)
+ 		exit(1);
+ 	}
+ 
++skip_device:
+ 	if (strcmp(image_fn, "-") == 0)
+ 		fd = 1;
+ 	else {
+@@ -1306,6 +1332,16 @@ int main (int argc, char ** argv)
+ 		}
+ 	}
+ 
++	if (flags & IS_QCOW2_FLAG) {
++		ret = qcow2_write_raw_image(qcow2_fd, fd, header);
++		if (ret)
++			com_err(program_name, errno,
++				_("while trying to convert qcow2 image"
++				  " (%s) into raw image (%s)"),
++				  device_name, image_fn);
++		goto out;
++	}
++
+ 	if ((img_type & IMAGE_QCOW2) && (fd == 1)) {
+ 		com_err(program_name, 0, "QCOW2 image can not be written to "
+ 					 "the stdout!\n");
+@@ -1318,6 +1354,11 @@ int main (int argc, char ** argv)
+ 		write_image_file(fs, fd);
+ 
+ 	ext2fs_close (fs);
++out:
++	if (header)
++		free(header);
++	if (qcow2_fd)
++		close(qcow2_fd);
+ 	remove_error_table(&et_ext2_error_table);
+-	exit (0);
++	return ret;
+ }
 -- 
-[PATCH 1/3 v2] e2image: Add support for qcow2 format
-[PATCH 2/3 v2] e2image: Support for conversion QCOW2 image into raw
-[PATCH 3/3 v2] tests: New i_e2image test to validate image
+1.7.4.4
 
- lib/ext2fs/Makefile.in             |    4 +-
- lib/ext2fs/bitops.h                |    4 +
- lib/ext2fs/e2image.h               |   21 +-
- lib/ext2fs/qcow2.c                 |  228 +++++++++++
- lib/ext2fs/qcow2.h                 |   94 +++++
- misc/e2image.8.in                  |   51 +++-
- misc/e2image.c                     |  766 +++++++++++++++++++++++++++++++++---
- tests/i_e2image/i_e2image.md5      |   15 +
- tests/i_e2image/image1024.orig.bz2 |  Bin 0 -> 322312 bytes
- tests/i_e2image/image2048.orig.bz2 |  Bin 0 -> 321388 bytes
- tests/i_e2image/image4096.orig.bz2 |  Bin 0 -> 312342 bytes
- tests/i_e2image/script             |   57 +++
- tests/test_config                  |    1 +
- 13 files changed, 1168 insertions(+), 73 deletions(-)
