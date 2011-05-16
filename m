@@ -1,139 +1,130 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH v3] ext4:Let ext4_ext_fiemap_cb() handle blocks before request range correctly.
-Date: Mon, 16 May 2011 19:27:14 +0800
-Message-ID: <1305545234-11751-1-git-send-email-xiaoqiangnk@gmail.com>
-Cc: lczerner@redhat.com, tytso@mit.edu,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>
-To: linux-ext4@vger.kernel.org
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: Re: [PATCH v3] ext4:Let ext4_ext_fiemap_cb() handle blocks before
+ request range correctly.
+Date: Mon, 16 May 2011 14:53:18 +0300
+Message-ID: <BANLkTinfHXUx0Ro6J7T7hr5Q=8SNtghViw@mail.gmail.com>
+References: <1305545234-11751-1-git-send-email-xiaoqiangnk@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: base64
+Cc: linux-ext4@vger.kernel.org, lczerner@redhat.com, tytso@mit.edu
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-px0-f173.google.com ([209.85.212.173]:35444 "EHLO
-	mail-px0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750984Ab1EPL2N (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 May 2011 07:28:13 -0400
-Received: by pxi16 with SMTP id 16so3012799pxi.4
-        for <linux-ext4@vger.kernel.org>; Mon, 16 May 2011 04:28:12 -0700 (PDT)
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:44275 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751219Ab1EPLxU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 May 2011 07:53:20 -0400
+Received: by eyx24 with SMTP id 24so1221252eyx.19
+        for <linux-ext4@vger.kernel.org>; Mon, 16 May 2011 04:53:18 -0700 (PDT)
+In-Reply-To: <1305545234-11751-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-To get delayed-extent information, ext4_ext_fiemap_cb() looks up
-pagecache, it thus collects information starting from a page's
-head block.
-
-If blocksize < pagesize, the beginning blocks of a page may lies
-before the request range. So ext4_ext_fiemap_cb() should proceed
-ignoring them, because they has been handled before. If no mapped
-buffer in the range is found in the 1st page, we need to look up
-the 2nd page, otherwise delayed-extents after a hole will be ignored.
-
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
----
- fs/ext4/extents.c |   51 ++++++++++++++++++++++++++++++++++++---------------
- 1 files changed, 36 insertions(+), 15 deletions(-)
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index e363f21..474eaad 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3680,6 +3680,7 @@ static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
- 		pgoff_t		last_offset;
- 		pgoff_t		offset;
- 		pgoff_t		index;
-+		pgoff_t		start_index = 0;
- 		struct page	**pages = NULL;
- 		struct buffer_head *bh = NULL;
- 		struct buffer_head *head = NULL;
-@@ -3706,39 +3707,57 @@ out:
- 				kfree(pages);
- 				return EXT_CONTINUE;
- 			}
-+			index = 0;
- 
-+next_page:
- 			/* Try to find the 1st mapped buffer. */
--			end = ((__u64)pages[0]->index << PAGE_SHIFT) >>
-+			end = ((__u64)pages[index]->index << PAGE_SHIFT) >>
- 				  blksize_bits;
--			if (!page_has_buffers(pages[0]))
-+			if (!page_has_buffers(pages[index]))
- 				goto out;
--			head = page_buffers(pages[0]);
-+			head = page_buffers(pages[index]);
- 			if (!head)
- 				goto out;
--
-+		
-+			index++;
- 			bh = head;
- 			do {
--				if (buffer_mapped(bh)) {
-+				if (end >= newex->ec_block +
-+					newex->ec_len)
-+					/* The buffer is out of
-+					 * the request range.
-+					 */
-+					goto out;
-+
-+				if (buffer_mapped(bh) &&
-+				    end >= newex->ec_block) {
-+					start_index = index - 1;
- 					/* get the 1st mapped buffer. */
--					if (end > newex->ec_block +
--						newex->ec_len)
--						/* The buffer is out of
--						 * the request range.
--						 */
--						goto out;
- 					goto found_mapped_buffer;
- 				}
-+
- 				bh = bh->b_this_page;
- 				end++;
- 			} while (bh != head);
- 
--			/* No mapped buffer found. */
--			goto out;
-+			/* No mapped buffer in the range found in this page,
-+			 * We need to look up next page.
-+			 */
-+			if (index >= ret) {
-+				/* There is no page left, but we need to limit
-+				 * newex->ec_len.
-+				 */
-+				newex->ec_len = end - newex->ec_block;
-+				goto out;
-+			}
-+			goto next_page;
- 		} else {
- 			/*Find contiguous delayed buffers. */
- 			if (ret > 0 && pages[0]->index == last_offset)
- 				head = page_buffers(pages[0]);
- 			bh = head;
-+			index = 1;
-+			start_index = 0;
- 		}
- 
- found_mapped_buffer:
-@@ -3761,7 +3780,7 @@ found_mapped_buffer:
- 				end++;
- 			} while (bh != head);
- 
--			for (index = 1; index < ret; index++) {
-+			for (; index < ret; index++) {
- 				if (!page_has_buffers(pages[index])) {
- 					bh = NULL;
- 					break;
-@@ -3771,8 +3790,10 @@ found_mapped_buffer:
- 					bh = NULL;
- 					break;
- 				}
-+				
- 				if (pages[index]->index !=
--					pages[0]->index + index) {
-+				    pages[start_index]->index + index
-+				    - start_index) {
- 					/* Blocks are not contiguous. */
- 					bh = NULL;
- 					break;
--- 
-1.7.5.1
-
+T24gTW9uLCBNYXkgMTYsIDIwMTEgYXQgMjoyNyBQTSwgWW9uZ3FpYW5nIFlhbmcgPHhpYW9xaWFu
+Z25rQGdtYWlsLmNvbT4gd3JvdGU6Cj4gVG8gZ2V0IGRlbGF5ZWQtZXh0ZW50IGluZm9ybWF0aW9u
+LCBleHQ0X2V4dF9maWVtYXBfY2IoKSBsb29rcyB1cAo+IHBhZ2VjYWNoZSwgaXQgdGh1cyBjb2xs
+ZWN0cyBpbmZvcm1hdGlvbiBzdGFydGluZyBmcm9tIGEgcGFnZSdzCj4gaGVhZCBibG9jay4KPgo+
+IElmIGJsb2Nrc2l6ZSA8IHBhZ2VzaXplLCB0aGUgYmVnaW5uaW5nIGJsb2NrcyBvZiBhIHBhZ2Ug
+bWF5IGxpZXMKPiBiZWZvcmUgdGhlIHJlcXVlc3QgcmFuZ2UuIFNvIGV4dDRfZXh0X2ZpZW1hcF9j
+YigpIHNob3VsZCBwcm9jZWVkCj4gaWdub3JpbmcgdGhlbSwgYmVjYXVzZSB0aGV5IGhhcyBiZWVu
+IGhhbmRsZWQgYmVmb3JlLiBJZiBubyBtYXBwZWQKPiBidWZmZXIgaW4gdGhlIHJhbmdlIGlzIGZv
+dW5kIGluIHRoZSAxc3QgcGFnZSwgd2UgbmVlZCB0byBsb29rIHVwCj4gdGhlIDJuZCBwYWdlLCBv
+dGhlcndpc2UgZGVsYXllZC1leHRlbnRzIGFmdGVyIGEgaG9sZSB3aWxsIGJlIGlnbm9yZWQuCgpE
+b2VzIHRoaXMgcGF0Y2ggZml4IHRoZSBlbmRsZXNzIGxvb3AgSSBlbmNvdW50ZXJlZD8KSWYgc28s
+IHlvdSBtYXkgd2FudCB0byBhZGQgdG8gY29tbWl0IG1lc3NhZ2U6Ci0gUmVwb3J0ZWQtYnk6IEFt
+aXIuLgotIHRoYXQgdGhlIHBhdGNoIGZpeGVzIGEgaGFuZyBidWcKLSBob3cgd2FzIGl0IHJlcHJv
+ZHVjZWQKLSB3aGljaCBjb21taXQgaW50cm9kdWNlZCB0aGUgYnVnCgo+Cj4gU2lnbmVkLW9mZi1i
+eTogWW9uZ3FpYW5nIFlhbmcgPHhpYW9xaWFuZ25rQGdtYWlsLmNvbT4KPiAtLS0KPiCgZnMvZXh0
+NC9leHRlbnRzLmMgfCCgIDUxICsrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKy0t
+LS0tLS0tLS0tLS0tLQo+IKAxIGZpbGVzIGNoYW5nZWQsIDM2IGluc2VydGlvbnMoKyksIDE1IGRl
+bGV0aW9ucygtKQo+Cj4gZGlmZiAtLWdpdCBhL2ZzL2V4dDQvZXh0ZW50cy5jIGIvZnMvZXh0NC9l
+eHRlbnRzLmMKPiBpbmRleCBlMzYzZjIxLi40NzRlYWFkIDEwMDY0NAo+IC0tLSBhL2ZzL2V4dDQv
+ZXh0ZW50cy5jCj4gKysrIGIvZnMvZXh0NC9leHRlbnRzLmMKPiBAQCAtMzY4MCw2ICszNjgwLDcg
+QEAgc3RhdGljIGludCBleHQ0X2V4dF9maWVtYXBfY2Ioc3RydWN0IGlub2RlICppbm9kZSwgc3Ry
+dWN0IGV4dDRfZXh0X3BhdGggKnBhdGgsCj4goCCgIKAgoCCgIKAgoCCgcGdvZmZfdCCgIKAgoCCg
+IGxhc3Rfb2Zmc2V0Owo+IKAgoCCgIKAgoCCgIKAgoHBnb2ZmX3QgoCCgIKAgoCBvZmZzZXQ7Cj4g
+oCCgIKAgoCCgIKAgoCCgcGdvZmZfdCCgIKAgoCCgIGluZGV4Owo+ICsgoCCgIKAgoCCgIKAgoCBw
+Z29mZl90IKAgoCCgIKAgc3RhcnRfaW5kZXggPSAwOwo+IKAgoCCgIKAgoCCgIKAgoHN0cnVjdCBw
+YWdlIKAgoCAqKnBhZ2VzID0gTlVMTDsKPiCgIKAgoCCgIKAgoCCgIKBzdHJ1Y3QgYnVmZmVyX2hl
+YWQgKmJoID0gTlVMTDsKPiCgIKAgoCCgIKAgoCCgIKBzdHJ1Y3QgYnVmZmVyX2hlYWQgKmhlYWQg
+PSBOVUxMOwo+IEBAIC0zNzA2LDM5ICszNzA3LDU3IEBAIG91dDoKPiCgIKAgoCCgIKAgoCCgIKAg
+oCCgIKAgoCCgIKAgoCCga2ZyZWUocGFnZXMpOwo+IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAg
+oCCgIKByZXR1cm4gRVhUX0NPTlRJTlVFOwo+IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgfQo+ICsg
+oCCgIKAgoCCgIKAgoCCgIKAgoCCgIGluZGV4ID0gMDsKPgo+ICtuZXh0X3BhZ2U6Cj4goCCgIKAg
+oCCgIKAgoCCgIKAgoCCgIKAvKiBUcnkgdG8gZmluZCB0aGUgMXN0IG1hcHBlZCBidWZmZXIuICov
+Cj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgZW5kID0gKChfX3U2NClwYWdlc1swXS0+aW5kZXgg
+PDwgUEFHRV9TSElGVCkgPj4KPiArIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCBlbmQgPSAoKF9fdTY0
+KXBhZ2VzW2luZGV4XS0+aW5kZXggPDwgUEFHRV9TSElGVCkgPj4KPiCgIKAgoCCgIKAgoCCgIKAg
+oCCgIKAgoCCgIKAgoCCgIKBibGtzaXplX2JpdHM7Cj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAg
+aWYgKCFwYWdlX2hhc19idWZmZXJzKHBhZ2VzWzBdKSkKPiArIKAgoCCgIKAgoCCgIKAgoCCgIKAg
+oCBpZiAoIXBhZ2VfaGFzX2J1ZmZlcnMocGFnZXNbaW5kZXhdKSkKPiCgIKAgoCCgIKAgoCCgIKAg
+oCCgIKAgoCCgIKAgoCCgZ290byBvdXQ7Cj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgaGVhZCA9
+IHBhZ2VfYnVmZmVycyhwYWdlc1swXSk7Cj4gKyCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgaGVhZCA9
+IHBhZ2VfYnVmZmVycyhwYWdlc1tpbmRleF0pOwo+IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgaWYg
+KCFoZWFkKQo+IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKBnb3RvIG91dDsKPiAtCj4g
+Kwo+ICsgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIGluZGV4Kys7Cj4goCCgIKAgoCCgIKAgoCCgIKAg
+oCCgIKBiaCA9IGhlYWQ7Cj4goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKBkbyB7Cj4gLSCgIKAgoCCg
+IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCBpZiAoYnVmZmVyX21hcHBlZChiaCkpIHsKPiArIKAgoCCg
+IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIGlmIChlbmQgPj0gbmV3ZXgtPmVjX2Jsb2NrICsKPiAr
+IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgbmV3ZXgtPmVjX2xlbikKPiAr
+IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgLyogVGhlIGJ1ZmZlciBpcyBv
+dXQgb2YKPiArIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCogdGhlIHJl
+cXVlc3QgcmFuZ2UuCj4gKyCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAq
+Lwo+ICsgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCBnb3RvIG91dDsKPiAr
+Cj4gKyCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCBpZiAoYnVmZmVyX21hcHBlZChiaCkg
+JiYKPiArIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCBlbmQgPj0gbmV3ZXgtPmVj
+X2Jsb2NrKSB7Cj4gKyCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIHN0YXJ0
+X2luZGV4ID0gaW5kZXggLSAxOwo+IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCg
+IKAgoC8qIGdldCB0aGUgMXN0IG1hcHBlZCBidWZmZXIuICovCj4gLSCgIKAgoCCgIKAgoCCgIKAg
+oCCgIKAgoCCgIKAgoCCgIKAgoCCgIGlmIChlbmQgPiBuZXdleC0+ZWNfYmxvY2sgKwo+IC0goCCg
+IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIG5ld2V4LT5lY19sZW4p
+Cj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgLyogVGhl
+IGJ1ZmZlciBpcyBvdXQgb2YKPiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCg
+IKAgoCCgIKAgoCCgKiB0aGUgcmVxdWVzdCByYW5nZS4KPiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAg
+oCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgKi8KPiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCg
+IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCBnb3RvIG91dDsKPiCgIKAgoCCgIKAgoCCgIKAgoCCgIKAg
+oCCgIKAgoCCgIKAgoCCgIKBnb3RvIGZvdW5kX21hcHBlZF9idWZmZXI7Cj4goCCgIKAgoCCgIKAg
+oCCgIKAgoCCgIKAgoCCgIKAgoH0KPiArCj4goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAg
+oGJoID0gYmgtPmJfdGhpc19wYWdlOwo+IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKBl
+bmQrKzsKPiCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoH0gd2hpbGUgKGJoICE9IGhlYWQpOwo+Cj4g
+LSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgLyogTm8gbWFwcGVkIGJ1ZmZlciBmb3VuZC4gKi8KPiAt
+IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCBnb3RvIG91dDsKPiArIKAgoCCgIKAgoCCgIKAgoCCgIKAg
+oCAvKiBObyBtYXBwZWQgYnVmZmVyIGluIHRoZSByYW5nZSBmb3VuZCBpbiB0aGlzIHBhZ2UsCj4g
+KyCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCogV2UgbmVlZCB0byBsb29rIHVwIG5leHQgcGFnZS4K
+PiArIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgKi8KPiArIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCBp
+ZiAoaW5kZXggPj0gcmV0KSB7Cj4gKyCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCAvKiBU
+aGVyZSBpcyBubyBwYWdlIGxlZnQsIGJ1dCB3ZSBuZWVkIHRvIGxpbWl0Cj4gKyCgIKAgoCCgIKAg
+oCCgIKAgoCCgIKAgoCCgIKAgoCCgKiBuZXdleC0+ZWNfbGVuLgo+ICsgoCCgIKAgoCCgIKAgoCCg
+IKAgoCCgIKAgoCCgIKAgoCovCj4gKyCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCBuZXdl
+eC0+ZWNfbGVuID0gZW5kIC0gbmV3ZXgtPmVjX2Jsb2NrOwo+ICsgoCCgIKAgoCCgIKAgoCCgIKAg
+oCCgIKAgoCCgIKAgZ290byBvdXQ7Cj4gKyCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgfQo+ICsgoCCg
+IKAgoCCgIKAgoCCgIKAgoCCgIGdvdG8gbmV4dF9wYWdlOwo+IKAgoCCgIKAgoCCgIKAgoH0gZWxz
+ZSB7Cj4goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAvKkZpbmQgY29udGlndW91cyBkZWxheWVkIGJ1
+ZmZlcnMuICovCj4goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKBpZiAocmV0ID4gMCAmJiBwYWdlc1sw
+XS0+aW5kZXggPT0gbGFzdF9vZmZzZXQpCj4goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAg
+oGhlYWQgPSBwYWdlX2J1ZmZlcnMocGFnZXNbMF0pOwo+IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCg
+YmggPSBoZWFkOwo+ICsgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIGluZGV4ID0gMTsKPiArIKAgoCCg
+IKAgoCCgIKAgoCCgIKAgoCBzdGFydF9pbmRleCA9IDA7Cj4goCCgIKAgoCCgIKAgoCCgfQo+Cj4g
+oGZvdW5kX21hcHBlZF9idWZmZXI6Cj4gQEAgLTM3NjEsNyArMzc4MCw3IEBAIGZvdW5kX21hcHBl
+ZF9idWZmZXI6Cj4goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoGVuZCsrOwo+IKAgoCCg
+IKAgoCCgIKAgoCCgIKAgoCCgfSB3aGlsZSAoYmggIT0gaGVhZCk7Cj4KPiAtIKAgoCCgIKAgoCCg
+IKAgoCCgIKAgoCBmb3IgKGluZGV4ID0gMTsgaW5kZXggPCByZXQ7IGluZGV4KyspIHsKPiArIKAg
+oCCgIKAgoCCgIKAgoCCgIKAgoCBmb3IgKDsgaW5kZXggPCByZXQ7IGluZGV4KyspIHsKPiCgIKAg
+oCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgaWYgKCFwYWdlX2hhc19idWZmZXJzKHBhZ2VzW2lu
+ZGV4XSkpIHsKPiCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKBiaCA9IE5V
+TEw7Cj4goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgYnJlYWs7Cj4gQEAg
+LTM3NzEsOCArMzc5MCwxMCBAQCBmb3VuZF9tYXBwZWRfYnVmZmVyOgo+IKAgoCCgIKAgoCCgIKAg
+oCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoGJoID0gTlVMTDsKPiCgIKAgoCCgIKAgoCCgIKAgoCCg
+IKAgoCCgIKAgoCCgIKAgoCCgIKBicmVhazsKPiCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAg
+oCCgfQo+ICsKPiCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgaWYgKHBhZ2VzW2luZGV4
+XS0+aW5kZXggIT0KPiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgcGFn
+ZXNbMF0tPmluZGV4ICsgaW5kZXgpIHsKPiArIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCg
+IKAgoCBwYWdlc1tzdGFydF9pbmRleF0tPmluZGV4ICsgaW5kZXgKPiArIKAgoCCgIKAgoCCgIKAg
+oCCgIKAgoCCgIKAgoCCgIKAgoCAtIHN0YXJ0X2luZGV4KSB7Cj4goCCgIKAgoCCgIKAgoCCgIKAg
+oCCgIKAgoCCgIKAgoCCgIKAgoCCgLyogQmxvY2tzIGFyZSBub3QgY29udGlndW91cy4gKi8KPiCg
+IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKBiaCA9IE5VTEw7Cj4goCCgIKAg
+oCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgYnJlYWs7Cj4gLS0KPiAxLjcuNS4xCj4K
+PiAtLQo+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1
+YnNjcmliZSBsaW51eC1leHQ0IiBpbgo+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRv
+bW9Admdlci5rZXJuZWwub3JnCj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCCgaHR0cDovL3ZnZXIu
+a2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sCj4K
