@@ -1,139 +1,406 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [PATCH v3] ext4:Let ext4_ext_fiemap_cb() handle blocks before
- request range correctly.
-Date: Mon, 16 May 2011 21:15:51 +0800
-Message-ID: <BANLkTikeXcqDGQhx9v6RrRUjOucV4wnzCA@mail.gmail.com>
-References: <1305545234-11751-1-git-send-email-xiaoqiangnk@gmail.com>
-	<BANLkTinfHXUx0Ro6J7T7hr5Q=8SNtghViw@mail.gmail.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH 1/2] resize2fs: Add support for lazy itable
+ initialization
+Date: Mon, 16 May 2011 15:41:46 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1105161541340.3670@dhcp-27-109.brq.redhat.com>
+References: <1296580465-28519-1-git-send-email-lczerner@redhat.com> <alpine.LFD.2.00.1102161142180.4744@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: base64
-Cc: linux-ext4@vger.kernel.org, lczerner@redhat.com, tytso@mit.edu
-To: Amir Goldstein <amir73il@gmail.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org, tytso@MIT.EDU
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:35068 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753622Ab1EPNPw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 May 2011 09:15:52 -0400
-Received: by vws1 with SMTP id 1so3085262vws.19
-        for <linux-ext4@vger.kernel.org>; Mon, 16 May 2011 06:15:51 -0700 (PDT)
-In-Reply-To: <BANLkTinfHXUx0Ro6J7T7hr5Q=8SNtghViw@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:15112 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754990Ab1EPNlt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 May 2011 09:41:49 -0400
+In-Reply-To: <alpine.LFD.2.00.1102161142180.4744@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-T24gTW9uLCBNYXkgMTYsIDIwMTEgYXQgNzo1MyBQTSwgQW1pciBHb2xkc3RlaW4gPGFtaXI3M2ls
-QGdtYWlsLmNvbT4gd3JvdGU6Cj4gT24gTW9uLCBNYXkgMTYsIDIwMTEgYXQgMjoyNyBQTSwgWW9u
-Z3FpYW5nIFlhbmcgPHhpYW9xaWFuZ25rQGdtYWlsLmNvbT4gd3JvdGU6Cj4+IFRvIGdldCBkZWxh
-eWVkLWV4dGVudCBpbmZvcm1hdGlvbiwgZXh0NF9leHRfZmllbWFwX2NiKCkgbG9va3MgdXAKPj4g
-cGFnZWNhY2hlLCBpdCB0aHVzIGNvbGxlY3RzIGluZm9ybWF0aW9uIHN0YXJ0aW5nIGZyb20gYSBw
-YWdlJ3MKPj4gaGVhZCBibG9jay4KPj4KPj4gSWYgYmxvY2tzaXplIDwgcGFnZXNpemUsIHRoZSBi
-ZWdpbm5pbmcgYmxvY2tzIG9mIGEgcGFnZSBtYXkgbGllcwo+PiBiZWZvcmUgdGhlIHJlcXVlc3Qg
-cmFuZ2UuIFNvIGV4dDRfZXh0X2ZpZW1hcF9jYigpIHNob3VsZCBwcm9jZWVkCj4+IGlnbm9yaW5n
-IHRoZW0sIGJlY2F1c2UgdGhleSBoYXMgYmVlbiBoYW5kbGVkIGJlZm9yZS4gSWYgbm8gbWFwcGVk
-Cj4+IGJ1ZmZlciBpbiB0aGUgcmFuZ2UgaXMgZm91bmQgaW4gdGhlIDFzdCBwYWdlLCB3ZSBuZWVk
-IHRvIGxvb2sgdXAKPj4gdGhlIDJuZCBwYWdlLCBvdGhlcndpc2UgZGVsYXllZC1leHRlbnRzIGFm
-dGVyIGEgaG9sZSB3aWxsIGJlIGlnbm9yZWQuCj4KPiBEb2VzIHRoaXMgcGF0Y2ggZml4IHRoZSBl
-bmRsZXNzIGxvb3AgSSBlbmNvdW50ZXJlZD8KWWVzLCBpdCBmaXhlcyBhbm90aGVyIGJ1Zy4KPiBJ
-ZiBzbywgeW91IG1heSB3YW50IHRvIGFkZCB0byBjb21taXQgbWVzc2FnZToKPiAtIFJlcG9ydGVk
-LWJ5OiBBbWlyLi4KPiAtIHRoYXQgdGhlIHBhdGNoIGZpeGVzIGEgaGFuZyBidWcKPiAtIGhvdyB3
-YXMgaXQgcmVwcm9kdWNlZAo+IC0gd2hpY2ggY29tbWl0IGludHJvZHVjZWQgdGhlIGJ1ZwpTb3Jy
-eSwgSSBmb3Jnb3QgdG8gYWRkIHRoZXNlLiAgIEkgcmV3cm90ZSB0aGUgeGZzdGVzdHMgMjI1IGFu
-ZCBmb3VuZAphbm90aGVyIGJ1ZyB3aGljaCB0aGUgb2xkIDIyNSBjb3VsZCBub3QgZmluZC4KSSB0
-aGluayBJIHNob3VsZCByZXNlbmQgdGhpcyBwYXRjaC4KCj4KPj4KPj4gU2lnbmVkLW9mZi1ieTog
-WW9uZ3FpYW5nIFlhbmcgPHhpYW9xaWFuZ25rQGdtYWlsLmNvbT4KPj4gLS0tCj4+IKBmcy9leHQ0
-L2V4dGVudHMuYyB8IKAgNTEgKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrLS0t
-LS0tLS0tLS0tLS0tCj4+IKAxIGZpbGVzIGNoYW5nZWQsIDM2IGluc2VydGlvbnMoKyksIDE1IGRl
-bGV0aW9ucygtKQo+Pgo+PiBkaWZmIC0tZ2l0IGEvZnMvZXh0NC9leHRlbnRzLmMgYi9mcy9leHQ0
-L2V4dGVudHMuYwo+PiBpbmRleCBlMzYzZjIxLi40NzRlYWFkIDEwMDY0NAo+PiAtLS0gYS9mcy9l
-eHQ0L2V4dGVudHMuYwo+PiArKysgYi9mcy9leHQ0L2V4dGVudHMuYwo+PiBAQCAtMzY4MCw2ICsz
-NjgwLDcgQEAgc3RhdGljIGludCBleHQ0X2V4dF9maWVtYXBfY2Ioc3RydWN0IGlub2RlICppbm9k
-ZSwgc3RydWN0IGV4dDRfZXh0X3BhdGggKnBhdGgsCj4+IKAgoCCgIKAgoCCgIKAgoHBnb2ZmX3Qg
-oCCgIKAgoCBsYXN0X29mZnNldDsKPj4goCCgIKAgoCCgIKAgoCCgcGdvZmZfdCCgIKAgoCCgIG9m
-ZnNldDsKPj4goCCgIKAgoCCgIKAgoCCgcGdvZmZfdCCgIKAgoCCgIGluZGV4Owo+PiArIKAgoCCg
-IKAgoCCgIKAgcGdvZmZfdCCgIKAgoCCgIHN0YXJ0X2luZGV4ID0gMDsKPj4goCCgIKAgoCCgIKAg
-oCCgc3RydWN0IHBhZ2UgoCCgICoqcGFnZXMgPSBOVUxMOwo+PiCgIKAgoCCgIKAgoCCgIKBzdHJ1
-Y3QgYnVmZmVyX2hlYWQgKmJoID0gTlVMTDsKPj4goCCgIKAgoCCgIKAgoCCgc3RydWN0IGJ1ZmZl
-cl9oZWFkICpoZWFkID0gTlVMTDsKPj4gQEAgLTM3MDYsMzkgKzM3MDcsNTcgQEAgb3V0Ogo+PiCg
-IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCga2ZyZWUocGFnZXMpOwo+PiCgIKAgoCCgIKAg
-oCCgIKAgoCCgIKAgoCCgIKAgoCCgcmV0dXJuIEVYVF9DT05USU5VRTsKPj4goCCgIKAgoCCgIKAg
-oCCgIKAgoCCgIKB9Cj4+ICsgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIGluZGV4ID0gMDsKPj4KPj4g
-K25leHRfcGFnZToKPj4goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAvKiBUcnkgdG8gZmluZCB0aGUg
-MXN0IG1hcHBlZCBidWZmZXIuICovCj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCCgIGVuZCA9ICgo
-X191NjQpcGFnZXNbMF0tPmluZGV4IDw8IFBBR0VfU0hJRlQpID4+Cj4+ICsgoCCgIKAgoCCgIKAg
-oCCgIKAgoCCgIGVuZCA9ICgoX191NjQpcGFnZXNbaW5kZXhdLT5pbmRleCA8PCBQQUdFX1NISUZU
-KSA+Pgo+PiCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKBibGtzaXplX2JpdHM7Cj4+
-IC0goCCgIKAgoCCgIKAgoCCgIKAgoCCgIGlmICghcGFnZV9oYXNfYnVmZmVycyhwYWdlc1swXSkp
-Cj4+ICsgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIGlmICghcGFnZV9oYXNfYnVmZmVycyhwYWdlc1tp
-bmRleF0pKQo+PiCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgZ290byBvdXQ7Cj4+IC0g
-oCCgIKAgoCCgIKAgoCCgIKAgoCCgIGhlYWQgPSBwYWdlX2J1ZmZlcnMocGFnZXNbMF0pOwo+PiAr
-IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCBoZWFkID0gcGFnZV9idWZmZXJzKHBhZ2VzW2luZGV4XSk7
-Cj4+IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgaWYgKCFoZWFkKQo+PiCgIKAgoCCgIKAgoCCgIKAg
-oCCgIKAgoCCgIKAgoCCgZ290byBvdXQ7Cj4+IC0KPj4gKwo+PiArIKAgoCCgIKAgoCCgIKAgoCCg
-IKAgoCBpbmRleCsrOwo+PiCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoGJoID0gaGVhZDsKPj4goCCg
-IKAgoCCgIKAgoCCgIKAgoCCgIKBkbyB7Cj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCg
-IKAgaWYgKGJ1ZmZlcl9tYXBwZWQoYmgpKSB7Cj4+ICsgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAg
-oCCgIKAgaWYgKGVuZCA+PSBuZXdleC0+ZWNfYmxvY2sgKwo+PiArIKAgoCCgIKAgoCCgIKAgoCCg
-IKAgoCCgIKAgoCCgIKAgoCCgIKAgbmV3ZXgtPmVjX2xlbikKPj4gKyCgIKAgoCCgIKAgoCCgIKAg
-oCCgIKAgoCCgIKAgoCCgIKAgoCCgIC8qIFRoZSBidWZmZXIgaXMgb3V0IG9mCj4+ICsgoCCgIKAg
-oCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgKiB0aGUgcmVxdWVzdCByYW5nZS4KPj4g
-KyCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAqLwo+PiArIKAgoCCgIKAg
-oCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgZ290byBvdXQ7Cj4+ICsKPj4gKyCgIKAgoCCg
-IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCBpZiAoYnVmZmVyX21hcHBlZChiaCkgJiYKPj4gKyCgIKAg
-oCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgZW5kID49IG5ld2V4LT5lY19ibG9jaykgewo+
-PiArIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgc3RhcnRfaW5kZXggPSBp
-bmRleCAtIDE7Cj4+IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoC8qIGdl
-dCB0aGUgMXN0IG1hcHBlZCBidWZmZXIuICovCj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAg
-oCCgIKAgoCCgIKAgoCBpZiAoZW5kID4gbmV3ZXgtPmVjX2Jsb2NrICsKPj4gLSCgIKAgoCCgIKAg
-oCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgbmV3ZXgtPmVjX2xlbikKPj4gLSCg
-IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgLyogVGhlIGJ1ZmZl
-ciBpcyBvdXQgb2YKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAg
-oCCgIKAgoCogdGhlIHJlcXVlc3QgcmFuZ2UuCj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAg
-oCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAqLwo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAg
-oCCgIKAgoCCgIKAgoCCgIKAgoCBnb3RvIG91dDsKPj4goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAg
-oCCgIKAgoCCgIKAgoCCgZ290byBmb3VuZF9tYXBwZWRfYnVmZmVyOwo+PiCgIKAgoCCgIKAgoCCg
-IKAgoCCgIKAgoCCgIKAgoCCgfQo+PiArCj4+IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCg
-IKBiaCA9IGJoLT5iX3RoaXNfcGFnZTsKPj4goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAg
-oGVuZCsrOwo+PiCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoH0gd2hpbGUgKGJoICE9IGhlYWQpOwo+
-Pgo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCAvKiBObyBtYXBwZWQgYnVmZmVyIGZvdW5kLiAq
-Lwo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCBnb3RvIG91dDsKPj4gKyCgIKAgoCCgIKAgoCCg
-IKAgoCCgIKAgLyogTm8gbWFwcGVkIGJ1ZmZlciBpbiB0aGUgcmFuZ2UgZm91bmQgaW4gdGhpcyBw
-YWdlLAo+PiArIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgKiBXZSBuZWVkIHRvIGxvb2sgdXAgbmV4
-dCBwYWdlLgo+PiArIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgKi8KPj4gKyCgIKAgoCCgIKAgoCCg
-IKAgoCCgIKAgaWYgKGluZGV4ID49IHJldCkgewo+PiArIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCg
-IKAgoCCgIC8qIFRoZXJlIGlzIG5vIHBhZ2UgbGVmdCwgYnV0IHdlIG5lZWQgdG8gbGltaXQKPj4g
-KyCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgKiBuZXdleC0+ZWNfbGVuLgo+PiArIKAg
-oCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAqLwo+PiArIKAgoCCgIKAgoCCgIKAgoCCgIKAg
-oCCgIKAgoCCgIG5ld2V4LT5lY19sZW4gPSBlbmQgLSBuZXdleC0+ZWNfYmxvY2s7Cj4+ICsgoCCg
-IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgZ290byBvdXQ7Cj4+ICsgoCCgIKAgoCCgIKAgoCCg
-IKAgoCCgIH0KPj4gKyCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgZ290byBuZXh0X3BhZ2U7Cj4+IKAg
-oCCgIKAgoCCgIKAgoH0gZWxzZSB7Cj4+IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgLypGaW5kIGNv
-bnRpZ3VvdXMgZGVsYXllZCBidWZmZXJzLiAqLwo+PiCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoGlm
-IChyZXQgPiAwICYmIHBhZ2VzWzBdLT5pbmRleCA9PSBsYXN0X29mZnNldCkKPj4goCCgIKAgoCCg
-IKAgoCCgIKAgoCCgIKAgoCCgIKAgoGhlYWQgPSBwYWdlX2J1ZmZlcnMocGFnZXNbMF0pOwo+PiCg
-IKAgoCCgIKAgoCCgIKAgoCCgIKAgoGJoID0gaGVhZDsKPj4gKyCgIKAgoCCgIKAgoCCgIKAgoCCg
-IKAgaW5kZXggPSAxOwo+PiArIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCBzdGFydF9pbmRleCA9IDA7
-Cj4+IKAgoCCgIKAgoCCgIKAgoH0KPj4KPj4goGZvdW5kX21hcHBlZF9idWZmZXI6Cj4+IEBAIC0z
-NzYxLDcgKzM3ODAsNyBAQCBmb3VuZF9tYXBwZWRfYnVmZmVyOgo+PiCgIKAgoCCgIKAgoCCgIKAg
-oCCgIKAgoCCgIKAgoCCgZW5kKys7Cj4+IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgfSB3aGlsZSAo
-YmggIT0gaGVhZCk7Cj4+Cj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCCgIGZvciAoaW5kZXggPSAx
-OyBpbmRleCA8IHJldDsgaW5kZXgrKykgewo+PiArIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCBmb3Ig
-KDsgaW5kZXggPCByZXQ7IGluZGV4KyspIHsKPj4goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCg
-IKAgoGlmICghcGFnZV9oYXNfYnVmZmVycyhwYWdlc1tpbmRleF0pKSB7Cj4+IKAgoCCgIKAgoCCg
-IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoGJoID0gTlVMTDsKPj4goCCgIKAgoCCgIKAgoCCg
-IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgYnJlYWs7Cj4+IEBAIC0zNzcxLDggKzM3OTAsMTAgQEAg
-Zm91bmRfbWFwcGVkX2J1ZmZlcjoKPj4goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCg
-IKAgoCCgYmggPSBOVUxMOwo+PiCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCg
-IKBicmVhazsKPj4goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoH0KPj4gKwo+PiCgIKAg
-oCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgaWYgKHBhZ2VzW2luZGV4XS0+aW5kZXggIT0KPj4g
-LSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIHBhZ2VzWzBdLT5pbmRleCAr
-IGluZGV4KSB7Cj4+ICsgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIHBhZ2VzW3N0
-YXJ0X2luZGV4XS0+aW5kZXggKyBpbmRleAo+PiArIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAg
-oCCgIKAgoCAtIHN0YXJ0X2luZGV4KSB7Cj4+IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCg
-IKAgoCCgIKAgoC8qIEJsb2NrcyBhcmUgbm90IGNvbnRpZ3VvdXMuICovCj4+IKAgoCCgIKAgoCCg
-IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoGJoID0gTlVMTDsKPj4goCCgIKAgoCCgIKAgoCCg
-IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgYnJlYWs7Cj4+IC0tCj4+IDEuNy41LjEKPj4KPj4gLS0K
-Pj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2Ny
-aWJlIGxpbnV4LWV4dDQiIGluCj4+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9A
-dmdlci5rZXJuZWwub3JnCj4+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgoGh0dHA6Ly92Z2VyLmtl
-cm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbAo+Pgo+CgoKCi0tIApCZXN0IFdpc2hlcwpZb25n
-cWlhbmcgWWFuZwo=
+On Wed, 16 Feb 2011, Lukas Czerner wrote:
+
+> On Tue, 1 Feb 2011, Lukas Czerner wrote:
+> 
+> > Lazy inode table initialization speeds up file system resize operation
+> > because we can let the inode tables uninitialized. For some time now the
+> > mke2fs has similar option and now, when we have in-kernel lazyinit
+> > implementation we can add this feature to the resize2fs as well.
+> > 
+> > This commit adds extended options '-E' to the resize2fs code along with
+> > the first extended option lazy_itable_init=n. With lazy_itable_init
+> > extended option one can instruct resize2fs to skip inode table
+> > initialization to significantly speed-up file system resize. If the
+> > option is omitted and the file system supports lazy inode table
+> > initialization it defaults to 1.
+> 
+> ping
+
+ping^2
+
+> 
+> > 
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> > ---
+> >  resize/main.c         |   68 +++++++++++++++++++++++++++++++-
+> >  resize/online.c       |    2 +-
+> >  resize/resize2fs.8.in |   20 +++++++++
+> >  resize/resize2fs.c    |  105 +++++++++++++++++++++++++++---------------------
+> >  resize/resize2fs.h    |    3 +-
+> >  5 files changed, 148 insertions(+), 50 deletions(-)
+> > 
+> > diff --git a/resize/main.c b/resize/main.c
+> > index 28a49ba..0f1a8db 100644
+> > --- a/resize/main.c
+> > +++ b/resize/main.c
+> > @@ -40,7 +40,8 @@ char *program_name, *device_name, *io_options;
+> >  static void usage (char *prog)
+> >  {
+> >  	fprintf (stderr, _("Usage: %s [-d debug_flags] [-f] [-F] [-M] [-P] "
+> > -			   "[-p] device [new_size]\n\n"), prog);
+> > +			   "[-p] [-E extended_options] device [new_size]\n\n"),
+> > +			   prog);
+> >  
+> >  	exit (1);
+> >  }
+> > @@ -146,6 +147,59 @@ static void determine_fs_stride(ext2_filsys fs)
+> >  #endif
+> >  }
+> >  
+> > +static void parse_extended_opts(int *flags, const char *opts)
+> > +{
+> > +	char	*buf, *token, *next, *p, *arg, *badopt = 0;
+> > +	int	len;
+> > +	int	r_usage = 0;
+> > +
+> > +	len = strlen(opts);
+> > +	buf = malloc(len+1);
+> > +	if (!buf) {
+> > +		fprintf(stderr,
+> > +			_("Couldn't allocate memory to parse options!\n"));
+> > +		exit(1);
+> > +	}
+> > +	strcpy(buf, opts);
+> > +	for (token = buf; token && *token; token = next) {
+> > +		p = strchr(token, ',');
+> > +		next = 0;
+> > +		if (p) {
+> > +			*p = 0;
+> > +			next = p+1;
+> > +		}
+> > +		arg = strchr(token, '=');
+> > +		if (arg) {
+> > +			*arg = 0;
+> > +			arg++;
+> > +		}
+> > +		if (!strcmp(token, "lazy_itable_init")) {
+> > +			int lazy;
+> > +			if (arg)
+> > +				lazy = strtoul(arg, &p, 0);
+> > +			else
+> > +				lazy = 1;
+> > +			if (lazy)
+> > +				*flags |= RESIZE_LAZY_ITABLE_INIT;
+> > +		} else {
+> > +			r_usage++;
+> > +			badopt = token;
+> > +		}
+> > +	}
+> > +	if (r_usage) {
+> > +		fprintf(stderr, _("\nBad option(s) specified: %s\n\n"
+> > +			"Extended options are separated by commas, "
+> > +			"and may take an argument which\n"
+> > +			"\tis set off by an equals ('=') sign.\n\n"
+> > +			"Valid extended options are:\n"
+> > +			"\tlazy_itable_init=<0 to disable, 1 to enable>\n\n"),
+> > +			badopt ? badopt : "");
+> > +		free(buf);
+> > +		exit(1);
+> > +	}
+> > +	free(buf);
+> > +}
+> > +
+> >  int main (int argc, char ** argv)
+> >  {
+> >  	errcode_t	retval;
+> > @@ -174,6 +228,7 @@ int main (int argc, char ** argv)
+> >  	long		sysval;
+> >  	int		len, mount_flags;
+> >  	char		*mtpt;
+> > +	char *		extended_opts = NULL;
+> >  
+> >  #ifdef ENABLE_NLS
+> >  	setlocale(LC_MESSAGES, "");
+> > @@ -189,7 +244,7 @@ int main (int argc, char ** argv)
+> >  	if (argc && *argv)
+> >  		program_name = *argv;
+> >  
+> > -	while ((c = getopt (argc, argv, "d:fFhMPpS:")) != EOF) {
+> > +	while ((c = getopt (argc, argv, "d:fFhMPpS:E:")) != EOF) {
+> >  		switch (c) {
+> >  		case 'h':
+> >  			usage(program_name);
+> > @@ -215,6 +270,9 @@ int main (int argc, char ** argv)
+> >  		case 'S':
+> >  			use_stride = atoi(optarg);
+> >  			break;
+> > +		case 'E':
+> > +			extended_opts = optarg;
+> > +			break;
+> >  		default:
+> >  			usage(program_name);
+> >  		}
+> > @@ -232,6 +290,12 @@ int main (int argc, char ** argv)
+> >  	if (io_options)
+> >  		*io_options++ = 0;
+> >  
+> > +	if (access("/sys/fs/ext4/features/lazy_itable_init", R_OK) == 0)
+> > +		flags |= RESIZE_LAZY_ITABLE_INIT;
+> > +
+> > +	if (extended_opts)
+> > +		parse_extended_opts(&flags, extended_opts);
+> > +
+> >  	/*
+> >  	 * Figure out whether or not the device is mounted, and if it is
+> >  	 * where it is mounted.
+> > diff --git a/resize/online.c b/resize/online.c
+> > index 1d8d4ec..7bc27b3 100644
+> > --- a/resize/online.c
+> > +++ b/resize/online.c
+> > @@ -104,7 +104,7 @@ errcode_t online_resize_fs(ext2_filsys fs, const char *mtpt,
+> >  	 * but at least it allows on-line resizing to function.
+> >  	 */
+> >  	new_fs->super->s_feature_incompat &= ~EXT4_FEATURE_INCOMPAT_FLEX_BG;
+> > -	retval = adjust_fs_info(new_fs, fs, 0, *new_size);
+> > +	retval = adjust_fs_info(new_fs, fs, 0, *new_size, 0);
+> >  	if (retval)
+> >  		return retval;
+> >  
+> > diff --git a/resize/resize2fs.8.in b/resize/resize2fs.8.in
+> > index e02345d..448265c 100644
+> > --- a/resize/resize2fs.8.in
+> > +++ b/resize/resize2fs.8.in
+> > @@ -18,6 +18,10 @@ resize2fs \- ext2/ext3/ext4 file system resizer
+> >  .B \-S
+> >  .I RAID-stride
+> >  ]
+> > +[
+> > +.B \-E
+> > +.I extended-options
+> > +]
+> >  .I device
+> >  [
+> >  .I size
+> > @@ -128,6 +132,22 @@ The
+> >  program will heuristically determine the RAID stride that was specified
+> >  when the filesystem was created.  This option allows the user to
+> >  explicitly specify a RAID stride setting to be used by resize2fs instead.
+> > +.TP
+> > +.B \-E \fIextended-options
+> > +Set extended options for the filesystem.  Extended options are comma
+> > +separated, and may take an argument using the equals ('=') sign.
+> > +The following extended options are supported:
+> > +.RS 1.2i
+> > +.TP
+> > +.B lazy_itable_init\fR[\fB= \fI<0 to disable, 1 to enable>\fR]
+> > +If enabled and the uninit_bg feature is enabled, the inode table will
+> > +not be fully initialized by
+> > +.BR resize2fs .
+> > +This speeds up filesystem
+> > +resize noticeably, but it requires the kernel to finish
+> > +initializing the filesystem in the background when the filesystem is
+> > +mounted.  If the option value is omitted, it defaults to 1 to
+> > +enable lazy inode table initialization.
+> >  .SH KNOWN BUGS
+> >  The minimum size of the filesystem as estimated by resize2fs may be
+> >  incorrect, especially for filesystems with 1k and 2k blocksizes.
+> > diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+> > index 216a626..1101364 100644
+> > --- a/resize/resize2fs.c
+> > +++ b/resize/resize2fs.c
+> > @@ -41,7 +41,8 @@
+> >  #endif
+> >  
+> >  static void fix_uninit_block_bitmaps(ext2_filsys fs);
+> > -static errcode_t adjust_superblock(ext2_resize_t rfs, blk64_t new_size);
+> > +static errcode_t adjust_superblock(ext2_resize_t rfs, blk64_t new_size,
+> > +				   int flags);
+> >  static errcode_t blocks_to_move(ext2_resize_t rfs);
+> >  static errcode_t block_mover(ext2_resize_t rfs);
+> >  static errcode_t inode_scan_and_fix(ext2_resize_t rfs);
+> > @@ -102,7 +103,7 @@ errcode_t resize_fs(ext2_filsys fs, blk64_t *new_size, int flags,
+> >  	if (retval)
+> >  		goto errout;
+> >  
+> > -	retval = adjust_superblock(rfs, *new_size);
+> > +	retval = adjust_superblock(rfs, *new_size, flags);
+> >  	if (retval)
+> >  		goto errout;
+> >  
+> > @@ -288,7 +289,8 @@ static void free_gdp_blocks(ext2_filsys fs,
+> >   * filesystem.
+> >   */
+> >  errcode_t adjust_fs_info(ext2_filsys fs, ext2_filsys old_fs,
+> > -			 ext2fs_block_bitmap reserve_blocks, blk64_t new_size)
+> > +			 ext2fs_block_bitmap reserve_blocks, blk64_t new_size,
+> > +			 int flags)
+> >  {
+> >  	errcode_t	retval;
+> >  	blk64_t		overhead = 0;
+> > @@ -497,8 +499,12 @@ retry:
+> >  		adjblocks = 0;
+> >  
+> >  		ext2fs_bg_flags_zap(fs, i);
+> > -		if (csum_flag)
+> > +		if (csum_flag && (flags & RESIZE_LAZY_ITABLE_INIT))
+> > +			ext2fs_bg_flags_set(fs, i, EXT2_BG_INODE_UNINIT);
+> > +		else if (csum_flag)
+> >  			ext2fs_bg_flags_set(fs, i, EXT2_BG_INODE_UNINIT | EXT2_BG_INODE_ZEROED);
+> > +		else
+> > +			flags &= ~RESIZE_LAZY_ITABLE_INIT;
+> >  		if (i == fs->group_desc_count-1) {
+> >  			numblocks = (ext2fs_blocks_count(fs->super) -
+> >  				     fs->super->s_first_data_block) %
+> > @@ -562,18 +568,57 @@ errout:
+> >  	return (retval);
+> >  }
+> >  
+> > +static errcode_t write_inode_tables(ext2_resize_t rfs, ext2_filsys fs)
+> > +{
+> > +	unsigned long	i, max_group;
+> > +	errcode_t	retval;
+> > +	int		adj = 0;
+> > +
+> > +	memset(rfs->itable_buf, 0, fs->blocksize * fs->inode_blocks_per_group);
+> > +	adj = rfs->old_fs->group_desc_count;
+> > +	max_group = fs->group_desc_count - adj;
+> > +	if (rfs->progress) {
+> > +		retval = rfs->progress(rfs, E2_RSZ_EXTEND_ITABLE_PASS,
+> > +				       0, max_group);
+> > +		if (retval)
+> > +			goto out;
+> > +	}
+> > +
+> > +	for (i = rfs->old_fs->group_desc_count;
+> > +	     i < fs->group_desc_count; i++) {
+> > +		/*
+> > +		 * Write out the new inode table
+> > +		 */
+> > +		retval = io_channel_write_blk64(fs->io,
+> > +						ext2fs_inode_table_loc(fs, i),
+> > +						fs->inode_blocks_per_group,
+> > +						rfs->itable_buf);
+> > +		if (retval)
+> > +			break;
+> > +
+> > +		io_channel_flush(fs->io);
+> > +		if (rfs->progress) {
+> > +			retval = rfs->progress(rfs, E2_RSZ_EXTEND_ITABLE_PASS,
+> > +					       i - adj + 1, max_group);
+> > +			if (retval)
+> > +				break;
+> > +		}
+> > +	}
+> > +	io_channel_flush(fs->io);
+> > +out:
+> > +	return retval;
+> > +}
+> > +
+> > +
+> >  /*
+> >   * This routine adjusts the superblock and other data structures, both
+> >   * in disk as well as in memory...
+> >   */
+> > -static errcode_t adjust_superblock(ext2_resize_t rfs, blk64_t new_size)
+> > +static errcode_t adjust_superblock(ext2_resize_t rfs, blk64_t new_size,
+> > +				   int flags)
+> >  {
+> > -	ext2_filsys fs;
+> > -	int		adj = 0;
+> > +	ext2_filsys	fs;
+> >  	errcode_t	retval;
+> > -	blk64_t		group_block;
+> > -	unsigned long	i;
+> > -	unsigned long	max_group;
+> >  
+> >  	fs = rfs->new_fs;
+> >  	ext2fs_mark_super_dirty(fs);
+> > @@ -585,7 +630,8 @@ static errcode_t adjust_superblock(ext2_resize_t rfs, blk64_t new_size)
+> >  	if (retval)
+> >  		return retval;
+> >  
+> > -	retval = adjust_fs_info(fs, rfs->old_fs, rfs->reserve_blocks, new_size);
+> > +	retval = adjust_fs_info(fs, rfs->old_fs, rfs->reserve_blocks, new_size,
+> > +				flags);
+> >  	if (retval)
+> >  		goto errout;
+> >  
+> > @@ -626,41 +672,8 @@ static errcode_t adjust_superblock(ext2_resize_t rfs, blk64_t new_size)
+> >  	if (retval)
+> >  		goto errout;
+> >  
+> > -	memset(rfs->itable_buf, 0, fs->blocksize * fs->inode_blocks_per_group);
+> > -	group_block = fs->super->s_first_data_block +
+> > -		rfs->old_fs->group_desc_count * fs->super->s_blocks_per_group;
+> > -
+> > -	adj = rfs->old_fs->group_desc_count;
+> > -	max_group = fs->group_desc_count - adj;
+> > -	if (rfs->progress) {
+> > -		retval = rfs->progress(rfs, E2_RSZ_EXTEND_ITABLE_PASS,
+> > -				       0, max_group);
+> > -		if (retval)
+> > -			goto errout;
+> > -	}
+> > -	for (i = rfs->old_fs->group_desc_count;
+> > -	     i < fs->group_desc_count; i++) {
+> > -		/*
+> > -		 * Write out the new inode table
+> > -		 */
+> > -		retval = io_channel_write_blk64(fs->io,
+> > -						ext2fs_inode_table_loc(fs, i),
+> > -						fs->inode_blocks_per_group,
+> > -						rfs->itable_buf);
+> > -		if (retval) goto errout;
+> > -
+> > -		io_channel_flush(fs->io);
+> > -		if (rfs->progress) {
+> > -			retval = rfs->progress(rfs, E2_RSZ_EXTEND_ITABLE_PASS,
+> > -					       i - adj + 1, max_group);
+> > -			if (retval)
+> > -				goto errout;
+> > -		}
+> > -		group_block += fs->super->s_blocks_per_group;
+> > -	}
+> > -	io_channel_flush(fs->io);
+> > -	retval = 0;
+> > -
+> > +	if (!(flags & RESIZE_LAZY_ITABLE_INIT))
+> > +		retval = write_inode_tables(rfs, fs);
+> >  errout:
+> >  	return retval;
+> >  }
+> > diff --git a/resize/resize2fs.h b/resize/resize2fs.h
+> > index 2184759..a968071 100644
+> > --- a/resize/resize2fs.h
+> > +++ b/resize/resize2fs.h
+> > @@ -79,6 +79,7 @@ typedef struct ext2_sim_progress *ext2_sim_progmeter;
+> >  
+> >  #define RESIZE_PERCENT_COMPLETE		0x0100
+> >  #define RESIZE_VERBOSE			0x0200
+> > +#define RESIZE_LAZY_ITABLE_INIT		0x0400	/* Do not initialize inode tables*/
+> >  
+> >  /*
+> >   * The core state structure for the ext2 resizer
+> > @@ -129,7 +130,7 @@ extern errcode_t resize_fs(ext2_filsys fs, blk64_t *new_size, int flags,
+> >  
+> >  extern errcode_t adjust_fs_info(ext2_filsys fs, ext2_filsys old_fs,
+> >  				ext2fs_block_bitmap reserve_blocks,
+> > -				blk64_t new_size);
+> > +				blk64_t new_size, int flags);
+> >  extern blk64_t calculate_minimum_resize_size(ext2_filsys fs);
+> >  
+> >  
+> > 
+> 
+> 
+
+-- 
