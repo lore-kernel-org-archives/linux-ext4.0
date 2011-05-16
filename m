@@ -1,117 +1,122 @@
-From: Minchan Kim <minchan.kim@gmail.com>
-Subject: Re: [PATCH 4/4] mm: vmscan: If kswapd has been running too long,
- allow it to sleep
-Date: Mon, 16 May 2011 14:04:00 +0900
-Message-ID: <BANLkTi=oe4Ties6awwhHFPf42EXCn2U4MQ@mail.gmail.com>
+From: Mel Gorman <mgorman@suse.de>
+Subject: Re: [PATCH 0/4] Reduce impact to overall system of SLUB using
+ high-order allocations V2
+Date: Mon, 16 May 2011 09:37:21 +0100
+Message-ID: <20110516083721.GB5279@suse.de>
 References: <1305295404-12129-1-git-send-email-mgorman@suse.de>
-	<1305295404-12129-5-git-send-email-mgorman@suse.de>
-	<4DCFAA80.7040109@jp.fujitsu.com>
-	<1305519711.4806.7.camel@mulgrave.site>
+ <1305362073.1969.4.camel@hpmini>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
-Cc: KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>, mgorman@suse.de,
-	akpm@linux-foundation.org, colin.king@canonical.com, raghu.prabhu13@gmail.com,
-	jack@suse.cz, chris.mason@oracle.com, cl@linux.com, penberg@kernel.org,
-	riel@redhat.com, hannes@cmpxchg.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: James Bottomley <James.Bottomley@hansenpartnership.com>
+Content-Type: text/plain; charset=iso-8859-15
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	James Bottomley <James.Bottomley@HansenPartnership.com>,
+	Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
+	Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
+	Christoph Lameter <cl@linux.com>, Pekka Enberg <penberg@kernel.org>,
+	Rik van Riel <riel@redhat.com>, Johannes Weiner <hannes@cmpxchg.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-mm <linux-mm@kvack.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Colin Ian King <colin.king@ubuntu.com>
 Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1305519711.4806.7.camel@mulgrave.site>
+Content-Disposition: inline
+In-Reply-To: <1305362073.1969.4.camel@hpmini>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 16, 2011 at 1:21 PM, James Bottomley
-<James.Bottomley@hansenpartnership.com> wrote:
-> On Sun, 2011-05-15 at 19:27 +0900, KOSAKI Motohiro wrote:
->> (2011/05/13 23:03), Mel Gorman wrote:
->> > Under constant allocation pressure, kswapd can be in the situation whe=
-re
->> > sleeping_prematurely() will always return true even if kswapd has been
->> > running a long time. Check if kswapd needs to be scheduled.
->> >
->> > Signed-off-by: Mel Gorman<mgorman@suse.de>
->> > ---
->> > =C2=A0 mm/vmscan.c | =C2=A0 =C2=A04 ++++
->> > =C2=A0 1 files changed, 4 insertions(+), 0 deletions(-)
->> >
->> > diff --git a/mm/vmscan.c b/mm/vmscan.c
->> > index af24d1e..4d24828 100644
->> > --- a/mm/vmscan.c
->> > +++ b/mm/vmscan.c
->> > @@ -2251,6 +2251,10 @@ static bool sleeping_prematurely(pg_data_t *pgd=
-at, int order, long remaining,
->> > =C2=A0 =C2=A0 unsigned long balanced =3D 0;
->> > =C2=A0 =C2=A0 bool all_zones_ok =3D true;
->> >
->> > + =C2=A0 /* If kswapd has been running too long, just sleep */
->> > + =C2=A0 if (need_resched())
->> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 return false;
->> > +
->>
->> Hmm... I don't like this patch so much. because this code does
->>
->> - don't sleep if kswapd got context switch at shrink_inactive_list
->
-> This isn't entirely true: =C2=A0need_resched() will be false, so we'll fo=
-llow
-> the normal path for determining whether to sleep or not, in effect
-> leaving the current behaviour unchanged.
->
->> - sleep if kswapd didn't
->
-> This also isn't entirely true: whether need_resched() is true at this
-> point depends on a whole lot more that whether we did a context switch
-> in shrink_inactive. It mostly depends on how long we've been running
-> without giving up the CPU. =C2=A0Generally that will mean we've been roun=
-d
-> the shrinker loop hundreds to thousands of times without sleeping.
->
->> It seems to be semi random behavior.
->
-> Well, we have to do something. =C2=A0Chris Mason first suspected the hang=
- was
-> a kswapd rescheduling problem a while ago. =C2=A0We tried putting
-> cond_rescheds() in several places in the vmscan code, but to no avail.
+On Sat, May 14, 2011 at 10:34:33AM +0200, Colin Ian King wrote:
+> On Fri, 2011-05-13 at 15:03 +0100, Mel Gorman wrote:
+> > Changelog since V1
+> >   o kswapd should sleep if need_resched
+> >   o Remove __GFP_REPEAT from GFP flags when speculatively using high
+> >     orders so direct/compaction exits earlier
+> >   o Remove __GFP_NORETRY for correctness
+> >   o Correct logic in sleeping_prematurely
+> >   o Leave SLUB using the default slub_max_order
+> > 
+> > There are a few reports of people experiencing hangs when copying
+> > large amounts of data with kswapd using a large amount of CPU which
+> > appear to be due to recent reclaim changes.
+> > 
+> > SLUB using high orders is the trigger but not the root cause as SLUB
+> > has been using high orders for a while. The following four patches
+> > aim to fix the problems in reclaim while reducing the cost for SLUB
+> > using those high orders.
+> > 
+> > Patch 1 corrects logic introduced by commit [1741c877: mm:
+> > 	kswapd: keep kswapd awake for high-order allocations until
+> > 	a percentage of the node is balanced] to allow kswapd to
+> > 	go to sleep when balanced for high orders.
+> > 
+> > Patch 2 prevents kswapd waking up in response to SLUBs speculative
+> > 	use of high orders.
+> > 
+> > Patch 3 further reduces the cost by prevent SLUB entering direct
+> > 	compaction or reclaim paths on the grounds that falling
+> > 	back to order-0 should be cheaper.
+> > 
+> > Patch 4 notes that even when kswapd is failing to keep up with
+> > 	allocation requests, it should still go to sleep when its
+> > 	quota has expired to prevent it spinning.
+> > 
+> > My own data on this is not great. I haven't really been able to
+> > reproduce the same problem locally.
+> > 
+> > The test case is simple. "download tar" wgets a large tar file and
+> > stores it locally. "unpack" is expanding it (15 times physical RAM
+> > in this case) and "delete source dirs" is the tarfile being deleted
+> > again. I also experimented with having the tar copied numerous times
+> > and into deeper directories to increase the size but the results were
+> > not particularly interesting so I left it as one tar.
+> > 
+> > In the background, applications are being launched to time to vaguely
+> > simulate activity on the desktop and to measure how long it takes
+> > applications to start.
+> > 
+> > Test server, 4 CPU threads, x86_64, 2G of RAM, no PREEMPT, no COMPACTION, X running
+> > LARGE COPY AND UNTAR
+> >                       vanilla       fixprematurely  kswapd-nowwake slub-noexstep  kswapdsleep
+> > download tar           95 ( 0.00%)   94 ( 1.06%)   94 ( 1.06%)   94 ( 1.06%)   94 ( 1.06%)
+> > unpack tar            654 ( 0.00%)  649 ( 0.77%)  655 (-0.15%)  589 (11.04%)  598 ( 9.36%)
+> > copy source files       0 ( 0.00%)    0 ( 0.00%)    0 ( 0.00%)    0 ( 0.00%)    0 ( 0.00%)
+> > delete source dirs    327 ( 0.00%)  334 (-2.10%)  318 ( 2.83%)  325 ( 0.62%)  320 ( 2.19%)
+> > MMTests Statistics: duration
+> > User/Sys Time Running Test (seconds)        1139.7   1142.55   1149.78   1109.32   1113.26
+> > Total Elapsed Time (seconds)               1341.59   1342.45   1324.90   1271.02   1247.35
+> > 
+> > MMTests Statistics: application launch
+> > evolution-wait30     mean     34.92   34.96   34.92   34.92   35.08
+> > gnome-terminal-find  mean      7.96    7.96    8.76    7.80    7.96
+> > iceweasel-table      mean      7.93    7.81    7.73    7.65    7.88
+> > 
+> > evolution-wait30     stddev    0.96    1.22    1.27    1.20    1.15
+> > gnome-terminal-find  stddev    3.02    3.09    3.51    2.99    3.02
+> > iceweasel-table      stddev    1.05    0.90    1.09    1.11    1.11
+> > 
+> > Having SLUB avoid expensive steps in reclaim improves performance
+> > by quite a bit with the overall test completing 1.5 minutes
+> > faster. Application launch times were not really affected but it's
+> > not something my test machine was suffering from in the first place
+> > so it's not really conclusive. The kswapd patches also did not appear
+> > to help but again, the test machine wasn't suffering that problem.
+> > 
+> > These patches are against 2.6.39-rc7. Again, testing would be
+> > appreciated.
+> 
+> These patches solve the problem for me.  I've been soak testing the file
+> copy test
+> for 3.5 hours with nearly 400 test cycles and observed no lockups at all
+> - rock solid. From my observations from the output from vmstat the
+> system is behaving sanely.
+> Thanks for finding a solution - much appreciated!
+> 
 
-Is it a result of  test with patch of Hannes(ie, !pgdat_balanced)?
+Can you tell me if just patches 1 and 4 fix the problem please? It'd be good
+to know if this was only a reclaim-related problem. Thanks.
 
-If it isn't, it would be nop regardless of putting cond_reshed at vmscan.c.
-Because, although we complete zone balancing, kswapd doesn't sleep as
-pgdat_balance returns wrong result. And at last VM calls
-balance_pgdat. In this case, balance_pgdat returns without any work as
-kswap couldn't find zones which have not enough free pages and goto
-out. kswapd could repeat this work infinitely. So you don't have a
-chance to call cond_resched.
-
-But if your test was with Hanne's patch, I am very curious how come
-kswapd consumes CPU a lot.
-
-> The need_resched() in sleeping_prematurely() seems to be about the best
-> option. =C2=A0The other option might be just to put a cond_resched() in
-> kswapd_try_to_sleep(), but that will really have about the same effect.
-
-I don't oppose it but before that, I think we have to know why kswapd
-consumes CPU a lot although we applied Hannes' patch.
-
->
-> James
->
->
-> --
-> To unsubscribe, send a message with 'unsubscribe linux-mm' in
-> the body to majordomo@kvack.org. =C2=A0For more info on Linux MM,
-> see: http://www.linux-mm.org/ .
-> Fight unfair telecom internet charges in Canada: sign http://stopthemeter=
-.ca/
-> Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
->
-
-
-
---=20
-Kind regards,
-Minchan Kim
+-- 
+Mel Gorman
+SUSE Labs
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
