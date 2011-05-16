@@ -1,52 +1,80 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH] ext4:Make ext4_split_extent() handle error correctly.
-Date: Mon, 16 May 2011 08:08:25 -0700
-Message-ID: <1305558505.2610.6.camel@mingming-laptop>
-References: <BANLkTintPx6Tugitnodou++sLR1m6SOunA@mail.gmail.com>
+Subject: Re: [PATCH v2] ext4: ext4_ext_convert_to_initialized bug found in
+ extended FSX testing
+Date: Mon, 16 May 2011 08:09:21 -0700
+Message-ID: <1305558561.2610.9.camel@mingming-laptop>
+References: <4DCE1B19.9070503@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: "Ted Ts'o" <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	Theodore Tso <tytso@mit.edu>
+To: Allison Henderson <achender@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:39790 "EHLO e1.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755619Ab1EPPIh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 May 2011 11:08:37 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e1.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p4GEvRpP012683
-	for <linux-ext4@vger.kernel.org>; Mon, 16 May 2011 10:57:27 -0400
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p4GF8Z7U096828
-	for <linux-ext4@vger.kernel.org>; Mon, 16 May 2011 11:08:36 -0400
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p4G983N1031566
-	for <linux-ext4@vger.kernel.org>; Mon, 16 May 2011 03:08:06 -0600
-In-Reply-To: <BANLkTintPx6Tugitnodou++sLR1m6SOunA@mail.gmail.com>
+Received: from e31.co.us.ibm.com ([32.97.110.149]:50512 "EHLO
+	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753788Ab1EPPJn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 May 2011 11:09:43 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e31.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p4GErKuO007483
+	for <linux-ext4@vger.kernel.org>; Mon, 16 May 2011 08:53:20 -0600
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id p4GF9TYK152562
+	for <linux-ext4@vger.kernel.org>; Mon, 16 May 2011 09:09:29 -0600
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p4G99OE8001782
+	for <linux-ext4@vger.kernel.org>; Mon, 16 May 2011 03:09:28 -0600
+In-Reply-To: <4DCE1B19.9070503@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, 2011-05-14 at 15:05 +0800, Yongqiang Yang wrote:
-> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+On Fri, 2011-05-13 at 23:03 -0700, Allison Henderson wrote:
+> Hi all,
+> 
+> After applying this patch, the fsx test has been able to run ok all 
+> day (about 12hrs). So I think it's safe to send it out now.  Thx all!
+> 
+> Allison Henderson
+> 
+> Signed-off-by: Allison Henderson <achender@us.ibm.com>
+
+Looks good to me.
 
 Reviewed-by: Mingming Cao <cmm@us.ibm.com>
+> 
 > ---
->  fs/ext4/extents.c |    2 ++
->  1 files changed, 2 insertions(+), 0 deletions(-)
+> :100644 100644 e363f21... 5f243da... M	fs/ext4/extents.c
+>  fs/ext4/extents.c |    9 ++++-----
+>  1 files changed, 4 insertions(+), 5 deletions(-)
 > 
 > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index e363f21..b7b667f 100644
+> index e363f21..5f243da 100644
 > --- a/fs/ext4/extents.c
 > +++ b/fs/ext4/extents.c
-> @@ -2716,6 +2716,8 @@ static int ext4_split_extent(handle_t *handle,
->  				       EXT4_EXT_MARK_UNINIT2;
->  		err = ext4_split_extent_at(handle, inode, path,
->  				map->m_lblk + map->m_len, split_flag1, flags1);
-> +		if (err)
-> +			goto out;
+> @@ -2818,8 +2818,8 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  		    (EXT4_EXT_MAY_ZEROOUT & split_flag)) {
+>  			/* case 3 */
+>  			zero_ex.ee_block =
+> -					 cpu_to_le32(map->m_lblk + map->m_len);
+> -			zero_ex.ee_len = cpu_to_le16(allocated - map->m_len);
+> +					 cpu_to_le32(map->m_lblk);
+> +			zero_ex.ee_len = cpu_to_le16(allocated);
+>  			ext4_ext_store_pblock(&zero_ex,
+>  				ext4_ext_pblock(ex) + map->m_lblk - ee_block);
+>  			err = ext4_ext_zeroout(inode, &zero_ex);
+> @@ -2842,10 +2842,9 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  					goto out;
+>  			}
+> 
+> -			allocated = map->m_lblk - ee_block + map->m_len;
+> -
+>  			split_map.m_lblk = ee_block;
+> -			split_map.m_len = allocated;
+> +			split_map.m_len = map->m_lblk - ee_block + map->m_len;
+> +			allocated = map->m_len;
+>  		}
 >  	}
 > 
->  	ext4_ext_drop_refs(path);
 
 
