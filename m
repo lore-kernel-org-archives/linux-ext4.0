@@ -1,90 +1,115 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: do not normalize block requests from fallocate.
-Date: Mon, 16 May 2011 11:39:50 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1105161135260.3670@dhcp-27-109.brq.redhat.com>
-References: <1305321545-17214-1-git-send-email-haldar@google.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Regression with ext4 in kernel 2.6.39-rc7? (Was: testing ext4
+ master branch)
+Date: Mon, 16 May 2011 11:43:24 +0200
+Message-ID: <20110516094324.GA5344@quack.suse.cz>
+References: <BANLkTikW57S9emEFG9w9RXvq5O7v_MrsYw@mail.gmail.com>
+ <20110513145608.GA21165@thunk.org>
+ <4DCD4D5E.6050307@redhat.com>
+ <BANLkTim8ihBNzxxkoTwigKMQB1xHToevdQ@mail.gmail.com>
+ <20110513224949.GB21165@thunk.org>
+ <BANLkTimA4JYROuQqe0+7UF7_Ti5rhZRrtA@mail.gmail.com>
+ <21756A13-BE43-4B46-BDC9-F5C456476FFC@gmail.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Vivek Haldar <haldar@google.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1305321545-17214-1-git-send-email-haldar@google.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: multipart/mixed; boundary="gKMricLos+KVdGMg"
+Cc: Ted Ts'o <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: Amir Goldstein <amir73il@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor.suse.de ([195.135.220.2]:44542 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753889Ab1EPJnr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 May 2011 05:43:47 -0400
+Content-Disposition: inline
+In-Reply-To: <21756A13-BE43-4B46-BDC9-F5C456476FFC@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 13 May 2011, Vivek Haldar wrote:
 
-> Currently, an fallocate request of size slightly larger than a power of
-> 2 is turned into two block requests, each a power of 2, with the extra
-> blocks pre-allocated for future use. When an application calls
-> fallocate, it already has an idea about how large the file may grow so
-> there is usually little benefit to reserve extra blocks on the
-> preallocation list. This reduces disk fragmentation.
+--gKMricLos+KVdGMg
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+
+On Sat 14-05-11 13:16:25, Amir Goldstein wrote:
+> Sent from my iPhone
 > 
-> Tested: fsstress. Also verified manually that fallocat'ed files are
-> contiguously laid out with this change (whereas without it they begin at
-> power-of-2 boundaries, leaving blocks in between). CPU usage of
-> fallocate is not appreciably higher. In a tight fallocate loop, CPU
-> usage hovers between 5%-8% with this change, and 5%-7% without it.
-
-Hi Vivek,
-
-the patch looks good, but I do not understand why you are introducing
-new #define when you can simply use EXT4_MB_HINT_NOPREALLOC and then in
-the ext4_ext_map_blocks() just do :
-
-ar.flags |= (flags & EXT4_MB_HINT_NOPREALLOC)
-
-and you do not need to introduce new condition. Am I missing something ?
-
-Thanks!
--Lukas
-
+> On 14/05/2011, at 10:11, Amir Goldstein <amir73il@gmail.com> wrote:
 > 
-> Signed-off-by: Vivek Haldar <haldar@google.com>
-> ---
->  fs/ext4/ext4.h    |    2 ++
->  fs/ext4/extents.c |    5 ++++-
->  2 files changed, 6 insertions(+), 1 deletions(-)
+> >On Sat, May 14, 2011 at 1:49 AM, Ted Ts'o <tytso@mit.edu> wrote:
+> >>On Fri, May 13, 2011 at 08:25:02PM +0300, Amir Goldstein wrote:
+> >>>
+> >>>After xfstests failed to build on Ubuntu 10.10, I followed the
+> >>>advice omitted by the build script to run "make install-qa", to
+> >>>solve the problem.  It took me a while to figure exactly where I
+> >>>should run the command, but in the end I pulled the xfsprogs tree,
+> >>>ran "make; make install; make install-qa" and from there on things
+> >>>were looking better.
+> >>
+> >>I did that, but fsstress doesn't pull in the needed xfs/xfs_fs.h
+> >>header file.  So it still dies.
+> >>
+> >>                                               - Ted
+> >>
+> >
+> >Well, anyway, the regression has to be from commit  21f97697:
+> >
+> >ext4: remove unnecessary [cm]time update of quota file
+> >
+> >because before that commit ext4_quota_off() was too short to
+> >have a bug at ext4_quota_off+0x42/0xd0.
+> >
+> >Jan, where are you? don't make me debug this...
 > 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 076c5d2..e606d34 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -512,6 +512,8 @@ struct ext4_new_group_data {
->  	/* Convert extent to initialized after IO complete */
->  #define EXT4_GET_BLOCKS_IO_CONVERT_EXT		(EXT4_GET_BLOCKS_CONVERT|\
->  					 EXT4_GET_BLOCKS_CREATE_UNINIT_EXT)
-> +	/* Don't normalize when fallocat'ing */
-> +#define EXT4_GET_BLOCKS_NO_NORMALIZE		0x0020
->  
->  /*
->   * Flags used by ext4_free_blocks
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index e363f21..f02dd52 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -3304,6 +3304,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
->  	else
->  		/* disable in-core preallocation for non-regular files */
->  		ar.flags = 0;
-> +	if (flags & EXT4_GET_BLOCKS_NO_NORMALIZE)
-> +		ar.flags |= EXT4_MB_HINT_NOPREALLOC;
->  	newblock = ext4_mb_new_blocks(handle, &ar, &err);
->  	if (!newblock)
->  		goto out2;
-> @@ -3549,7 +3551,8 @@ retry:
->  			break;
->  		}
->  		ret = ext4_map_blocks(handle, inode, &map,
-> -				      EXT4_GET_BLOCKS_CREATE_UNINIT_EXT);
-> +				      EXT4_GET_BLOCKS_CREATE_UNINIT_EXT |
-> +				      EXT4_GET_BLOCKS_NO_NORMALIZE);
->  		if (ret <= 0) {
->  #ifdef EXT4FS_DEBUG
->  			WARN_ON(ret <= 0);
-> 
+> So I guess that Jan's patch is missing
+> If (!inode)
+>     goto out;
+  Exactly, that is it. I cannot trigger the problem anymore with the patch.
+I just wonder how come you've spotted the problem because test 232 does not
+trigger the problem for me - it is triggered when you run quotaoff without
+running quotaon and that does not happen with test 232.. Anyway, with the
+attached patch running quotaoff on filesystem without quotas turned on
+works fine whereas previously it oopsed.
 
+									Honza
 -- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
+
+--gKMricLos+KVdGMg
+Content-Type: text/x-patch; charset=us-ascii
+Content-Disposition: attachment; filename="0001-ext4-Fix-oops-in-ext4_quota_off.patch"
+
+>From 91c77c4f066a9b905538bbeb1da46dc47c44855c Mon Sep 17 00:00:00 2001
+From: Jan Kara <jack@suse.cz>
+Date: Mon, 16 May 2011 10:49:39 +0200
+Subject: [PATCH] ext4: Fix oops in ext4_quota_off()
+
+When quota is not enabled when ext4_quota_off() is called, we must not
+dereference quota file inode since it is NULL. Check properly for this.
+
+Debugged-by: Amir Goldstein <amir73il@gmail.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/super.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index a86e693..2a4a9b2 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4652,6 +4652,8 @@ static int ext4_quota_off(struct super_block *sb, int type)
+ 	if (test_opt(sb, DELALLOC))
+ 		sync_filesystem(sb);
+ 
++	if (!inode)
++		goto out;
+ 	/* Update modification times of quota files when userspace can
+ 	 * start looking at them */
+ 	handle = ext4_journal_start(inode, 1);
+-- 
+1.7.1
+
+
+--gKMricLos+KVdGMg--
