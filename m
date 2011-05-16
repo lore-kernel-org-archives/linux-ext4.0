@@ -1,86 +1,48 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH 2/2] mm: vmscan: If kswapd has been running too long,
- allow it to sleep
-Date: Mon, 16 May 2011 14:16:54 -0700
-Message-ID: <20110516141654.2728f05a.akpm@linux-foundation.org>
-References: <1305558417-24354-1-git-send-email-mgorman@suse.de>
-	<1305558417-24354-3-git-send-email-mgorman@suse.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: James Bottomley <James.Bottomley@HansenPartnership.com>,
-        Colin King
- <colin.king@canonical.com>,
-        Raghavendra D Prabhu
- <raghu.prabhu13@gmail.com>,
-        Jan Kara <jack@suse.cz>, Chris Mason
- <chris.mason@oracle.com>,
-        Christoph Lameter <cl@linux.com>, Pekka Enberg
- <penberg@kernel.org>,
-        Rik van Riel <riel@redhat.com>, Johannes Weiner
- <hannes@cmpxchg.org>,
-        Minchan Kim <minchan.kim@gmail.com>,
-        linux-fsdevel
- <linux-fsdevel@vger.kernel.org>,
-        linux-mm <linux-mm@kvack.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        linux-ext4
- <linux-ext4@vger.kernel.org>, stable <stable@kernel.org>
-To: Mel Gorman <mgorman@suse.de>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1305558417-24354-3-git-send-email-mgorman@suse.de>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger.kernel@dilger.ca>
+Subject: Use of consistent types in e2fsprogs
+Date: Mon, 16 May 2011 15:55:54 -0600
+Message-ID: <DC591D7D-86E5-4FA6-BC8F-859F1965C51D@dilger.ca>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Lukas Czerner <lczerner@redhat.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:46024 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751129Ab1EPVzz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 May 2011 17:55:55 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 16 May 2011 16:06:57 +0100
-Mel Gorman <mgorman@suse.de> wrote:
+While inspecting the qcow2 format code, I was checking whether it was going to correctly support 64-bit filesystems.  It looks like the qcow2 format itself supports 64-bit filesystems, which is good, but I also found inconsistent use of types within libext2fs for block numbers, file offsets, groups, inodes, etc.
 
-> Under constant allocation pressure, kswapd can be in the situation where
-> sleeping_prematurely() will always return true even if kswapd has been
-> running a long time. Check if kswapd needs to be scheduled.
-> 
-> Signed-off-by: Mel Gorman <mgorman@suse.de>
-> Acked-by: Rik van Riel <riel@redhat.com>
-> ---
->  mm/vmscan.c |    4 ++++
->  1 files changed, 4 insertions(+), 0 deletions(-)
-> 
-> diff --git a/mm/vmscan.c b/mm/vmscan.c
-> index af24d1e..4d24828 100644
-> --- a/mm/vmscan.c
-> +++ b/mm/vmscan.c
-> @@ -2251,6 +2251,10 @@ static bool sleeping_prematurely(pg_data_t *pgdat, int order, long remaining,
->  	unsigned long balanced = 0;
->  	bool all_zones_ok = true;
->  
-> +	/* If kswapd has been running too long, just sleep */
-> +	if (need_resched())
-> +		return false;
-> +
->  	/* If a direct reclaimer woke kswapd within HZ/10, it's premature */
->  	if (remaining)
->  		return true;
+There are uses of blk64_t, ext2_off64_t, long long, (unsigned) long, etc. in the libext2fs code.  The currently defined types are:
 
-I'm a bit worried by this one.
+typedef __u32           blk_t;
+typedef __u64           blk64_t;
+typedef __u32           dgrp_t;
+typedef __u32           ext2_off_t;
+typedef __u64           ext2_off64_t;
+typedef __s64           e2_blkcnt_t;
 
-Do we really fully understand why kswapd is continuously running like
-this?  The changelog makes me think "no" ;)
+It would be nice to get some consistent naming for these types, like ext2_blk_t, ext2_blk64_t (or possibly ext2_fsblk_t to match the kernel), ext2_group_t, and ext2_blkcnt_t (this appears to be negative in some places, so isn't easily replaced with ext2_blk64_t.
 
-Given that the page-allocating process is madly reclaiming pages in
-direct reclaim (yes?) and that kswapd is madly reclaiming pages on a
-different CPU, we should pretty promptly get into a situation where
-kswapd can suspend itself.  But that obviously isn't happening.  So
-what *is* going on?
+For example, io_channel_read_blk64() uses "long long", while both ext2fs_{read,write}_inode_full() _incorrectly_ use "unsigned long".  I guess this wasn't noticed because > 16TB isn't directly usable on 32-bit Linux due to the block device limits, but it doesn't seem right to leave it as-is.
 
-Secondly, taking an up-to-100ms sleep in response to a need_resched()
-seems pretty savage and I suspect it risks undesirable side-effects.  A
-plain old cond_resched() would be more cautious.  But presumably
-kswapd() is already running cond_resched() pretty frequently, so why
-didn't that work?
+I understand it would be a lot of code churn, but I think it would be valuable to fix up the types used in e2fsprogs in order to clarify usage and remove errors, just like we did with the kernel code.  Is there any interest in accepting patches like this upstream?  Both ext2fs_{read,write}_inode_full() need to be fixed, and I expect even more places will need fixing.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Cheers, Andreas
+
+
+
+
+
+
+Cheers, Andreas
+
+
+
+
+
