@@ -1,175 +1,51 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH v2 1/2] e2fsprogs: Fix how we treat user-spcified filesystem
- size
-Date: Mon, 16 May 2011 15:49:46 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1105161549340.3670@dhcp-27-109.brq.redhat.com>
-References: <1297256607-4654-1-git-send-email-lczerner@redhat.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: fix NULL pointer dereference in ext4_quota_off
+Date: Mon, 16 May 2011 10:04:35 -0400
+Message-ID: <20110516140435.GA4953@thunk.org>
+References: <BANLkTin4vEQZ4W5LQT36U3BVxWG4VeDZYw@mail.gmail.com>
+ <20110516101154.GB5344@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org, tytso@MIT.EDU, adilger@dilger.ca
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Amir Goldstein <amir73il@gmail.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12785 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755394Ab1EPNtu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 May 2011 09:49:50 -0400
-In-Reply-To: <1297256607-4654-1-git-send-email-lczerner@redhat.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:37323 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755196Ab1EPOEk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 May 2011 10:04:40 -0400
+Content-Disposition: inline
+In-Reply-To: <20110516101154.GB5344@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 9 Feb 2011, Lukas Czerner wrote:
+On Mon, May 16, 2011 at 12:11:54PM +0200, Jan Kara wrote:
+>   Ah, I see we worked on the patch together :). Anyway, Ted can pick any of
+> them I guess.
 
-> (v2: do not spell units - mebibytes etc... - but rather use just abbrev.)
-> 
-> mke2fs and resize2fs allows specifying filesystem size as a parameter,
-> former called as blocks-count. However it has been a little bit messy so
-> this commit fixes it mainly by updating man pages.
-> 
-> We can not specify filesystem size in blocks count without specifying
-> blocksize as well. It is because we need blocks count to determine
-> filesystem type, and we need filesystem type to determine blocksize. So
-> it should not be allowed, however due to compatibility reason it should
-> be still possible, so at least print warning message for now, so we can
-> easily restrict that later.
-> 
-> Filesystem size can be specified using units as suffixes. This was not
-> documented for mke2fs, so this commits adds proper documentation into
-> mke2fs man page.
-> 
-> For the sake of completeness add 'b' (blocks count) unit.
+I actually combined the commit description and used elements from both
+of them.  Jan's short description was a better summary, but I liked
+Amir description of the commit (note though that if you're going to
+use abberviated git commit id's, please don't shorten them to 10-12
+characters since given the size of the git repository, shorter git
+commit id's could suffer from hash collision).
 
-ping
+						- Ted
 
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> ---
->  lib/e2p/parse_num.c   |    9 +++++++++
->  misc/mke2fs.8.in      |   32 ++++++++++++++++++++++++++------
->  resize/resize2fs.8.in |   19 ++++++-------------
->  3 files changed, 41 insertions(+), 19 deletions(-)
-> 
-> diff --git a/lib/e2p/parse_num.c b/lib/e2p/parse_num.c
-> index 83a329a..5e7924b 100644
-> --- a/lib/e2p/parse_num.c
-> +++ b/lib/e2p/parse_num.c
-> @@ -10,6 +10,7 @@
->   */
->  
->  #include "e2p.h"
-> +#include "../misc/nls-enable.h"
->  
->  #include <stdlib.h>
->  
-> @@ -37,6 +38,14 @@ unsigned long long parse_num_blocks2(const char *arg, int log_block_size)
->  		num >>= (1+log_block_size);
->  		break;
->  	case '\0':
-> +	case 'b':
-> +		if (!log_block_size) {
-> +			fprintf(stderr,
-> +				_("Warning: You can not specify blocks count "
-> +				"without specifying block size '-b'. Will "
-> +				"assume kilobytes instead of blocks count!.\n"
-> +				));
-> +		}
->  		break;
->  	default:
->  		return 0;
-> diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
-> index 2eead17..e093be0 100644
-> --- a/misc/mke2fs.8.in
-> +++ b/misc/mke2fs.8.in
-> @@ -108,7 +108,7 @@ mke2fs \- create an ext2/ext3/ext4 filesystem
->  ]
->  .I device
->  [
-> -.I blocks-count
-> +.I filesystem-size
->  ]
->  @JDEV@.sp
->  @JDEV@.B "mke2fs \-O journal_dev"
-> @@ -136,7 +136,7 @@ mke2fs \- create an ext2/ext3/ext4 filesystem
->  @JDEV@]
->  @JDEV@.I external-journal
->  @JDEV@[
-> -@JDEV@.I blocks-count
-> +@JDEV@.I filesystem-size
->  @JDEV@]
->  .SH DESCRIPTION
->  .B mke2fs
-> @@ -145,10 +145,30 @@ partition.
->  .I device
->  is the special file corresponding to the device (e.g
->  .IR /dev/hdXX ).
-> -.I blocks-count
-> -is the number of blocks on the device.  If omitted,
-> -.B mke2fs
-> -automagically figures the file system size.  If called as
-> +.I filesystem-size
-> +is the size of the filesystem you want to create.
-> +If no units are specified, the units of the
-> +.I filesystem-size
-> +parameter shall be the blocks count of the filesystem. Keep in mind that
-> +you can not specify
-> +.I filesystem-size
-> +in blocks count without specifying the blocksize as well. This will be
-> +allowed for now (1024 byte blocks will be assumed)
-> +due to compatibility reasons, however it may be restricted
-> +in the future.
-> +Optionally, the
-> +.I filesystem-size
-> +parameter may be suffixed by one of the following units
-> +designators: 'b', 's', 'K', 'M', 'G', or 'T',
-> +for blocks count, 512 byte sectors, KiB (2^10 Bytes), MiB (2^20 Bytes),
-> +GiB (2^30 Bytes), or TiB (2^40 Bytes) respectively, which are binary (power-of-2),
-> +not decimal, units. The
-> +.I filesystem-size
-> +may never be larger than the size of the partition.
-> +If
-> +.I filesystem-size
-> +parameter is not specified, it will default to the size of the partition.
-> +If called as
->  .B mkfs.ext3
->  a journal is created as if the
->  .B \-j
-> diff --git a/resize/resize2fs.8.in b/resize/resize2fs.8.in
-> index e02345d..769fd14 100644
-> --- a/resize/resize2fs.8.in
-> +++ b/resize/resize2fs.8.in
-> @@ -38,27 +38,20 @@ The
->  parameter specifies the requested new size of the filesystem.
->  If no units are specified, the units of the
->  .I size
-> -parameter shall be the filesystem blocksize of the filesystem.
-> +parameter shall be the blocks count of the filesystem.
->  Optionally, the 
->  .I size
-> -parameter may be suffixed by one of the following the units 
-> -designators: 's', 'K', 'M', or 'G',
-> -for 512 byte sectors, kilobytes, megabytes, or gigabytes, respectively.
-> -The 
-> +parameter may be suffixed by one of the following the units
-> +designators: 'b', 's', 'K', 'M', 'G', or 'T',
-> +for blocks count, 512 byte sectors, KiB (2^10 Bytes), MiB (2^20 Bytes),
-> +GiB (2^30 Bytes), or TiB (2^40 Bytes) respectively, which are binary (power-of-2),
-> +not decimal, units. The
->  .I size
->  of the filesystem may never be larger than the size of the partition.
->  If 
->  .I size
->  parameter is not specified, it will default to the size of the partition.
->  .PP
-> -Note: when kilobytes is used above, I mean
-> -.IR real ,
-> -power-of-2 kilobytes, (i.e., 1024 bytes), which some politically correct
-> -folks insist should be the stupid-sounding ``kibibytes''.  The same
-> -holds true for megabytes, also sometimes known as ``mebibytes'', or
-> -gigabytes, as the amazingly silly ``gibibytes''.  Makes you want to
-> -gibber, doesn't it?
-> -.PP
->  The
->  .B resize2fs
->  program does not manipulate the size of partitions.  If you wish to enlarge
-> 
+ext4: fix oops in ext4_quota_off()
 
--- 
+From: Amir Goldstein <amir73il@gmail.com>
+
+If quota is not enabled when ext4_quota_off() is called, we must not
+dereference quota file inode since it is NULL.  Check properly for
+this.
+
+This fixes a bug in commit 21f976975cbe (ext4: remove unnecessary
+[cm]time update of quota file), which was merged for 2.6.39-rc3.
+
+Reported-by: Amir Goldstein <amir73il@users.sf.net>
+Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
+Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+						- Ted
