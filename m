@@ -1,65 +1,132 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: fix NULL pointer dereference in ext4_quota_off
-Date: Mon, 16 May 2011 13:03:08 +0200
-Message-ID: <20110516110308.GD5344@quack.suse.cz>
-References: <BANLkTin4vEQZ4W5LQT36U3BVxWG4VeDZYw@mail.gmail.com>
- <alpine.LFD.2.00.1105161148010.3670@dhcp-27-109.brq.redhat.com>
- <20110516101329.GC5344@quack.suse.cz>
- <alpine.LFD.2.00.1105161248490.3670@dhcp-27-109.brq.redhat.com>
+From: Colin Ian King <colin.king@ubuntu.com>
+Subject: Re: [PATCH 0/4] Reduce impact to overall system of SLUB using
+ high-order allocations V2
+Date: Mon, 16 May 2011 12:24:51 +0100
+Message-ID: <1305545091.2046.2.camel@lenovo>
+References: <1305295404-12129-1-git-send-email-mgorman@suse.de>
+	 <1305362073.1969.4.camel@hpmini>  <20110516083721.GB5279@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Amir Goldstein <amir73il@gmail.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Tso <tytso@mit.edu>
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	James Bottomley <James.Bottomley@HansenPartnership.com>,
+	Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
+	Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
+	Christoph Lameter <cl@linux.com>,
+	Pekka Enberg <penberg@kernel.org>,
+	Rik van Riel <riel@redhat.com>,
+	Johannes Weiner <hannes@cmpxchg.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-mm <linux-mm@kvack.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Mel Gorman <mgorman@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:55444 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754400Ab1EPLDb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 May 2011 07:03:31 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1105161248490.3670@dhcp-27-109.brq.redhat.com>
+Received: from adelie.canonical.com ([91.189.90.139]:44552 "EHLO
+	adelie.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751137Ab1EPLZG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 May 2011 07:25:06 -0400
+In-Reply-To: <20110516083721.GB5279@suse.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 16-05-11 12:53:47, Lukas Czerner wrote:
-> On Mon, 16 May 2011, Jan Kara wrote:
-> 
-> > On Mon 16-05-11 11:49:22, Lukas Czerner wrote:
-> > > On Mon, 16 May 2011, Amir Goldstein wrote:
-> > > > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> > > > index fc827bb..2689351 100644
-> > > > --- a/fs/ext4/super.c
-> > > > +++ b/fs/ext4/super.c
-> > > > @@ -4681,6 +4681,9 @@ static int ext4_quota_off(struct super_block
-> > > > *sb, int type)
-> > > >  	if (test_opt(sb, DELALLOC))
-> > > >  		sync_filesystem(sb);
-> > > > 
-> > > > +	if (!inode)
-> > > > +		goto out;
+On Mon, 2011-05-16 at 09:37 +0100, Mel Gorman wrote:
+> On Sat, May 14, 2011 at 10:34:33AM +0200, Colin Ian King wrote:
+> > On Fri, 2011-05-13 at 15:03 +0100, Mel Gorman wrote:
+> > > Changelog since V1
+> > >   o kswapd should sleep if need_resched
+> > >   o Remove __GFP_REPEAT from GFP flags when speculatively using high
+> > >     orders so direct/compaction exits earlier
+> > >   o Remove __GFP_NORETRY for correctness
+> > >   o Correct logic in sleeping_prematurely
+> > >   o Leave SLUB using the default slub_max_order
 > > > 
-> > > Just out of curiosity, why would the quota inode be NULL ?
-> >   Because quota is already turned off (we then release all references to
-> > quota file). Just what I don't understand is why in Amir's testing quota is
-> > not turned on before calling quota off. Because when I run the same test, I
-> > don't trigger the issue.
+> > > There are a few reports of people experiencing hangs when copying
+> > > large amounts of data with kswapd using a large amount of CPU which
+> > > appear to be due to recent reclaim changes.
+> > > 
+> > > SLUB using high orders is the trigger but not the root cause as SLUB
+> > > has been using high orders for a while. The following four patches
+> > > aim to fix the problems in reclaim while reducing the cost for SLUB
+> > > using those high orders.
+> > > 
+> > > Patch 1 corrects logic introduced by commit [1741c877: mm:
+> > > 	kswapd: keep kswapd awake for high-order allocations until
+> > > 	a percentage of the node is balanced] to allow kswapd to
+> > > 	go to sleep when balanced for high orders.
+> > > 
+> > > Patch 2 prevents kswapd waking up in response to SLUBs speculative
+> > > 	use of high orders.
+> > > 
+> > > Patch 3 further reduces the cost by prevent SLUB entering direct
+> > > 	compaction or reclaim paths on the grounds that falling
+> > > 	back to order-0 should be cheaper.
+> > > 
+> > > Patch 4 notes that even when kswapd is failing to keep up with
+> > > 	allocation requests, it should still go to sleep when its
+> > > 	quota has expired to prevent it spinning.
+> > > 
+> > > My own data on this is not great. I haven't really been able to
+> > > reproduce the same problem locally.
+> > > 
+> > > The test case is simple. "download tar" wgets a large tar file and
+> > > stores it locally. "unpack" is expanding it (15 times physical RAM
+> > > in this case) and "delete source dirs" is the tarfile being deleted
+> > > again. I also experimented with having the tar copied numerous times
+> > > and into deeper directories to increase the size but the results were
+> > > not particularly interesting so I left it as one tar.
+> > > 
+> > > In the background, applications are being launched to time to vaguely
+> > > simulate activity on the desktop and to measure how long it takes
+> > > applications to start.
+> > > 
+> > > Test server, 4 CPU threads, x86_64, 2G of RAM, no PREEMPT, no COMPACTION, X running
+> > > LARGE COPY AND UNTAR
+> > >                       vanilla       fixprematurely  kswapd-nowwake slub-noexstep  kswapdsleep
+> > > download tar           95 ( 0.00%)   94 ( 1.06%)   94 ( 1.06%)   94 ( 1.06%)   94 ( 1.06%)
+> > > unpack tar            654 ( 0.00%)  649 ( 0.77%)  655 (-0.15%)  589 (11.04%)  598 ( 9.36%)
+> > > copy source files       0 ( 0.00%)    0 ( 0.00%)    0 ( 0.00%)    0 ( 0.00%)    0 ( 0.00%)
+> > > delete source dirs    327 ( 0.00%)  334 (-2.10%)  318 ( 2.83%)  325 ( 0.62%)  320 ( 2.19%)
+> > > MMTests Statistics: duration
+> > > User/Sys Time Running Test (seconds)        1139.7   1142.55   1149.78   1109.32   1113.26
+> > > Total Elapsed Time (seconds)               1341.59   1342.45   1324.90   1271.02   1247.35
+> > > 
+> > > MMTests Statistics: application launch
+> > > evolution-wait30     mean     34.92   34.96   34.92   34.92   35.08
+> > > gnome-terminal-find  mean      7.96    7.96    8.76    7.80    7.96
+> > > iceweasel-table      mean      7.93    7.81    7.73    7.65    7.88
+> > > 
+> > > evolution-wait30     stddev    0.96    1.22    1.27    1.20    1.15
+> > > gnome-terminal-find  stddev    3.02    3.09    3.51    2.99    3.02
+> > > iceweasel-table      stddev    1.05    0.90    1.09    1.11    1.11
+> > > 
+> > > Having SLUB avoid expensive steps in reclaim improves performance
+> > > by quite a bit with the overall test completing 1.5 minutes
+> > > faster. Application launch times were not really affected but it's
+> > > not something my test machine was suffering from in the first place
+> > > so it's not really conclusive. The kswapd patches also did not appear
+> > > to help but again, the test machine wasn't suffering that problem.
+> > > 
+> > > These patches are against 2.6.39-rc7. Again, testing would be
+> > > appreciated.
 > > 
-> > 								Honza
+> > These patches solve the problem for me.  I've been soak testing the file
+> > copy test
+> > for 3.5 hours with nearly 400 test cycles and observed no lockups at all
+> > - rock solid. From my observations from the output from vmstat the
+> > system is behaving sanely.
+> > Thanks for finding a solution - much appreciated!
 > > 
 > 
-> Exactly, I did not read the quota code very deeply, but it seems to me
-> that when we are turning the quota off, it should be on before. So if it
-> is not, it might be something broken and this is not the solution (or
-> maybe it is and I just do not see why:)).
-  Well, userspace can try to turn quotas off whenever it desires and it
-should not crash the kernel. The check whether quotas are actually turned
-on is only in dquot_quota_off() called from ext4_quota_off(). It seems to
-be some problem in Amir's build of xfstests that they happen to call
-quotaoff on the fs is without quotas turned on. But anyway it should not
-crash the kernel...
+> Can you tell me if just patches 1 and 4 fix the problem please? It'd be good
+> to know if this was only a reclaim-related problem. Thanks.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Hi Mel,
+
+Soak tested just patches 1 + 4 and works fine.  Did 250 cycles for ~2
+hours, no lockups, and the output from vmstat looked sane.
+
+Colin
+> 
+
+
