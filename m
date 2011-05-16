@@ -1,46 +1,46 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v3] ext4: ext4_ext_convert_to_initialized bug found in
- extended FSX testing
-Date: Mon, 16 May 2011 10:19:01 -0400
-Message-ID: <20110516141901.GB4953@thunk.org>
-References: <4DCFEC6D.1040508@linux.vnet.ibm.com>
+From: Rik van Riel <riel@redhat.com>
+Subject: Re: [PATCH 1/4] mm: vmscan: Correct use of pgdat_balanced in sleeping_prematurely
+Date: Mon, 16 May 2011 10:30:20 -0400
+Message-ID: <4DD134FC.3000608@redhat.com>
+References: <1305295404-12129-1-git-send-email-mgorman@suse.de> <1305295404-12129-2-git-send-email-mgorman@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Allison Henderson <achender@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:36380 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755422Ab1EPOTE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 May 2011 10:19:04 -0400
-Content-Disposition: inline
-In-Reply-To: <4DCFEC6D.1040508@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        James Bottomley <James.Bottomley@HansenPartnership.com>,
+        Colin King <colin.king@canonical.com>,
+        Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
+        Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
+        Christoph Lameter <cl@linux.com>, Pekka Enberg <penberg@kernel.org>,
+        Johannes Weiner <hannes@cmpxchg.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-mm <linux-mm@kvack.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>
+To: Mel Gorman <mgorman@suse.de>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1305295404-12129-2-git-send-email-mgorman@suse.de>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-I've added this to the ext4 patch queue (dev branch).  Many thanks for
-all of your work testing the punch series, and finding other bugs
-while you were at it!
+On 05/13/2011 10:03 AM, Mel Gorman wrote:
+> Johannes Weiner poined out that the logic in commit [1741c877: mm:
+> kswapd: keep kswapd awake for high-order allocations until a percentage
+> of the node is balanced] is backwards. Instead of allowing kswapd to go
+> to sleep when balancing for high order allocations, it keeps it kswapd
+> running uselessly.
+>
+> From-but-was-not-signed-off-by: Johannes Weiner<hannes@cmpxchg.org>
+> Will-sign-off-after-Johannes: Mel Gorman<mgorman@suse.de>
 
-I'm about to start merging the punch patches into the dev branch.
+Reviewed-by: Rik van Riel<riel@redhat.com>
 
-Just one tiny request for the future:
+-- 
+All rights reversed
 
-On Sun, May 15, 2011 at 08:08:29AM -0700, Allison Henderson wrote:
-> v1 -> v2
-> - Extent is now zeroed starting from map.m_len
-> - Return value changed to return the number of 
->   blocks split out
-> 
-> v2 -> v3
-> - Corrected patch description
-
-I really appreciate the fact that you write great commit descriptions
-and keep a version history of your patches; it helps me out a lot.  If
-you could move the version history to after the "---" and before the
-diff stats (or actual patch if there are no diff stats), that would
-make my life a just a tiny bit easier.
-
-Awesome work, and thanks again!
-
-							- Ted
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
