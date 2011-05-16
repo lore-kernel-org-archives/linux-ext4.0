@@ -1,152 +1,139 @@
-From: Minchan Kim <minchan.kim@gmail.com>
-Subject: Re: [PATCH 4/4] mm: vmscan: If kswapd has been running too long,
- allow it to sleep
-Date: Mon, 16 May 2011 17:58:59 +0900
-Message-ID: <BANLkTinW4s6aT2bZ79sHNgdh5j8VYyJz2w@mail.gmail.com>
-References: <1305295404-12129-1-git-send-email-mgorman@suse.de>
-	<1305295404-12129-5-git-send-email-mgorman@suse.de>
-	<4DCFAA80.7040109@jp.fujitsu.com>
-	<1305519711.4806.7.camel@mulgrave.site>
-	<BANLkTi=oe4Ties6awwhHFPf42EXCn2U4MQ@mail.gmail.com>
-	<20110516084558.GE5279@suse.de>
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: [PATCH] ext4: fix NULL pointer dereference in ext4_quota_off
+Date: Mon, 16 May 2011 12:31:15 +0300
+Message-ID: <BANLkTin4vEQZ4W5LQT36U3BVxWG4VeDZYw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: James Bottomley <James.Bottomley@hansenpartnership.com>,
-	KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>,
-	akpm@linux-foundation.org, colin.king@canonical.com,
-	raghu.prabhu13@gmail.com, jack@suse.cz, chris.mason@oracle.com,
-	cl@linux.com, penberg@kernel.org, riel@redhat.com,
-	hannes@cmpxchg.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Mel Gorman <mgorman@suse.de>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:60636 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753255Ab1EPI7A convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 May 2011 04:59:00 -0400
-In-Reply-To: <20110516084558.GE5279@suse.de>
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:56945 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753029Ab1EPJbQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 May 2011 05:31:16 -0400
+Received: by vxi39 with SMTP id 39so3002981vxi.19
+        for <linux-ext4@vger.kernel.org>; Mon, 16 May 2011 02:31:16 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 16, 2011 at 5:45 PM, Mel Gorman <mgorman@suse.de> wrote:
-> On Mon, May 16, 2011 at 02:04:00PM +0900, Minchan Kim wrote:
->> On Mon, May 16, 2011 at 1:21 PM, James Bottomley
->> <James.Bottomley@hansenpartnership.com> wrote:
->> > On Sun, 2011-05-15 at 19:27 +0900, KOSAKI Motohiro wrote:
->> >> (2011/05/13 23:03), Mel Gorman wrote:
->> >> > Under constant allocation pressure, kswapd can be in the situat=
-ion where
->> >> > sleeping_prematurely() will always return true even if kswapd h=
-as been
->> >> > running a long time. Check if kswapd needs to be scheduled.
->> >> >
->> >> > Signed-off-by: Mel Gorman<mgorman@suse.de>
->> >> > ---
->> >> > =C2=A0 mm/vmscan.c | =C2=A0 =C2=A04 ++++
->> >> > =C2=A0 1 files changed, 4 insertions(+), 0 deletions(-)
->> >> >
->> >> > diff --git a/mm/vmscan.c b/mm/vmscan.c
->> >> > index af24d1e..4d24828 100644
->> >> > --- a/mm/vmscan.c
->> >> > +++ b/mm/vmscan.c
->> >> > @@ -2251,6 +2251,10 @@ static bool sleeping_prematurely(pg_data=
-_t *pgdat, int order, long remaining,
->> >> > =C2=A0 =C2=A0 unsigned long balanced =3D 0;
->> >> > =C2=A0 =C2=A0 bool all_zones_ok =3D true;
->> >> >
->> >> > + =C2=A0 /* If kswapd has been running too long, just sleep */
->> >> > + =C2=A0 if (need_resched())
->> >> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 return false;
->> >> > +
->> >>
->> >> Hmm... I don't like this patch so much. because this code does
->> >>
->> >> - don't sleep if kswapd got context switch at shrink_inactive_lis=
-t
->> >
->> > This isn't entirely true: =C2=A0need_resched() will be false, so w=
-e'll follow
->> > the normal path for determining whether to sleep or not, in effect
->> > leaving the current behaviour unchanged.
->> >
->> >> - sleep if kswapd didn't
->> >
->> > This also isn't entirely true: whether need_resched() is true at t=
-his
->> > point depends on a whole lot more that whether we did a context sw=
-itch
->> > in shrink_inactive. It mostly depends on how long we've been runni=
-ng
->> > without giving up the CPU. =C2=A0Generally that will mean we've be=
-en round
->> > the shrinker loop hundreds to thousands of times without sleeping.
->> >
->> >> It seems to be semi random behavior.
->> >
->> > Well, we have to do something. =C2=A0Chris Mason first suspected t=
-he hang was
->> > a kswapd rescheduling problem a while ago. =C2=A0We tried putting
->> > cond_rescheds() in several places in the vmscan code, but to no av=
-ail.
->>
->> Is it a result of =C2=A0test with patch of Hannes(ie, !pgdat_balance=
-d)?
->>
->> If it isn't, it would be nop regardless of putting cond_reshed at vm=
-scan.c.
->> Because, although we complete zone balancing, kswapd doesn't sleep a=
-s
->> pgdat_balance returns wrong result. And at last VM calls
->> balance_pgdat. In this case, balance_pgdat returns without any work =
-as
->> kswap couldn't find zones which have not enough free pages and goto
->> out. kswapd could repeat this work infinitely. So you don't have a
->> chance to call cond_resched.
->>
->> But if your test was with Hanne's patch, I am very curious how come
->> kswapd consumes CPU a lot.
->>
->> > The need_resched() in sleeping_prematurely() seems to be about the=
- best
->> > option. =C2=A0The other option might be just to put a cond_resched=
-() in
->> > kswapd_try_to_sleep(), but that will really have about the same ef=
-fect.
->>
->> I don't oppose it but before that, I think we have to know why kswap=
-d
->> consumes CPU a lot although we applied Hannes' patch.
->>
->
-> Because it's still possible for processes to allocate pages at the sa=
-me
-> rate kswapd is freeing them leading to a situation where kswapd does =
-not
-> consider the zone balanced for prolonged periods of time.
+This fixes a bug in commit 21f97697 (ext4: remove unnecessary [cm]time
+update of quota file)
 
-We have cond_resched in shrink_page_list, shrink_slab and balance_pgdat=
-=2E
-So I think kswapd can be scheduled out although it's scheduled in
-after a short time as task scheduled also need page reclaim. Although
-all task in system need reclaim, kswapd cpu 99% consumption is a
-natural result, I think.
-Do I miss something?
+The above commit was merged for 2.6.39-rc3 and introduced a crash
+in xfstest 232 (Run fsstress with quotas enabled and verify accounted
+quotas in the end).
 
->
-> --
-> Mel Gorman
-> SUSE Labs
->
+Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
+---
+
+This fix solves the crash on my system, but the test still fails with the
+following output:
+
+QA output created by 232
+
+Testing fsstress
+
+fsstress -n 2000 -d outdir -p 7
+seed = S
+Comparing user usage
+3a4,493
+> #1        --    2456       0       0             13     0     0
+> #10       --       0       0       0              1     0     0
+> #10098    --     556       0       0              1     0     0
+> #1023     --      20       0       0              1     0     0
+> #10253    --       0       0       0              1     0     0
+> #1026286  --       4       0       0              1     0     0
+> #103086187 --       4       0       0              1     0     0
+> #1036     --       0       0       0              1     0     0
+> #1052282  --       4       0       0              1     0     0
+> #1057     --     260       0       0              1     0     0
+
+I checked with kernel 2.6.38 and the test passes.
+I also tried reverting the commit, but the test still fails.
+
+In any case, the fix resolved the following crash:
+
+[ 1319.112544] EXT4-fs (sda8): mounted filesystem with ordered data
+mode. Opts: acl,user_xattr,usrquota,grpquota
+[ 1319.270023] EXT4-fs (sda8): re-mounted. Opts: (null)
+[ 1319.271464] EXT4-fs (sda8): re-mounted. Opts: (null)
+[ 1368.214854] BUG: unable to handle kernel NULL pointer dereference
+at 0000000000000018
+[ 1368.219348] IP: [<ffffffff8122e152>] ext4_quota_off+0x42/0xd0
+[ 1368.221628] PGD 0
+[ 1368.222978] Oops: 0000 [#2] SMP
+[ 1368.222978] last sysfs file:
+/sys/devices/system/cpu/cpu3/cache/index2/shared_cpu_map
+[ 1368.222978] CPU 0
+[ 1368.222978] Modules linked in: binfmt_misc parport_pc ppdev
+snd_hda_codec_realtek snd_hda_intel snd_hda_codec i915 snd_hwdep
+snd_pcm drm_kms_helper drm snd_seq_midi snd_rawmidi e1000e
+snd_seq_midi_event i2c_algo_bit snd_seq lp firewire_ohci firewire_core
+snd_timer snd_seq_device snd soundcore snd_page_alloc psmouse parport
+pata_marvell usbhid hid video intel_agp intel_gtt tpm_tis crc_itu_t
+serio_raw tpm tpm_bios
+[ 1368.222978]
+[ 1368.222978] Pid: 2691, comm: quotaon Tainted: G   M  D
+2.6.39-rc7 #9                  /DQ35JO
+[ 1368.222978] RIP: 0010:[<ffffffff8122e152>]  [<ffffffff8122e152>]
+ext4_quota_off+0x42/0xd0
+[ 1368.222978] RSP: 0018:ffff8800c4bb3e28  EFLAGS: 00010292
+[ 1368.222978] RAX: 0000000000000000 RBX: 0000000000000000 RCX: 0000000000000018
+[ 1368.222978] RDX: 0000000000000000 RSI: 0000000000000001 RDI: 0000000000000246
+[ 1368.222978] RBP: ffff8800c4bb3e48 R08: 0000000000000001 R09: 0000000000000000
+[ 1368.222978] R10: 0000000000000000 R11: 0000000000000000 R12: ffff880114576000
+[ 1368.222978] R13: ffff880114576000 R14: 0000000000000001 R15: 0000000000000000
+[ 1368.222978] FS:  00007f5c2bf97720(0000) GS:ffff88012bc00000(0000)
+knlGS:0000000000000000
+[ 1368.222978] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[ 1368.222978] CR2: 0000000000000018 CR3: 00000000c693f000 CR4: 00000000000006f0
+[ 1368.222978] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+[ 1368.222978] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+[ 1368.222978] Process quotaon (pid: 2691, threadinfo
+ffff8800c4bb2000, task ffff880116bc5ee0)
+[ 1368.222978] Stack:
+[ 1368.222978]  0000000000800003 0000000000000001 ffff880114576000
+00000000ffffffda
+[ 1368.222978]  ffff8800c4bb3ef8 ffffffff811c9e05 0000000000000000
+0000000000000000
+[ 1368.222978]  ffff8800c4bb3e78 ffff880114576068 ffff880115009800
+ffff880114576068
+[ 1368.222978] Call Trace:
+[ 1368.222978]  [<ffffffff811c9e05>] do_quotactl+0x4e5/0x560
+[ 1368.222978]  [<ffffffff815d376c>] ? down_read+0x4c/0x70
+[ 1368.222978]  [<ffffffff811711cf>] ? get_super+0x9f/0xd0
+[ 1368.222978]  [<ffffffff81189f78>] ? iput+0x48/0x200
+[ 1368.222978]  [<ffffffff811c9f4c>] sys_quotactl+0xcc/0x1a0
+[ 1368.222978]  [<ffffffff8116be26>] ? filp_close+0x66/0x90
+[ 1368.222978]  [<ffffffff812fd76e>] ? trace_hardirqs_on_thunk+0x3a/0x3f
+[ 1368.222978]  [<ffffffff815dd2c2>] system_call_fastpath+0x16/0x1b
+[ 1368.222978] Code: 89 74 24 18 0f 1f 44 00 00 48 63 c6 49 89 fc 41
+89 f6 48 8b 9c c7 60 03 00 00 48 8b 87 90 04 00 00 f6 40 73 08 0f 85
+7e 00 00 00
+[ 1368.222978]  8b 7b 18 be 01 00 00 00 e8 c0 fb ff ff 48 3d 00 f0 ff ff 49
+[ 1368.222978] RIP  [<ffffffff8122e152>] ext4_quota_off+0x42/0xd0
+[ 1368.222978]  RSP <ffff8800c4bb3e28>
+[ 1368.222978] CR2: 0000000000000018
+[ 1368.310246] ---[ end trace 62a147f050ade229 ]---
 
 
+ fs/ext4/super.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
 
---=20
-Kind regards,
-Minchan Kim
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index fc827bb..2689351 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4681,6 +4681,9 @@ static int ext4_quota_off(struct super_block
+*sb, int type)
+ 	if (test_opt(sb, DELALLOC))
+ 		sync_filesystem(sb);
+
++	if (!inode)
++		goto out;
++
+ 	/* Update modification times of quota files when userspace can
+ 	 * start looking at them */
+ 	handle = ext4_journal_start(inode, 1);
+-- 
+1.7.4.1
