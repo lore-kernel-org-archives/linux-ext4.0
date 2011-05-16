@@ -1,8 +1,9 @@
 From: Rik van Riel <riel@redhat.com>
-Subject: Re: [PATCH 1/4] mm: vmscan: Correct use of pgdat_balanced in sleeping_prematurely
-Date: Mon, 16 May 2011 10:30:20 -0400
-Message-ID: <4DD134FC.3000608@redhat.com>
-References: <1305295404-12129-1-git-send-email-mgorman@suse.de> <1305295404-12129-2-git-send-email-mgorman@suse.de>
+Subject: Re: [PATCH 4/4] mm: vmscan: If kswapd has been running too long,
+ allow it to sleep
+Date: Mon, 16 May 2011 10:30:37 -0400
+Message-ID: <4DD1350D.9080302@redhat.com>
+References: <1305295404-12129-1-git-send-email-mgorman@suse.de> <1305295404-12129-5-git-send-email-mgorman@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
@@ -19,21 +20,18 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
         linux-ext4 <linux-ext4@vger.kernel.org>
 To: Mel Gorman <mgorman@suse.de>
 Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1305295404-12129-2-git-send-email-mgorman@suse.de>
+In-Reply-To: <1305295404-12129-5-git-send-email-mgorman@suse.de>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
 On 05/13/2011 10:03 AM, Mel Gorman wrote:
-> Johannes Weiner poined out that the logic in commit [1741c877: mm:
-> kswapd: keep kswapd awake for high-order allocations until a percentage
-> of the node is balanced] is backwards. Instead of allowing kswapd to go
-> to sleep when balancing for high order allocations, it keeps it kswapd
-> running uselessly.
+> Under constant allocation pressure, kswapd can be in the situation where
+> sleeping_prematurely() will always return true even if kswapd has been
+> running a long time. Check if kswapd needs to be scheduled.
 >
-> From-but-was-not-signed-off-by: Johannes Weiner<hannes@cmpxchg.org>
-> Will-sign-off-after-Johannes: Mel Gorman<mgorman@suse.de>
+> Signed-off-by: Mel Gorman<mgorman@suse.de>
 
-Reviewed-by: Rik van Riel<riel@redhat.com>
+Acked-by: Rik van Riel<riel@redhat.com>
 
 -- 
 All rights reversed
