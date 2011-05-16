@@ -1,11 +1,11 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 4/5] ext4 : Add missing posix_acl_release() in
- ext4_xattr_set_acl() in error path.
-Date: Mon, 16 May 2011 17:44:26 +0200
-Message-ID: <20110516154426.GH5344@quack.suse.cz>
-References: <BANLkTin4PDgtZUHgrPnQbg_0+dN6_Fj_Gg@mail.gmail.com>
- <20110511161808.GK5057@quack.suse.cz>
- <BANLkTimEOXs9yzws73kZ669YKLVhr6eAmw@mail.gmail.com>
+Subject: Re: [PATCH 1/5] jbd2: Pass extra bool parameter in journal
+ routines to specify if its ok to fail the journal transaction allocation.
+Date: Mon, 16 May 2011 17:51:38 +0200
+Message-ID: <20110516155138.GI5344@quack.suse.cz>
+References: <BANLkTinNUxt_Bj0JErLVDbh=73JHzzS9=w@mail.gmail.com>
+ <20110511155447.GH5057@quack.suse.cz>
+ <BANLkTikP3axXkZ=v8EbpbzyoeSeARZC_Ew@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
@@ -13,113 +13,67 @@ Cc: Jan Kara <jack@suse.cz>, ext4 <linux-ext4@vger.kernel.org>,
 	Theodore Ts'o <tytso@mit.edu>
 To: Manish Katiyar <mkatiyar@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:57548 "EHLO mx1.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:57820 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756247Ab1EPPos (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 May 2011 11:44:48 -0400
+	id S1756535Ab1EPPwB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 May 2011 11:52:01 -0400
 Content-Disposition: inline
-In-Reply-To: <BANLkTimEOXs9yzws73kZ669YKLVhr6eAmw@mail.gmail.com>
+In-Reply-To: <BANLkTikP3axXkZ=v8EbpbzyoeSeARZC_Ew@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 12-05-11 19:19:29, Manish Katiyar wrote:
-> On Wed, May 11, 2011 at 9:18 AM, Jan Kara <jack@suse.cz> wrote:
-> > On Sun 24-04-11 17:18:02, Manish Katiyar wrote:
-> >> This patch fixes the following.
-> >>
-> >> a) Incase journal transaction allocation fails due to ENOMEM don't=
- call
-> >> ext4_std_error() since it will remount the fs as readonly and logs=
- the
-> >> message in kernel log.
-> >> b) Call posix_acl_release() incase journal allocation fails in cas=
-e of
-> >> error paths.
-> >>
-> >>
-> >> Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
-> >> ---
-> >> =A0fs/ext4/acl.c | =A0 =A07 ++++---
-> >> =A01 files changed, 4 insertions(+), 3 deletions(-)
-> >>
-> >> diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
-> >> index 21eacd7..0c98710 100644
-> >> --- a/fs/ext4/acl.c
-> >> +++ b/fs/ext4/acl.c
-> >> @@ -354,7 +354,6 @@ ext4_acl_chmod(struct inode *inode)
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 EXT4_D=
-ATA_TRANS_BLOCKS(inode->i_sb));
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (IS_ERR(handle)) {
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 error =3D PTR_ERR(hand=
-le);
-> >> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_std_error(inode->i_=
-sb, error);
-> > =A0The changelog speaks only about ENOMEM but you actually remove t=
-he
-> > message completely (so it won't catch EIO or similar errors). I thi=
-nk you
-> > should just condition ext4_std_error() with if (error !=3D ENOMEM).
+  Hello,
+
+On Thu 12-05-11 23:37:05, Manish Katiyar wrote:
+> On Wed, May 11, 2011 at 8:54 AM, Jan Kara <jack@suse.cz> wrote:
+> > =A0Hi,
+> >
+> > =A0sorry I got to your patches with a delay. One general note - ple=
+ase do
+> > not attach patches. It is enough to have them in the email...
+> >
+> > On Sun 24-04-11 17:10:41, Manish Katiyar wrote:
+> >> Pass extra bool parameter in journal routines to specify if its ok=
+ to
+> >> fail the journal transaction allocation. If 'true' is passed
+> >> transaction allocation is done through GFP_KERNEL =A0and ENOMEM is
+> >> returned else GFP_NOFS is used.
+> > =A0Please, do not mix error handling with gfp masks. Instead just r=
+ename
+> > jbd2__journal_start() to jbd2_journal_start() and change gfp_mask p=
+arameter
+> > to "bool errok".
 >=20
-> Hi Jan,
+> ok.
 >=20
-> Thanks for your response. Here is the updated patch.
->=20
-> ---------------------------------------------------------------------=
-------------------------------------------------
-> a) Incase journal transaction allocation fails due to ENOMEM don't ca=
+> > Use GFP_NOFS gfp mask for start_this_handle().
+> I think I didn't completely understand this line. You meant passing
+> GFP_KERNEL or GFP_NOFS based on errok right ?
+  No, I meant passing GFP_NOFS always. Currently, GFP_NOFS is used in a=
 ll
-> ext4_std_error() since it will remount the fs as readonly and logs th=
-e
-> message in kernel log.
+the cases (noone uses GFP_KERNEL variant) and GFP_KERNEL can really be =
+used
+only when we do not hold other filesystem locks (as GFP_KERNEL allocati=
+on
+can recurse back into filesystem to reclaim memory). So using GFP_KERNE=
+L
+would need more auditting and is a separate issue anyway.
+
+> > Also your patch series should be bisectable - that means it must co=
+mpile
+> > and run after any of the patches. So you cannot really change
+> > jbd2_journal_start() prototype without changing all the filesystems=
+ using
+> > it. In this case, just include in this patch a simple change for ex=
+t4 and
+> > ocfs2 to pass 'false' in the additional argument.
 >=20
-> b) Call posix_acl_release() incase journal allocation fails in case
-> of error paths.
-  This patch looks OK now. You can add:
-Acked-by: Jan Kara <jack@suse.cz>
+> ok.. Will submit the first patch as everyone passing false as the
+> errok argument.
+  Thanks.
 
 									Honza
-> Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
-> ---
->  fs/ext4/acl.c |    9 ++++++---
->  1 files changed, 6 insertions(+), 3 deletions(-)
->=20
-> diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
-> index 21eacd7..93dc9a6 100644
-> --- a/fs/ext4/acl.c
-> +++ b/fs/ext4/acl.c
-> @@ -354,7 +354,8 @@ ext4_acl_chmod(struct inode *inode)
->  				EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
->  		if (IS_ERR(handle)) {
->  			error =3D PTR_ERR(handle);
-> -			ext4_std_error(inode->i_sb, error);
-> +			if (error !=3D -ENOMEM)
-> +				ext4_std_error(inode->i_sb, error);
->  			goto out;
->  		}
->  		error =3D ext4_set_acl(handle, inode, ACL_TYPE_ACCESS, clone);
-> @@ -450,8 +451,10 @@ ext4_xattr_set_acl(struct dentry *dentry, const
-> char *name, const void *value,
->=20
->  retry:
->  	handle =3D ext4_journal_start(inode, EXT4_DATA_TRANS_BLOCKS(inode->=
-i_sb));
-> -	if (IS_ERR(handle))
-> -		return PTR_ERR(handle);
-> +	if (IS_ERR(handle)) {
-> +		error =3D PTR_ERR(handle);
-> +		goto release_and_out;
-> +	}
->  	error =3D ext4_set_acl(handle, inode, type, acl);
->  	ext4_journal_stop(handle);
->  	if (error =3D=3D -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &r=
-etries))
-> --=20
-> 1.7.4.1
->=20
->=20
-> --=20
-> Thanks -
-> Manish
+
 --=20
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
