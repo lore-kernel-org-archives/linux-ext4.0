@@ -1,84 +1,103 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/2] ext4: Fix waiting and sending of a barrier in ext4_sync_file()
-Date: Tue, 17 May 2011 12:28:15 +0200
-Message-ID: <1305628095-27843-3-git-send-email-jack@suse.cz>
-References: <1305628095-27843-1-git-send-email-jack@suse.cz>
-Cc: Edward Goggin <egoggin@vmware.com>, linux-ext4@vger.kernel.org,
-	Jan Kara <jack@suse.cz>
-To: tytso@mit.edu
+Subject: Re: [PATCH 1/1] jbd,jbd2 : Fix __log_start_commit for both jbd and
+ jbd2 to return 1 instead of 0 if target transaction is actively being
+ committed.
+Date: Tue, 17 May 2011 12:32:11 +0200
+Message-ID: <20110517103211.GB24728@quack.suse.cz>
+References: <4C88517147624A459A766BC451FA1BA4049532CED2@EXCH-MBX-4.vmware.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: "'linux-ext4@vger.kernel.org'" <linux-ext4@vger.kernel.org>,
+	'Jan Kara' <jack@suse.cz>
+To: Edward Goggin <egoggin@vmware.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:59690 "EHLO mx1.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:39684 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752836Ab1EQK2u (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 May 2011 06:28:50 -0400
-In-Reply-To: <1305628095-27843-1-git-send-email-jack@suse.cz>
+	id S1752142Ab1EQKce (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 May 2011 06:32:34 -0400
+Content-Disposition: inline
+In-Reply-To: <4C88517147624A459A766BC451FA1BA4049532CED2@EXCH-MBX-4.vmware.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-jbd2_log_start_commit() returns 1 only when we really start a transaction.  But
-we also need to wait for a transaction when the commit is already running.  Fix
-this problem by waiting for transaction commit unconditionally (which is just a
-quick check if the transaction is already committed).
+On Fri 13-05-11 06:54:47, Edward Goggin wrote:
+> __log_start_commit for both jbd and jbd2 returns zero even when
+> the actively committing transaction has not yet completed. All
+> current callers of both __log_start_commit and its wrapper
+> function log_start_commit ignore the return value, but
+> ext4_sync_file does not. Unfortunately a return value of zero
+> from the call to log_start_commit in ext4_sync_file causes
+> ext4_sync_file to not call jbd2_log_wait_commit.
+> 
+> If jbd2_log_wait_commit is not called it is possible for the
+> calling context to return from ext4 without having persisted
+> the updates to the meta data (assume a write to a previously
+> unallocated region of a file) associated with the current ext4
+> operation. If the context calling ext4_sync_file is an nfs daemon,
+> the daemon has the potential of acknowledging the nfs write
+> request to its client before the ext4 meta data (assume journal
+> mode of (data=ordered) is persistent. Data corruption (lost write)
+> is possible if after the reply for the nfs request is sent, a
+> power outage, kernel panic, or other similar unorderly shutdown
+> precludes the actual committing of the jbd2 transaction required
+> to later retrieve the data written to the file.
+> 
+> This issue appears to be addressed for ext3 by
+> http://kerneltrap.org/mailarchive/linux-ext4/2010/4/26/6884343.
+> It is not clear why similar changes were not applied to ext4/jbd2
+> at that time.
+  Thanks Ed for spotting this! Your fix sadly does not solve all the issues
+in the code because when transaction commit is in progress, we do not know
+whether a barrier has been already issued while we were writing out data
+for fsync or whether it's going to be issued later. So we could miss
+sending a barrier in some cases.
 
-Also we have to be more careful with sending of a barrier because when
-transaction is being committed in parallel to ext4_sync_file() running, we
-cannot be sure that the barrier the journalling code sends happens after we
-wrote all the data for fsync (note that not every data writeout needs to
-trigger metadata changes thus commit of some metadata changes can be running
-while other data is still written out). So use jbd2_will_send_data_barrier()
-helper to detect the common cases when we can be sure barrier will be issued by
-the commit code and issue the barrier ourselves in the remaining cases. This
-code change will cause ext4_sync_file() to unnecessarily issue a barrier in
-data=ordered and data=journal mode with external journal but solving this would
-require ext4 to mess with jbd2 internals since jbd2 does not know about ext4
-data journalling modes.
+Also we prefer to keep ext3 and ext4 code in sync so I've ported ext3 fixes
+to ext4 and sent them to Ted for inclusion.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/fsync.c |   23 +++++++----------------
- 1 files changed, 7 insertions(+), 16 deletions(-)
-
-diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-index e9473cb..1c44f1a 100644
---- a/fs/ext4/fsync.c
-+++ b/fs/ext4/fsync.c
-@@ -172,6 +172,7 @@ int ext4_sync_file(struct file *file, int datasync)
- 	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
- 	int ret;
- 	tid_t commit_tid;
-+	bool needs_barrier = false;
+								Honza
  
- 	J_ASSERT(ext4_journal_current_handle() == NULL);
- 
-@@ -211,22 +212,12 @@ int ext4_sync_file(struct file *file, int datasync)
- 	}
- 
- 	commit_tid = datasync ? ei->i_datasync_tid : ei->i_sync_tid;
--	if (jbd2_log_start_commit(journal, commit_tid)) {
--		/*
--		 * When the journal is on a different device than the
--		 * fs data disk, we need to issue the barrier in
--		 * writeback mode.  (In ordered mode, the jbd2 layer
--		 * will take care of issuing the barrier.  In
--		 * data=journal, all of the data blocks are written to
--		 * the journal device.)
--		 */
--		if (ext4_should_writeback_data(inode) &&
--		    (journal->j_fs_dev != journal->j_dev) &&
--		    (journal->j_flags & JBD2_BARRIER))
--			blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL,
--					NULL);
--		ret = jbd2_log_wait_commit(journal, commit_tid);
--	} else if (journal->j_flags & JBD2_BARRIER)
-+	if (journal->j_flags & JBD2_BARRIER &&
-+	    !jbd2_trans_will_send_data_barrier(journal, commit_tid))
-+		needs_barrier = true;
-+	jbd2_log_start_commit(journal, commit_tid);
-+	ret = jbd2_log_wait_commit(journal, commit_tid);
-+	if (needs_barrier)
- 		blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);
-  out:
- 	trace_ext4_sync_file_exit(inode, ret);
+> Signed-off-by: Ed Goggin <egoggin@vmware.com>
+> 
+> diff -uprN linux-2.6.38.5//fs/jbd/journal.c linux-2.6.38.5.fix//fs/jbd/journal.c
+> --- linux-2.6.38.5//fs/jbd/journal.c    2011-05-02 16:30:53.000000000 +0000
+> +++ linux-2.6.38.5.fix//fs/jbd/journal.c        2011-05-12 21:27:04.000000000 +0000
+> @@ -452,6 +452,16 @@ int __log_start_commit(journal_t *journa
+>                 wake_up(&journal->j_wait_commit);
+>                 return 1;
+>         }
+> +        else if (journal->j_commit_request == target) {
+> +                /*
+> +                 * Return 1 so caller will wait for actively committing
+> +                 * transaction if they depend on this return value.
+> +                 */
+> +                jbd_debug(1, "JBD: requesting commit is current commit %d/%d\n",
+> +                          journal->j_commit_request,
+> +                          journal->j_commit_sequence);
+> +                return 1;
+> +        }
+>         return 0;
+>  }
+> 
+> diff -uprN linux-2.6.38.5//fs/jbd2/journal.c linux-2.6.38.5.fix//fs/jbd2/journal.c
+> --- linux-2.6.38.5//fs/jbd2/journal.c   2011-05-02 16:30:53.000000000 +0000
+> +++ linux-2.6.38.5.fix//fs/jbd2/journal.c       2011-05-12 21:26:53.000000000 +0000
+> @@ -494,6 +494,16 @@ int __jbd2_log_start_commit(journal_t *j
+>                 wake_up(&journal->j_wait_commit);
+>                 return 1;
+>         }
+> +        else if (journal->j_commit_request == target) {
+> +                /*
+> +                 * Return 1 so caller will wait for actively committing
+> +                 * transaction if they depend on this return value.
+> +                 */
+> +                jbd_debug(1, "JBD: requesting commit is current commit %d/%d\n",
+> +                          journal->j_commit_request,
+> +                          journal->j_commit_sequence);
+> +                return 1;
+> +        }
+>         return 0;
+>  }
 -- 
-1.7.1
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
