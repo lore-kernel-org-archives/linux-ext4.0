@@ -1,104 +1,125 @@
-From: James Bottomley <James.Bottomley@HansenPartnership.com>
-Subject: Re: [PATCH 2/2] mm: vmscan: If kswapd has been running too long,
- allow it to sleep
-Date: Tue, 17 May 2011 10:37:04 +0400
-Message-ID: <1305614225.6008.19.camel@mulgrave.site>
-References: <1305558417-24354-1-git-send-email-mgorman@suse.de>
-	 <1305558417-24354-3-git-send-email-mgorman@suse.de>
-	 <20110516141654.2728f05a.akpm@linux-foundation.org>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: do not normalize block requests from fallocate.
+Date: Tue, 17 May 2011 08:47:00 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1105170837260.3449@dhcp-27-109.brq.redhat.com>
+References: <1305321545-17214-1-git-send-email-haldar@google.com> <alpine.LFD.2.00.1105161135260.3670@dhcp-27-109.brq.redhat.com> <BANLkTikWG_+aeVZUpBcfbqVoKvjRq4tbgQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Mel Gorman <mgorman@suse.de>, Colin King <colin.king@canonical.com>,
- Raghavendra D Prabhu <raghu.prabhu13@gmail.com>, Jan Kara <jack@suse.cz>,
- Chris Mason <chris.mason@oracle.com>, Christoph Lameter <cl@linux.com>,
- Pekka Enberg <penberg@kernel.org>, Rik van Riel <riel@redhat.com>,
- Johannes Weiner <hannes@cmpxchg.org>, Minchan Kim <minchan.kim@gmail.com>,
- linux-fsdevel <linux-fsdevel@vger.kernel.org>, linux-mm
- <linux-mm@kvack.org>, linux-kernel <linux-kernel@vger.kernel.org>,
- linux-ext4 <linux-ext4@vger.kernel.org>, stable <stable@kernel.org>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20110516141654.2728f05a.akpm@linux-foundation.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1657751038-1305614823=:3449"
+Cc: Lukas Czerner <lczerner@redhat.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Vivek Haldar <haldar@google.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:39408 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751944Ab1EQGrI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 May 2011 02:47:08 -0400
+In-Reply-To: <BANLkTikWG_+aeVZUpBcfbqVoKvjRq4tbgQ@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 2011-05-16 at 14:16 -0700, Andrew Morton wrote:
-> On Mon, 16 May 2011 16:06:57 +0100
-> Mel Gorman <mgorman@suse.de> wrote:
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
+
+--8323328-1657751038-1305614823=:3449
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1
+Content-Transfer-Encoding: 8BIT
+
+On Mon, 16 May 2011, Vivek Haldar wrote:
+
+> EXT4_GET_BLOCKS_* and EXT4_MB_HINT_* are different flag spaces and
+> should not be mixed. ext4_ext_map_blocks should not be using
+> EXT4_MB_HINT_*, it only uses EXT4_GET_BLOCKS_*.
+
+Agh, yes you're right of course, somehow I just missed that
+ext4_map_blocks() take separate flag argument and EXT4_GET_* flag might
+use the same bit as EXT4_MB_HINT_NOPREALLOC. Sorry.
+
+Thanks!
+-Lukas
+
 > 
-> > Under constant allocation pressure, kswapd can be in the situation where
-> > sleeping_prematurely() will always return true even if kswapd has been
-> > running a long time. Check if kswapd needs to be scheduled.
-> > 
-> > Signed-off-by: Mel Gorman <mgorman@suse.de>
-> > Acked-by: Rik van Riel <riel@redhat.com>
-> > ---
-> >  mm/vmscan.c |    4 ++++
-> >  1 files changed, 4 insertions(+), 0 deletions(-)
-> > 
-> > diff --git a/mm/vmscan.c b/mm/vmscan.c
-> > index af24d1e..4d24828 100644
-> > --- a/mm/vmscan.c
-> > +++ b/mm/vmscan.c
-> > @@ -2251,6 +2251,10 @@ static bool sleeping_prematurely(pg_data_t *pgdat, int order, long remaining,
-> >  	unsigned long balanced = 0;
-> >  	bool all_zones_ok = true;
-> >  
-> > +	/* If kswapd has been running too long, just sleep */
-> > +	if (need_resched())
-> > +		return false;
-> > +
-> >  	/* If a direct reclaimer woke kswapd within HZ/10, it's premature */
-> >  	if (remaining)
-> >  		return true;
+> On Mon, May 16, 2011 at 2:39 AM, Lukas Czerner <lczerner@redhat.com> wrote:
+> > On Fri, 13 May 2011, Vivek Haldar wrote:
+> >
+> >> Currently, an fallocate request of size slightly larger than a power of
+> >> 2 is turned into two block requests, each a power of 2, with the extra
+> >> blocks pre-allocated for future use. When an application calls
+> >> fallocate, it already has an idea about how large the file may grow so
+> >> there is usually little benefit to reserve extra blocks on the
+> >> preallocation list. This reduces disk fragmentation.
+> >>
+> >> Tested: fsstress. Also verified manually that fallocat'ed files are
+> >> contiguously laid out with this change (whereas without it they begin at
+> >> power-of-2 boundaries, leaving blocks in between). CPU usage of
+> >> fallocate is not appreciably higher. In a tight fallocate loop, CPU
+> >> usage hovers between 5%-8% with this change, and 5%-7% without it.
+> >
+> > Hi Vivek,
+> >
+> > the patch looks good, but I do not understand why you are introducing
+> > new #define when you can simply use EXT4_MB_HINT_NOPREALLOC and then in
+> > the ext4_ext_map_blocks() just do :
+> >
+> > ar.flags |= (flags & EXT4_MB_HINT_NOPREALLOC)
+> >
+> > and you do not need to introduce new condition. Am I missing something ?
+> >
+> > Thanks!
+> > -Lukas
+> >
+> >>
+> >> Signed-off-by: Vivek Haldar <haldar@google.com>
+> >> ---
+> >>  fs/ext4/ext4.h    |    2 ++
+> >>  fs/ext4/extents.c |    5 ++++-
+> >>  2 files changed, 6 insertions(+), 1 deletions(-)
+> >>
+> >> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> >> index 076c5d2..e606d34 100644
+> >> --- a/fs/ext4/ext4.h
+> >> +++ b/fs/ext4/ext4.h
+> >> @@ -512,6 +512,8 @@ struct ext4_new_group_data {
+> >>       /* Convert extent to initialized after IO complete */
+> >>  #define EXT4_GET_BLOCKS_IO_CONVERT_EXT               (EXT4_GET_BLOCKS_CONVERT|\
+> >>                                        EXT4_GET_BLOCKS_CREATE_UNINIT_EXT)
+> >> +     /* Don't normalize when fallocat'ing */
+> >> +#define EXT4_GET_BLOCKS_NO_NORMALIZE         0x0020
+> >>
+> >>  /*
+> >>   * Flags used by ext4_free_blocks
+> >> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> >> index e363f21..f02dd52 100644
+> >> --- a/fs/ext4/extents.c
+> >> +++ b/fs/ext4/extents.c
+> >> @@ -3304,6 +3304,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+> >>       else
+> >>               /* disable in-core preallocation for non-regular files */
+> >>               ar.flags = 0;
+> >> +     if (flags & EXT4_GET_BLOCKS_NO_NORMALIZE)
+> >> +             ar.flags |= EXT4_MB_HINT_NOPREALLOC;
+> >>       newblock = ext4_mb_new_blocks(handle, &ar, &err);
+> >>       if (!newblock)
+> >>               goto out2;
+> >> @@ -3549,7 +3551,8 @@ retry:
+> >>                       break;
+> >>               }
+> >>               ret = ext4_map_blocks(handle, inode, &map,
+> >> -                                   EXT4_GET_BLOCKS_CREATE_UNINIT_EXT);
+> >> +                                   EXT4_GET_BLOCKS_CREATE_UNINIT_EXT |
+> >> +                                   EXT4_GET_BLOCKS_NO_NORMALIZE);
+> >>               if (ret <= 0) {
+> >>  #ifdef EXT4FS_DEBUG
+> >>                       WARN_ON(ret <= 0);
+> >>
+> >
+> > --
+> >
 > 
-> I'm a bit worried by this one.
 > 
-> Do we really fully understand why kswapd is continuously running like
-> this?  The changelog makes me think "no" ;)
 > 
-> Given that the page-allocating process is madly reclaiming pages in
-> direct reclaim (yes?) and that kswapd is madly reclaiming pages on a
-> different CPU, we should pretty promptly get into a situation where
-> kswapd can suspend itself.  But that obviously isn't happening.  So
-> what *is* going on?
+> 
 
-The triggering workload is a massive untar using a file on the same
-filesystem, so that's a continuous stream of pages read into the cache
-for the input and a stream of dirty pages out for the writes.  We
-thought it might have been out of control shrinkers, so we already
-debugged that and found it wasn't.  It just seems to be an imbalance in
-the zones that the shrinkers can't fix which causes
-sleeping_prematurely() to return true almost indefinitely.
-
-> Secondly, taking an up-to-100ms sleep in response to a need_resched()
-> seems pretty savage and I suspect it risks undesirable side-effects.  A
-> plain old cond_resched() would be more cautious.  But presumably
-> kswapd() is already running cond_resched() pretty frequently, so why
-> didn't that work?
-
-So the specific problem with cond_resched() is that kswapd is still
-runnable, so even if there's other work the system can be getting on
-with, it quickly comes back to looping madly in kswapd.  If we return
-false from sleeping_prematurely(), we stop kswapd until its woken up to
-do more work.  This manifests, even on non sandybridge systems that
-don't hang as a lot of time burned in kswapd.
-
-I think the sandybridge bug I see on the laptop is that cond_resched()
-is somehow ineffective:  kswapd is usually hogging one CPU and there are
-runnable processes but they seem to cluster on other CPUs, leaving
-kswapd to spin at close to 100% system time.
-
-When the problem was first described, we tried sprinkling more
-cond_rescheds() in the shrinker loop and it didn't work.
-
-James
-
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+-- 
+--8323328-1657751038-1305614823=:3449--
