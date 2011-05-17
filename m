@@ -1,95 +1,126 @@
-From: Mel Gorman <mgorman@suse.de>
-Subject: Re: [PATCH 3/3] mm: slub: Default slub_max_order to 0
-Date: Tue, 17 May 2011 10:48:45 +0100
-Message-ID: <20110517094845.GK5279@suse.de>
-References: <1305127773-10570-1-git-send-email-mgorman@suse.de>
- <1305127773-10570-4-git-send-email-mgorman@suse.de>
- <alpine.DEB.2.00.1105111314310.9346@chino.kir.corp.google.com>
- <20110512173628.GJ11579@random.random>
- <alpine.DEB.2.00.1105161356140.4353@chino.kir.corp.google.com>
+From: James Bottomley <James.Bottomley@HansenPartnership.com>
+Subject: Re: Kernel BUG when syncing ext2 if USB stick is removed
+Date: Tue, 17 May 2011 14:26:40 +0400
+Message-ID: <1305628000.2667.2.camel@mulgrave.site>
+References: <4DCBF4B0.10607@secunet.com>
+	 <20110512144255.5c4d4e84.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: Andrea Arcangeli <aarcange@redhat.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	James Bottomley <James.Bottomley@hansenpartnership.com>,
-	Colin King <colin.king@canonical.com>,
-	Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
-	Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
-	Christoph Lameter <cl@linux.com>,
-	Pekka Enberg <penberg@kernel.org>,
-	Rik van Riel <riel@redhat.com>,
-	Johannes Weiner <hannes@cmpxchg.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-mm <linux-mm@kvack.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: David Rientjes <rientjes@google.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: Torsten Hilbrich <torsten.hilbrich@secunet.com>,
+	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	LKML <linux-kernel@vger.kernel.org>,
+	Jens Axboe <axboe@kernel.dk>,
+	"Rafael J. Wysocki" <rjw@sisk.pl>,
+	Maciej Rutecki <maciej.rutecki@gmail.com>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:58247 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753846Ab1EQJsv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 May 2011 05:48:51 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.DEB.2.00.1105161356140.4353@chino.kir.corp.google.com>
+Received: from bedivere.hansenpartnership.com ([66.63.167.143]:53557 "EHLO
+	bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752359Ab1EQK0q (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 May 2011 06:26:46 -0400
+In-Reply-To: <20110512144255.5c4d4e84.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 16, 2011 at 02:03:33PM -0700, David Rientjes wrote:
-> On Thu, 12 May 2011, Andrea Arcangeli wrote:
+On Thu, 2011-05-12 at 14:42 -0700, Andrew Morton wrote:
+> On Thu, 12 May 2011 16:54:40 +0200
+> Torsten Hilbrich <torsten.hilbrich@secunet.com> wrote:
 > 
-> > On Wed, May 11, 2011 at 01:38:47PM -0700, David Rientjes wrote:
-> > > kswapd and doing compaction for the higher order allocs before falling 
+> > The error can be reproduced in both linux-2.6 master
+> > (3568bd9720b4a775f28a718fcbb462ce2f386988) and v2.6.38.6. It cannot be
+> > reproduced in v2.6.38.5, because the error occurs only after:
 > > 
-> > Note that patch 2 disabled compaction by clearing __GFP_WAIT.
+> > commit 1f74c190e1e97a38823c07fdc71780580a0fc03f
+> > Author: James Bottomley <James.Bottomley@suse.de>
+> > Date:   Fri Apr 22 10:39:59 2011 -0500
 > > 
-> > What you describe here would be patch 2 without the ~__GFP_WAIT
-> > addition (so keeping only ~GFP_NOFAIL).
+> >     put stricter guards on queue dead checks
 > > 
-> 
-> It's out of context, my sentence was:
-> 
-> "With the previous changes in this patchset, specifically avoiding waking 
-> kswapd and doing compaction for the higher order allocs before falling 
-> back to the min order..."
-> 
-> meaning this patchset avoids waking kswapd and avoids doing compaction.
-> 
-
-Ok.
-
-> > Not clearing __GFP_WAIT when compaction is enabled is possible and
-> > shouldn't result in bad behavior (if compaction is not enabled with
-> > current SLUB it's hard to imagine how it could perform decently if
-> > there's fragmentation). You should try to benchmark to see if it's
-> > worth it on the large NUMA systems with heavy network traffic (for
-> > normal systems I doubt compaction is worth it but I'm not against
-> > trying to keep it enabled just in case).
+> >     commit 86cbfb5607d4b81b1a993ff689bbd2addd5d3a9b upstream.
 > > 
+> > in the 2.6.38 stable line.
 > 
-> The fragmentation isn't the only issue with the netperf TCP_RR benchmark, 
-> the problem is that the slub slowpath is being used >95% of the time on 
-> every allocation and free for the very large number of kmalloc-256 and 
-> kmalloc-2K caches. 
+> A 2.6.38.5 -> 2.6.38.6 regression is presumably also a
+> 2.6.38->2.6.39-rc regression.
+> 
+> > Here is the error message for master:
+> > 
+> > general protection fault: 0000 [#1] SMP
+> > last sysfs file:
+> > CPU 1
+> > Modules linked in:
+> > 
+> > Pid: 1926, comm: sync Not tainted 2.6.39-rc7+ #39 LENOVO 20077KG/20077KG
+> > RIP: 0010:[<ffffffff811231bf>]  [<ffffffff811231bf>]
+> > __mark_inode_dirty+0x14f/0x200
+> > RSP: 0018:ffff88007bebbe08  EFLAGS: 00010246
+> > RAX: ffff88007d031470 RBX: ffff88007d031408 RCX: ffff88007d031470
+> > RDX: 6b6b6b6b6b6b6b6b RSI: ffffffff81d33f2a RDI: ffffffff82002300
+> > RBP: ffff88007bebbe28 R08: 0000000000000000 R09: 0000000000000000
+> > R10: ffff88007bde3d68 R11: ffff88007c2fba6f R12: ffff88007c350300
+> > R13: ffff88007c350458 R14: 0000000000000000 R15: ffffffff81127e30
+> > FS:  00007f8306063700(0000) GS:ffff88007fd00000(0000) knlGS:0000000000000000
+> > CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+> > CR2: 0000000001f40600 CR3: 000000007b968000 CR4: 00000000000006a0
+> > DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> > DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> > Process sync (pid: 1926, threadinfo ffff88007beba000, task ffff88007c610820)
+> > Stack:
+> >  ffff88007d031550 ffffea0000082638 0000000000000000 0000000000000000
+> >  ffff88007bebbe58 ffffffff8112a5ff ffffffff81d3c8d8 ffff88007d223eb0
+> >  ffff880002541400 ffff88007d223eb0 ffff88007bebbe78 ffffffff8112a6b6
+> > Call Trace:
+> >  [<ffffffff8112a5ff>] __set_page_dirty+0x6f/0xc0
+> >  [<ffffffff8112a6b6>] mark_buffer_dirty+0x66/0xa0
+> >  [<ffffffff8117c3ce>] ext2_sync_super+0x8e/0xf0
+> >  [<ffffffff8117c495>] ext2_sync_fs+0x65/0x80
+> >  [<ffffffff81127dfe>] __sync_filesystem+0x5e/0x90
+> >  [<ffffffff81127e4f>] sync_one_sb+0x1f/0x30
+> >  [<ffffffff81100021>] iterate_supers+0x71/0xd0
+> >  [<ffffffff81127e8f>] sys_sync+0x2f/0x70
+> >  [<ffffffff819c69ab>] system_call_fastpath+0x16/0x1b
+> > Code: e8 67 be 89 00 48 8b 05 20 47 ff 00 48 8b 53 70 48 8b 4b 68 48 89
+> > 43 50 48 8d 43 68 48 89 51 08 48 89 0a 49 8b 94 24 58 01 00 00
+> >  89 42 08 48 89 53 68 4c 89 6b 70 49 89 84 24 58 01 00 00 fe
+> > RIP  [<ffffffff811231bf>] __mark_inode_dirty+0x14f/0x200
+> >  RSP <ffff88007bebbe08>
+> > ---[ end trace 04d7660d6043ca51 ]---
+> > 
+> > If I parsed the error location correctly, it is the:
+> > 
+> >   next->prev = prev; // mov %rcx,(%rdx)
+> > 
+> > statement from __list_del called via __list_del_entry, list_move from
+> > the line:
+> > 
+> >   list_move(&inode->i_wb_list, &bdi->wb.b_dirty);
+> > 
+> > in __mark_inode_dirty. rdx seems to be
+> > 
+> > Here are the steps for reproduction:
+> > 
+> > 1. mount an USB stick with ext2 FS (mount /dev/sdb1 /mnt)
+> > 2. open file on USB stick for writing (cat > /mnt/foo)
+> > 3. press some return
+> > 4. Remove USB stick
+> > 5. In another console run sync
+> > 
+> > I will append the full kernel log (screenlog.0) and the configuration
+> > (config-master) to this mail.
+> 
+> hm, maybe *bdi was freed at this time.  But if so I'd have expected
+> __mark_inode_dirty() to crash earlier than in the list_move().
 
-Ok, that makes sense as I'd full expect that benchmark to exhaust
-the per-cpu page (high order or otherwise) of slab objects routinely
-during default and I'd also expect the freeing on the other side to
-be releasing slabs frequently to the partial or empty lists.
+I was going to say I couldn't reproduce this, but I didn't pay close
+enough attention to the filesystem type: It's unreproducible with
+anything except ext2 (well, from having tried vfat and ext3 that is).  I
+think this means ext2 has a refcounting problem, and being more strict
+with the state model in SCSI means that we're now exposing it.  However,
+I'm not really a filesystem person, so I don't know where in ext2 to
+start looking.
 
-> Those caches are order 1 and 3, respectively, on my 
-> system by default, but the page allocator seldomly gets invoked for such a 
-> benchmark after the partial lists are populated: the overhead is from the 
-> per-node locking required in the slowpath to traverse the partial lists.  
-> See the data I presented two years ago: http://lkml.org/lkml/2009/3/30/15.
+James
 
-Ok, I can see how this patch would indeed make the situation worse. I
-vaguely recall that there were other patches that would increase the
-per-cpu lists of objects but have no recollection as to what happened
-them.
 
-Maybe Christoph remembers but one way or the other, it's out of scope
-for James' and Colin's bug.
-
--- 
-Mel Gorman
-SUSE Labs
