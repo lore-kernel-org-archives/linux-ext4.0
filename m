@@ -1,50 +1,49 @@
-From: Christoph Lameter <cl@linux.com>
-Subject: Re: [PATCH 3/4] mm: slub: Do not take expensive steps for SLUBs
- speculative high-order allocations
-Date: Tue, 17 May 2011 08:51:47 -0500 (CDT)
-Message-ID: <alpine.DEB.2.00.1105170847550.11187@router.home>
-References: <1305295404-12129-1-git-send-email-mgorman@suse.de> <1305295404-12129-4-git-send-email-mgorman@suse.de> <alpine.DEB.2.00.1105161411440.4353@chino.kir.corp.google.com> <20110517084227.GI5279@suse.de>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCHSET v3.1 0/7] data integrity: Stabilize pages during
+ writeback for various fses
+Date: Tue, 17 May 2011 10:01:50 -0400
+Message-ID: <20110517140150.GA7030@infradead.org>
+References: <20110509230318.19566.66202.stgit@elm3c44.beaverton.ibm.com>
+ <20110516190427.GN20579@tux1.beaverton.ibm.com>
+ <20110516202710.GA32630@infradead.org>
+ <20110516205535.GP20579@tux1.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: David Rientjes <rientjes@google.com>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>,
 	Andrew Morton <akpm@linux-foundation.org>,
-	James Bottomley <James.Bottomley@hansenpartnership.com>,
-	Colin King <colin.king@canonical.com>,
-	Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
-	Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
-	Pekka Enberg <penberg@kernel.org>,
-	Rik van Riel <riel@redhat.com>,
-	Johannes Weiner <hannes@cmpxchg.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-mm <linux-mm@kvack.org>,
+	Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+	Jens Axboe <axboe@kernel.dk>,
+	"Martin K. Petersen" <martin.petersen@oracle.com>,
+	Jeff Layton <jlayton@redhat.com>,
+	Dave Chinner <david@fromorbit.com>,
 	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Mel Gorman <mgorman@suse.de>
+	Dave Hansen <dave@linux.vnet.ibm.com>, linux-mm@kvack.org,
+	Chris Mason <chris.mason@oracle.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	linux-scsi <linux-scsi@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, Mingming Cao <mcao@us.ibm.com>
+To: "Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp107.prem.mail.ac4.yahoo.com ([76.13.13.46]:40887 "HELO
-	smtp107.prem.mail.ac4.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1754567Ab1EQNvw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 May 2011 09:51:52 -0400
-In-Reply-To: <20110517084227.GI5279@suse.de>
+Received: from bombadil.infradead.org ([18.85.46.34]:52576 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754184Ab1EQOCT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 17 May 2011 10:02:19 -0400
+Content-Disposition: inline
+In-Reply-To: <20110516205535.GP20579@tux1.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 17 May 2011, Mel Gorman wrote:
+On Mon, May 16, 2011 at 01:55:35PM -0700, Darrick J. Wong wrote:
+> As for Al Viro, he's still listed as the VFS maintainer; isn't he resting?
+> I guess he did nominate you for the holding off of morons (like me). :)
 
-> entirely. Christoph wants to maintain historic behaviour of SLUB to
-> maximise the number of high-order pages it uses and at the end of the
-> day, which option performs better depends entirely on the workload
-> and machine configuration.
-
-That is not what I meant. I would like more higher order allocations to
-succeed. That does not mean that slubs allocation methods and flags passed
-have to stay the same. You can change the slub behavior if it helps.
-
-I am just suspicious of compaction. If these mods are needed to reduce the
-amount of higher order pages then compaction does not have the
-beneficial effect that it should have. It does not actually
-increase the available higher order pages. Fix that first.
-
-
+Al is back in action.  Anyway, the point stands, this is VFS material
+and you should formally submit the bits to the maintainer.  Note that
+there is very little fs specific material left, with Hirofumi beeing
+at least not overly exited by fat patches for now, and the only real
+ext4 patch going away with Jan's series to make it use the generic
+page_mkwrite code.
 
