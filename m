@@ -1,126 +1,82 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 1/3 v2] e2image: Add support for qcow2 format
-Date: Tue, 17 May 2011 13:08:28 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1105171254420.3449@dhcp-27-109.brq.redhat.com>
-References: <1305560604-31877-1-git-send-email-lczerner@redhat.com> <1305560604-31877-2-git-send-email-lczerner@redhat.com> <0FCF10DD-DE65-46A2-913B-531BC397DDAC@dilger.ca>
+Subject: Re: [PATCH 2/3 v2] e2image: Support for conversion QCOW2 image into
+ raw
+Date: Tue, 17 May 2011 13:10:54 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1105171308380.3449@dhcp-27-109.brq.redhat.com>
+References: <1305560604-31877-1-git-send-email-lczerner@redhat.com> <1305560604-31877-3-git-send-email-lczerner@redhat.com> <B2AF03AA-06B3-49AA-9CB9-022D2B32A61F@dilger.ca>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
 	tytso@mit.edu, sandeen@redhat.com
 To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54118 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:58796 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752999Ab1EQLIe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 May 2011 07:08:34 -0400
-In-Reply-To: <0FCF10DD-DE65-46A2-913B-531BC397DDAC@dilger.ca>
+	id S1752907Ab1EQLLA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 May 2011 07:11:00 -0400
+In-Reply-To: <B2AF03AA-06B3-49AA-9CB9-022D2B32A61F@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Andreas thanks for the review and useful comments.
-
 On Mon, 16 May 2011, Andreas Dilger wrote:
 
+> On May 16, 2011, at 09:43, Lukas Czerner wrote:
 > > diff --git a/lib/ext2fs/qcow2.c b/lib/ext2fs/qcow2.c
-> > new file mode 100644
-> > index 0000000..17eab38
-> > --- /dev/null
+> > index 17eab38..9ac050b 100644
+> > --- a/lib/ext2fs/qcow2.c
 > > +++ b/lib/ext2fs/qcow2.c
-> > @@ -0,0 +1,227 @@
-> > +/*
-> > + * qcow2.c --- Set of qcow2 related functions
+> > @@ -209,9 +209,10 @@ int qcow2_write_raw_image(int qcow2_fd, int raw_fd,
+> > 	}
+> > 
+> > 	/* Resize the output image to the filesystem size */
+> > -	if (lseek(raw_fd, img.image_size, SEEK_SET) < 0)
+> > +	if (lseek(raw_fd, img.image_size - 1, SEEK_SET) < 0)
+> > 		return errno;
+> > 
+> > +	memset(copy_buf, 0, 1);
+> > 	size = write(raw_fd, copy_buf, 1);
+> > 	if (size != 1)
+> > 		return errno;
 > 
-> It would be nice to have a better comment here.  I can see from the filename that this is related to "qcow2".  How about something like:
-> 
-> * Functions to generate qcow2 formatted disk images.  This format is used
-> * originally by QEMU for virtual machines, and stores the filesystem data
-> * on disk in a packed format to avoid creating sparse image files that need
-> * lots of seeking to read and write.
-> *
-> * The qcow2 format supports zlib compression, but that is not yet implemented.
-> *
-> * It is possible to directly mount a qcow2 image using qemu-nbd:
-> *
-> * [root]# modprobe nbd max_part=63
-> * [root]# qemu-nbd -c /dev/nbd0 image.img
-> * [root]# mount /dev/nbd0p1 /mnt/qemu
-> *
-> * Format details at http://people.gnome.org/~markmc/qcow-image-format.html
+> This should probably be part of the first patch.  Probably memset() is overkill here, just "copy_buf[0] = 0;" is enough.
 
-Very good, I will use it.
-
+Right, thanks.
 > 
-> > +/* Functions for converting qcow2 image into raw image */
-> > +
-> > +struct ext2_qcow2_hdr *qcow2_read_header(int fd, char *fname)
+> > diff --git a/misc/e2image.c b/misc/e2image.c
+> > index 6dc78d3..d749981 100644
+> > --- a/misc/e2image.c
+> > +++ b/misc/e2image.c
+> > @@ -1229,16 +1229,33 @@ static void install_image(char *device, char *image_fn, int type)
+> > 	exit (0);
+> > }
+> > 
+> > +static struct ext2_qcow2_hdr *check_qcow2_image(int *fd, char *name)
 > > +{
-> > +	void *buffer = NULL;
-> > +	struct ext2_qcow2_hdr *hdr = NULL;
-> > +	size_t size;
 > > +
-> > +	buffer = malloc(sizeof(struct ext2_qcow2_hdr));
-> 
-> Because this will be linked into libext2fs, all of these functions should be converted to use the libext2 helper functions for portability reasons.
-> 
-> s/malloc(/,ext2fs_get_mem(/g
-> 
-> though in some places ext2fs_get_array() is preferable, since it does overflow checking.
-
-I will change malloc to ext2fs_get_mem, but leave calloc as it is since
-it will zero the memory as well unliki ext2fs_get_array().
-
-> 
-> > +	if (!buffer)
+> > +#ifdef HAVE_OPEN64
+> > +	*fd = open64(name, O_RDONLY, 0600);
+> > +#else
+> > +	*fd = open(name, O_RDONLY, 0600);
+> > +#endif
+> > +	if (*fd < 0)
 > > +		return NULL;
-> > +	memset(buffer, 0, sizeof(struct ext2_qcow2_hdr));
 > > +
-> > +	if (lseek(fd, 0, SEEK_SET) < 0)
-> > +		return NULL;
+> > +	return qcow2_read_header(*fd, name);
 > 
-> This should instead use the built-in llseek:
+> It probably makes sense to check the header here that it is not using AES encryption, and return an error (NULL?) if it is.  I don't think there is a flag in the header if compression is used, since that is only marked in each block.
 > 
-> s/lseek(/ext2fs_llseek(/g
+> > +	if (flags & IS_QCOW2_FLAG) {
+> > +		ret = qcow2_write_raw_image(qcow2_fd, fd, header);
 > 
-> > +	size = read(fd, buffer, sizeof(struct ext2_qcow2_hdr));
-> 
-> This should use io_channel_read_blk64()
+> This also reminds me that qcow2_write_raw_image() should check the block numbers read from disk whether they point to zlib-compressed blocks, and return an error if they do, instead of just writing out the compressed data to disk.  Otherwise, some users might accidentally try to "restore" the qcow2 image created by some other tool and corrupt their filesystem.
 
-I do not think so, because there is no "real filesystem" on the qcow2
-image, so there is no point of generating all the structures including
-io_channel. I think that simple read is more than enough,
-isn't it ? I do not see the benefit of it and also it reads block
-aligned data only, which header is not.
- 
-> > +static void flush_l2_cache(struct ext2_qcow2_image *image)
-> > +{
-> > +	blk64_t offset, seek = 0;
-> > +	struct ext2_qcow2_l2_cache *cache = image->l2_cache;
-> > +	struct ext2_qcow2_l2_table *table = cache->used_head;
-> > +	int fd = image->fd;
-> > +
-> > +	/* Store current position */
-> > +	if ((offset = lseek(fd, 0, SEEK_CUR)) < 0) {
-> > +		strerror(errno);
-> > +		exit(1);
+I'll check for the encryption and compression in qcow2_write_raw_image()
+so it can return an corresponding error code (QCOW_COMPRESSED,
+QCOW_ENCRYPTED).
+
 > 
-> Hmm, seems like a bit harsh for error handling?  I guess there isn't much to be done if the seek fails, and that is pretty unlikely.  However, exit(1) also makes it harder to ever use this code from within a program.
-> 
-> Also, the use of strerror(errno) in many places is just returning a pointer to a formatted string to the caller, and not actually printing anything that the user can see.  You were probably thinking of "perror()", but it would be better to print a more meaningful error than what perror will provide
-
-There is not anything I can do if lseek fails. Note that this kind of error
-handling is used in various places in e2image already. Also it is not a
-library so I do not see why it should be used by other programs.
-
-However you're right about strerror(), I really meant perror() :) Thanks.
-But given that how unlikely will this happen on lseek() I'll just create new
-helper which will print perror() and exit(1). I think this is more than
-enough for this case, no need to write special err message for each
-lseek in the e2image (there are a lot of them).
-
 > Cheers, Andreas
-> 
 
-I'll resend the updated version shortly.
+Once again thanks for the review!
 
-Thanks!
 -Lukas
