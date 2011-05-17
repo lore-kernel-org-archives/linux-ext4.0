@@ -1,50 +1,121 @@
-From: David Rientjes <rientjes@google.com>
-Subject: Re: [PATCH 3/4] mm: slub: Do not take expensive steps for SLUBs
- speculative high-order allocations
-Date: Tue, 17 May 2011 12:35:32 -0700 (PDT)
-Message-ID: <alpine.DEB.2.00.1105171233150.5438@chino.kir.corp.google.com>
-References: <1305295404-12129-1-git-send-email-mgorman@suse.de> <1305295404-12129-4-git-send-email-mgorman@suse.de> <alpine.DEB.2.00.1105161411440.4353@chino.kir.corp.google.com> <20110517084227.GI5279@suse.de> <alpine.DEB.2.00.1105170847550.11187@router.home>
- <20110517162256.GO5279@suse.de> <alpine.DEB.2.00.1105171251450.15604@router.home>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Mel Gorman <mgorman@suse.de>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	James Bottomley <James.Bottomley@hansenpartnership.com>,
-	Colin King <colin.king@canonical.com>,
-	Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
-	Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
-	Pekka Enberg <penberg@kernel.org>,
-	Rik van Riel <riel@redhat.com>,
-	Johannes Weiner <hannes@cmpxchg.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-mm <linux-mm@kvack.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Christoph Lameter <cl@linux.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <alpine.DEB.2.00.1105171251450.15604@router.home>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Vivek Haldar <haldar@google.com>
+Subject: [PATCH] ext4: count hits/misses of extent cache and expose in sysfs.
+Date: Tue, 17 May 2011 15:26:53 -0700
+Message-ID: <1305671213-7624-1-git-send-email-haldar@google.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Vivek Haldar <haldar@google.com>
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp-out.google.com ([216.239.44.51]:11000 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756632Ab1EQW1E (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 17 May 2011 18:27:04 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 17 May 2011, Christoph Lameter wrote:
+The number of hits and misses for each filesystem is exposed in
+/sys/fs/ext4/<dev>/extent_cache_{hits, misses}.
 
-> > In this particular patch, the success rate for high order allocations
-> > would likely decrease in low memory conditions albeit the latency when
-> > calling the page allocator will be lower and the disruption to the
-> > system will be less (no copying or reclaim of pages). My expectation
-> > would be that it's cheaper for SLUB to fall back than compact memory
-> > or reclaim pages even if this means a slab page is smaller until more
-> > memory is free. However, if the "goodness" criteria is high order
-> > allocation success rate, the patch shouldn't be merged.
-> 
-> The criteria is certainly overall system performance and not a high order
-> allocation rate.
-> 
+Tested: fsstress, manual checks.
+Signed-off-by: Vivek Haldar <haldar@google.com>
+---
+ fs/ext4/ext4.h    |    3 +++
+ fs/ext4/extents.c |    7 ++++++-
+ fs/ext4/super.c   |   16 ++++++++++++++++
+ 3 files changed, 25 insertions(+), 1 deletions(-)
 
-SLUB definitely depends on these higher order allocations being successful 
-for performance, dropping back to the min order is a last resort as 
-opposed to failing the kmalloc().  If it's the last resort, then it makes 
-sense that we'd want to try both compaction and reclaim while we're 
-already in the page allocator as we go down the slub slowpath.  Why not 
-try just a little harder (compaction and/or reclaim) to alloc the cache's 
-preferred order?
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 47986ae..9625b19 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1144,6 +1144,9 @@ struct ext4_sb_info {
+ 	unsigned long s_ext_blocks;
+ 	unsigned long s_ext_extents;
+ #endif
++	/* ext4 extent cache stats */
++	unsigned long extent_cache_hits;
++	unsigned long extent_cache_misses;
+ 
+ 	/* for buddy allocator */
+ 	struct ext4_group_info ***s_group_info;
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index e363f21..1ea440a 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2035,6 +2035,7 @@ ext4_ext_in_cache(struct inode *inode, ext4_lblk_t block,
+ 			struct ext4_extent *ex)
+ {
+ 	struct ext4_ext_cache *cex;
++	struct ext4_sb_info *sbi;
+ 	int ret = 0;
+ 
+ 	/*
+@@ -2042,6 +2043,7 @@ ext4_ext_in_cache(struct inode *inode, ext4_lblk_t block,
+ 	 */
+ 	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+ 	cex = &EXT4_I(inode)->i_cached_extent;
++	sbi = EXT4_SB(inode->i_sb);
+ 
+ 	/* has cache valid data? */
+ 	if (cex->ec_len == 0)
+@@ -2057,6 +2059,10 @@ ext4_ext_in_cache(struct inode *inode, ext4_lblk_t block,
+ 		ret = 1;
+ 	}
+ errout:
++	if (!ret)
++		sbi->extent_cache_misses++;
++	else
++		sbi->extent_cache_hits++;
+ 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+ 	return ret;
+ }
+@@ -3900,4 +3906,3 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 
+ 	return error;
+ }
+-
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index fc827bb..20cc98f 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2439,6 +2439,18 @@ static ssize_t lifetime_write_kbytes_show(struct ext4_attr *a,
+ 			  EXT4_SB(sb)->s_sectors_written_start) >> 1)));
+ }
+ 
++static ssize_t extent_cache_hits_show(struct ext4_attr *a,
++				      struct ext4_sb_info *sbi, char *buf)
++{
++	return snprintf(buf, PAGE_SIZE, "%lu\n", sbi->extent_cache_hits);
++}
++
++static ssize_t extent_cache_misses_show(struct ext4_attr *a,
++					struct ext4_sb_info *sbi, char *buf)
++{
++	return snprintf(buf, PAGE_SIZE, "%lu\n", sbi->extent_cache_misses);
++}
++
+ static ssize_t inode_readahead_blks_store(struct ext4_attr *a,
+ 					  struct ext4_sb_info *sbi,
+ 					  const char *buf, size_t count)
+@@ -2496,6 +2508,8 @@ static struct ext4_attr ext4_attr_##name = __ATTR(name, mode, show, store)
+ EXT4_RO_ATTR(delayed_allocation_blocks);
+ EXT4_RO_ATTR(session_write_kbytes);
+ EXT4_RO_ATTR(lifetime_write_kbytes);
++EXT4_RO_ATTR(extent_cache_hits);
++EXT4_RO_ATTR(extent_cache_misses);
+ EXT4_ATTR_OFFSET(inode_readahead_blks, 0644, sbi_ui_show,
+ 		 inode_readahead_blks_store, s_inode_readahead_blks);
+ EXT4_RW_ATTR_SBI_UI(inode_goal, s_inode_goal);
+@@ -2511,6 +2525,8 @@ static struct attribute *ext4_attrs[] = {
+ 	ATTR_LIST(delayed_allocation_blocks),
+ 	ATTR_LIST(session_write_kbytes),
+ 	ATTR_LIST(lifetime_write_kbytes),
++	ATTR_LIST(extent_cache_hits),
++	ATTR_LIST(extent_cache_misses),
+ 	ATTR_LIST(inode_readahead_blks),
+ 	ATTR_LIST(inode_goal),
+ 	ATTR_LIST(mb_stats),
+-- 
+1.7.3.1
+
