@@ -1,51 +1,38 @@
-From: Wu Fengguang <fengguang.wu@intel.com>
-Subject: Re: [PATCH 1/2] mm: vmscan: Correct use of pgdat_balanced in
- sleeping_prematurely
-Date: Tue, 17 May 2011 13:26:21 +0800
-Message-ID: <20110517052621.GA24069@localhost>
-References: <1305558417-24354-1-git-send-email-mgorman@suse.de>
- <1305558417-24354-2-git-send-email-mgorman@suse.de>
- <20110516152608.GT16531@cmpxchg.org>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: Use of consistent types in e2fsprogs
+Date: Tue, 17 May 2011 08:32:49 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1105170830040.3449@dhcp-27-109.brq.redhat.com>
+References: <DC591D7D-86E5-4FA6-BC8F-859F1965C51D@dilger.ca> <20110517011648.GC4953@thunk.org> <DAA9FED5-9ACE-40A0-8AF4-70B4C7648976@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Mel Gorman <mgorman@suse.de>, Andrew Morton <akpm@linux-foundation.org>,
-	James Bottomley <James.Bottomley@HansenPartnership.com>,
-	Colin King <colin.king@canonical.com>,
-	Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
-	Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
-	Christoph Lameter <cl@linux.com>, Pekka Enberg <penberg@kernel.org>,
-	Rik van Riel <riel@redhat.com>, Minchan Kim <minchan.kim@gmail.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-mm <linux-mm@kvack.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>, stable <stable@kernel.org>
-To: Johannes Weiner <hannes@cmpxchg.org>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20110516152608.GT16531@cmpxchg.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: "Ted Ts'o" <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Lukas Czerner <lczerner@redhat.com>
+To: Andreas Dilger <adilger.kernel@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:60013 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752621Ab1EQGcy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 May 2011 02:32:54 -0400
+In-Reply-To: <DAA9FED5-9ACE-40A0-8AF4-70B4C7648976@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 16, 2011 at 05:26:08PM +0200, Johannes Weiner wrote:
-> On Mon, May 16, 2011 at 04:06:56PM +0100, Mel Gorman wrote:
-> > From: Johannes Weiner <hannes@cmpxchg.org>
-> > 
-> > Johannes Weiner poined out that the logic in commit [1741c877: mm:
-> > kswapd: keep kswapd awake for high-order allocations until a percentage
-> > of the node is balanced] is backwards. Instead of allowing kswapd to go
-> > to sleep when balancing for high order allocations, it keeps it kswapd
-> > running uselessly.
-> > 
-> > Signed-off-by: Mel Gorman <mgorman@suse.de>
-> > Reviewed-by: Rik van Riel <riel@redhat.com>
+> I'm not suggesting a global search & replace of "long long" or anything.
+> However, the current mish-mash of int vs. long vs. dgrp_t for group numbers,
+> __u64 vs blk64_t, etc doesn't make it clear when something is intentionally
+> that type, or just happens to be working for now.  Having separate types
+> for groups vs. physical blocks vs. logical blocks as we do in the kernel
+> will improve the quality of the code itself, I think.
 > 
-> Signed-off-by: Johannes Weiner <hannes@cmpxchg.org>
+> Cheers, Andreas
+> 
 
-Reviewed-by: Wu Fengguang <fengguang.wu@intel.com>
+I have to agree with Andreas here, types in e2fsprogs are not consistent
+and I have encounter this several times, trying to decide which one is
+the best, looking for examples, and finding different uses in different
+parts of e2fsprogs tools. It is a mess. I think it is worth the core crunch
+I someone is willing to do the job.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Thanks!
+-Lukas
