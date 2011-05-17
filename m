@@ -1,50 +1,58 @@
-From: Christoph Lameter <cl@linux.com>
-Subject: Re: [PATCH 3/4] mm: slub: Do not take expensive steps for SLUBs
- speculative high-order allocations
-Date: Tue, 17 May 2011 12:52:14 -0500 (CDT)
-Message-ID: <alpine.DEB.2.00.1105171251450.15604@router.home>
-References: <1305295404-12129-1-git-send-email-mgorman@suse.de> <1305295404-12129-4-git-send-email-mgorman@suse.de> <alpine.DEB.2.00.1105161411440.4353@chino.kir.corp.google.com> <20110517084227.GI5279@suse.de> <alpine.DEB.2.00.1105170847550.11187@router.home>
- <20110517162256.GO5279@suse.de>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: JBD commmit : Get list of all 'to be written' buffers in
+ advance
+Date: Tue, 17 May 2011 20:09:30 +0200
+Message-ID: <20110517180930.GC30519@quack.suse.cz>
+References: <4DCBED1D.2010109@gmail.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: David Rientjes <rientjes@google.com>,
-  Andrew Morton <akpm@linux-foundation.org>,
-  James Bottomley <James.Bottomley@hansenpartnership.com>,
-  Colin King <colin.king@canonical.com>,
-  Raghavendra D Prabhu <raghu.prabhu13@gmail.com>, Jan Kara <jack@suse.cz>,
-  Chris Mason <chris.mason@oracle.com>, Pekka Enberg <penberg@kernel.org>,
-  Rik van Riel <riel@redhat.com>, Johannes Weiner <hannes@cmpxchg.org>,
-  linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-  linux-mm <linux-mm@kvack.org>, linux-kernel <linux-kernel@vger.kernel.org>,
-  linux-ext4 <linux-ext4@vger.kernel.org>
-To: Mel Gorman <mgorman@suse.de>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20110517162256.GO5279@suse.de>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Niraj Kulkarni <kulkarniniraj14@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor.suse.de ([195.135.220.2]:48984 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755908Ab1EQSJv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 May 2011 14:09:51 -0400
+Content-Disposition: inline
+In-Reply-To: <4DCBED1D.2010109@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 17 May 2011, Mel Gorman wrote:
+  Hello,
 
-> > That is not what I meant. I would like more higher order allocations to
-> > succeed. That does not mean that slubs allocation methods and flags passed
-> > have to stay the same. You can change the slub behavior if it helps.
-> >
->
-> In this particular patch, the success rate for high order allocations
-> would likely decrease in low memory conditions albeit the latency when
-> calling the page allocator will be lower and the disruption to the
-> system will be less (no copying or reclaim of pages). My expectation
-> would be that it's cheaper for SLUB to fall back than compact memory
-> or reclaim pages even if this means a slab page is smaller until more
-> memory is free. However, if the "goodness" criteria is high order
-> allocation success rate, the patch shouldn't be merged.
+On Thu 12-05-11 19:52:21, Niraj Kulkarni wrote:
+>          I am trying to implement a concept called Transactional
+> Flash (http://www.usenix.org/event/osdi08/tech/full_papers/prabhakaran/prabhakaran_html/)
+> 
+>          in which all writes are flushed to disk (in this case
+> Flash) as a circular linked list of pages. No journaling mechanisms
+> are used.
+>           For that I am trying to get list of all buffers to be
+> written (metadata or data) before actually writing them. I thought
+> of 2 approaches :
+> 
+> 1. Get conservative list of all buffers before flushing any of them
+> (before commit phase 2) in journal_commit_transaction function.
+>      Problem : Metadata writes use temporary buffers which are
+> allocated just before write.
+  Well, if I understand the transactional flash concept right, what you
+should do is to replace code committing metadata to the journal by
+something which writes metadata directly to final location. That should be
+relatively easy modification of loops in journal_commit_transaction(). BTW,
+you might want to use ext4/jbd2 instead of ext3/jbd as a base for your
+experiments since ext3 is basically deprecated.
 
-The criteria is certainly overall system performance and not a high order
-allocation rate.
+> 2. Instead of submitting buffers straightaway, collect all of them (
+> data + metadata ) and flush them in end.
+>      Problem :  i.   Possibility of blocking after data buffers are
+> collected but before metadata buffer collection.
+>                            Since data buffers are locked, this may
+> lead to deadlock. (I am not sure if it is spinlock)
+> 
+>                       ii.   Not able to differentiate between
+> metadata buffers and Descriptor buffers.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
