@@ -1,76 +1,88 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Use of consistent types in e2fsprogs
-Date: Mon, 16 May 2011 21:16:48 -0400
-Message-ID: <20110517011648.GC4953@thunk.org>
-References: <DC591D7D-86E5-4FA6-BC8F-859F1965C51D@dilger.ca>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [PATCHSET v3.1 0/7] data integrity: Stabilize pages during
+	writeback for various fses
+Date: Mon, 16 May 2011 18:23:07 -0700
+Message-ID: <20110517012307.GQ20579@tux1.beaverton.ibm.com>
+References: <87hb924s2x.fsf@devron.myhome.or.jp> <20110510132953.GE4402@quack.suse.cz> <878vue4qjb.fsf@devron.myhome.or.jp> <87zkmu3b2i.fsf@devron.myhome.or.jp> <20110510145421.GJ4402@quack.suse.cz> <87zkmupmaq.fsf@devron.myhome.or.jp> <20110510162237.GM4402@quack.suse.cz> <87vcxipljj.fsf@devron.myhome.or.jp> <20110516184736.GL20579@tux1.beaverton.ibm.com> <87oc3230iu.fsf@devron.myhome.or.jp>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Lukas Czerner <lczerner@redhat.com>
-To: Andreas Dilger <adilger.kernel@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:54124 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751535Ab1EQBQu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 May 2011 21:16:50 -0400
+Cc: Jan Kara <jack@suse.cz>, Theodore Tso <tytso@mit.edu>,
+        Alexander Viro <viro@zeniv.linux.org.uk>, Jens Axboe <axboe@kernel.dk>,
+        "Martin K. Petersen" <martin.petersen@oracle.com>,
+        Jeff Layton <jlayton@redhat.com>, Dave Chinner <david@fromorbit.com>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        Dave Hansen <dave@linux.vnet.ibm.com>,
+        Christoph Hellwig <hch@infradead.org>, linux-mm@kvack.org,
+        Chris Mason <chris.mason@oracle.com>, Joel Becker <jlbec@evilplan.org>,
+        linux-scsi <linux-scsi@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4@vger.kernel.org, Mingming Cao <mcao@us.ibm.com>
+To: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <DC591D7D-86E5-4FA6-BC8F-859F1965C51D@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <87oc3230iu.fsf@devron.myhome.or.jp>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 16, 2011 at 03:55:54PM -0600, Andreas Dilger wrote:
+On Tue, May 17, 2011 at 04:31:37AM +0900, OGAWA Hirofumi wrote:
+> "Darrick J. Wong" <djwong@us.ibm.com> writes:
 > 
-> There are uses of blk64_t, ext2_off64_t, long long, (unsigned) long,
-> etc. in the libext2fs code.  The currently defined types are:
+> >> OK. E.g. usual workload on desktop, but FS like ext2/fat.
+> >
+> > In the frequent rewrite case, here's what you get:
+> >
+> > Regular disk: (possibly garbage) write, followed by a second write to make the
+> > disk reflect memory contents.
+> >
+> > RAID w/ shadow pages: two writes, both consistent.  Higher memory consumption.
+> >
+> > T10 DIF disk: disk error any time the CPU modifies a page that the disk
+> > controller is DMA'ing out of memory.  I suppose one could simply retry the
+> > operation if the page is dirty, but supposing memory writes are happening fast
+> > enough that the retries also produce disk errors, _nothing_ ever gets written.
+> >
+> > With the new stable-page-writes patchset, the garbage write/disk error symptoms
+> > go away since the processes block instead of creating this window where it's
+> > not clear whether the disk's copy of the data is consistent.  I could turn the
+> > wait_on_page_writeback calls into some sort of page migration if the
+> > performance turns out to be terrible, though I'm still working on quantifying
+> > the impact.  Some people pointed out that sqlite tends to write the same blocks
+> > frequently, though I wonder if sqlite actually tries to write memory pages
+> > while syncing them?
+> >
+> > One use case where I could see a serious performance hit happening is the case
+> > where some app writes a bunch of memory pages, calls sync to force the dirty
+> > pages to disk, and /must/ resume writing those memory pages before the sync
+> > completes.  The page migration would of course help there, provided a memory
+> > page can be found in less time than an I/O operation.
+> >
+> > Someone commented on the LWN article about this topic, claiming that he had a
+> > program that couldn't afford to block on writes to mlock()'d memory.  I'm not
+> > sure how to fix that program, because if memory writes never coordinate with
+> > disk writes and the other threads are always writing memory, I wonder how the
+> > copy on disk isn't always indeterminate.
 > 
-> typedef __u32           blk_t;
-> typedef __u64           blk64_t;
-> typedef __u32           dgrp_t;
-> typedef __u32           ext2_off_t;
-> typedef __u64           ext2_off64_t;
-> typedef __s64           e2_blkcnt_t;
-> 
-> It would be nice to get some consistent naming for these types, like
-> ext2_blk_t, ext2_blk64_t (or possibly ext2_fsblk_t to match the
-> kernel), ext2_group_t, and ext2_blkcnt_t (this appears to be
-> negative in some places, so isn't easily replaced with ext2_blk64_t.
+> I'm not thinking data page is special operation for doing this (at least
+> logically). In other word, if you are talking about only data page, you
+> shouldn't send patches for metadata with it.
 
-You're raising two issues here.  One is the fact that the names of the
-types aren't completely consistent.  Yes, that's true, but I'm not
-entirely convinced the code churn in renaming all of the types is worth
-the pain.   That to me is purely aesthetics.
+Patch 7, which is the only patch that touches code under fs/fat/, only fixes
+the case where the filesystem tries to modify its own metadata while writing
+out the same metadata.
 
-Note, by the way, that e2_blkcnt_t is quite different from blk64_t;
-the first is used for logical block numbers (and we use negative
-numbers to signal indirect blocks), where as blk64_t is used for
-physical block numbers.  We have two different types in the kernel for
-these two concept, as well.
+Patches 2 and 3, which affect only files mm/ and fs/, prevent data pages from
+being modified while the same data pages are being written out.  It is not
+necessary to modify any fs/fat/ code to fix the data page case, fortunately.
 
-> For example, io_channel_read_blk64() uses "long long", while both
-> ext2fs_{read,write}_inode_full() _incorrectly_ use "unsigned long".
-> I guess this wasn't noticed because > 16TB isn't directly usable on
-> 32-bit Linux due to the block device limits, but it doesn't seem
-> right to leave it as-is.
+That said, the intent of the patch set is to prevent writes to any memory page,
+regardless of type (data or metadata), while the same page is being written out.
 
-Well, that's not an example, a big (at least in the case of
-ext2fs_{read,write}_inode_full().  They should be using blk64_t
-instead.
+--D
 
-The reason why the io_* functions use long long was because
-conceptually they're a HAL that doesn't was considered logically
-separate from the ext2fs library.  So they don't #include ext2_fs.h,
-which is why they use unsigned long long instead of blk64_t.
-
-> I understand it would be a lot of code churn, but I think it would
-> be valuable to fix up the types used in e2fsprogs in order to
-> clarify usage and remove errors, just like we did with the kernel
-> code.  Is there any interest in accepting patches like this
-> upstream?  Both ext2fs_{read,write}_inode_full() need to be fixed,
-> and I expect even more places will need fixing.
-
-I'm not convinced that a mass renaming of all the types is really
-necessary to find these sorts of bugs.  A human has to look at the
-types and decide whether they are correct; renaming the types via a
-global search and replace isn't going to help find them....
-
-       	      	  	  	      	 - Ted
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
