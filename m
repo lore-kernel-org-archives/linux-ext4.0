@@ -1,76 +1,281 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: xfstests: device busy when umount
-Date: Wed, 18 May 2011 16:31:53 +1000
-Message-ID: <20110518063153.GZ19446@dastard>
-References: <BANLkTimQW+kyqjmzpAHH_W5x2v1EWW2AZA@mail.gmail.com>
- <4DD286E5.8090105@redhat.com>
- <BANLkTi=pZS6sTjS61UmpbOsj+vF+ithVvw@mail.gmail.com>
+From: Manish Katiyar <mkatiyar@gmail.com>
+Subject: Re: [PATCH 1/5] jbd2: Pass extra bool parameter in journal routines
+ to specify if its ok to fail the journal transaction allocation.
+Date: Tue, 17 May 2011 23:38:05 -0700
+Message-ID: <BANLkTinsJeiprc64Q8BE5498osJmm6npsg@mail.gmail.com>
+References: <BANLkTinNUxt_Bj0JErLVDbh=73JHzzS9=w@mail.gmail.com>
+ <20110511155447.GH5057@quack.suse.cz> <BANLkTikP3axXkZ=v8EbpbzyoeSeARZC_Ew@mail.gmail.com>
+ <20110516155138.GI5344@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>
-To: Amir Goldstein <amir73il@gmail.com>
+Cc: ext4 <linux-ext4@vger.kernel.org>, "Theodore Ts'o" <tytso@mit.edu>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:29005 "EHLO
-	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753733Ab1ERGc0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 May 2011 02:32:26 -0400
-Content-Disposition: inline
-In-Reply-To: <BANLkTi=pZS6sTjS61UmpbOsj+vF+ithVvw@mail.gmail.com>
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:62241 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753982Ab1ERGi0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 May 2011 02:38:26 -0400
+Received: by qwk3 with SMTP id 3so632705qwk.19
+        for <linux-ext4@vger.kernel.org>; Tue, 17 May 2011 23:38:25 -0700 (PDT)
+In-Reply-To: <20110516155138.GI5344@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 17, 2011 at 06:01:14PM +0300, Amir Goldstein wrote:
-> On Tue, May 17, 2011 at 5:32 PM, Eric Sandeen <sandeen@redhat.com> wr=
-ote:
-> > On 5/17/11 4:03 AM, Yongqiang Yang wrote:
-> >> Hi,
-> >>
-> >> I noticed that all tests which contain 'device busy' errors have
-> >> falloc operations. =A0Does the error have something to do with fal=
-loc?
+On Mon, May 16, 2011 at 8:51 AM, Jan Kara <jack@suse.cz> wrote:
+> =A0Hello,
+>
+> On Thu 12-05-11 23:37:05, Manish Katiyar wrote:
+>> On Wed, May 11, 2011 at 8:54 AM, Jan Kara <jack@suse.cz> wrote:
+>> > =A0Hi,
+>> >
+>> > =A0sorry I got to your patches with a delay. One general note - pl=
+ease do
+>> > not attach patches. It is enough to have them in the email...
+>> >
+>> > On Sun 24-04-11 17:10:41, Manish Katiyar wrote:
+>> >> Pass extra bool parameter in journal routines to specify if its o=
+k to
+>> >> fail the journal transaction allocation. If 'true' is passed
+>> >> transaction allocation is done through GFP_KERNEL =A0and ENOMEM i=
+s
+>> >> returned else GFP_NOFS is used.
+>> > =A0Please, do not mix error handling with gfp masks. Instead just =
+rename
+>> > jbd2__journal_start() to jbd2_journal_start() and change gfp_mask =
+parameter
+>> > to "bool errok".
+>>
+>> ok.
+>>
+>> > Use GFP_NOFS gfp mask for start_this_handle().
+>> I think I didn't completely understand this line. You meant passing
+>> GFP_KERNEL or GFP_NOFS based on errok right ?
+> =A0No, I meant passing GFP_NOFS always. Currently, GFP_NOFS is used i=
+n all
+> the cases (noone uses GFP_KERNEL variant) and GFP_KERNEL can really b=
+e used
+> only when we do not hold other filesystem locks (as GFP_KERNEL alloca=
+tion
+> can recurse back into filesystem to reclaim memory). So using GFP_KER=
+NEL
+> would need more auditting and is a separate issue anyway.
 
-<shrug>
+Hi Jan,
 
-Perhaps a bit more detail about what you are testing, how you've set
-up xfstests, etc, and some analysis of the problem is in order first?
+How about this ? As suggested I have removed special handlers for
+ocfs2, always pass false as default for allocation and have removed
+jbd2__journal_start and collapsed it in jbd2_journal_start.
 
-> > cc'ing xfs list since xfs devs maintain xfstests.
-> >
-> > What tests have "device busy" errors? =A0What do the usual investig=
-ative
-> > steps such as "lsof" and "fuser" tell you when this happens?
->=20
-> I tried running lsof | grep $TEST_DIR before umount
-> and I tried sleep 1 before umount and it didn't yield anything.
 
-Which usually indicates that you've got some kind of reference
-counting problem preventing the filesystem from being unmounted.
+Pass extra bool parameter in journal routines to specify if its ok to
+fail the journal transaction allocation.  Update ocfs2 and ext4 routine=
+s to
+pass false for the updated journal interface.
 
-> > Are there loop devices that didn't get cleaned up, or processes tha=
-t
-> > have not terminated?
-> >
-> > What tests have these problems?
->=20
-> for me 124 always fails to umount, and 198 and 213 sometimes fails to=
- umount.
+Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+---
+ fs/ext4/ext4_jbd2.h   |    2 +-
+ fs/ext4/super.c       |    3 ++-
+ fs/jbd2/transaction.c |   24 +++++-------------------
+ fs/ocfs2/journal.c    |    6 +++---
+ include/linux/jbd2.h  |    6 ++----
+ 5 files changed, 13 insertions(+), 28 deletions(-)
 
-What, exactly, are you testing on? test 124 uses XFS_IOC_RESVSP
-directly, not fallocate(), so all it is doing on a non-XFS
-filesystem is iterating a loop that writes a 1MB file, reads it back
-then unlinks it....
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index d0f5353..0abee1b 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -225,7 +225,7 @@ static inline int ext4_journal_extend(handle_t
+*handle, int nblocks)
+ static inline int ext4_journal_restart(handle_t *handle, int nblocks)
+ {
+ 	if (ext4_handle_valid(handle))
+-		return jbd2_journal_restart(handle, nblocks);
++		return jbd2_journal_restart(handle, nblocks, false);
+ 	return 0;
+ }
 
-Cheers,
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 8553dfb..c165ffe 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -279,9 +279,10 @@ handle_t *ext4_journal_start_sb(struct
+super_block *sb, int nblocks)
+ 		ext4_abort(sb, "Detected aborted journal");
+ 		return ERR_PTR(-EROFS);
+ 	}
+-	return jbd2_journal_start(journal, nblocks);
++	return jbd2_journal_start(journal, nblocks, false);
+ }
 
-Dave.
++
+ /*
+  * The only special thing we need to do here is to make sure that all
+  * jbd2_journal_stop calls result in the superblock being marked dirty=
+, so
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 05fa77a..b5c2550 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -318,7 +318,7 @@ static handle_t *new_handle(int nblocks)
+  *
+  * Return a pointer to a newly allocated handle, or NULL on failure
+  */
+-handle_t *jbd2__journal_start(journal_t *journal, int nblocks, int gfp=
+_mask)
++handle_t *jbd2_journal_start(journal_t *journal, int nblocks, bool err=
+ok)
+ {
+ 	handle_t *handle =3D journal_current_handle();
+ 	int err;
+@@ -338,7 +338,7 @@ handle_t *jbd2__journal_start(journal_t *journal,
+int nblocks, int gfp_mask)
+
+ 	current->journal_info =3D handle;
+
+-	err =3D start_this_handle(journal, handle, gfp_mask);
++	err =3D start_this_handle(journal, handle, GFP_NOFS);
+ 	if (err < 0) {
+ 		jbd2_free_handle(handle);
+ 		current->journal_info =3D NULL;
+@@ -346,13 +346,6 @@ handle_t *jbd2__journal_start(journal_t *journal,
+int nblocks, int gfp_mask)
+ 	}
+ 	return handle;
+ }
+-EXPORT_SYMBOL(jbd2__journal_start);
+-
+-
+-handle_t *jbd2_journal_start(journal_t *journal, int nblocks)
+-{
+-	return jbd2__journal_start(journal, nblocks, GFP_NOFS);
+-}
+ EXPORT_SYMBOL(jbd2_journal_start);
+
+
+@@ -441,7 +434,7 @@ out:
+  * transaction capabable of guaranteeing the requested number of
+  * credits.
+  */
+-int jbd2__journal_restart(handle_t *handle, int nblocks, int gfp_mask)
++int jbd2_journal_restart(handle_t *handle, int nblocks, bool errok)
+ {
+ 	transaction_t *transaction =3D handle->h_transaction;
+ 	journal_t *journal =3D transaction->t_journal;
+@@ -477,16 +470,9 @@ int jbd2__journal_restart(handle_t *handle, int
+nblocks, int gfp_mask)
+
+ 	lock_map_release(&handle->h_lockdep_map);
+ 	handle->h_buffer_credits =3D nblocks;
+-	ret =3D start_this_handle(journal, handle, gfp_mask);
++	ret =3D start_this_handle(journal, handle, GFP_NOFS);
+ 	return ret;
+ }
+-EXPORT_SYMBOL(jbd2__journal_restart);
+-
+-
+-int jbd2_journal_restart(handle_t *handle, int nblocks)
+-{
+-	return jbd2__journal_restart(handle, nblocks, GFP_NOFS);
+-}
+ EXPORT_SYMBOL(jbd2_journal_restart);
+
+ /**
+@@ -1436,7 +1422,7 @@ int jbd2_journal_force_commit(journal_t *journal)
+ 	handle_t *handle;
+ 	int ret;
+
+-	handle =3D jbd2_journal_start(journal, 1);
++	handle =3D jbd2_journal_start(journal, 1, false);
+ 	if (IS_ERR(handle)) {
+ 		ret =3D PTR_ERR(handle);
+ 	} else {
+diff --git a/fs/ocfs2/journal.c b/fs/ocfs2/journal.c
+index b141a44..cca0f76 100644
+--- a/fs/ocfs2/journal.c
++++ b/fs/ocfs2/journal.c
+@@ -353,11 +353,11 @@ handle_t *ocfs2_start_trans(struct ocfs2_super
+*osb, int max_buffs)
+
+ 	/* Nested transaction? Just return the handle... */
+ 	if (journal_current_handle())
+-		return jbd2_journal_start(journal, max_buffs);
++		return jbd2_journal_start(journal, max_buffs, false);
+
+ 	down_read(&osb->journal->j_trans_barrier);
+
+-	handle =3D jbd2_journal_start(journal, max_buffs);
++	handle =3D jbd2_journal_start(journal, max_buffs, false);
+ 	if (IS_ERR(handle)) {
+ 		up_read(&osb->journal->j_trans_barrier);
+
+@@ -438,7 +438,7 @@ int ocfs2_extend_trans(handle_t *handle, int nblock=
+s)
+ 	if (status > 0) {
+ 		trace_ocfs2_extend_trans_restart(old_nblocks + nblocks);
+ 		status =3D jbd2_journal_restart(handle,
+-					      old_nblocks + nblocks);
++					      old_nblocks + nblocks, false);
+ 		if (status < 0) {
+ 			mlog_errno(status);
+ 			goto bail;
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index a32dcae..67f0f4f 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1103,10 +1103,8 @@ static inline handle_t *journal_current_handle(v=
+oid)
+  * Register buffer modifications against the current transaction.
+  */
+
+-extern handle_t *jbd2_journal_start(journal_t *, int nblocks);
+-extern handle_t *jbd2__journal_start(journal_t *, int nblocks, int gfp=
+_mask);
+-extern int	 jbd2_journal_restart(handle_t *, int nblocks);
+-extern int	 jbd2__journal_restart(handle_t *, int nblocks, int gfp_mas=
+k);
++extern handle_t *jbd2_journal_start(journal_t *, int nblocks, bool err=
+ok);
++extern int	 jbd2_journal_restart(handle_t *, int nblocks, bool errok);
+ extern int	 jbd2_journal_extend (handle_t *, int nblocks);
+ extern int	 jbd2_journal_get_write_access(handle_t *, struct buffer_he=
+ad *);
+ extern int	 jbd2_journal_get_create_access (handle_t *, struct buffer_=
+head *);
 --=20
-Dave Chinner
-david@fromorbit.com
+1.7.4.1
+
+
+
+>
+>> > Also your patch series should be bisectable - that means it must c=
+ompile
+>> > and run after any of the patches. So you cannot really change
+>> > jbd2_journal_start() prototype without changing all the filesystem=
+s using
+>> > it. In this case, just include in this patch a simple change for e=
+xt4 and
+>> > ocfs2 to pass 'false' in the additional argument.
+>>
+>> ok.. Will submit the first patch as everyone passing false as the
+>> errok argument.
+> =A0Thanks.
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+Honza
+>
+> --
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
+>
+
+
+
+--=20
+Thanks -
+Manish
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
