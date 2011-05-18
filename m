@@ -1,7 +1,7 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Subject: Re: [PATCH] ext4: use vmtruncate() instead of ext4_truncate() in ext4_setattr()
-Date: Wed, 18 May 2011 10:46:36 +0800
-Message-ID: <BANLkTimFTLfQL0RUfyaghpT=pHp7HUYEPQ@mail.gmail.com>
+Date: Wed, 18 May 2011 10:56:42 +0800
+Message-ID: <BANLkTi==v=ShDNzhWHEAFcpzC9uKC63FBg@mail.gmail.com>
 References: <20110517225926.8B4A94225B@ruihe.smo.corp.google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
@@ -9,12 +9,12 @@ Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
 To: Jiaying Zhang <jiayingz@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:52715 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750975Ab1ERCqh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 17 May 2011 22:46:37 -0400
-Received: by vxi39 with SMTP id 39so813578vxi.19
-        for <linux-ext4@vger.kernel.org>; Tue, 17 May 2011 19:46:37 -0700 (PDT)
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:54676 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755436Ab1ERC4n convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 17 May 2011 22:56:43 -0400
+Received: by vws1 with SMTP id 1so811304vws.19
+        for <linux-ext4@vger.kernel.org>; Tue, 17 May 2011 19:56:42 -0700 (PDT)
 In-Reply-To: <20110517225926.8B4A94225B@ruihe.smo.corp.google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -74,30 +74,14 @@ NODE_EOFBLOCKS))) {
 > + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto er=
 r_out;
 > + =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
-Hi there,
-It seems that the error handling has problems.  1)We should handle
-error as the below code does. or 2) we can add a OR condition to the
-if statement below so that it can handle case here.  I prefer the 2nd
-solution.  it looks like:
-- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/* ext4_truncate will clear the flag *=
-/
-- =A0 =A0 =A0 =A0 =A0 =A0 =A0 if ((ext4_test_inode_flag(inode, EXT4_INO=
-DE_EOFBLOCKS)))
-- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_truncate(inode);
-
--	if ((attr->ia_valid & ATTR_SIZE) &&
--	    attr->ia_size !=3D i_size_read(inode))
-+	if (((attr->ia_valid & ATTR_SIZE) &&
-+	    attr->ia_size !=3D i_size_read(inode)) ||
-+          ext4_test_inode_flag(inode, EXT4_INODE_EOFBLOCKS))
-		rc =3D vmtruncate(inode, attr->ia_size);
+> =A0 =A0 =A0 =A0}
+Another question, does vmtruncate() write zeros to blocks beyond old
+EOF?  I had a rough look and could not find the code doing this, maybe
+due to my density.
 
 Yongqiang.
-> =A0 =A0 =A0 =A0}
 >
 > =A0 =A0 =A0 =A0if ((attr->ia_valid & ATTR_SIZE) &&
-
-
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
  in
