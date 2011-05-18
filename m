@@ -1,42 +1,117 @@
-From: KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>
-Subject: Re: [PATCH 4/4] mm: vmscan: If kswapd has been running too long,
- allow it to sleep
-Date: Wed, 18 May 2011 10:05:50 +0900
-Message-ID: <4DD31B6E.8040502@jp.fujitsu.com>
-References: <1305295404-12129-1-git-send-email-mgorman@suse.de>	<1305295404-12129-5-git-send-email-mgorman@suse.de>	<4DCFAA80.7040109@jp.fujitsu.com>	<1305519711.4806.7.camel@mulgrave.site>	<BANLkTi=oe4Ties6awwhHFPf42EXCn2U4MQ@mail.gmail.com>	<20110516084558.GE5279@suse.de>	<BANLkTinW4s6aT2bZ79sHNgdh5j8VYyJz2w@mail.gmail.com>	<20110516102753.GF5279@suse.de> <BANLkTi=5ON_ttuwFFhFObfoP8EBKPdFgAA@mail.gmail.com>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: Re: [PATCH] ext4: use vmtruncate() instead of ext4_truncate() in ext4_setattr()
+Date: Wed, 18 May 2011 10:46:36 +0800
+Message-ID: <BANLkTimFTLfQL0RUfyaghpT=pHp7HUYEPQ@mail.gmail.com>
+References: <20110517225926.8B4A94225B@ruihe.smo.corp.google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: mgorman@suse.de, James.Bottomley@hansenpartnership.com,
-	akpm@linux-foundation.org, colin.king@canonical.com,
-	raghu.prabhu13@gmail.com, jack@suse.cz, chris.mason@oracle.com,
-	cl@linux.com, penberg@kernel.org, riel@redhat.com,
-	hannes@cmpxchg.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: minchan.kim@gmail.com
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <BANLkTi=5ON_ttuwFFhFObfoP8EBKPdFgAA@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Jiaying Zhang <jiayingz@google.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:52715 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750975Ab1ERCqh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 17 May 2011 22:46:37 -0400
+Received: by vxi39 with SMTP id 39so813578vxi.19
+        for <linux-ext4@vger.kernel.org>; Tue, 17 May 2011 19:46:37 -0700 (PDT)
+In-Reply-To: <20110517225926.8B4A94225B@ruihe.smo.corp.google.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> It would be better to put cond_resched after balance_pgdat?
+On Wed, May 18, 2011 at 6:59 AM, Jiaying Zhang <jiayingz@google.com> wr=
+ote:
+> There is a bug in commit c8d46e41 "ext4: Add flag to files with block=
+s
+> intentionally past EOF" that if we fallocate a file with FALLOC_FL_KE=
+EP_SIZE
+> flag and then ftruncate the file to a size larger than the file's i_s=
+ize,
+> any allocated but unwritten blocks will be freed but the file size is=
+ set
+> to the size that ftruncate specifies.
 >
-> diff --git a/mm/vmscan.c b/mm/vmscan.c
-> index 292582c..61c45d0 100644
-> --- a/mm/vmscan.c
-> +++ b/mm/vmscan.c
-> @@ -2753,6 +2753,7 @@ static int kswapd(void *p)
->                  if (!ret) {
->                          trace_mm_vmscan_kswapd_wake(pgdat->node_id, order);
->                          order = balance_pgdat(pgdat, order,&classzone_idx);
-> +                       cond_resched();
->                  }
->          }
->          return 0;
+> Here is a simple test to reproduce the problem:
+> =A01. fallocate a 12k size file with KEEP_SIZE flag
+> =A02. write the first 4k
+> =A03. ftruncate the file to 8k
+> Then 'ls -l' shows that the i_size of the file becomes 8k but debugfs
+> shows the file has only the first written block left.
 >
->>>> While it appears unlikely, there are bad conditions which can result
->> in cond_resched() being avoided.
+> Below is the proposed patch to fix the bug:
+>
+> ext4: use vmtruncate() instead of ext4_truncate() in ext4_setattr().
+>
+> Change ext4_setattr() to use vmtruncate(inode, attr->ia_size) instead
+> of ext4_truncate(inode) when it needs to truncate an inode so that
+> if the inode has EXT4_EOFBLOCKS_FL flag set and we are trying to trun=
+cate
+> to a size larger than the inode's i_size, we will only truncate the b=
+locks
+> beyond the specified truncate size instead of all of blocks beyond i_=
+size.
+>
+> Signed-off-by: Jiaying Zhang <jiayingz@google.com>
+>
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 3424e82..3bfad57 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -5347,8 +5347,11 @@ int ext4_setattr(struct dentry *dentry, struct=
+ iattr *attr)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/* ext4_truncate will clear the flag *=
+/
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if ((ext4_test_inode_flag(inode, EXT4_I=
+NODE_EOFBLOCKS)))
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_truncate(inode);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if ((ext4_test_inode_flag(inode, EXT4_I=
+NODE_EOFBLOCKS))) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 rc =3D vmtruncate(inode=
+, attr->ia_size);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (rc)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto er=
+r_out;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+Hi there,
+It seems that the error handling has problems.  1)We should handle
+error as the below code does. or 2) we can add a OR condition to the
+if statement below so that it can handle case here.  I prefer the 2nd
+solution.  it looks like:
+- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/* ext4_truncate will clear the flag *=
+/
+- =A0 =A0 =A0 =A0 =A0 =A0 =A0 if ((ext4_test_inode_flag(inode, EXT4_INO=
+DE_EOFBLOCKS)))
+- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_truncate(inode);
 
-Every reclaim priority decreasing or every shrink_zone() calling makes more
-fine grained preemption. I think.
+-	if ((attr->ia_valid & ATTR_SIZE) &&
+-	    attr->ia_size !=3D i_size_read(inode))
++	if (((attr->ia_valid & ATTR_SIZE) &&
++	    attr->ia_size !=3D i_size_read(inode)) ||
++          ext4_test_inode_flag(inode, EXT4_INODE_EOFBLOCKS))
+		rc =3D vmtruncate(inode, attr->ia_size);
+
+Yongqiang.
+> =A0 =A0 =A0 =A0}
+>
+> =A0 =A0 =A0 =A0if ((attr->ia_valid & ATTR_SIZE) &&
+
+
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
+
+
+
+--=20
+Best Wishes
+Yongqiang Yang
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
