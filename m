@@ -1,154 +1,85 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 3/4 v4] e2image: Support for conversion QCOW2 image into raw
-Date: Wed, 18 May 2011 14:20:47 +0200
-Message-ID: <1305721247-9598-1-git-send-email-lczerner@redhat.com>
-References: <1305718615-5991-3-git-send-email-lczerner@redhat.com>
-Cc: tytso@mit.edu, sandeen@redhat.com, adilger@dilger.ca,
-	Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 1/4] e2fsprogs: Add memory allocation and zero-out
+ helpers
+Date: Wed, 18 May 2011 14:22:04 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1105181421240.4100@dhcp-27-109.brq.redhat.com>
+References: <1305718615-5991-1-git-send-email-lczerner@redhat.com>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, sandeen@redhat.com,
+	adilger@dilger.ca
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37531 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:27692 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756831Ab1ERMU5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 May 2011 08:20:57 -0400
-In-Reply-To: <1305718615-5991-3-git-send-email-lczerner@redhat.com>
+	id S933016Ab1ERMWK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 May 2011 08:22:10 -0400
+In-Reply-To: <1305718615-5991-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This commit adds support for converting QCOW2 image created previously
-with e2image into raw image. The QCOW2 image is detected automatically,
-so there is not new option. Just use following command:
+On Wed, 18 May 2011, Lukas Czerner wrote:
 
-  e2image -r image.qcow image.raw
+> Add functions ext2fs_get_memzero() which will malloc() the memory
+> using ext2fs_get_mem(), but it will zero the allocated memory afterwards
+> with memset().
+> 
+> Add function ext2fs_get_arrayzero() which will use calloc() for
+> allocating and zero-out the array.
 
-No that this tool is aimed to quickly convert qcow2 image created with
-e2image into raw image. In order to improve speed we are doing some
-assumption I believe might not be true for regular qcow2 images. So it
-was not tested with regular QCOW2 images and it might not work with
-them. The intention of this tool is only convert images previously
-created by e2image.
+Sorry this is not right I forgot to commit my changes. Version 2 is out there.
 
-Note that there is nothing special with QCOW2 images created by e2images
-and it can be used with tools like qemu-img, or qemu-nbd without any
-problems.
+Thanks!
+-Lukas
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- misc/e2image.8.in |    4 ++++
- misc/e2image.c    |   49 ++++++++++++++++++++++++++++++++++++++++++++++++-
- 2 files changed, 52 insertions(+), 1 deletions(-)
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> ---
+>  lib/ext2fs/ext2fs.h |   24 ++++++++++++++++++++++++
+>  1 files changed, 24 insertions(+), 0 deletions(-)
+> 
+> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+> index d3eb31d..4aff26d 100644
+> --- a/lib/ext2fs/ext2fs.h
+> +++ b/lib/ext2fs/ext2fs.h
+> @@ -1404,6 +1404,17 @@ _INLINE_ errcode_t ext2fs_get_memalign(unsigned long size,
+>  	return 0;
+>  }
+>  
+> +_INLINE_ errcode_t ext2fs_get_memzero(unsigned long size, void *ptr)
+> +{
+> +	errcode_t retval;
+> +
+> +	retval = ext2fs_get_mem(size, ptr);
+> +	if (retval)
+> +		return retval;
+> +	memset(ptr, 0, size);
+> +	return 0;
+> +}
+> +
+>  _INLINE_ errcode_t ext2fs_get_array(unsigned long count, unsigned long size, void *ptr)
+>  {
+>  	if (count && (-1UL)/count<size)
+> @@ -1411,6 +1422,19 @@ _INLINE_ errcode_t ext2fs_get_array(unsigned long count, unsigned long size, voi
+>  	return ext2fs_get_mem(count*size, ptr);
+>  }
+>  
+> +_INLINE_ errcode_t ext2fs_get_arrayzero(unsigned long count, unsigned long size, void *ptr)
+> +{
+> +	void *pp;
+> +
+> +	if (count && (-1UL)/count<size)
+> +		return EXT2_ET_NO_MEMORY; //maybe define EXT2_ET_OVERFLOW ?
+> +	pp = calloc(count, size);
+> +	if (!pp)
+> +		return EXT2_ET_NO_MEMORY;
+> +	memcpy(ptr, &pp, sizeof (pp));
+> +	return 0;
+> +}
+> +
+>  /*
+>   * Free memory
+>   */
+> 
 
-diff --git a/misc/e2image.8.in b/misc/e2image.8.in
-index 4a28580..6f31dd1 100644
---- a/misc/e2image.8.in
-+++ b/misc/e2image.8.in
-@@ -131,6 +131,10 @@ the
- option will prevent analysis of problems related to hash-tree indexed
- directories.
- .PP
-+Note that this will work even if you substitute "/dev/hda1" for another raw
-+disk image, or QCOW2 image previously created by
-+.BR e2image .
-+.PP
- .SH QCOW2 IMAGE FILES
- The 
- .B \-Q
-diff --git a/misc/e2image.c b/misc/e2image.c
-index dbf4421..6af2cc7 100644
---- a/misc/e2image.c
-+++ b/misc/e2image.c
-@@ -1213,16 +1213,33 @@ static void install_image(char *device, char *image_fn, int type)
- 	exit (0);
- }
- 
-+static struct ext2_qcow2_hdr *check_qcow2_image(int *fd, char *name)
-+{
-+
-+#ifdef HAVE_OPEN64
-+	*fd = open64(name, O_RDONLY, 0600);
-+#else
-+	*fd = open(name, O_RDONLY, 0600);
-+#endif
-+	if (*fd < 0)
-+		return NULL;
-+
-+	return qcow2_read_header(*fd);
-+}
-+
- int main (int argc, char ** argv)
- {
- 	int c;
- 	errcode_t retval;
- 	ext2_filsys fs;
- 	char *image_fn;
-+	struct ext2_qcow2_hdr *header = NULL;
- 	int open_flag = EXT2_FLAG_64BITS;
- 	int img_type = 0;
- 	int flags = 0;
-+	int qcow2_fd = 0;
- 	int fd = 0;
-+	int ret = 0;
- 
- #ifdef ENABLE_NLS
- 	setlocale(LC_MESSAGES, "");
-@@ -1266,6 +1283,14 @@ int main (int argc, char ** argv)
- 		exit (0);
- 	}
- 
-+	if (img_type & E2IMAGE_RAW) {
-+		header = check_qcow2_image(&qcow2_fd, device_name);
-+		if (header) {
-+			flags |= E2IMAGE_IS_QCOW2_FLAG;
-+			goto skip_device;
-+		}
-+	}
-+
- 	retval = ext2fs_open (device_name, open_flag, 0, 0,
- 			      unix_io_manager, &fs);
-         if (retval) {
-@@ -1275,6 +1300,7 @@ int main (int argc, char ** argv)
- 		exit(1);
- 	}
- 
-+skip_device:
- 	if (strcmp(image_fn, "-") == 0)
- 		fd = 1;
- 	else {
-@@ -1296,12 +1322,33 @@ int main (int argc, char ** argv)
- 		exit(1);
- 	}
- 
-+	if (flags & E2IMAGE_IS_QCOW2_FLAG) {
-+		ret = qcow2_write_raw_image(qcow2_fd, fd, header);
-+		if (ret) {
-+			if (ret == -QCOW_COMPRESSED)
-+				fprintf(stderr, "Image (%s) is compressed\n");
-+			if (ret == -QCOW_ENCRYPTED)
-+				fprintf(stderr, "Image (%s) is encrypted\n");
-+			com_err(program_name, ret,
-+				_("while trying to convert qcow2 image"
-+				" (%s) into raw image (%s)"),
-+				device_name, image_fn);
-+		}
-+		goto out;
-+	}
-+
-+
- 	if (img_type)
- 		write_raw_image_file(fs, fd, img_type, flags);
- 	else
- 		write_image_file(fs, fd);
- 
- 	ext2fs_close (fs);
-+out:
-+	if (header)
-+		free(header);
-+	if (qcow2_fd)
-+		close(qcow2_fd);
- 	remove_error_table(&et_ext2_error_table);
--	exit (0);
-+	return ret;
- }
 -- 
-1.7.4.4
-
