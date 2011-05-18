@@ -1,401 +1,150 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] xfstests:Make 225 compare map and fiemap at each block.
-Date: Tue, 17 May 2011 22:47:47 -0500
-Message-ID: <4DD34163.8010306@redhat.com>
-References: <BANLkTi=ra8eKxqstqFqDWHYsQpVx66c8BQ@mail.gmail.com> <BANLkTinQFrAEFy1Lc=D88F6AF9+POnoevA@mail.gmail.com>
+From: James Bottomley <James.Bottomley@HansenPartnership.com>
+Subject: Re: [PATCH 4/4] mm: vmscan: If kswapd has been running too long,
+ allow it to sleep
+Date: Wed, 18 May 2011 08:09:33 +0400
+Message-ID: <1305691773.2580.1.camel@mulgrave.site>
+References: <1305295404-12129-1-git-send-email-mgorman@suse.de>
+	 <1305295404-12129-5-git-send-email-mgorman@suse.de>
+	 <4DCFAA80.7040109@jp.fujitsu.com> <1305519711.4806.7.camel@mulgrave.site>
+	 <BANLkTi=oe4Ties6awwhHFPf42EXCn2U4MQ@mail.gmail.com>
+	 <20110516084558.GE5279@suse.de>
+	 <BANLkTinW4s6aT2bZ79sHNgdh5j8VYyJz2w@mail.gmail.com>
+	 <20110516102753.GF5279@suse.de>
+	 <BANLkTi=5ON_ttuwFFhFObfoP8EBKPdFgAA@mail.gmail.com>
+	 <20110517103840.GL5279@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com,
-	Josef Bacik <jbacik@redhat.com>
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Cc: Minchan Kim <minchan.kim@gmail.com>,
+	KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>,
+	akpm@linux-foundation.org, colin.king@canonical.com,
+	raghu.prabhu13@gmail.com, jack@suse.cz, chris.mason@oracle.com,
+	cl@linux.com, penberg@kernel.org, riel@redhat.com,
+	hannes@cmpxchg.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Mel Gorman <mgorman@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32673 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932469Ab1ERDrw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 May 2011 23:47:52 -0400
-In-Reply-To: <BANLkTinQFrAEFy1Lc=D88F6AF9+POnoevA@mail.gmail.com>
+Received: from bedivere.hansenpartnership.com ([66.63.167.143]:54705 "EHLO
+	bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751023Ab1EREJs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 May 2011 00:09:48 -0400
+In-Reply-To: <20110517103840.GL5279@suse.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 5/17/11 10:29 PM, Yongqiang Yang wrote:
-> Hi Eric,
+On Tue, 2011-05-17 at 11:38 +0100, Mel Gorman wrote:
+> On Tue, May 17, 2011 at 08:50:44AM +0900, Minchan Kim wrote:
+> > Don't we have to move cond_resched?
+> > 
+> > diff --git a/mm/vmscan.c b/mm/vmscan.c
+> > index 292582c..633e761 100644
+> > --- a/mm/vmscan.c
+> > +++ b/mm/vmscan.c
+> > @@ -231,8 +231,10 @@ unsigned long shrink_slab(struct shrink_control *shrink,
+> >         if (scanned == 0)
+> >                 scanned = SWAP_CLUSTER_MAX;
+> > 
+> > -       if (!down_read_trylock(&shrinker_rwsem))
+> > -               return 1;       /* Assume we'll be able to shrink next time */
+> > +       if (!down_read_trylock(&shrinker_rwsem)) {
+> > +               ret = 1;
+> > +               goto out; /* Assume we'll be able to shrink next time */
+> > +       }
+> > 
+> >         list_for_each_entry(shrinker, &shrinker_list, list) {
+> >                 unsigned long long delta;
+> > @@ -280,12 +282,14 @@ unsigned long shrink_slab(struct shrink_control *shrink,
+> >                         count_vm_events(SLABS_SCANNED, this_scan);
+> >                         total_scan -= this_scan;
+> > 
+> > -                       cond_resched();
+> >                 }
+> > 
+> >                 shrinker->nr += total_scan;
+> > +               cond_resched();
+> >         }
+> >         up_read(&shrinker_rwsem);
+> > +out:
+> > +       cond_resched();
+> >         return ret;
+> >  }
+> > 
 > 
-> Could you have a look at this patch?
-
-I was kind of hoping Josef would since he wrote it in the first place ;)
-
-I can try to take a look...
-
--Eric
-
-> On Sat, May 14, 2011 at 11:47 AM, Yongqiang Yang <xiaoqiangnk@gmail.com> wrote:
->> Hi All,
->>
->> Due to my carelessness, I induced a ugly patch to ext4's fiemap, but
->> 225 could not find it.  So I looked into the 225 and could not figure out
->> logic in compare_map_and_fiemap(), which seemed to mixed extents with
->> blocks.  Then I made 225 compare map and fiemap at each block, the new
->> 225 can find another bug in ext4's fiemap.
->>
->> The new 225 works well on ext3 and ext4 with both 1K and 4K block. However,
->> it report fiemap error on xfs with 4K block.  My working tree is 2.6.39-rc3
->> pulled from Ted's tree. The error message is as follows.
->>
->>  QA output created by 225
->>  fiemap run without preallocation, with sync
->> +map is 'DDHDHHDHHDHDDHDDHDDHHDHDDHDDDDDDHHDDDHHHHDH
->> DDDDDDDDHDDHHHDDDHDDHHDDDDDDHHHHHHDDHHHHHDHDHDHDD
->> DHDDHD'
->> +logical: [       0..      15] phys:       12..      27 flags: 0x000 tot: 16
->> +logical: [      17..      31] phys:       29..      43 flags: 0x000 tot: 15
->> +logical: [      34..      63] phys:       46..      75 flags: 0x000 tot: 30
->> +logical: [      65..      95] phys:       77..     107 flags: 0x001 tot: 31
->> +Problem comparing fiemap and map
->>  fiemap run without preallocation or sync
->> +map is 'DDHDHHDHHDHDDHDDHDDHHDHDDHDDDDDDHHDDDHHHHDH
->> DDDDDDDDHDDHHHDDDHDDHHDDDDDDHHHHHHDDHHHHHDHDHDHDD
->> DHDDHD'
->> +logical: [       0..      15] phys:        0..      15 flags: 0x006 tot: 16
->> +Problem comparing fiemap and map
->> Ran: 225
->> Failures: 225
->> Failed 1 of 1 tests
->>
->> I am not sure this is a bug in new 225 or xfs.
->>
->> Yongqiang.
->>
->> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
->> ---
->>  src/fiemap-tester.c |  223 ++++++++++++++++++++++++++++----------------------
->>  1 files changed, 125 insertions(+), 98 deletions(-)
->>
->> diff --git a/src/fiemap-tester.c b/src/fiemap-tester.c
->> index 1663f84..99bb5ce 100644
->> --- a/src/fiemap-tester.c
->> +++ b/src/fiemap-tester.c
->> @@ -14,6 +14,9 @@
->>  * You should have received a copy of the GNU General Public License
->>  * along with this program; if not, write the Free Software Foundation,
->>  * Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
->> + *
->> + * Compare map and fiemap at each block,
->> + * Yongqiang Yang <xiaoqiangnk@gmail.com>, 2011
->>  */
->>
->>  #include <stdio.h>
->> @@ -57,7 +60,7 @@ generate_file_mapping(int blocks, int prealloc)
->>        int num_types = 2, cur_block = 0;
->>        int i = 0;
->>
->> -       map = malloc(sizeof(char) * blocks);
->> +       map = malloc(sizeof(char) * (blocks + 1));
->>        if (!map)
->>                return NULL;
->>
->> @@ -80,7 +83,8 @@ generate_file_mapping(int blocks, int prealloc)
->>                }
->>                cur_block++;
->>        }
->> -
->> +
->> +       map[blocks] = 0;
->>        return map;
->>  }
->>
->> @@ -247,55 +251,36 @@ check_flags(struct fiemap *fiemap, int blocksize)
->>  }
->>
->>  static int
->> -check_data(struct fiemap *fiemap, __u64 logical_offset, int blocksize,
->> +check_data(struct fiemap_extent * extent ,  __u64 logical_offset, int
->> blocksize,
->>           int last, int prealloc)
->>  {
->> -       struct fiemap_extent *extent;
->> -       __u64 orig_offset = logical_offset;
->> -       int c, found = 0;
->> -
->> -       for (c = 0; c < fiemap->fm_mapped_extents; c++) {
->> -               __u64 start, end;
->> -               extent = &fiemap->fm_extents[c];
->> -
->> -               start = extent->fe_logical;
->> -               end = extent->fe_logical + extent->fe_length;
->> -
->> -               if (logical_offset > end)
->> -                       continue;
->> -
->> -               if (logical_offset + blocksize < start)
->> -                       break;
->> -
->> -               if (logical_offset >= start &&
->> -                   logical_offset < end) {
->> -                       if (prealloc &&
->> -                           !(extent->fe_flags & FIEMAP_EXTENT_UNWRITTEN)) {
->> -                               printf("ERROR: preallocated extent is not "
->> -                                      "marked with FIEMAP_EXTENT_UNWRITTEN: "
->> -                                      "%llu\n",
->> -                                      (unsigned long long)
->> -                                      (start / blocksize));
->> -                               return -1;
->> -                       }
->> -
->> -                       if (logical_offset + blocksize > end) {
->> -                               logical_offset = end+1;
->> -                               continue;
->> -                       } else {
->> -                               found = 1;
->> -                               break;
->> -                       }
->> +       int found = 0;
->> +       __u64 start, end;
->> +
->> +       start = extent->fe_logical;
->> +       end = extent->fe_logical + extent->fe_length;
->> +
->> +       if (logical_offset >= start &&
->> +           logical_offset < end) {
->> +               if (prealloc &&
->> +                   !(extent->fe_flags & FIEMAP_EXTENT_UNWRITTEN)) {
->> +                       printf("ERROR: preallocated extent is not "
->> +                              "marked with FIEMAP_EXTENT_UNWRITTEN: "
->> +                              "%llu\n",
->> +                              (unsigned long long)
->> +                              (start / blocksize));
->> +                       return -1;
->>                }
->> +               found = 1;
->>        }
->> -
->> +
->>        if (!found) {
->>                printf("ERROR: couldn't find extent at %llu\n",
->> -                      (unsigned long long)(orig_offset / blocksize));
->> +                      (unsigned long long)(logical_offset / blocksize));
->>        } else if (last &&
->> -                  !(fiemap->fm_extents[c].fe_flags & FIEMAP_EXTENT_LAST)) {
->> +                  !(extent->fe_flags & FIEMAP_EXTENT_LAST)) {
->>                printf("ERROR: last extent not marked as last: %llu\n",
->> -                      (unsigned long long)(orig_offset / blocksize));
->> +                      (unsigned long long)(logical_offset / blocksize));
->>                found = 0;
->>        }
->>
->> @@ -370,37 +355,26 @@ check_weird_fs_hole(int fd, __u64
->> logical_offset, int blocksize)
->>  }
->>
->>  static int
->> -check_hole(struct fiemap *fiemap, int fd, __u64 logical_offset, int blocksize)
->> +check_hole(struct fiemap_extent *extent, int fd, __u64
->> logical_offset, int blocksize)
->>  {
->> -       struct fiemap_extent *extent;
->> -       int c;
->> +       __u64 start, end;
->>
->> -       for (c = 0; c < fiemap->fm_mapped_extents; c++) {
->> -               __u64 start, end;
->> -               extent = &fiemap->fm_extents[c];
->> +       start = extent->fe_logical;
->> +       end = extent->fe_logical + extent->fe_length;
->>
->> -               start = extent->fe_logical;
->> -               end = extent->fe_logical + extent->fe_length;
->> +       if (logical_offset >= start &&
->> +           logical_offset < end) {
->>
->> -               if (logical_offset > end)
->> -                       continue;
->> -               if (logical_offset + blocksize < start)
->> -                       break;
->> +               if (check_weird_fs_hole(fd, logical_offset,
->> +                                       blocksize) == 0)
->> +                       return 0;
->>
->> -               if (logical_offset >= start &&
->> -                   logical_offset < end) {
->> -
->> -                       if (check_weird_fs_hole(fd, logical_offset,
->> -                                               blocksize) == 0)
->> -                               break;
->> -
->> -                       printf("ERROR: found an allocated extent where a hole "
->> -                              "should be: %llu\n",
->> -                              (unsigned long long)(start / blocksize));
->> -                       return -1;
->> -               }
->> +               printf("ERROR: found an allocated extent where a hole "
->> +                      "should be: %llu\n",
->> +                      (unsigned long long)(start / blocksize));
->> +               return -1;
->>        }
->> -
->> +
->>        return 0;
->>  }
->>
->> @@ -423,9 +397,11 @@ compare_fiemap_and_map(int fd, char *map, int
->> blocks, int blocksize, int syncfil
->>  {
->>        struct fiemap *fiemap;
->>        char *fiebuf;
->> -       int blocks_to_map, ret, cur_extent = 0, last_data;
->> +       int blocks_to_map, ret, last_data = -1;
->>        __u64 map_start, map_length;
->>        int i, c;
->> +       int cur_block = 0;
->> +       int last_found = 0;
->>
->>        if (query_fiemap_count(fd, blocks, blocksize) < 0)
->>                return -1;
->> @@ -451,8 +427,11 @@ compare_fiemap_and_map(int fd, char *map, int
->> blocks, int blocksize, int syncfil
->>        fiemap->fm_extent_count = blocks_to_map;
->>        fiemap->fm_mapped_extents = 0;
->>
->> +       /* check fiemap by looking at each block. */
->>        do {
->> -               fiemap->fm_start = map_start;
->> +               int nr_extents;
->> +
->> +               fiemap->fm_start = cur_block * blocksize;
->>                fiemap->fm_length = map_length;
->>
->>                ret = ioctl(fd, FS_IOC_FIEMAP, (unsigned long)fiemap);
->> @@ -465,45 +444,93 @@ compare_fiemap_and_map(int fd, char *map, int
->> blocks, int blocksize, int syncfil
->>                if (check_flags(fiemap, blocksize))
->>                        goto error;
->>
->> -               for (i = cur_extent, c = 1; i < blocks; i++, c++) {
->> -                       __u64 logical_offset = i * blocksize;
->> +               nr_extents = fiemap->fm_mapped_extents;
->> +               if (nr_extents == 0) {
->> +                       int block = cur_block + (map_length - 1)/ blocksize;
->> +                       for (; cur_block <= block && cur_block < blocks; cur_block++) {
->> +                               /* check hole */
->> +                               if (map[cur_block] != 'H') {
->> +                                       printf("ERROR: map[%d] should not be "
->> +                                              "a hole\n", cur_block);
->> +                                       goto error;
->> +                               }
->> +                       }
->> +                       continue;
->> +               }
->>
->> -                       if (c > fiemap->fm_mapped_extents) {
->> -                               i++;
->> -                               break;
->> +               for (c = 0; c < nr_extents; c++) {
->> +                       __u64 offset;
->> +                       int block;
->> +                       struct fiemap_extent *extent;
->> +
->> +                       if (last_found) {
->> +                               printf("ERROR: there is extent after"
->> +                                      "the last extent\n");
->> +                               goto error;
->>                        }
->>
->> -                       switch (map[i]) {
->> -                       case 'D':
->> -                               if (check_data(fiemap, logical_offset,
->> -                                              blocksize, last_data == i, 0))
->> -                                       goto error;
->> -                               break;
->> -                       case 'H':
->> -                               if (check_hole(fiemap, fd, logical_offset,
->> -                                              blocksize))
->> -                                       goto error;
->> -                               break;
->> -                       case 'P':
->> -                               if (check_data(fiemap, logical_offset,
->> -                                              blocksize, last_data == i, 1))
->> +                       extent = &fiemap->fm_extents[c];
->> +                       offset = extent->fe_logical;
->> +                       block = offset / blocksize;
->> +
->> +                       /* check hole. */
->> +                       for (; cur_block < block; cur_block++) {
->> +                               if (map[cur_block] != 'H') {
->> +                                       printf("ERROR: map[%d] should not be "
->> +                                              "a hole\n", cur_block);
->>                                        goto error;
->> -                               break;
->> -                       default:
->> -                               printf("ERROR: weird value in map: %c\n",
->> -                                      map[i]);
->> +                               }
->> +                       }
->> +
->> +                       offset = extent->fe_logical + extent->fe_length;
->> +                       block = offset / blocksize;
->> +
->> +                       if (block > blocks) {
->> +                               printf("ERROR: there are extents beyond EOF\n");
->>                                goto error;
->>                        }
->> +
->> +                       /* check data */
->> +                       for (; cur_block < block; cur_block++) {
->> +                               offset = (__u64)cur_block * blocksize;
->> +                               last_found = (last_data == cur_block);
->> +                               switch (map[cur_block]) {
->> +                               case 'D':
->> +                                       if (check_data(extent, offset,
->> +                                                      blocksize, last_found, 0))
->> +                                               goto error;
->> +                                       break;
->> +                               case 'H':
->> +                                       if (check_hole(extent, fd, offset,
->> +                                                      blocksize));
->> +                                               goto error;
->> +                                       break;
->> +
->> +                               case 'P':
->> +                                       if (check_data(extent, offset,
->> +                                                      blocksize, last_found, 1))
->> +                                               goto error;
->> +                                       break;
->> +                               default:
->> +                                       printf("ERROR: weird value in map: %c\n",
->> +                                              map[i]);
->> +                                       goto error;
->> +                               }
->> +                       }
->>                }
->> -               cur_extent = i;
->> -               map_start = i * blocksize;
->> -       } while (cur_extent < blocks);
->> +       } while (cur_block < blocks);
->>
->> -       ret = 0;
->> -       return ret;
->> +       if (!last_found && last_data != -1) {
->> +               printf("ERROR: find no last extent\n");
->> +               goto error;
->> +       }
->> +
->> +       free(fiebuf);
->> +       return 0;
->>  error:
->>        printf("map is '%s'\n", map);
->>        show_extents(fiemap, blocksize);
->> +       free(fiebuf);
->>        return -1;
->>  }
->>
->> --
->> 1.7.5.1
->>
->> --
->> Best Wishes
->> Yongqiang Yang
->>
+> This makes some sense for the exit path but if one or more of the
+> shrinkers takes a very long time without sleeping (extremely long
+> list searches for example) then kswapd will not call cond_resched()
+> between shrinkers and still consume a lot of CPU.
 > 
+> > >
+> > > balance_pgdat() only calls cond_resched if the zones are not
+> > >        balanced. For a high-order allocation that is balanced, it
+> > >        checks order-0 again. During that window, order-0 might have
+> > >        become unbalanced so it loops again for order-0 and returns
+> > >        that was reclaiming for order-0 to kswapd(). It can then find
+> > >        that a caller has rewoken kswapd for a high-order and re-enters
+> > >        balance_pgdat() without ever have called cond_resched().
+> > 
+> > If kswapd reclaims order-o followed by high order, it would have a
+> > chance to call cond_resched in shrink_page_list. But if all zones are
+> > all_unreclaimable is set, balance_pgdat could return any work. Okay.
+> > It does make sense.
+> > By your scenario, someone wakes up kswapd with higher order, again.
+> > So re-enters balance_pgdat without ever have called cond_resched.
+> > But if someone wakes up higher order again, we can't have a chance to
+> > call kswapd_try_to_sleep. So your patch effect would be nop, too.
+> > 
+> > It would be better to put cond_resched after balance_pgdat?
+> > 
 > 
+> Which will leave kswapd runnable instead of going to sleep but
+> guarantees a scheduling point. Lets see if the problem is that
+> cond_resched is being missed although if this was the case then patch
+> 4 would truly be a no-op but Colin has already reported that patch 1 on
+> its own didn't fix his problem. If the problem is sandybridge-specific
+> where kswapd remains runnable and consuming large amounts of CPU in
+> turbo mode then we know that there are other cond_resched() decisions
+> that will need to be revisited.
 > 
+> Colin or James, would you be willing to test with patch 1 from this
+> series and Minchan's patch below? Thanks.
+
+Yes, but unfortunately I'm on the road at the moment.  I won't get back
+to the laptop showing the problem until late on Tuesday (24th).  If it
+works for Colin, I'd assume it's OK.
+
+James
+
+
+> > diff --git a/mm/vmscan.c b/mm/vmscan.c
+> > index 292582c..61c45d0 100644
+> > --- a/mm/vmscan.c
+> > +++ b/mm/vmscan.c
+> > @@ -2753,6 +2753,7 @@ static int kswapd(void *p)
+> >                 if (!ret) {
+> >                         trace_mm_vmscan_kswapd_wake(pgdat->node_id, order);
+> >                         order = balance_pgdat(pgdat, order, &classzone_idx);
+> > +                       cond_resched();
+> >                 }
+> >         }
+> >         return 0;
+> > 
+> > >
+> > > While it appears unlikely, there are bad conditions which can result
+> > > in cond_resched() being avoided.
+> > 
+> > >
+> > > --
+> > > Mel Gorman
+> > > SUSE Labs
+> > >
+> > 
+> > 
+> > 
+> > -- 
+> > Kind regards,
+> > Minchan Kim
+> 
+
 
