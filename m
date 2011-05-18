@@ -1,57 +1,111 @@
-From: Mike Snitzer <snitzer@redhat.com>
-Subject: Re: do not disable ext4 discards on first discard failure? [was: Re:
- dm snapshot: ignore discards issued to the snapshot-origin target]
-Date: Wed, 18 May 2011 08:52:27 -0400
-Message-ID: <20110518125226.GA19490@redhat.com>
-References: <alpine.LFD.2.00.1105020857030.3778@dhcp-27-109.brq.redhat.com>
- <20110502081308.GC8642@agk-dp.fab.redhat.com>
- <20110502081925.GA11312@infradead.org>
- <alpine.LFD.2.00.1105021217080.3778@dhcp-27-109.brq.redhat.com>
- <yq1bozl420p.fsf@sermon.lab.mkp.net>
- <alpine.LFD.2.00.1105021631590.3778@dhcp-27-109.brq.redhat.com>
- <yq1tydd2g5h.fsf@sermon.lab.mkp.net>
- <alpine.LFD.2.00.1105031036090.4250@dhcp-27-109.brq.redhat.com>
- <yq1wri6zel9.fsf@sermon.lab.mkp.net>
- <20110518121631.GC18433@redhat.com>
+From: Josef Bacik <josef@redhat.com>
+Subject: Re: [PATCH] xfstests:Make 225 compare map and fiemap at each block.
+Date: Wed, 18 May 2011 09:05:19 -0400
+Message-ID: <4DD3C40F.1040808@redhat.com>
+References: <BANLkTi=ra8eKxqstqFqDWHYsQpVx66c8BQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Lukas Czerner <lczerner@redhat.com>, sandeen@redhat.com,
-	Christoph Hellwig <hch@infradead.org>,
-	device-mapper development <dm-devel@redhat.com>,
-	DarkNovaNick@gmail.com, linux-lvm@redhat.com,
-	linux-ext4@vger.kernel.org, Alasdair G Kergon <agk@redhat.com>
-To: "Martin K. Petersen" <martin.petersen@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Eric Sandeen <sandeen@sandeen.net>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	xfs@oss.sgi.com
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:61138 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:34071 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756850Ab1ERMwl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 May 2011 08:52:41 -0400
-Content-Disposition: inline
-In-Reply-To: <20110518121631.GC18433@redhat.com>
+	id S1752758Ab1ERNFZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 May 2011 09:05:25 -0400
+In-Reply-To: <BANLkTi=ra8eKxqstqFqDWHYsQpVx66c8BQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 18 2011 at  8:16am -0400,
-Mike Snitzer <snitzer@redhat.com> wrote:
+On 05/13/2011 11:47 PM, Yongqiang Yang wrote:
+> Hi All,
+>
+> Due to my carelessness, I induced a ugly patch to ext4's fiemap, but
+> 225 could not find it.  So I looked into the 225 and could not figure out
+> logic in compare_map_and_fiemap(), which seemed to mixed extents with
+> blocks.  Then I made 225 compare map and fiemap at each block, the new
+> 225 can find another bug in ext4's fiemap.
+>
+> The new 225 works well on ext3 and ext4 with both 1K and 4K block. However,
+> it report fiemap error on xfs with 4K block.  My working tree is 2.6.39-rc3
+> pulled from Ted's tree. The error message is as follows.
+>
+>   QA output created by 225
+>   fiemap run without preallocation, with sync
+> +map is 'DDHDHHDHHDHDDHDDHDDHHDHDDHDDDDDDHHDDDHHHHDH
+> DDDDDDDDHDDHHHDDDHDDHHDDDDDDHHHHHHDDHHHHHDHDHDHDD
+> DHDDHD'
+> +logical: [       0..      15] phys:       12..      27 flags: 0x000 tot: 16
+> +logical: [      17..      31] phys:       29..      43 flags: 0x000 tot: 15
+> +logical: [      34..      63] phys:       46..      75 flags: 0x000 tot: 30
+> +logical: [      65..      95] phys:       77..     107 flags: 0x001 tot: 31
+> +Problem comparing fiemap and map
+>   fiemap run without preallocation or sync
+> +map is 'DDHDHHDHHDHDDHDDHDDHHDHDDHDDDDDDHHDDDHHHHDH
+> DDDDDDDDHDDHHHDDDHDDHHDDDDDDHHHHHHDDHHHHHDHDHDHDD
+> DHDDHD'
+> +logical: [       0..      15] phys:        0..      15 flags: 0x006 tot: 16
+> +Problem comparing fiemap and map
+> Ran: 225
+> Failures: 225
+> Failed 1 of 1 tests
+>
+> I am not sure this is a bug in new 225 or xfs.
+>
+> Yongqiang.
+>
+> Signed-off-by: Yongqiang Yang<xiaoqiangnk@gmail.com>
+> ---
+>   src/fiemap-tester.c |  223 ++++++++++++++++++++++++++++----------------------
+>   1 files changed, 125 insertions(+), 98 deletions(-)
+>
+> diff --git a/src/fiemap-tester.c b/src/fiemap-tester.c
+> index 1663f84..99bb5ce 100644
+> --- a/src/fiemap-tester.c
+> +++ b/src/fiemap-tester.c
+> @@ -14,6 +14,9 @@
+>    * You should have received a copy of the GNU General Public License
+>    * along with this program; if not, write the Free Software Foundation,
+>    * Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+> + *
+> + * Compare map and fiemap at each block,
+> + * Yongqiang Yang<xiaoqiangnk@gmail.com>, 2011
+>    */
+>
+>   #include<stdio.h>
+> @@ -57,7 +60,7 @@ generate_file_mapping(int blocks, int prealloc)
+>   	int num_types = 2, cur_block = 0;
+>   	int i = 0;
+>
+> -	map = malloc(sizeof(char) * blocks);
+> +	map = malloc(sizeof(char) * (blocks + 1));
+>   	if (!map)
+>   		return NULL;
+>
+> @@ -80,7 +83,8 @@ generate_file_mapping(int blocks, int prealloc)
+>   		}
+>   		cur_block++;
+>   	}
+> -
+> +	
+> +	map[blocks] = 0;
+>   	return map;
+>   }
+>
+> @@ -247,55 +251,36 @@ check_flags(struct fiemap *fiemap, int blocksize)
+>   }
+>
+>   static int
+> -check_data(struct fiemap *fiemap, __u64 logical_offset, int blocksize,
+> +check_data(struct fiemap_extent * extent ,  __u64 logical_offset, int
+> blocksize,
+>   	   int last, int prealloc)
+>   {
 
-> Hey Martin,
-> 
-> On Wed, May 04 2011 at 11:10am -0400,
-> Martin K. Petersen <martin.petersen@oracle.com> wrote:
-> 
-> > >>>>> "Lukas" == Lukas Czerner <lczerner@redhat.com> writes:
-> > 
-> > Lukas> Nevertheless there is something weird going on, because even when
-> > Lukas> I create striped volume I get this:
-> > 
-> > Could you please try the following patch? It has a bunch of small tweaks
-> > to the discard stack in it. I'll split it up before posting for real but
-> > I'd like to know if it fixes your issue...
-> 
-> Would be ideal to get these fixes staged for 2.6.40.
-> 
-> Do you intend to split these patches up and post for 2.6.40 inclussion?
+This chunk is messed up, it's failing to apply.  Overall it looks good, 
+but could you clean this up and resend so I can apply it and test it 
+more thoroughly?  Thanks,
 
-Ah, I now see you posted them and Jens picked some up.. thanks
-
-Mike
+Josef
