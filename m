@@ -1,47 +1,37 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 3/3] ext4: Block mmapped writes while the fs is frozen
-Date: Wed, 18 May 2011 17:25:32 +0200
-Message-ID: <20110518152532.GA8417@quack.suse.cz>
-References: <1305066574-1573-1-git-send-email-jack@suse.cz>
- <1305066574-1573-4-git-send-email-jack@suse.cz>
- <20110517151108.GB6653@infradead.org>
- <20110518075614.GB25632@quack.suse.cz>
- <20110518080731.GA2759@infradead.org>
- <4DD3D1AF.9060809@redhat.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/4 v3] e2image: Add support for qcow2 format
+Date: Wed, 18 May 2011 12:17:51 -0400
+Message-ID: <20110518161751.GC29368@thunk.org>
+References: <1305718615-5991-1-git-send-email-lczerner@redhat.com>
+ <1305718615-5991-2-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>,
-	Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com, adilger@dilger.ca
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:59997 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756748Ab1ERQRx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 May 2011 12:17:53 -0400
 Content-Disposition: inline
-In-Reply-To: <4DD3D1AF.9060809@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1305718615-5991-2-git-send-email-lczerner@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 18-05-11 09:03:27, Eric Sandeen wrote:
-> On 5/18/11 3:07 AM, Christoph Hellwig wrote:
-> > On Wed, May 18, 2011 at 09:56:14AM +0200, Jan Kara wrote:
-> >> __block_page_mkwrite() and return some error value (EAGAIN translating to
-> >> VM_FAULT_RETRY would look logical, I just have to think off better error
-> >> value for VM_FAULT_NOPAGE). But vfs_check_frozen() cannot be in
-> >> __block_page_mkwrite() since ext4 needs to call that with a transaction
-> >> started so that would create a deadlock and we need to call
-> >> vfs_check_frozen() somewhere so that we don't busyloop.
-> >>
-> >> I can call vfs_check_frozen() inside block_page_mkwrite() but it would be a
-> >> bit surprising difference from __block_page_mkwrite() to me. Not sure what
-> >> the cleanest solution would be here...
-> > 
-> > block_page_mkwrite is supposed to be used directly by filesystems and
-> > do all the right things.  IIRC Eric even mentioned he added
-> > vfs_check_frozen to it for RHEL, but forgot to push it upstream.
+On Wed, May 18, 2011 at 01:36:53PM +0200, Lukas Czerner wrote:
+> This commit adds support for exporting filesystem into QCOW2 image
+> format. Like sparse format this saves space, by writing only necessary
+> (metadata blocks) into image. Unlike sparse image, QCOW2 image is NOT
+> sparse, hence does not change its size by copying with not-sparse-aware
+> tools.
 > 
-> Well, I tried, but it was rejected IIRC.  Still, mea culpa....
+> New options '-Q' has been added to tell the e2image to use QCOW2 as an
+> output image format. QCOW2 supports encryption and compression, however
+> e2image so far does no support such features, however you can still
+> scramble filenames with '-s' option.
 > 
-> I can resurrect what I did for RHEL5 and repost if desired...
-  I've just submitted second version of the patch series. So please check
-whether it does all you need... Thanks.
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
-									Honza
+Applied to the e2fsprogs branch, with a lot of whitespace fixes.
+
+	       		 	      	- Ted
