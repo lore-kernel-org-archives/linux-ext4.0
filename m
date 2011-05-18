@@ -1,136 +1,68 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH 2/2] mm: vmscan: If kswapd has been running too long,
+From: KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>
+Subject: Re: [PATCH 4/4] mm: vmscan: If kswapd has been running too long,
  allow it to sleep
-Date: Tue, 17 May 2011 16:22:26 -0700
-Message-ID: <20110517162226.96974d89.akpm@linux-foundation.org>
-References: <1305558417-24354-1-git-send-email-mgorman@suse.de>
-	<1305558417-24354-3-git-send-email-mgorman@suse.de>
-	<20110516141654.2728f05a.akpm@linux-foundation.org>
-	<1305614225.6008.19.camel@mulgrave.site>
+Date: Wed, 18 May 2011 09:26:09 +0900
+Message-ID: <4DD31221.3060205@jp.fujitsu.com>
+References: <1305295404-12129-1-git-send-email-mgorman@suse.de> <1305295404-12129-5-git-send-email-mgorman@suse.de> <4DCFAA80.7040109@jp.fujitsu.com> <1305519711.4806.7.camel@mulgrave.site> <BANLkTi=oe4Ties6awwhHFPf42EXCn2U4MQ@mail.gmail.com> <20110516084558.GE5279@suse.de> <BANLkTinW4s6aT2bZ79sHNgdh5j8VYyJz2w@mail.gmail.com> <20110516102753.GF5279@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Mel Gorman <mgorman@suse.de>,
-	Colin King <colin.king@canonical.com>,
-	Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
-	Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
-	Christoph Lameter <cl@linux.com>,
-	Pekka Enberg <penberg@kernel.org>,
-	Rik van Riel <riel@redhat.com>,
-	Johannes Weiner <hannes@cmpxchg.org>,
-	Minchan Kim <minchan.kim@gmail.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-mm <linux-mm@kvack.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	stable <stable@kernel.org>
-To: James Bottomley <James.Bottomley@HansenPartnership.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:38371 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756618Ab1EQXWn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 May 2011 19:22:43 -0400
-In-Reply-To: <1305614225.6008.19.camel@mulgrave.site>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: minchan.kim@gmail.com, James.Bottomley@hansenpartnership.com,
+ akpm@linux-foundation.org, colin.king@canonical.com,
+ raghu.prabhu13@gmail.com, jack@suse.cz, chris.mason@oracle.com,
+ cl@linux.com, penberg@kernel.org, riel@redhat.com, hannes@cmpxchg.org,
+ linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+ linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: mgorman@suse.de
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20110516102753.GF5279@suse.de>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 17 May 2011 10:37:04 +0400
-James Bottomley <James.Bottomley@HansenPartnership.com> wrote:
+> Lets see;
+>
+> shrink_page_list() only applies if inactive pages were isolated
+> 	which in turn may not happen if all_unreclaimable is set in
+> 	shrink_zones(). If for whatver reason, all_unreclaimable is
+> 	set on all zones, we can miss calling cond_resched().
+>
+> shrink_slab only applies if we are reclaiming slab pages. If the first
+> 	shrinker returns -1, we do not call cond_resched(). If that
+> 	first shrinker is dcache and __GFP_FS is not set, direct
+> 	reclaimers will not shrink at all. However, if there are
+> 	enough of them running or if one of the other shrinkers
+> 	is running for a very long time, kswapd could be starved
+> 	acquiring the shrinker_rwsem and never reaching the
+> 	cond_resched().
 
-> On Mon, 2011-05-16 at 14:16 -0700, Andrew Morton wrote:
-> > On Mon, 16 May 2011 16:06:57 +0100
-> > Mel Gorman <mgorman@suse.de> wrote:
-> > 
-> > > Under constant allocation pressure, kswapd can be in the situation where
-> > > sleeping_prematurely() will always return true even if kswapd has been
-> > > running a long time. Check if kswapd needs to be scheduled.
-> > > 
-> > > Signed-off-by: Mel Gorman <mgorman@suse.de>
-> > > Acked-by: Rik van Riel <riel@redhat.com>
-> > > ---
-> > >  mm/vmscan.c |    4 ++++
-> > >  1 files changed, 4 insertions(+), 0 deletions(-)
-> > > 
-> > > diff --git a/mm/vmscan.c b/mm/vmscan.c
-> > > index af24d1e..4d24828 100644
-> > > --- a/mm/vmscan.c
-> > > +++ b/mm/vmscan.c
-> > > @@ -2251,6 +2251,10 @@ static bool sleeping_prematurely(pg_data_t *pgdat, int order, long remaining,
-> > >  	unsigned long balanced = 0;
-> > >  	bool all_zones_ok = true;
-> > >  
-> > > +	/* If kswapd has been running too long, just sleep */
-> > > +	if (need_resched())
-> > > +		return false;
-> > > +
-> > >  	/* If a direct reclaimer woke kswapd within HZ/10, it's premature */
-> > >  	if (remaining)
-> > >  		return true;
-> > 
-> > I'm a bit worried by this one.
-> > 
-> > Do we really fully understand why kswapd is continuously running like
-> > this?  The changelog makes me think "no" ;)
-> > 
-> > Given that the page-allocating process is madly reclaiming pages in
-> > direct reclaim (yes?) and that kswapd is madly reclaiming pages on a
-> > different CPU, we should pretty promptly get into a situation where
-> > kswapd can suspend itself.  But that obviously isn't happening.  So
-> > what *is* going on?
-> 
-> The triggering workload is a massive untar using a file on the same
-> filesystem, so that's a continuous stream of pages read into the cache
-> for the input and a stream of dirty pages out for the writes.  We
-> thought it might have been out of control shrinkers, so we already
-> debugged that and found it wasn't.  It just seems to be an imbalance in
-> the zones that the shrinkers can't fix which causes
-> sleeping_prematurely() to return true almost indefinitely.
+OK.
 
-Is the untar disk-bound?  The untar has presumably hit the writeback
-dirty_ratio?  So its rate of page allocation is approximately equal to
-the write speed of the disks?
 
-If so, the VM is consuming 100% of a CPU to reclaim pages at a mere
-tens-of-megabytes-per-second.  If so, there's something seriously wrong
-here - under favorable conditions one would expect reclaim to free up
-100,000 pages/sec, maybe more.
+>
+> balance_pgdat() only calls cond_resched if the zones are not
+> 	balanced. For a high-order allocation that is balanced, it
+> 	checks order-0 again. During that window, order-0 might have
+> 	become unbalanced so it loops again for order-0 and returns
+> 	that was reclaiming for order-0 to kswapd(). It can then find
+> 	that a caller has rewoken kswapd for a high-order and re-enters
+> 	balance_pgdat() without ever have called cond_resched().
 
-If the untar is not disk-bound and the required page reclaim rate is
-equal to the rate at which a CPU can read, decompress and write to
-pagecache then, err, maybe possible.  But it still smells of
-inefficient reclaim.
+Then, Shouldn't balance_pgdat() call cond_resched() unconditionally?
+The problem is NOT 100% cpu consumption. if kswapd will sleep, other
+processes need to reclaim old pages. The problem is, kswapd doesn't
+invoke context switch and other tasks hang-up.
 
-> > Secondly, taking an up-to-100ms sleep in response to a need_resched()
-> > seems pretty savage and I suspect it risks undesirable side-effects.  A
-> > plain old cond_resched() would be more cautious.  But presumably
-> > kswapd() is already running cond_resched() pretty frequently, so why
-> > didn't that work?
-> 
-> So the specific problem with cond_resched() is that kswapd is still
-> runnable, so even if there's other work the system can be getting on
-> with, it quickly comes back to looping madly in kswapd.  If we return
-> false from sleeping_prematurely(), we stop kswapd until its woken up to
-> do more work.  This manifests, even on non sandybridge systems that
-> don't hang as a lot of time burned in kswapd.
-> 
-> I think the sandybridge bug I see on the laptop is that cond_resched()
-> is somehow ineffective:  kswapd is usually hogging one CPU and there are
-> runnable processes but they seem to cluster on other CPUs, leaving
-> kswapd to spin at close to 100% system time.
-> 
-> When the problem was first described, we tried sprinkling more
-> cond_rescheds() in the shrinker loop and it didn't work.
 
-Seems to me that kswapd for some reason is doing too much work.  Or,
-more specifically is doing its work very inefficiently.  Making kswapd
-take arbitrary naps when it's misbehaving didn't fix that misbehaviour!
 
-It would be interesting to watch kswapd's page reclaim inefficiency
-when this is happening: /proc/vmstat:pgscan_kswapd_* versus
-/proc/vmstat:kswapd_steal.  If that ration is high then kswapd is
-scanning many pages and not reclaiming them.
 
-But given the prominence of shrink_slab in the traces, perhaps that
-isn't happening.
+> While it appears unlikely, there are bad conditions which can result
+> in cond_resched() being avoided.
+>
 
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
