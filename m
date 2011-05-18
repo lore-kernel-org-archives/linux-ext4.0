@@ -1,37 +1,44 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/4 v3] e2image: Add support for qcow2 format
-Date: Wed, 18 May 2011 12:17:51 -0400
-Message-ID: <20110518161751.GC29368@thunk.org>
-References: <1305718615-5991-1-git-send-email-lczerner@redhat.com>
- <1305718615-5991-2-git-send-email-lczerner@redhat.com>
+Subject: Re: [PATCH 3/4 v4] e2image: Support for conversion QCOW2 image
+ into raw
+Date: Wed, 18 May 2011 12:18:23 -0400
+Message-ID: <20110518161823.GD29368@thunk.org>
+References: <1305718615-5991-3-git-send-email-lczerner@redhat.com>
+ <1305721247-9598-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com, adilger@dilger.ca
 To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:59997 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:60001 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756748Ab1ERQRx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 May 2011 12:17:53 -0400
+	id S1756756Ab1ERQSZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 May 2011 12:18:25 -0400
 Content-Disposition: inline
-In-Reply-To: <1305718615-5991-2-git-send-email-lczerner@redhat.com>
+In-Reply-To: <1305721247-9598-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 18, 2011 at 01:36:53PM +0200, Lukas Czerner wrote:
-> This commit adds support for exporting filesystem into QCOW2 image
-> format. Like sparse format this saves space, by writing only necessary
-> (metadata blocks) into image. Unlike sparse image, QCOW2 image is NOT
-> sparse, hence does not change its size by copying with not-sparse-aware
-> tools.
+On Wed, May 18, 2011 at 02:20:47PM +0200, Lukas Czerner wrote:
+> This commit adds support for converting QCOW2 image created previously
+> with e2image into raw image. The QCOW2 image is detected automatically,
+> so there is not new option. Just use following command:
 > 
-> New options '-Q' has been added to tell the e2image to use QCOW2 as an
-> output image format. QCOW2 supports encryption and compression, however
-> e2image so far does no support such features, however you can still
-> scramble filenames with '-s' option.
+>   e2image -r image.qcow image.raw
+> 
+> No that this tool is aimed to quickly convert qcow2 image created with
+> e2image into raw image. In order to improve speed we are doing some
+> assumption I believe might not be true for regular qcow2 images. So it
+> was not tested with regular QCOW2 images and it might not work with
+> them. The intention of this tool is only convert images previously
+> created by e2image.
+> 
+> Note that there is nothing special with QCOW2 images created by e2images
+> and it can be used with tools like qemu-img, or qemu-nbd without any
+> problems.
 > 
 > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
-Applied to the e2fsprogs branch, with a lot of whitespace fixes.
+Applied to the e2fsprogs next branch.
 
-	       		 	      	- Ted
+						- Ted
