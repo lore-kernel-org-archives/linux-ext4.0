@@ -1,101 +1,96 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [PATCH] ext4: use vmtruncate() instead of ext4_truncate() in ext4_setattr()
-Date: Wed, 18 May 2011 10:56:42 +0800
-Message-ID: <BANLkTi==v=ShDNzhWHEAFcpzC9uKC63FBg@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext4: use vmtruncate() instead of ext4_truncate() in
+ ext4_setattr()
+Date: Tue, 17 May 2011 22:19:05 -0500
+Message-ID: <4DD33AA9.9060104@redhat.com>
 References: <20110517225926.8B4A94225B@ruihe.smo.corp.google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Transfer-Encoding: 7bit
 Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
 To: Jiaying Zhang <jiayingz@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:54676 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755436Ab1ERC4n convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 17 May 2011 22:56:43 -0400
-Received: by vws1 with SMTP id 1so811304vws.19
-        for <linux-ext4@vger.kernel.org>; Tue, 17 May 2011 19:56:42 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:12086 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932300Ab1ERDTK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 May 2011 23:19:10 -0400
 In-Reply-To: <20110517225926.8B4A94225B@ruihe.smo.corp.google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 18, 2011 at 6:59 AM, Jiaying Zhang <jiayingz@google.com> wr=
-ote:
-> There is a bug in commit c8d46e41 "ext4: Add flag to files with block=
-s
-> intentionally past EOF" that if we fallocate a file with FALLOC_FL_KE=
-EP_SIZE
-> flag and then ftruncate the file to a size larger than the file's i_s=
-ize,
-> any allocated but unwritten blocks will be freed but the file size is=
- set
+On 5/17/11 5:59 PM, Jiaying Zhang wrote:
+> There is a bug in commit c8d46e41 "ext4: Add flag to files with blocks
+> intentionally past EOF" that if we fallocate a file with FALLOC_FL_KEEP_SIZE
+> flag and then ftruncate the file to a size larger than the file's i_size,
+> any allocated but unwritten blocks will be freed but the file size is set
 > to the size that ftruncate specifies.
->
+> 
 > Here is a simple test to reproduce the problem:
-> =A01. fallocate a 12k size file with KEEP_SIZE flag
-> =A02. write the first 4k
-> =A03. ftruncate the file to 8k
+>   1. fallocate a 12k size file with KEEP_SIZE flag
+>   2. write the first 4k
+>   3. ftruncate the file to 8k
 > Then 'ls -l' shows that the i_size of the file becomes 8k but debugfs
 > shows the file has only the first written block left.
->
+
+To be honest I'm not 100% certain what the fiesystem -should- do in this case.
+
+If I go through that same sequence on xfs, I get 4k written / 8k unwritten:
+
+# xfs_bmap -vp testfile
+testfile:
+ EXT: FILE-OFFSET      BLOCK-RANGE            AG AG-OFFSET              TOTAL FLAGS
+   0: [0..7]:          2648750760..2648750767  3 (356066400..356066407)     8 00000
+   1: [8..23]:         2648750768..2648750783  3 (356066408..356066423)    16 10000
+
+size 8k:
+# ls -l testfile
+-rw-r--r-- 1 root root 8192 May 17 22:33 testfile
+
+and diskspace used 12k:
+# du -hc testfile
+12K	testfile
+12K	total
+
+I think this is a different result from ext4, either with or without your patch.
+
+On ext4 I get size 8k, but only the first 4k mapped, as you say.
+
+I don't recall when truncate is supposed to free fallocated blocks, and from what point?
+
+-Eric
+
 > Below is the proposed patch to fix the bug:
->
+> 
 > ext4: use vmtruncate() instead of ext4_truncate() in ext4_setattr().
->
+> 
 > Change ext4_setattr() to use vmtruncate(inode, attr->ia_size) instead
 > of ext4_truncate(inode) when it needs to truncate an inode so that
-> if the inode has EXT4_EOFBLOCKS_FL flag set and we are trying to trun=
-cate
-> to a size larger than the inode's i_size, we will only truncate the b=
-locks
-> beyond the specified truncate size instead of all of blocks beyond i_=
-size.
->
+> if the inode has EXT4_EOFBLOCKS_FL flag set and we are trying to truncate
+> to a size larger than the inode's i_size, we will only truncate the blocks
+> beyond the specified truncate size instead of all of blocks beyond i_size.
+> 
 > Signed-off-by: Jiaying Zhang <jiayingz@google.com>
->
+> 
 > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
 > index 3424e82..3bfad57 100644
 > --- a/fs/ext4/inode.c
 > +++ b/fs/ext4/inode.c
-> @@ -5347,8 +5347,11 @@ int ext4_setattr(struct dentry *dentry, struct=
- iattr *attr)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/* ext4_truncate will clear the flag *=
-/
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if ((ext4_test_inode_flag(inode, EXT4_I=
-NODE_EOFBLOCKS)))
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_truncate(inode);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if ((ext4_test_inode_flag(inode, EXT4_I=
-NODE_EOFBLOCKS))) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 rc =3D vmtruncate(inode=
-, attr->ia_size);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (rc)
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto er=
-r_out;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
-> =A0 =A0 =A0 =A0}
-Another question, does vmtruncate() write zeros to blocks beyond old
-EOF?  I had a rough look and could not find the code doing this, maybe
-due to my density.
-
-Yongqiang.
->
-> =A0 =A0 =A0 =A0if ((attr->ia_valid & ATTR_SIZE) &&
+> @@ -5347,8 +5347,11 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+>  			}
+>  		}
+>  		/* ext4_truncate will clear the flag */
+> -		if ((ext4_test_inode_flag(inode, EXT4_INODE_EOFBLOCKS)))
+> -			ext4_truncate(inode);
+> +		if ((ext4_test_inode_flag(inode, EXT4_INODE_EOFBLOCKS))) {
+> +			rc = vmtruncate(inode, attr->ia_size);
+> +			if (rc)
+> +				goto err_out;
+> +		}
+>  	}
+>  
+>  	if ((attr->ia_valid & ATTR_SIZE) &&
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-
-
---=20
-Best Wishes
-Yongqiang Yang
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
