@@ -1,9 +1,8 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 2/3] vfs: Block mmapped writes while the fs is frozen
-Date: Wed, 18 May 2011 14:12:06 -0400
-Message-ID: <20110518181206.GB10163@infradead.org>
+Subject: Re: [PATCH 0/3] Make block_page_mkwrite() handle frozen fs (V2)
+Date: Wed, 18 May 2011 14:13:21 -0400
+Message-ID: <20110518181321.GC10163@infradead.org>
 References: <1305731882-8334-1-git-send-email-jack@suse.cz>
- <1305731882-8334-3-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -12,50 +11,18 @@ Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1305731882-8334-3-git-send-email-jack@suse.cz>
+In-Reply-To: <1305731882-8334-1-git-send-email-jack@suse.cz>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
->  
->  	if (unlikely(ret < 0))
->  		unlock_page(page);
-> +	else {
-> +		/*
-> +		 * Freezing in progress? We check after the page is marked
-> +		 * dirty and with page lock held so if the test here fails, we
-> +		 * are sure freezing code will wait during syncing until the
-> +		 * page fault is done - at that point page will be dirty and
-> +		 * unlocked so freezing code will write it and writeprotect it
-> +		 * again.
-> +		 */
-> +		set_page_dirty(page);
-> +		if (inode->i_sb->s_frozen != SB_UNFROZEN) {
-> +			unlock_page(page);
-> +			ret = -EAGAIN;
-> +			goto out;
-> +		}
-> +	}
->  out:
->  	return ret;
+On Wed, May 18, 2011 at 05:17:59PM +0200, Jan Kara wrote:
+> from Christoph in the patches which resulted in some patch reorg. I'd like to
+> get these patches reviewed and then get them merged possibly via ext4-tree
+> (although the first two patches might go via Al but that would complicate
+> merging of ext4 part where I expect more conflicts with ongoing work).
 
-The code structure looks a bit odd, why not:
+The core canges are clear VFS tree material, and given that they are
+needed for the stable pages patches as well it really doesn't make sense
+to funnel this through a fs tree.  It might make sense to include the
+ext4 patch in the VFS pile if that makes merging easier.
 
-	if (ret < 0)
-		goto out_unlock;
-
-	set_page_dirty(page);
-	if (inode->i_sb->s_frozen != SB_UNFROZEN) {
-		ret = -EAGAIN;
-		goto out_unlock;
-	}
-
-	return 0;
-
-out_unlock:
-	unlock_page(page);
-	return ret;
-}
-
-Otherwise looks good,
-
-Reviewed-by: Christoph Hellwig <hch@lst.de>
