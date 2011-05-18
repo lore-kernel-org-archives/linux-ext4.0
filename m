@@ -1,180 +1,78 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] ext4: use vmtruncate() instead of ext4_truncate() in
- ext4_setattr()
-Date: Wed, 18 May 2011 16:13:56 +1000
-Message-ID: <20110518061356.GY19446@dastard>
-References: <20110517225926.8B4A94225B@ruihe.smo.corp.google.com>
- <4DD33AA9.9060104@redhat.com>
+Subject: Re: xfstests: device busy when umount
+Date: Wed, 18 May 2011 16:31:53 +1000
+Message-ID: <20110518063153.GZ19446@dastard>
+References: <BANLkTimQW+kyqjmzpAHH_W5x2v1EWW2AZA@mail.gmail.com>
+ <4DD286E5.8090105@redhat.com>
+ <BANLkTi=pZS6sTjS61UmpbOsj+vF+ithVvw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jiaying Zhang <jiayingz@google.com>, tytso@mit.edu,
-	linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	xfs-oss <xfs@oss.sgi.com>
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:14861 "EHLO
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:29005 "EHLO
 	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754020Ab1ERGST (ORCPT
+	by vger.kernel.org with ESMTP id S1753733Ab1ERGc0 (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 May 2011 02:18:19 -0400
+	Wed, 18 May 2011 02:32:26 -0400
 Content-Disposition: inline
-In-Reply-To: <4DD33AA9.9060104@redhat.com>
+In-Reply-To: <BANLkTi=pZS6sTjS61UmpbOsj+vF+ithVvw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 17, 2011 at 10:19:05PM -0500, Eric Sandeen wrote:
-> On 5/17/11 5:59 PM, Jiaying Zhang wrote:
-> > There is a bug in commit c8d46e41 "ext4: Add flag to files with blocks
-> > intentionally past EOF" that if we fallocate a file with FALLOC_FL_KEEP_SIZE
-> > flag and then ftruncate the file to a size larger than the file's i_size,
-> > any allocated but unwritten blocks will be freed but the file size is set
-> > to the size that ftruncate specifies.
-> > 
-> > Here is a simple test to reproduce the problem:
-> >   1. fallocate a 12k size file with KEEP_SIZE flag
-> >   2. write the first 4k
-> >   3. ftruncate the file to 8k
-> > Then 'ls -l' shows that the i_size of the file becomes 8k but debugfs
-> > shows the file has only the first written block left.
-> 
-> To be honest I'm not 100% certain what the fiesystem -should- do in this case.
-> 
-> If I go through that same sequence on xfs, I get 4k written / 8k unwritten:
-> 
-> # xfs_bmap -vp testfile
-> testfile:
->  EXT: FILE-OFFSET      BLOCK-RANGE            AG AG-OFFSET              TOTAL FLAGS
->    0: [0..7]:          2648750760..2648750767  3 (356066400..356066407)     8 00000
->    1: [8..23]:         2648750768..2648750783  3 (356066408..356066423)    16 10000
+On Tue, May 17, 2011 at 06:01:14PM +0300, Amir Goldstein wrote:
+> On Tue, May 17, 2011 at 5:32 PM, Eric Sandeen <sandeen@redhat.com> wr=
+ote:
+> > On 5/17/11 4:03 AM, Yongqiang Yang wrote:
+> >> Hi,
+> >>
+> >> I noticed that all tests which contain 'device busy' errors have
+> >> falloc operations. =A0Does the error have something to do with fal=
+loc?
 
-Ok, so that's the case for a _truncate up_ from 4k to 8k:
+<shrug>
 
-$ rm /mnt/test/foo
-$ xfs_io -f -c "resvsp 0 12k" -c stat -c "bmap -vp" -c "pwrite 0 4k" -c "fsync" -c "bmap -vp" -c "t 8k" -c "bmap -vp" -c stat /mnt/test/foo
-fd.path = "/mnt/test/foo"
-fd.flags = non-sync,non-direct,read-write
-stat.ino = 71
-stat.type = regular file
-stat.size = 0
-stat.blocks = 24
-fsxattr.xflags = 0x2 [-p------------]
-fsxattr.projid = 0
-fsxattr.extsize = 0
-fsxattr.nextents = 1
-fsxattr.naextents = 0
-dioattr.mem = 0x200
-dioattr.miniosz = 512
-dioattr.maxiosz = 2147483136
-/mnt/test/foo:
- EXT: FILE-OFFSET      BLOCK-RANGE      AG AG-OFFSET        TOTAL FLAGS
-   0: [0..23]:         9712..9735        0 (9712..9735)        24 10000
-wrote 4096/4096 bytes at offset 0
-4 KiB, 1 ops; 0.0000 sec (156 MiB/sec and 40000.0000 ops/sec)
-/mnt/test/foo:
- EXT: FILE-OFFSET      BLOCK-RANGE      AG AG-OFFSET        TOTAL FLAGS
-   0: [0..7]:          9712..9719        0 (9712..9719)         8 00000
-   1: [8..23]:         9720..9735        0 (9720..9735)        16 10000
-/mnt/test/foo:
- EXT: FILE-OFFSET      BLOCK-RANGE      AG AG-OFFSET        TOTAL FLAGS
-   0: [0..7]:          9712..9719        0 (9712..9719)         8 00000
-   1: [8..23]:         9720..9735        0 (9720..9735)        16 10000
-fd.path = "/mnt/test/foo"
-fd.flags = non-sync,non-direct,read-write
-stat.ino = 71
-stat.type = regular file
-stat.size = 8192
-stat.blocks = 24
-fsxattr.xflags = 0x2 [-p------------]
-fsxattr.projid = 0
-fsxattr.extsize = 0
-fsxattr.nextents = 2
-fsxattr.naextents = 0
-dioattr.mem = 0x200
-dioattr.miniosz = 512
-dioattr.maxiosz = 2147483136
+Perhaps a bit more detail about what you are testing, how you've set
+up xfstests, etc, and some analysis of the problem is in order first?
 
-But you get a different result on truncate down:
+> > cc'ing xfs list since xfs devs maintain xfstests.
+> >
+> > What tests have "device busy" errors? =A0What do the usual investig=
+ative
+> > steps such as "lsof" and "fuser" tell you when this happens?
+>=20
+> I tried running lsof | grep $TEST_DIR before umount
+> and I tried sleep 1 before umount and it didn't yield anything.
 
-$rm /mnt/test/foo
-$ xfs_io -f -c "truncate 12k" -c "resvsp 0 12k" -c stat -c "bmap -vp" -c "pwrite 0 4k" -c "fsync" -c "bmap -vp" -c "t 8k" -c "bmap -vp" -c stat /mnt/test/foo
-fd.path = "/mnt/test/foo"
-fd.flags = non-sync,non-direct,read-write
-stat.ino = 71
-stat.type = regular file
-stat.size = 12288
-stat.blocks = 24
-fsxattr.xflags = 0x2 [-p------------]
-fsxattr.projid = 0
-fsxattr.extsize = 0
-fsxattr.nextents = 1
-fsxattr.naextents = 0
-dioattr.mem = 0x200
-dioattr.miniosz = 512
-dioattr.maxiosz = 2147483136
-/mnt/test/foo:
- EXT: FILE-OFFSET      BLOCK-RANGE      AG AG-OFFSET        TOTAL FLAGS
-   0: [0..23]:         9584..9607        0 (9584..9607)        24 10000
-wrote 4096/4096 bytes at offset 0
-4 KiB, 1 ops; 0.0000 sec (217.014 MiB/sec and 55555.5556 ops/sec)
-/mnt/test/foo:
- EXT: FILE-OFFSET      BLOCK-RANGE      AG AG-OFFSET        TOTAL FLAGS
-   0: [0..7]:          9584..9591        0 (9584..9591)         8 00000
-   1: [8..23]:         9592..9607        0 (9592..9607)        16 10000
-/mnt/test/foo:
- EXT: FILE-OFFSET      BLOCK-RANGE      AG AG-OFFSET        TOTAL FLAGS
-   0: [0..7]:          9584..9591        0 (9584..9591)         8 00000
-   1: [8..15]:         9592..9599        0 (9592..9599)         8 10000
-fd.path = "/mnt/test/foo"
-fd.flags = non-sync,non-direct,read-write
-stat.ino = 71
-stat.type = regular file
-stat.size = 8192
-stat.blocks = 16
-fsxattr.xflags = 0x2 [-p------------]
-fsxattr.projid = 0
-fsxattr.extsize = 0
-fsxattr.nextents = 2
-fsxattr.naextents = 0
-dioattr.mem = 0x200
-dioattr.miniosz = 512
-dioattr.maxiosz = 2147483136
+Which usually indicates that you've got some kind of reference
+counting problem preventing the filesystem from being unmounted.
 
-IOWs, on XFS a truncate up does not change the preallocation at all,
-while a truncate down will _always_ remove preallocation beyond the
-new EOF.  It's always had this behaviour w.r.t. to truncate(2) and
-preallocation beyond EOF.
+> > Are there loop devices that didn't get cleaned up, or processes tha=
+t
+> > have not terminated?
+> >
+> > What tests have these problems?
+>=20
+> for me 124 always fails to umount, and 198 and 213 sometimes fails to=
+ umount.
 
-> I think this is a different result from ext4, either with or without your patch.
-> 
-> On ext4 I get size 8k, but only the first 4k mapped, as you say.
-> 
-> I don't recall when truncate is supposed to free fallocated blocks, and from what point?
-
-It's entirely up to the filesystem how it treats blocks beyond EOF
-during truncation. XFS frees them on truncate down, because it is
-much safer to just truncate away everything beyond the new EOF than
-to leave written extents beyond EOF as potential landmines.
-
-Indeed, that's why calling vmtruncate() as a bad fix. If you have:
-
-
-	       NUUUUUUUUUUWWWWWWWWWOUUUUUUUUU
-       ....----+----------+--------+--------+
-               A	  B        C        D
-
-Where	A = new EOF (N)
-	A->B = unwritten (U)
-	B->C = written (W)
-	C = old EOF (O)
-	C->D = unwritten (U)
-
-Then just calling vmtruncate() will leave the blocks in the range
-B->C as written blocks. Hence then doing an extending truncate back
-out to D will expose stale data rather than zeros in the range
-B->C....
+What, exactly, are you testing on? test 124 uses XFS_IOC_RESVSP
+directly, not fallocate(), so all it is doing on a non-XFS
+filesystem is iterating a loop that writes a 1MB file, reads it back
+then unlinks it....
 
 Cheers,
 
 Dave.
--- 
+--=20
 Dave Chinner
 david@fromorbit.com
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
