@@ -1,259 +1,53 @@
-From: Colin Ian King <colin.king@canonical.com>
-Subject: Re: [PATCH 4/4] mm: vmscan: If kswapd has been running too long,
- allow it to sleep
-Date: Wed, 18 May 2011 08:39:34 +0100
-Message-ID: <1305704374.5123.2.camel@lenovo>
-References: <1305295404-12129-1-git-send-email-mgorman@suse.de>
-	 <1305295404-12129-5-git-send-email-mgorman@suse.de>
-	 <4DCFAA80.7040109@jp.fujitsu.com> <1305519711.4806.7.camel@mulgrave.site>
-	 <BANLkTi=oe4Ties6awwhHFPf42EXCn2U4MQ@mail.gmail.com>
-	 <20110516084558.GE5279@suse.de>
-	 <BANLkTinW4s6aT2bZ79sHNgdh5j8VYyJz2w@mail.gmail.com>
-	 <20110516102753.GF5279@suse.de>
-	 <BANLkTi=5ON_ttuwFFhFObfoP8EBKPdFgAA@mail.gmail.com>
-	 <20110517103840.GL5279@suse.de> <1305640239.2046.27.camel@lenovo>
-	 <BANLkTi=esh86EtfQgRGWkHx6Z3fYV+42tA@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 3/3] ext4: Block mmapped writes while the fs is frozen
+Date: Wed, 18 May 2011 09:56:14 +0200
+Message-ID: <20110518075614.GB25632@quack.suse.cz>
+References: <1305066574-1573-1-git-send-email-jack@suse.cz>
+ <1305066574-1573-4-git-send-email-jack@suse.cz>
+ <20110517151108.GB6653@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Mel Gorman <mgorman@suse.de>,
-	James Bottomley <James.Bottomley@hansenpartnership.com>,
-	KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>,
-	akpm@linux-foundation.org, raghu.prabhu13@gmail.com, jack@suse.cz,
-	chris.mason@oracle.com, cl@linux.com, penberg@kernel.org,
-	riel@redhat.com, hannes@cmpxchg.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Minchan Kim <minchan.kim@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from adelie.canonical.com ([91.189.90.139]:41205 "EHLO
-	adelie.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754427Ab1ERHjx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 May 2011 03:39:53 -0400
-In-Reply-To: <BANLkTi=esh86EtfQgRGWkHx6Z3fYV+42tA@mail.gmail.com>
+Received: from cantor2.suse.de ([195.135.220.15]:46695 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754725Ab1ERH4h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 May 2011 03:56:37 -0400
+Content-Disposition: inline
+In-Reply-To: <20110517151108.GB6653@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 2011-05-18 at 13:19 +0900, Minchan Kim wrote:
-> Hello Colin,
+On Tue 17-05-11 11:11:08, Christoph Hellwig wrote:
+> On Wed, May 11, 2011 at 12:29:34AM +0200, Jan Kara wrote:
+> > We should not allow file modification via mmap while the filesystem is
+> > frozen. So block in ext4_page_mkwrite() while the filesystem is frozen.
+> > 
+> > We have to check for frozen filesystem with the page marked dirty and under
+> > page lock with which we then return from ext4_page_mkwrite(). Only that way we
+> > cannot race with writeback done by freezing code - either we mark the page
+> > dirty after the writeback has started, see freezing in progress and block, or
+> > writeback will wait for our page lock which is released only when the fault is
+> > done and then writeback will writeout and writeprotect the page again.
 > 
-> On Tue, May 17, 2011 at 10:50 PM, Colin Ian King
-> <colin.king@canonical.com> wrote:
-> > On Tue, 2011-05-17 at 11:38 +0100, Mel Gorman wrote:
-> >> On Tue, May 17, 2011 at 08:50:44AM +0900, Minchan Kim wrote:
-> >> > On Mon, May 16, 2011 at 7:27 PM, Mel Gorman <mgorman@suse.de> wrote:
-> >> > > On Mon, May 16, 2011 at 05:58:59PM +0900, Minchan Kim wrote:
-> >> > >> On Mon, May 16, 2011 at 5:45 PM, Mel Gorman <mgorman@suse.de> wrote:
-> >> > >> > On Mon, May 16, 2011 at 02:04:00PM +0900, Minchan Kim wrote:
-> >> > >> >> On Mon, May 16, 2011 at 1:21 PM, James Bottomley
-> >> > >> >> <James.Bottomley@hansenpartnership.com> wrote:
-> >> > >> >> > On Sun, 2011-05-15 at 19:27 +0900, KOSAKI Motohiro wrote:
-> >> > >> >> >> (2011/05/13 23:03), Mel Gorman wrote:
-> >> > >> >> >> > Under constant allocation pressure, kswapd can be in the situation where
-> >> > >> >> >> > sleeping_prematurely() will always return true even if kswapd has been
-> >> > >> >> >> > running a long time. Check if kswapd needs to be scheduled.
-> >> > >> >> >> >
-> >> > >> >> >> > Signed-off-by: Mel Gorman<mgorman@suse.de>
-> >> > >> >> >> > ---
-> >> > >> >> >> >   mm/vmscan.c |    4 ++++
-> >> > >> >> >> >   1 files changed, 4 insertions(+), 0 deletions(-)
-> >> > >> >> >> >
-> >> > >> >> >> > diff --git a/mm/vmscan.c b/mm/vmscan.c
-> >> > >> >> >> > index af24d1e..4d24828 100644
-> >> > >> >> >> > --- a/mm/vmscan.c
-> >> > >> >> >> > +++ b/mm/vmscan.c
-> >> > >> >> >> > @@ -2251,6 +2251,10 @@ static bool sleeping_prematurely(pg_data_t *pgdat, int order, long remaining,
-> >> > >> >> >> >     unsigned long balanced = 0;
-> >> > >> >> >> >     bool all_zones_ok = true;
-> >> > >> >> >> >
-> >> > >> >> >> > +   /* If kswapd has been running too long, just sleep */
-> >> > >> >> >> > +   if (need_resched())
-> >> > >> >> >> > +           return false;
-> >> > >> >> >> > +
-> >> > >> >> >>
-> >> > >> >> >> Hmm... I don't like this patch so much. because this code does
-> >> > >> >> >>
-> >> > >> >> >> - don't sleep if kswapd got context switch at shrink_inactive_list
-> >> > >> >> >
-> >> > >> >> > This isn't entirely true:  need_resched() will be false, so we'll follow
-> >> > >> >> > the normal path for determining whether to sleep or not, in effect
-> >> > >> >> > leaving the current behaviour unchanged.
-> >> > >> >> >
-> >> > >> >> >> - sleep if kswapd didn't
-> >> > >> >> >
-> >> > >> >> > This also isn't entirely true: whether need_resched() is true at this
-> >> > >> >> > point depends on a whole lot more that whether we did a context switch
-> >> > >> >> > in shrink_inactive. It mostly depends on how long we've been running
-> >> > >> >> > without giving up the CPU.  Generally that will mean we've been round
-> >> > >> >> > the shrinker loop hundreds to thousands of times without sleeping.
-> >> > >> >> >
-> >> > >> >> >> It seems to be semi random behavior.
-> >> > >> >> >
-> >> > >> >> > Well, we have to do something.  Chris Mason first suspected the hang was
-> >> > >> >> > a kswapd rescheduling problem a while ago.  We tried putting
-> >> > >> >> > cond_rescheds() in several places in the vmscan code, but to no avail.
-> >> > >> >>
-> >> > >> >> Is it a result of  test with patch of Hannes(ie, !pgdat_balanced)?
-> >> > >> >>
-> >> > >> >> If it isn't, it would be nop regardless of putting cond_reshed at vmscan.c.
-> >> > >> >> Because, although we complete zone balancing, kswapd doesn't sleep as
-> >> > >> >> pgdat_balance returns wrong result. And at last VM calls
-> >> > >> >> balance_pgdat. In this case, balance_pgdat returns without any work as
-> >> > >> >> kswap couldn't find zones which have not enough free pages and goto
-> >> > >> >> out. kswapd could repeat this work infinitely. So you don't have a
-> >> > >> >> chance to call cond_resched.
-> >> > >> >>
-> >> > >> >> But if your test was with Hanne's patch, I am very curious how come
-> >> > >> >> kswapd consumes CPU a lot.
-> >> > >> >>
-> >> > >> >> > The need_resched() in sleeping_prematurely() seems to be about the best
-> >> > >> >> > option.  The other option might be just to put a cond_resched() in
-> >> > >> >> > kswapd_try_to_sleep(), but that will really have about the same effect.
-> >> > >> >>
-> >> > >> >> I don't oppose it but before that, I think we have to know why kswapd
-> >> > >> >> consumes CPU a lot although we applied Hannes' patch.
-> >> > >> >>
-> >> > >> >
-> >> > >> > Because it's still possible for processes to allocate pages at the same
-> >> > >> > rate kswapd is freeing them leading to a situation where kswapd does not
-> >> > >> > consider the zone balanced for prolonged periods of time.
-> >> > >>
-> >> > >> We have cond_resched in shrink_page_list, shrink_slab and balance_pgdat.
-> >> > >> So I think kswapd can be scheduled out although it's scheduled in
-> >> > >> after a short time as task scheduled also need page reclaim. Although
-> >> > >> all task in system need reclaim, kswapd cpu 99% consumption is a
-> >> > >> natural result, I think.
-> >> > >> Do I miss something?
-> >> > >>
-> >> > >
-> >> > > Lets see;
-> >> > >
-> >> > > shrink_page_list() only applies if inactive pages were isolated
-> >> > >        which in turn may not happen if all_unreclaimable is set in
-> >> > >        shrink_zones(). If for whatver reason, all_unreclaimable is
-> >> > >        set on all zones, we can miss calling cond_resched().
-> >> > >
-> >> > > shrink_slab only applies if we are reclaiming slab pages. If the first
-> >> > >        shrinker returns -1, we do not call cond_resched(). If that
-> >> > >        first shrinker is dcache and __GFP_FS is not set, direct
-> >> > >        reclaimers will not shrink at all. However, if there are
-> >> > >        enough of them running or if one of the other shrinkers
-> >> > >        is running for a very long time, kswapd could be starved
-> >> > >        acquiring the shrinker_rwsem and never reaching the
-> >> > >        cond_resched().
-> >> >
-> >> > Don't we have to move cond_resched?
-> >> >
-> >> > diff --git a/mm/vmscan.c b/mm/vmscan.c
-> >> > index 292582c..633e761 100644
-> >> > --- a/mm/vmscan.c
-> >> > +++ b/mm/vmscan.c
-> >> > @@ -231,8 +231,10 @@ unsigned long shrink_slab(struct shrink_control *shrink,
-> >> >         if (scanned == 0)
-> >> >                 scanned = SWAP_CLUSTER_MAX;
-> >> >
-> >> > -       if (!down_read_trylock(&shrinker_rwsem))
-> >> > -               return 1;       /* Assume we'll be able to shrink next time */
-> >> > +       if (!down_read_trylock(&shrinker_rwsem)) {
-> >> > +               ret = 1;
-> >> > +               goto out; /* Assume we'll be able to shrink next time */
-> >> > +       }
-> >> >
-> >> >         list_for_each_entry(shrinker, &shrinker_list, list) {
-> >> >                 unsigned long long delta;
-> >> > @@ -280,12 +282,14 @@ unsigned long shrink_slab(struct shrink_control *shrink,
-> >> >                         count_vm_events(SLABS_SCANNED, this_scan);
-> >> >                         total_scan -= this_scan;
-> >> >
-> >> > -                       cond_resched();
-> >> >                 }
-> >> >
-> >> >                 shrinker->nr += total_scan;
-> >> > +               cond_resched();
-> >> >         }
-> >> >         up_read(&shrinker_rwsem);
-> >> > +out:
-> >> > +       cond_resched();
-> >> >         return ret;
-> >> >  }
-> >> >
-> >>
-> >> This makes some sense for the exit path but if one or more of the
-> >> shrinkers takes a very long time without sleeping (extremely long
-> >> list searches for example) then kswapd will not call cond_resched()
-> >> between shrinkers and still consume a lot of CPU.
-> >>
-> >> > >
-> >> > > balance_pgdat() only calls cond_resched if the zones are not
-> >> > >        balanced. For a high-order allocation that is balanced, it
-> >> > >        checks order-0 again. During that window, order-0 might have
-> >> > >        become unbalanced so it loops again for order-0 and returns
-> >> > >        that was reclaiming for order-0 to kswapd(). It can then find
-> >> > >        that a caller has rewoken kswapd for a high-order and re-enters
-> >> > >        balance_pgdat() without ever have called cond_resched().
-> >> >
-> >> > If kswapd reclaims order-o followed by high order, it would have a
-> >> > chance to call cond_resched in shrink_page_list. But if all zones are
-> >> > all_unreclaimable is set, balance_pgdat could return any work. Okay.
-> >> > It does make sense.
-> >> > By your scenario, someone wakes up kswapd with higher order, again.
-> >> > So re-enters balance_pgdat without ever have called cond_resched.
-> >> > But if someone wakes up higher order again, we can't have a chance to
-> >> > call kswapd_try_to_sleep. So your patch effect would be nop, too.
-> >> >
-> >> > It would be better to put cond_resched after balance_pgdat?
-> >> >
-> >>
-> >> Which will leave kswapd runnable instead of going to sleep but
-> >> guarantees a scheduling point. Lets see if the problem is that
-> >> cond_resched is being missed although if this was the case then patch
-> >> 4 would truly be a no-op but Colin has already reported that patch 1 on
-> >> its own didn't fix his problem. If the problem is sandybridge-specific
-> >> where kswapd remains runnable and consuming large amounts of CPU in
-> >> turbo mode then we know that there are other cond_resched() decisions
-> >> that will need to be revisited.
-> >>
-> >> Colin or James, would you be willing to test with patch 1 from this
-> >> series and Minchan's patch below? Thanks.
-> >
-> > This works OK fine.  Ran 250 test cycles for about 2 hours.
-> 
-> Thanks for the testing!.
-> I would like to know exact patch for you to apply.
-> My modification of inserting cond_resched is two.
-> 
-> 1) shrink_slab function
-> 2) kswapd right after balance_pgdat.
-> 
-> 1) or 2) ?
-> Or
-> Both?
-> 
-I just followed Mel's request, so, patch 1 from the series and *just*
-the following:
+> This really should be done in (__)block_page_mkwrite.  I'd also return
+> VM_FAULT_RETRY instead of retrying inside the block_mkwrite handler
+> in case you hit the race.
+  Well, we can do the non-blocking check at the end of
+__block_page_mkwrite() and return some error value (EAGAIN translating to
+VM_FAULT_RETRY would look logical, I just have to think off better error
+value for VM_FAULT_NOPAGE). But vfs_check_frozen() cannot be in
+__block_page_mkwrite() since ext4 needs to call that with a transaction
+started so that would create a deadlock and we need to call
+vfs_check_frozen() somewhere so that we don't busyloop.
 
+I can call vfs_check_frozen() inside block_page_mkwrite() but it would be a
+bit surprising difference from __block_page_mkwrite() to me. Not sure what
+the cleanest solution would be here...
 
->Colin or James, would you be willing to test with patch 1 from this
->series and Minchan's patch below? Thanks.
->
-> diff --git a/mm/vmscan.c b/mm/vmscan.c
-> index 292582c..61c45d0 100644
-> --- a/mm/vmscan.c
-> +++ b/mm/vmscan.c
-> @@ -2753,6 +2753,7 @@ static int kswapd(void *p)
->                 if (!ret) {
->                         trace_mm_vmscan_kswapd_wake(pgdat->node_id,
-order);
->                         order = balance_pgdat(pgdat, order,
-&classzone_idx);
-> +                       cond_resched();
->                 }
->         }
->         return 0;
-
-Colin
-
-
-> Thanks
-
-
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
