@@ -1,348 +1,38 @@
-From: Josef Bacik <josef@redhat.com>
-Subject: Re: [PATCH] xfstests:Make 225 compare map and fiemap at each block.
-Date: Wed, 18 May 2011 09:43:01 -0400
-Message-ID: <4DD3CCE5.2010108@redhat.com>
-References: <1305724490-29408-1-git-send-email-xiaoqiangnk@gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 3/3] ext4: Block mmapped writes while the fs is frozen
+Date: Wed, 18 May 2011 09:03:27 -0500
+Message-ID: <4DD3D1AF.9060809@redhat.com>
+References: <1305066574-1573-1-git-send-email-jack@suse.cz> <1305066574-1573-4-git-send-email-jack@suse.cz> <20110517151108.GB6653@infradead.org> <20110518075614.GB25632@quack.suse.cz> <20110518080731.GA2759@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: sandeen@redhat.com, linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57842 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932691Ab1ERNnF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 May 2011 09:43:05 -0400
-In-Reply-To: <1305724490-29408-1-git-send-email-xiaoqiangnk@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20110518080731.GA2759@infradead.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 05/18/2011 09:14 AM, Yongqiang Yang wrote:
-> Hi All,
+On 5/18/11 3:07 AM, Christoph Hellwig wrote:
+> On Wed, May 18, 2011 at 09:56:14AM +0200, Jan Kara wrote:
+>> __block_page_mkwrite() and return some error value (EAGAIN translating to
+>> VM_FAULT_RETRY would look logical, I just have to think off better error
+>> value for VM_FAULT_NOPAGE). But vfs_check_frozen() cannot be in
+>> __block_page_mkwrite() since ext4 needs to call that with a transaction
+>> started so that would create a deadlock and we need to call
+>> vfs_check_frozen() somewhere so that we don't busyloop.
+>>
+>> I can call vfs_check_frozen() inside block_page_mkwrite() but it would be a
+>> bit surprising difference from __block_page_mkwrite() to me. Not sure what
+>> the cleanest solution would be here...
 > 
-> Due to my carelessness, I induced a ugly patch to ext4's fiemap, but
-> 225 could not find it.  So I looked into the 225 and could not figure out
-> logic in compare_map_and_fiemap(), which seemed to mixed extents with
-> blocks.  Then I made 225 compare map and fiemap at each block, the new
-> 225 can find another bug in ext4's fiemap.  After the new 225 is accepted,
-> I will send out the patch for ext4's fiemap.
-> 
-> The new 225 works well on ext3 and ext4 with both 1K and 4K block. However,
-> it report fiemap error on xfs with 4K block.  My working tree is 2.6.39-rc3
-> pulled from Ted's tree. The error message is as follows.
-> 
->  QA output created by 225
->  fiemap run without preallocation, with sync
-> +map is 'DDHDHHDHHDHDDHDDHDDHHDHDDHDDDDDDHHDDDHHHHDHDDDDDDDDHDDHHHDDDHDDHHD
-> DDDDDHHHHHHDDHHHHHDHDHDHDDDHDDHD'
-> +logical: [       0..      15] phys:       12..      27 flags: 0x000 tot: 16
-> +logical: [      17..      31] phys:       29..      43 flags: 0x000 tot: 15
-> +logical: [      34..      63] phys:       46..      75 flags: 0x000 tot: 30
-> +logical: [      65..      95] phys:       77..     107 flags: 0x001 tot: 31
-> +Problem comparing fiemap and map
->  fiemap run without preallocation or sync
-> +map is 'DDHDHHDHHDHDDHDDHDDHHDHDDHDDDDDDHHDDDHHHHDHDDDDDDDDHDDHHHDDDHDDHHDD
-> DDDDHHHHHHDDHHHHHDHDHDHDDDHDDHD'
-> +logical: [       0..      15] phys:        0..      15 flags: 0x006 tot: 16
-> +Problem comparing fiemap and map
-> Ran: 225
-> Failures: 225
-> Failed 1 of 1 tests
-> 
-> I am not sure this is a bug in new 225 or xfs.
-> 
-> Yongqiang.
-> 
-> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-> ---
->  src/fiemap-tester.c |  223 ++++++++++++++++++++++++++++----------------------
->  1 files changed, 125 insertions(+), 98 deletions(-)
-> 
-> diff --git a/src/fiemap-tester.c b/src/fiemap-tester.c
-> index 1663f84..99bb5ce 100644
-> --- a/src/fiemap-tester.c
-> +++ b/src/fiemap-tester.c
-> @@ -14,6 +14,9 @@
->   * You should have received a copy of the GNU General Public License
->   * along with this program; if not, write the Free Software Foundation,
->   * Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-> + *
-> + * Compare map and fiemap at each block,
-> + * Yongqiang Yang <xiaoqiangnk@gmail.com>, 2011
->   */
->  
->  #include <stdio.h>
-> @@ -57,7 +60,7 @@ generate_file_mapping(int blocks, int prealloc)
->  	int num_types = 2, cur_block = 0;
->  	int i = 0;
->  
-> -	map = malloc(sizeof(char) * blocks);
-> +	map = malloc(sizeof(char) * (blocks + 1));
->  	if (!map)
->  		return NULL;
->  
-> @@ -80,7 +83,8 @@ generate_file_mapping(int blocks, int prealloc)
->  		}
->  		cur_block++;
->  	}
-> -
-> +	
+> block_page_mkwrite is supposed to be used directly by filesystems and
+> do all the right things.  IIRC Eric even mentioned he added
+> vfs_check_frozen to it for RHEL, but forgot to push it upstream.
 
-You added whitespace here.
+Well, I tried, but it was rejected IIRC.  Still, mea culpa....
 
-> +	map[blocks] = 0;
->  	return map;
->  }
->  
-> @@ -247,55 +251,36 @@ check_flags(struct fiemap *fiemap, int blocksize)
->  }
->  
->  static int
-> -check_data(struct fiemap *fiemap, __u64 logical_offset, int blocksize,
-> +check_data(struct fiemap_extent * extent ,  __u64 logical_offset, int blocksize,
->  	   int last, int prealloc)
->  {
-> -	struct fiemap_extent *extent;
-> -	__u64 orig_offset = logical_offset;
-> -	int c, found = 0;
-> -
-> -	for (c = 0; c < fiemap->fm_mapped_extents; c++) {
-> -		__u64 start, end;
-> -		extent = &fiemap->fm_extents[c];
-> -
-> -		start = extent->fe_logical;
-> -		end = extent->fe_logical + extent->fe_length;
-> -
-> -		if (logical_offset > end)
-> -			continue;
-> -
-> -		if (logical_offset + blocksize < start)
-> -			break;
-> -
-> -		if (logical_offset >= start &&
-> -		    logical_offset < end) {
-> -			if (prealloc &&
-> -			    !(extent->fe_flags & FIEMAP_EXTENT_UNWRITTEN)) {
-> -				printf("ERROR: preallocated extent is not "
-> -				       "marked with FIEMAP_EXTENT_UNWRITTEN: "
-> -				       "%llu\n",
-> -				       (unsigned long long)
-> -				       (start / blocksize));
-> -				return -1;
-> -			}
-> -
-> -			if (logical_offset + blocksize > end) {
-> -				logical_offset = end+1;
-> -				continue;
-> -			} else {
-> -				found = 1;
-> -				break;
-> -			}
-> +	int found = 0;
-> +	__u64 start, end;
-> +
-> +	start = extent->fe_logical;
-> +	end = extent->fe_logical + extent->fe_length;
-> +
-> +	if (logical_offset >= start &&
-> +	    logical_offset < end) {
-> +		if (prealloc &&
-> +		    !(extent->fe_flags & FIEMAP_EXTENT_UNWRITTEN)) {
-> +			printf("ERROR: preallocated extent is not "
-> +			       "marked with FIEMAP_EXTENT_UNWRITTEN: "
-> +			       "%llu\n",
-> +			       (unsigned long long)
-> +			       (start / blocksize));
-> +			return -1;
->  		}
-> +		found = 1;
->  	}
-> -
-> +	
+I can resurrect what I did for RHEL5 and repost if desired...
 
-You added whitespace here.
-
->  	if (!found) {
->  		printf("ERROR: couldn't find extent at %llu\n",
-> -		       (unsigned long long)(orig_offset / blocksize));
-> +		       (unsigned long long)(logical_offset / blocksize));
->  	} else if (last &&
-> -		   !(fiemap->fm_extents[c].fe_flags & FIEMAP_EXTENT_LAST)) {
-> +		   !(extent->fe_flags & FIEMAP_EXTENT_LAST)) {
->  		printf("ERROR: last extent not marked as last: %llu\n",
-> -		       (unsigned long long)(orig_offset / blocksize));
-> +		       (unsigned long long)(logical_offset / blocksize));
->  		found = 0;
->  	}
->  
-> @@ -370,37 +355,26 @@ check_weird_fs_hole(int fd, __u64 logical_offset, int blocksize)
->  }
->  
->  static int
-> -check_hole(struct fiemap *fiemap, int fd, __u64 logical_offset, int blocksize)
-> +check_hole(struct fiemap_extent *extent, int fd, __u64 logical_offset, int blocksize)
->  {
-> -	struct fiemap_extent *extent;
-> -	int c;
-> +	__u64 start, end;
->  
-> -	for (c = 0; c < fiemap->fm_mapped_extents; c++) {
-> -		__u64 start, end;
-> -		extent = &fiemap->fm_extents[c];
-> +	start = extent->fe_logical;
-> +	end = extent->fe_logical + extent->fe_length;
->  
-> -		start = extent->fe_logical;
-> -		end = extent->fe_logical + extent->fe_length;
-> +	if (logical_offset >= start &&
-> +	    logical_offset < end) {
->  
-> -		if (logical_offset > end)
-> -			continue;
-> -		if (logical_offset + blocksize < start)
-> -			break;
-> +		if (check_weird_fs_hole(fd, logical_offset,
-> +					blocksize) == 0)
-> +			return 0;
->  
-> -		if (logical_offset >= start &&
-> -		    logical_offset < end) {
-> -
-> -			if (check_weird_fs_hole(fd, logical_offset,
-> -						blocksize) == 0)
-> -				break;
-> -
-> -			printf("ERROR: found an allocated extent where a hole "
-> -			       "should be: %llu\n",
-> -			       (unsigned long long)(start / blocksize));
-> -			return -1;
-> -		}
-> +		printf("ERROR: found an allocated extent where a hole "
-> +		       "should be: %llu\n",
-> +		       (unsigned long long)(start / blocksize));
-> +		return -1;
->  	}
-> -
-> +	
-
-More whitespace.
-
->  	return 0;
->  }
->  
-> @@ -423,9 +397,11 @@ compare_fiemap_and_map(int fd, char *map, int blocks, int blocksize, int syncfil
->  {
->  	struct fiemap *fiemap;
->  	char *fiebuf;
-> -	int blocks_to_map, ret, cur_extent = 0, last_data;
-> +	int blocks_to_map, ret, last_data = -1;
->  	__u64 map_start, map_length;
->  	int i, c;
-> +	int cur_block = 0;
-> +	int last_found = 0;
->  
->  	if (query_fiemap_count(fd, blocks, blocksize) < 0)
->  		return -1;
-> @@ -451,8 +427,11 @@ compare_fiemap_and_map(int fd, char *map, int blocks, int blocksize, int syncfil
->  	fiemap->fm_extent_count = blocks_to_map;
->  	fiemap->fm_mapped_extents = 0;
->  
-> +	/* check fiemap by looking at each block. */
->  	do {
-> -		fiemap->fm_start = map_start;
-> +		int nr_extents;
-> +
-> +		fiemap->fm_start = cur_block * blocksize;
->  		fiemap->fm_length = map_length;
->  
->  		ret = ioctl(fd, FS_IOC_FIEMAP, (unsigned long)fiemap);
-> @@ -465,45 +444,93 @@ compare_fiemap_and_map(int fd, char *map, int blocks, int blocksize, int syncfil
->  		if (check_flags(fiemap, blocksize))
->  			goto error;
->  
-> -		for (i = cur_extent, c = 1; i < blocks; i++, c++) {
-> -			__u64 logical_offset = i * blocksize;
-> +		nr_extents = fiemap->fm_mapped_extents;
-> +		if (nr_extents == 0) {
-> +			int block = cur_block + (map_length - 1)/ blocksize;
-> +			for (; cur_block <= block && cur_block < blocks; cur_block++) {
-> +				/* check hole */
-> +				if (map[cur_block] != 'H') {
-> +					printf("ERROR: map[%d] should not be "
-> +					       "a hole\n", cur_block);
-> +					goto error;
-> +				}
-> +			}
-> +			continue;
-> +		}
->  
-> -			if (c > fiemap->fm_mapped_extents) {
-> -				i++;
-> -				break;
-> +		for (c = 0; c < nr_extents; c++) {
-> +			__u64 offset;
-> +			int block;
-> +			struct fiemap_extent *extent;
-> +
-> +			if (last_found) {
-> +				printf("ERROR: there is extent after"
-> +				       "the last extent\n");
-> +				goto error;
->  			}
->  
-> -			switch (map[i]) {
-> -			case 'D':
-> -				if (check_data(fiemap, logical_offset,
-> -					       blocksize, last_data == i, 0))
-> -					goto error;
-> -				break;
-> -			case 'H':
-> -				if (check_hole(fiemap, fd, logical_offset,
-> -					       blocksize))
-> -					goto error;
-> -				break;
-> -			case 'P':
-> -				if (check_data(fiemap, logical_offset,
-> -					       blocksize, last_data == i, 1))
-> +			extent = &fiemap->fm_extents[c];
-> +			offset = extent->fe_logical;
-> +			block = offset / blocksize;
-> +
-> +			/* check hole. */
-> +			for (; cur_block < block; cur_block++) {
-> +				if (map[cur_block] != 'H') {
-> +					printf("ERROR: map[%d] should not be "
-> +					       "a hole\n", cur_block);
->  					goto error;
-> -				break;
-> -			default:
-> -				printf("ERROR: weird value in map: %c\n",
-> -				       map[i]);
-> +				}
-> +			}
-> +
-> +			offset = extent->fe_logical + extent->fe_length;
-> +			block = offset / blocksize;
-> +
-> +			if (block > blocks) {
-> +				printf("ERROR: there are extents beyond EOF\n");
->  				goto error;
->  			}
-> +
-> +			/* check data */
-> +			for (; cur_block < block; cur_block++) {
-> +				offset = (__u64)cur_block * blocksize;
-> +				last_found = (last_data == cur_block);
-> +				switch (map[cur_block]) {
-> +				case 'D':
-> +					if (check_data(extent, offset,
-> +						       blocksize, last_found, 0))
-> +						goto error;
-> +					break;
-> +				case 'H':
-> +					if (check_hole(extent, fd, offset,
-> +						       blocksize));
-
-Kill the ;, this is what's making xfs fail.  Thanks,
-
-Josef
+-Eric
