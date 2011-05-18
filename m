@@ -1,38 +1,54 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsprogs: don't set stripe/stride to 1 block in mkfs
-Date: Wed, 18 May 2011 13:20:24 -0400
-Message-ID: <20110518172024.GF29368@thunk.org>
-References: <4D9A17F8.4000406@redhat.com>
+From: Christoph Lameter <cl@linux.com>
+Subject: Re: [PATCH 2/4] mm: slub: Do not wake kswapd for SLUBs speculative
+ high-order allocations
+Date: Wed, 18 May 2011 12:21:08 -0500 (CDT)
+Message-ID: <alpine.DEB.2.00.1105181218520.12423@router.home>
+References: <1305295404-12129-1-git-send-email-mgorman@suse.de> <1305295404-12129-3-git-send-email-mgorman@suse.de> <alpine.DEB.2.00.1105161410090.4353@chino.kir.corp.google.com> <4DD36299.8000108@cs.helsinki.fi>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Zeev Tarantov <zeev.tarantov@gmail.com>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:43680 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933051Ab1ERRUc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 May 2011 13:20:32 -0400
-Content-Disposition: inline
-In-Reply-To: <4D9A17F8.4000406@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: David Rientjes <rientjes@google.com>, Mel Gorman <mgorman@suse.de>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	James Bottomley <James.Bottomley@hansenpartnership.com>,
+	Colin King <colin.king@canonical.com>,
+	Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
+	Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
+	Rik van Riel <riel@redhat.com>,
+	Johannes Weiner <hannes@cmpxchg.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-mm <linux-mm@kvack.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Pekka Enberg <penberg@cs.helsinki.fi>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <4DD36299.8000108@cs.helsinki.fi>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Apr 04, 2011 at 03:11:52PM -0400, Eric Sandeen wrote:
-> Block devices may set minimum or optimal IO hints equal to
-> blocksize; in this case there is really nothing for ext4
-> to do with this information (i.e. search for a block-aligned
-> allocation?) so don't set fs geometry with single-block
-> values.
-> 
-> Zeev also reported that with a block-sized stripe, the
-> ext4 allocator spends time spinning in ext4_mb_scan_aligned(),
-> oddly enough.
-> 
-> Reported-by: Zeev Tarantov <zeev.tarantov@gmail.com>
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+On Wed, 18 May 2011, Pekka Enberg wrote:
 
-Applied to the maint branch of e2fsprogs (which will be merged up to
-the next/master branches), thanks!!
+> On 5/17/11 12:10 AM, David Rientjes wrote:
+> > On Fri, 13 May 2011, Mel Gorman wrote:
+> >
+> > > To avoid locking and per-cpu overhead, SLUB optimisically uses
+> > > high-order allocations and falls back to lower allocations if they
+> > > fail.  However, by simply trying to allocate, kswapd is woken up to
+> > > start reclaiming at that order. On a desktop system, two users report
+> > > that the system is getting locked up with kswapd using large amounts
+> > > of CPU.  Using SLAB instead of SLUB made this problem go away.
+> > >
+> > > This patch prevents kswapd being woken up for high-order allocations.
+> > > Testing indicated that with this patch applied, the system was much
+> > > harder to hang and even when it did, it eventually recovered.
+> > >
+> > > Signed-off-by: Mel Gorman<mgorman@suse.de>
+> > Acked-by: David Rientjes<rientjes@google.com>
+>
+> Christoph? I think this patch is sane although the original rationale was to
+> workaround kswapd problems.
 
-						- Ted
+I am mostly fine with it. The concerns that I have is if there is a
+large series of high order allocs then at some point you would want
+kswapd to be triggered instead of high order allocs constantly failing.
+
+Can we have a "trigger once in a while" functionality?
+
