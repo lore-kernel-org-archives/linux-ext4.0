@@ -1,160 +1,91 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 3/3] ext4: Rewrite ext4_page_mkwrite() to return locked page
-Date: Wed, 18 May 2011 17:18:02 +0200
-Message-ID: <1305731882-8334-4-git-send-email-jack@suse.cz>
-References: <1305731882-8334-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Al Viro <viro@ZenIV.linux.org.uk>,
-	tytso@mit.edu, Christoph Hellwig <hch@infradead.org>,
-	Jan Kara <jack@suse.cz>
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1305731882-8334-1-git-send-email-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Allison Henderson <achender@linux.vnet.ibm.com>
+Subject: Re: [PATCH v2] NULL pointer when make_indexed_dir returns -ENOSPC
+Date: Wed, 18 May 2011 08:23:42 -0700
+Message-ID: <4DD3E47E.1020804@linux.vnet.ibm.com>
+References: <4DCC1FF8.6040103@linux.vnet.ibm.com> <20110517174449.GB30519@quack.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:34410 "EHLO e6.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752467Ab1ERPXt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 May 2011 11:23:49 -0400
+Received: from d01relay05.pok.ibm.com (d01relay05.pok.ibm.com [9.56.227.237])
+	by e6.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p4IExa9S022092
+	for <linux-ext4@vger.kernel.org>; Wed, 18 May 2011 10:59:36 -0400
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p4IFNkOY115756
+	for <linux-ext4@vger.kernel.org>; Wed, 18 May 2011 11:23:46 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p4IFNjQg025448
+	for <linux-ext4@vger.kernel.org>; Wed, 18 May 2011 11:23:46 -0400
+In-Reply-To: <20110517174449.GB30519@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-ext4_page_mkwrite() does not return page locked. This makes it hard
-to avoid races with filesystem freezing code (so that we don't leave
-writeable page on a frozen fs) or writeback code (so that we allow page
-to be stable during writeback).
+On 5/17/2011 10:44 AM, Jan Kara wrote:
+>    Hello,
+>
+> On Thu 12-05-11 10:59:20, Allison Henderson wrote:
+>> I wasnt sure if people were expecting a v2 for this one, but I
+>> noticed the modified version of v1 was removed from the tree, so I
+>> am assuming we needed v2?  This one handles marking the buffer dirty
+>> before calling do split to avoid the null pointer.  It introduces a
+>> little overhead, but the only other option would be to introduce a
+>> new flag set to do_split.  But if there's any one that would prefer
+>> the flags to this solution, please let me know.  Thx! :)
+>    The patch looks OK. Just please CC me next time - a) because ext3 needs a
+> similar fix (added now) and b) because I was involved with the previous
+> patch version. Thanks!
+>
+> 								Honza
 
-Also the current code uses i_alloc_sem to avoid races with truncate but that
-seems to be the wrong locking order according to lock ordering documented in
-mm/rmap.c.
+Sure, I just thought I would save people from the extra spam since it 
+was already seen, but I will keep you cc'd next time. Thx!
 
-Also add a check for frozen filesystem so that we don't busyloop in page fault
-when the filesystem is frozen.
+Allison Henderson
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/inode.c |   94 ++++++++++++++++++++++++++++++++-----------------------
- 1 files changed, 55 insertions(+), 39 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index f2fa5e8..3e7b6b6 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5793,66 +5793,82 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
- 	struct page *page = vmf->page;
- 	loff_t size;
- 	unsigned long len;
--	int ret = -EINVAL;
--	void *fsdata;
-+	int ret;
- 	struct file *file = vma->vm_file;
- 	struct inode *inode = file->f_path.dentry->d_inode;
- 	struct address_space *mapping = inode->i_mapping;
-+	handle_t *handle;
-+	get_block_t *get_block;
-+	int retries = 0;
- 
- 	/*
--	 * Get i_alloc_sem to stop truncates messing with the inode. We cannot
--	 * get i_mutex because we are already holding mmap_sem.
-+	 * This check is racy but catches the common case. We rely on
-+	 * __block_page_mkwrite() to do a reliable check.
- 	 */
--	down_read(&inode->i_alloc_sem);
-+	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
-+	/* Delalloc case is easy... */
-+	if (test_opt(inode->i_sb, DELALLOC) &&
-+	    !ext4_should_journal_data(inode) &&
-+	    !ext4_nonda_switch(inode->i_sb)) {
-+		do {
-+			ret = __block_page_mkwrite(vma, vmf,
-+						   ext4_da_get_block_prep);
-+		} while (ret == -ENOSPC &&
-+		       ext4_should_retry_alloc(inode->i_sb, &retries));
-+		goto out_ret;
-+	}
-+
-+	lock_page(page);
- 	size = i_size_read(inode);
--	if (page->mapping != mapping || size <= page_offset(page)
--	    || !PageUptodate(page)) {
--		/* page got truncated from under us? */
--		goto out_unlock;
-+	/* Page got truncated from under us? */
-+	if (page->mapping != mapping || page_offset(page) > size) {
-+		unlock_page(page);
-+		ret = VM_FAULT_NOPAGE;
-+		goto out;
- 	}
--	ret = 0;
--	if (PageMappedToDisk(page))
--		goto out_unlock;
- 
- 	if (page->index == size >> PAGE_CACHE_SHIFT)
- 		len = size & ~PAGE_CACHE_MASK;
- 	else
- 		len = PAGE_CACHE_SIZE;
--
--	lock_page(page);
- 	/*
--	 * return if we have all the buffers mapped. This avoid
--	 * the need to call write_begin/write_end which does a
--	 * journal_start/journal_stop which can block and take
--	 * long time
-+	 * Return if we have all the buffers mapped. This avoids the need to do
-+	 * journal_start/journal_stop which can block and take a long time
- 	 */
- 	if (page_has_buffers(page)) {
- 		if (!walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
- 					ext4_bh_unmapped)) {
--			unlock_page(page);
--			goto out_unlock;
-+			ret = VM_FAULT_LOCKED;
-+			goto out;
- 		}
- 	}
- 	unlock_page(page);
--	/*
--	 * OK, we need to fill the hole... Do write_begin write_end
--	 * to do block allocation/reservation.We are not holding
--	 * inode.i__mutex here. That allow * parallel write_begin,
--	 * write_end call. lock_page prevent this from happening
--	 * on the same page though
--	 */
--	ret = mapping->a_ops->write_begin(file, mapping, page_offset(page),
--			len, AOP_FLAG_UNINTERRUPTIBLE, &page, &fsdata);
--	if (ret < 0)
--		goto out_unlock;
--	ret = mapping->a_ops->write_end(file, mapping, page_offset(page),
--			len, len, page, fsdata);
--	if (ret < 0)
--		goto out_unlock;
--	ret = 0;
--out_unlock:
--	if (ret)
-+	/* OK, we need to fill the hole... */
-+	if (ext4_should_dioread_nolock(inode))
-+		get_block = ext4_get_block_write;
-+	else
-+		get_block = ext4_get_block;
-+retry_alloc:
-+	handle = ext4_journal_start(inode, ext4_writepage_trans_blocks(inode));
-+	if (IS_ERR(handle)) {
- 		ret = VM_FAULT_SIGBUS;
--	up_read(&inode->i_alloc_sem);
-+		goto out;
-+	}
-+	ret = __block_page_mkwrite(vma, vmf, get_block);
-+	if (!ret && ext4_should_journal_data(inode)) {
-+		if (walk_page_buffers(handle, page_buffers(page), 0,
-+			  PAGE_CACHE_SIZE, NULL, do_journal_get_write_access)) {
-+			unlock_page(page);
-+			ret = VM_FAULT_SIGBUS;
-+			goto out;
-+		}
-+		ext4_set_inode_state(inode, EXT4_STATE_JDATA);
-+	}
-+	ext4_journal_stop(handle);
-+	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-+		goto retry_alloc;
-+out_ret:
-+	ret = block_page_mkwrite_return(ret);
-+out:
- 	return ret;
- }
--- 
-1.7.1
+>> Signed-off-by: Allison Henderson<achender@us.ibm.com>
+>>
+>> ---
+>> :100644 100644 3c7a06e... b754b77... M	fs/ext4/namei.c
+>>   fs/ext4/namei.c |    6 ++++--
+>>   1 files changed, 4 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+>> index 3c7a06e..b754b77 100644
+>> --- a/fs/ext4/namei.c
+>> +++ b/fs/ext4/namei.c
+>> @@ -1413,6 +1413,10 @@ static int make_indexed_dir(handle_t *handle,
+>> struct dentry *dentry,
+>>   	frame->at = entries;
+>>   	frame->bh = bh;
+>>   	bh = bh2;
+>> +
+>> +	ext4_handle_dirty_metadata(handle, dir, frame->bh);
+>> +	ext4_handle_dirty_metadata(handle, dir, bh);
+>> +
+>>   	de = do_split(handle,dir,&bh, frame,&hinfo,&retval);
+>>   	if (!de) {
+>>   		/*
+>> @@ -1421,8 +1425,6 @@ static int make_indexed_dir(handle_t *handle,
+>> struct dentry *dentry,
+>>   		 * with corrupted filesystem.
+>>   		 */
+>>   		ext4_mark_inode_dirty(handle, dir);
+>> -		ext4_handle_dirty_metadata(handle, dir, frame->bh);
+>> -		ext4_handle_dirty_metadata(handle, dir, bh);
+>>   		dx_release(frames);
+>>   		return retval;
+>>   	}
+>> --
+>> 1.7.1
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
