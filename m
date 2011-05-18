@@ -1,102 +1,505 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [PATCH] ext4: use vmtruncate() instead of ext4_truncate() in ext4_setattr()
-Date: Wed, 18 May 2011 11:27:24 +0800
-Message-ID: <BANLkTinxcQKT4Q7P-oHiQOwb_LzVr7Fabw@mail.gmail.com>
-References: <20110517225926.8B4A94225B@ruihe.smo.corp.google.com>
-	<BANLkTi==v=ShDNzhWHEAFcpzC9uKC63FBg@mail.gmail.com>
+Subject: Re: [PATCH] xfstests:Make 225 compare map and fiemap at each block.
+Date: Wed, 18 May 2011 11:29:23 +0800
+Message-ID: <BANLkTinQFrAEFy1Lc=D88F6AF9+POnoevA@mail.gmail.com>
+References: <BANLkTi=ra8eKxqstqFqDWHYsQpVx66c8BQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Jiaying Zhang <jiayingz@google.com>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:45442 "EHLO
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:57472 "EHLO
 	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932446Ab1ERD10 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 17 May 2011 23:27:26 -0400
-Received: by vxi39 with SMTP id 39so828738vxi.19
-        for <linux-ext4@vger.kernel.org>; Tue, 17 May 2011 20:27:26 -0700 (PDT)
-In-Reply-To: <BANLkTi==v=ShDNzhWHEAFcpzC9uKC63FBg@mail.gmail.com>
+	with ESMTP id S932474Ab1ERD3Y convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 17 May 2011 23:29:24 -0400
+Received: by vxi39 with SMTP id 39so829371vxi.19
+        for <linux-ext4@vger.kernel.org>; Tue, 17 May 2011 20:29:23 -0700 (PDT)
+In-Reply-To: <BANLkTi=ra8eKxqstqFqDWHYsQpVx66c8BQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 18, 2011 at 10:56 AM, Yongqiang Yang <xiaoqiangnk@gmail.com=
+Hi Eric,
+
+Could you have a look at this patch?
+
+On Sat, May 14, 2011 at 11:47 AM, Yongqiang Yang <xiaoqiangnk@gmail.com=
 > wrote:
-> On Wed, May 18, 2011 at 6:59 AM, Jiaying Zhang <jiayingz@google.com> =
-wrote:
->> There is a bug in commit c8d46e41 "ext4: Add flag to files with bloc=
-ks
->> intentionally past EOF" that if we fallocate a file with FALLOC_FL_K=
-EEP_SIZE
->> flag and then ftruncate the file to a size larger than the file's i_=
-size,
->> any allocated but unwritten blocks will be freed but the file size i=
-s set
->> to the size that ftruncate specifies.
->>
->> Here is a simple test to reproduce the problem:
->> =A01. fallocate a 12k size file with KEEP_SIZE flag
->> =A02. write the first 4k
->> =A03. ftruncate the file to 8k
->> Then 'ls -l' shows that the i_size of the file becomes 8k but debugf=
-s
->> shows the file has only the first written block left.
->>
->> Below is the proposed patch to fix the bug:
->>
->> ext4: use vmtruncate() instead of ext4_truncate() in ext4_setattr().
->>
->> Change ext4_setattr() to use vmtruncate(inode, attr->ia_size) instea=
-d
->> of ext4_truncate(inode) when it needs to truncate an inode so that
->> if the inode has EXT4_EOFBLOCKS_FL flag set and we are trying to tru=
-ncate
->> to a size larger than the inode's i_size, we will only truncate the =
-blocks
->> beyond the specified truncate size instead of all of blocks beyond i=
-_size.
->>
->> Signed-off-by: Jiaying Zhang <jiayingz@google.com>
->>
->> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->> index 3424e82..3bfad57 100644
->> --- a/fs/ext4/inode.c
->> +++ b/fs/ext4/inode.c
->> @@ -5347,8 +5347,11 @@ int ext4_setattr(struct dentry *dentry, struc=
-t iattr *attr)
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/* ext4_truncate will clear the flag =
-*/
->> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if ((ext4_test_inode_flag(inode, EXT4_=
-INODE_EOFBLOCKS)))
->> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_truncate(inode);
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if ((ext4_test_inode_flag(inode, EXT4_=
-INODE_EOFBLOCKS))) {
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 rc =3D vmtruncate(inod=
-e, attr->ia_size);
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (rc)
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto e=
-rr_out;
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
->> =A0 =A0 =A0 =A0}
-> Another question, does vmtruncate() write zeros to blocks beyond old
-> EOF? =A0I had a rough look and could not find the code doing this, ma=
-ybe
-> due to my density.
-Sorry, ignore this, the extent is unwritten, no need to zero.
+> Hi All,
+>
+> Due to my carelessness, I induced a ugly patch to ext4's fiemap, but
+> 225 could not find it. =A0So I looked into the 225 and could not figu=
+re out
+> logic in compare_map_and_fiemap(), which seemed to mixed extents with
+> blocks. =A0Then I made 225 compare map and fiemap at each block, the =
+new
+> 225 can find another bug in ext4's fiemap.
+>
+> The new 225 works well on ext3 and ext4 with both 1K and 4K block. Ho=
+wever,
+> it report fiemap error on xfs with 4K block. =A0My working tree is 2.=
+6.39-rc3
+> pulled from Ted's tree. The error message is as follows.
+>
+> =A0QA output created by 225
+> =A0fiemap run without preallocation, with sync
+> +map is 'DDHDHHDHHDHDDHDDHDDHHDHDDHDDDDDDHHDDDHHHHDH
+> DDDDDDDDHDDHHHDDDHDDHHDDDDDDHHHHHHDDHHHHHDHDHDHDD
+> DHDDHD'
+> +logical: [ =A0 =A0 =A0 0.. =A0 =A0 =A015] phys: =A0 =A0 =A0 12.. =A0=
+ =A0 =A027 flags: 0x000 tot: 16
+> +logical: [ =A0 =A0 =A017.. =A0 =A0 =A031] phys: =A0 =A0 =A0 29.. =A0=
+ =A0 =A043 flags: 0x000 tot: 15
+> +logical: [ =A0 =A0 =A034.. =A0 =A0 =A063] phys: =A0 =A0 =A0 46.. =A0=
+ =A0 =A075 flags: 0x000 tot: 30
+> +logical: [ =A0 =A0 =A065.. =A0 =A0 =A095] phys: =A0 =A0 =A0 77.. =A0=
+ =A0 107 flags: 0x001 tot: 31
+> +Problem comparing fiemap and map
+> =A0fiemap run without preallocation or sync
+> +map is 'DDHDHHDHHDHDDHDDHDDHHDHDDHDDDDDDHHDDDHHHHDH
+> DDDDDDDDHDDHHHDDDHDDHHDDDDDDHHHHHHDDHHHHHDHDHDHDD
+> DHDDHD'
+> +logical: [ =A0 =A0 =A0 0.. =A0 =A0 =A015] phys: =A0 =A0 =A0 =A00.. =A0=
+ =A0 =A015 flags: 0x006 tot: 16
+> +Problem comparing fiemap and map
+> Ran: 225
+> Failures: 225
+> Failed 1 of 1 tests
+>
+> I am not sure this is a bug in new 225 or xfs.
 >
 > Yongqiang.
->>
->> =A0 =A0 =A0 =A0if ((attr->ia_valid & ATTR_SIZE) &&
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4=
-" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->>
 >
+> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+> ---
+> =A0src/fiemap-tester.c | =A0223 ++++++++++++++++++++++++++++---------=
+-------------
+> =A01 files changed, 125 insertions(+), 98 deletions(-)
 >
+> diff --git a/src/fiemap-tester.c b/src/fiemap-tester.c
+> index 1663f84..99bb5ce 100644
+> --- a/src/fiemap-tester.c
+> +++ b/src/fiemap-tester.c
+> @@ -14,6 +14,9 @@
+> =A0* You should have received a copy of the GNU General Public Licens=
+e
+> =A0* along with this program; if not, write the Free Software Foundat=
+ion,
+> =A0* Inc., =A051 Franklin St, Fifth Floor, Boston, MA =A002110-1301 =A0=
+USA
+> + *
+> + * Compare map and fiemap at each block,
+> + * Yongqiang Yang <xiaoqiangnk@gmail.com>, 2011
+> =A0*/
+>
+> =A0#include <stdio.h>
+> @@ -57,7 +60,7 @@ generate_file_mapping(int blocks, int prealloc)
+> =A0 =A0 =A0 =A0int num_types =3D 2, cur_block =3D 0;
+> =A0 =A0 =A0 =A0int i =3D 0;
+>
+> - =A0 =A0 =A0 map =3D malloc(sizeof(char) * blocks);
+> + =A0 =A0 =A0 map =3D malloc(sizeof(char) * (blocks + 1));
+> =A0 =A0 =A0 =A0if (!map)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return NULL;
+>
+> @@ -80,7 +83,8 @@ generate_file_mapping(int blocks, int prealloc)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0cur_block++;
+> =A0 =A0 =A0 =A0}
+> -
+> +
+> + =A0 =A0 =A0 map[blocks] =3D 0;
+> =A0 =A0 =A0 =A0return map;
+> =A0}
+>
+> @@ -247,55 +251,36 @@ check_flags(struct fiemap *fiemap, int blocksiz=
+e)
+> =A0}
+>
+> =A0static int
+> -check_data(struct fiemap *fiemap, __u64 logical_offset, int blocksiz=
+e,
+> +check_data(struct fiemap_extent * extent , =A0__u64 logical_offset, =
+int
+> blocksize,
+> =A0 =A0 =A0 =A0 =A0 int last, int prealloc)
+> =A0{
+> - =A0 =A0 =A0 struct fiemap_extent *extent;
+> - =A0 =A0 =A0 __u64 orig_offset =3D logical_offset;
+> - =A0 =A0 =A0 int c, found =3D 0;
+> -
+> - =A0 =A0 =A0 for (c =3D 0; c < fiemap->fm_mapped_extents; c++) {
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 __u64 start, end;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 extent =3D &fiemap->fm_extents[c];
+> -
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 start =3D extent->fe_logical;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 end =3D extent->fe_logical + extent->fe=
+_length;
+> -
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (logical_offset > end)
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 continue;
+> -
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (logical_offset + blocksize < start)
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 break;
+> -
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (logical_offset >=3D start &&
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 logical_offset < end) {
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (prealloc &&
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 !(extent->fe_fl=
+ags & FIEMAP_EXTENT_UNWRITTEN)) {
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 printf(=
+"ERROR: preallocated extent is not "
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0"marked with FIEMAP_EXTENT_UNWRITTEN: "
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0"%llu\n",
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0(unsigned long long)
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0(start / blocksize));
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return =
+-1;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> -
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (logical_offset + bl=
+ocksize > end) {
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 logical=
+_offset =3D end+1;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 continu=
+e;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 } else {
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 found =3D=
+ 1;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 break;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> + =A0 =A0 =A0 int found =3D 0;
+> + =A0 =A0 =A0 __u64 start, end;
+> +
+> + =A0 =A0 =A0 start =3D extent->fe_logical;
+> + =A0 =A0 =A0 end =3D extent->fe_logical + extent->fe_length;
+> +
+> + =A0 =A0 =A0 if (logical_offset >=3D start &&
+> + =A0 =A0 =A0 =A0 =A0 logical_offset < end) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (prealloc &&
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 !(extent->fe_flags & FIEMAP_EXT=
+ENT_UNWRITTEN)) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 printf("ERROR: prealloc=
+ated extent is not "
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0"marked =
+with FIEMAP_EXTENT_UNWRITTEN: "
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0"%llu\n"=
+,
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0(unsigne=
+d long long)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0(start /=
+ blocksize));
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return -1;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 found =3D 1;
+> =A0 =A0 =A0 =A0}
+> -
+> +
+> =A0 =A0 =A0 =A0if (!found) {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0printf("ERROR: couldn't find extent at=
+ %llu\n",
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0(unsigned long long)(ori=
+g_offset / blocksize));
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0(unsigned long long)(log=
+ical_offset / blocksize));
+> =A0 =A0 =A0 =A0} else if (last &&
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0!(fiemap->fm_extents[c].fe_flags=
+ & FIEMAP_EXTENT_LAST)) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0!(extent->fe_flags & FIEMAP_EXTE=
+NT_LAST)) {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0printf("ERROR: last extent not marked =
+as last: %llu\n",
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0(unsigned long long)(ori=
+g_offset / blocksize));
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0(unsigned long long)(log=
+ical_offset / blocksize));
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0found =3D 0;
+> =A0 =A0 =A0 =A0}
+>
+> @@ -370,37 +355,26 @@ check_weird_fs_hole(int fd, __u64
+> logical_offset, int blocksize)
+> =A0}
+>
+> =A0static int
+> -check_hole(struct fiemap *fiemap, int fd, __u64 logical_offset, int =
+blocksize)
+> +check_hole(struct fiemap_extent *extent, int fd, __u64
+> logical_offset, int blocksize)
+> =A0{
+> - =A0 =A0 =A0 struct fiemap_extent *extent;
+> - =A0 =A0 =A0 int c;
+> + =A0 =A0 =A0 __u64 start, end;
+>
+> - =A0 =A0 =A0 for (c =3D 0; c < fiemap->fm_mapped_extents; c++) {
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 __u64 start, end;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 extent =3D &fiemap->fm_extents[c];
+> + =A0 =A0 =A0 start =3D extent->fe_logical;
+> + =A0 =A0 =A0 end =3D extent->fe_logical + extent->fe_length;
+>
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 start =3D extent->fe_logical;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 end =3D extent->fe_logical + extent->fe=
+_length;
+> + =A0 =A0 =A0 if (logical_offset >=3D start &&
+> + =A0 =A0 =A0 =A0 =A0 logical_offset < end) {
+>
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (logical_offset > end)
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 continue;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (logical_offset + blocksize < start)
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 break;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (check_weird_fs_hole(fd, logical_off=
+set,
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 blocksize) =3D=3D 0)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return 0;
+>
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (logical_offset >=3D start &&
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 logical_offset < end) {
+> -
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (check_weird_fs_hole=
+(fd, logical_offset,
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 blocksize) =3D=3D 0)
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 break;
+> -
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 printf("ERROR: found an=
+ allocated extent where a hole "
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0"should =
+be: %llu\n",
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0(unsigne=
+d long long)(start / blocksize));
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return -1;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 printf("ERROR: found an allocated exten=
+t where a hole "
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0"should be: %llu\n",
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0(unsigned long long)(sta=
+rt / blocksize));
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 return -1;
+> =A0 =A0 =A0 =A0}
+> -
+> +
+> =A0 =A0 =A0 =A0return 0;
+> =A0}
+>
+> @@ -423,9 +397,11 @@ compare_fiemap_and_map(int fd, char *map, int
+> blocks, int blocksize, int syncfil
+> =A0{
+> =A0 =A0 =A0 =A0struct fiemap *fiemap;
+> =A0 =A0 =A0 =A0char *fiebuf;
+> - =A0 =A0 =A0 int blocks_to_map, ret, cur_extent =3D 0, last_data;
+> + =A0 =A0 =A0 int blocks_to_map, ret, last_data =3D -1;
+> =A0 =A0 =A0 =A0__u64 map_start, map_length;
+> =A0 =A0 =A0 =A0int i, c;
+> + =A0 =A0 =A0 int cur_block =3D 0;
+> + =A0 =A0 =A0 int last_found =3D 0;
+>
+> =A0 =A0 =A0 =A0if (query_fiemap_count(fd, blocks, blocksize) < 0)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return -1;
+> @@ -451,8 +427,11 @@ compare_fiemap_and_map(int fd, char *map, int
+> blocks, int blocksize, int syncfil
+> =A0 =A0 =A0 =A0fiemap->fm_extent_count =3D blocks_to_map;
+> =A0 =A0 =A0 =A0fiemap->fm_mapped_extents =3D 0;
+>
+> + =A0 =A0 =A0 /* check fiemap by looking at each block. */
+> =A0 =A0 =A0 =A0do {
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 fiemap->fm_start =3D map_start;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 int nr_extents;
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 fiemap->fm_start =3D cur_block * blocks=
+ize;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0fiemap->fm_length =3D map_length;
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ret =3D ioctl(fd, FS_IOC_FIEMAP, (unsi=
+gned long)fiemap);
+> @@ -465,45 +444,93 @@ compare_fiemap_and_map(int fd, char *map, int
+> blocks, int blocksize, int syncfil
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (check_flags(fiemap, blocksize))
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto error;
+>
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 for (i =3D cur_extent, c =3D 1; i < blo=
+cks; i++, c++) {
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 __u64 logical_offset =3D=
+ i * blocksize;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 nr_extents =3D fiemap->fm_mapped_extent=
+s;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (nr_extents =3D=3D 0) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 int block =3D cur_block=
+ + (map_length - 1)/ blocksize;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 for (; cur_block <=3D b=
+lock && cur_block < blocks; cur_block++) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* chec=
+k hole */
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (map=
+[cur_block] !=3D 'H') {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 printf("ERROR: map[%d] should not be "
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0"a hole\n", cur_block);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 goto error;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 continue;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+>
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (c > fiemap->fm_mapp=
+ed_extents) {
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 i++;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 break;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 for (c =3D 0; c < nr_extents; c++) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 __u64 offset;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 int block;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct fiemap_extent *e=
+xtent;
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (last_found) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 printf(=
+"ERROR: there is extent after"
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0"the last extent\n");
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto er=
+ror;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+>
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 switch (map[i]) {
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 case 'D':
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (che=
+ck_data(fiemap, logical_offset,
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0blocksize, last_data =3D=3D i, 0))
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 goto error;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 break;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 case 'H':
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (che=
+ck_hole(fiemap, fd, logical_offset,
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0blocksize))
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 goto error;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 break;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 case 'P':
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (che=
+ck_data(fiemap, logical_offset,
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0blocksize, last_data =3D=3D i, 1))
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 extent =3D &fiemap->fm_=
+extents[c];
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 offset =3D extent->fe_l=
+ogical;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 block =3D offset / bloc=
+ksize;
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* check hole. */
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 for (; cur_block < bloc=
+k; cur_block++) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (map=
+[cur_block] !=3D 'H') {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 printf("ERROR: map[%d] should not be "
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0"a hole\n", cur_block);
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0goto error;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 break;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 default:
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 printf(=
+"ERROR: weird value in map: %c\n",
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0map[i]);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 offset =3D extent->fe_l=
+ogical + extent->fe_length;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 block =3D offset / bloc=
+ksize;
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (block > blocks) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 printf(=
+"ERROR: there are extents beyond EOF\n");
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto e=
+rror;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* check data */
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 for (; cur_block < bloc=
+k; cur_block++) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 offset =
+=3D (__u64)cur_block * blocksize;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 last_fo=
+und =3D (last_data =3D=3D cur_block);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 switch =
+(map[cur_block]) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 case 'D=
+':
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 if (check_data(extent, offset,
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0blocksize, last_found, 0))
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 goto error;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 break;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 case 'H=
+':
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 if (check_hole(extent, fd, offset,
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0blocksize));
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 goto error;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 break;
+> +
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 case 'P=
+':
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 if (check_data(extent, offset,
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0blocksize, last_found, 1))
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 goto error;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 break;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 default=
+:
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 printf("ERROR: weird value in map: %c\n",
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0map[i]);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 goto error;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 cur_extent =3D i;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 map_start =3D i * blocksize;
+> - =A0 =A0 =A0 } while (cur_extent < blocks);
+> + =A0 =A0 =A0 } while (cur_block < blocks);
+>
+> - =A0 =A0 =A0 ret =3D 0;
+> - =A0 =A0 =A0 return ret;
+> + =A0 =A0 =A0 if (!last_found && last_data !=3D -1) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 printf("ERROR: find no last extent\n");
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto error;
+> + =A0 =A0 =A0 }
+> +
+> + =A0 =A0 =A0 free(fiebuf);
+> + =A0 =A0 =A0 return 0;
+> =A0error:
+> =A0 =A0 =A0 =A0printf("map is '%s'\n", map);
+> =A0 =A0 =A0 =A0show_extents(fiemap, blocksize);
+> + =A0 =A0 =A0 free(fiebuf);
+> =A0 =A0 =A0 =A0return -1;
+> =A0}
+>
+> --
+> 1.7.5.1
 >
 > --
 > Best Wishes
