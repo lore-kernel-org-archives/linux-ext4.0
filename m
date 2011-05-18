@@ -1,111 +1,87 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] ext4: use vmtruncate() instead of ext4_truncate() in ext4_setattr()
-Date: Tue, 17 May 2011 23:35:41 -0600
-Message-ID: <1C66CCCC-A62E-4277-B3CB-0C82DD6940BA@dilger.ca>
-References: <20110517225926.8B4A94225B@ruihe.smo.corp.google.com> <4DD33AA9.9060104@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Jiaying Zhang <jiayingz@google.com>, tytso@mit.edu,
+From: Minchan Kim <minchan.kim@gmail.com>
+Subject: Re: [PATCH 4/4] mm: vmscan: If kswapd has been running too long,
+ allow it to sleep
+Date: Wed, 18 May 2011 14:44:48 +0900
+Message-ID: <BANLkTikLuWPEt7MitUYdJtzqyBSOkz2zxg@mail.gmail.com>
+References: <1305295404-12129-1-git-send-email-mgorman@suse.de>
+	<1305295404-12129-5-git-send-email-mgorman@suse.de>
+	<4DCFAA80.7040109@jp.fujitsu.com>
+	<1305519711.4806.7.camel@mulgrave.site>
+	<BANLkTi=oe4Ties6awwhHFPf42EXCn2U4MQ@mail.gmail.com>
+	<20110516084558.GE5279@suse.de>
+	<BANLkTinW4s6aT2bZ79sHNgdh5j8VYyJz2w@mail.gmail.com>
+	<20110516102753.GF5279@suse.de>
+	<BANLkTi=5ON_ttuwFFhFObfoP8EBKPdFgAA@mail.gmail.com>
+	<4DD31B6E.8040502@jp.fujitsu.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: mgorman@suse.de, James.Bottomley@hansenpartnership.com,
+	akpm@linux-foundation.org, colin.king@canonical.com,
+	raghu.prabhu13@gmail.com, jack@suse.cz, chris.mason@oracle.com,
+	cl@linux.com, penberg@kernel.org, riel@redhat.com,
+	hannes@cmpxchg.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:45896 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751975Ab1ERFfm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 May 2011 01:35:42 -0400
-In-Reply-To: <4DD33AA9.9060104@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <4DD31B6E.8040502@jp.fujitsu.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On May 17, 2011, at 21:19, Eric Sandeen wrote:
-> On 5/17/11 5:59 PM, Jiaying Zhang wrote:
->> There is a bug in commit c8d46e41 "ext4: Add flag to files with blocks
->> intentionally past EOF" that if we fallocate a file with FALLOC_FL_KEEP_SIZE
->> flag and then ftruncate the file to a size larger than the file's i_size,
->> any allocated but unwritten blocks will be freed but the file size is set
->> to the size that ftruncate specifies.
->> 
->> Here is a simple test to reproduce the problem:
->> 1. fallocate a 12k size file with KEEP_SIZE flag
->> 2. write the first 4k
->> 3. ftruncate the file to 8k
->> Then 'ls -l' shows that the i_size of the file becomes 8k but debugfs
->> shows the file has only the first written block left.
-> 
-> To be honest I'm not 100% certain what the fiesystem -should- do in this case.
+On Wed, May 18, 2011 at 10:05 AM, KOSAKI Motohiro
+<kosaki.motohiro@jp.fujitsu.com> wrote:
+>> It would be better to put cond_resched after balance_pgdat?
+>>
+>> diff --git a/mm/vmscan.c b/mm/vmscan.c
+>> index 292582c..61c45d0 100644
+>> --- a/mm/vmscan.c
+>> +++ b/mm/vmscan.c
+>> @@ -2753,6 +2753,7 @@ static int kswapd(void *p)
+>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 if (!ret) {
+>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0 =C2=A0 trace_mm_vmscan_kswapd_wake(pgdat->node_id,
+>> order);
+>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0 =C2=A0 order =3D balance_pgdat(pgdat,
+>> order,&classzone_idx);
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
+=A0 =C2=A0 cond_resched();
+>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 }
+>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 }
+>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 return 0;
+>>
+>>>>> While it appears unlikely, there are bad conditions which can res=
+ult
+>>>
+>>> in cond_resched() being avoided.
+>
+> Every reclaim priority decreasing or every shrink_zone() calling make=
+s more
+> fine grained preemption. I think.
 
-I think it makes sense from a usage POV to discard the blocks after EOF when a truncate is being done.  For something like a PVR that is recording a show, but doesn't know the exact total size, it makes sense to fallocate() some estimated amount of space, and then when the show is finished recording it uses ftruncate() of the current size to drop the fallocated space.
+It could be.
+But in direct reclaim case, I have a concern about losing pages
+reclaimed to other tasks by preemption.
 
-> If I go through that same sequence on xfs, I get 4k written / 8k unwritten:
-> 
-> # xfs_bmap -vp testfile
-> testfile:
-> EXT: FILE-OFFSET      BLOCK-RANGE            AG AG-OFFSET              TOTAL FLAGS
-> 0: [0..7]:          2648750760..2648750767  3 (356066400..356066407)     8 00000
-> 1: [8..23]:         2648750768..2648750783  3 (356066408..356066423)    16 10000
-> 
-> size 8k:
-> # ls -l testfile
-> -rw-r--r-- 1 root root 8192 May 17 22:33 testfile
-> 
-> and diskspace used 12k:
-> # du -hc testfile
-> 12K	testfile
-> 12K	total
-> 
-> I think this is a different result from ext4, either with or without your patch.
-> 
-> On ext4 I get size 8k, but only the first 4k mapped, as you say.
-> 
-> I don't recall when truncate is supposed to free fallocated blocks, and from what point?
-> 
-> -Eric
-> 
->> Below is the proposed patch to fix the bug:
->> 
->> ext4: use vmtruncate() instead of ext4_truncate() in ext4_setattr().
->> 
->> Change ext4_setattr() to use vmtruncate(inode, attr->ia_size) instead
->> of ext4_truncate(inode) when it needs to truncate an inode so that
->> if the inode has EXT4_EOFBLOCKS_FL flag set and we are trying to truncate
->> to a size larger than the inode's i_size, we will only truncate the blocks
->> beyond the specified truncate size instead of all of blocks beyond i_size.
->> 
->> Signed-off-by: Jiaying Zhang <jiayingz@google.com>
->> 
->> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->> index 3424e82..3bfad57 100644
->> --- a/fs/ext4/inode.c
->> +++ b/fs/ext4/inode.c
->> @@ -5347,8 +5347,11 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
->> 			}
->> 		}
->> 		/* ext4_truncate will clear the flag */
->> -		if ((ext4_test_inode_flag(inode, EXT4_INODE_EOFBLOCKS)))
->> -			ext4_truncate(inode);
->> +		if ((ext4_test_inode_flag(inode, EXT4_INODE_EOFBLOCKS))) {
->> +			rc = vmtruncate(inode, attr->ia_size);
->> +			if (rc)
->> +				goto err_out;
->> +		}
->> 	}
->> 
->> 	if ((attr->ia_valid & ATTR_SIZE) &&
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Hmm,, anyway, we also needs test.
+Hmm,, how long should we bother them(Colins and James)?
+=46irst of all, Let's fix one just between us and ask test to them and
+send the last patch to akpm.
 
+1. shrink_slab
+2. right after balance_pgdat
+3. shrink_zone
+4. reclaim priority decreasing routine.
 
-Cheers, Andreas
+Now, I vote 1) and 2).
 
-
-
-
-
+Mel, KOSAKI?
+--=20
+Kind regards,
+Minchan Kim
+--
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
