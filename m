@@ -1,44 +1,43 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 4/4 v3] tests: New i_e2image test to validate image
- creation/conversion
-Date: Wed, 18 May 2011 12:19:30 -0400
-Message-ID: <20110518161930.GE29368@thunk.org>
-References: <1305718615-5991-1-git-send-email-lczerner@redhat.com>
- <1305718615-5991-4-git-send-email-lczerner@redhat.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH 2/4 v3] e2image: Add support for qcow2 format
+Date: Wed, 18 May 2011 18:20:38 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1105181819530.4100@dhcp-27-109.brq.redhat.com>
+References: <1305718615-5991-1-git-send-email-lczerner@redhat.com> <1305718615-5991-2-git-send-email-lczerner@redhat.com> <20110518161751.GC29368@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com, adilger@dilger.ca
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	sandeen@redhat.com, adilger@dilger.ca
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:60005 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932462Ab1ERQTc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 May 2011 12:19:32 -0400
-Content-Disposition: inline
-In-Reply-To: <1305718615-5991-4-git-send-email-lczerner@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:30003 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932730Ab1ERQUn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 May 2011 12:20:43 -0400
+In-Reply-To: <20110518161751.GC29368@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 18, 2011 at 01:36:55PM +0200, Lukas Czerner wrote:
-> This commit adds new regression test called i_e2image which should
-> validate expected behaviour of e2image raw and qcow2 image creation
-> and qcow2 -> raw image conversion. You can run it with "make check" as
-> the rest of regression tests.
+On Wed, 18 May 2011, Ted Ts'o wrote:
+
+> On Wed, May 18, 2011 at 01:36:53PM +0200, Lukas Czerner wrote:
+> > This commit adds support for exporting filesystem into QCOW2 image
+> > format. Like sparse format this saves space, by writing only necessary
+> > (metadata blocks) into image. Unlike sparse image, QCOW2 image is NOT
+> > sparse, hence does not change its size by copying with not-sparse-aware
+> > tools.
+> > 
+> > New options '-Q' has been added to tell the e2image to use QCOW2 as an
+> > output image format. QCOW2 supports encryption and compression, however
+> > e2image so far does no support such features, however you can still
+> > scramble filenames with '-s' option.
+> > 
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 > 
-> Testing is performed on three filesystem images with different block
-> sizes (1024, 2048, 4096). It creates raw and qcow2 images from the
-> original and then convert qcow2 image back to raw image. The results are
-> checksummed and compared with pre-prepared results. All md5sums should
-> stay the same and raw image created from original and qcow2 image should
-> be the same as well (just for the record).
+> Applied to the e2fsprogs branch, with a lot of whitespace fixes.
 > 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> 	       		 	      	- Ted
 
-Applied into the e2fsprogs next branch.
+Thanks Ted! And sorry for the whitespace problems, will do better next
+time!
 
-I had to fix up this commit so that it works when you are using a
-$VPATH build directory.  Note that, temp files for tests should go in
-the current directory, and that files in the source file have to be
-referenced via $SRCDIR.
-
-					- Ted
+-Lukas
