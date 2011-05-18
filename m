@@ -1,38 +1,55 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 3/3] ext4: Block mmapped writes while the fs is frozen
-Date: Wed, 18 May 2011 09:03:27 -0500
-Message-ID: <4DD3D1AF.9060809@redhat.com>
-References: <1305066574-1573-1-git-send-email-jack@suse.cz> <1305066574-1573-4-git-send-email-jack@suse.cz> <20110517151108.GB6653@infradead.org> <20110518075614.GB25632@quack.suse.cz> <20110518080731.GA2759@infradead.org>
+Subject: Re: [PATCH] ext4: use vmtruncate() instead of ext4_truncate() in
+ ext4_setattr()
+Date: Wed, 18 May 2011 09:05:22 -0500
+Message-ID: <4DD3D222.4050900@redhat.com>
+References: <20110517225926.8B4A94225B@ruihe.smo.corp.google.com> <4DD33AA9.9060104@redhat.com> <20110518061356.GY19446@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20110518080731.GA2759@infradead.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Jiaying Zhang <jiayingz@google.com>, tytso@mit.edu,
+	linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:26103 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932843Ab1EROFb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 May 2011 10:05:31 -0400
+In-Reply-To: <20110518061356.GY19446@dastard>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 5/18/11 3:07 AM, Christoph Hellwig wrote:
-> On Wed, May 18, 2011 at 09:56:14AM +0200, Jan Kara wrote:
->> __block_page_mkwrite() and return some error value (EAGAIN translating to
->> VM_FAULT_RETRY would look logical, I just have to think off better error
->> value for VM_FAULT_NOPAGE). But vfs_check_frozen() cannot be in
->> __block_page_mkwrite() since ext4 needs to call that with a transaction
->> started so that would create a deadlock and we need to call
->> vfs_check_frozen() somewhere so that we don't busyloop.
->>
->> I can call vfs_check_frozen() inside block_page_mkwrite() but it would be a
->> bit surprising difference from __block_page_mkwrite() to me. Not sure what
->> the cleanest solution would be here...
+On 5/18/11 1:13 AM, Dave Chinner wrote:
+
+> It's entirely up to the filesystem how it treats blocks beyond EOF
+> during truncation. XFS frees them on truncate down, because it is
+> much safer to just truncate away everything beyond the new EOF than
+> to leave written extents beyond EOF as potential landmines.
 > 
-> block_page_mkwrite is supposed to be used directly by filesystems and
-> do all the right things.  IIRC Eric even mentioned he added
-> vfs_check_frozen to it for RHEL, but forgot to push it upstream.
+> Indeed, that's why calling vmtruncate() as a bad fix. If you have:
+> 
+> 
+> 	       NUUUUUUUUUUWWWWWWWWWOUUUUUUUUU
+>        ....----+----------+--------+--------+
+>                A	  B        C        D
+> 
+> Where	A = new EOF (N)
+> 	A->B = unwritten (U)
+> 	B->C = written (W)
+> 	C = old EOF (O)
+> 	C->D = unwritten (U)
+> 
+> Then just calling vmtruncate() will leave the blocks in the range
+> B->C as written blocks. Hence then doing an extending truncate back
+> out to D will expose stale data rather than zeros in the range
+> B->C....
 
-Well, I tried, but it was rejected IIRC.  Still, mea culpa....
-
-I can resurrect what I did for RHEL5 and repost if desired...
+Hm, running recent xfstests which includes fsx-with-fallocate should probably
+eventually catch that then.
 
 -Eric
+ 
+> Cheers,
+> 
+> Dave.
+
