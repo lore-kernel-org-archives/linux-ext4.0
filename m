@@ -1,28 +1,44 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 0/3] Make block_page_mkwrite() handle frozen fs (V2)
-Date: Wed, 18 May 2011 14:13:21 -0400
-Message-ID: <20110518181321.GC10163@infradead.org>
-References: <1305731882-8334-1-git-send-email-jack@suse.cz>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [4/7] ext4: Clean up some wait_on_page_writeback calls
+Date: Wed, 18 May 2011 14:16:57 -0400
+Message-ID: <20110518181657.GA13693@thunk.org>
+References: <20110509230349.19566.27020.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Al Viro <viro@ZenIV.linux.org.uk>, tytso@mit.edu,
-	Christoph Hellwig <hch@infradead.org>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Jan Kara <jack@suse.cz>, Alexander Viro <viro@zeniv.linux.org.uk>,
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+	Jens Axboe <axboe@kernel.dk>,
+	"Martin K. Petersen" <martin.petersen@oracle.com>,
+	Jeff Layton <jlayton@redhat.com>,
+	Dave Chinner <david@fromorbit.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Dave Hansen <dave@linux.vnet.ibm.com>,
+	Christoph Hellwig <hch@infradead.org>, linux-mm@kvack.org,
+	Chris Mason <chris.mason@oracle.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	linux-scsi <linux-scsi@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, Mingming Cao <mcao@us.ibm.com>
+To: "Darrick J. Wong" <djwong@us.ibm.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <1305731882-8334-1-git-send-email-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <20110509230349.19566.27020.stgit@elm3c44.beaverton.ibm.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, May 18, 2011 at 05:17:59PM +0200, Jan Kara wrote:
-> from Christoph in the patches which resulted in some patch reorg. I'd like to
-> get these patches reviewed and then get them merged possibly via ext4-tree
-> (although the first two patches might go via Al but that would complicate
-> merging of ext4 part where I expect more conflicts with ongoing work).
+On Mon, May 09, 2011 at 01:03:49PM -0000, Darrick J. Wong wrote:
+> wait_on_page_writeback already checks the writeback bit, so callers of it
+> needn't do that test.
+> 
+> Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 
-The core canges are clear VFS tree material, and given that they are
-needed for the stable pages patches as well it really doesn't make sense
-to funnel this through a fs tree.  It might make sense to include the
-ext4 patch in the VFS pile if that makes merging easier.
+Added to the ext4 tree, thanks.
 
+						- Ted
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
