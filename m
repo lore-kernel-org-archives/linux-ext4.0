@@ -1,76 +1,32 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 3/3] mm: Provide stub page_mkwrite functionality to stabilize
-	pages during writes
-Date: Thu, 19 May 2011 15:49:03 -0700
-Message-ID: <20110519224903.28755.2703.stgit@elm3c44.beaverton.ibm.com>
-References: <20110519224841.28755.80650.stgit@elm3c44.beaverton.ibm.com>
+From: Sunil Mushran <sunil.mushran@oracle.com>
+Subject: Re: [XFS Tests Punch Hole 2/3 v3] XFS TESTS: Add Fallocate Punch
+ Hole Test Routines
+Date: Thu, 19 May 2011 16:36:34 -0700
+Message-ID: <4DD5A982.9090907@oracle.com>
+References: <4DD43300.6010908@linux.vnet.ibm.com> <20110519013144.GF32466@dastard> <4DD560CF.3040706@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Jens Axboe <axboe@kernel.dk>, Theodore Tso <tytso@mit.edu>,
-        "Martin K. Petersen" <martin.petersen@oracle.com>,
-        Jeff Layton <jlayton@redhat.com>, Dave Chinner <david@fromorbit.com>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        Dave Hansen <dave@linux.vnet.ibm.com>,
-        Christoph Hellwig <hch@infradead.org>, linux-mm@kvack.org,
-        Chris Mason <chris.mason@oracle.com>, Joel Becker <jlbec@evilplan.org>,
-        linux-scsi <linux-scsi@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>, Jan Kara <jack@suse.cz>,
-        linux-ext4@vger.kernel.org, Mingming Cao <mcao@us.ibm.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>,
-        "Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20110519224841.28755.80650.stgit@elm3c44.beaverton.ibm.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Dave Chinner <david@fromorbit.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	xfs-oss <xfs@oss.sgi.com>, Mark Fasheh <mfasheh@suse.com>
+To: Allison Henderson <achender@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:38068 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932238Ab1ESXh3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 May 2011 19:37:29 -0400
+In-Reply-To: <4DD560CF.3040706@linux.vnet.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-For filesystems that do not provide any page_mkwrite handler, provide a stub
-page_mkwrite function that locks the page and waits for pending writeback to
-complete.  This is needed to stabilize pages during writes for a large variety
-of filesystem drivers (ext2, ext3, vfat, hfs...).
+On 05/19/2011 11:26 AM, Allison Henderson wrote:
+> Thx for the all the reviewing on this one.  Im not quite sure I agree that the tests are analogous though.  I did some poking around in xfsprogs which I believe is what test 252 is using to do perform most of its operations.  I found the code where the hole gets punched, but I didnt find any code that does any kind of analyzing to verify that the hole was punched correctly.  Maybe I over looked it?  It kinda looks like the hole gets punched and it just checks the return code (fpunch_f in io/prealloc.c right?).
+>
 
-Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
----
- mm/filemap.c |   19 +++++++++++++++++++
- 1 files changed, 19 insertions(+), 0 deletions(-)
+Mark Fasheh wrote a test for the same for ocfs2 that might help. Check it out.
 
+http://oss.oracle.com/git/?p=ocfs2-test.git;a=tree;f=programs/fill_verify_holes;h=0df38895e7ff6e66a9a558f35407699ebb40f790;hb=HEAD
 
-diff --git a/mm/filemap.c b/mm/filemap.c
-index fd0e7f2..2a922b4 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -1713,8 +1713,27 @@ page_not_uptodate:
- }
- EXPORT_SYMBOL(filemap_fault);
- 
-+static int stub_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
-+{
-+	struct page *page = vmf->page;
-+	struct inode *inode = vma->vm_file->f_path.dentry->d_inode;
-+	loff_t size;
-+
-+	lock_page(page);
-+	size = i_size_read(inode);
-+	if ((page->mapping != inode->i_mapping) ||
-+	    (page_offset(page) > size)) {
-+		/* page got truncated out from underneath us */
-+		unlock_page(page);
-+		return VM_FAULT_NOPAGE;
-+	}
-+	wait_on_page_writeback(page);
-+	return VM_FAULT_LOCKED;
-+}
-+
- const struct vm_operations_struct generic_file_vm_ops = {
- 	.fault		= filemap_fault,
-+	.page_mkwrite	= stub_page_mkwrite,
- };
- 
- /* This is used for a general mmap of a disk file */
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
