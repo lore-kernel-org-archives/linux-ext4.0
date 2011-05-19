@@ -1,8 +1,8 @@
 From: Minchan Kim <minchan.kim@gmail.com>
 Subject: Re: [PATCH] mm: vmscan: Correctly check if reclaimer should schedule
  during shrink_slab
-Date: Thu, 19 May 2011 09:03:44 +0900
-Message-ID: <BANLkTimfKwJWgiDp7m8WqeUK00N5sV=mWQ@mail.gmail.com>
+Date: Thu, 19 May 2011 09:09:37 +0900
+Message-ID: <BANLkTimUJeTbWV_0BzgjrDjY=Wpc-PaG5Q@mail.gmail.com>
 References: <1305295404-12129-5-git-send-email-mgorman@suse.de>
 	<4DCFAA80.7040109@jp.fujitsu.com>
 	<1305519711.4806.7.camel@mulgrave.site>
@@ -18,7 +18,6 @@ Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: akpm@linux-foundation.org,
-	Colin Ian King <colin.king@canonical.com>,
 	James Bottomley <James.Bottomley@hansenpartnership.com>,
 	KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>,
 	raghu.prabhu13@gmail.com, jack@suse.cz, chris.mason@oracle.com,
@@ -26,11 +25,29 @@ Cc: akpm@linux-foundation.org,
 	hannes@cmpxchg.org, linux-fsdevel@vger.kernel.org,
 	linux-mm@kvack.org, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org
-To: Mel Gorman <mgorman@suse.de>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: Mel Gorman <mgorman@suse.de>,
+	Colin Ian King <colin.king@canonical.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:39727 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751188Ab1ESAJj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 May 2011 20:09:39 -0400
 In-Reply-To: <20110517161508.GN5279@suse.de>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
+
+Hi Colin.
+
+Sorry for bothering you. :(
+I hope this test is last.
+
+We(Mel, KOSAKI and me) finalized opinion.
+
+Could you test below patch with patch[1/4] of Mel's series(ie,
+!pgdat_balanced  of sleeping_prematurely)?
+If it is successful, we will try to merge this version instead of
+various cond_resched sprinkling version.
+
 
 On Wed, May 18, 2011 at 1:15 AM, Mel Gorman <mgorman@suse.de> wrote:
 > It has been reported on some laptops that kswapd is consuming large
@@ -80,14 +97,55 @@ t kswapd calling
 > [mgorman@suse.de: Preserve call to cond_resched after each call into =
 shrinker]
 > From: Minchan Kim <minchan.kim@gmail.com>
-Signed-off-by: Minchan Kim <minchan.kim@gmail.com>
 > Signed-off-by: Mel Gorman <mgorman@suse.de>
+> ---
+> =C2=A0mm/vmscan.c | =C2=A0 =C2=A09 +++++++--
+> =C2=A01 files changed, 7 insertions(+), 2 deletions(-)
+>
+> diff --git a/mm/vmscan.c b/mm/vmscan.c
+> index af24d1e..0bed248 100644
+> --- a/mm/vmscan.c
+> +++ b/mm/vmscan.c
+> @@ -230,8 +230,11 @@ unsigned long shrink_slab(unsigned long scanned,=
+ gfp_t gfp_mask,
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0if (scanned =3D=3D 0)
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0scanned =3D SW=
+AP_CLUSTER_MAX;
+>
+> - =C2=A0 =C2=A0 =C2=A0 if (!down_read_trylock(&shrinker_rwsem))
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 return 1; =C2=A0 =C2=
+=A0 =C2=A0 /* Assume we'll be able to shrink next time */
+> + =C2=A0 =C2=A0 =C2=A0 if (!down_read_trylock(&shrinker_rwsem)) {
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 /* Assume we'll be=
+ able to shrink next time */
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ret =3D 1;
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 goto out;
+> + =C2=A0 =C2=A0 =C2=A0 }
+>
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0list_for_each_entry(shrinker, &shrinker_li=
+st, list) {
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0unsigned long =
+long delta;
+> @@ -282,6 +285,8 @@ unsigned long shrink_slab(unsigned long scanned, =
+gfp_t gfp_mask,
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0shrinker->nr +=
+=3D total_scan;
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0}
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0up_read(&shrinker_rwsem);
+> +out:
+> + =C2=A0 =C2=A0 =C2=A0 cond_resched();
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0return ret;
+> =C2=A0}
+>
+>
+
+
 
 --=20
 Kind regards,
 Minchan Kim
 --
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
 the body of a message to majordomo@vger.kernel.org
 More majordomo info at  http://vger.kernel.org/majordomo-info.html
