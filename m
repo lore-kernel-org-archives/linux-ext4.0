@@ -1,32 +1,150 @@
-From: Sunil Mushran <sunil.mushran@oracle.com>
+From: Dave Chinner <david@fromorbit.com>
 Subject: Re: [XFS Tests Punch Hole 2/3 v3] XFS TESTS: Add Fallocate Punch
  Hole Test Routines
-Date: Thu, 19 May 2011 16:36:34 -0700
-Message-ID: <4DD5A982.9090907@oracle.com>
-References: <4DD43300.6010908@linux.vnet.ibm.com> <20110519013144.GF32466@dastard> <4DD560CF.3040706@linux.vnet.ibm.com>
+Date: Fri, 20 May 2011 09:56:01 +1000
+Message-ID: <20110519235601.GL32466@dastard>
+References: <4DD43300.6010908@linux.vnet.ibm.com>
+ <20110519013144.GF32466@dastard>
+ <4DD560CF.3040706@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Dave Chinner <david@fromorbit.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	Eric Sandeen <sandeen@redhat.com>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>, Mark Fasheh <mfasheh@suse.com>
+	xfs-oss <xfs@oss.sgi.com>
 To: Allison Henderson <achender@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:38068 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932238Ab1ESXh3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 May 2011 19:37:29 -0400
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:28014 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752675Ab1ESX4G (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 May 2011 19:56:06 -0400
+Content-Disposition: inline
 In-Reply-To: <4DD560CF.3040706@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/19/2011 11:26 AM, Allison Henderson wrote:
-> Thx for the all the reviewing on this one.  Im not quite sure I agree that the tests are analogous though.  I did some poking around in xfsprogs which I believe is what test 252 is using to do perform most of its operations.  I found the code where the hole gets punched, but I didnt find any code that does any kind of analyzing to verify that the hole was punched correctly.  Maybe I over looked it?  It kinda looks like the hole gets punched and it just checks the return code (fpunch_f in io/prealloc.c right?).
->
+On Thu, May 19, 2011 at 11:26:23AM -0700, Allison Henderson wrote:
+> On 5/18/2011 6:31 PM, Dave Chinner wrote:
+> >On Wed, May 18, 2011 at 01:58:40PM -0700, Allison Henderson wrote:
+> >>This patch adds low level routines to common.punch
+> >>for populating test files and punching holes in them using
+> >>fallocate.  When a hole is punched, file is then analyzed to
+> >>verify that the hole was punched correctly.  These routines will
+> >>be used to test various corner cases in the new fallocate
+> >>punch hole tests.
+> >
+> >So what condition does this test cover that test 252 doesn't?
+....
+> >....
+> >
+> >I think maybe this test is trying to be too smart and do too much,
+> >and the verbosity is hurting my eyes. I'm giving up here because I
+> >think it overlaps greatly with test 252, and I can't see what
+> >addition failures this test would actually detect that fsx and 252
+> >wouldn't. If there are corner cases that 252 isn't covering that
+> >this test does, then I think they should be added to 252....
+> >
+> >
+> 
+> 
+> Hi there,
+> 
+> Thx for the all the reviewing on this one.  Im not quite sure I
+> agree that the tests are analogous though.  I did some poking around
+> in xfsprogs which I believe is what test 252 is using to do perform
+> most of its operations.  I found the code where the hole gets
+> punched, but I didnt find any code that does any kind of analyzing
+> to verify that the hole was punched correctly.
 
-Mark Fasheh wrote a test for the same for ocfs2 that might help. Check it out.
+It's in the golden output - we use the "$map_cmd" output and filter
+it to the normalise the data/unwritten/hole pattern, and if that
+doesn't match the golden output, the test will fail. So it does
+indeed test that the hole is exactly where we expect it to be, just
+without needing the complex logic.
 
-http://oss.oracle.com/git/?p=ocfs2-test.git;a=tree;f=programs/fill_verify_holes;h=0df38895e7ff6e66a9a558f35407699ebb40f790;hb=HEAD
+> Maybe I over looked
+> it?  It kinda looks like the hole gets punched and it just checks
+> the return code (fpunch_f in io/prealloc.c right?).
 
+For the immediate exectution of the punch, yes. That code doesn't do
+the checking that there is a hole in the right place, though, which
+is what the golden output checks at the end of the test do.
+
+> The reason this concerns me is that because a lot of the bugs that I
+> worked out during development did not show up in the form of a bad
+> return code or kernel oops.  Initially the tests were not automated
+> as they are now.  They would just perform the operations and print
+> out info about the file, the fs, fragmentation etc, and I would just
+> go through the raw output to make sure that every thing added up, as
+> well as just looking for anything that was out of the ordinary.  To
+> be honest, I feel that I caught a lot more bugs before they started
+> just with a careful eye, than if I had just been watching return
+> codes.  The above routine was meant to automate that work for
+> xfstests, but sense I do not see anything in xfstests or xfsprogs
+> that is doing any kinda of analyzing, I cannot say that I think
+> removing this layer provides the same level of verification.
+
+Looking through the raw output in an automated fashion is exactly
+what the filter and golden image checks do.
+
+> Unfortunately it does sound like a lot of what is going would not
+> work on all file systems, but I would feel better if we at least
+> kept the hexdumps. The reason I'm diffing hexdumps in here is
+> because some files get quite large and can take a while to copy, but
+> if they are full of repeating data the hexdumps are small.
+
+You've got to read the files to produce hexdumps, md5sums or just
+plain diff the binary files, so there's no saving in what you
+propose anyway. IMO, it's just a poor way to compare two files. You
+should have a golden image, and compare the test file against the
+golden image. You don't need hexdump to do that, and the files. And
+given the files are small, there is no reason not to copy stuff
+around.
+
+The only thing that 252 does not do is compare the file contents to
+determine whether the zeros start and stop at the correct spot.
+Realistically, fsx will do a much better job of testing these corner
+cases from a data POV than any manual test could ever do. Hence
+it's quite valid to make the assumption that we don't need to test
+the data for zeros because we have other tests that do a better job
+of it...
+
+Remember that robust unit testing is not based around the concept of
+"we need to check everything in one test". It's based around the
+concept that a test should be as simple as possible and test one
+thing. Then you write another simple test to cover a different
+aspect of the same functionality, and the test suite as a whole then
+covers all the functionality needing to be verified.  fsx will cover
+the "user data being zeroed correctly" cases, test 252 covers the
+"hole being punched in the right place" cases. IOWs, there isn't One
+True Test to test hole punching is working correctly - it's the
+coverage provided by the entire suite that gives us the confidence
+that hole punching is working correctly.
+
+> They can
+> be placed in the golden output just the same I suppose.  As much as
+> I would like to include output about the extents, I do not know how
+> that would work since the file may be inherently fragmented
+> differently from test to test.
+
+That's the problem that the map output (extent) filtering fixes. 
+
+And FWIW, there's a bunch of interesting hole punching tests in the
+DMAPI part of xfstests that is not normally run on mainline kernels
+(no dmapi support) because punching out extents is a primary
+functionality of a HSM and, as I've said before, a common place to
+find data corruption bugs. IOWs, XFS has had hole punch test
+coverage for a lot longer than the recent test cases have been
+around. Those are tests 145, 161, 175, 176 and 185.  If we want more
+robust hole punch coverage, taking those and making them run without
+needing dmapi or XFS specific interfaces would be a good place to
+start. We don't need to re-invent the wheel just to have generic
+tests....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
