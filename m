@@ -1,63 +1,147 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 2/2] mm: vmscan: If kswapd has been running too long,
- allow it to sleep
-Date: Thu, 19 May 2011 10:28:55 +1000
-Message-ID: <20110519002855.GD32466@dastard>
-References: <1305558417-24354-1-git-send-email-mgorman@suse.de>
- <1305558417-24354-3-git-send-email-mgorman@suse.de>
- <20110516141654.2728f05a.akpm@linux-foundation.org>
- <1305614225.6008.19.camel@mulgrave.site>
- <20110517162226.96974d89.akpm@linux-foundation.org>
- <20110518094718.GP5279@suse.de>
+Subject: Re: [XFS Tests Punch Hole 1/3 v3] XFS TESTS: Add Punch Hole to FSX
+Date: Thu, 19 May 2011 10:42:38 +1000
+Message-ID: <20110519004238.GE32466@dastard>
+References: <4DD432FC.5030904@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	James Bottomley <James.Bottomley@HansenPartnership.com>,
-	Colin King <colin.king@canonical.com>,
-	Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
-	Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
-	Christoph Lameter <cl@linux.com>,
-	Pekka Enberg <penberg@kernel.org>,
-	Rik van Riel <riel@redhat.com>,
-	Johannes Weiner <hannes@cmpxchg.org>,
-	Minchan Kim <minchan.kim@gmail.com>,
+Cc: xfs-oss <xfs@oss.sgi.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-mm <linux-mm@kvack.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	stable <stable@kernel.org>
-To: Mel Gorman <mgorman@suse.de>
+	Eric Sandeen <sandeen@redhat.com>
+To: Allison Henderson <achender@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:6118 "EHLO
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:32614 "EHLO
 	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752537Ab1ESA3B (ORCPT
+	by vger.kernel.org with ESMTP id S1752871Ab1ESAmm (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 May 2011 20:29:01 -0400
+	Wed, 18 May 2011 20:42:42 -0400
 Content-Disposition: inline
-In-Reply-To: <20110518094718.GP5279@suse.de>
+In-Reply-To: <4DD432FC.5030904@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 18, 2011 at 10:47:18AM +0100, Mel Gorman wrote:
-> As we are aggressively shrinking slab, we can reach the stage where
-> we scan the requested number of objects and reclaim none of them
-> potentially setting zone->all_unreclaimable to 1 if a lot of scanning
-> has also taken place recently without pages being freed. Once this
-> happens, kswapd isn't even trying to reclaim pages and is instead stuck
-> in shrink_slab until a page is freed clearing zone->all_unreclaimable
-> and zone->pages-scanned.
+On Wed, May 18, 2011 at 01:58:36PM -0700, Allison Henderson wrote:
+> This patch adds punch hole tests to the fsx
+> stress test. The test is performed through
+> the fallocate call by randomly choosing to
+> use the punch hole flag when running the
+> fallocate test. Regions that have
+> been punched out should contain zeros, so
+> the expected file contents buffer is updated
+> to contain zeros when a hole is punched out.
+> 
+> Signed-off-by: Allison Henderson <achender@us.ibm.com>
+> ---
+> v0 -> v1:
+> Corrections to the Makefile have been backed out.
+> This patch needs to be applied on top of
+> the "xfstests: clean up fallocate configuration tests"
+> patch
+> 
+> The punch hole tests can be disabled with the
+> -H flag, and will also be disabled if it is
+> detected that the filesystem does not support
+> punch hole
+> 
+> 
+> :100644 100644 fe072d3... 8978ef1... M	ltp/fsx.c
+>  ltp/fsx.c |  111 ++++++++++++++++++++++++++++++++++++++++++++++++++++--------
+>  1 files changed, 96 insertions(+), 15 deletions(-)
+> 
+> diff --git a/ltp/fsx.c b/ltp/fsx.c
+> index fe072d3..8978ef1 100644
+> --- a/ltp/fsx.c
+> +++ b/ltp/fsx.c
+> @@ -110,6 +110,7 @@ int	randomoplen = 1;		/* -O flag disables it */
+>  int	seed = 1;			/* -S flag */
+>  int     mapped_writes = 1;              /* -W flag disables */
+>  int     fallocate_calls = 1;            /* -F flag disables */
+> +int     punch_hole_calls = 1;           /* -H flag disables */
+>  int 	mapped_reads = 1;		/* -R flag disables it */
+>  int	fsxgoodfd = 0;
+>  int	o_direct;			/* -Z */
+> @@ -207,7 +208,8 @@ logdump(void)
+>  {
+>  	int	i, count, down;
+>  	struct log_entry	*lp;
+> -	char *falloc_type[3] = {"PAST_EOF", "EXTENDING", "INTERIOR"};
+> +	char *falloc_type[4] = {"PAST_EOF", "EXTENDING", "INTERIOR",
+> +				"PUNCH_HOLE"};
+>  
+>  	prt("LOG DUMP (%d total operations):\n", logcount);
+>  	if (logcount < LOGSIZE) {
+> @@ -791,6 +793,11 @@ dofallocate(unsigned offset, unsigned length)
+>  {
+>  	unsigned end_offset;
+>  	int keep_size;
+> +	int max_offset = 0;
+> +	int max_len = 0;
+> +	int mode = 0;
+> +	char *op_name;
+> +	int punch_hole = 0;
+>  
+>          if (length == 0) {
+>                  if (!quiet && testcalls > simulatedopcount)
+> @@ -799,11 +806,37 @@ dofallocate(unsigned offset, unsigned length)
+>                  return;
+>          }
+>  
+> +#ifdef FALLOC_FL_PUNCH_HOLE
+> +	if (fallocate_calls && !punch_hole_calls)
+> +		punch_hole = 0;
+> +	else if (!fallocate_calls && punch_hole_calls)
+> +		punch_hole = 1;
+> +	else
+> +		punch_hole = random() % 2;
+> +
+> +	/* Keep size must be set for punch hole */
+> +	if (punch_hole) {
+> +		keep_size = 1;
+> +		mode = FALLOC_FL_PUNCH_HOLE;
+> +	} else
+> +		keep_size = random() % 2;
+> +#else
+>  	keep_size = random() % 2;
+> +#endif
 
-Isn't this completely broken then? We can have slabs with lots of
-objects but none are reclaimable - e.g. dirty inodes are not even on
-the inode LRU and require IO to get there, so repeatedly scanning
-the slab trying to free inodes is completely pointless.
+Ugh. Can you please separate hole punching out into it's own
+function? i.e. do_fallocate() gets renamed to do_preallocate(), and
+this new functionality goes into do_hole_punch()? The fact that they
+both use the fallocate() system call is no reason for complicating
+the logic like this....
 
-If the shrinkers are not freeing anything, then it should be backing
-off and giving thme some time to clean objects is a much more
-efficient use of CPU time than spinning madly. Indeed, if you back
-off, you can do another pass over the LRU and see if there are more
-pages that can be reclaimed, too, so you're not dependent on the
-shrinkers actually making progress to break the livelock....
+> @@ -1426,8 +1489,26 @@ main(int argc, char **argv)
+>  		if (fallocate(fd, 0, 0, 1) && errno == EOPNOTSUPP) {
+>  			warn("main: filesystem does not support fallocate, disabling");
+>  			fallocate_calls = 0;
+> -		} else
+> +			/*
+> +			 * punch hole depends on fallocate,
+> +			 * so turn punch hole off too
+> +			 */
+> +			punch_hole_calls = 0;
+> +		} else {
+> +#ifdef FALLOC_FL_PUNCH_HOLE
+> +			if (fallocate(fd,
+> +				FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE,
+> +				0, 1) && errno == EOPNOTSUPP) {
+> +				warn("main: filesystem does not support"
+> +					" fallocate punch hole, disabling");
+> +				punch_hole_calls = 0;
+> +			}
+> +#else
+> +			punch_hole_calls = 0;
+> +#endif
+> +
+>  			ftruncate(fd, 0);
+> +		}
+>  	}
+>  #else /* ! FALLOCATE */
+>  	fallocate_calls = 0;
+
+And these functionality tests would probably be better in their own
+function, too.
 
 Cheers,
 
