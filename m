@@ -1,47 +1,40 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 0/2] Fix sending of a barrier and transaction waiting
- in ext4_sync_file()
-Date: Thu, 19 May 2011 12:51:49 +0200
-Message-ID: <20110519105149.GC8417@quack.suse.cz>
-References: <1305628095-27843-1-git-send-email-jack@suse.cz>
- <20110518174327.GB20655@tux1.beaverton.ibm.com>
+Subject: Re: [PATCH 0/3] Make block_page_mkwrite() handle frozen fs (V2)
+Date: Thu, 19 May 2011 12:57:08 +0200
+Message-ID: <20110519105708.GD8417@quack.suse.cz>
+References: <1305731882-8334-1-git-send-email-jack@suse.cz>
+ <20110518180022.GM18929@tux1.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, tytso@mit.edu,
-	Edward Goggin <egoggin@vmware.com>, linux-ext4@vger.kernel.org
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Al Viro <viro@ZenIV.linux.org.uk>,
+	tytso@mit.edu, Christoph Hellwig <hch@infradead.org>
 To: "Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:37056 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754082Ab1ESKwM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 May 2011 06:52:12 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20110518174327.GB20655@tux1.beaverton.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20110518180022.GM18929@tux1.beaverton.ibm.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed 18-05-11 10:43:27, Darrick J. Wong wrote:
-> On Tue, May 17, 2011 at 12:28:13PM +0200, Jan Kara wrote:
+On Wed 18-05-11 11:00:22, Darrick J. Wong wrote:
+> On Wed, May 18, 2011 at 05:17:59PM +0200, Jan Kara wrote:
 > > 
-> >   Hi Ted,
+> >   Hi,
 > > 
-> >   the two patches below fix ext4_sync_file() to wait for a transaction commit
-> > properly (return value of jbd2_log_start_commit() is not exactly what
-> > ext4_sync_file() thinks it is). It also optimizes / fixes sending of a barrier
-> > in some cases (e.g. in ordered mode with external journal we cannot really
-> > depend on transaction commit to issue a barrier to fs device because we don't
-> > seem to add inode to a transaction for overwrites).
+> >   this is a second version of my patches which rewrite ext4_page_mkwrite() to
+> > use generic helper. When we are already changing this code, I also added proper
+> > handling of frozen filesystem there in patch 2/3. I've incorporated suggestions
+> > from Christoph in the patches which resulted in some patch reorg. I'd like to
+> > get these patches reviewed and then get them merged possibly via ext4-tree
+> > (although the first two patches might go via Al but that would complicate
+> > merging of ext4 part where I expect more conflicts with ongoing work).
 > 
-> Probably a silly nit to pick, but do you mean "flush" instead of "barrier"?
-  Oh, right. I mean flush :). Thanks.
+> Do you want me to generate a patch to add wait_on_page_writeback to the
+> appropriate place(s) in your new *_page_mkwrite functions, or do you plan to
+> add them yourself?
+  Since Ted has merged your stable pages patches touching ext4, I'll rebase
+my ext4 patch on top of that. Regarding block_page_mkwrite() I will add
+that one-liner to the series (because the ext4_page_mkwrite() now depends
+on that).
 
 									Honza
-
-> > I already fixed ext3 in this regard some time ago but didn't get to porting the
-> > patches to ext4. 
-> > 
-> > 									Honza
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
