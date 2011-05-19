@@ -1,291 +1,167 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: [XFS Tests Punch Hole 2/3 v3] XFS TESTS: Add Fallocate Punch
- Hole Test Routines
-Date: Thu, 19 May 2011 11:26:23 -0700
-Message-ID: <4DD560CF.3040706@linux.vnet.ibm.com>
-References: <4DD43300.6010908@linux.vnet.ibm.com> <20110519013144.GF32466@dastard>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 1/4 v2] ext4: Use schedule_timeout_interruptible() for
+ waiting in lazyinit thread
+Date: Thu, 19 May 2011 14:30:17 -0500
+Message-ID: <4DD56FC9.5050001@redhat.com>
+References: <1304956630-20384-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20110519013144.GF32466@dastard>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:9497 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934363Ab1ESTaV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 May 2011 15:30:21 -0400
+In-Reply-To: <1304956630-20384-1-git-send-email-lczerner@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 5/18/2011 6:31 PM, Dave Chinner wrote:
-> On Wed, May 18, 2011 at 01:58:40PM -0700, Allison Henderson wrote:
->> This patch adds low level routines to common.punch
->> for populating test files and punching holes in them using
->> fallocate.  When a hole is punched, file is then analyzed to
->> verify that the hole was punched correctly.  These routines will
->> be used to test various corner cases in the new fallocate
->> punch hole tests.
->
-> So what condition does this test cover that test 252 doesn't?
->
->>
->> Signed-off-by: Allison Henderson<achender@us.ibm.com>
->> ---
->> :100644 100644 e2da5d8... 778389a... M	common.punch
->>   common.punch |  393 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
->>   1 files changed, 393 insertions(+), 0 deletions(-)
->>
->> diff --git a/common.punch b/common.punch
->> index e2da5d8..778389a 100644
->> --- a/common.punch
->> +++ b/common.punch
->> @@ -377,3 +377,396 @@ _test_generic_punch()
->>   		-c "$map_cmd -v" $testfile | $filter_cmd
->>   	[ $? -ne 0 ]&&  die_now
->>   }
->> +
->> +
->> +#_fill_file()
->> +#
->> +#Fills a file with the given byte value up to the
->> +#given number of bytes.
->> +#
->> +# $1: The name of the file to fill
->> +# $2: The byte value to fill the file with
->> +# $3: The number of bytes to put in the file
->> +# $4: The block size used when copying in
->> +#     "block" sized chunks of data
->> +_fill_file() {
->> +	local file_to_fill=$1
->> +	local byte_value=$2
->> +	local number_of_bytes=$3
->> +	local blk_size=$4
->> +	
->> +	remaining_bytes=$number_of_bytes
->> +	blk=""
->> +
->> +	for (( i=0; i<blk_size; i++ ))
->> +	do
->> +		blk=$blk$byte_value
->> +	done
->> +
->> +	while [ $remaining_bytes -ge $blk_size ]
->> +	do
->> +		printf "$blk">>  $file_to_fill
->> +		remaining_bytes=$(($remaining_bytes - $blk_size))
->> +	done
->> +
->> +	for (( i=0; i<$remaining_bytes; i++ ))
->> +	do
->> +		printf "$byte_value">>  $file_to_fill
->> +	done
->> +	
->> +
->> +}
->
-> Ummm, do you really need to reinvent the wheel?
->
-> $XFS_IO_PROG -F -f -c "pwrite -S $byte_value -b $blk_size 0 $number_of_bytes" $file_to_fill
->
->> +
->> +# _hole_test()
->> +#
->> +# Punches a hole in the test file.
->> +# The hole is the checked to make sure the correct number
->> +# of blocks are released and the associated extents are
->> +# removed
->> +#
->> +# Usage: _hole_test [options] file_name hole_offset hole_length
->> +# Options:
->> +#    -c<length>  Create a file of the given length full of data to punch a hole in
->
-> rm -f $file_name
-> $XFS_IO_PROG -F -f -c "t $length" $file_name
->
->> +#    -p<length>  Preallocate a file to the given length to punch a hole in
->
-> $XFS_IO_PROG -F -f -c "falloc 0 $length" $file_name
->
->> +#    -s          Sync the file before punching the hole
->
-> $XFS_IO_PROG -F -f -c "fsync" $file_name
->
->> +#    -m          Remount the device before punching the hole
-> ....
->> +		umount $TEST_DEV
->> +		mount $TEST_DEV $TEST_DIR
->
-> If you need remounts during the test, it should be using the scratch
-> device, I think.
->
->> +#
->> +# This test is successful when the following conditions are met:
->> +#  - ls shows that the number of blocks occupied by the file
->> +#    has decreased by the number of blocks punched out.
->
-> There's no guarantee that a filesystem will punch the number of
-> blocks you expect.
->
->> +#  - df shows number of available blocks has increased by the number
->> +#    of blocks punched out
->
-> Ditto - indeed, punching blocks can lead to allocation for things
-> like extent tree splits because the number of extent records
-> increases.
->
->> +#  - File frag shows that the blocks punched out are absent from
->> +#    the extents
->
-> Probably the best method, though we tend to use the xfs_io output
-> because we already have a lot of parsing functions for it.
->
->> +#  - The test file contains zeros where the hole should be
->> +#
->> +_hole_test() {
->> +
->> +	err=0
->> +	sflag=
->> +	mflag=
->> +	pflag=
->> +	cflag=
->> +	lflag=
->> +	oflag=
->> +	OPTIND=1
->> +	while getopts 'smc:p:' OPTION
->> +	do
->> +		case $OPTION in
->> +		s)	sflag=1
->> +		;;
->> +		m)	mflag=1
->> +		;;
->> +		p)	pflag="$OPTARG"
->> +		;;
->> +		c)	cflag="$OPTARG"
->> +		;;
->> +		?)	echo Invalid flag
->> +		echo "Usage: $(basename $0): [options]  file_name hole_offset hole_length">&2
->> +		echo "Options:">&2
->> +		echo "-c<length>  Create a file of the given length full of data to punch a hole in">&2
->> +		echo "-p<length>  Preallocate a file to the given length to punch a hole in">&2
->> +		echo "-s          Sync the file before punching the hole">&2
->> +		echo "-m          Remount the device before punching the hole"
->> +		exit 1
->> +		;;
->> +		esac
->> +	done
->> +	shift $(($OPTIND - 1))
->> +
->> +	local file_name=$1
->> +	local hole_offset=$2
->> +	local hole_length=$3
->> +	local hole_offset_orig=$hole_offset
->> +	local hole_length_orig=$hole_length
->> +
->> +	if [ "$cflag" ]; then
->> +		local file_length=$cflag
->> +	elif [ "$pflag" ]; then
->> +		local file_length=$pflag
->> +	else
->> +		local file_length=`ls -ls $file_name | cut -d ' ' -f6`
->> +	fi
->> +
->> +	# If the hole to punch out extends off the edge of the file,
->> +	# then we need to expect a smaller hole to be punched
->> +	if [ $hole_offset -ge $file_length ]; then
->> +		local hole_length=0
->> +		local hole_offset=$file_length
->> +	elif [ $(($hole_offset + $hole_length)) -gt $file_length ]; then
->> +		local hole_length=$(($file_length - $hole_offset))
->> +	fi
->> +
->> +	# locations to store hexdumps must not be in the filesystem
->> +	# or it will skew the results.  When we measure used
->> +	# available blocks. Also, there may not be enough
->> +	# room to store them in the fs during ENOSPC tests
->> +	# So store the dumps in the cwd by stripping the path
->> +	expected=`echo $file_name.hexdump.expected | sed 's/.*\///'`
->> +	result=`echo $file_name.hexdump.result | sed 's/.*\///'`
->
-> This is why you shoul dbe using the scratch device and using the
-> test device to store the results. No hoops to jump through, and the
-> result is s simpler test.
->
-> Oh, and all you do is run diff on the hexdump output of the files.
-> diff can check binary files just fine - why do you need the hexdump
-> output? i.e. create files with zeros where the holes will be on the
-> testdev, create new ones on the scratch dev, punch holes in them,
-> diff them. No need for hexdumps, and the diff output can be put
-> directly into the golden output. If we then dump the fiemap output
-> into the output file (appropriately filtered) no further validation
-> checks are needed to determine that the hole was punched in the
-> correct place....
->
-> Indeed, I've seen plenty of cases where same test case operating on
-> an existing file gives different results to operating on a newly
-> created file....
->
->> +
->> +	#calculate the end points of the hole in blocks
->> +	local block_size=`stat -f $TEST_DEV | grep "Block size" | cut -d " " -f3`
->> +	local hole_first_blk=$(( $hole_offset / $block_size ))
->> +	if [ $(($hole_offset % $block_size)) != 0 ]
->> +	then
->> +		local hole_first_blk=$(( $hole_first_blk + 1 ))
->> +	fi
->> +
->> +	local hole_last_blk=$(( ($hole_offset + $hole_length) / $block_size ))
->
-> That's making a big assumption about the granularity of hole
-> punching. It's invalid for certain XFS configurations - when using
-> per inode preferred allocation alignment or the real time device,
-> and hole punching follows those alignments.
->
-> ....
->
-> I think maybe this test is trying to be too smart and do too much,
-> and the verbosity is hurting my eyes. I'm giving up here because I
-> think it overlaps greatly with test 252, and I can't see what
-> addition failures this test would actually detect that fsx and 252
-> wouldn't. If there are corner cases that 252 isn't covering that
-> this test does, then I think they should be added to 252....
->
->
+On 5/9/11 10:57 AM, Lukas Czerner wrote:
+> In order to make lazyinit eat approx. 10% of io bandwidth at max, we are
+> sleeping between zeroing each single inode table. For that purpose we
+> are using timer which wakes up thread when it expires. It is set via
+> add_timer() and this may cause troubles in the case that thread has been
+> woken up earlier and in next iteration we call add_timer() on still
+> running timer hence hitting BUG_ON in add_timer(). We could fix that by
+> using mod_timer() instead however we can use
+> schedule_timeout_interruptible() for waiting and hence simplifying
+> things a lot.
+> 
+> This commit exchange the old "waiting mechanism" with simple
+> schedule_timeout_interruptible(), setting the time to sleep. Hence we do
+> not longer need li_wait_daemon waiting queue and others, so get rid of
+> it.
+> 
+> This solves Red Hat bug 699708.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
+Thanks Lukas - this looks good to me and takes care of the concern
+about jiffies wrapping.
 
-Hi there,
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 
-Thx for the all the reviewing on this one.  Im not quite sure I agree 
-that the tests are analogous though.  I did some poking around in 
-xfsprogs which I believe is what test 252 is using to do perform most of 
-its operations.  I found the code where the hole gets punched, but I 
-didnt find any code that does any kind of analyzing to verify that the 
-hole was punched correctly.  Maybe I over looked it?  It kinda looks 
-like the hole gets punched and it just checks the return code (fpunch_f 
-in io/prealloc.c right?).
+> ---
+> [v2]: prevent sleepeng for a loong time when jiffies wraps
+>       (Thanks to Eric Sandeen)
+>  fs/ext4/ext4.h  |    4 ----
+>  fs/ext4/super.c |   31 ++++++-------------------------
+>  2 files changed, 6 insertions(+), 29 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 4daaf2b..1e37c09 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1590,12 +1590,8 @@ void ext4_get_group_no_and_offset(struct super_block *sb, ext4_fsblk_t blocknr,
+>   */
+>  struct ext4_lazy_init {
+>  	unsigned long		li_state;
+> -
+> -	wait_queue_head_t	li_wait_daemon;
+>  	wait_queue_head_t	li_wait_task;
+> -	struct timer_list	li_timer;
+>  	struct task_struct	*li_task;
+> -
+>  	struct list_head	li_request_list;
+>  	struct mutex		li_list_mtx;
+>  };
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 8553dfb..f0e4c3a 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -2659,12 +2659,6 @@ static void print_daily_error_info(unsigned long arg)
+>  	mod_timer(&sbi->s_err_report, jiffies + 24*60*60*HZ);  /* Once a day */
+>  }
+>  
+> -static void ext4_lazyinode_timeout(unsigned long data)
+> -{
+> -	struct task_struct *p = (struct task_struct *)data;
+> -	wake_up_process(p);
+> -}
+> -
+>  /* Find next suitable group and run ext4_init_inode_table */
+>  static int ext4_run_li_request(struct ext4_li_request *elr)
+>  {
+> @@ -2712,7 +2706,7 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
+>  
+>  /*
+>   * Remove lr_request from the list_request and free the
+> - * request tructure. Should be called with li_list_mtx held
+> + * request structure. Should be called with li_list_mtx held
+>   */
+>  static void ext4_remove_li_request(struct ext4_li_request *elr)
+>  {
+> @@ -2756,14 +2750,10 @@ static int ext4_lazyinit_thread(void *arg)
+>  	struct ext4_lazy_init *eli = (struct ext4_lazy_init *)arg;
+>  	struct list_head *pos, *n;
+>  	struct ext4_li_request *elr;
+> -	unsigned long next_wakeup;
+> -	DEFINE_WAIT(wait);
+> +	unsigned long next_wakeup, cur;
+>  
+>  	BUG_ON(NULL == eli);
+>  
+> -	eli->li_timer.data = (unsigned long)current;
+> -	eli->li_timer.function = ext4_lazyinode_timeout;
+> -
+>  	eli->li_task = current;
+>  	wake_up(&eli->li_wait_task);
+>  
+> @@ -2797,19 +2787,15 @@ cont_thread:
+>  		if (freezing(current))
+>  			refrigerator();
+>  
+> -		if ((time_after_eq(jiffies, next_wakeup)) ||
+> +		cur = jiffies;
+> +		if ((time_after_eq(cur, next_wakeup)) ||
+>  		    (MAX_JIFFY_OFFSET == next_wakeup)) {
+>  			cond_resched();
+>  			continue;
+>  		}
+>  
+> -		eli->li_timer.expires = next_wakeup;
+> -		add_timer(&eli->li_timer);
+> -		prepare_to_wait(&eli->li_wait_daemon, &wait,
+> -				TASK_INTERRUPTIBLE);
+> -		if (time_before(jiffies, next_wakeup))
+> -			schedule();
+> -		finish_wait(&eli->li_wait_daemon, &wait);
+> +		schedule_timeout_interruptible(next_wakeup - cur);
+> +
+>  		if (kthread_should_stop()) {
+>  			ext4_clear_request_list();
+>  			goto exit_thread;
+> @@ -2833,12 +2819,10 @@ exit_thread:
+>  		goto cont_thread;
+>  	}
+>  	mutex_unlock(&eli->li_list_mtx);
+> -	del_timer_sync(&ext4_li_info->li_timer);
+>  	eli->li_task = NULL;
+>  	wake_up(&eli->li_wait_task);
+>  
+>  	kfree(ext4_li_info);
+> -	ext4_lazyinit_task = NULL;
+>  	ext4_li_info = NULL;
+>  	mutex_unlock(&ext4_li_mtx);
+>  
+> @@ -2866,7 +2850,6 @@ static int ext4_run_lazyinit_thread(void)
+>  	if (IS_ERR(ext4_lazyinit_task)) {
+>  		int err = PTR_ERR(ext4_lazyinit_task);
+>  		ext4_clear_request_list();
+> -		del_timer_sync(&ext4_li_info->li_timer);
+>  		kfree(ext4_li_info);
+>  		ext4_li_info = NULL;
+>  		printk(KERN_CRIT "EXT4: error %d creating inode table "
+> @@ -2915,9 +2898,7 @@ static int ext4_li_info_new(void)
+>  	INIT_LIST_HEAD(&eli->li_request_list);
+>  	mutex_init(&eli->li_list_mtx);
+>  
+> -	init_waitqueue_head(&eli->li_wait_daemon);
+>  	init_waitqueue_head(&eli->li_wait_task);
+> -	init_timer(&eli->li_timer);
+>  	eli->li_state |= EXT4_LAZYINIT_QUIT;
+>  
+>  	ext4_li_info = eli;
 
-The reason this concerns me is that because a lot of the bugs that I 
-worked out during development did not show up in the form of a bad 
-return code or kernel oops.  Initially the tests were not automated as 
-they are now.  They would just perform the operations and print out info 
-about the file, the fs, fragmentation etc, and I would just go through 
-the raw output to make sure that every thing added up, as well as just 
-looking for anything that was out of the ordinary.  To be honest, I feel 
-that I caught a lot more bugs before they started just with a careful 
-eye, than if I had just been watching return codes.  The above routine 
-was meant to automate that work for xfstests, but sense I do not see 
-anything in xfstests or xfsprogs that is doing any kinda of analyzing, I 
-cannot say that I think removing this layer provides the same level of 
-verification.
-
-Unfortunately it does sound like a lot of what is going would not work 
-on all file systems, but I would feel better if we at least kept the 
-hexdumps. The reason I'm diffing hexdumps in here is because some files 
-get quite large and can take a while to copy, but if they are full of 
-repeating data the hexdumps are small.  They can be placed in the golden 
-output just the same I suppose.  As much as I would like to include 
-output about the extents, I do not know how that would work since the 
-file may be inherently fragmented differently from test to test.  Unless 
-maybe we did something where we just count up blocks from continuous 
-extents just to show where the holes are.  What do you think?  Thx!
-
-Allison Henderson
