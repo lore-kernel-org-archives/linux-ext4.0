@@ -1,281 +1,410 @@
-From: Manish Katiyar <mkatiyar@gmail.com>
-Subject: Re: [PATCH 1/5] jbd2: Pass extra bool parameter in journal routines
- to specify if its ok to fail the journal transaction allocation.
-Date: Wed, 18 May 2011 21:48:25 -0700
-Message-ID: <BANLkTinop+Try_MfxQ+uX_Njn1HaOtGsdw@mail.gmail.com>
-References: <BANLkTinNUxt_Bj0JErLVDbh=73JHzzS9=w@mail.gmail.com>
- <20110511155447.GH5057@quack.suse.cz> <BANLkTikP3axXkZ=v8EbpbzyoeSeARZC_Ew@mail.gmail.com>
- <20110516155138.GI5344@quack.suse.cz> <BANLkTinsJeiprc64Q8BE5498osJmm6npsg@mail.gmail.com>
- <20110518080930.GC25632@quack.suse.cz> <BANLkTim62Kc8gTjsiJG3Fq=MWW9wFJ8xnQ@mail.gmail.com>
- <20110518124447.GH25632@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: ext4 <linux-ext4@vger.kernel.org>, "Theodore Ts'o" <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: [PATCH v2] xfstests:Make 225 compare map and fiemap at each block.
+Date: Thu, 19 May 2011 15:21:05 +0800
+Message-ID: <1305789665-32743-1-git-send-email-xiaoqiangnk@gmail.com>
+Cc: xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>
+To: josef@redhat.com, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:44934 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751782Ab1ESEsq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 May 2011 00:48:46 -0400
-Received: by qwk3 with SMTP id 3so1166243qwk.19
-        for <linux-ext4@vger.kernel.org>; Wed, 18 May 2011 21:48:45 -0700 (PDT)
-In-Reply-To: <20110518124447.GH25632@quack.suse.cz>
+Received: from mail-px0-f173.google.com ([209.85.212.173]:44470 "EHLO
+	mail-px0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755777Ab1ESHUo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 May 2011 03:20:44 -0400
+Received: by pxi16 with SMTP id 16so1599207pxi.4
+        for <linux-ext4@vger.kernel.org>; Thu, 19 May 2011 00:20:44 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 18, 2011 at 5:44 AM, Jan Kara <jack@suse.cz> wrote:
-> On Wed 18-05-11 01:36:48, Manish Katiyar wrote:
->> On Wed, May 18, 2011 at 1:09 AM, Jan Kara <jack@suse.cz> wrote:
->> > On Tue 17-05-11 23:38:05, Manish Katiyar wrote:
->> >> On Mon, May 16, 2011 at 8:51 AM, Jan Kara <jack@suse.cz> wrote:
->> >> > =A0Hello,
->> >> >
->> >> > On Thu 12-05-11 23:37:05, Manish Katiyar wrote:
->> >> >> On Wed, May 11, 2011 at 8:54 AM, Jan Kara <jack@suse.cz> wrote=
-:
->> >> >> > =A0Hi,
->> >> >> >
->> >> >> > =A0sorry I got to your patches with a delay. One general not=
-e - please do
->> >> >> > not attach patches. It is enough to have them in the email..=
-=2E
->> >> >> >
->> >> >> > On Sun 24-04-11 17:10:41, Manish Katiyar wrote:
->> >> >> >> Pass extra bool parameter in journal routines to specify if=
- its ok to
->> >> >> >> fail the journal transaction allocation. If 'true' is passe=
-d
->> >> >> >> transaction allocation is done through GFP_KERNEL =A0and EN=
-OMEM is
->> >> >> >> returned else GFP_NOFS is used.
->> >> >> > =A0Please, do not mix error handling with gfp masks. Instead=
- just rename
->> >> >> > jbd2__journal_start() to jbd2_journal_start() and change gfp=
-_mask parameter
->> >> >> > to "bool errok".
->> >> >>
->> >> >> ok.
->> >> >>
->> >> >> > Use GFP_NOFS gfp mask for start_this_handle().
->> >> >> I think I didn't completely understand this line. You meant pa=
-ssing
->> >> >> GFP_KERNEL or GFP_NOFS based on errok right ?
->> >> > =A0No, I meant passing GFP_NOFS always. Currently, GFP_NOFS is =
-used in all
->> >> > the cases (noone uses GFP_KERNEL variant) and GFP_KERNEL can re=
-ally be used
->> >> > only when we do not hold other filesystem locks (as GFP_KERNEL =
-allocation
->> >> > can recurse back into filesystem to reclaim memory). So using G=
-=46P_KERNEL
->> >> > would need more auditting and is a separate issue anyway.
->> >>
->> >> Hi Jan,
->> >>
->> >> How about this ? As suggested I have removed special handlers for
->> >> ocfs2, always pass false as default for allocation and have remov=
-ed
->> >> jbd2__journal_start and collapsed it in jbd2_journal_start.
->> >>
->> >>
->> >> Pass extra bool parameter in journal routines to specify if its o=
-k to
->> >> fail the journal transaction allocation. =A0Update ocfs2 and ext4=
- routines to
->> >> pass false for the updated journal interface.
->> > =A0Yes, now the patch looks good! Thanks. Just one nit below:
->>
->> Thanks a lot. Fixed the newline issue. Here is the updated diff.
->>
->> Pass extra bool parameter in journal routines to specify if its ok t=
-o
->> fail the journal transaction allocation. =A0Update ocfs2 and ext4 ro=
-utines to
->> pass false for the updated journal interface.
-> =A0The patch look good now. You can add:
-> Acked-by: Jan Kara <jack@suse.cz>
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
-Honza
+Due to my carelessness, I induced a ugly patch to ext4's fiemap, but
+225 could not find it.  So I looked into the 225 and could not figure out
+logic in compare_map_and_fiemap(), which seemed to mix extents with
+blocks.  Then I made 225 compare map and fiemap at each block, the new
+225 can find another bug in ext4 with 1k block.
 
-Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
-Acked-by: Jan Kara <jack@suse.cz>
+The new 225 works well on ext3, ext4 and xfs with both 1K and 4K block.
+
+Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/ext4_jbd2.h   |    2 +-
- fs/ext4/super.c       |    2 +-
- fs/jbd2/transaction.c |   24 +++++-------------------
- fs/ocfs2/journal.c    |    6 +++---
- include/linux/jbd2.h  |    6 ++----
- 5 files changed, 12 insertions(+), 28 deletions(-)
+v1->v2:
+Josef <josef@redhat.com> reviewed the v1 patch and pointed out the bug which
+made xfs not work and several coding styles.
 
-diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index d0f5353..0abee1b 100644
---- a/fs/ext4/ext4_jbd2.h
-+++ b/fs/ext4/ext4_jbd2.h
-@@ -225,7 +225,7 @@ static inline int ext4_journal_extend(handle_t
-*handle, int nblocks)
- static inline int ext4_journal_restart(handle_t *handle, int nblocks)
+According to reply from Josef, I
+ fixed the bug which added ';' after an if statement.
+ removed the trailing whitespace.
+
+Apart from things above, I
+ made check_weird_fs_hole() verify bytes read by pread().
+
+ src/fiemap-tester.c |  251 ++++++++++++++++++++++++++++-----------------------
+ 1 files changed, 140 insertions(+), 111 deletions(-)
+
+diff --git a/src/fiemap-tester.c b/src/fiemap-tester.c
+index 1663f84..319a9bb 100644
+--- a/src/fiemap-tester.c
++++ b/src/fiemap-tester.c
+@@ -14,6 +14,9 @@
+  * You should have received a copy of the GNU General Public License
+  * along with this program; if not, write the Free Software Foundation,
+  * Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++ *
++ * Compare map and fiemap at each block,
++ * Yongqiang Yang <xiaoqiangnk@gmail.com>, 2011
+  */
+ 
+ #include <stdio.h>
+@@ -57,7 +60,7 @@ generate_file_mapping(int blocks, int prealloc)
+ 	int num_types = 2, cur_block = 0;
+ 	int i = 0;
+ 
+-	map = malloc(sizeof(char) * blocks);
++	map = malloc(sizeof(char) * (blocks + 1));
+ 	if (!map)
+ 		return NULL;
+ 
+@@ -81,6 +84,7 @@ generate_file_mapping(int blocks, int prealloc)
+ 		cur_block++;
+ 	}
+ 
++	map[blocks] = 0;
+ 	return map;
+ }
+ 
+@@ -247,55 +251,36 @@ check_flags(struct fiemap *fiemap, int blocksize)
+ }
+ 
+ static int
+-check_data(struct fiemap *fiemap, __u64 logical_offset, int blocksize,
++check_data(struct fiemap_extent *extent ,  __u64 logical_offset, int blocksize,
+ 	   int last, int prealloc)
  {
- 	if (ext4_handle_valid(handle))
--		return jbd2_journal_restart(handle, nblocks);
-+		return jbd2_journal_restart(handle, nblocks, false);
+-	struct fiemap_extent *extent;
+-	__u64 orig_offset = logical_offset;
+-	int c, found = 0;
+-
+-	for (c = 0; c < fiemap->fm_mapped_extents; c++) {
+-		__u64 start, end;
+-		extent = &fiemap->fm_extents[c];
+-
+-		start = extent->fe_logical;
+-		end = extent->fe_logical + extent->fe_length;
+-
+-		if (logical_offset > end)
+-			continue;
+-
+-		if (logical_offset + blocksize < start)
+-			break;
+-
+-		if (logical_offset >= start &&
+-		    logical_offset < end) {
+-			if (prealloc &&
+-			    !(extent->fe_flags & FIEMAP_EXTENT_UNWRITTEN)) {
+-				printf("ERROR: preallocated extent is not "
+-				       "marked with FIEMAP_EXTENT_UNWRITTEN: "
+-				       "%llu\n",
+-				       (unsigned long long)
+-				       (start / blocksize));
+-				return -1;
+-			}
+-
+-			if (logical_offset + blocksize > end) {
+-				logical_offset = end+1;
+-				continue;
+-			} else {
+-				found = 1;
+-				break;
+-			}
++	int found = 0;
++	__u64 start, end;
++
++	start = extent->fe_logical;
++	end = extent->fe_logical + extent->fe_length;
++
++	if (logical_offset >= start &&
++	    logical_offset < end) {
++		if (prealloc &&
++		    !(extent->fe_flags & FIEMAP_EXTENT_UNWRITTEN)) {
++			printf("ERROR: preallocated extent is not "
++			       "marked with FIEMAP_EXTENT_UNWRITTEN: "
++			       "%llu\n",
++			       (unsigned long long)
++			       (start / blocksize));
++			return -1;
+ 		}
++		found = 1;
+ 	}
+ 
+ 	if (!found) {
+ 		printf("ERROR: couldn't find extent at %llu\n",
+-		       (unsigned long long)(orig_offset / blocksize));
++		       (unsigned long long)(logical_offset / blocksize));
+ 	} else if (last &&
+-		   !(fiemap->fm_extents[c].fe_flags & FIEMAP_EXTENT_LAST)) {
++		   !(extent->fe_flags & FIEMAP_EXTENT_LAST)) {
+ 		printf("ERROR: last extent not marked as last: %llu\n",
+-		       (unsigned long long)(orig_offset / blocksize));
++		       (unsigned long long)(logical_offset / blocksize));
+ 		found = 0;
+ 	}
+ 
+@@ -306,7 +291,7 @@ static int
+ check_weird_fs_hole(int fd, __u64 logical_offset, int blocksize)
+ {
+ 	static int warning_printed = 0;
+-	int block, i;
++	int block, i, count;
+ 	size_t buf_len = sizeof(char) * blocksize;
+ 	char *buf;
+ 
+@@ -330,15 +315,16 @@ check_weird_fs_hole(int fd, __u64 logical_offset, int blocksize)
+ 		return -1;
+ 	}
+ 
+-	if (pread(fd, buf, buf_len, (off_t)logical_offset) < 0) {
++	count = pread(fd, buf, buf_len, (off_t)logical_offset);
++	if (count < 0) {
+ 		perror("Error reading from file");
+ 		free(buf);
+ 		return -1;
+ 	}
+ 
+-	for (i = 0; i < buf_len; i++) {
++	for (i = 0; i < count; i++) {
+ 		if (buf[i] != 0) {
+-			printf("ERROR: FIEMAP claimed there was data (%c) at "
++			printf("ERROR: FIEMAP claimed there was data (%x) at "
+ 			       "block %llu that should have been a hole, and "
+ 			       "FIBMAP confirmed that it was allocated, but "
+ 			       "it should be filled with 0's, but it was not "
+@@ -370,35 +356,25 @@ check_weird_fs_hole(int fd, __u64 logical_offset, int blocksize)
+ }
+ 
+ static int
+-check_hole(struct fiemap *fiemap, int fd, __u64 logical_offset, int blocksize)
++check_hole(struct fiemap_extent *extent, int fd, __u64 logical_offset,
++	   int blocksize)
+ {
+-	struct fiemap_extent *extent;
+-	int c;
++	__u64 start, end;
+ 
+-	for (c = 0; c < fiemap->fm_mapped_extents; c++) {
+-		__u64 start, end;
+-		extent = &fiemap->fm_extents[c];
+-
+-		start = extent->fe_logical;
+-		end = extent->fe_logical + extent->fe_length;
+-
+-		if (logical_offset > end)
+-			continue;
+-		if (logical_offset + blocksize < start)
+-			break;
++	start = extent->fe_logical;
++	end = extent->fe_logical + extent->fe_length;
+ 
+-		if (logical_offset >= start &&
+-		    logical_offset < end) {
++	if (logical_offset >= start &&
++	    logical_offset < end) {
+ 
+-			if (check_weird_fs_hole(fd, logical_offset,
+-						blocksize) == 0)
+-				break;
++		if (check_weird_fs_hole(fd, logical_offset,
++					blocksize) == 0)
++			return 0;
+ 
+-			printf("ERROR: found an allocated extent where a hole "
+-			       "should be: %llu\n",
+-			       (unsigned long long)(start / blocksize));
+-			return -1;
+-		}
++		printf("ERROR: found an allocated extent where a hole "
++		       "should be: %llu\n",
++		       (unsigned long long)(logical_offset / blocksize));
++		return -1;
+ 	}
+ 
  	return 0;
- }
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 8553dfb..4e4c17f 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -279,7 +279,7 @@ handle_t *ext4_journal_start_sb(struct super_block
-*sb, int nblocks)
- 		ext4_abort(sb, "Detected aborted journal");
- 		return ERR_PTR(-EROFS);
- 	}
--	return jbd2_journal_start(journal, nblocks);
-+	return jbd2_journal_start(journal, nblocks, false);
- }
-
- /*
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 05fa77a..b5c2550 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -318,7 +318,7 @@ static handle_t *new_handle(int nblocks)
-  *
-  * Return a pointer to a newly allocated handle, or NULL on failure
-  */
--handle_t *jbd2__journal_start(journal_t *journal, int nblocks, int gfp=
-_mask)
-+handle_t *jbd2_journal_start(journal_t *journal, int nblocks, bool err=
-ok)
+@@ -423,9 +399,11 @@ compare_fiemap_and_map(int fd, char *map, int blocks, int blocksize, int syncfil
  {
- 	handle_t *handle =3D journal_current_handle();
- 	int err;
-@@ -338,7 +338,7 @@ handle_t *jbd2__journal_start(journal_t *journal,
-int nblocks, int gfp_mask)
-
- 	current->journal_info =3D handle;
-
--	err =3D start_this_handle(journal, handle, gfp_mask);
-+	err =3D start_this_handle(journal, handle, GFP_NOFS);
- 	if (err < 0) {
- 		jbd2_free_handle(handle);
- 		current->journal_info =3D NULL;
-@@ -346,13 +346,6 @@ handle_t *jbd2__journal_start(journal_t *journal,
-int nblocks, int gfp_mask)
- 	}
- 	return handle;
+ 	struct fiemap *fiemap;
+ 	char *fiebuf;
+-	int blocks_to_map, ret, cur_extent = 0, last_data;
++	int blocks_to_map, ret, last_data = -1;
+ 	__u64 map_start, map_length;
+ 	int i, c;
++	int cur_block = 0;
++	int last_found = 0;
+ 
+ 	if (query_fiemap_count(fd, blocks, blocksize) < 0)
+ 		return -1;
+@@ -451,8 +429,11 @@ compare_fiemap_and_map(int fd, char *map, int blocks, int blocksize, int syncfil
+ 	fiemap->fm_extent_count = blocks_to_map;
+ 	fiemap->fm_mapped_extents = 0;
+ 
++	/* check fiemap by looking at each block. */
+ 	do {
+-		fiemap->fm_start = map_start;
++		int nr_extents;
++
++		fiemap->fm_start = cur_block * blocksize;
+ 		fiemap->fm_length = map_length;
+ 
+ 		ret = ioctl(fd, FS_IOC_FIEMAP, (unsigned long)fiemap);
+@@ -465,45 +446,93 @@ compare_fiemap_and_map(int fd, char *map, int blocks, int blocksize, int syncfil
+ 		if (check_flags(fiemap, blocksize))
+ 			goto error;
+ 
+-		for (i = cur_extent, c = 1; i < blocks; i++, c++) {
+-			__u64 logical_offset = i * blocksize;
+-
+-			if (c > fiemap->fm_mapped_extents) {
+-				i++;
+-				break;
++		nr_extents = fiemap->fm_mapped_extents;
++		if (nr_extents == 0) {
++			int block = cur_block + (map_length - 1) / blocksize;
++			for (; cur_block <= block &&
++			       cur_block < blocks; cur_block++) {
++				/* check hole */
++				if (map[cur_block] != 'H') {
++					printf("ERROR: map[%d] should not be "
++					       "a hole\n", cur_block);
++					goto error;
++				}
+ 			}
++			continue;
++		}
+ 
+-			switch (map[i]) {
+-			case 'D':
+-				if (check_data(fiemap, logical_offset,
+-					       blocksize, last_data == i, 0))
++		for (c = 0; c < nr_extents; c++) {
++			__u64 offset;
++			int block;
++			struct fiemap_extent *extent;
++
++
++			extent = &fiemap->fm_extents[c];
++			offset = extent->fe_logical;
++			block = offset / blocksize;
++
++			/* check hole. */
++			for (; cur_block < block && cur_block < blocks;
++			     cur_block++) {
++				if (map[cur_block] != 'H') {
++					printf("ERROR: map[%d] should not be "
++					       "a hole\n", cur_block);
+ 					goto error;
+-				break;
+-			case 'H':
+-				if (check_hole(fiemap, fd, logical_offset,
+-					       blocksize))
++				}
++			}
++
++			offset = extent->fe_logical + extent->fe_length;
++			block = offset / blocksize;
++			/* check data */
++			for (; cur_block < block && cur_block < blocks;
++			     cur_block++) {
++				int last;
++				offset = (__u64)cur_block * blocksize;
++				last = (cur_block == last_data);
++				last_found = last_found ? last_found : last;
++				switch (map[cur_block]) {
++				case 'D':
++					if (check_data(extent, offset,
++						       blocksize, last, 0))
++						goto error;
++					break;
++				case 'H':
++					if (check_hole(extent, fd, offset,
++						       blocksize))
++						goto error;
++					break;
++
++				case 'P':
++					if (check_data(extent, offset,
++						       blocksize, last, 1))
++						goto error;
++					break;
++				default:
++					printf("ERROR: weird value in "
++					       "map: %c\n", map[i]);
+ 					goto error;
+-				break;
+-			case 'P':
+-				if (check_data(fiemap, logical_offset,
+-					       blocksize, last_data == i, 1))
++				}
++			}
++
++			for (; cur_block < block; cur_block++) {
++				offset = (__u64)cur_block * blocksize;
++				if (check_hole(extent, fd, offset, blocksize))
+ 					goto error;
+-				break;
+-			default:
+-				printf("ERROR: weird value in map: %c\n",
+-				       map[i]);
+-				goto error;
+ 			}
+ 		}
+-		cur_extent = i;
+-		map_start = i * blocksize;
+-	} while (cur_extent < blocks);
++	} while (cur_block < blocks);
+ 
+-	ret = 0;
+-	return ret;
++	if (!last_found && last_data != -1) {
++		printf("ERROR: find no last extent\n");
++		goto error;
++	}
++
++	free(fiebuf);
++	return 0;
+ error:
+ 	printf("map is '%s'\n", map);
+ 	show_extents(fiemap, blocksize);
++	free(fiebuf);
+ 	return -1;
  }
--EXPORT_SYMBOL(jbd2__journal_start);
+ 
+@@ -605,6 +634,18 @@ main(int argc, char **argv)
+ 		printf("Starting infinite run, if you don't see any output "
+ 		       "then its working properly.\n");
+ 	do {
++		if (ftruncate(fd, 0)) {
++			perror("Could not truncate file\n");
++			close(fd);
++			exit(1);
++		}
++
++		if (lseek(fd, 0, SEEK_SET)) {
++			perror("Could not seek set\n");
++			close(fd);
++			exit(1);
++		}
++
+ 		if (!map) {
+ 			blocks = random() % maxblocks;
+ 			if (blocks == 0) {
+@@ -639,18 +680,6 @@ main(int argc, char **argv)
+ 		free(map);
+ 		map = NULL;
+ 
+-		if (ftruncate(fd, 0)) {
+-			perror("Could not truncate file\n");
+-			close(fd);
+-			exit(1);
+-		}
 -
--
--handle_t *jbd2_journal_start(journal_t *journal, int nblocks)
--{
--	return jbd2__journal_start(journal, nblocks, GFP_NOFS);
--}
- EXPORT_SYMBOL(jbd2_journal_start);
-
-
-@@ -441,7 +434,7 @@ out:
-  * transaction capabable of guaranteeing the requested number of
-  * credits.
-  */
--int jbd2__journal_restart(handle_t *handle, int nblocks, int gfp_mask)
-+int jbd2_journal_restart(handle_t *handle, int nblocks, bool errok)
- {
- 	transaction_t *transaction =3D handle->h_transaction;
- 	journal_t *journal =3D transaction->t_journal;
-@@ -477,16 +470,9 @@ int jbd2__journal_restart(handle_t *handle, int
-nblocks, int gfp_mask)
-
- 	lock_map_release(&handle->h_lockdep_map);
- 	handle->h_buffer_credits =3D nblocks;
--	ret =3D start_this_handle(journal, handle, gfp_mask);
-+	ret =3D start_this_handle(journal, handle, GFP_NOFS);
- 	return ret;
- }
--EXPORT_SYMBOL(jbd2__journal_restart);
--
--
--int jbd2_journal_restart(handle_t *handle, int nblocks)
--{
--	return jbd2__journal_restart(handle, nblocks, GFP_NOFS);
--}
- EXPORT_SYMBOL(jbd2_journal_restart);
-
- /**
-@@ -1436,7 +1422,7 @@ int jbd2_journal_force_commit(journal_t *journal)
- 	handle_t *handle;
- 	int ret;
-
--	handle =3D jbd2_journal_start(journal, 1);
-+	handle =3D jbd2_journal_start(journal, 1, false);
- 	if (IS_ERR(handle)) {
- 		ret =3D PTR_ERR(handle);
- 	} else {
-diff --git a/fs/ocfs2/journal.c b/fs/ocfs2/journal.c
-index b141a44..cca0f76 100644
---- a/fs/ocfs2/journal.c
-+++ b/fs/ocfs2/journal.c
-@@ -353,11 +353,11 @@ handle_t *ocfs2_start_trans(struct ocfs2_super
-*osb, int max_buffs)
-
- 	/* Nested transaction? Just return the handle... */
- 	if (journal_current_handle())
--		return jbd2_journal_start(journal, max_buffs);
-+		return jbd2_journal_start(journal, max_buffs, false);
-
- 	down_read(&osb->journal->j_trans_barrier);
-
--	handle =3D jbd2_journal_start(journal, max_buffs);
-+	handle =3D jbd2_journal_start(journal, max_buffs, false);
- 	if (IS_ERR(handle)) {
- 		up_read(&osb->journal->j_trans_barrier);
-
-@@ -438,7 +438,7 @@ int ocfs2_extend_trans(handle_t *handle, int nblock=
-s)
- 	if (status > 0) {
- 		trace_ocfs2_extend_trans_restart(old_nblocks + nblocks);
- 		status =3D jbd2_journal_restart(handle,
--					      old_nblocks + nblocks);
-+					      old_nblocks + nblocks, false);
- 		if (status < 0) {
- 			mlog_errno(status);
- 			goto bail;
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index a32dcae..67f0f4f 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1103,10 +1103,8 @@ static inline handle_t *journal_current_handle(v=
-oid)
-  * Register buffer modifications against the current transaction.
-  */
-
--extern handle_t *jbd2_journal_start(journal_t *, int nblocks);
--extern handle_t *jbd2__journal_start(journal_t *, int nblocks, int gfp=
-_mask);
--extern int	 jbd2_journal_restart(handle_t *, int nblocks);
--extern int	 jbd2__journal_restart(handle_t *, int nblocks, int gfp_mas=
-k);
-+extern handle_t *jbd2_journal_start(journal_t *, int nblocks, bool err=
-ok);
-+extern int	 jbd2_journal_restart(handle_t *, int nblocks, bool errok);
- extern int	 jbd2_journal_extend (handle_t *, int nblocks);
- extern int	 jbd2_journal_get_write_access(handle_t *, struct buffer_he=
-ad *);
- extern int	 jbd2_journal_get_create_access (handle_t *, struct buffer_=
-head *);
---=20
-1.7.4.1
-
-
---=20
-Thanks -
-Manish
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-		if (lseek(fd, 0, SEEK_SET)) {
+-			perror("Could not seek set\n");
+-			close(fd);
+-			exit(1);
+-		}
