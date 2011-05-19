@@ -1,40 +1,30 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 0/3] Make block_page_mkwrite() handle frozen fs (V2)
-Date: Thu, 19 May 2011 12:57:08 +0200
-Message-ID: <20110519105708.GD8417@quack.suse.cz>
-References: <1305731882-8334-1-git-send-email-jack@suse.cz>
- <20110518180022.GM18929@tux1.beaverton.ibm.com>
+From: Christoph Hellwig <hch@lst.de>
+Subject: Re: [Ocfs2-devel] SEEK_DATA/HOLE on ocfs2 - v2
+Date: Thu, 19 May 2011 13:04:19 +0200
+Message-ID: <20110519110419.GA6357@lst.de>
+References: <1305773084-19296-1-git-send-email-sunil.mushran@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Al Viro <viro@ZenIV.linux.org.uk>,
-	tytso@mit.edu, Christoph Hellwig <hch@infradead.org>
-To: "Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: josef@redhat.com, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org, viro@ZenIV.linux.org.uk,
+	ocfs2-devel@oss.oracle.com
+To: Sunil Mushran <sunil.mushran@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from verein.lst.de ([213.95.11.211]:45489 "EHLO newverein.lst.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752943Ab1ESLET (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 May 2011 07:04:19 -0400
 Content-Disposition: inline
-In-Reply-To: <20110518180022.GM18929@tux1.beaverton.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1305773084-19296-1-git-send-email-sunil.mushran@oracle.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 18-05-11 11:00:22, Darrick J. Wong wrote:
-> On Wed, May 18, 2011 at 05:17:59PM +0200, Jan Kara wrote:
-> > 
-> >   Hi,
-> > 
-> >   this is a second version of my patches which rewrite ext4_page_mkwrite() to
-> > use generic helper. When we are already changing this code, I also added proper
-> > handling of frozen filesystem there in patch 2/3. I've incorporated suggestions
-> > from Christoph in the patches which resulted in some patch reorg. I'd like to
-> > get these patches reviewed and then get them merged possibly via ext4-tree
-> > (although the first two patches might go via Al but that would complicate
-> > merging of ext4 part where I expect more conflicts with ongoing work).
-> 
-> Do you want me to generate a patch to add wait_on_page_writeback to the
-> appropriate place(s) in your new *_page_mkwrite functions, or do you plan to
-> add them yourself?
-  Since Ted has merged your stable pages patches touching ext4, I'll rebase
-my ext4 patch on top of that. Regarding block_page_mkwrite() I will add
-that one-liner to the series (because the ext4_page_mkwrite() now depends
-on that).
+On Wed, May 18, 2011 at 07:44:42PM -0700, Sunil Mushran wrote:
+> It is improved since the last post. It runs cleanly on zfs, ocfs2 and ext3
+> (default behavior). Users testing on zfs will need to flip the values of
+> SEEK_HOLE/DATA.
 
-									Honza
+sounds like we should switch the around, just to cause the least
+amount of confusion.
+
