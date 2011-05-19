@@ -1,49 +1,47 @@
-From: Joel Becker <jlbec@evilplan.org>
-Subject: Re: [XFS Tests Punch Hole 2/3 v3] XFS TESTS: Add Fallocate Punch
- Hole Test Routines
-Date: Wed, 18 May 2011 18:41:51 -0700
-Message-ID: <20110519014149.GA11278@noexit.corp.google.com>
-References: <4DD43300.6010908@linux.vnet.ibm.com>
- <20110519013144.GF32466@dastard>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
-	xfs-oss <xfs@oss.sgi.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Eric Sandeen <sandeen@redhat.com>
-To: Dave Chinner <david@fromorbit.com>
+From: Robin Dong <hao.bigrat@gmail.com>
+Subject: [PATCH] ext4: fix the incorrect info of /proc/mounts after mount no-journal fs
+Date: Thu, 19 May 2011 10:11:34 +0800
+Message-ID: <1305771094-2976-1-git-send-email-sanbai@taobao.com>
+Cc: Robin Dong <sanbai@taobao.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:35230 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754704Ab1ESBml (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 May 2011 21:42:41 -0400
-Content-Disposition: inline
-In-Reply-To: <20110519013144.GF32466@dastard>
+Received: from mail-pw0-f46.google.com ([209.85.160.46]:45267 "EHLO
+	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755806Ab1ESCLp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 May 2011 22:11:45 -0400
+Received: by pwi15 with SMTP id 15so1017194pwi.19
+        for <linux-ext4@vger.kernel.org>; Wed, 18 May 2011 19:11:45 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 19, 2011 at 11:31:44AM +1000, Dave Chinner wrote:
-> > +#
-> > +# This test is successful when the following conditions are met:
-> > +#  - ls shows that the number of blocks occupied by the file
-> > +#    has decreased by the number of blocks punched out.
-> 
-> There's no guarantee that a filesystem will punch the number of
-> blocks you expect.
+After mkfs without journal:
 
-	Cluster allocated filesystems like ocfs2 are certainly going to
-punch some multiple of clusters, not exact blocks.  Eg if the hole is
-punched in the middle of a cluster.
+  # mkfs.ext4 -O ^has_journal /dev/sda
+  # mount -t ext4 /dev/sda /test
 
-Joel
+the /proc/mounts will show:
+"/dev/sda /test ext4 rw,relatime,user_xattr,acl,barrier=1,data=writeback 0 0"
+which usually make users think the fs is using writeback-mode.
 
+Signed-off-by: Robin Dong <sanbai@taobao.com>
+---
+ fs/ext4/super.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 8553dfb..4ea1e85 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3474,7 +3474,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		goto failed_mount_wq;
+ 	} else {
+ 		clear_opt(sb, DATA_FLAGS);
+-		set_opt(sb, WRITEBACK_DATA);
++		if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL))
++			set_opt(sb, WRITEBACK_DATA);
+ 		sbi->s_journal = NULL;
+ 		needs_recovery = 0;
+ 		goto no_journal;
 -- 
+1.7.1
 
-Life's Little Instruction Book #464
-
-	"Don't miss the magic of the moment by focusing on what's
-	 to come."
-
-			http://www.jlbec.org/
-			jlbec@evilplan.org
