@@ -1,38 +1,38 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 4/4] ext4: fix possible use-after-free ext4_remove_li_request()
-Date: Fri, 20 May 2011 12:49:31 -0500
-Message-ID: <4DD6A9AB.1060501@redhat.com>
-References: <1304956630-20384-1-git-send-email-lczerner@redhat.com> <1304956630-20384-4-git-send-email-lczerner@redhat.com> <4DD57827.9060104@redhat.com> <alpine.LFD.2.00.1105201122510.5226@dhcp-27-109.brq.redhat.com> <20110520160313.GA29282@thunk.org> <4DD692D5.6010400@redhat.com> <20110520174719.GD29282@thunk.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 0/3] Make block_page_mkwrite() handle frozen fs (V2)
+Date: Fri, 20 May 2011 13:59:53 -0400
+Message-ID: <20110520175953.GE29282@thunk.org>
+References: <1305731882-8334-1-git-send-email-jack@suse.cz>
+ <20110518180022.GM18929@tux1.beaverton.ibm.com>
+ <20110519105708.GD8417@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Darrick J. Wong" <djwong@us.ibm.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Al Viro <viro@ZenIV.linux.org.uk>,
+	Christoph Hellwig <hch@infradead.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40124 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751049Ab1ETRte (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 20 May 2011 13:49:34 -0400
-In-Reply-To: <20110520174719.GD29282@thunk.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:56907 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751049Ab1ETSAA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 May 2011 14:00:00 -0400
+Content-Disposition: inline
+In-Reply-To: <20110519105708.GD8417@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 5/20/11 12:47 PM, Ted Ts'o wrote:
-> On Fri, May 20, 2011 at 11:12:05AM -0500, Eric Sandeen wrote:
->>
->> But skipping thorough review simply because the window is open now
->> doesn't make sense to me.
-> 
-> Sure, but adding a 24-hour turnaround for at least simple fix ups
-> (commit descriptions, comments, white space, etc) doesn't make a lot
-> of sense either.
-> 
-> 						- Ted
+On Thu, May 19, 2011 at 12:57:08PM +0200, Jan Kara wrote:
+>   Since Ted has merged your stable pages patches touching ext4, I'll rebase
+> my ext4 patch on top of that. Regarding block_page_mkwrite() I will add
+> that one-liner to the series (because the ext4_page_mkwrite() now depends
+> on that).
 
-I think you are free to use your discretion for those things :)
+Hi Jan,
 
-I mean if the last review comment is "you have a typo here" and
-you really want to make the window, it seems quite reasonable to
-fix it up, with a note in the commit log.
+Does your 3/3 ext4 patch have dependencies on your 1/3 and 2/3
+VFS-layer patches?
 
--Eric
+Thanks,
+
+					- Ted
