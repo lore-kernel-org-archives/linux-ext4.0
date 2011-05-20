@@ -1,42 +1,37 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH v2 1/2] e2fsprogs: Fix how we treat user-spcified filesystem
- size
-Date: Fri, 20 May 2011 14:22:44 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1105201421060.5226@dhcp-27-109.brq.redhat.com>
-References: <1297256607-4654-1-git-send-email-lczerner@redhat.com> <4DD57E69.5040601@redhat.com> <alpine.LFD.2.00.1105201021230.5226@dhcp-27-109.brq.redhat.com>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
-	tytso@MIT.EDU, adilger@dilger.ca
-To: Lukas Czerner <lczerner@redhat.com>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: Page allocation error during mount with 2.6.39
+Date: Fri, 20 May 2011 08:56:18 -0400
+Message-ID: <18683DA2-44FC-4417-9BBB-9627B54D8F8A@mit.edu>
+References: <20110520111728@it-loops.com>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: linux-ext4@vger.kernel.org
+To: Michael Guntsche <mike@it-loops.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56400 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935420Ab1ETMWu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 20 May 2011 08:22:50 -0400
-In-Reply-To: <alpine.LFD.2.00.1105201021230.5226@dhcp-27-109.brq.redhat.com>
+Received: from DMZ-MAILSEC-SCANNER-5.MIT.EDU ([18.7.68.34]:43497 "EHLO
+	dmz-mailsec-scanner-5.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S932176Ab1ETM4W convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 May 2011 08:56:22 -0400
+In-Reply-To: <20110520111728@it-loops.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 20 May 2011, Lukas Czerner wrote:
 
-> > > diff --git a/resize/resize2fs.8.in b/resize/resize2fs.8.in
-> > > index e02345d..769fd14 100644
-> > > --- a/resize/resize2fs.8.in
-> > > +++ b/resize/resize2fs.8.in
-> > > @@ -38,27 +38,20 @@ The
-> > >  parameter specifies the requested new size of the filesystem.
-> > >  If no units are specified, the units of the
-> > >  .I size
-> > > -parameter shall be the filesystem blocksize of the filesystem.
-> > > +parameter shall be the blocks count of the filesystem.
-> > 
-> > shall be equal to the filesystem blocksize ...
-> > 
+On May 20, 2011, at 5:22 AM, Michael Guntsche wrote:
 
-I actually shall be the blocks count, not blocksize. Resizefs knows what
-the blocksize is already, it just needs to know what the new size should
-be.
+> Hello list,
+> 
+> After upgrading to 2.6.39 I reformatted one of my partitions to ext4 to
+> do some testing. During a simple mount I got the following page
+> allocation failure, the mount succeeded though.
+> The problem is not really reproducible (I tried mounting several times
+> afterwards) but I thought I might mention it nevertheless.
 
-Thanks!
--Lukas
+The mount failure is harmless; if we can't allocate that much space via kmalloc(), we fall back to vmalloc().  In newer versions of the kernel we suppress the warning so as to avoid people thinking something serious had gone wrong.
+
+Regards,
+
+-- Ted
+
