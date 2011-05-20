@@ -1,158 +1,117 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 1/4 v3] ext4: Use schedule_timeout_interruptible() for waiting in lazyinit thread
-Date: Fri, 20 May 2011 13:20:39 +0200
-Message-ID: <1305890442-16361-1-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 3/4 v2] ext4: fix init_itable=n to work as expected for n=0
+Date: Fri, 20 May 2011 13:20:41 +0200
+Message-ID: <1305890442-16361-3-git-send-email-lczerner@redhat.com>
+References: <1305890442-16361-1-git-send-email-lczerner@redhat.com>
 Cc: sandeen@redhat.com, tytso@mit.edu,
 	Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:19456 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:8687 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934708Ab1ETLUx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 20 May 2011 07:20:53 -0400
+	id S934708Ab1ETLU4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 May 2011 07:20:56 -0400
+In-Reply-To: <1305890442-16361-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In order to make lazyinit eat approx. 10% of io bandwidth at max, we are
-sleeping between zeroing each single inode table. For that purpose we
-are using timer which wakes up thread when it expires. It is set via
-add_timer() and this may cause troubles in the case that thread has been
-woken up earlier and in next iteration we call add_timer() on still
-running timer hence hitting BUG_ON in add_timer(). We could fix that by
-using mod_timer() instead however we can use
-schedule_timeout_interruptible() for waiting and hence simplifying
-things a lot.
+For some reason, when we set mount option init_itable=0 it behaves as
+we would set init_itable=20 which is not right at all. Basically when we
+set it to zero we are saying to lazyinit thread not to wait between
+zeroing the inode table (except of cond_resched()) so this commit fixes
+that and removes the unnecessary condition. The 'n' should be also
+properly used on remount.
 
-This commit exchange the old "waiting mechanism" with simple
-schedule_timeout_interruptible(), setting the time to sleep. Hence we do
-not longer need li_wait_daemon waiting queue and others, so get rid of
-it.
-
-This solves Red Hat bug 699708.
+When the n is not set at all, it means that the default miltiplier
+EXT4_DEF_LI_WAIT_MULT is set instead.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+CC: Eric Sandeen <sandeen@redhat.com>
 ---
-[v2]: prevent sleepeng for a loong time when jiffies wrap
-[v3]: Add reviewed-by Eric Sandeen
- fs/ext4/ext4.h  |    4 ----
- fs/ext4/super.c |   31 ++++++-------------------------
- 2 files changed, 6 insertions(+), 29 deletions(-)
+[v2]: Do not set default in parsing Opt_init_inode_table
+ Documentation/filesystems/ext4.txt |    4 +++-
+ fs/ext4/super.c                    |   30 +++++++++++++++++++-----------
+ 2 files changed, 22 insertions(+), 12 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 4daaf2b..1e37c09 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1590,12 +1590,8 @@ void ext4_get_group_no_and_offset(struct super_block *sb, ext4_fsblk_t blocknr,
-  */
- struct ext4_lazy_init {
- 	unsigned long		li_state;
--
--	wait_queue_head_t	li_wait_daemon;
- 	wait_queue_head_t	li_wait_task;
--	struct timer_list	li_timer;
- 	struct task_struct	*li_task;
--
- 	struct list_head	li_request_list;
- 	struct mutex		li_list_mtx;
- };
+diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
+index c79ec58..bab8f8e 100644
+--- a/Documentation/filesystems/ext4.txt
++++ b/Documentation/filesystems/ext4.txt
+@@ -364,8 +364,10 @@ noinit_itable		Do not initialize any uninitialized inode table
+ init_itable=n		The lazy itable init code will wait n times the
+ 			number of milliseconds it took to zero out the
+ 			previous block group's inode table.  This
+-			minimizes the impact on the systme performance
++			minimizes the impact on the system performance
+ 			while file system's inode table is being initialized.
++			Parameter n is optional and if omitted, will be
++			defaulted to 10.
+ 
+ discard			Controls whether ext4 should issue discard/TRIM
+ nodiscard(*)		commands to the underlying block device when
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 8553dfb..f0e4c3a 100644
+index 6ccf0e2..72df905 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -2659,12 +2659,6 @@ static void print_daily_error_info(unsigned long arg)
- 	mod_timer(&sbi->s_err_report, jiffies + 24*60*60*HZ);  /* Once a day */
- }
- 
--static void ext4_lazyinode_timeout(unsigned long data)
--{
--	struct task_struct *p = (struct task_struct *)data;
--	wake_up_process(p);
--}
--
- /* Find next suitable group and run ext4_init_inode_table */
- static int ext4_run_li_request(struct ext4_li_request *elr)
- {
-@@ -2712,7 +2706,7 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
- 
- /*
-  * Remove lr_request from the list_request and free the
-- * request tructure. Should be called with li_list_mtx held
-+ * request structure. Should be called with li_list_mtx held
-  */
- static void ext4_remove_li_request(struct ext4_li_request *elr)
- {
-@@ -2756,14 +2750,10 @@ static int ext4_lazyinit_thread(void *arg)
- 	struct ext4_lazy_init *eli = (struct ext4_lazy_init *)arg;
- 	struct list_head *pos, *n;
- 	struct ext4_li_request *elr;
--	unsigned long next_wakeup;
--	DEFINE_WAIT(wait);
-+	unsigned long next_wakeup, cur;
- 
- 	BUG_ON(NULL == eli);
- 
--	eli->li_timer.data = (unsigned long)current;
--	eli->li_timer.function = ext4_lazyinode_timeout;
--
- 	eli->li_task = current;
- 	wake_up(&eli->li_wait_task);
- 
-@@ -2797,19 +2787,15 @@ cont_thread:
- 		if (freezing(current))
- 			refrigerator();
- 
--		if ((time_after_eq(jiffies, next_wakeup)) ||
-+		cur = jiffies;
-+		if ((time_after_eq(cur, next_wakeup)) ||
- 		    (MAX_JIFFY_OFFSET == next_wakeup)) {
- 			cond_resched();
- 			continue;
+@@ -1833,11 +1833,10 @@ set_qf_format:
+ 			if (args[0].from) {
+ 				if (match_int(&args[0], &option))
+ 					return 0;
+-			} else
+-				option = EXT4_DEF_LI_WAIT_MULT;
+-			if (option < 0)
+-				return 0;
+-			sbi->s_li_wait_mult = option;
++				if (option < 0)
++					return 0;
++				sbi->s_li_wait_mult = option;
++			}
+ 			break;
+ 		case Opt_noinit_inode_table:
+ 			clear_opt(sb, INIT_INODE_TABLE);
+@@ -2690,11 +2689,8 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
+ 		ret = ext4_init_inode_table(sb, group,
+ 					    elr->lr_timeout ? 0 : 1);
+ 		if (elr->lr_timeout == 0) {
+-			timeout = jiffies - timeout;
+-			if (elr->lr_sbi->s_li_wait_mult)
+-				timeout *= elr->lr_sbi->s_li_wait_mult;
+-			else
+-				timeout *= 20;
++			timeout = (jiffies - timeout) *
++				  elr->lr_sbi->s_li_wait_mult;
+ 			elr->lr_timeout = timeout;
  		}
+ 		elr->lr_next_sched = jiffies + elr->lr_timeout;
+@@ -2931,8 +2927,14 @@ static int ext4_register_li_request(struct super_block *sb,
+ 	ext4_group_t ngroups = EXT4_SB(sb)->s_groups_count;
+ 	int ret = 0;
  
--		eli->li_timer.expires = next_wakeup;
--		add_timer(&eli->li_timer);
--		prepare_to_wait(&eli->li_wait_daemon, &wait,
--				TASK_INTERRUPTIBLE);
--		if (time_before(jiffies, next_wakeup))
--			schedule();
--		finish_wait(&eli->li_wait_daemon, &wait);
-+		schedule_timeout_interruptible(next_wakeup - cur);
+-	if (sbi->s_li_request != NULL)
++	if (sbi->s_li_request != NULL) {
++		/*
++		 * Reset timeout so it can be computed again, because
++		 * s_li_wait_mult might have changed.
++		 */
++		sbi->s_li_request->lr_timeout = 0;
+ 		return 0;
++	}
+ 
+ 	if (first_not_zeroed == ngroups ||
+ 	    (sb->s_flags & MS_RDONLY) ||
+@@ -3137,6 +3139,12 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	    ((def_mount_opts & EXT4_DEFM_NODELALLOC) == 0))
+ 		set_opt(sb, DELALLOC);
+ 
++	/*
++	 * set default s_li_wait_mult for lazyinit, for the case there is
++	 * no mount option specified.
++	 */
++	sbi->s_li_wait_mult = EXT4_DEF_LI_WAIT_MULT;
 +
- 		if (kthread_should_stop()) {
- 			ext4_clear_request_list();
- 			goto exit_thread;
-@@ -2833,12 +2819,10 @@ exit_thread:
- 		goto cont_thread;
- 	}
- 	mutex_unlock(&eli->li_list_mtx);
--	del_timer_sync(&ext4_li_info->li_timer);
- 	eli->li_task = NULL;
- 	wake_up(&eli->li_wait_task);
- 
- 	kfree(ext4_li_info);
--	ext4_lazyinit_task = NULL;
- 	ext4_li_info = NULL;
- 	mutex_unlock(&ext4_li_mtx);
- 
-@@ -2866,7 +2850,6 @@ static int ext4_run_lazyinit_thread(void)
- 	if (IS_ERR(ext4_lazyinit_task)) {
- 		int err = PTR_ERR(ext4_lazyinit_task);
- 		ext4_clear_request_list();
--		del_timer_sync(&ext4_li_info->li_timer);
- 		kfree(ext4_li_info);
- 		ext4_li_info = NULL;
- 		printk(KERN_CRIT "EXT4: error %d creating inode table "
-@@ -2915,9 +2898,7 @@ static int ext4_li_info_new(void)
- 	INIT_LIST_HEAD(&eli->li_request_list);
- 	mutex_init(&eli->li_list_mtx);
- 
--	init_waitqueue_head(&eli->li_wait_daemon);
- 	init_waitqueue_head(&eli->li_wait_task);
--	init_timer(&eli->li_timer);
- 	eli->li_state |= EXT4_LAZYINIT_QUIT;
- 
- 	ext4_li_info = eli;
+ 	if (!parse_options((char *) sbi->s_es->s_mount_opts, sb,
+ 			   &journal_devnum, &journal_ioprio, NULL, 0)) {
+ 		ext4_msg(sb, KERN_WARNING,
 -- 
 1.7.4.4
 
