@@ -1,238 +1,115 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH v2 1/2] e2fsprogs: Fix how we treat user-spcified filesystem
- size
-Date: Fri, 20 May 2011 11:07:14 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1105201021230.5226@dhcp-27-109.brq.redhat.com>
-References: <1297256607-4654-1-git-send-email-lczerner@redhat.com> <4DD57E69.5040601@redhat.com>
+Subject: Re: [PATCH 2/4 v2] ext4: Remove unnecessary wait_event
+ ext4_run_lazyinit_thread()
+Date: Fri, 20 May 2011 11:09:05 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1105201108260.5226@dhcp-27-109.brq.redhat.com>
+References: <1304956630-20384-1-git-send-email-lczerner@redhat.com> <1304956630-20384-2-git-send-email-lczerner@redhat.com> <4DD57177.5040101@redhat.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	tytso@MIT.EDU, adilger@dilger.ca
+	tytso@mit.edu
 To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:18117 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:29313 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935009Ab1ETJHU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 20 May 2011 05:07:20 -0400
-In-Reply-To: <4DD57E69.5040601@redhat.com>
+	id S935380Ab1ETJJK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 May 2011 05:09:10 -0400
+In-Reply-To: <4DD57177.5040101@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 On Thu, 19 May 2011, Eric Sandeen wrote:
 
-> On 2/9/11 7:03 AM, Lukas Czerner wrote:
-> > (v2: do not spell units - mebibytes etc... - but rather use just abbrev.)
+> On 5/9/11 10:57 AM, Lukas Czerner wrote:
+> > For some reason we have been waiting for lazyinit thread to start in the
+> > ext4_run_lazyinit_thread() but it is not needed anymore so get rid of
+> > it. We can also remove li_task and li_wait_task since it is not used
+> > anymore.
 > > 
-> > mke2fs and resize2fs allows specifying filesystem size as a parameter,
-> > former called as blocks-count. However it has been a little bit messy so
-> > this commit fixes it mainly by updating man pages.
-> > 
-> > We can not specify filesystem size in blocks count without specifying
-> > blocksize as well. It is because we need blocks count to determine
-> > filesystem type, and we need filesystem type to determine blocksize. So
-> 
-> how does blocks count determine filesystem type?  (because we need room
-> for the journal?)  This isn't clear from the commit message...
-
-It was not my intention to explain specifically why we need block count
-to determine fs type etc. But the "type" is probably not the best name.
-The thing is that, we need it to determine filesystem "type" like
-"floppy,small,default,big,huge" and then use appropriate settings from
-mke2fs.conf. DO you think it is worth it to mention that in the
-descritpion ?
-
-> 
-> > it should not be allowed, however due to compatibility reason it should
-> > be still possible, so at least print warning message for now, so we can
-> > easily restrict that later.
-> > 
-> > Filesystem size can be specified using units as suffixes. This was not
-> > documented for mke2fs, so this commits adds proper documentation into
-> > mke2fs man page.
-> > 
-> > For the sake of completeness add 'b' (blocks count) unit.
-> 
-> Some notes below
-> 
 > > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> > ---
-> >  lib/e2p/parse_num.c   |    9 +++++++++
-> >  misc/mke2fs.8.in      |   32 ++++++++++++++++++++++++++------
-> >  resize/resize2fs.8.in |   19 ++++++-------------
-> >  3 files changed, 41 insertions(+), 19 deletions(-)
-> > 
-> > diff --git a/lib/e2p/parse_num.c b/lib/e2p/parse_num.c
-> > index 83a329a..5e7924b 100644
-> > --- a/lib/e2p/parse_num.c
-> > +++ b/lib/e2p/parse_num.c
-> > @@ -10,6 +10,7 @@
-> >   */
-> >  
-> >  #include "e2p.h"
-> > +#include "../misc/nls-enable.h"
-> >  
-> >  #include <stdlib.h>
-> >  
-> > @@ -37,6 +38,14 @@ unsigned long long parse_num_blocks2(const char *arg, int log_block_size)
-> >  		num >>= (1+log_block_size);
-> >  		break;
-> >  	case '\0':
-> > +	case 'b':
-> > +		if (!log_block_size) {
-> > +			fprintf(stderr,
-> > +				_("Warning: You can not specify blocks count "
-> > +				"without specifying block size '-b'. Will "
-> > +				"assume kilobytes instead of blocks count!.\n"
-> > +				));
-> > +		}
-> >  		break;
-> >  	default:
-> >  		return 0;
-> > diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
-> > index 2eead17..e093be0 100644
-> > --- a/misc/mke2fs.8.in
-> > +++ b/misc/mke2fs.8.in
-> > @@ -108,7 +108,7 @@ mke2fs \- create an ext2/ext3/ext4 filesystem
-> >  ]
-> >  .I device
-> >  [
-> > -.I blocks-count
-> > +.I filesystem-size
-> >  ]
-> >  @JDEV@.sp
-> >  @JDEV@.B "mke2fs \-O journal_dev"
-> > @@ -136,7 +136,7 @@ mke2fs \- create an ext2/ext3/ext4 filesystem
-> >  @JDEV@]
-> >  @JDEV@.I external-journal
-> >  @JDEV@[
-> > -@JDEV@.I blocks-count
-> > +@JDEV@.I filesystem-size
-> >  @JDEV@]
-> >  .SH DESCRIPTION
-> >  .B mke2fs
-> > @@ -145,10 +145,30 @@ partition.
-> >  .I device
-> >  is the special file corresponding to the device (e.g
-> >  .IR /dev/hdXX ).
-> > -.I blocks-count
-> > -is the number of blocks on the device.  If omitted,
-> > -.B mke2fs
-> > -automagically figures the file system size.  If called as
-> > +.I filesystem-size
-> > +is the size of the filesystem you want to create.
-> > +If no units are specified, the units of the
-> > +.I filesystem-size
-> > +parameter shall be the blocks count of the filesystem. Keep in mind that
 > 
-> should be "shall be equal to the block size of the filesystem" right?
-> 
-> (blocks count implies the number of blocks in the fs, not the size of each block)
-> 
-> Oh, I see.
-> 
-> The number does represent the count of blocks.
-> Therefore the -unit- of that number is the blocksize.
-> 
-> So saying "the units ... shall be the blocks count" isn't correct.
+> Can you add to the changelog why this is "not needed anymore?"
+> What changed?  Was there any reason that it was waiting before,
+> or was that just unnecessary complexity?  I don't think
+> there is a need to wait for the thread to ping us back
+> after calling kthread_run() but I just wonder why it was
+> there in the first place...
 
-Hmm, I think the -unit- is really "block". I would say that filesystem
-is, for example, 1024 blocks big (or long?) - hence the unit is blocks.
+Ok, I'll try to figure that out :) But probably just unnecessary
+complexity :)
 
-> 
-> > +you can not specify
-> 
-> how about:
-> 
-> you should not specify ...
-
-Good point, thanks:). We are trying to be polite and user-friendly:)
-
-> 
-> > +.I filesystem-size
-> > +in blocks count without specifying the blocksize as well. This will be
-> > +allowed for now (1024 byte blocks will be assumed)
-> > +due to compatibility reasons, however it may be restricted
-> > +in the future.
-> 
-> and then something like: "If blocksize is not specified on the
-> commandline and filesystem-size is specified in block units,
-> 1024-byte blocks will be assumed for this purpose, regardless
-> of the filesystem blocksize ultimately chosen by mke2fs."
-> 
-> (which is what it does today, right?)
-
-yes it is, I'll add the sentence thanks.
-
-> 
-> > +Optionally, the
-> > +.I filesystem-size
-> > +parameter may be suffixed by one of the following units
-> > +designators: 'b', 's', 'K', 'M', 'G', or 'T',
-> > +for blocks count, 512 byte sectors, KiB (2^10 Bytes), MiB (2^20 Bytes),
-> 
-> for blocks, 512 byte sectors ....
-> 
-> > +GiB (2^30 Bytes), or TiB (2^40 Bytes) respectively, which are binary (power-of-2),
-> > +not decimal, units. The
-> > +.I filesystem-size
-> > +may never be larger than the size of the partition.
-> > +If
-> 
-> If the 
-> 
-> > +.I filesystem-size
-> > +parameter is not specified, it will default to the size of the partition.
-> > +If called as
-> >  .B mkfs.ext3
-> >  a journal is created as if the
-> >  .B \-j
-> > diff --git a/resize/resize2fs.8.in b/resize/resize2fs.8.in
-> > index e02345d..769fd14 100644
-> > --- a/resize/resize2fs.8.in
-> > +++ b/resize/resize2fs.8.in
-> > @@ -38,27 +38,20 @@ The
-> >  parameter specifies the requested new size of the filesystem.
-> >  If no units are specified, the units of the
-> >  .I size
-> > -parameter shall be the filesystem blocksize of the filesystem.
-> > +parameter shall be the blocks count of the filesystem.
-> 
-> shall be equal to the filesystem blocksize ...
-> 
-> >  Optionally, the 
-> >  .I size
-> > -parameter may be suffixed by one of the following the units 
-> > -designators: 's', 'K', 'M', or 'G',
-> > -for 512 byte sectors, kilobytes, megabytes, or gigabytes, respectively.
-> > -The 
-> > +parameter may be suffixed by one of the following the units
-> > +designators: 'b', 's', 'K', 'M', 'G', or 'T',
-> > +for blocks count, 512 byte sectors, KiB (2^10 Bytes), MiB (2^20 Bytes),
-> 
-> for blocks, 512 byte sectors ....
-> 
-> > +GiB (2^30 Bytes), or TiB (2^40 Bytes) respectively, which are binary (power-of-2),
-> > +not decimal, units. The
-> >  .I size
-> >  of the filesystem may never be larger than the size of the partition.
-> >  If 
-> >  .I size
-> >  parameter is not specified, it will default to the size of the partition.
-> >  .PP
-> > -Note: when kilobytes is used above, I mean
-> > -.IR real ,
-> > -power-of-2 kilobytes, (i.e., 1024 bytes), which some politically correct
-> > -folks insist should be the stupid-sounding ``kibibytes''.  The same
-> > -holds true for megabytes, also sometimes known as ``mebibytes'', or
-> > -gigabytes, as the amazingly silly ``gibibytes''.  Makes you want to
-> > -gibber, doesn't it?
-> > -.PP
-> >  The
-> >  .B resize2fs
-> >  program does not manipulate the size of partitions.  If you wish to enlarge
-> 
-> 
-
-Thanks a lot for the review Eric! I'll repost ASAP.
-
+Thanks for the review!
 -Lukas
+
+> 
+> Other than that, seems fine, so:
+> 
+> Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+> 
+> > ---
+> >  fs/ext4/ext4.h  |    2 --
+> >  fs/ext4/super.c |   10 ----------
+> >  2 files changed, 0 insertions(+), 12 deletions(-)
+> > 
+> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> > index 1e37c09..8689f97 100644
+> > --- a/fs/ext4/ext4.h
+> > +++ b/fs/ext4/ext4.h
+> > @@ -1590,8 +1590,6 @@ void ext4_get_group_no_and_offset(struct super_block *sb, ext4_fsblk_t blocknr,
+> >   */
+> >  struct ext4_lazy_init {
+> >  	unsigned long		li_state;
+> > -	wait_queue_head_t	li_wait_task;
+> > -	struct task_struct	*li_task;
+> >  	struct list_head	li_request_list;
+> >  	struct mutex		li_list_mtx;
+> >  };
+> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> > index f0e4c3a..6ccf0e2 100644
+> > --- a/fs/ext4/super.c
+> > +++ b/fs/ext4/super.c
+> > @@ -2754,9 +2754,6 @@ static int ext4_lazyinit_thread(void *arg)
+> >  
+> >  	BUG_ON(NULL == eli);
+> >  
+> > -	eli->li_task = current;
+> > -	wake_up(&eli->li_wait_task);
+> > -
+> >  cont_thread:
+> >  	while (true) {
+> >  		next_wakeup = MAX_JIFFY_OFFSET;
+> > @@ -2819,9 +2816,6 @@ exit_thread:
+> >  		goto cont_thread;
+> >  	}
+> >  	mutex_unlock(&eli->li_list_mtx);
+> > -	eli->li_task = NULL;
+> > -	wake_up(&eli->li_wait_task);
+> > -
+> >  	kfree(ext4_li_info);
+> >  	ext4_li_info = NULL;
+> >  	mutex_unlock(&ext4_li_mtx);
+> > @@ -2858,8 +2852,6 @@ static int ext4_run_lazyinit_thread(void)
+> >  		return err;
+> >  	}
+> >  	ext4_li_info->li_state |= EXT4_LAZYINIT_RUNNING;
+> > -
+> > -	wait_event(ext4_li_info->li_wait_task, ext4_li_info->li_task != NULL);
+> >  	return 0;
+> >  }
+> >  
+> > @@ -2894,11 +2886,9 @@ static int ext4_li_info_new(void)
+> >  	if (!eli)
+> >  		return -ENOMEM;
+> >  
+> > -	eli->li_task = NULL;
+> >  	INIT_LIST_HEAD(&eli->li_request_list);
+> >  	mutex_init(&eli->li_list_mtx);
+> >  
+> > -	init_waitqueue_head(&eli->li_wait_task);
+> >  	eli->li_state |= EXT4_LAZYINIT_QUIT;
+> >  
+> >  	ext4_li_info = eli;
+> 
+> 
+
+-- 
