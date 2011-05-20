@@ -1,25 +1,33 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 4/4] ext4: fix possible use-after-free ext4_remove_li_request()
-Date: Fri, 20 May 2011 11:12:05 -0500
-Message-ID: <4DD692D5.6010400@redhat.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH 4/4] ext4: fix possible use-after-free
+ ext4_remove_li_request()
+Date: Fri, 20 May 2011 18:16:34 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1105201809320.5226@dhcp-27-109.brq.redhat.com>
 References: <1304956630-20384-1-git-send-email-lczerner@redhat.com> <1304956630-20384-4-git-send-email-lczerner@redhat.com> <4DD57827.9060104@redhat.com> <alpine.LFD.2.00.1105201122510.5226@dhcp-27-109.brq.redhat.com> <20110520160313.GA29282@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>,
+	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
 To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50367 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:16500 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933263Ab1ETQMI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 20 May 2011 12:12:08 -0400
+	id S934628Ab1ETQQk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 May 2011 12:16:40 -0400
 In-Reply-To: <20110520160313.GA29282@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 5/20/11 11:03 AM, Ted Ts'o wrote:
+Hi Ted,
+
+On Fri, 20 May 2011, Ted Ts'o wrote:
+
 > Lukas, are you going to be providing a new version of these patch
 > series or not?  
+
+I already did send it as a separate patch series with the version
+description.
+
 > 
 > If you are, could you do it as a separate patch series, instead of
 > only updating one patch as a reply to the mail thread.  When people do
@@ -36,19 +44,29 @@ On 5/20/11 11:03 AM, Ted Ts'o wrote:
 > patch that is first submitted after say, -rc5 or -rc6 until the next
 > merge window.  But given that some patches didn't *start* getting much
 > review until 2-3 weeks ago, that wouldn't be entirely fair.
+
+We all should do better, but I am not sure that limits like that are very
+useful. Some level of flexibility is always needed.
+
 > 
 > But for the next merge window, if this is going to work, we need
 > people submitting patches earlier, and people reviewing patches
 > earlier.
 
-How about a reasonable sounding convention like: if it's non-critical
-it's too late, but if it's critical you'll try to get it in.
+So let's to that people ;).
 
-Windows are windows, reviews are reviews, and if it's too late,
-it's too late ... You ultimately get to decide what goes in
-and when.
+> 
+> Thanks,
+> 
+> 						- Ted
 
-But skipping thorough review simply because the window is open now
-doesn't make sense to me.
+Thanks Ted!
+-Lukas
 
--Eric
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
+-- 
