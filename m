@@ -1,83 +1,158 @@
-From: Michael Guntsche <mike@it-loops.com>
-Subject: Page allocation error during mount with 2.6.39
-Date: Fri, 20 May 2011 11:22:22 +0200
-Message-ID: <20110520111728@it-loops.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 1/4 v3] ext4: Use schedule_timeout_interruptible() for waiting in lazyinit thread
+Date: Fri, 20 May 2011 13:20:39 +0200
+Message-ID: <1305890442-16361-1-git-send-email-lczerner@redhat.com>
+Cc: sandeen@redhat.com, tytso@mit.edu,
+	Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from lvps87-230-0-242.dedicated.hosteurope.de ([87.230.0.242]:49990
-	"EHLO lvps87-230-0-242.dedicated.hosteurope.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S935470Ab1ETJ3K (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 20 May 2011 05:29:10 -0400
-Content-Disposition: inline
+Received: from mx1.redhat.com ([209.132.183.28]:19456 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934708Ab1ETLUx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 May 2011 07:20:53 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello list,
+In order to make lazyinit eat approx. 10% of io bandwidth at max, we are
+sleeping between zeroing each single inode table. For that purpose we
+are using timer which wakes up thread when it expires. It is set via
+add_timer() and this may cause troubles in the case that thread has been
+woken up earlier and in next iteration we call add_timer() on still
+running timer hence hitting BUG_ON in add_timer(). We could fix that by
+using mod_timer() instead however we can use
+schedule_timeout_interruptible() for waiting and hence simplifying
+things a lot.
 
-After upgrading to 2.6.39 I reformatted one of my partitions to ext4 to
-do some testing. During a simple mount I got the following page
-allocation failure, the mount succeeded though.
-The problem is not really reproducible (I tried mounting several times
-afterwards) but I thought I might mention it nevertheless.
+This commit exchange the old "waiting mechanism" with simple
+schedule_timeout_interruptible(), setting the time to sleep. Hence we do
+not longer need li_wait_daemon waiting queue and others, so get rid of
+it.
 
-Kind regards,
-Michael Guntsche
+This solves Red Hat bug 699708.
 
-mount: page allocation failure. order:5, mode:0xc0d0
-Pid: 7813, comm: mount Not tainted 2.6.39 #1
-Call Trace:
- [<c121391a>] ? printk+0x18/0x1a
- [<c105e2a5>] __alloc_pages_nodemask+0x419/0x5f7
- [<c105e49a>] __get_free_pages+0x17/0x28
- [<c107a3a3>] __kmalloc+0xfe/0x10e
- [<fc3dbf92>] ? ext4_count_free_inodes+0x41/0x53 [ext4]
- [<fc3ecdba>] ext4_fill_super+0x1284/0x26eb [ext4]
- [<c10b8ed6>] ? disk_name+0x51/0xa6
- [<c107ea58>] mount_bdev+0x142/0x177
- [<c10e2b00>] ? ida_get_new_above+0x155/0x1e2
- [<c10e2b43>] ? ida_get_new_above+0x198/0x1e2
- [<fc3e8578>] ext4_mount+0x1a/0x20 [ext4]
- [<fc3ebb36>] ? ext4_remount+0x416/0x416 [ext4]
- [<c107ef8b>] mount_fs+0x16/0xbb
- [<c109009c>] ? alloc_vfsmnt+0x68/0x107
- [<c109036a>] vfs_kern_mount+0x46/0x7c
- [<c1090b22>] do_kern_mount+0x34/0xb6
- [<c1091e69>] do_mount+0x424/0x689
- [<c106722d>] ? strndup_user+0x2e/0x3f
- [<c1092330>] sys_mount+0x66/0x9b
- [<c1217acd>] syscall_call+0x7/0xb
-Mem-Info:
-DMA per-cpu:
-CPU    0: hi:    0, btch:   1 usd:   0
-Normal per-cpu:
-CPU    0: hi:  186, btch:  31 usd:   0
-HighMem per-cpu:
-CPU    0: hi:  186, btch:  31 usd:   0
-active_anon:35786 inactive_anon:12102 isolated_anon:0
- active_file:111413 inactive_file:189649 isolated_file:0
- unevictable:0 dirty:3 writeback:0 unstable:0
- free:246973 slab_reclaimable:130660 slab_unreclaimable:5621
- mapped:7296 shmem:955 pagetables:547 bounce:0
-DMA free:3548kB min:64kB low:80kB high:96kB active_anon:0kB inactive_anon:0kB active_file:88kB inactive_file:224kB unevictable:0kB isolated(anon):0kB isolated(file):0kB present:15804kB mlocked:0kB dirty:0kB writeback:0kB mapped:0kB shmem:0kB slab_reclaimable:7072kB slab_unreclaimable:120kB kernel_stack:0kB pagetables:0kB unstable:0kB bounce:0kB writeback_tmp:0kB pages_scanned:0 all_unreclaimable? no
-lowmem_reserve[]: 0 865 3031 3031
-Normal free:21224kB min:3728kB low:4660kB high:5592kB active_anon:4kB inactive_anon:3944kB active_file:61408kB inactive_file:60972kB unevictable:0kB isolated(anon):0kB isolated(file):0kB present:885944kB mlocked:0kB dirty:12kB writeback:0kB mapped:52kB shmem:4kB slab_reclaimable:515568kB slab_unreclaimable:22364kB kernel_stack:1264kB pagetables:2188kB unstable:0kB bounce:0kB writeback_tmp:0kB pages_scanned:0 all_unreclaimable? no
-lowmem_reserve[]: 0 0 17333 17333
-HighMem free:963120kB min:512kB low:2844kB high:5180kB active_anon:143140kB inactive_anon:44464kB active_file:384156kB inactive_file:697400kB unevictable:0kB isolated(anon):0kB isolated(file):0kB present:2218632kB mlocked:0kB dirty:0kB writeback:0kB mapped:29132kB shmem:3816kB slab_reclaimable:0kB slab_unreclaimable:0kB kernel_stack:0kB pagetables:0kB unstable:0kB bounce:0kB writeback_tmp:0kB pages_scanned:0 all_unreclaimable? no
-lowmem_reserve[]: 0 0 0 0
-DMA: 13*4kB 7*8kB 47*16kB 20*32kB 2*64kB 1*128kB 1*256kB 1*512kB 1*1024kB 0*2048kB 0*4096kB = 3548kB
-Normal: 4148*4kB 421*8kB 41*16kB 11*32kB 2*64kB 1*128kB 0*256kB 0*512kB 0*1024kB 0*2048kB 0*4096kB = 21224kB
-HighMem: 566*4kB 323*8kB 154*16kB 57*32kB 26*64kB 6*128kB 3*256kB 1*512kB 52*1024kB 80*2048kB 179*4096kB = 963120kB
-302083 total pagecache pages
-68 pages in swap cache
-Swap cache stats: add 70, delete 2, find 3/3
-Free swap  = 524012kB
-Total swap = 524284kB
-786336 pages RAM
-559026 pages HighMem
-7375 pages reserved
-214978 pages shared
-354410 pages non-shared
-EXT4-fs (sdb1): mounted filesystem with ordered data mode. Opts: (null)
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+---
+[v2]: prevent sleepeng for a loong time when jiffies wrap
+[v3]: Add reviewed-by Eric Sandeen
+ fs/ext4/ext4.h  |    4 ----
+ fs/ext4/super.c |   31 ++++++-------------------------
+ 2 files changed, 6 insertions(+), 29 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 4daaf2b..1e37c09 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1590,12 +1590,8 @@ void ext4_get_group_no_and_offset(struct super_block *sb, ext4_fsblk_t blocknr,
+  */
+ struct ext4_lazy_init {
+ 	unsigned long		li_state;
+-
+-	wait_queue_head_t	li_wait_daemon;
+ 	wait_queue_head_t	li_wait_task;
+-	struct timer_list	li_timer;
+ 	struct task_struct	*li_task;
+-
+ 	struct list_head	li_request_list;
+ 	struct mutex		li_list_mtx;
+ };
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 8553dfb..f0e4c3a 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2659,12 +2659,6 @@ static void print_daily_error_info(unsigned long arg)
+ 	mod_timer(&sbi->s_err_report, jiffies + 24*60*60*HZ);  /* Once a day */
+ }
+ 
+-static void ext4_lazyinode_timeout(unsigned long data)
+-{
+-	struct task_struct *p = (struct task_struct *)data;
+-	wake_up_process(p);
+-}
+-
+ /* Find next suitable group and run ext4_init_inode_table */
+ static int ext4_run_li_request(struct ext4_li_request *elr)
+ {
+@@ -2712,7 +2706,7 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
+ 
+ /*
+  * Remove lr_request from the list_request and free the
+- * request tructure. Should be called with li_list_mtx held
++ * request structure. Should be called with li_list_mtx held
+  */
+ static void ext4_remove_li_request(struct ext4_li_request *elr)
+ {
+@@ -2756,14 +2750,10 @@ static int ext4_lazyinit_thread(void *arg)
+ 	struct ext4_lazy_init *eli = (struct ext4_lazy_init *)arg;
+ 	struct list_head *pos, *n;
+ 	struct ext4_li_request *elr;
+-	unsigned long next_wakeup;
+-	DEFINE_WAIT(wait);
++	unsigned long next_wakeup, cur;
+ 
+ 	BUG_ON(NULL == eli);
+ 
+-	eli->li_timer.data = (unsigned long)current;
+-	eli->li_timer.function = ext4_lazyinode_timeout;
+-
+ 	eli->li_task = current;
+ 	wake_up(&eli->li_wait_task);
+ 
+@@ -2797,19 +2787,15 @@ cont_thread:
+ 		if (freezing(current))
+ 			refrigerator();
+ 
+-		if ((time_after_eq(jiffies, next_wakeup)) ||
++		cur = jiffies;
++		if ((time_after_eq(cur, next_wakeup)) ||
+ 		    (MAX_JIFFY_OFFSET == next_wakeup)) {
+ 			cond_resched();
+ 			continue;
+ 		}
+ 
+-		eli->li_timer.expires = next_wakeup;
+-		add_timer(&eli->li_timer);
+-		prepare_to_wait(&eli->li_wait_daemon, &wait,
+-				TASK_INTERRUPTIBLE);
+-		if (time_before(jiffies, next_wakeup))
+-			schedule();
+-		finish_wait(&eli->li_wait_daemon, &wait);
++		schedule_timeout_interruptible(next_wakeup - cur);
++
+ 		if (kthread_should_stop()) {
+ 			ext4_clear_request_list();
+ 			goto exit_thread;
+@@ -2833,12 +2819,10 @@ exit_thread:
+ 		goto cont_thread;
+ 	}
+ 	mutex_unlock(&eli->li_list_mtx);
+-	del_timer_sync(&ext4_li_info->li_timer);
+ 	eli->li_task = NULL;
+ 	wake_up(&eli->li_wait_task);
+ 
+ 	kfree(ext4_li_info);
+-	ext4_lazyinit_task = NULL;
+ 	ext4_li_info = NULL;
+ 	mutex_unlock(&ext4_li_mtx);
+ 
+@@ -2866,7 +2850,6 @@ static int ext4_run_lazyinit_thread(void)
+ 	if (IS_ERR(ext4_lazyinit_task)) {
+ 		int err = PTR_ERR(ext4_lazyinit_task);
+ 		ext4_clear_request_list();
+-		del_timer_sync(&ext4_li_info->li_timer);
+ 		kfree(ext4_li_info);
+ 		ext4_li_info = NULL;
+ 		printk(KERN_CRIT "EXT4: error %d creating inode table "
+@@ -2915,9 +2898,7 @@ static int ext4_li_info_new(void)
+ 	INIT_LIST_HEAD(&eli->li_request_list);
+ 	mutex_init(&eli->li_list_mtx);
+ 
+-	init_waitqueue_head(&eli->li_wait_daemon);
+ 	init_waitqueue_head(&eli->li_wait_task);
+-	init_timer(&eli->li_timer);
+ 	eli->li_state |= EXT4_LAZYINIT_QUIT;
+ 
+ 	ext4_li_info = eli;
+-- 
+1.7.4.4
+
