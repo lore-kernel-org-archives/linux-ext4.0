@@ -1,32 +1,124 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] ext4: Fix waiting and sending of a barrier in
- ext4_sync_file()
-Date: Sun, 22 May 2011 17:12:39 -0400
-Message-ID: <20110522211239.GB10009@thunk.org>
-References: <1305628095-27843-1-git-send-email-jack@suse.cz>
- <1305628095-27843-3-git-send-email-jack@suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Edward Goggin <egoggin@vmware.com>, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 1/2] jbd2: Add function jbd2_trans_will_send_data_barrier()
+Date: Sun, 22 May 2011 17:13:44 -0400
+Message-ID: <1306098825-469-1-git-send-email-tytso@mit.edu>
+References: <20110522211239.GB10009@thunk.org>
+Cc: Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:43143 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:50429 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754124Ab1EVVMo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 22 May 2011 17:12:44 -0400
-Content-Disposition: inline
-In-Reply-To: <1305628095-27843-3-git-send-email-jack@suse.cz>
+	id S1754478Ab1EVVNr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 22 May 2011 17:13:47 -0400
+In-Reply-To: <20110522211239.GB10009@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 17, 2011 at 12:28:15PM +0200, Jan Kara wrote:
-> This code change will cause ext4_sync_file() to unnecessarily issue
-> a barrier in data=ordered and data=journal mode with external
-> journal but solving this would require ext4 to mess with jbd2
-> internals since jbd2 does not know about ext4 data journalling
-> modes.
+From: Jan Kara <jack@suse.cz>
 
-I really don't like this.  I think the following two patches should
-address this.  Could you take a look please?
+Provide a function which returns whether a transaction with given tid
+will send a barrier to the filesystem device. The function will be
+used by ext4 to detect whether fsync needs to send a separate barrier
+or not.
 
--- Ted
+Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/jbd2/commit.c     |    6 +++++-
+ fs/jbd2/journal.c    |   32 ++++++++++++++++++++++++++++++++
+ include/linux/jbd2.h |    3 ++-
+ 3 files changed, 39 insertions(+), 2 deletions(-)
+
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 78c2992..861262a 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -805,6 +805,10 @@ wait_for_iobuf:
+ 		jbd2_journal_abort(journal, err);
+ 
+ 	jbd_debug(3, "JBD: commit phase 5\n");
++	write_lock(&journal->j_state_lock);
++	J_ASSERT(commit_transaction->t_state == T_COMMIT);
++	commit_transaction->t_state = T_COMMIT_RECORD;
++	write_unlock(&journal->j_state_lock);
+ 
+ 	if (!JBD2_HAS_INCOMPAT_FEATURE(journal,
+ 				       JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT)) {
+@@ -960,7 +964,7 @@ restart_loop:
+ 
+ 	jbd_debug(3, "JBD: commit phase 7\n");
+ 
+-	J_ASSERT(commit_transaction->t_state == T_COMMIT);
++	J_ASSERT(commit_transaction->t_state == T_COMMIT_RECORD);
+ 
+ 	commit_transaction->t_start = jiffies;
+ 	stats.run.rs_logging = jbd2_time_diff(stats.run.rs_logging,
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index cd2d341..287ba3f 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -588,6 +588,38 @@ int jbd2_journal_start_commit(journal_t *journal, tid_t *ptid)
+ }
+ 
+ /*
++ * Return 1 if a given transaction has not yet sent a barrier request
++ * connected with a transaction commit. If 0 is returned, transaction
++ * may or may not have sent the barrier. Used to avoid sending barrier
++ * twice in common cases.
++ */
++int jbd2_trans_will_send_data_barrier(journal_t *journal, tid_t tid)
++{
++	int ret = 0;
++	transaction_t *commit_trans;
++
++	if (!(journal->j_flags & JBD2_BARRIER))
++		return 0;
++	read_lock(&journal->j_state_lock);
++	/* Transaction already committed? */
++	if (tid_geq(journal->j_commit_sequence, tid))
++		goto out;
++	/*
++	 * Transaction is being committed and we already proceeded to
++	 * submitting barrier?
++	 */
++	commit_trans = journal->j_committing_transaction;
++	if (commit_trans && commit_trans->t_tid == tid &&
++	    commit_trans->t_state >= T_COMMIT_RECORD)
++		goto out;
++	ret = 1;
++out:
++	read_unlock(&journal->j_state_lock);
++	return ret;
++}
++EXPORT_SYMBOL(jbd2_trans_will_send_data_barrier);
++
++/*
+  * Wait for a specified commit to complete.
+  * The caller may not hold the journal lock.
+  */
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index a32dcae..fea6d6f 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -529,9 +529,9 @@ struct transaction_s
+ 	enum {
+ 		T_RUNNING,
+ 		T_LOCKED,
+-		T_RUNDOWN,
+ 		T_FLUSH,
+ 		T_COMMIT,
++		T_COMMIT_RECORD,
+ 		T_FINISHED
+ 	}			t_state;
+ 
+@@ -1228,6 +1228,7 @@ int jbd2_journal_start_commit(journal_t *journal, tid_t *tid);
+ int jbd2_journal_force_commit_nested(journal_t *journal);
+ int jbd2_log_wait_commit(journal_t *journal, tid_t tid);
+ int jbd2_log_do_checkpoint(journal_t *journal);
++int jbd2_trans_will_send_data_barrier(journal_t *journal, tid_t tid);
+ 
+ void __jbd2_log_wait_for_space(journal_t *journal);
+ extern void __jbd2_journal_drop_transaction(journal_t *, transaction_t *);
+-- 
+1.7.3.1
+
