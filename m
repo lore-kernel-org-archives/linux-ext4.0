@@ -1,77 +1,73 @@
-From: Nikola Ciprich <nikola.ciprich@linuxbox.cz>
-Subject: ext4 and dir_index optimization
-Date: Sun, 22 May 2011 14:52:37 +0200
-Message-ID: <20110522125237.GC2176@nik-comp.lan>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: fix the incorrect info of /proc/mounts after
+ mount no-journal fs
+Date: Sun, 22 May 2011 16:12:20 -0400
+Message-ID: <20110522201220.GA10009@thunk.org>
+References: <1305771094-2976-1-git-send-email-sanbai@taobao.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="f0KYrhQ4vYSV2aJu"
-Cc: nikola.ciprich@linuxbox.cz,
-	Petr =?iso-8859-1?Q?Kopeck=FD?= <petr.kopecky@linuxbox.cz>
-To: linux ext4 list <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Robin Dong <sanbai@taobao.com>
+To: Robin Dong <hao.bigrat@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ip-85-135-19-82.customer.poda.cz ([85.135.19.82]:59660 "EHLO
-	nik-comp.lan" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1755256Ab1EVNZl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 22 May 2011 09:25:41 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:47381 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752791Ab1EVUMY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 22 May 2011 16:12:24 -0400
 Content-Disposition: inline
+In-Reply-To: <1305771094-2976-1-git-send-email-sanbai@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Thu, May 19, 2011 at 10:11:34AM +0800, Robin Dong wrote:
+> After mkfs without journal:
+> 
+>   # mkfs.ext4 -O ^has_journal /dev/sda
+>   # mount -t ext4 /dev/sda /test
+> 
+> the /proc/mounts will show:
+> "/dev/sda /test ext4 rw,relatime,user_xattr,acl,barrier=1,data=writeback 0 0"
+> which usually make users think the fs is using writeback-mode.
+> 
+> Signed-off-by: Robin Dong <sanbai@taobao.com>
 
---f0KYrhQ4vYSV2aJu
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+It's actually better to simply always not set WRITEBACK_DATA() if we
+are not journaling (either because of a noload mount option or because
+the file systme doesn't have a journal).
 
-Hello everybody,
+						- Ted
 
-I'd like to ask few questions about dir_index on ext4. On one of my servers
-running 2.6.32.14, we were experiencing performance problems, especially
-accessing directory with huge (hundreds of thousands) amount of files
-was pain. The filesystem had dir_index enabled, so I tried running fsck
--D on it in order to force reindexation. It helped A LOT - ls -1 on this
-directory took about 5 minutes, after reindexation, it took about 10
-seconds!
-So my question is - is it really needed to force reindexation from time
-to time? I'm pretty sure dir_index has been enabled since the creation of
-filesystem, so shouldn't index be maintained automatically?
-Is it possible to check somehow whether optimization is needed, without
-umounting fs and running fsck? And possibly also do this optimization?
+commit d0e5cab82ecbe5578d3d17b90ba3515918ea0b9f
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Sun May 22 16:10:01 2011 -0400
 
-Thanks a lot in advance!
+    ext4: don't show mount options in /proc/mounts if there is no journal
+    
+    After creating an ext4 file system without a journal:
+    
+      # mke2fs -t ext4 -O ^has_journal /dev/sda
+      # mount -t ext4 /dev/sda /test
+    
+    the /proc/mounts will show:
+    "/dev/sda /test ext4 rw,relatime,user_xattr,acl,barrier=1,data=writeback 0 0"
+    which can fool users into thinking that the fs is using writeback mode.
+    
+    So don't set the writeback option when the journal has not been
+    enabled; we don't depend on the writeback option being set, since
+    ext4_should_writeback_data() in ext4_jbd2.h tests to see if the
+    journal is not present before returning true.
+    
+    Reported-by: Robin Dong <sanbai@taobao.com>
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-Cheers!
-
-nik
-
-
-
---=20
--------------------------------------
-Ing. Nikola CIPRICH
-LinuxBox.cz, s.r.o.
-28. rijna 168, 709 01 Ostrava
-
-tel.:   +420 596 603 142
-fax:    +420 596 621 273
-mobil:  +420 777 093 799
-
-www.linuxbox.cz
-
-mobil servis: +420 737 238 656
-email servis: servis@linuxbox.cz
--------------------------------------
-
---f0KYrhQ4vYSV2aJu
-Content-Type: application/pgp-signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.11 (GNU/Linux)
-
-iEYEARECAAYFAk3ZBxUACgkQ3xdJJrLygV7b4gCgigRArbJDTluxiKNsf1xaDQnk
-ntQAnRboD32Wr92R/9+KI1pKoSrzXSgg
-=b+JO
------END PGP SIGNATURE-----
-
---f0KYrhQ4vYSV2aJu--
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index ed5e80e..fdce4ee 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3485,7 +3485,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		goto failed_mount_wq;
+ 	} else {
+ 		clear_opt(sb, DATA_FLAGS);
+-		set_opt(sb, WRITEBACK_DATA);
+ 		sbi->s_journal = NULL;
+ 		needs_recovery = 0;
+ 		goto no_journal;
