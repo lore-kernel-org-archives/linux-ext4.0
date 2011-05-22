@@ -1,93 +1,56 @@
-From: Lee Davis <l.davis37@ymail.com>
-Subject: Re: EXT4 partition changes every time it's mounted. (How to stop this?)
-Date: Sun, 22 May 2011 21:39:04 -0700 (PDT)
-Message-ID: <195291.47304.qm@web125204.mail.ne1.yahoo.com>
-References: <476510.14310.qm@web125206.mail.ne1.yahoo.com> <A129F9FD-E914-408C-8997-FD145AA2A697@mit.edu>
-Reply-To: Lee Davis <l.davis37@ymail.com>
+From: Menetrier Amandine <Amandine.Menetrier@ac-besancon.fr>
+Subject: (unknown)
+Date: Sun, 22 May 2011 22:42:27 +0100
+Message-ID: <62a488af3a3b5f2b.4dd99153@ac-besancon.fr>
+Reply-To: western.transfer1@mspil.edu.cn
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@MIT.EDU>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+To: undisclosed-recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nm16-vm1.bullet.mail.ne1.yahoo.com ([98.138.91.47]:38346 "HELO
-	nm16-vm1.bullet.mail.ne1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1750857Ab1EWEjH convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 May 2011 00:39:07 -0400
-In-Reply-To: <A129F9FD-E914-408C-8997-FD145AA2A697@mit.edu>
+Received: from avas1.ac-besancon.fr ([195.221.85.113]:45359 "EHLO
+	avas1.ac-besancon.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750803Ab1EWEsG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 May 2011 00:48:06 -0400
+Content-Language: fr
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
-
-I've checked again, and despite being mounted read-only, the filesystem=
- is definitely changing every time I reboot.
-
-The mount options are: ro,relatime,commit=3D0
-
-I've taken three images of the filesystem (rebooting between each image=
-), and with a bit of research I've managed to discover which fields in =
-the superblock are being changed. They are: s_wtime and s_kbytes_writte=
-n.=20
-
-Here's how they're being changed:
-
-0x430 (s_wtime): 06C8D94D -> 68D0D94D -> B9D7D94D
-
-0x578 (s_kbytes_written): 42C8000000000000 -> 45C8000000000000 -> 48C80=
-00000000000
-
-These two fields are the only things that are changing in the entire fi=
-lesystem.
-
-
-Any ideas on what might be causing this and/or how to disable it?
-
-Much appreciated,
-Lee
-
-P.S. I just thought to test it after unmounting/re-mounting, and nothin=
-g was changed. So it appears to only get changed when I boot the system=
-=2E
-
-It's a fresh Ubuntu Natty installation, with GRUB on the MBR, an ext4 b=
-oot partition, and an encrypted ext4 root partition (which I set up thr=
-ough the installer). I can't think what might be writing to the boot pa=
-rtition.
 
 
 
 
+  My associate has helped me to send your first payment
+of $7,500 USD to you as instructed by the Malaysian
+Government and Mr. David Cameron the United Kingdom
+prime minister after the last G20 meeting that was
+held in Malaysia, making you one of the beneficiaries.
+Here is the information below.
 
------ Original Message -----
-=46rom: Theodore Tso <tytso@MIT.EDU>
-To: Lee Davis <l.davis37@ymail.com>
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Sent: Sunday, 22 May 2011 9:47 PM
-Subject: Re: EXT4 partition changes every time it's mounted. (How to st=
-op this?)
+MTCN Numbers: 6096147516
+Sender Name Is = Patrick Lee Chun
+
+  I told him to keep sending you $7,500 USD twice a week
+until the FULL payment of ($820000.00 United State Dollars)
+is completed.
+
+  A certificate will be made to change the Receivers Name
+to your name as stated by the Malaysian Government, send
+your Full Names and address via Email to: Mr Garry Moore
+to proceed.
+
+                         Note:
+ 
+  You cannot pickup the money until the certificate is
+obtained by you.
+
+Regards
+Mr. Garry Moore.
+Tel: +(60) 136910048.
+
+For more info: www.g20.org
 
 
-On May 21, 2011, at 3:45 PM, Lee Davis wrote:
 
-> I'm setting up a Linux system with full disk encryption. I've written=
- a script (to run on every boot) which will verify that neither the MBR=
- or /boot partition (ext4) has been modified.
->=20
-> Problem is that every time I boot up the system, my /boot partition h=
-ashes differently.
->=20
-> I'm guessing there is something behind the scenes which is changed/up=
-dated each time the filesystem is mounted? If so, can it be disabled?
 
-Yes, there is a last mounted time in the superblock.=A0  If you mount t=
-he file system read-only, then not only will that field not be changed,=
- but you can guarantee that nothing else will change...
-
--- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
