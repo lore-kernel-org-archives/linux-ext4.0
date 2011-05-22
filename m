@@ -1,101 +1,88 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/2] ext4: Fix waiting and sending of a barrier in ext4_sync_file()
-Date: Sun, 22 May 2011 17:13:45 -0400
-Message-ID: <1306098825-469-2-git-send-email-tytso@mit.edu>
-References: <20110522211239.GB10009@thunk.org>
-Cc: Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: use vmtruncate() instead of ext4_truncate() in
+ ext4_setattr()
+Date: Sun, 22 May 2011 19:56:26 -0400
+Message-ID: <20110522235625.GC10009@thunk.org>
+References: <20110517225926.8B4A94225B@ruihe.smo.corp.google.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Jiaying Zhang <jiayingz@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:50431 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:50356 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754927Ab1EVVNr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 22 May 2011 17:13:47 -0400
-In-Reply-To: <20110522211239.GB10009@thunk.org>
+	id S1754491Ab1EVX43 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 22 May 2011 19:56:29 -0400
+Content-Disposition: inline
+In-Reply-To: <20110517225926.8B4A94225B@ruihe.smo.corp.google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jan Kara <jack@suse.cz>
+Here's a cleaner way of fixing the problem.  vmtruncate() is now
+deprecated, so I'm using truncate_setsize() instead; in addition, I
+avoid calling ext4_truncate() twice in the case where EOFBLOCKS_FL.
+Since ext4_truncate() is a very heavyweight function, which requires
+manipulating the orphan list and taking i_data_sem, avoiding a double
+call of ext4_truncate() is a big win.
 
-jbd2_log_start_commit() returns 1 only when we really start a
-transaction.  But we also need to wait for a transaction when the
-commit is already running.  Fix this problem by waiting for
-transaction commit unconditionally (which is just a quick check if the
-transaction is already committed).
+						- Ted
 
-Also we have to be more careful with sending of a barrier because when
-transaction is being committed in parallel to ext4_sync_file()
-running, we cannot be sure that the barrier the journalling code sends
-happens after we wrote all the data for fsync (note that not every
-data writeout needs to trigger metadata changes thus commit of some
-metadata changes can be running while other data is still written
-out). So use jbd2_will_send_data_barrier() helper to detect the common
-cases when we can be sure barrier will be issued by the commit code
-and issue the barrier ourselves in the remaining cases.
+commit bb5eabd2de1e9dfdeeac822174fba17f2d2a7f2b
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Sun May 22 19:45:01 2011 -0400
 
-[ Modified by tytso so that the external journal cases are handled in
-  ext4_sync_file() to avoid needlessly issuing extra flush requests in
-  the data=ordered and data=journalled cases. ]
+    ext4: use truncate_setsize() unconditionally
+    
+    In commit c8d46e41 (ext4: Add flag to files with blocks intentionally
+    past EOF), if the EOFBLOCKS_FL flag is set, we call ext4_truncate()
+    before calling vmtruncate().  This caused any allocated but unwritten
+    blocks created by calling fallocate() with the FALLOC_FL_KEEP_SIZE
+    flag to be dropped.  This was done to make to make sure that
+    EOFBLOCKS_FL would not be cleared while still leaving blocks past
+    i_size allocated.  This was not necessary, since ext4_truncate()
+    guarantees that blocks past i_size will be dropped, even in the case
+    where truncate() has increased i_size before calling ext4_truncate().
+    
+    So fix this by removing the EOFBLOCKS_FL special case treatment in
+    ext4_setattr().  In addition, use truncate_setsize() followed by a
+    call to ext4_truncate() instead of using vmtruncate().  This is more
+    efficient since it skips the call to inode_newsize_ok(), which has
+    been checked already by inode_change_ok().  This is also in a win in
+    the case where EOFBLOCKS_FL is set since it avoids calling
+    ext4_truncate() twice.
+    
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-Signed-off-by: Jan Kara <jack@suse.cz>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/fsync.c |   31 ++++++++++++++++++++-----------
- 1 files changed, 20 insertions(+), 11 deletions(-)
-
-diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-index 60fe572..b0e03fa 100644
---- a/fs/ext4/fsync.c
-+++ b/fs/ext4/fsync.c
-@@ -172,6 +172,7 @@ int ext4_sync_file(struct file *file, int datasync)
- 	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
- 	int ret;
- 	tid_t commit_tid;
-+	bool needs_barrier = false;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index df3fb20..4ca8411 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5363,8 +5363,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
  
- 	J_ASSERT(ext4_journal_current_handle() == NULL);
+ 	if (S_ISREG(inode->i_mode) &&
+ 	    attr->ia_valid & ATTR_SIZE &&
+-	    (attr->ia_size < inode->i_size ||
+-	     (ext4_test_inode_flag(inode, EXT4_INODE_EOFBLOCKS)))) {
++	    (attr->ia_size < inode->i_size)) {
+ 		handle_t *handle;
  
-@@ -211,22 +212,30 @@ int ext4_sync_file(struct file *file, int datasync)
+ 		handle = ext4_journal_start(inode, 3);
+@@ -5398,14 +5397,13 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 				goto err_out;
+ 			}
+ 		}
+-		/* ext4_truncate will clear the flag */
+-		if ((ext4_test_inode_flag(inode, EXT4_INODE_EOFBLOCKS)))
+-			ext4_truncate(inode);
  	}
  
- 	commit_tid = datasync ? ei->i_datasync_tid : ei->i_sync_tid;
--	if (jbd2_log_start_commit(journal, commit_tid)) {
-+	if (journal->j_flags & JBD2_BARRIER) {
- 		/*
- 		 * When the journal is on a different device than the
--		 * fs data disk, we need to issue the barrier in
--		 * writeback mode.  (In ordered mode, the jbd2 layer
--		 * will take care of issuing the barrier.  In
-+		 * fs data disk, when data=writeback, we need to issue
-+		 * a barrier unconditionally.  (In ordered mode, the
-+		 * jbd2 layer will take care of issuing the barrier if
-+		 * there were any writes associated with the inode; in
- 		 * data=journal, all of the data blocks are written to
- 		 * the journal device.)
- 		 */
--		if (ext4_should_writeback_data(inode) &&
--		    (journal->j_fs_dev != journal->j_dev) &&
--		    (journal->j_flags & JBD2_BARRIER))
--			blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL,
--					NULL);
--		ret = jbd2_log_wait_commit(journal, commit_tid);
--	} else if (journal->j_flags & JBD2_BARRIER)
-+		if ((journal->j_fs_dev != journal->j_dev) &&
-+		    ext4_should_writeback_data(inode))
-+			needs_barrier = true;
-+		else if (!jbd2_trans_will_send_data_barrier(journal,
-+							    commit_tid))
-+			/*
-+			 * If the journal layer isn't going to issue
-+			 * the barrier, then we'd better.
-+			 */
-+			needs_barrier = true;
+ 	if ((attr->ia_valid & ATTR_SIZE) &&
+-	    attr->ia_size != i_size_read(inode))
+-		rc = vmtruncate(inode, attr->ia_size);
++	    attr->ia_size != i_size_read(inode)) {
++		truncate_setsize(inode, attr->ia_size);
++		ext4_truncate(inode);
 +	}
-+	jbd2_log_start_commit(journal, commit_tid);
-+	ret = jbd2_log_wait_commit(journal, commit_tid);
-+	if (needs_barrier)
- 		blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);
-  out:
- 	trace_ext4_sync_file_exit(inode, ret);
--- 
-1.7.3.1
-
+ 
+ 	if (!rc) {
+ 		setattr_copy(inode, attr);
