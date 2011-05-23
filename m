@@ -1,66 +1,43 @@
-From: Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 0/2] Eliminate hangs when using frequent high-order allocations V4
-Date: Mon, 23 May 2011 10:53:53 +0100
-Message-ID: <1306144435-2516-1-git-send-email-mgorman@suse.de>
-Cc: James Bottomley <James.Bottomley@HansenPartnership.com>,
-	Colin King <colin.king@canonical.com>,
-	Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
-	Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
-	Christoph Lameter <cl@linux.com>,
-	Pekka Enberg <penberg@kernel.org>,
-	Rik van Riel <riel@redhat.com>,
-	Johannes Weiner <hannes@cmpxchg.org>,
-	Minchan Kim <minchan.kim@gmail.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-mm <linux-mm@kvack.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	stable <stable@kernel.org>, Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 0/3] Make block_page_mkwrite() handle frozen fs (V2)
+Date: Mon, 23 May 2011 15:21:58 +0200
+Message-ID: <20110523132158.GB4716@quack.suse.cz>
+References: <1305731882-8334-1-git-send-email-jack@suse.cz>
+ <20110518180022.GM18929@tux1.beaverton.ibm.com>
+ <20110519105708.GD8417@quack.suse.cz>
+ <20110520175953.GE29282@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, "Darrick J. Wong" <djwong@us.ibm.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Al Viro <viro@ZenIV.linux.org.uk>,
+	Christoph Hellwig <hch@infradead.org>
+To: Ted Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:34262 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752713Ab1EWNWC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 May 2011 09:22:02 -0400
+Content-Disposition: inline
+In-Reply-To: <20110520175953.GE29282@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-(Resending as the updated patch 2 appears to have gotten lost in a
-"twisty maze of threads all similar" while questing towards mmotm)
+On Fri 20-05-11 13:59:53, Ted Tso wrote:
+> On Thu, May 19, 2011 at 12:57:08PM +0200, Jan Kara wrote:
+> >   Since Ted has merged your stable pages patches touching ext4, I'll rebase
+> > my ext4 patch on top of that. Regarding block_page_mkwrite() I will add
+> > that one-liner to the series (because the ext4_page_mkwrite() now depends
+> > on that).
+  Hi Ted,
 
-Changelog since V3
-  o cond_resched in shrink_slab when it does nothing rather than
-    having kswapd sleep for HZ/10 when it needs to schedule
+> Does your 3/3 ext4 patch have dependencies on your 1/3 and 2/3
+> VFS-layer patches?
+  Yes, it does depend on the new helper introduced in 1/3. Should I push
+3/3 via Al as well or just wait with it until Al merges the first two
+patches and then push it to you?
 
-Changelog since V2
-  o Drop all SLUB latency-reducing patches.
-
-Changelog since V1
-  o kswapd should sleep if need_resched
-  o Remove __GFP_REPEAT from GFP flags when speculatively using high
-    orders so direct/compaction exits earlier
-  o Remove __GFP_NORETRY for correctness
-  o Correct logic in sleeping_prematurely
-  o Leave SLUB using the default slub_max_order
-
-There are a few reports of people experiencing hangs when copying
-large amounts of data with kswapd using a large amount of CPU which
-appear to be due to recent reclaim changes. SLUB using high orders
-is the trigger but not the root cause as SLUB has been using high
-orders for a while. The root cause was bugs introduced into reclaim
-which are addressed by the following two patches.
-
-Patch 1 corrects logic introduced by commit [1741c877: mm:
-	kswapd: keep kswapd awake for high-order allocations until
-	a percentage of the node is balanced] to allow kswapd to
-	go to sleep when balanced for high orders.
-
-Patch 2 notes that it is possible for kswapd to miss every
-	cond_resched() and updates shrink_slab() so it'll at least
-	reach that scheduling point.
-
-Chris Wood reports that these two patches in isolation are sufficient
-to prevent the system hanging. AFAIK, they should also resolve similar
-hangs experienced by James Bottomley.
-
-These should be also considered for -stable for both 2.6.38 and 2.6.39.
-
+								Honza
 -- 
-1.7.3.4
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
