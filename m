@@ -1,216 +1,127 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/5] ext4 : Update low level ext4 journal routines to
- specify gfp_mask for transaction allocation.
-Date: Mon, 23 May 2011 18:41:23 +0200
-Message-ID: <20110523164123.GF4716@quack.suse.cz>
-References: <BANLkTinfvAXWwjtMnYRBL5JHLmYJGhS-aQ@mail.gmail.com>
- <20110511160447.GJ5057@quack.suse.cz>
- <BANLkTimEpNq5L3p2UsByTMEYG2G2ORA0dw@mail.gmail.com>
+Subject: Re: [PATCH 2/2] ext4: Fix waiting and sending of a barrier in
+ ext4_sync_file()
+Date: Mon, 23 May 2011 19:17:47 +0200
+Message-ID: <20110523171747.GG4716@quack.suse.cz>
+References: <20110522211239.GB10009@thunk.org>
+ <1306098825-469-2-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack@suse.cz>, ext4 <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Manish Katiyar <mkatiyar@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:37352 "EHLO mx1.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:43542 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755225Ab1EWQlZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 May 2011 12:41:25 -0400
+	id S1755722Ab1EWRRu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 May 2011 13:17:50 -0400
 Content-Disposition: inline
-In-Reply-To: <BANLkTimEpNq5L3p2UsByTMEYG2G2ORA0dw@mail.gmail.com>
+In-Reply-To: <1306098825-469-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat 21-05-11 19:43:10, Manish Katiyar wrote:
-> On Wed, May 11, 2011 at 9:04 AM, Jan Kara <jack@suse.cz> wrote:
-> > On Sun 24-04-11 17:13:18, Manish Katiyar wrote:
-> >> Update low level ext4 journal routines to pass an extra parameter
-> >> to journal allocation routines to specify whether transaction allo=
-cation
-> >> can fail or not. With this patch ext4_journal_start() can fail due=
- to
-> >> ENOMEM. Added a new interface ext4_journal_start_tryhard() which i=
-sn't
-> >> supposed to fail and keep retrying till the allocation succeeds.
-> > =A0As I wrote in a comment in the comment to the first patch, first=
- just
-> > make ext4_journal_start_sb() and similar functions pass false as a =
-part of
-> > the first patch.
-> >
-> > Then it would be better to create a new function that passes true -=
- the
-> > name does not really matter since it will be removed later in the s=
-eries
-> > but it will help the review process. You can call it
-> > ext4_journal_start_sb_enomem() or whatever. This way we keep backwa=
-rd
-> > compatibility because currently all call sites really expect the re=
-try
-> > behavior.
->=20
-> Hi Jan,
->=20
-> Here is the updated patch incorporating your comments. This adds a ne=
-w
-> function ext4_journal_start_failok and updates the ext4 code where we
-> can fail.
->=20
-> This patch adds a new wrapper ext4_journal_start_failok() which
-> can fail with -ENOMEM. Update the ext4 code with this, where callers
-> are ok failing the transaction start.
-  Thanks. My comments are below.
+On Sun 22-05-11 17:13:45, Ted Tso wrote:
+> From: Jan Kara <jack@suse.cz>
+> 
+> jbd2_log_start_commit() returns 1 only when we really start a
+> transaction.  But we also need to wait for a transaction when the
+> commit is already running.  Fix this problem by waiting for
+> transaction commit unconditionally (which is just a quick check if the
+> transaction is already committed).
+> 
+> Also we have to be more careful with sending of a barrier because when
+> transaction is being committed in parallel to ext4_sync_file()
+> running, we cannot be sure that the barrier the journalling code sends
+> happens after we wrote all the data for fsync (note that not every
+> data writeout needs to trigger metadata changes thus commit of some
+> metadata changes can be running while other data is still written
+> out). So use jbd2_will_send_data_barrier() helper to detect the common
+> cases when we can be sure barrier will be issued by the commit code
+> and issue the barrier ourselves in the remaining cases.
+> 
+> [ Modified by tytso so that the external journal cases are handled in
+>   ext4_sync_file() to avoid needlessly issuing extra flush requests in
+>   the data=ordered and data=journalled cases. ]
+  Well, in data=journal case I agree your change will work (but that's your
+minor concern I guess). In data=ordered it's harder:
+a) The flush of j_fs_dev in jbd2_journal_commit_transaction() is issued
+earlier than we set T_COMMIT_RECORD but that's easy to handle.
+b) Whether we do or don't send the flush in
+jbd2_journal_commit_transaction() depends on whether t_flushed_data_blocks
+is set.  We can't know in advance whether it gets set or not because it
+depends on whether some inode is in transaction's t_inode_list and inodes
+can get removed from there when flusher thread has written all the pages
+and inode has been reclaimed. OTOH this looks like a bug in the commit code
+anyway - I guess t_flushed_data_blocks (or better named equivalent) should
+be set in jbd2_journal_file_inode(). Then such variable will also become
+a reliable indicator whether the data flush is going to be sent or not.
 
-> Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
-> ---
->  fs/ext4/acl.c         |    6 +++---
->  fs/ext4/ext4_jbd2.h   |   10 +++++++++-
->  fs/ext4/extents.c     |    2 +-
->  fs/ext4/inode.c       |   19 +++++++++++--------
->  fs/ext4/ioctl.c       |    4 ++--
->  fs/ext4/migrate.c     |    4 ++--
->  fs/ext4/move_extent.c |    2 +-
->  fs/ext4/namei.c       |   23 +++++++++++++++--------
->  fs/ext4/super.c       |   17 ++++++++++++++---
->  fs/ext4/xattr.c       |    3 ++-
->  fs/jbd2/transaction.c |    4 +++-
->  11 files changed, 63 insertions(+), 31 deletions(-)
->=20
-> diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
-> index 21eacd7..cdb1f51 100644
-> --- a/fs/ext4/acl.c
-> +++ b/fs/ext4/acl.c
-> @@ -350,11 +350,10 @@ ext4_acl_chmod(struct inode *inode)
->  		int retries =3D 0;
->=20
->  	retry:
-> -		handle =3D ext4_journal_start(inode,
-> +		handle =3D ext4_journal_start_failok(inode,
->  				EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
->  		if (IS_ERR(handle)) {
->  			error =3D PTR_ERR(handle);
-> -			ext4_std_error(inode->i_sb, error);
-  Here, you should rather do
-if (error !=3D ENOMEM)
-	ext4_std_error(inode->i_sb, error);
-  We probably want to know about EIO (which is the other realistic erro=
-r).
-
-> @@ -449,7 +448,8 @@ ext4_xattr_set_acl(struct dentry *dentry, const
-> char *name, const void *value,
->  		acl =3D NULL;
->=20
->  retry:
-> -	handle =3D ext4_journal_start(inode, EXT4_DATA_TRANS_BLOCKS(inode->=
-i_sb));
-> +	handle =3D ext4_journal_start_failok(inode,
-> +					   EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
->  	if (IS_ERR(handle))
->  		return PTR_ERR(handle);
->  	error =3D ext4_set_acl(handle, inode, type, acl);
-  This change is OK. But looking at the code there, we should rather do
-if (IS_ERR(handle)) {
-	error =3D PTR_ERR(handle);
-	goto release_and_out;
-}
-  Can you please include this change in your other patch fixing ACL err=
-or
-handling? Thanks.
-
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index f2fa5e8..f7b2d4d 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -3523,7 +3523,7 @@ retry:
->  		int err;
->=20
->  		/* Credits for sb + inode write */
-> -		handle =3D ext4_journal_start(inode, 2);
-> +		handle =3D ext4_journal_start_failok(inode, 2);
->  		if (IS_ERR(handle)) {
->  			/* This is really bad luck. We've written the data
->  			 * but cannot extend i_size. Bail out and pretend
-  Here we shouldn't fail because that will leave blocks outside EOF
-allocated. So just leave there original ext4_journal_start().
-
-> @@ -5371,7 +5372,9 @@ int ext4_setattr(struct dentry *dentry, struct
-> iattr *attr)
->  		rc =3D ext4_acl_chmod(inode);
->=20
->  err_out:
-> -	ext4_std_error(inode->i_sb, error);
-> +	if (error !=3D -ENOMEM) {
-> +		ext4_std_error(inode->i_sb, error);
-> +	}
-  No need for braces here...
-
-> diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-> index 92816b4..8870746 100644
-> --- a/fs/ext4/migrate.c
-> +++ b/fs/ext4/migrate.c
-> @@ -533,7 +533,7 @@ int ext4_ext_migrate(struct inode *inode)
->  	ext4_set_inode_state(inode, EXT4_STATE_EXT_MIGRATE);
->  	up_read((&EXT4_I(inode)->i_data_sem));
->=20
-> -	handle =3D ext4_journal_start(inode, 1);
-> +	handle =3D ext4_journal_start_failok(inode, 1);
->  	if (IS_ERR(handle)) {
->  		/*
->  		 * It is impossible to update on-disk structures without
-  Here we should better not fail because we have inode on orphan list a=
-nd
-need to eventually remove it. So just keep old ext4_journal_start().
-
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 4e4c17f..2d57a57 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -247,7 +247,8 @@ static void ext4_put_nojournal(handle_t *handle)
->   * ext4 prevents a new handle from being started by s_frozen, which
->   * is in an upper layer.
->   */
-> -handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
-> +static handle_t *ext4_journal_start_sb_int(struct super_block *sb,
-> +				    	   int nblocks, bool errok)
-  Maybe __ext4_journal_start_sb() would be a more usual name...
-
-> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-> index b5c2550..3453c29 100644
-> --- a/fs/jbd2/transaction.c
-> +++ b/fs/jbd2/transaction.c
-> @@ -308,6 +308,8 @@ static handle_t *new_handle(int nblocks)
->   * handle_t *jbd2_journal_start() - Obtain a new handle.
->   * @journal: Journal to start transaction on.
->   * @nblocks: number of block buffer we might modify
-> + * @errok : True if the transaction allocation can fail
-> + *          with ENOMEM.
->   *
->   * We make sure that the transaction can guarantee at least nblocks =
-of
->   * modified buffers in the log.  We block until the log can guarante=
-e
-  Move this to the patch adding the parameter...
-
-> @@ -338,7 +340,7 @@ handle_t *jbd2_journal_start(journal_t *journal,
-> int nblocks, bool errok)
->=20
->  	current->journal_info =3D handle;
->=20
-> -	err =3D start_this_handle(journal, handle, GFP_NOFS);
-> +	err =3D start_this_handle(journal, handle, errok ? GFP_KERNEL : GFP=
-_NOFS);
->  	if (err < 0) {
->  		jbd2_free_handle(handle);
->  		current->journal_info =3D NULL;
-  This is probably just a leftover from some previous version?
+I'll update the patch set to reflect this...
 
 								Honza
---=20
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+>  fs/ext4/fsync.c |   31 ++++++++++++++++++++-----------
+>  1 files changed, 20 insertions(+), 11 deletions(-)
+> 
+> diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+> index 60fe572..b0e03fa 100644
+> --- a/fs/ext4/fsync.c
+> +++ b/fs/ext4/fsync.c
+> @@ -172,6 +172,7 @@ int ext4_sync_file(struct file *file, int datasync)
+>  	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
+>  	int ret;
+>  	tid_t commit_tid;
+> +	bool needs_barrier = false;
+>  
+>  	J_ASSERT(ext4_journal_current_handle() == NULL);
+>  
+> @@ -211,22 +212,30 @@ int ext4_sync_file(struct file *file, int datasync)
+>  	}
+>  
+>  	commit_tid = datasync ? ei->i_datasync_tid : ei->i_sync_tid;
+> -	if (jbd2_log_start_commit(journal, commit_tid)) {
+> +	if (journal->j_flags & JBD2_BARRIER) {
+>  		/*
+>  		 * When the journal is on a different device than the
+> -		 * fs data disk, we need to issue the barrier in
+> -		 * writeback mode.  (In ordered mode, the jbd2 layer
+> -		 * will take care of issuing the barrier.  In
+> +		 * fs data disk, when data=writeback, we need to issue
+> +		 * a barrier unconditionally.  (In ordered mode, the
+> +		 * jbd2 layer will take care of issuing the barrier if
+> +		 * there were any writes associated with the inode; in
+>  		 * data=journal, all of the data blocks are written to
+>  		 * the journal device.)
+>  		 */
+> -		if (ext4_should_writeback_data(inode) &&
+> -		    (journal->j_fs_dev != journal->j_dev) &&
+> -		    (journal->j_flags & JBD2_BARRIER))
+> -			blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL,
+> -					NULL);
+> -		ret = jbd2_log_wait_commit(journal, commit_tid);
+> -	} else if (journal->j_flags & JBD2_BARRIER)
+> +		if ((journal->j_fs_dev != journal->j_dev) &&
+> +		    ext4_should_writeback_data(inode))
+> +			needs_barrier = true;
+> +		else if (!jbd2_trans_will_send_data_barrier(journal,
+> +							    commit_tid))
+> +			/*
+> +			 * If the journal layer isn't going to issue
+> +			 * the barrier, then we'd better.
+> +			 */
+> +			needs_barrier = true;
+> +	}
+> +	jbd2_log_start_commit(journal, commit_tid);
+> +	ret = jbd2_log_wait_commit(journal, commit_tid);
+> +	if (needs_barrier)
+>  		blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);
+>   out:
+>  	trace_ext4_sync_file_exit(inode, ret);
+> -- 
+> 1.7.3.1
+> 
+-- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
