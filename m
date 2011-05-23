@@ -1,418 +1,166 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH v3] xfstests:Make 225 compare map and fiemap at each block.
-Date: Mon, 23 May 2011 15:07:03 +0800
-Message-ID: <1306134423-10028-1-git-send-email-xiaoqiangnk@gmail.com>
-Cc: josef@redhat.com, david@fromorbit.com, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, Yongqiang Yang <xiaoqiangnk@gmail.com>
-To: sandeen@redhat.com
+Subject: [PATCH v2] ext4:Teach ext4_ext_split to caculate extents efficiently.
+Date: Mon, 23 May 2011 17:30:57 +0800
+Message-ID: <1306143057-16962-1-git-send-email-xiaoqiangnk@gmail.com>
+Cc: linux-ext4@vger.kernel.org, Yongqiang Yang <xiaoqiangnk@gmail.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-px0-f173.google.com ([209.85.212.173]:61533 "EHLO
-	mail-px0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751996Ab1EWHGn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 May 2011 03:06:43 -0400
-Received: by pxi16 with SMTP id 16so3659985pxi.4
-        for <linux-ext4@vger.kernel.org>; Mon, 23 May 2011 00:06:42 -0700 (PDT)
+Received: from mail-pw0-f46.google.com ([209.85.160.46]:63555 "EHLO
+	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750918Ab1EWJaA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 May 2011 05:30:00 -0400
+Received: by pwi15 with SMTP id 15so2533926pwi.19
+        for <linux-ext4@vger.kernel.org>; Mon, 23 May 2011 02:30:00 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Due to my carelessness,  I induced a ugly patch to ext4's fiemap, as a result
-delayed-extents that did not start at the head block of a page was ignored
-in ext4 with 1K block, but 225 could not find it.  So I looked into the 225
-and could not figure out logic in compare_map_and_fiemap(), which seemed to
-mix extents with blocks.  Then I made 225 compare map and fiemap at each block,
-the new 225 can find the bug I induced and another bug in ext4 with 1k block,
-which ignored delayed-extents after a hole, which did not start at the head
-block of a page.
+Make ext4_ext_split() get extents to be moved by calculating in a statement
+instead of counting in a loop.
 
-
-The new 225 works well on ext3, ext4 and xfs with both 1K and 4K block.
-
-Reviewed-by: josef@rehat.com
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
-v2->v3:
-  Add much more specific changelog expalining the bug the old 225 could not find.
-
 v1->v2:
-Josef <josef@redhat.com> reviewed the v1 patch and pointed out the bug which
-made xfs not work and several coding styles.
+ Make changelog be much more specific.
 
-According to reply from Josef, I
- fixed the bug which added ';' after an if statement.
- removed the trailing whitespace.
+ fs/ext4/extents.c |   84 +++++++++++++++++++++++++++++------------------------
+ 1 files changed, 46 insertions(+), 38 deletions(-)
 
-Apart from things above, I
- made check_weird_fs_hole() verify bytes read by pread().
-
- src/fiemap-tester.c |  251 ++++++++++++++++++++++++++++-----------------------
- 1 files changed, 140 insertions(+), 111 deletions(-)
-
-diff --git a/src/fiemap-tester.c b/src/fiemap-tester.c
-index 1663f84..319a9bb 100644
---- a/src/fiemap-tester.c
-+++ b/src/fiemap-tester.c
-@@ -14,6 +14,9 @@
-  * You should have received a copy of the GNU General Public License
-  * along with this program; if not, write the Free Software Foundation,
-  * Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+ *
-+ * Compare map and fiemap at each block,
-+ * Yongqiang Yang <xiaoqiangnk@gmail.com>, 2011
-  */
- 
- #include <stdio.h>
-@@ -57,7 +60,7 @@ generate_file_mapping(int blocks, int prealloc)
- 	int num_types = 2, cur_block = 0;
- 	int i = 0;
- 
--	map = malloc(sizeof(char) * blocks);
-+	map = malloc(sizeof(char) * (blocks + 1));
- 	if (!map)
- 		return NULL;
- 
-@@ -81,6 +84,7 @@ generate_file_mapping(int blocks, int prealloc)
- 		cur_block++;
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index e363f21..baf846f 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -474,9 +474,43 @@ static void ext4_ext_show_leaf(struct inode *inode, struct ext4_ext_path *path)
  	}
- 
-+	map[blocks] = 0;
- 	return map;
+ 	ext_debug("\n");
  }
- 
-@@ -247,55 +251,36 @@ check_flags(struct fiemap *fiemap, int blocksize)
- }
- 
- static int
--check_data(struct fiemap *fiemap, __u64 logical_offset, int blocksize,
-+check_data(struct fiemap_extent *extent ,  __u64 logical_offset, int blocksize,
- 	   int last, int prealloc)
- {
--	struct fiemap_extent *extent;
--	__u64 orig_offset = logical_offset;
--	int c, found = 0;
--
--	for (c = 0; c < fiemap->fm_mapped_extents; c++) {
--		__u64 start, end;
--		extent = &fiemap->fm_extents[c];
--
--		start = extent->fe_logical;
--		end = extent->fe_logical + extent->fe_length;
--
--		if (logical_offset > end)
--			continue;
--
--		if (logical_offset + blocksize < start)
--			break;
--
--		if (logical_offset >= start &&
--		    logical_offset < end) {
--			if (prealloc &&
--			    !(extent->fe_flags & FIEMAP_EXTENT_UNWRITTEN)) {
--				printf("ERROR: preallocated extent is not "
--				       "marked with FIEMAP_EXTENT_UNWRITTEN: "
--				       "%llu\n",
--				       (unsigned long long)
--				       (start / blocksize));
--				return -1;
--			}
--
--			if (logical_offset + blocksize > end) {
--				logical_offset = end+1;
--				continue;
--			} else {
--				found = 1;
--				break;
--			}
-+	int found = 0;
-+	__u64 start, end;
 +
-+	start = extent->fe_logical;
-+	end = extent->fe_logical + extent->fe_length;
++static void ext4_ext_show_move(struct inode *inode, struct ext4_ext_path *path,
++			ext4_fsblk_t newblock, int level)
++{
++	int depth = ext_depth(inode);
++	struct ext4_extent *ex;
 +
-+	if (logical_offset >= start &&
-+	    logical_offset < end) {
-+		if (prealloc &&
-+		    !(extent->fe_flags & FIEMAP_EXTENT_UNWRITTEN)) {
-+			printf("ERROR: preallocated extent is not "
-+			       "marked with FIEMAP_EXTENT_UNWRITTEN: "
-+			       "%llu\n",
-+			       (unsigned long long)
-+			       (start / blocksize));
-+			return -1;
- 		}
-+		found = 1;
- 	}
- 
- 	if (!found) {
- 		printf("ERROR: couldn't find extent at %llu\n",
--		       (unsigned long long)(orig_offset / blocksize));
-+		       (unsigned long long)(logical_offset / blocksize));
- 	} else if (last &&
--		   !(fiemap->fm_extents[c].fe_flags & FIEMAP_EXTENT_LAST)) {
-+		   !(extent->fe_flags & FIEMAP_EXTENT_LAST)) {
- 		printf("ERROR: last extent not marked as last: %llu\n",
--		       (unsigned long long)(orig_offset / blocksize));
-+		       (unsigned long long)(logical_offset / blocksize));
- 		found = 0;
- 	}
- 
-@@ -306,7 +291,7 @@ static int
- check_weird_fs_hole(int fd, __u64 logical_offset, int blocksize)
- {
- 	static int warning_printed = 0;
--	int block, i;
-+	int block, i, count;
- 	size_t buf_len = sizeof(char) * blocksize;
- 	char *buf;
- 
-@@ -330,15 +315,16 @@ check_weird_fs_hole(int fd, __u64 logical_offset, int blocksize)
- 		return -1;
- 	}
- 
--	if (pread(fd, buf, buf_len, (off_t)logical_offset) < 0) {
-+	count = pread(fd, buf, buf_len, (off_t)logical_offset);
-+	if (count < 0) {
- 		perror("Error reading from file");
- 		free(buf);
- 		return -1;
- 	}
- 
--	for (i = 0; i < buf_len; i++) {
-+	for (i = 0; i < count; i++) {
- 		if (buf[i] != 0) {
--			printf("ERROR: FIEMAP claimed there was data (%c) at "
-+			printf("ERROR: FIEMAP claimed there was data (%x) at "
- 			       "block %llu that should have been a hole, and "
- 			       "FIBMAP confirmed that it was allocated, but "
- 			       "it should be filled with 0's, but it was not "
-@@ -370,35 +356,25 @@ check_weird_fs_hole(int fd, __u64 logical_offset, int blocksize)
- }
- 
- static int
--check_hole(struct fiemap *fiemap, int fd, __u64 logical_offset, int blocksize)
-+check_hole(struct fiemap_extent *extent, int fd, __u64 logical_offset,
-+	   int blocksize)
- {
--	struct fiemap_extent *extent;
--	int c;
-+	__u64 start, end;
- 
--	for (c = 0; c < fiemap->fm_mapped_extents; c++) {
--		__u64 start, end;
--		extent = &fiemap->fm_extents[c];
--
--		start = extent->fe_logical;
--		end = extent->fe_logical + extent->fe_length;
--
--		if (logical_offset > end)
--			continue;
--		if (logical_offset + blocksize < start)
--			break;
-+	start = extent->fe_logical;
-+	end = extent->fe_logical + extent->fe_length;
- 
--		if (logical_offset >= start &&
--		    logical_offset < end) {
-+	if (logical_offset >= start &&
-+	    logical_offset < end) {
- 
--			if (check_weird_fs_hole(fd, logical_offset,
--						blocksize) == 0)
--				break;
-+		if (check_weird_fs_hole(fd, logical_offset,
-+					blocksize) == 0)
-+			return 0;
- 
--			printf("ERROR: found an allocated extent where a hole "
--			       "should be: %llu\n",
--			       (unsigned long long)(start / blocksize));
--			return -1;
--		}
-+		printf("ERROR: found an allocated extent where a hole "
-+		       "should be: %llu\n",
-+		       (unsigned long long)(logical_offset / blocksize));
-+		return -1;
- 	}
- 
- 	return 0;
-@@ -423,9 +399,11 @@ compare_fiemap_and_map(int fd, char *map, int blocks, int blocksize, int syncfil
- {
- 	struct fiemap *fiemap;
- 	char *fiebuf;
--	int blocks_to_map, ret, cur_extent = 0, last_data;
-+	int blocks_to_map, ret, last_data = -1;
- 	__u64 map_start, map_length;
- 	int i, c;
-+	int cur_block = 0;
-+	int last_found = 0;
- 
- 	if (query_fiemap_count(fd, blocks, blocksize) < 0)
- 		return -1;
-@@ -451,8 +429,11 @@ compare_fiemap_and_map(int fd, char *map, int blocks, int blocksize, int syncfil
- 	fiemap->fm_extent_count = blocks_to_map;
- 	fiemap->fm_mapped_extents = 0;
- 
-+	/* check fiemap by looking at each block. */
- 	do {
--		fiemap->fm_start = map_start;
-+		int nr_extents;
-+
-+		fiemap->fm_start = cur_block * blocksize;
- 		fiemap->fm_length = map_length;
- 
- 		ret = ioctl(fd, FS_IOC_FIEMAP, (unsigned long)fiemap);
-@@ -465,45 +446,93 @@ compare_fiemap_and_map(int fd, char *map, int blocks, int blocksize, int syncfil
- 		if (check_flags(fiemap, blocksize))
- 			goto error;
- 
--		for (i = cur_extent, c = 1; i < blocks; i++, c++) {
--			__u64 logical_offset = i * blocksize;
--
--			if (c > fiemap->fm_mapped_extents) {
--				i++;
--				break;
-+		nr_extents = fiemap->fm_mapped_extents;
-+		if (nr_extents == 0) {
-+			int block = cur_block + (map_length - 1) / blocksize;
-+			for (; cur_block <= block &&
-+			       cur_block < blocks; cur_block++) {
-+				/* check hole */
-+				if (map[cur_block] != 'H') {
-+					printf("ERROR: map[%d] should not be "
-+					       "a hole\n", cur_block);
-+					goto error;
-+				}
- 			}
-+			continue;
++	if (depth != level) {
++		struct ext4_extent_idx *idx;
++		idx = path[level].p_idx;
++		while (idx <= EXT_MAX_INDEX(path[level].p_hdr)) {
++			ext_debug("%d: move %d:%llu in new index %llu\n", level,
++					le32_to_cpu(idx->ei_block),
++					ext4_idx_pblock(idx),
++					newblock);
++			idx++;
 +		}
- 
--			switch (map[i]) {
--			case 'D':
--				if (check_data(fiemap, logical_offset,
--					       blocksize, last_data == i, 0))
-+		for (c = 0; c < nr_extents; c++) {
-+			__u64 offset;
-+			int block;
-+			struct fiemap_extent *extent;
 +
-+
-+			extent = &fiemap->fm_extents[c];
-+			offset = extent->fe_logical;
-+			block = offset / blocksize;
-+
-+			/* check hole. */
-+			for (; cur_block < block && cur_block < blocks;
-+			     cur_block++) {
-+				if (map[cur_block] != 'H') {
-+					printf("ERROR: map[%d] should not be "
-+					       "a hole\n", cur_block);
- 					goto error;
--				break;
--			case 'H':
--				if (check_hole(fiemap, fd, logical_offset,
--					       blocksize))
-+				}
-+			}
-+
-+			offset = extent->fe_logical + extent->fe_length;
-+			block = offset / blocksize;
-+			/* check data */
-+			for (; cur_block < block && cur_block < blocks;
-+			     cur_block++) {
-+				int last;
-+				offset = (__u64)cur_block * blocksize;
-+				last = (cur_block == last_data);
-+				last_found = last_found ? last_found : last;
-+				switch (map[cur_block]) {
-+				case 'D':
-+					if (check_data(extent, offset,
-+						       blocksize, last, 0))
-+						goto error;
-+					break;
-+				case 'H':
-+					if (check_hole(extent, fd, offset,
-+						       blocksize))
-+						goto error;
-+					break;
-+
-+				case 'P':
-+					if (check_data(extent, offset,
-+						       blocksize, last, 1))
-+						goto error;
-+					break;
-+				default:
-+					printf("ERROR: weird value in "
-+					       "map: %c\n", map[i]);
- 					goto error;
--				break;
--			case 'P':
--				if (check_data(fiemap, logical_offset,
--					       blocksize, last_data == i, 1))
-+				}
-+			}
-+
-+			for (; cur_block < block; cur_block++) {
-+				offset = (__u64)cur_block * blocksize;
-+				if (check_hole(extent, fd, offset, blocksize))
- 					goto error;
--				break;
--			default:
--				printf("ERROR: weird value in map: %c\n",
--				       map[i]);
--				goto error;
- 			}
- 		}
--		cur_extent = i;
--		map_start = i * blocksize;
--	} while (cur_extent < blocks);
-+	} while (cur_block < blocks);
- 
--	ret = 0;
--	return ret;
-+	if (!last_found && last_data != -1) {
-+		printf("ERROR: find no last extent\n");
-+		goto error;
++		return;
 +	}
 +
-+	free(fiebuf);
-+	return 0;
- error:
- 	printf("map is '%s'\n", map);
- 	show_extents(fiemap, blocksize);
-+	free(fiebuf);
- 	return -1;
- }
- 
-@@ -605,6 +634,18 @@ main(int argc, char **argv)
- 		printf("Starting infinite run, if you don't see any output "
- 		       "then its working properly.\n");
- 	do {
-+		if (ftruncate(fd, 0)) {
-+			perror("Could not truncate file\n");
-+			close(fd);
-+			exit(1);
-+		}
++	ex = path[depth].p_ext;
++	while (ex <= EXT_MAX_EXTENT(path[depth].p_hdr)) {
++		ext_debug("move %d:%llu:[%d]%d in new leaf %llu\n",
++				le32_to_cpu(ex->ee_block),
++				ext4_ext_pblock(ex),
++				ext4_ext_is_uninitialized(ex),
++				ext4_ext_get_actual_len(ex),
++				newblock);
++		ex++;
++	}
++}
 +
-+		if (lseek(fd, 0, SEEK_SET)) {
-+			perror("Could not seek set\n");
-+			close(fd);
-+			exit(1);
-+		}
-+
- 		if (!map) {
- 			blocks = random() % maxblocks;
- 			if (blocks == 0) {
-@@ -639,18 +680,6 @@ main(int argc, char **argv)
- 		free(map);
- 		map = NULL;
+ #else
+ #define ext4_ext_show_path(inode, path)
+ #define ext4_ext_show_leaf(inode, path)
++#define ext4_ext_show_move(inode, path, newblock, level)
+ #endif
  
--		if (ftruncate(fd, 0)) {
--			perror("Could not truncate file\n");
--			close(fd);
--			exit(1);
+ void ext4_ext_drop_refs(struct ext4_ext_path *path)
+@@ -799,7 +833,6 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 	int depth = ext_depth(inode);
+ 	struct ext4_extent_header *neh;
+ 	struct ext4_extent_idx *fidx;
+-	struct ext4_extent *ex;
+ 	int i = at, k, m, a;
+ 	ext4_fsblk_t newblock, oldblock;
+ 	__le32 border;
+@@ -876,7 +909,6 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 	neh->eh_max = cpu_to_le16(ext4_ext_space_block(inode, 0));
+ 	neh->eh_magic = EXT4_EXT_MAGIC;
+ 	neh->eh_depth = 0;
+-	ex = EXT_FIRST_EXTENT(neh);
+ 
+ 	/* move remainder of path[depth] to the new leaf */
+ 	if (unlikely(path[depth].p_hdr->eh_entries !=
+@@ -888,25 +920,12 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 		goto cleanup;
+ 	}
+ 	/* start copy from next extent */
+-	/* TODO: we could do it by single memmove */
+-	m = 0;
+-	path[depth].p_ext++;
+-	while (path[depth].p_ext <=
+-			EXT_MAX_EXTENT(path[depth].p_hdr)) {
+-		ext_debug("move %d:%llu:[%d]%d in new leaf %llu\n",
+-				le32_to_cpu(path[depth].p_ext->ee_block),
+-				ext4_ext_pblock(path[depth].p_ext),
+-				ext4_ext_is_uninitialized(path[depth].p_ext),
+-				ext4_ext_get_actual_len(path[depth].p_ext),
+-				newblock);
+-		/*memmove(ex++, path[depth].p_ext++,
+-				sizeof(struct ext4_extent));
+-		neh->eh_entries++;*/
+-		path[depth].p_ext++;
+-		m++;
+-	}
++	m = EXT_MAX_EXTENT(path[depth].p_hdr) - path[depth].p_ext++;
++	ext4_ext_show_move(inode, path, newblock, depth);
+ 	if (m) {
+-		memmove(ex, path[depth].p_ext-m, sizeof(struct ext4_extent)*m);
++		struct ext4_extent *ex;
++		ex = EXT_FIRST_EXTENT(neh);
++		memmove(ex, path[depth].p_ext, sizeof(struct ext4_extent) * m);
+ 		le16_add_cpu(&neh->eh_entries, m);
+ 	}
+ 
+@@ -968,12 +987,8 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 
+ 		ext_debug("int.index at %d (block %llu): %u -> %llu\n",
+ 				i, newblock, le32_to_cpu(border), oldblock);
+-		/* copy indexes */
+-		m = 0;
+-		path[i].p_idx++;
+ 
+-		ext_debug("cur 0x%p, last 0x%p\n", path[i].p_idx,
+-				EXT_MAX_INDEX(path[i].p_hdr));
++		/* move remainder of path[i] to the new index block */
+ 		if (unlikely(EXT_MAX_INDEX(path[i].p_hdr) !=
+ 					EXT_LAST_INDEX(path[i].p_hdr))) {
+ 			EXT4_ERROR_INODE(inode,
+@@ -982,20 +997,13 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 			err = -EIO;
+ 			goto cleanup;
+ 		}
+-		while (path[i].p_idx <= EXT_MAX_INDEX(path[i].p_hdr)) {
+-			ext_debug("%d: move %d:%llu in new index %llu\n", i,
+-					le32_to_cpu(path[i].p_idx->ei_block),
+-					ext4_idx_pblock(path[i].p_idx),
+-					newblock);
+-			/*memmove(++fidx, path[i].p_idx++,
+-					sizeof(struct ext4_extent_idx));
+-			neh->eh_entries++;
+-			BUG_ON(neh->eh_entries > neh->eh_max);*/
+-			path[i].p_idx++;
+-			m++;
 -		}
--
--		if (lseek(fd, 0, SEEK_SET)) {
--			perror("Could not seek set\n");
--			close(fd);
--			exit(1);
--		}
++		/* start copy indexes */
++		m = EXT_MAX_INDEX(path[i].p_hdr) - path[i].p_idx++;
++		ext_debug("cur 0x%p, last 0x%p\n", path[i].p_idx,
++				EXT_MAX_INDEX(path[i].p_hdr));
++		ext4_ext_show_move(inode, path, newblock, i);
+ 		if (m) {
+-			memmove(++fidx, path[i].p_idx - m,
++			memmove(++fidx, path[i].p_idx,
+ 				sizeof(struct ext4_extent_idx) * m);
+ 			le16_add_cpu(&neh->eh_entries, m);
+ 		}
+-- 
+1.7.5.1
+
