@@ -1,49 +1,142 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: [PATCH] xfsprogs: Fix for xfstest 252 hang on ext4
-Date: Mon, 23 May 2011 13:34:58 -0700
-Message-ID: <4DDAC4F2.9090909@linux.vnet.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: xfs-oss <xfs@oss.sgi.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 2/3] jbd2: Provide function to check whether transaction will issue data flush
+Date: Mon, 23 May 2011 23:38:45 +0200
+Message-ID: <1306186726-23430-2-git-send-email-jack@suse.cz>
+References: <1306186726-23430-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Edward Goggin <egoggin@vmware.com>,
+	Jan Kara <jack@suse.cz>
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e37.co.us.ibm.com ([32.97.110.158]:37257 "EHLO
-	e37.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753052Ab1EWUfQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 May 2011 16:35:16 -0400
-Received: from d03relay01.boulder.ibm.com (d03relay01.boulder.ibm.com [9.17.195.226])
-	by e37.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p4NKWHt7021579
-	for <linux-ext4@vger.kernel.org>; Mon, 23 May 2011 14:32:18 -0600
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay01.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p4NKZ907179226
-	for <linux-ext4@vger.kernel.org>; Mon, 23 May 2011 14:35:09 -0600
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p4NKZ9SS001988
-	for <linux-ext4@vger.kernel.org>; Mon, 23 May 2011 14:35:09 -0600
+Received: from cantor2.suse.de ([195.135.220.15]:52035 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757646Ab1EWViw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 May 2011 17:38:52 -0400
+In-Reply-To: <1306186726-23430-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Xfstests 252 hangs on ext4 due to a loop in xfsprogs that does not exit.  
+Provide a function which returns whether a transaction with given tid
+will send a flush to the filesystem device. The function will be used
+by ext4 to detect whether fsync needs to send a separate flush or not.
 
-Signed-off-by: Allison Henderson <achender@us.ibm.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
-:100644 100644 fa990cc... 81fc92c... M	io/fiemap.c
- io/fiemap.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ fs/jbd2/commit.c     |   10 +++++++++-
+ fs/jbd2/journal.c    |   41 +++++++++++++++++++++++++++++++++++++++++
+ include/linux/jbd2.h |    4 +++-
+ 3 files changed, 53 insertions(+), 2 deletions(-)
 
-diff --git a/io/fiemap.c b/io/fiemap.c
-index fa990cc..81fc92c 100644
---- a/io/fiemap.c
-+++ b/io/fiemap.c
-@@ -246,7 +246,7 @@ fiemap_f(
- 		       flg_w, _("FLAGS"));
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 8bd8790..58fe1e2 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -677,6 +677,10 @@ start_journal_io:
+ 		err = 0;
  	}
  
--	while (!last && ((cur_extent + 1) != max_extents)) {
-+	while (!last && (cur_extent <= max_extents)) {
- 		if (max_extents)
- 			num_extents = min(num_extents,
- 					  max_extents - (cur_extent + 1));
++	write_lock(&journal->j_state_lock);
++	J_ASSERT(commit_transaction->t_state == T_COMMIT);
++	commit_transaction->t_state = T_COMMIT_DFLUSH;
++	write_unlock(&journal->j_state_lock);
+ 	/* 
+ 	 * If the journal is not located on the file system device,
+ 	 * then we must flush the file system device before we issue
+@@ -799,6 +803,10 @@ wait_for_iobuf:
+ 		jbd2_journal_abort(journal, err);
+ 
+ 	jbd_debug(3, "JBD: commit phase 5\n");
++	write_lock(&journal->j_state_lock);
++	J_ASSERT(commit_transaction->t_state == T_COMMIT_DFLUSH);
++	commit_transaction->t_state = T_COMMIT_JFLUSH;
++	write_unlock(&journal->j_state_lock);
+ 
+ 	if (!JBD2_HAS_INCOMPAT_FEATURE(journal,
+ 				       JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT)) {
+@@ -954,7 +962,7 @@ restart_loop:
+ 
+ 	jbd_debug(3, "JBD: commit phase 7\n");
+ 
+-	J_ASSERT(commit_transaction->t_state == T_COMMIT);
++	J_ASSERT(commit_transaction->t_state == T_COMMIT_JFLUSH);
+ 
+ 	commit_transaction->t_start = jiffies;
+ 	stats.run.rs_logging = jbd2_time_diff(stats.run.rs_logging,
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index e0ec3db..41f4ae5 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -577,6 +577,47 @@ int jbd2_journal_start_commit(journal_t *journal, tid_t *ptid)
+ }
+ 
+ /*
++ * Return 1 if a given transaction has not yet sent barrier request
++ * connected with a transaction commit. If 0 is returned, transaction
++ * may or may not have sent the barrier. Used to avoid sending barrier
++ * twice in common cases.
++ */
++int jbd2_trans_will_send_data_barrier(journal_t *journal, tid_t tid)
++{
++	int ret = 0;
++	transaction_t *commit_trans;
++
++	if (!(journal->j_flags & JBD2_BARRIER))
++		return 0;
++	read_lock(&journal->j_state_lock);
++	/* Transaction already committed? */
++	if (tid_geq(journal->j_commit_sequence, tid))
++		goto out;
++	commit_trans = journal->j_committing_transaction;
++	if (!commit_trans || commit_trans->t_tid != tid) {
++		ret = 1;
++		goto out;
++	}
++	/*
++	 * Transaction is being committed and we already proceeded to
++	 * submitting a flush to fs partition?
++	 */
++	if (journal->j_fs_dev != journal->j_dev) {
++		if (!commit_trans->t_need_data_flush ||
++		    commit_trans->t_state >= T_COMMIT_DFLUSH)
++			goto out;
++	} else {
++		if (commit_trans->t_state >= T_COMMIT_JFLUSH)
++			goto out;
++	}
++	ret = 1;
++out:
++	read_unlock(&journal->j_state_lock);
++	return ret;
++}
++EXPORT_SYMBOL(jbd2_trans_will_send_data_barrier);
++
++/*
+  * Wait for a specified commit to complete.
+  * The caller may not hold the journal lock.
+  */
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 4d57955..4ecb7b1 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -529,9 +529,10 @@ struct transaction_s
+ 	enum {
+ 		T_RUNNING,
+ 		T_LOCKED,
+-		T_RUNDOWN,
+ 		T_FLUSH,
+ 		T_COMMIT,
++		T_COMMIT_DFLUSH,
++		T_COMMIT_JFLUSH,
+ 		T_FINISHED
+ 	}			t_state;
+ 
+@@ -1230,6 +1231,7 @@ int jbd2_journal_start_commit(journal_t *journal, tid_t *tid);
+ int jbd2_journal_force_commit_nested(journal_t *journal);
+ int jbd2_log_wait_commit(journal_t *journal, tid_t tid);
+ int jbd2_log_do_checkpoint(journal_t *journal);
++int jbd2_trans_will_send_data_barrier(journal_t *journal, tid_t tid);
+ 
+ void __jbd2_log_wait_for_space(journal_t *journal);
+ extern void __jbd2_journal_drop_transaction(journal_t *, transaction_t *);
 -- 
 1.7.1
+
