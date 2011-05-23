@@ -1,81 +1,208 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 3/3] ext4: Fix waiting and sending of a barrier in ext4_sync_file()
-Date: Mon, 23 May 2011 23:38:46 +0200
-Message-ID: <1306186726-23430-3-git-send-email-jack@suse.cz>
-References: <1306186726-23430-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Edward Goggin <egoggin@vmware.com>,
-	Jan Kara <jack@suse.cz>
-To: Ted Ts'o <tytso@mit.edu>
+From: Josef Bacik <josef@redhat.com>
+Subject: [PATCH 2/3] Btrfs: implement our own ->llseek V4
+Date: Mon, 23 May 2011 17:43:10 -0400
+Message-ID: <1306186991-1905-2-git-send-email-josef@redhat.com>
+References: <1306186991-1905-1-git-send-email-josef@redhat.com>
+To: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	sunil.mushran@oracle.com, viro@ZenIV.linux.org.uk
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:46743 "EHLO mx1.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:31081 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757325Ab1EWViw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 May 2011 17:38:52 -0400
-In-Reply-To: <1306186726-23430-1-git-send-email-jack@suse.cz>
+	id S1753476Ab1EWVne (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 May 2011 17:43:34 -0400
+In-Reply-To: <1306186991-1905-1-git-send-email-josef@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-jbd2_log_start_commit() returns 1 only when we really start a transaction.  But
-we also need to wait for a transaction when the commit is already running.  Fix
-this problem by waiting for transaction commit unconditionally (which is just a
-quick check if the transaction is already committed).
+In order to handle SEEK_HOLE/SEEK_DATA we need to implement our own llseek.
+Basically for the normal SEEK_*'s we will just defer to the generic helper, and
+for SEEK_HOLE/SEEK_DATA we will use our fiemap helper to figure out the nearest
+hole or data.  Currently this helper doesn't check for delalloc bytes for
+prealloc space, so for now treat prealloc as data until that is fixed.  Thanks,
 
-Also we have to be more careful with sending of a barrier because when
-transaction is being committed in parallel to ext4_sync_file() running, we
-cannot be sure that the barrier the journalling code sends happens after we
-wrote all the data for fsync (note that not every data writeout needs to
-trigger metadata changes thus commit of some metadata changes can be running
-while other data is still written out). So use jbd2_will_send_data_barrier()
-helper to detect the common cases when we can be sure barrier will be issued by
-the commit code and issue the barrier ourselves in the remaining cases.
-
-Reported-by: Edward Goggin <egoggin@vmware.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Josef Bacik <josef@redhat.com>
 ---
- fs/ext4/fsync.c |   23 +++++++----------------
- 1 files changed, 7 insertions(+), 16 deletions(-)
+V3->V4:
+-Fix everything to pass Sunil's seek test that passes on Solaris
+ fs/btrfs/ctree.h |    3 +
+ fs/btrfs/file.c  |  148 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 150 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-index e9473cb..1c44f1a 100644
---- a/fs/ext4/fsync.c
-+++ b/fs/ext4/fsync.c
-@@ -172,6 +172,7 @@ int ext4_sync_file(struct file *file, int datasync)
- 	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
- 	int ret;
- 	tid_t commit_tid;
-+	bool needs_barrier = false;
+diff --git a/fs/btrfs/ctree.h b/fs/btrfs/ctree.h
+index 522a39b..75e3ba6 100644
+--- a/fs/btrfs/ctree.h
++++ b/fs/btrfs/ctree.h
+@@ -2475,6 +2475,9 @@ int btrfs_csum_truncate(struct btrfs_trans_handle *trans,
+ int btrfs_lookup_csums_range(struct btrfs_root *root, u64 start,
+ 			     u64 end, struct list_head *list);
+ /* inode.c */
++struct extent_map *btrfs_get_extent_fiemap(struct inode *inode, struct page *page,
++					   size_t pg_offset, u64 start, u64 len,
++					   int create);
  
- 	J_ASSERT(ext4_journal_current_handle() == NULL);
+ /* RHEL and EL kernels have a patch that renames PG_checked to FsMisc */
+ #if defined(ClearPageFsMisc) && !defined(ClearPageChecked)
+diff --git a/fs/btrfs/file.c b/fs/btrfs/file.c
+index cd5e82e..15e4719 100644
+--- a/fs/btrfs/file.c
++++ b/fs/btrfs/file.c
+@@ -1406,8 +1406,154 @@ out:
+ 	return ret;
+ }
  
-@@ -211,22 +212,12 @@ int ext4_sync_file(struct file *file, int datasync)
- 	}
- 
- 	commit_tid = datasync ? ei->i_datasync_tid : ei->i_sync_tid;
--	if (jbd2_log_start_commit(journal, commit_tid)) {
--		/*
--		 * When the journal is on a different device than the
--		 * fs data disk, we need to issue the barrier in
--		 * writeback mode.  (In ordered mode, the jbd2 layer
--		 * will take care of issuing the barrier.  In
--		 * data=journal, all of the data blocks are written to
--		 * the journal device.)
--		 */
--		if (ext4_should_writeback_data(inode) &&
--		    (journal->j_fs_dev != journal->j_dev) &&
--		    (journal->j_flags & JBD2_BARRIER))
--			blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL,
--					NULL);
--		ret = jbd2_log_wait_commit(journal, commit_tid);
--	} else if (journal->j_flags & JBD2_BARRIER)
-+	if (journal->j_flags & JBD2_BARRIER &&
-+	    !jbd2_trans_will_send_data_barrier(journal, commit_tid))
-+		needs_barrier = true;
-+	jbd2_log_start_commit(journal, commit_tid);
-+	ret = jbd2_log_wait_commit(journal, commit_tid);
-+	if (needs_barrier)
- 		blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);
-  out:
- 	trace_ext4_sync_file_exit(inode, ret);
++static int find_desired_extent(struct inode *inode, loff_t *offset, int origin)
++{
++	struct btrfs_root *root = BTRFS_I(inode)->root;
++	struct extent_map *em;
++	struct extent_state *cached_state = NULL;
++	u64 lockstart = *offset;
++	u64 lockend = i_size_read(inode);
++	u64 start = *offset;
++	u64 orig_start = *offset;
++	u64 len = i_size_read(inode);
++	u64 last_end = 0;
++	int ret = 0;
++
++	lockend = max_t(u64, root->sectorsize, lockend);
++	if (lockend <= lockstart)
++		lockend = lockstart + root->sectorsize;
++
++	len = lockend - lockstart + 1;
++
++	len = max_t(u64, len, root->sectorsize);
++	if (inode->i_size == 0)
++		return -ENXIO;
++
++	lock_extent_bits(&BTRFS_I(inode)->io_tree, lockstart, lockend, 0,
++			 &cached_state, GFP_NOFS);
++
++	/*
++	 * Delalloc is such a pain.  If we have a hole and we have pending
++	 * delalloc for a portion of the hole we will get back a hole that
++	 * exists for the entire range since it hasn't been actually written
++	 * yet.  So to take care of this case we need to look for an extent just
++	 * before the position we want in case there is outstanding delalloc
++	 * going on here.
++	 */
++	if (origin == SEEK_HOLE && start != 0) {
++		if (start <= root->sectorsize)
++			em = btrfs_get_extent_fiemap(inode, NULL, 0, 0,
++						     root->sectorsize, 0);
++		else
++			em = btrfs_get_extent_fiemap(inode, NULL, 0,
++						     start - root->sectorsize,
++						     root->sectorsize, 0);
++		if (IS_ERR(em)) {
++			ret = -ENXIO;
++			goto out;
++		}
++		last_end = em->start + em->len;
++		if (em->block_start == EXTENT_MAP_DELALLOC)
++			last_end = min_t(u64, last_end, inode->i_size);
++		free_extent_map(em);
++	}
++
++	while (1) {
++		em = btrfs_get_extent_fiemap(inode, NULL, 0, start, len, 0);
++		if (IS_ERR(em)) {
++			ret = -ENXIO;
++			break;
++		}
++
++		if (em->block_start == EXTENT_MAP_HOLE) {
++			if (test_bit(EXTENT_FLAG_VACANCY, &em->flags)) {
++				if (last_end <= orig_start) {
++					free_extent_map(em);
++					ret = -ENXIO;
++					break;
++				}
++			}
++
++			if (origin == SEEK_HOLE) {
++				*offset = start;
++				free_extent_map(em);
++				break;
++			}
++		} else {
++			if (origin == SEEK_DATA) {
++				if (em->block_start == EXTENT_MAP_DELALLOC) {
++					if (start >= inode->i_size) {
++						free_extent_map(em);
++						ret = -ENXIO;
++						break;
++					}
++				}
++
++				*offset = start;
++				free_extent_map(em);
++				break;
++			}
++		}
++
++		start = em->start + em->len;
++		last_end = em->start + em->len;
++
++		if (em->block_start == EXTENT_MAP_DELALLOC)
++			last_end = min_t(u64, last_end, inode->i_size);
++
++		if (test_bit(EXTENT_FLAG_VACANCY, &em->flags)) {
++			free_extent_map(em);
++			ret = -ENXIO;
++			break;
++		}
++		free_extent_map(em);
++		cond_resched();
++	}
++	if (!ret)
++		*offset = min(*offset, inode->i_size);
++out:
++	unlock_extent_cached(&BTRFS_I(inode)->io_tree, lockstart, lockend,
++			     &cached_state, GFP_NOFS);
++	return ret;
++}
++
++static loff_t btrfs_file_llseek(struct file *file, loff_t offset, int origin)
++{
++	struct inode *inode = file->f_mapping->host;
++	int ret;
++
++	mutex_lock(&inode->i_mutex);
++	switch (origin) {
++	case SEEK_END:
++	case SEEK_CUR:
++		offset = generic_file_llseek_unlocked(file, offset, origin);
++		goto out;
++	case SEEK_DATA:
++	case SEEK_HOLE:
++		ret = find_desired_extent(inode, &offset, origin);
++		if (ret) {
++			mutex_unlock(&inode->i_mutex);
++			return ret;
++		}
++	}
++
++	if (offset < 0 && !(file->f_mode & FMODE_UNSIGNED_OFFSET))
++		return -EINVAL;
++	if (offset > inode->i_sb->s_maxbytes)
++		return -EINVAL;
++
++	/* Special lock needed here? */
++	if (offset != file->f_pos) {
++		file->f_pos = offset;
++		file->f_version = 0;
++	}
++out:
++	mutex_unlock(&inode->i_mutex);
++	return offset;
++}
++
+ const struct file_operations btrfs_file_operations = {
+-	.llseek		= generic_file_llseek,
++	.llseek		= btrfs_file_llseek,
+ 	.read		= do_sync_read,
+ 	.write		= do_sync_write,
+ 	.aio_read       = generic_file_aio_read,
 -- 
-1.7.1
+1.7.2.3
 
