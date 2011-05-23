@@ -1,36 +1,46 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/2] ext3: Add fixed tracepoints
-Date: Mon, 23 May 2011 17:41:24 +0200
-Message-ID: <20110523154124.GC4716@quack.suse.cz>
-References: <1306162977-23061-1-git-send-email-lczerner@redhat.com>
- <1306162977-23061-2-git-send-email-lczerner@redhat.com>
+From: Minchan Kim <minchan.kim@gmail.com>
+Subject: Re: [PATCH 1/2] mm: vmscan: Correct use of pgdat_balanced in sleeping_prematurely
+Date: Tue, 24 May 2011 00:46:44 +0900
+Message-ID: <BANLkTi=T6R58_Z3UQTB6nUtRb9240dm0Sw@mail.gmail.com>
+References: <1306144435-2516-1-git-send-email-mgorman@suse.de>
+	<1306144435-2516-2-git-send-email-mgorman@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:35192 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754611Ab1EWPlc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 May 2011 11:41:32 -0400
-Content-Disposition: inline
-In-Reply-To: <1306162977-23061-2-git-send-email-lczerner@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	James Bottomley <James.Bottomley@hansenpartnership.com>,
+	Colin King <colin.king@canonical.com>, Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
+	Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>, Christoph Lameter <cl@linux.com>,
+	Pekka Enberg <penberg@kernel.org>, Rik van Riel <riel@redhat.com>,
+	Johannes Weiner <hannes@cmpxchg.org>, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-mm <linux-mm@kvack.org>, linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>, stable <stable@kernel.org>
+To: Mel Gorman <mgorman@suse.de>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1306144435-2516-2-git-send-email-mgorman@suse.de>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-> @@ -1577,6 +1589,7 @@ static int ext3_ordered_writepage(struct page *page,
->  	if (ext3_journal_current_handle())
->  		goto out_fail;
->  
-> +	trace_ext3_ordered_writepage(inode, page);
->  	if (!page_has_buffers(page)) {
->  		create_empty_buffers(page, inode->i_sb->s_blocksize,
->  				(1 << BH_Dirty)|(1 << BH_Uptodate));
-  Any reason why writepage() takes inode while all other page operations
-take only the page pointer? I see ext4 does this as well but still we don't
-have to be *that* compatible :). Otherwise the patch looks OK.
+On Mon, May 23, 2011 at 6:53 PM, Mel Gorman <mgorman@suse.de> wrote:
+> From: Johannes Weiner <hannes@cmpxchg.org>
+>
+> Johannes Weiner poined out that the logic in commit [1741c877: mm:
+> kswapd: keep kswapd awake for high-order allocations until a percentage
+> of the node is balanced] is backwards. Instead of allowing kswapd to go
+> to sleep when balancing for high order allocations, it keeps it kswapd
+> running uselessly.
+>
+> Signed-off-by: Mel Gorman <mgorman@suse.de>
+> Reviewed-by: Rik van Riel <riel@redhat.com>
+Reviewed-by: Minchan Kim <minchan.kim@gmail.com>
 
-								Honza
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Kind regards,
+Minchan Kim
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
