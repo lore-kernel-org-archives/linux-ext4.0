@@ -1,62 +1,40 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 35562] New: ext4 regression in 2.6.39
-Date: Mon, 23 May 2011 14:05:08 GMT
-Message-ID: <bug-35562-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 0/3] Make block_page_mkwrite() handle frozen fs (V2)
+Date: Mon, 23 May 2011 10:47:50 -0400
+Message-ID: <20110523144750.GJ10009@thunk.org>
+References: <1305731882-8334-1-git-send-email-jack@suse.cz>
+ <20110518180022.GM18929@tux1.beaverton.ibm.com>
+ <20110519105708.GD8417@quack.suse.cz>
+ <20110520175953.GE29282@thunk.org>
+ <20110523132158.GB4716@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "Darrick J. Wong" <djwong@us.ibm.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Al Viro <viro@ZenIV.linux.org.uk>,
+	Christoph Hellwig <hch@infradead.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:35237 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754433Ab1EWOFJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 May 2011 10:05:09 -0400
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p4NE58jb029011
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 23 May 2011 14:05:08 GMT
+Received: from li9-11.members.linode.com ([67.18.176.11]:48439 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755407Ab1EWOsC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 May 2011 10:48:02 -0400
+Content-Disposition: inline
+In-Reply-To: <20110523132158.GB4716@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=35562
+On Mon, May 23, 2011 at 03:21:58PM +0200, Jan Kara wrote:
+> > Does your 3/3 ext4 patch have dependencies on your 1/3 and 2/3
+> > VFS-layer patches?
+>   Yes, it does depend on the new helper introduced in 1/3. Should I push
+> 3/3 via Al as well or just wait with it until Al merges the first two
+> patches and then push it to you?
 
-           Summary: ext4 regression in 2.6.39
-           Product: File System
-           Version: 2.5
-    Kernel Version: 2.6.39
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: blocking
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: arthur@psw.ro
-                CC: hussam@visp.net.lb
-        Regression: Yes
+Hmm...  I guess it depends on how quickly Al is going to be pushing
+VFS changes to Linus (I assume you're hoping this is going to get
+pushed during this merge window, yes?).  I still have at least a day
+or two worth of final merging and testing to do, and your 3/3 ext4
+patch has a dependency on Darrick's T10 DIF/DIX patch as I recall.
 
-
-
-Hussam Al-Tayeb <hussam@visp.net.lb> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |hussam@visp.net.lb
-
-
-Created an attachment (id=58932)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=58932)
-kernel.log
-
-System is Archlinux x64 which just received kernel 2.6.39 in testing repos.
-
-The attached call traces are recorded in kernel.log while I was downloading
-with ktorrent (max speed 2.5 MB/s).
-
-I have little to no experience in producing a good bugzilla report but if more
-info is needed just ask and I'll do my best.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+      	    	       	  	    	- Ted
