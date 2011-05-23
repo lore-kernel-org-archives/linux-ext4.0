@@ -1,142 +1,89 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/3] jbd2: Provide function to check whether transaction will issue data flush
-Date: Mon, 23 May 2011 23:38:45 +0200
-Message-ID: <1306186726-23430-2-git-send-email-jack@suse.cz>
-References: <1306186726-23430-1-git-send-email-jack@suse.cz>
+Subject: [PATCH 1/3] jbd2: Fix sending of data flush on journal commit
+Date: Mon, 23 May 2011 23:38:44 +0200
+Message-ID: <1306186726-23430-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Edward Goggin <egoggin@vmware.com>,
 	Jan Kara <jack@suse.cz>
 To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:52035 "EHLO mx2.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:46744 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757646Ab1EWViw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1757645Ab1EWViw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 23 May 2011 17:38:52 -0400
-In-Reply-To: <1306186726-23430-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Provide a function which returns whether a transaction with given tid
-will send a flush to the filesystem device. The function will be used
-by ext4 to detect whether fsync needs to send a separate flush or not.
+It can theoretically happen, that in data=ordered mode inode is filed to
+transaction's t_inode_list, then flusher thread writes all the data and
+inode is reclaimed before transaction starts to commit. In such case we
+could errorneously ommit sending a flush to filesystem device when it
+is different from the journal device (because data can still be in disk
+cache only).
+
+Fix the problem by setting a flag in a transaction when some inode is added
+to it and then send disk flush in the commit code when the flag is set.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/commit.c     |   10 +++++++++-
- fs/jbd2/journal.c    |   41 +++++++++++++++++++++++++++++++++++++++++
- include/linux/jbd2.h |    4 +++-
- 3 files changed, 53 insertions(+), 2 deletions(-)
+ fs/jbd2/commit.c      |    3 +--
+ fs/jbd2/transaction.c |    7 +++++++
+ include/linux/jbd2.h  |    4 +++-
+ 3 files changed, 11 insertions(+), 3 deletions(-)
 
 diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 8bd8790..58fe1e2 100644
+index 6e28000..8bd8790 100644
 --- a/fs/jbd2/commit.c
 +++ b/fs/jbd2/commit.c
-@@ -677,6 +677,10 @@ start_journal_io:
- 		err = 0;
- 	}
- 
-+	write_lock(&journal->j_state_lock);
-+	J_ASSERT(commit_transaction->t_state == T_COMMIT);
-+	commit_transaction->t_state = T_COMMIT_DFLUSH;
-+	write_unlock(&journal->j_state_lock);
- 	/* 
- 	 * If the journal is not located on the file system device,
+@@ -219,7 +219,6 @@ static int journal_submit_data_buffers(journal_t *journal,
+ 			ret = err;
+ 		spin_lock(&journal->j_list_lock);
+ 		J_ASSERT(jinode->i_transaction == commit_transaction);
+-		commit_transaction->t_flushed_data_blocks = 1;
+ 		clear_bit(__JI_COMMIT_RUNNING, &jinode->i_flags);
+ 		smp_mb__after_clear_bit();
+ 		wake_up_bit(&jinode->i_flags, __JI_COMMIT_RUNNING);
+@@ -683,7 +682,7 @@ start_journal_io:
  	 * then we must flush the file system device before we issue
-@@ -799,6 +803,10 @@ wait_for_iobuf:
- 		jbd2_journal_abort(journal, err);
+ 	 * the commit record
+ 	 */
+-	if (commit_transaction->t_flushed_data_blocks &&
++	if (commit_transaction->t_need_data_flush &&
+ 	    (journal->j_fs_dev != journal->j_dev) &&
+ 	    (journal->j_flags & JBD2_BARRIER))
+ 		blkdev_issue_flush(journal->j_fs_dev, GFP_KERNEL, NULL);
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 05fa77a..7f70390 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -2147,6 +2147,13 @@ int jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *jinode)
+ 	    jinode->i_next_transaction == transaction)
+ 		goto done;
  
- 	jbd_debug(3, "JBD: commit phase 5\n");
-+	write_lock(&journal->j_state_lock);
-+	J_ASSERT(commit_transaction->t_state == T_COMMIT_DFLUSH);
-+	commit_transaction->t_state = T_COMMIT_JFLUSH;
-+	write_unlock(&journal->j_state_lock);
- 
- 	if (!JBD2_HAS_INCOMPAT_FEATURE(journal,
- 				       JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT)) {
-@@ -954,7 +962,7 @@ restart_loop:
- 
- 	jbd_debug(3, "JBD: commit phase 7\n");
- 
--	J_ASSERT(commit_transaction->t_state == T_COMMIT);
-+	J_ASSERT(commit_transaction->t_state == T_COMMIT_JFLUSH);
- 
- 	commit_transaction->t_start = jiffies;
- 	stats.run.rs_logging = jbd2_time_diff(stats.run.rs_logging,
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index e0ec3db..41f4ae5 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -577,6 +577,47 @@ int jbd2_journal_start_commit(journal_t *journal, tid_t *ptid)
- }
- 
- /*
-+ * Return 1 if a given transaction has not yet sent barrier request
-+ * connected with a transaction commit. If 0 is returned, transaction
-+ * may or may not have sent the barrier. Used to avoid sending barrier
-+ * twice in common cases.
-+ */
-+int jbd2_trans_will_send_data_barrier(journal_t *journal, tid_t tid)
-+{
-+	int ret = 0;
-+	transaction_t *commit_trans;
-+
-+	if (!(journal->j_flags & JBD2_BARRIER))
-+		return 0;
-+	read_lock(&journal->j_state_lock);
-+	/* Transaction already committed? */
-+	if (tid_geq(journal->j_commit_sequence, tid))
-+		goto out;
-+	commit_trans = journal->j_committing_transaction;
-+	if (!commit_trans || commit_trans->t_tid != tid) {
-+		ret = 1;
-+		goto out;
-+	}
 +	/*
-+	 * Transaction is being committed and we already proceeded to
-+	 * submitting a flush to fs partition?
++	 * We only ever set this variable to 1 so the test is safe. Since
++	 * t_need_data_flush is likely to be set, we do the test to save some
++	 * cacheline bouncing
 +	 */
-+	if (journal->j_fs_dev != journal->j_dev) {
-+		if (!commit_trans->t_need_data_flush ||
-+		    commit_trans->t_state >= T_COMMIT_DFLUSH)
-+			goto out;
-+	} else {
-+		if (commit_trans->t_state >= T_COMMIT_JFLUSH)
-+			goto out;
-+	}
-+	ret = 1;
-+out:
-+	read_unlock(&journal->j_state_lock);
-+	return ret;
-+}
-+EXPORT_SYMBOL(jbd2_trans_will_send_data_barrier);
-+
-+/*
-  * Wait for a specified commit to complete.
-  * The caller may not hold the journal lock.
-  */
++	if (!transaction->t_need_data_flush)
++		transaction->t_need_data_flush = 1;
+ 	/* On some different transaction's list - should be
+ 	 * the committing one */
+ 	if (jinode->i_transaction) {
 diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 4d57955..4ecb7b1 100644
+index a32dcae..4d57955 100644
 --- a/include/linux/jbd2.h
 +++ b/include/linux/jbd2.h
-@@ -529,9 +529,10 @@ struct transaction_s
- 	enum {
- 		T_RUNNING,
- 		T_LOCKED,
--		T_RUNDOWN,
- 		T_FLUSH,
- 		T_COMMIT,
-+		T_COMMIT_DFLUSH,
-+		T_COMMIT_JFLUSH,
- 		T_FINISHED
- 	}			t_state;
+@@ -658,7 +658,9 @@ struct transaction_s
+ 	 * waiting for it to finish.
+ 	 */
+ 	unsigned int t_synchronous_commit:1;
+-	unsigned int t_flushed_data_blocks:1;
++
++	/* Disk flush needs to be sent to fs partition [no locking] */
++	int			t_need_data_flush;
  
-@@ -1230,6 +1231,7 @@ int jbd2_journal_start_commit(journal_t *journal, tid_t *tid);
- int jbd2_journal_force_commit_nested(journal_t *journal);
- int jbd2_log_wait_commit(journal_t *journal, tid_t tid);
- int jbd2_log_do_checkpoint(journal_t *journal);
-+int jbd2_trans_will_send_data_barrier(journal_t *journal, tid_t tid);
- 
- void __jbd2_log_wait_for_space(journal_t *journal);
- extern void __jbd2_journal_drop_transaction(journal_t *, transaction_t *);
+ 	/*
+ 	 * For use by the filesystem to store fs-specific data
 -- 
 1.7.1
 
