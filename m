@@ -1,89 +1,81 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/3] jbd2: Fix sending of data flush on journal commit
-Date: Mon, 23 May 2011 23:38:44 +0200
-Message-ID: <1306186726-23430-1-git-send-email-jack@suse.cz>
+Subject: [PATCH 3/3] ext4: Fix waiting and sending of a barrier in ext4_sync_file()
+Date: Mon, 23 May 2011 23:38:46 +0200
+Message-ID: <1306186726-23430-3-git-send-email-jack@suse.cz>
+References: <1306186726-23430-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Edward Goggin <egoggin@vmware.com>,
 	Jan Kara <jack@suse.cz>
 To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:46744 "EHLO mx1.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:46743 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757645Ab1EWViw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1757325Ab1EWViw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 23 May 2011 17:38:52 -0400
+In-Reply-To: <1306186726-23430-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-It can theoretically happen, that in data=ordered mode inode is filed to
-transaction's t_inode_list, then flusher thread writes all the data and
-inode is reclaimed before transaction starts to commit. In such case we
-could errorneously ommit sending a flush to filesystem device when it
-is different from the journal device (because data can still be in disk
-cache only).
+jbd2_log_start_commit() returns 1 only when we really start a transaction.  But
+we also need to wait for a transaction when the commit is already running.  Fix
+this problem by waiting for transaction commit unconditionally (which is just a
+quick check if the transaction is already committed).
 
-Fix the problem by setting a flag in a transaction when some inode is added
-to it and then send disk flush in the commit code when the flag is set.
+Also we have to be more careful with sending of a barrier because when
+transaction is being committed in parallel to ext4_sync_file() running, we
+cannot be sure that the barrier the journalling code sends happens after we
+wrote all the data for fsync (note that not every data writeout needs to
+trigger metadata changes thus commit of some metadata changes can be running
+while other data is still written out). So use jbd2_will_send_data_barrier()
+helper to detect the common cases when we can be sure barrier will be issued by
+the commit code and issue the barrier ourselves in the remaining cases.
 
+Reported-by: Edward Goggin <egoggin@vmware.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/commit.c      |    3 +--
- fs/jbd2/transaction.c |    7 +++++++
- include/linux/jbd2.h  |    4 +++-
- 3 files changed, 11 insertions(+), 3 deletions(-)
+ fs/ext4/fsync.c |   23 +++++++----------------
+ 1 files changed, 7 insertions(+), 16 deletions(-)
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 6e28000..8bd8790 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -219,7 +219,6 @@ static int journal_submit_data_buffers(journal_t *journal,
- 			ret = err;
- 		spin_lock(&journal->j_list_lock);
- 		J_ASSERT(jinode->i_transaction == commit_transaction);
--		commit_transaction->t_flushed_data_blocks = 1;
- 		clear_bit(__JI_COMMIT_RUNNING, &jinode->i_flags);
- 		smp_mb__after_clear_bit();
- 		wake_up_bit(&jinode->i_flags, __JI_COMMIT_RUNNING);
-@@ -683,7 +682,7 @@ start_journal_io:
- 	 * then we must flush the file system device before we issue
- 	 * the commit record
- 	 */
--	if (commit_transaction->t_flushed_data_blocks &&
-+	if (commit_transaction->t_need_data_flush &&
- 	    (journal->j_fs_dev != journal->j_dev) &&
- 	    (journal->j_flags & JBD2_BARRIER))
- 		blkdev_issue_flush(journal->j_fs_dev, GFP_KERNEL, NULL);
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 05fa77a..7f70390 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -2147,6 +2147,13 @@ int jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *jinode)
- 	    jinode->i_next_transaction == transaction)
- 		goto done;
+diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+index e9473cb..1c44f1a 100644
+--- a/fs/ext4/fsync.c
++++ b/fs/ext4/fsync.c
+@@ -172,6 +172,7 @@ int ext4_sync_file(struct file *file, int datasync)
+ 	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
+ 	int ret;
+ 	tid_t commit_tid;
++	bool needs_barrier = false;
  
-+	/*
-+	 * We only ever set this variable to 1 so the test is safe. Since
-+	 * t_need_data_flush is likely to be set, we do the test to save some
-+	 * cacheline bouncing
-+	 */
-+	if (!transaction->t_need_data_flush)
-+		transaction->t_need_data_flush = 1;
- 	/* On some different transaction's list - should be
- 	 * the committing one */
- 	if (jinode->i_transaction) {
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index a32dcae..4d57955 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -658,7 +658,9 @@ struct transaction_s
- 	 * waiting for it to finish.
- 	 */
- 	unsigned int t_synchronous_commit:1;
--	unsigned int t_flushed_data_blocks:1;
-+
-+	/* Disk flush needs to be sent to fs partition [no locking] */
-+	int			t_need_data_flush;
+ 	J_ASSERT(ext4_journal_current_handle() == NULL);
  
- 	/*
- 	 * For use by the filesystem to store fs-specific data
+@@ -211,22 +212,12 @@ int ext4_sync_file(struct file *file, int datasync)
+ 	}
+ 
+ 	commit_tid = datasync ? ei->i_datasync_tid : ei->i_sync_tid;
+-	if (jbd2_log_start_commit(journal, commit_tid)) {
+-		/*
+-		 * When the journal is on a different device than the
+-		 * fs data disk, we need to issue the barrier in
+-		 * writeback mode.  (In ordered mode, the jbd2 layer
+-		 * will take care of issuing the barrier.  In
+-		 * data=journal, all of the data blocks are written to
+-		 * the journal device.)
+-		 */
+-		if (ext4_should_writeback_data(inode) &&
+-		    (journal->j_fs_dev != journal->j_dev) &&
+-		    (journal->j_flags & JBD2_BARRIER))
+-			blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL,
+-					NULL);
+-		ret = jbd2_log_wait_commit(journal, commit_tid);
+-	} else if (journal->j_flags & JBD2_BARRIER)
++	if (journal->j_flags & JBD2_BARRIER &&
++	    !jbd2_trans_will_send_data_barrier(journal, commit_tid))
++		needs_barrier = true;
++	jbd2_log_start_commit(journal, commit_tid);
++	ret = jbd2_log_wait_commit(journal, commit_tid);
++	if (needs_barrier)
+ 		blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);
+  out:
+ 	trace_ext4_sync_file_exit(inode, ret);
 -- 
 1.7.1
 
