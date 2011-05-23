@@ -1,43 +1,62 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 0/3] Make block_page_mkwrite() handle frozen fs (V2)
-Date: Mon, 23 May 2011 15:21:58 +0200
-Message-ID: <20110523132158.GB4716@quack.suse.cz>
-References: <1305731882-8334-1-git-send-email-jack@suse.cz>
- <20110518180022.GM18929@tux1.beaverton.ibm.com>
- <20110519105708.GD8417@quack.suse.cz>
- <20110520175953.GE29282@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 35562] New: ext4 regression in 2.6.39
+Date: Mon, 23 May 2011 14:05:08 GMT
+Message-ID: <bug-35562-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, "Darrick J. Wong" <djwong@us.ibm.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Al Viro <viro@ZenIV.linux.org.uk>,
-	Christoph Hellwig <hch@infradead.org>
-To: Ted Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:34262 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752713Ab1EWNWC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 May 2011 09:22:02 -0400
-Content-Disposition: inline
-In-Reply-To: <20110520175953.GE29282@thunk.org>
+Received: from demeter1.kernel.org ([140.211.167.39]:35237 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754433Ab1EWOFJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 May 2011 10:05:09 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p4NE58jb029011
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 23 May 2011 14:05:08 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 20-05-11 13:59:53, Ted Tso wrote:
-> On Thu, May 19, 2011 at 12:57:08PM +0200, Jan Kara wrote:
-> >   Since Ted has merged your stable pages patches touching ext4, I'll rebase
-> > my ext4 patch on top of that. Regarding block_page_mkwrite() I will add
-> > that one-liner to the series (because the ext4_page_mkwrite() now depends
-> > on that).
-  Hi Ted,
+https://bugzilla.kernel.org/show_bug.cgi?id=35562
 
-> Does your 3/3 ext4 patch have dependencies on your 1/3 and 2/3
-> VFS-layer patches?
-  Yes, it does depend on the new helper introduced in 1/3. Should I push
-3/3 via Al as well or just wait with it until Al merges the first two
-patches and then push it to you?
+           Summary: ext4 regression in 2.6.39
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.39
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: blocking
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: arthur@psw.ro
+                CC: hussam@visp.net.lb
+        Regression: Yes
 
-								Honza
+
+
+Hussam Al-Tayeb <hussam@visp.net.lb> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |hussam@visp.net.lb
+
+
+Created an attachment (id=58932)
+ --> (https://bugzilla.kernel.org/attachment.cgi?id=58932)
+kernel.log
+
+System is Archlinux x64 which just received kernel 2.6.39 in testing repos.
+
+The attached call traces are recorded in kernel.log while I was downloading
+with ktorrent (max speed 2.5 MB/s).
+
+I have little to no experience in producing a good bugzilla report but if more
+info is needed just ask and I'll do my best.
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
