@@ -1,39 +1,49 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 1/2] ext3: Add fixed tracepoints
-Date: Mon, 23 May 2011 18:11:54 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1105231804050.3903@dhcp-27-109.brq.redhat.com>
-References: <1306162977-23061-1-git-send-email-lczerner@redhat.com> <1306162977-23061-2-git-send-email-lczerner@redhat.com> <20110523154124.GC4716@quack.suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 35562] ext4 regression in 2.6.39
+Date: Mon, 23 May 2011 16:15:28 GMT
+Message-ID: <201105231615.p4NGFSUk024002@demeter2.kernel.org>
+References: <bug-35562-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34417 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756117Ab1EWQMA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 May 2011 12:12:00 -0400
-In-Reply-To: <20110523154124.GC4716@quack.suse.cz>
+Received: from demeter2.kernel.org ([140.211.167.42]:60384 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755854Ab1EWQP3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 May 2011 12:15:29 -0400
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p4NGFSpF024033
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 23 May 2011 16:15:28 GMT
+In-Reply-To: <bug-35562-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 23 May 2011, Jan Kara wrote:
+https://bugzilla.kernel.org/show_bug.cgi?id=35562
 
-> > @@ -1577,6 +1589,7 @@ static int ext3_ordered_writepage(struct page *page,
-> >  	if (ext3_journal_current_handle())
-> >  		goto out_fail;
-> >  
-> > +	trace_ext3_ordered_writepage(inode, page);
-> >  	if (!page_has_buffers(page)) {
-> >  		create_empty_buffers(page, inode->i_sb->s_blocksize,
-> >  				(1 << BH_Dirty)|(1 << BH_Uptodate));
->   Any reason why writepage() takes inode while all other page operations
-> take only the page pointer? I see ext4 does this as well but still we don't
-> have to be *that* compatible :). Otherwise the patch looks OK.
-> 
-> 								Honza
 
-Oh, I did not notice that. Thanks, I'll create just one EVENT_CLASS for
-page operations.
 
-Thanks!
--Lukas
+
+
+--- Comment #2 from Arthur Titeica <arthur@psw.ro>  2011-05-23 16:15:27 ---
+1)   Can you reproduce this problem reliably?
+
+Re: No, I've tried to replicate the conditions but nothing unusual happened.
+
+2)   What were you doing at the time of that you saw these messages?
+
+Re: I noticed that all apps got stuck. They looked normal but didn't react to
+any commands. I tried to su in a terminal emulator I had open but that didn't
+work either (no error but no login also).
+
+3)  Did the system recover eventually, or did it completely hang?
+
+Re: I managed to reboot using magic sysrq (REISUB)
+
+Some other thing I forgot to mention: the whole system (except /boot) is LVM2
+encrypted (crypto_luks).
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
