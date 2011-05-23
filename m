@@ -1,166 +1,98 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH v2] ext4:Teach ext4_ext_split to caculate extents efficiently.
-Date: Mon, 23 May 2011 17:30:57 +0800
-Message-ID: <1306143057-16962-1-git-send-email-xiaoqiangnk@gmail.com>
-Cc: linux-ext4@vger.kernel.org, Yongqiang Yang <xiaoqiangnk@gmail.com>
-To: tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pw0-f46.google.com ([209.85.160.46]:63555 "EHLO
-	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750918Ab1EWJaA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 May 2011 05:30:00 -0400
-Received: by pwi15 with SMTP id 15so2533926pwi.19
-        for <linux-ext4@vger.kernel.org>; Mon, 23 May 2011 02:30:00 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 2/2] mm: vmscan: Correctly check if reclaimer should schedule during shrink_slab
+Date: Mon, 23 May 2011 10:53:55 +0100
+Message-ID: <1306144435-2516-3-git-send-email-mgorman@suse.de>
+References: <1306144435-2516-1-git-send-email-mgorman@suse.de>
+Cc: James Bottomley <James.Bottomley@HansenPartnership.com>,
+	Colin King <colin.king@canonical.com>,
+	Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
+	Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
+	Christoph Lameter <cl@linux.com>, Pekka Enberg <penberg@kernel.org>,
+	Rik van Riel <riel@redhat.com>, Johannes Weiner <hannes@cmpxchg.org>,
+	Minchan Kim <minchan.kim@gmail.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-mm <linux-mm@kvack.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>, stable <stable@kernel.org>,
+	Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1306144435-2516-1-git-send-email-mgorman@suse.de>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Make ext4_ext_split() get extents to be moved by calculating in a statement
-instead of counting in a loop.
+It has been reported on some laptops that kswapd is consuming large
+amounts of CPU and not being scheduled when SLUB is enabled during
+large amounts of file copying. It is expected that this is due to
+kswapd missing every cond_resched() point because;
 
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+shrink_page_list() calls cond_resched() if inactive pages were isolated
+        which in turn may not happen if all_unreclaimable is set in
+        shrink_zones(). If for whatver reason, all_unreclaimable is
+        set on all zones, we can miss calling cond_resched().
+
+balance_pgdat() only calls cond_resched if the zones are not
+        balanced. For a high-order allocation that is balanced, it
+        checks order-0 again. During that window, order-0 might have
+        become unbalanced so it loops again for order-0 and returns
+        that it was reclaiming for order-0 to kswapd(). It can then
+        find that a caller has rewoken kswapd for a high-order and
+        re-enters balance_pgdat() without ever calling cond_resched().
+
+shrink_slab only calls cond_resched() if we are reclaiming slab
+	pages. If there are a large number of direct reclaimers, the
+	shrinker_rwsem can be contended and prevent kswapd calling
+	cond_resched().
+
+This patch modifies the shrink_slab() case. If the semaphore is
+contended, the caller will still check cond_resched(). After each
+successful call into a shrinker, the check for cond_resched() remains
+in case one shrinker is particularly slow.
+
+This patch replaces
+mm-vmscan-if-kswapd-has-been-running-too-long-allow-it-to-sleep.patch
+in -mm.
+
+[mgorman@suse.de: Preserve call to cond_resched after each call into shrinker]
+From: Minchan Kim <minchan.kim@gmail.com>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
 ---
-v1->v2:
- Make changelog be much more specific.
+ mm/vmscan.c |    9 +++++++--
+ 1 files changed, 7 insertions(+), 2 deletions(-)
 
- fs/ext4/extents.c |   84 +++++++++++++++++++++++++++++------------------------
- 1 files changed, 46 insertions(+), 38 deletions(-)
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index e363f21..baf846f 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -474,9 +474,43 @@ static void ext4_ext_show_leaf(struct inode *inode, struct ext4_ext_path *path)
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 1aa262b..cc1470b 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -230,8 +230,11 @@ unsigned long shrink_slab(unsigned long scanned, gfp_t gfp_mask,
+ 	if (scanned == 0)
+ 		scanned = SWAP_CLUSTER_MAX;
+ 
+-	if (!down_read_trylock(&shrinker_rwsem))
+-		return 1;	/* Assume we'll be able to shrink next time */
++	if (!down_read_trylock(&shrinker_rwsem)) {
++		/* Assume we'll be able to shrink next time */
++		ret = 1;
++		goto out;
++	}
+ 
+ 	list_for_each_entry(shrinker, &shrinker_list, list) {
+ 		unsigned long long delta;
+@@ -282,6 +285,8 @@ unsigned long shrink_slab(unsigned long scanned, gfp_t gfp_mask,
+ 		shrinker->nr += total_scan;
  	}
- 	ext_debug("\n");
+ 	up_read(&shrinker_rwsem);
++out:
++	cond_resched();
+ 	return ret;
  }
-+
-+static void ext4_ext_show_move(struct inode *inode, struct ext4_ext_path *path,
-+			ext4_fsblk_t newblock, int level)
-+{
-+	int depth = ext_depth(inode);
-+	struct ext4_extent *ex;
-+
-+	if (depth != level) {
-+		struct ext4_extent_idx *idx;
-+		idx = path[level].p_idx;
-+		while (idx <= EXT_MAX_INDEX(path[level].p_hdr)) {
-+			ext_debug("%d: move %d:%llu in new index %llu\n", level,
-+					le32_to_cpu(idx->ei_block),
-+					ext4_idx_pblock(idx),
-+					newblock);
-+			idx++;
-+		}
-+
-+		return;
-+	}
-+
-+	ex = path[depth].p_ext;
-+	while (ex <= EXT_MAX_EXTENT(path[depth].p_hdr)) {
-+		ext_debug("move %d:%llu:[%d]%d in new leaf %llu\n",
-+				le32_to_cpu(ex->ee_block),
-+				ext4_ext_pblock(ex),
-+				ext4_ext_is_uninitialized(ex),
-+				ext4_ext_get_actual_len(ex),
-+				newblock);
-+		ex++;
-+	}
-+}
-+
- #else
- #define ext4_ext_show_path(inode, path)
- #define ext4_ext_show_leaf(inode, path)
-+#define ext4_ext_show_move(inode, path, newblock, level)
- #endif
  
- void ext4_ext_drop_refs(struct ext4_ext_path *path)
-@@ -799,7 +833,6 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
- 	int depth = ext_depth(inode);
- 	struct ext4_extent_header *neh;
- 	struct ext4_extent_idx *fidx;
--	struct ext4_extent *ex;
- 	int i = at, k, m, a;
- 	ext4_fsblk_t newblock, oldblock;
- 	__le32 border;
-@@ -876,7 +909,6 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
- 	neh->eh_max = cpu_to_le16(ext4_ext_space_block(inode, 0));
- 	neh->eh_magic = EXT4_EXT_MAGIC;
- 	neh->eh_depth = 0;
--	ex = EXT_FIRST_EXTENT(neh);
- 
- 	/* move remainder of path[depth] to the new leaf */
- 	if (unlikely(path[depth].p_hdr->eh_entries !=
-@@ -888,25 +920,12 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
- 		goto cleanup;
- 	}
- 	/* start copy from next extent */
--	/* TODO: we could do it by single memmove */
--	m = 0;
--	path[depth].p_ext++;
--	while (path[depth].p_ext <=
--			EXT_MAX_EXTENT(path[depth].p_hdr)) {
--		ext_debug("move %d:%llu:[%d]%d in new leaf %llu\n",
--				le32_to_cpu(path[depth].p_ext->ee_block),
--				ext4_ext_pblock(path[depth].p_ext),
--				ext4_ext_is_uninitialized(path[depth].p_ext),
--				ext4_ext_get_actual_len(path[depth].p_ext),
--				newblock);
--		/*memmove(ex++, path[depth].p_ext++,
--				sizeof(struct ext4_extent));
--		neh->eh_entries++;*/
--		path[depth].p_ext++;
--		m++;
--	}
-+	m = EXT_MAX_EXTENT(path[depth].p_hdr) - path[depth].p_ext++;
-+	ext4_ext_show_move(inode, path, newblock, depth);
- 	if (m) {
--		memmove(ex, path[depth].p_ext-m, sizeof(struct ext4_extent)*m);
-+		struct ext4_extent *ex;
-+		ex = EXT_FIRST_EXTENT(neh);
-+		memmove(ex, path[depth].p_ext, sizeof(struct ext4_extent) * m);
- 		le16_add_cpu(&neh->eh_entries, m);
- 	}
- 
-@@ -968,12 +987,8 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
- 
- 		ext_debug("int.index at %d (block %llu): %u -> %llu\n",
- 				i, newblock, le32_to_cpu(border), oldblock);
--		/* copy indexes */
--		m = 0;
--		path[i].p_idx++;
- 
--		ext_debug("cur 0x%p, last 0x%p\n", path[i].p_idx,
--				EXT_MAX_INDEX(path[i].p_hdr));
-+		/* move remainder of path[i] to the new index block */
- 		if (unlikely(EXT_MAX_INDEX(path[i].p_hdr) !=
- 					EXT_LAST_INDEX(path[i].p_hdr))) {
- 			EXT4_ERROR_INODE(inode,
-@@ -982,20 +997,13 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
- 			err = -EIO;
- 			goto cleanup;
- 		}
--		while (path[i].p_idx <= EXT_MAX_INDEX(path[i].p_hdr)) {
--			ext_debug("%d: move %d:%llu in new index %llu\n", i,
--					le32_to_cpu(path[i].p_idx->ei_block),
--					ext4_idx_pblock(path[i].p_idx),
--					newblock);
--			/*memmove(++fidx, path[i].p_idx++,
--					sizeof(struct ext4_extent_idx));
--			neh->eh_entries++;
--			BUG_ON(neh->eh_entries > neh->eh_max);*/
--			path[i].p_idx++;
--			m++;
--		}
-+		/* start copy indexes */
-+		m = EXT_MAX_INDEX(path[i].p_hdr) - path[i].p_idx++;
-+		ext_debug("cur 0x%p, last 0x%p\n", path[i].p_idx,
-+				EXT_MAX_INDEX(path[i].p_hdr));
-+		ext4_ext_show_move(inode, path, newblock, i);
- 		if (m) {
--			memmove(++fidx, path[i].p_idx - m,
-+			memmove(++fidx, path[i].p_idx,
- 				sizeof(struct ext4_extent_idx) * m);
- 			le16_add_cpu(&neh->eh_entries, m);
- 		}
 -- 
-1.7.5.1
+1.7.3.4
 
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
