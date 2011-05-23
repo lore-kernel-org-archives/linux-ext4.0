@@ -1,49 +1,41 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 35562] ext4 regression in 2.6.39
-Date: Mon, 23 May 2011 16:15:28 GMT
-Message-ID: <201105231615.p4NGFSUk024002@demeter2.kernel.org>
-References: <bug-35562-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+From: Eryu Guan <guaneryu@gmail.com>
+Subject: [PATCH] jbd: Fix comment to match the code in journal_start()
+Date: Tue, 24 May 2011 00:17:34 +0800
+Message-ID: <1306167454-28638-1-git-send-email-guaneryu@gmail.com>
+Cc: Eryu Guan <guaneryu@gmail.com>, Jan Kara <jack@suse.cz>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:60384 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755854Ab1EWQP3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 May 2011 12:15:29 -0400
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p4NGFSpF024033
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 23 May 2011 16:15:28 GMT
-In-Reply-To: <bug-35562-13602@https.bugzilla.kernel.org/>
+Received: from mail-pw0-f46.google.com ([209.85.160.46]:62615 "EHLO
+	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752223Ab1EWQPu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 May 2011 12:15:50 -0400
+Received: by pwi15 with SMTP id 15so2664039pwi.19
+        for <linux-ext4@vger.kernel.org>; Mon, 23 May 2011 09:15:50 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=35562
+journal_start returns an ERR_PTR() value rather than NULL on failure.
 
+Cc: Jan Kara <jack@suse.cz>
+Signed-off-by: Eryu Guan <guaneryu@gmail.com>
+---
+ fs/jbd/transaction.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-
-
-
---- Comment #2 from Arthur Titeica <arthur@psw.ro>  2011-05-23 16:15:27 ---
-1)   Can you reproduce this problem reliably?
-
-Re: No, I've tried to replicate the conditions but nothing unusual happened.
-
-2)   What were you doing at the time of that you saw these messages?
-
-Re: I noticed that all apps got stuck. They looked normal but didn't react to
-any commands. I tried to su in a terminal emulator I had open but that didn't
-work either (no error but no login also).
-
-3)  Did the system recover eventually, or did it completely hang?
-
-Re: I managed to reboot using magic sysrq (REISUB)
-
-Some other thing I forgot to mention: the whole system (except /boot) is LVM2
-encrypted (crypto_luks).
-
+diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
+index 60d2319..f7ee81a 100644
+--- a/fs/jbd/transaction.c
++++ b/fs/jbd/transaction.c
+@@ -266,7 +266,8 @@ static handle_t *new_handle(int nblocks)
+  * This function is visible to journal users (like ext3fs), so is not
+  * called with the journal already locked.
+  *
+- * Return a pointer to a newly allocated handle, or NULL on failure
++ * Return a pointer to a newly allocated handle, or an ERR_PTR() value
++ * on failure.
+  */
+ handle_t *journal_start(journal_t *journal, int nblocks)
+ {
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.7.3.4
+
