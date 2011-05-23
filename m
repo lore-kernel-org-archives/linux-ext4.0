@@ -1,78 +1,124 @@
-From: James Bottomley <James.Bottomley@HansenPartnership.com>
-Subject: Re: [PATCH 2/2] mm: vmscan: Correctly check if reclaimer should
- schedule during shrink_slab
-Date: Tue, 24 May 2011 00:07:36 +0400
-Message-ID: <1306181256.2442.4.camel@mulgrave.site>
-References: <1306144435-2516-1-git-send-email-mgorman@suse.de>
-	 <1306144435-2516-3-git-send-email-mgorman@suse.de>
-	 <20110523130303.6b7dad1c.akpm@linux-foundation.org>
+From: Jiaying Zhang <jiayingz@google.com>
+Subject: Re: [PATCH -v2] ext4: use truncate_setsize() unconditionally
+Date: Mon, 23 May 2011 13:22:38 -0700
+Message-ID: <BANLkTi=hQa_y27yF5A431+eBmSjbK4nJGQ@mail.gmail.com>
+References: <BANLkTi=0NSws0GV4hP5KPPqvp4bxOSEbaQ@mail.gmail.com>
+	<1306178341-17632-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Mel Gorman <mgorman@suse.de>, Colin King <colin.king@canonical.com>,
- Raghavendra D Prabhu <raghu.prabhu13@gmail.com>, Jan Kara <jack@suse.cz>,
- Chris Mason <chris.mason@oracle.com>, Christoph Lameter <cl@linux.com>,
- Pekka Enberg <penberg@kernel.org>, Rik van Riel <riel@redhat.com>,
- Johannes Weiner <hannes@cmpxchg.org>, Minchan Kim <minchan.kim@gmail.com>,
- linux-fsdevel <linux-fsdevel@vger.kernel.org>, linux-mm
- <linux-mm@kvack.org>, linux-kernel <linux-kernel@vger.kernel.org>,
- linux-ext4 <linux-ext4@vger.kernel.org>, stable <stable@kernel.org>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20110523130303.6b7dad1c.akpm@linux-foundation.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp-out.google.com ([74.125.121.67]:60396 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934169Ab1EWUWm convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 May 2011 16:22:42 -0400
+Received: from kpbe17.cbf.corp.google.com (kpbe17.cbf.corp.google.com [172.25.105.81])
+	by smtp-out.google.com with ESMTP id p4NKMeG0027077
+	for <linux-ext4@vger.kernel.org>; Mon, 23 May 2011 13:22:41 -0700
+Received: from gyf1 (gyf1.prod.google.com [10.243.50.65])
+	by kpbe17.cbf.corp.google.com with ESMTP id p4NKLuRv011466
+	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Mon, 23 May 2011 13:22:39 -0700
+Received: by gyf1 with SMTP id 1so2418810gyf.6
+        for <linux-ext4@vger.kernel.org>; Mon, 23 May 2011 13:22:39 -0700 (PDT)
+In-Reply-To: <1306178341-17632-1-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 2011-05-23 at 13:03 -0700, Andrew Morton wrote:
-> On Mon, 23 May 2011 10:53:55 +0100
-> Mel Gorman <mgorman@suse.de> wrote:
-> 
-> > It has been reported on some laptops that kswapd is consuming large
-> > amounts of CPU and not being scheduled when SLUB is enabled during
-> > large amounts of file copying. It is expected that this is due to
-> > kswapd missing every cond_resched() point because;
-> > 
-> > shrink_page_list() calls cond_resched() if inactive pages were isolated
-> >         which in turn may not happen if all_unreclaimable is set in
-> >         shrink_zones(). If for whatver reason, all_unreclaimable is
-> >         set on all zones, we can miss calling cond_resched().
-> > 
-> > balance_pgdat() only calls cond_resched if the zones are not
-> >         balanced. For a high-order allocation that is balanced, it
-> >         checks order-0 again. During that window, order-0 might have
-> >         become unbalanced so it loops again for order-0 and returns
-> >         that it was reclaiming for order-0 to kswapd(). It can then
-> >         find that a caller has rewoken kswapd for a high-order and
-> >         re-enters balance_pgdat() without ever calling cond_resched().
-> > 
-> > shrink_slab only calls cond_resched() if we are reclaiming slab
-> > 	pages. If there are a large number of direct reclaimers, the
-> > 	shrinker_rwsem can be contended and prevent kswapd calling
-> > 	cond_resched().
-> > 
-> > This patch modifies the shrink_slab() case. If the semaphore is
-> > contended, the caller will still check cond_resched(). After each
-> > successful call into a shrinker, the check for cond_resched() remains
-> > in case one shrinker is particularly slow.
-> 
-> So CONFIG_PREEMPT=y kernels don't exhibit this problem?
+On Mon, May 23, 2011 at 12:19 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+> In commit c8d46e41 (ext4: Add flag to files with blocks intentionally
+> past EOF), if the EOFBLOCKS_FL flag is set, we call ext4_truncate()
+> before calling vmtruncate(). =A0This caused any allocated but unwritt=
+en
+> blocks created by calling fallocate() with the FALLOC_FL_KEEP_SIZE
+> flag to be dropped. =A0This was done to make to make sure that
+> EOFBLOCKS_FL would not be cleared while still leaving blocks past
+> i_size allocated. =A0This was not necessary, since ext4_truncate()
+> guarantees that blocks past i_size will be dropped, even in the case
+> where truncate() has increased i_size before calling ext4_truncate().
+>
+> So fix this by removing the EOFBLOCKS_FL special case treatment in
+> ext4_setattr(). =A0In addition, use truncate_setsize() followed by a
+> call to ext4_truncate() instead of using vmtruncate(). =A0This is mor=
+e
+> efficient since it skips the call to inode_newsize_ok(), which has
+> been checked already by inode_change_ok(). =A0This is also in a win i=
+n
+> the case where EOFBLOCKS_FL is set since it avoids calling
+> ext4_truncate() twice.
+>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+> =A0Jiayingz pointed out that in the case where we fallocate 12k, writ=
+e 4k, and
+> =A0then truncate to 4k, we should discard the excess fallocate'd bloc=
+ks. =A0So if
+> =A0attr->ia_size =3D=3D inode.i_size, we can skip the truncate_setsiz=
+e() call, but
+> =A0if the EOFBLOCKS_FL flag is set, we should still call ext4_truncat=
+e().
+>
+> =A0fs/ext4/inode.c | =A0 16 ++++++++--------
+> =A01 files changed, 8 insertions(+), 8 deletions(-)
+>
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index df3fb20..2e95819 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -5363,8 +5363,7 @@ int ext4_setattr(struct dentry *dentry, struct =
+iattr *attr)
+>
+> =A0 =A0 =A0 =A0if (S_ISREG(inode->i_mode) &&
+> =A0 =A0 =A0 =A0 =A0 =A0attr->ia_valid & ATTR_SIZE &&
+> - =A0 =A0 =A0 =A0 =A0 (attr->ia_size < inode->i_size ||
+> - =A0 =A0 =A0 =A0 =A0 =A0(ext4_test_inode_flag(inode, EXT4_INODE_EOFB=
+LOCKS)))) {
+> + =A0 =A0 =A0 =A0 =A0 (attr->ia_size < inode->i_size)) {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0handle_t *handle;
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0handle =3D ext4_journal_start(inode, 3=
+);
+> @@ -5398,14 +5397,15 @@ int ext4_setattr(struct dentry *dentry, struc=
+t iattr *attr)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto e=
+rr_out;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* ext4_truncate will clear the flag */
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if ((ext4_test_inode_flag(inode, EXT4_I=
+NODE_EOFBLOCKS)))
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_truncate(inode);
+> =A0 =A0 =A0 =A0}
+>
+> - =A0 =A0 =A0 if ((attr->ia_valid & ATTR_SIZE) &&
+> - =A0 =A0 =A0 =A0 =A0 attr->ia_size !=3D i_size_read(inode))
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 rc =3D vmtruncate(inode, attr->ia_size)=
+;
+> + =A0 =A0 =A0 if (attr->ia_valid & ATTR_SIZE) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (attr->ia_size !=3D i_size_read(inod=
+e)) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 truncate_setsize(inode,=
+ attr->ia_size);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_truncate(inode);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 } else if (ext4_test_inode_flag(inode, =
+EXT4_INODE_EOFBLOCKS))
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_truncate(inode);
+> + =A0 =A0 =A0 }
+>
+> =A0 =A0 =A0 =A0if (!rc) {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0setattr_copy(inode, attr);
+> --
+> 1.7.3.1
+lgtm.
 
-Yes, they do.  They just don't hang on my sandybridge system in the same
-way than non-PREEMPT kernels do.  I'm still sure it's got something to
-do with rescheduling kswapd onto a different CPU ...
+Jiaying
 
-> I'm still unconvinced that we know what's going on here.  What's kswapd
-> *doing* with all those cycles?  And if kswapd is now scheduling away,
-> who is doing that work instead?  Direct reclaim?
-
-Still in the dark about this one, too.
-
-James
-
-
+>
+>
 --
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
