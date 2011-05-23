@@ -1,50 +1,39 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/2] jbd: Add fixed tracepoints
-Date: Mon, 23 May 2011 17:48:39 +0200
-Message-ID: <20110523154839.GD4716@quack.suse.cz>
-References: <1306162977-23061-1-git-send-email-lczerner@redhat.com>
- <1306162977-23061-3-git-send-email-lczerner@redhat.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH 1/2] ext3: Add fixed tracepoints
+Date: Mon, 23 May 2011 18:11:54 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1105231804050.3903@dhcp-27-109.brq.redhat.com>
+References: <1306162977-23061-1-git-send-email-lczerner@redhat.com> <1306162977-23061-2-git-send-email-lczerner@redhat.com> <20110523154124.GC4716@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:40420 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:34417 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755526Ab1EWPsl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 May 2011 11:48:41 -0400
-Content-Disposition: inline
-In-Reply-To: <1306162977-23061-3-git-send-email-lczerner@redhat.com>
+	id S1756117Ab1EWQMA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 May 2011 12:12:00 -0400
+In-Reply-To: <20110523154124.GC4716@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 23-05-11 17:02:57, Lukas Czerner wrote:
-> This commit adds fixed tracepoint for jbd. It has been based on fixed
-> tracepoints for jbd2, however there are missing those for collecting
-> statistics, since I think that it will require more intrusive patch so I
-> should have its own commit, if someone decide that it is needed. Also
-> there are new tracepoints in __journal_drop_transaction() and
-> journal_update_superblock().
-> 
-> The list of jbd tracepoints:
-> 
-> jbd_checkpoint
-> jbd_start_commit
-> jbd_commit_locking
-> jbd_commit_flushing
-> jbd_commit_logging
-> jbd_drop_transaction
-> jbd_end_commit
-> jbd_do_submit_data
-> jbd_cleanup_journal_tail
-> jbd_update_superblock_end
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> Cc: Jan Kara <jack@suse.cz>
-  The patch looks OK so I guess I'll take it (when that one minor thing in
-the first patch is cleared up).
+On Mon, 23 May 2011, Jan Kara wrote:
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> > @@ -1577,6 +1589,7 @@ static int ext3_ordered_writepage(struct page *page,
+> >  	if (ext3_journal_current_handle())
+> >  		goto out_fail;
+> >  
+> > +	trace_ext3_ordered_writepage(inode, page);
+> >  	if (!page_has_buffers(page)) {
+> >  		create_empty_buffers(page, inode->i_sb->s_blocksize,
+> >  				(1 << BH_Dirty)|(1 << BH_Uptodate));
+>   Any reason why writepage() takes inode while all other page operations
+> take only the page pointer? I see ext4 does this as well but still we don't
+> have to be *that* compatible :). Otherwise the patch looks OK.
+> 
+> 								Honza
+
+Oh, I did not notice that. Thanks, I'll create just one EVENT_CLASS for
+page operations.
+
+Thanks!
+-Lukas
