@@ -1,46 +1,50 @@
-From: Minchan Kim <minchan.kim@gmail.com>
-Subject: Re: [PATCH 1/2] mm: vmscan: Correct use of pgdat_balanced in sleeping_prematurely
-Date: Tue, 24 May 2011 00:46:44 +0900
-Message-ID: <BANLkTi=T6R58_Z3UQTB6nUtRb9240dm0Sw@mail.gmail.com>
-References: <1306144435-2516-1-git-send-email-mgorman@suse.de>
-	<1306144435-2516-2-git-send-email-mgorman@suse.de>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/2] jbd: Add fixed tracepoints
+Date: Mon, 23 May 2011 17:48:39 +0200
+Message-ID: <20110523154839.GD4716@quack.suse.cz>
+References: <1306162977-23061-1-git-send-email-lczerner@redhat.com>
+ <1306162977-23061-3-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	James Bottomley <James.Bottomley@hansenpartnership.com>,
-	Colin King <colin.king@canonical.com>, Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
-	Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>, Christoph Lameter <cl@linux.com>,
-	Pekka Enberg <penberg@kernel.org>, Rik van Riel <riel@redhat.com>,
-	Johannes Weiner <hannes@cmpxchg.org>, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-mm <linux-mm@kvack.org>, linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>, stable <stable@kernel.org>
-To: Mel Gorman <mgorman@suse.de>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1306144435-2516-2-git-send-email-mgorman@suse.de>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:40420 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755526Ab1EWPsl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 May 2011 11:48:41 -0400
+Content-Disposition: inline
+In-Reply-To: <1306162977-23061-3-git-send-email-lczerner@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 23, 2011 at 6:53 PM, Mel Gorman <mgorman@suse.de> wrote:
-> From: Johannes Weiner <hannes@cmpxchg.org>
->
-> Johannes Weiner poined out that the logic in commit [1741c877: mm:
-> kswapd: keep kswapd awake for high-order allocations until a percentage
-> of the node is balanced] is backwards. Instead of allowing kswapd to go
-> to sleep when balancing for high order allocations, it keeps it kswapd
-> running uselessly.
->
-> Signed-off-by: Mel Gorman <mgorman@suse.de>
-> Reviewed-by: Rik van Riel <riel@redhat.com>
-Reviewed-by: Minchan Kim <minchan.kim@gmail.com>
+On Mon 23-05-11 17:02:57, Lukas Czerner wrote:
+> This commit adds fixed tracepoint for jbd. It has been based on fixed
+> tracepoints for jbd2, however there are missing those for collecting
+> statistics, since I think that it will require more intrusive patch so I
+> should have its own commit, if someone decide that it is needed. Also
+> there are new tracepoints in __journal_drop_transaction() and
+> journal_update_superblock().
+> 
+> The list of jbd tracepoints:
+> 
+> jbd_checkpoint
+> jbd_start_commit
+> jbd_commit_locking
+> jbd_commit_flushing
+> jbd_commit_logging
+> jbd_drop_transaction
+> jbd_end_commit
+> jbd_do_submit_data
+> jbd_cleanup_journal_tail
+> jbd_update_superblock_end
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Cc: Jan Kara <jack@suse.cz>
+  The patch looks OK so I guess I'll take it (when that one minor thing in
+the first patch is cleared up).
 
-
+								Honza
 -- 
-Kind regards,
-Minchan Kim
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
