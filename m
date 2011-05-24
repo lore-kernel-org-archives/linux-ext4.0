@@ -1,75 +1,56 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 14/19] ext3: remove unnecessary dentry_unhash on
- rmdir/rename_dir
-Date: Tue, 24 May 2011 22:38:02 +0200
-Message-ID: <20110524203802.GA14304@quack.suse.cz>
-References: <1306267582-5347-1-git-send-email-sage@newdream.net>
- <1306267582-5347-15-git-send-email-sage@newdream.net>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2] ext4:Teach ext4_ext_split to caculate extents
+ efficiently.
+Date: Tue, 24 May 2011 17:07:21 -0400
+Message-ID: <20110524210721.GD26055@thunk.org>
+References: <1306143057-16962-1-git-send-email-xiaoqiangnk@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: viro@ZenIV.linux.org.uk, linux-fsdevel@vger.kernel.org, hch@lst.de,
-	Jan Kara <jack@suse.cz>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-To: Sage Weil <sage@newdream.net>
+Cc: linux-ext4@vger.kernel.org
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:34520 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757200Ab1EXUiH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 May 2011 16:38:07 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:45257 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756355Ab1EXVHZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 May 2011 17:07:25 -0400
 Content-Disposition: inline
-In-Reply-To: <1306267582-5347-15-git-send-email-sage@newdream.net>
+In-Reply-To: <1306143057-16962-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 24-05-11 13:06:17, Sage Weil wrote:
-> ext3 has no problems with lingering references to unlinked directory
-> inodes.
-  OK, so if I understand right, dentry_unhash() has been there only so that
-filesystem can detect whether (something under) removed directory is in
-use? So filesystems which can happily handle unlinked but open directories
-don't need it, right? If that's the case, you can add:
-  Acked-by: Jan Kara <jack@suse.cz>
-to this patch and also the ext2 version.
+On Mon, May 23, 2011 at 05:30:57PM +0800, Yongqiang Yang wrote:
+> @@ -982,20 +997,13 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+>  			err = -EIO;
+>  			goto cleanup;
+>  		}
+> -		while (path[i].p_idx <= EXT_MAX_INDEX(path[i].p_hdr)) {
+> -			ext_debug("%d: move %d:%llu in new index %llu\n", i,
+> -					le32_to_cpu(path[i].p_idx->ei_block),
+> -					ext4_idx_pblock(path[i].p_idx),
+> -					newblock);
+> -			/*memmove(++fidx, path[i].p_idx++,
+> -					sizeof(struct ext4_extent_idx));
+> -			neh->eh_entries++;
+> -			BUG_ON(neh->eh_entries > neh->eh_max);*/
+> -			path[i].p_idx++;
+> -			m++;
+> -		}
+> +		/* start copy indexes */
+> +		m = EXT_MAX_INDEX(path[i].p_hdr) - path[i].p_idx++;
+> +		ext_debug("cur 0x%p, last 0x%p\n", path[i].p_idx,
+> +				EXT_MAX_INDEX(path[i].p_hdr));
+> +		ext4_ext_show_move(inode, path, newblock, i);
+>  		if (m) {
+> -			memmove(++fidx, path[i].p_idx - m,
+> +			memmove(++fidx, path[i].p_idx,
+>  				sizeof(struct ext4_extent_idx) * m);
+>  			le16_add_cpu(&neh->eh_entries, m);
+>  		}
 
-								Honza
-> 
-> CC: Jan Kara <jack@suse.cz>
-> CC: Andrew Morton <akpm@linux-foundation.org>
-> CC: Andreas Dilger <adilger.kernel@dilger.ca>
-> CC: linux-ext4@vger.kernel.org
-> Signed-off-by: Sage Weil <sage@newdream.net>
-> ---
->  fs/ext3/namei.c |    5 -----
->  1 files changed, 0 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
-> index f89b1d4..32f3b86 100644
-> --- a/fs/ext3/namei.c
-> +++ b/fs/ext3/namei.c
-> @@ -2074,8 +2074,6 @@ static int ext3_rmdir (struct inode * dir, struct dentry *dentry)
->  	struct ext3_dir_entry_2 * de;
->  	handle_t *handle;
->  
-> -	dentry_unhash(dentry);
-> -
->  	/* Initialize quotas before so that eventual writes go in
->  	 * separate transaction */
->  	dquot_initialize(dir);
-> @@ -2298,9 +2296,6 @@ static int ext3_rename (struct inode * old_dir, struct dentry *old_dentry,
->  	struct ext3_dir_entry_2 * old_de, * new_de;
->  	int retval, flush_file = 0;
->  
-> -	if (new_dentry->d_inode && S_ISDIR(new_dentry->d_inode->i_mode))
-> -		dentry_unhash(new_dentry);
-> -
->  	dquot_initialize(old_dir);
->  	dquot_initialize(new_dir);
->  
-> -- 
-> 1.7.0
-> 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+So the old code mutates path[i].p_idx, where as your new code doesn't.
+The one thing that scares me is that ext4_ext_insert_index() is passed
+&path[at], the function preferences path[at].p_idx.
+
+Have you looked at this case?
+
+					- Ted
