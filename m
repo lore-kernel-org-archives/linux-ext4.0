@@ -1,51 +1,59 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH -v2] ext4: use truncate_setsize() unconditionally
-Date: Tue, 24 May 2011 09:30:02 -0500
-Message-ID: <4DDBC0EA.7000609@redhat.com>
-References: <BANLkTi=0NSws0GV4hP5KPPqvp4bxOSEbaQ@mail.gmail.com> <1306178341-17632-1-git-send-email-tytso@mit.edu>
+From: Jan Kara <jack@suse.cz>
+Subject: [PULL REQUEST] Ext2 & ext3 fixes for 2.6.40-rc1
+Date: Tue, 24 May 2011 17:23:04 +0200
+Message-ID: <20110524152304.GB5390@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	jiayingz@google.com
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:15178 "EHLO mx1.redhat.com"
+Received: from cantor.suse.de ([195.135.220.2]:50139 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756092Ab1EXOaG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 May 2011 10:30:06 -0400
-In-Reply-To: <1306178341-17632-1-git-send-email-tytso@mit.edu>
+	id S1755623Ab1EXPXI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 May 2011 11:23:08 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 5/23/11 2:19 PM, Theodore Ts'o wrote:
-> In commit c8d46e41 (ext4: Add flag to files with blocks intentionally
-> past EOF), if the EOFBLOCKS_FL flag is set, we call ext4_truncate()
-> before calling vmtruncate().  This caused any allocated but unwritten
-> blocks created by calling fallocate() with the FALLOC_FL_KEEP_SIZE
-> flag to be dropped.  This was done to make to make sure that
-> EOFBLOCKS_FL would not be cleared while still leaving blocks past
-> i_size allocated.  This was not necessary, since ext4_truncate()
-> guarantees that blocks past i_size will be dropped, even in the case
-> where truncate() has increased i_size before calling ext4_truncate().
-> 
-> So fix this by removing the EOFBLOCKS_FL special case treatment in
-> ext4_setattr().  In addition, use truncate_setsize() followed by a
-> call to ext4_truncate() instead of using vmtruncate().  This is more
-> efficient since it skips the call to inode_newsize_ok(), which has
-> been checked already by inode_change_ok().  This is also in a win in
-> the case where EOFBLOCKS_FL is set since it avoids calling
-> ext4_truncate() twice.
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  Jiayingz pointed out that in the case where we fallocate 12k, write 4k, and
->  then truncate to 4k, we should discard the excess fallocate'd blocks.  So if
->  attr->ia_size == inode.i_size, we can skip the truncate_setsize() call, but
->  if the EOFBLOCKS_FL flag is set, we should still call ext4_truncate().
+  Hello Linus,
 
-are there xfstests which cover this explicitly?  It should be simple to write.
+  could you please pull from
 
-If filesystem behavior differs we can always make ext4-only tests.
+git://git.kernel.org/pub/scm/linux/kernel/git/jack/fs.git for_linus
 
--Eric
+Nothing too interesting, just couple of bugs fixed.
+
+The full shortlog is:
+
+Eryu Guan (1):
+      jbd: Fix comment to match the code in journal_start()
+
+Jan Kara (3):
+      ext3: Fix lock inversion in ext3_symlink()
+      ext3: Fix fs corruption when make_indexed_dir() fails
+      jbd: Fix forever sleeping process in do_get_write_access()
+
+Robin Dong (1):
+      ext2: fix error msg when mounting fs with too-large blocksize
+
+Tao Ma (1):
+      jbd/jbd2: remove obsolete summarise_journal_usage.
+
+Ted Ts'o (1):
+      jbd: fix fsync() tid wraparound bug
+
+The diffstat is
+
+ fs/ext2/super.c      |    3 +-
+ fs/ext3/namei.c      |   80 +++++++++++++++++++++++++++++++++++++++++--------
+ fs/jbd/commit.c      |   15 ++++-----
+ fs/jbd/journal.c     |   16 ++++++++--
+ fs/jbd/transaction.c |    3 +-
+ fs/jbd2/commit.c     |    6 ----
+ 6 files changed, 91 insertions(+), 32 deletions(-)
+
+							Thanks
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
