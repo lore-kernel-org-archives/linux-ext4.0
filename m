@@ -1,86 +1,76 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: xfsprogs: Fix for xfstest 252 hang on ext4
-Date: Tue, 24 May 2011 09:16:24 +0800
-Message-ID: <BANLkTiks0NSDTSPN8n446JHWhKtM61_=Mw@mail.gmail.com>
-References: <4DDAC4EF.1050702@linux.vnet.ibm.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH v3] xfstests:Make 225 compare map and fiemap at each
+ block.
+Date: Tue, 24 May 2011 11:51:05 +1000
+Message-ID: <20110524015105.GE32466@dastard>
+References: <1306134423-10028-1-git-send-email-xiaoqiangnk@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: xfs-oss <xfs@oss.sgi.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Allison Henderson <achender@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: sandeen@redhat.com, josef@redhat.com, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:55080 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753811Ab1EXBQZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 May 2011 21:16:25 -0400
-Received: by vws1 with SMTP id 1so4582648vws.19
-        for <linux-ext4@vger.kernel.org>; Mon, 23 May 2011 18:16:24 -0700 (PDT)
-In-Reply-To: <4DDAC4EF.1050702@linux.vnet.ibm.com>
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:22349 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752835Ab1EXBvJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 May 2011 21:51:09 -0400
+Content-Disposition: inline
+In-Reply-To: <1306134423-10028-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 24, 2011 at 4:34 AM, Allison Henderson
-<achender@linux.vnet.ibm.com> wrote:
-> Hi all,
->
-> While trying to add more punch hole tests to xfstest, I found that te=
-st 252 hangs on ext4 due to a loop in xfsprogs that does not exit. =A0X=
-=46S gets out of this loop because there is logic in the loop that look=
-s for the last extent flag and breaks out. =A0But it looks like ext4 do=
-es not return a last extent when the file has a hole at the end. =A0I a=
-m not sure if this is the correct behavior or not, so I will copy the e=
-xt4 folks on this too. =A0Below is a copy of the fix for xfsprogs:
+On Mon, May 23, 2011 at 03:07:03PM +0800, Yongqiang Yang wrote:
+> Due to my carelessness,  I induced a ugly patch to ext4's fiemap, as a result
+> delayed-extents that did not start at the head block of a page was ignored
+> in ext4 with 1K block, but 225 could not find it. 
 
-Hi there,
+When ext4 is using 1k block sizes, fiemap-tester does not find
+problems that may exist on ext4 with delayed allocation extents on
+the first block of a page.
 
-What's blocksize of the tested ext4?    For now, ext4 returns
-LAST_EXTENT if the logical offset covered by the extent is greater
-than file size, so if there is a hole at the end, no last extent is
-returned. Thx!
+> So I looked into the 225
+> and could not figure out logic in compare_map_and_fiemap(), which seemed to
+> mix extents with blocks.
 
-Yongqiang.
+Once again, "I don't understand it" is not a reason for a whoelsale
+rewrite.
 
->
-> diff --git a/io/fiemap.c b/io/fiemap.c
-> index fa990cc..81fc92c 100644
-> --- a/io/fiemap.c
-> +++ b/io/fiemap.c
-> @@ -246,7 +246,7 @@ fiemap_f(
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 flg_w, _("FLAGS"));
-> =A0 =A0 =A0 =A0}
->
-> - =A0 =A0 =A0 while (!last && ((cur_extent + 1) !=3D max_extents)) {
-> + =A0 =A0 =A0 while (!last && (cur_extent <=3D max_extents)) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (max_extents)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0num_extents =3D min(nu=
-m_extents,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0max_extents - (cur_extent + 1));
->
->
-> It looks like the loop enters with last=3D0, cur_extents=3D0, and max=
-_extents =3D 0, and on the first iteration cur_extents get set to 2, so=
- we dont see ((cur_extent + 1) =3D=3D max_extents for a very long time.=
- =A0I doubt the logic was meant to work that way, so this patch should =
-fix it, but I wanted to make sure that the fiemap for ext4 is working a=
-s intended too. =A0Feed back appreciated! =A0Thx all!
->
-> Allison Henderson
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
+> Then I made 225 compare map and fiemap at each block,
+> the new 225 can find the bug I induced and another bug in ext4 with 1k block,
+> which ignored delayed-extents after a hole, which did not start at the head
+> block of a page.
 
+Which means that the first paragraph should read:
 
+"When ext4 is using 1k block sizes, fiemap-tester does not find
+problems that may exist on ext4 with delayed allocation extents on
+the first block of a page or directly after a hole."
 
---=20
-Best Wishes
-Yongqiang Yang
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+That's a concise description of the overall problem you are fixing
+in this patch. Next you need to describe the different changes being
+made in the patch and the bugs they are fixing.  There appear to be:
+
+	- an off-by one in map array allocation
+	- zeroing the end block in the map array
+	- making check_weird_fs_hole() verify bytes read by pread()
+	- moving truncate/seek of the test file around
+	- changing the way map/fiemap are compared
+
+Also, you haven't addressed any of the comments I made in my
+original review:
+
+	- removing the changelog from the header comment
+	- adding comments on check_data/check_hole explaining what
+	  they are checking
+	- explaining why the existing map/fiemap compare couldn't
+	  detect the problems with delayed extents on ext4? i.e.
+	  what's the bug that you are fixing so we can determine if
+	  it really does need a rewrite to fix?
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
