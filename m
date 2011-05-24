@@ -1,76 +1,96 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: invalidate gap cache when writing extents last
- block
-Date: Tue, 24 May 2011 10:57:14 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1105241037190.4028@dhcp-27-109.brq.redhat.com>
-References: <alpine.LFD.2.00.1105130829160.3768@dhcp-27-109.brq.redhat.com> <1305268616-5167-1-git-send-email-lczerner@redhat.com> <4DCCF208.3040704@sx.jp.nec.com> <4DDB6D66.3010703@sx.jp.nec.com>
+From: Mel Gorman <mgorman@suse.de>
+Subject: Re: [PATCH 2/2] mm: vmscan: Correctly check if reclaimer should
+ schedule during shrink_slab
+Date: Tue, 24 May 2011 10:21:10 +0100
+Message-ID: <20110524092110.GE5279@suse.de>
+References: <1306144435-2516-1-git-send-email-mgorman@suse.de>
+ <1306144435-2516-3-git-send-email-mgorman@suse.de>
+ <20110523130303.6b7dad1c.akpm@linux-foundation.org>
+ <1306181256.2442.4.camel@mulgrave.site>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu
-To: Kazuya Mio <k-mio@sx.jp.nec.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55728 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755221Ab1EXI5Y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 May 2011 04:57:24 -0400
-In-Reply-To: <4DDB6D66.3010703@sx.jp.nec.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=iso-8859-15
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Colin King <colin.king@canonical.com>,
+	Raghavendra D Prabhu <raghu.prabhu13@gmail.com>,
+	Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
+	Christoph Lameter <cl@linux.com>, Pekka Enberg <penberg@kernel.org>,
+	Rik van Riel <riel@redhat.com>, Johannes Weiner <hannes@cmpxchg.org>,
+	Minchan Kim <minchan.kim@gmail.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-mm <linux-mm@kvack.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>, stable <stable@kernel.org>
+To: James Bottomley <James.Bottomley@HansenPartnership.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <1306181256.2442.4.camel@mulgrave.site>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Kazuya,
-
-I am really sorry for late answer. I think you're partly right. my
-solution is not good, but I still think that your is not good as well. I
-need to look at this again and more closely, sorry.
-
-What do you think about this: ext4_ext_next_allocated_block() should
-return next allocated block, however instead it in some cases returns
-EXT_MAX_BLOCK, which points at the last logical block in a file, which
-however in some cases might be equal to the last not allocated block,
-not first allocated block in subsequent extent. And boom, we have (next
-== lblock).
-
-So if we want to really return next allocated block (or more
-specifically, next block which we can not allocate), we should in those
-cases return EXT_MAX_BLOCK+1. And we should do this in
-ext4_ext_put_gap_in_cache() as well when there is no extent yet. Also
-note that as I said EXT_MAX_BLOCK means maximum logical block, however
-we use it as lenght in ext4_ext_put_gap_in_cache() which does not sound
-right either. It seems all a little bit messy :-/. I need to look at it
-and try it to see if it would work, but I think it does make sense.
-
-What do you think?
-
-Thanks!
--Lukas
-
-On Tue, 24 May 2011, Kazuya Mio wrote:
-
-> Hi Lukas,
-> How do you think about my comment?
-> 
-> Regards,
-> Kazuya Mio
-> 
-> 2011/05/13 17:55, Kazuya Mio wrote:
-> > 2011/05/13 15:36, Lukas Czerner wrote:
-> >> That is because due to defensive programming we planted a lot of
-> >> BUG_ON's to prevent the length of the gap cache to be zero, but in this
-> >> case it actually will be zero, because there will be no gap at the end
-> >> of the file.
+On Tue, May 24, 2011 at 12:07:36AM +0400, James Bottomley wrote:
+> On Mon, 2011-05-23 at 13:03 -0700, Andrew Morton wrote:
+> > On Mon, 23 May 2011 10:53:55 +0100
+> > Mel Gorman <mgorman@suse.de> wrote:
 > > 
-> > Um, I think there is a block (blocksize -1 byte) in gap.
-> > And this gap should be used for the next block searching.
-> > According to ext4_ext_in_cache(), len=0 means the special case
-> > which we have no cache extent, so len=0 should be disallowed.
+> > > It has been reported on some laptops that kswapd is consuming large
+> > > amounts of CPU and not being scheduled when SLUB is enabled during
+> > > large amounts of file copying. It is expected that this is due to
+> > > kswapd missing every cond_resched() point because;
+> > > 
+> > > shrink_page_list() calls cond_resched() if inactive pages were isolated
+> > >         which in turn may not happen if all_unreclaimable is set in
+> > >         shrink_zones(). If for whatver reason, all_unreclaimable is
+> > >         set on all zones, we can miss calling cond_resched().
+> > > 
+> > > balance_pgdat() only calls cond_resched if the zones are not
+> > >         balanced. For a high-order allocation that is balanced, it
+> > >         checks order-0 again. During that window, order-0 might have
+> > >         become unbalanced so it loops again for order-0 and returns
+> > >         that it was reclaiming for order-0 to kswapd(). It can then
+> > >         find that a caller has rewoken kswapd for a high-order and
+> > >         re-enters balance_pgdat() without ever calling cond_resched().
+> > > 
+> > > shrink_slab only calls cond_resched() if we are reclaiming slab
+> > > 	pages. If there are a large number of direct reclaimers, the
+> > > 	shrinker_rwsem can be contended and prevent kswapd calling
+> > > 	cond_resched().
+> > > 
+> > > This patch modifies the shrink_slab() case. If the semaphore is
+> > > contended, the caller will still check cond_resched(). After each
+> > > successful call into a shrinker, the check for cond_resched() remains
+> > > in case one shrinker is particularly slow.
 > > 
-> > Moreover, if we create the file which has 2^32-1 offset,
-> > we can't get extent which starts from this offset with FIEMAP ioctl.
-> > That's why I think the maximum file size should be 2^32-1 * blocksize.
-> > 
-> > Regards,
-> > Kazuya Mio
+> > So CONFIG_PREEMPT=y kernels don't exhibit this problem?
 > 
+> Yes, they do.  They just don't hang on my sandybridge system in the same
+> way than non-PREEMPT kernels do.  I'm still sure it's got something to
+> do with rescheduling kswapd onto a different CPU ...
+> 
+> > I'm still unconvinced that we know what's going on here.  What's kswapd
+> > *doing* with all those cycles?  And if kswapd is now scheduling away,
+> > who is doing that work instead?  Direct reclaim?
+> 
+> Still in the dark about this one, too.
+> 
+
+I still very strongly suspect that what gets us into this situation
+is all_unreclaiable being set when there are a large bunch of dirty
+pages together in the LRU pushing up the scanning rates high enough
+after slab is shrunk as far as they can be at this time. Without
+a local reproduction case, I'm undecided as to how this should be
+investigated other than sticking in printks when all_unreclaimable
+is set that outputs the number of LRU pages - anon, file and dirty
+(even though this information in itself will be incomplete) and see
+what falls out. I'm trying to borrow a similar laptop but haven't
+found someone with a similar model yet in the locality.
 
 -- 
+Mel Gorman
+SUSE Labs
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
