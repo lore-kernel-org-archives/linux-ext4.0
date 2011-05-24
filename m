@@ -1,83 +1,44 @@
 From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: [PATCH] ext4: ensure f_bfree returned by ext4_statfs() is non-negative
-Date: Tue, 24 May 2011 17:28:43 +0900
-Message-ID: <4DDB6C3B.3020306@sx.jp.nec.com>
+Subject: Re: [PATCH] ext4: invalidate gap cache when writing extents last
+ block
+Date: Tue, 24 May 2011 17:33:42 +0900
+Message-ID: <4DDB6D66.3010703@sx.jp.nec.com>
+References: <alpine.LFD.2.00.1105130829160.3768@dhcp-27-109.brq.redhat.com> <1305268616-5167-1-git-send-email-lczerner@redhat.com> <4DCCF208.3040704@sx.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
-To: ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:54699 "EHLO
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:56095 "EHLO
 	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754383Ab1EXI3l (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 May 2011 04:29:41 -0400
+	with ESMTP id S1754697Ab1EXIeb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 May 2011 04:34:31 -0400
+In-Reply-To: <4DCCF208.3040704@sx.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I found the issue that the number of free blocks went negative.
-# stat -f /mnt/mp1/
-  File: "/mnt/mp1/"
-    ID: e175ccb83a872efe Namelen: 255     Type: ext2/ext3
-Block size: 4096       Fundamental block size: 4096
-Blocks: Total: 258022     Free: -15        Available: -13122
-Inodes: Total: 65536      Free: 63029
+Hi Lukas,
+How do you think about my comment?
 
-f_bfree in struct statfs will go negative when the filesystem has
-few free blocks. Because the number of dirty blocks is bigger than
-the number of free blocks in the following two cases.
+Regards,
+Kazuya Mio
 
-CASE 1:
-ext4_da_writepages
-  mpage_da_map_and_submit
-    ext4_map_blocks
-      ext4_ext_map_blocks
-        ext4_mb_new_blocks
-          ext4_mb_diskspace_used
-            percpu_counter_sub(&sbi->s_freeblocks_counter, ac->ac_b_ex.fe_len);
-        <--- interrupt statfs systemcall --->
-        ext4_da_update_reserve_space
-            percpu_counter_sub(&sbi->s_dirtyblocks_counter,
-                            used + ei->i_allocated_meta_blocks);
-
-CASE 2:
-ext4_write_begin
-  __block_write_begin
-    ext4_map_blocks
-      ext4_ext_map_blocks
-        ext4_mb_new_blocks
-          ext4_mb_diskspace_used
-            percpu_counter_sub(&sbi->s_freeblocks_counter, ac->ac_b_ex.fe_len);
-            <--- interrupt statfs systemcall --->
-            percpu_counter_sub(&sbi->s_dirtyblocks_counter, reserv_blks);
-
-To avoid the issue, this patch ensures that f_bfree is non-negative.
-
-Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
----
- fs/ext4/super.c |    5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 8553dfb..2e8ce57 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4432,6 +4432,7 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct ext4_super_block *es = sbi->s_es;
- 	u64 fsid;
-+	s64 bfree;
- 
- 	if (test_opt(sb, MINIX_DF)) {
- 		sbi->s_overhead_last = 0;
-@@ -4475,8 +4476,10 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
- 	buf->f_type = EXT4_SUPER_MAGIC;
- 	buf->f_bsize = sb->s_blocksize;
- 	buf->f_blocks = ext4_blocks_count(es) - sbi->s_overhead_last;
--	buf->f_bfree = percpu_counter_sum_positive(&sbi->s_freeblocks_counter) -
-+	bfree = percpu_counter_sum_positive(&sbi->s_freeblocks_counter) -
- 		       percpu_counter_sum_positive(&sbi->s_dirtyblocks_counter);
-+	/* prevent underflow in case that few free space is available */
-+	buf->f_bfree = max_t(s64, bfree, 0);
- 	buf->f_bavail = buf->f_bfree - ext4_r_blocks_count(es);
- 	if (buf->f_bfree < ext4_r_blocks_count(es))
- 		buf->f_bavail = 0;
-
+2011/05/13 17:55, Kazuya Mio wrote:
+> 2011/05/13 15:36, Lukas Czerner wrote:
+>> That is because due to defensive programming we planted a lot of
+>> BUG_ON's to prevent the length of the gap cache to be zero, but in this
+>> case it actually will be zero, because there will be no gap at the end
+>> of the file.
+> 
+> Um, I think there is a block (blocksize -1 byte) in gap.
+> And this gap should be used for the next block searching.
+> According to ext4_ext_in_cache(), len=0 means the special case
+> which we have no cache extent, so len=0 should be disallowed.
+> 
+> Moreover, if we create the file which has 2^32-1 offset,
+> we can't get extent which starts from this offset with FIEMAP ioctl.
+> That's why I think the maximum file size should be 2^32-1 * blocksize.
+> 
+> Regards,
+> Kazuya Mio
