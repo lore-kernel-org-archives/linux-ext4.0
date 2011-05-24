@@ -1,247 +1,86 @@
-From: Sunil Mushran <sunil.mushran@oracle.com>
-Subject: [PATCH] ocfs2: Implement llseek()
-Date: Mon, 23 May 2011 16:55:12 -0700
-Message-ID: <1306194912-29893-2-git-send-email-sunil.mushran@oracle.com>
-References: <1306194912-29893-1-git-send-email-sunil.mushran@oracle.com>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: Re: xfsprogs: Fix for xfstest 252 hang on ext4
+Date: Tue, 24 May 2011 09:16:24 +0800
+Message-ID: <BANLkTiks0NSDTSPN8n446JHWhKtM61_=Mw@mail.gmail.com>
+References: <4DDAC4EF.1050702@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: josef@redhat.com, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, viro@ZenIV.linux.org.uk,
-        o
-Return-path: <ocfs2-devel-bounces@oss.oracle.com>
-In-Reply-To: <1306194912-29893-1-git-send-email-sunil.mushran@oracle.com>
-List-Unsubscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
-	<mailto:ocfs2-devel-request@oss.oracle.com?subject=unsubscribe>
-List-Archive: <http://oss.oracle.com/pipermail/ocfs2-devel>
-List-Post: <mailto:ocfs2-devel@oss.oracle.com>
-List-Help: <mailto:ocfs2-devel-request@oss.oracle.com?subject=help>
-List-Subscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
-	<mailto:ocfs2-devel-request@oss.oracle.com?subject=subscribe>
-Sender: ocfs2-devel-bounces@oss.oracle.com
-Errors-To: ocfs2-devel-bounces@oss.oracle.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: xfs-oss <xfs@oss.sgi.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Allison Henderson <achender@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:55080 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753811Ab1EXBQZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 May 2011 21:16:25 -0400
+Received: by vws1 with SMTP id 1so4582648vws.19
+        for <linux-ext4@vger.kernel.org>; Mon, 23 May 2011 18:16:24 -0700 (PDT)
+In-Reply-To: <4DDAC4EF.1050702@linux.vnet.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-ocfs2 implements its own llseek() to provide the SEEK_HOLE/SEEK_DATA
-functionality.
+On Tue, May 24, 2011 at 4:34 AM, Allison Henderson
+<achender@linux.vnet.ibm.com> wrote:
+> Hi all,
+>
+> While trying to add more punch hole tests to xfstest, I found that te=
+st 252 hangs on ext4 due to a loop in xfsprogs that does not exit. =A0X=
+=46S gets out of this loop because there is logic in the loop that look=
+s for the last extent flag and breaks out. =A0But it looks like ext4 do=
+es not return a last extent when the file has a hole at the end. =A0I a=
+m not sure if this is the correct behavior or not, so I will copy the e=
+xt4 folks on this too. =A0Below is a copy of the fix for xfsprogs:
 
-SEEK_HOLE sets the file pointer to the start of either a hole or an unwritten
-(preallocated) extent, that is greater than or equal to the supplied offset.
+Hi there,
 
-SEEK_DATA sets the file pointer to the start of an allocated extent (not
-unwritten) that is greater than or equal to the supplied offset.
+What's blocksize of the tested ext4?    For now, ext4 returns
+LAST_EXTENT if the logical offset covered by the extent is greater
+than file size, so if there is a hole at the end, no last extent is
+returned. Thx!
 
-If the supplied offset is on a desired region, then the file pointer is set
-to it. Offsets greater than or equal to the file size return -ENXIO.
+Yongqiang.
 
-Unwritten (preallocated) extents are considered holes because the file system
-treats reads to such regions in the same way as it does to holes.
+>
+> diff --git a/io/fiemap.c b/io/fiemap.c
+> index fa990cc..81fc92c 100644
+> --- a/io/fiemap.c
+> +++ b/io/fiemap.c
+> @@ -246,7 +246,7 @@ fiemap_f(
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 flg_w, _("FLAGS"));
+> =A0 =A0 =A0 =A0}
+>
+> - =A0 =A0 =A0 while (!last && ((cur_extent + 1) !=3D max_extents)) {
+> + =A0 =A0 =A0 while (!last && (cur_extent <=3D max_extents)) {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (max_extents)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0num_extents =3D min(nu=
+m_extents,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0max_extents - (cur_extent + 1));
+>
+>
+> It looks like the loop enters with last=3D0, cur_extents=3D0, and max=
+_extents =3D 0, and on the first iteration cur_extents get set to 2, so=
+ we dont see ((cur_extent + 1) =3D=3D max_extents for a very long time.=
+ =A0I doubt the logic was meant to work that way, so this patch should =
+fix it, but I wanted to make sure that the fiemap for ext4 is working a=
+s intended too. =A0Feed back appreciated! =A0Thx all!
+>
+> Allison Henderson
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
 
-Signed-off-by: Sunil Mushran <sunil.mushran@oracle.com>
----
- fs/ocfs2/extent_map.c |   96 +++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ocfs2/extent_map.h |    2 +
- fs/ocfs2/file.c       |   53 ++++++++++++++++++++++++++-
- 3 files changed, 149 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ocfs2/extent_map.c b/fs/ocfs2/extent_map.c
-index 23457b4..2f5b92e 100644
---- a/fs/ocfs2/extent_map.c
-+++ b/fs/ocfs2/extent_map.c
-@@ -832,6 +832,102 @@ out:
- 	return ret;
- }
- 
-+int ocfs2_seek_data_hole_offset(struct file *file, loff_t *offset, int origin)
-+{
-+	struct inode *inode = file->f_mapping->host;
-+	int ret;
-+	unsigned int is_last = 0, is_data = 0;
-+	u16 cs_bits = OCFS2_SB(inode->i_sb)->s_clustersize_bits;
-+	u32 cpos, cend, clen, hole_size;
-+	u64 extoff, extlen;
-+	struct buffer_head *di_bh = NULL;
-+	struct ocfs2_extent_rec rec;
-+
-+	BUG_ON(origin != SEEK_DATA && origin != SEEK_HOLE);
-+
-+	ret = ocfs2_inode_lock(inode, &di_bh, 0);
-+	if (ret) {
-+		mlog_errno(ret);
-+		goto out;
-+	}
-+
-+	down_read(&OCFS2_I(inode)->ip_alloc_sem);
-+
-+	if (*offset >= inode->i_size) {
-+		ret = -ENXIO;
-+		goto out_unlock;
-+	}
-+
-+	if (OCFS2_I(inode)->ip_dyn_features & OCFS2_INLINE_DATA_FL) {
-+		if (origin == SEEK_HOLE)
-+			*offset = inode->i_size;
-+		goto out_unlock;
-+	}
-+
-+	clen = 0;
-+	cpos = *offset >> cs_bits;
-+	cend = ocfs2_clusters_for_bytes(inode->i_sb, inode->i_size);
-+
-+	while (cpos < cend && !is_last) {
-+		ret = ocfs2_get_clusters_nocache(inode, di_bh, cpos, &hole_size,
-+						 &rec, &is_last);
-+		if (ret) {
-+			mlog_errno(ret);
-+			goto out_unlock;
-+		}
-+
-+		extoff = cpos;
-+		extoff <<= cs_bits;
-+
-+		if (rec.e_blkno == 0ULL) {
-+			clen = hole_size;
-+			is_data = 0;
-+		} else {
-+			clen = le16_to_cpu(rec.e_leaf_clusters) -
-+				(cpos - le32_to_cpu(rec.e_cpos));
-+			is_data = (rec.e_flags & OCFS2_EXT_UNWRITTEN) ?  0 : 1;
-+		}
-+
-+		if ((!is_data && origin == SEEK_HOLE) ||
-+		    (is_data && origin == SEEK_DATA)) {
-+			if (extoff > *offset)
-+				*offset = extoff;
-+			goto out_unlock;
-+		}
-+
-+		if (!is_last)
-+			cpos += clen;
-+	}
-+
-+	if (origin == SEEK_HOLE) {
-+		extoff = cpos;
-+		extoff <<= cs_bits;
-+		extlen = clen;
-+		extlen <<=  cs_bits;
-+
-+		if ((extoff + extlen) > inode->i_size)
-+			extlen = inode->i_size - extoff;
-+		extoff += extlen;
-+		if (extoff > *offset)
-+			*offset = extoff;
-+		goto out_unlock;
-+	}
-+
-+	ret = -ENXIO;
-+
-+out_unlock:
-+
-+	brelse(di_bh);
-+
-+	up_read(&OCFS2_I(inode)->ip_alloc_sem);
-+
-+	ocfs2_inode_unlock(inode, 0);
-+out:
-+	if (ret && ret != -ENXIO)
-+		ret = -ENXIO;
-+	return ret;
-+}
-+
- int ocfs2_read_virt_blocks(struct inode *inode, u64 v_block, int nr,
- 			   struct buffer_head *bhs[], int flags,
- 			   int (*validate)(struct super_block *sb,
-diff --git a/fs/ocfs2/extent_map.h b/fs/ocfs2/extent_map.h
-index e79d41c..67ea57d 100644
---- a/fs/ocfs2/extent_map.h
-+++ b/fs/ocfs2/extent_map.h
-@@ -53,6 +53,8 @@ int ocfs2_extent_map_get_blocks(struct inode *inode, u64 v_blkno, u64 *p_blkno,
- int ocfs2_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 		 u64 map_start, u64 map_len);
- 
-+int ocfs2_seek_data_hole_offset(struct file *file, loff_t *offset, int origin);
-+
- int ocfs2_xattr_get_clusters(struct inode *inode, u32 v_cluster,
- 			     u32 *p_cluster, u32 *num_clusters,
- 			     struct ocfs2_extent_list *el,
-diff --git a/fs/ocfs2/file.c b/fs/ocfs2/file.c
-index b1e35a3..13f7d03 100644
---- a/fs/ocfs2/file.c
-+++ b/fs/ocfs2/file.c
-@@ -2584,6 +2584,55 @@ bail:
- 	return ret;
- }
- 
-+/* Refer generic_file_llseek_unlocked() */
-+static loff_t ocfs2_file_llseek(struct file *file, loff_t offset, int origin)
-+{
-+	struct inode *inode = file->f_mapping->host;
-+	int ret = 0;
-+
-+	mutex_lock(&inode->i_mutex);
-+
-+	switch (origin) {
-+	case SEEK_END:
-+		offset += inode->i_size;
-+		break;
-+	case SEEK_CUR:
-+		if (offset == 0) {
-+			offset = file->f_pos;
-+			goto out;
-+		}
-+		offset += file->f_pos;
-+		break;
-+	case SEEK_DATA:
-+	case SEEK_HOLE:
-+		ret = ocfs2_seek_data_hole_offset(file, &offset, origin);
-+		if (ret)
-+			goto out;
-+		break;
-+	default:
-+		ret = -EINVAL;
-+		goto out;
-+	}
-+
-+	if (offset < 0 && !(file->f_mode & FMODE_UNSIGNED_OFFSET))
-+		ret = -EINVAL;
-+	if (!ret && offset > inode->i_sb->s_maxbytes)
-+		ret = -EINVAL;
-+	if (ret)
-+		goto out;
-+
-+	if (offset != file->f_pos) {
-+		file->f_pos = offset;
-+		file->f_version = 0;
-+	}
-+
-+out:
-+	mutex_unlock(&inode->i_mutex);
-+	if (ret)
-+		return ret;
-+	return offset;
-+}
-+
- const struct inode_operations ocfs2_file_iops = {
- 	.setattr	= ocfs2_setattr,
- 	.getattr	= ocfs2_getattr,
-@@ -2606,7 +2655,7 @@ const struct inode_operations ocfs2_special_file_iops = {
-  * ocfs2_fops_no_plocks and ocfs2_dops_no_plocks!
-  */
- const struct file_operations ocfs2_fops = {
--	.llseek		= generic_file_llseek,
-+	.llseek		= ocfs2_file_llseek,
- 	.read		= do_sync_read,
- 	.write		= do_sync_write,
- 	.mmap		= ocfs2_mmap,
-@@ -2654,7 +2703,7 @@ const struct file_operations ocfs2_dops = {
-  * the cluster.
-  */
- const struct file_operations ocfs2_fops_no_plocks = {
--	.llseek		= generic_file_llseek,
-+	.llseek		= ocfs2_file_llseek,
- 	.read		= do_sync_read,
- 	.write		= do_sync_write,
- 	.mmap		= ocfs2_mmap,
--- 
-1.7.4.1
+
+--=20
+Best Wishes
+Yongqiang Yang
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
