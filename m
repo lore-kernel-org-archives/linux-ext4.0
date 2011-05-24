@@ -1,49 +1,36 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] Attempt to sync the fsstress writes to a frozen F.S
-Date: Tue, 24 May 2011 17:42:23 -0400
-Message-ID: <20110524214222.GF26055@thunk.org>
-References: <4DCA3583.7010904@canonical.com>
- <1305097841-2308-1-git-send-email-surbhi.palande@canonical.com>
+Subject: Re: [PATCH] ext4: add support for multiple mount protection
+Date: Tue, 24 May 2011 17:47:14 -0400
+Message-ID: <20110524214714.GG26055@thunk.org>
+References: <1305333485-17140-1-git-send-email-johann@whamcloud.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: sandeen@redhat.com, jack@suse.cz, marco.stornelli@gmail.com,
-	adilger.kernel@dilger.ca, toshi.okajima@jp.fujitsu.com,
-	m.mizuma@jp.fujitsu.com, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Surbhi Palande <surbhi.palande@canonical.com>
+Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@whamcloud.com>
+To: Johann Lombardi <johann@whamcloud.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:42014 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:58590 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933674Ab1EXVmf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 May 2011 17:42:35 -0400
+	id S1757582Ab1EXVrQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 May 2011 17:47:16 -0400
 Content-Disposition: inline
-In-Reply-To: <1305097841-2308-1-git-send-email-surbhi.palande@canonical.com>
+In-Reply-To: <1305333485-17140-1-git-send-email-johann@whamcloud.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 11, 2011 at 10:10:41AM +0300, Surbhi Palande wrote:
-> While the fsstress background writes are busy dirtying the page cache, if a
-> fsfreeze happens then the background writes should stall. A sync should then
-> not have any data to sync to the FS. If it does have any data to sync then
-> sync will cause a deadlock by holding the s_umount write semaphore and waiting
-> in the wait queue for the FS to thaw, whereas the F.S can never thaw without
-> getting the s_umount write semaphore.
+On Fri, May 13, 2011 at 05:38:05PM -0700, Johann Lombardi wrote:
+> Prevent an ext4 filesystem from being mounted multiple times.
+> A sequence number is stored on disk and is periodically updated (every 5
+> seconds by default) by a mounted filesystem.
+> At mount time, we now wait for s_mmp_update_interval seconds to make sure
+> that the MMP sequence does not change.
+> In case of failure, the nodename, bdevname and the time at which the MMP
+> block was last updated is displayed.
+> Move all mmp code to a dedicated file (mmp.c).
 > 
-> Signed-off-by: Surbhi Palande <surbhi.palande@canonical.com>
+> Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
+> Signed-off-by: Johann Lombardi <johann@whamcloud.com>
 
-Hi Surbhi,
+Oops, I see I pulled the wrong (older) version of this patch into my
+dev tree.  I've corrected this and pulled in this version.  Thanks!!
 
-Have you tried out Jan Kara's patches?
-
-[1/3] fs: Create __block_page_mkwrite() helper passing error values back
-[2/3] vfs: Block mmapped writes while the fs is frozen
-[3/3] ext4: Rewrite ext4_page_mkwrite() to return locked page
-
-Do these patches fix the problem you've been trying to fix with your
-patches?  I believe they should, but I would appreciate confirmation
-that with these patches, you're no longer able to reproduce the
-problem you've been concerned about.
-
-Thanks, regards,
-
-						- Ted
+    	   		       	   	       - Ted
