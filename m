@@ -1,45 +1,40 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [PULL REQUEST] Ext2 & ext3 fixes for 2.6.40-rc1
-Date: Tue, 24 May 2011 15:13:02 -0700
-Message-ID: <BANLkTikun0+8bdhJ+-grLF04xuNEhKnjOg@mail.gmail.com>
-References: <20110524152304.GB5390@quack.suse.cz>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: ext4_trim_fs() load buddy only when it is needed
+Date: Tue, 24 May 2011 18:18:18 -0400
+Message-ID: <20110524221818.GH26055@thunk.org>
+References: <1303144351-15614-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:49603 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756354Ab1EXWN0 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 May 2011 18:13:26 -0400
-In-Reply-To: <20110524152304.GB5390@quack.suse.cz>
+Received: from li9-11.members.linode.com ([67.18.176.11]:37030 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757506Ab1EXWS1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 May 2011 18:18:27 -0400
+Content-Disposition: inline
+In-Reply-To: <1303144351-15614-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 24, 2011 at 8:23 AM, Jan Kara <jack@suse.cz> wrote:
->
-> =A0could you please pull from
->
-> git://git.kernel.org/pub/scm/linux/kernel/git/jack/fs.git for_linus
+On Mon, Apr 18, 2011 at 06:32:31PM +0200, Lukas Czerner wrote:
+> Currently we are loading buddy ext4_mb_load_buddy() for every block
+> group we are going through in ext4_trim_fs() in many cases just to find
+> out that there is not enough space to be bothered with. As Amir Goldstein
+> suggested we can use bb_free information directly from ext4_group_info.
+> 
+> This commit removes ext4_mb_load_buddy() from ext4_trim_fs() and rather
+> get the ext4_group_info via ext4_get_group_info() and use the bb_free
+> information directly from that. This avoids unnecessary call to load
+> buddy in the case the group does not have enough free space to trim.
+> Loading buddy is now moved to ext4_trim_all_free().
+> 
+> Tested by me with xfstests 251.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
-Grr.
+I just added this patch to the ext4 tree.  Apologies for not noticing
+it earlier.  I had to make a few adjustments to make the patch apply,
+but nothing major.
 
-That tree doesn't exist.
-
-You meant
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs-2.6 for_l=
-inus
-
-didn't you?
-
-Please fix your scripts.
-
-                         Linus
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+						- Ted
