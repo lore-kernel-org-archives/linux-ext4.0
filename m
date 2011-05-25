@@ -1,85 +1,91 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: hang in xfstest 204 with dev branch
-Date: Wed, 25 May 2011 22:01:38 +0300
-Message-ID: <BANLkTik66Fj7_uHmjsL65j+5s3VQ1_VdoQ@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>,
-	Allison Henderson <achender@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:51723 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753181Ab1EYTBk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 May 2011 15:01:40 -0400
-Received: by eyx24 with SMTP id 24so4398eyx.19
-        for <linux-ext4@vger.kernel.org>; Wed, 25 May 2011 12:01:39 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Andreas Dilger <adilger.kernel@dilger.ca>
+Subject: Re: [PATCH 1/3] fs: add SEEK_HOLE and SEEK_DATA flags V4
+Date: Wed, 25 May 2011 13:45:56 -0600
+Message-ID: <0E7B812A-4057-4EB8-93F5-79ED9FCE2CCD@dilger.ca>
+References: <1306186991-1905-1-git-send-email-josef@redhat.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	sunil.mushran@oracle.com, viro@ZenIV.linux.org.uk
+To: Josef Bacik <josef@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1306186991-1905-1-git-send-email-josef@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+On May 23, 2011, at 15:43, Josef Bacik wrote:
+> This just gets us ready to support the SEEK_HOLE and SEEK_DATA flags.  Turns out
+> using fiemap in things like cp cause more problems than it solves, so lets try
+> and give userspace an interface that doesn't suck.  We need to match solaris
+> here, and the definitions are
+> 
+> diff --git a/fs/read_write.c b/fs/read_write.c
+> index 5520f8a..9c3b453 100644
+> --- a/fs/read_write.c
+> +++ b/fs/read_write.c
+> @@ -64,6 +64,23 @@ generic_file_llseek_unlocked(struct file *file, loff_t offset, int origin)
+> 			return file->f_pos;
+> 		offset += file->f_pos;
+> 		break;
+> +	case SEEK_DATA:
+> +		/*
+> +		 * In the generic case the entire file is data, so as long as
+> +		 * offset isn't at the end of the file then the offset is data.
+> +		 */
+> +		if (offset >= inode->i_size)
+> +			return -ENXIO;
+> +		break;
+> +	case SEEK_HOLE:
+> +		/*
+> +		 * There is a virtual hole at the end of the file, so as long as
+> +		 * offset isn't i_size or larger, return i_size.
+> +		 */
+> +		if (offset >= inode->i_size)
+> +			return -ENXIO;
+> +		offset = inode->i_size;
+> +		break;
+> 	}
 
-When running xfstests with 4K blocksize, test 204 (Test out ENOSPC
-flushing on small filesystems)
-hangs in an interruptible sleep (I can release it with ctrl-C).
+What about all of the existing filesystems that currently just ignore
+values of "origin" that they don't understand?  Looking through those
+it appears that most of them will return "offset" for unknown values
+of "origin", which I guess is OK for SEEK_DATA, but is confusing for
+SEEK_HOLE.  Some filesystems will return -EINVAL for values of origin
+that are unknown.
 
-git bisect points at commit fc0d5c38963ed655e974025c63290563c172038a
-    ext4: add flag to ext4_has_free_blocks
-as the offender.
+Most of the filesystem-specific ->llseek() methods don't do any error
+checking on "origin" because this is handled at the sys_llseek() level,
+and hasn't changed in many years.
 
-Following is the stack dump of hung tasks (immediately after running test 204):
+I assume this patch is also dependent upon the "remove default_llseek()"
+patch, so that the implementation of SEEK_DATA and SEEK_HOLE can be done
+in only generic_file_llseek()?
 
-[  406.974191] SysRq : Show Blocked State
-[  406.974198]   task                        PC stack   pid father
-[  406.974234] 204             D ffff88010b763148     0  2002   1797 0x00000000
-[  406.974239]  ffff880109621bd8 0000000000000082 ffff880100000000
-0000000300000001
-[  406.974243]  ffff880109621b78 ffff880109621fd8 ffff880109620000
-ffff880109621fd8
-[  406.974247]  ffff880128f34470 ffff88010b762da0 ffff880109621bd8
-0000000181084ec0
-[  406.974250] Call Trace:
-[  406.974260]  [<ffffffff81241d05>] jbd2_log_wait_commit+0xb5/0x130
-[  406.974264]  [<ffffffff81084c10>] ? wake_up_bit+0x40/0x40
-[  406.974267]  [<ffffffff81243c26>] ? __jbd2_log_start_commit+0x96/0xa0
-[  406.974270]  [<ffffffff81243d6b>] jbd2_journal_force_commit_nested+0x5b/0xa0
-[  406.974274]  [<ffffffff811f3f1f>] ext4_should_retry_alloc+0x5f/0x70
-[  406.974277]  [<ffffffff81205c5b>] ext4_create+0x11b/0x140
-[  406.974281]  [<ffffffff8116c101>] vfs_create+0xb1/0x110
-[  406.974284]  [<ffffffff8116c796>] do_last+0x636/0x960
-[  406.974287]  [<ffffffff8116cc4b>] path_openat+0xcb/0x3c0
-[  406.974290]  [<ffffffff8116cf82>] do_filp_open+0x42/0xa0
-[  406.974293]  [<ffffffff81179707>] ? alloc_fd+0xf7/0x150
-[  406.974297]  [<ffffffff8115d1a1>] do_sys_open+0x101/0x1d0
-[  406.974299]  [<ffffffff8115d290>] sys_open+0x20/0x30
-[  406.974304]  [<ffffffff815ad242>] system_call_fastpath+0x16/0x1b
-[  406.974306] jbd2/sda8-8     D ffff88010f1ac818     0  2167      2 0x00000000
-[  406.974309]  ffff88010d3a9bc0 0000000000000046 ffff880100000000
-ffffffff81109a89
-[  406.974313]  ffff880109fd2958 ffff88010d3a9fd8 ffff88010d3a8000
-ffff88010d3a9fd8
-[  406.974317]  ffffffff81a0b020 ffff88010f1ac470 ffff88010d3a9b90
-000000012fc13fc0
+Finally, while looking through the various ->llseek() methods I notice
+that many filesystems return "i_size" for SEEK_END, which clearly does
+not make sense for filesystems like ext3/ext4 htree, btrfs, etc that
+use hash keys instead of byte offsets for doing directory traversal.
+The comment at generic_file_llseek() is that it is intended for use by
+regular files.
 
-[  406.974320] Call Trace:
-[  406.974324]  [<ffffffff81109a89>] ? mempool_alloc+0x59/0x140
-[  406.974328]  [<ffffffff8118aa20>] ? __wait_on_buffer+0x30/0x30
-[  406.974332]  [<ffffffff815a2c1c>] io_schedule+0x8c/0xd0
-[  406.974334]  [<ffffffff8118aa2e>] sleep_on_buffer+0xe/0x20
-[  406.974338]  [<ffffffff815a36ef>] __wait_on_bit+0x5f/0x90
-[  406.974341]  [<ffffffff8118aa20>] ? __wait_on_buffer+0x30/0x30
-[  406.974343]  [<ffffffff815a379c>] out_of_line_wait_on_bit+0x7c/0x90
-[  406.974347]  [<ffffffff81084c50>] ? autoremove_wake_function+0x40/0x40
-[  406.974350]  [<ffffffff8118aa1e>] __wait_on_buffer+0x2e/0x30
-[  406.974353]  [<ffffffff8123e70d>]
-jbd2_journal_commit_transaction+0x140d/0x1580
-[  406.974357]  [<ffffffff8100a6e0>] ? __switch_to+0xc0/0x2f0
-[  406.974360]  [<ffffffff81241e4b>] kjournald2+0xbb/0x220
-[  406.974363]  [<ffffffff81084c10>] ? wake_up_bit+0x40/0x40
-[  406.974366]  [<ffffffff81241d90>] ? commit_timeout+0x10/0x10
-[  406.974369]  [<ffffffff81084476>] kthread+0x96/0xa0
-[  406.974372]  [<ffffffff815ae364>] kernel_thread_helper+0x4/0x10
-[  406.974375]  [<ffffffff810843e0>] ? flush_kthread_worker+0xb0/0xb0
-[  406.974378]  [<ffffffff815ae360>] ? gs_change+0x13/0x13
+Should the ext4_llseek() code be changed to return 0x7ffffffff for the
+SEEK_END value?  That makes more sense compared to values returned for
+SEEK_CUR so that an application can compare the current "offset" with
+the final value for a progress bar.
 
-Amir.
+Another interesting use is for N threads to process a large directory
+in parallel by using max_off = llseek(dirfd, 0, SEEK_END) and then
+each thread calls llseek(dirfd, thread_nr * max_off / N, SEEK_SET)
+to process 1/N of the directory.
+
+
+Cheers, Andreas
+
+
+
+
+
+
+Cheers, Andreas
