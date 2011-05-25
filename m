@@ -1,15 +1,14 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext4: Convert ext4 to new truncate calling convention
-Date: Wed, 25 May 2011 10:43:08 +0200
-Message-ID: <1306312988-5508-1-git-send-email-jack@suse.cz>
-Cc: Christoph Hellwig <hch@infradead.org>, Ted Tso <tytso@mit.edu>,
-	Jan Kara <jack@suse.cz>
+Subject: [PATCH] ext3: Convert ext3 to new truncate calling convention
+Date: Wed, 25 May 2011 10:44:09 +0200
+Message-ID: <1306313049-5551-1-git-send-email-jack@suse.cz>
+Cc: Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:45036 "EHLO mx1.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:49191 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932931Ab1EYInT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 25 May 2011 04:43:19 -0400
+	id S932931Ab1EYIoM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 25 May 2011 04:44:12 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -18,56 +17,94 @@ files could not be truncated during failed writes as we change the code.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/file.c  |    1 -
- fs/ext4/inode.c |   24 ++++++++++++++++++++----
- 2 files changed, 20 insertions(+), 5 deletions(-)
+ fs/ext3/file.c          |    1 -
+ fs/ext3/inode.c         |   40 +++++++++++++++++++++++++++-------------
+ include/linux/ext3_fs.h |    2 +-
+ 3 files changed, 28 insertions(+), 15 deletions(-)
 
-  Ted, can you please merge this patch? Thanks.
+ I've added this patch to my tree.
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 7b80d54..2c09723 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -272,7 +272,6 @@ const struct file_operations ext4_file_operations = {
+diff --git a/fs/ext3/file.c b/fs/ext3/file.c
+index f55df0e..86c8ab3 100644
+--- a/fs/ext3/file.c
++++ b/fs/ext3/file.c
+@@ -71,7 +71,6 @@ const struct file_operations ext3_file_operations = {
  };
  
- const struct inode_operations ext4_file_inode_operations = {
--	.truncate	= ext4_truncate,
- 	.setattr	= ext4_setattr,
- 	.getattr	= ext4_getattr,
- #ifdef CONFIG_EXT4_FS_XATTR
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4eca654..0aa52b4 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3513,7 +3513,7 @@ retry:
- 			loff_t end = offset + iov_length(iov, nr_segs);
+ const struct inode_operations ext3_file_inode_operations = {
+-	.truncate	= ext3_truncate,
+ 	.setattr	= ext3_setattr,
+ #ifdef CONFIG_EXT3_FS_XATTR
+ 	.setxattr	= generic_setxattr,
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index 4d327a5..abb33cd 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -234,12 +234,10 @@ void ext3_evict_inode (struct inode *inode)
+ 	if (inode->i_blocks)
+ 		ext3_truncate(inode);
+ 	/*
+-	 * Kill off the orphan record which ext3_truncate created.
+-	 * AKPM: I think this can be inside the above `if'.
+-	 * Note that ext3_orphan_del() has to be able to cope with the
+-	 * deletion of a non-existent orphan - this is because we don't
+-	 * know if ext3_truncate() actually created an orphan record.
+-	 * (Well, we could do this if we need to, but heck - it works)
++	 * Kill off the orphan record created when the inode lost the last
++	 * link.  Note that ext3_orphan_del() has to be able to cope with the
++	 * deletion of a non-existent orphan - ext3_truncate() could
++	 * have removed the record.
+ 	 */
+ 	ext3_orphan_del(handle, inode);
+ 	EXT3_I(inode)->i_dtime	= get_seconds();
+@@ -890,6 +888,9 @@ int ext3_get_blocks_handle(handle_t *handle, struct inode *inode,
+ 	if (!create || err == -EIO)
+ 		goto cleanup;
  
- 			if (end > isize)
--				vmtruncate(inode, isize);
-+				ext4_truncate_failed_write(inode);
++	/*
++	 * Block out ext3_truncate while we alter the tree
++	 */
+ 	mutex_lock(&ei->truncate_mutex);
+ 
+ 	/*
+@@ -938,9 +939,6 @@ int ext3_get_blocks_handle(handle_t *handle, struct inode *inode,
+ 	 */
+ 	count = ext3_blks_to_allocate(partial, indirect_blks,
+ 					maxblocks, blocks_to_boundary);
+-	/*
+-	 * Block out ext3_truncate while we alter the tree
+-	 */
+ 	err = ext3_alloc_branch(handle, inode, indirect_blks, &count, goal,
+ 				offsets + (partial - chain), partial);
+ 
+@@ -1863,7 +1861,7 @@ retry:
+ 			/* This is really bad luck. We've written the data
+ 			 * but cannot extend i_size. Truncate allocated blocks
+ 			 * and pretend the write failed... */
+-			ext3_truncate(inode);
++			ext3_truncate_failed_write(inode);
+ 			ret = PTR_ERR(handle);
+ 			goto out;
  		}
- 	}
- 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-@@ -4380,8 +4380,6 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
+@@ -2414,8 +2412,6 @@ static void ext3_free_branches(handle_t *handle, struct inode *inode,
  
- int ext4_can_truncate(struct inode *inode)
+ int ext3_can_truncate(struct inode *inode)
  {
 -	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
 -		return 0;
  	if (S_ISREG(inode->i_mode))
  		return 1;
  	if (S_ISDIR(inode->i_mode))
-@@ -5236,6 +5234,24 @@ int ext4_write_inode(struct inode *inode, struct writeback_control *wbc)
- 	return err;
+@@ -3188,6 +3184,24 @@ int ext3_write_inode(struct inode *inode, struct writeback_control *wbc)
+ 	return ext3_force_commit(inode->i_sb);
  }
  
-+static int ext4_setsize(struct inode *inode, loff_t newsize)
++static int ext3_setsize(struct inode *inode, loff_t newsize)
 +{
 +	loff_t oldsize;
 +	int rc;
 +
-+	rc = inode_newsize_ok(inode, newsize);
++	rc = inode_newsize_ok(inode, newsize);		
 +	if (rc)
 +		return rc;
 +	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
@@ -75,23 +112,36 @@ index 4eca654..0aa52b4 100644
 +	oldsize = inode->i_size;
 +	i_size_write(inode, newsize);
 +	truncate_pagecache(inode, oldsize, newsize);
-+	ext4_truncate(inode);
++	ext3_truncate(inode);
 +
 +	return 0;
 +}
 +
  /*
-  * ext4_setattr()
+  * ext3_setattr()
   *
-@@ -5353,7 +5369,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+@@ -3264,7 +3278,7 @@ int ext3_setattr(struct dentry *dentry, struct iattr *attr)
  
  	if ((attr->ia_valid & ATTR_SIZE) &&
- 	    attr->ia_size != i_size_read(inode))
+ 	    attr->ia_size != i_size_read(inode)) {
 -		rc = vmtruncate(inode, attr->ia_size);
-+		rc = ext4_setsize(inode, attr->ia_size);
- 
- 	if (!rc) {
- 		setattr_copy(inode, attr);
++		rc = ext3_setsize(inode, attr->ia_size);
+ 		if (rc)
+ 			goto err_out;
+ 	}
+diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
+index 85c1d30..d7511b4 100644
+--- a/include/linux/ext3_fs.h
++++ b/include/linux/ext3_fs.h
+@@ -913,7 +913,7 @@ extern void ext3_dirty_inode(struct inode *);
+ extern int ext3_change_inode_journal_flag(struct inode *, int);
+ extern int ext3_get_inode_loc(struct inode *, struct ext3_iloc *);
+ extern int ext3_can_truncate(struct inode *inode);
+-extern void ext3_truncate (struct inode *);
++extern void ext3_truncate(struct inode *inode);
+ extern void ext3_set_inode_flags(struct inode *);
+ extern void ext3_get_inode_flags(struct ext3_inode_info *);
+ extern void ext3_set_aops(struct inode *inode);
 -- 
 1.7.1
 
