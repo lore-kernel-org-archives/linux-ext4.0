@@ -1,41 +1,35 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16019] Resume from hibernate corrupts ext4
-Date: Wed, 25 May 2011 21:10:52 GMT
-Message-ID: <201105252110.p4PLAqhs010409@demeter1.kernel.org>
-References: <bug-16019-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: hang in xfstest 204 with dev branch
+Date: Wed, 25 May 2011 17:31:17 -0400
+Message-ID: <20110525213117.GA9520@thunk.org>
+References: <BANLkTik66Fj7_uHmjsL65j+5s3VQ1_VdoQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:33001 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754450Ab1EYVKx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 May 2011 17:10:53 -0400
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p4PLAq6W010410
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 25 May 2011 21:10:52 GMT
-In-Reply-To: <bug-16019-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:39046 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752378Ab1EYVbd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 25 May 2011 17:31:33 -0400
+Content-Disposition: inline
+In-Reply-To: <BANLkTik66Fj7_uHmjsL65j+5s3VQ1_VdoQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16019
+On Wed, May 25, 2011 at 10:01:38PM +0300, Amir Goldstein wrote:
+> 
+> When running xfstests with 4K blocksize, test 204 (Test out ENOSPC
+> flushing on small filesystems)
+> hangs in an interruptible sleep (I can release it with ctrl-C).
+> 
+> git bisect points at commit fc0d5c38963ed655e974025c63290563c172038a
+>     ext4: add flag to ext4_has_free_blocks
+> as the offender.
 
+I found and fixed it.  It was a bug I accidently introduced when I was
+cleaning up that patches.  Try the latest dev branch from the ext4.git
+tree....
 
-Philippe Planchon <philippe.planchon@gmail.com> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |philippe.planchon@gmail.com
-
-
-
-
---- Comment #46 from Philippe Planchon <philippe.planchon@gmail.com>  2011-05-25 21:10:51 ---
-I'm running 2.6.35.13-91.fc14.x86_64 and have the same ext4-fs issue on resume
-after hibernate.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching someone on the CC list of the bug.
+					- Ted
