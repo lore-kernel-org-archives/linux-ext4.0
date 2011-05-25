@@ -1,83 +1,97 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/3] jbd2 : Fix journal start by passing a parameter to
- specify if the caller can deal with ENOMEM
-Date: Wed, 25 May 2011 10:13:33 +0200
-Message-ID: <20110525081333.GB4427@quack.suse.cz>
-References: <4DDCAF18.8030809@gmail.com>
- <20110525074457.GA4427@quack.suse.cz>
- <4DDCB3FA.2070009@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Manish Katiyar <mkatiyar@gmail.com>
+Subject: [PATCH] ext4: Convert ext4 to new truncate calling convention
+Date: Wed, 25 May 2011 10:43:08 +0200
+Message-ID: <1306312988-5508-1-git-send-email-jack@suse.cz>
+Cc: Christoph Hellwig <hch@infradead.org>, Ted Tso <tytso@mit.edu>,
+	Jan Kara <jack@suse.cz>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:48141 "EHLO mx2.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:45036 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932114Ab1EYINf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 25 May 2011 04:13:35 -0400
-Content-Disposition: inline
-In-Reply-To: <4DDCB3FA.2070009@gmail.com>
+	id S932931Ab1EYInT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 25 May 2011 04:43:19 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 25-05-11 00:47:06, Manish Katiyar wrote:
-> On 05/25/2011 12:44 AM, Jan Kara wrote:
-> > This patch is OK as such but as I wrote in a reply to a later patch in
-> > the series, you also need to pass 'errok' to start_this_handle() instead of
-> > gfp_mask as well. Then in start_this_handle() you can use 'errok' to decide
-> > whether we should retry the allocation or not instead of gfp_mask. And just
-> > call kzalloc in start_this_handle() with GFP_NOFS... Thanks.
-> 
-> Hi Jan,
-> 
->    ok.. I will do it as a separate patch.
-  Well, patch 2/3 does not really make too much sense without it (errok
-parameter isn't used) so there's no reason to do it as a separate patch.
-Just add it to this patch please.
+Mostly trivial conversion. We fix a bug that IS_IMMUTABLE and IS_APPEND
+files could not be truncated during failed writes as we change the code.
 
-Also Ted asked you to send patches in one mail thread - that is the second
-and further patches are a reply to the first patch. Git makes this easy to
-do via 'git send-email' but it's not so easy to use for development when
-you need to change patches in the middle of the series. But TopGit
-(http://repo.or.cz/w/topgit.git?a=blob;f=README) can make this task easier
-for you (or I personaly just use two shell scripts on top of git itself).
-
-Finally, the patch header like:
-Hi Jan,
-
-Posting this as a new mail for Ted's convenience. I have incorporated your
-feedback from the last patch
-(http://comments.gmane.org/gmane.comp.file-systems.ext4/24547) and updated
-the patch.
-
-
-
-a) Add a new API ext4_journal_start_failok for callers who are
-  ok to handle ENOMEM cases.
-b) Update ext4 routines with the new API which can fail.
-
-
-Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
-Isn't really useful. You don't really want the greeing and the first
-paragraph to end up in git history forever, do you? And Ted doesn't want to
-edit emails by hand to remove unnecessary stuff either. So it should rather
-have looked like:
-a) Add a new API ext4_journal_start_failok for callers who are
-  ok to handle ENOMEM cases.
-b) Update ext4 routines with the new API which can fail.
----
-Posting this as a new mail for Ted's convenience. I have incorporated Jan's
-feedback from the last patch
-(http://comments.gmane.org/gmane.comp.file-systems.ext4/24547) and updated
-the patch.
-<diffstat here>
+ fs/ext4/file.c  |    1 -
+ fs/ext4/inode.c |   24 ++++++++++++++++++++----
+ 2 files changed, 20 insertions(+), 5 deletions(-)
 
-Then, one can just run 'git am' on the mailbox and it will automatically
-remove stuff below --- and include the patch into git. Much faster when you
-have to handle tons of patches...
+  Ted, can you please merge this patch? Thanks.
 
-								Honza
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 7b80d54..2c09723 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -272,7 +272,6 @@ const struct file_operations ext4_file_operations = {
+ };
+ 
+ const struct inode_operations ext4_file_inode_operations = {
+-	.truncate	= ext4_truncate,
+ 	.setattr	= ext4_setattr,
+ 	.getattr	= ext4_getattr,
+ #ifdef CONFIG_EXT4_FS_XATTR
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 4eca654..0aa52b4 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3513,7 +3513,7 @@ retry:
+ 			loff_t end = offset + iov_length(iov, nr_segs);
+ 
+ 			if (end > isize)
+-				vmtruncate(inode, isize);
++				ext4_truncate_failed_write(inode);
+ 		}
+ 	}
+ 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+@@ -4380,8 +4380,6 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
+ 
+ int ext4_can_truncate(struct inode *inode)
+ {
+-	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
+-		return 0;
+ 	if (S_ISREG(inode->i_mode))
+ 		return 1;
+ 	if (S_ISDIR(inode->i_mode))
+@@ -5236,6 +5234,24 @@ int ext4_write_inode(struct inode *inode, struct writeback_control *wbc)
+ 	return err;
+ }
+ 
++static int ext4_setsize(struct inode *inode, loff_t newsize)
++{
++	loff_t oldsize;
++	int rc;
++
++	rc = inode_newsize_ok(inode, newsize);
++	if (rc)
++		return rc;
++	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
++		return -EPERM;
++	oldsize = inode->i_size;
++	i_size_write(inode, newsize);
++	truncate_pagecache(inode, oldsize, newsize);
++	ext4_truncate(inode);
++
++	return 0;
++}
++
+ /*
+  * ext4_setattr()
+  *
+@@ -5353,7 +5369,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 
+ 	if ((attr->ia_valid & ATTR_SIZE) &&
+ 	    attr->ia_size != i_size_read(inode))
+-		rc = vmtruncate(inode, attr->ia_size);
++		rc = ext4_setsize(inode, attr->ia_size);
+ 
+ 	if (!rc) {
+ 		setattr_copy(inode, attr);
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.1
+
