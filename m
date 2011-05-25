@@ -1,40 +1,66 @@
-From: y@mx.nrchpc.ac.cn
-Subject: [PATCH 1/2] Jbd2: fix a bug of leaking jh->b_jcount
-Date: Wed, 25 May 2011 18:19:46 +0800
-Message-ID: <5848.07172786004$1306319237@news.gmane.org>
-References: <y>
-Cc: Ding Dinghua <dingdinghua@nrchpc.ac.cn>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH v2] ext4: Convert ext4 to new truncate calling convention
+Date: Wed, 25 May 2011 12:35:02 +0200
+Message-ID: <1306319702-14459-1-git-send-email-jack@suse.cz>
+Cc: Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [221.122.61.228] ([221.122.61.228]:55680 "EHLO mx.nrchpc.ac.cn"
-	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1750783Ab1EYK1J (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 25 May 2011 06:27:09 -0400
-In-Reply-To: <y>
+Received: from cantor.suse.de ([195.135.220.2]:49477 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751103Ab1EYKfH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 25 May 2011 06:35:07 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Ding Dinghua <dingdinghua@nrchpc.ac.cn>
+Trivial conversion. Fixup one error handling case calling vmtruncate()
+and remove ->truncate callback. We also fix a bug that IS_IMMUTABLE and
+IS_APPEND files could not be truncated during failed writes. In fact, the
+test can be completely removed as upper layers do necessary permission
+checks for truncate in do_sys_[f]truncate() and may_open() anyway.
 
-drop jh->b_jcount in error path
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/transaction.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ fs/ext4/file.c  |    1 -
+ fs/ext4/inode.c |    4 +---
+ 2 files changed, 1 insertions(+), 4 deletions(-)
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 05fa77a..d66672a 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -921,8 +921,8 @@ int jbd2_journal_get_create_access(handle_t *handle, struct buffer_head *bh)
- 	 */
- 	JBUFFER_TRACE(jh, "cancelling revoke");
- 	jbd2_journal_cancel_revoke(handle, jh);
--	jbd2_journal_put_journal_head(jh);
- out:
-+	jbd2_journal_put_journal_head(jh);
- 	return err;
- }
+ Ted, this patch should finish necessary conversion of ext4 to new truncate
+calling sequence.
+
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 7b80d54..2c09723 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -272,7 +272,6 @@ const struct file_operations ext4_file_operations = {
+ };
  
+ const struct inode_operations ext4_file_inode_operations = {
+-	.truncate	= ext4_truncate,
+ 	.setattr	= ext4_setattr,
+ 	.getattr	= ext4_getattr,
+ #ifdef CONFIG_EXT4_FS_XATTR
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index fe37371..1f8e839 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3513,7 +3513,7 @@ retry:
+ 			loff_t end = offset + iov_length(iov, nr_segs);
+ 
+ 			if (end > isize)
+-				vmtruncate(inode, isize);
++				ext4_truncate_failed_write(inode);
+ 		}
+ 	}
+ 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+@@ -4380,8 +4380,6 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
+ 
+ int ext4_can_truncate(struct inode *inode)
+ {
+-	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
+-		return 0;
+ 	if (S_ISREG(inode->i_mode))
+ 		return 1;
+ 	if (S_ISDIR(inode->i_mode))
 -- 
-1.7.4.1
+1.7.1
 
