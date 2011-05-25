@@ -1,53 +1,108 @@
-From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: Re: [PATCH] ext4: invalidate gap cache when writing extents last
- block
-Date: Wed, 25 May 2011 17:59:23 +0900
-Message-ID: <4DDCC4EB.5000007@sx.jp.nec.com>
-References: <alpine.LFD.2.00.1105130829160.3768@dhcp-27-109.brq.redhat.com> <1305268616-5167-1-git-send-email-lczerner@redhat.com> <4DCCF208.3040704@sx.jp.nec.com> <4DDB6D66.3010703@sx.jp.nec.com> <alpine.LFD.2.00.1105241037190.4028@dhcp-27-109.brq.redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: Convert ext4 to new truncate calling convention
+Date: Wed, 25 May 2011 11:15:27 +0200
+Message-ID: <20110525091527.GA6246@quack.suse.cz>
+References: <1306312988-5508-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>, Ted Tso <tytso@mit.edu>,
+	Jan Kara <jack@suse.cz>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:42283 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751023Ab1EYI7y (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 May 2011 04:59:54 -0400
-In-Reply-To: <alpine.LFD.2.00.1105241037190.4028@dhcp-27-109.brq.redhat.com>
+Received: from cantor2.suse.de ([195.135.220.15]:50335 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751689Ab1EYJP3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 25 May 2011 05:15:29 -0400
+Content-Disposition: inline
+In-Reply-To: <1306312988-5508-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2011/05/24 17:57, Lukas Czerner wrote:
-> Hi Kazuya,
->
-> I am really sorry for late answer. I think you're partly right. my
-> solution is not good, but I still think that your is not good as well. I
-> need to look at this again and more closely, sorry.
->
-> What do you think about this: ext4_ext_next_allocated_block() should
-> return next allocated block, however instead it in some cases returns
-> EXT_MAX_BLOCK, which points at the last logical block in a file, which
-> however in some cases might be equal to the last not allocated block,
-> not first allocated block in subsequent extent. And boom, we have (next
-> == lblock).
+On Wed 25-05-11 10:43:08, Jan Kara wrote:
+> Mostly trivial conversion. We fix a bug that IS_IMMUTABLE and IS_APPEND
+> files could not be truncated during failed writes as we change the code.
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
+  I've just noticed that Ted has changed the code this week as well and
+removed vmtruncate() from ->setattr(). So Ted, please ignore this patch and
+I'll send you another patch based on current ext4 state in your tree.
 
-I think so, too.
-
-> So if we want to really return next allocated block (or more
-> specifically, next block which we can not allocate), we should in those
-> cases return EXT_MAX_BLOCK+1. And we should do this in
-> ext4_ext_put_gap_in_cache() as well when there is no extent yet. Also
-> note that as I said EXT_MAX_BLOCK means maximum logical block, however
-> we use it as lenght in ext4_ext_put_gap_in_cache() which does not sound
-> right either. It seems all a little bit messy :-/. I need to look at it
-> and try it to see if it would work, but I think it does make sense.
->
-> What do you think?
-
-AFAIK, it's the best way to fix this problem. But I have no idea that doesn't
-increase the size of struct ext4_ext_cache. I'm looking forward to seeing
-the patch.
-
-Regards,
-Kazuya Mio
+								Honza
+> ---
+>  fs/ext4/file.c  |    1 -
+>  fs/ext4/inode.c |   24 ++++++++++++++++++++----
+>  2 files changed, 20 insertions(+), 5 deletions(-)
+> 
+>   Ted, can you please merge this patch? Thanks.
+> 
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index 7b80d54..2c09723 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -272,7 +272,6 @@ const struct file_operations ext4_file_operations = {
+>  };
+>  
+>  const struct inode_operations ext4_file_inode_operations = {
+> -	.truncate	= ext4_truncate,
+>  	.setattr	= ext4_setattr,
+>  	.getattr	= ext4_getattr,
+>  #ifdef CONFIG_EXT4_FS_XATTR
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 4eca654..0aa52b4 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -3513,7 +3513,7 @@ retry:
+>  			loff_t end = offset + iov_length(iov, nr_segs);
+>  
+>  			if (end > isize)
+> -				vmtruncate(inode, isize);
+> +				ext4_truncate_failed_write(inode);
+>  		}
+>  	}
+>  	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+> @@ -4380,8 +4380,6 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
+>  
+>  int ext4_can_truncate(struct inode *inode)
+>  {
+> -	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
+> -		return 0;
+>  	if (S_ISREG(inode->i_mode))
+>  		return 1;
+>  	if (S_ISDIR(inode->i_mode))
+> @@ -5236,6 +5234,24 @@ int ext4_write_inode(struct inode *inode, struct writeback_control *wbc)
+>  	return err;
+>  }
+>  
+> +static int ext4_setsize(struct inode *inode, loff_t newsize)
+> +{
+> +	loff_t oldsize;
+> +	int rc;
+> +
+> +	rc = inode_newsize_ok(inode, newsize);
+> +	if (rc)
+> +		return rc;
+> +	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
+> +		return -EPERM;
+> +	oldsize = inode->i_size;
+> +	i_size_write(inode, newsize);
+> +	truncate_pagecache(inode, oldsize, newsize);
+> +	ext4_truncate(inode);
+> +
+> +	return 0;
+> +}
+> +
+>  /*
+>   * ext4_setattr()
+>   *
+> @@ -5353,7 +5369,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+>  
+>  	if ((attr->ia_valid & ATTR_SIZE) &&
+>  	    attr->ia_size != i_size_read(inode))
+> -		rc = vmtruncate(inode, attr->ia_size);
+> +		rc = ext4_setsize(inode, attr->ia_size);
+>  
+>  	if (!rc) {
+>  		setattr_copy(inode, attr);
+> -- 
+> 1.7.1
+> 
