@@ -1,51 +1,79 @@
 From: Joe Perches <joe@perches.com>
-Subject: [PATCH 0/4] printk: cleanups of direct includes
-Date: Wed, 25 May 2011 10:02:37 -0700
-Message-ID: <cover.1306342673.git.joe@perches.com>
+Subject: [PATCH 1/4] treewide: Remove direct includes of printk.h
+Date: Wed, 25 May 2011 10:02:38 -0700
+Message-ID: <16b4d3f7016443ed5e9ab580cde3c5e7cf1cc553.1306342673.git.joe@perches.com>
 References: <BANLkTimo30L7feKr9_Ec=fMoe1erw8Rnag@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Randy Dunlap <randy.dunlap@oracle.com>, devel@driverdev.osuosl.org,
-	linux-ia64@vger.kernel.org, linux-wireless@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
-	linux-arm-kernel@lists.infradead.org
-To: Geert Uytterhoeven <geert@linux-m68k.org>, kvm-ia64@vger.kernel.org,
-	kvm@vger.kernel.org, linux-ext4@vger.kernel.org, oprofile-list@lists.sf.net
-Return-path: <devel-bounces@linuxdriverproject.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Randy Dunlap <randy.dunlap@oracle.com>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	oprofile-list@lists.sf.net
+To: Geert Uytterhoeven <geert@linux-m68k.org>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Robert Richter <robert.richter@amd.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <BANLkTimo30L7feKr9_Ec=fMoe1erw8Rnag@mail.gmail.com>
-List-Unsubscribe: <http://driverdev.linuxdriverproject.org/mailman/options/devel>,
-	<mailto:devel-request@linuxdriverproject.org?subject=unsubscribe>
-List-Archive: <http://driverdev.linuxdriverproject.org/pipermail/devel>
-List-Post: <mailto:devel@linuxdriverproject.org>
-List-Help: <mailto:devel-request@linuxdriverproject.org?subject=help>
-List-Subscribe: <http://driverdev.linuxdriverproject.org/mailman/listinfo/devel>,
-	<mailto:devel-request@linuxdriverproject.org?subject=subscribe>
-Sender: devel-bounces@linuxdriverproject.org
-Errors-To: devel-bounces@linuxdriverproject.org
+In-Reply-To: <cover.1306342673.git.joe@perches.com>
+References: <cover.1306342673.git.joe@perches.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-printk.h is a subfile of kernel.h, do not allow it to
-be included directly.
+Make the uses kernel.h instead.
 
-Joe Perches (4):
-  treewide: Remove direct includes of printk.h
-  staging: Remove direct includes of printk.h
-  printk: Don't allow direct inclusion
-  treewide: Remove asmlinkage from printk
+Signed-off-by: Joe Perches <joe@perches.com>
+---
+ fs/ext4/inode.c          |    1 -
+ include/linux/oprofile.h |    2 +-
+ kernel/sysctl.c          |    3 +--
+ 3 files changed, 2 insertions(+), 4 deletions(-)
 
- arch/arm/kernel/early_printk.c                |    2 +-
- arch/ia64/kvm/vmm.c                           |    2 +-
- arch/x86/kernel/early_printk.c                |    2 +-
- drivers/staging/brcm80211/brcmfmac/dhd_sdio.c |    1 -
- drivers/staging/brcm80211/util/bcmutils.c     |    1 -
- drivers/staging/usbip/usbip_common.h          |    2 +-
- fs/ext4/inode.c                               |    1 -
- include/linux/oprofile.h                      |    2 +-
- include/linux/printk.h                        |   10 +++++++---
- kernel/printk.c                               |    6 +++---
- kernel/sysctl.c                               |    3 +--
- 11 files changed, 16 insertions(+), 16 deletions(-)
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 2e95819..cffecac 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -39,7 +39,6 @@
+ #include <linux/bio.h>
+ #include <linux/workqueue.h>
+ #include <linux/kernel.h>
+-#include <linux/printk.h>
+ #include <linux/slab.h>
+ #include <linux/ratelimit.h>
+ 
+diff --git a/include/linux/oprofile.h b/include/linux/oprofile.h
+index 7f5cfd3..ef7d5b1 100644
+--- a/include/linux/oprofile.h
++++ b/include/linux/oprofile.h
+@@ -14,10 +14,10 @@
+ #define OPROFILE_H
+ 
+ #include <linux/types.h>
++#include <linux/kernel.h>
+ #include <linux/spinlock.h>
+ #include <linux/init.h>
+ #include <linux/errno.h>
+-#include <linux/printk.h>
+ #include <asm/atomic.h>
+  
+ /* Each escaped entry is prefixed by ESCAPE_CODE
+diff --git a/kernel/sysctl.c b/kernel/sysctl.c
+index 4fc9244..814d227 100644
+--- a/kernel/sysctl.c
++++ b/kernel/sysctl.c
+@@ -24,14 +24,13 @@
+ #include <linux/slab.h>
+ #include <linux/sysctl.h>
+ #include <linux/signal.h>
+-#include <linux/printk.h>
++#include <linux/kernel.h>
+ #include <linux/proc_fs.h>
+ #include <linux/security.h>
+ #include <linux/ctype.h>
+ #include <linux/kmemcheck.h>
+ #include <linux/fs.h>
+ #include <linux/init.h>
+-#include <linux/kernel.h>
+ #include <linux/kobject.h>
+ #include <linux/net.h>
+ #include <linux/sysrq.h>
 -- 
 1.7.4.rc3
