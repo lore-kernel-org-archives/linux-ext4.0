@@ -1,33 +1,39 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsprogs: fix freeing bitmap in allocation error path
-Date: Wed, 25 May 2011 19:30:45 -0400
-Message-ID: <20110525233045.GF9520@thunk.org>
-References: <1300702421-4774-1-git-send-email-lczerner@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
+From: dingdinghua@nrchpc.ac.cn
+Subject: [PATCH 1/2] jbd2: fix a bug of leaking jh->b_jcount
+Date: Thu, 26 May 2011 10:02:54 +0800
+Message-ID: <1306375374-12619-1-git-send-email-dingdinghua@nrchpc.ac.cn>
+Cc: dingdinghua@nrchpc.ac.cn
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:37480 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752889Ab1EYXas (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 25 May 2011 19:30:48 -0400
-Content-Disposition: inline
-In-Reply-To: <1300702421-4774-1-git-send-email-lczerner@redhat.com>
+Received: from [221.122.61.228] ([221.122.61.228]:48410 "EHLO mx.nrchpc.ac.cn"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S932137Ab1EZCDI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 25 May 2011 22:03:08 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 21, 2011 at 11:13:41AM +0100, Lukas Czerner wrote:
-> In ext2fs_alloc_generic_bmap() error path, when new bitmap allocation
-> fails ext2fs_generic_bitmap should be freed, however in current state it
-> first frees ext2fs_generic_bitmap and then
-> ext2fs_generic_bitmap->description which is wrong. This commit fix the
-> free ordering.
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+From: Ding Dinghua <dingdinghua@nrchpc.ac.cn>
 
-This was actually pulled into e2fsprogs a while back, but it looks
-like I forgot to send an e-mail ack (or mark it as accepted in
-patchwork).  So I'm fixing that oversight now.
+jbd2_journal_get_create_access should drop jh->b_jount in error
+handling path
+---
+ fs/jbd2/transaction.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-						- Ted
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 05fa77a..d66672a 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -921,8 +921,8 @@ int jbd2_journal_get_create_access(handle_t *handle, struct buffer_head *bh)
+ 	 */
+ 	JBUFFER_TRACE(jh, "cancelling revoke");
+ 	jbd2_journal_cancel_revoke(handle, jh);
+-	jbd2_journal_put_journal_head(jh);
+ out:
++	jbd2_journal_put_journal_head(jh);
+ 	return err;
+ }
+ 
+-- 
+1.7.4.1
+
