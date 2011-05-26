@@ -1,42 +1,37 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v2] ext3: Convert ext3 to new truncate calling
- convention
-Date: Thu, 26 May 2011 16:23:37 +0200
-Message-ID: <20110526142337.GA5123@quack.suse.cz>
-References: <1306320216-19368-1-git-send-email-jack@suse.cz>
- <20110525114822.GA6251@infradead.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 25832] kernel crashes when a mounted ext3/4 file system is
+ physically removed
+Date: Thu, 26 May 2011 14:27:44 GMT
+Message-ID: <201105261427.p4QERitN027873@demeter2.kernel.org>
+References: <bug-25832-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:40814 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932450Ab1EZOXj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 26 May 2011 10:23:39 -0400
-Content-Disposition: inline
-In-Reply-To: <20110525114822.GA6251@infradead.org>
+Received: from demeter2.kernel.org ([140.211.167.42]:46113 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752435Ab1EZO1p (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 26 May 2011 10:27:45 -0400
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p4QERirM027874
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 26 May 2011 14:27:44 GMT
+In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 25-05-11 07:48:23, Christoph Hellwig wrote:
-> On Wed, May 25, 2011 at 12:43:36PM +0200, Jan Kara wrote:
-> > Mostly trivial conversion. We fix a bug that IS_IMMUTABLE and IS_APPEND
-> > files could not be truncated during failed writes as we change the code.
-> > In fact we remove the test altogether because do_sys_[f]truncate() and
-> > may_open() do necessary checks anyway.
-> 
-> This doesn't look quite correct me.  One of the major points of the
-> new truncate sequence is to to *_truncate_page before updating i_size,
-> so that we can properly handle an error there.  With your patch it's
-> still called too late.
-  OK, I missed this point (frankly, handling of error from
-ext3_block_truncate_page() does not seem like a huge win when we cannot
-handle error anywhere else during truncate but it's an improvement I
-agree). I'll move ext3_block_truncate_page() before the setting of i_size.
-Thanks for having a look at the patch.
+https://bugzilla.kernel.org/show_bug.cgi?id=25832
 
-								Honza
+
+
+
+
+--- Comment #83 from Alan Stern <stern@rowland.harvard.edu>  2011-05-26 14:27:43 ---
+This is a completely different issue from the main problem in this bug report. 
+You should report it separately -- perhaps by posting it on the linux-usb
+mailing list.
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
