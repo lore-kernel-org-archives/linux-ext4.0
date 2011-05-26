@@ -1,79 +1,42 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/3] jbd2 : Fix journal start by passing a parameter to
- specify if the caller can deal with ENOMEM
-Date: Thu, 26 May 2011 10:05:58 -0400
-Message-ID: <20110526140558.GJ9520@thunk.org>
-References: <4DDCAF18.8030809@gmail.com>
- <20110525074457.GA4427@quack.suse.cz>
- <4DDCB3FA.2070009@gmail.com>
- <20110525081333.GB4427@quack.suse.cz>
- <20110526022251.GG9520@thunk.org>
- <E4B2E5DC-AC13-4AB9-870E-6F3584991396@dilger.ca>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v2] ext3: Convert ext3 to new truncate calling
+ convention
+Date: Thu, 26 May 2011 16:23:37 +0200
+Message-ID: <20110526142337.GA5123@quack.suse.cz>
+References: <1306320216-19368-1-git-send-email-jack@suse.cz>
+ <20110525114822.GA6251@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Manish Katiyar <mkatiyar@gmail.com>,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:42602 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757893Ab1EZOGD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 26 May 2011 10:06:03 -0400
+Received: from cantor2.suse.de ([195.135.220.15]:40814 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932450Ab1EZOXj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 26 May 2011 10:23:39 -0400
 Content-Disposition: inline
-In-Reply-To: <E4B2E5DC-AC13-4AB9-870E-6F3584991396@dilger.ca>
+In-Reply-To: <20110525114822.GA6251@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 25, 2011 at 10:07:20PM -0600, Andreas Dilger wrote:
-> > What JBD2_TOPLEVEL means is that caller is from a top-level file
-> > system function, such as ext4_symlink() or ext4_chmod(), such that
-> > start_this_handle() can use GFP_KERNEL instead of GFP_NOFS.  GFP_NOFS
-> > is needed for any function that might get called by the direct reclaim
-> > path (i.e., the writepage() function).  But for the top-level
-> > symlink() or chmod() function, it's actually OK to allocate memory
-> > using GFP_KERNEL, since there's no potential recursion problem.
+On Wed 25-05-11 07:48:23, Christoph Hellwig wrote:
+> On Wed, May 25, 2011 at 12:43:36PM +0200, Jan Kara wrote:
+> > Mostly trivial conversion. We fix a bug that IS_IMMUTABLE and IS_APPEND
+> > files could not be truncated during failed writes as we change the code.
+> > In fact we remove the test altogether because do_sys_[f]truncate() and
+> > may_open() do necessary checks anyway.
 > 
-> At this point, why not just pass GFP_KERNEL or GFP_NOFS directly,
-> optionally with __GFP_NOFAIL?
+> This doesn't look quite correct me.  One of the major points of the
+> new truncate sequence is to to *_truncate_page before updating i_size,
+> so that we can properly handle an error there.  With your patch it's
+> still called too late.
+  OK, I missed this point (frankly, handling of error from
+ext3_block_truncate_page() does not seem like a huge win when we cannot
+handle error anywhere else during truncate but it's an improvement I
+agree). I'll move ext3_block_truncate_page() before the setting of i_size.
+Thanks for having a look at the patch.
 
-Well, __GFP_NOFAIL is going away.  (At least there are a number of mm
-hackers, including akpm, who really want it to go away).
-
-We could key off of GFP_NOFS, but GFP_NOFS doesn't mean loop and make
-sure that we don't fail.  The two concepts are in fact orthogonal;
-it's just at the moment that there are most places which are called in
-the fs writeback path which also can't fail.  
-
-But just to give one example, ext4_bio_write_page() is an example of a
-function that allocates memory GFP_NOFS, but can fail with ENOMEM,
-because its caller, mpage_da_submit_io() in fs/ext4/inode.c is
-designed to cope with failure in a way that doesn't cause data loss.
-(We leave the page dirty, unlock it and back out of the writeback
-code, and later the bdi flusher threads will retry the writepages
-request.)
-
-    	      	      	       	    	    	  - Ted
-
-P.S.  That means that there are calls to ext4_journal_start() in the
-ext4_da_writepages() code path that probably could be converted to
-ext4_journal_start_failok() --- or to ext4_journal_start(inode,
-nblocks, JBD2_FAIL_OK) per my suggestion --- once we have fully
-audited the error return paths.
-
-P.P.S.  Something that might be worth doing is having a sysfs tunable
-that causes ext4_journal_start() to return an ENOMEM failure on a per
-file system basis with a probability specified by the sysfs tunable.
-This would allow us to actually _test_ the error handling to make sure
-sane things happen....  
-
-What I'd probably do is define a new flag, JBD2_WRITEBACK_TEST, and
-use it to make the ext4_journal_start() functions that are allowed to
-probabilistically fail (since the retry should be happening at a
-higher level), and then run a stress test with the syfs tunable
-enabled.  Since the flag would only cause ext4_journal_start()
-functions that should have automatic fallbacks, the stress test would
-be able to run to completion even though 10% of the
-ext4_journal_start(... JBD2_WRITEBACK_TEST) calls were failing.
-That's another example of why using a flag bitfield instead of a bool
-is much more powerful.
-
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
