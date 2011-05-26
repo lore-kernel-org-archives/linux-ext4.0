@@ -1,66 +1,54 @@
-From: =?GB2312?B?tqG2qLuq?= <dingdinghua@nrchpc.ac.cn>
-Subject: Re: [PATCH 1/2] jbd2: fix a bug of leaking jh->b_jcount
-Date: Thu, 26 May 2011 10:10:22 +0800
-Message-ID: <BANLkTin1zCqFEOqymAXcFaBCs20U4RSmYQ@mail.gmail.com>
-References: <1306375374-12619-1-git-send-email-dingdinghua@nrchpc.ac.cn>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/3] jbd2 : Fix journal start by passing a parameter to
+ specify if the caller can deal with ENOMEM
+Date: Wed, 25 May 2011 22:22:51 -0400
+Message-ID: <20110526022251.GG9520@thunk.org>
+References: <4DDCAF18.8030809@gmail.com>
+ <20110525074457.GA4427@quack.suse.cz>
+ <4DDCB3FA.2070009@gmail.com>
+ <20110525081333.GB4427@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Manish Katiyar <mkatiyar@gmail.com>, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pw0-f46.google.com ([209.85.160.46]:53987 "EHLO
-	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754137Ab1EZCKW convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 May 2011 22:10:22 -0400
-Received: by pwi15 with SMTP id 15so137238pwi.19
-        for <linux-ext4@vger.kernel.org>; Wed, 25 May 2011 19:10:22 -0700 (PDT)
-In-Reply-To: <1306375374-12619-1-git-send-email-dingdinghua@nrchpc.ac.cn>
+Received: from li9-11.members.linode.com ([67.18.176.11]:37612 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756767Ab1EZCWz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 25 May 2011 22:22:55 -0400
+Content-Disposition: inline
+In-Reply-To: <20110525081333.GB4427@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-oops, I still forget to add signoff line, please ignore this patch,
-i will resend it.
+On Wed, May 25, 2011 at 10:13:33AM +0200, Jan Kara wrote:
+> > 
+> >    ok.. I will do it as a separate patch.
+>   Well, patch 2/3 does not really make too much sense without it (errok
+> parameter isn't used) so there's no reason to do it as a separate patch.
+> Just add it to this patch please.
 
-2011/5/26  <dingdinghua@nrchpc.ac.cn>:
-> From: Ding Dinghua <dingdinghua@nrchpc.ac.cn>
->
-> jbd2_journal_get_create_access should drop jh->b_jount in error
-> handling path
-> ---
-> =A0fs/jbd2/transaction.c | =A0 =A02 +-
-> =A01 files changed, 1 insertions(+), 1 deletions(-)
->
-> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-> index 05fa77a..d66672a 100644
-> --- a/fs/jbd2/transaction.c
-> +++ b/fs/jbd2/transaction.c
-> @@ -921,8 +921,8 @@ int jbd2_journal_get_create_access(handle_t *hand=
-le, struct buffer_head *bh)
-> =A0 =A0 =A0 =A0 */
-> =A0 =A0 =A0 =A0JBUFFER_TRACE(jh, "cancelling revoke");
-> =A0 =A0 =A0 =A0jbd2_journal_cancel_revoke(handle, jh);
-> - =A0 =A0 =A0 jbd2_journal_put_journal_head(jh);
-> =A0out:
-> + =A0 =A0 =A0 jbd2_journal_put_journal_head(jh);
-> =A0 =A0 =A0 =A0return err;
-> =A0}
->
-> --
-> 1.7.4.1
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
+Agreed; right now this whole patch series is a no-op, since errok
+isn't getting used for anything.  So fixing errok so it's passed to
+start_this_handle() seems to be more in the category of "fix the
+patch" more than anything else.
 
+One more thing; perhaps we should be passing in a integer so we can
+pass in a flag word.  That way you don't need to have a fail_ok
+variant.  It's a lot more obvious if you have a call:
 
+	  handle = ext4_journal_start(inode, 1, JBD2_FAIL_OK);
 
---=20
-Ding Dinghua
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+What we can also do is this:
+
+	  handle = ext4_journal_start(inode, 1, JBD2_FAIL_OK | JBD2_TOPLEVEL);
+
+What JBD2_TOPLEVEL means is that caller is from a top-level file
+system function, such as ext4_symlink() or ext4_chmod(), such that
+start_this_handle() can use GFP_KERNEL instead of GFP_NOFS.  GFP_NOFS
+is needed for any function that might get called by the direct reclaim
+path (i.e., the writepage() function).  But for the top-level
+symlink() or chmod() function, it's actually OK to allocate memory
+using GFP_KERNEL, since there's no potential recursion problem.
+
+      		  		   	     	       - Ted
