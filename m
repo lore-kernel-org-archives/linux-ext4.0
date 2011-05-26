@@ -1,85 +1,112 @@
-From: Manish Katiyar <mkatiyar@gmail.com>
-Subject: Re: [PATCH 2/3] jbd2 : Fix journal start by passing a parameter to
- specify if the caller can deal with ENOMEM
-Date: Wed, 25 May 2011 22:29:59 -0700
-Message-ID: <BANLkTi=QuZfvDohsawA75kWQuYuJvsHQiA@mail.gmail.com>
-References: <4DDCAF18.8030809@gmail.com> <20110525074457.GA4427@quack.suse.cz>
- <4DDCB3FA.2070009@gmail.com> <20110525081333.GB4427@quack.suse.cz> <20110526022251.GG9520@thunk.org>
+From: Lee Davis <l.davis37@ymail.com>
+Subject: Re: EXT4 partition changes every time it's mounted. (How to stop this?)
+Date: Wed, 25 May 2011 23:15:51 -0700 (PDT)
+Message-ID: <228119.28214.qm@web125215.mail.ne1.yahoo.com>
+References: <476510.14310.qm@web125206.mail.ne1.yahoo.com> <A129F9FD-E914-408C-8997-FD145AA2A697@mit.edu> <195291.47304.qm@web125204.mail.ne1.yahoo.com>
+Reply-To: Lee Davis <l.davis37@ymail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=iso-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Lee Davis <l.davis37@ymail.com>, Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f181.google.com ([209.85.216.181]:52083 "EHLO
-	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751448Ab1EZFaT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 26 May 2011 01:30:19 -0400
-Received: by qyg14 with SMTP id 14so185150qyg.19
-        for <linux-ext4@vger.kernel.org>; Wed, 25 May 2011 22:30:19 -0700 (PDT)
-In-Reply-To: <20110526022251.GG9520@thunk.org>
+Received: from nm8-vm3.bullet.mail.ne1.yahoo.com ([98.138.91.138]:43206 "HELO
+	nm8-vm3.bullet.mail.ne1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1751754Ab1EZGPw convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 26 May 2011 02:15:52 -0400
+In-Reply-To: <195291.47304.qm@web125204.mail.ne1.yahoo.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 25, 2011 at 7:22 PM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Wed, May 25, 2011 at 10:13:33AM +0200, Jan Kara wrote:
->> >
->> > =A0 =A0ok.. I will do it as a separate patch.
->> =A0 Well, patch 2/3 does not really make too much sense without it (=
-errok
->> parameter isn't used) so there's no reason to do it as a separate pa=
-tch.
->> Just add it to this patch please.
->
-> Agreed; right now this whole patch series is a no-op, since errok
-> isn't getting used for anything. =A0So fixing errok so it's passed to
-> start_this_handle() seems to be more in the category of "fix the
-> patch" more than anything else.
->
-> One more thing; perhaps we should be passing in a integer so we can
-> pass in a flag word. =A0That way you don't need to have a fail_ok
-> variant. =A0It's a lot more obvious if you have a call:
->
-> =A0 =A0 =A0 =A0 =A0handle =3D ext4_journal_start(inode, 1, JBD2_FAIL_=
-OK);
->
-> What we can also do is this:
->
-> =A0 =A0 =A0 =A0 =A0handle =3D ext4_journal_start(inode, 1, JBD2_FAIL_=
-OK | JBD2_TOPLEVEL);
->
-> What JBD2_TOPLEVEL means is that caller is from a top-level file
-> system function, such as ext4_symlink() or ext4_chmod(), such that
-> start_this_handle() can use GFP_KERNEL instead of GFP_NOFS. =A0GFP_NO=
-=46S
-> is needed for any function that might get called by the direct reclai=
-m
-> path (i.e., the writepage() function). =A0But for the top-level
-> symlink() or chmod() function, it's actually OK to allocate memory
-> using GFP_KERNEL, since there's no potential recursion problem.
+I've just tested this on a clean Ubuntu installation without any crypto=
+ -- exact same thing happens. Should I log this as an ext4 bug?
 
-Hi Ted/Jan,
+Regards,
+Lee
 
-Will it be more desirable to have the patch fixed as JBD2_FAIL_OK as
-you suggested above ? I have already
-fixed the patch to pass errok to start_this_handle() and then retry or
-not based on that, and was planning to send
-it. But if this needs to be fixed this way, then I will rework it then =
-send.
 
-Thanks -
-Manish
+----- Original Message -----
+=46rom: Lee Davis <l.davis37@ymail.com>
+To: Theodore Tso <tytso@MIT.EDU>
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Sent: Monday, 23 May 2011 2:39 PM
+Subject: Re: EXT4 partition changes every time it's mounted. (How to st=
+op this?)
 
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 - Ted
->
+Hi Ted,
+
+I've checked again, and despite being mounted read-only, the filesystem=
+ is definitely changing every time I reboot.
+
+The mount options are: ro,relatime,commit=3D0
+
+I've taken three images of the filesystem (rebooting between each image=
+), and with a bit of research I've managed to discover which fields in =
+the superblock are being changed. They are: s_wtime and s_kbytes_writte=
+n.=20
+
+Here's how they're being changed:
+
+0x430 (s_wtime): 06C8D94D -> 68D0D94D -> B9D7D94D
+
+0x578 (s_kbytes_written): 42C8000000000000 -> 45C8000000000000 -> 48C80=
+00000000000
+
+These two fields are the only things that are changing in the entire fi=
+lesystem.
+
+
+Any ideas on what might be causing this and/or how to disable it?
+
+Much appreciated,
+Lee
+
+P.S. I just thought to test it after unmounting/re-mounting, and nothin=
+g was changed. So it appears to only get changed when I boot the system=
+=2E
+
+It's a fresh Ubuntu Natty installation, with GRUB on the MBR, an ext4 b=
+oot partition, and an encrypted ext4 root partition (which I set up thr=
+ough the installer). I can't think what might be writing to the boot pa=
+rtition.
 
 
 
---=20
-Thanks -
-Manish
+
+
+----- Original Message -----
+=46rom: Theodore Tso <tytso@MIT.EDU>
+To: Lee Davis <l.davis37@ymail.com>
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Sent: Sunday, 22 May 2011 9:47 PM
+Subject: Re: EXT4 partition changes every time it's mounted. (How to st=
+op this?)
+
+
+On May 21, 2011, at 3:45 PM, Lee Davis wrote:
+
+> I'm setting up a Linux system with full disk encryption. I've written=
+ a script (to run on every boot) which will verify that neither the MBR=
+ or /boot partition (ext4) has been modified.
+>=20
+> Problem is that every time I boot up the system, my /boot partition h=
+ashes differently.
+>=20
+> I'm guessing there is something behind the scenes which is changed/up=
+dated each time the filesystem is mounted? If so, can it be disabled?
+
+Yes, there is a last mounted time in the superblock.=A0=A0 If you mount=
+ the file system read-only, then not only will that field not be change=
+d, but you can guarantee that nothing else will change...
+
+-- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at=A0 http://vger.kernel.org/majordomo-info.html
+
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
