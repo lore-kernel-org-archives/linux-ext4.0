@@ -1,51 +1,79 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] jbd2: Add MAINTAINERS entry
-Date: Thu, 26 May 2011 09:53:54 -0400
-Message-ID: <1306418034-31252-1-git-send-email-tytso@mit.edu>
-References: <20110523223207.GL4716@quack.suse.cz>
-Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/3] jbd2 : Fix journal start by passing a parameter to
+ specify if the caller can deal with ENOMEM
+Date: Thu, 26 May 2011 10:05:58 -0400
+Message-ID: <20110526140558.GJ9520@thunk.org>
+References: <4DDCAF18.8030809@gmail.com>
+ <20110525074457.GA4427@quack.suse.cz>
+ <4DDCB3FA.2070009@gmail.com>
+ <20110525081333.GB4427@quack.suse.cz>
+ <20110526022251.GG9520@thunk.org>
+ <E4B2E5DC-AC13-4AB9-870E-6F3584991396@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Manish Katiyar <mkatiyar@gmail.com>,
+	linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:57198 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:42602 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757523Ab1EZNx5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 26 May 2011 09:53:57 -0400
-In-Reply-To: <20110523223207.GL4716@quack.suse.cz>
+	id S1757893Ab1EZOGD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 26 May 2011 10:06:03 -0400
+Content-Disposition: inline
+In-Reply-To: <E4B2E5DC-AC13-4AB9-870E-6F3584991396@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Create a separate MAINTAINERS entry for jbd2
+On Wed, May 25, 2011 at 10:07:20PM -0600, Andreas Dilger wrote:
+> > What JBD2_TOPLEVEL means is that caller is from a top-level file
+> > system function, such as ext4_symlink() or ext4_chmod(), such that
+> > start_this_handle() can use GFP_KERNEL instead of GFP_NOFS.  GFP_NOFS
+> > is needed for any function that might get called by the direct reclaim
+> > path (i.e., the writepage() function).  But for the top-level
+> > symlink() or chmod() function, it's actually OK to allocate memory
+> > using GFP_KERNEL, since there's no potential recursion problem.
+> 
+> At this point, why not just pass GFP_KERNEL or GFP_NOFS directly,
+> optionally with __GFP_NOFAIL?
 
-Cc: Jan Kara <jack@suse.cz>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- MAINTAINERS |   13 ++++++++++---
- 1 files changed, 10 insertions(+), 3 deletions(-)
+Well, __GFP_NOFAIL is going away.  (At least there are a number of mm
+hackers, including akpm, who really want it to go away).
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 649600c..0682c0e 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -3552,9 +3552,16 @@ M:	Andrew Morton <akpm@linux-foundation.org>
- M:	Jan Kara <jack@suse.cz>
- L:	linux-ext4@vger.kernel.org
- S:	Maintained
--F:	fs/jbd*/
--F:	include/linux/ext*jbd*.h
--F:	include/linux/jbd*.h
-+F:	fs/jbd/
-+F:	include/linux/ext3_jbd.h
-+F:	include/linux/jbd.h
-+
-+JOURNALLING LAYER FOR BLOCK DEVICES (JBD2)
-+M:	"Theodore Ts'o" <tytso@mit.edu>
-+L:	linux-ext4@vger.kernel.org
-+S:	Maintained
-+F:	fs/jbd2/
-+F:	include/linux/jbd2.h
- 
- JSM Neo PCI based serial card
- M:	Breno Leitao <leitao@linux.vnet.ibm.com>
--- 
-1.7.3.1
+We could key off of GFP_NOFS, but GFP_NOFS doesn't mean loop and make
+sure that we don't fail.  The two concepts are in fact orthogonal;
+it's just at the moment that there are most places which are called in
+the fs writeback path which also can't fail.  
+
+But just to give one example, ext4_bio_write_page() is an example of a
+function that allocates memory GFP_NOFS, but can fail with ENOMEM,
+because its caller, mpage_da_submit_io() in fs/ext4/inode.c is
+designed to cope with failure in a way that doesn't cause data loss.
+(We leave the page dirty, unlock it and back out of the writeback
+code, and later the bdi flusher threads will retry the writepages
+request.)
+
+    	      	      	       	    	    	  - Ted
+
+P.S.  That means that there are calls to ext4_journal_start() in the
+ext4_da_writepages() code path that probably could be converted to
+ext4_journal_start_failok() --- or to ext4_journal_start(inode,
+nblocks, JBD2_FAIL_OK) per my suggestion --- once we have fully
+audited the error return paths.
+
+P.P.S.  Something that might be worth doing is having a sysfs tunable
+that causes ext4_journal_start() to return an ENOMEM failure on a per
+file system basis with a probability specified by the sysfs tunable.
+This would allow us to actually _test_ the error handling to make sure
+sane things happen....  
+
+What I'd probably do is define a new flag, JBD2_WRITEBACK_TEST, and
+use it to make the ext4_journal_start() functions that are allowed to
+probabilistically fail (since the retry should be happening at a
+higher level), and then run a stress test with the syfs tunable
+enabled.  Since the flag would only cause ext4_journal_start()
+functions that should have automatic fallbacks, the stress test would
+be able to run to completion even though 10% of the
+ext4_journal_start(... JBD2_WRITEBACK_TEST) calls were failing.
+That's another example of why using a flag bitfield instead of a bool
+is much more powerful.
 
