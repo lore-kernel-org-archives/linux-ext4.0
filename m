@@ -1,54 +1,39 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/3] jbd2 : Fix journal start by passing a parameter to
- specify if the caller can deal with ENOMEM
-Date: Wed, 25 May 2011 22:22:51 -0400
-Message-ID: <20110526022251.GG9520@thunk.org>
-References: <4DDCAF18.8030809@gmail.com>
- <20110525074457.GA4427@quack.suse.cz>
- <4DDCB3FA.2070009@gmail.com>
- <20110525081333.GB4427@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Manish Katiyar <mkatiyar@gmail.com>, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+From: Ding Dinghua <dingdinghua@nrchpc.ac.cn>
+Subject: [PATCH 1/2] jbd2: fix a bug of leaking jh->b_jcount
+Date: Thu, 26 May 2011 10:28:22 +0800
+Message-ID: <1306376902-13308-1-git-send-email-dingdinghua@nrchpc.ac.cn>
+Cc: dingdinghua@nrchpc.ac.cn
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:37612 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756767Ab1EZCWz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 25 May 2011 22:22:55 -0400
-Content-Disposition: inline
-In-Reply-To: <20110525081333.GB4427@quack.suse.cz>
+Received: from [221.122.61.228] ([221.122.61.228]:42233 "EHLO mx.nrchpc.ac.cn"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1755115Ab1EZC2c (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 25 May 2011 22:28:32 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 25, 2011 at 10:13:33AM +0200, Jan Kara wrote:
-> > 
-> >    ok.. I will do it as a separate patch.
->   Well, patch 2/3 does not really make too much sense without it (errok
-> parameter isn't used) so there's no reason to do it as a separate patch.
-> Just add it to this patch please.
+jbd2_journal_get_create_access should drop jh->b_jcount in error
+handling path
 
-Agreed; right now this whole patch series is a no-op, since errok
-isn't getting used for anything.  So fixing errok so it's passed to
-start_this_handle() seems to be more in the category of "fix the
-patch" more than anything else.
+Signed-off-by: Ding Dinghua <dingdinghua@nrchpc.ac.cn>
+---
+ fs/jbd2/transaction.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-One more thing; perhaps we should be passing in a integer so we can
-pass in a flag word.  That way you don't need to have a fail_ok
-variant.  It's a lot more obvious if you have a call:
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 05fa77a..d66672a 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -921,8 +921,8 @@ int jbd2_journal_get_create_access(handle_t *handle, struct buffer_head *bh)
+ 	 */
+ 	JBUFFER_TRACE(jh, "cancelling revoke");
+ 	jbd2_journal_cancel_revoke(handle, jh);
+-	jbd2_journal_put_journal_head(jh);
+ out:
++	jbd2_journal_put_journal_head(jh);
+ 	return err;
+ }
+ 
+-- 
+1.7.4.1
 
-	  handle = ext4_journal_start(inode, 1, JBD2_FAIL_OK);
-
-What we can also do is this:
-
-	  handle = ext4_journal_start(inode, 1, JBD2_FAIL_OK | JBD2_TOPLEVEL);
-
-What JBD2_TOPLEVEL means is that caller is from a top-level file
-system function, such as ext4_symlink() or ext4_chmod(), such that
-start_this_handle() can use GFP_KERNEL instead of GFP_NOFS.  GFP_NOFS
-is needed for any function that might get called by the direct reclaim
-path (i.e., the writepage() function).  But for the top-level
-symlink() or chmod() function, it's actually OK to allocate memory
-using GFP_KERNEL, since there's no potential recursion problem.
-
-      		  		   	     	       - Ted
