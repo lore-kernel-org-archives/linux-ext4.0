@@ -1,41 +1,46 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCHSET v3.2 0/3] data integrity: Stabilize pages during
-	writeback for various fses
-Date: Fri, 27 May 2011 09:20:00 -0700
-Message-ID: <20110527162000.GV18929@tux1.beaverton.ibm.com>
-References: <20110519224841.28755.80650.stgit@elm3c44.beaverton.ibm.com> <20110527073326.GA15405@infradead.org>
-Reply-To: djwong@us.ibm.com
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] Attempt to sync the fsstress writes to a frozen F.S
+Date: Fri, 27 May 2011 18:28:03 +0200
+Message-ID: <20110527162803.GA21260@quack.suse.cz>
+References: <4DCA3583.7010904@canonical.com>
+ <1305097841-2308-1-git-send-email-surbhi.palande@canonical.com>
+ <20110524214222.GF26055@thunk.org>
+ <4DDCEF4D.1070107@canonical.com>
+ <185A6552-AC55-475A-AB32-4EB9671612F3@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-	Jens Axboe <axboe@kernel.dk>, Theodore Tso <tytso@mit.edu>,
-	"Martin K. Petersen" <martin.petersen@oracle.com>,
-	Jeff Layton <jlayton@redhat.com>,
-	Dave Chinner <david@fromorbit.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Dave Hansen <dave@linux.vnet.ibm.com>, linux-mm@kvack.org,
-	Chris Mason <chris.mason@oracle.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	linux-scsi <linux-scsi@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	Mingming Cao <mcao@us.ibm.com>
-To: Christoph Hellwig <hch@infradead.org>
+Cc: surbhi.palande@canonical.com, sandeen@redhat.com, jack@suse.cz,
+	marco.stornelli@gmail.com, adilger.kernel@dilger.ca,
+	toshi.okajima@jp.fujitsu.com, m.mizuma@jp.fujitsu.com,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:33218 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753931Ab1E0QUw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 May 2011 12:20:52 -0400
+Received: from cantor.suse.de ([195.135.220.2]:54754 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754210Ab1E0Q2H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 27 May 2011 12:28:07 -0400
 Content-Disposition: inline
-In-Reply-To: <20110527073326.GA15405@infradead.org>
+In-Reply-To: <185A6552-AC55-475A-AB32-4EB9671612F3@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 27, 2011 at 03:33:26AM -0400, Christoph Hellwig wrote:
-> Can you resend patches 1 and 2 ontop of current Linus' tree with Jans
-> page_mkwrite changes?  I don't think there's much point of patch 3 until
-> we get a user for simple_page_mkwrite.
+  Ted,
 
-Sure thing.  I'll have something ready by the afternoon (here).
+On Wed 25-05-11 08:12:15, Ted Tso wrote:
+> Just as a request --- could you start a new thread (this one is getting
+> so long it's hard to follow)?
+> 
+> And could you also include a reliable reproduction case?
+  Just a quick note - this patch series was not really meant to fix the
+deadlocks. They are meant to make freezing reliable in combination with
+mmapped writes. As a side-effect, they make the deadlock Surbhi describes
+less probable but I'm aware it's still there.
 
---D
+I plan to have another look at how the deadlock could be fixed (the first
+attempt was rejected by Dave Chinner) but currently I'm busy with other
+stuff...
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
