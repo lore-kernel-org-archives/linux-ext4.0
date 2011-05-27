@@ -1,46 +1,86 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] Attempt to sync the fsstress writes to a frozen F.S
-Date: Fri, 27 May 2011 18:28:03 +0200
-Message-ID: <20110527162803.GA21260@quack.suse.cz>
-References: <4DCA3583.7010904@canonical.com>
- <1305097841-2308-1-git-send-email-surbhi.palande@canonical.com>
- <20110524214222.GF26055@thunk.org>
- <4DDCEF4D.1070107@canonical.com>
- <185A6552-AC55-475A-AB32-4EB9671612F3@mit.edu>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: [PATCHSET v3.3 0/2] data integrity: Stabilize pages during writeback
+	for various fses
+Date: Fri, 27 May 2011 12:23:26 -0700
+Message-ID: <20110527192326.32105.34164.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: surbhi.palande@canonical.com, sandeen@redhat.com, jack@suse.cz,
-	marco.stornelli@gmail.com, adilger.kernel@dilger.ca,
-	toshi.okajima@jp.fujitsu.com, m.mizuma@jp.fujitsu.com,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:54754 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754210Ab1E0Q2H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 27 May 2011 12:28:07 -0400
-Content-Disposition: inline
-In-Reply-To: <185A6552-AC55-475A-AB32-4EB9671612F3@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: Jens Axboe <axboe@kernel.dk>, Theodore Tso <tytso@mit.edu>,
+	"Martin K. Petersen" <martin.petersen@oracle.com>,
+	Jeff Layton <jlayton@redhat.com>,
+	Dave Chinner <david@fromorbit.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Dave Hansen <dave@linux.vnet.ibm.com>, linux-mm@kvack.org,
+	Chris Mason <chris.mason@oracle.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	linux-scsi <linux-scsi@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	Mingming Cao <mcao@us.ibm.com>
+To: Christoph Hellwig <hch@infradead.org>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	"Darrick J. Wong" <djwong@us.ibm.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-  Ted,
+Hi all,
 
-On Wed 25-05-11 08:12:15, Ted Tso wrote:
-> Just as a request --- could you start a new thread (this one is getting
-> so long it's hard to follow)?
-> 
-> And could you also include a reliable reproduction case?
-  Just a quick note - this patch series was not really meant to fix the
-deadlocks. They are meant to make freezing reliable in combination with
-mmapped writes. As a side-effect, they make the deadlock Surbhi describes
-less probable but I'm aware it's still there.
+This is v3.3 of the stable-page-writes patchset for ext4 and xfs.  The purpose
+of this patchset is to prohibit processes from writing on memory pages that are
+currently being written to disk because certain storage setups (e.g. SCSI disks
+with DIF integrity checksums) will fail a write if the page contents don't
+match the checksum.  btrfs already guarantees page stability, so it does not
+use these changes.
 
-I plan to have another look at how the deadlock could be fixed (the first
-attempt was rejected by Dave Chinner) but currently I'm busy with other
-stuff...
+The technique used is fairly simple -- whenever a page is about to become
+writable (either because of a write fault to a mapped page, or a buffered write
+is in progress), wait for the page writeback flag to be clear, indicating that
+the page is not being written to disk.  This means that it is necessary (1) to
+add wait for writeback code to grab_cache_page_write_begin to take care of
+buffered writes, and (2) all filesystems must have a page_mkwrite that locks a
+page, waits for writeback, and returns the locked page.  For filesystems that
+piggyback on the generic block_page_mkwrite, the patchset adds the writeback
+wait to that function; for filesystems that do not use the page_mkwrite hook at
+all, the patchset provides a stub page_mkwrite.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+I ran my write-after-checksum ("wac") reproducer program to try to create the
+DIF checksum errors by madly rewriting the same memory pages.  In fact, I tried
+the following combinations against ext4, xfs, and btrfs:
+
+a. 64 write() threads + sync_file_range
+b. 64 mmap write threads + msync
+c. 32 write() threads + sync_file_range + 32 mmap write threads + msync
+d. Same as C, but with all threads in directio mode
+e. Same as A, but with all threads in directio mode
+f. Same as B, but with all threads in directio mode
+
+After running profiles A-F for 30 minutes each on 6 different machines, ext4
+and xfs report no errors.   btrfs eventually reports -ENOSPC and fails the
+test, though it does that even without any of the patches applied.
+
+To assess the performance impact of stable page writes, I moved to a disk that
+doesn't have DIF support so that I could measure just the impact of waiting for
+writeback.  I first ran wac with 64 threads madly scribbling on a 64k file and
+saw about a 12 percent performance decrease.  I then reran the wac program with
+64 threads and a 64MB file and saw about the same performance numbers.  As I
+suspected, the patchset only seems to impact workloads that rewrite the same
+memory page frequently.
+
+Per various comments regarding v3 of this patchset, I've integrated his
+suggestions, reworked the patch descriptions to make it clearer which ones
+touch all the filesystems and which ones are to fix remaining holes in specific
+filesystems, and expanded the scope of filesystems that got fixed.
+
+As always, questions and comments are welcome; and thank you to all the
+previous reviewers of this patchset.  I am also soliciting people's opinions on
+whether or not these patches could go upstream for .40.
+
+The v3.2 iteration of the patchset focused solely on the generic changes
+necessary to provide stable pages.  It is being sent to Al Viro (just like v3.1
+was).
+
+v3.3 is a rebase against 2.6.40, or 3.0.0, or whatever the next one is called.
+
+--D
