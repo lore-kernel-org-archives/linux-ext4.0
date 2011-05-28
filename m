@@ -1,73 +1,59 @@
 From: Manish Katiyar <mkatiyar@gmail.com>
-Subject: Re: [PATCH 2/3] jbd2 : Fix journal start by passing a parameter to
- specify if the caller can deal with ENOMEM
-Date: Fri, 27 May 2011 23:16:00 -0700
-Message-ID: <BANLkTimsOKkRO=8k2GK8wY+LaYXRZaqkYQ@mail.gmail.com>
-References: <4DDCAF18.8030809@gmail.com> <20110525074457.GA4427@quack.suse.cz>
- <4DDCB3FA.2070009@gmail.com> <20110525081333.GB4427@quack.suse.cz> <20110526022251.GG9520@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+Subject: [PATCH v2 1/3] ext4: Fix missing acl release in error path in acl.c
+Date: Fri, 27 May 2011 23:16:56 -0700
+Message-ID: <1306563416-4286-1-git-send-email-mkatiyar@gmail.com>
+Cc: Manish Katiyar <mkatiyar@gmail.com>
+To: tytso@mit.edu, jack@suse.cz, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:38010 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751561Ab1E1GQV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 28 May 2011 02:16:21 -0400
-Received: by vxi39 with SMTP id 39so1770593vxi.19
-        for <linux-ext4@vger.kernel.org>; Fri, 27 May 2011 23:16:20 -0700 (PDT)
-In-Reply-To: <20110526022251.GG9520@thunk.org>
+Received: from mail-pv0-f174.google.com ([74.125.83.174]:61821 "EHLO
+	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751466Ab1E1GRa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 28 May 2011 02:17:30 -0400
+Received: by pvg12 with SMTP id 12so1038444pvg.19
+        for <linux-ext4@vger.kernel.org>; Fri, 27 May 2011 23:17:29 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 25, 2011 at 7:22 PM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Wed, May 25, 2011 at 10:13:33AM +0200, Jan Kara wrote:
->> >
->> > =A0 =A0ok.. I will do it as a separate patch.
->> =A0 Well, patch 2/3 does not really make too much sense without it (=
-errok
->> parameter isn't used) so there's no reason to do it as a separate pa=
-tch.
->> Just add it to this patch please.
->
-> Agreed; right now this whole patch series is a no-op, since errok
-> isn't getting used for anything. =A0So fixing errok so it's passed to
-> start_this_handle() seems to be more in the category of "fix the
-> patch" more than anything else.
->
-> One more thing; perhaps we should be passing in a integer so we can
-> pass in a flag word. =A0That way you don't need to have a fail_ok
-> variant. =A0It's a lot more obvious if you have a call:
->
-> =A0 =A0 =A0 =A0 =A0handle =3D ext4_journal_start(inode, 1, JBD2_FAIL_=
-OK);
->
-> What we can also do is this:
->
-> =A0 =A0 =A0 =A0 =A0handle =3D ext4_journal_start(inode, 1, JBD2_FAIL_=
-OK | JBD2_TOPLEVEL);
->
-> What JBD2_TOPLEVEL means is that caller is from a top-level file
-> system function, such as ext4_symlink() or ext4_chmod(), such that
-> start_this_handle() can use GFP_KERNEL instead of GFP_NOFS. =A0GFP_NO=
-=46S
-> is needed for any function that might get called by the direct reclai=
-m
-> path (i.e., the writepage() function). =A0But for the top-level
-> symlink() or chmod() function, it's actually OK to allocate memory
-> using GFP_KERNEL, since there's no potential recursion problem.
+a) Incase journal transaction allocation
+fails due to ENOMEM don't call ext4_std_error() since it will remount
+the fs as readonly and logs the message in kernel log.
 
-Hi Ted,
+b) Call posix_acl_release() incase journal allocation fails in case
+of error paths.
 
-Resending version 2 of the three patch series after updating them as
-you suggested above.
+Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+Acked-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/acl.c |    9 ++++++---
+ 1 files changed, 6 insertions(+), 3 deletions(-)
 
---=20
-Thanks -
-Manish
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
+index 21eacd7..93dc9a6 100644
+--- a/fs/ext4/acl.c
++++ b/fs/ext4/acl.c
+@@ -354,7 +354,8 @@ ext4_acl_chmod(struct inode *inode)
+ 				EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
+ 		if (IS_ERR(handle)) {
+ 			error = PTR_ERR(handle);
+-			ext4_std_error(inode->i_sb, error);
++			if (error != -ENOMEM)
++				ext4_std_error(inode->i_sb, error);
+ 			goto out;
+ 		}
+ 		error = ext4_set_acl(handle, inode, ACL_TYPE_ACCESS, clone);
+@@ -450,8 +451,10 @@ ext4_xattr_set_acl(struct dentry *dentry, const char *name, const void *value,
+ 
+ retry:
+ 	handle = ext4_journal_start(inode, EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
+-	if (IS_ERR(handle))
+-		return PTR_ERR(handle);
++	if (IS_ERR(handle)) {
++		error = PTR_ERR(handle);
++		goto release_and_out;
++	}
+ 	error = ext4_set_acl(handle, inode, type, acl);
+ 	ext4_journal_stop(handle);
+ 	if (error == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+-- 
+1.7.4.1
+
