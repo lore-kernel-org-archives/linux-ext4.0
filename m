@@ -1,55 +1,37 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 36262] New: ext3 umount: BUG: unable to handle kernel paging
- request
-Date: Mon, 30 May 2011 15:16:34 GMT
-Message-ID: <bug-36262-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/2] ext4: use little-endian bitops directly
+Date: Mon, 30 May 2011 11:43:57 -0400
+Message-ID: <20110530154357.GF2890@dhcp-172-31-194-241.cam.corp.google.com>
+References: <1306763382-13817-1-git-send-email-akinobu.mita@gmail.com>
+ <09010AAD-7443-4966-BF20-8580FBE8F389@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:52200 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757210Ab1E3PQe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 May 2011 11:16:34 -0400
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p4UFGYJH030721
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 30 May 2011 15:16:34 GMT
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Akinobu Mita <akinobu.mita@gmail.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <09010AAD-7443-4966-BF20-8580FBE8F389@dilger.ca>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=36262
+On Mon, May 30, 2011 at 08:49:43AM -0600, Andreas Dilger wrote:
+> On 2011-05-30, at 7:49 AM, Akinobu Mita <akinobu.mita@gmail.com> wrote:
+> > s/ext4_set_bit/__test_and_set_bit_le/
+> > s/ext4_clear_bit/__test_and_clear_bit_le/
+> > s/ext4_test_bit/test_bit_le/
+> > s/ext4_find_first_zero_bit/find_first_zero_bit_le/
+> > s/ext4_find_next_zero_bit/find_next_zero_bit_le/
+> > s/ext4_find_next_bit/find_next_bit_le/
+> 
+> I'm not souch in favor of making this change. One reason is the need
+> for inconsistent test_bit_le() vs __test_and_set_bit_le()
+> functions. I think this will make it more difficult to get the
+> correct bit operations (I for one do not know the difference between
+> the normal and __ versions without looking each time).
 
-           Summary: ext3 umount: BUG: unable to handle kernel paging
-                    request
-           Product: File System
-           Version: 2.5
-    Kernel Version: 2.6.39
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext3
-        AssignedTo: fs_ext3@kernel-bugs.osdl.org
-        ReportedBy: rl@hellgate.ch
-        Regression: No
+More to the point, what's the benefit of making this change?
 
-
-Created an attachment (id=60122)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=60122)
-BUG screenshot
-
-Umounting a USB disk using ext3 resulted in this kernel bug (screenshot
-attached).
-
-Only happened once.
-
-The machine has 8 GB RAM. To the best of my knowledge, it was rather lightly
-loaded; most of the memory use at the time was probably disk cache.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+     	    	   	      	      	 - Ted
