@@ -1,72 +1,55 @@
-From: western@une-pmta02.une.net.co, union@une-pmta02.une.net.co,
-	info@union.com
-Subject: PICK UP!!!
-Date: Mon, 30 May 2011 10:00:36 -0700
-Message-ID: <20110530090144.4F50B13FF18@une-pmta02.une.net.co>
-Reply-To: western_unionoffic102@w.cn
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/2] jbd: fix a bug of leaking jh->b_jcount
+Date: Mon, 30 May 2011 12:32:01 +0200
+Message-ID: <20110530103201.GB4075@quack.suse.cz>
+References: <1306376941-13349-1-git-send-email-dingdinghua@nrchpc.ac.cn>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Recipients <westernunioninfo@union.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Ding Dinghua <dingdinghua@nrchpc.ac.cn>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.une.net.co ([200.13.249.118]:42560 "EHLO
-	une-pmta02.une.net.co" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752654Ab1E3JCm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 May 2011 05:02:42 -0400
-Content-Description: Mail message body
+Received: from cantor.suse.de ([195.135.220.2]:48677 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752237Ab1E3KcE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 30 May 2011 06:32:04 -0400
+Content-Disposition: inline
+In-Reply-To: <1306376941-13349-1-git-send-email-dingdinghua@nrchpc.ac.cn>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I write to inform you that we have transferred USD$150,000 dollars.
-I decided to email you the MTCN and sender name so that you can pick st=
-art cashing your money in USD5000.00 daily instalment with the same MTC=
-N and sender's name which will be valid for 30 days until you cash the =
-full $150,000.00usd as it automatically activates for use for 30 days a=
-fter the first reactivation.
-
-The money is available for pick up which was deposited for transfer to =
-you by one MR Bernard Harry from BLACKBERRY MOBILE LOTTERY.
-The money is available for pick up by receiver(you) but when you track =
-it, it will display PICKED UP due to the fact that it has been deactiva=
-ted from our head office for security reason because it has stayed too =
-long in the air as we do not have your correct phone number which we wo=
-uld have use ito reach you, so it was blocked. therefore you can not ca=
-sh it out in any western union office due to its restriction from our h=
-ead office,which was a security measure because the money has been in t=
-he air for three days now and maybe in danger, hence the mtcn has to be=
- reactivated to enable you cash out the money in any western union offi=
-ce in your area, the reactivation of the MTCN will cost you a  token of=
- $105,once this is paid, our head office will release the fund on hold =
-to enable you cash it.To be sure of this please log on to www.westernun=
-ion.com  and click on track to and enter the sender's info and mtcn bel=
-ow.
-- Hide quoted text -
-
-Sender's Fist name: Perry
-Sender's Last Name: Poston
-MTCN: 0341153617
-Question: Who Is Great
-Answer: God
-Amount: $5000.00USD
-Total Amount To be cashed:$150,000usd
-
-With due respect please get back to me urgently after tracking the mone=
-y online so i can instruct you on how to send the $105 to us for the re=
-activation of the MTCN.
+On Thu 26-05-11 10:29:01, Ding Dinghua wrote:
+> journal_get_create_access should drop jh->b_jcount in error handling path
+> 
+> Signed-off-by: Ding Dinghua <dingdinghua@nrchpc.ac.cn>
+  Thanks. Merged into my tree.
 
 
-
-Thanks
-Best Regards
-Mr.Phoenix Mcferrin.
-western union Office,
-NIGERIA OFFICE.
-Western Union=AE Money Transfer
-Email: western_unionoffic102@w.cn
-Tel: +2347054952656
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+								Honza
+> ---
+>  fs/jbd/transaction.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
+> index f7ee81a..3b3b01f 100644
+> --- a/fs/jbd/transaction.c
+> +++ b/fs/jbd/transaction.c
+> @@ -844,8 +844,8 @@ int journal_get_create_access(handle_t *handle, struct buffer_head *bh)
+>  	 */
+>  	JBUFFER_TRACE(jh, "cancelling revoke");
+>  	journal_cancel_revoke(handle, jh);
+> -	journal_put_journal_head(jh);
+>  out:
+> +	journal_put_journal_head(jh);
+>  	return err;
+>  }
+>  
+> -- 
+> 1.7.4.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
