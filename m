@@ -1,183 +1,146 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: xfsprogs: Fix for xfstest 252 hang on ext4
-Date: Wed, 1 Jun 2011 09:58:45 +0800
-Message-ID: <BANLkTin3+GT+LmjTACDnZUKamhFhDMkvVA@mail.gmail.com>
-References: <4DDAC4EF.1050702@linux.vnet.ibm.com>
-	<BANLkTiks0NSDTSPN8n446JHWhKtM61_=Mw@mail.gmail.com>
-	<4DDB1A0C.5030502@linux.vnet.ibm.com>
-	<4DE50881.90401@linux.vnet.ibm.com>
+From: Christoph Anton Mitterer <calestyo@scientia.net>
+Subject: Re: errors in ext4_mb_generate_buddy and ext4_remount
+Date: Wed, 01 Jun 2011 00:38:13 +0200
+Message-ID: <1306881493.3275.5.camel@fermat.scientia.net>
+References: <f93bc5d54d25e080b5438bcdc3af8f84@imap.dd24.net>
+	 <20110509010112.GC4138@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>, Dave Chinner <david@fromorbit.com>,
-	"Ted Ts'o" <tytso@mit.edu>
-To: Allison Henderson <achender@linux.vnet.ibm.com>
+Content-Type: multipart/signed; micalg="sha1"; protocol="application/x-pkcs7-signature"; boundary="=-EIhU/mtZTOR/KQ7xgk/P"
+Cc: linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pw0-f46.google.com ([209.85.160.46]:64805 "EHLO
-	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753014Ab1FAB6p convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 May 2011 21:58:45 -0400
-Received: by pwi15 with SMTP id 15so2325211pwi.19
-        for <linux-ext4@vger.kernel.org>; Tue, 31 May 2011 18:58:45 -0700 (PDT)
-In-Reply-To: <4DE50881.90401@linux.vnet.ibm.com>
+Received: from mailgw02.dd24.net ([193.46.215.43]:43014 "EHLO
+	mailgw02.dd24.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758533Ab1FACLU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 May 2011 22:11:20 -0400
+In-Reply-To: <20110509010112.GC4138@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 31, 2011 at 11:25 PM, Allison Henderson
-<achender@linux.vnet.ibm.com> wrote:
-> On 5/23/2011 7:38 PM, Allison Henderson wrote:
->>
->> On 5/23/2011 6:16 PM, Yongqiang Yang wrote:
->>>
->>> On Tue, May 24, 2011 at 4:34 AM, Allison Henderson
->>> <achender@linux.vnet.ibm.com> wrote:
->>>>
->>>> Hi all,
->>>>
->>>> While trying to add more punch hole tests to xfstest, I found that
->>>> test 252 hangs on ext4 due to a loop in xfsprogs that does not exi=
-t.
->>>> XFS gets out of this loop because there is logic in the loop that
->>>> looks for the last extent flag and breaks out. But it looks like e=
-xt4
->>>> does not return a last extent when the file has a hole at the end.=
- I
->>>> am not sure if this is the correct behavior or not, so I will copy
->>>> the ext4 folks on this too. Below is a copy of the fix for xfsprog=
-s:
->>>
->>> Hi there,
->>>
->>> What's blocksize of the tested ext4? For now, ext4 returns
->>> LAST_EXTENT if the logical offset covered by the extent is greater
->>> than file size, so if there is a hole at the end, no last extent is
->>> returned. Thx!
->>>
->>> Yongqiang.
->>
->> Hi there,
->>
->> The block size I've been using is 4096. As long as that behavior is
->> expected, I think the test will be ok with just the xfsprogs fix,
->> though. Thx!
->>
->> Allison Henderson
->>
->>>
->>>>
->>>> diff --git a/io/fiemap.c b/io/fiemap.c
->>>> index fa990cc..81fc92c 100644
->>>> --- a/io/fiemap.c
->>>> +++ b/io/fiemap.c
->>>> @@ -246,7 +246,7 @@ fiemap_f(
->>>> flg_w, _("FLAGS"));
->>>> }
->>>>
->>>> - while (!last&& ((cur_extent + 1) !=3D max_extents)) {
->>>> + while (!last&& (cur_extent<=3D max_extents)) {
->>>> if (max_extents)
->>>> num_extents =3D min(num_extents,
->>>> max_extents - (cur_extent + 1));
->>>>
->>>>
->>>> It looks like the loop enters with last=3D0, cur_extents=3D0, and
->>>> max_extents =3D 0, and on the first iteration cur_extents get set =
-to 2,
->>>> so we dont see ((cur_extent + 1) =3D=3D max_extents for a very lon=
-g time.
->>>> I doubt the logic was meant to work that way, so this patch should
->>>> fix it, but I wanted to make sure that the fiemap for ext4 is work=
-ing
->>>> as intended too. Feed back appreciated! Thx all!
->>>>
->>>> Allison Henderson
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-ex=
-t4" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at http://vger.kernel.org/majordomo-info.html
->>>>
->>>
->>>
->>>
->>
->
->
->>> Hi all,
->>>
->>> I haven't heard much back on this patch, so Im just poking this
->>> thread to make sure it doesn't get forgotten. I have some patches
->>> out there for punch hole, and I'm currently looking at fixing up
->>> some older punch hole tests in the dmapi code, but they wont do muc=
-h
->>> good for ext4 with out this fix. =C2=A0If I could get a quick peek =
-from
->>> some one on the xfs list for this patch, that would be much
->>> appreciated. =C2=A0Thx all!
->>
->> If ext4 is not setting the last extent flag on the last extent then
->> that's an ext4 bug that the test has detected, right? And so you
->> should be fixing ext4 rather than modifying the test to hide the
->> different behaviour?
->>
->> Cheer
->>
->>-- Dave Chinner david@fromorbit.com
->
-> Hi All,
->
-> Sorry, I should have poked the thread with Yongqiang's response, so I=
- will
-> move the dialog into this thread. =C2=A0At the moment, it sounds like=
- the fiemap
-> for ext4 is working as intended. =C2=A0Yongqiang, do you agree that t=
-he fiemap
-> for ext4 should be changed? =C2=A0I think you are more familiar with =
-this part of
-Yes, I agree.  ext4 should return LAST extent.  I am thinking if we
-can find a new solution collecting extents.
 
-Maybe we can insert delayed extents into extent tree. This way fiemap
-will be simpler and much more efficient.
+--=-EIhU/mtZTOR/KQ7xgk/P
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-I would like to throw out the proposal inserting delayed-extents into
-extent tree.  What will it bring?  AFAIK it will bring:
-1. We need to down i_data_sem in delayed write-path to insert
-delayed-extents into the tree without journaling it.
+Hi Ted.
 
-2. When we come to block allocation, we can convert delayed-extents to
-normal extents.
-
-There is a problem that the solution can be only used in ordered mode.
-So what are your opinions=EF=BC=9F
-
-Yongqiang.
-
-> the code than I am, and I just want to make sure we find a solution t=
-hat
-> everyone is happy with. =C2=A0Thx!
->
-> Allison Henderson
->
->
->
->
->
->> _______________________________________________
->> xfs mailing list
->> xfs@oss.sgi.com
->> http://oss.sgi.com/mailman/listinfo/xfs
->
->
+On Sun, 2011-05-08 at 21:01 -0400, Ted Ts'o wrote:
+> The debian packages of e2fsprogs version 1.41.14-1 in experimental, or
+> 1.41.12-4 in unstable, has the necessary new code in e2fsck.  I'm
+> working on getting the patch pushed to Debian obsolete^H^H^H^H^H^H^H
+> stable; hopefully that will happen in the next week or two.
+The problem at least persists in the 1.41.12-4 version.
 
 
+Cheers,
+Chris.
 
---=20
-Best Wishes
-Yongqiang Yang
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--=-EIhU/mtZTOR/KQ7xgk/P
+Content-Type: application/x-pkcs7-signature; name="smime.p7s"
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Transfer-Encoding: base64
+
+MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIITMjCCBggw
+ggPwoAMCAQICAQEwDQYJKoZIhvcNAQEEBQAweTEQMA4GA1UEChMHUm9vdCBDQTEeMBwGA1UECxMV
+aHR0cDovL3d3dy5jYWNlcnQub3JnMSIwIAYDVQQDExlDQSBDZXJ0IFNpZ25pbmcgQXV0aG9yaXR5
+MSEwHwYJKoZIhvcNAQkBFhJzdXBwb3J0QGNhY2VydC5vcmcwHhcNMDUxMDE0MDczNjU1WhcNMzMw
+MzI4MDczNjU1WjBUMRQwEgYDVQQKEwtDQWNlcnQgSW5jLjEeMBwGA1UECxMVaHR0cDovL3d3dy5D
+QWNlcnQub3JnMRwwGgYDVQQDExNDQWNlcnQgQ2xhc3MgMyBSb290MIICIjANBgkqhkiG9w0BAQEF
+AAOCAg8AMIICCgKCAgEAq0k1EUh80iZ+U5TPQ6ndKNdCKovzh3gZWHwPntqJfeH763KQDXShlmSr
+n6AkmXPa4lV2xxd79QSsRrjDvn9kjRBsJPNhnMDykPpR5vVpAWPDD1biSkLP4kSMJSioxXkJfUa5
+ivPp8zQpCEXkHJ/LlAQcgagUs5hlxEPsToKNCdG9qluNktDs3pDFfwrC4+vmMVpedD6XM1nowwM9
+YDO/99FvR8TN7mKDUm4uCJqk2RUYkaaFkkewrkjrbbch7IUaaHI1q//wEF3A9JSnatU7kn5MkAV+
+k8Esi6SOYnQVcW4LcQPqrxU4mtTSBXJvjPkr61pyJfk5RuNyGz4Ew2QnIhAqik9YpwOtvrQuE+1d
+qkjX1X3UKntc+kYEUOTMDkJbjO3b8s/8lpPg2xE2VGI0OI8MYJs7l1Y4rfPSW4ugW+pOlrh819Wg
+hnBA05Ept6I8rfWMu88akorkNHvA2Gxf6QrCw6cgmlrfLF1SXLpH1ZvvJChwOCAv1X8pwLJBA2iS
+zOCczJdLRe86EAqrcDqYlXCtNbHqhSukHIAhMamuYHqAJkgAuAHAk2NVIpE8Vuev2zol848xVOom
+i4FZ+aHRUxHFe50D9nQR4G2xLD8shpGZcZqmd4s0YNEUtCysna+MENOfxGr4bxP8c1n3ZkJ0Horj
++NzSb5icy0eYlUAF++kCAwEAAaOBvzCBvDAPBgNVHRMBAf8EBTADAQH/MF0GCCsGAQUFBwEBBFEw
+TzAjBggrBgEFBQcwAYYXaHR0cDovL29jc3AuQ0FjZXJ0Lm9yZy8wKAYIKwYBBQUHMAKGHGh0dHA6
+Ly93d3cuQ0FjZXJ0Lm9yZy9jYS5jcnQwSgYDVR0gBEMwQTA/BggrBgEEAYGQSjAzMDEGCCsGAQUF
+BwIBFiVodHRwOi8vd3d3LkNBY2VydC5vcmcvaW5kZXgucGhwP2lkPTEwMA0GCSqGSIb3DQEBBAUA
+A4ICAQB/CIih2hpQSdqJ+6EIcvOK9x7EOrR5WyAwsUXewl3TZWnxwl1UVDyFX7l7QpHCmf0bUZur
+RqWhEFOebYisc24sM6bw9J7gdcE+iEWp4WZD/lZa0XpBePdA2ko68QtbpbsWBubC55O5hU2XT7Ee
+OEOA75sNjO+4p2AAh1d9HkQcyyPvmzyZna+1KRxFeRaWTSdt8Rxsw8JVZLO8FOLzpB8eMvwnFQXP
+3S6uPoJhe/AhEBj2ROpTOfnc0Jog4Ma74LtaT8SZyAe9tb2i2y5iDUI0Qbz/i4r1USKqiDAA4rDU
+vL5lutUDV3mb6NzITfhQ7ZGlUiiirPs2WD7plCuRUIcb1l7WjMz3DxAMUk7QFmHl5QpsvxfHckZX
+nJj1bGBjem9euU4vyLm5u2qFvJgN7fk+l4Q0lK4Ar6Hl55JuTr3z4tkUi1zS6wFsoBelLRDrnHpK
+vb3uzv3tIkCrcDiI9QqHasKrBWDJSAXaU8HeRHdqs/M8PO2AvKY4SikkX/5ZO5slelZjAGS5XaRi
+fVc2T62D7x+SU6COd1fd5WERPSMAkEw8+qNgkwSjrzX2DmqPT0pgp4UFbEahj/THduOhWVf3cbLE
+bhRcbW1BZt8bk7HUAMPuy888PSGAqV9jZfzd4F+k9CvwhXFB1Gcl+xqxl67WmYITQdJupRuZJ4Dn
+C6moADCCBo8wggR3oAMCAQICAwCyHTANBgkqhkiG9w0BAQUFADBUMRQwEgYDVQQKEwtDQWNlcnQg
+SW5jLjEeMBwGA1UECxMVaHR0cDovL3d3dy5DQWNlcnQub3JnMRwwGgYDVQQDExNDQWNlcnQgQ2xh
+c3MgMyBSb290MB4XDTEwMDgwMTIxMjc0M1oXDTEyMDczMTIxMjc0M1owggEdMSEwHwYDVQQDExhD
+aHJpc3RvcGggQW50b24gTWl0dGVyZXIxJDAiBgkqhkiG9w0BCQEWFWNhbGVzdHlvQHNjaWVudGlh
+Lm5ldDExMC8GCSqGSIb3DQEJARYibWFpbEBjaHJpc3RvcGguYW50b24ubWl0dGVyZXIubmFtZTEv
+MC0GCSqGSIb3DQEJARYgY2hyaXN0b3BoLmFudG9uLm1pdHRlcmVyQGNlcm4uY2gxPjA8BgkqhkiG
+9w0BCQEWL2NocmlzdG9waC5hbnRvbi5taXR0ZXJlckBwaHlzaWsudW5pLW11ZW5jaGVuLmRlMS4w
+LAYJKoZIhvcNAQkBFh9jaHJpc3RvcGguYW50b24ubWl0dGVyZXJAbG11LmRlMIIBIjANBgkqhkiG
+9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuwNa6CEzsTRd3bRYXPNn2KYKhFZbyPPk1CjuFfy+1PAfKBiG
+JmhhHGkmwCdnOd5aVnGzwIPfTv/+Rw3Cuw2zJ4YmJmX3uNDz/l2M6h5MO7Bawv7CjdR+ljGaIBYi
+gMuNaBawmoo60shkvOwf8df/Ou5KTxX7uL/hNOb1Q2/3yJWBBMPCbKD0nTvVH34nE1lfZxvKk/Mu
+dT7jc/WZ3kJshsO7y0WS/DEDvqPiQI5zfCx/qslMYCSCwcqZ4/NHwEXX4zgt9tfPj34iBNLEod7H
+zdNhCfdqn1j/FTsRI12M2OXEYhYgBoRNRYshPV10ePbV9+GPzvWlJm7Hn07fxVi4ZQIDAQABo4IB
+nTCCAZkwDAYDVR0TAQH/BAIwADBWBglghkgBhvhCAQ0ESRZHVG8gZ2V0IHlvdXIgb3duIGNlcnRp
+ZmljYXRlIGZvciBGUkVFIGhlYWQgb3ZlciB0byBodHRwOi8vd3d3LkNBY2VydC5vcmcwQAYDVR0l
+BDkwNwYIKwYBBQUHAwQGCCsGAQUFBwMCBgorBgEEAYI3CgMEBgorBgEEAYI3CgMDBglghkgBhvhC
+BAEwMgYIKwYBBQUHAQEEJjAkMCIGCCsGAQUFBzABhhZodHRwOi8vb2NzcC5jYWNlcnQub3JnMIG6
+BgNVHREEgbIwga+BFWNhbGVzdHlvQHNjaWVudGlhLm5ldIEibWFpbEBjaHJpc3RvcGguYW50b24u
+bWl0dGVyZXIubmFtZYEgY2hyaXN0b3BoLmFudG9uLm1pdHRlcmVyQGNlcm4uY2iBL2NocmlzdG9w
+aC5hbnRvbi5taXR0ZXJlckBwaHlzaWsudW5pLW11ZW5jaGVuLmRlgR9jaHJpc3RvcGguYW50b24u
+bWl0dGVyZXJAbG11LmRlMA0GCSqGSIb3DQEBBQUAA4ICAQAQFRkG3/PZgFdEFzeQyB2Gy8aXvyfS
+XpoF14+eAplacl6HXG874gfBw0VlTMkG7ynK3sh2cOEz20BMbly/MGT9tMpo246EhINlIwpfnqlS
+GZ+AVXrmztX25Eler+fO2wOVEeCn+HV09wb95VJtdzeAVaWpON5cEjGm9TLpMfR3RDDDkkcKI1uB
+kAcwVugRHmAXgx+2Mi6bDrG1q3TXA8JCdo+8ojdboSEpJvPXhXeKcN9N9ajLqcv/J0jp5s1jZCRn
+oX8OGIu9KWYmD7w2dHaYDmi/JHAa1ddd38BjULi1azqAVr32f1UWzU12JucqGHvlsZvkr479f/jV
+4G8ID7zz/KG0Qb1op7gOZnj56/ek2jHyFBlYnAsnqM2imqSkNZsOAhxLPsYvqE3APCTcFMSilCCD
+66K8OLrzpAj6fzcY9UJ9pkRZBP+nkOTN9avqZivxwKR8Zvl4XG9NJEdftSDTjFaVeYjn8hiDW0c9
+uqVlayI35d2L0jC6h/npeihVWSOBiqFd5sPepTrqe7AvPrpYR12QrbkYeqARcqYnLe3jKuyWyqhQ
+EQty00Zb0n3d7ezZ15ECXBOQHhvlDkbT6UeGX3Xa9kvNYWIb62S1nZ4oicU94NPxwMYtttaOTjzY
+3hb5/aS+TWT+xkTFSFmd2perZmiiyByCKC5bcp6cOPWgvzCCBo8wggR3oAMCAQICAwCyHTANBgkq
+hkiG9w0BAQUFADBUMRQwEgYDVQQKEwtDQWNlcnQgSW5jLjEeMBwGA1UECxMVaHR0cDovL3d3dy5D
+QWNlcnQub3JnMRwwGgYDVQQDExNDQWNlcnQgQ2xhc3MgMyBSb290MB4XDTEwMDgwMTIxMjc0M1oX
+DTEyMDczMTIxMjc0M1owggEdMSEwHwYDVQQDExhDaHJpc3RvcGggQW50b24gTWl0dGVyZXIxJDAi
+BgkqhkiG9w0BCQEWFWNhbGVzdHlvQHNjaWVudGlhLm5ldDExMC8GCSqGSIb3DQEJARYibWFpbEBj
+aHJpc3RvcGguYW50b24ubWl0dGVyZXIubmFtZTEvMC0GCSqGSIb3DQEJARYgY2hyaXN0b3BoLmFu
+dG9uLm1pdHRlcmVyQGNlcm4uY2gxPjA8BgkqhkiG9w0BCQEWL2NocmlzdG9waC5hbnRvbi5taXR0
+ZXJlckBwaHlzaWsudW5pLW11ZW5jaGVuLmRlMS4wLAYJKoZIhvcNAQkBFh9jaHJpc3RvcGguYW50
+b24ubWl0dGVyZXJAbG11LmRlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuwNa6CEz
+sTRd3bRYXPNn2KYKhFZbyPPk1CjuFfy+1PAfKBiGJmhhHGkmwCdnOd5aVnGzwIPfTv/+Rw3Cuw2z
+J4YmJmX3uNDz/l2M6h5MO7Bawv7CjdR+ljGaIBYigMuNaBawmoo60shkvOwf8df/Ou5KTxX7uL/h
+NOb1Q2/3yJWBBMPCbKD0nTvVH34nE1lfZxvKk/MudT7jc/WZ3kJshsO7y0WS/DEDvqPiQI5zfCx/
+qslMYCSCwcqZ4/NHwEXX4zgt9tfPj34iBNLEod7HzdNhCfdqn1j/FTsRI12M2OXEYhYgBoRNRYsh
+PV10ePbV9+GPzvWlJm7Hn07fxVi4ZQIDAQABo4IBnTCCAZkwDAYDVR0TAQH/BAIwADBWBglghkgB
+hvhCAQ0ESRZHVG8gZ2V0IHlvdXIgb3duIGNlcnRpZmljYXRlIGZvciBGUkVFIGhlYWQgb3ZlciB0
+byBodHRwOi8vd3d3LkNBY2VydC5vcmcwQAYDVR0lBDkwNwYIKwYBBQUHAwQGCCsGAQUFBwMCBgor
+BgEEAYI3CgMEBgorBgEEAYI3CgMDBglghkgBhvhCBAEwMgYIKwYBBQUHAQEEJjAkMCIGCCsGAQUF
+BzABhhZodHRwOi8vb2NzcC5jYWNlcnQub3JnMIG6BgNVHREEgbIwga+BFWNhbGVzdHlvQHNjaWVu
+dGlhLm5ldIEibWFpbEBjaHJpc3RvcGguYW50b24ubWl0dGVyZXIubmFtZYEgY2hyaXN0b3BoLmFu
+dG9uLm1pdHRlcmVyQGNlcm4uY2iBL2NocmlzdG9waC5hbnRvbi5taXR0ZXJlckBwaHlzaWsudW5p
+LW11ZW5jaGVuLmRlgR9jaHJpc3RvcGguYW50b24ubWl0dGVyZXJAbG11LmRlMA0GCSqGSIb3DQEB
+BQUAA4ICAQAQFRkG3/PZgFdEFzeQyB2Gy8aXvyfSXpoF14+eAplacl6HXG874gfBw0VlTMkG7ynK
+3sh2cOEz20BMbly/MGT9tMpo246EhINlIwpfnqlSGZ+AVXrmztX25Eler+fO2wOVEeCn+HV09wb9
+5VJtdzeAVaWpON5cEjGm9TLpMfR3RDDDkkcKI1uBkAcwVugRHmAXgx+2Mi6bDrG1q3TXA8JCdo+8
+ojdboSEpJvPXhXeKcN9N9ajLqcv/J0jp5s1jZCRnoX8OGIu9KWYmD7w2dHaYDmi/JHAa1ddd38Bj
+ULi1azqAVr32f1UWzU12JucqGHvlsZvkr479f/jV4G8ID7zz/KG0Qb1op7gOZnj56/ek2jHyFBlY
+nAsnqM2imqSkNZsOAhxLPsYvqE3APCTcFMSilCCD66K8OLrzpAj6fzcY9UJ9pkRZBP+nkOTN9avq
+ZivxwKR8Zvl4XG9NJEdftSDTjFaVeYjn8hiDW0c9uqVlayI35d2L0jC6h/npeihVWSOBiqFd5sPe
+pTrqe7AvPrpYR12QrbkYeqARcqYnLe3jKuyWyqhQEQty00Zb0n3d7ezZ15ECXBOQHhvlDkbT6UeG
+X3Xa9kvNYWIb62S1nZ4oicU94NPxwMYtttaOTjzY3hb5/aS+TWT+xkTFSFmd2perZmiiyByCKC5b
+cp6cOPWgvzGCAr0wggK5AgEBMFswVDEUMBIGA1UEChMLQ0FjZXJ0IEluYy4xHjAcBgNVBAsTFWh0
+dHA6Ly93d3cuQ0FjZXJ0Lm9yZzEcMBoGA1UEAxMTQ0FjZXJ0IENsYXNzIDMgUm9vdAIDALIdMAkG
+BSsOAwIaBQCgggE3MBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTEx
+MDUzMTIyMzgxM1owIwYJKoZIhvcNAQkEMRYEFPGae3YW2R4NuJHnxy3sNBc1VwotMGoGCSsGAQQB
+gjcQBDFdMFswVDEUMBIGA1UEChMLQ0FjZXJ0IEluYy4xHjAcBgNVBAsTFWh0dHA6Ly93d3cuQ0Fj
+ZXJ0Lm9yZzEcMBoGA1UEAxMTQ0FjZXJ0IENsYXNzIDMgUm9vdAIDALIdMGwGCyqGSIb3DQEJEAIL
+MV2gWzBUMRQwEgYDVQQKEwtDQWNlcnQgSW5jLjEeMBwGA1UECxMVaHR0cDovL3d3dy5DQWNlcnQu
+b3JnMRwwGgYDVQQDExNDQWNlcnQgQ2xhc3MgMyBSb290AgMAsh0wDQYJKoZIhvcNAQEBBQAEggEA
+m6VAORvBCxj3loGY5LSDOSz5O4ZHBlby8FFm9SDnThYF26lifsk2lnuD8R6qNzxn2V08uFjdJOxv
+2DKpW6FvKOZLsqWQN6ntq7dRz17t3DeE+hxk3tLsGlW6mWjb3WBpjX80BhyxH6GucoU4m/KURi7e
+5xBeO+uzGVlOf+nkzTMrG6R3bObNLWpmYyd7C2PAHNIqdPob+yZxSFLdvLog1nebIf6TyqCiPG7/
+g3QRqlE1oi9IRXE/t/Ia0mCvqMHJLVsEt7gATaaZRNGY4Cwu5NtKC3uu/zViH0/eZFFJwc8/1aJb
+9T4G+sAh79E7cJ5WBXOEMmsvaAk1R2NkX9y78wAAAAAAAA==
+
+
+--=-EIhU/mtZTOR/KQ7xgk/P--
+
