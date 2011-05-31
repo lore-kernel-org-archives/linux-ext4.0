@@ -1,77 +1,42 @@
-From: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
-Subject: Re: infinite getdents64 loop
-Date: Tue, 31 May 2011 19:43:58 +0200
-Message-ID: <4DE528DE.5020908@itwm.fraunhofer.de>
-References: <201105281502.32719.sweet_f_a@gmx.de> <201105301137.02061.sweet_f_a@gmx.de> <1306767521.5971.2.camel@lade.trondhjem.org> <201105311147.24939.sweet_f_a@gmx.de> <4DE4C063.9060100@itwm.fraunhofer.de> <20110531123518.GB4215@thunk.org> <D598829B-FB36-4DA8-978E-8C689940D0FA@dilger.ca>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 36262] ext3 umount: BUG: unable to handle kernel paging request
+Date: Tue, 31 May 2011 18:21:33 GMT
+Message-ID: <201105311821.p4VILXip001879@demeter1.kernel.org>
+References: <bug-36262-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: "Ted Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	"linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org List" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Fan Yong <yong.fan-KloliPT79xf2eFz/2MeuCQ@public.gmane.org>
-To: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <D598829B-FB36-4DA8-978E-8C689940D0FA-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter1.kernel.org ([140.211.167.39]:55288 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752443Ab1EaSVf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 May 2011 14:21:35 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p4VILYQ4001880
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 31 May 2011 18:21:34 GMT
+In-Reply-To: <bug-36262-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/31/2011 07:26 PM, Andreas Dilger wrote:
-> On 2011-05-31, at 6:35 AM, Ted Ts'o wrote:
->> On Tue, May 31, 2011 at 12:18:11PM +0200, Bernd Schubert wrote:
->>>
->>> Out of interest, did anyone ever benchmark if dirindex provides any
->>> advantages to readdir?  And did those benchmarks include the
->>> disadvantages of the present implementation (non-linear inode
->>> numbers from readdir, so disk seeks on stat() (e.g. from 'ls -l') or
->>> 'rm -fr $dir')?
->>
->> The problem is that seekdir/telldir is terminally broken (and so is
->> NFSv2 for using a such a tiny cookie) in that it fundamentally assumes
->> a linear data structure.  If you're going to use any kind of
->> tree-based data structure, a 32-bit "offset" for seekdir/telldir just
->> doesn't cut it.  We actually play games where we memoize the low
->> 32-bits of the hash and keep track of which cookies we hand out via
->> seekdir/telldir so that things mostly work --- except for NFSv2, where
->> with the 32-bit cookie, you're just hosed.
->>
->> The reason why we have to iterate over the directory in hash tree
->> order is because if we have a leaf node split, half the directories
->> entries get copied to another directory entry, given the promises made
->> by seekdir() and telldir() about directory entries appearing exactly
->> once during a readdir() stream, even if you hold the fd open for weeks
->> or days, mean that you really have to iterate over things in hash
->> order.
->>
->> I'd have to look, since it's been too many years, but as I recall the
->> problem was that there is a common path for NFSv2 and NFSv3/v4, so we
->> don't know whether we can hand back a 32-bit cookie or a 64-bit
->> cookie, so we're always handing the NFS server a 32-bit "offset", even
->> though ew could do better.  Actually, if we had an interface where we
->> could give you a 128-bit "offset" into the directory, we could
->> probably eliminate the duplicate cookie problem entirely.  We just
->> send 64-bits worth of hash, plus the first two bytes of the of file
->> name.
->
-> If it's of interest, we've implemented a 64-bit hash mode for ext4 to
-> solve just this problem for Lustre.  The llseek() code will return a
-> 64-bit hash value on 64-bit systems, unless it is running for some
-> process that needs a 32-bit hash value (only NFSv2, AFAIK).
->
-> The attached patch can at least form the basis for being able to return
-> 64-bit hash values for userspace/NFSv3/v4 when usable.  The patch
-> is NOT usable as it stands now, since I've had to modify it from the
-> version that we are currently using for Lustre (this version hasn't
-> actually been compiled), but it at least shows the outline of what needs
-> to be done to get this working.  None of the NFS side is implemented.
-
-Thanks Andreas! I haven't tested it yet, but the generic idea looks 
-good. I guess the lower part of the patch (netfilter stuff) got 
-accidentally in?
+https://bugzilla.kernel.org/show_bug.cgi?id=36262
 
 
-Cheers,
-Bernd
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Jan Kara <jack@suse.cz> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |jack@suse.cz, tj@kernel.org
+
+
+
+
+--- Comment #1 from Jan Kara <jack@suse.cz>  2011-05-31 18:21:28 ---
+Can you post here output of disassemble of __percpu_counter_add? You can get
+that by running gdb on vmlinux and then doing 'disass __percpu_counter_add'.
+Thanks.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
