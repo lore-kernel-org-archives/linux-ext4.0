@@ -1,125 +1,84 @@
-From: amir73il@users.sourceforge.net
-Subject: [PATCH v2] xfstests: add support for ext4dev FSTYP
-Date: Wed,  1 Jun 2011 15:56:52 +0300
-Message-ID: <1306933012-8666-1-git-send-email-amir73il@users.sourceforge.net>
-Cc: sandeen@redhat.com, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, sergey57@gmail.com,
-	Amir Goldstein <amir73il@users.sf.net>
-To: xfs@oss.sgi.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:52872 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750736Ab1FAM5Y (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Jun 2011 08:57:24 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Boaz Harrosh <bharrosh-C4P08NqkoRlBDgjK7y7TUQ@public.gmane.org>
+Subject: Re: infinite getdents64 loop
+Date: Wed, 01 Jun 2011 16:10:26 +0300
+Message-ID: <4DE63A42.4090102@panasas.com>
+References: <201105281502.32719.sweet_f_a@gmx.de> <201105301137.02061.sweet_f_a@gmx.de> <1306767521.5971.2.camel@lade.trondhjem.org> <201105311147.24939.sweet_f_a@gmx.de> <4DE4C063.9060100@itwm.fraunhofer.de> <20110531123518.GB4215@thunk.org> <4DE521B9.5050603@panasas.com> <4DE525AE.9030806@itwm.fraunhofer.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: Ted Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <4DE525AE.9030806-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Amir Goldstein <amir73il@users.sf.net>
+On 05/31/2011 08:30 PM, Bernd Schubert wrote:
+> On 05/31/2011 07:13 PM, Boaz Harrosh wrote:
+>> On 05/31/2011 03:35 PM, Ted Ts'o wrote:
+>>> On Tue, May 31, 2011 at 12:18:11PM +0200, Bernd Schubert wrote:
+>>>>
+>>>> Out of interest, did anyone ever benchmark if dirindex provides any
+>>>> advantages to readdir?  And did those benchmarks include the
+>>>> disadvantages of the present implementation (non-linear inode
+>>>> numbers from readdir, so disk seeks on stat() (e.g. from 'ls -l') or
+>>>> 'rm -fr $dir')?
+>>>
+>>> The problem is that seekdir/telldir is terminally broken (and so is
+>>> NFSv2 for using a such a tiny cookie) in that it fundamentally assumes
+>>> a linear data structure.  If you're going to use any kind of
+>>> tree-based data structure, a 32-bit "offset" for seekdir/telldir just
+>>> doesn't cut it.  We actually play games where we memoize the low
+>>> 32-bits of the hash and keep track of which cookies we hand out via
+>>> seekdir/telldir so that things mostly work --- except for NFSv2, where
+>>> with the 32-bit cookie, you're just hosed.
+>>>
+>>> The reason why we have to iterate over the directory in hash tree
+>>> order is because if we have a leaf node split, half the directories
+>>> entries get copied to another directory entry, given the promises made
+>>> by seekdir() and telldir() about directory entries appearing exactly
+>>> once during a readdir() stream, even if you hold the fd open for weeks
+>>> or days, mean that you really have to iterate over things in hash
+>>> order.
+>>
+>> open fd means that it does not survive a server reboot. Why don't you
+>> keep an array per open fd, and hand out the array index. In the array
+>> you can keep a pointer to any info you want to keep. (that's the meaning of
+>> a cookie)
+> 
+> An array can take lots of memory for a large directory, of course. Do we 
+> really want to do that in kernel space? Although I wouldn't have a 
+> problem to reserve a certain amount of memory for that. But what do we 
+> do if that gets exhausted (for example directory too large or several 
+> open filedescriptors)?
 
-From: Amir Goldstein <amir73il@users.sf.net>
+You miss understood me. Ted was complaining that the cookie was only 32
+bit and he hoped it was bigger, perhaps 128 minimum. What I said is that
+for each open fd, a cookie is returned that denotes a temporary space
+allocated for just that caller. When a second call with the same fd, same
+cookie comes, the allocated object is inspected to retrieve all the
+information needed to continue the walk from the same place. So the allocated
+space is only per active caller, up to the time fd is closed.
+(I never meant per directory entry)
 
-blkid knows to identify the ext4dev FSTYP of a partition that was
-formatted with mkfs.ext4dev.
-quota tools and various util-linux utils are also aware of ext4dev,
-so ext4dev shares the same capabilities as ext4.
+> And how does that help with NFS and other cluster filesystems where the 
+> client passes over the cookie? We ignore posix compliance then?
+> 
 
-Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
-Tested-by: Sergey Ivanov <sergey57@gmail.com>
----
-ext4dev is used to test experimental ext4 code in mutual existance
-with production ext4 code on the same system.
+I was not referring to that. I understand that this is an hard problem
+but it is solvable. The space per cookie is solved above.
 
-Specifically, ext4 snapshots code is available for testing as a
-stand-alone ext4dev module for Fedora 15 and Ubuntu 11.4
-(see http://next3.sf.net).
+> Thanks,
+> Bernd
 
-v1 -> v2:
-- undo change of fsck -t $FSTYP to fsck.$FSTYP
+But this is all talk. I don't know enough, or use, ext4 to be able to solve
+it myself. So I'm just babbling out here. Just that in the server we've done
+it before to keep things in an internal array and return the index as a magic
+cookie, when more information was needed internally.
 
- common.defrag |    2 +-
- common.quota  |    4 ++--
- common.rc     |   10 +++++-----
- 3 files changed, 8 insertions(+), 8 deletions(-)
-
-diff --git a/common.defrag b/common.defrag
-index 1bcf01d..4850803 100644
---- a/common.defrag
-+++ b/common.defrag
-@@ -26,7 +26,7 @@ _require_defrag()
-     xfs)
-         DEFRAG_PROG=/usr/sbin/xfs_fsr
- 	;;
--    ext4)
-+    ext4|ext4dev)
-         DEFRAG_PROG=/usr/bin/e4defrag
- 	;;
-     *)
-diff --git a/common.quota b/common.quota
-index 3c87ce1..b6d5f16 100644
---- a/common.quota
-+++ b/common.quota
-@@ -29,7 +29,7 @@ _require_quota()
-     [ -n $QUOTA_PROG ] || _notrun "Quota user tools not installed"
- 
-     case $FSTYP in
--    ext2|ext3|ext4|reiserfs)
-+    ext2|ext3|ext4|ext4dev|reiserfs)
- 	if [ ! -d /proc/sys/fs/quota ]; then
- 	    _notrun "Installed kernel does not support quotas"
- 	fi
-@@ -237,7 +237,7 @@ _check_quota_usage()
- 	# Sync to get delalloc to disk
- 	sync
- 	VFS_QUOTA=0
--	if [ $FSTYP = "ext2" -o $FSTYP = "ext3" -o $FSTYP = "ext4" -o $FSTYP = "reiserfs" ]; then
-+	if [ $FSTYP = "ext2" -o $FSTYP = "ext3" -o $FSTYP = "ext4" -o $FSTYP = "ext4dev" -o $FSTYP = "reiserfs" ]; then
- 		VFS_QUOTA=1
- 		quotaon -f -u -g $SCRATCH_MNT 2>/dev/null
- 	fi
-diff --git a/common.rc b/common.rc
-index e634fbb..c510c66 100644
---- a/common.rc
-+++ b/common.rc
-@@ -65,7 +65,7 @@ _mount_opts()
-     nfs)
- 	export MOUNT_OPTIONS=$NFS_MOUNT_OPTIONS
- 	;;
--    ext2|ext3|ext4)
-+    ext2|ext3|ext4|ext4dev)
- 	# acls & xattrs aren't turned on by default on ext$FOO
- 	export MOUNT_OPTIONS="-o acl,user_xattr $EXT_MOUNT_OPTIONS"
- 	;;
-@@ -110,7 +110,7 @@ _mkfs_opts()
- _fsck_opts()
- {
-     case $FSTYP in
--    ext2|ext3|ext4)
-+    ext2|ext3|ext4|ext4dev)
- 	export FSCK_OPTIONS="-nf"
- 	;;
-     reiserfs)
-@@ -326,10 +326,10 @@ _scratch_mkfs_sized()
-     xfs)
- 	_scratch_mkfs_xfs -d size=$fssize -b size=$blocksize
- 	;;
--    ext2|ext3|ext4)
-+    ext2|ext3|ext4|ext4dev)
- 	/sbin/mkfs.$FSTYP $MKFS_OPTIONS -b $blocksize $SCRATCH_DEV $blocks
- 	;;
--     btrfs)
-+    btrfs)
- 	/sbin/mkfs.$FSTYP $MKFS_OPTIONS $SCRATCH_DEV -b $fssize
- 	;;
-     *)
-@@ -354,7 +354,7 @@ _scratch_mkfs_geom()
-     xfs)
- 	MKFS_OPTIONS+=" -b size=$blocksize, -d su=$sunit_bytes,sw=$swidth_mult"
- 	;;
--    ext4)
-+    ext4|ext4dev)
- 	MKFS_OPTIONS+=" -b $blocksize -E stride=$sunit_blocks,stripe_width=$swidth_blocks"
- 	;;
-     *)
--- 
-1.7.4.1
-
+Boaz
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
