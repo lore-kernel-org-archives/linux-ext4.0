@@ -1,58 +1,142 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [3/3] libext2fs: pick out UNINIT-EXTENT block
-Date: Tue, 31 May 2011 19:56:41 -0400
-Message-ID: <20110531235641.GA2864@thunk.org>
-References: <1296368914-14079-1-git-send-email-hao.bigrat@gmail.com>
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: [PATCH] xfstests: add support for ext4dev FSTYP
+Date: Wed, 1 Jun 2011 06:13:59 +0300
+Message-ID: <BANLkTimBnAgiXZnvS56eAzEdJ=kw1zVGsg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Robin Dong <sanbai@taobao.com>,
-	Andreas Dilger <adilger@dilger.ca>,
-	Theodore Tso <tytso@google.com>
-To: Robin Dong <hao.bigrat@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Sergey Ivanov <sergey57@gmail.com>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: XFS <xfs@oss.sgi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:36905 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1161012Ab1FACW1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 31 May 2011 22:22:27 -0400
-Content-Disposition: inline
-In-Reply-To: <1296368914-14079-1-git-send-email-hao.bigrat@gmail.com>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:63285 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933108Ab1FADOB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 May 2011 23:14:01 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jan 29, 2011 at 08:28:34PM -0000, Robin Dong wrote:
-> From: Robin Dong <sanbai@taobao.com>
-> 
-> for display UNINIT-EXTENT block usage in dumpe2fs, modify 
-> ext2fs_block_iterate3 to distinguish between uninitial extent
-> block and normal extent block
-> 
-> Signed-off-by: Robing Dong <sanbai@taobao.com>
-> 
-> ---
-> lib/ext2fs/block.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/lib/ext2fs/block.c b/lib/ext2fs/block.c
-> index 0e4ec77..c7a60da 100644
-> --- a/lib/ext2fs/block.c
-> +++ b/lib/ext2fs/block.c
-> @@ -458,7 +458,7 @@ errcode_t ext2fs_block_iterate3(ext2_filsys fs,
->  			     blk++, blockcnt++, j++) {
->  				new_blk = blk;
->  				r = (*ctx.func)(fs, &new_blk, blockcnt,
-> -						0, 0, priv_data);
-> +						extent.e_flags, 0, priv_data);
+From: Amir Goldstein <amir73il@users.sf.net>
 
-Apologies for not getting back to this earlier, but I don't want to
-overload the ref_blk field, since it will have a very different
-meaning for extent-mapped and files mapped using the traditional
-indirect block scheme.  This could potentially confuse callers who
-don't know about extents.
+blkid knows to identify the ext4dev FSTYP of a partition that was
+formatted with mkfs.ext4dev.
+quota tools and various util-linux utils are also aware of ext4dev,
+so ext4dev shares the same capabilities as ext4.
 
-Programs that want to find out about the uninitialized extent flag,
-should use the extent iterator functions.
+While testing on Fedora 15, we encoutered a buggy fsck utility, which
+invokes fsck.ext4, even though it was called with -t ext4dev argument.
+In our setup fsck.ext4dev knows about new fs features that fsck.ext4
+doesn't know, so the generic_fs_check fails.
+Since we have no real use of the extra capabilities provided by fsck util,
+we decided to invoke fsck.$FSTYP directly to avoid this issue.
 
-As far as the other patches in this series, I'm concerned that
-dumpe2fs -s is going to confuse users more than anything else.
+Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
+Tested-by: Sergey Ivanov <sergey57@gmail.com>
+---
+ext4dev is used to test experimental ext4 code in mutual existance
+with production ext4 code on the same system.
 
-	       	     		      	   - Ted
+Specifically, ext4 snapshots code is available for testing as a
+stand-alone ext4dev module for Fedora 15 and Ubuntu 11.4
+(see http://next3.sf.net).
+
+ common.defrag |    2 +-
+ common.quota  |    4 ++--
+ common.rc     |   12 ++++++------
+ 3 files changed, 9 insertions(+), 9 deletions(-)
+
+diff --git a/common.defrag b/common.defrag
+index 1bcf01d..4850803 100644
+--- a/common.defrag
++++ b/common.defrag
+@@ -26,7 +26,7 @@ _require_defrag()
+     xfs)
+         DEFRAG_PROG=/usr/sbin/xfs_fsr
+ 	;;
+-    ext4)
++    ext4|ext4dev)
+         DEFRAG_PROG=/usr/bin/e4defrag
+ 	;;
+     *)
+diff --git a/common.quota b/common.quota
+index 3c87ce1..9eac19d 100644
+--- a/common.quota
++++ b/common.quota
+@@ -29,7 +29,7 @@ _require_quota()
+     [ -n $QUOTA_PROG ] || _notrun "Quota user tools not installed"
+
+     case $FSTYP in
+-    ext2|ext3|ext4|reiserfs)
++    ext2|ext3|ext4|ext4dev|reiserfs)
+ 	if [ ! -d /proc/sys/fs/quota ]; then
+ 	    _notrun "Installed kernel does not support quotas"
+ 	fi
+@@ -237,7 +237,7 @@ _check_quota_usage()
+ 	# Sync to get delalloc to disk
+ 	sync
+ 	VFS_QUOTA=0
+-	if [ $FSTYP = "ext2" -o $FSTYP = "ext3" -o $FSTYP = "ext4" -o $FSTYP
+= "reiserfs" ]; then
++	if [ $FSTYP = "ext2" -o $FSTYP = "ext3" -o $FSTYP = "ext4" -o $FSTYP
+= "ext4dev" -o $FSTYP = "reiserfs" ]; then
+ 		VFS_QUOTA=1
+ 		quotaon -f -u -g $SCRATCH_MNT 2>/dev/null
+ 	fi
+diff --git a/common.rc b/common.rc
+index e634fbb..e71fe9c 100644
+--- a/common.rc
++++ b/common.rc
+@@ -65,7 +65,7 @@ _mount_opts()
+     nfs)
+ 	export MOUNT_OPTIONS=$NFS_MOUNT_OPTIONS
+ 	;;
+-    ext2|ext3|ext4)
++    ext2|ext3|ext4|ext4dev)
+ 	# acls & xattrs aren't turned on by default on ext$FOO
+ 	export MOUNT_OPTIONS="-o acl,user_xattr $EXT_MOUNT_OPTIONS"
+ 	;;
+@@ -110,7 +110,7 @@ _mkfs_opts()
+ _fsck_opts()
+ {
+     case $FSTYP in
+-    ext2|ext3|ext4)
++    ext2|ext3|ext4|ext4dev)
+ 	export FSCK_OPTIONS="-nf"
+ 	;;
+     reiserfs)
+@@ -326,10 +326,10 @@ _scratch_mkfs_sized()
+     xfs)
+ 	_scratch_mkfs_xfs -d size=$fssize -b size=$blocksize
+ 	;;
+-    ext2|ext3|ext4)
++    ext2|ext3|ext4|ext4dev)
+ 	/sbin/mkfs.$FSTYP $MKFS_OPTIONS -b $blocksize $SCRATCH_DEV $blocks
+ 	;;
+-     btrfs)
++    btrfs)
+ 	/sbin/mkfs.$FSTYP $MKFS_OPTIONS $SCRATCH_DEV -b $fssize
+ 	;;
+     *)
+@@ -354,7 +354,7 @@ _scratch_mkfs_geom()
+     xfs)
+ 	MKFS_OPTIONS+=" -b size=$blocksize, -d su=$sunit_bytes,sw=$swidth_mult"
+ 	;;
+-    ext4)
++    ext4|ext4dev)
+ 	MKFS_OPTIONS+=" -b $blocksize -E
+stride=$sunit_blocks,stripe_width=$swidth_blocks"
+ 	;;
+     *)
+@@ -1026,7 +1026,7 @@ _check_generic_filesystem()
+         mountpoint=`_umount_or_remount_ro $device`
+     fi
+
+-    fsck -t $FSTYP $FSCK_OPTIONS $device >$tmp.fsck 2>&1
++    fsck.$FSTYP $FSCK_OPTIONS $device >$tmp.fsck 2>&1
+     if [ $? -ne 0 ]
+     then
+         echo "_check_generic_filesystem: filesystem on $device is
+inconsistent (see $seq.full)"
+-- 
+1.7.4.1
