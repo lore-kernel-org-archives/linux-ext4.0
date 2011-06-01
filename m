@@ -1,109 +1,233 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: infinite getdents64 loop
-Date: Wed, 01 Jun 2011 12:15:59 -0400
-Message-ID: <1306944959.3873.18.camel@lade.trondhjem.org>
-References: <201105281502.32719.sweet_f_a@gmx.de>
-	 <201105301137.02061.sweet_f_a@gmx.de>
-	 <1306767521.5971.2.camel@lade.trondhjem.org>
-	 <201105311147.24939.sweet_f_a@gmx.de> <4DE4C063.9060100@itwm.fraunhofer.de>
-	 <20110531123518.GB4215@thunk.org> <4DE521B9.5050603@panasas.com>
-	 <4DE525AE.9030806@itwm.fraunhofer.de> <4DE63A42.4090102@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+From: Andreas Dilger <adilger.kernel@dilger.ca>
+Subject: Re: [PATCH v2 1/2] ext4: arrange ext4_*_bit() macros
+Date: Wed, 1 Jun 2011 14:49:18 -0600
+Message-ID: <46950A08-9300-4649-A38D-88829035DFC2@dilger.ca>
+References: <1306939009-11283-1-git-send-email-akinobu.mita@gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 8BIT
-Cc: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-	"Ted Ts'o" <tytso@mit.edu>, linux-nfs@vger.kernel.org,
+Cc: linux-kernel@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
 	linux-ext4@vger.kernel.org
-To: Boaz Harrosh <bharrosh@panasas.com>
+To: Akinobu Mita <akinobu.mita@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:37785 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756084Ab1FAQQR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Jun 2011 12:16:17 -0400
-In-Reply-To: <4DE63A42.4090102@panasas.com>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:43686 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754516Ab1FAUtU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Jun 2011 16:49:20 -0400
+In-Reply-To: <1306939009-11283-1-git-send-email-akinobu.mita@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 2011-06-01 at 16:10 +0300, Boaz Harrosh wrote: 
-> On 05/31/2011 08:30 PM, Bernd Schubert wrote:
-> > On 05/31/2011 07:13 PM, Boaz Harrosh wrote:
-> >> On 05/31/2011 03:35 PM, Ted Ts'o wrote:
-> >>> On Tue, May 31, 2011 at 12:18:11PM +0200, Bernd Schubert wrote:
-> >>>>
-> >>>> Out of interest, did anyone ever benchmark if dirindex provides any
-> >>>> advantages to readdir?  And did those benchmarks include the
-> >>>> disadvantages of the present implementation (non-linear inode
-> >>>> numbers from readdir, so disk seeks on stat() (e.g. from 'ls -l') or
-> >>>> 'rm -fr $dir')?
-> >>>
-> >>> The problem is that seekdir/telldir is terminally broken (and so is
-> >>> NFSv2 for using a such a tiny cookie) in that it fundamentally assumes
-> >>> a linear data structure.  If you're going to use any kind of
-> >>> tree-based data structure, a 32-bit "offset" for seekdir/telldir just
-> >>> doesn't cut it.  We actually play games where we memoize the low
-> >>> 32-bits of the hash and keep track of which cookies we hand out via
-> >>> seekdir/telldir so that things mostly work --- except for NFSv2, where
-> >>> with the 32-bit cookie, you're just hosed.
-> >>>
-> >>> The reason why we have to iterate over the directory in hash tree
-> >>> order is because if we have a leaf node split, half the directories
-> >>> entries get copied to another directory entry, given the promises made
-> >>> by seekdir() and telldir() about directory entries appearing exactly
-> >>> once during a readdir() stream, even if you hold the fd open for weeks
-> >>> or days, mean that you really have to iterate over things in hash
-> >>> order.
-> >>
-> >> open fd means that it does not survive a server reboot. Why don't you
-> >> keep an array per open fd, and hand out the array index. In the array
-> >> you can keep a pointer to any info you want to keep. (that's the meaning of
-> >> a cookie)
-> > 
-> > An array can take lots of memory for a large directory, of course. Do we 
-> > really want to do that in kernel space? Although I wouldn't have a 
-> > problem to reserve a certain amount of memory for that. But what do we 
-> > do if that gets exhausted (for example directory too large or several 
-> > open filedescriptors)?
+On 2011-06-01, at 8:36 AM, Akinobu Mita wrote:
+> - remove unused ext4_{set,clear}_bit_atomic and ext4_find_first_zero_bit
+> - rename ext4_{set,clear}_bit to ext4_test_and_{set,clear}_bit
+> - reintroduce ext4_{set,clear}_bit for __{set,clear}_bit_le
 > 
-> You miss understood me. Ted was complaining that the cookie was only 32
-> bit and he hoped it was bigger, perhaps 128 minimum. What I said is that
-> for each open fd, a cookie is returned that denotes a temporary space
-> allocated for just that caller. When a second call with the same fd, same
-> cookie comes, the allocated object is inspected to retrieve all the
-> information needed to continue the walk from the same place. So the allocated
-> space is only per active caller, up to the time fd is closed.
-> (I never meant per directory entry)
+> This changes ext4_{set,clear}_bit safely, because if someone uses
+> these macros without noticing the change, new ext4_{set,clear}_bit
+> don't have return value and causes compiler errors where the return
+> value is used.
+
+I don't think it makes sense to change all of the ext4_set_bit() calls that
+don't check the return code to use ext4_test_and_set_bit(), just to return
+them back to ext4_set_bit() in the next patch.
+
+If you want to do this in separate steps, and maintain git bisect working,
+then it would be more clear to have two patches:
+
+Patch #1: Add new ext4_test_and_set_bit() macro
+#define ext4_test_and_set_bit		__test_and_set_bit_le
+{change ext4_set_bit() calls that check return to  ext4_test_and_set_bit()}
+
+Patch #2: Change ext4_set_bit() to not return old bit
+#define ext4_set_bit			__set_bit_le
+{nothing else changes}
+
+Alternately, you could just leave the calls that do not check the return
+value as ext4_set_bit() and have only a single patch.
+
+
+> Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+> Cc: linux-ext4@vger.kernel.org
+> ---
+> v2: rewritten to keep ext4_*_bit() macros
 > 
-> > And how does that help with NFS and other cluster filesystems where the 
-> > client passes over the cookie? We ignore posix compliance then?
-> > 
+> fs/ext4/balloc.c  |    8 ++++----
+> fs/ext4/ext4.h    |    9 ++++-----
+> fs/ext4/ialloc.c  |    9 ++++-----
+> fs/ext4/mballoc.c |    4 ++--
+> fs/ext4/resize.c  |   12 ++++++------
+> 5 files changed, 20 insertions(+), 22 deletions(-)
 > 
-> I was not referring to that. I understand that this is an hard problem
-> but it is solvable. The space per cookie is solved above.
-
-No. The above does not help in the case of NFS. The NFS protocol pretty
-much assumes that the cookies are valid forever (there is no "open
-directory" state to tell the server when to cache and when not).
-
-There is a half-arsed attempt to deal with cookies that expire in the
-form of the 'verifier', which changes when the cookies expire. When this
-happens, the client is indeed notified that its cookies are no longer
-usable, but the protocol offers no guidance for how the client can
-recover from such a situation if some process still holds an open
-directory descriptor.
-In practice, therefore, the NFS protocol assumes permanent cookies...
-
-My $.02 on this problem is therefore that we need some guidance from the
-application as to whether or not it can deal with 64-bit cookies (or
-larger). Something like Andreas' suggestion might work, and would allow
-us to fix 'telldir()' for userland too.
-
-Cheers
-  Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+> index 264f694..b6747e4 100644
+> --- a/fs/ext4/balloc.c
+> +++ b/fs/ext4/balloc.c
+> @@ -144,7 +144,7 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
+> 		int flex_bg = 0;
+> 
+> 		for (bit = 0; bit < bit_max; bit++)
+> -			ext4_set_bit(bit, bh->b_data);
+> +			ext4_test_and_set_bit(bit, bh->b_data);
+> 
+> 		start = ext4_group_first_block_no(sb, block_group);
+> 
+> @@ -155,18 +155,18 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
+> 		/* Set bits for block and inode bitmaps, and inode table */
+> 		tmp = ext4_block_bitmap(sb, gdp);
+> 		if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
+> -			ext4_set_bit(tmp - start, bh->b_data);
+> +			ext4_test_and_set_bit(tmp - start, bh->b_data);
+> 
+> 		tmp = ext4_inode_bitmap(sb, gdp);
+> 		if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
+> -			ext4_set_bit(tmp - start, bh->b_data);
+> +			ext4_test_and_set_bit(tmp - start, bh->b_data);
+> 
+> 		tmp = ext4_inode_table(sb, gdp);
+> 		for (; tmp < ext4_inode_table(sb, gdp) +
+> 				sbi->s_itb_per_group; tmp++) {
+> 			if (!flex_bg ||
+> 				ext4_block_in_group(sb, tmp, block_group))
+> -				ext4_set_bit(tmp - start, bh->b_data);
+> +				ext4_test_and_set_bit(tmp - start, bh->b_data);
+> 		}
+> 		/*
+> 		 * Also if the number of blocks within the group is
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 1921392..04db84f 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -930,12 +930,11 @@ struct ext4_inode_info {
+> #define test_opt2(sb, opt)		(EXT4_SB(sb)->s_mount_opt2 & \
+> 					 EXT4_MOUNT2_##opt)
+> 
+> -#define ext4_set_bit			__test_and_set_bit_le
+> -#define ext4_set_bit_atomic		ext2_set_bit_atomic
+> -#define ext4_clear_bit			__test_and_clear_bit_le
+> -#define ext4_clear_bit_atomic		ext2_clear_bit_atomic
+> +#define ext4_test_and_set_bit		__test_and_set_bit_le
+> +#define ext4_set_bit			__set_bit_le
+> +#define ext4_test_and_clear_bit		__test_and_clear_bit_le
+> +#define ext4_clear_bit			__clear_bit_le
+> #define ext4_test_bit			test_bit_le
+> -#define ext4_find_first_zero_bit	find_first_zero_bit_le
+> #define ext4_find_next_zero_bit		find_next_zero_bit_le
+> #define ext4_find_next_bit		find_next_bit_le
+> 
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index 21bb2f6..90bef6b 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -59,7 +59,7 @@ void ext4_mark_bitmap_end(int start_bit, int end_bit, char *bitmap)
+> 
+> 	ext4_debug("mark end bits +%d through +%d used\n", start_bit, end_bit);
+> 	for (i = start_bit; i < ((start_bit + 7) & ~7UL); i++)
+> -		ext4_set_bit(i, bitmap);
+> +		ext4_test_and_set_bit(i, bitmap);
+> 	if (i < end_bit)
+> 		memset(bitmap + (i >> 3), 0xff, (end_bit - i) >> 3);
+> }
+> @@ -252,7 +252,7 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
+> 		fatal = ext4_journal_get_write_access(handle, bh2);
+> 	}
+> 	ext4_lock_group(sb, block_group);
+> -	cleared = ext4_clear_bit(bit, bitmap_bh->b_data);
+> +	cleared = ext4_test_and_clear_bit(bit, bitmap_bh->b_data);
+> 	if (fatal || !cleared) {
+> 		ext4_unlock_group(sb, block_group);
+> 		goto out;
+> @@ -729,7 +729,7 @@ static int ext4_claim_inode(struct super_block *sb,
+> 	 */
+> 	down_read(&grp->alloc_sem);
+> 	ext4_lock_group(sb, group);
+> -	if (ext4_set_bit(ino, inode_bitmap_bh->b_data)) {
+> +	if (ext4_test_and_set_bit(ino, inode_bitmap_bh->b_data)) {
+> 		/* not a free inode */
+> 		retval = 1;
+> 		goto err_ret;
+> @@ -884,8 +884,7 @@ got_group:
+> 			goto fail;
+> 
+> repeat_in_this_group:
+> -		ino = ext4_find_next_zero_bit((unsigned long *)
+> -					      inode_bitmap_bh->b_data,
+> +		ino = ext4_find_next_zero_bit(inode_bitmap_bh->b_data,
+> 					      EXT4_INODES_PER_GROUP(sb), ino);
+> 
+> 		if (ino < EXT4_INODES_PER_GROUP(sb)) {
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 859f2ae..b423adf 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -384,13 +384,13 @@ static inline int mb_test_bit(int bit, void *addr)
+> static inline void mb_set_bit(int bit, void *addr)
+> {
+> 	addr = mb_correct_addr_and_bit(&bit, addr);
+> -	ext4_set_bit(bit, addr);
+> +	ext4_test_and_set_bit(bit, addr);
+> }
+> 
+> static inline void mb_clear_bit(int bit, void *addr)
+> {
+> 	addr = mb_correct_addr_and_bit(&bit, addr);
+> -	ext4_clear_bit(bit, addr);
+> +	ext4_test_and_clear_bit(bit, addr);
+> }
+> 
+> static inline int mb_find_next_zero_bit(void *addr, int max, int start)
+> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+> index 80bbc9c..cc40963 100644
+> --- a/fs/ext4/resize.c
+> +++ b/fs/ext4/resize.c
+> @@ -194,7 +194,7 @@ static int setup_new_group_blocks(struct super_block *sb,
+> 
+> 	if (ext4_bg_has_super(sb, input->group)) {
+> 		ext4_debug("mark backup superblock %#04llx (+0)\n", start);
+> -		ext4_set_bit(0, bh->b_data);
+> +		ext4_test_and_set_bit(0, bh->b_data);
+> 	}
+> 
+> 	/* Copy all of the GDT blocks into the backup in this group */
+> @@ -225,7 +225,7 @@ static int setup_new_group_blocks(struct super_block *sb,
+> 			brelse(gdb);
+> 			goto exit_bh;
+> 		}
+> -		ext4_set_bit(bit, bh->b_data);
+> +		ext4_test_and_set_bit(bit, bh->b_data);
+> 		brelse(gdb);
+> 	}
+> 
+> @@ -237,14 +237,14 @@ static int setup_new_group_blocks(struct super_block *sb,
+> 	if (err)
+> 		goto exit_bh;
+> 	for (i = 0, bit = gdblocks + 1; i < reserved_gdb; i++, bit++)
+> -		ext4_set_bit(bit, bh->b_data);
+> +		ext4_test_and_set_bit(bit, bh->b_data);
+> 
+> 	ext4_debug("mark block bitmap %#04llx (+%llu)\n", input->block_bitmap,
+> 		   input->block_bitmap - start);
+> -	ext4_set_bit(input->block_bitmap - start, bh->b_data);
+> +	ext4_test_and_set_bit(input->block_bitmap - start, bh->b_data);
+> 	ext4_debug("mark inode bitmap %#04llx (+%llu)\n", input->inode_bitmap,
+> 		   input->inode_bitmap - start);
+> -	ext4_set_bit(input->inode_bitmap - start, bh->b_data);
+> +	ext4_test_and_set_bit(input->inode_bitmap - start, bh->b_data);
+> 
+> 	/* Zero out all of the inode table blocks */
+> 	block = input->inode_table;
+> @@ -255,7 +255,7 @@ static int setup_new_group_blocks(struct super_block *sb,
+> 		goto exit_bh;
+> 	for (i = 0, bit = input->inode_table - start;
+> 	     i < sbi->s_itb_per_group; i++, bit++)
+> -		ext4_set_bit(bit, bh->b_data);
+> +		ext4_test_and_set_bit(bit, bh->b_data);
+> 
+> 	if ((err = extend_or_restart_transaction(handle, 2, bh)))
+> 		goto exit_bh;
+> -- 
+> 1.7.4.4
+> 
 
