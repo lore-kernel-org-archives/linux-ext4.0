@@ -1,233 +1,222 @@
-From: Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: [PATCH v2 1/2] ext4: arrange ext4_*_bit() macros
-Date: Wed, 1 Jun 2011 14:49:18 -0600
-Message-ID: <46950A08-9300-4649-A38D-88829035DFC2@dilger.ca>
-References: <1306939009-11283-1-git-send-email-akinobu.mita@gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-kernel@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org
-To: Akinobu Mita <akinobu.mita@gmail.com>
+From: Allison Henderson <achender@linux.vnet.ibm.com>
+Subject: Re: xfsprogs: Fix for xfstest 252 hang on ext4
+Date: Wed, 01 Jun 2011 13:50:41 -0700
+Message-ID: <4DE6A621.7040206@linux.vnet.ibm.com>
+References: <4DDAC4EF.1050702@linux.vnet.ibm.com> <BANLkTiks0NSDTSPN8n446JHWhKtM61_=Mw@mail.gmail.com> <4DDB1A0C.5030502@linux.vnet.ibm.com>	<4DE50881.90401@linux.vnet.ibm.com> <BANLkTin3+GT+LmjTACDnZUKamhFhDMkvVA@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	xfs-oss <xfs@oss.sgi.com>, Dave Chinner <david@fromorbit.com>,
+	"Ted Ts'o" <tytso@mit.edu>
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:43686 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754516Ab1FAUtU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Jun 2011 16:49:20 -0400
-In-Reply-To: <1306939009-11283-1-git-send-email-akinobu.mita@gmail.com>
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:43514 "EHLO e3.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752881Ab1FAUu7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 1 Jun 2011 16:50:59 -0400
+Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
+	by e3.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p51KSg5r026813
+	for <linux-ext4@vger.kernel.org>; Wed, 1 Jun 2011 16:28:42 -0400
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p51Kotc2061496
+	for <linux-ext4@vger.kernel.org>; Wed, 1 Jun 2011 16:50:55 -0400
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p51KosQx009814
+	for <linux-ext4@vger.kernel.org>; Wed, 1 Jun 2011 16:50:55 -0400
+In-Reply-To: <BANLkTin3+GT+LmjTACDnZUKamhFhDMkvVA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-06-01, at 8:36 AM, Akinobu Mita wrote:
-> - remove unused ext4_{set,clear}_bit_atomic and ext4_find_first_zero_bit
-> - rename ext4_{set,clear}_bit to ext4_test_and_{set,clear}_bit
-> - reintroduce ext4_{set,clear}_bit for __{set,clear}_bit_le
-> 
-> This changes ext4_{set,clear}_bit safely, because if someone uses
-> these macros without noticing the change, new ext4_{set,clear}_bit
-> don't have return value and causes compiler errors where the return
-> value is used.
+On 5/31/2011 6:58 PM, Yongqiang Yang wrote:
+> On Tue, May 31, 2011 at 11:25 PM, Allison Henderson
+> <achender@linux.vnet.ibm.com>  wrote:
+>> On 5/23/2011 7:38 PM, Allison Henderson wrote:
+>>>
+>>> On 5/23/2011 6:16 PM, Yongqiang Yang wrote:
+>>>>
+>>>> On Tue, May 24, 2011 at 4:34 AM, Allison Henderson
+>>>> <achender@linux.vnet.ibm.com>  wrote:
+>>>>>
+>>>>> Hi all,
+>>>>>
+>>>>> While trying to add more punch hole tests to xfstest, I found tha=
+t
+>>>>> test 252 hangs on ext4 due to a loop in xfsprogs that does not ex=
+it.
+>>>>> XFS gets out of this loop because there is logic in the loop that
+>>>>> looks for the last extent flag and breaks out. But it looks like =
+ext4
+>>>>> does not return a last extent when the file has a hole at the end=
+=2E I
+>>>>> am not sure if this is the correct behavior or not, so I will cop=
+y
+>>>>> the ext4 folks on this too. Below is a copy of the fix for xfspro=
+gs:
+>>>>
+>>>> Hi there,
+>>>>
+>>>> What's blocksize of the tested ext4? For now, ext4 returns
+>>>> LAST_EXTENT if the logical offset covered by the extent is greater
+>>>> than file size, so if there is a hole at the end, no last extent i=
+s
+>>>> returned. Thx!
+>>>>
+>>>> Yongqiang.
+>>>
+>>> Hi there,
+>>>
+>>> The block size I've been using is 4096. As long as that behavior is
+>>> expected, I think the test will be ok with just the xfsprogs fix,
+>>> though. Thx!
+>>>
+>>> Allison Henderson
+>>>
+>>>>
+>>>>>
+>>>>> diff --git a/io/fiemap.c b/io/fiemap.c
+>>>>> index fa990cc..81fc92c 100644
+>>>>> --- a/io/fiemap.c
+>>>>> +++ b/io/fiemap.c
+>>>>> @@ -246,7 +246,7 @@ fiemap_f(
+>>>>> flg_w, _("FLAGS"));
+>>>>> }
+>>>>>
+>>>>> - while (!last&&  ((cur_extent + 1) !=3D max_extents)) {
+>>>>> + while (!last&&  (cur_extent<=3D max_extents)) {
+>>>>> if (max_extents)
+>>>>> num_extents =3D min(num_extents,
+>>>>> max_extents - (cur_extent + 1));
+>>>>>
+>>>>>
+>>>>> It looks like the loop enters with last=3D0, cur_extents=3D0, and
+>>>>> max_extents =3D 0, and on the first iteration cur_extents get set=
+ to 2,
+>>>>> so we dont see ((cur_extent + 1) =3D=3D max_extents for a very lo=
+ng time.
+>>>>> I doubt the logic was meant to work that way, so this patch shoul=
+d
+>>>>> fix it, but I wanted to make sure that the fiemap for ext4 is wor=
+king
+>>>>> as intended too. Feed back appreciated! Thx all!
+>>>>>
+>>>>> Allison Henderson
+>>>>> --
+>>>>> To unsubscribe from this list: send the line "unsubscribe linux-e=
+xt4" in
+>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>> More majordomo info at http://vger.kernel.org/majordomo-info.html
+>>>>>
+>>>>
+>>>>
+>>>>
+>>>
+>>
+>>
+>>>> Hi all,
+>>>>
+>>>> I haven't heard much back on this patch, so Im just poking this
+>>>> thread to make sure it doesn't get forgotten. I have some patches
+>>>> out there for punch hole, and I'm currently looking at fixing up
+>>>> some older punch hole tests in the dmapi code, but they wont do mu=
+ch
+>>>> good for ext4 with out this fix.  If I could get a quick peek from
+>>>> some one on the xfs list for this patch, that would be much
+>>>> appreciated.  Thx all!
+>>>
+>>> If ext4 is not setting the last extent flag on the last extent then
+>>> that's an ext4 bug that the test has detected, right? And so you
+>>> should be fixing ext4 rather than modifying the test to hide the
+>>> different behaviour?
+>>>
+>>> Cheer
+>>>
+>>> -- Dave Chinner david@fromorbit.com
+>>
+>> Hi All,
+>>
+>> Sorry, I should have poked the thread with Yongqiang's response, so =
+I will
+>> move the dialog into this thread.  At the moment, it sounds like the=
+ fiemap
+>> for ext4 is working as intended.  Yongqiang, do you agree that the f=
+iemap
+>> for ext4 should be changed?  I think you are more familiar with this=
+ part of
+> Yes, I agree.  ext4 should return LAST extent.  I am thinking if we
+> can find a new solution collecting extents.
+>
+> Maybe we can insert delayed extents into extent tree. This way fiemap
+> will be simpler and much more efficient.
+>
+> I would like to throw out the proposal inserting delayed-extents into
+> extent tree.  What will it bring?  AFAIK it will bring:
+> 1. We need to down i_data_sem in delayed write-path to insert
+> delayed-extents into the tree without journaling it.
+>
+> 2. When we come to block allocation, we can convert delayed-extents t=
+o
+> normal extents.
+>
+> There is a problem that the solution can be only used in ordered mode=
+=2E
+> So what are your opinions=EF=BC=9F
+>
+> Yongqiang.
 
-I don't think it makes sense to change all of the ext4_set_bit() calls that
-don't check the return code to use ext4_test_and_set_bit(), just to return
-them back to ext4_set_bit() in the next patch.
 
-If you want to do this in separate steps, and maintain git bisect working,
-then it would be more clear to have two patches:
+Hi All,
 
-Patch #1: Add new ext4_test_and_set_bit() macro
-#define ext4_test_and_set_bit		__test_and_set_bit_le
-{change ext4_set_bit() calls that check return to  ext4_test_and_set_bit()}
+Well, I am not yet familiar with how the code for ordered mode works, s=
+o=20
+I may not be much help here, but I do think that if we could get it to=20
+work, it would help simplify a lot of things including fiemap and punch=
+=20
+hole.  I know that the earlier versions of punch hole were a little=20
+complicated because of the different mechanisms needed to identify=20
+mapped extents, delayed extents and holes.  Eventually what we did was=20
+to flush out the data in the region to be punched out in order to avoid=
+=20
+race conditions, and also to simplify the logic.  This has introduced=20
+some problems in some of the existing xfstests punch hole tests, becaus=
+e=20
+the tests want to see a hole in unwritten extents instead of written=20
+extents.  I was working on some optimization patches to avoid this, but=
+=20
+if this proposal is put in place, I think I could optimize that fix a=20
+lot.  And I know the fiemap routines would get simpler sense they would=
+=20
+only have to deal with the extent tree. If we decide to do what you=20
+propose, I will wait on doing any punch hole or fiemap patches to take=20
+advantage of that.  I'll poke around with the modes too to see if=20
+there's any thing we can do to get around that problem.  Thx!
 
-Patch #2: Change ext4_set_bit() to not return old bit
-#define ext4_set_bit			__set_bit_le
-{nothing else changes}
+Allison Henderson
 
-Alternately, you could just leave the calls that do not check the return
-value as ext4_set_bit() and have only a single patch.
+>
+>> the code than I am, and I just want to make sure we find a solution =
+that
+>> everyone is happy with.  Thx!
+>>
+>> Allison Henderson
+>>
+>>
+>>
+>>
+>>
+>>> _______________________________________________
+>>> xfs mailing list
+>>> xfs@oss.sgi.com
+>>> http://oss.sgi.com/mailman/listinfo/xfs
+>>
+>>
+>
+>
+>
 
-
-> Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-> Cc: linux-ext4@vger.kernel.org
-> ---
-> v2: rewritten to keep ext4_*_bit() macros
-> 
-> fs/ext4/balloc.c  |    8 ++++----
-> fs/ext4/ext4.h    |    9 ++++-----
-> fs/ext4/ialloc.c  |    9 ++++-----
-> fs/ext4/mballoc.c |    4 ++--
-> fs/ext4/resize.c  |   12 ++++++------
-> 5 files changed, 20 insertions(+), 22 deletions(-)
-> 
-> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-> index 264f694..b6747e4 100644
-> --- a/fs/ext4/balloc.c
-> +++ b/fs/ext4/balloc.c
-> @@ -144,7 +144,7 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
-> 		int flex_bg = 0;
-> 
-> 		for (bit = 0; bit < bit_max; bit++)
-> -			ext4_set_bit(bit, bh->b_data);
-> +			ext4_test_and_set_bit(bit, bh->b_data);
-> 
-> 		start = ext4_group_first_block_no(sb, block_group);
-> 
-> @@ -155,18 +155,18 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
-> 		/* Set bits for block and inode bitmaps, and inode table */
-> 		tmp = ext4_block_bitmap(sb, gdp);
-> 		if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
-> -			ext4_set_bit(tmp - start, bh->b_data);
-> +			ext4_test_and_set_bit(tmp - start, bh->b_data);
-> 
-> 		tmp = ext4_inode_bitmap(sb, gdp);
-> 		if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
-> -			ext4_set_bit(tmp - start, bh->b_data);
-> +			ext4_test_and_set_bit(tmp - start, bh->b_data);
-> 
-> 		tmp = ext4_inode_table(sb, gdp);
-> 		for (; tmp < ext4_inode_table(sb, gdp) +
-> 				sbi->s_itb_per_group; tmp++) {
-> 			if (!flex_bg ||
-> 				ext4_block_in_group(sb, tmp, block_group))
-> -				ext4_set_bit(tmp - start, bh->b_data);
-> +				ext4_test_and_set_bit(tmp - start, bh->b_data);
-> 		}
-> 		/*
-> 		 * Also if the number of blocks within the group is
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 1921392..04db84f 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -930,12 +930,11 @@ struct ext4_inode_info {
-> #define test_opt2(sb, opt)		(EXT4_SB(sb)->s_mount_opt2 & \
-> 					 EXT4_MOUNT2_##opt)
-> 
-> -#define ext4_set_bit			__test_and_set_bit_le
-> -#define ext4_set_bit_atomic		ext2_set_bit_atomic
-> -#define ext4_clear_bit			__test_and_clear_bit_le
-> -#define ext4_clear_bit_atomic		ext2_clear_bit_atomic
-> +#define ext4_test_and_set_bit		__test_and_set_bit_le
-> +#define ext4_set_bit			__set_bit_le
-> +#define ext4_test_and_clear_bit		__test_and_clear_bit_le
-> +#define ext4_clear_bit			__clear_bit_le
-> #define ext4_test_bit			test_bit_le
-> -#define ext4_find_first_zero_bit	find_first_zero_bit_le
-> #define ext4_find_next_zero_bit		find_next_zero_bit_le
-> #define ext4_find_next_bit		find_next_bit_le
-> 
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index 21bb2f6..90bef6b 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -59,7 +59,7 @@ void ext4_mark_bitmap_end(int start_bit, int end_bit, char *bitmap)
-> 
-> 	ext4_debug("mark end bits +%d through +%d used\n", start_bit, end_bit);
-> 	for (i = start_bit; i < ((start_bit + 7) & ~7UL); i++)
-> -		ext4_set_bit(i, bitmap);
-> +		ext4_test_and_set_bit(i, bitmap);
-> 	if (i < end_bit)
-> 		memset(bitmap + (i >> 3), 0xff, (end_bit - i) >> 3);
-> }
-> @@ -252,7 +252,7 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
-> 		fatal = ext4_journal_get_write_access(handle, bh2);
-> 	}
-> 	ext4_lock_group(sb, block_group);
-> -	cleared = ext4_clear_bit(bit, bitmap_bh->b_data);
-> +	cleared = ext4_test_and_clear_bit(bit, bitmap_bh->b_data);
-> 	if (fatal || !cleared) {
-> 		ext4_unlock_group(sb, block_group);
-> 		goto out;
-> @@ -729,7 +729,7 @@ static int ext4_claim_inode(struct super_block *sb,
-> 	 */
-> 	down_read(&grp->alloc_sem);
-> 	ext4_lock_group(sb, group);
-> -	if (ext4_set_bit(ino, inode_bitmap_bh->b_data)) {
-> +	if (ext4_test_and_set_bit(ino, inode_bitmap_bh->b_data)) {
-> 		/* not a free inode */
-> 		retval = 1;
-> 		goto err_ret;
-> @@ -884,8 +884,7 @@ got_group:
-> 			goto fail;
-> 
-> repeat_in_this_group:
-> -		ino = ext4_find_next_zero_bit((unsigned long *)
-> -					      inode_bitmap_bh->b_data,
-> +		ino = ext4_find_next_zero_bit(inode_bitmap_bh->b_data,
-> 					      EXT4_INODES_PER_GROUP(sb), ino);
-> 
-> 		if (ino < EXT4_INODES_PER_GROUP(sb)) {
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index 859f2ae..b423adf 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -384,13 +384,13 @@ static inline int mb_test_bit(int bit, void *addr)
-> static inline void mb_set_bit(int bit, void *addr)
-> {
-> 	addr = mb_correct_addr_and_bit(&bit, addr);
-> -	ext4_set_bit(bit, addr);
-> +	ext4_test_and_set_bit(bit, addr);
-> }
-> 
-> static inline void mb_clear_bit(int bit, void *addr)
-> {
-> 	addr = mb_correct_addr_and_bit(&bit, addr);
-> -	ext4_clear_bit(bit, addr);
-> +	ext4_test_and_clear_bit(bit, addr);
-> }
-> 
-> static inline int mb_find_next_zero_bit(void *addr, int max, int start)
-> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-> index 80bbc9c..cc40963 100644
-> --- a/fs/ext4/resize.c
-> +++ b/fs/ext4/resize.c
-> @@ -194,7 +194,7 @@ static int setup_new_group_blocks(struct super_block *sb,
-> 
-> 	if (ext4_bg_has_super(sb, input->group)) {
-> 		ext4_debug("mark backup superblock %#04llx (+0)\n", start);
-> -		ext4_set_bit(0, bh->b_data);
-> +		ext4_test_and_set_bit(0, bh->b_data);
-> 	}
-> 
-> 	/* Copy all of the GDT blocks into the backup in this group */
-> @@ -225,7 +225,7 @@ static int setup_new_group_blocks(struct super_block *sb,
-> 			brelse(gdb);
-> 			goto exit_bh;
-> 		}
-> -		ext4_set_bit(bit, bh->b_data);
-> +		ext4_test_and_set_bit(bit, bh->b_data);
-> 		brelse(gdb);
-> 	}
-> 
-> @@ -237,14 +237,14 @@ static int setup_new_group_blocks(struct super_block *sb,
-> 	if (err)
-> 		goto exit_bh;
-> 	for (i = 0, bit = gdblocks + 1; i < reserved_gdb; i++, bit++)
-> -		ext4_set_bit(bit, bh->b_data);
-> +		ext4_test_and_set_bit(bit, bh->b_data);
-> 
-> 	ext4_debug("mark block bitmap %#04llx (+%llu)\n", input->block_bitmap,
-> 		   input->block_bitmap - start);
-> -	ext4_set_bit(input->block_bitmap - start, bh->b_data);
-> +	ext4_test_and_set_bit(input->block_bitmap - start, bh->b_data);
-> 	ext4_debug("mark inode bitmap %#04llx (+%llu)\n", input->inode_bitmap,
-> 		   input->inode_bitmap - start);
-> -	ext4_set_bit(input->inode_bitmap - start, bh->b_data);
-> +	ext4_test_and_set_bit(input->inode_bitmap - start, bh->b_data);
-> 
-> 	/* Zero out all of the inode table blocks */
-> 	block = input->inode_table;
-> @@ -255,7 +255,7 @@ static int setup_new_group_blocks(struct super_block *sb,
-> 		goto exit_bh;
-> 	for (i = 0, bit = input->inode_table - start;
-> 	     i < sbi->s_itb_per_group; i++, bit++)
-> -		ext4_set_bit(bit, bh->b_data);
-> +		ext4_test_and_set_bit(bit, bh->b_data);
-> 
-> 	if ((err = extend_or_restart_transaction(handle, 2, bh)))
-> 		goto exit_bh;
-> -- 
-> 1.7.4.4
-> 
-
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
