@@ -1,187 +1,60 @@
-From: Amir Goldstein <amir73il@gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: [PATCH] xfstests: add support for ext4dev FSTYP
-Date: Wed, 1 Jun 2011 07:56:45 +0300
-Message-ID: <BANLkTikfjitncM=zLpfTrfQkd8VfQAxbUA@mail.gmail.com>
-References: <BANLkTimBnAgiXZnvS56eAzEdJ=kw1zVGsg@mail.gmail.com>
-	<4DE5C1FE.8080006@redhat.com>
+Date: Wed, 01 Jun 2011 00:22:22 -0500
+Message-ID: <4DE5CC8E.1090208@redhat.com>
+References: <BANLkTimBnAgiXZnvS56eAzEdJ=kw1zVGsg@mail.gmail.com>	<4DE5C1FE.8080006@redhat.com> <BANLkTikfjitncM=zLpfTrfQkd8VfQAxbUA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Transfer-Encoding: 7bit
 Cc: XFS <xfs@oss.sgi.com>, Sergey Ivanov <sergey57@gmail.com>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:60264 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750789Ab1FAE4s convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Jun 2011 00:56:48 -0400
-In-Reply-To: <4DE5C1FE.8080006@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:34329 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751744Ab1FAFW1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 1 Jun 2011 01:22:27 -0400
+In-Reply-To: <BANLkTikfjitncM=zLpfTrfQkd8VfQAxbUA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 1, 2011 at 7:37 AM, Eric Sandeen <sandeen@redhat.com> wrote=
-:
-> On 5/31/11 10:13 PM, Amir Goldstein wrote:
->> From: Amir Goldstein <amir73il@users.sf.net>
+On 5/31/11 11:56 PM, Amir Goldstein wrote:
+> On Wed, Jun 1, 2011 at 7:37 AM, Eric Sandeen <sandeen@redhat.com> wrote:
+>> On 5/31/11 10:13 PM, Amir Goldstein wrote:
+>>> From: Amir Goldstein <amir73il@users.sf.net>
+>>>
+>>> blkid knows to identify the ext4dev FSTYP of a partition that was
+>>> formatted with mkfs.ext4dev.
+>>> quota tools and various util-linux utils are also aware of ext4dev,
+>>> so ext4dev shares the same capabilities as ext4.
+>>>
+>>> While testing on Fedora 15, we encoutered a buggy fsck utility, which
+>>> invokes fsck.ext4, even though it was called with -t ext4dev argument.
+>>> In our setup fsck.ext4dev knows about new fs features that fsck.ext4
+>>> doesn't know, so the generic_fs_check fails.
+>>> Since we have no real use of the extra capabilities provided by fsck util,
+>>> we decided to invoke fsck.$FSTYP directly to avoid this issue.
 >>
->> blkid knows to identify the ext4dev FSTYP of a partition that was
->> formatted with mkfs.ext4dev.
->> quota tools and various util-linux utils are also aware of ext4dev,
->> so ext4dev shares the same capabilities as ext4.
+>> Adding ext4dev to every case seems harmless enough.  TBH I thought I had
+>> it there already but I guess not.
 >>
->> While testing on Fedora 15, we encoutered a buggy fsck utility, whic=
-h
->> invokes fsck.ext4, even though it was called with -t ext4dev argumen=
-t.
->> In our setup fsck.ext4dev knows about new fs features that fsck.ext4
->> doesn't know, so the generic_fs_check fails.
->> Since we have no real use of the extra capabilities provided by fsck=
- util,
->> we decided to invoke fsck.$FSTYP directly to avoid this issue.
->
-> Adding ext4dev to every case seems harmless enough. =A0TBH I thought =
-I had
-> it there already but I guess not.
->
-> I'm less certain of the change from fsck -t $FSTYP to fsck.$FSTYP
->
-> What issue are you avoiding? =A0wouldn't fsck -t ext4dev invoke fsck.=
-ext4dev anyway?
->
-> It seems like it should be harmless, but I don't understand how it he=
-lps you.
->
+>> I'm less certain of the change from fsck -t $FSTYP to fsck.$FSTYP
+>>
+>> What issue are you avoiding?  wouldn't fsck -t ext4dev invoke fsck.ext4dev anyway?
+>>
+>> It seems like it should be harmless, but I don't understand how it helps you.
+>>
+> 
+> As I wrote in the patch description, the fsck utility in Fedora 15 invokes
+> fsck.ext4 for some reason when calling fsck -t ext4dev.
 
-As I wrote in the patch description, the fsck utility in Fedora 15 invo=
-kes
-fsck.ext4 for some reason when calling fsck -t ext4dev.
-this fails because fsck.ext4 doesn't know the snapshot feature.
-I didn't debug fsck utility for that. it seemed pointless.
+Oh, right.
 
-> Thanks,
-> -Eric
->
->> Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
->> Tested-by: Sergey Ivanov <sergey57@gmail.com>
->> ---
->> ext4dev is used to test experimental ext4 code in mutual existance
->> with production ext4 code on the same system.
->>
->> Specifically, ext4 snapshots code is available for testing as a
->> stand-alone ext4dev module for Fedora 15 and Ubuntu 11.4
->> (see http://next3.sf.net).
->>
->> =A0common.defrag | =A0 =A02 +-
->> =A0common.quota =A0| =A0 =A04 ++--
->> =A0common.rc =A0 =A0 | =A0 12 ++++++------
->> =A03 files changed, 9 insertions(+), 9 deletions(-)
->>
->> diff --git a/common.defrag b/common.defrag
->> index 1bcf01d..4850803 100644
->> --- a/common.defrag
->> +++ b/common.defrag
->> @@ -26,7 +26,7 @@ _require_defrag()
->> =A0 =A0 =A0xfs)
->> =A0 =A0 =A0 =A0 =A0DEFRAG_PROG=3D/usr/sbin/xfs_fsr
->> =A0 =A0 =A0 ;;
->> - =A0 =A0ext4)
->> + =A0 =A0ext4|ext4dev)
->> =A0 =A0 =A0 =A0 =A0DEFRAG_PROG=3D/usr/bin/e4defrag
->> =A0 =A0 =A0 ;;
->> =A0 =A0 =A0*)
->> diff --git a/common.quota b/common.quota
->> index 3c87ce1..9eac19d 100644
->> --- a/common.quota
->> +++ b/common.quota
->> @@ -29,7 +29,7 @@ _require_quota()
->> =A0 =A0 =A0[ -n $QUOTA_PROG ] || _notrun "Quota user tools not insta=
-lled"
->>
->> =A0 =A0 =A0case $FSTYP in
->> - =A0 =A0ext2|ext3|ext4|reiserfs)
->> + =A0 =A0ext2|ext3|ext4|ext4dev|reiserfs)
->> =A0 =A0 =A0 if [ ! -d /proc/sys/fs/quota ]; then
->> =A0 =A0 =A0 =A0 =A0 _notrun "Installed kernel does not support quota=
-s"
->> =A0 =A0 =A0 fi
->> @@ -237,7 +237,7 @@ _check_quota_usage()
->> =A0 =A0 =A0 # Sync to get delalloc to disk
->> =A0 =A0 =A0 sync
->> =A0 =A0 =A0 VFS_QUOTA=3D0
->> - =A0 =A0 if [ $FSTYP =3D "ext2" -o $FSTYP =3D "ext3" -o $FSTYP =3D =
-"ext4" -o $FSTYP
->> =3D "reiserfs" ]; then
->> + =A0 =A0 if [ $FSTYP =3D "ext2" -o $FSTYP =3D "ext3" -o $FSTYP =3D =
-"ext4" -o $FSTYP
->> =3D "ext4dev" -o $FSTYP =3D "reiserfs" ]; then
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 VFS_QUOTA=3D1
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 quotaon -f -u -g $SCRATCH_MNT 2>/dev/nul=
-l
->> =A0 =A0 =A0 fi
->> diff --git a/common.rc b/common.rc
->> index e634fbb..e71fe9c 100644
->> --- a/common.rc
->> +++ b/common.rc
->> @@ -65,7 +65,7 @@ _mount_opts()
->> =A0 =A0 =A0nfs)
->> =A0 =A0 =A0 export MOUNT_OPTIONS=3D$NFS_MOUNT_OPTIONS
->> =A0 =A0 =A0 ;;
->> - =A0 =A0ext2|ext3|ext4)
->> + =A0 =A0ext2|ext3|ext4|ext4dev)
->> =A0 =A0 =A0 # acls & xattrs aren't turned on by default on ext$FOO
->> =A0 =A0 =A0 export MOUNT_OPTIONS=3D"-o acl,user_xattr $EXT_MOUNT_OPT=
-IONS"
->> =A0 =A0 =A0 ;;
->> @@ -110,7 +110,7 @@ _mkfs_opts()
->> =A0_fsck_opts()
->> =A0{
->> =A0 =A0 =A0case $FSTYP in
->> - =A0 =A0ext2|ext3|ext4)
->> + =A0 =A0ext2|ext3|ext4|ext4dev)
->> =A0 =A0 =A0 export FSCK_OPTIONS=3D"-nf"
->> =A0 =A0 =A0 ;;
->> =A0 =A0 =A0reiserfs)
->> @@ -326,10 +326,10 @@ _scratch_mkfs_sized()
->> =A0 =A0 =A0xfs)
->> =A0 =A0 =A0 _scratch_mkfs_xfs -d size=3D$fssize -b size=3D$blocksize
->> =A0 =A0 =A0 ;;
->> - =A0 =A0ext2|ext3|ext4)
->> + =A0 =A0ext2|ext3|ext4|ext4dev)
->> =A0 =A0 =A0 /sbin/mkfs.$FSTYP $MKFS_OPTIONS -b $blocksize $SCRATCH_D=
-EV $blocks
->> =A0 =A0 =A0 ;;
->> - =A0 =A0 btrfs)
->> + =A0 =A0btrfs)
->> =A0 =A0 =A0 /sbin/mkfs.$FSTYP $MKFS_OPTIONS $SCRATCH_DEV -b $fssize
->> =A0 =A0 =A0 ;;
->> =A0 =A0 =A0*)
->> @@ -354,7 +354,7 @@ _scratch_mkfs_geom()
->> =A0 =A0 =A0xfs)
->> =A0 =A0 =A0 MKFS_OPTIONS+=3D" -b size=3D$blocksize, -d su=3D$sunit_b=
-ytes,sw=3D$swidth_mult"
->> =A0 =A0 =A0 ;;
->> - =A0 =A0ext4)
->> + =A0 =A0ext4|ext4dev)
->> =A0 =A0 =A0 MKFS_OPTIONS+=3D" -b $blocksize -E
->> stride=3D$sunit_blocks,stripe_width=3D$swidth_blocks"
->> =A0 =A0 =A0 ;;
->> =A0 =A0 =A0*)
->> @@ -1026,7 +1026,7 @@ _check_generic_filesystem()
->> =A0 =A0 =A0 =A0 =A0mountpoint=3D`_umount_or_remount_ro $device`
->> =A0 =A0 =A0fi
->>
->> - =A0 =A0fsck -t $FSTYP $FSCK_OPTIONS $device >$tmp.fsck 2>&1
->> + =A0 =A0fsck.$FSTYP $FSCK_OPTIONS $device >$tmp.fsck 2>&1
->> =A0 =A0 =A0if [ $? -ne 0 ]
->> =A0 =A0 =A0then
->> =A0 =A0 =A0 =A0 =A0echo "_check_generic_filesystem: filesystem on $d=
-evice is
->> inconsistent (see $seq.full)"
->
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> this fails because fsck.ext4 doesn't know the snapshot feature.
+> I didn't debug fsck utility for that. it seemed pointless.
+
+Did you file a bug with Fedora?  I'd rather fix the root cause than work around it...
+Feel free to cc: me on the bug.
+
+-Eric
