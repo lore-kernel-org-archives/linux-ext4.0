@@ -1,150 +1,179 @@
-From: Akinobu Mita <akinobu.mita@gmail.com>
-Subject: [PATCH v2 2/2] ext4: use proper ext4_*_bit() macros
-Date: Wed,  1 Jun 2011 23:36:49 +0900
-Message-ID: <1306939009-11283-2-git-send-email-akinobu.mita@gmail.com>
-References: <1306939009-11283-1-git-send-email-akinobu.mita@gmail.com>
-Cc: Akinobu Mita <akinobu.mita@gmail.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-To: linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1306939009-11283-1-git-send-email-akinobu.mita@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] xfstests: add support for ext4dev FSTYP
+Date: Wed, 01 Jun 2011 10:27:56 -0500
+Message-ID: <4DE65A7C.7070908@redhat.com>
+References: <BANLkTimBnAgiXZnvS56eAzEdJ=kw1zVGsg@mail.gmail.com>	<4DE5C1FE.8080006@redhat.com>	<BANLkTikfjitncM=zLpfTrfQkd8VfQAxbUA@mail.gmail.com>	<4DE5CC8E.1090208@redhat.com>	<4DE5CF6C.4080707@redhat.com>	<BANLkTimoRUrY7xVnamBT=yFPzafhADA=tA@mail.gmail.com>	<BANLkTikQ=V8MJyuAQsZboCorZwnBSzX=Bg@mail.gmail.com> <BANLkTikOtoWJBz+PQ0+=e6466zAntA_f_g@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: sergey ivanov <sergey57@gmail.com>, XFS <xfs@oss.sgi.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: Amir Goldstein <amir73il@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:1025 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751206Ab1FAP2B (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 1 Jun 2011 11:28:01 -0400
+In-Reply-To: <BANLkTikOtoWJBz+PQ0+=e6466zAntA_f_g@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Using ext4_test_and_{set,clear}_bit() with ignoring its return value
-can be replaced with ext4_{set,clear}_bit().
+On 6/1/11 7:37 AM, Amir Goldstein wrote:
+> On Wed, Jun 1, 2011 at 2:48 PM, sergey ivanov <sergey57@gmail.com> wrote:
+>> On Wed, Jun 1, 2011 at 2:37 AM, Amir Goldstein <amir73il@gmail.com> wrote:
+>>>
+>>> On Wed, Jun 1, 2011 at 8:34 AM, Eric Sandeen <sandeen@redhat.com> wrote:
+>>>> On 6/1/11 12:22 AM, Eric Sandeen wrote:
+>>>>> On 5/31/11 11:56 PM, Amir Goldstein wrote:
+>>>>>> On Wed, Jun 1, 2011 at 7:37 AM, Eric Sandeen <sandeen@redhat.com>
+>>>>>> wrote:
+>>>>>>> On 5/31/11 10:13 PM, Amir Goldstein wrote:
+>>>>>>>> From: Amir Goldstein <amir73il@users.sf.net>
+>>>>>>>>
+>>>>>>>> blkid knows to identify the ext4dev FSTYP of a partition that was
+>>>>>>>> formatted with mkfs.ext4dev.
+>>>>>>>> quota tools and various util-linux utils are also aware of ext4dev,
+>>>>>>>> so ext4dev shares the same capabilities as ext4.
+>>>>>>>>
+>>>>>>>> While testing on Fedora 15, we encoutered a buggy fsck utility,
+>>>>>>>> which
+>>>>>>>> invokes fsck.ext4, even though it was called with -t ext4dev
+>>>>>>>> argument.
+>>>>>>>> In our setup fsck.ext4dev knows about new fs features that fsck.ext4
+>>>>>>>> doesn't know, so the generic_fs_check fails.
+>>>>>>>> Since we have no real use of the extra capabilities provided by fsck
+>>>>>>>> util,
+>>>>>>>> we decided to invoke fsck.$FSTYP directly to avoid this issue.
+>>>>>>>
+>>>>>>> Adding ext4dev to every case seems harmless enough.  TBH I thought I
+>>>>>>> had
+>>>>>>> it there already but I guess not.
+>>>>>>>
+>>>>>>> I'm less certain of the change from fsck -t $FSTYP to fsck.$FSTYP
+>>>>>>>
+>>>>>>> What issue are you avoiding?  wouldn't fsck -t ext4dev invoke
+>>>>>>> fsck.ext4dev anyway?
+>>>>>>>
+>>>>>>> It seems like it should be harmless, but I don't understand how it
+>>>>>>> helps you.
+>>>>>>>
+>>>>>>
+>>>>>> As I wrote in the patch description, the fsck utility in Fedora 15
+>>>>>> invokes
+>>>>>> fsck.ext4 for some reason when calling fsck -t ext4dev.
+>>>>>
+>>>>> Oh, right.
+>>>>>
+>>>>>> this fails because fsck.ext4 doesn't know the snapshot feature.
+>>>>>> I didn't debug fsck utility for that. it seemed pointless.
+>>>>>
+>>>>> Did you file a bug with Fedora?  I'd rather fix the root cause than
+>>>>> work around it...
+>>>>> Feel free to cc: me on the bug.
+>>>
+>>> No, I didn't file a bug.
+>>> In any case, it was Sergey, who tested and reported the problem on F15.
+>>>
+>>> Would you agree to fix the problem in xfstests now, so that F15 users can
+>>> test ext4dev and fix the bug in fsck regardless?
+>>>
+>>>>
+>>>> RHEL6 does the same; mkfs.ext4dev then fsck -t ext4dev invokes
+>>>> fsck.ext4; but this
+>>>> is because blkid identifies it as ext4, not ext4dev, despite the test_fs
+>>>> flag being set.
+>>>>
+>>>> ISTR this is due to some tortured logic about when ext4dev isn't
+>>>> ext4dev, but
+>>>> I don't remember the details... I don't know if this is the same
+>>>> situation
+>>>> you're seeing; just to double check - does blkid correctly identify it
+>>>> as ext4dev
+>>>> on F15?
+>>>
+>>>
+>>> For me (on Ubuntu) blkid identifies ext4dev, but maybe the tortured logic
+>>> finds unknown features a justification for declaring ext4dev?
+>>> Segrey, can you answer the question for F15?
+>>> Did you set FSTYP to ext4dev manually or did blkid identified it for you?
+>>
+>> Amir, Fedora's fsck behaves differently on ext4dev and next4. When I made
+>> next4 partition on Fedora-15 by
+>> {{{
+>> mkfs  -t next4 /dev/sdd9
+>> }}}
+>> it requires "export FSTYP=next4" to be defined and exported in local.conf.
+>> It mounts partition with
+>> {{{
+>> mount -t next4 /dev/sdd9 /mnt/sdd9
+>> }}}
+>> But on attempt to fsck it calls wrong fsck, as you reported:
+>> {{{
+>> [seriv@pimbra xfstests]$ sudo fsck -t next4 /dev/sdd9
+>> fsck from util-linux 2.19.1
+>> e2fsck 1.41.14 (22-Dec-2010)
+>> /dev/sdd9 has unsupported feature(s): FEATURE_C7 FEATURE_C8 FEATURE_R7
+>> e2fsck: Get a newer version of e2fsck!
+>> }}}
+>> And the problem can be easily traced to this wrong call:
+>> {{{
+>> [seriv@pimbra xfstests]$ sudo strace -o /var/log/fsck.strace fsck -t next4
+>> /dev/sdd9
+>> fsck from util-linux 2.19.1
+>> e2fsck 1.41.14 (22-Dec-2010)
+>> /dev/sdd9 has unsupported feature(s): FEATURE_C7 FEATURE_C8 FEATURE_R7
+>> e2fsck: Get a newer version of e2fsck!
+>> [seriv@pimbra xfstests]$ grep sbin /var/log/fsck.strace
+>> execve("/sbin/fsck", ["fsck", "-t", "next4", "/dev/sdd9"], [/* 17 vars */])
+>> = 0
+>> stat("/sbin/fsck.ext4", {st_mode=S_IFREG|0755, st_size=194280, ...}) = 0
+>> }}}
+>> But it's not the case for ext4dev, with it I even don't need "-t ext4dev",
+>> it is recognized by blkid:
+>> {{{
+>> [seriv@pimbra xfstests]$ sudo mkfs -t ext4dev /dev/sdd9
+>> mke2fs 1.41.14-next3-1.0.13-7 (24-May-2011)
+>> [skip]
+>> This filesystem will be automatically checked every 27 mounts or
+>> 180 days, whichever comes first.  Use tune2fs -c or -i to override.
+>> [seriv@pimbra xfstests]$ sudo mount /dev/sdd9 /mnt/sdd9
+>> [seriv@pimbra xfstests]$ mount | grep sdd9
+>> /dev/sdd9 on /mnt/sdd9 type ext4dev (rw)
+>> [seriv@pimbra xfstests]$ sudo umount /dev/sdd9
+>> [seriv@pimbra xfstests]$ sudo fsck /dev/sdd9
+>> fsck from util-linux 2.19.1
+>> e2fsck 1.41.14-next3-1.0.13-7 (24-May-2011)
+>> The test_fs flag is set (and ext4 is available).  Clear<y>?
+>> }}}
+>> and at this point in another session
+>> {{{
+>> [seriv@pimbra xfstests]$ pgrep -f -l fsck
+>> 4365 sudo fsck /dev/sdd9
+>> 4366 fsck /dev/sdd9
+>> 4367 fsck.ext4dev /dev/sdd9
+>> }}}
+>> So I'd like this patch to be applied to xfstests to be able to use it on the
+>> different filesystems, - if not, then why have this FSTYP and not rely upon
+>> blkid
+>> --
+> 
+> To make a long story a bit shorter, there was no intention to set
+> FSTYP manually,
+> that was only a temporary hack to make next4 clone work, but since ext4dev is
+> identified by blkid and respected by fsck/mkfs/mount, we are going to
+> work with it
+> and not with next4.
+> 
+> So I understood the problem incorrectly and the patch to xfstests doesn't need
+> to change fsck -t $FSTYP to fsck.$FSTYP.
+> I will resend the patch without this change.
 
-Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: linux-ext4@vger.kernel.org
----
-v2: rewritten to keep ext4_*_bit() macros
+Thanks, that makes sense to me.
 
- fs/ext4/balloc.c  |    8 ++++----
- fs/ext4/ialloc.c  |    2 +-
- fs/ext4/mballoc.c |    4 ++--
- fs/ext4/resize.c  |   12 ++++++------
- 4 files changed, 13 insertions(+), 13 deletions(-)
+Just wanted to make sure we weren't masking some other problem by working around it in xfstests ...
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index b6747e4..264f694 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -144,7 +144,7 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 		int flex_bg = 0;
- 
- 		for (bit = 0; bit < bit_max; bit++)
--			ext4_test_and_set_bit(bit, bh->b_data);
-+			ext4_set_bit(bit, bh->b_data);
- 
- 		start = ext4_group_first_block_no(sb, block_group);
- 
-@@ -155,18 +155,18 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 		/* Set bits for block and inode bitmaps, and inode table */
- 		tmp = ext4_block_bitmap(sb, gdp);
- 		if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
--			ext4_test_and_set_bit(tmp - start, bh->b_data);
-+			ext4_set_bit(tmp - start, bh->b_data);
- 
- 		tmp = ext4_inode_bitmap(sb, gdp);
- 		if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
--			ext4_test_and_set_bit(tmp - start, bh->b_data);
-+			ext4_set_bit(tmp - start, bh->b_data);
- 
- 		tmp = ext4_inode_table(sb, gdp);
- 		for (; tmp < ext4_inode_table(sb, gdp) +
- 				sbi->s_itb_per_group; tmp++) {
- 			if (!flex_bg ||
- 				ext4_block_in_group(sb, tmp, block_group))
--				ext4_test_and_set_bit(tmp - start, bh->b_data);
-+				ext4_set_bit(tmp - start, bh->b_data);
- 		}
- 		/*
- 		 * Also if the number of blocks within the group is
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 90bef6b..096da8a 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -59,7 +59,7 @@ void ext4_mark_bitmap_end(int start_bit, int end_bit, char *bitmap)
- 
- 	ext4_debug("mark end bits +%d through +%d used\n", start_bit, end_bit);
- 	for (i = start_bit; i < ((start_bit + 7) & ~7UL); i++)
--		ext4_test_and_set_bit(i, bitmap);
-+		ext4_set_bit(i, bitmap);
- 	if (i < end_bit)
- 		memset(bitmap + (i >> 3), 0xff, (end_bit - i) >> 3);
- }
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index b423adf..859f2ae 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -384,13 +384,13 @@ static inline int mb_test_bit(int bit, void *addr)
- static inline void mb_set_bit(int bit, void *addr)
- {
- 	addr = mb_correct_addr_and_bit(&bit, addr);
--	ext4_test_and_set_bit(bit, addr);
-+	ext4_set_bit(bit, addr);
- }
- 
- static inline void mb_clear_bit(int bit, void *addr)
- {
- 	addr = mb_correct_addr_and_bit(&bit, addr);
--	ext4_test_and_clear_bit(bit, addr);
-+	ext4_clear_bit(bit, addr);
- }
- 
- static inline int mb_find_next_zero_bit(void *addr, int max, int start)
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index cc40963..80bbc9c 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -194,7 +194,7 @@ static int setup_new_group_blocks(struct super_block *sb,
- 
- 	if (ext4_bg_has_super(sb, input->group)) {
- 		ext4_debug("mark backup superblock %#04llx (+0)\n", start);
--		ext4_test_and_set_bit(0, bh->b_data);
-+		ext4_set_bit(0, bh->b_data);
- 	}
- 
- 	/* Copy all of the GDT blocks into the backup in this group */
-@@ -225,7 +225,7 @@ static int setup_new_group_blocks(struct super_block *sb,
- 			brelse(gdb);
- 			goto exit_bh;
- 		}
--		ext4_test_and_set_bit(bit, bh->b_data);
-+		ext4_set_bit(bit, bh->b_data);
- 		brelse(gdb);
- 	}
- 
-@@ -237,14 +237,14 @@ static int setup_new_group_blocks(struct super_block *sb,
- 	if (err)
- 		goto exit_bh;
- 	for (i = 0, bit = gdblocks + 1; i < reserved_gdb; i++, bit++)
--		ext4_test_and_set_bit(bit, bh->b_data);
-+		ext4_set_bit(bit, bh->b_data);
- 
- 	ext4_debug("mark block bitmap %#04llx (+%llu)\n", input->block_bitmap,
- 		   input->block_bitmap - start);
--	ext4_test_and_set_bit(input->block_bitmap - start, bh->b_data);
-+	ext4_set_bit(input->block_bitmap - start, bh->b_data);
- 	ext4_debug("mark inode bitmap %#04llx (+%llu)\n", input->inode_bitmap,
- 		   input->inode_bitmap - start);
--	ext4_test_and_set_bit(input->inode_bitmap - start, bh->b_data);
-+	ext4_set_bit(input->inode_bitmap - start, bh->b_data);
- 
- 	/* Zero out all of the inode table blocks */
- 	block = input->inode_table;
-@@ -255,7 +255,7 @@ static int setup_new_group_blocks(struct super_block *sb,
- 		goto exit_bh;
- 	for (i = 0, bit = input->inode_table - start;
- 	     i < sbi->s_itb_per_group; i++, bit++)
--		ext4_test_and_set_bit(bit, bh->b_data);
-+		ext4_set_bit(bit, bh->b_data);
- 
- 	if ((err = extend_or_restart_transaction(handle, 2, bh)))
- 		goto exit_bh;
--- 
-1.7.4.4
+-Eric
+
+> Amir.
+
