@@ -1,122 +1,147 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: [PATCH] xfstests: add support for ext4dev FSTYP
-Date: Wed, 1 Jun 2011 09:37:15 +0300
-Message-ID: <BANLkTimoRUrY7xVnamBT=yFPzafhADA=tA@mail.gmail.com>
-References: <BANLkTimBnAgiXZnvS56eAzEdJ=kw1zVGsg@mail.gmail.com>
-	<4DE5C1FE.8080006@redhat.com>
-	<BANLkTikfjitncM=zLpfTrfQkd8VfQAxbUA@mail.gmail.com>
-	<4DE5CC8E.1090208@redhat.com>
-	<4DE5CF6C.4080707@redhat.com>
+From: Christoph Anton Mitterer <calestyo@scientia.net>
+Subject: Re: errors in ext4_mb_generate_buddy and ext4_remount
+Date: Wed, 01 Jun 2011 12:44:13 +0200
+Message-ID: <1306925053.3304.6.camel@fermat.scientia.net>
+References: <f93bc5d54d25e080b5438bcdc3af8f84@imap.dd24.net>
+	 <20110509010112.GC4138@thunk.org>
+	 <1306881493.3275.5.camel@fermat.scientia.net>
+	 <20110601041502.GB4172@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: XFS <xfs@oss.sgi.com>, Sergey Ivanov <sergey57@gmail.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: multipart/signed; micalg="sha1"; protocol="application/x-pkcs7-signature"; boundary="=-66qdgbj5Jc34oXWcVNi1"
+Cc: linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:49400 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753668Ab1FAGhR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Jun 2011 02:37:17 -0400
-In-Reply-To: <4DE5CF6C.4080707@redhat.com>
+Received: from mailgw01.dd24.net ([193.46.215.41]:43055 "EHLO
+	mailgw01.dd24.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933373Ab1FAKpQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Jun 2011 06:45:16 -0400
+In-Reply-To: <20110601041502.GB4172@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 1, 2011 at 8:34 AM, Eric Sandeen <sandeen@redhat.com> wrote=
-:
-> On 6/1/11 12:22 AM, Eric Sandeen wrote:
->> On 5/31/11 11:56 PM, Amir Goldstein wrote:
->>> On Wed, Jun 1, 2011 at 7:37 AM, Eric Sandeen <sandeen@redhat.com> w=
-rote:
->>>> On 5/31/11 10:13 PM, Amir Goldstein wrote:
->>>>> From: Amir Goldstein <amir73il@users.sf.net>
->>>>>
->>>>> blkid knows to identify the ext4dev FSTYP of a partition that was
->>>>> formatted with mkfs.ext4dev.
->>>>> quota tools and various util-linux utils are also aware of ext4de=
-v,
->>>>> so ext4dev shares the same capabilities as ext4.
->>>>>
->>>>> While testing on Fedora 15, we encoutered a buggy fsck utility, w=
-hich
->>>>> invokes fsck.ext4, even though it was called with -t ext4dev argu=
-ment.
->>>>> In our setup fsck.ext4dev knows about new fs features that fsck.e=
-xt4
->>>>> doesn't know, so the generic_fs_check fails.
->>>>> Since we have no real use of the extra capabilities provided by f=
-sck util,
->>>>> we decided to invoke fsck.$FSTYP directly to avoid this issue.
->>>>
->>>> Adding ext4dev to every case seems harmless enough. =A0TBH I thoug=
-ht I had
->>>> it there already but I guess not.
->>>>
->>>> I'm less certain of the change from fsck -t $FSTYP to fsck.$FSTYP
->>>>
->>>> What issue are you avoiding? =A0wouldn't fsck -t ext4dev invoke fs=
-ck.ext4dev anyway?
->>>>
->>>> It seems like it should be harmless, but I don't understand how it=
- helps you.
->>>>
->>>
->>> As I wrote in the patch description, the fsck utility in Fedora 15 =
-invokes
->>> fsck.ext4 for some reason when calling fsck -t ext4dev.
->>
->> Oh, right.
->>
->>> this fails because fsck.ext4 doesn't know the snapshot feature.
->>> I didn't debug fsck utility for that. it seemed pointless.
->>
->> Did you file a bug with Fedora? =A0I'd rather fix the root cause tha=
-n work around it...
->> Feel free to cc: me on the bug.
 
-No, I didn't file a bug.
-In any case, it was Sergey, who tested and reported the problem on F15.
+--=-66qdgbj5Jc34oXWcVNi1
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-Would you agree to fix the problem in xfstests now, so that F15 users c=
-an
-test ext4dev and fix the bug in fsck regardless?
+On Wed, 2011-06-01 at 00:15 -0400, Ted Ts'o wrote:
+> Um, are you sure?  Try forcing an fsck run on the file systems in questio=
+n.
+Of course I did ;-)  (fsck.ext4 -f -D /dev/bla)...
 
->
-> RHEL6 does the same; mkfs.ext4dev then fsck -t ext4dev invokes fsck.e=
-xt4; but this
-> is because blkid identifies it as ext4, not ext4dev, despite the test=
-_fs flag being set.
->
-> ISTR this is due to some tortured logic about when ext4dev isn't ext4=
-dev, but
-> I don't remember the details... I don't know if this is the same situ=
-ation
-> you're seeing; just to double check - does blkid correctly identify i=
-t as ext4dev
-> on F15?
+And as I had some other fs troubles with that ext4 yesterday, I ran it
+also several times ;)
 
 
-=46or me (on Ubuntu) blkid identifies ext4dev, but maybe the tortured l=
-ogic
-finds unknown features a justification for declaring ext4dev?
-Segrey, can you answer the question for F15?
-Did you set FSTYP to ext4dev manually or did blkid identified it for yo=
-u?
+Cheers,
+Chris.
 
->
-> -Eric
->
->> -Eric
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4=
-" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--=-66qdgbj5Jc34oXWcVNi1
+Content-Type: application/x-pkcs7-signature; name="smime.p7s"
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Transfer-Encoding: base64
+
+MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIITMjCCBggw
+ggPwoAMCAQICAQEwDQYJKoZIhvcNAQEEBQAweTEQMA4GA1UEChMHUm9vdCBDQTEeMBwGA1UECxMV
+aHR0cDovL3d3dy5jYWNlcnQub3JnMSIwIAYDVQQDExlDQSBDZXJ0IFNpZ25pbmcgQXV0aG9yaXR5
+MSEwHwYJKoZIhvcNAQkBFhJzdXBwb3J0QGNhY2VydC5vcmcwHhcNMDUxMDE0MDczNjU1WhcNMzMw
+MzI4MDczNjU1WjBUMRQwEgYDVQQKEwtDQWNlcnQgSW5jLjEeMBwGA1UECxMVaHR0cDovL3d3dy5D
+QWNlcnQub3JnMRwwGgYDVQQDExNDQWNlcnQgQ2xhc3MgMyBSb290MIICIjANBgkqhkiG9w0BAQEF
+AAOCAg8AMIICCgKCAgEAq0k1EUh80iZ+U5TPQ6ndKNdCKovzh3gZWHwPntqJfeH763KQDXShlmSr
+n6AkmXPa4lV2xxd79QSsRrjDvn9kjRBsJPNhnMDykPpR5vVpAWPDD1biSkLP4kSMJSioxXkJfUa5
+ivPp8zQpCEXkHJ/LlAQcgagUs5hlxEPsToKNCdG9qluNktDs3pDFfwrC4+vmMVpedD6XM1nowwM9
+YDO/99FvR8TN7mKDUm4uCJqk2RUYkaaFkkewrkjrbbch7IUaaHI1q//wEF3A9JSnatU7kn5MkAV+
+k8Esi6SOYnQVcW4LcQPqrxU4mtTSBXJvjPkr61pyJfk5RuNyGz4Ew2QnIhAqik9YpwOtvrQuE+1d
+qkjX1X3UKntc+kYEUOTMDkJbjO3b8s/8lpPg2xE2VGI0OI8MYJs7l1Y4rfPSW4ugW+pOlrh819Wg
+hnBA05Ept6I8rfWMu88akorkNHvA2Gxf6QrCw6cgmlrfLF1SXLpH1ZvvJChwOCAv1X8pwLJBA2iS
+zOCczJdLRe86EAqrcDqYlXCtNbHqhSukHIAhMamuYHqAJkgAuAHAk2NVIpE8Vuev2zol848xVOom
+i4FZ+aHRUxHFe50D9nQR4G2xLD8shpGZcZqmd4s0YNEUtCysna+MENOfxGr4bxP8c1n3ZkJ0Horj
++NzSb5icy0eYlUAF++kCAwEAAaOBvzCBvDAPBgNVHRMBAf8EBTADAQH/MF0GCCsGAQUFBwEBBFEw
+TzAjBggrBgEFBQcwAYYXaHR0cDovL29jc3AuQ0FjZXJ0Lm9yZy8wKAYIKwYBBQUHMAKGHGh0dHA6
+Ly93d3cuQ0FjZXJ0Lm9yZy9jYS5jcnQwSgYDVR0gBEMwQTA/BggrBgEEAYGQSjAzMDEGCCsGAQUF
+BwIBFiVodHRwOi8vd3d3LkNBY2VydC5vcmcvaW5kZXgucGhwP2lkPTEwMA0GCSqGSIb3DQEBBAUA
+A4ICAQB/CIih2hpQSdqJ+6EIcvOK9x7EOrR5WyAwsUXewl3TZWnxwl1UVDyFX7l7QpHCmf0bUZur
+RqWhEFOebYisc24sM6bw9J7gdcE+iEWp4WZD/lZa0XpBePdA2ko68QtbpbsWBubC55O5hU2XT7Ee
+OEOA75sNjO+4p2AAh1d9HkQcyyPvmzyZna+1KRxFeRaWTSdt8Rxsw8JVZLO8FOLzpB8eMvwnFQXP
+3S6uPoJhe/AhEBj2ROpTOfnc0Jog4Ma74LtaT8SZyAe9tb2i2y5iDUI0Qbz/i4r1USKqiDAA4rDU
+vL5lutUDV3mb6NzITfhQ7ZGlUiiirPs2WD7plCuRUIcb1l7WjMz3DxAMUk7QFmHl5QpsvxfHckZX
+nJj1bGBjem9euU4vyLm5u2qFvJgN7fk+l4Q0lK4Ar6Hl55JuTr3z4tkUi1zS6wFsoBelLRDrnHpK
+vb3uzv3tIkCrcDiI9QqHasKrBWDJSAXaU8HeRHdqs/M8PO2AvKY4SikkX/5ZO5slelZjAGS5XaRi
+fVc2T62D7x+SU6COd1fd5WERPSMAkEw8+qNgkwSjrzX2DmqPT0pgp4UFbEahj/THduOhWVf3cbLE
+bhRcbW1BZt8bk7HUAMPuy888PSGAqV9jZfzd4F+k9CvwhXFB1Gcl+xqxl67WmYITQdJupRuZJ4Dn
+C6moADCCBo8wggR3oAMCAQICAwCyHTANBgkqhkiG9w0BAQUFADBUMRQwEgYDVQQKEwtDQWNlcnQg
+SW5jLjEeMBwGA1UECxMVaHR0cDovL3d3dy5DQWNlcnQub3JnMRwwGgYDVQQDExNDQWNlcnQgQ2xh
+c3MgMyBSb290MB4XDTEwMDgwMTIxMjc0M1oXDTEyMDczMTIxMjc0M1owggEdMSEwHwYDVQQDExhD
+aHJpc3RvcGggQW50b24gTWl0dGVyZXIxJDAiBgkqhkiG9w0BCQEWFWNhbGVzdHlvQHNjaWVudGlh
+Lm5ldDExMC8GCSqGSIb3DQEJARYibWFpbEBjaHJpc3RvcGguYW50b24ubWl0dGVyZXIubmFtZTEv
+MC0GCSqGSIb3DQEJARYgY2hyaXN0b3BoLmFudG9uLm1pdHRlcmVyQGNlcm4uY2gxPjA8BgkqhkiG
+9w0BCQEWL2NocmlzdG9waC5hbnRvbi5taXR0ZXJlckBwaHlzaWsudW5pLW11ZW5jaGVuLmRlMS4w
+LAYJKoZIhvcNAQkBFh9jaHJpc3RvcGguYW50b24ubWl0dGVyZXJAbG11LmRlMIIBIjANBgkqhkiG
+9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuwNa6CEzsTRd3bRYXPNn2KYKhFZbyPPk1CjuFfy+1PAfKBiG
+JmhhHGkmwCdnOd5aVnGzwIPfTv/+Rw3Cuw2zJ4YmJmX3uNDz/l2M6h5MO7Bawv7CjdR+ljGaIBYi
+gMuNaBawmoo60shkvOwf8df/Ou5KTxX7uL/hNOb1Q2/3yJWBBMPCbKD0nTvVH34nE1lfZxvKk/Mu
+dT7jc/WZ3kJshsO7y0WS/DEDvqPiQI5zfCx/qslMYCSCwcqZ4/NHwEXX4zgt9tfPj34iBNLEod7H
+zdNhCfdqn1j/FTsRI12M2OXEYhYgBoRNRYshPV10ePbV9+GPzvWlJm7Hn07fxVi4ZQIDAQABo4IB
+nTCCAZkwDAYDVR0TAQH/BAIwADBWBglghkgBhvhCAQ0ESRZHVG8gZ2V0IHlvdXIgb3duIGNlcnRp
+ZmljYXRlIGZvciBGUkVFIGhlYWQgb3ZlciB0byBodHRwOi8vd3d3LkNBY2VydC5vcmcwQAYDVR0l
+BDkwNwYIKwYBBQUHAwQGCCsGAQUFBwMCBgorBgEEAYI3CgMEBgorBgEEAYI3CgMDBglghkgBhvhC
+BAEwMgYIKwYBBQUHAQEEJjAkMCIGCCsGAQUFBzABhhZodHRwOi8vb2NzcC5jYWNlcnQub3JnMIG6
+BgNVHREEgbIwga+BFWNhbGVzdHlvQHNjaWVudGlhLm5ldIEibWFpbEBjaHJpc3RvcGguYW50b24u
+bWl0dGVyZXIubmFtZYEgY2hyaXN0b3BoLmFudG9uLm1pdHRlcmVyQGNlcm4uY2iBL2NocmlzdG9w
+aC5hbnRvbi5taXR0ZXJlckBwaHlzaWsudW5pLW11ZW5jaGVuLmRlgR9jaHJpc3RvcGguYW50b24u
+bWl0dGVyZXJAbG11LmRlMA0GCSqGSIb3DQEBBQUAA4ICAQAQFRkG3/PZgFdEFzeQyB2Gy8aXvyfS
+XpoF14+eAplacl6HXG874gfBw0VlTMkG7ynK3sh2cOEz20BMbly/MGT9tMpo246EhINlIwpfnqlS
+GZ+AVXrmztX25Eler+fO2wOVEeCn+HV09wb95VJtdzeAVaWpON5cEjGm9TLpMfR3RDDDkkcKI1uB
+kAcwVugRHmAXgx+2Mi6bDrG1q3TXA8JCdo+8ojdboSEpJvPXhXeKcN9N9ajLqcv/J0jp5s1jZCRn
+oX8OGIu9KWYmD7w2dHaYDmi/JHAa1ddd38BjULi1azqAVr32f1UWzU12JucqGHvlsZvkr479f/jV
+4G8ID7zz/KG0Qb1op7gOZnj56/ek2jHyFBlYnAsnqM2imqSkNZsOAhxLPsYvqE3APCTcFMSilCCD
+66K8OLrzpAj6fzcY9UJ9pkRZBP+nkOTN9avqZivxwKR8Zvl4XG9NJEdftSDTjFaVeYjn8hiDW0c9
+uqVlayI35d2L0jC6h/npeihVWSOBiqFd5sPepTrqe7AvPrpYR12QrbkYeqARcqYnLe3jKuyWyqhQ
+EQty00Zb0n3d7ezZ15ECXBOQHhvlDkbT6UeGX3Xa9kvNYWIb62S1nZ4oicU94NPxwMYtttaOTjzY
+3hb5/aS+TWT+xkTFSFmd2perZmiiyByCKC5bcp6cOPWgvzCCBo8wggR3oAMCAQICAwCyHTANBgkq
+hkiG9w0BAQUFADBUMRQwEgYDVQQKEwtDQWNlcnQgSW5jLjEeMBwGA1UECxMVaHR0cDovL3d3dy5D
+QWNlcnQub3JnMRwwGgYDVQQDExNDQWNlcnQgQ2xhc3MgMyBSb290MB4XDTEwMDgwMTIxMjc0M1oX
+DTEyMDczMTIxMjc0M1owggEdMSEwHwYDVQQDExhDaHJpc3RvcGggQW50b24gTWl0dGVyZXIxJDAi
+BgkqhkiG9w0BCQEWFWNhbGVzdHlvQHNjaWVudGlhLm5ldDExMC8GCSqGSIb3DQEJARYibWFpbEBj
+aHJpc3RvcGguYW50b24ubWl0dGVyZXIubmFtZTEvMC0GCSqGSIb3DQEJARYgY2hyaXN0b3BoLmFu
+dG9uLm1pdHRlcmVyQGNlcm4uY2gxPjA8BgkqhkiG9w0BCQEWL2NocmlzdG9waC5hbnRvbi5taXR0
+ZXJlckBwaHlzaWsudW5pLW11ZW5jaGVuLmRlMS4wLAYJKoZIhvcNAQkBFh9jaHJpc3RvcGguYW50
+b24ubWl0dGVyZXJAbG11LmRlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuwNa6CEz
+sTRd3bRYXPNn2KYKhFZbyPPk1CjuFfy+1PAfKBiGJmhhHGkmwCdnOd5aVnGzwIPfTv/+Rw3Cuw2z
+J4YmJmX3uNDz/l2M6h5MO7Bawv7CjdR+ljGaIBYigMuNaBawmoo60shkvOwf8df/Ou5KTxX7uL/h
+NOb1Q2/3yJWBBMPCbKD0nTvVH34nE1lfZxvKk/MudT7jc/WZ3kJshsO7y0WS/DEDvqPiQI5zfCx/
+qslMYCSCwcqZ4/NHwEXX4zgt9tfPj34iBNLEod7HzdNhCfdqn1j/FTsRI12M2OXEYhYgBoRNRYsh
+PV10ePbV9+GPzvWlJm7Hn07fxVi4ZQIDAQABo4IBnTCCAZkwDAYDVR0TAQH/BAIwADBWBglghkgB
+hvhCAQ0ESRZHVG8gZ2V0IHlvdXIgb3duIGNlcnRpZmljYXRlIGZvciBGUkVFIGhlYWQgb3ZlciB0
+byBodHRwOi8vd3d3LkNBY2VydC5vcmcwQAYDVR0lBDkwNwYIKwYBBQUHAwQGCCsGAQUFBwMCBgor
+BgEEAYI3CgMEBgorBgEEAYI3CgMDBglghkgBhvhCBAEwMgYIKwYBBQUHAQEEJjAkMCIGCCsGAQUF
+BzABhhZodHRwOi8vb2NzcC5jYWNlcnQub3JnMIG6BgNVHREEgbIwga+BFWNhbGVzdHlvQHNjaWVu
+dGlhLm5ldIEibWFpbEBjaHJpc3RvcGguYW50b24ubWl0dGVyZXIubmFtZYEgY2hyaXN0b3BoLmFu
+dG9uLm1pdHRlcmVyQGNlcm4uY2iBL2NocmlzdG9waC5hbnRvbi5taXR0ZXJlckBwaHlzaWsudW5p
+LW11ZW5jaGVuLmRlgR9jaHJpc3RvcGguYW50b24ubWl0dGVyZXJAbG11LmRlMA0GCSqGSIb3DQEB
+BQUAA4ICAQAQFRkG3/PZgFdEFzeQyB2Gy8aXvyfSXpoF14+eAplacl6HXG874gfBw0VlTMkG7ynK
+3sh2cOEz20BMbly/MGT9tMpo246EhINlIwpfnqlSGZ+AVXrmztX25Eler+fO2wOVEeCn+HV09wb9
+5VJtdzeAVaWpON5cEjGm9TLpMfR3RDDDkkcKI1uBkAcwVugRHmAXgx+2Mi6bDrG1q3TXA8JCdo+8
+ojdboSEpJvPXhXeKcN9N9ajLqcv/J0jp5s1jZCRnoX8OGIu9KWYmD7w2dHaYDmi/JHAa1ddd38Bj
+ULi1azqAVr32f1UWzU12JucqGHvlsZvkr479f/jV4G8ID7zz/KG0Qb1op7gOZnj56/ek2jHyFBlY
+nAsnqM2imqSkNZsOAhxLPsYvqE3APCTcFMSilCCD66K8OLrzpAj6fzcY9UJ9pkRZBP+nkOTN9avq
+ZivxwKR8Zvl4XG9NJEdftSDTjFaVeYjn8hiDW0c9uqVlayI35d2L0jC6h/npeihVWSOBiqFd5sPe
+pTrqe7AvPrpYR12QrbkYeqARcqYnLe3jKuyWyqhQEQty00Zb0n3d7ezZ15ECXBOQHhvlDkbT6UeG
+X3Xa9kvNYWIb62S1nZ4oicU94NPxwMYtttaOTjzY3hb5/aS+TWT+xkTFSFmd2perZmiiyByCKC5b
+cp6cOPWgvzGCAr0wggK5AgEBMFswVDEUMBIGA1UEChMLQ0FjZXJ0IEluYy4xHjAcBgNVBAsTFWh0
+dHA6Ly93d3cuQ0FjZXJ0Lm9yZzEcMBoGA1UEAxMTQ0FjZXJ0IENsYXNzIDMgUm9vdAIDALIdMAkG
+BSsOAwIaBQCgggE3MBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTEx
+MDYwMTEwNDMzN1owIwYJKoZIhvcNAQkEMRYEFLXWVUZc/ZueOHk+Rn6atCVzuiCuMGoGCSsGAQQB
+gjcQBDFdMFswVDEUMBIGA1UEChMLQ0FjZXJ0IEluYy4xHjAcBgNVBAsTFWh0dHA6Ly93d3cuQ0Fj
+ZXJ0Lm9yZzEcMBoGA1UEAxMTQ0FjZXJ0IENsYXNzIDMgUm9vdAIDALIdMGwGCyqGSIb3DQEJEAIL
+MV2gWzBUMRQwEgYDVQQKEwtDQWNlcnQgSW5jLjEeMBwGA1UECxMVaHR0cDovL3d3dy5DQWNlcnQu
+b3JnMRwwGgYDVQQDExNDQWNlcnQgQ2xhc3MgMyBSb290AgMAsh0wDQYJKoZIhvcNAQEBBQAEggEA
+LhKwqmkOl/7suJ5/DoK1feVraapPVBhC2ZA2er6PVmysw50W4L7ffw9cSrJ2IElVLFdfYAr16a2A
+1O6Wqp3xyXfp0VcsSKyHwEtUkYoP2JOPxDdlX8usJE/mbCfhDY7wtPAnrVmPa3I6CryOCwT/r9kF
+6b+kMqBpwgGAkWg89s7e6XV94+SMAfmGNewd7pEd2g4ASVpT1qi15Uxg+fUbBd07ig1F9l4lxFtL
+a53+YXOKFggQCbDHi5y08cWeqnjWozsL9OturDB+o9GhIhbGIfLey3y14UUcLoHa82L9HOGF3Be2
+qQB3ec/GrzW1BImuVqtYP2+AJZxawohYZtY5igAAAAAAAA==
+
+
+--=-66qdgbj5Jc34oXWcVNi1--
+
