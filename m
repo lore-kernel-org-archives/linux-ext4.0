@@ -1,130 +1,136 @@
-From: "Amir G." <amir73il@users.sourceforge.net>
-Subject: Re: [PATCH v2] xfstests: add support for ext4dev FSTYP
-Date: Thu, 2 Jun 2011 10:16:48 +0300
-Message-ID: <BANLkTimKV3LxugkW6_cE5vutjcmatESXuw@mail.gmail.com>
-References: <1306933012-8666-1-git-send-email-amir73il@users.sourceforge.net>
-	<20110601232804.GL32466@dastard>
-	<BANLkTi=sV5=PyZvNSd=DGNW-V84=27d7Yw@mail.gmail.com>
-	<BANLkTimbPWfOJKq6er4mnSYNPcx6VHLcrw@mail.gmail.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate
+ super_operation
+Date: Thu, 2 Jun 2011 10:14:35 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1106020953510.3931@dhcp-27-109.brq.redhat.com>
+References: <20101118130630.GJ6178@parisc-linux.org> <20101118134804.GN5618@dhcp231-156.rdu.redhat.com> <20101118141957.GK6178@parisc-linux.org> <20101118142918.GA18510@infradead.org> <1290100750.3041.72.camel@mulgrave.site> <4CE59C9E.6050902@teksavvy.com>
+ <1290177488-sup-6540@think> <4CE68F80.7000607@teksavvy.com> <20101119145748.GB27919@infradead.org> <4CE695FF.20601@teksavvy.com> <20101207092749.GA26100@infradead.org> <1291740643-sup-2494@think> <BANLkTimkn7ZVAUJw6NfWVMECfe+C+82i+g@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: xfs@oss.sgi.com, sandeen@redhat.com, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, sergey57@gmail.com,
-	Amir Goldstein <amir73il@users.sf.net>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <BANLkTimbPWfOJKq6er4mnSYNPcx6VHLcrw@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-672173440-1307002481=:3931"
+Cc: Chris Mason <chris.mason@oracle.com>,
+	Lukas Czerner <lczerner@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	Mark Lord <kernel@teksavvy.com>,
+	James Bottomley <james.bottomley@suse.de>,
+	Matthew Wilcox <matthew@wil.cx>,
+	Josef Bacik <josef@redhat.com>, tytso <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	sandeen <sandeen@redhat.com>, Dave Chinner <dchinner@redhat.com>
+To: Kyungmin Park <kmpark@infradead.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:23930 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759140Ab1FBIPD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 2 Jun 2011 04:15:03 -0400
+In-Reply-To: <BANLkTimkn7ZVAUJw6NfWVMECfe+C+82i+g@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 2, 2011 at 5:33 AM, Amir G. <amir73il@users.sourceforge.net=
-> wrote:
-> On Thu, Jun 2, 2011 at 5:16 AM, Amir G. <amir73il@users.sourceforge.n=
-et> wrote:
->> On Thu, Jun 2, 2011 at 2:28 AM, Dave Chinner <david@fromorbit.com> w=
-rote:
->>> On Wed, Jun 01, 2011 at 03:56:52PM +0300, amir73il@users.sourceforg=
-e.net wrote:
->>>> From: Amir Goldstein <amir73il@users.sf.net>
->>>>
->>>> From: Amir Goldstein <amir73il@users.sf.net>
->>>>
->>>> blkid knows to identify the ext4dev FSTYP of a partition that was
->>>> formatted with mkfs.ext4dev.
->>>> quota tools and various util-linux utils are also aware of ext4dev=
-,
->>>> so ext4dev shares the same capabilities as ext4.
->>>>
->>>> Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
->>>> Tested-by: Sergey Ivanov <sergey57@gmail.com>
->>>> ---
->>>> ext4dev is used to test experimental ext4 code in mutual existance
->>>> with production ext4 code on the same system.
->>>>
->>>> Specifically, ext4 snapshots code is available for testing as a
->>>> stand-alone ext4dev module for Fedora 15 and Ubuntu 11.4
->>>> (see http://next3.sf.net).
->>>>
->>>> v1 -> v2:
->>>> - undo change of fsck -t $FSTYP to fsck.$FSTYP
->>>>
->>>> =A0common.defrag | =A0 =A02 +-
->>>> =A0common.quota =A0| =A0 =A04 ++--
->>>> =A0common.rc =A0 =A0 | =A0 10 +++++-----
->>>> =A03 files changed, 8 insertions(+), 8 deletions(-)
->>>>
->>>> diff --git a/common.defrag b/common.defrag
->>>> index 1bcf01d..4850803 100644
->>>> --- a/common.defrag
->>>> +++ b/common.defrag
->>>> @@ -26,7 +26,7 @@ _require_defrag()
->>>> =A0 =A0 =A0xfs)
->>>> =A0 =A0 =A0 =A0 =A0DEFRAG_PROG=3D/usr/sbin/xfs_fsr
->>>> =A0 =A0 =A0 ;;
->>>> - =A0 =A0ext4)
->>>> + =A0 =A0ext4|ext4dev)
->>>> =A0 =A0 =A0 =A0 =A0DEFRAG_PROG=3D/usr/bin/e4defrag
->>>> =A0 =A0 =A0 ;;
->>>> =A0 =A0 =A0*)
->>>> diff --git a/common.quota b/common.quota
->>>> index 3c87ce1..b6d5f16 100644
->>>> --- a/common.quota
->>>> +++ b/common.quota
->>>> @@ -29,7 +29,7 @@ _require_quota()
->>>> =A0 =A0 =A0[ -n $QUOTA_PROG ] || _notrun "Quota user tools not ins=
-talled"
->>>>
->>>> =A0 =A0 =A0case $FSTYP in
->>>> - =A0 =A0ext2|ext3|ext4|reiserfs)
->>>> + =A0 =A0ext2|ext3|ext4|ext4dev|reiserfs)
->>>> =A0 =A0 =A0 if [ ! -d /proc/sys/fs/quota ]; then
->>>> =A0 =A0 =A0 =A0 =A0 _notrun "Installed kernel does not support quo=
-tas"
->>>> =A0 =A0 =A0 fi
->>>> @@ -237,7 +237,7 @@ _check_quota_usage()
->>>> =A0 =A0 =A0 # Sync to get delalloc to disk
->>>> =A0 =A0 =A0 sync
->>>> =A0 =A0 =A0 VFS_QUOTA=3D0
->>>> - =A0 =A0 if [ $FSTYP =3D "ext2" -o $FSTYP =3D "ext3" -o $FSTYP =3D=
- "ext4" -o $FSTYP =3D "reiserfs" ]; then
->>>> + =A0 =A0 if [ $FSTYP =3D "ext2" -o $FSTYP =3D "ext3" -o $FSTYP =3D=
- "ext4" -o $FSTYP =3D "ext4dev" -o $FSTYP =3D "reiserfs" ]; then
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 VFS_QUOTA=3D1
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 quotaon -f -u -g $SCRATCH_MNT 2>/dev/n=
-ull
->>>> =A0 =A0 =A0 fi
->>>
->>> Perhaps this should be changes to a case statement?
->>>
->>
->> you're making me go to v3 in such a trivial patch, but ok, I'll do i=
-t ;-)
->>
->
-> I rechecked the fsck -t ext4dev vs. fsck.ext4dev.
-> fsck -t ext4dev doesn't work for me :-(
-> Sergey has a newer version of =A0util-linux-ng
-> see:
->
-> amir@qalab:~/xfstests$ sudo fsck -t ext4dev -nf /dev/sda5
-> fsck from util-linux-ng 2.17.2
-> e2fsck 1.41.14 (22-Dec-2010)
-> /dev/sda5 has unsupported feature(s): FEATURE_C7 FEATURE_C8 FEATURE_R=
-7
-> e2fsck: Get a newer version of e2fsck!
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-OK, after upgrading to newer util-linux and building it from git,
-which also didn't help, I finally found who to blame - me.
-I had an old (noauto) entry in /etc/fstab which claimed that /dev/sda5 =
-is ext4.
-fsck was picking up that entry and insisting that /dev/sda5 is ext4
-(regardless of what it really is)
-blkid isn't doing that silly thing.
+--8323328-672173440-1307002481=:3931
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1
+Content-Transfer-Encoding: 8BIT
 
-Amir
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On Thu, 2 Jun 2011, Kyungmin Park wrote:
+
+> On Wed, Dec 8, 2010 at 1:52 AM, Chris Mason <chris.mason@oracle.com> wrote:
+> > Excerpts from Christoph Hellwig's message of 2010-12-07 04:27:49 -0500:
+> >> On Fri, Nov 19, 2010 at 10:21:35AM -0500, Mark Lord wrote:
+> >> > >I really hate to rely on this third party hearsay (from all sides), and
+> >> > >have implement TRIM support in qemu now.  I'll soon install win7 and
+> >> > >will check out the TRIM patters myself.
+> >> >
+> >> > Excellent!
+> >>
+> >> I did a Windows 7 installation under qemu today, and the result is:
+> >
+> > Great, thanks for testing this.
+> >
+> >>
+> >>  - it TRIMs the whole device early during the installation
+> >>  - after that I see a constant stream of small trims during the
+> >>    installation.  It's using lots of non-contiguous ranges in a single
+> >>    TRIM command, with sizes down to 8 sectors (4k) for a single range.
+> >>  - after installation there's is some background-trimming going on
+> >>    even when doing no user interaction with the VM at all.
+> 
+> Hi Lukas,
+> 
+> Now FITRIM is based on user interaction. So how about to implement the
+> AUTO batched discard at kernel level?
+> Idea is same as windows, make a single thread and iterate the
+> superblocks and call the trim.
+> 
+> here's pseudo codes.
+> 
+> 1. generate the trim thread.
+> 2. iterate the superblocks by iterate_supers() at fs/super.c
+> 3. check the queue which support the discard feature or not.
+> blk_queue_discard(q)
+> 4. wait on events
+> 5. call the sb->trim (need to re-introduce it)
+> 
+> The difficult things are how to define the events and how to trigger
+> the trim thread.
+> e.g., notified from block layer, called from filesystem and so on.
+> 
+> How do you think?
+
+Hi Kyungmin,
+
+generally I think this is a good idea and I thought about it as well.
+However I also think that we might want to wait for the FITRIM and
+discard supported devices to settle down to see how it performs and if
+frequently calling discard on big chunks of the device does not have
+some unwanted consequences (as Dave Chinner pointed out in a different
+thread, that this automations usually do).
+
+Regarding events, filesystem might watch amount of data written to it
+(and it usually do right now) and trigger the event when it exceeds,
+let's say 50% of the fs size and zero the counter. The downside of this
+is that it is not controlled behaviour hence we'll end up with
+unpredictable behaviour of the filesystem in the long term.
+
+The solution might be (and it is something I want to look into)
+infrastructure to determine size of the queue to the device from within
+the filesystem (or vfs) so we can tell when it is busy and we want to wait,
+or when it is doing nothing and we can discard.
+
+Also per filesystem, or per device, control will be needed, so we can
+selectively turn it on and off. But as I said I am not sure that this is
+the best idea to do it right now, but others might have different
+opinion.
+
+Thanks!
+-Lukas
+
+> 
+> Thank you,
+> Kyungmin Park
+> 
+> >>  - removing files leads to an instant stream of TRIMs, again vectored
+> >>    and of all sizes down to 4k.  Note that the TRIMs are a lot more
+> >>    instant than even with btrfs and -o discard, which delays most
+> >>    TRIMs until doing a sync.
+> >
+> > Btrfs will do some small trims right when the block is freed, especially
+> > in fsync heavy workloads but this is a suboptimal thing I want to fix.
+> >
+> > The code tries to gather a whole transaction worth of trims and do them
+> > after the commit is done.
+> >
+> > -chris
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > Please read the FAQ at  http://www.tux.org/lkml/
+> >
+> 
+
+-- 
+--8323328-672173440-1307002481=:3931--
