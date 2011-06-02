@@ -1,14 +1,11 @@
 From: "Amir G." <amir73il@users.sourceforge.net>
 Subject: Re: [PATCH v2] xfstests: add support for ext4dev FSTYP
-Date: Thu, 2 Jun 2011 10:11:43 +0300
-Message-ID: <BANLkTinJcvvv2pfXBt7EZ9TXONb9jRe0uQ@mail.gmail.com>
+Date: Thu, 2 Jun 2011 10:16:48 +0300
+Message-ID: <BANLkTimKV3LxugkW6_cE5vutjcmatESXuw@mail.gmail.com>
 References: <1306933012-8666-1-git-send-email-amir73il@users.sourceforge.net>
 	<20110601232804.GL32466@dastard>
 	<BANLkTi=sV5=PyZvNSd=DGNW-V84=27d7Yw@mail.gmail.com>
 	<BANLkTimbPWfOJKq6er4mnSYNPcx6VHLcrw@mail.gmail.com>
-	<20110602030802.GR561@dastard>
-	<BANLkTi=sPM_AYB4w=N5pWHfws9R3WnfJVw@mail.gmail.com>
-	<20110602064040.GS561@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
@@ -16,132 +13,118 @@ Cc: xfs@oss.sgi.com, sandeen@redhat.com, linux-ext4@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org, sergey57@gmail.com,
 	Amir Goldstein <amir73il@users.sf.net>
 To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:44872 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757542Ab1FBHLo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Jun 2011 03:11:44 -0400
-In-Reply-To: <20110602064040.GS561@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <BANLkTimbPWfOJKq6er4mnSYNPcx6VHLcrw@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jun 2, 2011 at 9:40 AM, Dave Chinner <david@fromorbit.com> wrot=
-e:
-> On Thu, Jun 02, 2011 at 06:49:20AM +0300, Amir G. wrote:
->> On Thu, Jun 2, 2011 at 6:08 AM, Dave Chinner <david@fromorbit.com> w=
+On Thu, Jun 2, 2011 at 5:33 AM, Amir G. <amir73il@users.sourceforge.net=
+> wrote:
+> On Thu, Jun 2, 2011 at 5:16 AM, Amir G. <amir73il@users.sourceforge.n=
+et> wrote:
+>> On Thu, Jun 2, 2011 at 2:28 AM, Dave Chinner <david@fromorbit.com> w=
 rote:
->> > On Thu, Jun 02, 2011 at 05:33:34AM +0300, Amir G. wrote:
->> >> On Thu, Jun 2, 2011 at 5:16 AM, Amir G. <amir73il@users.sourcefor=
-ge.net> wrote:
->> >> > On Thu, Jun 2, 2011 at 2:28 AM, Dave Chinner <david@fromorbit.c=
-om> wrote:
->> > Personally I think that ext4dev shouldn't be supported at all. A
->> > special fstyp iwhile ext4 was being developed was, IMO, a stupid
->> > thing to do in the first place, and I was happy when it died. It
->> > should not be resurrected and propagated.
->> >
->> > xfstests assumes that you are using a userspace that is current wi=
-th
->> > the version of the filesystem the kernel supports. If you are
->> > running a development/special branch of ext4, then you need to be
->> > running a userspace that understands it completely. If all you are
->> > doing with the ext4dev fstyp is trying to vector to a different fs=
-ck
->> > program that supports a new set of feature bits, then IMO you are
->> > doing it all wrong.
->> >
->> > Fundamentally, the filesystem is either ext4 or it isn't. If the
->> > features are never going to make it into mainline ext4, then you
->> > need a completely different fstype and full userspace support for
->> > that fstype. Once you have that, you can add the fstype support to
->> > xfstests. However, just using a different fstyp just to set a
->> > certain set of feature flags is, again IMO, a pretty stupid way of
->> > going about this.
->> >
+>>> On Wed, Jun 01, 2011 at 03:56:52PM +0300, amir73il@users.sourceforg=
+e.net wrote:
+>>>> From: Amir Goldstein <amir73il@users.sf.net>
+>>>>
+>>>> From: Amir Goldstein <amir73il@users.sf.net>
+>>>>
+>>>> blkid knows to identify the ext4dev FSTYP of a partition that was
+>>>> formatted with mkfs.ext4dev.
+>>>> quota tools and various util-linux utils are also aware of ext4dev=
+,
+>>>> so ext4dev shares the same capabilities as ext4.
+>>>>
+>>>> Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
+>>>> Tested-by: Sergey Ivanov <sergey57@gmail.com>
+>>>> ---
+>>>> ext4dev is used to test experimental ext4 code in mutual existance
+>>>> with production ext4 code on the same system.
+>>>>
+>>>> Specifically, ext4 snapshots code is available for testing as a
+>>>> stand-alone ext4dev module for Fedora 15 and Ubuntu 11.4
+>>>> (see http://next3.sf.net).
+>>>>
+>>>> v1 -> v2:
+>>>> - undo change of fsck -t $FSTYP to fsck.$FSTYP
+>>>>
+>>>> =A0common.defrag | =A0 =A02 +-
+>>>> =A0common.quota =A0| =A0 =A04 ++--
+>>>> =A0common.rc =A0 =A0 | =A0 10 +++++-----
+>>>> =A03 files changed, 8 insertions(+), 8 deletions(-)
+>>>>
+>>>> diff --git a/common.defrag b/common.defrag
+>>>> index 1bcf01d..4850803 100644
+>>>> --- a/common.defrag
+>>>> +++ b/common.defrag
+>>>> @@ -26,7 +26,7 @@ _require_defrag()
+>>>> =A0 =A0 =A0xfs)
+>>>> =A0 =A0 =A0 =A0 =A0DEFRAG_PROG=3D/usr/sbin/xfs_fsr
+>>>> =A0 =A0 =A0 ;;
+>>>> - =A0 =A0ext4)
+>>>> + =A0 =A0ext4|ext4dev)
+>>>> =A0 =A0 =A0 =A0 =A0DEFRAG_PROG=3D/usr/bin/e4defrag
+>>>> =A0 =A0 =A0 ;;
+>>>> =A0 =A0 =A0*)
+>>>> diff --git a/common.quota b/common.quota
+>>>> index 3c87ce1..b6d5f16 100644
+>>>> --- a/common.quota
+>>>> +++ b/common.quota
+>>>> @@ -29,7 +29,7 @@ _require_quota()
+>>>> =A0 =A0 =A0[ -n $QUOTA_PROG ] || _notrun "Quota user tools not ins=
+talled"
+>>>>
+>>>> =A0 =A0 =A0case $FSTYP in
+>>>> - =A0 =A0ext2|ext3|ext4|reiserfs)
+>>>> + =A0 =A0ext2|ext3|ext4|ext4dev|reiserfs)
+>>>> =A0 =A0 =A0 if [ ! -d /proc/sys/fs/quota ]; then
+>>>> =A0 =A0 =A0 =A0 =A0 _notrun "Installed kernel does not support quo=
+tas"
+>>>> =A0 =A0 =A0 fi
+>>>> @@ -237,7 +237,7 @@ _check_quota_usage()
+>>>> =A0 =A0 =A0 # Sync to get delalloc to disk
+>>>> =A0 =A0 =A0 sync
+>>>> =A0 =A0 =A0 VFS_QUOTA=3D0
+>>>> - =A0 =A0 if [ $FSTYP =3D "ext2" -o $FSTYP =3D "ext3" -o $FSTYP =3D=
+ "ext4" -o $FSTYP =3D "reiserfs" ]; then
+>>>> + =A0 =A0 if [ $FSTYP =3D "ext2" -o $FSTYP =3D "ext3" -o $FSTYP =3D=
+ "ext4" -o $FSTYP =3D "ext4dev" -o $FSTYP =3D "reiserfs" ]; then
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 VFS_QUOTA=3D1
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 quotaon -f -u -g $SCRATCH_MNT 2>/dev/n=
+ull
+>>>> =A0 =A0 =A0 fi
+>>>
+>>> Perhaps this should be changes to a case statement?
+>>>
 >>
->> The features are going into mainline, but are not there yet.
+>> you're making me go to v3 in such a trivial patch, but ok, I'll do i=
+t ;-)
+>>
 >
-> So using feature bits as they were intended is the right thing to
-> do, isn't it?
-
-I am not sure what you mean by that.
-The fact that to this day fsck.ext2/3/4 have always been the same
-file (hence support the same feature set) does not mean that they have
-to be that way by design.
-
-on my test system fsck.ext4dev must be used to test ext4dev, which has
-newer features than ext4.
-I fail to see the problem with that.
-
+> I rechecked the fsck -t ext4dev vs. fsck.ext4dev.
+> fsck -t ext4dev doesn't work for me :-(
+> Sergey has a newer version of =A0util-linux-ng
+> see:
 >
->> I did not invent the ext4dev standard, which is pretty well supporte=
-d
->> by all relevant tools, but I find it very convenient for the testing=
-=2E
->
-> As I understand it, ext4dev is deprecated and should not be used for
-> any new filesystems. When did that status change?
->
-> Or did you just start using it because it's convenient for your
-> purposes? =A0What happens when someone else decides to use ext4dev fo=
-r
-> testing incompatible development features because it is convenient
-> for them?
->
+> amir@qalab:~/xfstests$ sudo fsck -t ext4dev -nf /dev/sda5
+> fsck from util-linux-ng 2.17.2
+> e2fsck 1.41.14 (22-Dec-2010)
+> /dev/sda5 has unsupported feature(s): FEATURE_C7 FEATURE_C8 FEATURE_R=
+7
+> e2fsck: Get a newer version of e2fsck!
 
-The way I see it, ext4dev is a tool for ext4 developers (and testers).
-Anyone can use it for their own needs and it would be convenient for ev=
-eryone.
-I never suggested that Fedora push my ext4dev utils as a standard packa=
-ge.
-But me and my group can use it to test the snapshots feature and Ted
-and his group can use it to test the allocation clusters feature.
+OK, after upgrading to newer util-linux and building it from git,
+which also didn't help, I finally found who to blame - me.
+I had an old (noauto) entry in /etc/fstab which claimed that /dev/sda5 =
+is ext4.
+fsck was picking up that entry and insisting that /dev/sda5 is ext4
+(regardless of what it really is)
+blkid isn't doing that silly thing.
 
-
->> Especially, when I expect my testers to be running a stable
->> distro release (i.e. F15 or Ubuntu 11.4) and be able to install
->> my experimental ext4dev module and utils, without it affecting
->> their (most likely) root ext4/ext3 fs.
->
-> So get them to use an ext3, XFS, reiser or JFS root filesystem if
-> that's your major concern. That's long been a best practice for
-> configuring a filesystem test box - don't use the same filesystem
-> for your root/stable filesystems as the filesytsem you are testing.
->
-> e.g. If you pick ext3 for the root filesystem, then you can test
-> ext4, btrfs, xfs, etc changes without having to worry about whether
-> the development module being tested is going to affect your root
-> filesystem....
-
-You make it sound as if I have a flock of testers out there waiting for
-me to feed them with use cases to test and who abide to my setup
-instructions.
-
-Wake up call! this is not the case for me and for most developers.
-If I'm lucky, I can get a e few testers who will say:
-OK, if all I have to do is download this package and run 'make test'
-I can spare an hour to play with it.
-
-So, yes, it's true. There are other ways to accomplish what I am doing,
-but I am going out of my way to try to make the life of developers and =
-testers
-easier and you are doing the exact opposite by raising objections to a =
-rather
-trivial and harmless patch.
-
-Let me ask you this: which FSTYP will be useful to more developers
-ext4dev or reiserfs?
-
->
-> Cheers,
->
-> Dave.
-> --
-> Dave Chinner
-> david@fromorbit.com
->
+Amir
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
 the body of a message to majordomo@vger.kernel.org
 More majordomo info at  http://vger.kernel.org/majordomo-info.html
