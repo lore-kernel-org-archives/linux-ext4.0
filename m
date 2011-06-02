@@ -1,33 +1,44 @@
-From: Akinobu Mita <akinobu.mita@gmail.com>
-Subject: Re: [PATCH v2 1/2] ext4: arrange ext4_*_bit() macros
-Date: Thu, 2 Jun 2011 19:04:40 +0900
-Message-ID: <BANLkTi=mdiK7us_b-YKhiu60csQJTcihsw@mail.gmail.com>
-References: <1306939009-11283-1-git-send-email-akinobu.mita@gmail.com>
-	<46950A08-9300-4649-A38D-88829035DFC2@dilger.ca>
-	<BANLkTikSKyKuseG+iehh=-wfDCu46sinZw@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 36262] ext3 umount: BUG: unable to handle kernel paging request
+Date: Thu, 2 Jun 2011 10:23:12 GMT
+Message-ID: <201106021023.p52ANCP7001604@demeter2.kernel.org>
+References: <bug-36262-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-kernel@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org, Yongqiang Yang <xiaoqiangnk@gmail.com>
-To: Amir Goldstein <amir73il@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:38407 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932138Ab1FBKEl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Jun 2011 06:04:41 -0400
-In-Reply-To: <BANLkTikSKyKuseG+iehh=-wfDCu46sinZw@mail.gmail.com>
+Received: from demeter2.kernel.org ([140.211.167.42]:36102 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933312Ab1FBKXN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Jun 2011 06:23:13 -0400
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p52ANDFi001605
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 2 Jun 2011 10:23:13 GMT
+In-Reply-To: <bug-36262-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2011/6/2 Amir Goldstein <amir73il@gmail.com>:
-> FYI, one of the snapshot patches (snapshot_exclude_bitmap.patch)
-> uses ext4_set_bit_atomic() to set bits in the exclude bitmap when
-> moving blocks to snapshot file.
-> Since moving blocks is not done in allocation context, there is no
-> buddy/group lock held while manipulating the exclude bitmap.
-> So I would appreciate if this specific macro will not be removed.
->
-> Thanks, Yongqiang , for pointing that out.
+https://bugzilla.kernel.org/show_bug.cgi?id=36262
 
-OK, I'll keep ext4_*_bit_atomic() in the next version.
+
+Jan Kara <jack@suse.cz> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |axboe@kernel.dk
+
+
+
+
+--- Comment #3 from Jan Kara <jack@suse.cz>  2011-06-02 10:23:12 ---
+Hmm, by any chance, was the USB disk pulled before the umount actually run?
+
+Jens, it seems we have destroyed the BDI before the filesystem was properly
+unmounted (the oops is just NULL pointer dereference hidden by new percpu code)
+because fbc->counters == NULL for the BDI_RECLAIMABLE stats counter.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
