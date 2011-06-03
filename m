@@ -1,114 +1,102 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: [PATCH 2/2] ext4: in fiemap use FIEMAP_EXTENT_LAST flag for last
- extent
-Date: Fri, 03 Jun 2011 17:13:30 -0700
-Message-ID: <4DE978AA.4090002@linux.vnet.ibm.com>
-References: <1307128825-3013-1-git-send-email-lczerner@redhat.com> <1307128825-3013-2-git-send-email-lczerner@redhat.com>
+From: Micah Anderson <micah@riseup.net>
+Subject: new ext4 filesystem vs. converted ext3
+Date: Fri, 03 Jun 2011 17:49:17 -0400
+Message-ID: <87tyc6pov6.fsf@algae.riseup.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, k-mio@sx.jp.nec.com
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha512; protocol="application/pgp-signature"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:50320 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756526Ab1FDANi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Jun 2011 20:13:38 -0400
-Received: from d03relay05.boulder.ibm.com (d03relay05.boulder.ibm.com [9.17.195.107])
-	by e34.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p5400ojl011358
-	for <linux-ext4@vger.kernel.org>; Fri, 3 Jun 2011 18:00:50 -0600
-Received: from d03av05.boulder.ibm.com (d03av05.boulder.ibm.com [9.17.195.85])
-	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p540DVPP346356
-	for <linux-ext4@vger.kernel.org>; Fri, 3 Jun 2011 18:13:31 -0600
-Received: from d03av05.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av05.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p540DUK7027962
-	for <linux-ext4@vger.kernel.org>; Fri, 3 Jun 2011 18:13:31 -0600
-In-Reply-To: <1307128825-3013-2-git-send-email-lczerner@redhat.com>
+Received: from lo.gmane.org ([80.91.229.12]:36805 "EHLO lo.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752669Ab1FDBpH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 3 Jun 2011 21:45:07 -0400
+Received: from list by lo.gmane.org with local (Exim 4.69)
+	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
+	id 1QSfvD-0004GX-Mg
+	for linux-ext4@vger.kernel.org; Sat, 04 Jun 2011 03:45:03 +0200
+Received: from seattle210.riseup.net ([198.252.153.210])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Sat, 04 Jun 2011 03:45:03 +0200
+Received: from micah by seattle210.riseup.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Sat, 04 Jun 2011 03:45:03 +0200
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 6/3/2011 12:20 PM, Lukas Czerner wrote:
-> Currently we are not marking the extent as the last one
-> (FIEMAP_EXTENT_LAST) if there is a hole at the end of the file. This is
-> because we just do not check for it right now and continue searching for
-> next extent. But at the point we hit the hole at the end of the file, it
-> is too late.
->
-> This commit adds check for the allocated block in subsequent extent and
-> if there is no more extents (block = EXT_MAX_BLOCKS) just flag the
-> current one as the last one.
->
-> This behaviour has been spotted unintentionally by 252 xfstest, when the
-> test hangs out, because of wrong loop condition. However on other
-> filesystems (like xfs) it will exit anyway, because we notice the last
-> extent flag and exit.
->
-> With this patch xfstest 252 does not hang anymore, ext4 fiemap
-> implementation still reports bad extent type in some cases, however
-> this seems to be different issue.
->
-> Signed-off-by: Lukas Czerner<lczerner@redhat.com>
-> ---
->   fs/ext4/ext4_extents.h |    2 +-
->   fs/ext4/extents.c      |    8 +++-----
->   2 files changed, 4 insertions(+), 6 deletions(-)
->
-> diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-> index 4764146..095c36f 100644
-> --- a/fs/ext4/ext4_extents.h
-> +++ b/fs/ext4/ext4_extents.h
-> @@ -125,7 +125,7 @@ struct ext4_ext_path {
->    * positive retcode - signal for ext4_ext_walk_space(), see below
->    * callback must return valid extent (passed or newly created)
->    */
-> -typedef int (*ext_prepare_callback)(struct inode *, struct ext4_ext_path *,
-> +typedef int (*ext_prepare_callback)(struct inode *, ext4_lblk_t,
->   					struct ext4_ext_cache *,
->   					struct ext4_extent *, void *);
->
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 4157570..f815cc8 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -1958,7 +1958,7 @@ static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
->   			err = -EIO;
->   			break;
->   		}
-> -		err = func(inode, path,&cbex, ex, cbdata);
-> +		err = func(inode, next,&cbex, ex, cbdata);
->   		ext4_ext_drop_refs(path);
->
->   		if (err<  0)
-> @@ -3914,14 +3914,13 @@ int ext4_convert_unwritten_extents(struct inode *inode, loff_t offset,
->   /*
->    * Callback function called for each extent to gather FIEMAP information.
->    */
-> -static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
-> +static int ext4_ext_fiemap_cb(struct inode *inode, ext4_lblk_t next,
->   		       struct ext4_ext_cache *newex, struct ext4_extent *ex,
->   		       void *data)
->   {
->   	__u64	logical;
->   	__u64	physical;
->   	__u64	length;
-> -	loff_t	size;
->   	__u32	flags = 0;
->   	int		ret = 0;
->   	struct fiemap_extent_info *fieinfo = data;
-> @@ -4103,8 +4102,7 @@ found_delayed_extent:
->   	if (ex&&  ext4_ext_is_uninitialized(ex))
->   		flags |= FIEMAP_EXTENT_UNWRITTEN;
->
-> -	size = i_size_read(inode);
-> -	if (logical + length>= size)
-> +	if (next == EXT_MAX_BLOCKS)
->   		flags |= FIEMAP_EXTENT_LAST;
->
->   	ret = fiemap_fill_next_extent(fieinfo, logical, physical,
+--=-=-=
+Content-Transfer-Encoding: quoted-printable
 
-Hi Lukas,
 
-I tried this patch and it fixed the 252 hang for me too.  This is a fix 
-I needed to continue the tests that I am working on.  Thank you!  :)
+Hello,
 
-Allison Henderson
+I recently ran into the subdirectory scalability issue of ext3 on our
+listserver. Thankfully, ext4 exists, so it was finally time to move to
+it. I followed the published process to convert the ext3 filesystem to
+ext4[0] and things worked well, I'm no longer hitting the 32000 limit on
+subdirectories.
+
+However, ever since I did that change, I've noticed an increase in I/O
+wait state on the CPUs. I've been trying to determine why, and if there
+were some things I should tune on this ext4 filesystem.
+
+First thing I found was that the Filesystem Features of an ext4
+filesystem that were converted from ext3 are different than those that
+are set on a filesystem that was created as ext4 (on Debian Squeeze),
+From=20tune2fs -l:
+
+a newly created ext4 has:
+Filesystem features:      has_journal ext_attr resize_inode dir_index filet=
+ype needs_recovery extent flex_bg sparse_super huge_file  uninit_bg dir_nli=
+nk extra_isize
+
+my migrated one has:=20
+Filesystem features:      has_journal ext_attr resize_inode dir_index filet=
+ype needs_recovery extent sparse_super large_file uninit_bg
+
+The difference being new filesystems have 'flex_bg', 'huge_file' and
+'extra_isize' set, and the converted filesystem has 'large_file' and
+'uninit_bg'. I'm not sure I understand why the difference and wonder if
+someone can explain to me why? Or if I should be changing these?
+
+Currently the filesystem is mounted with just rw,relatime set, and I
+wonder if there is a combination of some tune2fs changes, and mount
+options that we would benefit from.
+
+Basically this filesystem has a lot of small files, there is a set of
+spool directories where there are a lot of small writes, small reads and
+deletes. There is also an archive of list postings, which is a fairly
+large set of small files, which is mostly small writes, reads every once
+and a while. There is also a series of stats that happen on a large
+number of subdirectories.
+
+Thank you for any suggestions!
+micah
+
+
+0. https://ext4.wiki.kernel.org/index.php/Ext4_Howto#Converting_an_ext3_fil=
+esystem_to_ext4
+
+--=-=-=
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+
+iQIcBAEBCgAGBQJN6VbdAAoJEIy/mjIoYaeQJhQQAKCMcxHIeLsq8ua+vCB/v/ni
+h1QvrycjM5NW64X011dWt0FyJQthTb2uaamsuA39MenmOqqCK/f9nPPQWDwIFPo5
+pclMHFmXfdjEs8qFs8YQoFAj7K6BbA+ofjaP4YHlVhUD1UJZwcMzjrbd6976eQBs
+wsx2woUJ5N18blcYljpTFqFc65YGglTkCVhIL5jbC0qxW7wypATWGGSiji4O54of
+Hk8FCsMkXT7sE+sIfchas834/ZXAAho1FZG1GcKuKvilXofyDrPB7pGcED22lTYq
+ojQRZtstCEWZETMqYLMvKBsMiJWb5JUA32u7Sbf0JSqRGXXyRPAD/xGuS0NPKvqo
+URzfpf+/PSXNeHNZGby1Fhe5ZuWIjXe3Xp/fXdQ5xy/UAiPmjv06W0QG+2BLccGO
+PyJTr8W9Pww/MCwOimd30betvu2gVxf0KKKCmSgxGVgh2hNOwWtL3iWJ4vko168C
+CozMeX4oBkvJDVk9Qp+5dklABgnPLIuWaqmIaBE407apinafsftpzNGkm0QEcJdl
+Zu8z0x/mgMW3ovz6RS40SAWR1/Rqun0Z6wWl+rOpYMxUdIEtAPPXkfQq5lQ7HZoe
+Ncmp9C27RaxCXyR63lceQBPizXKy4e0kj3bfgJaJYsvsSaQ6Rw05upLhqP0+wurF
+NoMP036MyW6iD5yN4WF5
+=IlQg
+-----END PGP SIGNATURE-----
+--=-=-=--
+
