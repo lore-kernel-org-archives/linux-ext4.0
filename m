@@ -1,52 +1,90 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: Query about DIO/AIO WRITE throttling and ext4 serialization
-Date: Fri, 3 Jun 2011 01:00:55 -0400
-Message-ID: <20110603050055.GA6136@infradead.org>
-References: <20110602012209.GQ561@dastard>
- <20110602141716.GD18712@redhat.com>
- <20110602143633.GE18712@redhat.com>
- <20110602155610.GF18712@redhat.com>
- <20110602235153.GV561@dastard>
- <20110603002714.GA27129@redhat.com>
- <20110603004300.GE16306@thunk.org>
- <20110603005403.GB27129@redhat.com>
- <20110603010233.GA17726@infradead.org>
- <4DE8555E.7040404@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH v2] xfstests: add support for ext4dev FSTYP
+Date: Fri, 03 Jun 2011 00:06:09 -0500
+Message-ID: <4DE86BC1.4080008@redhat.com>
+References: <1306933012-8666-1-git-send-email-amir73il@users.sourceforge.net>	<20110601232804.GL32466@dastard>	<BANLkTi=sV5=PyZvNSd=DGNW-V84=27d7Yw@mail.gmail.com>	<BANLkTimbPWfOJKq6er4mnSYNPcx6VHLcrw@mail.gmail.com>	<BANLkTimKV3LxugkW6_cE5vutjcmatESXuw@mail.gmail.com>	<4DE7A557.9040608@redhat.com>	<7D3F86FA-5AA9-49B0-9AFE-F597E83C07B4@dilger.ca>	<20110603003610.GD16306@thunk.org> <BANLkTikiE1v6r7sYKSsR_pgqM-dJzQKrzQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Vivek Goyal <vgoyal@redhat.com>, Ted Ts'o <tytso@mit.edu>,
-	Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Ted Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>,
+	Dave Chinner <david@fromorbit.com>, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	sergey57@gmail.com, Amir Goldstein <amir73il@users.sf.net>
+To: "Amir G." <amir73il@users.sourceforge.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:35793
-	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751235Ab1FCFBC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Jun 2011 01:01:02 -0400
-Content-Disposition: inline
-In-Reply-To: <4DE8555E.7040404@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:53969 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750890Ab1FCFG1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 3 Jun 2011 01:06:27 -0400
+In-Reply-To: <BANLkTikiE1v6r7sYKSsR_pgqM-dJzQKrzQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 02, 2011 at 10:30:38PM -0500, Eric Sandeen wrote:
-> On 6/2/11 8:02 PM, Christoph Hellwig wrote:
-> > On Thu, Jun 02, 2011 at 08:54:03PM -0400, Vivek Goyal wrote:
-> >> Just wondering why ext4 and XFS behavior are different and which is a
-> >> more appropriate behavior. ext4 does not seem to be waiting for all
-> >> pending AIO/DIO to finish while XFS does.
-> > 
-> > They're both wrong.  Ext4 completely misses support in fsync or sync
-> > to catch pending unwrittent extent conversions, and thus fails to obey
-> > the data integrity guarante.  
+On 6/2/11 11:59 PM, Amir G. wrote:
+> On Fri, Jun 3, 2011 at 3:36 AM, Ted Ts'o <tytso@mit.edu> wrote:
+>> On Thu, Jun 02, 2011 at 11:22:53AM -0600, Andreas Dilger wrote:
+>>> On 2011-06-02, at 8:59 AM, Eric Sandeen wrote:
+>>>> I don't really mind adding ext4dev to FSTYP case statements, it
+>>>> -is- something which blkid could, in theory, still return, and
+>>>> making xfstests cope with that and try to invoke fsck -t ext4dev
+>>>> doesn't bother me too much.  It is sadly an fs type embedded into
+>>>> a few tools.
+>>>
+>>> I'm perfectly OK with using ext4dev as a filesystem type that allows testing
+>>> changes to ext4 on a system that is already running ext4 as the root fs.
+>>
+>> My take on this is that way too much time has been spent this subject.
 > 
-> I'm not sure about that.
+> No doubt.
 > 
-> ext4_sync_file() does ext4_flush_completed_IO() which does:
+>> Being able to use ext4dev is useful, and given that we have all of
+>> this support in our existing system tools, why not use it to make ext4
+>> development more efficient/easy?  As a bonus you can build the ext4dev
+>> as a module, and that means you the compile/edit/debug cycle can be
+>> much faster since you can avoid doing a reboot, for those
+>> circumstances where using KVM is not possible/convenient.  Personally,
+>> I normally use KVM these days, but I can imagine situations where
+>> using ext4dev would be a better way to go.  For example, I'd probably
+>> use KVM on my laptop, but for testing on production servers in a data
+>> center, I'd probably use ext4dev, for a variety of local deployment
+>> considerations that's not worth going into here.
+>>
+>> That being said, whether or not we modify xfstests seems to be a moot
+>> point.  In order for me to do my bigalloc development, I've been
+>> patching common.rc so that "/sbin/mkfs.$FSTYP" --> "mkfs.$FSTYP" and
+>> "/sbin/fsck -t $FSTYP" --> "fsck.$FSTYP".  It's a 3 line change.  Not
+>> a big deal.  I've been making this change using /bin/ed after
+>> installing xfstests.  So if the XFS folks want to veto this change ---
+>> who cares?  It's not hard to make the change locally in order to make
+>> xfstests.
+>>
+>> On the other hand, given that xfstests is using "mkfs.$FSTYP", I don't
+>> see why it's so important that it clings to "fsck -t $FSTYP" instead
+>> of using "fsck.$FSTYP".  There's no real benefit to calling the fsck
+>> driver; it's just an extra fork and exec, and xfstests is being
+>> inconsistent by insisting on the use of the fsck driver, but not using
+>> the mkfs driver.
+>>
+>> But that being said, hacking xfstests is not hard, and if Dave and/or
+>> Eric feels strongly about resisting this change, it's not worth a lot
+>> of time, one way or another....
+>>
+>>                                                - Ted
+>>
+> 
+> I blame only myself for not presenting the case correctly.
+> I made it sound like I am trying to push my own private hack upstream.
+> Actually, all 10 people involved in snapshot development clone my xfstests
+> tree from github, so we have no real need for the upstream change.
+> The reason I was pushing upstream is because I found this feature
+> so useful, I thought other developers may enjoy it as well.
+> 
+> Anyone on on this thread not having used ext4dev by next LSF
+> can come to me to claim his beer ;-)
 
-> Granted, I get easily lost in ext4's codepaths here, which is actually
-> why I suggested Vivek pose these questions to the list ;)
+mmm I like beer, I'll see you then!  ;)
 
-You're right it gets fsync right, but the sync still seems to be missing,
-which does not just include sync, but also the syncfs system call
-and unmount.
+-Eric (tucking this email away for future reference... ;)
+
+> Amir.
 
