@@ -1,192 +1,33 @@
 From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Fwd: [XFSTEST Add Fallocate Punch Hole Tests 3/3 v4] Add ENOSPC Hole
- Punch Test
-Date: Fri, 03 Jun 2011 12:14:49 -0700
-Message-ID: <4DE932A9.7040007@linux.vnet.ibm.com>
+Subject: Fwd: XFS TESTS: Add Fallocate Punch Hole Test v4 Changes
+Date: Fri, 03 Jun 2011 12:15:28 -0700
+Message-ID: <4DE932D0.9040808@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	xfs-oss <xfs@oss.sgi.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e33.co.us.ibm.com ([32.97.110.151]:52164 "EHLO
-	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755178Ab1FCTO4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Jun 2011 15:14:56 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
 
 -------- Original Message --------
-Subject: [XFSTEST Add Fallocate Punch Hole Tests 3/3 v4] Add ENOSPC Hole 
-Punch Test
-Date: Wed, 25 May 2011 19:34:44 -0700
+Subject: XFS TESTS: Add Fallocate Punch Hole Test v4 Changes
+Date: Wed, 25 May 2011 19:40:20 -0700
 From: Allison Henderson <achender@linux.vnet.ibm.com>
 To: xfs-oss <xfs@oss.sgi.com>
 
-This patch adds a test to 252 that tests that a hole can be punched even 
-when the
-disk is full.  Reserved blocks should be used to allow a punch hole to 
-proceed even
-when there is not enough blocks to further fragment the file. To test 
-this, the
-file system is fragmented by punching holes in regular intervals and filling
-the file system between punches. This will eventually force the file 
-system to use
-reserved blocks to proceed with the punch hole operation.
+Hi All,
 
-Signed-off-by: Allison Henderson <achender@us.ibm.com>
----
-:100755 100755 5efa243... b5204fe... M	252
-:100644 100644 ddf63b0... fc6123c... M	common.punch
-  252          |   12 +++++++
-  common.punch |   95 
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  2 files changed, 107 insertions(+), 0 deletions(-)
+Here is v4 of the punch hole tests.  I've merged in the non over-lapping 
+tests from v3 into 252, and I've separated the code paths for punch hole 
+and fallocate in the fsx patch.  I've also included the ENOSPC test that 
+we used in the ext4 punch hole tests.  Feedback appreciated!  Thx All!
 
-diff --git a/252 b/252
-index 5efa243..b5204fe 100755
---- a/252
-+++ b/252
-@@ -49,6 +49,7 @@ _supported_os Linux
-
-  _require_xfs_io_falloc_punch
-  _require_xfs_io_fiemap
-+_require_scratch
-
-  testfile=$TEST_DIR/252.$$
-
-@@ -64,4 +65,15 @@ _test_generic_punch -k falloc fpunch fpunch fiemap 
-_filter_fiemap $testfile -F
-  # Delayed allocation multi punch hole tests
-  _test_generic_punch -d -k falloc fpunch fpunch fiemap _filter_fiemap 
-$testfile -F
-
-+# Test full filesystem hole punching.
-+# Make a small file system to fill
-+umount $SCRATCH_DEV &> /dev/null
-+_scratch_mkfs_sized $(( 1024 * 1024 * 1024 )) &> /dev/null
-+_scratch_mount
-+# Test must be able to write files with non-root permissions
-+chmod 777 $SCRATCH_MNT
-+
-+block_size=`stat -f $SCRATCH_DEV | grep "Block size" | cut -d " " -f3`
-+_test_full_fs_punch $(( $block_size * 2 )) $block_size 500 
-$SCRATCH_MNT/252.$$
-+
-  status=0 ; exit
-diff --git a/common.punch b/common.punch
-index ddf63b0..fc6123c 100644
---- a/common.punch
-+++ b/common.punch
-@@ -481,5 +481,100 @@ _test_generic_punch()
-  		-c "$zero_cmd 128 128" \
-  		-c "$map_cmd -v" $testfile | $filter_cmd
-  	[ $? -ne 0 ] && die_now
-+}
-+
-+# _fill_fs()
-+#
-+# Fills a file system by repeatedly creating files in the given folder
-+# starting with the given file size.  Files are reduced in size when
-+# they can no longer fit untill no more files can be created.
-+#
-+# This routine is used by _test_full_fs_punch to test that a hole may
-+# still be punched when the disk is full by borrowing reserved blocks.
-+# All files are created as a non root user to prevent reserved blocks
-+# from being consumed.
-+#
-+_fill_fs() {
-+	local file_size=$1
-+	local dir=$2
-+	local file_count=1
-+
-+	if [ $# -ne 2 ]
-+	then
-+	    echo "USAGE: $0 filesize dir"
-+	    exit 1
-+	fi
-+
-+	mkdir -p $dir &> /dev/null
-+	if [[ $? != 0 ]] ; then
-+		return 0
-+	fi
-+	chmod 777 $dir
-+
-+	rc=0
-+	while [ $file_size -gt 0 -a $rc == 0 ]
-+	do
-+		# This part must not be done as root or
-+		# reserved blocks will be consumed
-+		sudo -u nobody $XFS_IO_PROG -F -f -c "pwrite  0 $file_size" 
-$dir/$file_count.bin &> /dev/null
-+		rc=$?
-+
-+		# If there was no room to make the file,
-+		# and the file size can still be made smaller,
-+		# then divide it in half, and keep going
-+		if [ $file_size -gt 1 -a $rc != 0 ]
-+		then
-+			file_size=$(( $file_size / 2 ))
-+			rc=0
-+		fi
-+		file_count=$(( $file_count + 1 ))
-+
-+	done
-+}
-
-+# _test_full_fs_punch()
-+#
-+# This function will test that a hole may be punched
-+# even when the file system is full.  Reserved blocks
-+# should be used to allow a punch hole to proceed even
-+# when there is not enough blocks to further fragment the
-+# file. To test this, this function will fragment the file
-+# system by punching holes in regular intervals and filling
-+# the file system between punches.
-+#
-+_test_full_fs_punch()
-+{
-+	hole_len=$1      # The length of the holes to punch
-+	hole_interval=$2 # The interval between the holes
-+	iterations=$3    # The number of holes to punch
-+	file_name=$4     # File to punch holes in
-+	file_len=$(( $(( $hole_len + $hole_interval )) * $iterations ))
-+	path=`dirname $file_name`
-+	hole_offset=0
-+
-+	rm -f $file_name &> /dev/null
-+
-+	$XFS_IO_PROG -F -f -c "pwrite 0 $file_len" \
-+		-c "fsync" $file_name &> /dev/null
-+	chmod 666 $file_name
-+
-+	_fill_fs $(( 1024 * 1024 * 1024 )) $path/fill
-+
-+	for (( i=0; i<$iterations; i++ ))
-+	do
-+		# This part must not be done as root in order to
-+		# test that reserved blocks are used when needed
-+		sudo -u nobody $XFS_IO_PROG -F -f -c "fpunch $hole_offset $hole_len" 
-$file_name
-+		rc=$?
-+		if [[ $? != 0 ]] ; then
-+			echo Punch hole failed
-+			break
-+		fi
-+
-+		hole_offset=$(( $hole_offset + $hole_len + $hole_interval ))
-+
-+		_fill_fs $hole_len $path/fill.$i
-+
-+	done
-  }
-+
--- 
-1.7.1
-
+Allison Henderson
 
 _______________________________________________
 xfs mailing list
