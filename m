@@ -1,7 +1,7 @@
-From: Christoph Hellwig <hch@infradead.org>
+From: Ted Ts'o <tytso@mit.edu>
 Subject: Re: Query about DIO/AIO WRITE throttling and ext4 serialization
-Date: Thu, 2 Jun 2011 21:02:33 -0400
-Message-ID: <20110603010233.GA17726@infradead.org>
+Date: Thu, 2 Jun 2011 21:11:29 -0400
+Message-ID: <20110603011129.GG16306@thunk.org>
 References: <20110601215049.GC17449@redhat.com>
  <20110602012209.GQ561@dastard>
  <20110602141716.GD18712@redhat.com>
@@ -13,86 +13,41 @@ References: <20110601215049.GC17449@redhat.com>
  <20110603005403.GB27129@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ted Ts'o <tytso@mit.edu>, Dave Chinner <david@fromorbit.com>,
-	linux-ext4@vger.kernel.org
+Cc: Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org
 To: Vivek Goyal <vgoyal@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:50213
-	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753634Ab1FCBCj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Jun 2011 21:02:39 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:34902 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754061Ab1FCBLd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 2 Jun 2011 21:11:33 -0400
 Content-Disposition: inline
 In-Reply-To: <20110603005403.GB27129@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 On Thu, Jun 02, 2011 at 08:54:03PM -0400, Vivek Goyal wrote:
+> 
+> In this case I had done "sync" while aio-stress was doing O_DIRECT writes.
+> I really don't have any real world example, I just cooked up a hypothetical
+> scenario.
+> 
 > Just wondering why ext4 and XFS behavior are different and which is a
 > more appropriate behavior. ext4 does not seem to be waiting for all
 > pending AIO/DIO to finish while XFS does.
 
-They're both wrong.  Ext4 completely misses support in fsync or sync
-to catch pending unwrittent extent conversions, and thus fails to obey
-the data integrity guarante.  XFS is beeing rather stupid about the
-amount of synchronization it requires.  The untested patch below
-should help with avoiding the synchronization if you're purely doing
-overwrites:
+I think this is something we can chalk up to "different
+implementations do different things".  I'm not convinced either
+behviour is wrong per se.  Granted, the recent work to make sync and
+fsync not livelock in the face of continuing writes means that I'm
+more happy with ext4's behaviour, but I don't think that means xfs's
+behavior is wrong.
 
+One of the things that I have thought about is sysctl which makes sync
+a no-op unless you are root.  The reason for that is that many system
+administrators sometimes have a habit of typing sync, and on a heavily
+loaded production server, this can really cause performance to go to
+hell for up to tens of minutes.  So it might make sense to not allow
+non-root users from trashing overall system performance by running
+sync....
 
-Index: xfs/fs/xfs/linux-2.6/xfs_aops.c
-===================================================================
---- xfs.orig/fs/xfs/linux-2.6/xfs_aops.c	2011-06-03 09:54:52.964337556 +0900
-+++ xfs/fs/xfs/linux-2.6/xfs_aops.c	2011-06-03 09:57:06.877674259 +0900
-@@ -270,7 +270,7 @@ xfs_finish_ioend_sync(
-  * (vs. incore size).
-  */
- STATIC xfs_ioend_t *
--xfs_alloc_ioend(
-+__xfs_alloc_ioend(
- 	struct inode		*inode,
- 	unsigned int		type)
- {
-@@ -290,7 +290,6 @@ xfs_alloc_ioend(
- 	ioend->io_inode = inode;
- 	ioend->io_buffer_head = NULL;
- 	ioend->io_buffer_tail = NULL;
--	atomic_inc(&XFS_I(ioend->io_inode)->i_iocount);
- 	ioend->io_offset = 0;
- 	ioend->io_size = 0;
- 	ioend->io_iocb = NULL;
-@@ -300,6 +299,18 @@ xfs_alloc_ioend(
- 	return ioend;
- }
- 
-+STATIC xfs_ioend_t *
-+xfs_alloc_ioend(
-+	struct inode		*inode,
-+	unsigned int		type)
-+{
-+	struct xfs_ioend	*ioend;
-+
-+	ioend = __xfs_alloc_ioend(inode, type);
-+	atomic_inc(&XFS_I(ioend->io_inode)->i_iocount);
-+	return ioend;
-+}
-+
- STATIC int
- xfs_map_blocks(
- 	struct inode		*inode,
-@@ -1318,6 +1329,7 @@ xfs_end_io_direct_write(
- 	 */
- 	iocb->private = NULL;
- 
-+	atomic_inc(&XFS_I(ioend->io_inode)->i_iocount);
- 	ioend->io_offset = offset;
- 	ioend->io_size = size;
- 	if (private && size > 0)
-@@ -1354,7 +1366,7 @@ xfs_vm_direct_IO(
- 	ssize_t			ret;
- 
- 	if (rw & WRITE) {
--		iocb->private = xfs_alloc_ioend(inode, IO_DIRECT);
-+		iocb->private = __xfs_alloc_ioend(inode, IO_DIRECT);
- 
- 		ret = __blockdev_direct_IO(rw, iocb, inode, bdev, iov,
- 					    offset, nr_segs,
+						- Ted
