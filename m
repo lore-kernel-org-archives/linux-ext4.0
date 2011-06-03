@@ -1,103 +1,78 @@
-From: Kyungmin Park <kmpark@infradead.org>
-Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate super_operation
-Date: Fri, 3 Jun 2011 13:25:21 +0900
-Message-ID: <BANLkTin7afjph7=GO=K+QcBSaOUf7zJqSw@mail.gmail.com>
-References: <20101118142918.GA18510@infradead.org>
-	<1290100750.3041.72.camel@mulgrave.site>
-	<4CE59C9E.6050902@teksavvy.com>
-	<1290177488-sup-6540@think>
-	<4CE68F80.7000607@teksavvy.com>
-	<20101119145748.GB27919@infradead.org>
-	<4CE695FF.20601@teksavvy.com>
-	<20101207092749.GA26100@infradead.org>
-	<1291740643-sup-2494@think>
-	<BANLkTimkn7ZVAUJw6NfWVMECfe+C+82i+g@mail.gmail.com>
-	<20110603020615.GZ561@dastard>
+From: "Amir G." <amir73il@users.sourceforge.net>
+Subject: Re: [PATCH RFC 13/30] ext4: snapshot file - increase maximum file
+ size limit to 16TB
+Date: Fri, 3 Jun 2011 07:45:34 +0300
+Message-ID: <BANLkTimW=mfWvByCdV-d4-DShPwcMEC+kw@mail.gmail.com>
+References: <1304959308-11122-1-git-send-email-amir73il@users.sourceforge.net>
+	<1304959308-11122-14-git-send-email-amir73il@users.sourceforge.net>
+	<BANLkTi=uHU-LH0QwCvn=5su3ZaVK_7YgnQ@mail.gmail.com>
+	<20110603004837.GF16306@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Chris Mason <chris.mason@oracle.com>,
-	Lukas Czerner <lczerner@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Mark Lord <kernel@teksavvy.com>,
-	James Bottomley <james.bottomley@suse.de>,
-	Matthew Wilcox <matthew@wil.cx>,
-	Josef Bacik <josef@redhat.com>, tytso <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	sandeen <sandeen@redhat.com>
-To: Dave Chinner <david@fromorbit.com>
+Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:62654 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750745Ab1FCEZX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Jun 2011 00:25:23 -0400
-In-Reply-To: <20110603020615.GZ561@dastard>
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:43327 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750906Ab1FCEph convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Jun 2011 00:45:37 -0400
+Received: by wya21 with SMTP id 21so1119666wya.19
+        for <linux-ext4@vger.kernel.org>; Thu, 02 Jun 2011 21:45:36 -0700 (PDT)
+In-Reply-To: <20110603004837.GF16306@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jun 3, 2011 at 11:06 AM, Dave Chinner <david@fromorbit.com> wro=
-te:
-> On Thu, Jun 02, 2011 at 01:52:12PM +0900, Kyungmin Park wrote:
->> On Wed, Dec 8, 2010 at 1:52 AM, Chris Mason <chris.mason@oracle.com>=
- wrote:
->> > Excerpts from Christoph Hellwig's message of 2010-12-07 04:27:49 -=
-0500:
->> >> On Fri, Nov 19, 2010 at 10:21:35AM -0500, Mark Lord wrote:
->> >> > >I really hate to rely on this third party hearsay (from all si=
-des), and
->> >> > >have implement TRIM support in qemu now. =A0I'll soon install =
-win7 and
->> >> > >will check out the TRIM patters myself.
->> >> >
->> >> > Excellent!
->> >>
->> >> I did a Windows 7 installation under qemu today, and the result i=
-s:
->> >
->> > Great, thanks for testing this.
->> >
->> >>
->> >> =A0- it TRIMs the whole device early during the installation
->> >> =A0- after that I see a constant stream of small trims during the
->> >> =A0 =A0installation. =A0It's using lots of non-contiguous ranges =
-in a single
->> >> =A0 =A0TRIM command, with sizes down to 8 sectors (4k) for a sing=
-le range.
->> >> =A0- after installation there's is some background-trimming going=
- on
->> >> =A0 =A0even when doing no user interaction with the VM at all.
->>
->> Hi Lukas,
->>
->> Now FITRIM is based on user interaction. So how about to implement t=
-he
->> AUTO batched discard at kernel level?
->> Idea is same as windows, make a single thread and iterate the
->> superblocks and call the trim.
+On Fri, Jun 3, 2011 at 3:48 AM, Ted Ts'o <tytso@mit.edu> wrote:
+> On Thu, Jun 02, 2011 at 02:47:19PM +0300, Amir G. wrote:
+>> Let it not be said that my patches don't get reviewed ;-)
 >
-> Surely this the responsibility of a userspace daemon and a config
-> file to decide and implement the background trim policy?
+> Between the merge window work, and the fact that I'm in Yokohama this
+> week attending the Linux Con Japan conference, and in two weeks I wil=
+l
+> be in Portland for Usenix, it's unlikely I will have any time to look
+> at your snapshot patches until the end of the month. =A0Sorry, but
+> things have just been crazy as of late.
+>
+> I had been hoping that other people would have had time to look at
+> your patches, but I suspect this has been a busy time for other folks
+> as well.
+>
+> I'm certainly willing to try using the github workflow, although the
+> fact that it requires an on-line network connection is a little
+> inconvenient when one is on airplanes as much as I have been as of
+> late. =A0But it may be that the upsides more than compensate for this
+> one disadvantage.
+>
+> Please do send a pointer to the patches to be reviewed on github to
+> the ext4 list, so that hopefully others on this list will be able to
+> look at your patches.
+>
+> Thanks,
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0- Ted
+>
 
-It seems to run as crond. BTW, what's config file? time based or behavi=
-or?
-my rough idea to run at kernel level.
+Hi All,
 
-1. Block I/O aware notification.
-2. Explicit filesystem call
-3. user space request. (same as current)
+Please see my patches online at:
+https://github.com/amir73il/ext4-snapshots/commits/for-ext4/
 
-Thank you,
-Kyungmin Park
->
-> Cheers,
->
-> Dave.
-> --
-> Dave Chinner
-> david@fromorbit.com
->
+You'd be surprised how easy (and addictive) it is to review patches thi=
+s way.
+just click on one of the commits, scroll down and click a line to
+insert a comment
+(which I get by email and can reply by email and our thread shows up em=
+bedded
+in the commit on the website).
+
+=46eel free to just leave "XXX was here" so everyone can see how it wor=
+ks.
+
+Thanks,
+Amir.
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
