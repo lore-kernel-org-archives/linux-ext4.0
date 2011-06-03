@@ -1,60 +1,70 @@
-From: Vivek Goyal <vgoyal@redhat.com>
-Subject: Re: Query about DIO/AIO WRITE throttling and ext4 serialization
-Date: Thu, 2 Jun 2011 20:27:14 -0400
-Message-ID: <20110603002714.GA27129@redhat.com>
-References: <20110601215049.GC17449@redhat.com>
- <20110602012209.GQ561@dastard>
- <20110602141716.GD18712@redhat.com>
- <20110602143633.GE18712@redhat.com>
- <20110602155610.GF18712@redhat.com>
- <20110602235153.GV561@dastard>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2] xfstests: add support for ext4dev FSTYP
+Date: Thu, 2 Jun 2011 20:36:10 -0400
+Message-ID: <20110603003610.GD16306@thunk.org>
+References: <1306933012-8666-1-git-send-email-amir73il@users.sourceforge.net>
+ <20110601232804.GL32466@dastard>
+ <BANLkTi=sV5=PyZvNSd=DGNW-V84=27d7Yw@mail.gmail.com>
+ <BANLkTimbPWfOJKq6er4mnSYNPcx6VHLcrw@mail.gmail.com>
+ <BANLkTimKV3LxugkW6_cE5vutjcmatESXuw@mail.gmail.com>
+ <4DE7A557.9040608@redhat.com>
+ <7D3F86FA-5AA9-49B0-9AFE-F597E83C07B4@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:14103 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753881Ab1FCA1X (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 2 Jun 2011 20:27:23 -0400
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	"Amir G." <amir73il@users.sourceforge.net>,
+	Dave Chinner <david@fromorbit.com>, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	sergey57@gmail.com, Amir Goldstein <amir73il@users.sf.net>
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20110602235153.GV561@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <7D3F86FA-5AA9-49B0-9AFE-F597E83C07B4@dilger.ca>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jun 03, 2011 at 09:51:53AM +1000, Dave Chinner wrote:
-
-[..]
-> > > Dave,
-> > > 
-> > > I did a quick test of throttling a direct IO on one file and then
-> > > doing "truncate -s 40 testfile" on a different file in different
-> > > cgroup and it seems to work fine.
-> > > 
-> > > But I seem to be having issues with "sync". Looks like in ext4, if
-> > > I throttle a DIO, sync does not hang but in XFS it does. I am 
-> > > wondering if XFS is waiting for all inflight DIO to finish before
-> > > sync completes.
-> > 
-> > "sync" on XFS seems to be livelocking as long as DIO write operation
-> > is going on and same does not happen on ext4.
-> > 
-> > I ran "aio-stress -O aiofile1 -s 4G" and in other window I did "sync"
-> > and it does not finish untile and unless aio-stress has finished.
-> > On the other hand ext4 seems to be fine and it does finish earlier.
+On Thu, Jun 02, 2011 at 11:22:53AM -0600, Andreas Dilger wrote:
+> On 2011-06-02, at 8:59 AM, Eric Sandeen wrote:
+> > I don't really mind adding ext4dev to FSTYP case statements, it
+> > -is- something which blkid could, in theory, still return, and
+> > making xfstests cope with that and try to invoke fsck -t ext4dev
+> > doesn't bother me too much.  It is sadly an fs type embedded into
+> > a few tools.
 > 
-> On XFS sync waits for the IO count on each inode to return to zero
-> before continuing.  If you are blasting concurrent AIO/DIO at a
-> file, then it is possible that the IO count never falls to zero.
-> It's questionable whether this is necessary, but ISTR that the
-> current behaviour has been there for a long time (though morphed
-> about a bit in implementation).
+> I'm perfectly OK with using ext4dev as a filesystem type that allows testing
+> changes to ext4 on a system that is already running ext4 as the root fs.
 
-In this case only a single thread is doing IO continuously. I am assuming
-if there is a database using XFS, it is not unreasonable to have prolonged
-periods of continuous IO activity. In that case I think by above design
-sync will not finish until and unless there is a momentary pause in IO. This
-does not sound like the best design choice.
+My take on this is that way too much time has been spent this subject.
+Being able to use ext4dev is useful, and given that we have all of
+this support in our existing system tools, why not use it to make ext4
+development more efficient/easy?  As a bonus you can build the ext4dev
+as a module, and that means you the compile/edit/debug cycle can be
+much faster since you can avoid doing a reboot, for those
+circumstances where using KVM is not possible/convenient.  Personally,
+I normally use KVM these days, but I can imagine situations where
+using ext4dev would be a better way to go.  For example, I'd probably
+use KVM on my laptop, but for testing on production servers in a data
+center, I'd probably use ext4dev, for a variety of local deployment
+considerations that's not worth going into here.
 
-Thanks
-Vivek
+That being said, whether or not we modify xfstests seems to be a moot
+point.  In order for me to do my bigalloc development, I've been
+patching common.rc so that "/sbin/mkfs.$FSTYP" --> "mkfs.$FSTYP" and
+"/sbin/fsck -t $FSTYP" --> "fsck.$FSTYP".  It's a 3 line change.  Not
+a big deal.  I've been making this change using /bin/ed after
+installing xfstests.  So if the XFS folks want to veto this change ---
+who cares?  It's not hard to make the change locally in order to make
+xfstests.
+
+On the other hand, given that xfstests is using "mkfs.$FSTYP", I don't
+see why it's so important that it clings to "fsck -t $FSTYP" instead
+of using "fsck.$FSTYP".  There's no real benefit to calling the fsck
+driver; it's just an extra fork and exec, and xfstests is being
+inconsistent by insisting on the use of the fsck driver, but not using
+the mkfs driver.
+
+But that being said, hacking xfstests is not hard, and if Dave and/or
+Eric feels strongly about resisting this change, it's not worth a lot
+of time, one way or another....
+
+						- Ted
