@@ -1,555 +1,156 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] ext4: fixed tracepoints cleanup
-Date: Sun,  5 Jun 2011 12:00:28 +0200
-Message-ID: <1307268028-6974-1-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 1/2 v4] e2fsprogs: Fix how we treat user-spcified filesystem size
+Date: Sun,  5 Jun 2011 12:30:44 +0200
+Message-ID: <1307269845-15062-1-git-send-email-lczerner@redhat.com>
 Cc: tytso@mit.edu, Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:24893 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:38060 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755643Ab1FEKAf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 5 Jun 2011 06:00:35 -0400
+	id S1755154Ab1FEKav (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 5 Jun 2011 06:30:51 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-While creating fixed tracepoints for ext3, basically by porting them
-from ext4, I found a lot of useless retyping, wrong type usage, useless
-variable passing and other inconsistencies in the ext4 fixed tracepoint
-code.
+mke2fs and resize2fs allows specifying filesystem size as a parameter,
+former called as blocks-count. However it has been a little bit messy so
+this commit fixes it mainly by updating man pages.
 
-This patch cleans the fixed tracepoint code for ext4 and also simplify
-some of them.
+We can not specify filesystem size in blocks count without specifying
+blocksize as well. It is because we need blocks count to determine
+filesystem type, and we need filesystem type to determine blocksize. So
+it should not be allowed, however due to compatibility reason it should
+be still possible, so at least print warning message for now, so we can
+easily restrict that later.
+
+Filesystem size can be specified using units as suffixes. This was not
+documented for mke2fs, so this commits adds proper documentation into
+mke2fs man page.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 ---
- fs/ext4/inode.c             |    2 +-
- fs/ext4/mballoc.c           |    6 +-
- include/trace/events/ext4.h |  179 ++++++++++++++++++-------------------------
- 3 files changed, 80 insertions(+), 107 deletions(-)
+[v2]: do not spell units - mebibytes etc... - but rather use just abbrev.
+[v3]: Change some phrasing in man pages, mainly with the help from Eric Sandeen
+[v4]: Remove 'b' unit designator.
+ lib/e2p/parse_num.c   |    1 -
+ misc/mke2fs.8.in      |   34 ++++++++++++++++++++++++++++------
+ resize/resize2fs.8.in |   23 ++++++++---------------
+ 3 files changed, 36 insertions(+), 22 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index a5763e3..e3126c0 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2634,7 +2634,7 @@ static int ext4_writepage(struct page *page,
- 	struct buffer_head *page_bufs = NULL;
- 	struct inode *inode = page->mapping->host;
- 
--	trace_ext4_writepage(inode, page);
-+	trace_ext4_writepage(page);
- 	size = i_size_read(inode);
- 	if (page->index == size >> PAGE_CACHE_SHIFT)
- 		len = size & ~PAGE_CACHE_MASK;
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 859f2ae..0b2664b 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3578,8 +3578,8 @@ ext4_mb_release_inode_pa(struct ext4_buddy *e4b, struct buffer_head *bitmap_bh,
- 		free += next - bit;
- 
- 		trace_ext4_mballoc_discard(sb, NULL, group, bit, next - bit);
--		trace_ext4_mb_release_inode_pa(sb, pa->pa_inode, pa,
--					       grp_blk_start + bit, next - bit);
-+		trace_ext4_mb_release_inode_pa(pa, grp_blk_start + bit,
-+					       next - bit);
- 		mb_free_blocks(pa->pa_inode, e4b, bit, next - bit);
- 		bit = next + 1;
+diff --git a/lib/e2p/parse_num.c b/lib/e2p/parse_num.c
+index 83a329a..8e2751b 100644
+--- a/lib/e2p/parse_num.c
++++ b/lib/e2p/parse_num.c
+@@ -37,7 +37,6 @@ unsigned long long parse_num_blocks2(const char *arg, int log_block_size)
+ 		num >>= (1+log_block_size);
+ 		break;
+ 	case '\0':
+-		break;
+ 	default:
+ 		return 0;
  	}
-@@ -3608,7 +3608,7 @@ ext4_mb_release_group_pa(struct ext4_buddy *e4b,
- 	ext4_group_t group;
- 	ext4_grpblk_t bit;
- 
--	trace_ext4_mb_release_group_pa(sb, pa);
-+	trace_ext4_mb_release_group_pa(pa);
- 	BUG_ON(pa->pa_deleted == 0);
- 	ext4_get_group_no_and_offset(sb, pa->pa_pstart, &group, &bit);
- 	BUG_ON(group != e4b->bd_group && pa->pa_len != 0);
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index e09592d..5ce2b2f 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -26,7 +26,7 @@ TRACE_EVENT(ext4_free_inode,
- 		__field(	umode_t, mode			)
- 		__field(	uid_t,	uid			)
- 		__field(	gid_t,	gid			)
--		__field(	blkcnt_t, blocks		)
-+		__field(	__u64, blocks			)
- 	),
- 
- 	TP_fast_assign(
-@@ -40,9 +40,8 @@ TRACE_EVENT(ext4_free_inode,
- 
- 	TP_printk("dev %d,%d ino %lu mode 0%o uid %u gid %u blocks %llu",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
--		  (unsigned long) __entry->ino,
--		  __entry->mode, __entry->uid, __entry->gid,
--		  (unsigned long long) __entry->blocks)
-+		  (unsigned long) __entry->ino, __entry->mode,
-+		  __entry->uid, __entry->gid, __entry->blocks)
- );
- 
- TRACE_EVENT(ext4_request_inode,
-@@ -178,7 +177,7 @@ TRACE_EVENT(ext4_begin_ordered_truncate,
- 	TP_printk("dev %d,%d ino %lu new_size %lld",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
--		  (long long) __entry->new_size)
-+		  __entry->new_size)
- );
- 
- DECLARE_EVENT_CLASS(ext4__write_begin,
-@@ -204,7 +203,7 @@ DECLARE_EVENT_CLASS(ext4__write_begin,
- 		__entry->flags	= flags;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu pos %llu len %u flags %u",
-+	TP_printk("dev %d,%d ino %lu pos %lld len %u flags %u",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
- 		  __entry->pos, __entry->len, __entry->flags)
-@@ -248,7 +247,7 @@ DECLARE_EVENT_CLASS(ext4__write_end,
- 		__entry->copied	= copied;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu pos %llu len %u copied %u",
-+	TP_printk("dev %d,%d ino %lu pos %lld len %u copied %u",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
- 		  __entry->pos, __entry->len, __entry->copied)
-@@ -286,29 +285,6 @@ DEFINE_EVENT(ext4__write_end, ext4_da_write_end,
- 	TP_ARGS(inode, pos, len, copied)
- );
- 
--TRACE_EVENT(ext4_writepage,
--	TP_PROTO(struct inode *inode, struct page *page),
--
--	TP_ARGS(inode, page),
--
--	TP_STRUCT__entry(
--		__field(	dev_t,	dev			)
--		__field(	ino_t,	ino			)
--		__field(	pgoff_t, index			)
--
--	),
--
--	TP_fast_assign(
--		__entry->dev	= inode->i_sb->s_dev;
--		__entry->ino	= inode->i_ino;
--		__entry->index	= page->index;
--	),
--
--	TP_printk("dev %d,%d ino %lu page_index %lu",
--		  MAJOR(__entry->dev), MINOR(__entry->dev),
--		  (unsigned long) __entry->ino, __entry->index)
--);
--
- TRACE_EVENT(ext4_da_writepages,
- 	TP_PROTO(struct inode *inode, struct writeback_control *wbc),
- 
-@@ -341,7 +317,7 @@ TRACE_EVENT(ext4_da_writepages,
- 	),
- 
- 	TP_printk("dev %d,%d ino %lu nr_to_write %ld pages_skipped %ld "
--		  "range_start %llu range_end %llu sync_mode %d"
-+		  "range_start %lld range_end %lld sync_mode %d"
- 		  "for_kupdate %d range_cyclic %d writeback_index %lu",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino, __entry->nr_to_write,
-@@ -449,7 +425,14 @@ DECLARE_EVENT_CLASS(ext4__page_op,
- 	TP_printk("dev %d,%d ino %lu page_index %lu",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
--		  __entry->index)
-+		  (unsigned long) __entry->index)
-+);
-+
-+DEFINE_EVENT(ext4__page_op, ext4_writepage,
-+
-+	TP_PROTO(struct page *page),
-+
-+	TP_ARGS(page)
- );
- 
- DEFINE_EVENT(ext4__page_op, ext4_readpage,
-@@ -489,7 +472,7 @@ TRACE_EVENT(ext4_invalidatepage,
- 	TP_printk("dev %d,%d ino %lu page_index %lu offset %lu",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
--		  __entry->index, __entry->offset)
-+		  (unsigned long) __entry->index, __entry->offset)
- );
- 
- TRACE_EVENT(ext4_discard_blocks,
-@@ -562,12 +545,10 @@ DEFINE_EVENT(ext4__mb_new_pa, ext4_mb_new_group_pa,
- );
- 
- TRACE_EVENT(ext4_mb_release_inode_pa,
--	TP_PROTO(struct super_block *sb,
--		 struct inode *inode,
--		 struct ext4_prealloc_space *pa,
-+	TP_PROTO(struct ext4_prealloc_space *pa,
- 		 unsigned long long block, unsigned int count),
- 
--	TP_ARGS(sb, inode, pa, block, count),
-+	TP_ARGS(pa, block, count),
- 
- 	TP_STRUCT__entry(
- 		__field(	dev_t,	dev			)
-@@ -578,8 +559,8 @@ TRACE_EVENT(ext4_mb_release_inode_pa,
- 	),
- 
- 	TP_fast_assign(
--		__entry->dev		= sb->s_dev;
--		__entry->ino		= inode->i_ino;
-+		__entry->dev		= pa->pa_inode->i_sb->s_dev;
-+		__entry->ino		= pa->pa_inode->i_ino;
- 		__entry->block		= block;
- 		__entry->count		= count;
- 	),
-@@ -591,10 +572,9 @@ TRACE_EVENT(ext4_mb_release_inode_pa,
- );
- 
- TRACE_EVENT(ext4_mb_release_group_pa,
--	TP_PROTO(struct super_block *sb,
--		 struct ext4_prealloc_space *pa),
-+	TP_PROTO(struct ext4_prealloc_space *pa),
- 
--	TP_ARGS(sb, pa),
-+	TP_ARGS(pa),
- 
- 	TP_STRUCT__entry(
- 		__field(	dev_t,	dev			)
-@@ -604,7 +584,7 @@ TRACE_EVENT(ext4_mb_release_group_pa,
- 	),
- 
- 	TP_fast_assign(
--		__entry->dev		= sb->s_dev;
-+		__entry->dev		= pa->pa_inode->i_sb->s_dev;
- 		__entry->pa_pstart	= pa->pa_pstart;
- 		__entry->pa_len		= pa->pa_len;
- 	),
-@@ -666,10 +646,10 @@ TRACE_EVENT(ext4_request_blocks,
- 		__field(	ino_t,	ino			)
- 		__field(	unsigned int, flags		)
- 		__field(	unsigned int, len		)
--		__field(	__u64,  logical			)
-+		__field(	__u32,  logical			)
-+		__field(	__u32,	lleft			)
-+		__field(	__u32,	lright			)
- 		__field(	__u64,	goal			)
--		__field(	__u64,	lleft			)
--		__field(	__u64,	lright			)
- 		__field(	__u64,	pleft			)
- 		__field(	__u64,	pright			)
- 	),
-@@ -687,17 +667,13 @@ TRACE_EVENT(ext4_request_blocks,
- 		__entry->pright	= ar->pright;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu flags %u len %u lblk %llu goal %llu "
--		  "lleft %llu lright %llu pleft %llu pright %llu ",
-+	TP_printk("dev %d,%d ino %lu flags %u len %u lblk %u goal %llu "
-+		  "lleft %u lright %u pleft %llu pright %llu ",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
--		  (unsigned long) __entry->ino,
--		  __entry->flags, __entry->len,
--		  (unsigned long long) __entry->logical,
--		  (unsigned long long) __entry->goal,
--		  (unsigned long long) __entry->lleft,
--		  (unsigned long long) __entry->lright,
--		  (unsigned long long) __entry->pleft,
--		  (unsigned long long) __entry->pright)
-+		  (unsigned long) __entry->ino, __entry->flags,
-+		  __entry->len, __entry->logical, __entry->goal,
-+		  __entry->lleft, __entry->lright, __entry->pleft,
-+		  __entry->pright)
- );
- 
- TRACE_EVENT(ext4_allocate_blocks,
-@@ -711,10 +687,10 @@ TRACE_EVENT(ext4_allocate_blocks,
- 		__field(	__u64,	block			)
- 		__field(	unsigned int, flags		)
- 		__field(	unsigned int, len		)
--		__field(	__u64,  logical			)
-+		__field(	__u32,  logical			)
-+		__field(	__u32,	lleft			)
-+		__field(	__u32,	lright			)
- 		__field(	__u64,	goal			)
--		__field(	__u64,	lleft			)
--		__field(	__u64,	lright			)
- 		__field(	__u64,	pleft			)
- 		__field(	__u64,	pright			)
- 	),
-@@ -733,17 +709,13 @@ TRACE_EVENT(ext4_allocate_blocks,
- 		__entry->pright	= ar->pright;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu flags %u len %u block %llu lblk %llu "
--		  "goal %llu lleft %llu lright %llu pleft %llu pright %llu",
-+	TP_printk("dev %d,%d ino %lu flags %u len %u block %llu lblk %u "
-+		  "goal %llu lleft %u lright %u pleft %llu pright %llu",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
--		  (unsigned long) __entry->ino,
--		  __entry->flags, __entry->len, __entry->block,
--		  (unsigned long long) __entry->logical,
--		  (unsigned long long) __entry->goal,
--		  (unsigned long long) __entry->lleft,
--		  (unsigned long long) __entry->lright,
--		  (unsigned long long) __entry->pleft,
--		  (unsigned long long) __entry->pright)
-+		  (unsigned long) __entry->ino, __entry->flags,
-+		  __entry->len, __entry->block, __entry->logical,
-+		  __entry->goal,  __entry->lleft, __entry->lright,
-+		  __entry->pleft, __entry->pright)
- );
- 
- TRACE_EVENT(ext4_free_blocks,
-@@ -755,10 +727,10 @@ TRACE_EVENT(ext4_free_blocks,
- 	TP_STRUCT__entry(
- 		__field(	dev_t,	dev			)
- 		__field(	ino_t,	ino			)
--		__field(      umode_t, mode			)
-+		__field(	umode_t, mode			)
- 		__field(	__u64,	block			)
- 		__field(	unsigned long,	count		)
--		__field(	 int,	flags			)
-+		__field(	int,	flags			)
- 	),
- 
- 	TP_fast_assign(
-@@ -798,7 +770,7 @@ TRACE_EVENT(ext4_sync_file_enter,
- 		__entry->parent		= dentry->d_parent->d_inode->i_ino;
- 	),
- 
--	TP_printk("dev %d,%d ino %ld parent %ld datasync %d ",
-+	TP_printk("dev %d,%d ino %lu parent %lu datasync %d ",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
- 		  (unsigned long) __entry->parent, __entry->datasync)
-@@ -821,7 +793,7 @@ TRACE_EVENT(ext4_sync_file_exit,
- 		__entry->dev		= inode->i_sb->s_dev;
- 	),
- 
--	TP_printk("dev %d,%d ino %ld ret %d",
-+	TP_printk("dev %d,%d ino %lu ret %d",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
- 		  __entry->ret)
-@@ -1005,7 +977,7 @@ DECLARE_EVENT_CLASS(ext4__mballoc,
- 		__entry->result_len	= len;
- 	),
- 
--	TP_printk("dev %d,%d inode %lu extent %u/%d/%u ",
-+	TP_printk("dev %d,%d inode %lu extent %u/%d/%d ",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
- 		  __entry->result_group, __entry->result_start,
-@@ -1093,7 +1065,7 @@ TRACE_EVENT(ext4_da_update_reserve_space,
- 		  "allocated_meta_blocks %d",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
--		  __entry->mode,  (unsigned long long) __entry->i_blocks,
-+		  __entry->mode, __entry->i_blocks,
- 		  __entry->used_blocks, __entry->reserved_data_blocks,
- 		  __entry->reserved_meta_blocks, __entry->allocated_meta_blocks)
- );
-@@ -1127,7 +1099,7 @@ TRACE_EVENT(ext4_da_reserve_space,
- 		  "reserved_data_blocks %d reserved_meta_blocks %d",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
--		  __entry->mode, (unsigned long long) __entry->i_blocks,
-+		  __entry->mode, __entry->i_blocks,
- 		  __entry->md_needed, __entry->reserved_data_blocks,
- 		  __entry->reserved_meta_blocks)
- );
-@@ -1164,7 +1136,7 @@ TRACE_EVENT(ext4_da_release_space,
- 		  "allocated_meta_blocks %d",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
--		  __entry->mode, (unsigned long long) __entry->i_blocks,
-+		  __entry->mode, __entry->i_blocks,
- 		  __entry->freed_blocks, __entry->reserved_data_blocks,
- 		  __entry->reserved_meta_blocks, __entry->allocated_meta_blocks)
- );
-@@ -1239,14 +1211,15 @@ TRACE_EVENT(ext4_direct_IO_enter,
- 		__entry->rw	= rw;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu pos %llu len %lu rw %d",
-+	TP_printk("dev %d,%d ino %lu pos %lld len %lu rw %d",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
--		  (unsigned long long) __entry->pos, __entry->len, __entry->rw)
-+		  __entry->pos, __entry->len, __entry->rw)
- );
- 
- TRACE_EVENT(ext4_direct_IO_exit,
--	TP_PROTO(struct inode *inode, loff_t offset, unsigned long len, int rw, int ret),
-+	TP_PROTO(struct inode *inode, loff_t offset, unsigned long len,
-+		 int rw, int ret),
- 
- 	TP_ARGS(inode, offset, len, rw, ret),
- 
-@@ -1268,10 +1241,10 @@ TRACE_EVENT(ext4_direct_IO_exit,
- 		__entry->ret	= ret;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu pos %llu len %lu rw %d ret %d",
-+	TP_printk("dev %d,%d ino %lu pos %lld len %lu rw %d ret %d",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
--		  (unsigned long long) __entry->pos, __entry->len,
-+		  __entry->pos, __entry->len,
- 		  __entry->rw, __entry->ret)
- );
- 
-@@ -1296,15 +1269,15 @@ TRACE_EVENT(ext4_fallocate_enter,
- 		__entry->mode	= mode;
- 	),
- 
--	TP_printk("dev %d,%d ino %ld pos %llu len %llu mode %d",
-+	TP_printk("dev %d,%d ino %lu pos %lld len %lld mode %d",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
--		  (unsigned long) __entry->ino,
--		  (unsigned long long) __entry->pos,
--		  (unsigned long long) __entry->len, __entry->mode)
-+		  (unsigned long) __entry->ino, __entry->pos,
-+		  __entry->len, __entry->mode)
- );
- 
- TRACE_EVENT(ext4_fallocate_exit,
--	TP_PROTO(struct inode *inode, loff_t offset, unsigned int max_blocks, int ret),
-+	TP_PROTO(struct inode *inode, loff_t offset,
-+		 unsigned int max_blocks, int ret),
- 
- 	TP_ARGS(inode, offset, max_blocks, ret),
- 
-@@ -1312,7 +1285,7 @@ TRACE_EVENT(ext4_fallocate_exit,
- 		__field(	ino_t,	ino			)
- 		__field(	dev_t,	dev			)
- 		__field(	loff_t,	pos			)
--		__field(	unsigned,	blocks		)
-+		__field(	unsigned int,	blocks		)
- 		__field(	int, 	ret			)
- 	),
- 
-@@ -1324,10 +1297,10 @@ TRACE_EVENT(ext4_fallocate_exit,
- 		__entry->ret	= ret;
- 	),
- 
--	TP_printk("dev %d,%d ino %ld pos %llu blocks %d ret %d",
-+	TP_printk("dev %d,%d ino %lu pos %lld blocks %u ret %d",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
--		  (unsigned long long) __entry->pos, __entry->blocks,
-+		  __entry->pos, __entry->blocks,
- 		  __entry->ret)
- );
- 
-@@ -1350,7 +1323,7 @@ TRACE_EVENT(ext4_unlink_enter,
- 		__entry->dev		= dentry->d_inode->i_sb->s_dev;
- 	),
- 
--	TP_printk("dev %d,%d ino %ld size %lld parent %ld",
-+	TP_printk("dev %d,%d ino %lu size %lld parent %lu",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino, __entry->size,
- 		  (unsigned long) __entry->parent)
-@@ -1373,7 +1346,7 @@ TRACE_EVENT(ext4_unlink_exit,
- 		__entry->ret		= ret;
- 	),
- 
--	TP_printk("dev %d,%d ino %ld ret %d",
-+	TP_printk("dev %d,%d ino %lu ret %d",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
- 		  __entry->ret)
-@@ -1387,7 +1360,7 @@ DECLARE_EVENT_CLASS(ext4__truncate,
- 	TP_STRUCT__entry(
- 		__field(	ino_t,  	ino		)
- 		__field(	dev_t,  	dev		)
--		__field(	blkcnt_t,	blocks		)
-+		__field(	__u64,		blocks		)
- 	),
- 
- 	TP_fast_assign(
-@@ -1396,9 +1369,9 @@ DECLARE_EVENT_CLASS(ext4__truncate,
- 		__entry->blocks	= inode->i_blocks;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu blocks %lu",
-+	TP_printk("dev %d,%d ino %lu blocks %llu",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
--		  (unsigned long) __entry->ino, (unsigned long) __entry->blocks)
-+		  (unsigned long) __entry->ino, __entry->blocks)
- );
- 
- DEFINE_EVENT(ext4__truncate, ext4_truncate_enter,
-@@ -1417,7 +1390,7 @@ DEFINE_EVENT(ext4__truncate, ext4_truncate_exit,
- 
- DECLARE_EVENT_CLASS(ext4__map_blocks_enter,
- 	TP_PROTO(struct inode *inode, ext4_lblk_t lblk,
--		 unsigned len, unsigned flags),
-+		 unsigned int len, unsigned int flags),
- 
- 	TP_ARGS(inode, lblk, len, flags),
- 
-@@ -1425,8 +1398,8 @@ DECLARE_EVENT_CLASS(ext4__map_blocks_enter,
- 		__field(	ino_t,  	ino		)
- 		__field(	dev_t,  	dev		)
- 		__field(	ext4_lblk_t,	lblk		)
--		__field(	unsigned,	len		)
--		__field(	unsigned,	flags		)
-+		__field(	unsigned int,	len		)
-+		__field(	unsigned int,	flags		)
- 	),
- 
- 	TP_fast_assign(
-@@ -1440,7 +1413,7 @@ DECLARE_EVENT_CLASS(ext4__map_blocks_enter,
- 	TP_printk("dev %d,%d ino %lu lblk %u len %u flags %u",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
--		  (unsigned) __entry->lblk, __entry->len, __entry->flags)
-+		  __entry->lblk, __entry->len, __entry->flags)
- );
- 
- DEFINE_EVENT(ext4__map_blocks_enter, ext4_ext_map_blocks_enter,
-@@ -1459,7 +1432,7 @@ DEFINE_EVENT(ext4__map_blocks_enter, ext4_ind_map_blocks_enter,
- 
- DECLARE_EVENT_CLASS(ext4__map_blocks_exit,
- 	TP_PROTO(struct inode *inode, ext4_lblk_t lblk,
--		 ext4_fsblk_t pblk, unsigned len, int ret),
-+		 ext4_fsblk_t pblk, unsigned int len, int ret),
- 
- 	TP_ARGS(inode, lblk, pblk, len, ret),
- 
-@@ -1468,7 +1441,7 @@ DECLARE_EVENT_CLASS(ext4__map_blocks_exit,
- 		__field(	dev_t,		dev		)
- 		__field(	ext4_lblk_t,	lblk		)
- 		__field(	ext4_fsblk_t,	pblk		)
--		__field(	unsigned,	len		)
-+		__field(	unsigned int,	len		)
- 		__field(	int,		ret		)
- 	),
- 
-@@ -1484,7 +1457,7 @@ DECLARE_EVENT_CLASS(ext4__map_blocks_exit,
- 	TP_printk("dev %d,%d ino %lu lblk %u pblk %llu len %u ret %d",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
--		  (unsigned) __entry->lblk, (unsigned long long) __entry->pblk,
-+		  __entry->lblk, __entry->pblk,
- 		  __entry->len, __entry->ret)
- );
- 
-@@ -1524,7 +1497,7 @@ TRACE_EVENT(ext4_ext_load_extent,
- 	TP_printk("dev %d,%d ino %lu lblk %u pblk %llu",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
--		  (unsigned) __entry->lblk, (unsigned long long) __entry->pblk)
-+		  __entry->lblk, __entry->pblk)
- );
- 
- TRACE_EVENT(ext4_load_inode,
+diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
+index 4a3b0c3..f315910 100644
+--- a/misc/mke2fs.8.in
++++ b/misc/mke2fs.8.in
+@@ -108,7 +108,7 @@ mke2fs \- create an ext2/ext3/ext4 filesystem
+ ]
+ .I device
+ [
+-.I blocks-count
++.I filesystem-size
+ ]
+ @JDEV@.sp
+ @JDEV@.B "mke2fs \-O journal_dev"
+@@ -136,7 +136,7 @@ mke2fs \- create an ext2/ext3/ext4 filesystem
+ @JDEV@]
+ @JDEV@.I external-journal
+ @JDEV@[
+-@JDEV@.I blocks-count
++@JDEV@.I filesystem-size
+ @JDEV@]
+ .SH DESCRIPTION
+ .B mke2fs
+@@ -145,10 +145,32 @@ partition.
+ .I device
+ is the special file corresponding to the device (e.g
+ .IR /dev/hdXX ).
+-.I blocks-count
+-is the number of blocks on the device.  If omitted,
+-.B mke2fs
+-automagically figures the file system size.  If called as
++.I filesystem-size
++is the size of the filesystem you want to create. Optionally, the
++.I filesystem-size
++parameter may be suffixed by one of the following unit
++designators: 's', 'K', 'M', 'G', or 'T',
++for  512 byte sectors, KiB (2^10 Bytes), MiB (2^20 Bytes),
++GiB (2^30 Bytes), or TiB (2^40 Bytes) respectively, which are binary (power-of-2),
++not decimal, units. If no units are specified, then the
++.I filesystem-size
++parameter shall specify the number of filesystem blocks.
++Note that you should not specify
++.I filesystem-size
++in block units (or without any units at all) without also specifying block
++size with the
++.B \-b
++option. This will be allowed for now due to compatibility reasons,
++however it may be restricted in the future. For now, 1024-byte blocks will
++be assumed in this case, regardless of the filesystem blocksize ultimately
++chosen by mke2fs.
++The
++.I filesystem-size
++may never be larger than the size of the partition.
++If the
++.I filesystem-size
++parameter is not specified, it will default to the size of the partition.
++If called as
+ .B mkfs.ext3
+ a journal is created as if the
+ .B \-j
+diff --git a/resize/resize2fs.8.in b/resize/resize2fs.8.in
+index e02345d..0f4153c 100644
+--- a/resize/resize2fs.8.in
++++ b/resize/resize2fs.8.in
+@@ -36,29 +36,22 @@ filesystems mounted using ext3 and ext4.).
+ The 
+ .I size
+ parameter specifies the requested new size of the filesystem.
+-If no units are specified, the units of the
+-.I size
+-parameter shall be the filesystem blocksize of the filesystem.
+ Optionally, the 
+ .I size
+-parameter may be suffixed by one of the following the units 
+-designators: 's', 'K', 'M', or 'G',
+-for 512 byte sectors, kilobytes, megabytes, or gigabytes, respectively.
+-The 
++parameter may be suffixed by one of the following the unit
++designators: 's', 'K', 'M', 'G', or 'T',
++for 512 byte sectors, KiB (2^10 Bytes), MiB (2^20 Bytes),
++GiB (2^30 Bytes), or TiB (2^40 Bytes) respectively, which are binary (power-of-2),
++not decimal, units.
++If no units are specified, then the
++.I size
++parameter shall specify the number of filesystem blocks. The
+ .I size
+ of the filesystem may never be larger than the size of the partition.
+ If 
+ .I size
+ parameter is not specified, it will default to the size of the partition.
+ .PP
+-Note: when kilobytes is used above, I mean
+-.IR real ,
+-power-of-2 kilobytes, (i.e., 1024 bytes), which some politically correct
+-folks insist should be the stupid-sounding ``kibibytes''.  The same
+-holds true for megabytes, also sometimes known as ``mebibytes'', or
+-gigabytes, as the amazingly silly ``gibibytes''.  Makes you want to
+-gibber, doesn't it?
+-.PP
+ The
+ .B resize2fs
+ program does not manipulate the size of partitions.  If you wish to enlarge
 -- 
 1.7.4.4
 
