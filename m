@@ -1,92 +1,179 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Google summer of snapshots
-Date: Sat, 4 Jun 2011 22:59:13 +0300
-Message-ID: <BANLkTi=CSkkZGo_g18QnLR_nnz-MH-veQA@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Andres Toomsalu <andres@active.ee>,
-	harshad shirwadkar <harshadshirwadkar@gmail.com>,
-	sergey ivanov <sergey57@gmail.com>,
-	Shardul Mangade <shardul27@gmail.com>,
-	Arvin Schnell <arvin.schnell@opensuse.org>,
-	Piyush Nimbalakar <piyushmnimbalkar@gmail.com>,
-	Greg Freemyer <greg.freemyer@gmail.com>,
-	Aditya Dani <aditya.dani@gmail.com>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: linux-fsdevel <linux-fsdevel@vger.kernel.org>
+From: Manish Katiyar <mkatiyar@gmail.com>
+Subject: [PATCH] jbd2:Make journal transaction allocations come from its own cache.
+Date: Sun,  5 Jun 2011 01:28:30 -0700
+Message-ID: <1307262510-16376-1-git-send-email-mkatiyar@gmail.com>
+Cc: Manish Katiyar <mkatiyar@gmail.com>
+To: jack@suse.cz, tytso@mit.edu, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ww0-f42.google.com ([74.125.82.42]:37427 "EHLO
-	mail-ww0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752314Ab1FDT7R (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 4 Jun 2011 15:59:17 -0400
+Received: from mail-px0-f179.google.com ([209.85.212.179]:42757 "EHLO
+	mail-px0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754933Ab1FEI2o (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 5 Jun 2011 04:28:44 -0400
+Received: by pxi2 with SMTP id 2so2109628pxi.10
+        for <linux-ext4@vger.kernel.org>; Sun, 05 Jun 2011 01:28:43 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi All,
+Add a cache for jbd2 journal transaction allocations. This also
+helps to leverage fault-injection framework to test various memory
+allocation failures in the jbd2 layer.
 
-I am posting this update to fill you in on some work related
-to filesystem snapshots, which is going to be carried out this summer.
-I am also posting the contacts of the people involved, in case
-any of you are interested in more details about their work.
+Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+---
+ fs/jbd2/checkpoint.c  |    2 +-
+ fs/jbd2/commit.c      |    2 +-
+ fs/jbd2/journal.c     |   25 +++++++++++++++++++++++++
+ fs/jbd2/transaction.c |    7 ++++---
+ include/linux/jbd2.h  |   21 +++++++++++++++++++++
+ 5 files changed, 52 insertions(+), 5 deletions(-)
 
-Some of you may have attended my talk on LSF about the status
-of (filesystem) snapshots and future improvements.
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index 6a79fd0..6f554ce 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -716,7 +716,7 @@ int __jbd2_journal_remove_checkpoint(struct journal_head *jh)
+ 				    transaction->t_tid, stats);
+ 
+ 	__jbd2_journal_drop_transaction(journal, transaction);
+-	kfree(transaction);
++	jbd2_free_transaction(transaction);
+ 
+ 	/* Just in case anybody was waiting for more transactions to be
+            checkpointed... */
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 7f21cf3..8e33d84 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -1037,7 +1037,7 @@ restart_loop:
+ 	jbd_debug(1, "JBD: commit %d complete, head %d\n",
+ 		  journal->j_commit_sequence, journal->j_tail_sequence);
+ 	if (to_free)
+-		kfree(commit_transaction);
++		jbd2_free_transaction(commit_transaction);
+ 
+ 	wake_up(&journal->j_wait_done_commit);
+ }
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 9a78269..c0ec463 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -95,6 +95,7 @@ EXPORT_SYMBOL(jbd2_journal_init_jbd_inode);
+ EXPORT_SYMBOL(jbd2_journal_release_jbd_inode);
+ EXPORT_SYMBOL(jbd2_journal_begin_ordered_truncate);
+ EXPORT_SYMBOL(jbd2_inode_cache);
++EXPORT_SYMBOL(jbd2_transaction_cache);
+ 
+ static int journal_convert_superblock_v1(journal_t *, journal_superblock_t *);
+ static void __journal_abort_soft (journal_t *journal, int errno);
+@@ -2371,6 +2372,27 @@ static void jbd2_journal_destroy_handle_cache(void)
+ 
+ }
+ 
++struct kmem_cache *jbd2_transaction_cache;
++
++static int journal_init_transaction_cache(void)
++{
++	J_ASSERT(jbd2_transaction_cache == NULL);
++	jbd2_transaction_cache = kmem_cache_create("jbd2_transaction",
++						   sizeof(transaction_t),
++						   0, SLAB_TEMPORARY, NULL);
++	if (jbd2_transaction_cache == NULL) {
++		printk(KERN_EMERG "JBD2: failed to create transaction cache\n");
++		return -ENOMEM;
++	}
++	return 0;
++}
++
++static void jbd2_journal_destroy_transaction_cache(void)
++{
++	if (jbd2_transaction_cache)
++		kmem_cache_destroy(jbd2_transaction_cache);
++}
++
+ /*
+  * Module startup and shutdown
+  */
+@@ -2384,6 +2406,8 @@ static int __init journal_init_caches(void)
+ 		ret = journal_init_jbd2_journal_head_cache();
+ 	if (ret == 0)
+ 		ret = journal_init_handle_cache();
++	if (ret == 0)
++		ret = journal_init_transaction_cache();
+ 	return ret;
+ }
+ 
+@@ -2392,6 +2416,7 @@ static void jbd2_journal_destroy_caches(void)
+ 	jbd2_journal_destroy_revoke_caches();
+ 	jbd2_journal_destroy_jbd2_journal_head_cache();
+ 	jbd2_journal_destroy_handle_cache();
++	jbd2_journal_destroy_transaction_cache();
+ 	jbd2_journal_destroy_slabs();
+ }
+ 
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 3eec82d..58fbec7 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -131,7 +131,7 @@ static int start_this_handle(journal_t *journal, handle_t *handle,
+ 
+ alloc_transaction:
+ 	if (!journal->j_running_transaction) {
+-		new_transaction = kzalloc(sizeof(*new_transaction), gfp_mask);
++		new_transaction = jbd2_alloc_transaction(gfp_mask);
+ 		if (!new_transaction) {
+ 			/*
+ 			 * If __GFP_FS is not present, then we may be
+@@ -160,7 +160,7 @@ repeat:
+ 	if (is_journal_aborted(journal) ||
+ 	    (journal->j_errno != 0 && !(journal->j_flags & JBD2_ACK_ERR))) {
+ 		read_unlock(&journal->j_state_lock);
+-		kfree(new_transaction);
++		jbd2_free_transaction(new_transaction);
+ 		return -EROFS;
+ 	}
+ 
+@@ -282,7 +282,8 @@ repeat:
+ 	read_unlock(&journal->j_state_lock);
+ 
+ 	lock_map_acquire(&handle->h_lockdep_map);
+-	kfree(new_transaction);
++	jbd2_free_transaction(new_transaction);
++
+ 	return 0;
+ }
+ 
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 4ecb7b1..df7f101 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1184,6 +1184,27 @@ static inline void jbd2_free_handle(handle_t *handle)
+ }
+ 
+ /*
++ * transaction management
++ */
++extern struct kmem_cache *jbd2_transaction_cache;
++
++static inline transaction_t *jbd2_alloc_transaction(gfp_t gfp_flags)
++{
++	return kmem_cache_zalloc(jbd2_transaction_cache, gfp_flags);
++}
++
++static inline void jbd2_free_transaction(transaction_t *transaction)
++{
++	if (transaction) {
++#ifdef CONFIG_JBD2_DEBUG
++		memset(transaction, JBD2_POISON_FREE, sizeof(*transaction));
++#endif
++		kmem_cache_free(jbd2_transaction_cache, transaction);
++	}
++}
++
++
++/*
+  * jbd2_inode management (optional, for those file systems that want to use
+  * dynamically allocated jbd2_inode structures)
+  */
+-- 
+1.7.4.1
 
-Part of the talk was focused on some technical and administrative
-challenges, which snapshotting file systems drag along, like disk
-quota management and out-of-space error handling.
-
-Another part was dedicated to examples of applications, which could
-leverage filesystem snapshots into something more than a cool
-sounding feature.
-
-The examples I gave were:
-1. Revert to snapshot by installers (Yum already utilizes btrfs snapshots)
-2. Hot (incremental) backup of a live filesystem to a remote
-    system by sending the snapshot diffs (e.g. ZFS send/recv)
-3. Generic snapshot manager, which is agnostic to the underlying
-    filesystem.
-4. Automated tests for snapshots (not an application per-se, but
-    something we are lacking)
-
-By sheer luck, LSF was rolling on the same week that Google summer
-of code applications could be submitted, a fact which I had learned just a
-short time before the submission deadline.
-
-Quickly and not subtly I had urged 4 students, who were previously
-engaged in the porting of next3 snapshots to ext4, to submit project
-proposals for the 4 applications mentioned above.
-
-In the following weeks I had recruited 4 mentors for each of the projects
-and eventually, all projects got accepted by Google :-)
-
-Following are the supporting organization, mentor and student for each project:
-1. Revert to ext4/LVM snapshot support in Yum: Fedora, Andres
-Toomsalu, Harshad Shirwadkar
-2. Hot filesystem backup with ext4 snapshots: Linux Foundation, Sergey
-Ivanov, Shardul Mangade
-3. Add ext4 support for snapper snapshot manager: openSUSE, Arvin
-Schnell, Piyush Nimbalakar
-4. Add snapshot related tests to xfstest: openSUSE, Greg Freemyer, Aditya Dani
-
-I addition to the 4 snapshot application projects, we also continue to
-improve ext4 snapshots:
-5. Auto defrag in ext4 snapshots: Linux Foundation, Amir Goldstein,
-Yongqiang Yang
-
-Ext4 snapshots patches were planned for merging in the 3.0 merge
-window, but did not
-make it in, partly due to lack of sufficient review.
-We do hope they will get reviewed and merged for the next merge window.
-
-The core patches are available for online review on github:
-https://github.com/amir73il/ext4-snapshots/commits/for-ext4
-
-A stand-alone ext4dev module (for kernel 2.6.38) and utils for testing
-ext4 snapshots
-are available for download on http://next3.sf.net/
-
-I wish all the students a great summer of coding!
-
-Amir.
