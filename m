@@ -1,35 +1,51 @@
-From: Allison Henderson <achender@vnet.ibm.com>
-Subject: Re: Fwd: [XFSTEST Add Fallocate Punch Hole Tests 1/3 v4] Add Punch
- Hole to FSX
-Date: Mon, 06 Jun 2011 10:41:41 -0700
-Message-ID: <4DED1155.4060503@vnet.ibm.com>
-References: <4DE93268.90007@linux.vnet.ibm.com> <20110606150323.GB22236@infradead.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 36722] TRIM support is broken for Crucial M4 drives
+Date: Mon, 6 Jun 2011 17:43:16 GMT
+Message-ID: <201106061743.p56HhGs1013089@demeter2.kernel.org>
+References: <bug-36722-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:40761 "EHLO e4.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756775Ab1FFRlz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 6 Jun 2011 13:41:55 -0400
-In-Reply-To: <20110606150323.GB22236@infradead.org>
+Received: from demeter2.kernel.org ([140.211.167.42]:43544 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755379Ab1FFRnQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Jun 2011 13:43:16 -0400
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p56HhGjR013090
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 6 Jun 2011 17:43:16 GMT
+In-Reply-To: <bug-36722-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 06/06/2011 08:03 AM, Christoph Hellwig wrote:
-> Btw, you mails are basically unreadable to me.  There doesn't seem to be
-> any threading context, and they all have your reply on top with a full
-> quote.  Please try again with a submission from a saner mailer, and all
-> important context information included in the [PATCH 0/n] mail.
+https://bugzilla.kernel.org/show_bug.cgi?id=36722
 
-Sorry about that, does this reply look better?  I realized that I needed 
-to send the patch to more lists than just xfs, so I forwarded the set 
-and the discussions.  I think the forwarding might have been what broke 
-the threading, and I can turn off the full quote.  If this reply looks 
-ok, I can resend the set and just collapse down the questions into a 
-[PATCH 0/n] email.  Thx!
+
+Martin K. Petersen <mkp@mkp.net> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |mkp@mkp.net
+
+
+
+
+--- Comment #3 from Martin K. Petersen <mkp@mkp.net>  2011-06-06 17:43:15 ---
+hdparm asks the drive directly whereas the LSI card must be able to translate
+from SCSI to ATA commands. None the LSI cards I have support that functionality
+yet.
+
+You can try sending us the output of:
+
+# sg_readcap -l /dev/sdk
+
+# sg_vpd -p thpv /dev/sdk
+
+-- 
+Martin K. Petersen      Oracle Linux Engineering
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
