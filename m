@@ -1,46 +1,94 @@
-From: =?windows-1252?Q?Luk=E1=9A_Czerner?= <czerner.lukas@gmail.com>
-Subject: Re: [PATCH RFC 00/30] Ext4 snapshots - core patches
-Date: Mon, 06 Jun 2011 21:58:45 +0200
-Message-ID: <4DED3175.70806@gmail.com>
-References: <1304959308-11122-1-git-send-email-amir73il@users.sourceforge.net> <alpine.LFD.2.00.1106061501460.3934@dhcp-27-109.brq.redhat.com> <BANLkTimjxkOnX6hvLvU+Xth20ie5FaXq1A@mail.gmail.com> <4DECF2D5.7050408@redhat.com> <77863E67-6DAF-491D-836D-09FCD379B81F@gmail.com> <4DED035B.9090107@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 32182] EXT4-fs error: bad header/extent
+Date: Mon, 6 Jun 2011 19:59:06 GMT
+Message-ID: <201106061959.p56Jx6Q0012255@demeter2.kernel.org>
+References: <bug-32182-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <aedilger@gmail.com>,
-	"Amir G." <amir73il@users.sourceforge.net>,
-	Lukas Czerner <lczerner@redhat.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"tytso@mit.edu" <tytso@mit.edu>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:60203 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753289Ab1FFT6t (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Jun 2011 15:58:49 -0400
-Received: by bwz15 with SMTP id 15so3599290bwz.19
-        for <linux-ext4@vger.kernel.org>; Mon, 06 Jun 2011 12:58:48 -0700 (PDT)
-In-Reply-To: <4DED035B.9090107@redhat.com>
+Received: from demeter2.kernel.org ([140.211.167.42]:49460 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753289Ab1FFT7H convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Jun 2011 15:59:07 -0400
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p56Jx6S5012256
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 6 Jun 2011 19:59:06 GMT
+In-Reply-To: <bug-32182-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Dne 6.6.2011 18:42, Eric Sandeen napsal(a):
->>> Take for example dioread_nolock caveats:
->>>
->>>           "However this does not work with nobh
->>>            option and the mount will fail.
->> Does anyone actually use nobh? I recall it was a performance tweak
->> fir ext3, but i think it was eclipsed by other improvements in ext4.
->> If nobody is using it anymore, we might consider removing it
->> entirely, since it was only a mount-time option and did not affect
->> the on-disk format.
-> As Lukas said, removing old cruft would help a fair bit, and this would
-> seem reasonable to remove.
-Nobh has been nooped already quite a long time ago with
-206f7ab4f49a2021fcb8687f25395be77711ddee so we should remove it from 
-documentation as well.
+https://bugzilla.kernel.org/show_bug.cgi?id=3D32182
 
-And what about other options ? Any idea what else we can remove ? Most 
-of the options does not get any testing at all!
 
-Thanks!
--Lukas
+Honore Doktorr <hdfssk@gmail.com> changed:
+
+           What    |Removed                     |Added
+-----------------------------------------------------------------------=
+-----
+                 CC|                            |hdfssk@gmail.com
+
+
+
+
+--- Comment #7 from Honore Doktorr <hdfssk@gmail.com>  2011-06-06 19:59=
+:05 ---
+I hit this problem with 2.6.35.13 after a power outage. The affected in=
+ode was
+empty & had no extents - these commands just returned nothing (was usin=
+g
+"debugfs 1.41.14 (22-Dec-2010)"):
+
+# debugfs -R 'cat <122877>' /dev/mapper/Fedora-FedoraSystem
+debugfs 1.41.14 (22-Dec-2010)
+# debugfs -R 'dump_extents <122877>' /dev/mapper/Fedora-FedoraSystem
+debugfs 1.41.14 (22-Dec-2010)
+
+The file using this inode wouldn't respond to shell commands:
+
+# find -inum 122877
+/usr/libexec/gdm-simple-slave
+# stat gdm-simple-slave
+stat: cannot stat `gdm-simple-slave': Input/output error
+# rm gdm-simple-slave=20
+rm: cannot remove `gdm-simple-slave': Input/output error
+
+Multiple fsck.ext4 runs didn't fix things. I eventually made the offend=
+ing file
+go away - I've no idea if this procedure is safe, or a good idea! - wit=
+h these
+commands.
+
+# debugfs -R 'testi <122877>' /dev/mapper/Fedora-FedoraSystem debugfs 1=
+=2E41.14
+(22-Dec-2010)
+Inode 122877 is marked in use
+# debugfs -w -R 'kill_file <122877>' /dev/mapper/Fedora-FedoraSystem
+debugfs 1.41.14 (22-Dec-2010)
+
+# debugfs -R 'testi <122877>' /dev/mapper/Fedora-FedoraSystem=20
+debugfs 1.41.14 (22-Dec-2010)
+Inode 122877 is not in use
+# ls /usr/libexec/gdm-simple-slave
+ls: cannot access /usr/libexec/gdm-simple-slave: Input/output error
+# debugfs -w -R 'rm /usr/libexec/gdm-simple-slave'
+/dev/mapper/Fedora-FedoraSystem=20
+debugfs 1.41.14 (22-Dec-2010)
+
+# ls /usr/libexec/gdm-simple-slave
+ls: cannot access /usr/libexec/gdm-simple-slave: No such file or direct=
+ory
+=E2=80=A2 ls gdm*
+ls: cannot access gdm*: No such file or directory
+
+--=20
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=3Demai=
+l
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
