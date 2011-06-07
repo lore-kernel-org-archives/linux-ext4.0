@@ -1,7 +1,7 @@
 From: amir73il@users.sourceforge.net
-Subject: [PATCH v1 30/36] ext4: snapshot race conditions - concurrent COW operations
-Date: Tue,  7 Jun 2011 18:07:57 +0300
-Message-ID: <1307459283-22130-31-git-send-email-amir73il@users.sourceforge.net>
+Subject: [PATCH v1 31/36] ext4: snapshot race conditions - tracked reads
+Date: Tue,  7 Jun 2011 18:07:58 +0300
+Message-ID: <1307459283-22130-32-git-send-email-amir73il@users.sourceforge.net>
 References: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
 Cc: tytso@mit.edu, lczerner@redhat.com,
 	Amir Goldstein <amir73il@users.sf.net>,
@@ -10,29 +10,27 @@ To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-wy0-f174.google.com ([74.125.82.174]:60303 "EHLO
 	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751130Ab1FGPKT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2011 11:10:19 -0400
+	with ESMTP id S1751130Ab1FGPKV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2011 11:10:21 -0400
 Received: by mail-wy0-f174.google.com with SMTP id 21so3629480wya.19
-        for <linux-ext4@vger.kernel.org>; Tue, 07 Jun 2011 08:10:18 -0700 (PDT)
+        for <linux-ext4@vger.kernel.org>; Tue, 07 Jun 2011 08:10:21 -0700 (PDT)
 In-Reply-To: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Amir Goldstein <amir73il@users.sf.net>
 
-Wait for pending COW operations to complete.
-When concurrent tasks try to COW the same buffer, the task that takes
-the active snapshot i_data_sem is elected as the the COWing task.
-The COWing task allocates a new snapshot block and creates a buffer
-cache entry with ref_count=1 for that new block.  It then locks the
-new buffer and marks it with the buffer_new flag.  The rest of the
-tasks wait (in msleep(1) loop), until the buffer_new flag is cleared.
-The COWing task copies the source buffer into the 'new' buffer,
-unlocks it, clears the new_buffer flag and drops its reference count.
-On active snapshot readpage, the buffer cache is checked.
-If a 'new' buffer entry is found, the reader task waits until the
-buffer_new flag is cleared and then copies the 'new' buffer directly
-into the snapshot file page.
+Wait for pending read I/O requests to complete.
+When a snapshot file readpage reads through to the block device,
+the reading task increments the block tracked readers count.
+Upon completion of the async read I/O request of the snapshot page,
+the tracked readers count is decremented.
+When a task is COWing a block with non-zero tracked readers count,
+that task has to wait (in msleep(1) loop), until the block's tracked
+readers count drops to zero, before the COW operation is completed.
+After a pending COW operation has started, reader tasks have to wait
+(again, in msleep(1) loop), until the pending COW operation is
+completed, so the COWing task cannot be starved by reader tasks.
 The sleep loop method was copied from LVM snapshot code, which does
 the same thing to deal with these (rare) races without wait queues.
 
@@ -40,232 +38,371 @@ the same thing to deal with these (rare) races without wait queues.
 Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/inode.c          |   26 ++++++++++++++++++
- fs/ext4/snapshot.c       |   11 ++++++++
- fs/ext4/snapshot.h       |   64 ++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/snapshot_inode.c |   40 ++++++++++++++++++++++++++++
- 4 files changed, 141 insertions(+), 0 deletions(-)
+ fs/ext4/ext4.h            |    6 ++
+ fs/ext4/snapshot.c        |   17 +++++
+ fs/ext4/snapshot.h        |   76 ++++++++++++++++++++++
+ fs/ext4/snapshot_buffer.c |  155 +++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/snapshot_inode.c  |   24 +++++++
+ 5 files changed, 278 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index de40993..89a97da 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1049,6 +1049,7 @@ static int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
- 	int depth;
- 	int count = 0;
- 	ext4_fsblk_t first_block = 0;
-+	struct buffer_head *sbh = NULL;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index ea1f38a..0599fef 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2238,12 +2238,18 @@ enum ext4_state_bits {
+ 			 * now used by snapshot to do mow
+ 			 */
+ 	BH_Partial_Write,	/* Buffer should be uptodate before write */
++	BH_Tracked_Read,	/* Buffer read I/O is being tracked,
++				 * to serialize write I/O to block device.
++				 * that is, don't write over this block
++				 * until I finished reading it.
++				 */
+ };
  
- 	trace_ext4_ind_map_blocks_enter(inode, map->m_lblk, map->m_len, flags);
- 	J_ASSERT(!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)));
-@@ -1155,6 +1156,25 @@ static int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
- 	if (err)
- 		goto cleanup;
+ BUFFER_FNS(Uninit, uninit)
+ TAS_BUFFER_FNS(Uninit, uninit)
+ BUFFER_FNS(Remap, remap)
+ BUFFER_FNS(Partial_Write, partial_write)
++BUFFER_FNS(Tracked_Read, tracked_read)
  
-+	if (SNAPMAP_ISCOW(flags)) {
-+		/*
-+		 * COWing block or creating COW bitmap.
-+		 * we now have exclusive access to the COW destination block
-+		 * and we are about to create the snapshot block mapping
-+		 * and make it public.
-+		 * grab the buffer cache entry and mark it new
-+		 * to indicate a pending COW operation.
-+		 * the refcount for the buffer cache will be released
-+		 * when the COW operation is either completed or canceled.
-+		 */
-+		sbh = sb_getblk(inode->i_sb, le32_to_cpu(chain[depth-1].key));
-+		if (!sbh) {
-+			err = -EIO;
-+			goto cleanup;
-+		}
-+		ext4_snapshot_start_pending_cow(sbh);
-+	}
-+
- 	if (map->m_flags & EXT4_MAP_REMAP) {
- 		map->m_len = count;
- 		/* move old block to snapshot */
-@@ -1198,6 +1218,12 @@ got_it:
- 	/* Clean up and exit */
- 	partial = chain + depth - 1;	/* the whole chain */
- cleanup:
-+	/* cancel pending COW operation on failure to alloc snapshot block */
-+	if (SNAPMAP_ISCOW(flags)) {
-+		if (err < 0 && sbh)
-+			ext4_snapshot_end_pending_cow(sbh);
-+		brelse(sbh);
-+	}
- 	while (partial > chain) {
- 		BUFFER_TRACE(partial->bh, "call brelse");
- 		brelse(partial->bh);
+ /*
+  * Add new method to test wether block and inode bitmaps are properly
 diff --git a/fs/ext4/snapshot.c b/fs/ext4/snapshot.c
-index 000e655..bd6a833 100644
+index bd6a833..a1e4175 100644
 --- a/fs/ext4/snapshot.c
 +++ b/fs/ext4/snapshot.c
-@@ -115,6 +115,8 @@ ext4_snapshot_complete_cow(handle_t *handle, struct inode *snapshot,
- 	if (sync)
- 		sync_dirty_buffer(sbh);
- out:
-+	/* COW operation is complete */
-+	ext4_snapshot_end_pending_cow(sbh);
- 	return err;
- }
+@@ -107,6 +107,23 @@ ext4_snapshot_complete_cow(handle_t *handle, struct inode *snapshot,
+ {
+ 	int err = 0;
  
-@@ -688,6 +690,12 @@ int ext4_snapshot_test_and_cow(const char *where, handle_t *handle,
- 	 * we allocated this block -
- 	 * copy block data to snapshot and complete COW operation
- 	 */
-+	snapshot_debug(3, "COWing block [%llu/%llu] of snapshot "
-+			"(%u)...\n",
-+			SNAPSHOT_BLOCK_TUPLE(block),
-+			active_snapshot->i_generation);
-+	/* sleep 1 tunable delay unit */
-+	snapshot_test_delay(SNAPTEST_COW);
- 	err = ext4_snapshot_copy_buffer_cow(handle, active_snapshot,
- 			sbh, bh);
- 	if (err)
-@@ -700,6 +708,9 @@ int ext4_snapshot_test_and_cow(const char *where, handle_t *handle,
- 
- 	trace_cow_inc(handle, copied);
- test_pending_cow:
-+	if (sbh)
-+		/* wait for pending COW to complete */
-+		ext4_snapshot_test_pending_cow(sbh, block);
- 
- cowed:
- 	/* mark the buffer COWed in the current transaction */
-diff --git a/fs/ext4/snapshot.h b/fs/ext4/snapshot.h
-index 44bac96..37f5c2d 100644
---- a/fs/ext4/snapshot.h
-+++ b/fs/ext4/snapshot.h
-@@ -474,6 +474,70 @@ static inline int ext4_snapshot_mow_in_tid(struct inode *inode)
- 		      ext4_snapshot_get_tid(inode->i_sb));
- }
- 
-+/*
-+ * Pending COW functions
-+ */
-+
-+/*
-+ * Start pending COW operation from get_blocks_handle()
-+ * after allocating snapshot block and before connecting it
-+ * to the snapshot inode.
-+ */
-+static inline void ext4_snapshot_start_pending_cow(struct buffer_head *sbh)
-+{
-+	/*
-+	 * setting the 'new' flag on a newly allocated snapshot block buffer
-+	 * indicates that the COW operation is pending.
-+	 */
-+	set_buffer_new(sbh);
-+	/* keep buffer in cache as long as we need to test the 'new' flag */
-+	get_bh(sbh);
-+}
-+
-+/*
-+ * End pending COW operation started in get_blocks_handle().
-+ * Called on failure to connect the new snapshot block to the inode
-+ * or on successful completion of the COW operation.
-+ */
-+static inline void ext4_snapshot_end_pending_cow(struct buffer_head *sbh)
-+{
-+	/*
-+	 * clearing the 'new' flag from the snapshot block buffer
-+	 * indicates that the COW operation is complete.
-+	 */
-+	clear_buffer_new(sbh);
-+	/* we no longer need to keep the buffer in cache */
-+	put_bh(sbh);
-+}
-+
-+/*
-+ * Test for pending COW operation and wait for its completion.
-+ */
-+static inline void ext4_snapshot_test_pending_cow(struct buffer_head *sbh,
-+						sector_t blocknr)
-+{
-+	while (buffer_new(sbh)) {
-+		/* wait for pending COW to complete */
-+		snapshot_debug_once(2, "waiting for pending cow: "
-+				"block = [%llu/%llu]...\n",
-+				SNAPSHOT_BLOCK_TUPLE(blocknr));
++	/* wait for completion of tracked reads before completing COW */
++	while (bh && buffer_tracked_readers_count(bh) > 0) {
++		snapshot_debug_once(2, "waiting for tracked reads: "
++			"block = [%llu/%llu], "
++			"tracked_readers_count = %d...\n",
++			SNAPSHOT_BLOCK_TUPLE(bh->b_blocknr),
++			buffer_tracked_readers_count(bh));
 +		/*
-+		 * An unusually long pending COW operation can be caused by
-+		 * the debugging function snapshot_test_delay(SNAPTEST_COW)
-+		 * and by waiting for tracked reads to complete.
-+		 * The new COW buffer is locked during those events, so wait
-+		 * on the buffer before the short msleep.
-+		 */
-+		wait_on_buffer(sbh);
-+		/*
-+		 * This is an unlikely event that can happen only once per
-+		 * block/snapshot, so msleep(1) is sufficient and there is
-+		 * no need for a wait queue.
++		 * Quote from LVM snapshot pending_complete() function:
++		 * "Check for conflicting reads. This is extremely improbable,
++		 *  so msleep(1) is sufficient and there is no need for a wait
++		 *  queue." (drivers/md/dm-snap.c).
 +		 */
 +		msleep(1);
 +		/* XXX: Should we fail after N retries? */
 +	}
++
+ 	unlock_buffer(sbh);
+ 	err = ext4_jbd2_file_inode(handle, snapshot);
+ 	if (err)
+diff --git a/fs/ext4/snapshot.h b/fs/ext4/snapshot.h
+index 37f5c2d..3282fe7 100644
+--- a/fs/ext4/snapshot.h
++++ b/fs/ext4/snapshot.h
+@@ -538,6 +538,82 @@ static inline void ext4_snapshot_test_pending_cow(struct buffer_head *sbh,
+ 		/* XXX: Should we fail after N retries? */
+ 	}
+ }
++/*
++ * A tracked reader takes 0x10000 reference counts on the block device buffer.
++ * b_count is not likely to reach 0x10000 by get_bh() calls, but even if it
++ * does, that will only affect the result of buffer_tracked_readers_count().
++ * After 0x10000 subsequent calls to get_bh_tracked_reader(), b_count will
++ * overflow, but that requires 0x10000 parallel readers from 0x10000 different
++ * snapshots and very slow disk I/O...
++ */
++#define BH_TRACKED_READERS_COUNT_SHIFT 16
++
++static inline void get_bh_tracked_reader(struct buffer_head *bdev_bh)
++{
++	atomic_add(1<<BH_TRACKED_READERS_COUNT_SHIFT, &bdev_bh->b_count);
 +}
++
++static inline void put_bh_tracked_reader(struct buffer_head *bdev_bh)
++{
++	atomic_sub(1<<BH_TRACKED_READERS_COUNT_SHIFT, &bdev_bh->b_count);
++}
++
++static inline int buffer_tracked_readers_count(struct buffer_head *bdev_bh)
++{
++	return atomic_read(&bdev_bh->b_count)>>BH_TRACKED_READERS_COUNT_SHIFT;
++}
++
++/* buffer.c */
++extern int start_buffer_tracked_read(struct buffer_head *bh);
++extern void cancel_buffer_tracked_read(struct buffer_head *bh);
++extern int ext4_read_full_page(struct page *page, get_block_t *get_block);
++
++#ifdef CONFIG_EXT4_DEBUG
++extern void __ext4_trace_bh_count(const char *fn, struct buffer_head *bh);
++#define ext4_trace_bh_count(bh) __ext4_trace_bh_count(__func__, bh)
++#else
++#define ext4_trace_bh_count(bh)
++#define __ext4_trace_bh_count(fn, bh)
++#endif
++
++#define sb_bread(sb, blk) ext4_sb_bread(__func__, sb, blk)
++#define sb_getblk(sb, blk) ext4_sb_getblk(__func__, sb, blk)
++#define sb_find_get_block(sb, blk) ext4_sb_find_get_block(__func__, sb, blk)
++
++static inline struct buffer_head *
++ext4_sb_bread(const char *fn, struct super_block *sb, sector_t block)
++{
++	struct buffer_head *bh;
++
++	bh = __bread(sb->s_bdev, block, sb->s_blocksize);
++	if (bh)
++		__ext4_trace_bh_count(fn, bh);
++	return bh;
++}
++
++static inline struct buffer_head *
++ext4_sb_getblk(const char *fn, struct super_block *sb, sector_t block)
++{
++	struct buffer_head *bh;
++
++	bh = __getblk(sb->s_bdev, block, sb->s_blocksize);
++	if (bh)
++		__ext4_trace_bh_count(fn, bh);
++	return bh;
++}
++
++static inline struct buffer_head *
++ext4_sb_find_get_block(const char *fn, struct super_block *sb, sector_t block)
++{
++	struct buffer_head *bh;
++
++	bh = __find_get_block(sb->s_bdev, block, sb->s_blocksize);
++	if (bh)
++		__ext4_trace_bh_count(fn, bh);
++	return bh;
++}
++
++
  
  #else /* CONFIG_EXT4_FS_SNAPSHOT */
  
-diff --git a/fs/ext4/snapshot_inode.c b/fs/ext4/snapshot_inode.c
-index a97411e..55cac07 100644
---- a/fs/ext4/snapshot_inode.c
-+++ b/fs/ext4/snapshot_inode.c
-@@ -183,6 +183,7 @@ static int ext4_snapshot_read_through(struct inode *inode, sector_t iblock,
- 	int err;
- 	struct ext4_map_blocks map;
- 	struct inode *prev_snapshot;
-+	struct buffer_head *sbh = NULL;
- 
- 	map.m_lblk = iblock;
- 	map.m_pblk = 0;
-@@ -214,6 +215,45 @@ get_block:
- 	bh_result->b_state = (bh_result->b_state & ~EXT4_MAP_FLAGS) |
- 		map.m_flags;
- 
-+	/*
-+	 * On read of active snapshot, a mapped block may belong to a non
-+	 * completed COW operation.  Use the buffer cache to test this
-+	 * condition.  if (bh_result->b_blocknr == SNAPSHOT_BLOCK(iblock)),
-+	 * then this is either read through to block device or moved block.
-+	 * Either way, it is not a COWed block, so it cannot be pending COW.
-+	 */
-+	if (ext4_snapshot_is_active(inode) &&
-+	    bh_result->b_blocknr != SNAPSHOT_BLOCK(iblock))
-+		sbh = sb_find_get_block(inode->i_sb, bh_result->b_blocknr);
-+	if (!sbh)
-+		return 0;
-+	/* wait for pending COW to complete */
-+	ext4_snapshot_test_pending_cow(sbh, SNAPSHOT_BLOCK(iblock));
-+	lock_buffer(sbh);
-+	if (buffer_uptodate(sbh)) {
-+		/*
-+		 * Avoid disk I/O and copy out snapshot page directly
-+		 * from block device page when possible.
-+		 */
-+		BUG_ON(!sbh->b_page);
-+		BUG_ON(!bh_result->b_page);
-+		lock_buffer(bh_result);
-+		copy_highpage(bh_result->b_page, sbh->b_page);
-+		set_buffer_uptodate(bh_result);
-+		unlock_buffer(bh_result);
-+	} else if (buffer_dirty(sbh)) {
-+		/*
-+		 * If snapshot data buffer is dirty (just been COWed),
-+		 * then it is not safe to read it from disk yet.
-+		 * We shouldn't get here because snapshot data buffer
-+		 * only becomes dirty during COW and because we waited
-+		 * for pending COW to complete, which means that a
-+		 * dirty snapshot data buffer should be uptodate.
-+		 */
-+		WARN_ON(1);
-+	}
-+	unlock_buffer(sbh);
-+	brelse(sbh);
- 	return 0;
+diff --git a/fs/ext4/snapshot_buffer.c b/fs/ext4/snapshot_buffer.c
+index acea9a3..387965e 100644
+--- a/fs/ext4/snapshot_buffer.c
++++ b/fs/ext4/snapshot_buffer.c
+@@ -55,6 +55,156 @@ static void buffer_io_error(struct buffer_head *bh)
  }
  
+ /*
++ * Tracked read functions.
++ * When reading through a ext4 snapshot file hole to a block device block,
++ * all writes to this block need to wait for completion of the async read.
++ * ext4_snapshot_readpage() always calls ext4_read_full_page() to attach
++ * a buffer head to the page and be aware of tracked reads.
++ * ext4_snapshot_get_block() calls start_buffer_tracked_read() to mark both
++ * snapshot page buffer and block device page buffer.
++ * ext4_snapshot_get_block() calls cancel_buffer_tracked_read() if snapshot
++ * doesn't need to read through to the block device.
++ * ext4_read_full_page() calls submit_buffer_tracked_read() to submit a
++ * tracked async read.
++ * end_buffer_async_read() calls end_buffer_tracked_read() to complete the
++ * tracked read operation.
++ * The only lock needed in all these functions is PageLock on the snapshot page,
++ * which is guarantied in readpage() and verified in ext4_read_full_page().
++ * The block device page buffer doesn't need any lock because the operations
++ * {get|put}_bh_tracked_reader() are atomic.
++ */
++
++#ifdef CONFIG_EXT4_DEBUG
++/*
++ * trace maximum value of b_count on all fs buffers to see if we are
++ * overflowing to upper word (tracked readers count)
++ */
++void __ext4_trace_bh_count(const char *fn, struct buffer_head *bh)
++{
++	static sector_t blocknr;
++	static int maxcount;
++	static int maxbit = 1;
++	static int maxorder;
++	int count = atomic_read(&bh->b_count) & 0x0000ffff;
++
++	BUG_ON(count < 0);
++	if (count <= maxcount)
++		return;
++	maxcount = count;
++	blocknr = bh->b_blocknr;
++
++	if (count <= maxbit)
++		return;
++	while (count > maxbit) {
++		maxbit <<= 1;
++		maxorder++;
++	}
++
++	snapshot_debug(maxorder > 7 ? 1 : 2,
++			"%s: buffer refcount maxorder = %d, "
++			"maxcount = 0x%08x, block = [%llu/%llu].\n",
++			fn, maxorder, maxcount,
++			SNAPSHOT_BLOCK_TUPLE(blocknr));
++}
++#endif
++
++/*
++ * start buffer tracked read
++ * called from inside get_block()
++ * get tracked reader ref count on buffer cache entry
++ * and set buffer tracked read flag
++ */
++int start_buffer_tracked_read(struct buffer_head *bh)
++{
++	struct buffer_head *bdev_bh;
++
++	BUG_ON(buffer_tracked_read(bh));
++	BUG_ON(!buffer_mapped(bh));
++
++	/* grab the buffer cache entry */
++	bdev_bh = __getblk(bh->b_bdev, bh->b_blocknr, bh->b_size);
++	if (!bdev_bh)
++		return -EIO;
++
++	BUG_ON(bdev_bh == bh);
++	ext4_trace_bh_count(bdev_bh);
++	set_buffer_tracked_read(bh);
++	get_bh_tracked_reader(bdev_bh);
++	put_bh(bdev_bh);
++	return 0;
++}
++
++/*
++ * cancel buffer tracked read
++ * called for tracked read that was started but was not submitted
++ * put tracked reader ref count on buffer cache entry
++ * and clear buffer tracked read flag
++ */
++void cancel_buffer_tracked_read(struct buffer_head *bh)
++{
++	struct buffer_head *bdev_bh;
++
++	BUG_ON(!buffer_tracked_read(bh));
++	BUG_ON(!buffer_mapped(bh));
++
++	/* try to grab the buffer cache entry */
++	bdev_bh = __find_get_block(bh->b_bdev, bh->b_blocknr, bh->b_size);
++	BUG_ON(!bdev_bh || bdev_bh == bh);
++	ext4_trace_bh_count(bdev_bh);
++	clear_buffer_tracked_read(bh);
++	clear_buffer_mapped(bh);
++	put_bh_tracked_reader(bdev_bh);
++	put_bh(bdev_bh);
++}
++
++/*
++ * submit buffer tracked read
++ * save a reference to buffer cache entry and submit I/O
++ */
++static int submit_buffer_tracked_read(struct buffer_head *bh)
++{
++	struct buffer_head *bdev_bh;
++	BUG_ON(!buffer_tracked_read(bh));
++	BUG_ON(!buffer_mapped(bh));
++	/* tracked read doesn't work with multiple buffers per page */
++	BUG_ON(bh->b_this_page != bh);
++
++	/*
++	 * Try to grab the buffer cache entry before submitting async read
++	 * because we cannot call blocking function __find_get_block()
++	 * in interrupt context inside end_buffer_tracked_read().
++	 */
++	bdev_bh = __find_get_block(bh->b_bdev, bh->b_blocknr, bh->b_size);
++	BUG_ON(!bdev_bh || bdev_bh == bh);
++	ext4_trace_bh_count(bdev_bh);
++	/* override page buffers list with reference to buffer cache entry */
++	bh->b_this_page = bdev_bh;
++	submit_bh(READ, bh);
++	return 0;
++}
++
++/*
++ * end buffer tracked read
++ * complete submitted tracked read
++ */
++static void end_buffer_tracked_read(struct buffer_head *bh)
++{
++	struct buffer_head *bdev_bh = bh->b_this_page;
++
++	BUG_ON(!buffer_tracked_read(bh));
++	BUG_ON(!bdev_bh || bdev_bh == bh);
++	bh->b_this_page = bh;
++	/*
++	 * clear the buffer mapping to make sure
++	 * that get_block() will always be called
++	 */
++	clear_buffer_mapped(bh);
++	clear_buffer_tracked_read(bh);
++	put_bh_tracked_reader(bdev_bh);
++	put_bh(bdev_bh);
++}
++
++/*
+  * I/O completion handler for ext4_read_full_page() - pages
+  * which come unlocked at the end of I/O.
+  */
+@@ -68,6 +218,9 @@ static void end_buffer_async_read(struct buffer_head *bh, int uptodate)
+ 
+ 	BUG_ON(!buffer_async_read(bh));
+ 
++	if (buffer_tracked_read(bh))
++		end_buffer_tracked_read(bh);
++
+ 	page = bh->b_page;
+ 	if (uptodate) {
+ 		set_buffer_uptodate(bh);
+@@ -229,6 +382,8 @@ int ext4_read_full_page(struct page *page, get_block_t *get_block)
+ 	 */
+ 	for (i = 0; i < nr; i++) {
+ 		bh = arr[i];
++		if (buffer_tracked_read(bh))
++			return submit_buffer_tracked_read(bh);
+ 		if (buffer_uptodate(bh))
+ 			end_buffer_async_read(bh, 1);
+ 		else
+diff --git a/fs/ext4/snapshot_inode.c b/fs/ext4/snapshot_inode.c
+index 55cac07..f2311e4 100644
+--- a/fs/ext4/snapshot_inode.c
++++ b/fs/ext4/snapshot_inode.c
+@@ -195,11 +195,35 @@ get_block:
+ 	err = ext4_snapshot_get_block_access(inode, &prev_snapshot);
+ 	if (err < 0)
+ 		return err;
++	if (!prev_snapshot) {
++		/*
++		 * Possible read through to block device.
++		 * Start tracked read before checking if block is mapped to
++		 * avoid race condition with COW that maps the block after
++		 * we checked if the block is mapped.  If we find that the
++		 * block is mapped, we will cancel the tracked read before
++		 * returning from this function.
++		 */
++		map_bh(bh_result, inode->i_sb, SNAPSHOT_BLOCK(iblock));
++		err = start_buffer_tracked_read(bh_result);
++		if (err < 0) {
++			snapshot_debug(1,
++					"snapshot (%u) failed to start "
++					"tracked read on block (%lld) "
++					"(err=%d)\n", inode->i_generation,
++					(long long)bh_result->b_blocknr, err);
++			return err;
++		}
++	}
+ 	err = ext4_map_blocks(NULL, inode, &map, 0);
+ 	snapshot_debug(4, "ext4_snapshot_read_through(%lld): block = "
+ 		       "(%lld), err = %d\n prev_snapshot = %u",
+ 		       (long long)iblock, map.m_pblk, err,
+ 		       prev_snapshot ? prev_snapshot->i_generation : 0);
++	/* if it's not a hole - cancel tracked read before we deadlock
++	 * on pending COW */
++	if (err && buffer_tracked_read(bh_result))
++		cancel_buffer_tracked_read(bh_result);
+ 	if (err < 0)
+ 		return err;
+ 	if (!err && prev_snapshot) {
 -- 
 1.7.4.1
 
