@@ -1,12 +1,10 @@
 From: "Amir G." <amir73il@users.sourceforge.net>
-Subject: Re: [PATCH RFC 01/30] ext4: EXT4 snapshots (Experimental)
-Date: Tue, 7 Jun 2011 16:20:53 +0300
-Message-ID: <BANLkTi=JQfmpJBuxKxNM61FqN3=x66_qgQ@mail.gmail.com>
+Subject: Re: [PATCH RFC 05/30] ext4: snapshot hooks - delete blocks
+Date: Tue, 7 Jun 2011 16:24:44 +0300
+Message-ID: <BANLkTinKD5aQQfhVAdFc9UbpJTjvhnW-3A@mail.gmail.com>
 References: <1304959308-11122-1-git-send-email-amir73il@users.sourceforge.net>
-	<1304959308-11122-2-git-send-email-amir73il@users.sourceforge.net>
-	<alpine.LFD.2.00.1106061512490.3934@dhcp-27-109.brq.redhat.com>
-	<BANLkTi=i_42H4mDWRyg325TFw=Z-bVnFqQ@mail.gmail.com>
-	<alpine.LFD.2.00.1106071232070.4754@dhcp-27-109.brq.redhat.com>
+	<1304959308-11122-6-git-send-email-amir73il@users.sourceforge.net>
+	<alpine.LFD.2.00.1106071306510.4754@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
@@ -15,208 +13,146 @@ Cc: linux-ext4@vger.kernel.org, tytso@mit.edu,
 	Yongqiang Yang <xiaoqiangnk@gmail.com>
 To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:50974 "EHLO
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:51713 "EHLO
 	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752806Ab1FGNUy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2011 09:20:54 -0400
-Received: by wwa36 with SMTP id 36so4921282wwa.1
-        for <linux-ext4@vger.kernel.org>; Tue, 07 Jun 2011 06:20:53 -0700 (PDT)
-In-Reply-To: <alpine.LFD.2.00.1106071232070.4754@dhcp-27-109.brq.redhat.com>
+	with ESMTP id S1753235Ab1FGNYp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2011 09:24:45 -0400
+Received: by wwa36 with SMTP id 36so4924990wwa.1
+        for <linux-ext4@vger.kernel.org>; Tue, 07 Jun 2011 06:24:44 -0700 (PDT)
+In-Reply-To: <alpine.LFD.2.00.1106071306510.4754@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 7, 2011 at 1:42 PM, Lukas Czerner <lczerner@redhat.com> wro=
+On Tue, Jun 7, 2011 at 2:24 PM, Lukas Czerner <lczerner@redhat.com> wro=
 te:
-> On Tue, 7 Jun 2011, Amir G. wrote:
+> On Mon, 9 May 2011, amir73il@users.sourceforge.net wrote:
 >
->> >> +config EXT4_FS_SNAPSHOT
->> >> + =A0 =A0 bool "EXT4 snapshots (Experimental)"
->> >> + =A0 =A0 depends on EXT4_FS && EXPERIMENTAL
->> >> + =A0 =A0 default n
->> >> + =A0 =A0 help
->> >> + =A0 =A0 =A0 Built-in snapshots support for ext4.
->> >> + =A0 =A0 =A0 Requires that the filesystem has the has_snapshot a=
-nd exclude_bitmap
->> >> + =A0 =A0 =A0 features and that block size is equal to system pag=
-e size.
->> >> + =A0 =A0 =A0 Snapshots are not supported with 64bit and meta_bg =
-features and the
->> >> + =A0 =A0 =A0 filesystem must be mounted with ordered data mode.
->> >
->> > What exactly do you mean by not supported with 64bit feature ? May=
-be I
->> > am being dense, but I do not get it.
+>> From: Amir Goldstein <amir73il@users.sf.net>
 >>
->> I mean snapshots and 64bit features are mutually exclusive.
->> Is that what you got or do I need to make it more clear?
->
-> Oh, I did not notice that it belongs to the "feature" word. Thats
-> probably just my English:)
-
-Or a combination of our 'Englishes' ;-)
-
->
+>> Before deleting file blocks in ext4_free_blocks(),
+>> we call the snapshot API ext4_snapshot_get_delete_access(),
+>> to optionally move the block to the snapshot file instead of
+>> freeing them.
 >>
->> >>
->> >> =A0#define outside(b, first, last) =A0 =A0 =A0((b) < (first) || (=
-b) >=3D (last))
->> >> =A0#define inside(b, first, last) =A0 =A0 =A0 ((b) >=3D (first) &=
-& (b) < (last))
->> >> diff --git a/fs/ext4/snapshot.h b/fs/ext4/snapshot.h
->> >> new file mode 100644
->> >> index 0000000..a927090
->> >> --- /dev/null
->> >> +++ b/fs/ext4/snapshot.h
->> >> @@ -0,0 +1,193 @@
->> >> +/*
->> >> + * linux/fs/ext4/snapshot.h
->> >> + *
->> >> + * Written by Amir Goldstein <amir73il@users.sf.net>, 2008
->> >> + *
->> >> + * Copyright (C) 2008-2011 CTERA Networks
->> >> + *
->> >> + * This file is part of the Linux kernel and is made available u=
-nder
->> >> + * the terms of the GNU General Public License, version 2, or at=
- your
->> >> + * option, any later version, incorporated herein by reference.
->> >> + *
->> >> + * Ext4 snapshot extensions.
->> >
->> > This is great place to write more about snapshot design and
->> > implementation. If it is added later in a different file, then ign=
-ore it
->> > :).
+>> Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
+>> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+>> ---
+>> =A0fs/ext4/ext4.h =A0 =A0| =A0 10 +++++++---
+>> =A0fs/ext4/mballoc.c | =A0 30 +++++++++++++++++++++++++++---
+>> =A02 files changed, 34 insertions(+), 6 deletions(-)
 >>
->> the inline documentation is scattered among several patches.
->> I should probably also add Documentation/ext4_snapshots.txt
->> with some design and overview information.
->> And perhaps insert a short short version of it here ;-)
->
-> Documentation/filesystems/ext4_snapshots.txt would be the most welcom=
-e,
-> thanks.
-
-I though I'd just drop the Technical_Overview wiki as ext4_snapshots.tx=
-t:
-http://sourceforge.net/apps/mediawiki/next3/index.php?title=3DTechnical=
-_overview
-it seems like a good start, which can be completed by diving into the c=
-ode.
-would you agree with that statement?
-
->
+>> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+>> index ca25e67..4e9e46a 100644
+>> --- a/fs/ext4/ext4.h
+>> +++ b/fs/ext4/ext4.h
+>> @@ -1729,9 +1729,13 @@ extern int ext4_mb_reserve_blocks(struct supe=
+r_block *, int);
+>> =A0extern void ext4_discard_preallocations(struct inode *);
+>> =A0extern int __init ext4_init_mballoc(void);
+>> =A0extern void ext4_exit_mballoc(void);
+>> -extern void ext4_free_blocks(handle_t *handle, struct inode *inode,
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0struct buffer_h=
+ead *bh, ext4_fsblk_t block,
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0unsigned long c=
+ount, int flags);
+>> +extern void __ext4_free_blocks(const char *where, unsigned int line=
+,
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0handle_t *h=
+andle, =A0struct inode *inode,
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0struct buff=
+er_head *bh, ext4_fsblk_t block,
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0unsigned lo=
+ng count, int flags);
+>> +#define ext4_free_blocks(handle, inode, bh, block, count, flags) \
+>> + =A0 =A0 __ext4_free_blocks(__func__, __LINE__ , (handle), (inode),=
+ (bh), \
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0(block), (count), (=
+flags))
+>> =A0extern int ext4_mb_add_groupinfo(struct super_block *sb,
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_group_t i, struct ext4_group_desc *=
+desc);
+>> =A0extern int ext4_trim_fs(struct super_block *, struct fstrim_range=
+ *);
+>> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+>> index e8bfd8d..3b1c6d1 100644
+>> --- a/fs/ext4/mballoc.c
+>> +++ b/fs/ext4/mballoc.c
+>> @@ -4445,9 +4445,9 @@ ext4_mb_free_metadata(handle_t *handle, struct=
+ ext4_buddy *e4b,
+>> =A0 * @count: =A0 =A0 =A0 =A0 =A0 number of blocks to count
+>> =A0 * @metadata: =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0Are these metadata b=
+locks
+>> =A0 */
+>> -void ext4_free_blocks(handle_t *handle, struct inode *inode,
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct buffer_head *bh, ext4_f=
+sblk_t block,
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 unsigned long count, int flags=
+)
+>> +void __ext4_free_blocks(const char *where, unsigned int line, handl=
+e_t *handle,
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct inode *inode, struc=
+t buffer_head *bh,
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_fsblk_t block, unsign=
+ed long count, int flags)
+>> =A0{
+>> =A0 =A0 =A0 struct buffer_head *bitmap_bh =3D NULL;
+>> =A0 =A0 =A0 struct super_block *sb =3D inode->i_sb;
+>> @@ -4461,6 +4461,7 @@ void ext4_free_blocks(handle_t *handle, struct=
+ inode *inode,
+>> =A0 =A0 =A0 struct ext4_buddy e4b;
+>> =A0 =A0 =A0 int err =3D 0;
+>> =A0 =A0 =A0 int ret;
+>> + =A0 =A0 int maxblocks;
 >>
->> >
->> >> + */
->> >> +
->> >> +#ifndef _LINUX_EXT4_SNAPSHOT_H
->> >> +#define _LINUX_EXT4_SNAPSHOT_H
->> >> +
->> >> +#include <linux/version.h>
->> >> +#include <linux/delay.h>
->> >> +#include "ext4.h"
->> >> +
->> >> +
->> >> +/*
->> >> + * use signed 64bit for snapshot image addresses
->> >> + * negative addresses are used to reference snapshot meta blocks
->> >> + */
->> >> +#define ext4_snapblk_t long long
->> >
->> > typedef signed long long int ext4_snapblk_t maybe ?
+>> =A0 =A0 =A0 if (bh) {
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (block)
+>> @@ -4543,6 +4544,29 @@ do_more:
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto error_return;
+>> =A0 =A0 =A0 }
 >>
->> 1. checkpatch doesn't like adding new typedef to the kernel
+>> + =A0 =A0 maxblocks =3D count;
+>> + =A0 =A0 ret =3D ext4_snapshot_get_delete_access(handle, inode,
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 block, &maxblocks);
 >
-> Yes, I suppose that the reason is so that people does not add new
-> typedefs like crazy, but when it is well reasoned I do not think it i=
-s a
-> problem.
->
->> 2. I am in th process of removing that define altogether
->
-> And use what instead ? ext4 typedefs helped people to realize what ty=
-pe
-> to use for what operation and if this type is used often enough and d=
-oes
-> make sense (which I do not know since I have not seen the whole serie=
-s
-> yet), it can help as well.
->
+> It would be nice to have this defined in the same commit, so I know w=
+hat
+> is it doing.
 
-I found a bug last week with accessing the last 4M of a 16TB snapshot f=
-ile.
-it was caused by conversion from ext4_snapblk_t to ext4_lblk_t in
-ext4_blk_to_path(),
-so I am dropping the different offset type approach and going handle
-the snapshot
-file offset translation inside ext4_blk_to_path().
-I won't get into it here. You will see it on the next (full) patch
-series I will post.
+Sorry, full patches again :-/
+I will post them soon without any fixes, so you can have a look.
 
->> >
->> >> +#define SNAPSHOT_IND_PER_BLOCK_GROUP_BITS =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0\
->> >> + =A0 =A0 (SNAPSHOT_BLOCKS_PER_GROUP_BITS-SNAPSHOT_ADDR_PER_BLOCK=
-_BITS)
->> >> +#define SNAPSHOT_IND_PER_BLOCK_GROUP =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 \
->> >> + =A0 =A0 (1<<SNAPSHOT_IND_PER_BLOCK_GROUP_BITS) /* 32 */
->> >> +#define SNAPSHOT_DIND_BLOCK_GROUPS_BITS =A0 =A0 =A0 =A0 =A0 =A0 =
-=A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0\
->> >> + =A0 =A0 (SNAPSHOT_ADDR_PER_BLOCK_BITS-SNAPSHOT_IND_PER_BLOCK_GR=
-OUP_BITS)
->> >> +#define SNAPSHOT_DIND_BLOCK_GROUPS =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 \
->> >> + =A0 =A0 (1<<SNAPSHOT_DIND_BLOCK_GROUPS_BITS)
->> >
->> > formating
+>
+>> + =A0 =A0 if (ret < 0) {
+>> + =A0 =A0 =A0 =A0 =A0 =A0 ext4_journal_abort_handle(where, line, __f=
+unc__,
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 NULL, handle, ret);
+>> + =A0 =A0 =A0 =A0 =A0 =A0 err =3D ret;
+>> + =A0 =A0 =A0 =A0 =A0 =A0 goto error_return;
+>> + =A0 =A0 }
+>> + =A0 =A0 if (ret > 0) {
+>> + =A0 =A0 =A0 =A0 =A0 =A0 /* 'ret' blocks were moved to snapshot - s=
+kip them */
+>> + =A0 =A0 =A0 =A0 =A0 =A0 block +=3D maxblocks;
+>> + =A0 =A0 =A0 =A0 =A0 =A0 count -=3D maxblocks;
+>> + =A0 =A0 =A0 =A0 =A0 =A0 count +=3D overflow;
+>> + =A0 =A0 =A0 =A0 =A0 =A0 cond_resched();
+>> + =A0 =A0 =A0 =A0 =A0 =A0 if (count > 0)
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto do_more;
+>> + =A0 =A0 =A0 =A0 =A0 =A0 /* no more blocks to free/move to snapshot=
+ */
+>> + =A0 =A0 =A0 =A0 =A0 =A0 ext4_mark_super_dirty(sb);
+>> + =A0 =A0 =A0 =A0 =A0 =A0 goto error_return;
+>> + =A0 =A0 }
+>> + =A0 =A0 overflow +=3D count - maxblocks;
+>> + =A0 =A0 count =3D maxblocks;
+>> =A0 =A0 =A0 BUFFER_TRACE(bitmap_bh, "getting write access");
+>> =A0 =A0 =A0 err =3D ext4_handle_get_bitmap_access(handle, sb, block_=
+group, bitmap_bh);
+>> =A0 =A0 =A0 if (err)
 >>
->> ?
 >
-> #define SNAPSHOT_IND_PER_BLOCK_GROUP_BITS =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0\
-> =A0 =A0 =A0 =A0(SNAPSHOT_BLOCKS_PER_GROUP_BITS - SNAPSHOT_ADDR_PER_BL=
-OCK_BITS)
-> #define SNAPSHOT_IND_PER_BLOCK_GROUP =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-=A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 \
-> =A0 =A0 =A0 =A0(1 << SNAPSHOT_IND_PER_BLOCK_GROUP_BITS) /* 32 */ <- 3=
-2 what ?
-> #define SNAPSHOT_DIND_BLOCK_GROUPS_BITS =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0\
-> =A0 =A0 =A0 =A0(SNAPSHOT_ADDR_PER_BLOCK_BITS - SNAPSHOT_IND_PER_BLOCK=
-_GROUP_BITS)
-> #define SNAPSHOT_DIND_BLOCK_GROUPS =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 \
-> =A0 =A0 =A0 =A0(1 << SNAPSHOT_DIND_BLOCK_GROUPS_BITS)
->
-
-OK. thanks.
-
->>
->> >
->> >> +
->> >> +#define SNAPSHOT_BLOCK_OFFSET =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0\
->> >> + =A0 =A0 (SNAPSHOT_DIR_BLOCKS+SNAPSHOT_IND_BLOCKS)
->> >> +#define SNAPSHOT_BLOCK(iblock) =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 \
->> >> + =A0 =A0 ((ext4_snapblk_t)(iblock) - SNAPSHOT_BLOCK_OFFSET)
->> >> +#define SNAPSHOT_IBLOCK(block) =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 \
->> >> + =A0 =A0 (ext4_fsblk_t)((block) + SNAPSHOT_BLOCK_OFFSET)
->> >
->> > I do not see SNAPSHOT_BLOCK() defined anywhere.
->> >
->>
->> Do you mean you don't see it used anywhere?
->> It is used by later patches, but I do need to document it's meaning =
-here.
->
-> I have missed the define before SNAPSHOT_IBLOCK sorry.
->
-> Thanks!
-> -Lukas
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
