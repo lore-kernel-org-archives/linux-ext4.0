@@ -1,312 +1,355 @@
 From: amir73il@users.sourceforge.net
-Subject: [PATCH v1 16/36] ext4: snapshot block operation - move blocks to snapshot
-Date: Tue,  7 Jun 2011 18:07:43 +0300
-Message-ID: <1307459283-22130-17-git-send-email-amir73il@users.sourceforge.net>
+Subject: [PATCH v1 17/36] ext4: snapshot block operation - copy block bitmap to snapshot
+Date: Tue,  7 Jun 2011 18:07:44 +0300
+Message-ID: <1307459283-22130-18-git-send-email-amir73il@users.sourceforge.net>
 References: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
 Cc: tytso@mit.edu, lczerner@redhat.com,
 	Amir Goldstein <amir73il@users.sf.net>,
 	Yongqiang Yang <xiaoqiangnk@gmail.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:60303 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756262Ab1FGPJj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2011 11:09:39 -0400
-Received: by mail-wy0-f174.google.com with SMTP id 21so3629480wya.19
-        for <linux-ext4@vger.kernel.org>; Tue, 07 Jun 2011 08:09:39 -0700 (PDT)
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:41767 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756262Ab1FGPJm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2011 11:09:42 -0400
+Received: by mail-ww0-f44.google.com with SMTP id 36so5035787wwa.1
+        for <linux-ext4@vger.kernel.org>; Tue, 07 Jun 2011 08:09:41 -0700 (PDT)
 In-Reply-To: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Amir Goldstein <amir73il@users.sf.net>
 
-Implementation of moving blocks into a snapshot file.
-The move block command maps an allocated blocks to the snapshot file,
-allocating only the indirect blocks when needed.
-This mechanism is used to move-on-write data blocks to snapshot.
+The snapshot copy of the file system block bitmap is called the COW
+bitmap and it is used to check if a block was allocated at the time
+that the snapshot was taken.
 
 
 Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/inode.c    |   62 +++++++++++++++++++-------
- fs/ext4/snapshot.c |  120 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/snapshot.h |   12 +++++-
- 3 files changed, 176 insertions(+), 18 deletions(-)
+ fs/ext4/snapshot.c     |  250 +++++++++++++++++++++++++++++++++++++++++++++++-
+ fs/ext4/snapshot_ctl.c |   19 ++++-
+ 2 files changed, 264 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index cdc1752..1558a7b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -676,6 +676,11 @@ static int ext4_alloc_blocks(handle_t *handle, struct inode *inode,
- 			new_blocks[index++] = current_block++;
- 			count--;
- 		}
-+		if (blks == 0 && target == 0) {
-+			/* mapping data blocks */
-+			*err = 0;
-+			return 0;
-+		}
- 		if (count > 0) {
- 			/*
- 			 * save the new block number
-@@ -777,10 +782,10 @@ failed_out:
-  *	ext4_alloc_block() (normally -ENOSPC). Otherwise we set the chain
-  *	as described above and return 0.
-  */
--static int ext4_alloc_branch(handle_t *handle, struct inode *inode,
--			     ext4_lblk_t iblock, int indirect_blks,
--			     int *blks, ext4_fsblk_t goal,
--			     ext4_lblk_t *offsets, Indirect *branch)
-+static int ext4_alloc_branch_cow(handle_t *handle, struct inode *inode,
-+			ext4_fsblk_t iblock, int indirect_blks,
-+				  int *blks, ext4_fsblk_t goal,
-+				  int *offsets, Indirect *branch, int flags)
- {
- 	int blocksize = inode->i_sb->s_blocksize;
- 	int i, n = 0;
-@@ -790,6 +795,22 @@ static int ext4_alloc_branch(handle_t *handle, struct inode *inode,
- 	ext4_fsblk_t new_blocks[4];
- 	ext4_fsblk_t current_block;
- 
-+	if (SNAPMAP_ISMOVE(flags)) {
-+		/* mapping snapshot block to block device block */
-+		current_block = SNAPSHOT_BLOCK(iblock);
-+		num = 0;
-+		if (indirect_blks > 0) {
-+			/* allocating only indirect blocks */
-+			ext4_alloc_blocks(handle, inode, iblock, goal,
-+					  indirect_blks, 0, new_blocks, &err);
-+			if (err)
-+				return err;
-+		}
-+		/* charge snapshot file owner for moved blocks */
-+		dquot_alloc_block_nofail(inode, *blks);
-+		num = *blks;
-+		new_blocks[indirect_blks] = current_block;
-+	} else
- 	num = ext4_alloc_blocks(handle, inode, iblock, goal, indirect_blks,
- 				*blks, new_blocks, &err);
- 	if (err)
-@@ -861,8 +882,11 @@ failed:
- 	}
- 	for (i = n+1; i < indirect_blks; i++)
- 		ext4_free_blocks(handle, inode, NULL, new_blocks[i], 1, 0);
--
--	ext4_free_blocks(handle, inode, NULL, new_blocks[i], num, 0);
-+	if (SNAPMAP_ISMOVE(flags) && num > 0)
-+		/* don't charge snapshot file owner if move failed */
-+		dquot_free_block(inode, num);
-+	else if (num > 0)
-+		ext4_free_blocks(handle, inode, NULL, new_blocks[i], num, 0);
- 
- 	return err;
- }
-@@ -882,9 +906,8 @@ failed:
-  * inode (->i_blocks, etc.). In case of success we end up with the full
-  * chain to new block and return 0.
-  */
--static int ext4_splice_branch(handle_t *handle, struct inode *inode,
--			      ext4_lblk_t block, Indirect *where, int num,
--			      int blks)
-+static int ext4_splice_branch_cow(handle_t *handle, struct inode *inode,
-+		long block, Indirect *where, int num, int blks, int flags)
- {
- 	int i;
- 	int err = 0;
-@@ -951,8 +974,12 @@ err_out:
- 		ext4_free_blocks(handle, inode, where[i].bh, 0, 1,
- 				 EXT4_FREE_BLOCKS_FORGET);
- 	}
--	ext4_free_blocks(handle, inode, NULL, le32_to_cpu(where[num].key),
--			 blks, 0);
-+	if (SNAPMAP_ISMOVE(flags))
-+		/* don't charge snapshot file owner if move failed */
-+		dquot_free_block(inode, blks);
-+	else
-+		ext4_free_blocks(handle, inode, NULL,
-+				 le32_to_cpu(where[num].key), blks, 0);
- 
- 	return err;
- }
-@@ -1099,9 +1126,11 @@ static int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
- 	/*
- 	 * Block out ext4_truncate while we alter the tree
- 	 */
--	err = ext4_alloc_branch(handle, inode, map->m_lblk, indirect_blks,
--				&count, goal,
--				offsets + (partial - chain), partial);
-+	err = ext4_alloc_branch_cow(handle, inode, map->m_lblk, indirect_blks,
-+				     &count, goal, offsets + (partial - chain),
-+				     partial, flags);
-+	if (err)
-+		goto cleanup;
- 
- 	if (map->m_flags & EXT4_MAP_REMAP) {
- 		map->m_len = count;
-@@ -1127,9 +1156,8 @@ static int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
- 	 * credits cannot be returned.  Can we handle this somehow?  We
- 	 * may need to return -EAGAIN upwards in the worst case.  --sct
- 	 */
--	if (!err)
--		err = ext4_splice_branch(handle, inode, map->m_lblk,
--					 partial, indirect_blks, count);
-+	err = ext4_splice_branch_cow(handle, inode, map->m_lblk, partial,
-+				     indirect_blks, count, flags);
- 	if (err)
- 		goto cleanup;
- 
 diff --git a/fs/ext4/snapshot.c b/fs/ext4/snapshot.c
-index fc91ca4..adeb0b6 100644
+index adeb0b6..9fb5c2f 100644
 --- a/fs/ext4/snapshot.c
 +++ b/fs/ext4/snapshot.c
-@@ -328,3 +328,123 @@ out:
- 	return err;
+@@ -75,6 +75,27 @@ __ext4_snapshot_copy_buffer(struct buffer_head *sbh,
  }
  
-+/*
-+ * ext4_snapshot_test_and_move - move blocks to active snapshot
-+ * @where:	name of caller function
-+ * @handle:	JBD handle
-+ * @inode:	owner of blocks (NULL for global metadata blocks)
-+ * @block:	address of first block to move
-+ * @maxblocks:	max. blocks to move
-+ * @move:	if false, only test if @block needs to be moved
-+ *
-+ * Return values:
-+ * > 0 - blocks a) were moved to snapshot for @move = 1;
-+ *		b) needs to be moved for @move = 0
-+ * = 0 - blocks dont need to be moved
-+ * < 0 - error
+ /*
++ * use @mask to clear exclude bitmap bits from block bitmap
++ * when creating COW bitmap and mark snapshot buffer @sbh uptodate
 + */
-+int ext4_snapshot_test_and_move(const char *where, handle_t *handle,
-+	struct inode *inode, ext4_fsblk_t block, int *maxblocks, int move)
++static inline void
++__ext4_snapshot_copy_bitmap(struct buffer_head *sbh,
++		char *dst, const char *src, const char *mask)
 +{
-+	struct super_block *sb = handle->h_transaction->t_journal->j_private;
-+	struct inode *active_snapshot = ext4_snapshot_has_active(sb);
-+	ext4_fsblk_t blk = 0;
-+	int err = 0, count = *maxblocks;
-+	int moved_blks = 0;
-+	int excluded = 0;
++	const u32 *ps = (const u32 *)src, *pm = (const u32 *)mask;
++	u32 *pd = (u32 *)dst;
++	int i;
 +
-+	if (!active_snapshot)
-+		/* no active snapshot - no need to move */
-+		return 0;
++	if (mask) {
++		for (i = 0; i < SNAPSHOT_ADDR_PER_BLOCK; i++)
++			*pd++ = *ps++ & ~*pm++;
++	} else
++		memcpy(dst, src, SNAPSHOT_BLOCK_SIZE);
 +
-+	ext4_snapshot_trace_cow(where, handle, sb, inode, NULL, block, count,
-+				move);
++	set_buffer_uptodate(sbh);
++}
 +
-+	BUG_ON(IS_COWING(handle) || inode == active_snapshot);
++/*
+  * ext4_snapshot_complete_cow()
+  * Unlock a newly COWed snapshot buffer and complete the COW operation.
+  * Optionally, sync the buffer to disk or add it to the current transaction
+@@ -123,13 +144,228 @@ void ext4_snapshot_copy_buffer(struct buffer_head *sbh,
+ 		struct buffer_head *bh, const char *mask)
+ {
+ 	lock_buffer(sbh);
+-	__ext4_snapshot_copy_buffer(sbh, bh);
++	if (mask)
++		__ext4_snapshot_copy_bitmap(sbh,
++				sbh->b_data, bh->b_data, mask);
++	else
++		__ext4_snapshot_copy_buffer(sbh, bh);
+ 	unlock_buffer(sbh);
+ 	mark_buffer_dirty(sbh);
+ 	sync_dirty_buffer(sbh);
+ }
+ 
+ /*
++ * COW bitmap functions
++ */
 +
-+	/* BEGIN moving */
-+	ext4_snapshot_cow_begin(handle);
++/*
++ * ext4_snapshot_init_cow_bitmap() init a new allocated (locked) COW bitmap
++ * buffer on first time block group access after snapshot take.
++ * COW bitmap is created by masking the block bitmap with exclude bitmap.
++ */
++static int
++ext4_snapshot_init_cow_bitmap(struct super_block *sb,
++		unsigned int block_group, struct buffer_head *cow_bh)
++{
++	struct buffer_head *bitmap_bh;
++	char *dst, *src, *mask = NULL;
 +
-+	if (inode)
-+		excluded = ext4_snapshot_excluded(inode);
-+	if (excluded) {
-+		/* don't move excluded file block to snapshot */
-+		snapshot_debug_hl(4, "file (%lu) excluded from snapshot\n",
-+				inode->i_ino);
-+		move = 0;
-+	}
++	bitmap_bh = ext4_read_block_bitmap(sb, block_group);
++	if (!bitmap_bh)
++		return -EIO;
 +
-+	if (excluded)
-+		goto out;
-+	if (!err) {
-+		/* block not in COW bitmap - no need to move */
-+		trace_cow_add(handle, ok_bitmap, count);
-+		goto out;
-+	}
-+
-+#ifdef CONFIG_EXT4_DEBUG
-+	if (inode == NULL &&
-+		!(EXT4_I(active_snapshot)->i_flags & EXT4_UNRM_FL)) {
-+		/*
-+		 * This is ext4_group_extend() "freeing" the blocks that
-+		 * were added to the block group.  These block should not be
-+		 * moved to snapshot, unless the snapshot is marked with the
-+		 * UNRM flag for large snapshot creation test.
-+		 */
-+		trace_cow_add(handle, ok_bitmap, count);
-+		err = 0;
-+		goto out;
-+	}
-+#endif
-+
-+	/* count blocks are in use by snapshot - check if @block is mapped */
-+	err = ext4_snapshot_map_blocks(handle, active_snapshot, block, count,
-+					&blk, SNAPMAP_READ);
-+	if (err < 0)
-+		goto out;
-+	if (err > 0) {
-+		/* blocks already mapped in snapshot - no need to move */
-+		count = err;
-+		trace_cow_add(handle, ok_mapped, count);
-+		err = 0;
-+		goto out;
-+	}
-+
-+	/* @count blocks need to be moved */
-+	err = count;
-+	if (!move)
-+		/* don't move - we were just checking */
-+		goto out;
-+
-+	/* try to move @count blocks from inode to snapshot.
-+	 * @count blocks may cross block boundry.
-+	 * TODO: if moving fails after some blocks has been moved,
-+	 * maybe we need a blockbitmap fsck.
-+	 */
-+	blk = block;
-+	while (count) {
-+		err = ext4_snapshot_map_blocks(handle, active_snapshot, blk,
-+					count, NULL, SNAPMAP_MOVE);
-+		if (err <= 0)
-+			goto out;
-+		moved_blks += err;
-+		blk += err;
-+		count -= err;
-+	}
-+	count = moved_blks;
-+	err = moved_blks;
++	src = bitmap_bh->b_data;
 +	/*
-+	 * User should no longer be charged for these blocks.
-+	 * Snapshot file owner was charged for these blocks
-+	 * when they were mapped to snapshot file.
++	 * Another COWing task may be changing this block bitmap
++	 * (allocating active snapshot blocks) while we are trying
++	 * to copy it.  At this point we are guaranteed that the only
++	 * changes to block bitmap are the new active snapshot blocks,
++	 * because before allocating/freeing any other blocks a task
++	 * must first get_write_access() on the bitmap and get here.
 +	 */
-+	if (inode)
-+		dquot_free_block(inode, count);
-+	trace_cow_add(handle, moved, count);
-+out:
-+	/* END moving */
-+	ext4_snapshot_cow_end(where, handle, block, err);
-+	*maxblocks = count;
++	ext4_lock_group(sb, block_group);
++
++	/*
++	 * in the path coming from ext4_snapshot_read_block_bitmap(),
++	 * cow_bh is a user page buffer so it has to be kmapped.
++	 */
++	dst = kmap_atomic(cow_bh->b_page, KM_USER0);
++	__ext4_snapshot_copy_bitmap(cow_bh, dst, src, mask);
++	kunmap_atomic(dst, KM_USER0);
++
++	ext4_unlock_group(sb, block_group);
++
++	brelse(bitmap_bh);
++	return 0;
++}
++
++/*
++ * ext4_snapshot_read_block_bitmap()
++ * helper function for ext4_snapshot_get_block()
++ * used for fixing the block bitmap user page buffer when
++ * reading through to block device.
++ */
++int ext4_snapshot_read_block_bitmap(struct super_block *sb,
++		unsigned int block_group, struct buffer_head *bitmap_bh)
++{
++	int err;
++
++	lock_buffer(bitmap_bh);
++	err = ext4_snapshot_init_cow_bitmap(sb, block_group, bitmap_bh);
++	unlock_buffer(bitmap_bh);
 +	return err;
 +}
 +
-diff --git a/fs/ext4/snapshot.h b/fs/ext4/snapshot.h
-index 90cb33e..fc5dbec 100644
---- a/fs/ext4/snapshot.h
-+++ b/fs/ext4/snapshot.h
-@@ -186,7 +186,17 @@ extern int ext4_snapshot_test_and_cow(const char *where,
- 	ext4_snapshot_test_and_cow(__func__, handle, inode,	\
- 			block, bh, cow)
- 
--#define ext4_snapshot_move(handle, inode, block, pcount, move) (0)
-+extern int ext4_snapshot_test_and_move(const char *where,
-+		handle_t *handle, struct inode *inode,
-+		ext4_fsblk_t block, int *pcount, int move);
++/*
++ * ext4_snapshot_read_cow_bitmap - read COW bitmap from active snapshot
++ * @handle:	JBD handle
++ * @snapshot:	active snapshot
++ * @block_group: block group
++ *
++ * Reads the COW bitmap block (i.e., the active snapshot copy of block bitmap).
++ * Creates the COW bitmap on first access to @block_group after snapshot take.
++ * COW bitmap cache is non-persistent, so no need to mark the group descriptor
++ * block dirty.  COW bitmap races are handled internally, so no locks are
++ * required when calling this function, only a valid @handle.
++ *
++ * Return COW bitmap buffer on success or NULL in case of failure.
++ */
++static struct buffer_head *
++ext4_snapshot_read_cow_bitmap(handle_t *handle, struct inode *snapshot,
++			       unsigned int block_group)
++{
++	struct super_block *sb = snapshot->i_sb;
++	struct ext4_group_info *grp = ext4_get_group_info(sb, block_group);
++	struct ext4_group_desc *desc;
++	struct buffer_head *cow_bh;
++	ext4_fsblk_t bitmap_blk;
++	ext4_fsblk_t cow_bitmap_blk;
++	int err = 0;
++
++	desc = ext4_get_group_desc(sb, block_group, NULL);
++	if (!desc)
++		return NULL;
++
++	bitmap_blk = ext4_block_bitmap(sb, desc);
++
++	ext4_lock_group(sb, block_group);
++	cow_bitmap_blk = grp->bg_cow_bitmap;
++	ext4_unlock_group(sb, block_group);
++	if (cow_bitmap_blk)
++		return sb_bread(sb, cow_bitmap_blk);
++
++	/*
++	 * Try to read cow bitmap block from snapshot file.  If COW bitmap
++	 * is not yet allocated, create the new COW bitmap block.
++	 */
++	cow_bh = ext4_bread(handle, snapshot, SNAPSHOT_IBLOCK(bitmap_blk),
++				SNAPMAP_READ, &err);
++	if (cow_bh)
++		goto out;
++
++	/* allocate snapshot block for COW bitmap */
++	cow_bh = ext4_getblk(handle, snapshot, SNAPSHOT_IBLOCK(bitmap_blk),
++			     SNAPMAP_BITMAP, &err);
++	if (!cow_bh)
++		goto out;
++	if (!err) {
++		/*
++		 * err should be 1 to indicate new allocated (locked) buffer.
++		 * if err is 0, it means that someone mapped this block
++		 * before us, while we are updating the COW bitmap cache.
++		 * the pending COW bitmap code should prevent that.
++		 */
++		WARN_ON(1);
++		err = -EIO;
++		goto out;
++	}
++
++	err = ext4_snapshot_init_cow_bitmap(sb, block_group, cow_bh);
++	if (err)
++		goto out;
++	/*
++	 * complete pending COW operation. no need to wait for tracked reads
++	 * of block bitmap, because it is copied directly to page buffer by
++	 * ext4_snapshot_read_block_bitmap()
++	 */
++	err = ext4_snapshot_complete_cow(handle, snapshot, cow_bh, NULL, 1);
++	if (err)
++		goto out;
++
++	trace_cow_inc(handle, bitmaps);
++out:
++	if (!err && cow_bh) {
++		/* initialized COW bitmap block */
++		cow_bitmap_blk = cow_bh->b_blocknr;
++		snapshot_debug(3, "COW bitmap #%u of snapshot (%u) "
++				"mapped to block [%lld/%lld]\n",
++				block_group, snapshot->i_generation,
++				SNAPSHOT_BLOCK_TUPLE(cow_bitmap_blk));
++	} else {
++		/* uninitialized COW bitmap block */
++		cow_bitmap_blk = 0;
++		snapshot_debug(1, "failed to read COW bitmap #%u of snapshot "
++				"(%u)\n", block_group, snapshot->i_generation);
++		brelse(cow_bh);
++		cow_bh = NULL;
++	}
++
++	/* update or reset COW bitmap cache */
++	ext4_lock_group(sb, block_group);
++	grp->bg_cow_bitmap = cow_bitmap_blk;
++	ext4_unlock_group(sb, block_group);
++
++	return cow_bh;
++}
 +
 +/*
-+ * test if blocks should be moved to snapshot
-+ * and if they should, try to move them to the active snapshot
++ * ext4_snapshot_test_cow_bitmap - test if blocks are in use by snapshot
++ * @handle:	JBD handle
++ * @snapshot:	active snapshot
++ * @block:	address of block
++ * @maxblocks:	max no. of blocks to be tested
++ * @excluded:	if not NULL, blocks belong to this excluded inode
++ *
++ * If the block bit is set in the COW bitmap, than it was allocated at the time
++ * that the active snapshot was taken and is therefore "in use" by the snapshot.
++ *
++ * Return values:
++ * > 0 - blocks are in use by snapshot
++ * = 0 - @blocks are not in use by snapshot
++ * < 0 - error
 + */
-+#define ext4_snapshot_move(handle, inode, block, pcount, move)	\
-+	ext4_snapshot_test_and_move(__func__, handle, inode,	\
-+			block, pcount, move)
++static int
++ext4_snapshot_test_cow_bitmap(handle_t *handle, struct inode *snapshot,
++		ext4_fsblk_t block, int *maxblocks, struct inode *excluded)
++{
++	struct buffer_head *cow_bh;
++	unsigned long block_group = SNAPSHOT_BLOCK_GROUP(block);
++	ext4_grpblk_t bit = SNAPSHOT_BLOCK_GROUP_OFFSET(block);
++	ext4_fsblk_t snapshot_blocks = SNAPSHOT_BLOCKS(snapshot);
++	int ret;
++
++	if (block >= snapshot_blocks)
++		/*
++		 * Block is not is use by snapshot because it is past the
++		 * last f/s block at the time that the snapshot was taken.
++		 * (suggests that f/s was resized after snapshot take)
++		 */
++		return 0;
++
++	cow_bh = ext4_snapshot_read_cow_bitmap(handle, snapshot, block_group);
++	if (!cow_bh)
++		return -EIO;
++	/*
++	 * if the bit is set in the COW bitmap,
++	 * then the block is in use by snapshot
++	 */
++
++	ret = ext4_mb_test_bit_range(bit, cow_bh->b_data, maxblocks);
++
++	brelse(cow_bh);
++	return ret;
++}
++/*
+  * COW functions
+  */
+ 
+@@ -248,8 +484,11 @@ int ext4_snapshot_test_and_cow(const char *where, handle_t *handle,
+ 		cow = 0;
+ 	}
+ 
+-	if (clear < 0)
+-		goto cowed;
++	/* get the COW bitmap and test if blocks are in use by snapshot */
++	err = ext4_snapshot_test_cow_bitmap(handle, active_snapshot,
++			block, &count, clear < 0 ? inode : NULL);
++	if (err < 0)
++		goto out;
+ 	if (!err) {
+ 		trace_cow_inc(handle, ok_bitmap);
+ 		goto cowed;
+@@ -374,7 +613,10 @@ int ext4_snapshot_test_and_move(const char *where, handle_t *handle,
+ 		move = 0;
+ 	}
+ 
+-	if (excluded)
++	/* get the COW bitmap and test if blocks are in use by snapshot */
++	err = ext4_snapshot_test_cow_bitmap(handle, active_snapshot,
++			block, &count, excluded ? inode : NULL);
++	if (err < 0)
+ 		goto out;
+ 	if (!err) {
+ 		/* block not in COW bitmap - no need to move */
+diff --git a/fs/ext4/snapshot_ctl.c b/fs/ext4/snapshot_ctl.c
+index 1abda77..810cb21 100644
+--- a/fs/ext4/snapshot_ctl.c
++++ b/fs/ext4/snapshot_ctl.c
+@@ -112,7 +112,24 @@ static int ext4_snapshot_set_active(struct super_block *sb,
+ 
+ 	return 0;
+ }
+-#define ext4_snapshot_reset_bitmap_cache(sb, init) 0
++/*
++ * ext4_snapshot_reset_bitmap_cache():
++ *
++ * Resets the COW/exclude bitmap cache for all block groups.
++ *
++ * Called from snapshot_take() under journal_lock_updates().
++ */
++static void ext4_snapshot_reset_bitmap_cache(struct super_block *sb)
++{
++	struct ext4_group_info *grp;
++	int i;
++
++	for (i = 0; i < EXT4_SB(sb)->s_groups_count; i++) {
++		grp = ext4_get_group_info(sb, i);
++		grp->bg_cow_bitmap = 0;
++		cond_resched();
++	}
++}
  
  /*
-  * Block access functions
+  * Snapshot constructor/destructor
 -- 
 1.7.4.1
 
