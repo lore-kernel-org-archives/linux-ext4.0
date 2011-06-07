@@ -1,7 +1,7 @@
 From: amir73il@users.sourceforge.net
-Subject: [PATCH v1 03/36] ext4: snapshot hooks - inside JBD hooks
-Date: Tue,  7 Jun 2011 18:07:30 +0300
-Message-ID: <1307459283-22130-4-git-send-email-amir73il@users.sourceforge.net>
+Subject: [PATCH v1 04/36] ext4: snapshot hooks - block bitmap access
+Date: Tue,  7 Jun 2011 18:07:31 +0300
+Message-ID: <1307459283-22130-5-git-send-email-amir73il@users.sourceforge.net>
 References: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
 Cc: tytso@mit.edu, lczerner@redhat.com,
 	Amir Goldstein <amir73il@users.sf.net>,
@@ -10,247 +10,155 @@ To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-ww0-f44.google.com ([74.125.82.44]:41767 "EHLO
 	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754241Ab1FGPJD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2011 11:09:03 -0400
+	with ESMTP id S1754072Ab1FGPJG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2011 11:09:06 -0400
 Received: by mail-ww0-f44.google.com with SMTP id 36so5035787wwa.1
-        for <linux-ext4@vger.kernel.org>; Tue, 07 Jun 2011 08:09:02 -0700 (PDT)
+        for <linux-ext4@vger.kernel.org>; Tue, 07 Jun 2011 08:09:05 -0700 (PDT)
 In-Reply-To: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Amir Goldstein <amir73il@users.sf.net>
 
-Before every metadata buffer write, the journal API is called,
-namely, one of the ext4_journal_get_XXX_access() functions.
-We use these journal hooks to call the snapshot API, namely
-ext4_snapshot_get_XXX_access(), to COW the metadata buffer before
-it is modified for the first time.
+The API ext4_handle_get_bitmap_access() is used instead of
+ext4_journal_get_write_access(), before modifying a block bitmap
+while allocating or deleting blocks.  The bitmap access API is
+used to initialize the COW bitmap for that group.
+The old ext4_journal_get_undo_access() API was removed because it
+is not being used in the code.
 
 
 Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/ext4_jbd2.c   |    9 ++++++-
- fs/ext4/ext4_jbd2.h   |   15 ++++++++++---
- fs/ext4/extents.c     |    3 +-
- fs/ext4/inode.c       |   22 ++++++++++++++------
- fs/ext4/move_extent.c |    3 +-
- fs/ext4/snapshot.h    |   51 +++++++++++++++++++++++++++++++++++++++++++++++++
- 6 files changed, 88 insertions(+), 15 deletions(-)
+ fs/ext4/ext4_jbd2.c |   10 +++++++---
+ fs/ext4/ext4_jbd2.h |   10 ++++++----
+ fs/ext4/mballoc.c   |    7 ++++---
+ fs/ext4/snapshot.h  |   31 +++++++++++++++++++++++++++++++
+ 4 files changed, 48 insertions(+), 10 deletions(-)
 
 diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index 560020d..833969b 100644
+index 833969b..c44c362 100644
 --- a/fs/ext4/ext4_jbd2.c
 +++ b/fs/ext4/ext4_jbd2.c
-@@ -23,13 +23,16 @@ int __ext4_journal_get_undo_access(const char *where, unsigned int line,
- 	return err;
- }
+@@ -9,13 +9,17 @@
  
--int __ext4_journal_get_write_access(const char *where, unsigned int line,
--				    handle_t *handle, struct buffer_head *bh)
-+int __ext4_journal_get_write_access_inode(const char *where, unsigned int line,
-+					 handle_t *handle, struct inode *inode,
-+					 struct buffer_head *bh, int exclude)
+ #include <trace/events/ext4.h>
+ 
+-int __ext4_journal_get_undo_access(const char *where, unsigned int line,
+-				   handle_t *handle, struct buffer_head *bh)
++int __ext4_handle_get_bitmap_access(const char *where, unsigned int line,
++				    handle_t *handle, struct super_block *sb,
++				    ext4_group_t group, struct buffer_head *bh)
  {
  	int err = 0;
  
  	if (ext4_handle_valid(handle)) {
- 		err = jbd2_journal_get_write_access(handle, bh);
-+		if (!err && !exclude)
-+			err = ext4_snapshot_get_write_access(handle, inode, bh);
+-		err = jbd2_journal_get_undo_access(handle, bh);
++		err = jbd2_journal_get_write_access(handle, bh);
++		if (!err)
++			err = ext4_snapshot_get_bitmap_access(handle, sb,
++							      group, bh);
  		if (err)
  			ext4_journal_abort_handle(where, line, __func__, bh,
  						  handle, err);
-@@ -111,6 +114,8 @@ int __ext4_journal_get_create_access(const char *where, unsigned int line,
- 
- 	if (ext4_handle_valid(handle)) {
- 		err = jbd2_journal_get_create_access(handle, bh);
-+		if (!err)
-+			err = ext4_snapshot_get_create_access(handle, bh);
- 		if (err)
- 			ext4_journal_abort_handle(where, line, __func__,
- 						  bh, handle, err);
 diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index 3da2092..ca6e135 100644
+index ca6e135..be3b8b3 100644
 --- a/fs/ext4/ext4_jbd2.h
 +++ b/fs/ext4/ext4_jbd2.h
-@@ -132,9 +132,9 @@ void ext4_journal_abort_handle(const char *caller, unsigned int line,
- int __ext4_journal_get_undo_access(const char *where, unsigned int line,
- 				   handle_t *handle, struct buffer_head *bh);
+@@ -129,8 +129,9 @@ void ext4_journal_abort_handle(const char *caller, unsigned int line,
+ 			       const char *err_fn,
+ 		struct buffer_head *bh, handle_t *handle, int err);
  
--int __ext4_journal_get_write_access(const char *where, unsigned int line,
--				    handle_t *handle, struct buffer_head *bh);
--
-+int __ext4_journal_get_write_access_inode(const char *where, unsigned int line,
-+					 handle_t *handle, struct inode *inode,
-+					 struct buffer_head *bh, int exclude);
- int __ext4_forget(const char *where, unsigned int line, handle_t *handle,
- 		  int is_metadata, struct inode *inode,
- 		  struct buffer_head *bh, ext4_fsblk_t blocknr);
-@@ -151,8 +151,15 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
+-int __ext4_journal_get_undo_access(const char *where, unsigned int line,
+-				   handle_t *handle, struct buffer_head *bh);
++int __ext4_handle_get_bitmap_access(const char *where, unsigned int line,
++				    handle_t *handle, struct super_block *sb,
++				    ext4_group_t group, struct buffer_head *bh);
  
- #define ext4_journal_get_undo_access(handle, bh) \
- 	__ext4_journal_get_undo_access(__func__, __LINE__, (handle), (bh))
-+#define ext4_journal_get_write_access_exclude(handle, bh) \
-+	__ext4_journal_get_write_access_inode(__func__, __LINE__, \
-+						 (handle), NULL, (bh), 1)
- #define ext4_journal_get_write_access(handle, bh) \
--	__ext4_journal_get_write_access(__func__, __LINE__, (handle), (bh))
-+	__ext4_journal_get_write_access_inode(__func__, __LINE__, \
-+						 (handle), NULL, (bh), 0)
-+#define ext4_journal_get_write_access_inode(handle, inode, bh) \
-+	__ext4_journal_get_write_access_inode(__func__, __LINE__, \
-+						(handle), (inode), (bh), 0)
- #define ext4_forget(handle, is_metadata, inode, bh, block_nr) \
- 	__ext4_forget(__func__, __LINE__, (handle), (is_metadata), (inode), \
- 		      (bh), (block_nr))
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 7598224..6f0a711 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -79,7 +79,8 @@ static int ext4_ext_get_access(handle_t *handle, struct inode *inode,
- {
- 	if (path->p_bh) {
- 		/* path points to block */
--		return ext4_journal_get_write_access(handle, path->p_bh);
-+		return ext4_journal_get_write_access_inode(handle,
-+					inode, path->p_bh);
+ int __ext4_journal_get_write_access_inode(const char *where, unsigned int line,
+ 					 handle_t *handle, struct inode *inode,
+@@ -149,8 +150,9 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+ int __ext4_handle_dirty_super(const char *where, unsigned int line,
+ 			      handle_t *handle, struct super_block *sb);
+ 
+-#define ext4_journal_get_undo_access(handle, bh) \
+-	__ext4_journal_get_undo_access(__func__, __LINE__, (handle), (bh))
++#define ext4_handle_get_bitmap_access(handle, sb, group, bh) \
++	__ext4_handle_get_bitmap_access(__func__, __LINE__, \
++					(handle), (sb), (group), (bh))
+ #define ext4_journal_get_write_access_exclude(handle, bh) \
+ 	__ext4_journal_get_write_access_inode(__func__, __LINE__, \
+ 						 (handle), NULL, (bh), 1)
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 54ea8c8..6b400f2 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2749,7 +2749,8 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+ 	if (!bitmap_bh)
+ 		goto out_err;
+ 
+-	err = ext4_journal_get_write_access(handle, bitmap_bh);
++	err = ext4_handle_get_bitmap_access(handle, sb, ac->ac_b_ex.fe_group,
++			bitmap_bh);
+ 	if (err)
+ 		goto out_err;
+ 
+@@ -4549,7 +4550,7 @@ do_more:
  	}
- 	/* path points to leaf/index in inode body */
- 	/* we use in-core data, no need to protect them */
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 9dbd806..80e3393 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -874,7 +874,8 @@ static int ext4_splice_branch(handle_t *handle, struct inode *inode,
- 	 */
- 	if (where->bh) {
- 		BUFFER_TRACE(where->bh, "get_write_access");
--		err = ext4_journal_get_write_access(handle, where->bh);
-+		err = ext4_journal_get_write_access_inode(handle, inode,
-+							   where->bh);
- 		if (err)
- 			goto err_out;
+ 
+ 	BUFFER_TRACE(bitmap_bh, "getting write access");
+-	err = ext4_journal_get_write_access(handle, bitmap_bh);
++	err = ext4_handle_get_bitmap_access(handle, sb, block_group, bitmap_bh);
+ 	if (err)
+ 		goto error_return;
+ 
+@@ -4698,7 +4699,7 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
  	}
-@@ -4149,7 +4150,8 @@ static int ext4_clear_blocks(handle_t *handle, struct inode *inode,
- 			goto out_err;
- 		if (bh) {
- 			BUFFER_TRACE(bh, "retaking write access");
--			err = ext4_journal_get_write_access(handle, bh);
-+			err = ext4_journal_get_write_access_inode(handle,
-+								  inode, bh);
- 			if (unlikely(err))
- 				goto out_err;
- 		}
-@@ -4200,7 +4202,8 @@ static void ext4_free_data(handle_t *handle, struct inode *inode,
  
- 	if (this_bh) {				/* For indirect block */
- 		BUFFER_TRACE(this_bh, "get_write_access");
--		err = ext4_journal_get_write_access(handle, this_bh);
-+		err = ext4_journal_get_write_access_inode(handle, inode,
-+							   this_bh);
- 		/* Important: if we can't update the indirect pointers
- 		 * to the blocks, we can't free them. */
- 		if (err)
-@@ -4363,8 +4366,8 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
- 				 * pointed to by an indirect block: journal it
- 				 */
- 				BUFFER_TRACE(parent_bh, "get_write_access");
--				if (!ext4_journal_get_write_access(handle,
--								   parent_bh)){
-+				if (!ext4_journal_get_write_access_inode(
-+					    handle, inode, parent_bh)){
- 					*p = 0;
- 					BUFFER_TRACE(parent_bh,
- 					"call ext4_handle_dirty_metadata");
-@@ -4741,9 +4744,14 @@ has_buffer:
+ 	BUFFER_TRACE(bitmap_bh, "getting write access");
+-	err = ext4_journal_get_write_access(handle, bitmap_bh);
++	err = ext4_handle_get_bitmap_access(handle, sb, block_group, bitmap_bh);
+ 	if (err)
+ 		goto error_return;
  
- int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc)
- {
--	/* We have all inode data except xattrs in memory here. */
--	return __ext4_get_inode_loc(inode, iloc,
-+	int in_mem = (!EXT4_SNAPSHOTS(inode->i_sb) &&
- 		!ext4_test_inode_state(inode, EXT4_STATE_XATTR));
-+
-+	/*
-+	 * We have all inode's data except xattrs in memory here,
-+	 * but we must always read-in the entire inode block for COW.
-+	 */
-+	return __ext4_get_inode_loc(inode, iloc, in_mem);
- }
- 
- void ext4_set_inode_flags(struct inode *inode)
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index b9f3e78..ad5409a 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -421,7 +421,8 @@ mext_insert_extents(handle_t *handle, struct inode *orig_inode,
- 
- 	if (depth) {
- 		/* Register to journal */
--		ret = ext4_journal_get_write_access(handle, orig_path->p_bh);
-+		ret = ext4_journal_get_write_access_inode(handle,
-+					orig_inode, orig_path->p_bh);
- 		if (ret)
- 			return ret;
- 	}
 diff --git a/fs/ext4/snapshot.h b/fs/ext4/snapshot.h
-index d0c985b..54241b9 100644
+index 54241b9..008f4a9 100644
 --- a/fs/ext4/snapshot.h
 +++ b/fs/ext4/snapshot.h
-@@ -145,6 +145,57 @@ static inline int EXT4_SNAPSHOTS(struct super_block *sb)
-  * Block access functions
-  */
+@@ -196,6 +196,37 @@ static inline int ext4_snapshot_get_create_access(handle_t *handle,
+ 	return err;
+ }
  
 +/*
-+ * get_write_access() is called before writing to a metadata block
-+ * if @inode is not NULL, then this is an inode's indirect block
-+ * otherwise, this is a file system global metadata block
++ * get_bitmap_access() is called before modifying a block bitmap.
++ * this call initializes the COW bitmap for @group.
 + *
 + * Return values:
-+ * = 0 - block was COWed or doesn't need to be COWed
++ * = 0 - COW bitmap is initialized
 + * < 0 - error
 + */
-+static inline int ext4_snapshot_get_write_access(handle_t *handle,
-+		struct inode *inode, struct buffer_head *bh)
-+{
-+	struct super_block *sb;
-+
-+	sb = handle->h_transaction->t_journal->j_private;
-+	if (!EXT4_SNAPSHOTS(sb))
-+		return 0;
-+
-+	return ext4_snapshot_cow(handle, inode, bh->b_blocknr, bh, 1);
-+}
-+
-+/*
-+ * get_create_access() is called after allocating a new metadata block
-+ *
-+ * Return values:
-+ * = 0 - block was COWed or doesn't need to be COWed
-+ * < 0 - error
-+ */
-+static inline int ext4_snapshot_get_create_access(handle_t *handle,
++static inline int ext4_snapshot_get_bitmap_access(handle_t *handle,
++		struct super_block *sb, ext4_group_t group,
 +		struct buffer_head *bh)
 +{
-+	struct super_block *sb;
-+	int err;
-+
-+	sb = handle->h_transaction->t_journal->j_private;
 +	if (!EXT4_SNAPSHOTS(sb))
 +		return 0;
-+
-+	/* Should block be COWed? */
-+	err = ext4_snapshot_cow(handle, NULL, bh->b_blocknr, bh, 0);
 +	/*
-+	 * A new block shouldn't need to be COWed if get_delete_access() was
-+	 * called for all deleted blocks.  However, it may need to be COWed
-+	 * if fsck was run and if it had freed some blocks without moving them
-+	 * to snapshot.  In the latter case, -EIO will be returned.
++	 * With flex_bg, block bitmap may reside in a different group than
++	 * the group it describes, so we need to init both COW bitmaps:
++	 * 1. init the COW bitmap for @group by testing
++	 *    if the first block in the group should be COWed
 +	 */
-+	if (err > 0)
-+		err = -EIO;
-+	return err;
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG)) {
++		int err = ext4_snapshot_cow(handle, NULL,
++				ext4_group_first_block_no(sb, group),
++				NULL, 0);
++		if (err < 0)
++			return err;
++	}
++	/* 2. COW the block bitmap itself, which may be in another group */
++	return ext4_snapshot_cow(handle, NULL, bh->b_blocknr, bh, 1);
 +}
 +
  
