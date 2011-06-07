@@ -1,7 +1,7 @@
 From: amir73il@users.sourceforge.net
-Subject: [PATCH v1 20/36] ext4: snapshot control - fix new snapshot
-Date: Tue,  7 Jun 2011 18:07:47 +0300
-Message-ID: <1307459283-22130-21-git-send-email-amir73il@users.sourceforge.net>
+Subject: [PATCH v1 21/36] ext4: snapshot control - reserve disk space for snapshot
+Date: Tue,  7 Jun 2011 18:07:48 +0300
+Message-ID: <1307459283-22130-22-git-send-email-amir73il@users.sourceforge.net>
 References: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
 Cc: tytso@mit.edu, lczerner@redhat.com,
 	Amir Goldstein <amir73il@users.sf.net>,
@@ -10,199 +10,211 @@ To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-wy0-f174.google.com ([74.125.82.174]:60303 "EHLO
 	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756262Ab1FGPJw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2011 11:09:52 -0400
+	with ESMTP id S1756262Ab1FGPJz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2011 11:09:55 -0400
 Received: by mail-wy0-f174.google.com with SMTP id 21so3629480wya.19
-        for <linux-ext4@vger.kernel.org>; Tue, 07 Jun 2011 08:09:52 -0700 (PDT)
+        for <linux-ext4@vger.kernel.org>; Tue, 07 Jun 2011 08:09:54 -0700 (PDT)
 In-Reply-To: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Amir Goldstein <amir73il@users.sf.net>
 
-On snapshot take, after copying the pre-allocated blocks, some are
-fixed to make the snapshot image appear as a valid Ext4 file system.
-The has_snapshot flags is cleared from the super block as well as
-the last_snapshot field and all snapshot inodes are cleared
-(to appear as empty inodes).
+Ensure there is enough disk space for snapshot file future use.
+Reserve disk space on snapshot take based on file system overhead
+size, number of directories and number of blocks/inodes in use.
 
 
 Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/ext4.h         |    2 +
- fs/ext4/inode.c        |    4 +-
- fs/ext4/snapshot_ctl.c |   74 ++++++++++++++++++++++++++++++++++++++++++++++-
- 3 files changed, 76 insertions(+), 4 deletions(-)
+ fs/ext4/balloc.c       |   25 +++++++++++++++++++++++++
+ fs/ext4/ext4.h         |    2 ++
+ fs/ext4/mballoc.c      |    6 ++++++
+ fs/ext4/snapshot_ctl.c |   44 ++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/super.c        |   16 +++++++++++++++-
+ 5 files changed, 92 insertions(+), 1 deletions(-)
 
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 8f1803f..1c140e4 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -372,6 +372,8 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
+ static int ext4_has_free_blocks(struct ext4_sb_info *sbi, s64 nblocks)
+ {
+ 	s64 free_blocks, dirty_blocks, root_blocks;
++	ext4_fsblk_t snapshot_r_blocks;
++	handle_t *handle = journal_current_handle();
+ 	struct percpu_counter *fbc = &sbi->s_freeblocks_counter;
+ 	struct percpu_counter *dbc = &sbi->s_dirtyblocks_counter;
+ 
+@@ -379,6 +381,29 @@ static int ext4_has_free_blocks(struct ext4_sb_info *sbi, s64 nblocks)
+ 	dirty_blocks = percpu_counter_read_positive(dbc);
+ 	root_blocks = ext4_r_blocks_count(sbi->s_es);
+ 
++	if (ext4_snapshot_active(sbi)) {
++		if (unlikely(free_blocks < (nblocks + dirty_blocks)))
++			/* sorry, but we're really out of space */
++			return 0;
++		if (handle && unlikely(IS_COWING(handle)))
++			/* any available space may be used by COWing task */
++			return 1;
++		/* reserve blocks for active snapshot */
++		snapshot_r_blocks =
++			le64_to_cpu(sbi->s_es->s_snapshot_r_blocks_count);
++		/*
++		 * The last snapshot_r_blocks are reserved for active snapshot
++		 * and may not be allocated even by root.
++		 */
++		if (free_blocks < (nblocks + dirty_blocks + snapshot_r_blocks))
++			return 0;
++		/*
++		 * Mortal users must reserve blocks for both snapshot and
++		 * root user.
++		 */
++		root_blocks += snapshot_r_blocks;
++	}
++
+ 	if (free_blocks - (nblocks + root_blocks + dirty_blocks) <
+ 						EXT4_FREEBLOCKS_WATERMARK) {
+ 		free_blocks  = percpu_counter_sum_positive(fbc);
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index e76faae..198d7d4 100644
+index 198d7d4..8d82125 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1839,6 +1839,8 @@ struct buffer_head *ext4_bread(handle_t *, struct inode *,
- int ext4_get_block(struct inode *inode, sector_t iblock,
- 				struct buffer_head *bh_result, int create);
+@@ -1963,6 +1963,8 @@ extern __le16 ext4_group_desc_csum(struct ext4_sb_info *sbi, __u32 group,
+ 				   struct ext4_group_desc *gdp);
+ extern int ext4_group_desc_csum_verify(struct ext4_sb_info *sbi, __u32 group,
+ 				       struct ext4_group_desc *gdp);
++struct kstatfs;
++extern int ext4_statfs_sb(struct super_block *sb, struct kstatfs *buf);
  
-+extern blkcnt_t ext4_inode_blocks(struct ext4_inode *raw_inode,
-+		struct ext4_inode_info *ei);
- extern struct inode *ext4_iget(struct super_block *, unsigned long);
- extern int  ext4_write_inode(struct inode *, struct writeback_control *);
- extern int  ext4_setattr(struct dentry *, struct iattr *);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 1558a7b..d703a55 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5178,8 +5178,8 @@ void ext4_get_inode_flags(struct ext4_inode_info *ei)
- 	} while (cmpxchg(&ei->i_flags, old_fl, new_fl) != old_fl);
- }
- 
--static blkcnt_t ext4_inode_blocks(struct ext4_inode *raw_inode,
--				  struct ext4_inode_info *ei)
-+blkcnt_t ext4_inode_blocks(struct ext4_inode *raw_inode,
-+			  struct ext4_inode_info *ei)
+ static inline ext4_fsblk_t ext4_blocks_count(struct ext4_super_block *es)
  {
- 	blkcnt_t i_blocks ;
- 	struct inode *inode = &(ei->vfs_inode);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 6e4d960..899c12c 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4296,10 +4296,16 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 			return 0;
+ 		}
+ 		reserv_blks = ar->len;
++		if (unlikely(ar->flags & EXT4_MB_HINT_COWING)) {
++			/* don't fail when allocating blocks for COW */
++			dquot_alloc_block_nofail(ar->inode, ar->len);
++			goto nofail;
++		}
+ 		while (ar->len && dquot_alloc_block(ar->inode, ar->len)) {
+ 			ar->flags |= EXT4_MB_HINT_NOPREALLOC;
+ 			ar->len--;
+ 		}
++nofail:
+ 		inquota = ar->len;
+ 		if (ar->len == 0) {
+ 			*errp = -EDQUOT;
 diff --git a/fs/ext4/snapshot_ctl.c b/fs/ext4/snapshot_ctl.c
-index 9d915a9..360581d 100644
+index 360581d..a610025 100644
 --- a/fs/ext4/snapshot_ctl.c
 +++ b/fs/ext4/snapshot_ctl.c
-@@ -393,6 +393,7 @@ static int ext4_snapshot_create(struct inode *inode)
- 	unsigned long ino;
- 	struct ext4_iloc iloc;
- 	ext4_fsblk_t bmap_blk = 0, imap_blk = 0, inode_blk = 0;
-+	ext4_fsblk_t prev_inode_blk = 0;
- 	ext4_fsblk_t snapshot_blocks = ext4_blocks_count(sbi->s_es);
- 	if (active_snapshot) {
- 		snapshot_debug(1, "failed to add snapshot because active "
-@@ -540,7 +541,9 @@ static int ext4_snapshot_create(struct inode *inode)
- 		goto out_handle;
- 	}
- 
--	ino = inode->i_ino;
-+	/* start with root inode and continue with snapshot list */
-+	ino = EXT4_ROOT_INO;
-+alloc_inode_blocks:
- 	/*
- 	 * pre-allocate the following blocks in the new snapshot:
- 	 * - block and inode bitmap blocks of ino's block group
-@@ -553,6 +556,11 @@ static int ext4_snapshot_create(struct inode *inode)
- 
- 	inode_blk = ext4_get_inode_block(sb, ino, &iloc);
- 
-+	if (!inode_blk || inode_blk == prev_inode_blk)
-+		goto next_snapshot;
-+
-+	/* not same inode and bitmap blocks as prev snapshot */
-+	prev_inode_blk = inode_blk;
- 	bmap_blk = 0;
- 	imap_blk = 0;
- 	desc = ext4_get_group_desc(sb, iloc.block_group, NULL);
-@@ -601,6 +609,10 @@ next_snapshot:
- 			err = -EIO;
- 		goto out_handle;
- 	}
-+	if (ino == EXT4_ROOT_INO) {
-+		ino = inode->i_ino;
-+		goto alloc_inode_blocks;
-+	}
- 	snapshot_debug(1, "snapshot (%u) created\n", inode->i_generation);
- 	err = 0;
- out_handle:
-@@ -693,6 +705,10 @@ int ext4_snapshot_take(struct inode *inode)
- 	struct inode *curr_inode;
- 	struct ext4_iloc iloc;
- 	struct ext4_group_desc *desc;
-+	ext4_fsblk_t prev_inode_blk = 0;
-+	struct ext4_inode *raw_inode;
-+	blkcnt_t excluded_blocks = 0;
-+	int fixing = 0;
+@@ -711,6 +711,8 @@ int ext4_snapshot_take(struct inode *inode)
+ 	int fixing = 0;
  	int i;
  	int err = -EIO;
++	u64 snapshot_r_blocks;
++	struct kstatfs statfs;
  
-@@ -752,7 +768,9 @@ int ext4_snapshot_take(struct inode *inode)
- 			goto out_unlockfs;
+ 	if (!sbi->s_sbh)
+ 		goto out_err;
+@@ -739,6 +741,47 @@ int ext4_snapshot_take(struct inode *inode)
  	}
  
--	curr_inode = inode;
-+	/* start with root inode and continue with snapshot list */
-+	curr_inode = sb->s_root->d_inode;
-+copy_inode_blocks:
- 	/*
- 	 * copy the following blocks to the new snapshot:
- 	 * - block and inode bitmap blocks of curr_inode block group
-@@ -769,6 +787,11 @@ int ext4_snapshot_take(struct inode *inode)
- 		err = err ? : -EIO;
- 		goto out_unlockfs;
- 	}
-+	if (fixing)
-+		goto fix_inode_copy;
-+	if (iloc.bh->b_blocknr == prev_inode_blk)
-+		goto next_inode;
-+	prev_inode_blk = iloc.bh->b_blocknr;
- 	brelse(bhs[COPY_BLOCK_BITMAP]);
- 	bhs[COPY_BLOCK_BITMAP] = sb_bread(sb,
- 			ext4_block_bitmap(sb, desc));
-@@ -784,12 +807,59 @@ int ext4_snapshot_take(struct inode *inode)
- 			goto out_unlockfs;
- 		mask = NULL;
- 	}
-+	/* this is the copy pass */
-+	goto next_inode;
-+fix_inode_copy:
-+	/* this is the fixing pass */
-+	/* get snapshot copy of raw inode */
-+	brelse(sbh);
-+	sbh = ext4_getblk(NULL, inode,
-+			SNAPSHOT_IBLOCK(iloc.bh->b_blocknr),
-+			SNAPMAP_READ, &err);
-+	if (!sbh)
-+		goto out_unlockfs;
-+	iloc.bh = sbh;
-+	raw_inode = ext4_raw_inode(&iloc);
+ 	err = -EIO;
++	/* update fs statistics to calculate snapshot reserved space */
++	if (ext4_statfs_sb(sb, &statfs)) {
++		snapshot_debug(1, "failed to statfs before snapshot (%u) "
++			       "take\n", inode->i_generation);
++		goto out_err;
++	}
 +	/*
-+	 * Snapshot inode blocks are excluded from COW bitmap,
-+	 * so they appear to be not allocated in the snapshot's
-+	 * block bitmap.  If we want the snapshot image to pass
-+	 * fsck with no errors, we need to detach those blocks
-+	 * from the copy of the snapshot inode, so we fix the
-+	 * snapshot inodes to appear as empty regular files.
++	 * Estimate maximum disk space for snapshot file metadata based on:
++	 * 1 indirect block per 1K fs blocks (to map moved data blocks)
++	 * +1 data block per 1K fs blocks (to copy indirect blocks)
++	 * +1 data block per fs meta block (to copy meta blocks)
++	 * +1 data block per directory (to copy small directory index blocks)
++	 * +1 data block per X inodes (to copy large directory index blocks)
++	 *
++	 * We estimate no. of dir blocks from no. of allocated inode, assuming
++	 * an avg. dir record size of 64 bytes. This assumption can break in
++	 * 2 cases:
++	 *   1. long file names (in avg.)
++	 *   2. large no. of hard links (many dir records for the same inode)
++	 *
++	 * Under estimation can lead to potential ENOSPC during COW, which
++	 * will trigger an ext4_error(). Hopefully, error behavior is set to
++	 * remount-ro, so snapshot will not be corrupted.
++	 *
++	 * XXX: reserved space may be too small in data jounaling mode,
++	 *      which is currently not supported.
 +	 */
-+	excluded_blocks += ext4_inode_blocks(raw_inode,
-+			EXT4_I(curr_inode)) >>
-+		(curr_inode->i_blkbits - 9);
-+	lock_buffer(sbh);
-+	ext4_isize_set(raw_inode, 0);
-+	raw_inode->i_blocks_lo = 0;
-+	raw_inode->i_blocks_high = 0;
-+	raw_inode->i_flags &= cpu_to_le32(~EXT4_SNAPFILE_FL);
-+	memset(raw_inode->i_block, 0, sizeof(raw_inode->i_block));
-+	unlock_buffer(sbh);
-+	mark_buffer_dirty(sbh);
-+	sync_dirty_buffer(sbh);
++#define AVG_DIR_RECORD_SIZE_BITS 6 /* 64 bytes */
++#define AVG_INODES_PER_DIR_BLOCK \
++	(SNAPSHOT_BLOCK_SIZE_BITS - AVG_DIR_RECORD_SIZE_BITS)
++	snapshot_r_blocks = 2 * (statfs.f_blocks >>
++			SNAPSHOT_ADDR_PER_BLOCK_BITS) +
++		statfs.f_spare[0] + statfs.f_spare[1] +
++		((statfs.f_files - statfs.f_ffree) >>
++		 AVG_INODES_PER_DIR_BLOCK);
 +
-+next_inode:
-+	if (curr_inode->i_ino == EXT4_ROOT_INO) {
-+		curr_inode = inode;
-+		goto copy_inode_blocks;
++	/* verify enough free space before taking the snapshot */
++	if (statfs.f_bfree < snapshot_r_blocks) {
++		err = -ENOSPC;
++		goto out_err;
 +	}
  
  	/*
- 	 * copy super block to snapshot and fix it
- 	 */
- 	lock_buffer(es_bh);
- 	memcpy(es_bh->b_data, sbi->s_sbh->b_data, sb->s_blocksize);
-+	/* set the IS_SNAPSHOT flag to signal fsck this is a snapshot */
-+	es->s_flags |= cpu_to_le32(EXT4_FLAGS_IS_SNAPSHOT);
-+	/* reset snapshots list in snapshot's super block copy */
-+	es->s_snapshot_inum = 0;
-+	es->s_snapshot_list = 0;
-+	/* fix free blocks count after clearing old snapshot inode blocks */
-+	ext4_free_blocks_count_set(es, ext4_free_blocks_count(es) +
-+				excluded_blocks);
- 	set_buffer_uptodate(es_bh);
- 	unlock_buffer(es_bh);
- 	mark_buffer_dirty(es_bh);
+ 	 * flush journal to disk and clear the RECOVER flag
+@@ -876,6 +919,7 @@ next_inode:
+ 		goto out_unlockfs;
+ 
+ 	/* set as on-disk active snapshot */
++	sbi->s_es->s_snapshot_r_blocks_count = cpu_to_le64(snapshot_r_blocks);
+ 
+ 	sbi->s_es->s_snapshot_id =
+ 		cpu_to_le32(le32_to_cpu(sbi->s_es->s_snapshot_id) + 1);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index dbe5651..a7be485 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4515,7 +4515,11 @@ restore_opts:
+ 
+ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
+ {
+-	struct super_block *sb = dentry->d_sb;
++	return ext4_statfs_sb(dentry->d_sb, buf);
++}
++
++int ext4_statfs_sb(struct super_block *sb, struct kstatfs *buf)
++{
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct ext4_super_block *es = sbi->s_es;
+ 	u64 fsid;
+@@ -4567,6 +4571,16 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
+ 	buf->f_bavail = buf->f_bfree - ext4_r_blocks_count(es);
+ 	if (buf->f_bfree < ext4_r_blocks_count(es))
+ 		buf->f_bavail = 0;
++	if (ext4_snapshot_active(sbi)) {
++		if (buf->f_bfree < ext4_r_blocks_count(es) +
++				le64_to_cpu(es->s_snapshot_r_blocks_count))
++			buf->f_bavail = 0;
++		else
++			buf->f_bavail -=
++				le64_to_cpu(es->s_snapshot_r_blocks_count);
++	}
++	buf->f_spare[0] = percpu_counter_sum_positive(&sbi->s_dirs_counter);
++	buf->f_spare[1] = sbi->s_overhead_last;
+ 	buf->f_files = le32_to_cpu(es->s_inodes_count);
+ 	buf->f_ffree = percpu_counter_sum_positive(&sbi->s_freeinodes_counter);
+ 	buf->f_namelen = EXT4_NAME_LEN;
 -- 
 1.7.4.1
 
