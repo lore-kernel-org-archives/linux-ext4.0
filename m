@@ -1,53 +1,101 @@
-From: Tao Ma <tm@tao.ma>
-Subject: [PATCH RESEND] Documentation: Remove the obsolete parameters in 2 jbd2 functions.
-Date: Tue,  7 Jun 2011 23:12:08 +0800
-Message-ID: <1307459528-12266-1-git-send-email-tm@tao.ma>
-References: <20110511145957.dff6c0ca.rdunlap@xenotime.net>
-Cc: Randy Dunlap <rdunlap@xenotime.net>,
-	"Theodore Ts'o" <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
+From: Josef Bacik <josef@redhat.com>
+Subject: Re: [PATCH RFC 00/30] Ext4 snapshots - core patches
+Date: Tue, 07 Jun 2011 11:26:43 -0400
+Message-ID: <4DEE4333.9@redhat.com>
+References: <1304959308-11122-1-git-send-email-amir73il@users.sourceforge.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: amir73il@users.sourceforge.net
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy3-pub.bluehost.com ([69.89.21.8]:39828 "HELO
-	oproxy3-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1755902Ab1FGPN1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2011 11:13:27 -0400
-In-Reply-To: <20110511145957.dff6c0ca.rdunlap@xenotime.net>
+Received: from mx1.redhat.com ([209.132.183.28]:63242 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755459Ab1FGP05 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 7 Jun 2011 11:26:57 -0400
+In-Reply-To: <1304959308-11122-1-git-send-email-amir73il@users.sourceforge.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Tao Ma <boyu.mt@taobao.com>
+On 05/09/2011 12:41 PM, amir73il@users.sourceforge.net wrote:
+> The following patch series includes all the changes to core ext4 files,
+> which are needed for snapshots support. It adds some ~2K lines of code,
+> which will never be executed unless the following 2 conditions apply:
+> 1. ext4 is built with CONFIG_EXT4_FS_SNAPSHOT
+> 2. HAS_SNAPSHOT and EXCLUDE_BITMAP features are set by mke2fs/tune2fs
+> 
+> The remaining ~5K lines of code, added in new snapshot* files, were omitted
+> from this series to simplify the review and becasue they are not needed
+> when building ext4 without CONFIG_EXT4_FS_SNAPSHOT.
+> the full patches will be posted soon after I recieve some comments.
+> 
+> Ted has concluded my ext4 snapshots talk on LPC 2010 with the statement that
+> as long as the snapshot patches don't break anything when snapshot support
+> is disabled, he will pull them, so the main goal when reviewing this series
+> should be to prove that it is safe to pull the patches.
+> 
+> REVIEWING
+> ---------
+> To make it easy for reviewers, I will provide some pointers:
+> - EXT4_SNAPSHOTS(sb) is defined to (0) (in snapshot.h) when ext4 is built
+>   without snapshots support.
+> - EXT4_SNAPSHOTS(sb) is defined to test the HAS_SNAPSHOT feature when ext4
+>   is built with snapshots support.
+> - All the ext4_snapshot_XXX function added by the patches, are defined to
+>   NOP macros in snapshot.h when ext4 is built without snapshots support.
+> - Various flags defined by the patches (like EXT4_MB_HINT_COWING) will never
+>   get set if EXT4_SNAPSHOTS(sb) is false, so testing them will also be false.
+> 
+> MERGING
+> -------
+> These patches are based on Ted's current master branch + alloc_semp removal
+> patches. Although the alloc_semp removal is an independent (and in my eyes
+> a good) change, it is also required by snapshot patches, to avoid circular
+> locking dependency during COW allocations.
+> 
+> Merging with Allison's punch holes patches should be straight forward, since
+> the hard part, namely Yongqiang's split extent refactoring patches, was
+> already merged by Ted.
+> 
+> Merging with Ted's big alloc patches is going to be a bit more challenging,
+> since big alloc patches make a lot of renaming and refactoring. However,
+> since has_snapshots and big_alloc features will never work together,
+> at least testing the code together is not a big concern.
+> 
+> TESTING
+> -------
+> Apart from the extensive testing for the snapshots feature functionality, we
+> also ran xfstests with snapshots and while taking a snapshot every 1 minute.
+> More importantly, we ran xfstests with snapshots support disabled in compile
+> time and with snapshot support enabled but without has_snapshot feature.
+> These xfstests were run with blocksize 1K and 4K and on X86 and X86_64.
+> The 1K blocksize tests are important for the alloc_semp removal patches.
+> No problems were found apart from one (test 225 hung), which is already
+> existing in master branch.
+> 
+> CREDITS
+> -------
+> The snapshots patches originate in my implementation of the Next3 filesystem
+> for CTERA networks.
+> The porting of the Next3 snapshot patches to ext4 patches is attributed to
+> Aditya Dani, Shardul Mangade, Piyush Nimbalkar and Harshad Shirwadkar from
+> the Pune Institute of Computer Technology (PICT).
+> The implementation of extents move-on-write, delayed move-on-write and much
+> of the cleanup work on these patches was carried out by Yongqiang Yang from
+> the Institute of Computing Technology, Chinese Academy of Sciences.
+> 
 
-credits isn't a parameter for jbd2_journal_get_write_access and
-jbd2_journal_get_undo_access. So remove the corresponding comments.
+I probably should have brought this up before, but why put all this
+effort into shoehorning in such a big an invasive feature to ext4 when
+btrfs does this all already?  Why not put your efforts into helping
+btrfs become stable and ready and then use that, instead of having to
+come up with a bunch of hacks to get around the myriad of weird feature
+combinations you can get with ext4?
 
-Acked-by: Jan Kara <jack@suse.cz>
-Cc: Randy Dunlap <rdunlap@xenotime.net>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
----
- fs/jbd2/transaction.c |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+The wonderful thing about ext4 is its a nice basic fs.  If we're going
+to start doing lots of crazy things, why not do them to the fs that
+isn't yet in wide use and can afford to have crazy things done to it
+without screwing a bunch of users who already depend on ext4's
+stability?  Thanks,
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 3eec82d..547b101 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -814,7 +814,6 @@ out:
-  * int jbd2_journal_get_write_access() - notify intent to modify a buffer for metadata (not data) update.
-  * @handle: transaction to add buffer modifications to
-  * @bh:     bh to be used for metadata writes
-- * @credits: variable that will receive credits for the buffer
-  *
-  * Returns an error code or 0 on success.
-  *
-@@ -932,7 +931,6 @@ out:
-  *     non-rewindable consequences
-  * @handle: transaction
-  * @bh: buffer to undo
-- * @credits: store the number of taken credits here (if not NULL)
-  *
-  * Sometimes there is a need to distinguish between metadata which has
-  * been committed to disk and that which has not.  The ext3fs code uses
--- 
-1.7.1
-
+Josef
