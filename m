@@ -1,147 +1,129 @@
 From: "Amir G." <amir73il@users.sourceforge.net>
 Subject: Re: [PATCH RFC 00/30] Ext4 snapshots - core patches
-Date: Tue, 7 Jun 2011 08:58:06 +0300
-Message-ID: <BANLkTin5WLnvaZtpym9896wWwscUetQy0Q@mail.gmail.com>
+Date: Tue, 7 Jun 2011 09:40:33 +0300
+Message-ID: <BANLkTimor-kJ8cjnLt4JYPhW2GW09N1YtQ@mail.gmail.com>
 References: <1304959308-11122-1-git-send-email-amir73il@users.sourceforge.net>
 	<alpine.LFD.2.00.1106061501460.3934@dhcp-27-109.brq.redhat.com>
 	<BANLkTimjxkOnX6hvLvU+Xth20ie5FaXq1A@mail.gmail.com>
 	<4DECF2D5.7050408@redhat.com>
 	<20110606205512.GE20818@thunk.org>
-	<BD378E74-754D-45FF-9F65-EFAF8436BBFD@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Ted Ts'o" <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+Cc: Eric Sandeen <sandeen@redhat.com>,
 	Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:44460 "EHLO
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:46557 "EHLO
 	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750710Ab1FGF6I convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2011 01:58:08 -0400
-Received: by wya21 with SMTP id 21so3293734wya.19
-        for <linux-ext4@vger.kernel.org>; Mon, 06 Jun 2011 22:58:06 -0700 (PDT)
-In-Reply-To: <BD378E74-754D-45FF-9F65-EFAF8436BBFD@dilger.ca>
+	with ESMTP id S1751127Ab1FGGkf convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2011 02:40:35 -0400
+Received: by wya21 with SMTP id 21so3311305wya.19
+        for <linux-ext4@vger.kernel.org>; Mon, 06 Jun 2011 23:40:33 -0700 (PDT)
+In-Reply-To: <20110606205512.GE20818@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 7, 2011 at 8:17 AM, Andreas Dilger <adilger@dilger.ca> wrot=
-e:
-> On 2011-06-06, at 2:55 PM, Ted Ts'o wrote:
->> On Mon, Jun 06, 2011 at 10:31:33AM -0500, Eric Sandeen wrote:
->>>> For one reason, a snapshot file format is currently an indirect fi=
+On Mon, Jun 6, 2011 at 11:55 PM, Ted Ts'o <tytso@mit.edu> wrote:
+> On Mon, Jun 06, 2011 at 10:31:33AM -0500, Eric Sandeen wrote:
+>> > For one reason, a snapshot file format is currently an indirect fi=
 le
->>>> and big_alloc doesn't support indirect mapped files.
->>>> I am not saying it cannot be done, but if it does, there would be
->>>> several obstacles to cross.
->>>
->>> I know I'm kind of just throwing a bomb out here, but I am very con=
-cerned
->>> about the ever-growing feature (in)compatibility matrix in ext4.
+>> > and big_alloc
+>> > doesn't support indirect mapped files.
+>> > I am not saying it cannot be done, but if it does, there would be
+>> > several obstacles
+>> > to cross.
 >>
->> bigalloc doesn't support indirect blocks mainly because it was faste=
-r
->> to get things working if I didn't have to worry about indirect block=
-s.
->> It wouldn't be _that_ hard to make bigalloc work on indirect blocks.
->> I'll get around to it at some point.
+>> I know I'm kind of just throwing a bomb out here, but I am very conc=
+erned
+>> about the ever-growing feature (in)compatibility matrix in ext4.
 >
-> My main concern isn't about whether bigalloc grows support for indire=
-ct-
-> mapped files, but rather the opposite - that snapshots gain support f=
-or
-> extent-mapped files. =A0In fact, since extent-mapped files can be 16T=
-B in
-> size, it might make sense that the snapshots are _always_ extent-mapp=
-ed
-> files, and we don't need to deal with the new block-mapped files with
-> 4-triple-indirect blocks layout at all? =A0Since snapshots are only g=
-oing
-> into ext4, and ext4 + e2fsprogs already support extents, there wouldn=
-'t
-> be any issue about compatibility?
+> bigalloc doesn't support indirect blocks mainly because it was faster
+> to get things working if I didn't have to worry about indirect blocks=
+=2E
+> It wouldn't be _that_ hard to make bigalloc work on indirect blocks.
+> I'll get around to it at some point.
 >
-> The only concern might be that mapping fragmented files into extents =
-is
-> more effort, which makes me wonder about whether we should introduce =
-the
-> "block-mapped extents" that I proposed in the past, to allow efficien=
-t
-> mapping of files (or parts thereof) that are highly fragmented, but s=
-till
-> keeping the benefits of extents (internal redundancy, 48-bit physical
-> block numbers, and while we are adding a new extent format it could b=
-e
-> designed to add 48-bit logical block numbers.
+> dioread_nolock is something that I had hoped to clean up by now, by
+> making this the default way we do all buffered writebacks, for all
+> block sizes.
 >
-
-You are right about snapshot file being a highly fragmented file by des=
-ign,
-so single block mapping is an advantage. The down side is that deleting
-an extent mapped file, requires mapping all blocks one-by-one to snapsh=
-ot
-file, which is not efficient and makes deletes slow.
-So having a format optimized for both single and multi block mapping wo=
-uld be
-best.
-
-The reason I DO NOT want to change the snapshot file format at this mom=
-ent
-is that it will make us lose all the stabilization that snapshot featur=
-e gained
-during 1 year in production as next3.
-You see, ext4_free_blocks() cares not if blocks are deleted from indire=
-ct or
-extent mapped files and from there on, the code that maps those blocks =
-to
-the special snapshot file is the same in next3 and ext4.
-
-> In another email Amir G. wrote:
->> Andreas Dilger wrote:
->
->>> I'd be a lot more confident in its acceptance if there was at least=
- a design for how to move forward with this feature for filesystems wit=
-h extents and 64bit support. I'd be happy with some co-requirement that=
- bigalloc is needed for filesystems larger than 2^32 blocks (for exampl=
-e), so that there is never a need to have a snapshot with more than 2^3=
-2 blocks.
->>>
->>> Doing this design work may point out some other solution which does=
- not require the 4*triple-indirect block hack in the first place, and w=
-ill improve the code in the long run.
+>> Take for example dioread_nolock caveats:
 >>
->> The design in this case is quite one-way-to-go - that is defining a
->> new extent format with 48bit logical addresses.
+>> =A0 =A0 =A0 =A0 =A0 "However this does not work with nobh
+>> =A0 =A0 =A0 =A0 =A0 =A0option and the mount will fail. Nor does it w=
+ork with
+>> =A0 =A0 =A0 =A0 =A0 =A0data journaling and dioread_nolock option wil=
+l be
+>> =A0 =A0 =A0 =A0 =A0 =A0ignored with kernel warning. Note that diorea=
+d_nolock
+>> =A0 =A0 =A0 =A0 =A0 =A0code path is only used for extent-based files=
+=2E"
 >
-> Agreed. =A0Is this something in your upcoming development plans, or j=
-ust a
-> feature that might be implemented some day?
+> Hey, at least we got rid of nobh! =A0:-)
+>
+>> If ext4 matches the lifespan of ext3, in 10 years I fear that it wil=
+l look
+>> more like a collection of various individuals' pet projects, rather =
+than
+>> any kind of well-designed, cohesive project.
+>>
+>> How long can we really keep adding features which are semi- or wholl=
+y-
+>> incompatible with other features?
+>>
+>> Consider this a cry in the wilderness for less rushed feature introd=
+uction,
+>> and a more holistic approach to ext4 design...
+>
+> It's something I do worry about; and I do share your concern. =A0At t=
+he
+> same time, the reality is that we are a little like the Old Dutch
+> Masters, who had take into account the preference of their patrons
+> (i.e., in our case, those who pay our paychecks :-).
+>
+> In the case of dioread_nolock, I allowed dioread_nolock in even thoug=
+h
+> it was a not a complete solution since internally, we had critical
+> business for it, and in my judgement, (a) it wasn't that horrible
+> (most of the horrible code paths was already being used for AIO/DIO),
+> and (b) I had a plan for how to clean it up eventually. =A0The
+> fs/ext4/page_io.c implementation was in fact the first part of my
+> cleanup plan, so we've made some progress; it's just not gone as fast
+> as I would like.
+>
+> Snapshots are an example of a feature where I am very much worried
+> about taking on technical debt. =A0On the other hand, there are a lot=
+ of
+> people who are quite excited of it as a feature, so I'm hoping we can
+> clean it up enough we don't put a huge maintenance burden on
+> ourselves.
+>
+> It should be possible to make snapshots work on bigalloc file systems=
+,
+> once support is added for indirect blocks. =A0The COW granulaity will
+> have to be done at the cluster level, of course, though. =A0So from a
+> design perspective it should be possible to make things knit together=
+=2E
+>
 
-To be honest, for me it was always in 'some day' category, but my
-patron has already
-asked me about supporting snapshots on >16TB volumes (with the move to =
-ext4),
-so that day may be coming after all.
+The question is why *should* we knit those 2 features together?
+There is a patron for snapshots and there is a patron for big_alloc,
+but is there a patron for both mixed? I don't thinks so.
+*This* is a maintenance burden, because none of the patrons will pay
+us to support this configuration.
 
->
->> There are 2 reasons I used the 4 tind blocks hack:
->> 1. Historic - the patches come from next3 which needed 16TB volume s=
-upport
->> 2. KISS - I don't know if you noticed, but the amount of lines in th=
-is
->> =A0 =A0hack is very small. both for ext4 and for libext2, the blk_to=
-_path logic
->> =A0 =A0for indirect mapped files is very easy to modify, which makes=
- the patch
->> =A0 =A0very easy to review.
->
-> Cheers, Andreas
->
->
->
->
->
->
+What's so bad about mutually excluding features, which are useful
+on their own? For one thing, it keeps the test matrix smaller, so it is
+actually realistic to follow it through.
+
+I hear Eric's cry in the wilderness and I can relate to it.
+Maybe is the distros that need to take action about it and declare
+only a reduces set of features matrix 'supported'.
+We can even try to write generic mutual exclusion rules, which
+will be enforced by mke2fs/tune2fs and ext4.
+
+Amir.
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
