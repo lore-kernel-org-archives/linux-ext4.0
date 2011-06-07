@@ -1,7 +1,7 @@
 From: amir73il@users.sourceforge.net
-Subject: [PATCH v1 13/36] ext4: snapshot file - increase maximum file size limit to 16TB
-Date: Tue,  7 Jun 2011 18:07:40 +0300
-Message-ID: <1307459283-22130-14-git-send-email-amir73il@users.sourceforge.net>
+Subject: [PATCH v1 14/36] ext4: snapshot block operations
+Date: Tue,  7 Jun 2011 18:07:41 +0300
+Message-ID: <1307459283-22130-15-git-send-email-amir73il@users.sourceforge.net>
 References: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
 Cc: tytso@mit.edu, lczerner@redhat.com,
 	Amir Goldstein <amir73il@users.sf.net>,
@@ -10,182 +10,183 @@ To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-ww0-f44.google.com ([74.125.82.44]:41767 "EHLO
 	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756262Ab1FGPJb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2011 11:09:31 -0400
+	with ESMTP id S1756262Ab1FGPJe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2011 11:09:34 -0400
 Received: by mail-ww0-f44.google.com with SMTP id 36so5035787wwa.1
-        for <linux-ext4@vger.kernel.org>; Tue, 07 Jun 2011 08:09:30 -0700 (PDT)
+        for <linux-ext4@vger.kernel.org>; Tue, 07 Jun 2011 08:09:33 -0700 (PDT)
 In-Reply-To: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Amir Goldstein <amir73il@users.sf.net>
 
-Files larger than 2TB use Ext4 huge_file flag to store i_blocks
-in file system blocks units, so the upper limit on snapshot actual
-size is increased from 512*2^32 = 2TB to 4K*2^32 = 16TB,
-which is also the upper limit on file system size.
-To map 2^32 logical blocks, 4 triple indirect blocks are used instead
-of just one.  The extra 3 triple indirect blocks are stored in-place
-of direct blocks, which are not in use by snapshot files.
+Core API of special snapshot file block operations.
+The argument @create to the function ext4_getblk()
+is re-interpreted as a snapshot block command argument.  The old
+argument values 0(=read) and 1(=create) preserve the original
+behavior of the function.  The bit field h_cowing in the current
+transaction handle is used to prevent COW recursions.
 
 
 Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/ext4.h  |   13 +++++++++++++
- fs/ext4/file.c  |    3 ++-
- fs/ext4/inode.c |   43 +++++++++++++++++++++++++++++++++++++++++--
- fs/ext4/super.c |    3 +++
- 4 files changed, 59 insertions(+), 3 deletions(-)
+ fs/ext4/ext4.h      |   10 ++++++++++
+ fs/ext4/ext4_jbd2.h |    3 +++
+ fs/ext4/inode.c     |    4 ++--
+ fs/ext4/snapshot.c  |   43 +++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/snapshot.h  |   37 +++++++++++++++++++++++++++++++++++++
+ 5 files changed, 95 insertions(+), 2 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 7f96ba5..81e6add 100644
+index 81e6add..5564111 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -320,6 +320,19 @@ struct flex_groups {
- #define	EXT4_DIND_BLOCK			(EXT4_IND_BLOCK + 1)
- #define	EXT4_TIND_BLOCK			(EXT4_DIND_BLOCK + 1)
- #define	EXT4_N_BLOCKS			(EXT4_TIND_BLOCK + 1)
+@@ -544,6 +544,16 @@ struct ext4_new_group_data {
+ 	 * if EXT4_GET_BLOCKS_CREATE is not set, return REMAP flags.
+ 	 */
+ #define EXT4_GET_BLOCKS_MOVE_ON_WRITE		0x0100
 +/*
-+ * Snapshot files have different indirection mapping that can map up to 2^32
-+ * logical blocks, so they can cover the mapped filesystem block address space.
-+ * Ext4 must use either 4K or 8K blocks (depending on PAGE_SIZE).
-+ * With 8K blocks, 1 triple indirect block maps 2^33 logical blocks.
-+ * With 4K blocks (the system default), each triple indirect block maps 2^30
-+ * logical blocks, so 4 triple indirect blocks map 2^32 logical blocks.
-+ * Snapshot files in small filesystems (<= 4G), use only 1 double indirect
-+ * block to map the entire filesystem.
++ * snapshot_map_blocks() flags passed to ext4_map_blocks() for mapping
++ * blocks to snapshot.
 + */
-+#define	EXT4_SNAPSHOT_EXTRA_TIND_BLOCKS	3
-+#define	EXT4_SNAPSHOT_N_BLOCKS		(EXT4_TIND_BLOCK + 1 + \
-+					 EXT4_SNAPSHOT_EXTRA_TIND_BLOCKS)
++	/* handle COW race conditions */
++#define EXT4_GET_BLOCKS_COW			0x200
++	/* allocate only indirect blocks */
++#define EXT4_GET_BLOCKS_MOVE			0x400
++	/* bypass journal and sync allocated indirect blocks directly to disk */
++#define EXT4_GET_BLOCKS_SYNC			0x800
  
  /*
-  * Inode flags
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index f31e58e..0ebd3e7 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -228,7 +228,8 @@ loff_t ext4_llseek(struct file *file, loff_t offset, int origin)
- 	struct inode *inode = file->f_mapping->host;
- 	loff_t maxbytes;
+  * Flags used by ext4_free_blocks
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 4d57fcb..4af0bb5 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -173,6 +173,9 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
+ #define ext4_handle_dirty_super(handle, sb) \
+ 	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb))
  
--	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
-+	if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) &&
-+			!ext4_snapshot_file(inode))
- 		maxbytes = EXT4_SB(inode->i_sb)->s_bitmap_maxbytes;
- 	else
- 		maxbytes = inode->i_sb->s_maxbytes;
++#define trace_cow_add(handle, name, num)
++#define trace_cow_inc(handle, name)
++
+ handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks);
+ int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle);
+ 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 33692fd..e64cf64 100644
+index e64cf64..410bc8b 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -335,6 +335,7 @@ static int ext4_block_to_path(struct inode *inode,
- 		double_blocks = (1 << (ptrs_bits * 2));
- 	int n = 0;
- 	int final = 0;
-+	int tind;
+@@ -1603,8 +1603,8 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
  
- 	if (i_block < direct_blocks) {
- 		offsets[n++] = i_block;
-@@ -354,6 +355,18 @@ static int ext4_block_to_path(struct inode *inode,
- 		offsets[n++] = (i_block >> ptrs_bits) & (ptrs - 1);
- 		offsets[n++] = i_block & (ptrs - 1);
- 		final = ptrs;
-+	} else if (ext4_snapshot_file(inode) &&
-+			(i_block >> (ptrs_bits * 3)) <
-+			EXT4_SNAPSHOT_EXTRA_TIND_BLOCKS + 1) {
-+		tind = i_block >> (ptrs_bits * 3);
-+		BUG_ON(tind == 0);
-+		/* use up to 4 triple indirect blocks to map 2^32 blocks */
-+		i_block -= (tind << (ptrs_bits * 3));
-+		offsets[n++] = (EXT4_TIND_BLOCK + tind) % EXT4_NDIR_BLOCKS;
-+		offsets[n++] = i_block >> (ptrs_bits * 2);
-+		offsets[n++] = (i_block >> ptrs_bits) & (ptrs - 1);
-+		offsets[n++] = i_block & (ptrs - 1);
-+		final = ptrs;
- 	} else {
- 		ext4_warning(inode->i_sb, "block %lu > max in inode %lu",
- 			     i_block + direct_blocks +
-@@ -4841,6 +4854,10 @@ do_indirects:
- 	/* Kill the remaining (whole) subtrees */
- 	switch (offsets[0]) {
- 	default:
-+		if (ext4_snapshot_file(inode) &&
-+				offsets[0] < EXT4_SNAPSHOT_EXTRA_TIND_BLOCKS)
-+			/* Freeing snapshot extra tind branches */
-+			break;
- 		nr = i_data[EXT4_IND_BLOCK];
- 		if (nr) {
- 			ext4_free_branches(handle, inode, NULL, &nr, &nr+1, 1);
-@@ -4862,6 +4879,19 @@ do_indirects:
- 		;
- 	}
+ 	map.m_lblk = block;
+ 	map.m_len = 1;
+-	err = ext4_map_blocks(handle, inode, &map,
+-			      create ? EXT4_GET_BLOCKS_CREATE : 0);
++	/* passing SNAPMAP flags on create argument */
++	err = ext4_map_blocks(handle, inode, &map, create);
  
-+	if (ext4_snapshot_file(inode)) {
-+		int i;
+ 	if (err < 0)
+ 		*errp = err;
+diff --git a/fs/ext4/snapshot.c b/fs/ext4/snapshot.c
+index e8db8ca..ef84551 100644
+--- a/fs/ext4/snapshot.c
++++ b/fs/ext4/snapshot.c
+@@ -16,3 +16,46 @@
+ #include "snapshot.h"
+ #include "ext4.h"
+ #include "mballoc.h"
 +
-+		/* Kill the remaining snapshot file triple indirect trees */
-+		for (i = 0; i < EXT4_SNAPSHOT_EXTRA_TIND_BLOCKS; i++) {
-+			nr = i_data[i];
-+			if (!nr)
-+				continue;
-+			ext4_free_branches(handle, inode, NULL, &nr, &nr+1, 3);
-+			i_data[i] = 0;
-+		}
-+	}
++#define snapshot_debug_hl(n, f, a...) snapshot_debug_l(n, handle ? \
++					IS_COWING(handle) : 0, f, ## a)
 +
- out_unlock:
- 	up_write(&ei->i_data_sem);
- 	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
-@@ -5096,7 +5126,8 @@ static blkcnt_t ext4_inode_blocks(struct ext4_inode *raw_inode,
- 	struct super_block *sb = inode->i_sb;
++/*
++ * ext4_snapshot_map_blocks() - helper function for
++ * ext4_snapshot_test_and_cow().  Test if blocks are mapped in snapshot file.
++ * If @block is not mapped and if @cmd is non zero, try to allocate @maxblocks.
++ * Also used by ext4_snapshot_create() to pre-allocate snapshot blocks.
++ *
++ * Return values:
++ * > 0 - no. of mapped blocks in snapshot file
++ * = 0 - @block is not mapped in snapshot file
++ * < 0 - error
++ */
++int ext4_snapshot_map_blocks(handle_t *handle, struct inode *inode,
++			      ext4_snapblk_t block, unsigned long maxblocks,
++			      ext4_fsblk_t *mapped, int cmd)
++{
++	int err;
++	struct ext4_map_blocks map;
++
++	map.m_lblk = SNAPSHOT_IBLOCK(block);
++	map.m_len = maxblocks;
++
++	err = ext4_map_blocks(handle, inode, &map, cmd);
++	/*
++	 * ext4_get_blocks_handle() returns number of blocks
++	 * mapped. 0 in case of a HOLE.
++	 */
++	if (mapped && err > 0)
++		*mapped = map.m_pblk;
++
++	snapshot_debug_hl(4, "snapshot (%u) map_blocks "
++			"[%lld/%lld] = [%lld/%lld] "
++			"cmd=%d, maxblocks=%lu, mapped=%d\n",
++			inode->i_generation,
++			SNAPSHOT_BLOCK_TUPLE(block),
++			SNAPSHOT_BLOCK_TUPLE(map.m_pblk),
++			cmd, maxblocks, err);
++	return err;
++}
++
+diff --git a/fs/ext4/snapshot.h b/fs/ext4/snapshot.h
+index 19e3416..ea87a5a 100644
+--- a/fs/ext4/snapshot.h
++++ b/fs/ext4/snapshot.h
+@@ -137,6 +137,43 @@ static inline int EXT4_SNAPSHOTS(struct super_block *sb)
+ 			EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT);
+ }
  
- 	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
--				EXT4_FEATURE_RO_COMPAT_HUGE_FILE)) {
-+				EXT4_FEATURE_RO_COMPAT_HUGE_FILE) ||
-+			ext4_snapshot_file(inode)) {
- 		/* we are using combined 48 bit field */
- 		i_blocks = ((u64)le16_to_cpu(raw_inode->i_blocks_high)) << 32 |
- 					le32_to_cpu(raw_inode->i_blocks_lo);
-@@ -5335,7 +5366,9 @@ static int ext4_inode_blocks_set(handle_t *handle,
- 		ext4_clear_inode_flag(inode, EXT4_INODE_HUGE_FILE);
- 		return 0;
- 	}
--	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_HUGE_FILE))
-+	/* snapshot files may be represented as huge files */
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_HUGE_FILE) &&
-+			!ext4_snapshot_file(inode))
- 		return -EFBIG;
++/*
++ * snapshot_map_blocks() command flags passed to ext4_map_blocks() on its
++ * @flags argument. The higher bits are used for mapping snapshot blocks.
++ */
++/* original meaning - only check if blocks are mapped */
++#define SNAPMAP_READ	0
++/* original meaning - allocate missing blocks and indirect blocks */
++#define SNAPMAP_WRITE	EXT4_GET_BLOCKS_CREATE
++/* creating COWed block */
++#define SNAPMAP_COW	(SNAPMAP_WRITE|EXT4_GET_BLOCKS_COW)
++/* moving blocks to snapshot */
++#define SNAPMAP_MOVE	(SNAPMAP_WRITE|EXT4_GET_BLOCKS_MOVE)
++ /* creating COW bitmap - handle COW races and bypass journal */
++#define SNAPMAP_BITMAP	(SNAPMAP_COW|EXT4_GET_BLOCKS_SYNC)
++
++/* test special cases when mapping snapshot blocks */
++#define SNAPMAP_ISCOW(cmd)	(unlikely((cmd) & EXT4_GET_BLOCKS_COW))
++#define SNAPMAP_ISMOVE(cmd)	(unlikely((cmd) & EXT4_GET_BLOCKS_MOVE))
++#define SNAPMAP_ISSYNC(cmd)	(unlikely((cmd) & EXT4_GET_BLOCKS_SYNC))
++
++#define IS_COWING(handle)	(unlikely((handle)->h_cowing))
++
++/* snapshot.c */
++
++/* helper functions for ext4_snapshot_create() */
++extern int ext4_snapshot_map_blocks(handle_t *handle, struct inode *inode,
++				     ext4_snapblk_t block,
++				     unsigned long maxblocks,
++				     ext4_fsblk_t *mapped, int cmd);
++/* helper function for ext4_snapshot_take() */
++extern void ext4_snapshot_copy_buffer(struct buffer_head *sbh,
++					   struct buffer_head *bh,
++					   const char *mask);
++/* helper function for ext4_snapshot_get_block() */
++extern int ext4_snapshot_read_block_bitmap(struct super_block *sb,
++		unsigned int block_group, struct buffer_head *bitmap_bh);
++
+ #define ext4_snapshot_cow(handle, inode, block, bh, cow) 0
  
- 	if (i_blocks <= 0xffffffffffffULL) {
-@@ -5625,6 +5658,12 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 	}
- 
- 	if (attr->ia_valid & ATTR_SIZE) {
-+		/* prevent size modification of snapshot files */
-+		if (ext4_snapshot_file(inode) && attr->ia_size != 0) {
-+			snapshot_debug(1, "snapshot file (%lu) can only be "
-+					"truncated to 0!\n", inode->i_ino);
-+			return -EPERM;
-+		}
- 		if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))) {
- 			struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 7655010..dbe5651 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3302,6 +3302,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 				EXT4_FEATURE_RO_COMPAT_HUGE_FILE);
- 	sbi->s_bitmap_maxbytes = ext4_max_bitmap_size(sb->s_blocksize_bits,
- 						      has_huge_files);
-+	if (EXT4_SNAPSHOTS(sb))
-+		/* Snapshot files are huge files */
-+		has_huge_files = 1;
- 	sb->s_maxbytes = ext4_max_size(sb->s_blocksize_bits, has_huge_files);
- 
- 	if (le32_to_cpu(es->s_rev_level) == EXT4_GOOD_OLD_REV) {
+ #define ext4_snapshot_move(handle, inode, block, pcount, move) (0)
 -- 
 1.7.4.1
 
