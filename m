@@ -1,51 +1,30 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] mke2fs: Don't erase flash device if "-n" is given
-Date: Tue, 07 Jun 2011 11:58:40 -0500
-Message-ID: <4DEE58C0.3040303@redhat.com>
-References: <1307463749-16498-1-git-send-email-adilger@whamcloud.com>
+From: Sunil Mushran <sunil.mushran@oracle.com>
+Subject: Re: [PATCH RFC 00/30] Ext4 snapshots - core patches
+Date: Tue, 07 Jun 2011 10:14:27 -0700
+Message-ID: <4DEE5C73.806@oracle.com>
+References: <1304959308-11122-1-git-send-email-amir73il@users.sourceforge.net>	<4DEE4333.9@redhat.com> <BANLkTik74BM_TZin7rSXDRo1YftBsT-yYw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@whamcloud.com>
+Cc: Josef Bacik <josef@redhat.com>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu
+To: "Amir G." <amir73il@users.sourceforge.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34489 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755393Ab1FGQ6p (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 7 Jun 2011 12:58:45 -0400
-In-Reply-To: <1307463749-16498-1-git-send-email-adilger@whamcloud.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:51326 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751348Ab1FGRO5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2011 13:14:57 -0400
+In-Reply-To: <BANLkTik74BM_TZin7rSXDRo1YftBsT-yYw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 6/7/11 11:22 AM, Andreas Dilger wrote:
-> If "mke2fs -n" is used, there should be no changes to the underlying
-> device.  Unfortunately, when the "discard" option was added in commit
-> c7cd908be59f48c66b4f3ac9a631ffe3dde4f1ab, it did not check for the "-n"
-> flag, and will discard all data on a flash device even if "-n" is given.
+On 06/07/2011 09:46 AM, Amir G. wrote:
+> I understand the bitterness in btrfs community regarding ext4 snapshot
+> feature. You might say the same things about ext4 64bit feature.
+> I think it is not up to us to decide how it rolls. it's the users
+> and companies involved that dictate where the development happens.
 
-Oh, crud.
+Bitterness is not the issue. The issue is what happens when your
+_patron_ has had enough of the project and decides to stop funding.
 
-> Check for the "noaction" flag before discarding any filesystem data.
-> 
-> Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
-
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
-
-> ---
->  misc/mke2fs.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index ddfa929..9472016 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -2132,7 +2132,7 @@ int main (int argc, char *argv[])
->  	}
->  
->  	/* Can't undo discard ... */
-> -	if (discard && (io_ptr != undo_io_manager)) {
-> +	if (!noaction && discard && (io_ptr != undo_io_manager)) {
->  		retval = mke2fs_discard_device(fs);
->  		if (!retval && io_channel_discard_zeroes_data(fs->io)) {
->  			if (verbose)
-
+Are you going to spend your free time maintaining the entire file system?
