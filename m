@@ -1,74 +1,162 @@
-From: Torsten Hilbrich <torsten.hilbrich@secunet.com>
-Subject: Re: 2.6.37, 2.6.38, 2.6.39 vfs/ext3/ext4 crash when unplugging USB
- storage
-Date: Tue, 07 Jun 2011 12:36:29 +0200
-Message-ID: <4DEDFF2D.2030805@secunet.com>
-References: <20110525132356.GA6296@janus> <4DDF46A4.3070601@secunet.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH RFC 01/30] ext4: EXT4 snapshots (Experimental)
+Date: Tue, 7 Jun 2011 12:42:14 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1106071232070.4754@dhcp-27-109.brq.redhat.com>
+References: <1304959308-11122-1-git-send-email-amir73il@users.sourceforge.net> <1304959308-11122-2-git-send-email-amir73il@users.sourceforge.net> <alpine.LFD.2.00.1106061512490.3934@dhcp-27-109.brq.redhat.com>
+ <BANLkTi=i_42H4mDWRyg325TFw=Z-bVnFqQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
-To: Frank van Maarseveen <frankvm@frankvm.com>
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-174576539-1307443338=:4754"
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, Amir Goldstein <amir73il@users.sf.net>,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>
+To: "Amir G." <amir73il@users.sourceforge.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from a.mx.secunet.com ([195.81.216.161]:38500 "EHLO a.mx.secunet.com"
+Received: from mx1.redhat.com ([209.132.183.28]:55525 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750881Ab1FGKgf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 7 Jun 2011 06:36:35 -0400
-In-Reply-To: <4DDF46A4.3070601@secunet.com>
+	id S1751333Ab1FGKm1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 7 Jun 2011 06:42:27 -0400
+In-Reply-To: <BANLkTi=i_42H4mDWRyg325TFw=Z-bVnFqQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Am 27.05.2011 08:37, schrieb Torsten Hilbrich:
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-> Pid: 520, comm: bdi-default Not tainted 2.6.39 #40 LENOVO 20077KG/20077KG
-> RIP: 0010:[<ffffffff811221f6>]  [<ffffffff811221f6>] redirty_tail+0x56/0xb0
-> RSP: 0018:ffff88007cd49c08  EFLAGS: 00010292
-> RAX: ffff88007d17b408 RBX: ffffffff8201d840 RCX: 6b6b6b6b6b6b6b6b
-> RDX: ffff88007c3a1070 RSI: ffff88007c3a11c8 RDI: ffffffff81d33f32
-> RBP: ffff88007cd49c10 R08: ffffffff8201d8b8 R09: ffff88007cd49c40
-> R10: 0000000000000000 R11: ffffffff8201d8b8 R12: ffff88007bcee218
-> R13: ffff88007cd49cc0 R14: ffff88007d17b408 R15: ffffffff8201d8c8
-> FS:  0000000000000000(0000) GS:ffff88007fd00000(0000) knlGS:0000000000000000
-> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> CR2: 00007f713597ebeb CR3: 0000000002003000 CR4: 00000000000006a0
-> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> Process bdi-default (pid: 520, threadinfo ffff88007cd48000, task ffff88007cc65180)
-> Stack:
->  ffffffff8201d840 ffff88007cd49c70 ffffffff811228fb ffff88007fc11b40
->  0000000000011b01 ffff88007fc11b40 ffffffff8201d8d8 ffff88007d17b470
->  ffffffff8201d840 ffff88007bde3d38 0000000000000400 0000000000000000
-> Call Trace:
->  [<ffffffff811228fb>] writeback_sb_inodes+0x8b/0x1b0
->  [<ffffffff811235ff>] wb_writeback+0x18f/0x460
->  [<ffffffff81123971>] wb_do_writeback+0xa1/0x280
->  [<ffffffff81051b80>] ? del_timer+0xe0/0xe0
->  [<ffffffff810d70a7>] bdi_forker_thread+0xc7/0x510
->  [<ffffffff810d6fe0>] ? bdi_debug_stats_show+0x170/0x170
->  [<ffffffff810d6fe0>] ? bdi_debug_stats_show+0x170/0x170
->  [<ffffffff81063a86>] kthread+0x96/0xa0
->  [<ffffffff819c79f4>] kernel_thread_helper+0x4/0x10
->  [<ffffffff810639f0>] ? kthread_worker_fn+0x190/0x190
->  [<ffffffff819c79f0>] ? gs_change+0xb/0xb
-> Code: 40 01 00 00 48 8b 52 68 8b 0d 27 01 ee 00 89 ce c1 fe 08 40 38 ce 74 66 48 8b 8a 58 01 00 00 48 8d b2 58 01 00 00 48 39 ce 74 15
->  8b 59 e8 48 39 58 50 79 0b 48 8b 0d b9 56 ff 00 48 89 48 50
-> RIP  [<ffffffff811221f6>] redirty_tail+0x56/0xb0
->  RSP <ffff88007cd49c08>
-> ---[ end trace 04e2da502b7fc110 ]---
+--8323328-174576539-1307443338=:4754
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1
+Content-Transfer-Encoding: 8BIT
 
-Problem is no longer reproducible with the following commits applied:
+On Tue, 7 Jun 2011, Amir G. wrote:
 
-commit d86e0e83b32bc84600adb0b6ea1fce389b266682
-Author: Jens Axboe <jaxboe@fusionio.com>
-Date:   Fri May 27 07:44:43 2011 +0200
+> >> +config EXT4_FS_SNAPSHOT
+> >> +     bool "EXT4 snapshots (Experimental)"
+> >> +     depends on EXT4_FS && EXPERIMENTAL
+> >> +     default n
+> >> +     help
+> >> +       Built-in snapshots support for ext4.
+> >> +       Requires that the filesystem has the has_snapshot and exclude_bitmap
+> >> +       features and that block size is equal to system page size.
+> >> +       Snapshots are not supported with 64bit and meta_bg features and the
+> >> +       filesystem must be mounted with ordered data mode.
+> >
+> > What exactly do you mean by not supported with 64bit feature ? Maybe I
+> > am being dense, but I do not get it.
+> 
+> I mean snapshots and 64bit features are mutually exclusive.
+> Is that what you got or do I need to make it more clear?
 
-    block: export blk_{get,put}_queue()
+Oh, I did not notice that it belongs to the "feature" word. Thats
+probably just my English:)
 
-commit e73e079bf128d68284efedeba1fbbc18d78610f9
-Author: James Bottomley <James.Bottomley@HansenPartnership.com>
-Date:   Wed May 25 15:52:14 2011 -0500
+> 
+> >>
+> >>  #define outside(b, first, last)      ((b) < (first) || (b) >= (last))
+> >>  #define inside(b, first, last)       ((b) >= (first) && (b) < (last))
+> >> diff --git a/fs/ext4/snapshot.h b/fs/ext4/snapshot.h
+> >> new file mode 100644
+> >> index 0000000..a927090
+> >> --- /dev/null
+> >> +++ b/fs/ext4/snapshot.h
+> >> @@ -0,0 +1,193 @@
+> >> +/*
+> >> + * linux/fs/ext4/snapshot.h
+> >> + *
+> >> + * Written by Amir Goldstein <amir73il@users.sf.net>, 2008
+> >> + *
+> >> + * Copyright (C) 2008-2011 CTERA Networks
+> >> + *
+> >> + * This file is part of the Linux kernel and is made available under
+> >> + * the terms of the GNU General Public License, version 2, or at your
+> >> + * option, any later version, incorporated herein by reference.
+> >> + *
+> >> + * Ext4 snapshot extensions.
+> >
+> > This is great place to write more about snapshot design and
+> > implementation. If it is added later in a different file, then ignore it
+> > :).
+> 
+> the inline documentation is scattered among several patches.
+> I should probably also add Documentation/ext4_snapshots.txt
+> with some design and overview information.
+> And perhaps insert a short short version of it here ;-)
 
-    [SCSI] Fix oops caused by queue refcounting failure
+Documentation/filesystems/ext4_snapshots.txt would be the most welcome,
+thanks.
 
+> 
+> >
+> >> + */
+> >> +
+> >> +#ifndef _LINUX_EXT4_SNAPSHOT_H
+> >> +#define _LINUX_EXT4_SNAPSHOT_H
+> >> +
+> >> +#include <linux/version.h>
+> >> +#include <linux/delay.h>
+> >> +#include "ext4.h"
+> >> +
+> >> +
+> >> +/*
+> >> + * use signed 64bit for snapshot image addresses
+> >> + * negative addresses are used to reference snapshot meta blocks
+> >> + */
+> >> +#define ext4_snapblk_t long long
+> >
+> > typedef signed long long int ext4_snapblk_t maybe ?
+> 
+> 1. checkpatch doesn't like adding new typedef to the kernel
 
-	Torsten
+Yes, I suppose that the reason is so that people does not add new
+typedefs like crazy, but when it is well reasoned I do not think it is a
+problem.
+
+> 2. I am in th process of removing that define altogether
+
+And use what instead ? ext4 typedefs helped people to realize what type
+to use for what operation and if this type is used often enough and does
+make sense (which I do not know since I have not seen the whole series
+yet), it can help as well.
+
+> >
+> >> +#define SNAPSHOT_IND_PER_BLOCK_GROUP_BITS                    \
+> >> +     (SNAPSHOT_BLOCKS_PER_GROUP_BITS-SNAPSHOT_ADDR_PER_BLOCK_BITS)
+> >> +#define SNAPSHOT_IND_PER_BLOCK_GROUP                         \
+> >> +     (1<<SNAPSHOT_IND_PER_BLOCK_GROUP_BITS) /* 32 */
+> >> +#define SNAPSHOT_DIND_BLOCK_GROUPS_BITS                              \
+> >> +     (SNAPSHOT_ADDR_PER_BLOCK_BITS-SNAPSHOT_IND_PER_BLOCK_GROUP_BITS)
+> >> +#define SNAPSHOT_DIND_BLOCK_GROUPS                           \
+> >> +     (1<<SNAPSHOT_DIND_BLOCK_GROUPS_BITS)
+> >
+> > formating
+> 
+> ?
+
+#define SNAPSHOT_IND_PER_BLOCK_GROUP_BITS				   \
+	(SNAPSHOT_BLOCKS_PER_GROUP_BITS - SNAPSHOT_ADDR_PER_BLOCK_BITS)
+#define SNAPSHOT_IND_PER_BLOCK_GROUP					   \
+	(1 << SNAPSHOT_IND_PER_BLOCK_GROUP_BITS) /* 32 */ <- 32 what ?
+#define SNAPSHOT_DIND_BLOCK_GROUPS_BITS					   \
+	(SNAPSHOT_ADDR_PER_BLOCK_BITS - SNAPSHOT_IND_PER_BLOCK_GROUP_BITS)
+#define SNAPSHOT_DIND_BLOCK_GROUPS					   \
+	(1 << SNAPSHOT_DIND_BLOCK_GROUPS_BITS)
+
+> 
+> >
+> >> +
+> >> +#define SNAPSHOT_BLOCK_OFFSET                                        \
+> >> +     (SNAPSHOT_DIR_BLOCKS+SNAPSHOT_IND_BLOCKS)
+> >> +#define SNAPSHOT_BLOCK(iblock)                                       \
+> >> +     ((ext4_snapblk_t)(iblock) - SNAPSHOT_BLOCK_OFFSET)
+> >> +#define SNAPSHOT_IBLOCK(block)                                       \
+> >> +     (ext4_fsblk_t)((block) + SNAPSHOT_BLOCK_OFFSET)
+> >
+> > I do not see SNAPSHOT_BLOCK() defined anywhere.
+> >
+> 
+> Do you mean you don't see it used anywhere?
+> It is used by later patches, but I do need to document it's meaning here.
+
+I have missed the define before SNAPSHOT_IBLOCK sorry.
+
+Thanks!
+-Lukas
+--8323328-174576539-1307443338=:4754--
