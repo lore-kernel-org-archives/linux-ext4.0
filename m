@@ -1,7 +1,7 @@
 From: amir73il@users.sourceforge.net
-Subject: [PATCH v1 32/36] ext4: snapshot exclude - the exclude bitmap
-Date: Tue,  7 Jun 2011 18:07:59 +0300
-Message-ID: <1307459283-22130-33-git-send-email-amir73il@users.sourceforge.net>
+Subject: [PATCH v1 34/36] ext4: snapshot cleanup - shrink deleted snapshots
+Date: Tue,  7 Jun 2011 18:08:01 +0300
+Message-ID: <1307459283-22130-35-git-send-email-amir73il@users.sourceforge.net>
 References: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
 Cc: tytso@mit.edu, lczerner@redhat.com,
 	Amir Goldstein <amir73il@users.sf.net>,
@@ -10,728 +10,651 @@ To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-wy0-f174.google.com ([74.125.82.174]:60303 "EHLO
 	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756399Ab1FGPKY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2011 11:10:24 -0400
+	with ESMTP id S1753825Ab1FGPKa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2011 11:10:30 -0400
 Received: by mail-wy0-f174.google.com with SMTP id 21so3629480wya.19
-        for <linux-ext4@vger.kernel.org>; Tue, 07 Jun 2011 08:10:23 -0700 (PDT)
+        for <linux-ext4@vger.kernel.org>; Tue, 07 Jun 2011 08:10:29 -0700 (PDT)
 In-Reply-To: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Amir Goldstein <amir73il@users.sf.net>
 
-Mark all snapshot blocks excluded from COW (i.e., mark that
-they do not need to be COWed).  The excluded blocks appear as not
-allocated inside the snapshot image (no snapshots of snapshot files).
-Excluding snapshot file blocks is essential for efficient cleanup
-of deleted snapshot files.
-Excluding blocks is done by setting their bit in the exclude bitmap.
-There is one exclude bitmap block per block group, which is allocated
-on mkfs when setting the exclude_bitmap feature.  The exclude bitmap
-location is stored in the group descriptor.
-The exclude_bitmap feature is backward compatible, but online resize
-support with exclude_bitmap was not yet implemented.
+Free blocks of deleted snapshots, which are not in use by an older
+non-deleted snapshot.  Shrinking helps reclaiming disk space
+while older snapshots are currently in use (enabled).
+We modify the indirect inode truncate helper functions so that they
+can be used by the snapshot cleanup functions to free blocks
+selectively according to a COW bitmap buffer.
 
 
 Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/balloc.c         |  107 ++++++++++++++++++++++++++++++++++++
- fs/ext4/ext4.h           |   12 ++++-
- fs/ext4/mballoc.c        |   69 +++++++++++++++++++++++
- fs/ext4/resize.c         |    6 ++
- fs/ext4/snapshot.c       |  136 ++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/snapshot.h       |   28 ++++++++++
- fs/ext4/snapshot_ctl.c   |    7 +++
- fs/ext4/snapshot_inode.c |   11 ++++
- fs/ext4/super.c          |   35 ++++++++++++-
- 9 files changed, 408 insertions(+), 3 deletions(-)
+ fs/ext4/ext4.h           |   10 ++
+ fs/ext4/inode.c          |   51 ++++++++---
+ fs/ext4/snapshot.h       |    5 +
+ fs/ext4/snapshot_ctl.c   |  232 ++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/snapshot_inode.c |  220 +++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 504 insertions(+), 14 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 1c140e4..b1303f2 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -65,6 +65,11 @@ static int ext4_group_used_meta_blocks(struct super_block *sb,
- 	/* block bitmap, inode bitmap, and inode table blocks */
- 	int used_blocks = sbi->s_itb_per_group + 2;
- 
-+	if (EXT4_HAS_COMPAT_FEATURE(sb,
-+				    EXT4_FEATURE_COMPAT_EXCLUDE_BITMAP))
-+		/* exclude bitmap */
-+		used_blocks += 1;
-+
- 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG)) {
- 		if (!ext4_block_in_group(sb, ext4_block_bitmap(sb, gdp),
- 					block_group))
-@@ -157,6 +162,14 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 		tmp = ext4_block_bitmap(sb, gdp);
- 		if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
- 			ext4_set_bit(tmp - start, bh->b_data);
-+		if (EXT4_HAS_COMPAT_FEATURE(sb,
-+					EXT4_FEATURE_COMPAT_EXCLUDE_BITMAP)) {
-+			tmp = ext4_exclude_bitmap(sb, gdp);
-+			if (!flex_bg ||
-+			    ext4_block_in_group(sb, tmp, block_group))
-+				ext4_set_bit(tmp - start, bh->b_data);
-+		}
-+
- 		tmp = ext4_inode_bitmap(sb, gdp);
- 		if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
- 			ext4_set_bit(tmp - start, bh->b_data);
-@@ -361,6 +374,100 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
- 	return bh;
- }
- 
-+/* Initializes an uninitialized exclude bitmap if given, and returns 0 */
-+unsigned ext4_init_exclude_bitmap(struct super_block *sb,
-+				  struct buffer_head *bh,
-+				  ext4_group_t block_group,
-+				  struct ext4_group_desc *gdp)
-+{
-+	if (!bh)
-+		/* we can return no. of blocks in exclude bitmap */
-+		return 0;
-+
-+	J_ASSERT_BH(bh, buffer_locked(bh));
-+	memset(bh->b_data, 0, sb->s_blocksize);
-+	return 0;
-+}
-+
-+/**
-+ * read_exclude_bitmap()
-+ * @sb:			super block
-+ * @block_group:	given block group
-+ *
-+ * Read the exclude bitmap for a given block_group
-+ *
-+ * Return buffer_head on success or NULL in case of failure.
-+ */
-+struct buffer_head *
-+ext4_read_exclude_bitmap(struct super_block *sb, ext4_group_t block_group)
-+{
-+	struct ext4_group_desc *desc;
-+	struct buffer_head *bh = NULL;
-+	ext4_fsblk_t bitmap_blk;
-+
-+	desc = ext4_get_group_desc(sb, block_group, NULL);
-+	if (!desc)
-+		return NULL;
-+	bitmap_blk = ext4_exclude_bitmap(sb, desc);
-+	if (!bitmap_blk)
-+		return NULL;
-+	bh = sb_getblk(sb, bitmap_blk);
-+	if (unlikely(!bh)) {
-+		ext4_error(sb, "Cannot read exclude bitmap - "
-+			    "block_group = %d, exclude_bitmap = %llu",
-+			    block_group, bitmap_blk);
-+		return NULL;
-+	}
-+
-+	if (bitmap_uptodate(bh))
-+		return bh;
-+
-+	lock_buffer(bh);
-+	if (bitmap_uptodate(bh)) {
-+		unlock_buffer(bh);
-+		return bh;
-+	}
-+
-+	ext4_lock_group(sb, block_group);
-+	if (desc->bg_flags & cpu_to_le16(EXT4_BG_EXCLUDE_UNINIT)) {
-+		ext4_init_exclude_bitmap(sb, bh, block_group, desc);
-+		set_bitmap_uptodate(bh);
-+		set_buffer_uptodate(bh);
-+		ext4_unlock_group(sb, block_group);
-+		unlock_buffer(bh);
-+		return bh;
-+	}
-+	ext4_unlock_group(sb, block_group);
-+	if (buffer_uptodate(bh)) {
-+		/*
-+		 * if not uninit if bh is uptodate,
-+		 * bitmap is also uptodate
-+		 */
-+		set_bitmap_uptodate(bh);
-+		unlock_buffer(bh);
-+		return bh;
-+	}
-+	/*
-+	 * submit the buffer_head for read. We can
-+	 * safely mark the bitmap as uptodate now.
-+	 * We do it here so the bitmap uptodate bit
-+	 * get set with buffer lock held.
-+	 */
-+	set_bitmap_uptodate(bh);
-+	if (bh_submit_read(bh) < 0) {
-+		put_bh(bh);
-+		ext4_error(sb, "Cannot read exclude bitmap - "
-+			    "block_group = %u, block_bitmap = %llu",
-+			    block_group, bitmap_blk);
-+		return NULL;
-+	}
-+	/*
-+	 * file system mounted not to panic on error,
-+	 * continue with corrupt bitmap
-+	 */
-+	return bh;
-+}
-+
- /**
-  * ext4_has_free_blocks()
-  * @sbi:	in-core super block structure.
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 0599fef..34aaade 100644
+index 6f0f310..92d75c2 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -269,7 +269,8 @@ struct ext4_group_desc
- 	__le16	bg_free_inodes_count_lo;/* Free inodes count */
- 	__le16	bg_used_dirs_count_lo;	/* Directories count */
- 	__le16	bg_flags;		/* EXT4_BG_flags (INODE_UNINIT, etc) */
--	__u32	bg_reserved[2];		/* Likely block/inode bitmap checksum */
-+	__le32	bg_exclude_bitmap_lo;	/* Exclude bitmap block */
-+	__u32	bg_reserved[1];		/* Likely block/inode bitmap checksum */
- 	__le16  bg_itable_unused_lo;	/* Unused inodes count */
- 	__le16  bg_checksum;		/* crc16(sb_uuid+group+desc) */
- 	__le32	bg_block_bitmap_hi;	/* Blocks bitmap block MSB */
-@@ -279,7 +280,8 @@ struct ext4_group_desc
- 	__le16	bg_free_inodes_count_hi;/* Free inodes count MSB */
- 	__le16	bg_used_dirs_count_hi;	/* Directories count MSB */
- 	__le16  bg_itable_unused_hi;    /* Unused inodes count MSB */
--	__u32	bg_reserved2[3];
-+	__le32	bg_exclude_bitmap_hi;	/* Exclude bitmap block MSB */
-+	__u32	bg_reserved2[2];
- };
- 
- /*
-@@ -295,6 +297,7 @@ struct flex_groups {
- #define EXT4_BG_INODE_UNINIT	0x0001 /* Inode table/bitmap not in use */
- #define EXT4_BG_BLOCK_UNINIT	0x0002 /* Block bitmap not in use */
- #define EXT4_BG_INODE_ZEROED	0x0004 /* On-disk itable initialized to zero */
-+#define EXT4_BG_EXCLUDE_UNINIT	0x0008 /* Exclude bitmap not in use */
- 
- /*
-  * Macro-instructions used to manage group descriptors
-@@ -1433,6 +1436,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
- #define EXT4_FEATURE_COMPAT_EXT_ATTR		0x0008
- #define EXT4_FEATURE_COMPAT_RESIZE_INODE	0x0010
- #define EXT4_FEATURE_COMPAT_DIR_INDEX		0x0020
-+#define EXT4_FEATURE_COMPAT_EXCLUDE_BITMAP	0x0100 /* Has exclude bitmap */
- 
- #define EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
- #define EXT4_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
-@@ -1775,6 +1779,8 @@ extern unsigned ext4_init_block_bitmap(struct super_block *sb,
- 				       struct ext4_group_desc *desc);
- #define ext4_free_blocks_after_init(sb, group, desc)			\
- 		ext4_init_block_bitmap(sb, NULL, group, desc)
-+extern struct buffer_head *ext4_read_exclude_bitmap(struct super_block *sb,
-+					       unsigned int block_group);
- 
- /* dir.c */
- extern int __ext4_check_dir_entry(const char *, unsigned int, struct inode *,
-@@ -1936,6 +1942,8 @@ extern ext4_fsblk_t ext4_block_bitmap(struct super_block *sb,
- 				      struct ext4_group_desc *bg);
- extern ext4_fsblk_t ext4_inode_bitmap(struct super_block *sb,
- 				      struct ext4_group_desc *bg);
-+extern ext4_fsblk_t ext4_exclude_bitmap(struct super_block *sb,
-+				      struct ext4_group_desc *bg);
- extern ext4_fsblk_t ext4_inode_table(struct super_block *sb,
- 				     struct ext4_group_desc *bg);
- extern __u32 ext4_free_blks_count(struct super_block *sb,
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 899c12c..50d2c9d 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2846,6 +2846,11 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 	if (err)
- 		goto out_err;
- 
-+	if (EXT4_SNAPSHOTS(sb) && ext4_snapshot_excluded(ac->ac_inode)) {
-+		err = ext4_snapshot_exclude_blocks(handle, sb, block, ac->ac_b_ex.fe_len);
-+		if (err < 0)
-+			goto out_err;
-+	}
- 
- 	err = ext4_handle_dirty_metadata(handle, NULL, gdp_bh);
- 
-@@ -4515,6 +4520,12 @@ void __ext4_free_blocks(const char *where, unsigned int line, handle_t *handle,
- 	int err = 0;
- 	int ret;
- 	int maxblocks;
-+	struct buffer_head *exclude_bitmap_bh = NULL;
-+	int  exclude_bitmap_dirty = 0;
-+	/* excluded_block is determined by testing exclude bitmap */
-+	int excluded_block;
-+	/* excluded_file is an attribute of the inode */
-+	int excluded_file = ext4_snapshot_excluded(inode);
- 
- 	if (bh) {
- 		if (block)
-@@ -4634,6 +4645,26 @@ do_more:
- 	err = ext4_journal_get_write_access(handle, gd_bh);
- 	if (err)
- 		goto error_return;
-+	/*
-+	 * we may be freeing blocks of snapshot/excluded file
-+	 * which we would need to clear from exclude bitmap -
-+	 * try to read exclude bitmap and if it fails
-+	 * skip the exclude bitmap update
-+	 */
-+	if (EXT4_SNAPSHOTS(sb)) {
-+		brelse(exclude_bitmap_bh);
-+		exclude_bitmap_bh = ext4_read_exclude_bitmap(sb, block_group);
-+		if (!exclude_bitmap_bh) {
-+			err = -EIO;
-+			goto error_return;
-+		}
-+		err = ext4_journal_get_write_access_exclude(handle,
-+						    exclude_bitmap_bh);
-+		if (err)
-+			goto error_return;
-+		exclude_bitmap_dirty = 0;
-+	}
+@@ -1894,6 +1894,16 @@ extern void ext4_free_branches(handle_t *handle, struct inode *inode,
+ 				struct buffer_head *parent_bh,
+ 				__le32 *first, __le32 *last,
+ 				int depth);
++extern void ext4_free_data_cow(handle_t *handle, struct inode *inode,
++			   struct buffer_head *this_bh,
++			   __le32 *first, __le32 *last,
++			   const char *bitmap, int bit,
++			   int *pfreed_blocks);
 +
- #ifdef AGGRESSIVE_CHECK
- 	{
- 		int i;
-@@ -4641,6 +4672,29 @@ do_more:
- 			BUG_ON(!mb_test_bit(bit + i, bitmap_bh->b_data));
- 	}
- #endif
-+	if (exclude_bitmap_bh) {
-+		unsigned long i;
++#define ext4_free_data(handle, inode, bh, first, last)		\
++	ext4_free_data_cow(handle, inode, bh, first, last,	\
++			    NULL, 0, NULL)
 +
-+		if (excluded_file)
-+			i = mb_find_next_zero_bit(exclude_bitmap_bh->b_data,
-+						  bit + count, bit) - bit;
-+		else
-+			i = mb_find_next_bit(exclude_bitmap_bh->b_data,
-+					     bit + count, bit) - bit;
-+		if (i < count) {
-+			EXT4_SET_FLAGS(sb, EXT4_FLAGS_FIX_EXCLUDE);
-+			ext4_error(sb, "%sexcluded file (ino=%lu)"
-+				   " block [%lu-%lu/%u, %llu] was %sexcluded!"
-+				   " - run fsck to fix exclude bitmap.\n",
-+				   excluded_file ? "" : "non-",
-+				   inode ? inode->i_ino : 0,
-+				   bit + i, bit + count,
-+				   block_group, block + i,
-+				   excluded_file ? "not " : "");
-+			if (!excluded_file)
-+				excluded_block = 1;
-+		}
-+	}
- 	trace_ext4_mballoc_free(sb, inode, block_group, bit, count);
- 
- 	err = ext4_mb_load_buddy(sb, block_group, &e4b);
-@@ -4675,6 +4729,14 @@ do_more:
- 		mb_clear_bits(bitmap_bh->b_data, bit, count);
- 		mb_free_blocks(inode, &e4b, bit, count);
- 	}
-+		/*
-+		 * A free block should never be excluded from snapshot, so we
-+		 * always clear exclude bitmap just to be on the safe side.
-+		 */
-+	if (exclude_bitmap_bh && (excluded_file || excluded_block)) {
-+		mb_clear_bits(exclude_bitmap_bh->b_data, bit, count);
-+		exclude_bitmap_dirty = 1;
-+	}
- 
- 	ret = ext4_free_blks_count(sb, gdp) + count;
- 	ext4_free_blks_set(sb, gdp, ret);
-@@ -4694,6 +4756,12 @@ do_more:
- 	/* We dirtied the bitmap block */
- 	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
- 	err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
-+	if (exclude_bitmap_bh && exclude_bitmap_dirty) {
-+		ret = ext4_handle_dirty_metadata(handle, NULL,
-+						 exclude_bitmap_bh);
-+		if (!err)
-+			err = ret;
-+	}
- 
- 	/* And the group descriptor block */
- 	BUFFER_TRACE(gd_bh, "dirtied group descriptor block");
-@@ -4711,6 +4779,7 @@ do_more:
- error_return:
- 	if (freed)
- 		dquot_free_block(inode, freed);
-+	brelse(exclude_bitmap_bh);
- 	brelse(bitmap_bh);
- 	ext4_std_error(sb, err);
- 	return;
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index d341a5c..741d72c 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -753,6 +753,12 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
- 	gdb_num = input->group / EXT4_DESC_PER_BLOCK(sb);
- 	gdb_off = input->group % EXT4_DESC_PER_BLOCK(sb);
- 
-+	if (EXT4_HAS_COMPAT_FEATURE(sb,
-+				EXT4_FEATURE_COMPAT_EXCLUDE_BITMAP)) {
-+		ext4_warning(sb, "Can't resize filesystem with exclude bitmap");
-+		return -ENOTSUPP;
-+	}
-+
- 	if (gdb_off == 0 && !EXT4_HAS_RO_COMPAT_FEATURE(sb,
- 					EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER)) {
- 		ext4_warning(sb, "Can't resize non-sparse filesystem further");
-diff --git a/fs/ext4/snapshot.c b/fs/ext4/snapshot.c
-index a1e4175..58ec349 100644
---- a/fs/ext4/snapshot.c
-+++ b/fs/ext4/snapshot.c
-@@ -187,6 +187,7 @@ ext4_snapshot_init_cow_bitmap(struct super_block *sb,
- 		unsigned int block_group, struct buffer_head *cow_bh)
- {
- 	struct buffer_head *bitmap_bh;
-+	struct buffer_head *exclude_bitmap_bh = NULL;
- 	char *dst, *src, *mask = NULL;
- 
- 	bitmap_bh = ext4_read_block_bitmap(sb, block_group);
-@@ -194,6 +195,10 @@ ext4_snapshot_init_cow_bitmap(struct super_block *sb,
- 		return -EIO;
- 
- 	src = bitmap_bh->b_data;
-+	exclude_bitmap_bh = ext4_read_exclude_bitmap(sb, block_group);
-+	if (exclude_bitmap_bh)
-+		/* mask block bitmap with exclude bitmap */
-+		mask = exclude_bitmap_bh->b_data;
- 	/*
- 	 * Another COWing task may be changing this block bitmap
- 	 * (allocating active snapshot blocks) while we are trying
-@@ -214,6 +219,7 @@ ext4_snapshot_init_cow_bitmap(struct super_block *sb,
- 
- 	ext4_unlock_group(sb, block_group);
- 
-+	brelse(exclude_bitmap_bh);
- 	brelse(bitmap_bh);
- 	return 0;
- }
-@@ -420,10 +426,129 @@ ext4_snapshot_test_cow_bitmap(handle_t *handle, struct inode *snapshot,
- 
- 	ret = ext4_mb_test_bit_range(bit, cow_bh->b_data, maxblocks);
- 
-+	if (ret && excluded) {
-+		int i, inuse = *maxblocks;
-+
-+		/*
-+		 * We should never get here because excluded file blocks should
-+		 * be excluded from COW bitmap.  The blocks will not be COWed
-+		 * anyway, but this can indicate a messed up exclude bitmap.
-+		 * Mark that exclude bitmap needs to be fixed and clear blocks
-+		 * from COW bitmap.
-+		 */
-+		EXT4_SET_FLAGS(excluded->i_sb, EXT4_FLAGS_FIX_EXCLUDE);
-+		ext4_warning(excluded->i_sb,
-+			"clearing excluded file (ino=%lu) blocks [%d-%d/%lu] "
-+			"from COW bitmap! - running fsck to fix exclude bitmap "
-+			"is recommended.\n",
-+			excluded->i_ino, bit, bit+inuse-1, block_group);
-+		for (i = 0; i < inuse; i++)
-+			ext4_clear_bit(bit+i, cow_bh->b_data);
-+		ret = ext4_jbd2_file_inode(handle, snapshot);
-+		mark_buffer_dirty(cow_bh);
-+	}
-+
- 	brelse(cow_bh);
- 	return ret;
- }
- /*
-+ * ext4_snapshot_test_and_exclude() marks blocks in exclude bitmap
-+ * @where:	name of caller function
-+ * @handle:	JBD handle
-+ * @sb:		super block handle
-+ * @block:	address of first block to exclude
-+ * @maxblocks:	max. blocks to exclude
-+ * @exclude:	if false, return -EIO if block needs to be excluded
-+ *
-+ * Return values:
-+ * >= 0 - no. of blocks set in exclude bitmap
-+ * < 0 - error
-+ */
-+int ext4_snapshot_test_and_exclude(const char *where, handle_t *handle,
-+		struct super_block *sb, ext4_fsblk_t block, int count,
-+		int exclude)
-+{
-+	struct buffer_head *exclude_bitmap_bh = NULL;
-+	struct buffer_head *gdp_bh = NULL;
-+	struct ext4_group_desc *gdp = NULL;
-+	ext4_group_t block_group = SNAPSHOT_BLOCK_GROUP(block);
-+	ext4_grpblk_t bit = SNAPSHOT_BLOCK_GROUP_OFFSET(block);
-+	int err = 0, n = 0, excluded = 0, exclude_uninit;
-+
-+	err = -EIO;
-+	gdp = ext4_get_group_desc(sb, block_group, &gdp_bh);
-+	if (!gdp)
-+		goto out;
-+
-+	exclude_uninit = gdp->bg_flags & cpu_to_le16(EXT4_BG_EXCLUDE_UNINIT);
-+	if (exclude && exclude_uninit) {
-+		err = ext4_journal_get_write_access(handle, gdp_bh);
-+		if (err)
-+			goto out;
-+	}
-+
-+	exclude_bitmap_bh = ext4_read_exclude_bitmap(sb, block_group);
-+	if (!exclude_bitmap_bh)
-+		return 0;
-+
-+	if (exclude)
-+		err = ext4_journal_get_write_access_exclude(handle,
-+							    exclude_bitmap_bh);
-+	if (err)
-+		goto out;
-+
-+	while (count > 0 && bit < SNAPSHOT_BLOCKS_PER_GROUP) {
-+		if (!ext4_set_bit_atomic(sb_bgl_lock(EXT4_SB(sb),
-+						block_group),
-+					bit, exclude_bitmap_bh->b_data)) {
-+			n++;
-+			if (!exclude)
-+				break;
-+		} else if (n) {
-+			snapshot_debug(2, "excluded blocks: [%d-%d/%d]\n",
-+					bit-n, bit-1, block_group);
-+			excluded += n;
-+			n = 0;
-+		}
-+		bit++;
-+		count--;
-+	}
-+
-+	if (n && !exclude) {
-+		EXT4_SET_FLAGS(sb, EXT4_FLAGS_FIX_EXCLUDE);
-+		ext4_error(sb, where,
-+			"snapshot file block [%d/%d] not in exclude bitmap! - "
-+			"running fsck to fix exclude bitmap is recommended.\n",
-+			bit, block_group);
-+		err = -EIO;
-+		goto out;
-+	}
-+
-+	if (n) {
-+		snapshot_debug(2, "excluded blocks: [%d-%d/%d]\n",
-+				bit-n, bit-1, block_group);
-+		excluded += n;
-+	}
-+
-+	if (exclude && excluded) {
-+		err = ext4_handle_dirty_metadata(handle,
-+						 NULL, exclude_bitmap_bh);
-+		if (err)
-+			goto out;
-+
-+		if (exclude_uninit) {
-+			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_EXCLUDE_UNINIT);
-+			err = ext4_handle_dirty_metadata(handle, NULL, gdp_bh);
-+		}
-+
-+		trace_cow_add(handle, excluded, excluded);
-+	}
-+out:
-+	brelse(exclude_bitmap_bh);
-+	return err ? err : excluded;
-+}
-+
-+/*
-  * COW functions
+ /* ioctl.c */
+ extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
+ extern long ext4_compat_ioctl(struct file *, unsigned int, unsigned long);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 5199035..ad9463f 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4523,11 +4523,15 @@ no_top:
+  * Return 0 on success, 1 on invalid block range
+  * and < 0 on fatal error.
   */
+-static int ext4_clear_blocks(handle_t *handle, struct inode *inode,
+-			     struct buffer_head *bh,
+-			     ext4_fsblk_t block_to_free,
+-			     unsigned long count, __le32 *first,
+-			     __le32 *last)
++/*
++ * ext4_clear_blocks_cow - Zero a number of block pointers (consult COW bitmap)
++ * @bitmap:	COW bitmap to consult when shrinking deleted snapshot
++ * @bit:	bit number representing the @first block
++ */
++static int ext4_clear_blocks_cow(handle_t *handle, struct inode *inode,
++		struct buffer_head *bh, ext4_fsblk_t block_to_free,
++		unsigned long count, __le32 *first, __le32 *last,
++		const char *bitmap, int bit)
+ {
+ 	__le32 *p;
+ 	int	flags = EXT4_FREE_BLOCKS_FORGET | EXT4_FREE_BLOCKS_VALIDATED;
+@@ -4567,8 +4571,12 @@ static int ext4_clear_blocks(handle_t *handle, struct inode *inode,
+ 		}
+ 	}
  
-@@ -732,6 +857,13 @@ test_pending_cow:
- cowed:
- 	/* mark the buffer COWed in the current transaction */
- 	ext4_snapshot_mark_cowed(handle, bh);
-+	if (clear) {
-+		/* mark COWed block in exclude bitmap */
-+		clear = ext4_snapshot_exclude_blocks(handle, sb,
-+				block, 1);
-+		if (clear < 0)
-+			err = clear;
+-	for (p = first; p < last; p++)
++	for (p = first; p < last; p++) {
++		if (*p && bitmap && ext4_test_bit(bit + (p - first), bitmap))
++			/* don't free block used by older snapshot */
++			continue;
+ 		*p = 0;
 +	}
- out:
- 	brelse(sbh);
- 	/* END COWing */
-@@ -854,6 +986,10 @@ int ext4_snapshot_test_and_move(const char *where, handle_t *handle,
- 	 */
- 	if (inode)
- 		dquot_free_block(inode, count);
-+	/* mark moved blocks in exclude bitmap */
-+	excluded = ext4_snapshot_exclude_blocks(handle, sb, block, count);
-+	if (excluded < 0)
-+		err = excluded;
- 	trace_cow_add(handle, moved, count);
- out:
- 	/* END moving */
+ 
+ 	ext4_free_blocks(handle, inode, NULL, block_to_free, count, flags);
+ 	return 0;
+@@ -4596,9 +4604,17 @@ out_err:
+  * @this_bh will be %NULL if @first and @last point into the inode's direct
+  * block pointers.
+  */
+-static void ext4_free_data(handle_t *handle, struct inode *inode,
++/*
++ * ext4_free_data_cow - free a list of data blocks (consult COW bitmap)
++ * @bitmap:	   COW bitmap to consult when shrinking deleted snapshot
++ * @bit:	   bit number representing the @first block
++ * @pfreed_blocks: return number of freed blocks
++ */
++void ext4_free_data_cow(handle_t *handle, struct inode *inode,
+ 			   struct buffer_head *this_bh,
+-			   __le32 *first, __le32 *last)
++			   __le32 *first, __le32 *last,
++			   const char *bitmap, int bit,
++			   int *pfreed_blocks)
+ {
+ 	ext4_fsblk_t block_to_free = 0;    /* Starting block # of a run */
+ 	unsigned long count = 0;	    /* Number of blocks in the run */
+@@ -4622,6 +4638,11 @@ static void ext4_free_data(handle_t *handle, struct inode *inode,
+ 
+ 	for (p = first; p < last; p++) {
+ 		nr = le32_to_cpu(*p);
++		if (nr && bitmap && ext4_test_bit(bit + (p - first), bitmap))
++			/* don't free block used by older snapshot */
++			nr = 0;
++		if (nr && pfreed_blocks)
++			++(*pfreed_blocks);
+ 		if (nr) {
+ 			/* accumulate blocks to free if they're contiguous */
+ 			if (count == 0) {
+@@ -4631,9 +4652,10 @@ static void ext4_free_data(handle_t *handle, struct inode *inode,
+ 			} else if (nr == block_to_free + count) {
+ 				count++;
+ 			} else {
+-				err = ext4_clear_blocks(handle, inode, this_bh,
+-						        block_to_free, count,
+-						        block_to_free_p, p);
++				err = ext4_clear_blocks_cow(handle, inode,
++					       this_bh, block_to_free, count,
++					       block_to_free_p, p, bitmap,
++					       bit + (block_to_free_p - first));
+ 				if (err)
+ 					break;
+ 				block_to_free = nr;
+@@ -4643,9 +4665,10 @@ static void ext4_free_data(handle_t *handle, struct inode *inode,
+ 		}
+ 	}
+ 
+-	if (!err && count > 0)
+-		err = ext4_clear_blocks(handle, inode, this_bh, block_to_free,
+-					count, block_to_free_p, p);
++	if (count > 0)
++		err = ext4_clear_blocks_cow(handle, inode, this_bh,
++				block_to_free, count, block_to_free_p, p,
++				bitmap, bit + (block_to_free_p - first));
+ 	if (err < 0)
+ 		/* fatal error */
+ 		return;
 diff --git a/fs/ext4/snapshot.h b/fs/ext4/snapshot.h
-index 3282fe7..11fa43d 100644
+index 11fa43d..53d4481 100644
 --- a/fs/ext4/snapshot.h
 +++ b/fs/ext4/snapshot.h
-@@ -341,6 +341,34 @@ static inline int ext4_snapshot_get_delete_access(handle_t *handle,
- 
- 	return ext4_snapshot_move(handle, inode, block, pcount, 1);
+@@ -401,6 +401,11 @@ static inline void exit_ext4_snapshot(void)
+ {
  }
-+extern int ext4_snapshot_test_and_exclude(const char *where, handle_t *handle,
-+		struct super_block *sb, ext4_fsblk_t block, int maxblocks,
-+		int exclude);
-+
-+/*
-+ * ext4_snapshot_exclude_blocks() - exclude snapshot blocks
-+ *
-+ * Called from ext4_snapshot_test_and_{cow,move}() when copying/moving
-+ * blocks to active snapshot.
-+ *
-+ * Return <0 on error.
-+ */
-+#define ext4_snapshot_exclude_blocks(handle, sb, block, count) \
-+	ext4_snapshot_test_and_exclude(__func__, (handle), (sb), \
-+			(block), (count), 1)
-+
-+/*
-+ * ext4_snapshot_test_excluded() - test that snapshot blocks are excluded
-+ *
-+ * Called from ext4_count_branches() and
-+ * ext4_count_blocks() under snapshot_mutex.
-+ *
-+ * Return <0 on error or if snapshot blocks are not excluded.
-+ */
-+#define ext4_snapshot_test_excluded(inode, block, count) \
-+	ext4_snapshot_test_and_exclude(__func__, NULL, (inode)->i_sb, \
-+			(block), (count), 0)
-+
  
- extern void init_ext4_snapshot_cow_cache(void);
++/* snapshot_inode.c */
++extern int ext4_snapshot_shrink_blocks(handle_t *handle, struct inode *inode,
++		sector_t iblock, unsigned long maxblocks,
++		struct buffer_head *cow_bh,
++		int shrink, int *pmapped);
  
+ /* tests if @inode is a snapshot file */
+ static inline int ext4_snapshot_file(struct inode *inode)
 diff --git a/fs/ext4/snapshot_ctl.c b/fs/ext4/snapshot_ctl.c
-index 298405a..9e39c04 100644
+index 13048f5..710e157 100644
 --- a/fs/ext4/snapshot_ctl.c
 +++ b/fs/ext4/snapshot_ctl.c
-@@ -886,6 +886,7 @@ int ext4_snapshot_take(struct inode *inode)
- 	struct ext4_super_block *es = NULL;
- 	struct buffer_head *es_bh = NULL;
- 	struct buffer_head *sbh = NULL;
-+	struct buffer_head *exclude_bitmap_bh = NULL;
- 	struct buffer_head *bhs[COPY_INODE_BLOCKS_NUM] = { NULL };
- 	const char *mask = NULL;
- 	struct inode *curr_inode;
-@@ -1027,6 +1028,11 @@ copy_inode_blocks:
- 	brelse(bhs[COPY_INODE_BITMAP]);
- 	bhs[COPY_INODE_BITMAP] = sb_bread(sb,
- 			ext4_inode_bitmap(sb, desc));
-+	brelse(exclude_bitmap_bh);
-+	exclude_bitmap_bh = ext4_read_exclude_bitmap(sb, iloc.block_group);
-+	if (exclude_bitmap_bh)
-+		/* mask block bitmap with exclude bitmap */
-+		mask = exclude_bitmap_bh->b_data;
- 	err = -EIO;
- 	for (i = 0; i < COPY_INODE_BLOCKS_NUM; i++) {
- 		brelse(sbh);
-@@ -1134,6 +1140,7 @@ out_unlockfs:
- 			inode->i_generation);
- 
- out_err:
-+	brelse(exclude_bitmap_bh);
- 	brelse(es_bh);
- 	brelse(sbh);
- 	for (i = 0; i < COPY_INODE_BLOCKS_NUM; i++)
-diff --git a/fs/ext4/snapshot_inode.c b/fs/ext4/snapshot_inode.c
-index f2311e4..3d6cb7b 100644
---- a/fs/ext4/snapshot_inode.c
-+++ b/fs/ext4/snapshot_inode.c
-@@ -149,6 +149,7 @@ static int ext4_snapshot_get_blockdev_access(struct super_block *sb,
- 	unsigned long block_group = SNAPSHOT_BLOCK_GROUP(bh->b_blocknr);
- 	ext4_grpblk_t bit = SNAPSHOT_BLOCK_GROUP_OFFSET(bh->b_blocknr);
- 	struct buffer_head *bitmap_bh;
-+	struct buffer_head *exclude_bitmap_bh = NULL;
- 	int err = 0;
- 
- 	if (PageReadahead(bh->b_page))
-@@ -166,6 +167,16 @@ static int ext4_snapshot_get_blockdev_access(struct super_block *sb,
- 		return -EIO;
- 	}
- 
-+	exclude_bitmap_bh = ext4_read_exclude_bitmap(sb, block_group);
-+	if (exclude_bitmap_bh &&
-+		ext4_test_bit(bit, exclude_bitmap_bh->b_data)) {
-+		snapshot_debug(2, "warning: attempt to read through to "
-+				"excluded block [%d/%lu] - read ahead?\n",
-+				bit, block_group);
-+		err = -EIO;
-+	}
-+
-+	brelse(exclude_bitmap_bh);
- 	brelse(bitmap_bh);
- 	return err;
- }
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index a1c4728..7f15983 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -126,6 +126,18 @@ ext4_fsblk_t ext4_inode_bitmap(struct super_block *sb,
- 		 (ext4_fsblk_t)le32_to_cpu(bg->bg_inode_bitmap_hi) << 32 : 0);
+@@ -1379,6 +1379,221 @@ out_err:
  }
  
-+ext4_fsblk_t ext4_exclude_bitmap(struct super_block *sb,
-+			       struct ext4_group_desc *bg)
+ /*
++ * ext4_snapshot_shrink_range - free unused blocks from deleted snapshots
++ * @handle: JBD handle for this transaction
++ * @start:	latest non-deleted snapshot before deleted snapshots group
++ * @end:	first non-deleted snapshot after deleted snapshots group
++ * @iblock:	inode offset to first data block to shrink
++ * @maxblocks:	inode range of data blocks to shrink
++ * @cow_bh:	buffer head to map the COW bitmap block of snapshot @start
++ *		if NULL, don't look for COW bitmap block
++ *
++ * Shrinks @maxblocks blocks starting at inode offset @iblock in a group of
++ * subsequent deleted snapshots starting after @start and ending before @end.
++ * Shrinking is done by finding a range of mapped blocks in @start snapshot
++ * or in one of the deleted snapshots, where no other blocks are mapped in the
++ * same range in @start snapshot or in snapshots between them.
++ * The blocks in the found range may be 'in-use' by @start snapshot, so only
++ * blocks which are not set in the COW bitmap are freed.
++ * All mapped blocks of other deleted snapshots in the same range are freed.
++ *
++ * Called from ext4_snapshot_shrink() under snapshot_mutex.
++ * Returns the shrunk blocks range and <0 on error.
++ */
++static int ext4_snapshot_shrink_range(handle_t *handle,
++		struct inode *start, struct inode *end,
++		sector_t iblock, unsigned long maxblocks,
++		struct buffer_head *cow_bh)
 +{
-+	if (!EXT4_HAS_COMPAT_FEATURE(sb,
-+				EXT4_FEATURE_COMPAT_EXCLUDE_BITMAP))
-+		return 0;
++	struct ext4_sb_info *sbi = EXT4_SB(start->i_sb);
++	struct list_head *l;
++	struct inode *inode = start;
++	/* start with @maxblocks range and narrow it down */
++	int err, count = maxblocks;
++	/* @start snapshot blocks should not be freed only counted */
++	int mapped, shrink = 0;
 +
-+	return le32_to_cpu(bg->bg_exclude_bitmap_lo) |
-+		(EXT4_DESC_SIZE(sb) >= EXT4_MIN_DESC_SIZE_64BIT ?
-+		 (ext4_fsblk_t)le32_to_cpu(bg->bg_exclude_bitmap_hi) << 32 : 0);
++	/* iterate on (@start <= snapshot < @end) */
++	list_for_each_prev(l, &EXT4_I(start)->i_snaplist) {
++		err = ext4_snapshot_shrink_blocks(handle, inode,
++				iblock, count, cow_bh, shrink, &mapped);
++		if (err < 0)
++			return err;
++
++		/* 0 < new range <= old range */
++		BUG_ON(!err || err > count);
++		count = err;
++		cond_resched();
++
++		/*
++		 * shrink mode state transitions:
++		 * 1. on @start, shrink is set to 0 ('don't free' mode).
++		 * 2. after @start, shrink is incremented until mapped blocks
++		 *    are found in the shrunk range ('free unused' mode).
++		 * 3. after mapped block were found, or if cow_bh is NULL,
++		 *    shrink is set to -1 and decremented until the end of
++		 *    the deleted snapshots group ('free all' mode).
++		 */
++		if (shrink < 0)
++			/* stay in 'free all' mode */
++			shrink--;
++		else if (!cow_bh)
++			/* no COW bitmap - enter 'free all' mode */
++			shrink = -1;
++		else if (mapped)
++			/* found mapped blocks - enter 'free all' mode */
++			shrink = -1;
++		else
++			/* enter/stay in 'free unused' mode */
++			shrink++;
++
++		if (l == &sbi->s_snapshot_list)
++			/* didn't reach @end */
++			return -EINVAL;
++		inode = &list_entry(l, struct ext4_inode_info,
++						  i_snaplist)->vfs_inode;
++		if (inode == end)
++			break;
++		/* indicate shrink progress via i_size */
++		SNAPSHOT_SET_PROGRESS(inode, SNAPSHOT_BLOCK(iblock));
++	}
++	return count;
 +}
 +
- ext4_fsblk_t ext4_inode_table(struct super_block *sb,
- 			      struct ext4_group_desc *bg)
- {
-@@ -2067,6 +2079,7 @@ static int ext4_check_descriptors(struct super_block *sb,
- 	ext4_fsblk_t block_bitmap;
- 	ext4_fsblk_t inode_bitmap;
- 	ext4_fsblk_t inode_table;
-+	ext4_fsblk_t exclude_bitmap;
- 	int flexbg_flag = 0;
- 	ext4_group_t i, grp = sbi->s_groups_count;
++/*
++ * ext4_snapshot_shrink - free unused blocks from deleted snapshot files
++ * @handle: JBD handle for this transaction
++ * @start:	latest non-deleted snapshot before deleted snapshots group
++ * @end:	first non-deleted snapshot after deleted snapshots group
++ * @need_shrink: no. of deleted snapshots in the group
++ *
++ * Frees all blocks in subsequent deleted snapshots starting after @start and
++ * ending before @end, except for blocks which are 'in-use' by @start snapshot.
++ * (blocks 'in-use' are set in snapshot COW bitmap and not copied to snapshot).
++ * Called from ext4_snapshot_update() under snapshot_mutex.
++ * Returns 0 on success and <0 on error.
++ */
++static int ext4_snapshot_shrink(struct inode *start, struct inode *end,
++				 int need_shrink)
++{
++	struct list_head *l;
++	handle_t *handle;
++	struct buffer_head cow_bitmap, *cow_bh = NULL;
++	ext4_fsblk_t block = 1; /* skip super block */
++	struct ext4_sb_info *sbi = EXT4_SB(start->i_sb);
++	/* blocks beyond the size of @start are not in-use by @start */
++	ext4_fsblk_t snapshot_blocks = SNAPSHOT_BLOCKS(start);
++	unsigned long count = ext4_blocks_count(sbi->s_es) - block;
++	long block_group = -1;
++	ext4_fsblk_t bg_boundary = 0;
++	int err, ret;
++
++	snapshot_debug(3, "snapshot (%u-%u) shrink: "
++			"count = 0x%lx, need_shrink = %d\n",
++			start->i_generation, end->i_generation,
++			count, need_shrink);
++
++	/* start large truncate transaction that will be extended/restarted */
++	handle = ext4_journal_start(start, EXT4_MAX_TRANS_DATA);
++	if (IS_ERR(handle))
++		return PTR_ERR(handle);
++
++	while (count > 0) {
++		while (block >= bg_boundary) {
++			/* reset COW bitmap cache */
++			cow_bitmap.b_state = 0;
++			cow_bitmap.b_blocknr = 0;
++			cow_bh = &cow_bitmap;
++			bg_boundary += SNAPSHOT_BLOCKS_PER_GROUP;
++			block_group++;
++			if (block >= snapshot_blocks)
++				/*
++				 * Past last snapshot block group - pass NULL
++				 * cow_bh to ext4_snapshot_shrink_range().
++				 * This will cause snapshots after resize to
++				 * shrink to the size of @start snapshot.
++				 */
++				cow_bh = NULL;
++			cond_resched();
++		}
++
++		err = extend_or_restart_transaction(handle,
++						    EXT4_MAX_TRANS_DATA);
++		if (err)
++			goto out_err;
++
++		err = ext4_snapshot_shrink_range(handle, start, end,
++					      SNAPSHOT_IBLOCK(block), count,
++					      cow_bh);
++
++		snapshot_debug(3, "snapshot (%u-%u) shrink: "
++				"block = 0x%llu, count = 0x%lx, err = 0x%x\n",
++				start->i_generation, end->i_generation,
++				block, count, err);
++
++		if (buffer_mapped(&cow_bitmap) && buffer_new(&cow_bitmap)) {
++			snapshot_debug(2, "snapshot (%u-%u) shrink: "
++				"block group = %ld/%u, "
++				"COW bitmap = [%llu/%llu]\n",
++				start->i_generation, end->i_generation,
++				block_group, sbi->s_groups_count,
++				SNAPSHOT_BLOCK_TUPLE(cow_bitmap.b_blocknr));
++			clear_buffer_new(&cow_bitmap);
++		}
++
++		if (err <= 0)
++			goto out_err;
++
++		block += err;
++		count -= err;
++	}
++
++	/* marks need_shrink snapshots shrunk */
++	err = extend_or_restart_transaction(handle, need_shrink);
++	if (err)
++		goto out_err;
++
++	/* iterate on (@start < snapshot < @end) */
++	list_for_each_prev(l, &EXT4_I(start)->i_snaplist) {
++		struct inode *inode;
++		struct ext4_iloc iloc;
++
++		if (l == &sbi->s_snapshot_list)
++			break;
++
++		inode = &list_entry(l, struct ext4_inode_info,
++				    i_snaplist)->vfs_inode;
++		if (inode == end)
++			break;
++		/* reset i_size that was used as progress indicator */
++		SNAPSHOT_SET_DISABLED(inode);
++		if (ext4_test_inode_flag(inode, EXT4_INODE_SNAPFILE_DELETED) &&
++		    !(ext4_test_inode_flag(inode, EXT4_INODE_SNAPFILE_SHRUNK) &&
++		    ext4_test_inode_snapstate(inode, EXT4_SNAPSTATE_ACTIVE))) {
++			/* mark snapshot shrunk */
++			err = ext4_reserve_inode_write(handle, inode, &iloc);
++			ext4_set_inode_flag(inode, EXT4_INODE_SNAPFILE_SHRUNK);
++			if (!err)
++				ext4_mark_iloc_dirty(handle, inode, &iloc);
++			if (--need_shrink <= 0)
++				break;
++		}
++	}
++
++	err = 0;
++out_err:
++	ret = ext4_journal_stop(handle);
++	if (!err)
++		err = ret;
++	if (need_shrink)
++		snapshot_debug(1, "snapshot (%u-%u) shrink: "
++			       "need_shrink=%d(>0!), err=%d\n",
++			       start->i_generation, end->i_generation,
++			       need_shrink, err);
++	return err;
++}
++
++/*
+  * ext4_snapshot_cleanup - shrink/merge/remove snapshot marked for deletion
+  * @inode - inode in question
+  * @used_by - latest non-deleted snapshot
+@@ -1403,6 +1618,23 @@ static int ext4_snapshot_cleanup(struct inode *inode, struct inode *used_by,
+ 		/* remove permanently unused deleted snapshot */
+ 		return ext4_snapshot_remove(inode);
  
-@@ -2110,10 +2123,23 @@ static int ext4_check_descriptors(struct super_block *sb,
- 			       "(block %llu)!", i, inode_table);
- 			return 0;
- 		}
-+		if (EXT4_HAS_COMPAT_FEATURE(sb,
-+					EXT4_FEATURE_COMPAT_EXCLUDE_BITMAP)) {
-+			exclude_bitmap = ext4_exclude_bitmap(sb, gdp);
-+			if (exclude_bitmap < first_block ||
-+			    exclude_bitmap > last_block) {
-+				ext4_msg(sb, KERN_ERR,
-+					 "ext4_check_descriptors: "
-+					 "Exclude bitmap for group %u "
-+					 "not in group (block %llu)!",
-+					 i, exclude_bitmap);
-+				return 0;
-+			}
++	if (deleted) {
++		/* deleted (non-active) snapshot file */
++		if (!ext4_test_inode_flag(inode, EXT4_INODE_SNAPFILE_SHRUNK))
++			/* deleted snapshot needs shrinking */
++			(*need_shrink)++;
++		return 0;
++	}
++
++	/* non-deleted (or active) snapshot file */
++	if (*need_shrink) {
++		/* pass 1: shrink all deleted snapshots
++		 * between 'used_by' and 'inode' */
++		err = ext4_snapshot_shrink(used_by, inode, *need_shrink);
++		if (err)
++			return err;
++		*need_shrink = 0;
++	}
+ 	return 0;
+ }
+ 
+diff --git a/fs/ext4/snapshot_inode.c b/fs/ext4/snapshot_inode.c
+index 3d6cb7b..391aa92 100644
+--- a/fs/ext4/snapshot_inode.c
++++ b/fs/ext4/snapshot_inode.c
+@@ -38,6 +38,226 @@
+ 
+ #include <trace/events/ext4.h>
+ #include "snapshot.h"
++
++/**
++ * ext4_blks_to_skip - count the number blocks that can be skipped
++ * @inode: inode in question
++ * @i_block: start block number
++ * @maxblocks: max number of data blocks to be skipped
++ * @chain: chain of indirect blocks
++ * @depth: length of chain from inode to data block
++ * @offsets: array of offsets in chain blocks
++ * @k: number of allocated blocks in the chain
++ *
++ * Counts the number of non-allocated data blocks (holes) at offset @i_block.
++ * Called from ext4_snapshot_merge_blocks() and ext4_snapshot_shrink_blocks()
++ * under snapshot_mutex.
++ * Returns the total number of data blocks to be skipped.
++ */
++
++static int ext4_blks_to_skip(struct inode *inode, long i_block,
++		unsigned long maxblocks, Indirect chain[4], int depth,
++		int *offsets, int k)
++{
++	int ptrs = EXT4_ADDR_PER_BLOCK(inode->i_sb);
++	int ptrs_bits = EXT4_ADDR_PER_BLOCK_BITS(inode->i_sb);
++	const long direct_blocks = EXT4_NDIR_BLOCKS,
++		indirect_blocks = ptrs,
++		double_blocks = (1 << (ptrs_bits * 2));
++	/* number of data blocks mapped with a single splice to the chain */
++	int data_ptrs_bits = ptrs_bits * (depth - k - 1);
++	int max_ptrs = maxblocks >> data_ptrs_bits;
++	int final = 0;
++	unsigned long count = 0;
++
++	switch (depth) {
++	case 4: /* tripple indirect */
++		i_block -= double_blocks;
++		/* fall through */
++	case 3: /* double indirect */
++		i_block -= indirect_blocks;
++		/* fall through */
++	case 2: /* indirect */
++		i_block -= direct_blocks;
++		final = (k == 0 ? 1 : ptrs);
++		break;
++	case 1: /* direct */
++		final = direct_blocks;
++		break;
++	}
++	/* offset of block from start of splice point */
++	i_block &= ((1 << data_ptrs_bits) - 1);
++
++	count++;
++	while (count <= max_ptrs &&
++		offsets[k] + count < final &&
++		le32_to_cpu(*(chain[k].p + count)) == 0) {
++		count++;
++	}
++	/* number of data blocks mapped by 'count' splice points */
++	count <<= data_ptrs_bits;
++	count -= i_block;
++	return count < maxblocks ? count : maxblocks;
++}
++
++/*
++ * ext4_snapshot_shrink_blocks - free unused blocks from deleted snapshot
++ * @handle: JBD handle for this transaction
++ * @inode:	inode we're shrinking
++ * @iblock:	inode offset to first data block to shrink
++ * @maxblocks:	inode range of data blocks to shrink
++ * @cow_bh:	buffer head to map the COW bitmap block
++ *		if NULL, don't look for COW bitmap block
++ * @shrink:	shrink mode: 0 (don't free), >0 (free unused), <0 (free all)
++ * @pmapped:	return no. of mapped blocks or 0 for skipped holes
++ *
++ * Frees @maxblocks blocks starting at offset @iblock in @inode, which are not
++ * 'in-use' by non-deleted snapshots (blocks 'in-use' are set in COW bitmap).
++ * If @shrink is false, just count mapped blocks and look for COW bitmap block.
++ * The first time that a COW bitmap block is found in @inode, whether @inode is
++ * deleted or not, it is stored in @cow_bh and is used in subsequent calls to
++ * this function with other deleted snapshots within the block group boundaries.
++ * Called from ext4_snapshot_shrink_blocks() under snapshot_mutex.
++ *
++ * Return values:
++ * >= 0 - no. of shrunk blocks (*@pmapped ? mapped blocks : skipped holes)
++ *  < 0 - error
++ */
++int ext4_snapshot_shrink_blocks(handle_t *handle, struct inode *inode,
++		sector_t iblock, unsigned long maxblocks,
++		struct buffer_head *cow_bh,
++		int shrink, int *pmapped)
++{
++	int offsets[4];
++	Indirect chain[4], *partial;
++	int err, blocks_to_boundary, depth, count;
++	struct buffer_head *sbh = NULL;
++	struct ext4_group_desc *desc = NULL;
++	ext4_snapblk_t block_bitmap, block = SNAPSHOT_BLOCK(iblock);
++	unsigned long block_group = SNAPSHOT_BLOCK_GROUP(block);
++	int mapped_blocks = 0, freed_blocks = 0;
++	const char *cow_bitmap;
++
++	BUG_ON(shrink &&
++	       (!(ext4_test_inode_flag(inode, EXT4_INODE_SNAPFILE_DELETED)) ||
++		ext4_snapshot_is_active(inode)));
++
++	depth = ext4_block_to_path(inode, iblock, offsets,
++			&blocks_to_boundary);
++	if (depth == 0)
++		return -EIO;
++
++	desc = ext4_get_group_desc(inode->i_sb, block_group, NULL);
++	if (!desc)
++		return -EIO;
++	block_bitmap = ext4_block_bitmap(inode->i_sb, desc);
++	partial = ext4_get_branch(inode, depth, offsets, chain, &err);
++	if (err)
++		return err;
++
++	if (partial) {
++		/* block not mapped (hole) - count the number of holes to
++		 * skip */
++		count = ext4_blks_to_skip(inode, iblock, maxblocks, chain,
++					   depth, offsets, (partial - chain));
++		snapshot_debug(3, "skipping snapshot (%u) blocks: block=0x%llx"
++			       ", count=0x%x\n", inode->i_generation,
++			       block, count);
++		goto shrink_indirect_blocks;
++	}
++
++	/* data block mapped - check if data blocks should be freed */
++	partial = chain + depth - 1;
++	/* scan all blocks upto maxblocks/boundary */
++	count = 0;
++	while (count < maxblocks && count <= blocks_to_boundary) {
++		ext4_fsblk_t blk = le32_to_cpu(*(partial->p + count));
++		if (blk && block + count == block_bitmap &&
++			cow_bh && !buffer_mapped(cow_bh)) {
++			/*
++			 * 'blk' is the COW bitmap physical block -
++			 * store it in cow_bh for subsequent calls
++			 * FIXME: for non-first flex_bg group,
++			 * we will not find COW bitmap like this.
++			 */
++			map_bh(cow_bh, inode->i_sb, blk);
++			set_buffer_new(cow_bh);
++			snapshot_debug(3, "COW bitmap #%lu: snapshot "
++				"(%u), bitmap_blk=(+%lld)\n",
++				block_group, inode->i_generation,
++				SNAPSHOT_BLOCK_GROUP_OFFSET(block_bitmap));
 +		}
- 		ext4_lock_group(sb, i);
- 		if (!ext4_group_desc_csum_verify(sbi, i, gdp)) {
- 			ext4_msg(sb, KERN_ERR, "ext4_check_descriptors: "
--				 "Checksum for group %u failed (%u!=%u)",
-+				 "Checksum for group %u failed (%x!=%x)",
- 				 i, le16_to_cpu(ext4_group_desc_csum(sbi, i,
- 				     gdp)), le16_to_cpu(gdp->bg_checksum));
- 			if (!(sb->s_flags & MS_RDONLY)) {
-@@ -2653,6 +2679,13 @@ static int ext4_feature_set_ok(struct super_block *sb, int readonly)
- 				"features: meta_bg, 64bit");
- 			return 0;
- 		}
-+		if (!EXT4_HAS_COMPAT_FEATURE(sb,
-+					EXT4_FEATURE_COMPAT_EXCLUDE_BITMAP)) {
-+			ext4_msg(sb, KERN_ERR,
-+				"exclude_bitmap feature is required "
-+				"for snapshots");
-+			return 0;
++		if (blk)
++			/* count mapped blocks in range */
++			mapped_blocks++;
++		else if (shrink >= 0)
++			/*
++			 * Unless we are freeing all block in range,
++			 * we cannot have holes inside mapped range
++			 */
++			break;
++		/* count size of range */
++		count++;
++	}
++
++	if (!shrink)
++		goto done_shrinking;
++
++	cow_bitmap = NULL;
++	if (shrink > 0 && cow_bh && buffer_mapped(cow_bh)) {
++		/* we found COW bitmap - consult it when shrinking */
++		sbh = sb_bread(inode->i_sb, cow_bh->b_blocknr);
++		if (!sbh) {
++			err = -EIO;
++			goto cleanup;
 +		}
- 		if (EXT4_TEST_FLAGS(sb, EXT4_FLAGS_IS_SNAPSHOT)) {
- 			ext4_msg(sb, KERN_ERR,
- 				"A snapshot image must be mounted read-only. "
++		cow_bitmap = sbh->b_data;
++	}
++	if (shrink < 0 || cow_bitmap) {
++		int bit = SNAPSHOT_BLOCK_GROUP_OFFSET(block);
++
++		BUG_ON(bit + count > SNAPSHOT_BLOCKS_PER_GROUP);
++		/* free blocks with or without consulting COW bitmap */
++		ext4_free_data_cow(handle, inode, partial->bh,
++				partial->p, partial->p + count,
++				cow_bitmap, bit, &freed_blocks);
++	}
++
++shrink_indirect_blocks:
++	/* check if the indirect block should be freed */
++	if (shrink && partial == chain + depth - 1) {
++		Indirect *ind = partial - 1;
++		__le32 *p = NULL;
++		if (freed_blocks == mapped_blocks &&
++		    count > blocks_to_boundary) {
++			for (p = (__le32 *)(partial->bh->b_data);
++			     !*p && p < partial->p; p++)
++				;
++		}
++		if (p == partial->p)
++			/* indirect block maps zero data blocks - free it */
++			ext4_free_branches(handle, inode, ind->bh, ind->p,
++					ind->p+1, 1);
++	}
++
++done_shrinking:
++	snapshot_debug(3, "shrinking snapshot (%u) blocks: shrink=%d, "
++			"block=0x%llx, count=0x%x, mapped=0x%x, freed=0x%x\n",
++			inode->i_generation, shrink, block, count,
++			mapped_blocks, freed_blocks);
++
++	if (pmapped)
++		*pmapped = mapped_blocks;
++	err = count;
++cleanup:
++	while (partial > chain) {
++		brelse(partial->bh);
++		partial--;
++	}
++	brelse(sbh);
++return err;
++}
++
+ /*
+  * ext4_snapshot_get_block_access() - called from ext4_snapshot_read_through()
+  * on snapshot file access.
 -- 
 1.7.4.1
 
