@@ -1,308 +1,261 @@
 From: amir73il@users.sourceforge.net
-Subject: [PATCH v1 02/36] ext4: snapshot debugging support
-Date: Tue,  7 Jun 2011 18:07:29 +0300
-Message-ID: <1307459283-22130-3-git-send-email-amir73il@users.sourceforge.net>
+Subject: [PATCH v1 03/36] ext4: snapshot hooks - inside JBD hooks
+Date: Tue,  7 Jun 2011 18:07:30 +0300
+Message-ID: <1307459283-22130-4-git-send-email-amir73il@users.sourceforge.net>
 References: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
 Cc: tytso@mit.edu, lczerner@redhat.com,
 	Amir Goldstein <amir73il@users.sf.net>,
 	Yongqiang Yang <xiaoqiangnk@gmail.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:60303 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752832Ab1FGPJB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2011 11:09:01 -0400
-Received: by mail-wy0-f174.google.com with SMTP id 21so3629480wya.19
-        for <linux-ext4@vger.kernel.org>; Tue, 07 Jun 2011 08:09:00 -0700 (PDT)
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:41767 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754241Ab1FGPJD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2011 11:09:03 -0400
+Received: by mail-ww0-f44.google.com with SMTP id 36so5035787wwa.1
+        for <linux-ext4@vger.kernel.org>; Tue, 07 Jun 2011 08:09:02 -0700 (PDT)
 In-Reply-To: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Amir Goldstein <amir73il@users.sf.net>
 
-Control snapshot debug level via debugfs entry /ext4/snapshot-debug
-and induce delay tests via debugfs entries /ext4/test-XXX-delay-msec.
+Before every metadata buffer write, the journal API is called,
+namely, one of the ext4_journal_get_XXX_access() functions.
+We use these journal hooks to call the snapshot API, namely
+ext4_snapshot_get_XXX_access(), to COW the metadata buffer before
+it is modified for the first time.
 
 
 Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/Makefile         |    1 +
- fs/ext4/mballoc.c        |    3 +
- fs/ext4/snapshot.h       |    9 ++++
- fs/ext4/snapshot_debug.c |  100 +++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/snapshot_debug.h |  105 ++++++++++++++++++++++++++++++++++++++++++++++
- 5 files changed, 218 insertions(+), 0 deletions(-)
+ fs/ext4/ext4_jbd2.c   |    9 ++++++-
+ fs/ext4/ext4_jbd2.h   |   15 ++++++++++---
+ fs/ext4/extents.c     |    3 +-
+ fs/ext4/inode.c       |   22 ++++++++++++++------
+ fs/ext4/move_extent.c |    3 +-
+ fs/ext4/snapshot.h    |   51 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 88 insertions(+), 15 deletions(-)
 
-diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
-index a471c2e..1d947ef 100644
---- a/fs/ext4/Makefile
-+++ b/fs/ext4/Makefile
-@@ -13,3 +13,4 @@ ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
- ext4-$(CONFIG_EXT4_FS_SECURITY)		+= xattr_security.o
- ext4-$(CONFIG_EXT4_FS_SNAPSHOT)		+= snapshot.o snapshot_ctl.o
- ext4-$(CONFIG_EXT4_FS_SNAPSHOT)		+= snapshot_inode.o snapshot_buffer.o
-+ext4-$(CONFIG_EXT4_FS_SNAPSHOT)		+= snapshot_debug.o
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 5a930d6..54ea8c8 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2658,10 +2658,13 @@ static void __init ext4_create_debugfs_entry(void)
- 						  S_IRUGO | S_IWUSR,
- 						  debugfs_dir,
- 						  &mb_enable_debug);
-+	if (debugfs_dir)
-+		ext4_snapshot_create_debugfs_entry(debugfs_dir);
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index 560020d..833969b 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -23,13 +23,16 @@ int __ext4_journal_get_undo_access(const char *where, unsigned int line,
+ 	return err;
  }
  
- static void ext4_remove_debugfs_entry(void)
+-int __ext4_journal_get_write_access(const char *where, unsigned int line,
+-				    handle_t *handle, struct buffer_head *bh)
++int __ext4_journal_get_write_access_inode(const char *where, unsigned int line,
++					 handle_t *handle, struct inode *inode,
++					 struct buffer_head *bh, int exclude)
  {
-+	ext4_snapshot_remove_debugfs_entry();
- 	debugfs_remove(debugfs_debug);
- 	debugfs_remove(debugfs_dir);
+ 	int err = 0;
+ 
+ 	if (ext4_handle_valid(handle)) {
+ 		err = jbd2_journal_get_write_access(handle, bh);
++		if (!err && !exclude)
++			err = ext4_snapshot_get_write_access(handle, inode, bh);
+ 		if (err)
+ 			ext4_journal_abort_handle(where, line, __func__, bh,
+ 						  handle, err);
+@@ -111,6 +114,8 @@ int __ext4_journal_get_create_access(const char *where, unsigned int line,
+ 
+ 	if (ext4_handle_valid(handle)) {
+ 		err = jbd2_journal_get_create_access(handle, bh);
++		if (!err)
++			err = ext4_snapshot_get_create_access(handle, bh);
+ 		if (err)
+ 			ext4_journal_abort_handle(where, line, __func__,
+ 						  bh, handle, err);
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 3da2092..ca6e135 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -132,9 +132,9 @@ void ext4_journal_abort_handle(const char *caller, unsigned int line,
+ int __ext4_journal_get_undo_access(const char *where, unsigned int line,
+ 				   handle_t *handle, struct buffer_head *bh);
+ 
+-int __ext4_journal_get_write_access(const char *where, unsigned int line,
+-				    handle_t *handle, struct buffer_head *bh);
+-
++int __ext4_journal_get_write_access_inode(const char *where, unsigned int line,
++					 handle_t *handle, struct inode *inode,
++					 struct buffer_head *bh, int exclude);
+ int __ext4_forget(const char *where, unsigned int line, handle_t *handle,
+ 		  int is_metadata, struct inode *inode,
+ 		  struct buffer_head *bh, ext4_fsblk_t blocknr);
+@@ -151,8 +151,15 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
+ 
+ #define ext4_journal_get_undo_access(handle, bh) \
+ 	__ext4_journal_get_undo_access(__func__, __LINE__, (handle), (bh))
++#define ext4_journal_get_write_access_exclude(handle, bh) \
++	__ext4_journal_get_write_access_inode(__func__, __LINE__, \
++						 (handle), NULL, (bh), 1)
+ #define ext4_journal_get_write_access(handle, bh) \
+-	__ext4_journal_get_write_access(__func__, __LINE__, (handle), (bh))
++	__ext4_journal_get_write_access_inode(__func__, __LINE__, \
++						 (handle), NULL, (bh), 0)
++#define ext4_journal_get_write_access_inode(handle, inode, bh) \
++	__ext4_journal_get_write_access_inode(__func__, __LINE__, \
++						(handle), (inode), (bh), 0)
+ #define ext4_forget(handle, is_metadata, inode, bh, block_nr) \
+ 	__ext4_forget(__func__, __LINE__, (handle), (is_metadata), (inode), \
+ 		      (bh), (block_nr))
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 7598224..6f0a711 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -79,7 +79,8 @@ static int ext4_ext_get_access(handle_t *handle, struct inode *inode,
+ {
+ 	if (path->p_bh) {
+ 		/* path points to block */
+-		return ext4_journal_get_write_access(handle, path->p_bh);
++		return ext4_journal_get_write_access_inode(handle,
++					inode, path->p_bh);
+ 	}
+ 	/* path points to leaf/index in inode body */
+ 	/* we use in-core data, no need to protect them */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 9dbd806..80e3393 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -874,7 +874,8 @@ static int ext4_splice_branch(handle_t *handle, struct inode *inode,
+ 	 */
+ 	if (where->bh) {
+ 		BUFFER_TRACE(where->bh, "get_write_access");
+-		err = ext4_journal_get_write_access(handle, where->bh);
++		err = ext4_journal_get_write_access_inode(handle, inode,
++							   where->bh);
+ 		if (err)
+ 			goto err_out;
+ 	}
+@@ -4149,7 +4150,8 @@ static int ext4_clear_blocks(handle_t *handle, struct inode *inode,
+ 			goto out_err;
+ 		if (bh) {
+ 			BUFFER_TRACE(bh, "retaking write access");
+-			err = ext4_journal_get_write_access(handle, bh);
++			err = ext4_journal_get_write_access_inode(handle,
++								  inode, bh);
+ 			if (unlikely(err))
+ 				goto out_err;
+ 		}
+@@ -4200,7 +4202,8 @@ static void ext4_free_data(handle_t *handle, struct inode *inode,
+ 
+ 	if (this_bh) {				/* For indirect block */
+ 		BUFFER_TRACE(this_bh, "get_write_access");
+-		err = ext4_journal_get_write_access(handle, this_bh);
++		err = ext4_journal_get_write_access_inode(handle, inode,
++							   this_bh);
+ 		/* Important: if we can't update the indirect pointers
+ 		 * to the blocks, we can't free them. */
+ 		if (err)
+@@ -4363,8 +4366,8 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
+ 				 * pointed to by an indirect block: journal it
+ 				 */
+ 				BUFFER_TRACE(parent_bh, "get_write_access");
+-				if (!ext4_journal_get_write_access(handle,
+-								   parent_bh)){
++				if (!ext4_journal_get_write_access_inode(
++					    handle, inode, parent_bh)){
+ 					*p = 0;
+ 					BUFFER_TRACE(parent_bh,
+ 					"call ext4_handle_dirty_metadata");
+@@ -4741,9 +4744,14 @@ has_buffer:
+ 
+ int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc)
+ {
+-	/* We have all inode data except xattrs in memory here. */
+-	return __ext4_get_inode_loc(inode, iloc,
++	int in_mem = (!EXT4_SNAPSHOTS(inode->i_sb) &&
+ 		!ext4_test_inode_state(inode, EXT4_STATE_XATTR));
++
++	/*
++	 * We have all inode's data except xattrs in memory here,
++	 * but we must always read-in the entire inode block for COW.
++	 */
++	return __ext4_get_inode_loc(inode, iloc, in_mem);
  }
+ 
+ void ext4_set_inode_flags(struct inode *inode)
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index b9f3e78..ad5409a 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -421,7 +421,8 @@ mext_insert_extents(handle_t *handle, struct inode *orig_inode,
+ 
+ 	if (depth) {
+ 		/* Register to journal */
+-		ret = ext4_journal_get_write_access(handle, orig_path->p_bh);
++		ret = ext4_journal_get_write_access_inode(handle,
++					orig_inode, orig_path->p_bh);
+ 		if (ret)
+ 			return ret;
+ 	}
 diff --git a/fs/ext4/snapshot.h b/fs/ext4/snapshot.h
-index 8a60ae1..d0c985b 100644
+index d0c985b..54241b9 100644
 --- a/fs/ext4/snapshot.h
 +++ b/fs/ext4/snapshot.h
-@@ -18,6 +18,7 @@
- #include <linux/version.h>
- #include <linux/delay.h>
- #include "ext4.h"
-+#include "snapshot_debug.h"
+@@ -145,6 +145,57 @@ static inline int EXT4_SNAPSHOTS(struct super_block *sb)
+  * Block access functions
+  */
  
- 
- /*
-@@ -109,6 +110,14 @@
- static inline void snapshot_size_extend(struct inode *inode,
- 			ext4_fsblk_t blocks)
- {
-+#ifdef CONFIG_EXT4_DEBUG
-+	ext4_fsblk_t old_blocks = SNAPSHOT_PROGRESS(inode);
-+	ext4_fsblk_t max_blocks = SNAPSHOT_BLOCKS(inode);
-+
-+	/* sleep total of tunable delay unit over 100% progress */
-+	snapshot_test_delay_progress(SNAPTEST_DELETE,
-+			old_blocks, blocks, max_blocks);
-+#endif
- 	i_size_write((inode), (loff_t)(blocks) << SNAPSHOT_BLOCK_SIZE_BITS);
- }
- 
-diff --git a/fs/ext4/snapshot_debug.c b/fs/ext4/snapshot_debug.c
-index e69de29..35f552a 100644
---- a/fs/ext4/snapshot_debug.c
-+++ b/fs/ext4/snapshot_debug.c
-@@ -0,0 +1,100 @@
 +/*
-+ * linux/fs/ext4/snapshot_debug.c
++ * get_write_access() is called before writing to a metadata block
++ * if @inode is not NULL, then this is an inode's indirect block
++ * otherwise, this is a file system global metadata block
 + *
-+ * Written by Amir Goldstein <amir73il@users.sf.net>, 2008
-+ *
-+ * Copyright (C) 2008-2011 CTERA Networks
-+ *
-+ * This file is part of the Linux kernel and is made available under
-+ * the terms of the GNU General Public License, version 2, or at your
-+ * option, any later version, incorporated herein by reference.
-+ *
-+ * Ext4 snapshot debugging.
++ * Return values:
++ * = 0 - block was COWed or doesn't need to be COWed
++ * < 0 - error
 + */
-+
-+
-+#include <linux/module.h>
-+#include <linux/proc_fs.h>
-+#include <linux/debugfs.h>
-+#include "snapshot.h"
-+
-+#if defined(CONFIG_EXT4_FS_SNAPSHOT) && defined(CONFIG_EXT4_DEBUG)
-+/*
-+ * debugfs tunables
-+ */
-+
-+const char *snapshot_indent = SNAPSHOT_INDENT_STR + SNAPSHOT_INDENT_MAX;
-+
-+/*
-+ * Tunable delay values per snapshot operation for testing of
-+ * COW race conditions and master snapshot_mutex lock
-+ */
-+static const char *snapshot_test_names[SNAPSHOT_TESTS_NUM] = {
-+	/* delay completion of snapshot create|take */
-+	"test-take-delay-msec",
-+	/* delay completion of snapshot shrink|cleanup */
-+	"test-delete-delay-msec",
-+	/* delay completion of COW operation */
-+	"test-cow-delay-msec",
-+	/* delay submission of tracked read */
-+	"test-read-delay-msec",
-+	/* delay completion of COW bitmap operation */
-+	"test-bitmap-delay-msec",
-+};
-+
-+#define SNAPSHOT_TEST_NAMES (sizeof(snapshot_test_names) / \
-+			     sizeof(snapshot_test_names[0]))
-+
-+u16 snapshot_enable_test[SNAPSHOT_TESTS_NUM] __read_mostly = {0};
-+u8 snapshot_enable_debug __read_mostly = 1;
-+
-+static struct dentry *snapshot_debug;
-+static struct dentry *snapshot_version;
-+static struct dentry *snapshot_test[SNAPSHOT_TESTS_NUM];
-+
-+static char snapshot_version_str[] = EXT4_SNAPSHOT_VERSION;
-+static struct debugfs_blob_wrapper snapshot_version_blob = {
-+	.data = snapshot_version_str,
-+	.size = sizeof(snapshot_version_str)
-+};
-+
-+
-+/*
-+ * ext4_snapshot_create_debugfs_entry - register ext4 snapshot debug hooks
-+ * Void function doesn't return error if debug hooks are not registered.
-+ */
-+void ext4_snapshot_create_debugfs_entry(struct dentry *debugfs_dir)
++static inline int ext4_snapshot_get_write_access(handle_t *handle,
++		struct inode *inode, struct buffer_head *bh)
 +{
-+	int i;
++	struct super_block *sb;
 +
-+	BUG_ON(!debugfs_dir);
-+	snapshot_debug = debugfs_create_u8("snapshot-debug", S_IRUGO|S_IWUSR,
-+					   debugfs_dir,
-+					   &snapshot_enable_debug);
-+	snapshot_version = debugfs_create_blob("snapshot-version", S_IRUGO,
-+					       debugfs_dir,
-+					       &snapshot_version_blob);
-+	for (i = 0; i < SNAPSHOT_TESTS_NUM && i < SNAPSHOT_TEST_NAMES; i++)
-+		snapshot_test[i] = debugfs_create_u16(snapshot_test_names[i],
-+					      S_IRUGO|S_IWUSR,
-+					      debugfs_dir,
-+					      &snapshot_enable_test[i]);
++	sb = handle->h_transaction->t_journal->j_private;
++	if (!EXT4_SNAPSHOTS(sb))
++		return 0;
++
++	return ext4_snapshot_cow(handle, inode, bh->b_blocknr, bh, 1);
 +}
 +
 +/*
-+ * ext4_snapshot_remove_debugfs_entry - unregister ext4 snapshot debug hooks
-+ * checks if the hooks have been registered before unregistering them.
++ * get_create_access() is called after allocating a new metadata block
++ *
++ * Return values:
++ * = 0 - block was COWed or doesn't need to be COWed
++ * < 0 - error
 + */
-+void ext4_snapshot_remove_debugfs_entry(void)
++static inline int ext4_snapshot_get_create_access(handle_t *handle,
++		struct buffer_head *bh)
 +{
-+	int i;
++	struct super_block *sb;
++	int err;
 +
-+	for (i = 0; i < SNAPSHOT_TESTS_NUM && i < SNAPSHOT_TEST_NAMES; i++)
-+		if (snapshot_test[i])
-+			debugfs_remove(snapshot_test[i]);
-+	if (snapshot_version)
-+		debugfs_remove(snapshot_version);
-+	if (snapshot_debug)
-+		debugfs_remove(snapshot_debug);
++	sb = handle->h_transaction->t_journal->j_private;
++	if (!EXT4_SNAPSHOTS(sb))
++		return 0;
++
++	/* Should block be COWed? */
++	err = ext4_snapshot_cow(handle, NULL, bh->b_blocknr, bh, 0);
++	/*
++	 * A new block shouldn't need to be COWed if get_delete_access() was
++	 * called for all deleted blocks.  However, it may need to be COWed
++	 * if fsck was run and if it had freed some blocks without moving them
++	 * to snapshot.  In the latter case, -EIO will be returned.
++	 */
++	if (err > 0)
++		err = -EIO;
++	return err;
 +}
-+#endif
-diff --git a/fs/ext4/snapshot_debug.h b/fs/ext4/snapshot_debug.h
-index e69de29..f893eb1 100644
---- a/fs/ext4/snapshot_debug.h
-+++ b/fs/ext4/snapshot_debug.h
-@@ -0,0 +1,105 @@
-+/*
-+ * linux/fs/ext4/snapshot_debug.h
-+ *
-+ * Written by Amir Goldstein <amir73il@users.sf.net>, 2008
-+ *
-+ * Copyright (C) 2008-2011 CTERA Networks
-+ *
-+ * This file is part of the Linux kernel and is made available under
-+ * the terms of the GNU General Public License, version 2, or at your
-+ * option, any later version, incorporated herein by reference.
-+ *
-+ * Ext4 snapshot debugging.
-+ */
 +
-+#ifndef _LINUX_EXT4_SNAPSHOT_DEBUG_H
-+#define _LINUX_EXT4_SNAPSHOT_DEBUG_H
-+
-+#if defined(CONFIG_EXT4_FS_SNAPSHOT) && defined(CONFIG_EXT4_DEBUG)
-+#include <linux/delay.h>
-+
-+#define SNAPSHOT_INDENT_MAX 4
-+#define SNAPSHOT_INDENT_STR "\t\t\t\t"
-+
-+#define SNAPTEST_TAKE	0
-+#define SNAPTEST_DELETE	1
-+#define SNAPTEST_COW	2
-+#define SNAPTEST_READ	3
-+#define SNAPTEST_BITMAP	4
-+#define SNAPSHOT_TESTS_NUM	5
-+
-+extern const char *snapshot_indent;
-+extern u8 snapshot_enable_debug;
-+extern u16 snapshot_enable_test[SNAPSHOT_TESTS_NUM];
-+extern u8 cow_cache_enabled;
-+
-+#define snapshot_test_delay(i)		     \
-+	do {							       \
-+		if (snapshot_enable_test[i])			       \
-+			msleep_interruptible(snapshot_enable_test[i]); \
-+	} while (0)
-+
-+/*
-+ * Sleep 1ms every 'blocks_per_ms', amounting to the total test delay
-+ * over 100% of progress (when 'to' reaches 'max').
-+ * snapshot_enable_test[i] (msec) is limited to 64K and max (blocks_count)
-+ * is likely much more than 64K, so 'blocks_per_ms' is likely non zero.
-+ */
-+#define snapshot_test_delay_progress(i, from, to, max)			\
-+	do {								\
-+		if (snapshot_enable_test[i] &&				\
-+				(max) > snapshot_enable_test[i] &&	\
-+				(from) <= (to) && (to) <= (max)) {	\
-+			unsigned long blocks_per_ms =			\
-+				do_div((max), snapshot_enable_test[i]);	\
-+			unsigned long x = do_div((from), blocks_per_ms);\
-+			unsigned long y = do_div((to), blocks_per_ms);	\
-+			if (y > x)					\
-+				msleep_interruptible(y - x);		\
-+		}							\
-+	} while (0)
-+
-+#define snapshot_debug_l(n, l, f, a...)					\
-+	do {								\
-+		if ((n) <= snapshot_enable_debug &&			\
-+		    (l) <= SNAPSHOT_INDENT_MAX) {			\
-+			printk(KERN_DEBUG "snapshot: %s" f,		\
-+			       snapshot_indent - (l),			\
-+				   ## a);				\
-+		}							\
-+	} while (0)
-+
-+#define snapshot_debug(n, f, a...)	snapshot_debug_l(n, 0, f, ## a)
-+
-+#define snapshot_debug_once(n, f, a...)					\
-+	do {								\
-+		static bool __once;					\
-+		if (!__once) {						\
-+			snapshot_debug(n, f, ## a);			\
-+			__once = true;					\
-+		}							\
-+	} while (0)
-+
-+extern void ext4_snapshot_create_debugfs_entry(struct dentry *debugfs_dir);
-+extern void ext4_snapshot_remove_debugfs_entry(void);
-+
-+#else
-+#define snapshot_enable_debug (0)
-+#define snapshot_test_delay(i)
-+#define snapshot_test_delay_progress(i, from, to, max)
-+#define snapshot_debug(n, f, a...)
-+#define snapshot_debug_l(n, l, f, a...)
-+#define snapshot_debug_once(n, f, a...)
-+#define ext4_snapshot_create_debugfs_entry(d)
-+#define ext4_snapshot_remove_debugfs_entry()
-+#endif
-+
-+
-+/* debug levels */
-+#define SNAP_ERR	1 /* errors and summary */
-+#define SNAP_WARN	2 /* warnings */
-+#define SNAP_INFO	3 /* info */
-+#define SNAP_DEBUG	4 /* debug */
-+#define SNAP_DUMP	5 /* dump snapshot file */
-+
-+#endif	/* _LINUX_EXT4_SNAPSHOT_DEBUG_H */
+ 
+ 
+ /* snapshot_ctl.c */
 -- 
 1.7.4.1
 
