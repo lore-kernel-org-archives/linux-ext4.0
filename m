@@ -1,48 +1,48 @@
-From: Allison Henderson <achender@vnet.ibm.com>
-Subject: Re: [PATCH 1/3 v5] XFS TESTS: Add Punch Hole to FSX
-Date: Mon, 06 Jun 2011 18:41:21 -0700
-Message-ID: <4DED81C1.6000204@vnet.ibm.com>
-References: <4DED63D1.5010600@vnet.ibm.com> <20110607004445.GG20818@thunk.org>
+From: Tao Ma <tm@tao.ma>
+Subject: Re: big allocation status
+Date: Tue, 07 Jun 2011 10:01:54 +0800
+Message-ID: <4DED8692.3010302@tao.ma>
+References: <4DE83F83.6070302@tao.ma> <20110604033805.GD2614@thunk.org> <20110606230421.GF20818@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>
-To: "Ted Ts'o" <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20110607004445.GG20818@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Ted Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from oproxy8-pub.bluehost.com ([69.89.22.20]:37926 "HELO
+	oproxy8-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1754406Ab1FGCB7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Jun 2011 22:01:59 -0400
+In-Reply-To: <20110606230421.GF20818@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 06/06/2011 05:44 PM, Ted Ts'o wrote:
-> Hey Allison, there are two things you can do that will make life much
-> easier for people to review and apply your patches.  First of all,
-> move the version information below to after the "---" line.  If you
-> want to keep this information in the git commit log, just move the
-> "---" line after you run the "git format-patch" command.
->
-> Secondly, run the command "git config format.thread true"; this is the
-> default in newer versions of git, but apparently you're not using a
-> new enough version of git.  You can also use "git send-email --thread"
-> if you don't want to set the git configuration variable.  The other
-> possibility is that your mailer is stripping the in-reply-to: and
-> references: header, so the mail threading is disappearing.  I never
-> used vnet.ibm.com's mailer, so I don't know if it's responsible for
-> stripping mail headers, but I tend not to trust VM or Lotus Notes'
-> standard adherence... fortunately for IBM the CIO's who make the
-> purchasing decisions tend not to know the first thing about Internet
-> Mail Standers or RFC's.:-)
->
-> 		       	      	- Ted
+On 06/07/2011 07:04 AM, Ted Ts'o wrote:
+> On Fri, Jun 03, 2011 at 11:38:05PM -0400, Ted Ts'o wrote:
+>> On Fri, Jun 03, 2011 at 09:57:23AM +0800, Tao Ma wrote:
+>>> Hi Ted,
+>>>
+>>> Do you have any new branch or patch set that can be used for testing
+>>> about big allocation? The latest patch set in the mailist is what you
+>>> have sent at the beginning of May. Do you have an updated one? We will
+>>> try to test it soon and it would grateful if we are on the same page.
+>>
+>> There is a patch set available at:
+>>
+>> git://repo.or.cz/ext4-patch-queue.git
+>>
+>> The bigalloc patches are after the stable-boundary, and will apply
+>> against 3.0-rc1.
+> 
+> I've updated the bigalloc patch set to fix a number of bugs that I and
+> a colleague of mine at Google have found.
+> 
+> This patch set known have problems with i_blocks getting out of sync
+> if delalloc is enabled (particularly with sparse files and truncates),
+> and as mentioned before, doesn't work correctly with the punch ioctl.
+> These are bugs that we plan to fix before anything gets pushed into
+> upstream, of course.
+cool, I will base my test on it. Thanks.
 
-
-Thx Ted!  I didn't realize the patches were hard for people to read.  I 
-will see if I can get those commands to work, and I will make sure the 
-"---" comes before the version info.  Initially I had tried the 
-send-email, but not all of the patches seemed to make it to the lists, 
-so I started using Thunderbird, but I will see if I can figure out what 
-went wrong with send-email.  Thx!
-
-Allison Henderson
-
+Regards,
+Tao
