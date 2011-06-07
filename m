@@ -1,7 +1,7 @@
 From: amir73il@users.sourceforge.net
-Subject: [PATCH v1 25/36] ext4: snapshot journaled - cache last COW tid in journal_head
-Date: Tue,  7 Jun 2011 18:07:52 +0300
-Message-ID: <1307459283-22130-26-git-send-email-amir73il@users.sourceforge.net>
+Subject: [PATCH v1 26/36] ext4: snapshot journaled - trace COW/buffer credits
+Date: Tue,  7 Jun 2011 18:07:53 +0300
+Message-ID: <1307459283-22130-27-git-send-email-amir73il@users.sourceforge.net>
 References: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
 Cc: tytso@mit.edu, lczerner@redhat.com,
 	Amir Goldstein <amir73il@users.sf.net>,
@@ -10,207 +10,211 @@ To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-ww0-f44.google.com ([74.125.82.44]:41767 "EHLO
 	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753053Ab1FGPKG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2011 11:10:06 -0400
+	with ESMTP id S1753053Ab1FGPKI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2011 11:10:08 -0400
 Received: by mail-ww0-f44.google.com with SMTP id 36so5035787wwa.1
-        for <linux-ext4@vger.kernel.org>; Tue, 07 Jun 2011 08:10:05 -0700 (PDT)
+        for <linux-ext4@vger.kernel.org>; Tue, 07 Jun 2011 08:10:08 -0700 (PDT)
 In-Reply-To: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Amir Goldstein <amir73il@users.sf.net>
 
-Cache last COW transaction id in buffer's journal_head.
-The cache suppresses COW tests until the transaction in committed.
-By default, the running transaction is committed every 5 seconds
-which implies an average COW cache expiry of 2.5 seconds.
-Before taking a new snapshot, the journal is flushed to disk
-and the current transaction in committed, so the COW cache is
-invalidated (as it should be).
+Extra debug prints to trace snapshot usage of buffer credits.
 
 
 Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/snapshot.c       |   93 ++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/snapshot.h       |    2 +
- fs/ext4/snapshot_debug.c |    7 +++
- 3 files changed, 102 insertions(+), 0 deletions(-)
+ fs/ext4/ext4_jbd2.c |   80 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ext4_jbd2.h |   26 ++++++++++++++++
+ fs/ext4/super.c     |    2 +
+ 3 files changed, 108 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/snapshot.c b/fs/ext4/snapshot.c
-index e86dc42..2724381 100644
---- a/fs/ext4/snapshot.c
-+++ b/fs/ext4/snapshot.c
-@@ -400,6 +400,90 @@ __ext4_snapshot_trace_cow(const char *where, handle_t *handle,
- #define ext4_snapshot_trace_cow(where, handle, sb, inode, bh, blk, cnt, cmd)
- #endif
- /*
-+ * The last transaction ID during which the buffer has been COWed is stored in
-+ * the b_cow_tid field of the journal_head struct.  If we know that the buffer
-+ * was COWed during the current transaction, we don't need to COW it again.
-+ * [jbd_lock_bh_state()]
-+ */
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index e8287f4..eb88564 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -23,6 +23,7 @@ int __ext4_handle_get_bitmap_access(const char *where, unsigned int line,
+ 		if (err)
+ 			ext4_journal_abort_handle(where, line, __func__, bh,
+ 						  handle, err);
++		ext4_journal_trace(SNAP_DEBUG, where, handle, 1);
+ 	}
+ 	return err;
+ }
+@@ -40,6 +41,7 @@ int __ext4_journal_get_write_access_inode(const char *where, unsigned int line,
+ 		if (err)
+ 			ext4_journal_abort_handle(where, line, __func__, bh,
+ 						  handle, err);
++	ext4_journal_trace(SNAP_DEBUG, where, handle, 1);
+ 	}
+ 	return err;
+ }
+@@ -91,6 +93,7 @@ int __ext4_forget(const char *where, unsigned int line, handle_t *handle,
+ 			if (err)
+ 				ext4_journal_abort_handle(where, line, __func__,
+ 							  bh, handle, err);
++			ext4_journal_trace(SNAP_DEBUG, where, handle, 1);
+ 			return err;
+ 		}
+ 		return 0;
+@@ -108,6 +111,7 @@ int __ext4_forget(const char *where, unsigned int line, handle_t *handle,
+ 			   "error %d when attempting revoke", err);
+ 	}
+ 	BUFFER_TRACE(bh, "exit");
++	ext4_journal_trace(SNAP_DEBUG, where, handle, 1);
+ 	return err;
+ }
+ 
+@@ -123,6 +127,7 @@ int __ext4_journal_get_create_access(const char *where, unsigned int line,
+ 		if (err)
+ 			ext4_journal_abort_handle(where, line, __func__,
+ 						  bh, handle, err);
++		ext4_journal_trace(SNAP_DEBUG, where, handle, -1);
+ 	}
+ 	return err;
+ }
+@@ -198,6 +203,7 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+ 			}
+ 			jbd_unlock_bh_state(bh);
+ 		}
++		ext4_journal_trace(SNAP_DEBUG, where, handle, -1);
+ 	} else {
+ 		if (inode)
+ 			mark_buffer_dirty_inode(bh, inode);
+@@ -236,3 +242,77 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
+ 		sb->s_dirt = 1;
+ 	return err;
+ }
 +
-+void init_ext4_snapshot_cow_cache(void)
++#ifdef CONFIG_JBD2_DEBUG
++static void ext4_journal_cow_stats(int n, handle_t *handle)
 +{
-+#ifdef CONFIG_EXT4_DEBUG
-+	cow_cache_enabled = 1;
-+#endif
++	snapshot_debug(n, "COW stats: moved/copied=%d/%d, "
++			 "mapped/bitmap/cached=%d/%d/%d, "
++			 "bitmaps/cleared=%d/%d\n", handle->h_cow_moved,
++			 handle->h_cow_copied, handle->h_cow_ok_mapped,
++			 handle->h_cow_ok_bitmap, handle->h_cow_ok_jh,
++			 handle->h_cow_bitmaps, handle->h_cow_excluded);
 +}
-+
-+#ifdef CONFIG_EXT4_DEBUG
-+#define cow_cache_enabled()	(cow_cache_enabled)
 +#else
-+#define cow_cache_enabled()	(1)
++#define ext4_journal_cow_stats(n, handle)
 +#endif
 +
-+#define test_cow_tid(jh, handle)	\
-+	((jh)->b_cow_tid == (handle)->h_transaction->t_tid)
-+#define set_cow_tid(jh, handle)		\
-+	((jh)->b_cow_tid = (handle)->h_transaction->t_tid)
-+
-+/*
-+ * Journal COW cache functions.
-+ * a block can only be COWed once per snapshot,
-+ * so a block can only be COWed once per transaction,
-+ * so a buffer that was COWed in the current transaction,
-+ * doesn't need to be COWed.
-+ *
-+ * Return values:
-+ * 1 - block was COWed in current transaction
-+ * 0 - block wasn't COWed in current transaction
-+ */
-+static int
-+ext4_snapshot_test_cowed(handle_t *handle, struct buffer_head *bh)
++#ifdef CONFIG_EXT4_DEBUG
++void __ext4_journal_trace(int n, const char *fn, const char *caller,
++			  handle_t *handle, int nblocks)
 +{
-+	struct journal_head *jh;
++	int active_snapshot;
++	int upper;
++	int lower;
++	int final;
++	struct super_block *sb;
 +
-+	if (!cow_cache_enabled())
-+		return 0;
-+
-+	/* check the COW tid in the journal head */
-+	if (bh && buffer_jbd(bh)) {
-+		jbd_lock_bh_state(bh);
-+		jh = bh2jh(bh);
-+		if (jh && !test_cow_tid(jh, handle))
-+			jh = NULL;
-+		jbd_unlock_bh_state(bh);
-+		if (jh)
-+			/*
-+			 * Block was already COWed in the running transaction,
-+			 * so we don't need to COW it again.
-+			 */
-+			return 1;
-+	}
-+	return 0;
-+}
-+
-+static void
-+ext4_snapshot_mark_cowed(handle_t *handle, struct buffer_head *bh)
-+{
-+	struct journal_head *jh;
-+
-+	if (!cow_cache_enabled())
++	sb = handle->h_transaction->t_journal->j_private;
++	if (!EXT4_SNAPSHOTS(sb))
 +		return;
 +
-+	if (bh && buffer_jbd(bh)) {
-+		jbd_lock_bh_state(bh);
-+		jh = bh2jh(bh);
-+		if (jh && !test_cow_tid(jh, handle))
-+			/*
-+			 * this is the first time this block was COWed
-+			 * in the running transaction.
-+			 * update the COW tid in the journal head
-+			 * to mark that this block doesn't need to be COWed.
-+			 */
-+			set_cow_tid(jh, handle);
-+		jbd_unlock_bh_state(bh);
-+	}
-+}
++	active_snapshot = ext4_snapshot_active(EXT4_SB(sb));
++	upper = EXT4_SNAPSHOT_START_TRANS_BLOCKS(handle->h_base_credits);
++	lower = EXT4_SNAPSHOT_TRANS_BLOCKS(handle->h_user_credits);
++	final = (nblocks == 0 && handle->h_ref == 1 &&
++		     !IS_COWING(handle));
 +
-+/*
-  * Begin COW or move operation.
-  * No locks needed here, because @handle is a per-task struct.
-  */
-@@ -479,6 +563,13 @@ int ext4_snapshot_test_and_cow(const char *where, handle_t *handle,
- 		snapshot_debug_hl(4, "active snapshot access denied!\n");
- 		return -EPERM;
- 	}
-+	/* check if the buffer was COWed in the current transaction */
-+	if (ext4_snapshot_test_cowed(handle, bh)) {
-+		snapshot_debug_hl(4, "buffer found in COW cache - "
-+				  "skip block cow!\n");
-+		trace_cow_inc(handle, ok_jh);
-+		return 0;
++	switch (snapshot_enable_debug) {
++	case SNAP_INFO:
++		/* trace final journal_stop if any credits have been used */
++		if (final && (handle->h_buffer_credits < upper ||
++			      handle->h_user_credits < handle->h_base_credits))
++			break;
++	case SNAP_WARN:
++		/*
++		 * trace if buffer credits are too low - lower limit is only
++		 * valid if there is an active snapshot and not during COW
++		 */
++		if (handle->h_buffer_credits < lower &&
++		    active_snapshot && !IS_COWING(handle))
++			break;
++	case SNAP_ERR:
++		/* trace if user credits are too low */
++		if (handle->h_user_credits < 0)
++			break;
++	case 0:
++		/* no trace */
++		return;
++
++	case SNAP_DEBUG:
++	default:
++		/* trace all calls */
++		break;
 +	}
++
++	snapshot_debug_l(n, IS_COWING(handle), "%s(%d): credits=%d,"
++			" limit=%d/%d, user=%d/%d, ref=%d, caller=%s\n",
++			 fn, nblocks, handle->h_buffer_credits, lower, upper,
++			 handle->h_user_credits, handle->h_base_credits,
++			 handle->h_ref, caller);
++	if (!final)
++		return;
++
++	ext4_journal_cow_stats(n, handle);
++}
++#endif
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index cee6f2a..41951da 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -229,10 +229,36 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
+ #define ext4_handle_dirty_super(handle, sb) \
+ 	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb))
  
- 	/* BEGIN COWing */
- 	ext4_snapshot_cow_begin(handle);
-@@ -572,6 +663,8 @@ int ext4_snapshot_test_and_cow(const char *where, handle_t *handle,
- test_pending_cow:
++/*
++ * macros for ext4 to update transaction COW statistics.
++ * if the kernel was compiled without CONFIG_JBD2_DEBUG
++ * then the h_cow_* fields are not allocated in handle objects.
++ */
++#ifdef CONFIG_JBD2_DEBUG
++#define trace_cow_add(handle, name, num)	\
++	(handle)->h_cow_##name += (num)
++#define trace_cow_inc(handle, name)		\
++	(handle)->h_cow_##name++;
++
++#else
+ #define trace_cow_add(handle, name, num)
+ #define trace_cow_inc(handle, name)
  
- cowed:
-+	/* mark the buffer COWed in the current transaction */
-+	ext4_snapshot_mark_cowed(handle, bh);
- out:
- 	brelse(sbh);
- 	/* END COWing */
-diff --git a/fs/ext4/snapshot.h b/fs/ext4/snapshot.h
-index 007fec0..44bac96 100644
---- a/fs/ext4/snapshot.h
-+++ b/fs/ext4/snapshot.h
-@@ -342,6 +342,7 @@ static inline int ext4_snapshot_get_delete_access(handle_t *handle,
- 	return ext4_snapshot_move(handle, inode, block, pcount, 1);
- }
++#endif
++#ifdef CONFIG_EXT4_DEBUG
++void __ext4_journal_trace(int debug, const char *fn, const char *caller,
++		handle_t *handle, int nblocks);
++
++#define ext4_journal_trace(n, caller, handle, nblocks)			\
++	do {								\
++		if ((n) <= snapshot_enable_debug)			\
++			__ext4_journal_trace((n), __func__, (caller),	\
++						(handle), (nblocks));	\
++	} while (0)
++
++#else
+ #define ext4_journal_trace(n, caller, handle, nblocks)
++#endif
  
-+extern void init_ext4_snapshot_cow_cache(void);
+ handle_t *__ext4_journal_start(const char *where,
+ 		struct super_block *sb, int nblocks);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 0d996be..fc8bfda 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -324,6 +324,8 @@ int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle)
+ 	int err;
+ 	int rc;
  
- /* snapshot_ctl.c */
- 
-@@ -364,6 +365,7 @@ extern void ext4_snapshot_destroy(struct super_block *sb);
- 
- static inline int init_ext4_snapshot(void)
- {
-+	init_ext4_snapshot_cow_cache();
- 	return 0;
- }
- 
-diff --git a/fs/ext4/snapshot_debug.c b/fs/ext4/snapshot_debug.c
-index 35f552a..265ee2c 100644
---- a/fs/ext4/snapshot_debug.c
-+++ b/fs/ext4/snapshot_debug.c
-@@ -47,10 +47,12 @@ static const char *snapshot_test_names[SNAPSHOT_TESTS_NUM] = {
- 
- u16 snapshot_enable_test[SNAPSHOT_TESTS_NUM] __read_mostly = {0};
- u8 snapshot_enable_debug __read_mostly = 1;
-+u8 cow_cache_enabled __read_mostly = 1;
- 
- static struct dentry *snapshot_debug;
- static struct dentry *snapshot_version;
- static struct dentry *snapshot_test[SNAPSHOT_TESTS_NUM];
-+static struct dentry *cow_cache;
- 
- static char snapshot_version_str[] = EXT4_SNAPSHOT_VERSION;
- static struct debugfs_blob_wrapper snapshot_version_blob = {
-@@ -79,6 +81,9 @@ void ext4_snapshot_create_debugfs_entry(struct dentry *debugfs_dir)
- 					      S_IRUGO|S_IWUSR,
- 					      debugfs_dir,
- 					      &snapshot_enable_test[i]);
-+	cow_cache = debugfs_create_u8("cow-cache", S_IRUGO|S_IWUSR,
-+					   debugfs_dir,
-+					   &cow_cache_enabled);
- }
- 
- /*
-@@ -89,6 +94,8 @@ void ext4_snapshot_remove_debugfs_entry(void)
- {
- 	int i;
- 
-+	if (cow_cache)
-+		debugfs_remove(cow_cache);
- 	for (i = 0; i < SNAPSHOT_TESTS_NUM && i < SNAPSHOT_TEST_NAMES; i++)
- 		if (snapshot_test[i])
- 			debugfs_remove(snapshot_test[i]);
++	ext4_journal_trace(SNAP_WARN, where, handle, 0);
++
+ 	if (!ext4_handle_valid(handle)) {
+ 		ext4_put_nojournal(handle);
+ 		return 0;
 -- 
 1.7.4.1
 
