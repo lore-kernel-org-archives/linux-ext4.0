@@ -1,253 +1,101 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] ext4: remove deprecated oldalloc
-Date: Tue,  7 Jun 2011 15:35:14 +0200
-Message-ID: <1307453714-2741-1-git-send-email-lczerner@redhat.com>
-Cc: tytso@mit.edu, Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Ric Wheeler <ricwheeler@gmail.com>
+Subject: Re: [PATCH RFC 00/30] Ext4 snapshots - core patches
+Date: Tue, 07 Jun 2011 09:50:42 -0400
+Message-ID: <4DEE2CB2.8000908@gmail.com>
+References: <1304959308-11122-1-git-send-email-amir73il@users.sourceforge.net>	<alpine.LFD.2.00.1106061501460.3934@dhcp-27-109.brq.redhat.com>	<BANLkTimjxkOnX6hvLvU+Xth20ie5FaXq1A@mail.gmail.com>	<4DECF2D5.7050408@redhat.com>	<20110606205512.GE20818@thunk.org>	<BD378E74-754D-45FF-9F65-EFAF8436BBFD@dilger.ca>	<BANLkTin5WLnvaZtpym9896wWwscUetQy0Q@mail.gmail.com>	<alpine.LFD.2.00.1106071205530.4754@dhcp-27-109.brq.redhat.com> <BANLkTikOrw-5TvL6VE8XHgc7Om=X-w3mkA@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Lukas Czerner <lczerner@redhat.com>,
+	Andreas Dilger <adilger@dilger.ca>, Ted Ts'o <tytso@mit.edu>,
+	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
+To: "Amir G." <amir73il@users.sourceforge.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56110 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753850Ab1FGNfV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 7 Jun 2011 09:35:21 -0400
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:64112 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754269Ab1FGNvF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2011 09:51:05 -0400
+Received: by qwk3 with SMTP id 3so2141359qwk.19
+        for <linux-ext4@vger.kernel.org>; Tue, 07 Jun 2011 06:51:04 -0700 (PDT)
+In-Reply-To: <BANLkTikOrw-5TvL6VE8XHgc7Om=X-w3mkA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-For a long time now orlov is the default block allocator in the ext4. It
-performs better than the old one and no one seems to claim otherwise so
-we can safely drop it and make oldalloc and orlov mount option
-deprecated.
+On 06/07/2011 09:01 AM, Amir G. wrote:
+> On Tue, Jun 7, 2011 at 1:09 PM, Lukas Czerner<lczerner@redhat.com>  wrote:
+>> On Tue, 7 Jun 2011, Amir G. wrote:
+>>
+>>> On Tue, Jun 7, 2011 at 8:17 AM, Andreas Dilger<adilger@dilger.ca>  wrote:
+>>>> On 2011-06-06, at 2:55 PM, Ted Ts'o wrote:
+>>>>> On Mon, Jun 06, 2011 at 10:31:33AM -0500, Eric Sandeen wrote:
+>>>>>>> For one reason, a snapshot file format is currently an indirect file
+>>>>>>> and big_alloc doesn't support indirect mapped files.
+>>>>>>> I am not saying it cannot be done, but if it does, there would be
+>>>>>>> several obstacles to cross.
+>>>>>> I know I'm kind of just throwing a bomb out here, but I am very concerned
+>>>>>> about the ever-growing feature (in)compatibility matrix in ext4.
+>>>>> bigalloc doesn't support indirect blocks mainly because it was faster
+>>>>> to get things working if I didn't have to worry about indirect blocks.
+>>>>> It wouldn't be _that_ hard to make bigalloc work on indirect blocks.
+>>>>> I'll get around to it at some point.
+>>>> My main concern isn't about whether bigalloc grows support for indirect-
+>>>> mapped files, but rather the opposite - that snapshots gain support for
+>>>> extent-mapped files.  In fact, since extent-mapped files can be 16TB in
+>>>> size, it might make sense that the snapshots are _always_ extent-mapped
+>>>> files, and we don't need to deal with the new block-mapped files with
+>>>> 4-triple-indirect blocks layout at all?  Since snapshots are only going
+>>>> into ext4, and ext4 + e2fsprogs already support extents, there wouldn't
+>>>> be any issue about compatibility?
+>>>>
+>>>> The only concern might be that mapping fragmented files into extents is
+>>>> more effort, which makes me wonder about whether we should introduce the
+>>>> "block-mapped extents" that I proposed in the past, to allow efficient
+>>>> mapping of files (or parts thereof) that are highly fragmented, but still
+>>>> keeping the benefits of extents (internal redundancy, 48-bit physical
+>>>> block numbers, and while we are adding a new extent format it could be
+>>>> designed to add 48-bit logical block numbers.
+>>>>
+>>> You are right about snapshot file being a highly fragmented file by design,
+>>> so single block mapping is an advantage. The down side is that deleting
+>>> an extent mapped file, requires mapping all blocks one-by-one to snapshot
+>>> file, which is not efficient and makes deletes slow.
+>>> So having a format optimized for both single and multi block mapping would be
+>>> best.
+>>>
+>>> The reason I DO NOT want to change the snapshot file format at this moment
+>>> is that it will make us lose all the stabilization that snapshot feature gained
+>>> during 1 year in production as next3.
+>>> You see, ext4_free_blocks() cares not if blocks are deleted from indirect or
+>>> extent mapped files and from there on, the code that maps those blocks to
+>>> the special snapshot file is the same in next3 and ext4.
+>>>
+>> But the problem is, that you will not be able to change it in the future
+>> or at least not without adding more incompatibility flags, which is
+>> exactly the point of this thread. I just wonder if it would not be
+>> better to do it now, because now is the right time. Although I do not
+>> know how much work will that require.
+>>
+> There are no compatibility issues.
+> ext4 fs is either 32bit or 64bit and you cannot convert between the 2 formats.
+> 32bit ext4 has snapshots support with indirect mapped snapshot files.
+> 64bit ext4 has no snapshots support.
+> if in the future, be it near or far, 64bit ext4 will have snapshots support with
+> a new snapshot file format, then 64bit feature + snapshots feature will
+> prevent the present (i.e. next) kernel from mouting that fs rw.
+> which is exactly the same as older kernel will prevent mounting a 32bit ext4
+> with snapshots rw.
+>
+> Amir.
 
-This is a part of the effort to reduce number of ext4 options hence the
-test matrix.
+Hi Amir,
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- Documentation/filesystems/ext4.txt |    8 --
- fs/ext4/ext4.h                     |    1 -
- fs/ext4/ialloc.c                   |  136 +-----------------------------------
- fs/ext4/super.c                    |    8 +-
- 4 files changed, 7 insertions(+), 146 deletions(-)
+I really am not comfortable with having two formats for snapshots.
 
-diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
-index 3ae9bc9..ec469fa 100644
---- a/Documentation/filesystems/ext4.txt
-+++ b/Documentation/filesystems/ext4.txt
-@@ -201,14 +201,6 @@ inode_readahead_blks=n	This tuning parameter controls the maximum
- 			table readahead algorithm will pre-read into
- 			the buffer cache.  The default value is 32 blocks.
- 
--orlov		(*)	This enables the new Orlov block allocator. It is
--			enabled by default.
--
--oldalloc		This disables the Orlov block allocator and enables
--			the old block allocator.  Orlov should have better
--			performance - we'd like to get some feedback if it's
--			the contrary for you.
--
- user_xattr		Enables Extended User Attributes.  Additionally, you
- 			need to have extended attribute support enabled in the
- 			kernel configuration (CONFIG_EXT4_FS_XATTR).  See the
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 1921392..7e0b8aa 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -884,7 +884,6 @@ struct ext4_inode_info {
- /*
-  * Mount flags
-  */
--#define EXT4_MOUNT_OLDALLOC		0x00002  /* Don't use the new Orlov allocator */
- #define EXT4_MOUNT_GRPID		0x00004	/* Create files with directory's group */
- #define EXT4_MOUNT_DEBUG		0x00008	/* Some debugging messages */
- #define EXT4_MOUNT_ERRORS_CONT		0x00010	/* Continue on errors */
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 21bb2f6..0b5ec23 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -293,118 +293,6 @@ error_return:
- 	ext4_std_error(sb, fatal);
- }
- 
--/*
-- * There are two policies for allocating an inode.  If the new inode is
-- * a directory, then a forward search is made for a block group with both
-- * free space and a low directory-to-inode ratio; if that fails, then of
-- * the groups with above-average free space, that group with the fewest
-- * directories already is chosen.
-- *
-- * For other inodes, search forward from the parent directory\'s block
-- * group to find a free inode.
-- */
--static int find_group_dir(struct super_block *sb, struct inode *parent,
--				ext4_group_t *best_group)
--{
--	ext4_group_t ngroups = ext4_get_groups_count(sb);
--	unsigned int freei, avefreei;
--	struct ext4_group_desc *desc, *best_desc = NULL;
--	ext4_group_t group;
--	int ret = -1;
--
--	freei = percpu_counter_read_positive(&EXT4_SB(sb)->s_freeinodes_counter);
--	avefreei = freei / ngroups;
--
--	for (group = 0; group < ngroups; group++) {
--		desc = ext4_get_group_desc(sb, group, NULL);
--		if (!desc || !ext4_free_inodes_count(sb, desc))
--			continue;
--		if (ext4_free_inodes_count(sb, desc) < avefreei)
--			continue;
--		if (!best_desc ||
--		    (ext4_free_blks_count(sb, desc) >
--		     ext4_free_blks_count(sb, best_desc))) {
--			*best_group = group;
--			best_desc = desc;
--			ret = 0;
--		}
--	}
--	return ret;
--}
--
--#define free_block_ratio 10
--
--static int find_group_flex(struct super_block *sb, struct inode *parent,
--			   ext4_group_t *best_group)
--{
--	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	struct ext4_group_desc *desc;
--	struct flex_groups *flex_group = sbi->s_flex_groups;
--	ext4_group_t parent_group = EXT4_I(parent)->i_block_group;
--	ext4_group_t parent_fbg_group = ext4_flex_group(sbi, parent_group);
--	ext4_group_t ngroups = ext4_get_groups_count(sb);
--	int flex_size = ext4_flex_bg_size(sbi);
--	ext4_group_t best_flex = parent_fbg_group;
--	int blocks_per_flex = sbi->s_blocks_per_group * flex_size;
--	int flexbg_free_blocks;
--	int flex_freeb_ratio;
--	ext4_group_t n_fbg_groups;
--	ext4_group_t i;
--
--	n_fbg_groups = (ngroups + flex_size - 1) >>
--		sbi->s_log_groups_per_flex;
--
--find_close_to_parent:
--	flexbg_free_blocks = atomic_read(&flex_group[best_flex].free_blocks);
--	flex_freeb_ratio = flexbg_free_blocks * 100 / blocks_per_flex;
--	if (atomic_read(&flex_group[best_flex].free_inodes) &&
--	    flex_freeb_ratio > free_block_ratio)
--		goto found_flexbg;
--
--	if (best_flex && best_flex == parent_fbg_group) {
--		best_flex--;
--		goto find_close_to_parent;
--	}
--
--	for (i = 0; i < n_fbg_groups; i++) {
--		if (i == parent_fbg_group || i == parent_fbg_group - 1)
--			continue;
--
--		flexbg_free_blocks = atomic_read(&flex_group[i].free_blocks);
--		flex_freeb_ratio = flexbg_free_blocks * 100 / blocks_per_flex;
--
--		if (flex_freeb_ratio > free_block_ratio &&
--		    (atomic_read(&flex_group[i].free_inodes))) {
--			best_flex = i;
--			goto found_flexbg;
--		}
--
--		if ((atomic_read(&flex_group[best_flex].free_inodes) == 0) ||
--		    ((atomic_read(&flex_group[i].free_blocks) >
--		      atomic_read(&flex_group[best_flex].free_blocks)) &&
--		     atomic_read(&flex_group[i].free_inodes)))
--			best_flex = i;
--	}
--
--	if (!atomic_read(&flex_group[best_flex].free_inodes) ||
--	    !atomic_read(&flex_group[best_flex].free_blocks))
--		return -1;
--
--found_flexbg:
--	for (i = best_flex * flex_size; i < ngroups &&
--		     i < (best_flex + 1) * flex_size; i++) {
--		desc = ext4_get_group_desc(sb, i, NULL);
--		if (ext4_free_inodes_count(sb, desc)) {
--			*best_group = i;
--			goto out;
--		}
--	}
--
--	return -1;
--out:
--	return 0;
--}
--
- struct orlov_stats {
- 	__u32 free_inodes;
- 	__u32 free_blocks;
-@@ -817,7 +705,6 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode,
- 	struct inode *ret;
- 	ext4_group_t i;
- 	int free = 0;
--	static int once = 1;
- 	ext4_group_t flex_group;
- 
- 	/* Cannot create files in a deleted directory */
-@@ -843,26 +730,9 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode,
- 		goto got_group;
- 	}
- 
--	if (sbi->s_log_groups_per_flex && test_opt(sb, OLDALLOC)) {
--		ret2 = find_group_flex(sb, dir, &group);
--		if (ret2 == -1) {
--			ret2 = find_group_other(sb, dir, &group, mode);
--			if (ret2 == 0 && once) {
--				once = 0;
--				printk(KERN_NOTICE "ext4: find_group_flex "
--				       "failed, fallback succeeded dir %lu\n",
--				       dir->i_ino);
--			}
--		}
--		goto got_group;
--	}
--
--	if (S_ISDIR(mode)) {
--		if (test_opt(sb, OLDALLOC))
--			ret2 = find_group_dir(sb, dir, &group);
--		else
--			ret2 = find_group_orlov(sb, dir, &group, mode, qstr);
--	} else
-+	if (S_ISDIR(mode))
-+		ret2 = find_group_orlov(sb, dir, &group, mode, qstr);
-+	else
- 		ret2 = find_group_other(sb, dir, &group, mode);
- 
- got_group:
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index cc5c157..e1f8f73 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1031,8 +1031,6 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
- 		seq_puts(seq, ",nouid32");
- 	if (test_opt(sb, DEBUG) && !(def_mount_opts & EXT4_DEFM_DEBUG))
- 		seq_puts(seq, ",debug");
--	if (test_opt(sb, OLDALLOC))
--		seq_puts(seq, ",oldalloc");
- #ifdef CONFIG_EXT4_FS_XATTR
- 	if (test_opt(sb, XATTR_USER))
- 		seq_puts(seq, ",user_xattr");
-@@ -1541,10 +1539,12 @@ static int parse_options(char *options, struct super_block *sb,
- 			set_opt(sb, DEBUG);
- 			break;
- 		case Opt_oldalloc:
--			set_opt(sb, OLDALLOC);
-+			ext4_msg(sb, KERN_WARNING,
-+				 "Ignoring deprecated oldalloc option");
- 			break;
- 		case Opt_orlov:
--			clear_opt(sb, OLDALLOC);
-+			ext4_msg(sb, KERN_WARNING,
-+				 "Ignoring deprecated orlov option");
- 			break;
- #ifdef CONFIG_EXT4_FS_XATTR
- 		case Opt_user_xattr:
--- 
-1.7.4.4
+Why not just do one 64 bit format and skip the 32 bit one?
+
+This seems like a recipe for end user confusion and pain :)
+
+thanks!
+
+Ric
 
