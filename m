@@ -1,29 +1,59 @@
-From: Ranisha Jackson <rjackson1@watc.edu>
-Subject: Dear Winner
-Date: Wed, 8 Jun 2011 06:04:16 -0500
-Message-ID: <148687F520DDFB49AD17F12DA5A644CB0140CF15A462__26569.3060392097$1307532321$gmane$org@gro-mail4>
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: Re: [PATCH] mke2fs: check that auto-detected blocksize <= sys_page_size
+Date: Wed, 8 Jun 2011 15:50:10 +0300
+Message-ID: <BANLkTikGv=OZgV0iwZroDDnPi+TiyxDzVg@mail.gmail.com>
+References: <1307524998.2467.41.camel@newpride>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-ext4@vger.kernel.org
+To: "Yury V. Zaytsev" <yury@shurup.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail0.watc.edu ([156.26.17.12]:59030 "EHLO mail0.watc.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750759Ab1FHLZI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Jun 2011 07:25:08 -0400
-Content-Language: en-US
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:65157 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753417Ab1FHMuL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Jun 2011 08:50:11 -0400
+Received: by mail-wy0-f174.google.com with SMTP id 21so326931wya.19
+        for <linux-ext4@vger.kernel.org>; Wed, 08 Jun 2011 05:50:11 -0700 (PDT)
+In-Reply-To: <1307524998.2467.41.camel@newpride>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Your email Address have won (=A3850,000.00 GBP)in the just concluded BM=
-W International Awareness Promotion.Contact the claim's agent(Mr. Louis=
- Moore) via Email:louismoorebmw@gmail.com with:Full name/Contact addres=
-s/Sex/Tel/Occupation/Age/Country
-Congratulation once more.
-Mrs. Ranisha Jackson
-BMW Online Co-ordinator.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On Wed, Jun 8, 2011 at 12:23 PM, Yury V. Zaytsev <yury@shurup.com> wrote:
+> Hi!
+>
+> I have recently stumbled upon a RHEL6.1 installation problem on an SSD
+> drive that was working fine with older kernels, where created file
+> systems could not be mounted and the installation was aborting.
+>
+> It turned out that the drive had a firmware bug and was exposing a
+> minimum_io_size of 8912, whereas my x86_64 system had a page size of
+> 4096 bytes.
+>
+> mkfs in turn was silently creating file systems with 8912 bytes block
+> size, because it was auto-detected as opposed to specified via the -b
+> option from the command line.
+>
+> This made the problem hard to debug, hence I attach a tentative patch to
+> fix this issue. I'd like to acknowledge Mike Snitzer for directing me to
+> this list.
+>
+> I'm not subscribed, so please CC: me upon replies and be mindful that
+> it's my first contribution of this kind, so even though I did my best to
+> do it the right way, I might have screwed something up.
+
+The only thing you screwed up is sending the patch as an attachment.
+People here expect it to be as plain text in the email, so that they can
+reply and comment inline.
+Other than that, the fix looks good (and well explained) to me.
+
+Cheers,
+Amir.
+
+>
+> Thanks!
+>
+> --
+> Sincerely yours,
+> Yury V. Zaytsev
+>
+>
