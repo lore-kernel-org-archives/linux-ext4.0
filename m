@@ -1,37 +1,70 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Port xfstests 145, 161, 175, 176, 185?
-Date: Wed, 08 Jun 2011 11:48:58 -0700
-Message-ID: <4DEFC41A.9070701@linux.vnet.ibm.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] jbd2: Fix oops in jbd2_journal_remove_journal_head()
+Date: Wed, 8 Jun 2011 21:31:42 +0200
+Message-ID: <20110608193142.GH5361@quack.suse.cz>
+References: <1306768378-27748-1-git-send-email-jack@suse.cz>
+ <20110606141630.GK7180@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e38.co.us.ibm.com ([32.97.110.159]:43944 "EHLO
-	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751500Ab1FHSta (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Jun 2011 14:49:30 -0400
+Received: from cantor2.suse.de ([195.135.220.15]:43462 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755562Ab1FHTbp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 8 Jun 2011 15:31:45 -0400
+Content-Disposition: inline
+In-Reply-To: <20110606141630.GK7180@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all!
+On Mon 06-06-11 10:16:30, Ted Tso wrote:
+> On Mon, May 30, 2011 at 05:12:58PM +0200, Jan Kara wrote:
+> >  /*
+> > - * For the unlocked version of this call, also make sure that any
+> > - * hanging journal_head is cleaned up if necessary.
+> > + * For the unlocked version of this call, also drop buffer_head reference.
+> >   *
+> >   * __jbd2_journal_refile_buffer is usually called as part of a single locked
+>      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 
+> Doesn't this paragraph refer to jbd2_journal_refile_buffer(), not
+> __jbd2_journal_refile_buffer()?  Or am I missing something?
+  Hmm, the comment seems to be wrong. The comment about buffer_head
+reference does not apply anymore. I'll fix that.
 
-During one of my reviews for the punch hole tests patch set it was 
-mentioned that it would be helpful to take the xfstests 145, 161, 175, 
-176, 185 and modify them such that they can run with out requiring the 
-dmapi.  These tests contain some more interesting punch hole tests, but 
-they dont normally run unless there is support for dmapi.
+> >  void jbd2_journal_refile_buffer(journal_t *journal, struct journal_head *jh)
+> >  {
+> >  	struct buffer_head *bh = jh2bh(jh);
+> >  
+> > +	/* Get reference so that buffer cannot be freed before we unlock it */
+> > +	get_bh(bh);
+> 
+> OK, so we're adding a get_bh(bh) call to jbd2_journal_refile_buffer(),
+> which we're not freeing later in the function.  So this means every
+> single place where we call jbd2_journal_refile_buffer(), we'd better
+> add put_bh(bh) or bhrelse(bh) call, right?
+Well, we are adding get_bh() but we are now also using
+jbd2_journal_put_journal_head() instead of
+jbd2_journal_remove_journal_head() and the former call does additional
+__brelse().
 
-I did take a peek at them and I was thinking that if we decide to do 
-this, we would probably need to do something like introduce a new set of 
-source code that is similar to what is seen under the dmapi folder, but 
-modified to use a generic interface instead of the dmapi libraries.  We 
-could try to merge them into a single code path, but I think that may 
-introduce more complexities than would be desirable.
+Probably a better way to look at this is that
+jbd2_journal_remove_journal_head() now gets a reference and puts it at the
+end of that function. jbd2_journal_put_journal_head() cares about releasing
+bh reference held by journal_head. So the logic ends up being simpler than
+it used to be.
 
-I just wanted to get a general consensus of how many people would be 
-interested in this idea.  Thx all!
+> So in fs/jbd2/commit.c, line 418, in jbd2_journal_commit_transaction(),
+> I see a call to jbd2_journal_refile_buffer(), which the patch doesn't
+> seem to adjust.  Looks like this could cause a buffer leak?
+> 
+> In your testing, have you checked to the slab cache to make sure there
+> isn't any memory leakage going on with buffer heads?
+  Not really - I now ran fsxlinux and fsstress and both the number of
+buffer_head and journal_head slabs seem to be under control.
 
-Allison Henderson
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
