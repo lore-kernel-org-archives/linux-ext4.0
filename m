@@ -1,20 +1,26 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] jbd2: Fix oops in jbd2_journal_remove_journal_head()
-Date: Wed, 8 Jun 2011 10:09:14 -0400
-Message-ID: <20110608140914.GF30037@thunk.org>
-References: <1306768378-27748-1-git-send-email-jack@suse.cz>
- <20110606141630.GK7180@thunk.org>
+Subject: Re: [PATCH v2 2/3] jbd2: Add extra parameter in
+ start_this_handle() to control allocation flags.
+Date: Wed, 8 Jun 2011 10:10:06 -0400
+Message-ID: <20110608141006.GG30037@thunk.org>
+References: <1306563416-4286-1-git-send-email-mkatiyar@gmail.com>
+ <1306563657-4334-1-git-send-email-mkatiyar@gmail.com>
+ <20110531112253.GD5614@quack.suse.cz>
+ <20110531222720.GA3867@thunk.org>
+ <20110602095424.GA5718@quack.suse.cz>
+ <20110606032113.GC7180@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Cc: Manish Katiyar <mkatiyar@gmail.com>, linux-ext4@vger.kernel.org,
+	mfasheh@suse.com, jlbec@evilplan.org
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:36278 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:36283 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754974Ab1FHOJR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 8 Jun 2011 10:09:17 -0400
+	id S1754974Ab1FHOKJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 8 Jun 2011 10:10:09 -0400
 Content-Disposition: inline
-In-Reply-To: <20110606141630.GK7180@thunk.org>
+In-Reply-To: <20110606032113.GC7180@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -22,36 +28,38 @@ Ping?
 
 				- Ted
 
-On Mon, Jun 06, 2011 at 10:16:30AM -0400, Ted Ts'o wrote:
-> On Mon, May 30, 2011 at 05:12:58PM +0200, Jan Kara wrote:
-> >  /*
-> > - * For the unlocked version of this call, also make sure that any
-> > - * hanging journal_head is cleaned up if necessary.
-> > + * For the unlocked version of this call, also drop buffer_head reference.
-> >   *
-> >   * __jbd2_journal_refile_buffer is usually called as part of a single locked
->      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+On Sun, Jun 05, 2011 at 11:21:13PM -0400, Ted Ts'o wrote:
+> On Thu, Jun 02, 2011 at 11:54:24AM +0200, Jan Kara wrote:
+> >   What happens is that direct reclaim sometimes does
+> > wait_on_page_writeback() (e.g. shrink_page_list()) or it explicitely waits
+> > for NR_WRITEBACK statistics to go below some threshold
+> > (throttle_vm_writeout()). And that is deadlockable if we hold i_mutex while
+> > doing this because we may need i_mutex to actually move the page from
+> > PageWriteback state...
 > 
-> Doesn't this paragraph refer to jbd2_journal_refile_buffer(), not
-> __jbd2_journal_refile_buffer()?  Or am I missing something?
+> We don't actully call set_page_writeback() until right before we
+> submit the page for writeback.  And we convert the unwritten extents
+> in a workqueue, which gets submitted after we call
+> end_page_writeback().  So I'm still not seeing a problem; sorry if I'm
+> being dense!
 > 
-> >  void jbd2_journal_refile_buffer(journal_t *journal, struct journal_head *jh)
-> >  {
-> >  	struct buffer_head *bh = jh2bh(jh);
-> >  
-> > +	/* Get reference so that buffer cannot be freed before we unlock it */
-> > +	get_bh(bh);
+> 			    	      	  - Ted
 > 
-> OK, so we're adding a get_bh(bh) call to jbd2_journal_refile_buffer(),
-> which we're not freeing later in the function.  So this means every
-> single place where we call jbd2_journal_refile_buffer(), we'd better
-> add put_bh(bh) or bhrelse(bh) call, right?
-> 
-> So in fs/jbd2/commit.c, line 418, in jbd2_journal_commit_transaction(),
-> I see a call to jbd2_journal_refile_buffer(), which the patch doesn't
-> seem to adjust.  Looks like this could cause a buffer leak?
-> 
-> In your testing, have you checked to the slab cache to make sure there
-> isn't any memory leakage going on with buffer heads?
-> 
->       	  	 	       	       - Ted
+> > As I'm saying this, I've realized ext4 has this problem also with
+> > stable-pages patches because there we can wait for PageWriteback in
+> > grab_cache_page_write_begin() when we also hold i_mutex. So I think we'll
+> > have to come up with a way to convert unwritten extents without having to
+> > hold i_mutex. That's going to be interesting.
+> > 
+> > 								Honza
+> > -- 
+> > Jan Kara <jack@suse.cz>
+> > SUSE Labs, CR
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
