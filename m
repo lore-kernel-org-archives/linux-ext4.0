@@ -1,208 +1,196 @@
-From: "Amir G." <amir73il@users.sourceforge.net>
-Subject: Re: [PATCH v1 00/30] Ext4 snapshots
-Date: Thu, 9 Jun 2011 13:06:37 +0300
-Message-ID: <BANLkTimKEL=1+XS59U7GWj6sfU_CCypsWA@mail.gmail.com>
-References: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
-	<alpine.LFD.2.00.1106071735100.11385@dhcp-27-109.brq.redhat.com>
-	<BANLkTikAB-RDDS8PMMrFK-OuY6PuavBixA@mail.gmail.com>
-	<alpine.LFD.2.00.1106081114240.5026@dhcp-27-109.brq.redhat.com>
-	<BANLkTi=T1OtyRSWNTA6xhkTy5uaHWqA_XA@mail.gmail.com>
-	<alpine.LFD.2.00.1106081716200.6609@dhcp-27-109.brq.redhat.com>
-	<BANLkTikUXdvMQROYEdxnyfcPuB0e9ozMOg@mail.gmail.com>
-	<BANLkTinU9Hegr3iA5it2vNjE_RYbB+8+RQ@mail.gmail.com>
-	<BANLkTik9Mnq5yqK795pxyr8SK-3EOzzNhA@mail.gmail.com>
-	<alpine.LFD.2.00.1106090834270.4138@dhcp-27-109.brq.redhat.com>
-	<BANLkTi=fugrRE0P5m8nMPrH_kZqPZB7ajA@mail.gmail.com>
-	<alpine.DEB.2.02.1106090102590.20783@asgard.lang.hm>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] jbd2:Make journal transaction allocations come from
+ its own cache.
+Date: Thu, 9 Jun 2011 12:15:46 +0200
+Message-ID: <20110609101546.GA4926@quack.suse.cz>
+References: <1307262510-16376-1-git-send-email-mkatiyar@gmail.com>
+ <20110608164903.GG5361@quack.suse.cz>
+ <4DF07910.1060209@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Lukas Czerner <lczerner@redhat.com>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	linux-ext4@vger.kernel.org, tytso@mit.edu,
-	linux-kernel@vger.kernel.org, sandeen@redhat.com,
-	Arvin Schnell <arvin.schnell@opensuse.org>
-To: david@lang.hm
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Manish Katiyar <mkatiyar@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:45114 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752219Ab1FIKGj convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Jun 2011 06:06:39 -0400
-In-Reply-To: <alpine.DEB.2.02.1106090102590.20783@asgard.lang.hm>
+Received: from cantor.suse.de ([195.135.220.2]:38923 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752447Ab1FIKPs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 9 Jun 2011 06:15:48 -0400
+Content-Disposition: inline
+In-Reply-To: <4DF07910.1060209@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 9, 2011 at 11:13 AM,  <david@lang.hm> wrote:
-> On Thu, 9 Jun 2011, Amir G. wrote:
->
->> On Thu, Jun 9, 2011 at 9:50 AM, Lukas Czerner <lczerner@redhat.com> =
-wrote:
->>>
->>> On Thu, 9 Jun 2011, Yongqiang Yang wrote:
->>>
->>>> On Thu, Jun 9, 2011 at 11:18 AM, Amir G.
->>>> <amir73il@users.sourceforge.net> wrote:
->>>>>
->>>>> On Thu, Jun 9, 2011 at 4:59 AM, Yongqiang Yang <xiaoqiangnk@gmail=
-=2Ecom>
->>>>> wrote:
->>>
->>> You see, when it comes to the full fs snapshots I am not convinced =
-that
->>> it is *very* useful, yes it might have some users, but you can alwa=
-y
->>> take the safe way and do lvm snapshots (or better use the new multi=
-snap)
->>> for backup, without need to modify stable filesystem code.
->>>
->>
->> You think like a developer. Try talking to some sys admins.
->> Especially ones that worked with Solaris/ZFS or NetApp.
->> See what they think about snapshots and about the LVM alternative...
->> Snapshots have addictive qualities. Ones you've used them, you can't
->> go back to not having them.
->> Imagine how people used to live before the 'Undo' button and imagine
->> that your employer forced you to use an editor without an Undo butto=
-n.
->> This is the kind of feedback I got from sys admins that moved from S=
-olaris
->> to Linux.
->
-> as a sysadmin, it's a _wonderful_ tool to have for any system that ha=
-s
-> people editing/saving files on directly.
+On Thu 09-06-11 00:41:04, Manish Katiyar wrote:
+> Add a cache for jbd2 journal transaction allocations. This also
+> helps to leverage fault-injection framework to test various memory
+> allocation failures in the jbd2 layer.
+> 
+> Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+  Now the patch looks OK. You can add:
+Acked-by: Jan Kara <jack@suse.cz>
 
-Thank you david. Finally some positive feedback from the people
-for whom the feature is intended for :-)
+								Honza
 
->
->>
->>> Also, I do not buy the whole argument of "not have to create separa=
-te
->>> disk
->>> space for snapshot". It is actually better for sysadmins, because y=
-ou
->>> have perfect control on what is going on, how much space is used fo=
-r
->>> your snapshots and how much is used by your data. You can always ea=
-sily
->>> extend the snapshot volume, or let it die silently when it is too o=
-ld
->>> and too big.
->>>
->>
->> Seriously, Lukas, talk to sys admins.
->> Letting the snapshot die silently is the worst possible thing that a
->> snapshots
->> implementation can do (for long lived snapshots).
->
-> that depends on the site policy.
->
-> sometimes it is better to loose snapshots than to run out of disk spa=
-ce and
-> halt the system, sometimes you would rather halt the system.
->
-> the policy of what happens when you run out of space should not be a =
-kernel
-> decision, the desired behavior varies far too much.
->
-> this includes being able to say things like "I want to always have 10=
-% of my
-> disk allocated to snapshots, but if there's more free space, go ahead=
- and
-> use it, but always keep at least 10% of the disk free so that you don=
-'t have
-> to halt new writes while you clear space"
->
-> or
->
-> "if you run out of space, try and keep the oldest snapshot and the ne=
-west
-> snapshot, delete other snapshots in between before touching either of=
- these"
->
+PS: Thanks for formatting the patch submission properly now! Just when you
+have the final version, send it separately (i.e. not as a reply to my
+comments) so that Ted can easily see it and pick it up.
 
-I fully agree.
-AFAIK, there is no user space tool to manage snapshots to this level fo=
-r Linux.
-The only snapshot manager I know about is snapper:
-http://en.opensuse.org/Portal:Snapper, which we are working on adding
-ext4 snapshots support to.
-Snapper does not have the free space based policy to the best of my kno=
-wledge,
-but it could be improved to monitor free disk space.
-
-A tool like that does not need any further kernel changes from
-ext4 and btrfs to implement the policies suggested above.
-However, with LVM snapshots, some of these policies (like use whatever =
-space you
-have free in the filesystem) are simply not possible.
-
-
->>> How does it actually work on ext4 snapshots ? When you're going to
->>> rewrite a file, you will never know how much disk space it'll take =
-in
->>> advance, am I right ? Is the filesystem accounting for the snapshot=
- size
->>> as well ? or is it hidden ?
->>
->> It's not hidden, it's accounted for as a regular file (usually owned=
- by
->> root).
->> You need a bit of scripting to gather the disk space used by snapsho=
-ts
->> (du).
->
-> the worst case when you re-write a file is that it will take the full=
- amount
-> of space that the file currently takes (as if you wrote a new copy of=
- the
-> file and some process had a filehandle open on the old copy, preventi=
-ng the
-> space from being reclaimed, so it's far from being a new problem)
-
-No. it's a new problem.
-When you have a large db, which does random writes to an exiting db fil=
-e,
-it does not expect ENOSPC, when updating an existing record or index.
-Only by keeping enough free disk space in the system at all times, can =
-you
-avoid this kind of problems.
-
->
-> see the note above about the need to be able to remove snapshots when=
- you
-> are out of space.
->
-> since snapshots tend to be small compared to the filesystems they pro=
-tect
-> (not in all cases, but if you are covering the entire system with one
-> snapshot that would be the way to bet), having the ability to put the
-> snapshot metadata off on a smaller/faster disk would be helpful.
-
-Helpful for which workload?
-=46or reading from snapshots? Yes, that would be faster.
-=46or writing to the filesystem? I demonstrated that the performance
-overhead is near zero.
-
->
-> having the ability to snapshot just specific files/directories would =
-be a
-> killer feature IMHO
-
-I agree to that, but I don't think the ext4 will be able to provide
-that to the full extent.
-
->
-> David Lang
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> ---
+> v1->v2 :
+>   *) Drop SLAB_TEMPORARY flag for cache allocation.
+>   *) Remove filling with pattern during frees.
+> 
+>  fs/jbd2/checkpoint.c  |    2 +-
+>  fs/jbd2/commit.c      |    2 +-
+>  fs/jbd2/journal.c     |   24 ++++++++++++++++++++++++
+>  fs/jbd2/transaction.c |    7 ++++---
+>  include/linux/jbd2.h  |   17 +++++++++++++++++
+>  5 files changed, 47 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+> index 6a79fd0..6f554ce 100644
+> --- a/fs/jbd2/checkpoint.c
+> +++ b/fs/jbd2/checkpoint.c
+> @@ -716,7 +716,7 @@ int __jbd2_journal_remove_checkpoint(struct journal_head *jh)
+>  				    transaction->t_tid, stats);
+> 
+>  	__jbd2_journal_drop_transaction(journal, transaction);
+> -	kfree(transaction);
+> +	jbd2_free_transaction(transaction);
+> 
+>  	/* Just in case anybody was waiting for more transactions to be
+>             checkpointed... */
+> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+> index 7f21cf3..8e33d84 100644
+> --- a/fs/jbd2/commit.c
+> +++ b/fs/jbd2/commit.c
+> @@ -1037,7 +1037,7 @@ restart_loop:
+>  	jbd_debug(1, "JBD: commit %d complete, head %d\n",
+>  		  journal->j_commit_sequence, journal->j_tail_sequence);
+>  	if (to_free)
+> -		kfree(commit_transaction);
+> +		jbd2_free_transaction(commit_transaction);
+> 
+>  	wake_up(&journal->j_wait_done_commit);
+>  }
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index 9a78269..2d9795b 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -95,6 +95,7 @@ EXPORT_SYMBOL(jbd2_journal_init_jbd_inode);
+>  EXPORT_SYMBOL(jbd2_journal_release_jbd_inode);
+>  EXPORT_SYMBOL(jbd2_journal_begin_ordered_truncate);
+>  EXPORT_SYMBOL(jbd2_inode_cache);
+> +EXPORT_SYMBOL(jbd2_transaction_cache);
+> 
+>  static int journal_convert_superblock_v1(journal_t *, journal_superblock_t *);
+>  static void __journal_abort_soft (journal_t *journal, int errno);
+> @@ -2371,6 +2372,26 @@ static void jbd2_journal_destroy_handle_cache(void)
+> 
+>  }
+> 
+> +struct kmem_cache *jbd2_transaction_cache;
+> +
+> +static int journal_init_transaction_cache(void)
+> +{
+> +	J_ASSERT(jbd2_transaction_cache == NULL);
+> +	jbd2_transaction_cache = kmem_cache_create("jbd2_transaction",
+> +						   sizeof(transaction_t),
+> +						   0, 0, NULL);
+> +	if (jbd2_transaction_cache == NULL) {
+> +		printk(KERN_EMERG "JBD2: failed to create transaction cache\n");
+> +		return -ENOMEM;
+> +	}
+> +	return 0;
+> +}
+> +
+> +static void jbd2_journal_destroy_transaction_cache(void)
+> +{
+> +	kmem_cache_destroy(jbd2_transaction_cache);
+> +}
+> +
+>  /*
+>   * Module startup and shutdown
+>   */
+> @@ -2384,6 +2405,8 @@ static int __init journal_init_caches(void)
+>  		ret = journal_init_jbd2_journal_head_cache();
+>  	if (ret == 0)
+>  		ret = journal_init_handle_cache();
+> +	if (ret == 0)
+> +		ret = journal_init_transaction_cache();
+>  	return ret;
+>  }
+> 
+> @@ -2392,6 +2415,7 @@ static void jbd2_journal_destroy_caches(void)
+>  	jbd2_journal_destroy_revoke_caches();
+>  	jbd2_journal_destroy_jbd2_journal_head_cache();
+>  	jbd2_journal_destroy_handle_cache();
+> +	jbd2_journal_destroy_transaction_cache();
+>  	jbd2_journal_destroy_slabs();
+>  }
+> 
+> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> index 3eec82d..58fbec7 100644
+> --- a/fs/jbd2/transaction.c
+> +++ b/fs/jbd2/transaction.c
+> @@ -131,7 +131,7 @@ static int start_this_handle(journal_t *journal, handle_t *handle,
+> 
+>  alloc_transaction:
+>  	if (!journal->j_running_transaction) {
+> -		new_transaction = kzalloc(sizeof(*new_transaction), gfp_mask);
+> +		new_transaction = jbd2_alloc_transaction(gfp_mask);
+>  		if (!new_transaction) {
+>  			/*
+>  			 * If __GFP_FS is not present, then we may be
+> @@ -160,7 +160,7 @@ repeat:
+>  	if (is_journal_aborted(journal) ||
+>  	    (journal->j_errno != 0 && !(journal->j_flags & JBD2_ACK_ERR))) {
+>  		read_unlock(&journal->j_state_lock);
+> -		kfree(new_transaction);
+> +		jbd2_free_transaction(new_transaction);
+>  		return -EROFS;
+>  	}
+> 
+> @@ -282,7 +282,8 @@ repeat:
+>  	read_unlock(&journal->j_state_lock);
+> 
+>  	lock_map_acquire(&handle->h_lockdep_map);
+> -	kfree(new_transaction);
+> +	jbd2_free_transaction(new_transaction);
+> +
+>  	return 0;
+>  }
+> 
+> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> index 4ecb7b1..803b5c4 100644
+> --- a/include/linux/jbd2.h
+> +++ b/include/linux/jbd2.h
+> @@ -1184,6 +1184,23 @@ static inline void jbd2_free_handle(handle_t *handle)
+>  }
+> 
+>  /*
+> + * transaction management
+> + */
+> +extern struct kmem_cache *jbd2_transaction_cache;
+> +
+> +static inline transaction_t *jbd2_alloc_transaction(gfp_t gfp_flags)
+> +{
+> +	return kmem_cache_zalloc(jbd2_transaction_cache, gfp_flags);
+> +}
+> +
+> +static inline void jbd2_free_transaction(transaction_t *transaction)
+> +{
+> +	if (transaction)
+> +		kmem_cache_free(jbd2_transaction_cache, transaction);
+> +}
+> +
+> +
+> +/*
+>   * jbd2_inode management (optional, for those file systems that want to use
+>   * dynamically allocated jbd2_inode structures)
+>   */
+> -- 
+> 1.7.4.1
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
