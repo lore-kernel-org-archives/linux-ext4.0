@@ -1,356 +1,208 @@
-From: Manish Katiyar <mkatiyar@gmail.com>
-Subject: Re: [PATCH] jbd2:Make journal transaction allocations come from its
- own cache.
-Date: Thu, 09 Jun 2011 00:41:04 -0700
-Message-ID: <4DF07910.1060209@gmail.com>
-References: <1307262510-16376-1-git-send-email-mkatiyar@gmail.com> <20110608164903.GG5361@quack.suse.cz>
+From: "Amir G." <amir73il@users.sourceforge.net>
+Subject: Re: [PATCH v1 00/30] Ext4 snapshots
+Date: Thu, 9 Jun 2011 10:57:11 +0300
+Message-ID: <BANLkTi=fugrRE0P5m8nMPrH_kZqPZB7ajA@mail.gmail.com>
+References: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
+	<alpine.LFD.2.00.1106071735100.11385@dhcp-27-109.brq.redhat.com>
+	<BANLkTikAB-RDDS8PMMrFK-OuY6PuavBixA@mail.gmail.com>
+	<alpine.LFD.2.00.1106081114240.5026@dhcp-27-109.brq.redhat.com>
+	<BANLkTi=T1OtyRSWNTA6xhkTy5uaHWqA_XA@mail.gmail.com>
+	<alpine.LFD.2.00.1106081716200.6609@dhcp-27-109.brq.redhat.com>
+	<BANLkTikUXdvMQROYEdxnyfcPuB0e9ozMOg@mail.gmail.com>
+	<BANLkTinU9Hegr3iA5it2vNjE_RYbB+8+RQ@mail.gmail.com>
+	<BANLkTik9Mnq5yqK795pxyr8SK-3EOzzNhA@mail.gmail.com>
+	<alpine.LFD.2.00.1106090834270.4138@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org, mkatiyar@gmail.com
-To: Jan Kara <jack@suse.cz>
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, linux-kernel@vger.kernel.org, sandeen@redhat.com
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pw0-f46.google.com ([209.85.160.46]:44197 "EHLO
-	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753236Ab1FIHlK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Jun 2011 03:41:10 -0400
-Received: by pwi15 with SMTP id 15so617682pwi.19
-        for <linux-ext4@vger.kernel.org>; Thu, 09 Jun 2011 00:41:10 -0700 (PDT)
-In-Reply-To: <20110608164903.GG5361@quack.suse.cz>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:51061 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752929Ab1FIH5N convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Jun 2011 03:57:13 -0400
+In-Reply-To: <alpine.LFD.2.00.1106090834270.4138@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 06/08/2011 09:49 AM, Jan Kara wrote:
-> On Sun 05-06-11 01:28:30, Manish Katiyar wrote:
->> Add a cache for jbd2 journal transaction allocations. This also
->> helps to leverage fault-injection framework to test various memory
->> allocation failures in the jbd2 layer.
->>
->> Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
->> ---
->>  fs/jbd2/checkpoint.c  |    2 +-
->>  fs/jbd2/commit.c      |    2 +-
->>  fs/jbd2/journal.c     |   25 +++++++++++++++++++++++++
->>  fs/jbd2/transaction.c |    7 ++++---
->>  include/linux/jbd2.h  |   21 +++++++++++++++++++++
->>  5 files changed, 52 insertions(+), 5 deletions(-)
->>
->> diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
->> index 6a79fd0..6f554ce 100644
->> --- a/fs/jbd2/checkpoint.c
->> +++ b/fs/jbd2/checkpoint.c
->> @@ -716,7 +716,7 @@ int __jbd2_journal_remove_checkpoint(struct journal_head *jh)
->>  				    transaction->t_tid, stats);
->>
->>  	__jbd2_journal_drop_transaction(journal, transaction);
->> -	kfree(transaction);
->> +	jbd2_free_transaction(transaction);
->>
->>  	/* Just in case anybody was waiting for more transactions to be
->>             checkpointed... */
->> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
->> index 7f21cf3..8e33d84 100644
->> --- a/fs/jbd2/commit.c
->> +++ b/fs/jbd2/commit.c
->> @@ -1037,7 +1037,7 @@ restart_loop:
->>  	jbd_debug(1, "JBD: commit %d complete, head %d\n",
->>  		  journal->j_commit_sequence, journal->j_tail_sequence);
->>  	if (to_free)
->> -		kfree(commit_transaction);
->> +		jbd2_free_transaction(commit_transaction);
->>
->>  	wake_up(&journal->j_wait_done_commit);
->>  }
->> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
->> index 9a78269..c0ec463 100644
->> --- a/fs/jbd2/journal.c
->> +++ b/fs/jbd2/journal.c
->> @@ -95,6 +95,7 @@ EXPORT_SYMBOL(jbd2_journal_init_jbd_inode);
->>  EXPORT_SYMBOL(jbd2_journal_release_jbd_inode);
->>  EXPORT_SYMBOL(jbd2_journal_begin_ordered_truncate);
->>  EXPORT_SYMBOL(jbd2_inode_cache);
->> +EXPORT_SYMBOL(jbd2_transaction_cache);
->>
->>  static int journal_convert_superblock_v1(journal_t *, journal_superblock_t *);
->>  static void __journal_abort_soft (journal_t *journal, int errno);
->> @@ -2371,6 +2372,27 @@ static void jbd2_journal_destroy_handle_cache(void)
->>
->>  }
->>
->> +struct kmem_cache *jbd2_transaction_cache;
->> +
->> +static int journal_init_transaction_cache(void)
->> +{
->> +	J_ASSERT(jbd2_transaction_cache == NULL);
->> +	jbd2_transaction_cache = kmem_cache_create("jbd2_transaction",
->> +						   sizeof(transaction_t),
->> +						   0, SLAB_TEMPORARY, NULL);
->   Transactions are not really short-lived in the memory-management sense I
-> think. They usually live for seconds while I'd understand 'short-lived' to
-> mean a milisecond or less. So just drop this flag (it doesn't do anything
-> these days anyway).
+On Thu, Jun 9, 2011 at 9:50 AM, Lukas Czerner <lczerner@redhat.com> wro=
+te:
+> On Thu, 9 Jun 2011, Yongqiang Yang wrote:
 >
->> +	if (jbd2_transaction_cache == NULL) {
->> +		printk(KERN_EMERG "JBD2: failed to create transaction cache\n");
->> +		return -ENOMEM;
->> +	}
->> +	return 0;
->> +}
->> +
->> +static void jbd2_journal_destroy_transaction_cache(void)
->> +{
->> +	if (jbd2_transaction_cache)
->   How can this happen?
+>> On Thu, Jun 9, 2011 at 11:18 AM, Amir G. <amir73il@users.sourceforge=
+=2Enet> wrote:
+>> > On Thu, Jun 9, 2011 at 4:59 AM, Yongqiang Yang <xiaoqiangnk@gmail.=
+com> wrote:
+>> >>> But I do understand the difference. And also, when it comes to f=
+s level
+>> >>> snapshotting I would suspect that it would do something we can n=
+ot do
+>> >>> with the current solutions, for example per-file or per-director=
+y snapshots,
+>> >>> cat ext4 snapshots do that ?
+>> >> Hi Lukas,
+>> >>
+>> >> I noticed that there is no answer to this question in the thread.=
+ =A0I
+>> >
+>> > I think I answered this question with No it can't ;-)
+>> I think this can be implemented easily by chattr and adding check in
+>> should_snapshot() or should_move_data().
+>>
+>> And I thought Lukas are focusing on if ext4-snapshots can do this
+>> easily. =A0So i said YES:-)
 >
->> +		kmem_cache_destroy(jbd2_transaction_cache);
->> +}
->> +
->>  /*
->>   * Module startup and shutdown
->>   */
->> @@ -2384,6 +2406,8 @@ static int __init journal_init_caches(void)
->>  		ret = journal_init_jbd2_journal_head_cache();
->>  	if (ret == 0)
->>  		ret = journal_init_handle_cache();
->> +	if (ret == 0)
->> +		ret = journal_init_transaction_cache();
->>  	return ret;
->>  }
->>
->> @@ -2392,6 +2416,7 @@ static void jbd2_journal_destroy_caches(void)
->>  	jbd2_journal_destroy_revoke_caches();
->>  	jbd2_journal_destroy_jbd2_journal_head_cache();
->>  	jbd2_journal_destroy_handle_cache();
->> +	jbd2_journal_destroy_transaction_cache();
->>  	jbd2_journal_destroy_slabs();
->>  }
->>
->> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
->> index 3eec82d..58fbec7 100644
->> --- a/fs/jbd2/transaction.c
->> +++ b/fs/jbd2/transaction.c
->> @@ -131,7 +131,7 @@ static int start_this_handle(journal_t *journal, handle_t *handle,
->>
->>  alloc_transaction:
->>  	if (!journal->j_running_transaction) {
->> -		new_transaction = kzalloc(sizeof(*new_transaction), gfp_mask);
->> +		new_transaction = jbd2_alloc_transaction(gfp_mask);
->>  		if (!new_transaction) {
->>  			/*
->>  			 * If __GFP_FS is not present, then we may be
->> @@ -160,7 +160,7 @@ repeat:
->>  	if (is_journal_aborted(journal) ||
->>  	    (journal->j_errno != 0 && !(journal->j_flags & JBD2_ACK_ERR))) {
->>  		read_unlock(&journal->j_state_lock);
->> -		kfree(new_transaction);
->> +		jbd2_free_transaction(new_transaction);
->>  		return -EROFS;
->>  	}
->>
->> @@ -282,7 +282,8 @@ repeat:
->>  	read_unlock(&journal->j_state_lock);
->>
->>  	lock_map_acquire(&handle->h_lockdep_map);
->> -	kfree(new_transaction);
->> +	jbd2_free_transaction(new_transaction);
->> +
->>  	return 0;
->>  }
->>
->> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
->> index 4ecb7b1..df7f101 100644
->> --- a/include/linux/jbd2.h
->> +++ b/include/linux/jbd2.h
->> @@ -1184,6 +1184,27 @@ static inline void jbd2_free_handle(handle_t *handle)
->>  }
->>
->>  /*
->> + * transaction management
->> + */
->> +extern struct kmem_cache *jbd2_transaction_cache;
->> +
->> +static inline transaction_t *jbd2_alloc_transaction(gfp_t gfp_flags)
->> +{
->> +	return kmem_cache_zalloc(jbd2_transaction_cache, gfp_flags);
->> +}
->> +
->> +static inline void jbd2_free_transaction(transaction_t *transaction)
->> +{
->> +	if (transaction) {
->> +#ifdef CONFIG_JBD2_DEBUG
->> +		memset(transaction, JBD2_POISON_FREE, sizeof(*transaction));
->> +#endif
->   No need for this - CONFIG_DEBUG_SLAB does this for you...
+> Cool, finally something interesting :). So, how it'll work ? Does tha=
+t
+> require any format changes again:) ? Can you exclude the whole root a=
+nd
+> then selectively pick the directories or files you are interested in =
+?
+
+The design is actually very simple and not as powerful as you
+probably desire.
+I hate to get into the design of future features, when we haven't
+even ACKed the current feature yet, but since you're the only one
+did any review, I owe you that much ;-)
+
+To exclude a file from snapshot it needs to have the NOCOW_FL flag.
+Ironically, btrfs have already added that flag in parallel to me (for t=
+he
+same purpose) so the flag it is already reserved in the code :-)
+
+To avoid some transition issues and keep it really simple,
+I disallow changing the NOCOW_FL
+for regular file and only allow to change it for directories.
+The NOCOW_FL is inherited from the parent directory,
+so setting/clearing the flag on a directory means:
+"All files/subdirs will be created excluded/not-excluded from now on".
+
+Inside the snapshot image, excluded directories, which are not really
+excluded, show normally, but excluded files are shown with zero length,
+because making the files disappear is hard, but their blocks may have a=
+lready
+been reused, so we cannot allow access to them.
+
 >
->> +		kmem_cache_free(jbd2_transaction_cache, transaction);
->> +	}
->> +}
->> +
->> +
->> +/*
->>   * jbd2_inode management (optional, for those file systems that want to use
->>   * dynamically allocated jbd2_inode structures)
->>   */
->   Otherwise the patch looks OK to me.
+> How does rollback work with ext4 snapshots ? Can you selectively roll
+> back one file, or the whole directory subtree even when you're
+> snapshotting more ?
 
-Add a cache for jbd2 journal transaction allocations. This also
-helps to leverage fault-injection framework to test various memory
-allocation failures in the jbd2 layer.
+So there is actually no inherent "rollback" feature, not for a file/dir
+and not for the entire fs.
+It's a drawback of ext4 snapshots, but hey, cp/rsync from snapshot
+still works for file/dir ;-)
+As for full "fs" rollback. A revert tool has been developed (by student=
+s),
+which requires an external storage to export the "revert patch".
+This tool is going to be enhanced to use LVM snapshot storage
+and LVM --merge option to implement ext4 "revert to snapshot" with Yum.
 
-Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
----
-v1->v2 :
-  *) Drop SLAB_TEMPORARY flag for cache allocation.
-  *) Remove filling with pattern during frees.
+>
+> You see, when it comes to the full fs snapshots I am not convinced th=
+at
+> it is *very* useful, yes it might have some users, but you can alway
+> take the safe way and do lvm snapshots (or better use the new multisn=
+ap)
+> for backup, without need to modify stable filesystem code.
+>
 
- fs/jbd2/checkpoint.c  |    2 +-
- fs/jbd2/commit.c      |    2 +-
- fs/jbd2/journal.c     |   24 ++++++++++++++++++++++++
- fs/jbd2/transaction.c |    7 ++++---
- include/linux/jbd2.h  |   17 +++++++++++++++++
- 5 files changed, 47 insertions(+), 5 deletions(-)
+You think like a developer. Try talking to some sys admins.
+Especially ones that worked with Solaris/ZFS or NetApp.
+See what they think about snapshots and about the LVM alternative...
+Snapshots have addictive qualities. Ones you've used them, you can't
+go back to not having them.
+Imagine how people used to live before the 'Undo' button and imagine
+that your employer forced you to use an editor without an Undo button.
+This is the kind of feedback I got from sys admins that moved from Sola=
+ris
+to Linux.
 
-diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index 6a79fd0..6f554ce 100644
---- a/fs/jbd2/checkpoint.c
-+++ b/fs/jbd2/checkpoint.c
-@@ -716,7 +716,7 @@ int __jbd2_journal_remove_checkpoint(struct journal_head *jh)
- 				    transaction->t_tid, stats);
 
- 	__jbd2_journal_drop_transaction(journal, transaction);
--	kfree(transaction);
-+	jbd2_free_transaction(transaction);
+> Also, I do not buy the whole argument of "not have to create separate=
+ disk
+> space for snapshot". It is actually better for sysadmins, because you
+> have perfect control on what is going on, how much space is used for
+> your snapshots and how much is used by your data. You can always easi=
+ly
+> extend the snapshot volume, or let it die silently when it is too old
+> and too big.
+>
 
- 	/* Just in case anybody was waiting for more transactions to be
-            checkpointed... */
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 7f21cf3..8e33d84 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -1037,7 +1037,7 @@ restart_loop:
- 	jbd_debug(1, "JBD: commit %d complete, head %d\n",
- 		  journal->j_commit_sequence, journal->j_tail_sequence);
- 	if (to_free)
--		kfree(commit_transaction);
-+		jbd2_free_transaction(commit_transaction);
+Seriously, Lukas, talk to sys admins.
+Letting the snapshot die silently is the worst possible thing that a sn=
+apshots
+implementation can do (for long lived snapshots).
 
- 	wake_up(&journal->j_wait_done_commit);
- }
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 9a78269..2d9795b 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -95,6 +95,7 @@ EXPORT_SYMBOL(jbd2_journal_init_jbd_inode);
- EXPORT_SYMBOL(jbd2_journal_release_jbd_inode);
- EXPORT_SYMBOL(jbd2_journal_begin_ordered_truncate);
- EXPORT_SYMBOL(jbd2_inode_cache);
-+EXPORT_SYMBOL(jbd2_transaction_cache);
 
- static int journal_convert_superblock_v1(journal_t *, journal_superblock_t *);
- static void __journal_abort_soft (journal_t *journal, int errno);
-@@ -2371,6 +2372,26 @@ static void jbd2_journal_destroy_handle_cache(void)
+> How does it actually work on ext4 snapshots ? When you're going to
+> rewrite a file, you will never know how much disk space it'll take in
+> advance, am I right ? Is the filesystem accounting for the snapshot s=
+ize
+> as well ? or is it hidden ?
 
- }
+It's not hidden, it's accounted for as a regular file (usually owned by=
+ root).
+You need a bit of scripting to gather the disk space used by snapshots =
+(du).
 
-+struct kmem_cache *jbd2_transaction_cache;
-+
-+static int journal_init_transaction_cache(void)
-+{
-+	J_ASSERT(jbd2_transaction_cache == NULL);
-+	jbd2_transaction_cache = kmem_cache_create("jbd2_transaction",
-+						   sizeof(transaction_t),
-+						   0, 0, NULL);
-+	if (jbd2_transaction_cache == NULL) {
-+		printk(KERN_EMERG "JBD2: failed to create transaction cache\n");
-+		return -ENOMEM;
-+	}
-+	return 0;
-+}
-+
-+static void jbd2_journal_destroy_transaction_cache(void)
-+{
-+	kmem_cache_destroy(jbd2_transaction_cache);
-+}
-+
- /*
-  * Module startup and shutdown
-  */
-@@ -2384,6 +2405,8 @@ static int __init journal_init_caches(void)
- 		ret = journal_init_jbd2_journal_head_cache();
- 	if (ret == 0)
- 		ret = journal_init_handle_cache();
-+	if (ret == 0)
-+		ret = journal_init_transaction_cache();
- 	return ret;
- }
+In ANY snapshots implementation, you can get ENOSPC on operations,
+which traditionally could not produce this error.
+This statement is also true for thin provisioning implementations.
+The question is how the implementation handles these situations.
 
-@@ -2392,6 +2415,7 @@ static void jbd2_journal_destroy_caches(void)
- 	jbd2_journal_destroy_revoke_caches();
- 	jbd2_journal_destroy_jbd2_journal_head_cache();
- 	jbd2_journal_destroy_handle_cache();
-+	jbd2_journal_destroy_transaction_cache();
- 	jbd2_journal_destroy_slabs();
- }
+What I came to realize on LSF, is that my implementation is the only
+one (of LVM and btrfs) that tries to deal with the ENOSPC issue and
+does a good job most of the time.
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 3eec82d..58fbec7 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -131,7 +131,7 @@ static int start_this_handle(journal_t *journal, handle_t *handle,
+I deal with it by reserving space for metadata COW on snapshot
+take, so if a future ENOSPC during metadata COW is possible,
+snapshot take will fail with ENOSPC.
 
- alloc_transaction:
- 	if (!journal->j_running_transaction) {
--		new_transaction = kzalloc(sizeof(*new_transaction), gfp_mask);
-+		new_transaction = jbd2_alloc_transaction(gfp_mask);
- 		if (!new_transaction) {
- 			/*
- 			 * If __GFP_FS is not present, then we may be
-@@ -160,7 +160,7 @@ repeat:
- 	if (is_journal_aborted(journal) ||
- 	    (journal->j_errno != 0 && !(journal->j_flags & JBD2_ACK_ERR))) {
- 		read_unlock(&journal->j_state_lock);
--		kfree(new_transaction);
-+		jbd2_free_transaction(new_transaction);
- 		return -EROFS;
- 	}
+As for ENOSPC during regular file rewrite, that's not such a big proble=
+m.
+The application simply gets ENOSPC as if the file was sparse to begin
+with. It may not be pleasant if the application have fallocated the spa=
+ce
+and used mmap/close without msync...
+The only way I see around this issue is reserving space on mmap time
+(and returning ENOSPC at that time), but again, this issue is shared
+with btrfs, but is easier to fix (I think) with ext4 snapshots.
 
-@@ -282,7 +282,8 @@ repeat:
- 	read_unlock(&journal->j_state_lock);
 
- 	lock_map_acquire(&handle->h_lockdep_map);
--	kfree(new_transaction);
-+	jbd2_free_transaction(new_transaction);
-+
- 	return 0;
- }
 
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 4ecb7b1..803b5c4 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1184,6 +1184,23 @@ static inline void jbd2_free_handle(handle_t *handle)
- }
 
- /*
-+ * transaction management
-+ */
-+extern struct kmem_cache *jbd2_transaction_cache;
-+
-+static inline transaction_t *jbd2_alloc_transaction(gfp_t gfp_flags)
-+{
-+	return kmem_cache_zalloc(jbd2_transaction_cache, gfp_flags);
-+}
-+
-+static inline void jbd2_free_transaction(transaction_t *transaction)
-+{
-+	if (transaction)
-+		kmem_cache_free(jbd2_transaction_cache, transaction);
-+}
-+
-+
-+/*
-  * jbd2_inode management (optional, for those file systems that want to use
-  * dynamically allocated jbd2_inode structures)
-  */
--- 
-1.7.4.1
+>
+> Thanks!
+> -Lukas
+>
+>>
+>> >
+>> >> can give the question the answer that ext4 can snapshot per-file =
+or
+>> >> per-directory, and can exclude some files or directories from bei=
+ng
+>> >> snapshotted.
+>> >>
+>> >
+>> > So the full answer is that ext4 snapshot CAN exclude
+>> > certain files/dirs from snapshot, but this feature is not fully im=
+plemented yet
+>> > (I have it in a dev branch)
+>> >
+>> >> --
+>> >> Best Wishes
+>> >> Yongqiang Yang
+>> >>
+>> >
+>>
+>>
+>>
+>>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
