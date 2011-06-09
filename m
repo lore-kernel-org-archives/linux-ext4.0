@@ -1,48 +1,74 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: Port xfstests 145, 161, 175, 176, 185?
-Date: Thu, 09 Jun 2011 12:17:59 -0700
-Message-ID: <4DF11C67.8090702@linux.vnet.ibm.com>
-References: <4DEFC41A.9070701@linux.vnet.ibm.com> <20110609110826.GA14899@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Updated heuristics for mke2fs on large filesystems
+Date: Thu, 9 Jun 2011 17:55:06 -0600
+Message-ID: <97674ACD-2827-443F-98C8-A43B39613229@dilger.ca>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>
-To: Christoph Hellwig <hch@infradead.org>
+Cc: ext4 List <linux-ext4@vger.kernel.org>
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e7.ny.us.ibm.com ([32.97.182.137]:42845 "EHLO e7.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750943Ab1FITSD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 9 Jun 2011 15:18:03 -0400
-In-Reply-To: <20110609110826.GA14899@infradead.org>
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:9009 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755187Ab1FIXzJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Jun 2011 19:55:09 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 06/09/2011 04:08 AM, Christoph Hellwig wrote:
-> On Wed, Jun 08, 2011 at 11:48:58AM -0700, Allison Henderson wrote:
->> During one of my reviews for the punch hole tests patch set it was
->> mentioned that it would be helpful to take the xfstests 145, 161,
->> 175, 176, 185 and modify them such that they can run with out
->> requiring the dmapi.  These tests contain some more interesting
->> punch hole tests, but they dont normally run unless there is support
->> for dmapi.
->>
->> I did take a peek at them and I was thinking that if we decide to do
->> this, we would probably need to do something like introduce a new
->> set of source code that is similar to what is seen under the dmapi
->> folder, but modified to use a generic interface instead of the dmapi
->> libraries.  We could try to merge them into a single code path, but
->> I think that may introduce more complexities than would be
->> desirable.
->
-> Most of it should be doable using xfs_io.  If it's nessecary to write
-> new source files because of e.g. concurrency tests that we can't easily
-> do from xfs_io please add new source files to the src/ directory.
->
-> Also, please don't rewrite the actual existing dmapi test cases, but
-> add new ones testing these patterns using the fallocate interface, as
-> the coverage for the dmapi interface still is useful.
->
+As discussed previously, there was an interest to solicit input on
+changing the default parameters to mke2fs so that it takes newer disks
+into account better by default, instead of expecting users to know the
+right tunables to pass.
 
-Alrighty, thx Christoph.  I will keep this work item on my todo list then.
+Some of the issues proposed were:
+
+- higher inode ratio (up 1MB for large LUNs)
+
+ With multi-TB drives, and modern media files, the average file size
+ in large filesystems is much larger than the default of 16kB/inode.
+ The   "unint_bg" feature keeps a high-watermark for inode table usage,
+ but errors in the group descriptor checksum with large inode tables
+ can cause major slowdowns to e2fsck.  Also, it takes a serious amount
+ of time to format the filesystem when zeroing the inode tables, if
+ the kernel doesn't support automatic itable zeroing.
+
+
+- flex_bg aligned to s_raid_stride, with aligned inode tables/bitmaps
+
+ With newer versions of mke2fs, it automatically detects the underlying
+ geometry of the device (if available).  This is used to specify the
+ s_raid_stride and s_raid_stripe_size values in the superblock, which
+ aid in aligning the block/inode bitmaps, for non-flex_bg filesystems.
+ For flex_bg filesystems it would make sense to make the flex_bg factor
+ equal to the s_raid_stripe_size, so that the block/inode bitmaps can
+ be sized/aligned on RAID stripe or SSD erase block boundaries.
+
+
+- ability to specify journal offset directly
+
+ This is useful for being able to align the journal on RAID boundaries,
+ or allocated within an SSD portion of the filesystem, if desired.
+
+
+- larger journal size
+
+ There is data that indicates having a larger journal size can improve
+ IO performance with many concurrent threads.  This needs to be balanced
+ against the journal consuming too much RAM on systems that don't have
+ much.
+
+
+- lower reserved space ratio
+
+ Some people feel that reserving 5% of very large filesystems wastes too
+ much space, and the reserved space ratio should be capped at some limit
+ regardless of how large the filesystem is.
+
+
+
+Cheers, Andreas
+
+
+
+
+
