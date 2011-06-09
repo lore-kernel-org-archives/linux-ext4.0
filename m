@@ -1,40 +1,73 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: Port xfstests 145, 161, 175, 176, 185?
-Date: Thu, 9 Jun 2011 07:08:26 -0400
-Message-ID: <20110609110826.GA14899@infradead.org>
-References: <4DEFC41A.9070701@linux.vnet.ibm.com>
+From: "Amir G." <amir73il@users.sourceforge.net>
+Subject: Re: LVM vs. Ext4 snapshots (was: [PATCH v1 00/30] Ext4 snapshots)
+Date: Thu, 9 Jun 2011 14:44:47 +0300
+Message-ID: <BANLkTin8r-8bomDJp9EahO5Ckr+Amw8RtQ@mail.gmail.com>
+References: <BANLkTimyBGfg4+ovGsiGqpCz345qVmU_7A@mail.gmail.com>
+	<20110609105220.GA3300@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>
-To: Allison Henderson <achender@linux.vnet.ibm.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <4DEFC41A.9070701@linux.vnet.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Mike Snitzer <snitzer@redhat.com>,
+	Lukas Czerner <lczerner@redhat.com>,
+	linux-ext4@vger.kernel.org, tytso@mit.edu,
+	linux-kernel@vger.kernel.org, sandeen@redhat.com
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:37114 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753919Ab1FILoz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Jun 2011 07:44:55 -0400
+In-Reply-To: <20110609105220.GA3300@infradead.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 08, 2011 at 11:48:58AM -0700, Allison Henderson wrote:
-> During one of my reviews for the punch hole tests patch set it was
-> mentioned that it would be helpful to take the xfstests 145, 161,
-> 175, 176, 185 and modify them such that they can run with out
-> requiring the dmapi.  These tests contain some more interesting
-> punch hole tests, but they dont normally run unless there is support
-> for dmapi.
-> 
-> I did take a peek at them and I was thinking that if we decide to do
-> this, we would probably need to do something like introduce a new
-> set of source code that is similar to what is seen under the dmapi
-> folder, but modified to use a generic interface instead of the dmapi
-> libraries.  We could try to merge them into a single code path, but
-> I think that may introduce more complexities than would be
-> desirable.
+On Thu, Jun 9, 2011 at 1:52 PM, Christoph Hellwig <hch@infradead.org> w=
+rote:
+> On Wed, Jun 08, 2011 at 09:26:11PM +0300, Amir G. wrote:
+>> In my old next3.sf.net wiki, which I do update from time to time,
+>> I listed 4 advantages of Ext4 (then next3) snapshots over LVM:
+>> * Performance: only small overhead to write performance with snapsho=
+ts
+>> * Scalability: no extra overhead per snapshot
+>> * Maintenance: no need to pre-allocate disk space for snapshots
+>> * Persistence: snapshots don't vanish when disk is full
+>>
+>> As far as I know, the only thing that has changed from dm-snap
+>> to dm-multisnap is the Scalability.
+>
+> I don't think you have looked at dm-multisnap at all, have you?
 
-Most of it should be doable using xfs_io.  If it's nessecary to write
-new source files because of e.g. concurrency tests that we can't easily
-do from xfs_io please add new source files to the src/ directory.
+You are on to me. I never tried it out or looked at the patches.
+I did read about the multisnap shared storage target, but didn't know
+about the thinp target.
 
-Also, please don't rewrite the actual existing dmapi test cases, but
-add new ones testing these patterns using the fallocate interface, as
-the coverage for the dmapi interface still is useful.
+=46unny, I talked with Alasdair on LSF and asked him about the status
+of multisnap and he only said there have been several implementations,
+but didn't mention the thin provisioning target... or maybe I
+understood him wrong.
+
+So I guess that addresses the Maintenance and Persistence issues.
+I'm sure it cannot thin provision the entire space for fs and snapsots
+like ext4 snapshots do, but I'll have to read about it some more.
+With regards to Performance, I will just have to run benchmarks, won't =
+I ;-)
+
+>=A0It addresses all your points and many more. =A0Take a look at the c=
+ode which
+> is in the multisnap branch of https://github.com/jthornber/linux-2.6/=
+,
+> there's also some slides on it from Linuxtag at:
+>
+> https://github.com/jthornber/storage-papers/blob/master/thinp-snapsho=
+ts-2011/thinp-and-multisnap.otp?raw=3Dtrue
+>
+
+Thanks for the pointers!
+These didn't come up in my googling.
+
+Amir.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
