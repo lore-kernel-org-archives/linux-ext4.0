@@ -1,70 +1,39 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] jbd2: Fix oops in jbd2_journal_remove_journal_head()
-Date: Wed, 8 Jun 2011 21:31:42 +0200
-Message-ID: <20110608193142.GH5361@quack.suse.cz>
-References: <1306768378-27748-1-git-send-email-jack@suse.cz>
- <20110606141630.GK7180@thunk.org>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: Re: [PATCH v1 00/30] Ext4 snapshots
+Date: Thu, 9 Jun 2011 09:59:50 +0800
+Message-ID: <BANLkTikUXdvMQROYEdxnyfcPuB0e9ozMOg@mail.gmail.com>
+References: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
+	<alpine.LFD.2.00.1106071735100.11385@dhcp-27-109.brq.redhat.com>
+	<BANLkTikAB-RDDS8PMMrFK-OuY6PuavBixA@mail.gmail.com>
+	<alpine.LFD.2.00.1106081114240.5026@dhcp-27-109.brq.redhat.com>
+	<BANLkTi=T1OtyRSWNTA6xhkTy5uaHWqA_XA@mail.gmail.com>
+	<alpine.LFD.2.00.1106081716200.6609@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "Amir G." <amir73il@users.sourceforge.net>,
+	linux-ext4@vger.kernel.org, tytso@mit.edu,
+	linux-kernel@vger.kernel.org, sandeen@redhat.com
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:43462 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755562Ab1FHTbp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 8 Jun 2011 15:31:45 -0400
-Content-Disposition: inline
-In-Reply-To: <20110606141630.GK7180@thunk.org>
+Received: from mail-px0-f179.google.com ([209.85.212.179]:45393 "EHLO
+	mail-px0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750890Ab1FIB7u (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Jun 2011 21:59:50 -0400
+In-Reply-To: <alpine.LFD.2.00.1106081716200.6609@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 06-06-11 10:16:30, Ted Tso wrote:
-> On Mon, May 30, 2011 at 05:12:58PM +0200, Jan Kara wrote:
-> >  /*
-> > - * For the unlocked version of this call, also make sure that any
-> > - * hanging journal_head is cleaned up if necessary.
-> > + * For the unlocked version of this call, also drop buffer_head reference.
-> >   *
-> >   * __jbd2_journal_refile_buffer is usually called as part of a single locked
->      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-> 
-> Doesn't this paragraph refer to jbd2_journal_refile_buffer(), not
-> __jbd2_journal_refile_buffer()?  Or am I missing something?
-  Hmm, the comment seems to be wrong. The comment about buffer_head
-reference does not apply anymore. I'll fix that.
+> But I do understand the difference. And also, when it comes to fs level
+> snapshotting I would suspect that it would do something we can not do
+> with the current solutions, for example per-file or per-directory snapshots,
+> cat ext4 snapshots do that ?
+Hi Lukas,
 
-> >  void jbd2_journal_refile_buffer(journal_t *journal, struct journal_head *jh)
-> >  {
-> >  	struct buffer_head *bh = jh2bh(jh);
-> >  
-> > +	/* Get reference so that buffer cannot be freed before we unlock it */
-> > +	get_bh(bh);
-> 
-> OK, so we're adding a get_bh(bh) call to jbd2_journal_refile_buffer(),
-> which we're not freeing later in the function.  So this means every
-> single place where we call jbd2_journal_refile_buffer(), we'd better
-> add put_bh(bh) or bhrelse(bh) call, right?
-Well, we are adding get_bh() but we are now also using
-jbd2_journal_put_journal_head() instead of
-jbd2_journal_remove_journal_head() and the former call does additional
-__brelse().
+I noticed that there is no answer to this question in the thread.  I
+can give the question the answer that ext4 can snapshot per-file or
+per-directory, and can exclude some files or directories from being
+snapshotted.
 
-Probably a better way to look at this is that
-jbd2_journal_remove_journal_head() now gets a reference and puts it at the
-end of that function. jbd2_journal_put_journal_head() cares about releasing
-bh reference held by journal_head. So the logic ends up being simpler than
-it used to be.
-
-> So in fs/jbd2/commit.c, line 418, in jbd2_journal_commit_transaction(),
-> I see a call to jbd2_journal_refile_buffer(), which the patch doesn't
-> seem to adjust.  Looks like this could cause a buffer leak?
-> 
-> In your testing, have you checked to the slab cache to make sure there
-> isn't any memory leakage going on with buffer heads?
-  Not really - I now ran fsxlinux and fsstress and both the number of
-buffer_head and journal_head slabs seem to be under control.
-
-								Honza
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Best Wishes
+Yongqiang Yang
