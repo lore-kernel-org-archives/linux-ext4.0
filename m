@@ -1,123 +1,41 @@
-From: Joe Thornber <thornber@redhat.com>
-Subject: Re: LVM vs. Ext4 snapshots (was: [PATCH v1 00/30] Ext4 snapshots)
-Date: Fri, 10 Jun 2011 16:01:30 +0100
-Message-ID: <20110610150129.GA17585@ubuntu>
-References: <BANLkTimyBGfg4+ovGsiGqpCz345qVmU_7A@mail.gmail.com>
- <BANLkTik20iYN4c9faKD9dzerehazWTwTFw@mail.gmail.com>
- <BANLkTikKRuPu_NX49vr0w-XeN0ZnWo+9vg@mail.gmail.com>
- <alpine.LFD.2.00.1106101101020.4502@dhcp-27-109.brq.redhat.com>
- <20110610101142.GA10144@ubuntu>
- <BANLkTi=zjU3-FV3AVpYsknzKFgaS7byb_Q@mail.gmail.com>
+From: Phillip Susi <psusi@cfl.rr.com>
+Subject: Re: 64bit filesystem questions
+Date: Fri, 10 Jun 2011 11:19:45 -0400
+Message-ID: <4DF23611.7000307@cfl.rr.com>
+References: <4DF0DA54.1080005@cfl.rr.com> <692307AB-41C8-4BC7-9D01-E5798CAB3548@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Lukas Czerner <lczerner@redhat.com>,
-	Mike Snitzer <snitzer@redhat.com>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, linux-kernel@vger.kernel.org, lvm-devel@redhat.com,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: "Amir G." <amir73il@users.sourceforge.net>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <BANLkTi=zjU3-FV3AVpYsknzKFgaS7byb_Q@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:58988 "EHLO
+	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757588Ab1FJPTr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Jun 2011 11:19:47 -0400
+In-Reply-To: <692307AB-41C8-4BC7-9D01-E5798CAB3548@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jun 10, 2011 at 05:15:37PM +0300, Amir G. wrote:
-> On Fri, Jun 10, 2011 at 1:11 PM, Joe Thornber <thornber@redhat.com> w=
-rote:
-> > FUA/flush allows us to treat multisnap devices as if they are devic=
-es
-> > with a write cache. =A0When a FUA/FLUSH bio comes in we ensure we c=
-ommit
-> > metadata before allowing the bio to continue. =A0A crash will lose =
-data
-> > that is in the write cache, same as any real block device with a wr=
-ite
-> > cache.
-> >
->=20
-> Now, here I am confused.
-> Reducing the problem to write cache enabled device sounds valid,
-> but I am not yet convinced it is enough.
-> In ext4 snapshots I had to deal with 'internal ordering' between I/O
-> of origin data and snapshot metadata and data.
-> That means that every single I/O to origin, which overwrites shared d=
-ata,
-> must hit the media *after* the original data has been copied to snaps=
-hot
-> and the snapshot metadata and data are secure on media.
-> In ext4 this is done with the help of JBD2, which anyway holds back m=
-etadata
-> writes until commit.
-> It could be that this problem is only relevant to _extenal_ origin, w=
-hich
-> are not supported for multisnap, but frankly, as I said, I am too con=
-fused
-> to figure out if there is yet an ordering problem for _internal_ orig=
-in or not.
+On 6/9/2011 8:08 PM, Andreas Dilger wrote:
+> There is only a single block pointer for each bitmap per group.  That said,
+> with flex_bg this is mostly meaningless, since the bitmaps do not have to
+> be located in the group, and a flex group is the same as a virtual group
+> that is {flex_bg_factor} times as large.
 
-Ok, let me talk you through my solution.  The relevant code is here if
-you want to sing along:
-https://github.com/jthornber/linux-2.6/blob/multisnap/drivers/md/dm-mul=
-tisnap.c
+Of course there is only a single pointer because there is only a single 
+bitmap.  What does this have to do with limiting the block count to 8 * 
+blocksize?
 
-We use a standard copy-on-write btree to store the mappings for the
-devices (note I'm talking about copy-on-write of the metadata here,
-not the data).  When you take an internal snapshot you clone the root
-node of the origin btree.  After this there is no concept of an
-origin or a snapshot.  They are just two device trees that happen to
-point to the same data blocks.
+>> 3)  Why does 64bit disable the resize inode?
+>
+> Because the on-disk format of the resize inode is only suitable for 32-bit
+> filesystems (it is an indirect-block mapped file and cannot reserve blocks
+> beyond 2^32).  The "future" way to resize filesystems is using the META_BG
+> feature, but the ability to use it has not been integrated into the kernel
+> or e2fsprogs yet.
 
-When we get a write in we decide if it's to a shared data block using
-some timestamp magic.  If it is, we have to break sharing.
+Ahh, right... no indirect blocks.  Couldn't and shouldn't the resize 
+inode just use extents instead?  Also I thought that META_BG was an idea 
+that eventually become FLEX_BG and has been dropped?
 
-Let's say we write to a shared block in what was the origin.  The
-steps are:
-
-i) plug io further to this physical block. (see bio_prison code).
-
-ii) quiesce any read io to that shared data block.  Obviously
-including all devices that share this block.  (see deferred_set code)
-
-iii) copy the data block to a newly allocate block.  This step can be
-missed out if the io covers the block. (schedule_copy).
-
-iv) insert the new mapping into the origin's btree
-(process_prepared_mappings).  This act of inserting breaks some
-sharing of btree nodes between the two devices.  Breaking sharing only
-effects the btree of that specific device.  Btrees for the other
-devices that share the block never change.  The btree for the origin
-device as it was after the last commit is untouched, ie. we're using
-persistent data structures in the functional programming sense.
-
-v) unplug io to this physical block, including the io that triggered
-the breaking of sharing.
-
-Steps (ii) and (iii) occur in parallel.
-
-The main difference to what you described is the metadata _doesn't_
-need to be committed before the io continues.  We get away with this
-because the io is always written to a _new_ block.  If there's a
-crash, then:
-
-- The origin mapping will point to the old origin block (the shared
-  one).  This will contain the data as it was before the io that
-  triggered the breaking of sharing came in.
-
-- The snap mapping still points to the old block.  As it would after
-  the commit.
-
-The downside of this scheme is the timestamp magic isn't perfect, and
-will continue to think that data block in the snapshot device is
-shared even after the write to the origin has broken sharing.  I
-suspect data blocks will typically be shared by many different
-devices, so we're breaking sharing n + 1 times, rather than n, where n
-is the number of devices that reference this data block.  At the
-moment I think the benefits far, far out weigh the disadvantages.
-
-- Joe
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
