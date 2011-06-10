@@ -1,92 +1,61 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [patch]check NULL pointer
-Date: Fri, 10 Jun 2011 10:32:35 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1106101029160.4502@dhcp-27-109.brq.redhat.com>
-References: <1307590292.15392.71.camel@sli10-conroe>  <alpine.LFD.2.00.1106091112560.4138@dhcp-27-109.brq.redhat.com>  <4DF0DE02.1090008@redhat.com> <1307687692.15392.79.camel@sli10-conroe>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: [BUG] ext4 timestamps corruption
+Date: Fri, 10 Jun 2011 17:27:40 +0900
+Message-ID: <4DF1D57C.3030107@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Lukas Czerner <lczerner@redhat.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"Ted Ts'o" <tytso@mit.edu>
-To: Shaohua Li <shaohua.li@intel.com>
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+To: Theodore Tso <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53248 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751372Ab1FJIcl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 10 Jun 2011 04:32:41 -0400
-In-Reply-To: <1307687692.15392.79.camel@sli10-conroe>
+Received: from TYO200.gate.nec.co.jp ([202.32.8.215]:37911 "EHLO
+	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751372Ab1FJIiG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Jun 2011 04:38:06 -0400
+Received: from tyo202.gate.nec.co.jp ([10.7.69.202])
+	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id p5A8c4qo013722
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 10 Jun 2011 17:38:05 +0900 (JST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 10 Jun 2011, Shaohua Li wrote:
+Hi,
 
-> On Thu, 2011-06-09 at 22:51 +0800, Eric Sandeen wrote:
-> > On 6/9/11 4:24 AM, Lukas Czerner wrote:
-> > > On Thu, 9 Jun 2011, Shaohua Li wrote:
-> > > 
-> > >> orig_data could be NULL.
-> > > 
-> > > Now, that is the commit description :). Could you please be more
-> > > descriptive in the "descritpion" ? Also the subject is not right either,
-> > > please see Documentation/SubmittingPatches
-> > 
-> > Yes; if possible please use the commit message to describe how/why orig_data
-> > can be NULL; a testcase if one exists; the resulting flaw (null pointer deref?)
-> > etc.
-> > 
-> > something like:
-> > 
-> > Subject: [PATCH] ext4: check for NULL orig_data pointer in mount paths
-> > 
-> > The orig_data pointer in ext4_fill_super()  and ext4_remount()
-> > can be null if < ??? >, which can lead to < ??? > in the mount
-> > and remount paths.  This can be demonstrated by < ??? >.  
-> > To avoid this, we can simply test for the null pointer
-> > and return an error in ext4_fill_super() and ext4_remount().
-> I thought the reason is pretty straightforward, anyway here is the
-> updated patch.
-> 
-> Subject: [patch]ext4: check NULL pointer for mount and remount
-> 
-> orig_data could be NULL, because the memory allocation of kstrdup() could fail.
-> Add the NULL check.
+Officially, ext4 can handle its timestamps until 2514
+with 32bit entries plus EPOCH_BIT (2bits).
+But when timestamps values use 32+ bit
+(e.g. 2038-01-19 9:14:08 0x0000000080000000),
+we can get corrupted values.
+Because sign bit is overwritten by transferring value
+between kernel space and user space.
 
-I am sorry, but as I pointed out in previous mail this is not true.
-*orig_data can be also NULL in the case that *data is NULL and hence
-there is no reason for exiting with error. Also please use the subject
-Eric suggested.
+This can be happened with kernel 3.0.0-rc2 (Also older kernel)
+on x86_64.
 
-Thanks!
--Lukas
+# This issue is already on Bugzilla,
+  does anybody know this current status?
+https://bugzilla.kernel.org/show_bug.cgi?id=23732
 
-> 
-> Signed-off-by: Shaohua Li <shaohua.li@intel.com>
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index cc5c157..45fc255 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -3057,6 +3057,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	unsigned int journal_ioprio = DEFAULT_JOURNAL_IOPRIO;
->  	ext4_group_t first_not_zeroed;
->  
-> +	if (!orig_data)
-> +		return ret;
->  	sbi = kzalloc(sizeof(*sbi), GFP_KERNEL);
->  	if (!sbi)
->  		goto out_free_orig;
-> @@ -4285,6 +4287,8 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
->  #endif
->  	char *orig_data = kstrdup(data, GFP_KERNEL);
->  
-> +	if (!orig_data)
-> +		return -ENOMEM;
->  	/* Store the original options */
->  	lock_super(sb);
->  	old_sb_flags = sb->s_flags;
-> 
-> 
-> 
+Reproduce steps are as follows:
+# System time is set to UTC.
 
--- 
+# mount -t ext4 /dev/sda8 /mnt/mp1
+
+# touch -t 203801190314.08 /mnt/mp1/FILE
+
+# umount /mnt/mp1
+# mount -t ext4 /dev/sda8 /mnt/mp1
+
+# stat /mnt/mp1/FILE
+  File: `/mnt/mp1/FILE'
+  Size: 0         	Blocks: 0          IO Block: 4096   regular empty file
+Device: 808h/2056d	Inode: 12          Links: 1
+Access: (0644/-rw-r--r--)  Uid: (    0/    root)   Gid: (    0/    root)
+Access: 1901-12-13 20:45:52.000000000 +0000       <-----
+Modify: 1901-12-13 20:45:52.000000000 +0000       <-----
+Change: 2011-06-10 03:57:39.595385951 +0100
+ Birth: -
+
+Regards,
+Akira Fujita
+
