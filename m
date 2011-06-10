@@ -1,80 +1,200 @@
-From: Shaohua Li <shaohua.li@intel.com>
-Subject: Re: [patch]check NULL pointer
-Date: Fri, 10 Jun 2011 14:34:52 +0800
-Message-ID: <1307687692.15392.79.camel@sli10-conroe>
-References: <1307590292.15392.71.camel@sli10-conroe>
-	 <alpine.LFD.2.00.1106091112560.4138@dhcp-27-109.brq.redhat.com>
-	 <4DF0DE02.1090008@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Lukas Czerner <lczerner@redhat.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Ted Ts'o <tytso@mit.edu>
-To: Eric Sandeen <sandeen@redhat.com>
+From: Andreas Dilger <adilger@whamcloud.com>
+Subject: [PATCH] misc: fix compile warnings on OSX
+Date: Fri, 10 Jun 2011 00:59:24 -0600
+Message-ID: <1307689164-11902-1-git-send-email-adilger@whamcloud.com>
+Cc: Andreas Dilger <adilger@whamcloud.com>
+To: tytso@mit.edu, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga09.intel.com ([134.134.136.24]:11101 "EHLO mga09.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751803Ab1FJGez (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 10 Jun 2011 02:34:55 -0400
-In-Reply-To: <4DF0DE02.1090008@redhat.com>
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:59355 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751803Ab1FJG70 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Jun 2011 02:59:26 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 2011-06-09 at 22:51 +0800, Eric Sandeen wrote:
-> On 6/9/11 4:24 AM, Lukas Czerner wrote:
-> > On Thu, 9 Jun 2011, Shaohua Li wrote:
-> > 
-> >> orig_data could be NULL.
-> > 
-> > Now, that is the commit description :). Could you please be more
-> > descriptive in the "descritpion" ? Also the subject is not right either,
-> > please see Documentation/SubmittingPatches
-> 
-> Yes; if possible please use the commit message to describe how/why orig_data
-> can be NULL; a testcase if one exists; the resulting flaw (null pointer deref?)
-> etc.
-> 
-> something like:
-> 
-> Subject: [PATCH] ext4: check for NULL orig_data pointer in mount paths
-> 
-> The orig_data pointer in ext4_fill_super()  and ext4_remount()
-> can be null if < ??? >, which can lead to < ??? > in the mount
-> and remount paths.  This can be demonstrated by < ??? >.  
-> To avoid this, we can simply test for the null pointer
-> and return an error in ext4_fill_super() and ext4_remount().
-I thought the reason is pretty straightforward, anyway here is the
-updated patch.
+The BLKFLSBUF and FDFLUSH ioctls are Linux specific, and do not
+really have anything to do with __GNUC__ (which is also used on
+OS/X and Solaris).  Only print these warnings on Linux systems.
 
-Subject: [patch]ext4: check NULL pointer for mount and remount
+statfs64() is deprecated on OSX and generates a deliberate warning.
+Fix some other warnings that show up on OSX builds.
 
-orig_data could be NULL, because the memory allocation of kstrdup() could fail.
-Add the NULL check.
+Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
+---
+ lib/e2p/fgetflags.c  |    8 ++++----
+ lib/e2p/fsetflags.c  |   15 ++++++++-------
+ lib/e2p/getflags.c   |    5 +++--
+ lib/e2p/setflags.c   |    5 +++--
+ lib/ext2fs/flushb.c  |   12 ++++--------
+ lib/ext2fs/getsize.c |    2 +-
+ 6 files changed, 23 insertions(+), 24 deletions(-)
 
-Signed-off-by: Shaohua Li <shaohua.li@intel.com>
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index cc5c157..45fc255 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3057,6 +3057,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	unsigned int journal_ioprio = DEFAULT_JOURNAL_IOPRIO;
- 	ext4_group_t first_not_zeroed;
- 
-+	if (!orig_data)
-+		return ret;
- 	sbi = kzalloc(sizeof(*sbi), GFP_KERNEL);
- 	if (!sbi)
- 		goto out_free_orig;
-@@ -4285,6 +4287,8 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+diff --git a/lib/e2p/fgetflags.c b/lib/e2p/fgetflags.c
+index d66f8e1..ca3ea16 100644
+--- a/lib/e2p/fgetflags.c
++++ b/lib/e2p/fgetflags.c
+@@ -63,7 +63,7 @@ int fgetflags (const char * name, unsigned long * flags)
  #endif
- 	char *orig_data = kstrdup(data, GFP_KERNEL);
  
-+	if (!orig_data)
-+		return -ENOMEM;
- 	/* Store the original options */
- 	lock_super(sb);
- 	old_sb_flags = sb->s_flags;
-
+ 	return 0;
+-#else
++#else /* !HAVE_STAT_FLAGS || (APPLE_DARWIN && HAVE_EXT2_IOCTLS) */
+ #if HAVE_EXT2_IOCTLS
+ 	int fd, r, f, save_errno = 0;
+ 
+@@ -83,15 +83,15 @@ int fgetflags (const char * name, unsigned long * flags)
+ 	if (save_errno)
+ 		errno = save_errno;
+ 	return r;
+-#else
++#else /* APPLE_DARWIN */
+    f = -1;
+    save_errno = syscall(SYS_fsctl, name, EXT2_IOC_GETFLAGS, &f, 0);
+    *flags = f;
+    return (save_errno);
+-#endif
++#endif /* !APPLE_DARWIN */
++notsupp:
+ #endif /* HAVE_EXT2_IOCTLS */
+ #endif
+-notsupp:
+ 	errno = EOPNOTSUPP;
+ 	return -1;
+ }
+diff --git a/lib/e2p/fsetflags.c b/lib/e2p/fsetflags.c
+index 30437a2..08dd114 100644
+--- a/lib/e2p/fsetflags.c
++++ b/lib/e2p/fsetflags.c
+@@ -51,7 +51,6 @@
+ 
+ int fsetflags (const char * name, unsigned long flags)
+ {
+-	struct stat buf;
+ #if HAVE_CHFLAGS && !(APPLE_DARWIN && HAVE_EXT2_IOCTLS)
+ 	unsigned long bsd_flags = 0;
+ 
+@@ -69,9 +68,10 @@ int fsetflags (const char * name, unsigned long flags)
+ #endif
+ 
+ 	return chflags (name, bsd_flags);
+-#else
++#else /* !HAVE_CHFLAGS || (APPLE_DARWIN && HAVE_EXT2_IOCTLS) */
+ #if HAVE_EXT2_IOCTLS
+ 	int fd, r, f, save_errno = 0;
++	struct stat buf;
+ 
+ 	if (!lstat(name, &buf) &&
+ 	    !S_ISREG(buf.st_mode) && !S_ISDIR(buf.st_mode)) {
+@@ -88,14 +88,15 @@ int fsetflags (const char * name, unsigned long flags)
+ 	close (fd);
+ 	if (save_errno)
+ 		errno = save_errno;
+-#else
+-   f = (int) flags;
+-   return syscall(SYS_fsctl, name, EXT2_IOC_SETFLAGS, &f, 0);
+-#endif
++#else /* APPLE_DARWIN */
++	f = (int) flags;
++	return syscall(SYS_fsctl, name, EXT2_IOC_SETFLAGS, &f, 0);
++#endif /* !APPLE_DARWIN */
+ 	return r;
++
++notsupp:
+ #endif /* HAVE_EXT2_IOCTLS */
+ #endif
+-notsupp:
+ 	errno = EOPNOTSUPP;
+ 	return -1;
+ }
+diff --git a/lib/e2p/getflags.c b/lib/e2p/getflags.c
+index a738fed..e871684 100644
+--- a/lib/e2p/getflags.c
++++ b/lib/e2p/getflags.c
+@@ -57,12 +57,13 @@ int getflags (int fd, unsigned long * flags)
+ 	if (!fstat(fd, &buf) &&
+ 	    !S_ISREG(buf.st_mode) && !S_ISDIR(buf.st_mode))
+ 		goto notsupp;
+-	r = ioctl (fd, EXT2_IOC_GETFLAGS, &f);
++	r = ioctl(fd, EXT2_IOC_GETFLAGS, &f);
+ 	*flags = f;
++
+ 	return r;
++notsupp:
+ #endif /* HAVE_EXT2_IOCTLS */
+ #endif
+-notsupp:
+ 	errno = EOPNOTSUPP;
+ 	return -1;
+ }
+diff --git a/lib/e2p/setflags.c b/lib/e2p/setflags.c
+index cc00b20..72cf441 100644
+--- a/lib/e2p/setflags.c
++++ b/lib/e2p/setflags.c
+@@ -38,7 +38,6 @@
+ 
+ int setflags (int fd, unsigned long flags)
+ {
+-	struct stat buf;
+ #if HAVE_CHFLAGS
+ 	unsigned long bsd_flags = 0;
+ 
+@@ -58,6 +57,7 @@ int setflags (int fd, unsigned long flags)
+ 	return fchflags (fd, bsd_flags);
+ #else
+ #if HAVE_EXT2_IOCTLS
++	struct stat buf;
+ 	int	f;
+ 
+ 	if (!fstat(fd, &buf) &&
+@@ -66,7 +66,8 @@ int setflags (int fd, unsigned long flags)
+ 		return -1;
+ 	}
+ 	f = (int) flags;
+-	return ioctl (fd, EXT2_IOC_SETFLAGS, &f);
++
++	return ioctl(fd, EXT2_IOC_SETFLAGS, &f);
+ #endif /* HAVE_EXT2_IOCTLS */
+ #endif
+ 	errno = EOPNOTSUPP;
+diff --git a/lib/ext2fs/flushb.c b/lib/ext2fs/flushb.c
+index 394bb07..ee0093a 100644
+--- a/lib/ext2fs/flushb.c
++++ b/lib/ext2fs/flushb.c
+@@ -65,17 +65,13 @@ errcode_t ext2fs_sync_device(int fd, int flushb)
+ #ifdef BLKFLSBUF
+ 		if (ioctl (fd, BLKFLSBUF, 0) == 0)
+ 			return 0;
+-#else
+-#ifdef __GNUC__
+- #warning BLKFLSBUF not defined
+-#endif /* __GNUC__ */
++#elif defined(__linux__)
++#warning BLKFLSBUF not defined
+ #endif
+ #ifdef FDFLUSH
+ 		ioctl (fd, FDFLUSH, 0);   /* In case this is a floppy */
+-#else
+-#ifdef __GNUC__
+- #warning FDFLUSH not defined
+-#endif /* __GNUC__ */
++#elif defined(__linux__)
++#warning FDFLUSH not defined
+ #endif
+ 	}
+ 	return 0;
+diff --git a/lib/ext2fs/getsize.c b/lib/ext2fs/getsize.c
+index 5ef0081..0c91b5b 100644
+--- a/lib/ext2fs/getsize.c
++++ b/lib/ext2fs/getsize.c
+@@ -235,7 +235,7 @@ errcode_t ext2fs_get_device_size2(const char *file, int blocksize,
+ #endif /* HAVE_SYS_DISKLABEL_H */
+ 
+ 	{
+-#ifdef HAVE_FSTAT64
++#if defined(HAVE_FSTAT64) && !defined(__OSX__)
+ 		struct stat64   st;
+ 		if (fstat64(fd, &st) == 0)
+ #else
+-- 
+1.7.3.4
 
