@@ -1,93 +1,111 @@
-From: Maxim Patlasov <maxim.patlasov@gmail.com>
-Subject: Re: [PATCH] ext4: ext4_free_blocks() fix
-Date: Fri, 10 Jun 2011 14:17:30 +0400
-Message-ID: <BANLkTinZ5Lw0R9Nf1Un_gEA8DZqo7y15TA@mail.gmail.com>
-References: <1307700474-25743-1-git-send-email-maxim.patlasov@gmail.com>
+From: "Amir G." <amir73il@users.sourceforge.net>
+Subject: Re: [PATCH v1 00/30] Ext4 snapshots
+Date: Fri, 10 Jun 2011 15:02:42 +0300
+Message-ID: <BANLkTimsEkciYcsWxygtTPALGp8xL2+Bgw@mail.gmail.com>
+References: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
+	<alpine.LFD.2.00.1106071735100.11385@dhcp-27-109.brq.redhat.com>
+	<BANLkTikAB-RDDS8PMMrFK-OuY6PuavBixA@mail.gmail.com>
+	<alpine.LFD.2.00.1106081114240.5026@dhcp-27-109.brq.redhat.com>
+	<BANLkTi=T1OtyRSWNTA6xhkTy5uaHWqA_XA@mail.gmail.com>
+	<alpine.LFD.2.00.1106081716200.6609@dhcp-27-109.brq.redhat.com>
+	<BANLkTikUXdvMQROYEdxnyfcPuB0e9ozMOg@mail.gmail.com>
+	<BANLkTinU9Hegr3iA5it2vNjE_RYbB+8+RQ@mail.gmail.com>
+	<BANLkTik9Mnq5yqK795pxyr8SK-3EOzzNhA@mail.gmail.com>
+	<alpine.LFD.2.00.1106090834270.4138@dhcp-27-109.brq.redhat.com>
+	<BANLkTi=fugrRE0P5m8nMPrH_kZqPZB7ajA@mail.gmail.com>
+	<alpine.LFD.2.00.1106091012030.4138@dhcp-27-109.brq.redhat.com>
+	<BANLkTin0RKZbDmB1movombH9o4HDpTnvFw@mail.gmail.com>
+	<alpine.LFD.2.00.1106091443370.4138@dhcp-27-109.brq.redhat.com>
+	<BANLkTinEJ6235sPNz_f92nfN0ac4qSnHtw@mail.gmail.com>
+	<alpine.LFD.2.00.1106101044350.4502@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: tytso@mit.edu
+Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, linux-kernel@vger.kernel.org, sandeen@redhat.com
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:64718 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752505Ab1FJKRb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Jun 2011 06:17:31 -0400
-In-Reply-To: <1307700474-25743-1-git-send-email-maxim.patlasov@gmail.com>
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:50579 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755954Ab1FJMCo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Jun 2011 08:02:44 -0400
+In-Reply-To: <alpine.LFD.2.00.1106101044350.4502@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I apologise for flooding, patch description in former email was for
-slightly different kernel version. Correct description is below:
-
-Existent implementation of ext4_free_blocks() always calls dquot_free_b=
-lock
-This looks quite sensible in the most cases: blocks to be freed are ass=
-ociated
-with inode and were accounted in quota and i_blocks some time ago.
-
-However, there is a case when blocks to free were not accounted by the =
-time
-calling ext4_free_blocks() yet:
-
-1. delalloc is on, write_begin pre-allocated some space in quota
-2. write-back happens, ext4 allocates some blocks in ext4_ext_map_block=
-s()
-3. then ext4_ext_map_blocks() gets an error (e.g.  ENOSPC) from
-   ext4_ext_insert_extent() and calls ext4_free_blocks().
-
-In this scenario, ext4_free_blocks() calls dquot_free_block() who, in t=
-urn,
-decrements i_blocks for blocks which were not accounted yet (due to del=
-alloc)
-After clean umount, e2fsck reports something like:
-
-> Inode 21, i_blocks is 5080, should be 5128.  Fix<y>?
-because i_blocks was erroneously decremented as explained above.
-
-The patch fixes the problem by passing EXT4_FREE_BLOCKS_SKIP_QUPD flag =
-to
-ext4_free_blocks(). This flag forces ext4_free_blocks() to skip
-dquot_free_block() call.
-
-Signed-off-by: Maxim Patlasov <maxim.patlasov@gmail.com>
-
-On Fri, Jun 10, 2011 at 2:07 PM, Maxim Patlasov
-<maxim.patlasov@gmail.com> wrote:
-> Existent implementation of ext4_free_blocks() always calls vfs_dq_fre=
-e_block
-> This looks quite sensible in the most cases: blocks to be freed are a=
-ssociated
-> with inode and were accounted in quota and i_blocks some time ago.
+On Fri, Jun 10, 2011 at 12:00 PM, Lukas Czerner <lczerner@redhat.com> wrote:
+> On Fri, 10 Jun 2011, Amir G. wrote:
 >
-> However, there is a case when blocks to free were not accounted by th=
-e time
-> calling ext4_free_blocks() yet:
+> --snip--
+>> >
+>> >>
+>> >>
+>> >> >
+>> >> > Granted, I have to take a look at the multisnap code, to see what it can
+>> >> > do and compare it with ext4 snapshots, because really, if it is good
+>> >> > enough and you will be able to do snapshotting backups as you do with
+>> >> > your approach, I do not see the reason why to complicate our life in
+>> >> > ext4.
+>> >> >
+>> >>
+>> >> I don't know how you intend to determine if dm-multisnap is 'good enough'.
+>> >> I don't claim to have the capability myself to determine if ext4 snapshots
+>> >> are 'good enough'.
+>> >> I just try to present the technical differences between the 3 solutions
+>> >> (LVM,ext4,btrfs) and claim that each have their advantages and disadvantages
+>> >> over others.
+>> >> I wish more sys admins and end users would provide feedback, though I don't
+>> >> know how many of them are following LKML.
+>> >
+>> > I do. When it can do long lived snapshots without any obvious headaches
+>> > it is good enough. Your only contra argument was that lvm snapshotting
+>> > is slow, which is not that big argument now when we have multisnap
+>> > almost ready. I am not even talking about features, because clearly
+>> > mutlisnap has superset of the features that ext4 does - no I am not
+>> > counting per-file or per-directory snapshotting because clearly those
+>> > are just hacks and it was not designed that way.
+>> >
+>>
+>> Hi Lukas,
+>>
+>> I am very glad to have you as my reviewer and critic :-)
+>> I am saying that with all honesty, because I know that you are impartial
+>> and have no anti-ext4 agenda.
+>>
+>> LVM multisnap does look like a big leap forward, but you should not
+>> be blinded by the promised feature, before you inspect the implementation,
+>> the same as you are doing to ext4 snapshots now...
+>>
+>> I could suggest that you put your root fs on a QCOW2 file exported as NBD.
+>> That would give you both thin provisioning and snapshots, but you know
+>> perfectly well, that this is not a 'good enough' solution.
+>> I'm not saying that LVM is comparable to QCOW2 virtual volume.
+>> I'm just saying we (included myself) should carefully examine the alternatives
+>> before make a ruling against one of them.
+>>
+>> Amir.
+>>
 >
-> 1. delalloc is on, write_begin pre-allocated some space in quota
-> 2. write-back happens, ext4 allocates some blocks in ext4_ext_get_blo=
-cks()
-> 3. then ext4_ext_get_blocks() gets an error (e.g. =A0ENOSPC) from
-> =A0 ext4_ext_insert_extent() and calls ext4_free_blocks().
+> Hi Amir,
 >
-> In this scenario, ext4_free_blocks() calls vfs_dq_free_block() who, i=
-n turn,
-> decrements i_blocks for blocks which were not accounted yet (due to d=
-elalloc)
-> After clean umount, e2fsck reports something like:
+> that is why I spoke with several dm people and all of them had the same
+> opinion. When you are not using the advantage of being at fs level,
+> there is no reason to have shapshoting at this level.
 >
->> Inode 21, i_blocks is 5080, should be 5128. =A0Fix<y>?
-> because i_blocks was erroneously decremented as explained above.
+> And no, I am not blinded. I am trying to understand why is multisnap a
+> huge win everyone is saying, so I already asked ejt to step in and
+> give us an overview on how dm-multisnap works and why is it better
+> than the old implementation. Also I am trying it myslef, and so far
+> it works quite well. I might have some numbers later.
 >
-> The patch fixes the problem by passing EXT4_FREE_BLOCKS_SKIP_QUPD fla=
-g to
-> ext4_free_blocks(). This flag forces ext4_free_blocks() to skip
-> vfs_dq_free_block() call.
+> Thanks!
+> -Lukas
 >
-> Signed-off-by: Maxim Patlasov <maxim.patlasov@gmail.com>
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+Wow, if you can provide numbers that would be great!
+If you can also run the same tests on the same machine with my
+ext4dev module that would be awesome!
+the module on next3.sf.net is for kernel 2.6.38, but I can send you
+a module for kernel 2.6.39 or 3.0-rc1 if you like.
+
+Thanks!
+Amir.
