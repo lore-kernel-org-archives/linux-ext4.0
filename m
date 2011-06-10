@@ -1,22 +1,23 @@
 From: "Amir G." <amir73il@users.sourceforge.net>
 Subject: Re: LVM vs. Ext4 snapshots (was: [PATCH v1 00/30] Ext4 snapshots)
-Date: Fri, 10 Jun 2011 10:45:47 +0300
-Message-ID: <BANLkTik20iYN4c9faKD9dzerehazWTwTFw@mail.gmail.com>
+Date: Fri, 10 Jun 2011 11:08:55 +0300
+Message-ID: <BANLkTikKRuPu_NX49vr0w-XeN0ZnWo+9vg@mail.gmail.com>
 References: <BANLkTimyBGfg4+ovGsiGqpCz345qVmU_7A@mail.gmail.com>
+	<BANLkTik20iYN4c9faKD9dzerehazWTwTFw@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, linux-kernel@vger.kernel.org, sandeen@redhat.com
+	tytso@mit.edu, linux-kernel@vger.kernel.org, lvm-devel@redhat.com,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
 To: Mike Snitzer <snitzer@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ww0-f42.google.com ([74.125.82.42]:51088 "EHLO
-	mail-ww0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751803Ab1FJHpt convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Jun 2011 03:45:49 -0400
-In-Reply-To: <BANLkTimyBGfg4+ovGsiGqpCz345qVmU_7A@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <BANLkTik20iYN4c9faKD9dzerehazWTwTFw@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
+
+CC'ing lvm-devel and fsdevel
+
 
 On Wed, Jun 8, 2011 at 9:26 PM, Amir G. <amir73il@users.sourceforge.net=
 > wrote:
@@ -218,8 +219,3 @@ the metadata store from being a performance bottleneck?
 
 Thank you!
 Amir.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
