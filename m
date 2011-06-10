@@ -1,171 +1,93 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: [PATCH] mke2fs: add extent-mapped journal regression test
-Date: Fri, 10 Jun 2011 04:06:52 -0600
-Message-ID: <1307700412-11191-1-git-send-email-adilger@whamcloud.com>
-Cc: Andreas Dilger <adilger@whamcloud.com>
-To: tytso@mit.edu, linux-ext4@vger.kernel.org
+From: Maxim Patlasov <maxim.patlasov@gmail.com>
+Subject: [PATCH] ext4: ext4_free_blocks() fix
+Date: Fri, 10 Jun 2011 14:07:54 +0400
+Message-ID: <1307700474-25743-1-git-send-email-maxim.patlasov@gmail.com>
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:17360 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754755Ab1FJKGz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Jun 2011 06:06:55 -0400
+Received: from mailhub.sw.ru ([195.214.232.25]:35693 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753445Ab1FJKIF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 10 Jun 2011 06:08:05 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-All of the regression tests in e2fsprogs still use a block-mapped
-journal (if any journal at all).  Add a simple regression test that
-tests extent-mapped journals for both mke2fs and e2fsck.
+Existent implementation of ext4_free_blocks() always calls vfs_dq_free_block
+This looks quite sensible in the most cases: blocks to be freed are associated
+with inode and were accounted in quota and i_blocks some time ago.
 
-Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
+However, there is a case when blocks to free were not accounted by the time
+calling ext4_free_blocks() yet:
+
+1. delalloc is on, write_begin pre-allocated some space in quota
+2. write-back happens, ext4 allocates some blocks in ext4_ext_get_blocks()
+3. then ext4_ext_get_blocks() gets an error (e.g.  ENOSPC) from
+   ext4_ext_insert_extent() and calls ext4_free_blocks().
+
+In this scenario, ext4_free_blocks() calls vfs_dq_free_block() who, in turn,
+decrements i_blocks for blocks which were not accounted yet (due to delalloc)
+After clean umount, e2fsck reports something like:
+
+> Inode 21, i_blocks is 5080, should be 5128.  Fix<y>?
+because i_blocks was erroneously decremented as explained above.
+
+The patch fixes the problem by passing EXT4_FREE_BLOCKS_SKIP_QUPD flag to
+ext4_free_blocks(). This flag forces ext4_free_blocks() to skip
+vfs_dq_free_block() call.
+
+Signed-off-by: Maxim Patlasov <maxim.patlasov@gmail.com>
 ---
- tests/m_extent_journal/expect.1 |  126 +++++++++++++++++++++++++++++++++++++++
- tests/m_extent_journal/script   |    4 +
- 2 files changed, 130 insertions(+), 0 deletions(-)
- create mode 100644 tests/m_extent_journal/expect.1
- create mode 100644 tests/m_extent_journal/script
+ fs/ext4/ext4.h    |    1 +
+ fs/ext4/extents.c |    4 +++-
+ fs/ext4/mballoc.c |    2 +-
+ 3 files changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/tests/m_extent_journal/expect.1 b/tests/m_extent_journal/expect.1
-new file mode 100644
-index 0000000..88ea2d9
---- /dev/null
-+++ b/tests/m_extent_journal/expect.1
-@@ -0,0 +1,126 @@
-+Filesystem label=
-+OS type: Linux
-+Block size=1024 (log=0)
-+Fragment size=1024 (log=0)
-+Stride=0 blocks, Stripe width=0 blocks
-+16384 inodes, 65536 blocks
-+3276 blocks (5.00%) reserved for the super user
-+First data block=1
-+Maximum filesystem blocks=67108864
-+8 block groups
-+8192 blocks per group, 8192 fragments per group
-+2048 inodes per group
-+Superblock backups stored on blocks: 
-+	8193, 24577, 40961, 57345
-+
-+Allocating group tables: 0/81/82/83/84/85/86/87/8   done                            
-+Writing inode tables: 0/81/82/83/84/85/86/87/8   done                            
-+Creating journal (4096 blocks): done
-+Writing superblocks and filesystem accounting information: 0/81/82/83/84/85/86/87/8   done
-+
-+0/81/82/83/84/85/86/87/8   Filesystem features: has_journal ext_attr resize_inode dir_index filetype extent sparse_super
-+ 
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+test_filesys: 11/16384 files (0.0% non-contiguous), 7460/65536 blocks
-+Exit status is 0
-+
-+Filesystem volume name:   <none>
-+Last mounted on:          <not available>
-+Filesystem magic number:  0xEF53
-+Filesystem revision #:    1 (dynamic)
-+Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent sparse_super
-+Default mount options:    (none)
-+Filesystem state:         clean
-+Errors behavior:          Continue
-+Filesystem OS type:       Linux
-+Inode count:              16384
-+Block count:              65536
-+Reserved block count:     3276
-+Free blocks:              58076
-+Free inodes:              16373
-+First block:              1
-+Block size:               1024
-+Fragment size:            1024
-+Reserved GDT blocks:      255
-+Blocks per group:         8192
-+Fragments per group:      8192
-+Inodes per group:         2048
-+Inode blocks per group:   256
-+Mount count:              0
-+Check interval:           15552000 (6 months)
-+Reserved blocks uid:      0
-+Reserved blocks gid:      0
-+First inode:              11
-+Inode size:	          128
-+Journal inode:            8
-+Default directory hash:   half_md4
-+Journal backup:           inode blocks
-+Journal features:         (none)
-+Journal size:             4096k
-+Journal length:           4096
-+Journal sequence:         0x00000001
-+Journal start:            0
-+
-+
-+Group 0: (Blocks 1-8192)
-+  Primary superblock at 1, Group descriptors at 2-2
-+  Reserved GDT blocks at 3-257
-+  Block bitmap at 258 (+257), Inode bitmap at 259 (+258)
-+  Inode table at 260-515 (+259)
-+  7663 free blocks, 2037 free inodes, 2 directories
-+  Free blocks: 530-8192
-+  Free inodes: 12-2048
-+Group 1: (Blocks 8193-16384)
-+  Backup superblock at 8193, Group descriptors at 8194-8194
-+  Reserved GDT blocks at 8195-8449
-+  Block bitmap at 8450 (+257), Inode bitmap at 8451 (+258)
-+  Inode table at 8452-8707 (+259)
-+  7677 free blocks, 2048 free inodes, 0 directories
-+  Free blocks: 8708-16384
-+  Free inodes: 2049-4096
-+Group 2: (Blocks 16385-24576)
-+  Block bitmap at 16385 (+0), Inode bitmap at 16386 (+1)
-+  Inode table at 16387-16642 (+2)
-+  3838 free blocks, 2048 free inodes, 0 directories
-+  Free blocks: 20739-24576
-+  Free inodes: 4097-6144
-+Group 3: (Blocks 24577-32768)
-+  Backup superblock at 24577, Group descriptors at 24578-24578
-+  Reserved GDT blocks at 24579-24833
-+  Block bitmap at 24834 (+257), Inode bitmap at 24835 (+258)
-+  Inode table at 24836-25091 (+259)
-+  7677 free blocks, 2048 free inodes, 0 directories
-+  Free blocks: 25092-32768
-+  Free inodes: 6145-8192
-+Group 4: (Blocks 32769-40960)
-+  Block bitmap at 32769 (+0), Inode bitmap at 32770 (+1)
-+  Inode table at 32771-33026 (+2)
-+  7934 free blocks, 2048 free inodes, 0 directories
-+  Free blocks: 33027-40960
-+  Free inodes: 8193-10240
-+Group 5: (Blocks 40961-49152)
-+  Backup superblock at 40961, Group descriptors at 40962-40962
-+  Reserved GDT blocks at 40963-41217
-+  Block bitmap at 41218 (+257), Inode bitmap at 41219 (+258)
-+  Inode table at 41220-41475 (+259)
-+  7677 free blocks, 2048 free inodes, 0 directories
-+  Free blocks: 41476-49152
-+  Free inodes: 10241-12288
-+Group 6: (Blocks 49153-57344)
-+  Block bitmap at 49153 (+0), Inode bitmap at 49154 (+1)
-+  Inode table at 49155-49410 (+2)
-+  7934 free blocks, 2048 free inodes, 0 directories
-+  Free blocks: 49411-57344
-+  Free inodes: 12289-14336
-+Group 7: (Blocks 57345-65535)
-+  Backup superblock at 57345, Group descriptors at 57346-57346
-+  Reserved GDT blocks at 57347-57601
-+  Block bitmap at 57602 (+257), Inode bitmap at 57603 (+258)
-+  Inode table at 57604-57859 (+259)
-+  7676 free blocks, 2048 free inodes, 0 directories
-+  Free blocks: 57860-65535
-+  Free inodes: 14337-16384
-diff --git a/tests/m_extent_journal/script b/tests/m_extent_journal/script
-new file mode 100644
-index 0000000..5e0cac2
---- /dev/null
-+++ b/tests/m_extent_journal/script
-@@ -0,0 +1,4 @@
-+DESCRIPTION="extent-mapped journal"
-+FS_SIZE=65536
-+MKE2FS_OPTS="-O extents -j"
-+. $cmd_dir/run_mke2fs
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 1921392..2cff50c 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -526,6 +526,7 @@ struct ext4_new_group_data {
+ #define EXT4_FREE_BLOCKS_METADATA	0x0001
+ #define EXT4_FREE_BLOCKS_FORGET		0x0002
+ #define EXT4_FREE_BLOCKS_VALIDATED	0x0004
++#define EXT4_FREE_BLOCKS_SKIP_QUPD	0x0008
+ 
+ /*
+  * ioctl commands
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 5199bac..4d17497 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3601,12 +3601,14 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ 
+ 	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
+ 	if (err) {
++		int fb_flags = flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE ?
++			EXT4_FREE_BLOCKS_SKIP_QUPD : 0;
+ 		/* free data blocks we just allocated */
+ 		/* not a good idea to call discard here directly,
+ 		 * but otherwise we'd need to call it every free() */
+ 		ext4_discard_preallocations(inode);
+ 		ext4_free_blocks(handle, inode, NULL, ext4_ext_pblock(&newex),
+-				 ext4_ext_get_actual_len(&newex), 0);
++				 ext4_ext_get_actual_len(&newex), fb_flags);
+ 		goto out2;
+ 	}
+ 
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 859f2ae..ba391c6 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4637,7 +4637,7 @@ do_more:
+ 	}
+ 	ext4_mark_super_dirty(sb);
+ error_return:
+-	if (freed)
++	if (freed && !(flags & EXT4_FREE_BLOCKS_SKIP_QUPD))
+ 		dquot_free_block(inode, freed);
+ 	brelse(bitmap_bh);
+ 	ext4_std_error(sb, err);
 -- 
-1.7.3.4
+1.7.4.4
 
