@@ -1,38 +1,48 @@
 From: Andreas Dilger <adilger@whamcloud.com>
-Subject: [PATCH] tune2fs: add dir_index feature to tune2fs man page
-Date: Thu,  9 Jun 2011 23:24:33 -0600
-Message-ID: <1307683473-4746-1-git-send-email-adilger@whamcloud.com>
+Subject: [PATCH] debugfs: fix icheck finding blocks used for xattrs
+Date: Fri, 10 Jun 2011 00:02:50 -0600
+Message-ID: <1307685770-6099-1-git-send-email-adilger@whamcloud.com>
 Cc: Andreas Dilger <adilger@whamcloud.com>
 To: tytso@mit.edu, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:58373 "EHLO
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:63875 "EHLO
 	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750864Ab1FJFYf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Jun 2011 01:24:35 -0400
+	with ESMTP id S1751027Ab1FJGCw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Jun 2011 02:02:52 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add description of missing dir_index feature to tune2fs(8) man page.
+This was an "uninitialized variable" warning, but it turns out to be
+a real bug.  Without this change, it is not possible to use "icheck"
+to find blocks that are used for the i_file_acl (xattr) block.
 
 Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
 ---
- misc/tune2fs.8.in |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
+ debugfs/icheck.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/misc/tune2fs.8.in b/misc/tune2fs.8.in
-index 2f9db81..233f85a 100644
---- a/misc/tune2fs.8.in
-+++ b/misc/tune2fs.8.in
-@@ -491,6 +491,9 @@ The following filesystem features can be set or cleared using
- .B dir_index
- Use hashed b-trees to speed up lookups in large directories.
- .TP
-+.B dir_nlink
-+Allow more than 65000 subdirectories per directory.
-+.TP
- .B filetype
- Store file type information in directory entries.
- .TP
+diff --git a/debugfs/icheck.c b/debugfs/icheck.c
+index 643bc5b..729ac93 100644
+--- a/debugfs/icheck.c
++++ b/debugfs/icheck.c
+@@ -106,13 +106,15 @@ void do_icheck(int argc, char **argv)
+ 	}
+ 
+ 	while (ino) {
++		blk64_t blk;
++
+ 		if (!inode.i_links_count)
+ 			goto next;
+ 
+ 		bw.inode = ino;
+ 
+-		if (ext2fs_file_acl_block(&inode)) {
+-			blk64_t blk;
++		blk = ext2fs_file_acl_block(&inode);
++		if (blk) {
+ 			icheck_proc(current_fs, &blk, 0,
+ 				    0, 0, &bw);
+ 			if (bw.blocks_left == 0)
 -- 
 1.7.3.4
 
