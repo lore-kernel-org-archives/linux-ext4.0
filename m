@@ -1,38 +1,32 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 37212] NULL pointer dereference in inode_has_perm() while
- setquota
-Date: Sat, 11 Jun 2011 15:44:58 GMT
-Message-ID: <201106111544.p5BFiwaK013844@demeter2.kernel.org>
-References: <bug-37212-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] misc: fix compile warnings on OSX
+Date: Sat, 11 Jun 2011 11:50:35 -0400
+Message-ID: <20110611155035.GH11207@thunk.org>
+References: <1307689164-11902-1-git-send-email-adilger@whamcloud.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@whamcloud.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:59309 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758690Ab1FKPo7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 11 Jun 2011 11:44:59 -0400
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.4) with ESMTP id p5BFiwWJ013845
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sat, 11 Jun 2011 15:44:58 GMT
-In-Reply-To: <bug-37212-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:45730 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758690Ab1FKPui (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 11 Jun 2011 11:50:38 -0400
+Content-Disposition: inline
+In-Reply-To: <1307689164-11902-1-git-send-email-adilger@whamcloud.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=37212
+On Fri, Jun 10, 2011 at 12:59:24AM -0600, Andreas Dilger wrote:
+> The BLKFLSBUF and FDFLUSH ioctls are Linux specific, and do not
+> really have anything to do with __GNUC__ (which is also used on
+> OS/X and Solaris).  Only print these warnings on Linux systems.
+> 
+> statfs64() is deprecated on OSX and generates a deliberate warning.
+> Fix some other warnings that show up on OSX builds.
+> 
+> Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
 
+Applied to the next tree, thanks.
 
-Maciej Rutecki <maciej.rutecki@gmail.com> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Blocks|                            |36912
-
-
-
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+					- Ted
