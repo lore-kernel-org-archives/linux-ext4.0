@@ -1,44 +1,27 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 29492] kernel BUG at
- /home/kernel-ppa/COD/linux/fs/inode.c:1421!
-Date: Sat, 11 Jun 2011 15:05:24 GMT
-Message-ID: <201106111505.p5BF5Oai026590@demeter1.kernel.org>
-References: <bug-29492-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] tune2fs: add dir_index feature to tune2fs man page
+Date: Sat, 11 Jun 2011 11:30:27 -0400
+Message-ID: <20110611153027.GD11207@thunk.org>
+References: <1307683473-4746-1-git-send-email-adilger@whamcloud.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@whamcloud.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:38722 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758584Ab1FKPFZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 11 Jun 2011 11:05:25 -0400
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.4) with ESMTP id p5BF5OnM026591
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sat, 11 Jun 2011 15:05:24 GMT
-In-Reply-To: <bug-29492-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:52302 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758582Ab1FKPaa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 11 Jun 2011 11:30:30 -0400
+Content-Disposition: inline
+In-Reply-To: <1307683473-4746-1-git-send-email-adilger@whamcloud.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=29492
+On Thu, Jun 09, 2011 at 11:24:33PM -0600, Andreas Dilger wrote:
+> Add description of missing dir_index feature to tune2fs(8) man page.
+> 
+> Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
 
+Applied to the next branch, thanks.
 
-Cristian Aravena Romero <caravena@gmail.com> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|NEW                         |RESOLVED
-         Resolution|                            |DUPLICATE
-
-
-
-
---- Comment #5 from Cristian Aravena Romero <caravena@gmail.com>  2011-06-11 15:05:20 ---
-No secure if duplicated :S
-
-*** This bug has been marked as a duplicate of bug 29202 ***
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+					- Ted
