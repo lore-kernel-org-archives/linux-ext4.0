@@ -1,38 +1,44 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 37212] NULL pointer dereference in inode_has_perm() while
- setquota
-Date: Sun, 12 Jun 2011 10:05:22 GMT
-Message-ID: <201106121005.p5CA5MtO029014@demeter1.kernel.org>
-References: <bug-37212-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] jbd2: Fix oops in jbd2_journal_remove_journal_head()
+Date: Sun, 12 Jun 2011 17:41:13 -0400
+Message-ID: <20110612214113.GD2662@thunk.org>
+References: <1306768378-27748-1-git-send-email-jack@suse.cz>
+ <20110606141630.GK7180@thunk.org>
+ <20110608193142.GH5361@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:36221 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752709Ab1FLKFX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 12 Jun 2011 06:05:23 -0400
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.4) with ESMTP id p5CA5MAB029017
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sun, 12 Jun 2011 10:05:22 GMT
-In-Reply-To: <bug-37212-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:56628 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753302Ab1FLVlR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 12 Jun 2011 17:41:17 -0400
+Content-Disposition: inline
+In-Reply-To: <20110608193142.GH5361@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=37212
+On Wed, Jun 08, 2011 at 09:31:42PM +0200, Jan Kara wrote:
+> On Mon 06-06-11 10:16:30, Ted Tso wrote:
+> > On Mon, May 30, 2011 at 05:12:58PM +0200, Jan Kara wrote:
+> > >  /*
+> > > - * For the unlocked version of this call, also make sure that any
+> > > - * hanging journal_head is cleaned up if necessary.
+> > > + * For the unlocked version of this call, also drop buffer_head reference.
+> > >   *
+> > >   * __jbd2_journal_refile_buffer is usually called as part of a single locked
+> >      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> > 
+> > Doesn't this paragraph refer to jbd2_journal_refile_buffer(), not
+> > __jbd2_journal_refile_buffer()?  Or am I missing something?
+>   Hmm, the comment seems to be wrong. The comment about buffer_head
+> reference does not apply anymore. I'll fix that.
 
 
-Florian Mickler <florian@mickler.org> changed:
+Are you going to be sending me a new version of this patch with this
+comment fixed?  Or should I just remove it?
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|RESOLVED                    |CLOSED
+Thanks,
 
-
-
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+						- Ted
