@@ -1,48 +1,45 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] jbd2: Fix oops in jbd2_journal_remove_journal_head()
-Date: Mon, 13 Jun 2011 16:10:14 +0200
-Message-ID: <20110613141014.GE4907@quack.suse.cz>
-References: <1306768378-27748-1-git-send-email-jack@suse.cz>
- <20110606141630.GK7180@thunk.org>
- <20110608193142.GH5361@quack.suse.cz>
- <20110612214113.GD2662@thunk.org>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH] jbd: Make jbd transactions come from its own cache.
+Date: Mon, 13 Jun 2011 16:41:21 -0700
+Message-ID: <20110613164121.d2ca952e.akpm@linux-foundation.org>
+References: <1307784961-1485-1-git-send-email-mkatiyar@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: jack@suse.cz, linux-ext4@vger.kernel.org
+To: Manish Katiyar <mkatiyar@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:59381 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752403Ab1FMOKP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 13 Jun 2011 10:10:15 -0400
-Content-Disposition: inline
-In-Reply-To: <20110612214113.GD2662@thunk.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:43336 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755361Ab1FMXl0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 13 Jun 2011 19:41:26 -0400
+In-Reply-To: <1307784961-1485-1-git-send-email-mkatiyar@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun 12-06-11 17:41:13, Ted Tso wrote:
-> On Wed, Jun 08, 2011 at 09:31:42PM +0200, Jan Kara wrote:
-> > On Mon 06-06-11 10:16:30, Ted Tso wrote:
-> > > On Mon, May 30, 2011 at 05:12:58PM +0200, Jan Kara wrote:
-> > > >  /*
-> > > > - * For the unlocked version of this call, also make sure that any
-> > > > - * hanging journal_head is cleaned up if necessary.
-> > > > + * For the unlocked version of this call, also drop buffer_head reference.
-> > > >   *
-> > > >   * __jbd2_journal_refile_buffer is usually called as part of a single locked
-> > >      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-> > > 
-> > > Doesn't this paragraph refer to jbd2_journal_refile_buffer(), not
-> > > __jbd2_journal_refile_buffer()?  Or am I missing something?
-> >   Hmm, the comment seems to be wrong. The comment about buffer_head
-> > reference does not apply anymore. I'll fix that.
-> 
-> Are you going to be sending me a new version of this patch with this
-> comment fixed?  Or should I just remove it?
-  I've replaced a comment with a better one, also fixed one more wrong
-comment I've found and resent the patch now. Thanks for reminding me.
+On Sat, 11 Jun 2011 02:36:01 -0700
+Manish Katiyar <mkatiyar@gmail.com> wrote:
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> Allocate a slab cache for jbd transaction allocations. It may help to test
+> various memory failure scenarios.
+
+This doesn't seem terribly useful to me.  That's truly ancient code and
+the change rate is really low.  If there were problem in there then
+we'd already know about them.  And the allocation frequency for these
+objects is very low.
+
+If you had some deeper reason for making this change, please describe
+it.  For example, were you chasing some bug?
+
+> +static int journal_init_transaction_cache(void)
+> +{
+> +	J_ASSERT(jbd_transaction_cache == NULL);
+> +	jbd_transaction_cache = kmem_cache_create("jbd_transaction",
+> +			sizeof(transaction_t),
+> +			0, 0, NULL);
+
+We have a KMEM_CACHE helper macro for this.  It proved useful at the
+time, when we were changing the kmem_cache_create() arguments fairly
+often.  It's less useful now.
+
