@@ -1,111 +1,80 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [patch]check NULL pointer
-Date: Mon, 13 Jun 2011 11:20:17 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1106131116270.4328@dhcp-27-109.brq.redhat.com>
-References: <1307590292.15392.71.camel@sli10-conroe>  <alpine.LFD.2.00.1106091112560.4138@dhcp-27-109.brq.redhat.com>  <4DF0DE02.1090008@redhat.com> <1307687692.15392.79.camel@sli10-conroe>  <alpine.LFD.2.00.1106101029160.4502@dhcp-27-109.brq.redhat.com>
- <1307950258.15392.113.camel@sli10-conroe>
+From: "Amir G." <amir73il@users.sourceforge.net>
+Subject: Re: [PATCH v1 00/30] Ext4 snapshots
+Date: Mon, 13 Jun 2011 12:56:54 +0300
+Message-ID: <BANLkTikdmT5vjXJHnRTT-=z8zFVAx+Y6_w@mail.gmail.com>
+References: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
+	<alpine.LFD.2.00.1106071735100.11385@dhcp-27-109.brq.redhat.com>
+	<BANLkTikAB-RDDS8PMMrFK-OuY6PuavBixA@mail.gmail.com>
+	<alpine.LFD.2.00.1106081114240.5026@dhcp-27-109.brq.redhat.com>
+	<BANLkTi=T1OtyRSWNTA6xhkTy5uaHWqA_XA@mail.gmail.com>
+	<alpine.LFD.2.00.1106081716200.6609@dhcp-27-109.brq.redhat.com>
+	<BANLkTikUXdvMQROYEdxnyfcPuB0e9ozMOg@mail.gmail.com>
+	<BANLkTinU9Hegr3iA5it2vNjE_RYbB+8+RQ@mail.gmail.com>
+	<BANLkTik9Mnq5yqK795pxyr8SK-3EOzzNhA@mail.gmail.com>
+	<alpine.LFD.2.00.1106090834270.4138@dhcp-27-109.brq.redhat.com>
+	<BANLkTi=fugrRE0P5m8nMPrH_kZqPZB7ajA@mail.gmail.com>
+	<alpine.LFD.2.00.1106091012030.4138@dhcp-27-109.brq.redhat.com>
+	<BANLkTin0RKZbDmB1movombH9o4HDpTnvFw@mail.gmail.com>
+	<alpine.LFD.2.00.1106091443370.4138@dhcp-27-109.brq.redhat.com>
+	<BANLkTinEJ6235sPNz_f92nfN0ac4qSnHtw@mail.gmail.com>
+	<alpine.LFD.2.00.1106101044350.4502@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"Ted Ts'o" <tytso@mit.edu>
-To: Shaohua Li <shaohua.li@intel.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, sandeen@redhat.com
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:8255 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750871Ab1FMJUX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 13 Jun 2011 05:20:23 -0400
-In-Reply-To: <1307950258.15392.113.camel@sli10-conroe>
+Received: from mail-ww0-f42.google.com ([74.125.82.42]:40559 "EHLO
+	mail-ww0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751120Ab1FMJ44 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Jun 2011 05:56:56 -0400
+Received: by wwk4 with SMTP id 4so2431122wwk.1
+        for <linux-ext4@vger.kernel.org>; Mon, 13 Jun 2011 02:56:55 -0700 (PDT)
+In-Reply-To: <alpine.LFD.2.00.1106101044350.4502@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 13 Jun 2011, Shaohua Li wrote:
+On Fri, Jun 10, 2011 at 12:00 PM, Lukas Czerner <lczerner@redhat.com> wrote:
+>
+> --snip--
+>
+> Hi Amir,
+>
+> that is why I spoke with several dm people and all of them had the same
+> opinion. When you are not using the advantage of being at fs level,
+> there is no reason to have shapshoting at this level.
+>
+> And no, I am not blinded. I am trying to understand why is multisnap a
+> huge win everyone is saying, so I already asked ejt to step in and
+> give us an overview on how dm-multisnap works and why is it better
+> than the old implementation. Also I am trying it myslef, and so far
+> it works quite well. I might have some numbers later.
+>
 
-> On Fri, 2011-06-10 at 16:32 +0800, Lukas Czerner wrote:
-> > On Fri, 10 Jun 2011, Shaohua Li wrote:
-> > 
-> > > On Thu, 2011-06-09 at 22:51 +0800, Eric Sandeen wrote:
-> > > > On 6/9/11 4:24 AM, Lukas Czerner wrote:
-> > > > > On Thu, 9 Jun 2011, Shaohua Li wrote:
-> > > > > 
-> > > > >> orig_data could be NULL.
-> > > > > 
-> > > > > Now, that is the commit description :). Could you please be more
-> > > > > descriptive in the "descritpion" ? Also the subject is not right either,
-> > > > > please see Documentation/SubmittingPatches
-> > > > 
-> > > > Yes; if possible please use the commit message to describe how/why orig_data
-> > > > can be NULL; a testcase if one exists; the resulting flaw (null pointer deref?)
-> > > > etc.
-> > > > 
-> > > > something like:
-> > > > 
-> > > > Subject: [PATCH] ext4: check for NULL orig_data pointer in mount paths
-> > > > 
-> > > > The orig_data pointer in ext4_fill_super()  and ext4_remount()
-> > > > can be null if < ??? >, which can lead to < ??? > in the mount
-> > > > and remount paths.  This can be demonstrated by < ??? >.  
-> > > > To avoid this, we can simply test for the null pointer
-> > > > and return an error in ext4_fill_super() and ext4_remount().
-> > > I thought the reason is pretty straightforward, anyway here is the
-> > > updated patch.
-> > > 
-> > > Subject: [patch]ext4: check NULL pointer for mount and remount
-> > > 
-> > > orig_data could be NULL, because the memory allocation of kstrdup() could fail.
-> > > Add the NULL check.
-> > 
-> > I am sorry, but as I pointed out in previous mail this is not true.
-> > *orig_data can be also NULL in the case that *data is NULL and hence
-> > there is no reason for exiting with error. Also please use the subject
-> > Eric suggested.
-> Hmm, maybe we just don't use the pointer if it's NULl. it's just print
-> info anyway.
-> 
-> Subject: [patch]ext4: check NULL orig_data pointer for mount and remount
-> 
-> orig_data could be NULL, because the memory allocation of kstrdup()
-> could fail or data is NULL. Add the NULL check.
-> 
-> Signed-off-by: Shaohua Li <shaohua.li@intel.com>
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index cc5c157..68eba3b 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -3706,7 +3706,7 @@ no_journal:
->  
->  	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. "
->  		 "Opts: %s%s%s", descr, sbi->s_es->s_mount_opts,
-> -		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data);
-> +		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data ? : ";");
+(Dropping LKML - had enough of that attention for 1 week...)
 
-Hi,
+Hi Lukas,
 
-so you are trying resolve the problem when the allocation fails right ?
-But what you do is not solving anything, but rather hiding it and it is
-not different than we had before.
+So did you get any numbers? Joe said you were not able to get good results.
 
-So what about this:
+Did you come to understand the drawbacks of multisnap (physical fragmentation)?
 
-if (data && !orig_data)
-	return ret;
+Did it make you change your mind about ext4 snapshots?
 
->  
->  	if (es->s_error_count)
->  		mod_timer(&sbi->s_err_report, jiffies + 300*HZ); /* 5 minutes */
-> @@ -4443,7 +4443,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
->  	if (enable_quota)
->  		dquot_resume(sb, -1);
->  
-> -	ext4_msg(sb, KERN_INFO, "re-mounted. Opts: %s", orig_data);
-> +	ext4_msg(sb, KERN_INFO, "re-mounted. Opts: %s", orig_data ? : ";");
->  	kfree(orig_data);
->  	return 0;
->  
-> 
-> 
-> 
+I am planning to join the ext4 weekly call today and ask if people think that
+we still have open issues with ext4 snapshots, which must be resolved
+before the merge.
 
--- 
+I have 2 questions that should be answered before the merge:
+1. Should 32bit ext4 move to 48bit snapshot file format after the
+format is implemented for 64bit ext4?
+2. Should exclude bitmap be allocated only on mkfs time or should it
+also be possible to allocate it with tune2fs?
+Allocating it later will enable snapshots on existing fs, but will
+have sub-optimal on-disk layout.
+
+If anyone has opinions on these 2 questions, please make them heard here or on
+the call today.
+
+Thanks,
+Amir.
