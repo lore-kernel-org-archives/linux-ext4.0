@@ -1,48 +1,66 @@
-From: Norbert Preining <preining@logic.at>
-Subject: Re: another ext3 kernel BUG
-Date: Tue, 14 Jun 2011 11:43:07 +0900
-Message-ID: <20110614024307.GA3039@gamma.logic.tuwien.ac.at>
-References: <20110611021732.GA18768@gamma.logic.tuwien.ac.at> <20110614011904.GA32521@gamma.logic.tuwien.ac.at> <4DF6C541.5050805@redhat.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [patch]check NULL pointer
+Date: Mon, 13 Jun 2011 17:02:12 -0400
+Message-ID: <20110613210212.GA2246@thunk.org>
+References: <1307590292.15392.71.camel@sli10-conroe>
+ <alpine.LFD.2.00.1106091112560.4138@dhcp-27-109.brq.redhat.com>
+ <4DF0DE02.1090008@redhat.com>
+ <1307687692.15392.79.camel@sli10-conroe>
+ <alpine.LFD.2.00.1106101029160.4502@dhcp-27-109.brq.redhat.com>
+ <1307950258.15392.113.camel@sli10-conroe>
+ <alpine.LFD.2.00.1106131116270.4328@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: Shaohua Li <shaohua.li@intel.com>,
+	Eric Sandeen <sandeen@redhat.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx.logic.tuwien.ac.at ([128.130.175.19]:35763 "EHLO
-	mx.logic.tuwien.ac.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751520Ab1FNCnK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Jun 2011 22:43:10 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:41418 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752060Ab1FNDAZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 13 Jun 2011 23:00:25 -0400
 Content-Disposition: inline
-In-Reply-To: <4DF6C541.5050805@redhat.com>
+In-Reply-To: <alpine.LFD.2.00.1106131116270.4328@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Eric,
+On Mon, Jun 13, 2011 at 11:20:17AM +0200, Lukas Czerner wrote:
+> >  	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. "
+> >  		 "Opts: %s%s%s", descr, sbi->s_es->s_mount_opts,
+> > -		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data);
+> > +		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data ? : ";");
+> 
+> Hi,
+> 
+> so you are trying resolve the problem when the allocation fails right ?
+> But what you do is not solving anything, but rather hiding it and it is
+> not different than we had before.
 
-thanks for the answer.
+So a couple of observations here.  The kernel's sprintf/printk
+functions will not OOPS if "%s" is asked to expand a NULL pointer; it
+will simply print "(null)".  So it's not a disaster if orig_data is
+NULL.  It's would perhaps be better (for cosmetic reasons) if we
+printed something such as "Opts: (none)", but it's not a huge deal
+either way.
 
-On Mo, 13 Jun 2011, Eric Sandeen wrote:
-> Disassembly of your code might show which register has i_state ... I wonder if this could possibly be corruption of some sort?  It'd be nice to know what was found in i_state.   Modifying iput() to print it out prior to the bug_on might also help.  Just a thought.
+> So what about this:
+> 
+> if (data && !orig_data)
+> 	return ret;
 
-Ok, I will try to patch something in and see what happens if I hit it
-again.
+Sure, that's technically better.  I'll note though that if we fail the
+kstrdup(), there are so many other memory allocations happening later
+in ext4_fill_super() that it's highly likely one of the others will
+fail and we will then return ENOMEM.
 
-> You seem uniquely able to hit it, and you do have a truckload of interesting modules loaded.  :)
+That's not to say that patches here aren't welcome, but (a) it's
+useful to take a look at the big picture, and (b) I'm going to
+prioritize this as a "clean up" patch that can wait until the merge
+window for v3.1.  It will be a great opportunity for Shaohua to
+practice submitting a high quality patch that complies with the
+Documentation/SubmittingPatches requirements.
 
-Interesting modules?
-alsa stuff, bluetooth, fuse/fat/vfat for ntfs/external drives, wlan
-the only thing that stand out is the vbox* I guess, all the others are
-pretty standard, aren't they?
+Regards,
 
-Best wishes
-
-Norbert
-------------------------------------------------------------------------
-Norbert Preining            preining@{jaist.ac.jp, logic.at, debian.org}
-JAIST, Japan                                 TeX Live & Debian Developer
-DSA: 0x09C5B094   fp: 14DF 2E6C 0307 BE6D AD76  A9C0 D2BF 4AA3 09C5 B094
-------------------------------------------------------------------------
-CONDOVER (n.)
-One who is employed to stand about all day browsing through the
-magazine racks in the newsagent.
-			--- Douglas Adams, The Meaning of Liff
+							- Ted
