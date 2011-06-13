@@ -1,96 +1,51 @@
-From: Shaohua Li <shaohua.li@intel.com>
-Subject: Re: [patch]check NULL pointer
-Date: Mon, 13 Jun 2011 15:30:58 +0800
-Message-ID: <1307950258.15392.113.camel@sli10-conroe>
-References: <1307590292.15392.71.camel@sli10-conroe>
-	 <alpine.LFD.2.00.1106091112560.4138@dhcp-27-109.brq.redhat.com>
-	 <4DF0DE02.1090008@redhat.com> <1307687692.15392.79.camel@sli10-conroe>
-	 <alpine.LFD.2.00.1106101029160.4502@dhcp-27-109.brq.redhat.com>
+From: Joe Thornber <thornber@redhat.com>
+Subject: Re: LVM vs. Ext4 snapshots (was: [PATCH v1 00/30] Ext4 snapshots)
+Date: Mon, 13 Jun 2011 09:50:55 +0100
+Message-ID: <20110613085054.GA4580@ubuntu>
+References: <BANLkTimyBGfg4+ovGsiGqpCz345qVmU_7A@mail.gmail.com>
+ <BANLkTik20iYN4c9faKD9dzerehazWTwTFw@mail.gmail.com>
+ <BANLkTikKRuPu_NX49vr0w-XeN0ZnWo+9vg@mail.gmail.com>
+ <alpine.LFD.2.00.1106101101020.4502@dhcp-27-109.brq.redhat.com>
+ <20110610101142.GA10144@ubuntu>
+ <BANLkTi=0N7QXRvFgjHUJXBi0x=668ahXXA@mail.gmail.com>
+ <20110611073517.GB2517@ubuntu>
+ <BANLkTi=THJi8Z2RTdfGgox4NH8hEGiN37A@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Ted Ts'o <tytso@mit.edu>
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Lukas Czerner <lczerner@redhat.com>,
+	Mike Snitzer <snitzer@redhat.com>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, linux-kernel@vger.kernel.org, lvm-devel@redhat.com,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: "Amir G." <amir73il@users.sourceforge.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga14.intel.com ([143.182.124.37]:8084 "EHLO mga14.intel.com"
+Received: from mx1.redhat.com ([209.132.183.28]:9731 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752119Ab1FMHbB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 13 Jun 2011 03:31:01 -0400
-In-Reply-To: <alpine.LFD.2.00.1106101029160.4502@dhcp-27-109.brq.redhat.com>
+	id S1754255Ab1FMIv1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 13 Jun 2011 04:51:27 -0400
+Content-Disposition: inline
+In-Reply-To: <BANLkTi=THJi8Z2RTdfGgox4NH8hEGiN37A@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2011-06-10 at 16:32 +0800, Lukas Czerner wrote:
-> On Fri, 10 Jun 2011, Shaohua Li wrote:
+On Sat, Jun 11, 2011 at 12:58:26PM +0300, Amir G. wrote:
+> I meant _readonly_ snapshots of a _writable_ _external_ origin,
+> which is what ext4 snapshots provides.
+> All snapshots are chained on a list that points to the origin and
+> only the latest (active) snapshot metadata get updated on origin writes.
+> When older snapshots lookup return -ENODATA, you go up the list
+> to the newer snapshot and up to the origin.
 > 
-> > On Thu, 2011-06-09 at 22:51 +0800, Eric Sandeen wrote:
-> > > On 6/9/11 4:24 AM, Lukas Czerner wrote:
-> > > > On Thu, 9 Jun 2011, Shaohua Li wrote:
-> > > > 
-> > > >> orig_data could be NULL.
-> > > > 
-> > > > Now, that is the commit description :). Could you please be more
-> > > > descriptive in the "descritpion" ? Also the subject is not right either,
-> > > > please see Documentation/SubmittingPatches
-> > > 
-> > > Yes; if possible please use the commit message to describe how/why orig_data
-> > > can be NULL; a testcase if one exists; the resulting flaw (null pointer deref?)
-> > > etc.
-> > > 
-> > > something like:
-> > > 
-> > > Subject: [PATCH] ext4: check for NULL orig_data pointer in mount paths
-> > > 
-> > > The orig_data pointer in ext4_fill_super()  and ext4_remount()
-> > > can be null if < ??? >, which can lead to < ??? > in the mount
-> > > and remount paths.  This can be demonstrated by < ??? >.  
-> > > To avoid this, we can simply test for the null pointer
-> > > and return an error in ext4_fill_super() and ext4_remount().
-> > I thought the reason is pretty straightforward, anyway here is the
-> > updated patch.
-> > 
-> > Subject: [patch]ext4: check NULL pointer for mount and remount
-> > 
-> > orig_data could be NULL, because the memory allocation of kstrdup() could fail.
-> > Add the NULL check.
-> 
-> I am sorry, but as I pointed out in previous mail this is not true.
-> *orig_data can be also NULL in the case that *data is NULL and hence
-> there is no reason for exiting with error. Also please use the subject
-> Eric suggested.
-Hmm, maybe we just don't use the pointer if it's NULl. it's just print
-info anyway.
+> Those _incremental_ snapshots cannot be _writable_, because older
+> snapshots may implicitly share blocks with newer snapshots, but it should
+> be possible to make _writable_ clones of these snapshots.
+> Not sure what the implications are for deleting snapshots, because I am
+> not familiar with all the implementation details of multisnap.
 
-Subject: [patch]ext4: check NULL orig_data pointer for mount and remount
+I deliberately ruled out chaining schemes like this because I want to
+support large numbers of snapshots.  I believe Daniel Phillips
+described a chaining scheme a while ago, and someone else implemented
+it last year.  From a cursory glance through the code they posted on
+dm-devel, it appeared to need a large in memory hash table to cache
+all those chained lookups.
 
-orig_data could be NULL, because the memory allocation of kstrdup()
-could fail or data is NULL. Add the NULL check.
-
-Signed-off-by: Shaohua Li <shaohua.li@intel.com>
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index cc5c157..68eba3b 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3706,7 +3706,7 @@ no_journal:
- 
- 	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. "
- 		 "Opts: %s%s%s", descr, sbi->s_es->s_mount_opts,
--		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data);
-+		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data ? : ";");
- 
- 	if (es->s_error_count)
- 		mod_timer(&sbi->s_err_report, jiffies + 300*HZ); /* 5 minutes */
-@@ -4443,7 +4443,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 	if (enable_quota)
- 		dquot_resume(sb, -1);
- 
--	ext4_msg(sb, KERN_INFO, "re-mounted. Opts: %s", orig_data);
-+	ext4_msg(sb, KERN_INFO, "re-mounted. Opts: %s", orig_data ? : ";");
- 	kfree(orig_data);
- 	return 0;
- 
-
-
+- Joe
