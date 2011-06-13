@@ -1,77 +1,138 @@
-From: "Amir G." <amir73il@users.sourceforge.net>
-Subject: Re: [PATCH v1 00/30] Ext4 snapshots
-Date: Mon, 13 Jun 2011 16:26:16 +0300
-Message-ID: <BANLkTin0Wg9LMjRtHQhyu8rBwU7dQLNW-w@mail.gmail.com>
-References: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
-	<BANLkTi=T1OtyRSWNTA6xhkTy5uaHWqA_XA@mail.gmail.com>
-	<alpine.LFD.2.00.1106081716200.6609@dhcp-27-109.brq.redhat.com>
-	<BANLkTikUXdvMQROYEdxnyfcPuB0e9ozMOg@mail.gmail.com>
-	<BANLkTinU9Hegr3iA5it2vNjE_RYbB+8+RQ@mail.gmail.com>
-	<BANLkTik9Mnq5yqK795pxyr8SK-3EOzzNhA@mail.gmail.com>
-	<alpine.LFD.2.00.1106090834270.4138@dhcp-27-109.brq.redhat.com>
-	<BANLkTi=fugrRE0P5m8nMPrH_kZqPZB7ajA@mail.gmail.com>
-	<alpine.LFD.2.00.1106091012030.4138@dhcp-27-109.brq.redhat.com>
-	<BANLkTin0RKZbDmB1movombH9o4HDpTnvFw@mail.gmail.com>
-	<alpine.LFD.2.00.1106091443370.4138@dhcp-27-109.brq.redhat.com>
-	<BANLkTinEJ6235sPNz_f92nfN0ac4qSnHtw@mail.gmail.com>
-	<alpine.LFD.2.00.1106101044350.4502@dhcp-27-109.brq.redhat.com>
-	<BANLkTikdmT5vjXJHnRTT-=z8zFVAx+Y6_w@mail.gmail.com>
-	<alpine.LFD.2.00.1106131204330.4328@dhcp-27-109.brq.redhat.com>
-	<BANLkTinQpXfY=WXmm6BMUErQBF8nNL1fSg@mail.gmail.com>
-	<alpine.LFD.2.00.1106131502160.4328@dhcp-27-109.brq.redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] jbd2:Make journal transaction allocations come from
+ its own cache.
+Date: Mon, 13 Jun 2011 15:31:00 +0200
+Message-ID: <20110613133100.GB4907@quack.suse.cz>
+References: <1307262510-16376-1-git-send-email-mkatiyar@gmail.com>
+ <20110608164903.GG5361@quack.suse.cz>
+ <BANLkTinoTeVUACvQ6OV1s8BNi9vmi8fd+Q@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, sandeen@redhat.com, snitzer@redhat.com,
-	lvm-devel@redhat.com, thornber@redhat.com
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Jan Kara <jack@suse.cz>, tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Manish Katiyar <mkatiyar@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:34260 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752120Ab1FMN0R (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Jun 2011 09:26:17 -0400
-Received: by wwa36 with SMTP id 36so4825755wwa.1
-        for <linux-ext4@vger.kernel.org>; Mon, 13 Jun 2011 06:26:16 -0700 (PDT)
-In-Reply-To: <alpine.LFD.2.00.1106131502160.4328@dhcp-27-109.brq.redhat.com>
+Received: from cantor2.suse.de ([195.135.220.15]:58331 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752580Ab1FMNbC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 13 Jun 2011 09:31:02 -0400
+Content-Disposition: inline
+In-Reply-To: <BANLkTinoTeVUACvQ6OV1s8BNi9vmi8fd+Q@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 13, 2011 at 4:11 PM, Lukas Czerner <lczerner@redhat.com> wrote:
-> On Mon, 13 Jun 2011, Amir G. wrote:
->
+On Thu 09-06-11 23:21:17, Manish Katiyar wrote:
+> On Wed, Jun 8, 2011 at 9:49 AM, Jan Kara <jack@suse.cz> wrote:
+> > On Sun 05-06-11 01:28:30, Manish Katiyar wrote:
+> >> Add a cache for jbd2 journal transaction allocations. This also
+> >> helps to leverage fault-injection framework to test various memory
+> >> allocation failures in the jbd2 layer.
+> >>
+> >> Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+> >> ---
+> >> =A0fs/jbd2/checkpoint.c =A0| =A0 =A02 +-
+> >> =A0fs/jbd2/commit.c =A0 =A0 =A0| =A0 =A02 +-
+> >> =A0fs/jbd2/journal.c =A0 =A0 | =A0 25 +++++++++++++++++++++++++
+> >> =A0fs/jbd2/transaction.c | =A0 =A07 ++++---
+> >> =A0include/linux/jbd2.h =A0| =A0 21 +++++++++++++++++++++
+> >> =A05 files changed, 52 insertions(+), 5 deletions(-)
+> >>
+> >> diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+> >> index 6a79fd0..6f554ce 100644
+> >> --- a/fs/jbd2/checkpoint.c
+> >> +++ b/fs/jbd2/checkpoint.c
+> >> @@ -716,7 +716,7 @@ int __jbd2_journal_remove_checkpoint(struct jo=
+urnal_head *jh)
+> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ transaction->t_tid, stats);
+> >>
+> >> =A0 =A0 =A0 __jbd2_journal_drop_transaction(journal, transaction);
+> >> - =A0 =A0 kfree(transaction);
+> >> + =A0 =A0 jbd2_free_transaction(transaction);
+> >>
+> >> =A0 =A0 =A0 /* Just in case anybody was waiting for more transacti=
+ons to be
+> >> =A0 =A0 =A0 =A0 =A0 =A0 checkpointed... */
+> >> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+> >> index 7f21cf3..8e33d84 100644
+> >> --- a/fs/jbd2/commit.c
+> >> +++ b/fs/jbd2/commit.c
+> >> @@ -1037,7 +1037,7 @@ restart_loop:
+> >> =A0 =A0 =A0 jbd_debug(1, "JBD: commit %d complete, head %d\n",
+> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 journal->j_commit_sequence, journa=
+l->j_tail_sequence);
+> >> =A0 =A0 =A0 if (to_free)
+> >> - =A0 =A0 =A0 =A0 =A0 =A0 kfree(commit_transaction);
+> >> + =A0 =A0 =A0 =A0 =A0 =A0 jbd2_free_transaction(commit_transaction=
+);
+> >>
+> >> =A0 =A0 =A0 wake_up(&journal->j_wait_done_commit);
+> >> =A0}
+> >> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> >> index 9a78269..c0ec463 100644
+> >> --- a/fs/jbd2/journal.c
+> >> +++ b/fs/jbd2/journal.c
+> >> @@ -95,6 +95,7 @@ EXPORT_SYMBOL(jbd2_journal_init_jbd_inode);
+> >> =A0EXPORT_SYMBOL(jbd2_journal_release_jbd_inode);
+> >> =A0EXPORT_SYMBOL(jbd2_journal_begin_ordered_truncate);
+> >> =A0EXPORT_SYMBOL(jbd2_inode_cache);
+> >> +EXPORT_SYMBOL(jbd2_transaction_cache);
+> >>
+> >> =A0static int journal_convert_superblock_v1(journal_t *, journal_s=
+uperblock_t *);
+> >> =A0static void __journal_abort_soft (journal_t *journal, int errno=
+);
+> >> @@ -2371,6 +2372,27 @@ static void jbd2_journal_destroy_handle_cac=
+he(void)
+> >>
+> >> =A0}
+> >>
+> >> +struct kmem_cache *jbd2_transaction_cache;
+> >> +
+> >> +static int journal_init_transaction_cache(void)
+> >> +{
+> >> + =A0 =A0 J_ASSERT(jbd2_transaction_cache =3D=3D NULL);
+> >> + =A0 =A0 jbd2_transaction_cache =3D kmem_cache_create("jbd2_trans=
+action",
+> >> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
+=A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0sizeof(transaction_t),
+> >> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
+=A0 =A0 =A0 =A0 =A0 =A0 =A0 =A00, SLAB_TEMPORARY, NULL);
+> > =A0Transactions are not really short-lived in the memory-management=
+ sense I
+> > think. They usually live for seconds while I'd understand 'short-li=
+ved' to
+> > mean a milisecond or less. So just drop this flag (it doesn't do an=
+ything
+> > these days anyway).
+> >
+> >> + =A0 =A0 if (jbd2_transaction_cache =3D=3D NULL) {
+> >> + =A0 =A0 =A0 =A0 =A0 =A0 printk(KERN_EMERG "JBD2: failed to creat=
+e transaction cache\n");
+> >> + =A0 =A0 =A0 =A0 =A0 =A0 return -ENOMEM;
+> >> + =A0 =A0 }
+> >> + =A0 =A0 return 0;
+> >> +}
+> >> +
+> >> +static void jbd2_journal_destroy_transaction_cache(void)
+> >> +{
+> >> + =A0 =A0 if (jbd2_transaction_cache)
+> > =A0How can this happen?
+>=20
+> Hi Jan,
+>=20
+> re-reading the code, I think its possible and we should be checking
+> for it. Since in journal_init_caches() if any of the initialization
+> fails we would call jbd2_journal_destroy_caches() on all the caches.
+> So we should be destroying it only if its initialized.
+  Ah, good point. Thanks for checking this.
 
--snip-
->> >>
->> >> Did you come to understand the drawbacks of multisnap (physical fragmentation)?
->> >
->> > Yes I did, but the fragmentation is problem for any thinly provisioned
->> > storage. I also understand that your snapshot files has also proble with
->> > fragmentation.
->> >
->>
->> It's true. ext4 snapshots generates fragmented *files*, but it does not fragment
->> the filesystem metadata. And only on specific workloads of in-place writes,
->> like large db or virtual image.
->>
->> One difference is that ext4 snapshots can do effective auto defrag by using
->> the inode context, which is not available for multisnap.
->
-> No it is not, but from top of my head .. we can use time locality to
-> pack frequently accessed blocks together. Definitely there is a place
-> for improvements.
->
->> The other big difference is that ext4 snapshots gives precedence to main
->> fs performance, while multisnap hasn't even the notion of a main fs.
->> All thinp and snapshot targets are writable and get equal treatment.
->
-> I am sorry, what do you mean by that ? Is it that when you mount the
-> snapshot, the reads will actually have lower importance ?
->
-
-with ext4, snapshots reads may cause extra seeks, but main fs will
-stay optimized for reads.
-with thinp and multisnap, there is no optimization for read from one
-specific target, but I admit that can change in the future when auto defrag
-heuristics are applies to multisnap.
-
-Amir.
+								Honza
+--=20
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
