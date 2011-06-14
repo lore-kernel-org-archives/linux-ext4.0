@@ -1,88 +1,96 @@
-From: amir73il@users.sourceforge.net
-Subject: [PATCH] libext2fs: fix the range validation in bitmap_range2 funcs
-Date: Tue, 14 Jun 2011 18:16:32 +0300
-Message-ID: <1308064592-29935-1-git-send-email-amir73il@users.sourceforge.net>
-Cc: Amir Goldstein <amir73il@users.sf.net>
+From: Tao Ma <tm@tao.ma>
+Subject: Re: [PATCH] jbd2: Use WRITE_SYNC in journal checkpoint.
+Date: Tue, 14 Jun 2011 23:22:36 +0800
+Message-ID: <4DF77CBC.8050102@tao.ma>
+References: <1307418559-3329-1-git-send-email-tm@tao.ma>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:57252 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752148Ab1FNPRQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Jun 2011 11:17:16 -0400
-Received: by wwa36 with SMTP id 36so5992264wwa.1
-        for <linux-ext4@vger.kernel.org>; Tue, 14 Jun 2011 08:17:15 -0700 (PDT)
+Received: from oproxy4-pub.bluehost.com ([69.89.21.11]:49114 "HELO
+	oproxy4-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1752975Ab1FNPWs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Jun 2011 11:22:48 -0400
+In-Reply-To: <1307418559-3329-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Amir Goldstein <amir73il@users.sf.net>
+Hi Ted,
+	Any comments for this patch? Jan is OK with it and wait for the jbd2
+part to be committed first.
 
-The condition ((start+num) & ~0xffffffffULL) in bitmap_ragne2
-and generic_bmap_range funcs in get_bitmap64.c was wrong and
-inconsistent with the condition (start+num-1 > bmap->real_end)
-in generic_bitmap_range funcs in get_bitmap.c.
-
-I got the following error from tune2fs on a 16TB fs:
-Illegal block number passed to ext2fs_unmark_block_bitmap #4294967295
-for block bitmap for 16TB.img
-tune2fs: Invalid argument while reading bitmaps
-
-Fix to condition to ((start+num-1) & ~0xffffffffULL), because
-the bit (start+num) is not going to be changed by the funcs.
-
-Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
----
- lib/ext2fs/gen_bitmap64.c |   10 +++++-----
- 1 files changed, 5 insertions(+), 5 deletions(-)
-
-diff --git a/lib/ext2fs/gen_bitmap64.c b/lib/ext2fs/gen_bitmap64.c
-index df095ac..69c399a 100644
---- a/lib/ext2fs/gen_bitmap64.c
-+++ b/lib/ext2fs/gen_bitmap64.c
-@@ -382,7 +382,7 @@ errcode_t ext2fs_set_generic_bmap_range(ext2fs_generic_bitmap bmap,
- 		return EINVAL;
- 
- 	if (EXT2FS_IS_32_BITMAP(bmap)) {
--		if ((start+num) & ~0xffffffffULL) {
-+		if ((start+num-1) & ~0xffffffffULL) {
- 			ext2fs_warn_bitmap2(bmap, EXT2FS_UNMARK_ERROR,
- 					    0xffffffff);
- 			return EINVAL;
-@@ -405,7 +405,7 @@ errcode_t ext2fs_get_generic_bmap_range(ext2fs_generic_bitmap bmap,
- 		return EINVAL;
- 
- 	if (EXT2FS_IS_32_BITMAP(bmap)) {
--		if ((start+num) & ~0xffffffffULL) {
-+		if ((start+num-1) & ~0xffffffffULL) {
- 			ext2fs_warn_bitmap2(bmap,
- 					    EXT2FS_UNMARK_ERROR, 0xffffffff);
- 			return EINVAL;
-@@ -476,7 +476,7 @@ int ext2fs_test_block_bitmap_range2(ext2fs_block_bitmap bmap,
- 						 bmap, block);
- 
- 	if (EXT2FS_IS_32_BITMAP(bmap)) {
--		if ((block+num) & ~0xffffffffULL) {
-+		if ((block+num-1) & ~0xffffffffULL) {
- 			ext2fs_warn_bitmap2((ext2fs_generic_bitmap) bmap,
- 					    EXT2FS_UNMARK_ERROR, 0xffffffff);
- 			return EINVAL;
-@@ -498,7 +498,7 @@ void ext2fs_mark_block_bitmap_range2(ext2fs_block_bitmap bmap,
- 		return;
- 
- 	if (EXT2FS_IS_32_BITMAP(bmap)) {
--		if ((block+num) & ~0xffffffffULL) {
-+		if ((block+num-1) & ~0xffffffffULL) {
- 			ext2fs_warn_bitmap2((ext2fs_generic_bitmap) bmap,
- 					    EXT2FS_UNMARK_ERROR, 0xffffffff);
- 			return;
-@@ -526,7 +526,7 @@ void ext2fs_unmark_block_bitmap_range2(ext2fs_block_bitmap bmap,
- 		return;
- 
- 	if (EXT2FS_IS_32_BITMAP(bmap)) {
--		if ((block+num) & ~0xffffffffULL) {
-+		if ((block+num-1) & ~0xffffffffULL) {
- 			ext2fs_warn_bitmap2((ext2fs_generic_bitmap) bmap,
- 					    EXT2FS_UNMARK_ERROR, 0xffffffff);
- 			return;
--- 
-1.7.4.1
+Thanks.
+Tao
+On 06/07/2011 11:49 AM, Tao Ma wrote:
+> From: Tao Ma <boyu.mt@taobao.com>
+> 
+> In journal checkpoint, we write the buffer and wait for its finish.
+> But in cfq, the async queue has a very low priority, and in our test,
+> if there are too many sync queues and every queue is filled up with
+> requests, the write request will be delayed for quite a long time and
+> all the tasks which are waiting for journal space will end with errors like:
+> 
+> INFO: task attr_set:3816 blocked for more than 120 seconds.
+> "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+> attr_set      D ffff880028393480     0  3816      1 0x00000000
+>  ffff8802073fbae8 0000000000000086 ffff8802140847c8 ffff8800283934e8
+>  ffff8802073fb9d8 ffffffff8103e456 ffff8802140847b8 ffff8801ed728080
+>  ffff8801db4bc080 ffff8801ed728450 ffff880028393480 0000000000000002
+> Call Trace:
+>  [<ffffffff8103e456>] ? __dequeue_entity+0x33/0x38
+>  [<ffffffff8103caad>] ? need_resched+0x23/0x2d
+>  [<ffffffff814006a6>] ? thread_return+0xa2/0xbc
+>  [<ffffffffa01f6224>] ? jbd2_journal_dirty_metadata+0x116/0x126 [jbd2]
+>  [<ffffffffa01f6224>] ? jbd2_journal_dirty_metadata+0x116/0x126 [jbd2]
+>  [<ffffffff81400d31>] __mutex_lock_common+0x14e/0x1a9
+>  [<ffffffffa021dbfb>] ? brelse+0x13/0x15 [ext4]
+>  [<ffffffff81400ddb>] __mutex_lock_slowpath+0x19/0x1b
+>  [<ffffffff81400b2d>] mutex_lock+0x1b/0x32
+>  [<ffffffffa01f927b>] __jbd2_journal_insert_checkpoint+0xe3/0x20c [jbd2]
+>  [<ffffffffa01f547b>] start_this_handle+0x438/0x527 [jbd2]
+>  [<ffffffff8106f491>] ? autoremove_wake_function+0x0/0x3e
+>  [<ffffffffa01f560b>] jbd2_journal_start+0xa1/0xcc [jbd2]
+>  [<ffffffffa02353be>] ext4_journal_start_sb+0x57/0x81 [ext4]
+>  [<ffffffffa024a314>] ext4_xattr_set+0x6c/0xe3 [ext4]
+>  [<ffffffffa024aaff>] ext4_xattr_user_set+0x42/0x4b [ext4]
+>  [<ffffffff81145adb>] generic_setxattr+0x6b/0x76
+>  [<ffffffff81146ac0>] __vfs_setxattr_noperm+0x47/0xc0
+>  [<ffffffff81146bb8>] vfs_setxattr+0x7f/0x9a
+>  [<ffffffff81146c88>] setxattr+0xb5/0xe8
+>  [<ffffffff81137467>] ? do_filp_open+0x571/0xa6e
+>  [<ffffffff81146d26>] sys_fsetxattr+0x6b/0x91
+>  [<ffffffff81002d32>] system_call_fastpath+0x16/0x1b
+> 
+> So this patch tries to use WRITE_SYNC in __flush_batch so that the request will
+> be moved into sync queue and handled by cfq timely. We also use the new plug,
+> sot that all the WRITE_SYNC requests can be given as a whole when we unplug it.
+> 
+> Cc: Jan Kara <jack@suse.cz>
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> Reported-by: Robin Dong <sanbai@taobao.com>
+> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+> ---
+>  fs/jbd2/checkpoint.c |    5 ++++-
+>  1 files changed, 4 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+> index 6a79fd0..b372ea2 100644
+> --- a/fs/jbd2/checkpoint.c
+> +++ b/fs/jbd2/checkpoint.c
+> @@ -254,9 +254,12 @@ static void
+>  __flush_batch(journal_t *journal, int *batch_count)
+>  {
+>  	int i;
+> +	struct blk_plug plug;
+>  
+> +	blk_start_plug(&plug);
+>  	for (i = 0; i < *batch_count; i++)
+> -		write_dirty_buffer(journal->j_chkpt_bhs[i], WRITE);
+> +		write_dirty_buffer(journal->j_chkpt_bhs[i], WRITE_SYNC);
+> +	blk_finish_plug(&plug);
+>  
+>  	for (i = 0; i < *batch_count; i++) {
+>  		struct buffer_head *bh = journal->j_chkpt_bhs[i];
 
