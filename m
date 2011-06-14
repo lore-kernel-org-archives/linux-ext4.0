@@ -1,100 +1,98 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Josef Bacik <josef@redhat.com>
 Subject: Re: xfstests 252 failure
-Date: Tue, 14 Jun 2011 11:06:46 -0500
-Message-ID: <4DF78716.4040605@redhat.com>
-References: <4DF78127.40505@linux.vnet.ibm.com>
+Date: Tue, 14 Jun 2011 14:41:58 -0400
+Message-ID: <4DF7AB76.8030701@redhat.com>
+References: <4DF78127.40505@linux.vnet.ibm.com> <4DF78716.4040605@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: xfs-oss <xfs@oss.sgi.com>,
+Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
+	xfs-oss <xfs@oss.sgi.com>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Josef Bacik <josef@redhat.com>
-To: Allison Henderson <achender@linux.vnet.ibm.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <4DF78127.40505@linux.vnet.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:22088 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751145Ab1FNSmC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 14 Jun 2011 14:42:02 -0400
+In-Reply-To: <4DF78716.4040605@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 6/14/11 10:41 AM, Allison Henderson wrote:
-> Hi all,
+On 06/14/2011 12:06 PM, Eric Sandeen wrote:
+> On 6/14/11 10:41 AM, Allison Henderson wrote:
+>> Hi all,
+>>
+>> I just wanted to get some ideas moving on this question before too
+>> much time goes by. Ext4 is currently failing xfstest 252, test number
+>> 12. Currently test 12 is:
+>>
+>>     $XFS_IO_PROG $xfs_io_opt -f -c "truncate 20k" \
+>>         -c "$alloc_cmd 0 20k" \   
+>>         -c "pwrite 8k 4k" -c "fsync" \       
+>>         -c "$zero_cmd 4k 12k" \
+>>         -c "$map_cmd -v" $testfile | $filter_cmd
+>>     [ $? -ne 0 ]&&  die_now
 > 
-> I just wanted to get some ideas moving on this question before too
-> much time goes by. Ext4 is currently failing xfstest 252, test number
-> 12. Currently test 12 is:
+> so the file should go through these steps:
+> (H=hole, P=prealloc, D=data)
 > 
->     $XFS_IO_PROG $xfs_io_opt -f -c "truncate 20k" \
->         -c "$alloc_cmd 0 20k" \   
->         -c "pwrite 8k 4k" -c "fsync" \       
->         -c "$zero_cmd 4k 12k" \
->         -c "$map_cmd -v" $testfile | $filter_cmd
->     [ $? -ne 0 ]&&  die_now
-
-so the file should go through these steps:
-(H=hole, P=prealloc, D=data)
-
-0k                       20k
-|  H |  H |  H |  H |  H | (truncate)
-|  P |  P |  P |  P |  P | (alloc_cmd)
-|  P |  P |  D |  P |  P | (pwrite)
-<fsync>                    (fsync)
-|  P |  H |  H |  H |  P | (punch)
- 
-> and the output is:
+> 0k                       20k
+> |  H |  H |  H |  H |  H | (truncate)
+> |  P |  P |  P |  P |  P | (alloc_cmd)
+> |  P |  P |  D |  P |  P | (pwrite)
+> <fsync>                    (fsync)
+> |  P |  H |  H |  H |  P | (punch)
+>  
+>> and the output is:
+>>
+>>         12. unwritten -> data -> unwritten
+>> 0: [0..7]: unwritten
+>> 1: [8..31]: hole
+>> 2: [32..39]: unwritten
+>>
+>> Ext4 gets data extents here instead of unwritten extents. 
 > 
->         12. unwritten -> data -> unwritten
-> 0: [0..7]: unwritten
+> so it's like this?
+> 
+> 0: [0..7]: data
 > 1: [8..31]: hole
-> 2: [32..39]: unwritten
+> 2: [32..39]: data
 > 
-> Ext4 gets data extents here instead of unwritten extents. 
-
-so it's like this?
-
-0: [0..7]: data
-1: [8..31]: hole
-2: [32..39]: data
-
-> I did some
-> investigating and it looks like the fsync command causes the extents
-> to be written out before the punch hole operation starts. It looks
-> like what happens is that when an unwritten extent gets written to,
-> it doesnt always split the extent. If the extent is small enough,
-> then it just zeros out the portions that are not written to, and the
-> whole extent becomes a written extent. Im not sure if that is
-> incorrect or if we need to change the test to not compare the extent
-> types.
-
-Yes, it does do that IIRC.
-
-I probably need to look closer, but any test which expects exact
-layouts from a filesystem after a series of operations is probably
-expecting too much...
-
->From a data integrity perspective, written zeros is as good as a hole is
-as good as preallocated space, so I suppose those should all be acceptable,
-though I guess "punch" should result in holes exactly as requested.
-
-> It looks to me that the code in ext4 that does this is supposed to be
-> an optimization to help reduce fragmentation. We could change the
-> filters to print just "extent" instead of "unwritten" or "data", but
-> I realize that probably makes the test a lot less effective for xfs.
-> If anyone can think of some more elegant fixes, please let me know.
-> Thx!
-
-Josef, what do you think?  It's your test originally.  :)
-
-But if the test is supposed to verify hole punching behavior,
-then to me, making unwritten extents equivalent to data extents
-full of 0s should be fine.  Perhaps an md5sum step would be 
-in order to verify that it is in fact all 0s.
-
--Eric
-
-> Allison Henderson
+>> I did some
+>> investigating and it looks like the fsync command causes the extents
+>> to be written out before the punch hole operation starts. It looks
+>> like what happens is that when an unwritten extent gets written to,
+>> it doesnt always split the extent. If the extent is small enough,
+>> then it just zeros out the portions that are not written to, and the
+>> whole extent becomes a written extent. Im not sure if that is
+>> incorrect or if we need to change the test to not compare the extent
+>> types.
 > 
-> -- 
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Yes, it does do that IIRC.
+> 
+> I probably need to look closer, but any test which expects exact
+> layouts from a filesystem after a series of operations is probably
+> expecting too much...
+> 
+> From a data integrity perspective, written zeros is as good as a hole is
+> as good as preallocated space, so I suppose those should all be acceptable,
+> though I guess "punch" should result in holes exactly as requested.
+> 
+>> It looks to me that the code in ext4 that does this is supposed to be
+>> an optimization to help reduce fragmentation. We could change the
+>> filters to print just "extent" instead of "unwritten" or "data", but
+>> I realize that probably makes the test a lot less effective for xfs.
+>> If anyone can think of some more elegant fixes, please let me know.
+>> Thx!
+> 
+> Josef, what do you think?  It's your test originally.  :)
+> 
 
+Yes, a test that was really only meant to test the block based fiemap
+since they all act in a dumb and easy to verify way.  I think if we want
+to keep this test we should probably have it just recognize these little
+optimizations so it doesn't freak out.  Thanks,
+
+Josef
