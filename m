@@ -1,80 +1,73 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: recovering from backup superblock with uninit_bg
-Date: Tue, 14 Jun 2011 11:53:31 +0300
-Message-ID: <BANLkTimHDG7p1P4yykQW2ywHG4J3Dfs3qQ@mail.gmail.com>
-References: <BANLkTi=Xy0hKvBe2VvO7L6cPvT94A2g+nw@mail.gmail.com>
-	<E51F9800-231C-45E0-A013-9DC1749AA00C@dilger.ca>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [patch]check NULL pointer
+Date: Tue, 14 Jun 2011 12:07:12 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1106141159050.4259@dhcp-27-109.brq.redhat.com>
+References: <1307590292.15392.71.camel@sli10-conroe>  <alpine.LFD.2.00.1106091112560.4138@dhcp-27-109.brq.redhat.com>  <4DF0DE02.1090008@redhat.com> <1307687692.15392.79.camel@sli10-conroe>  <alpine.LFD.2.00.1106101029160.4502@dhcp-27-109.brq.redhat.com>
+ <1307950258.15392.113.camel@sli10-conroe>  <alpine.LFD.2.00.1106131116270.4328@dhcp-27-109.brq.redhat.com> <1308011473.15392.114.camel@sli10-conroe>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>,
+	Eric Sandeen <sandeen@redhat.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"Ted Ts'o" <tytso@mit.edu>
+To: Shaohua Li <shaohua.li@intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:38741 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755386Ab1FNIxc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Jun 2011 04:53:32 -0400
-Received: by wwa36 with SMTP id 36so5643370wwa.1
-        for <linux-ext4@vger.kernel.org>; Tue, 14 Jun 2011 01:53:31 -0700 (PDT)
-In-Reply-To: <E51F9800-231C-45E0-A013-9DC1749AA00C@dilger.ca>
+Received: from mx1.redhat.com ([209.132.183.28]:28954 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755210Ab1FNKHS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 14 Jun 2011 06:07:18 -0400
+In-Reply-To: <1308011473.15392.114.camel@sli10-conroe>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 14, 2011 at 11:35 AM, Andreas Dilger <adilger@dilger.ca> wr=
-ote:
-> On 2011-06-14, at 2:15 AM, Amir Goldstein wrote:
->> Can you help me figure this one out.
->>
->> When I run the test:
->> # mkfs.ext4 /dev/sda5
->> # fsck.ext4 -nf -b 32768 /dev/sda5
->>
->> The results are a total chaos.
->>
->> Apparently, when opening an fs from a backup superblock,
->> all _UNINIT flags are cleared:
->>
->> First fsck rightfully complains that the group desc checksums are wr=
-ong.
->> Then, is complains about many errors in phantom inodes, because the =
-inode
->> bitmap and tables are treated as initialized, but they aren't (see s=
-nip below)
->>
->> Any idea what was the purpose of clearing the _UNINIT flags?
->> Or how and if this should be fixed?
->
-> The reason that the _UNINIT flags are cleared is that they cannot pos=
-sibly
-> be correct in the backup superblocks, and it is far more reliable to =
-check
-> all of the inode table blocks for inodes, as old e2fsck used to do.
+On Tue, 14 Jun 2011, Shaohua Li wrote:
 
-Right, so in this case do the checksums need to be wrong by design?
+--snip--
+> > > Hmm, maybe we just don't use the pointer if it's NULl. it's just print
+> > > info anyway.
+> > > 
+> > > Subject: [patch]ext4: check NULL orig_data pointer for mount and remount
+> > > 
+> > > orig_data could be NULL, because the memory allocation of kstrdup()
+> > > could fail or data is NULL. Add the NULL check.
+> > > 
+> > > Signed-off-by: Shaohua Li <shaohua.li@intel.com>
+> > > 
+> > > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> > > index cc5c157..68eba3b 100644
+> > > --- a/fs/ext4/super.c
+> > > +++ b/fs/ext4/super.c
+> > > @@ -3706,7 +3706,7 @@ no_journal:
+> > >  
+> > >  	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. "
+> > >  		 "Opts: %s%s%s", descr, sbi->s_es->s_mount_opts,
+> > > -		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data);
+> > > +		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data ? : ";");
+> > 
+> > Hi,
+> > 
+> > so you are trying resolve the problem when the allocation fails right ?
+> > But what you do is not solving anything, but rather hiding it and it is
+> > not different than we had before.
+> > 
+> > So what about this:
+> > 
+> > if (data && !orig_data)
+> > 	return ret;
+> how could this work? if data is NULL, orig_data will be NULL, the
+> ext4_msg will still use a NULL pointer.
+> 
 
->
-> However, you shouldn't have garbage data in your inode table in the f=
-irst
-> place. =A0mke2fs will normally do the inode table zeroing, unless it =
-detects
-> that the kernel supports the "lazyinit zeroing thread". =A0At that po=
-int, it
-> expects the kernel to proceed to zero all of the unused blocks in the
-> filesystem at mount time. =A0If this isn't happening, it is a bug.
->
+Hi,
 
-The test was: mkfs; fsck.
-There was no mount in between.
-I am testing a 16TB fs on a loop device, so I am mounting with -o noini=
-t_itable,
-so my image file won't grow.
-I may as well pick up your patch to skip zeroing of the journal,
-as that is mainly what my image file contains now.
+I am sorry if it was not clear, but as Ted already pointed out printk
+can handle NULL pointer, so there is no need to care about it in this
+case.
 
-Thanks,
-Amir.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Also it is not a *big* deal not to handle allocation failure in kstrdup,
+because there are other allocations in fill_super and remount which will
+result in error, however I think that it is better to catch such cases
+as early as we can, so it is good to fix this.
+
+Thanks!
+-Lukas
