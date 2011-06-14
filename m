@@ -1,66 +1,40 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [patch]check NULL pointer
-Date: Mon, 13 Jun 2011 17:02:12 -0400
-Message-ID: <20110613210212.GA2246@thunk.org>
-References: <1307590292.15392.71.camel@sli10-conroe>
- <alpine.LFD.2.00.1106091112560.4138@dhcp-27-109.brq.redhat.com>
- <4DF0DE02.1090008@redhat.com>
- <1307687692.15392.79.camel@sli10-conroe>
- <alpine.LFD.2.00.1106101029160.4502@dhcp-27-109.brq.redhat.com>
- <1307950258.15392.113.camel@sli10-conroe>
- <alpine.LFD.2.00.1106131116270.4328@dhcp-27-109.brq.redhat.com>
+From: Dave Jones <davej@redhat.com>
+Subject: Re: another ext3 kernel BUG
+Date: Mon, 13 Jun 2011 23:21:11 -0400
+Message-ID: <20110614032111.GA5392@redhat.com>
+References: <20110611021732.GA18768@gamma.logic.tuwien.ac.at>
+ <20110614011904.GA32521@gamma.logic.tuwien.ac.at>
+ <4DF6C541.5050805@redhat.com>
+ <20110614024307.GA3039@gamma.logic.tuwien.ac.at>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Shaohua Li <shaohua.li@intel.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Lukas Czerner <lczerner@redhat.com>
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Norbert Preining <preining@logic.at>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:41418 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752060Ab1FNDAZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 13 Jun 2011 23:00:25 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:57617 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751032Ab1FNDVW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 13 Jun 2011 23:21:22 -0400
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1106131116270.4328@dhcp-27-109.brq.redhat.com>
+In-Reply-To: <20110614024307.GA3039@gamma.logic.tuwien.ac.at>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 13, 2011 at 11:20:17AM +0200, Lukas Czerner wrote:
-> >  	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. "
-> >  		 "Opts: %s%s%s", descr, sbi->s_es->s_mount_opts,
-> > -		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data);
-> > +		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data ? : ";");
-> 
-> Hi,
-> 
-> so you are trying resolve the problem when the allocation fails right ?
-> But what you do is not solving anything, but rather hiding it and it is
-> not different than we had before.
+On Tue, Jun 14, 2011 at 11:43:07AM +0900, Norbert Preining wrote:
+ 
+ > > You seem uniquely able to hit it, and you do have a truckload of interesting modules loaded.  :)
+ > 
+ > Interesting modules?
+ > alsa stuff, bluetooth, fuse/fat/vfat for ntfs/external drives, wlan
+ > the only thing that stand out is the vbox* I guess, all the others are
+ > pretty standard, aren't they?
 
-So a couple of observations here.  The kernel's sprintf/printk
-functions will not OOPS if "%s" is asked to expand a NULL pointer; it
-will simply print "(null)".  So it's not a disaster if orig_data is
-NULL.  It's would perhaps be better (for cosmetic reasons) if we
-printed something such as "Opts: (none)", but it's not a huge deal
-either way.
+we've been getting a lot of bug reports in Fedora that have the vbox module
+loaded that manifest in various ways that look like it's corrupting kernel data
+structures. (Usually it scribbles over some linked list, and the CONFIG_LIST_DEBUG
+stuff catches it).
 
-> So what about this:
-> 
-> if (data && !orig_data)
-> 	return ret;
+I'd definitly try and reproduce it without that having been loaded if you can.
 
-Sure, that's technically better.  I'll note though that if we fail the
-kstrdup(), there are so many other memory allocations happening later
-in ext4_fill_super() that it's highly likely one of the others will
-fail and we will then return ENOMEM.
-
-That's not to say that patches here aren't welcome, but (a) it's
-useful to take a look at the big picture, and (b) I'm going to
-prioritize this as a "clean up" patch that can wait until the merge
-window for v3.1.  It will be a great opportunity for Shaohua to
-practice submitting a high quality patch that complies with the
-Documentation/SubmittingPatches requirements.
-
-Regards,
-
-							- Ted
+	Dave
