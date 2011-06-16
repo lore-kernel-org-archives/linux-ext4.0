@@ -1,98 +1,225 @@
-From: =?UTF-8?q?T=C3=B6r=C3=B6k=20Edwin?= <edwintorok@gmail.com>
-Subject: [PATCH] fix wrong iput on d_inode introduced by e6bc45d65d
-Date: Thu, 16 Jun 2011 00:06:14 +0300
-Message-ID: <1308171974-7323-1-git-send-email-edwintorok@gmail.com>
-References: <4DF868C8.3040903@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	=?UTF-8?q?T=C3=B6r=C3=B6k=20Edwin?= <edwintorok@gmail.com>
-To: Dave Jones <davej@redhat.com>, Eric Sandeen <sandeen@redhat.com>,
-	"Theodore Ts'o" <tytso@mit.edu>, Al Viro <viro@zeniv.linux.org.uk>,
-	Norbert Preining <preining@logic.at>
+From: Lai Jiangshan <laijs@cn.fujitsu.com>
+Subject: [PATCH 2/3] jbd2,tracing,rcu: jbd2_dev_to_name() is not protect by RCU
+Date: Thu, 16 Jun 2011 09:47:05 +0800
+Message-ID: <4f75c511d209281967ff8eaa97a75d38d5346903.1308131436.git.laijs@cn.fujitsu.com>
+References: <ec67960d0864680d18a43ec5275baba3f6e1dd94.1308131436.git.laijs@cn.fujitsu.com>
+Cc: Lai Jiangshan <laijs@cn.fujitsu.com>
+To: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+	Steven Rostedt <rostedt@goodmis.org>,
+	Ingo Molnar <mingo@elte.hu>, "Theodore Tso" <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org, linux-k
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:42131 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751260Ab1FOVG1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Jun 2011 17:06:27 -0400
-In-Reply-To: <4DF868C8.3040903@gmail.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:58909 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1754056Ab1FPBrt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 15 Jun 2011 21:47:49 -0400
+In-Reply-To: <ec67960d0864680d18a43ec5275baba3f6e1dd94.1308131436.git.laijs@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Git bisection shows that commit e6bc45d65df8599fdbae73be9cec4ceed274db5=
-3 causes
-BUG_ONs under high I/O load:
+TP_printk() is not inside the RCU critical section, so the return value
+of jbd2_dev_to_name() may be invalid. This fix pass a devname argument to
+store the result name to void this problem.
 
-kernel BUG at fs/inode.c:1368!
-[ 2862.501007] Call Trace:
-[ 2862.501007]  [<ffffffff811691d8>] d_kill+0xf8/0x140
-[ 2862.501007]  [<ffffffff81169c19>] dput+0xc9/0x190
-[ 2862.501007]  [<ffffffff8115577f>] fput+0x15f/0x210
-[ 2862.501007]  [<ffffffff81152171>] filp_close+0x61/0x90
-[ 2862.501007]  [<ffffffff81152251>] sys_close+0xb1/0x110
-[ 2862.501007]  [<ffffffff814c14fb>] system_call_fastpath+0x16/0x1b
+And ftrace_print_bdevname() is introduced to wrap
+trace_seq_reserve() and jbd2_dev_to_name().
 
-A reliable way to reproduce this bug is:
-Login to KDE, run 'rsnapshot sync', and apt-get install openjdk-6-jdk,
-and apt-get remove openjdk-6-jdk.
-
-The buggy part of the patch is this:
-	struct inode *inode =3D NULL;
-=2E....
--               if (nd.last.name[nd.last.len])
--                       goto slashes;
-                inode =3D dentry->d_inode;
--               if (inode)
--                       ihold(inode);
-+               if (nd.last.name[nd.last.len] || !inode)
-+                       goto slashes;
-+               ihold(inode)
-=2E..
-	if (inode)
-		iput(inode);	/* truncate the inode here */
-
-If nd.last.name[nd.last.len] is nonzero (and thus goto slashes branch i=
-s taken),
-and dentry->d_inode is non-NULL, then this code now does an additional =
-iput on
-the inode, which is wrong.
-
-=46ix this by only setting the inode variable if nd.last.name[nd.last.l=
-en] is 0.
-
-Reference: https://lkml.org/lkml/2011/6/15/50
-Reported-by: Norbert Preining <preining@logic.at>
-Reported-by: T=C3=B6r=C3=B6k Edwin <edwintorok@gmail.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Al Viro <viro@zeniv.linux.org.uk>
-Signed-off-by: T=C3=B6r=C3=B6k Edwin <edwintorok@gmail.com>
+Signed-off-by: Lai Jiangshan <laijs@cn.fujitsu.com>
 ---
- fs/namei.c |    4 +++-
- 1 files changed, 3 insertions(+), 1 deletions(-)
+ fs/jbd2/journal.c            |   27 ++++++++++++---------------
+ include/linux/ftrace_event.h |   10 ++++++++++
+ include/linux/jbd2.h         |    6 +++---
+ include/trace/events/jbd2.h  |   15 ++++++++-------
+ 4 files changed, 33 insertions(+), 25 deletions(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 9802345..6301963 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2713,8 +2713,10 @@ static long do_unlinkat(int dfd, const char __us=
-er *pathname)
- 	error =3D PTR_ERR(dentry);
- 	if (!IS_ERR(dentry)) {
- 		/* Why not before? Because we want correct error value */
-+		if (nd.last.name[nd.last.len])
-+			goto slashes;
- 		inode =3D dentry->d_inode;
--		if (nd.last.name[nd.last.len] || !inode)
-+		if (!inode)
- 			goto slashes;
- 		ihold(inode);
- 		error =3D mnt_want_write(nd.path.mnt);
---=20
-1.7.5.4
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 1c45b6a..c37597a 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -2427,11 +2427,8 @@ static void __exit journal_exit(void)
+  * jbd2_dev_to_name is a utility function used by the jbd2 and ext4 
+  * tracing infrastructure to map a dev_t to a device name.
+  *
+- * The caller should use rcu_read_lock() in order to make sure the
+- * device name stays valid until its done with it.  We use
+- * rcu_read_lock() as well to make sure we're safe in case the caller
+- * gets sloppy, and because rcu_read_lock() is cheap and can be safely
+- * nested.
++ * We use caches to cache the results and use rcu_read_lock()
++ * to protect the caches.
+  */
+ struct devname_cache {
+ 	struct rcu_head	rcu;
+@@ -2442,34 +2439,35 @@ struct devname_cache {
+ static struct devname_cache __rcu *devcache[1 << CACHE_SIZE_BITS];
+ static DEFINE_SPINLOCK(devname_cache_lock);
+ 
+-const char *jbd2_dev_to_name(dev_t device)
++void jbd2_dev_to_name(dev_t device, char *devname)
+ {
+ 	int	i = hash_32(device, CACHE_SIZE_BITS);
+-	char	*ret;
+ 	struct block_device *bd;
+ 	static struct devname_cache *cache;
+ 
+ 	rcu_read_lock();
+ 	cache = rcu_dereference(devcache[i]);
+ 	if (cache && cache->device == device) {
+-		ret = cache->devname;
++		memcpy(devname, cache->devname, BDEVNAME_SIZE);
+ 		rcu_read_unlock();
+-		return ret;
++		return;
+ 	}
+ 	rcu_read_unlock();
+ 
+ 	cache = kmalloc(sizeof(struct devname_cache), GFP_KERNEL);
+-	if (!cache)
+-		return "NODEV-ALLOCFAILURE"; /* Something non-NULL */
++	if (!cache) {
++		__bdevname(device, devname);
++		return;
++	}
+ 	bd = bdget(device);
+ 	spin_lock(&devname_cache_lock);
+ 	if (devcache[i]) {
+ 		if (devcache[i]->device == device) {
+ 			kfree(cache);
+ 			bdput(bd);
+-			ret = devcache[i]->devname;
++			memcpy(devname, devcache[i]->devname, BDEVNAME_SIZE);
+ 			spin_unlock(&devname_cache_lock);
+-			return ret;
++			return;
+ 		}
+ 		kfree_rcu(devcache[i], rcu);
+ 	}
+@@ -2480,9 +2478,8 @@ const char *jbd2_dev_to_name(dev_t device)
+ 	} else
+ 		__bdevname(device, cache->devname);
+ 	rcu_assign_pointer(devcache[i], cache);
+-	ret = cache->devname;
++	memcpy(devname, cache->devname, BDEVNAME_SIZE);
+ 	spin_unlock(&devname_cache_lock);
+-	return ret;
+ }
+ EXPORT_SYMBOL(jbd2_dev_to_name);
+ 
+diff --git a/include/linux/ftrace_event.h b/include/linux/ftrace_event.h
+index 59d3ef1..2959ead 100644
+--- a/include/linux/ftrace_event.h
++++ b/include/linux/ftrace_event.h
+@@ -6,6 +6,7 @@
+ #include <linux/percpu.h>
+ #include <linux/hardirq.h>
+ #include <linux/perf_event.h>
++#include <linux/jbd2.h>
+ 
+ struct trace_array;
+ struct tracer;
+@@ -28,6 +29,15 @@ const char *ftrace_print_flags_seq(struct trace_seq *p, const char *delim,
+ const char *ftrace_print_symbols_seq(struct trace_seq *p, unsigned long val,
+ 				     const struct trace_print_flags *symbol_array);
+ 
++static inline const char *ftrace_print_bdevname(struct trace_seq *p, dev_t device)
++{
++	char *bdevname = trace_seq_reserve(p, BDEVNAME_SIZE);
++
++	jbd2_dev_to_name(device, bdevname);
++
++	return bdevname;
++}
++
+ #if BITS_PER_LONG == 32
+ const char *ftrace_print_symbols_seq_u64(struct trace_seq *p,
+ 					 unsigned long long val,
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 4ecb7b1..964f375 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1331,11 +1331,11 @@ extern int jbd_blocks_per_page(struct inode *inode);
+ #define BUFFER_TRACE2(bh, bh2, info)	do {} while (0)
+ #define JBUFFER_TRACE(jh, info)	do {} while (0)
+ 
+-/* 
+- * jbd2_dev_to_name is a utility function used by the jbd2 and ext4 
++/*
++ * jbd2_dev_to_name is a utility function used by the jbd2 and ext4
+  * tracing infrastructure to map a dev_t to a device name.
+  */
+-extern const char *jbd2_dev_to_name(dev_t device);
++extern void jbd2_dev_to_name(dev_t device, char *bdevname);
+ 
+ #endif	/* __KERNEL__ */
+ 
+diff --git a/include/trace/events/jbd2.h b/include/trace/events/jbd2.h
+index bf16545..a9c8b44 100644
+--- a/include/trace/events/jbd2.h
++++ b/include/trace/events/jbd2.h
+@@ -27,7 +27,7 @@ TRACE_EVENT(jbd2_checkpoint,
+ 	),
+ 
+ 	TP_printk("dev %s result %d",
+-		  jbd2_dev_to_name(__entry->dev), __entry->result)
++		  ftrace_print_bdevname(p, __entry->dev), __entry->result)
+ );
+ 
+ DECLARE_EVENT_CLASS(jbd2_commit,
+@@ -49,7 +49,7 @@ DECLARE_EVENT_CLASS(jbd2_commit,
+ 	),
+ 
+ 	TP_printk("dev %s transaction %d sync %d",
+-		  jbd2_dev_to_name(__entry->dev), __entry->transaction,
++		  ftrace_print_bdevname(p, __entry->dev), __entry->transaction,
+ 		  __entry->sync_commit)
+ );
+ 
+@@ -101,7 +101,7 @@ TRACE_EVENT(jbd2_end_commit,
+ 	),
+ 
+ 	TP_printk("dev %s transaction %d sync %d head %d",
+-		  jbd2_dev_to_name(__entry->dev), __entry->transaction,
++		  ftrace_print_bdevname(p, __entry->dev), __entry->transaction,
+ 		  __entry->sync_commit, __entry->head)
+ );
+ 
+@@ -121,7 +121,8 @@ TRACE_EVENT(jbd2_submit_inode_data,
+ 	),
+ 
+ 	TP_printk("dev %s ino %lu",
+-		  jbd2_dev_to_name(__entry->dev), (unsigned long) __entry->ino)
++		  ftrace_print_bdevname(p, __entry->dev),
++		  (unsigned long) __entry->ino)
+ );
+ 
+ TRACE_EVENT(jbd2_run_stats,
+@@ -158,7 +159,7 @@ TRACE_EVENT(jbd2_run_stats,
+ 
+ 	TP_printk("dev %s tid %lu wait %u running %u locked %u flushing %u "
+ 		  "logging %u handle_count %u blocks %u blocks_logged %u",
+-		  jbd2_dev_to_name(__entry->dev), __entry->tid,
++		  ftrace_print_bdevname(p, __entry->dev), __entry->tid,
+ 		  jiffies_to_msecs(__entry->wait),
+ 		  jiffies_to_msecs(__entry->running),
+ 		  jiffies_to_msecs(__entry->locked),
+@@ -194,7 +195,7 @@ TRACE_EVENT(jbd2_checkpoint_stats,
+ 
+ 	TP_printk("dev %s tid %lu chp_time %u forced_to_close %u "
+ 		  "written %u dropped %u",
+-		  jbd2_dev_to_name(__entry->dev), __entry->tid,
++		  ftrace_print_bdevname(p, __entry->dev), __entry->tid,
+ 		  jiffies_to_msecs(__entry->chp_time),
+ 		  __entry->forced_to_close, __entry->written, __entry->dropped)
+ );
+@@ -223,7 +224,7 @@ TRACE_EVENT(jbd2_cleanup_journal_tail,
+ 	),
+ 
+ 	TP_printk("dev %s from %u to %u offset %lu freed %lu",
+-		  jbd2_dev_to_name(__entry->dev), __entry->tail_sequence,
++		  ftrace_print_bdevname(p, __entry->dev), __entry->tail_sequence,
+ 		  __entry->first_tid, __entry->block_nr, __entry->freed)
+ );
+ 
+-- 
+1.7.4.4
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
