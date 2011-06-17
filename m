@@ -1,45 +1,63 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: [PATCH 3/3 v5] XFS TESTS: Add ENOSPC Hole Punch Test
-Date: Fri, 17 Jun 2011 13:20:15 -0700
-Message-ID: <4DFBB6FF.8080208@linux.vnet.ibm.com>
-References: <4DED6405.7020104@vnet.ibm.com> <20110617120838.GA20714@infradead.org>
+From: Bernd Schubert <bernd.schubert@fastmail.fm>
+Subject: Re: [PATCH 1/2] ext4: Fix compilation with -DDX_DEBUG
+Date: Fri, 17 Jun 2011 23:25:51 +0200
+Message-ID: <4DFBC65F.7000208@fastmail.fm>
+References: <20110617160055.2062012.47590.stgit@localhost.localdomain> <4DFB9CF8.60208@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Allison Henderson <achender@vnet.ibm.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org,
+	Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+To: colyli@gmail.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:36103 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756918Ab1FQUUq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Jun 2011 16:20:46 -0400
-In-Reply-To: <20110617120838.GA20714@infradead.org>
+Received: from out4.smtp.messagingengine.com ([66.111.4.28]:43335 "EHLO
+	out4.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751049Ab1FQVZx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Jun 2011 17:25:53 -0400
+In-Reply-To: <4DFB9CF8.60208@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 06/17/2011 05:08 AM, Christoph Hellwig wrote:
-> This one fails for me because my test system doesn't have sudo
-> installed.  I can't see any reason why a simple su wouldn't be enough.
->
-> We already have a helper to make su usable on both IRIX and Linux in
-> test 123, and it might be a good idea to add this to the common routines
-> and use it.
->
-> I'd also suggest to split this test off 252 into a new test case, as
-> unlike the other tests it actually requires a scratch devices, and in
-> general is pretty different from the simple xfs_io exercises in 252.
->
-> I'd also move the newly added helpers directly into the new testcase
-> as they really aren't common.
->
+On 06/17/2011 08:29 PM, Coly Li wrote:
+> On 2011=E5=B9=B406=E6=9C=8818=E6=97=A5 00:00, Bernd Schubert Wrote:
+>> From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+>>
+>> Compilation of ext4/namei.c brought up an error and warning messages
+>> when compiled with -DDX_DEBUG
+>>
+>>
+>> Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+>> ---
+>>  fs/ext4/namei.c |    6 +++---
+>>  1 files changed, 3 insertions(+), 3 deletions(-)
+>>
+>> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+>> index b754b77..6f32da4 100644
+>> --- a/fs/ext4/namei.c
+>> +++ b/fs/ext4/namei.c
+>> @@ -288,8 +288,8 @@ static struct stats dx_show_leaf(struct dx_hash_=
+info *hinfo, struct ext4_dir_ent
+>>  				char *name =3D de->name;
+>>  				while (len--) printk("%c", *name++);
+>>  				ext4fs_dirhash(de->name, de->name_len, &h);
+>> -				printk(":%x.%u ", h.hash,
+>> -				       ((char *) de - base));
+>> +				printk(":%x.%ld ", h.hash,
+>> +				       (long) ((char *) de - base));
+>>  			}
+>=20
+> How about use %p in printk like
+>> +				printk(":%x.%p ", h.hash,
+>> +				       ((char *) de - base));
+>=20
 
-Hi Christoph,
+=46ine with me :) I will send updated patches on Monday.
 
-Thanks for the review, I will make those adjustments then and submit 
-them in a separate patch set since it sounds like 1/3 and 2/3 are moving 
-forward.  Thanks again!  :)
-
-Allison Henderson
+Cheers,
+Bernd
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
