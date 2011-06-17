@@ -1,49 +1,62 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: [PATCH 00/11 RESEND] e4defrag: fragmentation score rework and cleanups
-Date: Fri, 17 Jun 2011 09:08:19 -0400
-Message-ID: <BANLkTimFCQNt=Bptn-rhPeTbYRgfGdQLxQ@mail.gmail.com>
-References: <4DF916B8.5010001@wpkg.org> <4DF99052.8020201@sx.jp.nec.com>
- <4DF9BC52.40203@wpkg.org> <4DFAE285.9010503@sx.jp.nec.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 01/11 RESEND] libe2p: Add new function get_fragment_score()
+Date: Fri, 17 Jun 2011 09:20:55 -0500
+Message-ID: <4DFB62C7.5070008@redhat.com>
+References: <4DF8522F.2020304@sx.jp.nec.com> <20110617031814.GA31884@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: Tomasz Chmielewski <mangoo@wpkg.org>, linux-ext4@vger.kernel.org
-To: Kazuya Mio <k-mio@sx.jp.nec.com>
+Content-Transfer-Encoding: 7bit
+Cc: Kazuya Mio <k-mio@sx.jp.nec.com>, ext4 <linux-ext4@vger.kernel.org>
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:37291 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753743Ab1FQNIv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Jun 2011 09:08:51 -0400
-Received: by bwz15 with SMTP id 15so747213bwz.19
-        for <linux-ext4@vger.kernel.org>; Fri, 17 Jun 2011 06:08:49 -0700 (PDT)
-In-Reply-To: <4DFAE285.9010503@sx.jp.nec.com>
+Received: from mx1.redhat.com ([209.132.183.28]:39546 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754766Ab1FQOVA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Jun 2011 10:21:00 -0400
+In-Reply-To: <20110617031814.GA31884@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jun 17, 2011 at 1:13 AM, Kazuya Mio <k-mio@sx.jp.nec.com> wrote:
-> 2011/06/16 17:18, Tomasz Chmielewski wrote:
->>
->> I noticed that when using e4defrag on such a file-based image, while the
->> guest is running (i.e. the file is in use), all IO from that guest to
->> the disk (disk is this file) is "frozen".
->>
->> In other words, as soon as we run e4defrag, any guest writes to that
->> file will only complete if e4defrag finishes. As the images can be quite
->> big, it can mean guest IO can be frozen even for hours.
->>
->>
->> Is it a known/intended limitation (at least, it behaved like this when I
->> tried e4defrag a few months ago)?
->
-> Thank you for the feedback. I will try to reproduce this problem later.
->
+On 6/16/11 10:18 PM, Ted Ts'o wrote:
+> On Wed, Jun 15, 2011 at 03:33:19PM +0900, Kazuya Mio wrote:
+>> This patch adds get_fragment_score() to libe2p. get_fragment_score() returns
+>> the fragmentation score. It shows the percentage of extents whose size is
+>> smaller than the input argument "threshold".
+> 
+> It perhaps might be useful to also articulate what are the goals of
+> this metric.  Is just just to decide which files should be
+> defragmented, and which should be left alone?  Or do you want to be
+> able to compare which file is "worse off"?
+> 
+> I can imagine two files that have a score of 100%, but one is much
+> worse off than the other.  Does that matter?  It may or might not,
+> depending how you plan to use the fragmentation score, both now and in
+> the future.  So it might be good to explicitly declare what are the
+> goals for this metrics, and its planned use cases.
+> 
 > Regards,
-> Kazuya Mio
 
-Kazuya,
+Just as a random datapoint, the xfs_db "frag factor" has been a constant
+source of misunderstanding and woe for us.  (Granted, it works differently;
+it is an fs-wide number representing
 
-When trying to come up with a better plan for handling large files,
-you may want to review this msg and Akira's response from last spring:
+	((actual - ideal) / actual)
 
-http://www.kerneltrap.com/mailarchive/linux-ext4/2010/3/30/6899823
+extents in the fs.)
 
-Greg
+This "% of fragments smaller than threshold" is more easily understandable
+and possibly more descriptive, but I think Ted makes good points;
+think about how this will be used, and whether the metric is useful.
+
+It's hard to make a single number a) make sense to the user, and b)
+be usefully representative of fragmentation "badness" - so I am
+feeling very cautious about this idea overall.
+
+To really convey fragmentation "badness" you'd almost want a histogram
+of fragment sizes, which is a bit hard to present concisely...
+
+
+-Eric
+
+> 						- Ted
+
