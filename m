@@ -1,39 +1,56 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 01/11 RESEND] libe2p: Add new function
- get_fragment_score()
-Date: Thu, 16 Jun 2011 23:18:14 -0400
-Message-ID: <20110617031814.GA31884@thunk.org>
-References: <4DF8522F.2020304@sx.jp.nec.com>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] e2fsprogs: create com_err.h symlink in includedir
+Date: Thu, 16 Jun 2011 21:54:20 -0600
+Message-ID: <1A2DB8F9-BD3B-436E-886D-431A15796AC3@dilger.ca>
+References: <4D5C1103.8060403@redhat.com> <20110220231015.GA4001@thunk.org> <4D84C5C9.1060507@redhat.com> <4DFA69EB.3060907@redhat.com> <20110617023149.GD29725@thunk.org>
+Mime-Version: 1.0 (Apple Message framework v1082)
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 <linux-ext4@vger.kernel.org>
-To: Kazuya Mio <k-mio@sx.jp.nec.com>
+Content-Transfer-Encoding: 8BIT
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>, mitchb@mit.edu,
+	Bruce Cassidy <bruce@whamcloud.com>
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:50052 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755201Ab1FQDSS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Jun 2011 23:18:18 -0400
-Content-Disposition: inline
-In-Reply-To: <4DF8522F.2020304@sx.jp.nec.com>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:24120 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756732Ab1FQDye convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Jun 2011 23:54:34 -0400
+In-Reply-To: <20110617023149.GD29725@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 15, 2011 at 03:33:19PM +0900, Kazuya Mio wrote:
-> This patch adds get_fragment_score() to libe2p. get_fragment_score() returns
-> the fragmentation score. It shows the percentage of extents whose size is
-> smaller than the input argument "threshold".
+On 2011-06-16, at 8:31 PM, Ted Ts'o wrote:
+> On Thu, Jun 16, 2011 at 03:39:07PM -0500, Eric Sandeen wrote:
+>>> Hm, now in a "make rpm" build which has source in one place and rpm build
+>>> area in another:
+>>> 
+>>> /bin/ln: creating hard link `/home/sandeen/rpmbuild/BUILDROOT/e2fsprogs-1.41.14-0.x86_64/usr/include/com_err.h' => `/usr/include/et/com_err.h': Invalid cross-device link
+>>> 
+>>> so I'm not quite sure how to work around this.
+>>> 
+>>> Maybe in the end it does have to be packaging-specific, with the
+>>> link created by the distro pkg scripts...?
+>> 
+>> Ted, your change broke any builds span 2 different filesystems.
+> 
+> I thought I fixed this with commit 1e082c62?
+> 
+> Which Makefile is breaking?  Is this the one in lib/et/Makefile.in?
+> It currently reads:
+> 
+>  $(Q) (cd $(DESTDIR)$(includedir) ;\
+>  	$(LN) $(LINK_INSTALL_FLAGS) et/com_err.h . )
+> 
+> and I don't see how that could have generated the error you've cited
+> above...
 
-It perhaps might be useful to also articulate what are the goals of
-this metric.  Is just just to decide which files should be
-defragmented, and which should be left alone?  Or do you want to be
-able to compare which file is "worse off"?
+I had to return the "-s" back as well, but the current code looks OK.
+The chance of separate filesystems for /usr/include and /usr/include/et
+being used seems vanishingly small.
 
-I can imagine two files that have a score of 100%, but one is much
-worse off than the other.  Does that matter?  It may or might not,
-depending how you plan to use the fragmentation score, both now and in
-the future.  So it might be good to explicitly declare what are the
-goals for this metrics, and its planned use cases.
+Cheers, Andreas
 
-Regards,
 
-						- Ted
+
+
+
