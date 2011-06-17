@@ -1,31 +1,41 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 3/3 v5] XFS TESTS: Add ENOSPC Hole Punch Test
-Date: Fri, 17 Jun 2011 08:08:38 -0400
-Message-ID: <20110617120838.GA20714@infradead.org>
-References: <4DED6405.7020104@vnet.ibm.com>
+Subject: Re: [PATCH 2/3 v5] XFS TESTS: Expand 252 punch hole test
+Date: Fri, 17 Jun 2011 08:08:53 -0400
+Message-ID: <20110617120853.GB20714@infradead.org>
+References: <4DED63DE.1070000@vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	xfs-oss <xfs@oss.sgi.com>
 To: Allison Henderson <achender@vnet.ibm.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:39602
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1758268Ab1FQMIy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Jun 2011 08:08:54 -0400
 Content-Disposition: inline
-In-Reply-To: <4DED6405.7020104@vnet.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <4DED63DE.1070000@vnet.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This one fails for me because my test system doesn't have sudo
-installed.  I can't see any reason why a simple su wouldn't be enough.
+On Mon, Jun 06, 2011 at 04:33:50PM -0700, Allison Henderson wrote:
+> This patch adds additional punch hole tests to 252
+> that were used to test ext4 punch hole. The _test_generic_punch
+> routine has been modified to accept two new flags:
+> 
+> -k To keep the test file between tests.
+>    This will test the handling of existing holes
+> 
+> -d To not sync the file between tests.
+>    This will test the handling of delayed extents
+> 
+> Four new corner cases have also been added to the routine:
+> 14. data -> hole @ EOF
+> 15. data -> hole @ 0
+> 16. data -> cache cold ->hole
+> 17. data -> hole in single block file
 
-We already have a helper to make su usable on both IRIX and Linux in
-test 123, and it might be a good idea to add this to the common routines
-and use it.
-
-I'd also suggest to split this test off 252 into a new test case, as
-unlike the other tests it actually requires a scratch devices, and in
-general is pretty different from the simple xfs_io exercises in 252.
-
-I'd also move the newly added helpers directly into the new testcase
-as they really aren't common.
+Looks good, I'll put it in.
 
