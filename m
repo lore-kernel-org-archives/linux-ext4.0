@@ -1,41 +1,49 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 2/3 v5] XFS TESTS: Expand 252 punch hole test
-Date: Fri, 17 Jun 2011 08:08:53 -0400
-Message-ID: <20110617120853.GB20714@infradead.org>
-References: <4DED63DE.1070000@vnet.ibm.com>
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: [PATCH 00/11 RESEND] e4defrag: fragmentation score rework and cleanups
+Date: Fri, 17 Jun 2011 09:08:19 -0400
+Message-ID: <BANLkTimFCQNt=Bptn-rhPeTbYRgfGdQLxQ@mail.gmail.com>
+References: <4DF916B8.5010001@wpkg.org> <4DF99052.8020201@sx.jp.nec.com>
+ <4DF9BC52.40203@wpkg.org> <4DFAE285.9010503@sx.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>
-To: Allison Henderson <achender@vnet.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Tomasz Chmielewski <mangoo@wpkg.org>, linux-ext4@vger.kernel.org
+To: Kazuya Mio <k-mio@sx.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:39602
-	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758268Ab1FQMIy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 17 Jun 2011 08:08:54 -0400
-Content-Disposition: inline
-In-Reply-To: <4DED63DE.1070000@vnet.ibm.com>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:37291 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753743Ab1FQNIv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Jun 2011 09:08:51 -0400
+Received: by bwz15 with SMTP id 15so747213bwz.19
+        for <linux-ext4@vger.kernel.org>; Fri, 17 Jun 2011 06:08:49 -0700 (PDT)
+In-Reply-To: <4DFAE285.9010503@sx.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 06, 2011 at 04:33:50PM -0700, Allison Henderson wrote:
-> This patch adds additional punch hole tests to 252
-> that were used to test ext4 punch hole. The _test_generic_punch
-> routine has been modified to accept two new flags:
-> 
-> -k To keep the test file between tests.
->    This will test the handling of existing holes
-> 
-> -d To not sync the file between tests.
->    This will test the handling of delayed extents
-> 
-> Four new corner cases have also been added to the routine:
-> 14. data -> hole @ EOF
-> 15. data -> hole @ 0
-> 16. data -> cache cold ->hole
-> 17. data -> hole in single block file
+On Fri, Jun 17, 2011 at 1:13 AM, Kazuya Mio <k-mio@sx.jp.nec.com> wrote:
+> 2011/06/16 17:18, Tomasz Chmielewski wrote:
+>>
+>> I noticed that when using e4defrag on such a file-based image, while the
+>> guest is running (i.e. the file is in use), all IO from that guest to
+>> the disk (disk is this file) is "frozen".
+>>
+>> In other words, as soon as we run e4defrag, any guest writes to that
+>> file will only complete if e4defrag finishes. As the images can be quite
+>> big, it can mean guest IO can be frozen even for hours.
+>>
+>>
+>> Is it a known/intended limitation (at least, it behaved like this when I
+>> tried e4defrag a few months ago)?
+>
+> Thank you for the feedback. I will try to reproduce this problem later.
+>
+> Regards,
+> Kazuya Mio
 
-Looks good, I'll put it in.
+Kazuya,
 
+When trying to come up with a better plan for handling large files,
+you may want to review this msg and Akira's response from last spring:
+
+http://www.kerneltrap.com/mailarchive/linux-ext4/2010/3/30/6899823
+
+Greg
