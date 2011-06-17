@@ -1,37 +1,53 @@
-From: Manish Katiyar <mkatiyar@gmail.com>
-Subject: Re: [PATCH v2 2/3] jbd2: Add extra parameter in start_this_handle()
- to control allocation flags.
-Date: Thu, 16 Jun 2011 23:32:12 -0700
-Message-ID: <BANLkTikVuPx8F8DSdjFxZyR8ZA0ts3hQ_w@mail.gmail.com>
-References: <1306563416-4286-1-git-send-email-mkatiyar@gmail.com>
- <1306563657-4334-1-git-send-email-mkatiyar@gmail.com> <20110531112253.GD5614@quack.suse.cz>
- <20110531222720.GA3867@thunk.org> <20110602095424.GA5718@quack.suse.cz>
- <20110606032113.GC7180@thunk.org> <20110608141006.GG30037@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	mfasheh@suse.com, jlbec@evilplan.org
-To: "Ted Ts'o" <tytso@mit.edu>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 06/11 RESEND] e4defrag: Allow user who has read+write access to defrag
+Date: Fri, 17 Jun 2011 03:10:33 -0600
+Message-ID: <38089875-FB69-479A-9424-1AC477975AD1@dilger.ca>
+References: <4DF852F8.2020208@sx.jp.nec.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>
+To: Kazuya Mio <k-mio@sx.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f181.google.com ([209.85.216.181]:40724 "EHLO
-	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753227Ab1FQGcc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Jun 2011 02:32:32 -0400
-Received: by qyg14 with SMTP id 14so1162001qyg.19
-        for <linux-ext4@vger.kernel.org>; Thu, 16 Jun 2011 23:32:32 -0700 (PDT)
-In-Reply-To: <20110608141006.GG30037@thunk.org>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:11783 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757679Ab1FQJKi convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Jun 2011 05:10:38 -0400
+In-Reply-To: <4DF852F8.2020208@sx.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 8, 2011 at 7:10 AM, Ted Ts'o <tytso@mit.edu> wrote:
-> Ping?
+On 2011-06-15, at 12:36 AM, Kazuya Mio wrote:
+> Anyone who has read+write access can defrag the file for this fix.
+> Currently, non-root user needs owner authority to defrag the file. But non-root
+> user who is not owner might have read+write access.
 
-Hi Jan,
+I was looking at this code, and doing any kind of permission checking in
+userspace makes no sense.  Anyone could download the code and recompile
+it without this check, so it is clear that all permission checking has
+to happen in the kernel.
 
-Is there anything required from my side on this patch ? From your
-other post it seems that holding i_mutex isn't a problem. Please
-advise.
+I agree that anyone with read+write access to the file can corrupt it,
+just as badly as if they wrote garbage into the file, so it seems this
+should be enough permission to also run defragmentation on the file.
+It is good that you have removed these checks.
 
--- 
-Thanks -
-Manish
+> @@ -466,6 +465,7 @@ static int check_free_size(int fd, const char *file,
+> 	ext4_fsblk_t	free_blk_count;
+> 	struct statfs64	fsbuf;
+> +	uid_t		current_uid = getuid();
+> 
+> 	if (fstatfs64(fd, &fsbuf) < 0) {
+> 		if (mode_flag & DETAIL) {
+
+This one last usage is also incorrect.  It assumes that ROOT_UID is the
+only one that can access the "reserved" space in the filesystem.  In fact,
+it is possible to set s_def_resuid and s_def_resgid in the superblock to
+allow anyone with that UID or GID to access the reserved space.
+
+Cheers, Andreas
+
+
+
+
+
