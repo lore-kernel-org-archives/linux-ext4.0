@@ -1,384 +1,205 @@
-From: Robin Dong <hao.bigrat@gmail.com>
-Subject: Re: [PATCH 2/2] ext4 directory index: read-ahead blocks
-Date: Sat, 18 Jun 2011 15:45:08 +0800
-Message-ID: <BANLkTi=XSr9HkMOSbfVA2zOdGyd3CA3k2Q@mail.gmail.com>
-References: <20110617160055.2062012.47590.stgit@localhost.localdomain>
-	<20110617160100.2062012.50927.stgit@localhost.localdomain>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: Set file system to read-only by I/O error
+ threshold
+Date: Sat, 18 Jun 2011 10:38:37 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1106181015180.4602@dhcp-27-109.brq.redhat.com>
+References: <1308312516-14252-1-git-send-email-wangshaoyan.pt@taobao.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Bernd Schubert <bernd.schubert@fastmail.fm>,
-	linux-ext4@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org,
+	Wang Shaoyan <wangshaoyan.pt@taobao.com>,
+	Ted Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
+To: stufever@gmail.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:49681 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751978Ab1FRHpJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 18 Jun 2011 03:45:09 -0400
-Received: by iwn34 with SMTP id 34so2566421iwn.19
-        for <linux-ext4@vger.kernel.org>; Sat, 18 Jun 2011 00:45:08 -0700 (PDT)
-In-Reply-To: <20110617160100.2062012.50927.stgit@localhost.localdomain>
+Received: from mx1.redhat.com ([209.132.183.28]:44738 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753453Ab1FRIi6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 18 Jun 2011 04:38:58 -0400
+In-Reply-To: <1308312516-14252-1-git-send-email-wangshaoyan.pt@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2011/6/18 Bernd Schubert <bernd.schubert@fastmail.fm>:
-> While creating files in large directories we noticed an endless numbe=
-r
-> of 4K reads. And those reads very much reduced file creation numbers
-> as shown by bonnie. While we would expect about 2000 creates/s, we
-> only got about 25 creates/s. Running the benchmarks for a long time
-> improved the numbers, but not above 200 creates/s.
-> It turned out those reads came from directory index block reads
-> and probably the bh cache never cached all dx blocks. Given by
-> the high number of directories we have (8192) and number of files req=
-uired
-> to trigger the issue (16 million), rather probably bh cached dx block=
-s
-> got lost in favour of other less important blocks.
-> The patch below implements a read-ahead for *all* dx blocks of a dire=
-ctory
-> if a single dx block is missing in the cache. That also helps the LRU
-> to cache important dx blocks.
->
-> Unfortunately, it also has a performance trade-off for the first acce=
-ss to
-> a directory, although the READA flag is set already.
-> Therefore at least for now, this option is disabled by default, but m=
-ay
-> be enabled using 'mount -o dx_read_ahead' or 'mount -odx_read_ahead=3D=
-1'
->
-> Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+On Fri, 17 Jun 2011, stufever@gmail.com wrote:
+
+> From: Wang Shaoyan <wangshaoyan.pt@taobao.com>
+> 
+> Some version of Hadoop uses access(2) to check whether the data chunk harddisk is online, if access(2) returns error, hadoop marks the disk which it called access(2) as offline. This method works for Ext3/4 with journal, because when jbd/jbd2 encounters I/O error, the file system will be set as read-only. For Ext4 no-journal mode, there is no jdb2 to set the file system as read-only when I/O error happens, the access(2) from Hadoop is not able to reliably detect hard disk offline condition.
+
+Hi,
+
+so you're saying that you encounter I/O error on access(2) only with
+Ext3/4 with journal. So given that you're checking the error count in
+ext4_handle_error() which is called when I/O error happens I fail to see
+how this helps your case. Am I missing something ?
+
+Also I do not understand how this is helpful at all ? Usually when we
+hit I/O error we want to have predictable behavior set by the error=
+mount option, but with this patch we have absolutely unpredictable
+behaviour on errors, which is bad! Also we can end up with read-only
+file system even when errors=continue has been set.
+
+Could you please provide a real use case for having error threshold ?
+Because to me it does not seem like a very good idea.
+
+Couple of comment bellow.
+
+> 
+> This patch tries to fix the above problem from kernel side. People can set I/O error threshold, in 2 conditions Ext4 file system without journal will be set as read-only:
+> 1) inside the sampling interval, I/O errors come more then pre-set threshold happens
+> 2) I/O errors always happen in continous sampling intervals, the sum of errors exceeds pre-set threshold
+> 
+> Then the application can find the file system is set as read-only, and call its own failure tolerance procedures.
+> 
+> There are 2 interface exported to user space via sysfs:
+> /sys/fs/ext4/sd[?]/eio_threshold --- I/O error threshold to set file system as read-only
+> /sys/fs/ext4/sd[?]/eio_interval  --- sampling interval in second
+> 
+> If echo 0 into file eio_threshold, I/O error threshold will be infinite, no file system read-only will be triggered.
+> 
+> Cc: Ted Tso <tytso@mit.edu>
+> Cc: Jan Kara <jack@suse.cz>
+> Reviewed-by: Coly Li <bosong.ly@taobao.com>
+> Reviewed-by: Liu Yuan <tailai.ly@taobao.com>
+> Signed-off-by: Wang Shaoyan <wangshaoyan.pt@taobao.com>
+> 
 > ---
-> =A0Documentation/filesystems/ext4.txt | =A0 =A06 ++++
-> =A0fs/ext4/ext4.h =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 | =A0 =A03 =
-++
-> =A0fs/ext4/inode.c =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0| =A0 28 ++=
-++++++++++++++++
-> =A0fs/ext4/namei.c =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0| =A0 56 ++=
-+++++++++++++++++++++++++++++++---
-> =A0fs/ext4/super.c =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0| =A0 17 ++=
-+++++++++
-> =A05 files changed, 106 insertions(+), 4 deletions(-)
->
-> diff --git a/Documentation/filesystems/ext4.txt b/Documentation/files=
-ystems/ext4.txt
-> index 3ae9bc9..fad70ea 100644
-> --- a/Documentation/filesystems/ext4.txt
-> +++ b/Documentation/filesystems/ext4.txt
-> @@ -404,6 +404,12 @@ dioread_nolock =A0 =A0 =A0 =A0 =A0 =A0 locking. =
-If the dioread_nolock option is specified
-> =A0i_version =A0 =A0 =A0 =A0 =A0 =A0 =A0Enable 64-bit inode version s=
-upport. This option is
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0off by default.
->
-> +dx_read_ahead =A0 =A0 =A0 =A0 =A0Enables read-ahead of directory ind=
-ex blocks.
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 This option should be e=
-nabled if the filesystem several
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 directories with a high=
- number of files. Disadvantage
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 is that on first access=
- to a directory additional reads
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 come up, which might sl=
-ow down other operations.
-> +
-> =A0Data Mode
-> =A0=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> =A0There are 3 different data modes:
+>  fs/ext4/ext4.h  |    5 +++++
+>  fs/ext4/super.c |   51 +++++++++++++++++++++++++++++++++++++++++++++++++++
+>  2 files changed, 56 insertions(+), 0 deletions(-)
+> 
 > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 1921392..997323a 100644
+> index 1921392..8f445a8 100644
 > --- a/fs/ext4/ext4.h
 > +++ b/fs/ext4/ext4.h
-> @@ -916,6 +916,8 @@ struct ext4_inode_info {
-> =A0#define EXT4_MOUNT_DISCARD =A0 =A0 =A0 =A0 =A0 =A0 0x40000000 /* I=
-ssue DISCARD requests */
-> =A0#define EXT4_MOUNT_INIT_INODE_TABLE =A0 =A00x80000000 /* Initializ=
-e uninitialized itables */
->
-> +#define EXT4_MOUNT2_DX_READ_AHEAD =A0 =A0 =A00x00002 /* Read ahead d=
-irectory index blocks */
-> +
-> =A0#define clear_opt(sb, opt) =A0 =A0 =A0 =A0 =A0 =A0 EXT4_SB(sb)->s_=
-mount_opt &=3D \
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0~EXT4_MOUNT_##opt
-> =A0#define set_opt(sb, opt) =A0 =A0 =A0 =A0 =A0 =A0 =A0 EXT4_SB(sb)->=
-s_mount_opt |=3D \
-> @@ -1802,6 +1804,7 @@ struct buffer_head *ext4_getblk(handle_t *, str=
-uct inode *,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0ext4_lblk_t, int, int *);
-> =A0struct buffer_head *ext4_bread(handle_t *, struct inode *,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0ext4_lblk_t, int, int *);
-> +int ext4_bread_ra(struct inode *inode, ext4_lblk_t block);
-> =A0int ext4_get_block(struct inode *inode, sector_t iblock,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0struct=
- buffer_head *bh_result, int create);
->
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index a5763e3..938fb6c 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1490,6 +1490,9 @@ struct buffer_head *ext4_getblk(handle_t *handl=
-e, struct inode *inode,
-> =A0 =A0 =A0 =A0return bh;
-> =A0}
->
-> +/*
-> + =A0* Synchronous read of blocks
-> + =A0*/
-> =A0struct buffer_head *ext4_bread(handle_t *handle, struct inode *ino=
-de,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_lblk=
-_t block, int create, int *err)
-> =A0{
-> @@ -1500,6 +1503,7 @@ struct buffer_head *ext4_bread(handle_t *handle=
-, struct inode *inode,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return bh;
-> =A0 =A0 =A0 =A0if (buffer_uptodate(bh))
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return bh;
-> +
-> =A0 =A0 =A0 =A0ll_rw_block(READ_META, 1, &bh);
-> =A0 =A0 =A0 =A0wait_on_buffer(bh);
-> =A0 =A0 =A0 =A0if (buffer_uptodate(bh))
-> @@ -1509,6 +1513,30 @@ struct buffer_head *ext4_bread(handle_t *handl=
-e, struct inode *inode,
-> =A0 =A0 =A0 =A0return NULL;
-> =A0}
->
-> +/*
-> + * Read-ahead blocks
-> + */
-> +int ext4_bread_ra(struct inode *inode, ext4_lblk_t block)
-> +{
-> + =A0 =A0 =A0 struct buffer_head *bh;
-> + =A0 =A0 =A0 int err;
-> +
-> + =A0 =A0 =A0 bh =3D ext4_getblk(NULL, inode, block, 0, &err);
-> + =A0 =A0 =A0 if (!bh)
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 return -1;
-> +
-> + =A0 =A0 =A0 if (buffer_uptodate(bh)) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 brelse(bh);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 return 0;
-> + =A0 =A0 =A0 }
-> +
-> + =A0 =A0 =A0 ll_rw_block(READA, 1, &bh);
-> +
-> + =A0 =A0 =A0 brelse(bh);
-> + =A0 =A0 =A0 return 0;
-> +}
-> +
-> +
-> =A0static int walk_page_buffers(handle_t *handle,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct buffer=
-_head *head,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 unsigned from=
-,
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index 6f32da4..78290f0 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -334,6 +334,35 @@ struct stats dx_show_entries(struct dx_hash_info=
- *hinfo, struct inode *dir,
-> =A0#endif /* DX_DEBUG */
->
-> =A0/*
-> + * Read ahead directory index blocks
-> + */
-> +static void dx_ra_blocks(struct inode *dir, struct dx_entry * entrie=
-s)
-> +{
-> + =A0 =A0 =A0 int i, err =3D 0;
-> + =A0 =A0 =A0 unsigned num_entries =3D dx_get_count(entries);
-> +
-> + =A0 =A0 =A0 if (num_entries < 2 || num_entries > dx_get_limit(entri=
-es)) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 dxtrace(printk("dx read-ahead: invalid =
-number of entries\n"));
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 return;
-> + =A0 =A0 =A0 }
-> +
-> + =A0 =A0 =A0 dxtrace(printk("dx read-ahead: %d entries in dir-ino %l=
-u \n",
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 num_entries, dir->i_ino=
-));
-> +
-> + =A0 =A0 =A0 i =3D 1; /* skip first entry, it was already read in by=
- the caller */
-> + =A0 =A0 =A0 do {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct dx_entry *entry;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_lblk_t block;
-> +
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 entry =3D entries + i;
-> +
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 block =3D dx_get_block(entry);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 err =3D ext4_bread_ra(dir, dx_get_block=
-(entry));
+> @@ -1108,6 +1108,11 @@ struct ext4_sb_info {
+>  	int s_first_ino;
+>  	unsigned int s_inode_readahead_blks;
+>  	unsigned int s_inode_goal;
+> +	spinlock_t s_eio_lock;
 
-I think your meaning may be:
+You can use atomic_t and get rid of the spinlock maybe ?
 
-block =3D dx_get_block(entry);
-err =3D ext4_bread_ra(dir, block);
-
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 i++;
-> + =A0 =A0 =A0 =A0} while (i < num_entries && !err);
-> +}
-> +
-> +/*
-> =A0* Probe for a directory leaf block to search.
-> =A0*
-> =A0* dx_probe can return ERR_BAD_DX_DIR, which means there was a form=
-at
-> @@ -347,11 +376,12 @@ dx_probe(const struct qstr *d_name, struct inod=
-e *dir,
-> =A0 =A0 =A0 =A0 struct dx_hash_info *hinfo, struct dx_frame *frame_in=
-, int *err)
-> =A0{
-> =A0 =A0 =A0 =A0unsigned count, indirect;
-> - =A0 =A0 =A0 struct dx_entry *at, *entries, *p, *q, *m;
-> + =A0 =A0 =A0 struct dx_entry *at, *entries, *ra_entries, *p, *q, *m;
-> =A0 =A0 =A0 =A0struct dx_root *root;
-> =A0 =A0 =A0 =A0struct buffer_head *bh;
-> =A0 =A0 =A0 =A0struct dx_frame *frame =3D frame_in;
-> =A0 =A0 =A0 =A0u32 hash;
-> + =A0 =A0 =A0 bool did_ra =3D false;
->
-> =A0 =A0 =A0 =A0frame->bh =3D NULL;
-> =A0 =A0 =A0 =A0if (!(bh =3D ext4_bread (NULL,dir, 0, 0, err)))
-> @@ -390,7 +420,7 @@ dx_probe(const struct qstr *d_name, struct inode =
-*dir,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto fail;
-> =A0 =A0 =A0 =A0}
->
-> - =A0 =A0 =A0 entries =3D (struct dx_entry *) (((char *)&root->info) =
-+
-> + =A0 =A0 =A0 ra_entries =3D entries =3D (struct dx_entry *) (((char =
-*)&root->info) +
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 root->info.info_length);
->
-> =A0 =A0 =A0 =A0if (dx_get_limit(entries) !=3D dx_root_limit(dir,
-> @@ -446,9 +476,27 @@ dx_probe(const struct qstr *d_name, struct inode=
- *dir,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0frame->bh =3D bh;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0frame->entries =3D entries;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0frame->at =3D at;
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!indirect--) return frame;
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!(bh =3D ext4_bread (NULL,dir, dx_g=
-et_block(at), 0, err)))
-> +
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!did_ra && test_opt2(dir->i_sb, DX_=
-READ_AHEAD)) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* read-ahead of dx blo=
-cks */
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct buffer_head *tes=
-t_bh;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_lblk_t block =3D d=
-x_get_block(at);
-> +
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 test_bh =3D ext4_getblk=
-(NULL, dir, block, 0, err);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (test_bh && !buffer_=
-uptodate(test_bh)) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 dx_ra_b=
-locks(dir, ra_entries);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 did_ra =
-=3D true;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 brelse(test_bh);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
-> +
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!indirect--)
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return frame;
-> +
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 bh =3D ext4_bread(NULL, dir, dx_get_blo=
-ck(at), 0, err);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!bh)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto fail2;
-> +
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0at =3D entries =3D ((struct dx_node *)=
- bh->b_data)->entries;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (dx_get_limit(entries) !=3D dx_node=
-_limit (dir)) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext4_warning(dir->i_sb=
-,
+> +	unsigned int s_eio_threshold;
+> +	unsigned int s_eio_interval;
+> +	unsigned int s_eio_counter;
+> +	unsigned long s_eio_last_jiffies;
+>  	spinlock_t s_next_gen_lock;
+>  	u32 s_next_generation;
+>  	u32 s_hash_seed[4];
 > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index cc5c157..9dd7c05 100644
+> index cc5c157..f85ddcd 100644
 > --- a/fs/ext4/super.c
 > +++ b/fs/ext4/super.c
-> @@ -1119,6 +1119,9 @@ static int ext4_show_options(struct seq_file *s=
-eq, struct vfsmount *vfs)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0seq_printf(seq, ",init_inode_table=3D%=
-u",
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 (unsigned) sbi->s=
-_li_wait_mult);
->
-> + =A0 =A0 =A0 if (test_opt2(sb, DX_READ_AHEAD))
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 seq_puts(seq, ",dx_read_ahead");
+> @@ -384,6 +384,23 @@ static void save_error_info(struct super_block *sb, const char *func,
+>  	ext4_commit_super(sb, 1);
+>  }
+>  
+> +static inline void check_error_number(struct super_block *sb)
+
+The name for this function should rather be inc_sb_error_count().
+
+> +{
+> +	struct ext4_sb_info *sbi = EXT4_SB(sb);
 > +
-> =A0 =A0 =A0 =A0ext4_show_quota_options(seq, sb);
->
-> =A0 =A0 =A0 =A0return 0;
-> @@ -1294,6 +1297,7 @@ enum {
-> =A0 =A0 =A0 =A0Opt_dioread_nolock, Opt_dioread_lock,
-> =A0 =A0 =A0 =A0Opt_discard, Opt_nodiscard,
-> =A0 =A0 =A0 =A0Opt_init_inode_table, Opt_noinit_inode_table,
-> + =A0 =A0 =A0 Opt_dx_read_ahead,
-> =A0};
->
-> =A0static const match_table_t tokens =3D {
-> @@ -1369,6 +1373,8 @@ static const match_table_t tokens =3D {
-> =A0 =A0 =A0 =A0{Opt_init_inode_table, "init_itable=3D%u"},
-> =A0 =A0 =A0 =A0{Opt_init_inode_table, "init_itable"},
-> =A0 =A0 =A0 =A0{Opt_noinit_inode_table, "noinit_itable"},
-> + =A0 =A0 =A0 {Opt_dx_read_ahead, "dx_read_ahead=3D%u"},
-> + =A0 =A0 =A0 {Opt_dx_read_ahead, "dx_read_ahead"},
-> =A0 =A0 =A0 =A0{Opt_err, NULL},
-> =A0};
->
-> @@ -1859,6 +1865,17 @@ set_qf_format:
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0case Opt_noinit_inode_table:
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0clear_opt(sb, INIT_INO=
-DE_TABLE);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0break;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 case Opt_dx_read_ahead:
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (args[0].from) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (mat=
-ch_int(&args[0], &option))
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 return 0;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 } else
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 option =
-=3D 1; =A0 =A0 /* No argument, default to 1 */
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (option)
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 set_opt=
-2(sb, DX_READ_AHEAD);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 else
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 clear_o=
-pt2(sb, DX_READ_AHEAD);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 break;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0default:
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext4_msg(sb, KERN_ERR,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 "Unrecogn=
-ized mount option \"%s\" "
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
+> +	if (time_after(sbi->s_eio_last_jiffies + sbi->s_eio_interval * HZ, jiffies)) {
+> +		sbi->s_eio_counter++;
+> +	} else {
+> +		sbi->s_eio_counter = 1;
+> +	}
+> +
+> +	sbi->s_eio_last_jiffies = jiffies;
+> +	ext4_msg(sb, KERN_CRIT, "count total: %d", sbi->s_eio_counter);
+> +	
+> +	if (sbi->s_eio_counter > sbi->s_eio_threshold) { 
 
+I am not sure, but given that it it a "threshold" should not we trigger
+it when we hit the threshold and not threshold+1 ?
 
+> +		ext4_abort(sb, "Two many io error, abort it");
 
---=20
---
-Best Regard
-Robin Dong
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Could you use better error message ? This does not say nothing about why
+it happened. Something about IO errors count reached the threshold ?
+
+> +	}
+> +}
+>  
+>  /* Deal with the reporting of failure conditions on a filesystem such as
+>   * inconsistencies detected or read IO failures.
+> @@ -402,9 +419,17 @@ static void save_error_info(struct super_block *sb, const char *func,
+>  
+>  static void ext4_handle_error(struct super_block *sb)
+>  {
+> +	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> +
+>  	if (sb->s_flags & MS_RDONLY)
+>  		return;
+>  
+> +	if (sbi->s_eio_threshold && !sbi->s_journal) {
+> +		spin_lock(&sbi->s_eio_lock);
+> +		check_error_number(sb);
+> +		spin_unlock(&sbi->s_eio_lock);
+
+Maybe you can use atomic operations and get rid of the spin_lock.
+
+> +	}
+> +
+>  	if (!test_opt(sb, ERRORS_CONT)) {
+>  		journal_t *journal = EXT4_SB(sb)->s_journal;
+>  
+> @@ -2471,6 +2496,22 @@ static ssize_t inode_readahead_blks_store(struct ext4_attr *a,
+>  	return count;
+>  }
+>  
+> +static ssize_t eio_interval_store(struct ext4_attr *a,
+> +					  struct ext4_sb_info *sbi,
+> +					  const char *buf, size_t count)
+> +{
+> +	unsigned long t;
+> +
+> +	if (parse_strtoul(buf, 0xffffffff, &t))
+> +		return -EINVAL;
+> +
+> +	if (t <= 0)
+> +		return -EINVAL;
+> +
+> +	sbi->s_eio_interval = t;
+> +	return count;
+> +}
+> +
+>  static ssize_t sbi_ui_show(struct ext4_attr *a,
+>  			   struct ext4_sb_info *sbi, char *buf)
+>  {
+> @@ -2524,6 +2565,9 @@ EXT4_RW_ATTR_SBI_UI(mb_order2_req, s_mb_order2_reqs);
+>  EXT4_RW_ATTR_SBI_UI(mb_stream_req, s_mb_stream_request);
+>  EXT4_RW_ATTR_SBI_UI(mb_group_prealloc, s_mb_group_prealloc);
+>  EXT4_RW_ATTR_SBI_UI(max_writeback_mb_bump, s_max_writeback_mb_bump);
+> +EXT4_RW_ATTR_SBI_UI(eio_threshold, s_eio_threshold);
+> +EXT4_ATTR_OFFSET(eio_interval, 0644, sbi_ui_show,
+> +		 eio_interval_store, s_eio_interval);
+>  
+>  static struct attribute *ext4_attrs[] = {
+>  	ATTR_LIST(delayed_allocation_blocks),
+> @@ -2540,6 +2584,8 @@ static struct attribute *ext4_attrs[] = {
+>  	ATTR_LIST(mb_stream_req),
+>  	ATTR_LIST(mb_group_prealloc),
+>  	ATTR_LIST(max_writeback_mb_bump),
+> +	ATTR_LIST(eio_threshold),
+> +	ATTR_LIST(eio_interval),
+>  	NULL,
+>  };
+>  
+> @@ -3464,6 +3510,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  	sbi->s_stripe = ext4_get_stripe_size(sbi);
+>  	sbi->s_max_writeback_mb_bump = 128;
+>  
+> +	spin_lock_init(&sbi->s_eio_lock);
+> +	sbi->s_eio_threshold = 10;
+> +	sbi->s_eio_interval = 5;
+> +	sbi->s_eio_counter = 0;
+> +
+>  	/*
+>  	 * set up enough so that it can read an inode
+>  	 */
+> 
+
+-- 
