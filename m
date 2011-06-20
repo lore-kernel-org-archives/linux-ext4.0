@@ -1,37 +1,53 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: [PATCH 2/3 v5] XFS TESTS: Expand 252 punch hole test
-Date: Mon, 20 Jun 2011 07:49:19 -0700
-Message-ID: <4DFF5DEF.5040709@linux.vnet.ibm.com>
-References: <4DED63DE.1070000@vnet.ibm.com> <20110620090754.GA27583@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Allison Henderson <achender@vnet.ibm.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>
-To: Christoph Hellwig <hch@infradead.org>
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: [GIT PULL] ext4 update for 3.0
+Date: Mon, 20 Jun 2011 12:54:07 -0400
+Message-ID: <E1QYhjj-0006Ne-Lp@tytso-glaptop>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:47453 "EHLO e9.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750833Ab1FTOvJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 20 Jun 2011 10:51:09 -0400
-In-Reply-To: <20110620090754.GA27583@infradead.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:51738 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751305Ab1FTQyL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 Jun 2011 12:54:11 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 06/20/2011 02:07 AM, Christoph Hellwig wrote:
-> This actually broke 242 due to the new output from the new tests for me.
->
-> Next time please do a full xfsqa run before submitting patches.
->
+Hi Linus,
 
-Ah, sorry about that, I will remember to run the whole xfsqa from now 
-on. I think I have another set I submitted last night that I need to do 
-that with too. I will get it fixed up and resent.
+Please pull from:
 
-Allison Henderson
+   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
 
+to grab bug fixes needed for 3.0.
 
+Thanks!!
 
+					- Ted
 
+Jan Kara (1):
+      jbd2: Fix oops in jbd2_journal_remove_journal_head()
+
+Lukas Czerner (3):
+      ext4: Fix max file size and logical block counting of extent format file
+      ext4: use FIEMAP_EXTENT_LAST flag for last extent in fiemap
+      ext4: fixed tracepoints cleanup
+
+Tao Ma (1):
+      jbd2: Remove obsolete parameters in the comments for some jbd2 functions
+
+Yongqiang Yang (1):
+      ext4: correct comments for ext4_free_blocks()
+
+ fs/ext4/ext4_extents.h      |    9 ++-
+ fs/ext4/extents.c           |   42 +++++-----
+ fs/ext4/inode.c             |    2 +-
+ fs/ext4/mballoc.c           |    8 +-
+ fs/ext4/move_extent.c       |   10 +-
+ fs/ext4/super.c             |   15 +++-
+ fs/jbd2/checkpoint.c        |   28 ++++---
+ fs/jbd2/commit.c            |   33 +++++----
+ fs/jbd2/journal.c           |   91 +++++++---------------
+ fs/jbd2/transaction.c       |   69 +++++++++--------
+ include/linux/jbd2.h        |    2 -
+ include/trace/events/ext4.h |  179 ++++++++++++++++++-------------------------
+ 12 files changed, 223 insertions(+), 265 deletions(-)
