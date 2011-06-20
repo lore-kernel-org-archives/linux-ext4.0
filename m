@@ -1,42 +1,38 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Can someone confirm ext4 BUG_ON on latest kernel build?
-Date: Sun, 19 Jun 2011 21:42:19 -0400
-Message-ID: <20110620014219.GA32133@thunk.org>
-References: <4DFDCBE0.5020806@halfdog.net>
+Subject: Re: Commit 94968e74 breaks f_lotsbad
+Date: Sun, 19 Jun 2011 21:58:01 -0400
+Message-ID: <20110620015801.GB32133@thunk.org>
+References: <418F4E42-50E6-4CAA-B6F5-CA59B17E84C0@whamcloud.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: halfdog <me@halfdog.net>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@whamcloud.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:58739 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750765Ab1FTB6C (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 19 Jun 2011 21:58:02 -0400
 Content-Disposition: inline
-In-Reply-To: <4DFDCBE0.5020806@halfdog.net>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <418F4E42-50E6-4CAA-B6F5-CA59B17E84C0@whamcloud.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jun 19, 2011 at 10:13:52AM +0000, halfdog wrote:
-> 
-> Sorry, I do not have latest kernel. Can someone confirm this on latest?
-> At least bugtracker does not know about it, and to my understanding of
-> source, should be still here.
-> 
-> dd if=/dev/zero bs=1M count=64 of=test
-> mkfs.ext4 -F test
-> echo -n " " | dd of=test bs=1 count=1 seek=297195 conv=notrunc
-> mount -o loop test /mnt/test
-> dmesg -c
-> 
-> On ubuntu natty with latest kernel, it seems, that
-> fs/ext4/super.c:__save_error_info calls mod_timer before timer->function
-> is set at end of fs/ext4/super.c:ext4_fill_super via
->   sbi->s_err_report.function = print_daily_error_info;
-> 
-> This causes BUG_ON(!timer->function) in kernel/timer.c:__mod_timer
-> Device is stuck, not usable any more.
+On Fri, Jun 17, 2011 at 12:28:01AM -0600, Andreas Dilger wrote:
+> Ted,
+> I was going to send some more fixes, but it looks like your commit
+> 94968e74 "libext2fs: teach bitmap functions about bigalloc/cluster"
+> breaks the "f_lotsbad" test, which I found via git bisect and verified
+> is the offending commit:
 
-This problem is fixed in 2.6.39 (via commit 0449641130f5, which landed
-in mainline in 2.6.39-rc3).
+The problem was a bug in lib/ext2fs/Makefile.in; the $(SRCS) macro
+included "$(srcdir)/blkmap64_ba.o" (note ".o" instead of ".o"; Oops.)
+
+As a result we didn't have a dependency for blkmap64_ba.c in the
+Makefile, and so blkmap64_ba.o wasn't getting regenerated when
+bmap64.h changed.  You can fix it by rm'ing blkmap64_ba.o and then
+rebuilding.  I'll fixed the Makefile.in, rerun "make depend", and then
+check in a fix.
 
 Regards,
 
-					- Ted
+						- Ted
