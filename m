@@ -1,9 +1,9 @@
 From: Joel Becker <jlbec@evilplan.org>
-Subject: Re: [PATCH 6/8] fs: always maintain i_dio_count
-Date: Mon, 20 Jun 2011 14:29:24 -0700
-Message-ID: <20110620212924.GA26204@noexit.corp.google.com>
+Subject: Re: [PATCH 4/8] fs: kill i_alloc_sem
+Date: Mon, 20 Jun 2011 14:32:03 -0700
+Message-ID: <20110620213203.GB26204@noexit.corp.google.com>
 References: <20110620201533.847236272@bombadil.infradead.org>
- <20110620202031.567119520@bombadil.infradead.org>
+ <20110620202031.175620498@bombadil.infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: viro@zeniv.linux.org.uk, tglx@linutronix.de,
@@ -11,42 +11,46 @@ Cc: viro@zeniv.linux.org.uk, tglx@linutronix.de,
 	linux-btrfs@vger.kernel.org, hirofumi@mail.parknet.co.jp,
 	mfasheh@suse.com
 To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:38121 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751919Ab1FTV3c (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Jun 2011 17:29:32 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20110620202031.567119520@bombadil.infradead.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20110620202031.175620498@bombadil.infradead.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jun 20, 2011 at 04:15:39PM -0400, Christoph Hellwig wrote:
-> Maintain i_dio_count for all filesystems, not just those using DIO_LOCKING.
-> This these filesystems to also protect truncate against direct I/O requests
-> by using common code.  Right now the only non-DIO_LOCKING filesystem that
-> appears to do so is XFS, which uses an opencoded variant of the i_dio_count
-> scheme.
+On Mon, Jun 20, 2011 at 04:15:37PM -0400, Christoph Hellwig wrote:
+> i_alloc_sem is a rather special rw_semaphore.  It's the last one that may
+> be released by a non-owner, and it's write side is always mirrored by
+> real exclusion.  It's intended use it to wait for all pending direct I/O
+> requests to finish before starting a truncate.
 > 
-> Behaviour doesn't change for filesystems never calling inode_dio_wait,
-> which are all that never use DIO_LOCKING.
+> Replace it with a hand-grown construct:
 > 
-> For ext4 behaviour changes with the dioread_nonlock option, which previous
-> was missing any protection between truncate and direct I/O reads.
+>  - exclusion for truncates is already guaranteed by i_mutex, so it can
+>    simply fall way
+>  - the reader side is replaced by an i_dio_count member in struct inode
+>    that counts the number of pending direct I/O requests.  Truncate can't
+>    proceed as long as it's non-zero
+>  - when i_dio_count reaches non-zero we wake up a pending truncate using
+>    wake_up_bit on a new bit in i_flags
+>  - new references to i_dio_count can't appear while we are waiting for
+>    it to read zero because the direct I/O count always needs i_mutex
+>    (or an equivalent like XFS's i_iolock) for starting a new operation.
 > 
-> For ocfs2 that handcrafted i_dio_count manipulations are replaced with
-> the common code noew available.
+> This scheme is much simpler, and saves the space of a spinlock_t and a
+> struct list_head in struct inode (typically 160 bytes on a non-debug 64-bit
+> system).
 
-	Oh god you're making the world scary.  Are you guaranteeing that
-all allocation changes are locked out by the time we get into
-file_aio_write() and file_aio_read()?  This is not obvious to me.
+	Are we guaranteed that all allocation changes are locked out by
+i_dio_count>0?  I don't think we are.  The ocfs2 code very strongly
+assumes the state of a file's allocation when it holds i_alloc_sem.  I
+feel like we lose that here. 
 
 Joel
 
 -- 
 
-"Glory is fleeting, but obscurity is forever."  
-         - Napoleon Bonaparte
+"I don't even butter my bread; I consider that cooking."
+         - Katherine Cebrian
 
 			http://www.jlbec.org/
 			jlbec@evilplan.org
