@@ -1,52 +1,80 @@
-From: Manish Katiyar <mkatiyar@gmail.com>
-Subject: Re: [PATCH v2 2/3] jbd2: Add extra parameter in start_this_handle()
- to control allocation flags.
-Date: Mon, 20 Jun 2011 07:40:53 -0700
-Message-ID: <BANLkTi=nZrq9ZfU3G=YS6ZmZMhhD5g+tCg@mail.gmail.com>
-References: <1306563416-4286-1-git-send-email-mkatiyar@gmail.com>
- <1306563657-4334-1-git-send-email-mkatiyar@gmail.com> <20110531112253.GD5614@quack.suse.cz>
- <20110531222720.GA3867@thunk.org> <20110602095424.GA5718@quack.suse.cz>
- <20110606032113.GC7180@thunk.org> <20110608141006.GG30037@thunk.org>
- <BANLkTikVuPx8F8DSdjFxZyR8ZA0ts3hQ_w@mail.gmail.com> <20110620143201.GD4810@quack.suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: Set file system to read-only by I/O error
+ threshold
+Date: Mon, 20 Jun 2011 16:41:50 +0200
+Message-ID: <20110620144150.GE4810@quack.suse.cz>
+References: <1308312516-14252-1-git-send-email-wangshaoyan.pt@taobao.com>
+ <20110620133626.GC4810@quack.suse.cz>
+ <BANLkTikLrLPLgj3ykmqcZ_+KVQi85vrWAPSJHGX_hOV3nNL0sg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=iso-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Ted Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	mfasheh@suse.com, jlbec@evilplan.org
-To: Jan Kara <jack@suse.cz>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	Wang Shaoyan <wangshaoyan.pt@taobao.com>,
+	Ted Tso <tytso@mit.edu>
+To: Wang Shaoyan <stufever@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f181.google.com ([209.85.216.181]:46794 "EHLO
-	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755035Ab1FTOlN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Jun 2011 10:41:13 -0400
-Received: by qyk9 with SMTP id 9so1137577qyk.19
-        for <linux-ext4@vger.kernel.org>; Mon, 20 Jun 2011 07:41:13 -0700 (PDT)
-In-Reply-To: <20110620143201.GD4810@quack.suse.cz>
+Received: from cantor2.suse.de ([195.135.220.15]:47259 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754378Ab1FTOly (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 Jun 2011 10:41:54 -0400
+Content-Disposition: inline
+In-Reply-To: <BANLkTikLrLPLgj3ykmqcZ_+KVQi85vrWAPSJHGX_hOV3nNL0sg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 20, 2011 at 7:32 AM, Jan Kara <jack@suse.cz> wrote:
-> =A0Hi,
->
-> On Thu 16-06-11 23:32:12, Manish Katiyar wrote:
->> On Wed, Jun 8, 2011 at 7:10 AM, Ted Ts'o <tytso@mit.edu> wrote:
->> > Ping?
->>
->> Is there anything required from my side on this patch ? From your
->> other post it seems that holding i_mutex isn't a problem. Please
->> advise.
-> =A0OK, after my discussion with Ted today, i_mutex really shouldn't b=
-e an
-> issue so your patch should be fine. I just suggest you resend it to T=
-ed to
-> remind yourself :).
+On Mon 20-06-11 22:12:48, Wang Shaoyan wrote:
+> Thanks for your reply!
+> 2011/6/20 Jan Kara <jack@suse.cz>:
+>=20
+> > =A0Hum, if I understand your problem right, you should just mount t=
+he
+> > filesystem with errors=3Dremount-ro and you will get the behavior y=
+ou need.
+> > Or what is insufficient on that solution? Your patch surely provide=
+s more
+> > flexibility but is that really needed?
+> >
+>=20
+> 1.There are more than ten hard disks in each of our production
+> machine, so it is not right for
+> making the whole system panic, only based on one error in one harddis=
+k.
+> 2.There may be multiple tasks which access the same hard drive at the
+> same time, so it is
+> not ideal for changing the system to readonly, only based on one erro=
+r
+> in one task,
+> while other task may be killed.
+>=20
+> That's why we have a relaxed restrictions, only when the error counte=
+r
+> is grower than our
+> threshold, we change fs to readonly or panic.
+> When a system has a dozen hard drives, each hard drive is running
+> several tasks on time,
+> this feature is a real demand.
+  OK, but then your changelog is just misleading because your need for =
+the
+feature has nothing to do with different error behavior in ext4 nojourn=
+al
+mode as far as I understand. So please describe your real needs in the
+changelog as you described them above...
 
-Thanks a lot Jan, Will resend the series to Ted.
+That being said I'm not sure such policies like when to remount fs
+read-only belong to the kernel. It would seem more appropriate to me to
+somehow propagate information about all IO errors to user space and hav=
+e
+some monitoring daemon (be it Hadoop or Nagios or whatever people use)
+handle remounting the filesystem and marking the disk as offline. But
+this is just my opinion and I don't want to block this feature. It's mo=
+re
+a suggestion for other people...
 
-
+								Honza
 --=20
-Thanks -
-Manish
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
