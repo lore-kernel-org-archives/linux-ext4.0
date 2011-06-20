@@ -1,53 +1,59 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [GIT PULL] ext4 update for 3.0
-Date: Mon, 20 Jun 2011 12:54:07 -0400
-Message-ID: <E1QYhjj-0006Ne-Lp@tytso-glaptop>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2 2/3] jbd2: Add extra parameter in
+ start_this_handle() to control allocation flags.
+Date: Mon, 20 Jun 2011 13:57:20 -0400
+Message-ID: <20110620175720.GD32133@thunk.org>
+References: <1306563416-4286-1-git-send-email-mkatiyar@gmail.com>
+ <1306563657-4334-1-git-send-email-mkatiyar@gmail.com>
+ <20110531112253.GD5614@quack.suse.cz>
+ <20110531222720.GA3867@thunk.org>
+ <20110602095424.GA5718@quack.suse.cz>
+ <20110606032113.GC7180@thunk.org>
+ <20110608141006.GG30037@thunk.org>
+ <BANLkTikVuPx8F8DSdjFxZyR8ZA0ts3hQ_w@mail.gmail.com>
+ <20110620143201.GD4810@quack.suse.cz>
+ <BANLkTi=nZrq9ZfU3G=YS6ZmZMhhD5g+tCg@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	mfasheh@suse.com, jlbec@evilplan.org
+To: Manish Katiyar <mkatiyar@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:51738 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:58844 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751305Ab1FTQyL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 20 Jun 2011 12:54:11 -0400
+	id S1754301Ab1FTR5Z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 Jun 2011 13:57:25 -0400
+Content-Disposition: inline
+In-Reply-To: <BANLkTi=nZrq9ZfU3G=YS6ZmZMhhD5g+tCg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Linus,
+On Mon, Jun 20, 2011 at 07:40:53AM -0700, Manish Katiyar wrote:
+> > =A0OK, after my discussion with Ted today, i_mutex really shouldn't=
+ be an
+> > issue so your patch should be fine. I just suggest you resend it to=
+ Ted to
+> > remind yourself :).
+>=20
+> Thanks a lot Jan, Will resend the series to Ted.
 
-Please pull from:
+Thanks, but don't bother resending it unless you have any changes to
+update.
 
-   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
+I do keep track of patches using patchwork[1], so I haven't forgotten. =
+ :-)
 
-to grab bug fixes needed for 3.0.
+[1] http://patchwork.ozlabs.org/project/linux-ext4/list/
 
-Thanks!!
+I'll be starting to go through patches for the next merge window this
+week.
 
-					- Ted
+							- Ted
 
-Jan Kara (1):
-      jbd2: Fix oops in jbd2_journal_remove_journal_head()
 
-Lukas Czerner (3):
-      ext4: Fix max file size and logical block counting of extent format file
-      ext4: use FIEMAP_EXTENT_LAST flag for last extent in fiemap
-      ext4: fixed tracepoints cleanup
-
-Tao Ma (1):
-      jbd2: Remove obsolete parameters in the comments for some jbd2 functions
-
-Yongqiang Yang (1):
-      ext4: correct comments for ext4_free_blocks()
-
- fs/ext4/ext4_extents.h      |    9 ++-
- fs/ext4/extents.c           |   42 +++++-----
- fs/ext4/inode.c             |    2 +-
- fs/ext4/mballoc.c           |    8 +-
- fs/ext4/move_extent.c       |   10 +-
- fs/ext4/super.c             |   15 +++-
- fs/jbd2/checkpoint.c        |   28 ++++---
- fs/jbd2/commit.c            |   33 +++++----
- fs/jbd2/journal.c           |   91 +++++++---------------
- fs/jbd2/transaction.c       |   69 +++++++++--------
- include/linux/jbd2.h        |    2 -
- include/trace/events/ext4.h |  179 ++++++++++++++++++-------------------------
- 12 files changed, 223 insertions(+), 265 deletions(-)
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
