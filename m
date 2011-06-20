@@ -1,150 +1,114 @@
 From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: [RFC] on-line resize with flex_bg and exclude_bitmap
-Date: Mon, 20 Jun 2011 21:37:52 +0300
-Message-ID: <BANLkTi=831+K++G5o8ivt0cMJbHtRisJmg@mail.gmail.com>
-References: <BANLkTimfddp_6LkfCMfAe_SA2wa3t3jrMQ@mail.gmail.com>
+Subject: Re: [RFC] exclude_bitmap and uninit_bg features
+Date: Mon, 20 Jun 2011 21:52:32 +0300
+Message-ID: <BANLkTin07pMbppMMdiyVGvk6E=WQid0C0g@mail.gmail.com>
+References: <BANLkTimmRQtOiH2iunJczQOhxkB4uoCJ2g@mail.gmail.com>
+	<BANLkTik5x9nPgw7a_LhHxEpP8RuAce-n5Q@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Tso <tytso@mit.edu>,
-	Andreas Dilger <adilger@dilger.ca>
+	Theodore Tso <tytso@mit.edu>
 To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:42876 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755197Ab1FTShx convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Jun 2011 14:37:53 -0400
-Received: by wwe5 with SMTP id 5so2845532wwe.1
-        for <linux-ext4@vger.kernel.org>; Mon, 20 Jun 2011 11:37:52 -0700 (PDT)
-In-Reply-To: <BANLkTimfddp_6LkfCMfAe_SA2wa3t3jrMQ@mail.gmail.com>
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:63201 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750816Ab1FTSwe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Jun 2011 14:52:34 -0400
+Received: by wyb38 with SMTP id 38so1877342wyb.19
+        for <linux-ext4@vger.kernel.org>; Mon, 20 Jun 2011 11:52:33 -0700 (PDT)
+In-Reply-To: <BANLkTik5x9nPgw7a_LhHxEpP8RuAce-n5Q@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 12, 2011 at 2:27 PM, Amir Goldstein <amir73il@gmail.com> wr=
-ote:
-> Hi Ted,
+On Fri, Apr 15, 2011 at 4:54 AM, Amir Goldstein <amir73il@gmail.com> wrote:
+> On Wed, Apr 13, 2011 at 9:03 PM, Amir Goldstein <amir73il@gmail.com> wrote:
+>> Hi Ted,
+>>
+>> I have been exploring the possibility to make exclude bitmap a compat feature
+>> and I think I have come to a dead end with ext4_init_block_bitmap().
+>>
+>> On old kernels, this function will disregard the exclude bitmap block and leave
+>> it free in the block bitmap.
+>>
+>> So that leaves us with the less attractive option to make it rocompat,
+>> which leads to the following dilemma:
+>> Once exclude bitmap is allocated by new mkfs or added by new tune2fs,
+>> the fs can no longer be mounted by an older kernel.
+>> How can we solve that problem?
+>>
+>> We could use 2 features:
+>> EXT4_FEATURE_COMPAT_EXCLUDE_BITMAP /* exclude bitmap is allocated */
+>> EXT4_FEATURE_RO_COMPAT_UNINIT_EXCLUDE /* uninit_bg and exclude_bitmap are set */
 >
-> I realized another issue regarding exclude bitmap compatibility.
-> the exiting EXT4_IOC_GROUP_ADD ioctl doesn't pass a field for the loc=
-ation
-> of exclude_bitmap block, so we need to either allocate exclude_bitmap=
- in kernel
-> or define a new ioctl, which passes the exclude_bitmap to kernel.
+> I am being silly.
+> There is no need for the helper uninit_exclude rocompat feature,
+> because I already
+> have the rocomat has_snapshot feature, so I can init all bitmaps when
+> removing it,
+> to keep the exclude bitmap protected.
 >
-> If we are going to go with the latter solution, we may want to add
-> support for flex_bg
-> layout for the new ioctl, so following is my proposal for
-> EXT4_IOC_FLEX_GROUP_ADD:
+>>
+>> New mkfs can allocate exclude bitmaps for uninit groups and set the 2
+>> features by default.
+>> tune2fs -O ^uninit_exclude can init all groups and remove the rocompat feature,
+>> making the fs available for old kernels, while keeping the exclude
+>> bitmap intact.
+>>
+>> Does that make sense to you?
+>>
 >
-> 1. As far as online resize and mkfs are concerned, we always allocate=
- all
-> group descriptors of a flex bg at the same time.
+> So I have a new, yet simpler, deployment strategy.
+> For the next release of e2fsprogs:
+> - mke2fs -o has_snapshot will explicitly allocate exclude bitmap and big journal
+> - setting/clearing of exclude_bitmap/has_snapshot features by tune2fs
+> will not be allowed
 >
-> 2. If there is not enough space for all flex_bg metadata in the last =
-group,
-> the last group will be dropped.
+> ext4 with has_snapshot feature will be mountable read-write by new
+> kernels with the
+> CONFIG_EXT4_FS_SNAPSHOT config option enabled and will be mountable
+> read-only by old kernels and when config option is disabled.
 >
-> 3. The new flex group input will assume all bitmaps of the same type =
-are
-> consecutive, so only the address of the first bitmap is needed as inp=
-ut.
+> This avoid all backward compatibility issues and will assure that no one tries
+> to enable an experimental feature on his root fs.
 >
-> struct ext4_new_flex_group_input {
-> =A0 =A0 =A0 =A0__u32 group; =A0 =A0 =A0 =A0 =A0 =A0/* Group number fo=
-r this data */
-> =A0 =A0 =A0 =A0__u64 block_bitmap; =A0 =A0 /* Absolute block number o=
-f first
-> block bitmap */
-> =A0 =A0 =A0 =A0__u64 exclude_bitmap; =A0 =A0 /* Absolute block number=
- of first
-> exclude bitmap */
-> =A0 =A0 =A0 =A0__u64 inode_bitmap; =A0 =A0 /* Absolute block number o=
-f first
-> inode bitmap */
-> =A0 =A0 =A0 =A0__u64 inode_table; =A0 =A0 =A0/* Absolute block number=
- of first
-> inode table start */
-> =A0 =A0 =A0 =A0__u32 blocks_count; =A0 =A0 /* Total number of blocks =
-in this flex group */
-> =A0 =A0 =A0 =A0__u16 reserved_blocks; =A0/* Number of reserved blocks=
- in this
-> flex group */
-> =A0 =A0 =A0 =A0__u16 flex_size; =A0 =A0 =A0 =A0 =A0 =A0/* Number of g=
-roups in the flex group */
-> };
+> This also reduces the e2fsprogs patches to tune2fs.
 >
-> 4. ext4_group_extend() should be the same except we need to allow ext=
-ending
-> within the last flex bg, but not necessarily the last block group.
+> For a future release of e2fsprogs:
+> - setting the exclude_bitmap/has_snapshot features by tune2fs will be allowed
+> - clearing the exclude_bitmap feature will not be allowed
+> - clearing the has_snapshot feature will init all block bitmaps,
+> uninit all exclude bitmaps and discard all snapshots
 >
+> Please approve my plan and I will carry on to submit the reduced set
+> of e2fsporgs patches.
 >
-> To look at this from a different angle, if you imagine that the flex
-> group is just
-> a big group, whose bitmaps and group descriptor are flex_size times b=
-igger and
-> where ext4_new_flex_group_input encodes the info of the big descripto=
-r,
-> then this design is identical to the current implementation of online=
- resize.
->
-> What I will do, if you agree to this design, is use the new ioctl,
-> with flex_size =3D 1
-> to pass the exclude_bitmap in online resize and enforce flex_size =3D=
-=3D 1
-> in kernel.
-> Then later we can teach resize2fs and the kernel to extend flex group=
-s properly
-> using the new ioctl.
->
-> What do you think?
-> Can you think of another way I can support exclude_bitmap and online =
-resize,
-> without the need for a new ioctl?
->
+> Thanks,
 > Amir.
 >
 
-
 Hi Yongqiang,
 
-=46ollowing today's conf call, we agreed to drop the old habit of
-letting user space decide
-on bitmap allocations and leave the decision in the hands on the kernel=
-=2E
+As agreed on today's conf call, setting exclude_bitmap on mkfs time
+will be optional (can be configured as default via /etc/mke2fs.conf).
+And that adding the exclude_bitmap by tune2fs should be possible
+for existing installations.
 
-The new resize ioctl should just provide the new 64bit blocks count to
-the kernel.
-The new resize ioctl (say EXT4_IOC_ONLINE_RESIZE) cabability should be =
-published
-to user space via ext4_feat_attrs, like lazy_itable_init and
-batch_discard and resize2fs
-should check that attribute before choosing the ioctl to use.
+Of course, setting the snapshots feature will also set the exclude_bitmap
+feature.
+We also agreed that is it OK to require the flex_bg feature when setting
+both exclude_bitmap and uninit_bg features.
 
-As a first step, I think the new ioctl should be implemented by
-calling ext4_group_add()
-and ext4_group_extend() for all groups in the range.
+I noted that uninit_bg together with exclude_bitmap are not backward compatible
+because old kernels do not know how to init a block bitmap which contains
+an exclude bitmap block.
+I also noted that even current kernels do not know how to init a block bitmap
+which contains bitmaps and itables of other group (i.e. flex_bg).
+Backward compatibility is maintained by mke2fs, which initiates all
+block bitmaps
+which contain bitmaps and itables from another group.
+This practice should be preserved by future implementations of mke2fs
+and resize2fs
+(like the new resize ioctl).
 
-This is sufficient for supporting exclude bitmap, because the kernel
-can decide on the location
-for the exclude bitmaps.
-
-The next obvious steps would be to:
-1. honor the flex_bg layout (whenever possible)
-2. resize to large sizes very quickly by skipping the bitmaps and itabl=
-e init
-
-But you don't have to complete all the steps if you are overbooked
-with other tasks.
-
-More future enhancement that will be accessible with the new ioctl are:
-3. support resize for 64bit/meta_bg fs
-4. support resize for big_alloc fs
-
-Thanks,
+Cheers,
 Amir.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
