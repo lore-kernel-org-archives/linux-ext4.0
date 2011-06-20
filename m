@@ -1,26 +1,46 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH 0/8] remove i_alloc_sem
-Date: Mon, 20 Jun 2011 16:15:33 -0400
-Message-ID: <20110620201533.847236272@bombadil.infradead.org>
+Subject: [PATCH 3/8] fs: simpler handling of zero sized reads in __blockdev_direct_IO
+Date: Mon, 20 Jun 2011 16:15:36 -0400
+Message-ID: <20110620202030.966337660@bombadil.infradead.org>
+References: <20110620201533.847236272@bombadil.infradead.org>
 Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	linux-btrfs@vger.kernel.org, hirofumi@mail.parknet.co.jp,
 	mfasheh@suse.com, jlbec@evilplan.org
 To: viro@zeniv.linux.org.uk, tglx@linutronix.de
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+Content-Disposition: inline; filename=fs-cleanup-zero-size-dio-reads
+Sender: linux-btrfs-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-i_alloc_sem has always been a bit of an odd "lock".  It's the only remaining
-rw_semaphore that can be released by a different thread than the one that
-locked it, and it's use case in the core direct I/O code is more like a
-counter given that the writers already have external serialization.
+Reject zero sized reads as soon as we know our I/O length, and don't
+borther with locks or allocations that might have to be cleaned up
+otherwise.
 
-This series removes it in favour of a simpler counter scheme, thus getting
-rid of the rw_semaphore non-owner APIs as requests by Thomas, while at the
-same time shrinking the size of struct inode by 160 bytes on 64-bit systems.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-The only nasty bit is that two filesystems (fat and ext4) have started
-abusing the lock for their own purposes.  I've added a new rw_semaphore
-to their filesystem-specific inode structures to keep the current behaviour,
-but I suspect the maintainers might have smarted ideas to archive the same
-goal.
+Index: linux-2.6/fs/direct-io.c
+===================================================================
+--- linux-2.6.orig/fs/direct-io.c	2011-06-11 12:10:10.205165161 +0200
++++ linux-2.6/fs/direct-io.c	2011-06-11 12:12:49.161823781 +0200
+@@ -1200,6 +1200,10 @@ __blockdev_direct_IO(int rw, struct kioc
+ 		}
+ 	}
+ 
++	/* watch out for a 0 len io from a tricksy fs */
++	if (rw == READ && end == offset)
++		return 0;
++
+ 	dio = kmalloc(sizeof(*dio), GFP_KERNEL);
+ 	retval = -ENOMEM;
+ 	if (!dio)
+@@ -1213,8 +1217,7 @@ __blockdev_direct_IO(int rw, struct kioc
+ 
+ 	dio->flags = flags;
+ 	if (dio->flags & DIO_LOCKING) {
+-		/* watch out for a 0 len io from a tricksy fs */
+-		if (rw == READ && end > offset) {
++		if (rw == READ) {
+ 			struct address_space *mapping =
+ 					iocb->ki_filp->f_mapping;
+ 
+
