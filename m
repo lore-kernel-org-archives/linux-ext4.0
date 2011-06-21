@@ -1,47 +1,91 @@
-From: jiayingz@google.com (Jiaying Zhang)
-Subject: [PATCH] Free allocated and pre-allocated blocks when check_eofblocks_fl fails
-Date: Mon, 20 Jun 2011 20:28:16 -0700 (PDT)
-Message-ID: <20110621032816.6A0A942247@ruihe.smo.corp.google.com>
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 4/8] fs: kill i_alloc_sem
+Date: Tue, 21 Jun 2011 15:40:56 +1000
+Message-ID: <20110621054056.GP32466@dastard>
+References: <20110620201533.847236272@bombadil.infradead.org>
+ <20110620202031.175620498@bombadil.infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: viro@zeniv.linux.org.uk, tglx@linutronix.de,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, hirofumi@mail.parknet.co.jp,
+	mfasheh@suse.com, jlbec@evilplan.org
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.44.51]:51244 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753773Ab1FUD2T (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Jun 2011 23:28:19 -0400
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:44649 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751096Ab1FUFlC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 21 Jun 2011 01:41:02 -0400
+Content-Disposition: inline
+In-Reply-To: <20110620202031.175620498@bombadil.infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We have hit the same BUG_ON as described in
-https://bugzilla.kernel.org/show_bug.cgi?id=31222
-on some of our servers that have disk failures or corrupted inodes. After
-looking at the code, I think the problem is that we are not freeing inode's
-preallocation list when check_eofblocks_fl fails in ext4_ext_map_blocks(),
-which leaves the inode's preallocation list in an inconsistent state.
+On Mon, Jun 20, 2011 at 04:15:37PM -0400, Christoph Hellwig wrote:
+> i_alloc_sem is a rather special rw_semaphore.  It's the last one that may
+> be released by a non-owner, and it's write side is always mirrored by
+> real exclusion.  It's intended use it to wait for all pending direct I/O
+> requests to finish before starting a truncate.
+> 
+> Replace it with a hand-grown construct:
+> 
+>  - exclusion for truncates is already guaranteed by i_mutex, so it can
+>    simply fall way
+>  - the reader side is replaced by an i_dio_count member in struct inode
+>    that counts the number of pending direct I/O requests.  Truncate can't
+>    proceed as long as it's non-zero
+>  - when i_dio_count reaches non-zero we wake up a pending truncate using
+>    wake_up_bit on a new bit in i_flags
+>  - new references to i_dio_count can't appear while we are waiting for
+>    it to read zero because the direct I/O count always needs i_mutex
+>    (or an equivalent like XFS's i_iolock) for starting a new operation.
+> 
+> This scheme is much simpler, and saves the space of a spinlock_t and a
+> struct list_head in struct inode (typically 160 bytes on a non-debug 64-bit
+> system).
+> 
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> 
+> Index: linux-2.6/fs/direct-io.c
+> ===================================================================
+> --- linux-2.6.orig/fs/direct-io.c	2011-06-20 14:55:31.000000000 +0200
+> +++ linux-2.6/fs/direct-io.c	2011-06-20 14:55:34.602490284 +0200
+> @@ -136,6 +136,27 @@ struct dio {
+>  };
+>  
+>  /*
+> + * Wait for outstanding DIO requests to finish.  Must be locked against
+> + * increments of i_dio_count by i_mutex.
+> + */
+> +void inode_dio_wait(struct inode *inode)
+> +{
+> +	might_sleep();
+> +	while (atomic_read(&inode->i_dio_count)) {
+> +		wait_on_bit(&inode->i_state, __I_DIO_WAKEUP, inode_wait,
+> +			    TASK_UNINTERRUPTIBLE);
+> +	}
+> +}
+> +EXPORT_SYMBOL_GPL(inode_dio_wait);
+> +
+> +void inode_dio_wake(struct inode *inode)
+> +{
+> +	if (atomic_dec_and_test(&inode->i_dio_count))
+> +		wake_up_bit(&inode->i_state, __I_DIO_WAKEUP);
+> +}
+> +EXPORT_SYMBOL_GPL(inode_dio_wake);
 
-Below is a proposed patch to fix the bug. I have tested it by manually
-inserting a random failure in check_eofblocks_fl() and run a test that
-creates and uses an inode's preallocated blocks. Without the fix, the kernel
-crashes after a few runs. With the fix, no crash is observed.
-    
-ext4: free allocated and pre-allocated blocks when check_eofblocks_fl fails
+Modification of inode->i_state is not safe outside the
+inode->i_lock.
 
-Upon corrupted inode or disk failures, we may fail after we already allocate
-some blocks from the inode or take some blocks from the inode's preallocation
-list, but before we successfully insert the corresponding extent to the extent
-tree. In this case, we should free any allocated blocks and discard the inode's
-preallocated blocks because the entries in the inode's preallocation list may
-be in an inconsistent state.
+This probably needs to be implemented similar to the
+__I_NEW/__wait_on_freeing_inode() and
+__I_SYNC/inode_wait_for_writeback() pattern...
 
-Signed-off-by: Jiaying Zhang <jiayingz@google.com>
+Cheers,
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 5199bac..8cf6ec9 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3596,10 +3596,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	}
- 
- 	err = check_eofblocks_fl(handle, inode, map->m_lblk, path, ar.len);
--	if (err)
--		goto out2;
+Dave.
+
+-- 
+Dave Chinner
+david@fromorbit.com
