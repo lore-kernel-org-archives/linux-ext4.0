@@ -1,178 +1,91 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH v1 00/30] Ext4 snapshots
-Date: Tue, 21 Jun 2011 09:45:57 -0600
-Message-ID: <0A68B7C0-C7DD-456C-BC52-A169C5521933@dilger.ca>
-References: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net> <BANLkTimC9N6nLYg2+FqjVv_J4RGy1t8nZA@mail.gmail.com>
-Mime-Version: 1.0 (iPhone Mail 8J2)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Theodore Tso <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Amir G." <amir73il@users.sourceforge.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from shawmail.shawcable.com ([64.59.128.220]:56415 "EHLO
-	mail.shawcable.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752717Ab1FUPpk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Jun 2011 11:45:40 -0400
-In-Reply-To: <BANLkTimC9N6nLYg2+FqjVv_J4RGy1t8nZA@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Subject: Re: [PATCH 1/8] far: remove i_alloc_sem abuse
+Date: Wed, 22 Jun 2011 00:57:43 +0900
+Message-ID: <87fwn3mb2g.fsf@devron.myhome.or.jp>
+References: <20110620201533.847236272@bombadil.infradead.org>
+	<20110620202030.577464178@bombadil.infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: viro@zeniv.linux.org.uk, tglx@linutronix.de,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, mfasheh@suse.com, jlbec@evilplan.org
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+In-Reply-To: <20110620202030.577464178@bombadil.infradead.org> (Christoph
+	Hellwig's message of "Mon, 20 Jun 2011 16:15:34 -0400")
+Sender: linux-btrfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2011-06-21, at 5:06 AM, "Amir G." <amir73il@users.sourceforge.net> wrote:
-> On Tue, Jun 7, 2011 at 6:07 PM,  <amir73il@users.sourceforge.net> wrote:
->> 
->> I am resending the snapshots patch series as per Lukas's request.
->> This time, the snapshot*.c files have not been omitted, as in
->> the previous posting.
->> 
->> The series is still based on ext4 dev branch sometime in the preparation
->> for 3.0 merge window. It was not yet rebased on 3.0-rc1, so punch holes
->> changes have not been addressed yet.
->> 
->> As always, I advocate online review of the patches at:
->> https://github.com/amir73il/ext4-snapshots/commits/for-ext4-v1
->> but if you insist on doing it the old way, I won't complain.
->> 
->> 
-> 
-> To answer your question about possible diet to snapshot patches,
-> following are some diffstat on groups of patches (by functionality).
-> The diffsstat includes only ext4 core file (excluding new snapshot* files).
-> 
-> As you can see, removing the shrink/merge functionality for multiple
-> snapshots, will remove the need for exclude bitmap and reduce the changes
-> to core files by ~300 insertions.
-> 
-> There is some advantage of not having to add the exclude bitmap to existing
-> fs, but I think the win is not so big, assuming that we will want to have the
-> shrink/merge functionality eventually.
+Christoph Hellwig <hch@infradead.org> writes:
 
-Wouldn't that also mean if shrink/merge are added later it needs another feature flag and added complexity due to another row in the feature test matrix?
+> Add a new rw_semaphore to protect bmap against truncate.  Previous
+> i_alloc_sem was abused for this, but it's going away in this series.
 
+In FAT case, ->i_mutex was better. But, last time I saw, shmfs was using
+->i_mutex to call ->bmap. So, this was chosen instead.
 
-> 
->> [PATCH v1 01/36] ext4: EXT4 snapshots (Experimental)
->> [PATCH v1 02/36] ext4: snapshot debugging support
-> 
-> Generic stuff.
-> 
-> 15 files changed, 122 insertions(+), 1 deletions(-)
-> 
->> [PATCH v1 03/36] ext4: snapshot hooks - inside JBD hooks
->> [PATCH v1 04/36] ext4: snapshot hooks - block bitmap access
->> [PATCH v1 05/36] ext4: snapshot hooks - delete blocks
->> [PATCH v1 06/36] ext4: snapshot hooks - move data blocks
->> [PATCH v1 07/36] ext4: snapshot hooks - direct I/O
->> [PATCH v1 08/36] ext4: snapshot hooks - move extent file data blocks
-> 
-> Most of the code in this group handles MOW.
-> 
-> 7 files changed, 550 insertions(+), 68 deletions(-)
-> 
->> [PATCH v1 09/36] ext4: snapshot file
->> [PATCH v1 10/36] ext4: snapshot file - read through to block device
->> [PATCH v1 11/36] ext4: snapshot file - permissions
->> [PATCH v1 12/36] ext4: snapshot file - store on disk
->> [PATCH v1 13/36] ext4: snapshot file - increase maximum file size limit to 16TB
-> 
-> Implementation of special snapshot file.
-> 
-> 7 files changed, 220 insertions(+), 14 deletions(-)
-> 
->> [PATCH v1 14/36] ext4: snapshot block operations
->> [PATCH v1 15/36] ext4: snapshot block operation - copy blocks to snapshot
->> [PATCH v1 16/36] ext4: snapshot block operation - move blocks to snapshot
->> [PATCH v1 17/36] ext4: snapshot block operation - copy block bitmap to snapshot
-> 
-> Copy/move to snapshot file operations.
-> 
-> 5 files changed, 126 insertions(+), 24 deletions(-)
-> 
->> [PATCH v1 18/36] ext4: snapshot control
->> [PATCH v1 19/36] ext4: snapshot control - init new snapshot
->> [PATCH v1 20/36] ext4: snapshot control - fix new snapshot
->> [PATCH v1 21/36] ext4: snapshot control - reserve disk space for snapshot
-> 
-> Mostly new code in ioctl.c.
-> 
-> 6 files changed, 171 insertions(+), 3 deletions(-)
-> 
->> [PATCH v1 22/36] ext4: snapshot journaled - increase transaction credits
->> [PATCH v1 23/36] ext4: snapshot journaled - implement journal_release_buffer()
->> [PATCH v1 24/36] ext4: snapshot journaled - bypass to save credits
->> [PATCH v1 25/36] ext4: snapshot journaled - cache last COW tid in journal_head
-> 
-> Helper functions to handle extra COW credits.
-> 
-> 7 files changed, 284 insertions(+), 31 deletions(-)
-> 
->> [PATCH v1 26/36] ext4: snapshot journaled - trace COW/buffer credits
-> 
-> Trace/debug for extra COW credits.
-> 
-> 3 files changed, 108 insertions(+), 0 deletions(-)
-> 
->> [PATCH v1 27/36] ext4: snapshot list support
->> [PATCH v1 28/36] ext4: snapshot list - read through to previous snapshot
-> 
-> Not much to gain from dropping snapshot list support...
-> 
-> 2 files changed, 2 insertions(+), 0 deletions(-)
-> 
->> [PATCH v1 29/36] ext4: snapshot race conditions - concurrent COW bitmap operations
->> [PATCH v1 30/36] ext4: snapshot race conditions - concurrent COW operations
->> [PATCH v1 31/36] ext4: snapshot race conditions - tracked reads
-> 
-> We must handle race conditions.
-> 
-> 2 files changed, 32 insertions(+), 0 deletions(-)
-> 
->> [PATCH v1 32/36] ext4: snapshot exclude - the exclude bitmap
-> 
-> We do not need the exclude bitmap if we do not shrink/merge snapshots.
-> 
-> 5 files changed, 226 insertions(+), 3 deletions(-)
-> 
->> [PATCH v1 33/36] ext4: snapshot cleanup
->> [PATCH v1 34/36] ext4: snapshot cleanup - shrink deleted snapshots
->> [PATCH v1 35/36] ext4: snapshot cleanup - merge shrunk snapshots
-> 
-> We could support multiple snapshots without shrinking/merging deleted snapshot,
-> but that means that only disk space of oldest snapshot is reclaimed on delete.
-> 
-> 2 files changed, 74 insertions(+), 22 deletions(-)
-> 
->> [PATCH v1 36/36] ext4: snapshot rocompat - enable rw mount
->> 
->>  fs/ext4/Kconfig           |   11 +
->>  fs/ext4/Makefile          |    3 +
->>  fs/ext4/balloc.c          |  132 +++
->>  fs/ext4/ext4.h            |  188 ++++-
->>  fs/ext4/ext4_jbd2.c       |  162 ++++-
->>  fs/ext4/ext4_jbd2.h       |  266 ++++++-
->>  fs/ext4/extents.c         |  157 ++++-
->>  fs/ext4/file.c            |   11 +-
->>  fs/ext4/ialloc.c          |   19 +-
->>  fs/ext4/inode.c           |  668 +++++++++++++--
->>  fs/ext4/ioctl.c           |  120 +++
->>  fs/ext4/mballoc.c         |  161 ++++-
->>  fs/ext4/move_extent.c     |    3 +-
->>  fs/ext4/namei.c           |    9 +
->>  fs/ext4/resize.c          |   19 +-
->>  fs/ext4/snapshot.c        | 1000 ++++++++++++++++++++++
->>  fs/ext4/snapshot.h        |  690 ++++++++++++++++
->>  fs/ext4/snapshot_buffer.c |  393 +++++++++
->>  fs/ext4/snapshot_ctl.c    | 2002 +++++++++++++++++++++++++++++++++++++++++++++
->>  fs/ext4/snapshot_debug.c  |  107 +++
->>  fs/ext4/snapshot_debug.h  |  105 +++
->>  fs/ext4/snapshot_inode.c  |  960 ++++++++++++++++++++++
->>  fs/ext4/super.c           |  157 ++++-
->>  fs/ext4/xattr.c           |    4 +-
->>  24 files changed, 7182 insertions(+), 165 deletions(-)
->> 
->> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I'm not checking current version yet though, if shmfs had change, we can
+use ->i_mutex.
+
+BTW, this patch looks good to me.
+
+Thanks.
+
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+>
+> Index: linux-2.6/fs/fat/inode.c
+> ===================================================================
+> --- linux-2.6.orig/fs/fat/inode.c	2011-06-20 21:28:19.707963855 +0200
+> +++ linux-2.6/fs/fat/inode.c	2011-06-20 21:29:25.031293882 +0200
+> @@ -224,9 +224,9 @@ static sector_t _fat_bmap(struct address
+>  	sector_t blocknr;
+>  
+>  	/* fat_get_cluster() assumes the requested blocknr isn't truncated. */
+> -	down_read(&mapping->host->i_alloc_sem);
+> +	down_read(&MSDOS_I(mapping->host)->truncate_lock);
+>  	blocknr = generic_block_bmap(mapping, block, fat_get_block);
+> -	up_read(&mapping->host->i_alloc_sem);
+> +	up_read(&MSDOS_I(mapping->host)->truncate_lock);
+>  
+>  	return blocknr;
+>  }
+> @@ -510,6 +510,8 @@ static struct inode *fat_alloc_inode(str
+>  	ei = kmem_cache_alloc(fat_inode_cachep, GFP_NOFS);
+>  	if (!ei)
+>  		return NULL;
+> +
+> +	init_rwsem(&ei->truncate_lock);
+>  	return &ei->vfs_inode;
+>  }
+>  
+> Index: linux-2.6/fs/fat/fat.h
+> ===================================================================
+> --- linux-2.6.orig/fs/fat/fat.h	2011-06-20 21:28:19.724630522 +0200
+> +++ linux-2.6/fs/fat/fat.h	2011-06-20 21:29:25.034627215 +0200
+> @@ -109,6 +109,7 @@ struct msdos_inode_info {
+>  	int i_attrs;		/* unused attribute bits */
+>  	loff_t i_pos;		/* on-disk position of directory entry or 0 */
+>  	struct hlist_node i_fat_hash;	/* hash by i_location */
+> +	struct rw_semaphore truncate_lock; /* protect bmap against truncate */
+>  	struct inode vfs_inode;
+>  };
+>  
+> Index: linux-2.6/fs/fat/file.c
+> ===================================================================
+> --- linux-2.6.orig/fs/fat/file.c	2011-06-20 21:28:19.744630521 +0200
+> +++ linux-2.6/fs/fat/file.c	2011-06-20 21:29:54.501292390 +0200
+> @@ -429,8 +429,10 @@ int fat_setattr(struct dentry *dentry, s
+>  	}
+>  
+>  	if (attr->ia_valid & ATTR_SIZE) {
+> +		down_write(&MSDOS_I(inode)->truncate_lock);
+>  		truncate_setsize(inode, attr->ia_size);
+>  		fat_truncate_blocks(inode, attr->ia_size);
+> +		up_write(&MSDOS_I(inode)->truncate_lock);
+>  	}
+>  
+>  	setattr_copy(inode, attr);
+>
+
+-- 
+OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
