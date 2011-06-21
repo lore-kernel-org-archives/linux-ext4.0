@@ -1,37 +1,35 @@
-From: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+From: Christoph Hellwig <hch@infradead.org>
 Subject: Re: [PATCH 1/8] far: remove i_alloc_sem abuse
-Date: Wed, 22 Jun 2011 01:09:29 +0900
-Message-ID: <87boxrmaiu.fsf@devron.myhome.or.jp>
+Date: Tue, 21 Jun 2011 12:09:42 -0400
+Message-ID: <20110621160942.GA878@infradead.org>
 References: <20110620201533.847236272@bombadil.infradead.org>
-	<20110620202030.577464178@bombadil.infradead.org>
-	<87fwn3mb2g.fsf@devron.myhome.or.jp>
+ <20110620202030.577464178@bombadil.infradead.org>
+ <87fwn3mb2g.fsf@devron.myhome.or.jp>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: viro@zeniv.linux.org.uk, tglx@linutronix.de,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, mfasheh@suse.com, jlbec@evilplan.org
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>, viro@zeniv.linux.org.uk,
+	tglx@linutronix.de, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	mfasheh@suse.com, jlbec@evilplan.org
+To: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <87fwn3mb2g.fsf@devron.myhome.or.jp> (OGAWA Hirofumi's message of
-	"Wed, 22 Jun 2011 00:57:43 +0900")
+Content-Disposition: inline
+In-Reply-To: <87fwn3mb2g.fsf@devron.myhome.or.jp>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-OGAWA Hirofumi <hirofumi@mail.parknet.co.jp> writes:
-
+On Wed, Jun 22, 2011 at 12:57:43AM +0900, OGAWA Hirofumi wrote:
 > Christoph Hellwig <hch@infradead.org> writes:
->
->> Add a new rw_semaphore to protect bmap against truncate.  Previous
->> i_alloc_sem was abused for this, but it's going away in this series.
->
+> 
+> > Add a new rw_semaphore to protect bmap against truncate.  Previous
+> > i_alloc_sem was abused for this, but it's going away in this series.
+> 
 > In FAT case, ->i_mutex was better. But, last time I saw, shmfs was using
 > ->i_mutex to call ->bmap. So, this was chosen instead.
->
+> 
 > I'm not checking current version yet though, if shmfs had change, we can
 > use ->i_mutex.
 
-It was swapfile. And unfortunately it doesn't have change.
+I tried that first, but it gives an instant deadlock when using a
+swapfile on fat.
 
-> BTW, this patch looks good to me.
--- 
-OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
