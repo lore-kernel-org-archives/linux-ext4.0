@@ -1,55 +1,43 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: can we simplify the quota matrix in ext4?
-Date: Tue, 21 Jun 2011 15:06:04 -0600
-Message-ID: <07D034A6-BA0F-4643-87AF-C8BA3517A9E9@dilger.ca>
-References: <4E00E6DE.9060208@redhat.com> <4E0105FD.9090401@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v1082)
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 0/8] remove i_alloc_sem
+Date: Wed, 22 Jun 2011 01:54:25 +0200
+Message-ID: <20110621235425.GA24067@quack.suse.cz>
+References: <20110620201533.847236272@bombadil.infradead.org>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: viro@zeniv.linux.org.uk, tglx@linutronix.de,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, hirofumi@mail.parknet.co.jp,
+	mfasheh@suse.com, jlbec@evilplan.org, tytso@mit.edu
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:56184 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750863Ab1FUVGH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Jun 2011 17:06:07 -0400
-In-Reply-To: <4E0105FD.9090401@redhat.com>
+Received: from cantor2.suse.de ([195.135.220.15]:45631 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757484Ab1FUXy2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 21 Jun 2011 19:54:28 -0400
+Content-Disposition: inline
+In-Reply-To: <20110620201533.847236272@bombadil.infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-06-21, at 2:58 PM, Eric Sandeen wrote:
-> On 6/21/11 1:45 PM, Eric Sandeen wrote:
->> I was looking at 
->> 
->> 62d2b5f2dcd3707b070efb16bbfdf6947c38c194 ext4: Always journal quota file modifications
->> 
->> and was thinking - if we always journal, why do we still have all the mount options etc for journaled quota?
->> 
->> I guess without -o usrjquota=foo we don't journal right from mount time, and there are a few other paths that get skipped, but those seem like details...
->> 
->> It seems that ideally - and perhaps this is hindsight - ext4 should have defaulted to journaled, QFMT_VFS_V1 quotas only... is there any reason not to?
->> 
->> I'm still not very well versed in vfs quota, but does it seem possible to move in this direction?  It seems odd that we should still be supporting unjournaled, vfsold-format quotas in ext4 these days.  What's the point?
->> 
->> If it seems possible to move in this direction within the exiting quota framework I'd be interested in trying to get it done.
+On Mon 20-06-11 16:15:33, Christoph Hellwig wrote:
+> i_alloc_sem has always been a bit of an odd "lock".  It's the only remaining
+> rw_semaphore that can be released by a different thread than the one that
+> locked it, and it's use case in the core direct I/O code is more like a
+> counter given that the writers already have external serialization.
 > 
-> I was hoping that perhaps newer quota tools would only write newer quota formats to a fresh filesystem, and that would make things simpler, since only newer quota tools can understand ext4 in any case.
+> This series removes it in favour of a simpler counter scheme, thus getting
+> rid of the rw_semaphore non-owner APIs as requests by Thomas, while at the
+> same time shrinking the size of struct inode by 160 bytes on 64-bit systems.
 > 
-> Sadly, no: "quotacheck -F vfsold" will happily write the old format quota file on an ext4 filesystem, even if that's not the default it'd choose.
-> 
-> So I guess a deprecation period would need to be endured on the formats.
-> 
-> And without knowing the format in use, we can't know the quota filename(?) so we can't do journaled quota on mount, either, I think, at least without the -o jqfmt=blah?  Unless we look up both quota.user and aquota.user?  But what if both are there?  Bleah.
+> The only nasty bit is that two filesystems (fat and ext4) have started
+> abusing the lock for their own purposes.  I've added a new rw_semaphore
+  ext4 abuse should be gone when Ted merges my rewrite of
+ext4_page_mkwrite()... Ted, what happened to that patch. Should I resend
+it?
 
-I believe there are reserved fields in the superblock for the quota inodes.
-It would be possible to save the inode numbers into those fields the first
-time that the filesystem is mounted with a new kernel and/or run with a new
-e2fsck, even if ext4 still leaves those files in existence.
+								Honza
 
-
-Cheers, Andreas
-
-
-
-
-
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
