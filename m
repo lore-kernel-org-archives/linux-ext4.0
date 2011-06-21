@@ -1,268 +1,203 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH v2] ext4: Set file system to read-only by I/O error
- threshold
-Date: Tue, 21 Jun 2011 11:41:33 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1106211138520.6947@dhcp-27-109.brq.redhat.com>
-References: <1308572768-11606-1-git-send-email-wangshaoyan.pt@taobao.com> <4DFF5C93.4000704@redhat.com> <alpine.LFD.2.00.1106211111170.3618@dhcp-27-109.brq.redhat.com>
+From: "Amir G." <amir73il@users.sourceforge.net>
+Subject: Re: [PATCH v1 00/30] Ext4 snapshots
+Date: Tue, 21 Jun 2011 14:06:16 +0300
+Message-ID: <BANLkTimC9N6nLYg2+FqjVv_J4RGy1t8nZA@mail.gmail.com>
+References: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Eric Sandeen <sandeen@redhat.com>, stufever@gmail.com,
-	linux-ext4@vger.kernel.org,
-	Wang Shaoyan <wangshaoyan.pt@taobao.com>,
-	Ted Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36486 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752749Ab1FUJmB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 21 Jun 2011 05:42:01 -0400
-In-Reply-To: <alpine.LFD.2.00.1106211111170.3618@dhcp-27-109.brq.redhat.com>
+Received: from mail-ww0-f42.google.com ([74.125.82.42]:53538 "EHLO
+	mail-ww0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754529Ab1FULGS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Jun 2011 07:06:18 -0400
+Received: by wwg11 with SMTP id 11so131134wwg.1
+        for <linux-ext4@vger.kernel.org>; Tue, 21 Jun 2011 04:06:17 -0700 (PDT)
+In-Reply-To: <1307459283-22130-1-git-send-email-amir73il@users.sourceforge.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 21 Jun 2011, Lukas Czerner wrote:
+On Tue, Jun 7, 2011 at 6:07 PM,  <amir73il@users.sourceforge.net> wrote=
+:
+> Hi All,
+>
+> I am resending the snapshots patch series as per Lukas's request.
+> This time, the snapshot*.c files have not been omitted, as in
+> the previous posting.
+>
+> The series is still based on ext4 dev branch sometime in the preparat=
+ion
+> for 3.0 merge window. It was not yet rebased on 3.0-rc1, so punch hol=
+es
+> changes have not been addressed yet.
+>
+> As always, I advocate online review of the patches at:
+> https://github.com/amir73il/ext4-snapshots/commits/for-ext4-v1
+> but if you insist on doing it the old way, I won't complain.
+>
+> Thanks,
+> Amir.
+>
 
-> On Mon, 20 Jun 2011, Eric Sandeen wrote:
-> 
-> > On 6/20/11 7:26 AM, stufever@gmail.com wrote:
-> > > From: Wang Shaoyan <wangshaoyan.pt@taobao.com>
-> > > 
-> > > changes from v1 -> v2 :
-> > > When counter is greater than threshold, don't call ext4_abort(), but check the mount errors_* option.
-> > > 
-> > > Some version of Hadoop uses access(2) to check whether the data chunk
-> > > harddisk is online, if access(2) returns "Read-only file system"
-> > > error, hadoop marks the disk which it called access(2) to as offline.
-> > 
-> > Ugh, that already sounds ext3-specific.  "Some versions of Hadoop" - which
-> > versions?  All?  Custom?  Old?  Upstream?
-> > 
-> > > This method works for Ext3/4 with journal, because when jbd/jbd2
-> > > encounters I/O error, the file system will be set as read-only. For
-> > > Ext4 no-journal mode, there is no jdb2 to set the file system as
-> > > read-only when I/O error happens, the access(2) from Hadoop is not
-> > 
-> > But there are other paths to ext4_handle_error ... your changes don't
-> > seem specific to whether or not journaling is active?
-> > 
-> > > able to reliably detect hard disk offline condition.
-> > 
-> > > This patch tries to fix the above problem from kernel side. 
-> > 
-> > I don't really don't like this very much.
-> 
-> Hi Wang,
-> 
-> as I already said to you, I do not like this either and I agree with
-> Eric. You still did not explained how this change helps your case
-> without journal, since ext4_handle_error() is callen when IO error is
-> encountered and it is not journal specific at all.
-> 
-> But, I am trying to understand the case you are trying to solve. Is it
-> that you have bunch of data sources and access(2) helps you to determine
-> whether specific data source is accessible, e.g. writable ? Well if this
-> is the case then maybe you would have to change the method to not only
-> check if the device is writable, but also if the disk is still alive.
-> But generally you'll hit the IO error once you try to sync write to the
-> disk, is then already too late ?
+Hi Ted,
 
-Also it appears to me, that you counting on the fact that the drive
-might disappear and then reappear in short time (it that why you have
-the threashold?). If this it the case, then I think that detecting this
-in the moment when it happens is much better approach. I agree that lots
-of the application would not handle it correctly, but you can always try
-to detect IO error with systemtap on the fly.
+To answer your question about possible diet to snapshot patches,
+following are some diffstat on groups of patches (by functionality).
+The diffsstat includes only ext4 core file (excluding new snapshot* fil=
+es).
 
-> 
-> Why not just detect whether the filesystem is mounted as read write with
-> access(2) and ignore the case when disk is not alive and then detect this
-> and mark the data source as offline once you really hit the IO error ? Or
-> it is not sufficient ?
-> 
-> Also I do not think that this kind of heuristic you are adding into ext4
-> belongs to kernel, you should rather solve this in user-space.
-> 
-> Thanks!
-> -Lukas
-> 
-> > 
-> > We already have:
-> > 
-> > errors=remount-ro
-> > errors=continue
-> > errors=panic
-> > data_err=ignore
-> > data_err=abort
-> > 
-> > Now you propose yet another error handling behavior for the nonstandard
-> > no-journal operation mode, with still more tunables and complexity...
-> > 
-> > Well, or maybe it's only a change to existing behavior...
-> > 
-> > From a quick read, I think that all your patch really does is change existing
-> > ext4_handle_error() behavior so that it only triggers after a certain error rate
-> > threshold, right?  And we don't necessarily get there only for I/O errors, in
-> > fact I think many (most?) callchains which end here come from metadata corruption
-> > detection.
-> > 
-> > So for that case (metadata corruption) a threshold makes no sense to me;
-> > either the fs is corrupt, or it's not.  In the case of a corrupted directory,
-> > whether your code fires basically depends on how often (or how rapidly) an
-> > application tries to look up a file in a corrupted dir, for example.
-> > That doesn't make sense to me.  Your patch simply makes the filesystem
-> > more tolerant of corruption, as far as I can tell, and I don't see the point
-> > in that.  Am I missing something?
-> > 
-> > Thanks,
-> > -Eric
-> > 
-> > 
-> > > 1.Mount file system with errors=remount-ro
-> > > 	mount -t -o errors=remount-ro /dev/sd[?] some_dir 
-> > > 2.The counter reach the threshold:
-> > > 	1) inside the sampling interval, I/O errors come more than pre-set threshold happens
-> > > 	2) I/O errors always happen in continous sampling intervals, the sum of errors exceeds pre-set threshold
-> > > 
-> > > Then the application can find the file system is set as read-only, and call its own failure tolerance procedures.
-> > > 
-> > > There are 2 interface exported to user space via sysfs:
-> > > /sys/fs/ext4/sd[?]/eio_threshold --- I/O error threshold to check mount errors options
-> > > /sys/fs/ext4/sd[?]/eio_interval  --- sampling interval in second
-> > > 
-> > > If default value of eio_threshold is 0, everything happens as before.
-> > > 
-> > > Cc: Ted Tso <tytso@mit.edu>
-> > > Cc: Jan Kara <jack@suse.cz>
-> > > Cc: Lukas Czerner <lczerner@redhat.com>
-> > > Reviewed-by: Coly Li <bosong.ly@taobao.com>
-> > > Reviewed-by: Liu Yuan <tailai.ly@taobao.com>
-> > > Signed-off-by: Wang Shaoyan <wangshaoyan.pt@taobao.com>
-> > > ---
-> > >  fs/ext4/ext4.h  |    7 +++++++
-> > >  fs/ext4/super.c |   51 +++++++++++++++++++++++++++++++++++++++++++++++++++
-> > >  2 files changed, 58 insertions(+), 0 deletions(-)
-> > > 
-> > > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> > > index 1921392..b08348e 100644
-> > > --- a/fs/ext4/ext4.h
-> > > +++ b/fs/ext4/ext4.h
-> > > @@ -1214,6 +1214,13 @@ struct ext4_sb_info {
-> > >  
-> > >  	/* Kernel thread for multiple mount protection */
-> > >  	struct task_struct *s_mmp_tsk;
-> > > +
-> > > +	/* IO error count */
-> > > +	spinlock_t s_eio_lock;
-> > > +	unsigned int s_eio_threshold;
-> > > +	unsigned int s_eio_interval;
-> > > +	unsigned int s_eio_counter;
-> > > +	unsigned long s_eio_last_jiffies;
-> > >  };
-> > >  
-> > >  static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
-> > > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> > > index cc5c157..1b3fc81 100644
-> > > --- a/fs/ext4/super.c
-> > > +++ b/fs/ext4/super.c
-> > > @@ -384,6 +384,19 @@ static void save_error_info(struct super_block *sb, const char *func,
-> > >  	ext4_commit_super(sb, 1);
-> > >  }
-> > >  
-> > > +static inline void inc_sb_error_count(struct super_block *sb)
-> > > +{
-> > > +	struct ext4_sb_info *sbi = EXT4_SB(sb);
-> > > +
-> > > +	if (time_after(sbi->s_eio_last_jiffies + sbi->s_eio_interval * HZ, jiffies)) {
-> > > +		sbi->s_eio_counter++;
-> > > +	} else {
-> > > +		sbi->s_eio_counter = 1;
-> > > +	}
-> > > +
-> > > +	sbi->s_eio_last_jiffies = jiffies;
-> > > +	ext4_msg(sb, KERN_CRIT, "IO error count total: %d", sbi->s_eio_counter);
-> > > +}
-> > >  
-> > >  /* Deal with the reporting of failure conditions on a filesystem such as
-> > >   * inconsistencies detected or read IO failures.
-> > > @@ -402,9 +415,21 @@ static void save_error_info(struct super_block *sb, const char *func,
-> > >  
-> > >  static void ext4_handle_error(struct super_block *sb)
-> > >  {
-> > > +	struct ext4_sb_info *sbi = EXT4_SB(sb);
-> > > +
-> > >  	if (sb->s_flags & MS_RDONLY)
-> > >  		return;
-> > >  
-> > > +	spin_lock(&sbi->s_eio_lock);
-> > > +	inc_sb_error_count(sb);
-> > > +	spin_unlock(&sbi->s_eio_lock);
-> > > +
-> > > +	/* When the counter is greater than threshold(default 0), 
-> > > +	 * like usual, we check the ERRORS_*. Otherwise, we just return.
-> > > +	 */
-> > > +	if (sbi->s_eio_counter <= sbi->s_eio_threshold)
-> > > +		return;
-> > > +
-> > >  	if (!test_opt(sb, ERRORS_CONT)) {
-> > >  		journal_t *journal = EXT4_SB(sb)->s_journal;
-> > >  
-> > > @@ -2471,6 +2496,22 @@ static ssize_t inode_readahead_blks_store(struct ext4_attr *a,
-> > >  	return count;
-> > >  }
-> > >  
-> > > +static ssize_t eio_interval_store(struct ext4_attr *a,
-> > > +					  struct ext4_sb_info *sbi,
-> > > +					  const char *buf, size_t count)
-> > > +{
-> > > +	unsigned long t;
-> > > +
-> > > +	if (parse_strtoul(buf, 0xffffffff, &t))
-> > > +		return -EINVAL;
-> > > +
-> > > +	if (t <= 0)
-> > > +		return -EINVAL;
-> > > +
-> > > +	sbi->s_eio_interval = t;
-> > > +	return count;
-> > > +}
-> > > +
-> > >  static ssize_t sbi_ui_show(struct ext4_attr *a,
-> > >  			   struct ext4_sb_info *sbi, char *buf)
-> > >  {
-> > > @@ -2524,6 +2565,9 @@ EXT4_RW_ATTR_SBI_UI(mb_order2_req, s_mb_order2_reqs);
-> > >  EXT4_RW_ATTR_SBI_UI(mb_stream_req, s_mb_stream_request);
-> > >  EXT4_RW_ATTR_SBI_UI(mb_group_prealloc, s_mb_group_prealloc);
-> > >  EXT4_RW_ATTR_SBI_UI(max_writeback_mb_bump, s_max_writeback_mb_bump);
-> > > +EXT4_RW_ATTR_SBI_UI(eio_threshold, s_eio_threshold);
-> > > +EXT4_ATTR_OFFSET(eio_interval, 0644, sbi_ui_show,
-> > > +		 eio_interval_store, s_eio_interval);
-> > >  
-> > >  static struct attribute *ext4_attrs[] = {
-> > >  	ATTR_LIST(delayed_allocation_blocks),
-> > > @@ -2540,6 +2584,8 @@ static struct attribute *ext4_attrs[] = {
-> > >  	ATTR_LIST(mb_stream_req),
-> > >  	ATTR_LIST(mb_group_prealloc),
-> > >  	ATTR_LIST(max_writeback_mb_bump),
-> > > +	ATTR_LIST(eio_threshold),
-> > > +	ATTR_LIST(eio_interval),
-> > >  	NULL,
-> > >  };
-> > >  
-> > > @@ -3464,6 +3510,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
-> > >  	sbi->s_stripe = ext4_get_stripe_size(sbi);
-> > >  	sbi->s_max_writeback_mb_bump = 128;
-> > >  
-> > > +	spin_lock_init(&sbi->s_eio_lock);
-> > > +	sbi->s_eio_threshold = 0;
-> > > +	sbi->s_eio_interval = 5;
-> > > +	sbi->s_eio_counter = 0;
-> > > +
-> > >  	/*
-> > >  	 * set up enough so that it can read an inode
-> > >  	 */
-> > 
-> > 
-> 
-> 
+As you can see, removing the shrink/merge functionality for multiple
+snapshots, will remove the need for exclude bitmap and reduce the chang=
+es
+to core files by ~300 insertions.
 
--- 
+There is some advantage of not having to add the exclude bitmap to exis=
+ting
+fs, but I think the win is not so big, assuming that we will want to ha=
+ve the
+shrink/merge functionality eventually.
+
+Cheers,
+Amir.
+
+> [PATCH v1 01/36] ext4: EXT4 snapshots (Experimental)
+> [PATCH v1 02/36] ext4: snapshot debugging support
+
+Generic stuff.
+
+15 files changed, 122 insertions(+), 1 deletions(-)
+
+> [PATCH v1 03/36] ext4: snapshot hooks - inside JBD hooks
+> [PATCH v1 04/36] ext4: snapshot hooks - block bitmap access
+> [PATCH v1 05/36] ext4: snapshot hooks - delete blocks
+> [PATCH v1 06/36] ext4: snapshot hooks - move data blocks
+> [PATCH v1 07/36] ext4: snapshot hooks - direct I/O
+> [PATCH v1 08/36] ext4: snapshot hooks - move extent file data blocks
+
+Most of the code in this group handles MOW.
+
+7 files changed, 550 insertions(+), 68 deletions(-)
+
+> [PATCH v1 09/36] ext4: snapshot file
+> [PATCH v1 10/36] ext4: snapshot file - read through to block device
+> [PATCH v1 11/36] ext4: snapshot file - permissions
+> [PATCH v1 12/36] ext4: snapshot file - store on disk
+> [PATCH v1 13/36] ext4: snapshot file - increase maximum file size lim=
+it to 16TB
+
+Implementation of special snapshot file.
+
+ 7 files changed, 220 insertions(+), 14 deletions(-)
+
+> [PATCH v1 14/36] ext4: snapshot block operations
+> [PATCH v1 15/36] ext4: snapshot block operation - copy blocks to snap=
+shot
+> [PATCH v1 16/36] ext4: snapshot block operation - move blocks to snap=
+shot
+> [PATCH v1 17/36] ext4: snapshot block operation - copy block bitmap t=
+o snapshot
+
+Copy/move to snapshot file operations.
+
+ 5 files changed, 126 insertions(+), 24 deletions(-)
+
+> [PATCH v1 18/36] ext4: snapshot control
+> [PATCH v1 19/36] ext4: snapshot control - init new snapshot
+> [PATCH v1 20/36] ext4: snapshot control - fix new snapshot
+> [PATCH v1 21/36] ext4: snapshot control - reserve disk space for snap=
+shot
+
+Mostly new code in ioctl.c.
+
+ 6 files changed, 171 insertions(+), 3 deletions(-)
+
+> [PATCH v1 22/36] ext4: snapshot journaled - increase transaction cred=
+its
+> [PATCH v1 23/36] ext4: snapshot journaled - implement journal_release=
+_buffer()
+> [PATCH v1 24/36] ext4: snapshot journaled - bypass to save credits
+> [PATCH v1 25/36] ext4: snapshot journaled - cache last COW tid in jou=
+rnal_head
+
+Helper functions to handle extra COW credits.
+
+ 7 files changed, 284 insertions(+), 31 deletions(-)
+
+> [PATCH v1 26/36] ext4: snapshot journaled - trace COW/buffer credits
+
+Trace/debug for extra COW credits.
+
+ 3 files changed, 108 insertions(+), 0 deletions(-)
+
+> [PATCH v1 27/36] ext4: snapshot list support
+> [PATCH v1 28/36] ext4: snapshot list - read through to previous snaps=
+hot
+
+Not much to gain from dropping snapshot list support...
+
+ 2 files changed, 2 insertions(+), 0 deletions(-)
+
+> [PATCH v1 29/36] ext4: snapshot race conditions - concurrent COW bitm=
+ap operations
+> [PATCH v1 30/36] ext4: snapshot race conditions - concurrent COW oper=
+ations
+> [PATCH v1 31/36] ext4: snapshot race conditions - tracked reads
+
+We must handle race conditions.
+
+ 2 files changed, 32 insertions(+), 0 deletions(-)
+
+> [PATCH v1 32/36] ext4: snapshot exclude - the exclude bitmap
+
+We do not need the exclude bitmap if we do not shrink/merge snapshots.
+
+ 5 files changed, 226 insertions(+), 3 deletions(-)
+
+> [PATCH v1 33/36] ext4: snapshot cleanup
+> [PATCH v1 34/36] ext4: snapshot cleanup - shrink deleted snapshots
+> [PATCH v1 35/36] ext4: snapshot cleanup - merge shrunk snapshots
+
+We could support multiple snapshots without shrinking/merging deleted s=
+napshot,
+but that means that only disk space of oldest snapshot is reclaimed on =
+delete.
+
+ 2 files changed, 74 insertions(+), 22 deletions(-)
+
+> [PATCH v1 36/36] ext4: snapshot rocompat - enable rw mount
+>
+> =A0fs/ext4/Kconfig =A0 =A0 =A0 =A0 =A0 | =A0 11 +
+> =A0fs/ext4/Makefile =A0 =A0 =A0 =A0 =A0| =A0 =A03 +
+> =A0fs/ext4/balloc.c =A0 =A0 =A0 =A0 =A0| =A0132 +++
+> =A0fs/ext4/ext4.h =A0 =A0 =A0 =A0 =A0 =A0| =A0188 ++++-
+> =A0fs/ext4/ext4_jbd2.c =A0 =A0 =A0 | =A0162 ++++-
+> =A0fs/ext4/ext4_jbd2.h =A0 =A0 =A0 | =A0266 ++++++-
+> =A0fs/ext4/extents.c =A0 =A0 =A0 =A0 | =A0157 ++++-
+> =A0fs/ext4/file.c =A0 =A0 =A0 =A0 =A0 =A0| =A0 11 +-
+> =A0fs/ext4/ialloc.c =A0 =A0 =A0 =A0 =A0| =A0 19 +-
+> =A0fs/ext4/inode.c =A0 =A0 =A0 =A0 =A0 | =A0668 +++++++++++++--
+> =A0fs/ext4/ioctl.c =A0 =A0 =A0 =A0 =A0 | =A0120 +++
+> =A0fs/ext4/mballoc.c =A0 =A0 =A0 =A0 | =A0161 ++++-
+> =A0fs/ext4/move_extent.c =A0 =A0 | =A0 =A03 +-
+> =A0fs/ext4/namei.c =A0 =A0 =A0 =A0 =A0 | =A0 =A09 +
+> =A0fs/ext4/resize.c =A0 =A0 =A0 =A0 =A0| =A0 19 +-
+> =A0fs/ext4/snapshot.c =A0 =A0 =A0 =A0| 1000 ++++++++++++++++++++++
+> =A0fs/ext4/snapshot.h =A0 =A0 =A0 =A0| =A0690 ++++++++++++++++
+> =A0fs/ext4/snapshot_buffer.c | =A0393 +++++++++
+> =A0fs/ext4/snapshot_ctl.c =A0 =A0| 2002 +++++++++++++++++++++++++++++=
+++++++++++++++++
+> =A0fs/ext4/snapshot_debug.c =A0| =A0107 +++
+> =A0fs/ext4/snapshot_debug.h =A0| =A0105 +++
+> =A0fs/ext4/snapshot_inode.c =A0| =A0960 ++++++++++++++++++++++
+> =A0fs/ext4/super.c =A0 =A0 =A0 =A0 =A0 | =A0157 ++++-
+> =A0fs/ext4/xattr.c =A0 =A0 =A0 =A0 =A0 | =A0 =A04 +-
+> =A024 files changed, 7182 insertions(+), 165 deletions(-)
+>
+>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
