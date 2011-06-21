@@ -1,69 +1,86 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Set file system to read-only by I/O error
- threshold
-Date: Tue, 21 Jun 2011 10:48:56 -0400
-Message-ID: <20110621144856.GH32133@thunk.org>
-References: <1308312516-14252-1-git-send-email-wangshaoyan.pt@taobao.com>
- <alpine.LFD.2.00.1106181015180.4602@dhcp-27-109.brq.redhat.com>
- <BANLkTim-1FfCZAm449zp5PpApbq027HGwYhoZBF0soZpJon9tQ@mail.gmail.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH] Free allocated and pre-allocated blocks when check_eofblocks_fl
+ fails
+Date: Tue, 21 Jun 2011 17:24:58 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1106211717100.21178@dhcp-27-109.brq.redhat.com>
+References: <20110621032816.6A0A942247@ruihe.smo.corp.google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	Wang Shaoyan <wangshaoyan.pt@taobao.com>,
-	Jan Kara <jack@suse.cz>
-To: Wang Shaoyan <stufever@gmail.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Jiaying Zhang <jiayingz@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:58320 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750935Ab1FUOtD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 21 Jun 2011 10:49:03 -0400
-Content-Disposition: inline
-In-Reply-To: <BANLkTim-1FfCZAm449zp5PpApbq027HGwYhoZBF0soZpJon9tQ@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:32855 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751603Ab1FUPZD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 21 Jun 2011 11:25:03 -0400
+In-Reply-To: <20110621032816.6A0A942247@ruihe.smo.corp.google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ugh.  This is really, really, *really* ugly.  If you really want to
-have hadoop shut down when there are too many errors, it's much better
-to expose the number of EIO errors via sysfs, and then have some kind
-of system daemon do the right thing.
+On Mon, 20 Jun 2011, Jiaying Zhang wrote:
 
-But actually converting EIO's to file system errors isn't really a
-good idea.  Consider that most of the time, when you get a read error
-from the disk, if you rewrite that block, all will be will.  So taking
-the entire disk off-line, and setting the errors fs bit won't really
-help.  (a) Until the block is rewritten, the next time you try to read
-it, you'll get an error, and (b) running fsck will be a waste of time,
-since it will only scan the metadata blocks, and so the data block
-will still have an error.
+> We have hit the same BUG_ON as described in
+> https://bugzilla.kernel.org/show_bug.cgi?id=31222
+> on some of our servers that have disk failures or corrupted inodes. After
+> looking at the code, I think the problem is that we are not freeing inode's
+> preallocation list when check_eofblocks_fl fails in ext4_ext_map_blocks(),
+> which leaves the inode's preallocation list in an inconsistent state.
+> 
+> Below is a proposed patch to fix the bug. I have tested it by manually
+> inserting a random failure in check_eofblocks_fl() and run a test that
+> creates and uses an inode's preallocated blocks. Without the fix, the kernel
+> crashes after a few runs. With the fix, no crash is observed.
+>     
+> ext4: free allocated and pre-allocated blocks when check_eofblocks_fl fails
+> 
+> Upon corrupted inode or disk failures, we may fail after we already allocate
+> some blocks from the inode or take some blocks from the inode's preallocation
+> list, but before we successfully insert the corresponding extent to the extent
+> tree. In this case, we should free any allocated blocks and discard the inode's
+> preallocated blocks because the entries in the inode's preallocation list may
+> be in an inconsistent state.
+> 
+> Signed-off-by: Jiaying Zhang <jiayingz@google.com>
 
-I assume you're using hadoopfs as your cluster file system, which has
-redundancy at the file system level, right?  So getting an EIO won't
-be the end of the world, since you can always read data chunk from a
-redundant copy, or perform a reed-solomon reconstruction.  In fact,
-disabling the entire file system is the worst thing you can do, since
-you lose access to the rest of the files, which increases network
-track to your cluster interconnect, especially if you have to do a R-S
-reconstruction.
+Hi,
 
-(In fact I've recently written up a plan to turn metadata errors into
-EIO's, without bringing down the entire file system as containing
-errors, to make the file system more resiliant to I/O errors --- the
-exact reverse of what you're trying to do.)
+the change looks good to me (with one note), but the patch itself is not very
+well formated, and Ted would have to copy it out. Please use this:
 
-For data I/O errors, what you in fact what to do is to handle them in
-userspace, and just have HDFS delete the local copy of the file.  The
-next time you allocate the space and rewrite the block, the disk will
-do a bad block remap, and you'll be OK.
+ext4: free allocated and pre-allocated blocks when check_eofblocks_fl fails
 
-Now, you may want to do different things if the disk has completely
-disappeared, or has completely died, so this is a case where it would
-be desirable to get finer grained error reporting from the block I/O
-layer --- there's a big difference between what you do for an error
-caused by an unreadable block, and one caused by disk controller
-bursting into flame.  But in general, remounting the file system
-read-only should be a last-resort thing, and not the first thing you
-should try doing.
+for Subject line and put any comments which should not appear in the
+commit description after signed-off-by line starting with "--- " line.
+Or just use git format-patch.
 
-Regards,
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 5199bac..8cf6ec9 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -3596,10 +3596,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+>  	}
+>  
+>  	err = check_eofblocks_fl(handle, inode, map->m_lblk, path, ar.len);
+> -	if (err)
+> -		goto out2;
+> -
+> -	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
+> +	if (!err)
+> +		err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
+>  	if (err) {
 
-						- Ted
+why not to use:
+	else {
+
+
+>  		/* free data blocks we just allocated */
+>  		/* not a good idea to call discard here directly,
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
+Thanks!
+-Lukas
