@@ -1,54 +1,69 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 01/11 RESEND] libe2p: Add new function
- get_fragment_score()
-Date: Tue, 21 Jun 2011 09:56:08 -0400
-Message-ID: <20110621135608.GG32133@thunk.org>
-References: <4DF8522F.2020304@sx.jp.nec.com>
- <20110617031814.GA31884@thunk.org>
- <4E007FE1.8000704@sx.jp.nec.com>
+Subject: Re: [PATCH] ext4: Set file system to read-only by I/O error
+ threshold
+Date: Tue, 21 Jun 2011 10:48:56 -0400
+Message-ID: <20110621144856.GH32133@thunk.org>
+References: <1308312516-14252-1-git-send-email-wangshaoyan.pt@taobao.com>
+ <alpine.LFD.2.00.1106181015180.4602@dhcp-27-109.brq.redhat.com>
+ <BANLkTim-1FfCZAm449zp5PpApbq027HGwYhoZBF0soZpJon9tQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 <linux-ext4@vger.kernel.org>
-To: Kazuya Mio <k-mio@sx.jp.nec.com>
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	Wang Shaoyan <wangshaoyan.pt@taobao.com>,
+	Jan Kara <jack@suse.cz>
+To: Wang Shaoyan <stufever@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:52225 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:58320 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753798Ab1FUN4M (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 21 Jun 2011 09:56:12 -0400
+	id S1750935Ab1FUOtD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 21 Jun 2011 10:49:03 -0400
 Content-Disposition: inline
-In-Reply-To: <4E007FE1.8000704@sx.jp.nec.com>
+In-Reply-To: <BANLkTim-1FfCZAm449zp5PpApbq027HGwYhoZBF0soZpJon9tQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 21, 2011 at 08:26:25PM +0900, Kazuya Mio wrote:
-> 
-> I decided to implement a fragmentation score for the two purposes:
-> one is for filefrag that outputs the score to decide which files should be
-> defragmented, and the other is for e4defrag that compares two files'
-> fragmentation to prevent the worse fragmentation.
+Ugh.  This is really, really, *really* ugly.  If you really want to
+have hadoop shut down when there are too many errors, it's much better
+to expose the number of EIO errors via sysfs, and then have some kind
+of system daemon do the right thing.
 
-I'm really nervous about having filefrag print a "fragmentation
-score".  The problem is that the problem is invariably far more
-complex than can be boiled into a single number, and so users look at
-it and start worrying when they shouldn't.
+But actually converting EIO's to file system errors isn't really a
+good idea.  Consider that most of the time, when you get a read error
+from the disk, if you rewrite that block, all will be will.  So taking
+the entire disk off-line, and setting the errors fs bit won't really
+help.  (a) Until the block is rewritten, the next time you try to read
+it, you'll get an error, and (b) running fsck will be a waste of time,
+since it will only scan the metadata blocks, and so the data block
+will still have an error.
 
-And the statement, "so that e4defrag can compare two files'
-fragmentation to prevent the worse fragmentation" begs the question of
-what is "worse".  The real issue here is that it's a multidimensional
-problem.
+I assume you're using hadoopfs as your cluster file system, which has
+redundancy at the file system level, right?  So getting an EIO won't
+be the end of the world, since you can always read data chunk from a
+redundant copy, or perform a reed-solomon reconstruction.  In fact,
+disabling the entire file system is the worst thing you can do, since
+you lose access to the rest of the files, which increases network
+track to your cluster interconnect, especially if you have to do a R-S
+reconstruction.
 
-> Certainly, the same fragmentation score doesn't always mean the same
-> fragmentation. Just as Andreas said, "fragments per MB" is a good idea. It's
-> easy to understand, and other filesystem also would be able to use it without
-> change. Moreover, there is no worry about what threshold we use to
-> the application.
+(In fact I've recently written up a plan to turn metadata errors into
+EIO's, without bringing down the entire file system as containing
+errors, to make the file system more resiliant to I/O errors --- the
+exact reverse of what you're trying to do.)
 
-"fragments per megabyte" is definitely better, especially if you
-disregard the tail.  It's worth consider how it works for files
-smaller than a megabyte.  Do you round the file size up to the nearest
-megabyte?  Is it an integer score, or does it need to be floating
-point?  An integer score where the size is rounded up to the nearest
-megabyte sounds like a best plan, but I'm sure we could still find
-some interesting non-linearities that lead to surprising results.
+For data I/O errors, what you in fact what to do is to handle them in
+userspace, and just have HDFS delete the local copy of the file.  The
+next time you allocate the space and rewrite the block, the disk will
+do a bad block remap, and you'll be OK.
 
-	      	    	    	      	   - Ted
+Now, you may want to do different things if the disk has completely
+disappeared, or has completely died, so this is a case where it would
+be desirable to get finer grained error reporting from the block I/O
+layer --- there's a big difference between what you do for an error
+caused by an unreadable block, and one caused by disk controller
+bursting into flame.  But in general, remounting the file system
+read-only should be a last-resort thing, and not the first thing you
+should try doing.
+
+Regards,
+
+						- Ted
