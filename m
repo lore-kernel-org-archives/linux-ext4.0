@@ -1,112 +1,50 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: exclude bitmap update
-Date: Wed, 22 Jun 2011 21:04:29 +0300
-Message-ID: <BANLkTinJvsEDCGqcQ_c2c8m4b-ZWJ7VJ7g@mail.gmail.com>
-References: <BANLkTin2Q_U1Yi+-Pe0BZ2hcxsowEM5b0g@mail.gmail.com>
-	<BANLkTikcvkre+=cVgt_jbN5g+BxZeuEs6g@mail.gmail.com>
-	<BANLkTi=n=mZNdoSxxNcOLQ_tztYJBR6QOg@mail.gmail.com>
-	<84DFE1C1-8604-4C1D-A50B-89F74FD9D143@dilger.ca>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 0/8] remove i_alloc_sem
+Date: Wed, 22 Jun 2011 20:13:42 +0200
+Message-ID: <20110622181342.GC26160@quack.suse.cz>
+References: <20110620201533.847236272@bombadil.infradead.org>
+ <20110621235425.GA24067@quack.suse.cz>
+ <20110622142235.GN32133@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	Theodore Tso <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ww0-f42.google.com ([74.125.82.42]:34109 "EHLO
-	mail-ww0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758489Ab1FVSEa convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 22 Jun 2011 14:04:30 -0400
-Received: by wwg11 with SMTP id 11so1467245wwg.1
-        for <linux-ext4@vger.kernel.org>; Wed, 22 Jun 2011 11:04:29 -0700 (PDT)
-In-Reply-To: <84DFE1C1-8604-4C1D-A50B-89F74FD9D143@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@infradead.org>,
+	viro@zeniv.linux.org.uk, tglx@linutronix.de,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, hirofumi@mail.parknet.co.jp,
+	mfasheh@suse.com, jlbec@evilplan.org
+To: Ted Ts'o <tytso@mit.edu>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20110622142235.GN32133@thunk.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 22, 2011 at 8:47 PM, Andreas Dilger <adilger@dilger.ca> wro=
-te:
-> On 2011-06-22, at 6:04 AM, Amir Goldstein wrote:
->
->> On Wed, Jun 22, 2011 at 2:17 PM, Yongqiang Yang <xiaoqiangnk@gmail.c=
-om> wrote:
->>> If I am right, resize in userspace will be simpler.
->>
->> Yes, it will. very simple.
->> The only thing you need to do in userspace is check for online resiz=
-e
->> support in the kernel,
->> like mke2fs does for lazy_itable_init:
->>
->> =A0 =A0 =A0 if (access("/sys/fs/ext4/features/lazy_itable_init", R_O=
-K) =3D=3D 0)
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 lazy_itable_init =3D 1;
->>
->>
->> We can either just create the /sys/fs/ext4/features/online_resize en=
-try in
->> ext4_feat_attrs array with: EXT4_INFO_ATTR(online_resize);
->> to indicate the new ioctl is implemented by the kernel.
->>
->> Or we can export the specific features which are supported by online
->> resize with:
->> EXT4_RO_ATTR(online_resize);
->> and an online_resize_show() function.
->
-> No, this is all much too complex, and not needed.
+On Wed 22-06-11 10:22:35, Ted Tso wrote:
+> On Wed, Jun 22, 2011 at 01:54:25AM +0200, Jan Kara wrote:
+> > ext4_page_mkwrite()... Ted, what happened to that patch. Should I resend
+> > it?
+> 
+> So assuming I fix the refcounting issue in fs/ext4/page_io.c (which I
+> will do not dropping the page's refcount until after the workqueue
+> finishes its job), does your patch need changing, or is it a matter of
+> fixing the commit description?
+  Looking into patchwork (http://patchwork.ozlabs.org/patch/97924/) I see
+the discussion of two issues (page refcounting and page_mkwrite got mixed).
+I see the patch just needs fixing commit description because it's no longer
+accurate after "stable page under writeback" changes went it. I'll send you
+a patch with updated changelog in a minute.
 
-I suppose you are referring to advertising the features supported by re=
-size.
-I did get a bit carried away there ;-)
+> In any case, this dragged got out, and it's late in -rc cycle for 3.0,
+> so I was planning on queuing this for the next merge window.  (Sorry
+> for that, this was mostly due to my not having enough time to really
+> dive into the issues involved.)
+  No problem. Just we have to somehow coordinate with Christoph... Either
+he can avoid touching ext4 and merge his patch set after you merge my patch
+or he can take my patch instead of his ext4 change. Since my patch touches
+only ext4_page_mkwrite() there's not a high risk of collision. The latter
+would seem easier for both of you to me but I don't really care.
 
-I see no harm is advertising the new ioctl support via
-/sys/fs/ext4/features/online_resize.
-Do you have an objection to that?
-
->
->> Maybe somebody has a better suggestion or maybe we should just
->> let the ioctl return ENOTSUP, like today, with unsupported features =
-for resize.
->
-> Right. =A0This will fail for old kernels where the ioctl isn't suppor=
-ted, and
-> succeed for new kernels where it is supported, and has no added compl=
-exity.
->
->> Then, for example, if Andreas's group will add support for online re=
-size with
->> 64bit and meta_bg features, they could use this interface to adverti=
-se the
->> new resize capabilities to userspace.
->
-> There is no need for this either. =A0If the kernel can do the resize =
-(regardless
-> of the features involved) it will succeed, and if it fails, it fails.=
- =A0Passing
-> the new filesystem size is all that is needed. =A0If the user wants t=
-o enable
-> META_BG for resizing, this can be done via tune2fs/resize2fs from use=
-rspace
-> with the "s_first_meta_bg" value set to be the group after the end of=
- the
-> filesystem, or possibly after the last group that would fit within th=
-e last
-> regular group descriptor block.
->
-> Cheers, Andreas
->
->
->
->
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
