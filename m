@@ -1,62 +1,72 @@
-From: Robin Dong <hao.bigrat@gmail.com>
-Subject: [PATCH] ext4: check eh_max before really insert index
-Date: Wed, 22 Jun 2011 14:51:16 +0800
-Message-ID: <1308725476-5393-1-git-send-email-sanbai@taobao.com>
-Cc: Robin Dong <sanbai@taobao.com>
-To: linux-ext4@vger.kernel.org
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH] Free allocated and pre-allocated blocks when check_eofblocks_fl
+ fails
+Date: Wed, 22 Jun 2011 10:28:23 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1106221027090.4118@dhcp-27-109.brq.redhat.com>
+References: <20110621032816.6A0A942247@ruihe.smo.corp.google.com> <alpine.LFD.2.00.1106211717100.21178@dhcp-27-109.brq.redhat.com> <BANLkTin00aSpUXVAjB6DWajB6Sf079y11MMh_X7WcO8JJz9TBQ@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-725959581-1308731307=:4118"
+Cc: Lukas Czerner <lczerner@redhat.com>, Theodore Tso <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Jiaying Zhang <jiayingz@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:36951 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751234Ab1FVGv0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 22 Jun 2011 02:51:26 -0400
-Received: by iwn6 with SMTP id 6so451265iwn.19
-        for <linux-ext4@vger.kernel.org>; Tue, 21 Jun 2011 23:51:26 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:34699 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753584Ab1FVI2a (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 22 Jun 2011 04:28:30 -0400
+In-Reply-To: <BANLkTin00aSpUXVAjB6DWajB6Sf079y11MMh_X7WcO8JJz9TBQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Check eh_entries/eh_max before really insert index.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-Signed-off-by: Robin Dong <sanbai@taobao.com>
----
- fs/ext4/extents.c |   18 ++++++++++--------
- 1 files changed, 10 insertions(+), 8 deletions(-)
+--8323328-725959581-1308731307=:4118
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1
+Content-Transfer-Encoding: 8BIT
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index eb63c7b..a742e6e 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -776,6 +776,16 @@ static int ext4_ext_insert_index(handle_t *handle, struct inode *inode,
- 				 logical, le32_to_cpu(curp->p_idx->ei_block));
- 		return -EIO;
- 	}
-+
-+	if (unlikely(le16_to_cpu(curp->p_hdr->eh_entries) + 1
-+			     > le16_to_cpu(curp->p_hdr->eh_max))) {
-+		EXT4_ERROR_INODE(inode,
-+				 "eh_entries %d + 1 > eh_max %d!",
-+				 le16_to_cpu(curp->p_hdr->eh_entries),
-+				 le16_to_cpu(curp->p_hdr->eh_max));
-+		return -EIO;
-+	}
-+
- 	len = EXT_MAX_INDEX(curp->p_hdr) - curp->p_idx;
- 	if (logical > le32_to_cpu(curp->p_idx->ei_block)) {
- 		/* insert after */
-@@ -805,14 +815,6 @@ static int ext4_ext_insert_index(handle_t *handle, struct inode *inode,
- 	ext4_idx_store_pblock(ix, ptr);
- 	le16_add_cpu(&curp->p_hdr->eh_entries, 1);
- 
--	if (unlikely(le16_to_cpu(curp->p_hdr->eh_entries)
--			     > le16_to_cpu(curp->p_hdr->eh_max))) {
--		EXT4_ERROR_INODE(inode,
--				 "eh_entries %d > eh_max %d!",
--				 le16_to_cpu(curp->p_hdr->eh_entries),
--				 le16_to_cpu(curp->p_hdr->eh_max));
--		return -EIO;
--	}
- 	if (unlikely(ix > EXT_LAST_INDEX(curp->p_hdr))) {
- 		EXT4_ERROR_INODE(inode, "ix > EXT_LAST_INDEX!");
- 		return -EIO;
--- 
-1.7.1
+On Tue, 21 Jun 2011, Jiaying Zhang wrote:
 
+> > >
+> > > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> > > index 5199bac..8cf6ec9 100644
+> > > --- a/fs/ext4/extents.c
+> > > +++ b/fs/ext4/extents.c
+> > > @@ -3596,10 +3596,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+> > >       }
+> > >
+> > >       err = check_eofblocks_fl(handle, inode, map->m_lblk, path, ar.len);
+> > > -     if (err)
+> > > -             goto out2;
+> > > -
+> > > -     err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
+> > > +     if (!err)
+> > > +             err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
+> > >       if (err) {
+> >
+> > why not to use:
+> >        else {
+> >
+> It is not the same. If there is an error from ext4_ext_insert_extent(),
+> we also want to free allocated blocks.
+
+Oh, of course I have missed the assignment, sorry.
+
+Thanks!
+-Lukas
+
+> 
+> Jiaying
+> >
+> > >               /* free data blocks we just allocated */
+> > >               /* not a good idea to call discard here directly,
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > > the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > >
+> >
+> > Thanks!
+> > -Lukas
+> 
+--8323328-725959581-1308731307=:4118--
