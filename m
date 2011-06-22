@@ -1,184 +1,117 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH v3] ext4: Rewrite ext4_page_mkwrite() to use generic helpers
-Date: Wed, 22 Jun 2011 14:30:25 -0500
-Message-ID: <4E0242D1.3030106@redhat.com>
-References: <1308767062-27695-1-git-send-email-jack@suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Ted Tso <tytso@mit.edu>, Christoph Hellwig <hch@infradead.org>,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: exclude bitmap update
+Date: Wed, 22 Jun 2011 17:24:44 -0600
+Message-ID: <873775E5-8825-4A6D-AF07-54306A560982@dilger.ca>
+References: <BANLkTin2Q_U1Yi+-Pe0BZ2hcxsowEM5b0g@mail.gmail.com> <BANLkTikcvkre+=cVgt_jbN5g+BxZeuEs6g@mail.gmail.com> <BANLkTi=n=mZNdoSxxNcOLQ_tztYJBR6QOg@mail.gmail.com> <84DFE1C1-8604-4C1D-A50B-89F74FD9D143@dilger.ca> <BANLkTinJvsEDCGqcQ_c2c8m4b-ZWJ7VJ7g@mail.gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	Theodore Tso <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:63845 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758023Ab1FVTaq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 22 Jun 2011 15:30:46 -0400
-In-Reply-To: <1308767062-27695-1-git-send-email-jack@suse.cz>
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:45174 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758105Ab1FVXYs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 22 Jun 2011 19:24:48 -0400
+In-Reply-To: <BANLkTinJvsEDCGqcQ_c2c8m4b-ZWJ7VJ7g@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 6/22/11 1:24 PM, Jan Kara wrote:
-> Rewrite ext4_page_mkwrite() to use __block_page_mkwrite() helper. This
-> removes the need of using i_alloc_sem to avoid races with truncate which
-> seems to be the wrong locking order according to lock ordering documented in
-> mm/rmap.c. Also calling ext4_da_write_begin() as used by the old code seems to
-> be problematic because we can decide to flush delay-allocated blocks which
-> will acquire s_umount semaphore - again creating unpleasant lock dependency
-> if not directly a deadlock.
-
-I have a customer testcase which reliably locks up with freeze & mmap, and
-with this patch in place (and the other 2 higher-level patches that made
-it into 3.0-rcX) it passes, FWIW.
-
--Eric
-
-> Also add a check for frozen filesystem so that we don't busyloop in page fault
-> when the filesystem is frozen.
+On 2011-06-22, at 12:04 PM, Amir Goldstein wrote:
+> On Wed, Jun 22, 2011 at 8:47 PM, Andreas Dilger <adilger@dilger.ca> wrote:
+>> On 2011-06-22, at 6:04 AM, Amir Goldstein wrote:
+>> 
+>>> On Wed, Jun 22, 2011 at 2:17 PM, Yongqiang Yang <xiaoqiangnk@gmail.com> wrote:
+>>>> If I am right, resize in userspace will be simpler.
+>>> 
+>>> Yes, it will. very simple.
+>>> The only thing you need to do in userspace is check for online resize
+>>> support in the kernel,
+>>> like mke2fs does for lazy_itable_init:
+>>> 
+>>>      if (access("/sys/fs/ext4/features/lazy_itable_init", R_OK) == 0)
+>>>              lazy_itable_init = 1;
+>>> 
+>>> 
+>>> We can either just create the /sys/fs/ext4/features/online_resize entry in
+>>> ext4_feat_attrs array with: EXT4_INFO_ATTR(online_resize);
+>>> to indicate the new ioctl is implemented by the kernel.
+>>> 
+>>> Or we can export the specific features which are supported by online
+>>> resize with:
+>>> EXT4_RO_ATTR(online_resize);
+>>> and an online_resize_show() function.
+>> 
+>> No, this is all much too complex, and not needed.
 > 
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/ext4/inode.c |  106 ++++++++++++++++++++++++++++--------------------------
->  1 files changed, 55 insertions(+), 51 deletions(-)
+> I suppose you are referring to advertising the features supported by resize.
+> I did get a bit carried away there ;-)
 > 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index e3126c0..bd30976 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -5843,80 +5843,84 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
->  	struct page *page = vmf->page;
->  	loff_t size;
->  	unsigned long len;
-> -	int ret = -EINVAL;
-> -	void *fsdata;
-> +	int ret;
->  	struct file *file = vma->vm_file;
->  	struct inode *inode = file->f_path.dentry->d_inode;
->  	struct address_space *mapping = inode->i_mapping;
-> +	handle_t *handle;
-> +	get_block_t *get_block;
-> +	int retries = 0;
->  
->  	/*
-> -	 * Get i_alloc_sem to stop truncates messing with the inode. We cannot
-> -	 * get i_mutex because we are already holding mmap_sem.
-> +	 * This check is racy but catches the common case. We rely on
-> +	 * __block_page_mkwrite() to do a reliable check.
->  	 */
-> -	down_read(&inode->i_alloc_sem);
-> -	size = i_size_read(inode);
-> -	if (page->mapping != mapping || size <= page_offset(page)
-> -	    || !PageUptodate(page)) {
-> -		/* page got truncated from under us? */
-> -		goto out_unlock;
-> +	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
-> +	/* Delalloc case is easy... */
-> +	if (test_opt(inode->i_sb, DELALLOC) &&
-> +	    !ext4_should_journal_data(inode) &&
-> +	    !ext4_nonda_switch(inode->i_sb)) {
-> +		do {
-> +			ret = __block_page_mkwrite(vma, vmf,
-> +						   ext4_da_get_block_prep);
-> +		} while (ret == -ENOSPC &&
-> +		       ext4_should_retry_alloc(inode->i_sb, &retries));
-> +		goto out_ret;
->  	}
-> -	ret = 0;
->  
->  	lock_page(page);
-> -	wait_on_page_writeback(page);
-> -	if (PageMappedToDisk(page)) {
-> -		up_read(&inode->i_alloc_sem);
-> -		return VM_FAULT_LOCKED;
-> +	size = i_size_read(inode);
-> +	/* Page got truncated from under us? */
-> +	if (page->mapping != mapping || page_offset(page) > size) {
-> +		unlock_page(page);
-> +		ret = VM_FAULT_NOPAGE;
-> +		goto out;
->  	}
->  
->  	if (page->index == size >> PAGE_CACHE_SHIFT)
->  		len = size & ~PAGE_CACHE_MASK;
->  	else
->  		len = PAGE_CACHE_SIZE;
-> -
->  	/*
-> -	 * return if we have all the buffers mapped. This avoid
-> -	 * the need to call write_begin/write_end which does a
-> -	 * journal_start/journal_stop which can block and take
-> -	 * long time
-> +	 * Return if we have all the buffers mapped. This avoids the need to do
-> +	 * journal_start/journal_stop which can block and take a long time
->  	 */
->  	if (page_has_buffers(page)) {
->  		if (!walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
->  					ext4_bh_unmapped)) {
-> -			up_read(&inode->i_alloc_sem);
-> -			return VM_FAULT_LOCKED;
-> +			/* Wait so that we don't change page under IO */
-> +			wait_on_page_writeback(page);
-> +			ret = VM_FAULT_LOCKED;
-> +			goto out;
->  		}
->  	}
->  	unlock_page(page);
-> -	/*
-> -	 * OK, we need to fill the hole... Do write_begin write_end
-> -	 * to do block allocation/reservation.We are not holding
-> -	 * inode.i__mutex here. That allow * parallel write_begin,
-> -	 * write_end call. lock_page prevent this from happening
-> -	 * on the same page though
-> -	 */
-> -	ret = mapping->a_ops->write_begin(file, mapping, page_offset(page),
-> -			len, AOP_FLAG_UNINTERRUPTIBLE, &page, &fsdata);
-> -	if (ret < 0)
-> -		goto out_unlock;
-> -	ret = mapping->a_ops->write_end(file, mapping, page_offset(page),
-> -			len, len, page, fsdata);
-> -	if (ret < 0)
-> -		goto out_unlock;
-> -	ret = 0;
-> -
-> -	/*
-> -	 * write_begin/end might have created a dirty page and someone
-> -	 * could wander in and start the IO.  Make sure that hasn't
-> -	 * happened.
-> -	 */
-> -	lock_page(page);
-> -	wait_on_page_writeback(page);
-> -	up_read(&inode->i_alloc_sem);
-> -	return VM_FAULT_LOCKED;
-> -out_unlock:
-> -	if (ret)
-> +	/* OK, we need to fill the hole... */
-> +	if (ext4_should_dioread_nolock(inode))
-> +		get_block = ext4_get_block_write;
-> +	else
-> +		get_block = ext4_get_block;
-> +retry_alloc:
-> +	handle = ext4_journal_start(inode, ext4_writepage_trans_blocks(inode));
-> +	if (IS_ERR(handle)) {
->  		ret = VM_FAULT_SIGBUS;
-> -	up_read(&inode->i_alloc_sem);
-> +		goto out;
-> +	}
-> +	ret = __block_page_mkwrite(vma, vmf, get_block);
-> +	if (!ret && ext4_should_journal_data(inode)) {
-> +		if (walk_page_buffers(handle, page_buffers(page), 0,
-> +			  PAGE_CACHE_SIZE, NULL, do_journal_get_write_access)) {
-> +			unlock_page(page);
-> +			ret = VM_FAULT_SIGBUS;
-> +			goto out;
-> +		}
-> +		ext4_set_inode_state(inode, EXT4_STATE_JDATA);
-> +	}
-> +	ext4_journal_stop(handle);
-> +	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-> +		goto retry_alloc;
-> +out_ret:
-> +	ret = block_page_mkwrite_return(ret);
-> +out:
->  	return ret;
->  }
+> I see no harm is advertising the new ioctl support via
+> /sys/fs/ext4/features/online_resize.
+> Do you have an objection to that?
+
+What is the benefit of having this, compared to just calling the ioctl and
+getting -ENOTSUPP or -ENOTTY as the return code back?
+
+Two issues with "online_resize", I guess:
+- firstly that this name is very generic, and "online resize" has been
+ supported for a long time already
+- creating a /sys/fs/ext4/features entry for just this feature is
+ inconsistent with whether the kernel supports any other features.
+
+In this case of "online_resize" it is OK if the _current_ kernel only
+supports this feature, since the resize will be completed and shouldn't
+impact the long-term usability of the filesystem.  In some sense, even
+using "lazy_itable_init" is broken in this regard, since there is no
+guarantee that a new filesystem formatted on that kernel will actually
+be run on the same kernel, and it may leave the inode table uninitialized
+on disk while it runs on some older kernel.  Not a big danger, since the
+zeroing should happen fairly quickly, but it will probably happen to
+someone.
+
+I just want to make sure that we don't get into a bad habit of just
+checking what features the current kernel provides and assume that it
+is safe to do something to the filesystem that isn't usable on another
+kernel.
+
+
+>>> Maybe somebody has a better suggestion or maybe we should just
+>>> let the ioctl return ENOTSUP, like today, with unsupported features for resize.
+>> 
+>> Right.  This will fail for old kernels where the ioctl isn't supported, and
+>> succeed for new kernels where it is supported, and has no added complexity.
+>> 
+>>> Then, for example, if Andreas's group will add support for online resize with
+>>> 64bit and meta_bg features, they could use this interface to advertise the
+>>> new resize capabilities to userspace.
+>> 
+>> There is no need for this either.  If the kernel can do the resize (regardless
+>> of the features involved) it will succeed, and if it fails, it fails.  Passing
+>> the new filesystem size is all that is needed.  If the user wants to enable
+>> META_BG for resizing, this can be done via tune2fs/resize2fs from userspace
+>> with the "s_first_meta_bg" value set to be the group after the end of the
+>> filesystem, or possibly after the last group that would fit within the last
+>> regular group descriptor block.
+>> 
+>> Cheers, Andreas
+>> 
+>> 
+>> 
+>> 
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+
+
+Cheers, Andreas
+
+
+
+
 
