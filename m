@@ -1,132 +1,38 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: exclude bitmap update
-Date: Wed, 22 Jun 2011 15:04:01 +0300
-Message-ID: <BANLkTi=n=mZNdoSxxNcOLQ_tztYJBR6QOg@mail.gmail.com>
-References: <BANLkTin2Q_U1Yi+-Pe0BZ2hcxsowEM5b0g@mail.gmail.com>
-	<BANLkTikcvkre+=cVgt_jbN5g+BxZeuEs6g@mail.gmail.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 0/8] remove i_alloc_sem
+Date: Wed, 22 Jun 2011 10:22:35 -0400
+Message-ID: <20110622142235.GN32133@thunk.org>
+References: <20110620201533.847236272@bombadil.infradead.org>
+ <20110621235425.GA24067@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andreas Dilger <adilger@dilger.ca>, Theodore Tso <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>, viro@zeniv.linux.org.uk,
+	tglx@linutronix.de, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	hirofumi@mail.parknet.co.jp, mfasheh@suse.com, jlbec@evilplan.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:56063 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755582Ab1FVMED convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 22 Jun 2011 08:04:03 -0400
-Received: by wyb38 with SMTP id 38so503107wyb.19
-        for <linux-ext4@vger.kernel.org>; Wed, 22 Jun 2011 05:04:01 -0700 (PDT)
-In-Reply-To: <BANLkTikcvkre+=cVgt_jbN5g+BxZeuEs6g@mail.gmail.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:36072 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758075Ab1FVOXA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 22 Jun 2011 10:23:00 -0400
+Content-Disposition: inline
+In-Reply-To: <20110621235425.GA24067@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 22, 2011 at 2:17 PM, Yongqiang Yang <xiaoqiangnk@gmail.com>=
- wrote:
-> Hi Amir,
->
-> Now the resize's input is a struct which determines blockbitmap ,
-> inode bitmap and inode tables, then the kernel add groups.
->
-> What we want to do is as follows.
->
-> We need to remove IOC_EXTEND_GROUP and IOC_GROUP_ADD, and add
+On Wed, Jun 22, 2011 at 01:54:25AM +0200, Jan Kara wrote:
+> ext4_page_mkwrite()... Ted, what happened to that patch. Should I resend
+> it?
 
-We do not remove them. we leave them to support resize with old
-e2fsprogs version
-when new features are not enabled (exclude_bitmap, big_alloc)
+So assuming I fix the refcounting issue in fs/ext4/page_io.c (which I
+will do not dropping the page's refcount until after the workqueue
+finishes its job), does your patch need changing, or is it a matter of
+fixing the commit description?
 
-> IOC_RESIZE, =A0the input of which is a 64 bit argument which indicate=
-s
-> the nr. of blocks we want to add.
+In any case, this dragged got out, and it's late in -rc cycle for 3.0,
+so I was planning on queuing this for the next merge window.  (Sorry
+for that, this was mostly due to my not having enough time to really
+dive into the issues involved.)
 
-The argument is new nr. of blocks, just like in EXT4_IOC_GROUP_EXTEND,
-not the nr. of blocks we want to add.
-
->
-> Then the kernel will extend original last group and add groups and
-> allocate bitmaps and inode tables for new groups.
-
-Correct, and init them if needed (no uninit_bg, first flex_bg group,
-last partial group).
-
->
-> Am I right? =A0I am right, I am willing to propose a design to you. =A0=
-If
-> you think it is no problem, I will do the code work.
->
-
-Please do the code work.
-
-> If I am right, resize in userspace will be simpler.
->
-
-Yes, it will. very simple.
-The only thing you need to do in userspace is check for online resize
-support in the kernel,
-like mke2fs does for lazy_itable_init:
-
-        if (access("/sys/fs/ext4/features/lazy_itable_init", R_OK) =3D=3D=
- 0)
-                lazy_itable_init =3D 1;
-
-
-We can either just create the /sys/fs/ext4/features/online_resize entry=
- in
-ext4_feat_attrs array with:
-EXT4_INFO_ATTR(online_resize);
-to indicate the new ioctl is implemented by the kernel.
-
-Or we can export the specific features which are supported by online
-resize with:
-EXT4_RO_ATTR(online_resize);
-and an online_resize_show() function.
-
-Then, for example, if Andreas's group will add support for online resiz=
-e with
-64bit and meta_bg features, they could use this interface to advertise =
-the
-new resize capabilities to userspace.
-
-Maybe somebody has a better suggestion or maybe we should just
-let the ioctl return ENOTSUP, like today, with unsupported features for=
- resize.
-
-Cheers,
-Amir.
-
-> Thank you,
-> Yongqiang.
->
-> On Tue, Jun 21, 2011 at 12:06 AM, Amir Goldstein <amir73il@gmail.com>=
- wrote:
->> Hi,
->>
->> A quick update from todays' ext4 conf call.
->> Ted says we should allow to add exclude bitmap by tune2fs.
->> And he says new resize ioctl should be just passing to the kernel th=
-e
->> new 64bit size
->> and let the kernel do all the bitmap allocation logic.
->> So it simplifies the patch to resize2fs and adds another
->> exclude bitmap patch to the kernel.
->>
->> I will send a detailed design to the list later on.
->> As usual, please let me know if you want to continue this task
->> or to hand it over to me.
->>
->> Thanks,
->> Amir.
->>
->
->
->
-> --
-> Best Wishes
-> Yongqiang Yang
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+							- Ted
