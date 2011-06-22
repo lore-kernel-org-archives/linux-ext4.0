@@ -1,43 +1,50 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 0/8] remove i_alloc_sem
-Date: Wed, 22 Jun 2011 01:54:25 +0200
-Message-ID: <20110621235425.GA24067@quack.suse.cz>
-References: <20110620201533.847236272@bombadil.infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: viro@zeniv.linux.org.uk, tglx@linutronix.de,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, hirofumi@mail.parknet.co.jp,
-	mfasheh@suse.com, jlbec@evilplan.org, tytso@mit.edu
-To: Christoph Hellwig <hch@infradead.org>
+From: jiayingz@google.com (Jiaying Zhang)
+Subject: [PATCH RESEND] Free allocated and pre-allocated blocks when check_eofblocks_fl fails
+Date: Tue, 21 Jun 2011 19:33:50 -0700 (PDT)
+Message-ID: <20110622023351.0326042270@ruihe.smo.corp.google.com>
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:45631 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757484Ab1FUXy2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 21 Jun 2011 19:54:28 -0400
-Content-Disposition: inline
-In-Reply-To: <20110620201533.847236272@bombadil.infradead.org>
+Received: from smtp-out.google.com ([216.239.44.51]:39201 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757858Ab1FVCdz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Jun 2011 22:33:55 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 20-06-11 16:15:33, Christoph Hellwig wrote:
-> i_alloc_sem has always been a bit of an odd "lock".  It's the only remaining
-> rw_semaphore that can be released by a different thread than the one that
-> locked it, and it's use case in the core direct I/O code is more like a
-> counter given that the writers already have external serialization.
-> 
-> This series removes it in favour of a simpler counter scheme, thus getting
-> rid of the rw_semaphore non-owner APIs as requests by Thomas, while at the
-> same time shrinking the size of struct inode by 160 bytes on 64-bit systems.
-> 
-> The only nasty bit is that two filesystems (fat and ext4) have started
-> abusing the lock for their own purposes.  I've added a new rw_semaphore
-  ext4 abuse should be gone when Ted merges my rewrite of
-ext4_page_mkwrite()... Ted, what happened to that patch. Should I resend
-it?
+We have hit the same BUG_ON as described in
+https://bugzilla.kernel.org/show_bug.cgi?id=31222
+on some of our servers that have disk failures or corrupted inodes. After
+looking at the code, I think the problem is that we are not freeing inode's
+preallocation list when check_eofblocks_fl fails in ext4_ext_map_blocks(),
+which leaves the inode's preallocation list in an inconsistent state.
 
-								Honza
+Below is a proposed patch to fix the bug. I have tested it by manually
+inserting a random failure in check_eofblocks_fl() and run a test that
+creates and uses an inode's preallocated blocks. Without the fix, the kernel
+crashes after a few runs. With the fix, no crash is observed.
+    
+ext4: free allocated and pre-allocated blocks when check_eofblocks_fl fails
 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Upon corrupted inode or disk failures, we may fail after we already allocate
+some blocks from the inode or take some blocks from the inode's preallocation
+list, but before we successfully insert the corresponding extent to the extent
+tree. In this case, we should free any allocated blocks and discard the inode's
+preallocated blocks because the entries in the inode's preallocation list may
+be in an inconsistent state.
+
+Signed-off-by: Jiaying Zhang <jiayingz@google.com>
+---
+ fs/ext4/extents.c |    6 ++----
+ 1 files changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 5199bac..8cf6ec9 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3596,10 +3596,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+        }
+
+        err = check_eofblocks_fl(handle, inode, map->m_lblk, path, ar.len);
+-       if (err)
+-               goto out2;
