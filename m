@@ -1,45 +1,33 @@
-From: Tomasz Chmielewski <mangoo@wpkg.org>
-Subject: filesystems bigger than 16 TB?
-Date: Thu, 23 Jun 2011 13:35:59 +0200
-Message-ID: <4E03251F.4040603@wpkg.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH v3] ext4: Rewrite ext4_page_mkwrite() to use generic
+ helpers
+Date: Thu, 23 Jun 2011 07:51:44 -0400
+Message-ID: <20110623115144.GA13776@infradead.org>
+References: <1308767062-27695-1-git-send-email-jack@suse.cz>
+ <20110623103937.GB5171@infradead.org>
+ <20110623110918.GB4229@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.virtall.com ([178.63.195.102]:60246 "EHLO mail.virtall.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758724Ab1FWLgC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 23 Jun 2011 07:36:02 -0400
-Received: from mail.virtall.com (localhost [127.0.0.1])
-	by mail.virtall.com (Postfix) with ESMTP id 0C7D43648F0
-	for <linux-ext4@vger.kernel.org>; Thu, 23 Jun 2011 13:36:00 +0200 (CEST)
-Received: from [192.168.10.145] (e183095092.adsl.alicedsl.de [85.183.95.92])
-	by mail.virtall.com (Postfix) with ESMTPSA id B3AB636484B
-	for <linux-ext4@vger.kernel.org>; Thu, 23 Jun 2011 13:35:59 +0200 (CEST)
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:38078
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1759238Ab1FWLvr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 23 Jun 2011 07:51:47 -0400
+Content-Disposition: inline
+In-Reply-To: <20110623110918.GB4229@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-With mkfs.ext4 from 1.41.14, it is not possible to create a filesystem 
-which is bigger than 16 TB:
+On Thu, Jun 23, 2011 at 01:09:18PM +0200, Jan Kara wrote:
+> > more readable, even if there is a tiny amount of code duplication.
+>   The trouble is that ext4 falls backs to standard allocation instead of
+> delayed allocation when we run low on free space. So complete separation
+> of these two cases is not possible. Also inode data journal flag can be
+> set on the fly so we have to check it even in delalloc mkwrite
+> implementation.
 
+Yikes!  Ok, in that case there's no benefit in doing the split.
 
-mkfs.ext4: Size of device /dev/sdb too big to be expressed in 32 bits
-	using a blocksize of 4096.
-
-
-But I see it succeeds with the latest git version of e2fsprogs.
-
-
-
-The question is: how reliable such a filesystem is?
-
-On a system which is supposed to be reliable, perhaps I'll be better off 
-with xfs for such large filesystems?
-
-I'm using Debian Squeeze, which has a 2.6.32 kernel.
-
-
--- 
-Tomasz Chmielewski
-http://wpkg.org
