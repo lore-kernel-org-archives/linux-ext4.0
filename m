@@ -1,170 +1,157 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: exclude bitmap update
-Date: Thu, 23 Jun 2011 07:53:01 +0300
-Message-ID: <BANLkTikNGbVE7x38F4Ppmugp6cU=QVGOrw@mail.gmail.com>
-References: <BANLkTin2Q_U1Yi+-Pe0BZ2hcxsowEM5b0g@mail.gmail.com>
-	<BANLkTikcvkre+=cVgt_jbN5g+BxZeuEs6g@mail.gmail.com>
-	<BANLkTi=n=mZNdoSxxNcOLQ_tztYJBR6QOg@mail.gmail.com>
-	<84DFE1C1-8604-4C1D-A50B-89F74FD9D143@dilger.ca>
-	<BANLkTinJvsEDCGqcQ_c2c8m4b-ZWJ7VJ7g@mail.gmail.com>
-	<873775E5-8825-4A6D-AF07-54306A560982@dilger.ca>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: Re: [BUG] ext4 timestamps corruption
+Date: Thu, 23 Jun 2011 16:52:24 +0900
+Message-ID: <4E02F0B8.4080301@rs.jp.nec.com>
+References: <4DF1D57C.3030107@rs.jp.nec.com> <3BB3CFE7-BD50-4123-A1C8-D3FDAAD184DA@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	Theodore Tso <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <aedilger@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:60905 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751657Ab1FWExD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Jun 2011 00:53:03 -0400
-Received: by wyb38 with SMTP id 38so1030315wyb.19
-        for <linux-ext4@vger.kernel.org>; Wed, 22 Jun 2011 21:53:01 -0700 (PDT)
-In-Reply-To: <873775E5-8825-4A6D-AF07-54306A560982@dilger.ca>
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:64160 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754714Ab1FWHwy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Jun 2011 03:52:54 -0400
+In-Reply-To: <3BB3CFE7-BD50-4123-A1C8-D3FDAAD184DA@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 23, 2011 at 2:24 AM, Andreas Dilger <adilger@dilger.ca> wro=
-te:
-> On 2011-06-22, at 12:04 PM, Amir Goldstein wrote:
->> On Wed, Jun 22, 2011 at 8:47 PM, Andreas Dilger <adilger@dilger.ca> =
-wrote:
->>> On 2011-06-22, at 6:04 AM, Amir Goldstein wrote:
->>>
->>>> On Wed, Jun 22, 2011 at 2:17 PM, Yongqiang Yang <xiaoqiangnk@gmail=
-=2Ecom> wrote:
->>>>> If I am right, resize in userspace will be simpler.
->>>>
->>>> Yes, it will. very simple.
->>>> The only thing you need to do in userspace is check for online res=
-ize
->>>> support in the kernel,
->>>> like mke2fs does for lazy_itable_init:
->>>>
->>>> =A0 =A0 =A0if (access("/sys/fs/ext4/features/lazy_itable_init", R_=
-OK) =3D=3D 0)
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0lazy_itable_init =3D 1;
->>>>
->>>>
->>>> We can either just create the /sys/fs/ext4/features/online_resize =
-entry in
->>>> ext4_feat_attrs array with: EXT4_INFO_ATTR(online_resize);
->>>> to indicate the new ioctl is implemented by the kernel.
->>>>
->>>> Or we can export the specific features which are supported by onli=
-ne
->>>> resize with:
->>>> EXT4_RO_ATTR(online_resize);
->>>> and an online_resize_show() function.
->>>
->>> No, this is all much too complex, and not needed.
+Hi Andreas,
+
+Thanks for comment. I wrote a patch, could you review this?
+
+(2011/06/12 1:48), Andreas Dilger wrote:
+> 
+> On 2011-06-10, at 2:27 AM, Akira Fujita <a-fujita@rs.jp.nec.com <mailto:a-fujita@rs.jp.nec.com>> wrote:
 >>
->> I suppose you are referring to advertising the features supported by=
- resize.
->> I did get a bit carried away there ;-)
+>> Officially, ext4 can handle its timestamps until 2514
+>> with 32bit entries plus EPOCH_BIT (2bits).
+>> But when timestamps values use 32+ bit
+>> (e.g. 2038-01-19 9:14:08 0x0000000080000000),
+>> we can get corrupted values.
+>> Because sign bit is overwritten by transferring value
+>> between kernel space and user space.
 >>
->> I see no harm is advertising the new ioctl support via
->> /sys/fs/ext4/features/online_resize.
->> Do you have an objection to that?
->
-> What is the benefit of having this, compared to just calling the ioct=
-l and
-> getting -ENOTSUPP or -ENOTTY as the return code back?
->
+>> This can be happened with kernel 3.0.0-rc2 (Also older kernel)
+>> on x86_64.
+>>
+>> # This issue is already on Bugzilla,
+>> does anybody know this current status?
+>> https://bugzilla.kernel.org/show_bug.cgi?id=23732
+> 
+> I can't find any discussion about this bug in the list archives, but it is definitely a real problem.
+> 
+> At first glance, it appears that the correct solution is to shift the high bits in the extra time by only 31 bits.
+> 
+> As stated in the posting, it makes sense to keep the range -2^31 - +2^33 for maximum usability. I don't think there is any value to store more negative times.
+> 
+> To be honest I also don't think there is any value to even keeping negative timestamps (before 1970) since this is about storing file creation/modification times and I don't think any files with real 
+> creation dates before 1970 are used anywhere.
+> 
+> Either way I expect the time range to be sufficient, once the bug is fixed.
 
-I really don't know.
-If anyone objects to the old way of -ENOTSUPP being the official way
-to advertise
-capabilities, speak now.
+ext4: Fix ext4 timestamps corruption
 
-> Two issues with "online_resize", I guess:
-> - firstly that this name is very generic, and "online resize" has bee=
-n
-> =A0supported for a long time already
+Officially, ext4 can handle its timestamps until 2514
+with 32bit entries plus EPOCH_BIT (2bits).
+But when timestamps values use 32+ bit
+(e.g. 2038-01-19 9:14:08 0x0000000080000000),
+we can get corrupted values.
+Because sign bit is overwritten by transferring value
+between kernel space and user space.
 
-Yeah, I know, but it seems goofy to call it new_online_resize,
-or 64bit_online_resize, given the the latter is not yet supported.
+To fix this issue, 32th bit of extra time fields in ext4_inode structure
+(e.g. i_ctime_extra) are used as the sign for 64bit user space.
+Because these are used only 20bits for nano-second and bottom of 2bits
+are for EXT4_EPOCH_BITS shift.
+With this patch, ext4 supports timestamps Y1901-2514.
 
-> - creating a /sys/fs/ext4/features entry for just this feature is
-> =A0inconsistent with whether the kernel supports any other features.
->
-> In this case of "online_resize" it is OK if the _current_ kernel only
-> supports this feature, since the resize will be completed and shouldn=
-'t
-> impact the long-term usability of the filesystem. =A0In some sense, e=
-ven
-> using "lazy_itable_init" is broken in this regard, since there is no
-> guarantee that a new filesystem formatted on that kernel will actuall=
-y
-> be run on the same kernel, and it may leave the inode table uninitial=
-ized
-> on disk while it runs on some older kernel. =A0Not a big danger, sinc=
-e the
-> zeroing should happen fairly quickly, but it will probably happen to
-> someone.
->
-> I just want to make sure that we don't get into a bad habit of just
-> checking what features the current kernel provides and assume that it
-> is safe to do something to the filesystem that isn't usable on anothe=
-r
-> kernel.
->
->
->>>> Maybe somebody has a better suggestion or maybe we should just
->>>> let the ioctl return ENOTSUP, like today, with unsupported feature=
-s for resize.
->>>
->>> Right. =A0This will fail for old kernels where the ioctl isn't supp=
-orted, and
->>> succeed for new kernels where it is supported, and has no added com=
-plexity.
->>>
->>>> Then, for example, if Andreas's group will add support for online =
-resize with
->>>> 64bit and meta_bg features, they could use this interface to adver=
-tise the
->>>> new resize capabilities to userspace.
->>>
->>> There is no need for this either. =A0If the kernel can do the resiz=
-e (regardless
->>> of the features involved) it will succeed, and if it fails, it fail=
-s. =A0Passing
->>> the new filesystem size is all that is needed. =A0If the user wants=
- to enable
->>> META_BG for resizing, this can be done via tune2fs/resize2fs from u=
-serspace
->>> with the "s_first_meta_bg" value set to be the group after the end =
-of the
->>> filesystem, or possibly after the last group that would fit within =
-the last
->>> regular group descriptor block.
->>>
->>> Cheers, Andreas
->>>
->>>
->>>
->>>
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-ext=
-4" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at =A0http://vger.kernel.org/majordomo-info.htm=
-l
->>>
->
->
-> Cheers, Andreas
->
->
->
->
->
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The performance comparison is as follows:
+------------------------------------------------
+|              | file create   |   ls -l       |
+|--------------|---------------|----------------
+|with patch    | 138.2056 sec  | 14.9333 sec   |
+|without patch | 133.4566 sec  | 14.9096 sec   |
+------------------------------------------------
+ file count:1 million (average of 3 trials)
+ kernel: 3.0.0-rc3
+
+There is a slightly difference, but I think it is acceptable.
+
+Thanks and Regards,
+Akira Fujita
+
+Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
+---
+ fs/ext4/ext4.h |   30 +++++++++++++++++++++---------
+ 1 file changed, 21 insertions(+), 9 deletions(-)
+
+diff -Nrup -X linux-3.0-rc3-a/Documentation/dontdiff linux-3.0-rc3-a/fs/ext4/ext4.h linux-3.0-rc3-b/fs/ext4/ext4.h
+--- linux-3.0-rc3-a/fs/ext4/ext4.h	2011-06-14 07:29:59.000000000 +0900
++++ linux-3.0-rc3-b/fs/ext4/ext4.h	2011-06-23 14:18:47.000000000 +0900
+@@ -645,6 +645,7 @@ struct move_extent {
+ #define EXT4_EPOCH_BITS 2
+ #define EXT4_EPOCH_MASK ((1 << EXT4_EPOCH_BITS) - 1)
+ #define EXT4_NSEC_MASK  (~0UL << EXT4_EPOCH_BITS)
++#define EXT4_TIMESTAMP_SIGN_MASK 0x80000000
+
+ /*
+  * Extended fields will fit into an inode if the filesystem was formatted
+@@ -665,16 +666,23 @@ struct move_extent {
+ static inline __le32 ext4_encode_extra_time(struct timespec *time)
+ {
+        return cpu_to_le32((sizeof(time->tv_sec) > 4 ?
+-			   (time->tv_sec >> 32) & EXT4_EPOCH_MASK : 0) |
+-                          ((time->tv_nsec << EXT4_EPOCH_BITS) & EXT4_NSEC_MASK));
++		(time->tv_sec >> 32) &
++		(EXT4_EPOCH_MASK | EXT4_TIMESTAMP_SIGN_MASK) :
++		time->tv_sec & EXT4_TIMESTAMP_SIGN_MASK) |
++		((time->tv_nsec << EXT4_EPOCH_BITS) & EXT4_NSEC_MASK));
+ }
+
+ static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
+ {
+-       if (sizeof(time->tv_sec) > 4)
++	if (sizeof(time->tv_sec) > 4) {
+ 	       time->tv_sec |= (__u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK)
+ 			       << 32;
+-       time->tv_nsec = (le32_to_cpu(extra) & EXT4_NSEC_MASK) >> EXT4_EPOCH_BITS;
++		if (le32_to_cpu(extra) & EXT4_TIMESTAMP_SIGN_MASK)
++			time->tv_sec |= EXT4_NSEC_MASK << 32;
++	}
++
++	time->tv_nsec = ((le32_to_cpu(extra) & ~EXT4_TIMESTAMP_SIGN_MASK) >>
++				EXT4_EPOCH_BITS);
+ }
+
+ #define EXT4_INODE_SET_XTIME(xtime, inode, raw_inode)			       \
+@@ -696,19 +704,23 @@ do {									       \
+
+ #define EXT4_INODE_GET_XTIME(xtime, inode, raw_inode)			       \
+ do {									       \
+-	(inode)->xtime.tv_sec = (signed)le32_to_cpu((raw_inode)->xtime);       \
+-	if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
++	if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra)) {   \
++		(inode)->xtime.tv_sec =                                        \
++				(__u32)(le32_to_cpu((raw_inode)->xtime));      \
+ 		ext4_decode_extra_time(&(inode)->xtime,			       \
+ 				       raw_inode->xtime ## _extra);	       \
+-	else								       \
++	} else {							       \
++		(inode)->xtime.tv_sec =                                        \
++			(signed)le32_to_cpu((raw_inode)->xtime);               \
+ 		(inode)->xtime.tv_nsec = 0;				       \
++	}                                                                      \
+ } while (0)
+
+ #define EXT4_EINODE_GET_XTIME(xtime, einode, raw_inode)			       \
+ do {									       \
+ 	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime))		       \
+-		(einode)->xtime.tv_sec = 				       \
+-			(signed)le32_to_cpu((raw_inode)->xtime);	       \
++		(einode)->xtime.tv_sec =                                       \
++			(__u32)(le32_to_cpu((raw_inode)->xtime));              \
+ 	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime ## _extra))	       \
+ 		ext4_decode_extra_time(&(einode)->xtime,		       \
+ 				       raw_inode->xtime ## _extra);	       \
