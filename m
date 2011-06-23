@@ -1,55 +1,64 @@
-From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: Re: [PATCH 01/11 RESEND] libe2p: Add new function get_fragment_score()
-Date: Thu, 23 Jun 2011 17:00:17 +0900
-Message-ID: <4E02F291.6040805@sx.jp.nec.com>
-References: <4DF8522F.2020304@sx.jp.nec.com> <20110617031814.GA31884@thunk.org> <4E007FE1.8000704@sx.jp.nec.com> <20110621135608.GG32133@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: ext4 <linux-ext4@vger.kernel.org>
-To: "Ted Ts'o" <tytso@mit.edu>
+From: Robin Dong <hao.bigrat@gmail.com>
+Subject: [PATCH v2] ext4: avoid eh_entries overflow before insert extent_idx
+Date: Thu, 23 Jun 2011 16:47:17 +0800
+Message-ID: <1308818837-5243-1-git-send-email-sanbai@taobao.com>
+Cc: Robin Dong <sanbai@taobao.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:33514 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755817Ab1FWIAy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Jun 2011 04:00:54 -0400
-In-Reply-To: <20110621135608.GG32133@thunk.org>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:34941 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755817Ab1FWIr2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Jun 2011 04:47:28 -0400
+Received: by iwn6 with SMTP id 6so1389081iwn.19
+        for <linux-ext4@vger.kernel.org>; Thu, 23 Jun 2011 01:47:28 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2011/06/21 22:56, Ted Ts'o wrote:
-> I'm really nervous about having filefrag print a "fragmentation
-> score".  The problem is that the problem is invariably far more
-> complex than can be boiled into a single number, and so users look at
-> it and start worrying when they shouldn't.
+If eh_entries is equal to (or greater than) eh_max, the operation of
+inserting new extent_idx will make number of entries overflow.
+So check eh_entries before inserting the new extent_idx.
 
-It's possible that could happen. I suppose filefrag should output
-"fragmented" or "not fragmented" to understand when they shouldn't do e4defag.
-But it would be difficult to implement this idea because the threshold for
-the determination of which file is fragmented is different of each filesystem.
-As it stands now, I think filefrag shouldn't output fragmentation score.
+Signed-off-by: Robin Dong <sanbai@taobao.com>
+---
+ fs/ext4/extents.c |   18 ++++++++++--------
+ 1 files changed, 10 insertions(+), 8 deletions(-)
 
-However, I think I add get_fragment_score() to libe2p because e4defrag will
-still use it.
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index eb63c7b..792e77e 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -776,6 +776,16 @@ static int ext4_ext_insert_index(handle_t *handle, struct inode *inode,
+ 				 logical, le32_to_cpu(curp->p_idx->ei_block));
+ 		return -EIO;
+ 	}
++
++	if (unlikely(le16_to_cpu(curp->p_hdr->eh_entries)
++			     >= le16_to_cpu(curp->p_hdr->eh_max))) {
++		EXT4_ERROR_INODE(inode,
++				 "eh_entries %d >= eh_max %d!",
++				 le16_to_cpu(curp->p_hdr->eh_entries),
++				 le16_to_cpu(curp->p_hdr->eh_max));
++		return -EIO;
++	}
++
+ 	len = EXT_MAX_INDEX(curp->p_hdr) - curp->p_idx;
+ 	if (logical > le32_to_cpu(curp->p_idx->ei_block)) {
+ 		/* insert after */
+@@ -805,14 +815,6 @@ static int ext4_ext_insert_index(handle_t *handle, struct inode *inode,
+ 	ext4_idx_store_pblock(ix, ptr);
+ 	le16_add_cpu(&curp->p_hdr->eh_entries, 1);
+ 
+-	if (unlikely(le16_to_cpu(curp->p_hdr->eh_entries)
+-			     > le16_to_cpu(curp->p_hdr->eh_max))) {
+-		EXT4_ERROR_INODE(inode,
+-				 "eh_entries %d > eh_max %d!",
+-				 le16_to_cpu(curp->p_hdr->eh_entries),
+-				 le16_to_cpu(curp->p_hdr->eh_max));
+-		return -EIO;
+-	}
+ 	if (unlikely(ix > EXT_LAST_INDEX(curp->p_hdr))) {
+ 		EXT4_ERROR_INODE(inode, "ix > EXT_LAST_INDEX!");
+ 		return -EIO;
+-- 
+1.7.1
 
-> And the statement, "so that e4defrag can compare two files'
-> fragmentation to prevent the worse fragmentation" begs the question of
-> what is "worse".  The real issue here is that it's a multidimensional
-> problem.
-
-We need to define "what is worse" for e4defrag. If fragments per megabyte of
-the file is bigger than the threshold, e4defrag will call EXT4_IOC_MOVE_EXT
-ioctl. The threshold may be customizable by an option.
-
-> "fragments per megabyte" is definitely better, especially if you
-> disregard the tail.  It's worth consider how it works for files
-> smaller than a megabyte.  Do you round the file size up to the nearest
-> megabyte?  Is it an integer score, or does it need to be floating
-> point?  An integer score where the size is rounded up to the nearest
-> megabyte sounds like a best plan, but I'm sure we could still find
-> some interesting non-linearities that lead to surprising results.
-
-An integer score sounds good to me.
-
-Regards,
-Kazuya Mio
