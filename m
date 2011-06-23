@@ -1,81 +1,60 @@
-From: Mark Harris <mhlk@osj.us>
-Subject: Re: [BUG] ext4 timestamps corruption
-Date: Thu, 23 Jun 2011 15:37:11 -0700
-Message-ID: <BANLkTinxzNWZnMvj1716S24HJ6n2NM0z=w@mail.gmail.com>
-References: <4DF1D57C.3030107@rs.jp.nec.com>
-	<3BB3CFE7-BD50-4123-A1C8-D3FDAAD184DA@gmail.com>
-	<4E02F0B8.4080301@rs.jp.nec.com>
+From: "Moffett, Kyle D" <Kyle.D.Moffett@boeing.com>
+Subject: Re: Bug#615998: linux-image-2.6.32-5-xen-amd64: Repeatable "kernel
+ BUG at fs/jbd2/commit.c:534" from Postfix on ext4
+Date: Thu, 23 Jun 2011 16:19:08 -0500
+Message-ID: <404FD5CC-8F27-4336-B7D4-10675C53A588@boeing.com>
+References: <20110301165239.3310.43806.reportbug@support.exmeritus.com>
+ <15E8241A-37A0-4438-849E-A157A376C7F1@boeing.com>
+ <8658F8EE-A52D-4405-A1F3-C0247AB3EA6D@boeing.com>
+ <26AE8923-4DEA-43FF-8F79-1D5AA665A344@boeing.com>
+ <20110405230538.GH2832@thunk.org>
+ <FD93E462-D97B-411B-BF09-9A64670AC5C2@boeing.com>
+ <AF621113-8320-4973-A88A-1FC048EA4293@boeing.com>
+ <BANLkTi=5BLA07tvbv3PFcZ0cc8FmBtg+UA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Akira Fujita <a-fujita@rs.jp.nec.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+Cc: "Ted Ts'o" <tytso@mit.edu>,
+	"615998@bugs.debian.org" <615998@bugs.debian.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Sachin Sant <sachinp@in.ibm.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Sean Ryle <seanbo@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:51436 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933238Ab1FWWhM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Jun 2011 18:37:12 -0400
-Received: by iyb12 with SMTP id 12so1923613iyb.19
-        for <linux-ext4@vger.kernel.org>; Thu, 23 Jun 2011 15:37:12 -0700 (PDT)
-In-Reply-To: <4E02F0B8.4080301@rs.jp.nec.com>
+Received: from stl-smtpout-01.boeing.com ([130.76.96.56]:35776 "EHLO
+	stl-smtpout-01.boeing.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760035Ab1FWWno convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Jun 2011 18:43:44 -0400
+In-Reply-To: <BANLkTi=5BLA07tvbv3PFcZ0cc8FmBtg+UA@mail.gmail.com>
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2011/6/23 Akira Fujita <a-fujita@rs.jp.nec.com>:
->> https://bugzilla.kernel.org/show_bug.cgi?id=23732
->
-> ext4: Fix ext4 timestamps corruption
->
-> Officially, ext4 can handle its timestamps until 2514
-> with 32bit entries plus EPOCH_BIT (2bits).
-> But when timestamps values use 32+ bit
-> (e.g. 2038-01-19 9:14:08 0x0000000080000000),
-> we can get corrupted values.
-> Because sign bit is overwritten by transferring value
-> between kernel space and user space.
->
-> To fix this issue, 32th bit of extra time fields in ext4_inode structure
-> (e.g. i_ctime_extra) are used as the sign for 64bit user space.
-> Because these are used only 20bits for nano-second and bottom of 2bits
-> are for EXT4_EPOCH_BITS shift.
-> With this patch, ext4 supports timestamps Y1901-2514.
+On Jun 23, 2011, at 16:55, Sean Ryle wrote:
+> Maybe I am wrong here, but shouldn't the cast be to (unsigned long) or to (sector_t)?
+> 
+> Line 534 of commit.c:
+>                         jbd_debug(4, "JBD: got buffer %llu (%p)\n",
+>                                 (unsigned long long)bh->b_blocknr, bh->b_data);
 
-Thanks for looking into this bug.  However tv_nsec is in the
-range 0..999999999 and requires 30 bits.  That is why tv_sec was
-only extended by 2 bits.  So there are no additional spare bits
-in the "extra" field.
+No, that printk() is fine, the format string says "%llu" so the cast is
+unsigned long long.
 
-34-bit seconds can accommodate a maximum of 544.4 years, e.g.
-1970..2514 or 1901..2446.  Although an early version of the patch
-for 34-bit tv_sec in ext4 worked with years 1970..2514, prior to
-being committed the patch was changed to support pre-1970
-timestamps (introducing the sign extension issue in the decoding):
-  http://marc.info/?l=linux-ext4&m=118208541320999
+Besides which, line 534 in the Debian 2.6.32 kernel I am using is this
+one:
 
-The existing encoding simply encodes bits 31..0 of tv_sec in the
-regular time field and bits 33..32 in the extra field (along with
-the 30-bit tv_nsec).  The issue is in the decoding, which I think
-can be addressed by changing only the body of the "if" in in the
-ext4_decode_extra_time function, to something like this:
+  J_ASSERT(commit_transaction->t_nr_buffers <=
+           commit_transaction->t_outstanding_credits);
 
-        time->tv_sec += ((__u32)time->tv_sec +
-                ((__u64)le32_to_cpu(extra) << 32) +
-                0x80000000LL) & 0x300000000LL;
+If somebody can tell me what information would help to debug this I'd be
+more than happy to throw a whole bunch of debug printks under that error
+condition and try to trigger the crash with that.
 
-This is untested, and might look nicer with some macros, but
-it should decode the 34 bits into a timestamp in the range
--0x80000000 (1901-12-13) to 0x37fffffff (2446-05-10), while
-retaining compatibility with the existing encoding.
+Alternatively I could remove that J_ASSERT() and instead add some debug
+further down around the "commit_transaction->t_outstanding_credits--;"
+to try to see exactly what IO it's handling when it runs out of credits.
 
-   2    msb of                         adjustment needed to convert
- extra  32-bit                         sign-extended 32-bit tv_sec
-  bits   time   decoded 64-bit tv_sec   to decoded 64-bit tv_sec
-  1 1     1    -0x80000000..-1           0
-  0 0     0    0x000000000..0x07fffffff  0
-  0 0     1    0x080000000..0x0ffffffff  0x100000000
-  0 1     0    0x100000000..0x17fffffff  0x100000000
-  0 1     1    0x180000000..0x1ffffffff  0x200000000
-  1 0     0    0x200000000..0x27fffffff  0x200000000
-  1 0     1    0x280000000..0x2ffffffff  0x300000000
-  1 1     0    0x300000000..0x37fffffff  0x300000000
+Any ideas?
 
- - Mark
+Cheers,
+Kyle Moffett
