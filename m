@@ -1,33 +1,54 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 0/8] remove i_alloc_sem
-Date: Thu, 23 Jun 2011 06:36:54 -0400
-Message-ID: <20110623103654.GA5171@infradead.org>
-References: <20110620201533.847236272@bombadil.infradead.org>
- <20110621235425.GA24067@quack.suse.cz>
- <20110622142235.GN32133@thunk.org>
- <20110622181342.GC26160@quack.suse.cz>
+Subject: Re: [PATCH v3] ext4: Rewrite ext4_page_mkwrite() to use generic
+ helpers
+Date: Thu, 23 Jun 2011 06:39:37 -0400
+Message-ID: <20110623103937.GB5171@infradead.org>
+References: <1308767062-27695-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ted Ts'o <tytso@mit.edu>, Christoph Hellwig <hch@infradead.org>,
-	viro@zeniv.linux.org.uk, tglx@linutronix.de,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, hirofumi@mail.parknet.co.jp,
-	mfasheh@suse.com, jlbec@evilplan.org
+Cc: Ted Tso <tytso@mit.edu>, Christoph Hellwig <hch@infradead.org>,
+	linux-ext4@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:50046
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1758860Ab1FWKji (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 23 Jun 2011 06:39:38 -0400
 Content-Disposition: inline
-In-Reply-To: <20110622181342.GC26160@quack.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1308767062-27695-1-git-send-email-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 22, 2011 at 08:13:42PM +0200, Jan Kara wrote:
->   No problem. Just we have to somehow coordinate with Christoph... Either
-> he can avoid touching ext4 and merge his patch set after you merge my patch
-> or he can take my patch instead of his ext4 change. Since my patch touches
-> only ext4_page_mkwrite() there's not a high risk of collision. The latter
-> would seem easier for both of you to me but I don't really care.
+>  	loff_t size;
+>  	unsigned long len;
+> +	int ret;
+>  	struct file *file = vma->vm_file;
+>  	struct inode *inode = file->f_path.dentry->d_inode;
+>  	struct address_space *mapping = inode->i_mapping;
+> +	handle_t *handle;
+> +	get_block_t *get_block;
+> +	int retries = 0;
+>  
+>  	/*
+> +	 * This check is racy but catches the common case. We rely on
+> +	 * __block_page_mkwrite() to do a reliable check.
+>  	 */
+> +	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
+> +	/* Delalloc case is easy... */
+> +	if (test_opt(inode->i_sb, DELALLOC) &&
+> +	    !ext4_should_journal_data(inode) &&
+> +	    !ext4_nonda_switch(inode->i_sb)) {
+> +		do {
+> +			ret = __block_page_mkwrite(vma, vmf,
+> +						   ext4_da_get_block_prep);
+> +		} while (ret == -ENOSPC &&
+> +		       ext4_should_retry_alloc(inode->i_sb, &retries));
+> +		goto out_ret;
 
-For now I'll just take your repost into the next version of my series.
-If you guys have any better idea for sorting out the merge issues I'm
-happy to reshuffle it again.
+Is there any way to simply provide a different vm_operations_struct
+and thus ->fault implementation for the delalloc vs non-delalloc case?
+
+I think splitting those two cases completely would make the code a lot
+more readable, even if there is a tiny amount of code duplication.
 
