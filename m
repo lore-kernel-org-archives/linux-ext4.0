@@ -1,60 +1,56 @@
-From: Coly Li <colyli@gmail.com>
-Subject: Re: [PATCH v2] ext4: avoid eh_entries overflow before insert extent_idx
-Date: Fri, 24 Jun 2011 00:51:55 +0800
-Message-ID: <4E036F2B.80302@gmail.com>
-References: <1308818837-5243-1-git-send-email-sanbai@taobao.com> <BANLkTimwAyb5AA5YfG92mXbkRBgAd5dKiQ@mail.gmail.com>
-Reply-To: colyli@gmail.com
+From: "Moffett, Kyle D" <Kyle.D.Moffett@boeing.com>
+Subject: Re: Bug#615998: linux-image-2.6.32-5-xen-amd64: 	Repeatable "kernel
+ BUG 	at fs/jbd2/commit.c:534" from Postfix on ext4
+Date: Thu, 23 Jun 2011 13:32:48 -0500
+Message-ID: <AF621113-8320-4973-A88A-1FC048EA4293@boeing.com>
+References: <20110301165239.3310.43806.reportbug@support.exmeritus.com><BE4E
+ C1DF-4DFC-4B94-923D-0197B16BD7B4@boeing.com><20110403020227.GA19963@thunk.o
+ rg><15E8241A-37A0-4438-849E-A157A376C7F1@boeing.com><20110405001542.GE2832@
+ thunk.org><8658F8EE-A52D-4405-A1F3-C0247AB3EA6D@boeing.com><20110405190738.
+ GF2832@thunk.org><26AE8923-4DEA-43FF-8F79-1D5AA665A344@boeing.com>
+ <20110405230538.GH2832@thunk.org>
+ <FD93E462-D97B-411B-BF09-9A64670AC5C2@boeing.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Robin Dong <hao.bigrat@gmail.com>, linux-ext4@vger.kernel.org,
-	Robin Dong <sanbai@taobao.com>
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+Cc: "Ted Ts'o" <tytso@mit.edu>,
+	"615998@bugs.debian.org" <615998@bugs.debian.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Sachin Sant <sachinp@in.ibm.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: "Moffett, Kyle D" <Kyle.D.Moffett@boeing.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy7-pub.bluehost.com ([67.222.55.9]:34129 "HELO
-	oproxy7-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1759069Ab1FWQtr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Jun 2011 12:49:47 -0400
-In-Reply-To: <BANLkTimwAyb5AA5YfG92mXbkRBgAd5dKiQ@mail.gmail.com>
+Received: from slb-smtpout-01.boeing.com ([130.76.64.48]:53300 "EHLO
+	slb-smtpout-01.boeing.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932607Ab1FWTUJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Jun 2011 15:20:09 -0400
+In-Reply-To: <FD93E462-D97B-411B-BF09-9A64670AC5C2@boeing.com>
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011=E5=B9=B406=E6=9C=8823=E6=97=A5 17:00, Yongqiang Yang Wrote:
-> On Thu, Jun 23, 2011 at 4:47 PM, Robin Dong <hao.bigrat@gmail.com> wr=
-ote:
->> If eh_entries is equal to (or greater than) eh_max, the operation of
->> inserting new extent_idx will make number of entries overflow.
->> So check eh_entries before inserting the new extent_idx.
->>
->> Signed-off-by: Robin Dong <sanbai@taobao.com>
->> ---
->> =EF=BF=BDfs/ext4/extents.c | =EF=BF=BD 18 ++++++++++--------
->> =EF=BF=BD1 files changed, 10 insertions(+), 8 deletions(-)
->>
->> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
->> index eb63c7b..792e77e 100644
->> --- a/fs/ext4/extents.c
->> +++ b/fs/ext4/extents.c
-[snip]
+Hello again everyone,
 
->> =EF=BF=BD =EF=BF=BD =EF=BF=BD =EF=BF=BDif (unlikely(ix > EXT_LAST_IN=
-DEX(curp->p_hdr))) {
-> condition ix > EXT_LAST_INDEX(curp->p_hdr) can not be true.  Right?
-> May be we can remove this if-statement in this patch.
->=20
-> Yongqiang.
-[snip]
+I'm in the middle of doing some software testing on a pre-production
+clone of this system using some modified software configurations and a
+testing-only data volume, and I've managed to trigger this panic again.
 
-Good suggestion. But I suggest us to remove it a little bit later. When=
- we do meta data checksum, the last index/extent
-record might be used for checksum, the above checking might still be he=
-lpful for bug probing.
+The trigger was exactly the same; I had a bunch of queued emails from
+logcheck because my TLS configuration was wrong, then I fixed the TLS
+configuration and typed "postqueue -f" to send the queued mail.
 
-Thanks.
+Ted, since this new iteration has no customer data, passwords, keys, or
+any other private data, I'm going to try to get approval to release an
+exact EC2 image of this system for you to test with, including the fake
+data volume that I triggered the problem on.
 
-Coly
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+If not I can certainly reproduce it now by stopping email delivery and
+generating a lot of fake syslog spam; I can try applying kernel patches
+and report what happens.
+
+Hopefully you're still willing to help out tracking down the problem?
+
+Thanks again!
+
+Cheers,
+Kyle Moffett
