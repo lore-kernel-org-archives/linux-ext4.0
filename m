@@ -1,588 +1,123 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] jbd: Fix oops in journal_remove_journal_head()
-Date: Sat, 25 Jun 2011 00:36:39 +0200
-Message-ID: <1308954999-19788-1-git-send-email-jack@suse.cz>
-Cc: Jan Kara <jack@suse.cz>
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [BUG] ext4 timestamps corruption
+Date: Fri, 24 Jun 2011 16:46:44 -0600
+Message-ID: <D77F5ECA-5803-44B7-B8AB-E18707386B42@dilger.ca>
+References: <4DF1D57C.3030107@rs.jp.nec.com> <3BB3CFE7-BD50-4123-A1C8-D3FDAAD184DA@gmail.com> <4E02F0B8.4080301@rs.jp.nec.com> <BANLkTinxzNWZnMvj1716S24HJ6n2NM0z=w@mail.gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Akira Fujita <a-fujita@rs.jp.nec.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Mark Harris <mhlk@osj.us>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:36181 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752945Ab1FXWgn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 24 Jun 2011 18:36:43 -0400
-Received: from relay2.suse.de (charybdis-ext.suse.de [195.135.221.2])
-	by mx2.suse.de (Postfix) with ESMTP id D99D386EE4
-	for <linux-ext4@vger.kernel.org>; Sat, 25 Jun 2011 00:36:41 +0200 (CEST)
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:57560 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753957Ab1FXWqr convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Jun 2011 18:46:47 -0400
+In-Reply-To: <BANLkTinxzNWZnMvj1716S24HJ6n2NM0z=w@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-journal_remove_journal_head() can oops when trying to access journal_head
-returned by bh2jh(). This is caused for example by the following race:
+On 2011-06-23, at 4:37 PM, Mark Harris wrote:
+> 2011/6/23 Akira Fujita <a-fujita@rs.jp.nec.com>:
+>>> https://bugzilla.kernel.org/show_bug.cgi?id=23732
+>> 
+>> ext4: Fix ext4 timestamps corruption
+>> 
+>> Officially, ext4 can handle its timestamps until 2514
+>> with 32bit entries plus EPOCH_BIT (2bits).
+>> But when timestamps values use 32+ bit
+>> (e.g. 2038-01-19 9:14:08 0x0000000080000000),
+>> we can get corrupted values.
+>> Because sign bit is overwritten by transferring value
+>> between kernel space and user space.
+>> 
+>> To fix this issue, 32th bit of extra time fields in ext4_inode structure
+>> (e.g. i_ctime_extra) are used as the sign for 64bit user space.
+>> Because these are used only 20bits for nano-second and bottom of 2bits
+>> are for EXT4_EPOCH_BITS shift.
+>> With this patch, ext4 supports timestamps Y1901-2514.
+> 
+> Thanks for looking into this bug.  However tv_nsec is in the
+> range 0..999999999 and requires 30 bits.  That is why tv_sec was
+> only extended by 2 bits.  So there are no additional spare bits
+> in the "extra" field.
+> 
+> 34-bit seconds can accommodate a maximum of 544.4 years, e.g.
+> 1970..2514 or 1901..2446.  Although an early version of the patch
+> for 34-bit tv_sec in ext4 worked with years 1970..2514, prior to
+> being committed the patch was changed to support pre-1970
+> timestamps (introducing the sign extension issue in the decoding):
+>  http://marc.info/?l=linux-ext4&m=118208541320999
 
-	TASK1					TASK2
-  journal_commit_transaction()
-    ...
-    processing t_forget list
-      __journal_refile_buffer(jh);
-      if (!jh->b_transaction) {
-        jbd_unlock_bh_state(bh);
-					journal_try_to_free_buffers()
-					  journal_grab_journal_head(bh)
-					  jbd_lock_bh_state(bh)
-					  __journal_try_to_free_buffer()
-					  journal_put_journal_head(jh)
-        journal_remove_journal_head(bh);
+Sigh, it seems so unlikely that anyone even has a valid timestamp
+on a file with a date before 1970, it makes me wonder if this extra
+effort is even worthwhile...
 
-journal_put_journal_head() in TASK2 sees that b_jcount == 0 and buffer is not
-part of any transaction and thus frees journal_head before TASK1 gets to doing
-so. Note that even buffer_head can be released by try_to_free_buffers() after
-journal_put_journal_head() which adds even larger opportunity for oops (but I
-didn't see this happen in reality).
+> The existing encoding simply encodes bits 31..0 of tv_sec in the
+> regular time field and bits 33..32 in the extra field (along with
+> the 30-bit tv_nsec).  The issue is in the decoding, which I think
+> can be addressed by changing only the body of the "if" in in the
+> ext4_decode_extra_time function, to something like this:
+> 
+>        time->tv_sec += ((__u32)time->tv_sec +
+>                ((__u64)le32_to_cpu(extra) << 32) +
+>                0x80000000LL) & 0x300000000LL;
+> 
+> This is untested, and might look nicer with some macros, but
+> it should decode the 34 bits into a timestamp in the range
+> -0x80000000 (1901-12-13) to 0x37fffffff (2446-05-10), while
+> retaining compatibility with the existing encoding.
+> 
+>   2    msb of                         adjustment needed to convert
+> extra  32-bit                         sign-extended 32-bit tv_sec
+>  bits   time   decoded 64-bit tv_sec   to decoded 64-bit tv_sec
+>  1 1     1    -0x80000000..-1           0
+>  0 0     0    0x000000000..0x07fffffff  0
+>  0 0     1    0x080000000..0x0ffffffff  0x100000000
+>  0 1     0    0x100000000..0x17fffffff  0x100000000
+>  0 1     1    0x180000000..0x1ffffffff  0x200000000
+>  1 0     0    0x200000000..0x27fffffff  0x200000000
+>  1 0     1    0x280000000..0x2ffffffff  0x300000000
+>  1 1     0    0x300000000..0x37fffffff  0x300000000
 
-Fix the problem by making transactions hold their own journal_head reference
-(in b_jcount). That way we don't have to remove journal_head explicitely via
-journal_remove_journal_head() and instead just remove journal_head when
-b_jcount drops to zero. The result of this is that [__]journal_refile_buffer(),
-[__]journal_unfile_buffer(), and __journal_remove_checkpoint() can free
-journal_head which needs modification of a few callers. Also we have to be
-careful because once journal_head is removed, buffer_head might be freed as
-well. So we have to get our own buffer_head reference where it matters.
+The problem with this encoding is that it requires existing 32-bit
+timestamps before 1970 to have encoded "11" in the extra epoch bits,
+which is not the case.  Current pre-1970 timestamps would be encoded
+with "00" there, which would (according to your table) bump them past
+2038 incorrectly.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/jbd/checkpoint.c  |   27 ++++++++------
- fs/jbd/commit.c      |   46 +++++++++++-------------
- fs/jbd/journal.c     |   95 ++++++++++++++++---------------------------------
- fs/jbd/transaction.c |   66 ++++++++++++++++++-----------------
- include/linux/jbd.h  |    1 -
- 5 files changed, 101 insertions(+), 134 deletions(-)
+What we need is an encoding that preserves the times for extra epoch "00":
 
- This is a port of JBD2 commit de1b794130b130e77ffa975bb58cb843744f9ae5. I
-plan to pull it into my tree when some tests finish.
+  2    msb of                         adjustment needed to convert
+extra  32-bit                         sign-extended 32-bit tv_sec
+ bits   time   decoded 64-bit tv_sec   to decoded 64-bit tv_sec
+ 0 0     1    -0x80000000..-1           0
+ 0 0     0    0x000000000..0x07fffffff  0
+ 0 1     1    0x080000000..0x0ffffffff  0x100000000
+ 0 1     0    0x100000000..0x17fffffff  0x100000000
+ 1 0     1    0x180000000..0x1ffffffff  0x200000000
+ 1 0     0    0x200000000..0x27fffffff  0x200000000
+ 1 1     1    0x280000000..0x2ffffffff  0x300000000
+ 1 1     0    0x300000000..0x37fffffff  0x300000000
 
-diff --git a/fs/jbd/checkpoint.c b/fs/jbd/checkpoint.c
-index dea7503..61655a3 100644
---- a/fs/jbd/checkpoint.c
-+++ b/fs/jbd/checkpoint.c
-@@ -96,10 +96,14 @@ static int __try_to_free_cp_buf(struct journal_head *jh)
- 
- 	if (jh->b_jlist == BJ_None && !buffer_locked(bh) &&
- 	    !buffer_dirty(bh) && !buffer_write_io_error(bh)) {
-+		/*
-+		 * Get our reference so that bh cannot be freed before
-+		 * we unlock it
-+		 */
-+		get_bh(bh);
- 		JBUFFER_TRACE(jh, "remove from checkpoint list");
- 		ret = __journal_remove_checkpoint(jh) + 1;
- 		jbd_unlock_bh_state(bh);
--		journal_remove_journal_head(bh);
- 		BUFFER_TRACE(bh, "release");
- 		__brelse(bh);
- 	} else {
-@@ -221,8 +225,8 @@ restart:
- 			spin_lock(&journal->j_list_lock);
- 			goto restart;
- 		}
-+		get_bh(bh);
- 		if (buffer_locked(bh)) {
--			get_bh(bh);
- 			spin_unlock(&journal->j_list_lock);
- 			jbd_unlock_bh_state(bh);
- 			wait_on_buffer(bh);
-@@ -241,7 +245,6 @@ restart:
- 		 */
- 		released = __journal_remove_checkpoint(jh);
- 		jbd_unlock_bh_state(bh);
--		journal_remove_journal_head(bh);
- 		__brelse(bh);
- 	}
- 
-@@ -305,12 +308,12 @@ static int __process_buffer(journal_t *journal, struct journal_head *jh,
- 		ret = 1;
- 		if (unlikely(buffer_write_io_error(bh)))
- 			ret = -EIO;
-+		get_bh(bh);
- 		J_ASSERT_JH(jh, !buffer_jbddirty(bh));
- 		BUFFER_TRACE(bh, "remove from checkpoint");
- 		__journal_remove_checkpoint(jh);
- 		spin_unlock(&journal->j_list_lock);
- 		jbd_unlock_bh_state(bh);
--		journal_remove_journal_head(bh);
- 		__brelse(bh);
- 	} else {
- 		/*
-@@ -526,9 +529,9 @@ int cleanup_journal_tail(journal_t *journal)
- /*
-  * journal_clean_one_cp_list
-  *
-- * Find all the written-back checkpoint buffers in the given list and release them.
-+ * Find all the written-back checkpoint buffers in the given list and release
-+ * them.
-  *
-- * Called with the journal locked.
-  * Called with j_list_lock held.
-  * Returns number of bufers reaped (for debug)
-  */
-@@ -635,8 +638,8 @@ out:
-  * checkpoint lists.
-  *
-  * The function returns 1 if it frees the transaction, 0 otherwise.
-+ * The function can free jh and bh.
-  *
-- * This function is called with the journal locked.
-  * This function is called with j_list_lock held.
-  * This function is called with jbd_lock_bh_state(jh2bh(jh))
-  */
-@@ -655,13 +658,14 @@ int __journal_remove_checkpoint(struct journal_head *jh)
- 	}
- 	journal = transaction->t_journal;
- 
-+	JBUFFER_TRACE(jh, "removing from transaction");
- 	__buffer_unlink(jh);
- 	jh->b_cp_transaction = NULL;
-+	journal_put_journal_head(jh);
- 
- 	if (transaction->t_checkpoint_list != NULL ||
- 	    transaction->t_checkpoint_io_list != NULL)
- 		goto out;
--	JBUFFER_TRACE(jh, "transaction has no more buffers");
- 
- 	/*
- 	 * There is one special case to worry about: if we have just pulled the
-@@ -672,10 +676,8 @@ int __journal_remove_checkpoint(struct journal_head *jh)
- 	 * The locking here around t_state is a bit sleazy.
- 	 * See the comment at the end of journal_commit_transaction().
- 	 */
--	if (transaction->t_state != T_FINISHED) {
--		JBUFFER_TRACE(jh, "belongs to running/committing transaction");
-+	if (transaction->t_state != T_FINISHED)
- 		goto out;
--	}
- 
- 	/* OK, that was the last buffer for the transaction: we can now
- 	   safely remove this transaction from the log */
-@@ -687,7 +689,6 @@ int __journal_remove_checkpoint(struct journal_head *jh)
- 	wake_up(&journal->j_wait_logspace);
- 	ret = 1;
- out:
--	JBUFFER_TRACE(jh, "exit");
- 	return ret;
- }
- 
-@@ -706,6 +707,8 @@ void __journal_insert_checkpoint(struct journal_head *jh,
- 	J_ASSERT_JH(jh, buffer_dirty(jh2bh(jh)) || buffer_jbddirty(jh2bh(jh)));
- 	J_ASSERT_JH(jh, jh->b_cp_transaction == NULL);
- 
-+	/* Get reference for checkpointing transaction */
-+	journal_grab_journal_head(jh2bh(jh));
- 	jh->b_cp_transaction = transaction;
- 
- 	if (!transaction->t_checkpoint_list) {
-diff --git a/fs/jbd/commit.c b/fs/jbd/commit.c
-index eedd201..8799207 100644
---- a/fs/jbd/commit.c
-+++ b/fs/jbd/commit.c
-@@ -258,10 +258,6 @@ write_out_data:
- 			jbd_unlock_bh_state(bh);
- 			if (locked)
- 				unlock_buffer(bh);
--			journal_remove_journal_head(bh);
--			/* One for our safety reference, other for
--			 * journal_remove_journal_head() */
--			put_bh(bh);
- 			release_data_buffer(bh);
- 		}
- 
-@@ -455,14 +451,9 @@ void journal_commit_transaction(journal_t *journal)
- 		}
- 		if (buffer_jbd(bh) && bh2jh(bh) == jh &&
- 		    jh->b_transaction == commit_transaction &&
--		    jh->b_jlist == BJ_Locked) {
-+		    jh->b_jlist == BJ_Locked)
- 			__journal_unfile_buffer(jh);
--			jbd_unlock_bh_state(bh);
--			journal_remove_journal_head(bh);
--			put_bh(bh);
--		} else {
--			jbd_unlock_bh_state(bh);
--		}
-+		jbd_unlock_bh_state(bh);
- 		release_data_buffer(bh);
- 		cond_resched_lock(&journal->j_list_lock);
- 	}
-@@ -807,10 +798,16 @@ restart_loop:
- 	while (commit_transaction->t_forget) {
- 		transaction_t *cp_transaction;
- 		struct buffer_head *bh;
-+		int try_to_free = 0;
- 
- 		jh = commit_transaction->t_forget;
- 		spin_unlock(&journal->j_list_lock);
- 		bh = jh2bh(jh);
-+		/*
-+		 * Get a reference so that bh cannot be freed before we are
-+		 * done with it.
-+		 */
-+		get_bh(bh);
- 		jbd_lock_bh_state(bh);
- 		J_ASSERT_JH(jh,	jh->b_transaction == commit_transaction ||
- 			jh->b_transaction == journal->j_running_transaction);
-@@ -868,28 +865,27 @@ restart_loop:
- 			__journal_insert_checkpoint(jh, commit_transaction);
- 			if (is_journal_aborted(journal))
- 				clear_buffer_jbddirty(bh);
--			JBUFFER_TRACE(jh, "refile for checkpoint writeback");
--			__journal_refile_buffer(jh);
--			jbd_unlock_bh_state(bh);
- 		} else {
- 			J_ASSERT_BH(bh, !buffer_dirty(bh));
--			/* The buffer on BJ_Forget list and not jbddirty means
-+			/*
-+			 * The buffer on BJ_Forget list and not jbddirty means
- 			 * it has been freed by this transaction and hence it
- 			 * could not have been reallocated until this
- 			 * transaction has committed. *BUT* it could be
- 			 * reallocated once we have written all the data to
- 			 * disk and before we process the buffer on BJ_Forget
--			 * list. */
--			JBUFFER_TRACE(jh, "refile or unfile freed buffer");
--			__journal_refile_buffer(jh);
--			if (!jh->b_transaction) {
--				jbd_unlock_bh_state(bh);
--				 /* needs a brelse */
--				journal_remove_journal_head(bh);
--				release_buffer_page(bh);
--			} else
--				jbd_unlock_bh_state(bh);
-+			 * list.
-+			 */
-+			if (!jh->b_next_transaction)
-+				try_to_free = 1;
- 		}
-+		JBUFFER_TRACE(jh, "refile or unfile freed buffer");
-+		__journal_refile_buffer(jh);
-+		jbd_unlock_bh_state(bh);
-+		if (try_to_free)
-+			release_buffer_page(bh);
-+		else
-+			__brelse(bh);
- 		cond_resched_lock(&journal->j_list_lock);
- 	}
- 	spin_unlock(&journal->j_list_lock);
-diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-index ab019ee..9fe061f 100644
---- a/fs/jbd/journal.c
-+++ b/fs/jbd/journal.c
-@@ -1803,10 +1803,9 @@ static void journal_free_journal_head(struct journal_head *jh)
-  * When a buffer has its BH_JBD bit set it is immune from being released by
-  * core kernel code, mainly via ->b_count.
-  *
-- * A journal_head may be detached from its buffer_head when the journal_head's
-- * b_transaction, b_cp_transaction and b_next_transaction pointers are NULL.
-- * Various places in JBD call journal_remove_journal_head() to indicate that the
-- * journal_head can be dropped if needed.
-+ * A journal_head is detached from its buffer_head when the journal_head's
-+ * b_jcount reaches zero. Running transaction (b_transaction) and checkpoint
-+ * transaction (b_cp_transaction) hold their references to b_jcount.
-  *
-  * Various places in the kernel want to attach a journal_head to a buffer_head
-  * _before_ attaching the journal_head to a transaction.  To protect the
-@@ -1819,17 +1818,16 @@ static void journal_free_journal_head(struct journal_head *jh)
-  *	(Attach a journal_head if needed.  Increments b_jcount)
-  *	struct journal_head *jh = journal_add_journal_head(bh);
-  *	...
-- *	jh->b_transaction = xxx;
-- *	journal_put_journal_head(jh);
-- *
-- * Now, the journal_head's b_jcount is zero, but it is safe from being released
-- * because it has a non-zero b_transaction.
-+ *      (Get another reference for transaction)
-+ *      journal_grab_journal_head(bh);
-+ *      jh->b_transaction = xxx;
-+ *      (Put original reference)
-+ *      journal_put_journal_head(jh);
-  */
- 
- /*
-  * Give a buffer_head a journal_head.
-  *
-- * Doesn't need the journal lock.
-  * May sleep.
-  */
- struct journal_head *journal_add_journal_head(struct buffer_head *bh)
-@@ -1893,61 +1891,29 @@ static void __journal_remove_journal_head(struct buffer_head *bh)
- 	struct journal_head *jh = bh2jh(bh);
- 
- 	J_ASSERT_JH(jh, jh->b_jcount >= 0);
--
--	get_bh(bh);
--	if (jh->b_jcount == 0) {
--		if (jh->b_transaction == NULL &&
--				jh->b_next_transaction == NULL &&
--				jh->b_cp_transaction == NULL) {
--			J_ASSERT_JH(jh, jh->b_jlist == BJ_None);
--			J_ASSERT_BH(bh, buffer_jbd(bh));
--			J_ASSERT_BH(bh, jh2bh(jh) == bh);
--			BUFFER_TRACE(bh, "remove journal_head");
--			if (jh->b_frozen_data) {
--				printk(KERN_WARNING "%s: freeing "
--						"b_frozen_data\n",
--						__func__);
--				jbd_free(jh->b_frozen_data, bh->b_size);
--			}
--			if (jh->b_committed_data) {
--				printk(KERN_WARNING "%s: freeing "
--						"b_committed_data\n",
--						__func__);
--				jbd_free(jh->b_committed_data, bh->b_size);
--			}
--			bh->b_private = NULL;
--			jh->b_bh = NULL;	/* debug, really */
--			clear_buffer_jbd(bh);
--			__brelse(bh);
--			journal_free_journal_head(jh);
--		} else {
--			BUFFER_TRACE(bh, "journal_head was locked");
--		}
-+	J_ASSERT_JH(jh, jh->b_transaction == NULL);
-+	J_ASSERT_JH(jh, jh->b_next_transaction == NULL);
-+	J_ASSERT_JH(jh, jh->b_cp_transaction == NULL);
-+	J_ASSERT_JH(jh, jh->b_jlist == BJ_None);
-+	J_ASSERT_BH(bh, buffer_jbd(bh));
-+	J_ASSERT_BH(bh, jh2bh(jh) == bh);
-+	BUFFER_TRACE(bh, "remove journal_head");
-+	if (jh->b_frozen_data) {
-+		printk(KERN_WARNING "%s: freeing b_frozen_data\n", __func__);
-+		jbd_free(jh->b_frozen_data, bh->b_size);
- 	}
-+	if (jh->b_committed_data) {
-+		printk(KERN_WARNING "%s: freeing b_committed_data\n", __func__);
-+		jbd_free(jh->b_committed_data, bh->b_size);
-+	}
-+	bh->b_private = NULL;
-+	jh->b_bh = NULL;	/* debug, really */
-+	clear_buffer_jbd(bh);
-+	journal_free_journal_head(jh);
- }
- 
- /*
-- * journal_remove_journal_head(): if the buffer isn't attached to a transaction
-- * and has a zero b_jcount then remove and release its journal_head.   If we did
-- * see that the buffer is not used by any transaction we also "logically"
-- * decrement ->b_count.
-- *
-- * We in fact take an additional increment on ->b_count as a convenience,
-- * because the caller usually wants to do additional things with the bh
-- * after calling here.
-- * The caller of journal_remove_journal_head() *must* run __brelse(bh) at some
-- * time.  Once the caller has run __brelse(), the buffer is eligible for
-- * reaping by try_to_free_buffers().
-- */
--void journal_remove_journal_head(struct buffer_head *bh)
--{
--	jbd_lock_bh_journal_head(bh);
--	__journal_remove_journal_head(bh);
--	jbd_unlock_bh_journal_head(bh);
--}
--
--/*
-- * Drop a reference on the passed journal_head.  If it fell to zero then try to
-+ * Drop a reference on the passed journal_head.  If it fell to zero then
-  * release the journal_head from the buffer_head.
-  */
- void journal_put_journal_head(struct journal_head *jh)
-@@ -1957,11 +1923,12 @@ void journal_put_journal_head(struct journal_head *jh)
- 	jbd_lock_bh_journal_head(bh);
- 	J_ASSERT_JH(jh, jh->b_jcount > 0);
- 	--jh->b_jcount;
--	if (!jh->b_jcount && !jh->b_transaction) {
-+	if (!jh->b_jcount) {
- 		__journal_remove_journal_head(bh);
-+		jbd_unlock_bh_journal_head(bh);
- 		__brelse(bh);
--	}
--	jbd_unlock_bh_journal_head(bh);
-+	} else
-+		jbd_unlock_bh_journal_head(bh);
- }
- 
- /*
-diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
-index dc39efd..2512bc5 100644
---- a/fs/jbd/transaction.c
-+++ b/fs/jbd/transaction.c
-@@ -696,7 +696,6 @@ repeat:
- 	if (!jh->b_transaction) {
- 		JBUFFER_TRACE(jh, "no transaction");
- 		J_ASSERT_JH(jh, !jh->b_next_transaction);
--		jh->b_transaction = transaction;
- 		JBUFFER_TRACE(jh, "file as BJ_Reserved");
- 		spin_lock(&journal->j_list_lock);
- 		__journal_file_buffer(jh, transaction, BJ_Reserved);
-@@ -818,7 +817,6 @@ int journal_get_create_access(handle_t *handle, struct buffer_head *bh)
- 		 * committed and so it's safe to clear the dirty bit.
- 		 */
- 		clear_buffer_dirty(jh2bh(jh));
--		jh->b_transaction = transaction;
- 
- 		/* first access by this transaction */
- 		jh->b_modified = 0;
-@@ -1300,8 +1298,6 @@ int journal_forget (handle_t *handle, struct buffer_head *bh)
- 			__journal_file_buffer(jh, transaction, BJ_Forget);
- 		} else {
- 			__journal_unfile_buffer(jh);
--			journal_remove_journal_head(bh);
--			__brelse(bh);
- 			if (!buffer_jbd(bh)) {
- 				spin_unlock(&journal->j_list_lock);
- 				jbd_unlock_bh_state(bh);
-@@ -1622,19 +1618,32 @@ static void __journal_temp_unlink_buffer(struct journal_head *jh)
- 		mark_buffer_dirty(bh);	/* Expose it to the VM */
- }
- 
-+/*
-+ * Remove buffer from all transactions.
-+ *
-+ * Called with bh_state lock and j_list_lock
-+ *
-+ * jh and bh may be already freed when this function returns.
-+ */
- void __journal_unfile_buffer(struct journal_head *jh)
- {
- 	__journal_temp_unlink_buffer(jh);
- 	jh->b_transaction = NULL;
-+	journal_put_journal_head(jh);
- }
- 
- void journal_unfile_buffer(journal_t *journal, struct journal_head *jh)
- {
--	jbd_lock_bh_state(jh2bh(jh));
-+	struct buffer_head *bh = jh2bh(jh);
-+
-+	/* Get reference so that buffer cannot be freed before we unlock it */
-+	get_bh(bh);
-+	jbd_lock_bh_state(bh);
- 	spin_lock(&journal->j_list_lock);
- 	__journal_unfile_buffer(jh);
- 	spin_unlock(&journal->j_list_lock);
--	jbd_unlock_bh_state(jh2bh(jh));
-+	jbd_unlock_bh_state(bh);
-+	__brelse(bh);
- }
- 
- /*
-@@ -1661,16 +1670,12 @@ __journal_try_to_free_buffer(journal_t *journal, struct buffer_head *bh)
- 			/* A written-back ordered data buffer */
- 			JBUFFER_TRACE(jh, "release data");
- 			__journal_unfile_buffer(jh);
--			journal_remove_journal_head(bh);
--			__brelse(bh);
- 		}
- 	} else if (jh->b_cp_transaction != NULL && jh->b_transaction == NULL) {
- 		/* written-back checkpointed metadata buffer */
- 		if (jh->b_jlist == BJ_None) {
- 			JBUFFER_TRACE(jh, "remove from checkpoint list");
- 			__journal_remove_checkpoint(jh);
--			journal_remove_journal_head(bh);
--			__brelse(bh);
- 		}
- 	}
- 	spin_unlock(&journal->j_list_lock);
-@@ -1733,7 +1738,7 @@ int journal_try_to_free_buffers(journal_t *journal,
- 		/*
- 		 * We take our own ref against the journal_head here to avoid
- 		 * having to add tons of locking around each instance of
--		 * journal_remove_journal_head() and journal_put_journal_head().
-+		 * journal_put_journal_head().
- 		 */
- 		jh = journal_grab_journal_head(bh);
- 		if (!jh)
-@@ -1770,10 +1775,9 @@ static int __dispose_buffer(struct journal_head *jh, transaction_t *transaction)
- 	int may_free = 1;
- 	struct buffer_head *bh = jh2bh(jh);
- 
--	__journal_unfile_buffer(jh);
--
- 	if (jh->b_cp_transaction) {
- 		JBUFFER_TRACE(jh, "on running+cp transaction");
-+		__journal_temp_unlink_buffer(jh);
- 		/*
- 		 * We don't want to write the buffer anymore, clear the
- 		 * bit so that we don't confuse checks in
-@@ -1784,8 +1788,7 @@ static int __dispose_buffer(struct journal_head *jh, transaction_t *transaction)
- 		may_free = 0;
- 	} else {
- 		JBUFFER_TRACE(jh, "on running transaction");
--		journal_remove_journal_head(bh);
--		__brelse(bh);
-+		__journal_unfile_buffer(jh);
- 	}
- 	return may_free;
- }
-@@ -2070,6 +2073,8 @@ void __journal_file_buffer(struct journal_head *jh,
- 
- 	if (jh->b_transaction)
- 		__journal_temp_unlink_buffer(jh);
-+	else
-+		journal_grab_journal_head(bh);
- 	jh->b_transaction = transaction;
- 
- 	switch (jlist) {
-@@ -2127,9 +2132,10 @@ void journal_file_buffer(struct journal_head *jh,
-  * already started to be used by a subsequent transaction, refile the
-  * buffer on that transaction's metadata list.
-  *
-- * Called under journal->j_list_lock
-- *
-+ * Called under j_list_lock
-  * Called under jbd_lock_bh_state(jh2bh(jh))
-+ *
-+ * jh and bh may be already free when this function returns
-  */
- void __journal_refile_buffer(struct journal_head *jh)
- {
-@@ -2153,6 +2159,11 @@ void __journal_refile_buffer(struct journal_head *jh)
- 
- 	was_dirty = test_clear_buffer_jbddirty(bh);
- 	__journal_temp_unlink_buffer(jh);
-+	/*
-+	 * We set b_transaction here because b_next_transaction will inherit
-+	 * our jh reference and thus __journal_file_buffer() must not take a
-+	 * new one.
-+	 */
- 	jh->b_transaction = jh->b_next_transaction;
- 	jh->b_next_transaction = NULL;
- 	if (buffer_freed(bh))
-@@ -2169,30 +2180,21 @@ void __journal_refile_buffer(struct journal_head *jh)
- }
- 
- /*
-- * For the unlocked version of this call, also make sure that any
-- * hanging journal_head is cleaned up if necessary.
-- *
-- * __journal_refile_buffer is usually called as part of a single locked
-- * operation on a buffer_head, in which the caller is probably going to
-- * be hooking the journal_head onto other lists.  In that case it is up
-- * to the caller to remove the journal_head if necessary.  For the
-- * unlocked journal_refile_buffer call, the caller isn't going to be
-- * doing anything else to the buffer so we need to do the cleanup
-- * ourselves to avoid a jh leak.
-- *
-- * *** The journal_head may be freed by this call! ***
-+ * __journal_refile_buffer() with necessary locking added. We take our bh
-+ * reference so that we can safely unlock bh.
-+ *
-+ * The jh and bh may be freed by this call.
-  */
- void journal_refile_buffer(journal_t *journal, struct journal_head *jh)
- {
- 	struct buffer_head *bh = jh2bh(jh);
- 
-+	/* Get reference so that buffer cannot be freed before we unlock it */
-+	get_bh(bh);
- 	jbd_lock_bh_state(bh);
- 	spin_lock(&journal->j_list_lock);
--
- 	__journal_refile_buffer(jh);
- 	jbd_unlock_bh_state(bh);
--	journal_remove_journal_head(bh);
+So, looking at the above desired encoding, it looks like the error in
+the existing code is that it is doing a boolean operation on decode
+instead of a mathematical one, and it was incorrectly trying to extend
+the time to (1ULL<<34).  The below should fix this:
+
+static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
+{
+	if (unlikely(sizeof(time->tv_sec) > 4 &&
+		     (extra & cpu_to_le32(EXT4_EPOCH_MASK)))
+		time->tv_sec += (u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK) << 32;
+
+	time->tv_nsec = (le32_to_cpu(extra) & EXT4_NSEC_MASK) >> EXT4_EPOCH_BITS;
+}
+
+Cheers, Andreas
+
+
+
+
+
