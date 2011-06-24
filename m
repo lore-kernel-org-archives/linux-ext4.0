@@ -1,202 +1,186 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH 8/9] fs: simplify the blockdev_direct_IO prototype
-Date: Fri, 24 Jun 2011 14:29:47 -0400
-Message-ID: <20110624183208.310463909@bombadil.infradead.org>
+Subject: [PATCH 6/9] fs: move inode_dio_wait calls into ->setattr
+Date: Fri, 24 Jun 2011 14:29:45 -0400
+Message-ID: <20110624183207.921778908@bombadil.infradead.org>
 References: <20110624182939.401012221@bombadil.infradead.org>
 Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	linux-btrfs@vger.kernel.org, hirofumi@mail.parknet.co.jp,
 	mfasheh@suse.com, jlbec@evilplan.org
 To: viro@zeniv.linux.org.uk, tglx@linutronix.de
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline; filename=fs-simplify-blockdev_direct_IO-prototype
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:56824
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752519Ab1FXScO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 24 Jun 2011 14:32:14 -0400
+Content-Disposition: inline; filename=fs-move-dio_wait
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Simple filesystems always pass inode->i_sb_bdev as the block device
-argument, and never need a end_io handler.  Let's simply things for
-them and for my grepping activity by dropping these arguments.  The
-only thing not falling into that scheme is ext4, which passes and
-end_io handler without needing special flags (yet), but given how
-messy the direct I/O code there is use of __blockdev_direct_IO
-in one instead of two out of three cases isn't going to make a large
-difference anyway.
+Let filesystems handle waiting for direct I/O requests themselves instead
+of doing it beforehand.  This means filesystem-specific locks to prevent
+new dio referenes from appearing can be held.  This is important to allow
+generalizing i_dio_count to non-DIO_LOCKING filesystems.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 
+Index: linux-2.6/fs/ocfs2/file.c
+===================================================================
+--- linux-2.6.orig/fs/ocfs2/file.c	2011-06-20 09:28:54.516815966 +0200
++++ linux-2.6/fs/ocfs2/file.c	2011-06-20 09:31:34.706807855 +0200
+@@ -1142,6 +1142,8 @@ int ocfs2_setattr(struct dentry *dentry,
+ 		if (status)
+ 			goto bail_unlock;
+ 
++		inode_dio_wait(inode);
++
+ 		if (i_size_read(inode) > attr->ia_size) {
+ 			if (ocfs2_should_order_data(inode)) {
+ 				status = ocfs2_begin_ordered_truncate(inode,
+Index: linux-2.6/fs/attr.c
+===================================================================
+--- linux-2.6.orig/fs/attr.c	2011-06-20 09:28:54.490149300 +0200
++++ linux-2.6/fs/attr.c	2011-06-20 09:29:06.000000000 +0200
+@@ -232,9 +232,6 @@ int notify_change(struct dentry * dentry
+ 	if (error)
+ 		return error;
+ 
+-	if (ia_valid & ATTR_SIZE)
+-		inode_dio_wait(inode);
+-
+ 	if (inode->i_op->setattr)
+ 		error = inode->i_op->setattr(dentry, attr);
+ 	else
 Index: linux-2.6/fs/ext2/inode.c
 ===================================================================
---- linux-2.6.orig/fs/ext2/inode.c	2011-06-24 15:27:33.131562166 +0200
-+++ linux-2.6/fs/ext2/inode.c	2011-06-24 15:43:31.164846996 +0200
-@@ -843,8 +843,8 @@ ext2_direct_IO(int rw, struct kiocb *ioc
- 	struct inode *inode = mapping->host;
- 	ssize_t ret;
+--- linux-2.6.orig/fs/ext2/inode.c	2011-06-18 12:54:28.058273680 +0200
++++ linux-2.6/fs/ext2/inode.c	2011-06-20 09:29:06.500148692 +0200
+@@ -1184,6 +1184,8 @@ static int ext2_setsize(struct inode *in
+ 	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
+ 		return -EPERM;
  
--	ret = blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev,
--				iov, offset, nr_segs, ext2_get_block, NULL);
-+	ret = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
-+				 ext2_get_block);
- 	if (ret < 0 && (rw & WRITE))
- 		ext2_write_failed(mapping, offset + iov_length(iov, nr_segs));
- 	return ret;
++	inode_dio_wait(inode);
++
+ 	if (mapping_is_xip(inode->i_mapping))
+ 		error = xip_truncate_page(inode->i_mapping, newsize);
+ 	else if (test_opt(inode->i_sb, NOBH))
 Index: linux-2.6/fs/ext3/inode.c
 ===================================================================
---- linux-2.6.orig/fs/ext3/inode.c	2011-06-24 15:27:33.151562165 +0200
-+++ linux-2.6/fs/ext3/inode.c	2011-06-24 15:28:09.048226915 +0200
-@@ -1816,9 +1816,8 @@ static ssize_t ext3_direct_IO(int rw, st
+--- linux-2.6.orig/fs/ext3/inode.c	2011-06-18 12:54:28.071607014 +0200
++++ linux-2.6/fs/ext3/inode.c	2011-06-20 09:29:06.500148692 +0200
+@@ -3216,6 +3216,9 @@ int ext3_setattr(struct dentry *dentry,
+ 		ext3_journal_stop(handle);
  	}
  
- retry:
--	ret = blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev, iov,
--				 offset, nr_segs,
--				 ext3_get_block, NULL);
-+	ret = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
-+				 ext3_get_block);
- 	/*
- 	 * In case of error extending write may have instantiated a few
- 	 * blocks outside i_size. Trim these off again.
++	if (attr->ia_valid & ATTR_SIZE)
++		inode_dio_wait(inode);
++
+ 	if (S_ISREG(inode->i_mode) &&
+ 	    attr->ia_valid & ATTR_SIZE && attr->ia_size < inode->i_size) {
+ 		handle_t *handle;
 Index: linux-2.6/fs/ext4/inode.c
 ===================================================================
---- linux-2.6.orig/fs/ext4/inode.c	2011-06-24 15:27:33.171562165 +0200
-+++ linux-2.6/fs/ext4/inode.c	2011-06-24 15:32:40.694879881 +0200
-@@ -3501,10 +3501,8 @@ retry:
- 				 offset, nr_segs,
- 				 ext4_get_block, NULL, NULL, 0);
- 	else {
--		ret = blockdev_direct_IO(rw, iocb, inode,
--				 inode->i_sb->s_bdev, iov,
--				 offset, nr_segs,
--				 ext4_get_block, NULL);
-+		ret = blockdev_direct_IO(rw, iocb, inode, iov,
-+				 offset, nr_segs, ext4_get_block);
+--- linux-2.6.orig/fs/ext4/inode.c	2011-06-20 09:28:54.506815967 +0200
++++ linux-2.6/fs/ext4/inode.c	2011-06-20 09:29:06.000000000 +0200
+@@ -5351,6 +5351,8 @@ int ext4_setattr(struct dentry *dentry,
+ 	}
  
- 		if (unlikely((rw & WRITE) && ret < 0)) {
- 			loff_t isize = i_size_read(inode);
-@@ -3748,11 +3746,13 @@ static ssize_t ext4_ext_direct_IO(int rw
- 			EXT4_I(inode)->cur_aio_dio = iocb->private;
- 		}
+ 	if (attr->ia_valid & ATTR_SIZE) {
++		inode_dio_wait(inode);
++
+ 		if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))) {
+ 			struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
  
--		ret = blockdev_direct_IO(rw, iocb, inode,
-+		ret = __blockdev_direct_IO(rw, iocb, inode,
- 					 inode->i_sb->s_bdev, iov,
- 					 offset, nr_segs,
- 					 ext4_get_block_write,
--					 ext4_end_io_dio);
-+					 ext4_end_io_dio,
-+					 NULL,
-+					 DIO_LOCKING | DIO_SKIP_HOLES);
- 		if (iocb->private)
- 			EXT4_I(inode)->cur_aio_dio = NULL;
- 		/*
-Index: linux-2.6/fs/fat/inode.c
+Index: linux-2.6/fs/fat/file.c
 ===================================================================
---- linux-2.6.orig/fs/fat/inode.c	2011-06-24 15:27:33.188228830 +0200
-+++ linux-2.6/fs/fat/inode.c	2011-06-24 15:32:48.341546189 +0200
-@@ -211,8 +211,8 @@ static ssize_t fat_direct_IO(int rw, str
- 	 * FAT need to use the DIO_LOCKING for avoiding the race
- 	 * condition of fat_get_block() and ->truncate().
+--- linux-2.6.orig/fs/fat/file.c	2011-06-18 12:54:28.118273678 +0200
++++ linux-2.6/fs/fat/file.c	2011-06-20 09:29:06.000000000 +0200
+@@ -397,6 +397,8 @@ int fat_setattr(struct dentry *dentry, s
+ 	 * sequence.
  	 */
--	ret = blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev,
--				 iov, offset, nr_segs, fat_get_block, NULL);
-+	ret = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
-+				 fat_get_block);
- 	if (ret < 0 && (rw & WRITE))
- 		fat_write_failed(mapping, offset + iov_length(iov, nr_segs));
+ 	if (attr->ia_valid & ATTR_SIZE) {
++		inode_dio_wait(inode);
++
+ 		if (attr->ia_size > inode->i_size) {
+ 			error = fat_cont_expand(inode, attr->ia_size);
+ 			if (error || attr->ia_valid == ATTR_SIZE)
+Index: linux-2.6/fs/gfs2/bmap.c
+===================================================================
+--- linux-2.6.orig/fs/gfs2/bmap.c	2011-06-18 12:54:28.141607009 +0200
++++ linux-2.6/fs/gfs2/bmap.c	2011-06-20 09:29:06.510148693 +0200
+@@ -1224,6 +1224,8 @@ int gfs2_setattr_size(struct inode *inod
+ 	if (ret)
+ 		return ret;
  
++	inode_dio_wait(inode);
++
+ 	oldsize = inode->i_size;
+ 	if (newsize >= oldsize)
+ 		return do_grow(inode, newsize);
 Index: linux-2.6/fs/hfs/inode.c
 ===================================================================
---- linux-2.6.orig/fs/hfs/inode.c	2011-06-24 15:27:33.228228829 +0200
-+++ linux-2.6/fs/hfs/inode.c	2011-06-24 15:29:45.218222143 +0200
-@@ -123,8 +123,8 @@ static ssize_t hfs_direct_IO(int rw, str
- 	struct inode *inode = file->f_path.dentry->d_inode->i_mapping->host;
- 	ssize_t ret;
+--- linux-2.6.orig/fs/hfs/inode.c	2011-06-18 12:54:28.154940342 +0200
++++ linux-2.6/fs/hfs/inode.c	2011-06-20 09:29:06.000000000 +0200
+@@ -615,6 +615,8 @@ int hfs_inode_setattr(struct dentry *den
  
--	ret = blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev, iov,
--				  offset, nr_segs, hfs_get_block, NULL);
-+	ret = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
-+				 hfs_get_block);
- 
- 	/*
- 	 * In case of error extending write may have instantiated a few
+ 	if ((attr->ia_valid & ATTR_SIZE) &&
+ 	    attr->ia_size != i_size_read(inode)) {
++		inode_dio_wait(inode);
++
+ 		error = vmtruncate(inode, attr->ia_size);
+ 		if (error)
+ 			return error;
 Index: linux-2.6/fs/hfsplus/inode.c
 ===================================================================
---- linux-2.6.orig/fs/hfsplus/inode.c	2011-06-24 15:27:33.244895494 +0200
-+++ linux-2.6/fs/hfsplus/inode.c	2011-06-24 15:29:59.911554734 +0200
-@@ -119,8 +119,8 @@ static ssize_t hfsplus_direct_IO(int rw,
- 	struct inode *inode = file->f_path.dentry->d_inode->i_mapping->host;
- 	ssize_t ret;
+--- linux-2.6.orig/fs/hfsplus/inode.c	2011-06-18 12:54:28.168273676 +0200
++++ linux-2.6/fs/hfsplus/inode.c	2011-06-20 09:29:06.000000000 +0200
+@@ -296,6 +296,8 @@ static int hfsplus_setattr(struct dentry
  
--	ret = blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev, iov,
--				  offset, nr_segs, hfsplus_get_block, NULL);
-+	ret = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
-+				 hfsplus_get_block);
- 
- 	/*
- 	 * In case of error extending write may have instantiated a few
-Index: linux-2.6/fs/jfs/inode.c
+ 	if ((attr->ia_valid & ATTR_SIZE) &&
+ 	    attr->ia_size != i_size_read(inode)) {
++		inode_dio_wait(inode);
++
+ 		error = vmtruncate(inode, attr->ia_size);
+ 		if (error)
+ 			return error;
+Index: linux-2.6/fs/jfs/file.c
 ===================================================================
---- linux-2.6.orig/fs/jfs/inode.c	2011-06-24 15:27:33.264895492 +0200
-+++ linux-2.6/fs/jfs/inode.c	2011-06-24 15:30:11.701554144 +0200
-@@ -329,8 +329,8 @@ static ssize_t jfs_direct_IO(int rw, str
- 	struct inode *inode = file->f_mapping->host;
- 	ssize_t ret;
+--- linux-2.6.orig/fs/jfs/file.c	2011-06-18 12:54:28.191607007 +0200
++++ linux-2.6/fs/jfs/file.c	2011-06-20 09:29:06.000000000 +0200
+@@ -110,6 +110,8 @@ int jfs_setattr(struct dentry *dentry, s
  
--	ret = blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev, iov,
--				offset, nr_segs, jfs_get_block, NULL);
-+	ret = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
-+				 jfs_get_block);
- 
- 	/*
- 	 * In case of error extending write may have instantiated a few
+ 	if ((iattr->ia_valid & ATTR_SIZE) &&
+ 	    iattr->ia_size != i_size_read(inode)) {
++		inode_dio_wait(inode);
++
+ 		rc = vmtruncate(inode, iattr->ia_size);
+ 		if (rc)
+ 			return rc;
 Index: linux-2.6/fs/nilfs2/inode.c
 ===================================================================
---- linux-2.6.orig/fs/nilfs2/inode.c	2011-06-24 15:27:33.284895493 +0200
-+++ linux-2.6/fs/nilfs2/inode.c	2011-06-24 15:30:24.968220135 +0200
-@@ -259,8 +259,8 @@ nilfs_direct_IO(int rw, struct kiocb *io
- 		return 0;
+--- linux-2.6.orig/fs/nilfs2/inode.c	2011-06-18 12:54:28.204940339 +0200
++++ linux-2.6/fs/nilfs2/inode.c	2011-06-20 09:29:06.000000000 +0200
+@@ -778,6 +778,8 @@ int nilfs_setattr(struct dentry *dentry,
  
- 	/* Needs synchronization with the cleaner */
--	size = blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev, iov,
--				  offset, nr_segs, nilfs_get_block, NULL);
-+	size = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
-+				  nilfs_get_block);
- 
- 	/*
- 	 * In case of error extending write may have instantiated a few
+ 	if ((iattr->ia_valid & ATTR_SIZE) &&
+ 	    iattr->ia_size != i_size_read(inode)) {
++		inode_dio_wait(inode);
++
+ 		err = vmtruncate(inode, iattr->ia_size);
+ 		if (unlikely(err))
+ 			goto out_err;
 Index: linux-2.6/fs/reiserfs/inode.c
 ===================================================================
---- linux-2.6.orig/fs/reiserfs/inode.c	2011-06-24 15:27:33.324895489 +0200
-+++ linux-2.6/fs/reiserfs/inode.c	2011-06-24 15:30:38.311552796 +0200
-@@ -3068,9 +3068,8 @@ static ssize_t reiserfs_direct_IO(int rw
- 	struct inode *inode = file->f_mapping->host;
- 	ssize_t ret;
- 
--	ret = blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev, iov,
--				  offset, nr_segs,
--				  reiserfs_get_blocks_direct_io, NULL);
-+	ret = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
-+				  reiserfs_get_blocks_direct_io);
- 
- 	/*
- 	 * In case of error extending write may have instantiated a few
-Index: linux-2.6/include/linux/fs.h
-===================================================================
---- linux-2.6.orig/include/linux/fs.h	2011-06-24 15:27:33.361562155 +0200
-+++ linux-2.6/include/linux/fs.h	2011-06-24 15:46:57.914836526 +0200
-@@ -2381,12 +2381,11 @@ ssize_t __blockdev_direct_IO(int rw, str
- 	dio_submit_t submit_io,	int flags);
- 
- static inline ssize_t blockdev_direct_IO(int rw, struct kiocb *iocb,
--	struct inode *inode, struct block_device *bdev, const struct iovec *iov,
--	loff_t offset, unsigned long nr_segs, get_block_t get_block,
--	dio_iodone_t end_io)
-+		struct inode *inode, const struct iovec *iov, loff_t offset,
-+		unsigned long nr_segs, get_block_t get_block)
- {
--	return __blockdev_direct_IO(rw, iocb, inode, bdev, iov, offset,
--				    nr_segs, get_block, end_io, NULL,
-+	return __blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev, iov,
-+				    offset, nr_segs, get_block, NULL, NULL,
- 				    DIO_LOCKING | DIO_SKIP_HOLES);
- }
- #endif
+--- linux-2.6.orig/fs/reiserfs/inode.c	2011-06-18 12:54:28.218273673 +0200
++++ linux-2.6/fs/reiserfs/inode.c	2011-06-20 09:29:06.000000000 +0200
+@@ -3114,6 +3114,9 @@ int reiserfs_setattr(struct dentry *dent
+ 			error = -EFBIG;
+ 			goto out;
+ 		}
++
++		inode_dio_wait(inode);
++
+ 		/* fill in hole pointers in the expanding truncate case. */
+ 		if (attr->ia_size > inode->i_size) {
+ 			error = generic_cont_expand_simple(inode, attr->ia_size);
 
