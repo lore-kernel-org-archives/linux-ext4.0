@@ -1,143 +1,109 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [BUG] ext4 timestamps corruption
-Date: Fri, 24 Jun 2011 09:04:11 -0600
-Message-ID: <9A643E81-24A0-4F29-A065-6C934371EB95@dilger.ca>
-References: <4DF1D57C.3030107@rs.jp.nec.com> <3BB3CFE7-BD50-4123-A1C8-D3FDAAD184DA@gmail.com> <4E02F0B8.4080301@rs.jp.nec.com>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Andreas Dilger <aedilger@gmail.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Akira Fujita <a-fujita@rs.jp.nec.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:26923 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754057Ab1FXPEO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Jun 2011 11:04:14 -0400
-In-Reply-To: <4E02F0B8.4080301@rs.jp.nec.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "Moffett, Kyle D" <Kyle.D.Moffett@boeing.com>
+Subject: Bug#615998: linux-image-2.6.32-5-xen-amd64: Repeatable "kernel BUG at fs/jbd2/commit.c:534" from Postfix on ext4
+Date: Fri, 24 Jun 2011 11:03:52 -0500
+Message-ID: <2F80BF45-28FA-46D3-9A28-CA9416DC5813@boeing.com>
+References: <20110301165239.3310.43806.reportbug@support.exmeritus.com>
+ <15E8241A-37A0-4438-849E-A157A376C7F1@boeing.com>
+ <8658F8EE-A52D-4405-A1F3-C0247AB3EA6D@boeing.com>
+ <26AE8923-4DEA-43FF-8F79-1D5AA665A344@boeing.com>
+ <20110405230538.GH2832@thunk.org>
+ <FD93E462-D97B-411B-BF09-9A64670AC5C2@boeing.com>
+ <AF621113-8320-4973-A88A-1FC048EA4293@boeing.com>
+ <BANLkTi=5BLA07tvbv3PFcZ0cc8FmBtg+UA@mail.gmail.com>
+ <404FD5CC-8F27-4336-B7D4-10675C53A588@boeing.com>
+ <20110624134659.GB26380@quack.suse.cz>
+Reply-To: "Moffett, Kyle D" <Kyle.D.Moffett@boeing.com>, 615998@bugs.debian.org
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
+Cc: Sean Ryle <seanbo@gmail.com>, "Ted Ts'o" <tytso@mit.edu>,
+        "615998@bugs.debian.org" <615998@bugs.debian.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        Sachin Sant
+	<sachinp@in.ibm.com>,
+        "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <bounce-debian-bugs-dist=glddb-debian-bugs-dist=m.gmane.org@lists.debian.org>
+Resent-Message-ID: <handler.615998.B615998.130893147029964@bugs.debian.org>
+In-Reply-To: <20110624134659.GB26380@quack.suse.cz>
+Content-Language: en-US
+List-Post: <mailto:debian-bugs-dist@lists.debian.org>
+List-Help: <mailto:debian-bugs-dist-request@lists.debian.org?subject=help>
+List-Subscribe: <mailto:debian-bugs-dist-request@lists.debian.org?subject=subscribe>
+List-Unsubscribe: <mailto:debian-bugs-dist-request@lists.debian.org?subject=unsubscribe>
+List-Id: linux-ext4.vger.kernel.org
 
-On 2011-06-23, at 1:52 AM, Akira Fujita wrote:
-> ext4: Fix ext4 timestamps corruption
+On Jun 24, 2011, at 09:46, Jan Kara wrote:
+> On Thu 23-06-11 16:19:08, Moffett, Kyle D wrote:
+>> Besides which, line 534 in the Debian 2.6.32 kernel I am using is this
+>> one:
+>>=20
+>>  J_ASSERT(commit_transaction->t_nr_buffers <=3D
+>>           commit_transaction->t_outstanding_credits);
+>=20
+>  Hmm, OK, so we've used more metadata buffers than we told JBD2 to
+> reserve. I suppose you are not using data=3Djournal mode and the filesyst=
+em
+> was created as ext4 (i.e. not converted from ext3), right? Are you using
+> quotas?
 
-Hi Akira-san,
-thank you for the patch.  For submitting patches, it is easier for
-Ted if you send the patch in a separate email with a proper subject
-(e.g. "[PATCH] ext4: Fix ext4 timestamp > 2038 corruption" from
-instead of containing the reply to an old email.  Otherwise Ted has
-to manually reformat the patch.
+The filesystem *is* using data=3Djournal mode.  If I switch to data=3Dorder=
+ed
+or data=3Dwriteback, the problem goes away.
 
-> Officially, ext4 can handle its timestamps until 2514 with 32bit
-> entries plus EPOCH_BIT (2bits). But when timestamps values use
-> 32+ bit (e.g. 2038-01-19 9:14:08 0x0000000080000000), we can get
-> corrupted values.  Because sign bit is overwritten by transferring
-> value between kernel space and user space.
-> 
-> To fix this issue, 32th bit of extra time fields in ext4_inode structure
-> (e.g. i_ctime_extra) are used as the sign for 64bit user space.
-> Because these are used only 20bits for nano-second and bottom of 2bits
+The filesystems were created as ext4 using the e2fstools in Debian squeeze:
+1.41.12, and the kernel package is 2.6.32-5-xen-amd64 (2.6.32-34squeeze1).
 
-This should be "30 bits for nanosecond".
+The exact commands I used to create the Postfix filesystems were:
+  lvcreate -L  5G -n postfix dbnew
+  lvcreate -L 32M -n smtp    dbnew
+  mke2fs -t ext4 -L db:postfix /dev/dbnew/postfix
+  mke2fs -t ext4 -L db:smtp    /dev/dbnew/smtp
+  tune2fs -i 0 -c 1 -e remount-ro -o acl,user_xattr,journal_data /dev/dbnew=
+/postfix
+  tune2fs -i 0 -c 1 -e remount-ro -o acl,user_xattr,journal_data /dev/dbnew=
+/smtp
 
-> are for EXT4_EPOCH_BITS shift.
-> With this patch, ext4 supports timestamps Y1901-2514.
-> 
-> The performance comparison is as follows:
-> ------------------------------------------------
-> |              | file create   |   ls -l       |
-> |--------------|---------------|----------------
-> |with patch    | 138.2056 sec  | 14.9333 sec   |
-> |without patch | 133.4566 sec  | 14.9096 sec   |
-> ------------------------------------------------
-> file count:1 million (average of 3 trials)
-> kernel: 3.0.0-rc3
-> 
-> There is a slightly difference, but I think it is acceptable.
+Then my fstab has:
+  /dev/mapper/dbnew-postfix /var/spool/postfix ext4 noauto,noatime,nosuid,n=
+odev 0 2
+  /dev/mapper/dbnew-smtp    /var/lib/postfix   ext4 noauto,noatime,nosuid,n=
+odev 0 2
 
-I'm surprised that the difference is even measurable for such a
-change.
+I don't even think I have the quota tools installed on this system; there
+are certainly none configured.
 
-> Thanks and Regards,
-> Akira Fujita
-> 
-> Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
-> ---
-> fs/ext4/ext4.h |   30 +++++++++++++++++++++---------
-> 1 file changed, 21 insertions(+), 9 deletions(-)
-> 
-> diff -Nrup -X linux-3.0-rc3-a/Documentation/dontdiff linux-3.0-rc3-a/fs/ext4/ext4.h linux-3.0-rc3-b/fs/ext4/ext4.h
-> --- linux-3.0-rc3-a/fs/ext4/ext4.h	2011-06-14 07:29:59.000000000 +0900
-> +++ linux-3.0-rc3-b/fs/ext4/ext4.h	2011-06-23 14:18:47.000000000 +0900
-> @@ -645,6 +645,7 @@ struct move_extent {
-> #define EXT4_EPOCH_BITS 2
-> #define EXT4_EPOCH_MASK ((1 << EXT4_EPOCH_BITS) - 1)
-> #define EXT4_NSEC_MASK  (~0UL << EXT4_EPOCH_BITS)
-> +#define EXT4_TIMESTAMP_SIGN_MASK 0x80000000
-> 
-> /*
-> * Extended fields will fit into an inode if the filesystem was formatted
-> @@ -665,16 +666,23 @@ struct move_extent {
-> static inline __le32 ext4_encode_extra_time(struct timespec *time)
-> {
-> +       return cpu_to_le32((sizeof(time->tv_sec) > 4 ?
-> +		(time->tv_sec >> 32) &
-> +		(EXT4_EPOCH_MASK | EXT4_TIMESTAMP_SIGN_MASK) :
-> +		time->tv_sec & EXT4_TIMESTAMP_SIGN_MASK) |
-> +		((time->tv_nsec << EXT4_EPOCH_BITS) & EXT4_NSEC_MASK));
-> }
+>> If somebody can tell me what information would help to debug this I'd be
+>> more than happy to throw a whole bunch of debug printks under that error
+>> condition and try to trigger the crash with that.
+>>=20
+>> Alternatively I could remove that J_ASSERT() and instead add some debug
+>> further down around the "commit_transaction->t_outstanding_credits--;"
+>> to try to see exactly what IO it's handling when it runs out of credits.
+>=20
+>  The trouble is that the problem is likely in some journal list shuffling
+> code because if just some operation wrongly estimated the number of neede=
+d
+> buffers, we'd fail the assertion in jbd2_journal_dirty_metadata():
+> J_ASSERT_JH(jh, handle->h_buffer_credits > 0);
 
-As mentioned by Mark, this cannot work because the high bit is already used
-for the most significant bit of the nanoseconds.
+Hmm, ok...  I'm also going to turn that failing J_ASSERT() into a WARN_ON()
+just to see how much further it gets.  I have an easy script to recreate th=
+is
+data volume even if it gets totally hosed anyways, so...
 
-> static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
-> {
-> +	if (sizeof(time->tv_sec) > 4) {
-> 	       time->tv_sec |= (__u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK)
-> 			       << 32;
-> +		if (le32_to_cpu(extra) & EXT4_TIMESTAMP_SIGN_MASK)
-> +			time->tv_sec |= EXT4_NSEC_MASK << 32;
-> +	}
-> +
-> +	time->tv_nsec = ((le32_to_cpu(extra) & ~EXT4_TIMESTAMP_SIGN_MASK) >>
-> +				EXT4_EPOCH_BITS);
-> }
-> 
-> #define EXT4_INODE_SET_XTIME(xtime, inode, raw_inode)			       \
-> @@ -696,19 +704,23 @@ do {									       \
-> 
-> #define EXT4_INODE_GET_XTIME(xtime, inode, raw_inode)			       \
-> do {									       \
-> -	(inode)->xtime.tv_sec = (signed)le32_to_cpu((raw_inode)->xtime);       \
-> -	if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
-> +	if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra)) {   \
-> +		(inode)->xtime.tv_sec =                                        \
-> +				(__u32)(le32_to_cpu((raw_inode)->xtime));      \
-> 		ext4_decode_extra_time(&(inode)->xtime,			       \
-> 				       raw_inode->xtime ## _extra);	       \
-> -	else								       \
-> +	} else {							       \
-> +		(inode)->xtime.tv_sec =                                        \
-> +			(signed)le32_to_cpu((raw_inode)->xtime);               \
-> 		(inode)->xtime.tv_nsec = 0;				       \
-> +	}                                                                      \
-> } while (0)
-> 
-> #define EXT4_EINODE_GET_XTIME(xtime, einode, raw_inode)			       \
-> do {									       \
-> 	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime))		       \
-> -		(einode)->xtime.tv_sec = 				       \
-> -			(signed)le32_to_cpu((raw_inode)->xtime);	       \
-> +		(einode)->xtime.tv_sec =                                       \
-> +			(__u32)(le32_to_cpu((raw_inode)->xtime));              \
-> 	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime ## _extra))	       \
-> 		ext4_decode_extra_time(&(einode)->xtime,		       \
-> 				       raw_inode->xtime ## _extra);	       \
+> The patch below might catch the problem closer to the place where it
+> happens...
+>=20
+> Also possibly you can try current kernel whether the bug happens with it =
+or
+> not.
 
+I'm definitely going to try this patch, but I'll also see what I can do abo=
+ut
+trying a more recent kernel.
 
-Cheers, Andreas
+Thanks!
 
-
-
-
-
+Cheers,
+Kyle Moffett=
