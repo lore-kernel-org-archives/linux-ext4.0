@@ -1,107 +1,535 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Bug#615998: linux-image-2.6.32-5-xen-amd64: Repeatable "kernel
- BUG at fs/jbd2/commit.c:534" from Postfix on ext4
-Date: Fri, 24 Jun 2011 22:02:31 +0200
-Message-ID: <20110624200231.GA32176@quack.suse.cz>
-References: <15E8241A-37A0-4438-849E-A157A376C7F1@boeing.com>
- <8658F8EE-A52D-4405-A1F3-C0247AB3EA6D@boeing.com>
- <26AE8923-4DEA-43FF-8F79-1D5AA665A344@boeing.com>
- <20110405230538.GH2832@thunk.org>
- <FD93E462-D97B-411B-BF09-9A64670AC5C2@boeing.com>
- <AF621113-8320-4973-A88A-1FC048EA4293@boeing.com>
- <BANLkTi=5BLA07tvbv3PFcZ0cc8FmBtg+UA@mail.gmail.com>
- <404FD5CC-8F27-4336-B7D4-10675C53A588@boeing.com>
- <20110624134659.GB26380@quack.suse.cz>
- <2F80BF45-28FA-46D3-9A28-CA9416DC5813@boeing.com>
-Mime-Version: 1.0
+From: Kyle Moffett <Kyle.D.Moffett@boeing.com>
+Subject: Bug#615998: linux-image-2.6.32-5-xen-amd64: Repeatable "kernel BUG at fs/jbd2/commit.c:534" from Postfix on ext4
+Date: Fri, 24 Jun 2011 16:51:41 -0400
+Message-ID: <5DE8D448-A77D-46E8-BF40-15AA7F7CDBE9@boeing.com>
+References: <15E8241A-37A0-4438-849E-A157A376C7F1@boeing.com> <8658F8EE-A52D-4405-A1F3-C0247AB3EA6D@boeing.com> <26AE8923-4DEA-43FF-8F79-1D5AA665A344@boeing.com> <20110405230538.GH2832@thunk.org> <FD93E462-D97B-411B-BF09-9A64670AC5C2@boeing.com> <AF621113-8320-4973-A88A-1FC048EA4293@boeing.com> <BANLkTi=5BLA07tvbv3PFcZ0cc8FmBtg+UA@mail.gmail.com> <404FD5CC-8F27-4336-B7D4-10675C53A588@boeing.com> <20110624134659.GB26380@quack.suse.cz> <2F80BF45-28FA-46D3-9A28-CA9416DC5813@boeing.com> <20110624200231.GA32176@quack.suse.cz>
+Reply-To: Kyle Moffett <Kyle.D.Moffett@boeing.com>, 615998@bugs.debian.org
+Mime-Version: 1.0 (Apple Message framework v1084)
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Sean Ryle <seanbo@gmail.com>,
-	Ted Ts'o <tytso@mit.edu>,
-	"615998@bugs.debian.org" <615998@bugs.debian.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Sachin Sant <sachinp@in.ibm.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: "Moffett, Kyle D" <Kyle.D.Moffett@boeing.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:56328 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753300Ab1FXUCh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 24 Jun 2011 16:02:37 -0400
-Content-Disposition: inline
-In-Reply-To: <2F80BF45-28FA-46D3-9A28-CA9416DC5813@boeing.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Transfer-Encoding: quoted-printable
+Cc: Sean Ryle <seanbo@gmail.com>,
+ Ted Ts'o <tytso@mit.edu>,
+ "615998@bugs.debian.org" <615998@bugs.debian.org>,
+ "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+ Sachin Sant <sachinp@in.ibm.com>,
+ Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <bounce-debian-kernel=glddk-debian-kernel=m.gmane.org@lists.debian.org>
+Resent-Message-ID: <handler.615998.B615998.130894929912208@bugs.debian.org>
+In-Reply-To: <20110624200231.GA32176@quack.suse.cz>
+List-URL: <http://lists.debian.org/debian-kernel/>
+List-Post: <mailto:debian-kernel@lists.debian.org>
+List-Help: <mailto:debian-kernel-request@lists.debian.org?subject=help>
+List-Subscribe: <mailto:debian-kernel-request@lists.debian.org?subject=subscribe>
+List-Unsubscribe: <mailto:debian-kernel-request@lists.debian.org?subject=unsubscribe>
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri 24-06-11 11:03:52, Moffett, Kyle D wrote:
-> On Jun 24, 2011, at 09:46, Jan Kara wrote:
-> > On Thu 23-06-11 16:19:08, Moffett, Kyle D wrote:
-> >> Besides which, line 534 in the Debian 2.6.32 kernel I am using is this
-> >> one:
-> >> 
-> >>  J_ASSERT(commit_transaction->t_nr_buffers <=
-> >>           commit_transaction->t_outstanding_credits);
-> > 
-> >  Hmm, OK, so we've used more metadata buffers than we told JBD2 to
-> > reserve. I suppose you are not using data=journal mode and the filesystem
-> > was created as ext4 (i.e. not converted from ext3), right? Are you using
-> > quotas?
-> 
-> The filesystem *is* using data=journal mode.  If I switch to data=ordered
-> or data=writeback, the problem goes away.
-  Ah, OK. Then bug https://bugzilla.kernel.org/show_bug.cgi?id=34642 is
-probably ext3 incarnation of the same problem and it seems it's still
-present even in the current kernel - that ext3 assertion triggered even
-with 2.6.39 kernel. Frankly data=journal mode is far less tested than the
-other two modes especially with ext4, so I'm not sure how good idea is to
-use it in production.
+On Jun 24, 2011, at 16:02, Jan Kara wrote:
+> On Fri 24-06-11 11:03:52, Moffett, Kyle D wrote:
+>> On Jun 24, 2011, at 09:46, Jan Kara wrote:
+>>> On Thu 23-06-11 16:19:08, Moffett, Kyle D wrote:
+>>>> Besides which, line 534 in the Debian 2.6.32 kernel I am using is =
+this
+>>>> one:
+>>>>=20
+>>>> J_ASSERT(commit_transaction->t_nr_buffers <=3D
+>>>>          commit_transaction->t_outstanding_credits);
+>>>=20
+>>> Hmm, OK, so we've used more metadata buffers than we told JBD2 to
+>>> reserve. I suppose you are not using data=3Djournal mode and the =
+filesystem
+>>> was created as ext4 (i.e. not converted from ext3), right? Are you =
+using
+>>> quotas?
+>>=20
+>> The filesystem *is* using data=3Djournal mode.  If I switch to =
+data=3Dordered
+>> or data=3Dwriteback, the problem goes away.
+>=20
+>  Ah, OK. Then bug https://bugzilla.kernel.org/show_bug.cgi?id=3D34642 =
+is
+> probably ext3 incarnation of the same problem and it seems it's still
+> present even in the current kernel - that ext3 assertion triggered =
+even
+> with 2.6.39 kernel. Frankly data=3Djournal mode is far less tested =
+than the
+> other two modes especially with ext4, so I'm not sure how good idea is =
+to
+> use it in production.
 
-> The filesystems were created as ext4 using the e2fstools in Debian squeeze:
-> 1.41.12, and the kernel package is 2.6.32-5-xen-amd64 (2.6.32-34squeeze1).
-> 
-> The exact commands I used to create the Postfix filesystems were:
->   lvcreate -L  5G -n postfix dbnew
->   lvcreate -L 32M -n smtp    dbnew
->   mke2fs -t ext4 -L db:postfix /dev/dbnew/postfix
->   mke2fs -t ext4 -L db:smtp    /dev/dbnew/smtp
->   tune2fs -i 0 -c 1 -e remount-ro -o acl,user_xattr,journal_data /dev/dbnew/postfix
->   tune2fs -i 0 -c 1 -e remount-ro -o acl,user_xattr,journal_data /dev/dbnew/smtp
-> 
-> Then my fstab has:
->   /dev/mapper/dbnew-postfix /var/spool/postfix ext4 noauto,noatime,nosuid,nodev 0 2
->   /dev/mapper/dbnew-smtp    /var/lib/postfix   ext4 noauto,noatime,nosuid,nodev 0 2
-> 
-> I don't even think I have the quota tools installed on this system; there
-> are certainly none configured.
-  OK, thanks.
+Hm... ugh...
 
-> >> If somebody can tell me what information would help to debug this I'd be
-> >> more than happy to throw a whole bunch of debug printks under that error
-> >> condition and try to trigger the crash with that.
-> >> 
-> >> Alternatively I could remove that J_ASSERT() and instead add some debug
-> >> further down around the "commit_transaction->t_outstanding_credits--;"
-> >> to try to see exactly what IO it's handling when it runs out of credits.
-> > 
-> >  The trouble is that the problem is likely in some journal list shuffling
-> > code because if just some operation wrongly estimated the number of needed
-> > buffers, we'd fail the assertion in jbd2_journal_dirty_metadata():
-> > J_ASSERT_JH(jh, handle->h_buffer_credits > 0);
-> 
-> Hmm, ok...  I'm also going to turn that failing J_ASSERT() into a WARN_ON()
-> just to see how much further it gets.  I have an easy script to recreate this
-> data volume even if it gets totally hosed anyways, so...
-  OK, we'll see what happens.
+I really would *like* data=3Djournal mode to work reliably, especially =
+for
+specific read-mostly databases and other such things...  I suppose the
+solution is for me to load-test it and help get the bugs fixed!!! :-D
 
-> > The patch below might catch the problem closer to the place where it
-> > happens...
-> > 
-> > Also possibly you can try current kernel whether the bug happens with it or
-> > not.
-> 
-> I'm definitely going to try this patch, but I'll also see what I can do about
-> trying a more recent kernel.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+>>> The trouble is that the problem is likely in some journal list =
+shuffling
+>>> code because if just some operation wrongly estimated the number of =
+needed
+>>> buffers, we'd fail the assertion in jbd2_journal_dirty_metadata():
+>>> J_ASSERT_JH(jh, handle->h_buffer_credits > 0);
+>>=20
+>> Hmm, ok...  I'm also going to turn that failing J_ASSERT() into a =
+WARN_ON()
+>> just to see how much further it gets.  I have an easy script to =
+recreate this
+>> data volume even if it gets totally hosed anyways, so...
+>  OK, we'll see what happens.
+
+Ok, status update here:
+
+I applied a modified version of your patch that prints out the values of =
+both
+t_outstanding_credits and t_nr_buffers when the assertion triggers.  I =
+replaced
+the J_ASSERT() that was failing with the exact same WARN_ON() trigger =
+too.
+
+The end result is that postfix successfully finished delivering all the =
+emails.
+Afterwards I unmounted both filesystems and ran "fsck -fy" on them, it =
+reported
+no errors at all.
+
+Looking through the log, the filesystem with the issues is the 32MB one =
+mounted
+on /var/lib/postfix:
+  total 61
+  drwxr-x---  3 postfix postfix  1024 Jun 16 21:02 .
+  drwxr-xr-x 46 root    root     4096 Jun 20 17:19 ..
+  d---------  2 root    root    12288 Jun 16 18:35 lost+found
+  -rw-------  1 postfix postfix    33 Jun 24 16:34 master.lock
+  -rw-------  1 postfix postfix  1024 Jun 24 16:44 prng_exch
+  -rw-------  1 postfix postfix  2048 Jun 24 16:34 smtpd_scache.db
+  -rw-------  1 postfix postfix 41984 Jun 24 16:36 smtp_scache.db
+
+In particular, it's the tlsmgr program accessing the smtp_scache file =
+when it
+dies.
+
+Full log below.
+
+Cheers,
+Kyle Moffett
+
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385234] =
+transaction->t_outstanding_credits =3D 8
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385247] =
+transaction->t_nr_buffers =3D 9
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385251] ------------[ cut =
+here ]------------
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385278] WARNING: at =
+/tmp/kdm-deb-kernel/linux-2.6-2.6.32/debian/build/source_amd64_xen/fs/jbd2=
+/transaction.c:1329 jbd2_journal_stop+0x189/0x25d [jbd2]()
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385287] Modules linked in: =
+ip6table_filter ip6_tables act_police cls_flow cls_fw cls_u32 sch_htb =
+sch_hfsc sch_ingress sch_sfq xt_time xt_connlimit xt_realm iptable_raw =
+xt_comment xt_recent xt_policy ipt_ULOG ipt_REJECT ipt_REDIRECT =
+ipt_NETMAP ipt_MASQUERADE ipt_ECN ipt_ecn ipt_CLUSTERIP ipt_ah =
+ipt_addrtype nf_nat_tftp nf_nat_snmp_basic nf_nat_sip nf_nat_pptp =
+nf_nat_proto_gre nf_nat_irc nf_nat_h323 nf_nat_ftp nf_nat_amanda ts_kmp =
+nf_conntrack_amanda nf_conntrack_sane nf_conntrack_tftp nf_conntrack_sip =
+nf_conntrack_proto_sctp nf_conntrack_pptp nf_conntrack_proto_gre =
+nf_conntrack_netlink nf_conntrack_netbios_ns nf_conntrack_irc =
+nf_conntrack_h323 nf_conntrack_ftp xt_TPROXY nf_tproxy_core xt_tcpmss =
+xt_pkttype xt_physdev xt_owner xt_NFQUEUE xt_NFLOG nfnetlink_log =
+xt_multiport xt_MARK xt_mark xt_mac xt_limit xt_length xt_iprange =
+xt_helper xt_hashlimit xt_DSCP xt_dscp xt_dccp xt_conntrack xt_CONNMARK =
+xt_connmark xt_CLASSIFY ipt_LOG xt_tcpudp xt_state iptable_nat nf_nat =
+nf_conntrac
+Jun 24 16:36:05 i-38020f57 kernel: k_ipv4 nf_defrag_ipv4 nf_conntrack =
+iptable_mangle nfnetlink iptable_filter ip_tables x_tables ext3 jbd loop =
+snd_pcm snd_timer snd soundcore snd_page_alloc pcspkr evdev ext4 mbcache =
+jbd2 crc16 dm_mod xen_netfront xen_blkfront
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385440] Pid: 3817, comm: =
+tlsmgr Not tainted 2.6.32-5-xen-amd64 #1
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385445] Call Trace:
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385458]  =
+[<ffffffffa0032c81>] ? jbd2_journal_stop+0x189/0x25d [jbd2]
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385467]  =
+[<ffffffffa0032c81>] ? jbd2_journal_stop+0x189/0x25d [jbd2]
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385477]  =
+[<ffffffff8104ef00>] ? warn_slowpath_common+0x77/0xa3
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385486]  =
+[<ffffffffa0032c81>] ? jbd2_journal_stop+0x189/0x25d [jbd2]
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385505]  =
+[<ffffffffa0074c8e>] ? __ext4_journal_stop+0x63/0x69 [ext4]
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385517]  =
+[<ffffffffa0060949>] ? ext4_journalled_write_end+0x160/0x19a [ext4]
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385633]  =
+[<ffffffffa00857c6>] ? ext4_xattr_get+0x1fa/0x27c [ext4]
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385643]  =
+[<ffffffff810b5e91>] ? generic_file_buffered_write+0x18d/0x278
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385650]  =
+[<ffffffff810b632d>] ? __generic_file_aio_write+0x25f/0x293
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385659]  =
+[<ffffffffa0032d42>] ? jbd2_journal_stop+0x24a/0x25d [jbd2]
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385669]  =
+[<ffffffff8100eccf>] ? xen_restore_fl_direct_end+0x0/0x1
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385674]  =
+[<ffffffff810b63ba>] ? generic_file_aio_write+0x59/0x9f
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385682]  =
+[<ffffffff810efa46>] ? do_sync_write+0xce/0x113
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385694]  =
+[<ffffffffa0074c8e>] ? __ext4_journal_stop+0x63/0x69 [ext4]
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385701]  =
+[<ffffffff81065f06>] ? autoremove_wake_function+0x0/0x2e
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385709]  =
+[<ffffffff81102492>] ? notify_change+0x2b3/0x2c5
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385715]  =
+[<ffffffff810f0398>] ? vfs_write+0xa9/0x102
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385720]  =
+[<ffffffff810f0448>] ? sys_pwrite64+0x57/0x77
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385726]  =
+[<ffffffff810ef04d>] ? sys_ftruncate+0x112/0x11d
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385732]  =
+[<ffffffff81011b42>] ? system_call_fastpath+0x16/0x1b
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385737] ---[ end trace =
+2c615eb111c993ca ]---
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385782] =
+transaction->t_outstanding_credits =3D 8
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385788] =
+transaction->t_nr_buffers =3D 9
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385793] ------------[ cut =
+here ]------------
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385804] WARNING: at =
+/tmp/kdm-deb-kernel/linux-2.6-2.6.32/debian/build/source_amd64_xen/fs/jbd2=
+/transaction.c:1329 jbd2_journal_stop+0x189/0x25d [jbd2]()
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.385815] Modules linked in: =
+ip6table_filter ip6_tables act_police cls_flow cls_fw cls_u32 sch_htb =
+sch_hfsc sch_ingress sch_sfq xt_time xt_connlimit xt_realm iptable_raw =
+xt_comment xt_recent xt_policy ipt_ULOG ipt_REJECT ipt_REDIRECT =
+ipt_NETMAP ipt_MASQUERADE ipt_ECN ipt_ecn ipt_CLUSTERIP ipt_ah =
+ipt_addrtype nf_nat_tftp nf_nat_snmp_basic nf_nat_sip nf_nat_pptp =
+nf_nat_proto_gre nf_nat_irc nf_nat_h323 nf_nat_ftp nf_nat_amanda ts_kmp =
+nf_conntrack_amanda nf_conntrack_sane nf_conntrack_tftp nf_conntrack_sip =
+nf_conntrack_proto_sctp nf_conntrack_pptp nf_conntrack_proto_gre =
+nf_conntrack_netlink nf_conntrack_netbios_ns nf_conntrack_irc =
+nf_conntrack_h323 nf_conntrack_ftp xt_TPROXY nf_tproxy_core xt_tcpmss =
+xt_pkttype xt_physdev xt_owner xt_NFQUEUE xt_NFLOG nfnetlink_log =
+xt_multiport xt_MARK xt_mark xt_mac xt_limit xt_length xt_iprange =
+xt_helper xt_hashlimit xt_DSCP xt_dscp xt_dccp xt_conntrack xt_CONNMARK =
+xt_connmark xt_CLASSIFY ipt_LOG xt_tcpudp xt_state iptable_nat nf_nat =
+nf_conntrac
+Jun 24 16:36:05 i-38020f57 kernel: k_ipv4 nf_defrag_ipv4 nf_conntrack =
+iptable_mangle nfnetlink iptable_filter ip_tables x_tables ext3 jbd loop =
+snd_pcm snd_timer snd soundcore snd_page_alloc pcspkr evdev ext4 mbcache =
+jbd2 crc16 dm_mod xen_netfront xen_blkfront
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386041] Pid: 3817, comm: =
+tlsmgr Tainted: G        W  2.6.32-5-xen-amd64 #1
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386046] Call Trace:
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386055]  =
+[<ffffffffa0032c81>] ? jbd2_journal_stop+0x189/0x25d [jbd2]
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386064]  =
+[<ffffffffa0032c81>] ? jbd2_journal_stop+0x189/0x25d [jbd2]
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386071]  =
+[<ffffffff8104ef00>] ? warn_slowpath_common+0x77/0xa3
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386077]  =
+[<ffffffff8100eccf>] ? xen_restore_fl_direct_end+0x0/0x1
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386087]  =
+[<ffffffffa0032c81>] ? jbd2_journal_stop+0x189/0x25d [jbd2]
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386098]  =
+[<ffffffffa0033cd6>] ? jbd2_journal_start+0x96/0xc6 [jbd2]
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386113]  =
+[<ffffffffa0070df6>] ? ext4_force_commit+0xa4/0xb3 [ext4]
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386126]  =
+[<ffffffffa0058a37>] ? ext4_sync_file+0x8f/0x25c [ext4]
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386138]  =
+[<ffffffff8110ccd4>] ? vfs_fsync_range+0x73/0x9e
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386146]  =
+[<ffffffff8110cd7e>] ? do_fsync+0x28/0x39
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386153]  =
+[<ffffffff8110cd9d>] ? sys_fdatasync+0xe/0x13
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386163]  =
+[<ffffffff8130d89a>] ? error_exit+0x2a/0x60
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386170]  =
+[<ffffffff81011b42>] ? system_call_fastpath+0x16/0x1b
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386178]  =
+[<ffffffff810092eb>] ? hypercall_page+0x2eb/0x1001
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386185] ---[ end trace =
+2c615eb111c993cb ]---
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386243] =
+transaction->t_outstanding_credits =3D 8
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386249] =
+transaction->t_nr_buffers =3D 9
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386253] ------------[ cut =
+here ]------------
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386263] WARNING: at =
+/tmp/kdm-deb-kernel/linux-2.6-2.6.32/debian/build/source_amd64_xen/fs/jbd2=
+/commit.c:538 jbd2_journal_commit_transaction+0x574/0x118b [jbd2]()
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386311] Modules linked in: =
+ip6table_filter ip6_tables act_police cls_flow cls_fw cls_u32 sch_htb =
+sch_hfsc sch_ingress sch_sfq xt_time xt_connlimit xt_realm iptable_raw =
+xt_comment xt_recent xt_policy ipt_ULOG ipt_REJECT ipt_REDIRECT =
+ipt_NETMAP ipt_MASQUERADE ipt_ECN ipt_ecn ipt_CLUSTERIP ipt_ah =
+ipt_addrtype nf_nat_tftp nf_nat_snmp_basic nf_nat_sip nf_nat_pptp =
+nf_nat_proto_gre nf_nat_irc nf_nat_h323 nf_nat_ftp nf_nat_amanda ts_kmp =
+nf_conntrack_amanda nf_conntrack_sane nf_conntrack_tftp nf_conntrack_sip =
+nf_conntrack_proto_sctp nf_conntrack_pptp nf_conntrack_proto_gre =
+nf_conntrack_netlink nf_conntrack_netbios_ns nf_conntrack_irc =
+nf_conntrack_h323 nf_conntrack_ftp xt_TPROXY nf_tproxy_core xt_tcpmss =
+xt_pkttype xt_physdev xt_owner xt_NFQUEUE xt_NFLOG nfnetlink_log =
+xt_multiport xt_MARK xt_mark xt_mac xt_limit xt_length xt_iprange =
+xt_helper xt_hashlimit xt_DSCP xt_dscp xt_dccp xt_conntrack xt_CONNMARK =
+xt_connmark xt_CLASSIFY ipt_LOG xt_tcpudp xt_state iptable_nat nf_nat =
+nf_conntrac
+Jun 24 16:36:05 i-38020f57 kernel: k_ipv4 nf_defrag_ipv4 nf_conntrack =
+iptable_mangle nfnetlink iptable_filter ip_tables x_tables ext3 jbd loop =
+snd_pcm snd_timer snd soundcore snd_page_alloc pcspkr evdev ext4 mbcache =
+jbd2 crc16 dm_mod xen_netfront xen_blkfront
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386452] Pid: 992, comm: =
+jbd2/dm-23-8 Tainted: G        W  2.6.32-5-xen-amd64 #1
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386457] Call Trace:
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386466]  =
+[<ffffffffa0034471>] ? jbd2_journal_commit_transaction+0x574/0x118b =
+[jbd2]
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386475]  =
+[<ffffffffa0034471>] ? jbd2_journal_commit_transaction+0x574/0x118b =
+[jbd2]
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386483]  =
+[<ffffffff8104ef00>] ? warn_slowpath_common+0x77/0xa3
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386492]  =
+[<ffffffffa0034471>] ? jbd2_journal_commit_transaction+0x574/0x118b =
+[jbd2]
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386500]  =
+[<ffffffff8130bf48>] ? thread_return+0x79/0xe0
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386506]  =
+[<ffffffff8100e629>] ? xen_force_evtchn_callback+0x9/0xa
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386512]  =
+[<ffffffff8100ece2>] ? check_events+0x12/0x20
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386519]  =
+[<ffffffff8130d2e2>] ? _spin_unlock_irqrestore+0xd/0xe
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386560]  =
+[<ffffffff8105b8c8>] ? try_to_del_timer_sync+0x63/0x6c
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386572]  =
+[<ffffffffa003a98b>] ? kjournald2+0xbe/0x206 [jbd2]
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386578]  =
+[<ffffffff81065f06>] ? autoremove_wake_function+0x0/0x2e
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386587]  =
+[<ffffffffa003a8cd>] ? kjournald2+0x0/0x206 [jbd2]
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386592]  =
+[<ffffffff81065c39>] ? kthread+0x79/0x81
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386599]  =
+[<ffffffff81012baa>] ? child_rip+0xa/0x20
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386604]  =
+[<ffffffff81011d61>] ? int_ret_from_sys_call+0x7/0x1b
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386610]  =
+[<ffffffff8101251d>] ? retint_restore_args+0x5/0x6
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386616]  =
+[<ffffffff81012ba0>] ? child_rip+0x0/0x20
+Jun 24 16:36:05 i-38020f57 kernel: [5369326.386620] ---[ end trace =
+2c615eb111c993cc ]---
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.124954] =
+transaction->t_outstanding_credits =3D 9
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.124967] =
+transaction->t_nr_buffers =3D 10
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.124971] ------------[ cut =
+here ]------------
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.124998] WARNING: at =
+/tmp/kdm-deb-kernel/linux-2.6-2.6.32/debian/build/source_amd64_xen/fs/jbd2=
+/transaction.c:1329 jbd2_journal_stop+0x189/0x25d [jbd2]()
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125007] Modules linked in: =
+ip6table_filter ip6_tables act_police cls_flow cls_fw cls_u32 sch_htb =
+sch_hfsc sch_ingress sch_sfq xt_time xt_connlimit xt_realm iptable_raw =
+xt_comment xt_recent xt_policy ipt_ULOG ipt_REJECT ipt_REDIRECT =
+ipt_NETMAP ipt_MASQUERADE ipt_ECN ipt_ecn ipt_CLUSTERIP ipt_ah =
+ipt_addrtype nf_nat_tftp nf_nat_snmp_basic nf_nat_sip nf_nat_pptp =
+nf_nat_proto_gre nf_nat_irc nf_nat_h323 nf_nat_ftp nf_nat_amanda ts_kmp =
+nf_conntrack_amanda nf_conntrack_sane nf_conntrack_tftp nf_conntrack_sip =
+nf_conntrack_proto_sctp nf_conntrack_pptp nf_conntrack_proto_gre =
+nf_conntrack_netlink nf_conntrack_netbios_ns nf_conntrack_irc =
+nf_conntrack_h323 nf_conntrack_ftp xt_TPROXY nf_tproxy_core xt_tcpmss =
+xt_pkttype xt_physdev xt_owner xt_NFQUEUE xt_NFLOG nfnetlink_log =
+xt_multiport xt_MARK xt_mark xt_mac xt_limit xt_length xt_iprange =
+xt_helper xt_hashlimit xt_DSCP xt_dscp xt_dccp xt_conntrack xt_CONNMARK =
+xt_connmark xt_CLASSIFY ipt_LOG xt_tcpudp xt_state iptable_nat nf_nat =
+nf_conntrac
+Jun 24 16:36:07 i-38020f57 kernel: k_ipv4 nf_defrag_ipv4 nf_conntrack =
+iptable_mangle nfnetlink iptable_filter ip_tables x_tables ext3 jbd loop =
+snd_pcm snd_timer snd soundcore snd_page_alloc pcspkr evdev ext4 mbcache =
+jbd2 crc16 dm_mod xen_netfront xen_blkfront
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125158] Pid: 3817, comm: =
+tlsmgr Tainted: G        W  2.6.32-5-xen-amd64 #1
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125164] Call Trace:
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125174]  =
+[<ffffffffa0032c81>] ? jbd2_journal_stop+0x189/0x25d [jbd2]
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125183]  =
+[<ffffffffa0032c81>] ? jbd2_journal_stop+0x189/0x25d [jbd2]
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125194]  =
+[<ffffffff8104ef00>] ? warn_slowpath_common+0x77/0xa3
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125203]  =
+[<ffffffffa0032c81>] ? jbd2_journal_stop+0x189/0x25d [jbd2]
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125222]  =
+[<ffffffffa0074c8e>] ? __ext4_journal_stop+0x63/0x69 [ext4]
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125338]  =
+[<ffffffffa0060949>] ? ext4_journalled_write_end+0x160/0x19a [ext4]
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125351]  =
+[<ffffffffa00857c6>] ? ext4_xattr_get+0x1fa/0x27c [ext4]
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125361]  =
+[<ffffffff810b5e91>] ? generic_file_buffered_write+0x18d/0x278
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125368]  =
+[<ffffffff810b632d>] ? __generic_file_aio_write+0x25f/0x293
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125377]  =
+[<ffffffffa0032d42>] ? jbd2_journal_stop+0x24a/0x25d [jbd2]
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125385]  =
+[<ffffffff8100eccf>] ? xen_restore_fl_direct_end+0x0/0x1
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125391]  =
+[<ffffffff810b63ba>] ? generic_file_aio_write+0x59/0x9f
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125398]  =
+[<ffffffff810efa46>] ? do_sync_write+0xce/0x113
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125410]  =
+[<ffffffffa0074c8e>] ? __ext4_journal_stop+0x63/0x69 [ext4]
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125418]  =
+[<ffffffff81065f06>] ? autoremove_wake_function+0x0/0x2e
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125426]  =
+[<ffffffff81102492>] ? notify_change+0x2b3/0x2c5
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125432]  =
+[<ffffffff810f0398>] ? vfs_write+0xa9/0x102
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125437]  =
+[<ffffffff810f0448>] ? sys_pwrite64+0x57/0x77
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125443]  =
+[<ffffffff810ef04d>] ? sys_ftruncate+0x112/0x11d
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125449]  =
+[<ffffffff81011b42>] ? system_call_fastpath+0x16/0x1b
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.125454] ---[ end trace =
+2c615eb111c993cd ]---
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.180777] =
+transaction->t_outstanding_credits =3D 9
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.180787] =
+transaction->t_nr_buffers =3D 10
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.180792] ------------[ cut =
+here ]------------
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.180810] WARNING: at =
+/tmp/kdm-deb-kernel/linux-2.6-2.6.32/debian/build/source_amd64_xen/fs/jbd2=
+/transaction.c:1329 jbd2_journal_stop+0x189/0x25d [jbd2]()
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.180819] Modules linked in: =
+ip6table_filter ip6_tables act_police cls_flow cls_fw cls_u32 sch_htb =
+sch_hfsc sch_ingress sch_sfq xt_time xt_connlimit xt_realm iptable_raw =
+xt_comment xt_recent xt_policy ipt_ULOG ipt_REJECT ipt_REDIRECT =
+ipt_NETMAP ipt_MASQUERADE ipt_ECN ipt_ecn ipt_CLUSTERIP ipt_ah =
+ipt_addrtype nf_nat_tftp nf_nat_snmp_basic nf_nat_sip nf_nat_pptp =
+nf_nat_proto_gre nf_nat_irc nf_nat_h323 nf_nat_ftp nf_nat_amanda ts_kmp =
+nf_conntrack_amanda nf_conntrack_sane nf_conntrack_tftp nf_conntrack_sip =
+nf_conntrack_proto_sctp nf_conntrack_pptp nf_conntrack_proto_gre =
+nf_conntrack_netlink nf_conntrack_netbios_ns nf_conntrack_irc =
+nf_conntrack_h323 nf_conntrack_ftp xt_TPROXY nf_tproxy_core xt_tcpmss =
+xt_pkttype xt_physdev xt_owner xt_NFQUEUE xt_NFLOG nfnetlink_log =
+xt_multiport xt_MARK xt_mark xt_mac xt_limit xt_length xt_iprange =
+xt_helper xt_hashlimit xt_DSCP xt_dscp xt_dccp xt_conntrack xt_CONNMARK =
+xt_connmark xt_CLASSIFY ipt_LOG xt_tcpudp xt_state iptable_nat nf_nat =
+nf_conntrac
+Jun 24 16:36:07 i-38020f57 kernel: k_ipv4 nf_defrag_ipv4 nf_conntrack =
+iptable_mangle nfnetlink iptable_filter ip_tables x_tables ext3 jbd loop =
+snd_pcm snd_timer snd soundcore snd_page_alloc pcspkr evdev ext4 mbcache =
+jbd2 crc16 dm_mod xen_netfront xen_blkfront
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.180969] Pid: 3817, comm: =
+tlsmgr Tainted: G        W  2.6.32-5-xen-amd64 #1
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.180975] Call Trace:
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.180983]  =
+[<ffffffffa0032c81>] ? jbd2_journal_stop+0x189/0x25d [jbd2]
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.180992]  =
+[<ffffffffa0032c81>] ? jbd2_journal_stop+0x189/0x25d [jbd2]
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.180999]  =
+[<ffffffff8104ef00>] ? warn_slowpath_common+0x77/0xa3
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181006]  =
+[<ffffffff8100eccf>] ? xen_restore_fl_direct_end+0x0/0x1
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181015]  =
+[<ffffffffa0032c81>] ? jbd2_journal_stop+0x189/0x25d [jbd2]
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181024]  =
+[<ffffffffa0033cd6>] ? jbd2_journal_start+0x96/0xc6 [jbd2]
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181083]  =
+[<ffffffffa0070df6>] ? ext4_force_commit+0xa4/0xb3 [ext4]
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181094]  =
+[<ffffffffa0058a37>] ? ext4_sync_file+0x8f/0x25c [ext4]
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181104]  =
+[<ffffffff8110ccd4>] ? vfs_fsync_range+0x73/0x9e
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181110]  =
+[<ffffffff8110cd7e>] ? do_fsync+0x28/0x39
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181115]  =
+[<ffffffff8110cd9d>] ? sys_fdatasync+0xe/0x13
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181125]  =
+[<ffffffff8130d89a>] ? error_exit+0x2a/0x60
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181131]  =
+[<ffffffff81011b42>] ? system_call_fastpath+0x16/0x1b
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181137]  =
+[<ffffffff810092eb>] ? hypercall_page+0x2eb/0x1001
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181142] ---[ end trace =
+2c615eb111c993ce ]---
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181160] =
+transaction->t_outstanding_credits =3D 9
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181164] =
+transaction->t_nr_buffers =3D 10
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181168] ------------[ cut =
+here ]------------
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181176] WARNING: at =
+/tmp/kdm-deb-kernel/linux-2.6-2.6.32/debian/build/source_amd64_xen/fs/jbd2=
+/commit.c:538 jbd2_journal_commit_transaction+0x574/0x118b [jbd2]()
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181185] Modules linked in: =
+ip6table_filter ip6_tables act_police cls_flow cls_fw cls_u32 sch_htb =
+sch_hfsc sch_ingress sch_sfq xt_time xt_connlimit xt_realm iptable_raw =
+xt_comment xt_recent xt_policy ipt_ULOG ipt_REJECT ipt_REDIRECT =
+ipt_NETMAP ipt_MASQUERADE ipt_ECN ipt_ecn ipt_CLUSTERIP ipt_ah =
+ipt_addrtype nf_nat_tftp nf_nat_snmp_basic nf_nat_sip nf_nat_pptp =
+nf_nat_proto_gre nf_nat_irc nf_nat_h323 nf_nat_ftp nf_nat_amanda ts_kmp =
+nf_conntrack_amanda nf_conntrack_sane nf_conntrack_tftp nf_conntrack_sip =
+nf_conntrack_proto_sctp nf_conntrack_pptp nf_conntrack_proto_gre =
+nf_conntrack_netlink nf_conntrack_netbios_ns nf_conntrack_irc =
+nf_conntrack_h323 nf_conntrack_ftp xt_TPROXY nf_tproxy_core xt_tcpmss =
+xt_pkttype xt_physdev xt_owner xt_NFQUEUE xt_NFLOG nfnetlink_log =
+xt_multiport xt_MARK xt_mark xt_mac xt_limit xt_length xt_iprange =
+xt_helper xt_hashlimit xt_DSCP xt_dscp xt_dccp xt_conntrack xt_CONNMARK =
+xt_connmark xt_CLASSIFY ipt_LOG xt_tcpudp xt_state iptable_nat nf_nat =
+nf_conntrac
+Jun 24 16:36:07 i-38020f57 kernel: k_ipv4 nf_defrag_ipv4 nf_conntrack =
+iptable_mangle nfnetlink iptable_filter ip_tables x_tables ext3 jbd loop =
+snd_pcm snd_timer snd soundcore snd_page_alloc pcspkr evdev ext4 mbcache =
+jbd2 crc16 dm_mod xen_netfront xen_blkfront
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181368] Pid: 992, comm: =
+jbd2/dm-23-8 Tainted: G        W  2.6.32-5-xen-amd64 #1
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181374] Call Trace:
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181383]  =
+[<ffffffffa0034471>] ? jbd2_journal_commit_transaction+0x574/0x118b =
+[jbd2]
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181393]  =
+[<ffffffffa0034471>] ? jbd2_journal_commit_transaction+0x574/0x118b =
+[jbd2]
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181401]  =
+[<ffffffff8104ef00>] ? warn_slowpath_common+0x77/0xa3
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181409]  =
+[<ffffffffa0034471>] ? jbd2_journal_commit_transaction+0x574/0x118b =
+[jbd2]
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181418]  =
+[<ffffffff8130bf48>] ? thread_return+0x79/0xe0
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181424]  =
+[<ffffffff8100e629>] ? xen_force_evtchn_callback+0x9/0xa
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181430]  =
+[<ffffffff8100ece2>] ? check_events+0x12/0x20
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181436]  =
+[<ffffffff8130d2e2>] ? _spin_unlock_irqrestore+0xd/0xe
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181445]  =
+[<ffffffff8105b8c8>] ? try_to_del_timer_sync+0x63/0x6c
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181455]  =
+[<ffffffffa003a98b>] ? kjournald2+0xbe/0x206 [jbd2]
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181461]  =
+[<ffffffff81065f06>] ? autoremove_wake_function+0x0/0x2e
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181470]  =
+[<ffffffffa003a8cd>] ? kjournald2+0x0/0x206 [jbd2]
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181475]  =
+[<ffffffff81065c39>] ? kthread+0x79/0x81
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181482]  =
+[<ffffffff81012baa>] ? child_rip+0xa/0x20
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181487]  =
+[<ffffffff81011d61>] ? int_ret_from_sys_call+0x7/0x1b
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181493]  =
+[<ffffffff8101251d>] ? retint_restore_args+0x5/0x6
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181499]  =
+[<ffffffff81012ba0>] ? child_rip+0x0/0x20
+Jun 24 16:36:07 i-38020f57 kernel: [5369328.181503] ---[ end trace =
+2c615eb111c993cf ]---
+
+
+
+=09=
