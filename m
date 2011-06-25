@@ -1,125 +1,230 @@
-From: Jasper Wallace <jasper@pointless.net>
-Subject: All of my backup superblocks are zero'd out
-Date: Sat, 25 Jun 2011 04:09:15 +0100 (BST)
-Message-ID: <alpine.DEB.2.00.1106242204040.6390@yvzcvg>
+From: Mark Harris <mhlk@osj.us>
+Subject: Re: [BUG] ext4 timestamps corruption
+Date: Fri, 24 Jun 2011 22:12:12 -0700
+Message-ID: <BANLkTikQYPmTk7ui1CDszkBR_QDeSzs33g@mail.gmail.com>
+References: <4DF1D57C.3030107@rs.jp.nec.com>
+	<3BB3CFE7-BD50-4123-A1C8-D3FDAAD184DA@gmail.com>
+	<4E02F0B8.4080301@rs.jp.nec.com>
+	<BANLkTinxzNWZnMvj1716S24HJ6n2NM0z=w@mail.gmail.com>
+	<D77F5ECA-5803-44B7-B8AB-E18707386B42@dilger.ca>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Akira Fujita <a-fujita@rs.jp.nec.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thingy.pointless.net ([91.209.244.43]:52292 "EHLO
-	thingy.pointless.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751977Ab1FYDpb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Jun 2011 23:45:31 -0400
-Received: from 93-97-176-250.zone5.bethere.co.uk ([93.97.176.250]:50177 helo=limpit.lan.london.hackspace.org.uk)
-	by thingy.pointless.net with esmtpsa (TLSv1:DHE-RSA-AES256-SHA:256)
-	(Exim 4.71)
-	(envelope-from <jasper@pointless.net>)
-	id 1QaJFD-0001IF-W7
-	for linux-ext4@vger.kernel.org; Sat, 25 Jun 2011 04:09:16 +0100
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:64766 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750809Ab1FYFMO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 25 Jun 2011 01:12:14 -0400
+Received: by iwn6 with SMTP id 6so2892667iwn.19
+        for <linux-ext4@vger.kernel.org>; Fri, 24 Jun 2011 22:12:13 -0700 (PDT)
+In-Reply-To: <D77F5ECA-5803-44B7-B8AB-E18707386B42@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri, Jun 24, 2011 at 15:46, Andreas Dilger wrote:
+> On 2011-06-23, at 4:37 PM, Mark Harris wrote:
+>> 2011/6/23 Akira Fujita <a-fujita@rs.jp.nec.com>:
+>>>> https://bugzilla.kernel.org/show_bug.cgi?id=3D23732
+>>>
+>>> ext4: Fix ext4 timestamps corruption
+>>>
+>>> Officially, ext4 can handle its timestamps until 2514
+>>> with 32bit entries plus EPOCH_BIT (2bits).
+>>> But when timestamps values use 32+ bit
+>>> (e.g. 2038-01-19 9:14:08 0x0000000080000000),
+>>> we can get corrupted values.
+>>> Because sign bit is overwritten by transferring value
+>>> between kernel space and user space.
+>>>
+>>> To fix this issue, 32th bit of extra time fields in ext4_inode stru=
+cture
+>>> (e.g. i_ctime_extra) are used as the sign for 64bit user space.
+>>> Because these are used only 20bits for nano-second and bottom of 2b=
+its
+>>> are for EXT4_EPOCH_BITS shift.
+>>> With this patch, ext4 supports timestamps Y1901-2514.
+>>
+>> Thanks for looking into this bug. =A0However tv_nsec is in the
+>> range 0..999999999 and requires 30 bits. =A0That is why tv_sec was
+>> only extended by 2 bits. =A0So there are no additional spare bits
+>> in the "extra" field.
+>>
+>> 34-bit seconds can accommodate a maximum of 544.4 years, e.g.
+>> 1970..2514 or 1901..2446. =A0Although an early version of the patch
+>> for 34-bit tv_sec in ext4 worked with years 1970..2514, prior to
+>> being committed the patch was changed to support pre-1970
+>> timestamps (introducing the sign extension issue in the decoding):
+>> =A0http://marc.info/?l=3Dlinux-ext4&m=3D118208541320999
+>
+> Sigh, it seems so unlikely that anyone even has a valid timestamp
+> on a file with a date before 1970, it makes me wonder if this extra
+> effort is even worthwhile...
+>
+>> The existing encoding simply encodes bits 31..0 of tv_sec in the
+>> regular time field and bits 33..32 in the extra field (along with
+>> the 30-bit tv_nsec). =A0The issue is in the decoding, which I think
+>> can be addressed by changing only the body of the "if" in in the
+>> ext4_decode_extra_time function, to something like this:
+>>
+>> =A0 =A0 =A0 =A0time->tv_sec +=3D ((__u32)time->tv_sec +
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0((__u64)le32_to_cpu(extra) << 32) +
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A00x80000000LL) & 0x300000000LL;
+>>
+>> This is untested, and might look nicer with some macros, but
+>> it should decode the 34 bits into a timestamp in the range
+>> -0x80000000 (1901-12-13) to 0x37fffffff (2446-05-10), while
+>> retaining compatibility with the existing encoding.
+>>
+>> =A0 2 =A0 =A0msb of =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
+adjustment needed to convert
+>> extra =A032-bit =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 sign=
+-extended 32-bit tv_sec
+>> =A0bits =A0 time =A0 decoded 64-bit tv_sec =A0 to decoded 64-bit tv_=
+sec
+>> =A01 1 =A0 =A0 1 =A0 =A0-0x80000000..-1 =A0 =A0 =A0 =A0 =A0 0
+>> =A00 0 =A0 =A0 0 =A0 =A00x000000000..0x07fffffff =A00
+>> =A00 0 =A0 =A0 1 =A0 =A00x080000000..0x0ffffffff =A00x100000000
+>> =A00 1 =A0 =A0 0 =A0 =A00x100000000..0x17fffffff =A00x100000000
+>> =A00 1 =A0 =A0 1 =A0 =A00x180000000..0x1ffffffff =A00x200000000
+>> =A01 0 =A0 =A0 0 =A0 =A00x200000000..0x27fffffff =A00x200000000
+>> =A01 0 =A0 =A0 1 =A0 =A00x280000000..0x2ffffffff =A00x300000000
+>> =A01 1 =A0 =A0 0 =A0 =A00x300000000..0x37fffffff =A00x300000000
+>
+> The problem with this encoding is that it requires existing 32-bit
+> timestamps before 1970 to have encoded "11" in the extra epoch bits,
+> which is not the case. =A0Current pre-1970 timestamps would be encode=
+d
+> with "00" there, which would (according to your table) bump them past
+> 2038 incorrectly.
 
-Hi,
+I was under the impression that the encoding code stored bits
+33 & 32 of tv_sec there, which would be 1,1 for a negative value
+like -1.  Certainly the decoding would be simpler if the extra
+value was only non-zero for large timestamps.
 
-(apologies in advance if this is the wrong place to post this, but the 
-e2fsprogs mailing list on sf seems to be dead).
+On closer inspection of ext4_encode_extra_time, it looks like for
+tv_sec =3D -1, a 64-bit kernel will store 1,1 in the extra bits and
+a 32-bit kernel will store 0,0 in the extra bits.  That is a problem
+if both of these need to be decoded as -1 on a 64-bit system.
 
-I have a machine that dual boots NetBSD-current and Ubuntu 10.04.2 LTS so /home is ext2
-for it to work with both.
+>
+> What we need is an encoding that preserves the times for extra epoch =
+"00":
+>
+> =A02 =A0 =A0msb of =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ad=
+justment needed to convert
+> extra =A032-bit =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 sign-=
+extended 32-bit tv_sec
+> =A0bits =A0 time =A0 decoded 64-bit tv_sec =A0 to decoded 64-bit tv_s=
+ec
+> =A00 0 =A0 =A0 1 =A0 =A0-0x80000000..-1 =A0 =A0 =A0 =A0 =A0 0
+> =A00 0 =A0 =A0 0 =A0 =A00x000000000..0x07fffffff =A00
+> =A00 1 =A0 =A0 1 =A0 =A00x080000000..0x0ffffffff =A00x100000000
+> =A00 1 =A0 =A0 0 =A0 =A00x100000000..0x17fffffff =A00x100000000
+> =A01 0 =A0 =A0 1 =A0 =A00x180000000..0x1ffffffff =A00x200000000
+> =A01 0 =A0 =A0 0 =A0 =A00x200000000..0x27fffffff =A00x200000000
+> =A01 1 =A0 =A0 1 =A0 =A00x280000000..0x2ffffffff =A00x300000000
+> =A01 1 =A0 =A0 0 =A0 =A00x300000000..0x37fffffff =A00x300000000
+>
+> So, looking at the above desired encoding, it looks like the error in
+> the existing code is that it is doing a boolean operation on decode
+> instead of a mathematical one, and it was incorrectly trying to exten=
+d
+> the time to (1ULL<<34). =A0The below should fix this:
+>
+> static inline void ext4_decode_extra_time(struct timespec *time, __le=
+32 extra)
+> {
+> =A0 =A0 =A0 =A0if (unlikely(sizeof(time->tv_sec) > 4 &&
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 (extra & cpu_to_le32(EXT4_EPO=
+CH_MASK)))
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0time->tv_sec +=3D (u64)(le32_to_cpu(ex=
+tra) & EXT4_EPOCH_MASK) << 32;
+>
+> =A0 =A0 =A0 =A0time->tv_nsec =3D (le32_to_cpu(extra) & EXT4_NSEC_MASK=
+) >> EXT4_EPOCH_BITS;
+> }
 
-A while ago (i think after an ubuntu release upgrade) the netbsd ext2 fsck 
-started to core dump when checking /home. I checked the fs with the fsck 
-from e2fsprogs and it passed so i assumed it was a netbsd bug and 
-ignored it.
+That is not compatible with the existing ext4_encode_extra_time.
+=46or example, 2038-01-31 (0x80101500) is encoded with extra bits
+equal to bits 33 & 32, i.e. 0,0.  But this code would decode it
+as 1901-12-25 (i.e. it would leave the sign-extended 32-bit value
+unchanged).
 
-Recently i came back to the problem intending to fix netbsd's ext2 fsck 
-and discovered that all the backup super blocks on the fs where compleatly 
-zeroed out.
+Possible solutions:
 
-If the e2fs progs fsck can't find the first backup superblock it checks 
-the 2nd one and so on, but it exits cleanly if it dosen't find any.
+ (a) Define the current 64-bit encoding as the correct encoding since
+     the 2 extra bits are not even decoded on 32-bit kernels, so its
+     encoding doesn't matter much.  However, if anyone with existing
+     pre-1970 timestamps written using a 32-bit kernel wants to use
+     their ext4 filesystem with a 64-bit kernel, the pre-1970
+     timestamps would be wrong unless they re-write them with a
+     fixed kernel.
 
-I assume that not having any backup super blocks is a bad thing and the 
-e2fsprogs fsck should check for that case and offer to copy the main 
-superblock to all the backup positions.
+     Change ext4_decode_extra_time "if" body to something like:
+        time->tv_sec +=3D ((__u32)time->tv_sec +
+                ((__u64)le32_to_cpu(extra) << 32) +
+                0x80000000LL) & 0x300000000LL;
 
+     Change ext4_encode_extra_time ": 0" to something like:
+        time->tv_sec < 0 ? EXT4_EPOCH_MASK : 0
 
-Here's the output of fsck patched to print the block groups (bg) and block 
-numbers of where it's trying to find super blocks, the ignoreing happens 
-if the (backup_sb->s_magic != EXT2_SUPER_MAGIC) || (backup_sb->s_rev_level >
-EXT2_LIB_CURRENT_REV) || [other stuff] test fails in e2fsck/super.c, 
-line 930 ish:
+ (b) Change the encoding of the extra bits to be those in your new
+     table.  This is compatible with the 32-bit kernel encoding
+     (which does not decode these bits) but incompatible with the
+     64-bit kernel encoding.  Existing pre-1970 timestamps written
+     with a 64-bit kernel would be decoded as dates far in the future.
 
-root@limpit:~/e2fs/e2fsprogs-1.41.11/e2fsck# ./e2fsck /dev/sda3
-e2fsck 1.41.11 (14-Mar-2010)
-looking for backup sb at blk 32768 (bg 1)
-ignoring backup sb at blk 32768
-looking for backup sb at blk 98304 (bg 3)
-ignoring backup sb at blk 98304
-looking for backup sb at blk 163840 (bg 5)
-ignoring backup sb at blk 163840
-looking for backup sb at blk 229376 (bg 7)
-ignoring backup sb at blk 229376
-looking for backup sb at blk 294912 (bg 9)
-ignoring backup sb at blk 294912
-looking for backup sb at blk 819200 (bg 25)
-ignoring backup sb at blk 819200
-looking for backup sb at blk 884736 (bg 27)
-ignoring backup sb at blk 884736
-looking for backup sb at blk 1605632 (bg 49)
-ignoring backup sb at blk 1605632
-looking for backup sb at blk 2654208 (bg 81)
-ignoring backup sb at blk 2654208
-looking for backup sb at blk 4096000 (bg 125)
-ignoring backup sb at blk 4096000
-looking for backup sb at blk 7962624 (bg 243)
-ignoring backup sb at blk 7962624
-looking for backup sb at blk 11239424 (bg 343)
-ignoring backup sb at blk 11239424
-looking for backup sb at blk 20480000 (bg 625)
-ignoring backup sb at blk 20480000
-looking for backup sb at blk 23887872 (bg 729)
-ignoring backup sb at blk 23887872
-WARNING: no backup superblocks found
-Home: clean, 1047277/7806976 files, 21507366/31208652 blocks
+     Requires your change to ext4_decode_extra_time.
+     Also requires a change to ext4_encode_extra_time, changing
+     (time->tv_sec >> 32) to something like:
+        ((time->tv_sec - (signed int)time->tv_sec) >> 32)
 
-I've saved each backup superblock to a file and confirmed that they are 
-all zero's (0x00).
+ (c) If 100% compatibility with existing pre-1970 32-bit timestamps
+     is desired even when switching between 32-bit and 64-bit kernels,
+     both extra=3D1,1/msb=3D1 and extra=3D0,0/msb=3D1 could be treated =
+as year
+     1901..1969 timestamps.  However this would reduce the maximum
+     64-bit ext4 timestamp, and would necessarily be incompatible with
+     the existing 64-bit kernel encoding of timestamps > year 2038
+     (since a current 64-bit kernel encodes a year 2039 timestamp
+     exactly the same as a current 32-bit kernel encodes a year 1902
+     timestamp).
 
-If i use findsuper on the partition i get:
+     This requires additional complexity in both ext4_decode_extra_time
+     and ext4_encode_extra_time.
 
-root@limpit:~/e2fs/e2fsprogs-1.41.11/misc# ./findsuper /dev/sda3
-starting at 0, with 512 byte increments
-byte_offset  byte_start     byte_end  fs_blocks blksz  grp  last_mount_time           sb_uuid label
-       1024           0  127830638592   31208652  4096    0  Fri Jun 24 19:00:34 2011 8e19240c Home
-34359738368 44452740608 44452739584  2051003513344  1959522240  1024    0  Wed Feb  4 15:42:08 2032 1c000000 E
-67366390784 18314584675153709056  18314584675153709056          0  1024 38051  Sun May 11 07:34:55 1952 f7fff7ff
-89764110848 89764109824  89768720896       4503  1024    0  Thu Jan  1 01:00:00 1970 00000000 
-89768768000 89768766976  89785544192      16384  1024    0  Thu Jan  1 01:00:00 1970 00000000 
-89790432256 89790431232  89854443520      62512  1024    0  Thu Jun 12 09:47:43 1980 4608c91f 
-89799914496 89791524864  89855537152      62512  1024    1  Thu Jan  1 01:00:00 1970 4608c91f 
-89816708096 89791541248  89855553536      62512  1024    3  Thu Jan  1 01:00:00 1970 4608c91f 
-89833501696 89791557632  89855569920      62512  1024    5  Thu Jan  1 01:00:00 1970 4608c91f 
-89850295296 89791574016  89855586304      62512  1024    7  Thu Jan  1 01:00:00 1970 4608c91f 
-104213687296 104213686272  104217880576       4096  1024    0  Sun Dec 31 14:46:17 2006 3acdc9d5 
-124554051584:   220752kB/s @ Fri Jun 24 19:45:34 2011
-127830640640: finished with errno 2
+ (d) Declare that ext4 supports only timestamps with year >=3D 1970.
+     i.e. 1970..2514 (64-bit), 1970..2038 (32-bit).
+     Any existing pre-1970 timestamps would now be interpreted as a
+     year >=3D 2038 timestamp on 64-bit kernels.
 
-[the output above was captured with typescript, it got slightly mangled].
+     It may be possible for users of 32-bit kernels to continue to
+     successfully read and write 1901..1969 timestamps, but this
+     would have to be unsupported.  If such a timestamp was read with
+     a 64-bit kernel, or a program like fsck.ext4, the time may be
+     different.
 
-Apart from the 1st one, which is valid, i don't think any of the other
-superblocks are relevent, in particular the blocksize should be 4096, and
-the dates are bogus. The sequence of superblocks with 62512 fs_blocks and
-4608c91f sb_uuid might be from a filesystem image, but it's too small to be
-my /home.
+     If some day, as 2038 approaches, 32-bit time_t is changed to
+     unsigned, ext4 would once again support all 32-bit time_t
+     values.
 
-Does anyone know what could cause the lack of backup super blocks to 
-happen?
+     To implement, the decoding can simply drop all casts to (signed).
+     Optionally, the encoding could encode any negative tv_sec as 0
+     to make 32-bit and 64-bit behavior for pre-1970 timestamps
+     consistent (bugzilla 5079/8643).  However this may break some
+     uses of pre-1970 timestamps that would otherwise work on
+     32-bit kernels.
 
-Has anyone heard of this happening to anyone else?
+ - Mark
 
-P.S. see also related netbsd problem report: http://gnats.netbsd.org/45072 
-
--- 
-[http://pointless.net/]                                   [0x2ECA0975]
+>
+> Cheers, Andreas
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
