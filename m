@@ -1,112 +1,58 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: [PATCH 01/11 RESEND] libe2p: Add new function get_fragment_score()
-Date: Sat, 25 Jun 2011 22:16:54 -0400
-Message-ID: <BANLkTinjKDWv4HdODzLSU5WQ-TYaDk2ABw@mail.gmail.com>
-References: <4DF8522F.2020304@sx.jp.nec.com> <20110617031814.GA31884@thunk.org>
- <4DFB62C7.5070008@redhat.com> <E94A4A11-B1FB-4D95-87C5-F18190EF333B@gmail.com>
- <4E008045.1040909@sx.jp.nec.com> <BANLkTinvConLV08CkaTSBOhM=2HFwF0wnw@mail.gmail.com>
- <4E044AB4.9010804@sx.jp.nec.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andreas Dilger <aedilger@gmail.com>,
-	Eric Sandeen <sandeen@redhat.com>, "Ted Ts'o" <tytso@mit.edu>,
-	ext4 <linux-ext4@vger.kernel.org>
-To: Kazuya Mio <k-mio@sx.jp.nec.com>
+From: Akinobu Mita <akinobu.mita@gmail.com>
+Subject: [PATCH resend 0/6] use little-endian bitops properly
+Date: Sun, 26 Jun 2011 14:57:50 +0900
+Message-ID: <1309067876-3537-1-git-send-email-akinobu.mita@gmail.com>
+Cc: Akinobu Mita <akinobu.mita@gmail.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, Alasdair Kergon <agk@redhat.com>,
+	dm-devel@redhat.com, NeilBrown <neilb@suse.de>,
+	linux-raid@vger.kernel.org, reiserfs-devel@vger.kernel.org,
+	Joel Becker <jlbec@evilplan.org>,
+	Mark Fasheh <mfasheh@suse.com>, ocfs2-devel@oss.oracle.com
+To: linux-kernel@vger.kernel.org, akpm@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:49763 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752395Ab1FZCRZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 25 Jun 2011 22:17:25 -0400
-Received: by bwd5 with SMTP id 5so549148bwd.19
-        for <linux-ext4@vger.kernel.org>; Sat, 25 Jun 2011 19:17:24 -0700 (PDT)
-In-Reply-To: <4E044AB4.9010804@sx.jp.nec.com>
+Received: from mail-pw0-f46.google.com ([209.85.160.46]:63942 "EHLO
+	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750934Ab1FZF4i (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 26 Jun 2011 01:56:38 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jun 24, 2011 at 4:28 AM, Kazuya Mio <k-mio@sx.jp.nec.com> wrote=
-:
-> Hi Greg,
-> I'm sorry for the late reply.
->
-> 2011/06/23 20:16, Greg Freemyer wrote:
->>
->> For a sparse file, can you explain why you treat the head and tail
->> extents of a block group differently?
->
-> Could you tell me what "block group" you said means?
+All patches in this patch set were sent before. Individual patches
+improve little-endian bitops usage in several places.
 
-Kazuya,
+Akinobu Mita (6):
+  ext4: use proper little-endian bitops
+  dm: use use proper little-endian bitops
+  md: use proper little-endian bitops
+  reiserfs: use proper little-endian bitops
+  reiserfs: use hweight_long()
+  ocfs2: avoid unaligned access to dqc_bitmap
 
-Sorry if I've got the terminology wrong.
+ drivers/md/bitmap.c         |    4 +-
+ drivers/md/dm-log.c         |    9 +++----
+ fs/ext4/ext4.h              |    7 +++--
+ fs/ext4/ialloc.c            |    4 +-
+ fs/ocfs2/ocfs2.h            |   47 +++++++++++++++++++++++++++++++++++++++++++
+ fs/ocfs2/quota_local.c      |   10 ++++----
+ fs/reiserfs/bitmap.c        |    8 +-----
+ fs/reiserfs/resize.c        |    6 ++--
+ include/linux/reiserfs_fs.h |    2 +
+ 9 files changed, 71 insertions(+), 26 deletions(-)
 
-I'm talking about sparse files.
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
+Cc: Alasdair Kergon <agk@redhat.com>
+Cc: dm-devel@redhat.com
+Cc: NeilBrown <neilb@suse.de>
+Cc: linux-raid@vger.kernel.org
+Cc: reiserfs-devel@vger.kernel.org
+Cc: Joel Becker <jlbec@evilplan.org>
+Cc: Mark Fasheh <mfasheh@suse.com>
+Cc: ocfs2-devel@oss.oracle.com
 
-Where you might have:
+-- 
+1.7.4.4
 
-block_group1 - hole - block_group2 - hole - block_group3.
-
-Block_group2 has a head and a tail extent.  In my mind, from a
-performance perspective, they are symmetric.  Meaning that having a
-small extent at the beginning is no better and no worse than having a
-small extent at the end.
-
-> If "block group" means the ext4 block group, I will treat the head an=
-d tail
-> extents of a block group the same way.
->
-> And if "block group" means the chunk of the extents whose offset is
-> continued,
-> I will treat only the tail extents as a special case.
->
-> # filefrag -v /mnt/mp1/file
-> Filesystem type is: ef53
-> File size of /mnt/mp1/file is 285212672 (69632 blocks, blocksize 4096=
-)
-> =A0ext logical physical expected length flags
-> =A0 0 =A0 =A0 =A0 0 =A0 =A034816 =A0 =A0 =A0 =A0 =A0 30720
-> =A0 1 30720 65536 =A0 =A0 =A0 =A0 =A0 =A02048 unwritten
-> =A0 2 =A0 65536 =A0 =A067584 =A0 =A0 =A0 =A0 =A0 =A04096 unwritten,eo=
-f
-> /mnt/mp1/file: 1 extent found
->
-> The case is not fragmented. The length of #1 extent is a little bit s=
-hort,
-> but there is no point in doing defragmentation because of the hole
-> existence.
-
-Please consider this caseL
-
-Assume for a minute  a large sparse file with lots of holes.  This is
-one like a VM might create.  And that in the middle of the file is a
-block_group with a hole in front of it and a hole after it.  Assume it
-is 1 extent long exactly, and that one extent is a maximum extent (ie
-128 MB with 4KB blocks I believe).
-
-Now assume the VM writes a single short extent at the end of
-block_group.  Your logic says full_extent+small_extent, no need to
-defrag because its already optimal.
-
-I agree with that.
-
-Now assume instead of the block_group being extended at the tail, it
-is extended at the head.
-
-Now you have:
-
-   small_extent+full_extent
-
-Your logic as I understand it will score that as not as good as the
-first case.  I disagree,  Both are optimally defragged and both should
-get the same score.
-
->
-> Regards,
-> Kazuya Mio
-
-Greg
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
