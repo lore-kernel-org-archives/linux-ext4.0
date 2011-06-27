@@ -1,76 +1,85 @@
-From: Steven Liu <lingjiujianke@gmail.com>
-Subject: Re: [PATCH v2] ext4: avoid redundant cache finding if flags not
- cantian PUNCH_OUT
-Date: Mon, 27 Jun 2011 21:45:25 +0800
-Message-ID: <BANLkTikLtWsELdrn4tVsE2SB-hg32ni+Xw@mail.gmail.com>
-References: <1309171513-5246-1-git-send-email-sanbai@taobao.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Bug#615998: linux-image-2.6.32-5-xen-amd64: Repeatable "kernel
+ BUG at fs/jbd2/commit.c:534" from Postfix on ext4
+Date: Mon, 27 Jun 2011 16:02:51 +0200
+Message-ID: <20110627140251.GI5597@quack.suse.cz>
+References: <26AE8923-4DEA-43FF-8F79-1D5AA665A344@boeing.com>
+ <20110405230538.GH2832@thunk.org>
+ <FD93E462-D97B-411B-BF09-9A64670AC5C2@boeing.com>
+ <AF621113-8320-4973-A88A-1FC048EA4293@boeing.com>
+ <BANLkTi=5BLA07tvbv3PFcZ0cc8FmBtg+UA@mail.gmail.com>
+ <404FD5CC-8F27-4336-B7D4-10675C53A588@boeing.com>
+ <20110624134659.GB26380@quack.suse.cz>
+ <2F80BF45-28FA-46D3-9A28-CA9416DC5813@boeing.com>
+ <20110624200231.GA32176@quack.suse.cz>
+ <alpine.LFD.2.00.1106271312310.3845@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, Robin Dong <sanbai@taobao.com>
-To: Robin Dong <hao.bigrat@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>,
+	"Moffett, Kyle D" <Kyle.D.Moffett@boeing.com>,
+	Sean Ryle <seanbo@gmail.com>, Ted Ts'o <tytso@mit.edu>,
+	"615998@bugs.debian.org" <615998@bugs.debian.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Sachin Sant <sachinp@in.ibm.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:35999 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751203Ab1F0Np0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Jun 2011 09:45:26 -0400
-Received: by bwd5 with SMTP id 5so1238130bwd.19
-        for <linux-ext4@vger.kernel.org>; Mon, 27 Jun 2011 06:45:25 -0700 (PDT)
-In-Reply-To: <1309171513-5246-1-git-send-email-sanbai@taobao.com>
+Received: from cantor2.suse.de ([195.135.220.15]:46558 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750897Ab1F0OC5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 27 Jun 2011 10:02:57 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1106271312310.3845@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Robin Dong
+On Mon 27-06-11 13:16:50, Lukas Czerner wrote:
+> On Fri, 24 Jun 2011, Jan Kara wrote:
+> 
+> > On Fri 24-06-11 11:03:52, Moffett, Kyle D wrote:
+> > > On Jun 24, 2011, at 09:46, Jan Kara wrote:
+> > > > On Thu 23-06-11 16:19:08, Moffett, Kyle D wrote:
+> > > >> Besides which, line 534 in the Debian 2.6.32 kernel I am using is this
+> > > >> one:
+> > > >> 
+> > > >>  J_ASSERT(commit_transaction->t_nr_buffers <=
+> > > >>           commit_transaction->t_outstanding_credits);
+> > > > 
+> > > >  Hmm, OK, so we've used more metadata buffers than we told JBD2 to
+> > > > reserve. I suppose you are not using data=journal mode and the filesystem
+> > > > was created as ext4 (i.e. not converted from ext3), right? Are you using
+> > > > quotas?
+> > > 
+> > > The filesystem *is* using data=journal mode.  If I switch to data=ordered
+> > > or data=writeback, the problem goes away.
+> >   Ah, OK. Then bug https://bugzilla.kernel.org/show_bug.cgi?id=34642 is
+> > probably ext3 incarnation of the same problem and it seems it's still
+> > present even in the current kernel - that ext3 assertion triggered even
+> > with 2.6.39 kernel. Frankly data=journal mode is far less tested than the
+> > other two modes especially with ext4, so I'm not sure how good idea is to
+> > use it in production.
+ 
+  Hi Lukas,
 
-     Why don't modify this line?
-  =A0if ((flags & EXT4_GET_BLOCKS_CREATE) =3D=3D 0) {
-    if(!(flags & EXT4_GET_BLOCKS_CREATE))
+> if it is so (and it probably is, since I am not testing this mode as
+> well:), it would be interesting to find out whether there are many users
+> of this and if there are not, which is probably the case, deprecate it now,
+> so we can remove it later. If we are openly suggesting not to use this,
+> then there is probably no point in having this option in the first
+> place.
+  For about one year I'm trying to look for people using data=journal and
+I've found some. So although data=journal users are minority, there are
+some. That being said I agree with you we should do something about it
+- either state that we want to fully support data=journal - and then we
+should really do better with testing it or deprecate it and remove it
+(which would save us some complications in the code).
 
+I would be slightly in favor of removing it (code simplicity, less options
+to configure for admin, less options to test for us, some users I've come
+across actually were not quite sure why they are using it - they just
+thought it looks safer).
 
-2011/6/27 Robin Dong <hao.bigrat@gmail.com>:
-> In old code, ext4 will find extent in cache first even flags does
-> not contian PUNCH_OUT, that may waste some time.
->
-> Signed-off-by: Robin Dong <sanbai@taobao.com>
-> Reviewed-by: Lukas Czerner <lczerner@redhat.com>
-> ---
-> =A0fs/ext4/extents.c | =A0 =A04 ++--
-> =A01 files changed, 2 insertions(+), 2 deletions(-)
->
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index eb63c7b..fed2633 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -3358,8 +3358,8 @@ int ext4_ext_map_blocks(handle_t *handle, struc=
-t inode *inode,
-> =A0 =A0 =A0 =A0trace_ext4_ext_map_blocks_enter(inode, map->m_lblk, ma=
-p->m_len, flags);
->
-> =A0 =A0 =A0 =A0/* check in cache */
-> - =A0 =A0 =A0 if (ext4_ext_in_cache(inode, map->m_lblk, &newex) &&
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 ((flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT=
-) =3D=3D 0)) {
-> + =A0 =A0 =A0 if (!(flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) &&
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_ext_in_cache(inode, map->m_lblk, &=
-newex)) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (!newex.ee_start_lo && !newex.ee_st=
-art_hi) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if ((flags & EXT4_GET_=
-BLOCKS_CREATE) =3D=3D 0) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/*
-> --
-> 1.7.1
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
-
-Best Regards
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
