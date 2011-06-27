@@ -1,100 +1,78 @@
-From: Vivek Goyal <vgoyal@redhat.com>
-Subject: [RFC PATCH 0/3] block: Fix fsync slowness with CFQ cgroups
-Date: Mon, 27 Jun 2011 16:17:41 -0400
-Message-ID: <1309205864-13124-1-git-send-email-vgoyal@redhat.com>
-Cc: vgoyal@redhat.com, khlebnikov@openvz.org, jmoyer@redhat.com
-To: linux-kernel@vger.kernel.org, jaxboe@fusionio.com,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Bug#615998: linux-image-2.6.32-5-xen-amd64: Repeatable "kernel
+ BUG at fs/jbd2/commit.c:534" from Postfix on ext4
+Date: Mon, 27 Jun 2011 22:27:51 +0200
+Message-ID: <20110627202751.GJ5597@quack.suse.cz>
+References: <AF621113-8320-4973-A88A-1FC048EA4293@boeing.com>
+ <BANLkTi=5BLA07tvbv3PFcZ0cc8FmBtg+UA@mail.gmail.com>
+ <404FD5CC-8F27-4336-B7D4-10675C53A588@boeing.com>
+ <20110624134659.GB26380@quack.suse.cz>
+ <2F80BF45-28FA-46D3-9A28-CA9416DC5813@boeing.com>
+ <20110624200231.GA32176@quack.suse.cz>
+ <alpine.LFD.2.00.1106271312310.3845@dhcp-27-109.brq.redhat.com>
+ <20110627140251.GI5597@quack.suse.cz>
+ <alpine.LFD.2.00.1106271714350.3845@dhcp-27-109.brq.redhat.com>
+ <20110627160140.GC2729@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Lukas Czerner <lczerner@redhat.com>, Jan Kara <jack@suse.cz>,
+	"Moffett, Kyle D" <Kyle.D.Moffett@boeing.com>,
+	Sean Ryle <seanbo@gmail.com>,
+	"615998@bugs.debian.org" <615998@bugs.debian.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Sachin Sant <sachinp@in.ibm.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:1027 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:36187 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754154Ab1F0URt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 27 Jun 2011 16:17:49 -0400
+	id S1754296Ab1F0U15 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 27 Jun 2011 16:27:57 -0400
+Content-Disposition: inline
+In-Reply-To: <20110627160140.GC2729@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Mon 27-06-11 12:01:40, Ted Tso wrote:
+> On Mon, Jun 27, 2011 at 05:30:11PM +0200, Lukas Czerner wrote:
+> > > I've found some. So although data=journal users are minority, there are
+> > > some. That being said I agree with you we should do something about it
+> > > - either state that we want to fully support data=journal - and then we
+> > > should really do better with testing it or deprecate it and remove it
+> > > (which would save us some complications in the code).
+> > > 
+> > > I would be slightly in favor of removing it (code simplicity, less options
+> > > to configure for admin, less options to test for us, some users I've come
+> > > across actually were not quite sure why they are using it - they just
+> > > thought it looks safer).
+> 
+> Hmm...  FYI, I hope to be able to bring on line automated testing for
+> ext4 later this summer (there's a testing person at Google is has
+> signed up to work on setting this up as his 20% project).  The test
+> matrix that I have him included data=journal, so we will be getting
+> better testing in the near future.
+  Good! 
 
-Konstantin reported that fsync is very slow with ext4 if fsyncing process
-is in a separate cgroup and one is using CFQ IO scheduler.
+> At least historically, data=journalling was the *simpler* case, and
+> was the first thing supported by ext4.  (data=ordered required revoke
+> handling which didn't land for six months or so).  So I'm not really
+> that convinced that removing really buys us that much code
+> simplification.
+  It does buy us some reduction in number of variants (e.g. write_begin,
+write_end, writepage), we also wouldn't have to care about journalled data
+during invalidatepage() or releasepage() calls. 
+ 
+> That being siad, it is true that data=journalled isn't necessarily
+> faster.  For heavy disk-bound workloads, it can be slower.  So I can
+> imagine adding some documentation that warns people not to use
+> data=journal unless they really know what they are doing, but at least
+> personally, I'm a bit reluctant to dispense with a bug report like
+> this by saying, "oh, that feature should be deprecated".
+  No, I didn't want to dispense the bug report - we should definitely fix
+the bug. I just remarked that data=journal is currently not well tested and
+thus using it in production has its problems.
 
-https://lkml.org/lkml/2011/6/23/269
-
-Issue seems to be that fsync process is in a separate cgroup and journalling
-thread is in root cgroup. After every IO from fsync, CFQ idles on fysnc
-process queue waiting for more requests to come. But this process is now
-waiting for IO to finish from journaling thread. After waiting for 8ms
-fsync's queue gives way to jbd's queue. Then we start idling on jbd
-thread and new IO from fsync is sitting in a separate queue in a separate
-group.
-
-Bottom line, that after every IO we end up idling on fysnc and jbd thread
-so much that if somebody is doing fsync after every 4K of IO, throughput
-nose dives.
-
-Similar issue had issue come up with-in same cgroup also when "fsync"
-and "jbd" thread were being queued on differnt service trees and idling
-was killing. At that point of time two solutions were proposed. One
-from Jeff Moyer and one from Corrado Zoccolo.
-
-Jeff came up with the idea of coming with block layer API to yield the
-queue if explicitly told by file system, hence cutting down on idling.
-
-https://lkml.org/lkml/2010/7/2/277
-
-Corrado, came up with a simpler approach of keeping jbd and fsync processes
-on same service tree by parsing RQ_NOIDLE flag. By queuing on same service
-tree, one queue preempts other queue hence cutting down on idling time.
-Upstream went ahead with simpler approach to fix the issue.
-
-commit 749ef9f8423054e326f3a246327ed2db4b6d395f
-Author: Corrado Zoccolo <czoccolo@gmail.com>
-Date:   Mon Sep 20 15:24:50 2010 +0200
-
-    cfq: improve fsync performance for small files
-
-
-Now with cgroups, same problem resurfaces but this time we can not queue
-both the processes on same service tree and take advantage of preemption
-as separate cgroups have separate service trees and both processes
-belong to separate cgroups. We do not allow cross cgroup preemption 
-as that wil break down the isolation between groups.
-
-So this patch series resurrects Jeff's solution of file system specifying
-the IO dependencies between threads explicitly to the block layer/ioscheduler.
-One ioscheduler knows that current queue we are idling on is dependent on
-IO from some other queue, CFQ allows dispatch of requests from that other
-queue in the context of current active queue.
-
-So if fysnc thread specifies the dependency on journalling thread, then
-when time slice of fsync thread is running, it allows dispatch from
-jbd in the time slice of fsync thread. Hence cutting down on idling.
-
-This patch series seems to be working for me. I did testing for ext4 only.
-This series is based on for-3.1/core branch of Jen's block tree.
-Konstantin, can you please give it a try and see if it fixes your
-issue.
-
-Any feedback on how to solve this issue is appreciated.
-
-Thanks
-Vivek
-
-
-Vivek Goyal (3):
-  block: A new interface for specifying IO dependencing among tasks
-  ext4: Explicitly specify fsync dependency on journaling thread
-  ext3: Explicitly specify fsync dependency on journaling thread
-
- block/blk-core.c         |   42 ++++++++
- block/cfq-iosched.c      |  236 ++++++++++++++++++++++++++++++++++++++++++---
- block/elevator.c         |   16 +++
- fs/ext3/fsync.c          |    3 +
- fs/ext4/fsync.c          |    3 +
- include/linux/blkdev.h   |    8 ++-
- include/linux/elevator.h |    6 +
- 7 files changed, 297 insertions(+), 17 deletions(-)
-
+								Honza
 -- 
-1.7.4.4
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
