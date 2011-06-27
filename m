@@ -1,75 +1,43 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: big allocation status
-Date: Mon, 27 Jun 2011 18:25:11 +0800
-Message-ID: <4E085A87.7050101@tao.ma>
-References: <4DE83F83.6070302@tao.ma> <20110604033805.GD2614@thunk.org> <20110606230421.GF20818@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Ted Ts'o <tytso@mit.edu>
+From: Robin Dong <hao.bigrat@gmail.com>
+Subject: [PATCH v2] ext4: avoid redundant cache finding if flags not cantian PUNCH_OUT
+Date: Mon, 27 Jun 2011 18:45:13 +0800
+Message-ID: <1309171513-5246-1-git-send-email-sanbai@taobao.com>
+Cc: Robin Dong <sanbai@taobao.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy8-pub.bluehost.com ([69.89.22.20]:36225 "HELO
-	oproxy8-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1754927Ab1F0KZT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Jun 2011 06:25:19 -0400
-In-Reply-To: <20110606230421.GF20818@thunk.org>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:50656 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756429Ab1F0Kp1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Jun 2011 06:45:27 -0400
+Received: by iwn6 with SMTP id 6so3980982iwn.19
+        for <linux-ext4@vger.kernel.org>; Mon, 27 Jun 2011 03:45:26 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
-	We began our test this week. And we found an error in dmesg:
+In old code, ext4 will find extent in cache first even flags does
+not contian PUNCH_OUT, that may waste some time.
 
-[10484.043482] EXT4-fs (sda10): delayed block allocation failed for
-inode 2289279 at logical offset 0 with max blocks 2 with error -28
-[10484.043484] EXT4-fs (sda10): This should not happen!! Data will be lost
-[10484.043484]
-[10484.043486] Total free blocks count 0
-[10484.043487] Free/Dirty block details
-[10484.043488] free_blocks=0
-[10484.043489] dirty_blocks=1495584
-[10484.043489] Block reservation details
-[10484.043490] i_reserved_data_blocks=2
-[10484.043491] i_reserved_meta_blocks=1
+Signed-off-by: Robin Dong <sanbai@taobao.com>
+Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/extents.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-yes, df shows that the file system is used 100% now, so I am not sure
-whether this is a bug or not.
-
-btw, this is a postmark test.
-
-Regards,
-Tao
-
-
-On 06/07/2011 07:04 AM, Ted Ts'o wrote:
-> On Fri, Jun 03, 2011 at 11:38:05PM -0400, Ted Ts'o wrote:
->> On Fri, Jun 03, 2011 at 09:57:23AM +0800, Tao Ma wrote:
->>> Hi Ted,
->>>
->>> Do you have any new branch or patch set that can be used for testing
->>> about big allocation? The latest patch set in the mailist is what you
->>> have sent at the beginning of May. Do you have an updated one? We will
->>> try to test it soon and it would grateful if we are on the same page.
->>
->> There is a patch set available at:
->>
->> git://repo.or.cz/ext4-patch-queue.git
->>
->> The bigalloc patches are after the stable-boundary, and will apply
->> against 3.0-rc1.
-> 
-> I've updated the bigalloc patch set to fix a number of bugs that I and
-> a colleague of mine at Google have found.
-> 
-> This patch set known have problems with i_blocks getting out of sync
-> if delalloc is enabled (particularly with sparse files and truncates),
-> and as mentioned before, doesn't work correctly with the punch ioctl.
-> These are bugs that we plan to fix before anything gets pushed into
-> upstream, of course.
-> 
-> 	      					- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index eb63c7b..fed2633 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3358,8 +3358,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ 	trace_ext4_ext_map_blocks_enter(inode, map->m_lblk, map->m_len, flags);
+ 
+ 	/* check in cache */
+-	if (ext4_ext_in_cache(inode, map->m_lblk, &newex) &&
+-		((flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) == 0)) {
++	if (!(flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) &&
++		ext4_ext_in_cache(inode, map->m_lblk, &newex)) {
+ 		if (!newex.ee_start_lo && !newex.ee_start_hi) {
+ 			if ((flags & EXT4_GET_BLOCKS_CREATE) == 0) {
+ 				/*
+-- 
+1.7.1
 
