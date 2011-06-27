@@ -1,132 +1,190 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/3] ext4: move __ext4_check_blockref to block_validity.c
-Date: Mon, 27 Jun 2011 19:44:56 -0400
-Message-ID: <1309218298-12554-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2/3] ext4: move common truncate functions to header file
+Date: Mon, 27 Jun 2011 19:44:57 -0400
+Message-ID: <1309218298-12554-2-git-send-email-tytso@mit.edu>
 References: <20110627234156.GG2729@thunk.org>
+ <1309218298-12554-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:54039 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:54036 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755577Ab1F0XpA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1755521Ab1F0XpA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 27 Jun 2011 19:45:00 -0400
-In-Reply-To: <20110627234156.GG2729@thunk.org>
+In-Reply-To: <1309218298-12554-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In preparation for moving the indirect functions to a separate file,
-move __ext4_check_blockref() to block_validity.c and rename it to
-ext4_check_blockref() which is exported as globally visible function.
-
-Also, rename the cpp macro ext4_check_inode_blockref() to
-ext4_ind_check_inode(), to make it clear that it is only valid for use
-with non-extent mapped inodes.
+Move two functions that will be needed by the indirect functions to be
+moved to indirect.c as well as inode.c to truncate.h as inline
+functions, so that we can avoid having duplicate copies of the
+function (which can be a maintenance problem) without having to expose
+them as globally functions.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/block_validity.c |   20 ++++++++++++++++++++
- fs/ext4/ext4.h           |   15 +++++++++++++++
- fs/ext4/inode.c          |   35 +----------------------------------
- 3 files changed, 36 insertions(+), 34 deletions(-)
+ fs/ext4/inode.c    |   48 ++++++------------------------------------------
+ fs/ext4/truncate.h |   43 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 49 insertions(+), 42 deletions(-)
+ create mode 100644 fs/ext4/truncate.h
 
-diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
-index fac90f3..af103be 100644
---- a/fs/ext4/block_validity.c
-+++ b/fs/ext4/block_validity.c
-@@ -246,3 +246,23 @@ int ext4_data_block_valid(struct ext4_sb_info *sbi, ext4_fsblk_t start_blk,
- 	return 1;
- }
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 3dca526..9b82ac7 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -47,6 +47,7 @@
+ #include "xattr.h"
+ #include "acl.h"
+ #include "ext4_extents.h"
++#include "truncate.h"
  
-+int ext4_check_blockref(const char *function, unsigned int line,
-+			struct inode *inode, __le32 *p, unsigned int max)
-+{
-+	struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
-+	__le32 *bref = p;
-+	unsigned int blk;
-+
-+	while (bref < p+max) {
-+		blk = le32_to_cpu(*bref++);
-+		if (blk &&
-+		    unlikely(!ext4_data_block_valid(EXT4_SB(inode->i_sb),
-+						    blk, 1))) {
-+			es->s_last_error_block = cpu_to_le64(blk);
-+			ext4_error_inode(inode, function, line, blk,
-+					 "invalid block");
-+			return -EIO;
-+		}
-+	}
-+	return 0;
-+}
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 8532dd4..82ba7eb 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2125,6 +2125,19 @@ static inline void ext4_mark_super_dirty(struct super_block *sb)
+ #include <trace/events/ext4.h>
+ 
+@@ -89,33 +90,6 @@ static int ext4_inode_is_fast_symlink(struct inode *inode)
  }
  
  /*
-+ * Block validity checking
-+ */
-+#define ext4_check_indirect_blockref(inode, bh)				\
-+	ext4_check_blockref(__func__, __LINE__, inode,			\
-+			    (__le32 *)(bh)->b_data,			\
-+			    EXT4_ADDR_PER_BLOCK((inode)->i_sb))
-+
-+#define ext4_ind_check_inode(inode)					\
-+	ext4_check_blockref(__func__, __LINE__, inode,			\
-+			    EXT4_I(inode)->i_data,			\
-+			    EXT4_NDIR_BLOCKS)
-+
-+/*
-  * Inodes and files operations
-  */
- 
-@@ -2153,6 +2166,8 @@ extern void ext4_exit_system_zone(void);
- extern int ext4_data_block_valid(struct ext4_sb_info *sbi,
- 				 ext4_fsblk_t start_blk,
- 				 unsigned int count);
-+extern int ext4_check_blockref(const char *, unsigned int,
-+			       struct inode *, __le32 *, unsigned int);
- 
- /* extents.c */
- extern int ext4_ext_tree_init(handle_t *handle, struct inode *);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 6c1d28e..3dca526 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -360,39 +360,6 @@ static int ext4_block_to_path(struct inode *inode,
- 	return n;
- }
- 
--static int __ext4_check_blockref(const char *function, unsigned int line,
--				 struct inode *inode,
--				 __le32 *p, unsigned int max)
+- * Work out how many blocks we need to proceed with the next chunk of a
+- * truncate transaction.
+- */
+-static unsigned long blocks_for_truncate(struct inode *inode)
 -{
--	struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
--	__le32 *bref = p;
--	unsigned int blk;
+-	ext4_lblk_t needed;
 -
--	while (bref < p+max) {
--		blk = le32_to_cpu(*bref++);
--		if (blk &&
--		    unlikely(!ext4_data_block_valid(EXT4_SB(inode->i_sb),
--						    blk, 1))) {
--			es->s_last_error_block = cpu_to_le64(blk);
--			ext4_error_inode(inode, function, line, blk,
--					 "invalid block");
--			return -EIO;
--		}
--	}
--	return 0;
+-	needed = inode->i_blocks >> (inode->i_sb->s_blocksize_bits - 9);
+-
+-	/* Give ourselves just enough room to cope with inodes in which
+-	 * i_blocks is corrupt: we've seen disk corruptions in the past
+-	 * which resulted in random data in an inode which looked enough
+-	 * like a regular file for ext4 to try to delete it.  Things
+-	 * will go a bit crazy if that happens, but at least we should
+-	 * try not to panic the whole kernel. */
+-	if (needed < 2)
+-		needed = 2;
+-
+-	/* But we need to bound the transaction so we don't overflow the
+-	 * journal. */
+-	if (needed > EXT4_MAX_TRANS_DATA)
+-		needed = EXT4_MAX_TRANS_DATA;
+-
+-	return EXT4_DATA_TRANS_BLOCKS(inode->i_sb) + needed;
 -}
 -
+-/*
+  * Truncate transactions can be complex and absolutely huge.  So we need to
+  * be able to restart the transaction at a conventient checkpoint to make
+  * sure we don't overflow the journal.
+@@ -129,7 +103,7 @@ static handle_t *start_transaction(struct inode *inode)
+ {
+ 	handle_t *result;
+ 
+-	result = ext4_journal_start(inode, blocks_for_truncate(inode));
++	result = ext4_journal_start(inode, ext4_blocks_for_truncate(inode));
+ 	if (!IS_ERR(result))
+ 		return result;
+ 
+@@ -149,7 +123,7 @@ static int try_to_extend_transaction(handle_t *handle, struct inode *inode)
+ 		return 0;
+ 	if (ext4_handle_has_enough_credits(handle, EXT4_RESERVE_TRANS_BLOCKS+1))
+ 		return 0;
+-	if (!ext4_journal_extend(handle, blocks_for_truncate(inode)))
++	if (!ext4_journal_extend(handle, ext4_blocks_for_truncate(inode)))
+ 		return 0;
+ 	return 1;
+ }
+@@ -204,7 +178,7 @@ void ext4_evict_inode(struct inode *inode)
+ 	if (is_bad_inode(inode))
+ 		goto no_delete;
+ 
+-	handle = ext4_journal_start(inode, blocks_for_truncate(inode)+3);
++	handle = ext4_journal_start(inode, ext4_blocks_for_truncate(inode)+3);
+ 	if (IS_ERR(handle)) {
+ 		ext4_std_error(inode->i_sb, PTR_ERR(handle));
+ 		/*
+@@ -1555,16 +1529,6 @@ static int do_journal_get_write_access(handle_t *handle,
+ 	return ret;
+ }
+ 
+-/*
+- * Truncate blocks that were not used by write. We have to truncate the
+- * pagecache as well so that corresponding buffers get properly unmapped.
+- */
+-static void ext4_truncate_failed_write(struct inode *inode)
+-{
+-	truncate_inode_pages(inode->i_mapping, inode->i_size);
+-	ext4_truncate(inode);
+-}
 -
--#define ext4_check_indirect_blockref(inode, bh)                         \
--	__ext4_check_blockref(__func__, __LINE__, inode,		\
--			      (__le32 *)(bh)->b_data,			\
--			      EXT4_ADDR_PER_BLOCK((inode)->i_sb))
--
--#define ext4_check_inode_blockref(inode)                                \
--	__ext4_check_blockref(__func__, __LINE__, inode,		\
--			      EXT4_I(inode)->i_data,			\
--			      EXT4_NDIR_BLOCKS)
+ static int ext4_get_block_write(struct inode *inode, sector_t iblock,
+ 		   struct buffer_head *bh_result, int create);
+ static int ext4_write_begin(struct file *file, struct address_space *mapping,
+@@ -4134,7 +4098,7 @@ static int ext4_clear_blocks(handle_t *handle, struct inode *inode,
+ 		if (unlikely(err))
+ 			goto out_err;
+ 		err = ext4_truncate_restart_trans(handle, inode,
+-						  blocks_for_truncate(inode));
++					ext4_blocks_for_truncate(inode));
+ 		if (unlikely(err))
+ 			goto out_err;
+ 		if (bh) {
+@@ -4329,7 +4293,7 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
+ 			if (try_to_extend_transaction(handle, inode)) {
+ 				ext4_mark_inode_dirty(handle, inode);
+ 				ext4_truncate_restart_trans(handle, inode,
+-					    blocks_for_truncate(inode));
++					    ext4_blocks_for_truncate(inode));
+ 			}
+ 
+ 			/*
+diff --git a/fs/ext4/truncate.h b/fs/ext4/truncate.h
+new file mode 100644
+index 0000000..011ba66
+--- /dev/null
++++ b/fs/ext4/truncate.h
+@@ -0,0 +1,43 @@
++/*
++ * linux/fs/ext4/truncate.h
++ *
++ * Common inline functions needed for truncate support
++ */
++
++/*
++ * Truncate blocks that were not used by write. We have to truncate the
++ * pagecache as well so that corresponding buffers get properly unmapped.
++ */
++static inline void ext4_truncate_failed_write(struct inode *inode)
++{
++	truncate_inode_pages(inode->i_mapping, inode->i_size);
++	ext4_truncate(inode);
++}
++
++/*
++ * Work out how many blocks we need to proceed with the next chunk of a
++ * truncate transaction.
++ */
++static inline unsigned long ext4_blocks_for_truncate(struct inode *inode)
++{
++	ext4_lblk_t needed;
++
++	needed = inode->i_blocks >> (inode->i_sb->s_blocksize_bits - 9);
++
++	/* Give ourselves just enough room to cope with inodes in which
++	 * i_blocks is corrupt: we've seen disk corruptions in the past
++	 * which resulted in random data in an inode which looked enough
++	 * like a regular file for ext4 to try to delete it.  Things
++	 * will go a bit crazy if that happens, but at least we should
++	 * try not to panic the whole kernel. */
++	if (needed < 2)
++		needed = 2;
++
++	/* But we need to bound the transaction so we don't overflow the
++	 * journal. */
++	if (needed > EXT4_MAX_TRANS_DATA)
++		needed = EXT4_MAX_TRANS_DATA;
++
++	return EXT4_DATA_TRANS_BLOCKS(inode->i_sb) + needed;
++}
++
+-- 
+1.7.4.1.22.gec8e1.dirty
+
