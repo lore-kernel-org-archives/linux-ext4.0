@@ -1,78 +1,54 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Bug#615998: linux-image-2.6.32-5-xen-amd64: Repeatable "kernel
- BUG at fs/jbd2/commit.c:534" from Postfix on ext4
-Date: Mon, 27 Jun 2011 22:27:51 +0200
-Message-ID: <20110627202751.GJ5597@quack.suse.cz>
-References: <AF621113-8320-4973-A88A-1FC048EA4293@boeing.com>
- <BANLkTi=5BLA07tvbv3PFcZ0cc8FmBtg+UA@mail.gmail.com>
- <404FD5CC-8F27-4336-B7D4-10675C53A588@boeing.com>
- <20110624134659.GB26380@quack.suse.cz>
- <2F80BF45-28FA-46D3-9A28-CA9416DC5813@boeing.com>
- <20110624200231.GA32176@quack.suse.cz>
- <alpine.LFD.2.00.1106271312310.3845@dhcp-27-109.brq.redhat.com>
- <20110627140251.GI5597@quack.suse.cz>
- <alpine.LFD.2.00.1106271714350.3845@dhcp-27-109.brq.redhat.com>
- <20110627160140.GC2729@thunk.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4:quiet 'unsed variables' compiling warnings.
+Date: Mon, 27 Jun 2011 16:34:42 -0400
+Message-ID: <20110627203442.GF2729@thunk.org>
+References: <1308108420-13799-1-git-send-email-xiaoqiangnk@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Lukas Czerner <lczerner@redhat.com>, Jan Kara <jack@suse.cz>,
-	"Moffett, Kyle D" <Kyle.D.Moffett@boeing.com>,
-	Sean Ryle <seanbo@gmail.com>,
-	"615998@bugs.debian.org" <615998@bugs.debian.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Sachin Sant <sachinp@in.ibm.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Ted Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:36187 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754296Ab1F0U15 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 27 Jun 2011 16:27:57 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:51438 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754312Ab1F0Uep (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 27 Jun 2011 16:34:45 -0400
 Content-Disposition: inline
-In-Reply-To: <20110627160140.GC2729@thunk.org>
+In-Reply-To: <1308108420-13799-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 27-06-11 12:01:40, Ted Tso wrote:
-> On Mon, Jun 27, 2011 at 05:30:11PM +0200, Lukas Czerner wrote:
-> > > I've found some. So although data=journal users are minority, there are
-> > > some. That being said I agree with you we should do something about it
-> > > - either state that we want to fully support data=journal - and then we
-> > > should really do better with testing it or deprecate it and remove it
-> > > (which would save us some complications in the code).
-> > > 
-> > > I would be slightly in favor of removing it (code simplicity, less options
-> > > to configure for admin, less options to test for us, some users I've come
-> > > across actually were not quite sure why they are using it - they just
-> > > thought it looks safer).
+On Wed, Jun 15, 2011 at 11:27:00AM +0800, Yongqiang Yang wrote:
+> Delete unused variables.
 > 
-> Hmm...  FYI, I hope to be able to bring on line automated testing for
-> ext4 later this summer (there's a testing person at Google is has
-> signed up to work on setting this up as his 20% project).  The test
-> matrix that I have him included data=journal, so we will be getting
-> better testing in the near future.
-  Good! 
+> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 859f2ae..fece8c2 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -2860,7 +2860,7 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
+>  {
+>  	int bsbits, max;
+>  	ext4_lblk_t end;
+> -	loff_t size, orig_size, start_off;
+> +	loff_t size, start_off;
 
-> At least historically, data=journalling was the *simpler* case, and
-> was the first thing supported by ext4.  (data=ordered required revoke
-> handling which didn't land for six months or so).  So I'm not really
-> that convinced that removing really buys us that much code
-> simplification.
-  It does buy us some reduction in number of variants (e.g. write_begin,
-write_end, writepage), we also wouldn't have to care about journalled data
-during invalidatepage() or releasepage() calls. 
- 
-> That being siad, it is true that data=journalled isn't necessarily
-> faster.  For heavy disk-bound workloads, it can be slower.  So I can
-> imagine adding some documentation that warns people not to use
-> data=journal unless they really know what they are doing, but at least
-> personally, I'm a bit reluctant to dispense with a bug report like
-> this by saying, "oh, that feature should be deprecated".
-  No, I didn't want to dispense the bug report - we should definitely fix
-the bug. I just remarked that data=journal is currently not well tested and
-thus using it in production has its problems.
+Unfortunately, orig_size is being used by an mb_debug statement.  So
+simply removing orig_size and its initialization will cause the build
+to break if CONFIG_EXT4_DEBUG is enabled.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Can you resend this patch with this part of the patch removed?
+
+Also, for future reference I prefer for consistency's sake that the
+one-line summary be:
+
+ext4: quiet 'used variables' compiling warnings
+
+(note the space after "ext4: ", the lack of a ending period, and the
+spelling correction for "unsed"; the other change which I will
+commonly make for folks, again for consistency, is to make the first
+word after "ext4: " lower case --- the summary does not have to be a
+complete sentence, which is why I remove the trailing period)
+
+Thanks,
+
+						- Ted
