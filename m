@@ -1,70 +1,41 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCH v2] ext4: avoid redundant cache finding if flags not
-	cantian PUNCH_OUT
-Date: Mon, 27 Jun 2011 12:59:11 -0700
-Message-ID: <20110627195911.GD20655@tux1.beaverton.ibm.com>
-References: <1309171513-5246-1-git-send-email-sanbai@taobao.com>
-Reply-To: djwong@us.ibm.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Robin Dong <sanbai@taobao.com>
-To: Robin Dong <hao.bigrat@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:56782 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753946Ab1F0T74 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Jun 2011 15:59:56 -0400
-Received: from d03relay05.boulder.ibm.com (d03relay05.boulder.ibm.com [9.17.195.107])
-	by e36.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p5RJrfNd021282
-	for <linux-ext4@vger.kernel.org>; Mon, 27 Jun 2011 13:53:41 -0600
-Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
-	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p5RJxJas089202
-	for <linux-ext4@vger.kernel.org>; Mon, 27 Jun 2011 13:59:23 -0600
-Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av04.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p5RDx8YA032742
-	for <linux-ext4@vger.kernel.org>; Mon, 27 Jun 2011 07:59:08 -0600
-Content-Disposition: inline
-In-Reply-To: <1309171513-5246-1-git-send-email-sanbai@taobao.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Vivek Goyal <vgoyal@redhat.com>
+Subject: [PATCH 2/3] ext4: Explicitly specify fsync dependency on journaling thread
+Date: Mon, 27 Jun 2011 16:17:43 -0400
+Message-ID: <1309205864-13124-3-git-send-email-vgoyal@redhat.com>
+References: <1309205864-13124-1-git-send-email-vgoyal@redhat.com>
+Cc: vgoyal@redhat.com, khlebnikov@openvz.org, jmoyer@redhat.com
+To: linux-kernel@vger.kernel.org, jaxboe@fusionio.com,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1309205864-13124-1-git-send-email-vgoyal@redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jun 27, 2011 at 06:45:13PM +0800, Robin Dong wrote:
-> Subject: [PATCH v2] ext4: avoid redundant cache finding if flags not cantian
+Set/reset fsync dependency of fsync on journalling thread. This allows
+CFQ to dispatch IO from journalling thread in fsync's time slice.
+Otherwise, lots of cfq queue idling takes place if fsync is running
+in a separate cgroup and journalling thread is running in root group.
 
-I suspect you mean "contain" as opposed to "cantian".
+Signed-off-by: Vivek Goyal <vgoyal@redhat.com>
+---
+ fs/ext4/fsync.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
 
-> In old code, ext4 will find extent in cache first even flags does
-> not contian PUNCH_OUT, that may waste some time.
+diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+index ce66d2f..8b16a90 100644
+--- a/fs/ext4/fsync.c
++++ b/fs/ext4/fsync.c
+@@ -216,7 +216,10 @@ int ext4_sync_file(struct file *file, int datasync)
+ 	    !jbd2_trans_will_send_data_barrier(journal, commit_tid))
+ 		needs_barrier = true;
+ 	jbd2_log_start_commit(journal, commit_tid);
++	blk_set_depends_on_task(journal->j_dev->bd_disk->queue,
++				journal->j_task);
+ 	ret = jbd2_log_wait_commit(journal, commit_tid);
++	blk_reset_depends_on_task(journal->j_dev->bd_disk->queue);
+ 	if (needs_barrier)
+ 		blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);
+  out:
+-- 
+1.7.4.4
 
-Same here ("contian").
-
---D
-> 
-> Signed-off-by: Robin Dong <sanbai@taobao.com>
-> Reviewed-by: Lukas Czerner <lczerner@redhat.com>
-> ---
->  fs/ext4/extents.c |    4 ++--
->  1 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index eb63c7b..fed2633 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -3358,8 +3358,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
->  	trace_ext4_ext_map_blocks_enter(inode, map->m_lblk, map->m_len, flags);
-> 
->  	/* check in cache */
-> -	if (ext4_ext_in_cache(inode, map->m_lblk, &newex) &&
-> -		((flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) == 0)) {
-> +	if (!(flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) &&
-> +		ext4_ext_in_cache(inode, map->m_lblk, &newex)) {
->  		if (!newex.ee_start_lo && !newex.ee_start_hi) {
->  			if ((flags & EXT4_GET_BLOCKS_CREATE) == 0) {
->  				/*
-> -- 
-> 1.7.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
