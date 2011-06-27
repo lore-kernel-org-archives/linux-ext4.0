@@ -1,84 +1,47 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: Bug#615998: linux-image-2.6.32-5-xen-amd64: Repeatable "kernel
- BUG at fs/jbd2/commit.c:534" from Postfix on ext4
-Date: Mon, 27 Jun 2011 17:30:11 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1106271714350.3845@dhcp-27-109.brq.redhat.com>
-References: <26AE8923-4DEA-43FF-8F79-1D5AA665A344@boeing.com> <20110405230538.GH2832@thunk.org> <FD93E462-D97B-411B-BF09-9A64670AC5C2@boeing.com> <AF621113-8320-4973-A88A-1FC048EA4293@boeing.com> <BANLkTi=5BLA07tvbv3PFcZ0cc8FmBtg+UA@mail.gmail.com>
- <404FD5CC-8F27-4336-B7D4-10675C53A588@boeing.com> <20110624134659.GB26380@quack.suse.cz> <2F80BF45-28FA-46D3-9A28-CA9416DC5813@boeing.com> <20110624200231.GA32176@quack.suse.cz> <alpine.LFD.2.00.1106271312310.3845@dhcp-27-109.brq.redhat.com>
- <20110627140251.GI5597@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>,
-	"Moffett, Kyle D" <Kyle.D.Moffett@boeing.com>,
-	Sean Ryle <seanbo@gmail.com>, "Ted Ts'o" <tytso@mit.edu>,
-	"615998@bugs.debian.org" <615998@bugs.debian.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Sachin Sant <sachinp@in.ibm.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Jan Kara <jack@suse.cz>
+Subject: [PATCH] ext4: Deprecate data=journal mount option
+Date: Mon, 27 Jun 2011 17:37:24 +0200
+Message-ID: <1309189044-21791-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, jack@suse.cz, sandeen@redhat.com,
+	Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:14070 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:56724 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750799Ab1F0Pah (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 27 Jun 2011 11:30:37 -0400
-In-Reply-To: <20110627140251.GI5597@quack.suse.cz>
+	id S1750973Ab1F0Phn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 27 Jun 2011 11:37:43 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 27 Jun 2011, Jan Kara wrote:
+Data journalling mode (data=journal) is known to be neglected by
+developers and only minority of people is actually using it. This
+mode is also less tested than the other two modes by the developers.
 
-> On Mon 27-06-11 13:16:50, Lukas Czerner wrote:
-> > On Fri, 24 Jun 2011, Jan Kara wrote:
-> > 
-> > > On Fri 24-06-11 11:03:52, Moffett, Kyle D wrote:
-> > > > On Jun 24, 2011, at 09:46, Jan Kara wrote:
-> > > > > On Thu 23-06-11 16:19:08, Moffett, Kyle D wrote:
-> > > > >> Besides which, line 534 in the Debian 2.6.32 kernel I am using is this
-> > > > >> one:
-> > > > >> 
-> > > > >>  J_ASSERT(commit_transaction->t_nr_buffers <=
-> > > > >>           commit_transaction->t_outstanding_credits);
-> > > > > 
-> > > > >  Hmm, OK, so we've used more metadata buffers than we told JBD2 to
-> > > > > reserve. I suppose you are not using data=journal mode and the filesystem
-> > > > > was created as ext4 (i.e. not converted from ext3), right? Are you using
-> > > > > quotas?
-> > > > 
-> > > > The filesystem *is* using data=journal mode.  If I switch to data=ordered
-> > > > or data=writeback, the problem goes away.
-> > >   Ah, OK. Then bug https://bugzilla.kernel.org/show_bug.cgi?id=34642 is
-> > > probably ext3 incarnation of the same problem and it seems it's still
-> > > present even in the current kernel - that ext3 assertion triggered even
-> > > with 2.6.39 kernel. Frankly data=journal mode is far less tested than the
-> > > other two modes especially with ext4, so I'm not sure how good idea is to
-> > > use it in production.
->  
->   Hi Lukas,
-> 
-> > if it is so (and it probably is, since I am not testing this mode as
-> > well:), it would be interesting to find out whether there are many users
-> > of this and if there are not, which is probably the case, deprecate it now,
-> > so we can remove it later. If we are openly suggesting not to use this,
-> > then there is probably no point in having this option in the first
-> > place.
->   For about one year I'm trying to look for people using data=journal and
-> I've found some. So although data=journal users are minority, there are
-> some. That being said I agree with you we should do something about it
-> - either state that we want to fully support data=journal - and then we
-> should really do better with testing it or deprecate it and remove it
-> (which would save us some complications in the code).
-> 
-> I would be slightly in favor of removing it (code simplicity, less options
-> to configure for admin, less options to test for us, some users I've come
-> across actually were not quite sure why they are using it - they just
-> thought it looks safer).
-> 
-> 								Honza
-> 
+This creates a dangerous combination, because the option which seems
+*safer* is actually less safe the others. So this commit adds a warning
+message in case that data=journal mode is used, so the user is informed
+that the mode has been deprecated and we do not recommend using it.
 
-I completely agree with you. Also I find it really dangerous that the
-option which looks much safer is in fact less safe, because just a
-minority of people (including developers) are testing it.
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/super.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
 
-Thanks!
--Lukas
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 9ea71aa..d5a3dea 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1631,6 +1631,10 @@ static int parse_options(char *options, struct super_block *sb,
+ 			sbi->s_min_batch_time = option;
+ 			break;
+ 		case Opt_data_journal:
++			ext4_msg(sb, KERN_WARNING,
++				 "Using data=journal is not recommended. It "
++				 "has been deprecated and can be removed "
++				 "in the future");
+ 			data_opt = EXT4_MOUNT_JOURNAL_DATA;
+ 			goto datacheck;
+ 		case Opt_data_ordered:
+-- 
+1.7.4.4
+
