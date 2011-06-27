@@ -1,46 +1,132 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 3/4] ext4: clone indirect.c file from inode.c
-Date: Mon, 27 Jun 2011 19:41:56 -0400
-Message-ID: <20110627234156.GG2729@thunk.org>
-References: <1308649168-12543-1-git-send-email-amir73il@users.sourceforge.net>
- <1308649168-12543-4-git-send-email-amir73il@users.sourceforge.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Amir Goldstein <amir73il@users.sf.net>
-To: amir73il@users.sourceforge.net
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 1/3] ext4: move __ext4_check_blockref to block_validity.c
+Date: Mon, 27 Jun 2011 19:44:56 -0400
+Message-ID: <1309218298-12554-1-git-send-email-tytso@mit.edu>
+References: <20110627234156.GG2729@thunk.org>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:60727 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:54039 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754916Ab1F0XmE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 27 Jun 2011 19:42:04 -0400
-Content-Disposition: inline
-In-Reply-To: <1308649168-12543-4-git-send-email-amir73il@users.sourceforge.net>
+	id S1755577Ab1F0XpA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 27 Jun 2011 19:45:00 -0400
+In-Reply-To: <20110627234156.GG2729@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 21, 2011 at 12:39:27PM +0300, amir73il@users.sourceforge.net wrote:
-> From: Amir Goldstein <amir73il@users.sf.net>
-> 
-> The next patch is going to move ext4_ind_ functions to
-> indirect.c. First, we clone the file from inode.c and
-> only leave code that is going to be duplicated in both files.
-> This should keep the deleted lines count from inode.c in the next
-> patch the same as the added lines count to indirect.c.
+In preparation for moving the indirect functions to a separate file,
+move __ext4_check_blockref() to block_validity.c and rename it to
+ext4_check_blockref() which is exported as globally visible function.
 
-I really dislike cloning functions.  This becomes a maintenance
-headache, since bugs that get fixed in one file might not get
-propagated to another.  Since I need to manually move all of the
-functions to verify nothing else changed in patches that do massive
-code movement, I used the first two patches in your patch series, but
-replaced the last two patches in the patch series, and replaced it
-with the following:
+Also, rename the cpp macro ext4_check_inode_blockref() to
+ext4_ind_check_inode(), to make it clear that it is only valid for use
+with non-extent mapped inodes.
 
-A) Move __ext4_check_blockref() to fs/ext4/block_validity.c and
-declare it extern.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/block_validity.c |   20 ++++++++++++++++++++
+ fs/ext4/ext4.h           |   15 +++++++++++++++
+ fs/ext4/inode.c          |   35 +----------------------------------
+ 3 files changed, 36 insertions(+), 34 deletions(-)
 
-B) Move ext4_truncate_failed_write() and blocks_for_truncate() to a
-new function, fs/ext4/truncate.h.
-
-C) Movement of indirect-related code to fs/ext4/indirect.c.
-
-   	       			     	- Ted
+diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
+index fac90f3..af103be 100644
+--- a/fs/ext4/block_validity.c
++++ b/fs/ext4/block_validity.c
+@@ -246,3 +246,23 @@ int ext4_data_block_valid(struct ext4_sb_info *sbi, ext4_fsblk_t start_blk,
+ 	return 1;
+ }
+ 
++int ext4_check_blockref(const char *function, unsigned int line,
++			struct inode *inode, __le32 *p, unsigned int max)
++{
++	struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
++	__le32 *bref = p;
++	unsigned int blk;
++
++	while (bref < p+max) {
++		blk = le32_to_cpu(*bref++);
++		if (blk &&
++		    unlikely(!ext4_data_block_valid(EXT4_SB(inode->i_sb),
++						    blk, 1))) {
++			es->s_last_error_block = cpu_to_le64(blk);
++			ext4_error_inode(inode, function, line, blk,
++					 "invalid block");
++			return -EIO;
++		}
++	}
++	return 0;
++}
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 8532dd4..82ba7eb 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2125,6 +2125,19 @@ static inline void ext4_mark_super_dirty(struct super_block *sb)
+ }
+ 
+ /*
++ * Block validity checking
++ */
++#define ext4_check_indirect_blockref(inode, bh)				\
++	ext4_check_blockref(__func__, __LINE__, inode,			\
++			    (__le32 *)(bh)->b_data,			\
++			    EXT4_ADDR_PER_BLOCK((inode)->i_sb))
++
++#define ext4_ind_check_inode(inode)					\
++	ext4_check_blockref(__func__, __LINE__, inode,			\
++			    EXT4_I(inode)->i_data,			\
++			    EXT4_NDIR_BLOCKS)
++
++/*
+  * Inodes and files operations
+  */
+ 
+@@ -2153,6 +2166,8 @@ extern void ext4_exit_system_zone(void);
+ extern int ext4_data_block_valid(struct ext4_sb_info *sbi,
+ 				 ext4_fsblk_t start_blk,
+ 				 unsigned int count);
++extern int ext4_check_blockref(const char *, unsigned int,
++			       struct inode *, __le32 *, unsigned int);
+ 
+ /* extents.c */
+ extern int ext4_ext_tree_init(handle_t *handle, struct inode *);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 6c1d28e..3dca526 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -360,39 +360,6 @@ static int ext4_block_to_path(struct inode *inode,
+ 	return n;
+ }
+ 
+-static int __ext4_check_blockref(const char *function, unsigned int line,
+-				 struct inode *inode,
+-				 __le32 *p, unsigned int max)
+-{
+-	struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
+-	__le32 *bref = p;
+-	unsigned int blk;
+-
+-	while (bref < p+max) {
+-		blk = le32_to_cpu(*bref++);
+-		if (blk &&
+-		    unlikely(!ext4_data_block_valid(EXT4_SB(inode->i_sb),
+-						    blk, 1))) {
+-			es->s_last_error_block = cpu_to_le64(blk);
+-			ext4_error_inode(inode, function, line, blk,
+-					 "invalid block");
+-			return -EIO;
+-		}
+-	}
+-	return 0;
+-}
+-
+-
+-#define ext4_check_indirect_blockref(inode, bh)                         \
+-	__ext4_check_blockref(__func__, __LINE__, inode,		\
+-			      (__le32 *)(bh)->b_data,			\
+-			      EXT4_ADDR_PER_BLOCK((inode)->i_sb))
+-
+-#define ext4_check_inode_blockref(inode)                                \
+-	__ext4_check_blockref(__func__, __LINE__, inode,		\
+-			      EXT4_I(inode)->i_data,			\
+-			      EXT4_NDIR_BLOCKS)
