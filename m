@@ -1,59 +1,220 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Bug#615998: linux-image-2.6.32-5-xen-amd64: Repeatable "kernel BUG at fs/jbd2/commit.c:534" from Postfix on ext4
-Date: Tue, 28 Jun 2011 10:16:50 -0400
-Message-ID: <20110628141650.GH2729@thunk.org>
-References: <404FD5CC-8F27-4336-B7D4-10675C53A588@boeing.com>
- <20110624134659.GB26380@quack.suse.cz>
- <2F80BF45-28FA-46D3-9A28-CA9416DC5813@boeing.com>
- <20110624200231.GA32176@quack.suse.cz>
- <alpine.LFD.2.00.1106271312310.3845@dhcp-27-109.brq.redhat.com>
- <20110627140251.GI5597@quack.suse.cz>
- <alpine.LFD.2.00.1106271714350.3845@dhcp-27-109.brq.redhat.com>
- <20110627160140.GC2729@thunk.org>
- <2D8D1A30-C092-4163-B47A-BCEDACE536A3@boeing.com>
- <20110628093652.GA29978@quack.suse.cz>
-Reply-To: Ted Ts'o <tytso@mit.edu>, 615998@bugs.debian.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH -v3] ext4: refactor duplicated block placement code
+Date: Tue, 28 Jun 2011 09:14:32 -0500
+Message-ID: <4E09E1C8.9020107@redhat.com>
+References: <4E08EA6F.4010102@redhat.com> <1309269909-15341-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Moffett, Kyle D" <Kyle.D.Moffett@boeing.com>,
-	Lukas Czerner <lczerner@redhat.com>, Sean Ryle <seanbo@gmail.com>,
-	"615998@bugs.debian.org" <615998@bugs.debian.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Sachin Sant <sachinp@in.ibm.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <bounce-debian-bugs-dist=glddb-debian-bugs-dist=m.gmane.org@lists.debian.org>
-Resent-Message-ID: <handler.615998.B615998.130927062328320@bugs.debian.org>
-Content-Disposition: inline
-In-Reply-To: <20110628093652.GA29978@quack.suse.cz>
-List-Post: <mailto:debian-bugs-dist@lists.debian.org>
-List-Help: <mailto:debian-bugs-dist-request@lists.debian.org?subject=help>
-List-Subscribe: <mailto:debian-bugs-dist-request@lists.debian.org?subject=subscribe>
-List-Unsubscribe: <mailto:debian-bugs-dist-request@lists.debian.org?subject=unsubscribe>
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:20333 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758078Ab1F1OOf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Jun 2011 10:14:35 -0400
+In-Reply-To: <1309269909-15341-1-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> > My basic impression is that the use of "data=journalled" can help
-> > reduce the risk (slightly) of serious corruption to some kinds of
-> > databases when the application does not provide appropriate syncs
-> > or journalling on its own (IE: such as text-based Wiki database files).
+On 6/28/11 9:05 AM, Theodore Ts'o wrote:
+> From: "Theodore Ts'o" <tytso@mit.edu>
 
-Yes, although if the application has index files that have to be
-updated at the same time, there is no guarantee that the changes that
-survive after a system failure (either a crash or a power fail),
-unless the application is doing proper application-level journalling
-or some other structured.
+I kind of wish you'd keep me on the From: even if you did
+move the change to a new file.
 
-> To sum up, the only additional guarantee data=journal offers against
-> data=ordered is a total ordering of all IO operations. That is, if you do a
-> sequence of data and metadata operations, then you are guaranteed that
-> after a crash you will see the filesystem in a state corresponding exactly
-> to your sequence terminated at some (arbitrary) point. Data writes are
-> disassembled into page-sized & page-aligned sequence of writes for purpose
-> of this model...
+Thanks,
+-Eric
 
-data=journal can also make the fsync() operation faster, since it will
-involver fewer seeks (although it will require a greater write
-bandwidth).  Depending on the write bandwidth, you really need to
-benchmark things to be sure, though.
+> I found that ext4_ext_find_goal() and ext4_find_near()
+> share the same code for returning a coloured start block
+> based on i_block_group.
+> 
+> We can refactor this into a common function so that they
+> don't diverge in the future.
+> 
+> Thanks to adilger for suggesting the new function name.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+> 
+> Moved new code to balloc.c, and rebased patch to take into account the
+> fs/ext4/indirect.c reorganization.  -- Ted
+> 
+>  fs/ext4/balloc.c   |   48 ++++++++++++++++++++++++++++++++++++++++++++++++
+>  fs/ext4/ext4.h     |    1 +
+>  fs/ext4/extents.c  |   37 +------------------------------------
+>  fs/ext4/indirect.c |   28 +---------------------------
+>  4 files changed, 51 insertions(+), 63 deletions(-)
+> 
+> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+> index 264f694..f8224ad 100644
+> --- a/fs/ext4/balloc.c
+> +++ b/fs/ext4/balloc.c
+> @@ -620,3 +620,51 @@ unsigned long ext4_bg_num_gdb(struct super_block *sb, ext4_group_t group)
+>  
+>  }
+>  
+> +/**
+> + *	ext4_inode_to_goal_block - return a hint for block allocation
+> + *	@inode: inode for block allocation
+> + *
+> + *	Return the ideal location to start allocating blocks for a
+> + *	newly created inode.
+> + */
+> +ext4_fsblk_t ext4_inode_to_goal_block(struct inode *inode)
+> +{
+> +	struct ext4_inode_info *ei = EXT4_I(inode);
+> +	ext4_group_t block_group;
+> +	ext4_grpblk_t colour;
+> +	int flex_size = ext4_flex_bg_size(EXT4_SB(inode->i_sb));
+> +	ext4_fsblk_t bg_start;
+> +	ext4_fsblk_t last_block;
+> +
+> +	block_group = ei->i_block_group;
+> +	if (flex_size >= EXT4_FLEX_SIZE_DIR_ALLOC_SCHEME) {
+> +		/*
+> +		 * If there are at least EXT4_FLEX_SIZE_DIR_ALLOC_SCHEME
+> +		 * block groups per flexgroup, reserve the first block
+> +		 * group for directories and special files.  Regular
+> +		 * files will start at the second block group.  This
+> +		 * tends to speed up directory access and improves
+> +		 * fsck times.
+> +		 */
+> +		block_group &= ~(flex_size-1);
+> +		if (S_ISREG(inode->i_mode))
+> +			block_group++;
+> +	}
+> +	bg_start = ext4_group_first_block_no(inode->i_sb, block_group);
+> +	last_block = ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es) - 1;
+> +
+> +	/*
+> +	 * If we are doing delayed allocation, we don't need take
+> +	 * colour into account.
+> +	 */
+> +	if (test_opt(inode->i_sb, DELALLOC))
+> +		return bg_start;
+> +
+> +	if (bg_start + EXT4_BLOCKS_PER_GROUP(inode->i_sb) <= last_block)
+> +		colour = (current->pid % 16) *
+> +			(EXT4_BLOCKS_PER_GROUP(inode->i_sb) / 16);
+> +	else
+> +		colour = (current->pid % 16) * ((last_block - bg_start) / 16);
+> +	return bg_start + colour;
+> +}
+> +
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index ddaf504..49d2cea 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1743,6 +1743,7 @@ extern unsigned ext4_init_block_bitmap(struct super_block *sb,
+>  				       struct ext4_group_desc *desc);
+>  #define ext4_free_blocks_after_init(sb, group, desc)			\
+>  		ext4_init_block_bitmap(sb, NULL, group, desc)
+> +ext4_fsblk_t ext4_inode_to_goal_block(struct inode *);
+>  
+>  /* dir.c */
+>  extern int __ext4_check_dir_entry(const char *, unsigned int, struct inode *,
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index eb63c7b..f331e50 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -114,12 +114,6 @@ static ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
+>  			      struct ext4_ext_path *path,
+>  			      ext4_lblk_t block)
+>  {
+> -	struct ext4_inode_info *ei = EXT4_I(inode);
+> -	ext4_fsblk_t bg_start;
+> -	ext4_fsblk_t last_block;
+> -	ext4_grpblk_t colour;
+> -	ext4_group_t block_group;
+> -	int flex_size = ext4_flex_bg_size(EXT4_SB(inode->i_sb));
+>  	int depth;
+>  
+>  	if (path) {
+> @@ -161,36 +155,7 @@ static ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
+>  	}
+>  
+>  	/* OK. use inode's group */
+> -	block_group = ei->i_block_group;
+> -	if (flex_size >= EXT4_FLEX_SIZE_DIR_ALLOC_SCHEME) {
+> -		/*
+> -		 * If there are at least EXT4_FLEX_SIZE_DIR_ALLOC_SCHEME
+> -		 * block groups per flexgroup, reserve the first block
+> -		 * group for directories and special files.  Regular
+> -		 * files will start at the second block group.  This
+> -		 * tends to speed up directory access and improves
+> -		 * fsck times.
+> -		 */
+> -		block_group &= ~(flex_size-1);
+> -		if (S_ISREG(inode->i_mode))
+> -			block_group++;
+> -	}
+> -	bg_start = ext4_group_first_block_no(inode->i_sb, block_group);
+> -	last_block = ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es) - 1;
+> -
+> -	/*
+> -	 * If we are doing delayed allocation, we don't need take
+> -	 * colour into account.
+> -	 */
+> -	if (test_opt(inode->i_sb, DELALLOC))
+> -		return bg_start;
+> -
+> -	if (bg_start + EXT4_BLOCKS_PER_GROUP(inode->i_sb) <= last_block)
+> -		colour = (current->pid % 16) *
+> -			(EXT4_BLOCKS_PER_GROUP(inode->i_sb) / 16);
+> -	else
+> -		colour = (current->pid % 16) * ((last_block - bg_start) / 16);
+> -	return bg_start + colour + block;
+> +	return ext4_inode_to_goal_block(inode);
+>  }
+>  
+>  /*
+> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+> index c3e85a8..6c27111 100644
+> --- a/fs/ext4/indirect.c
+> +++ b/fs/ext4/indirect.c
+> @@ -207,11 +207,6 @@ static ext4_fsblk_t ext4_find_near(struct inode *inode, Indirect *ind)
+>  	struct ext4_inode_info *ei = EXT4_I(inode);
+>  	__le32 *start = ind->bh ? (__le32 *) ind->bh->b_data : ei->i_data;
+>  	__le32 *p;
+> -	ext4_fsblk_t bg_start;
+> -	ext4_fsblk_t last_block;
+> -	ext4_grpblk_t colour;
+> -	ext4_group_t block_group;
+> -	int flex_size = ext4_flex_bg_size(EXT4_SB(inode->i_sb));
+>  
+>  	/* Try to find previous block */
+>  	for (p = ind->p - 1; p >= start; p--) {
+> @@ -227,28 +222,7 @@ static ext4_fsblk_t ext4_find_near(struct inode *inode, Indirect *ind)
+>  	 * It is going to be referred to from the inode itself? OK, just put it
+>  	 * into the same cylinder group then.
+>  	 */
+> -	block_group = ei->i_block_group;
+> -	if (flex_size >= EXT4_FLEX_SIZE_DIR_ALLOC_SCHEME) {
+> -		block_group &= ~(flex_size-1);
+> -		if (S_ISREG(inode->i_mode))
+> -			block_group++;
+> -	}
+> -	bg_start = ext4_group_first_block_no(inode->i_sb, block_group);
+> -	last_block = ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es) - 1;
+> -
+> -	/*
+> -	 * If we are doing delayed allocation, we don't need take
+> -	 * colour into account.
+> -	 */
+> -	if (test_opt(inode->i_sb, DELALLOC))
+> -		return bg_start;
+> -
+> -	if (bg_start + EXT4_BLOCKS_PER_GROUP(inode->i_sb) <= last_block)
+> -		colour = (current->pid % 16) *
+> -			(EXT4_BLOCKS_PER_GROUP(inode->i_sb) / 16);
+> -	else
+> -		colour = (current->pid % 16) * ((last_block - bg_start) / 16);
+> -	return bg_start + colour;
+> +	return ext4_inode_to_goal_block(inode);
+>  }
+>  
+>  /**
 
-						- Ted
