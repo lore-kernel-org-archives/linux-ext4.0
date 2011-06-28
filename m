@@ -1,72 +1,38 @@
-From: Vivek Goyal <vgoyal@redhat.com>
-Subject: Re: [RFC PATCH 0/3] block: Fix fsync slowness with CFQ cgroups
-Date: Tue, 28 Jun 2011 10:47:44 -0400
-Message-ID: <20110628144744.GF17552@redhat.com>
-References: <1309205864-13124-1-git-send-email-vgoyal@redhat.com>
- <4E09B457.9050800@parallels.com>
- <20110628134500.GD17552@redhat.com>
- <4E09E871.8040600@parallels.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"jaxboe@fusionio.com" <jaxboe@fusionio.com>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"jmoyer@redhat.com" <jmoyer@redhat.com>
-To: Konstantin Khlebnikov <khlebnikov@parallels.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH] ext4: ext4_orphan_add() remove unnecessary comments
+Date: Tue, 28 Jun 2011 16:50:17 +0200
+Message-ID: <1309272617-30943-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50638 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:11339 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758040Ab1F1Orr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Jun 2011 10:47:47 -0400
-Content-Disposition: inline
-In-Reply-To: <4E09E871.8040600@parallels.com>
+	id S1758405Ab1F1OuW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Jun 2011 10:50:22 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 28, 2011 at 06:42:57PM +0400, Konstantin Khlebnikov wrote:
-> Vivek Goyal wrote:
-> >On Tue, Jun 28, 2011 at 03:00:39PM +0400, Konstantin Khlebnikov wrote:
-> >>Vivek Goyal wrote:
-> >>>This patch series seems to be working for me. I did testing for ext4 only.
-> >>>This series is based on for-3.1/core branch of Jen's block tree.
-> >>>Konstantin, can you please give it a try and see if it fixes your
-> >>>issue.
-> >>
-> >>It works for me too, for ext3 and ext4, on top 3.0-rc5, after these trivial fixes:
-> >>
-> >>--- a/block/cfq-iosched.c
-> >>+++ b/block/cfq-iosched.c
-> >>@@ -1511,7 +1519,7 @@ static void cfq_add_rq_rb(struct request *rq)
-> >>          * if that happens, put the alias on the dispatch list
-> >>          */
-> >>         while ((__alias = elv_rb_add(&cfqq->sort_list, rq)) != NULL)
-> >>-               cfq_dispatch_insert(cfqd->queue, __alias);
-> >>+               cfq_dispatch_insert(cfqd->queue, __alias, false);
-> >>
-> >>         if (!cfq_cfqq_on_rr(cfqq))
-> >>                 cfq_add_cfqq_rr(cfqd, cfqq);
-> >>@@ -3797,12 +3797,11 @@ cfq_set_depends_on_task(struct request_queue *q, struct task_struct *tsk)
-> >>          */
-> >>         rcu_read_lock();
-> >>         if (task_blkio_cgroup(current) == task_blkio_cgroup(tsk))
-> >>-               return;
-> >>-       rcu_read_unlock();
-> >>+               goto out_unlock_rcu;
-> >>
-> >>         cic = cfq_cic_lookup(cfqd, current->io_context);
-> >>         if (!cic)
-> >>-               return;
-> >>+               goto out_unlock_rcu;
-> >
-> >You have done this change because you want to keep cfq_cic_lookup() also
-> >in rcu read side critical section? I am assuming that it works even
-> >without this. Though keeping it under rcu is probably more correct as
-> >cic objects are freed in rcu manner.
-> 
-> No, your just forgot to relese rcu in case task_blkio_cgroup(current) == task_blkio_cgroup(tsk)
+The comment from Al Viro about possible race in the ext4_orphan_add() is
+not justified. There is no race possible as we always have either i_mutex
+locked, or the inode can not be referenced from outside hence the
+J_ASSERS should not be hit from the reason described in comment.
 
-Oh, that's right. Thanks for catching this. I will fix it.
+This commit replaces it with notion that we are holding i_mutex so it
+should not be possible for i_nlink to be changed while waiting for
+s_orphan_lock.
 
-Thanks
-Vivek
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/namei.c |   17 +++++------------
+ 1 files changed, 5 insertions(+), 12 deletions(-)
+
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index b754b77..8dde5ab 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1989,18 +1989,11 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
+ 	if (!list_empty(&EXT4_I(inode)->i_orphan))
+ 		goto out_unlock;
+ 
+-	/* Orphan handling is only valid for files with data blocks
+-	 * being truncated, or files being unlinked. */
