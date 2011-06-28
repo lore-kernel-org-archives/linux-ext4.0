@@ -1,66 +1,98 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] ext4: Documenatation: remove acl and user_xattr mount options
-Date: Tue, 28 Jun 2011 17:21:17 +0200
-Message-ID: <1309274477-451-1-git-send-email-lczerner@redhat.com>
+Subject: [PATCH] ext4: Remove some deprecated mount options
+Date: Tue, 28 Jun 2011 17:53:14 +0200
+Message-ID: <1309276394-11536-1-git-send-email-lczerner@redhat.com>
 Cc: tytso@mit.edu, Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:17670 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:28461 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758383Ab1F1PVW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Jun 2011 11:21:22 -0400
+	id S1758624Ab1F1PxV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Jun 2011 11:53:21 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Acl and user_xattr mount options are no longer needed since those
-features are enabled by default if configured in (seee commit
-ea6633369458992241599c9d9ebadffaeddec164). We can not easily
-deprecate mount options itself (since it is probably too early),
-but we can remove it from documentation first.
+Remove deprecated mount options bsddf, nogrpid, sysvgroups which has
+been marked as deprecated since 2.6.23 and should be removed in 2.6.28.
+However it is not a big deal because those are defaults anyway and the
+options for setting their opposites still remains in kernel (however are
+still deprecated). Also push the kernel version to remove those leftover
+options further in time.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- Documentation/filesystems/ext4.txt |   25 +++++++++++--------------
- 1 files changed, 11 insertions(+), 14 deletions(-)
+ Documentation/filesystems/ext4.txt |    4 ----
+ fs/ext4/super.c                    |   20 +++-----------------
+ 2 files changed, 3 insertions(+), 21 deletions(-)
 
 diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
-index 3ae9bc9..9544e2c 100644
+index 9544e2c..b33434f 100644
 --- a/Documentation/filesystems/ext4.txt
 +++ b/Documentation/filesystems/ext4.txt
-@@ -209,22 +209,19 @@ oldalloc		This disables the Orlov block allocator and enables
- 			performance - we'd like to get some feedback if it's
- 			the contrary for you.
+@@ -223,7 +223,6 @@ noacl			This option disables POSIX Access Control List
+ 			page and http://acl.bestbits.at/ for more information
+ 			about acl.
  
--user_xattr		Enables Extended User Attributes.  Additionally, you
--			need to have extended attribute support enabled in the
--			kernel configuration (CONFIG_EXT4_FS_XATTR).  See the
--			attr(5) manual page and http://acl.bestbits.at/ to
--			learn more about extended attributes.
--
--nouser_xattr		Disables Extended User Attributes.
--
--acl			Enables POSIX Access Control Lists support.
--			Additionally, you need to have ACL support enabled in
--			the kernel configuration (CONFIG_EXT4_FS_POSIX_ACL).
--			See the acl(5) manual page and http://acl.bestbits.at/
--			for more information.
-+nouser_xattr		Disables Extended User Attributes. If you have extended
-+			attribute support enabled in the kernel configuration
-+			(CONFIG_EXT4_FS_XATTR), extended attribute support
-+			is enabled by default on mount. See the attr(5) manual
-+			page and http://acl.bestbits.at/ for more information
-+			about extended attributes.
- 
- noacl			This option disables POSIX Access Control List
--			support.
-+			support. If ACL support is enabled in the kernel
-+			configuration (CONFIG_EXT4_FS_POSIX_ACL), ACL is
-+			enabled by default on mount. See the acl(5) manual
-+			page and http://acl.bestbits.at/ for more information
-+			about acl.
- 
- bsddf		(*)	Make 'df' act like BSD.
+-bsddf		(*)	Make 'df' act like BSD.
  minixdf			Make 'df' act like Minix.
--- 
-1.7.4.4
-
+ 
+ debug			Extra debugging information is sent to syslog.
+@@ -247,9 +246,6 @@ data_err=abort		Abort the journal if an error occurs in a file
+ grpid			Give objects the same group ID as their creator.
+ bsdgroups
+ 
+-nogrpid		(*)	New objects have the group ID of their creator.
+-sysvgroups
+-
+ resgid=n		The group ID which may use the reserved blocks.
+ 
+ resuid=n		The user ID which may use the reserved blocks.
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 9ea71aa..a75320e 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1274,7 +1274,7 @@ static const struct export_operations ext4_export_ops = {
+ };
+ 
+ enum {
+-	Opt_bsd_df, Opt_minix_df, Opt_grpid, Opt_nogrpid,
++	Opt_minix_df, Opt_grpid,
+ 	Opt_resgid, Opt_resuid, Opt_sb, Opt_err_cont, Opt_err_panic, Opt_err_ro,
+ 	Opt_nouid32, Opt_debug, Opt_oldalloc, Opt_orlov,
+ 	Opt_user_xattr, Opt_nouser_xattr, Opt_acl, Opt_noacl,
+@@ -1297,12 +1297,9 @@ enum {
+ };
+ 
+ static const match_table_t tokens = {
+-	{Opt_bsd_df, "bsddf"},
+ 	{Opt_minix_df, "minixdf"},
+ 	{Opt_grpid, "grpid"},
+ 	{Opt_grpid, "bsdgroups"},
+-	{Opt_nogrpid, "nogrpid"},
+-	{Opt_nogrpid, "sysvgroups"},
+ 	{Opt_resgid, "resgid=%u"},
+ 	{Opt_resuid, "resuid=%u"},
+ 	{Opt_sb, "sb=%u"},
+@@ -1486,24 +1483,13 @@ static int parse_options(char *options, struct super_block *sb,
+ 		args[0].to = args[0].from = NULL;
+ 		token = match_token(p, tokens, args);
+ 		switch (token) {
+-		case Opt_bsd_df:
+-			ext4_msg(sb, KERN_WARNING, deprecated_msg, p, "2.6.38");
+-			clear_opt(sb, MINIX_DF);
+-			break;
+ 		case Opt_minix_df:
+-			ext4_msg(sb, KERN_WARNING, deprecated_msg, p, "2.6.38");
++			ext4_msg(sb, KERN_WARNING, deprecated_msg, p, "3.5");
+ 			set_opt(sb, MINIX_DF);
+-
+ 			break;
+ 		case Opt_grpid:
+-			ext4_msg(sb, KERN_WARNING, deprecated_msg, p, "2.6.38");
++			ext4_msg(sb, KERN_WARNING, deprecated_msg, p, "3.5");
+ 			set_opt(sb, GRPID);
+-
+-			break;
+-		case Opt_nogrpid:
+-			ext4_msg(sb, KERN_WARNING, deprecated_msg, p, "2.6.38");
+-			clear_opt(sb, GRPID);
