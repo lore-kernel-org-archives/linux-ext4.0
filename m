@@ -1,71 +1,41 @@
 From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: [PATCH 2/3 v2] XFS TESTS: Fix 252 Failure: Update 252 Golden
- Output
-Date: Mon, 27 Jun 2011 22:26:35 -0700
-Message-ID: <4E09660B.7050706@linux.vnet.ibm.com>
-References: <1309235247-32650-1-git-send-email-achender@linux.vnet.ibm.com> <1309235247-32650-3-git-send-email-achender@linux.vnet.ibm.com> <20110628050900.GL32466@dastard>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Josef Bacik <josef@redhat.com>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e39.co.us.ibm.com ([32.97.110.160]:46460 "EHLO
-	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755729Ab1F1F0t (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Jun 2011 01:26:49 -0400
-In-Reply-To: <20110628050900.GL32466@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Subject: [PATCH 0/2 v6] XFS TESTS: Add ENOSPC Punch Hole Test
+Date: Mon, 27 Jun 2011 22:32:41 -0700
+Message-ID: <1309239163-3975-1-git-send-email-achender@linux.vnet.ibm.com>
+Cc: Allison Henderson <achender@linux.vnet.ibm.com>
+To: xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 06/27/2011 10:09 PM, Dave Chinner wrote:
-> On Mon, Jun 27, 2011 at 09:27:26PM -0700, Allison Henderson wrote:
->> New filtered golden output for test 252
->>
->> Signed-off-by: Allison Henderson<achender@linux.vnet.ibm.com>
->> ---
->> :100644 100644 930c924... fcfd121... M	252.out
->>   252.out |  272 +++++++++++++++++++++++++++++++++++++++------------------------
->>   1 files changed, 170 insertions(+), 102 deletions(-)
->>
->> diff --git a/252.out b/252.out
->> index 930c924..fcfd121 100644
->> --- a/252.out
->> +++ b/252.out
->> @@ -1,239 +1,307 @@
->>   QA output created by 252
->>   	1. into a hole
->> +daa100df6e6711906b61c9ab5aa16032
->>   	2. into allocated space
->> -0: [0..7]: data
->> +0: [0..7]: extent
->>   1: [8..23]: hole
->> -2: [24..39]: data
->> +2: [24..39]: extent
->> +cc58a7417c2d7763adc45b6fcd3fa024
->
-> I don't really like the way this weakens the test for XFS. With this
-> change, the test no longer is checking that unwritten extent
-> behaviour is correct.
->
-> Rather than weakening the test, perhaps it would be better to
-> execute 252 for XFS only (with the md5sums added), and then
-> duplicate it to a new test for all filesystems to run with the
-> weaker result checking that using the new filter function gives us.
-> With the amount of common code the two tests share, it should be
-> trivial to do this....
->
+Hi All,
 
-Alrighty, that sounds pretty straight forward, as long as every one is 
-in agreement.  I think that would help retain the tests effectiveness. 
-Eric, Josef, what are your thoughts?
+This is another set I sent out a while ago, but I didnt see it show up on the lists, 
+so I am resending this one too. The work in this patch is a continuation from a 
+previous patch set that has been partially accepted, so I thought I 
+should retain the v6.
 
-Allison Henderson
+This patch set adds the ENOSPC test that was used for ext4 punch hole testing.
+This test will verify that a hole can be punched even when the disk is full.
+Reserved blocks should be used to complete the operation when there is not blocks
+to further fragment the file.
 
-> Cheers,
->
-> Dave.
+Because punching a hole does not always require extra blocks, there needs to 
+be serveal iterations of punching holes, and then filling the file system to 100% 
+usage before it is forced to grow the tree in order to handle the fragmentation. 
+The growing of the tree is what would cause ENOSPC if not for the use of reserved blocks.
+
+I could use some opinions on this patch set becuase I am not sure if other filesystems 
+handle their punch holes in the same way.  Although xfs appears to pass the test, 
+should this test be an ext4 only test? Thx!
+
+Allison Henderson (2):
+  XFS TESTS: Move su routines in 123 to common.rc
+  XFS TESTS: Add ENOSPC Hole Punch Test
+
+ 123       |   24 ------------------------
+ common.rc |   20 ++++++++++++++++++++
+ group     |    1 +
+ 3 files changed, 21 insertions(+), 24 deletions(-)
 
