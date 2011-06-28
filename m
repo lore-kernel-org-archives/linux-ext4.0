@@ -1,45 +1,64 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: [PATCH 0/2v v7] XFS TESTS: ENOSPC Punch Hole Test
-Date: Tue, 28 Jun 2011 07:44:59 -0700
-Message-ID: <1309272301-5742-1-git-send-email-achender@linux.vnet.ibm.com>
-Cc: Allison Henderson <achender@linux.vnet.ibm.com>
-To: xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
+From: Konstantin Khlebnikov <khlebnikov@parallels.com>
+Subject: Re: [RFC PATCH 0/3] block: Fix fsync slowness with CFQ cgroups
+Date: Tue, 28 Jun 2011 18:42:57 +0400
+Message-ID: <4E09E871.8040600@parallels.com>
+References: <1309205864-13124-1-git-send-email-vgoyal@redhat.com> <4E09B457.9050800@parallels.com> <20110628134500.GD17552@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"jaxboe@fusionio.com" <jaxboe@fusionio.com>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"jmoyer@redhat.com" <jmoyer@redhat.com>
+To: Vivek Goyal <vgoyal@redhat.com>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20110628134500.GD17552@redhat.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi All,
+Vivek Goyal wrote:
+> On Tue, Jun 28, 2011 at 03:00:39PM +0400, Konstantin Khlebnikov wrote:
+>> Vivek Goyal wrote:
+>>> This patch series seems to be working for me. I did testing for ext4 only.
+>>> This series is based on for-3.1/core branch of Jen's block tree.
+>>> Konstantin, can you please give it a try and see if it fixes your
+>>> issue.
+>>
+>> It works for me too, for ext3 and ext4, on top 3.0-rc5, after these trivial fixes:
+>>
+>> --- a/block/cfq-iosched.c
+>> +++ b/block/cfq-iosched.c
+>> @@ -1511,7 +1519,7 @@ static void cfq_add_rq_rb(struct request *rq)
+>>           * if that happens, put the alias on the dispatch list
+>>           */
+>>          while ((__alias = elv_rb_add(&cfqq->sort_list, rq)) != NULL)
+>> -               cfq_dispatch_insert(cfqd->queue, __alias);
+>> +               cfq_dispatch_insert(cfqd->queue, __alias, false);
+>>
+>>          if (!cfq_cfqq_on_rr(cfqq))
+>>                  cfq_add_cfqq_rr(cfqd, cfqq);
+>> @@ -3797,12 +3797,11 @@ cfq_set_depends_on_task(struct request_queue *q, struct task_struct *tsk)
+>>           */
+>>          rcu_read_lock();
+>>          if (task_blkio_cgroup(current) == task_blkio_cgroup(tsk))
+>> -               return;
+>> -       rcu_read_unlock();
+>> +               goto out_unlock_rcu;
+>>
+>>          cic = cfq_cic_lookup(cfqd, current->io_context);
+>>          if (!cic)
+>> -               return;
+>> +               goto out_unlock_rcu;
+>
+> You have done this change because you want to keep cfq_cic_lookup() also
+> in rcu read side critical section? I am assuming that it works even
+> without this. Though keeping it under rcu is probably more correct as
+> cic objects are freed in rcu manner.
 
-This is another set I sent out a while ago, but I didnt see it show up on the lists, 
-so I am resending this one too. The work in this patch is a continuation from a 
-previous patch set that has been partially accepted, so I thought I 
-should retain the v6.
+No, your just forgot to relese rcu in case task_blkio_cgroup(current) == task_blkio_cgroup(tsk)
 
-This patch set adds the ENOSPC test that was used for ext4 punch hole testing.
-This test will verify that a hole can be punched even when the disk is full.
-Reserved blocks should be used to complete the operation when there is not blocks
-to further fragment the file.
-
-Because punching a hole does not always require extra blocks, there needs to 
-be serveal iterations of punching holes, and then filling the file system to 100% 
-usage before it is forced to grow the tree in order to handle the fragmentation. 
-The growing of the tree is what would cause ENOSPC if not for the use of reserved blocks.
-
-I could use some opinions on this patch set becuase I am not sure if other filesystems 
-handle their punch holes in the same way.  Although xfs appears to pass the test, 
-should this test be an ext4 only test? Thx!
-
-Allison Henderson (2):
-  XFS TESTS: ENOSPC Punch Hole: Move su routines in 123 to common.rc
-  XFS TESTS: Add ENOSPC Hole Punch Test
-
- 123       |   24 --------
- 255       |  178 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 255.out   |    1 +
- common.rc |   20 +++++++
- group     |    1 +
- 5 files changed, 200 insertions(+), 24 deletions(-)
- create mode 100644 255
- create mode 100644 255.out
+>
+> Thanks
+> Vivek
 
