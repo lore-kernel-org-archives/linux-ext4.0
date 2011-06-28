@@ -1,91 +1,64 @@
 From: Vivek Goyal <vgoyal@redhat.com>
 Subject: Re: [RFC PATCH 0/3] block: Fix fsync slowness with CFQ cgroups
-Date: Tue, 28 Jun 2011 09:35:58 -0400
-Message-ID: <20110628133557.GB17552@redhat.com>
+Date: Tue, 28 Jun 2011 09:45:00 -0400
+Message-ID: <20110628134500.GD17552@redhat.com>
 References: <1309205864-13124-1-git-send-email-vgoyal@redhat.com>
- <20110628024738.GJ32466@dastard>
+ <4E09B457.9050800@parallels.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, jaxboe@fusionio.com,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	khlebnikov@openvz.org, jmoyer@redhat.com
-To: Dave Chinner <david@fromorbit.com>
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"jaxboe@fusionio.com" <jaxboe@fusionio.com>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"jmoyer@redhat.com" <jmoyer@redhat.com>
+To: Konstantin Khlebnikov <khlebnikov@parallels.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:62976 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53668 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756719Ab1F1NgD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Jun 2011 09:36:03 -0400
+	id S1756592Ab1F1NpD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Jun 2011 09:45:03 -0400
 Content-Disposition: inline
-In-Reply-To: <20110628024738.GJ32466@dastard>
+In-Reply-To: <4E09B457.9050800@parallels.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 28, 2011 at 12:47:38PM +1000, Dave Chinner wrote:
+On Tue, Jun 28, 2011 at 03:00:39PM +0400, Konstantin Khlebnikov wrote:
+> Vivek Goyal wrote:
+> >This patch series seems to be working for me. I did testing for ext4 only.
+> >This series is based on for-3.1/core branch of Jen's block tree.
+> >Konstantin, can you please give it a try and see if it fixes your
+> >issue.
 > 
-> Vivek, I'm not sure this is a general solution. If we hand journal
-> IO off to a workqueue, then we've got no idea what the "dependent
-> task" is.
+> It works for me too, for ext3 and ext4, on top 3.0-rc5, after these trivial fixes:
 > 
-> I bring this up as I have a current patchset that moves all the XFS
-> journal IO out of process context into a workqueue to solve
-> process-visible operation latency (e.g. 1000 mkdir syscalls run at
-> 1ms each, the 1001st triggers a journal checkpoint and takes 500ms)
-> and background checkpoint submission races.  This effectively means
-> that XFS will trigger the same bad CFQ behaviour on fsync, but have
-> no means of avoiding it because we don't have a specific task to
-> yield to.
+> --- a/block/cfq-iosched.c
+> +++ b/block/cfq-iosched.c
+> @@ -1511,7 +1519,7 @@ static void cfq_add_rq_rb(struct request *rq)
+>          * if that happens, put the alias on the dispatch list
+>          */
+>         while ((__alias = elv_rb_add(&cfqq->sort_list, rq)) != NULL)
+> -               cfq_dispatch_insert(cfqd->queue, __alias);
+> +               cfq_dispatch_insert(cfqd->queue, __alias, false);
 > 
-> And FWIW, we're going to be using workqueues more and more in XFS
-> for asynchronous processing of operations. I'm looking to use WQs
-> for speculative readahead of inodes, all our delayed metadata
-> writeback, log IO submission, free space allocation requests,
-> background inode allocation, background inode freeing, background
-> EOF truncation, etc to process as much work asynchronously outside
-> syscall context as possible (let's use all those CPU cores we
-> have!).
+>         if (!cfq_cfqq_on_rr(cfqq))
+>                 cfq_add_cfqq_rr(cfqd, cfqq);
+> @@ -3797,12 +3797,11 @@ cfq_set_depends_on_task(struct request_queue *q, struct task_struct *tsk)
+>          */
+>         rcu_read_lock();
+>         if (task_blkio_cgroup(current) == task_blkio_cgroup(tsk))
+> -               return;
+> -       rcu_read_unlock();
+> +               goto out_unlock_rcu;
 > 
-> All of these things will push potentially dependent IO operations
-> outside of the bounds of the process actually doing the operation,
-> so some general solution to the "dependent IO in an undefined thread
-> context" problem really needs to be solved sooner rather than
-> later...
-> 
-> As it is, I don't have any good ideas of how to solve this, but I
-> thought it is worth bringing to your attention while you are trying
-> to solve a similar issue.
+>         cic = cfq_cic_lookup(cfqd, current->io_context);
+>         if (!cic)
+> -               return;
+> +               goto out_unlock_rcu;
 
-Dave,
-
-Coule of thoughts.
-
-- We can introduce anohter block layer call were dependencies are setup
-  from worker thread context. So when the process schedules the work, it can
-  save the task information somewhere and when the worker thread actually
-  calls the specified funciton, that function can setup the dependency
-  between worker thread and submitting task.
-
-  Probably original process can tear down the dependency connection
-  when IO is done. I am assuming that IO submitting process is waiting
-  for all IO to finish.
-
-  In current framework one can specify multiple processes being dependent
-  on one thread but not vice-a-versa. I think we should be able to 
-  handle that by maintaining a linked list of dependent queues instead
-  of single pointer. So if a process submits a bunch of jobs with help
-  of bunch of worker threads from multiple cpus, I think that case is
-  manageable with some extension to current patches.
-
-- Or we can also try to do something more exotic and that when we schedule
-  a work, one should be able to tell which cgroup the worker should run in.
-  When the worker actually runs, it can migrate itself to destination
-  destination cgroup and submit IO. This does not take care of cases like
-  journalling thread where multiple processes are dependent on single
-  kernel thread. In that case above dependent queue solution should work
-  well.
-
-So I think above API can be extended to handle the case of work queues
-also or we could look into migrating worker in user specified cgroup if
-that turns out to be a better solution. 
+You have done this change because you want to keep cfq_cic_lookup() also
+in rcu read side critical section? I am assuming that it works even
+without this. Though keeping it under rcu is probably more correct as
+cic objects are freed in rcu manner.
 
 Thanks
 Vivek
