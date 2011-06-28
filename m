@@ -1,72 +1,75 @@
-From: Vivek Goyal <vgoyal@redhat.com>
-Subject: Re: [RFC PATCH 0/3] block: Fix fsync slowness with CFQ cgroups
-Date: Tue, 28 Jun 2011 09:04:57 -0400
-Message-ID: <20110628130457.GA17552@redhat.com>
-References: <1309205864-13124-1-git-send-email-vgoyal@redhat.com>
- <1309223932.15392.186.camel@sli10-conroe>
- <20110628014039.GA15850@redhat.com>
- <1309226634.15392.197.camel@sli10-conroe>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 2/3 v2] XFS TESTS: Fix 252 Failure: Update 252 Golden
+ Output
+Date: Tue, 28 Jun 2011 08:29:25 -0500
+Message-ID: <4E09D735.5060000@redhat.com>
+References: <1309235247-32650-1-git-send-email-achender@linux.vnet.ibm.com> <1309235247-32650-3-git-send-email-achender@linux.vnet.ibm.com> <20110628050900.GL32466@dastard> <4E09660B.7050706@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"jaxboe@fusionio.com" <jaxboe@fusionio.com>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"khlebnikov@openvz.org" <khlebnikov@openvz.org>,
-	"jmoyer@redhat.com" <jmoyer@redhat.com>
-To: Shaohua Li <shaohua.li@intel.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:61428 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757630Ab1F1NFB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Jun 2011 09:05:01 -0400
-Content-Disposition: inline
-In-Reply-To: <1309226634.15392.197.camel@sli10-conroe>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Dave Chinner <david@fromorbit.com>, xfs@oss.sgi.com,
+	linux-fsdevel@vger.kernel.org,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Josef Bacik <josef@redhat.com>
+To: Allison Henderson <achender@linux.vnet.ibm.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <4E09660B.7050706@linux.vnet.ibm.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jun 28, 2011 at 10:03:54AM +0800, Shaohua Li wrote:
-
-[..]
-> > > > Any feedback on how to solve this issue is appreciated.
-> > > Hi Vivek,
-> > > can we introduce a group think time check in cfq? say in a group the
-> > > last queue is backed for the group and the queue is a non-idle queue, if
-> > > the group think time is big, we don't allow the group idle and preempt
-> > > could happen. The fsync thread is a non-idle queue with Corrado's patch,
-> > > this allows fast group switch.
-> > 
-> > In this case regular queue idle is hitting and not group idle. So some
-> > kind of think time stats probably might be useful for group idle check
-> > but not necessarily for queue idle.
-> I thought your problem is group idle issue. fsync uses WRITE_SYNC, which
-> will make the queue be sync-non-idle because REQ_NOIDLE is set. This is
-> exactly what Corrado's patch for. a fsync queue itself isn't idle unless
-> it's the last queue in a group. Am I missing anything?
-
-We idle on last queue on sync-noidle tree. So we idle on fysnc queue as
-it is last queue on sync-noidle tree. That's how we provide protection
-to all sync-noidle queues against sync-idle queues. Instead of idling
-on individual quues we do idling in group and that is on service tree.
-
+On 6/28/11 12:26 AM, Allison Henderson wrote:
+> On 06/27/2011 10:09 PM, Dave Chinner wrote:
+>> On Mon, Jun 27, 2011 at 09:27:26PM -0700, Allison Henderson wrote:
+>>> New filtered golden output for test 252
+>>>
+>>> Signed-off-by: Allison Henderson<achender@linux.vnet.ibm.com>
+>>> ---
+>>> :100644 100644 930c924... fcfd121... M    252.out
+>>>   252.out |  272 +++++++++++++++++++++++++++++++++++++++------------------------
+>>>   1 files changed, 170 insertions(+), 102 deletions(-)
+>>>
+>>> diff --git a/252.out b/252.out
+>>> index 930c924..fcfd121 100644
+>>> --- a/252.out
+>>> +++ b/252.out
+>>> @@ -1,239 +1,307 @@
+>>>   QA output created by 252
+>>>       1. into a hole
+>>> +daa100df6e6711906b61c9ab5aa16032
+>>>       2. into allocated space
+>>> -0: [0..7]: data
+>>> +0: [0..7]: extent
+>>>   1: [8..23]: hole
+>>> -2: [24..39]: data
+>>> +2: [24..39]: extent
+>>> +cc58a7417c2d7763adc45b6fcd3fa024
+>>
+>> I don't really like the way this weakens the test for XFS. With this
+>> change, the test no longer is checking that unwritten extent
+>> behaviour is correct.
+>>
+>> Rather than weakening the test, perhaps it would be better to
+>> execute 252 for XFS only (with the md5sums added), and then
+>> duplicate it to a new test for all filesystems to run with the
+>> weaker result checking that using the new filter function gives us.
+>> With the amount of common code the two tests share, it should be
+>> trivial to do this....
+>>
 > 
-> > Secondly, for this case think time will change. If you stop idling on
-> > fsync and jbd threads, both will be dispatching IOs fast and both will
-> > have small thinktime. We will think that thinktime is small so we
-> > will enable idle. Then there think time will increase as both will
-> > get blocked behind each other. And then we will removing idling. So
-> > looks like we will be oscillating between enabling and disabling
-> > think time.
-> That is possible, the think time check (even for queues) always has such
-> issue. Not sure how severe the issue is. Assume jbd will dispatch
-> several requests and this will make fsync thread think time big.
+> Alrighty, that sounds pretty straight forward, as long as every one
+> is in agreement. I think that would help retain the tests
+> effectiveness. Eric, Josef, what are your thoughts?
+
+Yeah, I agree, I share Dave's concerns and that sounds like a good
+way to go.
+
+Thanks,
+-Eric
+
+> Allison Henderson
 > 
-> > If we don't allow idling on sync-no-idle queues, then basic CFQ will
-> > be broken.
-> Hmm, CFQ only allows idling on sync queues, sync-no-idle queue isn't
-> allowed idling.
+>> Cheers,
+>>
+>> Dave.
+> 
 
-See above.
-
-Thanks
-Vivek
