@@ -1,68 +1,66 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 1/3 v2] XFS TESTS: Fix 252 Failure: Relax fiemap filter
-Date: Tue, 28 Jun 2011 18:49:47 +1000
-Message-ID: <20110628084947.GN32466@dastard>
-References: <1309235247-32650-1-git-send-email-achender@linux.vnet.ibm.com>
-	<1309235247-32650-2-git-send-email-achender@linux.vnet.ibm.com>
-	<20110628045903.GK32466@dastard>
-	<4E0963D8.5030002@linux.vnet.ibm.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH v2] ext4: quiet 'unused variables' compiling warnings
+Date: Tue, 28 Jun 2011 11:33:53 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1106281133370.3864@dhcp-27-109.brq.redhat.com>
+References: <1309224525-23875-1-git-send-email-xiaoqiangnk@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-To: Allison Henderson <achender@linux.vnet.ibm.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <4E0963D8.5030002@linux.vnet.ibm.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Sender: xfs-bounces@oss.sgi.com
-Errors-To: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:19417 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756930Ab1F1JeA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Jun 2011 05:34:00 -0400
+In-Reply-To: <1309224525-23875-1-git-send-email-xiaoqiangnk@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 27, 2011 at 10:17:12PM -0700, Allison Henderson wrote:
-> On 06/27/2011 09:59 PM, Dave Chinner wrote:
-> >On Mon, Jun 27, 2011 at 09:27:25PM -0700, Allison Henderson wrote:
-> >I seriously dislike conditional parameter passing in shell scripts
-> >at the best of times, but for filter functions I really think it is
-> >the wrong thing to do. It significantly obfuscates the working of
-> >the function for no really good reason.
-> >
-> >Just write a new filter function, and factor out the common parts of
-> >them if the amount of code duplication is sufficient to make it
-> >desirable to do so.
-> >
+On Tue, 28 Jun 2011, Yongqiang Yang wrote:
+
+> Unused variables was deleted.
 > 
-> Ok, it doesn't look like a lot of code, I can separate them into their
-> own functions.
+> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+> ---
+>  fs/ext4/extents.c |    2 --
+>  fs/ext4/mballoc.c |    2 --
+>  2 files changed, 0 insertions(+), 4 deletions(-)
 > 
-> >>+	md5sum $testfile | cut -d ' ' -f1
-> >
-> >Why cut out the file name? It's not like it changes at all....
-> >
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index f815cc8..94940aa 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -3107,12 +3107,10 @@ static int ext4_convert_unwritten_extents_endio(handle_t *handle,
+>  					      struct ext4_ext_path *path)
+>  {
+>  	struct ext4_extent *ex;
+> -	struct ext4_extent_header *eh;
+>  	int depth;
+>  	int err = 0;
+>  
+>  	depth = ext_depth(inode);
+> -	eh = path[depth].p_hdr;
+>  	ex = path[depth].p_ext;
+>  
+>  	ext_debug("ext4_convert_unwritten_extents_endio: inode %lu, logical"
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 6ed859d..389386b 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -4666,12 +4666,10 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
+>  	struct ext4_buddy e4b;
+>  	int err = 0, ret, blk_free_count;
+>  	ext4_grpblk_t blocks_freed;
+> -	struct ext4_group_info *grp;
+>  
+>  	ext4_debug("Adding block(s) %llu-%llu\n", block, block + count - 1);
+>  
+>  	ext4_get_group_no_and_offset(sb, block, &block_group, &bit);
+> -	grp = ext4_get_group_info(sb, block_group);
+>  	/*
+>  	 * Check to see if we are freeing blocks across a group
+>  	 * boundary.
 > 
-> Oh, it looked like there's a pid attached to the file name, so I
-> thought I should remove that from the output
 
-Oh, it does too. My mistake, too trigger happy, just looking for
-ways to keep things relatively simple. Maybe using a wrapper
-function so if we ever need to modify it we only need to change one
-line of code would acheive the same thing?
-
-Cheers,
-
-Dave.
-
--- 
-Dave Chinner
-david@fromorbit.com
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+Patch looks good. Thanks!
+-Lukas
