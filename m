@@ -1,61 +1,78 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH v2] ext4: quiet 'unused variables' compiling warnings
-Date: Tue, 28 Jun 2011 09:28:45 +0800
-Message-ID: <1309224525-23875-1-git-send-email-xiaoqiangnk@gmail.com>
-Cc: linux-ext4@vger.kernel.org, Yongqiang Yang <xiaoqiangnk@gmail.com>
-To: tytso@mit.edu
+Subject: Re: [PATCH] ext4:quiet 'unsed variables' compiling warnings.
+Date: Tue, 28 Jun 2011 09:32:17 +0800
+Message-ID: <BANLkTima0abH9p839-OVa7dk2U6B7PyoHg@mail.gmail.com>
+References: <1308108420-13799-1-git-send-email-xiaoqiangnk@gmail.com>
+	<20110627203442.GF2729@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:39167 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756122Ab1F1B3Q (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Jun 2011 21:29:16 -0400
-Received: by iyb12 with SMTP id 12so4538745iyb.19
-        for <linux-ext4@vger.kernel.org>; Mon, 27 Jun 2011 18:29:16 -0700 (PDT)
+Received: from mail-pv0-f174.google.com ([74.125.83.174]:47237 "EHLO
+	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755883Ab1F1BcR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Jun 2011 21:32:17 -0400
+Received: by pvg12 with SMTP id 12so3190146pvg.19
+        for <linux-ext4@vger.kernel.org>; Mon, 27 Jun 2011 18:32:17 -0700 (PDT)
+In-Reply-To: <20110627203442.GF2729@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Unused variables was deleted.
+On Tue, Jun 28, 2011 at 4:34 AM, Ted Ts'o <tytso@mit.edu> wrote:
+> On Wed, Jun 15, 2011 at 11:27:00AM +0800, Yongqiang Yang wrote:
+>> Delete unused variables.
+>>
+>> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+>> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+>> index 859f2ae..fece8c2 100644
+>> --- a/fs/ext4/mballoc.c
+>> +++ b/fs/ext4/mballoc.c
+>> @@ -2860,7 +2860,7 @@ ext4_mb_normalize_request(struct ext4_allocati=
+on_context *ac,
+>> =A0{
+>> =A0 =A0 =A0 int bsbits, max;
+>> =A0 =A0 =A0 ext4_lblk_t end;
+>> - =A0 =A0 loff_t size, orig_size, start_off;
+>> + =A0 =A0 loff_t size, start_off;
+>
+> Unfortunately, orig_size is being used by an mb_debug statement. =A0S=
+o
+> simply removing orig_size and its initialization will cause the build
+> to break if CONFIG_EXT4_DEBUG is enabled.
+Sorry for my carelessness.
+>
+> Can you resend this patch with this part of the patch removed?
+>
+> Also, for future reference I prefer for consistency's sake that the
+> one-line summary be:
+>
+> ext4: quiet 'used variables' compiling warnings
+>
+> (note the space after "ext4: ", the lack of a ending period, and the
+> spelling correction for "unsed"; the other change which I will
+> commonly make for folks, again for consistency, is to make the first
+> word after "ext4: " lower case --- the summary does not have to be a
+> complete sentence, which is why I remove the trailing period)
+I have resent the updated patch.   Thank you very much for your
+explanation on the summary.
 
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
----
- fs/ext4/extents.c |    2 --
- fs/ext4/mballoc.c |    2 --
- 2 files changed, 0 insertions(+), 4 deletions(-)
+Yongqiang.
+>
+> Thanks,
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0- Ted
+>
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index f815cc8..94940aa 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3107,12 +3107,10 @@ static int ext4_convert_unwritten_extents_endio(handle_t *handle,
- 					      struct ext4_ext_path *path)
- {
- 	struct ext4_extent *ex;
--	struct ext4_extent_header *eh;
- 	int depth;
- 	int err = 0;
- 
- 	depth = ext_depth(inode);
--	eh = path[depth].p_hdr;
- 	ex = path[depth].p_ext;
- 
- 	ext_debug("ext4_convert_unwritten_extents_endio: inode %lu, logical"
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 6ed859d..389386b 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4666,12 +4666,10 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
- 	struct ext4_buddy e4b;
- 	int err = 0, ret, blk_free_count;
- 	ext4_grpblk_t blocks_freed;
--	struct ext4_group_info *grp;
- 
- 	ext4_debug("Adding block(s) %llu-%llu\n", block, block + count - 1);
- 
- 	ext4_get_group_no_and_offset(sb, block, &block_group, &bit);
--	grp = ext4_get_group_info(sb, block_group);
- 	/*
- 	 * Check to see if we are freeing blocks across a group
- 	 * boundary.
--- 
-1.7.5.1
 
+
+--=20
+Best Wishes
+Yongqiang Yang
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
