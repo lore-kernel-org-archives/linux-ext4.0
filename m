@@ -1,40 +1,72 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH -v3] ext4: refactor duplicated block placement code
-Date: Tue, 28 Jun 2011 09:45:28 -0500
-Message-ID: <4E09E908.7020106@redhat.com>
-References: <4E08EA6F.4010102@redhat.com> <1309269909-15341-1-git-send-email-tytso@mit.edu> <4E09E1C8.9020107@redhat.com> <20110628144449.GK2729@thunk.org>
+From: Vivek Goyal <vgoyal@redhat.com>
+Subject: Re: [RFC PATCH 0/3] block: Fix fsync slowness with CFQ cgroups
+Date: Tue, 28 Jun 2011 10:47:44 -0400
+Message-ID: <20110628144744.GF17552@redhat.com>
+References: <1309205864-13124-1-git-send-email-vgoyal@redhat.com>
+ <4E09B457.9050800@parallels.com>
+ <20110628134500.GD17552@redhat.com>
+ <4E09E871.8040600@parallels.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"jaxboe@fusionio.com" <jaxboe@fusionio.com>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"jmoyer@redhat.com" <jmoyer@redhat.com>
+To: Konstantin Khlebnikov <khlebnikov@parallels.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47390 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:50638 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757798Ab1F1Opb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Jun 2011 10:45:31 -0400
-In-Reply-To: <20110628144449.GK2729@thunk.org>
+	id S1758040Ab1F1Orr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Jun 2011 10:47:47 -0400
+Content-Disposition: inline
+In-Reply-To: <4E09E871.8040600@parallels.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 6/28/11 9:44 AM, Ted Ts'o wrote:
-> On Tue, Jun 28, 2011 at 09:14:32AM -0500, Eric Sandeen wrote:
->> On 6/28/11 9:05 AM, Theodore Ts'o wrote:
->>> From: "Theodore Ts'o" <tytso@mit.edu>
->>
->> I kind of wish you'd keep me on the From: even if you did
->> move the change to a new file.
+On Tue, Jun 28, 2011 at 06:42:57PM +0400, Konstantin Khlebnikov wrote:
+> Vivek Goyal wrote:
+> >On Tue, Jun 28, 2011 at 03:00:39PM +0400, Konstantin Khlebnikov wrote:
+> >>Vivek Goyal wrote:
+> >>>This patch series seems to be working for me. I did testing for ext4 only.
+> >>>This series is based on for-3.1/core branch of Jen's block tree.
+> >>>Konstantin, can you please give it a try and see if it fixes your
+> >>>issue.
+> >>
+> >>It works for me too, for ext3 and ext4, on top 3.0-rc5, after these trivial fixes:
+> >>
+> >>--- a/block/cfq-iosched.c
+> >>+++ b/block/cfq-iosched.c
+> >>@@ -1511,7 +1519,7 @@ static void cfq_add_rq_rb(struct request *rq)
+> >>          * if that happens, put the alias on the dispatch list
+> >>          */
+> >>         while ((__alias = elv_rb_add(&cfqq->sort_list, rq)) != NULL)
+> >>-               cfq_dispatch_insert(cfqd->queue, __alias);
+> >>+               cfq_dispatch_insert(cfqd->queue, __alias, false);
+> >>
+> >>         if (!cfq_cfqq_on_rr(cfqq))
+> >>                 cfq_add_cfqq_rr(cfqd, cfqq);
+> >>@@ -3797,12 +3797,11 @@ cfq_set_depends_on_task(struct request_queue *q, struct task_struct *tsk)
+> >>          */
+> >>         rcu_read_lock();
+> >>         if (task_blkio_cgroup(current) == task_blkio_cgroup(tsk))
+> >>-               return;
+> >>-       rcu_read_unlock();
+> >>+               goto out_unlock_rcu;
+> >>
+> >>         cic = cfq_cic_lookup(cfqd, current->io_context);
+> >>         if (!cic)
+> >>-               return;
+> >>+               goto out_unlock_rcu;
+> >
+> >You have done this change because you want to keep cfq_cic_lookup() also
+> >in rcu read side critical section? I am assuming that it works even
+> >without this. Though keeping it under rcu is probably more correct as
+> >cic objects are freed in rcu manner.
 > 
-> No worries, you are still the author in the git commit.
-> 
-> The From that you saw was becasue because I edited the output of
-> git-format-patch before I used git send-email, forgetting that git
-> send-email would fix up the from field and move the original From
-> field into the budy of the message.
-> 
-> 					- Ted
+> No, your just forgot to relese rcu in case task_blkio_cgroup(current) == task_blkio_cgroup(tsk)
 
-Thanks, just checking; when I import something with From: into guilt,
-that sets the author.
+Oh, that's right. Thanks for catching this. I will fix it.
 
--Eric
+Thanks
+Vivek
