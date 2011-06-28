@@ -1,64 +1,48 @@
-From: Konstantin Khlebnikov <khlebnikov@parallels.com>
-Subject: Re: [RFC PATCH 0/3] block: Fix fsync slowness with CFQ cgroups
-Date: Tue, 28 Jun 2011 15:00:39 +0400
-Message-ID: <4E09B457.9050800@parallels.com>
-References: <1309205864-13124-1-git-send-email-vgoyal@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"jaxboe@fusionio.com" <jaxboe@fusionio.com>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"jmoyer@redhat.com" <jmoyer@redhat.com>
-To: Vivek Goyal <vgoyal@redhat.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH v2] ext4: Deprecate data=journal mount option
+Date: Tue, 28 Jun 2011 13:26:03 +0200
+Message-ID: <1309260363-19012-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, jack@suse.cz, sandeen@redhat.com, adilger@dilger.ca,
+	Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from relay.parallels.com ([195.214.232.42]:34216 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756739Ab1F1LAm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Jun 2011 07:00:42 -0400
-In-Reply-To: <1309205864-13124-1-git-send-email-vgoyal@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:36661 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757320Ab1F1L0U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Jun 2011 07:26:20 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Vivek Goyal wrote:
-> This patch series seems to be working for me. I did testing for ext4 only.
-> This series is based on for-3.1/core branch of Jen's block tree.
-> Konstantin, can you please give it a try and see if it fixes your
-> issue.
+Data journalling mode (data=journal) is known to be neglected by
+developers and only minority of people is actually using it. This
+mode is also less tested than the other two modes by the developers.
 
-It works for me too, for ext3 and ext4, on top 3.0-rc5, after these trivial fixes:
+This creates a dangerous combination, because the option which seems
+*safer* is actually less safe the others. So this commit adds a warning
+message in case that data=journal mode is used, so the user is informed
+that the mode might be removed in the future.
 
---- a/block/cfq-iosched.c
-+++ b/block/cfq-iosched.c
-@@ -1511,7 +1519,7 @@ static void cfq_add_rq_rb(struct request *rq)
-          * if that happens, put the alias on the dispatch list
-          */
-         while ((__alias = elv_rb_add(&cfqq->sort_list, rq)) != NULL)
--               cfq_dispatch_insert(cfqd->queue, __alias);
-+               cfq_dispatch_insert(cfqd->queue, __alias, false);
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/super.c |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
 
-         if (!cfq_cfqq_on_rr(cfqq))
-                 cfq_add_cfqq_rr(cfqd, cfqq);
-@@ -3797,12 +3797,11 @@ cfq_set_depends_on_task(struct request_queue *q, struct task_struct *tsk)
-          */
-         rcu_read_lock();
-         if (task_blkio_cgroup(current) == task_blkio_cgroup(tsk))
--               return;
--       rcu_read_unlock();
-+               goto out_unlock_rcu;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 9ea71aa..9d189cf 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1631,6 +1631,11 @@ static int parse_options(char *options, struct super_block *sb,
+ 			sbi->s_min_batch_time = option;
+ 			break;
+ 		case Opt_data_journal:
++			ext4_msg(sb, KERN_WARNING,
++				 "Using data=journal may be removed in the "
++				 "future. Please, contact "
++				 "linux-ext4@vger.kernel.org if you are "
++				 "using this feature.");
+ 			data_opt = EXT4_MOUNT_JOURNAL_DATA;
+ 			goto datacheck;
+ 		case Opt_data_ordered:
+-- 
+1.7.4.4
 
-         cic = cfq_cic_lookup(cfqd, current->io_context);
-         if (!cic)
--               return;
-+               goto out_unlock_rcu;
-
-         task_lock(tsk);
-         spin_lock_irq(q->queue_lock);
-@@ -3847,6 +3846,8 @@ cfq_set_depends_on_task(struct request_queue *q, struct task_struct *tsk)
-  out_unlock:
-         spin_unlock_irq(q->queue_lock);
-         task_unlock(tsk);
-+out_unlock_rcu:
-+       rcu_read_unlock();
-  }
