@@ -1,117 +1,94 @@
-From: Eric Gouriou <egouriou@google.com>
-Subject: Re: [PATCH v2] ext4: avoid redundant cache finding if flags not
- cantian PUNCH_OUT
-Date: Mon, 27 Jun 2011 17:44:58 -0700
-Message-ID: <BANLkTinLRiRakANN-VqEr8mcTdxyT1SGm2oMgKufcnbk=dKnVQ@mail.gmail.com>
-References: <1309171513-5246-1-git-send-email-sanbai@taobao.com>
-	<20110627195911.GD20655@tux1.beaverton.ibm.com>
+From: Shaohua Li <shaohua.li@intel.com>
+Subject: Re: [RFC PATCH 0/3] block: Fix fsync slowness with CFQ cgroups
+Date: Tue, 28 Jun 2011 09:18:52 +0800
+Message-ID: <1309223932.15392.186.camel@sli10-conroe>
+References: <1309205864-13124-1-git-send-email-vgoyal@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: djwong@us.ibm.com, linux-ext4@vger.kernel.org,
-	Robin Dong <sanbai@taobao.com>
-To: Robin Dong <hao.bigrat@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.44.51]:1474 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755523Ab1F1ApC convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Jun 2011 20:45:02 -0400
-Received: from kpbe20.cbf.corp.google.com (kpbe20.cbf.corp.google.com [172.25.105.84])
-	by smtp-out.google.com with ESMTP id p5S0j0XP007769
-	for <linux-ext4@vger.kernel.org>; Mon, 27 Jun 2011 17:45:00 -0700
-Received: from gyd10 (gyd10.prod.google.com [10.243.49.202])
-	by kpbe20.cbf.corp.google.com with ESMTP id p5S0iCst023690
-	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=NOT)
-	for <linux-ext4@vger.kernel.org>; Mon, 27 Jun 2011 17:44:59 -0700
-Received: by gyd10 with SMTP id 10so2826465gyd.16
-        for <linux-ext4@vger.kernel.org>; Mon, 27 Jun 2011 17:44:58 -0700 (PDT)
-In-Reply-To: <20110627195911.GD20655@tux1.beaverton.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"jaxboe@fusionio.com" <jaxboe@fusionio.com>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"khlebnikov@openvz.org" <khlebnikov@openvz.org>,
+	"jmoyer@redhat.com" <jmoyer@redhat.com>
+To: Vivek Goyal <vgoyal@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1309205864-13124-1-git-send-email-vgoyal@redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jun 27, 2011 at 12:59, Darrick J. Wong <djwong@us.ibm.com> wrot=
-e:
-> On Mon, Jun 27, 2011 at 06:45:13PM +0800, Robin Dong wrote:
->> Subject: [PATCH v2] ext4: avoid redundant cache finding if flags not=
- cantian
->
-> I suspect you mean "contain" as opposed to "cantian".
+On Tue, 2011-06-28 at 04:17 +0800, Vivek Goyal wrote:
+> Hi,
+> 
+> Konstantin reported that fsync is very slow with ext4 if fsyncing process
+> is in a separate cgroup and one is using CFQ IO scheduler.
+> 
+> https://lkml.org/lkml/2011/6/23/269
+> 
+> Issue seems to be that fsync process is in a separate cgroup and journalling
+> thread is in root cgroup. After every IO from fsync, CFQ idles on fysnc
+> process queue waiting for more requests to come. But this process is now
+> waiting for IO to finish from journaling thread. After waiting for 8ms
+> fsync's queue gives way to jbd's queue. Then we start idling on jbd
+> thread and new IO from fsync is sitting in a separate queue in a separate
+> group.
+> 
+> Bottom line, that after every IO we end up idling on fysnc and jbd thread
+> so much that if somebody is doing fsync after every 4K of IO, throughput
+> nose dives.
+> 
+> Similar issue had issue come up with-in same cgroup also when "fsync"
+> and "jbd" thread were being queued on differnt service trees and idling
+> was killing. At that point of time two solutions were proposed. One
+> from Jeff Moyer and one from Corrado Zoccolo.
+> 
+> Jeff came up with the idea of coming with block layer API to yield the
+> queue if explicitly told by file system, hence cutting down on idling.
+> 
+> https://lkml.org/lkml/2010/7/2/277
+> 
+> Corrado, came up with a simpler approach of keeping jbd and fsync processes
+> on same service tree by parsing RQ_NOIDLE flag. By queuing on same service
+> tree, one queue preempts other queue hence cutting down on idling time.
+> Upstream went ahead with simpler approach to fix the issue.
+> 
+> commit 749ef9f8423054e326f3a246327ed2db4b6d395f
+> Author: Corrado Zoccolo <czoccolo@gmail.com>
+> Date:   Mon Sep 20 15:24:50 2010 +0200
+> 
+>     cfq: improve fsync performance for small files
+> 
+> 
+> Now with cgroups, same problem resurfaces but this time we can not queue
+> both the processes on same service tree and take advantage of preemption
+> as separate cgroups have separate service trees and both processes
+> belong to separate cgroups. We do not allow cross cgroup preemption 
+> as that wil break down the isolation between groups.
+> 
+> So this patch series resurrects Jeff's solution of file system specifying
+> the IO dependencies between threads explicitly to the block layer/ioscheduler.
+> One ioscheduler knows that current queue we are idling on is dependent on
+> IO from some other queue, CFQ allows dispatch of requests from that other
+> queue in the context of current active queue.
+> 
+> So if fysnc thread specifies the dependency on journalling thread, then
+> when time slice of fsync thread is running, it allows dispatch from
+> jbd in the time slice of fsync thread. Hence cutting down on idling.
+> 
+> This patch series seems to be working for me. I did testing for ext4 only.
+> This series is based on for-3.1/core branch of Jen's block tree.
+> Konstantin, can you please give it a try and see if it fixes your
+> issue.
+> 
+> Any feedback on how to solve this issue is appreciated.
+Hi Vivek,
+can we introduce a group think time check in cfq? say in a group the
+last queue is backed for the group and the queue is a non-idle queue, if
+the group think time is big, we don't allow the group idle and preempt
+could happen. The fsync thread is a non-idle queue with Corrado's patch,
+this allows fast group switch.
 
-The patch summary line could also use some shortening.
+Thanks,
+Shaohua
 
->> In old code, ext4 will find extent in cache first even flags does
->> not contian PUNCH_OUT, that may waste some time.
->
-> Same here ("contian").
-
-How about something along the lines of:
----------
-ext4: avoid wasted extent cache lookup if !PUNCH_OUT_EXT
-
-This patch avoids an extraneous lookup of the extent cache
-in ext4_ext_map_blocks() when the flag
-EXT4_GET_BLOCKS_PUNCH_OUT_EXT is absent.
-
-The existing logic was performing the lookup but not making
-use of the result. The patch simply reverses the order of evaluation
-in the condition.
-
-Since ext4_ext_in_cache() does not initialize newex on misses, bypassin=
-g
-its invocation does not introduce any new issue in this regard.
----------
-
- Regards - Eric
-
->
-> --D
->>
->> Signed-off-by: Robin Dong <sanbai@taobao.com>
->> Reviewed-by: Lukas Czerner <lczerner@redhat.com>
->> ---
->> =C2=A0fs/ext4/extents.c | =C2=A0 =C2=A04 ++--
->> =C2=A01 files changed, 2 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
->> index eb63c7b..fed2633 100644
->> --- a/fs/ext4/extents.c
->> +++ b/fs/ext4/extents.c
->> @@ -3358,8 +3358,8 @@ int ext4_ext_map_blocks(handle_t *handle, stru=
-ct inode *inode,
->> =C2=A0 =C2=A0 =C2=A0 trace_ext4_ext_map_blocks_enter(inode, map->m_l=
-blk, map->m_len, flags);
->>
->> =C2=A0 =C2=A0 =C2=A0 /* check in cache */
->> - =C2=A0 =C2=A0 if (ext4_ext_in_cache(inode, map->m_lblk, &newex) &&
->> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ((flags & EXT4_GET_BLOCK=
-S_PUNCH_OUT_EXT) =3D=3D 0)) {
->> + =C2=A0 =C2=A0 if (!(flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) &&
->> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext4_ext_in_cache(inode,=
- map->m_lblk, &newex)) {
->> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 if (!newex.ee_start=
-_lo && !newex.ee_start_hi) {
->> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 if ((flags & EXT4_GET_BLOCKS_CREATE) =3D=3D 0) {
->> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 /*
->> --
->> 1.7.1
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4=
-" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at =C2=A0http://vger.kernel.org/majordomo-info.h=
-tml
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =C2=A0http://vger.kernel.org/majordomo-info.ht=
-ml
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
