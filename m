@@ -1,64 +1,97 @@
-From: Konstantin Khlebnikov <khlebnikov@parallels.com>
-Subject: Re: [RFC PATCH 0/3] block: Fix fsync slowness with CFQ cgroups
-Date: Tue, 28 Jun 2011 18:42:57 +0400
-Message-ID: <4E09E871.8040600@parallels.com>
-References: <1309205864-13124-1-git-send-email-vgoyal@redhat.com> <4E09B457.9050800@parallels.com> <20110628134500.GD17552@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"jaxboe@fusionio.com" <jaxboe@fusionio.com>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"jmoyer@redhat.com" <jmoyer@redhat.com>
-To: Vivek Goyal <vgoyal@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20110628134500.GD17552@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Allison Henderson <achender@linux.vnet.ibm.com>
+Subject: [PATCH 1/2 v7] XFS TESTS: ENOSPC Punch Hole: Move su routines in 123 to common.rc
+Date: Tue, 28 Jun 2011 07:45:00 -0700
+Message-ID: <1309272301-5742-2-git-send-email-achender@linux.vnet.ibm.com>
+References: <1309272301-5742-1-git-send-email-achender@linux.vnet.ibm.com>
+Cc: Allison Henderson <achender@linux.vnet.ibm.com>
+To: xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e38.co.us.ibm.com ([32.97.110.159]:51772 "EHLO
+	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756965Ab1F1OnJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Jun 2011 10:43:09 -0400
+In-Reply-To: <1309272301-5742-1-git-send-email-achender@linux.vnet.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Vivek Goyal wrote:
-> On Tue, Jun 28, 2011 at 03:00:39PM +0400, Konstantin Khlebnikov wrote:
->> Vivek Goyal wrote:
->>> This patch series seems to be working for me. I did testing for ext4 only.
->>> This series is based on for-3.1/core branch of Jen's block tree.
->>> Konstantin, can you please give it a try and see if it fixes your
->>> issue.
->>
->> It works for me too, for ext3 and ext4, on top 3.0-rc5, after these trivial fixes:
->>
->> --- a/block/cfq-iosched.c
->> +++ b/block/cfq-iosched.c
->> @@ -1511,7 +1519,7 @@ static void cfq_add_rq_rb(struct request *rq)
->>           * if that happens, put the alias on the dispatch list
->>           */
->>          while ((__alias = elv_rb_add(&cfqq->sort_list, rq)) != NULL)
->> -               cfq_dispatch_insert(cfqd->queue, __alias);
->> +               cfq_dispatch_insert(cfqd->queue, __alias, false);
->>
->>          if (!cfq_cfqq_on_rr(cfqq))
->>                  cfq_add_cfqq_rr(cfqd, cfqq);
->> @@ -3797,12 +3797,11 @@ cfq_set_depends_on_task(struct request_queue *q, struct task_struct *tsk)
->>           */
->>          rcu_read_lock();
->>          if (task_blkio_cgroup(current) == task_blkio_cgroup(tsk))
->> -               return;
->> -       rcu_read_unlock();
->> +               goto out_unlock_rcu;
->>
->>          cic = cfq_cic_lookup(cfqd, current->io_context);
->>          if (!cic)
->> -               return;
->> +               goto out_unlock_rcu;
->
-> You have done this change because you want to keep cfq_cic_lookup() also
-> in rcu read side critical section? I am assuming that it works even
-> without this. Though keeping it under rcu is probably more correct as
-> cic objects are freed in rcu manner.
+This patch moves the su routines in test 123 to common.rc
+so that they can also be used in the new test 255
 
-No, your just forgot to relese rcu in case task_blkio_cgroup(current) == task_blkio_cgroup(tsk)
+Signed-off-by: Allison Henderson <achender@linux.vnet.ibm.com>
+---
+:100755 100755 27c1e66... ee1194d... M	123
+:100644 100644 680631d... 9d68574... M	common.rc
+ 123       |   24 ------------------------
+ common.rc |   20 ++++++++++++++++++++
+ 2 files changed, 20 insertions(+), 24 deletions(-)
 
->
-> Thanks
-> Vivek
+diff --git a/123 b/123
+index 27c1e66..ee1194d 100755
+--- a/123
++++ b/123
+@@ -42,30 +42,6 @@ _cleanup()
+     _cleanup_testdir
+ }
+ 
+-
+-_filter_user_do()
+-{
+-        perl -ne "
+-s,.*Permission\sdenied.*,Permission denied,;
+-s,.*no\saccess\sto\stty.*,,;
+-s,.*no\sjob\scontrol\sin\sthis\sshell.*,,;
+-s,^\s*$,,;
+-        print;"
+-}
+-
+-
+-
+-
+-_user_do()
+-{
+-    if [ "$HOSTOS" == "IRIX" ]
+-	then
+-	echo $1 | /bin/bash "su $qa_user 2>&1" | _filter_user_do
+-    else
+-	echo $1 | su $qa_user 2>&1 | _filter_user_do
+-    fi
+-}
+-
+ # get standard environment, filters and checks
+ . ./common.rc
+ . ./common.filter
+diff --git a/common.rc b/common.rc
+index 680631d..9d68574 100644
+--- a/common.rc
++++ b/common.rc
+@@ -867,6 +867,26 @@ _require_user()
+     [ "$?" == "0" ] || _notrun "$qa_user user not defined."
+ }
+ 
++_filter_user_do()
++{
++        perl -ne "
++s,.*Permission\sdenied.*,Permission denied,;
++s,.*no\saccess\sto\stty.*,,;
++s,.*no\sjob\scontrol\sin\sthis\sshell.*,,;
++s,^\s*$,,;
++        print;"
++}
++
++_user_do()
++{
++    if [ "$HOSTOS" == "IRIX" ]
++	then
++	echo $1 | /bin/bash "su $qa_user 2>&1" | _filter_user_do
++    else
++	echo $1 | su $qa_user 2>&1 | _filter_user_do
++    fi  
++}
++
+ # check that xfs_io, glibc, kernel, and filesystem all (!) support
+ # fallocate
+ #
+-- 
+1.7.1
 
