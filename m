@@ -1,63 +1,198 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: [PATCH 2/2 v6] XFS TESTS: ENOSPC Punch Hole: Add new test 255
-Date: Tue, 28 Jun 2011 07:02:19 -0700
-Message-ID: <4E09DEEB.7070908@linux.vnet.ibm.com>
-References: <1309239163-3975-1-git-send-email-achender@linux.vnet.ibm.com> <1309239163-3975-3-git-send-email-achender@linux.vnet.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Allison Henderson <achender@linux.vnet.ibm.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH -v3] ext4: refactor duplicated block placement code
+Date: Tue, 28 Jun 2011 10:05:09 -0400
+Message-ID: <1309269909-15341-1-git-send-email-tytso@mit.edu>
+References: <4E08EA6F.4010102@redhat.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:36870 "EHLO e5.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757628Ab1F1ODQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Jun 2011 10:03:16 -0400
-In-Reply-To: <1309239163-3975-3-git-send-email-achender@linux.vnet.ibm.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:43337 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756516Ab1F1OFM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Jun 2011 10:05:12 -0400
+In-Reply-To: <4E08EA6F.4010102@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 06/27/2011 10:32 PM, Allison Henderson wrote:
-> This patch adds a new test 255 that tests that a hole can be punched even when the
-> disk is full.  Reserved blocks should be used to allow a punch hole to proceed even
-> when there is not enough blocks to further fragment the file. To test this, the
-> file system is fragmented by punching holes in regular intervals and filling
-> the file system between punches. This will eventually force the file system to use
-> reserved blocks to proceed with the punch hole operation.
->
-> The work in this patch is a continuation from a previous patch set that has been
-> partially accepted.
->
-> Signed-off-by: Allison Henderson<achender@linux.vnet.ibm.com>
-> ---
->
-> v5->v6
->
-> Test moved out of 252 and put in its own test 255
->
-> _fill_fs and _test_full_fs_punch have been moved from common.punch
-> to test 255 and modified to use the _user_do routines in common.rc
->
-> _fill_fs has been optimized to stop once files smaller than a block
-> cannot be created.
->
-> :100644 100644 1f86075... c045e70... M	group
->   group |    1 +
->   1 files changed, 1 insertions(+), 0 deletions(-)
->
-> diff --git a/group b/group
-> index 1f86075..c045e70 100644
-> --- a/group
-> +++ b/group
-> @@ -368,3 +368,4 @@ deprecated
->   252 auto quick prealloc
->   253 auto quick
->   254 auto quick
-> +255 auto quick
+From: "Theodore Ts'o" <tytso@mit.edu>
 
+I found that ext4_ext_find_goal() and ext4_find_near()
+share the same code for returning a coloured start block
+based on i_block_group.
 
-Ah, sorry I obviously messed up the file add here. My apologies for the 
-confusion!  Will resend this one.
+We can refactor this into a common function so that they
+don't diverge in the future.
 
-Allison
+Thanks to adilger for suggesting the new function name.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+
+Moved new code to balloc.c, and rebased patch to take into account the
+fs/ext4/indirect.c reorganization.  -- Ted
+
+ fs/ext4/balloc.c   |   48 ++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ext4.h     |    1 +
+ fs/ext4/extents.c  |   37 +------------------------------------
+ fs/ext4/indirect.c |   28 +---------------------------
+ 4 files changed, 51 insertions(+), 63 deletions(-)
+
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 264f694..f8224ad 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -620,3 +620,51 @@ unsigned long ext4_bg_num_gdb(struct super_block *sb, ext4_group_t group)
+ 
+ }
+ 
++/**
++ *	ext4_inode_to_goal_block - return a hint for block allocation
++ *	@inode: inode for block allocation
++ *
++ *	Return the ideal location to start allocating blocks for a
++ *	newly created inode.
++ */
++ext4_fsblk_t ext4_inode_to_goal_block(struct inode *inode)
++{
++	struct ext4_inode_info *ei = EXT4_I(inode);
++	ext4_group_t block_group;
++	ext4_grpblk_t colour;
++	int flex_size = ext4_flex_bg_size(EXT4_SB(inode->i_sb));
++	ext4_fsblk_t bg_start;
++	ext4_fsblk_t last_block;
++
++	block_group = ei->i_block_group;
++	if (flex_size >= EXT4_FLEX_SIZE_DIR_ALLOC_SCHEME) {
++		/*
++		 * If there are at least EXT4_FLEX_SIZE_DIR_ALLOC_SCHEME
++		 * block groups per flexgroup, reserve the first block
++		 * group for directories and special files.  Regular
++		 * files will start at the second block group.  This
++		 * tends to speed up directory access and improves
++		 * fsck times.
++		 */
++		block_group &= ~(flex_size-1);
++		if (S_ISREG(inode->i_mode))
++			block_group++;
++	}
++	bg_start = ext4_group_first_block_no(inode->i_sb, block_group);
++	last_block = ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es) - 1;
++
++	/*
++	 * If we are doing delayed allocation, we don't need take
++	 * colour into account.
++	 */
++	if (test_opt(inode->i_sb, DELALLOC))
++		return bg_start;
++
++	if (bg_start + EXT4_BLOCKS_PER_GROUP(inode->i_sb) <= last_block)
++		colour = (current->pid % 16) *
++			(EXT4_BLOCKS_PER_GROUP(inode->i_sb) / 16);
++	else
++		colour = (current->pid % 16) * ((last_block - bg_start) / 16);
++	return bg_start + colour;
++}
++
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index ddaf504..49d2cea 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1743,6 +1743,7 @@ extern unsigned ext4_init_block_bitmap(struct super_block *sb,
+ 				       struct ext4_group_desc *desc);
+ #define ext4_free_blocks_after_init(sb, group, desc)			\
+ 		ext4_init_block_bitmap(sb, NULL, group, desc)
++ext4_fsblk_t ext4_inode_to_goal_block(struct inode *);
+ 
+ /* dir.c */
+ extern int __ext4_check_dir_entry(const char *, unsigned int, struct inode *,
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index eb63c7b..f331e50 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -114,12 +114,6 @@ static ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
+ 			      struct ext4_ext_path *path,
+ 			      ext4_lblk_t block)
+ {
+-	struct ext4_inode_info *ei = EXT4_I(inode);
+-	ext4_fsblk_t bg_start;
+-	ext4_fsblk_t last_block;
+-	ext4_grpblk_t colour;
+-	ext4_group_t block_group;
+-	int flex_size = ext4_flex_bg_size(EXT4_SB(inode->i_sb));
+ 	int depth;
+ 
+ 	if (path) {
+@@ -161,36 +155,7 @@ static ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
+ 	}
+ 
+ 	/* OK. use inode's group */
+-	block_group = ei->i_block_group;
+-	if (flex_size >= EXT4_FLEX_SIZE_DIR_ALLOC_SCHEME) {
+-		/*
+-		 * If there are at least EXT4_FLEX_SIZE_DIR_ALLOC_SCHEME
+-		 * block groups per flexgroup, reserve the first block
+-		 * group for directories and special files.  Regular
+-		 * files will start at the second block group.  This
+-		 * tends to speed up directory access and improves
+-		 * fsck times.
+-		 */
+-		block_group &= ~(flex_size-1);
+-		if (S_ISREG(inode->i_mode))
+-			block_group++;
+-	}
+-	bg_start = ext4_group_first_block_no(inode->i_sb, block_group);
+-	last_block = ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es) - 1;
+-
+-	/*
+-	 * If we are doing delayed allocation, we don't need take
+-	 * colour into account.
+-	 */
+-	if (test_opt(inode->i_sb, DELALLOC))
+-		return bg_start;
+-
+-	if (bg_start + EXT4_BLOCKS_PER_GROUP(inode->i_sb) <= last_block)
+-		colour = (current->pid % 16) *
+-			(EXT4_BLOCKS_PER_GROUP(inode->i_sb) / 16);
+-	else
+-		colour = (current->pid % 16) * ((last_block - bg_start) / 16);
+-	return bg_start + colour + block;
++	return ext4_inode_to_goal_block(inode);
+ }
+ 
+ /*
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index c3e85a8..6c27111 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -207,11 +207,6 @@ static ext4_fsblk_t ext4_find_near(struct inode *inode, Indirect *ind)
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	__le32 *start = ind->bh ? (__le32 *) ind->bh->b_data : ei->i_data;
+ 	__le32 *p;
+-	ext4_fsblk_t bg_start;
+-	ext4_fsblk_t last_block;
+-	ext4_grpblk_t colour;
+-	ext4_group_t block_group;
+-	int flex_size = ext4_flex_bg_size(EXT4_SB(inode->i_sb));
+ 
+ 	/* Try to find previous block */
+ 	for (p = ind->p - 1; p >= start; p--) {
+@@ -227,28 +222,7 @@ static ext4_fsblk_t ext4_find_near(struct inode *inode, Indirect *ind)
+ 	 * It is going to be referred to from the inode itself? OK, just put it
+ 	 * into the same cylinder group then.
+ 	 */
+-	block_group = ei->i_block_group;
+-	if (flex_size >= EXT4_FLEX_SIZE_DIR_ALLOC_SCHEME) {
+-		block_group &= ~(flex_size-1);
+-		if (S_ISREG(inode->i_mode))
+-			block_group++;
+-	}
+-	bg_start = ext4_group_first_block_no(inode->i_sb, block_group);
+-	last_block = ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es) - 1;
+-
+-	/*
+-	 * If we are doing delayed allocation, we don't need take
+-	 * colour into account.
+-	 */
+-	if (test_opt(inode->i_sb, DELALLOC))
+-		return bg_start;
