@@ -1,91 +1,66 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: [PATCH 2/3 v2] XFS TESTS: Fix 252 Failure: Update 252 Golden
- Output
-Date: Tue, 28 Jun 2011 08:03:18 -0700
-Message-ID: <4E09ED36.2040903@linux.vnet.ibm.com>
-References: <1309235247-32650-1-git-send-email-achender@linux.vnet.ibm.com> <1309235247-32650-3-git-send-email-achender@linux.vnet.ibm.com> <20110628050900.GL32466@dastard>	<4E09660B.7050706@linux.vnet.ibm.com> <4E09D735.5060000@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Josef Bacik <josef@redhat.com>, xfs@oss.sgi.com
-To: Eric Sandeen <sandeen@redhat.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH] ext4: Documenatation: remove acl and user_xattr mount options
+Date: Tue, 28 Jun 2011 17:21:17 +0200
+Message-ID: <1309274477-451-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:44411 "EHLO e9.ny.us.ibm.com"
+Received: from mx1.redhat.com ([209.132.183.28]:17670 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755938Ab1F1PEO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Jun 2011 11:04:14 -0400
-In-Reply-To: <4E09D735.5060000@redhat.com>
+	id S1758383Ab1F1PVW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Jun 2011 11:21:22 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 06/28/2011 06:29 AM, Eric Sandeen wrote:
-> On 6/28/11 12:26 AM, Allison Henderson wrote:
->> On 06/27/2011 10:09 PM, Dave Chinner wrote:
->>> On Mon, Jun 27, 2011 at 09:27:26PM -0700, Allison Henderson wrote:
->>>> New filtered golden output for test 252
->>>>
->>>> Signed-off-by: Allison Henderson<achender@linux.vnet.ibm.com>
->>>> ---
->>>> :100644 100644 930c924... fcfd121... M    252.out
->>>>    252.out |  272 +++++++++++++++++++++++++++++++++++++++------------------------
->>>>    1 files changed, 170 insertions(+), 102 deletions(-)
->>>>
->>>> diff --git a/252.out b/252.out
->>>> index 930c924..fcfd121 100644
->>>> --- a/252.out
->>>> +++ b/252.out
->>>> @@ -1,239 +1,307 @@
->>>>    QA output created by 252
->>>>        1. into a hole
->>>> +daa100df6e6711906b61c9ab5aa16032
->>>>        2. into allocated space
->>>> -0: [0..7]: data
->>>> +0: [0..7]: extent
->>>>    1: [8..23]: hole
->>>> -2: [24..39]: data
->>>> +2: [24..39]: extent
->>>> +cc58a7417c2d7763adc45b6fcd3fa024
->>>
->>> I don't really like the way this weakens the test for XFS. With this
->>> change, the test no longer is checking that unwritten extent
->>> behaviour is correct.
->>>
->>> Rather than weakening the test, perhaps it would be better to
->>> execute 252 for XFS only (with the md5sums added), and then
->>> duplicate it to a new test for all filesystems to run with the
->>> weaker result checking that using the new filter function gives us.
->>> With the amount of common code the two tests share, it should be
->>> trivial to do this....
->>>
->>
->> Alrighty, that sounds pretty straight forward, as long as every one
->> is in agreement. I think that would help retain the tests
->> effectiveness. Eric, Josef, what are your thoughts?
->
-> Yeah, I agree, I share Dave's concerns and that sounds like a good
-> way to go.
->
-> Thanks,
-> -Eric
+Acl and user_xattr mount options are no longer needed since those
+features are enabled by default if configured in (seee commit
+ea6633369458992241599c9d9ebadffaeddec164). We can not easily
+deprecate mount options itself (since it is probably too early),
+but we can remove it from documentation first.
 
-Ok I will get an update sent out with these adjustments, and also the 
-checksum wrapper that Dave mentioned in the 1/3 patch.  Thanks all
-for your reviews!
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ Documentation/filesystems/ext4.txt |   25 +++++++++++--------------
+ 1 files changed, 11 insertions(+), 14 deletions(-)
 
-Allison Henderson
-
->
->> Allison Henderson
->>
->>> Cheers,
->>>
->>> Dave.
->>
->
-> _______________________________________________
-> xfs mailing list
-> xfs@oss.sgi.com
-> http://oss.sgi.com/mailman/listinfo/xfs
+diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
+index 3ae9bc9..9544e2c 100644
+--- a/Documentation/filesystems/ext4.txt
++++ b/Documentation/filesystems/ext4.txt
+@@ -209,22 +209,19 @@ oldalloc		This disables the Orlov block allocator and enables
+ 			performance - we'd like to get some feedback if it's
+ 			the contrary for you.
+ 
+-user_xattr		Enables Extended User Attributes.  Additionally, you
+-			need to have extended attribute support enabled in the
+-			kernel configuration (CONFIG_EXT4_FS_XATTR).  See the
+-			attr(5) manual page and http://acl.bestbits.at/ to
+-			learn more about extended attributes.
+-
+-nouser_xattr		Disables Extended User Attributes.
+-
+-acl			Enables POSIX Access Control Lists support.
+-			Additionally, you need to have ACL support enabled in
+-			the kernel configuration (CONFIG_EXT4_FS_POSIX_ACL).
+-			See the acl(5) manual page and http://acl.bestbits.at/
+-			for more information.
++nouser_xattr		Disables Extended User Attributes. If you have extended
++			attribute support enabled in the kernel configuration
++			(CONFIG_EXT4_FS_XATTR), extended attribute support
++			is enabled by default on mount. See the attr(5) manual
++			page and http://acl.bestbits.at/ for more information
++			about extended attributes.
+ 
+ noacl			This option disables POSIX Access Control List
+-			support.
++			support. If ACL support is enabled in the kernel
++			configuration (CONFIG_EXT4_FS_POSIX_ACL), ACL is
++			enabled by default on mount. See the acl(5) manual
++			page and http://acl.bestbits.at/ for more information
++			about acl.
+ 
+ bsddf		(*)	Make 'df' act like BSD.
+ minixdf			Make 'df' act like Minix.
+-- 
+1.7.4.4
 
