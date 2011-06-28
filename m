@@ -1,64 +1,76 @@
-From: Vivek Goyal <vgoyal@redhat.com>
-Subject: Re: [RFC PATCH 0/3] block: Fix fsync slowness with CFQ cgroups
-Date: Tue, 28 Jun 2011 09:45:00 -0400
-Message-ID: <20110628134500.GD17552@redhat.com>
-References: <1309205864-13124-1-git-send-email-vgoyal@redhat.com>
- <4E09B457.9050800@parallels.com>
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: [PATCH 01/11 RESEND] libe2p: Add new function get_fragment_score()
+Date: Tue, 28 Jun 2011 09:53:20 -0400
+Message-ID: <BANLkTikZwscrs4F1NeVRKBTPSouthhMgSg@mail.gmail.com>
+References: <4DF8522F.2020304@sx.jp.nec.com> <20110617031814.GA31884@thunk.org>
+ <4DFB62C7.5070008@redhat.com> <E94A4A11-B1FB-4D95-87C5-F18190EF333B@gmail.com>
+ <4E008045.1040909@sx.jp.nec.com> <BANLkTinvConLV08CkaTSBOhM=2HFwF0wnw@mail.gmail.com>
+ <4E044AB4.9010804@sx.jp.nec.com> <BANLkTinjKDWv4HdODzLSU5WQ-TYaDk2ABw@mail.gmail.com>
+ <4E09AB2A.6000105@sx.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"jaxboe@fusionio.com" <jaxboe@fusionio.com>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"jmoyer@redhat.com" <jmoyer@redhat.com>
-To: Konstantin Khlebnikov <khlebnikov@parallels.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Andreas Dilger <aedilger@gmail.com>,
+	Eric Sandeen <sandeen@redhat.com>, "Ted Ts'o" <tytso@mit.edu>,
+	ext4 <linux-ext4@vger.kernel.org>
+To: Kazuya Mio <k-mio@sx.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53668 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756592Ab1F1NpD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Jun 2011 09:45:03 -0400
-Content-Disposition: inline
-In-Reply-To: <4E09B457.9050800@parallels.com>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:49761 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758070Ab1F1Nxz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Jun 2011 09:53:55 -0400
+Received: by bwd5 with SMTP id 5so204727bwd.19
+        for <linux-ext4@vger.kernel.org>; Tue, 28 Jun 2011 06:53:54 -0700 (PDT)
+In-Reply-To: <4E09AB2A.6000105@sx.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 28, 2011 at 03:00:39PM +0400, Konstantin Khlebnikov wrote:
-> Vivek Goyal wrote:
-> >This patch series seems to be working for me. I did testing for ext4 only.
-> >This series is based on for-3.1/core branch of Jen's block tree.
-> >Konstantin, can you please give it a try and see if it fixes your
-> >issue.
-> 
-> It works for me too, for ext3 and ext4, on top 3.0-rc5, after these trivial fixes:
-> 
-> --- a/block/cfq-iosched.c
-> +++ b/block/cfq-iosched.c
-> @@ -1511,7 +1519,7 @@ static void cfq_add_rq_rb(struct request *rq)
->          * if that happens, put the alias on the dispatch list
->          */
->         while ((__alias = elv_rb_add(&cfqq->sort_list, rq)) != NULL)
-> -               cfq_dispatch_insert(cfqd->queue, __alias);
-> +               cfq_dispatch_insert(cfqd->queue, __alias, false);
-> 
->         if (!cfq_cfqq_on_rr(cfqq))
->                 cfq_add_cfqq_rr(cfqd, cfqq);
-> @@ -3797,12 +3797,11 @@ cfq_set_depends_on_task(struct request_queue *q, struct task_struct *tsk)
->          */
->         rcu_read_lock();
->         if (task_blkio_cgroup(current) == task_blkio_cgroup(tsk))
-> -               return;
-> -       rcu_read_unlock();
-> +               goto out_unlock_rcu;
-> 
->         cic = cfq_cic_lookup(cfqd, current->io_context);
->         if (!cic)
-> -               return;
-> +               goto out_unlock_rcu;
+On Tue, Jun 28, 2011 at 6:21 AM, Kazuya Mio <k-mio@sx.jp.nec.com> wrote=
+:
+> 2011/06/26 11:16, Greg Freemyer wrote:
+>>
+>> I'm talking about sparse files.
+>>
+>> Where you might have:
+>>
+>> block_group1 - hole - block_group2 - hole - block_group3.
+>>
+>> Block_group2 has a head and a tail extent. =A0In my mind, from a
+>> performance perspective, they are symmetric. =A0Meaning that having =
+a
+>> small extent at the beginning is no better and no worse than having =
+a
+>> small extent at the end.
+>
+> Thanks for your kind description. Your point is right. I'll think a l=
+ittle
+> more
+> about the fragmentation score.
+>
+> Regards,
+> Kazuya Mio
 
-You have done this change because you want to keep cfq_cic_lookup() also
-in rcu read side critical section? I am assuming that it works even
-without this. Though keeping it under rcu is probably more correct as
-cic objects are freed in rcu manner.
+Kazuya,
 
-Thanks
-Vivek
+While you're thinking about the issue:
+
+As I hope I've said before, for sparse file I think e4defrag should
+score and defrag one block_group at a time.  Thus if a VM backing
+storage file has 100 block_groups (as I'm using the term), then it
+should score each of the 100 separately and if needed defrag them one
+at a time.
+
+I can see no benefit from treating a large sparse file as monolithic
+for the decision process.
+
+fyi: Is there an agreed on term for what I'm calling a block_group.  I
+believe e4defrag uses the term "extent group" in the comments, but
+sparse files exist in non-extent based filesystems, so it's not a very
+portable name.
+
+Greg
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
