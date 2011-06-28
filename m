@@ -1,98 +1,82 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] ext4: Remove some deprecated mount options
-Date: Tue, 28 Jun 2011 17:53:14 +0200
-Message-ID: <1309276394-11536-1-git-send-email-lczerner@redhat.com>
-Cc: tytso@mit.edu, Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 3/4] Ext4: handle SEEK_HOLE/SEEK_DATA generically
+Date: Tue, 28 Jun 2011 10:29:12 -0600
+Message-ID: <40B8FEA5-D240-45CE-A903-946922CF449C@dilger.ca>
+References: <1309275199-10801-1-git-send-email-josef@redhat.com> <1309275199-10801-3-git-send-email-josef@redhat.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Josef Bacik <josef@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28461 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758624Ab1F1PxV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Jun 2011 11:53:21 -0400
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:15762 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759405Ab1F1Q3P convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Jun 2011 12:29:15 -0400
+In-Reply-To: <1309275199-10801-3-git-send-email-josef@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Remove deprecated mount options bsddf, nogrpid, sysvgroups which has
-been marked as deprecated since 2.6.23 and should be removed in 2.6.28.
-However it is not a big deal because those are defaults anyway and the
-options for setting their opposites still remains in kernel (however are
-still deprecated). Also push the kernel version to remove those leftover
-options further in time.
+On 2011-06-28, at 9:33 AM, Josef Bacik wrote:
+> Since Ext4 has its own lseek we need to make sure it handles
+> SEEK_HOLE/SEEK_DATA.  For now just do the same thing that is done in the generic
+> case, somebody else can come along and make it do fancy things later.  Thanks,
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- Documentation/filesystems/ext4.txt |    4 ----
- fs/ext4/super.c                    |   20 +++-----------------
- 2 files changed, 3 insertions(+), 21 deletions(-)
+Josef,
+are you planning to add an ext4-based version of this in the future?
+Another possibility is to have a generic SEEK_{DATA,HOLE} -> FIEMAP
+converter, since there are several filesystems that already support
+FIEMAP (ext3, ext4, etc).
 
-diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
-index 9544e2c..b33434f 100644
---- a/Documentation/filesystems/ext4.txt
-+++ b/Documentation/filesystems/ext4.txt
-@@ -223,7 +223,6 @@ noacl			This option disables POSIX Access Control List
- 			page and http://acl.bestbits.at/ for more information
- 			about acl.
- 
--bsddf		(*)	Make 'df' act like BSD.
- minixdf			Make 'df' act like Minix.
- 
- debug			Extra debugging information is sent to syslog.
-@@ -247,9 +246,6 @@ data_err=abort		Abort the journal if an error occurs in a file
- grpid			Give objects the same group ID as their creator.
- bsdgroups
- 
--nogrpid		(*)	New objects have the group ID of their creator.
--sysvgroups
--
- resgid=n		The group ID which may use the reserved blocks.
- 
- resuid=n		The user ID which may use the reserved blocks.
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 9ea71aa..a75320e 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1274,7 +1274,7 @@ static const struct export_operations ext4_export_ops = {
- };
- 
- enum {
--	Opt_bsd_df, Opt_minix_df, Opt_grpid, Opt_nogrpid,
-+	Opt_minix_df, Opt_grpid,
- 	Opt_resgid, Opt_resuid, Opt_sb, Opt_err_cont, Opt_err_panic, Opt_err_ro,
- 	Opt_nouid32, Opt_debug, Opt_oldalloc, Opt_orlov,
- 	Opt_user_xattr, Opt_nouser_xattr, Opt_acl, Opt_noacl,
-@@ -1297,12 +1297,9 @@ enum {
- };
- 
- static const match_table_t tokens = {
--	{Opt_bsd_df, "bsddf"},
- 	{Opt_minix_df, "minixdf"},
- 	{Opt_grpid, "grpid"},
- 	{Opt_grpid, "bsdgroups"},
--	{Opt_nogrpid, "nogrpid"},
--	{Opt_nogrpid, "sysvgroups"},
- 	{Opt_resgid, "resgid=%u"},
- 	{Opt_resuid, "resuid=%u"},
- 	{Opt_sb, "sb=%u"},
-@@ -1486,24 +1483,13 @@ static int parse_options(char *options, struct super_block *sb,
- 		args[0].to = args[0].from = NULL;
- 		token = match_token(p, tokens, args);
- 		switch (token) {
--		case Opt_bsd_df:
--			ext4_msg(sb, KERN_WARNING, deprecated_msg, p, "2.6.38");
--			clear_opt(sb, MINIX_DF);
--			break;
- 		case Opt_minix_df:
--			ext4_msg(sb, KERN_WARNING, deprecated_msg, p, "2.6.38");
-+			ext4_msg(sb, KERN_WARNING, deprecated_msg, p, "3.5");
- 			set_opt(sb, MINIX_DF);
--
- 			break;
- 		case Opt_grpid:
--			ext4_msg(sb, KERN_WARNING, deprecated_msg, p, "2.6.38");
-+			ext4_msg(sb, KERN_WARNING, deprecated_msg, p, "3.5");
- 			set_opt(sb, GRPID);
--
--			break;
--		case Opt_nogrpid:
--			ext4_msg(sb, KERN_WARNING, deprecated_msg, p, "2.6.38");
--			clear_opt(sb, GRPID);
+> Signed-off-by: Josef Bacik <josef@redhat.com>
+> ---
+> fs/ext4/file.c |   21 +++++++++++++++++++++
+> 1 files changed, 21 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index 2c09723..ce766f9 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -236,6 +236,27 @@ loff_t ext4_llseek(struct file *file, loff_t offset, int origin)
+> 		}
+> 		offset += file->f_pos;
+> 		break;
+> +	case SEEK_DATA:
+> +		/*
+> +		 * In the generic case the entire file is data, so as long as
+> +		 * offset isn't at the end of the file then the offset is data.
+> +		 */
+> +		if (offset >= inode->i_size) {
+> +			mutex_unlock(&inode->i_mutex);
+> +			return -ENXIO;
+> +		}
+> +		break;
+> +	case SEEK_HOLE:
+> +		/*
+> +		 * There is a virtual hole at the end of the file, so as long as
+> +		 * offset isn't i_size or larger, return i_size.
+> +		 */
+> +		if (offset >= inode->i_size) {
+> +			mutex_unlock(&inode->i_mutex);
+> +			return -ENXIO;
+> +		}
+> +		offset = inode->i_size;
+> +		break;
+> 	}
+> 
+> 	if (offset < 0 || offset > maxbytes) {
+> -- 
+> 1.7.5.2
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+Cheers, Andreas
+
+
+
+
+
