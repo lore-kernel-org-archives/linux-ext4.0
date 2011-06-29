@@ -1,67 +1,84 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [RFC] Journal credits debugging (Was: Re: Bug#615998: ...)
-Date: Wed, 29 Jun 2011 01:27:40 -0600
-Message-ID: <37DE6F9F-E43F-4EB8-9A1D-6CDB59F90134@dilger.ca>
-References: <BANLkTi=xXtnsBECOdSsC4_1bgnCrwsMb6g@mail.gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Jan Kara <jack@suse.cz>,
-	"Moffett, Kyle D" <Kyle.D.Moffett@boeing.com>,
-	"Ted Ts'o" <tytso@mit.edu>, Lukas Czerner <lczerner@redhat.com>,
-	Sean Ryle <seanbo@gmail.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Sachin Sant <sachinp@in.ibm.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Amir Goldstein <amir73il@gmail.com>
+From: Ric Wheeler <ricwheeler@gmail.com>
+Subject: Re: [PATCH] ext4: Remove some deprecated mount options
+Date: Wed, 29 Jun 2011 09:55:34 +0100
+Message-ID: <4E0AE886.6060005@gmail.com>
+References: <1309276394-11536-1-git-send-email-lczerner@redhat.com> <B9B585C1-330D-487B-9E1A-B55255377451@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:24216 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751736Ab1F2H1n convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Jun 2011 03:27:43 -0400
-In-Reply-To: <BANLkTi=xXtnsBECOdSsC4_1bgnCrwsMb6g@mail.gmail.com>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:65359 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753868Ab1F2Izi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Jun 2011 04:55:38 -0400
+Received: by vws1 with SMTP id 1so733734vws.19
+        for <linux-ext4@vger.kernel.org>; Wed, 29 Jun 2011 01:55:38 -0700 (PDT)
+In-Reply-To: <B9B585C1-330D-487B-9E1A-B55255377451@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-06-29, at 1:10 AM, Amir Goldstein wrote:
-> I would like to suggest an approach that may help us track down these
-> sort of bugs more easily.
-> 
-> Add a new class_id argument to ext4_handle_dirty_metadata() and collect
-> statistics of used credits per class_id.
-> 
-> There are only so many types of journaled objects:
-> SUPER, GDT, BB, IB, ITB, IND, EXT, DATA, XATTR, QUOT...
-> So it shouldn't be a problem to save the statistics per handle.
-> 
-> If you look at struct jbd2_journal_handle, you will find a bunch of h_cow_XXX
-> fields intended as COW debugging counters.
-> We may as well turn these fields into a generic counters array, which can
-> be used by either COW debugging or credits debugging code.
-> 
-> This should be simple enough to implement and should provide
-> a more detailed report when buffer credits have run out.
-> 
-> However, if we are going to modify all call sites of
-> ext4_handle_dirty_metadata(), it would be wise to also add an object_id
-> (or a better name) argument that will provide the group no. or inode no.
-> or quota type, or any other id relevant for classification.
-> 
-> We can use this information, along with where, line, handle, ino,
-> block_nr, buffer_credits and create a stable trace point in
-> __ext4_handle_dirty_metadata().
+On 06/28/2011 05:35 PM, Andreas Dilger wrote:
+> On 2011-06-28, at 9:53 AM, Lukas Czerner wrote:
+>> Remove deprecated mount options bsddf, nogrpid, sysvgroups which has
+>> been marked as deprecated since 2.6.23 and should be removed in 2.6.28.
+>> However it is not a big deal because those are defaults anyway and the
+>> options for setting their opposites still remains in kernel (however are
+>> still deprecated). Also push the kernel version to remove those leftover
+>> options further in time.
+>>
+>> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+>> index 9ea71aa..a75320e 100644
+>> --- a/fs/ext4/super.c
+>> +++ b/fs/ext4/super.c
+>> @@ -1486,24 +1483,13 @@ static int parse_options(char *options, struct super_block *sb,
+>> 		args[0].to = args[0].from = NULL;
+>> 		token = match_token(p, tokens, args);
+>> 		switch (token) {
+>> -		case Opt_bsd_df:
+>> -			ext4_msg(sb, KERN_WARNING, deprecated_msg, p, "2.6.38");
+>> -			clear_opt(sb, MINIX_DF);
+>> -			break;
+>> 		case Opt_minix_df:
+>> -			ext4_msg(sb, KERN_WARNING, deprecated_msg, p, "2.6.38");
+>> +			ext4_msg(sb, KERN_WARNING, deprecated_msg, p, "3.5");
+>> 			set_opt(sb, MINIX_DF);
+>> -
+>> 			break;
+>> 		case Opt_grpid:
+>> -			ext4_msg(sb, KERN_WARNING, deprecated_msg, p, "2.6.38");
+>> +			ext4_msg(sb, KERN_WARNING, deprecated_msg, p, "3.5");
+>> 			set_opt(sb, GRPID);
+>> -
+>> -			break;
+>> -		case Opt_nogrpid:
+>> -			ext4_msg(sb, KERN_WARNING, deprecated_msg, p, "2.6.38");
+>> -			clear_opt(sb, GRPID);
+> One problem is that these options haven't been deprecated in major vendor
+> releases (e.g. 2.6.32 for RHEL6 and SLES11), which is what most people are
+> using.  I think that they should be deprecated for at least one major
+> vendor release before being removed, otherwise it is nearly the same as just
+> deleting them on some random kernel version without telling anyone.
+>
+> I'm not sure where you got "2.6.23" and "2.6.28" from, maybe you meant "2.6.33",
+> which is unfortunately just after the cutoff for both RHEL6 and SLES11SP1.
+>
+>
+> Cheers, Andreas
+>
 
-One of the things I like about the ZFS/DMU transaction API is that instead
-of the caller having to "just know" how many credits are needed to modify
-the filesystem, the caller specifies the inodes/directories that will be
-modified, and if new inodes are allocated in a "declaration" step before
-starting the transaction.  This allows the internal code to account for the
-metadata will be modified, and avoids the knowledge of journal credits for
-different update types all over the code.
+I am not sure that I follow the concern - people who use upstream follow that, 
+people who use vendor kernels get some branched version of something old.
 
-Cheers, Andreas
+In fact, we try hard *not* to do things in RHEL kernels that are not upstream 
+first. I would be perfectly happy to drop it upstream first and then deprecate 
+it in a future RHEL release.
 
+Thanks!
 
+Ric
 
-
+(and Lukas is *very* familiar with which kernel the ext4 code was lifted from :))
 
