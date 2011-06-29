@@ -1,79 +1,85 @@
-From: Vivek Goyal <vgoyal@redhat.com>
-Subject: Re: [RFC PATCH 0/3] block: Fix fsync slowness with CFQ cgroups
-Date: Tue, 28 Jun 2011 21:29:55 -0400
-Message-ID: <20110629012955.GA19041@redhat.com>
-References: <1309205864-13124-1-git-send-email-vgoyal@redhat.com>
- <1309223932.15392.186.camel@sli10-conroe>
- <20110628014039.GA15850@redhat.com>
- <1309226634.15392.197.camel@sli10-conroe>
- <20110628130457.GA17552@redhat.com>
- <1309309495.15392.213.camel@sli10-conroe>
+From: Steven Liu <lingjiujianke@gmail.com>
+Subject: Re: [PATCH v3] ext4: avoid wasted extent cache lookup if !PUNCH_OUT_EXT
+Date: Wed, 29 Jun 2011 09:30:57 +0800
+Message-ID: <BANLkTinTk-2005wzEnLtk=guuOCnFdLBDA@mail.gmail.com>
+References: <1309309071-2244-1-git-send-email-sanbai@taobao.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"jaxboe@fusionio.com" <jaxboe@fusionio.com>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"khlebnikov@openvz.org" <khlebnikov@openvz.org>,
-	"jmoyer@redhat.com" <jmoyer@redhat.com>
-To: Shaohua Li <shaohua.li@intel.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, Robin Dong <sanbai@taobao.com>
+To: Robin Dong <hao.bigrat@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54992 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751390Ab1F2B36 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Jun 2011 21:29:58 -0400
-Content-Disposition: inline
-In-Reply-To: <1309309495.15392.213.camel@sli10-conroe>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:56827 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751390Ab1F2Ba7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Jun 2011 21:30:59 -0400
+Received: by bwd5 with SMTP id 5so637093bwd.19
+        for <linux-ext4@vger.kernel.org>; Tue, 28 Jun 2011 18:30:58 -0700 (PDT)
+In-Reply-To: <1309309071-2244-1-git-send-email-sanbai@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 29, 2011 at 09:04:55AM +0800, Shaohua Li wrote:
+2011/6/29 Robin Dong <hao.bigrat@gmail.com>:
+> This patch avoids an extraneous lookup of the extent cache
+> in ext4_ext_map_blocks() when the flag
+> EXT4_GET_BLOCKS_PUNCH_OUT_EXT is absent.
+>
+> The existing logic was performing the lookup but not making
+> use of the result. The patch simply reverses the order of evaluation
+> in the condition.
+>
+> Since ext4_ext_in_cache() does not initialize newex on misses, bypass=
+ing
+> its invocation does not introduce any new issue in this regard.
+>
+> Signed-off-by: Robin Dong <sanbai@taobao.com>
+> Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+> Reviewed-by: Eric Gouriou <egouriou@google.com>
+> ---
+> =A0fs/ext4/extents.c | =A0 =A04 ++--
+> =A01 files changed, 2 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index eb63c7b..fed2633 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -3358,8 +3358,8 @@ int ext4_ext_map_blocks(handle_t *handle, struc=
+t inode *inode,
+> =A0 =A0 =A0 =A0trace_ext4_ext_map_blocks_enter(inode, map->m_lblk, ma=
+p->m_len, flags);
+>
+> =A0 =A0 =A0 =A0/* check in cache */
+> - =A0 =A0 =A0 if (ext4_ext_in_cache(inode, map->m_lblk, &newex) &&
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 ((flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT=
+) =3D=3D 0)) {
+> + =A0 =A0 =A0 if (!(flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) &&
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_ext_in_cache(inode, map->m_lblk, &=
+newex)) {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (!newex.ee_start_lo && !newex.ee_st=
+art_hi) {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if ((flags & EXT4_GET_=
+BLOCKS_CREATE) =3D=3D 0) {
 
-[..]
-> > We idle on last queue on sync-noidle tree. So we idle on fysnc queue as
-> > it is last queue on sync-noidle tree. That's how we provide protection
-> > to all sync-noidle queues against sync-idle queues. Instead of idling
-> > on individual quues we do idling in group and that is on service tree.
-> Ok. but this looks silly. We are idling in a noidle service tree or a
-> group (backed by the last queue of the tree or group) because we assume
-> the tree or group can dispatch a request soon. But if the think time of
-> the tree or group is big, the assumption isn't true. Doing idle here is
-> blind. I thought we can extend the think time check for both service
-> tree and group.
+Ronbin Dong,
+  why donnot do this line?
+=A0if ((flags & EXT4_GET_BLOCKS_CREATE) =3D=3D 0) {
+TO
+=A0if (!(flags & EXT4_GET_BLOCKS_CREATE) ) {
+?
+Acked-by:   LiuQi <lingjiujianke@gmail.com>
 
-We can implement the thinktime for noidle service tree and group idle as
-well. That's not a problem, though I am yet to be convinced that thinktime
-still makes sense for the group. I guess it will just mean that in the
-past have you done a bunch of IO with gap between IO less than 8ms. If
-yes, then we expect you to do more IO in future. Frankly speaking, I am
-not too sure that how past IO pattern predicts the future IO pattern
-of the group.
-
-But anyway, the point is, even if you we implement it, it will not solve
-the fsync issue at hand. The reason I explained in previous mail. We 
-will be oscillating between high think time and low thinktime depending
-on whether we are idling or not. There is no correlation between think
-time of fsync thread and idling here.
-
-I think you are banking on the fact that after fsync, journaling thread
-IO can take more than 8ms hence delaying next IO to fsync thread, pushing
-its thinktim more than 8ms hence we will not idle on fsync thread at
-all. It is just one corner case and I think it is broken in multiple
-cases.
-
-- If filesystem barriers are disabled or backend storage has battery
-  backup then journal IO most likely will go in cache and barriers
-  will be ignored. In that case write will finish almost instantly
-  and we will get next IO from fsync thread very soon hence pushing
-  down thinktime of fsync thread which will enable idling and we will
-  be back to the problem we are trying to solve.
-
-- Fsync thread might be submitting string of IOs (say 10-12) before it
-  moves to journal thread to commit meta data. In that case we might
-  have lowered thinktime of fsync hence enable idle. 
-
-So implementing think time for service tree/group might be a good idea
-in general but it will not solve this IO dependecny issue across cgroups.
-
-Thanks
-Vivek
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/*
+> --
+> 1.7.1
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
