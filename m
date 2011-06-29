@@ -1,54 +1,34 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH v2] ext4: Deprecate data=journal mount option
-Date: Wed, 29 Jun 2011 13:49:27 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1106291338270.6151@dhcp-27-109.brq.redhat.com>
-References: <1309260363-19012-1-git-send-email-lczerner@redhat.com> <20110629044955.GA30312@untroubled.org>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org
-To: Bruce Guenter <bruce@untroubled.org>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: High CPU Utilization When Copying to Ext4
+Date: Wed, 29 Jun 2011 09:08:18 -0400
+Message-ID: <50F503A1-6A16-41C4-9C27-0662063C7817@mit.edu>
+References: <341DAA96EE3A8444B6E4657BE8A846EA4B3DA126FE@NDJSSCC06.ndc.nasa.gov>,<20110627030539.GF3064@thunk.org> <341DAA96EE3A8444B6E4657BE8A846EA4B3DA12708@NDJSSCC06.ndc.nasa.gov>,<F673734C-4ECE-40B2-B283-959027C34B06@mit.edu> <341DAA96EE3A8444B6E4657BE8A846EA4B3DA1270A@NDJSSCC06.ndc.nasa.gov>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "Mccauliff, Sean D. (ARC-PX)[Lockheed Martin Space OPNS]"
+	<sean.d.mccauliff@nasa.gov>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:29803 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754439Ab1F2Ltb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Jun 2011 07:49:31 -0400
-In-Reply-To: <20110629044955.GA30312@untroubled.org>
+Received: from DMZ-MAILSEC-SCANNER-4.MIT.EDU ([18.9.25.15]:53081 "EHLO
+	dmz-mailsec-scanner-4.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755481Ab1F2NIW convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 29 Jun 2011 09:08:22 -0400
+In-Reply-To: <341DAA96EE3A8444B6E4657BE8A846EA4B3DA1270A@NDJSSCC06.ndc.nasa.gov>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 28 Jun 2011, Bruce Guenter wrote:
 
-> On Tue, Jun 28, 2011 at 01:26:03PM +0200, Lukas Czerner wrote:
-> > Data journalling mode (data=journal) is known to be neglected by
-> > developers and only minority of people is actually using it. This
-> > mode is also less tested than the other two modes by the developers.
-> > 
-> > This creates a dangerous combination, because the option which seems
-> > *safer* is actually less safe the others. So this commit adds a warning
-> > message in case that data=journal mode is used, so the user is informed
-> > that the mode might be removed in the future.
-> 
-> When I last benchmarked it, data=journal mode was considerably faster
-> than the other modes for sync heavy work loads, such as mail servers.
-> Have there been improvements to other (safe) modes that reverse this?
-> 
+On Jun 28, 2011, at 4:20 PM, Mccauliff, Sean D. (ARC-PX)[Lockheed Martin Space OPNS] wrote:
 
-No, not any specific change that I know of. The problem with
-data=journal from performance perspective is that, it can improve fsync
-heavy loads, however just for a limited bandwidth. Because as you
-probably know in this mode it will write all data twice, however it will
-generate fewer seeks. So yes, for sync heavy work load with small writes
-(such as mail servers might do) the performance might be better. But it
-is always the matter of benchmarking your particular case to decide if
-it really helps, it is not like this is a general fact that
-data=journal implies better performance for fsync heavy writes.
+> Last time I benchmarked cp and tar with the respective sparse file options they where extremely slow as they (claim) to identify sparseness by contiguous regions of zeros.  This was quite sometime ago so perhaps cp and tar have changed.
 
-Also note that the even though bandwidth limit might go away (or scale
-up significantly) for newer drives like SSD's, the same is true for
-seeks, so I guess data=journal would not have any benefits on future
-drives. Also as I said those code paths are not as well tested as the
-other modes.
+How many of your files are sparse?   If the source file is not sparse (which you can check by looking at st_blocks and comparing it to the st_size value), and skip calling fiemap in that case.
 
-Thanks!
--Lukas
+Also, how many times are you calling fiemap per file?   Are you calling once per block, or something silly like this?
+
+(This is all of the details that should have been in your initial question, by the way....  we're not mind readers, you know.   Can you just send a copy of the key parts of your Java code?)
+
+-- Ted
 
