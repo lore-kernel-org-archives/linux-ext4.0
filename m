@@ -1,113 +1,51 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: [PATCH 3/4 v3] XFS TESTS: Fix 252 Failure: Update 242 Golden Output
-Date: Wed, 29 Jun 2011 22:24:00 -0700
-Message-ID: <1309411441-2491-4-git-send-email-achender@linux.vnet.ibm.com>
-References: <1309411441-2491-1-git-send-email-achender@linux.vnet.ibm.com>
-Cc: Allison Henderson <achender@linux.vnet.ibm.com>
-To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	xfs@oss.sgi.com
+From: Robin Dong <hao.bigrat@gmail.com>
+Subject: [PATCH 1/2] ext4: remove redundant goto tag "repeat"
+Date: Thu, 30 Jun 2011 16:03:33 +0800
+Message-ID: <1309421014-6148-1-git-send-email-sanbai@taobao.com>
+Cc: Robin Dong <sanbai@taobao.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:52347 "EHLO e6.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752630Ab1F3FVo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 30 Jun 2011 01:21:44 -0400
-In-Reply-To: <1309411441-2491-1-git-send-email-achender@linux.vnet.ibm.com>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:46029 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758585Ab1F3IDp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Jun 2011 04:03:45 -0400
+Received: by iwn6 with SMTP id 6so1695995iwn.19
+        for <linux-ext4@vger.kernel.org>; Thu, 30 Jun 2011 01:03:44 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-New filtered golden output for test 242. Another patch
-has been sumbitted that also modifies the 242 output, and
-this set has been adjusted to apply on top of it.
+If eh->eh_entries is smaller than eh->eh_max, the routine will
+go to the "repeat" and then go to "has_space" directlly ,
+since argument "depth" and "eh" are not even changed.
 
-This patch requires Christoph's
-"[PATCH] xfstests: update test 042 golden output" (06/20/2011)
+Therefore, goto "has_space" directly and remove redundant "repeat" tag.
 
-Signed-off-by: Allison Henderson <achender@linux.vnet.ibm.com>
+Signed-off-by: Robin Dong <sanbai@taobao.com>
 ---
-:100644 100644 e69382c... 649ac04... M	242.out
- 242.out |   17 +++++++++++++++++
- 1 files changed, 17 insertions(+), 0 deletions(-)
+ fs/ext4/extents.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
 
-diff --git a/242.out b/242.out
-index e69382c..649ac04 100644
---- a/242.out
-+++ b/242.out
-@@ -3,58 +3,75 @@ QA output created by 242
- 0: [0..7]: hole
- 1: [8..23]: unwritten
- 2: [24..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
- 	2. into allocated space
- 0: [0..7]: data
- 1: [8..23]: unwritten
- 2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
- 	3. into unwritten space
- 0: [0..39]: unwritten
-+daa100df6e6711906b61c9ab5aa16032
- 	4. hole -> data
- 0: [0..7]: hole
- 1: [8..23]: unwritten
- 2: [24..31]: data
- 3: [32..39]: hole
-+cc63069677939f69a6e8f68cae6a6dac
- 	5. hole -> unwritten
- 0: [0..7]: hole
- 1: [8..31]: unwritten
- 2: [32..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
- 	6. data -> hole
- 0: [0..7]: data
- 1: [8..23]: unwritten
- 2: [24..39]: hole
-+1b3779878366498b28c702ef88c4a773
- 	7. data -> unwritten
- 0: [0..7]: data
- 1: [8..31]: unwritten
- 2: [32..39]: hole
-+1b3779878366498b28c702ef88c4a773
- 	8. unwritten -> hole
- 0: [0..23]: unwritten
- 1: [24..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
- 	9. unwritten -> data
- 0: [0..23]: unwritten
- 1: [24..31]: data
- 2: [32..39]: hole
-+cc63069677939f69a6e8f68cae6a6dac
- 	10. hole -> data -> hole
- 0: [0..7]: hole
- 1: [8..31]: unwritten
- 2: [32..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
- 	11. data -> hole -> data
- 0: [0..7]: data
- 1: [8..31]: unwritten
- 2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
- 	12. unwritten -> data -> unwritten
- 0: [0..39]: unwritten
-+daa100df6e6711906b61c9ab5aa16032
- 	13. data -> unwritten -> data
- 0: [0..7]: data
- 1: [8..31]: unwritten
- 2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
- 	14. data -> hole @ EOF
- 0: [0..23]: data
- 1: [24..39]: unwritten
-+e1f024eedd27ea6b1c3e9b841c850404
- 	15. data -> hole @ 0
- 0: [0..15]: unwritten
- 1: [16..39]: data
-+eecb7aa303d121835de05028751d301c
- 	16. data -> cache cold ->hole
- 0: [0..15]: unwritten
- 1: [16..39]: data
-+eecb7aa303d121835de05028751d301c
- 	17. data -> hole in single block file
- 0: [0..7]: unwritten
-+56819989ef2d9f40785adce8c06b64d0
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index eb63c7b..dc5ef91 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1758,7 +1758,6 @@ int ext4_ext_insert_extent(handle_t *handle, struct inode *inode,
+ 		goto merge;
+ 	}
+ 
+-repeat:
+ 	depth = ext_depth(inode);
+ 	eh = path[depth].p_hdr;
+ 	if (le16_to_cpu(eh->eh_entries) < le16_to_cpu(eh->eh_max))
+@@ -1780,7 +1779,7 @@ repeat:
+ 			ext_debug("next leaf isn't full(%d)\n",
+ 				  le16_to_cpu(eh->eh_entries));
+ 			path = npath;
+-			goto repeat;
++			goto has_space;
+ 		}
+ 		ext_debug("next leaf has no free space(%d,%d)\n",
+ 			  le16_to_cpu(eh->eh_entries), le16_to_cpu(eh->eh_max));
 -- 
 1.7.1
 
