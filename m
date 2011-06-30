@@ -1,141 +1,129 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [PATCH 2/2] ext4: avoid finding next leaf if newext->ee_block
- smaller than fex->ee_block
-Date: Thu, 30 Jun 2011 16:42:31 +0800
-Message-ID: <BANLkTikeMA72P2-6eSv=2cqOtvEaHRbsZA@mail.gmail.com>
-References: <1309421014-6148-1-git-send-email-sanbai@taobao.com>
-	<1309421014-6148-2-git-send-email-sanbai@taobao.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: Remove some deprecated mount options
+Date: Thu, 30 Jun 2011 11:20:08 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1106301106270.4489@dhcp-27-109.brq.redhat.com>
+References: <1309276394-11536-1-git-send-email-lczerner@redhat.com> <B9B585C1-330D-487B-9E1A-B55255377451@dilger.ca> <4E0AE886.6060005@gmail.com> <alpine.LFD.2.00.1106291249550.6151@dhcp-27-109.brq.redhat.com> <4E0B3E3A.5030509@redhat.com>
+ <469EED47-CF7D-4F1C-92BA-7C7277D31448@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, Robin Dong <sanbai@taobao.com>
-To: Robin Dong <hao.bigrat@gmail.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Lukas Czerner <lczerner@redhat.com>,
+	Ric Wheeler <ricwheeler@gmail.com>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:52326 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754539Ab1F3Imc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Jun 2011 04:42:32 -0400
-Received: by pzk9 with SMTP id 9so1524654pzk.19
-        for <linux-ext4@vger.kernel.org>; Thu, 30 Jun 2011 01:42:31 -0700 (PDT)
-In-Reply-To: <1309421014-6148-2-git-send-email-sanbai@taobao.com>
+Received: from mx1.redhat.com ([209.132.183.28]:17335 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751803Ab1F3JUR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 30 Jun 2011 05:20:17 -0400
+In-Reply-To: <469EED47-CF7D-4F1C-92BA-7C7277D31448@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 30, 2011 at 4:03 PM, Robin Dong <hao.bigrat@gmail.com> wrot=
-e:
-> If newext->ee_block is smaller than (or equal to) fex->ee_block, the =
-call of
-> ext4_ext_next_leaf_block will be useless. We need to call it only aft=
-er
-> newext->ee_block is greater than fex->ee_block.
->
-> Signed-off-by: Robin Dong <sanbai@taobao.com>
-> ---
-> =A0fs/ext4/extents.c | =A0 37 ++++++++++++++++++++-----------------
-> =A01 files changed, 20 insertions(+), 17 deletions(-)
->
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index dc5ef91..0ee475a 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -1765,24 +1765,27 @@ int ext4_ext_insert_extent(handle_t *handle, =
-struct inode *inode,
->
-> =A0 =A0 =A0 =A0/* probably next leaf has space for us? */
-> =A0 =A0 =A0 =A0fex =3D EXT_LAST_EXTENT(eh);
-> - =A0 =A0 =A0 next =3D ext4_ext_next_leaf_block(inode, path);
-> - =A0 =A0 =A0 if (le32_to_cpu(newext->ee_block) > le32_to_cpu(fex->ee=
-_block)
-> - =A0 =A0 =A0 =A0 =A0 && next !=3D EXT_MAX_BLOCKS) {
-How about:
-           next =3D EXT_MAX_BLOCKS;
-           if (le32_to_cpu(newext->ee_block) > le32_to_cpu(fex->ee_bloc=
-k)
-                   next =3D ext4_ext_next_leaf_block(inode, path);
-           if (next !=3D EXT_MAX_BLOCKS) {
-Code above can reduce an indent.
+On Wed, 29 Jun 2011, Andreas Dilger wrote:
 
-Yongqiang.
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext_debug("next leaf block - %d\n", nex=
-t);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 BUG_ON(npath !=3D NULL);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 npath =3D ext4_ext_find_extent(inode, n=
-ext, NULL);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (IS_ERR(npath))
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return PTR_ERR(npath);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 BUG_ON(npath->p_depth !=3D path->p_dept=
-h);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 eh =3D npath[depth].p_hdr;
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (le16_to_cpu(eh->eh_entries) < le16_=
-to_cpu(eh->eh_max)) {
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext_debug("next leaf is=
-n't full(%d)\n",
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 le1=
-6_to_cpu(eh->eh_entries));
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 path =3D npath;
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto has_space;
-> + =A0 =A0 =A0 if (le32_to_cpu(newext->ee_block) > le32_to_cpu(fex->ee=
-_block)) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 next =3D ext4_ext_next_leaf_block(inode=
-, path);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (next !=3D EXT_MAX_BLOCKS) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext_debug("next leaf bl=
-ock - %d\n", next);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 BUG_ON(npath !=3D NULL)=
-;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 npath =3D ext4_ext_find=
-_extent(inode, next, NULL);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (IS_ERR(npath))
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return =
-PTR_ERR(npath);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 BUG_ON(npath->p_depth !=
-=3D path->p_depth);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 eh =3D npath[depth].p_h=
-dr;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (le16_to_cpu(eh->eh_=
-entries) <
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 le16_to_cpu(eh->eh_max)) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext_deb=
-ug("next leaf isn't full(%d)\n",
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 le16_to_cpu(eh->eh_entries));
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 path =3D=
- npath;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto ha=
-s_space;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext_debug("next leaf ha=
-s no free space(%d,%d)\n",
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 le16_to=
-_cpu(eh->eh_entries),
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 le16_to=
-_cpu(eh->eh_max));
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext_debug("next leaf has no free space(=
-%d,%d)\n",
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 le16_to_cpu(eh->eh_=
-entries), le16_to_cpu(eh->eh_max));
-> =A0 =A0 =A0 =A0}
->
-> =A0 =A0 =A0 =A0/*
-> --
-> 1.7.1
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
+> On 2011-06-29, at 9:01 AM, Eric Sandeen wrote:
+> > On 6/29/11 6:03 AM, Lukas Czerner wrote:
+> >> On Wed, 29 Jun 2011, Ric Wheeler wrote:
+> >> 
+> >>> On 06/28/2011 05:35 PM, Andreas Dilger wrote:
+> >>>> On 2011-06-28, at 9:53 AM, Lukas Czerner wrote:
+> >>>>> Remove deprecated mount options bsddf, nogrpid, sysvgroups which has
+> >>>>> been marked as deprecated since 2.6.23 and should be removed in 2.6.28.
+> >>>>> However it is not a big deal because those are defaults anyway and the
+> >>>>> options for setting their opposites still remains in kernel (however are
+> >>>>> still deprecated). Also push the kernel version to remove those leftover
+> >>>>> options further in time.
+> >> 
+> >>>> 
+> >>>> One problem is that these options haven't been deprecated in major vendor
+> >>>> releases (e.g. 2.6.32 for RHEL6 and SLES11), which is what most people are
+> >>>> using.  I think that they should be deprecated for at least one major
+> >>>> vendor release before being removed, otherwise it is nearly the same as just
+> >>>> deleting them on some random kernel version without telling anyone.
+> >>>> 
+> >>>> I'm not sure where you got "2.6.23" and "2.6.28" from, maybe you meant
+> >>>> "2.6.33",
+> >> 
+> >> Oh, sure it should be 2.6.33 and 2.6.38, sorry!
+> >> 
+> >>>> which is unfortunately just after the cutoff for both RHEL6 and SLES11SP1.
+> >>> 
+> >>> I am not sure that I follow the concern - people who use upstream follow that,
+> >>> people who use vendor kernels get some branched version of something old.
+> >>> 
+> >>> In fact, we try hard *not* to do things in RHEL kernels that are not
+> >>> upstream first. I would be perfectly happy to drop it upstream first and
+> >>> then deprecate it in a future RHEL release.
+> >> 
+> >> Ric has a valid point, it does not matter that the deprecation change
+> >> did not appear in RHEL, SLES or others because it is really a distributor
+> >> decision what code from what kernel version to use and communicate
+> >> changes with their customers.
+> >> 
+> >> That said, I do not think there is a point in upstream waiting for
+> >> distributors to adopt some change. Especially when it is not a question
+> >> feature test coverage.
+> > 
+> > *nod* I don't mean to turn this into an RH me-too fest, but we usually
+> > go the other way; make changes we want to see upstream first, and then
+> > they find their way into a distro.
+> > 
+> > We try to be pretty conservative on which of the filesystem configurations
+> > we support (you all know of my love for mount option matrices by now)
+> > so I'll shed no tear over losing these ...
+> 
+> I think you are all missing my point.
+> 
+> The reason we mark options deprecated is so that users have some chance to
+> see this in advance and allow them to fix up their userspace and stop using
+> the options so that their mounts don't start failing when they upgrade to
+> some kernel that doesn't support them.
+> 
+> If the majority of users (~= RHEL and SLES users) have never used a kernel
+> where these options were marked deprecated (i.e. 2.6.33+), then from their
+> POV it will be the same as if the options were just yanked out from under
+> their feet when they eventually do upgrade the kernel, since they will never
+> have seen an intermediate kernel.
+> 
+> I understand that you want to incorporate changes into RHEL that are already
+> upstream, so I would suggest FIRST to merge into RHEL6.x changes marking
+> these mount options as deprecated (which are upstream since 2.6.33), and we
+> can try to do the same for SLES11 SP1.  This will give a much wider exposure
+> to the option deprecation.  If there are no serious complaints from users
+> in the next year (which you are already confident of, if you want to remove
+> the options entirely) we can safely remove the mount options in upstream,
+> still leaving plenty of time to include this change into RHEL7.
+> 
+> Cheers, Andreas
 
+So there are two problems.
 
+1. The first one is that people have to notice that it has been deprecated
+before we actually remove the option. Upstream people had a lot of time
+to notice that (since 2.6.33) and it should have been removed in 2.6.38.
+The reason it was not removed is that some people (actually two people,
+one for each option) showed up asking for not removing those option.
+Namely it was bsdgroups and minixdf.
 
---=20
-Best Wishes
-Yongqiang Yang
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+This has nothing to do with distributors since they can decide what to
+take and what not (once it is upstream of course). So in this case there
+is no reason for delaying the removal any further.
+
+2. The second is that there still might be people actually using this
+and the should have had the opportunity to react against the removal. As
+I understand it this is your point. Once we remove it upstream and
+distributors will deprecate it first there might be people arguing
+against it, which would be already too late for upstream.
+
+Well, in this case we do not have to be that extra careful. Those
+options this patch removes are default, so no one actually needs to use
+it. The only people who might be remotely interested in it are those two
+I mentioned above, if they want (for some crazy reason) switch back and
+forth between the functionalities, but I very seriously doubt that.
+
+So I do not see any reason for not removing it, actually it should have
+been removed in 2.6.38 since noone argued against it.
+
+Thanks!
+-Lukas
