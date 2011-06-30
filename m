@@ -1,47 +1,45 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: High CPU Utilization When Copying to Ext4
-Date: Wed, 29 Jun 2011 22:33:06 -0400
-Message-ID: <20110630023306.GY2729@thunk.org>
-References: <341DAA96EE3A8444B6E4657BE8A846EA4B3DA126FE@NDJSSCC06.ndc.nasa.gov>
- <20110627030539.GF3064@thunk.org>
- <341DAA96EE3A8444B6E4657BE8A846EA4B3DA12708@NDJSSCC06.ndc.nasa.gov>
- <F673734C-4ECE-40B2-B283-959027C34B06@mit.edu>
- <341DAA96EE3A8444B6E4657BE8A846EA4B3DA1270A@NDJSSCC06.ndc.nasa.gov>
- <50F503A1-6A16-41C4-9C27-0662063C7817@mit.edu>
- <4E0BBCE9.9020600@nasa.gov>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Sean McCauliff <Sean.D.McCauliff@nasa.gov>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:55074 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757529Ab1F3CdJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Jun 2011 22:33:09 -0400
-Content-Disposition: inline
-In-Reply-To: <4E0BBCE9.9020600@nasa.gov>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Allison Henderson <achender@linux.vnet.ibm.com>
+Subject: [PATCH 0/4 v3] XFS TESTS: Fix 252 failure
+Date: Wed, 29 Jun 2011 22:23:57 -0700
+Message-ID: <1309411441-2491-1-git-send-email-achender@linux.vnet.ibm.com>
+Cc: Allison Henderson <achender@linux.vnet.ibm.com>
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	xfs@oss.sgi.com
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 29, 2011 at 05:01:45PM -0700, Sean McCauliff wrote:
-> Sorry, I didn't mean to bother you.  I did try and email ext3-users
-> so as to not take up any developer time with my question.  
+This patch corrects a 252 test failure when run on ext4.  This failure
+occures because ext4 and xfs do not handle splitting extents in the same way, 
+and do not create the same fiemap outout.
 
-Yeah, but it's not likely anyone on that list would be able to help
-you.  Both ext3 and ext4 isn't expected to take a huge amount of CPU
-under normal conditions when doing this type of copying where you will
-be likely disk bound.
+To correct this, this patch set will make test 252 an xfs only test, and a new 
+test 255 will be added.  The new test is similar to 252, but uses a weaker fiemap filter
+that only shows the location of the hole, and not the extent type.  An
+md5 check sum has also been added to the tests to help ensure the contents are
+correct.
 
-Well, you're not using fallocate() (at least you haven't disclosed it
-to date), and writing into fallocated space is the only thing that
-would be using a workqueue at all (which is what the kworker threads
-are using).
+Also, another patch was submitted that modifies the same code in 242.out.
+Assuming that patch will go through, this set was modified to be applied on 
+top of Christoph's "[PATCH] xfstests: update test 042 golden output" (06/20/2011). 
 
-So I very much doubt it has anything to do with ext4.  The fiber
-channel drivers do use workqueues a fair amount, so yes, it would be
-useful to know that you are using a fiber channel SAN.  At this point
-I'd suggest that you use oprofile or perf to see where the CPU is
-being consumed.  Perf is probably better since it will allow you to
-see the call chains.
+I noticed there are some other patches that are trying to add a test 255, so we 
+may need another version of this set depending on which ones go in first.
 
-						- Ted
+Allison Henderson (4):
+  XFS TESTS: Fix 252 Failure: Make 252 xfs only with MD5 checksum
+  XFS TESTS: Fix 252 Failure: Update 252 Golden Output
+  XFS TESTS: Fix 252 Failure: Update 242 Golden Output
+  XFS TESTS: Fix 252 Failure: Add Generic FS Punch Hole Test 255
+
+ 242.out      |   17 +++
+ 252          |    2 +-
+ 252.out      |   68 +++++++++++++
+ 255          |   67 +++++++++++++
+ 255.out      |  307 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ common.punch |   40 ++++++++
+ group        |    1 +
+ 7 files changed, 501 insertions(+), 1 deletions(-)
+ create mode 100644 255
+ create mode 100644 255.out
+
