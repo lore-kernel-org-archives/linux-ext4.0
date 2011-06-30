@@ -1,192 +1,460 @@
 From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: [PATCH 1/4 v3] XFS TESTS: Fix 252 Failure: Make 252 xfs only with MD5 checksum
-Date: Wed, 29 Jun 2011 22:23:58 -0700
-Message-ID: <1309411441-2491-2-git-send-email-achender@linux.vnet.ibm.com>
+Subject: [PATCH 4/4 v3] XFS TESTS: Fix 252 Failure: Add Generic FS Punch Hole Test 255
+Date: Wed, 29 Jun 2011 22:24:01 -0700
+Message-ID: <1309411441-2491-5-git-send-email-achender@linux.vnet.ibm.com>
 References: <1309411441-2491-1-git-send-email-achender@linux.vnet.ibm.com>
 Cc: Allison Henderson <achender@linux.vnet.ibm.com>
 To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	xfs@oss.sgi.com
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:50658 "EHLO e5.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752705Ab1F3FVp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 30 Jun 2011 01:21:45 -0400
 In-Reply-To: <1309411441-2491-1-git-send-email-achender@linux.vnet.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This patch modifies test 252 to run for only xfs, and also
-adds an md5 checksum to each of the punch hole tests
+This patch adds a new test 255 that tests fallocate punch hole,
+but is for use by generic filesystems.  It is similar to 252,
+but uses a weaker fiemap filter that only displays the location
+of the hole, and not the extent types.
 
 Signed-off-by: Allison Henderson <achender@linux.vnet.ibm.com>
 ---
-:100755 100755 5efa243... 441bed0... M	252
-:100644 100644 ddf63b0... c18f88a... M	common.punch
- 252          |    2 +-
- common.punch |   23 +++++++++++++++++++++++
- 2 files changed, 24 insertions(+), 1 deletions(-)
+:000000 100644 0000000... 0083963... A	255
+:000000 100644 0000000... 2ce882b... A	255.out
+:100644 100644 c18f88a... a48b7ae... M	common.punch
+:100644 100644 1f86075... 9558bc7... M	group
+ 255          |   67 +++++++++++++
+ 255.out      |  307 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ common.punch |   17 +++
+ group        |    1 +
+ 4 files changed, 392 insertions(+), 0 deletions(-)
 
-diff --git a/252 b/252
-index 5efa243..441bed0 100755
---- a/252
-+++ b/252
-@@ -44,7 +44,7 @@ trap "_cleanup ; exit \$status" 0 1 2 3 15
- . ./common.punch
- 
- # real QA test starts here
--_supported_fs generic
-+_supported_fs xfs 
- _supported_os Linux
- 
- _require_xfs_io_falloc_punch
+diff --git a/255 b/255
+new file mode 100644
+index 0000000..0083963
+--- /dev/null
++++ b/255
+@@ -0,0 +1,67 @@
++#! /bin/bash
++# FS QA Test No. 255
++#
++# Test Generic fallocate hole punching
++#
++#-----------------------------------------------------------------------
++# Copyright (c) 2010 Red Hat.  All Rights Reserved.
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#
++#-----------------------------------------------------------------------
++#
++# creator
++owner=josef@redhat.com
++
++seq=`basename $0`
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1	# failure is the default!
++
++_cleanup()
++{
++    rm -f $tmp.*
++}
++
++trap "_cleanup ; exit \$status" 0 1 2 3 15
++
++# get standard environment, filters and checks
++. ./common.rc
++. ./common.filter
++. ./common.punch
++
++# real QA test starts here
++_supported_fs generic 
++_supported_os Linux
++
++_require_xfs_io_falloc_punch
++_require_xfs_io_fiemap
++
++testfile=$TEST_DIR/255.$$
++
++# Standard punch hole tests
++_test_generic_punch falloc fpunch fpunch fiemap _filter_hole_fiemap $testfile -F
++
++# Delayed allocation punch hole tests
++_test_generic_punch -d falloc fpunch fpunch fiemap _filter_hole_fiemap $testfile -F
++
++# Multi hole punch tests
++_test_generic_punch -k falloc fpunch fpunch fiemap _filter_hole_fiemap $testfile -F
++
++# Delayed allocation multi punch hole tests
++_test_generic_punch -d -k falloc fpunch fpunch fiemap _filter_hole_fiemap $testfile -F
++
++status=0 ; exit
+diff --git a/255.out b/255.out
+new file mode 100644
+index 0000000..2ce882b
+--- /dev/null
++++ b/255.out
+@@ -0,0 +1,307 @@
++QA output created by 255
++	1. into a hole
++daa100df6e6711906b61c9ab5aa16032
++	2. into allocated space
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..39]: extent
++cc58a7417c2d7763adc45b6fcd3fa024
++	3. into unwritten space
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..39]: extent
++daa100df6e6711906b61c9ab5aa16032
++	4. hole -> data
++0: [0..23]: hole
++1: [24..31]: extent
++2: [32..39]: hole
++cc63069677939f69a6e8f68cae6a6dac
++	5. hole -> unwritten
++0: [0..23]: hole
++1: [24..31]: extent
++2: [32..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	6. data -> hole
++0: [0..7]: extent
++1: [8..39]: hole
++1b3779878366498b28c702ef88c4a773
++	7. data -> unwritten
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..31]: extent
++3: [32..39]: hole
++1b3779878366498b28c702ef88c4a773
++	8. unwritten -> hole
++0: [0..7]: extent
++1: [8..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	9. unwritten -> data
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..31]: extent
++3: [32..39]: hole
++cc63069677939f69a6e8f68cae6a6dac
++	10. hole -> data -> hole
++daa100df6e6711906b61c9ab5aa16032
++	11. data -> hole -> data
++0: [0..7]: extent
++1: [8..31]: hole
++2: [32..39]: extent
++f6aeca13ec49e5b266cd1c913cd726e3
++	12. unwritten -> data -> unwritten
++0: [0..7]: extent
++1: [8..31]: hole
++2: [32..39]: extent
++daa100df6e6711906b61c9ab5aa16032
++	13. data -> unwritten -> data
++0: [0..7]: extent
++1: [8..31]: hole
++2: [32..39]: extent
++f6aeca13ec49e5b266cd1c913cd726e3
++	14. data -> hole @ EOF
++0: [0..23]: extent
++1: [24..39]: hole
++e1f024eedd27ea6b1c3e9b841c850404
++	15. data -> hole @ 0
++0: [0..15]: hole
++1: [16..39]: extent
++eecb7aa303d121835de05028751d301c
++	16. data -> cache cold ->hole
++0: [0..15]: hole
++1: [16..39]: extent
++eecb7aa303d121835de05028751d301c
++	17. data -> hole in single block file
++0: [0..7]: extent
++13535fd4d496bf0b74bb2335aa4d1b31
++	1. into a hole
++daa100df6e6711906b61c9ab5aa16032
++	2. into allocated space
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..39]: extent
++cc58a7417c2d7763adc45b6fcd3fa024
++	3. into unwritten space
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..39]: extent
++daa100df6e6711906b61c9ab5aa16032
++	4. hole -> data
++0: [0..23]: hole
++1: [24..31]: extent
++2: [32..39]: hole
++cc63069677939f69a6e8f68cae6a6dac
++	5. hole -> unwritten
++0: [0..23]: hole
++1: [24..31]: extent
++2: [32..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	6. data -> hole
++0: [0..7]: extent
++1: [8..39]: hole
++1b3779878366498b28c702ef88c4a773
++	7. data -> unwritten
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..31]: extent
++3: [32..39]: hole
++1b3779878366498b28c702ef88c4a773
++	8. unwritten -> hole
++0: [0..7]: extent
++1: [8..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	9. unwritten -> data
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..31]: extent
++3: [32..39]: hole
++cc63069677939f69a6e8f68cae6a6dac
++	10. hole -> data -> hole
++daa100df6e6711906b61c9ab5aa16032
++	11. data -> hole -> data
++0: [0..7]: extent
++1: [8..31]: hole
++2: [32..39]: extent
++f6aeca13ec49e5b266cd1c913cd726e3
++	12. unwritten -> data -> unwritten
++0: [0..7]: extent
++1: [8..31]: hole
++2: [32..39]: extent
++daa100df6e6711906b61c9ab5aa16032
++	13. data -> unwritten -> data
++0: [0..7]: extent
++1: [8..31]: hole
++2: [32..39]: extent
++f6aeca13ec49e5b266cd1c913cd726e3
++	14. data -> hole @ EOF
++0: [0..23]: extent
++1: [24..39]: hole
++e1f024eedd27ea6b1c3e9b841c850404
++	15. data -> hole @ 0
++0: [0..15]: hole
++1: [16..39]: extent
++eecb7aa303d121835de05028751d301c
++	16. data -> cache cold ->hole
++0: [0..15]: hole
++1: [16..39]: extent
++eecb7aa303d121835de05028751d301c
++	17. data -> hole in single block file
++0: [0..7]: extent
++13535fd4d496bf0b74bb2335aa4d1b31
++	1. into a hole
++0: [0..7]: extent
++1: [8..39]: hole
++5a58e46082be047d0f13bee7974015b9
++	2. into allocated space
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..39]: extent
++cc58a7417c2d7763adc45b6fcd3fa024
++	3. into unwritten space
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..39]: extent
++cc58a7417c2d7763adc45b6fcd3fa024
++	4. hole -> data
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..39]: extent
++cc58a7417c2d7763adc45b6fcd3fa024
++	5. hole -> unwritten
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..39]: extent
++cc58a7417c2d7763adc45b6fcd3fa024
++	6. data -> hole
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..39]: extent
++cc58a7417c2d7763adc45b6fcd3fa024
++	7. data -> unwritten
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..39]: extent
++cc58a7417c2d7763adc45b6fcd3fa024
++	8. unwritten -> hole
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..39]: extent
++cc58a7417c2d7763adc45b6fcd3fa024
++	9. unwritten -> data
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..39]: extent
++cc58a7417c2d7763adc45b6fcd3fa024
++	10. hole -> data -> hole
++0: [0..7]: extent
++1: [8..31]: hole
++2: [32..39]: extent
++f6aeca13ec49e5b266cd1c913cd726e3
++	11. data -> hole -> data
++0: [0..7]: extent
++1: [8..31]: hole
++2: [32..39]: extent
++f6aeca13ec49e5b266cd1c913cd726e3
++	12. unwritten -> data -> unwritten
++0: [0..7]: extent
++1: [8..31]: hole
++2: [32..39]: extent
++f6aeca13ec49e5b266cd1c913cd726e3
++	13. data -> unwritten -> data
++0: [0..7]: extent
++1: [8..31]: hole
++2: [32..39]: extent
++f6aeca13ec49e5b266cd1c913cd726e3
++	14. data -> hole @ EOF
++0: [0..23]: extent
++1: [24..39]: hole
++e1f024eedd27ea6b1c3e9b841c850404
++	15. data -> hole @ 0
++0: [0..15]: hole
++1: [16..39]: extent
++eecb7aa303d121835de05028751d301c
++	16. data -> cache cold ->hole
++0: [0..15]: hole
++1: [16..39]: extent
++eecb7aa303d121835de05028751d301c
++	17. data -> hole in single block file
++0: [0..7]: extent
++13535fd4d496bf0b74bb2335aa4d1b31
++	1. into a hole
++0: [0..7]: extent
++1: [8..39]: hole
++5a58e46082be047d0f13bee7974015b9
++	2. into allocated space
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..39]: extent
++cc58a7417c2d7763adc45b6fcd3fa024
++	3. into unwritten space
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..39]: extent
++cc58a7417c2d7763adc45b6fcd3fa024
++	4. hole -> data
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..39]: extent
++cc58a7417c2d7763adc45b6fcd3fa024
++	5. hole -> unwritten
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..39]: extent
++cc58a7417c2d7763adc45b6fcd3fa024
++	6. data -> hole
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..39]: extent
++cc58a7417c2d7763adc45b6fcd3fa024
++	7. data -> unwritten
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..39]: extent
++cc58a7417c2d7763adc45b6fcd3fa024
++	8. unwritten -> hole
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..39]: extent
++cc58a7417c2d7763adc45b6fcd3fa024
++	9. unwritten -> data
++0: [0..7]: extent
++1: [8..23]: hole
++2: [24..39]: extent
++cc58a7417c2d7763adc45b6fcd3fa024
++	10. hole -> data -> hole
++0: [0..7]: extent
++1: [8..31]: hole
++2: [32..39]: extent
++f6aeca13ec49e5b266cd1c913cd726e3
++	11. data -> hole -> data
++0: [0..7]: extent
++1: [8..31]: hole
++2: [32..39]: extent
++f6aeca13ec49e5b266cd1c913cd726e3
++	12. unwritten -> data -> unwritten
++0: [0..7]: extent
++1: [8..31]: hole
++2: [32..39]: extent
++f6aeca13ec49e5b266cd1c913cd726e3
++	13. data -> unwritten -> data
++0: [0..7]: extent
++1: [8..31]: hole
++2: [32..39]: extent
++f6aeca13ec49e5b266cd1c913cd726e3
++	14. data -> hole @ EOF
++0: [0..23]: extent
++1: [24..39]: hole
++e1f024eedd27ea6b1c3e9b841c850404
++	15. data -> hole @ 0
++0: [0..15]: hole
++1: [16..39]: extent
++eecb7aa303d121835de05028751d301c
++	16. data -> cache cold ->hole
++0: [0..15]: hole
++1: [16..39]: extent
++eecb7aa303d121835de05028751d301c
++	17. data -> hole in single block file
++0: [0..7]: extent
++13535fd4d496bf0b74bb2335aa4d1b31
 diff --git a/common.punch b/common.punch
-index ddf63b0..c18f88a 100644
+index c18f88a..a48b7ae 100644
 --- a/common.punch
 +++ b/common.punch
-@@ -218,6 +218,12 @@ _filter_fiemap()
+@@ -218,6 +218,23 @@ _filter_fiemap()
  	_coalesce_extents
  }
  
-+# Prints the md5 checksum of a given file
-+_md5_checksum()
++# Filters fiemap output to only print the 
++# file offset column and whether or not
++# it is an extent or a hole
++_filter_hole_fiemap()
 +{
-+	md5sum $1 | cut -d ' ' -f1
++	awk --posix '
++		$3 ~ /hole/ {
++			print $1, $2, $3; 
++			next;
++		}   
++		$5 ~ /0x[[:digit:]]+/ {
++			print $1, $2, "extent";
++		}' |
++	_coalesce_extents
 +}
 +
- _filter_bmap()
++
+ # Prints the md5 checksum of a given file
+ _md5_checksum()
  {
- 	awk '
-@@ -305,6 +311,7 @@ _test_generic_punch()
- 		-c "$zero_cmd 4k 8k" \
- 		-c "$map_cmd -v" $testfile | $filter_cmd
- 	[ $? -ne 0 ] && die_now
-+	_md5_checksum $testfile
- 
- 	echo "	2. into allocated space"
- 	if [ "$remove_testfile" ]; then
-@@ -315,6 +322,7 @@ _test_generic_punch()
- 		-c "$zero_cmd 4k 8k" \
- 		-c "$map_cmd -v" $testfile | $filter_cmd
- 	[ $? -ne 0 ] && die_now
-+	_md5_checksum $testfile
- 
- 	echo "	3. into unwritten space"
- 	if [ "$remove_testfile" ]; then
-@@ -325,6 +333,7 @@ _test_generic_punch()
- 		-c "$zero_cmd 4k 8k" \
- 		-c "$map_cmd -v" $testfile | $filter_cmd
- 	[ $? -ne 0 ] && die_now
-+	_md5_checksum $testfile
- 
- 	echo "	4. hole -> data"
- 	if [ "$remove_testfile" ]; then
-@@ -335,6 +344,7 @@ _test_generic_punch()
- 		-c "$zero_cmd 4k 8k" \
- 		-c "$map_cmd -v" $testfile | $filter_cmd
- 	[ $? -ne 0 ] && die_now
-+	_md5_checksum $testfile
- 
- 	echo "	5. hole -> unwritten"
- 	if [ "$remove_testfile" ]; then
-@@ -345,6 +355,7 @@ _test_generic_punch()
- 		-c "$zero_cmd 4k 8k" \
- 		-c "$map_cmd -v" $testfile | $filter_cmd
- 	[ $? -ne 0 ] && die_now
-+	_md5_checksum $testfile
- 
- 	echo "	6. data -> hole"
- 	if [ "$remove_testfile" ]; then
-@@ -355,6 +366,7 @@ _test_generic_punch()
- 		-c "$zero_cmd 4k 8k" \
- 		-c "$map_cmd -v" $testfile | $filter_cmd
- 	[ $? -ne 0 ] && die_now
-+	_md5_checksum $testfile
- 
- 	echo "	7. data -> unwritten"
- 	if [ "$remove_testfile" ]; then
-@@ -366,6 +378,7 @@ _test_generic_punch()
- 		-c "$zero_cmd 4k 8k" \
- 		-c "$map_cmd -v" $testfile | $filter_cmd
- 	[ $? -ne 0 ] && die_now
-+	_md5_checksum $testfile
- 
- 	echo "	8. unwritten -> hole"
- 	if [ "$remove_testfile" ]; then
-@@ -376,6 +389,7 @@ _test_generic_punch()
- 		-c "$zero_cmd 4k 8k" \
- 		-c "$map_cmd -v" $testfile | $filter_cmd
- 	[ $? -ne 0 ] && die_now
-+	_md5_checksum $testfile
- 
- 	echo "	9. unwritten -> data"
- 	if [ "$remove_testfile" ]; then
-@@ -387,6 +401,7 @@ _test_generic_punch()
- 		-c "$zero_cmd 4k 8k" \
- 		-c "$map_cmd -v" $testfile | $filter_cmd
- 	[ $? -ne 0 ] && die_now
-+	_md5_checksum $testfile
- 
- 	echo "	10. hole -> data -> hole"
- 	if [ "$remove_testfile" ]; then
-@@ -397,6 +412,7 @@ _test_generic_punch()
- 		-c "$zero_cmd 4k 12k" \
- 		-c "$map_cmd -v" $testfile | $filter_cmd
- 	[ $? -ne 0 ] && die_now
-+	_md5_checksum $testfile
- 
- 	echo "	11. data -> hole -> data"
- 	if [ "$remove_testfile" ]; then
-@@ -410,6 +426,7 @@ _test_generic_punch()
- 		-c "$zero_cmd 4k 12k" \
- 		-c "$map_cmd -v" $testfile | $filter_cmd
- 	[ $? -ne 0 ] && die_now
-+	_md5_checksum $testfile
- 
- 	echo "	12. unwritten -> data -> unwritten"
- 	if [ "$remove_testfile" ]; then
-@@ -421,6 +438,7 @@ _test_generic_punch()
- 		-c "$zero_cmd 4k 12k" \
- 		-c "$map_cmd -v" $testfile | $filter_cmd
- 	[ $? -ne 0 ] && die_now
-+	_md5_checksum $testfile
- 
- 	echo "	13. data -> unwritten -> data"
- 	if [ "$remove_testfile" ]; then
-@@ -433,6 +451,7 @@ _test_generic_punch()
- 		-c "$zero_cmd 4k 12k" \
- 		-c "$map_cmd -v" $testfile | $filter_cmd
- 	[ $? -ne 0 ] && die_now
-+	_md5_checksum $testfile
- 
- 	echo "	14. data -> hole @ EOF"
- 	rm -f $testfile
-@@ -441,6 +460,7 @@ _test_generic_punch()
- 		-c "$zero_cmd 12k 8k" \
- 		-c "$map_cmd -v" $testfile | $filter_cmd
- 	[ $? -ne 0 ] && die_now
-+	_md5_checksum $testfile
- 
- 	echo "	15. data -> hole @ 0"
- 	if [ "$remove_testfile" ]; then
-@@ -451,6 +471,7 @@ _test_generic_punch()
- 		-c "$zero_cmd 0k 8k" \
- 		-c "$map_cmd -v" $testfile | $filter_cmd
- 	[ $? -ne 0 ] && die_now
-+	_md5_checksum $testfile
- 
- 	echo "	16. data -> cache cold ->hole"
- 	if [ "$remove_testfile" ]; then
-@@ -470,6 +491,7 @@ _test_generic_punch()
- 	diff $testfile $testfile.2
- 	[ $? -ne 0 ] && die_now
- 	rm -f $testfile.2
-+	_md5_checksum $testfile
- 
- 	echo "	17. data -> hole in single block file"
- 	if [ "$remove_testfile" ]; then
-@@ -481,5 +503,6 @@ _test_generic_punch()
- 		-c "$zero_cmd 128 128" \
- 		-c "$map_cmd -v" $testfile | $filter_cmd
- 	[ $? -ne 0 ] && die_now
-+	_md5_checksum $testfile
- 
- }
+diff --git a/group b/group
+index 1f86075..9558bc7 100644
+--- a/group
++++ b/group
+@@ -368,3 +368,4 @@ deprecated
+ 252 auto quick prealloc
+ 253 auto quick
+ 254 auto quick
++255 auto quick prealloc
 -- 
 1.7.1
 
