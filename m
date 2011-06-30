@@ -1,205 +1,82 @@
-From: Sean McCauliff <Sean.D.McCauliff@nasa.gov>
-Subject: Re: High CPU Utilization When Copying to Ext4
-Date: Wed, 29 Jun 2011 17:01:45 -0700
-Message-ID: <4E0BBCE9.9020600@nasa.gov>
-References: <341DAA96EE3A8444B6E4657BE8A846EA4B3DA126FE@NDJSSCC06.ndc.nasa.gov>,<20110627030539.GF3064@thunk.org> <341DAA96EE3A8444B6E4657BE8A846EA4B3DA12708@NDJSSCC06.ndc.nasa.gov>,<F673734C-4ECE-40B2-B283-959027C34B06@mit.edu> <341DAA96EE3A8444B6E4657BE8A846EA4B3DA1270A@NDJSSCC06.ndc.nasa.gov> <50F503A1-6A16-41C4-9C27-0662063C7817@mit.edu>
+From: Shaohua Li <shaohua.li@intel.com>
+Subject: Re: [RFC PATCH 0/3] block: Fix fsync slowness with CFQ cgroups
+Date: Thu, 30 Jun 2011 08:29:22 +0800
+Message-ID: <20110630002922.GB31352@sli10-conroe.sh.intel.com>
+References: <1309205864-13124-1-git-send-email-vgoyal@redhat.com>
+ <1309223932.15392.186.camel@sli10-conroe>
+ <20110628014039.GA15850@redhat.com>
+ <1309226634.15392.197.camel@sli10-conroe>
+ <20110628130457.GA17552@redhat.com>
+ <1309309495.15392.213.camel@sli10-conroe>
+ <20110629012955.GA19041@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@MIT.EDU>
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"jaxboe@fusionio.com" <jaxboe@fusionio.com>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"khlebnikov@openvz.org" <khlebnikov@openvz.org>,
+	"jmoyer@redhat.com" <jmoyer@redhat.com>
+To: Vivek Goyal <vgoyal@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ndmsnpf02.ndc.nasa.gov ([198.117.0.122]:35674 "EHLO
-	ndmsnpf02.ndc.nasa.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752768Ab1F3ABr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Jun 2011 20:01:47 -0400
-In-Reply-To: <50F503A1-6A16-41C4-9C27-0662063C7817@mit.edu>
+Received: from mga01.intel.com ([192.55.52.88]:63451 "EHLO mga01.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751584Ab1F3A3i (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 29 Jun 2011 20:29:38 -0400
+Content-Disposition: inline
+In-Reply-To: <20110629012955.GA19041@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 06/29/2011 06:08 AM, Theodore Tso wrote:
->
-> On Jun 28, 2011, at 4:20 PM, Mccauliff, Sean D. (ARC-PX)[Lockheed Martin Space OPNS] wrote:
->
->> Last time I benchmarked cp and tar with the respective sparse file options they where extremely slow as they (claim) to identify sparseness by contiguous regions of zeros.  This was quite sometime ago so perhaps cp and tar have changed.
->
-> How many of your files are sparse?   If the source file is not sparse (which you can check by looking at st_blocks and comparing it to the st_size value), and skip calling fiemap in that case.
-I already know most of the files are not sparse and can identify them by 
-the directory name they reside in.  So the copy program just does a 
-straight copy for the non-sparse files without the fiemap trickery. 
-I've already mentioned that I have about 2M sparse files.
-
->
-> Also, how many times are you calling fiemap per file?   Are you calling once per block, or something silly like this?
-
-Twice.  Once to get the number of struct fiemap_extent and another time 
-with the correct number of struct fiemap_extent.
-
->
-> (This is all of the details that should have been in your initial question, by the way....  we're not mind readers, you know.   Can you just send a copy of the key parts of your Java code?)
-Sorry, I didn't mean to bother you.  I did try and email ext3-users so 
-as to not take up any developer time with my question.  Portions of the 
-source are below.  It might also be useful to know the source and 
-destination file systems live on a 3par SAN, RAID 1+0 stripped across 
-240 7200 rpm disks.  The source file system uses LVM to combine several 
-3par volumes into a single volume.  The destination file system does not 
-use LVM.  There are two FC HBAs, they are load balanced using 
-multipathd.  My original question:
-
- > I'm copying terabytes of data from an ext3 file system to a new ext4 
- > file system.  I'm seeing high CPU usage from the processes  flush- 
- >253:2, kworker-3:0, kworker-2:2, kworker-1:1, and kworker-0:0.   Does 
- > anyone on the list have any idea what these processes do, why they 
- >are consuming so much cpu time and if there is something that can be 
- >done about it?  This is using Fedora 15.
+On Wed, Jun 29, 2011 at 09:29:55AM +0800, Vivek Goyal wrote:
+> On Wed, Jun 29, 2011 at 09:04:55AM +0800, Shaohua Li wrote:
+> 
+> [..]
+> > > We idle on last queue on sync-noidle tree. So we idle on fysnc queue as
+> > > it is last queue on sync-noidle tree. That's how we provide protection
+> > > to all sync-noidle queues against sync-idle queues. Instead of idling
+> > > on individual quues we do idling in group and that is on service tree.
+> > Ok. but this looks silly. We are idling in a noidle service tree or a
+> > group (backed by the last queue of the tree or group) because we assume
+> > the tree or group can dispatch a request soon. But if the think time of
+> > the tree or group is big, the assumption isn't true. Doing idle here is
+> > blind. I thought we can extend the think time check for both service
+> > tree and group.
+> 
+> We can implement the thinktime for noidle service tree and group idle as
+> well. That's not a problem, though I am yet to be convinced that thinktime
+> still makes sense for the group. I guess it will just mean that in the
+> past have you done a bunch of IO with gap between IO less than 8ms. If
+> yes, then we expect you to do more IO in future. Frankly speaking, I am
+> not too sure that how past IO pattern predicts the future IO pattern
+> of the group.
+> 
+> But anyway, the point is, even if you we implement it, it will not solve
+> the fsync issue at hand. The reason I explained in previous mail. We 
+> will be oscillating between high think time and low thinktime depending
+> on whether we are idling or not. There is no correlation between think
+> time of fsync thread and idling here.
+> 
+> I think you are banking on the fact that after fsync, journaling thread
+> IO can take more than 8ms hence delaying next IO to fsync thread, pushing
+> its thinktim more than 8ms hence we will not idle on fsync thread at
+> all. It is just one corner case and I think it is broken in multiple
+> cases.
+> 
+> - If filesystem barriers are disabled or backend storage has battery
+>   backup then journal IO most likely will go in cache and barriers
+>   will be ignored. In that case write will finish almost instantly
+>   and we will get next IO from fsync thread very soon hence pushing
+>   down thinktime of fsync thread which will enable idling and we will
+>   be back to the problem we are trying to solve.
+> 
+> - Fsync thread might be submitting string of IOs (say 10-12) before it
+>   moves to journal thread to commit meta data. In that case we might
+>   have lowered thinktime of fsync hence enable idle. 
+> 
+> So implementing think time for service tree/group might be a good idea
+> in general but it will not solve this IO dependecny issue across cgroups.
+Ok, fair enough. I'll give a try and check how things change with the fsync workload.
 
 Thanks,
-Sean
-
-
-
-///This is a snipped from extentmap.cpp, I thought I would spare you
-//the madness of looking the JNI portion.
-static void initFiemap(struct fiemap* fiemap, __u32 nExtents) {
-   if (fiemap == 0) {
-     throw FiemapException("Bad fiemap pointer.");
-   }
-
-   memset(fiemap, 0, sizeof(struct fiemap));
-
-   //Start mapping the file from user space length 0.
-   fiemap->fm_start = 0;
-   //Start mapping to the last possible byte of user space.
-   fiemap->fm_length = ~0ULL;
-   //In the current code this is now FIEMAP_FLAG_SYNC
-   fiemap->fm_flags = 0;
-   fiemap->fm_extent_count = nExtents;
-   fiemap->fm_mapped_extents = 0;
-
-   memset(fiemap->fm_extents, 0, sizeof(struct fiemap_extent) * nExtents);
-}
-
-
-
-
-static struct fiemap *readFiemap(int fd) throw (FiemapException) {
-   struct fiemap* extentMap =
-     reinterpret_cast<struct fiemap*>(malloc(sizeof(struct fiemap)));
-   if (extentMap == 0) {
-     throw FiemapException("Failed to allocate fiemap struct.");
-   }
-
-   FiemapDeallocator fiemapDeallocator(extentMap);
-
-   initFiemap(extentMap, 0);
-
-   // Find out how many extents there are
-   if (ioctl(fd, FS_IOC_FIEMAP, extentMap) < 0) {
-     char errbuf[128];
-     strerror_r(errno, errbuf, 127);
-     throw FiemapException(errbuf);
-   }
-
-   __u32 nExtents = extentMap->fm_mapped_extents;
-   __u32 extents_size = sizeof(struct fiemap_extent) * nExtents;
-   fiemapDeallocator.noDeallocate();
-
-   // Resize fiemap to allow us to read in the extents.
-   extentMap = reinterpret_cast<struct 
-fiemap*>(realloc(extentMap,sizeof(struct fiemap) + extents_size));
-   if (extentMap == 0) {
-     throw FiemapException("Out of memory allocating fiemap.");
-   }
-
-   initFiemap(extentMap, nExtents);
-   FiemapDeallocator reallocDeallocator(extentMap);
-
-   if (ioctl(fd, FS_IOC_FIEMAP, extentMap) < 0) {
-     char errbuf[128];
-     strerror_r(errno, errbuf, 127);
-     throw FiemapException(errbuf);
-   }
-   reallocDeallocator.noDeallocate();
-   return extentMap;
-}
-
-////This is from the Java code SparseFileUtil.java
-public List<SimpleInterval> extents(File file) throws IOException {
-
-    //A SimpleInterval is just a 64bit start and end pair
-    SimpleInterval[] extents = null;
-    try {	
-        extents = extentsForFile(file.getAbsolutePath());
-     } catch (IllegalArgumentException iae) {
-         throw new IllegalArgumentException("For file \"" + file + 
-"\".", iae);
-     }
-     if (extents.length == 0) {
-         return Collections.emptyList();
-     }
-
-     Arrays.sort(extents, comp);
-     List<SimpleInterval> mergedExtents = new ArrayList<SimpleInterval>();
-     SimpleInterval current = extents[0];
-
-    //merge adjacent extents
-    for (int i=1; i < extents.length; i++) {
-        SimpleInterval sortedExtent = extents[i];
-        if (current.end() < sortedExtent.start()) {
-            mergedExtents.add(current);
-            current = sortedExtent;
-        } else {
-            current = new SimpleInterval(Math.min(sortedExtent.start(), 
-current.start()),
-                     Math.max(current.end(), sortedExtent.end()));
-        }
-     }
-     mergedExtents.add(current);
-     return mergedExtents;
-}
-
-public void copySparseFile(File src, File dest) throws IOException {
-     if (!src.exists()) {
-         throw new FileNotFoundException(src.getAbsolutePath());
-     }
-     if (src.isDirectory()) {
-         throw new IllegalArgumentException("Src must be a file.");
-     }
-     List<SimpleInterval> extents = extents(src);
-     if (extents.size() == 1 && extents.get(0).start() == 0) {
-         FileUtils.copyFile(src, dest);
-         return;
-     }
-
-     byte[] buf = new byte[1024*1024];
-     RandomAccessFile srcRaf = new RandomAccessFile(src, "r");
-     try {
-        RandomAccessFile destRaf = new RandomAccessFile(dest, "rw");
-        try {
-            for (SimpleInterval extent : extents) {
-                long extentSize = extent.end() - extent.start() + 1;
-                srcRaf.seek(extent.start());
-                destRaf.seek(extent.start());
-                while (extentSize > 0) {
-                    int readLen = (int) Math.min(buf.length, extentSize);
-                    int nread = srcRaf.read(buf,0, readLen);
-                    if (nread == -1) {
-                        break; //file ends before extent ends.
-                    }
-                    extentSize -= nread;
-                    destRaf.write(buf, 0, nread);
-                }
-           }
-        } finally {
-            FileUtil.close(destRaf);
-        }
-      } finally {
-          FileUtil.close(srcRaf);
-      }
-}
-
-     private native SimpleInterval[] extentsForFile(String fname) throws 
-IOException;
-
-
-
+Shaohua
