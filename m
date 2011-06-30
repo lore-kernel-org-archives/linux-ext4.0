@@ -1,24 +1,23 @@
 From: Steven Liu <lingjiujianke@gmail.com>
 Subject: Re: [PATCH] ext4: remove loop around bio_alloc()
-Date: Thu, 30 Jun 2011 10:12:25 +0800
-Message-ID: <BANLkTikSROvSS9UdQbyyPkHQO1YDoP7yoQ@mail.gmail.com>
+Date: Thu, 30 Jun 2011 10:15:05 +0800
+Message-ID: <BANLkTinffxSZKjXh2EnTEDLYJa6smLXgmQ@mail.gmail.com>
 References: <1309398299-9988-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:58032 "EHLO
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:63231 "EHLO
 	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757529Ab1F3CM0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Jun 2011 22:12:26 -0400
-Received: by bwd5 with SMTP id 5so1463084bwd.19
-        for <linux-ext4@vger.kernel.org>; Wed, 29 Jun 2011 19:12:25 -0700 (PDT)
+	with ESMTP id S1753479Ab1F3CPG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Jun 2011 22:15:06 -0400
+Received: by bwd5 with SMTP id 5so1464134bwd.19
+        for <linux-ext4@vger.kernel.org>; Wed, 29 Jun 2011 19:15:05 -0700 (PDT)
 In-Reply-To: <1309398299-9988-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
-
-Hi Ted,
 
 2011/6/30 Theodore Ts'o <tytso@mit.edu>:
 > These days, bio_alloc() is guaranteed to never fail (as long as nvecs
@@ -45,8 +44,9 @@ Hi Ted,
 > - =A0 =A0 =A0 } while (bio =3D=3D NULL);
 > -
 > + =A0 =A0 =A0 bio =3D bio_alloc(GFP_NOIO, min(nvecs, BIO_MAX_PAGES));
-Is this needn't to check if bio_alloc success?
-
+I think , If this do not need to loop around the struct bio allocation
+insurance, if it check allocation value and give the faild message,
+maybe better.  is it?
 > =A0 =A0 =A0 =A0bio->bi_sector =3D bh->b_blocknr * (bh->b_size >> 9);
 > =A0 =A0 =A0 =A0bio->bi_bdev =3D bh->b_bdev;
 > =A0 =A0 =A0 =A0bio->bi_private =3D io->io_end =3D io_end;
@@ -54,7 +54,11 @@ Is this needn't to check if bio_alloc success?
 > 1.7.4.1.22.gec8e1.dirty
 >
 > --
-Asked-by: LiuQi <lingjiujianke@gmail.com>
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
