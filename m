@@ -1,129 +1,60 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] mke2fs: check that auto-detected blocksize <=
- sys_page_size
-Date: Fri, 1 Jul 2011 16:45:07 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1107011642010.4168@dhcp-27-109.brq.redhat.com>
-References: <1307524998.2467.41.camel@newpride>  <BANLkTikGv=OZgV0iwZroDDnPi+TiyxDzVg@mail.gmail.com> <1307918791.2872.18.camel@newpride>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 38642] New: ext4 timestamp format unable to uniquely represent
+ times
+Date: Fri, 1 Jul 2011 15:05:38 GMT
+Message-ID: <bug-38642-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: "Ted Ts'o" <tytso@mit.edu>, Amir Goldstein <amir73il@gmail.com>,
-	linux-ext4@vger.kernel.org
-To: "Yury V. Zaytsev" <yury@shurup.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:63547 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756621Ab1GAOpO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 1 Jul 2011 10:45:14 -0400
-In-Reply-To: <1307918791.2872.18.camel@newpride>
+Received: from demeter1.kernel.org ([140.211.167.39]:51096 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751842Ab1GAPFj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Jul 2011 11:05:39 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.4) with ESMTP id p61F5cbv004964
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 1 Jul 2011 15:05:39 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 13 Jun 2011, Yury V. Zaytsev wrote:
+https://bugzilla.kernel.org/show_bug.cgi?id=38642
 
-> On Wed, 2011-06-08 at 15:50 +0300, Amir Goldstein wrote:
-> 
-> > The only thing you screwed up is sending the patch as an attachment.
-> > People here expect it to be as plain text in the email, so that they
-> > can reply and comment inline. Other than that, the fix looks good (and
-> > well explained) to me.
-> 
-> Hi Amir!
-> 
-> Thank you for reviewing my submission. I apologize for attaching the
-> patch the wrong way. Hopefully, this time I will be able to make my mail
-> program to include it inline.
-> 
-> I have refreshed patch against the latest "next" branch since it no
-> longer properly applied and hopefully it can now be included!
-> 
-> --Yury.
+           Summary: ext4 timestamp format unable to uniquely represent
+                    times
+           Product: File System
+           Version: 2.5
+    Kernel Version: all
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: ersmith.nospam@totalspectrum.ca
+        Regression: No
 
-Hi Yury,
 
-the patch looks good. You can add my
+The presence of the extra bits in the ext4 timestamps implies a desire to
+represent file times to sub-second accuracy. Unfortunately, standard posix
+timestamps are not uniformly 1 SI second long, due to the presence of leap
+seconds. For example, the Posix timestamp 1230768000 corresponds to the UTC
+times "2008-12-31 23:59:60" and "2009-01-01 00:00:00".
 
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+Since there are only 30 bits in the nanosecond field, ext4 cannot accurately
+keep track of file times during a leap second.
 
-but could you please resend the patch in proper format indicating second
-version ? So Ted does not have to dig up the patch.
+One possible solution would be to add another bit to the nanosecond field,
+allowing nanoseconds to range from 0 to 1999999999 and hence allowing
+sufficient range to keep accurate time even during "long" posix timestamps.
 
-[PATCH v2] mke2fs: check that auto-detected blocksize <= sys_page_size
-
-Thanks!
--Lukas
-
-> 
-> From 1f8e5ad235694f2918fb442135619d4988366434 Mon Sep 17 00:00:00 2001
-> From: "Yury V. Zaytsev" <yury@shurup.com>
-> Date: Mon, 13 Jun 2011 00:35:05 +0200
-> Subject: 
-> 
-> Block size can be specified manually via the -b option or deduced
-> automatically. Unfortunately, the check that it is still smaller than
-> the system page size is only performed right after the command line
-> options are parsed.
-> 
-> Therefore, if buggy or inappropriately installed/configured hardware
-> hints that larger block sizes have to be used, mkfs will silently create
-> a file system which can not be mounted on the system in question.
-> 
-> By moving the check beyond the last assignment to blocksize it is now
-> ensured, that mkfs will issue a warning even if inappropriate blocksize
-> was auto-detected.
-> 
-> The new behavior can be easily tested, by exporting the following
-> variables before running mkfs:
-> 
->     export MKE2FS_DEVICE_SECTSIZE=8912
->     export MKE2FS_DEVICE_PHYS_SECTSIZE=8912
-> 
-> Signed-off-by: Yury V. Zaytsev <yury@shurup.com>
-> ---
->  misc/mke2fs.c |   24 +++++++++++++-----------
->  1 files changed, 13 insertions(+), 11 deletions(-)
-> 
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index 5ff3f9f..d699b46 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -1516,17 +1516,6 @@ profile_error:
->  		ext2fs_close(jfs);
->  	}
->  
-> -	if (blocksize > sys_page_size) {
-> -		if (!force) {
-> -			com_err(program_name, 0,
-> -				_("%d-byte blocks too big for system (max %d)"),
-> -				blocksize, sys_page_size);
-> -			proceed_question();
-> -		}
-> -		fprintf(stderr, _("Warning: %d-byte blocks too big for system "
-> -				  "(max %d), forced to continue\n"),
-> -			blocksize, sys_page_size);
-> -	}
->  	if (optind < argc) {
->  		fs_blocks_count = parse_num_blocks2(argv[optind++],
->  						   fs_param.s_log_block_size);
-> @@ -1825,6 +1814,19 @@ profile_error:
->  
->  	blocksize = EXT2_BLOCK_SIZE(&fs_param);
->  
-> +	/* This check should happen beyond the last assignment to blocksize */
-> +	if (blocksize > sys_page_size) {
-> +		if (!force) {
-> +			com_err(program_name, 0,
-> +				_("%d-byte blocks too big for system (max %d)"),
-> +				blocksize, sys_page_size);
-> +			proceed_question();
-> +		}
-> +		fprintf(stderr, _("Warning: %d-byte blocks too big for system "
-> +				  "(max %d), forced to continue\n"),
-> +			blocksize, sys_page_size);
-> +	}
-> +
->  	lazy_itable_init = 0;
->  	if (access("/sys/fs/ext4/features/lazy_itable_init", R_OK) == 0)
->  		lazy_itable_init = 1;
-> 
+Another would be to specify that the seconds fields of ext4 time stamps should
+hold actual SI seconds elapsed, rather than POSIX timestamps; this would be
+considerably more complicated, though.
 
 -- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
