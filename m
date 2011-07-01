@@ -1,60 +1,32 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 38642] New: ext4 timestamp format unable to uniquely represent
- times
-Date: Fri, 1 Jul 2011 15:05:38 GMT
-Message-ID: <bug-38642-13602@https.bugzilla.kernel.org/>
+From: Tao Ma <tm@tao.ma>
+Subject: [PATCH 0/5 RESEND V2] ext4: trim bug fixes and improvements.
+Date: Fri, 01 Jul 2011 23:22:34 +0800
+Message-ID: <4E0DE63A.7030103@tao.ma>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: Ted Ts'o <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>, tm@tao.ma
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:51096 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751842Ab1GAPFj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Jul 2011 11:05:39 -0400
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.4) with ESMTP id p61F5cbv004964
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 1 Jul 2011 15:05:39 GMT
+Received: from oproxy4-pub.bluehost.com ([69.89.21.11]:35605 "HELO
+	oproxy4-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753090Ab1GAPWs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Jul 2011 11:22:48 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=38642
+Hi Ted,
 
-           Summary: ext4 timestamp format unable to uniquely represent
-                    times
-           Product: File System
-           Version: 2.5
-    Kernel Version: all
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: ersmith.nospam@totalspectrum.ca
-        Regression: No
+changelog from v1 to v2:
+1. integrated comments form Lukas.
+2. add another trivial fix reported by Andreas.
 
+Patch 1/5 is a fix for the 'len' overflow. As we have decided that we
+don't adjust start to s_first_data_block, this patch is still needed.
+Patch 2/5 is a speedup for trim in one group.
+Patch 3/5 adds trace points for the functions used in FITRIM.
+Patch 4/5 is a speedup for trim for the whole volume.
+Patch 5/5 is a trivial fix for the comment of ext4_trim_all_free.
 
-The presence of the extra bits in the ext4 timestamps implies a desire to
-represent file times to sub-second accuracy. Unfortunately, standard posix
-timestamps are not uniformly 1 SI second long, due to the presence of leap
-seconds. For example, the Posix timestamp 1230768000 corresponds to the UTC
-times "2008-12-31 23:59:60" and "2009-01-01 00:00:00".
-
-Since there are only 30 bits in the nanosecond field, ext4 cannot accurately
-keep track of file times during a leap second.
-
-One possible solution would be to add another bit to the nanosecond field,
-allowing nanoseconds to range from 0 to 1999999999 and hence allowing
-sufficient range to keep accurate time even during "long" posix timestamps.
-
-Another would be to specify that the seconds fields of ext4 time stamps should
-hold actual SI seconds elapsed, rather than POSIX timestamps; this would be
-considerably more complicated, though.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Thanks,
+Tao
