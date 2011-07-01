@@ -1,117 +1,52 @@
-From: "Yury V. Zaytsev" <yury@shurup.com>
-Subject: Re: [PATCH] mke2fs: check that auto-detected blocksize <=
- sys_page_size
-Date: Fri, 01 Jul 2011 10:31:38 +0200
-Message-ID: <1309509098.4859.12.camel@newpride>
-References: <1307524998.2467.41.camel@newpride>
-	 <BANLkTikGv=OZgV0iwZroDDnPi+TiyxDzVg@mail.gmail.com>
-	 <1307918791.2872.18.camel@newpride>
+From: Kazuya Mio <k-mio@sx.jp.nec.com>
+Subject: Re: [PATCH 01/11 RESEND] libe2p: Add new function get_fragment_score()
+Date: Fri, 01 Jul 2011 17:34:09 +0900
+Message-ID: <4E0D8681.3060205@sx.jp.nec.com>
+References: <4DF8522F.2020304@sx.jp.nec.com> <20110617031814.GA31884@thunk.org> <4DFB62C7.5070008@redhat.com> <E94A4A11-B1FB-4D95-87C5-F18190EF333B@gmail.com> <4E008045.1040909@sx.jp.nec.com> <BANLkTinvConLV08CkaTSBOhM=2HFwF0wnw@mail.gmail.com> <4E044AB4.9010804@sx.jp.nec.com> <BANLkTinjKDWv4HdODzLSU5WQ-TYaDk2ABw@mail.gmail.com> <4E09AB2A.6000105@sx.jp.nec.com> <BANLkTikZwscrs4F1NeVRKBTPSouthhMgSg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Amir Goldstein <amir73il@gmail.com>,
-	Mike Snitzer <snitzer@redhat.com>, linux-ext4@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <aedilger@gmail.com>,
+	Eric Sandeen <sandeen@redhat.com>, "Ted Ts'o" <tytso@mit.edu>,
+	ext4 <linux-ext4@vger.kernel.org>
+To: Greg Freemyer <greg.freemyer@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailgateway3.uni-freiburg.de ([132.230.2.213]:36805 "EHLO
-	mailgateway3.uni-freiburg.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755447Ab1GAIbm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Jul 2011 04:31:42 -0400
-In-Reply-To: <1307918791.2872.18.camel@newpride>
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:49019 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755320Ab1GAIfA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Jul 2011 04:35:00 -0400
+In-Reply-To: <BANLkTikZwscrs4F1NeVRKBTPSouthhMgSg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi!
+2011/06/28 22:53, Greg Freemyer wrote:
+> While you're thinking about the issue:
+>
+> As I hope I've said before, for sparse file I think e4defrag should
+> score and defrag one block_group at a time.  Thus if a VM backing
+> storage file has 100 block_groups (as I'm using the term), then it
+> should score each of the 100 separately and if needed defrag them one
+> at a time.
+>
+> I can see no benefit from treating a large sparse file as monolithic
+> for the decision process.
 
-On Mon, 2011-06-13 at 00:46 +0200, Yury V. Zaytsev wrote:
+If e4defrag does defrag one block_group at a time, this block_group may be
+allocated far away from the other block_groups. If so, seek time increases
+even if the number of extents is less than before.
 
-> I have refreshed patch against the latest "next" branch since it no
-> longer properly applied and hopefully it can now be included!
+Of course, I'm aware of the advantage of your suggestion. I may also try to
+consider it to defrag only a part of a file in the future, but before that
+I think I should do the cleanup and bugfix.
 
-I would highly appreciate if the trivial patch that nonetheless fixes an
-important issue to my mind posted last month could be looked at.
+> fyi: Is there an agreed on term for what I'm calling a block_group.  I
+> believe e4defrag uses the term "extent group" in the comments, but
+> sparse files exist in non-extent based filesystems, so it's not a very
+> portable name.
 
-Is there anything else I could do to help with the inclusion? Sorry if I
-am bumping the thread too fast, but I see other patches flowing in which
-makes me think that I've done something wrong; if this is the case
-please do let me know, I am willing to rectify it.
+e4defrag supports only an extent based filesystem, so I think it's no problem.
+And I associate "block_group" with the physical layout of the blocks on the
+disk. I guess we shouldn't use the same word with different meanings.
 
-Thanks!
-
--- 
-Sincerely yours,
-Yury V. Zaytsev
-
-> From 1f8e5ad235694f2918fb442135619d4988366434 Mon Sep 17 00:00:00 2001
-> From: "Yury V. Zaytsev" <yury@shurup.com>
-> Date: Mon, 13 Jun 2011 00:35:05 +0200
-> Subject: [PATCH] mke2fs: check that auto-detected blocksize <= sys_page_size
-> 
-> Block size can be specified manually via the -b option or deduced
-> automatically. Unfortunately, the check that it is still smaller than
-> the system page size is only performed right after the command line
-> options are parsed.
-> 
-> Therefore, if buggy or inappropriately installed/configured hardware
-> hints that larger block sizes have to be used, mkfs will silently create
-> a file system which can not be mounted on the system in question.
-> 
-> By moving the check beyond the last assignment to blocksize it is now
-> ensured, that mkfs will issue a warning even if inappropriate blocksize
-> was auto-detected.
-> 
-> The new behavior can be easily tested, by exporting the following
-> variables before running mkfs:
-> 
->     export MKE2FS_DEVICE_SECTSIZE=8912
->     export MKE2FS_DEVICE_PHYS_SECTSIZE=8912
-> 
-> Signed-off-by: Yury V. Zaytsev <yury@shurup.com>
-> ---
->  misc/mke2fs.c |   24 +++++++++++++-----------
->  1 files changed, 13 insertions(+), 11 deletions(-)
-> 
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index 5ff3f9f..d699b46 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -1516,17 +1516,6 @@ profile_error:
->  		ext2fs_close(jfs);
->  	}
->  
-> -	if (blocksize > sys_page_size) {
-> -		if (!force) {
-> -			com_err(program_name, 0,
-> -				_("%d-byte blocks too big for system (max %d)"),
-> -				blocksize, sys_page_size);
-> -			proceed_question();
-> -		}
-> -		fprintf(stderr, _("Warning: %d-byte blocks too big for system "
-> -				  "(max %d), forced to continue\n"),
-> -			blocksize, sys_page_size);
-> -	}
->  	if (optind < argc) {
->  		fs_blocks_count = parse_num_blocks2(argv[optind++],
->  						   fs_param.s_log_block_size);
-> @@ -1825,6 +1814,19 @@ profile_error:
->  
->  	blocksize = EXT2_BLOCK_SIZE(&fs_param);
->  
-> +	/* This check should happen beyond the last assignment to blocksize */
-> +	if (blocksize > sys_page_size) {
-> +		if (!force) {
-> +			com_err(program_name, 0,
-> +				_("%d-byte blocks too big for system (max %d)"),
-> +				blocksize, sys_page_size);
-> +			proceed_question();
-> +		}
-> +		fprintf(stderr, _("Warning: %d-byte blocks too big for system "
-> +				  "(max %d), forced to continue\n"),
-> +			blocksize, sys_page_size);
-> +	}
-> +
->  	lazy_itable_init = 0;
->  	if (access("/sys/fs/ext4/features/lazy_itable_init", R_OK) == 0)
->  		lazy_itable_init = 1;
-
-
+Regards,
+Kazuya Mio
