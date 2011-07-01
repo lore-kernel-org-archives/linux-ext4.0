@@ -1,18 +1,19 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 3/4] ext4: Add new ext4 trim tracepoints
-Date: Fri, 1 Jul 2011 11:54:14 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1107011151370.4168@dhcp-27-109.brq.redhat.com>
-References: <4E0C8B6C.8030403@tao.ma> <1309445439-3753-3-git-send-email-tm@tao.ma>
+Subject: Re: [PATCH 4/4] ext4: Speed up FITRIM by recording flags in
+ ext4_group_info.
+Date: Fri, 1 Jul 2011 12:09:48 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1107011206580.4168@dhcp-27-109.brq.redhat.com>
+References: <4E0C8B6C.8030403@tao.ma> <1309445439-3753-4-git-send-email-tm@tao.ma>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
 To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:23340 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:17018 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754832Ab1GAJyT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 1 Jul 2011 05:54:19 -0400
-In-Reply-To: <1309445439-3753-3-git-send-email-tm@tao.ma>
+	id S1755161Ab1GAKJw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 1 Jul 2011 06:09:52 -0400
+In-Reply-To: <1309445439-3753-4-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -20,108 +21,188 @@ On Thu, 30 Jun 2011, Tao Ma wrote:
 
 > From: Tao Ma <boyu.mt@taobao.com>
 > 
-> Add ext4_trim_extent and ext4_trim_all_free.
+> In ext4, when FITRIM is called every time, we iterate all the
+> groups and do trim one by one. It is a bit time wasting if the
+> group has been trimmed and there is no change since the last
+> trim.
 > 
+> So this patch adds a new flag in ext4_group_info->bb_state to
+> indicate that the group has been trimmed, and it will be cleared
+> if some blocks is freed(in release_blocks_on_commit). Another
+> trim_minlen is added in ext4_sb_info to record the last minlen
+> we use to trim the volume, so that if the caller provide a small
+> one, we will go on the trim regardless of the bb_state.
+> 
+> A simple test with my intel x25m ssd:
+> df -h shows:
+> /dev/sdb1              40G   21G   17G  56% /mnt/ext4
+> Block size:               4096
+> 
+> run the FITRIM with the following parameter:
+> range.start = 0;
+> range.len = UINT64_MAX;
+> range.minlen = 1048576;
+> 
+> without the patch:
+> [root@boyu-tm linux-2.6]# time ./ftrim /mnt/ext4/a
+> real	0m5.505s
+> user	0m0.000s
+> sys	0m1.224s
+> [root@boyu-tm linux-2.6]# time ./ftrim /mnt/ext4/a
+> real	0m5.359s
+> user	0m0.000s
+> sys	0m1.178s
+> [root@boyu-tm linux-2.6]# time ./ftrim /mnt/ext4/a
+> real	0m5.228s
+> user	0m0.000s
+> sys	0m1.151s
+> 
+> with the patch:
+> [root@boyu-tm linux-2.6]# time ./ftrim /mnt/ext4/a
+> real	0m5.625s
+> user	0m0.000s
+> sys	0m1.269s
+> [root@boyu-tm linux-2.6]# time ./ftrim /mnt/ext4/a
+> real	0m0.002s
+> user	0m0.000s
+> sys	0m0.001s
+> [root@boyu-tm linux-2.6]# time ./ftrim /mnt/ext4/a
+> real	0m0.002s
+> user	0m0.000s
+> sys	0m0.001s
+> 
+> A big improvement for the 2nd and 3rd run.
+> 
+> Even after I delete some big image files, it is still much
+> faster than iterating the whole disk.
+> 
+> [root@boyu-tm test]# time ./ftrim /mnt/ext4/a
+> real	0m1.217s
+> user	0m0.000s
+> sys	0m0.196s
 
-I have some nitpicky comment bellow, but other than that it
-looks good, you can add:
+Thanks for the patch Tao, I have couple of comments bellow.
 
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+> 
+> Reviewed-by: Andreas Dilger <adilger.kernel@dilger.ca>
+> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+> ---
+>  fs/ext4/ext4.h    |   13 ++++++++++++-
+>  fs/ext4/mballoc.c |   20 ++++++++++++++++++++
+>  fs/ext4/super.c   |    2 ++
+>  3 files changed, 34 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 1921392..5878a22 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1214,6 +1214,9 @@ struct ext4_sb_info {
+>  
+>  	/* Kernel thread for multiple mount protection */
+>  	struct task_struct *s_mmp_tsk;
+> +
+> +	/* record the last minlen when FITRIM is called. */
+> +	atomic_t s_last_trim_minblks;
+>  };
+>  
+>  static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
+> @@ -2067,11 +2070,19 @@ struct ext4_group_info {
+>  					 * 5 free 8-block regions. */
+>  };
+>  
+> -#define EXT4_GROUP_INFO_NEED_INIT_BIT	0
+> +#define EXT4_GROUP_INFO_NEED_INIT_BIT		0
+> +#define EXT4_GROUP_INFO_WAS_TRIMMED_BIT		1
+>  
+>  #define EXT4_MB_GRP_NEED_INIT(grp)	\
+>  	(test_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &((grp)->bb_state)))
+>  
+> +#define EXT4_MB_GRP_WAS_TRIMMED(grp)	\
+> +	(test_bit(EXT4_GROUP_INFO_WAS_TRIMMED_BIT, &((grp)->bb_state)))
+> +#define EXT4_MB_GRP_SET_TRIMMED(grp)	\
+> +	(set_bit(EXT4_GROUP_INFO_WAS_TRIMMED_BIT, &((grp)->bb_state)))
+> +#define EXT4_MB_GRP_CLEAR_TRIMMED(grp)	\
+> +	(clear_bit(EXT4_GROUP_INFO_WAS_TRIMMED_BIT, &((grp)->bb_state)))
+> +
+>  #define EXT4_MAX_CONTENTION		8
+>  #define EXT4_CONTENTION_THRESHOLD	2
+>  
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index a822f2a..afdd869 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -2628,6 +2628,15 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
+>  		rb_erase(&entry->node, &(db->bb_free_root));
+>  		mb_free_blocks(NULL, &e4b, entry->start_blk, entry->count);
+>  
+> +		/*
+> +		 * Clear the trimmed flag for the group so that the next
+> +		 * ext4_trim_fs can trim it.
+> +		 * If the volume is mounted with -o discard, online discard
+> +		 * is supported and the free blocks will be trimmed online.
+> +		 */
+> +		if (!test_opt(sb, DISCARD))
+> +			EXT4_MB_GRP_CLEAR_TRIMMED(db);
+
+If the online discard failed we should probably clear the flag as well
+right ? However I am not sure how helpful it would be since it'll most
+likely fail again. Maybe we do not need to bother with that case at all,
+what do you think ?
+
+> +
+>  		if (!db->bb_free_root.rb_node) {
+>  			/* No more items in the per group rb tree
+>  			 * balance refcounts from ext4_mb_free_metadata()
+> @@ -4840,6 +4849,10 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
+>  	bitmap = e4b.bd_bitmap;
+>  
+>  	ext4_lock_group(sb, group);
+> +	if (EXT4_MB_GRP_WAS_TRIMMED(e4b.bd_info) &&
+> +	    minblocks >= atomic_read(&EXT4_SB(sb)->s_last_trim_minblks))
+> +		goto out;
+> +
+>  	start = (e4b.bd_info->bb_first_free > start) ?
+>  		e4b.bd_info->bb_first_free : start;
+>  
+> @@ -4871,6 +4884,10 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
+>  		if ((e4b.bd_info->bb_free - free_count) < minblocks)
+>  			break;
+>  	}
+> +
+> +	if (!ret)
+> +		EXT4_MB_GRP_SET_TRIMMED(e4b.bd_info);
+> +out:
+>  	ext4_unlock_group(sb, group);
+>  	ext4_mb_unload_buddy(&e4b);
+>  
+> @@ -4960,6 +4977,9 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+>  	}
+>  	range->len = trimmed * sb->s_blocksize;
+>  
+> +	if (!ret)
+> +		atomic_set(&EXT4_SB(sb)->s_last_trim_minblks, minlen);
+> +
+>  out:
+>  	return ret;
+>  }
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 9ea71aa..080e9f9 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -3086,6 +3086,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  		sbi->s_sectors_written_start =
+>  			part_stat_read(sb->s_bdev->bd_part, sectors[1]);
+>  
+> +	atomic_set(&sbi->s_last_trim_minblks, 0);
+> +
+
+I am not sure that this is needed since sbi is allocated with kzalloc,
+so it should be zero already.
+
+>  	/* Cleanup superblock name */
+>  	for (cp = sb->s_id; (cp = strchr(cp, '/'));)
+>  		*cp = '!';
+> 
 
 Thanks!
 -Lukas
-
-> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
-> ---
->  fs/ext4/mballoc.c           |    4 +++
->  include/trace/events/ext4.h |   49 +++++++++++++++++++++++++++++++++++++++++++
->  2 files changed, 53 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index 83fb04b..a822f2a 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -4782,6 +4782,8 @@ static void ext4_trim_extent(struct super_block *sb, int start, int count,
->  {
->  	struct ext4_free_extent ex;
->  
-> +	trace_ext4_trim_extent(sb, group, start, count);
-> +
->  	assert_spin_locked(ext4_group_lock_ptr(sb, group));
->  
->  	ex.fe_start = start;
-> @@ -4827,6 +4829,8 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
->  	struct ext4_buddy e4b;
->  	int ret;
->  
-> +	trace_ext4_trim_all_free(sb, group, start, max);
-> +
->  	ret = ext4_mb_load_buddy(sb, group, &e4b);
->  	if (ret) {
->  		ext4_error(sb, "Error in loading buddy "
-> diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-> index 5ce2b2f..405ea6b 100644
-> --- a/include/trace/events/ext4.h
-> +++ b/include/trace/events/ext4.h
-> @@ -1520,6 +1520,55 @@ TRACE_EVENT(ext4_load_inode,
->  		  (unsigned long) __entry->ino)
->  );
->  
-> +DECLARE_EVENT_CLASS(ext4__trim,
-> +	TP_PROTO(struct super_block *sb,
-> +		 ext4_group_t group,
-> +		 ext4_grpblk_t start,
-> +		 ext4_grpblk_t len),
-> +
-> +	TP_ARGS(sb, group, start, len),
-> +
-> +	TP_STRUCT__entry(
-> +		__field(	int,	dev_major               )
-> +		__field(	int,	dev_minor               )
-
-You can rather use tabs for indent.              ^^^^^^^^^^^^^^^
-
-> +		__field(	__u32, 	group			)
-> +		__field(	int,	start			)
-> +		__field(	int,	len			)
-> +	),
-> +
-> +	TP_fast_assign(
-> +		__entry->dev_major	= MAJOR(sb->s_dev);
-> +		__entry->dev_minor	= MINOR(sb->s_dev);
-> +		__entry->group		= group;
-> +		__entry->start		= start;
-> +		__entry->len		= len;
-> +	),
-> +
-> +	TP_printk("dev %d,%d group %u, start %d, len %d",
-> +		  __entry->dev_major, __entry->dev_minor,
-> +		  __entry->group, __entry->start, __entry->len)
-> +);
-> +
-> +DEFINE_EVENT(ext4__trim, ext4_trim_extent,
-> +
-> +	TP_PROTO(struct super_block *sb,
-> +		 ext4_group_t group,
-> +		 ext4_grpblk_t start,
-> +		 ext4_grpblk_t len),
-> +
-> +	TP_ARGS(sb, group, start, len)
-> +);
-> +
-> +DEFINE_EVENT(ext4__trim, ext4_trim_all_free,
-> +
-> +	TP_PROTO(struct super_block *sb,
-> +		 ext4_group_t group,
-> +		 ext4_grpblk_t start,
-> +		 ext4_grpblk_t len),
-> +
-> +	TP_ARGS(sb, group, start, len)
-> +);
-> +
->  #endif /* _TRACE_EXT4_H */
->  
->  /* This part must be outside protection */
-> 
-
--- 
