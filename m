@@ -1,177 +1,44 @@
 From: Tao Ma <tm@tao.ma>
-Subject: [PATCH 4/5] ext4: Speed up FITRIM by recording flags in ext4_group_info.
-Date: Fri,  1 Jul 2011 23:27:55 +0800
-Message-ID: <1309534076-2784-4-git-send-email-tm@tao.ma>
+Subject: [PATCH 5/5] ext4: Change the wrong param comment for ext4_trim_all_free.
+Date: Fri,  1 Jul 2011 23:27:56 +0800
+Message-ID: <1309534076-2784-5-git-send-email-tm@tao.ma>
 References: <4E0DE63A.7030103@tao.ma>
  <1309534076-2784-1-git-send-email-tm@tao.ma>
-Cc: tytso@mit.edu, Lukas Czerner <lczerner@redhat.com>
+Cc: tytso@mit.edu
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy8-pub.bluehost.com ([69.89.22.20]:60296 "HELO
-	oproxy8-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751700Ab1GAPan (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Jul 2011 11:30:43 -0400
+Received: from oproxy7-pub.bluehost.com ([67.222.55.9]:38160 "HELO
+	oproxy7-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751700Ab1GAPat (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Jul 2011 11:30:49 -0400
 In-Reply-To: <1309534076-2784-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Tao Ma <boyu.mt@taobao.com>
 
-In ext4, when FITRIM is called every time, we iterate all the
-groups and do trim one by one. It is a bit time wasting if the
-group has been trimmed and there is no change since the last
-trim.
+at ext4_trim_all_free() comment, there is no longer an @e4b parameter,
+instead it is @group.
 
-So this patch adds a new flag in ext4_group_info->bb_state to
-indicate that the group has been trimmed, and it will be cleared
-if some blocks is freed(in release_blocks_on_commit). Another
-trim_minlen is added in ext4_sb_info to record the last minlen
-we use to trim the volume, so that if the caller provide a small
-one, we will go on the trim regardless of the bb_state.
-
-A simple test with my intel x25m ssd:
-df -h shows:
-/dev/sdb1              40G   21G   17G  56% /mnt/ext4
-Block size:               4096
-
-run the FITRIM with the following parameter:
-range.start = 0;
-range.len = UINT64_MAX;
-range.minlen = 1048576;
-
-without the patch:
-[root@boyu-tm linux-2.6]# time ./ftrim /mnt/ext4/a
-real	0m5.505s
-user	0m0.000s
-sys	0m1.224s
-[root@boyu-tm linux-2.6]# time ./ftrim /mnt/ext4/a
-real	0m5.359s
-user	0m0.000s
-sys	0m1.178s
-[root@boyu-tm linux-2.6]# time ./ftrim /mnt/ext4/a
-real	0m5.228s
-user	0m0.000s
-sys	0m1.151s
-
-with the patch:
-[root@boyu-tm linux-2.6]# time ./ftrim /mnt/ext4/a
-real	0m5.625s
-user	0m0.000s
-sys	0m1.269s
-[root@boyu-tm linux-2.6]# time ./ftrim /mnt/ext4/a
-real	0m0.002s
-user	0m0.000s
-sys	0m0.001s
-[root@boyu-tm linux-2.6]# time ./ftrim /mnt/ext4/a
-real	0m0.002s
-user	0m0.000s
-sys	0m0.001s
-
-A big improvement for the 2nd and 3rd run.
-
-Even after I delete some big image files, it is still much
-faster than iterating the whole disk.
-
-[root@boyu-tm test]# time ./ftrim /mnt/ext4/a
-real	0m1.217s
-user	0m0.000s
-sys	0m0.196s
-
-Cc: Lukas Czerner <lczerner@redhat.com>
-Reviewed-by: Andreas Dilger <adilger.kernel@dilger.ca>
+Reported-by: Andreas Dilger <adilger@dilger.ca>
 Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/ext4.h    |   13 ++++++++++++-
- fs/ext4/mballoc.c |   20 ++++++++++++++++++++
- 2 files changed, 32 insertions(+), 1 deletions(-)
+ fs/ext4/mballoc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 1921392..5878a22 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1214,6 +1214,9 @@ struct ext4_sb_info {
- 
- 	/* Kernel thread for multiple mount protection */
- 	struct task_struct *s_mmp_tsk;
-+
-+	/* record the last minlen when FITRIM is called. */
-+	atomic_t s_last_trim_minblks;
- };
- 
- static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
-@@ -2067,11 +2070,19 @@ struct ext4_group_info {
- 					 * 5 free 8-block regions. */
- };
- 
--#define EXT4_GROUP_INFO_NEED_INIT_BIT	0
-+#define EXT4_GROUP_INFO_NEED_INIT_BIT		0
-+#define EXT4_GROUP_INFO_WAS_TRIMMED_BIT		1
- 
- #define EXT4_MB_GRP_NEED_INIT(grp)	\
- 	(test_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &((grp)->bb_state)))
- 
-+#define EXT4_MB_GRP_WAS_TRIMMED(grp)	\
-+	(test_bit(EXT4_GROUP_INFO_WAS_TRIMMED_BIT, &((grp)->bb_state)))
-+#define EXT4_MB_GRP_SET_TRIMMED(grp)	\
-+	(set_bit(EXT4_GROUP_INFO_WAS_TRIMMED_BIT, &((grp)->bb_state)))
-+#define EXT4_MB_GRP_CLEAR_TRIMMED(grp)	\
-+	(clear_bit(EXT4_GROUP_INFO_WAS_TRIMMED_BIT, &((grp)->bb_state)))
-+
- #define EXT4_MAX_CONTENTION		8
- #define EXT4_CONTENTION_THRESHOLD	2
- 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index cf42fdd..cecc304 100644
+index cecc304..9a35263 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -2628,6 +2628,15 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
- 		rb_erase(&entry->node, &(db->bb_free_root));
- 		mb_free_blocks(NULL, &e4b, entry->start_blk, entry->count);
- 
-+		/*
-+		 * Clear the trimmed flag for the group so that the next
-+		 * ext4_trim_fs can trim it.
-+		 * If the volume is mounted with -o discard, online discard
-+		 * is supported and the free blocks will be trimmed online.
-+		 */
-+		if (!test_opt(sb, DISCARD))
-+			EXT4_MB_GRP_CLEAR_TRIMMED(db);
-+
- 		if (!db->bb_free_root.rb_node) {
- 			/* No more items in the per group rb tree
- 			 * balance refcounts from ext4_mb_free_metadata()
-@@ -4840,6 +4849,10 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
- 	bitmap = e4b.bd_bitmap;
- 
- 	ext4_lock_group(sb, group);
-+	if (EXT4_MB_GRP_WAS_TRIMMED(e4b.bd_info) &&
-+	    minblocks >= atomic_read(&EXT4_SB(sb)->s_last_trim_minblks))
-+		goto out;
-+
- 	start = (e4b.bd_info->bb_first_free > start) ?
- 		e4b.bd_info->bb_first_free : start;
- 
-@@ -4871,6 +4884,10 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
- 		if ((e4b.bd_info->bb_free - free_count) < minblocks)
- 			break;
- 	}
-+
-+	if (!ret)
-+		EXT4_MB_GRP_SET_TRIMMED(e4b.bd_info);
-+out:
- 	ext4_unlock_group(sb, group);
- 	ext4_mb_unload_buddy(&e4b);
- 
-@@ -4959,6 +4976,9 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
- 	}
- 	range->len = trimmed * sb->s_blocksize;
- 
-+	if (!ret)
-+		atomic_set(&EXT4_SB(sb)->s_last_trim_minblks, minlen);
-+
- out:
- 	return ret;
- }
+@@ -4813,7 +4813,7 @@ static void ext4_trim_extent(struct super_block *sb, int start, int count,
+ /**
+  * ext4_trim_all_free -- function to trim all free space in alloc. group
+  * @sb:			super block for file system
+- * @e4b:		ext4 buddy
++ * @group:		group to be trimmed
+  * @start:		first group block to examine
+  * @max:		last group block to examine
+  * @minblocks:		minimum extent block count
 -- 
 1.7.4
 
