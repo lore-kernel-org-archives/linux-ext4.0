@@ -1,91 +1,57 @@
-From: "Yury V. Zaytsev" <yury@shurup.com>
-Subject: [PATCH v2] mke2fs: check that auto-detected blocksize <=
- sys_page_size
-Date: Fri, 01 Jul 2011 17:27:31 +0200
-Message-ID: <1309534051.9412.58.camel@newpride>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Amir Goldstein <amir73il@gmail.com>,
-	Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+From: Tao Ma <tm@tao.ma>
+Subject: [PATCH 1/5] ext4: fix trim length underflow with small trim length.
+Date: Fri,  1 Jul 2011 23:27:52 +0800
+Message-ID: <1309534076-2784-1-git-send-email-tm@tao.ma>
+References: <4E0DE63A.7030103@tao.ma>
+Cc: tytso@mit.edu, Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailgateway3.uni-freiburg.de ([132.230.2.213]:37144 "EHLO
-	mailgateway3.uni-freiburg.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756566Ab1GAP1f (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Jul 2011 11:27:35 -0400
+Received: from oproxy1-pub.bluehost.com ([66.147.249.253]:45169 "HELO
+	oproxy1-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751333Ab1GAPa2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Jul 2011 11:30:28 -0400
+In-Reply-To: <4E0DE63A.7030103@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Block size can be specified manually via the -b option or deduced
-automatically. Unfortunately, the check that it is still smaller than
-the system page size is only performed right after the command line
-options are parsed.
+From: Tao Ma <boyu.mt@taobao.com>
 
-Therefore, if buggy or inappropriately installed/configured hardware
-hints that larger block sizes have to be used, mkfs will silently create
-a file system which can not be mounted on the system in question.
+In 0f0a25b, we adjust 'len' with s_first_data_block - start, but
+it could underflow in case blocksize=1K, fstrim_range.len=512 and
+fstrim_range.start = 0. In this case, when we run the code:
+len -= first_data_blk - start; len will be underflow to -1ULL.
+In the end, although we are safe that last_group check later will limit
+the trim to the whole volume, but that isn't what the user really want.
 
-By moving the check beyond the last assignment to blocksize it is now
-ensured, that mkfs will issue a warning even if inappropriate blocksize
-was auto-detected.
+So this patch fix it. It also adds the check for 'start' like ext3 so that
+we can break immediately if the start is invalid.
 
-The new behavior can be easily tested, by exporting the following
-variables before running mkfs:
-
-    export MKE2FS_DEVICE_SECTSIZE=8912
-    export MKE2FS_DEVICE_PHYS_SECTSIZE=8912
-
-Signed-off-by: Yury V. Zaytsev <yury@shurup.com>
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+Cc: Lukas Czerner <lczerner@redhat.com>
+Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- misc/mke2fs.c |   24 +++++++++++++-----------
- 1 files changed, 13 insertions(+), 11 deletions(-)
+ fs/ext4/mballoc.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
 
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 05cbbce..8faf12a 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -1514,17 +1514,6 @@ profile_error:
- 		ext2fs_close(jfs);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 6ed859d..604b706 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4904,6 +4904,8 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ 
+ 	if (unlikely(minlen > EXT4_BLOCKS_PER_GROUP(sb)))
+ 		return -EINVAL;
++	if (start + len <= first_data_blk)
++		goto out;
+ 	if (start < first_data_blk) {
+ 		len -= first_data_blk - start;
+ 		start = first_data_blk;
+@@ -4952,5 +4954,6 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
  	}
+ 	range->len = trimmed * sb->s_blocksize;
  
--	if (blocksize > sys_page_size) {
--		if (!force) {
--			com_err(program_name, 0,
--				_("%d-byte blocks too big for system (max %d)"),
--				blocksize, sys_page_size);
--			proceed_question();
--		}
--		fprintf(stderr, _("Warning: %d-byte blocks too big for system "
--				  "(max %d), forced to continue\n"),
--			blocksize, sys_page_size);
--	}
- 	if (optind < argc) {
- 		fs_blocks_count = parse_num_blocks2(argv[optind++],
- 						   fs_param.s_log_block_size);
-@@ -1833,6 +1822,19 @@ profile_error:
- 
- 	blocksize = EXT2_BLOCK_SIZE(&fs_param);
- 
-+	/* This check should happen beyond the last assignment to blocksize */
-+	if (blocksize > sys_page_size) {
-+		if (!force) {
-+			com_err(program_name, 0,
-+				_("%d-byte blocks too big for system (max %d)"),
-+				blocksize, sys_page_size);
-+			proceed_question();
-+		}
-+		fprintf(stderr, _("Warning: %d-byte blocks too big for system "
-+				  "(max %d), forced to continue\n"),
-+			blocksize, sys_page_size);
-+	}
-+
- 	lazy_itable_init = 0;
- 	if (access("/sys/fs/ext4/features/lazy_itable_init", R_OK) == 0)
- 		lazy_itable_init = 1;
++out:
+ 	return ret;
+ }
 -- 
-1.7.5.4
-
-
+1.7.4
 
