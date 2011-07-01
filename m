@@ -1,54 +1,129 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: [PATCH 0/2v v7] XFS TESTS: ENOSPC Punch Hole Test
-Date: Fri, 01 Jul 2011 07:30:19 -0700
-Message-ID: <4E0DD9FB.8090307@linux.vnet.ibm.com>
-References: <1309272301-5742-1-git-send-email-achender@linux.vnet.ibm.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH] mke2fs: check that auto-detected blocksize <=
+ sys_page_size
+Date: Fri, 1 Jul 2011 16:45:07 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1107011642010.4168@dhcp-27-109.brq.redhat.com>
+References: <1307524998.2467.41.camel@newpride>  <BANLkTikGv=OZgV0iwZroDDnPi+TiyxDzVg@mail.gmail.com> <1307918791.2872.18.camel@newpride>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>
-To: Allison Henderson <achender@linux.vnet.ibm.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1309272301-5742-1-git-send-email-achender@linux.vnet.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: "Ted Ts'o" <tytso@mit.edu>, Amir Goldstein <amir73il@gmail.com>,
+	linux-ext4@vger.kernel.org
+To: "Yury V. Zaytsev" <yury@shurup.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:63547 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756621Ab1GAOpO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 1 Jul 2011 10:45:14 -0400
+In-Reply-To: <1307918791.2872.18.camel@newpride>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 06/28/2011 07:44 AM, Allison Henderson wrote:
-> Hi All,
->
-> This is another set I sent out a while ago, but I didnt see it show up on the lists,
-> so I am resending this one too. The work in this patch is a continuation from a
-> previous patch set that has been partially accepted, so I thought I
-> should retain the v6.
->
-> This patch set adds the ENOSPC test that was used for ext4 punch hole testing.
-> This test will verify that a hole can be punched even when the disk is full.
-> Reserved blocks should be used to complete the operation when there is not blocks
-> to further fragment the file.
->
-> Because punching a hole does not always require extra blocks, there needs to
-> be serveal iterations of punching holes, and then filling the file system to 100%
-> usage before it is forced to grow the tree in order to handle the fragmentation.
-> The growing of the tree is what would cause ENOSPC if not for the use of reserved blocks.
->
-> I could use some opinions on this patch set becuase I am not sure if other filesystems
-> handle their punch holes in the same way.  Although xfs appears to pass the test,
-> should this test be an ext4 only test? Thx!
->
+On Mon, 13 Jun 2011, Yury V. Zaytsev wrote:
 
-Hi All,
+> On Wed, 2011-06-08 at 15:50 +0300, Amir Goldstein wrote:
+> 
+> > The only thing you screwed up is sending the patch as an attachment.
+> > People here expect it to be as plain text in the email, so that they
+> > can reply and comment inline. Other than that, the fix looks good (and
+> > well explained) to me.
+> 
+> Hi Amir!
+> 
+> Thank you for reviewing my submission. I apologize for attaching the
+> patch the wrong way. Hopefully, this time I will be able to make my mail
+> program to include it inline.
+> 
+> I have refreshed patch against the latest "next" branch since it no
+> longer properly applied and hopefully it can now be included!
+> 
+> --Yury.
 
-I just wanted to poke this thread before too much time goes by.  This 
-patch was initially part of an earlier set that's already been picked 
-up, and it seemed like people were generally interested in it, so I 
-resubmitted it as it's own patch.  Is there still an interest in this 
-patch set?
+Hi Yury,
 
-I have another set that now also needs to add a new test 255 (the fix 
-252 failure patch set).  I am thinking that if people still want this 
-test, I could put this patch in with the other set so that they stack 
-properly.  Thx!
+the patch looks good. You can add my
 
-Allison Henderson
+Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 
+but could you please resend the patch in proper format indicating second
+version ? So Ted does not have to dig up the patch.
+
+[PATCH v2] mke2fs: check that auto-detected blocksize <= sys_page_size
+
+Thanks!
+-Lukas
+
+> 
+> From 1f8e5ad235694f2918fb442135619d4988366434 Mon Sep 17 00:00:00 2001
+> From: "Yury V. Zaytsev" <yury@shurup.com>
+> Date: Mon, 13 Jun 2011 00:35:05 +0200
+> Subject: 
+> 
+> Block size can be specified manually via the -b option or deduced
+> automatically. Unfortunately, the check that it is still smaller than
+> the system page size is only performed right after the command line
+> options are parsed.
+> 
+> Therefore, if buggy or inappropriately installed/configured hardware
+> hints that larger block sizes have to be used, mkfs will silently create
+> a file system which can not be mounted on the system in question.
+> 
+> By moving the check beyond the last assignment to blocksize it is now
+> ensured, that mkfs will issue a warning even if inappropriate blocksize
+> was auto-detected.
+> 
+> The new behavior can be easily tested, by exporting the following
+> variables before running mkfs:
+> 
+>     export MKE2FS_DEVICE_SECTSIZE=8912
+>     export MKE2FS_DEVICE_PHYS_SECTSIZE=8912
+> 
+> Signed-off-by: Yury V. Zaytsev <yury@shurup.com>
+> ---
+>  misc/mke2fs.c |   24 +++++++++++++-----------
+>  1 files changed, 13 insertions(+), 11 deletions(-)
+> 
+> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+> index 5ff3f9f..d699b46 100644
+> --- a/misc/mke2fs.c
+> +++ b/misc/mke2fs.c
+> @@ -1516,17 +1516,6 @@ profile_error:
+>  		ext2fs_close(jfs);
+>  	}
+>  
+> -	if (blocksize > sys_page_size) {
+> -		if (!force) {
+> -			com_err(program_name, 0,
+> -				_("%d-byte blocks too big for system (max %d)"),
+> -				blocksize, sys_page_size);
+> -			proceed_question();
+> -		}
+> -		fprintf(stderr, _("Warning: %d-byte blocks too big for system "
+> -				  "(max %d), forced to continue\n"),
+> -			blocksize, sys_page_size);
+> -	}
+>  	if (optind < argc) {
+>  		fs_blocks_count = parse_num_blocks2(argv[optind++],
+>  						   fs_param.s_log_block_size);
+> @@ -1825,6 +1814,19 @@ profile_error:
+>  
+>  	blocksize = EXT2_BLOCK_SIZE(&fs_param);
+>  
+> +	/* This check should happen beyond the last assignment to blocksize */
+> +	if (blocksize > sys_page_size) {
+> +		if (!force) {
+> +			com_err(program_name, 0,
+> +				_("%d-byte blocks too big for system (max %d)"),
+> +				blocksize, sys_page_size);
+> +			proceed_question();
+> +		}
+> +		fprintf(stderr, _("Warning: %d-byte blocks too big for system "
+> +				  "(max %d), forced to continue\n"),
+> +			blocksize, sys_page_size);
+> +	}
+> +
+>  	lazy_itable_init = 0;
+>  	if (access("/sys/fs/ext4/features/lazy_itable_init", R_OK) == 0)
+>  		lazy_itable_init = 1;
+> 
+
+-- 
