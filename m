@@ -1,32 +1,91 @@
-From: Tao Ma <tm@tao.ma>
-Subject: [PATCH 0/5 RESEND V2] ext4: trim bug fixes and improvements.
-Date: Fri, 01 Jul 2011 23:22:34 +0800
-Message-ID: <4E0DE63A.7030103@tao.ma>
+From: "Yury V. Zaytsev" <yury@shurup.com>
+Subject: [PATCH v2] mke2fs: check that auto-detected blocksize <=
+ sys_page_size
+Date: Fri, 01 Jul 2011 17:27:31 +0200
+Message-ID: <1309534051.9412.58.camel@newpride>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-To: Ted Ts'o <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>, tm@tao.ma
+Cc: Amir Goldstein <amir73il@gmail.com>,
+	Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy4-pub.bluehost.com ([69.89.21.11]:35605 "HELO
-	oproxy4-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753090Ab1GAPWs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Jul 2011 11:22:48 -0400
+Received: from mailgateway3.uni-freiburg.de ([132.230.2.213]:37144 "EHLO
+	mailgateway3.uni-freiburg.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756566Ab1GAP1f (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Jul 2011 11:27:35 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+Block size can be specified manually via the -b option or deduced
+automatically. Unfortunately, the check that it is still smaller than
+the system page size is only performed right after the command line
+options are parsed.
 
-changelog from v1 to v2:
-1. integrated comments form Lukas.
-2. add another trivial fix reported by Andreas.
+Therefore, if buggy or inappropriately installed/configured hardware
+hints that larger block sizes have to be used, mkfs will silently create
+a file system which can not be mounted on the system in question.
 
-Patch 1/5 is a fix for the 'len' overflow. As we have decided that we
-don't adjust start to s_first_data_block, this patch is still needed.
-Patch 2/5 is a speedup for trim in one group.
-Patch 3/5 adds trace points for the functions used in FITRIM.
-Patch 4/5 is a speedup for trim for the whole volume.
-Patch 5/5 is a trivial fix for the comment of ext4_trim_all_free.
+By moving the check beyond the last assignment to blocksize it is now
+ensured, that mkfs will issue a warning even if inappropriate blocksize
+was auto-detected.
 
-Thanks,
-Tao
+The new behavior can be easily tested, by exporting the following
+variables before running mkfs:
+
+    export MKE2FS_DEVICE_SECTSIZE=8912
+    export MKE2FS_DEVICE_PHYS_SECTSIZE=8912
+
+Signed-off-by: Yury V. Zaytsev <yury@shurup.com>
+Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+---
+ misc/mke2fs.c |   24 +++++++++++++-----------
+ 1 files changed, 13 insertions(+), 11 deletions(-)
+
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 05cbbce..8faf12a 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -1514,17 +1514,6 @@ profile_error:
+ 		ext2fs_close(jfs);
+ 	}
+ 
+-	if (blocksize > sys_page_size) {
+-		if (!force) {
+-			com_err(program_name, 0,
+-				_("%d-byte blocks too big for system (max %d)"),
+-				blocksize, sys_page_size);
+-			proceed_question();
+-		}
+-		fprintf(stderr, _("Warning: %d-byte blocks too big for system "
+-				  "(max %d), forced to continue\n"),
+-			blocksize, sys_page_size);
+-	}
+ 	if (optind < argc) {
+ 		fs_blocks_count = parse_num_blocks2(argv[optind++],
+ 						   fs_param.s_log_block_size);
+@@ -1833,6 +1822,19 @@ profile_error:
+ 
+ 	blocksize = EXT2_BLOCK_SIZE(&fs_param);
+ 
++	/* This check should happen beyond the last assignment to blocksize */
++	if (blocksize > sys_page_size) {
++		if (!force) {
++			com_err(program_name, 0,
++				_("%d-byte blocks too big for system (max %d)"),
++				blocksize, sys_page_size);
++			proceed_question();
++		}
++		fprintf(stderr, _("Warning: %d-byte blocks too big for system "
++				  "(max %d), forced to continue\n"),
++			blocksize, sys_page_size);
++	}
++
+ 	lazy_itable_init = 0;
+ 	if (access("/sys/fs/ext4/features/lazy_itable_init", R_OK) == 0)
+ 		lazy_itable_init = 1;
+-- 
+1.7.5.4
+
+
+
