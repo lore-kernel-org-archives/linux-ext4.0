@@ -1,85 +1,169 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: -E stride and stripe-width necessary for best performace of SSDs?
-Date: Fri, 1 Jul 2011 12:03:26 -0400
-Message-ID: <BANLkTinMoDXYn6x7aWzmvbVj3pqN7Rwn9g@mail.gmail.com>
-References: <1309512654.5729.15.camel@werner-t410>
+From: Allison Henderson <achender@linux.vnet.ibm.com>
+Subject: Re: [PATCH 1/2 v3] EXT4: Secure Delete: Zero out file data
+Date: Fri, 01 Jul 2011 09:21:20 -0700
+Message-ID: <4E0DF400.2020400@linux.vnet.ibm.com>
+References: <1309468923-5677-1-git-send-email-achender@linux.vnet.ibm.com> <1309468923-5677-2-git-send-email-achender@linux.vnet.ibm.com> <alpine.LFD.2.00.1107011224292.4168@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: Werner Fischer <devlists@wefi.net>
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:41648 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751788Ab1GAQD5 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Jul 2011 12:03:57 -0400
-Received: by bwd5 with SMTP id 5so2713392bwd.19
-        for <linux-ext4@vger.kernel.org>; Fri, 01 Jul 2011 09:03:56 -0700 (PDT)
-In-Reply-To: <1309512654.5729.15.camel@werner-t410>
+Received: from e37.co.us.ibm.com ([32.97.110.158]:35432 "EHLO
+	e37.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756569Ab1GAQV1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Jul 2011 12:21:27 -0400
+Received: from d03relay01.boulder.ibm.com (d03relay01.boulder.ibm.com [9.17.195.226])
+	by e37.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p61GINcr011088
+	for <linux-ext4@vger.kernel.org>; Fri, 1 Jul 2011 10:18:23 -0600
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay01.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p61GLM86179464
+	for <linux-ext4@vger.kernel.org>; Fri, 1 Jul 2011 10:21:22 -0600
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p61ALKH1031829
+	for <linux-ext4@vger.kernel.org>; Fri, 1 Jul 2011 04:21:21 -0600
+In-Reply-To: <alpine.LFD.2.00.1107011224292.4168@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-apologies for the re-send - first one bounced
-
-On Fri, Jul 1, 2011 at 5:30 AM, Werner Fischer <devlists@wefi.net> wrot=
-e:
+On 07/01/2011 03:26 AM, Lukas Czerner wrote:
+> On Thu, 30 Jun 2011, Allison Henderson wrote:
 >
-> Hi,
+>> The first patch adds a new flag, EXT4_FREE_BLOCKS_ZERO,
+>> to ext4_free_blocks. This flag causes causes blocks to be
+>> zerod before they are freed.  Files that have the EXT4_SECRM_FL
+>> attribute flag on will have their blocks zerod when
+>> they are released.  The EXT4_SECRM_FL attribute flag can
+>> be enabled useing chattr +s
 >
-> * I want to optimize ext4 on my SSD (Intel 320 Series 160 GB).
-> * There are some sites recommending the use of the -E stride and -E
-> =A0stripe-width paramaters, like
-> =A0http://searchenterpriselinux.techtarget.com/tip/Optimizing-Linux-f=
-or-SSD-usage
-> * I know these parameters are useful for RAIDs, but I don't think tha=
-t
-> =A0they have any advantages for SSDs.
+> Hi Allison,
 >
-> Can anybody with deeper ext4 knowledge confirm if I'm right?
+> the patch looks good, however I have one little nitpick bellow:)
+>>
+>> Signed-off-by: Allison Henderson<achender@linux.vnet.ibm.com>
+>> ---
+>> v1->v2
+>> Removed check for discard mount option and replaced with
+>> check for secure discard and discard_zeroes_data
+>>
+>> Added BLKDEV_DISCARD_SECURE to the sb_issue_discard call
+>>
+>> v2->v3
+>> Removed code for discard.  A seperate patch will
+>> be done to add that code in the block layer
+>>
+>> :100644 100644 1921392... 38a4d75... M	fs/ext4/ext4.h
+>> :100644 100644 f815cc8... cf178f3... M	fs/ext4/extents.c
+>> :100644 100644 62f86e7... 8fdae7d... M	fs/ext4/inode.c
+>> :100644 100644 6ed859d... 94872b2... M	fs/ext4/mballoc.c
+>> :100644 100644 c757adc... 1ff7532... M	fs/ext4/xattr.c
+>>   fs/ext4/ext4.h    |    1 +
+>>   fs/ext4/extents.c |    3 +++
+>>   fs/ext4/inode.c   |    3 +++
+>>   fs/ext4/mballoc.c |    8 ++++++++
+>>   fs/ext4/xattr.c   |   12 ++++++++----
+>>   5 files changed, 23 insertions(+), 4 deletions(-)
+>>
+>> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+>> index 1921392..38a4d75 100644
+>> --- a/fs/ext4/ext4.h
+>> +++ b/fs/ext4/ext4.h
+>> @@ -526,6 +526,7 @@ struct ext4_new_group_data {
+>>   #define EXT4_FREE_BLOCKS_METADATA	0x0001
+>>   #define EXT4_FREE_BLOCKS_FORGET		0x0002
+>>   #define EXT4_FREE_BLOCKS_VALIDATED	0x0004
+>> +#define EXT4_FREE_BLOCKS_ZERO		0x0008
+>>
+>>   /*
+>>    * ioctl commands
+>> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+>> index f815cc8..cf178f3 100644
+>> --- a/fs/ext4/extents.c
+>> +++ b/fs/ext4/extents.c
+>> @@ -2231,6 +2231,9 @@ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
+>>
+>>   	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
+>>   		flags |= EXT4_FREE_BLOCKS_METADATA;
+>> +
+>> +	if (EXT4_I(inode)->i_flags&  EXT4_SECRM_FL)
+>> +		flags |= EXT4_FREE_BLOCKS_ZERO;
+>>   #ifdef EXTENTS_STATS
+>>   	{
+>>   		struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+>> index 62f86e7..8fdae7d 100644
+>> --- a/fs/ext4/inode.c
+>> +++ b/fs/ext4/inode.c
+>> @@ -4182,6 +4182,9 @@ static int ext4_clear_blocks(handle_t *handle, struct inode *inode,
+>>   	for (p = first; p<  last; p++)
+>>   		*p = 0;
+>>
+>> +	if (EXT4_I(inode)->i_flags&  EXT4_SECRM_FL)
+>> +		flags |= EXT4_FREE_BLOCKS_ZERO;
+>> +
+>>   	ext4_free_blocks(handle, inode, NULL, block_to_free, count, flags);
+>>   	return 0;
+>>   out_err:
+>> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+>> index 6ed859d..94872b2 100644
+>> --- a/fs/ext4/mballoc.c
+>> +++ b/fs/ext4/mballoc.c
+>> @@ -4485,6 +4485,14 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
+>>   	ext4_debug("freeing block %llu\n", block);
+>>   	trace_ext4_free_blocks(inode, block, count, flags);
+>>
+>> +	if (flags&  EXT4_FREE_BLOCKS_ZERO) {
+>> +		err = sb_issue_zeroout(inode->i_sb, block, count, GFP_NOFS);
+>> +		if (err<  0)
+>> +			goto error_return;
+>> +		else
+>> +			err = 0;
 >
-> Best regards,
-> Werner
+> No need to set err=0. sb_issue_zeroout() will return zero on success.
+>
+> Thanks!
+> -Lukas
 
-Werner,
+Ah, alrighty, I will pull that out.  Thx! :)
 
-That article is highly simplistic, and I dare say inaccurate due to
-the simplifications.
+Allison
 
-=46or most of us SSDs are magic boxes we push data into and pull data o=
-ut of.
+>
+>> +	}
+>> +
+>>   	if (flags&  EXT4_FREE_BLOCKS_FORGET) {
+>>   		struct buffer_head *tbh = bh;
+>>   		int i;
+>> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+>> index c757adc..1ff7532 100644
+>> --- a/fs/ext4/xattr.c
+>> +++ b/fs/ext4/xattr.c
+>> @@ -471,7 +471,7 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
+>>   			 struct buffer_head *bh)
+>>   {
+>>   	struct mb_cache_entry *ce = NULL;
+>> -	int error = 0;
+>> +	int free_blocks_flags, error = 0;
+>>
+>>   	ce = mb_cache_entry_get(ext4_xattr_cache, bh->b_bdev, bh->b_blocknr);
+>>   	error = ext4_journal_get_write_access(handle, bh);
+>> @@ -484,9 +484,13 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
+>>   		if (ce)
+>>   			mb_cache_entry_free(ce);
+>>   		get_bh(bh);
+>> -		ext4_free_blocks(handle, inode, bh, 0, 1,
+>> -				 EXT4_FREE_BLOCKS_METADATA |
+>> -				 EXT4_FREE_BLOCKS_FORGET);
+>> +		free_blocks_flags = EXT4_FREE_BLOCKS_METADATA |
+>> +					EXT4_FREE_BLOCKS_FORGET;
+>> +
+>> +		if (EXT4_I(inode)->i_flags&  EXT4_SECRM_FL)
+>> +			free_blocks_flags |= EXT4_FREE_BLOCKS_ZERO;
+>> +
+>> +		ext4_free_blocks(handle, inode, bh, 0, 1, free_blocks_flags);
+>>   	} else {
+>>   		le32_add_cpu(&BHDR(bh)->h_refcount, -1);
+>>   		error = ext4_handle_dirty_metadata(handle, inode, bh);
+>>
+>
 
-We know the data gets stored on NAND chips and that many (most?) NAND
-chips have 128KB Erase Blocks.
-
-But we have no knowledge of how the data itself is organized.
-Assuming that a Erase Block contains contiguous sectors is wrong in
-most cases. There is sophisticated logic going on that is re-mapping
-the data.  Those algorithms are NOT public. We definitely don't know
-enough to know what stride etc. is optimal.
-
-I personally think using 1MB for partition boundaries and a stride
-which is a multiple of 4KB is probably best, but there really is no
-good way to know other than performance testing the specific make /
-model / firmware release you are working with.
-
-Here's two wiki pages I wrote that may give you some background:
-
-http://en.opensuse.org/SDB:SSD_Idle_Time_Garbage_Collection_support
-
-http://en.opensuse.org/SDB:SSD_discard_%28trim%29_support
-
-You might want to read them both, then read them both again because
-the topics depend on each other.
-
-And I just noticed this one:
-http://en.opensuse.org/SDB:SSD_performance
-
-I have no idea how accurate the last article is.  (I have not read/revi=
-ewed it.)
-
-Greg
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
