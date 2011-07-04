@@ -1,68 +1,59 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: e2fsprogs 1.42-WIP-0702 released
-Date: Mon, 04 Jul 2011 18:52:06 +0100
-Message-ID: <4E11FDC6.7040506@redhat.com>
-References: <E1QdWwc-0002Qx-Th@tytso-glaptop> <4E117FB3.3030403@redhat.com> <D24E441E-2821-4BF5-9A8A-423070A2464E@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 1/2 v3] EXT4: Secure Delete: Zero out file data
+Date: Mon, 4 Jul 2011 12:19:00 -0600
+Message-ID: <9EC28987-9A72-4753-8822-A138C5F0E622@dilger.ca>
+References: <1309468923-5677-1-git-send-email-achender@linux.vnet.ibm.com> <1309468923-5677-2-git-send-email-achender@linux.vnet.ibm.com> <CAOQ4uxicueV9QOvHEhyk0mNSs+B+dT1X=Z64i_L2_qn6X6_vHA@mail.gmail.com> <E9840366-F572-48CA-B71F-D9AF5E11EBCC@dilger.ca> <CAOQ4uxj26t=Z6mssXZ3dY7=yd8_upuy7-ZMpHrsCbQczp7O0Og@mail.gmail.com> <4E11F61C.6070100@linux.vnet.ibm.com> <CAOQ4uxjwHeP3DqgbW2mJ8wBi=HBcDd-UTaZ=XTsSAcH+jdNvJQ@mail.gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39962 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757058Ab1GDRwK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 4 Jul 2011 13:52:10 -0400
-In-Reply-To: <D24E441E-2821-4BF5-9A8A-423070A2464E@dilger.ca>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:20875 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750763Ab1GDSTF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Jul 2011 14:19:05 -0400
+In-Reply-To: <CAOQ4uxjwHeP3DqgbW2mJ8wBi=HBcDd-UTaZ=XTsSAcH+jdNvJQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 07/04/2011 06:49 PM, Andreas Dilger wrote:
-> On 2011-07-04, at 2:54 AM, Ric Wheeler wrote:
->> On 07/04/2011 01:23 AM, Theodore Ts'o wrote:
->>> I've made the first WIP release of e2fsprogs 1.42.  The primary purpose
->>> is for people to test the 64-bit functionality and be confident that we
->>> didn't introduce any 32-bit regressions.
->>>
->>> ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/e2fsprogs-1.42-WIP-0702.tar.gz
->>>
->>> This has been built for Debian unstable, so we can get some initial
->>> testing.
->> Thanks Ted!
->>
->> Do we have a specific idea of who is going to be testing and on what size
->> file systems?
->>
->> We might want to see about getting this ready for Fedora as well at some point....
-> Ric,
-> we have been doing fairly thorough testing at 24TB, because that is
-> the LUN size when using 3TB drives in RAID-6 8+2 config.  One caveat
-> is that this is only on the Lustre data servers, so it doesn't exercise
-> namespace operations and external xattrs very much, since there is no
-> benefit to large LUNs on the metadata server due to the 4B inode limit.
->
-> We have also done some testing up to 128TB, which works fine if the
-> filesystem passes the initial mount, but has occasional problems at
-> mount due to kmalloc() failures of large data structs, with oops at
-> ext4_fill_super() cleanup (http://jira.whamcloud.com/browse/LU-136
-> and http://jira.whamcloud.com/browse/LU-477).  The oops is completely
-> unrelated to>16TB LUN support, but is in generic error handling in
-> ext4_fill_super().  Hopefully now that the developer doing this testing
-> has finished testing 24TB LUNs, she will be able to work on issues
-> we've found with 128TB+ LUNs.
->
-> In our admittedly unrealistic circumstances, e2fsck run time is very
-> short, due to flex_bg, uninit_bg, and extents avoiding a lot of seeking
-> and unnecessary IO.  With "lazy_journal_init" and "lazy_itable_init"
-> the mke2fs time is also very short.
->
-> Cheers, Andreas
->
+On 2011-07-04, at 11:44 AM, Amir Goldstein wrote:
+> On Mon, Jul 4, 2011 at 8:19 PM, Allison Henderson
+> <achender@linux.vnet.ibm.com> wrote:
+>> 
+>> Thx all for the reviews!  It sounds like the zero out code is in the right
+>> spot then.  We are thinking about adding an optimization too, where we use
+>> use secure discard instead of the sb_issue_zeroout, but only if the device
+>> supports it.  I was thinking about putting that code some where in the
+>> commit call back because that is where the existing discard code is, but
+>> maybe that's not such a good place to put it then?  What does everyone
+>> think?  Thx!
+> 
+> I already stated my opinion about the need for 2-phase secure delete.
+> If you have to choose between security (zeroout pre commit) and the
+> atomicity of the unlink() command (zeroout post commit), then it's
+> a question of policy.
+> Is there any other FS (or OS) that implements secure delete?
+> Perhaps we could follow its semantics.
 
-Sounds like a very good start - thanks!
+One thing we did ages ago, before extent-mapped files made unlink so
+fast, was to move the blocks from unlinked files and truncated-to-zero
+files to a delete queue in the main transaction, and then do the unlink
+via a separate thread.
 
-One thing that might still needs done is to do some of the power failure testing 
-at this scale?
+This facility could be resurrected (a version of the patch was posted to
+linux-ext4 at http://www.spinics.net/lists/linux-ext4/msg06178.html) to
+do the block zeroing/discard in the context of the unlink thread.  It
+could be structured so that sync/fsync on the file waits for background
+zeroing to complete, so that apps doing secure delete + fsync will be
+sure that the file is safely erased.  The fsync would be needed for this
+in any case, otherwise even an inline async zero-fill could fail if the
+system crashes before the blocks are actually flushed to disk.
 
-Ric
+Cheers, Andreas
+
+
+
+
 
