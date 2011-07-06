@@ -1,101 +1,185 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: Change the handling of RAID stripe width
-Date: Wed, 06 Jul 2011 17:40:33 -0500
-Message-ID: <4E14E461.9080100@redhat.com>
-References: <1309985245-14835-1-git-send-email-dehrenberg@google.com>	<4E14D130.6080605@redhat.com> <CAAK6Zt2RW_J7zPJfDWbN8kKBGx+bVCRXUEvbVoGrma_VD9i6Tw@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	"Theodore Ts'o" <tytso@mit.edu>
-To: Daniel Ehrenberg <dehrenberg@google.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] ext4: Fix missing iput for root inode in case of all failed mount paths.
+Date: Wed, 6 Jul 2011 16:54:45 -0600
+Message-ID: <3828C477-0589-402A-8F71-9837FE8B0693@dilger.ca>
+References: <AANLkTik8jweuA_kDfzY7H=wP-ikSSwdf-FF1NX09DDCT@mail.gmail.com> <032DF412-6B37-4EB7-A687-8216CB1E2BAB@dilger.ca> <AANLkTiku46htAypEN7QNN=UZuRETKGnHJQ8cxt3kYPJg@mail.gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Theodore Ts'o <tytso@mit.edu>, ext4 <linux-ext4@vger.kernel.org>,
+	Yu Jian <yujian@whamcloud.com>
+To: Manish Katiyar <mkatiyar@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36457 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752574Ab1GFWkj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 Jul 2011 18:40:39 -0400
-In-Reply-To: <CAAK6Zt2RW_J7zPJfDWbN8kKBGx+bVCRXUEvbVoGrma_VD9i6Tw@mail.gmail.com>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:39694 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752484Ab1GFWyr convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Jul 2011 18:54:47 -0400
+In-Reply-To: <AANLkTiku46htAypEN7QNN=UZuRETKGnHJQ8cxt3kYPJg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 7/6/11 5:17 PM, Daniel Ehrenberg wrote:
-> On Wed, Jul 6, 2011 at 2:18 PM, Eric Sandeen <sandeen@redhat.com> wrote:
->> On 7/6/11 3:47 PM, Dan Ehrenberg wrote:
->>> Previously, the stripe width was blindly used for determining the size
->>> of allocations. Now, the stripe width is used as a hint for the initial
->>> mb_group_prealloc; if it is greater than 1, then we make sure that
->>> mb_group_prealloc is some multiple of it, and otherwise it is ignored.
->>> mb_group_prealloc is always usable to adjust the preallocation strategy,
->>> not just when the stripe-width is 0 as before.
->>>
->>> Signed-off-by: Dan Ehrenberg <dehrenberg@google.com>
+On 2011-01-16, at 11:05 AM, Manish Katiyar wrote:
+> On Sun, Jan 16, 2011 at 8:20 AM, Andreas Dilger <adilger@dilger.ca> wrote:
+>> Why not just put the iput() at failed_mount4() instead of spread around the code?
+> 
+> Thanks Andreas, Here is the updated patch.
+
+We are hitting this same problem due to ENOMEM on allocating some large
+filesystem structures for 128TB filesystems.  However, when we were going
+to add this patch to our patch series (until vendor kernels include it),
+Yu Jian (one of our developers) noticed a problem with the patch.
+
+In the error path, the patch is doing:
+
+failed_mount4:
+	iput(root);
+	sb->s_root = NULL;
+
+but in fact sb->s_root is a dentry allocated by d_alloc_root(), so the
+above code is freeing the inode, but still leaking the dentry.  This
+is of course a lot better than before (no oops), but still isn't correct.
+
+The original problem appears to have been inadvertently fixed with commit
+8aefcd557d26d0023a36f9ec5afbf55e59f8f26b, because ext4_clear_inode() now
+checks "if (EXT4_I(inode)->jinode)" before deferencing EXT4_SB() and the
+now-NULL s_fs_info.  jinode should be NULL during mount, because it has
+never been opened.  I haven't confirmed this theory yet, however.  Manish,
+can you please give this a try with your fault-injection testing?
+
+It looks like we could revert 32a9bb57d7c1fd04ae0f72b8f671501f000a0e9f
+(this patch, leaving the two explicit iput() in place in case of a bad
+root inode or dentry) and leave the VFS to clean up the root dentry.
+
+> Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+> ---
+> fs/ext4/super.c |    5 +++--
+> 1 files changed, 3 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index cb10a06..8fa53e9 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -3522,17 +3522,16 @@ no_journal:
+>       if (IS_ERR(root)) {
+>               ext4_msg(sb, KERN_ERR, "get root inode failed");
+>               ret = PTR_ERR(root);
+> +               root = NULL;
+>               goto failed_mount4;
+>       }
+>       if (!S_ISDIR(root->i_mode) || !root->i_blocks || !root->i_size) {
+> -               iput(root);
+>               ext4_msg(sb, KERN_ERR, "corrupt root inode, run e2fsck");
+>               goto failed_mount4;
+>       }
+>       sb->s_root = d_alloc_root(root);
+>       if (!sb->s_root) {
+>               ext4_msg(sb, KERN_ERR, "get root dentry failed");
+> -               iput(root);
+>               ret = -ENOMEM;
+>               goto failed_mount4;
+>       }
+> @@ -3648,6 +3647,8 @@ cantfind_ext4:
+>       goto failed_mount;
+> 
+> failed_mount4:
+> +       iput(root);
+> +       sb->s_root = NULL;
+>       ext4_msg(sb, KERN_ERR, "mount failed");
+>       destroy_workqueue(EXT4_SB(sb)->dio_unwritten_wq);
+> failed_mount_wq:
+> -- 
+> 1.7.1
+> 
+> 
+> 
+>> 
+>> Cheers, Andreas
+>> 
+>> On 2011-01-16, at 0:30, Manish Katiyar <mkatiyar@gmail.com> wrote:
+>> 
+>>> Fix missing iput for root inode in case of all failed mount paths.
+>>> Fixes bug#26752
+>>> 
+>>> Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+>>> 
 >>> ---
->>>  fs/ext4/mballoc.c |   40 +++++++++++++++++++++++++++++-----------
->>>  1 files changed, 29 insertions(+), 11 deletions(-)
->>>
->>> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
->>> index 6ed859d..710c27f 100644
->>> --- a/fs/ext4/mballoc.c
->>> +++ b/fs/ext4/mballoc.c
->>> @@ -127,13 +127,14 @@
->>>   * based on file size. This can be found in ext4_mb_normalize_request. If
->>>   * we are doing a group prealloc we try to normalize the request to
->>>   * sbi->s_mb_group_prealloc. Default value of s_mb_group_prealloc is
->>> - * 512 blocks. This can be tuned via
->>> - * /sys/fs/ext4/<partition/mb_group_prealloc. The value is represented in
->>> - * terms of number of blocks. If we have mounted the file system with -O
->>> + * 512 blocks. If we have mounted the file system with -O
->>>   * stripe=<value> option the group prealloc request is normalized to the
->>> - * stripe value (sbi->s_stripe)
->>> + * the smallest multiple of the stripe value (sbi->s_stripe) which is
->>> + * greater than the default mb_group_prealloc. This can be tuned via
->>> + * /sys/fs/ext4/<partition>/mb_group_prealloc. The value is represented in
->>> + * terms of number of blocks.
->>>   *
->>> - * The regular allocator(using the buddy cache) supports few tunables.
->>> + * The regular allocator (using the buddy cache) supports a few tunables.
->>>   *
->>>   * /sys/fs/ext4/<partition>/mb_min_to_scan
->>>   * /sys/fs/ext4/<partition>/mb_max_to_scan
->>> @@ -2471,7 +2472,26 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
->>>       sbi->s_mb_stats = MB_DEFAULT_STATS;
->>>       sbi->s_mb_stream_request = MB_DEFAULT_STREAM_THRESHOLD;
->>>       sbi->s_mb_order2_reqs = MB_DEFAULT_ORDER2_REQS;
->>> +     /*
->>> +      * If the stripe width is 1, this makes no sense and
->>> +      * we set it to 0 to turn off stripe handling code.
->>> +      */
->>> +     if (sbi->s_stripe == 1)
->>> +             sbi->s_stripe = 0;
->>
->> This strikes me as a weird band-aid-y place to fix this up.
->>
->> Wouldn't it be better suited for the option-parsing code, and/or
->> in ext4_get_stripe_size()?  Why let a value of 1 get this far
->> only to override it here?
->>
->> -Eric
+>>> fs/ext4/super.c |    8 +++++++-
+>>> 1 files changed, 7 insertions(+), 1 deletions(-)
+>>> 
+>>> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+>>> index cb10a06..9570fcc 100644
+>>> --- a/fs/ext4/super.c
+>>> +++ b/fs/ext4/super.c
+>>> @@ -3587,6 +3587,7 @@ no_journal:
+>>>       if (err) {
+>>>               ext4_msg(sb, KERN_ERR, "failed to initialize system "
+>>>                        "zone (%d)", err);
+>>> +               iput(root);
+>>>               goto failed_mount4;
+>>>       }
+>>> 
+>>> @@ -3595,12 +3596,15 @@ no_journal:
+>>>       if (err) {
+>>>               ext4_msg(sb, KERN_ERR, "failed to initialize mballoc (%d)",
+>>>                        err);
+>>> +               iput(root);
+>>>               goto failed_mount4;
+>>>       }
+>>> 
+>>>       err = ext4_register_li_request(sb, first_not_zeroed);
+>>> -       if (err)
+>>> +       if (err) {
+>>> +               iput(root);
+>>>               goto failed_mount4;
+>>> +       }
+>>> 
+>>>       sbi->s_kobj.kset = ext4_kset;
+>>>       init_completion(&sbi->s_kobj_unregister);
+>>> @@ -3609,6 +3613,7 @@ no_journal:
+>>>       if (err) {
+>>>               ext4_mb_release(sb);
+>>>               ext4_ext_release(sb);
+>>> +               iput(root);
+>>>               goto failed_mount4;
+>>>       };
+>>> 
+>>> @@ -3648,6 +3653,7 @@ cantfind_ext4:
+>>>       goto failed_mount;
+>>> 
+>>> failed_mount4:
+>>> +       sb->s_root = NULL;
+>>>       ext4_msg(sb, KERN_ERR, "mount failed");
+>>>       destroy_workqueue(EXT4_SB(sb)->dio_unwritten_wq);
+>>> failed_mount_wq:
+>>> --
+>>> 1.7.1
+>>> 
+>>> 
+>>> --
+>>> Thanks -
+>>> Manish
+>>> ==================================
+>>> [$\*.^ -- I miss being one of them
+>>> ==================================
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
 > 
-> The mount option parsing code wouldn't be a working place to do it,
-> since it can be specified on-disk what the stripe size is. But
-
-well I think that the mount option overrides the on disk value, since the
-first thing that ext4_get_stripe_size() does is look for s_stripe
-and return it if it's already set.
-
-I just think it's good to keep this stuff consolidated, and not
-sprinkle special-cases and error checking around in the code 
-too much... complicated enough already IMHO.
-
--Eric
-
-> ext4_get_stripe_size might be a good place to put it instead. I guess
-> there are two unrelated parts to this patch: handling where the stripe
-> width was set to 1, and handling where it's more than 1 but much less
-> than what it should be.
 > 
-> Dan
 > 
-> Dan
+> -- 
+> Thanks -
+> Manish
+> ==================================
+> [$\*.^ -- I miss being one of them
+> ==================================
+
+
+Cheers, Andreas
+
+
+
+
 
