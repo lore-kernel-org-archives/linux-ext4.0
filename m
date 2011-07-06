@@ -1,153 +1,283 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 04/23] ext4: factor out block group accounting into functions
-Date: Wed,  6 Jul 2011 12:35:47 -0400
-Message-ID: <1309970166-11770-5-git-send-email-tytso@mit.edu>
+Subject: [PATCH 09/23] ext4: teach ext4_free_blocks() about bigalloc and clusters
+Date: Wed,  6 Jul 2011 12:35:52 -0400
+Message-ID: <1309970166-11770-10-git-send-email-tytso@mit.edu>
 References: <1309970166-11770-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33472 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:33470 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754765Ab1GFQgJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1754754Ab1GFQgJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 6 Jul 2011 12:36:09 -0400
 In-Reply-To: <1309970166-11770-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This makes it easier to understand how ext4_init_block_bitmap() works,
-and it will assist when we split out ext4_free_blocks_after_init() in
-the next commit.
+The ext4_free_blocks() function now has two new flags that indicate
+whether a partial cluster at the beginning or the end of the block
+extents should be freed or not.  That will be up the caller (i.e.,
+truncate), who can figure out whether partial clusters at the
+beginning or the end of a block range can be freed.
+
+We also have to update the ext4_mb_free_metadata() and
+release_blocks_on_commit() machinery to be cluster-based, since it is
+used by ext4_free_blocks().
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/balloc.c |   80 ++++++++++++++++++++++++++++++++---------------------
- 1 files changed, 48 insertions(+), 32 deletions(-)
+ fs/ext4/ext4.h    |    2 +
+ fs/ext4/mballoc.c |   86 ++++++++++++++++++++++++++++++++++++++---------------
+ fs/ext4/mballoc.h |    2 +-
+ 3 files changed, 65 insertions(+), 25 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index f8224ad..8573e2b 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -23,6 +23,9 @@
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index d404288..e77df83 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -538,6 +538,8 @@ struct ext4_new_group_data {
+ #define EXT4_FREE_BLOCKS_METADATA	0x0001
+ #define EXT4_FREE_BLOCKS_FORGET		0x0002
+ #define EXT4_FREE_BLOCKS_VALIDATED	0x0004
++#define EXT4_FREE_BLOCKS_NOFREE_FIRST_CLUSTER	0x0008
++#define EXT4_FREE_BLOCKS_NOFREE_LAST_CLUSTER	0x0010
  
- #include <trace/events/ext4.h>
- 
-+static unsigned int num_base_meta_blocks(struct super_block *sb,
-+					 ext4_group_t block_group);
-+
  /*
-  * balloc.c contains the blocks allocation and deallocation routines
-  */
-@@ -83,14 +86,30 @@ static int ext4_group_used_meta_blocks(struct super_block *sb,
- 	return used_blocks;
+  * ioctl commands
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 646366c..635cc9f 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2582,11 +2582,13 @@ int ext4_mb_release(struct super_block *sb)
  }
  
-+static unsigned int num_blocks_in_group(struct super_block *sb,
-+					ext4_group_t block_group)
-+{
-+	if (block_group == ext4_get_groups_count(sb) - 1) {
-+		/*
-+		 * Even though mke2fs always initializes the first and
-+		 * last group, just in case some other tool was used,
-+		 * we need to make sure we calculate the right free
-+		 * blocks.
-+		 */
-+		return ext4_blocks_count(EXT4_SB(sb)->s_es) -
-+			ext4_group_first_block_no(sb, block_group);
-+	} else
-+		return EXT4_BLOCKS_PER_GROUP(sb);
-+}
-+
- /* Initializes an uninitialized block bitmap if given, and returns the
-  * number of blocks free in the group. */
- unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 		 ext4_group_t block_group, struct ext4_group_desc *gdp)
+ static inline int ext4_issue_discard(struct super_block *sb,
+-		ext4_group_t block_group, ext4_grpblk_t block, int count)
++		ext4_group_t block_group, ext4_grpblk_t cluster, int count)
  {
--	int bit, bit_max;
-+	unsigned int bit, bit_max = num_base_meta_blocks(sb, block_group);
- 	ext4_group_t ngroups = ext4_get_groups_count(sb);
--	unsigned free_blocks, group_blocks;
-+	unsigned group_blocks = num_blocks_in_group(sb, block_group);
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	ext4_fsblk_t discard_block;
  
- 	if (bh) {
-@@ -110,35 +129,6 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 		memset(bh->b_data, 0, sb->s_blocksize);
+-	discard_block = block + ext4_group_first_block_no(sb, block_group);
++	discard_block = (EXT4_C2B(EXT4_SB(sb), cluster) +
++			 ext4_group_first_block_no(sb, block_group));
++	count = EXT4_C2B(EXT4_SB(sb), count);
+ 	trace_ext4_discard_blocks(sb,
+ 			(unsigned long long) discard_block, count);
+ 	return sb_issue_discard(sb, discard_block, count, GFP_NOFS, 0);
+@@ -2613,7 +2615,7 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
+ 
+ 		if (test_opt(sb, DISCARD))
+ 			ext4_issue_discard(sb, entry->group,
+-					   entry->start_blk, entry->count);
++					   entry->start_cluster, entry->count);
+ 
+ 		err = ext4_mb_load_buddy(sb, entry->group, &e4b);
+ 		/* we expect to find existing buddy because it's pinned */
+@@ -2626,7 +2628,7 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
+ 		ext4_lock_group(sb, entry->group);
+ 		/* Take it out of per group rb tree */
+ 		rb_erase(&entry->node, &(db->bb_free_root));
+-		mb_free_blocks(NULL, &e4b, entry->start_blk, entry->count);
++		mb_free_blocks(NULL, &e4b, entry->start_cluster, entry->count);
+ 
+ 		if (!db->bb_free_root.rb_node) {
+ 			/* No more items in the per group rb tree
+@@ -3271,7 +3273,7 @@ static void ext4_mb_generate_from_freelist(struct super_block *sb, void *bitmap,
+ 
+ 	while (n) {
+ 		entry = rb_entry(n, struct ext4_free_data, node);
+-		mb_set_bits(bitmap, entry->start_blk, entry->count);
++		mb_set_bits(bitmap, entry->start_cluster, entry->count);
+ 		n = rb_next(n);
  	}
- 
--	/* Check for superblock and gdt backups in this group */
--	bit_max = ext4_bg_has_super(sb, block_group);
--
--	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_META_BG) ||
--	    block_group < le32_to_cpu(sbi->s_es->s_first_meta_bg) *
--			  sbi->s_desc_per_block) {
--		if (bit_max) {
--			bit_max += ext4_bg_num_gdb(sb, block_group);
--			bit_max +=
--				le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks);
--		}
--	} else { /* For META_BG_BLOCK_GROUPS */
--		bit_max += ext4_bg_num_gdb(sb, block_group);
--	}
--
--	if (block_group == ngroups - 1) {
--		/*
--		 * Even though mke2fs always initialize first and last group
--		 * if some other tool enabled the EXT4_BG_BLOCK_UNINIT we need
--		 * to make sure we calculate the right free blocks
--		 */
--		group_blocks = ext4_blocks_count(sbi->s_es) -
--			ext4_group_first_block_no(sb, ngroups - 1);
--	} else {
--		group_blocks = EXT4_BLOCKS_PER_GROUP(sb);
--	}
--
--	free_blocks = group_blocks - bit_max;
--
- 	if (bh) {
- 		ext4_fsblk_t start, tmp;
- 		int flex_bg = 0;
-@@ -176,7 +166,8 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 		ext4_mark_bitmap_end(group_blocks, sb->s_blocksize * 8,
- 				     bh->b_data);
- 	}
--	return free_blocks - ext4_group_used_meta_blocks(sb, block_group, gdp);
-+	return group_blocks - bit_max -
-+		ext4_group_used_meta_blocks(sb, block_group, gdp);
+ 	return;
+@@ -4369,7 +4371,7 @@ static int can_merge(struct ext4_free_data *entry1,
+ {
+ 	if ((entry1->t_tid == entry2->t_tid) &&
+ 	    (entry1->group == entry2->group) &&
+-	    ((entry1->start_blk + entry1->count) == entry2->start_blk))
++	    ((entry1->start_cluster + entry1->count) == entry2->start_cluster))
+ 		return 1;
+ 	return 0;
  }
+@@ -4379,7 +4381,7 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ 		      struct ext4_free_data *new_entry)
+ {
+ 	ext4_group_t group = e4b->bd_group;
+-	ext4_grpblk_t block;
++	ext4_grpblk_t cluster;
+ 	struct ext4_free_data *entry;
+ 	struct ext4_group_info *db = e4b->bd_info;
+ 	struct super_block *sb = e4b->bd_sb;
+@@ -4392,7 +4394,7 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ 	BUG_ON(e4b->bd_buddy_page == NULL);
  
+ 	new_node = &new_entry->node;
+-	block = new_entry->start_blk;
++	cluster = new_entry->start_cluster;
  
-@@ -620,6 +611,31 @@ unsigned long ext4_bg_num_gdb(struct super_block *sb, ext4_group_t group)
+ 	if (!*n) {
+ 		/* first free block exent. We need to
+@@ -4406,13 +4408,14 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ 	while (*n) {
+ 		parent = *n;
+ 		entry = rb_entry(parent, struct ext4_free_data, node);
+-		if (block < entry->start_blk)
++		if (cluster < entry->start_cluster)
+ 			n = &(*n)->rb_left;
+-		else if (block >= (entry->start_blk + entry->count))
++		else if (cluster >= (entry->start_cluster + entry->count))
+ 			n = &(*n)->rb_right;
+ 		else {
+ 			ext4_grp_locked_error(sb, group, 0,
+-				ext4_group_first_block_no(sb, group) + block,
++				ext4_group_first_block_no(sb, group) +
++				EXT4_C2B(sbi, cluster),
+ 				"Block already on to-be-freed list");
+ 			return 0;
+ 		}
+@@ -4426,7 +4429,7 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ 	if (node) {
+ 		entry = rb_entry(node, struct ext4_free_data, node);
+ 		if (can_merge(entry, new_entry)) {
+-			new_entry->start_blk = entry->start_blk;
++			new_entry->start_cluster = entry->start_cluster;
+ 			new_entry->count += entry->count;
+ 			rb_erase(node, &(db->bb_free_root));
+ 			spin_lock(&sbi->s_md_lock);
+@@ -4477,6 +4480,7 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 	ext4_group_t block_group;
+ 	struct ext4_sb_info *sbi;
+ 	struct ext4_buddy e4b;
++	unsigned int count_clusters;
+ 	int err = 0;
+ 	int ret;
  
- }
+@@ -4525,6 +4529,38 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 	if (!ext4_should_writeback_data(inode))
+ 		flags |= EXT4_FREE_BLOCKS_METADATA;
  
-+/*
-+ * This function returns the number of file system metadata blocks at
-+ * the beginning of a block group, including the reserved gdt blocks.
-+ */
-+static unsigned int num_base_meta_blocks(struct super_block *sb,
-+					 ext4_group_t block_group)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	int num;
-+
-+	/* Check for superblock and gdt backups in this group */
-+	num = ext4_bg_has_super(sb, block_group);
-+
-+	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_META_BG) ||
-+	    block_group < le32_to_cpu(sbi->s_es->s_first_meta_bg) *
-+			  sbi->s_desc_per_block) {
-+		if (num) {
-+			num += ext4_bg_num_gdb(sb, block_group);
-+			num += le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks);
++	/*
++	 * If the extent to be freed does not begin on a cluster
++	 * boundary, we need to deal with partial clusters at the
++	 * beginning and end of the extent.  Normally we will free
++	 * blocks at the beginning or the end unless we are explicitly
++	 * requested to avoid doing so.
++	 */
++	overflow = block & (sbi->s_cluster_ratio - 1);
++	if (overflow) {
++		if (flags & EXT4_FREE_BLOCKS_NOFREE_FIRST_CLUSTER) {
++			overflow = sbi->s_cluster_ratio - overflow;
++			block += overflow;
++			if (count > overflow)
++				count -= overflow;
++			else
++				return;
++		} else {
++			block -= overflow;
++			count += overflow;
 +		}
-+	} else { /* For META_BG_BLOCK_GROUPS */
-+		num += ext4_bg_num_gdb(sb, block_group);
 +	}
-+	return num;
-+}
- /**
-  *	ext4_inode_to_goal_block - return a hint for block allocation
-  *	@inode: inode for block allocation
++	overflow = count & (sbi->s_cluster_ratio - 1);
++	if (overflow) {
++		if (flags & EXT4_FREE_BLOCKS_NOFREE_LAST_CLUSTER) {
++			if (count > overflow)
++				count -= overflow;
++			else
++				return;
++		} else
++			count += sbi->s_cluster_ratio - overflow;
++	}
++
+ do_more:
+ 	overflow = 0;
+ 	ext4_get_group_no_and_offset(sb, block, &block_group, &bit);
+@@ -4533,10 +4569,12 @@ do_more:
+ 	 * Check to see if we are freeing blocks across a group
+ 	 * boundary.
+ 	 */
+-	if (bit + count > EXT4_CLUSTERS_PER_GROUP(sb)) {
+-		overflow = bit + count - EXT4_CLUSTERS_PER_GROUP(sb);
++	if (EXT4_C2B(sbi, bit) + count > EXT4_BLOCKS_PER_GROUP(sb)) {
++		overflow = EXT4_C2B(sbi, bit) + count -
++			EXT4_BLOCKS_PER_GROUP(sb);
+ 		count -= overflow;
+ 	}
++	count_clusters = EXT4_B2C(sbi, count);
+ 	bitmap_bh = ext4_read_block_bitmap(sb, block_group);
+ 	if (!bitmap_bh) {
+ 		err = -EIO;
+@@ -4551,9 +4589,9 @@ do_more:
+ 	if (in_range(ext4_block_bitmap(sb, gdp), block, count) ||
+ 	    in_range(ext4_inode_bitmap(sb, gdp), block, count) ||
+ 	    in_range(block, ext4_inode_table(sb, gdp),
+-		      EXT4_SB(sb)->s_itb_per_group) ||
++		     EXT4_SB(sb)->s_itb_per_group) ||
+ 	    in_range(block + count - 1, ext4_inode_table(sb, gdp),
+-		      EXT4_SB(sb)->s_itb_per_group)) {
++		     EXT4_SB(sb)->s_itb_per_group)) {
+ 
+ 		ext4_error(sb, "Freeing blocks in system zone - "
+ 			   "Block = %llu, count = %lu", block, count);
+@@ -4578,11 +4616,11 @@ do_more:
+ #ifdef AGGRESSIVE_CHECK
+ 	{
+ 		int i;
+-		for (i = 0; i < count; i++)
++		for (i = 0; i < count_clusters; i++)
+ 			BUG_ON(!mb_test_bit(bit + i, bitmap_bh->b_data));
+ 	}
+ #endif
+-	trace_ext4_mballoc_free(sb, inode, block_group, bit, count);
++	trace_ext4_mballoc_free(sb, inode, block_group, bit, count_clusters);
+ 
+ 	err = ext4_mb_load_buddy(sb, block_group, &e4b);
+ 	if (err)
+@@ -4599,13 +4637,13 @@ do_more:
+ 			err = -ENOMEM;
+ 			goto error_return;
+ 		}
+-		new_entry->start_blk = bit;
++		new_entry->start_cluster = bit;
+ 		new_entry->group  = block_group;
+-		new_entry->count = count;
++		new_entry->count = count_clusters;
+ 		new_entry->t_tid = handle->h_transaction->t_tid;
+ 
+ 		ext4_lock_group(sb, block_group);
+-		mb_clear_bits(bitmap_bh->b_data, bit, count);
++		mb_clear_bits(bitmap_bh->b_data, bit, count_clusters);
+ 		ext4_mb_free_metadata(handle, &e4b, new_entry);
+ 	} else {
+ 		/* need to update group_info->bb_free and bitmap
+@@ -4613,11 +4651,11 @@ do_more:
+ 		 * them with group lock_held
+ 		 */
+ 		ext4_lock_group(sb, block_group);
+-		mb_clear_bits(bitmap_bh->b_data, bit, count);
+-		mb_free_blocks(inode, &e4b, bit, count);
++		mb_clear_bits(bitmap_bh->b_data, bit, count_clusters);
++		mb_free_blocks(inode, &e4b, bit, count_clusters);
+ 	}
+ 
+-	ret = ext4_free_blks_count(sb, gdp) + count;
++	ret = ext4_free_blks_count(sb, gdp) + count_clusters;
+ 	ext4_free_blks_set(sb, gdp, ret);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
+ 	ext4_unlock_group(sb, block_group);
+diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+index cd93532..5d27fc0 100644
+--- a/fs/ext4/mballoc.h
++++ b/fs/ext4/mballoc.h
+@@ -106,7 +106,7 @@ struct ext4_free_data {
+ 	ext4_group_t group;
+ 
+ 	/* free block extent */
+-	ext4_grpblk_t start_blk;
++	ext4_grpblk_t start_cluster;
+ 	ext4_grpblk_t count;
+ 
+ 	/* transaction which freed this extent */
 -- 
 1.7.4.1.22.gec8e1.dirty
 
