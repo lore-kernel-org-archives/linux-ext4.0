@@ -1,694 +1,196 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 16/23] ext4: Fix bigalloc quota accounting and i_blocks value
-Date: Wed,  6 Jul 2011 12:35:59 -0400
-Message-ID: <1309970166-11770-17-git-send-email-tytso@mit.edu>
+Subject: [PATCH 01/23] ext4: read-only support for bigalloc file systems
+Date: Wed,  6 Jul 2011 12:35:44 -0400
+Message-ID: <1309970166-11770-2-git-send-email-tytso@mit.edu>
 References: <1309970166-11770-1-git-send-email-tytso@mit.edu>
-Cc: Aditya Kali <adityakali@google.com>,
-	"Theodore Ts'o" <tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33448 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:33487 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754732Ab1GFQgJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1754771Ab1GFQgJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 6 Jul 2011 12:36:09 -0400
 In-Reply-To: <1309970166-11770-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Aditya Kali <adityakali@google.com>
+This adds supports for bigalloc file systems.  It teaches the mount
+code just enough about bigalloc superblock fields that it will mount
+the file system without freaking out that the number of blocks per
+group is too big.
 
-With bigalloc changes, the i_blocks value was not correctly set (it was still
-set to number of blocks being used, but in case of bigalloc, we want i_blocks
-to represent the number of clusters being used). Since the quota subsystem sets
-the i_blocks value, this patch fixes the quota accounting and makes sure that
-the i_blocks value is set correctly.
-
-Signed-off-by: Aditya Kali <adityakali@google.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/balloc.c       |    5 +-
- fs/ext4/ext4.h         |   16 +++-
- fs/ext4/ext4_extents.h |    2 +
- fs/ext4/extents.c      |  306 +++++++++++++++++++++++++++++++++++++++++++++++-
- fs/ext4/inode.c        |   54 ++++++---
- fs/ext4/mballoc.c      |    4 +-
- fs/ext4/super.c        |    3 +-
- 7 files changed, 365 insertions(+), 25 deletions(-)
+ fs/ext4/ext4.h  |   17 +++++++++++++--
+ fs/ext4/super.c |   58 +++++++++++++++++++++++++++++++++++++++++++++++-------
+ 2 files changed, 64 insertions(+), 11 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 9080a85..bf42b32 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -485,7 +485,7 @@ int ext4_should_retry_alloc(struct super_block *sb, int *retries)
-  * @handle:             handle to this transaction
-  * @inode:              file inode
-  * @goal:               given target block(filesystem wide)
-- * @count:		pointer to total number of blocks needed
-+ * @count:		pointer to total number of clusters needed
-  * @errp:               error code
-  *
-  * Return 1st allocated block number on success, *count stores total account
-@@ -517,7 +517,8 @@ ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
- 		spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
- 		EXT4_I(inode)->i_allocated_meta_blocks += ar.len;
- 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
--		dquot_alloc_block_nofail(inode, ar.len);
-+		dquot_alloc_block_nofail(inode,
-+				EXT4_C2B(EXT4_SB(inode->i_sb), ar.len));
- 	}
- 	return ret;
- }
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index ca5ab11..78ac8ed 100644
+index 49d2cea..03a0857 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -144,9 +144,17 @@ struct ext4_allocation_request {
- #define EXT4_MAP_UNWRITTEN	(1 << BH_Unwritten)
- #define EXT4_MAP_BOUNDARY	(1 << BH_Boundary)
- #define EXT4_MAP_UNINIT		(1 << BH_Uninit)
-+/* Sometimes (in the bigalloc case, from ext4_da_get_block_prep) the caller of
-+ * ext4_map_blocks wants to know whether or not the underlying cluster has
-+ * already been accounted for. EXT4_MAP_FROM_CLUSTER conveys to the caller that
-+ * the requested mapping was from previously mapped (or delayed allocated)
-+ * cluster. We use BH_AllocFromCluster only for this flag. BH_AllocFromCluster
-+ * should never appear on buffer_head's state flags.
-+ */
-+#define EXT4_MAP_FROM_CLUSTER	(1 << BH_AllocFromCluster)
- #define EXT4_MAP_FLAGS		(EXT4_MAP_NEW | EXT4_MAP_MAPPED |\
- 				 EXT4_MAP_UNWRITTEN | EXT4_MAP_BOUNDARY |\
--				 EXT4_MAP_UNINIT)
-+				 EXT4_MAP_UNINIT | EXT4_MAP_FROM_CLUSTER)
- 
- struct ext4_map_blocks {
- 	ext4_fsblk_t m_pblk;
-@@ -1863,6 +1871,7 @@ extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
- extern qsize_t *ext4_get_reserved_space(struct inode *inode);
- extern void ext4_da_update_reserve_space(struct inode *inode,
- 					int used, int quota_claim);
-+extern int ext4_da_reserve_space(struct inode *inode, ext4_lblk_t lblock);
- 
- /* indirect.c */
- extern int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
-@@ -2252,6 +2261,11 @@ extern int ext4_multi_mount_protect(struct super_block *, ext4_fsblk_t);
- enum ext4_state_bits {
- 	BH_Uninit	/* blocks are allocated but uninitialized on disk */
- 	  = BH_JBDPrivateStart,
-+	BH_AllocFromCluster,	/* allocated blocks were part of already
-+				 * allocated cluster. Note that this flag will
-+				 * never, ever appear in a buffer_head's state
-+				 * flag. See EXT4_MAP_FROM_CLUSTER to see where
-+				 * this is used. */
+@@ -238,8 +238,11 @@ struct ext4_io_submit {
+ # define EXT4_BLOCK_SIZE(s)		(EXT4_MIN_BLOCK_SIZE << (s)->s_log_block_size)
+ #endif
+ #define	EXT4_ADDR_PER_BLOCK(s)		(EXT4_BLOCK_SIZE(s) / sizeof(__u32))
++#define EXT4_CLUSTER_SIZE(s)		(EXT4_BLOCK_SIZE(s) << \
++					 EXT4_SB(s)->s_cluster_bits)
+ #ifdef __KERNEL__
+ # define EXT4_BLOCK_SIZE_BITS(s)	((s)->s_blocksize_bits)
++# define EXT4_CLUSTER_BITS(s)		(EXT4_SB(s)->s_cluster_bits)
+ #else
+ # define EXT4_BLOCK_SIZE_BITS(s)	((s)->s_log_block_size + 10)
+ #endif
+@@ -305,6 +308,7 @@ struct flex_groups {
+ #define EXT4_DESC_SIZE(s)		(EXT4_SB(s)->s_desc_size)
+ #ifdef __KERNEL__
+ # define EXT4_BLOCKS_PER_GROUP(s)	(EXT4_SB(s)->s_blocks_per_group)
++# define EXT4_CLUSTERS_PER_GROUP(s)	(EXT4_SB(s)->s_clusters_per_group)
+ # define EXT4_DESC_PER_BLOCK(s)		(EXT4_SB(s)->s_desc_per_block)
+ # define EXT4_INODES_PER_GROUP(s)	(EXT4_SB(s)->s_inodes_per_group)
+ # define EXT4_DESC_PER_BLOCK_BITS(s)	(EXT4_SB(s)->s_desc_per_block_bits)
+@@ -964,9 +968,9 @@ struct ext4_super_block {
+ /*10*/	__le32	s_free_inodes_count;	/* Free inodes count */
+ 	__le32	s_first_data_block;	/* First Data Block */
+ 	__le32	s_log_block_size;	/* Block size */
+-	__le32	s_obso_log_frag_size;	/* Obsoleted fragment size */
++	__le32	s_log_cluster_size;	/* Allocation cluster size */
+ /*20*/	__le32	s_blocks_per_group;	/* # Blocks per group */
+-	__le32	s_obso_frags_per_group;	/* Obsoleted fragments per group */
++	__le32	s_clusters_per_group;	/* # Clusters per group */
+ 	__le32	s_inodes_per_group;	/* # Inodes per group */
+ 	__le32	s_mtime;		/* Mount time */
+ /*30*/	__le32	s_wtime;		/* Write time */
+@@ -1062,7 +1066,10 @@ struct ext4_super_block {
+ 	__u8	s_last_error_func[32];	/* function where the error happened */
+ #define EXT4_S_ERR_END offsetof(struct ext4_super_block, s_mount_opts)
+ 	__u8	s_mount_opts[64];
+-	__le32	s_reserved[112];        /* Padding to the end of the block */
++	__le32	s_usr_quota_inum;	/* inode for tracking user quota */
++	__le32	s_grp_quota_inum;	/* inode for tracking group quota */
++	__le32	s_overhead_clusters;	/* overhead blocks/clusters in fs */
++	__le32  s_reserved[109];        /* Padding to the end of the block */
  };
  
- BUFFER_FNS(Uninit, uninit)
-diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-index 095c36f..a52db3a 100644
---- a/fs/ext4/ext4_extents.h
-+++ b/fs/ext4/ext4_extents.h
-@@ -290,5 +290,7 @@ extern struct ext4_ext_path *ext4_ext_find_extent(struct inode *, ext4_lblk_t,
- 							struct ext4_ext_path *);
- extern void ext4_ext_drop_refs(struct ext4_ext_path *);
- extern int ext4_ext_check_inode(struct inode *inode);
-+extern int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk,
-+				      int search_hint_reverse);
- #endif /* _EXT4_EXTENTS */
+ #define EXT4_S_ERR_LEN (EXT4_S_ERR_END - EXT4_S_ERR_START)
+@@ -1082,6 +1089,7 @@ struct ext4_sb_info {
+ 	unsigned long s_desc_size;	/* Size of a group descriptor in bytes */
+ 	unsigned long s_inodes_per_block;/* Number of inodes per block */
+ 	unsigned long s_blocks_per_group;/* Number of blocks in a group */
++	unsigned long s_clusters_per_group; /* Number of clusters in a group */
+ 	unsigned long s_inodes_per_group;/* Number of inodes in a group */
+ 	unsigned long s_itb_per_group;	/* Number of inode table blocks per group */
+ 	unsigned long s_gdb_count;	/* Number of group descriptor blocks */
+@@ -1090,6 +1098,8 @@ struct ext4_sb_info {
+ 	ext4_group_t s_blockfile_groups;/* Groups acceptable for non-extent files */
+ 	unsigned long s_overhead_last;  /* Last calculated overhead */
+ 	unsigned long s_blocks_last;    /* Last seen block count */
++	unsigned int s_cluster_ratio;	/* Number of blocks per cluster */
++	unsigned int s_cluster_bits;	/* log2 of s_cluster_ratio */
+ 	loff_t s_bitmap_maxbytes;	/* max bytes for bitmap files */
+ 	struct buffer_head * s_sbh;	/* Buffer containing the super block */
+ 	struct ext4_super_block *s_es;	/* Pointer to the super block in the buffer */
+@@ -1352,6 +1362,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+ #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
+ #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
+ #define EXT4_FEATURE_RO_COMPAT_QUOTA		0x0100
++#define EXT4_FEATURE_RO_COMPAT_BIGALLOC		0x0200
  
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 8fc735f..11bd617 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2676,6 +2676,21 @@ again:
- 		}
- 	}
- 
-+	/* If we still have something in the partial cluster and we have removed
-+	 * even the first extent, then we should free the blocks in the partial
-+	 * cluster as well. */
-+	if (partial_cluster && path->p_hdr->eh_entries == 0) {
-+		int flags = EXT4_FREE_BLOCKS_FORGET;
-+
-+		if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
-+			flags |= EXT4_FREE_BLOCKS_METADATA;
-+
-+		ext4_free_blocks(handle, inode, NULL,
-+				 EXT4_C2B(EXT4_SB(sb), partial_cluster),
-+				 EXT4_SB(sb)->s_cluster_ratio, flags);
-+		partial_cluster = 0;
-+	}
-+
- 	/* TODO: flexible tree reduction should be here */
- 	if (path->p_hdr->eh_entries == 0) {
- 		/*
-@@ -3223,6 +3238,195 @@ static int check_eofblocks_fl(handle_t *handle, struct inode *inode,
- 	return ext4_mark_inode_dirty(handle, inode);
- }
- 
-+/**
-+ * ext4_find_delalloc_range: find delayed allocated block in the given range.
-+ *
-+ * Goes through the buffer heads in the range [lblk_start, lblk_end] and returns
-+ * whether there are any buffers marked for delayed allocation. It returns '1'
-+ * on the first delalloc'ed buffer head found. If no buffer head in the given
-+ * range is marked for delalloc, it returns 0.
-+ * lblk_start should always be <= lblk_end.
-+ * search_hint_reverse is to indicate that searching in reverse from lblk_end to
-+ * lblk_start might be more efficient (i.e., we will likely hit the delalloc'ed
-+ * block sooner). This is useful when blocks are truncated sequentially from
-+ * lblk_start towards lblk_end.
-+ */
-+static int ext4_find_delalloc_range(struct inode *inode,
-+				    ext4_lblk_t lblk_start,
-+				    ext4_lblk_t lblk_end,
-+				    int search_hint_reverse)
-+{
-+	struct address_space *mapping = inode->i_mapping;
-+	struct buffer_head *head, *bh = NULL;
-+	struct page *page;
-+	ext4_lblk_t i, pg_lblk;
-+	pgoff_t index;
-+
-+	/* reverse search wont work if fs block size is less than page size */
-+	if (inode->i_blkbits < PAGE_CACHE_SHIFT)
-+		search_hint_reverse = 0;
-+
-+	if (search_hint_reverse)
-+		i = lblk_end;
-+	else
-+		i = lblk_start;
-+
-+	index = i >> (PAGE_CACHE_SHIFT - inode->i_blkbits);
-+
-+	while ((i >= lblk_start) && (i <= lblk_end)) {
-+		page = find_get_page(mapping, index);
-+		if (!page || !PageDirty(page))
-+			goto nextpage;
-+
-+		if (PageWriteback(page)) {
-+			/*
-+			 * This might be a race with allocation and writeout. In
-+			 * this case we just assume that the rest of the range
-+			 * will eventually be written and there wont be any
-+			 * delalloc blocks left.
-+			 * TODO: the above assumption is troublesome, but might
-+			 * work better in practice. other option could be note
-+			 * somewhere that the cluster is getting written out and
-+			 * detect that here.
-+			 */
-+			page_cache_release(page);
-+			return 0;
-+		}
-+
-+		if (!page_has_buffers(page))
-+			goto nextpage;
-+
-+		head = page_buffers(page);
-+		if (!head)
-+			goto nextpage;
-+
-+		bh = head;
-+		pg_lblk = index << (PAGE_CACHE_SHIFT -
-+						inode->i_blkbits);
-+		do {
-+			if (unlikely(pg_lblk < lblk_start)) {
-+				/*
-+				 * This is possible when fs block size is less
-+				 * than page size and our cluster starts/ends in
-+				 * middle of the page. So we need to skip the
-+				 * initial few blocks till we reach the 'lblk'
-+				 */
-+				pg_lblk++;
-+				continue;
-+			}
-+
-+			if (buffer_delay(bh)) {
-+				page_cache_release(page);
-+				return 1;
-+			}
-+			if (search_hint_reverse)
-+				i--;
-+			else
-+				i++;
-+		} while ((i >= lblk_start) && (i <= lblk_end) &&
-+				((bh = bh->b_this_page) != head));
-+nextpage:
-+		if (page)
-+			page_cache_release(page);
-+		/*
-+		 * Move to next page. 'i' will be the first lblk in the next
-+		 * page.
-+		 */
-+		if (search_hint_reverse)
-+			index--;
-+		else
-+			index++;
-+		i = index << (PAGE_CACHE_SHIFT - inode->i_blkbits);
-+	}
-+
-+	return 0;
-+}
-+
-+int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk,
-+			       int search_hint_reverse)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+	ext4_lblk_t lblk_start, lblk_end;
-+	lblk_start = lblk & (~(sbi->s_cluster_ratio - 1));
-+	lblk_end = lblk_start + sbi->s_cluster_ratio - 1;
-+
-+	return ext4_find_delalloc_range(inode, lblk_start, lblk_end,
-+					search_hint_reverse);
-+}
-+
-+/**
-+ * Determines how many complete clusters (out of those specified by the 'map')
-+ * are under delalloc and were reserved quota for.
-+ * This function is called when we are writing out the blocks that were
-+ * originally written with their allocation delayed, but then the space was
-+ * allocated using fallocate() before the delayed allocation could be resolved.
-+ * The cases to look for are:
-+ * ('=' indicated delayed allocated blocks
-+ *  '-' indicates non-delayed allocated blocks)
-+ * (a) partial clusters towards beginning and/or end outside of allocated range
-+ *     are not delalloc'ed.
-+ *	Ex:
-+ *	|----c---=|====c====|====c====|===-c----|
-+ *	         |++++++ allocated ++++++|
-+ *	==> 4 complete clusters in above example
-+ *
-+ * (b) partial cluster (outside of allocated range) towards either end is
-+ *     marked for delayed allocation. In this case, we will exclude that
-+ *     cluster.
-+ *	Ex:
-+ *	|----====c========|========c========|
-+ *	     |++++++ allocated ++++++|
-+ *	==> 1 complete clusters in above example
-+ *
-+ *	Ex:
-+ *	|================c================|
-+ *            |++++++ allocated ++++++|
-+ *	==> 0 complete clusters in above example
-+ *
-+ * The ext4_da_update_reserve_space will be called only if we
-+ * determine here that there were some "entire" clusters that span
-+ * this 'allocated' range.
-+ * In the non-bigalloc case, this function will just end up returning num_blks
-+ * without ever calling ext4_find_delalloc_range.
-+ */
-+static unsigned int
-+get_reserved_cluster_alloc(struct inode *inode, ext4_lblk_t lblk_start,
-+			   unsigned int num_blks)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+	ext4_lblk_t alloc_cluster_start, alloc_cluster_end;
-+	ext4_lblk_t lblk_from, lblk_to, c_offset;
-+	unsigned int allocated_clusters = 0;
-+
-+	alloc_cluster_start = EXT4_B2C(sbi, lblk_start);
-+	alloc_cluster_end = EXT4_B2C(sbi, lblk_start + num_blks - 1);
-+
-+	/* max possible clusters for this allocation */
-+	allocated_clusters = alloc_cluster_end - alloc_cluster_start + 1;
-+
-+	/* Check towards left side */
-+	c_offset = lblk_start & (sbi->s_cluster_ratio - 1);
-+	if (c_offset) {
-+		lblk_from = lblk_start & (~(sbi->s_cluster_ratio - 1));
-+		lblk_to = lblk_from + c_offset - 1;
-+
-+		if (ext4_find_delalloc_range(inode, lblk_from, lblk_to, 0))
-+			allocated_clusters--;
-+	}
-+
-+	/* Now check towards right. */
-+	c_offset = (lblk_start + num_blks) & (sbi->s_cluster_ratio - 1);
-+	if (c_offset) {
-+		lblk_from = lblk_start + num_blks;
-+		lblk_to = lblk_from + (sbi->s_cluster_ratio - c_offset) - 1;
-+
-+		if (ext4_find_delalloc_range(inode, lblk_from, lblk_to, 0))
-+			allocated_clusters--;
-+	}
-+
-+	return allocated_clusters;
-+}
-+
- static int
- ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
- 			struct ext4_map_blocks *map,
-@@ -3328,8 +3532,15 @@ out:
- 	 * But fallocate would have already updated quota and block
- 	 * count for this offset. So cancel these reservation
- 	 */
--	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
--		ext4_da_update_reserve_space(inode, allocated, 0);
-+	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) {
-+		unsigned int reserved_clusters;
-+		reserved_clusters = get_reserved_cluster_alloc(inode,
-+				map->m_lblk, map->m_len);
-+		if (reserved_clusters)
-+			ext4_da_update_reserve_space(inode,
-+						     reserved_clusters,
-+						     0);
-+	}
- 
- map_out:
- 	map->m_flags |= EXT4_MAP_MAPPED;
-@@ -3474,6 +3685,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	ext4_fsblk_t newblock = 0;
- 	int free_on_err = 0, err = 0, depth, ret;
- 	unsigned int allocated = 0, offset = 0;
-+	unsigned int allocated_clusters = 0, reserved_clusters = 0;
- 	unsigned int punched_out = 0;
- 	unsigned int result = 0;
- 	struct ext4_allocation_request ar;
-@@ -3489,6 +3701,10 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	if (ext4_ext_in_cache(inode, map->m_lblk, &newex) &&
- 		((flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) == 0)) {
- 		if (!newex.ee_start_lo && !newex.ee_start_hi) {
-+			if ((sbi->s_cluster_ratio > 1) &&
-+			    ext4_find_delalloc_cluster(inode, map->m_lblk, 0))
-+				map->m_flags |= EXT4_MAP_FROM_CLUSTER;
-+
- 			if ((flags & EXT4_GET_BLOCKS_CREATE) == 0) {
- 				/*
- 				 * block isn't allocated yet and
-@@ -3499,6 +3715,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 			/* we should allocate requested block */
- 		} else {
- 			/* block is already allocated */
-+			if (sbi->s_cluster_ratio > 1)
-+				map->m_flags |= EXT4_MAP_FROM_CLUSTER;
- 			newblock = map->m_lblk
- 				   - le32_to_cpu(newex.ee_block)
- 				   + ext4_ext_pblock(&newex);
-@@ -3633,6 +3851,10 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 		}
- 	}
- 
-+	if ((sbi->s_cluster_ratio > 1) &&
-+	    ext4_find_delalloc_cluster(inode, map->m_lblk, 0))
-+		map->m_flags |= EXT4_MAP_FROM_CLUSTER;
-+
- 	/*
- 	 * requested block isn't allocated yet;
- 	 * we couldn't try to create block if create flag is zero
-@@ -3649,6 +3871,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	/*
- 	 * Okay, we need to do block allocation.
- 	 */
-+	map->m_flags &= ~EXT4_MAP_FROM_CLUSTER;
- 	newex.ee_block = cpu_to_le32(map->m_lblk);
- 	cluster_offset = map->m_lblk & (sbi->s_cluster_ratio-1);
- 
-@@ -3660,6 +3883,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	    get_implied_cluster_alloc(sbi, map, ex, path)) {
- 		ar.len = allocated = map->m_len;
- 		newblock = map->m_pblk;
-+		map->m_flags |= EXT4_MAP_FROM_CLUSTER;
- 		goto got_allocated_blocks;
- 	}
- 
-@@ -3680,6 +3904,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	    get_implied_cluster_alloc(sbi, map, ex2, path)) {
- 		ar.len = allocated = map->m_len;
- 		newblock = map->m_pblk;
-+		map->m_flags |= EXT4_MAP_FROM_CLUSTER;
- 		goto got_allocated_blocks;
- 	}
- 
-@@ -3733,6 +3958,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	ext_debug("allocate new block: goal %llu, found %llu/%u\n",
- 		  ar.goal, newblock, allocated);
- 	free_on_err = 1;
-+	allocated_clusters = ar.len;
- 	ar.len = EXT4_C2B(sbi, ar.len) - offset;
- 	if (ar.len > allocated)
- 		ar.len = allocated;
-@@ -3789,8 +4015,80 @@ got_allocated_blocks:
- 	 * Update reserved blocks/metadata blocks after successful
- 	 * block allocation which had been deferred till now.
- 	 */
--	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
--		ext4_da_update_reserve_space(inode, allocated, 1);
-+	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) {
-+		/*
-+		 * Check how many clusters we had reserved this allocted range.
-+		 */
-+		reserved_clusters = get_reserved_cluster_alloc(inode,
-+						map->m_lblk, allocated);
-+		if (map->m_flags & EXT4_MAP_FROM_CLUSTER) {
-+			if (reserved_clusters) {
-+				/*
-+				 * We have clusters reserved for this range.
-+				 * But since we are not doing actual allocation
-+				 * and are simply using blocks from previously
-+				 * allocated cluster, we should release the
-+				 * reservation and not claim quota.
-+				 */
-+				ext4_da_update_reserve_space(inode,
-+						reserved_clusters, 0);
-+			}
-+		} else {
-+			BUG_ON(allocated_clusters < reserved_clusters);
-+			/* We will claim quota for all newly allocated blocks.*/
-+			ext4_da_update_reserve_space(inode, allocated_clusters,
-+							1);
-+			if (reserved_clusters < allocated_clusters) {
-+				int reservation = allocated_clusters -
-+						  reserved_clusters;
-+				/*
-+				 * It seems we claimed few clusters outside of
-+				 * the range of this allocation. We should give
-+				 * it back to the reservation pool. This can
-+				 * happen in the following case:
-+				 *
-+				 * * Suppose s_cluster_ratio is 4 (i.e., each
-+				 *   cluster has 4 blocks. Thus, the clusters
-+				 *   are [0-3],[4-7],[8-11]...
-+				 * * First comes delayed allocation write for
-+				 *   logical blocks 10 & 11. Since there were no
-+				 *   previous delayed allocated blocks in the
-+				 *   range [8-11], we would reserve 1 cluster
-+				 *   for this write.
-+				 * * Next comes write for logical blocks 3 to 8.
-+				 *   In this case, we will reserve 2 clusters
-+				 *   (for [0-3] and [4-7]; and not for [8-11] as
-+				 *   that range has a delayed allocated blocks.
-+				 *   Thus total reserved clusters now becomes 3.
-+				 * * Now, during the delayed allocation writeout
-+				 *   time, we will first write blocks [3-8] and
-+				 *   allocate 3 clusters for writing these
-+				 *   blocks. Also, we would claim all these
-+				 *   three clusters above.
-+				 * * Now when we come here to writeout the
-+				 *   blocks [10-11], we would expect to claim
-+				 *   the reservation of 1 cluster we had made
-+				 *   (and we would claim it since there are no
-+				 *   more delayed allocated blocks in the range
-+				 *   [8-11]. But our reserved cluster count had
-+				 *   already gone to 0.
-+				 *
-+				 *   Thus, at the step 4 above when we determine
-+				 *   that there are still some unwritten delayed
-+				 *   allocated blocks outside of our current
-+				 *   block range, we should increment the
-+				 *   reserved clusters count so that when the
-+				 *   remaining blocks finally gets written, we
-+				 *   could claim them.
-+				 */
-+				while (reservation) {
-+					ext4_da_reserve_space(inode,
-+							      map->m_lblk);
-+					reservation--;
-+				}
-+			}
-+		}
-+	}
- 
- 	/*
- 	 * Cache the extent and update transaction to commit on fdatasync only
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 2c0150c..513f4e6 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -270,14 +270,14 @@ void ext4_da_update_reserve_space(struct inode *inode,
- 
- 	/* Update quota subsystem for data blocks */
- 	if (quota_claim)
--		dquot_claim_block(inode, used);
-+		dquot_claim_block(inode, EXT4_C2B(sbi, used));
- 	else {
- 		/*
- 		 * We did fallocate with an offset that is already delayed
- 		 * allocated. So on delayed allocated writeback we should
- 		 * not re-claim the quota for fallocated blocks.
- 		 */
--		dquot_release_reservation_block(inode, used);
-+		dquot_release_reservation_block(inode, EXT4_C2B(sbi, used));
- 	}
- 
- 	/*
-@@ -1004,14 +1004,14 @@ static int ext4_journalled_write_end(struct file *file,
- }
- 
- /*
-- * Reserve a single block located at lblock
-+ * Reserve a single cluster located at lblock
-  */
--static int ext4_da_reserve_space(struct inode *inode, ext4_lblk_t lblock)
-+int ext4_da_reserve_space(struct inode *inode, ext4_lblk_t lblock)
- {
- 	int retries = 0;
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	struct ext4_inode_info *ei = EXT4_I(inode);
--	unsigned long md_needed;
-+	unsigned int md_needed;
- 	int ret;
- 
- 	/*
-@@ -1021,7 +1021,8 @@ static int ext4_da_reserve_space(struct inode *inode, ext4_lblk_t lblock)
- 	 */
- repeat:
- 	spin_lock(&ei->i_block_reservation_lock);
--	md_needed = ext4_calc_metadata_amount(inode, lblock);
-+	md_needed = EXT4_NUM_B2C(sbi,
-+				 ext4_calc_metadata_amount(inode, lblock));
- 	trace_ext4_da_reserve_space(inode, md_needed);
- 	spin_unlock(&ei->i_block_reservation_lock);
- 
-@@ -1030,7 +1031,7 @@ repeat:
- 	 * us from metadata over-estimation, though we may go over by
- 	 * a small amount in the end.  Here we just reserve for data.
- 	 */
--	ret = dquot_reserve_block(inode, 1);
-+	ret = dquot_reserve_block(inode, EXT4_C2B(sbi, 1));
- 	if (ret)
- 		return ret;
- 	/*
-@@ -1038,7 +1039,7 @@ repeat:
- 	 * we cannot afford to run out of free blocks.
- 	 */
- 	if (ext4_claim_free_blocks(sbi, md_needed + 1, 0)) {
--		dquot_release_reservation_block(inode, 1);
-+		dquot_release_reservation_block(inode, EXT4_C2B(sbi, 1));
- 		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
- 			yield();
- 			goto repeat;
-@@ -1085,6 +1086,8 @@ static void ext4_da_release_space(struct inode *inode, int to_free)
- 		 * We can release all of the reserved metadata blocks
- 		 * only when we have written all of the delayed
- 		 * allocation blocks.
-+		 * Note that in case of bigalloc, i_reserved_meta_blocks,
-+		 * i_reserved_data_blocks, etc. refer to number of clusters.
- 		 */
- 		percpu_counter_sub(&sbi->s_dirtyclusters_counter,
- 				   ei->i_reserved_meta_blocks);
-@@ -1097,7 +1100,7 @@ static void ext4_da_release_space(struct inode *inode, int to_free)
- 
- 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
- 
--	dquot_release_reservation_block(inode, to_free);
-+	dquot_release_reservation_block(inode, EXT4_C2B(sbi, to_free));
- }
- 
- static void ext4_da_page_release_reservation(struct page *page,
-@@ -1106,6 +1109,9 @@ static void ext4_da_page_release_reservation(struct page *page,
- 	int to_release = 0;
- 	struct buffer_head *head, *bh;
- 	unsigned int curr_off = 0;
-+	struct inode *inode = page->mapping->host;
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+	int num_clusters;
- 
- 	head = page_buffers(page);
- 	bh = head;
-@@ -1118,7 +1124,20 @@ static void ext4_da_page_release_reservation(struct page *page,
- 		}
- 		curr_off = next_off;
- 	} while ((bh = bh->b_this_page) != head);
--	ext4_da_release_space(page->mapping->host, to_release);
-+
-+	/* If we have released all the blocks belonging to a cluster, then we
-+	 * need to release the reserved space for that cluster. */
-+	num_clusters = EXT4_NUM_B2C(sbi, to_release);
-+	while (num_clusters > 0) {
-+		ext4_fsblk_t lblk;
-+		lblk = (page->index << (PAGE_CACHE_SHIFT - inode->i_blkbits)) +
-+			((num_clusters - 1) << sbi->s_cluster_bits);
-+		if (sbi->s_cluster_ratio == 1 ||
-+		    !ext4_find_delalloc_cluster(inode, lblk, 1))
-+			ext4_da_release_space(inode, 1);
-+
-+		num_clusters--;
-+	}
- }
- 
- /*
-@@ -1314,7 +1333,8 @@ static void ext4_print_free_blocks(struct inode *inode)
- 	       (long long) EXT4_C2B(EXT4_SB(inode->i_sb),
- 		percpu_counter_sum(&sbi->s_freeclusters_counter)));
- 	printk(KERN_CRIT "dirty_blocks=%lld\n",
--	       (long long) percpu_counter_sum(&sbi->s_dirtyclusters_counter));
-+	       (long long) EXT4_C2B(EXT4_SB(inode->i_sb),
-+		percpu_counter_sum(&sbi->s_dirtyclusters_counter)));
- 	printk(KERN_CRIT "Block reservation details\n");
- 	printk(KERN_CRIT "i_reserved_data_blocks=%u\n",
- 	       EXT4_I(inode)->i_reserved_data_blocks);
-@@ -1588,10 +1608,14 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
- 		/*
- 		 * XXX: __block_write_begin() unmaps passed block, is it OK?
- 		 */
--		ret = ext4_da_reserve_space(inode, iblock);
--		if (ret)
--			/* not enough space to reserve */
--			return ret;
-+		/* If the block was allocated from previously allocated cluster,
-+		 * then we dont need to reserve it again. */
-+		if (!(map.m_flags & EXT4_MAP_FROM_CLUSTER)) {
-+			ret = ext4_da_reserve_space(inode, iblock);
-+			if (ret)
-+				/* not enough space to reserve */
-+				return ret;
-+		}
- 
- 		map_bh(bh, inode->i_sb, invalid_block);
- 		set_buffer_new(bh);
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 2d23d0a..73fbb99 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4686,6 +4686,8 @@ do_more:
- 
- 	freed += count;
- 
-+	dquot_free_block(inode, EXT4_C2B(sbi, count_clusters));
-+
- 	/* We dirtied the bitmap block */
- 	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
- 	err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
-@@ -4704,8 +4706,6 @@ do_more:
- 	}
- 	ext4_mark_super_dirty(sb);
- error_return:
--	if (freed)
--		dquot_free_block(inode, freed);
- 	brelse(bitmap_bh);
- 	ext4_std_error(sb, err);
- 	return;
+ #define EXT4_FEATURE_INCOMPAT_COMPRESSION	0x0001
+ #define EXT4_FEATURE_INCOMPAT_FILETYPE		0x0002
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 7a4d54e..e10062d 100644
+index 9ea71aa..4618f7c1 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -2425,7 +2425,8 @@ static ssize_t delayed_allocation_blocks_show(struct ext4_attr *a,
- 					      char *buf)
- {
- 	return snprintf(buf, PAGE_SIZE, "%llu\n",
--		(s64) percpu_counter_sum(&sbi->s_dirtyclusters_counter));
-+		(s64) EXT4_C2B(sbi,
-+			percpu_counter_sum(&sbi->s_dirtyclusters_counter)));
- }
+@@ -1909,7 +1909,7 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
+ 		res = MS_RDONLY;
+ 	}
+ 	if (read_only)
+-		return res;
++		goto done;
+ 	if (!(sbi->s_mount_state & EXT4_VALID_FS))
+ 		ext4_msg(sb, KERN_WARNING, "warning: mounting unchecked fs, "
+ 			 "running e2fsck is recommended");
+@@ -1940,6 +1940,7 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
+ 		EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
  
- static ssize_t session_write_kbytes_show(struct ext4_attr *a,
+ 	ext4_commit_super(sb, 1);
++done:
+ 	if (test_opt(sb, DEBUG))
+ 		printk(KERN_INFO "[EXT4 FS bs=%lu, gc=%u, "
+ 				"bpg=%lu, ipg=%lu, mo=%04x, mo2=%04x]\n",
+@@ -3057,10 +3058,10 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	char *cp;
+ 	const char *descr;
+ 	int ret = -ENOMEM;
+-	int blocksize;
++	int blocksize, clustersize;
+ 	unsigned int db_count;
+ 	unsigned int i;
+-	int needs_recovery, has_huge_files;
++	int needs_recovery, has_huge_files, has_bigalloc;
+ 	__u64 blocks_count;
+ 	int err;
+ 	unsigned int journal_ioprio = DEFAULT_JOURNAL_IOPRIO;
+@@ -3339,12 +3340,53 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		sb->s_dirt = 1;
+ 	}
+ 
+-	if (sbi->s_blocks_per_group > blocksize * 8) {
+-		ext4_msg(sb, KERN_ERR,
+-		       "#blocks per group too big: %lu",
+-		       sbi->s_blocks_per_group);
+-		goto failed_mount;
++	/* Handle clustersize */
++	clustersize = BLOCK_SIZE << le32_to_cpu(es->s_log_cluster_size);
++	has_bigalloc = EXT4_HAS_RO_COMPAT_FEATURE(sb,
++				EXT4_FEATURE_RO_COMPAT_BIGALLOC);
++	if (has_bigalloc) {
++		if (clustersize < blocksize) {
++			ext4_msg(sb, KERN_ERR,
++				 "cluster size (%d) smaller than "
++				 "block size (%d)", clustersize, blocksize);
++			goto failed_mount;
++		}
++		sbi->s_cluster_bits = le32_to_cpu(es->s_log_cluster_size) -
++			le32_to_cpu(es->s_log_block_size);
++		sbi->s_clusters_per_group =
++			le32_to_cpu(es->s_clusters_per_group);
++		if (sbi->s_clusters_per_group > blocksize * 8) {
++			ext4_msg(sb, KERN_ERR,
++				 "#clusters per group too big: %lu",
++				 sbi->s_clusters_per_group);
++			goto failed_mount;
++		}
++		if (sbi->s_blocks_per_group !=
++		    (sbi->s_clusters_per_group * (clustersize / blocksize))) {
++			ext4_msg(sb, KERN_ERR, "blocks per group (%lu) and "
++				 "clusters per group (%lu) inconsistent",
++				 sbi->s_blocks_per_group,
++				 sbi->s_clusters_per_group);
++			goto failed_mount;
++		}
++	} else {
++		if (clustersize != blocksize) {
++			ext4_warning(sb, "fragment/cluster size (%d) != "
++				     "block size (%d)", clustersize,
++				     blocksize);
++			clustersize = blocksize;
++		}
++		if (sbi->s_blocks_per_group > blocksize * 8) {
++			ext4_msg(sb, KERN_ERR,
++				 "#blocks per group too big: %lu",
++				 sbi->s_blocks_per_group);
++			goto failed_mount;
++		}
++		sbi->s_clusters_per_group = sbi->s_blocks_per_group;
++		sbi->s_cluster_bits = 0;
+ 	}
++	sbi->s_cluster_ratio = clustersize / blocksize;
++
+ 	if (sbi->s_inodes_per_group > blocksize * 8) {
+ 		ext4_msg(sb, KERN_ERR,
+ 		       "#inodes per group too big: %lu",
 -- 
 1.7.4.1.22.gec8e1.dirty
 
