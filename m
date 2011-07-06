@@ -1,188 +1,118 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: [PATCH 1/2 v3] EXT4: Secure Delete: Zero out file data
-Date: Wed, 06 Jul 2011 14:05:25 -0700
-Message-ID: <4E14CE15.90404@linux.vnet.ibm.com>
-References: <1309468923-5677-1-git-send-email-achender@linux.vnet.ibm.com> <1309468923-5677-2-git-send-email-achender@linux.vnet.ibm.com> <CAOQ4uxicueV9QOvHEhyk0mNSs+B+dT1X=Z64i_L2_qn6X6_vHA@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext4: Change the handling of RAID stripe width
+Date: Wed, 06 Jul 2011 16:18:40 -0500
+Message-ID: <4E14D130.6080605@redhat.com>
+References: <1309985245-14835-1-git-send-email-dehrenberg@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Amir Goldstein <amir73il@gmail.com>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: Dan Ehrenberg <dehrenberg@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:47424 "EHLO e1.ny.us.ibm.com"
+Received: from mx1.redhat.com ([209.132.183.28]:47380 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756094Ab1GFVFk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 Jul 2011 17:05:40 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e1.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p66KrKDA024390
-	for <linux-ext4@vger.kernel.org>; Wed, 6 Jul 2011 16:53:20 -0400
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p66L5RcF149420
-	for <linux-ext4@vger.kernel.org>; Wed, 6 Jul 2011 17:05:27 -0400
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p66L5RIH019420
-	for <linux-ext4@vger.kernel.org>; Wed, 6 Jul 2011 17:05:27 -0400
-In-Reply-To: <CAOQ4uxicueV9QOvHEhyk0mNSs+B+dT1X=Z64i_L2_qn6X6_vHA@mail.gmail.com>
+	id S1756189Ab1GFVSt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 6 Jul 2011 17:18:49 -0400
+In-Reply-To: <1309985245-14835-1-git-send-email-dehrenberg@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 07/02/2011 02:33 AM, Amir Goldstein wrote:
-> On Fri, Jul 1, 2011 at 12:22 AM, Allison Henderson
-> <achender@linux.vnet.ibm.com>  wrote:
->> The first patch adds a new flag, EXT4_FREE_BLOCKS_ZERO,
->> to ext4_free_blocks. This flag causes causes blocks to be
->> zerod before they are freed.  Files that have the EXT4_SECRM_FL
->> attribute flag on will have their blocks zerod when
->> they are released.  The EXT4_SECRM_FL attribute flag can
->> be enabled useing chattr +s
->>
->> Signed-off-by: Allison Henderson<achender@linux.vnet.ibm.com>
->> ---
->> v1->v2
->> Removed check for discard mount option and replaced with
->> check for secure discard and discard_zeroes_data
->>
->> Added BLKDEV_DISCARD_SECURE to the sb_issue_discard call
->>
->> v2->v3
->> Removed code for discard.  A seperate patch will
->> be done to add that code in the block layer
->>
->> :100644 100644 1921392... 38a4d75... M  fs/ext4/ext4.h
->> :100644 100644 f815cc8... cf178f3... M  fs/ext4/extents.c
->> :100644 100644 62f86e7... 8fdae7d... M  fs/ext4/inode.c
->> :100644 100644 6ed859d... 94872b2... M  fs/ext4/mballoc.c
->> :100644 100644 c757adc... 1ff7532... M  fs/ext4/xattr.c
->>   fs/ext4/ext4.h    |    1 +
->>   fs/ext4/extents.c |    3 +++
->>   fs/ext4/inode.c   |    3 +++
->>   fs/ext4/mballoc.c |    8 ++++++++
->>   fs/ext4/xattr.c   |   12 ++++++++----
->>   5 files changed, 23 insertions(+), 4 deletions(-)
->>
->> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
->> index 1921392..38a4d75 100644
->> --- a/fs/ext4/ext4.h
->> +++ b/fs/ext4/ext4.h
->> @@ -526,6 +526,7 @@ struct ext4_new_group_data {
->>   #define EXT4_FREE_BLOCKS_METADATA      0x0001
->>   #define EXT4_FREE_BLOCKS_FORGET                0x0002
->>   #define EXT4_FREE_BLOCKS_VALIDATED     0x0004
->> +#define EXT4_FREE_BLOCKS_ZERO          0x0008
->>
->>   /*
->>   * ioctl commands
->> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
->> index f815cc8..cf178f3 100644
->> --- a/fs/ext4/extents.c
->> +++ b/fs/ext4/extents.c
->> @@ -2231,6 +2231,9 @@ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
->>
->>         if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
->>                 flags |= EXT4_FREE_BLOCKS_METADATA;
->> +
->> +       if (EXT4_I(inode)->i_flags&  EXT4_SECRM_FL)
->> +               flags |= EXT4_FREE_BLOCKS_ZERO;
->>   #ifdef EXTENTS_STATS
->>         {
->>                 struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
->> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->> index 62f86e7..8fdae7d 100644
->> --- a/fs/ext4/inode.c
->> +++ b/fs/ext4/inode.c
->> @@ -4182,6 +4182,9 @@ static int ext4_clear_blocks(handle_t *handle, struct inode *inode,
->>         for (p = first; p<  last; p++)
->>                 *p = 0;
->>
->> +       if (EXT4_I(inode)->i_flags&  EXT4_SECRM_FL)
->> +               flags |= EXT4_FREE_BLOCKS_ZERO;
->> +
->>         ext4_free_blocks(handle, inode, NULL, block_to_free, count, flags);
->>         return 0;
->>   out_err:
->> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
->> index 6ed859d..94872b2 100644
->> --- a/fs/ext4/mballoc.c
->> +++ b/fs/ext4/mballoc.c
->> @@ -4485,6 +4485,14 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
->>         ext4_debug("freeing block %llu\n", block);
->>         trace_ext4_free_blocks(inode, block, count, flags);
->>
->> +       if (flags&  EXT4_FREE_BLOCKS_ZERO) {
->> +               err = sb_issue_zeroout(inode->i_sb, block, count, GFP_NOFS);
->
-> But the delete of these blocks in not yet committed,
-> so after reboot, you can end up with a non-deleted but zeroed file data.
-> Is that acceptable? I should think not.
->
-> One way around this is a 2-phase unlink/truncate.
-> Phase 1: add to orphan list and register a callback on commit
-> Phase 2: issue zeroout and free the blocks
->
-> This won't work for punch hole, but then again, for punch hole
-> it's probably OK to end up with zeroed data, but non-deleted blocks.
-> Right?
->
-> Amir.
+On 7/6/11 3:47 PM, Dan Ehrenberg wrote:
+> Previously, the stripe width was blindly used for determining the size
+> of allocations. Now, the stripe width is used as a hint for the initial
+> mb_group_prealloc; if it is greater than 1, then we make sure that
+> mb_group_prealloc is some multiple of it, and otherwise it is ignored.
+> mb_group_prealloc is always usable to adjust the preallocation strategy,
+> not just when the stripe-width is 0 as before.
+> 
+> Signed-off-by: Dan Ehrenberg <dehrenberg@google.com>
+> ---
+>  fs/ext4/mballoc.c |   40 +++++++++++++++++++++++++++++-----------
+>  1 files changed, 29 insertions(+), 11 deletions(-)
+> 
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 6ed859d..710c27f 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -127,13 +127,14 @@
+>   * based on file size. This can be found in ext4_mb_normalize_request. If
+>   * we are doing a group prealloc we try to normalize the request to
+>   * sbi->s_mb_group_prealloc. Default value of s_mb_group_prealloc is
+> - * 512 blocks. This can be tuned via
+> - * /sys/fs/ext4/<partition/mb_group_prealloc. The value is represented in
+> - * terms of number of blocks. If we have mounted the file system with -O
+> + * 512 blocks. If we have mounted the file system with -O
+>   * stripe=<value> option the group prealloc request is normalized to the
+> - * stripe value (sbi->s_stripe)
+> + * the smallest multiple of the stripe value (sbi->s_stripe) which is
+> + * greater than the default mb_group_prealloc. This can be tuned via
+> + * /sys/fs/ext4/<partition>/mb_group_prealloc. The value is represented in
+> + * terms of number of blocks.
+>   *
+> - * The regular allocator(using the buddy cache) supports few tunables.
+> + * The regular allocator (using the buddy cache) supports a few tunables.
+>   *
+>   * /sys/fs/ext4/<partition>/mb_min_to_scan
+>   * /sys/fs/ext4/<partition>/mb_max_to_scan
+> @@ -2471,7 +2472,26 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
+>  	sbi->s_mb_stats = MB_DEFAULT_STATS;
+>  	sbi->s_mb_stream_request = MB_DEFAULT_STREAM_THRESHOLD;
+>  	sbi->s_mb_order2_reqs = MB_DEFAULT_ORDER2_REQS;
+> +	/*
+> +	 * If the stripe width is 1, this makes no sense and
+> +	 * we set it to 0 to turn off stripe handling code.
+> +	 */
+> +	if (sbi->s_stripe == 1)
+> +		sbi->s_stripe = 0;
 
-Hi, I had a quick question about the orphan list.  I notice that 
-ext4_ext_truncate and also ext4_ext_punch_hole already have a call to
-ext4_orphan_add that happens really early before any calls to free 
-blocks.  Does this address your earlier concerns, or is there another 
-reason I missed?  Thx!
+This strikes me as a weird band-aid-y place to fix this up.
 
-Allison Henderson
+Wouldn't it be better suited for the option-parsing code, and/or
+in ext4_get_stripe_size()?  Why let a value of 1 get this far
+only to override it here?
 
->
->> +               if (err<  0)
->> +                       goto error_return;
->> +               else
->> +                       err = 0;
->> +       }
->> +
->>         if (flags&  EXT4_FREE_BLOCKS_FORGET) {
->>                 struct buffer_head *tbh = bh;
->>                 int i;
->> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
->> index c757adc..1ff7532 100644
->> --- a/fs/ext4/xattr.c
->> +++ b/fs/ext4/xattr.c
->> @@ -471,7 +471,7 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
->>                          struct buffer_head *bh)
->>   {
->>         struct mb_cache_entry *ce = NULL;
->> -       int error = 0;
->> +       int free_blocks_flags, error = 0;
->>
->>         ce = mb_cache_entry_get(ext4_xattr_cache, bh->b_bdev, bh->b_blocknr);
->>         error = ext4_journal_get_write_access(handle, bh);
->> @@ -484,9 +484,13 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
->>                 if (ce)
->>                         mb_cache_entry_free(ce);
->>                 get_bh(bh);
->> -               ext4_free_blocks(handle, inode, bh, 0, 1,
->> -                                EXT4_FREE_BLOCKS_METADATA |
->> -                                EXT4_FREE_BLOCKS_FORGET);
->> +               free_blocks_flags = EXT4_FREE_BLOCKS_METADATA |
->> +                                       EXT4_FREE_BLOCKS_FORGET;
->> +
->> +               if (EXT4_I(inode)->i_flags&  EXT4_SECRM_FL)
->> +                       free_blocks_flags |= EXT4_FREE_BLOCKS_ZERO;
->> +
->> +               ext4_free_blocks(handle, inode, bh, 0, 1, free_blocks_flags);
->>         } else {
->>                 le32_add_cpu(&BHDR(bh)->h_refcount, -1);
->>                 error = ext4_handle_dirty_metadata(handle, inode, bh);
->> --
->> 1.7.1
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-Eric
+
+>  	sbi->s_mb_group_prealloc = MB_DEFAULT_GROUP_PREALLOC;
+> +	/*
+> +	 * If there is a s_stripe > 1, then we set the s_mb_group_prealloc
+> +	 * to the lowest multiple of s_stripe which is bigger than
+> +	 * the s_mb_group_prealloc as determined above. We want
+> +	 * the preallocation size to be an exact multiple of the
+> +	 * RAID stripe size so that preallocations don't fragment
+> +	 * the stripes.
+> +	 */
+> +	if (sbi->s_stripe > 1) {
+> +		sbi->s_mb_group_prealloc = roundup(
+> +			sbi->s_mb_group_prealloc, sbi->s_stripe);
+> +	}
+>  
+>  	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
+>  	if (sbi->s_locality_groups == NULL) {
+> @@ -2830,8 +2850,9 @@ out_err:
+>  
+>  /*
+>   * here we normalize request for locality group
+> - * Group request are normalized to s_strip size if we set the same via mount
+> - * option. If not we set it to s_mb_group_prealloc which can be configured via
+> + * Group request are normalized to s_mb_group_prealloc, which goes to
+> + * s_strip if we set the same via mount option.
+> + * s_mb_group_prealloc can be configured via
+>   * /sys/fs/ext4/<partition>/mb_group_prealloc
+>   *
+>   * XXX: should we try to preallocate more than the group has now?
+> @@ -2842,10 +2863,7 @@ static void ext4_mb_normalize_group_request(struct ext4_allocation_context *ac)
+>  	struct ext4_locality_group *lg = ac->ac_lg;
+>  
+>  	BUG_ON(lg == NULL);
+> -	if (EXT4_SB(sb)->s_stripe)
+> -		ac->ac_g_ex.fe_len = EXT4_SB(sb)->s_stripe;
+> -	else
+> -		ac->ac_g_ex.fe_len = EXT4_SB(sb)->s_mb_group_prealloc;
+> +	ac->ac_g_ex.fe_len = EXT4_SB(sb)->s_mb_group_prealloc;
+>  	mb_debug(1, "#%u: goal %u blocks for locality group\n",
+>  		current->pid, ac->ac_g_ex.fe_len);
+>  }
 
