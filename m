@@ -1,196 +1,186 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 01/23] ext4: read-only support for bigalloc file systems
-Date: Wed,  6 Jul 2011 12:35:44 -0400
-Message-ID: <1309970166-11770-2-git-send-email-tytso@mit.edu>
+Subject: [PATCH 11/23] ext4: teach ext4_ext_truncate() about the bigalloc feature
+Date: Wed,  6 Jul 2011 12:35:54 -0400
+Message-ID: <1309970166-11770-12-git-send-email-tytso@mit.edu>
 References: <1309970166-11770-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33487 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:33467 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754771Ab1GFQgJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1754757Ab1GFQgJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 6 Jul 2011 12:36:09 -0400
 In-Reply-To: <1309970166-11770-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This adds supports for bigalloc file systems.  It teaches the mount
-code just enough about bigalloc superblock fields that it will mount
-the file system without freaking out that the number of blocks per
-group is too big.
+When we are truncating (as opposed unlinking) a file, we need to worry
+about partial truncates of a file, especially in the light of sparse
+files.  The changes here make sure that arbitrary truncates of sparse
+files works correctly.  Yeah, it's messy.
+
+Note that these functions will need to be revisted when the punch
+ioctl is integrated --- in fact this commit will probably have merge
+conflicts with the punch changes which Allison Henders and the IBM LTC
+have been working on.  I will need to fix this up when either patch
+hits mainline.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h  |   17 +++++++++++++--
- fs/ext4/super.c |   58 +++++++++++++++++++++++++++++++++++++++++++++++-------
- 2 files changed, 64 insertions(+), 11 deletions(-)
+ fs/ext4/extents.c |   82 +++++++++++++++++++++++++++++++++++++++++++++-------
+ 1 files changed, 71 insertions(+), 11 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 49d2cea..03a0857 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -238,8 +238,11 @@ struct ext4_io_submit {
- # define EXT4_BLOCK_SIZE(s)		(EXT4_MIN_BLOCK_SIZE << (s)->s_log_block_size)
- #endif
- #define	EXT4_ADDR_PER_BLOCK(s)		(EXT4_BLOCK_SIZE(s) / sizeof(__u32))
-+#define EXT4_CLUSTER_SIZE(s)		(EXT4_BLOCK_SIZE(s) << \
-+					 EXT4_SB(s)->s_cluster_bits)
- #ifdef __KERNEL__
- # define EXT4_BLOCK_SIZE_BITS(s)	((s)->s_blocksize_bits)
-+# define EXT4_CLUSTER_BITS(s)		(EXT4_SB(s)->s_cluster_bits)
- #else
- # define EXT4_BLOCK_SIZE_BITS(s)	((s)->s_log_block_size + 10)
- #endif
-@@ -305,6 +308,7 @@ struct flex_groups {
- #define EXT4_DESC_SIZE(s)		(EXT4_SB(s)->s_desc_size)
- #ifdef __KERNEL__
- # define EXT4_BLOCKS_PER_GROUP(s)	(EXT4_SB(s)->s_blocks_per_group)
-+# define EXT4_CLUSTERS_PER_GROUP(s)	(EXT4_SB(s)->s_clusters_per_group)
- # define EXT4_DESC_PER_BLOCK(s)		(EXT4_SB(s)->s_desc_per_block)
- # define EXT4_INODES_PER_GROUP(s)	(EXT4_SB(s)->s_inodes_per_group)
- # define EXT4_DESC_PER_BLOCK_BITS(s)	(EXT4_SB(s)->s_desc_per_block_bits)
-@@ -964,9 +968,9 @@ struct ext4_super_block {
- /*10*/	__le32	s_free_inodes_count;	/* Free inodes count */
- 	__le32	s_first_data_block;	/* First Data Block */
- 	__le32	s_log_block_size;	/* Block size */
--	__le32	s_obso_log_frag_size;	/* Obsoleted fragment size */
-+	__le32	s_log_cluster_size;	/* Allocation cluster size */
- /*20*/	__le32	s_blocks_per_group;	/* # Blocks per group */
--	__le32	s_obso_frags_per_group;	/* Obsoleted fragments per group */
-+	__le32	s_clusters_per_group;	/* # Clusters per group */
- 	__le32	s_inodes_per_group;	/* # Inodes per group */
- 	__le32	s_mtime;		/* Mount time */
- /*30*/	__le32	s_wtime;		/* Write time */
-@@ -1062,7 +1066,10 @@ struct ext4_super_block {
- 	__u8	s_last_error_func[32];	/* function where the error happened */
- #define EXT4_S_ERR_END offsetof(struct ext4_super_block, s_mount_opts)
- 	__u8	s_mount_opts[64];
--	__le32	s_reserved[112];        /* Padding to the end of the block */
-+	__le32	s_usr_quota_inum;	/* inode for tracking user quota */
-+	__le32	s_grp_quota_inum;	/* inode for tracking group quota */
-+	__le32	s_overhead_clusters;	/* overhead blocks/clusters in fs */
-+	__le32  s_reserved[109];        /* Padding to the end of the block */
- };
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 9458586..8fc735f 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2192,14 +2192,39 @@ int ext4_ext_index_trans_blocks(struct inode *inode, int nrblocks, int chunk)
+ }
  
- #define EXT4_S_ERR_LEN (EXT4_S_ERR_END - EXT4_S_ERR_START)
-@@ -1082,6 +1089,7 @@ struct ext4_sb_info {
- 	unsigned long s_desc_size;	/* Size of a group descriptor in bytes */
- 	unsigned long s_inodes_per_block;/* Number of inodes per block */
- 	unsigned long s_blocks_per_group;/* Number of blocks in a group */
-+	unsigned long s_clusters_per_group; /* Number of clusters in a group */
- 	unsigned long s_inodes_per_group;/* Number of inodes in a group */
- 	unsigned long s_itb_per_group;	/* Number of inode table blocks per group */
- 	unsigned long s_gdb_count;	/* Number of group descriptor blocks */
-@@ -1090,6 +1098,8 @@ struct ext4_sb_info {
- 	ext4_group_t s_blockfile_groups;/* Groups acceptable for non-extent files */
- 	unsigned long s_overhead_last;  /* Last calculated overhead */
- 	unsigned long s_blocks_last;    /* Last seen block count */
-+	unsigned int s_cluster_ratio;	/* Number of blocks per cluster */
-+	unsigned int s_cluster_bits;	/* log2 of s_cluster_ratio */
- 	loff_t s_bitmap_maxbytes;	/* max bytes for bitmap files */
- 	struct buffer_head * s_sbh;	/* Buffer containing the super block */
- 	struct ext4_super_block *s_es;	/* Pointer to the super block in the buffer */
-@@ -1352,6 +1362,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
- #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
- #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
- #define EXT4_FEATURE_RO_COMPAT_QUOTA		0x0100
-+#define EXT4_FEATURE_RO_COMPAT_BIGALLOC		0x0200
+ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
+-				struct ext4_extent *ex,
+-				ext4_lblk_t from, ext4_lblk_t to)
++			      struct ext4_extent *ex,
++			      ext4_fsblk_t *partial_cluster,
++			      ext4_lblk_t from, ext4_lblk_t to)
+ {
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 	unsigned short ee_len =  ext4_ext_get_actual_len(ex);
++	ext4_fsblk_t pblk;
+ 	int flags = EXT4_FREE_BLOCKS_FORGET;
  
- #define EXT4_FEATURE_INCOMPAT_COMPRESSION	0x0001
- #define EXT4_FEATURE_INCOMPAT_FILETYPE		0x0002
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 9ea71aa..4618f7c1 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1909,7 +1909,7 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
- 		res = MS_RDONLY;
- 	}
- 	if (read_only)
--		return res;
-+		goto done;
- 	if (!(sbi->s_mount_state & EXT4_VALID_FS))
- 		ext4_msg(sb, KERN_WARNING, "warning: mounting unchecked fs, "
- 			 "running e2fsck is recommended");
-@@ -1940,6 +1940,7 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
- 		EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
- 
- 	ext4_commit_super(sb, 1);
-+done:
- 	if (test_opt(sb, DEBUG))
- 		printk(KERN_INFO "[EXT4 FS bs=%lu, gc=%u, "
- 				"bpg=%lu, ipg=%lu, mo=%04x, mo2=%04x]\n",
-@@ -3057,10 +3058,10 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	char *cp;
- 	const char *descr;
- 	int ret = -ENOMEM;
--	int blocksize;
-+	int blocksize, clustersize;
- 	unsigned int db_count;
- 	unsigned int i;
--	int needs_recovery, has_huge_files;
-+	int needs_recovery, has_huge_files, has_bigalloc;
- 	__u64 blocks_count;
- 	int err;
- 	unsigned int journal_ioprio = DEFAULT_JOURNAL_IOPRIO;
-@@ -3339,12 +3340,53 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		sb->s_dirt = 1;
- 	}
- 
--	if (sbi->s_blocks_per_group > blocksize * 8) {
--		ext4_msg(sb, KERN_ERR,
--		       "#blocks per group too big: %lu",
--		       sbi->s_blocks_per_group);
--		goto failed_mount;
-+	/* Handle clustersize */
-+	clustersize = BLOCK_SIZE << le32_to_cpu(es->s_log_cluster_size);
-+	has_bigalloc = EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+				EXT4_FEATURE_RO_COMPAT_BIGALLOC);
-+	if (has_bigalloc) {
-+		if (clustersize < blocksize) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "cluster size (%d) smaller than "
-+				 "block size (%d)", clustersize, blocksize);
-+			goto failed_mount;
-+		}
-+		sbi->s_cluster_bits = le32_to_cpu(es->s_log_cluster_size) -
-+			le32_to_cpu(es->s_log_block_size);
-+		sbi->s_clusters_per_group =
-+			le32_to_cpu(es->s_clusters_per_group);
-+		if (sbi->s_clusters_per_group > blocksize * 8) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "#clusters per group too big: %lu",
-+				 sbi->s_clusters_per_group);
-+			goto failed_mount;
-+		}
-+		if (sbi->s_blocks_per_group !=
-+		    (sbi->s_clusters_per_group * (clustersize / blocksize))) {
-+			ext4_msg(sb, KERN_ERR, "blocks per group (%lu) and "
-+				 "clusters per group (%lu) inconsistent",
-+				 sbi->s_blocks_per_group,
-+				 sbi->s_clusters_per_group);
-+			goto failed_mount;
-+		}
-+	} else {
-+		if (clustersize != blocksize) {
-+			ext4_warning(sb, "fragment/cluster size (%d) != "
-+				     "block size (%d)", clustersize,
-+				     blocksize);
-+			clustersize = blocksize;
-+		}
-+		if (sbi->s_blocks_per_group > blocksize * 8) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "#blocks per group too big: %lu",
-+				 sbi->s_blocks_per_group);
-+			goto failed_mount;
-+		}
-+		sbi->s_clusters_per_group = sbi->s_blocks_per_group;
-+		sbi->s_cluster_bits = 0;
- 	}
-+	sbi->s_cluster_ratio = clustersize / blocksize;
+ 	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
+ 		flags |= EXT4_FREE_BLOCKS_METADATA;
++	/*
++	 * For bigalloc file systems, we never free a partial cluster
++	 * at the beginning of the extent.  Instead, we make a note
++	 * that we tried freeing the cluster, and check to see if we
++	 * need to free it on a subsequent call to ext4_remove_blocks,
++	 * or at the end of the ext4_truncate() operation.
++	 */
++	flags |= EXT4_FREE_BLOCKS_NOFREE_FIRST_CLUSTER;
 +
- 	if (sbi->s_inodes_per_group > blocksize * 8) {
- 		ext4_msg(sb, KERN_ERR,
- 		       "#inodes per group too big: %lu",
++	/*
++	 * If we have a partial cluster, and it's different from the
++	 * cluster of the last block, we need to explicitly free the
++	 * partial cluster here.
++	 */
++	pblk = ext4_ext_pblock(ex) + ee_len - 1;
++	if (*partial_cluster && (EXT4_B2C(sbi, pblk) != *partial_cluster)) {
++		ext4_free_blocks(handle, inode, NULL,
++				 EXT4_C2B(sbi, *partial_cluster),
++				 sbi->s_cluster_ratio, flags);
++		*partial_cluster = 0;
++	}
++
+ #ifdef EXTENTS_STATS
+ 	{
+ 		struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+@@ -2219,12 +2244,24 @@ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
+ 	    && to == le32_to_cpu(ex->ee_block) + ee_len - 1) {
+ 		/* tail removal */
+ 		ext4_lblk_t num;
+-		ext4_fsblk_t start;
+ 
+ 		num = le32_to_cpu(ex->ee_block) + ee_len - from;
+-		start = ext4_ext_pblock(ex) + ee_len - num;
+-		ext_debug("free last %u blocks starting %llu\n", num, start);
+-		ext4_free_blocks(handle, inode, NULL, start, num, flags);
++		pblk = ext4_ext_pblock(ex) + ee_len - num;
++		ext_debug("free last %u blocks starting %llu\n", num, pblk);
++		ext4_free_blocks(handle, inode, NULL, pblk, num, flags);
++		/*
++		 * If the block range to be freed didn't start at the
++		 * beginning of a cluster, and we removed the entire
++		 * extent, save the partial cluster here, since we
++		 * might need to delete if we determine that the
++		 * truncate operation has removed all of the blocks in
++		 * the cluster.
++		 */
++		if (pblk & (sbi->s_cluster_ratio - 1) &&
++		    (ee_len == num))
++			*partial_cluster = EXT4_B2C(sbi, pblk);
++		else
++			*partial_cluster = 0;
+ 	} else if (from == le32_to_cpu(ex->ee_block)
+ 		   && to <= le32_to_cpu(ex->ee_block) + ee_len - 1) {
+ 		/* head removal */
+@@ -2259,9 +2296,10 @@ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
+  */
+ static int
+ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+-		struct ext4_ext_path *path, ext4_lblk_t start,
+-		ext4_lblk_t end)
++		 struct ext4_ext_path *path, ext4_fsblk_t *partial_cluster,
++		 ext4_lblk_t start, ext4_lblk_t end)
+ {
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 	int err = 0, correct_index = 0;
+ 	int depth = ext_depth(inode), credits;
+ 	struct ext4_extent_header *eh;
+@@ -2413,7 +2451,8 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+ 		if (err)
+ 			goto out;
+ 
+-		err = ext4_remove_blocks(handle, inode, ex, a, b);
++		err = ext4_remove_blocks(handle, inode, ex, partial_cluster,
++					 a, b);
+ 		if (err)
+ 			goto out;
+ 
+@@ -2461,7 +2500,8 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+ 					sizeof(struct ext4_extent));
+ 			}
+ 			le16_add_cpu(&eh->eh_entries, -1);
+-		}
++		} else
++			*partial_cluster = 0;
+ 
+ 		ext_debug("new extent: %u:%u:%llu\n", block, num,
+ 				ext4_ext_pblock(ex));
+@@ -2473,6 +2513,25 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+ 	if (correct_index && eh->eh_entries)
+ 		err = ext4_ext_correct_indexes(handle, inode, path);
+ 
++	/*
++	 * If there is still a entry in the leaf node, check to see if
++	 * it references the partial cluster.  This is the only place
++	 * where it could; if it doesn't, we can free the cluster.
++	 */
++	if (*partial_cluster && ex >= EXT_FIRST_EXTENT(eh) &&
++	    (EXT4_B2C(sbi, ext4_ext_pblock(ex) + ex_ee_len - 1) !=
++	     *partial_cluster)) {
++		int flags = EXT4_FREE_BLOCKS_FORGET;
++
++		if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
++			flags |= EXT4_FREE_BLOCKS_METADATA;
++
++		ext4_free_blocks(handle, inode, NULL,
++				 EXT4_C2B(sbi, *partial_cluster),
++				 sbi->s_cluster_ratio, flags);
++		*partial_cluster = 0;
++	}
++
+ 	/* if this leaf is free, then we should
+ 	 * remove it from index block above */
+ 	if (err == 0 && eh->eh_entries == 0 && path[depth].p_bh != NULL)
+@@ -2509,6 +2568,7 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
+ 	struct super_block *sb = inode->i_sb;
+ 	int depth = ext_depth(inode);
+ 	struct ext4_ext_path *path;
++	ext4_fsblk_t partial_cluster = 0;
+ 	handle_t *handle;
+ 	int i, err;
+ 
+@@ -2544,7 +2604,7 @@ again:
+ 		if (i == depth) {
+ 			/* this is leaf block */
+ 			err = ext4_ext_rm_leaf(handle, inode, path,
+-					start, end);
++					       &partial_cluster, start, end);
+ 			/* root level has p_bh == NULL, brelse() eats this */
+ 			brelse(path[i].p_bh);
+ 			path[i].p_bh = NULL;
 -- 
 1.7.4.1.22.gec8e1.dirty
 
