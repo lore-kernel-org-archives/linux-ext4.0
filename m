@@ -1,275 +1,183 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 18/23] ext4: Rename ext4_free_blks_{count,set}() to refer to clusters
-Date: Wed,  6 Jul 2011 12:36:01 -0400
-Message-ID: <1309970166-11770-19-git-send-email-tytso@mit.edu>
+Subject: [PATCH 02/23] ext4: enforce bigalloc restrictions (e.g., no online resizing, etc.)
+Date: Wed,  6 Jul 2011 12:35:45 -0400
+Message-ID: <1309970166-11770-3-git-send-email-tytso@mit.edu>
 References: <1309970166-11770-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33479 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:33478 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754763Ab1GFQgJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1754760Ab1GFQgJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 6 Jul 2011 12:36:09 -0400
 In-Reply-To: <1309970166-11770-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The field bg_free_free_blocks_count_{lo,high} in the block group
-descriptor has been repurposed to hold the number of free clusters for
-bigalloc functions.  So rename the functions so it makes it easier to
-read and audit the block allocation and block freeing code.
-
-Note: at this point in bigalloc development we doesn't support
-online-resize, so this also makes it really obvious all of the places
-we need to fix up to add support for online resize.
+At least initially if the bigalloc feature is enabled, we will not
+support non-extent mapped inodes, online resizing, online defrag, or
+the FITRIM ioctl.  This simplifies the initial implementation.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/balloc.c  |    8 ++++----
- fs/ext4/ext4.h    |    9 +++++----
- fs/ext4/ialloc.c  |   14 +++++++-------
- fs/ext4/mballoc.c |   22 +++++++++++-----------
- fs/ext4/resize.c  |    2 +-
- fs/ext4/super.c   |   10 +++++-----
- 6 files changed, 33 insertions(+), 32 deletions(-)
+ fs/ext4/indirect.c |    7 +++++++
+ fs/ext4/inode.c    |    5 +++++
+ fs/ext4/ioctl.c    |   33 +++++++++++++++++++++++++++++----
+ fs/ext4/super.c    |    7 +++++++
+ 4 files changed, 48 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index bf42b32..84dc3d6 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -168,7 +168,7 @@ void ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 	 * essentially implementing a per-group read-only flag. */
- 	if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
- 		ext4_error(sb, "Checksum bad for group %u", block_group);
--		ext4_free_blks_set(sb, gdp, 0);
-+		ext4_free_group_clusters_set(sb, gdp, 0);
- 		ext4_free_inodes_set(sb, gdp, 0);
- 		ext4_itable_unused_set(sb, gdp, 0);
- 		memset(bh->b_data, 0xff, sb->s_blocksize);
-@@ -550,7 +550,7 @@ ext4_fsblk_t ext4_count_free_blocks(struct super_block *sb)
- 		gdp = ext4_get_group_desc(sb, i, NULL);
- 		if (!gdp)
- 			continue;
--		desc_count += ext4_free_blks_count(sb, gdp);
-+		desc_count += ext4_free_group_clusters(sb, gdp);
- 		brelse(bitmap_bh);
- 		bitmap_bh = ext4_read_block_bitmap(sb, i);
- 		if (bitmap_bh == NULL)
-@@ -558,7 +558,7 @@ ext4_fsblk_t ext4_count_free_blocks(struct super_block *sb)
- 
- 		x = ext4_count_free(bitmap_bh, sb->s_blocksize);
- 		printk(KERN_DEBUG "group %u: stored = %d, counted = %u\n",
--			i, ext4_free_blks_count(sb, gdp), x);
-+			i, ext4_free_group_clusters(sb, gdp), x);
- 		bitmap_count += x;
- 	}
- 	brelse(bitmap_bh);
-@@ -572,7 +572,7 @@ ext4_fsblk_t ext4_count_free_blocks(struct super_block *sb)
- 		gdp = ext4_get_group_desc(sb, i, NULL);
- 		if (!gdp)
- 			continue;
--		desc_count += ext4_free_blks_count(sb, gdp);
-+		desc_count += ext4_free_group_clusters(sb, gdp);
- 	}
- 
- 	return desc_count;
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index d79e773..290b7e4 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1954,8 +1954,8 @@ extern ext4_fsblk_t ext4_inode_bitmap(struct super_block *sb,
- 				      struct ext4_group_desc *bg);
- extern ext4_fsblk_t ext4_inode_table(struct super_block *sb,
- 				     struct ext4_group_desc *bg);
--extern __u32 ext4_free_blks_count(struct super_block *sb,
--				struct ext4_group_desc *bg);
-+extern __u32 ext4_free_group_clusters(struct super_block *sb,
-+				      struct ext4_group_desc *bg);
- extern __u32 ext4_free_inodes_count(struct super_block *sb,
- 				 struct ext4_group_desc *bg);
- extern __u32 ext4_used_dirs_count(struct super_block *sb,
-@@ -1968,8 +1968,9 @@ extern void ext4_inode_bitmap_set(struct super_block *sb,
- 				  struct ext4_group_desc *bg, ext4_fsblk_t blk);
- extern void ext4_inode_table_set(struct super_block *sb,
- 				 struct ext4_group_desc *bg, ext4_fsblk_t blk);
--extern void ext4_free_blks_set(struct super_block *sb,
--			       struct ext4_group_desc *bg, __u32 count);
-+extern void ext4_free_group_clusters_set(struct super_block *sb,
-+					 struct ext4_group_desc *bg,
-+					 __u32 count);
- extern void ext4_free_inodes_set(struct super_block *sb,
- 				struct ext4_group_desc *bg, __u32 count);
- extern void ext4_used_dirs_set(struct super_block *sb,
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 048ee7f..aa74ca6 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -78,7 +78,7 @@ static unsigned ext4_init_inode_bitmap(struct super_block *sb,
- 	 * allocation, essentially implementing a per-group read-only flag. */
- 	if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
- 		ext4_error(sb, "Checksum bad for group %u", block_group);
--		ext4_free_blks_set(sb, gdp, 0);
-+		ext4_free_group_clusters_set(sb, gdp, 0);
- 		ext4_free_inodes_set(sb, gdp, 0);
- 		ext4_itable_unused_set(sb, gdp, 0);
- 		memset(bh->b_data, 0xff, sb->s_blocksize);
-@@ -322,8 +322,8 @@ static int find_group_dir(struct super_block *sb, struct inode *parent,
- 		if (ext4_free_inodes_count(sb, desc) < avefreei)
- 			continue;
- 		if (!best_desc ||
--		    (ext4_free_blks_count(sb, desc) >
--		     ext4_free_blks_count(sb, best_desc))) {
-+		    (ext4_free_group_clusters(sb, desc) >
-+		     ext4_free_group_clusters(sb, best_desc))) {
- 			*best_group = group;
- 			best_desc = desc;
- 			ret = 0;
-@@ -434,7 +434,7 @@ static void get_orlov_stats(struct super_block *sb, ext4_group_t g,
- 	desc = ext4_get_group_desc(sb, g, NULL);
- 	if (desc) {
- 		stats->free_inodes = ext4_free_inodes_count(sb, desc);
--		stats->free_clusters = ext4_free_blks_count(sb, desc);
-+		stats->free_clusters = ext4_free_group_clusters(sb, desc);
- 		stats->used_dirs = ext4_used_dirs_count(sb, desc);
- 	} else {
- 		stats->free_inodes = 0;
-@@ -662,7 +662,7 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
- 	*group = parent_group;
- 	desc = ext4_get_group_desc(sb, *group, NULL);
- 	if (desc && ext4_free_inodes_count(sb, desc) &&
--			ext4_free_blks_count(sb, desc))
-+	    ext4_free_group_clusters(sb, desc))
- 		return 0;
- 
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 6c27111..9572827 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -699,6 +699,13 @@ int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
  	/*
-@@ -686,7 +686,7 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
- 			*group -= ngroups;
- 		desc = ext4_get_group_desc(sb, *group, NULL);
- 		if (desc && ext4_free_inodes_count(sb, desc) &&
--				ext4_free_blks_count(sb, desc))
-+		    ext4_free_group_clusters(sb, desc))
- 			return 0;
+ 	 * Okay, we need to do block allocation.
+ 	*/
++	if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
++				       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
++		EXT4_ERROR_INODE(inode, "Can't allocate blocks for "
++				 "non-extent mapped inodes with bigalloc");
++		return -ENOSPC;
++	}
++
+ 	goal = ext4_find_goal(inode, map->m_lblk, partial);
+ 
+ 	/* the number of blocks need to allocate for [d,t]indirect blocks */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index de50b16..7d1e9e0 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3060,6 +3060,11 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 		return -ENOTSUPP;
  	}
  
-@@ -960,7 +960,7 @@ got:
- 		ext4_lock_group(sb, group);
- 		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
- 			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
--			ext4_free_blks_set(sb, gdp,
-+			ext4_free_group_clusters_set(sb, gdp,
- 				ext4_free_blocks_after_init(sb, group, gdp));
- 			gdp->bg_checksum = ext4_group_desc_csum(sbi, group,
- 								gdp);
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 73fbb99..852f303 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2254,7 +2254,7 @@ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
- 			ext4_free_blocks_after_init(sb, group, desc);
- 	} else {
- 		meta_group_info[i]->bb_free =
--			ext4_free_blks_count(sb, desc);
-+			ext4_free_group_clusters(sb, desc);
- 	}
++	if (EXT4_SB(inode->i_sb)->s_cluster_ratio > 1) {
++		/* TODO: Add support for bigalloc file systems */
++		return -ENOTSUPP;
++	}
++
+ 	return ext4_ext_punch_hole(file, offset, length);
+ }
  
- 	INIT_LIST_HEAD(&meta_group_info[i]->bb_prealloc_list);
-@@ -2770,7 +2770,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 		goto out_err;
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 808c554..dcd0916 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -21,6 +21,7 @@
+ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ {
+ 	struct inode *inode = filp->f_dentry->d_inode;
++	struct super_block *sb = inode->i_sb;
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	unsigned int flags;
  
- 	ext4_debug("using block group %u(%d)\n", ac->ac_b_ex.fe_group,
--			ext4_free_blks_count(sb, gdp));
-+			ext4_free_group_clusters(sb, gdp));
+@@ -183,7 +184,6 @@ setversion_out:
+ 		 * Returns 1 if it slept, else zero.
+ 		 */
+ 		{
+-			struct super_block *sb = inode->i_sb;
+ 			DECLARE_WAITQUEUE(wait, current);
+ 			int ret = 0;
  
- 	err = ext4_journal_get_write_access(handle, gdp_bh);
- 	if (err)
-@@ -2809,12 +2809,12 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 	mb_set_bits(bitmap_bh->b_data, ac->ac_b_ex.fe_start,ac->ac_b_ex.fe_len);
- 	if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
- 		gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
--		ext4_free_blks_set(sb, gdp,
--					ext4_free_blocks_after_init(sb,
--					ac->ac_b_ex.fe_group, gdp));
-+		ext4_free_group_clusters_set(sb, gdp,
-+					     ext4_free_blocks_after_init(sb,
-+						ac->ac_b_ex.fe_group, gdp));
- 	}
--	len = ext4_free_blks_count(sb, gdp) - ac->ac_b_ex.fe_len;
--	ext4_free_blks_set(sb, gdp, len);
-+	len = ext4_free_group_clusters(sb, gdp) - ac->ac_b_ex.fe_len;
-+	ext4_free_group_clusters_set(sb, gdp, len);
- 	gdp->bg_checksum = ext4_group_desc_csum(sbi, ac->ac_b_ex.fe_group, gdp);
+@@ -199,7 +199,6 @@ setversion_out:
+ #endif
+ 	case EXT4_IOC_GROUP_EXTEND: {
+ 		ext4_fsblk_t n_blocks_count;
+-		struct super_block *sb = inode->i_sb;
+ 		int err, err2=0;
  
- 	ext4_unlock_group(sb, ac->ac_b_ex.fe_group);
-@@ -4670,8 +4670,8 @@ do_more:
- 		mb_free_blocks(inode, &e4b, bit, count_clusters);
- 	}
+ 		if (!capable(CAP_SYS_RESOURCE))
+@@ -212,6 +211,13 @@ setversion_out:
+ 		if (err)
+ 			return err;
  
--	ret = ext4_free_blks_count(sb, gdp) + count_clusters;
--	ext4_free_blks_set(sb, gdp, ret);
-+	ret = ext4_free_group_clusters(sb, gdp) + count_clusters;
-+	ext4_free_group_clusters_set(sb, gdp, ret);
- 	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
- 	ext4_unlock_group(sb, block_group);
- 	percpu_counter_add(&sbi->s_freeclusters_counter, count_clusters);
-@@ -4800,8 +4800,8 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
- 	ext4_lock_group(sb, block_group);
- 	mb_clear_bits(bitmap_bh->b_data, bit, count);
- 	mb_free_blocks(NULL, &e4b, bit, count);
--	blk_free_count = blocks_freed + ext4_free_blks_count(sb, desc);
--	ext4_free_blks_set(sb, desc, blk_free_count);
-+	blk_free_count = blocks_freed + ext4_free_group_clusters(sb, desc);
-+	ext4_free_group_clusters_set(sb, desc, blk_free_count);
- 	desc->bg_checksum = ext4_group_desc_csum(sbi, block_group, desc);
- 	ext4_unlock_group(sb, block_group);
- 	percpu_counter_add(&sbi->s_freeclusters_counter,
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index cef49d3..14b66ba 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -853,7 +853,7 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
- 	ext4_block_bitmap_set(sb, gdp, input->block_bitmap); /* LV FIXME */
- 	ext4_inode_bitmap_set(sb, gdp, input->inode_bitmap); /* LV FIXME */
- 	ext4_inode_table_set(sb, gdp, input->inode_table); /* LV FIXME */
--	ext4_free_blks_set(sb, gdp, input->free_blocks_count);
-+	ext4_free_group_clusters_set(sb, gdp, input->free_blocks_count);
- 	ext4_free_inodes_set(sb, gdp, EXT4_INODES_PER_GROUP(sb));
- 	gdp->bg_flags = cpu_to_le16(EXT4_BG_INODE_ZEROED);
- 	gdp->bg_checksum = ext4_group_desc_csum(sbi, input->group, gdp);
++		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
++			       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
++			ext4_msg(sb, KERN_ERR,
++				 "Online resizing not supported with bigalloc");
++			return -EOPNOTSUPP;
++		}
++
+ 		err = ext4_group_extend(sb, EXT4_SB(sb)->s_es, n_blocks_count);
+ 		if (EXT4_SB(sb)->s_journal) {
+ 			jbd2_journal_lock_updates(EXT4_SB(sb)->s_journal);
+@@ -252,6 +258,13 @@ setversion_out:
+ 		if (err)
+ 			goto mext_out;
+ 
++		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
++			       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
++			ext4_msg(sb, KERN_ERR,
++				 "Online defrag not supported with bigalloc");
++			return -EOPNOTSUPP;
++		}
++
+ 		err = ext4_move_extents(filp, donor_filp, me.orig_start,
+ 					me.donor_start, me.len, &me.moved_len);
+ 		mnt_drop_write(filp->f_path.mnt);
+@@ -268,7 +281,6 @@ mext_out:
+ 
+ 	case EXT4_IOC_GROUP_ADD: {
+ 		struct ext4_new_group_data input;
+-		struct super_block *sb = inode->i_sb;
+ 		int err, err2=0;
+ 
+ 		if (!capable(CAP_SYS_RESOURCE))
+@@ -282,6 +294,13 @@ mext_out:
+ 		if (err)
+ 			return err;
+ 
++		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
++			       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
++			ext4_msg(sb, KERN_ERR,
++				 "Online resizing not supported with bigalloc");
++			return -EOPNOTSUPP;
++		}
++
+ 		err = ext4_group_add(sb, &input);
+ 		if (EXT4_SB(sb)->s_journal) {
+ 			jbd2_journal_lock_updates(EXT4_SB(sb)->s_journal);
+@@ -333,7 +352,6 @@ mext_out:
+ 
+ 	case FITRIM:
+ 	{
+-		struct super_block *sb = inode->i_sb;
+ 		struct request_queue *q = bdev_get_queue(sb->s_bdev);
+ 		struct fstrim_range range;
+ 		int ret = 0;
+@@ -344,6 +362,13 @@ mext_out:
+ 		if (!blk_queue_discard(q))
+ 			return -EOPNOTSUPP;
+ 
++		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
++			       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
++			ext4_msg(sb, KERN_ERR,
++				 "FITRIM not supported with bigalloc");
++			return -EOPNOTSUPP;
++		}
++
+ 		if (copy_from_user(&range, (struct fstrim_range *)arg,
+ 		    sizeof(range)))
+ 			return -EFAULT;
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index e10062d..3f02afa 100644
+index 4618f7c1..231aac2 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -134,8 +134,8 @@ ext4_fsblk_t ext4_inode_table(struct super_block *sb,
- 		 (ext4_fsblk_t)le32_to_cpu(bg->bg_inode_table_hi) << 32 : 0);
+@@ -2653,6 +2653,13 @@ static int ext4_feature_set_ok(struct super_block *sb, int readonly)
+ 			return 0;
+ 		}
+ 	}
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_BIGALLOC) &&
++	    !EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS)) {
++		ext4_msg(sb, KERN_ERR,
++			 "Can't support bigalloc feature without "
++			 "extents feature\n");
++		return 0;
++	}
+ 	return 1;
  }
  
--__u32 ext4_free_blks_count(struct super_block *sb,
--			      struct ext4_group_desc *bg)
-+__u32 ext4_free_group_clusters(struct super_block *sb,
-+			       struct ext4_group_desc *bg)
- {
- 	return le16_to_cpu(bg->bg_free_blocks_count_lo) |
- 		(EXT4_DESC_SIZE(sb) >= EXT4_MIN_DESC_SIZE_64BIT ?
-@@ -190,8 +190,8 @@ void ext4_inode_table_set(struct super_block *sb,
- 		bg->bg_inode_table_hi = cpu_to_le32(blk >> 32);
- }
- 
--void ext4_free_blks_set(struct super_block *sb,
--			  struct ext4_group_desc *bg, __u32 count)
-+void ext4_free_group_clusters_set(struct super_block *sb,
-+				  struct ext4_group_desc *bg, __u32 count)
- {
- 	bg->bg_free_blocks_count_lo = cpu_to_le16((__u16)count);
- 	if (EXT4_DESC_SIZE(sb) >= EXT4_MIN_DESC_SIZE_64BIT)
-@@ -1994,7 +1994,7 @@ static int ext4_fill_flex_info(struct super_block *sb)
- 		flex_group = ext4_flex_group(sbi, i);
- 		atomic_add(ext4_free_inodes_count(sb, gdp),
- 			   &sbi->s_flex_groups[flex_group].free_inodes);
--		atomic_add(ext4_free_blks_count(sb, gdp),
-+		atomic_add(ext4_free_group_clusters(sb, gdp),
- 			   &sbi->s_flex_groups[flex_group].free_clusters);
- 		atomic_add(ext4_used_dirs_count(sb, gdp),
- 			   &sbi->s_flex_groups[flex_group].used_dirs);
 -- 
 1.7.4.1.22.gec8e1.dirty
 
