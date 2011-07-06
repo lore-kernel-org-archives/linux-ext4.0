@@ -1,67 +1,226 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 07/23] ext4: convert block group-relative offsets to use clusters
-Date: Wed,  6 Jul 2011 12:35:50 -0400
-Message-ID: <1309970166-11770-8-git-send-email-tytso@mit.edu>
+Subject: [PATCH 05/23] ext4: split out ext4_free_blocks_after_init()
+Date: Wed,  6 Jul 2011 12:35:48 -0400
+Message-ID: <1309970166-11770-6-git-send-email-tytso@mit.edu>
 References: <1309970166-11770-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33455 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:33468 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754749Ab1GFQgJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1754751Ab1GFQgJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 6 Jul 2011 12:36:09 -0400
 In-Reply-To: <1309970166-11770-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Certain parts of the ext4 code base, primarily in mballoc.c, use a
-block group number and offset from the beginning of the block group.
-This offset is invariably used to index into the allocation bitmap, so
-change the offset to be denominated in units of clusters.
+The function ext4_free_blocks_after_init() used to be a #define of
+ext4_init_block_bitmap().  This actually made it difficult to
+understand how the function worked, and made it hard make changes to
+support clusters.  So as an initial cleanup, I've separated out the
+functionality of initializing block bitmap from calculating the number
+of free blocks in the new block group.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/balloc.c  |    6 ++++--
- fs/ext4/mballoc.h |    3 ++-
- 2 files changed, 6 insertions(+), 3 deletions(-)
+ fs/ext4/balloc.c |  105 ++++++++++++++++++++++++++---------------------------
+ fs/ext4/ext4.h   |   13 ++++---
+ fs/ext4/ialloc.c |   20 ++++-------
+ 3 files changed, 66 insertions(+), 72 deletions(-)
 
 diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 1c6d777..89abf1f 100644
+index 8573e2b..735d9fc 100644
 --- a/fs/ext4/balloc.c
 +++ b/fs/ext4/balloc.c
-@@ -28,7 +28,8 @@
-  */
+@@ -102,74 +102,73 @@ static unsigned int num_blocks_in_group(struct super_block *sb,
+ 		return EXT4_BLOCKS_PER_GROUP(sb);
+ }
+ 
+-/* Initializes an uninitialized block bitmap if given, and returns the
+- * number of blocks free in the group. */
+-unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
+-		 ext4_group_t block_group, struct ext4_group_desc *gdp)
++/* Initializes an uninitialized block bitmap */
++void ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
++			    ext4_group_t block_group,
++			    struct ext4_group_desc *gdp)
+ {
+ 	unsigned int bit, bit_max = num_base_meta_blocks(sb, block_group);
+-	ext4_group_t ngroups = ext4_get_groups_count(sb);
+-	unsigned group_blocks = num_blocks_in_group(sb, block_group);
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-
+-	if (bh) {
+-		J_ASSERT_BH(bh, buffer_locked(bh));
+-
+-		/* If checksum is bad mark all blocks used to prevent allocation
+-		 * essentially implementing a per-group read-only flag. */
+-		if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
+-			ext4_error(sb, "Checksum bad for group %u",
+-					block_group);
+-			ext4_free_blks_set(sb, gdp, 0);
+-			ext4_free_inodes_set(sb, gdp, 0);
+-			ext4_itable_unused_set(sb, gdp, 0);
+-			memset(bh->b_data, 0xff, sb->s_blocksize);
+-			return 0;
+-		}
+-		memset(bh->b_data, 0, sb->s_blocksize);
++	ext4_fsblk_t start, tmp;
++	int flex_bg = 0;
++
++	J_ASSERT_BH(bh, buffer_locked(bh));
++
++	/* If checksum is bad mark all blocks used to prevent allocation
++	 * essentially implementing a per-group read-only flag. */
++	if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
++		ext4_error(sb, "Checksum bad for group %u", block_group);
++		ext4_free_blks_set(sb, gdp, 0);
++		ext4_free_inodes_set(sb, gdp, 0);
++		ext4_itable_unused_set(sb, gdp, 0);
++		memset(bh->b_data, 0xff, sb->s_blocksize);
++		return;
+ 	}
++	memset(bh->b_data, 0, sb->s_blocksize);
+ 
+-	if (bh) {
+-		ext4_fsblk_t start, tmp;
+-		int flex_bg = 0;
++	for (bit = 0; bit < bit_max; bit++)
++		ext4_set_bit(bit, bh->b_data);
+ 
+-		for (bit = 0; bit < bit_max; bit++)
+-			ext4_set_bit(bit, bh->b_data);
++	start = ext4_group_first_block_no(sb, block_group);
+ 
+-		start = ext4_group_first_block_no(sb, block_group);
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
++		flex_bg = 1;
+ 
+-		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
+-					      EXT4_FEATURE_INCOMPAT_FLEX_BG))
+-			flex_bg = 1;
++	/* Set bits for block and inode bitmaps, and inode table */
++	tmp = ext4_block_bitmap(sb, gdp);
++	if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
++		ext4_set_bit(tmp - start, bh->b_data);
+ 
+-		/* Set bits for block and inode bitmaps, and inode table */
+-		tmp = ext4_block_bitmap(sb, gdp);
+-		if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
+-			ext4_set_bit(tmp - start, bh->b_data);
++	tmp = ext4_inode_bitmap(sb, gdp);
++	if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
++		ext4_set_bit(tmp - start, bh->b_data);
+ 
+-		tmp = ext4_inode_bitmap(sb, gdp);
++	tmp = ext4_inode_table(sb, gdp);
++	for (; tmp < ext4_inode_table(sb, gdp) +
++		     sbi->s_itb_per_group; tmp++) {
+ 		if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
+ 			ext4_set_bit(tmp - start, bh->b_data);
+-
+-		tmp = ext4_inode_table(sb, gdp);
+-		for (; tmp < ext4_inode_table(sb, gdp) +
+-				sbi->s_itb_per_group; tmp++) {
+-			if (!flex_bg ||
+-				ext4_block_in_group(sb, tmp, block_group))
+-				ext4_set_bit(tmp - start, bh->b_data);
+-		}
+-		/*
+-		 * Also if the number of blocks within the group is
+-		 * less than the blocksize * 8 ( which is the size
+-		 * of bitmap ), set rest of the block bitmap to 1
+-		 */
+-		ext4_mark_bitmap_end(group_blocks, sb->s_blocksize * 8,
+-				     bh->b_data);
+ 	}
+-	return group_blocks - bit_max -
+-		ext4_group_used_meta_blocks(sb, block_group, gdp);
++	/*
++	 * Also if the number of blocks within the group is less than
++	 * the blocksize * 8 ( which is the size of bitmap ), set rest
++	 * of the block bitmap to 1
++	 */
++	ext4_mark_bitmap_end(num_blocks_in_group(sb, block_group),
++			     sb->s_blocksize * 8, bh->b_data);
+ }
+ 
++/* Return the number of free blocks in a block group.  It is used when
++ * the block bitmap is uninitialized, so we can't just count the bits
++ * in the bitmap. */
++unsigned ext4_free_blocks_after_init(struct super_block *sb,
++				     ext4_group_t block_group,
++				     struct ext4_group_desc *gdp)
++{
++	return num_blocks_in_group(sb, block_group) -
++		num_base_meta_blocks(sb, block_group) -
++		ext4_group_used_meta_blocks(sb, block_group, gdp);
++}
  
  /*
-- * Calculate the block group number and offset, given a block number
-+ * Calculate the block group number and offset into the block/cluster
-+ * allocation bitmap, given a block number
-  */
- void ext4_get_group_no_and_offset(struct super_block *sb, ext4_fsblk_t blocknr,
- 		ext4_group_t *blockgrpp, ext4_grpblk_t *offsetp)
-@@ -37,7 +38,8 @@ void ext4_get_group_no_and_offset(struct super_block *sb, ext4_fsblk_t blocknr,
- 	ext4_grpblk_t offset;
+  * The free blocks are managed by bitmaps.  A file system contains several
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 03a0857..db090e7 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1748,12 +1748,13 @@ extern struct ext4_group_desc * ext4_get_group_desc(struct super_block * sb,
+ extern int ext4_should_retry_alloc(struct super_block *sb, int *retries);
+ struct buffer_head *ext4_read_block_bitmap(struct super_block *sb,
+ 				      ext4_group_t block_group);
+-extern unsigned ext4_init_block_bitmap(struct super_block *sb,
+-				       struct buffer_head *bh,
+-				       ext4_group_t group,
+-				       struct ext4_group_desc *desc);
+-#define ext4_free_blocks_after_init(sb, group, desc)			\
+-		ext4_init_block_bitmap(sb, NULL, group, desc)
++extern void ext4_init_block_bitmap(struct super_block *sb,
++				   struct buffer_head *bh,
++				   ext4_group_t group,
++				   struct ext4_group_desc *desc);
++extern unsigned ext4_free_blocks_after_init(struct super_block *sb,
++					    ext4_group_t block_group,
++					    struct ext4_group_desc *gdp);
+ ext4_fsblk_t ext4_inode_to_goal_block(struct inode *);
  
- 	blocknr = blocknr - le32_to_cpu(es->s_first_data_block);
--	offset = do_div(blocknr, EXT4_BLOCKS_PER_GROUP(sb));
-+	offset = do_div(blocknr, EXT4_BLOCKS_PER_GROUP(sb)) >>
-+		EXT4_SB(sb)->s_cluster_bits;
- 	if (offsetp)
- 		*offsetp = offset;
- 	if (blockgrpp)
-diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
-index 20b5e7b..4423c6f 100644
---- a/fs/ext4/mballoc.h
-+++ b/fs/ext4/mballoc.h
-@@ -217,6 +217,7 @@ struct ext4_buddy {
- static inline ext4_fsblk_t ext4_grp_offs_to_block(struct super_block *sb,
- 					struct ext4_free_extent *fex)
- {
--	return ext4_group_first_block_no(sb, fex->fe_group) + fex->fe_start;
-+	return ext4_group_first_block_no(sb, fex->fe_group) +
-+		(fex->fe_start << EXT4_SB(sb)->s_cluster_bits);
- }
- #endif
--- 
-1.7.4.1.22.gec8e1.dirty
-
+ /* dir.c */
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 21bb2f6..c176cf4 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -816,7 +816,6 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode,
+ 	int ret2, err = 0;
+ 	struct inode *ret;
+ 	ext4_group_t i;
+-	int free = 0;
+ 	static int once = 1;
+ 	ext4_group_t flex_group;
+ 
+@@ -950,26 +949,21 @@ got:
+ 			goto fail;
+ 		}
+ 
+-		free = 0;
+-		ext4_lock_group(sb, group);
++		BUFFER_TRACE(block_bitmap_bh, "dirty block bitmap");
++		err = ext4_handle_dirty_metadata(handle, NULL, block_bitmap_bh);
++		brelse(block_bitmap_bh);
++
+ 		/* recheck and clear flag under lock if we still need to */
++		ext4_lock_group(sb, group);
+ 		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+-			free = ext4_free_blocks_after_init(sb, group, gdp);
+ 			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
+-			ext4_free_blks_set(sb, gdp, free);
++			ext4_free_blks_set(sb, gdp,
++				ext4_free_blocks_after_init(sb, group, gdp));
+ 			gdp->bg_checksum = ext4_group_desc_csum(sbi, group,
+ 								gdp);
+ 		}
+ 		ext4_unlock_group(sb, group);
+ 
+-		/* Don't need to dirty bitmap block if we didn't change it */
+-		if (free) {
+-			BUFFER_TRACE(block_bitmap_bh, "dirty block bitmap");
+-			err = ext4_handle_dirty_metadata(handle,
+-							NULL, block_bitmap_bh);
+-		}
