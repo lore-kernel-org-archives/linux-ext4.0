@@ -1,65 +1,152 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 15/23] ext4: tune mballoc's default group prealloc size for bigalloc file systems
-Date: Wed,  6 Jul 2011 12:35:58 -0400
-Message-ID: <1309970166-11770-16-git-send-email-tytso@mit.edu>
+Subject: [PATCH 22/23] ext4: rename ext4_has_free_blocks() to ext4_has_free_clusters()
+Date: Wed,  6 Jul 2011 12:36:05 -0400
+Message-ID: <1309970166-11770-23-git-send-email-tytso@mit.edu>
 References: <1309970166-11770-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33492 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:33463 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754780Ab1GFQgJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1754773Ab1GFQgJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 6 Jul 2011 12:36:09 -0400
 In-Reply-To: <1309970166-11770-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The default group preallocation size had been previously set to 512
-blocks/clusters, regardless of the block/cluster size.  This is
-probably too big for large cluster sizes.  So adjust the default so
-that it is 2 megabytes or 32 clusters, whichever is larger.
+Rename the function so it is more clear what is going on.  Also rename
+the various variables so it's clearer what's happening.
+
+Also fix a missing blocks to cluster conversion when reading the
+number of reserved blocks for root.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/mballoc.c |   18 ++++++++++++++++--
- 1 files changed, 16 insertions(+), 2 deletions(-)
+ fs/ext4/balloc.c |   43 ++++++++++++++++++++++---------------------
+ fs/ext4/ext4.h   |    8 ++++----
+ fs/ext4/inode.c  |    2 +-
+ 3 files changed, 27 insertions(+), 26 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 48172a1..2d23d0a 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -126,7 +126,8 @@
-  * list. In case of inode preallocation we follow a list of heuristics
-  * based on file size. This can be found in ext4_mb_normalize_request. If
-  * we are doing a group prealloc we try to normalize the request to
-- * sbi->s_mb_group_prealloc. Default value of s_mb_group_prealloc is
-+ * sbi->s_mb_group_prealloc.  The default value of s_mb_group_prealloc is
-+ * dependent on the cluster size; for non-bigalloc file systems, it is
-  * 512 blocks. This can be tuned via
-  * /sys/fs/ext4/<partition/mb_group_prealloc. The value is represented in
-  * terms of number of blocks. If we have mounted the file system with -O
-@@ -2471,7 +2472,20 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
- 	sbi->s_mb_stats = MB_DEFAULT_STATS;
- 	sbi->s_mb_stream_request = MB_DEFAULT_STREAM_THRESHOLD;
- 	sbi->s_mb_order2_reqs = MB_DEFAULT_ORDER2_REQS;
--	sbi->s_mb_group_prealloc = MB_DEFAULT_GROUP_PREALLOC;
-+	/*
-+	 * The default group preallocation is 512, which for 4k block
-+	 * sizes translates to 2 megabytes.  However for bigalloc file
-+	 * systems, this is probably too big (i.e, if the cluster size
-+	 * is 1 megabyte, then group preallocation size becomes half a
-+	 * gigabyte!).  As a default, we will keep a two megabyte
-+	 * group pralloc size for cluster sizes up to 64k, and after
-+	 * that, we will force a minimum group preallocation size of
-+	 * 32 clusters.  This translates to 8 megs when the cluster
-+	 * size is 256k, and 32 megs when the cluster size is 1 meg,
-+	 * which seems reasonable as a default.
-+	 */
-+	sbi->s_mb_group_prealloc = max(MB_DEFAULT_GROUP_PREALLOC >>
-+				       sbi->s_cluster_bits, 32);
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index af0c535..f6dba45 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -403,42 +403,43 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
+ }
  
- 	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
- 	if (sbi->s_locality_groups == NULL) {
+ /**
+- * ext4_has_free_blocks()
++ * ext4_has_free_clusters()
+  * @sbi:	in-core super block structure.
+- * @nblocks:	number of needed blocks
++ * @nclusters:	number of needed blocks
++ * @flags:	flags from ext4_mb_new_blocks()
+  *
+- * Check if filesystem has nblocks free & available for allocation.
++ * Check if filesystem has nclusters free & available for allocation.
+  * On success return 1, return 0 on failure.
+  */
+-static int ext4_has_free_blocks(struct ext4_sb_info *sbi,
+-				s64 nblocks, unsigned int flags)
++static int ext4_has_free_clusters(struct ext4_sb_info *sbi,
++				  s64 nclusters, unsigned int flags)
+ {
+-	s64 free_blocks, dirty_blocks, root_blocks;
++	s64 free_clusters, dirty_clusters, root_clusters;
+ 	struct percpu_counter *fcc = &sbi->s_freeclusters_counter;
+-	struct percpu_counter *dbc = &sbi->s_dirtyclusters_counter;
++	struct percpu_counter *dcc = &sbi->s_dirtyclusters_counter;
+ 
+-	free_blocks  = percpu_counter_read_positive(fcc);
+-	dirty_blocks = percpu_counter_read_positive(dbc);
+-	root_blocks = ext4_r_blocks_count(sbi->s_es);
++	free_clusters  = percpu_counter_read_positive(fcc);
++	dirty_clusters = percpu_counter_read_positive(dcc);
++	root_clusters = EXT4_B2C(sbi, ext4_r_blocks_count(sbi->s_es));
+ 
+-	if (free_blocks - (nblocks + root_blocks + dirty_blocks) <
+-						EXT4_FREEBLOCKS_WATERMARK) {
+-		free_blocks  = EXT4_C2B(sbi, percpu_counter_sum_positive(fcc));
+-		dirty_blocks = percpu_counter_sum_positive(dbc);
++	if (free_clusters - (nclusters + root_clusters + dirty_clusters) <
++					EXT4_FREECLUSTERS_WATERMARK) {
++		free_clusters  = EXT4_C2B(sbi, percpu_counter_sum_positive(fcc));
++		dirty_clusters = percpu_counter_sum_positive(dcc);
+ 	}
+-	/* Check whether we have space after
+-	 * accounting for current dirty blocks & root reserved blocks.
++	/* Check whether we have space after accounting for current
++	 * dirty clusters & root reserved clusters.
+ 	 */
+-	if (free_blocks >= ((root_blocks + nblocks) + dirty_blocks))
++	if (free_clusters >= ((root_clusters + nclusters) + dirty_clusters))
+ 		return 1;
+ 
+-	/* Hm, nope.  Are (enough) root reserved blocks available? */
++	/* Hm, nope.  Are (enough) root reserved clusters available? */
+ 	if (sbi->s_resuid == current_fsuid() ||
+ 	    ((sbi->s_resgid != 0) && in_group_p(sbi->s_resgid)) ||
+ 	    capable(CAP_SYS_RESOURCE) ||
+ 		(flags & EXT4_MB_USE_ROOT_BLOCKS)) {
+ 
+-		if (free_blocks >= (nblocks + dirty_blocks))
++		if (free_clusters >= (nclusters + dirty_clusters))
+ 			return 1;
+ 	}
+ 
+@@ -448,7 +449,7 @@ static int ext4_has_free_blocks(struct ext4_sb_info *sbi,
+ int ext4_claim_free_clusters(struct ext4_sb_info *sbi,
+ 			     s64 nclusters, unsigned int flags)
+ {
+-	if (ext4_has_free_blocks(sbi, nclusters, flags)) {
++	if (ext4_has_free_clusters(sbi, nclusters, flags)) {
+ 		percpu_counter_add(&sbi->s_dirtyclusters_counter, nclusters);
+ 		return 0;
+ 	} else
+@@ -469,7 +470,7 @@ int ext4_claim_free_clusters(struct ext4_sb_info *sbi,
+  */
+ int ext4_should_retry_alloc(struct super_block *sb, int *retries)
+ {
+-	if (!ext4_has_free_blocks(EXT4_SB(sb), 1, 0) ||
++	if (!ext4_has_free_clusters(EXT4_SB(sb), 1, 0) ||
+ 	    (*retries)++ > 3 ||
+ 	    !EXT4_SB(sb)->s_journal)
+ 		return 0;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 8d2e34f..b11ee7e 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2079,13 +2079,13 @@ do {								\
+ } while (0)
+ 
+ #ifdef CONFIG_SMP
+-/* Each CPU can accumulate percpu_counter_batch blocks in their local
+- * counters. So we need to make sure we have free blocks more
++/* Each CPU can accumulate percpu_counter_batch clusters in their local
++ * counters. So we need to make sure we have free clusters more
+  * than percpu_counter_batch  * nr_cpu_ids. Also add a window of 4 times.
+  */
+-#define EXT4_FREEBLOCKS_WATERMARK (4 * (percpu_counter_batch * nr_cpu_ids))
++#define EXT4_FREECLUSTERS_WATERMARK (4 * (percpu_counter_batch * nr_cpu_ids))
+ #else
+-#define EXT4_FREEBLOCKS_WATERMARK 0
++#define EXT4_FREECLUSTERS_WATERMARK 0
+ #endif
+ 
+ static inline void ext4_update_i_disksize(struct inode *inode, loff_t newsize)
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 4a68531..7ae8dec 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2214,7 +2214,7 @@ static int ext4_nonda_switch(struct super_block *sb)
+ 		percpu_counter_read_positive(&sbi->s_freeclusters_counter));
+ 	dirty_blocks = percpu_counter_read_positive(&sbi->s_dirtyclusters_counter);
+ 	if (2 * free_blocks < 3 * dirty_blocks ||
+-		free_blocks < (dirty_blocks + EXT4_FREEBLOCKS_WATERMARK)) {
++		free_blocks < (dirty_blocks + EXT4_FREECLUSTERS_WATERMARK)) {
+ 		/*
+ 		 * free block count is less than 150% of dirty blocks
+ 		 * or free blocks is less than watermark
 -- 
 1.7.4.1.22.gec8e1.dirty
 
