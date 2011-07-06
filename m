@@ -1,152 +1,99 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 22/23] ext4: rename ext4_has_free_blocks() to ext4_has_free_clusters()
-Date: Wed,  6 Jul 2011 12:36:05 -0400
-Message-ID: <1309970166-11770-23-git-send-email-tytso@mit.edu>
+Subject: [PATCH 20/23] ext4: rename ext4_free_blocks_after_init() to ext4_free_clusters_after_init()
+Date: Wed,  6 Jul 2011 12:36:03 -0400
+Message-ID: <1309970166-11770-21-git-send-email-tytso@mit.edu>
 References: <1309970166-11770-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33463 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:33486 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754773Ab1GFQgJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1754779Ab1GFQgJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 6 Jul 2011 12:36:09 -0400
 In-Reply-To: <1309970166-11770-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Rename the function so it is more clear what is going on.  Also rename
-the various variables so it's clearer what's happening.
-
-Also fix a missing blocks to cluster conversion when reading the
-number of reserved blocks for root.
+This function really returns the number of clusters after initializing
+an uninitalized block bitmap has been initialized.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/balloc.c |   43 ++++++++++++++++++++++---------------------
- fs/ext4/ext4.h   |    8 ++++----
- fs/ext4/inode.c  |    2 +-
- 3 files changed, 27 insertions(+), 26 deletions(-)
+ fs/ext4/balloc.c  |    6 +++---
+ fs/ext4/ext4.h    |    6 +++---
+ fs/ext4/ialloc.c  |    2 +-
+ fs/ext4/mballoc.c |    4 ++--
+ 4 files changed, 9 insertions(+), 9 deletions(-)
 
 diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index af0c535..f6dba45 100644
+index 4f30380..3d07c35 100644
 --- a/fs/ext4/balloc.c
 +++ b/fs/ext4/balloc.c
-@@ -403,42 +403,43 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
- }
- 
- /**
-- * ext4_has_free_blocks()
-+ * ext4_has_free_clusters()
-  * @sbi:	in-core super block structure.
-- * @nblocks:	number of needed blocks
-+ * @nclusters:	number of needed blocks
-+ * @flags:	flags from ext4_mb_new_blocks()
-  *
-- * Check if filesystem has nblocks free & available for allocation.
-+ * Check if filesystem has nclusters free & available for allocation.
-  * On success return 1, return 0 on failure.
-  */
--static int ext4_has_free_blocks(struct ext4_sb_info *sbi,
--				s64 nblocks, unsigned int flags)
-+static int ext4_has_free_clusters(struct ext4_sb_info *sbi,
-+				  s64 nclusters, unsigned int flags)
+@@ -213,9 +213,9 @@ void ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
+ /* Return the number of free blocks in a block group.  It is used when
+  * the block bitmap is uninitialized, so we can't just count the bits
+  * in the bitmap. */
+-unsigned ext4_free_blocks_after_init(struct super_block *sb,
+-				     ext4_group_t block_group,
+-				     struct ext4_group_desc *gdp)
++unsigned ext4_free_clusters_after_init(struct super_block *sb,
++				       ext4_group_t block_group,
++				       struct ext4_group_desc *gdp)
  {
--	s64 free_blocks, dirty_blocks, root_blocks;
-+	s64 free_clusters, dirty_clusters, root_clusters;
- 	struct percpu_counter *fcc = &sbi->s_freeclusters_counter;
--	struct percpu_counter *dbc = &sbi->s_dirtyclusters_counter;
-+	struct percpu_counter *dcc = &sbi->s_dirtyclusters_counter;
- 
--	free_blocks  = percpu_counter_read_positive(fcc);
--	dirty_blocks = percpu_counter_read_positive(dbc);
--	root_blocks = ext4_r_blocks_count(sbi->s_es);
-+	free_clusters  = percpu_counter_read_positive(fcc);
-+	dirty_clusters = percpu_counter_read_positive(dcc);
-+	root_clusters = EXT4_B2C(sbi, ext4_r_blocks_count(sbi->s_es));
- 
--	if (free_blocks - (nblocks + root_blocks + dirty_blocks) <
--						EXT4_FREEBLOCKS_WATERMARK) {
--		free_blocks  = EXT4_C2B(sbi, percpu_counter_sum_positive(fcc));
--		dirty_blocks = percpu_counter_sum_positive(dbc);
-+	if (free_clusters - (nclusters + root_clusters + dirty_clusters) <
-+					EXT4_FREECLUSTERS_WATERMARK) {
-+		free_clusters  = EXT4_C2B(sbi, percpu_counter_sum_positive(fcc));
-+		dirty_clusters = percpu_counter_sum_positive(dcc);
- 	}
--	/* Check whether we have space after
--	 * accounting for current dirty blocks & root reserved blocks.
-+	/* Check whether we have space after accounting for current
-+	 * dirty clusters & root reserved clusters.
- 	 */
--	if (free_blocks >= ((root_blocks + nblocks) + dirty_blocks))
-+	if (free_clusters >= ((root_clusters + nclusters) + dirty_clusters))
- 		return 1;
- 
--	/* Hm, nope.  Are (enough) root reserved blocks available? */
-+	/* Hm, nope.  Are (enough) root reserved clusters available? */
- 	if (sbi->s_resuid == current_fsuid() ||
- 	    ((sbi->s_resgid != 0) && in_group_p(sbi->s_resgid)) ||
- 	    capable(CAP_SYS_RESOURCE) ||
- 		(flags & EXT4_MB_USE_ROOT_BLOCKS)) {
- 
--		if (free_blocks >= (nblocks + dirty_blocks))
-+		if (free_clusters >= (nclusters + dirty_clusters))
- 			return 1;
- 	}
- 
-@@ -448,7 +449,7 @@ static int ext4_has_free_blocks(struct ext4_sb_info *sbi,
- int ext4_claim_free_clusters(struct ext4_sb_info *sbi,
- 			     s64 nclusters, unsigned int flags)
- {
--	if (ext4_has_free_blocks(sbi, nclusters, flags)) {
-+	if (ext4_has_free_clusters(sbi, nclusters, flags)) {
- 		percpu_counter_add(&sbi->s_dirtyclusters_counter, nclusters);
- 		return 0;
- 	} else
-@@ -469,7 +470,7 @@ int ext4_claim_free_clusters(struct ext4_sb_info *sbi,
-  */
- int ext4_should_retry_alloc(struct super_block *sb, int *retries)
- {
--	if (!ext4_has_free_blocks(EXT4_SB(sb), 1, 0) ||
-+	if (!ext4_has_free_clusters(EXT4_SB(sb), 1, 0) ||
- 	    (*retries)++ > 3 ||
- 	    !EXT4_SB(sb)->s_journal)
- 		return 0;
+ 	return num_clusters_in_group(sb, block_group) - 
+ 		ext4_num_overhead_clusters(sb, block_group, gdp);
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 8d2e34f..b11ee7e 100644
+index 04bf654..b18c6d5 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -2079,13 +2079,13 @@ do {								\
- } while (0)
- 
- #ifdef CONFIG_SMP
--/* Each CPU can accumulate percpu_counter_batch blocks in their local
-- * counters. So we need to make sure we have free blocks more
-+/* Each CPU can accumulate percpu_counter_batch clusters in their local
-+ * counters. So we need to make sure we have free clusters more
-  * than percpu_counter_batch  * nr_cpu_ids. Also add a window of 4 times.
-  */
--#define EXT4_FREEBLOCKS_WATERMARK (4 * (percpu_counter_batch * nr_cpu_ids))
-+#define EXT4_FREECLUSTERS_WATERMARK (4 * (percpu_counter_batch * nr_cpu_ids))
- #else
--#define EXT4_FREEBLOCKS_WATERMARK 0
-+#define EXT4_FREECLUSTERS_WATERMARK 0
- #endif
- 
- static inline void ext4_update_i_disksize(struct inode *inode, loff_t newsize)
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4a68531..7ae8dec 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2214,7 +2214,7 @@ static int ext4_nonda_switch(struct super_block *sb)
- 		percpu_counter_read_positive(&sbi->s_freeclusters_counter));
- 	dirty_blocks = percpu_counter_read_positive(&sbi->s_dirtyclusters_counter);
- 	if (2 * free_blocks < 3 * dirty_blocks ||
--		free_blocks < (dirty_blocks + EXT4_FREEBLOCKS_WATERMARK)) {
-+		free_blocks < (dirty_blocks + EXT4_FREECLUSTERS_WATERMARK)) {
- 		/*
- 		 * free block count is less than 150% of dirty blocks
- 		 * or free blocks is less than watermark
+@@ -1772,9 +1772,9 @@ extern void ext4_init_block_bitmap(struct super_block *sb,
+ 				   struct buffer_head *bh,
+ 				   ext4_group_t group,
+ 				   struct ext4_group_desc *desc);
+-extern unsigned ext4_free_blocks_after_init(struct super_block *sb,
+-					    ext4_group_t block_group,
+-					    struct ext4_group_desc *gdp);
++extern unsigned ext4_free_clusters_after_init(struct super_block *sb,
++					      ext4_group_t block_group,
++					      struct ext4_group_desc *gdp);
+ extern unsigned ext4_num_base_meta_clusters(struct super_block *sb,
+ 					    ext4_group_t block_group);
+ extern unsigned ext4_num_overhead_clusters(struct super_block *sb,
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index aa74ca6..b30115b 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -961,7 +961,7 @@ got:
+ 		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+ 			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
+ 			ext4_free_group_clusters_set(sb, gdp,
+-				ext4_free_blocks_after_init(sb, group, gdp));
++				ext4_free_clusters_after_init(sb, group, gdp));
+ 			gdp->bg_checksum = ext4_group_desc_csum(sbi, group,
+ 								gdp);
+ 		}
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 852f303..33cdc81 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2251,7 +2251,7 @@ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
+ 	 */
+ 	if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+ 		meta_group_info[i]->bb_free =
+-			ext4_free_blocks_after_init(sb, group, desc);
++			ext4_free_clusters_after_init(sb, group, desc);
+ 	} else {
+ 		meta_group_info[i]->bb_free =
+ 			ext4_free_group_clusters(sb, desc);
+@@ -2810,7 +2810,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+ 	if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+ 		gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
+ 		ext4_free_group_clusters_set(sb, gdp,
+-					     ext4_free_blocks_after_init(sb,
++					     ext4_free_clusters_after_init(sb,
+ 						ac->ac_b_ex.fe_group, gdp));
+ 	}
+ 	len = ext4_free_group_clusters(sb, gdp) - ac->ac_b_ex.fe_len;
 -- 
 1.7.4.1.22.gec8e1.dirty
 
