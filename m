@@ -1,689 +1,275 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 23/23] ext4: add some tracepoints in ext4/extents.c
-Date: Wed,  6 Jul 2011 12:36:06 -0400
-Message-ID: <1309970166-11770-24-git-send-email-tytso@mit.edu>
+Subject: [PATCH 18/23] ext4: Rename ext4_free_blks_{count,set}() to refer to clusters
+Date: Wed,  6 Jul 2011 12:36:01 -0400
+Message-ID: <1309970166-11770-19-git-send-email-tytso@mit.edu>
 References: <1309970166-11770-1-git-send-email-tytso@mit.edu>
-Cc: Aditya Kali <adityakali@google.com>,
-	"Theodore Ts'o" <tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33457 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:33479 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754739Ab1GFQgJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1754763Ab1GFQgJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 6 Jul 2011 12:36:09 -0400
 In-Reply-To: <1309970166-11770-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Aditya Kali <adityakali@google.com>
+The field bg_free_free_blocks_count_{lo,high} in the block group
+descriptor has been repurposed to hold the number of free clusters for
+bigalloc functions.  So rename the functions so it makes it easier to
+read and audit the block allocation and block freeing code.
 
-This patch adds some tracepoints in ext4/extents.c and updates a tracepoint in
-ext4/inode.c.
+Note: at this point in bigalloc development we doesn't support
+online-resize, so this also makes it really obvious all of the places
+we need to fix up to add support for online resize.
 
-Tested: Built and ran the kernel and verified that these tracepoints work.
-Also ran xfstests.
-
-Signed-off-by: Aditya Kali <adityakali@google.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/extents.c           |   46 +++++-
- fs/ext4/inode.c             |    2 +-
- include/trace/events/ext4.h |  415 +++++++++++++++++++++++++++++++++++++++++--
- 3 files changed, 443 insertions(+), 20 deletions(-)
+ fs/ext4/balloc.c  |    8 ++++----
+ fs/ext4/ext4.h    |    9 +++++----
+ fs/ext4/ialloc.c  |   14 +++++++-------
+ fs/ext4/mballoc.c |   22 +++++++++++-----------
+ fs/ext4/resize.c  |    2 +-
+ fs/ext4/super.c   |   10 +++++-----
+ 6 files changed, 33 insertions(+), 32 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 11bd617..0d3ba59 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -1964,6 +1964,7 @@ ext4_ext_put_in_cache(struct inode *inode, ext4_lblk_t block,
- 	struct ext4_ext_cache *cex;
- 	BUG_ON(len == 0);
- 	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
-+	trace_ext4_ext_put_in_cache(inode, block, len, start);
- 	cex = &EXT4_I(inode)->i_cached_extent;
- 	cex->ec_block = block;
- 	cex->ec_len = len;
-@@ -2065,6 +2066,7 @@ errout:
- 		sbi->extent_cache_misses++;
- 	else
- 		sbi->extent_cache_hits++;
-+	trace_ext4_ext_in_cache(inode, block, ret);
- 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
- 	return ret;
- }
-@@ -2127,6 +2129,8 @@ static int ext4_ext_rm_idx(handle_t *handle, struct inode *inode,
- 	if (err)
- 		return err;
- 	ext_debug("index is empty, remove it, free block %llu\n", leaf);
-+	trace_ext4_ext_rm_idx(inode, leaf);
-+
- 	ext4_free_blocks(handle, inode, NULL, leaf, 1,
- 			 EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET);
- 	return err;
-@@ -2212,6 +2216,9 @@ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
- 	 */
- 	flags |= EXT4_FREE_BLOCKS_NOFREE_FIRST_CLUSTER;
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index bf42b32..84dc3d6 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -168,7 +168,7 @@ void ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
+ 	 * essentially implementing a per-group read-only flag. */
+ 	if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
+ 		ext4_error(sb, "Checksum bad for group %u", block_group);
+-		ext4_free_blks_set(sb, gdp, 0);
++		ext4_free_group_clusters_set(sb, gdp, 0);
+ 		ext4_free_inodes_set(sb, gdp, 0);
+ 		ext4_itable_unused_set(sb, gdp, 0);
+ 		memset(bh->b_data, 0xff, sb->s_blocksize);
+@@ -550,7 +550,7 @@ ext4_fsblk_t ext4_count_free_blocks(struct super_block *sb)
+ 		gdp = ext4_get_group_desc(sb, i, NULL);
+ 		if (!gdp)
+ 			continue;
+-		desc_count += ext4_free_blks_count(sb, gdp);
++		desc_count += ext4_free_group_clusters(sb, gdp);
+ 		brelse(bitmap_bh);
+ 		bitmap_bh = ext4_read_block_bitmap(sb, i);
+ 		if (bitmap_bh == NULL)
+@@ -558,7 +558,7 @@ ext4_fsblk_t ext4_count_free_blocks(struct super_block *sb)
  
-+	trace_ext4_remove_blocks(inode, cpu_to_le32(ex->ee_block),
-+				 ext4_ext_pblock(ex), ee_len, from,
-+				 to, *partial_cluster);
- 	/*
- 	 * If we have a partial cluster, and it's different from the
- 	 * cluster of the last block, we need to explicitly free the
-@@ -2326,6 +2333,9 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 	ex_ee_block = le32_to_cpu(ex->ee_block);
- 	ex_ee_len = ext4_ext_get_actual_len(ex);
- 
-+	trace_ext4_ext_rm_leaf(inode, start, ex_ee_block, ext4_ext_pblock(ex),
-+			       ex_ee_len, *partial_cluster);
-+
- 	while (ex >= EXT_FIRST_EXTENT(eh) &&
- 			ex_ee_block + ex_ee_len > start) {
- 
-@@ -2582,6 +2592,8 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
- again:
- 	ext4_ext_invalidate_cache(inode);
- 
-+	trace_ext4_ext_remove_space(inode, start, depth);
-+
- 	/*
- 	 * We start scanning from right side, freeing all the blocks
- 	 * after i_size and walking into the tree depth-wise.
-@@ -2676,6 +2688,9 @@ again:
- 		}
+ 		x = ext4_count_free(bitmap_bh, sb->s_blocksize);
+ 		printk(KERN_DEBUG "group %u: stored = %d, counted = %u\n",
+-			i, ext4_free_blks_count(sb, gdp), x);
++			i, ext4_free_group_clusters(sb, gdp), x);
+ 		bitmap_count += x;
+ 	}
+ 	brelse(bitmap_bh);
+@@ -572,7 +572,7 @@ ext4_fsblk_t ext4_count_free_blocks(struct super_block *sb)
+ 		gdp = ext4_get_group_desc(sb, i, NULL);
+ 		if (!gdp)
+ 			continue;
+-		desc_count += ext4_free_blks_count(sb, gdp);
++		desc_count += ext4_free_group_clusters(sb, gdp);
  	}
  
-+	trace_ext4_ext_remove_space_done(inode, start, depth, partial_cluster,
-+			path->p_hdr->eh_entries);
-+
- 	/* If we still have something in the partial cluster and we have removed
- 	 * even the first extent, then we should free the blocks in the partial
- 	 * cluster as well. */
-@@ -3290,6 +3305,10 @@ static int ext4_find_delalloc_range(struct inode *inode,
- 			 * detect that here.
- 			 */
- 			page_cache_release(page);
-+			trace_ext4_find_delalloc_range(inode,
-+					lblk_start, lblk_end,
-+					search_hint_reverse,
-+					0, i);
+ 	return desc_count;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index d79e773..290b7e4 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1954,8 +1954,8 @@ extern ext4_fsblk_t ext4_inode_bitmap(struct super_block *sb,
+ 				      struct ext4_group_desc *bg);
+ extern ext4_fsblk_t ext4_inode_table(struct super_block *sb,
+ 				     struct ext4_group_desc *bg);
+-extern __u32 ext4_free_blks_count(struct super_block *sb,
+-				struct ext4_group_desc *bg);
++extern __u32 ext4_free_group_clusters(struct super_block *sb,
++				      struct ext4_group_desc *bg);
+ extern __u32 ext4_free_inodes_count(struct super_block *sb,
+ 				 struct ext4_group_desc *bg);
+ extern __u32 ext4_used_dirs_count(struct super_block *sb,
+@@ -1968,8 +1968,9 @@ extern void ext4_inode_bitmap_set(struct super_block *sb,
+ 				  struct ext4_group_desc *bg, ext4_fsblk_t blk);
+ extern void ext4_inode_table_set(struct super_block *sb,
+ 				 struct ext4_group_desc *bg, ext4_fsblk_t blk);
+-extern void ext4_free_blks_set(struct super_block *sb,
+-			       struct ext4_group_desc *bg, __u32 count);
++extern void ext4_free_group_clusters_set(struct super_block *sb,
++					 struct ext4_group_desc *bg,
++					 __u32 count);
+ extern void ext4_free_inodes_set(struct super_block *sb,
+ 				struct ext4_group_desc *bg, __u32 count);
+ extern void ext4_used_dirs_set(struct super_block *sb,
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 048ee7f..aa74ca6 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -78,7 +78,7 @@ static unsigned ext4_init_inode_bitmap(struct super_block *sb,
+ 	 * allocation, essentially implementing a per-group read-only flag. */
+ 	if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
+ 		ext4_error(sb, "Checksum bad for group %u", block_group);
+-		ext4_free_blks_set(sb, gdp, 0);
++		ext4_free_group_clusters_set(sb, gdp, 0);
+ 		ext4_free_inodes_set(sb, gdp, 0);
+ 		ext4_itable_unused_set(sb, gdp, 0);
+ 		memset(bh->b_data, 0xff, sb->s_blocksize);
+@@ -322,8 +322,8 @@ static int find_group_dir(struct super_block *sb, struct inode *parent,
+ 		if (ext4_free_inodes_count(sb, desc) < avefreei)
+ 			continue;
+ 		if (!best_desc ||
+-		    (ext4_free_blks_count(sb, desc) >
+-		     ext4_free_blks_count(sb, best_desc))) {
++		    (ext4_free_group_clusters(sb, desc) >
++		     ext4_free_group_clusters(sb, best_desc))) {
+ 			*best_group = group;
+ 			best_desc = desc;
+ 			ret = 0;
+@@ -434,7 +434,7 @@ static void get_orlov_stats(struct super_block *sb, ext4_group_t g,
+ 	desc = ext4_get_group_desc(sb, g, NULL);
+ 	if (desc) {
+ 		stats->free_inodes = ext4_free_inodes_count(sb, desc);
+-		stats->free_clusters = ext4_free_blks_count(sb, desc);
++		stats->free_clusters = ext4_free_group_clusters(sb, desc);
+ 		stats->used_dirs = ext4_used_dirs_count(sb, desc);
+ 	} else {
+ 		stats->free_inodes = 0;
+@@ -662,7 +662,7 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
+ 	*group = parent_group;
+ 	desc = ext4_get_group_desc(sb, *group, NULL);
+ 	if (desc && ext4_free_inodes_count(sb, desc) &&
+-			ext4_free_blks_count(sb, desc))
++	    ext4_free_group_clusters(sb, desc))
+ 		return 0;
+ 
+ 	/*
+@@ -686,7 +686,7 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
+ 			*group -= ngroups;
+ 		desc = ext4_get_group_desc(sb, *group, NULL);
+ 		if (desc && ext4_free_inodes_count(sb, desc) &&
+-				ext4_free_blks_count(sb, desc))
++		    ext4_free_group_clusters(sb, desc))
  			return 0;
- 		}
- 
-@@ -3317,6 +3336,10 @@ static int ext4_find_delalloc_range(struct inode *inode,
- 
- 			if (buffer_delay(bh)) {
- 				page_cache_release(page);
-+				trace_ext4_find_delalloc_range(inode,
-+						lblk_start, lblk_end,
-+						search_hint_reverse,
-+						1, i);
- 				return 1;
- 			}
- 			if (search_hint_reverse)
-@@ -3339,6 +3362,8 @@ nextpage:
- 		i = index << (PAGE_CACHE_SHIFT - inode->i_blkbits);
  	}
  
-+	trace_ext4_find_delalloc_range(inode, lblk_start, lblk_end,
-+					search_hint_reverse, 0, 0);
- 	return 0;
+@@ -960,7 +960,7 @@ got:
+ 		ext4_lock_group(sb, group);
+ 		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+ 			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
+-			ext4_free_blks_set(sb, gdp,
++			ext4_free_group_clusters_set(sb, gdp,
+ 				ext4_free_blocks_after_init(sb, group, gdp));
+ 			gdp->bg_checksum = ext4_group_desc_csum(sbi, group,
+ 								gdp);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 73fbb99..852f303 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2254,7 +2254,7 @@ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
+ 			ext4_free_blocks_after_init(sb, group, desc);
+ 	} else {
+ 		meta_group_info[i]->bb_free =
+-			ext4_free_blks_count(sb, desc);
++			ext4_free_group_clusters(sb, desc);
+ 	}
+ 
+ 	INIT_LIST_HEAD(&meta_group_info[i]->bb_prealloc_list);
+@@ -2770,7 +2770,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+ 		goto out_err;
+ 
+ 	ext4_debug("using block group %u(%d)\n", ac->ac_b_ex.fe_group,
+-			ext4_free_blks_count(sb, gdp));
++			ext4_free_group_clusters(sb, gdp));
+ 
+ 	err = ext4_journal_get_write_access(handle, gdp_bh);
+ 	if (err)
+@@ -2809,12 +2809,12 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+ 	mb_set_bits(bitmap_bh->b_data, ac->ac_b_ex.fe_start,ac->ac_b_ex.fe_len);
+ 	if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+ 		gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
+-		ext4_free_blks_set(sb, gdp,
+-					ext4_free_blocks_after_init(sb,
+-					ac->ac_b_ex.fe_group, gdp));
++		ext4_free_group_clusters_set(sb, gdp,
++					     ext4_free_blocks_after_init(sb,
++						ac->ac_b_ex.fe_group, gdp));
+ 	}
+-	len = ext4_free_blks_count(sb, gdp) - ac->ac_b_ex.fe_len;
+-	ext4_free_blks_set(sb, gdp, len);
++	len = ext4_free_group_clusters(sb, gdp) - ac->ac_b_ex.fe_len;
++	ext4_free_group_clusters_set(sb, gdp, len);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, ac->ac_b_ex.fe_group, gdp);
+ 
+ 	ext4_unlock_group(sb, ac->ac_b_ex.fe_group);
+@@ -4670,8 +4670,8 @@ do_more:
+ 		mb_free_blocks(inode, &e4b, bit, count_clusters);
+ 	}
+ 
+-	ret = ext4_free_blks_count(sb, gdp) + count_clusters;
+-	ext4_free_blks_set(sb, gdp, ret);
++	ret = ext4_free_group_clusters(sb, gdp) + count_clusters;
++	ext4_free_group_clusters_set(sb, gdp, ret);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
+ 	ext4_unlock_group(sb, block_group);
+ 	percpu_counter_add(&sbi->s_freeclusters_counter, count_clusters);
+@@ -4800,8 +4800,8 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
+ 	ext4_lock_group(sb, block_group);
+ 	mb_clear_bits(bitmap_bh->b_data, bit, count);
+ 	mb_free_blocks(NULL, &e4b, bit, count);
+-	blk_free_count = blocks_freed + ext4_free_blks_count(sb, desc);
+-	ext4_free_blks_set(sb, desc, blk_free_count);
++	blk_free_count = blocks_freed + ext4_free_group_clusters(sb, desc);
++	ext4_free_group_clusters_set(sb, desc, blk_free_count);
+ 	desc->bg_checksum = ext4_group_desc_csum(sbi, block_group, desc);
+ 	ext4_unlock_group(sb, block_group);
+ 	percpu_counter_add(&sbi->s_freeclusters_counter,
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index cef49d3..14b66ba 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -853,7 +853,7 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 	ext4_block_bitmap_set(sb, gdp, input->block_bitmap); /* LV FIXME */
+ 	ext4_inode_bitmap_set(sb, gdp, input->inode_bitmap); /* LV FIXME */
+ 	ext4_inode_table_set(sb, gdp, input->inode_table); /* LV FIXME */
+-	ext4_free_blks_set(sb, gdp, input->free_blocks_count);
++	ext4_free_group_clusters_set(sb, gdp, input->free_blocks_count);
+ 	ext4_free_inodes_set(sb, gdp, EXT4_INODES_PER_GROUP(sb));
+ 	gdp->bg_flags = cpu_to_le16(EXT4_BG_INODE_ZEROED);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, input->group, gdp);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index e10062d..3f02afa 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -134,8 +134,8 @@ ext4_fsblk_t ext4_inode_table(struct super_block *sb,
+ 		 (ext4_fsblk_t)le32_to_cpu(bg->bg_inode_table_hi) << 32 : 0);
  }
  
-@@ -3404,6 +3429,8 @@ get_reserved_cluster_alloc(struct inode *inode, ext4_lblk_t lblk_start,
- 	/* max possible clusters for this allocation */
- 	allocated_clusters = alloc_cluster_end - alloc_cluster_start + 1;
- 
-+	trace_ext4_get_reserved_cluster_alloc(inode, lblk_start, num_blks);
-+
- 	/* Check towards left side */
- 	c_offset = lblk_start & (sbi->s_cluster_ratio - 1);
- 	if (c_offset) {
-@@ -3443,6 +3470,9 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
- 		  flags, allocated);
- 	ext4_ext_show_leaf(inode, path);
- 
-+	trace_ext4_ext_handle_uninitialized_extents(inode, map, allocated,
-+						    newblock);
-+
- 	/* get_block() before submit the IO, split the extent */
- 	if ((flags & EXT4_GET_BLOCKS_PRE_IO)) {
- 		ret = ext4_split_unwritten_extents(handle, inode, map,
-@@ -3562,7 +3592,7 @@ out2:
-  * get_implied_cluster_alloc - check to see if the requested
-  * allocation (in the map structure) overlaps with a cluster already
-  * allocated in an extent.
-- *	@sbi	The ext4-specific superblock structure
-+ *	@sb	The filesystem superblock structure
-  *	@map	The requested lblk->pblk mapping
-  *	@ex	The extent structure which might contain an implied
-  *			cluster allocation
-@@ -3599,11 +3629,12 @@ out2:
-  * ext4_ext_map_blocks() will then allocate one or more new clusters
-  * by calling ext4_mb_new_blocks().
-  */
--static int get_implied_cluster_alloc(struct ext4_sb_info *sbi,
-+static int get_implied_cluster_alloc(struct super_block *sb,
- 				     struct ext4_map_blocks *map,
- 				     struct ext4_extent *ex,
- 				     struct ext4_ext_path *path)
+-__u32 ext4_free_blks_count(struct super_block *sb,
+-			      struct ext4_group_desc *bg)
++__u32 ext4_free_group_clusters(struct super_block *sb,
++			       struct ext4_group_desc *bg)
  {
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	ext4_lblk_t c_offset = map->m_lblk & (sbi->s_cluster_ratio-1);
- 	ext4_lblk_t ex_cluster_start, ex_cluster_end;
- 	ext4_lblk_t rr_cluster_start, rr_cluster_end;
-@@ -3652,8 +3683,12 @@ static int get_implied_cluster_alloc(struct ext4_sb_info *sbi,
- 			ext4_lblk_t next = ext4_ext_next_allocated_block(path);
- 			map->m_len = min(map->m_len, next - map->m_lblk);
- 		}
-+
-+		trace_ext4_get_implied_cluster_alloc_exit(sb, map, 1);
- 		return 1;
- 	}
-+
-+	trace_ext4_get_implied_cluster_alloc_exit(sb, map, 0);
- 	return 0;
+ 	return le16_to_cpu(bg->bg_free_blocks_count_lo) |
+ 		(EXT4_DESC_SIZE(sb) >= EXT4_MIN_DESC_SIZE_64BIT ?
+@@ -190,8 +190,8 @@ void ext4_inode_table_set(struct super_block *sb,
+ 		bg->bg_inode_table_hi = cpu_to_le32(blk >> 32);
  }
  
-@@ -3762,6 +3797,9 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 		 * we split out initialized portions during a write.
- 		 */
- 		ee_len = ext4_ext_get_actual_len(ex);
-+
-+		trace_ext4_ext_show_extent(inode, ee_block, ee_start, ee_len);
-+
- 		/* if found extent covers block, simply return it */
- 		if (in_range(map->m_lblk, ee_block, ee_len)) {
- 			newblock = map->m_lblk - ee_block + ee_start;
-@@ -3880,7 +3918,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	 * by ext4_ext_find_extent() implies a cluster we can use.
- 	 */
- 	if (cluster_offset && ex &&
--	    get_implied_cluster_alloc(sbi, map, ex, path)) {
-+	    get_implied_cluster_alloc(inode->i_sb, map, ex, path)) {
- 		ar.len = allocated = map->m_len;
- 		newblock = map->m_pblk;
- 		map->m_flags |= EXT4_MAP_FROM_CLUSTER;
-@@ -3901,7 +3939,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	/* Check if the extent after searching to the right implies a
- 	 * cluster we can use. */
- 	if ((sbi->s_cluster_ratio > 1) && ex2 &&
--	    get_implied_cluster_alloc(sbi, map, ex2, path)) {
-+	    get_implied_cluster_alloc(inode->i_sb, map, ex2, path)) {
- 		ar.len = allocated = map->m_len;
- 		newblock = map->m_pblk;
- 		map->m_flags |= EXT4_MAP_FROM_CLUSTER;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 7ae8dec..2495cfb 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -238,7 +238,7 @@ void ext4_da_update_reserve_space(struct inode *inode,
- 	struct ext4_inode_info *ei = EXT4_I(inode);
- 
- 	spin_lock(&ei->i_block_reservation_lock);
--	trace_ext4_da_update_reserve_space(inode, used);
-+	trace_ext4_da_update_reserve_space(inode, used, quota_claim);
- 	if (unlikely(used > ei->i_reserved_data_blocks)) {
- 		ext4_msg(inode->i_sb, KERN_NOTICE, "%s: ino %lu, used %d "
- 			 "with only %d reserved data blocks\n",
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 5ce2b2f..3368399 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -12,6 +12,7 @@ struct ext4_allocation_request;
- struct ext4_prealloc_space;
- struct ext4_inode_info;
- struct mpage_da_data;
-+struct ext4_map_blocks;
- 
- #define EXT4_I(inode) (container_of(inode, struct ext4_inode_info, vfs_inode))
- 
-@@ -1034,19 +1035,20 @@ TRACE_EVENT(ext4_forget,
- );
- 
- TRACE_EVENT(ext4_da_update_reserve_space,
--	TP_PROTO(struct inode *inode, int used_blocks),
-+	TP_PROTO(struct inode *inode, int used_blocks, int quota_claim),
- 
--	TP_ARGS(inode, used_blocks),
-+	TP_ARGS(inode, used_blocks, quota_claim),
- 
- 	TP_STRUCT__entry(
--		__field(	dev_t,	dev			)
--		__field(	ino_t,	ino			)
--		__field(	umode_t, mode			)
--		__field(	__u64,	i_blocks		)
--		__field(	int,	used_blocks		)
--		__field(	int,	reserved_data_blocks	)
--		__field(	int,	reserved_meta_blocks	)
--		__field(	int,	allocated_meta_blocks	)
-+		__field(	dev_t,		dev			)
-+		__field(	ino_t,		ino			)
-+		__field(	umode_t,	mode			)
-+		__field(	__u64,		i_blocks		)
-+		__field(	int,		used_blocks		)
-+		__field(	int,		reserved_data_blocks	)
-+		__field(	int,		reserved_meta_blocks	)
-+		__field(	int,		allocated_meta_blocks	)
-+		__field(	int,		quota_claim		)
- 	),
- 
- 	TP_fast_assign(
-@@ -1055,19 +1057,24 @@ TRACE_EVENT(ext4_da_update_reserve_space,
- 		__entry->mode	= inode->i_mode;
- 		__entry->i_blocks = inode->i_blocks;
- 		__entry->used_blocks = used_blocks;
--		__entry->reserved_data_blocks = EXT4_I(inode)->i_reserved_data_blocks;
--		__entry->reserved_meta_blocks = EXT4_I(inode)->i_reserved_meta_blocks;
--		__entry->allocated_meta_blocks = EXT4_I(inode)->i_allocated_meta_blocks;
-+		__entry->reserved_data_blocks =
-+				EXT4_I(inode)->i_reserved_data_blocks;
-+		__entry->reserved_meta_blocks =
-+				EXT4_I(inode)->i_reserved_meta_blocks;
-+		__entry->allocated_meta_blocks =
-+				EXT4_I(inode)->i_allocated_meta_blocks;
-+		__entry->quota_claim = quota_claim;
- 	),
- 
- 	TP_printk("dev %d,%d ino %lu mode 0%o i_blocks %llu used_blocks %d "
- 		  "reserved_data_blocks %d reserved_meta_blocks %d "
--		  "allocated_meta_blocks %d",
-+		  "allocated_meta_blocks %d quota_claim %d",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
- 		  __entry->mode, __entry->i_blocks,
- 		  __entry->used_blocks, __entry->reserved_data_blocks,
--		  __entry->reserved_meta_blocks, __entry->allocated_meta_blocks)
-+		  __entry->reserved_meta_blocks, __entry->allocated_meta_blocks,
-+		  __entry->quota_claim)
- );
- 
- TRACE_EVENT(ext4_da_reserve_space,
-@@ -1520,6 +1527,384 @@ TRACE_EVENT(ext4_load_inode,
- 		  (unsigned long) __entry->ino)
- );
- 
-+TRACE_EVENT(ext4_ext_handle_uninitialized_extents,
-+	TP_PROTO(struct inode *inode, struct ext4_map_blocks *map,
-+		 unsigned int allocated, ext4_fsblk_t newblock),
-+
-+	TP_ARGS(inode, map, allocated, newblock),
-+
-+	TP_STRUCT__entry(
-+		__field(	ino_t,		ino		)
-+		__field(	dev_t,		dev		)
-+		__field(	ext4_lblk_t,	lblk		)
-+		__field(	ext4_fsblk_t,	pblk		)
-+		__field(	unsigned int,	len		)
-+		__field(	int,		flags		)
-+		__field(	unsigned int,	allocated	)
-+		__field(	ext4_fsblk_t,	newblk		)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->ino		= inode->i_ino;
-+		__entry->dev		= inode->i_sb->s_dev;
-+		__entry->lblk		= map->m_lblk;
-+		__entry->pblk		= map->m_pblk;
-+		__entry->len		= map->m_len;
-+		__entry->flags		= map->m_flags;
-+		__entry->allocated	= allocated;
-+		__entry->newblk		= newblock;
-+	),
-+
-+	TP_printk("dev %d,%d ino %lu m_lblk %u m_pblk %llu m_len %u flags %d"
-+		  "allocated %d newblock %llu",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  (unsigned long) __entry->ino,
-+		  (unsigned) __entry->lblk, (unsigned long long) __entry->pblk,
-+		  __entry->len, __entry->flags,
-+		  (unsigned int) __entry->allocated,
-+		  (unsigned long long) __entry->newblk)
-+);
-+
-+TRACE_EVENT(ext4_get_implied_cluster_alloc_exit,
-+	TP_PROTO(struct super_block *sb, struct ext4_map_blocks *map, int ret),
-+
-+	TP_ARGS(sb, map, ret),
-+
-+	TP_STRUCT__entry(
-+		__field(	dev_t,		dev	)
-+		__field(	ext4_lblk_t,	lblk	)
-+		__field(	ext4_fsblk_t,	pblk	)
-+		__field(	unsigned int,	len	)
-+		__field(	unsigned int,	flags	)
-+		__field(	int,		ret	)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->dev	= sb->s_dev;
-+		__entry->lblk	= map->m_lblk;
-+		__entry->pblk	= map->m_pblk;
-+		__entry->len	= map->m_len;
-+		__entry->flags	= map->m_flags;
-+		__entry->ret	= ret;
-+	),
-+
-+	TP_printk("dev %d,%d m_lblk %u m_pblk %llu m_len %u m_flags %u ret %d",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  __entry->lblk, (unsigned long long) __entry->pblk,
-+		  __entry->len, __entry->flags, __entry->ret)
-+);
-+
-+TRACE_EVENT(ext4_ext_put_in_cache,
-+	TP_PROTO(struct inode *inode, ext4_lblk_t lblk, unsigned int len,
-+		 ext4_fsblk_t start),
-+
-+	TP_ARGS(inode, lblk, len, start),
-+
-+	TP_STRUCT__entry(
-+		__field(	ino_t,		ino	)
-+		__field(	dev_t,		dev	)
-+		__field(	ext4_lblk_t,	lblk	)
-+		__field(	unsigned int,	len	)
-+		__field(	ext4_fsblk_t,	start	)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->ino	= inode->i_ino;
-+		__entry->dev	= inode->i_sb->s_dev;
-+		__entry->lblk	= lblk;
-+		__entry->len	= len;
-+		__entry->start	= start;
-+	),
-+
-+	TP_printk("dev %d,%d ino %lu lblk %u len %u start %llu",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  (unsigned long) __entry->ino,
-+		  (unsigned) __entry->lblk,
-+		  __entry->len,
-+		  (unsigned long long) __entry->start)
-+);
-+
-+TRACE_EVENT(ext4_ext_in_cache,
-+	TP_PROTO(struct inode *inode, ext4_lblk_t lblk, int ret),
-+
-+	TP_ARGS(inode, lblk, ret),
-+
-+	TP_STRUCT__entry(
-+		__field(	ino_t,		ino	)
-+		__field(	dev_t,		dev	)
-+		__field(	ext4_lblk_t,	lblk	)
-+		__field(	int,		ret	)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->ino	= inode->i_ino;
-+		__entry->dev	= inode->i_sb->s_dev;
-+		__entry->lblk	= lblk;
-+		__entry->ret	= ret;
-+	),
-+
-+	TP_printk("dev %d,%d ino %lu lblk %u ret %d",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  (unsigned long) __entry->ino,
-+		  (unsigned) __entry->lblk,
-+		  __entry->ret)
-+
-+);
-+
-+TRACE_EVENT(ext4_find_delalloc_range,
-+	TP_PROTO(struct inode *inode, ext4_lblk_t from, ext4_lblk_t to,
-+		int reverse, int found, ext4_lblk_t found_blk),
-+
-+	TP_ARGS(inode, from, to, reverse, found, found_blk),
-+
-+	TP_STRUCT__entry(
-+		__field(	ino_t,		ino		)
-+		__field(	dev_t,		dev		)
-+		__field(	ext4_lblk_t,	from		)
-+		__field(	ext4_lblk_t,	to		)
-+		__field(	int,		reverse		)
-+		__field(	int,		found		)
-+		__field(	ext4_lblk_t,	found_blk	)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->ino		= inode->i_ino;
-+		__entry->dev		= inode->i_sb->s_dev;
-+		__entry->from		= from;
-+		__entry->to		= to;
-+		__entry->reverse	= reverse;
-+		__entry->found		= found;
-+		__entry->found_blk	= found_blk;
-+	),
-+
-+	TP_printk("dev %d,%d ino %lu from %u to %u reverse %d found %d "
-+		  "(blk = %u)",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  (unsigned long) __entry->ino,
-+		  (unsigned) __entry->from, (unsigned) __entry->to,
-+		  __entry->reverse, __entry->found,
-+		  (unsigned) __entry->found_blk)
-+);
-+
-+TRACE_EVENT(ext4_get_reserved_cluster_alloc,
-+	TP_PROTO(struct inode *inode, ext4_lblk_t lblk, unsigned int len),
-+
-+	TP_ARGS(inode, lblk, len),
-+
-+	TP_STRUCT__entry(
-+		__field(	ino_t,		ino	)
-+		__field(	dev_t,		dev	)
-+		__field(	ext4_lblk_t,	lblk	)
-+		__field(	unsigned int,	len	)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->ino	= inode->i_ino;
-+		__entry->dev	= inode->i_sb->s_dev;
-+		__entry->lblk	= lblk;
-+		__entry->len	= len;
-+	),
-+
-+	TP_printk("dev %d,%d ino %lu lblk %u len %u",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  (unsigned long) __entry->ino,
-+		  (unsigned) __entry->lblk,
-+		  __entry->len)
-+);
-+
-+TRACE_EVENT(ext4_ext_show_extent,
-+	TP_PROTO(struct inode *inode, ext4_lblk_t lblk, ext4_fsblk_t pblk,
-+		 unsigned short len),
-+
-+	TP_ARGS(inode, lblk, pblk, len),
-+
-+	TP_STRUCT__entry(
-+		__field(	ino_t,		ino	)
-+		__field(	dev_t,		dev	)
-+		__field(	ext4_lblk_t,	lblk	)
-+		__field(	ext4_fsblk_t,	pblk	)
-+		__field(	unsigned short,	len	)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->ino	= inode->i_ino;
-+		__entry->dev	= inode->i_sb->s_dev;
-+		__entry->lblk	= lblk;
-+		__entry->pblk	= pblk;
-+		__entry->len	= len;
-+	),
-+
-+	TP_printk("dev %d,%d ino %lu lblk %u pblk %llu len %u",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  (unsigned long) __entry->ino,
-+		  (unsigned) __entry->lblk,
-+		  (unsigned long long) __entry->pblk,
-+		  (unsigned short) __entry->len)
-+);
-+
-+TRACE_EVENT(ext4_remove_blocks,
-+	TP_PROTO(struct inode *inode, ext4_lblk_t ex_lblk,
-+		ext4_fsblk_t ex_pblk, unsigned short ex_len,
-+		ext4_lblk_t from, ext4_fsblk_t to,
-+		ext4_fsblk_t partial_cluster),
-+
-+	TP_ARGS(inode, ex_lblk, ex_pblk, ex_len, from, to, partial_cluster),
-+
-+	TP_STRUCT__entry(
-+		__field(	ino_t,		ino	)
-+		__field(	dev_t,		dev	)
-+		__field(	ext4_lblk_t,	ee_lblk	)
-+		__field(	ext4_fsblk_t,	ee_pblk	)
-+		__field(	unsigned short,	ee_len	)
-+		__field(	ext4_lblk_t,	from	)
-+		__field(	ext4_lblk_t,	to	)
-+		__field(	ext4_fsblk_t,	partial	)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->ino		= inode->i_ino;
-+		__entry->dev		= inode->i_sb->s_dev;
-+		__entry->ee_lblk	= ex_lblk;
-+		__entry->ee_pblk	= ex_pblk;
-+		__entry->ee_len		= ex_len;
-+		__entry->from		= from;
-+		__entry->to		= to;
-+		__entry->partial	= partial_cluster;
-+	),
-+
-+	TP_printk("dev %d,%d ino %lu extent [%u(%llu), %u]"
-+		  "from %u to %u partial_cluster %u",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  (unsigned long) __entry->ino,
-+		  (unsigned) __entry->ee_lblk,
-+		  (unsigned long long) __entry->ee_pblk,
-+		  (unsigned short) __entry->ee_len,
-+		  (unsigned) __entry->from,
-+		  (unsigned) __entry->to,
-+		  (unsigned) __entry->partial)
-+);
-+
-+TRACE_EVENT(ext4_ext_rm_leaf,
-+	TP_PROTO(struct inode *inode, ext4_lblk_t start,
-+		 ext4_lblk_t ex_lblk, ext4_fsblk_t ex_pblk,
-+		 unsigned short ex_len, ext4_fsblk_t partial_cluster),
-+
-+	TP_ARGS(inode, start, ex_lblk, ex_pblk, ex_len, partial_cluster),
-+
-+	TP_STRUCT__entry(
-+		__field(	ino_t,		ino	)
-+		__field(	dev_t,		dev	)
-+		__field(	ext4_lblk_t,	start	)
-+		__field(	ext4_lblk_t,	ee_lblk	)
-+		__field(	ext4_fsblk_t,	ee_pblk	)
-+		__field(	short,		ee_len	)
-+		__field(	ext4_fsblk_t,	partial	)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->ino		= inode->i_ino;
-+		__entry->dev		= inode->i_sb->s_dev;
-+		__entry->start		= start;
-+		__entry->ee_lblk	= ex_lblk;
-+		__entry->ee_pblk	= ex_pblk;
-+		__entry->ee_len		= ex_len;
-+		__entry->partial	= partial_cluster;
-+	),
-+
-+	TP_printk("dev %d,%d ino %lu start_lblk %u last_extent [%u(%llu), %u]"
-+		  "partial_cluster %u",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  (unsigned long) __entry->ino,
-+		  (unsigned) __entry->start,
-+		  (unsigned) __entry->ee_lblk,
-+		  (unsigned long long) __entry->ee_pblk,
-+		  (unsigned short) __entry->ee_len,
-+		  (unsigned) __entry->partial)
-+);
-+
-+TRACE_EVENT(ext4_ext_rm_idx,
-+	TP_PROTO(struct inode *inode, ext4_fsblk_t pblk),
-+
-+	TP_ARGS(inode, pblk),
-+
-+	TP_STRUCT__entry(
-+		__field(	ino_t,		ino	)
-+		__field(	dev_t,		dev	)
-+		__field(	ext4_fsblk_t,	pblk	)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->ino	= inode->i_ino;
-+		__entry->dev	= inode->i_sb->s_dev;
-+		__entry->pblk	= pblk;
-+	),
-+
-+	TP_printk("dev %d,%d ino %lu index_pblk %llu",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  (unsigned long) __entry->ino,
-+		  (unsigned long long) __entry->pblk)
-+);
-+
-+TRACE_EVENT(ext4_ext_remove_space,
-+	TP_PROTO(struct inode *inode, ext4_lblk_t start, int depth),
-+
-+	TP_ARGS(inode, start, depth),
-+
-+	TP_STRUCT__entry(
-+		__field(	ino_t,		ino	)
-+		__field(	dev_t,		dev	)
-+		__field(	ext4_lblk_t,	start	)
-+		__field(	int,		depth	)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->ino	= inode->i_ino;
-+		__entry->dev	= inode->i_sb->s_dev;
-+		__entry->start	= start;
-+		__entry->depth	= depth;
-+	),
-+
-+	TP_printk("dev %d,%d ino %lu since %u depth %d",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  (unsigned long) __entry->ino,
-+		  (unsigned) __entry->start,
-+		  __entry->depth)
-+);
-+
-+TRACE_EVENT(ext4_ext_remove_space_done,
-+	TP_PROTO(struct inode *inode, ext4_lblk_t start, int depth,
-+		ext4_lblk_t partial, unsigned short eh_entries),
-+
-+	TP_ARGS(inode, start, depth, partial, eh_entries),
-+
-+	TP_STRUCT__entry(
-+		__field(	ino_t,		ino		)
-+		__field(	dev_t,		dev		)
-+		__field(	ext4_lblk_t,	start		)
-+		__field(	int,		depth		)
-+		__field(	ext4_lblk_t,	partial		)
-+		__field(	unsigned short,	eh_entries	)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->ino		= inode->i_ino;
-+		__entry->dev		= inode->i_sb->s_dev;
-+		__entry->start		= start;
-+		__entry->depth		= depth;
-+		__entry->partial	= partial;
-+		__entry->eh_entries	= eh_entries;
-+	),
-+
-+	TP_printk("dev %d,%d ino %lu since %u depth %d partial %u "
-+		  "remaining_entries %u",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  (unsigned long) __entry->ino,
-+		  (unsigned) __entry->start,
-+		  __entry->depth,
-+		  (unsigned) __entry->partial,
-+		  (unsigned short) __entry->eh_entries)
-+);
-+
- #endif /* _TRACE_EXT4_H */
- 
- /* This part must be outside protection */
+-void ext4_free_blks_set(struct super_block *sb,
+-			  struct ext4_group_desc *bg, __u32 count)
++void ext4_free_group_clusters_set(struct super_block *sb,
++				  struct ext4_group_desc *bg, __u32 count)
+ {
+ 	bg->bg_free_blocks_count_lo = cpu_to_le16((__u16)count);
+ 	if (EXT4_DESC_SIZE(sb) >= EXT4_MIN_DESC_SIZE_64BIT)
+@@ -1994,7 +1994,7 @@ static int ext4_fill_flex_info(struct super_block *sb)
+ 		flex_group = ext4_flex_group(sbi, i);
+ 		atomic_add(ext4_free_inodes_count(sb, gdp),
+ 			   &sbi->s_flex_groups[flex_group].free_inodes);
+-		atomic_add(ext4_free_blks_count(sb, gdp),
++		atomic_add(ext4_free_group_clusters(sb, gdp),
+ 			   &sbi->s_flex_groups[flex_group].free_clusters);
+ 		atomic_add(ext4_used_dirs_count(sb, gdp),
+ 			   &sbi->s_flex_groups[flex_group].used_dirs);
 -- 
 1.7.4.1.22.gec8e1.dirty
 
