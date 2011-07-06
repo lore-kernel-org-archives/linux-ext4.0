@@ -1,244 +1,153 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 13/23] ext4: convert the free_blocks field in s_flex_groups to be free_clusters
-Date: Wed,  6 Jul 2011 12:35:56 -0400
-Message-ID: <1309970166-11770-14-git-send-email-tytso@mit.edu>
+Subject: [PATCH 04/23] ext4: factor out block group accounting into functions
+Date: Wed,  6 Jul 2011 12:35:47 -0400
+Message-ID: <1309970166-11770-5-git-send-email-tytso@mit.edu>
 References: <1309970166-11770-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33461 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:33472 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754747Ab1GFQgJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1754765Ab1GFQgJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 6 Jul 2011 12:36:09 -0400
 In-Reply-To: <1309970166-11770-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Convert the free_blocks to be free_clusters to make the final revised
-bigalloc changes easier to read/understand.
+This makes it easier to understand how ext4_init_block_bitmap() works,
+and it will assist when we split out ext4_free_blocks_after_init() in
+the next commit.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h    |    2 +-
- fs/ext4/ialloc.c  |   40 +++++++++++++++++++++-------------------
- fs/ext4/mballoc.c |    9 +++++----
- fs/ext4/resize.c  |    4 ++--
- fs/ext4/super.c   |    2 +-
- 5 files changed, 30 insertions(+), 27 deletions(-)
+ fs/ext4/balloc.c |   80 ++++++++++++++++++++++++++++++++---------------------
+ 1 files changed, 48 insertions(+), 32 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index cabc9fd..ca5ab11 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -299,7 +299,7 @@ struct ext4_group_desc
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index f8224ad..8573e2b 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -23,6 +23,9 @@
  
- struct flex_groups {
- 	atomic_t free_inodes;
--	atomic_t free_blocks;
-+	atomic_t free_clusters;
- 	atomic_t used_dirs;
- };
+ #include <trace/events/ext4.h>
  
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 31a4dc3..048ee7f 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -346,7 +346,7 @@ static int find_group_flex(struct super_block *sb, struct inode *parent,
- 	int flex_size = ext4_flex_bg_size(sbi);
- 	ext4_group_t best_flex = parent_fbg_group;
- 	int blocks_per_flex = sbi->s_blocks_per_group * flex_size;
--	int flexbg_free_blocks;
-+	int flexbg_free_clusters;
- 	int flex_freeb_ratio;
- 	ext4_group_t n_fbg_groups;
- 	ext4_group_t i;
-@@ -355,8 +355,9 @@ static int find_group_flex(struct super_block *sb, struct inode *parent,
- 		sbi->s_log_groups_per_flex;
- 
- find_close_to_parent:
--	flexbg_free_blocks = atomic_read(&flex_group[best_flex].free_blocks);
--	flex_freeb_ratio = flexbg_free_blocks * 100 / blocks_per_flex;
-+	flexbg_free_clusters = atomic_read(&flex_group[best_flex].free_clusters);
-+	flex_freeb_ratio = EXT4_C2B(sbi, flexbg_free_clusters) * 100 /
-+		blocks_per_flex;
- 	if (atomic_read(&flex_group[best_flex].free_inodes) &&
- 	    flex_freeb_ratio > free_block_ratio)
- 		goto found_flexbg;
-@@ -370,8 +371,9 @@ find_close_to_parent:
- 		if (i == parent_fbg_group || i == parent_fbg_group - 1)
- 			continue;
- 
--		flexbg_free_blocks = atomic_read(&flex_group[i].free_blocks);
--		flex_freeb_ratio = flexbg_free_blocks * 100 / blocks_per_flex;
-+		flexbg_free_clusters = atomic_read(&flex_group[i].free_clusters);
-+		flex_freeb_ratio = EXT4_C2B(sbi, flexbg_free_clusters) * 100 /
-+			blocks_per_flex;
- 
- 		if (flex_freeb_ratio > free_block_ratio &&
- 		    (atomic_read(&flex_group[i].free_inodes))) {
-@@ -380,14 +382,14 @@ find_close_to_parent:
- 		}
- 
- 		if ((atomic_read(&flex_group[best_flex].free_inodes) == 0) ||
--		    ((atomic_read(&flex_group[i].free_blocks) >
--		      atomic_read(&flex_group[best_flex].free_blocks)) &&
-+		    ((atomic_read(&flex_group[i].free_clusters) >
-+		      atomic_read(&flex_group[best_flex].free_clusters)) &&
- 		     atomic_read(&flex_group[i].free_inodes)))
- 			best_flex = i;
- 	}
- 
- 	if (!atomic_read(&flex_group[best_flex].free_inodes) ||
--	    !atomic_read(&flex_group[best_flex].free_blocks))
-+	    !atomic_read(&flex_group[best_flex].free_clusters))
- 		return -1;
- 
- found_flexbg:
-@@ -407,7 +409,7 @@ out:
- 
- struct orlov_stats {
- 	__u32 free_inodes;
--	__u32 free_blocks;
-+	__u32 free_clusters;
- 	__u32 used_dirs;
- };
- 
-@@ -424,7 +426,7 @@ static void get_orlov_stats(struct super_block *sb, ext4_group_t g,
- 
- 	if (flex_size > 1) {
- 		stats->free_inodes = atomic_read(&flex_group[g].free_inodes);
--		stats->free_blocks = atomic_read(&flex_group[g].free_blocks);
-+		stats->free_clusters = atomic_read(&flex_group[g].free_clusters);
- 		stats->used_dirs = atomic_read(&flex_group[g].used_dirs);
- 		return;
- 	}
-@@ -432,11 +434,11 @@ static void get_orlov_stats(struct super_block *sb, ext4_group_t g,
- 	desc = ext4_get_group_desc(sb, g, NULL);
- 	if (desc) {
- 		stats->free_inodes = ext4_free_inodes_count(sb, desc);
--		stats->free_blocks = ext4_free_blks_count(sb, desc);
-+		stats->free_clusters = ext4_free_blks_count(sb, desc);
- 		stats->used_dirs = ext4_used_dirs_count(sb, desc);
- 	} else {
- 		stats->free_inodes = 0;
--		stats->free_blocks = 0;
-+		stats->free_clusters = 0;
- 		stats->used_dirs = 0;
- 	}
++static unsigned int num_base_meta_blocks(struct super_block *sb,
++					 ext4_group_t block_group);
++
+ /*
+  * balloc.c contains the blocks allocation and deallocation routines
+  */
+@@ -83,14 +86,30 @@ static int ext4_group_used_meta_blocks(struct super_block *sb,
+ 	return used_blocks;
  }
-@@ -471,10 +473,10 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
- 	ext4_group_t real_ngroups = ext4_get_groups_count(sb);
- 	int inodes_per_group = EXT4_INODES_PER_GROUP(sb);
- 	unsigned int freei, avefreei;
--	ext4_fsblk_t freeb, avefreeb;
-+	ext4_fsblk_t freeb, avefreec;
- 	unsigned int ndirs;
- 	int max_dirs, min_inodes;
--	ext4_grpblk_t min_blocks;
-+	ext4_grpblk_t min_clusters;
- 	ext4_group_t i, grp, g, ngroups;
- 	struct ext4_group_desc *desc;
- 	struct orlov_stats stats;
-@@ -492,8 +494,8 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
- 	avefreei = freei / ngroups;
- 	freeb = EXT4_C2B(sbi,
- 		percpu_counter_read_positive(&sbi->s_freeclusters_counter));
--	avefreeb = freeb;
--	do_div(avefreeb, ngroups);
-+	avefreec = freeb;
-+	do_div(avefreec, ngroups);
- 	ndirs = percpu_counter_read_positive(&sbi->s_dirs_counter);
  
- 	if (S_ISDIR(mode) &&
-@@ -519,7 +521,7 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
- 				continue;
- 			if (stats.free_inodes < avefreei)
- 				continue;
--			if (stats.free_blocks < avefreeb)
-+			if (stats.free_clusters < avefreec)
- 				continue;
- 			grp = g;
- 			ret = 0;
-@@ -557,7 +559,7 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
- 	min_inodes = avefreei - inodes_per_group*flex_size / 4;
- 	if (min_inodes < 1)
- 		min_inodes = 1;
--	min_blocks = avefreeb - EXT4_BLOCKS_PER_GROUP(sb)*flex_size / 4;
-+	min_clusters = avefreec - EXT4_CLUSTERS_PER_GROUP(sb)*flex_size / 4;
++static unsigned int num_blocks_in_group(struct super_block *sb,
++					ext4_group_t block_group)
++{
++	if (block_group == ext4_get_groups_count(sb) - 1) {
++		/*
++		 * Even though mke2fs always initializes the first and
++		 * last group, just in case some other tool was used,
++		 * we need to make sure we calculate the right free
++		 * blocks.
++		 */
++		return ext4_blocks_count(EXT4_SB(sb)->s_es) -
++			ext4_group_first_block_no(sb, block_group);
++	} else
++		return EXT4_BLOCKS_PER_GROUP(sb);
++}
++
+ /* Initializes an uninitialized block bitmap if given, and returns the
+  * number of blocks free in the group. */
+ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
+ 		 ext4_group_t block_group, struct ext4_group_desc *gdp)
+ {
+-	int bit, bit_max;
++	unsigned int bit, bit_max = num_base_meta_blocks(sb, block_group);
+ 	ext4_group_t ngroups = ext4_get_groups_count(sb);
+-	unsigned free_blocks, group_blocks;
++	unsigned group_blocks = num_blocks_in_group(sb, block_group);
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
  
- 	/*
- 	 * Start looking in the flex group where we last allocated an
-@@ -576,7 +578,7 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
- 			continue;
- 		if (stats.free_inodes < min_inodes)
- 			continue;
--		if (stats.free_blocks < min_blocks)
-+		if (stats.free_clusters < min_clusters)
- 			continue;
- 		goto found_flex_bg;
- 	}
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index a0f92c0..48172a1 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2817,7 +2817,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 		ext4_group_t flex_group = ext4_flex_group(sbi,
- 							  ac->ac_b_ex.fe_group);
- 		atomic_sub(ac->ac_b_ex.fe_len,
--			   &sbi->s_flex_groups[flex_group].free_blocks);
-+			   &sbi->s_flex_groups[flex_group].free_clusters);
+ 	if (bh) {
+@@ -110,35 +129,6 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
+ 		memset(bh->b_data, 0, sb->s_blocksize);
  	}
  
- 	err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
-@@ -4664,7 +4664,8 @@ do_more:
- 
- 	if (sbi->s_log_groups_per_flex) {
- 		ext4_group_t flex_group = ext4_flex_group(sbi, block_group);
--		atomic_add(count, &sbi->s_flex_groups[flex_group].free_blocks);
-+		atomic_add(count_clusters,
-+			   &sbi->s_flex_groups[flex_group].free_clusters);
+-	/* Check for superblock and gdt backups in this group */
+-	bit_max = ext4_bg_has_super(sb, block_group);
+-
+-	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_META_BG) ||
+-	    block_group < le32_to_cpu(sbi->s_es->s_first_meta_bg) *
+-			  sbi->s_desc_per_block) {
+-		if (bit_max) {
+-			bit_max += ext4_bg_num_gdb(sb, block_group);
+-			bit_max +=
+-				le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks);
+-		}
+-	} else { /* For META_BG_BLOCK_GROUPS */
+-		bit_max += ext4_bg_num_gdb(sb, block_group);
+-	}
+-
+-	if (block_group == ngroups - 1) {
+-		/*
+-		 * Even though mke2fs always initialize first and last group
+-		 * if some other tool enabled the EXT4_BG_BLOCK_UNINIT we need
+-		 * to make sure we calculate the right free blocks
+-		 */
+-		group_blocks = ext4_blocks_count(sbi->s_es) -
+-			ext4_group_first_block_no(sb, ngroups - 1);
+-	} else {
+-		group_blocks = EXT4_BLOCKS_PER_GROUP(sb);
+-	}
+-
+-	free_blocks = group_blocks - bit_max;
+-
+ 	if (bh) {
+ 		ext4_fsblk_t start, tmp;
+ 		int flex_bg = 0;
+@@ -176,7 +166,8 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
+ 		ext4_mark_bitmap_end(group_blocks, sb->s_blocksize * 8,
+ 				     bh->b_data);
  	}
+-	return free_blocks - ext4_group_used_meta_blocks(sb, block_group, gdp);
++	return group_blocks - bit_max -
++		ext4_group_used_meta_blocks(sb, block_group, gdp);
+ }
  
- 	ext4_mb_unload_buddy(&e4b);
-@@ -4794,8 +4795,8 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
  
- 	if (sbi->s_log_groups_per_flex) {
- 		ext4_group_t flex_group = ext4_flex_group(sbi, block_group);
--		atomic_add(blocks_freed,
--			   &sbi->s_flex_groups[flex_group].free_blocks);
-+		atomic_add(EXT4_B2C(sbi, blocks_freed),
-+			   &sbi->s_flex_groups[flex_group].free_clusters);
- 	}
+@@ -620,6 +611,31 @@ unsigned long ext4_bg_num_gdb(struct super_block *sb, ext4_group_t group)
  
- 	ext4_mb_unload_buddy(&e4b);
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 405c1cb..cef49d3 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -928,8 +928,8 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
- 	    sbi->s_log_groups_per_flex) {
- 		ext4_group_t flex_group;
- 		flex_group = ext4_flex_group(sbi, input->group);
--		atomic_add(input->free_blocks_count,
--			   &sbi->s_flex_groups[flex_group].free_blocks);
-+		atomic_add(EXT4_B2C(sbi, input->free_blocks_count),
-+			   &sbi->s_flex_groups[flex_group].free_clusters);
- 		atomic_add(EXT4_INODES_PER_GROUP(sb),
- 			   &sbi->s_flex_groups[flex_group].free_inodes);
- 	}
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 307e453..a803d65 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1995,7 +1995,7 @@ static int ext4_fill_flex_info(struct super_block *sb)
- 		atomic_add(ext4_free_inodes_count(sb, gdp),
- 			   &sbi->s_flex_groups[flex_group].free_inodes);
- 		atomic_add(ext4_free_blks_count(sb, gdp),
--			   &sbi->s_flex_groups[flex_group].free_blocks);
-+			   &sbi->s_flex_groups[flex_group].free_clusters);
- 		atomic_add(ext4_used_dirs_count(sb, gdp),
- 			   &sbi->s_flex_groups[flex_group].used_dirs);
- 	}
+ }
+ 
++/*
++ * This function returns the number of file system metadata blocks at
++ * the beginning of a block group, including the reserved gdt blocks.
++ */
++static unsigned int num_base_meta_blocks(struct super_block *sb,
++					 ext4_group_t block_group)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	int num;
++
++	/* Check for superblock and gdt backups in this group */
++	num = ext4_bg_has_super(sb, block_group);
++
++	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_META_BG) ||
++	    block_group < le32_to_cpu(sbi->s_es->s_first_meta_bg) *
++			  sbi->s_desc_per_block) {
++		if (num) {
++			num += ext4_bg_num_gdb(sb, block_group);
++			num += le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks);
++		}
++	} else { /* For META_BG_BLOCK_GROUPS */
++		num += ext4_bg_num_gdb(sb, block_group);
++	}
++	return num;
++}
+ /**
+  *	ext4_inode_to_goal_block - return a hint for block allocation
+  *	@inode: inode for block allocation
 -- 
 1.7.4.1.22.gec8e1.dirty
 
