@@ -1,59 +1,41 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 38852] Oops in page_waitqueue during large copy to ext4
- filesystem
-Date: Wed, 6 Jul 2011 14:57:28 GMT
-Message-ID: <201107061457.p66EvSwc004847@demeter2.kernel.org>
-References: <bug-38852-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 17/23] ext4: enable mounting bigalloc as read/write
+Date: Wed,  6 Jul 2011 12:36:00 -0400
+Message-ID: <1309970166-11770-18-git-send-email-tytso@mit.edu>
+References: <1309970166-11770-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:59238 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753638Ab1GFO52 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Jul 2011 10:57:28 -0400
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.4) with ESMTP id p66EvSGY004848
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 6 Jul 2011 14:57:28 GMT
-In-Reply-To: <bug-38852-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:33456 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754742Ab1GFQgJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 6 Jul 2011 12:36:09 -0400
+In-Reply-To: <1309970166-11770-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=38852
+Now that we have implemented all of the changes needed for bigalloc,
+we can finally enable it!
 
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/ext4.h |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-Jim Paris <jim@jtan.com> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|NEW                         |RESOLVED
-         Resolution|                            |INVALID
-
-
-
-
---- Comment #2 from Jim Paris <jim@jtan.com>  2011-07-06 14:57:27 ---
-Nevermind this report.  Besides installing new disks and upgrading the kernel,
-I also added more RAM, so I just ran memtester for a while:
-
-pagesize is 4096
-pagesizemask is 0xfffffffffffff000
-want 4096MB (4294967296 bytes)
-got  4096MB (4294967296 bytes), trying mlock ...locked.
-Loop 1:
-  Stuck Address       : ok
-  Random Value        : FAILURE: 0xfbb90e87ff7d6321 != 0xfbb90e87ff7d6721 at
-offset 0x08ab3585.
-FAILURE: 0xf7fcbbb567f370e7 != 0xf7fcbbb567f374e7 at offset 0x08ac3585.
-FAILURE: 0xaedce87b7ff0b265 != 0xaedce87b7ff0b665 at offset 0x08b86f85.
-FAILURE: 0x237ffcdd3b79d98a != 0x237ffcdd3b79dd8a at offset 0x08bbcd85.
-
-... etc.
-
-I'll go back to my known-good RAM and close this for now.  Sorry for the noise.
-
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 78ac8ed..d79e773 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1424,7 +1424,8 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+ 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK | \
+ 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE | \
+ 					 EXT4_FEATURE_RO_COMPAT_BTREE_DIR |\
+-					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE)
++					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE |\
++					 EXT4_FEATURE_RO_COMPAT_BIGALLOC)
+ 
+ /*
+  * Default values for user and/or group using reserved blocks
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.7.4.1.22.gec8e1.dirty
+
