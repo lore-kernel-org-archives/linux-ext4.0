@@ -1,76 +1,198 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 1/2 v3] EXT4: Secure Delete: Zero out file data
-Date: Fri, 8 Jul 2011 17:49:25 -0600
-Message-ID: <507FA19B-1395-4237-98BF-7CD65F80A120@dilger.ca>
-References: <1309468923-5677-1-git-send-email-achender@linux.vnet.ibm.com> <1309468923-5677-2-git-send-email-achender@linux.vnet.ibm.com> <CAOQ4uxicueV9QOvHEhyk0mNSs+B+dT1X=Z64i_L2_qn6X6_vHA@mail.gmail.com> <4E14CE15.90404@linux.vnet.ibm.com> <CAOQ4uxh4iUKjDgCBV54VxZ4PhDi18aqL3O6YHOoMYrHyXcECiA@mail.gmail.com> <2DE49B61-CC67-4613-99EB-88601D6EC564@dilger.ca> <4E1614C1.1050209@linux.vnet.ibm.com> <CAOQ4uxiV+h3G7vPZtZp0afbhek8uAP0gER+H7yS9xdrr_XBmVw@mail.gmail.com> <1310149225.2970.2.camel@mingming-laptop>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Amir Goldstein <amir73il@gmail.com>,
-	Allison Henderson <achender@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
+From: Andreas Dilger <adilger@whamcloud.com>
+Subject: [PATCH] misc: use EXT2_I_SIZE() consistently to get size
+Date: Fri,  8 Jul 2011 17:54:57 -0600
+Message-ID: <1310169297-4561-1-git-send-email-adilger@whamcloud.com>
+Cc: Andreas Dilger <adilger@whamcloud.com>
+To: tytso@mit.edu, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:28836 "EHLO
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:22678 "EHLO
 	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750879Ab1GHXt0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Jul 2011 19:49:26 -0400
-In-Reply-To: <1310149225.2970.2.camel@mingming-laptop>
+	with ESMTP id S1750931Ab1GHXzA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Jul 2011 19:55:00 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-07-08, at 12:20 PM, Mingming Cao wrote:
-> On Fri, 2011-07-08 at 03:09 +0300, Amir Goldstein wrote:
->> I realized that there is a basic flaw in the concept of deferred-secure-delete.
->> From a security point of view, after a crash during a secure-delete,
->> if the file is not there, all its data should have been wiped.
->> Orphan cleanup on the next mount may be done on a system that
->> doesn't respect secure delete.
->> So for real security, the unlink/truncate command cannot return before
->> all data is wiped.
-> 
-> I agree. I think the user who expect secure delete will be expecting the
-> data being completely wiped off from disk, instead of wondering when the
-> OS/fs will really get rid of the data on the hidden inode by background
-> thread.  Secure delete should be synchronous.
+Use the EXT2_I_SIZE() macro consistently to access the inode size.
+The i_size/i_size_high combination is open coded in several places.
 
-I'm not going to argue further for async secure delete, but just wanted
-to point out that userspace can determine when the "shred" is safely done
-on disk (or any other operation for that matter) by doing a sync afterward.
-It wouldn't have to "wonder" about anything.
+Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
+---
+ debugfs/debugfs.c   |   13 ++++---------
+ debugfs/ls.c        |    5 ++---
+ debugfs/lsdel.c     |    5 +----
+ e2fsck/message.c    |    3 +--
+ e2fsck/pass1.c      |    5 ++---
+ e2fsck/pass2.c      |    3 +--
+ e2fsck/super.c      |    3 +--
+ lib/ext2fs/extent.c |    5 ++---
+ lib/ext2fs/fileio.c |    3 +--
+ 9 files changed, 15 insertions(+), 30 deletions(-)
 
-My original proposal for using the delete thread included having sync()
-block until all of the background secure unlink/overwrite operations were
-finished.  That would allow deleting many files at one time, and then
-sending all of the requests to the disk more efficiently.
-
-
-I am just imagining some Enron accountant sweating for hours as his sync
-secure-delete is running at 50-100 files/sec (seek limit if there are
-1 or 2 seeks/file) on a filesystem with 1M files in it, instead of being
-able to delete 50000 files/sec asynchronously and wait a few minutes at
-the end as the sync completes. ;-)
-
-A better solution is to just encrypt the data with a per-inode key and
-then just overwrite the inode securely when it is unlinked, so when the
-key is erased the data is unrecoverable.  I imagine that ecryptfs or
-similar might do something like that (I don't know much about it, honestly).
-
-
-Note that this should probably get an EXT4_FEATURE_COMPAT_SECDEL flag, so
-e2fsck knows to also wipe secure-delete files when they are unlinked due
-to inode corruption, or similar.
-
-This reminds me I also have an e2fsck patch that we've been carrying for a
-few years for shared block handling that allows e2fsck to optionally move
-inodes to lost+found, delete them, or wipe the shared blocks option.  This
-is necessary to avoid data leakage between users in case there is some
-corruption that links one user's inode to another user's blocks.  I'll send
-that in another email.
-
-Cheers, Andreas
-
-
-
-
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index 55d16af..12ee638 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -722,12 +722,9 @@ void internal_dump_inode(FILE *out, const char *prefix,
+ 	}
+ 	fprintf(out, "%sUser: %5d   Group: %5d   Size: ",
+ 		prefix, inode_uid(*inode), inode_gid(*inode));
+-	if (LINUX_S_ISREG(inode->i_mode)) {
+-		unsigned long long i_size = (inode->i_size |
+-				    ((unsigned long long)inode->i_size_high << 32));
+-
+-		fprintf(out, "%llu\n", i_size);
+-	} else
++	if (LINUX_S_ISREG(inode->i_mode))
++		fprintf(out, "%llu\n", EXT2_I_SIZE(inode));
++	else
+ 		fprintf(out, "%d\n", inode->i_size);
+ 	if (os == EXT2_OS_HURD)
+ 		fprintf(out,
+@@ -901,9 +898,7 @@ void do_dump_extents(int argc, char **argv)
+ 		return;
+ 	}
+ 
+-	logical_width = int_log10(((inode.i_size |
+-				    (__u64) inode.i_size_high << 32) +
+-				   current_fs->blocksize - 1) /
++	logical_width = int_log10((EXT2_I_SIZE(&inode)+current_fs->blocksize-1)/
+ 				  current_fs->blocksize) + 1;
+ 	if (logical_width < 5)
+ 		logical_width = 5;
+diff --git a/debugfs/ls.c b/debugfs/ls.c
+index 906504e..8e019d2 100644
+--- a/debugfs/ls.c
++++ b/debugfs/ls.c
+@@ -79,7 +79,7 @@ static int list_dir_proc(ext2_ino_t dir EXT2FS_ATTR((unused)),
+ 		if (LINUX_S_ISDIR(inode.i_mode))
+ 			fprintf(ls->f, "/");
+ 		else
+-			fprintf(ls->f, "%lld/", inode.i_size | ((__u64)inode.i_size_high << 32));
++			fprintf(ls->f, "%lld/", EXT2_I_SIZE(&inode));
+ 		fprintf(ls->f, "\n");
+ 	}
+ 	else if (ls->options & LONG_OPT) {
+@@ -102,8 +102,7 @@ static int list_dir_proc(ext2_ino_t dir EXT2FS_ATTR((unused)),
+ 		if (LINUX_S_ISDIR(inode.i_mode))
+ 			fprintf(ls->f, "%5d", inode.i_size);
+ 		else
+-			fprintf(ls->f, "%5llu", inode.i_size |
+-				((unsigned long long) inode.i_size_high << 32));
++			fprintf(ls->f, "%5llu", EXT2_I_SIZE(&inode));
+ 		fprintf (ls->f, " %s %s\n", datestr, name);
+ 	} else {
+ 		sprintf(tmp, "%c%u%c (%d) %s   ", lbr, dirent->inode, rbr,
+diff --git a/debugfs/lsdel.c b/debugfs/lsdel.c
+index 91ac06a..ba7a90f 100644
+--- a/debugfs/lsdel.c
++++ b/debugfs/lsdel.c
+@@ -164,10 +164,7 @@ void do_lsdel(int argc, char **argv)
+ 			delarray[num_delarray].ino = ino;
+ 			delarray[num_delarray].mode = inode.i_mode;
+ 			delarray[num_delarray].uid = inode_uid(inode);
+-			delarray[num_delarray].size = inode.i_size;
+-			if (!LINUX_S_ISDIR(inode.i_mode))
+-				delarray[num_delarray].size |=
+-					((__u64) inode.i_size_high << 32);
++			delarray[num_delarray].size = EXT2_I_SIZE(&inode);
+ 			delarray[num_delarray].dtime = inode.i_dtime;
+ 			delarray[num_delarray].num_blocks = lsd.num_blocks;
+ 			delarray[num_delarray].free_blocks = lsd.free_blocks;
+diff --git a/e2fsck/message.c b/e2fsck/message.c
+index d560cf8..c456752 100644
+--- a/e2fsck/message.c
++++ b/e2fsck/message.c
+@@ -282,8 +282,7 @@ static _INLINE_ void expand_inode_expression(ext2_filsys fs, char ch,
+ 			else
+ 				printf("%u", inode->i_size);
+ #else
+-			printf("%llu", inode->i_size |
+-				       ((long long)inode->i_size_high << 32));
++			printf("%llu", EXT2_I_SIZE(inode));
+ #endif
+ 		}
+ 		break;
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index dbf3c94..75491cf 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -256,7 +256,7 @@ static void check_size(e2fsck_t ctx, struct problem_context *pctx)
+ {
+ 	struct ext2_inode *inode = pctx->inode;
+ 
+-	if ((inode->i_size == 0) && (inode->i_size_high == 0))
++	if (EXT2_I_SIZE(inode) == 0)
+ 		return;
+ 
+ 	if (!fix_problem(ctx, PR_1_SET_NONZSIZE, pctx))
+@@ -2045,8 +2045,7 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
+ 		}
+ 		pctx->num = 0;
+ 	}
+-	if (LINUX_S_ISREG(inode->i_mode) &&
+-	    (inode->i_size_high || inode->i_size & 0x80000000UL))
++	if (LINUX_S_ISREG(inode->i_mode) && EXT2_I_SIZE(inode) >= 0x80000000UL)
+ 		ctx->large_files++;
+ 	if ((pb.num_blocks != ext2fs_inode_i_blocks(fs, inode)) ||
+ 	    ((fs->super->s_feature_ro_compat &
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index b97a0b3..2863699 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -1220,8 +1220,7 @@ static void deallocate_inode(e2fsck_t ctx, ext2_ino_t ino, char* block_buf)
+ 	if (!ext2fs_inode_has_valid_blocks(&inode))
+ 		return;
+ 
+-	if (LINUX_S_ISREG(inode.i_mode) &&
+-	    (inode.i_size_high || inode.i_size & 0x80000000UL))
++	if (LINUX_S_ISREG(inode.i_mode) && EXT2_I_SIZE(&inode) >= 0x80000000UL)
+ 		ctx->large_files--;
+ 
+ 	pctx.errcode = ext2fs_block_iterate3(fs, ino, 0, block_buf,
+diff --git a/e2fsck/super.c b/e2fsck/super.c
+index 2fffc53..a61eb33 100644
+--- a/e2fsck/super.c
++++ b/e2fsck/super.c
+@@ -170,8 +170,7 @@ static int release_inode_blocks(e2fsck_t ctx, ext2_ino_t ino,
+ 	if (inode->i_links_count) {
+ 		pb.truncating = 1;
+ 		pb.truncate_block = (e2_blkcnt_t)
+-			((((long long)inode->i_size_high << 32) +
+-			  inode->i_size + fs->blocksize - 1) /
++			((EXT2_I_SIZE(inode) + fs->blocksize - 1) /
+ 			 fs->blocksize);
+ 		pb.truncate_offset = inode->i_size % fs->blocksize;
+ 	} else {
+diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
+index 5e07092..abb60dd 100644
+--- a/lib/ext2fs/extent.c
++++ b/lib/ext2fs/extent.c
+@@ -253,9 +253,8 @@ extern errcode_t ext2fs_extent_open2(ext2_filsys fs, ext2_ino_t ino,
+ 	handle->path[0].max_entries = ext2fs_le16_to_cpu(eh->eh_max);
+ 	handle->path[0].curr = 0;
+ 	handle->path[0].end_blk =
+-		((((__u64) handle->inode->i_size_high << 32) +
+-		  handle->inode->i_size + (fs->blocksize - 1))
+-		 >> EXT2_BLOCK_SIZE_BITS(fs->super));
++		(EXT2_I_SIZE(handle->inode) + fs->blocksize - 1) >>
++		 EXT2_BLOCK_SIZE_BITS(fs->super);
+ 	handle->path[0].visit_num = 1;
+ 	handle->level = 0;
+ 	handle->magic = EXT2_ET_MAGIC_EXTENT_HANDLE;
+diff --git a/lib/ext2fs/fileio.c b/lib/ext2fs/fileio.c
+index d62ef35..324f046 100644
+--- a/lib/ext2fs/fileio.c
++++ b/lib/ext2fs/fileio.c
+@@ -376,8 +376,7 @@ errcode_t ext2fs_file_set_size2(ext2_file_t file, ext2_off64_t size)
+ 
+ 	truncate_block = ((size + file->fs->blocksize - 1) >>
+ 			  EXT2_BLOCK_SIZE_BITS(file->fs->super)) + 1;
+-	old_size = file->inode.i_size +
+-		((blk64_t)file->inode.i_size_high << 32);
++	old_size = EXT2_I_SIZE(&file->inode);
+ 	old_truncate = ((old_size + file->fs->blocksize - 1) >>
+ 		      EXT2_BLOCK_SIZE_BITS(file->fs->super)) + 1;
+ 
+-- 
+1.7.3.4
 
