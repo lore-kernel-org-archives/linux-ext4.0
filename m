@@ -1,126 +1,49 @@
-From: Sean McCauliff <Sean.D.McCauliff@nasa.gov>
+From: Andi Kleen <andi@firstfloor.org>
 Subject: Re: High CPU Utilization When Copying to Ext4
-Date: Fri, 8 Jul 2011 10:08:31 -0700
-Message-ID: <4E17398F.2090609@nasa.gov>
-References: <341DAA96EE3A8444B6E4657BE8A846EA4B3DA126FE@NDJSSCC06.ndc.nasa.gov> <20110627030539.GF3064@thunk.org> <341DAA96EE3A8444B6E4657BE8A846EA4B3DA12708@NDJSSCC06.ndc.nasa.gov> <F673734C-4ECE-40B2-B283-959027C34B06@mit.edu> <341DAA96EE3A8444B6E4657BE8A846EA4B3DA1270A@NDJSSCC06.ndc.nasa.gov> <50F503A1-6A16-41C4-9C27-0662063C7817@mit.edu> <4E0BBCE9.9020600@nasa.gov> <20110630023306.GY2729@thunk.org>
+Date: Fri, 08 Jul 2011 10:17:49 -0700
+Message-ID: <m27h7sd742.fsf@firstfloor.org>
+References: <341DAA96EE3A8444B6E4657BE8A846EA4B3DA126FE@NDJSSCC06.ndc.nasa.gov>
+	<20110627030539.GF3064@thunk.org>
+	<341DAA96EE3A8444B6E4657BE8A846EA4B3DA12708@NDJSSCC06.ndc.nasa.gov>
+	<F673734C-4ECE-40B2-B283-959027C34B06@mit.edu>
+	<341DAA96EE3A8444B6E4657BE8A846EA4B3DA1270A@NDJSSCC06.ndc.nasa.gov>
+	<50F503A1-6A16-41C4-9C27-0662063C7817@mit.edu>
+	<4E0BBCE9.9020600@nasa.gov> <20110630023306.GY2729@thunk.org>
+	<4E17398F.2090609@nasa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Ted Ts'o" <tytso@mit.edu>,
+	"linux-ext4\@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Sean McCauliff <Sean.D.McCauliff@nasa.gov>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ndmsnpf02.ndc.nasa.gov ([198.117.0.122]:45466 "EHLO
-	ndmsnpf02.ndc.nasa.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753692Ab1GHRIh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Jul 2011 13:08:37 -0400
-In-Reply-To: <20110630023306.GY2729@thunk.org>
+Received: from mga11.intel.com ([192.55.52.93]:56296 "EHLO mga11.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752238Ab1GHRTW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 8 Jul 2011 13:19:22 -0400
+In-Reply-To: <4E17398F.2090609@nasa.gov> (Sean McCauliff's message of "Fri, 8
+	Jul 2011 10:08:31 -0700")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I tried running perf on the copy program on subset of the sparse files. 
-  It seems like ext4 is the source of high cpu utilization.  At this 
-point this high cpu utilization is very annoying, but I can live with 
-this problem.  If you know something simple I could do to alleviate this 
-problem I would be most appreciative.  At the end of this email is a 
-consolidation of information about this problem.
+Sean McCauliff <Sean.D.McCauliff@nasa.gov> writes:
 
-Events: 6M cycles
--76.80%     java  [kernel.kallsyms]      [k] ext4_mb_good_group
-   - ext4_mb_good_group
-       - 99.24% ext4_mb_regular_allocator
-            ext4_mb_new_blocks
-            ext4_ext_map_blocks
-            ext4_map_blocks
-          - mpage_da_map_and_submit
-             - 96.25% write_cache_pages_da
-                  ext4_da_writepages
-                  do_writepages
-                  writeback_single_inode
-                  writeback_sb_inodes
-                  writeback_inodes_wb
-                  balance_dirty_pages_ratelimited_nr
-                  generic_file_buffered_write
-                  __generic_file_aio_write
-                  generic_file_aio_write
-                  ext4_file_write
-                  do_sync_write
-                  vfs_write
-                  sys_write
-                  system_call_fastpath
-                - 0x338480df7d
-                     100.00% writeBytes
-             + 3.75% ext4_da_writepages
-       + 0.76% ext4_mb_new_blocks
-+4.07%     java  [kernel.kallsyms]      [k] do_raw_spin_lock
-+2.19%     java  [kernel.kallsyms]      [k] _raw_spin_lock_irqsave
-+1.53%     java  [kernel.kallsyms]      [k] ext4_get_group_info
-+1.07%     java  [kernel.kallsyms]      [k] ext4_mb_regular_allocator
-+1.07%     java  [kernel.kallsyms]      [k] compaction_alloc
-+0.85%     java  [kernel.kallsyms]      [k] read_hpet
-+0.40%     java  [kernel.kallsyms]      [k] copy_user_generic_string
-+0.32%     java  [kernel.kallsyms]      [k] __bitmap_empty
-+0.31%     java  [kernel.kallsyms]      [k] ktime_get
-
-Specifics:
-
-The copy program is written in Java with some C code that calls the 
-fiemap ioctl.  It uses this to maintain the sparseness of the 
-destination files and seems to be much faster then doing contiguous zero 
-detection like tar or cp in order to identify the holes in the files. 
-The copy program is using 64 threads.
-
-During the copy system cpu is over 90%, iowait is generally only 1 or 2%.
-
-Source file system is 8T ext3, destination file system is 16T ext4. 
-Files are sparse, non-sparse size is 17M.  They have about a few hundred 
-extents on average as reported by filefrag.  The destination file 
-generated by the copy program has fewer extents, but are otherwise 
-identical.  I assume this is due to smarter allocation by ext4.
-
-The source file system is built on top of LVM which is built on top of 
-four multipath devices which load balance for a pair of qlogic FC HBAs. 
-  The destination file system is built on top of a single multipath 
-device which load balances the same pair of HBAs (no LVM).
-
-The san is a 3par with 240 SATA drives.  Each lun exported to the server 
-is in a RAID1+0 configuration striped over all the drives.  The server 
-is directly connection without a FC switch.
-
-Fedora 15.
-Linux xxxx.arc.nasa.gov 2.6.38.8-32.fc15.x86_64 #1 SMP Mon Jun 13 
-19:49:05 UTC 2011 x86_64 x86_64 x86_64 GNU/Linux
-
-The server has 8 cores and 64G of memory.
-
-Nothing else is running or consuming substantial resources on this 
-server.  top shows that java, flush and kworker processes are consuming cpu.
-
-
-Thanks!
-Sean
-
-On 06/29/2011 07:33 PM, Ted Ts'o wrote:
-> On Wed, Jun 29, 2011 at 05:01:45PM -0700, Sean McCauliff wrote:
->> Sorry, I didn't mean to bother you.  I did try and email ext3-users
->> so as to not take up any developer time with my question.
+> I tried running perf on the copy program on subset of the sparse
+> files. It seems like ext4 is the source of high cpu utilization.  At
+> this point this high cpu utilization is very annoying, but I can live
+> with this problem.  If you know something simple I could do to
+> alleviate this problem I would be most appreciative.  At the end of
+> this email is a consolidation of information about this problem.
 >
-> Yeah, but it's not likely anyone on that list would be able to help
-> you.  Both ext3 and ext4 isn't expected to take a huge amount of CPU
-> under normal conditions when doing this type of copying where you will
-> be likely disk bound.
->
-> Well, you're not using fallocate() (at least you haven't disclosed it
-> to date), and writing into fallocated space is the only thing that
-> would be using a workqueue at all (which is what the kworker threads
-> are using).
->
-> So I very much doubt it has anything to do with ext4.  The fiber
-> channel drivers do use workqueues a fair amount, so yes, it would be
-> useful to know that you are using a fiber channel SAN.  At this point
-> I'd suggest that you use oprofile or perf to see where the CPU is
-> being consumed.  Perf is probably better since it will allow you to
-> see the call chains.
->
-> 						- Ted
->
+> Events: 6M cycles
+> -76.80%     java  [kernel.kallsyms]      [k] ext4_mb_good_group
+>   - ext4_mb_good_group
 
+Is your file system too full?
+
+A lot of file system get inefficient in allocating blocks when the 
+file system is nearly full.
+
+-Andi
+
+-- 
+ak@linux.intel.com -- Speaking for myself only
