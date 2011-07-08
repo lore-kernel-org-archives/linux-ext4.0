@@ -1,228 +1,246 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: [PATCH 1/2 v3] EXT4: Secure Delete: Zero out file data
-Date: Fri, 8 Jul 2011 09:29:16 +0300
-Message-ID: <CAOQ4uxjZNduK5BtmwBnGoz=Gvr2C3twV5aPK2xhT0YSC29RYOg@mail.gmail.com>
-References: <1309468923-5677-1-git-send-email-achender@linux.vnet.ibm.com>
-	<1309468923-5677-2-git-send-email-achender@linux.vnet.ibm.com>
-	<CAOQ4uxicueV9QOvHEhyk0mNSs+B+dT1X=Z64i_L2_qn6X6_vHA@mail.gmail.com>
-	<4E14CE15.90404@linux.vnet.ibm.com>
-	<CAOQ4uxh4iUKjDgCBV54VxZ4PhDi18aqL3O6YHOoMYrHyXcECiA@mail.gmail.com>
-	<2DE49B61-CC67-4613-99EB-88601D6EC564@dilger.ca>
-	<4E1614C1.1050209@linux.vnet.ibm.com>
-	<CAOQ4uxiV+h3G7vPZtZp0afbhek8uAP0gER+H7yS9xdrr_XBmVw@mail.gmail.com>
-	<4E16639A.3060504@linux.vnet.ibm.com>
+From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
+Subject: Re: [PATCH 2/3] jbd2,tracing,rcu: jbd2_dev_to_name() is not
+ protect by RCU
+Date: Fri, 8 Jul 2011 09:02:32 -0700
+Message-ID: <20110708160232.GT6014@linux.vnet.ibm.com>
+References: <ec67960d0864680d18a43ec5275baba3f6e1dd94.1308131436.git.laijs@cn.fujitsu.com>
+ <4f75c511d209281967ff8eaa97a75d38d5346903.1308131436.git.laijs@cn.fujitsu.com>
+ <1310090784.26417.217.camel@gandalf.stny.rr.com>
+Reply-To: paulmck@linux.vnet.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
-To: Allison Henderson <achender@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Lai Jiangshan <laijs@cn.fujitsu.com>, Ingo Molnar <mingo@elte.hu>,
+	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Steven Rostedt <rostedt@goodmis.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:45016 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750986Ab1GHG3S convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Jul 2011 02:29:18 -0400
-Received: by wyg8 with SMTP id 8so1088318wyg.19
-        for <linux-ext4@vger.kernel.org>; Thu, 07 Jul 2011 23:29:16 -0700 (PDT)
-In-Reply-To: <4E16639A.3060504@linux.vnet.ibm.com>
+Received: from e8.ny.us.ibm.com ([32.97.182.138]:54369 "EHLO e8.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752612Ab1GHQCs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 8 Jul 2011 12:02:48 -0400
+Content-Disposition: inline
+In-Reply-To: <1310090784.26417.217.camel@gandalf.stny.rr.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 8, 2011 at 4:55 AM, Allison Henderson
-<achender@linux.vnet.ibm.com> wrote:
-> On 07/07/2011 05:09 PM, Amir Goldstein wrote:
->>
->> On Thu, Jul 7, 2011 at 11:19 PM, Allison Henderson
->> <achender@linux.vnet.ibm.com> =A0wrote:
->>>
->>> On 07/07/2011 12:52 PM, Andreas Dilger wrote:
->>>>
->>>> On 2011-07-07, at 1:05 AM, Amir Goldstein wrote:
->>>>>
->>>>> On Thu, Jul 7, 2011 at 12:05 AM, Allison Henderson
->>>>> <achender@linux.vnet.ibm.com> =A0 =A0wrote:
->>>>>>
->>>>>> On 07/02/2011 02:33 AM, Amir Goldstein wrote:
->>>>>>>
->>>>>>> On Fri, Jul 1, 2011 at 12:22 AM, Allison Henderson
->>>>>>> <achender@linux.vnet.ibm.com> =A0 =A0 wrote:
->>>>>>>>
->>>>>>>> @@ -4485,6 +4485,14 @@ void ext4_free_blocks(handle_t *handle,
->>>>>>>> struct
->>>>>>>> inode *inode,
->>>>>>>> =A0 =A0 =A0 =A0ext4_debug("freeing block %llu\n", block);
->>>>>>>> =A0 =A0 =A0 =A0trace_ext4_free_blocks(inode, block, count, fla=
-gs);
->>>>>>>>
->>>>>>>> + =A0 =A0 =A0 if (flags& =A0 =A0 EXT4_FREE_BLOCKS_ZERO) {
->>>>>>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 err =3D sb_issue_zeroout(inode->=
-i_sb, block, count,
->>>>>>>> GFP_NOFS);
->>>>>>>
->>>>>>> But the delete of these blocks in not yet committed,
->>>>>>> so after reboot, you can end up with a non-deleted but zeroed f=
-ile
->>>>>>> data.
->>>>>>> Is that acceptable? I should think not.
->>>>>>>
->>>>>>> One way around this is a 2-phase unlink/truncate.
->>>>>>> Phase 1: add to orphan list and register a callback on commit
->>>>>>> Phase 2: issue zeroout and free the blocks
->>>>>>>
->>>>>>> This won't work for punch hole, but then again, for punch hole
->>>>>>> it's probably OK to end up with zeroed data, but non-deleted bl=
-ocks.
->>>>>>> Right?
->>>>>>
->>>>>> Hi, I had a quick question about the orphan list. =A0I notice th=
-at
->>>>>> ext4_ext_truncate and also ext4_ext_punch_hole already have a ca=
-ll to
->>>>>> ext4_orphan_add that happens really early before any calls to fr=
-ee
->>>>>> blocks.
->>>>>> =A0Does this address your earlier concerns, or is there another =
-reason I
->>>>>> missed? =A0Thx!
->>>>>
->>>>> It doesn't address the concerns of getting a non-deleted file wit=
-h
->>>>> zeroed
->>>>> data
->>>>> after crash, because the existence of the inode on the orphan lis=
-t
->>>>> after
->>>>> crash
->>>>> depends on the transaction that added it to the list being commit=
-ted.
->>>>> And your patch zeroes the blocks before that transaction is commi=
-tted.
->>>>>
->>>>> However, the orphan list gives you a very good framework to imple=
-ment
->>>>> deferred delete (by a kernel thread) as Andreas suggested.
->>>>> Unlink should be simple, because freeing unlinked inode blocks it=
- is
->>>>> anyway
->>>>> deferred till the inode refcount drops to zero.
->>>>
->>>> Right. =A0The patch that I referenced moved all of the blocks from=
- unlink
->>>> and truncate-to-zero from the current inode to a new temporary ino=
-de on
->>>> the
->>>> orphan list (simply copying the i_blocks field + i_block and i_siz=
-e,
->>>> IIRC,
->>>> and zeroing them on the original inode).
->>>>
->>>>> Truncate is more tricky, because of the truncate shrink/extend
->>>>> requirement
->>>>> (that all data is zeroes after extending the inode's size via tru=
-ncate
->>>>> system call), so a shrinking-deferred truncate would have to mark=
- all
->>>>> the
->>>>> to-be-deleted extents uninitialized.
->>>>
->>>> It would be possible to do this for partial truncate/punch as well=
-, to
->>>> move whole blocks over to a new inode on the orphan list and zeroi=
-ng
->>>> only
->>>> the 1 or 2 partial blocks inline.
->>>>
->>>> It should even be possible to leverage the "block migrate" facilit=
-y used
->>>> by defrag, so that we don't duplicate this code. =A0That would mea=
-n just
->>>> allocating a temp "unlink" inode in the kernel and putting it on t=
-he
->>>> orphan
->>>> list (like an open-unlinked file), migrate the selected range of b=
-locks,
->>>> and then zeroing the blocks in the background before unlinking the
->>>> inode.
->>>>
->>>> I don't think that just marking the deleted extents as uninitializ=
-ed is
->>>> enough, since it would still leave "private" data on disk that cou=
-ld be
->>>> read afterward. =A0This would also only work for extent-mapped
->>>> filesystems.
->>>>
->>>> There may need to be some work to enable the migrate code on
->>>> block-mapped
->>>> files, if you want to allow secure-delete on those files, but that=
- is
->>>> good
->>>> IMHO since it also means that we could defrag block-mapped files.
->>>>
->>>> Cheers, Andreas
->>>>
->>>
->>> Ah, ok then. =A0Yes, part of the requirements was to make secure de=
-lete
->>> work
->>> for partial truncates, punch hole, and also indexed files. =A0So th=
-at will
->>> save me some time if I can get the migrate routines work. =A0Thx fo=
-r the
->>> pointers all!
->>>
->>
->> I realized that there is a basic flaw in the concept of
->> deferred-secure-delete.
->> =A0From a security point of view, after a crash during a secure-dele=
-te,
->> if the file is not there, all its data should have been wiped.
->> Orphan cleanup on the next mount may be done on a system that
->> doesn't respect secure delete.
->> So for real security, the unlink/truncate command cannot return befo=
-re
->> all data is wiped.
->> The unlink/truncate metadata changes must not even be committed
->> before all data is wiped (or at least part of the data with partial
->> truncate).
->>
->> Amir.
->
->
-> I see, so then it sounds like using a background thread to do the zer=
-oing
-> would not help us if we have to wait for it complete anyway. Going ba=
-ck to
-> the 2 phase approach, this means that we need to do the zero out and =
-then
-> the free before we do the orphan list and commit? Just trying to make=
- sure I
-> understand things correctly :)
->
+On Thu, Jul 07, 2011 at 10:06:24PM -0400, Steven Rostedt wrote:
+> On Thu, 2011-06-16 at 09:47 +0800, Lai Jiangshan wrote:
+> > TP_printk() is not inside the RCU critical section, so the return value
+> > of jbd2_dev_to_name() may be invalid. This fix pass a devname argument to
+> > store the result name to void this problem.
+> > 
+> > And ftrace_print_bdevname() is introduced to wrap
+> > trace_seq_reserve() and jbd2_dev_to_name().
+> > 
+> > Signed-off-by: Lai Jiangshan <laijs@cn.fujitsu.com>
+> 
+> Acked-by: Steven Rostedt <rostedt@goodmis.org>
+> 
+> Ted,
+> 
+> Are you going to take these patches? Probably too late for 3.0, but
+> maybe can get them into 3.1?
 
-Well, that really depends of the precise definition of "secure delete".
-If you agree with the "100% secure" interpretation, then your current p=
-atch
-is "almost" correct.
-I can see 2 things that are missing:
-1. ext4_unlink() will have to invoke ext4_truncate(0) directly just
-like truncate system call does.
-This is to prevent an attacker from keeping the protected file open
-and preventing freeing
-of it's data when the file is removed from the name space.
-2. ext4_truncate() currently changes i_disksize first (and adds inode
-to orphan list)
-and then frees the blocks. for 100% secure delete, you cannot change i_=
-disksize
-before zeroing the blocks, so it has to be:
-- zeroout range
-- change i_disksize and add to orphan list
-- free blocks
+Me too.
 
-I don't see how it could be done any other way, but maybe someone else =
-can...
+Acked-by: Paul E. McKenney <paulmck@linux.vnet.ibm.com>
 
-Amir.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> -- Steve
+> 
+> > ---
+> >  fs/jbd2/journal.c            |   27 ++++++++++++---------------
+> >  include/linux/ftrace_event.h |   10 ++++++++++
+> >  include/linux/jbd2.h         |    6 +++---
+> >  include/trace/events/jbd2.h  |   15 ++++++++-------
+> >  4 files changed, 33 insertions(+), 25 deletions(-)
+> > 
+> > diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> > index 1c45b6a..c37597a 100644
+> > --- a/fs/jbd2/journal.c
+> > +++ b/fs/jbd2/journal.c
+> > @@ -2427,11 +2427,8 @@ static void __exit journal_exit(void)
+> >   * jbd2_dev_to_name is a utility function used by the jbd2 and ext4 
+> >   * tracing infrastructure to map a dev_t to a device name.
+> >   *
+> > - * The caller should use rcu_read_lock() in order to make sure the
+> > - * device name stays valid until its done with it.  We use
+> > - * rcu_read_lock() as well to make sure we're safe in case the caller
+> > - * gets sloppy, and because rcu_read_lock() is cheap and can be safely
+> > - * nested.
+> > + * We use caches to cache the results and use rcu_read_lock()
+> > + * to protect the caches.
+> >   */
+> >  struct devname_cache {
+> >  	struct rcu_head	rcu;
+> > @@ -2442,34 +2439,35 @@ struct devname_cache {
+> >  static struct devname_cache __rcu *devcache[1 << CACHE_SIZE_BITS];
+> >  static DEFINE_SPINLOCK(devname_cache_lock);
+> >  
+> > -const char *jbd2_dev_to_name(dev_t device)
+> > +void jbd2_dev_to_name(dev_t device, char *devname)
+> >  {
+> >  	int	i = hash_32(device, CACHE_SIZE_BITS);
+> > -	char	*ret;
+> >  	struct block_device *bd;
+> >  	static struct devname_cache *cache;
+> >  
+> >  	rcu_read_lock();
+> >  	cache = rcu_dereference(devcache[i]);
+> >  	if (cache && cache->device == device) {
+> > -		ret = cache->devname;
+> > +		memcpy(devname, cache->devname, BDEVNAME_SIZE);
+> >  		rcu_read_unlock();
+> > -		return ret;
+> > +		return;
+> >  	}
+> >  	rcu_read_unlock();
+> >  
+> >  	cache = kmalloc(sizeof(struct devname_cache), GFP_KERNEL);
+> > -	if (!cache)
+> > -		return "NODEV-ALLOCFAILURE"; /* Something non-NULL */
+> > +	if (!cache) {
+> > +		__bdevname(device, devname);
+> > +		return;
+> > +	}
+> >  	bd = bdget(device);
+> >  	spin_lock(&devname_cache_lock);
+> >  	if (devcache[i]) {
+> >  		if (devcache[i]->device == device) {
+> >  			kfree(cache);
+> >  			bdput(bd);
+> > -			ret = devcache[i]->devname;
+> > +			memcpy(devname, devcache[i]->devname, BDEVNAME_SIZE);
+> >  			spin_unlock(&devname_cache_lock);
+> > -			return ret;
+> > +			return;
+> >  		}
+> >  		kfree_rcu(devcache[i], rcu);
+> >  	}
+> > @@ -2480,9 +2478,8 @@ const char *jbd2_dev_to_name(dev_t device)
+> >  	} else
+> >  		__bdevname(device, cache->devname);
+> >  	rcu_assign_pointer(devcache[i], cache);
+> > -	ret = cache->devname;
+> > +	memcpy(devname, cache->devname, BDEVNAME_SIZE);
+> >  	spin_unlock(&devname_cache_lock);
+> > -	return ret;
+> >  }
+> >  EXPORT_SYMBOL(jbd2_dev_to_name);
+> >  
+> > diff --git a/include/linux/ftrace_event.h b/include/linux/ftrace_event.h
+> > index 59d3ef1..2959ead 100644
+> > --- a/include/linux/ftrace_event.h
+> > +++ b/include/linux/ftrace_event.h
+> > @@ -6,6 +6,7 @@
+> >  #include <linux/percpu.h>
+> >  #include <linux/hardirq.h>
+> >  #include <linux/perf_event.h>
+> > +#include <linux/jbd2.h>
+> >  
+> >  struct trace_array;
+> >  struct tracer;
+> > @@ -28,6 +29,15 @@ const char *ftrace_print_flags_seq(struct trace_seq *p, const char *delim,
+> >  const char *ftrace_print_symbols_seq(struct trace_seq *p, unsigned long val,
+> >  				     const struct trace_print_flags *symbol_array);
+> >  
+> > +static inline const char *ftrace_print_bdevname(struct trace_seq *p, dev_t device)
+> > +{
+> > +	char *bdevname = trace_seq_reserve(p, BDEVNAME_SIZE);
+> > +
+> > +	jbd2_dev_to_name(device, bdevname);
+> > +
+> > +	return bdevname;
+> > +}
+> > +
+> >  #if BITS_PER_LONG == 32
+> >  const char *ftrace_print_symbols_seq_u64(struct trace_seq *p,
+> >  					 unsigned long long val,
+> > diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> > index 4ecb7b1..964f375 100644
+> > --- a/include/linux/jbd2.h
+> > +++ b/include/linux/jbd2.h
+> > @@ -1331,11 +1331,11 @@ extern int jbd_blocks_per_page(struct inode *inode);
+> >  #define BUFFER_TRACE2(bh, bh2, info)	do {} while (0)
+> >  #define JBUFFER_TRACE(jh, info)	do {} while (0)
+> >  
+> > -/* 
+> > - * jbd2_dev_to_name is a utility function used by the jbd2 and ext4 
+> > +/*
+> > + * jbd2_dev_to_name is a utility function used by the jbd2 and ext4
+> >   * tracing infrastructure to map a dev_t to a device name.
+> >   */
+> > -extern const char *jbd2_dev_to_name(dev_t device);
+> > +extern void jbd2_dev_to_name(dev_t device, char *bdevname);
+> >  
+> >  #endif	/* __KERNEL__ */
+> >  
+> > diff --git a/include/trace/events/jbd2.h b/include/trace/events/jbd2.h
+> > index bf16545..a9c8b44 100644
+> > --- a/include/trace/events/jbd2.h
+> > +++ b/include/trace/events/jbd2.h
+> > @@ -27,7 +27,7 @@ TRACE_EVENT(jbd2_checkpoint,
+> >  	),
+> >  
+> >  	TP_printk("dev %s result %d",
+> > -		  jbd2_dev_to_name(__entry->dev), __entry->result)
+> > +		  ftrace_print_bdevname(p, __entry->dev), __entry->result)
+> >  );
+> >  
+> >  DECLARE_EVENT_CLASS(jbd2_commit,
+> > @@ -49,7 +49,7 @@ DECLARE_EVENT_CLASS(jbd2_commit,
+> >  	),
+> >  
+> >  	TP_printk("dev %s transaction %d sync %d",
+> > -		  jbd2_dev_to_name(__entry->dev), __entry->transaction,
+> > +		  ftrace_print_bdevname(p, __entry->dev), __entry->transaction,
+> >  		  __entry->sync_commit)
+> >  );
+> >  
+> > @@ -101,7 +101,7 @@ TRACE_EVENT(jbd2_end_commit,
+> >  	),
+> >  
+> >  	TP_printk("dev %s transaction %d sync %d head %d",
+> > -		  jbd2_dev_to_name(__entry->dev), __entry->transaction,
+> > +		  ftrace_print_bdevname(p, __entry->dev), __entry->transaction,
+> >  		  __entry->sync_commit, __entry->head)
+> >  );
+> >  
+> > @@ -121,7 +121,8 @@ TRACE_EVENT(jbd2_submit_inode_data,
+> >  	),
+> >  
+> >  	TP_printk("dev %s ino %lu",
+> > -		  jbd2_dev_to_name(__entry->dev), (unsigned long) __entry->ino)
+> > +		  ftrace_print_bdevname(p, __entry->dev),
+> > +		  (unsigned long) __entry->ino)
+> >  );
+> >  
+> >  TRACE_EVENT(jbd2_run_stats,
+> > @@ -158,7 +159,7 @@ TRACE_EVENT(jbd2_run_stats,
+> >  
+> >  	TP_printk("dev %s tid %lu wait %u running %u locked %u flushing %u "
+> >  		  "logging %u handle_count %u blocks %u blocks_logged %u",
+> > -		  jbd2_dev_to_name(__entry->dev), __entry->tid,
+> > +		  ftrace_print_bdevname(p, __entry->dev), __entry->tid,
+> >  		  jiffies_to_msecs(__entry->wait),
+> >  		  jiffies_to_msecs(__entry->running),
+> >  		  jiffies_to_msecs(__entry->locked),
+> > @@ -194,7 +195,7 @@ TRACE_EVENT(jbd2_checkpoint_stats,
+> >  
+> >  	TP_printk("dev %s tid %lu chp_time %u forced_to_close %u "
+> >  		  "written %u dropped %u",
+> > -		  jbd2_dev_to_name(__entry->dev), __entry->tid,
+> > +		  ftrace_print_bdevname(p, __entry->dev), __entry->tid,
+> >  		  jiffies_to_msecs(__entry->chp_time),
+> >  		  __entry->forced_to_close, __entry->written, __entry->dropped)
+> >  );
+> > @@ -223,7 +224,7 @@ TRACE_EVENT(jbd2_cleanup_journal_tail,
+> >  	),
+> >  
+> >  	TP_printk("dev %s from %u to %u offset %lu freed %lu",
+> > -		  jbd2_dev_to_name(__entry->dev), __entry->tail_sequence,
+> > +		  ftrace_print_bdevname(p, __entry->dev), __entry->tail_sequence,
+> >  		  __entry->first_tid, __entry->block_nr, __entry->freed)
+> >  );
+> >  
+> 
+> 
