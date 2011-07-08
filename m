@@ -1,34 +1,31 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 12/23] ext4: convert s_{dirty,free}blocks_counter to
- s_{dirty,free}clusters_counter
-Date: Fri, 8 Jul 2011 18:41:06 -0400
-Message-ID: <20110708224106.GH3331@thunk.org>
+Subject: Re: [PATCH 18/23] ext4: Rename ext4_free_blks_{count,set}() to
+ refer to clusters
+Date: Fri, 8 Jul 2011 18:42:20 -0400
+Message-ID: <20110708224220.GI3331@thunk.org>
 References: <1309970166-11770-1-git-send-email-tytso@mit.edu>
- <1309970166-11770-13-git-send-email-tytso@mit.edu>
- <05C9E747-3956-4E45-8973-C1574CE88575@dilger.ca>
+ <1309970166-11770-19-git-send-email-tytso@mit.edu>
+ <BC2E91B2-7E48-47F4-B978-B90ACC7B0ADC@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:49620 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:49622 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752067Ab1GHWlH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 8 Jul 2011 18:41:07 -0400
+	id S1752057Ab1GHWmW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 8 Jul 2011 18:42:22 -0400
 Content-Disposition: inline
-In-Reply-To: <05C9E747-3956-4E45-8973-C1574CE88575@dilger.ca>
+In-Reply-To: <BC2E91B2-7E48-47F4-B978-B90ACC7B0ADC@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 06, 2011 at 04:59:59PM -0600, Andreas Dilger wrote:
-> On 2011-07-06, at 10:35 AM, Theodore Ts'o wrote:
-> > Convert the percpu counters s_dirtyblocks_counter and
-> > s_freeblocks_counter in struct ext4_super_info to be
-> > s_dirtyblocks_counter and s_freeclusters_counter.
+On Wed, Jul 06, 2011 at 05:06:37PM -0600, Andreas Dilger wrote:
+> On 2011-07-06, at 10:36 AM, Theodore Ts'o wrote:
+> > The field bg_free_free_blocks_count_{lo,high} in the block group
 > 
-> Commit comment is incorrect.  Should be "s_dirtyclusters_counter"
-> at the second usage.
+> s/free_free/free_/
 
-Thanks for pointing that out, fixed.
+Thanks, fixed.
 
 					- Ted
