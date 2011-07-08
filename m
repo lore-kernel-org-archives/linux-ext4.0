@@ -1,239 +1,60 @@
-From: Steven Rostedt <rostedt@goodmis.org>
-Subject: Re: [PATCH 2/3] jbd2,tracing,rcu: jbd2_dev_to_name() is not
- protect by RCU
-Date: Thu, 07 Jul 2011 22:06:24 -0400
-Message-ID: <1310090784.26417.217.camel@gandalf.stny.rr.com>
-References: <ec67960d0864680d18a43ec5275baba3f6e1dd94.1308131436.git.laijs@cn.fujitsu.com>
-	 <4f75c511d209281967ff8eaa97a75d38d5346903.1308131436.git.laijs@cn.fujitsu.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-15"
-Content-Transfer-Encoding: 7bit
-Cc: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-	Ingo Molnar <mingo@elte.hu>, Theodore Tso <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Lai Jiangshan <laijs@cn.fujitsu.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 1/2 v3] EXT4: Secure Delete: Zero out file data
+Date: Thu, 7 Jul 2011 20:46:54 -0600
+Message-ID: <7AE9DA58-62BA-4FE9-B4C0-AEB6D46DB096@dilger.ca>
+References: <1309468923-5677-1-git-send-email-achender@linux.vnet.ibm.com> <1309468923-5677-2-git-send-email-achender@linux.vnet.ibm.com> <CAOQ4uxicueV9QOvHEhyk0mNSs+B+dT1X=Z64i_L2_qn6X6_vHA@mail.gmail.com> <4E14CE15.90404@linux.vnet.ibm.com> <CAOQ4uxh4iUKjDgCBV54VxZ4PhDi18aqL3O6YHOoMYrHyXcECiA@mail.gmail.com> <2DE49B61-CC67-4613-99EB-88601D6EC564@dilger.ca> <4E1614C1.1050209@linux.vnet.ibm.com> <CAOQ4uxiV+h3G7vPZtZp0afbhek8uAP0gER+H7yS9xdrr_XBmVw@mail.gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
+	linux-ext4@vger.kernel.org
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from hrndva-omtalb.mail.rr.com ([71.74.56.125]:46563 "EHLO
-	hrndva-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753224Ab1GHCG1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Jul 2011 22:06:27 -0400
-In-Reply-To: <4f75c511d209281967ff8eaa97a75d38d5346903.1308131436.git.laijs@cn.fujitsu.com>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:3449 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750823Ab1GHCqz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Jul 2011 22:46:55 -0400
+In-Reply-To: <CAOQ4uxiV+h3G7vPZtZp0afbhek8uAP0gER+H7yS9xdrr_XBmVw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 2011-06-16 at 09:47 +0800, Lai Jiangshan wrote:
-> TP_printk() is not inside the RCU critical section, so the return value
-> of jbd2_dev_to_name() may be invalid. This fix pass a devname argument to
-> store the result name to void this problem.
+On 2011-07-07, at 6:09 PM, Amir Goldstein wrote:
+> On Thu, Jul 7, 2011 at 11:19 PM, Allison Henderson
+> <achender@linux.vnet.ibm.com> wrote:
+>> 
+>> Ah, ok then.  Yes, part of the requirements was to make secure delete work
+>> for partial truncates, punch hole, and also indexed files.  So that will
+>> save me some time if I can get the migrate routines work.  Thx for the
+>> pointers all!
 > 
-> And ftrace_print_bdevname() is introduced to wrap
-> trace_seq_reserve() and jbd2_dev_to_name().
-> 
-> Signed-off-by: Lai Jiangshan <laijs@cn.fujitsu.com>
+> I realized that there is a basic flaw in the concept of deferred-secure-delete.
+> From a security point of view, after a crash during a secure-delete,
+> if the file is not there, all its data should have been wiped.
+> Orphan cleanup on the next mount may be done on a system that
+> doesn't respect secure delete.
+> So for real security, the unlink/truncate command cannot return before
+> all data is wiped.
 
-Acked-by: Steven Rostedt <rostedt@goodmis.org>
+I don't necessarily agree.  People who are using secure delete don't
+necessarily want their performance to go into the toilet, which is what
+would happen if each unlink/zero happened sequentially.  It is far more
+efficient to submit a large batch of unlink/zero operations and then do
+an sync() or fsync() at the end.  This allows multiple journal operations
+to be coalesced (e.g. unlinks from directory) and block zero requests to
+be merged.
 
-Ted,
+> The unlink/truncate metadata changes must not even be committed
+> before all data is wiped (or at least part of the data with partial truncate).
 
-Are you going to take these patches? Probably too late for 3.0, but
-maybe can get them into 3.1?
+That depends on the user, I think.  If someone does "rm -r {dir}" it may
+be better that the files are removed from the namespace more quickly, and
+secure deleted (in a batch) more quickly, than having "rm" wait for each
+file to be unlinked and maybe leave files in the namespace that didn't
+even get a chance to be unlinked.
 
--- Steve
+Cheers, Andreas
 
-> ---
->  fs/jbd2/journal.c            |   27 ++++++++++++---------------
->  include/linux/ftrace_event.h |   10 ++++++++++
->  include/linux/jbd2.h         |    6 +++---
->  include/trace/events/jbd2.h  |   15 ++++++++-------
->  4 files changed, 33 insertions(+), 25 deletions(-)
-> 
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index 1c45b6a..c37597a 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -2427,11 +2427,8 @@ static void __exit journal_exit(void)
->   * jbd2_dev_to_name is a utility function used by the jbd2 and ext4 
->   * tracing infrastructure to map a dev_t to a device name.
->   *
-> - * The caller should use rcu_read_lock() in order to make sure the
-> - * device name stays valid until its done with it.  We use
-> - * rcu_read_lock() as well to make sure we're safe in case the caller
-> - * gets sloppy, and because rcu_read_lock() is cheap and can be safely
-> - * nested.
-> + * We use caches to cache the results and use rcu_read_lock()
-> + * to protect the caches.
->   */
->  struct devname_cache {
->  	struct rcu_head	rcu;
-> @@ -2442,34 +2439,35 @@ struct devname_cache {
->  static struct devname_cache __rcu *devcache[1 << CACHE_SIZE_BITS];
->  static DEFINE_SPINLOCK(devname_cache_lock);
->  
-> -const char *jbd2_dev_to_name(dev_t device)
-> +void jbd2_dev_to_name(dev_t device, char *devname)
->  {
->  	int	i = hash_32(device, CACHE_SIZE_BITS);
-> -	char	*ret;
->  	struct block_device *bd;
->  	static struct devname_cache *cache;
->  
->  	rcu_read_lock();
->  	cache = rcu_dereference(devcache[i]);
->  	if (cache && cache->device == device) {
-> -		ret = cache->devname;
-> +		memcpy(devname, cache->devname, BDEVNAME_SIZE);
->  		rcu_read_unlock();
-> -		return ret;
-> +		return;
->  	}
->  	rcu_read_unlock();
->  
->  	cache = kmalloc(sizeof(struct devname_cache), GFP_KERNEL);
-> -	if (!cache)
-> -		return "NODEV-ALLOCFAILURE"; /* Something non-NULL */
-> +	if (!cache) {
-> +		__bdevname(device, devname);
-> +		return;
-> +	}
->  	bd = bdget(device);
->  	spin_lock(&devname_cache_lock);
->  	if (devcache[i]) {
->  		if (devcache[i]->device == device) {
->  			kfree(cache);
->  			bdput(bd);
-> -			ret = devcache[i]->devname;
-> +			memcpy(devname, devcache[i]->devname, BDEVNAME_SIZE);
->  			spin_unlock(&devname_cache_lock);
-> -			return ret;
-> +			return;
->  		}
->  		kfree_rcu(devcache[i], rcu);
->  	}
-> @@ -2480,9 +2478,8 @@ const char *jbd2_dev_to_name(dev_t device)
->  	} else
->  		__bdevname(device, cache->devname);
->  	rcu_assign_pointer(devcache[i], cache);
-> -	ret = cache->devname;
-> +	memcpy(devname, cache->devname, BDEVNAME_SIZE);
->  	spin_unlock(&devname_cache_lock);
-> -	return ret;
->  }
->  EXPORT_SYMBOL(jbd2_dev_to_name);
->  
-> diff --git a/include/linux/ftrace_event.h b/include/linux/ftrace_event.h
-> index 59d3ef1..2959ead 100644
-> --- a/include/linux/ftrace_event.h
-> +++ b/include/linux/ftrace_event.h
-> @@ -6,6 +6,7 @@
->  #include <linux/percpu.h>
->  #include <linux/hardirq.h>
->  #include <linux/perf_event.h>
-> +#include <linux/jbd2.h>
->  
->  struct trace_array;
->  struct tracer;
-> @@ -28,6 +29,15 @@ const char *ftrace_print_flags_seq(struct trace_seq *p, const char *delim,
->  const char *ftrace_print_symbols_seq(struct trace_seq *p, unsigned long val,
->  				     const struct trace_print_flags *symbol_array);
->  
-> +static inline const char *ftrace_print_bdevname(struct trace_seq *p, dev_t device)
-> +{
-> +	char *bdevname = trace_seq_reserve(p, BDEVNAME_SIZE);
-> +
-> +	jbd2_dev_to_name(device, bdevname);
-> +
-> +	return bdevname;
-> +}
-> +
->  #if BITS_PER_LONG == 32
->  const char *ftrace_print_symbols_seq_u64(struct trace_seq *p,
->  					 unsigned long long val,
-> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> index 4ecb7b1..964f375 100644
-> --- a/include/linux/jbd2.h
-> +++ b/include/linux/jbd2.h
-> @@ -1331,11 +1331,11 @@ extern int jbd_blocks_per_page(struct inode *inode);
->  #define BUFFER_TRACE2(bh, bh2, info)	do {} while (0)
->  #define JBUFFER_TRACE(jh, info)	do {} while (0)
->  
-> -/* 
-> - * jbd2_dev_to_name is a utility function used by the jbd2 and ext4 
-> +/*
-> + * jbd2_dev_to_name is a utility function used by the jbd2 and ext4
->   * tracing infrastructure to map a dev_t to a device name.
->   */
-> -extern const char *jbd2_dev_to_name(dev_t device);
-> +extern void jbd2_dev_to_name(dev_t device, char *bdevname);
->  
->  #endif	/* __KERNEL__ */
->  
-> diff --git a/include/trace/events/jbd2.h b/include/trace/events/jbd2.h
-> index bf16545..a9c8b44 100644
-> --- a/include/trace/events/jbd2.h
-> +++ b/include/trace/events/jbd2.h
-> @@ -27,7 +27,7 @@ TRACE_EVENT(jbd2_checkpoint,
->  	),
->  
->  	TP_printk("dev %s result %d",
-> -		  jbd2_dev_to_name(__entry->dev), __entry->result)
-> +		  ftrace_print_bdevname(p, __entry->dev), __entry->result)
->  );
->  
->  DECLARE_EVENT_CLASS(jbd2_commit,
-> @@ -49,7 +49,7 @@ DECLARE_EVENT_CLASS(jbd2_commit,
->  	),
->  
->  	TP_printk("dev %s transaction %d sync %d",
-> -		  jbd2_dev_to_name(__entry->dev), __entry->transaction,
-> +		  ftrace_print_bdevname(p, __entry->dev), __entry->transaction,
->  		  __entry->sync_commit)
->  );
->  
-> @@ -101,7 +101,7 @@ TRACE_EVENT(jbd2_end_commit,
->  	),
->  
->  	TP_printk("dev %s transaction %d sync %d head %d",
-> -		  jbd2_dev_to_name(__entry->dev), __entry->transaction,
-> +		  ftrace_print_bdevname(p, __entry->dev), __entry->transaction,
->  		  __entry->sync_commit, __entry->head)
->  );
->  
-> @@ -121,7 +121,8 @@ TRACE_EVENT(jbd2_submit_inode_data,
->  	),
->  
->  	TP_printk("dev %s ino %lu",
-> -		  jbd2_dev_to_name(__entry->dev), (unsigned long) __entry->ino)
-> +		  ftrace_print_bdevname(p, __entry->dev),
-> +		  (unsigned long) __entry->ino)
->  );
->  
->  TRACE_EVENT(jbd2_run_stats,
-> @@ -158,7 +159,7 @@ TRACE_EVENT(jbd2_run_stats,
->  
->  	TP_printk("dev %s tid %lu wait %u running %u locked %u flushing %u "
->  		  "logging %u handle_count %u blocks %u blocks_logged %u",
-> -		  jbd2_dev_to_name(__entry->dev), __entry->tid,
-> +		  ftrace_print_bdevname(p, __entry->dev), __entry->tid,
->  		  jiffies_to_msecs(__entry->wait),
->  		  jiffies_to_msecs(__entry->running),
->  		  jiffies_to_msecs(__entry->locked),
-> @@ -194,7 +195,7 @@ TRACE_EVENT(jbd2_checkpoint_stats,
->  
->  	TP_printk("dev %s tid %lu chp_time %u forced_to_close %u "
->  		  "written %u dropped %u",
-> -		  jbd2_dev_to_name(__entry->dev), __entry->tid,
-> +		  ftrace_print_bdevname(p, __entry->dev), __entry->tid,
->  		  jiffies_to_msecs(__entry->chp_time),
->  		  __entry->forced_to_close, __entry->written, __entry->dropped)
->  );
-> @@ -223,7 +224,7 @@ TRACE_EVENT(jbd2_cleanup_journal_tail,
->  	),
->  
->  	TP_printk("dev %s from %u to %u offset %lu freed %lu",
-> -		  jbd2_dev_to_name(__entry->dev), __entry->tail_sequence,
-> +		  ftrace_print_bdevname(p, __entry->dev), __entry->tail_sequence,
->  		  __entry->first_tid, __entry->block_nr, __entry->freed)
->  );
->  
+
+
 
 
