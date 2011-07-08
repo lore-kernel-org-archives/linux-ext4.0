@@ -1,46 +1,157 @@
-From: Sean McCauliff <Sean.D.McCauliff@nasa.gov>
-Subject: Re: High CPU Utilization When Copying to Ext4
-Date: Fri, 8 Jul 2011 10:41:13 -0700
-Message-ID: <4E174139.4070501@nasa.gov>
-References: <341DAA96EE3A8444B6E4657BE8A846EA4B3DA126FE@NDJSSCC06.ndc.nasa.gov>	<20110627030539.GF3064@thunk.org>	<341DAA96EE3A8444B6E4657BE8A846EA4B3DA12708@NDJSSCC06.ndc.nasa.gov>	<F673734C-4ECE-40B2-B283-959027C34B06@mit.edu>	<341DAA96EE3A8444B6E4657BE8A846EA4B3DA1270A@NDJSSCC06.ndc.nasa.gov>	<50F503A1-6A16-41C4-9C27-0662063C7817@mit.edu>	<4E0BBCE9.9020600@nasa.gov> <20110630023306.GY2729@thunk.org>	<4E17398F.2090609@nasa.gov> <m27h7sd742.fsf@firstfloor.org>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [PATCH 1/2 v3] EXT4: Secure Delete: Zero out file data
+Date: Fri, 08 Jul 2011 11:20:25 -0700
+Message-ID: <1310149225.2970.2.camel@mingming-laptop>
+References: <1309468923-5677-1-git-send-email-achender@linux.vnet.ibm.com>
+	 <1309468923-5677-2-git-send-email-achender@linux.vnet.ibm.com>
+	 <CAOQ4uxicueV9QOvHEhyk0mNSs+B+dT1X=Z64i_L2_qn6X6_vHA@mail.gmail.com>
+	 <4E14CE15.90404@linux.vnet.ibm.com>
+	 <CAOQ4uxh4iUKjDgCBV54VxZ4PhDi18aqL3O6YHOoMYrHyXcECiA@mail.gmail.com>
+	 <2DE49B61-CC67-4613-99EB-88601D6EC564@dilger.ca>
+	 <4E1614C1.1050209@linux.vnet.ibm.com>
+	 <CAOQ4uxiV+h3G7vPZtZp0afbhek8uAP0gER+H7yS9xdrr_XBmVw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: "Ted Ts'o" <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andi Kleen <andi@firstfloor.org>
+Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
+	Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ndmsnpf01.ndc.nasa.gov ([198.117.0.121]:49430 "EHLO
-	ndmsnpf01.ndc.nasa.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754443Ab1GHRlP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Jul 2011 13:41:15 -0400
-In-Reply-To: <m27h7sd742.fsf@firstfloor.org>
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:54570 "EHLO e5.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751811Ab1GHSUq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 8 Jul 2011 14:20:46 -0400
+Received: from d01relay07.pok.ibm.com (d01relay07.pok.ibm.com [9.56.227.147])
+	by e5.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p68HpxGC027637
+	for <linux-ext4@vger.kernel.org>; Fri, 8 Jul 2011 13:51:59 -0400
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p68IKWO91761366
+	for <linux-ext4@vger.kernel.org>; Fri, 8 Jul 2011 14:20:32 -0400
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p68EKJNQ013332
+	for <linux-ext4@vger.kernel.org>; Fri, 8 Jul 2011 11:20:20 -0300
+In-Reply-To: <CAOQ4uxiV+h3G7vPZtZp0afbhek8uAP0gER+H7yS9xdrr_XBmVw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-43% of the destination file system is in use.
+On Fri, 2011-07-08 at 03:09 +0300, Amir Goldstein wrote:
+> On Thu, Jul 7, 2011 at 11:19 PM, Allison Henderson
+> <achender@linux.vnet.ibm.com> wrote:
+> > On 07/07/2011 12:52 PM, Andreas Dilger wrote:
+> >>
+> >> On 2011-07-07, at 1:05 AM, Amir Goldstein wrote:
+> >>>
+> >>> On Thu, Jul 7, 2011 at 12:05 AM, Allison Henderson
+> >>> <achender@linux.vnet.ibm.com>  wrote:
+> >>>>
+> >>>> On 07/02/2011 02:33 AM, Amir Goldstein wrote:
+> >>>>>
+> >>>>> On Fri, Jul 1, 2011 at 12:22 AM, Allison Henderson
+> >>>>> <achender@linux.vnet.ibm.com>   wrote:
+> >>>>>>
+> >>>>>> @@ -4485,6 +4485,14 @@ void ext4_free_blocks(handle_t *handle, struct
+> >>>>>> inode *inode,
+> >>>>>>        ext4_debug("freeing block %llu\n", block);
+> >>>>>>        trace_ext4_free_blocks(inode, block, count, flags);
+> >>>>>>
+> >>>>>> +       if (flags&   EXT4_FREE_BLOCKS_ZERO) {
+> >>>>>> +               err = sb_issue_zeroout(inode->i_sb, block, count,
+> >>>>>> GFP_NOFS);
+> >>>>>
+> >>>>> But the delete of these blocks in not yet committed,
+> >>>>> so after reboot, you can end up with a non-deleted but zeroed file
+> >>>>> data.
+> >>>>> Is that acceptable? I should think not.
+> >>>>>
+> >>>>> One way around this is a 2-phase unlink/truncate.
+> >>>>> Phase 1: add to orphan list and register a callback on commit
+> >>>>> Phase 2: issue zeroout and free the blocks
+> >>>>>
+> >>>>> This won't work for punch hole, but then again, for punch hole
+> >>>>> it's probably OK to end up with zeroed data, but non-deleted blocks.
+> >>>>> Right?
+> >>>>
+> >>>> Hi, I had a quick question about the orphan list.  I notice that
+> >>>> ext4_ext_truncate and also ext4_ext_punch_hole already have a call to
+> >>>> ext4_orphan_add that happens really early before any calls to free
+> >>>> blocks.
+> >>>>  Does this address your earlier concerns, or is there another reason I
+> >>>> missed?  Thx!
+> >>>
+> >>> It doesn't address the concerns of getting a non-deleted file with zeroed
+> >>> data
+> >>> after crash, because the existence of the inode on the orphan list after
+> >>> crash
+> >>> depends on the transaction that added it to the list being committed.
+> >>> And your patch zeroes the blocks before that transaction is committed.
+> >>>
+> >>> However, the orphan list gives you a very good framework to implement
+> >>> deferred delete (by a kernel thread) as Andreas suggested.
+> >>> Unlink should be simple, because freeing unlinked inode blocks it is
+> >>> anyway
+> >>> deferred till the inode refcount drops to zero.
+> >>
+> >> Right.  The patch that I referenced moved all of the blocks from unlink
+> >> and truncate-to-zero from the current inode to a new temporary inode on
+> >> the
+> >> orphan list (simply copying the i_blocks field + i_block and i_size, IIRC,
+> >> and zeroing them on the original inode).
+> >>
+> >>> Truncate is more tricky, because of the truncate shrink/extend
+> >>> requirement
+> >>> (that all data is zeroes after extending the inode's size via truncate
+> >>> system call), so a shrinking-deferred truncate would have to mark all the
+> >>> to-be-deleted extents uninitialized.
+> >>
+> >> It would be possible to do this for partial truncate/punch as well, to
+> >> move whole blocks over to a new inode on the orphan list and zeroing only
+> >> the 1 or 2 partial blocks inline.
+> >>
+> >> It should even be possible to leverage the "block migrate" facility used
+> >> by defrag, so that we don't duplicate this code.  That would mean just
+> >> allocating a temp "unlink" inode in the kernel and putting it on the
+> >> orphan
+> >> list (like an open-unlinked file), migrate the selected range of blocks,
+> >> and then zeroing the blocks in the background before unlinking the inode.
+> >>
+> >> I don't think that just marking the deleted extents as uninitialized is
+> >> enough, since it would still leave "private" data on disk that could be
+> >> read afterward.  This would also only work for extent-mapped filesystems.
+> >>
+> >> There may need to be some work to enable the migrate code on block-mapped
+> >> files, if you want to allow secure-delete on those files, but that is good
+> >> IMHO since it also means that we could defrag block-mapped files.
+> >>
+> >> Cheers, Andreas
+> >>
+> >
+> > Ah, ok then.  Yes, part of the requirements was to make secure delete work
+> > for partial truncates, punch hole, and also indexed files.  So that will
+> > save me some time if I can get the migrate routines work.  Thx for the
+> > pointers all!
+> >
+> 
+> I realized that there is a basic flaw in the concept of deferred-secure-delete.
+> From a security point of view, after a crash during a secure-delete,
+> if the file is not there, all its data should have been wiped.
+> Orphan cleanup on the next mount may be done on a system that
+> doesn't respect secure delete.
+> So for real security, the unlink/truncate command cannot return before
+> all data is wiped.
 
-Sean
 
-On 07/08/2011 10:17 AM, Andi Kleen wrote:
-> Sean McCauliff<Sean.D.McCauliff@nasa.gov>  writes:
->
->> I tried running perf on the copy program on subset of the sparse
->> files. It seems like ext4 is the source of high cpu utilization.  At
->> this point this high cpu utilization is very annoying, but I can live
->> with this problem.  If you know something simple I could do to
->> alleviate this problem I would be most appreciative.  At the end of
->> this email is a consolidation of information about this problem.
->>
->> Events: 6M cycles
->> -76.80%     java  [kernel.kallsyms]      [k] ext4_mb_good_group
->>    - ext4_mb_good_group
->
-> Is your file system too full?
->
-> A lot of file system get inefficient in allocating blocks when the
-> file system is nearly full.
->
-> -Andi
->
+I agree. I think the user who expect secure delete will be expecting the
+data being completely wiped off from disk, instead of wondering when the
+OS/fs will really get rid of the data on the hidden inode by background
+thread.  Secure delete should be synchronous.
+
+> The unlink/truncate metadata changes must not even be committed
+> before all data is wiped (or at least part of the data with partial truncate).
+> 
+> Amir.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 
