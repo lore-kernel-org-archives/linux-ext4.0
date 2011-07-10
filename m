@@ -1,97 +1,110 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: [PATCH 1/2 v3] EXT4: Secure Delete: Zero out file data
-Date: Sun, 10 Jul 2011 09:19:58 +0100
-Message-ID: <4E1960AE.1020707@redhat.com>
-References: <1309468923-5677-1-git-send-email-achender@linux.vnet.ibm.com> <1309468923-5677-2-git-send-email-achender@linux.vnet.ibm.com> <CAOQ4uxicueV9QOvHEhyk0mNSs+B+dT1X=Z64i_L2_qn6X6_vHA@mail.gmail.com> <4E14CE15.90404@linux.vnet.ibm.com> <CAOQ4uxh4iUKjDgCBV54VxZ4PhDi18aqL3O6YHOoMYrHyXcECiA@mail.gmail.com> <2DE49B61-CC67-4613-99EB-88601D6EC564@dilger.ca> <4E1614C1.1050209@linux.vnet.ibm.com> <CAOQ4uxiV+h3G7vPZtZp0afbhek8uAP0gER+H7yS9xdrr_XBmVw@mail.gmail.com> <1310149225.2970.2.camel@mingming-laptop> <507FA19B-1395-4237-98BF-7CD65F80A120@dilger.ca>
+From: Manish Katiyar <mkatiyar@gmail.com>
+Subject: Re: [PATCH] ext4: Fix missing iput for root inode in case of all
+ failed mount paths.
+Date: Sun, 10 Jul 2011 12:11:52 -0700
+Message-ID: <CAE0An6eJmfK0bZ-6pTXbxxx8CXVx1JMh_FnCvCDmOc97rNndcw@mail.gmail.com>
+References: <AANLkTik8jweuA_kDfzY7H=wP-ikSSwdf-FF1NX09DDCT@mail.gmail.com>
+ <032DF412-6B37-4EB7-A687-8216CB1E2BAB@dilger.ca> <AANLkTiku46htAypEN7QNN=UZuRETKGnHJQ8cxt3kYPJg@mail.gmail.com>
+ <3828C477-0589-402A-8F71-9837FE8B0693@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Mingming Cao <cmm@us.ibm.com>, Amir Goldstein <amir73il@gmail.com>,
-	Allison Henderson <achender@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: "Theodore Ts'o" <tytso@mit.edu>, ext4 <linux-ext4@vger.kernel.org>,
+	Yu Jian <yujian@whamcloud.com>
 To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:31519 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755458Ab1GJIUK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 10 Jul 2011 04:20:10 -0400
-In-Reply-To: <507FA19B-1395-4237-98BF-7CD65F80A120@dilger.ca>
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:39513 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756321Ab1GJTMN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 10 Jul 2011 15:12:13 -0400
+Received: by qwk3 with SMTP id 3so1580793qwk.19
+        for <linux-ext4@vger.kernel.org>; Sun, 10 Jul 2011 12:12:12 -0700 (PDT)
+In-Reply-To: <3828C477-0589-402A-8F71-9837FE8B0693@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 07/09/2011 12:49 AM, Andreas Dilger wrote:
-> On 2011-07-08, at 12:20 PM, Mingming Cao wrote:
->> On Fri, 2011-07-08 at 03:09 +0300, Amir Goldstein wrote:
->>> I realized that there is a basic flaw in the concept of deferred-secure-delete.
->>>  From a security point of view, after a crash during a secure-delete,
->>> if the file is not there, all its data should have been wiped.
->>> Orphan cleanup on the next mount may be done on a system that
->>> doesn't respect secure delete.
->>> So for real security, the unlink/truncate command cannot return before
->>> all data is wiped.
->> I agree. I think the user who expect secure delete will be expecting the
->> data being completely wiped off from disk, instead of wondering when the
->> OS/fs will really get rid of the data on the hidden inode by background
->> thread.  Secure delete should be synchronous.
-> I'm not going to argue further for async secure delete, but just wanted
-> to point out that userspace can determine when the "shred" is safely done
-> on disk (or any other operation for that matter) by doing a sync afterward.
-> It wouldn't have to "wonder" about anything.
+On Wed, Jul 6, 2011 at 3:54 PM, Andreas Dilger <adilger@dilger.ca> wrot=
+e:
+> On 2011-01-16, at 11:05 AM, Manish Katiyar wrote:
+>> On Sun, Jan 16, 2011 at 8:20 AM, Andreas Dilger <adilger@dilger.ca> =
+wrote:
+>>> Why not just put the iput() at failed_mount4() instead of spread ar=
+ound the code?
+>>
+>> Thanks Andreas, Here is the updated patch.
 >
-> My original proposal for using the delete thread included having sync()
-> block until all of the background secure unlink/overwrite operations were
-> finished.  That would allow deleting many files at one time, and then
-> sending all of the requests to the disk more efficiently.
+> We are hitting this same problem due to ENOMEM on allocating some lar=
+ge
+> filesystem structures for 128TB filesystems. =A0However, when we were=
+ going
+> to add this patch to our patch series (until vendor kernels include i=
+t),
+> Yu Jian (one of our developers) noticed a problem with the patch.
 >
+> In the error path, the patch is doing:
 >
-> I am just imagining some Enron accountant sweating for hours as his sync
-> secure-delete is running at 50-100 files/sec (seek limit if there are
-> 1 or 2 seeks/file) on a filesystem with 1M files in it, instead of being
-> able to delete 50000 files/sec asynchronously and wait a few minutes at
-> the end as the sync completes. ;-)
+> failed_mount4:
+> =A0 =A0 =A0 =A0iput(root);
+> =A0 =A0 =A0 =A0sb->s_root =3D NULL;
 >
-> A better solution is to just encrypt the data with a per-inode key and
-> then just overwrite the inode securely when it is unlinked, so when the
-> key is erased the data is unrecoverable.  I imagine that ecryptfs or
-> similar might do something like that (I don't know much about it, honestly).
+> but in fact sb->s_root is a dentry allocated by d_alloc_root(), so th=
+e
+> above code is freeing the inode, but still leaking the dentry. =A0Thi=
+s
+> is of course a lot better than before (no oops), but still isn't corr=
+ect.
 >
+> The original problem appears to have been inadvertently fixed with co=
+mmit
+> 8aefcd557d26d0023a36f9ec5afbf55e59f8f26b, because ext4_clear_inode() =
+now
+> checks "if (EXT4_I(inode)->jinode)" before deferencing EXT4_SB() and =
+the
+> now-NULL s_fs_info. =A0jinode should be NULL during mount, because it=
+ has
+> never been opened. =A0I haven't confirmed this theory yet, however. =A0=
+Manish,
+> can you please give this a try with your fault-injection testing?
 >
-> Note that this should probably get an EXT4_FEATURE_COMPAT_SECDEL flag, so
-> e2fsck knows to also wipe secure-delete files when they are unlinked due
-> to inode corruption, or similar.
->
-> This reminds me I also have an e2fsck patch that we've been carrying for a
-> few years for shared block handling that allows e2fsck to optionally move
-> inodes to lost+found, delete them, or wipe the shared blocks option.  This
-> is necessary to avoid data leakage between users in case there is some
-> corruption that links one user's inode to another user's blocks.  I'll send
-> that in another email.
->
-> Cheers, Andreas
->
+> It looks like we could revert 32a9bb57d7c1fd04ae0f72b8f671501f000a0e9=
+f
+> (this patch, leaving the two explicit iput() in place in case of a ba=
+d
+> root inode or dentry) and leave the VFS to clean up the root dentry.
 
-Just to wrap up this thread, I will throw out some of the use cases that I have 
-seen:
+Hi Andreas,
 
-(1) In some parts of the world, an employer has a hard requirement to eliminate 
-records in so many days after termination for any reason (the EU iirc)
+I reverted my original patch in latest Ted's tree and retried.
+ext4_clear_inode() is fixed, but we still
+panic in
 
-(2) legal or data retention requirements. Sarbanes/Oxley (aka SOX) in the US 
-requires firms to retain data on trades for a specified amount of days. In a 
-similar way, email is often required to be retained during any legal proceedings
-
-(3) "Scrubbing" a whole disk of data before an upgrade/return to the vendor 
-(usually done by wiping disks, not removing/scrubbing individual files).
-
-As you point out, performance is a critical aspect of several of these use 
-cases. Imagine the shifty trader watching the clock to see when they can start 
-deleting electronic evidence of shady trades :)  That said, the promise has to 
-be that there is no shadow of data left on disk (even after a crash or recovery).
-
-I think that the synchronous method is the easy and obvious way to do this for 
-most use cases, but as you say, you can always use "shred" from user space to do 
-something a bit different....
-
-Ric
+#14 <signal handler called>
+#15 ext4_sync_fs (sb=3D0x17d6ee00, wait=3D0) at fs/ext4/super.c:4191
+#16 0x080d5214 in __sync_filesystem (sb=3D0x17d6ee00, wait=3D0) at fs/s=
+ync.c:49
+#17 0x080d5277 in sync_filesystem (sb=3D0x17d6ee00) at fs/sync.c:74
+#18 0x080bc188 in generic_shutdown_super (sb=3D0x17d6ee00) at fs/super.=
+c:282
+#19 0x080bc236 in kill_block_super (sb=3D0x17d6ee00) at fs/super.c:856
+#20 0x080bc3fe in deactivate_locked_super (s=3D0x17d6ee00) at fs/super.=
+c:183
+#21 0x080bc96b in mount_bdev (fs_type=3D0x8264974, flags=3D0,
+dev_name=3D0x17d74ed0 "/dev/loop0", data=3D0x0, fill_super=3D0x81236f1
+<ext4_fill_super>) at fs/super.c:831
+#22 0x0811fc36 in ext4_mount (fs_type=3D0x8264974, flags=3D0,
+dev_name=3D0x17d74ed0 "/dev/loop0", data=3D0x0) at fs/ext4/super.c:4820
+(gdb) f 15
+#15 ext4_sync_fs (sb=3D0x17d6ee00, wait=3D0) at fs/ext4/super.c:4191
+4191		flush_workqueue(sbi->dio_unwritten_wq);
+(gdb) p sbi
+$1 =3D (struct ext4_sb_info *) 0x0
 
 
+--=20
+Thanks -
+Manish
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
