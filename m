@@ -1,64 +1,213 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 39072] jbd2 writes on disk every few seconds
-Date: Mon, 11 Jul 2011 03:15:51 GMT
-Message-ID: <201107110315.p6B3Fpl2024329@demeter1.kernel.org>
-References: <bug-39072-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] jbd2: remove jbd2_dev_to_name() from jbd2 tracepoints
+Date: Sun, 10 Jul 2011 23:28:25 -0400
+Message-ID: <1310354905-29807-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:33143 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756725Ab1GKDPw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 10 Jul 2011 23:15:52 -0400
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.4) with ESMTP id p6B3FpMG024330
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 11 Jul 2011 03:15:51 GMT
-In-Reply-To: <bug-39072-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:43720 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756958Ab1GKD23 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 10 Jul 2011 23:28:29 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=39072
+Using function calls in TP_printk causes perf heartburn, so print the
+MAJOR/MINOR device numbers instead.
 
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/jbd2/journal.c           |   67 -------------------------------------------
+ include/linux/jbd2.h        |    6 ----
+ include/trace/events/jbd2.h |   36 ++++++++++++-----------
+ 3 files changed, 19 insertions(+), 90 deletions(-)
 
-Lars Stokholm <lars.stokholm@gmail.com> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |lars.stokholm@gmail.com
-
-
-
-
---- Comment #2 from Lars Stokholm <lars.stokholm@gmail.com>  2011-07-10 20:08:51 ---
-I just wanted to say that I agree
-
---- Comment #3 from Lars Stokholm <lars.stokholm@gmail.com>  2011-07-10 20:13:38 ---
-Oops. Sorry, I'm very new to this bug list, I committed before I should have.
-
-I just wanted to say that I agree with you Theodore. Going into single user
-mode helps. In fact just killing off my daemons (syslog-ng, cron and so on)
-along with X was enough. I didn't have to go to single user mode.
-
---- Comment #4 from Theodore Tso <tytso@mit.edu>  2011-07-11 03:15:46 ---
-Created an attachment (id=65212)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=65212)
-Journal tracepoint patch
-
-The following patch should help people figure out which process is responsible
-for starting an jbd2 transaction handle.   After applying the patch, enable it
-via:
-
-echo 1 > /sys/kernel/debug/tracing/events/ext4/ext4_journal_start/enable
-echo 1 > /sys/kernel/debug/tracing/events/jbd2/jbd2_run_stats/enable
-cat /sys/kernel/debug/tracing/trace_pipe
-
-... and wait.
-
-(All of this assumes you have ftrace enabled, of course).
-
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 0dfa5b5..f24df13 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -2390,73 +2390,6 @@ static void __exit journal_exit(void)
+ 	jbd2_journal_destroy_caches();
+ }
+ 
+-/* 
+- * jbd2_dev_to_name is a utility function used by the jbd2 and ext4 
+- * tracing infrastructure to map a dev_t to a device name.
+- *
+- * The caller should use rcu_read_lock() in order to make sure the
+- * device name stays valid until its done with it.  We use
+- * rcu_read_lock() as well to make sure we're safe in case the caller
+- * gets sloppy, and because rcu_read_lock() is cheap and can be safely
+- * nested.
+- */
+-struct devname_cache {
+-	struct rcu_head	rcu;
+-	dev_t		device;
+-	char		devname[BDEVNAME_SIZE];
+-};
+-#define CACHE_SIZE_BITS 6
+-static struct devname_cache *devcache[1 << CACHE_SIZE_BITS];
+-static DEFINE_SPINLOCK(devname_cache_lock);
+-
+-static void free_devcache(struct rcu_head *rcu)
+-{
+-	kfree(rcu);
+-}
+-
+-const char *jbd2_dev_to_name(dev_t device)
+-{
+-	int	i = hash_32(device, CACHE_SIZE_BITS);
+-	char	*ret;
+-	struct block_device *bd;
+-	static struct devname_cache *new_dev;
+-
+-	rcu_read_lock();
+-	if (devcache[i] && devcache[i]->device == device) {
+-		ret = devcache[i]->devname;
+-		rcu_read_unlock();
+-		return ret;
+-	}
+-	rcu_read_unlock();
+-
+-	new_dev = kmalloc(sizeof(struct devname_cache), GFP_KERNEL);
+-	if (!new_dev)
+-		return "NODEV-ALLOCFAILURE"; /* Something non-NULL */
+-	bd = bdget(device);
+-	spin_lock(&devname_cache_lock);
+-	if (devcache[i]) {
+-		if (devcache[i]->device == device) {
+-			kfree(new_dev);
+-			bdput(bd);
+-			ret = devcache[i]->devname;
+-			spin_unlock(&devname_cache_lock);
+-			return ret;
+-		}
+-		call_rcu(&devcache[i]->rcu, free_devcache);
+-	}
+-	devcache[i] = new_dev;
+-	devcache[i]->device = device;
+-	if (bd) {
+-		bdevname(bd, devcache[i]->devname);
+-		bdput(bd);
+-	} else
+-		__bdevname(device, devcache[i]->devname);
+-	ret = devcache[i]->devname;
+-	spin_unlock(&devname_cache_lock);
+-	return ret;
+-}
+-EXPORT_SYMBOL(jbd2_dev_to_name);
+-
+ MODULE_LICENSE("GPL");
+ module_init(journal_init);
+ module_exit(journal_exit);
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index d087c2e..38f307b 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1329,12 +1329,6 @@ extern int jbd_blocks_per_page(struct inode *inode);
+ #define BUFFER_TRACE2(bh, bh2, info)	do {} while (0)
+ #define JBUFFER_TRACE(jh, info)	do {} while (0)
+ 
+-/* 
+- * jbd2_dev_to_name is a utility function used by the jbd2 and ext4 
+- * tracing infrastructure to map a dev_t to a device name.
+- */
+-extern const char *jbd2_dev_to_name(dev_t device);
+-
+ #endif	/* __KERNEL__ */
+ 
+ #endif	/* _LINUX_JBD2_H */
+diff --git a/include/trace/events/jbd2.h b/include/trace/events/jbd2.h
+index bf16545..7596441 100644
+--- a/include/trace/events/jbd2.h
++++ b/include/trace/events/jbd2.h
+@@ -26,8 +26,8 @@ TRACE_EVENT(jbd2_checkpoint,
+ 		__entry->result		= result;
+ 	),
+ 
+-	TP_printk("dev %s result %d",
+-		  jbd2_dev_to_name(__entry->dev), __entry->result)
++	TP_printk("dev %d,%d result %d",
++		  MAJOR(__entry->dev), MINOR(__entry->dev), __entry->result)
+ );
+ 
+ DECLARE_EVENT_CLASS(jbd2_commit,
+@@ -48,9 +48,9 @@ DECLARE_EVENT_CLASS(jbd2_commit,
+ 		__entry->transaction	= commit_transaction->t_tid;
+ 	),
+ 
+-	TP_printk("dev %s transaction %d sync %d",
+-		  jbd2_dev_to_name(__entry->dev), __entry->transaction,
+-		  __entry->sync_commit)
++	TP_printk("dev %d,%d transaction %d sync %d",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  __entry->transaction, __entry->sync_commit)
+ );
+ 
+ DEFINE_EVENT(jbd2_commit, jbd2_start_commit,
+@@ -100,9 +100,9 @@ TRACE_EVENT(jbd2_end_commit,
+ 		__entry->head		= journal->j_tail_sequence;
+ 	),
+ 
+-	TP_printk("dev %s transaction %d sync %d head %d",
+-		  jbd2_dev_to_name(__entry->dev), __entry->transaction,
+-		  __entry->sync_commit, __entry->head)
++	TP_printk("dev %d,%d transaction %d sync %d head %d",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  __entry->transaction, __entry->sync_commit, __entry->head)
+ );
+ 
+ TRACE_EVENT(jbd2_submit_inode_data,
+@@ -120,8 +120,9 @@ TRACE_EVENT(jbd2_submit_inode_data,
+ 		__entry->ino	= inode->i_ino;
+ 	),
+ 
+-	TP_printk("dev %s ino %lu",
+-		  jbd2_dev_to_name(__entry->dev), (unsigned long) __entry->ino)
++	TP_printk("dev %d,%d ino %lu",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  (unsigned long) __entry->ino)
+ );
+ 
+ TRACE_EVENT(jbd2_run_stats,
+@@ -156,9 +157,9 @@ TRACE_EVENT(jbd2_run_stats,
+ 		__entry->blocks_logged	= stats->rs_blocks_logged;
+ 	),
+ 
+-	TP_printk("dev %s tid %lu wait %u running %u locked %u flushing %u "
++	TP_printk("dev %d,%d tid %lu wait %u running %u locked %u flushing %u "
+ 		  "logging %u handle_count %u blocks %u blocks_logged %u",
+-		  jbd2_dev_to_name(__entry->dev), __entry->tid,
++		  MAJOR(__entry->dev), MINOR(__entry->dev), __entry->tid,
+ 		  jiffies_to_msecs(__entry->wait),
+ 		  jiffies_to_msecs(__entry->running),
+ 		  jiffies_to_msecs(__entry->locked),
+@@ -192,9 +193,9 @@ TRACE_EVENT(jbd2_checkpoint_stats,
+ 		__entry->dropped	= stats->cs_dropped;
+ 	),
+ 
+-	TP_printk("dev %s tid %lu chp_time %u forced_to_close %u "
++	TP_printk("dev %d,%d tid %lu chp_time %u forced_to_close %u "
+ 		  "written %u dropped %u",
+-		  jbd2_dev_to_name(__entry->dev), __entry->tid,
++		  MAJOR(__entry->dev), MINOR(__entry->dev), __entry->tid,
+ 		  jiffies_to_msecs(__entry->chp_time),
+ 		  __entry->forced_to_close, __entry->written, __entry->dropped)
+ );
+@@ -222,9 +223,10 @@ TRACE_EVENT(jbd2_cleanup_journal_tail,
+ 		__entry->freed		= freed;
+ 	),
+ 
+-	TP_printk("dev %s from %u to %u offset %lu freed %lu",
+-		  jbd2_dev_to_name(__entry->dev), __entry->tail_sequence,
+-		  __entry->first_tid, __entry->block_nr, __entry->freed)
++	TP_printk("dev %d,%d from %u to %u offset %lu freed %lu",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  __entry->tail_sequence, __entry->first_tid,
++		  __entry->block_nr, __entry->freed)
+ );
+ 
+ #endif /* _TRACE_JBD2_H */
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.7.4.1.22.gec8e1.dirty
+
