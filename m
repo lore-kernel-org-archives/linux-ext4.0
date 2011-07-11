@@ -1,36 +1,34 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Fix a double free of sbi->s_group_info in
- ext4_mb_init_backend
-Date: Mon, 11 Jul 2011 18:44:08 -0400
-Message-ID: <20110711224408.GT28763@thunk.org>
-References: <1310398016-8104-1-git-send-email-tm@tao.ma>
- <1310398016-8104-2-git-send-email-tm@tao.ma>
+Subject: Re: [PATCH] ext4: ext4_orphan_add() remove unnecessary comments
+Date: Mon, 11 Jul 2011 18:47:34 -0400
+Message-ID: <20110711224734.GU28763@thunk.org>
+References: <1309272617-30943-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Tao Ma <tm@tao.ma>
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:56664 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:56667 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753165Ab1GKWoM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 11 Jul 2011 18:44:12 -0400
+	id S1756169Ab1GKWrg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Jul 2011 18:47:36 -0400
 Content-Disposition: inline
-In-Reply-To: <1310398016-8104-2-git-send-email-tm@tao.ma>
+In-Reply-To: <1309272617-30943-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 11, 2011 at 11:26:56PM +0800, Tao Ma wrote:
-> From: Tao Ma <boyu.mt@taobao.com>
+On Tue, Jun 28, 2011 at 04:50:17PM +0200, Lukas Czerner wrote:
+> The comment from Al Viro about possible race in the ext4_orphan_add() is
+> not justified. There is no race possible as we always have either i_mutex
+> locked, or the inode can not be referenced from outside hence the
+> J_ASSERS should not be hit from the reason described in comment.
 > 
-> If we meet with an error in ext4_mb_add_groupinfo, we kfree
-> sbi->s_group_info[group >> EXT4_DESC_PER_BLOCK_BITS(sb)], but fail to
-> reset it to NULL. So the caller ext4_mb_init_backend will try to kfree
-> it again and causes a double free. So fix it by resetting it to NULL.
+> This commit replaces it with notion that we are holding i_mutex so it
+> should not be possible for i_nlink to be changed while waiting for
+> s_orphan_lock.
 > 
-> Some typo in comments of mballoc.c are also changed.
-> 
-> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
-Added to the ext4 tree, thanks.
+Applied, thanks.
 
 						- Ted
