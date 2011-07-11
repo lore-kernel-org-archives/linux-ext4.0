@@ -1,70 +1,40 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: add tracepoint for ext4_journal_start
-Date: Sun, 10 Jul 2011 23:28:41 -0400
-Message-ID: <1310354921-29876-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/5] ext4: fix trim length underflow with small trim
+ length.
+Date: Mon, 11 Jul 2011 00:06:45 -0400
+Message-ID: <20110711040645.GE28763@thunk.org>
+References: <4E0DE63A.7030103@tao.ma>
+ <1309534076-2784-1-git-send-email-tm@tao.ma>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:43722 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:55470 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756965Ab1GKD2o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 10 Jul 2011 23:28:44 -0400
+	id S1750891Ab1GKEGu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Jul 2011 00:06:50 -0400
+Content-Disposition: inline
+In-Reply-To: <1309534076-2784-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This will help debug who is responsible for starting a jbd2 transaction.
+On Fri, Jul 01, 2011 at 11:27:52PM +0800, Tao Ma wrote:
+> From: Tao Ma <boyu.mt@taobao.com>
+> 
+> In 0f0a25b, we adjust 'len' with s_first_data_block - start, but
+> it could underflow in case blocksize=1K, fstrim_range.len=512 and
+> fstrim_range.start = 0. In this case, when we run the code:
+> len -= first_data_blk - start; len will be underflow to -1ULL.
+> In the end, although we are safe that last_group check later will limit
+> the trim to the whole volume, but that isn't what the user really want.
+> 
+> So this patch fix it. It also adds the check for 'start' like ext3 so that
+> we can break immediately if the start is invalid.
+> 
+> Cc: Lukas Czerner <lczerner@redhat.com>
+> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/super.c             |    1 +
- include/trace/events/ext4.h |   22 ++++++++++++++++++++++
- 2 files changed, 23 insertions(+), 0 deletions(-)
+Added to the ext4 tree, thanks.
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 9ea71aa..7910e61 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -269,6 +269,7 @@ handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
- 	journal_t *journal;
- 	handle_t  *handle;
- 
-+	trace_ext4_journal_start(sb, nblocks, _RET_IP_);
- 	if (sb->s_flags & MS_RDONLY)
- 		return ERR_PTR(-EROFS);
- 
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 5ce2b2f..6f27a59 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -1520,6 +1520,28 @@ TRACE_EVENT(ext4_load_inode,
- 		  (unsigned long) __entry->ino)
- );
- 
-+TRACE_EVENT(ext4_journal_start,
-+	TP_PROTO(struct super_block *sb, int nblocks, unsigned long IP),
-+
-+	TP_ARGS(sb, nblocks, IP),
-+
-+	TP_STRUCT__entry(
-+		__field(	dev_t,	dev			)
-+		__field(	  int, 	nblocks			)
-+		__field(unsigned long,	ip			)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->dev	 = sb->s_dev;
-+		__entry->nblocks = nblocks;
-+		__entry->ip	 = IP;
-+	),
-+
-+	TP_printk("dev %d,%d nblocks %d caller %pF",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  __entry->nblocks, (void *)__entry->ip)
-+);
-+
- #endif /* _TRACE_EXT4_H */
- 
- /* This part must be outside protection */
--- 
-1.7.4.1.22.gec8e1.dirty
-
+							- Ted
