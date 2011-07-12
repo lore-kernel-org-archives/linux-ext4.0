@@ -1,56 +1,50 @@
-From: Andy Campbell <andycampbell.uk@gmail.com>
-Subject: High latency with ext4 / jbd2 kernel thread
-Date: Tue, 12 Jul 2011 01:07:27 +0100
-Message-ID: <CALEedhfHQBiCxv06X3w-JwUzP+beJ9+_zUbr=9vHErp+ew1r=w@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 1/2] ext3: make ext3 mount default to barrier=1
+Date: Mon, 11 Jul 2011 19:16:06 -0500
+Message-ID: <4E1B9246.3060507@redhat.com>
+References: <20110711182532.GA12099@infradead.org> <20110711182558.GB12099@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-To: linux-ext4@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Cc: viro@zeniv.linux.org.uk, jeffm@suse.com, chris.mason@oracle.com,
+	jack@suse.cz, reiserfs-devel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:51589 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752574Ab1GLAH2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Jul 2011 20:07:28 -0400
-Received: by gwaa18 with SMTP id a18so1724444gwa.19
-        for <linux-ext4@vger.kernel.org>; Mon, 11 Jul 2011 17:07:28 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:56660 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752574Ab1GLAQ1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Jul 2011 20:16:27 -0400
+In-Reply-To: <20110711182558.GB12099@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi ext4 mailing list members,
+On 7/11/11 1:25 PM, Christoph Hellwig wrote:
+> From: Chris Mason <mason@suse.com>
+> 
+> This patch turns on barriers by default for ext3.  mount -o barrier=0
+> will turn them off.
+> 
+> Acked-by: Jeff Mahoney <jeffm@suse.com>
+> 
+> Index: linux-2.6/fs/ext3/super.c
+> ===================================================================
+> --- linux-2.6.orig/fs/ext3/super.c	2011-06-30 21:19:37.389544975 +0200
+> +++ linux-2.6/fs/ext3/super.c	2011-07-02 13:56:51.877784292 +0200
+> @@ -1718,6 +1718,8 @@ static int ext3_fill_super (struct super
+>  	sbi->s_resuid = le16_to_cpu(es->s_def_resuid);
+>  	sbi->s_resgid = le16_to_cpu(es->s_def_resgid);
+>  
+> +	/* enable barriers by default */
+> +	set_opt(sbi->s_mount_opt, BARRIER);
+>  	set_opt(sbi->s_mount_opt, RESERVATION);
+>  
+>  	if (!parse_options ((char *) data, sb, &journal_inum, &journal_devnum,
 
-I hope you can help me with a problem.
+Thank you, I hope it will get upstream THIS time ;)
 
-I recently upgraded my main audio PC to Fedora FC15 and, at the same
-time, reformatted by root drive to ext4.  Since this upgrade this, my
-system has high system latency which is causing my audio hardware
-(firewire) to experience buffer under-runs (XRUNs).  This causes
-"unhandled xrun" errors and the audio software fails.
+As Jan said, despite uptream rejection last time, RHEL6 and SuSE have made this change anyway, because it's the Right Thing To Do.
 
-My audio software (jackd) is running in realtime mode with SCHED_FIFO priority.
+Acked-by: Eric Sandeen <sandeen@redhat.com>
 
-I have been using latencytop (http://www.latencytop.org/) to try to
-understand what is causing the system latency.
-Typically my system runs with a max latency around 5ms.  If i run a
-disk heavy operation (such as updatedb) I see a max latency of around
-20ms.
-
-Around the time that jackd fails, I can see events like this with a
-latency of 40 - 120 ms:
-"writing buffer to disk (synchronous)"  = "jbd2_journal_commit_transaction"
-Screenshot here
-http://dl.dropbox.com/u/3289905/latencytop.png
-
-My kernel version is
-Linux speedy.local 2.6.38.8-32.fc15.i686.PAE #1 SMP Mon Jun 13
-19:55:27 UTC 2011 i686 i686 i386 GNU/Linu
-
-The ext4 drive is mounted with these options:
-/dev/sda4 on / type ext4 (rw,relatime,seclabel,barrier=1,data=ordered)
-I also tried mounting using using noatime and also using
-data=writeback options.  Unfortunately neither of these parameters
-resolved the problem
-
-Could you give me any advice or ideas about how I could minimize this latency?
-
-Thanks!
-
-Andy
+-Eric
