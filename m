@@ -1,50 +1,94 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 1/2] ext3: make ext3 mount default to barrier=1
-Date: Mon, 11 Jul 2011 19:16:06 -0500
-Message-ID: <4E1B9246.3060507@redhat.com>
-References: <20110711182532.GA12099@infradead.org> <20110711182558.GB12099@infradead.org>
+From: Robin Dong <hao.bigrat@gmail.com>
+Subject: Re: [PATCH 2/2] ext4: avoid finding next leaf if newext->ee_block
+ smaller than fex->ee_block
+Date: Tue, 12 Jul 2011 09:33:26 +0800
+Message-ID: <CAFZ0FUXnxdOhLzaACGA80AmbsxteCZPo09JuocGRr1=9aZZYUA@mail.gmail.com>
+References: <1309421014-6148-1-git-send-email-sanbai@taobao.com>
+	<1309421014-6148-2-git-send-email-sanbai@taobao.com>
+	<BANLkTikeMA72P2-6eSv=2cqOtvEaHRbsZA@mail.gmail.com>
+	<20110711195211.GQ28763@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: viro@zeniv.linux.org.uk, jeffm@suse.com, chris.mason@oracle.com,
-	jack@suse.cz, reiserfs-devel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>, linux-ext4@vger.kernel.org
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56660 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752574Ab1GLAQ1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 11 Jul 2011 20:16:27 -0400
-In-Reply-To: <20110711182558.GB12099@infradead.org>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:36107 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752630Ab1GLBd1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Jul 2011 21:33:27 -0400
+Received: by iwn6 with SMTP id 6so4203288iwn.19
+        for <linux-ext4@vger.kernel.org>; Mon, 11 Jul 2011 18:33:27 -0700 (PDT)
+In-Reply-To: <20110711195211.GQ28763@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 7/11/11 1:25 PM, Christoph Hellwig wrote:
-> From: Chris Mason <mason@suse.com>
-> 
-> This patch turns on barriers by default for ext3.  mount -o barrier=0
-> will turn them off.
-> 
-> Acked-by: Jeff Mahoney <jeffm@suse.com>
-> 
-> Index: linux-2.6/fs/ext3/super.c
-> ===================================================================
-> --- linux-2.6.orig/fs/ext3/super.c	2011-06-30 21:19:37.389544975 +0200
-> +++ linux-2.6/fs/ext3/super.c	2011-07-02 13:56:51.877784292 +0200
-> @@ -1718,6 +1718,8 @@ static int ext3_fill_super (struct super
->  	sbi->s_resuid = le16_to_cpu(es->s_def_resuid);
->  	sbi->s_resgid = le16_to_cpu(es->s_def_resgid);
->  
-> +	/* enable barriers by default */
-> +	set_opt(sbi->s_mount_opt, BARRIER);
->  	set_opt(sbi->s_mount_opt, RESERVATION);
->  
->  	if (!parse_options ((char *) data, sb, &journal_inum, &journal_devnum,
+2011/7/12 Ted Ts'o <tytso@mit.edu>:
+> On Thu, Jun 30, 2011 at 04:42:31PM +0800, Yongqiang Yang wrote:
+>> How about:
+>> =A0 =A0 =A0 =A0 =A0 =A0next =3D EXT_MAX_BLOCKS;
+>> =A0 =A0 =A0 =A0 =A0 =A0if (le32_to_cpu(newext->ee_block) > le32_to_c=
+pu(fex->ee_block)
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0next =3D ext4_ext_next_leaf_b=
+lock(inode, path);
+>> =A0 =A0 =A0 =A0 =A0 =A0if (next !=3D EXT_MAX_BLOCKS) {
+>
+> Agreed, that's a better way of doing things. =A0Also, Robin, please
+> compare and contrast your description with mine. =A0The commit
+> description shouldn't just be a textual description of the change. =A0=
+It
+> should give the larger context of the change and why it's important.
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 - Ted
+>
+> commit 2a3f7e0e0e55f8817fbe92d111ef2a06e6b8ef18
+> Author: Robin Dong <sanbai@taobao.com>
+> Date: =A0 Mon Jul 11 15:43:38 2011 -0400
+>
+> =A0 =A0ext4: avoid unneeded ext4_ext_next_leaf_block() while insertin=
+g extents
+>
+> =A0 =A0Optimize ext4_exT_insert_extent() by avoiding
+> =A0 =A0ext4_ext_next_leaf_block() when the result is not used/needed.
+>
+> =A0 =A0Signed-off-by: Robin Dong <sanbai@taobao.com>
+> =A0 =A0Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+>
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 9cbdcb2..f1c538e 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -1730,9 +1730,10 @@ int ext4_ext_insert_extent(handle_t *handle, s=
+truct inode *inode,
+>
+> =A0 =A0 =A0 =A0/* probably next leaf has space for us? */
+> =A0 =A0 =A0 =A0fex =3D EXT_LAST_EXTENT(eh);
+> - =A0 =A0 =A0 next =3D ext4_ext_next_leaf_block(inode, path);
+> - =A0 =A0 =A0 if (le32_to_cpu(newext->ee_block) > le32_to_cpu(fex->ee=
+_block)
+> - =A0 =A0 =A0 =A0 =A0 && next !=3D EXT_MAX_BLOCKS) {
+> + =A0 =A0 =A0 next =3D EXT_MAX_BLOCKS;
+> + =A0 =A0 =A0 if (le32_to_cpu(newext->ee_block) > le32_to_cpu(fex->ee=
+_block))
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 next =3D ext4_ext_next_leaf_block(inode=
+, path);
+> + =A0 =A0 =A0 if (next !=3D EXT_MAX_BLOCKS) {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext_debug("next leaf block - %d\n", ne=
+xt);
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0BUG_ON(npath !=3D NULL);
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0npath =3D ext4_ext_find_extent(inode, =
+next, NULL);
+>
 
-Thank you, I hope it will get upstream THIS time ;)
+It seems much better than my description. Thanks!
 
-As Jan said, despite uptream rejection last time, RHEL6 and SuSE have made this change anyway, because it's the Right Thing To Do.
-
-Acked-by: Eric Sandeen <sandeen@redhat.com>
-
--Eric
+--=20
+--
+Best Regard
+Robin Dong
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
