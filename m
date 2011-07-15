@@ -1,76 +1,69 @@
-From: Felipe Wilhelms Damasio - Taghos <felipewd@taghos.com.br>
-Subject: Re: Ext4 flush blocked
-Date: Thu, 14 Jul 2011 22:27:50 -0300
-Message-ID: <4E1F9796.5020107@taghos.com.br>
-References: <4E1F95B8.4050005@taghos.com.br>
+From: Tao Ma <tm@tao.ma>
+Subject: Re: [PATCH] jbd/2[stable only]: Use WRITE_SYNC_PLUG in journal_commit_transaction.
+Date: Fri, 15 Jul 2011 10:43:47 +0800
+Message-ID: <4E1FA963.8010403@tao.ma>
+References: <1310467431-23108-1-git-send-email-tm@tao.ma> <20110712123041.GC1293@redhat.com> <4E1C65EA.5060009@tao.ma> <x4962n4g6zb.fsf@segfault.boston.devel.redhat.com> <20110714194657.GA16415@quack.suse.cz> <x49d3hck4lj.fsf@segfault.boston.devel.redhat.com> <20110714213822.GC16415@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
-	linux-ext4@vger.kernel.org
+Cc: Jeff Moyer <jmoyer@redhat.com>, Vivek Goyal <vgoyal@redhat.com>,
+	linux-ext4@vger.kernel.org, stable@kernel.org,
+	Corrado Zoccolo <czoccolo@gmail.com>,
+	Jens Axboe <jaxboe@fusionio.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gateway07.websitewelcome.com ([69.56.236.22]:59922 "HELO
-	gateway07.websitewelcome.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S932677Ab1GOBiR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 Jul 2011 21:38:17 -0400
-Received: from gator1481.hostgator.com (gator1481.hostgator.com [184.173.199.228])
-	by ham.websitewelcome.com (Postfix) with ESMTP id 87D8C7D804500
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Jul 2011 20:28:00 -0500 (CDT)
-In-Reply-To: <4E1F95B8.4050005@taghos.com.br>
+Received: from oproxy7-pub.bluehost.com ([67.222.55.9]:40634 "HELO
+	oproxy7-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S932639Ab1GOCnw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Jul 2011 22:43:52 -0400
+In-Reply-To: <20110714213822.GC16415@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-    Hi Again,
+Hi Vivek and Jeff,
+On 07/15/2011 05:38 AM, Jan Kara wrote:
+> On Thu 14-07-11 16:08:24, Jeff Moyer wrote:
+>> Jan Kara <jack@suse.cz> writes:
+>>
+>>> On Thu 14-07-11 12:30:32, Jeff Moyer wrote:
+>>>> Tao Ma <tm@tao.ma> writes:
+>>>>>> - WRITE_SYNC_PLUG will plug the queue and expects explicity unplug. Who
+>>>>>>   is doing unplug in this case?
+>>>>> See the comments I removed, "we rely on sync_buffer() doing the unplug
+>>>>> for us". I removed them cause we all use pluged write now.
+>>>>
+>>>> Your logic is upside-down.  The code currently only uses the _PLUG
+>>>> variant when t_synchronous_commit is set, meaning somebody *will* call
+>>>> sync_buffer.  Simply setting WRITE_SYNC_PLUG doens't mean the upper
+>>>> layer is going to issue the unplug.  Of course, I'm not 100% sure of the
+>>>> journaling process, so it may very well be that there always is an
+>>>> unplug.  Can Jan or someone comment on that?  Anyway, you could test
+>>>> this theory by seeing if your kernel generates any timer unplugs in the
+>>>> blktrace output.
+>>>   So I'm not expert in plugging code but from what I understand when we do
+>>> wait_on_buffer() (which calls io_schedule()) which will do
+>>> blk_flush_plug()), the queue will get unplugged and IO starts. And we wait
+>>> for all buffers we submit so we are guaranteed wait_on_buffer() will be
+>>> called...
+>>
+>> Sorry, I should have been more specific.  As Vivek mentioned, we're
+>> talking about older kernels (pre the blk plugging series).  So, the
+>> question is, if journal_commit_transaction is called with
+>> t_synchronous_commit not set, will the underlying device ever be
+>> unplugged by the journal code?  My guess is there's no explicit unplug,
+>> so it's not correct to replace a WRITE_SYNC with a WRITE_SYNC_PLUG.
+>   There are no explicit unplugs in journalling code. But checking the code
+> in 2.6.37, I still see wait_on_buffer() calls sync_bh() which calls
+> blk_run_address_space() which ends up calling bdi->unplug_io_fn() so I
+> would say unplug is called anyway.
+yeah, jbd2 works like what Jan described.
+And what's more, if you looked at the commit I mentioned(749ef9f8423),
+this commit just changed WRITE to WRITE_SYNC, so in the old times(before
+that commit is merged), WRITE has been used in jbd/2 for many years. It
+also doesn't do a explicit unplug, let the scheduler do the merge and
+reply on sync_bh to unplug the device. So change WRITE to
+WRITE_SYNC_PLUG is welcomed, but change WRITE to WRITE_SYNC is broken
+since it splits the sequential write to several i/o requests.
 
-Em 14/07/2011 22:19, Felipe Wilhelms Damasio - Taghos escreveu:
->      After a while using (about an hour) I get a lot of:
->
-> INFO: task flush-8:16:6650 blocked for more than 120 seconds.
-
-    I also saw this:
-
-INFO: task jbd2/sdb1-8:1672 blocked for more than 120 seconds.
-"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-jbd2/sdb1-8   D 0000000000000004     0  1672      2 0x00000000
- ffff88042e171aa0 0000000000000046 0000000000012500 ffff88042e171fd8
- ffff88042e171fd8 ffff88042c2eadf0 0000000000012500 0000000000012500
- 0000000000012500 ffff88042c2eadf0 ffff88042e0d0690 ffff88042c2eb098
-Call Trace:
- [<ffffffff8151c837>] io_schedule+0x7b/0xc2
- [<ffffffff8108fceb>] sync_page+0x41/0x45
- [<ffffffff8151cc1a>] __wait_on_bit+0x47/0x79
- [<ffffffff8108fcaa>] ? sync_page+0x0/0x45
- [<ffffffff8108fea1>] wait_on_page_bit+0x6e/0x75
- [<ffffffff8104ed1c>] ? wake_bit_function+0x0/0x2a
- [<ffffffff81097a36>] ? pagevec_lookup_tag+0x22/0x2b
- [<ffffffff810965cb>] write_cache_pages+0x1d5/0x2e9
- [<ffffffff81095ee0>] ? __writepage+0x0/0x2f
- [<ffffffff810966fe>] generic_writepages+0x1f/0x25
- [<ffffffff8114251d>] jbd2_journal_commit_transaction+0x35b/0x10b2
- [<ffffffff81035288>] ? get_parent_ip+0x11/0x41
- [<ffffffff811468bf>] kjournald2+0xd2/0x22b
- [<ffffffff8104ece4>] ? autoremove_wake_function+0x0/0x38
- [<ffffffff8151dbdf>] ? _raw_spin_unlock_irqrestore+0x2c/0x37
- [<ffffffff811467ed>] ? kjournald2+0x0/0x22b
- [<ffffffff8104e892>] kthread+0x7d/0x85
- [<ffffffff810037d4>] kernel_thread_helper+0x4/0x10
- [<ffffffff8104e815>] ? kthread+0x0/0x85
- [<ffffffff810037d0>] ? kernel_thread_helper+0x0/0x10
-
-
-    Don't know if this helps, though.
-
-    Is there something I can try to fix this?
-
-    Cheers,
-
--- 
-Felipe Wilhelms Damasio
-TAGHOS - Tecnologia
-Rua Prof. Alvaro Alvim, 211
-Porto Alegre - RS - (51) 3239-3180
-www.taghos.com.br <http://www.taghos.com.br/>
-
-
-
+Thanks
+Tao
