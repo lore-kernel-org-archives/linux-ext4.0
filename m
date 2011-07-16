@@ -1,33 +1,44 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH] reiserfs: make reiserfs default to barrier=flush
-Date: Sat, 16 Jul 2011 16:47:00 -0400
-Message-ID: <20110716204700.GB16882@infradead.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/3] ext4: Fix compilation with -DDX_DEBUG v2
+Date: Sat, 16 Jul 2011 19:41:06 -0400
+Message-ID: <20110716234106.GB2717@thunk.org>
+References: <20110620202631.2473133.4166.stgit@localhost.localdomain>
+ <20110620202849.2473133.84386.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: jeffm@suse.com, chris.mason@oracle.com, jack@suse.cz,
-	reiserfs-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: viro@zeniv.linux.org.uk
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, adilger@whamcloud.com, colyli@gmail.com
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:58161 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752488Ab1GPXlN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 16 Jul 2011 19:41:13 -0400
 Content-Disposition: inline
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20110620202849.2473133.84386.stgit@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Change the default reiserfs mount option to barrier=flush.  Based on a patch
-from Jeff Mahoney in the SuSE tree.
+On Mon, Jun 20, 2011 at 10:28:49PM +0200, Bernd Schubert wrote:
+> changes from v1 -> v2:
+> Use %p as suggested by Coly Li
 
-Signed-off-by: Jeff Mahoney <jeffm@suse.com>
-Signed-off-by: Christoph Hellwig <hch@lst.de>
+The problem with %p:
 
-Index: linux-2.6/fs/reiserfs/super.c
-===================================================================
---- linux-2.6.orig/fs/reiserfs/super.c	2011-07-02 13:57:08.061117424 +0200
-+++ linux-2.6/fs/reiserfs/super.c	2011-07-02 13:59:26.197782375 +0200
-@@ -1643,6 +1643,7 @@ static int reiserfs_fill_super(struct su
- 	/* Set default values for options: non-aggressive tails, RO on errors */
- 	REISERFS_SB(s)->s_mount_opt |= (1 << REISERFS_SMALLTAIL);
- 	REISERFS_SB(s)->s_mount_opt |= (1 << REISERFS_ERROR_RO);
-+	REISERFS_SB(s)->s_mount_opt |= (1 << REISERFS_BARRIER_FLUSH);
- 	/* no preallocation minimum, be smart in
- 	   reiserfs_file_write instead */
- 	REISERFS_SB(s)->s_alloc_options.preallocmin = 0;
+    1)  It prints numbers that will never be larger than 4096 with as 
+        "00000012"
+    2)  It prints the number 0 as "  (null)".
+
+These two things mean that we get messages like this:
+
+names: foo:7141e93c.  (null) bar:745c4a06.00000012 baz:79817344.00000024 quux:7e85a800.00000036 ...
+
+instead of:
+
+names: foo:7141e93c.0 bar:745c4a06.12 baz:79817344.24 quux:7e85a800.36 ...
+
+(did anyone even try this and check to see what would happen with %p?)
+
+I've applied this patch, with a change so that we print the number
+with %u and with an explicit cast to unsigned.
+
+						- Ted
