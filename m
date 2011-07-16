@@ -1,38 +1,33 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH] ext3: make ext3 mount default to barrier=1
-Date: Sat, 16 Jul 2011 16:46:50 -0400
-Message-ID: <20110716204650.GA16882@infradead.org>
+Subject: [PATCH] reiserfs: make reiserfs default to barrier=flush
+Date: Sat, 16 Jul 2011 16:47:00 -0400
+Message-ID: <20110716204700.GB16882@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: jeffm@suse.com, chris.mason@oracle.com, jack@suse.cz,
 	reiserfs-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org
 To: viro@zeniv.linux.org.uk
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-Sender: reiserfs-devel-owner@vger.kernel.org
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This patch turns on barriers by default for ext3.  mount -o barrier=0
-will turn them off.  Based on a patch from Chris Mason in the SuSE tree.
+Change the default reiserfs mount option to barrier=flush.  Based on a patch
+from Jeff Mahoney in the SuSE tree.
 
-Signed-off-by: Chris Mason <chris.mason@oracle.com>
+Signed-off-by: Jeff Mahoney <jeffm@suse.com>
 Signed-off-by: Christoph Hellwig <hch@lst.de>
-Acked-by: Eric Sandeen <sandeen@redhat.com>
-Acked-by: Jan Kara <jack@suse.cz>
-Acked-by: Jeff Mahoney <jeffm@suse.com>
-Acked-by: Ted Ts'o <tytso@mit.edu>
 
-Index: linux-2.6/fs/ext3/super.c
+Index: linux-2.6/fs/reiserfs/super.c
 ===================================================================
---- linux-2.6.orig/fs/ext3/super.c	2011-06-30 21:19:37.389544975 +0200
-+++ linux-2.6/fs/ext3/super.c	2011-07-02 13:56:51.877784292 +0200
-@@ -1718,6 +1718,8 @@ static int ext3_fill_super (struct super
- 	sbi->s_resuid = le16_to_cpu(es->s_def_resuid);
- 	sbi->s_resgid = le16_to_cpu(es->s_def_resgid);
- 
-+	/* enable barriers by default */
-+	set_opt(sbi->s_mount_opt, BARRIER);
- 	set_opt(sbi->s_mount_opt, RESERVATION);
- 
- 	if (!parse_options ((char *) data, sb, &journal_inum, &journal_devnum,
+--- linux-2.6.orig/fs/reiserfs/super.c	2011-07-02 13:57:08.061117424 +0200
++++ linux-2.6/fs/reiserfs/super.c	2011-07-02 13:59:26.197782375 +0200
+@@ -1643,6 +1643,7 @@ static int reiserfs_fill_super(struct su
+ 	/* Set default values for options: non-aggressive tails, RO on errors */
+ 	REISERFS_SB(s)->s_mount_opt |= (1 << REISERFS_SMALLTAIL);
+ 	REISERFS_SB(s)->s_mount_opt |= (1 << REISERFS_ERROR_RO);
++	REISERFS_SB(s)->s_mount_opt |= (1 << REISERFS_BARRIER_FLUSH);
+ 	/* no preallocation minimum, be smart in
+ 	   reiserfs_file_write instead */
+ 	REISERFS_SB(s)->s_alloc_options.preallocmin = 0;
