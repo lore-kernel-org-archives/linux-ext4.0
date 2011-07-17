@@ -1,43 +1,38 @@
-From: Felipe Wilhelms Damasio - Taghos <felipewd@taghos.com.br>
-Subject: Re: Ext4 flush blocked
-Date: Sun, 17 Jul 2011 15:54:15 -0300
-Message-ID: <4E232FD7.609@taghos.com.br>
-References: <4E1F95B8.4050005@taghos.com.br> <4E1F9796.5020107@taghos.com.br> <4E1FB492.4070300@tao.ma>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
-	linux-ext4@vger.kernel.org
-To: Tao Ma <tm@tao.ma>
+From: Allison Henderson <achender@linux.vnet.ibm.com>
+Subject: [PATCH 0/2 v8] XFS TESTS: ENOSPC Punch Hole Test
+Date: Sun, 17 Jul 2011 16:52:44 -0700
+Message-ID: <1310946766-30217-1-git-send-email-achender@linux.vnet.ibm.com>
+Cc: Allison Henderson <achender@linux.vnet.ibm.com>
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	xfs@oss.sgi.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gateway08.websitewelcome.com ([67.18.36.18]:35241 "HELO
-	gateway08.websitewelcome.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1756135Ab1GQTLe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 17 Jul 2011 15:11:34 -0400
-Received: from gator1481.hostgator.com (gator1481.hostgator.com [184.173.199.228])
-	by ham.websitewelcome.com (Postfix) with ESMTP id A04065265C76D
-	for <linux-ext4@vger.kernel.org>; Sun, 17 Jul 2011 13:54:29 -0500 (CDT)
-In-Reply-To: <4E1FB492.4070300@tao.ma>
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:45484 "EHLO e6.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752970Ab1GQXw6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 17 Jul 2011 19:52:58 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-    Hi Tao,
+This patch set adds the ENOSPC test that was used for ext4 punch hole testing.
+This test will verify that a hole can be punched even when the disk is full.
+Reserved blocks should be used to complete the operation when there is not blocks
+to further fragment the file.
 
-Em 15/07/2011 00:31, Tao Ma escreveu:
-> Is there something I can try to fix this?
-> could you please try to change io scheduler to 'deadline'?
-> We have met with some similar warnings and changing to 'deadline' makes
-> ext4 happy.
-    The symptoms were away after changing the system to use deadline
-scheduler, thanks.
+Because punching a hole does not always require extra blocks, there needs to 
+be several iterations of punching holes, and then filling the file system to 100% 
+usage before it is forced to grow the tree in order to handle the fragmentation. 
+The growing of the tree is what would cause ENOSPC if not for the use of reserved blocks.
 
-    Cheers,
+Allison Henderson (2):
+  XFS TESTS: ENOSPC Punch Hole: Move su routines in 123 to common.rc
+  XFS TESTS: Add ENOSPC Hole Punch Test
 
--- 
-Felipe Wilhelms Damasio
-TAGHOS - Tecnologia
-Rua Prof. Alvaro Alvim, 211
-Porto Alegre - RS - (51) 3239-3180
-www.taghos.com.br <http://www.taghos.com.br/>
+ 123       |   24 ------------
+ 256       |  120 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 256.out   |    1 +
+ common.rc |   81 +++++++++++++++++++++++++++++++++++++++++
+ group     |   12 ++++--
+ 5 files changed, 210 insertions(+), 28 deletions(-)
+ create mode 100644 256
+ create mode 100644 256.out
 
