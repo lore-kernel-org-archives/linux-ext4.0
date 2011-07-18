@@ -1,130 +1,66 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH 11/12] ext4: simplify parameters of add_new_gdb()
-Date: Mon, 18 Jul 2011 10:52:34 +0800
-Message-ID: <1310957555-15617-12-git-send-email-xiaoqiangnk@gmail.com>
+Subject: [PATCH 12/12] ext4: simplify parameters of reserve_backup_gdb()
+Date: Mon, 18 Jul 2011 10:52:35 +0800
+Message-ID: <1310957555-15617-13-git-send-email-xiaoqiangnk@gmail.com>
 References: <1310957555-15617-1-git-send-email-xiaoqiangnk@gmail.com>
 Cc: aedilger@gmail.com, Yongqiang Yang <xiaoqiangnk@gmail.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-iw0-f174.google.com ([209.85.214.174]:45447 "EHLO
 	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752649Ab1GRC5K (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Jul 2011 22:57:10 -0400
+	with ESMTP id S1752987Ab1GRC5N (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Jul 2011 22:57:13 -0400
 Received: by mail-iw0-f174.google.com with SMTP id 6so2719031iwn.19
-        for <linux-ext4@vger.kernel.org>; Sun, 17 Jul 2011 19:57:10 -0700 (PDT)
+        for <linux-ext4@vger.kernel.org>; Sun, 17 Jul 2011 19:57:12 -0700 (PDT)
 In-Reply-To: <1310957555-15617-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-add_new_gdb() only needs the no. of a group, there is no need to pass
-a pointer to struct ext4_new_group_data to add_new_gdb().
+reserve_backup_gdb() only needs the no. of a group, there is no need to pass
+a pointer to struct ext4_new_group_data to it.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/resize.c |   33 +++++++++++++++++++--------------
- 1 files changed, 19 insertions(+), 14 deletions(-)
+ fs/ext4/resize.c |   12 +++++++-----
+ 1 files changed, 7 insertions(+), 5 deletions(-)
 
 diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index e452bee..52d0426 100644
+index 52d0426..3e790ad 100644
 --- a/fs/ext4/resize.c
 +++ b/fs/ext4/resize.c
-@@ -404,15 +404,15 @@ static int verify_reserved_gdb(struct super_block *sb,
-  * fail once we start modifying the data on disk, because JBD has no rollback.
+@@ -556,7 +556,7 @@ exit_bh:
+  * backup GDT blocks are stored in their reserved primary GDT block.
   */
- static int add_new_gdb(handle_t *handle, struct inode *inode,
--		       struct ext4_new_group_data *input,
--		       struct buffer_head **primary)
-+		       ext4_group_t group)
+ static int reserve_backup_gdb(handle_t *handle, struct inode *inode,
+-			      struct ext4_new_group_data *input)
++			      ext4_group_t group)
  {
  	struct super_block *sb = inode->i_sb;
- 	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
--	unsigned long gdb_num = input->group / EXT4_DESC_PER_BLOCK(sb);
-+	unsigned long gdb_num = group / EXT4_DESC_PER_BLOCK(sb);
- 	ext4_fsblk_t gdblock = EXT4_SB(sb)->s_sbh->b_blocknr + 1 + gdb_num;
- 	struct buffer_head **o_group_desc, **n_group_desc;
- 	struct buffer_head *dind;
-+	struct buffer_head *gdb_bh;
- 	int gdbackups;
- 	struct ext4_iloc iloc;
- 	__le32 *data;
-@@ -435,11 +435,12 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
- 		return -EPERM;
- 	}
- 
--	*primary = sb_bread(sb, gdblock);
--	if (!*primary)
-+	gdb_bh = sb_bread(sb, gdblock);
-+	if (!gdb_bh)
- 		return -EIO;
- 
--	if ((gdbackups = verify_reserved_gdb(sb, *primary)) < 0) {
-+	gdbackups = verify_reserved_gdb(sb, gdb_bh);
-+	if (gdbackups < 0) {
- 		err = gdbackups;
- 		goto exit_bh;
- 	}
-@@ -454,7 +455,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
- 	data = (__le32 *)dind->b_data;
- 	if (le32_to_cpu(data[gdb_num % EXT4_ADDR_PER_BLOCK(sb)]) != gdblock) {
- 		ext4_warning(sb, "new group %u GDT block %llu not reserved",
--			     input->group, gdblock);
-+			     group, gdblock);
- 		err = -EINVAL;
- 		goto exit_dind;
- 	}
-@@ -463,7 +464,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
- 	if (unlikely(err))
- 		goto exit_dind;
- 
--	err = ext4_journal_get_write_access(handle, *primary);
-+	err = ext4_journal_get_write_access(handle, gdb_bh);
- 	if (unlikely(err))
- 		goto exit_sbh;
- 
-@@ -502,8 +503,8 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
- 	}
- 	inode->i_blocks -= (gdbackups + 1) * sb->s_blocksize >> 9;
- 	ext4_mark_iloc_dirty(handle, inode, &iloc);
--	memset((*primary)->b_data, 0, sb->s_blocksize);
--	err = ext4_handle_dirty_metadata(handle, NULL, *primary);
-+	memset(gdb_bh->b_data, 0, sb->s_blocksize);
-+	err = ext4_handle_dirty_metadata(handle, NULL, gdb_bh);
- 	if (unlikely(err)) {
- 		ext4_std_error(sb, err);
- 		goto exit_inode;
-@@ -513,7 +514,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
- 	o_group_desc = EXT4_SB(sb)->s_group_desc;
- 	memcpy(n_group_desc, o_group_desc,
- 	       EXT4_SB(sb)->s_gdb_count * sizeof(struct buffer_head *));
--	n_group_desc[gdb_num] = *primary;
-+	n_group_desc[gdb_num] = gdb_bh;
- 	EXT4_SB(sb)->s_group_desc = n_group_desc;
- 	EXT4_SB(sb)->s_gdb_count++;
- 	kfree(o_group_desc);
-@@ -535,7 +536,7 @@ exit_sbh:
- exit_dind:
- 	brelse(dind);
- exit_bh:
--	brelse(*primary);
-+	brelse(gdb_bh);
- 
- 	ext4_debug("leaving with error %d\n", err);
- 	return err;
-@@ -843,8 +844,12 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
- 		if (reserved_gdb && ext4_bg_num_gdb(sb, input->group) &&
- 		    (err = reserve_backup_gdb(handle, inode, input)))
+ 	int reserved_gdb =le16_to_cpu(EXT4_SB(sb)->s_es->s_reserved_gdt_blocks);
+@@ -627,7 +627,7 @@ static int reserve_backup_gdb(handle_t *handle, struct inode *inode,
+ 	 * Finally we can add each of the reserved backup GDT blocks from
+ 	 * the new group to its reserved primary GDT block.
+ 	 */
+-	blk = input->group * EXT4_BLOCKS_PER_GROUP(sb);
++	blk = group * EXT4_BLOCKS_PER_GROUP(sb);
+ 	for (i = 0; i < reserved_gdb; i++) {
+ 		int err2;
+ 		data = (__le32 *)primary[i]->b_data;
+@@ -841,9 +841,11 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 		if ((err = ext4_journal_get_write_access(handle, primary)))
  			goto exit_journal;
--	} else if ((err = add_new_gdb(handle, inode, input, &primary)))
--		goto exit_journal;
-+	} else {
-+		err = add_new_gdb(handle, inode, input->group);
-+		if (err)
-+			goto exit_journal;
-+		primary = sbi->s_group_desc[gdb_num];
-+	}
  
-         /*
-          * OK, now we've set up the new group.  Time to make it active.
+-		if (reserved_gdb && ext4_bg_num_gdb(sb, input->group) &&
+-		    (err = reserve_backup_gdb(handle, inode, input)))
+-			goto exit_journal;
++		if (reserved_gdb && ext4_bg_num_gdb(sb, input->group)) {
++			err = reserve_backup_gdb(handle, inode, input->group);
++			if (err)
++				goto exit_journal;
++		}
+ 	} else {
+ 		err = add_new_gdb(handle, inode, input->group);
+ 		if (err)
 -- 
 1.7.5.1
 
