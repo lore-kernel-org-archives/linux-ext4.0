@@ -1,42 +1,131 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH 06/12] ext4: let ext4_group_add_blocks() handle 0 blocks quickly
-Date: Mon, 18 Jul 2011 10:52:29 +0800
-Message-ID: <1310957555-15617-7-git-send-email-xiaoqiangnk@gmail.com>
+Subject: [PATCH 05/12] ext4: let ext4_group_add_blocks return an error code
+Date: Mon, 18 Jul 2011 10:52:28 +0800
+Message-ID: <1310957555-15617-6-git-send-email-xiaoqiangnk@gmail.com>
 References: <1310957555-15617-1-git-send-email-xiaoqiangnk@gmail.com>
 Cc: aedilger@gmail.com, Yongqiang Yang <xiaoqiangnk@gmail.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-iy0-f174.google.com ([209.85.210.174]:65169 "EHLO
 	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752352Ab1GRC45 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Jul 2011 22:56:57 -0400
+	with ESMTP id S1752009Ab1GRC4z (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Jul 2011 22:56:55 -0400
 Received: by mail-iy0-f174.google.com with SMTP id 12so2725572iyb.19
-        for <linux-ext4@vger.kernel.org>; Sun, 17 Jul 2011 19:56:57 -0700 (PDT)
+        for <linux-ext4@vger.kernel.org>; Sun, 17 Jul 2011 19:56:55 -0700 (PDT)
 In-Reply-To: <1310957555-15617-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If ext4_group_add_blocks() is called with 0 block, it just return 0.
+This patch lets ext4_group_add_blocks() return an error code if it fails,
+so that upper functions can handle error correctly.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/mballoc.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
+ fs/ext4/ext4.h    |    2 +-
+ fs/ext4/mballoc.c |   19 +++++++++++++------
+ fs/ext4/resize.c  |   10 +++++++---
+ 3 files changed, 21 insertions(+), 10 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index bbe81db..da7ab48 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1799,7 +1799,7 @@ extern void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 			     unsigned long count, int flags);
+ extern int ext4_mb_add_groupinfo(struct super_block *sb,
+ 		ext4_group_t i, struct ext4_group_desc *desc);
+-extern void ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
++extern int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
+ 				ext4_fsblk_t block, unsigned long count);
+ extern int ext4_trim_fs(struct super_block *, struct fstrim_range *);
+ 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 33c41e6..a2af35b 100644
+index ea80c0b..33c41e6 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -4680,6 +4680,9 @@ int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
- 
- 	ext4_debug("Adding block(s) %llu-%llu\n", block, block + count - 1);
- 
-+	if (count == 0)
-+		return 0;
-+
- 	ext4_get_group_no_and_offset(sb, block, &block_group, &bit);
- 	/*
+@@ -4664,7 +4664,7 @@ error_return:
+  *
+  * This marks the blocks as free in the bitmap and buddy.
+  */
+-void ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
++int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
+ 			 ext4_fsblk_t block, unsigned long count)
+ {
+ 	struct buffer_head *bitmap_bh = NULL;
+@@ -4685,15 +4685,21 @@ void ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
  	 * Check to see if we are freeing blocks across a group
+ 	 * boundary.
+ 	 */
+-	if (bit + count > EXT4_BLOCKS_PER_GROUP(sb))
+-		goto error_return;
++	if (bit + count > EXT4_BLOCKS_PER_GROUP(sb)) {
++		ext4_warning(sb, "too much blocks added to group %u\n",
++			     block_group);
++		return -EINVAL;
++	}
+ 
+ 	bitmap_bh = ext4_read_block_bitmap(sb, block_group);
+ 	if (!bitmap_bh)
+-		goto error_return;
++		return -EIO;
++
+ 	desc = ext4_get_group_desc(sb, block_group, &gd_bh);
+-	if (!desc)
++	if (!desc) {
++		err = -EIO;
+ 		goto error_return;
++	}
+ 
+ 	if (in_range(ext4_block_bitmap(sb, desc), block, count) ||
+ 	    in_range(ext4_inode_bitmap(sb, desc), block, count) ||
+@@ -4703,6 +4709,7 @@ void ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
+ 		ext4_error(sb, "Adding blocks in system zones - "
+ 			   "Block = %llu, count = %lu",
+ 			   block, count);
++		err = -EINVAL;
+ 		goto error_return;
+ 	}
+ 
+@@ -4771,7 +4778,7 @@ void ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
+ error_return:
+ 	brelse(bitmap_bh);
+ 	ext4_std_error(sb, err);
+-	return;
++	return err;
+ }
+ 
+ /**
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 374fd1c..2e63376 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -990,7 +990,7 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
+ 	ext4_grpblk_t add;
+ 	struct buffer_head *bh;
+ 	handle_t *handle;
+-	int err;
++	int err, err2;
+ 	ext4_group_t group;
+ 
+ 	o_blocks_count = ext4_blocks_count(es);
+@@ -1066,11 +1066,15 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
+ 	ext4_debug("freeing blocks %llu through %llu\n", o_blocks_count,
+ 		   o_blocks_count + add);
+ 	/* We add the blocks to the bitmap and set the group need init bit */
+-	ext4_group_add_blocks(handle, sb, o_blocks_count, add);
++	err = ext4_group_add_blocks(handle, sb, o_blocks_count, add);
+ 	ext4_handle_dirty_super(handle, sb);
+ 	ext4_debug("freed blocks %llu through %llu\n", o_blocks_count,
+ 		   o_blocks_count + add);
+-	if ((err = ext4_journal_stop(handle)))
++	err2 = ext4_journal_stop(handle);
++	if (!err && err2)
++		err = err2;
++
++	if (err)
+ 		goto exit_put;
+ 
+ 	if (test_opt(sb, DEBUG))
 -- 
 1.7.5.1
 
