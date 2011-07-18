@@ -1,100 +1,68 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: [PATCH] ext4: fall back to vmalloc() for large allocations
-Date: Sun, 17 Jul 2011 23:12:34 -0600
-Message-ID: <A8CDAA23-61C6-4823-ADB1-7D36CBAFC025@whamcloud.com>
-References: <1310506846-25843-1-git-send-email-adilger@whamcloud.com> <20110718012556.GJ2717@thunk.org>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org, Yu Jian <yujian@whamcloud.com>
-To: Ted Ts'o <tytso@mit.edu>
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: Re: prevent parallel resizers and fix some error handling in resize
+Date: Mon, 18 Jul 2011 09:16:19 +0300
+Message-ID: <CAOQ4uxj7C7L_27nEcn5ge6aD=2RLgipGOa_GBhhEeafC1H0HHQ@mail.gmail.com>
+References: <1310957555-15617-1-git-send-email-xiaoqiangnk@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, aedilger@gmail.com
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:38500 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751023Ab1GRFMh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Jul 2011 01:12:37 -0400
-Received: by pzk3 with SMTP id 3so3706164pzk.5
-        for <linux-ext4@vger.kernel.org>; Sun, 17 Jul 2011 22:12:37 -0700 (PDT)
-In-Reply-To: <20110718012556.GJ2717@thunk.org>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:48771 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750758Ab1GRGQU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Jul 2011 02:16:20 -0400
+Received: by wwe5 with SMTP id 5so2853748wwe.1
+        for <linux-ext4@vger.kernel.org>; Sun, 17 Jul 2011 23:16:19 -0700 (PDT)
+In-Reply-To: <1310957555-15617-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-07-17, at 7:25 PM, Ted Ts'o wrote:
-> On Tue, Jul 12, 2011 at 03:40:46PM -0600, Andreas Dilger wrote:
->> For very large ext4 filesystems (128TB and larger) kmalloc() of
->> some per-group structures can fail at mount time due to memory
->> fragmentation.  If kmalloc() fails, fall back to vmalloc() for
->> the s_group_info and s_group_desc arrays.
->> 
->> Signed-off-by: Yu Jian <yujian@whamcloud.com>
->> Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
-> 
-> Andreas, was this patch authored by Yu Jian or by you?
+On Mon, Jul 18, 2011 at 5:52 AM, Yongqiang Yang <xiaoqiangnk@gmail.com>=
+ wrote:
+> Hi,
+>
+> =A0This patch series prevents parallel resizer and fixes some error h=
+andling in
+> resize code. =A0Besides these, some code is simplified so that the co=
+de can be
+> used easily in new resize implementation.
 
-Yu Jian wrote it with help from me, and I made some modifications afterward,
-so I put both of our names down.
+You should probably mention that "new resize implementation" means:
+let the kernel do all the resize work, gaining fast multi group resize,
+flex_bg layout, and uninit block groups.
+The new kernel resize implementation also prepares the ground for
+supporting resize with features like big_alloc, 64bit and exclude_bitma=
+p.
 
->> 	sbi->s_buddy_cache = new_inode(sb);
->> 	if (sbi->s_buddy_cache == NULL) {
->> -		printk(KERN_ERR "EXT4-fs: can't get new inode\n");
->> +		ext4_msg(sb, KERN_ERR, "can't get new inode\n");
->> 		goto err_freesgi;
->> 	}
-> 
-> Using ext4_msg instead of printk is good, but that really should be a
-> separate patch.
+You should probably also mention that you have already completed the
+"new resize implementation" and that you will post it shortly ;-)
 
-> 
->> -	sbi->s_buddy_cache->i_ino = get_next_ino();
->> +	/* To avoid potentially colliding with an valid on-disk inode number,
->> +	 * use EXT4_BAD_INO for the buddy cache inode number.  This inode is
->> +	 * not in the inode hash, so it should never be found by iget(), but
->> +	 * this will avoid confusion if it ever shows up during debugging. */
->> +	sbi->s_buddy_cache->i_ino = EXT4_BAD_INO;
-> 
-> This should be a separate patch.
-
-Sure.
-
->> @@ -2457,12 +2472,6 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
->> 		i++;
->> 	} while (i <= sb->s_blocksize_bits + 1);
->> 
->> -	/* init file for buddy data */
->> -	ret = ext4_mb_init_backend(sb);
->> -	if (ret != 0) {
->> -		goto out;
->> -	}
->> -
->> 	spin_lock_init(&sbi->s_md_lock);
->> 	spin_lock_init(&sbi->s_bal_lock);
->> 
->> @@ -2487,6 +2496,11 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
->> 		spin_lock_init(&lg->lg_prealloc_lock);
->> 	}
->> 
->> +	/* init file for buddy data */
->> +	ret = ext4_mb_init_backend(sb);
->> +	if (ret != 0)
->> +		goto out;
->> +
->> 	if (sbi->s_proc)
->> 		proc_create_data("mb_groups", S_IRUGO, sbi->s_proc,
->> 				 &ext4_mb_seq_groups_fops, sb);
-> 
-> Why are you moving ext4_mb_init_backend()?  This should be a separate
-> patch, with an explanation of what is going on....
-
-In ext4_mb_init(), if the s_locality_group allocation fails it will
-currently cause the allocations made in ext4_mb_init_backend() to
-be leaked.  Moving the ext4_mb_init_backend() allocation after the
-s_locality_group allocation avoids that problem.
-
-Cheers, Andreas
+>
+> =A0The patches are tested by resize2fs and e2fsck -fn.
+>
+> [PATCH 01/12] ext4: prevent parallel resizers by atomic bit ops
+> [PATCH 02/12] ext4: prevent a fs with errors from being resized
+> [PATCH 03/12] ext4: prevent a fs without journal from being resized
+> [PATCH 04/12] ext4: rename ext4_add_groupblocks() to
+> [PATCH 05/12] ext4: let ext4_group_add_blocks return an error code
+> [PATCH 06/12] ext4: let ext4_group_add_blocks() handle 0 blocks
+> [PATCH 07/12] ext4: fix a typo in ext4_group_extend()
+> [PATCH 08/12] ext4: let setup_new_group_blocks set multi-bits each
+> [PATCH 09/12] ext4: simplify journal handling in
+> [PATCH 10/12] ext4: remove lock_buffer in bclean() and
+> [PATCH 11/12] ext4: simplify parameters of add_new_gdb()
+> [PATCH 12/12] ext4: simplify parameters of reserve_backup_gdb()
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
 --
-Andreas Dilger 
-Principal Engineer
-Whamcloud, Inc.
-
-
-
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
