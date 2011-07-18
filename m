@@ -1,46 +1,58 @@
-From: "Mr. Vincent Cheng Hoi Chuen" <antonio.rial.sanchez@usc.es>
-Subject: (unknown)
-Date: Mon, 18 Jul 2011 22:20:58 +0200
-Message-ID: <20110718222058.bv5sf0v28wgggk4o@correoweb.usc.es>
-Reply-To: choi_chu08@yahoo.co.jp
+From: Alex Elder <aelder@sgi.com>
+Subject: Re: [PATCH 0/2 v8] XFS TESTS: ENOSPC Punch Hole Test
+Date: Mon, 18 Jul 2011 17:09:13 -0500
+Message-ID: <1311026953.2790.49.camel@doink>
+References: <1310946766-30217-1-git-send-email-achender@linux.vnet.ibm.com>
+Reply-To: <aelder@sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset=ISO-8859-1;
-	DelSp="Yes";
-	format="flowed"
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-To: undisclosed-recipients:;
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from correo2.usc.es ([193.144.75.22]:3304 "EHLO correo2.usc.es"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754606Ab1GRUbr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Jul 2011 16:31:47 -0400
-Subject: 
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
+	<xfs@oss.sgi.com>
+To: Allison Henderson <achender@linux.vnet.ibm.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1310946766-30217-1-git-send-email-achender@linux.vnet.ibm.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
+
+On Sun, 2011-07-17 at 16:52 -0700, Allison Henderson wrote:
+> This patch set adds the ENOSPC test that was used for ext4 punch hole testing.
+> This test will verify that a hole can be punched even when the disk is full.
+> Reserved blocks should be used to complete the operation when there is not blocks
+> to further fragment the file.
+> 
+> Because punching a hole does not always require extra blocks, there needs to 
+> be several iterations of punching holes, and then filling the file system to 100% 
+> usage before it is forced to grow the tree in order to handle the fragmentation. 
+> The growing of the tree is what would cause ENOSPC if not for the use of reserved blocks.
+
+I have reviewed both of your updated patches.  They
+both look good to me.  I'll give it another day or
+two for others to comment if they like, but unless
+someone suggests changes I'll commit this for you.
+
+Reviewed-by: Alex Elder <aelder@sgi.com>
 
 
-Good Day,
-
-I am Mr. Vincent Cheng Hoi Chuen, GBS, JP Chairman of the Hong Kong  
-and Shanghai
-Banking Corporation Limited.i have a business proposal of Twenty Two million
-Five Hundred Thousand United State Dollars only for you to  transact with me
-from my bank to your country.
-
-All confirmable documents to back up the claims will be made available to you
-prior to your acceptance and as soon as I receive your return mail Via  
-my email
-address:choi_chu08@yahoo.co.jp and I will let you know what is  
-required of you.
-
-Your earliest response to this letter will be appreciated.
-
-Best Regards,
-Mr. Vincent Cheng
 
 
+> Allison Henderson (2):
+>   XFS TESTS: ENOSPC Punch Hole: Move su routines in 123 to common.rc
+>   XFS TESTS: Add ENOSPC Hole Punch Test
+> 
+>  123       |   24 ------------
+>  256       |  120 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+>  256.out   |    1 +
+>  common.rc |   81 +++++++++++++++++++++++++++++++++++++++++
+>  group     |   12 ++++--
+>  5 files changed, 210 insertions(+), 28 deletions(-)
+>  create mode 100644 256
+>  create mode 100644 256.out
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 
 
