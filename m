@@ -1,66 +1,132 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH 12/12] ext4: simplify parameters of reserve_backup_gdb()
-Date: Mon, 18 Jul 2011 10:52:35 +0800
-Message-ID: <1310957555-15617-13-git-send-email-xiaoqiangnk@gmail.com>
-References: <1310957555-15617-1-git-send-email-xiaoqiangnk@gmail.com>
-Cc: aedilger@gmail.com, Yongqiang Yang <xiaoqiangnk@gmail.com>
-To: linux-ext4@vger.kernel.org
+From: Tao Ma <tm@tao.ma>
+Subject: Re: [PATCH 09/12] ext4: simplify journal handling in ext4_setup_new_group_blocks
+Date: Mon, 18 Jul 2011 11:09:15 +0800
+Message-ID: <4E23A3DB.9020906@tao.ma>
+References: <1310957555-15617-1-git-send-email-xiaoqiangnk@gmail.com> <1310957555-15617-10-git-send-email-xiaoqiangnk@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, aedilger@gmail.com
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:45447 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752987Ab1GRC5N (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Jul 2011 22:57:13 -0400
-Received: by mail-iw0-f174.google.com with SMTP id 6so2719031iwn.19
-        for <linux-ext4@vger.kernel.org>; Sun, 17 Jul 2011 19:57:12 -0700 (PDT)
-In-Reply-To: <1310957555-15617-1-git-send-email-xiaoqiangnk@gmail.com>
+Received: from oproxy9.bluehost.com ([69.89.24.6]:46618 "HELO
+	oproxy9.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751736Ab1GRDJV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Jul 2011 23:09:21 -0400
+In-Reply-To: <1310957555-15617-10-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-reserve_backup_gdb() only needs the no. of a group, there is no need to pass
-a pointer to struct ext4_new_group_data to it.
+On 07/18/2011 10:52 AM, Yongqiang Yang wrote:
+> This patch simplifies journal handling in ext4_setup_new_group_blocks().
+> 
+> 
+> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+> ---
+>  fs/ext4/resize.c |   39 ++++++++++++++++++++-------------------
+>  1 files changed, 20 insertions(+), 19 deletions(-)
+> 
+> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+> index c91653c..ac5b63d 100644
+> --- a/fs/ext4/resize.c
+> +++ b/fs/ext4/resize.c
+> @@ -171,8 +171,7 @@ static struct buffer_head *bclean(handle_t *handle, struct super_block *sb,
+>   * If that fails, restart the transaction & regain write access for the
+>   * buffer head which is used for block_bitmap modifications.
+>   */
+> -static int extend_or_restart_transaction(handle_t *handle, int thresh,
+> -					 struct buffer_head *bh)
+> +static int extend_or_restart_transaction(handle_t *handle, int thresh)
+>  {
+>  	int err;
+>  
+> @@ -183,9 +182,8 @@ static int extend_or_restart_transaction(handle_t *handle, int thresh,
+>  	if (err < 0)
+>  		return err;
+>  	if (err) {
+> -		if ((err = ext4_journal_restart(handle, EXT4_MAX_TRANS_DATA)))
+> -			return err;
+> -		if ((err = ext4_journal_get_write_access(handle, bh)))
+> +		err = ext4_journal_restart(handle, EXT4_MAX_TRANS_DATA);
+> +		if (err)
+>  			return err;
+you removed an ext4_journal_get_write_access here, and I didn't see you
+add it back anywhere.
 
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
----
- fs/ext4/resize.c |   12 +++++++-----
- 1 files changed, 7 insertions(+), 5 deletions(-)
-
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 52d0426..3e790ad 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -556,7 +556,7 @@ exit_bh:
-  * backup GDT blocks are stored in their reserved primary GDT block.
-  */
- static int reserve_backup_gdb(handle_t *handle, struct inode *inode,
--			      struct ext4_new_group_data *input)
-+			      ext4_group_t group)
- {
- 	struct super_block *sb = inode->i_sb;
- 	int reserved_gdb =le16_to_cpu(EXT4_SB(sb)->s_es->s_reserved_gdt_blocks);
-@@ -627,7 +627,7 @@ static int reserve_backup_gdb(handle_t *handle, struct inode *inode,
- 	 * Finally we can add each of the reserved backup GDT blocks from
- 	 * the new group to its reserved primary GDT block.
- 	 */
--	blk = input->group * EXT4_BLOCKS_PER_GROUP(sb);
-+	blk = group * EXT4_BLOCKS_PER_GROUP(sb);
- 	for (i = 0; i < reserved_gdb; i++) {
- 		int err2;
- 		data = (__le32 *)primary[i]->b_data;
-@@ -841,9 +841,11 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
- 		if ((err = ext4_journal_get_write_access(handle, primary)))
- 			goto exit_journal;
- 
--		if (reserved_gdb && ext4_bg_num_gdb(sb, input->group) &&
--		    (err = reserve_backup_gdb(handle, inode, input)))
--			goto exit_journal;
-+		if (reserved_gdb && ext4_bg_num_gdb(sb, input->group)) {
-+			err = reserve_backup_gdb(handle, inode, input->group);
-+			if (err)
-+				goto exit_journal;
-+		}
- 	} else {
- 		err = add_new_gdb(handle, inode, input->group);
- 		if (err)
--- 
-1.7.5.1
+Thanks
+Tao
+>  	}
+>  
+> @@ -222,29 +220,24 @@ static int setup_new_group_blocks(struct super_block *sb,
+>  
+>  	BUG_ON(input->group != sbi->s_groups_count);
+>  
+> -	if (IS_ERR(bh = bclean(handle, sb, input->block_bitmap))) {
+> -		err = PTR_ERR(bh);
+> -		goto exit_journal;
+> -	}
+> -
+>  	/* Copy all of the GDT blocks into the backup in this group */
+>  	for (i = 0, bit = 1, block = start + 1;
+>  	     i < gdblocks; i++, block++, bit++) {
+>  		struct buffer_head *gdb;
+>  
+>  		ext4_debug("update backup group %#04llx (+%d)\n", block, bit);
+> -
+> -		if ((err = extend_or_restart_transaction(handle, 1, bh)))
+> -			goto exit_bh;
+> +		err = extend_or_restart_transaction(handle, 1);
+> +		if (err)
+> +			goto exit_journal;
+>  
+>  		gdb = sb_getblk(sb, block);
+>  		if (!gdb) {
+>  			err = -EIO;
+> -			goto exit_bh;
+> +			goto exit_journal;
+>  		}
+>  		if ((err = ext4_journal_get_write_access(handle, gdb))) {
+>  			brelse(gdb);
+> -			goto exit_bh;
+> +			goto exit_journal;
+>  		}
+>  		lock_buffer(gdb);
+>  		memcpy(gdb->b_data, sbi->s_group_desc[i]->b_data, gdb->b_size);
+> @@ -253,7 +246,7 @@ static int setup_new_group_blocks(struct super_block *sb,
+>  		err = ext4_handle_dirty_metadata(handle, NULL, gdb);
+>  		if (unlikely(err)) {
+>  			brelse(gdb);
+> -			goto exit_bh;
+> +			goto exit_journal;
+>  		}
+>  		brelse(gdb);
+>  	}
+> @@ -264,7 +257,17 @@ static int setup_new_group_blocks(struct super_block *sb,
+>  	err = sb_issue_zeroout(sb, gdblocks + start + 1, reserved_gdb,
+>  			       GFP_NOFS);
+>  	if (err)
+> -		goto exit_bh;
+> +		goto exit_journal;
+> +
+> +	err = extend_or_restart_transaction(handle, 2);
+> +	if (err)
+> +		goto exit_journal;
+> +
+> +	bh = bclean(handle, sb, input->block_bitmap);
+> +	if (IS_ERR(bh)) {
+> +		err = PTR_ERR(bh);
+> +		goto exit_journal;
+> +	}
+>  
+>  	if (ext4_bg_has_super(sb, input->group)) {
+>  		ext4_debug("mark backup group tables %#04llx (+0)\n", start);
+> @@ -288,8 +291,6 @@ static int setup_new_group_blocks(struct super_block *sb,
+>  	ext4_set_bits(bh->b_data, input->inode_table - start,
+>  		      sbi->s_itb_per_group);
+>  
+> -	if ((err = extend_or_restart_transaction(handle, 2, bh)))
+> -		goto exit_bh;
+>  
+>  	ext4_mark_bitmap_end(input->blocks_count, sb->s_blocksize * 8,
+>  			     bh->b_data);
 
