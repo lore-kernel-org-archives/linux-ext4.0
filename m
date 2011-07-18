@@ -1,82 +1,40 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: prevent parallel resizers and fix some error handling in resize
-Date: Mon, 18 Jul 2011 18:16:07 +0800
-Message-ID: <CAGBYx2YxnOSJTM78pJNNjjVf7DfWktx04v9HDReqWMXpqOxKRQ@mail.gmail.com>
-References: <1310957555-15617-1-git-send-email-xiaoqiangnk@gmail.com>
-	<CAOQ4uxj7C7L_27nEcn5ge6aD=2RLgipGOa_GBhhEeafC1H0HHQ@mail.gmail.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: fall back to vmalloc() for large allocations
+Date: Mon, 18 Jul 2011 07:36:23 -0400
+Message-ID: <20110718113623.GF14869@thunk.org>
+References: <1310506846-25843-1-git-send-email-adilger@whamcloud.com>
+ <20110718012556.GJ2717@thunk.org>
+ <A8CDAA23-61C6-4823-ADB1-7D36CBAFC025@whamcloud.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, aedilger@gmail.com
-To: Amir Goldstein <amir73il@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Yu Jian <yujian@whamcloud.com>
+To: Andreas Dilger <adilger@whamcloud.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:34736 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755688Ab1GRKQI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Jul 2011 06:16:08 -0400
-Received: by pzk3 with SMTP id 3so3913580pzk.5
-        for <linux-ext4@vger.kernel.org>; Mon, 18 Jul 2011 03:16:07 -0700 (PDT)
-In-Reply-To: <CAOQ4uxj7C7L_27nEcn5ge6aD=2RLgipGOa_GBhhEeafC1H0HHQ@mail.gmail.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:43948 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751128Ab1GRLgZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 18 Jul 2011 07:36:25 -0400
+Content-Disposition: inline
+In-Reply-To: <A8CDAA23-61C6-4823-ADB1-7D36CBAFC025@whamcloud.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 18, 2011 at 2:16 PM, Amir Goldstein <amir73il@gmail.com> wr=
-ote:
-> On Mon, Jul 18, 2011 at 5:52 AM, Yongqiang Yang <xiaoqiangnk@gmail.co=
-m> wrote:
->> Hi,
->>
->> =A0This patch series prevents parallel resizer and fixes some error =
-handling in
->> resize code. =A0Besides these, some code is simplified so that the c=
-ode can be
->> used easily in new resize implementation.
->
-> You should probably mention that "new resize implementation" means:
-> let the kernel do all the resize work, gaining fast multi group resiz=
-e,
-> flex_bg layout, and uninit block groups.
-> The new kernel resize implementation also prepares the ground for
-> supporting resize with features like big_alloc, 64bit and exclude_bit=
-map.
->
-> You should probably also mention that you have already completed the
-> "new resize implementation" and that you will post it shortly ;-)
-Thank you for pointing it out:-)
+On Sun, Jul 17, 2011 at 11:12:34PM -0600, Andreas Dilger wrote:
+> 
+> Yu Jian wrote it with help from me, and I made some modifications afterward,
+> so I put both of our names down.
 
-Yongqiang.
->
->>
->> =A0The patches are tested by resize2fs and e2fsck -fn.
->>
->> [PATCH 01/12] ext4: prevent parallel resizers by atomic bit ops
->> [PATCH 02/12] ext4: prevent a fs with errors from being resized
->> [PATCH 03/12] ext4: prevent a fs without journal from being resized
->> [PATCH 04/12] ext4: rename ext4_add_groupblocks() to
->> [PATCH 05/12] ext4: let ext4_group_add_blocks return an error code
->> [PATCH 06/12] ext4: let ext4_group_add_blocks() handle 0 blocks
->> [PATCH 07/12] ext4: fix a typo in ext4_group_extend()
->> [PATCH 08/12] ext4: let setup_new_group_blocks set multi-bits each
->> [PATCH 09/12] ext4: simplify journal handling in
->> [PATCH 10/12] ext4: remove lock_buffer in bclean() and
->> [PATCH 11/12] ext4: simplify parameters of add_new_gdb()
->> [PATCH 12/12] ext4: simplify parameters of reserve_backup_gdb()
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4=
-" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->>
->
+OK, I just wanted to know who I should credit as the author in Git.
+If you think it should be Yu Jian, could you put in a From: Yu Jian
+line?  If you think you made sufficient modifications that you think
+it's mainly your code, that's fine.  I just wasn't sure which would
+have been more correct, and whether you might have just forgotten an
+explicit From: header or not.  Just want to give credit where credit
+is due!  :-)
 
+I'm going to mark this patch as "revisions requested" in patchworkand
+want for you to send out a broken out patch series.
 
+Many thanks!!
 
---=20
-Best Wishes
-Yongqiang Yang
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+					- Ted
