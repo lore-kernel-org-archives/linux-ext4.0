@@ -1,53 +1,108 @@
-From: =?UTF-8?Q?Rog=C3=A9rio_Madureira?= <mr@atipico.com.br>
-Subject: How to loop inodes of a damaged ext4 filesystem...
-Date: Mon, 18 Jul 2011 13:04:14 -0300
-Message-ID: <CAMgn0=Xx-EJdX2AYs86V+W3_2c-gOeSmFmWr160+Od_ofserTw@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+From: Josef Bacik <josef@redhat.com>
+Subject: [PATCH] ext4: don't return VM_FAULT_SIGBUS if the page was truncated
+Date: Mon, 18 Jul 2011 12:06:17 -0400
+Message-ID: <1311005177-15214-1-git-send-email-josef@redhat.com>
+To: linux-ext4@vger.kernel.org, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f52.google.com ([209.85.161.52]:50269 "EHLO
-	mail-fx0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752672Ab1GRQEf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Jul 2011 12:04:35 -0400
-Received: by fxd18 with SMTP id 18so6883791fxd.11
-        for <linux-ext4@vger.kernel.org>; Mon, 18 Jul 2011 09:04:34 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:32147 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751779Ab1GRQGV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 18 Jul 2011 12:06:21 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi everybody,
+If a page is truncated out from underneath us it is not nice to segfault.  Other
+fs's just returm VM_FAULT_NOPAGE which will make userspace retry the fault.  If
+you are doing O_DIRECT to the same file which you are mmap'ing you will get
+segfaults because sometims O_DIRECT will invalidate the mapping pages which will
+make it disappear in the middle of the fault, which on ext4 will result in a
+segfault, but everybody else this works fine.  Fixing this makes the
+O_DIRECT/mmap test not crash.  Thanks,
 
-Does anybody know of any software (or even an script) that's able to
-search for the inodes of a (damaged) ext4 filesystem and get meta data
-(just like sleuthkit "ils" does in ext3)? I am trying to rebuilt a
-script to recover files from a ext4 filesystem. As far as I know there
-are few tools able to deal with ext4 for file recovery purposes
-(mantaining the name and the folder hierarchy, of course).
+Signed-off-by: Josef Bacik <josef@redhat.com>
+---
+ fs/ext4/inode.c |   32 +++++++++++++-------------------
+ 1 files changed, 13 insertions(+), 19 deletions(-)
 
-The original script is here:
-http://matt.matzi.org.uk/2008/07/03/reconstructing-heavily-damaged-hard=
--drives/#comment-209
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 1ad7d10..16d727c 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5843,7 +5843,8 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	struct page *page = vmf->page;
+ 	loff_t size;
+ 	unsigned long len;
+-	int ret = -EINVAL;
++	int ret = VM_FAULT_NOPAGE;
++	int err;
+ 	void *fsdata;
+ 	struct file *file = vma->vm_file;
+ 	struct inode *inode = file->f_path.dentry->d_inode;
+@@ -5862,13 +5863,11 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 		/* page got truncated from under us? */
+ 		goto out_unlock;
+ 	}
+-	ret = 0;
+ 
++	ret = VM_FAULT_LOCKED;
+ 	wait_on_page_writeback(page);
+-	if (PageMappedToDisk(page)) {
+-		up_read(&inode->i_alloc_sem);
+-		return VM_FAULT_LOCKED;
+-	}
++	if (PageMappedToDisk(page))
++		goto out_unlock;
+ 
+ 	if (page->index == size >> PAGE_CACHE_SHIFT)
+ 		len = size & ~PAGE_CACHE_MASK;
+@@ -5883,10 +5882,8 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	 */
+ 	if (page_has_buffers(page)) {
+ 		if (!walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
+-					ext4_bh_unmapped)) {
+-			up_read(&inode->i_alloc_sem);
+-			return VM_FAULT_LOCKED;
+-		}
++					ext4_bh_unmapped))
++			goto out_unlock;
+ 	}
+ 	unlock_page(page);
+ 	/*
+@@ -5896,28 +5893,25 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	 * write_end call. lock_page prevent this from happening
+ 	 * on the same page though
+ 	 */
+-	ret = mapping->a_ops->write_begin(file, mapping, page_offset(page),
++	ret = VM_FAULT_SIGBUS;
++	err = mapping->a_ops->write_begin(file, mapping, page_offset(page),
+ 			len, AOP_FLAG_UNINTERRUPTIBLE, &page, &fsdata);
+-	if (ret < 0)
++	if (err < 0)
+ 		goto out_unlock;
+-	ret = mapping->a_ops->write_end(file, mapping, page_offset(page),
++	err = mapping->a_ops->write_end(file, mapping, page_offset(page),
+ 			len, len, page, fsdata);
+-	if (ret < 0)
++	if (err < 0)
+ 		goto out_unlock;
+-	ret = 0;
+ 
+ 	/*
+ 	 * write_begin/end might have created a dirty page and someone
+ 	 * could wander in and start the IO.  Make sure that hasn't
+ 	 * happened.
+ 	 */
++	ret = VM_FAULT_LOCKED;
+ 	lock_page(page);
+ 	wait_on_page_writeback(page);
+-	up_read(&inode->i_alloc_sem);
+-	return VM_FAULT_LOCKED;
+ out_unlock:
+-	if (ret)
+-		ret = VM_FAULT_SIGBUS;
+ 	up_read(&inode->i_alloc_sem);
+ 	return ret;
+ }
+-- 
+1.7.5.2
 
-Wally, the blog's owner said:
-
-"Mate, I=E2=80=99m really sorry. Sounds like ext4 (which if you=E2=80=99=
-re not aware,
-is a relatively recent FS) isn=E2=80=99t supported =E2=80=93 and probab=
-ly won=E2=80=99t be for
-a while. It=E2=80=99s partially for this reason I=E2=80=99m sticking wi=
-th ext3 for the
-time being=E2=80=A6 Don=E2=80=99t give up ;-) Keep an eye out for new S=
-leuthkit
-releases=E2=80=A6 it=E2=80=99s as always only a matter of time=E2=80=A6=
-"
-
-Is him correct or there's any advance on this area?
-
-Thanks for any light,
-Rog=C3=A9rio Madureira
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
