@@ -1,48 +1,80 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2 2/2] ext4: Ignore a stripe width of 1
-Date: Sun, 17 Jul 2011 21:21:05 -0400
-Message-ID: <20110718012105.GI2717@thunk.org>
-References: <1310766115-4164-1-git-send-email-dehrenberg@google.com>
- <1310766115-4164-2-git-send-email-dehrenberg@google.com>
+Subject: Re: [PATCH] ext4: fall back to vmalloc() for large allocations
+Date: Sun, 17 Jul 2011 21:25:56 -0400
+Message-ID: <20110718012556.GJ2717@thunk.org>
+References: <1310506846-25843-1-git-send-email-adilger@whamcloud.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Eric Sandeen <sandeen@redhat.com>
-To: Dan Ehrenberg <dehrenberg@google.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, Yu Jian <yujian@whamcloud.com>
+To: Andreas Dilger <adilger@whamcloud.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:45700 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752853Ab1GRBZ6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 17 Jul 2011 21:25:58 -0400
 Content-Disposition: inline
-In-Reply-To: <1310766115-4164-2-git-send-email-dehrenberg@google.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1310506846-25843-1-git-send-email-adilger@whamcloud.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 15, 2011 at 02:41:55PM -0700, Dan Ehrenberg wrote:
-> If the stripe width was set to 1, then this patch will ignore
-> that stripe width and ext4 will act as if the stripe width
-> were 0 with respect to optimizing allocations.
+On Tue, Jul 12, 2011 at 03:40:46PM -0600, Andreas Dilger wrote:
+> For very large ext4 filesystems (128TB and larger) kmalloc() of
+> some per-group structures can fail at mount time due to memory
+> fragmentation.  If kmalloc() fails, fall back to vmalloc() for
+> the s_group_info and s_group_desc arrays.
 > 
-> Signed-off-by: Dan Ehrenberg <dehrenberg@google.com>
+> Signed-off-by: Yu Jian <yujian@whamcloud.com>
+> Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
 
-Applied to the ext4 tree.  I did make one formatting change.  Please
-don't have blank lines between the if and else clauses, like this:
+Andras, was this patch authored by Yu Jian or by you?
 
-	if (sbi->s_stripe && sbi->s_stripe <= sbi->s_blocks_per_group)
-		ret = sbi->s_stripe;
+>  	sbi->s_buddy_cache = new_inode(sb);
+>  	if (sbi->s_buddy_cache == NULL) {
+> -		printk(KERN_ERR "EXT4-fs: can't get new inode\n");
+> +		ext4_msg(sb, KERN_ERR, "can't get new inode\n");
+>  		goto err_freesgi;
+>  	}
 
-	else if (stripe_width <= sbi->s_blocks_per_group)
-		ret = stripe_width;
+Using ext4_msg instead of printk is good, but that really should be a
+separate patch.
 
-	else if (stride <= sbi->s_blocks_per_group)
-		ret = stride;
 
-it wastes vertical whitespace and makes the control flow harder to
-follow.  Eliminate the blank lines, and it's easier to read, I think.
+> -	sbi->s_buddy_cache->i_ino = get_next_ino();
+> +	/* To avoid potentially colliding with an valid on-disk inode number,
+> +	 * use EXT4_BAD_INO for the buddy cache inode number.  This inode is
+> +	 * not in the inode hash, so it should never be found by iget(), but
+> +	 * this will avoid confusion if it ever shows up during debugging. */
+> +	sbi->s_buddy_cache->i_ino = EXT4_BAD_INO;
 
-	if (sbi->s_stripe && sbi->s_stripe <= sbi->s_blocks_per_group)
-		ret = sbi->s_stripe;
-	else if (stripe_width <= sbi->s_blocks_per_group)
-		ret = stripe_width;
-	else if (stride <= sbi->s_blocks_per_group)
-		ret = stride;
+This should be a separate patch.
 
-						- Ted
+> @@ -2457,12 +2472,6 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
+>  		i++;
+>  	} while (i <= sb->s_blocksize_bits + 1);
+>  
+> -	/* init file for buddy data */
+> -	ret = ext4_mb_init_backend(sb);
+> -	if (ret != 0) {
+> -		goto out;
+> -	}
+> -
+>  	spin_lock_init(&sbi->s_md_lock);
+>  	spin_lock_init(&sbi->s_bal_lock);
+>  
+> @@ -2487,6 +2496,11 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
+>  		spin_lock_init(&lg->lg_prealloc_lock);
+>  	}
+>  
+> +	/* init file for buddy data */
+> +	ret = ext4_mb_init_backend(sb);
+> +	if (ret != 0)
+> +		goto out;
+> +
+>  	if (sbi->s_proc)
+>  		proc_create_data("mb_groups", S_IRUGO, sbi->s_proc,
+>  				 &ext4_mb_seq_groups_fops, sb);
+
+Why are you moving ext4_mb_init_backend()?  This should be a separate
+patch, with an explanation of what is going on....
+
+       	       		      	      	    - Ted
