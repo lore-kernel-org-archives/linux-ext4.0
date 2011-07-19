@@ -1,50 +1,261 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: ext4: prevent parallel resizers and fix some error handling in resize
-Date: Tue, 19 Jul 2011 12:02:06 +0800
-Message-ID: <1311048137-16400-1-git-send-email-xiaoqiangnk@gmail.com>
-Cc: adilger@dilger.ca, amir73il@gmail.com, tm@tao.ma
+Subject: [PATCH v2 01/11] ext4: prevent parallel resizers by atomic bit ops
+Date: Tue, 19 Jul 2011 12:02:07 +0800
+Message-ID: <1311048137-16400-2-git-send-email-xiaoqiangnk@gmail.com>
+References: <1311048137-16400-1-git-send-email-xiaoqiangnk@gmail.com>
+Cc: adilger@dilger.ca, amir73il@gmail.com, tm@tao.ma,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-iw0-f174.google.com ([209.85.214.174]:49578 "EHLO
 	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750788Ab1GSEGX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Jul 2011 00:06:23 -0400
-Received: by iwn6 with SMTP id 6so3703318iwn.19
-        for <linux-ext4@vger.kernel.org>; Mon, 18 Jul 2011 21:06:22 -0700 (PDT)
+	with ESMTP id S1750788Ab1GSEGZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Jul 2011 00:06:25 -0400
+Received: by mail-iw0-f174.google.com with SMTP id 6so3703318iwn.19
+        for <linux-ext4@vger.kernel.org>; Mon, 18 Jul 2011 21:06:25 -0700 (PDT)
+In-Reply-To: <1311048137-16400-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+Before this patch, parallel resizers are allowed and protected by a mutex lock,
+actually, there is no need to support parallel resizer, so this patch prevents
+parallel resizers by atmoic bit ops, like lock_page() and unlock_page() do.
 
-This patch series prevents parallel resizers and fixes some error handling in
-resize code.  Besides these, some code is simplified so that the code could be
-used easily in new resize implementation.
+To do this, the patch removed the mutex lock s_resize_lock from struct ext4_sb_info
+and added a unsigned long field named s_resize_flags which inidicates if there is
+a resizer.
 
-In the new resize implementation, all work, like allocating group tables, are
-done by kernel side, so it can support flex_bg feature and BLOCK_UNINIT, and
-adds multi groups (a flex groups) each time, it thus is very fast.
+Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+---
+ fs/ext4/ext4.h   |    7 +++++-
+ fs/ext4/ioctl.c  |   12 +++++++---
+ fs/ext4/resize.c |   55 ++++++++++++++++++++---------------------------------
+ fs/ext4/super.c  |    2 +-
+ 4 files changed, 36 insertions(+), 40 deletions(-)
 
-Once the patch series are merged, the new resize implementation will be post
-quickly.
+ v1->v2:
+    nothing changed.
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 62cee2b..bb0f776 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1127,7 +1127,8 @@ struct ext4_sb_info {
+ 	struct journal_s *s_journal;
+ 	struct list_head s_orphan;
+ 	struct mutex s_orphan_lock;
+-	struct mutex s_resize_lock;
++	unsigned long s_resize_flags;		/* Flags indicating if there
++						   is a resizer */
+ 	unsigned long s_commit_interval;
+ 	u32 s_max_batch_time;
+ 	u32 s_min_batch_time;
+@@ -2269,6 +2270,10 @@ static inline void set_bitmap_uptodate(struct buffer_head *bh)
+ extern wait_queue_head_t ext4__ioend_wq[EXT4_WQ_HASH_SZ];
+ extern struct mutex ext4__aio_mutex[EXT4_WQ_HASH_SZ];
+ 
++#define EXT4_RESIZING	0
++extern int ext4_resize_begin(struct super_block *sb);
++extern void ext4_resize_end(struct super_block *sb);
++
+ #endif	/* __KERNEL__ */
+ 
+ #endif	/* _EXT4_H */
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 808c554..f18bfe3 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -202,8 +202,9 @@ setversion_out:
+ 		struct super_block *sb = inode->i_sb;
+ 		int err, err2=0;
+ 
+-		if (!capable(CAP_SYS_RESOURCE))
+-			return -EPERM;
++		err = ext4_resize_begin(sb);
++		if (err)
++			return err;
+ 
+ 		if (get_user(n_blocks_count, (__u32 __user *)arg))
+ 			return -EFAULT;
+@@ -221,6 +222,7 @@ setversion_out:
+ 		if (err == 0)
+ 			err = err2;
+ 		mnt_drop_write(filp->f_path.mnt);
++		ext4_resize_end(sb);
+ 
+ 		return err;
+ 	}
+@@ -271,8 +273,9 @@ mext_out:
+ 		struct super_block *sb = inode->i_sb;
+ 		int err, err2=0;
+ 
+-		if (!capable(CAP_SYS_RESOURCE))
+-			return -EPERM;
++		err = ext4_resize_begin(sb);
++		if (err)
++			return err;
+ 
+ 		if (copy_from_user(&input, (struct ext4_new_group_input __user *)arg,
+ 				sizeof(input)))
+@@ -291,6 +294,7 @@ mext_out:
+ 		if (err == 0)
+ 			err = err2;
+ 		mnt_drop_write(filp->f_path.mnt);
++		ext4_resize_end(sb);
+ 
+ 		return err;
+ 	}
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 80bbc9c..0213f63 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -16,6 +16,25 @@
+ 
+ #include "ext4_jbd2.h"
+ 
++int ext4_resize_begin(struct super_block *sb)
++{
++	int ret = 0;
++
++	if (!capable(CAP_SYS_RESOURCE))
++		return -EPERM;
++
++	if (test_and_set_bit_lock(EXT4_RESIZING, &EXT4_SB(sb)->s_resize_flags))
++		ret = -EBUSY;
++
++	return ret;
++}
++
++void ext4_resize_end(struct super_block *sb)
++{
++	clear_bit_unlock(EXT4_RESIZING, &EXT4_SB(sb)->s_resize_flags);
++	smp_mb__after_clear_bit();
++}
++
+ #define outside(b, first, last)	((b) < (first) || (b) >= (last))
+ #define inside(b, first, last)	((b) >= (first) && (b) < (last))
+ 
+@@ -181,11 +200,7 @@ static int setup_new_group_blocks(struct super_block *sb,
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
+-	mutex_lock(&sbi->s_resize_lock);
+-	if (input->group != sbi->s_groups_count) {
+-		err = -EBUSY;
+-		goto exit_journal;
+-	}
++	BUG_ON(input->group != sbi->s_groups_count);
+ 
+ 	if (IS_ERR(bh = bclean(handle, sb, input->block_bitmap))) {
+ 		err = PTR_ERR(bh);
+@@ -285,7 +300,6 @@ exit_bh:
+ 	brelse(bh);
+ 
+ exit_journal:
+-	mutex_unlock(&sbi->s_resize_lock);
+ 	if ((err2 = ext4_journal_stop(handle)) && !err)
+ 		err = err2;
+ 
+@@ -799,13 +813,6 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 		goto exit_put;
+ 	}
+ 
+-	mutex_lock(&sbi->s_resize_lock);
+-	if (input->group != sbi->s_groups_count) {
+-		ext4_warning(sb, "multiple resizers run on filesystem!");
+-		err = -EBUSY;
+-		goto exit_journal;
+-	}
+-
+ 	if ((err = ext4_journal_get_write_access(handle, sbi->s_sbh)))
+ 		goto exit_journal;
+ 
+@@ -829,7 +836,6 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+         /*
+          * OK, now we've set up the new group.  Time to make it active.
+          *
+-         * We do not lock all allocations via s_resize_lock
+          * so we have to be safe wrt. concurrent accesses the group
+          * data.  So we need to be careful to set all of the relevant
+          * group descriptor data etc. *before* we enable the group.
+@@ -886,13 +892,9 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 	 *
+ 	 * The precise rules we use are:
+ 	 *
+-	 * * Writers of s_groups_count *must* hold s_resize_lock
+-	 * AND
+ 	 * * Writers must perform a smp_wmb() after updating all dependent
+ 	 *   data and before modifying the groups count
+ 	 *
+-	 * * Readers must hold s_resize_lock over the access
+-	 * OR
+ 	 * * Readers must perform an smp_rmb() after reading the groups count
+ 	 *   and before reading any dependent data.
+ 	 *
+@@ -937,7 +939,6 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 	ext4_handle_dirty_super(handle, sb);
+ 
+ exit_journal:
+-	mutex_unlock(&sbi->s_resize_lock);
+ 	if ((err2 = ext4_journal_stop(handle)) && !err)
+ 		err = err2;
+ 	if (!err) {
+@@ -972,9 +973,6 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
+ 	int err;
+ 	ext4_group_t group;
+ 
+-	/* We don't need to worry about locking wrt other resizers just
+-	 * yet: we're going to revalidate es->s_blocks_count after
+-	 * taking the s_resize_lock below. */
+ 	o_blocks_count = ext4_blocks_count(es);
+ 
+ 	if (test_opt(sb, DEBUG))
+@@ -995,7 +993,7 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
+ 
+ 	if (n_blocks_count < o_blocks_count) {
+ 		ext4_warning(sb, "can't shrink FS - resize aborted");
+-		return -EBUSY;
++		return -EINVAL;
+ 	}
+ 
+ 	/* Handle the remaining blocks in the last group only. */
+@@ -1038,24 +1036,13 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
+ 		goto exit_put;
+ 	}
+ 
+-	mutex_lock(&EXT4_SB(sb)->s_resize_lock);
+-	if (o_blocks_count != ext4_blocks_count(es)) {
+-		ext4_warning(sb, "multiple resizers run on filesystem!");
+-		mutex_unlock(&EXT4_SB(sb)->s_resize_lock);
+-		ext4_journal_stop(handle);
+-		err = -EBUSY;
+-		goto exit_put;
+-	}
+-
+ 	if ((err = ext4_journal_get_write_access(handle,
+ 						 EXT4_SB(sb)->s_sbh))) {
+ 		ext4_warning(sb, "error %d on journal write access", err);
+-		mutex_unlock(&EXT4_SB(sb)->s_resize_lock);
+ 		ext4_journal_stop(handle);
+ 		goto exit_put;
+ 	}
+ 	ext4_blocks_count_set(es, o_blocks_count + add);
+-	mutex_unlock(&EXT4_SB(sb)->s_resize_lock);
+ 	ext4_debug("freeing blocks %llu through %llu\n", o_blocks_count,
+ 		   o_blocks_count + add);
+ 	/* We add the blocks to the bitmap and set the group need init bit */
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 7910e61..39c2992 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3492,7 +3492,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 
+ 	INIT_LIST_HEAD(&sbi->s_orphan); /* unlinked but open files */
+ 	mutex_init(&sbi->s_orphan_lock);
+-	mutex_init(&sbi->s_resize_lock);
++	sbi->s_resize_flags = 0;
+ 
+ 	sb->s_root = NULL;
+ 
+-- 
+1.7.5.1
 
-I split the patches into 2 series to let the patches be reviewed easily.
-
-v1->v2:
-   -- add commit logs for the 8th and the 10th patches.
-   -- fix error handling in the 4th patch.
-   -- remove the patch which prevents a fs without journal fromn being resized.
-
-The patch for no-journal mode is removed so that this patches can be merged quickly,
-we can handle no-journal mode after new resize is merged.
-
-[PATCH v2 01/11] ext4: prevent parallel resizers by atomic bit ops
-[PATCH v2 02/11] ext4: prevent a fs with errors from being resized
-[PATCH v2 03/11] ext4: rename ext4_add_groupblocks() to
-[PATCH v2 04/11] ext4: let ext4_group_add_blocks() return an error
-[PATCH v2 05/11] ext4: let ext4_group_add_blocks() handle 0 blocks
-[PATCH v2 06/11] ext4: fix a typo in ext4_group_extend()
-[PATCH v2 07/11] ext4: let setup_new_group_blocks() set multi-bits
-[PATCH v2 08/11] ext4: simplify journal handling in
-[PATCH v2 09/11] ext4: remove lock_buffer in bclean() and
-[PATCH v2 10/11] ext4: simplify parameters of add_new_gdb()
-[PATCH v2 11/11] ext4: simplify parameters of reserve_backup_gdb()
