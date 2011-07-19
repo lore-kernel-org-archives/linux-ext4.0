@@ -1,39 +1,30 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: [PATCH 0/2 v8] XFS TESTS: ENOSPC Punch Hole Test
-Date: Mon, 18 Jul 2011 17:09:52 -0700
-Message-ID: <4E24CB50.7020506@linux.vnet.ibm.com>
-References: <1310946766-30217-1-git-send-email-achender@linux.vnet.ibm.com> <1311026953.2790.49.camel@doink>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH] ext4: hold page lock when checking mapping in
+ ext4_page_mkwrite
+Date: Mon, 18 Jul 2011 22:13:28 -0400
+Message-ID: <20110719021328.GA11918@infradead.org>
+References: <1311004772-14675-1-git-send-email-josef@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	xfs@oss.sgi.com
-To: aelder@sgi.com
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1311026953.2790.49.camel@doink>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Josef Bacik <josef@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:60933
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751235Ab1GSCNa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 18 Jul 2011 22:13:30 -0400
+Content-Disposition: inline
+In-Reply-To: <1311004772-14675-1-git-send-email-josef@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 07/18/2011 03:09 PM, Alex Elder wrote:
-> On Sun, 2011-07-17 at 16:52 -0700, Allison Henderson wrote:
->> This patch set adds the ENOSPC test that was used for ext4 punch hole testing.
->> This test will verify that a hole can be punched even when the disk is full.
->> Reserved blocks should be used to complete the operation when there is not blocks
->> to further fragment the file.
->>
->> Because punching a hole does not always require extra blocks, there needs to
->> be several iterations of punching holes, and then filling the file system to 100%
->> usage before it is forced to grow the tree in order to handle the fragmentation.
->> The growing of the tree is what would cause ENOSPC if not for the use of reserved blocks.
->
-> I have reviewed both of your updated patches.  They
-> both look good to me.  I'll give it another day or
-> two for others to comment if they like, but unless
-> someone suggests changes I'll commit this for you.
->
-> Reviewed-by: Alex Elder<aelder@sgi.com>
->
+On Mon, Jul 18, 2011 at 11:59:32AM -0400, Josef Bacik wrote:
+> Pages can be evicted from cache outside of truncate, for example when
+> invalidating pages after writing with O_DIRECT.  The only proper way to check
+> page->mapping is under the page lock, so fix ext4_page_mkwrite to do this.
+> Thanks,
 
-Alrighty then, sounds good to me.  Thanks Alex!
-
-Allison Henderson
+Josef, please check the ext4_page_mkwrite implementation in the vfs
+tree, which is just a wrapper around the generic code and thus shouldn't
+have this problem any more.
