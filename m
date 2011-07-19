@@ -1,141 +1,59 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH v2 08/11] ext4: simplify journal handling in setup_new_group_blocks()
-Date: Tue, 19 Jul 2011 12:02:14 +0800
-Message-ID: <1311048137-16400-9-git-send-email-xiaoqiangnk@gmail.com>
+Subject: [PATCH v2 09/11] ext4: remove lock_buffer in bclean() and setup_new_group_blocks()
+Date: Tue, 19 Jul 2011 12:02:15 +0800
+Message-ID: <1311048137-16400-10-git-send-email-xiaoqiangnk@gmail.com>
 References: <1311048137-16400-1-git-send-email-xiaoqiangnk@gmail.com>
 Cc: adilger@dilger.ca, amir73il@gmail.com, tm@tao.ma,
 	Yongqiang Yang <xiaoqiangnk@gmail.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:49578 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751032Ab1GSEGo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Jul 2011 00:06:44 -0400
-Received: by mail-iw0-f174.google.com with SMTP id 6so3703318iwn.19
-        for <linux-ext4@vger.kernel.org>; Mon, 18 Jul 2011 21:06:44 -0700 (PDT)
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:48758 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751032Ab1GSEGq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Jul 2011 00:06:46 -0400
+Received: by mail-iy0-f174.google.com with SMTP id 12so3708338iyb.19
+        for <linux-ext4@vger.kernel.org>; Mon, 18 Jul 2011 21:06:46 -0700 (PDT)
 In-Reply-To: <1311048137-16400-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch simplifies journal handling in setup_new_group_blocks().
-
-In previous code, block bitmap is modified everywhere in
-setup_new_group_blocks(), ext4_get_write_access() in
-extend_or_restart_transaction() is used to guarantee that the block bitmap
-stays in the new handle, this makes things complicated.
-
-In this patch the modifications on the block bitmap are batched and done
-by ext4_set_bits() after reqesting a handle from extend_or_restart_transaction()
-with enough credits.  So ext4_get_write_access() can be removed from
-extend_or_restart_transaction().
+Nobody touchs blocks beyond the filesystem, there is no need to lock
+the buffers.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/resize.c |   39 ++++++++++++++++++++-------------------
- 1 files changed, 20 insertions(+), 19 deletions(-)
+ fs/ext4/resize.c |    4 ----
+ 1 files changed, 0 insertions(+), 4 deletions(-)
 
  v1->v2:
-    add commit log explainning it is safe to remove
-    ext4_get_write_access() from extend_or_restart_transaction().
+   nothing changed.
 
 diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 178fb2f..5b423f8 100644
+index 5b423f8..65e5cb6 100644
 --- a/fs/ext4/resize.c
 +++ b/fs/ext4/resize.c
-@@ -161,8 +161,7 @@ static struct buffer_head *bclean(handle_t *handle, struct super_block *sb,
-  * If that fails, restart the transaction & regain write access for the
-  * buffer head which is used for block_bitmap modifications.
-  */
--static int extend_or_restart_transaction(handle_t *handle, int thresh,
--					 struct buffer_head *bh)
-+static int extend_or_restart_transaction(handle_t *handle, int thresh)
- {
- 	int err;
- 
-@@ -173,9 +172,8 @@ static int extend_or_restart_transaction(handle_t *handle, int thresh,
- 	if (err < 0)
- 		return err;
- 	if (err) {
--		if ((err = ext4_journal_restart(handle, EXT4_MAX_TRANS_DATA)))
--			return err;
--		if ((err = ext4_journal_get_write_access(handle, bh)))
-+		err = ext4_journal_restart(handle, EXT4_MAX_TRANS_DATA);
-+		if (err)
- 			return err;
+@@ -147,10 +147,8 @@ static struct buffer_head *bclean(handle_t *handle, struct super_block *sb,
+ 		brelse(bh);
+ 		bh = ERR_PTR(err);
+ 	} else {
+-		lock_buffer(bh);
+ 		memset(bh->b_data, 0, sb->s_blocksize);
+ 		set_buffer_uptodate(bh);
+-		unlock_buffer(bh);
  	}
  
-@@ -212,29 +210,24 @@ static int setup_new_group_blocks(struct super_block *sb,
- 
- 	BUG_ON(input->group != sbi->s_groups_count);
- 
--	if (IS_ERR(bh = bclean(handle, sb, input->block_bitmap))) {
--		err = PTR_ERR(bh);
--		goto exit_journal;
--	}
--
- 	/* Copy all of the GDT blocks into the backup in this group */
- 	for (i = 0, bit = 1, block = start + 1;
- 	     i < gdblocks; i++, block++, bit++) {
- 		struct buffer_head *gdb;
- 
- 		ext4_debug("update backup group %#04llx (+%d)\n", block, bit);
--
--		if ((err = extend_or_restart_transaction(handle, 1, bh)))
--			goto exit_bh;
-+		err = extend_or_restart_transaction(handle, 1);
-+		if (err)
-+			goto exit_journal;
- 
- 		gdb = sb_getblk(sb, block);
- 		if (!gdb) {
- 			err = -EIO;
--			goto exit_bh;
-+			goto exit_journal;
- 		}
- 		if ((err = ext4_journal_get_write_access(handle, gdb))) {
+ 	return bh;
+@@ -229,10 +227,8 @@ static int setup_new_group_blocks(struct super_block *sb,
  			brelse(gdb);
--			goto exit_bh;
-+			goto exit_journal;
+ 			goto exit_journal;
  		}
- 		lock_buffer(gdb);
+-		lock_buffer(gdb);
  		memcpy(gdb->b_data, sbi->s_group_desc[i]->b_data, gdb->b_size);
-@@ -243,7 +236,7 @@ static int setup_new_group_blocks(struct super_block *sb,
+ 		set_buffer_uptodate(gdb);
+-		unlock_buffer(gdb);
  		err = ext4_handle_dirty_metadata(handle, NULL, gdb);
  		if (unlikely(err)) {
  			brelse(gdb);
--			goto exit_bh;
-+			goto exit_journal;
- 		}
- 		brelse(gdb);
- 	}
-@@ -254,7 +247,17 @@ static int setup_new_group_blocks(struct super_block *sb,
- 	err = sb_issue_zeroout(sb, gdblocks + start + 1, reserved_gdb,
- 			       GFP_NOFS);
- 	if (err)
--		goto exit_bh;
-+		goto exit_journal;
-+
-+	err = extend_or_restart_transaction(handle, 2);
-+	if (err)
-+		goto exit_journal;
-+
-+	bh = bclean(handle, sb, input->block_bitmap);
-+	if (IS_ERR(bh)) {
-+		err = PTR_ERR(bh);
-+		goto exit_journal;
-+	}
- 
- 	if (ext4_bg_has_super(sb, input->group)) {
- 		ext4_debug("mark backup group tables %#04llx (+0)\n", start);
-@@ -278,8 +281,6 @@ static int setup_new_group_blocks(struct super_block *sb,
- 	ext4_set_bits(bh->b_data, input->inode_table - start,
- 		      sbi->s_itb_per_group);
- 
--	if ((err = extend_or_restart_transaction(handle, 2, bh)))
--		goto exit_bh;
- 
- 	ext4_mark_bitmap_end(input->blocks_count, sb->s_blocksize * 8,
- 			     bh->b_data);
 -- 
 1.7.5.1
 
