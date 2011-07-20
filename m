@@ -1,42 +1,46 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH bigalloc] e2fsprogs: change root-inode to extent-mapped
-Date: Wed, 20 Jul 2011 13:49:37 -0400
-Message-ID: <20110720174937.GA17971@thunk.org>
-References: <1311140311-20242-1-git-send-email-hao.bigrat@gmail.com>
- <B27D0C6A-E0F5-4196-872B-392AA72FB348@gmail.com>
+Subject: Problems building xfsprogs
+Date: Wed, 20 Jul 2011 13:59:18 -0400
+Message-ID: <20110720175918.GB17971@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "hao.bigrat@gmail.com" <hao.bigrat@gmail.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Robin Dong <sanbai@taobao.com>
-To: Andreas Dilger <aedilger@gmail.com>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	xfs-oss <xfs@oss.sgi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:34881 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:33784 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752353Ab1GTRtl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 20 Jul 2011 13:49:41 -0400
+	id S1751765Ab1GTR7U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 20 Jul 2011 13:59:20 -0400
 Content-Disposition: inline
-In-Reply-To: <B27D0C6A-E0F5-4196-872B-392AA72FB348@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 20, 2011 at 09:52:49AM -0600, Andreas Dilger wrote:
-> 
-> That reminds me of a question I had with bigalloc - are htree
-> directories supported with bigalloc?  For a 1MB bigalloc chunksize
-> it would mean a fanout of 256k, or a maximum directory size of 256GB
-> with only a single level.
+I was trying to build xfsprogs in preparation for building xfstests in
+an hermetic environment (as opposed to depending on magic XFS headers
+being installed in /usr/include...)
 
-Yes, htree directories are supported with bigalloc; but it still works
-on *blocks*, whereas *clusters* are just used for allocation purposes.
+What I found first of all (building on Ubuntu 10.10) was
 
-> 
-> Any thoughts about increasing the directory size beyond 2GB?
-> 
+a) "make configure" doesn't work until I patch the top-level Makefile:
 
-I think the best way to do that is to support more than two levels of
-directories.  I seem to recall your telling me that one of your team
-had prototyped something like this a while back?  Or is my memory
-playing tricks on me?
+diff --git a/Makefile b/Makefile
+index c40fb2c..37973f5 100644
+--- a/Makefile
++++ b/Makefile
+@@ -82,7 +82,7 @@ configure:
+ 	libtoolize -c $(LIBTOOLIZE_INSTALL) -f
+ 	cp include/install-sh .
+ 	aclocal -I m4
+-	autoconf
++	autoconf -I m4
+ 
+ include/builddefs: configure
+ 	./configure $$LOCAL_CONFIGURE_OPTIONS
 
-							- Ted
+b) By default xfsprogs builds with DEBUG, and this causes building
+libxfs/xfs_ialloc.c to blow up since there a reference of
+xfs_stack_trace() which is undefined under a #ifdef DEBUG.  The way to
+fix this is to build with DEBUG=-DNDEBUG, but it took me an hour or
+two figure this out....
+
+					- Ted
