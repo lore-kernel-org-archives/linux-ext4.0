@@ -1,232 +1,94 @@
 From: Aditya Kali <adityakali@google.com>
-Subject: [PATCH] ext4: make quota as first class supported feature
-Date: Wed, 20 Jul 2011 11:40:18 -0700
-Message-ID: <1311187218-30798-1-git-send-email-adityakali@google.com>
-Cc: Aditya Kali <adityakali@google.com>
+Subject: [PATCH 0/5] e2fsprogs: support quota as first class feature in ext4
+Date: Wed, 20 Jul 2011 11:40:01 -0700
+Message-ID: <1311187206-30553-1-git-send-email-adityakali@google.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.44.51]:9936 "EHLO
+Received: from smtp-out.google.com ([74.125.121.67]:7413 "EHLO
 	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752338Ab1GTSkp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jul 2011 14:40:45 -0400
-Received: from kpbe14.cbf.corp.google.com (kpbe14.cbf.corp.google.com [172.25.105.78])
-	by smtp-out.google.com with ESMTP id p6KIeiFQ027350
-	for <linux-ext4@vger.kernel.org>; Wed, 20 Jul 2011 11:40:44 -0700
+	with ESMTP id S1752338Ab1GTSk6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jul 2011 14:40:58 -0400
+Received: from wpaz33.hot.corp.google.com (wpaz33.hot.corp.google.com [172.24.198.97])
+	by smtp-out.google.com with ESMTP id p6KIeuu4018505
+	for <linux-ext4@vger.kernel.org>; Wed, 20 Jul 2011 11:40:56 -0700
+Received: from adityakali.mtv.corp.google.com (adityakali.mtv.corp.google.com [172.18.96.56])
+	by wpaz33.hot.corp.google.com with ESMTP id p6KIetnK003296
+	for <linux-ext4@vger.kernel.org>; Wed, 20 Jul 2011 11:40:55 -0700
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch is an attempt towards supporting quotas as first class
-feature in ext4. It is based on the proposal at:
-https://ext4.wiki.kernel.org/index.php/Design_For_1st_Class_Quota_in_Ext4
-This patch introduces a new feature - EXT4_FEATURE_RO_COMPAT_QUOTA which, when
-turned on, enables quota accounting at mount time iteself. Also, the
-quota inodes are stored in two additional superblock fields.
-Some changes introduced by this patch that should be pointed out are:
-1) Two new ext4-superblock fields - s_usr_quota_inum and s_grp_quota_inum
-   for storing the quota inodes in use.
-2) Quotas are turned on at mount time irrespective of the quota mount options.
-   Thus the mount options 'quota', 'usrquota' and 'grpquota' are completely
-   ignored.
-3) Default quota inodes are: inode#3 for tracking userquota and inode#4 for
-   tracking group quota. The superblock fields can be set to use other inodes
-   as well.
-4) mke2fs or tune2fs will initialize these inodes when quota feature is
-   being set. The default reserved inodes will not be visible to user as
-   regular files.
-5) Once quotas are turned on, they cannot be turned off while the FS is
-   mounted. This is because we do not want to let the quota get inconsistent.
-6) Since the quota inodes are hidden, some of the utilities from quota-tools
-   will no longer work correctly. Instead, e2fsprogs will include support for
-   fixing the quota files.
-7) Support is only for QFMT_VFS_V1 quota file format.
+This patch set is a step towards making quotas as a first class
+supported feature in ext4 in addition to the separately sent
+kernel patches. This idea is proposed at:
+https://ext4.wiki.kernel.org/index.php/Design_For_1st_Class_Quota_in_Ext4.
 
-Signed-off-by: Aditya Kali <adityakali@google.com>
----
- fs/ext4/ext4.h  |   10 ++++++-
- fs/ext4/super.c |   67 ++++++++++++++++++++++++++++++++++++++----------------
- 2 files changed, 55 insertions(+), 22 deletions(-)
+This patch set only provides some basic functionality in e2fsprogs
+to set quota feature and fix quotas during e2fsck on ext4 filesystem.
+This patch set:
+1) ports the quota library written by Jan Kara for quota-tools to
+e2fsprogs. I have ported most of the quota-library by Jan Kara as-is
+(except some readability changes and use of ext2fs library).
+2) adds wrapper over the quota library (lib/quota/mkquota.[c|h]) that
+provides an interface that can be used by e2fsprogs tools.
+3) adds support to mke2fs and tune2fs to enable the quota feature
+on ext4 superblock and create user/group quota inodes using the quota
+library.
+4) adds support for doing quota accounting during full e2fsck scan and
+fix the quota inodes.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 1921392..256fdd8 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1062,7 +1062,9 @@ struct ext4_super_block {
- 	__u8	s_last_error_func[32];	/* function where the error happened */
- #define EXT4_S_ERR_END offsetof(struct ext4_super_block, s_mount_opts)
- 	__u8	s_mount_opts[64];
--	__le32	s_reserved[112];        /* Padding to the end of the block */
-+	__le32	s_usr_quota_inum;	/* inode for tracking user quota */
-+	__le32	s_grp_quota_inum;	/* inode for tracking group quota */
-+	__le32	s_reserved[110];        /* Padding to the end of the block */
- };
- 
- #define EXT4_S_ERR_LEN (EXT4_S_ERR_END - EXT4_S_ERR_START)
-@@ -1138,6 +1140,7 @@ struct ext4_sb_info {
- #ifdef CONFIG_QUOTA
- 	char *s_qf_names[MAXQUOTAS];		/* Names of quota files with journalled quota */
- 	int s_jquota_fmt;			/* Format of quota to use */
-+	unsigned long s_qf_inums[MAXQUOTAS];	/* Quota file inodes */
- #endif
- 	unsigned int s_want_extra_isize; /* New inodes should reserve # bytes */
- 	struct rb_root system_blks;
-@@ -1234,6 +1237,8 @@ static inline struct timespec ext4_current_time(struct inode *inode)
- static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
- {
- 	return ino == EXT4_ROOT_INO ||
-+		ino == EXT4_USR_QUOTA_INO ||
-+		ino == EXT4_GRP_QUOTA_INO ||
- 		ino == EXT4_JOURNAL_INO ||
- 		ino == EXT4_RESIZE_INO ||
- 		(ino >= EXT4_FIRST_INO(sb) &&
-@@ -1394,7 +1399,8 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
- 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK | \
- 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE | \
- 					 EXT4_FEATURE_RO_COMPAT_BTREE_DIR |\
--					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE)
-+					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE| \
-+					 EXT4_FEATURE_RO_COMPAT_QUOTA)
- 
- /*
-  * Default values for user and/or group using reserved blocks
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 9ea71aa..dd6590d 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1196,8 +1196,7 @@ static int ext4_acquire_dquot(struct dquot *dquot);
- static int ext4_release_dquot(struct dquot *dquot);
- static int ext4_mark_dquot_dirty(struct dquot *dquot);
- static int ext4_write_info(struct super_block *sb, int type);
--static int ext4_quota_on(struct super_block *sb, int type, int format_id,
--			 struct path *path);
-+static int ext4_quota_on(struct super_block *sb, int type, int format_id);
- static int ext4_quota_off(struct super_block *sb, int type);
- static int ext4_quota_on_mount(struct super_block *sb, int type);
- static ssize_t ext4_quota_read(struct super_block *sb, int type, char *data,
-@@ -1217,7 +1216,7 @@ static const struct dquot_operations ext4_quota_operations = {
- };
- 
- static const struct quotactl_ops ext4_qctl_operations = {
--	.quota_on	= ext4_quota_on,
-+	.quota_on_meta	= ext4_quota_on,
- 	.quota_off	= ext4_quota_off,
- 	.quota_sync	= dquot_quota_sync,
- 	.get_info	= dquot_get_dqinfo,
-@@ -3486,6 +3485,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- #ifdef CONFIG_QUOTA
- 	sb->s_qcop = &ext4_qctl_operations;
- 	sb->dq_op = &ext4_quota_operations;
-+
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) {
-+		sbi->s_qf_inums[USRQUOTA] = es->s_usr_quota_inum;
-+		sbi->s_qf_inums[GRPQUOTA] = es->s_grp_quota_inum;
-+	}
- #endif
- 	memcpy(sb->s_uuid, es->s_uuid, sizeof(es->s_uuid));
- 
-@@ -3713,8 +3717,19 @@ no_journal:
- 	} else
- 		descr = "out journal";
- 
--	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. "
--		 "Opts: %s%s%s", descr, sbi->s_es->s_mount_opts,
-+#ifdef CONFIG_QUOTA
-+	/* Enable quotas during mount. */
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) &&
-+	    !(sb->s_flags & MS_RDONLY)) {
-+		ext4_quota_on(sb, USRQUOTA, QFMT_VFS_V1);
-+		ext4_quota_on(sb, GRPQUOTA, QFMT_VFS_V1);
-+	}
-+#endif  /* CONFIG_QUOTA */
-+
-+	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. quota=%s. "
-+		 "Opts: %s%s%s", descr,
-+		 sb_any_quota_loaded(sb) ? "on" : "off",
-+		 sbi->s_es->s_mount_opts,
- 		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data);
- 
- 	if (es->s_error_count)
-@@ -4078,6 +4093,12 @@ static int ext4_commit_super(struct super_block *sb, int sync)
- 	es->s_free_inodes_count =
- 		cpu_to_le32(percpu_counter_sum_positive(
- 				&EXT4_SB(sb)->s_freeinodes_counter));
-+#ifdef CONFIG_QUOTA
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) {
-+		es->s_usr_quota_inum = EXT4_SB(sb)->s_qf_inums[USRQUOTA];
-+		es->s_grp_quota_inum = EXT4_SB(sb)->s_qf_inums[GRPQUOTA];
-+	}
-+#endif
- 	sb->s_dirt = 0;
- 	BUFFER_TRACE(sbh, "marking dirty");
- 	mark_buffer_dirty(sbh);
-@@ -4658,24 +4679,22 @@ static int ext4_quota_on_mount(struct super_block *sb, int type)
- /*
-  * Standard function to be called on quota_on
-  */
--static int ext4_quota_on(struct super_block *sb, int type, int format_id,
--			 struct path *path)
-+static int ext4_quota_on(struct super_block *sb, int type, int format_id)
- {
- 	int err;
-+	struct inode *qf_inode;
- 
--	if (!test_opt(sb, QUOTA))
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) ||
-+	    !EXT4_SB(sb)->s_qf_inums[type])
- 		return -EINVAL;
- 
--	/* Quotafile not on the same filesystem? */
--	if (path->mnt->mnt_sb != sb)
--		return -EXDEV;
--	/* Journaling quota? */
--	if (EXT4_SB(sb)->s_qf_names[type]) {
--		/* Quotafile not in fs root? */
--		if (path->dentry->d_parent != sb->s_root)
--			ext4_msg(sb, KERN_WARNING,
--				"Quota file not on filesystem root. "
--				"Journaled quota will not work");
-+	if (!EXT4_SB(sb)->s_qf_inums[type])
-+		return -EINVAL;
-+
-+	qf_inode = ext4_iget(sb, EXT4_SB(sb)->s_qf_inums[type]);
-+	if (IS_ERR(qf_inode)) {
-+		EXT4_SB(sb)->s_qf_inums[type] = 0;
-+		return PTR_ERR(qf_inode);
- 	}
- 
- 	/*
-@@ -4683,7 +4702,7 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
- 	 * all updates to the file when we bypass pagecache...
- 	 */
- 	if (EXT4_SB(sb)->s_journal &&
--	    ext4_should_journal_data(path->dentry->d_inode)) {
-+	    ext4_should_journal_data(qf_inode)) {
- 		/*
- 		 * We don't need to lock updates but journal_flush() could
- 		 * otherwise be livelocked...
-@@ -4695,7 +4714,11 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
- 			return err;
- 	}
- 
--	return dquot_quota_on(sb, type, format_id, path);
-+	err = dquot_enable(qf_inode, type, format_id,
-+			   DQUOT_USAGE_ENABLED | DQUOT_LIMITS_ENABLED);
-+	iput(qf_inode);
-+
-+	return err;
- }
- 
- static int ext4_quota_off(struct super_block *sb, int type)
-@@ -4703,6 +4726,10 @@ static int ext4_quota_off(struct super_block *sb, int type)
- 	struct inode *inode = sb_dqopt(sb)->files[type];
- 	handle_t *handle;
- 
-+	/* Do not allow turning quotas off. */
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA))
-+		return -EINVAL;
-+
- 	/* Force all delayed allocation blocks to be allocated.
- 	 * Caller already holds s_umount sem */
- 	if (test_opt(sb, DELALLOC))
--- 
-1.7.3.1
+Following features still need to be implemented:
+1) allow support for reading existing quota files
+2) allow debugfs to view quota information in the quota inodes
+3) report mismatch in existing quotas and computed quotas after
+   e2fsck scan (currently, the existing quota inodes are simply
+   overwritten with new inodes).
+
+Thanks,
+	-Aditya
+
+Aditya Kali (5):
+ e2fsprogs: add quota library to e2fsprogs
+ e2fsprogs: Make quota as a supported feature
+ mke2fs: support creation of filesystem with quota feature
+ tune2fs: Add support for turning on quota feature
+ e2fsck: check quota accounting during fsck
+
+ MCONFIG.in               |    6 +
+ Makefile.in              |    3 +-
+ configure                |   32 +++
+ configure.in             |   51 ++++
+ e2fsck/Makefile.in       |   43 +++--
+ e2fsck/e2fsck.h          |    9 +
+ e2fsck/message.c         |    2 +
+ e2fsck/pass1.c           |   34 +++
+ e2fsck/pass1b.c          |    6 +-
+ e2fsck/pass2.c           |   16 +-
+ e2fsck/pass3.c           |    3 +
+ e2fsck/pass4.c           |    1 +
+ e2fsck/problem.c         |   20 ++
+ e2fsck/problem.h         |    9 +
+ e2fsck/quota.c           |   88 +++++++
+ e2fsck/super.c           |    5 +
+ e2fsck/unix.c            |   17 ++
+ lib/ext2fs/ext2fs.h      |    3 +-
+ lib/quota/Makefile.in    |  127 ++++++++++
+ lib/quota/common.c       |   63 +++++
+ lib/quota/common.h       |   78 +++++++
+ lib/quota/dqblk_v2.h     |   43 ++++
+ lib/quota/mkquota.c      |  400 ++++++++++++++++++++++++++++++++
+ lib/quota/mkquota.h      |   66 ++++++
+ lib/quota/quota.h        |  190 +++++++++++++++
+ lib/quota/quota.pc.in    |   11 +
+ lib/quota/quotaio.c      |  359 +++++++++++++++++++++++++++++
+ lib/quota/quotaio.h      |  163 +++++++++++++
+ lib/quota/quotaio_tree.c |  574 ++++++++++++++++++++++++++++++++++++++++++++++
+ lib/quota/quotaio_tree.h |   63 +++++
+ lib/quota/quotaio_v2.c   |  314 +++++++++++++++++++++++++
+ lib/quota/quotaio_v2.h   |  103 +++++++++
+ misc/Makefile.in         |   28 ++-
+ misc/mke2fs.8.in         |    5 +
+ misc/mke2fs.c            |   21 ++-
+ misc/tune2fs.8.in        |   15 ++
+ misc/tune2fs.c           |  148 ++++++++++++-
+ 37 files changed, 3081 insertions(+), 38 deletions(-)
 
