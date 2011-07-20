@@ -1,344 +1,97 @@
-From: Aditya Kali <adityakali@google.com>
-Subject: [PATCH 4/5] tune2fs: Add support for turning on quota feature
-Date: Wed, 20 Jul 2011 11:40:05 -0700
-Message-ID: <1311187206-30553-5-git-send-email-adityakali@google.com>
-References: <1311187206-30553-1-git-send-email-adityakali@google.com>
-Cc: Aditya Kali <adityakali@google.com>
-To: linux-ext4@vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/3] ext4: Fix compilation with -DDX_DEBUG v2
+Date: Wed, 20 Jul 2011 23:25:11 +0200
+Message-ID: <20110720212511.GA17353@quack.suse.cz>
+References: <20110620202631.2473133.4166.stgit@localhost.localdomain>
+ <20110620202849.2473133.84386.stgit@localhost.localdomain>
+ <20110716234106.GB2717@thunk.org>
+ <4E259C7A.5030506@itwm.fraunhofer.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ted Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	adilger@whamcloud.com, colyli@gmail.com, Jan Kara <jack@suse.cz>
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([74.125.121.67]:7541 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752338Ab1GTSlN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jul 2011 14:41:13 -0400
-Received: from hpaq7.eem.corp.google.com (hpaq7.eem.corp.google.com [172.25.149.7])
-	by smtp-out.google.com with ESMTP id p6KIfCD6014261
-	for <linux-ext4@vger.kernel.org>; Wed, 20 Jul 2011 11:41:12 -0700
-In-Reply-To: <1311187206-30553-1-git-send-email-adityakali@google.com>
+Received: from cantor2.suse.de ([195.135.220.15]:51394 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751691Ab1GTVZN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 20 Jul 2011 17:25:13 -0400
+Content-Disposition: inline
+In-Reply-To: <4E259C7A.5030506@itwm.fraunhofer.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds support for setting the quota feature in superblock
-and allows selectively creating quota inodes (user or group or both)
-in the superblock. Currently, modifying the quota feature is only
-supported when the filesystem is unmounted.
-Also, when setting the quota feature, tune2fs will use aquota.user or
-aquota.group file inode number in superblock if these files exist.
-Otherwise it will initialize empty quota inodes #3 and #4 and use them.
+On Tue 19-07-11 17:02:18, Bernd Schubert wrote:
+> On 07/17/2011 01:41 AM, Ted Ts'o wrote:
+> > On Mon, Jun 20, 2011 at 10:28:49PM +0200, Bernd Schubert wrote:
+> >> changes from v1 ->  v2:
+> >> Use %p as suggested by Coly Li
+> > 
+> > The problem with %p:
+> > 
+> >      1)  It prints numbers that will never be larger than 4096 with as
+> >          "00000012"
+> >      2)  It prints the number 0 as "  (null)".
+> > 
+> > These two things mean that we get messages like this:
+> > 
+> > names: foo:7141e93c.  (null) bar:745c4a06.00000012 baz:79817344.00000024 quux:7e85a800.00000036 ...
+> > 
+> > instead of:
+> > 
+> > names: foo:7141e93c.0 bar:745c4a06.12 baz:79817344.24 quux:7e85a800.36 ...
+> > 
+> > (did anyone even try this and check to see what would happen with %p?)
+> > 
+> > I've applied this patch, with a change so that we print the number
+> > with %u and with an explicit cast to unsigned.
+> > 
+> > 						- Ted
+> 
+> Ooops, sorry, I should have checked %p output more thoroughly.
+> 
+> Could you please also apply almost the same patch for ext3? 
+> 
+> 
+> ext3: Fix compilation with -DDX_DEBUG v2
+> 
+> From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+> 
+> Compilation of ext3/namei.c brought up an error and warning messages
+> when compiled with -DDX_DEBUG.
+> 
+> Signed-off-by: Bernd Schubert<bernd.schubert@itwm.fraunhofer.de>
+  I've merged this patch to my tree.
 
-Here is how it works:
- # Set quota feature and initialize both (user and group) quota inodes
- $ tune2fs -O quota /dev/ram1
+								Honza
 
- # Enable only one type of quota
- $ tune2fs -Q usrquota /dev/ram1
-
- # Enable grpquota, disable usrquota
- $ tune2fs -Q ^usrquota,grpquota /dev/ram1
-
- # Clear quota feature and remove quota inodes
- $ tune2fs -O ^quota /dev/ram1
-
-Signed-off-by: Aditya Kali <adityakali@google.com>
----
- misc/Makefile.in  |   14 +++--
- misc/tune2fs.8.in |   15 +++++
- misc/tune2fs.c    |  148 +++++++++++++++++++++++++++++++++++++++++++++++++++--
- 3 files changed, 167 insertions(+), 10 deletions(-)
-
-diff --git a/misc/Makefile.in b/misc/Makefile.in
-index 2f7908c..a23adcd 100644
---- a/misc/Makefile.in
-+++ b/misc/Makefile.in
-@@ -143,24 +143,26 @@ e2initrd_helper: e2initrd_helper.o $(DEPLIBS) $(DEPLIBBLKID) $(LIBEXT2FS)
- 		$(LIBBLKID) $(LIBEXT2FS) $(LIBINTL)
- 
- tune2fs: $(TUNE2FS_OBJS) $(DEPLIBS) $(DEPLIBS_E2P) $(DEPLIBBLKID) \
--		$(DEPLIBUUID) $(LIBEXT2FS) 
-+		$(DEPLIBUUID) $(DEPLIBQUOTA) $(LIBEXT2FS)
- 	$(E) "	LD $@"
- 	$(Q) $(CC) $(ALL_LDFLAGS) -o tune2fs $(TUNE2FS_OBJS) $(LIBS) \
--		$(LIBBLKID) $(LIBUUID) $(LIBEXT2FS) $(LIBS_E2P) $(LIBINTL)
-+		$(LIBBLKID) $(LIBUUID) $(LIBQUOTA) $(LIBEXT2FS) $(LIBS_E2P) \
-+		$(LIBINTL)
- 
- tune2fs.static: $(TUNE2FS_OBJS) $(STATIC_DEPLIBS) $(STATIC_LIBE2P) $(DEPSTATIC_LIBBLKID)
- 	$(E) "	LD $@"
- 	$(Q) $(CC) $(LDFLAGS_STATIC) -o tune2fs.static $(TUNE2FS_OBJS) \
- 		$(STATIC_LIBS) $(STATIC_LIBBLKID) $(STATIC_LIBUUID) \
--		$(STATIC_LIBE2P) $(LIBINTL)
-+		$(STATIC_LIBQUOTA) $(STATIC_LIBE2P) $(LIBINTL)
- 
- tune2fs.profiled: $(PROFILED_TUNE2FS_OBJS) $(PROFILED_DEPLIBS) \
--		$(PROFILED_E2P) $(DEPPROFILED_LIBBLKID) $(DEPPROFILED_LIBUUID)
-+		$(PROFILED_E2P) $(DEPPROFILED_LIBBLKID) $(DEPPROFILED_LIBUUID) \
-+		$(DEPPROFILED_LIBQUOTA)
- 	$(E) "	LD $@"
- 	$(Q) $(CC) $(ALL_LDFLAGS) -g -pg -o tune2fs.profiled \
- 		$(PROFILED_TUNE2FS_OBJS) $(PROFILED_LIBBLKID) \
--		$(PROFILED_LIBUUID) $(PROFILED_LIBE2P) $(LIBINTL) \
--		$(PROFILED_LIBS) 
-+		$(PROFILED_LIBUUID) $(PROFILED_LIBQUOTA) $(PROFILED_LIBE2P) \
-+		$(LIBINTL) $(PROFILED_LIBS)
- 
- blkid: $(BLKID_OBJS) $(DEPLIBBLKID) $(LIBEXT2FS)
- 	$(E) "	LD $@"
-diff --git a/misc/tune2fs.8.in b/misc/tune2fs.8.in
-index 233f85a..89bc1d9 100644
---- a/misc/tune2fs.8.in
-+++ b/misc/tune2fs.8.in
-@@ -77,6 +77,11 @@ tune2fs \- adjust tunable filesystem parameters on ext2/ext3/ext4 filesystems
- .RI [^] feature [,...]
- ]
- [
-+.B \-Q
-+.I quota-options
-+]
-+[
-+[
- .B \-T
- .I time-last-checked
- ]
-@@ -561,6 +566,16 @@ features are only supported by the ext4 filesystem.
- .BI \-r " reserved-blocks-count"
- Set the number of reserved filesystem blocks.
- .TP
-+.BI \-Q " quota-options"
-+Sets 'quota' feature on the superblock and works on the quota files for the
-+given quota type. Quota options could be one or more of the following:
-+.RS 1.2i
-+.TP
-+.BR [^]usrquota
-+Sets/clears user quota inode in the superblock.
-+.BR [^]usrquota
-+Sets/clears group quota inode in the superblock.
-+.TP
- .BI \-T " time-last-checked"
- Set the time the filesystem was last checked using
- .BR  e2fsck .
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 5bf5187..3c81898 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -55,16 +55,22 @@ extern int optind;
- #include "jfs_user.h"
- #include "util.h"
- #include "blkid/blkid.h"
-+#include "quota/mkquota.h"
- 
- #include "../version.h"
- #include "nls-enable.h"
- 
-+#define QOPT_ENABLE	(1)
-+#define QOPT_DISABLE	(-1)
-+
-+extern int ask_yn(const char *string, int def);
-+
- const char *program_name = "tune2fs";
- char *device_name;
- char *new_label, *new_last_mounted, *new_UUID;
- char *io_options;
- static int c_flag, C_flag, e_flag, f_flag, g_flag, i_flag, l_flag, L_flag;
--static int m_flag, M_flag, r_flag, s_flag = -1, u_flag, U_flag, T_flag;
-+static int m_flag, M_flag, Q_flag, r_flag, s_flag = -1, u_flag, U_flag, T_flag;
- static int I_flag;
- static time_t last_check_time;
- static int print_label;
-@@ -82,6 +88,7 @@ static int stride_set, stripe_width_set;
- static char *extended_cmd;
- static unsigned long new_inode_size;
- static char *ext_mount_opts;
-+static int usrquota, grpquota;
- 
- int journal_size, journal_flags;
- char *journal_device;
-@@ -131,7 +138,8 @@ static __u32 ok_features[3] = {
- 		EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
- 		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
- 		EXT4_FEATURE_RO_COMPAT_GDT_CSUM |
--		EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER
-+		EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER |
-+		EXT4_FEATURE_RO_COMPAT_QUOTA
- };
- 
- static __u32 clear_ok_features[3] = {
-@@ -147,7 +155,8 @@ static __u32 clear_ok_features[3] = {
- 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
- 		EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
- 		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
--		EXT4_FEATURE_RO_COMPAT_GDT_CSUM
-+		EXT4_FEATURE_RO_COMPAT_GDT_CSUM |
-+		EXT4_FEATURE_RO_COMPAT_QUOTA
- };
- 
- /*
-@@ -477,6 +486,36 @@ static void update_feature_set(ext2_filsys fs, char *features)
- 		fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
- 	}
- 
-+	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
-+				EXT4_FEATURE_RO_COMPAT_QUOTA)) {
-+		/*
-+		 * Set the Q_flag here and handle the quota options in the code
-+		 * below.
-+		 */
-+		if (!Q_flag) {
-+			Q_flag = 1;
-+			/* Enable both user quota and group quota by default */
-+			usrquota = QOPT_ENABLE;
-+			grpquota = QOPT_ENABLE;
-+		}
-+		sb->s_feature_ro_compat &= ~EXT4_FEATURE_RO_COMPAT_QUOTA;
-+	}
-+
-+	if (FEATURE_OFF(E2P_FEATURE_RO_INCOMPAT,
-+				EXT4_FEATURE_RO_COMPAT_QUOTA)) {
-+		/*
-+		 * Set the Q_flag here and handle the quota options in the code
-+		 * below.
-+		 */
-+		if (Q_flag)
-+			fputs(_("\nWarning: '^quota' option overrides '-Q'"
-+				"arguments.\n"), stderr);
-+		Q_flag = 1;
-+		/* Disable both user quota and group quota by default */
-+		usrquota = QOPT_DISABLE;
-+		grpquota = QOPT_DISABLE;
-+	}
-+
- 	if (sb->s_rev_level == EXT2_GOOD_OLD_REV &&
- 	    (sb->s_feature_compat || sb->s_feature_ro_compat ||
- 	     sb->s_feature_incompat))
-@@ -576,6 +615,93 @@ err:
- 	exit(1);
- }
- 
-+void handle_quota_options(ext2_filsys fs)
-+{
-+	quota_ctx_t qctx;
-+	errcode_t retval;
-+	ext2_ino_t qf_ino;
-+
-+	if (!usrquota && !grpquota)
-+		/* Nothing to do. */
-+		return;
-+
-+	init_quota_context(&qctx, fs, -1);
-+
-+	if (usrquota == QOPT_ENABLE && !fs->super->s_usr_quota_inum) {
-+		if ((qf_ino = quota_file_exists(fs, USRQUOTA, QFMT_VFS_V1)) > 0)
-+			set_sb_quota_inum(fs, qf_ino, USRQUOTA);
-+		else
-+			write_quota_inode(qctx, USRQUOTA);
-+	} else if (usrquota == QOPT_DISABLE) {
-+		remove_quota_inode(fs, USRQUOTA);
-+	}
-+
-+	if (grpquota == QOPT_ENABLE && !fs->super->s_grp_quota_inum) {
-+		if ((qf_ino = quota_file_exists(fs, GRPQUOTA, QFMT_VFS_V1)) > 0)
-+			set_sb_quota_inum(fs, qf_ino, GRPQUOTA);
-+		else
-+			write_quota_inode(qctx, GRPQUOTA);
-+	} else if (grpquota == QOPT_DISABLE) {
-+		remove_quota_inode(fs, GRPQUOTA);
-+	}
-+
-+	release_quota_context(&qctx);
-+
-+	if ((usrquota == QOPT_ENABLE) || (grpquota == QOPT_ENABLE)) {
-+		fs->super->s_feature_ro_compat |= EXT4_FEATURE_RO_COMPAT_QUOTA;
-+		ext2fs_mark_super_dirty(fs);
-+	} else if ((usrquota == QOPT_DISABLE) && (grpquota == QOPT_DISABLE)) {
-+		fs->super->s_feature_ro_compat &= ~EXT4_FEATURE_RO_COMPAT_QUOTA;
-+		ext2fs_mark_super_dirty(fs);
-+	}
-+
-+	return;
-+}
-+
-+void parse_quota_opts(const char *opts)
-+{
-+	char	*buf, *token, *next, *p, *arg;
-+	int	len;
-+
-+	len = strlen(opts);
-+	buf = malloc(len+1);
-+	if (!buf) {
-+		fputs(_("Couldn't allocate memory to parse quota "
-+			"options!\n"), stderr);
-+		exit(1);
-+	}
-+	strcpy(buf, opts);
-+	for (token = buf; token && *token; token = next) {
-+		p = strchr(token, ',');
-+		next = 0;
-+		if (p) {
-+			*p = 0;
-+			next = p+1;
-+		}
-+
-+		if (strcmp(token, "usrquota") == 0) {
-+			usrquota = QOPT_ENABLE;
-+		} else if (strcmp(token, "^usrquota") == 0) {
-+			usrquota = QOPT_DISABLE;
-+		} else if (strcmp(token, "grpquota") == 0) {
-+			grpquota = QOPT_ENABLE;
-+		} else if (strcmp(token, "^grpquota") == 0) {
-+			grpquota = QOPT_DISABLE;
-+		} else {
-+			fputs(_("\nBad quota options specified.\n\n"
-+				"Following valid quota options are available "
-+				"(pass by separating with comma):\n"
-+				"\t[^]usrquota\n"
-+				"\t[^]grpquota\n"
-+				"\n\n"), stderr);
-+			free(buf);
-+			exit(1);
-+		}
-+	}
-+	free(buf);
-+}
-+
-+
- 
- static void parse_e2label_options(int argc, char ** argv)
- {
-@@ -641,7 +767,7 @@ static void parse_tune2fs_options(int argc, char **argv)
- 	open_flag = 0;
- 
- 	printf("tune2fs %s (%s)\n", E2FSPROGS_VERSION, E2FSPROGS_DATE);
--	while ((c = getopt(argc, argv, "c:e:fg:i:jlm:o:r:s:u:C:E:I:J:L:M:O:T:U:")) != EOF)
-+	while ((c = getopt(argc, argv, "c:e:fg:i:jlm:o:r:s:u:C:E:I:J:L:M:O:Q:T:U:")) != EOF)
- 		switch (c) {
- 		case 'c':
- 			max_mount_count = strtol(optarg, &tmp, 0);
-@@ -796,6 +922,11 @@ static void parse_tune2fs_options(int argc, char **argv)
- 			features_cmd = optarg;
- 			open_flag = EXT2_FLAG_RW;
- 			break;
-+		case 'Q':
-+			Q_flag = 1;
-+			parse_quota_opts(optarg);
-+			open_flag = EXT2_FLAG_RW;
-+			break;
- 		case 'r':
- 			reserved_blocks = strtoul(optarg, &tmp, 0);
- 			if (*tmp) {
-@@ -1790,6 +1921,15 @@ retry_open:
- 	if (journal_size || journal_device)
- 		add_journal(fs);
- 
-+	if (Q_flag) {
-+		if (mount_flags & EXT2_MF_MOUNTED) {
-+			fputs(_("The quota feature may only be changed when "
-+				"the filesystem is unmounted.\n"), stderr);
-+			exit(1);
-+		}
-+		handle_quota_options(fs);
-+	}
-+
- 	if (U_flag) {
- 		int set_csum = 0;
- 		dgrp_t i;
+> diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+> index 34b6d9b..e54e87a 100644
+> --- a/fs/ext3/namei.c
+> +++ b/fs/ext3/namei.c
+> @@ -287,7 +287,7 @@ static struct stats dx_show_leaf(struct dx_hash_info *hinfo, struct ext3_dir_ent
+>  				while (len--) printk("%c", *name++);
+>  				ext3fs_dirhash(de->name, de->name_len, &h);
+>  				printk(":%x.%u ", h.hash,
+> -				       ((char *) de - base));
+> +				       (unsigned) ((char *) de - base));
+>  			}
+>  			space += EXT3_DIR_REC_LEN(de->name_len);
+>  			names++;
+> @@ -1013,7 +1013,7 @@ static struct buffer_head * ext3_dx_find_entry(struct inode *dir,
+>  
+>  	*err = -ENOENT;
+>  errout:
+> -	dxtrace(printk("%s not found\n", name));
+> +	dxtrace(printk("%s not found\n", entry->name));
+>  	dx_release (frames);
+>  	return NULL;
+>  }
+> 
+> 
+> 
+> Thanks,
+> Bernd
 -- 
-1.7.3.1
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
