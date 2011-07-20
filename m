@@ -1,90 +1,186 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Problems building xfsprogs
-Date: Wed, 20 Jul 2011 17:33:20 -0400
-Message-ID: <20110720213320.GA3304@thunk.org>
-References: <20110720175918.GB17971@thunk.org>
- <4E271F30.6070102@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] e2fsprogs: add ext2fs_group_blocks_count helper
+Date: Wed, 20 Jul 2011 16:46:56 -0500
+Message-ID: <4E274CD0.1000801@redhat.com>
+References: <1311090411-13766-1-git-send-email-xiaoqiangnk@gmail.com> <4E25AE6A.6090909@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:57009 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751638Ab1GTVdY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 20 Jul 2011 17:33:24 -0400
-Content-Disposition: inline
-In-Reply-To: <4E271F30.6070102@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:43891 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751699Ab1GTVq7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 20 Jul 2011 17:46:59 -0400
+In-Reply-To: <4E25AE6A.6090909@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 20, 2011 at 01:32:16PM -0500, Eric Sandeen wrote:
-> 
-> How does it fail?  Works here(tm):
+Code to count the number of blocks in the last partial
+group is cut and pasted around the e2fsprogs codebase, and
+is wrong in at least one instancem as pointed out by
+Yongqiang Yang (but not fixed in this patch).
 
-It doesn't find the autoconfig macros defined in the m4 directory:
+Making this a helper function should improve matters.
 
-<tytso@tytso-glaptop> {/kbuild/xfstests/xfsprogs-dev}  [master]
-512% autoconf
-autoconf: Undefined macros:
-configure.in:100:AC_PACKAGE_NEED_PTHREADMUTEXINIT
-configure.in:102:AC_HAVE_FADVISE
-configure.in:103:AC_HAVE_MADVISE
-configure.in:104:AC_HAVE_MINCORE
-configure.in:105:AC_HAVE_SENDFILE
-configure.in:106:AC_HAVE_GETMNTENT
-configure.in:107:AC_HAVE_GETMNTINFO
-configure.in:108:AC_HAVE_FALLOCATE
-configure.in:109:AC_HAVE_FIEMAP
-configure.in:110:AC_HAVE_BLKID_TOPO($enable_blkid)
-configure.in:112:AC_TYPE_PSINT
-configure.in:113:AC_TYPE_PSUNSIGNED
-configure.in:114:AC_TYPE_U32
-configure.in:115:AC_SIZEOF_POINTERS_AND_LONG
-configure.in:116:AC_MANUAL_FORMAT
-configure.in:3:AC_CONFIG_MACRO_DIR([m4])
-configure.in:7:AC_PROG_LIBTOOL
-configure.in:89:AC_PACKAGE_GLOBALS(xfsprogs)
-configure.in:90:AC_PACKAGE_UTILITIES(xfsprogs)
-configure.in:91:AC_MULTILIB($enable_lib64)
-configure.in:93:AC_PACKAGE_NEED_AIO_H
-configure.in:94:AC_PACKAGE_NEED_LIO_LISTIO
-configure.in:96:AC_PACKAGE_NEED_UUID_H
-configure.in:97:AC_PACKAGE_NEED_UUIDCOMPARE
-configure.in:99:AC_PACKAGE_NEED_PTHREAD_H
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-Maybe you have all of these autoconf macros stuffed in some
-distro-supplied global m4 directory?
+(I have not fixed up the spot Yongqiang Yang discovered,
+but this helper should now make that fix easy to do.)
 
-> > b) By default xfsprogs builds with DEBUG, and this causes building
-> > libxfs/xfs_ialloc.c to blow up since there a reference of
-> > xfs_stack_trace() which is undefined under a #ifdef DEBUG.  The way to
-> > fix this is to build with DEBUG=-DNDEBUG, but it took me an hour or
-> > two figure this out....
-> 
-> Odd, libxfs/Makefile has:
-> 
-> DEBUG = -DNDEBUG
+ e2fsck/pass5.c        |    6 +-----
+ lib/ext2fs/alloc_sb.c |   10 +---------
+ lib/ext2fs/blknum.c   |   19 +++++++++++++++++++
+ lib/ext2fs/closefs.c  |    9 +--------
+ lib/ext2fs/ext2fs.h   |    1 +
+ resize/online.c       |    7 +------
+ resize/resize2fs.c    |   14 ++------------
+ 7 files changed, 26 insertions(+), 40 deletions(-)
 
-Yeah, but include/builddefs{.in}, DEBUG is defined to @debug_build@,
-which is -DDEBUG, and then GCFLAGS is set to $(OPTIMIZER) $(DEBUG) ...,
 
-and the override in libxfs/Makefile doesn't change the value of
-GCFLAGS, at least not for gmake 3.81.
+diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
+index b423d28..73db4e8 100644
+--- a/e2fsck/pass5.c
++++ b/e2fsck/pass5.c
+@@ -218,11 +218,7 @@ redo_counts:
+ 					fs->super->s_reserved_gdt_blocks;
+ 
+ 				count = 0;
+-				cmp_block = fs->super->s_blocks_per_group;
+-				if (group == (int)fs->group_desc_count - 1)
+-					cmp_block =
+-						ext2fs_blocks_count(fs->super) %
+-						fs->super->s_blocks_per_group;
++				cmp_block = ext2fs_group_blocks_count(fs, group);
+ 			}
+ 
+ 			bitmap = 0;
+diff --git a/lib/ext2fs/alloc_sb.c b/lib/ext2fs/alloc_sb.c
+index d5fca3b..98aec52 100644
+--- a/lib/ext2fs/alloc_sb.c
++++ b/lib/ext2fs/alloc_sb.c
+@@ -71,15 +71,7 @@ int ext2fs_reserve_super_and_bgd(ext2_filsys fs,
+ 	if (new_desc_blk)
+ 		ext2fs_mark_block_bitmap2(bmap, new_desc_blk);
+ 
+-	if (group == fs->group_desc_count-1) {
+-		num_blocks = (ext2fs_blocks_count(fs->super) -
+-			     fs->super->s_first_data_block) %
+-			fs->super->s_blocks_per_group;
+-		if (!num_blocks)
+-			num_blocks = fs->super->s_blocks_per_group;
+-	} else
+-		num_blocks = fs->super->s_blocks_per_group;
+-
++	num_blocks = ext2fs_group_blocks_count(fs, group);
+ 	num_blocks -= 2 + fs->inode_blocks_per_group + used_blks;
+ 
+ 	return num_blocks  ;
+diff --git a/lib/ext2fs/blknum.c b/lib/ext2fs/blknum.c
+index b3e6dca..f1bbe9b 100644
+--- a/lib/ext2fs/blknum.c
++++ b/lib/ext2fs/blknum.c
+@@ -43,6 +43,25 @@ blk64_t ext2fs_group_last_block2(ext2_filsys fs, dgrp_t group)
+ }
+ 
+ /*
++ * Return the number of blocks in a group
++ */
++int ext2fs_group_blocks_count(ext2_filsys fs, dgrp_t group)
++{
++	int num_blocks;
++
++	if (group == fs->group_desc_count-1) {
++		num_blocks = (ext2fs_blocks_count(fs->super) -
++				fs->super->s_first_data_block) %
++			      fs->super->s_blocks_per_group;
++		if (!num_blocks)
++			num_blocks = fs->super->s_blocks_per_group;
++	} else
++		num_blocks = fs->super->s_blocks_per_group;
++
++	return num_blocks;
++}
++
++/*
+  * Return the inode data block count
+  */
+ blk64_t ext2fs_inode_data_blocks2(ext2_filsys fs,
+diff --git a/lib/ext2fs/closefs.c b/lib/ext2fs/closefs.c
+index 7a23e46..b13a0c9 100644
+--- a/lib/ext2fs/closefs.c
++++ b/lib/ext2fs/closefs.c
+@@ -150,14 +150,7 @@ int ext2fs_super_and_bgd_loc(ext2_filsys fs,
+ 					&ret_new_desc_blk2,
+ 					&ret_used_blks);
+ 
+-	if (group == fs->group_desc_count-1) {
+-		numblocks = (ext2fs_blocks_count(fs->super) -
+-			     (blk64_t) fs->super->s_first_data_block) %
+-			(blk64_t) fs->super->s_blocks_per_group;
+-		if (!numblocks)
+-			numblocks = fs->super->s_blocks_per_group;
+-	} else
+-		numblocks = fs->super->s_blocks_per_group;
++	numblocks = ext2fs_group_blocks_count(fs, group);
+ 
+ 	if (ret_super_blk)
+ 		*ret_super_blk = (blk_t)ret_super_blk2;
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index d3eb31d..5983adc 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -731,6 +731,7 @@ extern errcode_t ext2fs_get_block_bitmap_range2(ext2fs_block_bitmap bmap,
+ extern dgrp_t ext2fs_group_of_blk2(ext2_filsys fs, blk64_t);
+ extern blk64_t ext2fs_group_first_block2(ext2_filsys fs, dgrp_t group);
+ extern blk64_t ext2fs_group_last_block2(ext2_filsys fs, dgrp_t group);
++extern int ext2fs_group_blocks_count(ext2_filsys fs, dgrp_t group);
+ extern blk64_t ext2fs_inode_data_blocks2(ext2_filsys fs,
+ 					 struct ext2_inode *inode);
+ extern blk64_t ext2fs_inode_i_blocks(ext2_filsys fs,
+diff --git a/resize/online.c b/resize/online.c
+index 1d8d4ec..c2b98c6 100644
+--- a/resize/online.c
++++ b/resize/online.c
+@@ -135,12 +135,7 @@ errcode_t online_resize_fs(ext2_filsys fs, const char *mtpt,
+ 		input.block_bitmap = ext2fs_block_bitmap_loc(new_fs, i);
+ 		input.inode_bitmap = ext2fs_inode_bitmap_loc(new_fs, i);
+ 		input.inode_table = ext2fs_inode_table_loc(new_fs, i);
+-		input.blocks_count = sb->s_blocks_per_group;
+-		if (i == new_fs->group_desc_count-1) {
+-			input.blocks_count = ext2fs_blocks_count(new_fs->super) -
+-				sb->s_first_data_block -
+-				(i * sb->s_blocks_per_group);
+-		}
++		input.blocks_count = ext2fs_group_blocks_count(new_fs, i);
+ 		input.reserved_blocks = (blk_t) (percent * input.blocks_count
+ 						 / 100.0);
+ 
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index 216a626..4b83ca9 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -499,18 +499,8 @@ retry:
+ 		ext2fs_bg_flags_zap(fs, i);
+ 		if (csum_flag)
+ 			ext2fs_bg_flags_set(fs, i, EXT2_BG_INODE_UNINIT | EXT2_BG_INODE_ZEROED);
+-		if (i == fs->group_desc_count-1) {
+-			numblocks = (ext2fs_blocks_count(fs->super) -
+-				     fs->super->s_first_data_block) %
+-					     fs->super->s_blocks_per_group;
+-			if (!numblocks)
+-				numblocks = fs->super->s_blocks_per_group;
+-		} else {
+-			numblocks = fs->super->s_blocks_per_group;
+-			if (csum_flag)
+-				ext2fs_bg_flags_set(fs, i,
+-						    EXT2_BG_BLOCK_UNINIT);
+-		}
++
++		numblocks = ext2fs_group_blocks_count(fs, i);
+ 
+ 		has_super = ext2fs_bg_has_super(fs, i);
+ 		if (has_super) {
 
-> But to be honest, the DEBUG stuff has been a thorn in my side for Fedora
-> too, with the extra CFLAGS it sets, something gets goobered up by
-> default, and I build with -DNDEBUG for those packages too.
-> 
-> I just haven't sorted it out yet ....
-> 
-> So things to look into, but can you also describe how building xfstests
-> fails for you when you have all the ubuntu xfsprogs-related packages
-> installed?
-
-Yeah, working on it.  I'm starting from scratch so I can have a shell
-script that can build all of this by hand, instead of manually fixing
-these things one at a time as I've done in the past...
-
-      	     	      	      	   	   - Ted
