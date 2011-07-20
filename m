@@ -1,97 +1,90 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/3] ext4: Fix compilation with -DDX_DEBUG v2
-Date: Wed, 20 Jul 2011 23:25:11 +0200
-Message-ID: <20110720212511.GA17353@quack.suse.cz>
-References: <20110620202631.2473133.4166.stgit@localhost.localdomain>
- <20110620202849.2473133.84386.stgit@localhost.localdomain>
- <20110716234106.GB2717@thunk.org>
- <4E259C7A.5030506@itwm.fraunhofer.de>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: Problems building xfsprogs
+Date: Wed, 20 Jul 2011 17:33:20 -0400
+Message-ID: <20110720213320.GA3304@thunk.org>
+References: <20110720175918.GB17971@thunk.org>
+ <4E271F30.6070102@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ted Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	adilger@whamcloud.com, colyli@gmail.com, Jan Kara <jack@suse.cz>
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	xfs-oss <xfs@oss.sgi.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:51394 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751691Ab1GTVZN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 20 Jul 2011 17:25:13 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:57009 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751638Ab1GTVdY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 20 Jul 2011 17:33:24 -0400
 Content-Disposition: inline
-In-Reply-To: <4E259C7A.5030506@itwm.fraunhofer.de>
+In-Reply-To: <4E271F30.6070102@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 19-07-11 17:02:18, Bernd Schubert wrote:
-> On 07/17/2011 01:41 AM, Ted Ts'o wrote:
-> > On Mon, Jun 20, 2011 at 10:28:49PM +0200, Bernd Schubert wrote:
-> >> changes from v1 ->  v2:
-> >> Use %p as suggested by Coly Li
-> > 
-> > The problem with %p:
-> > 
-> >      1)  It prints numbers that will never be larger than 4096 with as
-> >          "00000012"
-> >      2)  It prints the number 0 as "  (null)".
-> > 
-> > These two things mean that we get messages like this:
-> > 
-> > names: foo:7141e93c.  (null) bar:745c4a06.00000012 baz:79817344.00000024 quux:7e85a800.00000036 ...
-> > 
-> > instead of:
-> > 
-> > names: foo:7141e93c.0 bar:745c4a06.12 baz:79817344.24 quux:7e85a800.36 ...
-> > 
-> > (did anyone even try this and check to see what would happen with %p?)
-> > 
-> > I've applied this patch, with a change so that we print the number
-> > with %u and with an explicit cast to unsigned.
-> > 
-> > 						- Ted
+On Wed, Jul 20, 2011 at 01:32:16PM -0500, Eric Sandeen wrote:
 > 
-> Ooops, sorry, I should have checked %p output more thoroughly.
-> 
-> Could you please also apply almost the same patch for ext3? 
-> 
-> 
-> ext3: Fix compilation with -DDX_DEBUG v2
-> 
-> From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-> 
-> Compilation of ext3/namei.c brought up an error and warning messages
-> when compiled with -DDX_DEBUG.
-> 
-> Signed-off-by: Bernd Schubert<bernd.schubert@itwm.fraunhofer.de>
-  I've merged this patch to my tree.
+> How does it fail?  Works here(tm):
 
-								Honza
+It doesn't find the autoconfig macros defined in the m4 directory:
 
-> diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
-> index 34b6d9b..e54e87a 100644
-> --- a/fs/ext3/namei.c
-> +++ b/fs/ext3/namei.c
-> @@ -287,7 +287,7 @@ static struct stats dx_show_leaf(struct dx_hash_info *hinfo, struct ext3_dir_ent
->  				while (len--) printk("%c", *name++);
->  				ext3fs_dirhash(de->name, de->name_len, &h);
->  				printk(":%x.%u ", h.hash,
-> -				       ((char *) de - base));
-> +				       (unsigned) ((char *) de - base));
->  			}
->  			space += EXT3_DIR_REC_LEN(de->name_len);
->  			names++;
-> @@ -1013,7 +1013,7 @@ static struct buffer_head * ext3_dx_find_entry(struct inode *dir,
->  
->  	*err = -ENOENT;
->  errout:
-> -	dxtrace(printk("%s not found\n", name));
-> +	dxtrace(printk("%s not found\n", entry->name));
->  	dx_release (frames);
->  	return NULL;
->  }
+<tytso@tytso-glaptop> {/kbuild/xfstests/xfsprogs-dev}  [master]
+512% autoconf
+autoconf: Undefined macros:
+configure.in:100:AC_PACKAGE_NEED_PTHREADMUTEXINIT
+configure.in:102:AC_HAVE_FADVISE
+configure.in:103:AC_HAVE_MADVISE
+configure.in:104:AC_HAVE_MINCORE
+configure.in:105:AC_HAVE_SENDFILE
+configure.in:106:AC_HAVE_GETMNTENT
+configure.in:107:AC_HAVE_GETMNTINFO
+configure.in:108:AC_HAVE_FALLOCATE
+configure.in:109:AC_HAVE_FIEMAP
+configure.in:110:AC_HAVE_BLKID_TOPO($enable_blkid)
+configure.in:112:AC_TYPE_PSINT
+configure.in:113:AC_TYPE_PSUNSIGNED
+configure.in:114:AC_TYPE_U32
+configure.in:115:AC_SIZEOF_POINTERS_AND_LONG
+configure.in:116:AC_MANUAL_FORMAT
+configure.in:3:AC_CONFIG_MACRO_DIR([m4])
+configure.in:7:AC_PROG_LIBTOOL
+configure.in:89:AC_PACKAGE_GLOBALS(xfsprogs)
+configure.in:90:AC_PACKAGE_UTILITIES(xfsprogs)
+configure.in:91:AC_MULTILIB($enable_lib64)
+configure.in:93:AC_PACKAGE_NEED_AIO_H
+configure.in:94:AC_PACKAGE_NEED_LIO_LISTIO
+configure.in:96:AC_PACKAGE_NEED_UUID_H
+configure.in:97:AC_PACKAGE_NEED_UUIDCOMPARE
+configure.in:99:AC_PACKAGE_NEED_PTHREAD_H
+
+Maybe you have all of these autoconf macros stuffed in some
+distro-supplied global m4 directory?
+
+> > b) By default xfsprogs builds with DEBUG, and this causes building
+> > libxfs/xfs_ialloc.c to blow up since there a reference of
+> > xfs_stack_trace() which is undefined under a #ifdef DEBUG.  The way to
+> > fix this is to build with DEBUG=-DNDEBUG, but it took me an hour or
+> > two figure this out....
 > 
+> Odd, libxfs/Makefile has:
 > 
+> DEBUG = -DNDEBUG
+
+Yeah, but include/builddefs{.in}, DEBUG is defined to @debug_build@,
+which is -DDEBUG, and then GCFLAGS is set to $(OPTIMIZER) $(DEBUG) ...,
+
+and the override in libxfs/Makefile doesn't change the value of
+GCFLAGS, at least not for gmake 3.81.
+
+> But to be honest, the DEBUG stuff has been a thorn in my side for Fedora
+> too, with the extra CFLAGS it sets, something gets goobered up by
+> default, and I build with -DNDEBUG for those packages too.
 > 
-> Thanks,
-> Bernd
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> I just haven't sorted it out yet ....
+> 
+> So things to look into, but can you also describe how building xfstests
+> fails for you when you have all the ubuntu xfsprogs-related packages
+> installed?
+
+Yeah, working on it.  I'm starting from scratch so I can have a shell
+script that can build all of this by hand, instead of manually fixing
+these things one at a time as I've done in the past...
+
+      	     	      	      	   	   - Ted
