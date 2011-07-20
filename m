@@ -1,91 +1,232 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Problems building xfsprogs
-Date: Wed, 20 Jul 2011 13:32:16 -0500
-Message-ID: <4E271F30.6070102@redhat.com>
-References: <20110720175918.GB17971@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>
-To: "Ted Ts'o" <tytso@mit.edu>
+From: Aditya Kali <adityakali@google.com>
+Subject: [PATCH] ext4: make quota as first class supported feature
+Date: Wed, 20 Jul 2011 11:40:18 -0700
+Message-ID: <1311187218-30798-1-git-send-email-adityakali@google.com>
+Cc: Aditya Kali <adityakali@google.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:6320 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751508Ab1GTScU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 20 Jul 2011 14:32:20 -0400
-In-Reply-To: <20110720175918.GB17971@thunk.org>
+Received: from smtp-out.google.com ([216.239.44.51]:9936 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752338Ab1GTSkp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jul 2011 14:40:45 -0400
+Received: from kpbe14.cbf.corp.google.com (kpbe14.cbf.corp.google.com [172.25.105.78])
+	by smtp-out.google.com with ESMTP id p6KIeiFQ027350
+	for <linux-ext4@vger.kernel.org>; Wed, 20 Jul 2011 11:40:44 -0700
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 07/20/2011 12:59 PM, Ted Ts'o wrote:
-> I was trying to build xfsprogs in preparation for building xfstests in
-> an hermetic environment (as opposed to depending on magic XFS headers
-> being installed in /usr/include...)
-> 
-> What I found first of all (building on Ubuntu 10.10) was
-> 
-> a) "make configure" doesn't work until I patch the top-level Makefile:
-> 
-> diff --git a/Makefile b/Makefile
-> index c40fb2c..37973f5 100644
-> --- a/Makefile
-> +++ b/Makefile
-> @@ -82,7 +82,7 @@ configure:
->  	libtoolize -c $(LIBTOOLIZE_INSTALL) -f
->  	cp include/install-sh .
->  	aclocal -I m4
-> -	autoconf
-> +	autoconf -I m4
->  
->  include/builddefs: configure
->  	./configure $$LOCAL_CONFIGURE_OPTIONS
+This patch is an attempt towards supporting quotas as first class
+feature in ext4. It is based on the proposal at:
+https://ext4.wiki.kernel.org/index.php/Design_For_1st_Class_Quota_in_Ext4
+This patch introduces a new feature - EXT4_FEATURE_RO_COMPAT_QUOTA which, when
+turned on, enables quota accounting at mount time iteself. Also, the
+quota inodes are stored in two additional superblock fields.
+Some changes introduced by this patch that should be pointed out are:
+1) Two new ext4-superblock fields - s_usr_quota_inum and s_grp_quota_inum
+   for storing the quota inodes in use.
+2) Quotas are turned on at mount time irrespective of the quota mount options.
+   Thus the mount options 'quota', 'usrquota' and 'grpquota' are completely
+   ignored.
+3) Default quota inodes are: inode#3 for tracking userquota and inode#4 for
+   tracking group quota. The superblock fields can be set to use other inodes
+   as well.
+4) mke2fs or tune2fs will initialize these inodes when quota feature is
+   being set. The default reserved inodes will not be visible to user as
+   regular files.
+5) Once quotas are turned on, they cannot be turned off while the FS is
+   mounted. This is because we do not want to let the quota get inconsistent.
+6) Since the quota inodes are hidden, some of the utilities from quota-tools
+   will no longer work correctly. Instead, e2fsprogs will include support for
+   fixing the quota files.
+7) Support is only for QFMT_VFS_V1 quota file format.
 
-How does it fail?  Works here(tm):
+Signed-off-by: Aditya Kali <adityakali@google.com>
+---
+ fs/ext4/ext4.h  |   10 ++++++-
+ fs/ext4/super.c |   67 ++++++++++++++++++++++++++++++++++++++----------------
+ 2 files changed, 55 insertions(+), 22 deletions(-)
 
-[sandeen@sandeen tmp]$ git clone
-git://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
-[sandeen@sandeen xfsprogs-dev]$ cd xfsprogs-dev
-[sandeen@sandeen xfsprogs-dev]$ make
-...
-aclocal -I m4
-autoconf
-./configure $LOCAL_CONFIGURE_OPTIONS
-checking build system type... x86_64-redhat-linux-gnu
-checking host system type... x86_64-redhat-linux-gnu
-...
-    [CC]     attrset.o
-    [LD]     xfs_db
-[sandeen@sandeen xfsprogs-dev]$
-
-Wonder what the difference is...
-
-> b) By default xfsprogs builds with DEBUG, and this causes building
-> libxfs/xfs_ialloc.c to blow up since there a reference of
-> xfs_stack_trace() which is undefined under a #ifdef DEBUG.  The way to
-> fix this is to build with DEBUG=-DNDEBUG, but it took me an hour or
-> two figure this out....
-
-Odd, libxfs/Makefile has:
-
-DEBUG = -DNDEBUG
-
-But to be honest, the DEBUG stuff has been a thorn in my side for Fedora
-too, with the extra CFLAGS it sets, something gets goobered up by
-default, and I build with -DNDEBUG for those packages too.
-
-I just haven't sorted it out yet ....
-
-So things to look into, but can you also describe how building xfstests
-fails for you when you have all the ubuntu xfsprogs-related packages
-installed?
-
--Eric
-
-
-> 					- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 1921392..256fdd8 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1062,7 +1062,9 @@ struct ext4_super_block {
+ 	__u8	s_last_error_func[32];	/* function where the error happened */
+ #define EXT4_S_ERR_END offsetof(struct ext4_super_block, s_mount_opts)
+ 	__u8	s_mount_opts[64];
+-	__le32	s_reserved[112];        /* Padding to the end of the block */
++	__le32	s_usr_quota_inum;	/* inode for tracking user quota */
++	__le32	s_grp_quota_inum;	/* inode for tracking group quota */
++	__le32	s_reserved[110];        /* Padding to the end of the block */
+ };
+ 
+ #define EXT4_S_ERR_LEN (EXT4_S_ERR_END - EXT4_S_ERR_START)
+@@ -1138,6 +1140,7 @@ struct ext4_sb_info {
+ #ifdef CONFIG_QUOTA
+ 	char *s_qf_names[MAXQUOTAS];		/* Names of quota files with journalled quota */
+ 	int s_jquota_fmt;			/* Format of quota to use */
++	unsigned long s_qf_inums[MAXQUOTAS];	/* Quota file inodes */
+ #endif
+ 	unsigned int s_want_extra_isize; /* New inodes should reserve # bytes */
+ 	struct rb_root system_blks;
+@@ -1234,6 +1237,8 @@ static inline struct timespec ext4_current_time(struct inode *inode)
+ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+ {
+ 	return ino == EXT4_ROOT_INO ||
++		ino == EXT4_USR_QUOTA_INO ||
++		ino == EXT4_GRP_QUOTA_INO ||
+ 		ino == EXT4_JOURNAL_INO ||
+ 		ino == EXT4_RESIZE_INO ||
+ 		(ino >= EXT4_FIRST_INO(sb) &&
+@@ -1394,7 +1399,8 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+ 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK | \
+ 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE | \
+ 					 EXT4_FEATURE_RO_COMPAT_BTREE_DIR |\
+-					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE)
++					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE| \
++					 EXT4_FEATURE_RO_COMPAT_QUOTA)
+ 
+ /*
+  * Default values for user and/or group using reserved blocks
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 9ea71aa..dd6590d 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1196,8 +1196,7 @@ static int ext4_acquire_dquot(struct dquot *dquot);
+ static int ext4_release_dquot(struct dquot *dquot);
+ static int ext4_mark_dquot_dirty(struct dquot *dquot);
+ static int ext4_write_info(struct super_block *sb, int type);
+-static int ext4_quota_on(struct super_block *sb, int type, int format_id,
+-			 struct path *path);
++static int ext4_quota_on(struct super_block *sb, int type, int format_id);
+ static int ext4_quota_off(struct super_block *sb, int type);
+ static int ext4_quota_on_mount(struct super_block *sb, int type);
+ static ssize_t ext4_quota_read(struct super_block *sb, int type, char *data,
+@@ -1217,7 +1216,7 @@ static const struct dquot_operations ext4_quota_operations = {
+ };
+ 
+ static const struct quotactl_ops ext4_qctl_operations = {
+-	.quota_on	= ext4_quota_on,
++	.quota_on_meta	= ext4_quota_on,
+ 	.quota_off	= ext4_quota_off,
+ 	.quota_sync	= dquot_quota_sync,
+ 	.get_info	= dquot_get_dqinfo,
+@@ -3486,6 +3485,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ #ifdef CONFIG_QUOTA
+ 	sb->s_qcop = &ext4_qctl_operations;
+ 	sb->dq_op = &ext4_quota_operations;
++
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) {
++		sbi->s_qf_inums[USRQUOTA] = es->s_usr_quota_inum;
++		sbi->s_qf_inums[GRPQUOTA] = es->s_grp_quota_inum;
++	}
+ #endif
+ 	memcpy(sb->s_uuid, es->s_uuid, sizeof(es->s_uuid));
+ 
+@@ -3713,8 +3717,19 @@ no_journal:
+ 	} else
+ 		descr = "out journal";
+ 
+-	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. "
+-		 "Opts: %s%s%s", descr, sbi->s_es->s_mount_opts,
++#ifdef CONFIG_QUOTA
++	/* Enable quotas during mount. */
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) &&
++	    !(sb->s_flags & MS_RDONLY)) {
++		ext4_quota_on(sb, USRQUOTA, QFMT_VFS_V1);
++		ext4_quota_on(sb, GRPQUOTA, QFMT_VFS_V1);
++	}
++#endif  /* CONFIG_QUOTA */
++
++	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. quota=%s. "
++		 "Opts: %s%s%s", descr,
++		 sb_any_quota_loaded(sb) ? "on" : "off",
++		 sbi->s_es->s_mount_opts,
+ 		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data);
+ 
+ 	if (es->s_error_count)
+@@ -4078,6 +4093,12 @@ static int ext4_commit_super(struct super_block *sb, int sync)
+ 	es->s_free_inodes_count =
+ 		cpu_to_le32(percpu_counter_sum_positive(
+ 				&EXT4_SB(sb)->s_freeinodes_counter));
++#ifdef CONFIG_QUOTA
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) {
++		es->s_usr_quota_inum = EXT4_SB(sb)->s_qf_inums[USRQUOTA];
++		es->s_grp_quota_inum = EXT4_SB(sb)->s_qf_inums[GRPQUOTA];
++	}
++#endif
+ 	sb->s_dirt = 0;
+ 	BUFFER_TRACE(sbh, "marking dirty");
+ 	mark_buffer_dirty(sbh);
+@@ -4658,24 +4679,22 @@ static int ext4_quota_on_mount(struct super_block *sb, int type)
+ /*
+  * Standard function to be called on quota_on
+  */
+-static int ext4_quota_on(struct super_block *sb, int type, int format_id,
+-			 struct path *path)
++static int ext4_quota_on(struct super_block *sb, int type, int format_id)
+ {
+ 	int err;
++	struct inode *qf_inode;
+ 
+-	if (!test_opt(sb, QUOTA))
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) ||
++	    !EXT4_SB(sb)->s_qf_inums[type])
+ 		return -EINVAL;
+ 
+-	/* Quotafile not on the same filesystem? */
+-	if (path->mnt->mnt_sb != sb)
+-		return -EXDEV;
+-	/* Journaling quota? */
+-	if (EXT4_SB(sb)->s_qf_names[type]) {
+-		/* Quotafile not in fs root? */
+-		if (path->dentry->d_parent != sb->s_root)
+-			ext4_msg(sb, KERN_WARNING,
+-				"Quota file not on filesystem root. "
+-				"Journaled quota will not work");
++	if (!EXT4_SB(sb)->s_qf_inums[type])
++		return -EINVAL;
++
++	qf_inode = ext4_iget(sb, EXT4_SB(sb)->s_qf_inums[type]);
++	if (IS_ERR(qf_inode)) {
++		EXT4_SB(sb)->s_qf_inums[type] = 0;
++		return PTR_ERR(qf_inode);
+ 	}
+ 
+ 	/*
+@@ -4683,7 +4702,7 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
+ 	 * all updates to the file when we bypass pagecache...
+ 	 */
+ 	if (EXT4_SB(sb)->s_journal &&
+-	    ext4_should_journal_data(path->dentry->d_inode)) {
++	    ext4_should_journal_data(qf_inode)) {
+ 		/*
+ 		 * We don't need to lock updates but journal_flush() could
+ 		 * otherwise be livelocked...
+@@ -4695,7 +4714,11 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
+ 			return err;
+ 	}
+ 
+-	return dquot_quota_on(sb, type, format_id, path);
++	err = dquot_enable(qf_inode, type, format_id,
++			   DQUOT_USAGE_ENABLED | DQUOT_LIMITS_ENABLED);
++	iput(qf_inode);
++
++	return err;
+ }
+ 
+ static int ext4_quota_off(struct super_block *sb, int type)
+@@ -4703,6 +4726,10 @@ static int ext4_quota_off(struct super_block *sb, int type)
+ 	struct inode *inode = sb_dqopt(sb)->files[type];
+ 	handle_t *handle;
+ 
++	/* Do not allow turning quotas off. */
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA))
++		return -EINVAL;
++
+ 	/* Force all delayed allocation blocks to be allocated.
+ 	 * Caller already holds s_umount sem */
+ 	if (test_opt(sb, DELALLOC))
+-- 
+1.7.3.1
 
