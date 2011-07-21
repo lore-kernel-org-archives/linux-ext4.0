@@ -1,95 +1,61 @@
-From: Aditya Kali <adityakali@google.com>
-Subject: Re: [PATCH] ext4: make quota as first class supported feature
-Date: Thu, 21 Jul 2011 10:24:12 -0700
-Message-ID: <CAGr1F2GVuVMcf1Sv4AwBrB5MgXLp8vQmBKXQ=KZyk_GCJcMjdA@mail.gmail.com>
-References: <1311187218-30798-1-git-send-email-adityakali@google.com> <561996F3-BC30-4E1A-B405-0A13A966E45A@dilger.ca>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: Problems building xfsprogs
+Date: Thu, 21 Jul 2011 05:06:19 -0400
+Message-ID: <20110721090619.GA26263@infradead.org>
+References: <20110720175918.GB17971@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Johann Lombardi <johann@whamcloud.com>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.44.51]:24236 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752460Ab1GURYe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jul 2011 13:24:34 -0400
-Received: from wpaz1.hot.corp.google.com (wpaz1.hot.corp.google.com [172.24.198.65])
-	by smtp-out.google.com with ESMTP id p6LHOXXG016741
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Jul 2011 10:24:33 -0700
-Received: from pzk5 (pzk5.prod.google.com [10.243.19.133])
-	by wpaz1.hot.corp.google.com with ESMTP id p6LHNRW5017372
-	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=NOT)
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Jul 2011 10:24:32 -0700
-Received: by pzk5 with SMTP id 5so6362134pzk.17
-        for <linux-ext4@vger.kernel.org>; Thu, 21 Jul 2011 10:24:32 -0700 (PDT)
-In-Reply-To: <561996F3-BC30-4E1A-B405-0A13A966E45A@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        xfs-oss <xfs@oss.sgi.com>
+To: "Ted Ts'o" <tytso@mit.edu>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <20110720175918.GB17971@thunk.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Sender: xfs-bounces@oss.sgi.com
+Errors-To: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jul 21, 2011 at 12:02 AM, Andreas Dilger <adilger@dilger.ca> wr=
-ote:
-> Why support V1 quota, when it has known limits on some of the usage, =
-instead
-> of using V2 quotas that are added to ext3/4 already? =C2=A0The Kconfi=
-g comment
-> for V1 begins:
-> =C2=A0=C2=A0=C2=A0=C2=A0This=C2=A0quota=C2=A0format=C2=A0was=C2=A0(is=
-)=C2=A0used=C2=A0by=C2=A0kernels=C2=A0earlier=C2=A0than=C2=A02.4.22.
-> It would make much more sense to start with V2 for a new feature like=
- this.
->
-QFMT_VFS_V1 is actually the format ID of V2 quota format itself. This
-is whats in fs/quota/quota_v2.c:
+On Wed, Jul 20, 2011 at 01:59:18PM -0400, Ted Ts'o wrote:
+> a) "make configure" doesn't work until I patch the top-level Makefile:
+> 
+> diff --git a/Makefile b/Makefile
+> index c40fb2c..37973f5 100644
+> --- a/Makefile
+> +++ b/Makefile
+> @@ -82,7 +82,7 @@ configure:
+>  	libtoolize -c $(LIBTOOLIZE_INSTALL) -f
+>  	cp include/install-sh .
+>  	aclocal -I m4
+> -	autoconf
+> +	autoconf -I m4
+>  
+>  include/builddefs: configure
+>  	./configure $$LOCAL_CONFIGURE_OPTIONS
 
-313 static struct quota_format_type v2r1_quota_format =3D {
-314         .qf_fmt_id      =3D QFMT_VFS_V1,
-315         .qf_ops         =3D &v2_format_ops,
-316         .qf_owner       =3D THIS_MODULE
-317 };
+I works fine for me on various releases of Debian, Fedsora, RHEL and
+SLES.  But all he machines I've quickly checked seem to have an autoconf
+that can handle -I, so could you please send this pach with a proper
+signoff and description?
 
-So this patch does support the V2 format.
+> b) By default xfsprogs builds with DEBUG, and this causes building
+> libxfs/xfs_ialloc.c to blow up since there a reference of
+> xfs_stack_trace() which is undefined under a #ifdef DEBUG.  The way to
+> fix this is to build with DEBUG=-DNDEBUG, but it took me an hour or
+> two figure this out....
 
+The defaul actually is DEBUG=-DNDEBUG.  No sure how you go he debug
+build. but we surely should fix it.  I'll add the stub as soon as I get
+some time.
 
-> static const struct quotactl_ops ext4_qctl_operations =3D {
-> - =C2=A0 =C2=A0.quota_on =C2=A0 =C2=A0=3D ext4_quota_on,
-> + =C2=A0 =C2=A0.quota_on_meta =C2=A0 =C2=A0=3D ext4_quota_on,
-> =C2=A0 =C2=A0.quota_off =C2=A0 =C2=A0=3D ext4_quota_off,
-> =C2=A0 =C2=A0.quota_sync =C2=A0 =C2=A0=3D dquot_quota_sync,
-> =C2=A0 =C2=A0.get_info =C2=A0 =C2=A0=3D dquot_get_dqinfo,
-
-> @@ -4658,24 +4679,22 @@ static int ext4_quota_on_mount(struct super_b=
-lock
-> *sb, int type)
-> /*
-> =C2=A0* Standard function to be called on quota_on
-> =C2=A0*/
-> -static int ext4_quota_on(struct super_block *sb, int type, int forma=
-t_id,
-> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 struct path *path)
-> +static int ext4_quota_on(struct super_block *sb, int type, int forma=
-t_id)
-> {
-> =C2=A0 =C2=A0int err;
-> + =C2=A0 =C2=A0struct inode *qf_inode;
->
-> - =C2=A0 =C2=A0if (!test_opt(sb, QUOTA))
-> + =C2=A0 =C2=A0if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_CO=
-MPAT_QUOTA) ||
-> + =C2=A0 =C2=A0 =C2=A0=C2=A0=C2=A0!EXT4_SB(sb)->s_qf_inums[type])
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0return -EINVAL;
->
-I also wanted to get input on this change to ext4_quota_on. With this
-change, its not possible to use quotas at all without the 'quota'
-feature flag set, which might break the current userspace. Do we want
-to keep supporting current approach (where quotas can be turned on
-with user specified files) as well? This change kinda forces users to
-update userspace tools (e2fsprogs & quota-tools) as well.
-
-Thanks,
--Aditya
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
