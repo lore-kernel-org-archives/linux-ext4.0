@@ -1,39 +1,44 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Problems building xfsprogs
-Date: Thu, 21 Jul 2011 18:57:38 -0400
-Message-ID: <20110721225738.GA25092@thunk.org>
-References: <20110720175918.GB17971@thunk.org>
- <20110721090619.GA26263@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>
-To: Christoph Hellwig <hch@infradead.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH XFSPROGS 1/3] configure.in: Declare a requirement for at least autoconf 2.50
+Date: Thu, 21 Jul 2011 19:50:35 -0400
+Message-ID: <1311292237-4155-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38940 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:49490 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751505Ab1GUW5n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Jul 2011 18:57:43 -0400
-Content-Disposition: inline
-In-Reply-To: <20110721090619.GA26263@infradead.org>
+	id S1752194Ab1GUXul (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 Jul 2011 19:50:41 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 21, 2011 at 05:06:19AM -0400, Christoph Hellwig wrote:
-> 
-> I works fine for me on various releases of Debian, Fedsora, RHEL and
-> SLES.  But all he machines I've quickly checked seem to have an autoconf
-> that can handle -I, so could you please send this pach with a proper
-> signoff and description?
+On Debian/Ubuntu systems, if autoconf version 2.13 is installed,
+autoconf will try to automatically figure out whether autoconf 2.13 or
+something more modern is required (since the autoconf maintainers,
+curses be upon them, didn't bother to maintain compatibility between
+autoconf 2.13 and 2.50).  Unfortunately, the hueristics aren't
+perfect, and although the configure.in file looks superficially like
+it will be compatible with autoconf 2.13, it isn't.  You will end up
+with a number of very subtle compilation failures if you use autoconf
+2.13.
 
-I figured what the core problem is.  There's a subtle and hidden
-dependency in xfsprogs for an autoconf version which is 2.50 or above.
-In Debian and Ubuntu, if autoconf 2.13 is installed, autoconf will try
-to automatically figure out whether the configure.in requires 2.13 or
-2.50 (since the autoconf maintainers didn't understand the concept of
-"backwards compatibility").  Unfortunately, it got this wrong.
+So declare a requirement for autoconf 2.50 using AC_PREREQ(2.50).
 
-Using an explicit AC_PREREQ(2.50) fixes this.  I'll be sending patches
-shortly....
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ configure.in |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-						- Ted
+diff --git a/configure.in b/configure.in
+index 10c4c61..664c0e9 100644
+--- a/configure.in
++++ b/configure.in
+@@ -1,4 +1,5 @@
+ AC_INIT(include/libxfs.h)
++AC_PREREQ(2.50)
+ AC_CONFIG_AUX_DIR([.])
+ AC_CONFIG_MACRO_DIR([m4])
+ AC_CONFIG_HEADER(include/platform_defs.h)
+-- 
+1.7.4.1.22.gec8e1.dirty
+
