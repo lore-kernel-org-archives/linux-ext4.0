@@ -1,28 +1,18 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Problems building xfsprogs
-Date: Thu, 21 Jul 2011 00:27:29 -0400
-Message-ID: <20110721042729.GC3304@thunk.org>
-References: <20110720175918.GB17971@thunk.org>
- <20110721041903.GB3304@thunk.org>
+From: Jason H Staples <jason.staples@abbott.com>
+Subject: CAN I WORK WITH YOU ON BEHALF OF THIS BUSINESS?
+Date: Wed, 20 Jul 2011 23:10:21 -0500
+Message-ID: <OF4C6CA5A8.2B1A0E86-ON862578D4.0016EB80-862578D4.0016EBBD@abbott.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8BIT
+To: info@canitrustyou.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:57314 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751888Ab1GUE1b (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Jul 2011 00:27:31 -0400
-Content-Disposition: inline
-In-Reply-To: <20110721041903.GB3304@thunk.org>
+Received: from abtmx2.abbott.com ([130.36.44.92]:20208 "EHLO abtmx2.abbott.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751212Ab1GUEZn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jul 2011 00:25:43 -0400
+MIME-Version: 1.0
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 21, 2011 at 12:19:03AM -0400, Ted Ts'o wrote:
-> Another problem with xfsprogs.  "make install" iterates into the
-> debian subdirectory, for no good reason I can see other than to cause
-> the build to explode in a million pieces.... 
-
-Sorry, never mind, false alarm.
-
-						- Ted
+I am Mr Mag Min-Ji from Bank Of China,Hong Kong.I have a business proposal of 18.6 Million Dollars for us,if you are interested please contact:mac_mi@rocketmail.com
