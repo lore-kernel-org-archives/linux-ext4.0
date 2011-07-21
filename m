@@ -1,159 +1,270 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: Problems building xfsprogs
-Date: Wed, 20 Jul 2011 18:25:53 -0400
-Message-ID: <CAGpXXZJLt2oSBpBXkGz173Big+LRhhVOdKYBaJhqKEXtL9K1SQ@mail.gmail.com>
-References: <20110720175918.GB17971@thunk.org> <4E271F30.6070102@redhat.com> <20110720213320.GA3304@thunk.org>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: Re: [PATCH 2/2] ext4: remove ext4_free_blocks_after_init()
+Date: Thu, 21 Jul 2011 09:37:17 +0800
+Message-ID: <CAGBYx2Yd4_V0hnFSA=DRE2gtmAuWn96AdoJXvFa+yg-vZoUibA@mail.gmail.com>
+References: <1311168774-26378-1-git-send-email-xiaoqiangnk@gmail.com>
+	<1311168774-26378-3-git-send-email-xiaoqiangnk@gmail.com>
+	<B18ADA2A-CB14-4D30-A091-E4ACB1C9E280@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>
-To: "Ted Ts'o" <tytso@mit.edu>
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"tytso@mit.edu" <tytso@mit.edu>
+To: Andreas Dilger <aedilger@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f52.google.com ([209.85.161.52]:43893 "EHLO
-	mail-fx0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751908Ab1GTW0Z convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jul 2011 18:26:25 -0400
-Received: by fxd18 with SMTP id 18so2349150fxd.11
-        for <linux-ext4@vger.kernel.org>; Wed, 20 Jul 2011 15:26:24 -0700 (PDT)
-In-Reply-To: <20110720213320.GA3304@thunk.org>
+Received: from mail-pv0-f174.google.com ([74.125.83.174]:60697 "EHLO
+	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751686Ab1GUBhS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jul 2011 21:37:18 -0400
+Received: by pvg12 with SMTP id 12so643561pvg.19
+        for <linux-ext4@vger.kernel.org>; Wed, 20 Jul 2011 18:37:17 -0700 (PDT)
+In-Reply-To: <B18ADA2A-CB14-4D30-A091-E4ACB1C9E280@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 20, 2011 at 5:33 PM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Wed, Jul 20, 2011 at 01:32:16PM -0500, Eric Sandeen wrote:
+On Wed, Jul 20, 2011 at 11:41 PM, Andreas Dilger <aedilger@gmail.com> w=
+rote:
+> On 2011-07-20, at 7:32 AM, Yongqiang Yang <xiaoqiangnk@gmail.com> wro=
+te:
+>> This patch removes ext4_free_blocks_after_init() and simplifies
+>> ext4_init_block_bitmap() a lot.
+>
+> Why not use the ext4_set_bits() function, exported in another patch, =
+to set multiple bits?
+That patch has not been merged.  After it is merged, I will post
+another patch doing this, this can easy Ted's work.  That patch is a
+part of resize, but this patch has nothing to do with it logically.
+
+
+Thank you,
+
+Yongqiang.
+>
+>> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+>> ---
+>> fs/ext4/balloc.c | =A0122 ++++++++++++++++++------------------------=
+-----------
+>> fs/ext4/ext4.h =A0 | =A0 =A04 +-
+>> 2 files changed, 43 insertions(+), 83 deletions(-)
 >>
->> How does it fail? =A0Works here(tm):
->
-> It doesn't find the autoconfig macros defined in the m4 directory:
->
-> <tytso@tytso-glaptop> {/kbuild/xfstests/xfsprogs-dev} =A0[master]
-> 512% autoconf
-> autoconf: Undefined macros:
-> configure.in:100:AC_PACKAGE_NEED_PTHREADMUTEXINIT
-> configure.in:102:AC_HAVE_FADVISE
-> configure.in:103:AC_HAVE_MADVISE
-> configure.in:104:AC_HAVE_MINCORE
-> configure.in:105:AC_HAVE_SENDFILE
-> configure.in:106:AC_HAVE_GETMNTENT
-> configure.in:107:AC_HAVE_GETMNTINFO
-> configure.in:108:AC_HAVE_FALLOCATE
-> configure.in:109:AC_HAVE_FIEMAP
-> configure.in:110:AC_HAVE_BLKID_TOPO($enable_blkid)
-> configure.in:112:AC_TYPE_PSINT
-> configure.in:113:AC_TYPE_PSUNSIGNED
-> configure.in:114:AC_TYPE_U32
-> configure.in:115:AC_SIZEOF_POINTERS_AND_LONG
-> configure.in:116:AC_MANUAL_FORMAT
-> configure.in:3:AC_CONFIG_MACRO_DIR([m4])
-> configure.in:7:AC_PROG_LIBTOOL
-> configure.in:89:AC_PACKAGE_GLOBALS(xfsprogs)
-> configure.in:90:AC_PACKAGE_UTILITIES(xfsprogs)
-> configure.in:91:AC_MULTILIB($enable_lib64)
-> configure.in:93:AC_PACKAGE_NEED_AIO_H
-> configure.in:94:AC_PACKAGE_NEED_LIO_LISTIO
-> configure.in:96:AC_PACKAGE_NEED_UUID_H
-> configure.in:97:AC_PACKAGE_NEED_UUIDCOMPARE
-> configure.in:99:AC_PACKAGE_NEED_PTHREAD_H
->
-> Maybe you have all of these autoconf macros stuffed in some
-> distro-supplied global m4 directory?
->
->> > b) By default xfsprogs builds with DEBUG, and this causes building
->> > libxfs/xfs_ialloc.c to blow up since there a reference of
->> > xfs_stack_trace() which is undefined under a #ifdef DEBUG. =A0The =
-way to
->> > fix this is to build with DEBUG=3D-DNDEBUG, but it took me an hour=
- or
->> > two figure this out....
+>> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+>> index f8224ad..2dd9820 100644
+>> --- a/fs/ext4/balloc.c
+>> +++ b/fs/ext4/balloc.c
+>> @@ -55,60 +55,31 @@ static int ext4_block_in_group(struct super_bloc=
+k *sb, ext4_fsblk_t block,
+>> =A0 =A0return 0;
+>> }
 >>
->> Odd, libxfs/Makefile has:
+>> -static int ext4_group_used_meta_blocks(struct super_block *sb,
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_group_t block_gro=
+up,
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct ext4_group_desc=
+ *gdp)
+>> -{
+>> - =A0 =A0ext4_fsblk_t tmp;
+>> - =A0 =A0struct ext4_sb_info *sbi =3D EXT4_SB(sb);
+>> - =A0 =A0/* block bitmap, inode bitmap, and inode table blocks */
+>> - =A0 =A0int used_blocks =3D sbi->s_itb_per_group + 2;
+>> -
+>> - =A0 =A0if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLE=
+X_BG)) {
+>> - =A0 =A0 =A0 =A0if (!ext4_block_in_group(sb, ext4_block_bitmap(sb, =
+gdp),
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0block_group))
+>> - =A0 =A0 =A0 =A0 =A0 =A0used_blocks--;
+>> -
+>> - =A0 =A0 =A0 =A0if (!ext4_block_in_group(sb, ext4_inode_bitmap(sb, =
+gdp),
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0block_group))
+>> - =A0 =A0 =A0 =A0 =A0 =A0used_blocks--;
+>> -
+>> - =A0 =A0 =A0 =A0tmp =3D ext4_inode_table(sb, gdp);
+>> - =A0 =A0 =A0 =A0for (; tmp < ext4_inode_table(sb, gdp) +
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0sbi->s_itb_per_group; tmp++) {
+>> - =A0 =A0 =A0 =A0 =A0 =A0if (!ext4_block_in_group(sb, tmp, block_gro=
+up))
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0used_blocks -=3D 1;
+>> - =A0 =A0 =A0 =A0}
+>> - =A0 =A0}
+>> - =A0 =A0return used_blocks;
+>> -}
+>> -
+>> -/* Initializes an uninitialized block bitmap if given, and returns =
+the
+>> - * number of blocks free in the group. */
+>> -unsigned ext4_init_block_bitmap(struct super_block *sb, struct buff=
+er_head *bh,
+>> +/* Initializes an uninitialized block bitmap */
+>> +void ext4_init_block_bitmap(struct super_block *sb, struct buffer_h=
+ead *bh,
+>> =A0 =A0 =A0 =A0 ext4_group_t block_group, struct ext4_group_desc *gd=
+p)
+>> {
+>> + =A0 =A0ext4_fsblk_t start, tmp;
+>> =A0 =A0int bit, bit_max;
+>> =A0 =A0ext4_group_t ngroups =3D ext4_get_groups_count(sb);
+>> - =A0 =A0unsigned free_blocks, group_blocks;
+>> + =A0 =A0unsigned group_blocks;
+>> =A0 =A0struct ext4_sb_info *sbi =3D EXT4_SB(sb);
+>> -
+>> - =A0 =A0if (bh) {
+>> - =A0 =A0 =A0 =A0J_ASSERT_BH(bh, buffer_locked(bh));
+>> -
+>> - =A0 =A0 =A0 =A0/* If checksum is bad mark all blocks used to preve=
+nt allocation
+>> - =A0 =A0 =A0 =A0 * essentially implementing a per-group read-only f=
+lag. */
+>> - =A0 =A0 =A0 =A0if (!ext4_group_desc_csum_verify(sbi, block_group, =
+gdp)) {
+>> - =A0 =A0 =A0 =A0 =A0 =A0ext4_error(sb, "Checksum bad for group %u",
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0block_group);
+>> - =A0 =A0 =A0 =A0 =A0 =A0ext4_free_blks_set(sb, gdp, 0);
+>> - =A0 =A0 =A0 =A0 =A0 =A0ext4_free_inodes_set(sb, gdp, 0);
+>> - =A0 =A0 =A0 =A0 =A0 =A0ext4_itable_unused_set(sb, gdp, 0);
+>> - =A0 =A0 =A0 =A0 =A0 =A0memset(bh->b_data, 0xff, sb->s_blocksize);
+>> - =A0 =A0 =A0 =A0 =A0 =A0return 0;
+>> - =A0 =A0 =A0 =A0}
+>> - =A0 =A0 =A0 =A0memset(bh->b_data, 0, sb->s_blocksize);
+>> + =A0 =A0int flex_bg =3D 0;
+>> +
+>> + =A0 =A0J_ASSERT_BH(bh, bh && buffer_locked(bh));
+>> +
+>> + =A0 =A0/* If checksum is bad mark all blocks used to prevent alloc=
+ation
+>> + =A0 =A0 * essentially implementing a per-group read-only flag. */
+>> + =A0 =A0if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
+>> + =A0 =A0 =A0 =A0ext4_error(sb, "Checksum bad for group %u",
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0block_group);
+>> + =A0 =A0 =A0 =A0ext4_free_blks_set(sb, gdp, 0);
+>> + =A0 =A0 =A0 =A0ext4_free_inodes_set(sb, gdp, 0);
+>> + =A0 =A0 =A0 =A0ext4_itable_unused_set(sb, gdp, 0);
+>> + =A0 =A0 =A0 =A0memset(bh->b_data, 0xff, sb->s_blocksize);
+>> + =A0 =A0 =A0 =A0return;
+>> =A0 =A0}
+>> + =A0 =A0memset(bh->b_data, 0, sb->s_blocksize);
 >>
->> DEBUG =3D -DNDEBUG
->
-> Yeah, but include/builddefs{.in}, DEBUG is defined to @debug_build@,
-> which is -DDEBUG, and then GCFLAGS is set to $(OPTIMIZER) $(DEBUG) ..=
-=2E,
->
-> and the override in libxfs/Makefile doesn't change the value of
-> GCFLAGS, at least not for gmake 3.81.
->
->> But to be honest, the DEBUG stuff has been a thorn in my side for Fe=
-dora
->> too, with the extra CFLAGS it sets, something gets goobered up by
->> default, and I build with -DNDEBUG for those packages too.
+>> =A0 =A0/* Check for superblock and gdt backups in this group */
+>> =A0 =A0bit_max =3D ext4_bg_has_super(sb, block_group);
+>> @@ -137,46 +108,37 @@ unsigned ext4_init_block_bitmap(struct super_b=
+lock *sb, struct buffer_head *bh,
+>> =A0 =A0 =A0 =A0group_blocks =3D EXT4_BLOCKS_PER_GROUP(sb);
+>> =A0 =A0}
 >>
->> I just haven't sorted it out yet ....
+>> - =A0 =A0free_blocks =3D group_blocks - bit_max;
 >>
->> So things to look into, but can you also describe how building xfste=
-sts
->> fails for you when you have all the ubuntu xfsprogs-related packages
->> installed?
+>> - =A0 =A0if (bh) {
+>> - =A0 =A0 =A0 =A0ext4_fsblk_t start, tmp;
+>> - =A0 =A0 =A0 =A0int flex_bg =3D 0;
+>> + =A0 =A0for (bit =3D 0; bit < bit_max; bit++)
+>> + =A0 =A0 =A0 =A0ext4_set_bit(bit, bh->b_data);
+>>
+>> - =A0 =A0 =A0 =A0for (bit =3D 0; bit < bit_max; bit++)
+>> - =A0 =A0 =A0 =A0 =A0 =A0ext4_set_bit(bit, bh->b_data);
+>> + =A0 =A0start =3D ext4_group_first_block_no(sb, block_group);
+>>
+>> - =A0 =A0 =A0 =A0start =3D ext4_group_first_block_no(sb, block_group=
+);
+>> + =A0 =A0flex_bg =3D EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCO=
+MPAT_FLEX_BG);
+>>
+>> - =A0 =A0 =A0 =A0if (EXT4_HAS_INCOMPAT_FEATURE(sb,
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT4_FEATURE_IN=
+COMPAT_FLEX_BG))
+>> - =A0 =A0 =A0 =A0 =A0 =A0flex_bg =3D 1;
+>> + =A0 =A0/* Set bits for block and inode bitmaps, and inode table */
+>> + =A0 =A0tmp =3D ext4_block_bitmap(sb, gdp);
+>> + =A0 =A0if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
+>> + =A0 =A0 =A0 =A0ext4_set_bit(tmp - start, bh->b_data);
+>>
+>> - =A0 =A0 =A0 =A0/* Set bits for block and inode bitmaps, and inode =
+table */
+>> - =A0 =A0 =A0 =A0tmp =3D ext4_block_bitmap(sb, gdp);
+>> - =A0 =A0 =A0 =A0if (!flex_bg || ext4_block_in_group(sb, tmp, block_=
+group))
+>> - =A0 =A0 =A0 =A0 =A0 =A0ext4_set_bit(tmp - start, bh->b_data);
+>> + =A0 =A0tmp =3D ext4_inode_bitmap(sb, gdp);
+>> + =A0 =A0if (!flex_bg || ext4_block_in_group(sb, tmp, block_group))
+>> + =A0 =A0 =A0 =A0ext4_set_bit(tmp - start, bh->b_data);
+>>
+>> - =A0 =A0 =A0 =A0tmp =3D ext4_inode_bitmap(sb, gdp);
+>> - =A0 =A0 =A0 =A0if (!flex_bg || ext4_block_in_group(sb, tmp, block_=
+group))
+>> + =A0 =A0tmp =3D ext4_inode_table(sb, gdp);
+>> + =A0 =A0for (; tmp < ext4_inode_table(sb, gdp) +
+>> + =A0 =A0 =A0 =A0 =A0 =A0sbi->s_itb_per_group; tmp++) {
+>> + =A0 =A0 =A0 =A0if (!flex_bg ||
+>> + =A0 =A0 =A0 =A0 =A0 =A0ext4_block_in_group(sb, tmp, block_group))
+>> =A0 =A0 =A0 =A0 =A0 =A0ext4_set_bit(tmp - start, bh->b_data);
+>> -
+>> - =A0 =A0 =A0 =A0tmp =3D ext4_inode_table(sb, gdp);
+>> - =A0 =A0 =A0 =A0for (; tmp < ext4_inode_table(sb, gdp) +
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0sbi->s_itb_per_group; tmp++) {
+>> - =A0 =A0 =A0 =A0 =A0 =A0if (!flex_bg ||
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext4_block_in_group(sb, tmp, block_=
+group))
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext4_set_bit(tmp - start, bh->b_dat=
+a);
+>> - =A0 =A0 =A0 =A0}
+>> - =A0 =A0 =A0 =A0/*
+>> - =A0 =A0 =A0 =A0 * Also if the number of blocks within the group is
+>> - =A0 =A0 =A0 =A0 * less than the blocksize * 8 ( which is the size
+>> - =A0 =A0 =A0 =A0 * of bitmap ), set rest of the block bitmap to 1
+>> - =A0 =A0 =A0 =A0 */
+>> - =A0 =A0 =A0 =A0ext4_mark_bitmap_end(group_blocks, sb->s_blocksize =
+* 8,
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 bh->b_data);
+>> =A0 =A0}
+>> - =A0 =A0return free_blocks - ext4_group_used_meta_blocks(sb, block_=
+group, gdp);
+>> + =A0 =A0/*
+>> + =A0 =A0 * Also if the number of blocks within the group is
+>> + =A0 =A0 * less than the blocksize * 8 ( which is the size
+>> + =A0 =A0 * of bitmap ), set rest of the block bitmap to 1
+>> + =A0 =A0 */
+>> + =A0 =A0ext4_mark_bitmap_end(group_blocks, sb->s_blocksize * 8,
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 bh->b_data);
+>> }
+>>
+>>
+>> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+>> index 62cee2b..eacaad2 100644
+>> --- a/fs/ext4/ext4.h
+>> +++ b/fs/ext4/ext4.h
+>> @@ -1741,12 +1741,10 @@ extern struct ext4_group_desc * ext4_get_gro=
+up_desc(struct super_block * sb,
+>> extern int ext4_should_retry_alloc(struct super_block *sb, int *retr=
+ies);
+>> struct buffer_head *ext4_read_block_bitmap(struct super_block *sb,
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext4_group_t block_group)=
+;
+>> -extern unsigned ext4_init_block_bitmap(struct super_block *sb,
+>> +extern void ext4_init_block_bitmap(struct super_block *sb,
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct buffer_head *bh,
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_group_t group,
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct ext4_group_desc *=
+desc);
+>> -#define ext4_free_blocks_after_init(sb, group, desc) =A0 =A0 =A0 =A0=
+ =A0 =A0\
+>> - =A0 =A0 =A0 =A0ext4_init_block_bitmap(sb, NULL, group, desc)
+>> ext4_fsblk_t ext4_inode_to_goal_block(struct inode *);
+>>
+>> /* dir.c */
+>> --
+>> 1.7.5.1
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4=
+" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
 >
-> Yeah, working on it. =A0I'm starting from scratch so I can have a she=
-ll
-> script that can build all of this by hand, instead of manually fixing
-> these things one at a time as I've done in the past...
-
-This little shell script is part of the openSUSE qa test (or soon will
-be).  ie. Every opensuse distro build is run through automated qa
-tests.  The testing team is working on adding in xfstests specifically
-for btrfs at present.
-
-I don't know exactly what packages are installed when the below runs,
-but it should be a fairly basic set of packages since its just a QA
-basic functionality run.
-
-=3D=3D=3D
-#!/bin/sh
-tmp=3D/tmp/xfs_playground
-export TEST_DEV=3D/dev/vdb
-export TEST_DIR=3D$tmp/test
-export SCRATCH_DEV=3D/dev/vdc
-export SCRATCH_MNT=3D$tmp/scratch
-export FSTYP=3Dbtrfs
-
-grep -q susetest /etc/hosts || echo "10.0.2.15 susetest.zq1.de
-susetest" >> /etc/hosts # workaround factory bug # TODO: drop later
-
-sudo zypper -n install sudo git gcc libtool automake gettext-tools
-libattr-devel libacl-devel libuuid-devel btrfsprogs
-mkdir -p $tmp $TEST_DIR $SCRATCH_MNT
-cd $tmp
-
-#git clone git://oss.sgi.com/xfs/xfs   #(this step may not be needed?)
-git clone git://oss.sgi.com/xfs/cmds/xfsprogs
-git clone git://oss.sgi.com/xfs/cmds/xfstests
-
-(
-	cd xfsprogs
-	make
-	sudo make install-qa
-)
-cd xfstests
-make
 
 
-mkfs.$FSTYP $TEST_DEV
-mkfs.$FSTYP $SCRATCH_DEV
 
-mount $TEST_DEV $TEST_DIR
-mount $SCRATCH_DEV $SCRATCH_MNT
-
-time ./check -g auto -f quick
-
-umount $TEST_DIR
-umount $SCRATCH_MNT
-
-echo "xfstests done" > /dev/ttyS0
-=3D=3D=3D=3D
-
-So far the xfstest part of the above seems fine.
-
-It is finding 3 or 4 btrfs failed tests.
-
-Greg
+--=20
+Best Wishes
+Yongqiang Yang
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
