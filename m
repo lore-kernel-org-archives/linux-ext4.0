@@ -1,34 +1,36 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH XFSPROGS 2/3] Build without enabling DEBUG by default
-Date: Fri, 22 Jul 2011 10:17:53 -0400
-Message-ID: <20110722141753.GA19681@infradead.org>
+Subject: Re: [PATCH XFSPROGS 1/3] configure.in: Declare a requirement for at
+ least autoconf 2.50
+Date: Fri, 22 Jul 2011 10:28:50 -0400
+Message-ID: <20110722142850.GB19681@infradead.org>
 References: <1311292237-4155-1-git-send-email-tytso@mit.edu>
- <1311292237-4155-2-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:49707
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:40894
 	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754534Ab1GVORz (ORCPT
+	by vger.kernel.org with ESMTP id S1751418Ab1GVO2w (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 22 Jul 2011 10:17:55 -0400
+	Fri, 22 Jul 2011 10:28:52 -0400
 Content-Disposition: inline
-In-Reply-To: <1311292237-4155-2-git-send-email-tytso@mit.edu>
+In-Reply-To: <1311292237-4155-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 21, 2011 at 07:50:36PM -0400, Theodore Ts'o wrote:
-> The tree currently will blow out with a build failure if -DDEBUG is
-> specified.
+On Thu, Jul 21, 2011 at 07:50:35PM -0400, Theodore Ts'o wrote:
+> On Debian/Ubuntu systems, if autoconf version 2.13 is installed,
+> autoconf will try to automatically figure out whether autoconf 2.13 or
+> something more modern is required (since the autoconf maintainers,
+> curses be upon them, didn't bother to maintain compatibility between
+> autoconf 2.13 and 2.50).  Unfortunately, the hueristics aren't
+> perfect, and although the configure.in file looks superficially like
+> it will be compatible with autoconf 2.13, it isn't.  You will end up
+> with a number of very subtle compilation failures if you use autoconf
+> 2.13.
+> 
+> So declare a requirement for autoconf 2.50 using AC_PREREQ(2.50).
 
-This still doesn't make sense to me.  libxfs explicily overrides
-DEBUG in the makefile:
-
-# don't try linking xfs_repair with a debug libxfs.
-DEBUG = -DNDEBUG
-
-we really need to figure out why your enviroment doesn't pick this
-up, especially as we've never seen that report from anybody else.
-
+Thanks a lot, I've applied our xfsprogs and xfstests patches, and also
+ported the change to the xfsdump and dmapi repositories.
