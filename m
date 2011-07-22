@@ -1,52 +1,45 @@
-From: Wang Sheng-Hui <shhuiw@gmail.com>
-Subject: [PATCH] jbd: change the field "b_cow_tid" of struct journal_head
- from type unsigned to tid_t
-Date: Mon, 25 Jul 2011 21:02:25 +0800
-Message-ID: <4E2D6961.9000909@gmail.com>
+From: Alex Elder <aelder@sgi.com>
+Subject: Re: [PATCH XFSPROGS 2/3] Build without enabling DEBUG by default
+Date: Fri, 22 Jul 2011 17:30:48 -0500
+Message-ID: <1311373848.2771.164.camel@doink>
+References: <1311292237-4155-1-git-send-email-tytso@mit.edu>
+	 <1311292237-4155-2-git-send-email-tytso@mit.edu>
+	 <20110722141753.GA19681@infradead.org> <20110722183048.GC25092@thunk.org>
+	 <20110722183830.GA21744@infradead.org>
+Reply-To: <aelder@sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-To: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Ted Ts'o <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	<xfs@oss.sgi.com>
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f42.google.com ([209.85.210.42]:64103 "EHLO
-	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750776Ab1GYNCh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Jul 2011 09:02:37 -0400
+Received: from relay3.sgi.com ([192.48.152.1]:54800 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751212Ab1GYNKU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Jul 2011 09:10:20 -0400
+In-Reply-To: <20110722183830.GA21744@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The patch is against 3.0
+On Fri, 2011-07-22 at 14:38 -0400, Christoph Hellwig wrote:
+> On Fri, Jul 22, 2011 at 02:30:48PM -0400, Ted Ts'o wrote:
 
-In the definition of struct journal_head, the comment for
-the field "unsigned b_cow_tid" says the field tracks the
-last transaction id in which this buffer has been cowed.
+. . .
 
-In the header part of file journal-head.h, it defines
-   typedef unsigned int  tid_t;
-We should use type tid_t to define transaction id fields.
+> A typical V=1 compile line looks like:
+> 
+> /bin/bash ../libtool --quiet --tag=CC --mode=compile gcc -I. -g -O2
+> -DNDEBUG -DVERSION=\"3.1.5\" -DLOCALEDIR=\"/usr/share/locale\"
+> -DPACKAGE=\"xfsprogs\" -I../include -DENABLE_GETTEXT -D_GNU_SOURCE
+> -D_XOPEN_SOURCE=500 -D_FILE_OFFSET_BITS=64 -funsigned-char
+> -fno-strict-aliasing -Wall    -c xfs_dir2_sf.c
 
-Change the field "b_cow_tid" of struct journal_head from
-type unsigned to tid_t.
+FWIW, I get a compile line for xfs_dir2_sf.c identical to
+what Christoph supplied.
 
-Signed-off-by: Wang Sheng-Hui <shhuiw@gmail.com>
----
- include/linux/journal-head.h |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/include/linux/journal-head.h b/include/linux/journal-head.h
-index 44e95d0..423cb6d 100644
---- a/include/linux/journal-head.h
-+++ b/include/linux/journal-head.h
-@@ -45,7 +45,7 @@ struct journal_head {
- 	 * has been cowed
- 	 * [jbd_lock_bh_state()]
- 	 */
--	unsigned b_cow_tid;
-+	tid_t b_cow_tid;
- 
- 	/*
- 	 * Copy of the buffer data frozen for writing to the log.
--- 
-1.7.1
+> for me.  The biggest thing is that you have another directory in your
+> include path.  How did you add that one? Did you add anything else
+> special to the ./configure or make command lines?
 
