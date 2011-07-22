@@ -1,52 +1,82 @@
-From: Andreas Dilger <aedilger@gmail.com>
-Subject: Re: flashing large eMMC partitions with ext4
-Date: Fri, 22 Jul 2011 10:35:20 -0600
-Message-ID: <419A2628-5AF6-4B32-85B8-BE1E2B159DFA@gmail.com>
-References: <20110722154936.30251.qmail@web4208.mail.ogk.yahoo.co.jp>
-Mime-Version: 1.0 (iPhone Mail 8J2)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Round Robinjp <roundrobinjp@yahoo.co.jp>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext2: check xattr name_len before acquiring sem lock
+ in ext2_xattr_get
+Date: Fri, 22 Jul 2011 19:37:27 +0200
+Message-ID: <20110722173727.GA11015@quack.suse.cz>
+References: <4E2983E0.3060208@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>
+To: Wang Sheng-Hui <shhuiw@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f42.google.com ([209.85.210.42]:61587 "EHLO
-	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750927Ab1GVQe5 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jul 2011 12:34:57 -0400
-Received: by pzk37 with SMTP id 37so3832500pzk.1
-        for <linux-ext4@vger.kernel.org>; Fri, 22 Jul 2011 09:34:56 -0700 (PDT)
-In-Reply-To: <20110722154936.30251.qmail@web4208.mail.ogk.yahoo.co.jp>
+Received: from cantor2.suse.de ([195.135.220.15]:52862 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753626Ab1GVRh3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 22 Jul 2011 13:37:29 -0400
+Content-Disposition: inline
+In-Reply-To: <4E2983E0.3060208@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If you can wipe the MMC device to be all-zero efficiently, then you can format it quickly with "mke2fs -E lazy_itable_init,lazy_journal_init ..." and restore from a tarball.
+  Hello,
 
-Alternately, Lukas recently added support for QCOW2 sparse image format, and it should be possible to restore this to the device efficiently, if it is zeroed in advance. I don't know if his code skips all-zero blocks in the image, but that should be possible to add fairly easily. 
+On Fri 22-07-11 22:06:24, Wang Sheng-Hui wrote:
+> From 667173a18b671896f933c5952fa211601d2e5ab0 Mon Sep 17 00:00:00 2001
+> From: Wang Sheng-Hui <shhuiw@gmail.com>
+> Date: Fri, 22 Jul 2011 08:50:13 -0500
+> Subject: [PATCH] ext2: check xattr name_len before acquiring sem lock in ext2_xattr_get
+> 
+> The patch is against 3.0.
+> 
+> In ext2_xattr_get, the code will acquire sem lock first, later check
+> the length of xattr name_len > 255. It's kind of time consuming, and
+> we should do the basic check before the time consuming acquiring sem
+> lock.
+  Well, but the check name_len > 255 is almost never true so it does not
+really make a difference... But I see ext2_xattr_set() also checks the
+length first so it probably makes sense from consistency point of view.
+So I'll take the patch into my tree.
 
-Cheers, Andreas
-
-On 2011-07-22, at 9:49 AM, Round Robinjp <roundrobinjp@yahoo.co.jp> wrote:
-
-> Hi
+								Honza
 > 
-> I have a question regarding making ext4 image for
-> large eMMC partition.
+> Signed-off-by: Wang Sheng-Hui <shhuiw@gmail.com>
+> ---
+>  fs/ext2/xattr.c |   10 +++++-----
+>  1 files changed, 5 insertions(+), 5 deletions(-)
 > 
-> We have a 4G partition in our embedded device
-> in which we want to use ext4 filesystem.
-> But for that we have to create a 4G image.
-> flashing this 4G image to the eMMC takes a long
-> time. Is there any way to reduce this time?
+> diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+> index 5299706..d27b71f 100644
+> --- a/fs/ext2/xattr.c
+> +++ b/fs/ext2/xattr.c
+> @@ -161,6 +161,10 @@ ext2_xattr_get(struct inode *inode, int name_index, const char *name,
+>  
+>  	if (name == NULL)
+>  		return -EINVAL;
+> +	name_len = strlen(name);
+> +	if (name_len > 255)
+> +		return -ERANGE;
+> +
+>  	down_read(&EXT2_I(inode)->xattr_sem);
+>  	error = -ENODATA;
+>  	if (!EXT2_I(inode)->i_file_acl)
+> @@ -181,12 +185,8 @@ bad_block:	ext2_error(inode->i_sb, "ext2_xattr_get",
+>  		error = -EIO;
+>  		goto cleanup;
+>  	}
+> -	/* find named attribute */
+> -	name_len = strlen(name);
+>  
+> -	error = -ERANGE;
+> -	if (name_len > 255)
+> -		goto cleanup;
+> +	/* find named attribute */
+>  	entry = FIRST_ENTRY(bh);
+>  	while (!IS_LAST_ENTRY(entry)) {
+>  		struct ext2_xattr_entry *next =
+> -- 
+> 1.7.1
 > 
-> For vfat, you can truncate the image leaving only
-> non zero-filled blocks which makes the image very
-> short and the time for flashing is reduced.
-> Is something similar to that possible for ext4?
-> 
-> Thanks
-> Robin
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
