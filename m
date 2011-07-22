@@ -1,107 +1,66 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 39732] New: JBD: Spotted dirty metadata buffer (dev = dm-2,
- blocknr = 2512725). There's a risk of filesystem corruption in case of system
- crash.
-Date: Fri, 22 Jul 2011 04:22:58 GMT
-Message-ID: <bug-39732-13602@https.bugzilla.kernel.org/>
+From: Wang Sheng-Hui <shhuiw@gmail.com>
+Subject: [PATCH] ext2: check xattr name_len before acquiring sem lock in ext2_xattr_get
+Date: Fri, 22 Jul 2011 22:06:24 +0800
+Message-ID: <4E2983E0.3060208@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:36532 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750741Ab1GVEW7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jul 2011 00:22:59 -0400
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.4) with ESMTP id p6M4Mxno015683
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 22 Jul 2011 04:22:59 GMT
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:57379 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754455Ab1GVOGf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jul 2011 10:06:35 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=39732
+>From 667173a18b671896f933c5952fa211601d2e5ab0 Mon Sep 17 00:00:00 2001
+From: Wang Sheng-Hui <shhuiw@gmail.com>
+Date: Fri, 22 Jul 2011 08:50:13 -0500
+Subject: [PATCH] ext2: check xattr name_len before acquiring sem lock in ext2_xattr_get
 
-           Summary: JBD: Spotted dirty metadata buffer (dev = dm-2,
-                    blocknr = 2512725). There's a risk of filesystem
-                    corruption in case of system crash.
-           Product: File System
-           Version: 2.5
-    Kernel Version: 3.0.0-rc7
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: baryluk@smp.if.uj.edu.pl
-        Regression: Yes
+The patch is against 3.0.
 
+In ext2_xattr_get, the code will acquire sem lock first, later check
+the length of xattr name_len > 255. It's kind of time consuming, and
+we should do the basic check before the time consuming acquiring sem
+lock.
 
-I was just updating some packages in 32-bit Debian unstable, under highload on
-my Thinkpad T43 (uniprocessor pentium-m). And spoted this thing in log:
+Signed-off-by: Wang Sheng-Hui <shhuiw@gmail.com>
+---
+ fs/ext2/xattr.c |   10 +++++-----
+ 1 files changed, 5 insertions(+), 5 deletions(-)
 
-[79324.133130] JBD: Spotted dirty metadata buffer (dev = dm-2, blocknr =
-2512725). There's a risk of filesystem corruption in case of system crash.
-
-dm-2 is block device (on LVM on luksCrypt) with /usr on ext4, with
-journal=data.
-
-I never ever seen such thing.
-
-# cat /proc/mounts  | grep -v fuse
-rootfs / rootfs rw 0 0
-sysfs /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0
-proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0
-udev /dev devtmpfs rw,relatime,size=1031676k,nr_inodes=220204,mode=755 0 0
-devpts /dev/pts devpts rw,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000 0
-0
-tmpfs /run tmpfs rw,nosuid,noexec,relatime,size=207032k,mode=755 0 0
-/dev/mapper/sredniczarny-root / ext4
-rw,relatime,user_xattr,acl,barrier=1,nodelalloc,data=journal 0 0
-tmpfs /lib/init/rw tmpfs rw,nosuid,relatime,size=5120k,mode=755 0 0
-tmpfs /run/lock tmpfs rw,nosuid,nodev,noexec,relatime,size=5120k 0 0
-tmpfs /run/shm tmpfs rw,nosuid,nodev,relatime,size=414060k 0 0
-/dev/sda1 /boot ext3
-rw,relatime,errors=continue,commit=5,barrier=1,data=ordered 0 0
-/dev/mapper/sredniczarny-tmp /tmp ext4
-rw,relatime,user_xattr,acl,barrier=1,data=ordered 0 0
-/dev/mapper/sredniczarny-usr /usr ext4
-rw,relatime,user_xattr,acl,barrier=1,nodelalloc,data=journal 0 0
-/dev/mapper/sredniczarny-var /var ext4
-rw,relatime,user_xattr,acl,barrier=1,nodelalloc,data=journal 0 0
-/dev/mapper/sredniczarny-home /home ext4
-rw,relatime,user_xattr,acl,barrier=1,nodelalloc,data=journal 0 0
-rpc_pipefs /var/lib/nfs/rpc_pipefs rpc_pipefs rw,relatime 0 0
-fusectl /sys/fs/fuse/connections fusectl rw,relatime 0 0
-sctank2 /sctank2 fuse rw,relatime,user_id=0,group_id=0,allow_other 0 0
-binfmt_misc /proc/sys/fs/binfmt_misc binfmt_misc
-rw,nosuid,nodev,noexec,relatime 0 0
-nfsd /proc/fs/nfsd nfsd rw,relatime 0 0
-/home/baryluk/.Private /home/baryluk/Private ecryptfs
-rw,relatime,ecryptfs_fnek_sig=caxxxxxx,ecryptfs_sig=e47xxxxx,ecryptfs_cipher=aes,ecryptfs_key_bytes=16,ecryptfs_unlink_sigs
-0 0
-/dev/sr0 /media/cdrom0 iso9660 ro,nosuid,nodev,noexec,relatime 0 0
-#
-
-
-Kenrel config attached.
-
-I found two separate bug in Red Hat bugzilla which are similar, and occurs when
-usrquota is used, and some quota releated configuration is changed. I have
-hovewer no quota here (it is just laptop) enabled, configured, or even
-supported by my custom kernel.
-
-Any ideas?
-
-
-exact kernel version 3.0.0-rc7-t43-prod-00159-ge6625fa-dirty
-
-(dirty only because -march=pentium-m added to the build). gcc 4.6.1-4 used.
-32bit i386.
-
+diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+index 5299706..d27b71f 100644
+--- a/fs/ext2/xattr.c
++++ b/fs/ext2/xattr.c
+@@ -161,6 +161,10 @@ ext2_xattr_get(struct inode *inode, int name_index, const char *name,
+ 
+ 	if (name == NULL)
+ 		return -EINVAL;
++	name_len = strlen(name);
++	if (name_len > 255)
++		return -ERANGE;
++
+ 	down_read(&EXT2_I(inode)->xattr_sem);
+ 	error = -ENODATA;
+ 	if (!EXT2_I(inode)->i_file_acl)
+@@ -181,12 +185,8 @@ bad_block:	ext2_error(inode->i_sb, "ext2_xattr_get",
+ 		error = -EIO;
+ 		goto cleanup;
+ 	}
+-	/* find named attribute */
+-	name_len = strlen(name);
+ 
+-	error = -ERANGE;
+-	if (name_len > 255)
+-		goto cleanup;
++	/* find named attribute */
+ 	entry = FIRST_ENTRY(bh);
+ 	while (!IS_LAST_ENTRY(entry)) {
+ 		struct ext2_xattr_entry *next =
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.7.1
+
