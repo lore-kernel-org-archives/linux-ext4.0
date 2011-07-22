@@ -1,61 +1,44 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Build script for a hermetic build of xfstests
-Date: Thu, 21 Jul 2011 19:54:41 -0400
-Message-ID: <20110721235441.GB25092@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>
+From: Robin Dong <hao.bigrat@gmail.com>
+Subject: [PATCH 2/3] ext4: correct the debug message in ext4_ext_insert_extent
+Date: Fri, 22 Jul 2011 10:23:40 +0800
+Message-ID: <1311301421-10533-2-git-send-email-hao.bigrat@gmail.com>
+References: <1311301421-10533-1-git-send-email-hao.bigrat@gmail.com>
+Cc: Robin Dong <sanbai@taobao.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38861 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751933Ab1GUXyn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Jul 2011 19:54:43 -0400
-Content-Disposition: inline
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:63101 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752398Ab1GVCXv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jul 2011 22:23:51 -0400
+Received: by mail-pz0-f42.google.com with SMTP id 37so2818129pzk.1
+        for <linux-ext4@vger.kernel.org>; Thu, 21 Jul 2011 19:23:51 -0700 (PDT)
+In-Reply-To: <1311301421-10533-1-git-send-email-hao.bigrat@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-With the six patches which I just sent (3 for xfsprogs, 3 for
-xfstests), I'm now able to build xfstests hermetically using the
-following script.  It's still a bit rough, but I offer it up if anyone
-else wants to be able to build xfstests without having to worry about
-hidden dependencies in the distro-supplied /usr/include/xfs
-directories, etc.
+From: Robin Dong <sanbai@taobao.com>
 
-						- Ted
+The debug message in ext4_ext_insert_extent before moving extent
+is incorrect (the "from xx to xx").
 
-#!/bin/bash -vx
+Signed-off-by: Robin Dong <sanbai@taobao.com>
+---
+ fs/ext4/extents.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-DESTDIR=$(pwd)/bld
-
-mkdir -p $DESTDIR
-
-export CFLAGS="-I$DESTDIR/include"
-export LDFLAGS="-static -L$DESTDIR/lib"
-
-(cd e2fsprogs-libs; ./configure --prefix=/; make ; make DESTDIR=$DESTDIR install)
-
-(cd attr; ./configure --prefix=$DESTDIR; make LLDFLAGS=-all-static ; make install-dev ; make install)
-
-(cd acl; ./configure --prefix=$DESTDIR; make LLDFLAGS=-all-static; make install-dev; make install)
-
-(cd libaio; make prefix=$DESTDIR install)
-
-export DIST_ROOT=$DESTDIR
-export LIBS=-lpthread
-(cd xfsprogs-dev; make realclean ; make configure ; ./configure --prefix=/; make LLDFLAGS=-all-static BUILD_VERBOSE=1; make install; make install-dev)
-unset LIBS
-unset DIST_ROOT
-
-export LIBTOOL="/usr/bin/libtool --tag=CC"
-(cd dmapi; CFLAGS="-I$DESTDIR/include  -L$DESTDIR/lib" LDFLAGS=-static ./configure --prefix=$DESTDIR; make LLDFLAGS=-all-static; make install-dev; make install)
-unset LIBTOOL
-
-find . -name \*.la | xargs rm -f      # Die, libtool, die!!!!
-cp $DESTDIR/include/xfs/dmapi.h $DESTDIR/include
-set
-
-export LIBS=-lpthread
-export CFLAGS="-I$DESTDIR/include  -fno-stack-protector"
-(cd xfstests-dev; ./configure ; make LLDFLAGS=-all-static BUILD_VERBOSE=1)
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 3966839..a4d6216 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1839,7 +1839,7 @@ has_space:
+ 				ext4_ext_pblock(newext),
+ 				ext4_ext_is_uninitialized(newext),
+ 				ext4_ext_get_actual_len(newext),
+-				nearex, len, nearex + 1, nearex + 2);
++				nearex, len, nearex, nearex + 1);
+ 		memmove(nearex + 1, nearex, len);
+ 		path[depth].p_ext = nearex;
+ 	}
+-- 
+1.7.4.1
 
