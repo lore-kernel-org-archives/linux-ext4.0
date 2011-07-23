@@ -1,91 +1,48 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext4: Fix data corruption in inodes with journalled data
-Date: Sat, 23 Jul 2011 02:39:37 +0200
-Message-ID: <1311381577-31406-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
+From: Wang Sheng-Hui <shhuiw@gmail.com>
+Subject: [PATCH] ext3.txt: update the links in the section "useful links"
+ to the latest ones
+Date: Sat, 23 Jul 2011 09:08:49 +0800
+Message-ID: <4E2A1F21.5060604@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:39850 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751726Ab1GWAjm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 22 Jul 2011 20:39:42 -0400
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:59522 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751972Ab1GWBI7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jul 2011 21:08:59 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When journalling data for an inode (either because it is a symlink or
-because the filesystem is mounted in data=journal mode), ext4_evict_inode()
-can discard unwritten data by calling truncate_inode_pages(). This is
-because we don't mark the buffer / page dirty when journalling data but only
-add the buffer to the running transaction and thus mm does not know there
-are still unwritten data.
+The patch is against 3.0.
 
-Fix the problem by carefully tracking transaction containing inode's data,
-committing this transaction, and writing uncheckpointed buffers when inode
-should be reaped.
+In Documentation/filesystems/ext3.txt, the section "useful links"
+provides two links which link to ibm developerworks articles. While
+the second one can be redirected to the latest one, the first one
+   http://www.ibm.com/developerworks/library/l-fs7.html
+fails to be redirected.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
+Update the 2 links to the latest ones.
+
+Signed-off-by: Wang Sheng-Hui <shhuiw@gmail.com>
 ---
- fs/ext4/inode.c |   29 +++++++++++++++++++++++++++++
- 1 files changed, 29 insertions(+), 0 deletions(-)
+ Documentation/filesystems/ext3.txt |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-  This is ext4 version of an ext3 fix I sent a while ago. It received only
-light testing but I figured you might want get the patch earlier rather than
-later given the merge window is open.
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index e3126c0..019995b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -190,6 +190,33 @@ void ext4_evict_inode(struct inode *inode)
+diff --git a/Documentation/filesystems/ext3.txt b/Documentation/filesystems/ext3.txt
+index 272f80d..a779614 100644
+--- a/Documentation/filesystems/ext3.txt
++++ b/Documentation/filesystems/ext3.txt
+@@ -227,5 +227,5 @@ kernel source:	<file:fs/ext3/>
+ programs: 	http://e2fsprogs.sourceforge.net/
+ 		http://ext2resize.sourceforge.net
  
- 	trace_ext4_evict_inode(inode);
- 	if (inode->i_nlink) {
-+		/*
-+		 * When journalling data dirty buffers are tracked only in the
-+		 * journal. So although mm thinks everything is clean and
-+		 * ready for reaping the inode might still have some pages to
-+		 * write in the running transaction or waiting to be
-+		 * checkpointed. Thus calling jbd2_journal_invalidatepage()
-+		 * (via truncate_inode_pages()) to discard these buffers can
-+		 * cause data loss. Also even if we did not discard these
-+		 * buffers, we would have no way to find them after the inode
-+		 * is reaped and thus user could see stale data if he tries to
-+		 * read them before the transaction is checkpointed. So be
-+		 * careful and force everything to disk here... We use
-+		 * ei->i_datasync_tid to store the newest transaction
-+		 * containing inode's data.
-+		 *
-+		 * Note that directories do not have this problem because they
-+		 * don't use page cache.
-+		 */
-+		if (ext4_should_journal_data(inode) &&
-+		    (S_ISLNK(inode->i_mode) || S_ISREG(inode->i_mode))) {
-+			journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
-+			tid_t commit_tid = EXT4_I(inode)->i_datasync_tid;
-+
-+			jbd2_log_start_commit(journal, commit_tid);
-+			jbd2_log_wait_commit(journal, commit_tid);
-+			filemap_write_and_wait(&inode->i_data);
-+		}
- 		truncate_inode_pages(&inode->i_data, 0);
- 		goto no_delete;
- 	}
-@@ -1863,6 +1890,7 @@ static int ext4_journalled_write_end(struct file *file,
- 	if (new_i_size > inode->i_size)
- 		i_size_write(inode, pos+copied);
- 	ext4_set_inode_state(inode, EXT4_STATE_JDATA);
-+	EXT4_I(inode)->i_datasync_tid = handle->h_transaction->t_tid;
- 	if (new_i_size > EXT4_I(inode)->i_disksize) {
- 		ext4_update_i_disksize(inode, new_i_size);
- 		ret2 = ext4_mark_inode_dirty(handle, inode);
-@@ -2571,6 +2599,7 @@ static int __ext4_journalled_writepage(struct page *page,
- 				write_end_fn);
- 	if (ret == 0)
- 		ret = err;
-+	EXT4_I(inode)->i_datasync_tid = handle->h_transaction->t_tid;
- 	err = ext4_journal_stop(handle);
- 	if (!ret)
- 		ret = err;
+-useful links:	http://www.ibm.com/developerworks/library/l-fs7.html
+-		http://www.ibm.com/developerworks/library/l-fs8.html
++useful links:	http://www.ibm.com/developerworks/library/l-fs7/index.html
++        http://www.ibm.com/developerworks/library/l-fs8/index.html
 -- 
 1.7.1
 
