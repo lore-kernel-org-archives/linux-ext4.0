@@ -1,45 +1,75 @@
-From: Alex Elder <aelder@sgi.com>
-Subject: Re: [PATCH XFSPROGS 2/3] Build without enabling DEBUG by default
-Date: Fri, 22 Jul 2011 17:30:48 -0500
-Message-ID: <1311373848.2771.164.camel@doink>
-References: <1311292237-4155-1-git-send-email-tytso@mit.edu>
-	 <1311292237-4155-2-git-send-email-tytso@mit.edu>
-	 <20110722141753.GA19681@infradead.org> <20110722183048.GC25092@thunk.org>
-	 <20110722183830.GA21744@infradead.org>
-Reply-To: <aelder@sgi.com>
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: Re: [PATCH] jbd: change the field "b_cow_tid" of struct journal_head
+ from type unsigned to tid_t
+Date: Mon, 25 Jul 2011 16:25:39 +0300
+Message-ID: <CAOQ4uxhGceySNm7-d=NdjPVZDsb4Pi8Gobf145zdDomZqhJCyQ@mail.gmail.com>
+References: <4E2D6961.9000909@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Ted Ts'o <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	<xfs@oss.sgi.com>
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Wang Sheng-Hui <shhuiw@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from relay3.sgi.com ([192.48.152.1]:54800 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751212Ab1GYNKU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Jul 2011 09:10:20 -0400
-In-Reply-To: <20110722183830.GA21744@infradead.org>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:35627 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751178Ab1GYNZl convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Jul 2011 09:25:41 -0400
+In-Reply-To: <4E2D6961.9000909@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2011-07-22 at 14:38 -0400, Christoph Hellwig wrote:
-> On Fri, Jul 22, 2011 at 02:30:48PM -0400, Ted Ts'o wrote:
+On Mon, Jul 25, 2011 at 4:02 PM, Wang Sheng-Hui <shhuiw@gmail.com> wrot=
+e:
+> The patch is against 3.0
+>
+> In the definition of struct journal_head, the comment for
+> the field "unsigned b_cow_tid" says the field tracks the
+> last transaction id in which this buffer has been cowed.
+>
+> In the header part of file journal-head.h, it defines
+> =A0 typedef unsigned int =A0tid_t;
+> We should use type tid_t to define transaction id fields.
+>
+> Change the field "b_cow_tid" of struct journal_head from
+> type unsigned to tid_t.
+>
+> Signed-off-by: Wang Sheng-Hui <shhuiw@gmail.com>
 
-. . .
+my bad.
 
-> A typical V=1 compile line looks like:
-> 
-> /bin/bash ../libtool --quiet --tag=CC --mode=compile gcc -I. -g -O2
-> -DNDEBUG -DVERSION=\"3.1.5\" -DLOCALEDIR=\"/usr/share/locale\"
-> -DPACKAGE=\"xfsprogs\" -I../include -DENABLE_GETTEXT -D_GNU_SOURCE
-> -D_XOPEN_SOURCE=500 -D_FILE_OFFSET_BITS=64 -funsigned-char
-> -fno-strict-aliasing -Wall    -c xfs_dir2_sf.c
+Acked-by: Amir Goldstein <amir73il@users.sf.net>
 
-FWIW, I get a compile line for xfs_dir2_sf.c identical to
-what Christoph supplied.
-
-> for me.  The biggest thing is that you have another directory in your
-> include path.  How did you add that one? Did you add anything else
-> special to the ./configure or make command lines?
-
+> ---
+> =A0include/linux/journal-head.h | =A0 =A02 +-
+> =A01 files changed, 1 insertions(+), 1 deletions(-)
+>
+> diff --git a/include/linux/journal-head.h b/include/linux/journal-hea=
+d.h
+> index 44e95d0..423cb6d 100644
+> --- a/include/linux/journal-head.h
+> +++ b/include/linux/journal-head.h
+> @@ -45,7 +45,7 @@ struct journal_head {
+> =A0 =A0 =A0 =A0 * has been cowed
+> =A0 =A0 =A0 =A0 * [jbd_lock_bh_state()]
+> =A0 =A0 =A0 =A0 */
+> - =A0 =A0 =A0 unsigned b_cow_tid;
+> + =A0 =A0 =A0 tid_t b_cow_tid;
+>
+> =A0 =A0 =A0 =A0/*
+> =A0 =A0 =A0 =A0 * Copy of the buffer data frozen for writing to the l=
+og.
+> --
+> 1.7.1
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
