@@ -1,40 +1,55 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 39732] JBD: Spotted dirty metadata buffer (dev = dm-2, blocknr
- = 2512725). There's a risk of filesystem corruption in case of system crash.
-Date: Mon, 25 Jul 2011 03:52:00 GMT
-Message-ID: <201107250352.p6P3q0e8020298@demeter2.kernel.org>
-References: <bug-39732-13602@https.bugzilla.kernel.org/>
+From: Utako Kusaka <u-kusaka@wm.jp.nec.com>
+Subject: [PATCH] ext4: Add missing cast in ext4_fallocate
+Date: Mon, 25 Jul 2011 16:33:49 +0900
+Message-ID: <4E2D1C5D.6070103@wm.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:33755 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752497Ab1GYDwB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Jul 2011 23:52:01 -0400
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.4) with ESMTP id p6P3q02F020299
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 25 Jul 2011 03:52:00 GMT
-In-Reply-To: <bug-39732-13602@https.bugzilla.kernel.org/>
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:55675 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750864Ab1GYHeU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Jul 2011 03:34:20 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=39732
+Cast map.m_lblk to loff_t.
+
+File size is corrupt when we get an ENOSPC.
+Logical block number is __u32, so new_size will be set to overflowed value.
+
+# df -T /mnt/mp1
+Filesystem    Type   1K-blocks      Used Available Use% Mounted on
+/dev/sda6     ext4     9843276    153056   9190200   2% /mnt/mp1
+# fallocate -o 0 -l 2199023251456 /mnt/mp1/testfile
+fallocate: /mnt/mp1/testfile: fallocate failed: No space left on device
+# stat /mnt/mp1/testfile
+  File: `/mnt/mp1/testfile'
+  Size: 4293656576	Blocks: 19380440   IO Block: 4096   regular file
+Device: 806h/2054d	Inode: 12          Links: 1
+Access: (0644/-rw-r--r--)  Uid: (    0/    root)   Gid: (    0/    root)
+Access: 2011-07-25 13:01:31.414490496 +0900
+Modify: 2011-07-25 13:01:31.414490496 +0900
+Change: 2011-07-25 13:01:31.454490495 +0900
+
+Signed-off-by: Utako Kusaka <u-kusaka@wm.jp.nec.com>
+--
+ fs/ext4/extents.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index f815cc8..a082f43 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3835,7 +3835,7 @@ retry:
+ 						blkbits) >> blkbits))
+ 			new_size = offset + len;
+ 		else
+-			new_size = (map.m_lblk + ret) << blkbits;
++			new_size = ((loff_t)map.m_lblk + ret) << blkbits;
+
+ 		ext4_falloc_update_inode(inode, mode, new_size,
+ 					 (map.m_flags & EXT4_MAP_NEW));
 
 
-
-
-
---- Comment #1 from Witold Baryluk <baryluk@smp.if.uj.edu.pl>  2011-07-25 03:51:59 ---
-May it be because of bugs in dcache in rc7? If so, then it should not be issue
-in 3.0. I also do not seen this again in later rc7, and 3.0 or after that. It
-was single event.
-
-But it may by also some rare event I accidentally triggered. No data was lost,
-as I safely rebooted system without problem.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
