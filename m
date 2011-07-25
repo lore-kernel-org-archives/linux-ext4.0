@@ -1,45 +1,46 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Filesystem benchmarks on reasonably fast hardware
-Date: Mon, 25 Jul 2011 11:18:25 -0400
-Message-ID: <20110725151825.GI3469@thunk.org>
-References: <20110717160501.GA1437@logfs.org>
- <20110718120751.GH14869@thunk.org>
- <20110718124229.GG1437@logfs.org>
+From: Allison Henderson <achender@linux.vnet.ibm.com>
+Subject: Re: Punch hole patch causes a regression on 1k file systems
+Date: Mon, 25 Jul 2011 08:24:54 -0700
+Message-ID: <4E2D8AC6.80900@linux.vnet.ibm.com>
+References: <20110725031858.GA32714@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: =?iso-8859-1?Q?J=F6rn?= Engel <joern@logfs.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20110718124229.GG1437@logfs.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: "Ted Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e8.ny.us.ibm.com ([32.97.182.138]:50637 "EHLO e8.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752249Ab1GYPY5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Jul 2011 11:24:57 -0400
+Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
+	by e8.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p6PFCDah005364
+	for <linux-ext4@vger.kernel.org>; Mon, 25 Jul 2011 11:12:13 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p6PFOulw139214
+	for <linux-ext4@vger.kernel.org>; Mon, 25 Jul 2011 11:24:56 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p6PFOtVi030454
+	for <linux-ext4@vger.kernel.org>; Mon, 25 Jul 2011 12:24:56 -0300
+In-Reply-To: <20110725031858.GA32714@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 18, 2011 at 02:42:29PM +0200, J=F6rn Engel wrote:
-> On Mon, 18 July 2011 08:07:51 -0400, Ted Ts'o wrote:
-> >=20
-> > Can you send me your script and the lockstat for ext4?
->=20
-> Attached.  The first script generates a bunch of files, the second
-> condenses them into the tabular form.  Will need some massaging to
-> work on anything other than my particular setup, sorry.
->=20
-> > (Please cc the linux-ext4@vger.kernel.org list if you don't mind.
-> > Thanks!!)
->=20
-> Sure.  Lockstat will come later today.  The machine is currently busy
-> regenerating xfs seqrd numbers.
+On 07/24/2011 08:18 PM, Ted Ts'o wrote:
+> Apparently commit a4bb6b64e39a: "ext4: enable "punch hole"
+> functionality" causes a regression on 1k block file systems.  It
+> causes failures for xfstests #75, #112, #127.  This shows when using
+> file systems with a 1k block file system.  (I assume this means it
+> will also show up on Power systems with 16k pages and 4k file system
+> blocks...)
+>
+> Enclosed please find the log of the xfstests run for commit a4bb6b6
+> and e861304 (where e861304 is the parent commit for a4bb6b6).
+>
+> Allison, could you take a look into this, please?  Many thanks!!
+>
+> 	       	   	       	    	  	   - Ted
+>
+Alrighty, I will look into it.  Thx Ted!
 
-Hi J=F6rn,
-
-Did you have a chance to do an ext4 lockstat run?
-
-Many thanks!!
-
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Allison Henderson
