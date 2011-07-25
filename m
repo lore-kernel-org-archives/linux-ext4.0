@@ -1,93 +1,50 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: flashing large eMMC partitions with ext4
-Date: Mon, 25 Jul 2011 21:36:36 +0300
-Message-ID: <CAOQ4uxgh-T5f8e2McZQcFW3e7oBV+iDVGWBW7oXnv5oztk4z0Q@mail.gmail.com>
-References: <20110722154936.30251.qmail@web4208.mail.ogk.yahoo.co.jp>
-	<20110725181043.GK3469@thunk.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: Filesystem benchmarks on reasonably fast hardware
+Date: Mon, 25 Jul 2011 17:18:10 -0400
+Message-ID: <20110725211810.GL3469@thunk.org>
+References: <20110717160501.GA1437@logfs.org>
+ <20110718120751.GH14869@thunk.org>
+ <20110718124229.GG1437@logfs.org>
+ <20110725151825.GI3469@thunk.org>
+ <20110725182037.GE26160@logfs.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=iso-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Round Robinjp <roundrobinjp@yahoo.co.jp>,
-	linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: =?iso-8859-1?Q?J=F6rn?= Engel <joern@logfs.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:50349 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751563Ab1GYSgh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Jul 2011 14:36:37 -0400
-Received: by wyg8 with SMTP id 8so2947314wyg.19
-        for <linux-ext4@vger.kernel.org>; Mon, 25 Jul 2011 11:36:36 -0700 (PDT)
-In-Reply-To: <20110725181043.GK3469@thunk.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:40442 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752119Ab1GYVSO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Jul 2011 17:18:14 -0400
+Content-Disposition: inline
+In-Reply-To: <20110725182037.GE26160@logfs.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 25, 2011 at 9:10 PM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Sat, Jul 23, 2011 at 12:49:28AM +0900, Round Robinjp wrote:
->> Hi
->>
->> I have a question regarding making ext4 image for
->> large eMMC partition.
->>
->> We have a 4G partition in our embedded device
->> in which we want to use ext4 filesystem.
->> But for that we have to create a 4G image.
->> flashing this 4G image to the eMMC takes a long
->> time. Is there any way to reduce this time?
->>
->> For vfat, you can truncate the image leaving only
->> non zero-filled blocks which makes the image very
->> short and the time for flashing is reduced.
->> Is something similar to that possible for ext4?
->
-> OK, so it's not obvious what problem you are trying to ask here.
->
-> It sounds like Andreas was trying to help you solve the problem of
-> minimizing the number of blocks written by mke2fs.
->
-> I'm guessing the problem is you've already created a file system imag=
-e
-> which is 4G, and for which a large number of the blocks are not used,
-> and you're trying to optimize the amount of time it takes to flash th=
-e
-> image. =A0Is that right?
->
+On Mon, Jul 25, 2011 at 08:20:37PM +0200, J=F6rn Engel wrote:
+> On Mon, 25 July 2011 11:18:25 -0400, Ted Ts'o wrote:
+> >=20
+> > Did you have a chance to do an ext4 lockstat run?
+>=20
+> Yes, I did.  But your mails keep bouncing, so you have to look at the
+> list to see it (or this mail).  Yes, I lack a proper reverse DNS
+> record, as the IP belongs to my provider, not me.  Most people don't
+> care, some bounce, some silently ignore my mail.  The joys of spam
+> filtering.
 
-I am going to make a 3rd guess and we will see who was closest ;-)
-My guess is that Round wan't a "short" image, just like he wrote.
-vfat image can simply be truncated, because all initial blocks are at t=
-he
-beginning of the partition.
+I didn't see the ext4 lockstat on the list.  Can you resend it to
+tytso@google.com or theodore.tso@gmail.com?  MIT is using an
+outsourced SPAM provider (Brightmail anti-spam), and I can't do
+anything about that, unfortunately.  From what I can tell the
+Brightmail doesn't drop all e-mails from non-resolving IP's, but if
+it's in a "bad neighborhood" (i.e., your neighbors are all spammers,
+or belong to Windows users where 80% of the machines are spambots),
+Brightmail is probably going to flag your mail as spam.  :-(
 
-One could truncate the result of an ext4 image to quite less than 4G,
-for example, if flex_bg is set to 32, all bitmaps are at the block grou=
-p 0.
-copies of the super block can be discarded, since one has the copy in
-the image file.
+Thanks!
 
-The only important piece of information, not in the beginning of the pa=
-rtition
-is the super block of the journal, which is usually in the middle of th=
-e fs,
-so one needs do some tricks to allocate the journal from group 0.
-Is there a mke2fs option to do that?
-
-All-in-all, I think it should be easy to prepare a 4G image that could
-be truncated
-to one group (128M).
-
-Amir.
-
-> The way to do that is to use a program like zerofree.c (google it, or
-> see attached) to make sure the non-used blocks are zero-filled, and
-> then use a program like make-sparse.c (see the e2fsprogs sources, in
-> the contrib directory) to only write the non-zero blocks to the flash
-> device.
->
-> Regards,
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0- Ted
->
+					- Ted
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
