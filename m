@@ -1,53 +1,61 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: flashing large eMMC partitions with ext4
-Date: Tue, 26 Jul 2011 00:13:54 -0400
-Message-ID: <2F7A8BEF-0AF3-4642-A8BD-CDF30AB3917F@mit.edu>
-References: <20110722154936.30251.qmail@web4208.mail.ogk.yahoo.co.jp> <20110725181043.GK3469@thunk.org> <CAOQ4uxgh-T5f8e2McZQcFW3e7oBV+iDVGWBW7oXnv5oztk4z0Q@mail.gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: Round Robinjp <roundrobinjp@yahoo.co.jp>,
-	linux-ext4@vger.kernel.org
-To: Amir Goldstein <amir73il@gmail.com>
+From: Robin Dong <hao.bigrat@gmail.com>
+Subject: [PATCH] ext4: add action of moving index in ext4_ext_rm_idx for Punch Hole
+Date: Tue, 26 Jul 2011 15:34:59 +0800
+Message-ID: <1311665699-22023-1-git-send-email-hao.bigrat@gmail.com>
+Cc: Robin Dong <sanbai@taobao.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DMZ-MAILSEC-SCANNER-1.MIT.EDU ([18.9.25.12]:49958 "EHLO
-	dmz-mailsec-scanner-1.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750757Ab1GZEN7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Jul 2011 00:13:59 -0400
-In-Reply-To: <CAOQ4uxgh-T5f8e2McZQcFW3e7oBV+iDVGWBW7oXnv5oztk4z0Q@mail.gmail.com>
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:60702 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751142Ab1GZHfH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Jul 2011 03:35:07 -0400
+Received: by pzk37 with SMTP id 37so394727pzk.1
+        for <linux-ext4@vger.kernel.org>; Tue, 26 Jul 2011 00:35:06 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+From: Robin Dong <sanbai@taobao.com>
 
-On Jul 25, 2011, at 2:36 PM, Amir Goldstein wrote:
+The old function ext4_ext_rm_idx is used only for truncate case because
+it just remove last index in extent-index-block. When punching hole,
+it usually needed to remove "middle" index, therefore we must move indexes
+which after it forward.
 
-> I am going to make a 3rd guess and we will see who was closest ;-)
-> My guess is that Round wan't a "short" image, just like he wrote.
-> vfat image can simply be truncated, because all initial blocks are at the
-> beginning of the partition.
+(I create a file with 1 depth extent tree and punch hole in the middle of it,
+the last index in index-block strangly gone, so I find out this bug)
 
-Sure, but why did he want a "short"/truncated image?  Because it's faster
-to load onto the flash device for mass production, right?
+Signed-off-by: Robin Dong <sanbai@taobao.com>
+---
+ fs/ext4/extents.c |    9 +++++++--
+ 1 files changed, 7 insertions(+), 2 deletions(-)
 
-If you can do that with a specialized tool that writes the necessary blocks 
-and not the ones that are all zeros, it solves his high-level need.
-
-> One could truncate the result of an ext4 image to quite less than 4G,
-> for example, if flex_bg is set to 32, all bitmaps are at the block group 0.
-> copies of the super block can be discarded, since one has the copy in
-> the image file.
-
-You could do that, but it's a lot more complicated, and you still need
-to write a tool that determines the first block where it is safe to truncate
-away the backup superblocks.  And you have to hack mke2fs, and use
-special options to make sure the flex bg size is large enough so that
-all of the block group descriptors are the beginning of the disk.
-
-It's much simpler to use a sparse image and then use a special tool
-to write the file system image onto the MMC device.   The approach
-you outlined can work, but it's a lot more complicated and easy 
-to mess up.
-
--- Ted
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 4d73e11..a25bbdc 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2101,8 +2101,6 @@ ext4_ext_in_cache(struct inode *inode, ext4_lblk_t block,
+ /*
+  * ext4_ext_rm_idx:
+  * removes index from the index block.
+- * It's used in truncate case only, thus all requests are for
+- * last index in the block only.
+  */
+ static int ext4_ext_rm_idx(handle_t *handle, struct inode *inode,
+ 			struct ext4_ext_path *path)
+@@ -2120,6 +2118,13 @@ static int ext4_ext_rm_idx(handle_t *handle, struct inode *inode,
+ 	err = ext4_ext_get_access(handle, inode, path);
+ 	if (err)
+ 		return err;
++
++	if (path->p_idx != EXT_LAST_INDEX(path->p_hdr)) {
++		int len = EXT_LAST_INDEX(path->p_hdr) - path->p_idx;
++		len *= sizeof(struct ext4_extent_idx);
++		memmove(path->p_idx, path->p_idx + 1, len);
++	}
++
+ 	le16_add_cpu(&path->p_hdr->eh_entries, -1);
+ 	err = ext4_ext_dirty(handle, inode, path);
+ 	if (err)
+-- 
+1.7.3.2
 
