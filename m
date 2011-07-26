@@ -1,47 +1,54 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Filesystem benchmarks on reasonably fast hardware
-Date: Tue, 26 Jul 2011 10:57:36 -0400
-Message-ID: <20110726145736.GA7684@thunk.org>
-References: <20110717160501.GA1437@logfs.org>
- <20110718120751.GH14869@thunk.org>
- <20110718124229.GG1437@logfs.org>
- <20110725151825.GI3469@thunk.org>
- <20110725182037.GE26160@logfs.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH XFSPROGS 2/3] Build without enabling DEBUG by default
+Date: Tue, 26 Jul 2011 11:10:33 -0400
+Message-ID: <20110726151033.GA18311@infradead.org>
+References: <1311292237-4155-1-git-send-email-tytso@mit.edu>
+ <1311292237-4155-2-git-send-email-tytso@mit.edu>
+ <20110722141753.GA19681@infradead.org>
+ <20110722183048.GC25092@thunk.org>
+ <20110722183830.GA21744@infradead.org>
+ <20110722223458.GD25092@thunk.org>
+ <20110723013214.GA22837@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: =?iso-8859-1?Q?J=F6rn?= Engel <joern@logfs.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	xfs@oss.sgi.com
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:37832 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753334Ab1GZO5r (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Jul 2011 10:57:47 -0400
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:37961
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751573Ab1GZPKg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Jul 2011 11:10:36 -0400
 Content-Disposition: inline
-In-Reply-To: <20110725182037.GE26160@logfs.org>
+In-Reply-To: <20110723013214.GA22837@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 25, 2011 at 08:20:37PM +0200, J=F6rn Engel wrote:
-> On Mon, 25 July 2011 11:18:25 -0400, Ted Ts'o wrote:
-> >=20
-> > Did you have a chance to do an ext4 lockstat run?
+On Fri, Jul 22, 2011 at 09:32:14PM -0400, Christoph Hellwig wrote:
+> > diff --git a/include/builddefs.in b/include/builddefs.in
+> > index 4c8ec64..81ebfcd 100644
+> > --- a/include/builddefs.in
+> > +++ b/include/builddefs.in
+> > @@ -25,6 +25,7 @@ OPTIMIZER = @opt_build@
+> >  MALLOCLIB = @malloc_lib@
+> >  LOADERFLAGS = @LDFLAGS@
+> >  LTLDFLAGS = @LDFLAGS@
+> > +CFLAGS = @CFLAGS@
+> >  
+> >  LIBRT = @librt@
+> >  LIBUUID = @libuuid@
+> > 
+> > Then I don't have to set an environment variable when running make; I
+> > just have to pass it to configure.
+> 
+> This looks much better, and is indeed similar to some other fixes we
+> recently had to put in, probably due to changing make behaviour.
+> 
+> If you add a signoff and a proper description I'll put it into all the
+> repositories.
 
-Hi J=F6rn,
+Can you at least provide the signoff?  I can take care of the rest if
+this means I can get it in ASAP.
 
-Thanks for forwarding it to me.  It's the same problem as in XFS, the
-excessive coverage of the i_mutex lock.  In ext4's case, it's in the
-generic generic_file_aio_write() machinery where we need to do the
-lock busting.  (XFS apparently doesn't use the generic routines, so
-the fix that Dave did won't help ext3 and ext4.)
-
-I don't have the time to look at it now, but I'll put it on my todo
-list; or maybe someone with a bit more time can look into how we might
-be able to use a similar approach in the generic file system code.
-
-   	       	 	 	     	 	 - Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
