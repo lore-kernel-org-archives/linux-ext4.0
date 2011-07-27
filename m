@@ -1,38 +1,51 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: RCU locking issues in jbd2_dev_to_name
-Date: Wed, 27 Jul 2011 07:28:27 -0400
-Message-ID: <7A69E96B-0763-4440-BE10-A39B808C44FA@mit.edu>
-References: <20110727174104.65fb9c1c@notabene.brown>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org,
-	"Paul E.McKenney" <paulmck@linux.vnet.ibm.com>
-To: NeilBrown <neilb@suse.de>
+From: Round Robinjp <roundrobinjp@yahoo.co.jp>
+Subject: Re: flashing large eMMC partitions with ext4
+Date: Thu, 28 Jul 2011 01:40:48 +0900 (JST)
+Message-ID: <134141.91415.qm@web4210.mail.ogk.yahoo.co.jp>
+References: <20110727012139.GB19851@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8BIT
+Cc: linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DMZ-MAILSEC-SCANNER-5.MIT.EDU ([18.7.68.34]:64102 "EHLO
-	dmz-mailsec-scanner-5.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752848Ab1G0L2d (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Jul 2011 07:28:33 -0400
-In-Reply-To: <20110727174104.65fb9c1c@notabene.brown>
+Received: from web4210.mail.ogk.yahoo.co.jp ([124.83.212.30]:27640 "HELO
+	web4210.mail.ogk.yahoo.co.jp" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1753572Ab1G0Qku convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Jul 2011 12:40:50 -0400
+In-Reply-To: <20110727012139.GB19851@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-On Jul 27, 2011, at 3:41 AM, NeilBrown wrote:
-
+> > The flash will then contain _random_ data in the non-used blocks.
+> > That is not a problem, right?
 > 
+> Nope.  So long as the previously written (random) data on the card
+> doesn't contain anything security sensitive.
+
+I understood.
+
+> > Although I have very small amount of files in my 4G image,
+> > I see that the image has almost no zero-filled blocks.
+> > Is that normal for ext4?
 > 
-> Hi Ted and all,
+> It depends on how you created the image.
+
+I create the image like this:
+
+dd if=/dev/zero of=a.img bs=4096 count=1048576
+mkfs.ext4 a.img
+mount -t ext4 -o loop a.img /mnt
+cp -a /foo/* /mnt/
+umount /mnt
+
+> > Can zerofree.c recognize them as non-used blocks?
 > 
-> I've been exploring RCU usage in the kernel looking for strange things, and
-> jbd2_dev_to_name looks particularly strange.  The following patch explains
-> and addresses the issues that I found.  Comments welcome.
+> Yes, it uses the block allocation bitmaps to understand what is used
+> and non-used.
 
-Yeah its broken.  But I have patches pending for the merge window that solve
-it by nuking the function altogether; the problem is calling a function from
-TP_PRINTK causes perf to die on the spot, terminating its tracing.  :-(
+Great.
 
-- Ted
-
+Thanks
+Round
