@@ -1,163 +1,40 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: let setup_new_group_blocks() set multiple bits at a time
-Date: Tue, 26 Jul 2011 22:15:50 -0400
-Message-ID: <1311732950-26194-1-git-send-email-tytso@mit.edu>
-References: <1311048137-16400-8-git-send-email-xiaoqiangnk@gmail.com>
-Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	"Theodore Ts'o" <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2 08/11] ext4: simplify journal handling in
+ setup_new_group_blocks()
+Date: Tue, 26 Jul 2011 22:23:22 -0400
+Message-ID: <20110727022322.GJ19851@thunk.org>
+References: <1311048137-16400-1-git-send-email-xiaoqiangnk@gmail.com>
+ <1311048137-16400-9-git-send-email-xiaoqiangnk@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, adilger@dilger.ca, amir73il@gmail.com,
+	tm@tao.ma
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:50185 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:43328 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751532Ab1G0CPx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Jul 2011 22:15:53 -0400
-In-Reply-To: <1311048137-16400-8-git-send-email-xiaoqiangnk@gmail.com>
+	id S1753782Ab1G0CXZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Jul 2011 22:23:25 -0400
+Content-Disposition: inline
+In-Reply-To: <1311048137-16400-9-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+On Tue, Jul 19, 2011 at 12:02:14PM +0800, Yongqiang Yang wrote:
+> This patch simplifies journal handling in setup_new_group_blocks().
+> 
+> In previous code, block bitmap is modified everywhere in
+> setup_new_group_blocks(), ext4_get_write_access() in
+> extend_or_restart_transaction() is used to guarantee that the block bitmap
+> stays in the new handle, this makes things complicated.
+> 
+> In this patch the modifications on the block bitmap are batched and done
+> by ext4_set_bits() after reqesting a handle from extend_or_restart_transaction()
+> with enough credits.  So ext4_get_write_access() can be removed from
+> extend_or_restart_transaction().
+> 
+> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 
-Rename mb_set_bits() to ext4_set_bits() and make it a global function
-so that setup_new_group_blocks() can use it.
+Applied, thanks.
 
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
-
-I used this instead of your "[PATCH v2 07/11] ext4: let
-setup_new_group_blocks() set multi-bits each time"; I renamed
-mb_set_bits() instead of making ext4_set_bits() call mb_set_bits(), to
-avoid the redundancy.
-
- fs/ext4/ext4.h    |    2 ++
- fs/ext4/mballoc.c |   15 ++++++++-------
- fs/ext4/resize.c  |   18 +++++++-----------
- 3 files changed, 17 insertions(+), 18 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index da7ab48..ba2009b 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -940,6 +940,8 @@ struct ext4_inode_info {
- #define ext4_find_next_zero_bit		find_next_zero_bit_le
- #define ext4_find_next_bit		find_next_bit_le
- 
-+extern void ext4_set_bits(void *bm, int cur, int len);
-+
- /*
-  * Maximal mount counts between two filesystem checks
-  */
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index b6ef4da..fa716c9 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1282,7 +1282,7 @@ static void mb_clear_bits(void *bm, int cur, int len)
- 	}
- }
- 
--static void mb_set_bits(void *bm, int cur, int len)
-+void ext4_set_bits(void *bm, int cur, int len)
- {
- 	__u32 *addr;
- 
-@@ -1511,7 +1511,7 @@ static int mb_mark_used(struct ext4_buddy *e4b, struct ext4_free_extent *ex)
- 	}
- 	mb_set_largest_free_order(e4b->bd_sb, e4b->bd_info);
- 
--	mb_set_bits(EXT4_MB_BITMAP(e4b), ex->fe_start, len0);
-+	ext4_set_bits(EXT4_MB_BITMAP(e4b), ex->fe_start, len0);
- 	mb_check_buddy(e4b);
- 
- 	return ret;
-@@ -2795,8 +2795,8 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 		 * We leak some of the blocks here.
- 		 */
- 		ext4_lock_group(sb, ac->ac_b_ex.fe_group);
--		mb_set_bits(bitmap_bh->b_data, ac->ac_b_ex.fe_start,
--			    ac->ac_b_ex.fe_len);
-+		ext4_set_bits(bitmap_bh->b_data, ac->ac_b_ex.fe_start,
-+			      ac->ac_b_ex.fe_len);
- 		ext4_unlock_group(sb, ac->ac_b_ex.fe_group);
- 		err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
- 		if (!err)
-@@ -2814,7 +2814,8 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 		}
- 	}
- #endif
--	mb_set_bits(bitmap_bh->b_data, ac->ac_b_ex.fe_start,ac->ac_b_ex.fe_len);
-+	ext4_set_bits(bitmap_bh->b_data, ac->ac_b_ex.fe_start,
-+		      ac->ac_b_ex.fe_len);
- 	if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
- 		gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
- 		ext4_free_blks_set(sb, gdp,
-@@ -3284,7 +3285,7 @@ static void ext4_mb_generate_from_freelist(struct super_block *sb, void *bitmap,
- 
- 	while (n) {
- 		entry = rb_entry(n, struct ext4_free_data, node);
--		mb_set_bits(bitmap, entry->start_blk, entry->count);
-+		ext4_set_bits(bitmap, entry->start_blk, entry->count);
- 		n = rb_next(n);
- 	}
- 	return;
-@@ -3326,7 +3327,7 @@ void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
- 		if (unlikely(len == 0))
- 			continue;
- 		BUG_ON(groupnr != group);
--		mb_set_bits(bitmap, start, len);
-+		ext4_set_bits(bitmap, start, len);
- 		preallocated += len;
- 		count++;
- 	}
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 5f0aefd..178fb2f 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -217,11 +217,6 @@ static int setup_new_group_blocks(struct super_block *sb,
- 		goto exit_journal;
- 	}
- 
--	if (ext4_bg_has_super(sb, input->group)) {
--		ext4_debug("mark backup superblock %#04llx (+0)\n", start);
--		ext4_set_bit(0, bh->b_data);
--	}
--
- 	/* Copy all of the GDT blocks into the backup in this group */
- 	for (i = 0, bit = 1, block = start + 1;
- 	     i < gdblocks; i++, block++, bit++) {
-@@ -250,7 +245,6 @@ static int setup_new_group_blocks(struct super_block *sb,
- 			brelse(gdb);
- 			goto exit_bh;
- 		}
--		ext4_set_bit(bit, bh->b_data);
- 		brelse(gdb);
- 	}
- 
-@@ -261,8 +255,11 @@ static int setup_new_group_blocks(struct super_block *sb,
- 			       GFP_NOFS);
- 	if (err)
- 		goto exit_bh;
--	for (i = 0, bit = gdblocks + 1; i < reserved_gdb; i++, bit++)
--		ext4_set_bit(bit, bh->b_data);
-+
-+	if (ext4_bg_has_super(sb, input->group)) {
-+		ext4_debug("mark backup group tables %#04llx (+0)\n", start);
-+		ext4_set_bits(bh->b_data, 0, gdblocks + reserved_gdb + 1);
-+	}
- 
- 	ext4_debug("mark block bitmap %#04llx (+%llu)\n", input->block_bitmap,
- 		   input->block_bitmap - start);
-@@ -278,9 +275,8 @@ static int setup_new_group_blocks(struct super_block *sb,
- 	err = sb_issue_zeroout(sb, block, sbi->s_itb_per_group, GFP_NOFS);
- 	if (err)
- 		goto exit_bh;
--	for (i = 0, bit = input->inode_table - start;
--	     i < sbi->s_itb_per_group; i++, bit++)
--		ext4_set_bit(bit, bh->b_data);
-+	ext4_set_bits(bh->b_data, input->inode_table - start,
-+		      sbi->s_itb_per_group);
- 
- 	if ((err = extend_or_restart_transaction(handle, 2, bh)))
- 		goto exit_bh;
--- 
-1.7.4.1.22.gec8e1.dirty
-
+						- Ted
