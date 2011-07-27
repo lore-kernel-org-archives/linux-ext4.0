@@ -1,34 +1,52 @@
-From: Al Viro <viro@ZenIV.linux.org.uk>
-Subject: Re: [PATCH] ext4: fix races in ext4_sync_parent()
-Date: Wed, 27 Jul 2011 02:15:54 +0100
-Message-ID: <20110727011554.GN22133@ZenIV.linux.org.uk>
-References: <1311729192-30598-1-git-send-email-tytso@mit.edu>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: flashing large eMMC partitions with ext4
+Date: Tue, 26 Jul 2011 21:21:39 -0400
+Message-ID: <20110727012139.GB19851@thunk.org>
+References: <20110725181043.GK3469@thunk.org>
+ <20110726173822.24068.qmail@web4211.mail.ogk.yahoo.co.jp>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+To: Round Robinjp <roundrobinjp@yahoo.co.jp>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:46670 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751782Ab1G0BP5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Jul 2011 21:15:57 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:48579 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752356Ab1G0BVl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Jul 2011 21:21:41 -0400
 Content-Disposition: inline
-In-Reply-To: <1311729192-30598-1-git-send-email-tytso@mit.edu>
+In-Reply-To: <20110726173822.24068.qmail@web4211.mail.ogk.yahoo.co.jp>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 26, 2011 at 09:13:12PM -0400, Theodore Ts'o wrote:
-> +	inode = igrab(inode);
-> +	while (ext4_test_inode_state(inode, EXT4_STATE_NEWENTRY)) {
->  		ext4_clear_inode_state(inode, EXT4_STATE_NEWENTRY);
-> -		dentry = list_entry(inode->i_dentry.next,
-> -				    struct dentry, d_alias);
-> -		if (!dentry || !dentry->d_parent || !dentry->d_parent->d_inode)
-> +		dentry = list_first_entry(&inode->i_dentry,
-> +					  struct dentry, d_alias);
+On Wed, Jul 27, 2011 at 02:38:19AM +0900, Round Robinjp wrote:
+> 
+> I see.
+> The flash will then contain _random_ data in the non-used blocks.
+> That is not a problem, right?
 
-... and what if you don't have a dentry for that inode anymore?
+Nope.  So long as the previously written (random) data on the card
+doesn't contain anything security sensitive.
 
-> +		next = igrab(dentry->d_parent->d_inode);
+So for example, if someone used a microSD card to transfer credit card
+numbers from their e-commerce website to their credit card processor,
+and then afterwards, deciding they didn't need the card any more, and
+dropped it into a bin at the production line where it got flashed and
+put into a cell phone that was then shipped to Best Buy, then the
+non-used blocks wouldn't get written and credit card numbers might get
+exposed.  But that's probably only something that folks who designed
+the security systems at Sony would do, so there's nothing to worry
+about.  :-)
 
-what protects you against rename() (OK, d_mode()) here?
+> One more thing.
+> Although I have very small amount of files in my 4G image,
+> I see that the image has almost no zero-filled blocks.
+> Is that normal for ext4?
+
+It depends on how you created the image.
+
+> Can zerofree.c recognize them as non-used blocks?
+
+Yes, it uses the block allocation bitmaps to understand what is used
+and non-used.
+
+						- Ted
