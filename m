@@ -1,52 +1,37 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: flashing large eMMC partitions with ext4
-Date: Tue, 26 Jul 2011 21:21:39 -0400
-Message-ID: <20110727012139.GB19851@thunk.org>
-References: <20110725181043.GK3469@thunk.org>
- <20110726173822.24068.qmail@web4211.mail.ogk.yahoo.co.jp>
+Subject: Re: [PATCH] ext4: Fix data corruption in inodes with journalled
+ data
+Date: Tue, 26 Jul 2011 21:27:38 -0400
+Message-ID: <20110727012738.GC19851@thunk.org>
+References: <1311381577-31406-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Round Robinjp <roundrobinjp@yahoo.co.jp>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:48579 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:47372 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752356Ab1G0BVl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Jul 2011 21:21:41 -0400
+	id S1751223Ab1G0B1m (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Jul 2011 21:27:42 -0400
 Content-Disposition: inline
-In-Reply-To: <20110726173822.24068.qmail@web4211.mail.ogk.yahoo.co.jp>
+In-Reply-To: <1311381577-31406-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 27, 2011 at 02:38:19AM +0900, Round Robinjp wrote:
+On Sat, Jul 23, 2011 at 02:39:37AM +0200, Jan Kara wrote:
+> When journalling data for an inode (either because it is a symlink or
+> because the filesystem is mounted in data=journal mode), ext4_evict_inode()
+> can discard unwritten data by calling truncate_inode_pages(). This is
+> because we don't mark the buffer / page dirty when journalling data but only
+> add the buffer to the running transaction and thus mm does not know there
+> are still unwritten data.
 > 
-> I see.
-> The flash will then contain _random_ data in the non-used blocks.
-> That is not a problem, right?
+> Fix the problem by carefully tracking transaction containing inode's data,
+> committing this transaction, and writing uncheckpointed buffers when inode
+> should be reaped.
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-Nope.  So long as the previously written (random) data on the card
-doesn't contain anything security sensitive.
+Thanks, applied to the ext4 tree.
 
-So for example, if someone used a microSD card to transfer credit card
-numbers from their e-commerce website to their credit card processor,
-and then afterwards, deciding they didn't need the card any more, and
-dropped it into a bin at the production line where it got flashed and
-put into a cell phone that was then shipped to Best Buy, then the
-non-used blocks wouldn't get written and credit card numbers might get
-exposed.  But that's probably only something that folks who designed
-the security systems at Sony would do, so there's nothing to worry
-about.  :-)
-
-> One more thing.
-> Although I have very small amount of files in my 4G image,
-> I see that the image has almost no zero-filled blocks.
-> Is that normal for ext4?
-
-It depends on how you created the image.
-
-> Can zerofree.c recognize them as non-used blocks?
-
-Yes, it uses the block allocation bitmaps to understand what is used
-and non-used.
-
-						- Ted
+					- Ted
