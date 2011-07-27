@@ -1,42 +1,38 @@
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Subject: [PATCH 3/3] nfsd: vfs_llseek() with O_32BITHASH or O_64BITHASH
-Date: Wed, 27 Jul 2011 13:02:59 +0200
-Message-ID: <20110727110259.204979.56782.stgit@localhost.localdomain>
-References: <20110727110148.204979.49551.stgit@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: RCU locking issues in jbd2_dev_to_name
+Date: Wed, 27 Jul 2011 07:28:27 -0400
+Message-ID: <7A69E96B-0763-4440-BE10-A39B808C44FA@mit.edu>
+References: <20110727174104.65fb9c1c@notabene.brown>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
-	adilger@whamcloud.com, tytso@mit.edu
-To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20110727110148.204979.49551.stgit@localhost.localdomain>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org,
+	"Paul E.McKenney" <paulmck@linux.vnet.ibm.com>
+To: NeilBrown <neilb@suse.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from DMZ-MAILSEC-SCANNER-5.MIT.EDU ([18.7.68.34]:64102 "EHLO
+	dmz-mailsec-scanner-5.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752848Ab1G0L2d (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Jul 2011 07:28:33 -0400
+In-Reply-To: <20110727174104.65fb9c1c@notabene.brown>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Use 32-bit or 64-bit llseek() hashes for directory offsets depending on
-the NFS version. NFSv2 gets 32-bit hashes only.
 
-Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
----
- fs/nfsd/vfs.c |    6 ++++++
- 1 files changed, 6 insertions(+), 0 deletions(-)
+On Jul 27, 2011, at 3:41 AM, NeilBrown wrote:
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index fd0acca..d79bbcd 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1994,6 +1994,12 @@ nfsd_readdir(struct svc_rqst *rqstp, struct svc_fh *fhp, loff_t *offsetp,
- 	if (err)
- 		goto out;
- 
-+	/* NFSv2 only supports 32 bit cookies */
-+	if (rqstp->rq_vers > 2)
-+		file->f_flags &= O_64BITHASH;
-+	else
-+		file->f_flags &= O_32BITHASH;
-+
- 	offset = vfs_llseek(file, offset, 0);
- 	if (offset < 0) {
- 		err = nfserrno((int)offset);
+> 
+> 
+> Hi Ted and all,
+> 
+> I've been exploring RCU usage in the kernel looking for strange things, and
+> jbd2_dev_to_name looks particularly strange.  The following patch explains
+> and addresses the issues that I found.  Comments welcome.
+
+Yeah its broken.  But I have patches pending for the merge window that solve
+it by nuking the function altogether; the problem is calling a function from
+TP_PRINTK causes perf to die on the spot, terminating its tracing.  :-(
+
+- Ted
 
