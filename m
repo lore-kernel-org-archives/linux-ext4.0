@@ -1,69 +1,69 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: Filesystem benchmarks on reasonably fast hardware
-Date: Wed, 27 Jul 2011 11:39:08 +0800
-Message-ID: <CAGBYx2aSK2p9_X45p5AM=BPFOzwWDHUDxtf3Q7xrvT1dHKrquw@mail.gmail.com>
-References: <20110717160501.GA1437@logfs.org>
-	<20110718120751.GH14869@thunk.org>
-	<20110718124229.GG1437@logfs.org>
-	<20110725151825.GI3469@thunk.org>
-	<20110725182037.GE26160@logfs.org>
-	<20110726145736.GA7684@thunk.org>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [PATCH 0/2] Add inode checksum support to ext4
+Date: Wed, 27 Jul 2011 01:27:30 -0700
+Message-ID: <20110727082730.GG20655@tux1.beaverton.ibm.com>
+References: <20110406224410.GB24354@tux1.beaverton.ibm.com> <1302290868.4461.7.camel@mingming-laptop>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: =?ISO-8859-1?Q?J=F6rn_Engel?= <joern@logfs.org>,
-	"Ted Ts'o" <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20110726145736.GA7684@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: Mingming Cao <cmm@us.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e35.co.us.ibm.com ([32.97.110.153]:58072 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751813Ab1G0I10 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Jul 2011 04:27:26 -0400
+Content-Disposition: inline
+In-Reply-To: <1302290868.4461.7.camel@mingming-laptop>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi  J=F6rn and Ted,
+On Fri, Apr 08, 2011 at 12:27:48PM -0700, Mingming Cao wrote:
+> On Wed, 2011-04-06 at 15:44 -0700, Darrick J. Wong wrote:
+> > Hi all,
+> > 
+> > I spent last week analyzing a client's corrupted ext3 image to see if I could
+> > determine what had gone wrong and caused the filesystem to blow apart.  As best
+> > as I could tell, a data block got miswritten into a different sector ... which
+> > happened to be an indirect block.  Some time later the indirect block, which
+> > now pointed at one of the inode tables (among other things that shouldn't ever
+> > become file data) was loaded as part of a file write, which caused that inode
+> > table to be blown to smithereens.  Just for fun I tried reading from one of
+> > these busted-inode files and ... failed to encounter any errors.  Somehow, they
+> > didn't find it funny that ext3 would read block numbers from a table with the
+> > contents "ibm.com" with a straight face.  Fortunately there were backups. :)
+> > 
+> > The client at this point asked if ext4 would do a better job of sanity
+> > checking, which got me to wonder why ext4 checksums block groups but not
+> > inodes.  It's on Ted's todo list, but apparently nobody wrote any patch, so I
+> > did.  The following two patches are a first draft of adding inode checksum
+> > support to both the kernel driver and to the various e2fsprogs.
+> > 
+> 
+> We had some discussion about this week at SF (at the ext4 bof at the
+> linux colloboration summit). Beyond checksumming the inode itself, it
+> would be more useful to checksum the extent indexing blocks, as the ext3
+> corruption actually happen at the indirect block.  
+> 
+> The idea is to reduce the eh_max (the max # of extents stored in this
+> block) to save some space to store the checksums in the block, 
+> 
+> /*
+>  * Each block (leaves and indexes), even inode-stored has header.
+>  */
+> struct ext4_extent_header {
+>         __le16  eh_magic;       /* probably will support different
+> formats */
+>         __le16  eh_entries;     /* number of valid entries */
+>         __le16  eh_max;         /* capacity of store in entries */
+>         __le16  eh_depth;       /* has tree real underlying blocks? */
+>         __le32  eh_generation;  /* generation of the tree */
 
-Could you anyone send out the ext4 lock stat on the list?
+Does anyone use eh_generation?  Linux 3.0 shows no users and it didn't look like
+the snapshot patches do either.  If nobody intends to start using this field,
+(part of) it could become eh_checksum.
 
-Thank you,
-Yongqiang.
-
-
-On Tue, Jul 26, 2011 at 10:57 PM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Mon, Jul 25, 2011 at 08:20:37PM +0200, J=F6rn Engel wrote:
->> On Mon, 25 July 2011 11:18:25 -0400, Ted Ts'o wrote:
->> >
->> > Did you have a chance to do an ext4 lockstat run?
->
-> Hi J=F6rn,
->
-> Thanks for forwarding it to me. =A0It's the same problem as in XFS, t=
-he
-> excessive coverage of the i_mutex lock. =A0In ext4's case, it's in th=
-e
-> generic generic_file_aio_write() machinery where we need to do the
-> lock busting. =A0(XFS apparently doesn't use the generic routines, so
-> the fix that Dave did won't help ext3 and ext4.)
->
-> I don't have the time to look at it now, but I'll put it on my todo
-> list; or maybe someone with a bit more time can look into how we migh=
-t
-> be able to use a similar approach in the generic file system code.
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 - Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
-
-
-
---=20
-Best Wishes
-Yongqiang Yang
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--D
