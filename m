@@ -1,42 +1,52 @@
-From: Sven Eckelmann <sven@narfation.org>
-Subject: [PATCHv4 07/11] ext4: Use *_dec_not_zero instead of *_add_unless
-Date: Wed, 27 Jul 2011 11:47:46 +0200
-Message-ID: <1311760070-21532-7-git-send-email-sven@narfation.org>
-References: <1311760070-21532-1-git-send-email-sven@narfation.org>
-Cc: linux-kernel@vger.kernel.org, Sven Eckelmann <sven@narfation.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-To: linux-arch@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1311760070-21532-1-git-send-email-sven@narfation.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Subject: [PATCH 0/3] 32/64 bit llseek hashes
+Date: Wed, 27 Jul 2011 13:02:44 +0200
+Message-ID: <20110727110148.204979.49551.stgit@localhost.localdomain>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
+	adilger@whamcloud.com, tytso@mit.edu
+To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:41973 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754460Ab1G0LCr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Jul 2011 07:02:47 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-atomic_dec_not_zero is defined for each architecture through
-<linux/atomic.h> to provide the functionality of
-atomic_add_unless(x, -1, 0).
+With the ext3/ext4 directory index implementation hashes are used to specify
+offsets for llseek(). For compatibility with NFSv2 and 32-bit user space
+on 64-bit systems (kernel space) ext3/ext4 currently only return 32-bit 
+hashes and therefore the probability of hash collisions for larger directories
+is rather high. As recently reported on the NFS mailing list that theoretical
+problem also happens on real systems:
+http://comments.gmane.org/gmane.linux.nfs/40863
 
-Signed-off-by: Sven Eckelmann <sven@narfation.org>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: linux-ext4@vger.kernel.org
+The following series adds two new open flags to tell ext4
+to to 32-bit or 64-bit hash values for llseek() calls.
+These flags are then used by NFS to use 32-bit (NFSv2) or 64-bit
+offsets (hashes in case of ext3/ext4) for readdir and seekdir.
+User space does not need to specify these flags, but usually the check
+for is_32bit_api() should be sufficient.
+
 ---
- fs/ext4/ext4.h |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index fa44df8..29996e8 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2098,7 +2098,7 @@ static inline void ext4_lock_group(struct super_block *sb, ext4_group_t group)
- 		 * We're able to grab the lock right away, so drop the
- 		 * lock contention counter.
- 		 */
--		atomic_add_unless(&EXT4_SB(sb)->s_lock_busy, -1, 0);
-+		atomic_dec_not_zero(&EXT4_SB(sb)->s_lock_busy);
- 	else {
- 		/*
- 		 * The lock is busy, so bump the contention counter,
+Bernd Schubert (2):
+      Remove check for a 32-bit cookie in nfsd4_readdir()
+      nfsd: vfs_llseek() with O_32BITHASH or O_64BITHASH
+
+Fan Yong (1):
+      Return 32/64-bit dir name hash according to usage type
+
+
+ fs/ext4/dir.c               |  160 ++++++++++++++++++++++++++++++++++---------
+ fs/fcntl.c                  |    5 +
+ fs/nfsd/nfs4proc.c          |    2 -
+ fs/nfsd/vfs.c               |    6 ++
+ include/asm-generic/fcntl.h |    9 ++
+ 5 files changed, 145 insertions(+), 37 deletions(-)
+
 -- 
-1.7.5.4
+Bernd Schubert
