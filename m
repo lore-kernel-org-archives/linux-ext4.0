@@ -1,29 +1,45 @@
-From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Subject: Re: [PATCH 3/3] nfsd: vfs_llseek() with O_32BITHASH or O_64BITHASH
-Date: Wed, 27 Jul 2011 17:03:44 -0400
-Message-ID: <20110727210344.GC9066@infradead.org>
-References: <20110727110148.204979.49551.stgit@localhost.localdomain>
- <20110727110259.204979.56782.stgit@localhost.localdomain>
+From: NeilBrown <neilb@suse.de>
+Subject: Re: RCU locking issues in jbd2_dev_to_name
+Date: Thu, 28 Jul 2011 08:45:31 +1000
+Message-ID: <20110728084531.06aa878a@notabene.brown>
+References: <20110727174104.65fb9c1c@notabene.brown>
+	<7A69E96B-0763-4440-BE10-A39B808C44FA@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, yong.fan-KloliPT79xf2eFz/2MeuCQ@public.gmane.org,
-	adilger-KloliPT79xf2eFz/2MeuCQ@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org
-To: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20110727110259.204979.56782.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org,
+	"Paul E.McKenney" <paulmck@linux.vnet.ibm.com>
+To: Theodore Tso <tytso@MIT.EDU>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:59123 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753985Ab1G0Wpo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Jul 2011 18:45:44 -0400
+In-Reply-To: <7A69E96B-0763-4440-BE10-A39B808C44FA@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 27, 2011 at 01:02:59PM +0200, Bernd Schubert wrote:
-> Use 32-bit or 64-bit llseek() hashes for directory offsets depending on
-> the NFS version. NFSv2 gets 32-bit hashes only.
+On Wed, 27 Jul 2011 07:28:27 -0400 Theodore Tso <tytso@MIT.EDU> wrote:
 
-Independent of the O_ vs FMODE thing make sure you pass the correct
-flag at open time, instead of racy runtime modifications.
+> 
+> On Jul 27, 2011, at 3:41 AM, NeilBrown wrote:
+> 
+> > 
+> > 
+> > Hi Ted and all,
+> > 
+> > I've been exploring RCU usage in the kernel looking for strange things, and
+> > jbd2_dev_to_name looks particularly strange.  The following patch explains
+> > and addresses the issues that I found.  Comments welcome.
+> 
+> Yeah its broken.  But I have patches pending for the merge window that solve
+> it by nuking the function altogether; the problem is calling a function from
+> TP_PRINTK causes perf to die on the spot, terminating its tracing.  :-(
+> 
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Sounds painful...
+
+If it is about to go, that is good enough for me.
+
+Thanks,
+NeilBrown
