@@ -1,29 +1,85 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 3/3] nfsd: vfs_llseek() with O_32BITHASH or O_64BITHASH
-Date: Thu, 28 Jul 2011 07:46:59 -0400
-Message-ID: <20110728114659.GA13296@infradead.org>
-References: <20110727110148.204979.49551.stgit@localhost.localdomain>
- <20110727110259.204979.56782.stgit@localhost.localdomain>
- <20110727210344.GC9066@infradead.org>
- <4E31298B.7050800@itwm.fraunhofer.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	yong.fan@whamcloud.com, adilger@whamcloud.com, tytso@mit.edu
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <4E31298B.7050800@itwm.fraunhofer.de>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] dumpe2fs: Warn when filesystem is mounted read-write
+Date: Thu, 28 Jul 2011 17:17:04 +0200
+Message-ID: <1311866224-27351-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:43423 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754623Ab1G1PRI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 Jul 2011 11:17:08 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 28, 2011 at 11:19:07AM +0200, Bernd Schubert wrote:
-> before I'm going to work further on the patch sets, I have few
-> questions first. Could you please help me with that?
-> 
-> file->f_mode is set in __dentry_open() based on O_ flags.
+When dumpe2fs is used on a filesystem mounted read-write, printed information
+may be old and inconsistent because e.g. updates of some superblock fields
+happen lazily or because we do not really try to handle various intermediate
+states of filesystem operations. Document this in the manpage and warn user
+when dumpe2fs is used for such filesystem.
 
-Or right after dentry_open, before anyone can possibly grab a reference
-to the file.  Just do that in nfsd_open based on an NFSD_MAY_ flag.
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ misc/dumpe2fs.8.in |    3 ++-
+ misc/dumpe2fs.c    |   14 ++++++++++++++
+ 2 files changed, 16 insertions(+), 1 deletions(-)
+
+  Ted, would you take this change? We actually had to explain to our users that
+what they were doing isn't really going to work reliably...
+
+diff --git a/misc/dumpe2fs.8.in b/misc/dumpe2fs.8.in
+index c1dfcbd..e1336dc 100644
+--- a/misc/dumpe2fs.8.in
++++ b/misc/dumpe2fs.8.in
+@@ -71,7 +71,8 @@ print the version number of
+ and exit.
+ .SH BUGS
+ You need to know the physical filesystem structure to understand the
+-output.
++output. When used with a mounted filesystem, the printed information may be
++old or inconsistent.
+ .SH AUTHOR
+ .B dumpe2fs 
+ was written by Remy Card <Remy.Card@linux.org>.  It is currently being
+diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
+index 9a0dd46..fa1362a 100644
+--- a/misc/dumpe2fs.c
++++ b/misc/dumpe2fs.c
+@@ -495,6 +495,7 @@ int main (int argc, char ** argv)
+ 	int		flags;
+ 	int		header_only = 0;
+ 	int		c;
++	int		mount_flags;
+ 
+ #ifdef ENABLE_NLS
+ 	setlocale(LC_MESSAGES, "");
+@@ -567,6 +568,13 @@ int main (int argc, char ** argv)
+ 		printf (_("Couldn't find valid filesystem superblock.\n"));
+ 		exit (1);
+ 	}
++	retval = ext2fs_check_if_mounted(device_name, &mount_flags);
++	if (retval) {
++		com_err("ext2fs_check_if_mount", retval,
++			_("while determining whether %s is mounted."),
++			device_name);
++		exit(1);
++	}
+ 	if (print_badblocks) {
+ 		list_bad_blocks(fs, 1);
+ 	} else {
+@@ -595,6 +603,12 @@ int main (int argc, char ** argv)
+ 		}
+ 	}
+ 	ext2fs_close (fs);
++	if ((mount_flags & EXT2_MF_MOUNTED) &&
++	    !(mount_flags & EXT2_MF_READONLY)) {
++		fputs(_("The filesystem is read-write mounted so printed"
++			" information may be old or inconsistent.\n"), stderr);
++	}
++
+ 	remove_error_table(&et_ext2_error_table);
+ 	exit (0);
+ }
+-- 
+1.7.1
 
