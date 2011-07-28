@@ -1,48 +1,155 @@
-From: Al Viro <viro@ZenIV.linux.org.uk>
-Subject: Re: [PATCH] ext4: fix races in ext4_sync_parent()
-Date: Thu, 28 Jul 2011 02:11:29 +0100
-Message-ID: <20110728011129.GO22133@ZenIV.linux.org.uk>
-References: <1311729192-30598-1-git-send-email-tytso@mit.edu>
- <20110727011554.GN22133@ZenIV.linux.org.uk>
- <20110728003421.GA3133@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Ted Ts'o <tytso@mit.edu>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH -v3] ext4: simplify parameters of add_new_gdb()
+Date: Wed, 27 Jul 2011 21:21:30 -0400
+Message-ID: <1311816090-5879-1-git-send-email-tytso@mit.edu>
+References: <1311048137-16400-11-git-send-email-xiaoqiangnk@gmail.com>
+Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:54377 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752863Ab1G1BLc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Jul 2011 21:11:32 -0400
-Content-Disposition: inline
-In-Reply-To: <20110728003421.GA3133@thunk.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:38578 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754840Ab1G1BVg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Jul 2011 21:21:36 -0400
+In-Reply-To: <1311048137-16400-11-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 27, 2011 at 08:34:22PM -0400, Ted Ts'o wrote:
-> > > +		dentry = list_first_entry(&inode->i_dentry,
-> > > +					  struct dentry, d_alias);
-> > 
-> > ... and what if you don't have a dentry for that inode anymore?
-> 
-> I thought you were complaining that dentry could never be NULL
-> earlier?  We earlier checked for NULL, but I figured you knew
-> something I didn't....
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
 
-The pointer won't be NULL, of course, but what guarantees that inode->i_dentry
-won't be *empty*?  IOW, you could get a perfectly non-NULL pointer, equal to
-	(char *)inode + offsetof(struct inode, i_dentry)
-	 - offsetof(struct dentry, d_alias)
-and treating it as struct dentry * won't do you any good...
+add_new_gdb() only needs the block group number; there is no need to
+pass a pointer to struct ext4_new_group_data to add_new_gdb().
+Instead of filling in a pointer the struct buffer_head in
+add_new_gdb(), it's simpler to have the caller fetch it from the
+s_group_desc[] array.
 
-> > > +		next = igrab(dentry->d_parent->d_inode);
-> > 
-> > what protects you against rename() (OK, d_mode()) here?
-> 
-> Does it matter?  We'll get either the old or the new parent directory,
-> but either way it will be a valid inode, right?  Or am I missing
-> something?
+[Fixed error path to handle the case where struct buffer_head *primary
+ hasn't been set yet. -- Ted]
 
-Once d_move() has happened, there's nothing to protect the old parent
-anymore...  Granted, it's a hell of a narrow race window, but you
-need at least ->d_lock on your dentry...
+Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+
+Applied to the ext4 tree, with a bug fix to prevent a null pointer
+dereference if add_new_gdb() returns an error.
+
+ fs/ext4/resize.c |   39 ++++++++++++++++++++++++---------------
+ 1 files changed, 24 insertions(+), 15 deletions(-)
+
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 65e5cb6..9e45355 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -394,15 +394,15 @@ static int verify_reserved_gdb(struct super_block *sb,
+  * fail once we start modifying the data on disk, because JBD has no rollback.
+  */
+ static int add_new_gdb(handle_t *handle, struct inode *inode,
+-		       struct ext4_new_group_data *input,
+-		       struct buffer_head **primary)
++		       ext4_group_t group)
+ {
+ 	struct super_block *sb = inode->i_sb;
+ 	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+-	unsigned long gdb_num = input->group / EXT4_DESC_PER_BLOCK(sb);
++	unsigned long gdb_num = group / EXT4_DESC_PER_BLOCK(sb);
+ 	ext4_fsblk_t gdblock = EXT4_SB(sb)->s_sbh->b_blocknr + 1 + gdb_num;
+ 	struct buffer_head **o_group_desc, **n_group_desc;
+ 	struct buffer_head *dind;
++	struct buffer_head *gdb_bh;
+ 	int gdbackups;
+ 	struct ext4_iloc iloc;
+ 	__le32 *data;
+@@ -425,11 +425,12 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 		return -EPERM;
+ 	}
+ 
+-	*primary = sb_bread(sb, gdblock);
+-	if (!*primary)
++	gdb_bh = sb_bread(sb, gdblock);
++	if (!gdb_bh)
+ 		return -EIO;
+ 
+-	if ((gdbackups = verify_reserved_gdb(sb, *primary)) < 0) {
++	gdbackups = verify_reserved_gdb(sb, gdb_bh);
++	if (gdbackups < 0) {
+ 		err = gdbackups;
+ 		goto exit_bh;
+ 	}
+@@ -444,7 +445,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 	data = (__le32 *)dind->b_data;
+ 	if (le32_to_cpu(data[gdb_num % EXT4_ADDR_PER_BLOCK(sb)]) != gdblock) {
+ 		ext4_warning(sb, "new group %u GDT block %llu not reserved",
+-			     input->group, gdblock);
++			     group, gdblock);
+ 		err = -EINVAL;
+ 		goto exit_dind;
+ 	}
+@@ -453,7 +454,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 	if (unlikely(err))
+ 		goto exit_dind;
+ 
+-	err = ext4_journal_get_write_access(handle, *primary);
++	err = ext4_journal_get_write_access(handle, gdb_bh);
+ 	if (unlikely(err))
+ 		goto exit_sbh;
+ 
+@@ -492,8 +493,8 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 	}
+ 	inode->i_blocks -= (gdbackups + 1) * sb->s_blocksize >> 9;
+ 	ext4_mark_iloc_dirty(handle, inode, &iloc);
+-	memset((*primary)->b_data, 0, sb->s_blocksize);
+-	err = ext4_handle_dirty_metadata(handle, NULL, *primary);
++	memset(gdb_bh->b_data, 0, sb->s_blocksize);
++	err = ext4_handle_dirty_metadata(handle, NULL, gdb_bh);
+ 	if (unlikely(err)) {
+ 		ext4_std_error(sb, err);
+ 		goto exit_inode;
+@@ -503,7 +504,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 	o_group_desc = EXT4_SB(sb)->s_group_desc;
+ 	memcpy(n_group_desc, o_group_desc,
+ 	       EXT4_SB(sb)->s_gdb_count * sizeof(struct buffer_head *));
+-	n_group_desc[gdb_num] = *primary;
++	n_group_desc[gdb_num] = gdb_bh;
+ 	EXT4_SB(sb)->s_group_desc = n_group_desc;
+ 	EXT4_SB(sb)->s_gdb_count++;
+ 	kfree(o_group_desc);
+@@ -525,7 +526,7 @@ exit_sbh:
+ exit_dind:
+ 	brelse(dind);
+ exit_bh:
+-	brelse(*primary);
++	brelse(gdb_bh);
+ 
+ 	ext4_debug("leaving with error %d\n", err);
+ 	return err;
+@@ -833,8 +834,16 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 		if (reserved_gdb && ext4_bg_num_gdb(sb, input->group) &&
+ 		    (err = reserve_backup_gdb(handle, inode, input)))
+ 			goto exit_journal;
+-	} else if ((err = add_new_gdb(handle, inode, input, &primary)))
+-		goto exit_journal;
++	} else {
++		/*
++		 * Note that we can access new group descriptor block safely
++		 * only if add_new_gdb() succeeds.
++		 */
++		err = add_new_gdb(handle, inode, input->group);
++		if (err)
++			goto exit_journal;
++		primary = sbi->s_group_desc[gdb_num];
++	}
+ 
+         /*
+          * OK, now we've set up the new group.  Time to make it active.
+@@ -944,7 +953,7 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ exit_journal:
+ 	if ((err2 = ext4_journal_stop(handle)) && !err)
+ 		err = err2;
+-	if (!err) {
++	if (!err && primary) {
+ 		update_backups(sb, sbi->s_sbh->b_blocknr, (char *)es,
+ 			       sizeof(struct ext4_super_block));
+ 		update_backups(sb, primary->b_blocknr, primary->b_data,
+-- 
+1.7.4.1.22.gec8e1.dirty
+
