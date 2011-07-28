@@ -1,104 +1,86 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] dumpe2fs: Warn when filesystem is mounted read-write
-Date: Thu, 28 Jul 2011 10:44:30 -0600
-Message-ID: <1968AC77-D564-47DB-8D15-5F5FBB75B08B@dilger.ca>
-References: <1311866224-27351-1-git-send-email-jack@suse.cz>
-Mime-Version: 1.0 (iPhone Mail 8L1)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Ted Tso <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from shawmail.shawcable.com ([64.59.128.220]:60451 "EHLO
-	mail.shawcable.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754576Ab1G1QoD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Jul 2011 12:44:03 -0400
-In-Reply-To: <1311866224-27351-1-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [PATCH 0/2] Add inode checksum support to ext4
+Date: Thu, 28 Jul 2011 09:56:15 -0700
+Message-ID: <20110728165615.GI20655@tux1.beaverton.ibm.com>
+References: <20110406224410.GB24354@tux1.beaverton.ibm.com> <1302290868.4461.7.camel@mingming-laptop> <20110727082730.GG20655@tux1.beaverton.ibm.com> <EF1F2330-D8C4-427A-ABB9-D1E607D91A3D@gmail.com>
+Reply-To: djwong@us.ibm.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Mingming Cao <cmm@us.ibm.com>, "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: Andreas Dilger <aedilger@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <EF1F2330-D8C4-427A-ABB9-D1E607D91A3D@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2011-07-28, at 9:17 AM, Jan Kara <jack@suse.cz> wrote:
-> When dumpe2fs is used on a filesystem mounted read-write, printed information
-> may be old and inconsistent because e.g. updates of some superblock fields
-> happen lazily or because we do not really try to handle various intermediate
-> states of filesystem operations. Document this in the manpage and warn user
-> when dumpe2fs is used for such filesystem.
-
-Jan, does this specifically relate to the free blocks or free inodes count?  My preference would actually be to have dumpe2fs print the correct values. I guess that means reading all of the group descriptors and adding up the free block/inode counts like the kernel does. 
-
-I'm not against this patch in principle, since any operation on a mounted filesystem is inherently racy, but as it stands now the information printed by dumpe2fs can be completely useless. 
-
-Cheers, Andreas
-
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
-> misc/dumpe2fs.8.in |    3 ++-
-> misc/dumpe2fs.c    |   14 ++++++++++++++
-> 2 files changed, 16 insertions(+), 1 deletions(-)
+On Wed, Jul 27, 2011 at 03:16:12AM -0600, Andreas Dilger wrote:
+> On 2011-07-27, at 2:27 AM, "Darrick J. Wong" <djwong@us.ibm.com> wrote:
+> > On Fri, Apr 08, 2011 at 12:27:48PM -0700, Mingming Cao wrote:
+> >> Beyond checksumming the inode itself, it
+> >> would be more useful to checksum the extent indexing blocks, as the ext3
+> >> corruption actually happen at the indirect block.  
+> >> 
+> >> The idea is to reduce the eh_max (the max # of extents stored in this
+> >> block) to save some space to store the checksums in the block, 
+> >> 
+> >> /*
+> >> * Each block (leaves and indexes), even inode-stored has header.
+> >> */
+> >> struct ext4_extent_header {
+> >>        __le16  eh_magic;       /* probably will support different
+> >> formats */
+> >>        __le16  eh_entries;     /* number of valid entries */
+> >>        __le16  eh_max;         /* capacity of store in entries */
+> >>        __le16  eh_depth;       /* has tree real underlying blocks? */
+> >>        __le32  eh_generation;  /* generation of the tree */
+> > 
+> > Does anyone use eh_generation?  Linux 3.0 shows no users and it didn't look like
+> > the snapshot patches do either.  If nobody intends to start using this field,
+> > (part of) it could become eh_checksum
 > 
->  Ted, would you take this change? We actually had to explain to our users that
-> what they were doing isn't really going to work reliably...
+> We use eh_generation in Lustre to detect if the extent tree is being changed
+> while it is unlocked.
 > 
-> diff --git a/misc/dumpe2fs.8.in b/misc/dumpe2fs.8.in
-> index c1dfcbd..e1336dc 100644
-> --- a/misc/dumpe2fs.8.in
-> +++ b/misc/dumpe2fs.8.in
-> @@ -71,7 +71,8 @@ print the version number of
-> and exit.
-> .SH BUGS
-> You need to know the physical filesystem structure to understand the
-> -output.
-> +output. When used with a mounted filesystem, the printed information may be
-> +old or inconsistent.
-> .SH AUTHOR
-> .B dumpe2fs 
-> was written by Remy Card <Remy.Card@linux.org>.  It is currently being
-> diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
-> index 9a0dd46..fa1362a 100644
-> --- a/misc/dumpe2fs.c
-> +++ b/misc/dumpe2fs.c
-> @@ -495,6 +495,7 @@ int main (int argc, char ** argv)
->    int        flags;
->    int        header_only = 0;
->    int        c;
-> +    int        mount_flags;
+> In the past, the discussion about adding checksums to the index and extent
+> blocks was about using an ext4_extent_tail that contained not only the
+> checksum of the block, but also a back-pointer to the inode/generation of the
+> inode using this block.
 > 
-> #ifdef ENABLE_NLS
->    setlocale(LC_MESSAGES, "");
-> @@ -567,6 +568,13 @@ int main (int argc, char ** argv)
->        printf (_("Couldn't find valid filesystem superblock.\n"));
->        exit (1);
->    }
-> +    retval = ext2fs_check_if_mounted(device_name, &mount_flags);
-> +    if (retval) {
-> +        com_err("ext2fs_check_if_mount", retval,
-> +            _("while determining whether %s is mounted."),
-> +            device_name);
-> +        exit(1);
-> +    }
->    if (print_badblocks) {
->        list_bad_blocks(fs, 1);
->    } else {
-> @@ -595,6 +603,12 @@ int main (int argc, char ** argv)
->        }
->    }
->    ext2fs_close (fs);
-> +    if ((mount_flags & EXT2_MF_MOUNTED) &&
-> +        !(mount_flags & EXT2_MF_READONLY)) {
-> +        fputs(_("The filesystem is read-write mounted so printed"
-> +            " information may be old or inconsistent.\n"), stderr);
-> +    }
-> +
->    remove_error_table(&et_ext2_error_table);
->    exit (0);
-> }
-> -- 
-> 1.7.1
+> That would allow e2fsck to verify that it is using the correct index/extent
+> blocks and not pointing to a stale block that belonged to some other inode.
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Since the header and index/extent entries are always 3 *__u32 in size, the
+> extent tail can always be 4 * __u32 in size yet only consume a single slot in
+> the block. There of course is no reason to put an extent tail inside the
+> inode itself.
+
+Does anybody have any objection to using crc32c (which we can hardware
+accelerate on new Intel boxen) over crc16?  I think it'll be pretty easy to use
+some of the reserved space in the group descriptor to store checksums of the
+block and inode bitmaps.  Adding tails to the extent tree blocks seems a bit
+trickier than that, but not a big deal, though I guess I'll have to reshuffle
+the extent tree to free up space at the end of the block.
+
+I was also wondering what people think of adding checksums to directory files?
+I think that it's possible to put a checksum in each directory block -- for
+blocks containing a linear array of actual directory entries, we could zero out
+the space past the end of the array and put a checksum at the very end of the
+block.  For the dx_node/dx_root blocks, we could probably use the space
+occupied by the last dx_entry to store the checksum.  Obviously, we'd have to
+move whatever's at the end of the block elsewhere, but then, we have to do that
+for the extent tree too.  Basically, the last 4 bytes become the checksum after
+whatever's occupying the space is relocated. :)
+
+It looks like there's sufficient unused space in ext4_xattr_header to add a
+checksum.
+
+Also -- should I create separate rocompat feature flags for each metadata
+object that I add checksums to?  Or just have one flag that covers them all?
+
+Ok, enough crazy ideas for now...
+
+--D
