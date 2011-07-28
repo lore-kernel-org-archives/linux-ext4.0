@@ -1,31 +1,48 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2 09/11] ext4: remove lock_buffer in bclean() and
- setup_new_group_blocks()
-Date: Wed, 27 Jul 2011 20:45:24 -0400
-Message-ID: <20110728004524.GB3133@thunk.org>
-References: <1311048137-16400-1-git-send-email-xiaoqiangnk@gmail.com>
- <1311048137-16400-10-git-send-email-xiaoqiangnk@gmail.com>
+From: Al Viro <viro@ZenIV.linux.org.uk>
+Subject: Re: [PATCH] ext4: fix races in ext4_sync_parent()
+Date: Thu, 28 Jul 2011 02:11:29 +0100
+Message-ID: <20110728011129.GO22133@ZenIV.linux.org.uk>
+References: <1311729192-30598-1-git-send-email-tytso@mit.edu>
+ <20110727011554.GN22133@ZenIV.linux.org.uk>
+ <20110728003421.GA3133@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, adilger@dilger.ca, amir73il@gmail.com,
-	tm@tao.ma
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:51605 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754147Ab1G1Ap1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Jul 2011 20:45:27 -0400
+Received: from zeniv.linux.org.uk ([195.92.253.2]:54377 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752863Ab1G1BLc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Jul 2011 21:11:32 -0400
 Content-Disposition: inline
-In-Reply-To: <1311048137-16400-10-git-send-email-xiaoqiangnk@gmail.com>
+In-Reply-To: <20110728003421.GA3133@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 19, 2011 at 12:02:15PM +0800, Yongqiang Yang wrote:
-> Nobody touchs blocks beyond the filesystem, there is no need to lock
-> the buffers.
+On Wed, Jul 27, 2011 at 08:34:22PM -0400, Ted Ts'o wrote:
+> > > +		dentry = list_first_entry(&inode->i_dentry,
+> > > +					  struct dentry, d_alias);
+> > 
+> > ... and what if you don't have a dentry for that inode anymore?
 > 
-> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+> I thought you were complaining that dentry could never be NULL
+> earlier?  We earlier checked for NULL, but I figured you knew
+> something I didn't....
 
-Added to the ext4 tree, thanks.
+The pointer won't be NULL, of course, but what guarantees that inode->i_dentry
+won't be *empty*?  IOW, you could get a perfectly non-NULL pointer, equal to
+	(char *)inode + offsetof(struct inode, i_dentry)
+	 - offsetof(struct dentry, d_alias)
+and treating it as struct dentry * won't do you any good...
 
-						- Ted
+> > > +		next = igrab(dentry->d_parent->d_inode);
+> > 
+> > what protects you against rename() (OK, d_mode()) here?
+> 
+> Does it matter?  We'll get either the old or the new parent directory,
+> but either way it will be a valid inode, right?  Or am I missing
+> something?
+
+Once d_move() has happened, there's nothing to protect the old parent
+anymore...  Granted, it's a hell of a narrow race window, but you
+need at least ->d_lock on your dentry...
