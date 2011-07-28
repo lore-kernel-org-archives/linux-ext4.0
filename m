@@ -1,130 +1,76 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: [PATCH] tune2fs: kill external journal if device not found
-Date: Thu, 28 Jul 2011 00:57:38 -0600
-Message-ID: <1311836258-15868-1-git-send-email-adilger@whamcloud.com>
-Cc: Andreas Dilger <adilger@whamcloud.com>
-To: tytso@mit.edu, linux-ext4@vger.kernel.org
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Subject: Re: [PATCH 3/3] nfsd: vfs_llseek() with O_32BITHASH or O_64BITHASH
+Date: Thu, 28 Jul 2011 11:19:07 +0200
+Message-ID: <4E31298B.7050800@itwm.fraunhofer.de>
+References: <20110727110148.204979.49551.stgit@localhost.localdomain> <20110727110259.204979.56782.stgit@localhost.localdomain> <20110727210344.GC9066@infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
+	adilger@whamcloud.com, tytso@mit.edu
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:35081 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754484Ab1G1G5l (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Jul 2011 02:57:41 -0400
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:41525 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750782Ab1G1JTM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Jul 2011 05:19:12 -0400
+In-Reply-To: <20110727210344.GC9066@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Continue to remove the external journal device even if the device
-cannot be found.
+On 07/27/2011 11:03 PM, Christoph Hellwig wrote:
+> On Wed, Jul 27, 2011 at 01:02:59PM +0200, Bernd Schubert wrote:
+>> Use 32-bit or 64-bit llseek() hashes for directory offsets depending on
+>> the NFS version. NFSv2 gets 32-bit hashes only.
+>
+> Independent of the O_ vs FMODE thing make sure you pass the correct
+> flag at open time, instead of racy runtime modifications.
+>
 
-Add a test to verify that the journal device/UUID are actually removed
-from the superblock.  It isn't possible to use a real journal device
-for testing without loopback devices and such (it must be a block device)
-and this would invite complexity and failures in the regression test.
+Christoph,
 
-Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
----
- misc/tune2fs.c            |   18 ++++++++++--------
- tests/u_ext_jnl_rm/script |   28 ++++++++++++++++++++++++++++
- 2 files changed, 38 insertions(+), 8 deletions(-)
- create mode 100644 tests/u_ext_jnl_rm/script
+before I'm going to work further on the patch sets, I have few questions 
+first. Could you please help me with that?
 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 9e369ec..7c78c6e 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -174,7 +174,7 @@ static void remove_journal_device(ext2_filsys fs)
- 		journal_path =
- 			ext2fs_find_block_device(fs->super->s_journal_dev);
- 		if (!journal_path)
--			return;
-+			goto no_valid_journal;
- 	}
- 
- #ifdef CONFIG_TESTIO_DEBUG
-@@ -192,7 +192,8 @@ static void remove_journal_device(ext2_filsys fs)
- 			_("while trying to open external journal"));
- 		goto no_valid_journal;
- 	}
--	if (!(jfs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_JOURNAL_DEV)) {
-+	if (!(jfs->super->s_feature_incompat &
-+	      EXT3_FEATURE_INCOMPAT_JOURNAL_DEV)) {
- 		fprintf(stderr, _("%s is not a journal device.\n"),
- 			journal_path);
- 		goto no_valid_journal;
-@@ -206,8 +207,8 @@ static void remove_journal_device(ext2_filsys fs)
- 	}
- 
- 	jsb = (journal_superblock_t *) buf;
--	if ((jsb->s_header.h_magic != (unsigned) ntohl(JFS_MAGIC_NUMBER)) ||
--	    (jsb->s_header.h_blocktype != (unsigned) ntohl(JFS_SUPERBLOCK_V2))) {
-+	if ((jsb->s_header.h_magic != (unsigned)ntohl(JFS_MAGIC_NUMBER)) ||
-+	    (jsb->s_header.h_blocktype != (unsigned)ntohl(JFS_SUPERBLOCK_V2))) {
- 		fputs(_("Journal superblock not found!\n"), stderr);
- 		goto no_valid_journal;
- 	}
-@@ -215,8 +216,7 @@ static void remove_journal_device(ext2_filsys fs)
- 	/* Find the filesystem UUID */
- 	nr_users = ntohl(jsb->s_nr_users);
- 	for (i = 0; i < nr_users; i++) {
--		if (memcmp(fs->super->s_uuid,
--			   &jsb->s_users[i*16], 16) == 0)
-+		if (memcmp(fs->super->s_uuid, &jsb->s_users[i * 16], 16) == 0)
- 			break;
- 	}
- 	if (i >= nr_users) {
-@@ -227,7 +227,7 @@ static void remove_journal_device(ext2_filsys fs)
- 	}
- 	nr_users--;
- 	for (i = 0; i < nr_users; i++)
--		memcpy(&jsb->s_users[i*16], &jsb->s_users[(i+1)*16], 16);
-+		memcpy(&jsb->s_users[i * 16], &jsb->s_users[(i + 1) * 16], 16);
- 	jsb->s_nr_users = htonl(nr_users);
- 
- 	/* Write back the journal superblock */
-@@ -241,7 +241,9 @@ static void remove_journal_device(ext2_filsys fs)
- 
- no_valid_journal:
- 	if (commit_remove_journal == 0) {
--		fputs(_("Journal NOT removed\n"), stderr);
-+		fputs(_("Cannot locate journal device. It was NOT removed\n"
-+			"Use -f option to remove missing journal device.\n"),
-+		      stderr);
- 		exit(1);
- 	}
- 	fs->super->s_journal_dev = 0;
-diff --git a/tests/u_ext_jnl_rm/script b/tests/u_ext_jnl_rm/script
-new file mode 100644
-index 0000000..ff6c491
---- /dev/null
-+++ b/tests/u_ext_jnl_rm/script
-@@ -0,0 +1,28 @@
-+printf "remove missing external journal device: "
-+OUT=$test_name.log
-+
-+dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
-+
-+echo mke2fs -q -F -o Linux -b 1024 $TMPFILE >> $OUT
-+$MKE2FS -q -F -o Linux -I 128 -b 1024 $TMPFILE >> $OUT 2>&1
-+
-+echo "debugfs add journal device/UUID" >> $OUT
-+$DEBUGFS -w -f - $TMPFILE <<- EOF >> $OUT 2>&1
-+	feature has_journal
-+	ssv journal_dev 0x9999
-+	ssv journal_uuid 1db3f677-6832-4adb-bafc-8e4059c30a33
-+EOF
-+
-+echo "tune2fs -f -O ^has_journal $TMPFILE" >> $OUT
-+$TUNE2FS -f -O ^has_journal $TMPFILE >> $OUT 2>&1
-+$DUMPE2FS -h $TMPFILE >> $OUT 2>&1 
-+if [ "$(grep 'Journal UUID:' $OUT)" ]; then
-+	rm -f $test_name.ok
-+	mv $test_name.log $test_name.failed
-+	echo "failed"
-+else
-+	echo "ok"
-+	mv $test_name.log $test_name.ok
-+	rm -f $test_name.failed
-+fi
-+rm -f $TMPFILE
--- 
-1.7.3.4
+file->f_mode is set in __dentry_open() based on O_ flags.
+
+So if f_mode is supposed to be set directly during the NFS open call we 
+would need O_ *and* FMODE flags,
+
+Now I still do not understand why we cannot add a flag *after* the open 
+call and only in nfsd_readdir()? I do not see any races there.
+
+nfsd_readdir() gets its 'struct file' from get_empty_filp() and 
+__dentry_open(). Now as 'struct file' is allocated by get_empty_filp() 
+it also cannot be used by any other thread.
+
+nfsd_readdir() just reads the directory and closes it immedeatily after 
+the readdir().
+
+So where is there supposed to be a race?
+
+
+And lastly, if we are going to set f_mode directly at open time, we have 
+the choice to
+
+1) Specify those new O_ flags for all files. While setting a flag is a 
+cheap operation, it still wastes CPU cycles for file opens, as files do 
+not need that flag.
+
+2) Duplicate nfsd_open() to implement a new function for directories 
+only. I think not a good idea either.
+
+3) Rewrite the nfsd_open() function to allow to set flags from calling 
+functions. That would mean to update the nfsd code at at least 8 places. 
+Do we really want to go that way?
+
+
+So altogether, updating the patches to replace O_ by FMODE flags is 
+easy, but setting that flag in nfsd at open time, would mean a large 
+overhead.
+
+
+Thanks,
+Bernd
 
