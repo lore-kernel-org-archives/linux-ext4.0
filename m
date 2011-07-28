@@ -1,152 +1,130 @@
 From: Andreas Dilger <adilger@whamcloud.com>
-Subject: [PATCH] misc: quiet minor compiler errors
-Date: Wed, 27 Jul 2011 22:42:36 -0600
-Message-ID: <1311828156-31419-1-git-send-email-adilger@whamcloud.com>
+Subject: [PATCH] tune2fs: kill external journal if device not found
+Date: Thu, 28 Jul 2011 00:57:38 -0600
+Message-ID: <1311836258-15868-1-git-send-email-adilger@whamcloud.com>
 Cc: Andreas Dilger <adilger@whamcloud.com>
 To: tytso@mit.edu, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:61622 "EHLO
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:35081 "EHLO
 	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751467Ab1G1Emk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Jul 2011 00:42:40 -0400
+	with ESMTP id S1754484Ab1G1G5l (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Jul 2011 02:57:41 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Several compiler errors are quieted:
-- zero-length gnu_printf format string
-- unused variable
-- uninitalized variable (though it isn't actually used for anything)
+Continue to remove the external journal device even if the device
+cannot be found.
+
+Add a test to verify that the journal device/UUID are actually removed
+from the superblock.  It isn't possible to use a real journal device
+for testing without loopback devices and such (it must be a block device)
+and this would invite complexity and failures in the regression test.
 
 Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
 ---
- e2fsck/ea_refcount.c |   30 ++++++++++++++----------------
- e2fsck/problem.c     |    1 +
- e2fsck/region.c      |    2 +-
- misc/tune2fs.c       |    2 +-
- 4 files changed, 17 insertions(+), 18 deletions(-)
+ misc/tune2fs.c            |   18 ++++++++++--------
+ tests/u_ext_jnl_rm/script |   28 ++++++++++++++++++++++++++++
+ 2 files changed, 38 insertions(+), 8 deletions(-)
+ create mode 100644 tests/u_ext_jnl_rm/script
 
-diff --git a/e2fsck/ea_refcount.c b/e2fsck/ea_refcount.c
-index b10cfff..ece10c2 100644
---- a/e2fsck/ea_refcount.c
-+++ b/e2fsck/ea_refcount.c
-@@ -406,8 +406,8 @@ int main(int argc, char **argv)
- 			size = bcode_program[i++];
- 			retval = ea_refcount_create(size, &refcount);
- 			if (retval) {
--				com_err("ea_refcount_create",
--					retval, "");
-+				com_err("ea_refcount_create", retval,
-+					"while creating size %d", size);
- 				exit(1);
- 			} else
- 				printf("Creating refcount with size %d\n",
-@@ -421,35 +421,35 @@ int main(int argc, char **argv)
- 		case BCODE_STORE:
- 			blk = (blk_t) bcode_program[i++];
- 			arg = bcode_program[i++];
--			retval = ea_refcount_store(refcount, blk, arg);
- 			printf("Storing blk %u with value %d\n", blk, arg);
-+			retval = ea_refcount_store(refcount, blk, arg);
- 			if (retval)
--				com_err("ea_refcount_store", retval, "");
-+				com_err("ea_refcount_store", retval,
-+					"while storing blk %u", blk);
- 			break;
- 		case BCODE_FETCH:
- 			blk = (blk_t) bcode_program[i++];
- 			retval = ea_refcount_fetch(refcount, blk, &arg);
- 			if (retval)
--				com_err("ea_refcount_fetch", retval, "");
-+				com_err("ea_refcount_fetch", retval,
-+					"while fetching blk %u", blk);
- 			else
- 				printf("bcode_fetch(%u) returns %d\n",
- 				       blk, arg);
- 			break;
- 		case BCODE_INCR:
- 			blk = (blk_t) bcode_program[i++];
--			retval = ea_refcount_increment(refcount, blk,
--							   &arg);
-+			retval = ea_refcount_increment(refcount, blk, &arg);
- 			if (retval)
- 				com_err("ea_refcount_increment", retval,
--					"");
-+					"while incrementing blk %u", blk);
- 			else
- 				printf("bcode_increment(%u) returns %d\n",
- 				       blk, arg);
- 			break;
- 		case BCODE_DECR:
- 			blk = (blk_t) bcode_program[i++];
--			retval = ea_refcount_decrement(refcount, blk,
--							   &arg);
-+			retval = ea_refcount_decrement(refcount, blk, &arg);
- 			if (retval)
- 				com_err("ea_refcount_decrement", retval,
- 					"while decrementing blk %u", blk);
-@@ -460,20 +460,18 @@ int main(int argc, char **argv)
- 		case BCODE_VALIDATE:
- 			retval = ea_refcount_validate(refcount, stderr);
- 			if (retval)
--				com_err("ea_refcount_validate",
--					retval, "");
-+				com_err("ea_refcount_validate", retval,
-+					"while validating");
- 			else
- 				printf("Refcount validation OK.\n");
- 			break;
- 		case BCODE_LIST:
- 			ea_refcount_intr_begin(refcount);
- 			while (1) {
--				blk = ea_refcount_intr_next(refcount,
--								&arg);
-+				blk = ea_refcount_intr_next(refcount, &arg);
- 				if (!blk)
- 					break;
--				printf("\tblk=%u, count=%d\n", blk,
--				       arg);
-+				printf("\tblk=%u, count=%d\n", blk, arg);
- 			}
- 			break;
- 		case BCODE_COLLAPSE:
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index c5bebf8..eab9fe2 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -1958,6 +1958,7 @@ int main(int argc, char *argv[])
- 	e2fsck_t ctx;
- 	int rc;
- 
-+	memset(&ctx, 0, sizeof(ctx)); /* just to quiet compiler */
- 	rc = verify_problem_table(ctx);
- 	if (rc == 0)
- 		printf("e2fsck problem table verified\n");
-diff --git a/e2fsck/region.c b/e2fsck/region.c
-index e50c8a4..85c1ac7 100644
---- a/e2fsck/region.c
-+++ b/e2fsck/region.c
-@@ -172,7 +172,7 @@ int main(int argc, char **argv)
- {
- 	region_t	r;
- 	int		pc = 0, ret;
--	region_addr_t	start, end, len;
-+	region_addr_t	start, end;
- 
- 
- 	while (1) {
 diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 5bf5187..9e369ec 100644
+index 9e369ec..7c78c6e 100644
 --- a/misc/tune2fs.c
 +++ b/misc/tune2fs.c
-@@ -1864,7 +1864,7 @@ retry_open:
- 		printf(_("Setting stripe width to %d\n"), stripe_width);
+@@ -174,7 +174,7 @@ static void remove_journal_device(ext2_filsys fs)
+ 		journal_path =
+ 			ext2fs_find_block_device(fs->super->s_journal_dev);
+ 		if (!journal_path)
+-			return;
++			goto no_valid_journal;
  	}
- 	if (ext_mount_opts) {
--		strncpy(fs->super->s_mount_opts, ext_mount_opts,
-+		strncpy((char *)(fs->super->s_mount_opts), ext_mount_opts,
- 			sizeof(fs->super->s_mount_opts));
- 		fs->super->s_mount_opts[sizeof(fs->super->s_mount_opts)-1] = 0;
- 		ext2fs_mark_super_dirty(fs);
+ 
+ #ifdef CONFIG_TESTIO_DEBUG
+@@ -192,7 +192,8 @@ static void remove_journal_device(ext2_filsys fs)
+ 			_("while trying to open external journal"));
+ 		goto no_valid_journal;
+ 	}
+-	if (!(jfs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_JOURNAL_DEV)) {
++	if (!(jfs->super->s_feature_incompat &
++	      EXT3_FEATURE_INCOMPAT_JOURNAL_DEV)) {
+ 		fprintf(stderr, _("%s is not a journal device.\n"),
+ 			journal_path);
+ 		goto no_valid_journal;
+@@ -206,8 +207,8 @@ static void remove_journal_device(ext2_filsys fs)
+ 	}
+ 
+ 	jsb = (journal_superblock_t *) buf;
+-	if ((jsb->s_header.h_magic != (unsigned) ntohl(JFS_MAGIC_NUMBER)) ||
+-	    (jsb->s_header.h_blocktype != (unsigned) ntohl(JFS_SUPERBLOCK_V2))) {
++	if ((jsb->s_header.h_magic != (unsigned)ntohl(JFS_MAGIC_NUMBER)) ||
++	    (jsb->s_header.h_blocktype != (unsigned)ntohl(JFS_SUPERBLOCK_V2))) {
+ 		fputs(_("Journal superblock not found!\n"), stderr);
+ 		goto no_valid_journal;
+ 	}
+@@ -215,8 +216,7 @@ static void remove_journal_device(ext2_filsys fs)
+ 	/* Find the filesystem UUID */
+ 	nr_users = ntohl(jsb->s_nr_users);
+ 	for (i = 0; i < nr_users; i++) {
+-		if (memcmp(fs->super->s_uuid,
+-			   &jsb->s_users[i*16], 16) == 0)
++		if (memcmp(fs->super->s_uuid, &jsb->s_users[i * 16], 16) == 0)
+ 			break;
+ 	}
+ 	if (i >= nr_users) {
+@@ -227,7 +227,7 @@ static void remove_journal_device(ext2_filsys fs)
+ 	}
+ 	nr_users--;
+ 	for (i = 0; i < nr_users; i++)
+-		memcpy(&jsb->s_users[i*16], &jsb->s_users[(i+1)*16], 16);
++		memcpy(&jsb->s_users[i * 16], &jsb->s_users[(i + 1) * 16], 16);
+ 	jsb->s_nr_users = htonl(nr_users);
+ 
+ 	/* Write back the journal superblock */
+@@ -241,7 +241,9 @@ static void remove_journal_device(ext2_filsys fs)
+ 
+ no_valid_journal:
+ 	if (commit_remove_journal == 0) {
+-		fputs(_("Journal NOT removed\n"), stderr);
++		fputs(_("Cannot locate journal device. It was NOT removed\n"
++			"Use -f option to remove missing journal device.\n"),
++		      stderr);
+ 		exit(1);
+ 	}
+ 	fs->super->s_journal_dev = 0;
+diff --git a/tests/u_ext_jnl_rm/script b/tests/u_ext_jnl_rm/script
+new file mode 100644
+index 0000000..ff6c491
+--- /dev/null
++++ b/tests/u_ext_jnl_rm/script
+@@ -0,0 +1,28 @@
++printf "remove missing external journal device: "
++OUT=$test_name.log
++
++dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
++
++echo mke2fs -q -F -o Linux -b 1024 $TMPFILE >> $OUT
++$MKE2FS -q -F -o Linux -I 128 -b 1024 $TMPFILE >> $OUT 2>&1
++
++echo "debugfs add journal device/UUID" >> $OUT
++$DEBUGFS -w -f - $TMPFILE <<- EOF >> $OUT 2>&1
++	feature has_journal
++	ssv journal_dev 0x9999
++	ssv journal_uuid 1db3f677-6832-4adb-bafc-8e4059c30a33
++EOF
++
++echo "tune2fs -f -O ^has_journal $TMPFILE" >> $OUT
++$TUNE2FS -f -O ^has_journal $TMPFILE >> $OUT 2>&1
++$DUMPE2FS -h $TMPFILE >> $OUT 2>&1 
++if [ "$(grep 'Journal UUID:' $OUT)" ]; then
++	rm -f $test_name.ok
++	mv $test_name.log $test_name.failed
++	echo "failed"
++else
++	echo "ok"
++	mv $test_name.log $test_name.ok
++	rm -f $test_name.failed
++fi
++rm -f $TMPFILE
 -- 
 1.7.3.4
 
