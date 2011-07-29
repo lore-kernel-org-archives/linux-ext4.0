@@ -1,77 +1,59 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [patch 1/1] ext4: use proper little-endian bitops
-Date: Fri, 29 Jul 2011 14:41:17 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1107291437150.4293@dhcp-27-109.brq.redhat.com>
-References: <201107282055.p6SKtKp5008047@imap1.linux-foundation.org> <alpine.LFD.2.00.1107291109460.4293@dhcp-27-109.brq.redhat.com> <CAC5umyjxG3k2L3mozmd-Dfb08mMt1ZEZdrsAdhAjbZTkEy_OoQ@mail.gmail.com> <alpine.LFD.2.00.1107291341540.4293@dhcp-27-109.brq.redhat.com>
- <CAC5umyhz-RNL=agBsbG4oP0z0AHS3c6vjmKH-qOyn9SjQS0FAg@mail.gmail.com>
+From: Joel Becker <jlbec@evilplan.org>
+Subject: Re: [PATCH 0/2] Add inode checksum support to ext4
+Date: Fri, 29 Jul 2011 06:19:38 -0700
+Message-ID: <20110729131937.GB5910@noexit.corp.google.com>
+References: <20110406224410.GB24354@tux1.beaverton.ibm.com>
+ <1302290868.4461.7.camel@mingming-laptop>
+ <20110727082730.GG20655@tux1.beaverton.ibm.com>
+ <EF1F2330-D8C4-427A-ABB9-D1E607D91A3D@gmail.com>
+ <20110728165615.GI20655@tux1.beaverton.ibm.com>
+ <20110728220735.GA27253@noexit.corp.google.com>
+ <0E795C1D-AD1E-4CC4-9426-2B58D98B14DC@dilger.ca>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1046734363-1311943281=:4293"
-Cc: Lukas Czerner <lczerner@redhat.com>, amir73il@gmail.com,
-	xiaoqiangnk@gmail.com, akpm@linux-foundation.org, tytso@mit.edu,
-	linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca
-To: Akinobu Mita <akinobu.mita@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Darrick J. Wong" <djwong@us.ibm.com>,
+	Andreas Dilger <aedilger@gmail.com>,
+	Mingming Cao <cmm@us.ibm.com>, Theodore Ts'o <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52727 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755659Ab1G2Ml1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 29 Jul 2011 08:41:27 -0400
-In-Reply-To: <CAC5umyhz-RNL=agBsbG4oP0z0AHS3c6vjmKH-qOyn9SjQS0FAg@mail.gmail.com>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:59606 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750901Ab1G2NT6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Jul 2011 09:19:58 -0400
+Content-Disposition: inline
+In-Reply-To: <0E795C1D-AD1E-4CC4-9426-2B58D98B14DC@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
-
---8323328-1046734363-1311943281=:4293
-Content-Type: TEXT/PLAIN; charset=ISO-8859-1
-Content-Transfer-Encoding: 8BIT
-
-On Fri, 29 Jul 2011, Akinobu Mita wrote:
-
-> 2011/7/29 Lukas Czerner <lczerner@redhat.com>:
-> > On Fri, 29 Jul 2011, Akinobu Mita wrote:
-> >
-> >> 2011/7/29 Lukas Czerner <lczerner@redhat.com>:
-> >>
-> >> >> diff -puN fs/ext4/ext4.h~ext4-use-proper-little-endian-bitops fs/ext4/ext4.h
-> >> >> --- a/fs/ext4/ext4.h~ext4-use-proper-little-endian-bitops
-> >> >> +++ a/fs/ext4/ext4.h
-> >> >> @@ -931,12 +931,13 @@ struct ext4_inode_info {
-> >> >>  #define test_opt2(sb, opt)           (EXT4_SB(sb)->s_mount_opt2 & \
-> >> >>                                        EXT4_MOUNT2_##opt)
-> >> >>
-> >> >> -#define ext4_set_bit                 __test_and_set_bit_le
-> >> >> +#define ext4_test_and_set_bit                __test_and_set_bit_le
-> >> >> +#define ext4_set_bit                 __set_bit_le
-> >> >>  #define ext4_set_bit_atomic          ext2_set_bit_atomic
-> >> > We can remove this since it is not used anywhere and it is just a macro
-> >> > for test_and_set_bit_le() anyway.
-> >>
-> >> Amir Goldstein requested not to remove it because ext4 snapshot patches is
-> >> using ext4_set_bit_atomic(), although I really don't know about the status of
-> >> mainline inclusion.
-> >
-> > It is not anywhere near inclusion. Moreover it is using
-> > __test_and_set_bit_le, but the name does not really imply *test*.
+On Fri, Jul 29, 2011 at 03:48:45AM -0600, Andreas Dilger wrote:
+> On 2011-07-28, at 4:07 PM, Joel Becker wrote:
+> > 	We use ethernet crc32 in ocfs2.  btrfs uses crc32c.  Frankly, I
+> > could have used crc32c if I'd really thought about the hardware
+> > acceleration benefits.  I think it's a good idea for ext4.
 > 
-> BTW, do you think of anything more preferable name?  Because ext[23] and
-> nilfs2 are still using them, so renaming can avoid confusion.
+> The problem with crc32[c] is that if you don't have hardware acceleration
+> it is terribly slow.
 
-Well, it is the same situation as you are fixing with this ext4 patch.
-So ext2_test_and_set_bit_atomic seems ok, but I really wonder if we need
-to call it ext2_* since it is not ext2 specific.
+	We find ethernet crc32 just fine in ocfs2.  I use the kernel's
+implementation, which survives everyone's network traffic, and of course
+we added the triggers to jbd2 so we only have to do the calculations on
+read and write.
 
-Maybe it would be nice to rename it, as well as move it into different
-file, or just rename the file. But it is not *very* important I guess.
+> Yes, it makes sense to just put a "fake" dirent at the end of the leaf block,
+> or similar.  I don't think it is necessary to modify existing directories or
+> extent blocks to add these structures in, if there is no room, but for new
+> blocks, or blocks with space it is enough.
 
-> 
-> > So please, just remove it and when Amir is going to
-> > need it someday he might add proper define with the proper name using
-> > the proper set, or test_and_set functions.
-> 
-> OK, I'll remove if no one has strong objection against it.
-> 
+	We have tunefs.ocfs2 code to adjust existing directories to add
+the trailer.  It's not too bad, really.
+ 
+Joel
 
-Thanks!
+-- 
 
---8323328-1046734363-1311943281=:4293--
+"People with narrow minds usually have broad tongues."
+
+			http://www.jlbec.org/
+			jlbec@evilplan.org
