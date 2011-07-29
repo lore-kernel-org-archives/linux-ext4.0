@@ -1,83 +1,97 @@
 From: Andreas Dilger <adilger.kernel@dilger.ca>
 Subject: Re: [PATCH 0/2] Add inode checksum support to ext4
-Date: Fri, 29 Jul 2011 03:48:45 -0600
-Message-ID: <0E795C1D-AD1E-4CC4-9426-2B58D98B14DC@dilger.ca>
-References: <20110406224410.GB24354@tux1.beaverton.ibm.com> <1302290868.4461.7.camel@mingming-laptop> <20110727082730.GG20655@tux1.beaverton.ibm.com> <EF1F2330-D8C4-427A-ABB9-D1E607D91A3D@gmail.com> <20110728165615.GI20655@tux1.beaverton.ibm.com> <20110728220735.GA27253@noexit.corp.google.com>
+Date: Fri, 29 Jul 2011 03:55:30 -0600
+Message-ID: <4B7BD8E2-A1F3-4788-9753-20DC78620C5D@dilger.ca>
+References: <20110406224410.GB24354@tux1.beaverton.ibm.com> <1302290868.4461.7.camel@mingming-laptop> <20110727082730.GG20655@tux1.beaverton.ibm.com> <EF1F2330-D8C4-427A-ABB9-D1E607D91A3D@gmail.com> <20110728165615.GI20655@tux1.beaverton.ibm.com> <CAOQ4uxiOpwX2-Nfh9wJ7wSmAnbj9bh1+d9C95-N5D-8saRr6ww@mail.gmail.com> <20110728185730.GJ20655@tux1.beaverton.ibm.com>
 Mime-Version: 1.0 (Apple Message framework v1084)
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 8BIT
-Cc: "Darrick J. Wong" <djwong@us.ibm.com>,
+Cc: Amir Goldstein <amir73il@gmail.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
 	Andreas Dilger <aedilger@gmail.com>,
-	Mingming Cao <cmm@us.ibm.com>, Theodore Ts'o <tytso@mit.edu>,
 	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>
-To: Joel Becker <jlbec@evilplan.org>
+	"Theodore Ts'o" <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>
+To: djwong@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:20272 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756088Ab1G2Jsq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Jul 2011 05:48:46 -0400
-In-Reply-To: <20110728220735.GA27253@noexit.corp.google.com>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:41600 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755372Ab1G2Jzb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Jul 2011 05:55:31 -0400
+In-Reply-To: <20110728185730.GJ20655@tux1.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-07-28, at 4:07 PM, Joel Becker wrote:
-> On Thu, Jul 28, 2011 at 09:56:15AM -0700, Darrick J. Wong wrote:
->>> the block. There of course is no reason to put an extent tail inside the
->>> inode itself.
+On 2011-07-28, at 12:57 PM, Darrick J. Wong wrote:
+>>> On Wed, Jul 27, 2011 at 03:16:12AM -0600, Andreas Dilger wrote:
+>>>> In the past, the discussion about adding checksums to the index and
+>>>> extent blocks was about using an ext4_extent_tail that contained not
+>>>> only the checksum of the block, but also a back-pointer to the
+>>>> inode/generation of the inode using this block.
+>>>> 
+>>>> That would allow e2fsck to verify that it is using the correct
+>>>> index/extent blocks and not pointing to a stale block that belonged
+>>>> to some other inode.
+>>>> 
+>>>> Since the header and index/extent entries are always 3 *__u32 in size,
+>>>> the extent tail can always be 4 * __u32 in size yet only consume a
+>>>> single slot in the block. There of course is no reason to put an extent
+>>>> tail inside the inode itself.
+>>> 
+>>> Does anybody have any objection to using crc32c (which we can hardware
+>>> accelerate on new Intel boxen) over crc16?  I think it'll be pretty easy
+>>> to use some of the reserved space in the group descriptor to store
+>>> checksums of the block and inode bitmaps.
 >> 
->> Does anybody have any objection to using crc32c (which we can hardware
->> accelerate on new Intel boxen) over crc16?  I think it'll be pretty easy to use
+>> On LSF Ted told me i can use 32bit from the group descriptor for exclude
+>> bitmap block and that inode and block bitmap checksum would use 16bit each .
 > 
-> 	We use ethernet crc32 in ocfs2.  btrfs uses crc32c.  Frankly, I
-> could have used crc32c if I'd really thought about the hardware
-> acceleration benefits.  I think it's a good idea for ext4.
+> I know;  as far as I know there's still 96 bits of free space in the group
+> descriptor, which could be used to crc32 all three bitmaps.  But then that
+> leaves the descriptors with no room for further expansion, unless we decide to
+> expand them sort of like what was done for inodes.  Do we have a strategy for
+> handling continued expansion of metadata objects in ext4?
 
-The problem with crc32[c] is that if you don't have hardware acceleration
-it is terribly slow.
+One reason to stick to crc16 for the block checksums is that this would still
+fit inside the ext3_group_desc space, so upgraded filesystems could enable
+checksums.
 
->> some of the reserved space in the group descriptor to store checksums of the
->> block and inode bitmaps.  Adding tails to the extent tree blocks seems a bit
->> trickier than that, but not a big deal, though I guess I'll have to reshuffle
->> the extent tree to free up space at the end of the block.
->> 
->> I was also wondering what people think of adding checksums to directory files?
->> I think that it's possible to put a checksum in each directory block -- for
->> blocks containing a linear array of actual directory entries, we could zero out
->> the space past the end of the array and put a checksum at the very end of the
->> block.  For the dx_node/dx_root blocks, we could probably use the space
->> occupied by the last dx_entry to store the checksum.  Obviously, we'd have to
->> move whatever's at the end of the block elsewhere, but then, we have to do that
->> for the extent tree too.  Basically, the last 4 bytes become the checksum after
->> whatever's occupying the space is relocated. :)
-> 
-> 	ocfs2 adds trailer entries to every dirblock for the checksum.
-> We also do our dirindex free list there.  Since ocfs2 dirblocks are ext3
-> dirblocks, I bet you can rip off a lot of that code, including the
-> feature compatibility stuff.  See ocfs2_fs.h.
+>>> Adding tails to the extent tree blocks seems a bit trickier than that,
+>>> but not a big deal, though I guess I'll have to reshuffle
+>>> the extent tree to free up space at the end of the block.
 
-Yes, it makes sense to just put a "fake" dirent at the end of the leaf block,
-or similar.  I don't think it is necessary to modify existing directories or
-extent blocks to add these structures in, if there is no room, but for new
-blocks, or blocks with space it is enough.
+I don't think reshuffling is necessary.  It should be OK to add it to blocks
+that fit, and skip blocks that don't have enough space.
 
->> It looks like there's sufficient unused space in ext4_xattr_header to add a
->> checksum.
->> 
->> Also -- should I create separate rocompat feature flags for each metadata
->> object that I add checksums to?  Or just have one flag that covers them all?
-> 
-> 	I really think you should checksum every metadata block.  A few
-> things will take some effort to shoehorn it in, but it is worth it.
-> 
-> Joel
-> 
-> -- 
-> 
-> Life's Little Instruction Book #173
-> 
-> 	"Be kinder than necessary."
-> 
-> 			http://www.jlbec.org/
-> 			jlbec@evilplan.org
+>>> I was also wondering what people think of adding checksums to directory
+>> files?
+>>> I think that it's possible to put a checksum in each directory block --
+>> for
+>>> blocks containing a linear array of actual directory entries, we could
+>> zero out
+>>> the space past the end of the array and put a checksum at the very end of
+>> the
+>>> block.  For the dx_node/dx_root blocks, we could probably use the space
+>>> occupied by the last dx_entry to store the checksum.  Obviously, we'd have
+>> to
+>>> move whatever's at the end of the block elsewhere, but then, we have to do
+>> that
+>>> for the extent tree too.  Basically, the last 4 bytes become the checksum
+>> after
+>>> whatever's occupying the space is relocated. :)
+>>> 
+>>> It looks like there's sufficient unused space in ext4_xattr_header to add
+>> a
+>>> checksum.
+>>> 
+>>> Also -- should I create separate rocompat feature flags for each metadata
+>>> object that I add checksums to?  Or just have one flag that covers them
+>> all?
+>>> 
+>>> Ok, enough crazy ideas for now...
+>>> 
+>>> --D
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
