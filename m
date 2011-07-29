@@ -1,115 +1,83 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [patch 1/1] ext4: use proper little-endian bitops
-Date: Fri, 29 Jul 2011 11:43:32 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1107291109460.4293@dhcp-27-109.brq.redhat.com>
-References: <201107282055.p6SKtKp5008047@imap1.linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=UTF-8
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org, akinobu.mita@gmail.com,
-	adilger.kernel@dilger.ca
-To: akpm@linux-foundation.org
+From: Andreas Dilger <adilger.kernel@dilger.ca>
+Subject: Re: [PATCH 0/2] Add inode checksum support to ext4
+Date: Fri, 29 Jul 2011 03:48:45 -0600
+Message-ID: <0E795C1D-AD1E-4CC4-9426-2B58D98B14DC@dilger.ca>
+References: <20110406224410.GB24354@tux1.beaverton.ibm.com> <1302290868.4461.7.camel@mingming-laptop> <20110727082730.GG20655@tux1.beaverton.ibm.com> <EF1F2330-D8C4-427A-ABB9-D1E607D91A3D@gmail.com> <20110728165615.GI20655@tux1.beaverton.ibm.com> <20110728220735.GA27253@noexit.corp.google.com>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: "Darrick J. Wong" <djwong@us.ibm.com>,
+	Andreas Dilger <aedilger@gmail.com>,
+	Mingming Cao <cmm@us.ibm.com>, Theodore Ts'o <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: Joel Becker <jlbec@evilplan.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45992 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755750Ab1G2JoT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 29 Jul 2011 05:44:19 -0400
-In-Reply-To: <201107282055.p6SKtKp5008047@imap1.linux-foundation.org>
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:20272 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756088Ab1G2Jsq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Jul 2011 05:48:46 -0400
+In-Reply-To: <20110728220735.GA27253@noexit.corp.google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 28 Jul 2011, akpm@linux-foundation.org wrote:
-
-> From: Akinobu Mita <akinobu.mita@gmail.com>
+On 2011-07-28, at 4:07 PM, Joel Becker wrote:
+> On Thu, Jul 28, 2011 at 09:56:15AM -0700, Darrick J. Wong wrote:
+>>> the block. There of course is no reason to put an extent tail inside the
+>>> inode itself.
+>> 
+>> Does anybody have any objection to using crc32c (which we can hardware
+>> accelerate on new Intel boxen) over crc16?  I think it'll be pretty easy to use
 > 
-> ext4_{set,clear}_bit() is defined as __test_and_{set,clear}_bit_le() for
-> ext4.  Only two ext4_{set,clear}_bit() calls check the return value.  The
-> rest of calls ignore the return value and they can be replaced with
-> __{set,clear}_bit_le().
+> 	We use ethernet crc32 in ocfs2.  btrfs uses crc32c.  Frankly, I
+> could have used crc32c if I'd really thought about the hardware
+> acceleration benefits.  I think it's a good idea for ext4.
+
+The problem with crc32[c] is that if you don't have hardware acceleration
+it is terribly slow.
+
+>> some of the reserved space in the group descriptor to store checksums of the
+>> block and inode bitmaps.  Adding tails to the extent tree blocks seems a bit
+>> trickier than that, but not a big deal, though I guess I'll have to reshuffle
+>> the extent tree to free up space at the end of the block.
+>> 
+>> I was also wondering what people think of adding checksums to directory files?
+>> I think that it's possible to put a checksum in each directory block -- for
+>> blocks containing a linear array of actual directory entries, we could zero out
+>> the space past the end of the array and put a checksum at the very end of the
+>> block.  For the dx_node/dx_root blocks, we could probably use the space
+>> occupied by the last dx_entry to store the checksum.  Obviously, we'd have to
+>> move whatever's at the end of the block elsewhere, but then, we have to do that
+>> for the extent tree too.  Basically, the last 4 bytes become the checksum after
+>> whatever's occupying the space is relocated. :)
 > 
-> This changes ext4_{set,clear}_bit() from __test_and_{set,clear}_bit_le()
-> to __{set,clear}_bit_le() and introduces ext4_test_and_{set,clear}_bit()
-> for the two places where old bit needs to be returned.
+> 	ocfs2 adds trailer entries to every dirblock for the checksum.
+> We also do our dirindex free list there.  Since ocfs2 dirblocks are ext3
+> dirblocks, I bet you can rip off a lot of that code, including the
+> feature compatibility stuff.  See ocfs2_fs.h.
+
+Yes, it makes sense to just put a "fake" dirent at the end of the leaf block,
+or similar.  I don't think it is necessary to modify existing directories or
+extent blocks to add these structures in, if there is no room, but for new
+blocks, or blocks with space it is enough.
+
+>> It looks like there's sufficient unused space in ext4_xattr_header to add a
+>> checksum.
+>> 
+>> Also -- should I create separate rocompat feature flags for each metadata
+>> object that I add checksums to?  Or just have one flag that covers them all?
 > 
-> This ext4_{set,clear}_bit() change is considered safe, because if someone
-> uses these macros without noticing the change, new ext4_{set,clear}_bit
-> don't have return value and causes compiler errors where the return value
-> is used.
+> 	I really think you should checksum every metadata block.  A few
+> things will take some effort to shoehorn it in, but it is worth it.
 > 
-> This also removes unused ext4_find_first_zero_bit().
-
-Hi Anikobu,
-
-I have some comments bellow.
-
+> Joel
 > 
-> Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-> Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
-> ---
+> -- 
 > 
->  fs/ext4/ext4.h   |    7 ++++---
->  fs/ext4/ialloc.c |    4 ++--
->  2 files changed, 6 insertions(+), 5 deletions(-)
+> Life's Little Instruction Book #173
 > 
-> diff -puN fs/ext4/ext4.h~ext4-use-proper-little-endian-bitops fs/ext4/ext4.h
-> --- a/fs/ext4/ext4.h~ext4-use-proper-little-endian-bitops
-> +++ a/fs/ext4/ext4.h
-> @@ -931,12 +931,13 @@ struct ext4_inode_info {
->  #define test_opt2(sb, opt)		(EXT4_SB(sb)->s_mount_opt2 & \
->  					 EXT4_MOUNT2_##opt)
->  
-> -#define ext4_set_bit			__test_and_set_bit_le
-> +#define ext4_test_and_set_bit		__test_and_set_bit_le
-> +#define ext4_set_bit			__set_bit_le
->  #define ext4_set_bit_atomic		ext2_set_bit_atomic
-We can remove this since it is not used anywhere and it is just a macro
-for test_and_set_bit_le() anyway.
-
-> -#define ext4_clear_bit			__test_and_clear_bit_le
-> +#define ext4_test_and_clear_bit		__test_and_clear_bit_le
-> +#define ext4_clear_bit			__clear_bit_le
->  #define ext4_clear_bit_atomic		ext2_clear_bit_atomic
-Not used as well.
-
->  #define ext4_test_bit			test_bit_le
-> -#define ext4_find_first_zero_bit	find_first_zero_bit_le
->  #define ext4_find_next_zero_bit		find_next_zero_bit_le
->  #define ext4_find_next_bit		find_next_bit_le
-
-Other than that it looks good. You can add my 
-
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
-
-Thanks!
--Lukas
-
->  
-> diff -puN fs/ext4/ialloc.c~ext4-use-proper-little-endian-bitops fs/ext4/ialloc.c
-> --- a/fs/ext4/ialloc.c~ext4-use-proper-little-endian-bitops
-> +++ a/fs/ext4/ialloc.c
-> @@ -252,7 +252,7 @@ void ext4_free_inode(handle_t *handle, s
->  		fatal = ext4_journal_get_write_access(handle, bh2);
->  	}
->  	ext4_lock_group(sb, block_group);
-> -	cleared = ext4_clear_bit(bit, bitmap_bh->b_data);
-> +	cleared = ext4_test_and_clear_bit(bit, bitmap_bh->b_data);
->  	if (fatal || !cleared) {
->  		ext4_unlock_group(sb, block_group);
->  		goto out;
-> @@ -729,7 +729,7 @@ static int ext4_claim_inode(struct super
->  	 */
->  	down_read(&grp->alloc_sem);
->  	ext4_lock_group(sb, group);
-> -	if (ext4_set_bit(ino, inode_bitmap_bh->b_data)) {
-> +	if (ext4_test_and_set_bit(ino, inode_bitmap_bh->b_data)) {
->  		/* not a free inode */
->  		retval = 1;
->  		goto err_ret;
-> _
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 	"Be kinder than necessary."
 > 
+> 			http://www.jlbec.org/
+> 			jlbec@evilplan.org
 
