@@ -1,45 +1,31 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH XFSPROGS 2/3] Build without enabling DEBUG by default
-Date: Sat, 30 Jul 2011 12:55:17 -0400
-Message-ID: <20110730165517.GA13918@infradead.org>
-References: <1311292237-4155-1-git-send-email-tytso@mit.edu>
- <1311292237-4155-2-git-send-email-tytso@mit.edu>
- <20110722141753.GA19681@infradead.org>
- <20110722183048.GC25092@thunk.org>
- <20110722183830.GA21744@infradead.org>
- <20110722223458.GD25092@thunk.org>
- <20110723013214.GA22837@infradead.org>
- <20110726151033.GA18311@infradead.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [patch] ext4: add a kfree() on error i add_new_gdb()
+Date: Sat, 30 Jul 2011 12:59:39 -0400
+Message-ID: <20110730165939.GJ7361@thunk.org>
+References: <20110730082557.GB5575@shale.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	xfs@oss.sgi.com
-To: Ted Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	"open list:EXT4 FILE SYSTEM" <linux-ext4@vger.kernel.org>,
+	kernel-janitors@vger.kernel.org
+To: Dan Carpenter <error27@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:54821
-	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752088Ab1G3QzT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 30 Jul 2011 12:55:19 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:54954 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752088Ab1G3Q7m (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 30 Jul 2011 12:59:42 -0400
 Content-Disposition: inline
-In-Reply-To: <20110726151033.GA18311@infradead.org>
+In-Reply-To: <20110730082557.GB5575@shale.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 26, 2011 at 11:10:33AM -0400, Christoph Hellwig wrote:
-> > This looks much better, and is indeed similar to some other fixes we
-> > recently had to put in, probably due to changing make behaviour.
-> > 
-> > If you add a signoff and a proper description I'll put it into all the
-> > repositories.
+On Sat, Jul 30, 2011 at 11:25:57AM +0300, Dan Carpenter wrote:
+> We added some more error handling in b40971426a "ext4: add error
+> checking to calls to ext4_handle_dirty_metadata()".  But we need to
+> call kfree() as well to avoid a memory leak.
 > 
-> Can you at least provide the signoff?  I can take care of the rest if
-> this means I can get it in ASAP.
+> Signed-off-by: Dan Carpenter <error27@gmail.com>
 
-Ted,
+Added to the ext4 tree, thanks for catching this!!
 
-can you please give me a signoff for this patch?  I could probably just
-put it in anyway given how trivial it is.  But let's just stick to the
-proper protocol if we can.
-
+      	     	  	       	   	    - Ted
