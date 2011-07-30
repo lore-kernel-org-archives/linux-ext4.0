@@ -1,41 +1,102 @@
-From: Al Viro <viro@ZenIV.linux.org.uk>
-Subject: Re: [PATCH] ext4: fix races in ext4_sync_parent()
-Date: Sat, 30 Jul 2011 17:42:42 +0100
-Message-ID: <20110730164242.GB2203@ZenIV.linux.org.uk>
-References: <1311729192-30598-1-git-send-email-tytso@mit.edu>
- <20110727011554.GN22133@ZenIV.linux.org.uk>
- <20110728003421.GA3133@thunk.org>
- <20110728011129.GO22133@ZenIV.linux.org.uk>
- <20110730163204.GH7361@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Ted Ts'o <tytso@mit.edu>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: change umode_t in tracepoint headers to be an explicit __u16
+Date: Sat, 30 Jul 2011 12:52:22 -0400
+Message-ID: <1312044742-15148-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, Al Viro <viro@ZenIV.linux.org.uk>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:37849 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751544Ab1G3Qmp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 30 Jul 2011 12:42:45 -0400
-Content-Disposition: inline
-In-Reply-To: <20110730163204.GH7361@thunk.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:59647 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751443Ab1G3QwZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 30 Jul 2011 12:52:25 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jul 30, 2011 at 12:32:04PM -0400, Ted Ts'o wrote:
-> 		spin_lock(&inode->i_lock);
-> 		if (!list_empty(&inode->i_dentry)) {
-> 			dentry = list_first_entry(&inode->i_dentry,
-> 						  struct dentry, d_alias);
-> 			dget(dentry);
-> 		}
-> 		spin_unlock(&inode->i_lock);
+As requested by Al Viro, since umode_t may be changing to a u32 for
+some architectures.
 
-		dentry = d_find_alias(inode);
-actually...
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>
+---
+ include/trace/events/ext4.h |   16 ++++++++--------
+ 1 files changed, 8 insertions(+), 8 deletions(-)
 
-> 		if (!dentry)
-> 			break;
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index 51d8813..bf5518d 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -23,7 +23,7 @@ TRACE_EVENT(ext4_free_inode,
+ 	TP_STRUCT__entry(
+ 		__field(	dev_t,	dev			)
+ 		__field(	ino_t,	ino			)
+-		__field(	umode_t, mode			)
++		__field(	__u16, mode			)
+ 		__field(	uid_t,	uid			)
+ 		__field(	gid_t,	gid			)
+ 		__field(	__u64, blocks			)
+@@ -52,7 +52,7 @@ TRACE_EVENT(ext4_request_inode,
+ 	TP_STRUCT__entry(
+ 		__field(	dev_t,	dev			)
+ 		__field(	ino_t,	dir			)
+-		__field(	umode_t, mode			)
++		__field(	__u16, mode			)
+ 	),
+ 
+ 	TP_fast_assign(
+@@ -75,7 +75,7 @@ TRACE_EVENT(ext4_allocate_inode,
+ 		__field(	dev_t,	dev			)
+ 		__field(	ino_t,	ino			)
+ 		__field(	ino_t,	dir			)
+-		__field(	umode_t, mode			)
++		__field(	__u16,	mode			)
+ 	),
+ 
+ 	TP_fast_assign(
+@@ -727,7 +727,7 @@ TRACE_EVENT(ext4_free_blocks,
+ 	TP_STRUCT__entry(
+ 		__field(	dev_t,	dev			)
+ 		__field(	ino_t,	ino			)
+-		__field(	umode_t, mode			)
++		__field(	__u16,	mode			)
+ 		__field(	__u64,	block			)
+ 		__field(	unsigned long,	count		)
+ 		__field(	int,	flags			)
+@@ -1014,7 +1014,7 @@ TRACE_EVENT(ext4_forget,
+ 	TP_STRUCT__entry(
+ 		__field(	dev_t,	dev			)
+ 		__field(	ino_t,	ino			)
+-		__field(	umode_t, mode			)
++		__field(	__u16,	mode			)
+ 		__field(	int,	is_metadata		)
+ 		__field(	__u64,	block			)
+ 	),
+@@ -1041,7 +1041,7 @@ TRACE_EVENT(ext4_da_update_reserve_space,
+ 	TP_STRUCT__entry(
+ 		__field(	dev_t,	dev			)
+ 		__field(	ino_t,	ino			)
+-		__field(	umode_t, mode			)
++		__field(	__u16,	mode			)
+ 		__field(	__u64,	i_blocks		)
+ 		__field(	int,	used_blocks		)
+ 		__field(	int,	reserved_data_blocks	)
+@@ -1078,7 +1078,7 @@ TRACE_EVENT(ext4_da_reserve_space,
+ 	TP_STRUCT__entry(
+ 		__field(	dev_t,	dev			)
+ 		__field(	ino_t,	ino			)
+-		__field(	umode_t, mode			)
++		__field(	__u16,  mode			)
+ 		__field(	__u64,	i_blocks		)
+ 		__field(	int,	md_needed		)
+ 		__field(	int,	reserved_data_blocks	)
+@@ -1112,7 +1112,7 @@ TRACE_EVENT(ext4_da_release_space,
+ 	TP_STRUCT__entry(
+ 		__field(	dev_t,	dev			)
+ 		__field(	ino_t,	ino			)
+-		__field(	umode_t, mode			)
++		__field(	__u16,  mode			)
+ 		__field(	__u64,	i_blocks		)
+ 		__field(	int,	freed_blocks		)
+ 		__field(	int,	reserved_data_blocks	)
+-- 
+1.7.4.1.22.gec8e1.dirty
 
-> 		next = igrab(dentry->d_parent->d_inode);
-
-and that one needs dentry->d_lock around it, to stabilize ->d_parent.
