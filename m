@@ -1,207 +1,31 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/5] ext4: use ext4_msg() instead of printk in mballoc
-Date: Mon,  1 Aug 2011 09:13:16 -0400
-Message-ID: <1312204398-12460-4-git-send-email-tytso@mit.edu>
-References: <A8CDAA23-61C6-4823-ADB1-7D36CBAFC025@whamcloud.com>
- <1312204398-12460-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: make quota as first class supported feature
+Date: Mon, 1 Aug 2011 10:00:34 -0400
+Message-ID: <20110801140034.GC21388@thunk.org>
+References: <1311187218-30798-1-git-send-email-adityakali@google.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Aditya Kali <adityakali@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:40455 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:60691 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751841Ab1HANN0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 1 Aug 2011 09:13:26 -0400
-In-Reply-To: <1312204398-12460-1-git-send-email-tytso@mit.edu>
+	id S1751773Ab1HAOAi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 1 Aug 2011 10:00:38 -0400
+Content-Disposition: inline
+In-Reply-To: <1311187218-30798-1-git-send-email-adityakali@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/mballoc.c |   79 ++++++++++++++++++++++++++++-------------------------
- 1 files changed, 42 insertions(+), 37 deletions(-)
+On Wed, Jul 20, 2011 at 11:40:18AM -0700, Aditya Kali wrote:
+> This patch is an attempt towards supporting quotas as first class
+> feature in ext4. It is based on the proposal at:
+> https://ext4.wiki.kernel.org/index.php/Design_For_1st_Class_Quota_in_Ext4
+> ...
+>
+> Signed-off-by: Aditya Kali <adityakali@google.com>
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index d5021e8..262fa47 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -493,10 +493,11 @@ static void mb_cmp_bitmaps(struct ext4_buddy *e4b, void *bitmap)
- 		b2 = (unsigned char *) bitmap;
- 		for (i = 0; i < e4b->bd_sb->s_blocksize; i++) {
- 			if (b1[i] != b2[i]) {
--				printk(KERN_ERR "corruption in group %u "
--				       "at byte %u(%u): %x in copy != %x "
--				       "on disk/prealloc\n",
--				       e4b->bd_group, i, i * 8, b1[i], b2[i]);
-+				ext4_msg(e4b->bd_sb, KERN_ERR,
-+					 "corruption in group %u "
-+					 "at byte %u(%u): %x in copy != %x "
-+					 "on disk/prealloc",
-+					 e4b->bd_group, i, i * 8, b1[i], b2[i]);
- 				BUG();
- 			}
- 		}
-@@ -2224,8 +2225,8 @@ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
- 			EXT4_DESC_PER_BLOCK_BITS(sb);
- 		meta_group_info = kmalloc(metalen, GFP_KERNEL);
- 		if (meta_group_info == NULL) {
--			printk(KERN_ERR "EXT4-fs: can't allocate mem for a "
--			       "buddy group\n");
-+			ext4_msg(sb, KERN_ERR, "EXT4-fs: can't allocate mem "
-+				 "for a buddy group");
- 			goto exit_meta_group_info;
- 		}
- 		sbi->s_group_info[group >> EXT4_DESC_PER_BLOCK_BITS(sb)] =
-@@ -2238,7 +2239,7 @@ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
- 
- 	meta_group_info[i] = kmem_cache_alloc(cachep, GFP_KERNEL);
- 	if (meta_group_info[i] == NULL) {
--		printk(KERN_ERR "EXT4-fs: can't allocate buddy mem\n");
-+		ext4_msg(sb, KERN_ERR, "EXT4-fs: can't allocate buddy mem");
- 		goto exit_group_info;
- 	}
- 	memset(meta_group_info[i], 0, kmem_cache_size(cachep));
-@@ -2333,12 +2334,12 @@ static int ext4_mb_init_backend(struct super_block *sb)
- 	 * So a two level scheme suffices for now. */
- 	sbi->s_group_info = ext4_kvzalloc(array_size, GFP_KERNEL);
- 	if (sbi->s_group_info == NULL) {
--		printk(KERN_ERR "EXT4-fs: can't allocate buddy meta group\n");
-+		ext4_msg(sb, KERN_ERR, "can't allocate buddy meta group");
- 		return -ENOMEM;
- 	}
- 	sbi->s_buddy_cache = new_inode(sb);
- 	if (sbi->s_buddy_cache == NULL) {
--		printk(KERN_ERR "EXT4-fs: can't get new inode\n");
-+		ext4_msg(sb, KERN_ERR, "can't get new inode");
- 		goto err_freesgi;
- 	}
- 	sbi->s_buddy_cache->i_ino = get_next_ino();
-@@ -2346,8 +2347,7 @@ static int ext4_mb_init_backend(struct super_block *sb)
- 	for (i = 0; i < ngroups; i++) {
- 		desc = ext4_get_group_desc(sb, i, NULL);
- 		if (desc == NULL) {
--			printk(KERN_ERR
--				"EXT4-fs: can't read descriptor %u\n", i);
-+			ext4_msg(sb, KERN_ERR, "can't read descriptor %u", i);
- 			goto err_freebuddy;
- 		}
- 		if (ext4_mb_add_groupinfo(sb, i, desc) != 0)
-@@ -2411,7 +2411,8 @@ static int ext4_groupinfo_create_slab(size_t size)
- 
- 	mutex_unlock(&ext4_grpinfo_slab_create_mutex);
- 	if (!cachep) {
--		printk(KERN_EMERG "EXT4: no memory for groupinfo slab cache\n");
-+		printk(KERN_EMERG,
-+		       "EXT4-fs: no memory for groupinfo slab cache\n");
- 		return -ENOMEM;
- 	}
- 
-@@ -2566,25 +2567,25 @@ int ext4_mb_release(struct super_block *sb)
- 	if (sbi->s_buddy_cache)
- 		iput(sbi->s_buddy_cache);
- 	if (sbi->s_mb_stats) {
--		printk(KERN_INFO
--		       "EXT4-fs: mballoc: %u blocks %u reqs (%u success)\n",
-+		ext4_msg(sb, KERN_INFO,
-+		       "mballoc: %u blocks %u reqs (%u success)",
- 				atomic_read(&sbi->s_bal_allocated),
- 				atomic_read(&sbi->s_bal_reqs),
- 				atomic_read(&sbi->s_bal_success));
--		printk(KERN_INFO
--		      "EXT4-fs: mballoc: %u extents scanned, %u goal hits, "
--				"%u 2^N hits, %u breaks, %u lost\n",
-+		ext4_msg(sb, KERN_INFO,
-+		      "mballoc: %u extents scanned, %u goal hits, "
-+				"%u 2^N hits, %u breaks, %u lost",
- 				atomic_read(&sbi->s_bal_ex_scanned),
- 				atomic_read(&sbi->s_bal_goals),
- 				atomic_read(&sbi->s_bal_2orders),
- 				atomic_read(&sbi->s_bal_breaks),
- 				atomic_read(&sbi->s_mb_lost_chunks));
--		printk(KERN_INFO
--		       "EXT4-fs: mballoc: %lu generated and it took %Lu\n",
-+		ext4_msg(sb, KERN_INFO,
-+		       "mballoc: %lu generated and it took %Lu",
- 				sbi->s_mb_buddies_generated,
- 				sbi->s_mb_generation_time);
--		printk(KERN_INFO
--		       "EXT4-fs: mballoc: %u preallocated, %u discarded\n",
-+		ext4_msg(sb, KERN_INFO,
-+		       "mballoc: %u preallocated, %u discarded",
- 				atomic_read(&sbi->s_mb_preallocated),
- 				atomic_read(&sbi->s_mb_discarded));
- 	}
-@@ -3024,9 +3025,10 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
- 
- 	if (start + size <= ac->ac_o_ex.fe_logical &&
- 			start > ac->ac_o_ex.fe_logical) {
--		printk(KERN_ERR "start %lu, size %lu, fe_logical %lu\n",
--			(unsigned long) start, (unsigned long) size,
--			(unsigned long) ac->ac_o_ex.fe_logical);
-+		ext4_msg(ac->ac_sb, KERN_ERR,
-+			 "start %lu, size %lu, fe_logical %lu",
-+			 (unsigned long) start, (unsigned long) size,
-+			 (unsigned long) ac->ac_o_ex.fe_logical);
- 	}
- 	BUG_ON(start + size <= ac->ac_o_ex.fe_logical &&
- 			start > ac->ac_o_ex.fe_logical);
-@@ -3607,10 +3609,11 @@ ext4_mb_release_inode_pa(struct ext4_buddy *e4b, struct buffer_head *bitmap_bh,
- 		bit = next + 1;
- 	}
- 	if (free != pa->pa_free) {
--		printk(KERN_CRIT "pa %p: logic %lu, phys. %lu, len %lu\n",
--			pa, (unsigned long) pa->pa_lstart,
--			(unsigned long) pa->pa_pstart,
--			(unsigned long) pa->pa_len);
-+		ext4_msg(e4b->bd_sb, KERN_CRIT,
-+			 "pa %p: logic %lu, phys. %lu, len %lu",
-+			 pa, (unsigned long) pa->pa_lstart,
-+			 (unsigned long) pa->pa_pstart,
-+			 (unsigned long) pa->pa_len);
- 		ext4_grp_locked_error(sb, group, 0, 0, "free %u, pa_free %u",
- 					free, pa->pa_free);
- 		/*
-@@ -3798,7 +3801,8 @@ repeat:
- 			 * use preallocation while we're discarding it */
- 			spin_unlock(&pa->pa_lock);
- 			spin_unlock(&ei->i_prealloc_lock);
--			printk(KERN_ERR "uh-oh! used pa while discarding\n");
-+			ext4_msg(sb, KERN_ERR,
-+				 "uh-oh! used pa while discarding");
- 			WARN_ON(1);
- 			schedule_timeout_uninterruptible(HZ);
- 			goto repeat;
-@@ -3875,12 +3879,13 @@ static void ext4_mb_show_ac(struct ext4_allocation_context *ac)
- 	    (EXT4_SB(sb)->s_mount_flags & EXT4_MF_FS_ABORTED))
- 		return;
- 
--	printk(KERN_ERR "EXT4-fs: Can't allocate:"
--			" Allocation context details:\n");
--	printk(KERN_ERR "EXT4-fs: status %d flags %d\n",
-+	ext4_msg(ac->ac_sb, KERN_ERR, "EXT4-fs: Can't allocate:"
-+			" Allocation context details:");
-+	ext4_msg(ac->ac_sb, KERN_ERR, "EXT4-fs: status %d flags %d",
- 			ac->ac_status, ac->ac_flags);
--	printk(KERN_ERR "EXT4-fs: orig %lu/%lu/%lu@%lu, goal %lu/%lu/%lu@%lu, "
--			"best %lu/%lu/%lu@%lu cr %d\n",
-+	ext4_msg(ac->ac_sb, KERN_ERR, "EXT4-fs: orig %lu/%lu/%lu@%lu, "
-+		 	"goal %lu/%lu/%lu@%lu, "
-+			"best %lu/%lu/%lu@%lu cr %d",
- 			(unsigned long)ac->ac_o_ex.fe_group,
- 			(unsigned long)ac->ac_o_ex.fe_start,
- 			(unsigned long)ac->ac_o_ex.fe_len,
-@@ -3894,9 +3899,9 @@ static void ext4_mb_show_ac(struct ext4_allocation_context *ac)
- 			(unsigned long)ac->ac_b_ex.fe_len,
- 			(unsigned long)ac->ac_b_ex.fe_logical,
- 			(int)ac->ac_criteria);
--	printk(KERN_ERR "EXT4-fs: %lu scanned, %d found\n", ac->ac_ex_scanned,
--		ac->ac_found);
--	printk(KERN_ERR "EXT4-fs: groups: \n");
-+	ext4_msg(ac->ac_sb, KERN_ERR, "EXT4-fs: %lu scanned, %d found",
-+		 ac->ac_ex_scanned, ac->ac_found);
-+	ext4_msg(ac->ac_sb, KERN_ERR, "EXT4-fs: groups: ");
- 	ngroups = ext4_get_groups_count(sb);
- 	for (i = 0; i < ngroups; i++) {
- 		struct ext4_group_info *grp = ext4_get_group_info(sb, i);
--- 
-1.7.4.1.22.gec8e1.dirty
+Thanks, added to the ext4 tree.
+
+						- Ted
 
