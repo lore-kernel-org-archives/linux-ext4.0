@@ -1,132 +1,48 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/5] ext4: use ext4_kvzalloc()/ext4_kvmalloc() for s_group_desc and s_group_info
-Date: Mon,  1 Aug 2011 09:13:15 -0400
-Message-ID: <1312204398-12460-3-git-send-email-tytso@mit.edu>
+Subject: [PATCH 4/5] ext4: use EXT4_BAD_INO for buddy cache to avoid colliding with valid inode #
+Date: Mon,  1 Aug 2011 09:13:17 -0400
+Message-ID: <1312204398-12460-5-git-send-email-tytso@mit.edu>
 References: <A8CDAA23-61C6-4823-ADB1-7D36CBAFC025@whamcloud.com>
  <1312204398-12460-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: Yu Jian <yujian@whamcloud.com>,
+	Andreas Dilger <adilger@whamcloud.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:40446 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:40449 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751826Ab1HANNV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751841Ab1HANNV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 1 Aug 2011 09:13:21 -0400
 In-Reply-To: <1312204398-12460-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+From: Yu Jian <yujian@whamcloud.com>
+
+Signed-off-by: Yu Jian <yujian@whamcloud.com>
+Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/mballoc.c |    6 +++---
- fs/ext4/resize.c  |   13 +++++++------
- fs/ext4/super.c   |    9 +++++----
- 3 files changed, 15 insertions(+), 13 deletions(-)
+ fs/ext4/mballoc.c |    6 +++++-
+ 1 files changed, 5 insertions(+), 1 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index fa716c9..d5021e8 100644
+index 262fa47..8beccd8 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -2331,7 +2331,7 @@ static int ext4_mb_init_backend(struct super_block *sb)
- 	/* An 8TB filesystem with 64-bit pointers requires a 4096 byte
- 	 * kmalloc. A 128kb malloc should suffice for a 256TB filesystem.
- 	 * So a two level scheme suffices for now. */
--	sbi->s_group_info = kzalloc(array_size, GFP_KERNEL);
-+	sbi->s_group_info = ext4_kvzalloc(array_size, GFP_KERNEL);
- 	if (sbi->s_group_info == NULL) {
- 		printk(KERN_ERR "EXT4-fs: can't allocate buddy meta group\n");
- 		return -ENOMEM;
-@@ -2365,7 +2365,7 @@ err_freebuddy:
- 		kfree(sbi->s_group_info[i]);
- 	iput(sbi->s_buddy_cache);
- err_freesgi:
--	kfree(sbi->s_group_info);
-+	ext4_kvfree(sbi->s_group_info);
- 	return -ENOMEM;
- }
- 
-@@ -2559,7 +2559,7 @@ int ext4_mb_release(struct super_block *sb)
- 			EXT4_DESC_PER_BLOCK_BITS(sb);
- 		for (i = 0; i < num_meta_group_infos; i++)
- 			kfree(sbi->s_group_info[i]);
--		kfree(sbi->s_group_info);
-+		ext4_kvfree(sbi->s_group_info);
+@@ -2342,7 +2342,11 @@ static int ext4_mb_init_backend(struct super_block *sb)
+ 		ext4_msg(sb, KERN_ERR, "can't get new inode");
+ 		goto err_freesgi;
  	}
- 	kfree(sbi->s_mb_offsets);
- 	kfree(sbi->s_mb_maxs);
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 71085df..707d3f1 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -467,12 +467,13 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
- 	if (unlikely(err))
- 		goto exit_dindj;
- 
--	n_group_desc = kmalloc((gdb_num + 1) * sizeof(struct buffer_head *),
--			GFP_NOFS);
-+	n_group_desc = ext4_kvmalloc((gdb_num + 1) *
-+				     sizeof(struct buffer_head *),
-+				     GFP_NOFS);
- 	if (!n_group_desc) {
- 		err = -ENOMEM;
--		ext4_warning(sb,
--			      "not enough memory for %lu groups", gdb_num + 1);
-+		ext4_warning(sb, "not enough memory for %lu groups",
-+			     gdb_num + 1);
- 		goto exit_inode;
- 	}
- 
-@@ -507,7 +508,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
- 	n_group_desc[gdb_num] = gdb_bh;
- 	EXT4_SB(sb)->s_group_desc = n_group_desc;
- 	EXT4_SB(sb)->s_gdb_count++;
--	kfree(o_group_desc);
-+	ext4_kvfree(o_group_desc);
- 
- 	le16_add_cpu(&es->s_reserved_gdt_blocks, -1);
- 	err = ext4_handle_dirty_metadata(handle, NULL, EXT4_SB(sb)->s_sbh);
-@@ -517,7 +518,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
- 	return err;
- 
- exit_inode:
--	kfree(n_group_desc);
-+	ext4_kvfree(n_group_desc);
- 	/* ext4_handle_release_buffer(handle, iloc.bh); */
- 	brelse(iloc.bh);
- exit_dindj:
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 658f586..e2d88ba 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -819,7 +819,7 @@ static void ext4_put_super(struct super_block *sb)
- 
- 	for (i = 0; i < sbi->s_gdb_count; i++)
- 		brelse(sbi->s_group_desc[i]);
--	kfree(sbi->s_group_desc);
-+	ext4_kvfree(sbi->s_group_desc);
- 	ext4_kvfree(sbi->s_flex_groups);
- 	percpu_counter_destroy(&sbi->s_freeblocks_counter);
- 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
-@@ -3439,8 +3439,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 			(EXT4_MAX_BLOCK_FILE_PHYS / EXT4_BLOCKS_PER_GROUP(sb)));
- 	db_count = (sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) /
- 		   EXT4_DESC_PER_BLOCK(sb);
--	sbi->s_group_desc = kmalloc(db_count * sizeof(struct buffer_head *),
--				    GFP_KERNEL);
-+	sbi->s_group_desc = ext4_kvmalloc(db_count *
-+					  sizeof(struct buffer_head *),
-+					  GFP_KERNEL);
- 	if (sbi->s_group_desc == NULL) {
- 		ext4_msg(sb, KERN_ERR, "not enough memory");
- 		goto failed_mount;
-@@ -3783,7 +3784,7 @@ failed_mount3:
- failed_mount2:
- 	for (i = 0; i < db_count; i++)
- 		brelse(sbi->s_group_desc[i]);
--	kfree(sbi->s_group_desc);
-+	ext4_kvfree(sbi->s_group_desc);
- failed_mount:
- 	if (sbi->s_proc) {
- 		remove_proc_entry(sb->s_id, ext4_proc_root);
+-	sbi->s_buddy_cache->i_ino = get_next_ino();
++	/* To avoid potentially colliding with an valid on-disk inode number,
++	 * use EXT4_BAD_INO for the buddy cache inode number.  This inode is
++	 * not in the inode hash, so it should never be found by iget(), but
++	 * this will avoid confusion if it ever shows up during debugging. */
++	sbi->s_buddy_cache->i_ino = EXT4_BAD_INO;
+ 	EXT4_I(sbi->s_buddy_cache)->i_disksize = 0;
+ 	for (i = 0; i < ngroups; i++) {
+ 		desc = ext4_get_group_desc(sb, i, NULL);
 -- 
 1.7.4.1.22.gec8e1.dirty
 
