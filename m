@@ -1,77 +1,48 @@
-From: Coly Li <i@coly.li>
-Subject: Re: [PATCH 0/2] Add inode checksum support to ext4
-Date: Mon, 01 Aug 2011 15:16:30 +0800
-Message-ID: <4E3652CE.1060000@coly.li>
-References: <20110727082730.GG20655@tux1.beaverton.ibm.com> <EF1F2330-D8C4-427A-ABB9-D1E607D91A3D@gmail.com> <20110728165615.GI20655@tux1.beaverton.ibm.com> <20110728220735.GA27253@noexit.corp.google.com> <0E795C1D-AD1E-4CC4-9426-2B58D98B14DC@dilger.ca> <20110729131937.GB5910@noexit.corp.google.com> <4E33B1EC.9030004@gmail.com> <20110731070832.GA2848@noexit.corp.google.com> <4E35EAC9.6070707@gmail.com> <20110801045710.GB5716@noexit.corp.google.com> <20110801050435.GC5716@noexit.corp.google.com>
-Reply-To: i@coly.li
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext3: fix message in ext3_remount for rw-remount case
+Date: Mon, 1 Aug 2011 10:45:26 +0200
+Message-ID: <20110801084526.GB6522@quack.suse.cz>
+References: <20110801135451.cb73c981.toshi.okajima@jp.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Andreas Dilger <adilger.kernel@dilger.ca>,
-	"Darrick J. Wong" <djwong@us.ibm.com>,
-	Andreas Dilger <aedilger@gmail.com>,
-	Mingming Cao <cmm@us.ibm.com>, Theodore Ts'o <tytso@mit.edu>,
-	l
+Content-Type: text/plain; charset=us-ascii
+Cc: jack@suse.cz, akpm@linux-foundation.org, adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org
+To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy9.bluehost.com ([69.89.24.6]:41137 "HELO
-	oproxy9.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751467Ab1HAHMP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Aug 2011 03:12:15 -0400
-In-Reply-To: <20110801050435.GC5716@noexit.corp.google.com>
+Received: from cantor2.suse.de ([195.135.220.15]:45438 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751530Ab1HAIp2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 1 Aug 2011 04:45:28 -0400
+Content-Disposition: inline
+In-Reply-To: <20110801135451.cb73c981.toshi.okajima@jp.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011=E5=B9=B408=E6=9C=8801=E6=97=A5 13:04, Joel Becker Wrote:
-> On Sun, Jul 31, 2011 at 09:57:11PM -0700, Joel Becker wrote:
->> On Mon, Aug 01, 2011 at 07:52:41AM +0800, Coly Li wrote:
->>> On 2011=E5=B9=B407=E6=9C=8831=E6=97=A5 15:08, Joel Becker Wrote:
->>>> On Sat, Jul 30, 2011 at 03:25:32PM +0800, Coly Li wrote:
->>>>> And in non-journal mode, there is not copy of any meta data block=
- in jbd2, we need to be
->>>>> more careful in check summing, e.g. inode/block bitmap blocks...
->>>>
->>>> 	Sure, but you could use a trigger in journaled mode and then do
->>>> the checksums directly in the __ext4_handle_journal_dirty_*() func=
-tions
->>>> in non-journaled mode.  Sure, it would be a little more CPU time, =
-but
->>>> the user picked "checksums + no journal" at mkfs time.
->>>>
->>>
->>> Yes, my idea was similar to you.
->>> One thing not clear to me is, in non-journal mode, how to make the =
-page of bitmap block being stable. Because bits
->>> setting in Ext4 bitmap is non-locking, it might be possible that ne=
-w bit setting after check sum is calculated.
->>
->> 	Every place that changes the bits will eventually call
->> ext4_journal_dirty(), which recalculates the checksum.  So there's n=
-o
->> danger of a set-bit-after-last-checksum.  But you will have to lock
->> around the checksum calculation in non-journaling mode.  JBD2 handle=
-s it
->> for journaling mode.
->=20
-> 	Wait, bitsetting in ext4 can't be non-locking.  Or are they
-> crazily stomping on memory?  I sure see an assert_spin_locked() in
-> mb_mark_used().
->=20
+On Mon 01-08-11 13:54:51, Toshiyuki Okajima wrote:
+> If there are some inodes in orphan list while a filesystem is being 
+> read-only mounted, we should recommend that pepole umount and then
+> mount it when they try to remount with read-write. But the current
+> message/comment recommends that they umount and then remount it.
+> 
+> ext3_remount:
+> 	/*
+> 	 * If we have an unprocessed orphan list hanging
+> 	 * around from a previously readonly bdev mount,
+> 	 * require a full umount/remount for now.
+>                           ^^^^^^^^^^^^^^
+> 	 */
+> 	if (es->s_last_orphan) {
+> 		printk(KERN_WARNING "EXT3-fs: %s: couldn't "
+> 			"remount RDWR because of unprocessed "
+> 			"orphan inode list.  Please "
+> 			"umount/remount instead.\n",
+>                          ^^^^^^^^^^^^^^
+> 			sb->s_id);
+  OK, so how about using "umount & mount"? The '/' is what would confuse me
+the most... BTW, I guess you didn't really see this message in practice, did
+you?
 
-Yes, you are right.
-What I worried was inode bitmap, because last time (before uninit_bg wa=
-s developed), inode bitmap was set by
-ext4_set_bit_atomic(). Now I see inode bitmap is set by ext4_claim_inod=
-e() which locks the group internally.
-And I confirm block bitmap is protected by ext4_{lock,unlock}_group(). =
-So there is no risk for
-set-bit-after-last-checksum.
-
-Thanks for the clarification.
-
---=20
-Coly Li
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
