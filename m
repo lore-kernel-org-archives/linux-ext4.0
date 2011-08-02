@@ -1,78 +1,55 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v2] ext3: fix message in ext3_remount for rw-remount
- case
-Date: Tue, 2 Aug 2011 13:40:43 +0200
-Message-ID: <20110802114043.GB18545@quack.suse.cz>
-References: <20110802181657.d758bd44.toshi.okajima@jp.fujitsu.com>
+From: Round Robinjp <roundrobinjp@yahoo.co.jp>
+Subject: Re: flashing large eMMC partitions with ext4
+Date: Wed, 3 Aug 2011 01:07:08 +0900 (JST)
+Message-ID: <20110802160715.3069.qmail@web4212.mail.ogk.yahoo.co.jp>
+References: <CAOQ4uxiFaEvC0WpZH_bVp-Thhv0TMADNabd2pcr9pENfufDLoA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.cz, akpm@linux-foundation.org, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org
-To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8BIT
+Cc: Andreas Dilger <aedilger@gmail.com>, Ted Ts'o <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Goldstein Amir <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:42311 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753250Ab1HBLkq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Aug 2011 07:40:46 -0400
-Content-Disposition: inline
-In-Reply-To: <20110802181657.d758bd44.toshi.okajima@jp.fujitsu.com>
+Received: from web4212.mail.ogk.yahoo.co.jp ([124.83.212.32]:23928 "HELO
+	web4212.mail.ogk.yahoo.co.jp" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1754365Ab1HBQHU convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Aug 2011 12:07:20 -0400
+In-Reply-To: <CAOQ4uxiFaEvC0WpZH_bVp-Thhv0TMADNabd2pcr9pENfufDLoA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 02-08-11 18:16:57, Toshiyuki Okajima wrote:
-> If there are some inodes in orphan list while a filesystem is being 
-> read-only mounted, we should recommend that pepole umount and then
-> mount it when they try to remount with read-write. But the current
-> message and comment recommend that they umount and then remount it.
-> 
-> ext3_remount:
-> 	/*
-> 	 * If we have an unprocessed orphan list hanging
-> 	 * around from a previously readonly bdev mount,
-> 	 * require a full umount/remount for now.
->                           ^^^^^^^^^^^^^^
-> 	 */
-> 	if (es->s_last_orphan) {
-> 		printk(KERN_WARNING "EXT3-fs: %s: couldn't "
-> 			"remount RDWR because of unprocessed "
-> 			"orphan inode list.  Please "
-> 			"umount/remount instead.\n",
->                          ^^^^^^^^^^^^^^
-> 			sb->s_id);
-> 
-  Thanks. I've merged the patch. I only made the log shorther (no need to
-repeat where the message is fixed in the changelog when it's obvious from
-the diff).
+Amir
 
-								Honza
-
-> Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-> ---
->  fs/ext3/super.c |    4 ++--
->  1 files changed, 2 insertions(+), 2 deletions(-)
+> > But after extending to 4G, e2fsck makes some complain.
+> > I guess this is not expected behaviour, is it?
+> >
 > 
-> diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-> index 7beb69a..2043bcc 100644
-> --- a/fs/ext3/super.c
-> +++ b/fs/ext3/super.c
-> @@ -2669,13 +2669,13 @@ static int ext3_remount (struct super_block * sb, int * flags, char * data)
->  			/*
->  			 * If we have an unprocessed orphan list hanging
->  			 * around from a previously readonly bdev mount,
-> -			 * require a full umount/remount for now.
-> +			 * require a full umount & mount for now.
->  			 */
->  			if (es->s_last_orphan) {
->  				ext3_msg(sb, KERN_WARNING, "warning: couldn't "
->  				       "remount RDWR because of unprocessed "
->  				       "orphan inode list.  Please "
-> -				       "umount/remount instead.");
-> +				       "umount & mount instead.");
->  				err = -EINVAL;
->  				goto restore_opts;
->  			}
-> -- 
-> 1.5.5.6
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> it is expected when you use the current resize2fs,
+> which does not respect the flex_bg layout, so new group block bitmaps
+> are allocated beyond the 1G border and initialized.
+
+So that means I have thrown away some important part of
+the filesystem when I did truncate -s 1G, isn't it?
+Will things go wrong if I flash this 1G image to my eMMC
+partition (without using Yongqiang's new 64bit resize patches)?
+I need to understand whether Yongqiang's patch is absolutely
+necessary for this purpose or just a good thing to have.
+
+> if you use Yongqiang's new 64bit resize patches, the final fsck won't complain.
+> unfortunately for you, those patches have not been merged to the kernel yet,
+> so you will have to either build your own ext4 module or wait at least until
+> kernel 3.2 is released to have it in mainline.
+
+As said above.
+
+> It is actually quite simple to fix the 1G image, so it will pass fsck
+> after truncate -s 4G.
+> All it takes it setting the BLOCK_UNINIT flag in groups 8-31
+> this should be possible to do with debugfs (or write a small tool to do it).
+> if I have time, it will try it myself and post the instructions.
+
+OK, thanks in advance.
+
+Best Regards
+Round
