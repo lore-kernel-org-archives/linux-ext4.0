@@ -1,236 +1,38 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 3/5] ext4: use ext4_msg() instead of printk in mballoc
-Date: Mon, 1 Aug 2011 21:12:04 -0600
-Message-ID: <B52BE188-5FB1-4F7E-9FB3-5E6A25E58B69@dilger.ca>
-References: <A8CDAA23-61C6-4823-ADB1-7D36CBAFC025@whamcloud.com> <1312204398-12460-1-git-send-email-tytso@mit.edu> <1312204398-12460-4-git-send-email-tytso@mit.edu>
+From: Andreas Dilger <aedilger@gmail.com>
+Subject: Re: [PATCH 1/2] ext4: get free blocks count of BLOCK_UNINIT groups from group desc directly
+Date: Mon, 1 Aug 2011 21:15:11 -0600
+Message-ID: <0B54C612-6561-4EFD-894B-59CC27ABE2BA@gmail.com>
+References: <1311168774-26378-1-git-send-email-xiaoqiangnk@gmail.com> <1311168774-26378-2-git-send-email-xiaoqiangnk@gmail.com> <20110801112015.GB21388@thunk.org>
 Mime-Version: 1.0 (iPhone Mail 8L1)
 Content-Type: text/plain;
 	charset=us-ascii
 Content-Transfer-Encoding: 8BIT
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from shawmail.shawcable.com ([64.59.128.220]:42373 "EHLO
-	mail.shawcable.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752869Ab1HBDLg convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Aug 2011 23:11:36 -0400
-In-Reply-To: <1312204398-12460-4-git-send-email-tytso@mit.edu>
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:60042 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752817Ab1HBDOn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Aug 2011 23:14:43 -0400
+Received: by pzk37 with SMTP id 37so12652406pzk.1
+        for <linux-ext4@vger.kernel.org>; Mon, 01 Aug 2011 20:14:43 -0700 (PDT)
+In-Reply-To: <20110801112015.GB21388@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-08-01, at 7:13 AM, Theodore Ts'o <tytso@mit.edu> wrote:
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
-> fs/ext4/mballoc.c |   79 ++++++++++++++++++++++++++++-------------------------
-> 1 files changed, 42 insertions(+), 37 deletions(-)
-
-Hi Ted, thanks for updating this patch set.  One minor issue below. 
-
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index d5021e8..262fa47 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -493,10 +493,11 @@ static void mb_cmp_bitmaps(struct ext4_buddy *e4b, void *bitmap)
->        b2 = (unsigned char *) bitmap;
->        for (i = 0; i < e4b->bd_sb->s_blocksize; i++) {
->            if (b1[i] != b2[i]) {
-> -                printk(KERN_ERR "corruption in group %u "
-> -                       "at byte %u(%u): %x in copy != %x "
-> -                       "on disk/prealloc\n",
-> -                       e4b->bd_group, i, i * 8, b1[i], b2[i]);
-> +                ext4_msg(e4b->bd_sb, KERN_ERR,
-> +                     "corruption in group %u "
-> +                     "at byte %u(%u): %x in copy != %x "
-> +                     "on disk/prealloc",
-> +                     e4b->bd_group, i, i * 8, b1[i], b2[i]);
->                BUG();
->            }
->        }
-> @@ -2224,8 +2225,8 @@ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
->            EXT4_DESC_PER_BLOCK_BITS(sb);
->        meta_group_info = kmalloc(metalen, GFP_KERNEL);
->        if (meta_group_info == NULL) {
-> -            printk(KERN_ERR "EXT4-fs: can't allocate mem for a "
-> -                   "buddy group\n");
-> +            ext4_msg(sb, KERN_ERR, "EXT4-fs: can't allocate mem "
-> +                 "for a buddy group");
-
-I don't think ext4_msg() format strings should still have "Ext4-fs:" at the beginning. Isn't that the whole point of using ext4_msg()?
-
->            goto exit_meta_group_info;
->        }
->        sbi->s_group_info[group >> EXT4_DESC_PER_BLOCK_BITS(sb)] =
-> @@ -2238,7 +2239,7 @@ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
+On 2011-08-01, at 5:20 AM, Ted Ts'o <tytso@mit.edu> wrote:
+> On Wed, Jul 20, 2011 at 09:32:53PM +0800, Yongqiang Yang wrote:
+>> This patch teaches ext4 to get free blocks count of BLOCK_UNINIT groups from
+>> group desc directly.
+>> 
+>> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 > 
->    meta_group_info[i] = kmem_cache_alloc(cachep, GFP_KERNEL);
->    if (meta_group_info[i] == NULL) {
-> -        printk(KERN_ERR "EXT4-fs: can't allocate buddy mem\n");
-> +        ext4_msg(sb, KERN_ERR, "EXT4-fs: can't allocate buddy mem");
+> The reason why we weren't doing this is because older versions of
+> e2fsprogs I don't think set the free blocks count correctly.  Or at
+> least, I have a vague memory that this was the case.  I'll have to do
+> some code archeology before can be 100% sure this is safe to do.
 
-Ditto. 
+I think the other reason is that this gives the kernel code some flexibility in how the group is formatted (e.g. flex_bg or whatever may move allocated blocks around).
 
->        goto exit_group_info;
->    }
->    memset(meta_group_info[i], 0, kmem_cache_size(cachep));
-> @@ -2333,12 +2334,12 @@ static int ext4_mb_init_backend(struct super_block *sb)
->     * So a two level scheme suffices for now. */
->    sbi->s_group_info = ext4_kvzalloc(array_size, GFP_KERNEL);
->    if (sbi->s_group_info == NULL) {
-> -        printk(KERN_ERR "EXT4-fs: can't allocate buddy meta group\n");
-> +        ext4_msg(sb, KERN_ERR, "can't allocate buddy meta group");
->        return -ENOMEM;
->    }
->    sbi->s_buddy_cache = new_inode(sb);
->    if (sbi->s_buddy_cache == NULL) {
-> -        printk(KERN_ERR "EXT4-fs: can't get new inode\n");
-> +        ext4_msg(sb, KERN_ERR, "can't get new inode");
->        goto err_freesgi;
->    }
->    sbi->s_buddy_cache->i_ino = get_next_ino();
-> @@ -2346,8 +2347,7 @@ static int ext4_mb_init_backend(struct super_block *sb)
->    for (i = 0; i < ngroups; i++) {
->        desc = ext4_get_group_desc(sb, i, NULL);
->        if (desc == NULL) {
-> -            printk(KERN_ERR
-> -                "EXT4-fs: can't read descriptor %u\n", i);
-> +            ext4_msg(sb, KERN_ERR, "can't read descriptor %u", i);
->            goto err_freebuddy;
->        }
->        if (ext4_mb_add_groupinfo(sb, i, desc) != 0)
-> @@ -2411,7 +2411,8 @@ static int ext4_groupinfo_create_slab(size_t size)
-> 
->    mutex_unlock(&ext4_grpinfo_slab_create_mutex);
->    if (!cachep) {
-> -        printk(KERN_EMERG "EXT4: no memory for groupinfo slab cache\n");
-> +        printk(KERN_EMERG,
-> +               "EXT4-fs: no memory for groupinfo slab cache\n");
-
-This one didn't actually get changed to ext4_msg(). 
-
->        return -ENOMEM;
->    }
-> 
-> @@ -2566,25 +2567,25 @@ int ext4_mb_release(struct super_block *sb)
->    if (sbi->s_buddy_cache)
->        iput(sbi->s_buddy_cache);
->    if (sbi->s_mb_stats) {
-> -        printk(KERN_INFO
-> -               "EXT4-fs: mballoc: %u blocks %u reqs (%u success)\n",
-> +        ext4_msg(sb, KERN_INFO,
-> +               "mballoc: %u blocks %u reqs (%u success)",
->                atomic_read(&sbi->s_bal_allocated),
->                atomic_read(&sbi->s_bal_reqs),
->                atomic_read(&sbi->s_bal_success));
-> -        printk(KERN_INFO
-> -              "EXT4-fs: mballoc: %u extents scanned, %u goal hits, "
-> -                "%u 2^N hits, %u breaks, %u lost\n",
-> +        ext4_msg(sb, KERN_INFO,
-> +              "mballoc: %u extents scanned, %u goal hits, "
-> +                "%u 2^N hits, %u breaks, %u lost",
->                atomic_read(&sbi->s_bal_ex_scanned),
->                atomic_read(&sbi->s_bal_goals),
->                atomic_read(&sbi->s_bal_2orders),
->                atomic_read(&sbi->s_bal_breaks),
->                atomic_read(&sbi->s_mb_lost_chunks));
-> -        printk(KERN_INFO
-> -               "EXT4-fs: mballoc: %lu generated and it took %Lu\n",
-> +        ext4_msg(sb, KERN_INFO,
-> +               "mballoc: %lu generated and it took %Lu",
->                sbi->s_mb_buddies_generated,
->                sbi->s_mb_generation_time);
-> -        printk(KERN_INFO
-> -               "EXT4-fs: mballoc: %u preallocated, %u discarded\n",
-> +        ext4_msg(sb, KERN_INFO,
-> +               "mballoc: %u preallocated, %u discarded",
->                atomic_read(&sbi->s_mb_preallocated),
->                atomic_read(&sbi->s_mb_discarded));
->    }
-> @@ -3024,9 +3025,10 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
-> 
->    if (start + size <= ac->ac_o_ex.fe_logical &&
->            start > ac->ac_o_ex.fe_logical) {
-> -        printk(KERN_ERR "start %lu, size %lu, fe_logical %lu\n",
-> -            (unsigned long) start, (unsigned long) size,
-> -            (unsigned long) ac->ac_o_ex.fe_logical);
-> +        ext4_msg(ac->ac_sb, KERN_ERR,
-> +             "start %lu, size %lu, fe_logical %lu",
-> +             (unsigned long) start, (unsigned long) size,
-> +             (unsigned long) ac->ac_o_ex.fe_logical);
->    }
->    BUG_ON(start + size <= ac->ac_o_ex.fe_logical &&
->            start > ac->ac_o_ex.fe_logical);
-> @@ -3607,10 +3609,11 @@ ext4_mb_release_inode_pa(struct ext4_buddy *e4b, struct buffer_head *bitmap_bh,
->        bit = next + 1;
->    }
->    if (free != pa->pa_free) {
-> -        printk(KERN_CRIT "pa %p: logic %lu, phys. %lu, len %lu\n",
-> -            pa, (unsigned long) pa->pa_lstart,
-> -            (unsigned long) pa->pa_pstart,
-> -            (unsigned long) pa->pa_len);
-> +        ext4_msg(e4b->bd_sb, KERN_CRIT,
-> +             "pa %p: logic %lu, phys. %lu, len %lu",
-> +             pa, (unsigned long) pa->pa_lstart,
-> +             (unsigned long) pa->pa_pstart,
-> +             (unsigned long) pa->pa_len);
->        ext4_grp_locked_error(sb, group, 0, 0, "free %u, pa_free %u",
->                    free, pa->pa_free);
->        /*
-> @@ -3798,7 +3801,8 @@ repeat:
->             * use preallocation while we're discarding it */
->            spin_unlock(&pa->pa_lock);
->            spin_unlock(&ei->i_prealloc_lock);
-> -            printk(KERN_ERR "uh-oh! used pa while discarding\n");
-> +            ext4_msg(sb, KERN_ERR,
-> +                 "uh-oh! used pa while discarding");
->            WARN_ON(1);
->            schedule_timeout_uninterruptible(HZ);
->            goto repeat;
-> @@ -3875,12 +3879,13 @@ static void ext4_mb_show_ac(struct ext4_allocation_context *ac)
->        (EXT4_SB(sb)->s_mount_flags & EXT4_MF_FS_ABORTED))
->        return;
-> 
-> -    printk(KERN_ERR "EXT4-fs: Can't allocate:"
-> -            " Allocation context details:\n");
-> -    printk(KERN_ERR "EXT4-fs: status %d flags %d\n",
-> +    ext4_msg(ac->ac_sb, KERN_ERR, "EXT4-fs: Can't allocate:"
-
-Ditto. 
-
-> +            " Allocation context details:");
-> +    ext4_msg(ac->ac_sb, KERN_ERR, "EXT4-fs: status %d flags %d",
->            ac->ac_status, ac->ac_flags);
-> -    printk(KERN_ERR "EXT4-fs: orig %lu/%lu/%lu@%lu, goal %lu/%lu/%lu@%lu, "
-> -            "best %lu/%lu/%lu@%lu cr %d\n",
-> +    ext4_msg(ac->ac_sb, KERN_ERR, "EXT4-fs: orig %lu/%lu/%lu@%lu, "
-
-Here too. 
-
-> +            "goal %lu/%lu/%lu@%lu, "
-> +            "best %lu/%lu/%lu@%lu cr %d",
->            (unsigned long)ac->ac_o_ex.fe_group,
->            (unsigned long)ac->ac_o_ex.fe_start,
->            (unsigned long)ac->ac_o_ex.fe_len,
-> @@ -3894,9 +3899,9 @@ static void ext4_mb_show_ac(struct ext4_allocation_context *ac)
->            (unsigned long)ac->ac_b_ex.fe_len,
->            (unsigned long)ac->ac_b_ex.fe_logical,
->            (int)ac->ac_criteria);
-> -    printk(KERN_ERR "EXT4-fs: %lu scanned, %d found\n", ac->ac_ex_scanned,
-> -        ac->ac_found);
-> -    printk(KERN_ERR "EXT4-fs: groups: \n");
-> +    ext4_msg(ac->ac_sb, KERN_ERR, "EXT4-fs: %lu scanned, %d found",
-
-...
-
-> +         ac->ac_ex_scanned, ac->ac_found);
-> +    ext4_msg(ac->ac_sb, KERN_ERR, "EXT4-fs: groups: ");
->    ngroups = ext4_get_groups_count(sb);
->    for (i = 0; i < ngroups; i++) {
->        struct ext4_group_info *grp = ext4_get_group_info(sb, i);
-> -- 
-> 1.7.4.1.22.gec8e1.dirty
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Cheers, Andreas
