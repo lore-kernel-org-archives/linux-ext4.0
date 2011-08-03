@@ -1,172 +1,68 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext3: fix message in ext3_remount for rw-remount case
-Date: Wed, 3 Aug 2011 11:57:54 +0200
-Message-ID: <20110803095754.GA5047@quack.suse.cz>
-References: <20110801135451.cb73c981.toshi.okajima@jp.fujitsu.com>
- <20110801084526.GB6522@quack.suse.cz>
- <4E3675D6.3010201@jp.fujitsu.com>
- <20110801095731.GI6522@quack.suse.cz>
- <4E37BFEA.7020601@jp.fujitsu.com>
- <4E38B57B.4050304@jp.fujitsu.com>
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Subject: Re: [PATCH 1/2] ext2fs: add multi-mount protection (INCOMPAT_MMP)
+Date: Wed, 03 Aug 2011 13:39:55 +0200
+Message-ID: <4E39338B.8020308@itwm.fraunhofer.de>
+References: <1311937077-22262-1-git-send-email-adilger@whamcloud.com> <4E32F18B.6000800@itwm.fraunhofer.de> <5E568C7A-6A5B-4699-9266-8A0CD2537E5F@whamcloud.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack@suse.cz>, akpm@linux-foundation.org,
-	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org,
+	Johann Lombardi <johann@whamcloud.com>
+To: Andreas Dilger <adilger@whamcloud.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:48962 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753197Ab1HCJ6I (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Aug 2011 05:58:08 -0400
-Content-Disposition: inline
-In-Reply-To: <4E38B57B.4050304@jp.fujitsu.com>
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:33749 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752666Ab1HCLj7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Aug 2011 07:39:59 -0400
+Received: from itwm2.itwm.fhg.de (itwm2.itwm.fhg.de [131.246.191.3])
+	by mailgw1.uni-kl.de (8.14.3/8.14.3/Debian-5+lenny1) with ESMTP id p73Bdu7I023749
+	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Wed, 3 Aug 2011 13:39:57 +0200
+In-Reply-To: <5E568C7A-6A5B-4699-9266-8A0CD2537E5F@whamcloud.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
+On 07/29/2011 08:25 PM, Andreas Dilger wrote:
+> On 2011-07-29, at 11:44 AM, Bernd Schubert wrote:
+>> thanks a lot for sending those patches! From a previous review I still remember ext2fs_mmp_read(), see below.
+>> I will look through the other parts later on.
+>>
+>>> +errcode_t ext2fs_mmp_read(ext2_filsys fs, blk64_t mmp_blk, void *buf)
+>>> +{
+>>> +	/* ext2fs_open reserves fd0,1,2 to avoid stdio collision */
+>>> +	if (fs->mmp_fd<= 0) {
+>>> +		fs->mmp_fd = open(fs->device_name, O_RDWR | O_DIRECT);
+>>> +		if (fs->mmp_fd<   0) {
+>>> +			retval = EXT2_ET_MMP_OPEN_DIRECT;
+>>> +			goto out;
+>>> +		}
+>>> +	}
+>>> +
+>>> +	if (ext2fs_llseek(fs->mmp_fd, mmp_blk * fs->blocksize, SEEK_SET) !=
+>>> +	    mmp_blk * fs->blocksize) {
+>>> +		retval = EXT2_ET_LLSEEK_FAILED;
+>>> +		goto out;
+>>> +	}
+>>> +
+>>> +	if (read(fs->mmp_fd, fs->mmp_cmp, fs->blocksize) != fs->blocksize) {
+>>> +		retval = EXT2_ET_SHORT_READ;
+>>> +		goto out;
+>>> +	}
+>>
+>> While ext2fs_llseek() and read() works fine, I still wonder why the code does not use io_channel_read_blk64() here, similarly as io_channel_write_blk64() write in ext2fs_mmp_write().
+>
+> One of the reasons for doing a direct open+seek+read here is because previous
+> versions of e2fsprogs did not allow O_DIRECT reads via io_channel_read_blk64(),
+> which is critical for the correct MMP functioning.  It cannot allow read from
+> a cached block, either in libext2fs or in the VM, though a cached block on the
+> disk is OK as long as it is visible to all hosts that are accessing it.
 
-On Wed 03-08-11 11:42:03, Toshiyuki Okajima wrote:
-> >(2011/08/01 18:57), Jan Kara wrote:
-> >>On Mon 01-08-11 18:45:58, Toshiyuki Okajima wrote:
-> >>>(2011/08/01 17:45), Jan Kara wrote:
-> >>>>On Mon 01-08-11 13:54:51, Toshiyuki Okajima wrote:
-> >>>>>If there are some inodes in orphan list while a filesystem is be=
-ing
-> >>>>>read-only mounted, we should recommend that pepole umount and th=
-en
-> >>>>>mount it when they try to remount with read-write. But the curre=
-nt
-> >>>>>message/comment recommends that they umount and then remount it.
-> <SNIP>
-> >>>>the most... BTW, I guess you didn't really see this message in pr=
-actice, did
-> >>>>you?
-> >>>No.
-> >>>I have seen this message in practice while quotacheck command was =
-repeatedly
-> >>>executed per an hour.
-> >>Interesting. Are you able to reproduce this? Quotacheck does remoun=
-t
-> >>read-only + remount read-write but you cannot really remount the fi=
-lesystem
-> >>read-only when it has orphan inodes and so you should not see those=
- when
-> >>you remount read-write again. Possibly there's race between remount=
-ing and
-> >>unlinking...
-> >Yes. I can reproduce it. However, it is not frequently reproduced
-> >by using the original procedure (qutacheck per an hour). So, I made =
-a
-> >reproducer.
-> To tell the truth, I think the race creates the message:
-> ---------------------------------------------------------------------=
---
->  EXT3-fs: <dev>: couldn't remount RDWR because of
->  =E3=80=80=E3=80=80=E3=80=80 =E3=80=80unprocessed orphan inode list. =
- Please umount/remount instead.
-> ---------------------------------------------------------------------=
---
-> which hides a serious problem.
-  I've inquired about this at linux-fsdevel (I think you were in CC unl=
-ess
-I forgot). It's a race in VFS remount code as you properly analyzed bel=
-ow.
-People are working on fixing it but it's not trivial. Filesystem is rea=
-lly
-a wrong place to fix such problem. If there is a trivial fix for ext3 t=
-o
-workaround the issue, I can take it but I'm not willing to push anythin=
-g
-complex - effort should better be spent working on a generic fix.
+Yeah, I understand that it had to be O_DIRECT, but I didn't know about 
+(previous) limitation of io_channel_read_blk64(). Maybe you could add a 
+comment about it to the code about that, if you want to keep it? 
+Something like
+"/* We don't use io_channel_read_blk64() here to make sure blocks are 
+really not cached */"?
 
-								Honza
-
-> By using my reproducer, I found that it can show another message that
-> is not the above mentioned message:
-> ---------------------------------------------------------------------=
---
-> EXT3-fs error (device <dev>) in start_transaction: Readonly filesyste=
-m=09
-> ---------------------------------------------------------------------=
---
-> After I examined the code path which message could display, I found
-> it can display if the following steps are satisfied:
->=20
-> [[CASE 1]]
-> ( 1)  [process A] do_unlinkat
-> ( 2)  [process B] do_remount_sb(, RDONLY, )
-> ( 3)  [process A]  vfs_unlink
-> ( 4)  [process A]   ext3_unlink
-> ( 5)  [process A]    ext3_journal_start
-> ( 6)  [process B]  fs_may_remount_ro   (=3D> return 0)
-> ( 7)  [process A]    inode->i_nlink-- (i_nlink=3D0)
-> ( 8)  [process A]    ext3_orphan_add
-> ( 9)  [process A]    ext3_journal_stop
-> (10)  [process A]  dput
-> (11)  [process A]   iput
-> (12)  [process A]    ext3_evict_inode
-> (13)  [process B]  ext3_remount
-> (14)  [process A]     start_transaction
-> (15)  [process B]   sb->s_flags |=3D MS_RDONLY
-> (16)  [process B]   ext3_mark_recovery_complete
-> (17)  [process A]      start_this_handle (new transaction is created)
-> (18)  [process A]     ext3_truncate
-> (19)  [process A]      start_transaction (failed =3D> this message is=
- displayed)
-> ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^=
-^^^^^^^^^
-> (20)  [process A]     ext3_orphan_del
-> (21)  [process A]     ext3_journal_stop
->=20
-> * "Process A" deletes a file successfully(21). However the file data =
-is left
->    because (18) fails. **Furthermore, new transaction can be created =
-after
->    ext3_mark_recovery_complete finishes.**
->=20
-> [[CASE2]]
-> ( 1)  [process A] do_unlinkat
-> ( 2)  [process B] do_remount_sb(, RDONLY, )
-> ( 3)  [process A]  vfs_unlink
-> ( 4)  [process A]   ext3_unlink
-> ( 5)  [process A]    ext3_journal_start
-> ( 6)  [process B]  fs_may_remount_ro   (=3D> return 0)
-> ( 7)  [process A]    inode->i_nlink-- (i_nlink=3D0)
-> ( 8)  [process A]    ext3_orphan_add
-> ( 9)  [process A]    ext3_journal_stop
-> (10)  [process A]  dput
-> (11)  [process A]   iput
-> (12)  [process A]    ext3_evict_inode
-> (13)  [process B]  ext3_remount
-> (14)  [process A]     start_transaction
-> (15)  [process B]   sb->s_flags |=3D MS_RDONLY
-> (17)  [process A]      start_this_handle (new transaction is created)
-> (18)  [process A]     ext3_truncate
-> (19)  [process A]      start_transaction (failed =3D> this message is=
- displayed)
-> ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^=
-^^^^^^^^^
-> (20)  [process A]     ext3_orphan_del
-> (21)  [process A]     ext3_journal_stop
-> (22)  [process B]   ext3_mark_recovery_complete
->=20
-> * "Process A" deletes a file successfully(21). However the file data =
-is left
->    because (18) fails. This transaction can finish before
->    ext3_mark_recovery_complete finishes.
->=20
-> I will try to fix this problem not to do with fs-error.
-> Please comment about the fix if I have created one.
->=20
-> Thanks,
-> Toshiyuki Okajima
->=20
---=20
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Thanks,
+Bernd
