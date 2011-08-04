@@ -1,80 +1,79 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 40512] New: EXT4_IOC_MIGRATE is dangerous on directories
-Date: Thu, 4 Aug 2011 01:51:00 GMT
-Message-ID: <bug-40512-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+From: Robin Dong <hao.bigrat@gmail.com>
+Subject: [PATCH 2/2 bigalloc] ext4: modify offset to cluster in ext4_valid_block_bitmap
+Date: Thu,  4 Aug 2011 11:48:01 +0800
+Message-ID: <1312429682-16970-1-git-send-email-hao.bigrat@gmail.com>
+Cc: Robin Dong <sanbai@taobao.com>, Ted Ts'o <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:39331 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755944Ab1HDBvB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Aug 2011 21:51:01 -0400
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.4) with ESMTP id p741p0Za029630
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 4 Aug 2011 01:51:00 GMT
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:64824 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755374Ab1HDDsl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Aug 2011 23:48:41 -0400
+Received: by pzk37 with SMTP id 37so1253271pzk.1
+        for <linux-ext4@vger.kernel.org>; Wed, 03 Aug 2011 20:48:41 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=40512
+From: Robin Dong <sanbai@taobao.com>
 
-           Summary: EXT4_IOC_MIGRATE is dangerous on directories
-           Product: File System
-           Version: 2.5
-    Kernel Version: 2.6.39
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: high
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: benjamin@python.org
-        Regression: No
+When I run a test application on ext4 of bigalloc, and also a daemon
+which run "echo 3 > /proc/sys/vm/drop_caches" every 2 seconds,
+the kernel report:
 
+15319.557145] EXT4-fs error (device sda4): ext4_valid_block_bitmap:324: comm dir_tree: Invalid block bitmap - block_group = 6, block = 3145730
 
-Using EXT4_IOC_MIGRATE on a non-extent directory seems to have terrible
-consequences. Consider the following example. "dir" is a old directory without
-extents.
+The reason is ext4_valied_block_bitmap has not be modified for cluster.
 
-$ ls -la dir/
-total 12
-drwxr-xr-x  2 benjamin benjamin 4096 Aug  3 20:42 .
-drwxr-xr-x 47 benjamin benjamin 4096 Aug  3 20:42 ..
--rw-r-----  1 benjamin benjamin    7 Aug  3 20:42 something.txt
-$ cat migrate.c
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
+Signed-off-by: Robin Dong <sanbai@taobao.com>
+Cc: Ted Ts'o <tytso@mit.edu>
+---
+ fs/ext4/balloc.c |   13 ++++++++-----
+ 1 files changed, 8 insertions(+), 5 deletions(-)
 
-int
-main(int argc, char **argv)
-{
-    const char *fn = argv[1];
-    int fd, ret;
-
-    fd = open(fn, O_RDONLY);
-    /* This invokes EXT4_IOC_MIGRATE. */
-    ret = ioctl(fd, 0x6609);
-    close(fd);
-    if (ret < 0) {
-        fprintf(stderr, "ioctl failed\n");
-        return 1;
-    }
-    printf("Migration successful?\n");
-    return 0;
-}
-$ gcc -o migrate migrate.c
-$ ./migrate dir
-Migration successful?
-$ ls -la dir
-total 0 # !!!!!!!!!!!!!!
-
-Also, we why are you allowed to migrate stuff with only O_RDONLY access?
-
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 23a6375..8b982fc 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -282,6 +282,7 @@ static int ext4_valid_block_bitmap(struct super_block *sb,
+ 	ext4_grpblk_t next_zero_bit;
+ 	ext4_fsblk_t bitmap_blk;
+ 	ext4_fsblk_t group_first_block;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 
+ 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG)) {
+ 		/* with FLEX_BG, the inode/block bitmaps and itable
+@@ -297,14 +298,14 @@ static int ext4_valid_block_bitmap(struct super_block *sb,
+ 	/* check whether block bitmap block number is set */
+ 	bitmap_blk = ext4_block_bitmap(sb, desc);
+ 	offset = bitmap_blk - group_first_block;
+-	if (!ext4_test_bit(offset, bh->b_data))
++	if (!ext4_test_bit(EXT4_B2C(sbi, offset), bh->b_data))
+ 		/* bad block bitmap */
+ 		goto err_out;
+ 
+ 	/* check whether the inode bitmap block number is set */
+ 	bitmap_blk = ext4_inode_bitmap(sb, desc);
+ 	offset = bitmap_blk - group_first_block;
+-	if (!ext4_test_bit(offset, bh->b_data))
++	if (!ext4_test_bit(EXT4_B2C(sbi, offset), bh->b_data))
+ 		/* bad block bitmap */
+ 		goto err_out;
+ 
+@@ -312,9 +313,11 @@ static int ext4_valid_block_bitmap(struct super_block *sb,
+ 	bitmap_blk = ext4_inode_table(sb, desc);
+ 	offset = bitmap_blk - group_first_block;
+ 	next_zero_bit = ext4_find_next_zero_bit(bh->b_data,
+-				offset + EXT4_SB(sb)->s_itb_per_group,
+-				offset);
+-	if (next_zero_bit >= offset + EXT4_SB(sb)->s_itb_per_group)
++			EXT4_B2C(sbi, offset + EXT4_SB(sb)->s_itb_per_group),
++			EXT4_B2C(sbi, offset));
++
++	if (next_zero_bit >=
++			EXT4_B2C(sbi, offset + EXT4_SB(sb)->s_itb_per_group))
+ 		/* good bitmap for inode tables */
+ 		return 1;
+ 
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.7.3.2
+
