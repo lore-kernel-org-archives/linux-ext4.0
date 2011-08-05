@@ -1,89 +1,364 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 1/2 bigalloc] e2fsprogs: change "blocks" to "clusters" in dumpe2fs
-Date: Fri, 5 Aug 2011 00:35:31 -0600
-Message-ID: <59AFE301-7CEF-47EF-8B0E-3B8F819C93BF@dilger.ca>
-References: <1312518471-30714-1-git-send-email-hao.bigrat@gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org, Robin Dong <sanbai@taobao.com>
-To: Robin Dong <hao.bigrat@gmail.com>
+From: stufever@gmail.com
+Subject: Ext4: Set file system to read-only by I/O error threshold
+Date: Fri,  5 Aug 2011 15:45:04 +0800
+Message-ID: <1312530304-9110-1-git-send-email-wangshaoyan.pt@taobao.com>
+Cc: linux-ext4@vger.kernel.org,
+	Wang Shaoyan <wangshaoyan.pt@taobao.com>
+To: linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:22582 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751276Ab1HEGfb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Aug 2011 02:35:31 -0400
-In-Reply-To: <1312518471-30714-1-git-send-email-hao.bigrat@gmail.com>
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:34277 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755675Ab1HEHmP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Aug 2011 03:42:15 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-08-04, at 10:27 PM, Robin Dong wrote:
-> From: Robin Dong <sanbai@taobao.com>
-> 
-> When using dumpe2fs to display group detail of a bigalloc-fs, it displays like:
-> 
-> Group 413: (Blocks 54132737-54263808)
-> Block bitmap at 54132737 (+0), Inode bitmap at 54132738 (+1)
-> Inode table at 54132739-54133761 (+2)
-> 8127 free blocks, 8184 free inodes, 0 directories
-> Free blocks: 54133776-54263792
-> Free inodes: 3379993-3388176
-> 
-> The "8127 free blocks" should be "8127 free clusters".
+From: Wang Shaoyan <wangshaoyan.pt@taobao.com>
 
-Perhaps it is good to show both the free clusters and the equivalent free blocks, or maybe even free kB, since having units of e.g. 64kB clusters is hard to understand.
+Some version of Hadoop uses access(2) to check whether the data chunk harddisk is online, if access(2) returns error, hadoop marks the disk which it called access(2) to as offline. This method works for Ext3/4 with journal, because when jbd/jbd2 encounters I/O error, the file system will be set as read-only. But for Ext4 no-journal mode, there is no jdb2 to set the file system as read-only when I/O error happens, the access(2) from Hadoop is not able to reliably detect hard disk offline condition.
 
-> This patch is based on "next" branch of e2fsprogs.
-> 
-> Signed-off-by: Robin Dong <sanbai@taobao.com>
-> ---
-> misc/dumpe2fs.c |   21 +++++++++++++++------
-> 1 files changed, 15 insertions(+), 6 deletions(-)
-> 
-> diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
-> index 9a0dd46..bb4eef1 100644
-> --- a/misc/dumpe2fs.c
-> +++ b/misc/dumpe2fs.c
-> @@ -226,12 +226,21 @@ static void list_desc (ext2_filsys fs)
-> 			    inode_blocks_per_group - 1);
-> 		print_bg_rel_offset(fs, ext2fs_inode_table_loc(fs, i), 1,
-> 				    first_block, last_block);
-> -		printf (_("\n  %u free blocks, %u free inodes, "
-> -			  "%u directories%s"),
-> -			ext2fs_bg_free_blocks_count(fs, i),
-> -			ext2fs_bg_free_inodes_count(fs, i),
-> -			ext2fs_bg_used_dirs_count(fs, i),
-> -			ext2fs_bg_itable_unused(fs, i) ? "" : "\n");
-> +		if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-> +					EXT4_FEATURE_RO_COMPAT_BIGALLOC))
-> +			printf (_("\n  %u free clusters, %u free inodes, "
-> +				  "%u directories%s"),
-> +				ext2fs_bg_free_blocks_count(fs, i),
-> +				ext2fs_bg_free_inodes_count(fs, i),
-> +				ext2fs_bg_used_dirs_count(fs, i),
-> +				ext2fs_bg_itable_unused(fs, i) ? "" : "\n");
-> +		else
-> +			printf (_("\n  %u free blocks, %u free inodes, "
-> +				  "%u directories%s"),
-> +				ext2fs_bg_free_blocks_count(fs, i),
-> +				ext2fs_bg_free_inodes_count(fs, i),
-> +				ext2fs_bg_used_dirs_count(fs, i),
-> +				ext2fs_bg_itable_unused(fs, i) ? "" : "\n");
-> 		if (ext2fs_bg_itable_unused(fs, i))
-> 			printf (_(", %u unused inodes\n"),
-> 				ext2fs_bg_itable_unused(fs, i));
-> -- 
-> 1.7.3.2
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+This patch tries to fix the above problem from kernel side. A counter is used to record the total I/O error numbers in a block device. When I/O error counter reach threshold, all fs which register eio_handler on the block device will be set as read-only. People can set I/O error threshold, in 2 conditions fs will be set as read-only:
+1) inside the sampling interval, I/O errors reach pre-set threshold happens
+2) I/O errors always happen in continous sampling intervals, the sum of errors reach pre-set threshold
 
+Then the application can find the file system is set as read-only, and call its own failure tolerance procedures.
 
-Cheers, Andreas
+There are 2 interface exported to user space via sysfs:
+/sys/block/sd[?]/eio/threshold --- I/O error threshold
+/sys/block/sd[?]/eio/interval  --- sampling interval in second
 
+If default value of threshold is 0, everything happens as before.
 
+Signed-off-by: Wang Shaoyan <wangshaoyan.pt@taobao.com>
+---
+ block/genhd.c      |   62 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/bio.c           |   34 +++++++++++++++++++++++++++++
+ fs/block_dev.c     |   16 +++++++++++++
+ fs/ext4/ext4.h     |    3 ++
+ fs/ext4/super.c    |   38 ++++++++++++++++++++++++++++++++
+ include/linux/fs.h |   16 +++++++++++++
+ 6 files changed, 169 insertions(+)
 
-
-
+--- a/block/genhd.c
++++ b/block/genhd.c
+@@ -872,6 +872,13 @@ static ssize_t disk_discard_alignment_sh
+ 	return sprintf(buf, "%d\n", queue_discard_alignment(disk->queue));
+ }
+ 
++static ssize_t eio_show(struct device *dev,
++			struct device_attribute *attr,
++			char *buf);
++static ssize_t eio_store(struct device *dev,
++			 struct device_attribute *attr,
++			 const char *buf, size_t count);
++
+ static DEVICE_ATTR(range, S_IRUGO, disk_range_show, NULL);
+ static DEVICE_ATTR(ext_range, S_IRUGO, disk_ext_range_show, NULL);
+ static DEVICE_ATTR(removable, S_IRUGO, disk_removable_show, NULL);
+@@ -892,6 +899,10 @@ static struct device_attribute dev_attr_
+ 	__ATTR(io-timeout-fail,  S_IRUGO|S_IWUSR, part_timeout_show,
+ 		part_timeout_store);
+ #endif
++static DEVICE_ATTR(threshold, S_IRUGO|S_IWUSR, eio_show,
++		   eio_store);
++static DEVICE_ATTR(interval, S_IRUGO|S_IWUSR, eio_show,
++		   eio_store);
+ 
+ static struct attribute *disk_attrs[] = {
+ 	&dev_attr_range.attr,
+@@ -913,15 +924,66 @@ static struct attribute *disk_attrs[] = 
+ 	NULL
+ };
+ 
++static struct attribute *eio_attrs[] = {
++	&dev_attr_threshold.attr,
++	&dev_attr_interval.attr,
++	NULL
++};
+ static struct attribute_group disk_attr_group = {
+ 	.attrs = disk_attrs,
+ };
++static struct attribute_group eio_attr_group = {
++	.name = "eio",
++	.attrs = eio_attrs,
++};
+ 
+ static const struct attribute_group *disk_attr_groups[] = {
+ 	&disk_attr_group,
++	&eio_attr_group,
+ 	NULL
+ };
+ 
++static ssize_t eio_show(struct device *dev,
++			struct device_attribute *attr,
++			char *buf)
++{
++	struct gendisk *disk = dev_to_disk(dev);
++	struct block_device *bdev = bdget_disk(disk, 0);
++	struct eio *eio = &bdev->bd_eio;
++	int ret = -EINVAL;
++
++	if (attr == &dev_attr_interval)
++		ret = sprintf(buf, "%u\n", eio->interval);
++	else if (attr == &dev_attr_threshold)
++		ret = sprintf(buf, "%u\n", eio->threshold);
++
++	return ret;
++}
++
++static ssize_t eio_store(struct device *dev,
++			 struct device_attribute *attr,
++			 const char *buf, size_t count)
++{
++	struct gendisk *disk = dev_to_disk(dev);
++	struct block_device *bdev = bdget_disk(disk, 0);
++	struct eio *eio = &bdev->bd_eio;
++	unsigned long t;
++	char *endp;
++
++	t = simple_strtoul(skip_spaces(buf), &endp, 0);
++	endp = skip_spaces(endp);
++	if (*endp || t > 0xffffffff)
++		return -EINVAL;
++
++	if (attr == &dev_attr_interval) {
++		if (t <= 0)
++			return -EINVAL;
++		eio->interval = t;
++	} else if (attr == &dev_attr_threshold)
++		eio->threshold = t;
++
++	return count;
++}
+ static void disk_free_ptbl_rcu_cb(struct rcu_head *head)
+ {
+ 	struct disk_part_tbl *ptbl =
+--- a/fs/bio.c
++++ b/fs/bio.c
+@@ -1408,6 +1408,35 @@ void bio_check_pages_dirty(struct bio *b
+ 	}
+ }
+ 
++static void bio_error_handler(struct block_device *bdev)
++{
++	struct eio *eio = &bdev->bd_contains->bd_eio;
++	struct eio_handler *eio_handler;
++	unsigned long time;
++	unsigned int threshold = eio->threshold;
++
++	if (threshold == 0) {
++		return;
++	}
++
++	spin_lock(&eio->lock);
++	time = jiffies;
++	if (time_after(eio->last_jiffies + eio->interval * HZ, time))
++		eio->counter++;
++	else
++		eio->counter = 1;
++	eio->last_jiffies = time;
++	printk(KERN_ERR "bio error counter: %u\n", eio->counter);
++
++	if (eio->counter >= threshold) {
++		list_for_each_entry(eio_handler, &eio->head, list) {
++			if (eio_handler->handler)
++				eio_handler->handler(eio_handler);
++		}
++	}
++	spin_unlock(&eio->lock);
++}
++
+ /**
+  * bio_endio - end I/O on a bio
+  * @bio:	bio
+@@ -1429,6 +1458,11 @@ void bio_endio(struct bio *bio, int erro
+ 	else if (!test_bit(BIO_UPTODATE, &bio->bi_flags))
+ 		error = -EIO;
+ 
++	if (error) {
++		if (bio->bi_bdev)
++			bio_error_handler(bio->bi_bdev);
++	}
++
+ 	if (bio->bi_end_io)
+ 		bio->bi_end_io(bio, error);
+ }
+--- a/fs/block_dev.c
++++ b/fs/block_dev.c
+@@ -29,6 +29,9 @@
+ #include <asm/uaccess.h>
+ #include "internal.h"
+ 
++#define DEFAULT_EIO_THRESHOLD	10
++#define DEFAULT_EIO_INTERVAL	5
++
+ struct bdev_inode {
+ 	struct block_device bdev;
+ 	struct inode vfs_inode;
+@@ -453,6 +456,7 @@ static void init_once(void *foo)
+ {
+ 	struct bdev_inode *ei = (struct bdev_inode *) foo;
+ 	struct block_device *bdev = &ei->bdev;
++	struct eio *eio = &bdev->bd_eio;
+ 
+ 	memset(bdev, 0, sizeof(*bdev));
+ 	mutex_init(&bdev->bd_mutex);
+@@ -461,6 +465,8 @@ static void init_once(void *foo)
+ #ifdef CONFIG_SYSFS
+ 	INIT_LIST_HEAD(&bdev->bd_holder_list);
+ #endif
++	spin_lock_init(&eio->lock);
++	INIT_LIST_HEAD(&eio->head);
+ 	inode_init_once(&ei->vfs_inode);
+ 	/* Initialize mutex for freeze. */
+ 	mutex_init(&bdev->bd_fsfreeze_mutex);
+@@ -557,6 +563,7 @@ struct block_device *bdget(dev_t dev)
+ {
+ 	struct block_device *bdev;
+ 	struct inode *inode;
++	struct eio *eio;
+ 
+ 	inode = iget5_locked(blockdev_superblock, hash(dev),
+ 			bdev_test, bdev_set, &dev);
+@@ -565,6 +572,7 @@ struct block_device *bdget(dev_t dev)
+ 		return NULL;
+ 
+ 	bdev = &BDEV_I(inode)->bdev;
++	eio = &bdev->bd_eio;
+ 
+ 	if (inode->i_state & I_NEW) {
+ 		bdev->bd_contains = NULL;
+@@ -580,6 +588,9 @@ struct block_device *bdget(dev_t dev)
+ 		spin_lock(&bdev_lock);
+ 		list_add(&bdev->bd_list, &all_bdevs);
+ 		spin_unlock(&bdev_lock);
++		/* eio->counter and eio->threshold are set to 0 in memset */
++		eio->threshold = DEFAULT_EIO_THRESHOLD;
++		eio->interval = DEFAULT_EIO_INTERVAL;
+ 		unlock_new_inode(inode);
+ 	}
+ 	return bdev;
+@@ -1379,6 +1390,11 @@ static int __blkdev_put(struct block_dev
+ 	}
+ 	if (!bdev->bd_openers) {
+ 		struct module *owner = disk->fops->owner;
++		if (bdev->bd_contains == bdev) {
++			struct eio *eio = &bdev->bd_contains->bd_eio;
++
++			WARN_ON(!list_empty(&eio->head));
++		}
+ 
+ 		put_disk(disk);
+ 		module_put(owner);
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1114,6 +1114,9 @@ struct ext4_sb_info {
+ 
+ 	/* workqueue for dio unwritten */
+ 	struct workqueue_struct *dio_unwritten_wq;
++
++	/* IO error handler when counter reach threshold */
++	struct eio_handler s_eio_handler;
+ };
+ 
+ static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -334,6 +334,18 @@ static void ext4_handle_error(struct sup
+ 			sb->s_id);
+ }
+ 
++static void ext4_eio_handler(struct eio_handler *handler)
++{
++	struct super_block *sb = handler->bdev->bd_super;
++
++	if (sb->s_flags & MS_RDONLY) {
++		return;
++	}
++
++	ext4_msg(sb, KERN_CRIT, "Remounting filesystem read-only");
++	sb->s_flags |= MS_RDONLY;
++}
++
+ void __ext4_error(struct super_block *sb, const char *function,
+ 		const char *fmt, ...)
+ {
+@@ -640,6 +652,14 @@ static void ext4_put_super(struct super_
+ 	if (sb->s_dirt)
+ 		ext4_commit_super(sb, 1);
+ 
++	if (!sbi->s_journal) {
++		struct eio_handler *eio_handler = &sbi->s_eio_handler;
++		struct eio *eio = &sb->s_bdev->bd_contains->bd_eio;
++		spin_lock_bh(&eio->lock);
++		list_del_init(&eio_handler->list);
++		spin_unlock_bh(&eio->lock);
++	}
++
+ 	if (sbi->s_journal) {
+ 		err = jbd2_journal_destroy(sbi->s_journal);
+ 		sbi->s_journal = NULL;
+@@ -2417,6 +2437,8 @@ static int ext4_fill_super(struct super_
+ 	__u64 blocks_count;
+ 	int err;
+ 	unsigned int journal_ioprio = DEFAULT_JOURNAL_IOPRIO;
++	struct eio *eio;
++	struct eio_handler *eio_handler;
+ 
+ 	sbi = kzalloc(sizeof(*sbi), GFP_KERNEL);
+ 	if (!sbi)
+@@ -3008,6 +3030,22 @@ no_journal:
+ 
+ 	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s", descr);
+ 
++	/*
++	 * io error handler only support no journal, because journal
++	 * will do the same thing
++	 */
++	if (!EXT4_SB(sb)->s_journal) {
++		eio = &sb->s_bdev->bd_contains->bd_eio;
++		eio_handler = &sbi->s_eio_handler;
++		INIT_LIST_HEAD(&eio_handler->list);
++		eio_handler->handler = ext4_eio_handler;
++		eio_handler->bdev = sb->s_bdev;
++
++		spin_lock_bh(&eio->lock);
++		list_add(&eio_handler->list, &eio->head);
++		spin_unlock_bh(&eio->lock);
++	}
++
+ 	lock_kernel();
+ 	return 0;
+ 
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -678,6 +678,20 @@ struct address_space {
+ 	 * of struct page's "mapping" pointer be used for PAGE_MAPPING_ANON.
+ 	 */
+ 
++struct eio {
++	unsigned int threshold;
++	unsigned int counter;
++	unsigned long last_jiffies;
++	unsigned int interval;
++	spinlock_t lock;
++	struct list_head head;
++};
++struct eio_handler {
++	struct list_head list;
++	void (*handler)(struct eio_handler *eio_handler);
++	struct block_device *bdev;
++};
++
+ struct block_device {
+ 	dev_t			bd_dev;  /* not a kdev_t - it's a search key */
+ 	struct inode *		bd_inode;	/* will die */
+@@ -709,6 +723,8 @@ struct block_device {
+ 	int			bd_fsfreeze_count;
+ 	/* Mutex for freeze */
+ 	struct mutex		bd_fsfreeze_mutex;
++
++	struct eio		bd_eio;
+ };
+ 
+ /*
