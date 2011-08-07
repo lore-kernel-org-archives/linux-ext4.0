@@ -1,209 +1,235 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] PM / Freezer: Freeze filesystems while freezing
- processes (v2)
-Date: Sun, 7 Aug 2011 10:14:46 +1000
-Message-ID: <20110807001446.GI3162@dastard>
-References: <4E1C70AD.1010101@u-club.de>
- <201108041127.30944.rjw@sisk.pl>
- <201108050025.09792.rjw@sisk.pl>
- <201108062317.19033.rjw@sisk.pl>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux PM mailing list <linux-pm@lists.linux-foundation.org>,
-	Pavel Machek <pavel@ucw.cz>,
-	Nigel Cunningham <nigel@tuxonice.net>,
-	Christoph Hellwig <hch@infradead.org>,
-	Christoph <cr2005@u-club.de>, xfs@oss.sgi.com,
-	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
-	Theodore Ts'o <tytso@mit.edu>, linux-fsdevel@vger.kernel.org
-To: "Rafael J. Wysocki" <rjw@sisk.pl>
+From: Allison Henderson <achender@linux.vnet.ibm.com>
+Subject: [PATCH 1/1 v4] ext4: fix xfstests 75, 112, 127 punch hole failure
+Date: Sat,  6 Aug 2011 23:21:52 -0700
+Message-ID: <1312698112-7836-1-git-send-email-achender@linux.vnet.ibm.com>
+Cc: Allison Henderson <achender@linux.vnet.ibm.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:37099 "EHLO
-	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755266Ab1HGAOv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 6 Aug 2011 20:14:51 -0400
-Content-Disposition: inline
-In-Reply-To: <201108062317.19033.rjw@sisk.pl>
+Received: from e9.ny.us.ibm.com ([32.97.182.139]:49106 "EHLO e9.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751006Ab1HGGS5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 7 Aug 2011 02:18:57 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e9.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p775jtYA007023
+	for <linux-ext4@vger.kernel.org>; Sun, 7 Aug 2011 01:45:55 -0400
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p776Itki351998
+	for <linux-ext4@vger.kernel.org>; Sun, 7 Aug 2011 02:18:55 -0400
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p772IhnR005442
+	for <linux-ext4@vger.kernel.org>; Sat, 6 Aug 2011 23:18:43 -0300
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Aug 06, 2011 at 11:17:18PM +0200, Rafael J. Wysocki wrote:
-> From: Rafael J. Wysocki <rjw@sisk.pl>
-> 
-> Freeze all filesystems during the freezing of tasks by calling
-> freeze_bdev() for each of them and thaw them during the thawing
-> of tasks with the help of thaw_bdev().
-> 
-> This is needed by hibernation, because some filesystems (e.g. XFS)
-> deadlock with the preallocation of memory used by it if the memory
-> pressure caused by it is too heavy.
-> 
-> The additional benefit of this change is that, if something goes
-> wrong after filesystems have been frozen, they will stay in a
-> consistent state and journal replays won't be necessary (e.g. after
-> a failing suspend or resume).  In particular, this should help to
-> solve a long-standing issue that in some cases during resume from
-> hibernation the boot loader causes the journal to be replied for the
-> filesystem containing the kernel image and initrd causing it to
-> become inconsistent with the information stored in the hibernation
-> image.
-> 
-> This change is based on earlier work by Nigel Cunningham.
-> 
-> Signed-off-by: Rafael J. Wysocki <rjw@sisk.pl>
-> ---
-> 
-> OK, so nobody except for Pavel appears to have any comments, so I assume
-> that everyone except for Pavel is fine with the approach, interestingly enough.
-> 
-> I've removed the MS_FROZEN Pavel complained about from freeze_filesystems()
-> and added comments explaining why lockdep_off/on() are used.
-> 
-> Thanks,
-> Rafael
-> 
-> ---
->  fs/block_dev.c         |   56 +++++++++++++++++++++++++++++++++++++++++++++++++
->  include/linux/fs.h     |    6 +++++
->  kernel/power/process.c |    7 +++++-
->  3 files changed, 68 insertions(+), 1 deletion(-)
-> 
-> Index: linux-2.6/include/linux/fs.h
-> ===================================================================
-> --- linux-2.6.orig/include/linux/fs.h
-> +++ linux-2.6/include/linux/fs.h
-> @@ -211,6 +211,7 @@ struct inodes_stat_t {
->  #define MS_KERNMOUNT	(1<<22) /* this is a kern_mount call */
->  #define MS_I_VERSION	(1<<23) /* Update inode I_version field */
->  #define MS_STRICTATIME	(1<<24) /* Always perform atime updates */
-> +#define MS_FROZEN	(1<<25) /* bdev has been frozen */
->  #define MS_NOSEC	(1<<28)
->  #define MS_BORN		(1<<29)
->  #define MS_ACTIVE	(1<<30)
-> @@ -2047,6 +2048,8 @@ extern struct super_block *freeze_bdev(s
->  extern void emergency_thaw_all(void);
->  extern int thaw_bdev(struct block_device *bdev, struct super_block *sb);
->  extern int fsync_bdev(struct block_device *);
-> +extern void freeze_filesystems(void);
-> +extern void thaw_filesystems(void);
->  #else
->  static inline void bd_forget(struct inode *inode) {}
->  static inline int sync_blockdev(struct block_device *bdev) { return 0; }
-> @@ -2061,6 +2064,9 @@ static inline int thaw_bdev(struct block
->  {
->  	return 0;
->  }
-> +
-> +static inline void freeze_filesystems(void) {}
-> +static inline void thaw_filesystems(void) {}
->  #endif
->  extern int sync_filesystem(struct super_block *);
->  extern const struct file_operations def_blk_fops;
-> Index: linux-2.6/fs/block_dev.c
-> ===================================================================
-> --- linux-2.6.orig/fs/block_dev.c
-> +++ linux-2.6/fs/block_dev.c
-> @@ -314,6 +314,62 @@ out:
->  }
->  EXPORT_SYMBOL(thaw_bdev);
->  
-> +/**
-> + * freeze_filesystems - Force all filesystems into a consistent state.
-> + */
-> +void freeze_filesystems(void)
-> +{
-> +	struct super_block *sb;
-> +
-> +	/*
-> +	 * This is necessary, because some filesystems (e.g. ext3) lock
-> +	 * mutexes in their .freeze_fs() callbacks and leave them locked for
-> +	 * their .unfreeze_fs() callbacks to unlock.  This is done under
-> +	 * bdev->bd_fsfreeze_mutex, which is then released, but it makes
-> +	 * lockdep think something may be wrong when freeze_bdev() attempts
-> +	 * to acquire bdev->bd_fsfreeze_mutex for the next filesystem.
-> +	 */
-> +	lockdep_off();
+This patch corrects a punch hole bug found by xfstests
+when the block size is set to 1k.  Test 127 runs longer
+before it fails, but that appears to be a separate bug.
 
-I thought those problems were fixed. If they aren't, then they most
-certainly need to be because holding mutexes over system calls is a
-bug.
+This bug happens because the punch hole code only zeros
+out non block aligned blocks, and then releases the pages
+for data that is page aligned.  This means that if the
+blocks are smaller than a page, then the blocks contained
+in the non page aligned regions (but still block aligned)
+are left unzeroed and mapped.
 
-Well, well:
+This patch adds a new ext4_unmap_partial_page_buffers routine
+that unmapps the block aligned buffers in a page that are
+contained in a specified range.
 
-[252182.603134] ================================================
-[252182.604832] [ BUG: lock held when returning to user space! ]
-[252182.606086] ------------------------------------------------
-[252182.607400] xfs_io/4917 is leaving the kernel with locks still held!
-[252182.608905] 1 lock held by xfs_io/4917:
-[252182.609739]  #0:  (&journal->j_barrier){+.+...}, at: [<ffffffff812a2aaf>] journal_lock_updates+0xef/0x100
+Signed-off-by: Allison Henderson <achender@linux.vnet.ibm.com>
+---
+v1 -> v2
+Added EXT4_BLOCK_ZERO_DISCARD_BUFFER flag
 
-<sigh>
+v2 -> v3
+Moved code out of ext4_zero_block_page_range and in
+to new ext4_unmap_page_range function
 
-Looks like the problem was fixed for ext4, but not ext3.  Please
-report this to the ext3/4 list and get it fixed, don't work around
-it here.
+v3 -> v4
+Renamed ext4_unmap_page_range to ext4_unmap_partial_page_buffers
+Moved ext4_unmap_partial_page_buffers from inode.c to extents.c
+Corrected comments for non block/page aligned handling
+Added checks to avoid unnecessary page unmaps
+Removed unneeded journaling and mapping from new routine
 
-> +	/*
-> +	 * Freeze in reverse order so filesystems depending on others are
-> +	 * frozen in the right order (eg. loopback on ext3).
-> +	 */
-> +	list_for_each_entry_reverse(sb, &super_blocks, s_list) {
-> +		if (!sb->s_root || !sb->s_bdev ||
-> +		    (sb->s_frozen == SB_FREEZE_TRANS) ||
-> +		    (sb->s_flags & MS_RDONLY))
-> +			continue;
-> +
-> +		freeze_bdev(sb->s_bdev);
-> +		sb->s_flags |= MS_FROZEN;
-> +	}
+:100644 100644 4d73e11... a946023... M	fs/ext4/extents.c
+ fs/ext4/extents.c |  142 +++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 files changed, 138 insertions(+), 4 deletions(-)
 
-AFAIK, that won't work for btrfs - you have to call freeze_super()
-directly for btrfs because it has a special relationship with
-sb->s_bdev. And besides, all freeze_bdev does is get an active
-reference on the superblock and call freeze_super().
-
-Also, that's traversing the list of superblock with locking and
-dereferencing the superblock without properly checking that the
-superblock is not being torn down. You should probably use
-iterate_supers (or at least copy the code), with a function that
-drops the s_umount read lock befor calling freeze_super() and then
-picks it back up afterwards.
-
-> +
-> +	lockdep_on();
-> +}
-> +
-> +/**
-> + * thaw_filesystems - Make all filesystems active again.
-> + */
-> +void thaw_filesystems(void)
-> +{
-> +	struct super_block *sb;
-> +
-> +	/*
-> +	 * This is necessary for the same reason as in freeze_filesystems()
-> +	 * above.
-> +	 */
-> +	lockdep_off();
-> +
-> +	list_for_each_entry(sb, &super_blocks, s_list)
-> +		if (sb->s_flags & MS_FROZEN) {
-> +			sb->s_flags &= ~MS_FROZEN;
-> +			thaw_bdev(sb->s_bdev, sb);
-> +		}
-
-And once again, iterate_supers() is what you want here. And you
-should only call thaw_bdev() as it needs to do checks other than
-checking MS_FROZEN e.g. the above will unfreeze filesystems that
-were already frozen at the time a suspend occurs, and that could
-lead to corruption depending on why the filesystem was frozen...
-
-Also, you still need to check for a valid sb->s_bdev here, otherwise
-<splat>.
-
-Cheers,
-
-Dave.
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 4d73e11..a946023 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4137,6 +4137,107 @@ static int ext4_xattr_fiemap(struct inode *inode,
+ }
+ 
+ /*
++ * ext4_unmap_partial_page_buffers()
++ * Unmaps a page range of length 'length' starting from offset
++ * 'from'.  The range to be unmaped must be contained with in
++ * one page.  If the specified range exceeds the end of the page
++ * it will be shortened to end of the page that cooresponds to
++ * 'from'.  Only block aligned buffers will be unmapped and unblock
++ * aligned buffers are skipped
++ */
++static int ext4_unmap_partial_page_buffers(handle_t *handle,
++		struct address_space *mapping, loff_t from, loff_t length)
++{
++	ext4_fsblk_t index = from >> PAGE_CACHE_SHIFT;
++	unsigned int offset = from & (PAGE_CACHE_SIZE-1);
++	unsigned int blocksize, max, pos;
++	unsigned int end_of_block, range_to_unmap;
++	ext4_lblk_t iblock;
++	struct inode *inode = mapping->host;
++	struct buffer_head *bh;
++	struct page *page;
++	int err = 0;
++
++	page = find_or_create_page(mapping, from >> PAGE_CACHE_SHIFT,
++				   mapping_gfp_mask(mapping) & ~__GFP_FS);
++	if (!page)
++		return -EINVAL;
++
++	blocksize = inode->i_sb->s_blocksize;
++	max = PAGE_CACHE_SIZE - offset;
++
++	/*
++	 * correct length if it does not fall between
++	 * 'from' and the end of the page
++	 */
++	if (length > max || length < 0)
++		length = max;
++
++	iblock = index << (PAGE_CACHE_SHIFT - inode->i_sb->s_blocksize_bits);
++
++	if (!page_has_buffers(page))
++		goto unlock;
++
++	/* Find the buffer that contains "offset" */
++	bh = page_buffers(page);
++	pos = blocksize;
++	while (offset >= pos) {
++		bh = bh->b_this_page;
++		iblock++;
++		pos += blocksize;
++	}
++
++	pos = offset;
++	while (pos < offset + length) {
++		err = 0;
++
++		/* The length of space left to zero */
++		range_to_unmap = offset + length - pos;
++
++		/* The length of space until the end of the block */
++		end_of_block = blocksize - (pos & (blocksize-1));
++
++		/* Do not unmap past end of block */
++		if (range_to_unmap > end_of_block)
++			range_to_unmap = end_of_block;
++
++		if (buffer_freed(bh)) {
++			BUFFER_TRACE(bh, "freed: skip");
++			goto next;
++		}
++
++		if (!buffer_mapped(bh)) {
++			BUFFER_TRACE(bh, "unmapped: skip");
++			goto next;
++		}
++
++		/* If the range is not block aligned, skip */
++		if (range_to_unmap != blocksize)
++			goto next;
++
++		clear_buffer_dirty(bh);
++		bh->b_bdev = NULL;
++		clear_buffer_mapped(bh);
++		clear_buffer_req(bh);
++		clear_buffer_new(bh);
++		clear_buffer_delay(bh);
++		clear_buffer_unwritten(bh);
++		clear_buffer_uptodate(bh);
++		ClearPageUptodate(page);
++
++		BUFFER_TRACE(bh, "buffer unmapped");
++next:
++		bh = bh->b_this_page;
++		iblock++;
++		pos += range_to_unmap;
++	}
++unlock:
++	unlock_page(page);
++	page_cache_release(page);
++	return err;
++}
++
++/*
+  * ext4_ext_punch_hole
+  *
+  * Punches a hole of "length" bytes in a file starting
+@@ -4157,7 +4258,7 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 	struct address_space *mapping = inode->i_mapping;
+ 	struct ext4_map_blocks map;
+ 	handle_t *handle;
+-	loff_t first_block_offset, last_block_offset, block_len;
++	loff_t first_block_offset, last_block_offset, block_len, page_len;
+ 	loff_t first_page, last_page, first_page_offset, last_page_offset;
+ 	int ret, credits, blocks_released, err = 0;
+ 
+@@ -4206,9 +4307,9 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 		goto out;
+ 
+ 	/*
+-	 * Now we need to zero out the un block aligned data.
+-	 * If the file is smaller than a block, just
+-	 * zero out the middle
++	 * Now we need to zero out the non-block-aligned data.
++	 * If the file space being truncated is smaller than
++	 * than a block, just zero out the middle
+ 	 */
+ 	if (first_block > last_block)
+ 		ext4_block_zero_page_range(handle, mapping, offset, length);
+@@ -4227,6 +4328,39 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 		}
+ 	}
+ 
++	/*
++	 * Now we need to unmap the non-page-aligned buffers.
++	 * If the block size is smaller than the page size
++	 * and the file space being truncated is not
++	 * page aligned, then unmap the buffers
++	 */
++	if (inode->i_sb->s_blocksize < PAGE_CACHE_SIZE &&
++	   !((offset % PAGE_CACHE_SIZE == 0) &&
++	   (length % PAGE_CACHE_SIZE == 0))) {
++
++		/*
++		* If the file space being truncated is smaller
++		* than a page, just unmap the middle
++		*/
++		if (first_page > last_page) {
++			ext4_unmap_partial_page_buffers(handle,
++				mapping, offset, length);
++		} else {
++			/* unmap page buffers before the first aligned page */
++			page_len = first_page_offset - offset;
++			if (page_len > 0)
++				ext4_unmap_partial_page_buffers(handle,
++					mapping, offset, page_len);
++
++			/* unmap the page buffers after the last aligned page */
++			page_len = offset + length - last_page_offset;
++			if (page_len > 0) {
++				ext4_unmap_partial_page_buffers(handle,
++					mapping, last_page_offset, page_len);
++			}
++		}
++	}
++
+ 	/* If there are no blocks to remove, return now */
+ 	if (first_block >= last_block)
+ 		goto out;
 -- 
-Dave Chinner
-david@fromorbit.com
+1.7.1
+
