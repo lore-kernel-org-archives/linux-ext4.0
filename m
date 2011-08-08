@@ -1,235 +1,89 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: [PATCH 1/1 v4] ext4: fix xfstests 75, 112, 127 punch hole failure
-Date: Sat,  6 Aug 2011 23:21:52 -0700
-Message-ID: <1312698112-7836-1-git-send-email-achender@linux.vnet.ibm.com>
-Cc: Allison Henderson <achender@linux.vnet.ibm.com>
-To: linux-ext4@vger.kernel.org
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/1 v4] ext4: fix xfstests 75, 112, 127 punch hole
+ failure
+Date: Sun, 7 Aug 2011 22:42:13 -0400
+Message-ID: <20110808024213.GC11497@thunk.org>
+References: <1312698112-7836-1-git-send-email-achender@linux.vnet.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Allison Henderson <achender@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:49106 "EHLO e9.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751006Ab1HGGS5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 7 Aug 2011 02:18:57 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e9.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p775jtYA007023
-	for <linux-ext4@vger.kernel.org>; Sun, 7 Aug 2011 01:45:55 -0400
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p776Itki351998
-	for <linux-ext4@vger.kernel.org>; Sun, 7 Aug 2011 02:18:55 -0400
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p772IhnR005442
-	for <linux-ext4@vger.kernel.org>; Sat, 6 Aug 2011 23:18:43 -0300
+Received: from li9-11.members.linode.com ([67.18.176.11]:38157 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752694Ab1HHCmQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 7 Aug 2011 22:42:16 -0400
+Content-Disposition: inline
+In-Reply-To: <1312698112-7836-1-git-send-email-achender@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch corrects a punch hole bug found by xfstests
-when the block size is set to 1k.  Test 127 runs longer
-before it fails, but that appears to be a separate bug.
+Thanks, much better.  I still have some questions though.
 
-This bug happens because the punch hole code only zeros
-out non block aligned blocks, and then releases the pages
-for data that is page aligned.  This means that if the
-blocks are smaller than a page, then the blocks contained
-in the non page aligned regions (but still block aligned)
-are left unzeroed and mapped.
+>  /*
+> + * ext4_unmap_partial_page_buffers()
+> + * Unmaps a page range of length 'length' starting from offset
+> + * 'from'.  The range to be unmaped must be contained with in
+> + * one page.  If the specified range exceeds the end of the page
+> + * it will be shortened to end of the page that cooresponds to
+> + * 'from'.  Only block aligned buffers will be unmapped and unblock
+> + * aligned buffers are skipped
+> + */
+> +static int ext4_unmap_partial_page_buffers(handle_t *handle,
+> +		struct address_space *mapping, loff_t from, loff_t length)
 
-This patch adds a new ext4_unmap_partial_page_buffers routine
-that unmapps the block aligned buffers in a page that are
-contained in a specified range.
+Is "unmap" really the right name of this function?  Isn't the real to
+invalidate a buffer head that corresponds to a punched-out block?
 
-Signed-off-by: Allison Henderson <achender@linux.vnet.ibm.com>
----
-v1 -> v2
-Added EXT4_BLOCK_ZERO_DISCARD_BUFFER flag
+Correct me if I'm wrong, but the primary problem that we need to worry
+about here is that the block that has just been punched out could be
+reused by some other inode --- but if we still have a dirty buffer
+head mapped to the now-punched-out-and-released-block, writeback could
+end up corrupting some other buffer.  So in some sense, what we are
+effectively doing is a bforget, right?
 
-v2 -> v3
-Moved code out of ext4_zero_block_page_range and in
-to new ext4_unmap_page_range function
+In fact, if we are doing data journalling, don't we need to call
+ext4_forget()?  Otherwise, the block gets reassigned, but if the block
+has been data journaled, without the revoke record written by
+ext4_forget(), won't we have a potential problem where the journal
+replay could end up corrupting another inode's data?
 
-v3 -> v4
-Renamed ext4_unmap_page_range to ext4_unmap_partial_page_buffers
-Moved ext4_unmap_partial_page_buffers from inode.c to extents.c
-Corrected comments for non block/page aligned handling
-Added checks to avoid unnecessary page unmaps
-Removed unneeded journaling and mapping from new routine
+Furthermore, the question I have is why don't have precisely the same
+problem with truncate?  If we have a 16k page size, and we open a 15k
+file for writing, and then we overwrite the first 15k, and then
+truncate the file down to 4k.  At the moment we'll zero out the last
+11k of the file, and leave the buffer heads dirty and mapped; then
+suppose those blocks get reassigned and used before writeback happens.
+We're not calling ext4_unmap_partial_page_buffers() now; why isn't
+this a problem today?  Are we just getting lucky?  Why is this more of
+a problem with punch, such that xfstests 75, 112, 127, etc. are
+failing?
 
-:100644 100644 4d73e11... a946023... M	fs/ext4/extents.c
- fs/ext4/extents.c |  142 +++++++++++++++++++++++++++++++++++++++++++++++++++--
- 1 files changed, 138 insertions(+), 4 deletions(-)
+Am I missing something here?
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 4d73e11..a946023 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4137,6 +4137,107 @@ static int ext4_xattr_fiemap(struct inode *inode,
- }
- 
- /*
-+ * ext4_unmap_partial_page_buffers()
-+ * Unmaps a page range of length 'length' starting from offset
-+ * 'from'.  The range to be unmaped must be contained with in
-+ * one page.  If the specified range exceeds the end of the page
-+ * it will be shortened to end of the page that cooresponds to
-+ * 'from'.  Only block aligned buffers will be unmapped and unblock
-+ * aligned buffers are skipped
-+ */
-+static int ext4_unmap_partial_page_buffers(handle_t *handle,
-+		struct address_space *mapping, loff_t from, loff_t length)
-+{
-+	ext4_fsblk_t index = from >> PAGE_CACHE_SHIFT;
-+	unsigned int offset = from & (PAGE_CACHE_SIZE-1);
-+	unsigned int blocksize, max, pos;
-+	unsigned int end_of_block, range_to_unmap;
-+	ext4_lblk_t iblock;
-+	struct inode *inode = mapping->host;
-+	struct buffer_head *bh;
-+	struct page *page;
-+	int err = 0;
-+
-+	page = find_or_create_page(mapping, from >> PAGE_CACHE_SHIFT,
-+				   mapping_gfp_mask(mapping) & ~__GFP_FS);
-+	if (!page)
-+		return -EINVAL;
-+
-+	blocksize = inode->i_sb->s_blocksize;
-+	max = PAGE_CACHE_SIZE - offset;
-+
-+	/*
-+	 * correct length if it does not fall between
-+	 * 'from' and the end of the page
-+	 */
-+	if (length > max || length < 0)
-+		length = max;
-+
-+	iblock = index << (PAGE_CACHE_SHIFT - inode->i_sb->s_blocksize_bits);
-+
-+	if (!page_has_buffers(page))
-+		goto unlock;
-+
-+	/* Find the buffer that contains "offset" */
-+	bh = page_buffers(page);
-+	pos = blocksize;
-+	while (offset >= pos) {
-+		bh = bh->b_this_page;
-+		iblock++;
-+		pos += blocksize;
-+	}
-+
-+	pos = offset;
-+	while (pos < offset + length) {
-+		err = 0;
-+
-+		/* The length of space left to zero */
-+		range_to_unmap = offset + length - pos;
-+
-+		/* The length of space until the end of the block */
-+		end_of_block = blocksize - (pos & (blocksize-1));
-+
-+		/* Do not unmap past end of block */
-+		if (range_to_unmap > end_of_block)
-+			range_to_unmap = end_of_block;
-+
-+		if (buffer_freed(bh)) {
-+			BUFFER_TRACE(bh, "freed: skip");
-+			goto next;
-+		}
-+
-+		if (!buffer_mapped(bh)) {
-+			BUFFER_TRACE(bh, "unmapped: skip");
-+			goto next;
-+		}
-+
-+		/* If the range is not block aligned, skip */
-+		if (range_to_unmap != blocksize)
-+			goto next;
-+
-+		clear_buffer_dirty(bh);
-+		bh->b_bdev = NULL;
-+		clear_buffer_mapped(bh);
-+		clear_buffer_req(bh);
-+		clear_buffer_new(bh);
-+		clear_buffer_delay(bh);
-+		clear_buffer_unwritten(bh);
-+		clear_buffer_uptodate(bh);
-+		ClearPageUptodate(page);
-+
-+		BUFFER_TRACE(bh, "buffer unmapped");
-+next:
-+		bh = bh->b_this_page;
-+		iblock++;
-+		pos += range_to_unmap;
-+	}
-+unlock:
-+	unlock_page(page);
-+	page_cache_release(page);
-+	return err;
-+}
-+
-+/*
-  * ext4_ext_punch_hole
-  *
-  * Punches a hole of "length" bytes in a file starting
-@@ -4157,7 +4258,7 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
- 	struct address_space *mapping = inode->i_mapping;
- 	struct ext4_map_blocks map;
- 	handle_t *handle;
--	loff_t first_block_offset, last_block_offset, block_len;
-+	loff_t first_block_offset, last_block_offset, block_len, page_len;
- 	loff_t first_page, last_page, first_page_offset, last_page_offset;
- 	int ret, credits, blocks_released, err = 0;
- 
-@@ -4206,9 +4307,9 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
- 		goto out;
- 
- 	/*
--	 * Now we need to zero out the un block aligned data.
--	 * If the file is smaller than a block, just
--	 * zero out the middle
-+	 * Now we need to zero out the non-block-aligned data.
-+	 * If the file space being truncated is smaller than
-+	 * than a block, just zero out the middle
- 	 */
- 	if (first_block > last_block)
- 		ext4_block_zero_page_range(handle, mapping, offset, length);
-@@ -4227,6 +4328,39 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
- 		}
- 	}
- 
-+	/*
-+	 * Now we need to unmap the non-page-aligned buffers.
-+	 * If the block size is smaller than the page size
-+	 * and the file space being truncated is not
-+	 * page aligned, then unmap the buffers
-+	 */
-+	if (inode->i_sb->s_blocksize < PAGE_CACHE_SIZE &&
-+	   !((offset % PAGE_CACHE_SIZE == 0) &&
-+	   (length % PAGE_CACHE_SIZE == 0))) {
-+
-+		/*
-+		* If the file space being truncated is smaller
-+		* than a page, just unmap the middle
-+		*/
-+		if (first_page > last_page) {
-+			ext4_unmap_partial_page_buffers(handle,
-+				mapping, offset, length);
-+		} else {
-+			/* unmap page buffers before the first aligned page */
-+			page_len = first_page_offset - offset;
-+			if (page_len > 0)
-+				ext4_unmap_partial_page_buffers(handle,
-+					mapping, offset, page_len);
-+
-+			/* unmap the page buffers after the last aligned page */
-+			page_len = offset + length - last_page_offset;
-+			if (page_len > 0) {
-+				ext4_unmap_partial_page_buffers(handle,
-+					mapping, last_page_offset, page_len);
-+			}
-+		}
-+	}
-+
- 	/* If there are no blocks to remove, return now */
- 	if (first_block >= last_block)
- 		goto out;
--- 
-1.7.1
+> +	/*
+> +	 * Now we need to unmap the non-page-aligned buffers.
+> +	 * If the block size is smaller than the page size
+> +	 * and the file space being truncated is not
+> +	 * page aligned, then unmap the buffers
+> +	 */
+> +	if (inode->i_sb->s_blocksize < PAGE_CACHE_SIZE &&
+> +	   !((offset % PAGE_CACHE_SIZE == 0) &&
+> +	   (length % PAGE_CACHE_SIZE == 0))) {
 
+How does this solve the situation I had outlined before?  Suppose are
+have a 4k page size, and a 4k block size, and we issue a punch
+operation with offset=4092, and length=4105.  In the previous section
+of code, the offsets 4092--4095 and 8193--8197 will be zero'ed out.
+But offset will not be a multiple of the page size, and length will
+not be a multiple of page size, but what has been left to be dealt
+with *is* an exactl multiple of a page size, and thus could be
+optimized out.
+
+I didn't see any changes in your patch that adjust offset and length
+after calling ext4_block_zero_page_range(); so I think we still have
+an optimization opportunity we're missing here.
+
+Regards,
+
+						- Ted
