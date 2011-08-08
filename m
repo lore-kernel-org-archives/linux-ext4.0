@@ -1,51 +1,115 @@
-From: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
-Subject: Re: [PATCH 0/4] 32/64 bit llseek hashes v2
-Date: Mon, 08 Aug 2011 17:47:21 +0200
-Message-ID: <4E400509.8090804@itwm.fraunhofer.de>
-References: <20110808153432.1872437.85783.stgit@fsdevel3>
+From: Christian Brunner <chb@muc.de>
+Subject: Re: Kernel 3.0.0 + ext4 + ceph == ...
+Date: Mon, 8 Aug 2011 22:07:58 +0200
+Message-ID: <CAO47_-9N0k_OjgUooBtTjGdvTqbAoUTJ-vbqVy8q4=f6YkV_og@mail.gmail.com>
+References: <4E33D101.1050504@ufm.su>
+	<9BF9E529-C532-4A94-8362-93C2D1B778DB@mit.edu>
+	<4E3432FC.9030204@ufm.su>
+	<20110730165001.GI7361@thunk.org>
+	<Pine.LNX.4.64.1107301016120.23447@cobra.newdream.net>
+	<20110730221900.GK7361@thunk.org>
+	<Pine.LNX.4.64.1107302149430.23447@cobra.newdream.net>
+	<4E353D9E.5080802@ufm.su>
+	<Pine.LNX.4.64.1107310951550.2348@cobra.newdream.net>
+	<4E35B833.6070304@ufm.su>
+	<Pine.LNX.4.64.1107311339530.23447@cobra.newdream.net>
+	<80E3795B-C981-492F-9312-DC91D57E4017@mit.edu>
+	<Pine.LNX.4.64.1108010918580.6290@cobra.newdream.net>
+	<CAO47_-9DmxqfBsBF2K_8ScX_4d-HPz01QeQ-2FFwZS-nCDEOsw@mail.gmail.com>
+	<CAC-hyiHzmn25ryJkNUdzQvk7c7chwVDfmwDeo8X2+4zTbDuFGQ@mail.gmail.com>
+Reply-To: chb@muc.de
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, yong.fan-KloliPT79xf2eFz/2MeuCQ@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, adilger-KloliPT79xf2eFz/2MeuCQ@public.gmane.org
-To: linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20110808153432.1872437.85783.stgit@fsdevel3>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Sage Weil <sage@newdream.net>, Theodore Tso <tytso@mit.edu>,
+	Fyodor Ustinov <ufm@ufm.su>, ceph-devel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Yehuda Sadeh Weinraub <yehuda.sadeh@dreamhost.com>
+Return-path: <ceph-devel-owner@vger.kernel.org>
+In-Reply-To: <CAC-hyiHzmn25ryJkNUdzQvk7c7chwVDfmwDeo8X2+4zTbDuFGQ@mail.gmail.com>
+Sender: ceph-devel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Oh sorry, I forgot to set the correct subject line in my stg command line :(
+I tried 3.0.1 today, which contains the commit Theodore suggested and
+was no longer able to reproduce the problem.
 
-On 08/08/2011 05:37 PM, Bernd Schubert wrote:
-> With the ext3/ext4 directory index implementation hashes are used to specify
-> offsets for llseek(). For compatibility with NFSv2 and 32-bit user space
-> on 64-bit systems (kernel space) ext3/ext4 currently only return 32-bit
-> hashes and therefore the probability of hash collisions for larger directories
-> is rather high. As recently reported on the NFS mailing list that theoretical
-> problem also happens on real systems:
-> http://comments.gmane.org/gmane.linux.nfs/40863
->
-> The following series adds two new f_mode flags to tell ext4
-> to use 32-bit or 64-bit hash values for llseek() calls.
-> These flags can then used by network file systems, such as NFS, to
-> request 32-bit or 64-bit offsets (hashes).
->
-> Version 2:
-> - use f_mode instead of O_* flags and also in a separate patch
-> - introduce EXT4_HTREE_EOF_32BIT and EXT4_HTREE_EOF_64BIT
-> - fix SEEK_END in ext4_dir_llseek()
-> - set f_mode flags in NFS code as early as possible and introduce a new
->    NFSD_MAY_64BIT_COOKIE flag for that
->
-> --
-> Bernd Schubert
-> Fraunhofer ITWM
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+So I think the corruption we have seen is indeed related to:
 
+commit 7132de744ba76930d13033061018ddd7e3e8cd91
+Author: Maxim Patlasov <maxim.patlasov@gmail.com>
+Date:   Sun Jul 10 19:37:48 2011 -0400
+
+   ext4: fix i_blocks/quota accounting when extent insertion fails
+
+
+I will now try to apply this patch to the RHEL6.1 kernel and see what
+happens...
+
+Thanks for your help.
+
+Christian
+
+
+2011/8/3 Yehuda Sadeh Weinraub <yehuda.sadeh@dreamhost.com>:
+> On Wed, Aug 3, 2011 at 7:16 AM, Christian Brunner <chb@muc.de> wrote:
+> ...
+>> I tried to reproduce this without ceph, but wasn't able to...
+>>
+>> In the meantime it seams, that I can also see the side effects on th=
+e
+>> librbd side: I get an "librbd: data error!" when I do an "rbd copy".
+>>
+>> When I look at the librbd code this is related to a sparse_read not
+>> returning the right size of the object.
+>>
+>> I don't know if it helps, but I think that the problem is also relat=
+ed
+>> to sparse file usage.
+>>
+>
+> There were a few sparse-read issues that we fixed not too long ago,
+> but should have been fixed for at least the previous ceph version. I'=
+m
+> not sure what version you're using.
+> There was a ext4 fiemap issue that I was hitting on specific
+> environments but couldn't determine whether it was fixed in later
+> kernel versions (I was using 2.6.32). Now is a good time to try and
+> get to the bottom of it. Here's a script I was using to reproduce it:
+>
+> #!/bin/sh
+> dd if=3D/dev/urandom of=3Dbla bs=3D1 seek=3D$((0x6f000)) count=3D$((0=
+x1000)); sync
+> dd if=3D/dev/urandom of=3Dbla bs=3D1 seek=3D$((0x70000)) count=3D$((0=
+x1000)); sync
+> dd if=3D/dev/urandom of=3Dbla bs=3D1 seek=3D$((0x71000)) count=3D$((0=
+x1000)); sync
+> dd if=3D/dev/urandom of=3Dbla bs=3D1 seek=3D$((0x72000)) count=3D$((0=
+x1000)); sync
+> dd if=3D/dev/urandom of=3Dbla bs=3D1 seek=3D$((0x73000)) count=3D$((0=
+x1000)); sync
+> dd if=3D/dev/urandom of=3Dbla bs=3D1 seek=3D$((0x74000)) count=3D$((0=
+x2000)); sync
+> dd if=3D/dev/urandom of=3Dbla bs=3D1 seek=3D$((0x2ae000)) count=3D$((=
+0x2000)); sync
+>
+> You can compile and run the following utility to dump all the extents=
+:
+> http://pastebin.com/h2Cnpk2Q
+>
+> Thanks,
+> Yehuda
+>
+> Oh, btw, You can effectively disable the use of fiemap by setting the
+> 'filestore fiemap threshold' config option with large enough value
+> (e.g., anything bigger than 4 MB should be enough for rbd).
+> --
+> To unsubscribe from this list: send the line "unsubscribe ceph-devel"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
 --
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To unsubscribe from this list: send the line "unsubscribe ceph-devel" i=
+n
+the body of a message to majordomo@vger.kernel.org
 More majordomo info at  http://vger.kernel.org/majordomo-info.html
