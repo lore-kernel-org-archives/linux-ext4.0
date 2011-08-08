@@ -1,89 +1,142 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/1 v4] ext4: fix xfstests 75, 112, 127 punch hole
- failure
-Date: Sun, 7 Aug 2011 22:42:13 -0400
-Message-ID: <20110808024213.GC11497@thunk.org>
-References: <1312698112-7836-1-git-send-email-achender@linux.vnet.ibm.com>
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Subject: Re: [PATCH] ext3: fix message in ext3_remount for rw-remount case
+Date: Mon, 08 Aug 2011 13:27:12 +0900
+Message-ID: <4E3F65A0.9090109@jp.fujitsu.com>
+References: <20110801135451.cb73c981.toshi.okajima@jp.fujitsu.com> <20110801084526.GB6522@quack.suse.cz> <4E3675D6.3010201@jp.fujitsu.com> <20110801095731.GI6522@quack.suse.cz> <4E37BFEA.7020601@jp.fujitsu.com> <4E38B57B.4050304@jp.fujitsu.com> <20110803095754.GA5047@quack.suse.cz> <20110803222548.7c1ee229.toshi.okajima@jp.fujitsu.com> <20110803162525.GB10815@quack.suse.cz>
+Reply-To: toshi.okajima@jp.fujitsu.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Allison Henderson <achender@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=UTF-8;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: akpm@linux-foundation.org, adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38157 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752694Ab1HHCmQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 7 Aug 2011 22:42:16 -0400
-Content-Disposition: inline
-In-Reply-To: <1312698112-7836-1-git-send-email-achender@linux.vnet.ibm.com>
+Received: from fgwmail6.fujitsu.co.jp ([192.51.44.36]:44728 "EHLO
+	fgwmail6.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750774Ab1HHE0Z (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Aug 2011 00:26:25 -0400
+Received: from m2.gw.fujitsu.co.jp (unknown [10.0.50.72])
+	by fgwmail6.fujitsu.co.jp (Postfix) with ESMTP id 599B23EE0BC
+	for <linux-ext4@vger.kernel.org>; Mon,  8 Aug 2011 13:26:23 +0900 (JST)
+Received: from smail (m2 [127.0.0.1])
+	by outgoing.m2.gw.fujitsu.co.jp (Postfix) with ESMTP id 3DCAA45DE85
+	for <linux-ext4@vger.kernel.org>; Mon,  8 Aug 2011 13:26:23 +0900 (JST)
+Received: from s2.gw.fujitsu.co.jp (s2.gw.fujitsu.co.jp [10.0.50.92])
+	by m2.gw.fujitsu.co.jp (Postfix) with ESMTP id 1AF6345DE7E
+	for <linux-ext4@vger.kernel.org>; Mon,  8 Aug 2011 13:26:23 +0900 (JST)
+Received: from s2.gw.fujitsu.co.jp (localhost.localdomain [127.0.0.1])
+	by s2.gw.fujitsu.co.jp (Postfix) with ESMTP id 081A81DB803F
+	for <linux-ext4@vger.kernel.org>; Mon,  8 Aug 2011 13:26:23 +0900 (JST)
+Received: from m105.s.css.fujitsu.com (m105.s.css.fujitsu.com [10.240.81.145])
+	by s2.gw.fujitsu.co.jp (Postfix) with ESMTP id B6DED1DB803E
+	for <linux-ext4@vger.kernel.org>; Mon,  8 Aug 2011 13:26:22 +0900 (JST)
+In-Reply-To: <20110803162525.GB10815@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Thanks, much better.  I still have some questions though.
+Hi.
 
->  /*
-> + * ext4_unmap_partial_page_buffers()
-> + * Unmaps a page range of length 'length' starting from offset
-> + * 'from'.  The range to be unmaped must be contained with in
-> + * one page.  If the specified range exceeds the end of the page
-> + * it will be shortened to end of the page that cooresponds to
-> + * 'from'.  Only block aligned buffers will be unmapped and unblock
-> + * aligned buffers are skipped
-> + */
-> +static int ext4_unmap_partial_page_buffers(handle_t *handle,
-> +		struct address_space *mapping, loff_t from, loff_t length)
+I'm sorry for my late response. I took vacations till yesterday.
 
-Is "unmap" really the right name of this function?  Isn't the real to
-invalidate a buffer head that corresponds to a punched-out block?
+(2011/08/04 1:25), Jan Kara wrote:
+>    Hello,
+>
+> On Wed 03-08-11 22:25:48, Toshiyuki Okajima wrote:
+>> On Wed, 3 Aug 2011 11:57:54 +0200
+>> Jan Kara<jack@suse.cz>  wrote:
+>>> On Wed 03-08-11 11:42:03, Toshiyuki Okajima wrote:
+>>>>> (2011/08/01 18:57), Jan Kara wrote:
+>>>>>> On Mon 01-08-11 18:45:58, Toshiyuki Okajima wrote:
+>>>>>>> (2011/08/01 17:45), Jan Kara wrote:
+>>>>>>>> On Mon 01-08-11 13:54:51, Toshiyuki Okajima wrote:
+>>>>>>>>> If there are some inodes in orphan list while a filesystem is=
+ being
+>>>>>>>>> read-only mounted, we should recommend that pepole umount and=
+ then
+>>>>>>>>> mount it when they try to remount with read-write. But the cu=
+rrent
+>>>>>>>>> message/comment recommends that they umount and then remount =
+it.
+>>>> <SNIP>
+>>>>>>>> the most... BTW, I guess you didn't really see this message in=
+ practice, did
+>>>>>>>> you?
+>>>>>>> No.
+>>>>>>> I have seen this message in practice while quotacheck command w=
+as repeatedly
+>>>>>>> executed per an hour.
+>>>>>> Interesting. Are you able to reproduce this? Quotacheck does rem=
+ount
+>>>>>> read-only + remount read-write but you cannot really remount the=
+ filesystem
+>>>>>> read-only when it has orphan inodes and so you should not see th=
+ose when
+>>>>>> you remount read-write again. Possibly there's race between remo=
+unting and
+>>>>>> unlinking...
+>>>>> Yes. I can reproduce it. However, it is not frequently reproduced
+>>>>> by using the original procedure (qutacheck per an hour). So, I ma=
+de a
+>>>>> reproducer.
+>>>> To tell the truth, I think the race creates the message:
+>>>> ------------------------------------------------------------------=
+-----
+>>>>   EXT3-fs:<dev>: couldn't remount RDWR because of
+>>>>   =E3=80=80=E3=80=80=E3=80=80 =E3=80=80unprocessed orphan inode li=
+st.  Please umount/remount instead.
+>>>> ------------------------------------------------------------------=
+-----
+>>>> which hides a serious problem.
+>>>    I've inquired about this at linux-fsdevel (I think you were in C=
+C unless
+>>> I forgot). It's a race in VFS remount code as you properly analyzed=
+ below.
+>>> People are working on fixing it but it's not trivial. Filesystem is=
+ really
+>>> a wrong place to fix such problem. If there is a trivial fix for ex=
+t3 to
+>>> workaround the issue, I can take it but I'm not willing to push any=
+thing
+>>> complex - effort should better be spent working on a generic fix.
+>> I also think read-only remount race in VFS layer should be fixed.
+>> However, I think this race depends on ext3/ext4 filesystem
+>> implementation. (Orphan inode list)
+>> So, we should modify ext3/ext4(jbd/jbd2) to fix it.
 
-Correct me if I'm wrong, but the primary problem that we need to worry
-about here is that the block that has just been punched out could be
-reused by some other inode --- but if we still have a dirty buffer
-head mapped to the now-punched-out-and-released-block, writeback could
-end up corrupting some other buffer.  So in some sense, what we are
-effectively doing is a bforget, right?
+>    Umm, I don't understand here. If VFS makes sure that there are no
 
-In fact, if we are doing data journalling, don't we need to call
-ext4_forget()?  Otherwise, the block gets reassigned, but if the block
-has been data journaled, without the revoke record written by
-ext4_forget(), won't we have a potential problem where the journal
-replay could end up corrupting another inode's data?
+After I saw the following messages, I thought we must fix EXT3-fs error
+at first. So, I created the fix patch.
 
-Furthermore, the question I have is why don't have precisely the same
-problem with truncate?  If we have a 16k page size, and we open a 15k
-file for writing, and then we overwrite the first 15k, and then
-truncate the file down to 4k.  At the moment we'll zero out the last
-11k of the file, and leave the buffer heads dirty and mapped; then
-suppose those blocks get reassigned and used before writeback happens.
-We're not calling ext4_unmap_partial_page_buffers() now; why isn't
-this a problem today?  Are we just getting lucky?  Why is this more of
-a problem with punch, such that xfstests 75, 112, 127, etc. are
-failing?
+(1) kernel: EXT3-fs: <dev>: couldn't remount RDWR because of
+  =E3=80=80=E3=80=80=E3=80=80 =E3=80=80unprocessed orphan inode list.  =
+Please umount/remount instead.
+(2) kernel: EXT3-fs error (device <dev>) in start_transaction: Readonly=
+ filesystem
 
-Am I missing something here?
+I wasn't aware that by fixing the race between "ro-remount" and "unlink=
+",
+that EXT3-fs error can be also fixed then.
 
-> +	/*
-> +	 * Now we need to unmap the non-page-aligned buffers.
-> +	 * If the block size is smaller than the page size
-> +	 * and the file space being truncated is not
-> +	 * page aligned, then unmap the buffers
-> +	 */
-> +	if (inode->i_sb->s_blocksize < PAGE_CACHE_SIZE &&
-> +	   !((offset % PAGE_CACHE_SIZE == 0) &&
-> +	   (length % PAGE_CACHE_SIZE == 0))) {
+> files open for writing, no unfinished operations changing the filesys=
+tem (e.g.
+> unlink), and no open-but-unlinked files, what remains for ext3 to che=
+ck?
+OK.
+Now, I also think we need not modify ext3 to fix these problems.
+If we can prevent to add an inode into the orphan list (to start unlink=
+ing)
+while ro-remounting, we can also prevent (1) and (2).
 
-How does this solve the situation I had outlined before?  Suppose are
-have a 4k page size, and a 4k block size, and we issue a punch
-operation with offset=4092, and length=4105.  In the previous section
-of code, the offsets 4092--4095 and 8193--8197 will be zero'ed out.
-But offset will not be a multiple of the page size, and length will
-not be a multiple of page size, but what has been left to be dealt
-with *is* an exactl multiple of a page size, and thus could be
-optimized out.
+However, new mechanism to confirm whether "no open-but-unlinked" files
+exist while ro-remounting is required, isn't it?
+ =20
+Thanks,
+Toshiyuki Okajima
 
-I didn't see any changes in your patch that adjust offset and length
-after calling ext4_block_zero_page_range(); so I think we still have
-an optimization opportunity we're missing here.
-
-Regards,
-
-						- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
