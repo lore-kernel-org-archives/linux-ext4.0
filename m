@@ -1,58 +1,104 @@
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Subject: Re: [PATCH] ext4: fix message in ext4_remount for rw-remount case
-Date: Mon, 08 Aug 2011 19:20:58 +0900
-Message-ID: <4E3FB88A.7000305@jp.fujitsu.com>
-References: <20110801135628.3257a561.toshi.okajima@jp.fujitsu.com> <j1k60i$481$1@dough.gmane.org>
-Reply-To: toshi.okajima@jp.fujitsu.com
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext3: fix message in ext3_remount for rw-remount case
+Date: Mon, 8 Aug 2011 14:48:19 +0200
+Message-ID: <20110808124819.GA8919@quack.suse.cz>
+References: <20110801135451.cb73c981.toshi.okajima@jp.fujitsu.com>
+ <20110801084526.GB6522@quack.suse.cz>
+ <4E3675D6.3010201@jp.fujitsu.com>
+ <20110801095731.GI6522@quack.suse.cz>
+ <4E37BFEA.7020601@jp.fujitsu.com>
+ <4E38B57B.4050304@jp.fujitsu.com>
+ <20110803095754.GA5047@quack.suse.cz>
+ <20110803222548.7c1ee229.toshi.okajima@jp.fujitsu.com>
+ <20110803162525.GB10815@quack.suse.cz>
+ <4E3F65A0.9090109@jp.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Sergei Zhirikov <sfzhi@yahoo.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Jan Kara <jack@suse.cz>, akpm@linux-foundation.org,
+	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fgwmail5.fujitsu.co.jp ([192.51.44.35]:51530 "EHLO
-	fgwmail5.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751255Ab1HHKUL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Aug 2011 06:20:11 -0400
-Received: from m4.gw.fujitsu.co.jp (unknown [10.0.50.74])
-	by fgwmail5.fujitsu.co.jp (Postfix) with ESMTP id A39D13EE081
-	for <linux-ext4@vger.kernel.org>; Mon,  8 Aug 2011 19:20:09 +0900 (JST)
-Received: from smail (m4 [127.0.0.1])
-	by outgoing.m4.gw.fujitsu.co.jp (Postfix) with ESMTP id 8C31845DE50
-	for <linux-ext4@vger.kernel.org>; Mon,  8 Aug 2011 19:20:09 +0900 (JST)
-Received: from s4.gw.fujitsu.co.jp (s4.gw.fujitsu.co.jp [10.0.50.94])
-	by m4.gw.fujitsu.co.jp (Postfix) with ESMTP id 77C8C45DE4E
-	for <linux-ext4@vger.kernel.org>; Mon,  8 Aug 2011 19:20:09 +0900 (JST)
-Received: from s4.gw.fujitsu.co.jp (localhost.localdomain [127.0.0.1])
-	by s4.gw.fujitsu.co.jp (Postfix) with ESMTP id 61AEEE08001
-	for <linux-ext4@vger.kernel.org>; Mon,  8 Aug 2011 19:20:09 +0900 (JST)
-Received: from m106.s.css.fujitsu.com (m106.s.css.fujitsu.com [10.240.81.146])
-	by s4.gw.fujitsu.co.jp (Postfix) with ESMTP id 2733E1DB802F
-	for <linux-ext4@vger.kernel.org>; Mon,  8 Aug 2011 19:20:09 +0900 (JST)
-In-Reply-To: <j1k60i$481$1@dough.gmane.org>
+Received: from cantor2.suse.de ([195.135.220.15]:43045 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753124Ab1HHMsW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Aug 2011 08:48:22 -0400
+Content-Disposition: inline
+In-Reply-To: <4E3F65A0.9090109@jp.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi.
+  Hello,
 
-(2011/08/07 4:51), Sergei Zhirikov wrote:
-> On 2011-08-01 06:56, Toshiyuki Okajima wrote:
->> If there are some inodes in orphan list while a filesystem is being
->> read-only mounted, we should recommend that pepole umount and then
->> mount it when they try to remount with read-write.
-> On 2011-08-01 06:56, Toshiyuki Okajima wrote:
->
-> Hi,
->
-> I have just encountered this feature and I have a question:
->
+On Mon 08-08-11 13:27:12, Toshiyuki Okajima wrote:
+> >On Wed 03-08-11 22:25:48, Toshiyuki Okajima wrote:
+> >>On Wed, 3 Aug 2011 11:57:54 +0200
+> >>Jan Kara<jack@suse.cz>  wrote:
+> >>>>To tell the truth, I think the race creates the message:
+> >>>>-----------------------------------------------------------------=
+------
+> >>>>  EXT3-fs:<dev>: couldn't remount RDWR because of
+> >>>>  =E3=80=80=E3=80=80=E3=80=80 =E3=80=80unprocessed orphan inode l=
+ist.  Please umount/remount instead.
+> >>>>-----------------------------------------------------------------=
+------
+> >>>>which hides a serious problem.
+> >>>   I've inquired about this at linux-fsdevel (I think you were in =
+CC unless
+> >>>I forgot). It's a race in VFS remount code as you properly analyze=
+d below.
+> >>>People are working on fixing it but it's not trivial. Filesystem i=
+s really
+> >>>a wrong place to fix such problem. If there is a trivial fix for e=
+xt3 to
+> >>>workaround the issue, I can take it but I'm not willing to push an=
+ything
+> >>>complex - effort should better be spent working on a generic fix.
+> >>I also think read-only remount race in VFS layer should be fixed.
+> >>However, I think this race depends on ext3/ext4 filesystem
+> >>implementation. (Orphan inode list)
+> >>So, we should modify ext3/ext4(jbd/jbd2) to fix it.
+>=20
+> >   Umm, I don't understand here. If VFS makes sure that there are no
+>=20
+> After I saw the following messages, I thought we must fix EXT3-fs err=
+or
+> at first. So, I created the fix patch.
+>=20
+> (1) kernel: EXT3-fs: <dev>: couldn't remount RDWR because of
+>  =E3=80=80=E3=80=80=E3=80=80 =E3=80=80unprocessed orphan inode list. =
+ Please umount/remount instead.
+> (2) kernel: EXT3-fs error (device <dev>) in start_transaction: Readon=
+ly filesystem
+>=20
+> I wasn't aware that by fixing the race between "ro-remount" and "unli=
+nk",
+> that EXT3-fs error can be also fixed then.
+>=20
+> >files open for writing, no unfinished operations changing the filesy=
+stem (e.g.
+> >unlink), and no open-but-unlinked files, what remains for ext3 to ch=
+eck?
+> OK.
+> Now, I also think we need not modify ext3 to fix these problems.
+> If we can prevent to add an inode into the orphan list (to start unli=
+nking)
+> while ro-remounting, we can also prevent (1) and (2).
+>=20
+> However, new mechanism to confirm whether "no open-but-unlinked" file=
+s
+> exist while ro-remounting is required, isn't it?
+  Yes. Actually, VFS already tracks open-but-unlinked files but the che=
+ck &
+remount pair is not atomic so that needs to be fixed and it is not that
+simple.
 
-> How do I umount/mount if it's my root filesystem?
-> Is there anything I can do besides "the Microsoft way" (reboot)?
-Only way that you can recover this situation by is to reboot
-because the root filesystem cannot umount.
-
-Best Regards,
-Toshiyuki Okajima
-
-
+								Honza
+--=20
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
