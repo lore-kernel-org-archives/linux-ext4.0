@@ -1,49 +1,44 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: e2fsprogs 1.42-WIP-0702 released
-Date: Tue, 09 Aug 2011 08:10:23 -0500
-Message-ID: <4E4131BF.9040602@redhat.com>
-References: <E1QdWwc-0002Qx-Th@tytso-glaptop> <4E117FB3.3030403@redhat.com>
+From: Round Robinjp <roundrobinjp@yahoo.co.jp>
+Subject: Re: flashing large eMMC partitions with ext4
+Date: Wed, 10 Aug 2011 01:05:29 +0900 (JST)
+Message-ID: <20110809160534.88984.qmail@web4207.mail.ogk.yahoo.co.jp>
+References: <CAOQ4uxjaAmJ6acCBNUtKW2th-+k8vXfdX7gsb-W_sFvj10-rXg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Ric Wheeler <rwheeler@redhat.com>
+Content-Type: text/plain; charset=iso-2022-jp
+Cc: Dilger Andreas <aedilger@gmail.com>, Ted Ts'o <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Goldstein Amir <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39938 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751812Ab1HINKY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Aug 2011 09:10:24 -0400
-In-Reply-To: <4E117FB3.3030403@redhat.com>
+Received: from web4207.mail.ogk.yahoo.co.jp ([124.83.212.27]:25681 "HELO
+	web4207.mail.ogk.yahoo.co.jp" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1752673Ab1HIQFg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Aug 2011 12:05:36 -0400
+In-Reply-To: <CAOQ4uxjaAmJ6acCBNUtKW2th-+k8vXfdX7gsb-W_sFvj10-rXg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 7/4/11 3:54 AM, Ric Wheeler wrote:
-> On 07/04/2011 01:23 AM, Theodore Ts'o wrote:
->> I've made the first WIP release of e2fsprogs 1.42.  The primary purpose
->> is for people to test the 64-bit functionality and be confident that we
->> didn't introduce any 32-bit regressions.
->>
->> ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/e2fsprogs-1.42-WIP-0702.tar.gz
->>
->> This has been built for Debian unstable, so we can get some initial
->> testing.
->>
->>                         - Ted
-> 
-> Thanks Ted!
-> 
-> Do we have a specific idea of who is going to be testing and on what size file systems?
-> 
-> We might want to see about getting this ready for Fedora as well at some point....
+Amir
 
-I bit the bullet and put this into rawhide today.
-
--Eric
-
-> Ric
+> https://raw.github.com/amir73il/e2fsprogs-snapshots/next4-stable/contrib/uninit_bg.c
 > 
-> -- 
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> amir@qalab:~$ gcc -o uninit_bg -lext2fs uninit_bg.c
 
+For me, it gives error:
+
+$ gcc -o uninit_bg -lext2fs uninit_bg.c
+uninit_bg.c: In function ‘main’:
+uninit_bg.c:105:2: error: invalid use of undefined type ‘struct opaque_ext2_group_desc’
+uninit_bg.c:105:5: warning: assignment from incompatible pointer type
+$
+
+I have the latest source code from
+git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+but nowhere I can find the full declaration of
+struct opaque_ext2_group_desc.
+
+Am I missing something?
+I didn't want to bother you for this, but I could not
+solve the puzzle.
+
+Thanks
+Round
