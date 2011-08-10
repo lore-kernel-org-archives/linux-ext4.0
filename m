@@ -1,47 +1,44 @@
-From: Lukas Czerner <lczerner@redhat.com>
+From: Ted Ts'o <tytso@mit.edu>
 Subject: Re: Feature request: e2fsck -z
-Date: Wed, 10 Aug 2011 13:09:47 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1108101307590.4380@dhcp-27-109.brq.redhat.com>
-References: <4E4173D4.9010104@zytor.com> <4E422686.8080207@gmail.com> <4420E0D8-5E16-4FD0-A7A9-B462F02D742D@dilger.ca> <4E423FD0.40108@gmail.com> <alpine.LFD.2.00.1108101134580.4380@dhcp-27-109.brq.redhat.com> <82k4ala62o.fsf@mid.bfk.de>
- <alpine.LFD.2.00.1108101259330.4380@dhcp-27-109.brq.redhat.com> <82fwl9a5o5.fsf@mid.bfk.de>
+Date: Wed, 10 Aug 2011 09:25:26 -0400
+Message-ID: <20110810132526.GA726@thunk.org>
+References: <4E4173D4.9010104@zytor.com>
+ <4E422686.8080207@gmail.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>,
-	Ric Wheeler <ricwheeler@gmail.com>,
-	Andreas Dilger <adilger@whamcloud.com>,
-	"H. Peter Anvin" <hpa@zytor.com>, linux-ext4@vger.kernel.org
-To: Florian Weimer <fweimer@bfk.de>
+Content-Type: text/plain; charset=us-ascii
+Cc: "H. Peter Anvin" <hpa@zytor.com>, linux-ext4@vger.kernel.org
+To: Ric Wheeler <ricwheeler@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:62336 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752796Ab1HJLJy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Aug 2011 07:09:54 -0400
-In-Reply-To: <82fwl9a5o5.fsf@mid.bfk.de>
+Received: from li9-11.members.linode.com ([67.18.176.11]:55951 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750857Ab1HJNZb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Aug 2011 09:25:31 -0400
+Content-Disposition: inline
+In-Reply-To: <4E422686.8080207@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 10 Aug 2011, Florian Weimer wrote:
+On Wed, Aug 10, 2011 at 07:34:46AM +0100, Ric Wheeler wrote:
+> 
+> Do you need it to be in the fsck tool?
 
-> * Lukas Czerner:
-> 
-> > On Wed, 10 Aug 2011, Florian Weimer wrote:
-> >
-> >> * Lukas Czerner:
-> >> 
-> >> > You're right. It is a part of e2fsck and you can enable it with -E
-> >> > discard.
-> >> 
-> >> If the block device does not support TRIM, does this result in zeros
-> >> being written instead?
-> 
-> > Of course not, discard works only on devices which does support it. If
-> > the device does not support discard it will to nothing.
-> 
-> Oh, then it doesn't address hpa's use case (improving compression).
-> 
+As others have noted, (a) zerofree does this already, and (b) there's
+also -E discard.
 
-It does if he will use SSD's with "discard_zeroes_data" capability. But
-my original answer was to simply confirm that e2fsck has that feature.
+My take on it though is that it's a reasonable request.  It's much
+like there is "sort -u" even though you could do this via "sort |
+uniq".  Part of the Unix philosophy is to use tools that are
+composable, yes --- but optimizing for common cases is also a good
+thing, and with the advent of virtualization being more and more
+popular, zeroing free blocks for virtualization images is good and
+useful thing.
 
-Thanks!
--Lukas
+This is also why I agitated for adding support so that e2fsprogs tools
+could operate directly on qemu-img files, and not just have support
+which is hacked into e2image.  Yes, you can always take an qemu-img
+file, decompress and expand it into a raw file, run debugfs or e2fsck
+on it, and then convert it back to a qemu-img file --- but if lots of
+people are doing that, it does make sense to optimize for the most
+common use cases.
+
+						- Ted
