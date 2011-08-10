@@ -1,48 +1,30 @@
-From: Ric Wheeler <ricwheeler@gmail.com>
+From: Ron Yorston <rmy@tigress.co.uk>
 Subject: Re: Feature request: e2fsck -z
-Date: Wed, 10 Aug 2011 07:34:46 +0100
-Message-ID: <4E422686.8080207@gmail.com>
+Date: Wed, 10 Aug 2011 08:54:53 +0100
+Message-ID: <201108100754.p7A7ss3n016775@tiffany.internal.tigress.co.uk>
 References: <4E4173D4.9010104@zytor.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "H. Peter Anvin" <hpa@zytor.com>
+To: linux-ext4@vger.kernel.org, hpa@zytor.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ww0-f47.google.com ([74.125.82.47]:41127 "EHLO
-	mail-ww0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751164Ab1HJGlm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Aug 2011 02:41:42 -0400
-Received: by wwf4 with SMTP id 4so665557wwf.4
-        for <linux-ext4@vger.kernel.org>; Tue, 09 Aug 2011 23:41:41 -0700 (PDT)
+Received: from mail.tigress.co.uk ([195.172.168.163]:33919 "EHLO
+	intgat.tigress.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750949Ab1HJIQQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Aug 2011 04:16:16 -0400
 In-Reply-To: <4E4173D4.9010104@zytor.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 08/09/2011 06:52 PM, H. Peter Anvin wrote:
-> Hi all,
->
-> This is something I've wanted to see for a very long time, and it
-> finally occurred to me that perhaps I should say something about it!
->
-> It would be a very nice thing to have a flag to e2fsck, presumably -z,
-> to zero out any unused data blocks, inodes and so on.  The goal is to
-> minimize the amount of space required after compressing a virtual disk
-> image or similar, and to make sure any non-data isn't lying around.
->
-> 	-hpa
->
+"H. Peter Anvin" wrote:
 
-Do you need it to be in the fsck tool?
+>It would be a very nice thing to have a flag to e2fsck, presumably -z,
+>to zero out any unused data blocks, inodes and so on.  The goal is to
+>minimize the amount of space required after compressing a virtual disk
+>image or similar, and to make sure any non-data isn't lying around.
 
-If you have a sparsely allocated block map under your file system, doing a zero 
-of all blocks could add hours for a big, slow S-ATA drives (2-3 hours for a 1TB 
-drive).
+I wrote a separate utility, zerofree[1], that zeroes out free blocks.
 
-An alternative for SSD's and devices that do TRIM/UNMAP would be to use one of 
-the batched discard tools (that would make discarded data read back as zeroed).
-
-Thanks!
-
-Ric
-
+Ron
+--
+[1] http://intgat.tigress.co.uk/rmy/uml/
