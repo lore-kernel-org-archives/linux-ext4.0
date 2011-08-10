@@ -1,66 +1,67 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: Feature request: e2fsck -z
-Date: Wed, 10 Aug 2011 16:34:42 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1108101629570.4119@dhcp-27-109.brq.redhat.com>
-References: <4E4173D4.9010104@zytor.com> <4E422686.8080207@gmail.com> <20110810132526.GA726@thunk.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] libext2fs: copy cluster_bits in ext2fs_copy_generic_bmap
+Date: Wed, 10 Aug 2011 14:07:41 -0500
+Message-ID: <4E42D6FD.2020904@redhat.com>
+References: <418F4E42-50E6-4CAA-B6F5-CA59B17E84C0@whamcloud.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Ric Wheeler <ricwheeler@gmail.com>,
-	"H. Peter Anvin" <hpa@zytor.com>, linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Ted Ts'o" <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@whamcloud.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:20269 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45178 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752751Ab1HJOes (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Aug 2011 10:34:48 -0400
-In-Reply-To: <20110810132526.GA726@thunk.org>
+	id S1753890Ab1HJTHo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Aug 2011 15:07:44 -0400
+In-Reply-To: <418F4E42-50E6-4CAA-B6F5-CA59B17E84C0@whamcloud.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 10 Aug 2011, Ted Ts'o wrote:
+The f_lotsbad regression test was failing on some systems
+with:
 
-> On Wed, Aug 10, 2011 at 07:34:46AM +0100, Ric Wheeler wrote:
-> > 
-> > Do you need it to be in the fsck tool?
-> 
-> As others have noted, (a) zerofree does this already, and (b) there's
-> also -E discard.
-> 
-> My take on it though is that it's a reasonable request.  It's much
-> like there is "sort -u" even though you could do this via "sort |
-> uniq".  Part of the Unix philosophy is to use tools that are
-> composable, yes --- but optimizing for common cases is also a good
-> thing, and with the advent of virtualization being more and more
-> popular, zeroing free blocks for virtualization images is good and
-> useful thing.
+@@ -26,6 +61,7 @@
 
-And since we already have punch hole support in ext4 I am going to use
-that to "discard" - "punch out" unused blocks from the image. It is
-probably not exactly what you are talking about, but it can be useful.
+ Restarting e2fsck from the beginning...
+ Pass 1: Checking inodes, blocks, and sizes
++Illegal block number passed to ext2fs_test_block_bitmap #0 for in-use block map
+ Pass 2: Checking directory structure
+ Entry 'termcap' in / (2) has deleted/unused inode 12.  Clear? yes
 
-> 
-> This is also why I agitated for adding support so that e2fsprogs tools
-> could operate directly on qemu-img files, and not just have support
-> which is hacked into e2image.  Yes, you can always take an qemu-img
-> file, decompress and expand it into a raw file, run debugfs or e2fsck
-> on it, and then convert it back to a qemu-img file --- but if lots of
-> people are doing that, it does make sense to optimize for the most
-> common use cases.
+Running with valgrind (./test_script --valgrind f_lotsbad) we
+see:
 
-I am in favor if this, however I do not want to do it. I seems to me
-that it is just rewriting the support that qemu already has. However if
-qemu guys (or anyone) would create an library which we can use from
-both projects, that would be certainly very useful.
++==31409== Conditional jump or move depends on uninitialised value(s)
++==31409==    at 0x42927A: ext2fs_test_generic_bmap (gen_bitmap64.c:378)
 
-Thanks!
--Lukas
+among others.
 
-> 
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Looking at gen_bitmap64.c:
+376:        arg >>= bitmap->cluster_bits;
+377:
+378:        if ((arg < bitmap->start) || (arg > bitmap->end)) {
 
--- 
+A little more debugging showed that it was actually
+bitmap->cluster_bits which was uninitialized, because it never
+gets copied over in ext2fs_copy_generic_bmap()
+
+Patch below resolves the issue.
+
+Reported-by: Andreas Dilger <adilger@whamcloud.com>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+diff --git a/lib/ext2fs/gen_bitmap64.c b/lib/ext2fs/gen_bitmap64.c
+index f75876d..80c9f7a 100644
+--- a/lib/ext2fs/gen_bitmap64.c
++++ b/lib/ext2fs/gen_bitmap64.c
+@@ -193,6 +193,7 @@ errcode_t ext2fs_copy_generic_bmap(ext2fs_generic_bitmap src,
+ 	new_bmap->real_end = src->real_end;
+ 	new_bmap->bitmap_ops = src->bitmap_ops;
+ 	new_bmap->base_error_code = src->base_error_code;
++	new_bmap->cluster_bits = src->cluster_bits;
+ 
+ 	descr = src->description;
+ 	if (descr) {
+
