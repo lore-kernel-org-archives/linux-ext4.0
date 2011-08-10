@@ -1,67 +1,39 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] libext2fs: copy cluster_bits in ext2fs_copy_generic_bmap
-Date: Wed, 10 Aug 2011 14:07:41 -0500
-Message-ID: <4E42D6FD.2020904@redhat.com>
-References: <418F4E42-50E6-4CAA-B6F5-CA59B17E84C0@whamcloud.com>
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Subject: Re: [PATCH 4/4] nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)
+Date: Wed, 10 Aug 2011 21:13:09 +0200
+Message-ID: <4E42D845.7060905@itwm.fraunhofer.de>
+References: <20110808153432.1872437.85783.stgit@fsdevel3> <20110808153813.1872437.44997.stgit@fsdevel3> <20110809173342.GB16206@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: "Ted Ts'o" <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@whamcloud.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45178 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753890Ab1HJTHo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Aug 2011 15:07:44 -0400
-In-Reply-To: <418F4E42-50E6-4CAA-B6F5-CA59B17E84C0@whamcloud.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	hch@infradead.org, yong.fan@whamcloud.com,
+	linux-fsdevel@vger.kernel.org, tytso@mit.edu, adilger@whamcloud.com
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20110809173342.GB16206@fieldses.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-The f_lotsbad regression test was failing on some systems
-with:
+On 08/09/2011 07:33 PM, J. Bruce Fields wrote:
+> On Mon, Aug 08, 2011 at 05:38:13PM +0200, Bernd Schubert wrote:
+>> Use 32-bit or 64-bit llseek() hashes for directory offsets depending on
+>> the NFS version. NFSv2 gets 32-bit hashes only.
+>>
+>> NOTE: This patch got rather complex as Christoph asked to set the
+>> filp->f_mode flag in the open call or immediatly after dentry_open()
+>> in nfsd_open() to avoid races.
+>> Personally I still do not see a reason for that and in my opinion
+>> FMODE_32BITHASH/FMODE_64BITHASH flags could be set nfsd_readdir(), as it
+>> follows directly after nfsd_open() without a chance of races.
+>
+> The bulk of the patch seems to be just an access->may_flags rename.
+> Could you please split that into a separate patch?
 
-@@ -26,6 +61,7 @@
+Ok, shall I resend the entire patch series, but already remove the 
+32-bit nfsd_readdir() cookie patch? Or only just this patch split into 
+to parts?
 
- Restarting e2fsck from the beginning...
- Pass 1: Checking inodes, blocks, and sizes
-+Illegal block number passed to ext2fs_test_block_bitmap #0 for in-use block map
- Pass 2: Checking directory structure
- Entry 'termcap' in / (2) has deleted/unused inode 12.  Clear? yes
 
-Running with valgrind (./test_script --valgrind f_lotsbad) we
-see:
-
-+==31409== Conditional jump or move depends on uninitialised value(s)
-+==31409==    at 0x42927A: ext2fs_test_generic_bmap (gen_bitmap64.c:378)
-
-among others.
-
-Looking at gen_bitmap64.c:
-376:        arg >>= bitmap->cluster_bits;
-377:
-378:        if ((arg < bitmap->start) || (arg > bitmap->end)) {
-
-A little more debugging showed that it was actually
-bitmap->cluster_bits which was uninitialized, because it never
-gets copied over in ext2fs_copy_generic_bmap()
-
-Patch below resolves the issue.
-
-Reported-by: Andreas Dilger <adilger@whamcloud.com>
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-diff --git a/lib/ext2fs/gen_bitmap64.c b/lib/ext2fs/gen_bitmap64.c
-index f75876d..80c9f7a 100644
---- a/lib/ext2fs/gen_bitmap64.c
-+++ b/lib/ext2fs/gen_bitmap64.c
-@@ -193,6 +193,7 @@ errcode_t ext2fs_copy_generic_bmap(ext2fs_generic_bitmap src,
- 	new_bmap->real_end = src->real_end;
- 	new_bmap->bitmap_ops = src->bitmap_ops;
- 	new_bmap->base_error_code = src->base_error_code;
-+	new_bmap->cluster_bits = src->cluster_bits;
- 
- 	descr = src->description;
- 	if (descr) {
-
+Thanks,
+Bernd
