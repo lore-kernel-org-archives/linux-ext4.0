@@ -1,63 +1,95 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: Feature request: e2fsck -z
-Date: Wed, 10 Aug 2011 11:35:34 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1108101134580.4380@dhcp-27-109.brq.redhat.com>
-References: <4E4173D4.9010104@zytor.com> <4E422686.8080207@gmail.com> <4420E0D8-5E16-4FD0-A7A9-B462F02D742D@dilger.ca> <4E423FD0.40108@gmail.com>
+From: Michael Tokarev <mjt@tls.msk.ru>
+Subject: DIO process stuck apparently due to dioread_nolock (3.0)
+Date: Wed, 10 Aug 2011 14:51:17 +0400
+Message-ID: <4E4262A5.6030903@msgid.tls.msk.ru>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Andreas Dilger <adilger@whamcloud.com>,
-	"H. Peter Anvin" <hpa@zytor.com>, linux-ext4@vger.kernel.org
-To: Ric Wheeler <ricwheeler@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:21872 "EHLO mx1.redhat.com"
+Received: from isrv.corpit.ru ([86.62.121.231]:51564 "EHLO isrv.corpit.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752878Ab1HJJfj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Aug 2011 05:35:39 -0400
-In-Reply-To: <4E423FD0.40108@gmail.com>
+	id S1752684Ab1HJKvT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Aug 2011 06:51:19 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 10 Aug 2011, Ric Wheeler wrote:
+Hello.
 
-> On 08/10/2011 09:16 AM, Andreas Dilger wrote:
-> > On 2011-08-10, at 12:34 AM, Ric Wheeler wrote:
-> > > On 08/09/2011 06:52 PM, H. Peter Anvin wrote:
-> > > > Hi all,
-> > > > 
-> > > > This is something I've wanted to see for a very long time, and it
-> > > > finally occurred to me that perhaps I should say something about it!
-> > > > 
-> > > > It would be a very nice thing to have a flag to e2fsck, presumably -z,
-> > > > to zero out any unused data blocks, inodes and so on.  The goal is to
-> > > > minimize the amount of space required after compressing a virtual disk
-> > > > image or similar, and to make sure any non-data isn't lying around.
-> > > Do you need it to be in the fsck tool?
-> > > 
-> > > If you have a sparsely allocated block map under your file system, doing a
-> > > zero of all blocks could add hours for a big, slow S-ATA drives (2-3 hours
-> > > for a 1TB drive).
-> > I think Ted has a tool that does this already.  It should be relatively
-> > simple oo do, like "dd if=/dev/zero of=/mountpoint/temp_zero_file&&  rm
-> > /mountpoint/temp_zero_file.
-> 
-> This will work but will be a potential multi-hour long process (and cause out
-> of space errors at some point for other applications for a very brief window
-> :))
-> 
-> > 
-> > > An alternative for SSD's and devices that do TRIM/UNMAP would be to use
-> > > one of the batched discard tools (that would make discarded data read back
-> > > as zeroed).
-> > In fact, I thought Lukas has already made a tool for sending BLKDISCARD for
-> > all unused parts of the filesystem?
-> > 
-> > Cheers, Andreas
-> 
-> Right, I think he has. That tool (not part of fsck) would do the job much
-> quicker for enabled devices,
+For a few days I'm evaluating various options to use
+storage.  I'm interested in concurrent direct I/O
+(oracle rdbms workload).
 
-You're right. It is a part of e2fsck and you can enable it with -E
-discard.
+I noticed that somehow, ext4fs in mixed read-write
+test greatly prefers writes over reads - writes goes
+at full speed while reads are almost non-existent.
 
-Thanks!
--Lukas
+Sandeen on IRC pointed me at dioread_nolock mount
+option, which I tried with great results, if not
+one "but".
+
+There's a deadlock somewhere, which I can't trigger
+"on demand" - I can't hit the right condition.  It
+happened twice in a row already, each time after the
+same scenario (more about that later).
+
+When it happens, a process doing direct AIO stalls
+infinitely, with the following backtrace:
+
+[87550.759848] INFO: task oracle:23176 blocked for more than 120 seconds.
+[87550.759892] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+[87550.759955] oracle          D 0000000000000000     0 23176      1 0x00000000
+[87550.760006]  ffff8820457b47d0 0000000000000082 ffff880600000000 ffff881278e3f7d0
+[87550.760085]  ffff8806215c1fd8 ffff8806215c1fd8 ffff8806215c1fd8 ffff8820457b47d0
+[87550.760163]  ffffea0010bd7c68 ffffffff00000000 ffff882045512ef8 ffffffff810eeda2
+[87550.760245] Call Trace:
+[87550.760285]  [<ffffffff810eeda2>] ? __do_fault+0x422/0x520
+[87550.760327]  [<ffffffff81111ded>] ? kmem_getpages+0x5d/0x170
+[87550.760367]  [<ffffffff81112e58>] ? ____cache_alloc_node+0x48/0x140
+[87550.760430]  [<ffffffffa0123e6d>] ? ext4_file_write+0x20d/0x260 [ext4]
+[87550.760475]  [<ffffffff8106aee0>] ? abort_exclusive_wait+0xb0/0xb0
+[87550.760523]  [<ffffffffa0123c60>] ? ext4_llseek+0x120/0x120 [ext4]
+[87550.760566]  [<ffffffff81162173>] ? aio_rw_vect_retry+0x73/0x1d0
+[87550.760607]  [<ffffffff8116302f>] ? aio_run_iocb+0x5f/0x160
+[87550.760646]  [<ffffffff81164258>] ? do_io_submit+0x4f8/0x600
+[87550.760689]  [<ffffffff81359b52>] ? system_call_fastpath+0x16/0x1b
+
+At this point, the process in question can't be killed or
+stopped.  Yes it's oracle DB, and I can kill all other processes
+of this instance (this one is lgwr, aka log writer), but the stuck
+process will continue to be stuck, so it is not an inter-process
+deadlock.
+
+echo "w" > /proc/sysrq-trigger shows only that process, with the
+same stack trace.
+
+This is 3.0.1 kernel from kernel.org (amd64 arch).  The system is
+a relatively large box (IBM System x3850 X5).  So far, I've seen
+this issue twice, and each time in the following scenario:
+
+I copy an oracle database from another machine to filesystem
+mounted with dioread_nolock, and right after the copy completes,
+I start the database.  And immediately when Oracle opens its
+DB ("Database opened") I see stuck lgwr process like above.
+
+So I suspect it happens when there are some unwritten files
+in buffer/page cache and some process tries to do direct
+writes.
+
+I haven't seen this happening without dioread_nolock, but since
+I don't have an easy reproducer I can't say this mount option
+is a requiriment.  So far, I was able to trigger it only after
+large db copy, with small database I created in order to try
+to reproduce it the issue does not happen.
+
+And sure thing, when it happens, the only way to clean up is
+to forcible reboot the machine (echo b > sysrq-trigger).
+
+I'll continue experiments in a hope to find an easier reproducer,
+but the problem is that I've little time left before the machine
+in question will go into production.  So if anyone have hints
+for this issue, please share.. ;)
+
+Thank you!
+
+/mjt
