@@ -1,90 +1,33 @@
 From: "Yury V. Zaytsev" <yury@shurup.com>
-Subject: [PATCH 1/1 v2 RESEND] mke2fs: check that auto-detected blocksize
+Subject: [PATCH 0/1 v2 RESEND] mke2fs: check that auto-detected blocksize
  <= sys_page_size
-Date: Wed, 10 Aug 2011 10:48:43 +0200
-Message-ID: <1312966123.4477.99.camel@newpride>
+Date: Wed, 10 Aug 2011 10:48:22 +0200
+Message-ID: <1312966102.4477.98.camel@newpride>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
 To: Ted Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailgateway3.uni-freiburg.de ([132.230.2.213]:57752 "EHLO
+Received: from mailgateway3.uni-freiburg.de ([132.230.2.213]:50646 "EHLO
 	mailgateway3.uni-freiburg.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752702Ab1HJJQU (ORCPT
+	by vger.kernel.org with ESMTP id S1752702Ab1HJJQW (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Aug 2011 05:16:20 -0400
+	Wed, 10 Aug 2011 05:16:22 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Block size can be specified manually via the -b option or deduced
-automatically. Unfortunately, the check that it is still smaller than
-the system page size is only performed right after the command line
-options are parsed.
+Hi!
 
-Therefore, if buggy or inappropriately installed/configured hardware
-hints that larger block sizes have to be used, mkfs will silently create
-a file system which can not be mounted on the system in question.
+It's been over two months since my initial submission, so I am
+re-sending this patch again for your consideration (tested that it
+cleanly applies to latest 'next' branch). 
 
-By moving the check beyond the last assignment to blocksize it is now
-ensured, that mkfs will issue a warning even if inappropriate blocksize
-was auto-detected.
+If there is anything else I can/should do, please do kindly let me know,
 
-The new behavior can be easily tested, by exporting the following
-variables before running mkfs:
+Thanks!
 
-    export MKE2FS_DEVICE_SECTSIZE=8192
-    export MKE2FS_DEVICE_PHYS_SECTSIZE=8192
-
-Signed-off-by: Yury V. Zaytsev <yury@shurup.com>
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
----
- misc/mke2fs.c |   24 +++++++++++++-----------
- 1 files changed, 13 insertions(+), 11 deletions(-)
-
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index e062bda..3f1b642 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -1514,17 +1514,6 @@ profile_error:
- 		ext2fs_close(jfs);
- 	}
- 
--	if (blocksize > sys_page_size) {
--		if (!force) {
--			com_err(program_name, 0,
--				_("%d-byte blocks too big for system (max %d)"),
--				blocksize, sys_page_size);
--			proceed_question();
--		}
--		fprintf(stderr, _("Warning: %d-byte blocks too big for system "
--				  "(max %d), forced to continue\n"),
--			blocksize, sys_page_size);
--	}
- 	if (optind < argc) {
- 		fs_blocks_count = parse_num_blocks2(argv[optind++],
- 						   fs_param.s_log_block_size);
-@@ -1833,6 +1822,19 @@ profile_error:
- 
- 	blocksize = EXT2_BLOCK_SIZE(&fs_param);
- 
-+	/* This check should happen beyond the last assignment to blocksize */
-+	if (blocksize > sys_page_size) {
-+		if (!force) {
-+			com_err(program_name, 0,
-+				_("%d-byte blocks too big for system (max %d)"),
-+				blocksize, sys_page_size);
-+			proceed_question();
-+		}
-+		fprintf(stderr, _("Warning: %d-byte blocks too big for system "
-+				  "(max %d), forced to continue\n"),
-+			blocksize, sys_page_size);
-+	}
-+
- 	lazy_itable_init = 0;
- 	if (access("/sys/fs/ext4/features/lazy_itable_init", R_OK) == 0)
- 		lazy_itable_init = 1;
 -- 
-1.7.6
-
+Sincerely yours,
+Yury V. Zaytsev
 
 
