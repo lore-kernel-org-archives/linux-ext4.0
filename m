@@ -1,102 +1,138 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] e2fsprogs: add 64bit-online-resize support
-Date: Thu, 11 Aug 2011 01:42:33 -0600
-Message-ID: <06EFAA62-3D2C-4FEF-A2E3-6363726CBDA8@dilger.ca>
-References: <1313046601-2795-1-git-send-email-xiaoqiangnk@gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+From: Steven Liu <lingjiujianke@gmail.com>
+Subject: Re: [PATCH 05/13] ext4: add a structure which will be used by
+ 64bit-resize interface
+Date: Thu, 11 Aug 2011 18:57:24 +0800
+Message-ID: <CADxeRwkB+Mx_bg_etdwb8qzfSKPtnnEE3T_XiupRHwXGotVosQ@mail.gmail.com>
+References: <1313033308-882-1-git-send-email-xiaoqiangnk@gmail.com>
+	<1313033308-882-6-git-send-email-xiaoqiangnk@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, aedilger@gmail.com, tytso@mit.edu
 To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:39381 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751283Ab1HKHme convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Aug 2011 03:42:34 -0400
-In-Reply-To: <1313046601-2795-1-git-send-email-xiaoqiangnk@gmail.com>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:34952 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751821Ab1HKK5Z convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Aug 2011 06:57:25 -0400
+Received: by bke11 with SMTP id 11so886145bke.19
+        for <linux-ext4@vger.kernel.org>; Thu, 11 Aug 2011 03:57:24 -0700 (PDT)
+In-Reply-To: <1313033308-882-6-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-08-11, at 1:10 AM, Yongqiang Yang wrote:
-> This patch adds 64bit-resize support to e2fsprogs.
-> 
+TO: Yongqiang
+
+2011/8/11 Yongqiang Yang <xiaoqiangnk@gmail.com>:
+> This patch adds a structure which will be used by 64bit-resize interf=
+ace.
+> Two functions which allocate and destroy the structure respectively a=
+re
+> added.
+>
 > Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 > ---
-> lib/ext2fs/ext2_fs.h |    1 +
-> resize/online.c      |   22 +++++++++++++++++++++-
-> 2 files changed, 22 insertions(+), 1 deletions(-)
-> 
-> diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-> index 54cb3d4..4fec5db 100644
-> --- a/lib/ext2fs/ext2_fs.h
-> +++ b/lib/ext2fs/ext2_fs.h
-> @@ -327,6 +327,7 @@ struct ext4_new_group_input {
-> #define EXT2_IOC_GROUP_EXTEND		_IOW('f', 7, unsigned long)
-> #define EXT2_IOC_GROUP_ADD		_IOW('f', 8,struct ext2_new_group_input)
-> #define EXT4_IOC_GROUP_ADD		_IOW('f', 8,struct ext4_new_group_input)
-> +#define EXT4_IOC_RESIZE_FS		_IOW('f', 16, __u64)
-> 
-> /*
->  * Structure of an inode on the disk
-> diff --git a/resize/online.c b/resize/online.c
-> index 1d8d4ec..53ad852 100644
-> --- a/resize/online.c
-> +++ b/resize/online.c
-> @@ -51,7 +51,7 @@ errcode_t online_resize_fs(ext2_filsys fs, const char *mtpt,
-> 				  fs->super->s_first_data_block,
-> 				  EXT2_BLOCKS_PER_GROUP(fs->super)),
-> 		EXT2_DESC_PER_BLOCK(fs->super));
-> -	printf("old desc_blocks = %lu, new_desc_blocks = %lu\n",
-> +	printf("old_desc_blocks = %lu, new_desc_blocks = %lu\n",
-> 	       fs->desc_blocks, new_desc_blocks);
-> 	if (!(fs->super->s_feature_compat &
-> 	      EXT2_FEATURE_COMPAT_RESIZE_INODE) &&
-> @@ -69,6 +69,26 @@ errcode_t online_resize_fs(ext2_filsys fs, const char *mtpt,
-> 	}
-> 
-> 	size=ext2fs_blocks_count(sb);
+> =A0fs/ext4/resize.c | =A0 56 ++++++++++++++++++++++++++++++++++++++++=
+++++++++++++++
+> =A01 files changed, 56 insertions(+), 0 deletions(-)
+>
+> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+> index 14be865..c586e51 100644
+> --- a/fs/ext4/resize.c
+> +++ b/fs/ext4/resize.c
+> @@ -134,6 +134,62 @@ static int verify_group_input(struct super_block=
+ *sb,
+> =A0 =A0 =A0 =A0return err;
+> =A0}
+>
+> +/*
+> + * ext4_new_flex_group_data is used by 64bit-resize interface to add=
+ a flex
+> + * group each time.
+> + */
+> +struct ext4_new_flex_group_data {
+> + =A0 =A0 =A0 struct ext4_new_group_data *groups; =A0 =A0 /* new_grou=
+p_data for groups
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0in the flex group */
+> + =A0 =A0 =A0 __u16 *bg_flags; =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0/* block group flags of groups
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0in @groups */
+> + =A0 =A0 =A0 ext4_group_t count; =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 /* number of groups in @groups
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 =A0*/
+> +};
 > +
-> +	if (ioctl(fd, EXT4_IOC_RESIZE_FS, new_size)) {
-> +		if (errno == ENOTTY) {
-> +			printf("Kernel does not support 64bit-online resizing, "
-> +			       "tring the old style online resizing\n");
-
-s/tring/trying/
-
-In any case, I don't think users care about which ioctl is in use, just
-that it works correctly on the kernel they are using.  IMHO it should just
-silently try both ioctls() without any extra warnings.
-
-> +		} else {
-> +			if (errno == EPERM)
-> +				com_err(program_name, 0,
-> +				_("Permission denied to resize filesystem"));
-> +			else
-> +				com_err(program_name, errno,
-> +				_("While checking for on-line resizing "
-> +				  "support"));
-> +			exit(1);
-> +		}
-> +	} else {
-> +		close(fd);
-> +		return 0;
-> +	}
+> +/*
+> + * alloc_flex_gd() allocates a ext4_new_flex_group_data with size of
+> + * @flexbg_size.
+> + *
+> + * Returns NULL on failure otherwise address of the allocated struct=
+ure.
+> + */
+> +static struct ext4_new_flex_group_data *alloc_flex_gd(unsigned long =
+flexbg_size)
+> +{
+> + =A0 =A0 =A0 struct ext4_new_flex_group_data *flex_gd;
 > +
-> 	if (ioctl(fd, EXT2_IOC_GROUP_EXTEND, &size)) {
-> 		if (errno == EPERM)
-> 			com_err(program_name, 0,
-> -- 
-> 1.7.5.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> + =A0 =A0 =A0 flex_gd =3D kmalloc(sizeof(*flex_gd), GFP_NOFS);
+> + =A0 =A0 =A0 if (flex_gd =3D=3D NULL) {
+                    printk( KERN_WARNING "not enough memory for flex_gd=
+\n" );
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out3;
+             }
+> +
+> + =A0 =A0 =A0 flex_gd->count =3D flexbg_size;
+> +
+> + =A0 =A0 =A0 flex_gd->groups =3D kmalloc(sizeof(struct ext4_new_grou=
+p_data) *
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 fle=
+xbg_size, GFP_NOFS);
+> + =A0 =A0 =A0 if (flex_gd->groups =3D=3D NULL) {
+                    printk( KERN_WARNING "not enough memory for
+flex_gd->groups\n" );
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out2;
+            }
+> +
+> + =A0 =A0 =A0 flex_gd->bg_flags =3D kmalloc(flexbg_size * sizeof(__u1=
+6), GFP_NOFS);
+> + =A0 =A0 =A0 if (flex_gd->bg_flags =3D=3D NULL) {
+                    printk( KERN_WARNING "not enough memory for
+flex_gd->bg_flags\n" );
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out1;
+             }
+> +
+> + =A0 =A0 =A0 return flex_gd;
+> +
+out1:
+ =A0 =A0 kfree(flex_gd->groups);
+> +out2:
+> + =A0 =A0 =A0 kfree(flex_gd);
+ out3:
+> + =A0 =A0 =A0 return NULL;
+> +}
+> +
+> +void free_flex_gd(struct ext4_new_flex_group_data *flex_gd)
+> +{
+> + =A0 =A0 =A0 kfree(flex_gd->bg_flags);
+> + =A0 =A0 =A0 kfree(flex_gd->groups);
+> + =A0 =A0 =A0 kfree(flex_gd);
+> +}
+> +
+> =A0static struct buffer_head *bclean(handle_t *handle, struct super_b=
+lock *sb,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ex=
+t4_fsblk_t blk)
+> =A0{
 
 
-Cheers, Andreas
 
-
-
-
-
+What about add some message for kmalloc failure, and  goto the label
+looks like the above ?
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
