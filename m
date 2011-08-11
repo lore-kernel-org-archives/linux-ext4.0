@@ -1,40 +1,58 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2 bigalloc] ext4: modify offset to cluster in
- ext4_valid_block_bitmap
-Date: Wed, 10 Aug 2011 22:51:52 -0400
-Message-ID: <20110811025152.GD3625@thunk.org>
-References: <1312429682-16970-1-git-send-email-hao.bigrat@gmail.com>
+Subject: Re: Question about BIGALLOC
+Date: Wed, 10 Aug 2011 22:59:44 -0400
+Message-ID: <20110811025944.GE3625@thunk.org>
+References: <CAFZ0FUUH85yWoVZ3XpMMYjhiaDrV9QQRSrLsAomXhH8uG_duBg@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Robin Dong <sanbai@taobao.com>
+Cc: linux-ext4@vger.kernel.org
 To: Robin Dong <hao.bigrat@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:37694 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:42188 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752749Ab1HKCvy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Aug 2011 22:51:54 -0400
+	id S1751075Ab1HKC7q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Aug 2011 22:59:46 -0400
 Content-Disposition: inline
-In-Reply-To: <1312429682-16970-1-git-send-email-hao.bigrat@gmail.com>
+In-Reply-To: <CAFZ0FUUH85yWoVZ3XpMMYjhiaDrV9QQRSrLsAomXhH8uG_duBg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 04, 2011 at 11:48:01AM +0800, Robin Dong wrote:
-> From: Robin Dong <sanbai@taobao.com>
+On Fri, Aug 05, 2011 at 03:59:01PM +0800, Robin Dong wrote:
+> Hi, Ted
 > 
-> When I run a test application on ext4 of bigalloc, and also a daemon
-> which run "echo 3 > /proc/sys/vm/drop_caches" every 2 seconds,
-> the kernel report:
+> I am doing some test of BIGALLOC using "next" branch of e2fsprogs and
+> kernel (3.0) with 23 bigalloc-patches.
 > 
-> 15319.557145] EXT4-fs error (device sda4): ext4_valid_block_bitmap:324: comm dir_tree: Invalid block bitmap - block_group = 6, block = 3145730
+> Everything seems to work, but I have a question:
+> the "ee_len" of "struct ext4_extent" is used to indicate block numbers
+> not cluster,
+> an ext4_extent in 4K-block-size filesystem can only hold 128MB space at most
+> even with BIGALLOC feature enabled, so we don't have any benefit from
+> this for a file with large number of blocks.
 > 
-> The reason is ext4_valied_block_bitmap has not be modified for cluster.
-> 
-> Signed-off-by: Robin Dong <sanbai@taobao.com>
-> Cc: Ted Ts'o <tytso@mit.edu>
+> Is this the design behavior or you will change it in the next version?
 
-Yep, this looks like a bug --- I'm curious, though --- this is
-something I don't run into because I use mke2fs -t ext4 which sets the
-flex_bg feature.  Is there some reason you're not using flex_bg on
-your file systems?
+It's not something I can change, because the VM subsystem
+fundamentally assumes that file system block size is less than or
+equal to the page size.  If I changed the granularity in the extent
+length, then in the case of a sparse file, blocks would have to be
+allocated and zero'ed in units of a cluster.  The VM doesn't support
+this well.
 
-					- Ted
+For example, suppose you fallocate a file to be 1 megabyte.  That
+means that you have a 1mb extent which is marked as uninitialized.
+Now suppose you mmap() this file, and then you write a single byte at
+offset 20480.  This dirties a single 4k page, and when we write out
+that page, we end up converting the 1mb extent uninitialized extent
+into 3 extents: a 20k uninitalized extent, a 4k initialized extent,
+and a 1000k uninitalized extent.  Now suppose this was done on a
+bigalloc file system with a 64k cluster size.  If ee_len was
+denominated in 64k cluster chunks, we couldn't express the concept of
+a 20k or 4k extent.
+
+This is the same reason why we can't support a 64k file system block
+size.  If the user dirties a single 4k block in an otherwise sparse
+file, the VM would have to instantiate the other 56k pages and zero
+them (atomically!) --- and the VM doesn't know how to do this.
+
+     		       	       	  	  - Ted
