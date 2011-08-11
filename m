@@ -1,7 +1,7 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH 07/13] ext4: add a function which adds several group descriptors
-Date: Thu, 11 Aug 2011 11:28:22 +0800
-Message-ID: <1313033308-882-8-git-send-email-xiaoqiangnk@gmail.com>
+Subject: [PATCH 11/13] ext4: add a new function which allocates bitmaps and inode tables
+Date: Thu, 11 Aug 2011 11:28:26 +0800
+Message-ID: <1313033308-882-12-git-send-email-xiaoqiangnk@gmail.com>
 References: <1313033308-882-1-git-send-email-xiaoqiangnk@gmail.com>
 Cc: aedilger@gmail.com, tytso@mit.edu,
 	Yongqiang Yang <xiaoqiangnk@gmail.com>
@@ -9,58 +9,145 @@ To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-pz0-f42.google.com ([209.85.210.42]:48649 "EHLO
 	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753987Ab1HKDfk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Aug 2011 23:35:40 -0400
+	with ESMTP id S1754650Ab1HKDfs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Aug 2011 23:35:48 -0400
 Received: by mail-pz0-f42.google.com with SMTP id 37so2947235pzk.1
-        for <linux-ext4@vger.kernel.org>; Wed, 10 Aug 2011 20:35:40 -0700 (PDT)
+        for <linux-ext4@vger.kernel.org>; Wed, 10 Aug 2011 20:35:48 -0700 (PDT)
 In-Reply-To: <1313033308-882-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds a functon named ext4_add_new_descs() which adds
-several  group descriptors each time.
+This patch adds a new function named ext4_allocates_group_table() which
+allcoates block bitmaps, inode bitmaps and inode tables for a flex groups and is
+used by resize code.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/resize.c |   25 +++++++++++++++++++++++++
- 1 files changed, 25 insertions(+), 0 deletions(-)
+ fs/ext4/resize.c |  111 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 111 insertions(+), 0 deletions(-)
 
 diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 4acf7a8..7e91d58 100644
+index 86edf19..d4b892f 100644
 --- a/fs/ext4/resize.c
 +++ b/fs/ext4/resize.c
-@@ -1083,6 +1083,31 @@ out:
+@@ -190,6 +190,117 @@ void free_flex_gd(struct ext4_new_flex_group_data *flex_gd)
+ 	kfree(flex_gd);
  }
  
- /*
-+ * ext4_add_new_descs() adds @count group descriptor of groups
-+ * starting at @group
++/*
++ * ext4_allcoate_group_table() allocates block bitmaps, inode bitmaps and
++ * inode tables for a flex group.
 + *
-+ * @handle: journal handle
-+ * @sb; super block
-+ * @group: the group no. of the first group desc to be added
-+ * @resize_inode: the resize inode
-+ * @count: number of group descriptors to be added
++ * This function is used by 64bit-resize.  Note that this function allocates
++ * group tables from the 1st group of groups contained by @flexgd, which may
++ * be a partial of a flex group.
++ *
++ * @sb: super block of fs to which the groups belongs
 + */
-+static int ext4_add_new_descs(handle_t *handle, struct super_block *sb,
-+			ext4_group_t group, struct inode *resize_inode,
-+			ext4_group_t count)
++static void ext4_alloc_group_tables(struct super_block *sb,
++				struct ext4_new_flex_group_data *flex_gd,
++				int flexbg_size)
 +{
-+	int i, err = 0;
++	struct ext4_new_group_data *group_data = flex_gd->groups;
++	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
++	ext4_fsblk_t start_blk;
++	ext4_fsblk_t last_blk;
++	ext4_group_t src_group;
++	ext4_group_t bb_index = 0;
++	ext4_group_t ib_index = 0;
++	ext4_group_t it_index = 0;
++	ext4_group_t group;
++	ext4_group_t last_group;
++	unsigned overhead;
 +
-+	for (i = 0; i < count; i++) {
-+		err = ext4_add_new_desc(handle, sb, group + i, resize_inode);
-+		if (err)
-+			return err;
++	BUG_ON(flex_gd->count == 0 || group_data == NULL);
++
++	src_group = group_data[0].group;
++	last_group  = src_group + flex_gd->count - 1;
++
++	BUG_ON((flexbg_size > 1) && ((src_group & ~(flexbg_size - 1)) !=
++	       (last_group & ~(flexbg_size - 1))));
++next_group:
++	group = group_data[0].group;
++	start_blk = ext4_group_first_block_no(sb, src_group);
++	last_blk = start_blk + group_data[src_group - group].blocks_count;
++
++	overhead = ext4_bg_has_super(sb, src_group) ?
++		   (1 + ext4_bg_num_gdb(sb, src_group) +
++		    le16_to_cpu(es->s_reserved_gdt_blocks)) : 0;
++
++	start_blk += overhead;
++
++	BUG_ON(src_group >= group_data[0].group + flex_gd->count);
++	/* We collect contiguous blocks as much as possible. */
++	src_group++;
++	for (; src_group <= last_group; src_group++)
++		if (!ext4_bg_has_super(sb, src_group))
++			last_blk += group_data[src_group - group].blocks_count;
++		else
++			break;
++
++	/* Allocate block bitmaps */
++	for (; bb_index < flex_gd->count; bb_index++) {
++		if (start_blk >= last_blk)
++			goto next_group;
++		group_data[bb_index].block_bitmap = start_blk++;
++		ext4_get_group_no_and_offset(sb, start_blk - 1, &group, NULL);
++		group -= group_data[0].group;
++		group_data[group].free_blocks_count--;
++		if (flexbg_size > 1)
++			flex_gd->bg_flags[group] &= ~EXT4_BG_BLOCK_UNINIT;
 +	}
 +
-+	return err;
++	/* Allocate inode bitmaps */
++	for (; ib_index < flex_gd->count; ib_index++) {
++		if (start_blk >= last_blk)
++			goto next_group;
++		group_data[ib_index].inode_bitmap = start_blk++;
++		ext4_get_group_no_and_offset(sb, start_blk - 1, &group, NULL);
++		group -= group_data[0].group;
++		group_data[group].free_blocks_count--;
++		if (flexbg_size > 1)
++			flex_gd->bg_flags[group] &= ~EXT4_BG_BLOCK_UNINIT;
++	}
++
++	/* Allocate inode tables */
++	for (; it_index < flex_gd->count; it_index++) {
++		if (start_blk + EXT4_SB(sb)->s_itb_per_group > last_blk)
++			goto next_group;
++		group_data[it_index].inode_table = start_blk;
++		ext4_get_group_no_and_offset(sb, start_blk, &group, NULL);
++		group -= group_data[0].group;
++		group_data[group].free_blocks_count -=
++					EXT4_SB(sb)->s_itb_per_group;
++		if (flexbg_size > 1)
++			flex_gd->bg_flags[group] &= ~EXT4_BG_BLOCK_UNINIT;
++
++		start_blk += EXT4_SB(sb)->s_itb_per_group;
++	}
++
++	if (test_opt(sb, DEBUG)) {
++		int i;
++		group = group_data[0].group;
++
++		printk(KERN_DEBUG "EXT4-fs: adding a flex group with "
++		       "%d groups, flexbg size is %d:\n", flex_gd->count,
++		       flexbg_size);
++
++		for (i = 0; i < flex_gd->count; i++) {
++			printk(KERN_DEBUG "adding %s group %u: %u "
++			       "blocks (%d free)\n",
++			       ext4_bg_has_super(sb, group + i) ? "normal" :
++			       "no-super", group + i,
++			       group_data[i].blocks_count,
++			       group_data[i].free_blocks_count);
++		}
++	}
 +}
 +
-+/*
-  * ext4_setup_new_desc() sets up group descriptors specified by @input.
-  *
-  * @handle: journal handle
+ static struct buffer_head *bclean(handle_t *handle, struct super_block *sb,
+ 				  ext4_fsblk_t blk)
+ {
 -- 
 1.7.5.1
 
