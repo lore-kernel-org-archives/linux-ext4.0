@@ -1,68 +1,48 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/1 v4] ext4: fix xfstests 75, 112, 127 punch hole
- failure
-Date: Wed, 10 Aug 2011 23:17:12 -0400
-Message-ID: <20110811031712.GF3625@thunk.org>
-References: <1312698112-7836-1-git-send-email-achender@linux.vnet.ibm.com>
- <20110808024213.GC11497@thunk.org>
- <4E404D06.6010002@linux.vnet.ibm.com>
- <20110809164524.GA3422@thunk.org>
- <4E41A254.3030300@linux.vnet.ibm.com>
+Subject: Re: [PATCH 2/2 bigalloc] e2fsprogs: use s_log_block_size to decide
+ s_first_data_block in ext2fs_initialize
+Date: Wed, 10 Aug 2011 23:23:43 -0400
+Message-ID: <20110811032343.GG3625@thunk.org>
+References: <1312518471-30714-1-git-send-email-hao.bigrat@gmail.com>
+ <1312518471-30714-2-git-send-email-hao.bigrat@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Allison Henderson <achender@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org, Robin Dong <sanbai@taobao.com>
+To: Robin Dong <hao.bigrat@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:46378 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:44066 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753522Ab1HKDRW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Aug 2011 23:17:22 -0400
+	id S1753423Ab1HKDXu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Aug 2011 23:23:50 -0400
 Content-Disposition: inline
-In-Reply-To: <4E41A254.3030300@linux.vnet.ibm.com>
+In-Reply-To: <1312518471-30714-2-git-send-email-hao.bigrat@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 09, 2011 at 02:10:44PM -0700, Allison Henderson wrote:
-> >	/*
-> >	 * Now we need to zero out the non-block-aligned data.
-> >	 * If the file space being truncated is smaller than
-> >	 * than a block, just zero out the middle
-> >	 */
-> >
-> Hmm, for this piece here, Im not sure I quite follow you.  I was
-> pretty sure that ext4_block_zero_page() only deals with ranges that
-> appear with in one block.  
+On Fri, Aug 05, 2011 at 12:27:51PM +0800, Robin Dong wrote:
+> From: Robin Dong <sanbai@taobao.com>
+> 
+> After mke2fs with 1024 block size:
+> 
+> #misc/mke2fs -m 0 -O ^resize_inode,extent,meta_bg,bigalloc -b 1024 /dev/sda
+> 
+> kernel reports:
+> 
+> [74687.352702] EXT4-fs (loop0): ext4_check_descriptors: Inode bitmap for group 0 not in group (block 524288)!
+> [74687.355534] EXT4-fs (loop0): group descriptors corrupted!
+> 
+> when mount /dev/sda.
 
-Yes, that's true.  What I was objecting to in the comment is the
-phrase "smaller than a block".  That's not right, or it's only right
-if blocksize == page size.  That comment should really read, "if the
-file space is smaller than a ***page***" zero out the middle.
+Wow, out of curiosity, why are you using a 1k block size?
 
-That's what happens in ext4_block_zero_page(), and so it works
-correctly; but the comment is confusing, and it makes the reader think
-that all we only need to zero is based on block boundaries, when in
-fact when we look at zeroing memory, we have to base it on page
-boundaries.
+Actually, the bug here is in the kernel (in complaining), not in
+e2fsprogs.  The only time we want s_first_data_block to be 1 is in the
+case when block size and cluster is 1024.
 
-Basically for either punch or truncate what we must do is:
+In the case where the cluster is greater than 1k, we want to keep the
+clusters aligned (for efficiency with 4k blocksize disks if for no
+other reason).  Since the superblock is located at a 1k offset,
+cluster #0 will always be reserved, so the first 1k is already
+reserved for use by the bootloader.
 
-   *) Zero partial pages
-   *) Unmap full pages
-   *) We take buffer_heads which have been freed and either
-      (a) detach them, or 
-      (b) clear the mapped flag, to indicate that the block number
-           in the bh is invalid 
-
-Using "unmap" for both pages and blocks can be confusing, since for
-pages, unmapping means that we remove the page completely from the
-page cache, so any future attempt to read from that virtual memory
-address will result in a zero page getting mapped in.
-
-However, for buffers, "unmapping" merely means that we are removing
-the mapping to the disk block which has been deallocated by the punch
-operation.  It does not result in anything getting zero'ed out in the
-_page_ cache, which is why we need to zero out partial pages.
-
-Does that make sense?
-
-						- Ted
+					- Ted
