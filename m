@@ -1,99 +1,105 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] loop: add discard support for loop devices
-Date: Thu, 11 Aug 2011 13:56:35 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1108111348020.4160@dhcp-27-109.brq.redhat.com>
-References: <1313063143-14473-1-git-send-email-lczerner@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: DIO process stuck apparently due to dioread_nolock (3.0)
+Date: Thu, 11 Aug 2011 13:59:43 +0200
+Message-ID: <20110811115943.GF4755@quack.suse.cz>
+References: <4E4262A5.6030903@msgid.tls.msk.ru>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-kernel@vger.kernel.org, Jens Axboe <jaxboe@fusionio.com>,
-	Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
-To: achender@linux.vnet.ibm.com
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Michael Tokarev <mjt@tls.msk.ru>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50505 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:44069 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753538Ab1HKL4k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 11 Aug 2011 07:56:40 -0400
-In-Reply-To: <1313063143-14473-1-git-send-email-lczerner@redhat.com>
+	id S1754171Ab1HKL7q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 11 Aug 2011 07:59:46 -0400
+Content-Disposition: inline
+In-Reply-To: <4E4262A5.6030903@msgid.tls.msk.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 11 Aug 2011, Lukas Czerner wrote:
+  Hello,
 
-> This commit adds discard support for loop devices. Discard is usually
-> supported by SSD and thinly provisioned devices as a method for
-> reclaiming unused space. This is no different than trying to reclaim
-> back space which is not used by the file system on the image, but it
-> still occupies space on the host file system.
+On Wed 10-08-11 14:51:17, Michael Tokarev wrote:
+> For a few days I'm evaluating various options to use
+> storage.  I'm interested in concurrent direct I/O
+> (oracle rdbms workload).
 > 
-> We can do the reclamation on file system which does support hole
-> punching. So when discard request gets to the loop driver we can
-> translate that to punch a hole to the underlying file, hence reclaim
-> the free space.
+> I noticed that somehow, ext4fs in mixed read-write
+> test greatly prefers writes over reads - writes goes
+> at full speed while reads are almost non-existent.
 > 
-> This is very useful for trimming down the size of the image to only what
-> is really used by the file system on that image. Fstrim may be used for
-> that purpose.
+> Sandeen on IRC pointed me at dioread_nolock mount
+> option, which I tried with great results, if not
+> one "but".
 > 
-> It has been tested on ext4, xfs and btrfs with the image file systems
-> ext4, ext3, xfs and btrfs. ext4, or ext6 image on ext4 file system has
-> some problems but it seems that ext4 punch hole implementation is
-> somewhat flawed and it is unrelated to this commit.
+> There's a deadlock somewhere, which I can't trigger
+> "on demand" - I can't hit the right condition.  It
+> happened twice in a row already, each time after the
+> same scenario (more about that later).
 > 
-> Also this is a very good method of validating file systems punch hole
-> implementation.
+> When it happens, a process doing direct AIO stalls
+> infinitely, with the following backtrace:
 > 
-> Note that when encryption is used, discard support is disabled, because
-> using it might leak some information useful for possible attacker.
+> [87550.759848] INFO: task oracle:23176 blocked for more than 120 seconds.
+> [87550.759892] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+> [87550.759955] oracle          D 0000000000000000     0 23176      1 0x00000000
+> [87550.760006]  ffff8820457b47d0 0000000000000082 ffff880600000000 ffff881278e3f7d0
+> [87550.760085]  ffff8806215c1fd8 ffff8806215c1fd8 ffff8806215c1fd8 ffff8820457b47d0
+> [87550.760163]  ffffea0010bd7c68 ffffffff00000000 ffff882045512ef8 ffffffff810eeda2
+> [87550.760245] Call Trace:
+> [87550.760285]  [<ffffffff810eeda2>] ? __do_fault+0x422/0x520
+> [87550.760327]  [<ffffffff81111ded>] ? kmem_getpages+0x5d/0x170
+> [87550.760367]  [<ffffffff81112e58>] ? ____cache_alloc_node+0x48/0x140
+> [87550.760430]  [<ffffffffa0123e6d>] ? ext4_file_write+0x20d/0x260 [ext4]
+> [87550.760475]  [<ffffffff8106aee0>] ? abort_exclusive_wait+0xb0/0xb0
+> [87550.760523]  [<ffffffffa0123c60>] ? ext4_llseek+0x120/0x120 [ext4]
+> [87550.760566]  [<ffffffff81162173>] ? aio_rw_vect_retry+0x73/0x1d0
+> [87550.760607]  [<ffffffff8116302f>] ? aio_run_iocb+0x5f/0x160
+> [87550.760646]  [<ffffffff81164258>] ? do_io_submit+0x4f8/0x600
+> [87550.760689]  [<ffffffff81359b52>] ? system_call_fastpath+0x16/0x1b
+  Hmm, the stack trace does not quite make sense to me - the part between
+__do_fault and aio_rw_vect_retry is somehow broken. I can imagine we
+blocked in ext4_file_write() but I don't see any place there where we would
+allocate memory. By any chance, are there messages like "Unaligned AIO/DIO
+on inode ..." in the kernel log?
 
-Hi Allison,
+> At this point, the process in question can't be killed or
+> stopped.  Yes it's oracle DB, and I can kill all other processes
+> of this instance (this one is lgwr, aka log writer), but the stuck
+> process will continue to be stuck, so it is not an inter-process
+> deadlock.
+> 
+> echo "w" > /proc/sysrq-trigger shows only that process, with the
+> same stack trace.
+> 
+> This is 3.0.1 kernel from kernel.org (amd64 arch).  The system is
+> a relatively large box (IBM System x3850 X5).  So far, I've seen
+> this issue twice, and each time in the following scenario:
+> 
+> I copy an oracle database from another machine to filesystem
+> mounted with dioread_nolock, and right after the copy completes,
+> I start the database.  And immediately when Oracle opens its
+> DB ("Database opened") I see stuck lgwr process like above.
+> 
+> So I suspect it happens when there are some unwritten files
+> in buffer/page cache and some process tries to do direct
+> writes.
+> 
+> I haven't seen this happening without dioread_nolock, but since
+> I don't have an easy reproducer I can't say this mount option
+> is a requiriment.  So far, I was able to trigger it only after
+> large db copy, with small database I created in order to try
+> to reproduce it the issue does not happen.
+> 
+> And sure thing, when it happens, the only way to clean up is
+> to forcible reboot the machine (echo b > sysrq-trigger).
+> 
+> I'll continue experiments in a hope to find an easier reproducer,
+> but the problem is that I've little time left before the machine
+> in question will go into production.  So if anyone have hints
+> for this issue, please share.. ;)
 
-as I mentioned in the commit description I believe that I have
-seen problems with punch hole implementation. You can apply the
-commit to add discard support for loop device and then here is how
-to reproduce the problem:
-
-
-# mkfs.ext4 /dev/sdd
-# mount /dev/sdd /mnt/test
-# dd if=/dev/zero of=/mnt/test/bigfil2 bs=4096 seek=100M count=1
-# mkfs.ext4 /mnt/test/bigfil2
-# mount -o loop /mnt/test/bigfil2 /mnt/test3/
-# fstrim -v /mnt/test3/
-422650347520 Bytes were trimmed
-
-# fsck.ext4 -fn /mnt/test1/bigfil2
-e2fsck 1.41.12 (17-May-2010)
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-Block bitmap differences:  +(524288--532511)
-Fix? no
-
-Free blocks count wrong for group #16 (24544, counted=32768).
-Fix? no
-
-Free blocks count wrong (103161576, counted=103169800).
-Fix? no
-
-
-/mnt/test1/bigfil2: ********** WARNING: Filesystem still has errors
-**********
-
-/mnt/test1/bigfil2: 11/26214400 files (0.0% non-contiguous),
-1696024/104857600 blocks
-
-And we also get corrupted file system on the ext3 image. I did
-not saw that for other file systems, but it is probably just the matter
-of how are blocks laid out in the file system format and there are more
-chunks of free blocks in ext[43] than xfs, or btrfs.
-
-Also you can find fstrim in latest util-inux-ng. And lastly I believe
-that this is great way to validate punch hole implementation. Just
-create an image on ext4 file system and run xfstest 251 (or stress.sh -
-oss.oracle.com/~mason/stress.sh) on it the image mounted with -o
-discard.
-
-Thanks!
--Lukas
+							Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
