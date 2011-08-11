@@ -1,166 +1,262 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] mke2fs: Use ext2fs_flush() only once
-Date: Thu, 11 Aug 2011 16:57:37 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1108111657280.29009@dhcp-27-109.brq.redhat.com>
-References: <1311941612-9108-1-git-send-email-lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: remove deprecated oldalloc
+Date: Thu, 11 Aug 2011 16:58:57 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1108111658520.29009@dhcp-27-109.brq.redhat.com>
+References: <1307453714-2741-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
 To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:15566 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:3256 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751205Ab1HKO5o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 11 Aug 2011 10:57:44 -0400
-In-Reply-To: <1311941612-9108-1-git-send-email-lczerner@redhat.com>
+	id S1751096Ab1HKO7D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 11 Aug 2011 10:59:03 -0400
+In-Reply-To: <1307453714-2741-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 29 Jul 2011, Lukas Czerner wrote:
+On Tue, 7 Jun 2011, Lukas Czerner wrote:
 
-> We are doing ext2fs_flush() twice right now at the end of the mke2fs.
-> First by directly calling ext2fs_flush() which is intended to write
-> superblock and fs accounting information. And then it is invoked again
-> when we are calling ext2fs_close(), only this time, because the fs is
-> not dirty, we are writing out only superblock.
+> For a long time now orlov is the default block allocator in the ext4. It
+> performs better than the old one and no one seems to claim otherwise so
+> we can safely drop it and make oldalloc and orlov mount option
+> deprecated.
 > 
-> I think it is bad to call it twice because even when writing only super
-> block it takes some time on bigger file systems and moreover
-> ext2fs_close() can fail without any reasonable explanation for the user.
-> Also ext2fs_flush() is printing out progress and it is confusing for the
-> users.
-> 
-> Fix all this by removing the ext2fs_flush() and leaving it all to
-> ext2fs_close(). However we need to introduce new variables to store
-> check interval and max mount count, because fs structure is freed on
-> ext2fs_close() and we really want to print those information as the last
-> info for the user.
-
-Ping
-
+> This is a part of the effort to reduce number of ext4 options hence the
+> test matrix.
 > 
 > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+
+ping
+
 > ---
->  misc/mke2fs.c                   |   15 ++++++++-------
->  misc/tune2fs.c                  |    3 ++-
->  misc/util.c                     |    5 ++---
->  misc/util.h                     |    2 +-
->  tests/m_extent_journal/expect.1 |    2 +-
->  tests/m_uninit/expect.1         |    2 +-
->  6 files changed, 15 insertions(+), 14 deletions(-)
+>  Documentation/filesystems/ext4.txt |    8 --
+>  fs/ext4/ext4.h                     |    1 -
+>  fs/ext4/ialloc.c                   |  136 +-----------------------------------
+>  fs/ext4/super.c                    |    8 +-
+>  4 files changed, 7 insertions(+), 146 deletions(-)
 > 
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index e062bda..481e550 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -2143,7 +2143,7 @@ int main (int argc, char *argv[])
->  	ext2_filsys	fs;
->  	badblocks_list	bb_list = 0;
->  	unsigned int	journal_blocks;
-> -	unsigned int	i;
-> +	unsigned int	i, max_mnt_count, checkinterval;
->  	int		val, hash_alg;
->  	int		flags;
->  	int		old_bitmaps;
-> @@ -2469,22 +2469,23 @@ no_journal:
->  	if (!quiet)
->  		printf(_("Writing superblocks and "
->  		       "filesystem accounting information: "));
-> -	retval = ext2fs_flush(fs);
-> +	checkinterval = fs->super->s_checkinterval;
-> +	max_mnt_count = fs->super->s_max_mnt_count;
-> +	retval = ext2fs_close(fs);
->  	if (retval) {
->  		fprintf(stderr,
->  			_("\nWarning, had trouble writing out superblocks."));
+> diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
+> index 3ae9bc9..ec469fa 100644
+> --- a/Documentation/filesystems/ext4.txt
+> +++ b/Documentation/filesystems/ext4.txt
+> @@ -201,14 +201,6 @@ inode_readahead_blks=n	This tuning parameter controls the maximum
+>  			table readahead algorithm will pre-read into
+>  			the buffer cache.  The default value is 32 blocks.
+>  
+> -orlov		(*)	This enables the new Orlov block allocator. It is
+> -			enabled by default.
+> -
+> -oldalloc		This disables the Orlov block allocator and enables
+> -			the old block allocator.  Orlov should have better
+> -			performance - we'd like to get some feedback if it's
+> -			the contrary for you.
+> -
+>  user_xattr		Enables Extended User Attributes.  Additionally, you
+>  			need to have extended attribute support enabled in the
+>  			kernel configuration (CONFIG_EXT4_FS_XATTR).  See the
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 1921392..7e0b8aa 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -884,7 +884,6 @@ struct ext4_inode_info {
+>  /*
+>   * Mount flags
+>   */
+> -#define EXT4_MOUNT_OLDALLOC		0x00002  /* Don't use the new Orlov allocator */
+>  #define EXT4_MOUNT_GRPID		0x00004	/* Create files with directory's group */
+>  #define EXT4_MOUNT_DEBUG		0x00008	/* Some debugging messages */
+>  #define EXT4_MOUNT_ERRORS_CONT		0x00010	/* Continue on errors */
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index 21bb2f6..0b5ec23 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -293,118 +293,6 @@ error_return:
+>  	ext4_std_error(sb, fatal);
+>  }
+>  
+> -/*
+> - * There are two policies for allocating an inode.  If the new inode is
+> - * a directory, then a forward search is made for a block group with both
+> - * free space and a low directory-to-inode ratio; if that fails, then of
+> - * the groups with above-average free space, that group with the fewest
+> - * directories already is chosen.
+> - *
+> - * For other inodes, search forward from the parent directory\'s block
+> - * group to find a free inode.
+> - */
+> -static int find_group_dir(struct super_block *sb, struct inode *parent,
+> -				ext4_group_t *best_group)
+> -{
+> -	ext4_group_t ngroups = ext4_get_groups_count(sb);
+> -	unsigned int freei, avefreei;
+> -	struct ext4_group_desc *desc, *best_desc = NULL;
+> -	ext4_group_t group;
+> -	int ret = -1;
+> -
+> -	freei = percpu_counter_read_positive(&EXT4_SB(sb)->s_freeinodes_counter);
+> -	avefreei = freei / ngroups;
+> -
+> -	for (group = 0; group < ngroups; group++) {
+> -		desc = ext4_get_group_desc(sb, group, NULL);
+> -		if (!desc || !ext4_free_inodes_count(sb, desc))
+> -			continue;
+> -		if (ext4_free_inodes_count(sb, desc) < avefreei)
+> -			continue;
+> -		if (!best_desc ||
+> -		    (ext4_free_blks_count(sb, desc) >
+> -		     ext4_free_blks_count(sb, best_desc))) {
+> -			*best_group = group;
+> -			best_desc = desc;
+> -			ret = 0;
+> -		}
 > -	}
-> -	if (!quiet) {
-> +	} else if (!quiet) {
->  		printf(_("done\n\n"));
->  		if (!getenv("MKE2FS_SKIP_CHECK_MSG"))
-> -			print_check_message(fs);
-> +			print_check_message(max_mnt_count, checkinterval);
+> -	return ret;
+> -}
+> -
+> -#define free_block_ratio 10
+> -
+> -static int find_group_flex(struct super_block *sb, struct inode *parent,
+> -			   ext4_group_t *best_group)
+> -{
+> -	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> -	struct ext4_group_desc *desc;
+> -	struct flex_groups *flex_group = sbi->s_flex_groups;
+> -	ext4_group_t parent_group = EXT4_I(parent)->i_block_group;
+> -	ext4_group_t parent_fbg_group = ext4_flex_group(sbi, parent_group);
+> -	ext4_group_t ngroups = ext4_get_groups_count(sb);
+> -	int flex_size = ext4_flex_bg_size(sbi);
+> -	ext4_group_t best_flex = parent_fbg_group;
+> -	int blocks_per_flex = sbi->s_blocks_per_group * flex_size;
+> -	int flexbg_free_blocks;
+> -	int flex_freeb_ratio;
+> -	ext4_group_t n_fbg_groups;
+> -	ext4_group_t i;
+> -
+> -	n_fbg_groups = (ngroups + flex_size - 1) >>
+> -		sbi->s_log_groups_per_flex;
+> -
+> -find_close_to_parent:
+> -	flexbg_free_blocks = atomic_read(&flex_group[best_flex].free_blocks);
+> -	flex_freeb_ratio = flexbg_free_blocks * 100 / blocks_per_flex;
+> -	if (atomic_read(&flex_group[best_flex].free_inodes) &&
+> -	    flex_freeb_ratio > free_block_ratio)
+> -		goto found_flexbg;
+> -
+> -	if (best_flex && best_flex == parent_fbg_group) {
+> -		best_flex--;
+> -		goto find_close_to_parent;
+> -	}
+> -
+> -	for (i = 0; i < n_fbg_groups; i++) {
+> -		if (i == parent_fbg_group || i == parent_fbg_group - 1)
+> -			continue;
+> -
+> -		flexbg_free_blocks = atomic_read(&flex_group[i].free_blocks);
+> -		flex_freeb_ratio = flexbg_free_blocks * 100 / blocks_per_flex;
+> -
+> -		if (flex_freeb_ratio > free_block_ratio &&
+> -		    (atomic_read(&flex_group[i].free_inodes))) {
+> -			best_flex = i;
+> -			goto found_flexbg;
+> -		}
+> -
+> -		if ((atomic_read(&flex_group[best_flex].free_inodes) == 0) ||
+> -		    ((atomic_read(&flex_group[i].free_blocks) >
+> -		      atomic_read(&flex_group[best_flex].free_blocks)) &&
+> -		     atomic_read(&flex_group[i].free_inodes)))
+> -			best_flex = i;
+> -	}
+> -
+> -	if (!atomic_read(&flex_group[best_flex].free_inodes) ||
+> -	    !atomic_read(&flex_group[best_flex].free_blocks))
+> -		return -1;
+> -
+> -found_flexbg:
+> -	for (i = best_flex * flex_size; i < ngroups &&
+> -		     i < (best_flex + 1) * flex_size; i++) {
+> -		desc = ext4_get_group_desc(sb, i, NULL);
+> -		if (ext4_free_inodes_count(sb, desc)) {
+> -			*best_group = i;
+> -			goto out;
+> -		}
+> -	}
+> -
+> -	return -1;
+> -out:
+> -	return 0;
+> -}
+> -
+>  struct orlov_stats {
+>  	__u32 free_inodes;
+>  	__u32 free_blocks;
+> @@ -817,7 +705,6 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode,
+>  	struct inode *ret;
+>  	ext4_group_t i;
+>  	int free = 0;
+> -	static int once = 1;
+>  	ext4_group_t flex_group;
+>  
+>  	/* Cannot create files in a deleted directory */
+> @@ -843,26 +730,9 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode,
+>  		goto got_group;
 >  	}
-> -	val = ext2fs_close(fs);
-> +
->  	remove_error_table(&et_ext2_error_table);
->  	remove_error_table(&et_prof_error_table);
->  	profile_release(profile);
->  	for (i=0; fs_types[i]; i++)
->  		free(fs_types[i]);
->  	free(fs_types);
-> -	return (retval || val) ? 1 : 0;
-> +	return retval;
->  }
-> diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-> index 5bf5187..0e1e1cf 100644
-> --- a/misc/tune2fs.c
-> +++ b/misc/tune2fs.c
-> @@ -568,7 +568,8 @@ static void add_journal(ext2_filsys fs)
->  		if ((mount_flags & EXT2_MF_MOUNTED) == 0)
->  			fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
->  	}
-> -	print_check_message(fs);
-> +	print_check_message(fs->super->s_max_mnt_count,
-> +			    fs->super->s_checkinterval);
->  	return;
 >  
->  err:
-> diff --git a/misc/util.c b/misc/util.c
-> index 51bdb60..18329ee 100644
-> --- a/misc/util.c
-> +++ b/misc/util.c
-> @@ -282,12 +282,11 @@ unsigned int figure_journal_size(int size, ext2_filsys fs)
->  	return j_blocks;
->  }
+> -	if (sbi->s_log_groups_per_flex && test_opt(sb, OLDALLOC)) {
+> -		ret2 = find_group_flex(sb, dir, &group);
+> -		if (ret2 == -1) {
+> -			ret2 = find_group_other(sb, dir, &group, mode);
+> -			if (ret2 == 0 && once) {
+> -				once = 0;
+> -				printk(KERN_NOTICE "ext4: find_group_flex "
+> -				       "failed, fallback succeeded dir %lu\n",
+> -				       dir->i_ino);
+> -			}
+> -		}
+> -		goto got_group;
+> -	}
+> -
+> -	if (S_ISDIR(mode)) {
+> -		if (test_opt(sb, OLDALLOC))
+> -			ret2 = find_group_dir(sb, dir, &group);
+> -		else
+> -			ret2 = find_group_orlov(sb, dir, &group, mode, qstr);
+> -	} else
+> +	if (S_ISDIR(mode))
+> +		ret2 = find_group_orlov(sb, dir, &group, mode, qstr);
+> +	else
+>  		ret2 = find_group_other(sb, dir, &group, mode);
 >  
-> -void print_check_message(ext2_filsys fs)
-> +void print_check_message(unsigned int mnt, unsigned int check)
->  {
->  	printf(_("This filesystem will be automatically "
->  		 "checked every %d mounts or\n"
->  		 "%g days, whichever comes first.  "
->  		 "Use tune2fs -c or -i to override.\n"),
-> -	       fs->super->s_max_mnt_count,
-> -	       (double)fs->super->s_checkinterval / (3600 * 24));
-> +		mnt, check / (3600 * 24));
->  }
-> diff --git a/misc/util.h b/misc/util.h
-> index e0c99f6..d05f17e 100644
-> --- a/misc/util.h
-> +++ b/misc/util.h
-> @@ -23,4 +23,4 @@ extern void check_plausibility(const char *device);
->  extern void parse_journal_opts(const char *opts);
->  extern void check_mount(const char *device, int force, const char *type);
->  extern unsigned int figure_journal_size(int size, ext2_filsys fs);
-> -extern void print_check_message(ext2_filsys fs);
-> +extern void print_check_message(unsigned int, unsigned int);
-> diff --git a/tests/m_extent_journal/expect.1 b/tests/m_extent_journal/expect.1
-> index 88ea2d9..a8c5b63 100644
-> --- a/tests/m_extent_journal/expect.1
-> +++ b/tests/m_extent_journal/expect.1
-> @@ -18,7 +18,7 @@ Writing inode tables: 0/81/82/83/84/85/86/87/8   done
->  Creating journal (4096 blocks): done
->  Writing superblocks and filesystem accounting information: 0/81/82/83/84/85/86/87/8   done
->  
-> -0/81/82/83/84/85/86/87/8   Filesystem features: has_journal ext_attr resize_inode dir_index filetype extent sparse_super
-> +Filesystem features: has_journal ext_attr resize_inode dir_index filetype extent sparse_super
->   
->  Pass 1: Checking inodes, blocks, and sizes
->  Pass 2: Checking directory structure
-> diff --git a/tests/m_uninit/expect.1 b/tests/m_uninit/expect.1
-> index 173c072..a3c059d 100644
-> --- a/tests/m_uninit/expect.1
-> +++ b/tests/m_uninit/expect.1
-> @@ -17,7 +17,7 @@ Allocating group tables:  0/16 1/16 2/16 3/16 4/16 5/16
->  Writing inode tables:  0/16 1/16 2/16 3/16 4/16 5/16 6/16 7/16 8/16 9/1610/1611/1612/1613/1614/1615/16     done                            
->  Writing superblocks and filesystem accounting information:  0/16 1/16 2/16 3/16 4/16 5/16 6/16 7/16 8/16 9/1610/1611/1612/1613/1614/1615/16     done
->  
-> - 0/16 1/16 2/16 3/16 4/16 5/16 6/16 7/16 8/16 9/1610/1611/1612/1613/1614/1615/16     Filesystem features: ext_attr resize_inode dir_index filetype sparse_super uninit_bg
-> +Filesystem features: ext_attr resize_inode dir_index filetype sparse_super uninit_bg
->   
->  Pass 1: Checking inodes, blocks, and sizes
->  Pass 2: Checking directory structure
+>  got_group:
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index cc5c157..e1f8f73 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1031,8 +1031,6 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
+>  		seq_puts(seq, ",nouid32");
+>  	if (test_opt(sb, DEBUG) && !(def_mount_opts & EXT4_DEFM_DEBUG))
+>  		seq_puts(seq, ",debug");
+> -	if (test_opt(sb, OLDALLOC))
+> -		seq_puts(seq, ",oldalloc");
+>  #ifdef CONFIG_EXT4_FS_XATTR
+>  	if (test_opt(sb, XATTR_USER))
+>  		seq_puts(seq, ",user_xattr");
+> @@ -1541,10 +1539,12 @@ static int parse_options(char *options, struct super_block *sb,
+>  			set_opt(sb, DEBUG);
+>  			break;
+>  		case Opt_oldalloc:
+> -			set_opt(sb, OLDALLOC);
+> +			ext4_msg(sb, KERN_WARNING,
+> +				 "Ignoring deprecated oldalloc option");
+>  			break;
+>  		case Opt_orlov:
+> -			clear_opt(sb, OLDALLOC);
+> +			ext4_msg(sb, KERN_WARNING,
+> +				 "Ignoring deprecated orlov option");
+>  			break;
+>  #ifdef CONFIG_EXT4_FS_XATTR
+>  		case Opt_user_xattr:
 > 
 
 -- 
