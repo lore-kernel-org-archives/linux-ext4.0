@@ -1,171 +1,222 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 1/2 v4] e2fsprogs: Fix how we treat user-spcified filesystem
- size
-Date: Thu, 11 Aug 2011 17:02:42 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1108111702280.29009@dhcp-27-109.brq.redhat.com>
-References: <1307269845-15062-1-git-send-email-lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: Make reads/writes atomic with i_rwlock semaphore
+Date: Thu, 11 Aug 2011 17:10:19 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1108111710040.29009@dhcp-27-109.brq.redhat.com>
+References: <1303154492-25446-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, esandeen@redhat.com,
+	adilger@s0106002191d9348c.cg.shawcable.net
 To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46738 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:14395 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751518Ab1HKPCs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 11 Aug 2011 11:02:48 -0400
-In-Reply-To: <1307269845-15062-1-git-send-email-lczerner@redhat.com>
+	id S1752459Ab1HKPKd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 11 Aug 2011 11:10:33 -0400
+In-Reply-To: <1303154492-25446-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, 5 Jun 2011, Lukas Czerner wrote:
+On Mon, 18 Apr 2011, Lukas Czerner wrote:
 
-> mke2fs and resize2fs allows specifying filesystem size as a parameter,
-> former called as blocks-count. However it has been a little bit messy so
-> this commit fixes it mainly by updating man pages.
+> Currently concurrent reads/writes are atomic only wrt individual pages,
+> however are not on the system call. This may cause read() to return data
+> mixed from several different writes, which I do not think it is good
+> approach. We might argue that application doing this is broken, but
+> actually this is something we can easily do on filesystem level without
+> significant performance issues, so we can be consistent. Also POSIX
+> mentions this as well and XFS filesystem already has this feature.
 > 
-> We can not specify filesystem size in blocks count without specifying
-> blocksize as well. It is because we need blocks count to determine
-> filesystem type, and we need filesystem type to determine blocksize. So
-> it should not be allowed, however due to compatibility reason it should
-> be still possible, so at least print warning message for now, so we can
-> easily restrict that later.
+> This commit adds new rw_semaphore into ext4_inode structure. We take
+> read lock every time we read data from a file (via ext4_file_read() or
+> ext4_file_splice_read()) and also when we write data in direct io mode,
+> since in this mode application should know exactly what it is doing.
+> Then we take write lock when we write into a file (via ext4_file_write()
+> and ext4_file_splice_write()), except the direct io when we take read
+> lock and unaligned direct io which is already serialized in different
+> manner. Also we are locking ext4_truncate() as well so we are consistent
+> and preserve atomicity.
 > 
-> Filesystem size can be specified using units as suffixes. This was not
-> documented for mke2fs, so this commits adds proper documentation into
-> mke2fs man page.
+> This should not have any significant performance impact since we still
+> allow concurrent reads from the same inode and concurrent writes are
+> serialized already by i_mutex. The only type of load which will feel the
+> performance hit is the case of writing into an inode while reading from
+> it and vice versa. In this case, if reads/writes are exclusive it might
+> not need locking, however tracking this would be expensive.
 
-Hi Ted,
-
-any chance merging that ?
+Anyone any thoughts on this one ?
 
 Thanks!
 -Lukas
 
 > 
 > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 > ---
-> [v2]: do not spell units - mebibytes etc... - but rather use just abbrev.
-> [v3]: Change some phrasing in man pages, mainly with the help from Eric Sandeen
-> [v4]: Remove 'b' unit designator.
->  lib/e2p/parse_num.c   |    1 -
->  misc/mke2fs.8.in      |   34 ++++++++++++++++++++++++++++------
->  resize/resize2fs.8.in |   23 ++++++++---------------
->  3 files changed, 36 insertions(+), 22 deletions(-)
+>  fs/ext4/ext4.h  |    5 ++++
+>  fs/ext4/file.c  |   58 ++++++++++++++++++++++++++++++++++++++++++++++++++----
+>  fs/ext4/inode.c |    7 ++++++
+>  fs/ext4/super.c |    1 +
+>  4 files changed, 66 insertions(+), 5 deletions(-)
 > 
-> diff --git a/lib/e2p/parse_num.c b/lib/e2p/parse_num.c
-> index 83a329a..8e2751b 100644
-> --- a/lib/e2p/parse_num.c
-> +++ b/lib/e2p/parse_num.c
-> @@ -37,7 +37,6 @@ unsigned long long parse_num_blocks2(const char *arg, int log_block_size)
->  		num >>= (1+log_block_size);
->  		break;
->  	case '\0':
-> -		break;
->  	default:
->  		return 0;
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 4daaf2b..037857c 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -858,6 +858,11 @@ struct ext4_inode_info {
+>  	 */
+>  	tid_t i_sync_tid;
+>  	tid_t i_datasync_tid;
+> +
+> +	/*
+> +	 * Semaphore forcing read/write atomicity
+> +	 */
+> +	struct rw_semaphore i_rwlock;
+>  };
+>  
+>  /*
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index 7b80d54..6c7ed94 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -94,7 +94,7 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+>  		unsigned long nr_segs, loff_t pos)
+>  {
+>  	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
+> -	int unaligned_aio = 0;
+> +	int unaligned_aio = 0, direct_io = 0;
+>  	int ret;
+>  
+>  	/*
+> @@ -117,6 +117,7 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+>  	} else if (unlikely((iocb->ki_filp->f_flags & O_DIRECT) &&
+>  		   !is_sync_kiocb(iocb))) {
+>  		unaligned_aio = ext4_unaligned_aio(inode, iov, nr_segs, pos);
+> +		direct_io = 1;
 >  	}
-> diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
-> index 4a3b0c3..f315910 100644
-> --- a/misc/mke2fs.8.in
-> +++ b/misc/mke2fs.8.in
-> @@ -108,7 +108,7 @@ mke2fs \- create an ext2/ext3/ext4 filesystem
->  ]
->  .I device
->  [
-> -.I blocks-count
-> +.I filesystem-size
->  ]
->  @JDEV@.sp
->  @JDEV@.B "mke2fs \-O journal_dev"
-> @@ -136,7 +136,7 @@ mke2fs \- create an ext2/ext3/ext4 filesystem
->  @JDEV@]
->  @JDEV@.I external-journal
->  @JDEV@[
-> -@JDEV@.I blocks-count
-> +@JDEV@.I filesystem-size
->  @JDEV@]
->  .SH DESCRIPTION
->  .B mke2fs
-> @@ -145,10 +145,32 @@ partition.
->  .I device
->  is the special file corresponding to the device (e.g
->  .IR /dev/hdXX ).
-> -.I blocks-count
-> -is the number of blocks on the device.  If omitted,
-> -.B mke2fs
-> -automagically figures the file system size.  If called as
-> +.I filesystem-size
-> +is the size of the filesystem you want to create. Optionally, the
-> +.I filesystem-size
-> +parameter may be suffixed by one of the following unit
-> +designators: 's', 'K', 'M', 'G', or 'T',
-> +for  512 byte sectors, KiB (2^10 Bytes), MiB (2^20 Bytes),
-> +GiB (2^30 Bytes), or TiB (2^40 Bytes) respectively, which are binary (power-of-2),
-> +not decimal, units. If no units are specified, then the
-> +.I filesystem-size
-> +parameter shall specify the number of filesystem blocks.
-> +Note that you should not specify
-> +.I filesystem-size
-> +in block units (or without any units at all) without also specifying block
-> +size with the
-> +.B \-b
-> +option. This will be allowed for now due to compatibility reasons,
-> +however it may be restricted in the future. For now, 1024-byte blocks will
-> +be assumed in this case, regardless of the filesystem blocksize ultimately
-> +chosen by mke2fs.
-> +The
-> +.I filesystem-size
-> +may never be larger than the size of the partition.
-> +If the
-> +.I filesystem-size
-> +parameter is not specified, it will default to the size of the partition.
-> +If called as
->  .B mkfs.ext3
->  a journal is created as if the
->  .B \-j
-> diff --git a/resize/resize2fs.8.in b/resize/resize2fs.8.in
-> index e02345d..0f4153c 100644
-> --- a/resize/resize2fs.8.in
-> +++ b/resize/resize2fs.8.in
-> @@ -36,29 +36,22 @@ filesystems mounted using ext3 and ext4.).
->  The 
->  .I size
->  parameter specifies the requested new size of the filesystem.
-> -If no units are specified, the units of the
-> -.I size
-> -parameter shall be the filesystem blocksize of the filesystem.
->  Optionally, the 
->  .I size
-> -parameter may be suffixed by one of the following the units 
-> -designators: 's', 'K', 'M', or 'G',
-> -for 512 byte sectors, kilobytes, megabytes, or gigabytes, respectively.
-> -The 
-> +parameter may be suffixed by one of the following the unit
-> +designators: 's', 'K', 'M', 'G', or 'T',
-> +for 512 byte sectors, KiB (2^10 Bytes), MiB (2^20 Bytes),
-> +GiB (2^30 Bytes), or TiB (2^40 Bytes) respectively, which are binary (power-of-2),
-> +not decimal, units.
-> +If no units are specified, then the
-> +.I size
-> +parameter shall specify the number of filesystem blocks. The
->  .I size
->  of the filesystem may never be larger than the size of the partition.
->  If 
->  .I size
->  parameter is not specified, it will default to the size of the partition.
->  .PP
-> -Note: when kilobytes is used above, I mean
-> -.IR real ,
-> -power-of-2 kilobytes, (i.e., 1024 bytes), which some politically correct
-> -folks insist should be the stupid-sounding ``kibibytes''.  The same
-> -holds true for megabytes, also sometimes known as ``mebibytes'', or
-> -gigabytes, as the amazingly silly ``gibibytes''.  Makes you want to
-> -gibber, doesn't it?
-> -.PP
->  The
->  .B resize2fs
->  program does not manipulate the size of partitions.  If you wish to enlarge
+>  
+>  	/* Unaligned direct AIO must be serialized; see comment above */
+> @@ -131,12 +132,19 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+>  				 inode->i_ino, current->comm);
+>  		mutex_lock(ext4_aio_mutex(inode));
+>  		ext4_aiodio_wait(inode);
+> -	}
+> +	} else if (unlikely(direct_io))
+> +		down_read(&EXT4_I(inode)->i_rwlock);
+> +	else
+> +		down_write(&EXT4_I(inode)->i_rwlock);
+>  
+>  	ret = generic_file_aio_write(iocb, iov, nr_segs, pos);
+>  
+>  	if (unaligned_aio)
+>  		mutex_unlock(ext4_aio_mutex(inode));
+> +	else if (unlikely(direct_io))
+> +		up_read(&EXT4_I(inode)->i_rwlock);
+> +	else
+> +		up_write(&EXT4_I(inode)->i_rwlock);
+>  
+>  	return ret;
+>  }
+> @@ -252,11 +260,51 @@ loff_t ext4_llseek(struct file *file, loff_t offset, int origin)
+>  	return offset;
+>  }
+>  
+> +static ssize_t
+> +ext4_file_read(struct kiocb *iocb, const struct iovec *iov,
+> +	       unsigned long nr_segs, loff_t pos)
+> +{
+> +	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
+> +	ssize_t size;
+> +
+> +	down_read(&EXT4_I(inode)->i_rwlock);
+> +	size = generic_file_aio_read(iocb, iov, nr_segs, pos);
+> +	up_read(&EXT4_I(inode)->i_rwlock);
+> +	return size;
+> +}
+> +
+> +ssize_t ext4_file_splice_read(struct file *in, loff_t *ppos,
+> +			      struct pipe_inode_info *pipe, size_t len,
+> +			      unsigned int flags)
+> +{
+> +	struct inode *inode = in->f_mapping->host;
+> +	ssize_t size;
+> +
+> +	down_read(&EXT4_I(inode)->i_rwlock);
+> +	size = generic_file_splice_read(in, ppos, pipe, len, flags);
+> +	up_read(&EXT4_I(inode)->i_rwlock);
+> +	return size;
+> +}
+> +
+> +ssize_t ext4_file_splice_write(struct pipe_inode_info *pipe,
+> +			       struct file *out, loff_t *ppos, size_t len,
+> +			       unsigned int flags)
+> +{
+> +	struct inode *inode = out->f_mapping->host;
+> +	ssize_t size;
+> +
+> +	down_write(&EXT4_I(inode)->i_rwlock);
+> +	size = generic_file_splice_write(pipe, out, ppos, len, flags);
+> +	up_write(&EXT4_I(inode)->i_rwlock);
+> +	return size;
+> +}
+> +
+> +
+>  const struct file_operations ext4_file_operations = {
+>  	.llseek		= ext4_llseek,
+>  	.read		= do_sync_read,
+>  	.write		= do_sync_write,
+> -	.aio_read	= generic_file_aio_read,
+> +	.aio_read	= ext4_file_read,
+>  	.aio_write	= ext4_file_write,
+>  	.unlocked_ioctl = ext4_ioctl,
+>  #ifdef CONFIG_COMPAT
+> @@ -266,8 +314,8 @@ const struct file_operations ext4_file_operations = {
+>  	.open		= ext4_file_open,
+>  	.release	= ext4_release_file,
+>  	.fsync		= ext4_sync_file,
+> -	.splice_read	= generic_file_splice_read,
+> -	.splice_write	= generic_file_splice_write,
+> +	.splice_read	= ext4_file_splice_read,
+> +	.splice_write	= ext4_file_splice_write,
+>  	.fallocate	= ext4_fallocate,
+>  };
+>  
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index f2fa5e8..769ab0f 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4482,6 +4482,12 @@ void ext4_truncate(struct inode *inode)
+>  		goto out_stop;
+>  
+>  	/*
+> +	 * We should block reads/writes to that inode so we are sure we are
+> +	 * consistent and reads/writes remain atomic.
+> +	 */
+> +	down_write(&EXT4_I(inode)->i_rwlock);
+> +
+> +	/*
+>  	 * From here we block out all ext4_get_block() callers who want to
+>  	 * modify the block allocation tree.
+>  	 */
+> @@ -4566,6 +4572,7 @@ do_indirects:
+>  
+>  out_unlock:
+>  	up_write(&ei->i_data_sem);
+> +	up_write(&EXT4_I(inode)->i_rwlock);
+>  	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
+>  	ext4_mark_inode_dirty(handle, inode);
+>  
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 8553dfb..2dbe86a 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -895,6 +895,7 @@ static void init_once(void *foo)
+>  	init_rwsem(&ei->xattr_sem);
+>  #endif
+>  	init_rwsem(&ei->i_data_sem);
+> +	init_rwsem(&ei->i_rwlock);
+>  	inode_init_once(&ei->vfs_inode);
+>  }
+>  
 > 
 
 -- 
