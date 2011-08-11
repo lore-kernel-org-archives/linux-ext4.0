@@ -1,80 +1,122 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH 08/13] ext4: add a function which sets up a flex groups each time
-Date: Thu, 11 Aug 2011 11:28:23 +0800
-Message-ID: <1313033308-882-9-git-send-email-xiaoqiangnk@gmail.com>
-References: <1313033308-882-1-git-send-email-xiaoqiangnk@gmail.com>
-Cc: aedilger@gmail.com, tytso@mit.edu,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 01/13] ext4: add a function which extends a group without checking parameters
+Date: Wed, 10 Aug 2011 23:47:05 -0600
+Message-ID: <4B3266BE-B083-41DE-BD85-BA1497D9EF51@dilger.ca>
+References: <1313033308-882-1-git-send-email-xiaoqiangnk@gmail.com> <1313033308-882-2-git-send-email-xiaoqiangnk@gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: linux-ext4 List <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f42.google.com ([209.85.210.42]:48649 "EHLO
-	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753987Ab1HKDfm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Aug 2011 23:35:42 -0400
-Received: by mail-pz0-f42.google.com with SMTP id 37so2947235pzk.1
-        for <linux-ext4@vger.kernel.org>; Wed, 10 Aug 2011 20:35:42 -0700 (PDT)
-In-Reply-To: <1313033308-882-1-git-send-email-xiaoqiangnk@gmail.com>
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:13260 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751036Ab1HKFrH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Aug 2011 01:47:07 -0400
+In-Reply-To: <1313033308-882-2-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds a function named ext4_setup_new_descs() which sets up
-a flex groups each time.
+On 2011-08-10, at 9:28 PM, Yongqiang Yang wrote:
+> This patch added a function named __ext4_group_extend() whose code
+> is copied from ext4_group_extend().  __ext4_group_extend() assumes
+> the parameter is valid and has been checked by caller.
+> 
+> __ext4_group_extend() will be used by new resize implementation. It
+> can also be used by ext4_group_extend(), but this patch series does
+> not do this.
 
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
----
- fs/ext4/resize.c |   25 +++++++++++++++++++++++--
- 1 files changed, 23 insertions(+), 2 deletions(-)
+Since this is duplicating a lot of code from ext4_group_extend(), this
+patch should be written in such a way that this new function is added,
+and the duplicate code is removed from ext4_group_extend() and calls
+the new function instead.
 
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 7e91d58..5939b62 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -1114,7 +1114,8 @@ static int ext4_add_new_descs(handle_t *handle, struct super_block *sb,
-  * @sb: super block
-  */
- static int ext4_setup_new_desc(handle_t *handle, struct super_block *sb,
--			       struct ext4_new_group_data *input)
-+			       struct ext4_new_group_data *input,
-+			       __u16 bg_flags)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	ext4_group_t group;
-@@ -1143,7 +1144,7 @@ static int ext4_setup_new_desc(handle_t *handle, struct super_block *sb,
- 	ext4_inode_table_set(sb, gdp, input->inode_table); /* LV FIXME */
- 	ext4_free_blks_set(sb, gdp, input->free_blocks_count);
- 	ext4_free_inodes_set(sb, gdp, EXT4_INODES_PER_GROUP(sb));
--	gdp->bg_flags = cpu_to_le16(EXT4_BG_INODE_ZEROED);
-+	gdp->bg_flags = cpu_to_le16(bg_flags);
- 	gdp->bg_checksum = ext4_group_desc_csum(sbi, input->group, gdp);
- 
- 	err = ext4_handle_dirty_metadata(handle, NULL, gdb_bh);
-@@ -1162,6 +1163,26 @@ static int ext4_setup_new_desc(handle_t *handle, struct super_block *sb,
- }
- 
- /*
-+ * ext4_setup_new_descs setups group descriptors of a flex groups
-+ */
-+static int ext4_setup_new_descs(handle_t *handle, struct super_block *sb,
-+				struct ext4_new_flex_group_data *flex_gd)
-+{
-+	struct ext4_new_group_data *group_data = flex_gd->groups;
-+	__u16 *bg_flags = flex_gd->bg_flags;
-+	int i, err = 0;
-+
-+	for (i = 0; i < flex_gd->count; i++) {
-+		err = ext4_setup_new_desc(handle, sb, group_data + i,
-+					  bg_flags[i]);
-+		if (err)
-+			return err;
-+	}
-+
-+	return err;
-+}
-+
-+/*
-  * ext4_update_super() updates super so that new the added group can be seen
-  *   by the filesystem.
-  *
--- 
-1.7.5.1
+It looks like all of these patches are adding a completely duplicate set
+of functions for doing the resizing, even though they are largely the
+same as the existing code, and it will mean duplicate efforts to maintain
+both copies of the code.
+
+> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+> ---
+> fs/ext4/resize.c |   53 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+> 1 files changed, 53 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+> index 707d3f1..6ffbdb6 100644
+> --- a/fs/ext4/resize.c
+> +++ b/fs/ext4/resize.c
+> @@ -969,6 +969,59 @@ exit_put:
+> } /* ext4_group_add */
+> 
+> /*
+> + * extend a group without checking assuming that checking has been done.
+> + */
+> +static int __ext4_group_extend(struct super_block *sb,
+> +			       ext4_fsblk_t o_blocks_count, ext4_grpblk_t add)
+> +{
+> +	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+> +	handle_t *handle;
+> +	int err = 0, err2;
+> +
+> +	/* We will update the superblock, one block bitmap, and
+> +	 * one group descriptor via ext4_ext4_group_add_blocks().
+
+Typo here: "ext4_ext4"
+
+> +	 */
+> +	handle = ext4_journal_start_sb(sb, 3);
+> +	if (IS_ERR(handle)) {
+> +		err = PTR_ERR(handle);
+> +		ext4_warning(sb, "error %d on journal start", err);
+> +		goto out;
+> +	}
+> +
+> +	err = ext4_journal_get_write_access(handle, EXT4_SB(sb)->s_sbh);
+> +	if (err) {
+> +		ext4_warning(sb, "error %d on journal write access", err);
+> +		ext4_journal_stop(handle);
+> +		goto out;
+> +	}
+> +
+> +	ext4_blocks_count_set(es, o_blocks_count + add);
+> +	ext4_debug("freeing blocks %llu through %llu\n", o_blocks_count,
+> +		   o_blocks_count + add);
+> +	/* We add the blocks to the bitmap and set the group need init bit */
+> +	err = ext4_group_add_blocks(handle, sb, o_blocks_count, add);
+> +	if (err)
+> +		goto exit_journal;
+> +	ext4_handle_dirty_super(handle, sb);
+> +	ext4_debug("freed blocks %llu through %llu\n", o_blocks_count,
+> +		   o_blocks_count + add);
+> +exit_journal:
+> +	err2 = ext4_journal_stop(handle);
+> +	if (err2 && !err)
+> +		err = err2;
+> +
+> +	if (!err) {
+> +		if (test_opt(sb, DEBUG))
+> +			printk(KERN_DEBUG "EXT4-fs: extended group to %llu "
+> +			       "blocks\n", ext4_blocks_count(es));
+> +		update_backups(sb, EXT4_SB(sb)->s_sbh->b_blocknr, (char *)es,
+> +			       sizeof(struct ext4_super_block));
+> +	}
+> +out:
+> +	return err;
+> +}
+> +
+> +/*
+>  * Extend the filesystem to the new number of blocks specified.  This entry
+>  * point is only used to extend the current filesystem to the end of the last
+>  * existing group.  It can be accessed via ioctl, or by "remount,resize=<size>"
+> -- 
+> 1.7.5.1
+> 
+
+
+Cheers, Andreas
+
+
+
+
 
