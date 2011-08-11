@@ -1,138 +1,99 @@
-From: Steven Liu <lingjiujianke@gmail.com>
-Subject: Re: [PATCH 05/13] ext4: add a structure which will be used by
- 64bit-resize interface
-Date: Thu, 11 Aug 2011 18:57:24 +0800
-Message-ID: <CADxeRwkB+Mx_bg_etdwb8qzfSKPtnnEE3T_XiupRHwXGotVosQ@mail.gmail.com>
-References: <1313033308-882-1-git-send-email-xiaoqiangnk@gmail.com>
-	<1313033308-882-6-git-send-email-xiaoqiangnk@gmail.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH] loop: add discard support for loop devices
+Date: Thu, 11 Aug 2011 13:56:35 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1108111348020.4160@dhcp-27-109.brq.redhat.com>
+References: <1313063143-14473-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, aedilger@gmail.com, tytso@mit.edu
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-kernel@vger.kernel.org, Jens Axboe <jaxboe@fusionio.com>,
+	Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
+To: achender@linux.vnet.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:34952 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751821Ab1HKK5Z convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Aug 2011 06:57:25 -0400
-Received: by bke11 with SMTP id 11so886145bke.19
-        for <linux-ext4@vger.kernel.org>; Thu, 11 Aug 2011 03:57:24 -0700 (PDT)
-In-Reply-To: <1313033308-882-6-git-send-email-xiaoqiangnk@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:50505 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753538Ab1HKL4k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 11 Aug 2011 07:56:40 -0400
+In-Reply-To: <1313063143-14473-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-TO: Yongqiang
+On Thu, 11 Aug 2011, Lukas Czerner wrote:
 
-2011/8/11 Yongqiang Yang <xiaoqiangnk@gmail.com>:
-> This patch adds a structure which will be used by 64bit-resize interf=
-ace.
-> Two functions which allocate and destroy the structure respectively a=
-re
-> added.
->
-> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-> ---
-> =A0fs/ext4/resize.c | =A0 56 ++++++++++++++++++++++++++++++++++++++++=
-++++++++++++++
-> =A01 files changed, 56 insertions(+), 0 deletions(-)
->
-> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-> index 14be865..c586e51 100644
-> --- a/fs/ext4/resize.c
-> +++ b/fs/ext4/resize.c
-> @@ -134,6 +134,62 @@ static int verify_group_input(struct super_block=
- *sb,
-> =A0 =A0 =A0 =A0return err;
-> =A0}
->
-> +/*
-> + * ext4_new_flex_group_data is used by 64bit-resize interface to add=
- a flex
-> + * group each time.
-> + */
-> +struct ext4_new_flex_group_data {
-> + =A0 =A0 =A0 struct ext4_new_group_data *groups; =A0 =A0 /* new_grou=
-p_data for groups
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0in the flex group */
-> + =A0 =A0 =A0 __u16 *bg_flags; =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0/* block group flags of groups
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0in @groups */
-> + =A0 =A0 =A0 ext4_group_t count; =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 /* number of groups in @groups
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0*/
-> +};
-> +
-> +/*
-> + * alloc_flex_gd() allocates a ext4_new_flex_group_data with size of
-> + * @flexbg_size.
-> + *
-> + * Returns NULL on failure otherwise address of the allocated struct=
-ure.
-> + */
-> +static struct ext4_new_flex_group_data *alloc_flex_gd(unsigned long =
-flexbg_size)
-> +{
-> + =A0 =A0 =A0 struct ext4_new_flex_group_data *flex_gd;
-> +
-> + =A0 =A0 =A0 flex_gd =3D kmalloc(sizeof(*flex_gd), GFP_NOFS);
-> + =A0 =A0 =A0 if (flex_gd =3D=3D NULL) {
-                    printk( KERN_WARNING "not enough memory for flex_gd=
-\n" );
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out3;
-             }
-> +
-> + =A0 =A0 =A0 flex_gd->count =3D flexbg_size;
-> +
-> + =A0 =A0 =A0 flex_gd->groups =3D kmalloc(sizeof(struct ext4_new_grou=
-p_data) *
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 fle=
-xbg_size, GFP_NOFS);
-> + =A0 =A0 =A0 if (flex_gd->groups =3D=3D NULL) {
-                    printk( KERN_WARNING "not enough memory for
-flex_gd->groups\n" );
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out2;
-            }
-> +
-> + =A0 =A0 =A0 flex_gd->bg_flags =3D kmalloc(flexbg_size * sizeof(__u1=
-6), GFP_NOFS);
-> + =A0 =A0 =A0 if (flex_gd->bg_flags =3D=3D NULL) {
-                    printk( KERN_WARNING "not enough memory for
-flex_gd->bg_flags\n" );
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out1;
-             }
-> +
-> + =A0 =A0 =A0 return flex_gd;
-> +
-out1:
- =A0 =A0 kfree(flex_gd->groups);
-> +out2:
-> + =A0 =A0 =A0 kfree(flex_gd);
- out3:
-> + =A0 =A0 =A0 return NULL;
-> +}
-> +
-> +void free_flex_gd(struct ext4_new_flex_group_data *flex_gd)
-> +{
-> + =A0 =A0 =A0 kfree(flex_gd->bg_flags);
-> + =A0 =A0 =A0 kfree(flex_gd->groups);
-> + =A0 =A0 =A0 kfree(flex_gd);
-> +}
-> +
-> =A0static struct buffer_head *bclean(handle_t *handle, struct super_b=
-lock *sb,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ex=
-t4_fsblk_t blk)
-> =A0{
+> This commit adds discard support for loop devices. Discard is usually
+> supported by SSD and thinly provisioned devices as a method for
+> reclaiming unused space. This is no different than trying to reclaim
+> back space which is not used by the file system on the image, but it
+> still occupies space on the host file system.
+> 
+> We can do the reclamation on file system which does support hole
+> punching. So when discard request gets to the loop driver we can
+> translate that to punch a hole to the underlying file, hence reclaim
+> the free space.
+> 
+> This is very useful for trimming down the size of the image to only what
+> is really used by the file system on that image. Fstrim may be used for
+> that purpose.
+> 
+> It has been tested on ext4, xfs and btrfs with the image file systems
+> ext4, ext3, xfs and btrfs. ext4, or ext6 image on ext4 file system has
+> some problems but it seems that ext4 punch hole implementation is
+> somewhat flawed and it is unrelated to this commit.
+> 
+> Also this is a very good method of validating file systems punch hole
+> implementation.
+> 
+> Note that when encryption is used, discard support is disabled, because
+> using it might leak some information useful for possible attacker.
+
+Hi Allison,
+
+as I mentioned in the commit description I believe that I have
+seen problems with punch hole implementation. You can apply the
+commit to add discard support for loop device and then here is how
+to reproduce the problem:
 
 
+# mkfs.ext4 /dev/sdd
+# mount /dev/sdd /mnt/test
+# dd if=/dev/zero of=/mnt/test/bigfil2 bs=4096 seek=100M count=1
+# mkfs.ext4 /mnt/test/bigfil2
+# mount -o loop /mnt/test/bigfil2 /mnt/test3/
+# fstrim -v /mnt/test3/
+422650347520 Bytes were trimmed
 
-What about add some message for kmalloc failure, and  goto the label
-looks like the above ?
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+# fsck.ext4 -fn /mnt/test1/bigfil2
+e2fsck 1.41.12 (17-May-2010)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+Block bitmap differences:  +(524288--532511)
+Fix? no
+
+Free blocks count wrong for group #16 (24544, counted=32768).
+Fix? no
+
+Free blocks count wrong (103161576, counted=103169800).
+Fix? no
+
+
+/mnt/test1/bigfil2: ********** WARNING: Filesystem still has errors
+**********
+
+/mnt/test1/bigfil2: 11/26214400 files (0.0% non-contiguous),
+1696024/104857600 blocks
+
+And we also get corrupted file system on the ext3 image. I did
+not saw that for other file systems, but it is probably just the matter
+of how are blocks laid out in the file system format and there are more
+chunks of free blocks in ext[43] than xfs, or btrfs.
+
+Also you can find fstrim in latest util-inux-ng. And lastly I believe
+that this is great way to validate punch hole implementation. Just
+create an image on ext4 file system and run xfstest 251 (or stress.sh -
+oss.oracle.com/~mason/stress.sh) on it the image mounted with -o
+discard.
+
+Thanks!
+-Lukas
