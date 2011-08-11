@@ -1,7 +1,7 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH 11/13] ext4: add a new function which allocates bitmaps and inode tables
-Date: Thu, 11 Aug 2011 11:28:26 +0800
-Message-ID: <1313033308-882-12-git-send-email-xiaoqiangnk@gmail.com>
+Subject: [PATCH 12/13] ext4: add a new function which adds a flex group to a fs
+Date: Thu, 11 Aug 2011 11:28:27 +0800
+Message-ID: <1313033308-882-13-git-send-email-xiaoqiangnk@gmail.com>
 References: <1313033308-882-1-git-send-email-xiaoqiangnk@gmail.com>
 Cc: aedilger@gmail.com, tytso@mit.edu,
 	Yongqiang Yang <xiaoqiangnk@gmail.com>
@@ -9,145 +9,112 @@ To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-pz0-f42.google.com ([209.85.210.42]:48649 "EHLO
 	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754650Ab1HKDfs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Aug 2011 23:35:48 -0400
+	with ESMTP id S1754650Ab1HKDfu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Aug 2011 23:35:50 -0400
 Received: by mail-pz0-f42.google.com with SMTP id 37so2947235pzk.1
-        for <linux-ext4@vger.kernel.org>; Wed, 10 Aug 2011 20:35:48 -0700 (PDT)
+        for <linux-ext4@vger.kernel.org>; Wed, 10 Aug 2011 20:35:50 -0700 (PDT)
 In-Reply-To: <1313033308-882-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds a new function named ext4_allocates_group_table() which
-allcoates block bitmaps, inode bitmaps and inode tables for a flex groups and is
-used by resize code.
+This patch adds a new function named ext4_flex_group_add() which adds a
+flex group to a fs.  The function is used by 64bit-resize interface.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/resize.c |  111 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 111 insertions(+), 0 deletions(-)
+ fs/ext4/resize.c |   82 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 82 insertions(+), 0 deletions(-)
 
 diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 86edf19..d4b892f 100644
+index d4b892f..14082c0 100644
 --- a/fs/ext4/resize.c
 +++ b/fs/ext4/resize.c
-@@ -190,6 +190,117 @@ void free_flex_gd(struct ext4_new_flex_group_data *flex_gd)
- 	kfree(flex_gd);
- }
- 
-+/*
-+ * ext4_allcoate_group_table() allocates block bitmaps, inode bitmaps and
-+ * inode tables for a flex group.
-+ *
-+ * This function is used by 64bit-resize.  Note that this function allocates
-+ * group tables from the 1st group of groups contained by @flexgd, which may
-+ * be a partial of a flex group.
-+ *
-+ * @sb: super block of fs to which the groups belongs
+@@ -1787,3 +1787,85 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
+ exit_put:
+ 	return err;
+ } /* ext4_group_extend */
++
++/* Add a flex group to an fs. Ensure we handle all possible error conditions
++ * _before_ we start modifying the filesystem, because we cannot abort the
++ * transaction and not have it write the data to disk.
 + */
-+static void ext4_alloc_group_tables(struct super_block *sb,
-+				struct ext4_new_flex_group_data *flex_gd,
-+				int flexbg_size)
++static int ext4_flex_group_add(struct super_block *sb,
++			       struct inode *resize_inode,
++			       struct ext4_new_flex_group_data *flex_gd)
 +{
-+	struct ext4_new_group_data *group_data = flex_gd->groups;
-+	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
-+	ext4_fsblk_t start_blk;
-+	ext4_fsblk_t last_blk;
-+	ext4_group_t src_group;
-+	ext4_group_t bb_index = 0;
-+	ext4_group_t ib_index = 0;
-+	ext4_group_t it_index = 0;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct ext4_super_block *es = sbi->s_es;
++	ext4_fsblk_t o_blocks_count;
++	ext4_grpblk_t last;
 +	ext4_group_t group;
-+	ext4_group_t last_group;
-+	unsigned overhead;
++	handle_t *handle;
++	unsigned reserved_gdb;
++	int err = 0, err2 = 0, credit;
 +
-+	BUG_ON(flex_gd->count == 0 || group_data == NULL);
++	BUG_ON(!flex_gd->count || !flex_gd->groups || !flex_gd->bg_flags);
 +
-+	src_group = group_data[0].group;
-+	last_group  = src_group + flex_gd->count - 1;
++	reserved_gdb = le16_to_cpu(es->s_reserved_gdt_blocks);
++	o_blocks_count = ext4_blocks_count(es);
++	ext4_get_group_no_and_offset(sb, o_blocks_count, &group, &last);
++	BUG_ON(last);
 +
-+	BUG_ON((flexbg_size > 1) && ((src_group & ~(flexbg_size - 1)) !=
-+	       (last_group & ~(flexbg_size - 1))));
-+next_group:
-+	group = group_data[0].group;
-+	start_blk = ext4_group_first_block_no(sb, src_group);
-+	last_blk = start_blk + group_data[src_group - group].blocks_count;
-+
-+	overhead = ext4_bg_has_super(sb, src_group) ?
-+		   (1 + ext4_bg_num_gdb(sb, src_group) +
-+		    le16_to_cpu(es->s_reserved_gdt_blocks)) : 0;
-+
-+	start_blk += overhead;
-+
-+	BUG_ON(src_group >= group_data[0].group + flex_gd->count);
-+	/* We collect contiguous blocks as much as possible. */
-+	src_group++;
-+	for (; src_group <= last_group; src_group++)
-+		if (!ext4_bg_has_super(sb, src_group))
-+			last_blk += group_data[src_group - group].blocks_count;
-+		else
-+			break;
-+
-+	/* Allocate block bitmaps */
-+	for (; bb_index < flex_gd->count; bb_index++) {
-+		if (start_blk >= last_blk)
-+			goto next_group;
-+		group_data[bb_index].block_bitmap = start_blk++;
-+		ext4_get_group_no_and_offset(sb, start_blk - 1, &group, NULL);
-+		group -= group_data[0].group;
-+		group_data[group].free_blocks_count--;
-+		if (flexbg_size > 1)
-+			flex_gd->bg_flags[group] &= ~EXT4_BG_BLOCK_UNINIT;
++	err = setup_new_flex_group_blocks(sb, flex_gd);
++	if (err)
++		goto exit;
++	/*
++	 * We will always be modifying at least the superblock and  GDT
++	 * block.  If we are adding a group past the last current GDT block,
++	 * we will also modify the inode and the dindirect block.  If we
++	 * are adding a group with superblock/GDT backups  we will also
++	 * modify each of the reserved GDT dindirect blocks.
++	 */
++	credit = flex_gd->count * 4 + reserved_gdb;
++	handle = ext4_journal_start_sb(sb, credit);
++	if (IS_ERR(handle)) {
++		err = PTR_ERR(handle);
++		goto exit;
 +	}
 +
-+	/* Allocate inode bitmaps */
-+	for (; ib_index < flex_gd->count; ib_index++) {
-+		if (start_blk >= last_blk)
-+			goto next_group;
-+		group_data[ib_index].inode_bitmap = start_blk++;
-+		ext4_get_group_no_and_offset(sb, start_blk - 1, &group, NULL);
-+		group -= group_data[0].group;
-+		group_data[group].free_blocks_count--;
-+		if (flexbg_size > 1)
-+			flex_gd->bg_flags[group] &= ~EXT4_BG_BLOCK_UNINIT;
-+	}
++	err = ext4_journal_get_write_access(handle, sbi->s_sbh);
++	if (err)
++		goto exit_journal;
 +
-+	/* Allocate inode tables */
-+	for (; it_index < flex_gd->count; it_index++) {
-+		if (start_blk + EXT4_SB(sb)->s_itb_per_group > last_blk)
-+			goto next_group;
-+		group_data[it_index].inode_table = start_blk;
-+		ext4_get_group_no_and_offset(sb, start_blk, &group, NULL);
-+		group -= group_data[0].group;
-+		group_data[group].free_blocks_count -=
-+					EXT4_SB(sb)->s_itb_per_group;
-+		if (flexbg_size > 1)
-+			flex_gd->bg_flags[group] &= ~EXT4_BG_BLOCK_UNINIT;
++	group = flex_gd->groups[0].group;
++	BUG_ON(group != EXT4_SB(sb)->s_groups_count);
++	err = ext4_add_new_descs(handle, sb, group,
++				resize_inode, flex_gd->count);
++	if (err)
++		goto exit_journal;
 +
-+		start_blk += EXT4_SB(sb)->s_itb_per_group;
-+	}
++	err = ext4_setup_new_descs(handle, sb, flex_gd);
++	if (err)
++		goto exit_journal;
 +
-+	if (test_opt(sb, DEBUG)) {
++	ext4_update_super(sb, flex_gd);
++
++	err = ext4_handle_dirty_super(handle, sb);
++
++exit_journal:
++	err2 = ext4_journal_stop(handle);
++	if (!err)
++		err = err2;
++
++	if (!err) {
 +		int i;
-+		group = group_data[0].group;
-+
-+		printk(KERN_DEBUG "EXT4-fs: adding a flex group with "
-+		       "%d groups, flexbg size is %d:\n", flex_gd->count,
-+		       flexbg_size);
-+
-+		for (i = 0; i < flex_gd->count; i++) {
-+			printk(KERN_DEBUG "adding %s group %u: %u "
-+			       "blocks (%d free)\n",
-+			       ext4_bg_has_super(sb, group + i) ? "normal" :
-+			       "no-super", group + i,
-+			       group_data[i].blocks_count,
-+			       group_data[i].free_blocks_count);
++		update_backups(sb, sbi->s_sbh->b_blocknr, (char *)es,
++			       sizeof(struct ext4_super_block));
++		for (i = 0; i < flex_gd->count; i++, group++) {
++			struct buffer_head *gdb_bh;
++			int gdb_num;
++			gdb_num = group / EXT4_BLOCKS_PER_GROUP(sb);
++			gdb_bh = sbi->s_group_desc[gdb_num];
++			update_backups(sb, gdb_bh->b_blocknr, gdb_bh->b_data,
++				       gdb_bh->b_size);
 +		}
 +	}
++exit:
++	return err;
 +}
-+
- static struct buffer_head *bclean(handle_t *handle, struct super_block *sb,
- 				  ext4_fsblk_t blk)
- {
 -- 
 1.7.5.1
 
