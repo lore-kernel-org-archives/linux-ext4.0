@@ -1,7 +1,7 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH 12/13] ext4: add a new function which adds a flex group to a fs
-Date: Thu, 11 Aug 2011 11:28:27 +0800
-Message-ID: <1313033308-882-13-git-send-email-xiaoqiangnk@gmail.com>
+Subject: [PATCH 08/13] ext4: add a function which sets up a flex groups each time
+Date: Thu, 11 Aug 2011 11:28:23 +0800
+Message-ID: <1313033308-882-9-git-send-email-xiaoqiangnk@gmail.com>
 References: <1313033308-882-1-git-send-email-xiaoqiangnk@gmail.com>
 Cc: aedilger@gmail.com, tytso@mit.edu,
 	Yongqiang Yang <xiaoqiangnk@gmail.com>
@@ -9,112 +9,72 @@ To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-pz0-f42.google.com ([209.85.210.42]:48649 "EHLO
 	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754650Ab1HKDfu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Aug 2011 23:35:50 -0400
+	with ESMTP id S1753987Ab1HKDfm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Aug 2011 23:35:42 -0400
 Received: by mail-pz0-f42.google.com with SMTP id 37so2947235pzk.1
-        for <linux-ext4@vger.kernel.org>; Wed, 10 Aug 2011 20:35:50 -0700 (PDT)
+        for <linux-ext4@vger.kernel.org>; Wed, 10 Aug 2011 20:35:42 -0700 (PDT)
 In-Reply-To: <1313033308-882-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds a new function named ext4_flex_group_add() which adds a
-flex group to a fs.  The function is used by 64bit-resize interface.
+This patch adds a function named ext4_setup_new_descs() which sets up
+a flex groups each time.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/resize.c |   82 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 82 insertions(+), 0 deletions(-)
+ fs/ext4/resize.c |   25 +++++++++++++++++++++++--
+ 1 files changed, 23 insertions(+), 2 deletions(-)
 
 diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index d4b892f..14082c0 100644
+index 7e91d58..5939b62 100644
 --- a/fs/ext4/resize.c
 +++ b/fs/ext4/resize.c
-@@ -1787,3 +1787,85 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
- exit_put:
- 	return err;
- } /* ext4_group_extend */
-+
-+/* Add a flex group to an fs. Ensure we handle all possible error conditions
-+ * _before_ we start modifying the filesystem, because we cannot abort the
-+ * transaction and not have it write the data to disk.
+@@ -1114,7 +1114,8 @@ static int ext4_add_new_descs(handle_t *handle, struct super_block *sb,
+  * @sb: super block
+  */
+ static int ext4_setup_new_desc(handle_t *handle, struct super_block *sb,
+-			       struct ext4_new_group_data *input)
++			       struct ext4_new_group_data *input,
++			       __u16 bg_flags)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	ext4_group_t group;
+@@ -1143,7 +1144,7 @@ static int ext4_setup_new_desc(handle_t *handle, struct super_block *sb,
+ 	ext4_inode_table_set(sb, gdp, input->inode_table); /* LV FIXME */
+ 	ext4_free_blks_set(sb, gdp, input->free_blocks_count);
+ 	ext4_free_inodes_set(sb, gdp, EXT4_INODES_PER_GROUP(sb));
+-	gdp->bg_flags = cpu_to_le16(EXT4_BG_INODE_ZEROED);
++	gdp->bg_flags = cpu_to_le16(bg_flags);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, input->group, gdp);
+ 
+ 	err = ext4_handle_dirty_metadata(handle, NULL, gdb_bh);
+@@ -1162,6 +1163,26 @@ static int ext4_setup_new_desc(handle_t *handle, struct super_block *sb,
+ }
+ 
+ /*
++ * ext4_setup_new_descs setups group descriptors of a flex groups
 + */
-+static int ext4_flex_group_add(struct super_block *sb,
-+			       struct inode *resize_inode,
-+			       struct ext4_new_flex_group_data *flex_gd)
++static int ext4_setup_new_descs(handle_t *handle, struct super_block *sb,
++				struct ext4_new_flex_group_data *flex_gd)
 +{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct ext4_super_block *es = sbi->s_es;
-+	ext4_fsblk_t o_blocks_count;
-+	ext4_grpblk_t last;
-+	ext4_group_t group;
-+	handle_t *handle;
-+	unsigned reserved_gdb;
-+	int err = 0, err2 = 0, credit;
++	struct ext4_new_group_data *group_data = flex_gd->groups;
++	__u16 *bg_flags = flex_gd->bg_flags;
++	int i, err = 0;
 +
-+	BUG_ON(!flex_gd->count || !flex_gd->groups || !flex_gd->bg_flags);
-+
-+	reserved_gdb = le16_to_cpu(es->s_reserved_gdt_blocks);
-+	o_blocks_count = ext4_blocks_count(es);
-+	ext4_get_group_no_and_offset(sb, o_blocks_count, &group, &last);
-+	BUG_ON(last);
-+
-+	err = setup_new_flex_group_blocks(sb, flex_gd);
-+	if (err)
-+		goto exit;
-+	/*
-+	 * We will always be modifying at least the superblock and  GDT
-+	 * block.  If we are adding a group past the last current GDT block,
-+	 * we will also modify the inode and the dindirect block.  If we
-+	 * are adding a group with superblock/GDT backups  we will also
-+	 * modify each of the reserved GDT dindirect blocks.
-+	 */
-+	credit = flex_gd->count * 4 + reserved_gdb;
-+	handle = ext4_journal_start_sb(sb, credit);
-+	if (IS_ERR(handle)) {
-+		err = PTR_ERR(handle);
-+		goto exit;
++	for (i = 0; i < flex_gd->count; i++) {
++		err = ext4_setup_new_desc(handle, sb, group_data + i,
++					  bg_flags[i]);
++		if (err)
++			return err;
 +	}
 +
-+	err = ext4_journal_get_write_access(handle, sbi->s_sbh);
-+	if (err)
-+		goto exit_journal;
-+
-+	group = flex_gd->groups[0].group;
-+	BUG_ON(group != EXT4_SB(sb)->s_groups_count);
-+	err = ext4_add_new_descs(handle, sb, group,
-+				resize_inode, flex_gd->count);
-+	if (err)
-+		goto exit_journal;
-+
-+	err = ext4_setup_new_descs(handle, sb, flex_gd);
-+	if (err)
-+		goto exit_journal;
-+
-+	ext4_update_super(sb, flex_gd);
-+
-+	err = ext4_handle_dirty_super(handle, sb);
-+
-+exit_journal:
-+	err2 = ext4_journal_stop(handle);
-+	if (!err)
-+		err = err2;
-+
-+	if (!err) {
-+		int i;
-+		update_backups(sb, sbi->s_sbh->b_blocknr, (char *)es,
-+			       sizeof(struct ext4_super_block));
-+		for (i = 0; i < flex_gd->count; i++, group++) {
-+			struct buffer_head *gdb_bh;
-+			int gdb_num;
-+			gdb_num = group / EXT4_BLOCKS_PER_GROUP(sb);
-+			gdb_bh = sbi->s_group_desc[gdb_num];
-+			update_backups(sb, gdb_bh->b_blocknr, gdb_bh->b_data,
-+				       gdb_bh->b_size);
-+		}
-+	}
-+exit:
 +	return err;
 +}
++
++/*
+  * ext4_update_super() updates super so that new the added group can be seen
+  *   by the filesystem.
+  *
 -- 
 1.7.5.1
 
