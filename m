@@ -1,58 +1,68 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Question about BIGALLOC
-Date: Wed, 10 Aug 2011 22:59:44 -0400
-Message-ID: <20110811025944.GE3625@thunk.org>
-References: <CAFZ0FUUH85yWoVZ3XpMMYjhiaDrV9QQRSrLsAomXhH8uG_duBg@mail.gmail.com>
+Subject: Re: [PATCH 1/1 v4] ext4: fix xfstests 75, 112, 127 punch hole
+ failure
+Date: Wed, 10 Aug 2011 23:17:12 -0400
+Message-ID: <20110811031712.GF3625@thunk.org>
+References: <1312698112-7836-1-git-send-email-achender@linux.vnet.ibm.com>
+ <20110808024213.GC11497@thunk.org>
+ <4E404D06.6010002@linux.vnet.ibm.com>
+ <20110809164524.GA3422@thunk.org>
+ <4E41A254.3030300@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Robin Dong <hao.bigrat@gmail.com>
+To: Allison Henderson <achender@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:42188 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:46378 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751075Ab1HKC7q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Aug 2011 22:59:46 -0400
+	id S1753522Ab1HKDRW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Aug 2011 23:17:22 -0400
 Content-Disposition: inline
-In-Reply-To: <CAFZ0FUUH85yWoVZ3XpMMYjhiaDrV9QQRSrLsAomXhH8uG_duBg@mail.gmail.com>
+In-Reply-To: <4E41A254.3030300@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 05, 2011 at 03:59:01PM +0800, Robin Dong wrote:
-> Hi, Ted
-> 
-> I am doing some test of BIGALLOC using "next" branch of e2fsprogs and
-> kernel (3.0) with 23 bigalloc-patches.
-> 
-> Everything seems to work, but I have a question:
-> the "ee_len" of "struct ext4_extent" is used to indicate block numbers
-> not cluster,
-> an ext4_extent in 4K-block-size filesystem can only hold 128MB space at most
-> even with BIGALLOC feature enabled, so we don't have any benefit from
-> this for a file with large number of blocks.
-> 
-> Is this the design behavior or you will change it in the next version?
+On Tue, Aug 09, 2011 at 02:10:44PM -0700, Allison Henderson wrote:
+> >	/*
+> >	 * Now we need to zero out the non-block-aligned data.
+> >	 * If the file space being truncated is smaller than
+> >	 * than a block, just zero out the middle
+> >	 */
+> >
+> Hmm, for this piece here, Im not sure I quite follow you.  I was
+> pretty sure that ext4_block_zero_page() only deals with ranges that
+> appear with in one block.  
 
-It's not something I can change, because the VM subsystem
-fundamentally assumes that file system block size is less than or
-equal to the page size.  If I changed the granularity in the extent
-length, then in the case of a sparse file, blocks would have to be
-allocated and zero'ed in units of a cluster.  The VM doesn't support
-this well.
+Yes, that's true.  What I was objecting to in the comment is the
+phrase "smaller than a block".  That's not right, or it's only right
+if blocksize == page size.  That comment should really read, "if the
+file space is smaller than a ***page***" zero out the middle.
 
-For example, suppose you fallocate a file to be 1 megabyte.  That
-means that you have a 1mb extent which is marked as uninitialized.
-Now suppose you mmap() this file, and then you write a single byte at
-offset 20480.  This dirties a single 4k page, and when we write out
-that page, we end up converting the 1mb extent uninitialized extent
-into 3 extents: a 20k uninitalized extent, a 4k initialized extent,
-and a 1000k uninitalized extent.  Now suppose this was done on a
-bigalloc file system with a 64k cluster size.  If ee_len was
-denominated in 64k cluster chunks, we couldn't express the concept of
-a 20k or 4k extent.
+That's what happens in ext4_block_zero_page(), and so it works
+correctly; but the comment is confusing, and it makes the reader think
+that all we only need to zero is based on block boundaries, when in
+fact when we look at zeroing memory, we have to base it on page
+boundaries.
 
-This is the same reason why we can't support a 64k file system block
-size.  If the user dirties a single 4k block in an otherwise sparse
-file, the VM would have to instantiate the other 56k pages and zero
-them (atomically!) --- and the VM doesn't know how to do this.
+Basically for either punch or truncate what we must do is:
 
-     		       	       	  	  - Ted
+   *) Zero partial pages
+   *) Unmap full pages
+   *) We take buffer_heads which have been freed and either
+      (a) detach them, or 
+      (b) clear the mapped flag, to indicate that the block number
+           in the bh is invalid 
+
+Using "unmap" for both pages and blocks can be confusing, since for
+pages, unmapping means that we remove the page completely from the
+page cache, so any future attempt to read from that virtual memory
+address will result in a zero page getting mapped in.
+
+However, for buffers, "unmapping" merely means that we are removing
+the mapping to the disk block which has been deallocated by the punch
+operation.  It does not result in anything getting zero'ed out in the
+_page_ cache, which is why we need to zero out partial pages.
+
+Does that make sense?
+
+						- Ted
