@@ -1,149 +1,114 @@
-From: Jiaying Zhang <jiayingz@google.com>
-Subject: Re: DIO process stuck apparently due to dioread_nolock (3.0)
-Date: Thu, 11 Aug 2011 19:46:10 -0700
-Message-ID: <CAFgt=MCgfN-6_uBm=pDaeLqJKJQkSHry91XbYwWq=iBXip3D-w@mail.gmail.com>
-References: <4E4262A5.6030903@msgid.tls.msk.ru>
-	<20110811115943.GF4755@quack.suse.cz>
-	<4E43C956.3060507@msgid.tls.msk.ru>
-	<20110811140101.GA18802@quack.suse.cz>
-	<4E4435F4.6000406@msgid.tls.msk.ru>
+From: Robin Dong <hao.bigrat@gmail.com>
+Subject: Re: [PATCH 1/2 bigalloc] e2fsprogs: remove wrong EXT2FS_C2B in check_block_end
+Date: Fri, 12 Aug 2011 11:44:41 +0800
+Message-ID: <CAFZ0FUXHeiU3d_6XsXLD7shzw=bW_WhLSTuh5R9BimWP=bn-_Q@mail.gmail.com>
+References: <1312429682-16970-1-git-send-email-hao.bigrat@gmail.com>
+	<1312429682-16970-2-git-send-email-hao.bigrat@gmail.com>
+	<20110811024933.GC3625@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Michael Tokarev <mjt@tls.msk.ru>
+Cc: linux-ext4@vger.kernel.org
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([74.125.121.67]:41990 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751440Ab1HLCqQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Aug 2011 22:46:16 -0400
-Received: from hpaq1.eem.corp.google.com (hpaq1.eem.corp.google.com [172.25.149.1])
-	by smtp-out.google.com with ESMTP id p7C2kFYL015637
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Aug 2011 19:46:15 -0700
-Received: from gyh3 (gyh3.prod.google.com [10.243.50.195])
-	by hpaq1.eem.corp.google.com with ESMTP id p7C2kCww010710
-	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=NOT)
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Aug 2011 19:46:13 -0700
-Received: by gyh3 with SMTP id 3so2222329gyh.23
-        for <linux-ext4@vger.kernel.org>; Thu, 11 Aug 2011 19:46:12 -0700 (PDT)
-In-Reply-To: <4E4435F4.6000406@msgid.tls.msk.ru>
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:44855 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751307Ab1HLDom convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Aug 2011 23:44:42 -0400
+Received: by qyk38 with SMTP id 38so121293qyk.19
+        for <linux-ext4@vger.kernel.org>; Thu, 11 Aug 2011 20:44:41 -0700 (PDT)
+In-Reply-To: <20110811024933.GC3625@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Michael,
+2011/8/11 Ted Ts'o <tytso@mit.edu>:
+> On Thu, Aug 04, 2011 at 11:48:02AM +0800, Robin Dong wrote:
+>> From: Robin Dong <sanbai@taobao.com>
+>>
+>> The argument "save_blocks_count" and the block bitmap has the unit o=
+f cluster,
+>> so it don't need EXT2FS_C2B to convert argument "i".
+>>
+>> This patch is based on "next" branch of e2fsprogs.
+>>
+>> Signed-off-by: Robin Dong <sanbai@taobao.com>
+>> Cc: Ted Ts'o <tytso@mit.edu>
+>
+> No, I don't think this is right. =A0Regardless of whether the unit of
+> the block bitmap is cluster- or block- (only while mke2fs is running,
+> and only initially) based, the argument to
+> ext2fs_{test,mark,unmark}_block_bitmap is always in blocks.
+>
+> That's why the EXT2FS_C2B is necessary.
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0- Ted
+>
 
-Could you try your test with the patch I just posted:
-http://marc.info/?l=3Dlinux-ext4&m=3D131311627101278&w=3D2
-and see whether it fixes the problem?
+Hi, Ted
 
-Thanks!
+Last week I did some wrecking-case to test e2fsck ("next" branch) and
+find a error in it:
 
-Jiaying
+1. misc/mke2fs -m 0 -O
+^has_journal,^resize_inode,^uninit_bg,bigalloc,extent,meta_bg,flex_bg
+/dev/sda4
+2. copy some file into /dev/sda4
+3. set an inode's mode to zero
+4. e2fsck -f /dev/sda4
 
-On Thu, Aug 11, 2011 at 1:05 PM, Michael Tokarev <mjt@tls.msk.ru> wrote=
-:
-> 11.08.2011 18:01, Jan Kara wrote:
-> []
->>>>> When it happens, a process doing direct AIO stalls
->>>>> infinitely, with the following backtrace:
->>>>>
->>>>> [87550.759848] INFO: task oracle:23176 blocked for more than 120 =
-seconds.
->>>>> [87550.759892] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs"=
- disables this message.
->>>>> [87550.759955] oracle =A0 =A0 =A0 =A0 =A0D 0000000000000000 =A0 =A0=
- 0 23176 =A0 =A0 =A01 0x00000000
->>>>> [87550.760006] =A0ffff8820457b47d0 0000000000000082 ffff880600000=
-000 ffff881278e3f7d0
->>>>> [87550.760085] =A0ffff8806215c1fd8 ffff8806215c1fd8 ffff8806215c1=
-fd8 ffff8820457b47d0
->>>>> [87550.760163] =A0ffffea0010bd7c68 ffffffff00000000 ffff882045512=
-ef8 ffffffff810eeda2
->>>>> [87550.760245] Call Trace:
->>>>> [87550.760285] =A0[<ffffffff810eeda2>] ? __do_fault+0x422/0x520
->>>>> [87550.760327] =A0[<ffffffff81111ded>] ? kmem_getpages+0x5d/0x170
->>>>> [87550.760367] =A0[<ffffffff81112e58>] ? ____cache_alloc_node+0x4=
-8/0x140
->>>>> [87550.760430] =A0[<ffffffffa0123e6d>] ? ext4_file_write+0x20d/0x=
-260 [ext4]
->>>>> [87550.760475] =A0[<ffffffff8106aee0>] ? abort_exclusive_wait+0xb=
-0/0xb0
->>>>> [87550.760523] =A0[<ffffffffa0123c60>] ? ext4_llseek+0x120/0x120 =
-[ext4]
->>>>> [87550.760566] =A0[<ffffffff81162173>] ? aio_rw_vect_retry+0x73/0=
-x1d0
->>>>> [87550.760607] =A0[<ffffffff8116302f>] ? aio_run_iocb+0x5f/0x160
->>>>> [87550.760646] =A0[<ffffffff81164258>] ? do_io_submit+0x4f8/0x600
->>>>> [87550.760689] =A0[<ffffffff81359b52>] ? system_call_fastpath+0x1=
-6/0x1b
->>>> =A0 Hmm, the stack trace does not quite make sense to me - the par=
-t between
->>>> __do_fault and aio_rw_vect_retry is somehow broken. I can imagine =
-we
->>>> blocked in ext4_file_write() but I don't see any place there where=
- we would
->>>> allocate memory. By any chance, are there messages like "Unaligned=
- AIO/DIO
->>>> on inode ..." in the kernel log?
->>>
->>> Yes, there are warnings about unaligned DIO, referring to this same
->>> process actually. Oracle does almost good job at aligning writes
->>> (usually it does i/o by its blocks which are 4Kb by default but
->>> are set to something larger - like 16Kb - for larger database).
->>> Except of a few cases, and lgwr process is one of them (*) - it
->>> writes logfiles using 512b blocks. =A0This is okay for a raw device
->>> with 512bytes blocks, but ext4 expects 4k writes at min.
->>>
->>> (*) another case is writing to control file, which is also done in
->>> 512byte chunks.
->> =A0 Ah, OK. I think the code ext4_end_io_nolock() handling the wait =
-queue
->> might be racy. waitqueue_active() check is missing a barrier I think=
-=2E
->> Does attached (untested) patch fix the issue for you?
->
-> With this patch applied, I can reproduce the problem easily too:
->
-> [ =A0 76.982985] EXT4-fs (dm-1): Unaligned AIO/DIO on inode 3407879 b=
-y oracle; performance will be poor.
-> [ 1469.734114] SysRq : Show Blocked State
-> [ 1469.734157] =A0 task =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
-PC stack =A0 pid father
-> [ 1469.734473] oracle =A0 =A0 =A0 =A0 =A0D 0000000000000000 =A0 =A0 0=
- =A06146 =A0 =A0 =A01 0x00000000
-> [ 1469.734525] =A0ffff88103f604810 0000000000000082 ffff881000000000 =
-ffff881079791040
-> [ 1469.734603] =A0ffff880432c19fd8 ffff880432c19fd8 ffff880432c19fd8 =
-ffff88103f604810
-> [ 1469.734681] =A0ffffea000ec13590 ffffffff00000000 ffff881438c8dad8 =
-ffffffff810eeda2
-> [ 1469.734760] Call Trace:
-> [ 1469.734800] =A0[<ffffffff810eeda2>] ? __do_fault+0x422/0x520
-> [ 1469.734863] =A0[<ffffffffa0123e6d>] ? ext4_file_write+0x20d/0x260 =
-[ext4]
-> [ 1469.734909] =A0[<ffffffff8106aee0>] ? abort_exclusive_wait+0xb0/0x=
-b0
-> [ 1469.734956] =A0[<ffffffffa0123c60>] ? ext4_llseek+0x120/0x120 [ext=
-4]
-> [ 1469.734999] =A0[<ffffffff81162173>] ? aio_rw_vect_retry+0x73/0x1d0
-> [ 1469.735039] =A0[<ffffffff8116302f>] ? aio_run_iocb+0x5f/0x160
-> [ 1469.735078] =A0[<ffffffff81164258>] ? do_io_submit+0x4f8/0x600
-> [ 1469.735122] =A0[<ffffffff81359b52>] ? system_call_fastpath+0x16/0x=
-1b
->
-> which is exactly the same as with previous "w" into sysrq-trigger.
->
-> So it's something else... :(
->
-> Thank you!
->
-> /mjt
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
+it report something like:
+
+e2fsck 1.42-WIP (02-Jul-2011)
+Pass 1: Checking inodes, blocks, and sizes
+Inode 314, i_blocks is 128, should be 0.  Fix<y>? yes
+
+Pass 2: Checking directory structure
+Inode 314 (/c/3) has invalid mode (00).
+Clear<y>? yes
+
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+Block bitmap differences:  -529632
+=46ix<y>? yes
+
+=46ree blocks count wrong for group #1 (32267, counted=3D32268).
+=46ix<y>? yes
+
+=46ree blocks count wrong (13838736, counted=3D13838752).
+=46ix<y>? yes
+
+Illegal block number passed to ext2fs_test_block_bitmap #13874128 for
+converted cluster bitmap
+Padding at end of block bitmap is not set. Fix<y>? yes
+
+Illegal block number passed to ext2fs_mark_block_bitmap #13874128 for
+converted cluster bitmap
+Illegal block number passed to ext2fs_mark_block_bitmap #13874144 for
+converted cluster bitmap
+Illegal block number passed to ext2fs_mark_block_bitmap #13874160 for
+converted cluster bitmap
+Illegal block number passed to ext2fs_mark_block_bitmap #13874176 for
+converted cluster bitmap
+Illegal block number passed to ext2fs_mark_block_bitmap #13874192 for
+converted cluster bitmap
+Illegal block number passed to ext2fs_mark_block_bitmap #13874208 for
+converted cluster bitmap
+Illegal block number passed to ext2fs_mark_block_bitmap #13874224 for
+converted cluster bitmap
+=2E......
+
+my disk has just 13874128 4k-blocks, so the block number must have
+some problems.
+So I doubt at the check_block_end in pass5.c.
+Could you please shed some light on it?
+
+
+--=20
+--
+Best Regard
+Robin Dong
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
