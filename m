@@ -1,96 +1,37 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: DIO process stuck apparently due to dioread_nolock (3.0)
-Date: Fri, 12 Aug 2011 23:19:31 +0200
-Message-ID: <20110812211931.GC31255@quack.suse.cz>
-References: <4E4262A5.6030903@msgid.tls.msk.ru>
- <20110811115943.GF4755@quack.suse.cz>
- <4E43C956.3060507@msgid.tls.msk.ru>
- <20110811140101.GA18802@quack.suse.cz>
- <4E4435F4.6000406@msgid.tls.msk.ru>
- <CAFgt=MCgfN-6_uBm=pDaeLqJKJQkSHry91XbYwWq=iBXip3D-w@mail.gmail.com>
- <4E44C6ED.2030506@msgid.tls.msk.ru>
- <20110812130729.GC28324@quack.suse.cz>
- <4E454CD4.3080505@msgid.tls.msk.ru>
+From: Benjamin Peterson <benjamin@python.org>
+Subject: Re: Ext4 allocation strategy
+Date: Fri, 12 Aug 2011 22:18:19 +0000 (UTC)
+Message-ID: <loom.20110813T001740-521@post.gmane.org>
+References: <4E452ED4.9000307@shiftmail.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Jiaying Zhang <jiayingz@google.com>,
-	linux-ext4@vger.kernel.org
-To: Michael Tokarev <mjt@tls.msk.ru>
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:52471 "EHLO mx2.suse.de"
+Received: from lo.gmane.org ([80.91.229.12]:33525 "EHLO lo.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750907Ab1HLVTd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 12 Aug 2011 17:19:33 -0400
-Content-Disposition: inline
-In-Reply-To: <4E454CD4.3080505@msgid.tls.msk.ru>
+	id S1752167Ab1HLWZM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 12 Aug 2011 18:25:12 -0400
+Received: from list by lo.gmane.org with local (Exim 4.69)
+	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
+	id 1Qs0A8-0000IM-KG
+	for linux-ext4@vger.kernel.org; Sat, 13 Aug 2011 00:25:08 +0200
+Received: from 64-131-13-109.usfamily.net ([64.131.13.109])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Sat, 13 Aug 2011 00:25:08 +0200
+Received: from benjamin by 64-131-13-109.usfamily.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Sat, 13 Aug 2011 00:25:08 +0200
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 12-08-11 19:55:00, Michael Tokarev wrote:
-> 12.08.2011 17:07, Jan Kara wrote:
-> []
-> >>>> [   76.982985] EXT4-fs (dm-1): Unaligned AIO/DIO on inode 3407879 by oracle; performance will be poor.
-> >>>> [ 1469.734114] SysRq : Show Blocked State
-> >>>> [ 1469.734157]   task                        PC stack   pid father
-> >>>> [ 1469.734473] oracle          D 0000000000000000     0  6146      1 0x00000000
-> >>>> [ 1469.734525]  ffff88103f604810 0000000000000082 ffff881000000000 ffff881079791040
-> >>>> [ 1469.734603]  ffff880432c19fd8 ffff880432c19fd8 ffff880432c19fd8 ffff88103f604810
-> >>>> [ 1469.734681]  ffffea000ec13590 ffffffff00000000 ffff881438c8dad8 ffffffff810eeda2
-> >>>> [ 1469.734760] Call Trace:
-> >>>> [ 1469.734800]  [<ffffffff810eeda2>] ? __do_fault+0x422/0x520
-> >>>> [ 1469.734863]  [<ffffffffa0123e6d>] ? ext4_file_write+0x20d/0x260 [ext4]
-> >>>> [ 1469.734909]  [<ffffffff8106aee0>] ? abort_exclusive_wait+0xb0/0xb0
-> >>>> [ 1469.734956]  [<ffffffffa0123c60>] ? ext4_llseek+0x120/0x120 [ext4]
-> >>>> [ 1469.734999]  [<ffffffff81162173>] ? aio_rw_vect_retry+0x73/0x1d0
-> >>>> [ 1469.735039]  [<ffffffff8116302f>] ? aio_run_iocb+0x5f/0x160
-> >>>> [ 1469.735078]  [<ffffffff81164258>] ? do_io_submit+0x4f8/0x600
-> >>>> [ 1469.735122]  [<ffffffff81359b52>] ? system_call_fastpath+0x16/0x1b
-> []
-> >   Probably not, just garbage on stack confuses the stack unwinder. Note
-> > that e.g. ext4_llseek() is at the end of function as well as
-> > abort_exclusive_wait() which probably means these functions have already
-> > finished and just left their addresses on stack. Could you disasseble
-> > your ext4_file_write() function and check where offset 0x20d is? Sadly you
-> > won't see where calls are going when ext4 is compiled as a module (module
-> > is linked when loaded into kernel) so it might be easier to compile ext4
-> > into the kernel and disassemble the function in vmlinux file.
-> > 
-> >> Btw, does ext4_llseek() look sane here?  Note it's called from
-> >> aio_submit() -- does it _ever_ implement SEEKs?
-> >>
-> >> Maybe some debugging is neecessary here?
-> >   Yes. The trouble is I'm not completely sure where we are hanging yet.
-> > We should know more from your disassembly. But you can try running with
-> > attached debug patch - maybe it shows something interesting.
+torn5 <torn5 <at> shiftmail.org> writes:
 > 
-> With ext4 built-in and your patch applied:
-> 
-> [  429.061524] EXT4-fs (sda11): Unaligned AIO/DIO on inode 5767181 by oracle; performance will be poor.
-> [  429.061669] Going to wait for 18446744073709551199 aios
-> [  437.717942] SysRq : Show Blocked State
-> [  437.718109]   task                        PC stack   pid father
-> [  437.718528] oracle          D 0000000000000000     0  3844      1 0x00000000
-> [  437.718767]  ffff88203e330080 0000000000000082 0000000000000000 ffff881078e3f7d0
-> [  437.719156]  ffff88203dc15fd8 ffff88203dc15fd8 ffff88203dc15fd8 ffff88203e330080
-> [  437.719546]  0000001e0000000f 0000000000000246 205b88103f806680 3136302e39323420
-> [  437.719935] Call Trace:
-> [  437.720043]  [<ffffffff8139b976>] ? printk+0x43/0x48
-> [  437.720155]  [<ffffffff8118e16d>] ? ext4_file_write+0x21d/0x290
-> [  437.720267]  [<ffffffff8106aee0>] ? abort_exclusive_wait+0xb0/0xb0
-> [  437.720376]  [<ffffffff8118df50>] ? ext4_llseek+0x120/0x120
-> [  437.720485]  [<ffffffff81162173>] ? aio_rw_vect_retry+0x73/0x1d0
-> [  437.720593]  [<ffffffff8116302f>] ? aio_run_iocb+0x5f/0x160
-> [  437.720699]  [<ffffffff81164258>] ? do_io_submit+0x4f8/0x600
-> [  437.720811]  [<ffffffff813a3152>] ? system_call_fastpath+0x16/0x1b
-> 
-> Trying to find how to disassemble things now...
-> And yes, 18446744073709551199 aios sounds quite alot ;)
-  I think you don't have to. My stab-in-the-dark patch is showing that we
-underflow the number of outstanding aiodio calls - we think there are -416
-of these calls outstanding. Thus we wait indefinitely. So now we have to
-just find where is the accounting wrong.
+> So can you tell me something?
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+You might find the comments in fs/ext4/mballoc.c helpful.
+
+
+
+
