@@ -1,153 +1,252 @@
-From: Michael Tokarev <mjt@tls.msk.ru>
-Subject: Re: DIO process stuck apparently due to dioread_nolock (3.0)
-Date: Fri, 12 Aug 2011 11:07:43 +0400
-Message-ID: <4E44D13F.2010900@msgid.tls.msk.ru>
-References: <4E4262A5.6030903@msgid.tls.msk.ru>	<20110811115943.GF4755@quack.suse.cz>	<4E43C956.3060507@msgid.tls.msk.ru>	<20110811140101.GA18802@quack.suse.cz>	<4E4435F4.6000406@msgid.tls.msk.ru> <CAFgt=MCgfN-6_uBm=pDaeLqJKJQkSHry91XbYwWq=iBXip3D-w@mail.gmail.com> <4E44C6ED.2030506@msgid.tls.msk.ru>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: Make reads/writes atomic with i_rwlock semaphore
+Date: Fri, 12 Aug 2011 10:12:32 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1108121011430.4535@dhcp-27-109.brq.redhat.com>
+References: <1303154492-25446-1-git-send-email-lczerner@redhat.com> <alpine.LFD.2.00.1108111710040.29009@dhcp-27-109.brq.redhat.com> <C174786E-E1A9-4593-9A04-7F7F36EFB4AC@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Jiaying Zhang <jiayingz@google.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>,
+	linux-ext4 List <linux-ext4@vger.kernel.org>,
+	"Theodore Ts'o" <tytso@mit.edu>, esandeen@redhat.com
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from isrv.corpit.ru ([86.62.121.231]:47096 "EHLO isrv.corpit.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:43051 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750886Ab1HLHHq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 12 Aug 2011 03:07:46 -0400
-In-Reply-To: <4E44C6ED.2030506@msgid.tls.msk.ru>
+	id S1750842Ab1HLIMh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 12 Aug 2011 04:12:37 -0400
+In-Reply-To: <C174786E-E1A9-4593-9A04-7F7F36EFB4AC@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-12.08.2011 10:23, Michael Tokarev =D0=BF=D0=B8=D1=88=D0=B5=D1=82:
-> 12.08.2011 06:46, Jiaying Zhang wrote:
->> Hi Michael,
->>
->> Could you try your test with the patch I just posted:
->> http://marc.info/?l=3Dlinux-ext4&m=3D131311627101278&w=3D2
->> and see whether it fixes the problem?
->=20
-> No it does not.  I'm now able to trigger it more or
-> less reliable - I need to decompress a relatively
-> small (about 70Gb) oracle database and try to start
-> it (this requires a rebuild of initrd and reboot ofcourse --
-> whole thing takes about 15 minutes) - and I see this:
+On Thu, 11 Aug 2011, Andreas Dilger wrote:
 
-And I forgot to note an important (in my opinion anyway)
-detail: I can only trigger the issue after copying the
-database files, ie, on a hot cache.  After reboot when
-the files are not in cache, I can start this database
-without any issues whatsoever, and it passes all our
-stress tests just fine.  So it appears the problem only
-happens when the cache is hot - maybe DIO is fighting
-with in-memory cache of the file or somesuch, or maybe
-with yet unwritten file (since the amount of memory on
-this machine is large, whole database with all its files
-fits in memory).  Next time I'll try to ensure only the
-(problematic and small) logfiles are hot in the cache.
+> On 2011-08-11, at 9:10 AM, Lukas Czerner wrote:
+> > On Mon, 18 Apr 2011, Lukas Czerner wrote:
+> >> Currently concurrent reads/writes are atomic only wrt individual pages,
+> >> however are not on the system call. This may cause read() to return data
+> >> mixed from several different writes, which I do not think it is good
+> >> approach. We might argue that application doing this is broken, but
+> >> actually this is something we can easily do on filesystem level without
+> >> significant performance issues, so we can be consistent. Also POSIX
+> >> mentions this as well and XFS filesystem already has this feature.
+> >> 
+> >> This commit adds new rw_semaphore into ext4_inode structure. We take
+> >> read lock every time we read data from a file (via ext4_file_read() or
+> >> ext4_file_splice_read()) and also when we write data in direct io mode,
+> >> since in this mode application should know exactly what it is doing.
+> >> Then we take write lock when we write into a file (via ext4_file_write()
+> >> and ext4_file_splice_write()), except the direct io when we take read
+> >> lock and unaligned direct io which is already serialized in different
+> >> manner. Also we are locking ext4_truncate() as well so we are consistent
+> >> and preserve atomicity.
+> >> 
+> >> This should not have any significant performance impact since we still
+> >> allow concurrent reads from the same inode and concurrent writes are
+> >> serialized already by i_mutex. The only type of load which will feel the
+> >> performance hit is the case of writing into an inode while reading from
+> >> it and vice versa. In this case, if reads/writes are exclusive it might
+> >> not need locking, however tracking this would be expensive.
+> > 
+> > Anyone any thoughts on this one ?
+> 
+> Rather than adding more global locking to the IO path, it would be much
+> preferable IMHO to start looking at extent locks for file IO.  At that
+> point, a reader could get a read lock for the range of its syscall and
+> get an atomic read, and other writers could write atomically to different
+> parts of the file without contention (to the greatest degree possible).
+> 
+> I wouldn't be surprised if there is already some code in the kernel that
+> implements this.
 
-Thanks,
+Yes, that is what I was thinking as well. However I just wanted to
+present the concept of this to know what people think about this.
 
-/mjt
+Thanks!
+-Lukas
 
-> [  945.729965] EXT4-fs (sda11): Unaligned AIO/DIO on inode 5767175 by=
- oracle; performance will be poor.
-> [  960.915602] SysRq : Show Blocked State
-> [  960.915650]   task                        PC stack   pid father
-> [  960.915852] oracle          D 0000000000000000     0  4985      1 =
-0x00000000
-> [  960.915909]  ffff88103e627040 0000000000000082 ffff881000000000 ff=
-ff881078e3f7d0
-> [  960.917855]  ffff88103f88ffd8 ffff88103f88ffd8 ffff88103f88ffd8 ff=
-ff88103e627040
-> [  960.917953]  0000000001c08400 ffff88203e98c948 ffff88207873e240 ff=
-ffffff813527c6
-> [  960.918045] Call Trace:
-> [  960.918092]  [<ffffffff813527c6>] ? printk+0x43/0x48
-> [  960.918153]  [<ffffffffa01432a8>] ? ext4_msg+0x58/0x60 [ext4]
-> [  960.918201]  [<ffffffffa0123e6d>] ? ext4_file_write+0x20d/0x260 [e=
-xt4]
-> [  960.918252]  [<ffffffff8106aee0>] ? abort_exclusive_wait+0xb0/0xb0
-> [  960.918301]  [<ffffffffa0123c60>] ? ext4_llseek+0x120/0x120 [ext4]
-> [  960.918348]  [<ffffffff81162173>] ? aio_rw_vect_retry+0x73/0x1d0
-> [  960.918392]  [<ffffffff8116302f>] ? aio_run_iocb+0x5f/0x160
-> [  960.918436]  [<ffffffff81164258>] ? do_io_submit+0x4f8/0x600
-> [  960.918483]  [<ffffffff81359b52>] ? system_call_fastpath+0x16/0x1b
->=20
-> (Inum 5767175 is one of oracle redologs).
->=20
-> Jan, I lied to you initially - I didn't even test your first patch,
-> because I loaded the wrong initrd.  With it applied, situation does
-> not improve still, and it looks exactly the same as with this new
-> patch by Jiaying Zhang:
->=20
-> [  415.288104] EXT4-fs (sda11): Unaligned AIO/DIO on inode 5767177 by=
- oracle; performance will be poor.
-> [  422.967323] SysRq : Show Blocked State
-> [  422.967494]   task                        PC stack   pid father
-> [  422.967872] oracle          D 0000000000000000     0  3743      1 =
-0x00000000
-> [  422.968112]  ffff88203e5a2810 0000000000000086 ffff882000000000 ff=
-ff88103f403080
-> [  422.968505]  ffff88203eeddfd8 ffff88203eeddfd8 ffff88203eeddfd8 ff=
-ff88203e5a2810
-> [  422.968895]  0000000001c08400 ffff88103f3db348 ffff88103f2fe800 ff=
-ffffff813527c6
-> [  422.969287] Call Trace:
-> [  422.969397]  [<ffffffff813527c6>] ? printk+0x43/0x48
-> [  422.969528]  [<ffffffffa0143288>] ? ext4_msg+0x58/0x60 [ext4]
-> [  422.969643]  [<ffffffffa0123e6d>] ? ext4_file_write+0x20d/0x260 [e=
-xt4]
-> [  422.969758]  [<ffffffff8106aee0>] ? abort_exclusive_wait+0xb0/0xb0
-> [  422.969873]  [<ffffffffa0123c60>] ? ext4_llseek+0x120/0x120 [ext4]
-> [  422.969985]  [<ffffffff81162173>] ? aio_rw_vect_retry+0x73/0x1d0
-> [  422.970093]  [<ffffffff8116302f>] ? aio_run_iocb+0x5f/0x160
-> [  422.970200]  [<ffffffff81164258>] ? do_io_submit+0x4f8/0x600
-> [  422.970312]  [<ffffffff81359b52>] ? system_call_fastpath+0x16/0x1b
->=20
-> Note in both this cases, I now see slightly different
-> backtrace -- both mentions ext4_llseek and abort_exclusive_wait,
-> but the rest is different:
->=20
->>> [   76.982985] EXT4-fs (dm-1): Unaligned AIO/DIO on inode 3407879 b=
-y oracle; performance will be poor.
->>> [ 1469.734114] SysRq : Show Blocked State
->>> [ 1469.734157]   task                        PC stack   pid father
->>> [ 1469.734473] oracle          D 0000000000000000     0  6146      =
-1 0x00000000
->>> [ 1469.734525]  ffff88103f604810 0000000000000082 ffff881000000000 =
-ffff881079791040
->>> [ 1469.734603]  ffff880432c19fd8 ffff880432c19fd8 ffff880432c19fd8 =
-ffff88103f604810
->>> [ 1469.734681]  ffffea000ec13590 ffffffff00000000 ffff881438c8dad8 =
-ffffffff810eeda2
->>> [ 1469.734760] Call Trace:
->>> [ 1469.734800]  [<ffffffff810eeda2>] ? __do_fault+0x422/0x520
->>> [ 1469.734863]  [<ffffffffa0123e6d>] ? ext4_file_write+0x20d/0x260 =
-[ext4]
->>> [ 1469.734909]  [<ffffffff8106aee0>] ? abort_exclusive_wait+0xb0/0x=
-b0
->>> [ 1469.734956]  [<ffffffffa0123c60>] ? ext4_llseek+0x120/0x120 [ext=
-4]
->>> [ 1469.734999]  [<ffffffff81162173>] ? aio_rw_vect_retry+0x73/0x1d0
->>> [ 1469.735039]  [<ffffffff8116302f>] ? aio_run_iocb+0x5f/0x160
->>> [ 1469.735078]  [<ffffffff81164258>] ? do_io_submit+0x4f8/0x600
->>> [ 1469.735122]  [<ffffffff81359b52>] ? system_call_fastpath+0x16/0x=
-1b
->=20
-> As Jan already pointed out, this place looks bogus, and
-> the same can be said about the new backtrace.  So I wonder
-> if there's some stack corruption going on there as well.
->=20
-> Btw, does ext4_llseek() look sane here?  Note it's called from
-> aio_submit() -- does it _ever_ implement SEEKs?
->=20
-> Maybe some debugging is neecessary here?
->=20
-> Thank you!
->=20
-> /mjt
+> 
+> >> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> >> ---
+> >> fs/ext4/ext4.h  |    5 ++++
+> >> fs/ext4/file.c  |   58 ++++++++++++++++++++++++++++++++++++++++++++++++++----
+> >> fs/ext4/inode.c |    7 ++++++
+> >> fs/ext4/super.c |    1 +
+> >> 4 files changed, 66 insertions(+), 5 deletions(-)
+> >> 
+> >> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> >> index 4daaf2b..037857c 100644
+> >> --- a/fs/ext4/ext4.h
+> >> +++ b/fs/ext4/ext4.h
+> >> @@ -858,6 +858,11 @@ struct ext4_inode_info {
+> >> 	 */
+> >> 	tid_t i_sync_tid;
+> >> 	tid_t i_datasync_tid;
+> >> +
+> >> +	/*
+> >> +	 * Semaphore forcing read/write atomicity
+> >> +	 */
+> >> +	struct rw_semaphore i_rwlock;
+> >> };
+> >> 
+> >> /*
+> >> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> >> index 7b80d54..6c7ed94 100644
+> >> --- a/fs/ext4/file.c
+> >> +++ b/fs/ext4/file.c
+> >> @@ -94,7 +94,7 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+> >> 		unsigned long nr_segs, loff_t pos)
+> >> {
+> >> 	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
+> >> -	int unaligned_aio = 0;
+> >> +	int unaligned_aio = 0, direct_io = 0;
+> >> 	int ret;
+> >> 
+> >> 	/*
+> >> @@ -117,6 +117,7 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+> >> 	} else if (unlikely((iocb->ki_filp->f_flags & O_DIRECT) &&
+> >> 		   !is_sync_kiocb(iocb))) {
+> >> 		unaligned_aio = ext4_unaligned_aio(inode, iov, nr_segs, pos);
+> >> +		direct_io = 1;
+> >> 	}
+> >> 
+> >> 	/* Unaligned direct AIO must be serialized; see comment above */
+> >> @@ -131,12 +132,19 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+> >> 				 inode->i_ino, current->comm);
+> >> 		mutex_lock(ext4_aio_mutex(inode));
+> >> 		ext4_aiodio_wait(inode);
+> >> -	}
+> >> +	} else if (unlikely(direct_io))
+> >> +		down_read(&EXT4_I(inode)->i_rwlock);
+> >> +	else
+> >> +		down_write(&EXT4_I(inode)->i_rwlock);
+> >> 
+> >> 	ret = generic_file_aio_write(iocb, iov, nr_segs, pos);
+> >> 
+> >> 	if (unaligned_aio)
+> >> 		mutex_unlock(ext4_aio_mutex(inode));
+> >> +	else if (unlikely(direct_io))
+> >> +		up_read(&EXT4_I(inode)->i_rwlock);
+> >> +	else
+> >> +		up_write(&EXT4_I(inode)->i_rwlock);
+> >> 
+> >> 	return ret;
+> >> }
+> >> @@ -252,11 +260,51 @@ loff_t ext4_llseek(struct file *file, loff_t offset, int origin)
+> >> 	return offset;
+> >> }
+> >> 
+> >> +static ssize_t
+> >> +ext4_file_read(struct kiocb *iocb, const struct iovec *iov,
+> >> +	       unsigned long nr_segs, loff_t pos)
+> >> +{
+> >> +	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
+> >> +	ssize_t size;
+> >> +
+> >> +	down_read(&EXT4_I(inode)->i_rwlock);
+> >> +	size = generic_file_aio_read(iocb, iov, nr_segs, pos);
+> >> +	up_read(&EXT4_I(inode)->i_rwlock);
+> >> +	return size;
+> >> +}
+> >> +
+> >> +ssize_t ext4_file_splice_read(struct file *in, loff_t *ppos,
+> >> +			      struct pipe_inode_info *pipe, size_t len,
+> >> +			      unsigned int flags)
+> >> +{
+> >> +	struct inode *inode = in->f_mapping->host;
+> >> +	ssize_t size;
+> >> +
+> >> +	down_read(&EXT4_I(inode)->i_rwlock);
+> >> +	size = generic_file_splice_read(in, ppos, pipe, len, flags);
+> >> +	up_read(&EXT4_I(inode)->i_rwlock);
+> >> +	return size;
+> >> +}
+> >> +
+> >> +ssize_t ext4_file_splice_write(struct pipe_inode_info *pipe,
+> >> +			       struct file *out, loff_t *ppos, size_t len,
+> >> +			       unsigned int flags)
+> >> +{
+> >> +	struct inode *inode = out->f_mapping->host;
+> >> +	ssize_t size;
+> >> +
+> >> +	down_write(&EXT4_I(inode)->i_rwlock);
+> >> +	size = generic_file_splice_write(pipe, out, ppos, len, flags);
+> >> +	up_write(&EXT4_I(inode)->i_rwlock);
+> >> +	return size;
+> >> +}
+> >> +
+> >> +
+> >> const struct file_operations ext4_file_operations = {
+> >> 	.llseek		= ext4_llseek,
+> >> 	.read		= do_sync_read,
+> >> 	.write		= do_sync_write,
+> >> -	.aio_read	= generic_file_aio_read,
+> >> +	.aio_read	= ext4_file_read,
+> >> 	.aio_write	= ext4_file_write,
+> >> 	.unlocked_ioctl = ext4_ioctl,
+> >> #ifdef CONFIG_COMPAT
+> >> @@ -266,8 +314,8 @@ const struct file_operations ext4_file_operations = {
+> >> 	.open		= ext4_file_open,
+> >> 	.release	= ext4_release_file,
+> >> 	.fsync		= ext4_sync_file,
+> >> -	.splice_read	= generic_file_splice_read,
+> >> -	.splice_write	= generic_file_splice_write,
+> >> +	.splice_read	= ext4_file_splice_read,
+> >> +	.splice_write	= ext4_file_splice_write,
+> >> 	.fallocate	= ext4_fallocate,
+> >> };
+> >> 
+> >> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> >> index f2fa5e8..769ab0f 100644
+> >> --- a/fs/ext4/inode.c
+> >> +++ b/fs/ext4/inode.c
+> >> @@ -4482,6 +4482,12 @@ void ext4_truncate(struct inode *inode)
+> >> 		goto out_stop;
+> >> 
+> >> 	/*
+> >> +	 * We should block reads/writes to that inode so we are sure we are
+> >> +	 * consistent and reads/writes remain atomic.
+> >> +	 */
+> >> +	down_write(&EXT4_I(inode)->i_rwlock);
+> >> +
+> >> +	/*
+> >> 	 * From here we block out all ext4_get_block() callers who want to
+> >> 	 * modify the block allocation tree.
+> >> 	 */
+> >> @@ -4566,6 +4572,7 @@ do_indirects:
+> >> 
+> >> out_unlock:
+> >> 	up_write(&ei->i_data_sem);
+> >> +	up_write(&EXT4_I(inode)->i_rwlock);
+> >> 	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
+> >> 	ext4_mark_inode_dirty(handle, inode);
+> >> 
+> >> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> >> index 8553dfb..2dbe86a 100644
+> >> --- a/fs/ext4/super.c
+> >> +++ b/fs/ext4/super.c
+> >> @@ -895,6 +895,7 @@ static void init_once(void *foo)
+> >> 	init_rwsem(&ei->xattr_sem);
+> >> #endif
+> >> 	init_rwsem(&ei->i_data_sem);
+> >> +	init_rwsem(&ei->i_rwlock);
+> >> 	inode_init_once(&ei->vfs_inode);
+> >> }
+> >> 
+> >> 
+> > 
+> > -- 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
+> Cheers, Andreas
+> 
+> 
+> 
+> 
+> 
+> 
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
