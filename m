@@ -1,58 +1,75 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/1 v4] ext4: fix xfstests 75, 112, 127 punch hole
- failure
-Date: Thu, 11 Aug 2011 19:44:45 -0400
-Message-ID: <20110811234445.GB31181@thunk.org>
-References: <1312698112-7836-1-git-send-email-achender@linux.vnet.ibm.com>
- <20110808024213.GC11497@thunk.org>
- <4E404D06.6010002@linux.vnet.ibm.com>
- <20110809164524.GA3422@thunk.org>
- <4E41A254.3030300@linux.vnet.ibm.com>
- <20110811031712.GF3625@thunk.org>
- <4E444A15.6000405@linux.vnet.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+From: jiayingz@google.com (Jiaying Zhang)
+Subject: [PATCH] ext4: call ext4_ioend_wait and ext4_flush_completed_IO in ext4_evict_inode
+Date: Thu, 11 Aug 2011 19:31:04 -0700 (PDT)
+Message-ID: <20110812023105.18FBB4207C@ruihe.smo.corp.google.com>
 Cc: linux-ext4@vger.kernel.org
-To: Allison Henderson <achender@linux.vnet.ibm.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:49456 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754503Ab1HKXot (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 11 Aug 2011 19:44:49 -0400
-Content-Disposition: inline
-In-Reply-To: <4E444A15.6000405@linux.vnet.ibm.com>
+Received: from smtp-out.google.com ([216.239.44.51]:38659 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751821Ab1HLCbI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Aug 2011 22:31:08 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 11, 2011 at 02:31:01PM -0700, Allison Henderson wrote:
-> Ah, ok then that makes sense.  So maybe what I need to do is modify
-> the ext4_block_zero_page routine to zero everything in the specified
-> range and then clear the mapped flag for any buffer header that is
-> fully zeroed.  I'm not sure I'm clear about what it means to be
-> detached though.  What is the difference between clearing the flag
-> and detaching the buffer head?  Thank you for all the explaining!
+Flush inode's i_completed_io_list before calling ext4_io_wait to
+prevent the following deadlock scenario: A page fault happens while
+some process is writing inode A. During page fault, shrink_icache_memory
+is called that in turn evicts another inode B. Inode B has some pending
+io_end work so it calls ext4_ioend_wait() that waits for inode B's
+i_ioend_count to become zero. However, inode B's ioend work was queued
+behind some of inode A's ioend work on the same cpu's ext4-dio-unwritten
+workqueue. As the ext4-dio-unwritten thread on that cpu is processing
+inode A's ioend work, it tries to grab inode A's i_mutex lock. Since the
+i_mutex lock of inode A is still hold before the page fault happened,
+we enter a deadlock.
 
-Technically speaking, there is no guarantee that a page has either no
-buffer heads, or all of the buffer heads that cover a page --- or that
-the buffer_heads are in any particular order in the linked list.
+Also moves ext4_flush_completed_IO and ext4_ioend_wait from
+ext4_destroy_inode() to ext4_evict_inode(). During inode deleteion,
+ext4_evict_inode() is called before ext4_destroy_inode() and in
+ext4_evict_inode(), we may call ext4_truncate() without holding
+i_mutex lock. As a result, there is a race between flush_completed_IO
+that is called from ext4_ext_truncate() and ext4_end_io_work, which
+may cause corruption on an io_end structure. This change moves
+ext4_flush_completed_IO and ext4_ioend_wait from ext4_destroy_inode()
+to ext4_evict_inode() to resolve the race between ext4_truncate()
+and ext4_end_io_work during inode deletion.
 
-In practice create_empty_buffers() creates them in a particular order,
-and always creates *all* of them --- and I'm not sure if we have any
-code paths left that don't use create_empty_buffers() --- but I'm
-pretty sure there used to be cases where the buffer_heads could only
-be partially present, or in an arbitrary order.
+Signed-off-by: Jiaying Zhang <jiayingz@google.com>
+---
+ fs/ext4/inode.c |    6 ++++++
+ fs/ext4/super.c |    1 -
+ 2 files changed, 6 insertions(+), 1 deletions(-)
 
-So if you look at the code which iterates over the page buffers,
-you'll see they are very defensively coded --- and it's complicated.
-One of these days I'd really like to simplify the code so instead of
-using linked list, we use an array of structures --- and something
-slimmed down from a buffer_head to have only those essential fields
-that ext4 uses.
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index de50b16..2aba49e 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -120,6 +120,12 @@ void ext4_evict_inode(struct inode *inode)
+ 	int err;
+ 
+ 	trace_ext4_evict_inode(inode);
++
++	mutex_lock(&inode->i_mutex);
++	ext4_flush_completed_IO(inode);
++	mutex_unlock(&inode->i_mutex);
++	ext4_ioend_wait(inode);
++
+ 	if (inode->i_nlink) {
+ 		truncate_inode_pages(&inode->i_data, 0);
+ 		goto no_delete;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 9ea71aa..111ed9d 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -892,7 +892,6 @@ static void ext4_i_callback(struct rcu_head *head)
+ 
+ static void ext4_destroy_inode(struct inode *inode)
+ {
+-	ext4_ioend_wait(inode);
+ 	if (!list_empty(&(EXT4_I(inode)->i_orphan))) {
+ 		ext4_msg(inode->i_sb, KERN_ERR,
+ 			 "Inode %lu (%p): orphan list check failed!",
+-- 
+1.7.3.1
 
-One of these days....
-
-Anyway, clearing the all of the bh_flags as is currently done is good
-enough, and actually probably easier (in case there's code which is
-dependent on all of the bh's being there, and in order)
-
-					- Ted
