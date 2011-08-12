@@ -1,186 +1,212 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH v2] ext4: Deprecate data=journal mount option
-Date: Fri, 12 Aug 2011 18:08:21 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1108121803210.3088@dhcp-27-109.brq.redhat.com>
-References: <1309260363-19012-1-git-send-email-lczerner@redhat.com> <alpine.LFD.2.00.1108111700500.29009@dhcp-27-109.brq.redhat.com> <BEF6D87F-AEA5-4BF8-B71D-6BBA540C3731@dilger.ca> <alpine.LFD.2.00.1108121013280.4535@dhcp-27-109.brq.redhat.com>
- <4E44E374.7080103@redhat.com> <CAO81RMYcvpd2--Y-u2xOb2+3U=fOK2UtaW7d9iP43_u38hYgZA@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1065660080-1313165306=:3088"
-Cc: Ric Wheeler <rwheeler@redhat.com>,
-	Lukas Czerner <lczerner@redhat.com>,
-	Andreas Dilger <adilger@dilger.ca>,
-	linux-ext4 List <linux-ext4@vger.kernel.org>,
-	"Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	Eric Sandeen <sandeen@redhat.com>
-To: Curt Wohlgemuth <curtw@google.com>
+Subject: [PATCH 2/5 v2] e2fsprogs: Use punch hole as "discard" on regular files
+Date: Fri, 12 Aug 2011 18:42:57 +0200
+Message-ID: <1313167380-3283-2-git-send-email-lczerner@redhat.com>
+References: <1313167380-3283-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, adilger@dilger.ca,
+	Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36906 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:36571 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750944Ab1HLQIn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 12 Aug 2011 12:08:43 -0400
-In-Reply-To: <CAO81RMYcvpd2--Y-u2xOb2+3U=fOK2UtaW7d9iP43_u38hYgZA@mail.gmail.com>
+	id S1751269Ab1HLQnP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 12 Aug 2011 12:43:15 -0400
+In-Reply-To: <1313167380-3283-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+If e2fsprogs tools (mke2fs, e2fsck) is run on regular file instead of
+on block device, we can use punch hole instead of regular discard
+command which would not work on regular file anyway. This gives us
+several advantages. First of all when e2fsck is run with '-E discard'
+parameter it will punch out all ununsed space from the image, hence
+trimming down the file system image. And secondly, when creating an
+file system on regular file (with '-E discard' which is default), we
+can use punch hole to clear the file content, hence we can skip inode
+table initialization, because reads from sparse area returns zeros. This
+will result in faster file system creation (without the need to specify
+lazy_itable_init) and smaller images.
 
---8323328-1065660080-1313165306=:3088
-Content-Type: TEXT/PLAIN; charset=ISO-8859-1
-Content-Transfer-Encoding: 8BIT
+This commit also fixes some tests that would fail due to mke2fs showing
+discard progress, hence the output would differ.
 
-On Fri, 12 Aug 2011, Curt Wohlgemuth wrote:
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+v2: fix tests for case there is no punch hole support
+    add ifdefs to cover no punch hole or fallocate support
 
-> I don't know much about data=journal, but I've been running xfstests
-> with it, and it's a disaster, given that data=journal doesn't support
-> O_DIRECT.  What kind of testing do people do on data=journal?
+ lib/ext2fs/ext2_io.h        |    1 +
+ lib/ext2fs/unix_io.c        |   53 ++++++++++++++++++++++++++++++++++++------
+ misc/mke2fs.c               |   10 ++++++-
+ tests/f_resize_inode/script |    1 +
+ tests/m_bigjournal/script   |    2 +-
+ tests/run_mke2fs            |    2 +-
+ 6 files changed, 57 insertions(+), 12 deletions(-)
 
-Short answer is probably none :). Even though that it seems like an
-radical answer I believe that it is mostly true, because simply said
-almost no-one care. But I think that Ted mentioned that he actually do
-some tests with that mode, but I am not sure about that.
-
-> 
-> And worse, I consistently crash my machine running xfstests 074 on a
-> data=journal partition.  I just repeated this to make sure, on
-> 3.1.0-rc1; I've also seen it with 3.0.0.  There's a BUG_ON firing in
-> jbd2_journal_dirty_metadata():
-> 
-> [ 2174.697692] ------------[ cut here ]------------
-> [ 2174.698627] kernel BUG at fs/jbd2/transaction.c:1112!
-> [ 2174.698627] invalid opcode: 0000 [#1] SMP
-> [ 2174.698627] CPU 11
-> ...
-> [ 2174.698627] Call Trace:
-> [ 2174.698627]  [<ffffffff8127f9a3>] __ext4_handle_dirty_metadata+0x83/0x120
-> [ 2174.698627]  [<ffffffff8127fd1e>] ? __ext4_journal_get_write_access+0x3e/0x80
-> [ 2174.698627]  [<ffffffff81253a78>] __ext4_journalled_writepage+0x338/0x3e0
-> [ 2174.698627]  [<ffffffff81254244>] ext4_writepage+0x234/0x2f0
-> [ 2174.698627]  [<ffffffff81158327>] __writepage+0x17/0x40
-> [ 2174.698627]  [<ffffffff811597ae>] write_cache_pages+0x1fe/0x650
-> 
-> This is at the J_ASSERT_JH below:
-> 
-> 	/*
-> 	 * Metadata already on the current transaction list doesn't
-> 	 * need to be filed.  Metadata on another transaction's list must
-> 	 * be committing, and will be refiled once the commit completes:
-> 	 * leave it alone for now.
-> 	 */
-> 	if (jh->b_transaction != transaction) {
-> 		JBUFFER_TRACE(jh, "already on other transaction");
-> 		J_ASSERT_JH(jh, jh->b_transaction ==
-> 					journal->j_committing_transaction);      <===============
-> 		J_ASSERT_JH(jh, jh->b_next_transaction == transaction);
-> 		/* And this case is illegal: we can't reuse another
-> 		 * transaction's data buffer, ever. */
-> 		goto out_unlock_bh;
-> 	}
-
-Wow, that backtrace seems like a flash-back to me I believe that I have
-seen it several times, probably in different modes and probably already
-fixed. Do no know about this one though.
-
-Thanks!
--Lukas
-
-> 
-> Curt
-> 
-> On Fri, Aug 12, 2011 at 1:25 AM, Ric Wheeler <rwheeler@redhat.com> wrote:
-> > On 08/12/2011 09:16 AM, Lukas Czerner wrote:
-> >>
-> >> On Thu, 11 Aug 2011, Andreas Dilger wrote:
-> >>
-> >>> On 2011-08-11, at 9:01 AM, Lukas Czerner wrote:
-> >>>>
-> >>>> On Tue, 28 Jun 2011, Lukas Czerner wrote:
-> >>>>>
-> >>>>> Data journalling mode (data=journal) is known to be neglected by
-> >>>>> developers and only minority of people is actually using it. This
-> >>>>> mode is also less tested than the other two modes by the developers.
-> >>>>>
-> >>>>> This creates a dangerous combination, because the option which seems
-> >>>>> *safer* is actually less safe the others. So this commit adds a warning
-> >>>>> message in case that data=journal mode is used, so the user is informed
-> >>>>> that the mode might be removed in the future.
-> >>>>
-> >>>> Any comments on this ? Is that feasible to remove is someday ?
-> >>>
-> >>> I'm less in favour of removing data=journal.  Jan made some fixes to
-> >>> data=journal mode in the last few weeks, which means that people are
-> >>> still using this.
-> >>
-> >> I think that Jan was actually the one who was in favour of this change
-> >> IIRC. But you're right that there are still some (very little possibly?)
-> >> users of this. But this change does not remove it, but just let the
-> >> users know that it might be removed someday, hence discouraging them from
-> >> using it.
-> >>
-> >> Also we were discussing that several times, so I think that letting
-> >> users know that we are considering it is a good thing.
-> >>
-> >> Thanks!
-> >> -Lukas
-> >
-> > I think that this will be very useful to have - users should definitely
-> > chime in when they see this warning if they are using data journal mode.
-> >
-> > The only work load that I know that benefits from a performance point of
-> > view is one which involves an fsync() heavy, small file creation workload.
-> >  Any workload with larger files tends to lose roughly 50% of the write
-> > bandwidth under streaming writes since we end up writing everything twice.
-> >
-> > Regards,
-> >
-> > Ric
-> >
-> >
-> >>
-> >>>>> Signed-off-by: Lukas Czerner<lczerner@redhat.com>
-> >>>>> ---
-> >>>>> fs/ext4/super.c |    5 +++++
-> >>>>> 1 files changed, 5 insertions(+), 0 deletions(-)
-> >>>>>
-> >>>>> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> >>>>> index 9ea71aa..9d189cf 100644
-> >>>>> --- a/fs/ext4/super.c
-> >>>>> +++ b/fs/ext4/super.c
-> >>>>> @@ -1631,6 +1631,11 @@ static int parse_options(char *options, struct
-> >>>>> super_block *sb,
-> >>>>>                        sbi->s_min_batch_time = option;
-> >>>>>                        break;
-> >>>>>                case Opt_data_journal:
-> >>>>> +                       ext4_msg(sb, KERN_WARNING,
-> >>>>> +                                "Using data=journal may be removed in
-> >>>>> the "
-> >>>>> +                                "future. Please, contact "
-> >>>>> +                                "linux-ext4@vger.kernel.org if you are
-> >>>>> "
-> >>>>> +                                "using this feature.");
-> >>>>>                        data_opt = EXT4_MOUNT_JOURNAL_DATA;
-> >>>>>                        goto datacheck;
-> >>>>>                case Opt_data_ordered:
-> >>>>>
-> >>>> --
-> >>>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> >>>> the body of a message to majordomo@vger.kernel.org
-> >>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >>>
-> >>> Cheers, Andreas
-> >>>
-> >>>
-> >>>
-> >>>
-> >>>
-> >>>
-> >
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >
-> 
-
+diff --git a/lib/ext2fs/ext2_io.h b/lib/ext2fs/ext2_io.h
+index e71ada9..bcc2f87 100644
+--- a/lib/ext2fs/ext2_io.h
++++ b/lib/ext2fs/ext2_io.h
+@@ -30,6 +30,7 @@ typedef struct struct_io_stats *io_stats;
+ 
+ #define CHANNEL_FLAGS_WRITETHROUGH	0x01
+ #define CHANNEL_FLAGS_DISCARD_ZEROES	0x02
++#define CHANNEL_FLAGS_BLOCK_DEVICE	0x04
+ 
+ #define io_channel_discard_zeroes_data(i) (i->flags & CHANNEL_FLAGS_DISCARD_ZEROES)
+ 
+diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
+index 21a273d..ecddfa6 100644
+--- a/lib/ext2fs/unix_io.c
++++ b/lib/ext2fs/unix_io.c
+@@ -49,6 +49,9 @@
+ #if HAVE_SYS_RESOURCE_H
+ #include <sys/resource.h>
+ #endif
++#if HAVE_LINUX_FALLOC_H
++#include <linux/falloc.h>
++#endif
+ 
+ #if defined(__linux__) && defined(_IO) && !defined(BLKROGET)
+ #define BLKROGET   _IO(0x12, 94) /* Get read-only status (0 = read_write).  */
+@@ -488,6 +491,20 @@ static errcode_t unix_open(const char *name, int flags, io_channel *channel)
+ 		goto cleanup;
+ 	}
+ 
++	/*
++	 * If the device is really a block device, then set the
++	 * appropriate flag, otherwise we can set DISCARD_ZEROES flag
++	 * because we are going to use punch hole instead of discard
++	 * and if it succeed, subsequent read from sparse area returns
++	 * zero.
++	 */
++	if (ext2fs_stat(io->name, &st) == 0) {
++		if (S_ISBLK(st.st_mode))
++			io->flags |= CHANNEL_FLAGS_BLOCK_DEVICE;
++		else
++			io->flags |= CHANNEL_FLAGS_DISCARD_ZEROES;
++	}
++
+ #ifdef BLKSSZGET
+ 	if (flags & IO_FLAG_DIRECT_IO) {
+ 		if (ioctl(data->dev, BLKSSZGET, &data->align) != 0)
+@@ -853,13 +870,12 @@ static errcode_t unix_set_option(io_channel channel, const char *option,
+ }
+ 
+ #if defined(__linux__) && !defined(BLKDISCARD)
+-#define BLKDISCARD	_IO(0x12,119)
++#define BLKDISCARD		_IO(0x12,119)
+ #endif
+ 
+ static errcode_t unix_discard(io_channel channel, unsigned long long block,
+ 			      unsigned long long count)
+ {
+-#ifdef BLKDISCARD
+ 	struct unix_private_data *data;
+ 	__uint64_t	range[2];
+ 	int		ret;
+@@ -868,14 +884,35 @@ static errcode_t unix_discard(io_channel channel, unsigned long long block,
+ 	data = (struct unix_private_data *) channel->private_data;
+ 	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
+ 
+-	range[0] = (__uint64_t)(block) * channel->block_size;
+-	range[1] = (__uint64_t)(count) * channel->block_size;
++	if (channel->flags & CHANNEL_FLAGS_BLOCK_DEVICE) {
++#ifdef BLKDISCARD
++		range[0] = (__uint64_t)(block) * channel->block_size;
++		range[1] = (__uint64_t)(count) * channel->block_size;
+ 
+-	ret = ioctl(data->dev, BLKDISCARD, &range);
+-	if (ret < 0)
++		ret = ioctl(data->dev, BLKDISCARD, &range);
++#else
++		goto unimplemented;
++#endif
++	} else {
++#ifdef FALLOC_FL_PUNCH_HOLE
++		/*
++		 * If we are not on block device, try to use punch hole
++		 * to reclaim free space.
++		 */
++		ret = fallocate(data->dev,
++				FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
++				(off_t)(block) * channel->block_size,
++				(off_t)(count) * channel->block_size);
++#else
++		goto unimplemented;
++#endif
++	}
++	if (ret < 0) {
++		if (errno == EOPNOTSUPP)
++			goto unimplemented;
+ 		return errno;
++	}
+ 	return 0;
+-#else
++unimplemented:
+ 	return EXT2_ET_UNIMPLEMENTED;
+-#endif
+ }
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index e062bda..9685e2d 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -2073,12 +2073,18 @@ static int mke2fs_discard_device(ext2_filsys fs)
+ 	struct ext2fs_numeric_progress_struct progress;
+ 	blk64_t blocks = ext2fs_blocks_count(fs->super);
+ 	blk64_t count = DISCARD_STEP_MB;
+-	blk64_t cur = 0;
++	blk64_t cur;
+ 	int retval = 0;
+ 
+-	retval = io_channel_discard(fs->io, 0, 0);
++	/*
++	 * Let's try if discard really works on the device, so
++	 * we do not print numeric progress resulting in failure
++	 * afterwards.
++	 */
++	retval = io_channel_discard(fs->io, 0, fs->blocksize);
+ 	if (retval)
+ 		return retval;
++	cur = fs->blocksize;
+ 
+ 	count *= (1024 * 1024);
+ 	count /= fs->blocksize;
+diff --git a/tests/f_resize_inode/script b/tests/f_resize_inode/script
+index 327f41b..1665e1a 100644
+--- a/tests/f_resize_inode/script
++++ b/tests/f_resize_inode/script
+@@ -15,6 +15,7 @@ dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
+ echo mke2fs -F -O resize_inode -o Linux -b 1024 -g 1024 test.img 16384 > $OUT
+ $MKE2FS -F -O resize_inode -o Linux -b 1024 -g 1024 $TMPFILE 16384 2>&1 \
+ 	| sed -e '1d' | grep -v "automatically checked" | 
++	grep -v 'Discarding device blocks' |
+ 	grep -v "whichever comes first" >> $OUT 
+ 
+ $FSCK $FSCK_OPT  -N test_filesys $TMPFILE > $OUT.new 2>&1
+diff --git a/tests/m_bigjournal/script b/tests/m_bigjournal/script
+index 29e0a24..1e21fdf 100644
+--- a/tests/m_bigjournal/script
++++ b/tests/m_bigjournal/script
+@@ -1,4 +1,4 @@
+ DESCRIPTION="journal over 4GB in size"
+ FS_SIZE=11000000
+-MKE2FS_OPTS="-t ext4 -G 512 -N 1280 -J size=5000 -q -E lazy_journal_init,lazy_itable_init"
++MKE2FS_OPTS="-t ext4 -G 512 -N 1280 -J size=5000 -q -E lazy_journal_init,lazy_itable_init,nodiscard"
+ . $cmd_dir/run_mke2fs
+diff --git a/tests/run_mke2fs b/tests/run_mke2fs
+index ab807a5..4abea53 100644
+--- a/tests/run_mke2fs
++++ b/tests/run_mke2fs
+@@ -9,7 +9,7 @@ MKE2FS_SKIP_PROGRESS=true
+ MKE2FS_SKIP_CHECK_MSG=true
+ export MKE2FS_SKIP_PROGRESS MKE2FS_SKIP_CHECK_MSG
+ > $TMPFILE
+-PREP_CMD='$MKE2FS -F -o Linux $MKE2FS_OPTS $TMPFILE $FS_SIZE 2>&1 | sed -e 1d | tr -d \\015 > $OUT1 ; $DEBUGFS -R features $TMPFILE 2>&1 | sed -e 1d | tr -d \\015 >> $OUT1 ; echo " " >> $OUT1'
++PREP_CMD='$MKE2FS -F -o Linux $MKE2FS_OPTS $TMPFILE $FS_SIZE 2>&1 | sed -e 1d | grep -v "Discarding device blocks" | tr -d \\015 > $OUT1 ; $DEBUGFS -R features $TMPFILE 2>&1 | sed -e 1d | tr -d \\015 >> $OUT1 ; echo " " >> $OUT1'
+ AFTER_CMD='$DUMPE2FS $TMPFILE 2>&1 | sed -f $cmd_dir/filter_dumpe2fs | tr -d \\015 >> $OUT1'
+ . $cmd_dir/run_e2fsck
+ unset FS_SIZE MKE2FS_OPTS MKE2FS_SKIP_PROGRESS
 -- 
---8323328-1065660080-1313165306=:3088--
+1.7.4.4
+
