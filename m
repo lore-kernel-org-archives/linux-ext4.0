@@ -1,81 +1,186 @@
-From: Michael Tokarev <mjt@tls.msk.ru>
-Subject: Re: DIO process stuck apparently due to dioread_nolock (3.0)
-Date: Fri, 12 Aug 2011 19:55:00 +0400
-Message-ID: <4E454CD4.3080505@msgid.tls.msk.ru>
-References: <4E4262A5.6030903@msgid.tls.msk.ru> <20110811115943.GF4755@quack.suse.cz> <4E43C956.3060507@msgid.tls.msk.ru> <20110811140101.GA18802@quack.suse.cz> <4E4435F4.6000406@msgid.tls.msk.ru> <CAFgt=MCgfN-6_uBm=pDaeLqJKJQkSHry91XbYwWq=iBXip3D-w@mail.gmail.com> <4E44C6ED.2030506@msgid.tls.msk.ru> <20110812130729.GC28324@quack.suse.cz>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH v2] ext4: Deprecate data=journal mount option
+Date: Fri, 12 Aug 2011 18:08:21 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1108121803210.3088@dhcp-27-109.brq.redhat.com>
+References: <1309260363-19012-1-git-send-email-lczerner@redhat.com> <alpine.LFD.2.00.1108111700500.29009@dhcp-27-109.brq.redhat.com> <BEF6D87F-AEA5-4BF8-B71D-6BBA540C3731@dilger.ca> <alpine.LFD.2.00.1108121013280.4535@dhcp-27-109.brq.redhat.com>
+ <4E44E374.7080103@redhat.com> <CAO81RMYcvpd2--Y-u2xOb2+3U=fOK2UtaW7d9iP43_u38hYgZA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Jiaying Zhang <jiayingz@google.com>, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1065660080-1313165306=:3088"
+Cc: Ric Wheeler <rwheeler@redhat.com>,
+	Lukas Czerner <lczerner@redhat.com>,
+	Andreas Dilger <adilger@dilger.ca>,
+	linux-ext4 List <linux-ext4@vger.kernel.org>,
+	"Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	Eric Sandeen <sandeen@redhat.com>
+To: Curt Wohlgemuth <curtw@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from isrv.corpit.ru ([86.62.121.231]:45036 "EHLO isrv.corpit.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:36906 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751269Ab1HLPzE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 12 Aug 2011 11:55:04 -0400
-In-Reply-To: <20110812130729.GC28324@quack.suse.cz>
+	id S1750944Ab1HLQIn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 12 Aug 2011 12:08:43 -0400
+In-Reply-To: <CAO81RMYcvpd2--Y-u2xOb2+3U=fOK2UtaW7d9iP43_u38hYgZA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-12.08.2011 17:07, Jan Kara wrote:
-[]
->>>> [   76.982985] EXT4-fs (dm-1): Unaligned AIO/DIO on inode 3407879 by oracle; performance will be poor.
->>>> [ 1469.734114] SysRq : Show Blocked State
->>>> [ 1469.734157]   task                        PC stack   pid father
->>>> [ 1469.734473] oracle          D 0000000000000000     0  6146      1 0x00000000
->>>> [ 1469.734525]  ffff88103f604810 0000000000000082 ffff881000000000 ffff881079791040
->>>> [ 1469.734603]  ffff880432c19fd8 ffff880432c19fd8 ffff880432c19fd8 ffff88103f604810
->>>> [ 1469.734681]  ffffea000ec13590 ffffffff00000000 ffff881438c8dad8 ffffffff810eeda2
->>>> [ 1469.734760] Call Trace:
->>>> [ 1469.734800]  [<ffffffff810eeda2>] ? __do_fault+0x422/0x520
->>>> [ 1469.734863]  [<ffffffffa0123e6d>] ? ext4_file_write+0x20d/0x260 [ext4]
->>>> [ 1469.734909]  [<ffffffff8106aee0>] ? abort_exclusive_wait+0xb0/0xb0
->>>> [ 1469.734956]  [<ffffffffa0123c60>] ? ext4_llseek+0x120/0x120 [ext4]
->>>> [ 1469.734999]  [<ffffffff81162173>] ? aio_rw_vect_retry+0x73/0x1d0
->>>> [ 1469.735039]  [<ffffffff8116302f>] ? aio_run_iocb+0x5f/0x160
->>>> [ 1469.735078]  [<ffffffff81164258>] ? do_io_submit+0x4f8/0x600
->>>> [ 1469.735122]  [<ffffffff81359b52>] ? system_call_fastpath+0x16/0x1b
-[]
->   Probably not, just garbage on stack confuses the stack unwinder. Note
-> that e.g. ext4_llseek() is at the end of function as well as
-> abort_exclusive_wait() which probably means these functions have already
-> finished and just left their addresses on stack. Could you disasseble
-> your ext4_file_write() function and check where offset 0x20d is? Sadly you
-> won't see where calls are going when ext4 is compiled as a module (module
-> is linked when loaded into kernel) so it might be easier to compile ext4
-> into the kernel and disassemble the function in vmlinux file.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
+
+--8323328-1065660080-1313165306=:3088
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1
+Content-Transfer-Encoding: 8BIT
+
+On Fri, 12 Aug 2011, Curt Wohlgemuth wrote:
+
+> I don't know much about data=journal, but I've been running xfstests
+> with it, and it's a disaster, given that data=journal doesn't support
+> O_DIRECT.  What kind of testing do people do on data=journal?
+
+Short answer is probably none :). Even though that it seems like an
+radical answer I believe that it is mostly true, because simply said
+almost no-one care. But I think that Ted mentioned that he actually do
+some tests with that mode, but I am not sure about that.
+
 > 
->> Btw, does ext4_llseek() look sane here?  Note it's called from
->> aio_submit() -- does it _ever_ implement SEEKs?
->>
->> Maybe some debugging is neecessary here?
->   Yes. The trouble is I'm not completely sure where we are hanging yet.
-> We should know more from your disassembly. But you can try running with
-> attached debug patch - maybe it shows something interesting.
+> And worse, I consistently crash my machine running xfstests 074 on a
+> data=journal partition.  I just repeated this to make sure, on
+> 3.1.0-rc1; I've also seen it with 3.0.0.  There's a BUG_ON firing in
+> jbd2_journal_dirty_metadata():
+> 
+> [ 2174.697692] ------------[ cut here ]------------
+> [ 2174.698627] kernel BUG at fs/jbd2/transaction.c:1112!
+> [ 2174.698627] invalid opcode: 0000 [#1] SMP
+> [ 2174.698627] CPU 11
+> ...
+> [ 2174.698627] Call Trace:
+> [ 2174.698627]  [<ffffffff8127f9a3>] __ext4_handle_dirty_metadata+0x83/0x120
+> [ 2174.698627]  [<ffffffff8127fd1e>] ? __ext4_journal_get_write_access+0x3e/0x80
+> [ 2174.698627]  [<ffffffff81253a78>] __ext4_journalled_writepage+0x338/0x3e0
+> [ 2174.698627]  [<ffffffff81254244>] ext4_writepage+0x234/0x2f0
+> [ 2174.698627]  [<ffffffff81158327>] __writepage+0x17/0x40
+> [ 2174.698627]  [<ffffffff811597ae>] write_cache_pages+0x1fe/0x650
+> 
+> This is at the J_ASSERT_JH below:
+> 
+> 	/*
+> 	 * Metadata already on the current transaction list doesn't
+> 	 * need to be filed.  Metadata on another transaction's list must
+> 	 * be committing, and will be refiled once the commit completes:
+> 	 * leave it alone for now.
+> 	 */
+> 	if (jh->b_transaction != transaction) {
+> 		JBUFFER_TRACE(jh, "already on other transaction");
+> 		J_ASSERT_JH(jh, jh->b_transaction ==
+> 					journal->j_committing_transaction);      <===============
+> 		J_ASSERT_JH(jh, jh->b_next_transaction == transaction);
+> 		/* And this case is illegal: we can't reuse another
+> 		 * transaction's data buffer, ever. */
+> 		goto out_unlock_bh;
+> 	}
 
-With ext4 built-in and your patch applied:
+Wow, that backtrace seems like a flash-back to me I believe that I have
+seen it several times, probably in different modes and probably already
+fixed. Do no know about this one though.
 
-[  429.061524] EXT4-fs (sda11): Unaligned AIO/DIO on inode 5767181 by oracle; performance will be poor.
-[  429.061669] Going to wait for 18446744073709551199 aios
-[  437.717942] SysRq : Show Blocked State
-[  437.718109]   task                        PC stack   pid father
-[  437.718528] oracle          D 0000000000000000     0  3844      1 0x00000000
-[  437.718767]  ffff88203e330080 0000000000000082 0000000000000000 ffff881078e3f7d0
-[  437.719156]  ffff88203dc15fd8 ffff88203dc15fd8 ffff88203dc15fd8 ffff88203e330080
-[  437.719546]  0000001e0000000f 0000000000000246 205b88103f806680 3136302e39323420
-[  437.719935] Call Trace:
-[  437.720043]  [<ffffffff8139b976>] ? printk+0x43/0x48
-[  437.720155]  [<ffffffff8118e16d>] ? ext4_file_write+0x21d/0x290
-[  437.720267]  [<ffffffff8106aee0>] ? abort_exclusive_wait+0xb0/0xb0
-[  437.720376]  [<ffffffff8118df50>] ? ext4_llseek+0x120/0x120
-[  437.720485]  [<ffffffff81162173>] ? aio_rw_vect_retry+0x73/0x1d0
-[  437.720593]  [<ffffffff8116302f>] ? aio_run_iocb+0x5f/0x160
-[  437.720699]  [<ffffffff81164258>] ? do_io_submit+0x4f8/0x600
-[  437.720811]  [<ffffffff813a3152>] ? system_call_fastpath+0x16/0x1b
+Thanks!
+-Lukas
 
-Trying to find how to disassemble things now...
-And yes, 18446744073709551199 aios sounds quite alot ;)
+> 
+> Curt
+> 
+> On Fri, Aug 12, 2011 at 1:25 AM, Ric Wheeler <rwheeler@redhat.com> wrote:
+> > On 08/12/2011 09:16 AM, Lukas Czerner wrote:
+> >>
+> >> On Thu, 11 Aug 2011, Andreas Dilger wrote:
+> >>
+> >>> On 2011-08-11, at 9:01 AM, Lukas Czerner wrote:
+> >>>>
+> >>>> On Tue, 28 Jun 2011, Lukas Czerner wrote:
+> >>>>>
+> >>>>> Data journalling mode (data=journal) is known to be neglected by
+> >>>>> developers and only minority of people is actually using it. This
+> >>>>> mode is also less tested than the other two modes by the developers.
+> >>>>>
+> >>>>> This creates a dangerous combination, because the option which seems
+> >>>>> *safer* is actually less safe the others. So this commit adds a warning
+> >>>>> message in case that data=journal mode is used, so the user is informed
+> >>>>> that the mode might be removed in the future.
+> >>>>
+> >>>> Any comments on this ? Is that feasible to remove is someday ?
+> >>>
+> >>> I'm less in favour of removing data=journal.  Jan made some fixes to
+> >>> data=journal mode in the last few weeks, which means that people are
+> >>> still using this.
+> >>
+> >> I think that Jan was actually the one who was in favour of this change
+> >> IIRC. But you're right that there are still some (very little possibly?)
+> >> users of this. But this change does not remove it, but just let the
+> >> users know that it might be removed someday, hence discouraging them from
+> >> using it.
+> >>
+> >> Also we were discussing that several times, so I think that letting
+> >> users know that we are considering it is a good thing.
+> >>
+> >> Thanks!
+> >> -Lukas
+> >
+> > I think that this will be very useful to have - users should definitely
+> > chime in when they see this warning if they are using data journal mode.
+> >
+> > The only work load that I know that benefits from a performance point of
+> > view is one which involves an fsync() heavy, small file creation workload.
+> >  Any workload with larger files tends to lose roughly 50% of the write
+> > bandwidth under streaming writes since we end up writing everything twice.
+> >
+> > Regards,
+> >
+> > Ric
+> >
+> >
+> >>
+> >>>>> Signed-off-by: Lukas Czerner<lczerner@redhat.com>
+> >>>>> ---
+> >>>>> fs/ext4/super.c |    5 +++++
+> >>>>> 1 files changed, 5 insertions(+), 0 deletions(-)
+> >>>>>
+> >>>>> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> >>>>> index 9ea71aa..9d189cf 100644
+> >>>>> --- a/fs/ext4/super.c
+> >>>>> +++ b/fs/ext4/super.c
+> >>>>> @@ -1631,6 +1631,11 @@ static int parse_options(char *options, struct
+> >>>>> super_block *sb,
+> >>>>>                        sbi->s_min_batch_time = option;
+> >>>>>                        break;
+> >>>>>                case Opt_data_journal:
+> >>>>> +                       ext4_msg(sb, KERN_WARNING,
+> >>>>> +                                "Using data=journal may be removed in
+> >>>>> the "
+> >>>>> +                                "future. Please, contact "
+> >>>>> +                                "linux-ext4@vger.kernel.org if you are
+> >>>>> "
+> >>>>> +                                "using this feature.");
+> >>>>>                        data_opt = EXT4_MOUNT_JOURNAL_DATA;
+> >>>>>                        goto datacheck;
+> >>>>>                case Opt_data_ordered:
+> >>>>>
+> >>>> --
+> >>>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> >>>> the body of a message to majordomo@vger.kernel.org
+> >>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >>>
+> >>> Cheers, Andreas
+> >>>
+> >>>
+> >>>
+> >>>
+> >>>
+> >>>
+> >
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >
+> 
 
-Thanks,
-
-/mjt
+-- 
+--8323328-1065660080-1313165306=:3088--
