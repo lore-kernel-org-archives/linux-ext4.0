@@ -1,212 +1,263 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 2/5 v2] e2fsprogs: Use punch hole as "discard" on regular files
-Date: Fri, 12 Aug 2011 18:42:57 +0200
-Message-ID: <1313167380-3283-2-git-send-email-lczerner@redhat.com>
-References: <1313167380-3283-1-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 1/5 v2] e2fsprogs: create open() and stat() helpers
+Date: Fri, 12 Aug 2011 18:42:56 +0200
+Message-ID: <1313167380-3283-1-git-send-email-lczerner@redhat.com>
 Cc: tytso@mit.edu, adilger@dilger.ca,
 	Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36571 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:17529 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751269Ab1HLQnP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751298Ab1HLQnP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 12 Aug 2011 12:43:15 -0400
-In-Reply-To: <1313167380-3283-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If e2fsprogs tools (mke2fs, e2fsck) is run on regular file instead of
-on block device, we can use punch hole instead of regular discard
-command which would not work on regular file anyway. This gives us
-several advantages. First of all when e2fsck is run with '-E discard'
-parameter it will punch out all ununsed space from the image, hence
-trimming down the file system image. And secondly, when creating an
-file system on regular file (with '-E discard' which is default), we
-can use punch hole to clear the file content, hence we can skip inode
-table initialization, because reads from sparse area returns zeros. This
-will result in faster file system creation (without the need to specify
-lazy_itable_init) and smaller images.
-
-This commit also fixes some tests that would fail due to mke2fs showing
-discard progress, hence the output would differ.
+In many places we are using #ifdef HAVE_OPEN64 to determine if we can
+use open64() but that's ugly. This commit creates two new helpers
+ext2fs_open_file() for open() and ext2fs_stat() for stat(). Also we need
+new typedef ext2fs_struct_stat for struct stat.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
-v2: fix tests for case there is no punch hole support
-    add ifdefs to cover no punch hole or fallocate support
+v2: This is the actually the first version of the patch
 
- lib/ext2fs/ext2_io.h        |    1 +
- lib/ext2fs/unix_io.c        |   53 ++++++++++++++++++++++++++++++++++++------
- misc/mke2fs.c               |   10 ++++++-
- tests/f_resize_inode/script |    1 +
- tests/m_bigjournal/script   |    2 +-
- tests/run_mke2fs            |    2 +-
- 6 files changed, 57 insertions(+), 12 deletions(-)
+ lib/ext2fs/ext2fs.h      |   38 ++++++++++++++++++++++++++++++++++++++
+ lib/ext2fs/getsectsize.c |   12 ++----------
+ lib/ext2fs/getsize.c     |    6 +-----
+ lib/ext2fs/unix_io.c     |   10 +++-------
+ misc/e2image.c           |   18 +++---------------
+ misc/util.c              |   10 ++--------
+ resize/main.c            |    6 +-----
+ 7 files changed, 50 insertions(+), 50 deletions(-)
 
-diff --git a/lib/ext2fs/ext2_io.h b/lib/ext2fs/ext2_io.h
-index e71ada9..bcc2f87 100644
---- a/lib/ext2fs/ext2_io.h
-+++ b/lib/ext2fs/ext2_io.h
-@@ -30,6 +30,7 @@ typedef struct struct_io_stats *io_stats;
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index dc83fb0..bf61b37 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -584,6 +584,12 @@ typedef struct ext2_icount *ext2_icount_t;
+ #define EXT2FS_NUM_B2C(fs, blks)	(((blks) + EXT2FS_CLUSTER_MASK(fs)) >> \
+ 					 (fs)->cluster_ratio_bits)
  
- #define CHANNEL_FLAGS_WRITETHROUGH	0x01
- #define CHANNEL_FLAGS_DISCARD_ZEROES	0x02
-+#define CHANNEL_FLAGS_BLOCK_DEVICE	0x04
++#ifdef HAVE_OPEN64
++typedef struct stat64 ext2fs_struct_stat;
++#else
++typedef struct stat ext2fs_struct_stat;
++#endif
++
+ /*
+  * function prototypes
+  */
+@@ -1388,6 +1394,8 @@ extern blk_t ext2fs_inode_data_blocks(ext2_filsys fs,
+ 				      struct ext2_inode *inode);
+ extern unsigned int ext2fs_div_ceil(unsigned int a, unsigned int b);
+ extern __u64 ext2fs_div64_ceil(__u64 a, __u64 b);
++extern int ext2fs_open_file(const char *pathname, int flags, ...);
++extern int ext2fs_stat(const char *path, ext2fs_struct_stat *buf);
  
- #define io_channel_discard_zeroes_data(i) (i->flags & CHANNEL_FLAGS_DISCARD_ZEROES)
+ /*
+  * The actual inlined functions definitions themselves...
+@@ -1638,6 +1646,36 @@ _INLINE_ __u64 ext2fs_div64_ceil(__u64 a, __u64 b)
+ 	return ((a - 1) / b) + 1;
+ }
+ 
++_INLINE_ int ext2fs_open_file(const char *pathname, int flags, ...)
++{
++	va_list args;
++	mode_t mode;
++
++	va_start(args, flags);
++	mode = va_arg(args, mode_t);
++	va_end(args);
++
++	if (mode)
++#ifdef HAVE_OPEN64
++		return open64(pathname, flags, mode);
++	else
++		return open64(pathname, flags);
++#else
++		return open(pathname, flags, mode);
++	else
++		return open(pathname, flags);
++#endif
++}
++
++_INLINE_ int ext2fs_stat(const char *path, ext2fs_struct_stat *buf)
++{
++#ifdef HAVE_OPEN64
++	return stat64(path, buf);
++#else
++	return open(path, buf);
++#endif
++}
++
+ #undef _INLINE_
+ #endif
+ 
+diff --git a/lib/ext2fs/getsectsize.c b/lib/ext2fs/getsectsize.c
+index 64f42a6..f129be1 100644
+--- a/lib/ext2fs/getsectsize.c
++++ b/lib/ext2fs/getsectsize.c
+@@ -45,11 +45,7 @@ errcode_t ext2fs_get_device_sectsize(const char *file, int *sectsize)
+ {
+ 	int	fd;
+ 
+-#ifdef HAVE_OPEN64
+-	fd = open64(file, O_RDONLY);
+-#else
+-	fd = open(file, O_RDONLY);
+-#endif
++	fd = ext2fs_open_file(file, O_RDONLY);
+ 	if (fd < 0)
+ 		return errno;
+ 
+@@ -71,11 +67,7 @@ errcode_t ext2fs_get_device_phys_sectsize(const char *file, int *sectsize)
+ {
+ 	int	fd;
+ 
+-#ifdef HAVE_OPEN64
+-	fd = open64(file, O_RDONLY);
+-#else
+-	fd = open(file, O_RDONLY);
+-#endif
++	fd = ext2fs_open_file(file, O_RDONLY);
+ 	if (fd < 0)
+ 		return errno;
+ 
+diff --git a/lib/ext2fs/getsize.c b/lib/ext2fs/getsize.c
+index 0c91b5b..41da6b9 100644
+--- a/lib/ext2fs/getsize.c
++++ b/lib/ext2fs/getsize.c
+@@ -159,11 +159,7 @@ errcode_t ext2fs_get_device_size2(const char *file, int blocksize,
+ 	char ch;
+ #endif /* HAVE_SYS_DISKLABEL_H */
+ 
+-#ifdef HAVE_OPEN64
+-	fd = open64(file, O_RDONLY);
+-#else
+-	fd = open(file, O_RDONLY);
+-#endif
++	fd = ext2fs_open_file(file, O_RDONLY);
+ 	if (fd < 0)
+ 		return errno;
  
 diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
-index 21a273d..ecddfa6 100644
+index c1d0561..21a273d 100644
 --- a/lib/ext2fs/unix_io.c
 +++ b/lib/ext2fs/unix_io.c
-@@ -49,6 +49,9 @@
- #if HAVE_SYS_RESOURCE_H
- #include <sys/resource.h>
+@@ -441,7 +441,7 @@ static errcode_t unix_open(const char *name, int flags, io_channel *channel)
+ 	struct unix_private_data *data = NULL;
+ 	errcode_t	retval;
+ 	int		open_flags, zeroes = 0;
+-	struct stat	st;
++	ext2fs_struct_stat st;
+ #ifdef __linux__
+ 	struct 		utsname ut;
  #endif
-+#if HAVE_LINUX_FALLOC_H
-+#include <linux/falloc.h>
-+#endif
+@@ -482,11 +482,7 @@ static errcode_t unix_open(const char *name, int flags, io_channel *channel)
+ #endif
+ 	data->flags = flags;
  
- #if defined(__linux__) && defined(_IO) && !defined(BLKROGET)
- #define BLKROGET   _IO(0x12, 94) /* Get read-only status (0 = read_write).  */
-@@ -488,6 +491,20 @@ static errcode_t unix_open(const char *name, int flags, io_channel *channel)
+-#ifdef HAVE_OPEN64
+-	data->dev = open64(io->name, open_flags);
+-#else
+-	data->dev = open(io->name, open_flags);
+-#endif
++	data->dev = ext2fs_open_file(io->name, open_flags);
+ 	if (data->dev < 0) {
+ 		retval = errno;
  		goto cleanup;
+@@ -552,7 +548,7 @@ static errcode_t unix_open(const char *name, int flags, io_channel *channel)
+ 	     (ut.release[2] == '4') && (ut.release[3] == '.') &&
+ 	     (ut.release[4] == '1') && (ut.release[5] >= '0') &&
+ 	     (ut.release[5] < '8')) &&
+-	    (fstat(data->dev, &st) == 0) &&
++	    (ext2fs_stat(io->name, &st) == 0) &&
+ 	    (S_ISBLK(st.st_mode))) {
+ 		struct rlimit	rlim;
+ 
+diff --git a/misc/e2image.c b/misc/e2image.c
+index 83a9d02..ca6fd41 100644
+--- a/misc/e2image.c
++++ b/misc/e2image.c
+@@ -1176,11 +1176,7 @@ static void install_image(char *device, char *image_fn, int type)
+ 		exit(1);
  	}
  
-+	/*
-+	 * If the device is really a block device, then set the
-+	 * appropriate flag, otherwise we can set DISCARD_ZEROES flag
-+	 * because we are going to use punch hole instead of discard
-+	 * and if it succeed, subsequent read from sparse area returns
-+	 * zero.
-+	 */
-+	if (ext2fs_stat(io->name, &st) == 0) {
-+		if (S_ISBLK(st.st_mode))
-+			io->flags |= CHANNEL_FLAGS_BLOCK_DEVICE;
-+		else
-+			io->flags |= CHANNEL_FLAGS_DISCARD_ZEROES;
-+	}
-+
- #ifdef BLKSSZGET
- 	if (flags & IO_FLAG_DIRECT_IO) {
- 		if (ioctl(data->dev, BLKSSZGET, &data->align) != 0)
-@@ -853,13 +870,12 @@ static errcode_t unix_set_option(io_channel channel, const char *option,
- }
- 
- #if defined(__linux__) && !defined(BLKDISCARD)
--#define BLKDISCARD	_IO(0x12,119)
-+#define BLKDISCARD		_IO(0x12,119)
- #endif
- 
- static errcode_t unix_discard(io_channel channel, unsigned long long block,
- 			      unsigned long long count)
- {
--#ifdef BLKDISCARD
- 	struct unix_private_data *data;
- 	__uint64_t	range[2];
- 	int		ret;
-@@ -868,14 +884,35 @@ static errcode_t unix_discard(io_channel channel, unsigned long long block,
- 	data = (struct unix_private_data *) channel->private_data;
- 	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
- 
--	range[0] = (__uint64_t)(block) * channel->block_size;
--	range[1] = (__uint64_t)(count) * channel->block_size;
-+	if (channel->flags & CHANNEL_FLAGS_BLOCK_DEVICE) {
-+#ifdef BLKDISCARD
-+		range[0] = (__uint64_t)(block) * channel->block_size;
-+		range[1] = (__uint64_t)(count) * channel->block_size;
- 
--	ret = ioctl(data->dev, BLKDISCARD, &range);
--	if (ret < 0)
-+		ret = ioctl(data->dev, BLKDISCARD, &range);
-+#else
-+		goto unimplemented;
-+#endif
-+	} else {
-+#ifdef FALLOC_FL_PUNCH_HOLE
-+		/*
-+		 * If we are not on block device, try to use punch hole
-+		 * to reclaim free space.
-+		 */
-+		ret = fallocate(data->dev,
-+				FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
-+				(off_t)(block) * channel->block_size,
-+				(off_t)(count) * channel->block_size);
-+#else
-+		goto unimplemented;
-+#endif
-+	}
-+	if (ret < 0) {
-+		if (errno == EOPNOTSUPP)
-+			goto unimplemented;
- 		return errno;
-+	}
- 	return 0;
+-#ifdef HAVE_OPEN64
+-	fd = open64(image_fn, O_RDONLY);
 -#else
-+unimplemented:
- 	return EXT2_ET_UNIMPLEMENTED;
+-	fd = open(image_fn, O_RDONLY);
 -#endif
- }
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index e062bda..9685e2d 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -2073,12 +2073,18 @@ static int mke2fs_discard_device(ext2_filsys fs)
- 	struct ext2fs_numeric_progress_struct progress;
- 	blk64_t blocks = ext2fs_blocks_count(fs->super);
- 	blk64_t count = DISCARD_STEP_MB;
--	blk64_t cur = 0;
-+	blk64_t cur;
- 	int retval = 0;
++	fd = ext2fs_open_file(image_fn, O_RDONLY);
+ 	if (fd < 0) {
+ 		perror(image_fn);
+ 		exit(1);
+@@ -1212,11 +1208,7 @@ static void install_image(char *device, char *image_fn, int type)
+ static struct ext2_qcow2_hdr *check_qcow2_image(int *fd, char *name)
+ {
  
--	retval = io_channel_discard(fs->io, 0, 0);
-+	/*
-+	 * Let's try if discard really works on the device, so
-+	 * we do not print numeric progress resulting in failure
-+	 * afterwards.
-+	 */
-+	retval = io_channel_discard(fs->io, 0, fs->blocksize);
- 	if (retval)
- 		return retval;
-+	cur = fs->blocksize;
+-#ifdef HAVE_OPEN64
+-	*fd = open64(name, O_RDONLY, 0600);
+-#else
+-	*fd = open(name, O_RDONLY, 0600);
+-#endif
++	*fd = ext2fs_open_file(name, O_RDONLY, 0600);
+ 	if (*fd < 0)
+ 		return NULL;
  
- 	count *= (1024 * 1024);
- 	count /= fs->blocksize;
-diff --git a/tests/f_resize_inode/script b/tests/f_resize_inode/script
-index 327f41b..1665e1a 100644
---- a/tests/f_resize_inode/script
-+++ b/tests/f_resize_inode/script
-@@ -15,6 +15,7 @@ dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
- echo mke2fs -F -O resize_inode -o Linux -b 1024 -g 1024 test.img 16384 > $OUT
- $MKE2FS -F -O resize_inode -o Linux -b 1024 -g 1024 $TMPFILE 16384 2>&1 \
- 	| sed -e '1d' | grep -v "automatically checked" | 
-+	grep -v 'Discarding device blocks' |
- 	grep -v "whichever comes first" >> $OUT 
+@@ -1300,11 +1292,7 @@ skip_device:
+ 	if (strcmp(image_fn, "-") == 0)
+ 		fd = 1;
+ 	else {
+-#ifdef HAVE_OPEN64
+-		fd = open64(image_fn, O_CREAT|O_TRUNC|O_WRONLY, 0600);
+-#else
+-		fd = open(image_fn, O_CREAT|O_TRUNC|O_WRONLY, 0600);
+-#endif
++		fd = ext2fs_open_file(image_fn, O_CREAT|O_TRUNC|O_WRONLY, 0600);
+ 		if (fd < 0) {
+ 			com_err(program_name, errno,
+ 				_("while trying to open %s"), argv[optind+1]);
+diff --git a/misc/util.c b/misc/util.c
+index 51bdb60..cd78b00 100644
+--- a/misc/util.c
++++ b/misc/util.c
+@@ -79,15 +79,9 @@ void proceed_question(void)
+ void check_plausibility(const char *device)
+ {
+ 	int val;
+-#ifdef HAVE_OPEN64
+-	struct stat64 s;
++	ext2fs_struct_stat s;
  
- $FSCK $FSCK_OPT  -N test_filesys $TMPFILE > $OUT.new 2>&1
-diff --git a/tests/m_bigjournal/script b/tests/m_bigjournal/script
-index 29e0a24..1e21fdf 100644
---- a/tests/m_bigjournal/script
-+++ b/tests/m_bigjournal/script
-@@ -1,4 +1,4 @@
- DESCRIPTION="journal over 4GB in size"
- FS_SIZE=11000000
--MKE2FS_OPTS="-t ext4 -G 512 -N 1280 -J size=5000 -q -E lazy_journal_init,lazy_itable_init"
-+MKE2FS_OPTS="-t ext4 -G 512 -N 1280 -J size=5000 -q -E lazy_journal_init,lazy_itable_init,nodiscard"
- . $cmd_dir/run_mke2fs
-diff --git a/tests/run_mke2fs b/tests/run_mke2fs
-index ab807a5..4abea53 100644
---- a/tests/run_mke2fs
-+++ b/tests/run_mke2fs
-@@ -9,7 +9,7 @@ MKE2FS_SKIP_PROGRESS=true
- MKE2FS_SKIP_CHECK_MSG=true
- export MKE2FS_SKIP_PROGRESS MKE2FS_SKIP_CHECK_MSG
- > $TMPFILE
--PREP_CMD='$MKE2FS -F -o Linux $MKE2FS_OPTS $TMPFILE $FS_SIZE 2>&1 | sed -e 1d | tr -d \\015 > $OUT1 ; $DEBUGFS -R features $TMPFILE 2>&1 | sed -e 1d | tr -d \\015 >> $OUT1 ; echo " " >> $OUT1'
-+PREP_CMD='$MKE2FS -F -o Linux $MKE2FS_OPTS $TMPFILE $FS_SIZE 2>&1 | sed -e 1d | grep -v "Discarding device blocks" | tr -d \\015 > $OUT1 ; $DEBUGFS -R features $TMPFILE 2>&1 | sed -e 1d | tr -d \\015 >> $OUT1 ; echo " " >> $OUT1'
- AFTER_CMD='$DUMPE2FS $TMPFILE 2>&1 | sed -f $cmd_dir/filter_dumpe2fs | tr -d \\015 >> $OUT1'
- . $cmd_dir/run_e2fsck
- unset FS_SIZE MKE2FS_OPTS MKE2FS_SKIP_PROGRESS
+-	val = stat64(device, &s);
+-#else
+-	struct stat s;
+-
+-	val = stat(device, &s);
+-#endif
++	val = ext2fs_stat(device, &s);
+ 
+ 	if(val == -1) {
+ 		fprintf(stderr, _("Could not stat %s --- %s\n"),
+diff --git a/resize/main.c b/resize/main.c
+index 28a49ba..daa68c5 100644
+--- a/resize/main.c
++++ b/resize/main.c
+@@ -256,11 +256,7 @@ int main (int argc, char ** argv)
+ 		len = 2 * len;
+ 	}
+ 
+-#ifdef HAVE_OPEN64
+-	fd = open64(device_name, O_RDWR);
+-#else
+-	fd = open(device_name, O_RDWR);
+-#endif
++	fd = ext2fs_open_file(device_name, O_RDWR);
+ 	if (fd < 0) {
+ 		com_err("open", errno, _("while opening %s"),
+ 			device_name);
 -- 
 1.7.4.4
 
