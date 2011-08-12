@@ -1,116 +1,108 @@
-From: Robin Dong <hao.bigrat@gmail.com>
-Subject: Re: [PATCH 1/2 bigalloc] e2fsprogs: remove wrong EXT2FS_C2B in check_block_end
-Date: Fri, 12 Aug 2011 11:44:41 +0800
-Message-ID: <CAFZ0FUXHeiU3d_6XsXLD7shzw=bW_WhLSTuh5R9BimWP=bn-_Q@mail.gmail.com>
-References: <1312429682-16970-1-git-send-email-hao.bigrat@gmail.com>
-	<1312429682-16970-2-git-send-email-hao.bigrat@gmail.com>
-	<20110811024933.GC3625@thunk.org>
+From: Michael Tokarev <mjt@tls.msk.ru>
+Subject: Re: DIO process stuck apparently due to dioread_nolock (3.0)
+Date: Fri, 12 Aug 2011 10:23:41 +0400
+Message-ID: <4E44C6ED.2030506@msgid.tls.msk.ru>
+References: <4E4262A5.6030903@msgid.tls.msk.ru>	<20110811115943.GF4755@quack.suse.cz>	<4E43C956.3060507@msgid.tls.msk.ru>	<20110811140101.GA18802@quack.suse.cz>	<4E4435F4.6000406@msgid.tls.msk.ru> <CAFgt=MCgfN-6_uBm=pDaeLqJKJQkSHry91XbYwWq=iBXip3D-w@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Jiaying Zhang <jiayingz@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:44855 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751307Ab1HLDom convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Aug 2011 23:44:42 -0400
-Received: by qyk38 with SMTP id 38so121293qyk.19
-        for <linux-ext4@vger.kernel.org>; Thu, 11 Aug 2011 20:44:41 -0700 (PDT)
-In-Reply-To: <20110811024933.GC3625@thunk.org>
+Received: from isrv.corpit.ru ([86.62.121.231]:45247 "EHLO isrv.corpit.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750781Ab1HLGXo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 12 Aug 2011 02:23:44 -0400
+In-Reply-To: <CAFgt=MCgfN-6_uBm=pDaeLqJKJQkSHry91XbYwWq=iBXip3D-w@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2011/8/11 Ted Ts'o <tytso@mit.edu>:
-> On Thu, Aug 04, 2011 at 11:48:02AM +0800, Robin Dong wrote:
->> From: Robin Dong <sanbai@taobao.com>
->>
->> The argument "save_blocks_count" and the block bitmap has the unit o=
-f cluster,
->> so it don't need EXT2FS_C2B to convert argument "i".
->>
->> This patch is based on "next" branch of e2fsprogs.
->>
->> Signed-off-by: Robin Dong <sanbai@taobao.com>
->> Cc: Ted Ts'o <tytso@mit.edu>
->
-> No, I don't think this is right. =A0Regardless of whether the unit of
-> the block bitmap is cluster- or block- (only while mke2fs is running,
-> and only initially) based, the argument to
-> ext2fs_{test,mark,unmark}_block_bitmap is always in blocks.
->
-> That's why the EXT2FS_C2B is necessary.
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0- Ted
->
+12.08.2011 06:46, Jiaying Zhang wrote:
+> Hi Michael,
+> 
+> Could you try your test with the patch I just posted:
+> http://marc.info/?l=linux-ext4&m=131311627101278&w=2
+> and see whether it fixes the problem?
 
-Hi, Ted
+No it does not.  I'm now able to trigger it more or
+less reliable - I need to decompress a relatively
+small (about 70Gb) oracle database and try to start
+it (this requires a rebuild of initrd and reboot ofcourse --
+whole thing takes about 15 minutes) - and I see this:
 
-Last week I did some wrecking-case to test e2fsck ("next" branch) and
-find a error in it:
+[  945.729965] EXT4-fs (sda11): Unaligned AIO/DIO on inode 5767175 by oracle; performance will be poor.
+[  960.915602] SysRq : Show Blocked State
+[  960.915650]   task                        PC stack   pid father
+[  960.915852] oracle          D 0000000000000000     0  4985      1 0x00000000
+[  960.915909]  ffff88103e627040 0000000000000082 ffff881000000000 ffff881078e3f7d0
+[  960.917855]  ffff88103f88ffd8 ffff88103f88ffd8 ffff88103f88ffd8 ffff88103e627040
+[  960.917953]  0000000001c08400 ffff88203e98c948 ffff88207873e240 ffffffff813527c6
+[  960.918045] Call Trace:
+[  960.918092]  [<ffffffff813527c6>] ? printk+0x43/0x48
+[  960.918153]  [<ffffffffa01432a8>] ? ext4_msg+0x58/0x60 [ext4]
+[  960.918201]  [<ffffffffa0123e6d>] ? ext4_file_write+0x20d/0x260 [ext4]
+[  960.918252]  [<ffffffff8106aee0>] ? abort_exclusive_wait+0xb0/0xb0
+[  960.918301]  [<ffffffffa0123c60>] ? ext4_llseek+0x120/0x120 [ext4]
+[  960.918348]  [<ffffffff81162173>] ? aio_rw_vect_retry+0x73/0x1d0
+[  960.918392]  [<ffffffff8116302f>] ? aio_run_iocb+0x5f/0x160
+[  960.918436]  [<ffffffff81164258>] ? do_io_submit+0x4f8/0x600
+[  960.918483]  [<ffffffff81359b52>] ? system_call_fastpath+0x16/0x1b
 
-1. misc/mke2fs -m 0 -O
-^has_journal,^resize_inode,^uninit_bg,bigalloc,extent,meta_bg,flex_bg
-/dev/sda4
-2. copy some file into /dev/sda4
-3. set an inode's mode to zero
-4. e2fsck -f /dev/sda4
+(Inum 5767175 is one of oracle redologs).
 
-it report something like:
+Jan, I lied to you initially - I didn't even test your first patch,
+because I loaded the wrong initrd.  With it applied, situation does
+not improve still, and it looks exactly the same as with this new
+patch by Jiaying Zhang:
 
-e2fsck 1.42-WIP (02-Jul-2011)
-Pass 1: Checking inodes, blocks, and sizes
-Inode 314, i_blocks is 128, should be 0.  Fix<y>? yes
+[  415.288104] EXT4-fs (sda11): Unaligned AIO/DIO on inode 5767177 by oracle; performance will be poor.
+[  422.967323] SysRq : Show Blocked State
+[  422.967494]   task                        PC stack   pid father
+[  422.967872] oracle          D 0000000000000000     0  3743      1 0x00000000
+[  422.968112]  ffff88203e5a2810 0000000000000086 ffff882000000000 ffff88103f403080
+[  422.968505]  ffff88203eeddfd8 ffff88203eeddfd8 ffff88203eeddfd8 ffff88203e5a2810
+[  422.968895]  0000000001c08400 ffff88103f3db348 ffff88103f2fe800 ffffffff813527c6
+[  422.969287] Call Trace:
+[  422.969397]  [<ffffffff813527c6>] ? printk+0x43/0x48
+[  422.969528]  [<ffffffffa0143288>] ? ext4_msg+0x58/0x60 [ext4]
+[  422.969643]  [<ffffffffa0123e6d>] ? ext4_file_write+0x20d/0x260 [ext4]
+[  422.969758]  [<ffffffff8106aee0>] ? abort_exclusive_wait+0xb0/0xb0
+[  422.969873]  [<ffffffffa0123c60>] ? ext4_llseek+0x120/0x120 [ext4]
+[  422.969985]  [<ffffffff81162173>] ? aio_rw_vect_retry+0x73/0x1d0
+[  422.970093]  [<ffffffff8116302f>] ? aio_run_iocb+0x5f/0x160
+[  422.970200]  [<ffffffff81164258>] ? do_io_submit+0x4f8/0x600
+[  422.970312]  [<ffffffff81359b52>] ? system_call_fastpath+0x16/0x1b
 
-Pass 2: Checking directory structure
-Inode 314 (/c/3) has invalid mode (00).
-Clear<y>? yes
+Note in both this cases, I now see slightly different
+backtrace -- both mentions ext4_llseek and abort_exclusive_wait,
+but the rest is different:
 
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-Block bitmap differences:  -529632
-=46ix<y>? yes
+>> [   76.982985] EXT4-fs (dm-1): Unaligned AIO/DIO on inode 3407879 by oracle; performance will be poor.
+>> [ 1469.734114] SysRq : Show Blocked State
+>> [ 1469.734157]   task                        PC stack   pid father
+>> [ 1469.734473] oracle          D 0000000000000000     0  6146      1 0x00000000
+>> [ 1469.734525]  ffff88103f604810 0000000000000082 ffff881000000000 ffff881079791040
+>> [ 1469.734603]  ffff880432c19fd8 ffff880432c19fd8 ffff880432c19fd8 ffff88103f604810
+>> [ 1469.734681]  ffffea000ec13590 ffffffff00000000 ffff881438c8dad8 ffffffff810eeda2
+>> [ 1469.734760] Call Trace:
+>> [ 1469.734800]  [<ffffffff810eeda2>] ? __do_fault+0x422/0x520
+>> [ 1469.734863]  [<ffffffffa0123e6d>] ? ext4_file_write+0x20d/0x260 [ext4]
+>> [ 1469.734909]  [<ffffffff8106aee0>] ? abort_exclusive_wait+0xb0/0xb0
+>> [ 1469.734956]  [<ffffffffa0123c60>] ? ext4_llseek+0x120/0x120 [ext4]
+>> [ 1469.734999]  [<ffffffff81162173>] ? aio_rw_vect_retry+0x73/0x1d0
+>> [ 1469.735039]  [<ffffffff8116302f>] ? aio_run_iocb+0x5f/0x160
+>> [ 1469.735078]  [<ffffffff81164258>] ? do_io_submit+0x4f8/0x600
+>> [ 1469.735122]  [<ffffffff81359b52>] ? system_call_fastpath+0x16/0x1b
 
-=46ree blocks count wrong for group #1 (32267, counted=3D32268).
-=46ix<y>? yes
+As Jan already pointed out, this place looks bogus, and
+the same can be said about the new backtrace.  So I wonder
+if there's some stack corruption going on there as well.
 
-=46ree blocks count wrong (13838736, counted=3D13838752).
-=46ix<y>? yes
+Btw, does ext4_llseek() look sane here?  Note it's called from
+aio_submit() -- does it _ever_ implement SEEKs?
 
-Illegal block number passed to ext2fs_test_block_bitmap #13874128 for
-converted cluster bitmap
-Padding at end of block bitmap is not set. Fix<y>? yes
+Maybe some debugging is neecessary here?
 
-Illegal block number passed to ext2fs_mark_block_bitmap #13874128 for
-converted cluster bitmap
-Illegal block number passed to ext2fs_mark_block_bitmap #13874144 for
-converted cluster bitmap
-Illegal block number passed to ext2fs_mark_block_bitmap #13874160 for
-converted cluster bitmap
-Illegal block number passed to ext2fs_mark_block_bitmap #13874176 for
-converted cluster bitmap
-Illegal block number passed to ext2fs_mark_block_bitmap #13874192 for
-converted cluster bitmap
-Illegal block number passed to ext2fs_mark_block_bitmap #13874208 for
-converted cluster bitmap
-Illegal block number passed to ext2fs_mark_block_bitmap #13874224 for
-converted cluster bitmap
-=2E......
+Thank you!
 
-my disk has just 13874128 4k-blocks, so the block number must have
-some problems.
-So I doubt at the check_block_end in pass5.c.
-Could you please shed some light on it?
-
-
---=20
---
-Best Regard
-Robin Dong
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+/mjt
