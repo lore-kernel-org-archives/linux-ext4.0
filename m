@@ -1,87 +1,236 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: DIO process stuck apparently due to dioread_nolock (3.0)
-Date: Sun, 14 Aug 2011 00:02:51 +0800
-Message-ID: <1313251371-3672-1-git-send-email-tm@tao.ma>
-References: <4E456436.8070107@msgid.tls.msk.ru>
-Cc: mjt@tls.msk.ru, sandeen@redhat.com
-To: linux-ext4@vger.kernel.org
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: xfstests #62 broken on ext4
+Date: Sat, 13 Aug 2011 16:14:19 -0400
+Message-ID: <20110813201419.GA6442@infradead.org>
+References: <E1QsFMR-0001iq-Vt@tytso-glaptop>
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="CdrF4e02JqNVZeln"
+Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
+	Stefan Behrens <sbehrens@giantdisaster.de>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy1-pub.bluehost.com ([66.147.249.253]:46189 "HELO
-	oproxy1-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1750956Ab1HMQJY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Aug 2011 12:09:24 -0400
-In-Reply-To: <4E456436.8070107@msgid.tls.msk.ru>
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:57906
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750852Ab1HMUOV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 13 Aug 2011 16:14:21 -0400
+Content-Disposition: inline
+In-Reply-To: <E1QsFMR-0001iq-Vt@tytso-glaptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Tao Ma <boyu.mt@taobao.com>
 
-Hi Michael,
-	could you please check whether this patch work for you?
+--CdrF4e02JqNVZeln
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+
+On Sat, Aug 13, 2011 at 10:38:51AM -0400, Theodore Ts'o wrote:
+> 
+> Xfstests #62 was recently enabled by commit b2b36d0a4.
+> 
+> However, this test is failing for ext4 because ext4 doesn't support
+> extended attributes on anything other than regular files and
+> directories.  This is behavior is documented in the attr(5) man page:
+
+As explained to you before that is not the reason why it fails.  The
+reason is that Andreas Gruenbacher changed return values for certain
+xattr operations in commit 55b23bde19c08f14127a27d461a4e079942c7258.
 
 
-Subject: [PATCH] ext4: Set unwritten flag and increase i_aiodio_unwritten simultaneously.
->From 4f1d797973da8b5cf79f58cc1e4d22efb9d46d19 Mon Sep 17 00:00:00 2001
-From: Tao Ma <boyu.mt@taobao.com>
-Date: Sat, 13 Aug 2011 23:50:28 +0800
-Subject: [PATCH] ext4: Set unwritten flag and increase i_aiodio_unwritten simultaneously.
+> It looks like XFS is not conformant to documented behaviour and the file
+> system generic code.
 
-EXT4_IO_END_UNWRITTEN flag set and the increase of i_aiodio_unwritten should
-be done simultaneously since ext4_end_io_nolock always clear the flag and
-decrease the counter in the same time.
+Care to explain that conclusion?  A simple test and/or a look at the
+code will reveal that this is not true.
 
-We don't increase i_aiodio_unwritten when setting EXT4_IO_END_UNWRITTEN so
-it will go nagative and causes some process to wait forever.
+Below is the patch from Andreas that makes the test work properly again
+on Linux 3.0+ on XFS, although other filesystem still have some issues
+with it.  For ext4 that mostly seems the presence of the lost+found
+directory, and a different ordering from readdir than expected.
 
-Part of the patch came from Eric in his e-mail.
-http://marc.info/?l=linux-ext4&m=131316851417460&w=2
+--CdrF4e02JqNVZeln
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename="2.diff"
 
-Reported-by: Michael Tokarev<mjt@tls.msk.ru>
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
----
- fs/ext4/inode.c   |    9 ++++++++-
- fs/ext4/page-io.c |    6 ++++--
- 2 files changed, 12 insertions(+), 3 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d47264c..40c0b10 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2668,8 +2668,15 @@ static void ext4_end_io_buffer_write(struct buffer_head *bh, int uptodate)
- 		goto out;
- 	}
+diff --git a/062 b/062
+index 5cb6f92..df29e7a 100755
+--- a/062
++++ b/062
+@@ -84,6 +84,12 @@ _scratch_mkfs_xfs | _filter_mkfs 2>$tmp.mkfs
+ _scratch_mount || _fail "mount failed"
+ _create_test_bed
  
--	io_end->flag = EXT4_IO_END_UNWRITTEN;
-+	/*
-+	 * It may be over-defensive here to check EXT4_IO_END_UNWRITTEN now,
-+	 * but being more careful is always safe for the future change.
-+	 */
- 	inode = io_end->inode;
-+	if (!(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
-+		io_end->flag |= EXT4_IO_END_UNWRITTEN;
-+		atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
-+	}
++# In kernels before 3.0.0, getxattr() returns -EPERM for an attribute which
++# cannot exist.  Later kernels return -ENODATA.
++invalid_attribute_filter() {
++	sed -e "s:\(No such attribute\|Operation not permitted\):No such attribute or operation not permitted:"
++}
++
+ if [ "$USE_ATTR_SECURE" = yes ]; then
+     ATTR_MODES="user security trusted"
+ else
+@@ -119,15 +125,15 @@ for nsp in $ATTR_MODES; do
+ 		
+ 		echo "*** set an empty value for second attribute"
+ 		setfattr -h -n $nsp.name2 $SCRATCH_MNT/$inode
+-		getfattr -m $nsp -n $nsp.name2 $SCRATCH_MNT/$inode
++		getfattr -m $nsp -n $nsp.name2 $SCRATCH_MNT/$inode 2>&1 | invalid_attribute_filter
  
- 	/* Add the io_end to per-inode completed io list*/
- 	spin_lock_irqsave(&EXT4_I(inode)->i_completed_io_lock, flags);
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 430c401..78839af 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -334,8 +334,10 @@ submit_and_retry:
- 	if ((io_end->num_io_pages >= MAX_IO_PAGES) &&
- 	    (io_end->pages[io_end->num_io_pages-1] != io_page))
- 		goto submit_and_retry;
--	if (buffer_uninit(bh))
--		io->io_end->flag |= EXT4_IO_END_UNWRITTEN;
-+	if (buffer_uninit(bh) && !(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
-+		io_end->flag |= EXT4_IO_END_UNWRITTEN;
-+		atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
-+	}
- 	io->io_end->size += bh->b_size;
- 	io->io_next_block++;
- 	ret = bio_add_page(io->io_bio, bh->b_page, bh->b_size, bh_offset(bh));
--- 
-1.7.0.4
+ 		echo "*** overwrite empty value"
+ 		setfattr -h -n $nsp.name2 -v 0xcafe $SCRATCH_MNT/$inode
+-		getfattr -m $nsp -e hex -n $nsp.name2 $SCRATCH_MNT/$inode
++		getfattr -m $nsp -e hex -n $nsp.name2 $SCRATCH_MNT/$inode 2>&1 | invalid_attribute_filter
+ 
+ 		echo "*** remove attribute"
+ 		setfattr -h -x $nsp.name2 $SCRATCH_MNT/$inode
+-		getfattr -m $nsp -e hex -n $nsp.name2 $SCRATCH_MNT/$inode
++		getfattr -m $nsp -e hex -n $nsp.name2 $SCRATCH_MNT/$inode 2>&1 | invalid_attribute_filter
+ 
+ 		echo "*** final list (strings, type=$inode, nsp=$nsp)"
+ 		getfattr -m '.' -e hex $SCRATCH_MNT/$inode
+diff --git a/062.out b/062.out
+index 73fd628..5e3f5d9 100644
+--- a/062.out
++++ b/062.out
+@@ -55,7 +55,7 @@ user.name2
+ user.name2=0xcafe
+ 
+ *** remove attribute
+-SCRATCH_MNT/reg: user.name2: No such attribute
++SCRATCH_MNT/reg: user.name2: No such attribute or operation not permitted
+ *** final list (strings, type=reg, nsp=user)
+ # file: SCRATCH_MNT/reg
+ user.name=0xbabe
+@@ -102,7 +102,7 @@ user.name2
+ user.name2=0xcafe
+ 
+ *** remove attribute
+-SCRATCH_MNT/dir: user.name2: No such attribute
++SCRATCH_MNT/dir: user.name2: No such attribute or operation not permitted
+ *** final list (strings, type=dir, nsp=user)
+ # file: SCRATCH_MNT/dir
+ user.name=0xbabe
+@@ -125,13 +125,13 @@ setfattr: SCRATCH_MNT/lnk: Operation not permitted
+ setfattr: SCRATCH_MNT/lnk: Operation not permitted
+ *** set an empty value for second attribute
+ setfattr: SCRATCH_MNT/lnk: Operation not permitted
+-SCRATCH_MNT/lnk: user.name2: Operation not permitted
++SCRATCH_MNT/lnk: user.name2: No such attribute or operation not permitted
+ *** overwrite empty value
+ setfattr: SCRATCH_MNT/lnk: Operation not permitted
+-SCRATCH_MNT/lnk: user.name2: Operation not permitted
++SCRATCH_MNT/lnk: user.name2: No such attribute or operation not permitted
+ *** remove attribute
+ setfattr: SCRATCH_MNT/lnk: Operation not permitted
+-SCRATCH_MNT/lnk: user.name2: Operation not permitted
++SCRATCH_MNT/lnk: user.name2: No such attribute or operation not permitted
+ *** final list (strings, type=lnk, nsp=user)
+ 
+ === TYPE dev/b; NAMESPACE user
+@@ -150,13 +150,13 @@ setfattr: SCRATCH_MNT/dev/b: Operation not permitted
+ setfattr: SCRATCH_MNT/dev/b: Operation not permitted
+ *** set an empty value for second attribute
+ setfattr: SCRATCH_MNT/dev/b: Operation not permitted
+-SCRATCH_MNT/dev/b: user.name2: Operation not permitted
++SCRATCH_MNT/dev/b: user.name2: No such attribute or operation not permitted
+ *** overwrite empty value
+ setfattr: SCRATCH_MNT/dev/b: Operation not permitted
+-SCRATCH_MNT/dev/b: user.name2: Operation not permitted
++SCRATCH_MNT/dev/b: user.name2: No such attribute or operation not permitted
+ *** remove attribute
+ setfattr: SCRATCH_MNT/dev/b: Operation not permitted
+-SCRATCH_MNT/dev/b: user.name2: Operation not permitted
++SCRATCH_MNT/dev/b: user.name2: No such attribute or operation not permitted
+ *** final list (strings, type=dev/b, nsp=user)
+ 
+ === TYPE dev/c; NAMESPACE user
+@@ -175,13 +175,13 @@ setfattr: SCRATCH_MNT/dev/c: Operation not permitted
+ setfattr: SCRATCH_MNT/dev/c: Operation not permitted
+ *** set an empty value for second attribute
+ setfattr: SCRATCH_MNT/dev/c: Operation not permitted
+-SCRATCH_MNT/dev/c: user.name2: Operation not permitted
++SCRATCH_MNT/dev/c: user.name2: No such attribute or operation not permitted
+ *** overwrite empty value
+ setfattr: SCRATCH_MNT/dev/c: Operation not permitted
+-SCRATCH_MNT/dev/c: user.name2: Operation not permitted
++SCRATCH_MNT/dev/c: user.name2: No such attribute or operation not permitted
+ *** remove attribute
+ setfattr: SCRATCH_MNT/dev/c: Operation not permitted
+-SCRATCH_MNT/dev/c: user.name2: Operation not permitted
++SCRATCH_MNT/dev/c: user.name2: No such attribute or operation not permitted
+ *** final list (strings, type=dev/c, nsp=user)
+ 
+ === TYPE dev/p; NAMESPACE user
+@@ -200,13 +200,13 @@ setfattr: SCRATCH_MNT/dev/p: Operation not permitted
+ setfattr: SCRATCH_MNT/dev/p: Operation not permitted
+ *** set an empty value for second attribute
+ setfattr: SCRATCH_MNT/dev/p: Operation not permitted
+-SCRATCH_MNT/dev/p: user.name2: Operation not permitted
++SCRATCH_MNT/dev/p: user.name2: No such attribute or operation not permitted
+ *** overwrite empty value
+ setfattr: SCRATCH_MNT/dev/p: Operation not permitted
+-SCRATCH_MNT/dev/p: user.name2: Operation not permitted
++SCRATCH_MNT/dev/p: user.name2: No such attribute or operation not permitted
+ *** remove attribute
+ setfattr: SCRATCH_MNT/dev/p: Operation not permitted
+-SCRATCH_MNT/dev/p: user.name2: Operation not permitted
++SCRATCH_MNT/dev/p: user.name2: No such attribute or operation not permitted
+ *** final list (strings, type=dev/p, nsp=user)
+ 
+ === TYPE reg; NAMESPACE trusted
+@@ -249,7 +249,7 @@ trusted.name2
+ trusted.name2=0xcafe
+ 
+ *** remove attribute
+-SCRATCH_MNT/reg: trusted.name2: No such attribute
++SCRATCH_MNT/reg: trusted.name2: No such attribute or operation not permitted
+ *** final list (strings, type=reg, nsp=trusted)
+ # file: SCRATCH_MNT/reg
+ trusted.name=0xbabe
+@@ -298,7 +298,7 @@ trusted.name2
+ trusted.name2=0xcafe
+ 
+ *** remove attribute
+-SCRATCH_MNT/dir: trusted.name2: No such attribute
++SCRATCH_MNT/dir: trusted.name2: No such attribute or operation not permitted
+ *** final list (strings, type=dir, nsp=trusted)
+ # file: SCRATCH_MNT/dir
+ trusted.name=0xbabe
+@@ -347,7 +347,7 @@ trusted.name2
+ trusted.name2=0xcafe
+ 
+ *** remove attribute
+-SCRATCH_MNT/lnk: trusted.name2: No such attribute
++SCRATCH_MNT/lnk: trusted.name2: No such attribute or operation not permitted
+ *** final list (strings, type=lnk, nsp=trusted)
+ # file: SCRATCH_MNT/lnk
+ trusted.name=0xbabe
+@@ -394,7 +394,7 @@ trusted.name2
+ trusted.name2=0xcafe
+ 
+ *** remove attribute
+-SCRATCH_MNT/dev/b: trusted.name2: No such attribute
++SCRATCH_MNT/dev/b: trusted.name2: No such attribute or operation not permitted
+ *** final list (strings, type=dev/b, nsp=trusted)
+ # file: SCRATCH_MNT/dev/b
+ trusted.name=0xbabe
+@@ -441,7 +441,7 @@ trusted.name2
+ trusted.name2=0xcafe
+ 
+ *** remove attribute
+-SCRATCH_MNT/dev/c: trusted.name2: No such attribute
++SCRATCH_MNT/dev/c: trusted.name2: No such attribute or operation not permitted
+ *** final list (strings, type=dev/c, nsp=trusted)
+ # file: SCRATCH_MNT/dev/c
+ trusted.name=0xbabe
+@@ -488,7 +488,7 @@ trusted.name2
+ trusted.name2=0xcafe
+ 
+ *** remove attribute
+-SCRATCH_MNT/dev/p: trusted.name2: No such attribute
++SCRATCH_MNT/dev/p: trusted.name2: No such attribute or operation not permitted
+ *** final list (strings, type=dev/p, nsp=trusted)
+ # file: SCRATCH_MNT/dev/p
+ trusted.name=0xbabe
 
+--CdrF4e02JqNVZeln--
