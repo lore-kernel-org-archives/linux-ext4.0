@@ -1,101 +1,105 @@
-From: Ivan Shmakov <ivan@gray.siamics.net>
-Subject: e2dis: a Jigdo-like tool for Ext2+ FS
-Date: Sat, 13 Aug 2011 17:21:09 +0700
-Message-ID: <86ei0p8ve2.fsf@gray.siamics.net>
-Reply-To: Ivan Shmakov <oneingray@gmail.com>
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: xfstests #62 broken on ext4
+Date: Sat, 13 Aug 2011 10:38:51 -0400
+Message-ID: <E1QsFMR-0001iq-Vt@tytso-glaptop>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+Cc: Stefan Behrens <sbehrens@giantdisaster.de>
+To: linux-ext4@vger.kernel.org, xfs@oss.sgi.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from lo.gmane.org ([80.91.229.12]:40074 "EHLO lo.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751083Ab1HMKV2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 13 Aug 2011 06:21:28 -0400
-Received: from list by lo.gmane.org with local (Exim 4.69)
-	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
-	id 1QsBLI-0003ND-UL
-	for linux-ext4@vger.kernel.org; Sat, 13 Aug 2011 12:21:24 +0200
-Received: from gray.am-1.org ([188.120.231.229])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Sat, 13 Aug 2011 12:21:24 +0200
-Received: from oneingray by gray.am-1.org with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Sat, 13 Aug 2011 12:21:24 +0200
+Received: from li9-11.members.linode.com ([67.18.176.11]:55219 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751987Ab1HMOi5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 13 Aug 2011 10:38:57 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-	A couple of weeks ago I've started working on a tool
-	(tentantively named =E2=80=9CExt2 disassembler=E2=80=9D) to walk throu=
-gh an
-	Ext2+ filesystem (or an image of) and produce the mapping of
-	files' (inodes') relative block numbers to the image's (or
-	=E2=80=9Cphysical=E2=80=9D) block numbers.
 
-	The version-that-works (apparently) is almost done, pending
-	upload to a publicly-accessible Git repository.
+Xfstests #62 was recently enabled by commit b2b36d0a4.
 
-	However, there's a considerable amount of work to be done so
-	that the tool will become really usable.  Therefore, I'd
-	appreciate any help with it.
+However, this test is failing for ext4 because ext4 doesn't support
+extended attributes on anything other than regular files and
+directories.  This is behavior is documented in the attr(5) man page:
 
-	TIA.
+   Extended user attributes
+       Extended user attributes may be assigned to files and  directori=
+es  for
+       storing arbitrary additional information such as the mime type, =
+charac=E2=80=90
+       ter set or  encoding  of  a  file.  The  access  permissions  fo=
+r  user
+       attributes are defined by the file permission bits.
 
-    Why I'm interested in that?
+       The  file  permission  bits of regular files and directories are=
+ inter=E2=80=90
+       preted differently from the file permission bits of special  fil=
+es  and
+       symbolic  links.  For regular files and directories the file per=
+mission
+       bits define access to the file's contents,  while  for  device  =
+special
+       files  they  define access to the device described by the specia=
+l file.
+       The file permissions of symbolic links are not used in  access  =
+checks.
+       These  differences would allow users to consume filesystem resou=
+rces in
+       a way not controllable by disk quotas for group or world writabl=
+e  spe=E2=80=90
+       cial files and directories.
 
-	Recently, there was a discussion in debian-devel@ on whether the
-	Debian project should provide images for easy deployment within
-	=E2=80=9Cvirtual=E2=80=9D environments (such as KVM, Xen, etc.)
+       For  this reason, extended user attributes are only allowed for =
+regular
+       files and directories,  and  access  to  extended  user  attribu=
+tes  is
+       restricted  to the owner and to users with appropriate capabilit=
+ies for
+       directories with the sticky bit set (see the chmod(1) manual  pa=
+ge  for
+       an explanation of Sticky Directories).
 
-	Such images (which, I assume, will use a filesystem supported by
-	e2fsprogs) are going to be quite large: hundreds MiB to a few
-	GiB's (depending on the intended usage) per architecture per
-	version.
+=2E.. and it is enforced by the generic fs/xattr.c code in
+xattr_permission():
 
-	Earlier, to reduce the burden of mirroring of the ISO 9660 (CD,
-	DVD, etc.) images, the Jigdo (for Jigsaw Download) tool was
-	introduced.  The tool uses SHA-1 to associate pieces of a
-	filesystem image with the contents of the files of a specified
-	set.  As the result, the tool produces the association map,
-	which has the parts of the image for which no matching files are
-	known embedded.  (A helper file, which contains the URI's the
-	files may be downloaded from, is also generated.)
+	/*
+	 * In the user.* namespace, only regular files and directories can hav=
+e
+	 * extended attributes. For sticky directories, only the owner and
+	 * privileged users can write attributes.
+	 */
+	if (!strncmp(name, XATTR_USER_PREFIX, XATTR_USER_PREFIX_LEN)) {
+		if (!S_ISREG(inode->i_mode) && !S_ISDIR(inode->i_mode))
+			return (mask & MAY_WRITE) ? -EPERM : -ENODATA;
+		if (S_ISDIR(inode->i_mode) && (inode->i_mode & S_ISVTX) &&
+		    (mask & MAY_WRITE) && !inode_owner_or_capable(inode))
+			return -EPERM;
+	}
 
-	Given such an association map, and the files, the tool is
-	capable of restoring the image.
 
-	The tool is filesystem-agnostic.  Unfortunately, it relies on
-	the fact that the files on the ISO 9660 filesystem are never
-	fragmented.  Which doesn't hold for Ext2+.
 
-	However, given the knowledge of the filesystem, it's possible to
-	solve the task of describing the parts of a given image as being
-	parts of the files specified.
+It looks like XFS is not conformant to documented behaviour and the fil=
+e
+system generic code.   The question is how should we fix this?  I can
+think of a couple of different options
 
-    Done
+(1) Back out commit b2b36d0a4 and make test #62 XFS-specific again.
 
-	The tool iterates over the inodes, and records the
-	logical-to-physical blocks correspondence.  All the =E2=80=9Cchunks=E2=
-=80=9D
-	belonging to the same inode are marked as such.
+(2) Option #1, above, and then also create another test for file system=
+s
+with the standard/generic Linux behavior
 
-	The mapping is written to a SQLite database.
+(3) Modify test #62 so that it can support both the XFS and Linux
+generic behavior.
 
-    To do
+(4) Change the generic code to match what XFS does (despite the design
+rationale mentioned in the attr(5) man page).
 
-	Message digests are to be computed and recorded just as well.
+(5) Change XFS to match the generic behavior, and then change test #62.
 
-	Non-payload blocks are to be annotated as well.
+What do people think?
 
-	A tool to reassemble the image.
-
-	Command line interface.  (Preferably compliant to the GNU Coding
-	Standards.)
-
---=20
-=46SF associate member #7257
-
+						- Ted
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
