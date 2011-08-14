@@ -1,50 +1,76 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2] ext4: Deprecate data=journal mount option
-Date: Sat, 13 Aug 2011 22:06:17 -0400
-Message-ID: <20110814020617.GB3524@thunk.org>
-References: <1309260363-19012-1-git-send-email-lczerner@redhat.com>
- <alpine.LFD.2.00.1108111700500.29009@dhcp-27-109.brq.redhat.com>
- <BEF6D87F-AEA5-4BF8-B71D-6BBA540C3731@dilger.ca>
- <alpine.LFD.2.00.1108121013280.4535@dhcp-27-109.brq.redhat.com>
- <4E44E374.7080103@redhat.com>
- <CAO81RMYcvpd2--Y-u2xOb2+3U=fOK2UtaW7d9iP43_u38hYgZA@mail.gmail.com>
- <alpine.LFD.2.00.1108121803210.3088@dhcp-27-109.brq.redhat.com>
- <20110812181330.GG31181@thunk.org>
- <20110812205719.GA1670@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Lukas Czerner <lczerner@redhat.com>,
-	Curt Wohlgemuth <curtw@google.com>,
-	Ric Wheeler <rwheeler@redhat.com>,
-	Andreas Dilger <adilger@dilger.ca>,
-	linux-ext4 List <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>
-To: Christoph Hellwig <hch@infradead.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext2,ext3,ext4: don't inherit APPEND_FL or IMMUTABLE_FL for new inodes
+Date: Sat, 13 Aug 2011 22:28:06 -0400
+Message-ID: <1313288886-32689-1-git-send-email-tytso@mit.edu>
+References: <20110814020617.GB3524@thunk.org>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:47624 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:46338 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752272Ab1HNCG2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 13 Aug 2011 22:06:28 -0400
-Content-Disposition: inline
-In-Reply-To: <20110812205719.GA1670@infradead.org>
+	id S1752272Ab1HNC2L (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 13 Aug 2011 22:28:11 -0400
+In-Reply-To: <20110814020617.GB3524@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 12, 2011 at 04:57:19PM -0400, Christoph Hellwig wrote:
-> > and differences in error code returns for
-> > xattrs) and #79 (a failure in the append-only handling which I don't
-> > completely understand yet).
-> 
-> This was discussed on fsdevel lately.  All filesystem but xfs inherit
-> the append only bit from directories to files created inside them.
-> This not only is not very useful behaviour, but also exposes a bug
-> in the vfs that allows to create these new files, but fail the open
-> unless using O_APPEND which is against the posix create semantics.
+This doesn't make much sense, and it exposes a bug in the kernel where
+attempts to create a new file in an append-only directory using
+O_CREAT will fail (but still leave a zero-length file).  This was
+discovered when xfstests #79 was generalized so it could run on all
+file systems.
 
-I agree that disabling inheritance of the APPEND_FL flag makes sense.
-I propose we do this for ext2/3/4 and any other file systems which is
-currently following the ext2/3/4 behavior.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/ext4.h          |    3 +--
+ include/linux/ext2_fs.h |    4 ++--
+ include/linux/ext3_fs.h |    4 ++--
+ 3 files changed, 5 insertions(+), 6 deletions(-)
 
-Any objections?
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index e717dfd..be593d5 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -357,8 +357,7 @@ struct flex_groups {
+ 
+ /* Flags that should be inherited by new inodes from their parent. */
+ #define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
+-			   EXT4_SYNC_FL | EXT4_IMMUTABLE_FL | EXT4_APPEND_FL |\
+-			   EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
++			   EXT4_SYNC_FL | EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
+ 			   EXT4_NOCOMPR_FL | EXT4_JOURNAL_DATA_FL |\
+ 			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL)
+ 
+diff --git a/include/linux/ext2_fs.h b/include/linux/ext2_fs.h
+index 53792bf..ce1b719 100644
+--- a/include/linux/ext2_fs.h
++++ b/include/linux/ext2_fs.h
+@@ -197,8 +197,8 @@ struct ext2_group_desc
+ 
+ /* Flags that should be inherited by new inodes from their parent. */
+ #define EXT2_FL_INHERITED (EXT2_SECRM_FL | EXT2_UNRM_FL | EXT2_COMPR_FL |\
+-			   EXT2_SYNC_FL | EXT2_IMMUTABLE_FL | EXT2_APPEND_FL |\
+-			   EXT2_NODUMP_FL | EXT2_NOATIME_FL | EXT2_COMPRBLK_FL|\
++			   EXT2_SYNC_FL | EXT2_NODUMP_FL |\
++			   EXT2_NOATIME_FL | EXT2_COMPRBLK_FL |\
+ 			   EXT2_NOCOMP_FL | EXT2_JOURNAL_DATA_FL |\
+ 			   EXT2_NOTAIL_FL | EXT2_DIRSYNC_FL)
+ 
+diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
+index 67a803a..0244611 100644
+--- a/include/linux/ext3_fs.h
++++ b/include/linux/ext3_fs.h
+@@ -180,8 +180,8 @@ struct ext3_group_desc
+ 
+ /* Flags that should be inherited by new inodes from their parent. */
+ #define EXT3_FL_INHERITED (EXT3_SECRM_FL | EXT3_UNRM_FL | EXT3_COMPR_FL |\
+-			   EXT3_SYNC_FL | EXT3_IMMUTABLE_FL | EXT3_APPEND_FL |\
+-			   EXT3_NODUMP_FL | EXT3_NOATIME_FL | EXT3_COMPRBLK_FL|\
++			   EXT3_SYNC_FL | EXT3_NODUMP_FL |\
++			   EXT3_NOATIME_FL | EXT3_COMPRBLK_FL |\
+ 			   EXT3_NOCOMPR_FL | EXT3_JOURNAL_DATA_FL |\
+ 			   EXT3_NOTAIL_FL | EXT3_DIRSYNC_FL)
+ 
+-- 
+1.7.4.1.22.gec8e1.dirty
 
-						- Ted
