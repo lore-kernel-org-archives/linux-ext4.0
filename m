@@ -1,56 +1,33 @@
-From: Ivan Shmakov <ivan@gray.siamics.net>
-Subject: Re: e2dis: a Jigdo-like tool for Ext2+ FS
-Date: Sun, 14 Aug 2011 13:56:31 +0700
-Message-ID: <86r54o7a74.fsf@gray.siamics.net>
-References: <86ei0p8ve2.fsf@gray.siamics.net>
-Reply-To: Ivan Shmakov <oneingray@gmail.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: xfstests #62 broken on ext4
+Date: Sun, 14 Aug 2011 12:09:25 -0400
+Message-ID: <20110814160925.GA29428@infradead.org>
+References: <E1QsFMR-0001iq-Vt@tytso-glaptop>
+ <20110813201419.GA6442@infradead.org>
+ <20110814004417.GA3524@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>, linux-ext4@vger.kernel.org,
+	Stefan Behrens <sbehrens@giantdisaster.de>, xfs@oss.sgi.com
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from lo.gmane.org ([80.91.229.12]:40895 "EHLO lo.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750852Ab1HNG4t (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 14 Aug 2011 02:56:49 -0400
-Received: from list by lo.gmane.org with local (Exim 4.69)
-	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
-	id 1QsUcp-0001km-W4
-	for linux-ext4@vger.kernel.org; Sun, 14 Aug 2011 08:56:48 +0200
-Received: from gray.am-1.org ([188.120.231.229])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Sun, 14 Aug 2011 08:56:47 +0200
-Received: from oneingray by gray.am-1.org with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Sun, 14 Aug 2011 08:56:47 +0200
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:35774
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754350Ab1HNQJ3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 14 Aug 2011 12:09:29 -0400
+Content-Disposition: inline
+In-Reply-To: <20110814004417.GA3524@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
->>>>> Ivan Shmakov <ivan@gray.siamics.net> writes:
+On Sat, Aug 13, 2011 at 08:44:17PM -0400, Ted Ts'o wrote:
+> I see there's an sort command at the very end of _extend_test_bed(), I
+> presume we should also add a similar "LC_COLLATE=POSIX sort" to the
+> other "find" command pipelines, and it's easy enough to filter out the
+> lost+found directory by adding a "! -name lost+found".
 
-[=E2=80=A6]
+A patch from you or Stefan would be very welcome.  Note that at least
+for btrfs I see problems with the user.name2 attribute in that test too,
+so it might be a bit of effort to sort out what actually is going on.
 
- > The version-that-works (apparently) is almost done, pending upload t=
-o
- > a publicly-accessible Git repository.
-
-	Done.
-
-http://gray.siamics.net/~ivan/archives/git/gitweb.cgi/?p=3De2dis.git
-http://waterlily.siamics.net/~ivan/archives/git/gitweb.cgi/?p=3De2dis.g=
-it
-
-http://gray.siamics.net/~ivan/archives/git/e2dis.git/
-http://waterlily.siamics.net/~ivan/archives/git/e2dis.git/
-
-[=E2=80=A6]
-
---=20
-=46SF associate member #7257
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
