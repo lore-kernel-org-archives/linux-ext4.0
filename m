@@ -1,236 +1,227 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: xfstests #62 broken on ext4
-Date: Sat, 13 Aug 2011 16:14:19 -0400
-Message-ID: <20110813201419.GA6442@infradead.org>
-References: <E1QsFMR-0001iq-Vt@tytso-glaptop>
+From: "Rafael J. Wysocki" <rjw@sisk.pl>
+Subject: Re: [PATCH] PM / Freezer: Freeze filesystems while freezing processes (v2)
+Date: Sun, 14 Aug 2011 02:16:26 +0200
+Message-ID: <201108140216.26340.rjw@sisk.pl>
+References: <4E1C70AD.1010101@u-club.de> <201108062317.19033.rjw@sisk.pl> <20110807001446.GI3162@dastard>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="CdrF4e02JqNVZeln"
-Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
-	Stefan Behrens <sbehrens@giantdisaster.de>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:57906
-	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750852Ab1HMUOV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 13 Aug 2011 16:14:21 -0400
-Content-Disposition: inline
-In-Reply-To: <E1QsFMR-0001iq-Vt@tytso-glaptop>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: Linux PM mailing list <linux-pm@lists.linux-foundation.org>,
+	Pavel Machek <pavel@ucw.cz>,
+	Nigel Cunningham <nigel@tuxonice.net>,
+	Christoph Hellwig <hch@infradead.org>,
+	Christoph <cr2005@u-club.de>, xfs@oss.sgi.com,
+	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
+	"Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20110807001446.GI3162@dastard>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-
---CdrF4e02JqNVZeln
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-
-On Sat, Aug 13, 2011 at 10:38:51AM -0400, Theodore Ts'o wrote:
+On Sunday, August 07, 2011, Dave Chinner wrote:
+> On Sat, Aug 06, 2011 at 11:17:18PM +0200, Rafael J. Wysocki wrote:
+> > From: Rafael J. Wysocki <rjw@sisk.pl>
+...
+> > +	/*
+> > +	 * Freeze in reverse order so filesystems depending on others are
+> > +	 * frozen in the right order (eg. loopback on ext3).
+> > +	 */
+> > +	list_for_each_entry_reverse(sb, &super_blocks, s_list) {
+> > +		if (!sb->s_root || !sb->s_bdev ||
+> > +		    (sb->s_frozen == SB_FREEZE_TRANS) ||
+> > +		    (sb->s_flags & MS_RDONLY))
+> > +			continue;
+> > +
+> > +		freeze_bdev(sb->s_bdev);
+> > +		sb->s_flags |= MS_FROZEN;
+> > +	}
 > 
-> Xfstests #62 was recently enabled by commit b2b36d0a4.
+> AFAIK, that won't work for btrfs - you have to call freeze_super()
+> directly for btrfs because it has a special relationship with
+> sb->s_bdev. And besides, all freeze_bdev does is get an active
+> reference on the superblock and call freeze_super().
 > 
-> However, this test is failing for ext4 because ext4 doesn't support
-> extended attributes on anything other than regular files and
-> directories.  This is behavior is documented in the attr(5) man page:
+> Also, that's traversing the list of superblock with locking and
+> dereferencing the superblock without properly checking that the
+> superblock is not being torn down. You should probably use
+> iterate_supers (or at least copy the code), with a function that
+> drops the s_umount read lock befor calling freeze_super() and then
+> picks it back up afterwards.
 
-As explained to you before that is not the reason why it fails.  The
-reason is that Andreas Gruenbacher changed return values for certain
-xattr operations in commit 55b23bde19c08f14127a27d461a4e079942c7258.
+So, what about the patch below?  It appears to work on my test boxes.
 
+Thanks,
+Rafael
 
-> It looks like XFS is not conformant to documented behaviour and the file
-> system generic code.
+---
+From: Rafael J. Wysocki <rjw@sisk.pl>
+Subject: PM / Freezer: Freeze filesystems while freezing processes (v3)
 
-Care to explain that conclusion?  A simple test and/or a look at the
-code will reveal that this is not true.
+Freeze all filesystems during the freezing of tasks by calling
+freeze_super() for all superblocks and thaw them during the thawing
+of tasks with the help of thaw_super().
 
-Below is the patch from Andreas that makes the test work properly again
-on Linux 3.0+ on XFS, although other filesystem still have some issues
-with it.  For ext4 that mostly seems the presence of the lost+found
-directory, and a different ordering from readdir than expected.
+This is needed by hibernation, because some filesystems (e.g. XFS)
+deadlock with the preallocation of memory used by it if the memory
+pressure caused by it is too heavy.
 
---CdrF4e02JqNVZeln
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename="2.diff"
+The additional benefit of this change is that, if something goes
+wrong after filesystems have been frozen, they will stay in a
+consistent state and journal replays won't be necessary (e.g. after
+a failing suspend or resume).  In particular, this should help to
+solve a long-standing issue that in some cases during resume from
+hibernation the boot loader causes the journal to be replied for the
+filesystem containing the kernel image and initrd causing it to
+become inconsistent with the information stored in the hibernation
+image.
 
-diff --git a/062 b/062
-index 5cb6f92..df29e7a 100755
---- a/062
-+++ b/062
-@@ -84,6 +84,12 @@ _scratch_mkfs_xfs | _filter_mkfs 2>$tmp.mkfs
- _scratch_mount || _fail "mount failed"
- _create_test_bed
+This change is based on earlier work by Nigel Cunningham.
+
+Signed-off-by: Rafael J. Wysocki <rjw@sisk.pl>
+---
+ fs/super.c             |   70 +++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/fs.h     |    3 ++
+ kernel/power/process.c |    9 +++++-
+ 3 files changed, 81 insertions(+), 1 deletion(-)
+
+Index: linux/include/linux/fs.h
+===================================================================
+--- linux.orig/include/linux/fs.h
++++ linux/include/linux/fs.h
+@@ -211,6 +211,7 @@ struct inodes_stat_t {
+ #define MS_KERNMOUNT	(1<<22) /* this is a kern_mount call */
+ #define MS_I_VERSION	(1<<23) /* Update inode I_version field */
+ #define MS_STRICTATIME	(1<<24) /* Always perform atime updates */
++#define MS_FROZEN	(1<<25) /* Frozen filesystem */
+ #define MS_NOSEC	(1<<28)
+ #define MS_BORN		(1<<29)
+ #define MS_ACTIVE	(1<<30)
+@@ -2497,6 +2498,8 @@ extern void drop_super(struct super_bloc
+ extern void iterate_supers(void (*)(struct super_block *, void *), void *);
+ extern void iterate_supers_type(struct file_system_type *,
+ 			        void (*)(struct super_block *, void *), void *);
++extern int freeze_supers(void);
++extern void thaw_supers(void);
  
-+# In kernels before 3.0.0, getxattr() returns -EPERM for an attribute which
-+# cannot exist.  Later kernels return -ENODATA.
-+invalid_attribute_filter() {
-+	sed -e "s:\(No such attribute\|Operation not permitted\):No such attribute or operation not permitted:"
+ extern int dcache_dir_open(struct inode *, struct file *);
+ extern int dcache_dir_close(struct inode *, struct file *);
+Index: linux/kernel/power/process.c
+===================================================================
+--- linux.orig/kernel/power/process.c
++++ linux/kernel/power/process.c
+@@ -12,10 +12,10 @@
+ #include <linux/oom.h>
+ #include <linux/suspend.h>
+ #include <linux/module.h>
+-#include <linux/syscalls.h>
+ #include <linux/freezer.h>
+ #include <linux/delay.h>
+ #include <linux/workqueue.h>
++#include <linux/fs.h>
+ 
+ /* 
+  * Timeout for stopping processes
+@@ -147,6 +147,12 @@ int freeze_processes(void)
+ 		goto Exit;
+ 	printk("done.\n");
+ 
++	printk("Freezing filesystems ... ");
++	error = freeze_supers();
++	if (error)
++		goto Exit;
++	printk("done.\n");
++
+ 	printk("Freezing remaining freezable tasks ... ");
+ 	error = try_to_freeze_tasks(false);
+ 	if (error)
+@@ -188,6 +194,7 @@ void thaw_processes(void)
+ 	printk("Restarting tasks ... ");
+ 	thaw_workqueues();
+ 	thaw_tasks(true);
++	thaw_supers();
+ 	thaw_tasks(false);
+ 	schedule();
+ 	printk("done.\n");
+Index: linux/fs/super.c
+===================================================================
+--- linux.orig/fs/super.c
++++ linux/fs/super.c
+@@ -590,6 +590,76 @@ void iterate_supers_type(struct file_sys
+ EXPORT_SYMBOL(iterate_supers_type);
+ 
+ /**
++ *	freeze_supers - call freeze_super() for all superblocks
++ */
++int freeze_supers(void)
++{
++	struct super_block *sb, *p = NULL;
++	int error = 0;
++
++	spin_lock(&sb_lock);
++	/*
++	 * Freeze in reverse order so filesystems depending on others are
++	 * frozen in the right order (eg. loopback on ext3).
++	 */
++	list_for_each_entry_reverse(sb, &super_blocks, s_list) {
++		if (list_empty(&sb->s_instances))
++			continue;
++		sb->s_count++;
++		spin_unlock(&sb_lock);
++
++		if (sb->s_root && sb->s_frozen != SB_FREEZE_TRANS
++		    && !(sb->s_flags & MS_RDONLY)) {
++			error = freeze_super(sb);
++			if (!error)
++				sb->s_flags |= MS_FROZEN;
++		}
++
++		spin_lock(&sb_lock);
++		if (error)
++			break;
++		if (p)
++			__put_super(p);
++		p = sb;
++	}
++	if (p)
++		__put_super(p);
++	spin_unlock(&sb_lock);
++
++	return error;
 +}
 +
- if [ "$USE_ATTR_SECURE" = yes ]; then
-     ATTR_MODES="user security trusted"
- else
-@@ -119,15 +125,15 @@ for nsp in $ATTR_MODES; do
- 		
- 		echo "*** set an empty value for second attribute"
- 		setfattr -h -n $nsp.name2 $SCRATCH_MNT/$inode
--		getfattr -m $nsp -n $nsp.name2 $SCRATCH_MNT/$inode
-+		getfattr -m $nsp -n $nsp.name2 $SCRATCH_MNT/$inode 2>&1 | invalid_attribute_filter
- 
- 		echo "*** overwrite empty value"
- 		setfattr -h -n $nsp.name2 -v 0xcafe $SCRATCH_MNT/$inode
--		getfattr -m $nsp -e hex -n $nsp.name2 $SCRATCH_MNT/$inode
-+		getfattr -m $nsp -e hex -n $nsp.name2 $SCRATCH_MNT/$inode 2>&1 | invalid_attribute_filter
- 
- 		echo "*** remove attribute"
- 		setfattr -h -x $nsp.name2 $SCRATCH_MNT/$inode
--		getfattr -m $nsp -e hex -n $nsp.name2 $SCRATCH_MNT/$inode
-+		getfattr -m $nsp -e hex -n $nsp.name2 $SCRATCH_MNT/$inode 2>&1 | invalid_attribute_filter
- 
- 		echo "*** final list (strings, type=$inode, nsp=$nsp)"
- 		getfattr -m '.' -e hex $SCRATCH_MNT/$inode
-diff --git a/062.out b/062.out
-index 73fd628..5e3f5d9 100644
---- a/062.out
-+++ b/062.out
-@@ -55,7 +55,7 @@ user.name2
- user.name2=0xcafe
- 
- *** remove attribute
--SCRATCH_MNT/reg: user.name2: No such attribute
-+SCRATCH_MNT/reg: user.name2: No such attribute or operation not permitted
- *** final list (strings, type=reg, nsp=user)
- # file: SCRATCH_MNT/reg
- user.name=0xbabe
-@@ -102,7 +102,7 @@ user.name2
- user.name2=0xcafe
- 
- *** remove attribute
--SCRATCH_MNT/dir: user.name2: No such attribute
-+SCRATCH_MNT/dir: user.name2: No such attribute or operation not permitted
- *** final list (strings, type=dir, nsp=user)
- # file: SCRATCH_MNT/dir
- user.name=0xbabe
-@@ -125,13 +125,13 @@ setfattr: SCRATCH_MNT/lnk: Operation not permitted
- setfattr: SCRATCH_MNT/lnk: Operation not permitted
- *** set an empty value for second attribute
- setfattr: SCRATCH_MNT/lnk: Operation not permitted
--SCRATCH_MNT/lnk: user.name2: Operation not permitted
-+SCRATCH_MNT/lnk: user.name2: No such attribute or operation not permitted
- *** overwrite empty value
- setfattr: SCRATCH_MNT/lnk: Operation not permitted
--SCRATCH_MNT/lnk: user.name2: Operation not permitted
-+SCRATCH_MNT/lnk: user.name2: No such attribute or operation not permitted
- *** remove attribute
- setfattr: SCRATCH_MNT/lnk: Operation not permitted
--SCRATCH_MNT/lnk: user.name2: Operation not permitted
-+SCRATCH_MNT/lnk: user.name2: No such attribute or operation not permitted
- *** final list (strings, type=lnk, nsp=user)
- 
- === TYPE dev/b; NAMESPACE user
-@@ -150,13 +150,13 @@ setfattr: SCRATCH_MNT/dev/b: Operation not permitted
- setfattr: SCRATCH_MNT/dev/b: Operation not permitted
- *** set an empty value for second attribute
- setfattr: SCRATCH_MNT/dev/b: Operation not permitted
--SCRATCH_MNT/dev/b: user.name2: Operation not permitted
-+SCRATCH_MNT/dev/b: user.name2: No such attribute or operation not permitted
- *** overwrite empty value
- setfattr: SCRATCH_MNT/dev/b: Operation not permitted
--SCRATCH_MNT/dev/b: user.name2: Operation not permitted
-+SCRATCH_MNT/dev/b: user.name2: No such attribute or operation not permitted
- *** remove attribute
- setfattr: SCRATCH_MNT/dev/b: Operation not permitted
--SCRATCH_MNT/dev/b: user.name2: Operation not permitted
-+SCRATCH_MNT/dev/b: user.name2: No such attribute or operation not permitted
- *** final list (strings, type=dev/b, nsp=user)
- 
- === TYPE dev/c; NAMESPACE user
-@@ -175,13 +175,13 @@ setfattr: SCRATCH_MNT/dev/c: Operation not permitted
- setfattr: SCRATCH_MNT/dev/c: Operation not permitted
- *** set an empty value for second attribute
- setfattr: SCRATCH_MNT/dev/c: Operation not permitted
--SCRATCH_MNT/dev/c: user.name2: Operation not permitted
-+SCRATCH_MNT/dev/c: user.name2: No such attribute or operation not permitted
- *** overwrite empty value
- setfattr: SCRATCH_MNT/dev/c: Operation not permitted
--SCRATCH_MNT/dev/c: user.name2: Operation not permitted
-+SCRATCH_MNT/dev/c: user.name2: No such attribute or operation not permitted
- *** remove attribute
- setfattr: SCRATCH_MNT/dev/c: Operation not permitted
--SCRATCH_MNT/dev/c: user.name2: Operation not permitted
-+SCRATCH_MNT/dev/c: user.name2: No such attribute or operation not permitted
- *** final list (strings, type=dev/c, nsp=user)
- 
- === TYPE dev/p; NAMESPACE user
-@@ -200,13 +200,13 @@ setfattr: SCRATCH_MNT/dev/p: Operation not permitted
- setfattr: SCRATCH_MNT/dev/p: Operation not permitted
- *** set an empty value for second attribute
- setfattr: SCRATCH_MNT/dev/p: Operation not permitted
--SCRATCH_MNT/dev/p: user.name2: Operation not permitted
-+SCRATCH_MNT/dev/p: user.name2: No such attribute or operation not permitted
- *** overwrite empty value
- setfattr: SCRATCH_MNT/dev/p: Operation not permitted
--SCRATCH_MNT/dev/p: user.name2: Operation not permitted
-+SCRATCH_MNT/dev/p: user.name2: No such attribute or operation not permitted
- *** remove attribute
- setfattr: SCRATCH_MNT/dev/p: Operation not permitted
--SCRATCH_MNT/dev/p: user.name2: Operation not permitted
-+SCRATCH_MNT/dev/p: user.name2: No such attribute or operation not permitted
- *** final list (strings, type=dev/p, nsp=user)
- 
- === TYPE reg; NAMESPACE trusted
-@@ -249,7 +249,7 @@ trusted.name2
- trusted.name2=0xcafe
- 
- *** remove attribute
--SCRATCH_MNT/reg: trusted.name2: No such attribute
-+SCRATCH_MNT/reg: trusted.name2: No such attribute or operation not permitted
- *** final list (strings, type=reg, nsp=trusted)
- # file: SCRATCH_MNT/reg
- trusted.name=0xbabe
-@@ -298,7 +298,7 @@ trusted.name2
- trusted.name2=0xcafe
- 
- *** remove attribute
--SCRATCH_MNT/dir: trusted.name2: No such attribute
-+SCRATCH_MNT/dir: trusted.name2: No such attribute or operation not permitted
- *** final list (strings, type=dir, nsp=trusted)
- # file: SCRATCH_MNT/dir
- trusted.name=0xbabe
-@@ -347,7 +347,7 @@ trusted.name2
- trusted.name2=0xcafe
- 
- *** remove attribute
--SCRATCH_MNT/lnk: trusted.name2: No such attribute
-+SCRATCH_MNT/lnk: trusted.name2: No such attribute or operation not permitted
- *** final list (strings, type=lnk, nsp=trusted)
- # file: SCRATCH_MNT/lnk
- trusted.name=0xbabe
-@@ -394,7 +394,7 @@ trusted.name2
- trusted.name2=0xcafe
- 
- *** remove attribute
--SCRATCH_MNT/dev/b: trusted.name2: No such attribute
-+SCRATCH_MNT/dev/b: trusted.name2: No such attribute or operation not permitted
- *** final list (strings, type=dev/b, nsp=trusted)
- # file: SCRATCH_MNT/dev/b
- trusted.name=0xbabe
-@@ -441,7 +441,7 @@ trusted.name2
- trusted.name2=0xcafe
- 
- *** remove attribute
--SCRATCH_MNT/dev/c: trusted.name2: No such attribute
-+SCRATCH_MNT/dev/c: trusted.name2: No such attribute or operation not permitted
- *** final list (strings, type=dev/c, nsp=trusted)
- # file: SCRATCH_MNT/dev/c
- trusted.name=0xbabe
-@@ -488,7 +488,7 @@ trusted.name2
- trusted.name2=0xcafe
- 
- *** remove attribute
--SCRATCH_MNT/dev/p: trusted.name2: No such attribute
-+SCRATCH_MNT/dev/p: trusted.name2: No such attribute or operation not permitted
- *** final list (strings, type=dev/p, nsp=trusted)
- # file: SCRATCH_MNT/dev/p
- trusted.name=0xbabe
-
---CdrF4e02JqNVZeln--
++/**
++ *	thaw_supers - call thaw_super() for all superblocks
++ */
++void thaw_supers(void)
++{
++	struct super_block *sb, *p = NULL;
++
++	spin_lock(&sb_lock);
++	list_for_each_entry(sb, &super_blocks, s_list) {
++		if (list_empty(&sb->s_instances))
++			continue;
++		sb->s_count++;
++		spin_unlock(&sb_lock);
++
++		if (sb->s_flags & MS_FROZEN) {
++			thaw_super(sb);
++			sb->s_flags &= ~MS_FROZEN;
++		}
++
++		spin_lock(&sb_lock);
++		if (p)
++			__put_super(p);
++		p = sb;
++	}
++	if (p)
++		__put_super(p);
++	spin_unlock(&sb_lock);
++}
++
++
++/**
+  *	get_super - get the superblock of a device
+  *	@bdev: device to get the superblock for
+  *	
