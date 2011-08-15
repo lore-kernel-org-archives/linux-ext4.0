@@ -1,110 +1,97 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: [PATCH] loop: add discard support for loop devices
-Date: Mon, 15 Aug 2011 08:52:48 -0700
-Message-ID: <4E4940D0.8090806@linux.vnet.ibm.com>
-References: <1313063143-14473-1-git-send-email-lczerner@redhat.com> <alpine.LFD.2.00.1108111348020.4160@dhcp-27-109.brq.redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: DIO process stuck apparently due to dioread_nolock (3.0)
+Date: Mon, 15 Aug 2011 11:08:31 -0500
+Message-ID: <4E49447F.105@redhat.com>
+References: <4E456436.8070107@msgid.tls.msk.ru> <1313251371-3672-1-git-send-email-tm@tao.ma>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, Jens Axboe <jaxboe@fusionio.com>,
-	linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
+Cc: linux-ext4@vger.kernel.org, mjt@tls.msk.ru
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e7.ny.us.ibm.com ([32.97.182.137]:36919 "EHLO e7.ny.us.ibm.com"
+Received: from mx1.redhat.com ([209.132.183.28]:38671 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754708Ab1HOPxA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Aug 2011 11:53:00 -0400
-In-Reply-To: <alpine.LFD.2.00.1108111348020.4160@dhcp-27-109.brq.redhat.com>
+	id S1751184Ab1HOQIt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Aug 2011 12:08:49 -0400
+In-Reply-To: <1313251371-3672-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 08/11/2011 04:56 AM, Lukas Czerner wrote:
-> On Thu, 11 Aug 2011, Lukas Czerner wrote:
->
->> This commit adds discard support for loop devices. Discard is usually
->> supported by SSD and thinly provisioned devices as a method for
->> reclaiming unused space. This is no different than trying to reclaim
->> back space which is not used by the file system on the image, but it
->> still occupies space on the host file system.
->>
->> We can do the reclamation on file system which does support hole
->> punching. So when discard request gets to the loop driver we can
->> translate that to punch a hole to the underlying file, hence reclaim
->> the free space.
->>
->> This is very useful for trimming down the size of the image to only what
->> is really used by the file system on that image. Fstrim may be used for
->> that purpose.
->>
->> It has been tested on ext4, xfs and btrfs with the image file systems
->> ext4, ext3, xfs and btrfs. ext4, or ext6 image on ext4 file system has
->> some problems but it seems that ext4 punch hole implementation is
->> somewhat flawed and it is unrelated to this commit.
->>
->> Also this is a very good method of validating file systems punch hole
->> implementation.
->>
->> Note that when encryption is used, discard support is disabled, because
->> using it might leak some information useful for possible attacker.
->
-> Hi Allison,
->
-> as I mentioned in the commit description I believe that I have
-> seen problems with punch hole implementation. You can apply the
-> commit to add discard support for loop device and then here is how
-> to reproduce the problem:
->
->
-> # mkfs.ext4 /dev/sdd
-> # mount /dev/sdd /mnt/test
-> # dd if=/dev/zero of=/mnt/test/bigfil2 bs=4096 seek=100M count=1
-> # mkfs.ext4 /mnt/test/bigfil2
-> # mount -o loop /mnt/test/bigfil2 /mnt/test3/
-> # fstrim -v /mnt/test3/
-> 422650347520 Bytes were trimmed
->
-> # fsck.ext4 -fn /mnt/test1/bigfil2
-> e2fsck 1.41.12 (17-May-2010)
-> Pass 1: Checking inodes, blocks, and sizes
-> Pass 2: Checking directory structure
-> Pass 3: Checking directory connectivity
-> Pass 4: Checking reference counts
-> Pass 5: Checking group summary information
-> Block bitmap differences:  +(524288--532511)
-> Fix? no
->
-> Free blocks count wrong for group #16 (24544, counted=32768).
-> Fix? no
->
-> Free blocks count wrong (103161576, counted=103169800).
-> Fix? no
->
->
-> /mnt/test1/bigfil2: ********** WARNING: Filesystem still has errors
-> **********
->
-> /mnt/test1/bigfil2: 11/26214400 files (0.0% non-contiguous),
-> 1696024/104857600 blocks
->
-> And we also get corrupted file system on the ext3 image. I did
-> not saw that for other file systems, but it is probably just the matter
-> of how are blocks laid out in the file system format and there are more
-> chunks of free blocks in ext[43] than xfs, or btrfs.
->
-> Also you can find fstrim in latest util-inux-ng. And lastly I believe
-> that this is great way to validate punch hole implementation. Just
-> create an image on ext4 file system and run xfstest 251 (or stress.sh -
-> oss.oracle.com/~mason/stress.sh) on it the image mounted with -o
-> discard.
->
-> Thanks!
-> -Lukas
+On 8/13/11 11:02 AM, Tao Ma wrote:
+> From: Tao Ma <boyu.mt@taobao.com>
+> 
+> Hi Michael,
+> 	could you please check whether this patch work for you?
 
+Thanks, this is the patch I meant to send, I guess ;)  I think
+I missed the "|=" case before :(
 
-Hi Lukas,
+given that every place we set it requires a test and an increment
+if not set, maybe a helper to do all that is in order?
 
-Alrighty I will look into this one.  I have some punch hole bugs that I 
-am working on now, so I will see if I can fold in some fixes for this 
-bug too.  Thx for finding it for me!  :)
+-Eric
 
-Allison Henderson
+> 
+> Subject: [PATCH] ext4: Set unwritten flag and increase i_aiodio_unwritten simultaneously.
+> From 4f1d797973da8b5cf79f58cc1e4d22efb9d46d19 Mon Sep 17 00:00:00 2001
+> From: Tao Ma <boyu.mt@taobao.com>
+> Date: Sat, 13 Aug 2011 23:50:28 +0800
+> Subject: [PATCH] ext4: Set unwritten flag and increase i_aiodio_unwritten simultaneously.
+> 
+> EXT4_IO_END_UNWRITTEN flag set and the increase of i_aiodio_unwritten should
+> be done simultaneously since ext4_end_io_nolock always clear the flag and
+> decrease the counter in the same time.
+> 
+> We don't increase i_aiodio_unwritten when setting EXT4_IO_END_UNWRITTEN so
+> it will go nagative and causes some process to wait forever.
+> 
+> Part of the patch came from Eric in his e-mail.
+> http://marc.info/?l=linux-ext4&m=131316851417460&w=2
+> 
+> Reported-by: Michael Tokarev<mjt@tls.msk.ru>
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+> ---
+>  fs/ext4/inode.c   |    9 ++++++++-
+>  fs/ext4/page-io.c |    6 ++++--
+>  2 files changed, 12 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index d47264c..40c0b10 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -2668,8 +2668,15 @@ static void ext4_end_io_buffer_write(struct buffer_head *bh, int uptodate)
+>  		goto out;
+>  	}
+>  
+> -	io_end->flag = EXT4_IO_END_UNWRITTEN;
+> +	/*
+> +	 * It may be over-defensive here to check EXT4_IO_END_UNWRITTEN now,
+> +	 * but being more careful is always safe for the future change.
+> +	 */
+>  	inode = io_end->inode;
+> +	if (!(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
+> +		io_end->flag |= EXT4_IO_END_UNWRITTEN;
+> +		atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
+> +	}
+>  
+>  	/* Add the io_end to per-inode completed io list*/
+>  	spin_lock_irqsave(&EXT4_I(inode)->i_completed_io_lock, flags);
+> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+> index 430c401..78839af 100644
+> --- a/fs/ext4/page-io.c
+> +++ b/fs/ext4/page-io.c
+> @@ -334,8 +334,10 @@ submit_and_retry:
+>  	if ((io_end->num_io_pages >= MAX_IO_PAGES) &&
+>  	    (io_end->pages[io_end->num_io_pages-1] != io_page))
+>  		goto submit_and_retry;
+> -	if (buffer_uninit(bh))
+> -		io->io_end->flag |= EXT4_IO_END_UNWRITTEN;
+> +	if (buffer_uninit(bh) && !(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
+> +		io_end->flag |= EXT4_IO_END_UNWRITTEN;
+> +		atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
+> +	}
+>  	io->io_end->size += bh->b_size;
+>  	io->io_next_block++;
+>  	ret = bio_add_page(io->io_bio, bh->b_page, bh->b_size, bh_offset(bh));
+
