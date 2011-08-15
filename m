@@ -1,74 +1,62 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: don't give the "disabling delalloc" if not explicitly
- specified
-Date: Mon, 15 Aug 2011 20:13:45 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1108152004041.3695@dhcp-27-109.brq.redhat.com>
-References: <1313290358-12611-1-git-send-email-tytso@mit.edu> <alpine.LFD.2.00.1108151134280.3695@dhcp-27-109.brq.redhat.com> <4E494246.2050609@redhat.com> <20110815175426.GB5948@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: remove deprecated oldalloc
+Date: Mon, 15 Aug 2011 20:49:45 +0200
+Message-ID: <20110815184945.GB16369@quack.suse.cz>
+References: <1307453714-2741-1-git-send-email-lczerner@redhat.com>
+ <alpine.LFD.2.00.1108111658520.29009@dhcp-27-109.brq.redhat.com>
+ <BF21E0BA-332B-4ADD-901C-5B0E8590898A@dilger.ca>
+ <alpine.LFD.2.00.1108151612120.19095@dhcp-27-109.brq.redhat.com>
+ <20110815152729.GE6597@quack.suse.cz>
+ <alpine.LFD.2.00.1108151747260.3695@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Lukas Czerner <lczerner@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
+	linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:62618 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:45293 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751302Ab1HOSNt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Aug 2011 14:13:49 -0400
-In-Reply-To: <20110815175426.GB5948@thunk.org>
+	id S1752661Ab1HOSts (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Aug 2011 14:49:48 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1108151747260.3695@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 15 Aug 2011, Ted Ts'o wrote:
-
-> On Mon, Aug 15, 2011 at 10:59:02AM -0500, Eric Sandeen wrote:
-> > 
-> > The giant behavior-options switch in ext4 is confusing enough; if enabling
-> > one option disables another default option, I think that explicitly stating
-> > it in the logs is useful.  Doing so silently just covers up the behavior.
-> > 
-> > If users are unhappy with the message, it's probably more because of 
-> > the fact of the matter, and not because of the presentation of the fact.  :)
+On Mon 15-08-11 17:50:53, Lukas Czerner wrote:
+> On Mon, 15 Aug 2011, Jan Kara wrote:
+> > On Mon 15-08-11 16:21:27, Lukas Czerner wrote:
+> > > On Thu, 11 Aug 2011, Andreas Dilger wrote:
+> > > > On 2011-08-11, at 8:58 AM, Lukas Czerner wrote:
+> > > > > On Tue, 7 Jun 2011, Lukas Czerner wrote:
+> > > > >> For a long time now orlov is the default block allocator in the ext4. It
+> > > > >> performs better than the old one and no one seems to claim otherwise so
+> > > > >> we can safely drop it and make oldalloc and orlov mount option
+> > > > >> deprecated.
+> > > > >> 
+> > > > >> This is a part of the effort to reduce number of ext4 options hence the
+> > > > >> test matrix.
+> > > > >> 
+> > > > >> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> > > > > 
+> > > > > ping
+> > > > 
+> > > > I'm OK with removing this, I don't think anyone uses it, and it has almost
+> > > > no meaning with flex_bg anyway.
+> > > > 
+> > > > That said, "orlov" is also mostly meaningless with flex_bg as well, since
+> > > > there is very little real benefit/affinity from inodes being "close" to
+> > > > their data blocks.  We gain far more benefit from keeping the inodes
+> > > > together than spreading them out and keeping them close to the data blocks.
+> > > 
+> > > What about removing it for ext3 as well ? I can prepare a patch.
+> >   OK, let's start warning the option is deprecated and will be removed from
+> > ext3. We can remove it after 2-3 releases...
 > 
-> Most users probably have no idea what "delalloc" actually means.  So
-> when they get a message that saying that data=journalled has disabled
-> delalloc, it could easily be seen as noise.  I was moved to do it
-> because I got tired of seeing the message over, and over, and over
-> again when running xfstests.
+> Is that really necessary ? It is not like we are removing a feature which
+> would not work anymore.
+  Well, we are removing a mount option so if someone is using it e.g. in
+/etc/fstab, his machine will fail to mount the filesystem. Or did I
+misunderstood your intention?
 
-So the actual users of data=journal does not care all that much about
-it apparently. If the information for some of the users is "noise" than
-be it, there is a lot of "noise" in the logs but it is useful for people
-who do understand it, or to people who can search for it.
-
-> 
-> Maybe an improvement would be (1) to document what data=journal
-> implies in the Documentation/filesystems/ext4.txt, (2) change the
-> message to explicitly say "delayed allocation" instead of "delalloc"
-> (although many people won't have any idea what "delayed allocation"
-> means either), and (3) make it a printk_once thing.
-
-That information actually already is in
-Documentation/filesystems/ext4.txt but not in the Options section.
-However important is to have this information in mount man page, because
-that is where usually users go for info right ?
-
-I like the "delayed allocation" version of the warning, but I do not
-think we should do it with printk_once as it seems even more confusing
-to me.
-
-> 
-> I guess I don't agree with the fundamental presumption which is that
-> users should be looking at the dmesg output to understand what various
-> things mean, and if they didn't explicitly specify delalloc, why
-> should we complain about the fact that both delalloc and data=journal
-> were specified (when in fact it wasn't specified).
-
-Yeah, we should probably say that we are "disabling delayed allocation".
-
-> 
-> 						- Ted
-> 
-
-Thanks!
--Lukas
+								Honza
