@@ -1,85 +1,109 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: fake direct I/O mode for data=journal
-Date: Mon, 15 Aug 2011 13:59:39 +0200
-Message-ID: <20110815115939.GA6971@quack.suse.cz>
-References: <1313374754-1958-1-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH] fs / ext3: Always unlock updates in ext3_freeze()
+Date: Mon, 15 Aug 2011 14:22:18 +0200
+Message-ID: <20110815122218.GB6971@quack.suse.cz>
+References: <201108112329.23043.rjw@sisk.pl>
+ <201108112331.13241.rjw@sisk.pl>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:46372 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752007Ab1HOL7l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Aug 2011 07:59:41 -0400
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	LKML <linux-kernel@vger.kernel.org>,
+	Dave Chinner <david@fromorbit.com>
+To: "Rafael J. Wysocki" <rjw@sisk.pl>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1313374754-1958-1-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <201108112331.13241.rjw@sisk.pl>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sun 14-08-11 22:19:14, Ted Tso wrote:
-> Currently attempts to open a file with O_DIRECT in data=journal mode
-> causes the open to fail with -EINVAL.  This makes it very hard to test
-> data=journal mode.  So we will let the open succeed, but then always
-> fall back to O_DSYNC buffered writes.
+  Hi,
+On Thu 11-08-11 23:31:13, Rafael J. Wysocki wrote:
+> From: Rafael J. Wysocki <rjw@sisk.pl>
 > 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> In analogy with ext4 make ext3_freeze() always call
+> journal_unlock_updates() to prevent it from leaving a locked mutex
+> behind.  Accordingly, modify ext3_unfreeze() so that it doesn't
+> call journal_unlock_updates() any more.
+> 
+> Signed-off-by: Rafael J. Wysocki <rjw@sisk.pl>
 > ---
 > 
-> With this commit applied ext4 in data=journal mode passes nearly all
-> of the xfstests -g auto tests:
+> Sorry for the duplicate, the previous one was sent too early.
 > 
-> BEGIN TEST: Ext4 4k block w/data=journal Sun Aug 14 20:10:23 EDT 2011
-> Ran: 001 002 005 006 007 011 013 014 015 053 069 070 074 075 076 077 079 083 088 089 100 105 112 113 117 120 123 124 125 126 127 128 129 130 131 132 133 135 141 169 184 192 193 198 204 207 208 209 210 211 212 213 214 215 221 223 224 225 226 228 236 237 239 240 243 245 246 247 248 249 256
-> Failures: 223
-> END TEST: Ext4 4k block w/data=journal Sun Aug 14 20:24:18 EDT 2011
+> ---
+>  fs/ext3/super.c |   39 ++++++++++++++++++---------------------
+>  1 file changed, 18 insertions(+), 21 deletions(-)
 > 
-> The #223 failure is a stripe alignment failure; it's interesting that
-> data=journal is affecting our block allocation, but since ext4's RAID
-> stripe alignment happens mostly by luck, it's not a huge deal....
-> 
->  fs/ext4/file.c  |   10 ++++++++++
->  fs/ext4/inode.c |    1 +
->  2 files changed, 11 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> index e4095e9..f92981a 100644
-> --- a/fs/ext4/file.c
-> +++ b/fs/ext4/file.c
-> @@ -98,6 +98,16 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
->  	int ret;
+> Index: linux/fs/ext3/super.c
+> ===================================================================
+> --- linux.orig/fs/ext3/super.c
+> +++ linux/fs/ext3/super.c
+> @@ -2535,30 +2535,28 @@ static int ext3_sync_fs(struct super_blo
+>   */
+>  static int ext3_freeze(struct super_block *sb)
+>  {
+> -	int error = 0;
+> +	int error;
+>  	journal_t *journal;
 >  
->  	/*
-> +	 * If O_DIRECT is set and we are doing data journalling we
-> +	 * don't support O_DIRECT so force it off.
-> +	 */
-> +	if ((iocb->ki_filp->f_flags & O_DIRECT) &&
-> +	    ext4_should_journal_data(inode)) {
-> +		iocb->ki_filp->f_flags &= ~O_DIRECT;
-> +		iocb->ki_filp->f_flags |= O_DSYNC;
-> +	}
+> -	if (!(sb->s_flags & MS_RDONLY)) {
+> -		journal = EXT3_SB(sb)->s_journal;
+> +	if (sb->s_flags & MS_RDONLY)
+> +		return 0;
+>  
+> -		/* Now we set up the journal barrier. */
+> -		journal_lock_updates(journal);
+> +	journal = EXT3_SB(sb)->s_journal;
+>  
+> -		/*
+> -		 * We don't want to clear needs_recovery flag when we failed
+> -		 * to flush the journal.
+> -		 */
+> -		error = journal_flush(journal);
+> -		if (error < 0)
+> -			goto out;
+> -
+> -		/* Journal blocked and flushed, clear needs_recovery flag. */
+> -		EXT3_CLEAR_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
+> -		error = ext3_commit_super(sb, EXT3_SB(sb)->s_es, 1);
+> -		if (error)
+> -			goto out;
+> -	}
+> -	return 0;
+> +	/* Now we set up the journal barrier. */
+> +	journal_lock_updates(journal);
 > +
 > +	/*
->  	 * If we have encountered a bitmap-format file, the size limit
->  	 * is smaller than s_maxbytes, which is for extent-mapped files.
->  	 */
-  Why have you chosen to set O_DSYNC?
-  Also what about reads? Mixing of buffered writes and direct IO reads will
-not work because filemap_write_and_write() does not write data block to the
-final location on disk but only to a journal.
-
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 7dd6981..49ebd3b9 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -2914,6 +2914,7 @@ static const struct address_space_operations ext4_journalled_aops = {
->  	.bmap			= ext4_bmap,
->  	.invalidatepage		= ext4_invalidatepage,
->  	.releasepage		= ext4_releasepage,
-> +	.direct_IO		= ext4_direct_IO,
->  	.is_partially_uptodate  = block_is_partially_uptodate,
->  	.error_remove_page	= generic_error_remove_page,
->  };
+> +	 * We don't want to clear needs_recovery flag when we failed
+> +	 * to flush the journal.
+> +	 */
+> +	error = journal_flush(journal);
+> +	if (error < 0)
+> +		goto out;
+> +
+> +	/* Journal blocked and flushed, clear needs_recovery flag. */
+> +	EXT3_CLEAR_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
+> +	error = ext3_commit_super(sb, EXT3_SB(sb)->s_es, 1);
+>  
+>  out:
+>  	journal_unlock_updates(journal);
+> @@ -2577,7 +2575,6 @@ static int ext3_unfreeze(struct super_bl
+>  		EXT3_SET_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
+>  		ext3_commit_super(sb, EXT3_SB(sb)->s_es, 1);
+>  		unlock_super(sb);
+> -		journal_unlock_updates(EXT3_SB(sb)->s_journal);
+>  	}
+>  	return 0;
+>  }
+  It's not so simple as this. Ext3 relies on the mutex (the one hidden in
+journal_lock_updates()) to make sure that new transaction cannot be started
+while the filesystem is frozen - that's essentially what makes the
+filesystem frozen. So if we want to get rid of the mutex we have to achieve
+blocking by something else - ext4 uses vfs_check_frozen() in
+ext4_journal_start().
+  BTW,  filesystem freezing never really worked for mmaped writes under
+ext3 - ext3 would have to implement page_mkwrite() callback for that - so
+if you want to rely on it for suspending, this will be non-trivial.
 
 								Honza
 -- 
