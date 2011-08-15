@@ -1,73 +1,109 @@
-From: Michael Tokarev <mjt@tls.msk.ru>
-Subject: Re: DIO process stuck apparently due to dioread_nolock (3.0)
-Date: Mon, 15 Aug 2011 13:03:12 +0400
-Message-ID: <4E48E0D0.3090005@msgid.tls.msk.ru>
-References: <4E456436.8070107@msgid.tls.msk.ru> <1313251371-3672-1-git-send-email-tm@tao.ma> <4E4836A8.3080709@msgid.tls.msk.ru> <4E48390E.9050102@msgid.tls.msk.ru> <4E488625.609@tao.ma> <4E48D231.5060807@msgid.tls.msk.ru> <4E48DF31.4050603@msgid.tls.msk.ru>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: e2dis: a Jigdo-like tool for Ext2+ FS
+Date: Mon, 15 Aug 2011 11:29:57 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1108151125470.3695@dhcp-27-109.brq.redhat.com>
+References: <86ei0p8ve2.fsf@gray.siamics.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com,
-	Jan Kara <jack@suse.cz>
-To: Tao Ma <tm@tao.ma>
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1191746045-1313400600=:3695"
+Cc: linux-ext4@vger.kernel.org
+To: Ivan Shmakov <oneingray@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from isrv.corpit.ru ([86.62.121.231]:34862 "EHLO isrv.corpit.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:15060 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752674Ab1HOJDO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Aug 2011 05:03:14 -0400
-In-Reply-To: <4E48DF31.4050603@msgid.tls.msk.ru>
+	id S1752669Ab1HOJaB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Aug 2011 05:30:01 -0400
+In-Reply-To: <86ei0p8ve2.fsf@gray.siamics.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-15.08.2011 12:56, Michael Tokarev =D0=BF=D0=B8=D1=88=D0=B5=D1=82:
-> 15.08.2011 12:00, Michael Tokarev wrote:
-> [....]
->=20
-> So, it looks like this (starting with cold cache):
->=20
-> 1. rename the redologs and copy them over - this will
->    make a hot copy of redologs
-> 2. startup oracle - it will complain that the redologs aren't
->    redologs, the header is corrupt
-> 3. shut down oracle, start it up again - it will succeed.
->=20
-> If between 1 and 2 you'll issue sync(1) everything will work.
-> When shutting down, oracle calls fsync(), so that's like
-> sync(1) again.
->=20
-> If there will be some time between 1. and 2., everything
-> will work too.
->=20
-> Without dioread_nolock I can't trigger the problem no matter
-> how I tried.
->=20
->=20
-> A smaller test case.  I used redo1.odf file (one of the
-> redologs) as a test file, any will work.
->=20
->  $ cp -p redo1.odf temp
->  $ dd if=3Dtemp of=3Dfoo iflag=3Ddirect count=3D20
->=20
-> Now, first 512bytes of "foo" will contain all zeros, while
-> the beginning of redo1.odf is _not_ zeros.
->=20
-> Again, without aioread_nolock it works as expected.
->=20
->=20
-> And the most important note: without the patch there's no
-> data corruption like that.  But instead, there is the
-> lockup... ;)
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-Actually I can reproduce this data corruption without the
-patch too, just not that easily.  Oracle testcase (with
-copying redologs over) does that nicely.  So that's a
-separate bug which was here before.
+--8323328-1191746045-1313400600=:3695
+Content-Type: TEXT/PLAIN; charset=utf-8
+Content-Transfer-Encoding: 8BIT
 
-> Thank you,
->=20
-> /mjt
+On Sat, 13 Aug 2011, Ivan Shmakov wrote:
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 	A couple of weeks ago I've started working on a tool
+> 	(tentantively named “Ext2 disassembler”) to walk through an
+> 	Ext2+ filesystem (or an image of) and produce the mapping of
+> 	files' (inodes') relative block numbers to the image's (or
+> 	“physical”) block numbers.
+
+Hi Ivan,
+
+I have not seen your code, but that sounds like something that debugfs
+(part of e2fsprogs) is already doing very well (and a lot more). This is
+exactly the "extN disassembler" you're talking about and with a little
+bit of scripting around it you should be able dig any information you
+desire from the file system so I do not think that new application is
+needed. But I might be wrong, just take a look at it.
+
+Thanks!
+-Lukas
+
+> 
+> 	The version-that-works (apparently) is almost done, pending
+> 	upload to a publicly-accessible Git repository.
+> 
+> 	However, there's a considerable amount of work to be done so
+> 	that the tool will become really usable.  Therefore, I'd
+> 	appreciate any help with it.
+> 
+> 	TIA.
+> 
+>     Why I'm interested in that?
+> 
+> 	Recently, there was a discussion in debian-devel@ on whether the
+> 	Debian project should provide images for easy deployment within
+> 	“virtual” environments (such as KVM, Xen, etc.)
+> 
+> 	Such images (which, I assume, will use a filesystem supported by
+> 	e2fsprogs) are going to be quite large: hundreds MiB to a few
+> 	GiB's (depending on the intended usage) per architecture per
+> 	version.
+> 
+> 	Earlier, to reduce the burden of mirroring of the ISO 9660 (CD,
+> 	DVD, etc.) images, the Jigdo (for Jigsaw Download) tool was
+> 	introduced.  The tool uses SHA-1 to associate pieces of a
+> 	filesystem image with the contents of the files of a specified
+> 	set.  As the result, the tool produces the association map,
+> 	which has the parts of the image for which no matching files are
+> 	known embedded.  (A helper file, which contains the URI's the
+> 	files may be downloaded from, is also generated.)
+> 
+> 	Given such an association map, and the files, the tool is
+> 	capable of restoring the image.
+> 
+> 	The tool is filesystem-agnostic.  Unfortunately, it relies on
+> 	the fact that the files on the ISO 9660 filesystem are never
+> 	fragmented.  Which doesn't hold for Ext2+.
+> 
+> 	However, given the knowledge of the filesystem, it's possible to
+> 	solve the task of describing the parts of a given image as being
+> 	parts of the files specified.
+> 
+>     Done
+> 
+> 	The tool iterates over the inodes, and records the
+> 	logical-to-physical blocks correspondence.  All the “chunks”
+> 	belonging to the same inode are marked as such.
+> 
+> 	The mapping is written to a SQLite database.
+> 
+>     To do
+> 
+> 	Message digests are to be computed and recorded just as well.
+> 
+> 	Non-payload blocks are to be annotated as well.
+> 
+> 	A tool to reassemble the image.
+> 
+> 	Command line interface.  (Preferably compliant to the GNU Coding
+> 	Standards.)
+> 
+> 
+
+-- 
+--8323328-1191746045-1313400600=:3695--
