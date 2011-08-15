@@ -1,97 +1,107 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: DIO process stuck apparently due to dioread_nolock (3.0)
-Date: Mon, 15 Aug 2011 11:08:31 -0500
-Message-ID: <4E49447F.105@redhat.com>
-References: <4E456436.8070107@msgid.tls.msk.ru> <1313251371-3672-1-git-send-email-tm@tao.ma>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: e2dis: a Jigdo-like tool for Ext2+ FS
+Date: Mon, 15 Aug 2011 18:12:54 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1108151759040.3695@dhcp-27-109.brq.redhat.com>
+References: <86ei0p8ve2.fsf@gray.siamics.net> <alpine.LFD.2.00.1108151125470.3695@dhcp-27-109.brq.redhat.com> <86zkjb3p7f.fsf@gray.siamics.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, mjt@tls.msk.ru
-To: Tao Ma <tm@tao.ma>
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1319028455-1313424776=:3695"
+Cc: linux-ext4@vger.kernel.org
+To: Ivan Shmakov <oneingray@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38671 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:62197 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751184Ab1HOQIt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Aug 2011 12:08:49 -0400
-In-Reply-To: <1313251371-3672-1-git-send-email-tm@tao.ma>
+	id S1753181Ab1HOQM5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Aug 2011 12:12:57 -0400
+In-Reply-To: <86zkjb3p7f.fsf@gray.siamics.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 8/13/11 11:02 AM, Tao Ma wrote:
-> From: Tao Ma <boyu.mt@taobao.com>
-> 
-> Hi Michael,
-> 	could you please check whether this patch work for you?
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-Thanks, this is the patch I meant to send, I guess ;)  I think
-I missed the "|=" case before :(
+--8323328-1319028455-1313424776=:3695
+Content-Type: TEXT/PLAIN; charset=utf-8
+Content-Transfer-Encoding: 8BIT
 
-given that every place we set it requires a test and an increment
-if not set, maybe a helper to do all that is in order?
+On Mon, 15 Aug 2011, Ivan Shmakov wrote:
 
--Eric
+> >>>>> Lukas Czerner <lczerner@redhat.com> writes:
+> >>>>> On Sat, 13 Aug 2011, Ivan Shmakov wrote:
+> 
+>  >> A couple of weeks ago I've started working on a tool (tentantively
+>  >> named “Ext2 disassembler”) to walk through an Ext2+ filesystem (or
+>  >> an image of) and produce the mapping of files' (inodes') relative
+>  >> block numbers to the image's (or “physical”) block numbers.
+> 
+>  > I have not seen your code, but that sounds like something that
+>  > debugfs (part of e2fsprogs) is already doing very well (and a lot
+>  > more).  This is exactly the "extN disassembler" you're talking about
+> 
+> 	Not quite.  The meaning of “disassembler” here is that the image
+> 	is torn in parts, which could later be assembled together to
+> 	form exactly the same image (by an “image assembler” tool.)
+
+Ok then, I have misunderstood your intentions. I thought that you need
+to get logical to physical mappings of inodes.
 
 > 
-> Subject: [PATCH] ext4: Set unwritten flag and increase i_aiodio_unwritten simultaneously.
-> From 4f1d797973da8b5cf79f58cc1e4d22efb9d46d19 Mon Sep 17 00:00:00 2001
-> From: Tao Ma <boyu.mt@taobao.com>
-> Date: Sat, 13 Aug 2011 23:50:28 +0800
-> Subject: [PATCH] ext4: Set unwritten flag and increase i_aiodio_unwritten simultaneously.
-> 
-> EXT4_IO_END_UNWRITTEN flag set and the increase of i_aiodio_unwritten should
-> be done simultaneously since ext4_end_io_nolock always clear the flag and
-> decrease the counter in the same time.
-> 
-> We don't increase i_aiodio_unwritten when setting EXT4_IO_END_UNWRITTEN so
-> it will go nagative and causes some process to wait forever.
-> 
-> Part of the patch came from Eric in his e-mail.
-> http://marc.info/?l=linux-ext4&m=131316851417460&w=2
-> 
-> Reported-by: Michael Tokarev<mjt@tls.msk.ru>
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
-> ---
->  fs/ext4/inode.c   |    9 ++++++++-
->  fs/ext4/page-io.c |    6 ++++--
->  2 files changed, 12 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index d47264c..40c0b10 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -2668,8 +2668,15 @@ static void ext4_end_io_buffer_write(struct buffer_head *bh, int uptodate)
->  		goto out;
->  	}
->  
-> -	io_end->flag = EXT4_IO_END_UNWRITTEN;
-> +	/*
-> +	 * It may be over-defensive here to check EXT4_IO_END_UNWRITTEN now,
-> +	 * but being more careful is always safe for the future change.
-> +	 */
->  	inode = io_end->inode;
-> +	if (!(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
-> +		io_end->flag |= EXT4_IO_END_UNWRITTEN;
-> +		atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
-> +	}
->  
->  	/* Add the io_end to per-inode completed io list*/
->  	spin_lock_irqsave(&EXT4_I(inode)->i_completed_io_lock, flags);
-> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-> index 430c401..78839af 100644
-> --- a/fs/ext4/page-io.c
-> +++ b/fs/ext4/page-io.c
-> @@ -334,8 +334,10 @@ submit_and_retry:
->  	if ((io_end->num_io_pages >= MAX_IO_PAGES) &&
->  	    (io_end->pages[io_end->num_io_pages-1] != io_page))
->  		goto submit_and_retry;
-> -	if (buffer_uninit(bh))
-> -		io->io_end->flag |= EXT4_IO_END_UNWRITTEN;
-> +	if (buffer_uninit(bh) && !(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
-> +		io_end->flag |= EXT4_IO_END_UNWRITTEN;
-> +		atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
-> +	}
->  	io->io_end->size += bh->b_size;
->  	io->io_next_block++;
->  	ret = bio_add_page(io->io_bio, bh->b_page, bh->b_size, bh_offset(bh));
+> 	It's not implied that e2dis will ever produce some sort of
+> 	human-readable output (as its primary result.)  For that,
+> 	debugfs(8) should indeed suffice.
 
+Ok, I was just implying that you can use debugfs as a tool to figure out
+what to read e.g. what physical blocks belongs to what inode. If you
+have already tried debugfs and it did not suit you needs I am ok with
+that.
+
+> 
+>  > and with a little bit of scripting around it you should be able dig
+>  > any information you desire from the file system so I do not think
+>  > that new application is needed.  But I might be wrong, just take a
+>  > look at it.
+> 
+> 	Indeed, my first try was to use debugfs(8).  However, there're
+> 	several issues with it:
+> 
+> 	• I see no way to obtain the list of used inodes in debugfs(8)
+> 	  (as of 1.41.12 debian 2); therefore, I have had to resort to
+> 	  trying the ‘stat’ command on every possible inode number;
+
+I am not sure if there is a way to list used inodes in debugfs but it
+should be very easy to implement.
+
+> 
+> 	• also, the (binary) filesystem data is serialized into ASCII by
+> 	  debugfs(8) and is parsed afterwards by the invoking tool,
+> 	  which is computationally-inefficient; (especially if applied
+> 	  to a filesystem with size in the order of several GiB's, and
+> 	  the number of used inodes in the order of tens of thousands,
+> 	  or more);
+
+Oh, I was not trying to say that you should use debugfs to dig data out,
+but rather to get hint of where data lies in the image.
+
+> 
+> 	• moreover, I see no claims that the output of the debugfs(8)
+> 	  ‘stat’ command won't ever change (neither I see the formal
+> 	  description of the aforementioned output — its source is the
+> 	  only form of specification I could rely); my guess is that the
+> 	  C API, being documented, is going to be much more stable;
+
+Well, you can probably say that about every tool, but that is not good
+enough reason to duplicate the code for everything. Although I am not
+saying that you're doing so.
+
+Thanks!
+-Lukas
+
+> 
+> 	That being said, the most of the code I've written so far is
+> 	concerned /not/ with the filesystems per se (i. e., libext2fs
+> 	calls), but with data recording: representing the data in a
+> 	compact way, interfacing SQLite, etc.  (The SHA-1 computation
+> 	and GNU-style CLI will require some coding as well, thus making
+> 	the Ext2+ FS-specific parts even smaller when compared to the
+> 	overall code size.)
+
+--8323328-1319028455-1313424776=:3695--
