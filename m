@@ -1,105 +1,110 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: don't give the "disabling delalloc" if not explicitly
- specified
-Date: Mon, 15 Aug 2011 10:59:02 -0500
-Message-ID: <4E494246.2050609@redhat.com>
-References: <1313290358-12611-1-git-send-email-tytso@mit.edu> <alpine.LFD.2.00.1108151134280.3695@dhcp-27-109.brq.redhat.com>
+From: Allison Henderson <achender@linux.vnet.ibm.com>
+Subject: Re: [PATCH] loop: add discard support for loop devices
+Date: Mon, 15 Aug 2011 08:52:48 -0700
+Message-ID: <4E4940D0.8090806@linux.vnet.ibm.com>
+References: <1313063143-14473-1-git-send-email-lczerner@redhat.com> <alpine.LFD.2.00.1108111348020.4160@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc: linux-kernel@vger.kernel.org, Jens Axboe <jaxboe@fusionio.com>,
+	linux-ext4@vger.kernel.org
 To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:63297 "EHLO mx1.redhat.com"
+Received: from e7.ny.us.ibm.com ([32.97.182.137]:36919 "EHLO e7.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753577Ab1HOP7H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Aug 2011 11:59:07 -0400
-In-Reply-To: <alpine.LFD.2.00.1108151134280.3695@dhcp-27-109.brq.redhat.com>
+	id S1754708Ab1HOPxA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Aug 2011 11:53:00 -0400
+In-Reply-To: <alpine.LFD.2.00.1108111348020.4160@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 8/15/11 5:14 AM, Lukas Czerner wrote:
-> On Sat, 13 Aug 2011, Theodore Ts'o wrote:
-> 
->> If both delalloc and data=journalled are enabled, then a warning
->> message that delalloc will be disabled is displayed at mount time.
->> Since delalloc is the default, this means this warning is always
->> printed which really isn't necessary.  So disable the warning message
->> unless the user explicitly asked for delalloc.
-> 
-> Hi Ted,
-> 
-> that seems a bit confusing. Since delalloc is the default how would the
-> user know that it will be disabled if data=journalled mode is used ?
-> That said, if users are complaining about the warning so lets at least
-> add this information into mount man page, but if they are not I am not
-> sure that we really need to change that.
-
-I concur...
-
-The giant behavior-options switch in ext4 is confusing enough; if enabling
-one option disables another default option, I think that explicitly stating
-it in the logs is useful.  Doing so silently just covers up the behavior.
-
-If users are unhappy with the message, it's probably more because of 
-the fact of the matter, and not because of the presentation of the fact.  :)
-
-IOW, what does this patch really improve?
-
--Eric
-
+On 08/11/2011 04:56 AM, Lukas Czerner wrote:
+> On Thu, 11 Aug 2011, Lukas Czerner wrote:
+>
+>> This commit adds discard support for loop devices. Discard is usually
+>> supported by SSD and thinly provisioned devices as a method for
+>> reclaiming unused space. This is no different than trying to reclaim
+>> back space which is not used by the file system on the image, but it
+>> still occupies space on the host file system.
+>>
+>> We can do the reclamation on file system which does support hole
+>> punching. So when discard request gets to the loop driver we can
+>> translate that to punch a hole to the underlying file, hence reclaim
+>> the free space.
+>>
+>> This is very useful for trimming down the size of the image to only what
+>> is really used by the file system on that image. Fstrim may be used for
+>> that purpose.
+>>
+>> It has been tested on ext4, xfs and btrfs with the image file systems
+>> ext4, ext3, xfs and btrfs. ext4, or ext6 image on ext4 file system has
+>> some problems but it seems that ext4 punch hole implementation is
+>> somewhat flawed and it is unrelated to this commit.
+>>
+>> Also this is a very good method of validating file systems punch hole
+>> implementation.
+>>
+>> Note that when encryption is used, discard support is disabled, because
+>> using it might leak some information useful for possible attacker.
+>
+> Hi Allison,
+>
+> as I mentioned in the commit description I believe that I have
+> seen problems with punch hole implementation. You can apply the
+> commit to add discard support for loop device and then here is how
+> to reproduce the problem:
+>
+>
+> # mkfs.ext4 /dev/sdd
+> # mount /dev/sdd /mnt/test
+> # dd if=/dev/zero of=/mnt/test/bigfil2 bs=4096 seek=100M count=1
+> # mkfs.ext4 /mnt/test/bigfil2
+> # mount -o loop /mnt/test/bigfil2 /mnt/test3/
+> # fstrim -v /mnt/test3/
+> 422650347520 Bytes were trimmed
+>
+> # fsck.ext4 -fn /mnt/test1/bigfil2
+> e2fsck 1.41.12 (17-May-2010)
+> Pass 1: Checking inodes, blocks, and sizes
+> Pass 2: Checking directory structure
+> Pass 3: Checking directory connectivity
+> Pass 4: Checking reference counts
+> Pass 5: Checking group summary information
+> Block bitmap differences:  +(524288--532511)
+> Fix? no
+>
+> Free blocks count wrong for group #16 (24544, counted=32768).
+> Fix? no
+>
+> Free blocks count wrong (103161576, counted=103169800).
+> Fix? no
+>
+>
+> /mnt/test1/bigfil2: ********** WARNING: Filesystem still has errors
+> **********
+>
+> /mnt/test1/bigfil2: 11/26214400 files (0.0% non-contiguous),
+> 1696024/104857600 blocks
+>
+> And we also get corrupted file system on the ext3 image. I did
+> not saw that for other file systems, but it is probably just the matter
+> of how are blocks laid out in the file system format and there are more
+> chunks of free blocks in ext[43] than xfs, or btrfs.
+>
+> Also you can find fstrim in latest util-inux-ng. And lastly I believe
+> that this is great way to validate punch hole implementation. Just
+> create an image on ext4 file system and run xfstest 251 (or stress.sh -
+> oss.oracle.com/~mason/stress.sh) on it the image mounted with -o
+> discard.
+>
 > Thanks!
 > -Lukas
-> 
-> 
->>
->> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
->> ---
->>  fs/ext4/ext4.h  |    2 ++
->>  fs/ext4/super.c |    6 ++++--
->>  2 files changed, 6 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
->> index be593d5..b98b5a1 100644
->> --- a/fs/ext4/ext4.h
->> +++ b/fs/ext4/ext4.h
->> @@ -916,6 +916,8 @@ struct ext4_inode_info {
->>  #define EXT4_MOUNT_DISCARD		0x40000000 /* Issue DISCARD requests */
->>  #define EXT4_MOUNT_INIT_INODE_TABLE	0x80000000 /* Initialize uninitialized itables */
->>  
->> +#define EXT4_MOUNT2_DELALLOC_EXPLICIT	0x00000001 /* specified by user */
->> +
->>  #define clear_opt(sb, opt)		EXT4_SB(sb)->s_mount_opt &= \
->>  						~EXT4_MOUNT_##opt
->>  #define set_opt(sb, opt)		EXT4_SB(sb)->s_mount_opt |= \
->> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
->> index 44d0c8d..447eb45 100644
->> --- a/fs/ext4/super.c
->> +++ b/fs/ext4/super.c
->> @@ -1817,6 +1817,7 @@ set_qf_format:
->>  			break;
->>  		case Opt_delalloc:
->>  			set_opt(sb, DELALLOC);
->> +			set_opt2(sb, DELALLOC_EXPLICIT);
->>  			break;
->>  		case Opt_block_validity:
->>  			set_opt(sb, BLOCK_VALIDITY);
->> @@ -3681,8 +3682,9 @@ no_journal:
->>  
->>  	if (test_opt(sb, DELALLOC) &&
->>  	    (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA)) {
->> -		ext4_msg(sb, KERN_WARNING, "Ignoring delalloc option - "
->> -			 "requested data journaling mode");
->> +		if (test_opt2(sb, DELALLOC_EXPLICIT))
->> +			ext4_msg(sb, KERN_WARNING, "Ignoring delalloc option "
->> +				 "- requested data journaling mode");
->>  		clear_opt(sb, DELALLOC);
->>  	}
->>  	if (test_opt(sb, DIOREAD_NOLOCK)) {
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
+
+Hi Lukas,
+
+Alrighty I will look into this one.  I have some punch hole bugs that I 
+am working on now, so I will see if I can fold in some fixes for this 
+bug too.  Thx for finding it for me!  :)
+
+Allison Henderson
