@@ -1,118 +1,168 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: DIO process stuck apparently due to dioread_nolock (3.0)
-Date: Tue, 16 Aug 2011 15:53:25 +0200
-Message-ID: <20110816135325.GD23416@quack.suse.cz>
-References: <4E456436.8070107@msgid.tls.msk.ru>
- <1313251371-3672-1-git-send-email-tm@tao.ma>
- <4E4836A8.3080709@msgid.tls.msk.ru>
- <4E48390E.9050102@msgid.tls.msk.ru>
- <4E488625.609@tao.ma>
- <4E48D231.5060807@msgid.tls.msk.ru>
- <4E48DF31.4050603@msgid.tls.msk.ru>
- <CAFgt=MAfbU_muEzmxx-8CK8w7=nGR5dUZSgBQ1dN6XkyrTbO9g@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext4: Create helper function for EXT4_IO_END_UNWRITTEN
+ and i_aiodio_unwritten.
+Date: Tue, 16 Aug 2011 09:04:59 -0500
+Message-ID: <4E4A790B.9060008@redhat.com>
+References: <1313478363-5330-1-git-send-email-tm@tao.ma>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Michael Tokarev <mjt@tls.msk.ru>, Tao Ma <tm@tao.ma>,
-	linux-ext4@vger.kernel.org, sandeen@redhat.com,
-	Jan Kara <jack@suse.cz>
-To: Jiaying Zhang <jiayingz@google.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:41383 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:28989 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751377Ab1HPNxk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 16 Aug 2011 09:53:40 -0400
-Content-Disposition: inline
-In-Reply-To: <CAFgt=MAfbU_muEzmxx-8CK8w7=nGR5dUZSgBQ1dN6XkyrTbO9g@mail.gmail.com>
+	id S1751983Ab1HPOFD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Aug 2011 10:05:03 -0400
+In-Reply-To: <1313478363-5330-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 15-08-11 16:53:34, Jiaying Zhang wrote:
-> On Mon, Aug 15, 2011 at 1:56 AM, Michael Tokarev <mjt@tls.msk.ru> wro=
-te:
-> > 15.08.2011 12:00, Michael Tokarev wrote:
-> > [....]
-> >
-> > So, it looks like this (starting with cold cache):
-> >
-> > 1. rename the redologs and copy them over - this will
-> > =A0 make a hot copy of redologs
-> > 2. startup oracle - it will complain that the redologs aren't
-> > =A0 redologs, the header is corrupt
-> > 3. shut down oracle, start it up again - it will succeed.
-> >
-> > If between 1 and 2 you'll issue sync(1) everything will work.
-> > When shutting down, oracle calls fsync(), so that's like
-> > sync(1) again.
-> >
-> > If there will be some time between 1. and 2., everything
-> > will work too.
-> >
-> > Without dioread_nolock I can't trigger the problem no matter
-> > how I tried.
-> >
-> >
-> > A smaller test case. =A0I used redo1.odf file (one of the
-> > redologs) as a test file, any will work.
-> >
-> > =A0$ cp -p redo1.odf temp
-> > =A0$ dd if=3Dtemp of=3Dfoo iflag=3Ddirect count=3D20
-> Isn't this the expected behavior here? When doing
-> 'cp -p redo1.odf temp', data is copied to temp through
-> buffer write, but there is no guarantee when data will be
-> actually written to disk. Then with 'dd if=3Dtemp of=3Dfoo
-> iflag=3Ddirect count=3D20', data is read directly from disk.
-> Very likely, the written data hasn't been flushed to disk
-> yet so ext4 returns zero in this case.
-  No it's not. Buffered and direct IO is supposed to work correctly
-(although not fast) together. In this particular case we take care to f=
-lush
-dirty data from page cache before performing direct IO read... But
-something is broken in this path obviously.
+On 8/16/11 2:06 AM, Tao Ma wrote:
+> From: Tao Ma <boyu.mt@taobao.com>
+> 
+> EXT4_IO_END_UNWRITTEN flag set and the increase of i_aiodio_unwritten should
+> be done simultaneously since ext4_end_io_nolock always clear the flag and
+> decrease the counter in the same time.
+> 
+> We have found some bugs that the flag is set while leaving i_aiodio_unwritten
+> unchanged. So this patch just tries to creat a helper function to wrap them
+> to avoid any future bug. The idea is inspired by Eric.
 
-I don't have time to dig into this in detail now but what seems to be t=
-he
-problem is that with dioread_nolock option, we don't acquire i_mutex fo=
-r
-direct IO reads anymore. Thus these reads can compete with
-ext4_end_io_nolock() called from ext4_end_io_work() (this is called und=
-er
-i_mutex so without dioread_nolock the race cannot happen).
+Although I like it a little less now that I see it in practice, sorry.   ;)
 
-Hmm, the new writepages code seems to be broken in combination with dir=
-ect
-IO. Direct IO code expects that when filemap_write_and_wait() finishes,
-data is on disk but with new bio submission code this is not true becau=
-se
-we clear PageWriteback bit (which is what filemap_fdatawait() waits for=
-) in
-ext4_end_io_buffer_write() but do extent conversion only after that in
-convert workqueue. So the race seems to be there all the time, just wit=
-hout
-dioread_nolock it's much smaller.
+This:
+                /*
+                 * Flag the inode(non aio case) or end_io struct (aio case)
+                 * that this IO needs to conversion to written when IO is
+                 * completed
+                 */
+		if (!ext4_set_io_unwritten_flag(inode, io))
+			ext4_set_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
 
-=46ixing this is going to be non-trivial - I'm not sure we can really m=
-ove
-clearing of PageWriteback bit to conversion workqueue. I think we alrea=
-dy
-tried that once but it caused deadlocks for some reason...
+just reads weirdly to me.
 
-> > Now, first 512bytes of "foo" will contain all zeros, while
-> > the beginning of redo1.odf is _not_ zeros.
-> >
-> > Again, without aioread_nolock it works as expected.
-> >
-> >
-> > And the most important note: without the patch there's no
-> > data corruption like that. =A0But instead, there is the
-> > lockup... ;)
+It encapsulates all the steps, but it really isn't intuitive to read, I think.
 
-								Honza
---=20
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+"If we (can't? don't?) set the io unwritten flag, set the dio unwritten flag
+on the inode."
+
+I wonder if changing "io" to "endio" would make it a little more obvious.
+
+I'm not sure, maybe it's ok.  What do others think?
+
+I also wonder about this, but I get lost in this code.  It was originally:
+
+                if (io && !(io->flag & EXT4_IO_END_UNWRITTEN)) {
+                        io->flag = EXT4_IO_END_UNWRITTEN;
+                        atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
+                } else
+                        ext4_set_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
+
+That means that if it is AIO ("if (io)"), but the flag is already set
+(io->flag & EXT4_IO_END_UNWRITTEN), we don't re-set the flag or increase
+the count, which is fine - but is it then correct to set the state on the
+inode?
+
+thanks,
+-Eric
+
+> Cc: Eric Sandeen <sandeen@redhat.com>
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+> ---
+> Ted,
+> 	This patch is based on the patch with subject "ext4: Resolve the hang
+> of direct i/o read in handling EXT4_IO_END_UNWRITTEN.". I meant it for the next
+> merge window, but if you think it is also ok for 3.1, go ahead.
+> 
+>  fs/ext4/ext4.h    |   11 +++++++++++
+>  fs/ext4/extents.c |   10 ++--------
+>  fs/ext4/inode.c   |    5 +----
+>  fs/ext4/page-io.c |    6 ++----
+>  4 files changed, 16 insertions(+), 16 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index e717dfd..514f670 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1247,6 +1247,17 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+>  		 ino <= le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count));
+>  }
+>  
+> +static inline int ext4_set_io_unwritten_flag(struct inode *inode,
+> +					     struct ext4_io_end *io_end)
+> +{
+> +	if (io_end && !(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
+> +		io_end->flag |= EXT4_IO_END_UNWRITTEN;
+> +		atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
+> +		return 1;
+> +	}
+> +
+> +	return 0;
+> +}
+>  /*
+>   * Inode dynamic state flags
+>   */
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 57cf568..c0f8655 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -3190,10 +3190,7 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
+>  		 * that this IO needs to conversion to written when IO is
+>  		 * completed
+>  		 */
+> -		if (io && !(io->flag & EXT4_IO_END_UNWRITTEN)) {
+> -			io->flag = EXT4_IO_END_UNWRITTEN;
+> -			atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
+> -		} else
+> +		if (!ext4_set_io_unwritten_flag(inode, io))
+>  			ext4_set_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
+>  		if (ext4_should_dioread_nolock(inode))
+>  			map->m_flags |= EXT4_MAP_UNINIT;
+> @@ -3572,10 +3569,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+>  		 * that we need to perform conversion when IO is done.
+>  		 */
+>  		if ((flags & EXT4_GET_BLOCKS_PRE_IO)) {
+> -			if (io && !(io->flag & EXT4_IO_END_UNWRITTEN)) {
+> -				io->flag = EXT4_IO_END_UNWRITTEN;
+> -				atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
+> -			} else
+> +			if (!ext4_set_io_unwritten_flag(inode, io))
+>  				ext4_set_inode_state(inode,
+>  						     EXT4_STATE_DIO_UNWRITTEN);
+>  		}
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 40c0b10..128493b 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -2673,10 +2673,7 @@ static void ext4_end_io_buffer_write(struct buffer_head *bh, int uptodate)
+>  	 * but being more careful is always safe for the future change.
+>  	 */
+>  	inode = io_end->inode;
+> -	if (!(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
+> -		io_end->flag |= EXT4_IO_END_UNWRITTEN;
+> -		atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
+> -	}
+> +	ext4_set_io_unwritten_flag(inode, io_end);
+>  
+>  	/* Add the io_end to per-inode completed io list*/
+>  	spin_lock_irqsave(&EXT4_I(inode)->i_completed_io_lock, flags);
+> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+> index 78839af..edd2f7b 100644
+> --- a/fs/ext4/page-io.c
+> +++ b/fs/ext4/page-io.c
+> @@ -334,10 +334,8 @@ submit_and_retry:
+>  	if ((io_end->num_io_pages >= MAX_IO_PAGES) &&
+>  	    (io_end->pages[io_end->num_io_pages-1] != io_page))
+>  		goto submit_and_retry;
+> -	if (buffer_uninit(bh) && !(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
+> -		io_end->flag |= EXT4_IO_END_UNWRITTEN;
+> -		atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
+> -	}
+> +	if (buffer_uninit(bh))
+> +		ext4_set_io_unwritten_flag(inode, io_end);
+>  	io->io_end->size += bh->b_size;
+>  	io->io_next_block++;
+>  	ret = bio_add_page(io->io_bio, bh->b_page, bh->b_size, bh_offset(bh));
+
