@@ -1,95 +1,155 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH -v2] ext4: fake direct I/O mode for data=journal
-Date: Tue, 16 Aug 2011 15:32:25 -0400
-Message-ID: <1313523145-31631-1-git-send-email-tytso@mit.edu>
-References: <20110815180311.GC5948@thunk.org>
+Subject: [PATCH] ext4: improve handling of conflincting mount options
+Date: Tue, 16 Aug 2011 15:14:39 -0400
+Message-ID: <1313522079-23909-1-git-send-email-tytso@mit.edu>
+References: <4E497BCA.4030300@redhat.com>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:44347 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:44349 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752542Ab1HPUxP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752674Ab1HPUxP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 16 Aug 2011 16:53:15 -0400
-In-Reply-To: <20110815180311.GC5948@thunk.org>
+In-Reply-To: <4E497BCA.4030300@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently attempts to open a file with O_DIRECT in data=journal mode
-causes the open to fail with -EINVAL.  This makes it very hard to test
-data=journal mode.  So we will let the open succeed, but then always
-fall back to O_DSYNC buffered writes.
+If the user explicitly specifies conflicting mount options for
+delalloc or dioread_nolock and data=journal, fail the mount, instead
+of printing a warning and continuing (since many user's won't look at
+dmesg and notice the warning).
+
+Also, print a single warning that data=journal implies that delayed
+allocation is not on by default (since it's not supported), and
+furthermore that O_DIRECT is not supported.  Improve the text in
+Documentation/filesystems/ext4.txt so this is clear there as well.
+
+Similarly, if the dioread_nolock mount option is specified when the
+file system block size != PAGE_SIZE, fail the mount instead of
+printing a warning message and ignoring the mount option.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/file.c  |   28 +++++++++++++++++++++++++++-
- fs/ext4/inode.c |    1 +
- 2 files changed, 28 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index e4095e9..566f33f 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -89,6 +89,24 @@ ext4_unaligned_aio(struct inode *inode, const struct iovec *iov,
- 	return 0;
- }
- 
-+ssize_t
-+ext4_file_read(struct kiocb *iocb, const struct iovec *iov,
-+	       unsigned long nr_segs, loff_t pos)
-+{
-+	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
-+
-+	/*
-+	 * If O_DIRECT is set and we are doing data journalling we
-+	 * don't support O_DIRECT so force it off.
-+	 */
-+	if ((iocb->ki_filp->f_flags & O_DIRECT) &&
-+	    ext4_should_journal_data(inode))
-+		iocb->ki_filp->f_flags &= ~O_DIRECT;
-+
-+	return generic_file_aio_read(iocb, iov, nr_segs, pos);
-+}
-+
-+
- static ssize_t
- ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
- 		unsigned long nr_segs, loff_t pos)
-@@ -98,6 +116,14 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
- 	int ret;
- 
- 	/*
-+	 * If O_DIRECT is set and we are doing data journalling we
-+	 * don't support O_DIRECT so force it off.
-+	 */
-+	if ((iocb->ki_filp->f_flags & O_DIRECT) &&
-+	    ext4_should_journal_data(inode))
-+		iocb->ki_filp->f_flags &= ~O_DIRECT;
-+
-+	/*
- 	 * If we have encountered a bitmap-format file, the size limit
- 	 * is smaller than s_maxbytes, which is for extent-mapped files.
- 	 */
-@@ -277,7 +303,7 @@ const struct file_operations ext4_file_operations = {
- 	.llseek		= ext4_llseek,
- 	.read		= do_sync_read,
- 	.write		= do_sync_write,
--	.aio_read	= generic_file_aio_read,
-+	.aio_read	= ext4_file_read,
- 	.aio_write	= ext4_file_write,
- 	.unlocked_ioctl = ext4_ioctl,
- #ifdef CONFIG_COMPAT
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 762e803..b7088e2 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2921,6 +2921,7 @@ static const struct address_space_operations ext4_journalled_aops = {
- 	.bmap			= ext4_bmap,
- 	.invalidatepage		= ext4_invalidatepage,
- 	.releasepage		= ext4_releasepage,
-+	.direct_IO		= ext4_direct_IO,
- 	.is_partially_uptodate  = block_is_partially_uptodate,
- 	.error_remove_page	= generic_error_remove_page,
- };
--- 
-1.7.4.1.22.gec8e1.dirty
+n.b.  I plan to follow this up with a patch to the mount man page in
+util-linux-ng
 
+ Documentation/filesystems/ext4.txt |    8 ++++--
+ fs/ext4/ext4.h                     |    3 ++
+ fs/ext4/super.c                    |   46 +++++++++++++++++++++---------------
+ 3 files changed, 35 insertions(+), 22 deletions(-)
+
+diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
+index 232a575..168242b 100644
+--- a/Documentation/filesystems/ext4.txt
++++ b/Documentation/filesystems/ext4.txt
+@@ -160,7 +160,9 @@ noload			if the filesystem was not unmounted cleanly,
+                      	lead to any number of problems.
+ 
+ data=journal		All data are committed into the journal prior to being
+-			written into the main file system.
++			written into the main file system.  Enabling
++			this mode will disable delayed allocation and
++			O_DIRECT support.
+ 
+ data=ordered	(*)	All data are forced directly out to the main file
+ 			system prior to its metadata being committed to the
+@@ -419,8 +421,8 @@ written to the journal first, and then to its final location.
+ In the event of a crash, the journal can be replayed, bringing both data and
+ metadata into a consistent state.  This mode is the slowest except when data
+ needs to be read from and written to disk at the same time where it
+-outperforms all others modes.  Currently ext4 does not have delayed
+-allocation support if this data journalling mode is selected.
++outperforms all others modes.  Enabling this mode will disable delayed
++allocation and O_DIRECT support.
+ 
+ /proc entries
+ =============
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index e717dfd..062c668 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -917,6 +917,9 @@ struct ext4_inode_info {
+ #define EXT4_MOUNT_DISCARD		0x40000000 /* Issue DISCARD requests */
+ #define EXT4_MOUNT_INIT_INODE_TABLE	0x80000000 /* Initialize uninitialized itables */
+ 
++#define EXT4_MOUNT2_EXPLICIT_DELALLOC	0x00000001 /* User explicitly
++						      specified delalloc */
++
+ #define clear_opt(sb, opt)		EXT4_SB(sb)->s_mount_opt &= \
+ 						~EXT4_MOUNT_##opt
+ #define set_opt(sb, opt)		EXT4_SB(sb)->s_mount_opt |= \
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 44d0c8d..c3e3a80 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1801,6 +1801,7 @@ set_qf_format:
+ 			break;
+ 		case Opt_nodelalloc:
+ 			clear_opt(sb, DELALLOC);
++			clear_opt2(sb, EXPLICIT_DELALLOC);
+ 			break;
+ 		case Opt_mblk_io_submit:
+ 			set_opt(sb, MBLK_IO_SUBMIT);
+@@ -1817,6 +1818,7 @@ set_qf_format:
+ 			break;
+ 		case Opt_delalloc:
+ 			set_opt(sb, DELALLOC);
++			set_opt2(sb, EXPLICIT_DELALLOC);
+ 			break;
+ 		case Opt_block_validity:
+ 			set_opt(sb, BLOCK_VALIDITY);
+@@ -3224,6 +3226,31 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 			   &journal_ioprio, NULL, 0))
+ 		goto failed_mount;
+ 
++	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) {
++		printk_once(KERN_WARNING "EXT4-fs: Warning: mounting "
++			    "with data=journal disables delayed "
++			    "allocation and O_DIRECT support!\n");
++		if (test_opt2(sb, EXPLICIT_DELALLOC)) {
++			ext4_msg(sb, KERN_ERR, "can't mount with "
++				 "both data=journal and delalloc");
++			goto failed_mount;
++		}
++		if (test_opt(sb, DIOREAD_NOLOCK)) {
++			ext4_msg(sb, KERN_ERR, "can't mount with "
++				 "both data=journal and delalloc");
++			goto failed_mount;
++		}
++		if (test_opt(sb, DELALLOC))
++			clear_opt(sb, DELALLOC);
++	}
++	if (test_opt(sb, DIOREAD_NOLOCK)) {
++		if (sb->s_blocksize < PAGE_SIZE) {
++			ext4_msg(sb, KERN_ERR, "can't mount with "
++				 "dioread_nolock if block size != PAGE_SIZE");
++			goto failed_mount;
++		}
++	}
++
+ 	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+ 		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
+ 
+@@ -3679,25 +3706,6 @@ no_journal:
+ 			 "available");
+ 	}
+ 
+-	if (test_opt(sb, DELALLOC) &&
+-	    (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA)) {
+-		ext4_msg(sb, KERN_WARNING, "Ignoring delalloc option - "
+-			 "requested data journaling mode");
+-		clear_opt(sb, DELALLOC);
+-	}
+-	if (test_opt(sb, DIOREAD_NOLOCK)) {
+-		if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) {
+-			ext4_msg(sb, KERN_WARNING, "Ignoring dioread_nolock "
+-				"option - requested data journaling mode");
+-			clear_opt(sb, DIOREAD_NOLOCK);
+-		}
+-		if (sb->s_blocksize < PAGE_SIZE) {
+-			ext4_msg(sb, KERN_WARNING, "Ignoring dioread_nolock "
+-				"option - block size is too small");
+-			clear_opt(sb, DIOREAD_NOLOCK);
+-		}
+-	}
