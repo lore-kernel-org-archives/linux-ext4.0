@@ -1,125 +1,78 @@
-From: Tao Ma <tm@tao.ma>
-Subject: [PATCH] ext4: Create helper function for EXT4_IO_END_UNWRITTEN and i_aiodio_unwritten.
-Date: Tue, 16 Aug 2011 15:06:03 +0800
-Message-ID: <1313478363-5330-1-git-send-email-tm@tao.ma>
-Cc: Eric Sandeen <sandeen@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
+From: Michael Tokarev <mjt@tls.msk.ru>
+Subject: Re: DIO process stuck apparently due to dioread_nolock (3.0)
+Date: Tue, 16 Aug 2011 12:38:14 +0400
+Message-ID: <4E4A2C76.8060407@msgid.tls.msk.ru>
+References: <4E456436.8070107@msgid.tls.msk.ru>	<1313251371-3672-1-git-send-email-tm@tao.ma>	<4E4836A8.3080709@msgid.tls.msk.ru>	<4E48390E.9050102@msgid.tls.msk.ru>	<4E488625.609@tao.ma>	<4E48D231.5060807@msgid.tls.msk.ru>	<4E48DF31.4050603@msgid.tls.msk.ru> <CAFgt=MAfbU_muEzmxx-8CK8w7=nGR5dUZSgBQ1dN6XkyrTbO9g@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Tao Ma <tm@tao.ma>, linux-ext4@vger.kernel.org, sandeen@redhat.com,
+	Jan Kara <jack@suse.cz>
+To: Jiaying Zhang <jiayingz@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy1-pub.bluehost.com ([66.147.249.253]:47257 "HELO
-	oproxy1-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1750869Ab1HPHI0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Aug 2011 03:08:26 -0400
+Received: from isrv.corpit.ru ([86.62.121.231]:58060 "EHLO isrv.corpit.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751020Ab1HPIiQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Aug 2011 04:38:16 -0400
+In-Reply-To: <CAFgt=MAfbU_muEzmxx-8CK8w7=nGR5dUZSgBQ1dN6XkyrTbO9g@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Tao Ma <boyu.mt@taobao.com>
+16.08.2011 03:53, Jiaying Zhang wrote:
+> Hi Michael,
+> 
+> On Mon, Aug 15, 2011 at 1:56 AM, Michael Tokarev <mjt@tls.msk.ru> wrote:
+[]
+>> A smaller test case.  I used redo1.odf file (one of the
+>> redologs) as a test file, any will work.
+>>
+>>  $ cp -p redo1.odf temp
+>>  $ dd if=temp of=foo iflag=direct count=20
 
-EXT4_IO_END_UNWRITTEN flag set and the increase of i_aiodio_unwritten should
-be done simultaneously since ext4_end_io_nolock always clear the flag and
-decrease the counter in the same time.
+> Isn't this the expected behavior here? When doing
+> 'cp -p redo1.odf temp', data is copied to temp through
+> buffer write, but there is no guarantee when data will be
+> actually written to disk. Then with 'dd if=temp of=foo
+> iflag=direct count=20', data is read directly from disk.
+> Very likely, the written data hasn't been flushed to disk
+> yet so ext4 returns zero in this case.
 
-We have found some bugs that the flag is set while leaving i_aiodio_unwritten
-unchanged. So this patch just tries to creat a helper function to wrap them
-to avoid any future bug. The idea is inspired by Eric.
+The problem is 3-faced (at least ;)
 
-Cc: Eric Sandeen <sandeen@redhat.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
----
-Ted,
-	This patch is based on the patch with subject "ext4: Resolve the hang
-of direct i/o read in handling EXT4_IO_END_UNWRITTEN.". I meant it for the next
-merge window, but if you think it is also ok for 3.1, go ahead.
+First of all, it is _not_ an expected behavour.  When you
+think about it, maybe it becomes "more expected", but for
+first it looks like something Really Wrong (tm).  It can
+be made "more expected" by mentioning in various manpages
+and whatnot all the possible consecuences of mixing direct
+and buffered I/O.  So far it hasn't been done.  I can
+understand (and sort of expect), say, buffered write being
+insisible for concurrent direct read, while they're going
+at the same time.  But here, the file has been closed and
+re-opened between writes and reads.
 
- fs/ext4/ext4.h    |   11 +++++++++++
- fs/ext4/extents.c |   10 ++--------
- fs/ext4/inode.c   |    5 +----
- fs/ext4/page-io.c |    6 ++----
- 4 files changed, 16 insertions(+), 16 deletions(-)
+I agree that it's difficult to keep both pieces - direct
+and buffered I/O - in sync, -- there were numerous efforts
+to syncronize them, with various success and usually huge
+amount of work.  Maybe if it were noted initially that
+direct I/O _is_ incompatible with buffered I/O, things
+weren't that bad now.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index e717dfd..514f670 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1247,6 +1247,17 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
- 		 ino <= le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count));
- }
- 
-+static inline int ext4_set_io_unwritten_flag(struct inode *inode,
-+					     struct ext4_io_end *io_end)
-+{
-+	if (io_end && !(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
-+		io_end->flag |= EXT4_IO_END_UNWRITTEN;
-+		atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
-+		return 1;
-+	}
-+
-+	return 0;
-+}
- /*
-  * Inode dynamic state flags
-  */
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 57cf568..c0f8655 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3190,10 +3190,7 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
- 		 * that this IO needs to conversion to written when IO is
- 		 * completed
- 		 */
--		if (io && !(io->flag & EXT4_IO_END_UNWRITTEN)) {
--			io->flag = EXT4_IO_END_UNWRITTEN;
--			atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
--		} else
-+		if (!ext4_set_io_unwritten_flag(inode, io))
- 			ext4_set_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
- 		if (ext4_should_dioread_nolock(inode))
- 			map->m_flags |= EXT4_MAP_UNINIT;
-@@ -3572,10 +3569,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 		 * that we need to perform conversion when IO is done.
- 		 */
- 		if ((flags & EXT4_GET_BLOCKS_PRE_IO)) {
--			if (io && !(io->flag & EXT4_IO_END_UNWRITTEN)) {
--				io->flag = EXT4_IO_END_UNWRITTEN;
--				atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
--			} else
-+			if (!ext4_set_io_unwritten_flag(inode, io))
- 				ext4_set_inode_state(inode,
- 						     EXT4_STATE_DIO_UNWRITTEN);
- 		}
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 40c0b10..128493b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2673,10 +2673,7 @@ static void ext4_end_io_buffer_write(struct buffer_head *bh, int uptodate)
- 	 * but being more careful is always safe for the future change.
- 	 */
- 	inode = io_end->inode;
--	if (!(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
--		io_end->flag |= EXT4_IO_END_UNWRITTEN;
--		atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
--	}
-+	ext4_set_io_unwritten_flag(inode, io_end);
- 
- 	/* Add the io_end to per-inode completed io list*/
- 	spin_lock_irqsave(&EXT4_I(inode)->i_completed_io_lock, flags);
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 78839af..edd2f7b 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -334,10 +334,8 @@ submit_and_retry:
- 	if ((io_end->num_io_pages >= MAX_IO_PAGES) &&
- 	    (io_end->pages[io_end->num_io_pages-1] != io_page))
- 		goto submit_and_retry;
--	if (buffer_uninit(bh) && !(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
--		io_end->flag |= EXT4_IO_END_UNWRITTEN;
--		atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
--	}
-+	if (buffer_uninit(bh))
-+		ext4_set_io_unwritten_flag(inode, io_end);
- 	io->io_end->size += bh->b_size;
- 	io->io_next_block++;
- 	ret = bio_add_page(io->io_bio, bh->b_page, bh->b_size, bh_offset(bh));
--- 
-1.7.0.4
+Next, this problem does not happen without the mentioned
+dioread_nolock option (which - as far as I can see -
+supposed to be the default (or only) way to handle this
+in the future).  I can't trigger any of the issues
+described in this thread without dioread_nolock.
 
+So that makes this as yet another "corner case" somehow
+(like famous non-fs-buffer-aligned direct write past end
+of file, or like mmapped I/O mixed with direct I/O and
+so on), but since most other such corner cases are fixed
+now, this one just needs to be fixed too.
+
+And 3rd, this is a race condition: it does not happen all
+the time, or even most of the time, it happens "sometimes",
+which makes it more like a bug than not.
+
+Thanks,
+
+/mjt
