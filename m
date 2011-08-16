@@ -1,359 +1,169 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: [PATCH 2/6] Return 32/64-bit dir name hash according to usage type
-Date: Tue, 16 Aug 2011 15:22:27 -0600
-Message-ID: <123AAA92-9EEF-4FB7-AA7B-B179BC0626BA@whamcloud.com>
-References: <20110816112536.1808464.7174.stgit@fsdevel3> <20110816112547.1808464.77625.stgit@fsdevel3>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	hch@infradead.org, yong.fan@whamcloud.com,
-	linux-fsdevel@vger.kernel.org, tytso@mit.edu
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20110816112547.1808464.77625.stgit@fsdevel3>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Jiaying Zhang <jiayingz@google.com>
+Subject: Re: DIO process stuck apparently due to dioread_nolock (3.0)
+Date: Tue, 16 Aug 2011 14:32:12 -0700
+Message-ID: <CAFgt=MCQttE5Vv_4W=hFWU_L_FvELnY6bnFQ3uSOu07VkDm6rA@mail.gmail.com>
+References: <4E456436.8070107@msgid.tls.msk.ru>
+	<1313251371-3672-1-git-send-email-tm@tao.ma>
+	<4E4836A8.3080709@msgid.tls.msk.ru>
+	<4E48390E.9050102@msgid.tls.msk.ru>
+	<4E488625.609@tao.ma>
+	<4E48D231.5060807@msgid.tls.msk.ru>
+	<4E48DF31.4050603@msgid.tls.msk.ru>
+	<CAFgt=MAfbU_muEzmxx-8CK8w7=nGR5dUZSgBQ1dN6XkyrTbO9g@mail.gmail.com>
+	<20110816135325.GD23416@quack.suse.cz>
+	<4E4A86D0.2070300@tao.ma>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Jan Kara <jack@suse.cz>, Michael Tokarev <mjt@tls.msk.ru>,
+	linux-ext4@vger.kernel.org, sandeen@redhat.com
+To: Tao Ma <tm@tao.ma>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp-out.google.com ([216.239.44.51]:36910 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752739Ab1HPVcS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Aug 2011 17:32:18 -0400
+Received: from wpaz9.hot.corp.google.com (wpaz9.hot.corp.google.com [172.24.198.73])
+	by smtp-out.google.com with ESMTP id p7GLWEEH005005
+	for <linux-ext4@vger.kernel.org>; Tue, 16 Aug 2011 14:32:14 -0700
+Received: from yib19 (yib19.prod.google.com [10.243.65.83])
+	by wpaz9.hot.corp.google.com with ESMTP id p7GLUQMf009665
+	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Tue, 16 Aug 2011 14:32:13 -0700
+Received: by yib19 with SMTP id 19so416340yib.27
+        for <linux-ext4@vger.kernel.org>; Tue, 16 Aug 2011 14:32:13 -0700 (PDT)
+In-Reply-To: <4E4A86D0.2070300@tao.ma>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-08-16, at 5:25 AM, Bernd Schubert wrote:
+On Tue, Aug 16, 2011 at 8:03 AM, Tao Ma <tm@tao.ma> wrote:
+> On 08/16/2011 09:53 PM, Jan Kara wrote:
+>> On Mon 15-08-11 16:53:34, Jiaying Zhang wrote:
+>>> On Mon, Aug 15, 2011 at 1:56 AM, Michael Tokarev <mjt@tls.msk.ru> w=
+rote:
+>>>> 15.08.2011 12:00, Michael Tokarev wrote:
+>>>> [....]
+>>>>
+>>>> So, it looks like this (starting with cold cache):
+>>>>
+>>>> 1. rename the redologs and copy them over - this will
+>>>> =A0 make a hot copy of redologs
+>>>> 2. startup oracle - it will complain that the redologs aren't
+>>>> =A0 redologs, the header is corrupt
+>>>> 3. shut down oracle, start it up again - it will succeed.
+>>>>
+>>>> If between 1 and 2 you'll issue sync(1) everything will work.
+>>>> When shutting down, oracle calls fsync(), so that's like
+>>>> sync(1) again.
+>>>>
+>>>> If there will be some time between 1. and 2., everything
+>>>> will work too.
+>>>>
+>>>> Without dioread_nolock I can't trigger the problem no matter
+>>>> how I tried.
+>>>>
+>>>>
+>>>> A smaller test case. =A0I used redo1.odf file (one of the
+>>>> redologs) as a test file, any will work.
+>>>>
+>>>> =A0$ cp -p redo1.odf temp
+>>>> =A0$ dd if=3Dtemp of=3Dfoo iflag=3Ddirect count=3D20
+>>> Isn't this the expected behavior here? When doing
+>>> 'cp -p redo1.odf temp', data is copied to temp through
+>>> buffer write, but there is no guarantee when data will be
+>>> actually written to disk. Then with 'dd if=3Dtemp of=3Dfoo
+>>> iflag=3Ddirect count=3D20', data is read directly from disk.
+>>> Very likely, the written data hasn't been flushed to disk
+>>> yet so ext4 returns zero in this case.
+>> =A0 No it's not. Buffered and direct IO is supposed to work correctl=
+y
+>> (although not fast) together. In this particular case we take care t=
+o flush
+>> dirty data from page cache before performing direct IO read... But
+>> something is broken in this path obviously.
+I see. Thanks a lot for the explanation.
 
-> From: Fan Yong <yong.fan@whamcloud.com>
-> 
-> Traditionally ext2/3/4 has returned a 32-bit hash value from llseek()
-> to appease NFSv2, which can only handle a 32-bit cookie for seekdir()
-> and telldir().  However, this causes problems if there are 32-bit hash
-> collisions, since the NFSv2 server can get stuck resending the same
-> entries from the directory repeatedly.
-> 
-> Allow ext4 to return a full 64-bit hash (both major and minor) for
-> telldir to decrease the chance of hash collisions.  This still needs
-> integration on the NFS side.
-> 
-> Patch-updated-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-> (blame me if something is not correct)
-> 
-> Signed-off-by: Fan Yong <yong.fan@whamcloud.com>
-> Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
-> Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-> ---
-> fs/ext4/dir.c  |  185 ++++++++++++++++++++++++++++++++++++++++++++------------
-> fs/ext4/ext4.h |    6 ++
-> fs/ext4/hash.c |    4 +
-> 3 files changed, 154 insertions(+), 41 deletions(-)
-> 
-> diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-> index 164c560..cc47087 100644
-> --- a/fs/ext4/dir.c
-> +++ b/fs/ext4/dir.c
-> @@ -32,24 +32,8 @@ static unsigned char ext4_filetype_table[] = {
-> 	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
-> };
-> 
-> -static int ext4_readdir(struct file *, void *, filldir_t);
-> static int ext4_dx_readdir(struct file *filp,
-> 			   void *dirent, filldir_t filldir);
-> -static int ext4_release_dir(struct inode *inode,
-> -				struct file *filp);
-> -
-> -const struct file_operations ext4_dir_operations = {
-> -	.llseek		= ext4_llseek,
-> -	.read		= generic_read_dir,
-> -	.readdir	= ext4_readdir,		/* we take BKL. needed?*/
-> -	.unlocked_ioctl = ext4_ioctl,
-> -#ifdef CONFIG_COMPAT
-> -	.compat_ioctl	= ext4_compat_ioctl,
-> -#endif
-> -	.fsync		= ext4_sync_file,
-> -	.release	= ext4_release_dir,
-> -};
-> -
-> 
-> static unsigned char get_dtype(struct super_block *sb, int filetype)
-> {
-> @@ -254,22 +238,134 @@ out:
-> 	return ret;
-> }
-> 
-> +static inline int is_32bit_api(void)
-> +{
-> +#ifdef HAVE_IS_COMPAT_TASK
-> +	return is_compat_task();
+I wonder whether the following patch will solve the problem:
 
-Looking more closely, this should actually be "#ifdef CONFIG_COMPAT" in the mainline kernel.
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 6c27111..ca90d73 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -800,12 +800,17 @@ ssize_t ext4_ind_direct_IO(int rw, struct kiocb *=
+iocb,
+        }
 
-HAVE_IS_COMPAT_TASK is from the Lustre configure script for detecting which kernel is_compat_task() was added in, since it appeared in some kernels at 2.6.17 but wasn't in most arches until 2.6.29.
+ retry:
+-       if (rw =3D=3D READ && ext4_should_dioread_nolock(inode))
++       if (rw =3D=3D READ && ext4_should_dioread_nolock(inode)) {
++               if (unlikely(!list_empty(&ei->i_completed_io_list))) {
++                       mutex_lock(&inode->i_mutex);
++                       ext4_flush_completed_IO(inode);
++                       mutex_unlock(&inode->i_mutex);
++               }
+                ret =3D __blockdev_direct_IO(rw, iocb, inode,
+                                 inode->i_sb->s_bdev, iov,
+                                 offset, nr_segs,
+                                 ext4_get_block, NULL, NULL, 0);
+-       else {
++       } else {
+                ret =3D blockdev_direct_IO(rw, iocb, inode,
+                                 inode->i_sb->s_bdev, iov,
+                                 offset, nr_segs,
 
-Sorry I didn't notice this earlier.
+I tested the patch a little bit and it seems to resolve the race
+on dioread_nolock in my case. Michael, I would very appreciate
+if you can try this patch with your test case and see whether it works.
 
-> +#else
-> +	return (BITS_PER_LONG == 32);
-> +#endif
-> +}
-> +
-> /*
->  * These functions convert from the major/minor hash to an f_pos
-> - * value.
-> + * value for dx directories
-> + *
-> + * Upper layer (for example NFS) should specify FMODE_32BITHASH or
-> + * FMODE_64BITHASH explicitly. On the other hand, we allow ext4 to be mounted
-> + * directly on both 32-bit and 64-bit nodes, under such case, neither
-> + * FMODE_32BITHASH nor FMODE_64BITHASH is specified.
-> + */
-> +static inline loff_t hash2pos(struct file *filp, __u32 major, __u32 minor)
-> +{
-> +	if ((filp->f_flags & FMODE_32BITHASH) ||
-> +	    (!(filp->f_flags & FMODE_64BITHASH) && is_32bit_api()))
-> +		return major >> 1;
-> +	else
-> +		return ((__u64)(major >> 1) << 32) | (__u64)minor;
-> +}
-> +
-> +static inline __u32 pos2maj_hash(struct file *filp, loff_t pos)
-> +{
-> +	if ((filp->f_flags & FMODE_32BITHASH) ||
-> +	    (!(filp->f_mode & FMODE_64BITHASH) && is_32bit_api()))
-> +		return (pos << 1) & 0xffffffff;
-> +	else
-> +		return ((pos >> 32) << 1) & 0xffffffff;
-> +}
-> +
-> +static inline __u32 pos2min_hash(struct file *filp, loff_t pos)
-> +{
-> +	if ((filp->f_flags & FMODE_32BITHASH) ||
-> +	    (!(filp->f_flags & FMODE_64BITHASH) && is_32bit_api()))
-> +		return 0;
-> +	else
-> +		return pos & 0xffffffff;
-> +}
-> +
-> +/*
-> + * Return 32- or 64-bit end-of-file for dx directories
-> + */
-> +static inline loff_t ext4_get_htree_eof(struct file *filp)
-> +{
-> +	if ((filp->f_mode & FMODE_32BITHASH) ||
-> +	    (!(filp->f_mode & FMODE_64BITHASH) && is_32bit_api()))
-> +		return EXT4_HTREE_EOF_32BIT;
-> +	else
-> +		return EXT4_HTREE_EOF_64BIT;
-> +}
-> +
-> +
-> +/*
-> + * ext4_dir_llseek() based on generic_file_llseek() to handle both
-> + * non-htree and htree directories, where the "offset" is in terms
-> + * of the filename hash value instead of the byte offset.
->  *
-> - * Currently we only use major hash numer.  This is unfortunate, but
-> - * on 32-bit machines, the same VFS interface is used for lseek and
-> - * llseek, so if we use the 64 bit offset, then the 32-bit versions of
-> - * lseek/telldir/seekdir will blow out spectacularly, and from within
-> - * the ext2 low-level routine, we don't know if we're being called by
-> - * a 64-bit version of the system call or the 32-bit version of the
-> - * system call.  Worse yet, NFSv2 only allows for a 32-bit readdir
-> - * cookie.  Sigh.
-> + * NOTE: offsets obtained *before* ext4_set_inode_flag(dir, EXT4_INODE_INDEX)
-> + *       will be invalid once the directory was converted into a dx directory
->  */
-> -#define hash2pos(major, minor)	(major >> 1)
-> -#define pos2maj_hash(pos)	((pos << 1) & 0xffffffff)
-> -#define pos2min_hash(pos)	(0)
-> +loff_t ext4_dir_llseek(struct file *file, loff_t offset, int origin)
-> +{
-> +	struct inode *inode = file->f_mapping->host;
-> +	loff_t ret = -EINVAL;
-> +	int is_dx_dir = ext4_test_inode_flag(inode, EXT4_INODE_INDEX);
-> +
-> +	mutex_lock(&inode->i_mutex);
-> +
-> +	/* NOTE: relative offsets with dx directories might not work
-> +	 *       as expected, as it is difficult to figure out the
-> +	 *       correct offset between dx hashes */
-> +
-> +	switch (origin) {
-> +	case SEEK_END:
-> +		if (unlikely(offset > 0))
-> +			goto out_err; /* not supported for directories */
-> +
-> +		/* so only negative offsets are left, does that have a
-> +		 * meaning for directories at all? */
-> +		if (is_dx_dir)
-> +			offset += ext4_get_htree_eof(file);
-> +		else
-> +			offset += inode->i_size;
-> +		break;
-> +	case SEEK_CUR:
-> +		/*
-> +		 * Here we special-case the lseek(fd, 0, SEEK_CUR)
-> +		 * position-querying operation.  Avoid rewriting the "same"
-> +		 * f_pos value back to the file because a concurrent read(),
-> +		 * write() or lseek() might have altered it
-> +		 */
-> +		if (offset == 0) {
-> +			offset = file->f_pos;
-> +			goto out_ok;
-> +		}
-> +
-> +		offset += file->f_pos;
-> +		break;
-> +	}
-> +
-> +	if (unlikely(offset < 0))
-> +		goto out_err;
-> +
-> +	if (!is_dx_dir) {
-> +		if (offset > inode->i_sb->s_maxbytes)
-> +			goto out_err;
-> +	} else if (offset > ext4_get_htree_eof(file))
-> +		goto out_err;
-> +
-> +	/* Special lock needed here? */
-> +	if (offset != file->f_pos) {
-> +		file->f_pos = offset;
-> +		file->f_version = 0;
-> +	}
-> +
-> +out_ok:
-> +	ret = offset;
-> +out_err:
-> +	mutex_unlock(&inode->i_mutex);
-> +
-> +	return ret;
-> +}
-> 
-> /*
->  * This structure holds the nodes of the red-black tree used to store
-> @@ -330,15 +426,16 @@ static void free_rb_tree_fname(struct rb_root *root)
-> }
-> 
-> 
-> -static struct dir_private_info *ext4_htree_create_dir_info(loff_t pos)
-> +static struct dir_private_info *ext4_htree_create_dir_info(struct file *filp,
-> +							   loff_t pos)
-> {
-> 	struct dir_private_info *p;
-> 
-> 	p = kzalloc(sizeof(struct dir_private_info), GFP_KERNEL);
-> 	if (!p)
-> 		return NULL;
-> -	p->curr_hash = pos2maj_hash(pos);
-> -	p->curr_minor_hash = pos2min_hash(pos);
-> +	p->curr_hash = pos2maj_hash(filp, pos);
-> +	p->curr_minor_hash = pos2min_hash(filp, pos);
-> 	return p;
-> }
-> 
-> @@ -429,7 +526,7 @@ static int call_filldir(struct file *filp, void *dirent,
-> 		       "null fname?!?\n");
-> 		return 0;
-> 	}
-> -	curr_pos = hash2pos(fname->hash, fname->minor_hash);
-> +	curr_pos = hash2pos(filp, fname->hash, fname->minor_hash);
-> 	while (fname) {
-> 		error = filldir(dirent, fname->name,
-> 				fname->name_len, curr_pos,
-> @@ -454,13 +551,13 @@ static int ext4_dx_readdir(struct file *filp,
-> 	int	ret;
-> 
-> 	if (!info) {
-> -		info = ext4_htree_create_dir_info(filp->f_pos);
-> +		info = ext4_htree_create_dir_info(filp, filp->f_pos);
-> 		if (!info)
-> 			return -ENOMEM;
-> 		filp->private_data = info;
-> 	}
-> 
-> -	if (filp->f_pos == EXT4_HTREE_EOF)
-> +	if (filp->f_pos == ext4_get_htree_eof(filp))
-> 		return 0;	/* EOF */
-> 
-> 	/* Some one has messed with f_pos; reset the world */
-> @@ -468,8 +565,8 @@ static int ext4_dx_readdir(struct file *filp,
-> 		free_rb_tree_fname(&info->root);
-> 		info->curr_node = NULL;
-> 		info->extra_fname = NULL;
-> -		info->curr_hash = pos2maj_hash(filp->f_pos);
-> -		info->curr_minor_hash = pos2min_hash(filp->f_pos);
-> +		info->curr_hash = pos2maj_hash(filp, filp->f_pos);
-> +		info->curr_minor_hash = pos2min_hash(filp, filp->f_pos);
-> 	}
-> 
-> 	/*
-> @@ -501,7 +598,7 @@ static int ext4_dx_readdir(struct file *filp,
-> 			if (ret < 0)
-> 				return ret;
-> 			if (ret == 0) {
-> -				filp->f_pos = EXT4_HTREE_EOF;
-> +				filp->f_pos = ext4_get_htree_eof(filp);
-> 				break;
-> 			}
-> 			info->curr_node = rb_first(&info->root);
-> @@ -521,7 +618,7 @@ static int ext4_dx_readdir(struct file *filp,
-> 			info->curr_minor_hash = fname->minor_hash;
-> 		} else {
-> 			if (info->next_hash == ~0) {
-> -				filp->f_pos = EXT4_HTREE_EOF;
-> +				filp->f_pos = ext4_get_htree_eof(filp);
-> 				break;
-> 			}
-> 			info->curr_hash = info->next_hash;
-> @@ -540,3 +637,15 @@ static int ext4_release_dir(struct inode *inode, struct file *filp)
-> 
-> 	return 0;
-> }
-> +
-> +const struct file_operations ext4_dir_operations = {
-> +	.llseek		= ext4_dir_llseek,
-> +	.read		= generic_read_dir,
-> +	.readdir	= ext4_readdir,
-> +	.unlocked_ioctl = ext4_ioctl,
-> +#ifdef CONFIG_COMPAT
-> +	.compat_ioctl	= ext4_compat_ioctl,
-> +#endif
-> +	.fsync		= ext4_sync_file,
-> +	.release	= ext4_release_dir,
-> +};
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index e717dfd..31d9ba0 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1560,7 +1560,11 @@ struct dx_hash_info
-> 	u32		*seed;
-> };
-> 
-> -#define EXT4_HTREE_EOF	0x7fffffff
-> +
-> +/* 32 and 64 bit signed EOF for dx directories */
-> +#define EXT4_HTREE_EOF_32BIT   ((1UL  << (32 - 1)) - 1)
-> +#define EXT4_HTREE_EOF_64BIT   ((1ULL << (64 - 1)) - 1)
-> +
-> 
-> /*
->  * Control parameters used by ext4_htree_next_block
-> diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
-> index ac8f168..fa8e491 100644
-> --- a/fs/ext4/hash.c
-> +++ b/fs/ext4/hash.c
-> @@ -200,8 +200,8 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
-> 		return -1;
-> 	}
-> 	hash = hash & ~1;
-> -	if (hash == (EXT4_HTREE_EOF << 1))
-> -		hash = (EXT4_HTREE_EOF-1) << 1;
-> +	if (hash == (EXT4_HTREE_EOF_32BIT << 1))
-> +		hash = (EXT4_HTREE_EOF_32BIT - 1) << 1;
-> 	hinfo->hash = hash;
-> 	hinfo->minor_hash = minor_hash;
-> 	return 0;
-> 
+>>
+>> I don't have time to dig into this in detail now but what seems to b=
+e the
+>> problem is that with dioread_nolock option, we don't acquire i_mutex=
+ for
+>> direct IO reads anymore. Thus these reads can compete with
+>> ext4_end_io_nolock() called from ext4_end_io_work() (this is called =
+under
+>> i_mutex so without dioread_nolock the race cannot happen).
+>>
+>> Hmm, the new writepages code seems to be broken in combination with =
+direct
+>> IO. Direct IO code expects that when filemap_write_and_wait() finish=
+es,
+>> data is on disk but with new bio submission code this is not true be=
+cause
+>> we clear PageWriteback bit (which is what filemap_fdatawait() waits =
+for) in
+>> ext4_end_io_buffer_write() but do extent conversion only after that =
+in
+>> convert workqueue. So the race seems to be there all the time, just =
+without
+>> dioread_nolock it's much smaller.
+I think ext4_end_io_buffer_write() is only called with dioread_nolock e=
+nabled.
+So I think we should be ok with the default mount options.
 
+Jiaying
 
-Cheers, Andreas
+> You are absolutely right. The really problem is that ext4_direct_IO
+> begins to work *after* we clear the page writeback flag and *before* =
+we
+> convert unwritten extent to a valid state. Some of my trace does show
+> that. I am working on it now.
+>>
+>> Fixing this is going to be non-trivial - I'm not sure we can really =
+move
+>> clearing of PageWriteback bit to conversion workqueue. I thienk we a=
+lready
+>> tried that once but it caused deadlocks for some reason...
+> I just did as what you described and yes I met with another problem a=
+nd
+> try to resolve it now. Once it is OK, I will send out the patch.
+>
+> Thanks
+> Tao
+>
 --
-Andreas Dilger 
-Principal Engineer
-Whamcloud, Inc.
-
-
-
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
