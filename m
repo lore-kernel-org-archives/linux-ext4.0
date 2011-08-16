@@ -1,87 +1,59 @@
-From: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
-Subject: [PATCH 4/6] nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)
-Date: Tue, 16 Aug 2011 13:25:57 +0200
-Message-ID: <20110816112557.1808464.64349.stgit@fsdevel3>
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Subject: [PATCH 5/6] Fix possible Null pointer dereference in
+	ipoib_start_xmit()
+Date: Tue, 16 Aug 2011 13:26:02 +0200
+Message-ID: <20110816112602.1808464.35621.stgit@fsdevel3>
 References: <20110816112536.1808464.7174.stgit@fsdevel3>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Cc: hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, yong.fan-KloliPT79xf2eFz/2MeuCQ@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, adilger-KloliPT79xf2eFz/2MeuCQ@public.gmane.org
-To: linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: hch@infradead.org, yong.fan@whamcloud.com,
+	linux-fsdevel@vger.kernel.org, tytso@mit.edu, adilger@whamcloud.com
+To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <20110816112536.1808464.7174.stgit@fsdevel3>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Use 32-bit or 64-bit llseek() hashes for directory offsets depending on
-the NFS version. NFSv2 gets 32-bit hashes only.
+This will fix https://bugzilla.kernel.org/show_bug.cgi?id=41212
 
-NOTE: This patch got rather complex as Christoph asked to set the
-filp->f_mode flag in the open call or immediatly after dentry_open()
-in nfsd_open() to avoid races.
-Personally I still do not see a reason for that and in my opinion
-FMODE_32BITHASH/FMODE_64BITHASH flags could be set nfsd_readdir(), as it
-follows directly after nfsd_open() without a chance of races.
+fslab2 login: [  114.392408] EXT4-fs (sdc): barriers disabled
+[  114.449737] EXT4-fs (sdc): mounted filesystem with writeback data mode.
+Opts: journal_async_commit,barrier=0,data=writeback
+[  240.944030] BUG: unable to handle kernel NULL pointer dereference at
+0000000000000040
+[  240.948007] IP: [<ffffffffa0366ce9>] ipoib_start_xmit+0x39/0x280 [ib_ipoib]
+[...]
+[  240.948007] Call Trace:
+[  240.948007]  <IRQ>
+[  240.948007]  [<ffffffff812cd5e0>] dev_hard_start_xmit+0x2a0/0x590
+[  240.948007]  [<ffffffff8131f680>] ? arp_create+0x70/0x200
+[  240.948007]  [<ffffffff812e8e1f>] sch_direct_xmit+0xef/0x1c0
 
-
-Signed-off-by: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
+Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
 ---
- fs/nfsd/vfs.c |   15 +++++++++++++--
- fs/nfsd/vfs.h |    2 ++
- 2 files changed, 15 insertions(+), 2 deletions(-)
+ drivers/infiniband/ulp/ipoib/ipoib_main.c |    8 +++++---
+ 1 files changed, 5 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index ca692b4..97a99f1 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -767,9 +767,15 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
- 			    flags, current_cred());
- 	if (IS_ERR(*filp))
- 		host_err = PTR_ERR(*filp);
--	else
-+	else {
- 		host_err = ima_file_check(*filp, may_flags);
+diff --git a/drivers/infiniband/ulp/ipoib/ipoib_main.c b/drivers/infiniband/ulp/ipoib/ipoib_main.c
+index 43f89ba..fe89c46 100644
+--- a/drivers/infiniband/ulp/ipoib/ipoib_main.c
++++ b/drivers/infiniband/ulp/ipoib/ipoib_main.c
+@@ -717,11 +717,13 @@ static int ipoib_start_xmit(struct sk_buff *skb, struct net_device *dev)
+ {
+ 	struct ipoib_dev_priv *priv = netdev_priv(dev);
+ 	struct ipoib_neigh *neigh;
+-	struct neighbour *n;
++	struct neighbour *n = NULL;
+ 	unsigned long flags;
  
-+		if (may_flags & NFSD_MAY_64BIT_COOKIE)
-+			(*filp)->f_mode |= FMODE_64BITHASH;
-+		else
-+			(*filp)->f_mode |= FMODE_32BITHASH;
-+	}
+-	n = dst_get_neighbour(skb_dst(skb));
+-	if (likely(skb_dst(skb) && n)) {
++	if (likely(skb_dst(skb)))
++		n = dst_get_neighbour(skb_dst(skb));
 +
- out_nfserr:
- 	err = nfserrno(host_err);
- out:
-@@ -1991,8 +1997,13 @@ nfsd_readdir(struct svc_rqst *rqstp, struct svc_fh *fhp, loff_t *offsetp,
- 	__be32		err;
- 	struct file	*file;
- 	loff_t		offset = *offsetp;
-+	int             may_flags = NFSD_MAY_READ;
-+
-+	/* NFSv2 only supports 32 bit cookies */
-+	if (rqstp->rq_vers > 2)
-+		may_flags |= NFSD_MAY_64BIT_COOKIE;
- 
--	err = nfsd_open(rqstp, fhp, S_IFDIR, NFSD_MAY_READ, &file);
-+	err = nfsd_open(rqstp, fhp, S_IFDIR, may_flags, &file);
- 	if (err)
- 		goto out;
- 
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index e0bbac0..ecd00e1 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -26,6 +26,8 @@
- #define NFSD_MAY_NOT_BREAK_LEASE 512
- #define NFSD_MAY_BYPASS_GSS	1024
- 
-+#define NFSD_MAY_64BIT_COOKIE	2048 /* 64 bit readdir cookies for >= NFSv3 */
-+
- #define NFSD_MAY_CREATE		(NFSD_MAY_EXEC|NFSD_MAY_WRITE)
- #define NFSD_MAY_REMOVE		(NFSD_MAY_EXEC|NFSD_MAY_WRITE|NFSD_MAY_TRUNC)
- 
++	if (likely(n)) {
+ 		if (unlikely(!*to_ipoib_neigh(n))) {
+ 			ipoib_path_lookup(skb, dev);
+ 			return NETDEV_TX_OK;
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
