@@ -1,71 +1,95 @@
-From: "Rafael J. Wysocki" <rjw@sisk.pl>
-Subject: Re: [PATCH] fs / ext3: Always unlock updates in ext3_freeze()
-Date: Tue, 16 Aug 2011 20:20:07 +0200
-Message-ID: <201108162020.07344.rjw@sisk.pl>
-References: <201108112329.23043.rjw@sisk.pl> <20110815205807.GC16369@quack.suse.cz> <20110816000916.GH26978@dastard>
-Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
-To: Dave Chinner <david@fromorbit.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH -v2] ext4: fake direct I/O mode for data=journal
+Date: Tue, 16 Aug 2011 15:32:25 -0400
+Message-ID: <1313523145-31631-1-git-send-email-tytso@mit.edu>
+References: <20110815180311.GC5948@thunk.org>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ogre.sisk.pl ([217.79.144.158]:45540 "EHLO ogre.sisk.pl"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752238Ab1HPSSX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 16 Aug 2011 14:18:23 -0400
-In-Reply-To: <20110816000916.GH26978@dastard>
+Received: from li9-11.members.linode.com ([67.18.176.11]:44347 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752542Ab1HPUxP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Aug 2011 16:53:15 -0400
+In-Reply-To: <20110815180311.GC5948@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tuesday, August 16, 2011, Dave Chinner wrote:
-> On Mon, Aug 15, 2011 at 10:58:07PM +0200, Jan Kara wrote:
-> >   Hello,
-> > 
-> > On Mon 15-08-11 20:09:13, Rafael J. Wysocki wrote:
-> > > On Monday, August 15, 2011, Jan Kara wrote:
-> > > >   BTW,  filesystem freezing never really worked for mmaped writes under
-> > > > ext3 - ext3 would have to implement page_mkwrite() callback for that - so
-> > > > if you want to rely on it for suspending, this will be non-trivial.
-> > > 
-> > > At this point the purpose of freezing filesystems is basically to
-> > > prevent XFS from deadlocking with hibernation's memory preallocation.
-> > > For other filesystems it may or may not make a difference depending on
-> > > their implementation of freeze/unfreeze_super().
-> >   What's exactly the problem? Memory preallocation enters direct reclaim
-> > and that deadlocks in the filesystem?
-> 
-> Well, that's one possible manifestation. The problem is that the
-> current hibernate code still assumes that sys_sync() results in an
-> idle filesystem that will not change after the call if nothing is
-> dirty.
-> 
-> The result is that when the large memory allocation occurs for the
-> hibernate image (after the sys_sync() call) then the shrink_slab()
-> tends to be called. The XFS shrinkers are capable of dirtying inodes
-> and the backing buffers of inodes that are in the reclaimable state.
-> But those buffers cannot be flushed to disk because hibernate has
-> already frozen the xfsbufd threads, so the shrinker doing inode
-> reclaim hangs up on locks waiting for the buffers to be written.
-> This either leads to deadlock or hibernate image allocation failure.
-> 
-> Far worse, IMO, is the case where is -doesn't- deadlock, because the
-> filesystem state can still changing after the allocation has
-> finished due to async metadata IO completions. That has the
-> potential to cause filesystem corruption as after resume the on-disk
-> state may not match what is written from memory to the hibernate
-> image.
-> 
-> The problem really isn't XFS specific, nor is it new - the fact is
-> that any filesystem that has registered a shrinker or can do async
-> work in the background post-sync is vulnerable to this problem. It's
-> just that XFS is the filesystem that usually exposes such issues, so
-> it gets blamed for causing the problem....
+Currently attempts to open a file with O_DIRECT in data=journal mode
+causes the open to fail with -EINVAL.  This makes it very hard to test
+data=journal mode.  So we will let the open succeed, but then always
+fall back to O_DSYNC buffered writes.
 
-I'm not saying it's XFS' fault.  It's just that XFS tends to do things
-that other filesystems don't do and that expose the problem in the
-hibernate code.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/file.c  |   28 +++++++++++++++++++++++++++-
+ fs/ext4/inode.c |    1 +
+ 2 files changed, 28 insertions(+), 1 deletions(-)
 
-Thanks,
-Rafael
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index e4095e9..566f33f 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -89,6 +89,24 @@ ext4_unaligned_aio(struct inode *inode, const struct iovec *iov,
+ 	return 0;
+ }
+ 
++ssize_t
++ext4_file_read(struct kiocb *iocb, const struct iovec *iov,
++	       unsigned long nr_segs, loff_t pos)
++{
++	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
++
++	/*
++	 * If O_DIRECT is set and we are doing data journalling we
++	 * don't support O_DIRECT so force it off.
++	 */
++	if ((iocb->ki_filp->f_flags & O_DIRECT) &&
++	    ext4_should_journal_data(inode))
++		iocb->ki_filp->f_flags &= ~O_DIRECT;
++
++	return generic_file_aio_read(iocb, iov, nr_segs, pos);
++}
++
++
+ static ssize_t
+ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+ 		unsigned long nr_segs, loff_t pos)
+@@ -98,6 +116,14 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+ 	int ret;
+ 
+ 	/*
++	 * If O_DIRECT is set and we are doing data journalling we
++	 * don't support O_DIRECT so force it off.
++	 */
++	if ((iocb->ki_filp->f_flags & O_DIRECT) &&
++	    ext4_should_journal_data(inode))
++		iocb->ki_filp->f_flags &= ~O_DIRECT;
++
++	/*
+ 	 * If we have encountered a bitmap-format file, the size limit
+ 	 * is smaller than s_maxbytes, which is for extent-mapped files.
+ 	 */
+@@ -277,7 +303,7 @@ const struct file_operations ext4_file_operations = {
+ 	.llseek		= ext4_llseek,
+ 	.read		= do_sync_read,
+ 	.write		= do_sync_write,
+-	.aio_read	= generic_file_aio_read,
++	.aio_read	= ext4_file_read,
+ 	.aio_write	= ext4_file_write,
+ 	.unlocked_ioctl = ext4_ioctl,
+ #ifdef CONFIG_COMPAT
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 762e803..b7088e2 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2921,6 +2921,7 @@ static const struct address_space_operations ext4_journalled_aops = {
+ 	.bmap			= ext4_bmap,
+ 	.invalidatepage		= ext4_invalidatepage,
+ 	.releasepage		= ext4_releasepage,
++	.direct_IO		= ext4_direct_IO,
+ 	.is_partially_uptodate  = block_is_partially_uptodate,
+ 	.error_remove_page	= generic_error_remove_page,
+ };
+-- 
+1.7.4.1.22.gec8e1.dirty
+
