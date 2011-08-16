@@ -1,153 +1,71 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] ext3: remove deprecated oldalloc
-Date: Tue, 16 Aug 2011 18:08:06 +0200
-Message-ID: <1313510886-28619-1-git-send-email-lczerner@redhat.com>
-Cc: jack@suse.cz, Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: "Rafael J. Wysocki" <rjw@sisk.pl>
+Subject: Re: [PATCH] fs / ext3: Always unlock updates in ext3_freeze()
+Date: Tue, 16 Aug 2011 20:20:07 +0200
+Message-ID: <201108162020.07344.rjw@sisk.pl>
+References: <201108112329.23043.rjw@sisk.pl> <20110815205807.GC16369@quack.suse.cz> <20110816000916.GH26978@dastard>
+Mime-Version: 1.0
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12754 "EHLO mx1.redhat.com"
+Received: from ogre.sisk.pl ([217.79.144.158]:45540 "EHLO ogre.sisk.pl"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752357Ab1HPQIX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 16 Aug 2011 12:08:23 -0400
+	id S1752238Ab1HPSSX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Aug 2011 14:18:23 -0400
+In-Reply-To: <20110816000916.GH26978@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-For a long time now orlov is the default block allocator in the ext3. It
-performs better than the old one and no one seems to claim otherwise so
-we can safely drop it and make oldalloc and orlov mount option
-deprecated.
+On Tuesday, August 16, 2011, Dave Chinner wrote:
+> On Mon, Aug 15, 2011 at 10:58:07PM +0200, Jan Kara wrote:
+> >   Hello,
+> > 
+> > On Mon 15-08-11 20:09:13, Rafael J. Wysocki wrote:
+> > > On Monday, August 15, 2011, Jan Kara wrote:
+> > > >   BTW,  filesystem freezing never really worked for mmaped writes under
+> > > > ext3 - ext3 would have to implement page_mkwrite() callback for that - so
+> > > > if you want to rely on it for suspending, this will be non-trivial.
+> > > 
+> > > At this point the purpose of freezing filesystems is basically to
+> > > prevent XFS from deadlocking with hibernation's memory preallocation.
+> > > For other filesystems it may or may not make a difference depending on
+> > > their implementation of freeze/unfreeze_super().
+> >   What's exactly the problem? Memory preallocation enters direct reclaim
+> > and that deadlocks in the filesystem?
+> 
+> Well, that's one possible manifestation. The problem is that the
+> current hibernate code still assumes that sys_sync() results in an
+> idle filesystem that will not change after the call if nothing is
+> dirty.
+> 
+> The result is that when the large memory allocation occurs for the
+> hibernate image (after the sys_sync() call) then the shrink_slab()
+> tends to be called. The XFS shrinkers are capable of dirtying inodes
+> and the backing buffers of inodes that are in the reclaimable state.
+> But those buffers cannot be flushed to disk because hibernate has
+> already frozen the xfsbufd threads, so the shrinker doing inode
+> reclaim hangs up on locks waiting for the buffers to be written.
+> This either leads to deadlock or hibernate image allocation failure.
+> 
+> Far worse, IMO, is the case where is -doesn't- deadlock, because the
+> filesystem state can still changing after the allocation has
+> finished due to async metadata IO completions. That has the
+> potential to cause filesystem corruption as after resume the on-disk
+> state may not match what is written from memory to the hibernate
+> image.
+> 
+> The problem really isn't XFS specific, nor is it new - the fact is
+> that any filesystem that has registered a shrinker or can do async
+> work in the background post-sync is vulnerable to this problem. It's
+> just that XFS is the filesystem that usually exposes such issues, so
+> it gets blamed for causing the problem....
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- Documentation/filesystems/ext3.txt |    8 ------
- fs/ext3/ialloc.c                   |   45 ++---------------------------------
- fs/ext3/super.c                    |    8 +++---
- include/linux/ext3_fs.h            |    2 +-
- 4 files changed, 8 insertions(+), 55 deletions(-)
+I'm not saying it's XFS' fault.  It's just that XFS tends to do things
+that other filesystems don't do and that expose the problem in the
+hibernate code.
 
-diff --git a/Documentation/filesystems/ext3.txt b/Documentation/filesystems/ext3.txt
-index 22f3a0e..b100adc 100644
---- a/Documentation/filesystems/ext3.txt
-+++ b/Documentation/filesystems/ext3.txt
-@@ -73,14 +73,6 @@ nobarrier	(*)	This also requires an IO stack which can support
- 			also be used to enable or disable barriers, for
- 			consistency with other ext3 mount options.
- 
--orlov		(*)	This enables the new Orlov block allocator. It is
--			enabled by default.
--
--oldalloc		This disables the Orlov block allocator and enables
--			the old block allocator.  Orlov should have better
--			performance - we'd like to get some feedback if it's
--			the contrary for you.
--
- user_xattr		Enables Extended User Attributes.  Additionally, you
- 			need to have extended attribute support enabled in the
- 			kernel configuration (CONFIG_EXT3_FS_XATTR).  See the
-diff --git a/fs/ext3/ialloc.c b/fs/ext3/ialloc.c
-index bf09cbf..635bd8c 100644
---- a/fs/ext3/ialloc.c
-+++ b/fs/ext3/ialloc.c
-@@ -178,42 +178,6 @@ error_return:
- }
- 
- /*
-- * There are two policies for allocating an inode.  If the new inode is
-- * a directory, then a forward search is made for a block group with both
-- * free space and a low directory-to-inode ratio; if that fails, then of
-- * the groups with above-average free space, that group with the fewest
-- * directories already is chosen.
-- *
-- * For other inodes, search forward from the parent directory\'s block
-- * group to find a free inode.
-- */
--static int find_group_dir(struct super_block *sb, struct inode *parent)
--{
--	int ngroups = EXT3_SB(sb)->s_groups_count;
--	unsigned int freei, avefreei;
--	struct ext3_group_desc *desc, *best_desc = NULL;
--	int group, best_group = -1;
--
--	freei = percpu_counter_read_positive(&EXT3_SB(sb)->s_freeinodes_counter);
--	avefreei = freei / ngroups;
--
--	for (group = 0; group < ngroups; group++) {
--		desc = ext3_get_group_desc (sb, group, NULL);
--		if (!desc || !desc->bg_free_inodes_count)
--			continue;
--		if (le16_to_cpu(desc->bg_free_inodes_count) < avefreei)
--			continue;
--		if (!best_desc ||
--		    (le16_to_cpu(desc->bg_free_blocks_count) >
--		     le16_to_cpu(best_desc->bg_free_blocks_count))) {
--			best_group = group;
--			best_desc = desc;
--		}
--	}
--	return best_group;
--}
--
--/*
-  * Orlov's allocator for directories.
-  *
-  * We always try to spread first-level directories.
-@@ -436,12 +400,9 @@ struct inode *ext3_new_inode(handle_t *handle, struct inode * dir,
- 
- 	sbi = EXT3_SB(sb);
- 	es = sbi->s_es;
--	if (S_ISDIR(mode)) {
--		if (test_opt (sb, OLDALLOC))
--			group = find_group_dir(sb, dir);
--		else
--			group = find_group_orlov(sb, dir);
--	} else
-+	if (S_ISDIR(mode))
-+		group = find_group_orlov(sb, dir);
-+	else
- 		group = find_group_other(sb, dir);
- 
- 	err = -ENOSPC;
-diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index 7beb69a..948b358 100644
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -652,8 +652,6 @@ static int ext3_show_options(struct seq_file *seq, struct vfsmount *vfs)
- 		seq_puts(seq, ",nouid32");
- 	if (test_opt(sb, DEBUG))
- 		seq_puts(seq, ",debug");
--	if (test_opt(sb, OLDALLOC))
--		seq_puts(seq, ",oldalloc");
- #ifdef CONFIG_EXT3_FS_XATTR
- 	if (test_opt(sb, XATTR_USER))
- 		seq_puts(seq, ",user_xattr");
-@@ -1049,10 +1047,12 @@ static int parse_options (char *options, struct super_block *sb,
- 			set_opt (sbi->s_mount_opt, DEBUG);
- 			break;
- 		case Opt_oldalloc:
--			set_opt (sbi->s_mount_opt, OLDALLOC);
-+			ext3_msg(sb, KERN_WARNING,
-+				"Ignoring deprecated oldalloc option");
- 			break;
- 		case Opt_orlov:
--			clear_opt (sbi->s_mount_opt, OLDALLOC);
-+			ext3_msg(sb, KERN_WARNING,
-+				"Ignoring deprecated orlov option");
- 			break;
- #ifdef CONFIG_EXT3_FS_XATTR
- 		case Opt_user_xattr:
-diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
-index 67a803a..96a30b9 100644
---- a/include/linux/ext3_fs.h
-+++ b/include/linux/ext3_fs.h
-@@ -381,7 +381,7 @@ struct ext3_inode {
-  * Mount flags
-  */
- #define EXT3_MOUNT_CHECK		0x00001	/* Do mount-time checks */
--#define EXT3_MOUNT_OLDALLOC		0x00002  /* Don't use the new Orlov allocator */
-+/* EXT3_MOUNT_OLDALLOC was there */
- #define EXT3_MOUNT_GRPID		0x00004	/* Create files with directory's group */
- #define EXT3_MOUNT_DEBUG		0x00008	/* Some debugging messages */
- #define EXT3_MOUNT_ERRORS_CONT		0x00010	/* Continue on errors */
--- 
-1.7.4.4
-
+Thanks,
+Rafael
