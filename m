@@ -1,7 +1,8 @@
 From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Subject: [PATCH 0/2] 32/64 bit llseek hashes (v3)
-Date: Tue, 16 Aug 2011 13:54:04 +0200
-Message-ID: <20110816115404.1810393.47239.stgit@localhost.localdomain>
+Subject: [PATCH 3 1/4] Add new FMODE flags: FMODE_32bithash and FMODE_64bithash
+Date: Tue, 16 Aug 2011 13:54:09 +0200
+Message-ID: <20110816115409.1810393.11784.stgit@localhost.localdomain>
+References: <20110816115404.1810393.47239.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
@@ -10,41 +11,32 @@ Cc: bfields@fieldses.org, tytso@mit.edu, bernd.schubert@fastmail.fm,
 	linux-fsdevel@vger.kernel.org
 To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20110816115404.1810393.47239.stgit@localhost.localdomain>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-With the ext3/ext4 directory index implementation hashes are used to specify
-offsets for llseek(). For compatibility with NFSv2 and 32-bit user space
-on 64-bit systems (kernel space) ext3/ext4 currently only return 32-bit 
-hashes and therefore the probability of hash collisions for larger directories
-is rather high. As recently reported on the NFS mailing list that theoretical
-problem also happens on real systems:
-http://comments.gmane.org/gmane.linux.nfs/40863
+Those flags are supposed to be set by NFS readdir() to tell ext3/ext4
+to 32bit (NFSv2) or 64bit hash values (offsets) in seekdir().
 
-The following series adds two new f_mode flags to tell ext4
-to use 32-bit or 64-bit hash values for llseek() calls.
-These flags can then used by network file systems, such as NFS, to
-request 32-bit or 64-bit offsets (hashes).
+Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+---
+ include/linux/fs.h |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
 
-Version 3:
-- remove patch "RFC: Remove check for a 32-bit cookie in nfsd4_readdir()",
-  I think Bruce wanted to take it seperately as bug fix. It should be applied
-  before applying the remaining NFS patches, as without it NFSv4 will always
-  fail with the new 64-bit ext4 seek hashes.
-- split "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)" into two
-  two separate patches as suggested by Bruce, one patch to rename 
-  'access' to 'may_flags'. And the remainder of the original patch to set 
-  FMODE_32BITHASH/FMODE_64BITHASH flags and to introduce the new 
-  NFSD_MAY_64BIT_COOKIE flag
-
-Version 2:
-- use f_mode instead of O_* flags and also in a separate patch
-- introduce EXT4_HTREE_EOF_32BIT and EXT4_HTREE_EOF_64BIT
-- fix SEEK_END in ext4_dir_llseek()
-- set f_mode flags in NFS code as early as possible and introduce a new
-  NFSD_MAY_64BIT_COOKIE flag for that
-
---
-Bernd Schubert
-Fraunhofer ITWM
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 178cdb4..18d40ae 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -91,6 +91,11 @@ struct inodes_stat_t {
+ /* File is opened using open(.., 3, ..) and is writeable only for ioctls
+    (specialy hack for floppy.c) */
+ #define FMODE_WRITE_IOCTL	((__force fmode_t)0x100)
++/* 32bit hashes as llseek() offset (for directories) */
++#define FMODE_32BITHASH         ((__force fmode_t)0x200)
++/* 64bit hashes as llseek() offset (for directories) */
++#define FMODE_64BITHASH         ((__force fmode_t)0x400)
++
+ 
+ /*
+  * Don't update ctime and mtime.
 
