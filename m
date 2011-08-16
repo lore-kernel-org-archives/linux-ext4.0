@@ -1,100 +1,74 @@
-From: Jiaying Zhang <jiayingz@google.com>
-Subject: Re: DIO process stuck apparently due to dioread_nolock (3.0)
-Date: Mon, 15 Aug 2011 16:53:34 -0700
-Message-ID: <CAFgt=MAfbU_muEzmxx-8CK8w7=nGR5dUZSgBQ1dN6XkyrTbO9g@mail.gmail.com>
-References: <4E456436.8070107@msgid.tls.msk.ru>
-	<1313251371-3672-1-git-send-email-tm@tao.ma>
-	<4E4836A8.3080709@msgid.tls.msk.ru>
-	<4E48390E.9050102@msgid.tls.msk.ru>
-	<4E488625.609@tao.ma>
-	<4E48D231.5060807@msgid.tls.msk.ru>
-	<4E48DF31.4050603@msgid.tls.msk.ru>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH] fs / ext3: Always unlock updates in ext3_freeze()
+Date: Tue, 16 Aug 2011 10:09:16 +1000
+Message-ID: <20110816000916.GH26978@dastard>
+References: <201108112329.23043.rjw@sisk.pl>
+ <201108112331.13241.rjw@sisk.pl>
+ <20110815122218.GB6971@quack.suse.cz>
+ <201108152009.13776.rjw@sisk.pl>
+ <20110815205807.GC16369@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Tao Ma <tm@tao.ma>, linux-ext4@vger.kernel.org, sandeen@redhat.com,
-	Jan Kara <jack@suse.cz>
-To: Michael Tokarev <mjt@tls.msk.ru>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Rafael J. Wysocki" <rjw@sisk.pl>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.44.51]:17602 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751101Ab1HOXxi convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Aug 2011 19:53:38 -0400
-Received: from wpaz17.hot.corp.google.com (wpaz17.hot.corp.google.com [172.24.198.81])
-	by smtp-out.google.com with ESMTP id p7FNra6w020236
-	for <linux-ext4@vger.kernel.org>; Mon, 15 Aug 2011 16:53:36 -0700
-Received: from gwj17 (gwj17.prod.google.com [10.200.10.17])
-	by wpaz17.hot.corp.google.com with ESMTP id p7FNqtQ0025987
-	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=NOT)
-	for <linux-ext4@vger.kernel.org>; Mon, 15 Aug 2011 16:53:35 -0700
-Received: by gwj17 with SMTP id 17so4355244gwj.24
-        for <linux-ext4@vger.kernel.org>; Mon, 15 Aug 2011 16:53:34 -0700 (PDT)
-In-Reply-To: <4E48DF31.4050603@msgid.tls.msk.ru>
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:60782 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752390Ab1HPAJV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Aug 2011 20:09:21 -0400
+Content-Disposition: inline
+In-Reply-To: <20110815205807.GC16369@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Michael,
+On Mon, Aug 15, 2011 at 10:58:07PM +0200, Jan Kara wrote:
+>   Hello,
+> 
+> On Mon 15-08-11 20:09:13, Rafael J. Wysocki wrote:
+> > On Monday, August 15, 2011, Jan Kara wrote:
+> > >   BTW,  filesystem freezing never really worked for mmaped writes under
+> > > ext3 - ext3 would have to implement page_mkwrite() callback for that - so
+> > > if you want to rely on it for suspending, this will be non-trivial.
+> > 
+> > At this point the purpose of freezing filesystems is basically to
+> > prevent XFS from deadlocking with hibernation's memory preallocation.
+> > For other filesystems it may or may not make a difference depending on
+> > their implementation of freeze/unfreeze_super().
+>   What's exactly the problem? Memory preallocation enters direct reclaim
+> and that deadlocks in the filesystem?
 
-On Mon, Aug 15, 2011 at 1:56 AM, Michael Tokarev <mjt@tls.msk.ru> wrote=
-:
-> 15.08.2011 12:00, Michael Tokarev wrote:
-> [....]
->
-> So, it looks like this (starting with cold cache):
->
-> 1. rename the redologs and copy them over - this will
-> =A0 make a hot copy of redologs
-> 2. startup oracle - it will complain that the redologs aren't
-> =A0 redologs, the header is corrupt
-> 3. shut down oracle, start it up again - it will succeed.
->
-> If between 1 and 2 you'll issue sync(1) everything will work.
-> When shutting down, oracle calls fsync(), so that's like
-> sync(1) again.
->
-> If there will be some time between 1. and 2., everything
-> will work too.
->
-> Without dioread_nolock I can't trigger the problem no matter
-> how I tried.
->
->
-> A smaller test case. =A0I used redo1.odf file (one of the
-> redologs) as a test file, any will work.
->
-> =A0$ cp -p redo1.odf temp
-> =A0$ dd if=3Dtemp of=3Dfoo iflag=3Ddirect count=3D20
-Isn't this the expected behavior here? When doing
-'cp -p redo1.odf temp', data is copied to temp through
-buffer write, but there is no guarantee when data will be
-actually written to disk. Then with 'dd if=3Dtemp of=3Dfoo
-iflag=3Ddirect count=3D20', data is read directly from disk.
-Very likely, the written data hasn't been flushed to disk
-yet so ext4 returns zero in this case.
+Well, that's one possible manifestation. The problem is that the
+current hibernate code still assumes that sys_sync() results in an
+idle filesystem that will not change after the call if nothing is
+dirty.
 
-Jiaying
->
-> Now, first 512bytes of "foo" will contain all zeros, while
-> the beginning of redo1.odf is _not_ zeros.
->
-> Again, without aioread_nolock it works as expected.
->
->
-> And the most important note: without the patch there's no
-> data corruption like that. =A0But instead, there is the
-> lockup... ;)
->
-> Thank you,
->
-> /mjt
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The result is that when the large memory allocation occurs for the
+hibernate image (after the sys_sync() call) then the shrink_slab()
+tends to be called. The XFS shrinkers are capable of dirtying inodes
+and the backing buffers of inodes that are in the reclaimable state.
+But those buffers cannot be flushed to disk because hibernate has
+already frozen the xfsbufd threads, so the shrinker doing inode
+reclaim hangs up on locks waiting for the buffers to be written.
+This either leads to deadlock or hibernate image allocation failure.
+
+Far worse, IMO, is the case where is -doesn't- deadlock, because the
+filesystem state can still changing after the allocation has
+finished due to async metadata IO completions. That has the
+potential to cause filesystem corruption as after resume the on-disk
+state may not match what is written from memory to the hibernate
+image.
+
+The problem really isn't XFS specific, nor is it new - the fact is
+that any filesystem that has registered a shrinker or can do async
+work in the background post-sync is vulnerable to this problem. It's
+just that XFS is the filesystem that usually exposes such issues, so
+it gets blamed for causing the problem....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
