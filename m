@@ -1,78 +1,115 @@
 From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: [PATCH v2 09/12] e4defrag: Use blk64_t instead of ext4_fsblk_t
-Date: Wed, 17 Aug 2011 16:47:53 +0900
-Message-ID: <4E4B7229.4030205@sx.jp.nec.com>
+Subject: [PATCH v2 11/12] e4defrag: Fix error messages more clearly
+Date: Wed, 17 Aug 2011 16:48:05 +0900
+Message-ID: <4E4B7235.3040605@sx.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
 To: ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:35679 "EHLO
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:35703 "EHLO
 	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751647Ab1HQIEO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Aug 2011 04:04:14 -0400
+	with ESMTP id S1751647Ab1HQIET (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Aug 2011 04:04:19 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-e2fsprogs has blk64_t defined for the physical block number. e4defrag uses it
-instead of ext4_fsblk_t.
+There are some error messages we don't really understand what happens.
+This patch fixes those messages.
 
 Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
 ---
- misc/e4defrag.c |   13 +++++--------
- 1 file changed, 5 insertions(+), 8 deletions(-)
+ misc/e4defrag.c |   39 +++++++++++++++++++++------------------
+ 1 file changed, 21 insertions(+), 18 deletions(-)
 diff --git a/misc/e4defrag.c b/misc/e4defrag.c
-index 45e6d82..b5958d9 100644
+index ec1b15a..df532d3 100644
 --- a/misc/e4defrag.c
 +++ b/misc/e4defrag.c
-@@ -41,6 +41,7 @@
+@@ -323,6 +323,7 @@ static int is_ext4(const char *file)
  
- #include "e2p/e2p.h"
- #include "ext2fs/ext2_types.h"
-+#include "ext2fs/ext2fs.h"
- #include "ext2fs/fiemap.h"
+ 		mnt_type = realloc(mnt_type, strlen(mnt->mnt_type) + 1);
+ 		if (mnt_type == NULL) {
++			perror("Failed to allocate memory");
+ 			endmntent(fp);
+ 			return -1;
+ 		}
+@@ -727,11 +728,9 @@ static int get_file_extents(int fd, struct fiemap_extent_list **ext_list_head)
+ 		!(ext_buf[EXTENT_MAX_COUNT-1].fe_flags
+ 					& FIEMAP_EXTENT_LAST));
  
- /* A relatively new ioctl interface ... */
-@@ -117,13 +118,10 @@
- #define NGMSG_FILE_UNREG	"File is not regular file"
- #define NGMSG_LOST_FOUND	"Can not process \"lost+found\""
+-	FREE(fiemap_buf);
+-	return 0;
+ out:
+ 	FREE(fiemap_buf);
+-	return -1;
++	return errno ? -1 : 0;
+ }
  
--/* Data type for filesystem-wide blocks number */
--typedef unsigned long long ext4_fsblk_t;
+ /*
+@@ -873,7 +872,7 @@ static int call_defrag(int fd, int donor_fd, const char *file,
+ 			if (mode_flag & DETAIL) {
+ 				printf("\n");
+ 				PRINT_ERR_MSG_WITH_ERRNO(
+-					"Failed to free page");
++					"Failed to synchronize the file");
+ 			} else {
+ 				printf("\t[ NG ]\n");
+ 			}
+@@ -971,15 +970,6 @@ static int file_defrag(const char *file, const struct stat64 *buf,
+ 		return 0;
+ 	}
+ 
+-	/* Has no blocks */
+-	if (buf->st_blocks == 0) {
+-		if (mode_flag & DETAIL) {
+-			PRINT_FILE_NAME(file);
+-			IN_FTW_PRINT_ERR_MSG("File has no blocks");
+-		}
+-		return 0;
+-	}
 -
- struct fiemap_extent_data {
- 	__u64 len;			/* blocks count */
- 	__u64 logical;		/* start logical block number */
--	ext4_fsblk_t physical;		/* start physical block number */
-+	blk64_t physical;		/* start physical block number */
- };
+ 	fd = open64(file, O_RDWR);
+ 	if (fd < 0) {
+ 		if (mode_flag & DETAIL) {
+@@ -997,6 +987,12 @@ static int file_defrag(const char *file, const struct stat64 *buf,
+ 			PRINT_ERR_MSG_WITH_ERRNO(NGMSG_FILE_EXTENT);
+ 		}
+ 		goto out;
++	} else if (orig_list == NULL) {
++		if (mode_flag & DETAIL) {
++			PRINT_FILE_NAME(file);
++			IN_FTW_PRINT_ERR_MSG("File has no blocks");
++		}
++		goto out;
+ 	}
  
- struct fiemap_extent_list {
-@@ -473,7 +471,7 @@ static int defrag_fadvise(int fd, struct move_extent defrag_data,
-  * In this case, they can catch ENOSPC when donor file is created by fallocate
-  * in file_defrag(). So, it's no problem.
-  */
--static int check_free_size(int fd, const char *file, ext4_fsblk_t blk_count)
-+static int check_free_size(int fd, const char *file, blk64_t blk_count)
- {
- 	struct statfs64	fsbuf;
+ 	/* Count file fragments before defrag */
+@@ -1089,6 +1085,12 @@ static int file_defrag(const char *file, const struct stat64 *buf,
+ 			PRINT_ERR_MSG_WITH_ERRNO(NGMSG_FILE_EXTENT);
+ 		}
+ 		goto out;
++	} else if (donor_list == NULL) {
++		if (mode_flag & DETAIL) {
++			PRINT_FILE_NAME(file);
++			IN_FTW_PRINT_ERR_MSG("Temporary file was removed");
++		}
++		goto out;
+ 	}
  
-@@ -522,8 +520,7 @@ static int file_frag_count(int fd)
-  * @extents:		file extents.
-  * @blk_count:		file blocks.
-  */
--static int file_check(int fd, const char *file, int extents,
--					ext4_fsblk_t blk_count)
-+static int file_check(int fd, const char *file, int extents, blk64_t blk_count)
- {
- 	int	ret;
- 	struct flock	lock;
-@@ -938,7 +935,7 @@ static int file_defrag(const char *file, const struct stat64 *buf,
- 	int	file_frags_start, file_frags_end;
- 	char	tmp_inode_name[PATH_MAX + 8];
- 	unsigned int			orig_score = 0, donor_score = 0;
--	ext4_fsblk_t			blk_count = 0;
-+	blk64_t				blk_count = 0;
- 	struct fiemap_extent_list	*orig_list = NULL;
- 	struct fiemap_extent_list	*donor_list = NULL;
- 	struct fiemap_extent_group	*orig_group_head = NULL;
+ 	donor_score = e2p_get_fragscore(donor_fd, threshold,
+@@ -1136,7 +1138,7 @@ check_improvement:
+ 		file_frags_end = file_frag_count(fd);
+ 		if (file_frags_end < 0) {
+ 			printf("\n");
+-			PRINT_ERR_MSG_WITH_ERRNO(NGMSG_FILE_INFO);
++			PRINT_ERR_MSG_WITH_ERRNO(NGMSG_FILE_EXTENT);
+ 			goto out;
+ 		}
+ 
+@@ -1282,10 +1284,7 @@ int main(int argc, char *argv[])
+ 		}
+ 
+ 		switch (arg_type) {
+-		case DIRNAME:
+-			printf("ext4 defragmentation for directory(%s)\n",
+-					argv[i]);
