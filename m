@@ -1,38 +1,59 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH -v2] ext4: fake direct I/O mode for data=journal
-Date: Wed, 17 Aug 2011 12:50:58 -0400
-Message-ID: <20110817165058.GA6901@thunk.org>
-References: <20110815180311.GC5948@thunk.org>
- <1313523145-31631-1-git-send-email-tytso@mit.edu>
- <20110817114252.GD9959@quack.suse.cz>
+Subject: Re: DIO process stuck apparently due to dioread_nolock (3.0)
+Date: Wed, 17 Aug 2011 13:02:36 -0400
+Message-ID: <20110817170236.GB6901@thunk.org>
+References: <4E48390E.9050102@msgid.tls.msk.ru>
+ <4E488625.609@tao.ma>
+ <4E48D231.5060807@msgid.tls.msk.ru>
+ <4E48DF31.4050603@msgid.tls.msk.ru>
+ <CAFgt=MAfbU_muEzmxx-8CK8w7=nGR5dUZSgBQ1dN6XkyrTbO9g@mail.gmail.com>
+ <20110816135325.GD23416@quack.suse.cz>
+ <4E4A86D0.2070300@tao.ma>
+ <CAFgt=MCQttE5Vv_4W=hFWU_L_FvELnY6bnFQ3uSOu07VkDm6rA@mail.gmail.com>
+ <4E4AEF13.7070504@msgid.tls.msk.ru>
+ <CAFgt=MBMyf=n2GM6iNPdOoBiC2o0PqLSi7yrssHn562K96wn_g@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+Cc: Michael Tokarev <mjt@tls.msk.ru>, Tao Ma <tm@tao.ma>,
+	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	sandeen@redhat.com
+To: Jiaying Zhang <jiayingz@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:49313 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:54638 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754190Ab1HQQvC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Aug 2011 12:51:02 -0400
+	id S1752684Ab1HQRCo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 17 Aug 2011 13:02:44 -0400
 Content-Disposition: inline
-In-Reply-To: <20110817114252.GD9959@quack.suse.cz>
+In-Reply-To: <CAFgt=MBMyf=n2GM6iNPdOoBiC2o0PqLSi7yrssHn562K96wn_g@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 17, 2011 at 01:42:52PM +0200, Jan Kara wrote:
->   Strictly speaking this is racy wrt. to fcntl() setting O_DIRECT bit.
-> Fixing it is actually quite simple - just provide ext4_noop_direct_IO
-> function that will just "return 0" and generic write code will fall
-> back to buffered IO automatically. We don't want to use the fallback all
-> the time since it incurs overhead of flushing and invalidating the mapping
-> so what you did above will catch the common case.
+On Tue, Aug 16, 2011 at 04:07:38PM -0700, Jiaying Zhang wrote:
+> Good question. At the time when we checked in the code, we wanted to be
+> careful that it didn't introduce data corruptions that would affect normal
+> workloads. Apparently, the downside is that this code path doesn't get
+> a good test coverage. Maybe it is time to reconsider enabling this feature
+> by default. I guess we still want to guard it with a mount option given that
+> it doesn't work with certain options, like "data=journaled" mode and small
+> block size.
 
-Good point!  Yes, that's a much better way to do it.  Actually
-ext4_noop_direct_IO() isn't good enough, since even with data=ordered
-or data=journalled, because you can set the 'j' attribute to force the
-file to use data journalling.  (This is true in ext3 as well, and I'm
-not sure something sane happens if you force a file to be data
-journalling and then do direct IO on it when in data=ordered or
-data=writeback mode.)
+What I'd like to do long-term here is to change things so that (a)
+instead of instantiating the extent as uninitialized, writing the
+data, and then doing the uninit->init conversion to writing the data
+and then instantiated the extent as initialzied.  This would also
+allow us to get rid of data=ordered mode.  And we should make it work
+for fs block size != page size.
+
+It means that we need a way of adding this sort of information into an
+in-memory extent cache but which isn't saved to disk until the data is
+written.  We've also talked about adding the information about whether
+an extent is subject to delalloc as well, so we don't have to grovel
+through the page cache and look at individual buffers attached to the
+pages.  And there are folks who have been experimenting with an
+in-memory extent tree cache to speed access to fast PCIe-attached
+flash.
+
+It seems to me that if we're careful a single solution should be able
+to solve all of these problems...
 
 						- Ted
