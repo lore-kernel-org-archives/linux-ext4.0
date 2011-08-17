@@ -1,63 +1,44 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [RFC] ext4 metadata checksumming design
-Date: Tue, 16 Aug 2011 20:25:19 -0700
-Message-ID: <20110817032519.GN20655@tux1.beaverton.ibm.com>
+Subject: [PATCH] ext4_rename should dirty dir_bh with the correct directory
+Date: Tue, 16 Aug 2011 20:35:44 -0700
+Message-ID: <20110817033544.GO20655@tux1.beaverton.ibm.com>
 Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Sunil Mushran <sunil.mushran@oracle.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	Mingming Cao <cmm@us.ibm.com>,
-	Amir Goldstein <amir73il@gmail.com>,
-	Coly Li <colyli@gmail.com>, Andi Kleen <andi@firstfloor.org>
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e9.ny.us.ibm.com ([32.97.182.139]:54004 "EHLO e9.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752167Ab1HQDfq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Aug 2011 23:35:46 -0400
 Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all,
+When ext4_rename performs a directory rename (move), dir_bh is a buffer that is
+modified to update the '..' link in the directory being moved (old_inode).
+However, ext4_handle_dirty_metadata is called with the old parent directory
+inode (old_dir) and dir_bh, which is incorrect because dir_bh does not belong
+to the parent inode.  Fix this error.
 
-I've created a page on the ext4 wiki outlining the patchset that I'm working on
-to add metadata checksumming to ext4.  The page can be found at this address:
-https://ext4.wiki.kernel.org/index.php/Ext4_Metadata_Checksums
+Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+---
 
-For the most part, the metadata objects in ext4 actually have enough space to
-squeeze in a 32-bit checksum; it was trivially easy to find a spot in the
-superblock, the extent tree, extended attribute blocks, and the inode.  Those
-pieces are already done and in my tree, but the patchset as a whole is being
-held up by the second class of metadata objects.
+ fs/ext4/namei.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-That second class of objects are the ones that required a bit of work:
-
-- Directory blocks have an "unused" 12-byte directory entry at the very end of
-  the block; 8 bytes of header are followed by a 32-bit checksum.  This can be
-  taken care of as part of directory rebuilding in e2fsck/rehash.c.
-
-- HTree blocks had to have the dx_entry limit reduced by 1 to accomodate a
-  checksum.  This is also taken care of during e2fsck directory rebuild.
-
-- Extended attribute blocks that are stored in the inode table -- the h_magic
-  field is written by the kernel, but neither the kernel nor e2fsprogs ever
-  actually read this field.  The field could be reused to checksum the extra
-  space since (as far as I can tell) EAs are the only user of that empty space.
-
-Other miscellany:
-
-- e2fsprogs had to be converted to always work with ext2_inode_large.
-
-- Various bugs in the htree code....
-
-I hope to have a first draft of the kernel/e2fsprogs patches out on the mailing
-list in a week or two, or at least before LPC next month.  Still on my todo
-list is superblocks, EAs, changing the jbd2 checksum, and rigorous testing on
-powerpc.
-
-Please have a look at the design document and please feel free to suggest any
-changes.
-
---D
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 79ddc43..2b5c34b 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2538,7 +2538,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 		PARENT_INO(dir_bh->b_data, new_dir->i_sb->s_blocksize) =
+ 						cpu_to_le32(new_dir->i_ino);
+ 		BUFFER_TRACE(dir_bh, "call ext4_handle_dirty_metadata");
+-		retval = ext4_handle_dirty_metadata(handle, old_dir, dir_bh);
++		retval = ext4_handle_dirty_metadata(handle, old_inode, dir_bh);
+ 		if (retval) {
+ 			ext4_std_error(old_dir->i_sb, retval);
+ 			goto end_rename;
