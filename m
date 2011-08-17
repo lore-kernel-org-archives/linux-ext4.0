@@ -1,38 +1,41 @@
-From: Andi Kleen <andi@firstfloor.org>
-Subject: Re: [RFC] ext4 metadata checksumming design
-Date: Wed, 17 Aug 2011 15:57:19 +0200
-Message-ID: <20110817135719.GA25996@one.firstfloor.org>
-References: <20110817032519.GN20655@tux1.beaverton.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Sunil Mushran <sunil.mushran@oracle.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	Mingming Cao <cmm@us.ibm.com>,
-	Amir Goldstein <amir73il@gmail.com>,
-	Coly Li <colyli@gmail.com>, Andi Kleen <andi@firstfloor.org>
-To: "Darrick J. Wong" <djwong@us.ibm.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: INFO: task jbd2/dm-0-8:3993 blocked for more than 120 seconds
+Date: Wed, 17 Aug 2011 08:35:14 -0600
+Message-ID: <96850198-2253-40F7-B99C-62A6097278FA@dilger.ca>
+References: <4E4BC296.1040004@mageia.org>
+Mime-Version: 1.0 (iPhone Mail 8L1)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Thomas Backlund <tmb@mageia.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from one.firstfloor.org ([213.235.205.2]:46785 "EHLO
-	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753423Ab1HQN5W (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Aug 2011 09:57:22 -0400
-Content-Disposition: inline
-In-Reply-To: <20110817032519.GN20655@tux1.beaverton.ibm.com>
+Received: from shawmail.shawcable.com ([64.59.128.220]:9643 "EHLO
+	mail.shawcable.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753970Ab1HQOek convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Aug 2011 10:34:40 -0400
+In-Reply-To: <4E4BC296.1040004@mageia.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 16, 2011 at 08:25:19PM -0700, Darrick J. Wong wrote:
-> Hi all,
+On 2011-08-17, at 7:31 AM, Thomas Backlund <tmb@mageia.org> wrote:
 > 
-> I've created a page on the ext4 wiki outlining the patchset that I'm working on
-> to add metadata checksumming to ext4.  The page can be found at this address:
-> https://ext4.wiki.kernel.org/index.php/Ext4_Metadata_Checksums
+> One of our buildnodes, a 8-core Supermicro X7DA8 system,
+> and a WDC WD1002FAEX-0 sata disk hits the "blocked for more than 120 seconds" several times, and ends up resetting the ata bus.
+> 
+> The disk does not report any errors with smart, and we have the same model in a 24-core Supermicro X8DTN, and it does not show this problem.
+> 
+> ata3.00: exception Emask 0x0 SAct 0x0 SErr 0x0 action 0x6 frozen
+> ata3.00: failed command: FLUSH CACHE EXT
+> ata3.00: cmd ea/00:00:00:00:00/00:00:00:00:00/a0 tag 0
+>         res 40/00:00:01:4f:c2/00:00:00:00:00/00 Emask 0x4 (timeout)
+> ata3.00: status: { DRDY }
+> ata3: soft resetting link
+> ata3.00: configured for UDMA/133
+> ata3.00: retrying FLUSH 0xea Emask 0x4
+> ata3: EH complete
 
-Can you summarize the differences to my earlier patchkit?
+This is a problem with your disk hardware. 
 
--Andi
+Cheers, Andreas
