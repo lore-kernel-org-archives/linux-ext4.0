@@ -1,55 +1,71 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: a (documented) way to get the Ext2+ filesystem size?
-Date: Wed, 17 Aug 2011 18:09:53 -0400
-Message-ID: <20110817220953.GD6901@thunk.org>
-References: <86aab94mfg.fsf@gray.siamics.net>
- <20110817183101.GC6901@thunk.org>
- <86mxf7yirb.fsf@gray.siamics.net>
+From: Valdis.Kletnieks@vt.edu
+Subject: Re: INFO: task jbd2/dm-0-8:3993 blocked for more than 120 seconds
+Date: Wed, 17 Aug 2011 19:48:07 -0400
+Message-ID: <27048.1313624887@turing-police.cc.vt.edu>
+References: <4E4BC296.1040004@mageia.org> <96850198-2253-40F7-B99C-62A6097278FA@dilger.ca>
+            <4E4C2DE5.5020100@mageia.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Ivan Shmakov <oneingray@gmail.com>
+Content-Type: multipart/signed; boundary="==_Exmh_1313624887_2796P";
+	 micalg=pgp-sha1; protocol="application/pgp-signature"
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Thomas Backlund <tmb@mageia.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:51959 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751694Ab1HQWJ4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Aug 2011 18:09:56 -0400
-Content-Disposition: inline
-In-Reply-To: <86mxf7yirb.fsf@gray.siamics.net>
+Received: from lennier.cc.vt.edu ([198.82.162.213]:58538 "EHLO
+	lennier.cc.vt.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751234Ab1HQXsN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Aug 2011 19:48:13 -0400
+In-Reply-To: Your message of "Thu, 18 Aug 2011 00:08:53 +0300."
+             <4E4C2DE5.5020100@mageia.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 18, 2011 at 01:50:48AM +0700, Ivan Shmakov wrote:
-> >>>>> Ted Ts'o <tytso@mit.edu> writes:
-> >>>>> On Tue, Aug 16, 2011 at 06:37:23PM +0700, Ivan Shmakov wrote:
->=20
->  >> How do I get the Ext2+ filesystem size (in blocks)?
->=20
->  > I assume you need the exact numbers, so you can't use statfs(2)?
->  > What are you using it for?
->=20
-> 	The intent is to process a filesystem image, not a mounted
-> 	filesystem.  It's my understanding that I cannot use neither
-> 	statfs(2) nor POSIX' statvfs(2) in this case.
->=20
-> 	The code I've posted earlier is used in my e2dis [1=E2=80=933] proje=
-ct.
+--==_Exmh_1313624887_2796P
+Content-Type: text/plain; charset=us-ascii
 
-=46or this, I'd suggest that you use the ext2fs library.  That will tak=
-e
-care of byte swapping, etc.  It also means that you don't have to
-worry about parsing the extent trees.  If you had used the ext2fs
-library before ext4 had shipped, you wouldn't have had to make any
-changes to support extents, since the ext2fs library wraps and
-provides abstract interfaces for most of what you would need for e2dis
-project.
+On Thu, 18 Aug 2011 00:08:53 +0300, Thomas Backlund said:
+> Andreas Dilger skrev 17.8.2011 17:35:
 
-Regards,
+> > This is a problem with your disk hardware.
 
-					- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Are you sure?
+> I get nothing from smart, even after I had executed the long test...
+
+SMART is nice, but it isn't guaranteed.  In particular, you need to
+double-check that what you think it's testing in a "long" test is what
+it actually did...
+
+> # smartctl -a /dev/sda
+> smartctl 5.39.1 2010-01-28 r3054 [x86_64-mandriva-linux-gnu] (local build)
+> Copyright (C) 2002-10 by Bruce Allen, http://smartmontools.sourceforge.net
+> 
+> === START OF INFORMATION SECTION ===
+> Device Model:     WDC WD1002FAEX-00Z3A0
+> Serial Number:    WD-WCATR3168879
+> Firmware Version: 05.01D05
+> User Capacity:    1,000,204,886,016 bytes
+
+So we're looking at a terabyte of disk...
+
+> Selective self-test flags (0x0):
+>    After scanning selected spans, do NOT read-scan remainder of disk.
+
+And it's *NOT* doing a read-scan of the entire terabyte.
+
+
+--==_Exmh_1313624887_2796P
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+Comment: Exmh version 2.5 07/13/2001
+
+iD8DBQFOTFM3cC3lWbTT17ARAkMFAJ9dv9vHc/L2OtWOzT+f2ODVgjs3hwCeJlVq
+iCIinxQmh0I0JVWt31cy0OA=
+=KHlq
+-----END PGP SIGNATURE-----
+
+--==_Exmh_1313624887_2796P--
+
