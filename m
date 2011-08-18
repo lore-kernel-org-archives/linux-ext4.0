@@ -1,69 +1,111 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: a (documented) way to get the Ext2+ filesystem size?
-Date: Thu, 18 Aug 2011 17:03:13 -0400
-Message-ID: <20110818210313.GA4602@thunk.org>
-References: <86aab94mfg.fsf@gray.siamics.net>
- <20110817183101.GC6901@thunk.org>
- <86mxf7yirb.fsf@gray.siamics.net>
- <20110817220953.GD6901@thunk.org>
- <86ei0jxtt9.fsf@gray.siamics.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Ivan Shmakov <oneingray@gmail.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [RFC] ext4 metadata checksumming design
+Date: Thu, 18 Aug 2011 15:53:11 -0600
+Message-ID: <BD422CF9-E99A-4D31-815D-70C6DABBC6CB@dilger.ca>
+References: <20110817032519.GN20655@tux1.beaverton.ibm.com> <EB5DDA28-421A-4C67-817C-74F9B9643351@dilger.ca> <20110818181423.GR20655@tux1.beaverton.ibm.com>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4 List <linux-ext4@vger.kernel.org>,
+	Sunil Mushran <sunil.mushran@oracle.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	Mingming Cao <cmm@us.ibm.com>,
+	Amir Goldstein <amir73il@gmail.com>,
+	Coly Li <colyli@gmail.com>, Andi Kleen <andi@firstfloor.org>
+To: djwong@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:51081 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752739Ab1HRVDQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Aug 2011 17:03:16 -0400
-Content-Disposition: inline
-In-Reply-To: <86ei0jxtt9.fsf@gray.siamics.net>
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:53488 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754313Ab1HRVxQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Aug 2011 17:53:16 -0400
+In-Reply-To: <20110818181423.GR20655@tux1.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 18, 2011 at 10:49:38AM +0700, Ivan Shmakov wrote:
->  > For this, I'd suggest that you use the ext2fs library.  That will
->  > take care of byte swapping, etc.  It also means that you don't hav=
-e
->  > to worry about parsing the extent trees.  If you had used the ext2=
-fs
->  > library before ext4 had shipped, you wouldn't have had to make any
->  > changes to support extents, since the ext2fs library wraps and
->  > provides abstract interfaces for most of what you would need for
->  > e2dis project.
->=20
-> 	I don't seem to understand.  I've scanned through the
-> 	(libext2fs.info) Function Index section (as per the Debian's
-> 	e2fslibs-dev package, 1.41.12-2), and I see no mention of a
-> 	function that I can use for that.
+On 2011-08-18, at 12:14 PM, Darrick J. Wong wrote:
+> On Thu, Aug 18, 2011 at 12:16:00AM -0600, Andreas Dilger wrote:
+>> On 2011-08-16, at 9:25 PM, "Darrick J. Wong" <djwong@us.ibm.com> wrote:
+>>> - Extended attribute blocks that are stored in the inode table -- the h_magic
+>>> field is written by the kernel, but neither the kernel nor e2fsprogs ever
+>>> actually read this field.  The field could be reused to checksum the extra
+>>> space since (as far as I can tell) EAs are the only user of that empty space.
+>> 
+>> I haven't had a chance to read the document you wrote, but wanted to comment
+>> on xattrs. There is a hash field for each xattr (including internal xattrs),
+>> and one for the external xattr blocks that can be used to validate the xattr
+>> value.
+>> 
+>> In addition to the hash for the in-inode xattrs, the inode hash itself would
+>> serve to validate the xattr values. 
+>> 
+>> I have a patch for e2fsprogs that checks the xattr hash for in-inode xattrs
+>> (currently it is always 0).
+> 
+> I surveyed the h_hash/e_hash calculation code; it only covers the name and
+> value fields.  Do we care about checksum protection for the extra fields in
+> struct ext4_xattr_header and struct ext4_xattr_entry?
 
-Sorry, the documentation is not necessarily complete; my apologies.
+For entries in the inode, the ext4_xattr_entry should itself already be
+covered by the inode hash.
 
-> 	Thus, I've ended up writing my own one, which takes an
-> 	ext2_filsys handle, and references, via its =E2=80=98super=E2=80=99 =
-member, the
-> 	=E2=80=98s_blocks_count=E2=80=99 and =E2=80=98s_blocks_count_hi=E2=80=
-=99 members of the
-> 	superblock structure.
+For entries in an external EA block, the ext4_xattr_header h_hash only
+contains the hash of individual e_hash values, themselves covering the
+e_name and e_value parts of the structure.
 
-The function to do this is in the 1.42 dev branch which is in Debian
-unstable, and it's called ext2fs_block_count().
+This is by design since the h_hash is used to determine whether an xattr
+block can be shared among inodes (mbcache, which I'm not a fan of, but
+that is besides the point) so it should depend only on the content and
+not the actual layout (e.g. cannot contain e_value_offs, e_value_block,
+h_refcount, h_blocks).
 
-> 	However, I was concerned that I don't seem to find the
-> 	documentation for these structures' contents anywhere.  (Sans
-> 	the source, of course), and wondered, if the interface I use is
-> 	at least stable?
 
-I make a very strong effort to ensure that interfaces which are
-exposed via the shared library are stable.  If you're not sure, please
-feel free to ask on the ext4 list.
+I'm totally against using the h_magic field for a checksum, since it would
+break our ability to change the structure of xattrs in the future.  Instead,
+it would be possible to use a new h_magic (e.g. EA03) that redefines the hash
+function to be what we want it to be (e.g. e_hash is CRC32c of everything
+except e_value_offs and e_hash, and h_hash is CRC32c of all e_hash fields),
+without making the code significantly more complex.
 
-Regards,
+That would firstly give us a better hash function for the entries, and
+secondly add in the e_name_len, e_name_index, and e_value_size values into
+e_hash (and subsequently into h_hash).
 
-					- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+We could also/instead use h_reserved[0] for a hash of ext4_xattr_header
+and the missing e_* fields to have a stronger validation of the entire block,
+without breaking the ability to use h_hash as a hash of the content, and
+without doubling the CPU cost of doing the checksum.
+
+Alternately, if we want to spend the extra CPU cycles, it would be possible
+to just use h_reserved[0] for a CRC32c (or other) checksum of the whole
+block.
+
+Using only h_reserved[0] instead of changing h_magic would not require
+changing the h_magic at all (which would break read-only compatibility).
+
+>  I think it would be
+> useful to be able to check the sanity of h_refcount and h_blocks.  Possibly
+> that extends to e_value_* as well, though the hash probably covers it.  Also,
+> there's no hardware acceleration available for the xattr hash, though I doubt
+> xattrs are especially performance sensitive.
+> 
+> --D
+>> 
+>>> Please have a look at the design document and please feel free to suggest any
+>>> changes.
+>> 
+>> Hopefully soon. 
+>> 
+>> Cheers, Andreas--
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+Cheers, Andreas
+
+
+
+
+
