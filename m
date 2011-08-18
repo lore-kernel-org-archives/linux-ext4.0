@@ -1,72 +1,119 @@
 From: Ivan Shmakov <ivan@gray.siamics.net>
-Subject: Re: a (documented) way to get the Ext2+ filesystem size?
-Date: Thu, 18 Aug 2011 10:49:38 +0700
-Message-ID: <86ei0jxtt9.fsf@gray.siamics.net>
+Subject: e2dis example usage pattern
+Date: Thu, 18 Aug 2011 11:25:17 +0700
+Message-ID: <868vqrxs5u.fsf_-_@gray.siamics.net>
 References: <86aab94mfg.fsf@gray.siamics.net>
 	<20110817183101.GC6901@thunk.org> <86mxf7yirb.fsf@gray.siamics.net>
 	<20110817220953.GD6901@thunk.org>
+	<CADxeRw=pV_6Ey0hQhK2dUkbQMnJwhb+NM4TMxECkZGuuqptrOA@mail.gmail.com>
 Reply-To: Ivan Shmakov <oneingray@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: debian-devel@lists.debian.org
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from lo.gmane.org ([80.91.229.12]:39342 "EHLO lo.gmane.org"
+Received: from lo.gmane.org ([80.91.229.12]:51814 "EHLO lo.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754902Ab1HRDtx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Aug 2011 23:49:53 -0400
+	id S1750750Ab1HREZi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 18 Aug 2011 00:25:38 -0400
 Received: from list by lo.gmane.org with local (Exim 4.69)
 	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
-	id 1Qttc8-0002As-KF
-	for linux-ext4@vger.kernel.org; Thu, 18 Aug 2011 05:49:52 +0200
+	id 1QtuAh-0003bz-0N
+	for linux-ext4@vger.kernel.org; Thu, 18 Aug 2011 06:25:35 +0200
 Received: from gray.am-1.org ([188.120.231.229])
         by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
         id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Aug 2011 05:49:52 +0200
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Aug 2011 06:25:34 +0200
 Received: from oneingray by gray.am-1.org with local (Gmexim 0.1 (Debian))
         id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Aug 2011 05:49:52 +0200
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Aug 2011 06:25:34 +0200
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
->>>>> Ted Ts'o <tytso@mit.edu> writes:
+>>>>> Steven Liu <lingjiujianke@gmail.com> writes:
+>>>>> 2011/8/18 Ted Ts'o <tytso@mit.edu>:
 >>>>> On Thu, Aug 18, 2011 at 01:50:48AM +0700, Ivan Shmakov wrote:
+
+	(Crossposting to debian-devel@, as there may be interested
+	parties there as well.)
 
 [=E2=80=A6]
 
- >> The intent is to process a filesystem image, not a mounted
- >> filesystem.  It's my understanding that I cannot use neither
- >> statfs(2) nor POSIX' statvfs(2) in this case.
+ >>> The code I've posted earlier is used in my e2dis [1=E2=80=933] pro=
+ject.
 
- >> The code I've posted earlier is used in my e2dis [1=E2=80=933] proj=
-ect.
+ >>> [1] http://article.gmane.org/gmane.linux.debian.devel.general/1644=
+88
+ >>> [2] http://article.gmane.org/gmane.comp.file-systems.ext4/27269
+ >>> [3] https://gitorious.org/e2dis/
 
- > For this, I'd suggest that you use the ext2fs library.  That will
- > take care of byte swapping, etc.  It also means that you don't have
- > to worry about parsing the extent trees.  If you had used the ext2fs
- > library before ext4 had shipped, you wouldn't have had to make any
- > changes to support extents, since the ext2fs library wraps and
- > provides abstract interfaces for most of what you would need for
- > e2dis project.
+[=E2=80=A6]
 
-	I don't seem to understand.  I've scanned through the
-	(libext2fs.info) Function Index section (as per the Debian's
-	e2fslibs-dev package, 1.41.12-2), and I see no mention of a
-	function that I can use for that.
+ > Do you want use mkfs.ext2 to make a small ext2 image file and write
+ > the image to mmc or some devices?
 
-	Thus, I've ended up writing my own one, which takes an
-	ext2_filsys handle, and references, via its =E2=80=98super=E2=80=99 me=
-mber, the
-	=E2=80=98s_blocks_count=E2=80=99 and =E2=80=98s_blocks_count_hi=E2=80=99=
- members of the
-	superblock structure.
+ > when you write it to block device, the tool can modify the sb info
+ > about the file system size?
 
-	However, I was concerned that I don't seem to find the
-	documentation for these structures' contents anywhere.  (Sans
-	the source, of course), and wondered, if the interface I use is
-	at least stable?
+[=E2=80=A6]
 
-	TIA.
+ > Is this?
+
+	For that purpose, I'd probably use resize2fs(8).
+
+	However, my intent is different.  Namely, my aim is to provide a
+	Jigdo-like [4] tool for Ext2+ FS, to be used to reduce the
+	burden to store and distribute Ext2+ FS images over the
+	Internet.
+
+	The example use for the tool would be as follows:
+
+	=E2=80=A2 one prepares a Debian GNU/Linux =E2=80=9CLive=E2=80=9D image=
+ (to be written to
+	  a removable USB Flash medium, or used in =E2=80=9Cvirtualized=E2=80=9D
+	  environments);
+
+	=E2=80=A2 the typical size of such an image is 1 GiB; it's cumbersome =
+to
+	  host, especially if one considers hosting an image for each
+	  architecture (say, IA-32, AMD64, and ARM), suite (say, Debian
+	  stable, testing and unstable) and variant (say, Gnome, KDE,
+	  LXDE; thus totalling to 27 images);
+
+	=E2=80=A2 however, most of the files on such images would bytewise mat=
+ch
+	  those in the .deb packages, which are universally available;
+
+	=E2=80=A2 therefore, one prepares a /mapping/ of the Ext2+ FS image
+	  locations to the files contained within the .deb packages;
+
+	=E2=80=A2 this mapping, along with a compressed data of the parts of t=
+he
+	  image for which no corresponding file is known (free blocks,
+	  FS service areas, files generated at the installation time,
+	  etc.) is hosted on an HTTP server for distribution;
+
+	=E2=80=A2 anyone interested in such an image downloads the mapping, th=
+e
+	  compressed =E2=80=9Cdry remainder=E2=80=9D of the image, and starts =
+the image
+	  download and reassembly software (yet to be developed);
+
+	=E2=80=A2 this software downloads the necessary .deb files off the
+	  nearby Debian mirror, extracts the files therein, and uses
+	  them to =E2=80=9Cfill the gaps=E2=80=9D within the dry remainder;
+
+	=E2=80=A2 this results in an exact (bytewise) copy of the image
+	  processed earlier with e2dis.
+
+	In addition to Jigdo, the operation of the suite is not unlike
+	that of the software supporting Metalink [5=E2=80=937].
+
+[4] http://atterer.org/jigdo/
+[5] http://en.wikipedia.org/wiki/Metalink
+[6] http://www.metalinker.org/
+[7] http://www.rfc-editor.org/rfc/rfc5854.txt
 
 --=20
 =46SF associate member #7257	Coming soon: Software Freedom Day
