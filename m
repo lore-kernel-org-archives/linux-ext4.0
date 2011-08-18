@@ -1,51 +1,59 @@
-From: Michael Tokarev <mjt@tls.msk.ru>
-Subject: Re: DIO process stuck apparently due to dioread_nolock (3.0)
-Date: Thu, 18 Aug 2011 10:49:20 +0400
-Message-ID: <4E4CB5F0.6000202@msgid.tls.msk.ru>
-References: <4E48390E.9050102@msgid.tls.msk.ru> <4E488625.609@tao.ma> <4E48D231.5060807@msgid.tls.msk.ru> <4E48DF31.4050603@msgid.tls.msk.ru> <CAFgt=MAfbU_muEzmxx-8CK8w7=nGR5dUZSgBQ1dN6XkyrTbO9g@mail.gmail.com> <20110816135325.GD23416@quack.suse.cz> <4E4A86D0.2070300@tao.ma> <CAFgt=MCQttE5Vv_4W=hFWU_L_FvELnY6bnFQ3uSOu07VkDm6rA@mail.gmail.com> <4E4AEF13.7070504@msgid.tls.msk.ru> <CAFgt=MBMyf=n2GM6iNPdOoBiC2o0PqLSi7yrssHn562K96wn_g@mail.gmail.com> <20110817170236.GB6901@thunk.org>
+From: Kazuya Mio <k-mio@sx.jp.nec.com>
+Subject: Re: [PATCH v2 05/12] e4defrag: Add force option for e4defrag
+Date: Thu, 18 Aug 2011 17:57:32 +0900
+Message-ID: <4E4CD3FC.10405@sx.jp.nec.com>
+References: <4E4B720A.5000908@sx.jp.nec.com> <282B034F-E435-4CFF-A4F8-62912B6C627F@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Jiaying Zhang <jiayingz@google.com>, Tao Ma <tm@tao.ma>,
-	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	sandeen@redhat.com
-To: Ted Ts'o <tytso@mit.edu>
+Cc: ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from isrv.corpit.ru ([86.62.121.231]:33496 "EHLO isrv.corpit.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751772Ab1HRGte (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Aug 2011 02:49:34 -0400
-In-Reply-To: <20110817170236.GB6901@thunk.org>
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:44499 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755217Ab1HRI6I (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Aug 2011 04:58:08 -0400
+In-Reply-To: <282B034F-E435-4CFF-A4F8-62912B6C627F@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-17.08.2011 21:02, Ted Ts'o wrote:
-[]
-> What I'd like to do long-term here is to change things so that (a)
-> instead of instantiating the extent as uninitialized, writing the
-> data, and then doing the uninit->init conversion to writing the data
-> and then instantiated the extent as initialzied.  This would also
-> allow us to get rid of data=ordered mode.  And we should make it work
-> for fs block size != page size.
-> 
-> It means that we need a way of adding this sort of information into an
-> in-memory extent cache but which isn't saved to disk until the data is
-> written.  We've also talked about adding the information about whether
-> an extent is subject to delalloc as well, so we don't have to grovel
-> through the page cache and look at individual buffers attached to the
-> pages.  And there are folks who have been experimenting with an
-> in-memory extent tree cache to speed access to fast PCIe-attached
-> flash.
-> 
-> It seems to me that if we're careful a single solution should be able
-> to solve all of these problems...
+2011/08/18 1:31, Andreas Dilger wrote:
+> It is confusing in conditionals like this when integer variables are treated
+> as boolean values. It would be more clear to compare the orig_score and
+> donor_score to zero.
+>
+>         if (orig_score == 0 || (donor_score > 0 && !(mode_flag & FORCE)) ||
+>             (orig_score <= donor_score && (mode_flag & FORCE))) {
+>
+> To be honest, I still can't understand the above logic. I would think it is
+> enough to check:
+>
+>         if (orig_score < donor_score && !(mode_flag & FORCE))) {
+>
+> so that the file is not defragged if the score would get worse, but "force"
+> means it is always moved.
 
-What about current situation, how do you think - should it be ignored
-for now, having in mind that dioread_nolock isn't used often (but it
-gives _serious_ difference in read speed), or, short term, fix this
-very case which have real-life impact already, while implementing a
-long-term solution?
+e4defrag has two conditions to call EXT4_IOC_MOVE_EXT ioctl:
+(1) the original file is fragmented file (orig_score > 0)
+(2) the donor file is not fragmented file (donor_score == 0)
 
-Thank you!
+It could be that the donor file is a little fragmented file in case of few disk
+space available, so sometimes we cannot defrag a file due to the condition (2).
+However, it makes no sense that the fragmentation gets worse due to
+e4defrag. Hence, I added a new condition (orig_score > donor_score) instead of
+the condition (2) to check whether the fragmentation gets better.
 
-/mjt
+The condition (1) is necessary for e4defarg -F. Because if e2p_get_fragscore()
+returns zero in case of maximum threshold (2^32-1), it means the number of
+the extents doesn't decrease any more even if the file gets the best extent
+mapping.
+
+>> printf("\033[79;0H\033[K[%u/%u]%s:\t%3d%%",
+> It would be nice if the color terminal output was optional (maybe only on
+> by default for tty output). This is not typical for other e2fsprogs utilities,
+> and makes a mess of logs being kept of the output.
+
+I see. I'll fix the output based on mke2fs.
+
+Regards,
+Kazuya Mio
