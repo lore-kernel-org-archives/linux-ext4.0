@@ -1,67 +1,66 @@
-From: Chris Lee <cslee-list@cybericom.co.uk>
-Subject: Re: [Bug 15875] Add an option to disable file/directory permissions
- for ACL'ed file systems
-Date: Thu, 18 Aug 2011 16:03:34 +0100
-Message-ID: <4E4D29C6.7000908@cybericom.co.uk>
-References: <bug-15875-13602@https.bugzilla.kernel.org/> <201011041548.oA4FmPl4005005@demeter2.kernel.org>
+From: Ivan Shmakov <ivan@gray.siamics.net>
+Subject: ext2fs_test_block_bitmap (): Unknown code ext2 47 #0, etc.
+Date: Thu, 18 Aug 2011 23:27:30 +0700
+Message-ID: <867h6awuq5.fsf_-_@gray.siamics.net>
+References: <86ei0p8ve2.fsf@gray.siamics.net>
+	<alpine.LFD.2.00.1108151125470.3695@dhcp-27-109.brq.redhat.com>
+	<86zkjb3p7f.fsf@gray.siamics.net>
+	<alpine.LFD.2.00.1108151759040.3695@dhcp-27-109.brq.redhat.com>
+	<86ei0k1tbc.fsf@gray.siamics.net>
+Reply-To: Ivan Shmakov <oneingray@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: bugzilla-daemon@bugzilla.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mk-outboundfilter-4.mail.uk.tiscali.com ([212.74.114.32]:5633
-	"EHLO mk-outboundfilter-4.mail.uk.tiscali.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751319Ab1HRPPM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Aug 2011 11:15:12 -0400
-In-Reply-To: <201011041548.oA4FmPl4005005@demeter2.kernel.org>
+Received: from lo.gmane.org ([80.91.229.12]:47494 "EHLO lo.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756044Ab1HRQ1p (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 18 Aug 2011 12:27:45 -0400
+Received: from list by lo.gmane.org with local (Exim 4.69)
+	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
+	id 1Qu5RX-0007tq-1N
+	for linux-ext4@vger.kernel.org; Thu, 18 Aug 2011 18:27:43 +0200
+Received: from gray.am-1.org ([188.120.231.229])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Aug 2011 18:27:43 +0200
+Received: from oneingray by gray.am-1.org with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Aug 2011 18:27:43 +0200
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+>>>>> Ivan Shmakov <ivan@gray.siamics.net> writes:
 
+[=E2=80=A6]
 
-On 04/11/10 15:48, bugzilla-daemon@bugzilla.kernel.org wrote:
-> https://bugzilla.kernel.org/show_bug.cgi?id=15875
->
->
-> Theodore Tso<tytso@mit.edu>  changed:
->
->             What    |Removed                     |Added
-> ----------------------------------------------------------------------------
->                   CC|                            |tytso@mit.edu
->
->
->
->
-> --- Comment #11 from Theodore Tso<tytso@mit.edu>   2010-11-04 15:48:22 ---
-> So this bug report is highly confused.  Reading the original request, I think
-> what the original poster was requesting was actually a way of disabling all
-> access controls, and ACL's (meaning Access Control Lists) has nothing to do
-> with this at all.
->
-> Ideally I think this should be a VFS-level mount option (like read-only,
-> noatime) so that it's not an ext4 specific option.  But if we can't get
-> consensus across other file system developer teams, doing it as an ext4
-> specific mount option is a possibility.
->
-I know this is an old post I am dragging up but I have not seen any further 
-discussion and I would like to see the a solution for the following use case:
-I grab the SD card out of a friends camera which stores images on an extX file 
-system and shove it into my PC. My PC makes all the files owned by me so that I 
-can access them, just like today with FAT based sd cards.
-If this is done at the VFS level then how is my PC going to know that the file 
-system on the SD card has permissions that should be ignored?
-Or should things like cameras all just write files with owner id 0 and 
-permissions set to 777?
-My issue with this is when I change the permissions by using some broken 
-software and then put it back in the camera will it be able to store the images 
-in a permission modified directory? or will the owner of the camera have 
-problems later on when they try to get the content off the card?
+ > (The support for the whole-image and metadata message digests is not
+ > yet committed.)
 
-It would be nice if the file system had a "data in this file system is for 
-anyone who can get their hands on it" mode that was well defined so that device 
-manufacturers would feel safer using it for mass end user use.
+	The code is now ready to be committed.  However, I'm getting the
+	following message on stderr upon a call (only the first one?) to
+	ext2fs_test_block_bitmap ():
 
-Regards,
-Chris.
+--cut--
+Unknown code ext2 47 #0 for block bitmap for /dev/stdin
+--cut--
+
+	Otherwise, e2dis seems to behave sanely.
+
+	Also, do I understand it correctly that I need to call
+	ext2fs_read_block_bitmap () before accessing the block_map
+	member of the ext2_filsys structure?
+
+[=E2=80=A6]
+
+--=20
+=46SF associate member #7257	Coming soon: Software Freedom Day
+http://mail.sf-day.org/lists/listinfo/ planning-ru (ru), sfd-discuss (e=
+n)
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
