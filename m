@@ -1,87 +1,84 @@
 From: Tao Ma <tm@tao.ma>
-Subject: [PATCH] ext4: Free resources in some error path in ext4_fill_super.
-Date: Fri, 19 Aug 2011 23:28:09 +0800
-Message-ID: <1313767689-2786-2-git-send-email-tm@tao.ma>
-References: <1313767689-2786-1-git-send-email-tm@tao.ma>
+Subject: [PATCH] ext4: Free resources in the error path of ext4_mb_init.
+Date: Fri, 19 Aug 2011 23:28:08 +0800
+Message-ID: <1313767689-2786-1-git-send-email-tm@tao.ma>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy1-pub.bluehost.com ([66.147.249.253]:36953 "HELO
-	oproxy1-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751832Ab1HSPaT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Aug 2011 11:30:19 -0400
+Received: from oproxy8-pub.bluehost.com ([69.89.22.20]:45781 "HELO
+	oproxy8-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751832Ab1HSPaR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Aug 2011 11:30:17 -0400
 Received: from [221.217.45.152] (helo=localhost.localdomain)
 	by box585.bluehost.com with esmtpsa (TLSv1:AES256-SHA:256)
 	(Exim 4.76)
 	(envelope-from <tm@tao.ma>)
-	id 1QuR1V-0004kH-TN
-	for linux-ext4@vger.kernel.org; Fri, 19 Aug 2011 09:30:18 -0600
-In-Reply-To: <1313767689-2786-1-git-send-email-tm@tao.ma>
+	id 1QuR1T-0004kH-Rp
+	for linux-ext4@vger.kernel.org; Fri, 19 Aug 2011 09:30:16 -0600
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Tao Ma <boyu.mt@taobao.com>
 
-Some of the error path in ext4_fill_super don't release the
-resouces properly. So this patch just try to release them
-in the right way.
+In commit 79a77c5ac, we move ext4_mb_init_backend after the allocation
+of s_locality_group to avoid memory leak in error path, but there are
+still some other error paths in ext4_mb_init that need to do the same
+work. So this patch adds all the error patch for ext4_mb_init. And all
+the pointers are reset to NULL in case the caller may double free them.
 
 Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/super.c |   19 +++++++++++--------
- 1 files changed, 11 insertions(+), 8 deletions(-)
+ fs/ext4/mballoc.c |   23 +++++++++++++++--------
+ 1 files changed, 15 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 4687fea..552b465 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3711,22 +3711,19 @@ no_journal:
- 	if (err) {
- 		ext4_msg(sb, KERN_ERR, "failed to initialize mballoc (%d)",
- 			 err);
--		goto failed_mount4;
-+		goto failed_mount5;
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 17a5a57..e7d64d8 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2490,7 +2490,7 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
+ 	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
+ 	if (sbi->s_locality_groups == NULL) {
+ 		ret = -ENOMEM;
+-		goto out;
++		goto out_free_groupinfo_slab;
  	}
+ 	for_each_possible_cpu(i) {
+ 		struct ext4_locality_group *lg;
+@@ -2503,9 +2503,8 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
  
- 	err = ext4_register_li_request(sb, first_not_zeroed);
- 	if (err)
--		goto failed_mount4;
-+		goto failed_mount6;
+ 	/* init file for buddy data */
+ 	ret = ext4_mb_init_backend(sb);
+-	if (ret != 0) {
+-		goto out;
+-	}
++	if (ret != 0)
++		goto out_free_locality_groups;
  
- 	sbi->s_kobj.kset = ext4_kset;
- 	init_completion(&sbi->s_kobj_unregister);
- 	err = kobject_init_and_add(&sbi->s_kobj, &ext4_ktype, NULL,
- 				   "%s", sb->s_id);
--	if (err) {
--		ext4_mb_release(sb);
--		ext4_ext_release(sb);
--		goto failed_mount4;
--	};
-+	if (err)
-+		goto failed_mount7;
+ 	if (sbi->s_proc)
+ 		proc_create_data("mb_groups", S_IRUGO, sbi->s_proc,
+@@ -2513,11 +2512,19 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
  
- 	EXT4_SB(sb)->s_mount_state |= EXT4_ORPHAN_FS;
- 	ext4_orphan_cleanup(sb, es);
-@@ -3760,13 +3757,19 @@ cantfind_ext4:
- 		ext4_msg(sb, KERN_ERR, "VFS: Can't find ext4 filesystem");
- 	goto failed_mount;
+ 	if (sbi->s_journal)
+ 		sbi->s_journal->j_commit_callback = release_blocks_on_commit;
++
++	return 0;
++
++out_free_groupinfo_slab:
++	ext4_groupinfo_destroy_slabs();
++out_free_locality_groups:
++	free_percpu(sbi->s_locality_groups);
++	sbi->s_locality_groups = NULL;
+ out:
+-	if (ret) {
+-		kfree(sbi->s_mb_offsets);
+-		kfree(sbi->s_mb_maxs);
+-	}
++	kfree(sbi->s_mb_offsets);
++	sbi->s_mb_offsets = NULL;
++	kfree(sbi->s_mb_maxs);
++	sbi->s_mb_maxs = NULL;
+ 	return ret;
+ }
  
-+failed_mount7:
-+	ext4_unregister_li_request(sb);
-+failed_mount6:
-+	ext4_ext_release(sb);
-+failed_mount5:
-+	ext4_mb_release(sb);
-+	ext4_release_system_zone(sb);
- failed_mount4:
- 	iput(root);
- 	sb->s_root = NULL;
- 	ext4_msg(sb, KERN_ERR, "mount failed");
- 	destroy_workqueue(EXT4_SB(sb)->dio_unwritten_wq);
- failed_mount_wq:
--	ext4_release_system_zone(sb);
- 	if (sbi->s_journal) {
- 		jbd2_journal_destroy(sbi->s_journal);
- 		sbi->s_journal = NULL;
 -- 
 1.7.1
 
