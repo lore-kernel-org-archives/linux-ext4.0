@@ -1,84 +1,68 @@
-From: Tao Ma <tm@tao.ma>
-Subject: [PATCH] ext4: Free resources in the error path of ext4_mb_init.
-Date: Fri, 19 Aug 2011 23:28:08 +0800
-Message-ID: <1313767689-2786-1-git-send-email-tm@tao.ma>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy8-pub.bluehost.com ([69.89.22.20]:45781 "HELO
-	oproxy8-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751832Ab1HSPaR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Aug 2011 11:30:17 -0400
-Received: from [221.217.45.152] (helo=localhost.localdomain)
-	by box585.bluehost.com with esmtpsa (TLSv1:AES256-SHA:256)
-	(Exim 4.76)
-	(envelope-from <tm@tao.ma>)
-	id 1QuR1T-0004kH-Rp
-	for linux-ext4@vger.kernel.org; Fri, 19 Aug 2011 09:30:16 -0600
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Coly Li <i@coly.li>
+Subject: Re: [RFC] ext4 metadata checksumming design
+Date: Sat, 20 Aug 2011 01:46:56 +0800
+Message-ID: <4E4EA190.7080905@coly.li>
+References: <20110817032519.GN20655@tux1.beaverton.ibm.com>
+Reply-To: i@coly.li
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Sunil Mushran <sunil.mushran@oracle.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	Mingming Cao <cmm@us.ibm.com>,
+	Amir Goldstein <amir73il@gmail.com>,
+	Andi Kleen <andi@firstfloor.org>
+To: djwong@us.ibm.com
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20110817032519.GN20655@tux1.beaverton.ibm.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Tao Ma <boyu.mt@taobao.com>
+On 2011=E5=B9=B408=E6=9C=8817=E6=97=A5 11:25, Darrick J. Wong Wrote:
+> Hi all,
+>=20
+> I've created a page on the ext4 wiki outlining the patchset that I'm =
+working on
+> to add metadata checksumming to ext4.  The page can be found at this =
+address:
+> https://ext4.wiki.kernel.org/index.php/Ext4_Metadata_Checksums
+>=20
 
-In commit 79a77c5ac, we move ext4_mb_init_backend after the allocation
-of s_locality_group to avoid memory leak in error path, but there are
-still some other error paths in ext4_mb_init that need to do the same
-work. So this patch adds all the error patch for ext4_mb_init. And all
-the pointers are reset to NULL in case the caller may double free them.
+Hi Darrick,
 
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
----
- fs/ext4/mballoc.c |   23 +++++++++++++++--------
- 1 files changed, 15 insertions(+), 8 deletions(-)
+I just go through the proposal, have on objection for most of the text.=
+ Only some things want to confirm,
+1) If a metadata_csum enabled file system is metadata_csum disabled, it=
+ should be better to mark the block group or
+inode whether the existing (disabled) checksum is valid or not. So if p=
+eople re-enable metadata_csum, we can save quite
+a lot of time to re-build check sums for all metadata objects.
+2) In no-journal mode, every time when we modify the metadata objects, =
+we may have to hold a lock, calculate the check
+sum, and release the lock, which may introduce performance regression. =
+I hope this is only my unnecessary over worry.
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 17a5a57..e7d64d8 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2490,7 +2490,7 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
- 	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
- 	if (sbi->s_locality_groups == NULL) {
- 		ret = -ENOMEM;
--		goto out;
-+		goto out_free_groupinfo_slab;
- 	}
- 	for_each_possible_cpu(i) {
- 		struct ext4_locality_group *lg;
-@@ -2503,9 +2503,8 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
- 
- 	/* init file for buddy data */
- 	ret = ext4_mb_init_backend(sb);
--	if (ret != 0) {
--		goto out;
--	}
-+	if (ret != 0)
-+		goto out_free_locality_groups;
- 
- 	if (sbi->s_proc)
- 		proc_create_data("mb_groups", S_IRUGO, sbi->s_proc,
-@@ -2513,11 +2512,19 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
- 
- 	if (sbi->s_journal)
- 		sbi->s_journal->j_commit_callback = release_blocks_on_commit;
-+
-+	return 0;
-+
-+out_free_groupinfo_slab:
-+	ext4_groupinfo_destroy_slabs();
-+out_free_locality_groups:
-+	free_percpu(sbi->s_locality_groups);
-+	sbi->s_locality_groups = NULL;
- out:
--	if (ret) {
--		kfree(sbi->s_mb_offsets);
--		kfree(sbi->s_mb_maxs);
--	}
-+	kfree(sbi->s_mb_offsets);
-+	sbi->s_mb_offsets = NULL;
-+	kfree(sbi->s_mb_maxs);
-+	sbi->s_mb_maxs = NULL;
- 	return ret;
- }
- 
--- 
-1.7.1
+BTW, an engineer in Taobao kernel team, is trying to count different me=
+ta data objects I/O in run time now. One of the
+first efforts, is trying to unify a set of routines to read or dirty me=
+ta data object blocks. A.k.a something (might)
+like ext4_read_ext_block(), ext4_read_idx_block(), ... etc. Then the co=
+unting routines can be added inside the meta data
+object blocks I/O routines. So far, it seems the modification is not tr=
+ivial, needs more study on the code. Anyway,
+since you mentioned on the wiki page, just let you know what we are doi=
+ng now :-)
 
+P.S. The idea of meta data I/O counting is to help us understanding the=
+ I/O characteristic of our online servers running
+Ext4 file systems, which is the basic material for further I/O performa=
+nce optimization.
+
+Thanks.
+--=20
+Coly Li
