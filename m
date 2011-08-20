@@ -1,57 +1,43 @@
-From: Andreas Dilger <adilger-KloliPT79xf2eFz/2MeuCQ@public.gmane.org>
-Subject: Re: [PATCH 3 2/4] Return 32/64-bit dir name hash according to usage type
-Date: Sat, 20 Aug 2011 00:23:24 -0600
-Message-ID: <8B32DE36-9AD0-4418-86D8-4E453AA910DB@whamcloud.com>
-References: <20110816115404.1810393.47239.stgit@localhost.localdomain> <20110816115414.1810393.92169.stgit@localhost.localdomain> <20110819222951.GC3578@thunk.org>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org, bernd.schubert-97jfqw80gc6171pxa8y+qA@public.gmane.org,
-	hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, yong.fan-KloliPT79xf2eFz/2MeuCQ@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Ted Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20110819222951.GC3578-AKGzg7BKzIDYtjvyW6yDsg@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH v2] ext4: make quota as first class supported feature
+Date: Sat, 20 Aug 2011 09:58:38 -0600
+Message-ID: <0EC4FCD1-1DBB-417C-BE5D-4B39ABD67A56@dilger.ca>
+References: <1313780769-21713-1-git-send-email-adityakali@google.com>
+Mime-Version: 1.0 (iPhone Mail 8L1)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: "adilger@dilger.ca" <adilger@dilger.ca>,
+	"tytso@mit.edu" <tytso@mit.edu>, "jack@suse.cz" <jack@suse.cz>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Aditya Kali <adityakali@google.com>
+To: Aditya Kali <adityakali@google.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from shawmail.shawcable.com ([64.59.128.220]:4908 "EHLO
+	mail.shawcable.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753319Ab1HTP6D convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Aug 2011 11:58:03 -0400
+In-Reply-To: <1313780769-21713-1-git-send-email-adityakali@google.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-08-19, at 4:29 PM, Ted Ts'o wrote:
-> On Tue, Aug 16, 2011 at 01:54:14PM +0200, Bernd Schubert wrote:
->> +static inline int is_32bit_api(void)
->> +{
->> +#ifdef HAVE_IS_COMPAT_TASK
->> +	return is_compat_task();
->> +#else
->> +	return (BITS_PER_LONG == 32);
->> +#endif
-> 
-> I assume is_compat_task() is coming from another patch?  What is the
-> status of that change?
+On 2011-08-19, at 1:06 PM, Aditya Kali <adityakali@google.com> wrote:
 
-No, is_compat_task() is upstream for most (all?) of the architectures
-that support hybrid 32-/64-bit operation.  It is set at 32-bit syscall
-entry when running on 64-bit architectures.
+> This patch is an attempt towards supporting quotas as first class
+> feature in ext4. It is based on the proposal at:
+> https://ext4.wiki.kernel.org/index.php/Design_For_1st_Class_Quota_in_Ext4
+> This patch introduces a new feature - EXT4_FEATURE_RO_COMPAT_QUOTA which, when
+> turned on, enables quota accounting at mount time iteself. 
 
-The only minor error in this patch (fixed with a new version from Bernd)
-is that this should be under CONFIG_COMPAT instead of HAVE_IS_COMPAT_TASK.
+> 6) With the QUOTA feature set, since the quota inodes are hidden, some of the
+>   utilities from quota-tools will no longer work correctly. Instead, e2fsprogs
+>   will include support for fixing the quota files.
 
-> In the case where is_compat_task() is not defined, we can't just test
-> based on BITS_PER_LONG == 32, since even on an x86_64 machine, it's
-> possible we're running a 32-bit binary in compat mode....
+It would be preferable from a usability point of view to have the existing quota tools to work with the new quota files instead of having to introduce new quota utilities. 
 
-It is definitely available on x86_64.
+There are a number of ways that this could be facilitated:
+- make the quota files visible to userspace, but immutable
+- add the needed calls to the existing quota tools and use them when manipulating quotas on ext4 filesystems with this feature
+- add library interfaces for doing the quota changes to libext2fs (or a new very simple library) and have the quota tools link to that instead of interfacing to the kernel directly 
 
 Cheers, Andreas
---
-Andreas Dilger 
-Principal Engineer
-Whamcloud, Inc.
-
-
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
