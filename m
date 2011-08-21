@@ -1,92 +1,77 @@
 From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: [PATCH 6/6 v5] ext4: fix partial page writes
-Date: Sat, 20 Aug 2011 19:29:47 -0700
-Message-ID: <1313893787-25460-7-git-send-email-achender@linux.vnet.ibm.com>
+Subject: [PATCH 5/6 v5] ext4: fix fsx truncate failure
+Date: Sat, 20 Aug 2011 19:29:46 -0700
+Message-ID: <1313893787-25460-6-git-send-email-achender@linux.vnet.ibm.com>
 References: <1313893787-25460-1-git-send-email-achender@linux.vnet.ibm.com>
 Cc: Allison Henderson <achender@linux.vnet.ibm.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:58602 "EHLO e9.ny.us.ibm.com"
+Received: from e8.ny.us.ibm.com ([32.97.182.138]:34770 "EHLO e8.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753933Ab1HUC0o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 20 Aug 2011 22:26:44 -0400
-Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
-	by e9.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p7L1r5Ha005258
-	for <linux-ext4@vger.kernel.org>; Sat, 20 Aug 2011 21:53:05 -0400
+	id S1753570Ab1HUC0n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 20 Aug 2011 22:26:43 -0400
+Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
+	by e8.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p7L2D5wP013109
+	for <linux-ext4@vger.kernel.org>; Sat, 20 Aug 2011 22:13:05 -0400
 Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p7L2QhdK3330214
-	for <linux-ext4@vger.kernel.org>; Sat, 20 Aug 2011 22:26:43 -0400
+	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p7L2Qggu198998
+	for <linux-ext4@vger.kernel.org>; Sat, 20 Aug 2011 22:26:42 -0400
 Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p7L2Qgj6008841
-	for <linux-ext4@vger.kernel.org>; Sat, 20 Aug 2011 22:26:43 -0400
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p7L2QgUF008830
+	for <linux-ext4@vger.kernel.org>; Sat, 20 Aug 2011 22:26:42 -0400
 In-Reply-To: <1313893787-25460-1-git-send-email-achender@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-These bugs were also found during extended fsx testing
-for blocksize = 1k.
+This patch corrects a bug found during extended fsx
+testing for the first two patches.
 
-When ever a write operation begins or ends in a hole,
-or extends EOF, the partial page contained in the hole
-or beyond EOF needs to be zeroed out.
+This bug is caused because the truncate routine only zeros
+the unblock aligned portion of the last page.  This means
+that the block aligned portions of the page appearing after
+i_size are left unzeroed, and the buffer heads still mapped.
 
-To correct this the new ext4_discard_partial_page_buffers_no_lock
-routine is used to zero out the partial page, but only for buffer
-heads that are already unmapped.
+This bug is corrected by using ext4_discard_partial_page_buffers
+in the truncate routine to zero the partial page and unmap
+the buffer headers
 
 Signed-off-by: Allison Henderson <achender@linux.vnet.ibm.com>
 ---
-:100644 100644 c1b42cb... 78c723b... M	fs/ext4/inode.c
- fs/ext4/inode.c |   15 +++++++++++++++
- 1 files changed, 15 insertions(+), 0 deletions(-)
+:100644 100644 b417e47... fe421bf... M	fs/ext4/extents.c
+ fs/ext4/extents.c |   13 +++++++++++--
+ 1 files changed, 11 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c1b42cb..78c723b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2214,6 +2214,7 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
- 	pgoff_t index;
- 	struct inode *inode = mapping->host;
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index b417e47..fe421bf 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3644,6 +3644,7 @@ void ext4_ext_truncate(struct inode *inode)
+ 	struct super_block *sb = inode->i_sb;
+ 	ext4_lblk_t last_block;
  	handle_t *handle;
 +	loff_t page_len;
+ 	int err = 0;
  
- 	index = pos >> PAGE_CACHE_SHIFT;
+ 	/*
+@@ -3660,8 +3661,16 @@ void ext4_ext_truncate(struct inode *inode)
+ 	if (IS_ERR(handle))
+ 		return;
  
-@@ -2260,6 +2261,11 @@ retry:
- 		 */
- 		if (pos + len > inode->i_size)
- 			ext4_truncate_failed_write(inode);
-+	} else {
-+		page_len = pos & (PAGE_CACHE_SIZE - 1);
-+		ext4_discard_partial_page_buffers_no_lock(handle,
-+			inode, page, pos - page_len, page_len,
-+			EXT4_DSCRD_PARTIAL_PG_ZERO_UNMAPED);
- 	}
- 
- 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-@@ -2302,6 +2308,7 @@ static int ext4_da_write_end(struct file *file,
- 	loff_t new_i_size;
- 	unsigned long start, end;
- 	int write_mode = (int)(unsigned long)fsdata;
-+	loff_t page_len;
- 
- 	if (write_mode == FALL_BACK_TO_NONDELALLOC) {
- 		if (ext4_should_order_data(inode)) {
-@@ -2350,6 +2357,14 @@ static int ext4_da_write_end(struct file *file,
- 	}
- 	ret2 = generic_write_end(file, mapping, pos, len, copied,
- 							page, fsdata);
+-	if (inode->i_size & (sb->s_blocksize - 1))
+-		ext4_block_truncate_page(handle, mapping, inode->i_size);
++	 if (inode->i_size % PAGE_CACHE_SIZE != 0) {
 +
-+	page_len = PAGE_CACHE_SIZE -
-+			((pos + copied) & (PAGE_CACHE_SIZE - 1));
++		page_len = PAGE_CACHE_SIZE -
++			(inode->i_size & (PAGE_CACHE_SIZE - 1));
 +
-+	ext4_discard_partial_page_buffers_no_lock(handle,
-+		inode, page, pos + copied, page_len,
-+		EXT4_DSCRD_PARTIAL_PG_ZERO_UNMAPED);
-+
- 	copied = ret2;
- 	if (ret2 < 0)
- 		ret = ret2;
++		if (page_len >= sb->s_blocksize) {
++			ext4_discard_partial_page_buffers(handle,
++			mapping, inode->i_size, page_len, 0);
++		}
++	}
+ 
+ 	if (ext4_orphan_add(handle, inode))
+ 		goto out_stop;
 -- 
 1.7.1
 
