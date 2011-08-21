@@ -1,36 +1,35 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 01/13] ext4: add a function which extends a group
- without checking parameters
-Date: Sun, 21 Aug 2011 13:07:44 -0400
-Message-ID: <20110821170744.GA19498@thunk.org>
-References: <1313033308-882-1-git-send-email-xiaoqiangnk@gmail.com>
- <1313033308-882-2-git-send-email-xiaoqiangnk@gmail.com>
- <4B3266BE-B083-41DE-BD85-BA1497D9EF51@dilger.ca>
- <CAGBYx2b3fCkReC4hy-K7jO35oM3thUHO9ST8xEkhVtkZSAqzgQ@mail.gmail.com>
+Subject: Re: [PATCH] ext4_rename should dirty dir_bh with the correct
+ directory
+Date: Sun, 21 Aug 2011 14:15:47 -0400
+Message-ID: <20110821181547.GB19498@thunk.org>
+References: <20110817033544.GO20655@tux1.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@s0106002191d9348c.cg.shawcable.net>,
-	linux-ext4 List <linux-ext4@vger.kernel.org>
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: "Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33202 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:52091 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751968Ab1HURHx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 21 Aug 2011 13:07:53 -0400
+	id S1751292Ab1HUSP7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 21 Aug 2011 14:15:59 -0400
 Content-Disposition: inline
-In-Reply-To: <CAGBYx2b3fCkReC4hy-K7jO35oM3thUHO9ST8xEkhVtkZSAqzgQ@mail.gmail.com>
+In-Reply-To: <20110817033544.GO20655@tux1.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 11, 2011 at 02:27:41PM +0800, Yongqiang Yang wrote:
-> YES!  This needs some feedbacks, I thought the old resize interface
-> will be removed after the new resize interface goes into upstream.  So
-> I did not touch
-> old interface.  If we will remain the old interface, I can make some
-> patches which let old resize use common code instead.
+On Tue, Aug 16, 2011 at 08:35:44PM -0700, Darrick J. Wong wrote:
+> When ext4_rename performs a directory rename (move), dir_bh is a buffer that is
+> modified to update the '..' link in the directory being moved (old_inode).
+> However, ext4_handle_dirty_metadata is called with the old parent directory
+> inode (old_dir) and dir_bh, which is incorrect because dir_bh does not belong
+> to the parent inode.  Fix this error.
+> 
+> Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 
-Yes, the backwards compatibility requirements for the kernel means
-that we have to keep the old ioctl's working for at least 2-3 years...
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-   	   	    			    - Ted
+Added to the ext4 tree, thanks.
 
+						- Ted
