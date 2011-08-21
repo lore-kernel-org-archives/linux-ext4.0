@@ -1,35 +1,52 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4_rename should dirty dir_bh with the correct
- directory
-Date: Sun, 21 Aug 2011 14:15:47 -0400
-Message-ID: <20110821181547.GB19498@thunk.org>
-References: <20110817033544.GO20655@tux1.beaverton.ibm.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 41502] New: cfq-iosched: a regression
+Date: Sun, 21 Aug 2011 18:49:07 GMT
+Message-ID: <bug-41502-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>
-To: "Darrick J. Wong" <djwong@us.ibm.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:52091 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751292Ab1HUSP7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 21 Aug 2011 14:15:59 -0400
-Content-Disposition: inline
-In-Reply-To: <20110817033544.GO20655@tux1.beaverton.ibm.com>
+Received: from demeter1.kernel.org ([140.211.167.39]:37739 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752021Ab1HUStI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 21 Aug 2011 14:49:08 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.4) with ESMTP id p7LIn7hc007533
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Sun, 21 Aug 2011 18:49:07 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 16, 2011 at 08:35:44PM -0700, Darrick J. Wong wrote:
-> When ext4_rename performs a directory rename (move), dir_bh is a buffer that is
-> modified to update the '..' link in the directory being moved (old_inode).
-> However, ext4_handle_dirty_metadata is called with the old parent directory
-> inode (old_dir) and dir_bh, which is incorrect because dir_bh does not belong
-> to the parent inode.  Fix this error.
-> 
-> Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=41502
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+           Summary: cfq-iosched: a regression
+           Product: File System
+           Version: 2.5
+    Kernel Version: 3.1-rc1
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext3
+        AssignedTo: fs_ext3@kernel-bugs.osdl.org
+        ReportedBy: maciej.rutecki@gmail.com
+                CC: shaohua.li@intel.com, rjw@sisk.pl,
+                    maciej.rutecki@gmail.com
+        Regression: Yes
 
-Added to the ext4 tree, thanks.
 
-						- Ted
+Subject    : cfq-iosched: a regression
+Submitter  : Shaohua Li <shaohua.li@intel.com>
+Date       : 2011-08-16 2:47
+Message-ID : 1313462826.27321.22.camel@sli10-conroe
+References : http://marc.info/?l=linux-kernel&m=131346279329911&w=2
+
+This entry is being used for tracking a regression from 3.0. Please don't
+close it until the problem is fixed in the mainline.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
