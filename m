@@ -1,42 +1,36 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/6 v5] ext4: Add new ext4_discard_partial_page_buffers
- routines
-Date: Sun, 21 Aug 2011 22:38:10 -0400
-Message-ID: <20110822023810.GA3671@thunk.org>
-References: <1313893787-25460-1-git-send-email-achender@linux.vnet.ibm.com>
- <1313893787-25460-2-git-send-email-achender@linux.vnet.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Allison Henderson <achender@linux.vnet.ibm.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 01/13] ext4: add a function which extends a group without checking parameters
+Date: Sun, 21 Aug 2011 20:51:04 -0600
+Message-ID: <A343607D-0D16-4359-98B2-065902277549@dilger.ca>
+References: <1313033308-882-1-git-send-email-xiaoqiangnk@gmail.com> <1313033308-882-2-git-send-email-xiaoqiangnk@gmail.com> <4B3266BE-B083-41DE-BD85-BA1497D9EF51@dilger.ca> <CAGBYx2b3fCkReC4hy-K7jO35oM3thUHO9ST8xEkhVtkZSAqzgQ@mail.gmail.com> <20110821170744.GA19498@thunk.org>
+Mime-Version: 1.0 (iPhone Mail 8L1)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	Andreas Dilger <adilger@s0106002191d9348c.cg.shawcable.net>,
+	linux-ext4List <linux-ext4@vger.kernel.org>
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:34114 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751972Ab1HVCiQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 21 Aug 2011 22:38:16 -0400
-Content-Disposition: inline
-In-Reply-To: <1313893787-25460-2-git-send-email-achender@linux.vnet.ibm.com>
+Received: from shawmail.shawcable.com ([64.59.128.220]:23657 "EHLO
+	mail.shawcable.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752319Ab1HVCu3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 21 Aug 2011 22:50:29 -0400
+In-Reply-To: <20110821170744.GA19498@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Aug 20, 2011 at 07:29:42PM -0700, Allison Henderson wrote:
-> +		/* If the range is block aligned, unmap */
-> +		if (range_to_discard == blocksize) {
-> +			clear_buffer_dirty(bh);
-> +			bh->b_bdev = NULL;
-> +			clear_buffer_mapped(bh);
-> +			clear_buffer_req(bh);
-> +			clear_buffer_new(bh);
-> +			clear_buffer_delay(bh);
-> +			clear_buffer_unwritten(bh);
-> +			clear_buffer_uptodate(bh);
-> +			ClearPageUptodate(page);
+On 2011-08-21, at 11:07 AM, Ted Ts'o <tytso@mit.edu> wrote:
+> On Thu, Aug 11, 2011 at 02:27:41PM +0800, Yongqiang Yang wrote:
+>> YES!  This needs some feedbacks, I thought the old resize interface
+>> will be removed after the new resize interface goes into upstream.  So
+>> I did not touch
+>> old interface.  If we will remain the old interface, I can make some
+>> patches which let old resize use common code instead.
+> 
+> Yes, the backwards compatibility requirements for the kernel means
+> that we have to keep the old ioctl's working for at least 2-3 years...
 
-Is this ClearPageUptodate() necessary?  If the page is uptodate, and
-we've zero'ed out the relevant space, why do we need to force the page
-to read in from disk again?  (In fact, if we want to avoid forcing the
-whole punched region to be written to disk, we'll need to get rid of
-the ClearPageUptodate() sooner or later --- and I'm not sure I see why
-it's needed now.  Am I missing something?)
+I'd be happy with just wiring up the old ioctls to the new code, and having the kernel ignore the passed parameters and just do it's own thing to resize to the end of the group.
 
-					- Ted
+Cheers, Andreas
