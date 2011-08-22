@@ -1,85 +1,80 @@
-From: Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: [RFC] ext4 metadata checksumming design
-Date: Mon, 22 Aug 2011 12:11:25 -0600
-Message-ID: <587920A5-66EF-4630-9E02-CA1C5790E0BD@dilger.ca>
-References: <20110817032519.GN20655@tux1.beaverton.ibm.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH] fs / ext3: Always unlock updates in ext3_freeze()
+Date: Tue, 23 Aug 2011 09:13:48 +1000
+Message-ID: <20110822231348.GS3162@dastard>
+References: <201108112329.23043.rjw@sisk.pl>
+ <201108112331.13241.rjw@sisk.pl>
+ <20110815122218.GB6971@quack.suse.cz>
+ <201108152009.13776.rjw@sisk.pl>
+ <20110815205807.GC16369@quack.suse.cz>
+ <20110816000916.GH26978@dastard>
+ <20110822130045.GC11264@atrey.karlin.mff.cuni.cz>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	linux-fsdevel Devel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4 List <linux-ext4@vger.kernel.org>,
-	Sunil Mushran <sunil.mushran@oracle.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	Mingming Cao <cmm@us.ibm.com>,
-	Amir Goldstein <amir73il@gmail.com>,
-	Coly Li <colyli@gmail.com>, Andi Kleen <andi@firstfloor.org>
-To: djwong@us.ibm.com
+Cc: Jan Kara <jack@suse.cz>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	LKML <linux-kernel@vger.kernel.org>
+To: Pavel Machek <pavel@ucw.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:13414 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752435Ab1HVSL1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Aug 2011 14:11:27 -0400
-In-Reply-To: <20110817032519.GN20655@tux1.beaverton.ibm.com>
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:34798 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751589Ab1HVXNx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 22 Aug 2011 19:13:53 -0400
+Content-Disposition: inline
+In-Reply-To: <20110822130045.GC11264@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-08-16, at 9:25 PM, Darrick J. Wong wrote:
-> I've created a page on the ext4 wiki outlining the patchset that I'm working on
-> to add metadata checksumming to ext4.  The page can be found at this address:
-> https://ext4.wiki.kernel.org/index.php/Ext4_Metadata_Checksums
+On Mon, Aug 22, 2011 at 03:00:45PM +0200, Pavel Machek wrote:
+> Hi!
+> 
+> > >   What's exactly the problem? Memory preallocation enters direct reclaim
+> > > and that deadlocks in the filesystem?
+> > 
+> > Well, that's one possible manifestation. The problem is that the
+> > current hibernate code still assumes that sys_sync() results in an
+> > idle filesystem that will not change after the call if nothing is
+> > dirty.
+> > 
+> > The result is that when the large memory allocation occurs for the
+> > hibernate image (after the sys_sync() call) then the shrink_slab()
+> > tends to be called. The XFS shrinkers are capable of dirtying inodes
+> > and the backing buffers of inodes that are in the reclaimable state.
+> > But those buffers cannot be flushed to disk because hibernate has
+> > already frozen the xfsbufd threads, so the shrinker doing inode
+> > reclaim hangs up on locks waiting for the buffers to be written.
+> > This either leads to deadlock or hibernate image allocation failure.
+> > 
+> > Far worse, IMO, is the case where is -doesn't- deadlock, because the
+> > filesystem state can still changing after the allocation has
+> > finished due to async metadata IO completions. That has the
+> > potential to cause filesystem corruption as after resume the on-disk
+> > state may not match what is written from memory to the hibernate
+> > image.
+> > 
+> > The problem really isn't XFS specific, nor is it new - the fact is
+> > that any filesystem that has registered a shrinker or can do async
+> > work in the background post-sync is vulnerable to this problem. It's
+> 
+> Should we avoid calling shrinkers while hibernating?
 
-Darrick,
-I just had a look though this document, and it looks pretty good.  It does
-need to be updated to reflect that the inode checksum now covers the full
-inode size, which is already mentioned in the "Extended Attributes" section.
+If you like getting random OOM problems when hibernating, then go
+for it.  Besides, shrinkers are used for more than just filesystems,
+so you might find you screw entire classes of users by doing this
+(eg everyone using intel graphics and 3D).
 
-> For the most part, the metadata objects in ext4 actually have enough space to
-> squeeze in a 32-bit checksum; it was trivially easy to find a spot in the
-> superblock, the extent tree, extended attribute blocks, and the inode.  Those
-> pieces are already done and in my tree, but the patchset as a whole is being
-> held up by the second class of metadata objects.
+> Or put BUG_ON()s into filesystem shrinkers so that this can not
+> happen?
 
-For the group descriptor checksum and inode/block bitmap checksums with
-32-byte group descriptors it makes sense to truncate the CRC32c checksum
-and store the low bits of the checksum in the existing 16-bit fields, and
-the high bits in extended 16-bit fields.
+Definitely not. If your concern is filesystem shrinkers and you want
+a large hammer to hit the problem with then do your hibernate
+image allocation wih GFP_NOFS and the filesystem shrinkers will
+abort without doing anything.
 
-As a follow on, it probably also makes sense to test with a < 2^32 block
-filesystem with a 64-byte group descriptor.  That would give enough room
-for 32-bit checksums even on smaller filesystems, and would also help
-facilitate resizing filesystems from < 2^32 blocks to > 2^32 blocks in
-the future.  That _may_ just be as easy as formatting with "-O 64bit"
-on a < 2^32 block filesystem, but I don't know how much that has been
-tested.
+Cheers,
 
-> That second class of objects are the ones that required a bit of work:
-> 
-> - Directory blocks have an "unused" 12-byte directory entry at the very end of
->  the block; 8 bytes of header are followed by a 32-bit checksum.  This can be
->  taken care of as part of directory rebuilding in e2fsck/rehash.c.
-> 
-> - HTree blocks had to have the dx_entry limit reduced by 1 to accomodate a
->  checksum.  This is also taken care of during e2fsck directory rebuild.
-> 
-> - Extended attribute blocks that are stored in the inode table -- the h_magic
->  field is written by the kernel, but neither the kernel nor e2fsprogs ever
->  actually read this field.  The field could be reused to checksum the extra
->  space since (as far as I can tell) EAs are the only user of that empty space.
-> 
-> Other miscellany:
-> 
-> - e2fsprogs had to be converted to always work with ext2_inode_large.
-> 
-> - Various bugs in the htree code....
-> 
-> I hope to have a first draft of the kernel/e2fsprogs patches out on the mailing
-> list in a week or two, or at least before LPC next month.  Still on my todo
-> list is superblocks, EAs, changing the jbd2 checksum, and rigorous testing on
-> powerpc.
-> 
-> Please have a look at the design document and please feel free to suggest any
-> changes.
-> 
-> --D
-
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
