@@ -1,60 +1,43 @@
-From: Aditya Kali <adityakali@google.com>
-Subject: Re: [PATCH v2] ext4: make quota as first class supported feature
-Date: Mon, 22 Aug 2011 00:08:06 -0700
-Message-ID: <CAGr1F2GkYwzrrwjgmSyX_yxAz8WMxq_qZq_ytYKoRhzELQHndA@mail.gmail.com>
-References: <1313780769-21713-1-git-send-email-adityakali@google.com> <0EC4FCD1-1DBB-417C-BE5D-4B39ABD67A56@dilger.ca>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: Re: attempt to fix race in bigalloc code path
+Date: Mon, 22 Aug 2011 21:54:06 +0800
+Message-ID: <CAGBYx2ZTzrLR2yRRnCu3pvFWvofYzJp7+WsdQt2=Y7yWGEzyTg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "tytso@mit.edu" <tytso@mit.edu>, "jack@suse.cz" <jack@suse.cz>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Jan Kara <jack@suse.cz>, "Ted Ts'o" <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: adityakali@google.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f70.google.com ([209.85.210.70]:49165 "EHLO
-	mail-pz0-f70.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752538Ab1HVHOK convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Aug 2011 03:14:10 -0400
-Received: by pzk37 with SMTP id 37so5061pzk.1
-        for <linux-ext4@vger.kernel.org>; Mon, 22 Aug 2011 00:14:10 -0700 (PDT)
-In-Reply-To: <0EC4FCD1-1DBB-417C-BE5D-4B39ABD67A56@dilger.ca>
+Received: from mail-yi0-f46.google.com ([209.85.218.46]:44451 "EHLO
+	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750815Ab1HVNyH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Aug 2011 09:54:07 -0400
+Received: by yie30 with SMTP id 30so3572713yie.19
+        for <linux-ext4@vger.kernel.org>; Mon, 22 Aug 2011 06:54:07 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
->> 6) With the QUOTA feature set, since the quota inodes are hidden, so=
-me of the
->> =C2=A0 utilities from quota-tools will no longer work correctly. Ins=
-tead, e2fsprogs
->> =C2=A0 will include support for fixing the quota files.
->
-> It would be preferable from a usability point of view to have the exi=
-sting quota tools to work with the new quota files instead of having to=
- introduce new quota utilities.
->
-> There are a number of ways that this could be facilitated:
-> - make the quota files visible to userspace, but immutable
-> - add the needed calls to the existing quota tools and use them when =
-manipulating quotas on ext4 filesystems with this feature
-There are only few operations of the quota tools that depend on
-accessing the quota files and, AFAIK, supporting hidden quota files is
-already in the works. I believe it is already done for some other
-filesystems like ocfs2.
+Hi,
 
-> - add library interfaces for doing the quota changes to libext2fs (or=
- a new very simple library) and have the quota tools link to that inste=
-ad of interfacing to the kernel directly
->
-I have already sent patches to add a new quota library in e2fsprogs
-(this library too is majorly based on the current quota tools). With
-this, e2fsck can scan and fix quota files and tune2fs/mke2fs can be
-used to turn on/off the new quota feature.
+I can not find the patch - attempt to fix race in bigalloc code path -
+in the mailing list.
 
-Thanks,
---
-Aditya
+I don't think this patch can work.  set_buffers_da_mapped() is called
+under i_data_sem, so it can not lock page.  If the page is not locked,
+calling page_has_buffers() is not secure as Jan pointed out
+previously.  If a page is partially mapped(block size < page size),
+setting BH_Da_Mapped without locking page is not safe too.
 
-> Cheers, Andreas
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+BTW:  find_delalloc_range() does not lock page as ext4_fiemap_cb().
+As Jan said, it can crash system.  BUT we can not lock page in both
+scenarios, because i_data_sem is hold. So delayed extent list is
+necessary.  I have finished the code implementing delayed extent list,
+which needs some further testing.
+
+
+What are your opinions?
+
+
+-- 
+Best Wishes
+Yongqiang Yang
