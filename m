@@ -1,80 +1,82 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] fs / ext3: Always unlock updates in ext3_freeze()
-Date: Tue, 23 Aug 2011 09:13:48 +1000
-Message-ID: <20110822231348.GS3162@dastard>
-References: <201108112329.23043.rjw@sisk.pl>
- <201108112331.13241.rjw@sisk.pl>
- <20110815122218.GB6971@quack.suse.cz>
- <201108152009.13776.rjw@sisk.pl>
- <20110815205807.GC16369@quack.suse.cz>
- <20110816000916.GH26978@dastard>
- <20110822130045.GC11264@atrey.karlin.mff.cuni.cz>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: Re: attempt to fix race in bigalloc code path
+Date: Tue, 23 Aug 2011 09:12:10 +0800
+Message-ID: <CAGBYx2YD5gC6--DqL9XR5ZVDynybA8jmBy9v0YXQGfCH1AeAkw@mail.gmail.com>
+References: <CAGBYx2ZTzrLR2yRRnCu3pvFWvofYzJp7+WsdQt2=Y7yWGEzyTg@mail.gmail.com>
+	<CAGr1F2EG32dkeo+6DU4caQdJtFBLN7kpF9a4Gj_vr+awdGZ6jw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, "Rafael J. Wysocki" <rjw@sisk.pl>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	LKML <linux-kernel@vger.kernel.org>
-To: Pavel Machek <pavel@ucw.cz>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Jan Kara <jack@suse.cz>, "Ted Ts'o" <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Aditya Kali <adityakali@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:34798 "EHLO
-	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751589Ab1HVXNx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 22 Aug 2011 19:13:53 -0400
-Content-Disposition: inline
-In-Reply-To: <20110822130045.GC11264@atrey.karlin.mff.cuni.cz>
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:33140 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754613Ab1HWBML convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Aug 2011 21:12:11 -0400
+Received: by pzk37 with SMTP id 37so9533696pzk.1
+        for <linux-ext4@vger.kernel.org>; Mon, 22 Aug 2011 18:12:10 -0700 (PDT)
+In-Reply-To: <CAGr1F2EG32dkeo+6DU4caQdJtFBLN7kpF9a4Gj_vr+awdGZ6jw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 22, 2011 at 03:00:45PM +0200, Pavel Machek wrote:
-> Hi!
-> 
-> > >   What's exactly the problem? Memory preallocation enters direct reclaim
-> > > and that deadlocks in the filesystem?
-> > 
-> > Well, that's one possible manifestation. The problem is that the
-> > current hibernate code still assumes that sys_sync() results in an
-> > idle filesystem that will not change after the call if nothing is
-> > dirty.
-> > 
-> > The result is that when the large memory allocation occurs for the
-> > hibernate image (after the sys_sync() call) then the shrink_slab()
-> > tends to be called. The XFS shrinkers are capable of dirtying inodes
-> > and the backing buffers of inodes that are in the reclaimable state.
-> > But those buffers cannot be flushed to disk because hibernate has
-> > already frozen the xfsbufd threads, so the shrinker doing inode
-> > reclaim hangs up on locks waiting for the buffers to be written.
-> > This either leads to deadlock or hibernate image allocation failure.
-> > 
-> > Far worse, IMO, is the case where is -doesn't- deadlock, because the
-> > filesystem state can still changing after the allocation has
-> > finished due to async metadata IO completions. That has the
-> > potential to cause filesystem corruption as after resume the on-disk
-> > state may not match what is written from memory to the hibernate
-> > image.
-> > 
-> > The problem really isn't XFS specific, nor is it new - the fact is
-> > that any filesystem that has registered a shrinker or can do async
-> > work in the background post-sync is vulnerable to this problem. It's
-> 
-> Should we avoid calling shrinkers while hibernating?
+On Tue, Aug 23, 2011 at 1:30 AM, Aditya Kali <adityakali@google.com> wr=
+ote:
+> On Mon, Aug 22, 2011 at 6:54 AM, Yongqiang Yang <xiaoqiangnk@gmail.co=
+m> wrote:
+>> Hi,
+>>
+>> I can not find the patch - attempt to fix race in bigalloc code path=
+ -
+>> in the mailing list.
+>>
+>> I don't think this patch can work. =A0set_buffers_da_mapped() is cal=
+led
+>> under i_data_sem, so it can not lock page. =A0If the page is not loc=
+ked,
+>> calling page_has_buffers() is not secure as Jan pointed out
+>> previously. =A0If a page is partially mapped(block size < page size)=
+,
+>> setting BH_Da_Mapped without locking page is not safe too.
+>>
+> The BH_Da_Mapped is set only during page writeback when the page is
+> locked (in write_cache_pages_da). So, the setting of BH_Da_Mapped
+> should be safe, no ?
+Sorry for noise and thank you for your explanation, you are right.
+IMHO, we can clear BH_Delayed and set BH_Mapped instead.
 
-If you like getting random OOM problems when hibernating, then go
-for it.  Besides, shrinkers are used for more than just filesystems,
-so you might find you screw entire classes of users by doing this
-(eg everyone using intel graphics and 3D).
+Yongqiang.
+>
+>> BTW: =A0find_delalloc_range() does not lock page as ext4_fiemap_cb()=
+=2E
+>> As Jan said, it can crash system. =A0BUT we can not lock page in bot=
+h
+>> scenarios, because i_data_sem is hold. So delayed extent list is
+>> necessary. =A0I have finished the code implementing delayed extent l=
+ist,
+>> which needs some further testing.
+>>
+>>
+>> What are your opinions?
+>>
+> I agree that having a delayed extent list will greatly simply this
+> solution in this case.
+>
+>>
+>> --
+>> Best Wishes
+>> Yongqiang Yang
+>>
+>
 
-> Or put BUG_ON()s into filesystem shrinkers so that this can not
-> happen?
 
-Definitely not. If your concern is filesystem shrinkers and you want
-a large hammer to hit the problem with then do your hibernate
-image allocation wih GFP_NOFS and the filesystem shrinkers will
-abort without doing anything.
 
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+--=20
+Best Wishes
+Yongqiang Yang
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
