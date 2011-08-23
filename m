@@ -1,295 +1,145 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: [PATCH 5/6 v5] ext4: fix fsx truncate failure
-Date: Mon, 22 Aug 2011 19:51:26 -0700
-Message-ID: <4E5315AE.7080502@linux.vnet.ibm.com>
-References: <1313893787-25460-1-git-send-email-achender@linux.vnet.ibm.com> <1313893787-25460-6-git-send-email-achender@linux.vnet.ibm.com> <20110823023618.GA6544@thunk.org>
+From: Sergey Senozhatsky <sergey.senozhatsky@gmail.com>
+Subject: khugepaged: inconsistent lock {RECLAIM_FS-ON-W} -> {IN-RECLAIM_FS-W}
+ usage
+Date: Tue, 23 Aug 2011 15:10:13 +0300
+Message-ID: <20110823121013.GB3554@swordfish.minsk.epam.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="KsGdsel6WgEHnImy"
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Ingo Molnar <mingo@elte.hu>,
+	Peter Zijlstra <a.p.zijlstra@chello.nl>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Thomas Gleixner <tglx@linutronix.de>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e33.co.us.ibm.com ([32.97.110.151]:38956 "EHLO
-	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754742Ab1HWCvd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Aug 2011 22:51:33 -0400
-Received: from d03relay05.boulder.ibm.com (d03relay05.boulder.ibm.com [9.17.195.107])
-	by e33.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p7N2hVKi024562
-	for <linux-ext4@vger.kernel.org>; Mon, 22 Aug 2011 20:43:31 -0600
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p7N2pSN2154492
-	for <linux-ext4@vger.kernel.org>; Mon, 22 Aug 2011 20:51:28 -0600
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p7MKpR4O017356
-	for <linux-ext4@vger.kernel.org>; Mon, 22 Aug 2011 14:51:27 -0600
-In-Reply-To: <20110823023618.GA6544@thunk.org>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:40719 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751706Ab1HWMLi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Aug 2011 08:11:38 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 08/22/2011 07:36 PM, Ted Ts'o wrote:
-> On Sat, Aug 20, 2011 at 07:29:46PM -0700, Allison Henderson wrote:
->> This patch corrects a bug found during extended fsx
->> testing for the first two patches.
->>
->> This bug is caused because the truncate routine only zeros
->> the unblock aligned portion of the last page.  This means
->> that the block aligned portions of the page appearing after
->> i_size are left unzeroed, and the buffer heads still mapped.
->>
->> This bug is corrected by using ext4_discard_partial_page_buffers
->> in the truncate routine to zero the partial page and unmap
->> the buffer headers
->>
->> Signed-off-by: Allison Henderson<achender@linux.vnet.ibm.com>
->
-> This patch is causing a failure in xfstests #130.  When I bisected it,
-> the "git bisect finger of blame" pointed to this commit.  (This is
-> commit 83eb170d4 on the "dev" branch on the ext4.git tree at the moment).
->
->         		    	      	     	    	     - Ted
-Alrighty, I'll take a look at it, thx!
 
-Allison Henderson
+--KsGdsel6WgEHnImy
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
->
->
-> Running local boot scripts (/etc/rc.local)
-> FSTESTCFG is "all"
-> FSTESTSET is "130"
-> umount: /dev/vdb: not mounted
-> umount: /dev/vdd: not mounted
-> e2fsck 1.42-WIP (02-Jul-2011)
-> Pass 1: Checking inodes, blocks, and sizes
-> Pass 2: Checking directory structure
-> Pass 3: Checking directory connectivity
-> Pass 4: Checking reference counts
-> Pass 5: Checking group summary information
-> /dev/vdb: 6030/327680 files (3.1% non-contiguous), 77032/1310720 blocks
-> BEGIN TEST: Ext4 4k block Mon Aug 22 22:27:54 EDT 2011
-> Device: /dev/vdb
-> mke2fs options: -q
-> mount options: -o block_validity
-> 000 - unknown test, ignored
-> FSTYP         -- ext4
-> PLATFORM      -- Linux/x86_64 candygram 3.1.0-gcg-DEV
-> MKFS_OPTIONS  -- -q /dev/vdc
-> MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity /dev/vdc /vdc
->
-> 130 11s ... - output mismatch (see 130.out.bad)
-> --- 130.out	2011-08-12 00:06:32.000000000 -0400
-> +++ 130.out.bad	2011-08-22 22:27:57.550000003 -0400
-> @@ -4,8 +4,9 @@
->   XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
->   wrote 65536/65536 bytes at offset 65536
->   XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
-> -00000000:  63 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  c...............
-> -00000010:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-> +00000000:  63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63  cccccccccccccccc
-> +*
-> +00001000:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
->   *
->   00010000:  41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41  AAAAAAAAAAAAAAAA
->   *
-> Ran: 130
-> Failures: 130
-> Failed 1 of 1 tests
-> END TEST: Ext4 4k block Mon Aug 22 22:27:57 EDT 2011
-> e2fsck 1.42-WIP (02-Jul-2011)
-> Pass 1: Checking inodes, blocks, and sizes
-> Pass 2: Checking directory structure
-> Pass 3: Checking directory connectivity
-> Pass 4: Checking reference counts
-> Pass 5: Checking group summary information
-> /dev/vdb: 6030/327680 files (3.1% non-contiguous), 77032/1310720 blocks
-> BEGIN TEST: Ext4 4k block w/nodelalloc and no extents Mon Aug 22 22:27:58 EDT 2011
-> Device: /dev/vdd
-> mke2fs options: -q -O ^extents
-> mount options: -o block_validity,nodelalloc
-> 000 - unknown test, ignored
-> FSTYP         -- ext4
-> PLATFORM      -- Linux/x86_64 candygram 3.1.0-gcg-DEV
-> MKFS_OPTIONS  -- -q -O ^extents /dev/vdc
-> MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity,nodelalloc /dev/vdc /vdc
->
-> 130 11s ... 3s
-> Ran: 130
-> Passed all 1 tests
-> END TEST: Ext4 4k block w/nodelalloc and no extents Mon Aug 22 22:28:01 EDT 2011
-> e2fsck 1.42-WIP (02-Jul-2011)
-> Pass 1: Checking inodes, blocks, and sizes
-> Pass 2: Checking directory structure
-> Pass 3: Checking directory connectivity
-> Pass 4: Checking reference counts
-> Pass 5: Checking group summary information
-> /dev/vdd: 11/327680 files (0.0% non-contiguous), 55935/1310720 blocks
-> BEGIN TEST: Ext4 4k block w/ no journal Mon Aug 22 22:28:01 EDT 2011
-> Device: /dev/vdb
-> mke2fs options: -q -O ^has_journal
-> mount options: -o block_validity,noload
-> 000 - unknown test, ignored
-> FSTYP         -- ext4
-> PLATFORM      -- Linux/x86_64 candygram 3.1.0-gcg-DEV
-> MKFS_OPTIONS  -- -q -O ^has_journal /dev/vdc
-> MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity,noload /dev/vdc /vdc
->
-> 130 3s ... - output mismatch (see 130.out.bad)
-> --- 130.out	2011-08-12 00:06:32.000000000 -0400
-> +++ 130.out.bad	2011-08-22 22:28:04.490000003 -0400
-> @@ -4,8 +4,9 @@
->   XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
->   wrote 65536/65536 bytes at offset 65536
->   XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
-> -00000000:  63 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  c...............
-> -00000010:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-> +00000000:  63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63  cccccccccccccccc
-> +*
-> +00001000:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
->   *
->   00010000:  41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41  AAAAAAAAAAAAAAAA
->   *
-> Ran: 130
-> Failures: 130
-> Failed 1 of 1 tests
-> END TEST: Ext4 4k block w/ no journal Mon Aug 22 22:28:04 EDT 2011
-> e2fsck 1.42-WIP (02-Jul-2011)
-> Pass 1: Checking inodes, blocks, and sizes
-> Pass 2: Checking directory structure
-> Pass 3: Checking directory connectivity
-> Pass 4: Checking reference counts
-> Pass 5: Checking group summary information
-> /dev/vdb: 6030/327680 files (3.1% non-contiguous), 77032/1310720 blocks
-> BEGIN TEST: Ext4 1k block Mon Aug 22 22:28:05 EDT 2011
-> Device: /dev/vdd
-> mke2fs options: -q -b 1024
-> mount options: -o block_validity
-> 000 - unknown test, ignored
-> FSTYP         -- ext4
-> PLATFORM      -- Linux/x86_64 candygram 3.1.0-gcg-DEV
-> MKFS_OPTIONS  -- -q -b 1024 /dev/vdc
-> MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity /dev/vdc /vdc
->
-> 130 3s ... - output mismatch (see 130.out.bad)
-> --- 130.out	2011-08-12 00:06:32.000000000 -0400
-> +++ 130.out.bad	2011-08-22 22:28:08.160000004 -0400
-> @@ -4,8 +4,9 @@
->   XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
->   wrote 65536/65536 bytes at offset 65536
->   XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
-> -00000000:  63 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  c...............
-> -00000010:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-> +00000000:  63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63  cccccccccccccccc
-> +*
-> +00000400:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
->   *
->   00010000:  41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41  AAAAAAAAAAAAAAAA
->   *
-> Ran: 130
-> Failures: 130
-> Failed 1 of 1 tests
-> END TEST: Ext4 1k block Mon Aug 22 22:28:08 EDT 2011
-> e2fsck 1.42-WIP (02-Jul-2011)
-> Pass 1: Checking inodes, blocks, and sizes
-> Pass 2: Checking directory structure
-> Pass 3: Checking directory connectivity
-> Pass 4: Checking reference counts
-> Pass 5: Checking group summary information
-> /dev/vdd: 11/327680 files (0.0% non-contiguous), 119861/5242880 blocks
-> BEGIN TEST: Ext4 4k block w/bigalloc Mon Aug 22 22:28:08 EDT 2011
-> Device: /dev/vdd
-> mke2fs options: -q -O bigalloc
-> mount options: -o block_validity
-> 000 - unknown test, ignored
-> [1825745.459201] EXT4-fs (vdd): couldn't mount RDWR because of unsupported optional features (200)
-> mount: wrong fs type, bad option, bad superblock on /dev/vdd,
->         missing codepage or helper program, or other error
->         In some cases useful info is found in syslog - try
->         dmesg | tail  or so
->
-> common.rc: retrying test device mount with external set
-> [1825745.488666] EXT4-fs (vdd): couldn't mount RDWR because of unsupported optional features (200)
-> mount: wrong fs type, bad option, bad superblock on /dev/vdd,
->         missing codepage or helper program, or other error
->         In some cases useful info is found in syslog - try
->         dmesg | tail  or so
->
-> common.rc: could not mount /dev/vdd on /vdd
-> END TEST: Ext4 4k block w/bigalloc Mon Aug 22 22:28:08 EDT 2011
-> umount: /dev/vdd: not mounted
-> e2fsck 1.42-WIP (02-Jul-2011)
-> Pass 1: Checking inodes, blocks, and sizes
-> Pass 2: Checking directory structure
-> Pass 3: Checking directory connectivity
-> Pass 4: Checking reference counts
-> Pass 5: Checking group summary information
-> /dev/vdd: 11/81936 files (0.0% non-contiguous), 38032/1310720 blocks
-> BEGIN TEST: Ext4 4k block w/data=journal Mon Aug 22 22:28:08 EDT 2011
-> Device: /dev/vdb
-> mke2fs options: -q
-> mount options: -o block_validity,data=journal
-> 000 - unknown test, ignored
-> FSTYP         -- ext4
-> PLATFORM      -- Linux/x86_64 candygram 3.1.0-gcg-DEV
-> MKFS_OPTIONS  -- -q /dev/vdc
-> MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity,data=journal /dev/vdc /vdc
->
-> [1825745.927937] EXT4-fs: Warning: mounting with data=journal disables delayed allocation and O_DIRECT support!
-> 130 3s ... 2s
-> Ran: 130
-> Passed all 1 tests
-> END TEST: Ext4 4k block w/data=journal Mon Aug 22 22:28:12 EDT 2011
-> e2fsck 1.42-WIP (02-Jul-2011)
-> Pass 1: Checking inodes, blocks, and sizes
-> Pass 2: Checking directory structure
-> Pass 3: Checking directory connectivity
-> Pass 4: Checking reference counts
-> Pass 5: Checking group summary information
-> /dev/vdb: 6030/327680 files (3.1% non-contiguous), 77032/1310720 blocks
-> BEGIN TEST: Ext4 4k block w/dioread_nolock Mon Aug 22 22:28:12 EDT 2011
-> Device: /dev/vdb
-> mke2fs options: -q
-> mount options: -o block_validity,dioread_nolock
-> 000 - unknown test, ignored
-> FSTYP         -- ext4
-> PLATFORM      -- Linux/x86_64 candygram 3.1.0-gcg-DEV
-> MKFS_OPTIONS  -- -q /dev/vdc
-> MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity,dioread_nolock /dev/vdc /vdc
->
-> [1825749.476751] EXT4-fs (vdc): can't mount with dioread_nolock if block size != PAGE_SIZE
-> our local mount routine ...
-> mount: wrong fs type, bad option, bad superblock on /dev/vdc,
->         missing codepage or helper program, or other error
->         In some cases useful info is found in syslog - try
->         dmesg | tail  or so
->
-> check: failed to mount $SCRATCH_DEV using specified options
-> Passed all 0 tests
-> END TEST: Ext4 4k block w/dioread_nolock Mon Aug 22 22:28:12 EDT 2011
-> e2fsck 1.42-WIP (02-Jul-2011)
-> Pass 1: Checking inodes, blocks, and sizes
-> Pass 2: Checking directory structure
-> Pass 3: Checking directory connectivity
-> Pass 4: Checking reference counts
-> Pass 5: Checking group summary information
-> /dev/vdb: 6030/327680 files (3.1% non-contiguous), 77032/1310720 blocks
-> INIT: Switching to runlevel: 0
-> INIT: Sending processes the TERM signal
-> error: 'stop-bootlogd' exited outside the expected code flow.
-> Using makefile-style concurrent boot in runlevel 0.
-> Saving random seed...done.
-> Stopping quota service: rpc.rquotad.
-> Turning off quotas...quotaoff: Warning: No quota format detected in the kernel.
-> done.
-> Asking all remaining processes to terminate...done.
-> All processes ended within 1 seconds....done.
-> Deconfiguring network interfaces...done.
-> Cleaning up ifupdown....
-> Saving the system clock.
-> Hardware Clock updated to Mon Aug 22 22:28:15 EDT 2011.
-> Will now unmount temporary filesystems:tmpfs has been unmounted
-> .
-> Will now deactivate swap:.
-> Mounting root filesystem read-only...done.
-> Will now halt.
-> [1825755.423049] Power down.
-> EXIT_SUCCESS
+Hello,
 
+[12027.382589] =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+[12027.382594] [ INFO: inconsistent lock state ]
+[12027.382600] 3.1.0-rc3-dbg-00548-gba7b8dc #692
+[12027.382603] ---------------------------------
+[12027.382607] inconsistent {RECLAIM_FS-ON-W} -> {IN-RECLAIM_FS-W} usage.
+[12027.382614] khugepaged/552 [HC0[0]:SC0[0]:HE1:SE1] takes:
+[12027.382619]  (&sb->s_type->i_mutex_key#9){+.+.?.}, at: [<ffffffff811c11f=
+7>] ext4_evict_inode+0xb0/0x51d
+[12027.382640] {RECLAIM_FS-ON-W} state was registered at:
+[12027.382644]   [<ffffffff81071f8b>] mark_held_locks+0xc3/0xef
+[12027.382655]   [<ffffffff810725a8>] lockdep_trace_alloc+0x9b/0xbd
+[12027.382663]   [<ffffffff810ff580>] kmem_cache_alloc+0x2a/0x1a4
+[12027.382671]   [<ffffffff8111d972>] __d_alloc+0x22/0x164
+[12027.382679]   [<ffffffff8111dd5d>] d_alloc+0x19/0x7a
+[12027.382686]   [<ffffffff811132f9>] d_alloc_and_lookup+0x27/0x66
+[12027.382695]   [<ffffffff81113dc8>] do_lookup+0x1df/0x2e9
+[12027.382702]   [<ffffffff81114566>] link_path_walk+0x1b3/0x738
+[12027.382709]   [<ffffffff81115499>] path_lookupat+0x57/0x5ee
+[12027.382717]   [<ffffffff81115a53>] do_path_lookup+0x23/0x9f
+[12027.382724]   [<ffffffff81116f75>] user_path_at+0x54/0x91
+[12027.382731]   [<ffffffff8110dc46>] vfs_fstatat+0x3f/0x69
+[12027.382738]   [<ffffffff8110dca1>] vfs_stat+0x16/0x18
+[12027.382745]   [<ffffffff8110dd87>] sys_newstat+0x15/0x2e
+[12027.382751]   [<ffffffff814965d2>] system_call_fastpath+0x16/0x1b
+[12027.382761] irq event stamp: 9401171
+[12027.382765] hardirqs last  enabled at (9401171): [<ffffffff810cee07>] fr=
+ee_hot_cold_page+0x168/0x181
+[12027.382776] hardirqs last disabled at (9401170): [<ffffffff810cecfd>] fr=
+ee_hot_cold_page+0x5e/0x181
+[12027.382785] softirqs last  enabled at (9399656): [<ffffffff81045555>] __=
+do_softirq+0x261/0x2ff
+[12027.382795] softirqs last disabled at (9399635): [<ffffffff81497abc>] ca=
+ll_softirq+0x1c/0x30
+[12027.382805]=20
+[12027.382805] other info that might help us debug this:
+[12027.382809]  Possible unsafe locking scenario:
+[12027.382811]=20
+[12027.382814]        CPU0
+[12027.382817]        ----
+[12027.382819]   lock(&sb->s_type->i_mutex_key);
+[12027.382826]   <Interrupt>
+[12027.382829]     lock(&sb->s_type->i_mutex_key);
+[12027.382835]=20
+[12027.382836]  *** DEADLOCK ***
+[12027.382838]=20
+[12027.382842] 2 locks held by khugepaged/552:
+[12027.382846]  #0:  (shrinker_rwsem){++++..}, at: [<ffffffff810d6465>] shr=
+ink_slab+0x37/0x3d0
+[12027.382862]  #1:  (&type->s_umount_key#16){+++++.}, at: [<ffffffff8110c5=
+12>] grab_super_passive+0x52/0x76
+[12027.382880]=20
+[12027.382881] stack backtrace:
+[12027.382887] Pid: 552, comm: khugepaged Not tainted 3.1.0-rc3-dbg-00548-g=
+ba7b8dc #692
+[12027.382891] Call Trace:
+[12027.382902]  [<ffffffff81486180>] print_usage_bug+0x28f/0x2a0
+[12027.382913]  [<ffffffff8100cb2a>] ? save_stack_trace+0x27/0x44
+[12027.382922]  [<ffffffff8106ee4e>] ? print_irq_inversion_bug+0x1cd/0x1cd
+[12027.382929]  [<ffffffff8106fa1e>] mark_lock+0x2eb/0x53a
+[12027.382937]  [<ffffffff81070321>] __lock_acquire+0x6b4/0x164b
+[12027.382945]  [<ffffffff8106d318>] ? __bfs+0x23/0x1c7
+[12027.382952]  [<ffffffff8106f62c>] ? check_irq_usage+0x99/0xab
+[12027.382960]  [<ffffffff810711df>] ? __lock_acquire+0x1572/0x164b
+[12027.382968]  [<ffffffff811c11f7>] ? ext4_evict_inode+0xb0/0x51d
+[12027.382975]  [<ffffffff8107186e>] lock_acquire+0x138/0x1ac
+[12027.382982]  [<ffffffff811c11f7>] ? ext4_evict_inode+0xb0/0x51d
+[12027.382990]  [<ffffffff811c11f7>] ? ext4_evict_inode+0xb0/0x51d
+[12027.382998]  [<ffffffff8148e953>] mutex_lock_nested+0x5e/0x325
+[12027.383005]  [<ffffffff811c11f7>] ? ext4_evict_inode+0xb0/0x51d
+[12027.383013]  [<ffffffff81120013>] ? evict+0x64/0x15c
+[12027.383022]  [<ffffffff81256185>] ? do_raw_spin_lock+0x6b/0x122
+[12027.383030]  [<ffffffff811c11f7>] ext4_evict_inode+0xb0/0x51d
+[12027.383038]  [<ffffffff811c1147>] ? ext4_da_writepages+0x6df/0x6df
+[12027.383045]  [<ffffffff81120050>] evict+0xa1/0x15c
+[12027.383051]  [<ffffffff81120137>] dispose_list+0x2c/0x38
+[12027.383059]  [<ffffffff811211c6>] prune_icache_sb+0x28c/0x29b
+[12027.383067]  [<ffffffff8110c60b>] prune_super+0xd5/0x140
+[12027.383074]  [<ffffffff810d6624>] shrink_slab+0x1f6/0x3d0
+[12027.383083]  [<ffffffff810d9448>] do_try_to_free_pages+0x1ae/0x330
+[12027.383091]  [<ffffffff810d979b>] try_to_free_pages+0x110/0x241
+[12027.383099]  [<ffffffff810ce50a>] __alloc_pages_nodemask+0x4d2/0x801
+[12027.383108]  [<ffffffff814902ea>] ? _raw_spin_unlock_irqrestore+0x56/0x74
+[12027.383116]  [<ffffffff81102510>] khugepaged_alloc_hugepage+0x50/0xdd
+[12027.383127]  [<ffffffff8105dc32>] ? __init_waitqueue_head+0x46/0x46
+[12027.383134]  [<ffffffff81102aa1>] khugepaged+0x82/0xff5
+[12027.383141]  [<ffffffff8148cadd>] ? schedule+0x353/0xa7e
+[12027.383150]  [<ffffffff8105dc32>] ? __init_waitqueue_head+0x46/0x46
+[12027.383157]  [<ffffffff81102a1f>] ? khugepaged_defrag_store+0x57/0x57
+[12027.383164]  [<ffffffff8105d3e6>] kthread+0x9a/0xa2
+[12027.383173]  [<ffffffff814979c4>] kernel_thread_helper+0x4/0x10
+[12027.383181]  [<ffffffff8102d6d6>] ? finish_task_switch+0x76/0xf0
+[12027.383188]  [<ffffffff814907b8>] ? retint_restore_args+0x13/0x13
+[12027.383196]  [<ffffffff8105d34c>] ? __init_kthread_worker+0x53/0x53
+[12027.383203]  [<ffffffff814979c0>] ? gs_change+0x13/0x13
+
+
+	Sergey
+
+--KsGdsel6WgEHnImy
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+
+iJwEAQECAAYFAk5TmKUACgkQfKHnntdSXjQFGQQAkRjlZO/acTyaKoYCPwRdvx9U
+86JOw6Cc+8vm9EHosBXG2L/b2Wq0GtkWKuzpwjJCb9OZe30HzMWWCKXn4GxQxYe9
+m8iQUP+wNzvEwLBTsHW/HOtKgJlXsKj+IzqDlH8f0OQLQ7tozWzyTjJQ0iGxkon9
+m8Bw9UulJ7gK2ncZxqQ=
+=Ryum
+-----END PGP SIGNATURE-----
+
+--KsGdsel6WgEHnImy--
