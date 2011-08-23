@@ -1,89 +1,66 @@
-From: Ivan Shmakov <ivan@gray.siamics.net>
-Subject: Re: ext2fs_test_block_bitmap (): Unknown code ext2 47 #0, etc.
-Date: Wed, 24 Aug 2011 00:26:37 +0700
-Message-ID: <86bovgqbsi.fsf@gray.siamics.net>
-References: <86ei0p8ve2.fsf@gray.siamics.net>
-	<alpine.LFD.2.00.1108151125470.3695@dhcp-27-109.brq.redhat.com>
-	<86zkjb3p7f.fsf@gray.siamics.net>
-	<alpine.LFD.2.00.1108151759040.3695@dhcp-27-109.brq.redhat.com>
-	<86ei0k1tbc.fsf@gray.siamics.net> <867h6awuq5.fsf_-_@gray.siamics.net>
-	<20110822043103.GB3671@thunk.org>
-Reply-To: Ivan Shmakov <oneingray@gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 0/2] 32/64 bit llseek hashes (v3)
+Date: Tue, 23 Aug 2011 17:56:08 -0400
+Message-ID: <20110823215608.GH25350@fieldses.org>
+References: <20110816115404.1810393.47239.stgit@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from lo.gmane.org ([80.91.229.12]:38093 "EHLO lo.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755507Ab1HWR04 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 23 Aug 2011 13:26:56 -0400
-Received: from list by lo.gmane.org with local (Exim 4.69)
-	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
-	id 1QvukZ-0003rj-85
-	for linux-ext4@vger.kernel.org; Tue, 23 Aug 2011 19:26:55 +0200
-Received: from gray.am-1.org ([188.120.231.229])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Tue, 23 Aug 2011 19:26:55 +0200
-Received: from oneingray by gray.am-1.org with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Tue, 23 Aug 2011 19:26:55 +0200
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, bernd.schubert@fastmail.fm, hch@infradead.org,
+	adilger@whamcloud.com, yong.fan@whamcloud.com,
+	linux-fsdevel@vger.kernel.org
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20110816115404.1810393.47239.stgit@localhost.localdomain>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
->>>>> Ted Ts'o <tytso@mit.edu> writes:
->>>>> On Thu, Aug 18, 2011 at 11:27:30PM +0700, Ivan Shmakov wrote:
+On Tue, Aug 16, 2011 at 01:54:04PM +0200, Bernd Schubert wrote:
+> With the ext3/ext4 directory index implementation hashes are used to specify
+> offsets for llseek(). For compatibility with NFSv2 and 32-bit user space
+> on 64-bit systems (kernel space) ext3/ext4 currently only return 32-bit 
+> hashes and therefore the probability of hash collisions for larger directories
+> is rather high. As recently reported on the NFS mailing list that theoretical
+> problem also happens on real systems:
+> http://comments.gmane.org/gmane.linux.nfs/40863
+> 
+> The following series adds two new f_mode flags to tell ext4
+> to use 32-bit or 64-bit hash values for llseek() calls.
+> These flags can then used by network file systems, such as NFS, to
+> request 32-bit or 64-bit offsets (hashes).
+> 
+> Version 3:
+> - remove patch "RFC: Remove check for a 32-bit cookie in nfsd4_readdir()",
+>   I think Bruce wanted to take it seperately as bug fix. It should be applied
+>   before applying the remaining NFS patches, as without it NFSv4 will always
+>   fail with the new 64-bit ext4 seek hashes.
 
-[=E2=80=A6]
+Yes, applied to my for-3.2 branch at
+git://linux-nfs.org/~bfields/linux.git.
 
- >> However, I'm getting the following message on stderr upon a call
- >> (only the first one?) to ext2fs_test_block_bitmap ():
+For the NFS patches:
 
- >> --cut--
- >> Unknown code ext2 47 #0 for block bitmap for /dev/stdin
- >> --cut--
+	Acked-by: J. Bruce Fields <bfields@redhat.com>
 
- > You're not getting a human-readable error message because you need t=
-o
- > add the following at the beginning of your program:
+OK by me if they go in through ext4 tree, or however's most convenient.
 
- > add_error_table(&et_ext2_error_table);
+--b.
 
-	Thanks for the suggestion!
-
-[=E2=80=A6]
-
- > The 47th error message in the ext2 error table, which would have bee=
-n
- > printed if you had called add_error_table(), is:
-
- > Illegal block number passed to ext2fs_test_block_bitmap
-
- > This means you've passed in a block number which is out-of-range for
- > the block bitmap.
-
-	Do I understand it correctly that the block #0 isn't covered by
-	any bitmap?  (I guess it's reserved for bootloaders, etc.)
-
- >> Also, do I understand it correctly that I need to call
- >> ext2fs_read_block_bitmap () before accessing the block_map member o=
-f
- >> the ext2_filsys structure?
-
- > Yes, or if you are going to need to read in both the block and inode
- > bitmaps, you can use ext2fs_read_bitmaps(), which will be more
- > optimal for reading in the block bitmaps.
-
-	ACK.  Thanks.
-
---=20
-=46SF associate member #7257	Coming soon: Software Freedom Day
-http://mail.sf-day.org/lists/listinfo/ planning-ru (ru), sfd-discuss (e=
-n)
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> - split "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)" into two
+>   two separate patches as suggested by Bruce, one patch to rename 
+>   'access' to 'may_flags'. And the remainder of the original patch to set 
+>   FMODE_32BITHASH/FMODE_64BITHASH flags and to introduce the new 
+>   NFSD_MAY_64BIT_COOKIE flag
+> 
+> Version 2:
+> - use f_mode instead of O_* flags and also in a separate patch
+> - introduce EXT4_HTREE_EOF_32BIT and EXT4_HTREE_EOF_64BIT
+> - fix SEEK_END in ext4_dir_llseek()
+> - set f_mode flags in NFS code as early as possible and introduce a new
+>   NFSD_MAY_64BIT_COOKIE flag for that
+> 
+> --
+> Bernd Schubert
+> Fraunhofer ITWM
+> 
