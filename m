@@ -1,47 +1,43 @@
-From: Tejun Heo <tj@kernel.org>
-Subject: Re: [PATCH 2/2] percpu_counter: Put a reasonable upper bound on
- percpu_counter_batch
-Date: Fri, 26 Aug 2011 11:00:16 +0200
-Message-ID: <20110826090016.GD2632@htj.dyndns.org>
-References: <20110826072622.406d3395@kryten>
- <20110826072927.5b4781f9@kryten>
+From: Tao Ma <tm@tao.ma>
+Subject: Re: [URGENT PATCH] ext4: fix potential deadlock in ext4_evict_inode()
+Date: Fri, 26 Aug 2011 17:03:14 +0800
+Message-ID: <4E576152.9060405@tao.ma>
+References: <E1QwnAu-00087H-8X@tytso-glaptop.cam.corp.google.com> <20110826073507.GZ3162@dastard> <20110826084403.GA3162@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, eric.dumazet@gmail.com,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Anton Blanchard <anton@samba.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20110826072927.5b4781f9@kryten>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>, Jiaying Zhang <jiayingz@google.com>,
+	linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from oproxy4-pub.bluehost.com ([69.89.21.11]:58752 "HELO
+	oproxy4-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753592Ab1HZJDW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Aug 2011 05:03:22 -0400
+In-Reply-To: <20110826084403.GA3162@dastard>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 26, 2011 at 07:29:27AM +1000, Anton Blanchard wrote:
+On 08/26/2011 04:44 PM, Dave Chinner wrote:
+> On Fri, Aug 26, 2011 at 05:35:07PM +1000, Dave Chinner wrote:
+>> On Thu, Aug 25, 2011 at 11:33:44PM -0400, Theodore Ts'o wrote:
+>>>
+>>> Note: this will probably need to be sent to Linus as an emergency
+>>> bugfix ASAP, since it was introduced in 3.1-rc1, so it represents a
+>>> regression.
+>>
+>> It doesn't appear to be a bug. All of the new ext4 lockdep reports
+>> in 3.1 I've seen (except for the mmap_sem/i_mutex one) are false
+>> positives....
 > 
-> When testing on a 1024 thread ppc64 box I noticed a large amount of
-> CPU time in ext4 code.
-> 
-> ext4_has_free_blocks has a fast path to avoid summing every free and
-> dirty block per cpu counter, but only if the global count shows more
-> free blocks than the maximum amount that could be stored in all the
-> per cpu counters.
-> 
-> Since percpu_counter_batch scales with num_online_cpus() and the maximum
-> amount in all per cpu counters is percpu_counter_batch * num_online_cpus(),
-> this breakpoint grows at O(n^2).
-> 
-> This issue will also hit with users of percpu_counter_compare which
-> does a similar thing for one percpu counter.
-> 
-> I chose to cap percpu_counter_batch at 1024 as a conservative first
-> step, but we may want to reduce it further based on further benchmarking.
-> 
-> Signed-off-by: Anton Blanchard <anton@samba.org>
+> While the lockdep report is false positive, I agree that your
+> change is the right fix to make - the IO completions are already
+> queued on the workqueue, so they don't need to be flushed to get
+> them to complete. All that needs to be done is call
+> ext4_ioend_wait() for them to complete, and that gets rid of the
+> i_mutex altogether. (*)
+ext4_ioend_wait can't work here for a nasty bug. Please see the commit
+log of 2581fdc8.
 
-Yeah, capping the upper bound seems reasonable but can you please add
-some comment explaining why the upper bound is necessary there?
-
-Thank you.
-
--- 
-tejun
+Thanks
+Tao
