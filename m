@@ -1,36 +1,51 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: question about punch hole
-Date: Fri, 26 Aug 2011 10:53:27 +0800
-Message-ID: <CAGBYx2abeJQBuZDV11WtrprmareZWSNkv-HGdLMvYoMB36mqZA@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Allison Henderson <achender@linux.vnet.ibm.com>
+From: Robin Dong <hao.bigrat@gmail.com>
+Subject: [PATCH 1/2] ext4: remove redundant argument in mb_find_extent()
+Date: Fri, 26 Aug 2011 11:17:21 +0800
+Message-ID: <1314328641-27281-1-git-send-email-hao.bigrat@gmail.com>
+Cc: Robin Dong <sanbai@taobao.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f42.google.com ([209.85.210.42]:37355 "EHLO
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:45535 "EHLO
 	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750865Ab1HZCx1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Aug 2011 22:53:27 -0400
-Received: by pzk37 with SMTP id 37so3498953pzk.1
-        for <linux-ext4@vger.kernel.org>; Thu, 25 Aug 2011 19:53:27 -0700 (PDT)
+	with ESMTP id S1751427Ab1HZDRb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Aug 2011 23:17:31 -0400
+Received: by pzk37 with SMTP id 37so3527969pzk.1
+        for <linux-ext4@vger.kernel.org>; Thu, 25 Aug 2011 20:17:30 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Allison,
+From: Robin Dong <sanbai@taobao.com>
 
-Currently, punch hole flushes all pages to disk and releases pages in
-page cache, and then calls ext4_ext_map_blocks.
+The argument of "ord" in mb_find_extent is not necessary.
 
-Assume that if a new page in the punching's range is mapped after
-releasing pages and before down_write i_data_sem,
-then ext4_ext_map_blocks will release map info of the page in extent
-tree.  However, up layers does not know this, and they think the page
-is mapped.
+Signed-off-by: Robin Dong <sanbai@taobao.com>
+---
+ fs/ext4/mballoc.c |    4 +---
+ 1 files changed, 1 insertions(+), 3 deletions(-)
 
-I can not find how punch hole handle the situation above.  Could you
-shed a light on it?
-
-
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 17a5a57..cc8ed5a 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1390,7 +1390,6 @@ static int mb_find_extent(struct ext4_buddy *e4b, int order, int block,
+ {
+ 	int next = block;
+ 	int max;
+-	int ord;
+ 	void *buddy;
+ 
+ 	assert_spin_locked(ext4_group_lock_ptr(e4b->bd_sb, e4b->bd_group));
+@@ -1432,9 +1431,8 @@ static int mb_find_extent(struct ext4_buddy *e4b, int order, int block,
+ 		if (mb_test_bit(next, EXT4_MB_BITMAP(e4b)))
+ 			break;
+ 
+-		ord = mb_find_order_for_block(e4b, next);
++		order = mb_find_order_for_block(e4b, next);
+ 
+-		order = ord;
+ 		block = next >> order;
+ 		ex->fe_len += 1 << order;
+ 	}
 -- 
-Best Wishes
-Yongqiang Yang
+1.7.4.1
+
