@@ -1,52 +1,50 @@
-From: Eric Dumazet <eric.dumazet@gmail.com>
-Subject: Re: [PATCH 2/2] percpu_counter: Put a reasonable upper bound on
- percpu_counter_batch
-Date: Fri, 26 Aug 2011 10:39:43 +0200
-Message-ID: <1314347983.2563.1.camel@edumazet-HP-Compaq-6005-Pro-SFF-PC>
-References: <20110826072622.406d3395@kryten>
-	 <20110826072927.5b4781f9@kryten>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [URGENT PATCH] ext4: fix potential deadlock in ext4_evict_inode()
+Date: Fri, 26 Aug 2011 18:44:03 +1000
+Message-ID: <20110826084403.GA3162@dastard>
+References: <E1QwnAu-00087H-8X@tytso-glaptop.cam.corp.google.com>
+ <20110826073507.GZ3162@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, tj@kernel.org,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Anton Blanchard <anton@samba.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jiaying Zhang <jiayingz@google.com>, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:60116 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753256Ab1HZIjo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Aug 2011 04:39:44 -0400
-In-Reply-To: <20110826072927.5b4781f9@kryten>
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:37173 "EHLO
+	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753857Ab1HZIoI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 26 Aug 2011 04:44:08 -0400
+Content-Disposition: inline
+In-Reply-To: <20110826073507.GZ3162@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Le vendredi 26 ao=C3=BBt 2011 =C3=A0 07:29 +1000, Anton Blanchard a =C3=
-=A9crit :
+On Fri, Aug 26, 2011 at 05:35:07PM +1000, Dave Chinner wrote:
+> On Thu, Aug 25, 2011 at 11:33:44PM -0400, Theodore Ts'o wrote:
+> > 
+> > Note: this will probably need to be sent to Linus as an emergency
+> > bugfix ASAP, since it was introduced in 3.1-rc1, so it represents a
+> > regression.
+> 
+> It doesn't appear to be a bug. All of the new ext4 lockdep reports
+> in 3.1 I've seen (except for the mmap_sem/i_mutex one) are false
+> positives....
 
-> +/*
-> + * We set the batch at 2 * num_online_cpus(), with a minimum of 32 a=
-nd
-> + * a maximum of 1024.
-> + */
->  static void compute_batch_value(void)
->  {
->  	int nr =3D num_online_cpus();
-> =20
-> -	percpu_counter_batch =3D max(32, nr*2);
-> +	percpu_counter_batch =3D min(1024, max(32, nr*2));
->  }
-> =20
->  static int __cpuinit percpu_counter_hotcpu_callback(struct notifier_=
-block *nb,
+While the lockdep report is false positive, I agree that your
+change is the right fix to make - the IO completions are already
+queued on the workqueue, so they don't need to be flushed to get
+them to complete. All that needs to be done is call
+ext4_ioend_wait() for them to complete, and that gets rid of the
+i_mutex altogether. (*)
 
-Or use the following :
+Sorry for the noise, Ted.
 
-percpu_counter_batch =3D clamp(nr*2, 32, 1024);
+Cheers,
 
+Dave.
 
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+(*) Even better would be to get rid of that flush list altogether
+and just use ext4_ioend_wait() everywhere....
+-- 
+Dave Chinner
+david@fromorbit.com
