@@ -1,44 +1,47 @@
-From: Tao Ma <tm@tao.ma>
+From: Christoph Hellwig <hch@infradead.org>
 Subject: Re: [URGENT PATCH] ext4: fix potential deadlock in ext4_evict_inode()
-Date: Fri, 26 Aug 2011 17:10:35 +0800
-Message-ID: <4E57630B.7000202@tao.ma>
-References: <E1QwnAu-00087H-8X@tytso-glaptop.cam.corp.google.com> <20110826073507.GZ3162@dastard> <20110826084403.GA3162@dastard> <20110826085057.GA13311@infradead.org>
+Date: Fri, 26 Aug 2011 05:17:18 -0400
+Message-ID: <20110826091718.GA3179@infradead.org>
+References: <E1QwnAu-00087H-8X@tytso-glaptop.cam.corp.google.com>
+ <20110826073507.GZ3162@dastard>
+ <20110826084403.GA3162@dastard>
+ <20110826085057.GA13311@infradead.org>
+ <4E57630B.7000202@tao.ma>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Dave Chinner <david@fromorbit.com>, Theodore Ts'o <tytso@mit.edu>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Dave Chinner <david@fromorbit.com>,
+	Theodore Ts'o <tytso@mit.edu>,
 	Jiaying Zhang <jiayingz@google.com>, linux-ext4@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy8-pub.bluehost.com ([69.89.22.20]:54125 "HELO
-	oproxy8-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1754566Ab1HZJKk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Aug 2011 05:10:40 -0400
-In-Reply-To: <20110826085057.GA13311@infradead.org>
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:40858
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753748Ab1HZJRX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 26 Aug 2011 05:17:23 -0400
+Content-Disposition: inline
+In-Reply-To: <4E57630B.7000202@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Christoph,
-On 08/26/2011 04:50 PM, Christoph Hellwig wrote:
-> On Fri, Aug 26, 2011 at 06:44:03PM +1000, Dave Chinner wrote:
->> While the lockdep report is false positive, I agree that your
->> change is the right fix to make - the IO completions are already
->> queued on the workqueue, so they don't need to be flushed to get
->> them to complete. All that needs to be done is call
->> ext4_ioend_wait() for them to complete, and that gets rid of the
->> i_mutex altogether. (*)
-> 
-> The really correct fix is to stop using the ioend wait like I did
-> in my pending series for XFS.  The only thing preventing ext4 from
-> doing that is that it marks pages uptodate from irq context,
-> before finishing the ioends.  This has a lot of nasty implications
-> as the the page might be marked uptodate without actually having
-> that state on disk.
-yeah, the DIO read on a buffer write file issue is also another side
-effect of it.[1]
-So could you please talk a little more about how xfs handle it now?
+On Fri, Aug 26, 2011 at 05:10:35PM +0800, Tao Ma wrote:
+> yeah, the DIO read on a buffer write file issue is also another side
+> effect of it.[1]
+> So could you please talk a little more about how xfs handle it now?
 
-[1] http://www.spinics.net/lists/linux-ext4/msg27139.html
+The thing I have queued up for 3.2 makes it very simple:  we do not
+track I/O ends any more at all, outside of the workqueue.
 
-Thanks
-Tao
+For buffered I/O we only mark the page uptodate when all unwritten
+extent conversion and size updates have finished.  All data integrity
+callers and inode eviction wait for the pages to be update so we are
+covered.
+
+For direct I/O we only call inode_dio_done and aio_complete once all
+unwritten extent size updates are done.  Inodes can't be evicted until
+we drop a reference to the inode, which can't happen until the
+sync or async dio is done and we drop the inode reference the VFS
+holds for it.  Sync and fsync are only guaranteed to pick up I/O
+that has returned to userspace, so we are covered for that as well.
+
