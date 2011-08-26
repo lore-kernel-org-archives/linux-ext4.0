@@ -1,72 +1,57 @@
-From: Dan Carpenter <error27@gmail.com>
-Subject: [patch 2/2] jbd2: use gfp_t instead of int
-Date: Fri, 26 Aug 2011 12:20:37 +0300
-Message-ID: <20110826092036.GN5975@shale.localdomain>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [URGENT PATCH] ext4: fix potential deadlock in ext4_evict_inode()
+Date: Fri, 26 Aug 2011 19:24:26 +1000
+Message-ID: <20110826092426.GB3162@dastard>
+References: <E1QwnAu-00087H-8X@tytso-glaptop.cam.corp.google.com>
+ <20110826073507.GZ3162@dastard>
+ <20110826084403.GA3162@dastard>
+ <4E576152.9060405@tao.ma>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "open list:JOURNALLING LAYER..." <linux-ext4@vger.kernel.org>,
-	kernel-janitors@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, Jiaying Zhang <jiayingz@google.com>,
+	linux-ext4@vger.kernel.org
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f42.google.com ([209.85.210.42]:44895 "EHLO
-	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754198Ab1HZJWy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Aug 2011 05:22:54 -0400
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:43440 "EHLO
+	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753892Ab1HZJYa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 26 Aug 2011 05:24:30 -0400
 Content-Disposition: inline
+In-Reply-To: <4E576152.9060405@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This silences some Sparse warnings:
-fs/jbd2/transaction.c:135:69: warning: incorrect type in argument 2 (different base types)
-fs/jbd2/transaction.c:135:69:    expected restricted gfp_t [usertype] flags
-fs/jbd2/transaction.c:135:69:    got int [signed] gfp_mask
+On Fri, Aug 26, 2011 at 05:03:14PM +0800, Tao Ma wrote:
+> On 08/26/2011 04:44 PM, Dave Chinner wrote:
+> > On Fri, Aug 26, 2011 at 05:35:07PM +1000, Dave Chinner wrote:
+> >> On Thu, Aug 25, 2011 at 11:33:44PM -0400, Theodore Ts'o wrote:
+> >>>
+> >>> Note: this will probably need to be sent to Linus as an emergency
+> >>> bugfix ASAP, since it was introduced in 3.1-rc1, so it represents a
+> >>> regression.
+> >>
+> >> It doesn't appear to be a bug. All of the new ext4 lockdep reports
+> >> in 3.1 I've seen (except for the mmap_sem/i_mutex one) are false
+> >> positives....
+> > 
+> > While the lockdep report is false positive, I agree that your
+> > change is the right fix to make - the IO completions are already
+> > queued on the workqueue, so they don't need to be flushed to get
+> > them to complete. All that needs to be done is call
+> > ext4_ioend_wait() for them to complete, and that gets rid of the
+> > i_mutex altogether. (*)
+> ext4_ioend_wait can't work here for a nasty bug. Please see the commit
+> log of 2581fdc8.
 
-Signed-off-by: Dan Carpenter <error27@gmail.com>
+Unless I'm missing something, the described race with
+ext4_truncate() flushing completions without the i_mutex lock held
+cannot occur if you've already waited for all pending completions to
+drain by calling ext4_ioend_wait()....
 
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 38f307b..3dd101e 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1106,9 +1106,9 @@ static inline handle_t *journal_current_handle(void)
-  */
- 
- extern handle_t *jbd2_journal_start(journal_t *, int nblocks);
--extern handle_t *jbd2__journal_start(journal_t *, int nblocks, int gfp_mask);
-+extern handle_t *jbd2__journal_start(journal_t *, int nblocks, gfp_t gfp_mask);
- extern int	 jbd2_journal_restart(handle_t *, int nblocks);
--extern int	 jbd2__journal_restart(handle_t *, int nblocks, int gfp_mask);
-+extern int	 jbd2__journal_restart(handle_t *, int nblocks, gfp_t gfp_mask);
- extern int	 jbd2_journal_extend (handle_t *, int nblocks);
- extern int	 jbd2_journal_get_write_access(handle_t *, struct buffer_head *);
- extern int	 jbd2_journal_get_create_access (handle_t *, struct buffer_head *);
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 8d7013c..9fc049d 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -115,7 +115,7 @@ static inline void update_t_max_wait(transaction_t *transaction,
-  */
- 
- static int start_this_handle(journal_t *journal, handle_t *handle,
--			     int gfp_mask)
-+			     gfp_t gfp_mask)
- {
- 	transaction_t	*transaction, *new_transaction = NULL;
- 	tid_t		tid;
-@@ -320,7 +320,7 @@ static handle_t *new_handle(int nblocks)
-  * Return a pointer to a newly allocated handle, or an ERR_PTR() value
-  * on failure.
-  */
--handle_t *jbd2__journal_start(journal_t *journal, int nblocks, int gfp_mask)
-+handle_t *jbd2__journal_start(journal_t *journal, int nblocks, gfp_t gfp_mask)
- {
- 	handle_t *handle = journal_current_handle();
- 	int err;
-@@ -443,7 +443,7 @@ out:
-  * transaction capabable of guaranteeing the requested number of
-  * credits.
-  */
--int jbd2__journal_restart(handle_t *handle, int nblocks, int gfp_mask)
-+int jbd2__journal_restart(handle_t *handle, int nblocks, gfp_t gfp_mask)
- {
- 	transaction_t *transaction = handle->h_transaction;
- 	journal_t *journal = transaction->t_journal;
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
