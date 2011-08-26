@@ -1,81 +1,71 @@
-From: Jiaying Zhang <jiayingz@google.com>
-Subject: Re: [URGENT PATCH] ext4: fix potential deadlock in ext4_evict_inode()
-Date: Fri, 26 Aug 2011 09:58:45 -0700
-Message-ID: <CAFgt=MBAGurdr6Cce9zZ5sWX=BQz4RXJ4HHVWuUvM+gPcgpkFg@mail.gmail.com>
-References: <E1QwnAu-00087H-8X@tytso-glaptop.cam.corp.google.com>
-	<20110826073507.GZ3162@dastard>
-	<20110826084403.GA3162@dastard>
-	<4E576152.9060405@tao.ma>
-	<20110826092426.GB3162@dastard>
-	<4E57670B.6070205@tao.ma>
-	<20110826155234.GC5176@thunk.org>
+From: Justin Maggard <jmaggard10@gmail.com>
+Subject: Re: New resize interface implementation
+Date: Fri, 26 Aug 2011 13:06:48 -0700
+Message-ID: <CAKgsxVRTwoFgdsnbF7nd9AmQjsbHaK93AVMSpM1ac_wTifBbvw@mail.gmail.com>
+References: <1313033308-882-1-git-send-email-xiaoqiangnk@gmail.com>
+	<CAKgsxVQAwEetdyGcOciA8+wi_eLA7Fmq60kfDvEK1WzgYxdUMQ@mail.gmail.com>
+	<CAGBYx2bdaGRMLmWiz752AGs9EfygXQU3nEMYxLNCCjVYkiuG-A@mail.gmail.com>
+	<CAKgsxVSfrCt6tyxDdczLYFu0YeGXfuEAA=o_5T4TOkeNXSG8iA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Tao Ma <tm@tao.ma>, Dave Chinner <david@fromorbit.com>,
-	linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([74.125.121.67]:6246 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751032Ab1HZQ6s convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Aug 2011 12:58:48 -0400
-Received: from hpaq5.eem.corp.google.com (hpaq5.eem.corp.google.com [172.25.149.5])
-	by smtp-out.google.com with ESMTP id p7QGwlhm020647
-	for <linux-ext4@vger.kernel.org>; Fri, 26 Aug 2011 09:58:47 -0700
-Received: from gxk7 (gxk7.prod.google.com [10.202.11.7])
-	by hpaq5.eem.corp.google.com with ESMTP id p7QGvqBx007006
-	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=NOT)
-	for <linux-ext4@vger.kernel.org>; Fri, 26 Aug 2011 09:58:46 -0700
-Received: by gxk7 with SMTP id 7so3478682gxk.7
-        for <linux-ext4@vger.kernel.org>; Fri, 26 Aug 2011 09:58:45 -0700 (PDT)
-In-Reply-To: <20110826155234.GC5176@thunk.org>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:61987 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752176Ab1HZUGt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Aug 2011 16:06:49 -0400
+Received: by gya6 with SMTP id 6so3129321gya.19
+        for <linux-ext4@vger.kernel.org>; Fri, 26 Aug 2011 13:06:48 -0700 (PDT)
+In-Reply-To: <CAKgsxVSfrCt6tyxDdczLYFu0YeGXfuEAA=o_5T4TOkeNXSG8iA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+On Wed, Aug 17, 2011 at 12:28 AM, Yongqiang Yang <xiaoqiangnk@gmail.com=
+> wrote:
+> On Tue, Aug 16, 2011 at 8:22 AM, Justin Maggard <jmaggard10@gmail.com=
+> wrote:
+> > Does this patch set combined with your e2fsprogs patch add 64-bit r=
+esize
+> > support now, or does it just make it easier to add later?
+> YES. e2fsprgos's patch is ready too.
 
-On Fri, Aug 26, 2011 at 8:52 AM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Fri, Aug 26, 2011 at 05:27:39PM +0800, Tao Ma wrote:
->> No, it doesn't mean the ext4_truncate. But another race pasted below=
-=2E
->>
->> Flush inode's i_completed_io_list before calling ext4_io_wait to
->> prevent the following deadlock scenario: A page fault happens while
->> some process is writing inode A. During page fault,
->> shrink_icache_memory is called that in turn evicts another inode
->> B. Inode B has some pending io_end work so it calls ext4_ioend_wait(=
-)
->> that waits for inode B's i_ioend_count to become zero. However, inod=
-e
->> B's ioend work was queued behind some of inode A's ioend work on the
->> same cpu's ext4-dio-unwritten workqueue. As the ext4-dio-unwritten
->> thread on that cpu is processing inode A's ioend work, it tries to
->> grab inode A's i_mutex lock. Since the i_mutex lock of inode A is
->> still hold before the page fault happened, we enter a deadlock.
->
-> ... but that shouldn't be a problem since we're not holding A's
-> i_mutex at this point, right? =A0Or am I missing something?
-I think it is possible that we are holding A's i_mutex lock if the page
-fault happens while we are writing inode A. The problem is if we call
-ext4_evict_inode for inode B during the page fault handling and we
-just call ext4_ioend_wait() to wait for inode B's i_ioend_count to
-become zero, we rely on the ext4-dio-unwritten worker thread to
-finish any queued work at some time. But as mentioned in the change
-commit log, B's io_end work may be queued after A's work on the
-same cpu. Since A's i_mutex lock may be still hold during the page
-fault time, the ext4-dio-unwritten worker thread can't make progress.
+So I finally got around to gather the hardware and patching all the
+software components to try out this 64-bit expansion code. =A0The first
+thing I noticed is that there is still a check to make sure the block
+count is 32 bits. =A0However, I can get around it by specifying a size
+string (something like "20T") rather than a block count, in which case
+it will actually try the expansion.
 
-Now thinking about an alternative approach to resolve the deadlock
-mentioned above, maybe we can use mutex_trylock() in
-ext4_end_io_work() and if we can't grab the mutex lock for an inode,
-just requeue the work to the end of workqueue?
+> > If I am making a 64-bit ext4 filesystem today (20TB), and hoping to=
+ resize
+> > it next year to 30TB what features should I set? =A0In my searching=
+ it sounded
+> > like maybe I would need meta_bg, but it is not compatible with the =
+default
+> > resize_inode.
+> You can understand meta_bg here http://linuxsoftware.co.nz/wiki/ext4.
+> Now, ext4 with meta_bg does not support resize. =A0It is in ext4's TO=
+DO list.
+> The feature you should set is resize_inode.
+>
+> > Also, if I am making a <16TB filesystem today, should I turn on the=
+ 64-bit
+> > flag in order to expand to >16TB in the future?
+> Yes. =A0You should turn on 64 bit feature. =A0If the block number is =
+32
+> bit, the size it can support is 2^32 * 2^(log blocksize), =A04K
+> blocksize as an example, it maximum size of a filesystem is 2^32 *
+> 2^12 =3D 2^44 =3D 16TB.
 
-Jiaying
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 - Ted
->
+I think this is where the real problem is with this 64-bit resize
+support. =A0With the 64-bit flag set, the most I can expand by online i=
+s
+just 8TB over the life of the filesystem, because my reserved GDT
+blocks get used up twice as fast as with a 32-bit filesystem. =A0Is
+there any way around this?
+
+-Justin
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
