@@ -1,38 +1,72 @@
 From: Dan Carpenter <error27@gmail.com>
-Subject: [patch 1/2] jbd2: remove an unneeded NULL check
-Date: Fri, 26 Aug 2011 12:19:31 +0300
-Message-ID: <20110826091931.GM5975@shale.localdomain>
+Subject: [patch 2/2] jbd2: use gfp_t instead of int
+Date: Fri, 26 Aug 2011 12:20:37 +0300
+Message-ID: <20110826092036.GN5975@shale.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: "open list:JOURNALLING LAYER..." <linux-ext4@vger.kernel.org>,
 	kernel-janitors@vger.kernel.org
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f42.google.com ([209.85.210.42]:34795 "EHLO
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:44895 "EHLO
 	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754114Ab1HZJVt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Aug 2011 05:21:49 -0400
+	with ESMTP id S1754198Ab1HZJWy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Aug 2011 05:22:54 -0400
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We dereference "transaction" at the start of the function so the NULL
-check isn't needed here.  It's not harmful, but it silences a static
-checker warning when we remove this.
+This silences some Sparse warnings:
+fs/jbd2/transaction.c:135:69: warning: incorrect type in argument 2 (different base types)
+fs/jbd2/transaction.c:135:69:    expected restricted gfp_t [usertype] flags
+fs/jbd2/transaction.c:135:69:    got int [signed] gfp_mask
 
 Signed-off-by: Dan Carpenter <error27@gmail.com>
 
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 38f307b..3dd101e 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1106,9 +1106,9 @@ static inline handle_t *journal_current_handle(void)
+  */
+ 
+ extern handle_t *jbd2_journal_start(journal_t *, int nblocks);
+-extern handle_t *jbd2__journal_start(journal_t *, int nblocks, int gfp_mask);
++extern handle_t *jbd2__journal_start(journal_t *, int nblocks, gfp_t gfp_mask);
+ extern int	 jbd2_journal_restart(handle_t *, int nblocks);
+-extern int	 jbd2__journal_restart(handle_t *, int nblocks, int gfp_mask);
++extern int	 jbd2__journal_restart(handle_t *, int nblocks, gfp_t gfp_mask);
+ extern int	 jbd2_journal_extend (handle_t *, int nblocks);
+ extern int	 jbd2_journal_get_write_access(handle_t *, struct buffer_head *);
+ extern int	 jbd2_journal_get_create_access (handle_t *, struct buffer_head *);
 diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index a242f6f..8d7013c 100644
+index 8d7013c..9fc049d 100644
 --- a/fs/jbd2/transaction.c
 +++ b/fs/jbd2/transaction.c
-@@ -1143,8 +1143,7 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
- 			       jh->b_next_transaction,
- 			       jh->b_next_transaction ?
- 			         jh->b_next_transaction->t_tid : 0,
--			       transaction,
--			       transaction ? transaction->t_tid : 0);
-+			       transaction, transaction->t_tid);
- 			BUG_ON(1);
- 		}
- 		/* And this case is illegal: we can't reuse another
+@@ -115,7 +115,7 @@ static inline void update_t_max_wait(transaction_t *transaction,
+  */
+ 
+ static int start_this_handle(journal_t *journal, handle_t *handle,
+-			     int gfp_mask)
++			     gfp_t gfp_mask)
+ {
+ 	transaction_t	*transaction, *new_transaction = NULL;
+ 	tid_t		tid;
+@@ -320,7 +320,7 @@ static handle_t *new_handle(int nblocks)
+  * Return a pointer to a newly allocated handle, or an ERR_PTR() value
+  * on failure.
+  */
+-handle_t *jbd2__journal_start(journal_t *journal, int nblocks, int gfp_mask)
++handle_t *jbd2__journal_start(journal_t *journal, int nblocks, gfp_t gfp_mask)
+ {
+ 	handle_t *handle = journal_current_handle();
+ 	int err;
+@@ -443,7 +443,7 @@ out:
+  * transaction capabable of guaranteeing the requested number of
+  * credits.
+  */
+-int jbd2__journal_restart(handle_t *handle, int nblocks, int gfp_mask)
++int jbd2__journal_restart(handle_t *handle, int nblocks, gfp_t gfp_mask)
+ {
+ 	transaction_t *transaction = handle->h_transaction;
+ 	journal_t *journal = transaction->t_journal;
