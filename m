@@ -1,48 +1,45 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 5/5 v6] ext4: fix partial page writes
-Date: Fri, 26 Aug 2011 11:47:13 -0400
-Message-ID: <20110826154713.GB5176@thunk.org>
-References: <1314212842-16741-1-git-send-email-achender@linux.vnet.ibm.com>
- <1314212842-16741-6-git-send-email-achender@linux.vnet.ibm.com>
+Subject: Re: [URGENT PATCH] ext4: fix potential deadlock in
+ ext4_evict_inode()
+Date: Fri, 26 Aug 2011 11:52:34 -0400
+Message-ID: <20110826155234.GC5176@thunk.org>
+References: <E1QwnAu-00087H-8X@tytso-glaptop.cam.corp.google.com>
+ <20110826073507.GZ3162@dastard>
+ <20110826084403.GA3162@dastard>
+ <4E576152.9060405@tao.ma>
+ <20110826092426.GB3162@dastard>
+ <4E57670B.6070205@tao.ma>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Allison Henderson <achender@linux.vnet.ibm.com>
+Cc: Dave Chinner <david@fromorbit.com>,
+	Jiaying Zhang <jiayingz@google.com>, linux-ext4@vger.kernel.org
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:37652 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:54685 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754466Ab1HZPrV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 26 Aug 2011 11:47:21 -0400
+	id S1753679Ab1HZPwl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 26 Aug 2011 11:52:41 -0400
 Content-Disposition: inline
-In-Reply-To: <1314212842-16741-6-git-send-email-achender@linux.vnet.ibm.com>
+In-Reply-To: <4E57670B.6070205@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 24, 2011 at 12:07:22PM -0700, Allison Henderson wrote:
-> While running extended fsx tests to verify the preceeding patches,
-> a similar bug was also found in the write operation
+On Fri, Aug 26, 2011 at 05:27:39PM +0800, Tao Ma wrote:
+> No, it doesn't mean the ext4_truncate. But another race pasted below.
 > 
-> When ever a write operation begins or ends in a hole,
-> or extends EOF, the partial page contained in the hole
-> or beyond EOF needs to be zeroed out.
-> 
-> To correct this the new ext4_discard_partial_page_buffers_no_lock
-> routine is used to zero out the partial page, but only for buffer
-> heads that are already unmapped.
-> 
-> Signed-off-by: Allison Henderson <achender@linux.vnet.ibm.com>
+> Flush inode's i_completed_io_list before calling ext4_io_wait to
+> prevent the following deadlock scenario: A page fault happens while
+> some process is writing inode A. During page fault,
+> shrink_icache_memory is called that in turn evicts another inode
+> B. Inode B has some pending io_end work so it calls ext4_ioend_wait()
+> that waits for inode B's i_ioend_count to become zero. However, inode
+> B's ioend work was queued behind some of inode A's ioend work on the
+> same cpu's ext4-dio-unwritten workqueue. As the ext4-dio-unwritten
+> thread on that cpu is processing inode A's ioend work, it tries to
+> grab inode A's i_mutex lock. Since the i_mutex lock of inode A is
+> still hold before the page fault happened, we enter a deadlock.
 
-I haven't had a chance to debug this yet, but FYI, with this patch
-applied, xfstests #224 causes OOM's to result when running under KVM
-with 1024megs.  I tried doubling the memory to 2048 megs, and it
-passed in 4k standard ext4 mode, but then got hit with the OOM killer
-on test #224 in ext3 emulation mode (nodealloc, and with extents not
-enabled in the file system).  Without this patch, and the first four
-patches in the v6 patch series applied, xfstests #224 passes in all of
-the standard configurations (4k, ext3, 1k, data=journal, etc.)
+... but that shouldn't be a problem since we're not holding A's
+i_mutex at this point, right?  Or am I missing something?
 
-I don't know why this is happening, but I'll try to dig into it in the
-next day or two.  Any thoughts or fixes you might suggest would be
-much appreciated.
-
-						- Ted
+	   	       	       	       - Ted
