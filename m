@@ -1,47 +1,38 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [URGENT PATCH] ext4: fix potential deadlock in ext4_evict_inode()
-Date: Fri, 26 Aug 2011 05:17:18 -0400
-Message-ID: <20110826091718.GA3179@infradead.org>
-References: <E1QwnAu-00087H-8X@tytso-glaptop.cam.corp.google.com>
- <20110826073507.GZ3162@dastard>
- <20110826084403.GA3162@dastard>
- <20110826085057.GA13311@infradead.org>
- <4E57630B.7000202@tao.ma>
+From: Dan Carpenter <error27@gmail.com>
+Subject: [patch 1/2] jbd2: remove an unneeded NULL check
+Date: Fri, 26 Aug 2011 12:19:31 +0300
+Message-ID: <20110826091931.GM5975@shale.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Dave Chinner <david@fromorbit.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Jiaying Zhang <jiayingz@google.com>, linux-ext4@vger.kernel.org
-To: Tao Ma <tm@tao.ma>
+Cc: "open list:JOURNALLING LAYER..." <linux-ext4@vger.kernel.org>,
+	kernel-janitors@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:40858
-	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753748Ab1HZJRX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 26 Aug 2011 05:17:23 -0400
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:34795 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754114Ab1HZJVt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Aug 2011 05:21:49 -0400
 Content-Disposition: inline
-In-Reply-To: <4E57630B.7000202@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 26, 2011 at 05:10:35PM +0800, Tao Ma wrote:
-> yeah, the DIO read on a buffer write file issue is also another side
-> effect of it.[1]
-> So could you please talk a little more about how xfs handle it now?
+We dereference "transaction" at the start of the function so the NULL
+check isn't needed here.  It's not harmful, but it silences a static
+checker warning when we remove this.
 
-The thing I have queued up for 3.2 makes it very simple:  we do not
-track I/O ends any more at all, outside of the workqueue.
+Signed-off-by: Dan Carpenter <error27@gmail.com>
 
-For buffered I/O we only mark the page uptodate when all unwritten
-extent conversion and size updates have finished.  All data integrity
-callers and inode eviction wait for the pages to be update so we are
-covered.
-
-For direct I/O we only call inode_dio_done and aio_complete once all
-unwritten extent size updates are done.  Inodes can't be evicted until
-we drop a reference to the inode, which can't happen until the
-sync or async dio is done and we drop the inode reference the VFS
-holds for it.  Sync and fsync are only guaranteed to pick up I/O
-that has returned to userspace, so we are covered for that as well.
-
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index a242f6f..8d7013c 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -1143,8 +1143,7 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
+ 			       jh->b_next_transaction,
+ 			       jh->b_next_transaction ?
+ 			         jh->b_next_transaction->t_tid : 0,
+-			       transaction,
+-			       transaction ? transaction->t_tid : 0);
++			       transaction, transaction->t_tid);
+ 			BUG_ON(1);
+ 		}
+ 		/* And this case is illegal: we can't reuse another
