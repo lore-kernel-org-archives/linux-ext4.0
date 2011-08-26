@@ -1,60 +1,57 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [PATCH 2/2] percpu_counter: Put a reasonable upper bound on percpu_counter_batch
-Date: Fri, 26 Aug 2011 07:48:52 -0400
-Message-ID: <A91A91A5-9EF0-42FE-B1C3-184D65112EA9@mit.edu>
-References: <20110826072622.406d3395@kryten> <20110826072927.5b4781f9@kryten>
-Mime-Version: 1.0 (Apple Message framework v1244.3)
+From: Tao Ma <tm@tao.ma>
+Subject: Re: [URGENT PATCH] ext4: fix potential deadlock in ext4_evict_inode()
+Date: Fri, 26 Aug 2011 22:53:03 +0800
+Message-ID: <4E57B34F.6010508@tao.ma>
+References: <E1QwnAu-00087H-8X@tytso-glaptop.cam.corp.google.com> <20110826073507.GZ3162@dastard> <20110826084403.GA3162@dastard> <20110826085057.GA13311@infradead.org> <4E57630B.7000202@tao.ma> <20110826091718.GA3179@infradead.org> <22BEE903-4141-4D2A-932B-259DF50F14E1@mit.edu>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=windows-1252
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: adilger.kernel@dilger.ca, eric.dumazet@gmail.com, tj@kernel.org,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Anton Blanchard <anton@samba.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20110826072927.5b4781f9@kryten>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Dave Chinner <david@fromorbit.com>,
+	Jiaying Zhang <jiayingz@google.com>, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@MIT.EDU>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from oproxy5-pub.bluehost.com ([67.222.38.55]:42728 "HELO
+	oproxy5-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751368Ab1HZOxZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Aug 2011 10:53:25 -0400
+In-Reply-To: <22BEE903-4141-4D2A-932B-259DF50F14E1@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-
-On Aug 25, 2011, at 5:29 PM, Anton Blanchard wrote:
-
+On 08/26/2011 07:35 PM, Theodore Tso wrote:
 >=20
-> When testing on a 1024 thread ppc64 box I noticed a large amount of
-> CPU time in ext4 code.
+> On Aug 26, 2011, at 5:17 AM, Christoph Hellwig wrote:
 >=20
-> ext4_has_free_blocks has a fast path to avoid summing every free and
-> dirty block per cpu counter, but only if the global count shows more
-> free blocks than the maximum amount that could be stored in all the
-> per cpu counters.
+>> The thing I have queued up for 3.2 makes it very simple:  we do not
+>> track I/O ends any more at all, outside of the workqueue.
+>>
+>> For buffered I/O we only mark the page uptodate when all unwritten
+>> extent conversion and size updates have finished.  All data integrit=
+y
+>> callers and inode eviction wait for the pages to be update so we are
+>> covered.
+>>
+>> For direct I/O we only call inode_dio_done and aio_complete once all
+>> unwritten extent size updates are done.  Inodes can't be evicted unt=
+il
+>> we drop a reference to the inode, which can't happen until the
+>> sync or async dio is done and we drop the inode reference the VFS
+>> holds for it.  Sync and fsync are only guaranteed to pick up I/O
+>> that has returned to userspace, so we are covered for that as well.
 >=20
-> Since percpu_counter_batch scales with num_online_cpus() and the maxi=
-mum
-> amount in all per cpu counters is percpu_counter_batch * num_online_c=
-pus(),
-> this breakpoint grows at O(n^2).
+> Long term, I definitely want to make ext4 do something similar.=20
+> What we have now is just way too fragile=85
+yeah, actually I have done some basic tests about letting
+ext4_free_io_end to clear the page writeback flag for us after the
+unwritten extent conversion, and it does have several problems with bot=
+h
+ext4 and jbd2. I will try to write up some solution for review.
 
-I understand why we would want to reduce this number.   Unfortunately, =
-the
-question is what do we do if all 1024 threads try to do buffered writes=
- into
-the file system at the same instant, when we have less than 4 megabytes
-of space left?
-
-The problem is that we can then do more writes than we have space, and
-we will only find out about it at write back time, when the process may=
- have
-exited already -- at which point data loss is almost inevitable.  (We c=
-ould
-keep the data in cache and frantically page the system administrator to
-delete some files to make room for dirty data, but that's probably not =
-going
-to end well=85.)
-
-What we can do if we must clamp this threshold is to also increase the
-threshold at which we shift away from delayed allocation.  We'll then
-allocate each block at write time, which does mean more CPU and=20
-less efficient allocation of blocks, but if we're down to our last 4 me=
-gabytes,
-there's probably not much we can do that will be efficient as far as
-block layout anyway=85.
-
--- Ted
+Thanks
+Tao
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
