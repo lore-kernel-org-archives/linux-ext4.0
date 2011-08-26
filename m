@@ -1,71 +1,34 @@
-From: Tao Ma <tm@tao.ma>
+From: Dave Chinner <david@fromorbit.com>
 Subject: Re: [URGENT PATCH] ext4: fix potential deadlock in ext4_evict_inode()
-Date: Fri, 26 Aug 2011 11:56:43 +0800
-Message-ID: <4E57197B.8090009@tao.ma>
+Date: Fri, 26 Aug 2011 17:35:07 +1000
+Message-ID: <20110826073507.GZ3162@dastard>
 References: <E1QwnAu-00087H-8X@tytso-glaptop.cam.corp.google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: Jiaying Zhang <jiayingz@google.com>, linux-ext4@vger.kernel.org
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy4-pub.bluehost.com ([69.89.21.11]:43030 "HELO
-	oproxy4-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752793Ab1HZD4s (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Aug 2011 23:56:48 -0400
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:47519 "EHLO
+	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750704Ab1HZHfM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 26 Aug 2011 03:35:12 -0400
+Content-Disposition: inline
 In-Reply-To: <E1QwnAu-00087H-8X@tytso-glaptop.cam.corp.google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
-On 08/26/2011 11:33 AM, Theodore Ts'o wrote:
+On Thu, Aug 25, 2011 at 11:33:44PM -0400, Theodore Ts'o wrote:
+> 
 > Note: this will probably need to be sent to Linus as an emergency
 > bugfix ASAP, since it was introduced in 3.1-rc1, so it represents a
 > regression.
-> 
-> Jiayingz, I'd appreciate if you could review this, since this is a
-> partial undo of commit 2581fdc810, which you authored.  I don't think
-> taking out the call to ext4_flush_complted_IO() should should cause any
-> problems, since it should only delay how long it takes for an inode to
-> be evicted, and in some cases we are already waiting for a truncate or
-> journal commit to complete.  But I don't want to take any chances, so a
-> second pair of eyes would be appreciated.  Thanks!!
-I do agree that the revert can help to resolve that lockdep issue, but I
-think jiaying's patch and the deadlock described in her commit log does
-make sense. So I am working on another way to resolve it and hope to
-send it out today. Please review the patch when it is ready.
 
-Thanks
-Tao
-> 
-> 	      	     	     	  	   - Ted
-> 
-> From 18271e31ece46955c0fd61e726fa7540fddf8924 Mon Sep 17 00:00:00 2001
-> From: Theodore Ts'o <tytso@mit.edu>
-> Date: Thu, 25 Aug 2011 23:26:01 -0400
-> Subject: [PATCH] ext4: fix potential deadlock in ext4_evict_inode()
-> 
-> Commit 2581fdc810 moved ext4_ioend_wait() from ext4_destroy_inode() to
-> ext4_evict_inode().  It also added code to explicitly call
-> ext4_flush_completed_IO(inode):
-> 
-> 	mutex_lock(&inode->i_mutex);
-> 	ext4_flush_completed_IO(inode);
-> 	mutex_unlock(&inode->i_mutex);
-> 
-> Unfortunately, we can't take the i_mutex lock in ext4_evict_inode()
-> without potentially causing a deadlock.
-> 
-> Fix this by removing the code sequence altogether.  This may result in
-> ext4_evict_inode() taking longer to complete, but that's ok, we're not
-> in a rush here.  That just means we have to wait until the workqueue
-> is scheduled, which is OK; there's nothing that says we have to do
-> this work on the current thread, which would require taking a lock
-> that might lead to a deadlock condition.
-> 
-> See Kernel Bugzilla #41682 for one example of the circular locking
-> problem that arise.  Another one can be seen here:
-> 
+It doesn't appear to be a bug. All of the new ext4 lockdep reports
+in 3.1 I've seen (except for the mmap_sem/i_mutex one) are false
+positives....
+
+.....
 > =======================================================
 > [ INFO: possible circular locking dependency detected ]
 > 3.1.0-rc3-00012-g2a22fc1 #1839
@@ -112,28 +75,21 @@ Tao
 >        [<c02030d5>] vfs_write+0x85/0xe3
 >        [<c02031d4>] sys_write+0x40/0x65
 >        [<c06a6ac5>] syscall_call+0x7/0xb
-> 
-> https://bugzilla.kernel.org/show_bug.cgi?id=41682
-> 
-> Cc: stable@kernel.org
-> Cc: Jiaying Zhang <jiayingz@google.com>
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/ext4/inode.c |    3 ---
->  1 files changed, 0 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 29b7148..cf0b515 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -121,9 +121,6 @@ void ext4_evict_inode(struct inode *inode)
->  
->  	trace_ext4_evict_inode(inode);
->  
-> -	mutex_lock(&inode->i_mutex);
-> -	ext4_flush_completed_IO(inode);
-> -	mutex_unlock(&inode->i_mutex);
->  	ext4_ioend_wait(inode);
->  
->  	if (inode->i_nlink) {
 
+That's definitely a false positive - sys_write() will have an active
+reference to the inode, and evict is only called on inodes without
+active references. Hence you can never get a deadlock between an
+inode context with an active reference and the same inode in the
+evict/dispose path because inode cannot be in both places at once...
+
+This is why XFS changes the lockdep context for the its iolock as
+soon as .evict is called on the inode - to stop these false
+positives from being emitted whenever memory reclaim or unmount
+evicts inodes.
+
+Cheers,
+
+dave.
+-- 
+Dave Chinner
+david@fromorbit.com
