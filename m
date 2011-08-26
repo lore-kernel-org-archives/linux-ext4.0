@@ -1,38 +1,47 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [URGENT PATCH] ext4: fix potential deadlock in ext4_evict_inode()
-Date: Fri, 26 Aug 2011 04:50:57 -0400
-Message-ID: <20110826085057.GA13311@infradead.org>
-References: <E1QwnAu-00087H-8X@tytso-glaptop.cam.corp.google.com>
- <20110826073507.GZ3162@dastard>
- <20110826084403.GA3162@dastard>
+From: Tejun Heo <tj@kernel.org>
+Subject: Re: [PATCH 2/2] percpu_counter: Put a reasonable upper bound on
+ percpu_counter_batch
+Date: Fri, 26 Aug 2011 11:00:16 +0200
+Message-ID: <20110826090016.GD2632@htj.dyndns.org>
+References: <20110826072622.406d3395@kryten>
+ <20110826072927.5b4781f9@kryten>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, Jiaying Zhang <jiayingz@google.com>,
-	linux-ext4@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:45796
-	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750747Ab1HZIvA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 26 Aug 2011 04:51:00 -0400
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca, eric.dumazet@gmail.com,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Anton Blanchard <anton@samba.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20110826084403.GA3162@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20110826072927.5b4781f9@kryten>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Aug 26, 2011 at 06:44:03PM +1000, Dave Chinner wrote:
-> While the lockdep report is false positive, I agree that your
-> change is the right fix to make - the IO completions are already
-> queued on the workqueue, so they don't need to be flushed to get
-> them to complete. All that needs to be done is call
-> ext4_ioend_wait() for them to complete, and that gets rid of the
-> i_mutex altogether. (*)
+On Fri, Aug 26, 2011 at 07:29:27AM +1000, Anton Blanchard wrote:
+> 
+> When testing on a 1024 thread ppc64 box I noticed a large amount of
+> CPU time in ext4 code.
+> 
+> ext4_has_free_blocks has a fast path to avoid summing every free and
+> dirty block per cpu counter, but only if the global count shows more
+> free blocks than the maximum amount that could be stored in all the
+> per cpu counters.
+> 
+> Since percpu_counter_batch scales with num_online_cpus() and the maximum
+> amount in all per cpu counters is percpu_counter_batch * num_online_cpus(),
+> this breakpoint grows at O(n^2).
+> 
+> This issue will also hit with users of percpu_counter_compare which
+> does a similar thing for one percpu counter.
+> 
+> I chose to cap percpu_counter_batch at 1024 as a conservative first
+> step, but we may want to reduce it further based on further benchmarking.
+> 
+> Signed-off-by: Anton Blanchard <anton@samba.org>
 
-The really correct fix is to stop using the ioend wait like I did
-in my pending series for XFS.  The only thing preventing ext4 from
-doing that is that it marks pages uptodate from irq context,
-before finishing the ioends.  This has a lot of nasty implications
-as the the page might be marked uptodate without actually having
-that state on disk.
+Yeah, capping the upper bound seems reasonable but can you please add
+some comment explaining why the upper bound is necessary there?
 
+Thank you.
+
+-- 
+tejun
