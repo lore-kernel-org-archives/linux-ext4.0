@@ -1,68 +1,96 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: [PATCH 5/5 v6] ext4: fix partial page writes
-Date: Fri, 26 Aug 2011 15:46:44 -0700
-Message-ID: <4E582254.1010001@linux.vnet.ibm.com>
-References: <1314212842-16741-1-git-send-email-achender@linux.vnet.ibm.com> <1314212842-16741-6-git-send-email-achender@linux.vnet.ibm.com> <20110826154713.GB5176@thunk.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/5 v6] ext4: Add new ext4_discard_partial_page_buffers
+ routines
+Date: Sat, 27 Aug 2011 00:06:09 -0400
+Message-ID: <20110827040609.GA5374@thunk.org>
+References: <1314212842-16741-1-git-send-email-achender@linux.vnet.ibm.com>
+ <1314212842-16741-2-git-send-email-achender@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+To: Allison Henderson <achender@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e35.co.us.ibm.com ([32.97.110.153]:41680 "EHLO
-	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751244Ab1HZWqu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Aug 2011 18:46:50 -0400
-Received: from d03relay05.boulder.ibm.com (d03relay05.boulder.ibm.com [9.17.195.107])
-	by e35.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p7QMQimj025788
-	for <linux-ext4@vger.kernel.org>; Fri, 26 Aug 2011 16:26:44 -0600
-Received: from d03av05.boulder.ibm.com (d03av05.boulder.ibm.com [9.17.195.85])
-	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p7QMkjsR155594
-	for <linux-ext4@vger.kernel.org>; Fri, 26 Aug 2011 16:46:45 -0600
-Received: from d03av05.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av05.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p7QMkjIe002150
-	for <linux-ext4@vger.kernel.org>; Fri, 26 Aug 2011 16:46:45 -0600
-In-Reply-To: <20110826154713.GB5176@thunk.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:33186 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750695Ab1H0EGQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 27 Aug 2011 00:06:16 -0400
+Content-Disposition: inline
+In-Reply-To: <1314212842-16741-2-git-send-email-achender@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 08/26/2011 08:47 AM, Ted Ts'o wrote:
-> On Wed, Aug 24, 2011 at 12:07:22PM -0700, Allison Henderson wrote:
->> While running extended fsx tests to verify the preceeding patches,
->> a similar bug was also found in the write operation
->>
->> When ever a write operation begins or ends in a hole,
->> or extends EOF, the partial page contained in the hole
->> or beyond EOF needs to be zeroed out.
->>
->> To correct this the new ext4_discard_partial_page_buffers_no_lock
->> routine is used to zero out the partial page, but only for buffer
->> heads that are already unmapped.
->>
->> Signed-off-by: Allison Henderson<achender@linux.vnet.ibm.com>
->
-> I haven't had a chance to debug this yet, but FYI, with this patch
-> applied, xfstests #224 causes OOM's to result when running under KVM
-> with 1024megs.  I tried doubling the memory to 2048 megs, and it
-> passed in 4k standard ext4 mode, but then got hit with the OOM killer
-> on test #224 in ext3 emulation mode (nodealloc, and with extents not
-> enabled in the file system).  Without this patch, and the first four
-> patches in the v6 patch series applied, xfstests #224 passes in all of
-> the standard configurations (4k, ext3, 1k, data=journal, etc.)
->
-> I don't know why this is happening, but I'll try to dig into it in the
-> next day or two.  Any thoughts or fixes you might suggest would be
-> much appreciated.
->
-> 						- Ted
+On Wed, Aug 24, 2011 at 12:07:18PM -0700, Allison Henderson wrote:
+> +	while (pos < offset + length) {
+> +		err = 0;
+> +
+> +		/* The length of space left to zero and unmap */
+> +		range_to_discard = offset + length - pos;
+> +
+> +		/* The length of space until the end of the block */
+> +		end_of_block = blocksize - (pos & (blocksize-1));
+> +
+> +		/*
+> +		 * Do not unmap or zero past end of block
+> +		 * for this buffer head
+> +		 */
+> +		if (range_to_discard > end_of_block)
+> +			range_to_discard = end_of_block;
+> +
+> +
+> +		/*
+> +		 * Skip this buffer head if we are only zeroing unampped
+> +		 * regions of the page
+> +		 */
+> +		if (flags & EXT4_DSCRD_PARTIAL_PG_ZERO_UNMAPED &&
+> +			buffer_mapped(bh))
+> +				goto next;
+> +
 
-Alrighty then, I will look into this one and see if I can figure out 
-whats going on.  Thx again!
 
-Allison Henderson
+You should move this bit of code here:
 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+		/* If the range is block aligned, unmap */
+		if (range_to_discard == blocksize) {
+			clear_buffer_dirty(bh);
+			bh->b_bdev = NULL;
+			clear_buffer_mapped(bh);
+			clear_buffer_req(bh);
+			clear_buffer_new(bh);
+			clear_buffer_delay(bh);
+			clear_buffer_unwritten(bh);
+			clear_buffer_uptodate(bh);
 
+and add these two lines:
++			zero_user(page, pos, blocksize);
++			goto next;
+
+		}
+
+Why?  Because if the range is block aligned, all you have to do is
+unmap the buffer and call zero_user() just in case the page was
+mmap'ed into some process's address space.  You don't want to mark the
+block dirty --- in fact, if the buffer was already unmapped, you'll
+trigger a WARN_ON in fs/buffer.c in mark_buffer_dirty() --- which is
+how I noticed the problem and decided to look more closely at this bit
+of code.   
+
+You also don't want to engage the journaling machinery and journal the
+data block in data=journalling mode, or to put the inode on the
+data=ordered writeback list just because of this write.  That's just
+wasted work.
+
+If you do this, then you also don't need the conditional below:
+
+> +		/*
+> +		 * If this block is not completely contained in the range
+> +		 * to be discarded, then it is not going to be released. Because
+> +		 * we need to keep this block, we need to make sure this part
+> +		 * of the page is uptodate before we modify it by writeing
+> +		 * partial zeros on it.
+> +		 */
+> +		if (range_to_discard != blocksize) {
+
+... which will also reduce a level of indentation, in the code, which
+is good.
+
+						- Ted
