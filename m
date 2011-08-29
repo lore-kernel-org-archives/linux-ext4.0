@@ -1,303 +1,169 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v2] ext4: make quota as first class supported feature
-Date: Mon, 29 Aug 2011 23:57:32 +0200
-Message-ID: <20110829215732.GJ5672@quack.suse.cz>
-References: <1313780769-21713-1-git-send-email-adityakali@google.com>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: ext4: Always verify extent tree blocks
+Date: Mon, 29 Aug 2011 15:10:24 -0700
+Message-ID: <20110829221015.GB11984@tux1.beaverton.ibm.com>
+References: <CAEd0oO1MiuLwtLBh1B7xap-269ORgKYQBTtThKBZc3q45_Z3Nw@mail.gmail.com> <20110824174506.GJ10570@tux1.beaverton.ibm.com> <CAEd0oO1_FkOPKGDzXNX9S1L2fByoMiOcbA3Qw8szwAh-BkkdbA@mail.gmail.com>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: adilger@dilger.ca, tytso@mit.edu, jack@suse.cz,
-	linux-ext4@vger.kernel.org
-To: Aditya Kali <adityakali@google.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: =?utf-8?B?6buD5LiA6LuSIChJLUhzdWFuIEh1YW5nKQ==?=
+	<ihhuang@abmail.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:35810 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753945Ab1H2V5f (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Aug 2011 17:57:35 -0400
+Received: from e39.co.us.ibm.com ([32.97.110.160]:40701 "EHLO
+	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754505Ab1H2WKX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Aug 2011 18:10:23 -0400
+Received: from d03relay01.boulder.ibm.com (d03relay01.boulder.ibm.com [9.17.195.226])
+	by e39.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p7TLsvfj017425
+	for <linux-ext4@vger.kernel.org>; Mon, 29 Aug 2011 15:54:57 -0600
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay01.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p7TMAGPh182344
+	for <linux-ext4@vger.kernel.org>; Mon, 29 Aug 2011 16:10:16 -0600
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p7TMAGI8029446
+	for <linux-ext4@vger.kernel.org>; Mon, 29 Aug 2011 16:10:16 -0600
 Content-Disposition: inline
-In-Reply-To: <1313780769-21713-1-git-send-email-adityakali@google.com>
+In-Reply-To: <CAEd0oO1_FkOPKGDzXNX9S1L2fByoMiOcbA3Qw8szwAh-BkkdbA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 19-08-11 12:06:09, Aditya Kali wrote:
-> This patch is an attempt towards supporting quotas as first class
-> feature in ext4. It is based on the proposal at:
-> https://ext4.wiki.kernel.org/index.php/Design_For_1st_Class_Quota_in_Ext4
-> This patch introduces a new feature - EXT4_FEATURE_RO_COMPAT_QUOTA which, when
-> turned on, enables quota accounting at mount time iteself. Also, the
-> quota inodes are stored in two additional superblock fields.
-> Some changes introduced by this patch that should be pointed out are:
-> 1) Two new ext4-superblock fields - s_usr_quota_inum and s_grp_quota_inum
->    for storing the quota inodes in use.
-> 2) If the QUOTA feature and corresponding quota inodes are set in superblock,
->    Quotas are turned on at mount time irrespective of the quota mount options.
->    Thus the mount options 'quota', 'usrquota' and 'grpquota' are completely
->    ignored with the new QUOTA feature flag.
-  Hmm, cannot we automatically enable 'usrquota' and 'grpquota' options
-when we see QUOTA feature enabled? Quota tools still need these options to
-identify a filesystem they can work with (although another option would be
-to change quota tools to use GETFMT with ext4 filesystem to identify
-whether quotas are enabled or not).
+On Mon, Aug 29, 2011 at 01:40:11PM +0800, =E9=BB=83=E4=B8=80=E8=BB=92 (=
+I-Hsuan Huang) wrote:
+> Dear Darrick,
+>=20
+> I still met the following failure symptom with your patch.
+>=20
+> <2>[    3.311674] EXT4-fs error (device mmcblk0p23): ext4_iget: inode
+> #22944: (comm init) bad extended attribute block 173879342
+>=20
+> The validation code looks like not work.
+> Is changing the flag enough to force validating extent header?
 
-> 3) Default quota inodes are: inode#3 for tracking userquota and inode#4 for
->    tracking group quota. The superblock fields can be set to use other inodes
->    as well.
-> 4) mke2fs or tune2fs will initialize these inodes when quota feature is
->    being set. The default reserved inodes will not be visible to user as
->    regular files.
-> 5) Once quotas are turned on, they cannot be turned off while the FS is
->    mounted. This is because we do not want to let the quota get inconsistent.
-  Both xfs and ocfs2 allow for mode in which usage is tracked (i.e. quota
-information is kept uptodate) but limits are not enforced. I imagine this
-might be useful in some cases and also from consistency point of view it
-would be nice.
+Extended attribute blocks are not extent tree blocks.
 
-In ocfs2 I implemented it so that on mount, updating of quota information
-is enabled (when appropriate fs feature is enabled) but limits are not
-enforced. Quotaon/quotaoff commands then toggle enforcement of quota
-limits. XFS has mount options which decide whether quota information should
-be kept uptodate and whether it should be enforced or not.
+The patch in question only made ext4 complain consistently if the exten=
+t tree
+got corrupt.
 
-> 6) With the QUOTA feature set, since the quota inodes are hidden, some of the
->    utilities from quota-tools will no longer work correctly. Instead, e2fsprogs
->    will include support for fixing the quota files.
-  I think it might be useful in some cases to enable only user quotas but
-leave group quotas disabled (it slightly reduces quota overhead - mainly
-because we have less quota structures to update on disk). So it would be
-useful to have USRQUOTA and GRPQUOTA features separate...
-
-								Honza
-> 7) Support is only for the new V2 quota file format.
-> 
-> Signed-off-by: Aditya Kali <adityakali@google.com>
-> ---
->  fs/ext4/ext4.h      |   10 ++++-
->  fs/ext4/ext4_jbd2.h |   18 +++++++---
->  fs/ext4/super.c     |   89 +++++++++++++++++++++++++++++++++++++++++++++++++--
->  3 files changed, 106 insertions(+), 11 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index e717dfd..5b57bc2 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1065,7 +1065,9 @@ struct ext4_super_block {
->  	__u8	s_last_error_func[32];	/* function where the error happened */
->  #define EXT4_S_ERR_END offsetof(struct ext4_super_block, s_mount_opts)
->  	__u8	s_mount_opts[64];
-> -	__le32	s_reserved[112];        /* Padding to the end of the block */
-> +	__le32	s_usr_quota_inum;	/* inode for tracking user quota */
-> +	__le32	s_grp_quota_inum;	/* inode for tracking group quota */
-> +	__le32	s_reserved[110];        /* Padding to the end of the block */
->  };
->  
->  #define EXT4_S_ERR_LEN (EXT4_S_ERR_END - EXT4_S_ERR_START)
-> @@ -1142,6 +1144,7 @@ struct ext4_sb_info {
->  #ifdef CONFIG_QUOTA
->  	char *s_qf_names[MAXQUOTAS];		/* Names of quota files with journalled quota */
->  	int s_jquota_fmt;			/* Format of quota to use */
-> +	unsigned long s_qf_inums[MAXQUOTAS];	/* Quota file inodes */
->  #endif
->  	unsigned int s_want_extra_isize; /* New inodes should reserve # bytes */
->  	struct rb_root system_blks;
-> @@ -1241,6 +1244,8 @@ static inline struct timespec ext4_current_time(struct inode *inode)
->  static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
->  {
->  	return ino == EXT4_ROOT_INO ||
-> +		ino == EXT4_USR_QUOTA_INO ||
-> +		ino == EXT4_GRP_QUOTA_INO ||
->  		ino == EXT4_JOURNAL_INO ||
->  		ino == EXT4_RESIZE_INO ||
->  		(ino >= EXT4_FIRST_INO(sb) &&
-> @@ -1401,7 +1406,8 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
->  					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK | \
->  					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE | \
->  					 EXT4_FEATURE_RO_COMPAT_BTREE_DIR |\
-> -					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE)
-> +					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE| \
-> +					 EXT4_FEATURE_RO_COMPAT_QUOTA)
->  
->  /*
->   * Default values for user and/or group using reserved blocks
-> diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-> index bb85757..0f097ed 100644
-> --- a/fs/ext4/ext4_jbd2.h
-> +++ b/fs/ext4/ext4_jbd2.h
-> @@ -87,14 +87,20 @@
->  #ifdef CONFIG_QUOTA
->  /* Amount of blocks needed for quota update - we know that the structure was
->   * allocated so we need to update only data block */
-> -#define EXT4_QUOTA_TRANS_BLOCKS(sb) (test_opt(sb, QUOTA) ? 1 : 0)
-> +#define EXT4_QUOTA_TRANS_BLOCKS(sb) ((test_opt(sb, QUOTA) ||\
-> +		EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) ?\
-> +		1 : 0)
->  /* Amount of blocks needed for quota insert/delete - we do some block writes
->   * but inode, sb and group updates are done only once */
-> -#define EXT4_QUOTA_INIT_BLOCKS(sb) (test_opt(sb, QUOTA) ? (DQUOT_INIT_ALLOC*\
-> -		(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)+3+DQUOT_INIT_REWRITE) : 0)
-> -
-> -#define EXT4_QUOTA_DEL_BLOCKS(sb) (test_opt(sb, QUOTA) ? (DQUOT_DEL_ALLOC*\
-> -		(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)+3+DQUOT_DEL_REWRITE) : 0)
-> +#define EXT4_QUOTA_INIT_BLOCKS(sb) ((test_opt(sb, QUOTA) ||\
-> +		EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) ?\
-> +		(DQUOT_INIT_ALLOC*(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)\
-> +		 +3+DQUOT_INIT_REWRITE) : 0)
-> +
-> +#define EXT4_QUOTA_DEL_BLOCKS(sb) ((test_opt(sb, QUOTA) ||\
-> +		EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) ?\
-> +		(DQUOT_DEL_ALLOC*(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)\
-> +		 +3+DQUOT_DEL_REWRITE) : 0)
->  #else
->  #define EXT4_QUOTA_TRANS_BLOCKS(sb) 0
->  #define EXT4_QUOTA_INIT_BLOCKS(sb) 0
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 4687fea..3f3d87e 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1225,6 +1225,7 @@ static int ext4_mark_dquot_dirty(struct dquot *dquot);
->  static int ext4_write_info(struct super_block *sb, int type);
->  static int ext4_quota_on(struct super_block *sb, int type, int format_id,
->  			 struct path *path);
-> +static int ext4_quota_on_meta(struct super_block *sb, int type, int format_id);
->  static int ext4_quota_off(struct super_block *sb, int type);
->  static int ext4_quota_on_mount(struct super_block *sb, int type);
->  static ssize_t ext4_quota_read(struct super_block *sb, int type, char *data,
-> @@ -1252,6 +1253,16 @@ static const struct quotactl_ops ext4_qctl_operations = {
->  	.get_dqblk	= dquot_get_dqblk,
->  	.set_dqblk	= dquot_set_dqblk
->  };
-> +
-> +static const struct quotactl_ops ext4_new_qctl_operations = {
-> +	.quota_on_meta	= ext4_quota_on_meta,
-> +	.quota_off	= ext4_quota_off,
-> +	.quota_sync	= dquot_quota_sync,
-> +	.get_info	= dquot_get_dqinfo,
-> +	.set_info	= dquot_set_dqinfo,
-> +	.get_dqblk	= dquot_get_dqblk,
-> +	.set_dqblk	= dquot_set_dqblk
-> +};
->  #endif
->  
->  static const struct super_operations ext4_sops = {
-> @@ -3518,6 +3529,15 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  #ifdef CONFIG_QUOTA
->  	sb->s_qcop = &ext4_qctl_operations;
->  	sb->dq_op = &ext4_quota_operations;
-> +
-> +	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) {
-> +		/* Use new qctl operations with quota on function that does not
-> +		 * require user specified quota file path. */
-> +		sb->s_qcop = &ext4_new_qctl_operations;
-> +
-> +		sbi->s_qf_inums[USRQUOTA] = es->s_usr_quota_inum;
-> +		sbi->s_qf_inums[GRPQUOTA] = es->s_grp_quota_inum;
-> +	}
->  #endif
->  	memcpy(sb->s_uuid, es->s_uuid, sizeof(es->s_uuid));
->  
-> @@ -3745,8 +3765,19 @@ no_journal:
->  	} else
->  		descr = "out journal";
->  
-> -	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. "
-> -		 "Opts: %s%s%s", descr, sbi->s_es->s_mount_opts,
-> +#ifdef CONFIG_QUOTA
-> +	/* Enable quotas during mount. */
-> +	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) &&
-> +	    !(sb->s_flags & MS_RDONLY)) {
-> +		ext4_quota_on_meta(sb, USRQUOTA, QFMT_VFS_V1);
-> +		ext4_quota_on_meta(sb, GRPQUOTA, QFMT_VFS_V1);
-> +	}
-> +#endif  /* CONFIG_QUOTA */
-> +
-> +	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. quota=%s. "
-> +		 "Opts: %s%s%s", descr,
-> +		 sb_any_quota_loaded(sb) ? "on" : "off",
-> +		 sbi->s_es->s_mount_opts,
->  		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data);
->  
->  	if (es->s_error_count)
-> @@ -4106,6 +4137,12 @@ static int ext4_commit_super(struct super_block *sb, int sync)
->  	es->s_free_inodes_count =
->  		cpu_to_le32(percpu_counter_sum_positive(
->  				&EXT4_SB(sb)->s_freeinodes_counter));
-> +#ifdef CONFIG_QUOTA
-> +	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) {
-> +		es->s_usr_quota_inum = EXT4_SB(sb)->s_qf_inums[USRQUOTA];
-> +		es->s_grp_quota_inum = EXT4_SB(sb)->s_qf_inums[GRPQUOTA];
-> +	}
-> +#endif
->  	sb->s_dirt = 0;
->  	BUFFER_TRACE(sbh, "marking dirty");
->  	mark_buffer_dirty(sbh);
-> @@ -4687,7 +4724,7 @@ static int ext4_quota_on_mount(struct super_block *sb, int type)
->   * Standard function to be called on quota_on
->   */
->  static int ext4_quota_on(struct super_block *sb, int type, int format_id,
-> -			 struct path *path)
-> +			struct path *path)
->  {
->  	int err;
->  
-> @@ -4726,11 +4763,57 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
->  	return dquot_quota_on(sb, type, format_id, path);
->  }
->  
-> +/*
-> + * New quota_on function that is used when QUOTA feature is set.
-> + */
-> +static int ext4_quota_on_meta(struct super_block *sb, int type, int format_id)
-> +{
-> +	int err;
-> +	struct inode *qf_inode;
-> +
-> +	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) ||
-> +	    !EXT4_SB(sb)->s_qf_inums[type])
-> +		return -EINVAL;
-> +
-> +	qf_inode = ext4_iget(sb, EXT4_SB(sb)->s_qf_inums[type]);
-> +	if (IS_ERR(qf_inode)) {
-> +		EXT4_SB(sb)->s_qf_inums[type] = 0;
-> +		return PTR_ERR(qf_inode);
-> +	}
-> +
-> +	/*
-> +	 * When we journal data on quota file, we have to flush journal to see
-> +	 * all updates to the file when we bypass pagecache...
-> +	 */
-> +	if (EXT4_SB(sb)->s_journal &&
-> +	    ext4_should_journal_data(qf_inode)) {
-> +		/*
-> +		 * We don't need to lock updates but journal_flush() could
-> +		 * otherwise be livelocked...
-> +		 */
-> +		jbd2_journal_lock_updates(EXT4_SB(sb)->s_journal);
-> +		err = jbd2_journal_flush(EXT4_SB(sb)->s_journal);
-> +		jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
-> +		if (err)
-> +			return err;
-> +	}
-> +
-> +	err = dquot_enable(qf_inode, type, format_id,
-> +			   DQUOT_USAGE_ENABLED | DQUOT_LIMITS_ENABLED);
-> +	iput(qf_inode);
-> +
-> +	return err;
-> +}
-> +
->  static int ext4_quota_off(struct super_block *sb, int type)
->  {
->  	struct inode *inode = sb_dqopt(sb)->files[type];
->  	handle_t *handle;
->  
-> +	/* Do not allow turning quotas off if QUOTA feature is set. */
-> +	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA))
-> +		return -EINVAL;
-> +
->  	/* Force all delayed allocation blocks to be allocated.
->  	 * Caller already holds s_umount sem */
->  	if (test_opt(sb, DELALLOC))
-> -- 
-> 1.7.3.1
-> 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+--D
+>=20
+> Thanks,
+> IH Huang
+>=20
+> 2011/8/25 Darrick J. Wong <djwong@us.ibm.com>
+>=20
+> > On Wed, Aug 24, 2011 at 05:54:15PM +0800, =E9=BB=83=E4=B8=80=E8=BB=92=
+ (I-Hsuan Huang) wrote:
+> > > Dear Darrick,
+> > >
+> > > I have read your ext4 patch on Patchwork and have a question abou=
+t your
+> > ext4
+> > > patch to validate the extent header.
+> > > Is you patch related to the Bug 20992:
+> > > https://bugzilla.kernel.org/show_bug.cgi?id=3D20992
+> >
+> > Yes, I think it would fix that bug.  That said, I'm pretty close to=
+ posting
+> > a
+> > patch set to implement full metadata checksuming, which includes a =
+better
+> > solution than what's in patchwork.  Basically it implements a new
+> > bufferhead
+> > flag that tracks whether or not a metadata buffer has been validate=
+d, and
+> > skips
+> > the checks if it has.
+> >
+> > Obviously that won't help you if you overwrite the filesystem while=
+ it's
+> > mounted... but oh well, at least it'll fix your case.  It was meant=
+ to fix
+> > the
+> > case where the first time a bad extent block gets read it fails the=
+ check
+> > and
+> > complains, but subsequent accesses of the same block don't even che=
+ck.
+> >
+> > --D
+> > >
+> > > Ted mentioned that
+> > >
+> > > *Yep, looks like a bug alright.
+> > >
+> > > From what I can tell, you were in the middle of async I/O, at the=
+ time
+> > when
+> > > the
+> > > disk was corrupted.  The problem seemed to come after the I/O was
+> > completed,
+> > > and  ext4_convert_unwritten_extents() was trying to set the initi=
+alized
+> > bit
+> > > on
+> > > the extent tree.  At that point the extent tree must have gotten
+> > corrupted
+> > > on
+> > > disk, and this seriously confused the extent conversion code, whi=
+ch ended
+> > up
+> > > passing 0 to ext4_ext_put_in_cache() as the length of the extent,=
+ and
+> > that
+> > > tripped the BUG_ON in ext4_ext_put_in_cache().
+> > >
+> > > How did you corrupt the file system while it was mounted?   Was i=
+t via
+> > some
+> > > dd
+> > > to the disk device directly?
+> > >
+> > > We do have code that checks to make sure the extent tree is sane,=
+ but we
+> > > skip
+> > > it if the data was already in the buffer cache, to save CPU costs=
+=2E  But
+> > if
+> > > you
+> > > wrote to the disk device directly, it would have gone through the=
+ buffer
+> > > cache,
+> > > since the extent tree was already cached, we would have skipped t=
+he
+> > > validation
+> > > step, and that could be the explanation for how the bug got trigg=
+ered.
+> > >
+> > > If so, I'm loathe to turn on the validation check unconditionally=
+, since
+> > > that
+> > > would kill performance.  I can probably change the BUG_ON in
+> > > ext4_put_in_cache() to rather set the cache state to "invalid", w=
+hich
+> > would
+> > > at
+> > > least prevent the BUG_ON.  The filesystem was probably well and t=
+ruly
+> > > trashed,
+> > > though, so sooner or later the ext4 fs code would have hit someth=
+ing to
+> > > cause
+> > > it to be very unhappy.  Hoepfully it would be an ext4_error() cal=
+l to
+> > mark
+> > > the
+> > > file system as corrupted, as opposed to another BUG_ON.
+> > > *
+> > > Have a nice day.
+> > >
+> > > Thanks,
+> > > Randall
+> >
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
