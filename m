@@ -1,55 +1,35 @@
-From: Anton Blanchard <anton@samba.org>
-Subject: Re: [PATCH 2/2] percpu_counter: Put a reasonable upper bound on
- percpu_counter_batch
-Date: Mon, 29 Aug 2011 21:54:39 +1000
-Message-ID: <20110829215439.63353384@kryten>
-References: <20110826072622.406d3395@kryten>
-	<20110826072927.5b4781f9@kryten>
-	<A91A91A5-9EF0-42FE-B1C3-184D65112EA9@mit.edu>
+From: francis <franciskabore12@gmail.com>
+Subject: REPLY VERY URGENTLY.
+Date: Mon, 29 Aug 2011 17:29:52 +0530 (IST)
+Message-ID: <1314619192.79899.YahooMailClassic__44097.3602737815$1314619212$gmane$org@web137908.mail.in.yahoo.com>
+Reply-To: franciskabore.10@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: adilger.kernel@dilger.ca, eric.dumazet@gmail.com, tj@kernel.org,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8BIT
+To: undisclosed recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ozlabs.org ([203.10.76.45]:56593 "EHLO ozlabs.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752615Ab1H2Lym convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Aug 2011 07:54:42 -0400
-In-Reply-To: <A91A91A5-9EF0-42FE-B1C3-184D65112EA9@mit.edu>
+Received: from nm4-vm1.bullet.mail.in.yahoo.com ([121.101.151.209]:36993 "HELO
+	nm4-vm1.bullet.mail.in.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1752531Ab1H2L7z convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Aug 2011 07:59:55 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
-Hi Ted,
+Dear Friend,
 
-> I understand why we would want to reduce this number.
-> Unfortunately, the question is what do we do if all 1024 threads try
-> to do buffered writes into the file system at the same instant, when
-> we have less than 4 megabytes of space left?
->=20
-> The problem is that we can then do more writes than we have space, an=
-d
-> we will only find out about it at write back time, when the process
-> may have exited already -- at which point data loss is almost
-> inevitable.  (We could keep the data in cache and frantically page
-> the system administrator to delete some files to make room for dirty
-> data, but that's probably not going to end well=E2=80=A6.)
->=20
-> What we can do if we must clamp this threshold is to also increase th=
-e
-> threshold at which we shift away from delayed allocation.  We'll then
-> allocate each block at write time, which does mean more CPU and=20
-> less efficient allocation of blocks, but if we're down to our last 4
-> megabytes, there's probably not much we can do that will be efficient
-> as far as block layout anyway=E2=80=A6.
+I know that this message will come to you as a surprise. I am the Auditing and Accounting section manager with African Development Bank, Ouagadougou Burkina faso. I Hope that you will not expose or betray this trust and confident that I am about to repose on you for the mutual benefit of our both families.
 
-Thanks for the explanation, I'll go back and take another look.
+I need your urgent assistance in transferring the sum of($39.5)million to your account within 10 or 14 banking days. This money has been dormant for years in our Bank without claim.I want the bank to release the money to you as the nearest person to our deceased customer late George small. who died along with his supposed next of kin in an air crash since 31st October 1999.
 
-Anton
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I don't want the money to go into government treasury as an abandoned fund. So this is the reason why I am contacting you so that the bank can release the money to you as the next of kin to the deceased customer. Please I would like you to keep this proposal as atop secret and delete it if you are not interested.
+
+Upon receipt of your reply, I will give you full details on how the business will be executed and also note that you will have 40% of the above mentioned sum if you agree to handle this business with me.
+
+I am expecting your urgent response as soon as you receive my message.
+
+Best Regard,
+
+Mr Francis Kabore
+
