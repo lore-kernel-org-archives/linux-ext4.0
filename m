@@ -1,37 +1,40 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] percpu_counter: Put a reasonable upper bound on
- percpu_counter_batch
-Date: Mon, 29 Aug 2011 09:27:34 -0400
-Message-ID: <20110829132734.GB12187@thunk.org>
-References: <20110826072622.406d3395@kryten>
- <20110826072927.5b4781f9@kryten>
- <A91A91A5-9EF0-42FE-B1C3-184D65112EA9@mit.edu>
+Subject: KVM-based xfstests appliance
+Date: Mon, 29 Aug 2011 09:32:48 -0400
+Message-ID: <20110829133248.GC12187@thunk.org>
+References: <20110828235437.GA12187@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: adilger.kernel@dilger.ca, eric.dumazet@gmail.com, tj@kernel.org,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Anton Blanchard <anton@samba.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:54529 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:54532 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753524Ab1H2N1v (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Aug 2011 09:27:51 -0400
+	id S1753634Ab1H2Ncv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Aug 2011 09:32:51 -0400
 Content-Disposition: inline
-In-Reply-To: <A91A91A5-9EF0-42FE-B1C3-184D65112EA9@mit.edu>
+In-Reply-To: <20110828235437.GA12187@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 26, 2011 at 07:48:52AM -0400, Theodore Tso wrote:
-> 
-> I understand why we would want to reduce this number.   Unfortunately, the
-> question is what do we do if all 1024 threads try to do buffered writes into
-> the file system at the same instant, when we have less than 4 megabytes
-> of space left?
+On Sun, Aug 28, 2011 at 07:54:37PM -0400, Ted Ts'o wrote:
+> Has anyone else noticed failures with xfstests #74?  What I'm finding
+> is that if compile the fstest program so that it is statically linked,
+> I can't get it to fail:
 
-Oops, sorry, that should be 4 GB of space left (i.e., what do we do if
-all 1024 cpu's all try write 1024 4k blocks all at the same time).
-Imagine an simulation application where all threads finish at more or
-less the same time and then try to write out their data files at the
-same time....
+I've put up an my KVM-based xfstests appliance here:
 
-							- Ted
+ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/V-xfstests.tar.gz
+
+Hopefully this will be useful for other people who are trying to do QA
+work for ext4.  I find it's much more convenient to test out a kernel
+by running "kvm-xfstests smoke", or "kvm-xfstests full".
+
+BTW, I've found that the xfstests 74 test failure is very timing
+dependent.  It doesn't fail when I use another system which has faster
+disks than dm-crypt'ed laptop drives, and where writeback mode is
+enabled with lots of memory available for caching purposes.  It seems
+to require memory pressure and slower disks.  I should check and see
+whether it involves ext4_writepage() getting invoked out of the direct
+reclaim path...
+
+	     	     	    	      	  	  - Ted
