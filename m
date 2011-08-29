@@ -1,167 +1,147 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: ext4: Always verify extent tree blocks
-Date: Mon, 29 Aug 2011 15:10:24 -0700
-Message-ID: <20110829221015.GB11984@tux1.beaverton.ibm.com>
-References: <CAEd0oO1MiuLwtLBh1B7xap-269ORgKYQBTtThKBZc3q45_Z3Nw@mail.gmail.com> <20110824174506.GJ10570@tux1.beaverton.ibm.com> <CAEd0oO1_FkOPKGDzXNX9S1L2fByoMiOcbA3Qw8szwAh-BkkdbA@mail.gmail.com>
-Reply-To: djwong@us.ibm.com
+From: Aditya Kali <adityakali@google.com>
+Subject: Re: [PATCH v2] ext4: make quota as first class supported feature
+Date: Mon, 29 Aug 2011 15:42:36 -0700
+Message-ID: <CAGr1F2EXgaWVywbRUUdOhPmvv3ZXwt1nnOpkyuBgygSYvJ+h-A@mail.gmail.com>
+References: <1313780769-21713-1-git-send-email-adityakali@google.com> <20110829215732.GJ5672@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: =?utf-8?B?6buD5LiA6LuSIChJLUhzdWFuIEh1YW5nKQ==?=
-	<ihhuang@abmail.org>
+Cc: adilger@dilger.ca, tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e39.co.us.ibm.com ([32.97.110.160]:40701 "EHLO
-	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754505Ab1H2WKX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Aug 2011 18:10:23 -0400
-Received: from d03relay01.boulder.ibm.com (d03relay01.boulder.ibm.com [9.17.195.226])
-	by e39.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p7TLsvfj017425
-	for <linux-ext4@vger.kernel.org>; Mon, 29 Aug 2011 15:54:57 -0600
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay01.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p7TMAGPh182344
-	for <linux-ext4@vger.kernel.org>; Mon, 29 Aug 2011 16:10:16 -0600
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p7TMAGI8029446
-	for <linux-ext4@vger.kernel.org>; Mon, 29 Aug 2011 16:10:16 -0600
-Content-Disposition: inline
-In-Reply-To: <CAEd0oO1_FkOPKGDzXNX9S1L2fByoMiOcbA3Qw8szwAh-BkkdbA@mail.gmail.com>
+Received: from smtp-out.google.com ([216.239.44.51]:55200 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753838Ab1H2WnA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Aug 2011 18:43:00 -0400
+Received: from hpaq11.eem.corp.google.com (hpaq11.eem.corp.google.com [172.25.149.11])
+	by smtp-out.google.com with ESMTP id p7TMgx0E012246
+	for <linux-ext4@vger.kernel.org>; Mon, 29 Aug 2011 15:42:59 -0700
+Received: from yib18 (yib18.prod.google.com [10.243.65.82])
+	by hpaq11.eem.corp.google.com with ESMTP id p7TMgua1021819
+	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Mon, 29 Aug 2011 15:42:57 -0700
+Received: by yib18 with SMTP id 18so3676633yib.9
+        for <linux-ext4@vger.kernel.org>; Mon, 29 Aug 2011 15:42:56 -0700 (PDT)
+In-Reply-To: <20110829215732.GJ5672@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 29, 2011 at 01:40:11PM +0800, =E9=BB=83=E4=B8=80=E8=BB=92 (=
-I-Hsuan Huang) wrote:
-> Dear Darrick,
->=20
-> I still met the following failure symptom with your patch.
->=20
-> <2>[    3.311674] EXT4-fs error (device mmcblk0p23): ext4_iget: inode
-> #22944: (comm init) bad extended attribute block 173879342
->=20
-> The validation code looks like not work.
-> Is changing the flag enough to force validating extent header?
+Thanks for your feedback.
 
-Extended attribute blocks are not extent tree blocks.
 
-The patch in question only made ext4 complain consistently if the exten=
-t tree
-got corrupt.
+On Mon, Aug 29, 2011 at 2:57 PM, Jan Kara <jack@suse.cz> wrote:
+> On Fri 19-08-11 12:06:09, Aditya Kali wrote:
+>> This patch is an attempt towards supporting quotas as first class
+>> feature in ext4. It is based on the proposal at:
+>> https://ext4.wiki.kernel.org/index.php/Design_For_1st_Class_Quota_in=
+_Ext4
+>> This patch introduces a new feature - EXT4_FEATURE_RO_COMPAT_QUOTA w=
+hich, when
+>> turned on, enables quota accounting at mount time iteself. Also, the
+>> quota inodes are stored in two additional superblock fields.
+>> Some changes introduced by this patch that should be pointed out are=
+:
+>> 1) Two new ext4-superblock fields - s_usr_quota_inum and s_grp_quota=
+_inum
+>> =C2=A0 =C2=A0for storing the quota inodes in use.
+>> 2) If the QUOTA feature and corresponding quota inodes are set in su=
+perblock,
+>> =C2=A0 =C2=A0Quotas are turned on at mount time irrespective of the =
+quota mount options.
+>> =C2=A0 =C2=A0Thus the mount options 'quota', 'usrquota' and 'grpquot=
+a' are completely
+>> =C2=A0 =C2=A0ignored with the new QUOTA feature flag.
+> =C2=A0Hmm, cannot we automatically enable 'usrquota' and 'grpquota' o=
+ptions
+> when we see QUOTA feature enabled? Quota tools still need these optio=
+ns to
+> identify a filesystem they can work with (although another option wou=
+ld be
+> to change quota tools to use GETFMT with ext4 filesystem to identify
+> whether quotas are enabled or not).
+>
+In my current change, these options are just ignored, and the user can
+still set them if any user tools depend on them while
+mounting/remounting the filesystem.
+The design wiki
+(https://ext4.wiki.kernel.org/index.php/Design_For_1st_Class_Quota_in_E=
+xt4#How_can_userspace_tell_if_quota_is_enabled.3F)
+mentions that 'usrquota' & 'grpquota' options won't be used (so I was
+under impression that they are being deprecated). Also, if these are
+set automatically on mount, it would mean that the user wont be able
+to set these options anymore.
 
---D
->=20
-> Thanks,
-> IH Huang
->=20
-> 2011/8/25 Darrick J. Wong <djwong@us.ibm.com>
->=20
-> > On Wed, Aug 24, 2011 at 05:54:15PM +0800, =E9=BB=83=E4=B8=80=E8=BB=92=
- (I-Hsuan Huang) wrote:
-> > > Dear Darrick,
-> > >
-> > > I have read your ext4 patch on Patchwork and have a question abou=
-t your
-> > ext4
-> > > patch to validate the extent header.
-> > > Is you patch related to the Bug 20992:
-> > > https://bugzilla.kernel.org/show_bug.cgi?id=3D20992
-> >
-> > Yes, I think it would fix that bug.  That said, I'm pretty close to=
- posting
-> > a
-> > patch set to implement full metadata checksuming, which includes a =
-better
-> > solution than what's in patchwork.  Basically it implements a new
-> > bufferhead
-> > flag that tracks whether or not a metadata buffer has been validate=
-d, and
-> > skips
-> > the checks if it has.
-> >
-> > Obviously that won't help you if you overwrite the filesystem while=
- it's
-> > mounted... but oh well, at least it'll fix your case.  It was meant=
- to fix
-> > the
-> > case where the first time a bad extent block gets read it fails the=
- check
-> > and
-> > complains, but subsequent accesses of the same block don't even che=
-ck.
-> >
-> > --D
-> > >
-> > > Ted mentioned that
-> > >
-> > > *Yep, looks like a bug alright.
-> > >
-> > > From what I can tell, you were in the middle of async I/O, at the=
- time
-> > when
-> > > the
-> > > disk was corrupted.  The problem seemed to come after the I/O was
-> > completed,
-> > > and  ext4_convert_unwritten_extents() was trying to set the initi=
-alized
-> > bit
-> > > on
-> > > the extent tree.  At that point the extent tree must have gotten
-> > corrupted
-> > > on
-> > > disk, and this seriously confused the extent conversion code, whi=
-ch ended
-> > up
-> > > passing 0 to ext4_ext_put_in_cache() as the length of the extent,=
- and
-> > that
-> > > tripped the BUG_ON in ext4_ext_put_in_cache().
-> > >
-> > > How did you corrupt the file system while it was mounted?   Was i=
-t via
-> > some
-> > > dd
-> > > to the disk device directly?
-> > >
-> > > We do have code that checks to make sure the extent tree is sane,=
- but we
-> > > skip
-> > > it if the data was already in the buffer cache, to save CPU costs=
-=2E  But
-> > if
-> > > you
-> > > wrote to the disk device directly, it would have gone through the=
- buffer
-> > > cache,
-> > > since the extent tree was already cached, we would have skipped t=
-he
-> > > validation
-> > > step, and that could be the explanation for how the bug got trigg=
-ered.
-> > >
-> > > If so, I'm loathe to turn on the validation check unconditionally=
-, since
-> > > that
-> > > would kill performance.  I can probably change the BUG_ON in
-> > > ext4_put_in_cache() to rather set the cache state to "invalid", w=
-hich
-> > would
-> > > at
-> > > least prevent the BUG_ON.  The filesystem was probably well and t=
-ruly
-> > > trashed,
-> > > though, so sooner or later the ext4 fs code would have hit someth=
-ing to
-> > > cause
-> > > it to be very unhappy.  Hoepfully it would be an ext4_error() cal=
-l to
-> > mark
-> > > the
-> > > file system as corrupted, as opposed to another BUG_ON.
-> > > *
-> > > Have a nice day.
-> > >
-> > > Thanks,
-> > > Randall
-> >
+>> 3) Default quota inodes are: inode#3 for tracking userquota and inod=
+e#4 for
+>> =C2=A0 =C2=A0tracking group quota. The superblock fields can be set =
+to use other inodes
+>> =C2=A0 =C2=A0as well.
+>> 4) mke2fs or tune2fs will initialize these inodes when quota feature=
+ is
+>> =C2=A0 =C2=A0being set. The default reserved inodes will not be visi=
+ble to user as
+>> =C2=A0 =C2=A0regular files.
+>> 5) Once quotas are turned on, they cannot be turned off while the FS=
+ is
+>> =C2=A0 =C2=A0mounted. This is because we do not want to let the quot=
+a get inconsistent.
+> =C2=A0Both xfs and ocfs2 allow for mode in which usage is tracked (i.=
+e. quota
+> information is kept uptodate) but limits are not enforced. I imagine =
+this
+> might be useful in some cases and also from consistency point of view=
+ it
+> would be nice.
+>
+> In ocfs2 I implemented it so that on mount, updating of quota informa=
+tion
+> is enabled (when appropriate fs feature is enabled) but limits are no=
+t
+> enforced. Quotaon/quotaoff commands then toggle enforcement of quota
+> limits. XFS has mount options which decide whether quota information =
+should
+> be kept uptodate and whether it should be enforced or not.
+
+Enabling only usage on mount makes sense. The limits can then be
+turned on using quotaon. I assume then we will also need to allow
+turning the limits off by user (instead of completely denying
+quotaoff)?
+
+>
+>> 6) With the QUOTA feature set, since the quota inodes are hidden, so=
+me of the
+>> =C2=A0 =C2=A0utilities from quota-tools will no longer work correctl=
+y. Instead, e2fsprogs
+>> =C2=A0 =C2=A0will include support for fixing the quota files.
+> =C2=A0I think it might be useful in some cases to enable only user qu=
+otas but
+> leave group quotas disabled (it slightly reduces quota overhead - mai=
+nly
+> because we have less quota structures to update on disk). So it would=
+ be
+> useful to have USRQUOTA and GRPQUOTA features separate...
+>
+It is possible to enable only one type of quotas. Instead of having
+two filesystem features, there are already two superblock fields
+s_usr_quota_inum and s_grp_quota_inum. The enabling can be disabled by
+setting the corresponding field to '0'. This is also supported via
+tune2fs:
+
+# to enable only user quotas and not group quotas:
+$ tune2fs -Q usrquota /dev/ram1 # this will set the 'quota' feature in
+superblock and initialize only usrquota inode.
+
+# to enable both user and group quotas:
+$ tune2fs -Q usrquota,grpquota /dev/ram1
+
+
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
+=A0 =C2=A0Honza
+
+--
+Aditya
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
