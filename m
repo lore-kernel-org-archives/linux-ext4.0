@@ -1,49 +1,51 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] xfstests: don't print "do not support" warnings unless
- verbose is specified
-Date: Mon, 29 Aug 2011 09:37:18 -0400
-Message-ID: <20110829133718.GD12187@thunk.org>
-References: <1314467002-20297-1-git-send-email-tytso@mit.edu>
- <20110829053621.GH32358@dastard>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v2] ext4: make quota as first class supported feature
+Date: Mon, 29 Aug 2011 22:46:02 +0200
+Message-ID: <20110829204602.GI5672@quack.suse.cz>
+References: <1313780769-21713-1-git-send-email-adityakali@google.com>
+ <0EC4FCD1-1DBB-417C-BE5D-4B39ABD67A56@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: xfs@oss.sgi.com, Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Dave Chinner <david@fromorbit.com>
+Cc: Aditya Kali <adityakali@google.com>,
+	"tytso@mit.edu" <tytso@mit.edu>, "jack@suse.cz" <jack@suse.cz>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:51101 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753636Ab1H2NhW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Aug 2011 09:37:22 -0400
+Received: from cantor2.suse.de ([195.135.220.15]:58847 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754038Ab1H2UqF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Aug 2011 16:46:05 -0400
 Content-Disposition: inline
-In-Reply-To: <20110829053621.GH32358@dastard>
+In-Reply-To: <0EC4FCD1-1DBB-417C-BE5D-4B39ABD67A56@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 29, 2011 at 03:36:21PM +1000, Dave Chinner wrote:
-> On Sat, Aug 27, 2011 at 01:43:22PM -0400, Theodore Ts'o wrote:
-> > Commit 630421f6d449 attempts to avoid printing the "fallocate not
-> > supported" warning if the -q (quiet) option is specified on the
-> > command-line.  Unfortunately tests 75 and 112 don't set the -q flag.
-> > This causes test failures for file systems that don't support
-> > fallocate or the punch hole functionality.
-> > 
-> > I considered changing tests 75 and 112 to pass -q to fsx, but that
-> > would suppress other warning messages that could be legitimate test
-> > failures, so I decided to add a new -v (vebose) flag.
+On Sat 20-08-11 09:58:38, Andreas Dilger wrote:
+> On 2011-08-19, at 1:06 PM, Aditya Kali <adityakali@google.com> wrote:
 > 
-> Oh, so now we can have verbose quietness? Or is it quiet verbosity?
-> That quickly leads to insanity.... :/
+> > This patch is an attempt towards supporting quotas as first class
+> > feature in ext4. It is based on the proposal at:
+> > https://ext4.wiki.kernel.org/index.php/Design_For_1st_Class_Quota_in_Ext4
+> > This patch introduces a new feature - EXT4_FEATURE_RO_COMPAT_QUOTA which, when
+> > turned on, enables quota accounting at mount time iteself. 
 > 
-> The quiet flag only suppresses output that is otherwise logged and
-> output when a failure occurs. Hence setting the quiet won't cause
-> any loss of functionality or error detection for these tests so you
-> should just add the quiet flag to the tests.
+> > 6) With the QUOTA feature set, since the quota inodes are hidden, some of the
+> >   utilities from quota-tools will no longer work correctly. Instead, e2fsprogs
+> >   will include support for fixing the quota files.
+> 
+> It would be preferable from a usability point of view to have the
+> existing quota tools to work with the new quota files instead of having
+> to introduce new quota utilities. 
+  They will generally work - e.g. quota(1), edquota(8), setquota(8)
+commands will work just fine. Quotacheck(8) does not make sense when quota
+is handled as filesystem metadata and doing necessary things in e2fsck is
+not only logical but also faster since it reads all necessary data anyway.
+The only pain point is repquota(8) - that needs a new kernel interface to
+work reliably (for ocfs2 and xfs we workaround the inability to iterate
+over all quota structures from userspace by using getpwent but that's just
+ugly).
 
-OK, I'll resubmit a patch which changes the tests (i.e., 75 and 112)
-to pass the -q flag to fsx.  I had thought _not_ passing -q was
-deliberate, but reviewing the output, it does seem that none of the
-!quiet messages are all that important.
-
-					- Ted
-
-
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
