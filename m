@@ -1,46 +1,44 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 41682] INFO: possible circular locking dependency detected ..
- at ext4_evict_inode
-Date: Tue, 30 Aug 2011 10:51:11 GMT
-Message-ID: <201108301051.p7UApB26010969@demeter2.kernel.org>
-References: <bug-41682-13602@https.bugzilla.kernel.org/>
+From: Sedat Dilek <sedat.dilek@googlemail.com>
+Subject: Re: lockdep warnings - possible circular locking
+Date: Tue, 30 Aug 2011 12:55:58 +0200
+Message-ID: <CA+icZUWoEEBQke2moQpr_XQNQ-wySSuN9-bssS8yAt2yBJT0bg@mail.gmail.com>
+References: <CABqxG0e6EXfDUEeno6e70Orgye+0EGq6x7qsFJ2q8Og3vt+aiA@mail.gmail.com>
+	<4E5CAD18.1020907@tao.ma>
+Reply-To: sedat.dilek@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: Dave Young <hidave.darkstar@gmail.com>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:48832 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752898Ab1H3KvM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Aug 2011 06:51:12 -0400
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.4) with ESMTP id p7UApBFN010970
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 30 Aug 2011 10:51:11 GMT
-In-Reply-To: <bug-41682-13602@https.bugzilla.kernel.org/>
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:36381 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753006Ab1H3Kz7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Aug 2011 06:55:59 -0400
+In-Reply-To: <4E5CAD18.1020907@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=41682
+On Tue, Aug 30, 2011 at 11:27 AM, Tao Ma <tm@tao.ma> wrote:
+> Hi Dave,
+> On 08/30/2011 05:09 PM, Dave Young wrote:
+>> Hi,
+>>
+>> I got following lockdep warnings, ext4 related?
+> This is already reported by many guys. Ted has a fix for it.
+> Please search the mail with subject
+> [URGENT PATCH] ext4: fix potential deadlock in ext4_evict_inode()
+>
+> Thanks
+> Tao
+>>
 
+[ CC Theodore Ts'o ]
 
-Sedat Dilek <sedat.dilek@gmail.com> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |sedat.dilek@gmail.com
-
-
-
-
---- Comment #8 from Sedat Dilek <sedat.dilek@gmail.com>  2011-08-30 10:51:09 ---
-Should be fixed by "ext4: fix potential deadlock in ext4_evict_inode()" [1].
+Updated Kernel Bug #41682 with your informations.
 
 - Sedat -
 
-[1]
-http://git.us.kernel.org/?p=linux/kernel/git/tytso/ext4.git;a=commit;h=a840f388e87f75c18c51e1d868fdcd2ef23e9cea
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+[1] https://bugzilla.kernel.org/show_bug.cgi?id=41682
