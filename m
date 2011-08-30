@@ -1,79 +1,91 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH v2 02/15] ext4: add a function which adds a new desc to a fs
-Date: Tue, 30 Aug 2011 16:10:12 +0800
-Message-ID: <1314691825-12295-3-git-send-email-xiaoqiangnk@gmail.com>
+Subject: [PATCH v2 03/15] ext4: add a function which sets up a new group desc
+Date: Tue, 30 Aug 2011 16:10:13 +0800
+Message-ID: <1314691825-12295-4-git-send-email-xiaoqiangnk@gmail.com>
 References: <1314691825-12295-1-git-send-email-xiaoqiangnk@gmail.com>
 Cc: adilger@dilger.ca, linux-ext4@vger.kernel.org,
 	Yongqiang Yang <xiaoqiangnk@gmail.com>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:57578 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750949Ab1H3Ixs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Aug 2011 04:53:48 -0400
-Received: by vws1 with SMTP id 1so5211024vws.19
-        for <linux-ext4@vger.kernel.org>; Tue, 30 Aug 2011 01:53:47 -0700 (PDT)
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:51065 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750994Ab1H3Ixu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Aug 2011 04:53:50 -0400
+Received: by mail-pz0-f42.google.com with SMTP id 37so9952724pzk.1
+        for <linux-ext4@vger.kernel.org>; Tue, 30 Aug 2011 01:53:50 -0700 (PDT)
 In-Reply-To: <1314691825-12295-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds a function named ext4_add_new_desc() which adds
-a new desc to a fs and whose code is copied from ext4_group_add().
+This patch adds a function named ext4_setup_new_desc() which sets
+up a new group descriptor and whose code is sopied from ext4_group_add().
 
 The function will be used by new resize implementation.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/resize.c |   42 ++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 42 insertions(+), 0 deletions(-)
+ fs/ext4/resize.c |   54 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 54 insertions(+), 0 deletions(-)
 
 diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 5126aac..b577647 100644
+index b577647..66ca671 100644
 --- a/fs/ext4/resize.c
 +++ b/fs/ext4/resize.c
-@@ -735,6 +735,48 @@ exit_err:
- 	}
+@@ -777,6 +777,60 @@ out:
+ 	return err;
  }
  
 +/*
-+ * ext4_add_new_desc() adds group descriptor of group @group
++ * ext4_setup_new_desc() sets up group descriptors specified by @input.
 + *
 + * @handle: journal handle
-+ * @sb; super block
-+ * @group: the group no. of the first group desc to be added
-+ * @resize_inode: the resize inode
++ * @sb: super block
 + */
-+static int ext4_add_new_desc(handle_t *handle, struct super_block *sb,
-+			     ext4_group_t group, struct inode *resize_inode)
++static int ext4_setup_new_desc(handle_t *handle, struct super_block *sb,
++			       struct ext4_new_group_data *input)
 +{
 +	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct ext4_super_block *es = sbi->s_es;
++	ext4_group_t group;
++	struct ext4_group_desc *gdp;
 +	struct buffer_head *gdb_bh;
 +	int gdb_off, gdb_num, err = 0;
-+	int reserved_gdb = ext4_bg_has_super(sb, group) ?
-+		le16_to_cpu(es->s_reserved_gdt_blocks) : 0;
++
++	group = input->group;
 +
 +	gdb_off = group % EXT4_DESC_PER_BLOCK(sb);
 +	gdb_num = group / EXT4_DESC_PER_BLOCK(sb);
 +
 +	/*
-+	 * We will only either add reserved group blocks to a backup group
-+	 * or remove reserved blocks for the first group in a new group block.
-+	 * Doing both would be mean more complex code, and sane people don't
-+	 * use non-sparse filesystems anymore.  This is already checked above.
++	 * get_write_access() has been called on gdb_bh by ext4_add_new_desc().
 +	 */
-+	if (gdb_off) {
-+		gdb_bh = sbi->s_group_desc[gdb_num];
-+		err = ext4_journal_get_write_access(handle, gdb_bh);
-+		if (err)
-+			goto out;
++	gdb_bh = sbi->s_group_desc[gdb_num];
++	/* Update group descriptor block for new group */
++	gdp = (struct ext4_group_desc *)((char *)gdb_bh->b_data +
++				 gdb_off * EXT4_DESC_SIZE(sb));
 +
-+		if (reserved_gdb && ext4_bg_num_gdb(sb, group))
-+			err = reserve_backup_gdb(handle, resize_inode, group);
-+	} else
-+		err = add_new_gdb(handle, resize_inode, group);
++	memset(gdp, 0, EXT4_DESC_SIZE(sb));
++	 /* LV FIXME */
++	memset(gdp, 0, EXT4_DESC_SIZE(sb));
++	ext4_block_bitmap_set(sb, gdp, input->block_bitmap); /* LV FIXME */
++	ext4_inode_bitmap_set(sb, gdp, input->inode_bitmap); /* LV FIXME */
++	ext4_inode_table_set(sb, gdp, input->inode_table); /* LV FIXME */
++	ext4_free_blks_set(sb, gdp, input->free_blocks_count);
++	ext4_free_inodes_set(sb, gdp, EXT4_INODES_PER_GROUP(sb));
++	gdp->bg_flags = cpu_to_le16(EXT4_BG_INODE_ZEROED);
++	gdp->bg_checksum = ext4_group_desc_csum(sbi, input->group, gdp);
 +
-+out:
++	err = ext4_handle_dirty_metadata(handle, NULL, gdb_bh);
++	if (unlikely(err)) {
++		ext4_std_error(sb, err);
++		return err;
++	}
++
++	/*
++	 * We can allocate memory for mb_alloc based on the new group
++	 * descriptor
++	 */
++	err = ext4_mb_add_groupinfo(sb, group, gdp);
++
 +	return err;
 +}
 +
