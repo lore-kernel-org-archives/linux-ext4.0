@@ -1,57 +1,46 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] fix the outdated comment in ext2_nfs_get_inode()
-Date: Tue, 30 Aug 2011 12:35:45 +0200
-Message-ID: <20110830103545.GA16202@quack.suse.cz>
-References: <CAFNq8R62+5dLbDV3b_rtFgMwTZ2abW+h+tg013L=pij60tTRdw@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 41682] INFO: possible circular locking dependency detected ..
+ at ext4_evict_inode
+Date: Tue, 30 Aug 2011 10:51:11 GMT
+Message-ID: <201108301051.p7UApB26010969@demeter2.kernel.org>
+References: <bug-41682-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.cz, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Li Haifeng <omycle@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:39380 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751362Ab1H3Kfr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 30 Aug 2011 06:35:47 -0400
-Content-Disposition: inline
-In-Reply-To: <CAFNq8R62+5dLbDV3b_rtFgMwTZ2abW+h+tg013L=pij60tTRdw@mail.gmail.com>
+Received: from demeter2.kernel.org ([140.211.167.42]:48832 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752898Ab1H3KvM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Aug 2011 06:51:12 -0400
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.4) with ESMTP id p7UApBFN010970
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 30 Aug 2011 10:51:11 GMT
+In-Reply-To: <bug-41682-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 30-08-11 17:53:58, Li Haifeng wrote:
-> The function iget  referred by the comment is replaced by ext2_iget .
-> And the ext2_read_inode() is not exist, the ext2_iget is "neater". So
-> the comment is fixed here.
-> 
-> Signed-off-by: Li Haifeng <omycle@gmail.com>
-> ---
->  fs/ext2/super.c |    6 ++----
->  1 files changed, 2 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-> index 1dd62ed..994ced3 100644
-> --- a/fs/ext2/super.c
-> +++ b/fs/ext2/super.c
-> @@ -327,10 +327,8 @@ static struct inode *ext2_nfs_get_inode(struct
-> super_block *sb,
->     if (ino > le32_to_cpu(EXT2_SB(sb)->s_es->s_inodes_count))
->         return ERR_PTR(-ESTALE);
-> 
-> -   /* iget isn't really right if the inode is currently unallocated!!
-> -    * ext2_read_inode currently does appropriate checks, but
-> -    * it might be "neater" to call ext2_get_inode first and check
-> -    * if the inode is valid.....
-> +   /*
-> +    * ext2_iget isn't really right if the inode is currently unallocated!!
-  OK, but we should keep there a note that ext2_iget() does appropriate
-checks to handle stale inodes.
+https://bugzilla.kernel.org/show_bug.cgi?id=41682
 
-									Honza
->      */
->     inode = ext2_iget(sb, ino);
->     if (IS_ERR(inode))
-> -- 
-> 1.7.4.1
+
+Sedat Dilek <sedat.dilek@gmail.com> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |sedat.dilek@gmail.com
+
+
+
+
+--- Comment #8 from Sedat Dilek <sedat.dilek@gmail.com>  2011-08-30 10:51:09 ---
+Should be fixed by "ext4: fix potential deadlock in ext4_evict_inode()" [1].
+
+- Sedat -
+
+[1]
+http://git.us.kernel.org/?p=linux/kernel/git/tytso/ext4.git;a=commit;h=a840f388e87f75c18c51e1d868fdcd2ef23e9cea
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
