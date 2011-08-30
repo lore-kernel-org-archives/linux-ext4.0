@@ -1,18 +1,24 @@
 From: Li Haifeng <omycle@gmail.com>
 Subject: [PATCH] fix the outdated comment in ext2_nfs_get_inode()
-Date: Tue, 30 Aug 2011 19:46:20 +0800
-Message-ID: <CAFNq8R4Fbnuk_PnEKxCrNgnVA9w6H+LcSUNLWTqPcsiLquKLcA@mail.gmail.com>
+Date: Tue, 30 Aug 2011 20:11:28 +0800
+Message-ID: <CAFNq8R7dt03bXJUe4gVcZOGRSqJ7uPJHTFeXoaGTu2pKuNBCfw@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+To: jack@suse.cz
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:41469 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753254Ab1H3LqV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Aug 2011 07:46:21 -0400
+Received: from mail-yi0-f46.google.com ([209.85.218.46]:44098 "EHLO
+	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750738Ab1H3ML2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Aug 2011 08:11:28 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
+
+I am sorry, the last patch "fix the outdated comment in
+ext2_nfs_get_inode()" has some " whitespace errors detected". So
+correct it and remake it.
+
+I will be more careful later.
 
 Signed-off-by: Li Haifeng <omycle@gmail.com>
 ---
