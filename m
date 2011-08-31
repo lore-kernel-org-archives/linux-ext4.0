@@ -1,101 +1,60 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: [PATCH 4/6 v7] ext4: Lock i_mutex for punch hole
-Date: Wed, 31 Aug 2011 11:49:08 -0700
-Message-ID: <4E5E8224.3040607@linux.vnet.ibm.com>
-References: <1314750513-10045-1-git-send-email-achender@linux.vnet.ibm.com> <1314750513-10045-5-git-send-email-achender@linux.vnet.ibm.com> <7607E9C9-650E-4C7F-B5EA-1DD76E564C05@dilger.ca>
+From: Arnaud Lacombe <lacombar@gmail.com>
+Subject: Re: [GIT PULL] ext4 fixes for 3.1-rc5
+Date: Wed, 31 Aug 2011 14:57:06 -0400
+Message-ID: <CACqU3MUzHB=S-P=2CakCm=Z0JYvt8ebknE3pdJ93rbV=R4J_Qw@mail.gmail.com>
+References: <E1Qyos7-0001in-99@tytso-glaptop.cam.corp.google.com>
+	<CA+55aFzFRo0vmuED2wbab6ZU9oH4Rriav6R13zGNtUnS2UStMA@mail.gmail.com>
+	<CACqU3MV9nd-0i3Ng7rFCFRFnw1Wii0V4PJcx0U_AmxanJQoS6g@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:33539 "EHLO e4.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751288Ab1HaStQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 31 Aug 2011 14:49:16 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e4.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p7VIPrK5020211
-	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 14:25:53 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p7VInF1q131478
-	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 14:49:15 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p7VInDha029079
-	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 15:49:14 -0300
-In-Reply-To: <7607E9C9-650E-4C7F-B5EA-1DD76E564C05@dilger.ca>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:53825 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752519Ab1HaS5H convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Aug 2011 14:57:07 -0400
+In-Reply-To: <CACqU3MV9nd-0i3Ng7rFCFRFnw1Wii0V4PJcx0U_AmxanJQoS6g@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 08/30/2011 05:31 PM, Andreas Dilger wrote:
-> On 2011-08-30, at 6:28 PM, Allison Henderson wrote:
->> This patch modifies the fallocate routine to lock i_mutex during
->> the punch hole operation.
->>
->> Yongqiang noticed that the vfs layer locks i_mutex for truncate,
->> but not fallocate, so the fallocate routine will need to take
->> care of locking i_mutex.  Otherwise a page may be mapped after
->> punch hole has released the pages, but before i_data_sem is
->> locked to release the blocks in the extent tree.
->
-> If the VFS is locking i_mutex for truncate, shouldn't the locking for
-> fallocate() also be done in the VFS?
+Hi,
 
-Alrighty, I will do some poking around with this idea first.  I dont 
-know if other files systems are already locking i_mutex during 
-fallocate, and it may be the case that not all filesystems need i_mutex 
-locked for fallocate.  So I'll do a little research first, but I will 
-post back with what I find.  Thx!
+On Wed, Aug 31, 2011 at 2:47 PM, Arnaud Lacombe <lacombar@gmail.com> wr=
+ote:
+> Hi,
+>
+> On Wed, Aug 31, 2011 at 2:25 PM, Linus Torvalds
+> <torvalds@linux-foundation.org> wrote:
+>> On Wed, Aug 31, 2011 at 10:46 AM, Theodore Ts'o <tytso@mit.edu> wrot=
+e:
+>>>
+>>> Please pull from:
+>>>
+>>> =A0 =A0 =A0 =A0git://github.com/tytso/ext4.git for_linus-20110831 #=
+ 8c0bec2151a
+>>>
+>>> to get the following bug fix. =A0It address a lockdep warning which=
+ a lot
+>>> of people have been complaining about.
+>>
+>> So what's up? Bad English and a github address makes me unhappy.
+>>
+>> I can imagine that you decided not to use kernel.org due to hera bei=
+ng
+>> down, but this still makes me want to say "please more references".
+>>
+> shouldn't all pull request be digitally signed, by _default_ ?
+>
+nah... you can forget about the question, as it would just mean that
+all the chain from the original submitter would need to be signed to
+be trustable...
 
-Allison Henderson
-
->
->> Signed-off-by: Allison Henderson<achender@linux.vnet.ibm.com>
->> ---
->> :100644 100644 9124cd2... 007fb08... M	fs/ext4/extents.c
->> fs/ext4/extents.c |   10 +++++++---
->> 1 files changed, 7 insertions(+), 3 deletions(-)
->>
->> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
->> index 9124cd2..007fb08 100644
->> --- a/fs/ext4/extents.c
->> +++ b/fs/ext4/extents.c
->> @@ -3774,8 +3774,13 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
->> 	if (mode&  ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
->> 		return -EOPNOTSUPP;
->>
->> -	if (mode&  FALLOC_FL_PUNCH_HOLE)
->> -		return ext4_punch_hole(file, offset, len);
->> +	mutex_lock(&inode->i_mutex);
->> +
->> +	if (mode&  FALLOC_FL_PUNCH_HOLE) {
->> +		ret = ext4_punch_hole(file, offset, len);
->> +		mutex_unlock(&inode->i_mutex);
->> +		return ret;	
->> +	}
->>
->> 	trace_ext4_fallocate_enter(inode, offset, len, mode);
->> 	map.m_lblk = offset>>  blkbits;
->> @@ -3789,7 +3794,6 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
->> 	 * credits to insert 1 extent into extent tree
->> 	 */
->> 	credits = ext4_chunk_trans_blocks(inode, max_blocks);
->> -	mutex_lock(&inode->i_mutex);
->> 	ret = inode_newsize_ok(inode, (len + offset));
->> 	if (ret) {
->> 		mutex_unlock(&inode->i_mutex);
->> --
->> 1.7.1
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
-> Cheers, Andreas
->
->
->
->
->
-
+ - A.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
