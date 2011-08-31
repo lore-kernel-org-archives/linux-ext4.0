@@ -1,51 +1,51 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 25832] kernel crashes when a mounted ext3/4 file system is
- physically removed
-Date: Wed, 31 Aug 2011 14:36:00 GMT
-Message-ID: <201108311436.p7VEa0uQ001551@demeter1.kernel.org>
-References: <bug-25832-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: ext2fs_block_iterate (e2, EXT2_RESIZE_INO, ...) =>
+ EXT2_ET_FILE_TOO_BIG?
+Date: Wed, 31 Aug 2011 11:22:07 -0400
+Message-ID: <20110831152207.GB32582@thunk.org>
+References: <867h5tdf9o.fsf@gray.siamics.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Ivan Shmakov <oneingray@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:41887 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750794Ab1HaOgC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Aug 2011 10:36:02 -0400
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.4) with ESMTP id p7VEa04i001552
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 14:36:00 GMT
-In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:52401 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756355Ab1HaPWJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 31 Aug 2011 11:22:09 -0400
+Content-Disposition: inline
+In-Reply-To: <867h5tdf9o.fsf@gray.siamics.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=25832
+On Wed, Aug 31, 2011 at 05:52:35PM +0700, Ivan Shmakov wrote:
+> 	Curiosly enough, ext2fs_block_iterate () returns
+> 	EXT2FS_BLOCK_ITERATE for EXT2_RESIZE_INO (the binary in question
+> 	is statically linked against libext2fs, 1.41.12 debian 2):
+> 
+> (gdb) print ext2fs_block_iterate (e2, ino, 0, 0, db_add_block, (void *)sp)
+> $13 = 2133571410
+> (gdb) 
+> 
+> 	Is it because the blocks belonging to this inode aren't supposed
+> 	to belong to the filesystem itself, I wonder?
 
+It returned the error EXT2_ET_FILE_TOO_BIG.  From ext2_err.h, which
+you can get from the build tree of e2fsprogs, in lib/ext2fs/ext2_err.h
+(generated from lib/ext2fs/ext2_err.et):
 
+#define EXT2_ET_FILE_TOO_BIG                     (2133571410L)
 
+Yeah, the resize inode is a special case.  It is specially constructed
+to reserve space for new block group descriptor blocks when doing an
+online resize.  I would suggest for your purposes that you _not_
+support the online-resizable file system feature, as it's unneeded
+complexity (from what I understand of what you're going to be doing
+with the file system).
 
+Regards,
 
---- Comment #87 from Alan Stern <stern@rowland.harvard.edu>  2011-08-31 14:35:39 ---
-I think all I had was  CONFIG_NETCONSOLE=y.
+							- Ted
 
-As for fixing the problem...  To be honest, you shouldn't expect it to get
-fixed until somebody can identify what's causing it.  Since you seem to be one
-of the very few people experiencing it regularly, the situation doesn't look
-good until you can provide more information.
-
-The best course of action is to narrow down the variables as much as possible. 
-That means not running any extraneous programs (i.e., don't run a graphical
-desktop, and indeed, don't run X at all).  It also means coming up with a very
-repeatable scenario to trigger the problem.  Something like what you described
-in comment #75 would be good.
-
-Speaking of which, you mentioned in that comment that on each loop through the
-test, the driver letter would go up by one.  That should not have happened! 
-It's another indication of something strange.  Can you verify -- does this
-still happen with 3.1-rc4?
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+P.S. The code to create the reserved inode can be found in
+lib/ext2fs/res_gdt.c, in ext2fs_create_resize_inode().
