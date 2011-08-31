@@ -1,51 +1,50 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: ext2fs_block_iterate (e2, EXT2_RESIZE_INO, ...) =>
- EXT2_ET_FILE_TOO_BIG?
-Date: Wed, 31 Aug 2011 11:22:07 -0400
-Message-ID: <20110831152207.GB32582@thunk.org>
-References: <867h5tdf9o.fsf@gray.siamics.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Ivan Shmakov <oneingray@gmail.com>
+From: Tao Ma <tm@tao.ma>
+Subject: [PATCH ] ext3: Fix a possible corruption in dx_probe.
+Date: Wed, 31 Aug 2011 23:57:24 +0800
+Message-ID: <1314806244-8434-1-git-send-email-tm@tao.ma>
+Cc: Jan Kara <jack@suse.cz>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:52401 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756355Ab1HaPWJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 31 Aug 2011 11:22:09 -0400
-Content-Disposition: inline
-In-Reply-To: <867h5tdf9o.fsf@gray.siamics.net>
+Received: from oproxy6-pub.bluehost.com ([67.222.54.6]:43402 "HELO
+	oproxy6-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1755985Ab1HaP7i (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Aug 2011 11:59:38 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 31, 2011 at 05:52:35PM +0700, Ivan Shmakov wrote:
-> 	Curiosly enough, ext2fs_block_iterate () returns
-> 	EXT2FS_BLOCK_ITERATE for EXT2_RESIZE_INO (the binary in question
-> 	is statically linked against libext2fs, 1.41.12 debian 2):
-> 
-> (gdb) print ext2fs_block_iterate (e2, ino, 0, 0, db_add_block, (void *)sp)
-> $13 = 2133571410
-> (gdb) 
-> 
-> 	Is it because the blocks belonging to this inode aren't supposed
-> 	to belong to the filesystem itself, I wonder?
+From: Tao Ma <boyu.mt@taobao.com>
 
-It returned the error EXT2_ET_FILE_TOO_BIG.  From ext2_err.h, which
-you can get from the build tree of e2fsprogs, in lib/ext2fs/ext2_err.h
-(generated from lib/ext2fs/ext2_err.et):
+For all the callers of dx_probe, frame_in is passed in uninitialized.
+So we should set frame->bh to NULL in the beginning of while, not
+the end. Otherwise, the first "goto fail2" will try to brelse(frame->bh)
+while frame->bh is still invalid.
 
-#define EXT2_ET_FILE_TOO_BIG                     (2133571410L)
+Cc: Jan Kara <jack@suse.cz>
+Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+---
+ fs/ext3/namei.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-Yeah, the resize inode is a special case.  It is specially constructed
-to reserve space for new block group descriptor blocks when doing an
-online resize.  I would suggest for your purposes that you _not_
-support the online-resizable file system feature, as it's unneeded
-complexity (from what I understand of what you're going to be doing
-with the file system).
+diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+index 34b6d9b..45468b9 100644
+--- a/fs/ext3/namei.c
++++ b/fs/ext3/namei.c
+@@ -404,6 +404,7 @@ dx_probe(struct qstr *entry, struct inode *dir,
+ 	dxtrace (printk("Look up %x", hash));
+ 	while (1)
+ 	{
++		frame->bh = NULL;
+ 		count = dx_get_count(entries);
+ 		if (!count || count > dx_get_limit(entries)) {
+ 			ext3_warning(dir->i_sb, __func__,
+@@ -458,7 +459,6 @@ dx_probe(struct qstr *entry, struct inode *dir,
+ 			goto fail2;
+ 		}
+ 		frame++;
+-		frame->bh = NULL;
+ 	}
+ fail2:
+ 	while (frame >= frame_in) {
+-- 
+1.7.0.4
 
-Regards,
-
-							- Ted
-
-P.S. The code to create the reserved inode can be found in
-lib/ext2fs/res_gdt.c, in ext2fs_create_resize_inode().
