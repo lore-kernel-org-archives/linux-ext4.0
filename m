@@ -1,132 +1,118 @@
 From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: [PATCH 0/6 v7] ext4: fix 1k block bugs
-Date: Tue, 30 Aug 2011 17:28:27 -0700
-Message-ID: <1314750513-10045-1-git-send-email-achender@linux.vnet.ibm.com>
+Subject: [PATCH 3/6 v7] ext4: fix 2nd xfstests 127 punch hole failure
+Date: Tue, 30 Aug 2011 17:28:30 -0700
+Message-ID: <1314750513-10045-4-git-send-email-achender@linux.vnet.ibm.com>
+References: <1314750513-10045-1-git-send-email-achender@linux.vnet.ibm.com>
 Cc: Allison Henderson <achender@linux.vnet.ibm.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:35758 "EHLO e1.ny.us.ibm.com"
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:33217 "EHLO e6.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754060Ab1HaAZZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1754085Ab1HaAZZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 30 Aug 2011 20:25:25 -0400
-Received: from /spool/local
-	by us.ibm.com with XMail ESMTP
-	for <linux-ext4@vger.kernel.org> from <achender@linux.vnet.ibm.com>;
-	Tue, 30 Aug 2011 20:25:24 -0400
+Received: from d01relay07.pok.ibm.com (d01relay07.pok.ibm.com [9.56.227.147])
+	by e6.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p7V01FdV031943
+	for <linux-ext4@vger.kernel.org>; Tue, 30 Aug 2011 20:01:15 -0400
 Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p7V0PLh51429730
-	for <linux-ext4@vger.kernel.org>; Tue, 30 Aug 2011 20:25:21 -0400
+	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p7V0POZM2420972
+	for <linux-ext4@vger.kernel.org>; Tue, 30 Aug 2011 20:25:24 -0400
 Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p7V0PKYN001392
-	for <linux-ext4@vger.kernel.org>; Tue, 30 Aug 2011 21:25:21 -0300
+	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p7V0PNbp001566
+	for <linux-ext4@vger.kernel.org>; Tue, 30 Aug 2011 21:25:23 -0300
+In-Reply-To: <1314750513-10045-1-git-send-email-achender@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch set corrects several bugs that occur
-when blocksize = 1k.
+This patch fixes a second punch hole bug found by xfstests 127.
 
-The first bug appears in xfstests 75, 112, 127 and occurs
-because the partial pages appearing at the head and tail
-of a hole are not properly zeroed and unmapped
+This bug happens because punch hole needs to flush the pages
+of the hole to avoid race conditions.  But if the end of the
+hole is in the same page as i_size, the buffer heads beyond
+i_size need to be unmapped and the page needs to be zeroed
+after it is flushed.
 
-A second bug in test 127 occurs when i_size and the end of
-the hole appear in the same page.  Because punch hole needs
-to flush the pages in the hole, it will need to properly
-unmap the partial page appearing after i_size.
+To correct this, the new ext4_discard_partial_page_buffers
+routine is used to zero and unmap the partial page
+beyond i_size if the end of the hole appears in the same
+page as i_size.
 
-A similar bug occurred during extra fsx testing for the
-first two patches.  This bug happens because truncate also
-does not zero and unmap the partial page at the end of the
-file.
+The code has also been optimized to set the end of the hole
+to the page after i_size if the specified hole exceeds i_size,
+and the code that flushes the pages has been simplified.
 
-Similar bugs also occurred when a write operation begins or
-ends in a hole or extends EOF.  The partial page of the write
-operation needs to be zeroed and unmapped.
+Signed-off-by: Allison Henderson <achender@linux.vnet.ibm.com>
+---
+:100644 100644 18f7e04... 9124cd2... M	fs/ext4/extents.c
+ fs/ext4/extents.c |   41 +++++++++++++++++++++++++++++++++++++----
+ 1 files changed, 37 insertions(+), 4 deletions(-)
 
-These bugs are corrected using a new ext4_discard_partial_page_buffers
-routine that zeros a specified region of a page, and unmaps buffer
-heads for any block aligned region of the page that was completely
-zeroed.
-
-This set also contains a fix for a bug reported by Lukas while
-working on a new patch to add discard support to loop devices using
-punch hole.  This bug occurs when calculating the byte block offset for
-very large holes.  Since the code now needs the byte offset of the
-pages instead of the blocks, the problem code is simply removed.
-
-Lastly the set contains a patch to lock i_mutex for punch hole.
-Yongquiang noticed that the vfs locks i_mutex for truncate,
-but not for fallocate, so fallocate will need to take i_mutex
-before calling punch hole.
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 18f7e04..9124cd2 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4166,6 +4166,20 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 	loff_t first_page_offset, last_page_offset;
+ 	int ret, credits, blocks_released, err = 0;
  
-This patch set has passed the following tests
-(for both 1k and 4k blocksizes):
-xfstests 75, 112, 127, 130, 252 and 256
-fsx stress test (12 hours)
++	/* No need to punch hole beyond i_size */
++	if (offset >= inode->i_size)
++		return 0;
++
++	/*
++	 * If the hole extends beyond i_size, set the hole
++	 * to end after the page that contains i_size
++	 */
++	if (offset + length > inode->i_size) {
++		length = inode->i_size +
++		   PAGE_CACHE_SIZE - (inode->i_size & (PAGE_CACHE_SIZE - 1)) -
++		   offset;
++	}
++
+ 	first_block = (offset + sb->s_blocksize - 1) >>
+ 		EXT4_BLOCK_SIZE_BITS(sb);
+ 	last_block = (offset + length) >> EXT4_BLOCK_SIZE_BITS(sb);
+@@ -4182,11 +4196,10 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 	 */
+ 	if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
+ 		err = filemap_write_and_wait_range(mapping,
+-			first_page_offset == 0 ? 0 : first_page_offset-1,
+-			last_page_offset);
++			offset, offset + length - 1);
  
-v1 -> v2
-Added EXT4_BLOCK_ZERO_DISCARD_BUFFER flag
-
-v2 -> v3
-Moved code out of ext4_zero_block_page_range and in
-to new ext4_unmap_page_range function
-
-v3 -> v4
-Renamed ext4_unmap_page_range to ext4_unmap_partial_page_buffers
-Moved ext4_unmap_partial_page_buffers from inode.c to extents.c
-Corrected comments for non block/page aligned handling
-Added checks to avoid unnecessary page unmaps
-Removed unneeded journaling and mapping from new routine
-
-v4 -> v5
-Renamed ext4_unmap_partial_page_buffers to
-ext4_discard_partial_page_buffers_no_lock and added
-new ext4_discard_partial_page_buffers wrapper function
-
-Modified ext4_discard_partial_page_buffers_no_lock to
-zero the page as well as unmap buffers
-
-Moved ext4_discard_partial_page_buffers functions
-back to inode.c, and also put in a separate patch.
-
-Added extra patches for write bugs and truncate bugs
-
-Added extra patch for large hole calculation
-
-v5 -> v6
-Merged patch 4 into patch 2 since block offsets are
-no longer needed
-
-Removed uneeded ClearPageUptodate when unmapping
-buffer heads
-
-Patch set now passes test 130.  The
-ext4_discard_partial_page_buffers_no_lock routine
-was modified to map buffer heads for unblock aligned
-regions of the page (if needed) so that they can be
-updated with the contents of the block before being
-partially zeroed
-
-v6 -> v7
-Added feedback to simplify ext4_discard_partial_page_buffers_no_lock
-
-Remove journaling for buffer heads that are block aligned
-
-Do not mark unmapped buffers dirty (causes a warning)
-
-Added patch to lock i_mutex for punch hole
-
-Allison Henderson (6):
-  ext4: Add new ext4_discard_partial_page_buffers routines
-  ext4: fix xfstests 75, 112, 127 punch hole failure
-  ext4: fix 2nd xfstests 127 punch hole failure
-  ext4: Lock i_mutex for punch hole
-  ext4: fix fsx truncate failure
-  ext4: fix partial page writes
-
- fs/ext4/ext4.h     |   11 +++
- fs/ext4/extents.c  |  126 ++++++++++++++++++++-------
- fs/ext4/indirect.c |   16 +++-
- fs/ext4/inode.c    |  243 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 363 insertions(+), 33 deletions(-)
+-			if (err)
+-				return err;
++		if (err)
++			return err;
+ 	}
+ 
+ 	/* Now release the pages */
+@@ -4249,6 +4262,26 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 		}
+ 	}
+ 
++
++	/*
++	 * If i_size is contained in the last page, we need to
++	 * unmap and zero the partial page after i_size
++	 */
++	if (inode->i_size >> PAGE_CACHE_SHIFT == last_page &&
++	   inode->i_size % PAGE_CACHE_SIZE != 0) {
++
++		page_len = PAGE_CACHE_SIZE -
++			(inode->i_size & (PAGE_CACHE_SIZE - 1));
++
++		if (page_len > 0) {
++			err = ext4_discard_partial_page_buffers(handle,
++			  mapping, inode->i_size, page_len, 0);
++
++			if (err)
++				goto out;
++		}
++	}
++
+ 	/* If there are no blocks to remove, return now */
+ 	if (first_block >= last_block)
+ 		goto out;
+-- 
+1.7.1
 
