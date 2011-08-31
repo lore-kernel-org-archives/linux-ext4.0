@@ -1,81 +1,73 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 4/6 v7] ext4: Lock i_mutex for punch hole
-Date: Tue, 30 Aug 2011 18:31:40 -0600
-Message-ID: <7607E9C9-650E-4C7F-B5EA-1DD76E564C05@dilger.ca>
-References: <1314750513-10045-1-git-send-email-achender@linux.vnet.ibm.com> <1314750513-10045-5-git-send-email-achender@linux.vnet.ibm.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
+From: "Moffett, Kyle D" <Kyle.D.Moffett@boeing.com>
+Subject: Re: Bug#615998: linux-image-2.6.32-5-xen-amd64: Repeatable "kernel
+ BUG at fs/jbd2/commit.c:534" from Postfix on ext4
+Date: Tue, 30 Aug 2011 19:26:22 -0500
+Message-ID: <F33B5C17-2893-44D4-BBE4-C75CDC1375EA@boeing.com>
+References: <20110405230538.GH2832@thunk.org>
+ <FD93E462-D97B-411B-BF09-9A64670AC5C2@boeing.com>
+ <AF621113-8320-4973-A88A-1FC048EA4293@boeing.com>
+ <BANLkTi=5BLA07tvbv3PFcZ0cc8FmBtg+UA@mail.gmail.com>
+ <404FD5CC-8F27-4336-B7D4-10675C53A588@boeing.com>
+ <20110624134659.GB26380@quack.suse.cz>
+ <2F80BF45-28FA-46D3-9A28-CA9416DC5813@boeing.com>
+ <20110624200231.GA32176@quack.suse.cz>
+ <5DE8D448-A77D-46E8-BF40-15AA7F7CDBE9@boeing.com>
+ <79E8C04C-B5A8-49E5-901F-444C8B8A53DB@boeing.com>
+ <20110830221249.GH16202@quack.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org
-To: Allison Henderson <achender@linux.vnet.ibm.com>
+Cc: Sean Ryle <seanbo@gmail.com>, "Ted Ts'o" <tytso@mit.edu>,
+	"615998@bugs.debian.org" <615998@bugs.debian.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Sachin Sant <sachinp@in.ibm.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:46552 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754068Ab1HaAbl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Aug 2011 20:31:41 -0400
-In-Reply-To: <1314750513-10045-5-git-send-email-achender@linux.vnet.ibm.com>
+Received: from stl-smtpout-01.boeing.com ([130.76.96.56]:54477 "EHLO
+	stl-smtpout-01.boeing.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754375Ab1HaA6G convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Aug 2011 20:58:06 -0400
+In-Reply-To: <20110830221249.GH16202@quack.suse.cz>
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-08-30, at 6:28 PM, Allison Henderson wrote:
-> This patch modifies the fallocate routine to lock i_mutex during
-> the punch hole operation.
+On Aug 30, 2011, at 18:12, Jan Kara wrote:
+> On Fri 26-08-11 16:03:32, Moffett, Kyle D wrote:
+>> Ping?
+>> 
+>> Any more ideas for debugging this issue?
 > 
-> Yongqiang noticed that the vfs layer locks i_mutex for truncate,
-> but not fallocate, so the fallocate routine will need to take
-> care of locking i_mutex.  Otherwise a page may be mapped after
-> punch hole has released the pages, but before i_data_sem is
-> locked to release the blocks in the extent tree.
+> Sorry for not getting to you earlier.
 
-If the VFS is locking i_mutex for truncate, shouldn't the locking for
-fallocate() also be done in the VFS?
+That's ok, I have a workaround so it's been on my back burner for a while.
 
-> Signed-off-by: Allison Henderson <achender@linux.vnet.ibm.com>
-> ---
-> :100644 100644 9124cd2... 007fb08... M	fs/ext4/extents.c
-> fs/ext4/extents.c |   10 +++++++---
-> 1 files changed, 7 insertions(+), 3 deletions(-)
+>> I can still trigger it on my VM snapshot very easily, so if you have anything
+>> you think I should test I would be very happy to give it a shot.
 > 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 9124cd2..007fb08 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -3774,8 +3774,13 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
-> 	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
-> 		return -EOPNOTSUPP;
+>  OK, so in the meantime I found a bug in data=journal code which could be
+> related to your problem. It is fixed by commit
+> 2d859db3e4a82a365572592d57624a5f996ed0ec which is in 3.1-rc1. Have you
+> tried that or newer kernel as well?
 > 
-> -	if (mode & FALLOC_FL_PUNCH_HOLE)
-> -		return ext4_punch_hole(file, offset, len);
-> +	mutex_lock(&inode->i_mutex);
-> +
-> +	if (mode & FALLOC_FL_PUNCH_HOLE) {
-> +		ret = ext4_punch_hole(file, offset, len);
-> +		mutex_unlock(&inode->i_mutex);
-> +		return ret;	
-> +	}
-> 
-> 	trace_ext4_fallocate_enter(inode, offset, len, mode);
-> 	map.m_lblk = offset >> blkbits;
-> @@ -3789,7 +3794,6 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
-> 	 * credits to insert 1 extent into extent tree
-> 	 */
-> 	credits = ext4_chunk_trans_blocks(inode, max_blocks);
-> -	mutex_lock(&inode->i_mutex);
-> 	ret = inode_newsize_ok(inode, (len + offset));
-> 	if (ret) {
-> 		mutex_unlock(&inode->i_mutex);
-> -- 
-> 1.7.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> If the problem still is not fixed, I can provide some debugging patch to
+> you. We spoke with Josef Bacik how errors like yours could happen so I have
+> some places to watch...
 
+I have not tried anything more recent; I'm actually a bit reluctant to move
+away from the Debian squeeze official kernels since I do need the security
+updates.
 
-Cheers, Andreas
+I took a quick look and I can't find that function in 2.6.32, so I assume it
+would be a rather nontrivial back-port.  It looks like the relevant code
+used to be in ext4_clear_inode somewhere?
 
+Out of curiosity, what would happen in data=journal mode if you unlinked a
+file which still had buffers pending?  That case does not seem to be handled
+by that commit you mentioned, was it already handled elsewhere?
 
+Thanks again!
 
-
-
+Cheers,
+Kyle Moffett
