@@ -1,73 +1,96 @@
-From: "Moffett, Kyle D" <Kyle.D.Moffett@boeing.com>
-Subject: Re: Bug#615998: linux-image-2.6.32-5-xen-amd64: Repeatable "kernel
- BUG at fs/jbd2/commit.c:534" from Postfix on ext4
-Date: Tue, 30 Aug 2011 19:26:22 -0500
-Message-ID: <F33B5C17-2893-44D4-BBE4-C75CDC1375EA@boeing.com>
-References: <20110405230538.GH2832@thunk.org>
- <FD93E462-D97B-411B-BF09-9A64670AC5C2@boeing.com>
- <AF621113-8320-4973-A88A-1FC048EA4293@boeing.com>
- <BANLkTi=5BLA07tvbv3PFcZ0cc8FmBtg+UA@mail.gmail.com>
- <404FD5CC-8F27-4336-B7D4-10675C53A588@boeing.com>
- <20110624134659.GB26380@quack.suse.cz>
- <2F80BF45-28FA-46D3-9A28-CA9416DC5813@boeing.com>
- <20110624200231.GA32176@quack.suse.cz>
- <5DE8D448-A77D-46E8-BF40-15AA7F7CDBE9@boeing.com>
- <79E8C04C-B5A8-49E5-901F-444C8B8A53DB@boeing.com>
- <20110830221249.GH16202@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: Sean Ryle <seanbo@gmail.com>, "Ted Ts'o" <tytso@mit.edu>,
-	"615998@bugs.debian.org" <615998@bugs.debian.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Sachin Sant <sachinp@in.ibm.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Jan Kara <jack@suse.cz>
+From: jiayingz@google.com (Jiaying Zhang)
+Subject: [PATCH] ext4: remove i_mutex lock in ext4_evict_inode to fix lockdep complaining
+Date: Tue, 30 Aug 2011 18:08:10 -0700 (PDT)
+Message-ID: <20110831010810.DBC952012E@ruihe2.smo.corp.google.com>
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from stl-smtpout-01.boeing.com ([130.76.96.56]:54477 "EHLO
-	stl-smtpout-01.boeing.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754375Ab1HaA6G convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Aug 2011 20:58:06 -0400
-In-Reply-To: <20110830221249.GH16202@quack.suse.cz>
-Content-Language: en-US
+Received: from smtp-out.google.com ([216.239.44.51]:21320 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754277Ab1HaBIO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Aug 2011 21:08:14 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Aug 30, 2011, at 18:12, Jan Kara wrote:
-> On Fri 26-08-11 16:03:32, Moffett, Kyle D wrote:
->> Ping?
->> 
->> Any more ideas for debugging this issue?
-> 
-> Sorry for not getting to you earlier.
+The i_mutex lock and flush_completed_IO() added by commit 2581fdc810 in
+ext4_evict_inode() causes lockdep complaining about potential deadlock in
+several places. This change removes the flush_completed_IO() and i_mutex lock
+in ext4_evict_inode(). Instead, we take a different approach to resolve the
+software lockup that commit 2581fdc810 intends to fix. Rather than having
+ext4-dio-unwritten thread wait for grabing the i_mutex lock of an inode, we
+use mutex_trylock() instead, and simply requeue the work item if we fail to
+grab the inode's i_mutex lock. This should speed up work queue processing in
+general and also prevents the following deadlock scenario: During page fault,
+shrink_icache_memory is called that in turn evicts another inode B. Inode B
+has some pending io_end work so it calls ext4_ioend_wait() that waits for
+inode B's i_ioend_count to become zero. However, inode B's ioend work was
+queued behind some of inode A's ioend work on the same cpu's ext4-dio-unwritten
+workqueue. As the ext4-dio-unwritten thread on that cpu is processing inode A's
+ioend work, it tries to grab inode A's i_mutex lock. Since the i_mutex lock of
+inode A is still hold before the page fault happened, we enter a deadlock.
 
-That's ok, I have a workaround so it's been on my back burner for a while.
+Signed-off-by: Jiaying Zhang <jiayingz@google.com>
+---
+ fs/ext4/ext4.h    |    1 +
+ fs/ext4/inode.c   |    3 ---
+ fs/ext4/page-io.c |   18 +++++++++++++++++-
+ 3 files changed, 18 insertions(+), 4 deletions(-)
 
->> I can still trigger it on my VM snapshot very easily, so if you have anything
->> you think I should test I would be very happy to give it a shot.
-> 
->  OK, so in the meantime I found a bug in data=journal code which could be
-> related to your problem. It is fixed by commit
-> 2d859db3e4a82a365572592d57624a5f996ed0ec which is in 3.1-rc1. Have you
-> tried that or newer kernel as well?
-> 
-> If the problem still is not fixed, I can provide some debugging patch to
-> you. We spoke with Josef Bacik how errors like yours could happen so I have
-> some places to watch...
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index e717dfd..b7d7bd0 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -175,6 +175,7 @@ struct mpage_da_data {
+  */
+ #define	EXT4_IO_END_UNWRITTEN	0x0001
+ #define EXT4_IO_END_ERROR	0x0002
++#define EXT4_IO_END_QUEUED	0x0004
+ 
+ struct ext4_io_page {
+ 	struct page	*p_page;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c4da98a..18d2558 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -121,9 +121,6 @@ void ext4_evict_inode(struct inode *inode)
+ 
+ 	trace_ext4_evict_inode(inode);
+ 
+-	mutex_lock(&inode->i_mutex);
+-	ext4_flush_completed_IO(inode);
+-	mutex_unlock(&inode->i_mutex);
+ 	ext4_ioend_wait(inode);
+ 
+ 	if (inode->i_nlink) {
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 78839af..92f38ee 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -142,7 +142,23 @@ static void ext4_end_io_work(struct work_struct *work)
+ 	unsigned long		flags;
+ 	int			ret;
+ 
+-	mutex_lock(&inode->i_mutex);
++	if (!mutex_trylock(&inode->i_mutex)) {
++		/*
++		 * Requeue the work instead of waiting so that the work
++		 * items queued after this can be processed.
++		 */
++		queue_work(EXT4_SB(inode->i_sb)->dio_unwritten_wq, &io->work);
++		/*
++		 * To prevent the ext4-dio-unwritten thread from keeping
++		 * requeueing end_io requests and occupying cpu for too long,
++		 * yield the cpu if it sees an end_io request that has already
++		 * been requeued.
++		 */
++		if (io->flag & EXT4_IO_END_QUEUED)
++			yield();
++		io->flag |= EXT4_IO_END_QUEUED;
++		return;
++	}
+ 	ret = ext4_end_io_nolock(io);
+ 	if (ret < 0) {
+ 		mutex_unlock(&inode->i_mutex);
+-- 
+1.7.3.1
 
-I have not tried anything more recent; I'm actually a bit reluctant to move
-away from the Debian squeeze official kernels since I do need the security
-updates.
-
-I took a quick look and I can't find that function in 2.6.32, so I assume it
-would be a rather nontrivial back-port.  It looks like the relevant code
-used to be in ext4_clear_inode somewhere?
-
-Out of curiosity, what would happen in data=journal mode if you unlinked a
-file which still had buffers pending?  That case does not seem to be handled
-by that commit you mentioned, was it already handled elsewhere?
-
-Thanks again!
-
-Cheers,
-Kyle Moffett
