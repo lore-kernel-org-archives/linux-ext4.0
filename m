@@ -1,214 +1,132 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: ext4: Always verify extent tree blocks
-Date: Tue, 30 Aug 2011 16:04:19 -0700
-Message-ID: <20110830230419.GF11984@tux1.beaverton.ibm.com>
-References: <CAEd0oO1MiuLwtLBh1B7xap-269ORgKYQBTtThKBZc3q45_Z3Nw@mail.gmail.com> <20110824174506.GJ10570@tux1.beaverton.ibm.com> <CAEd0oO1_FkOPKGDzXNX9S1L2fByoMiOcbA3Qw8szwAh-BkkdbA@mail.gmail.com> <20110829221015.GB11984@tux1.beaverton.ibm.com> <CAEd0oO1wm0iinsUJ2zwZM_+i2BnfU7uNA77ReiAcFTdwomKfkA@mail.gmail.com>
-Reply-To: djwong@us.ibm.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: =?utf-8?B?6buD5LiA6LuSIChJLUhzdWFuIEh1YW5nKQ==?=
-	<ihhuang@abmail.org>
+From: Allison Henderson <achender@linux.vnet.ibm.com>
+Subject: [PATCH 0/6 v7] ext4: fix 1k block bugs
+Date: Tue, 30 Aug 2011 17:28:27 -0700
+Message-ID: <1314750513-10045-1-git-send-email-achender@linux.vnet.ibm.com>
+Cc: Allison Henderson <achender@linux.vnet.ibm.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:51428 "EHLO e9.ny.us.ibm.com"
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:35758 "EHLO e1.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752618Ab1H3XF2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 30 Aug 2011 19:05:28 -0400
-Received: from d01relay07.pok.ibm.com (d01relay07.pok.ibm.com [9.56.227.147])
-	by e9.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p7UMULZr006865
-	for <linux-ext4@vger.kernel.org>; Tue, 30 Aug 2011 18:30:21 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p7UN4UqV2322556
-	for <linux-ext4@vger.kernel.org>; Tue, 30 Aug 2011 19:04:30 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p7UN4UgW014421
-	for <linux-ext4@vger.kernel.org>; Tue, 30 Aug 2011 19:04:30 -0400
-Content-Disposition: inline
-In-Reply-To: <CAEd0oO1wm0iinsUJ2zwZM_+i2BnfU7uNA77ReiAcFTdwomKfkA@mail.gmail.com>
+	id S1754060Ab1HaAZZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 30 Aug 2011 20:25:25 -0400
+Received: from /spool/local
+	by us.ibm.com with XMail ESMTP
+	for <linux-ext4@vger.kernel.org> from <achender@linux.vnet.ibm.com>;
+	Tue, 30 Aug 2011 20:25:24 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p7V0PLh51429730
+	for <linux-ext4@vger.kernel.org>; Tue, 30 Aug 2011 20:25:21 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p7V0PKYN001392
+	for <linux-ext4@vger.kernel.org>; Tue, 30 Aug 2011 21:25:21 -0300
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 30, 2011 at 09:08:59AM +0800, =E9=BB=83=E4=B8=80=E8=BB=92 (=
-I-Hsuan Huang) wrote:
-> Dear Darrick,
->=20
-> Thanks for your correction.
-> Would you please kindly give me some idea about how to prevent extent
-> attribute block error?
-> I would like to try journal_checksum.
+This patch set corrects several bugs that occur
+when blocksize = 1k.
 
-=46irst you'd have to figure out how the extent attribute got corrupted=
- (bad
-disk, bad cable, bad memory, bad software....) and then we could put to=
-gether a
-plan to fix it.  The ext4 metadata checksumming patches (which are near=
-ly ready
-to be sent out) would at least help with silent corruption.
+The first bug appears in xfstests 75, 112, 127 and occurs
+because the partial pages appearing at the head and tail
+of a hole are not properly zeroed and unmapped
 
---D
->=20
-> Thanks,
-> IH
->=20
-> 2011/8/30 Darrick J. Wong <djwong@us.ibm.com>
->=20
-> > On Mon, Aug 29, 2011 at 01:40:11PM +0800, =E9=BB=83=E4=B8=80=E8=BB=92=
- (I-Hsuan Huang) wrote:
-> > > Dear Darrick,
-> > >
-> > > I still met the following failure symptom with your patch.
-> > >
-> > > <2>[    3.311674] EXT4-fs error (device mmcblk0p23): ext4_iget: i=
-node
-> > > #22944: (comm init) bad extended attribute block 173879342
-> > >
-> > > The validation code looks like not work.
-> > > Is changing the flag enough to force validating extent header?
-> >
-> > Extended attribute blocks are not extent tree blocks.
-> >
-> > The patch in question only made ext4 complain consistently if the e=
-xtent
-> > tree
-> > got corrupt.
-> >
-> > --D
-> > >
-> > > Thanks,
-> > > IH Huang
-> > >
-> > > 2011/8/25 Darrick J. Wong <djwong@us.ibm.com>
-> > >
-> > > > On Wed, Aug 24, 2011 at 05:54:15PM +0800, =E9=BB=83=E4=B8=80=E8=
-=BB=92 (I-Hsuan Huang) wrote:
-> > > > > Dear Darrick,
-> > > > >
-> > > > > I have read your ext4 patch on Patchwork and have a question =
-about
-> > your
-> > > > ext4
-> > > > > patch to validate the extent header.
-> > > > > Is you patch related to the Bug 20992:
-> > > > > https://bugzilla.kernel.org/show_bug.cgi?id=3D20992
-> > > >
-> > > > Yes, I think it would fix that bug.  That said, I'm pretty clos=
-e to
-> > posting
-> > > > a
-> > > > patch set to implement full metadata checksuming, which include=
-s a
-> > better
-> > > > solution than what's in patchwork.  Basically it implements a n=
-ew
-> > > > bufferhead
-> > > > flag that tracks whether or not a metadata buffer has been vali=
-dated,
-> > and
-> > > > skips
-> > > > the checks if it has.
-> > > >
-> > > > Obviously that won't help you if you overwrite the filesystem w=
-hile
-> > it's
-> > > > mounted... but oh well, at least it'll fix your case.  It was m=
-eant to
-> > fix
-> > > > the
-> > > > case where the first time a bad extent block gets read it fails=
- the
-> > check
-> > > > and
-> > > > complains, but subsequent accesses of the same block don't even=
- check.
-> > > >
-> > > > --D
-> > > > >
-> > > > > Ted mentioned that
-> > > > >
-> > > > > *Yep, looks like a bug alright.
-> > > > >
-> > > > > From what I can tell, you were in the middle of async I/O, at=
- the
-> > time
-> > > > when
-> > > > > the
-> > > > > disk was corrupted.  The problem seemed to come after the I/O=
- was
-> > > > completed,
-> > > > > and  ext4_convert_unwritten_extents() was trying to set the
-> > initialized
-> > > > bit
-> > > > > on
-> > > > > the extent tree.  At that point the extent tree must have got=
-ten
-> > > > corrupted
-> > > > > on
-> > > > > disk, and this seriously confused the extent conversion code,=
- which
-> > ended
-> > > > up
-> > > > > passing 0 to ext4_ext_put_in_cache() as the length of the ext=
-ent, and
-> > > > that
-> > > > > tripped the BUG_ON in ext4_ext_put_in_cache().
-> > > > >
-> > > > > How did you corrupt the file system while it was mounted?   W=
-as it
-> > via
-> > > > some
-> > > > > dd
-> > > > > to the disk device directly?
-> > > > >
-> > > > > We do have code that checks to make sure the extent tree is s=
-ane, but
-> > we
-> > > > > skip
-> > > > > it if the data was already in the buffer cache, to save CPU c=
-osts.
-> >  But
-> > > > if
-> > > > > you
-> > > > > wrote to the disk device directly, it would have gone through=
- the
-> > buffer
-> > > > > cache,
-> > > > > since the extent tree was already cached, we would have skipp=
-ed the
-> > > > > validation
-> > > > > step, and that could be the explanation for how the bug got
-> > triggered.
-> > > > >
-> > > > > If so, I'm loathe to turn on the validation check uncondition=
-ally,
-> > since
-> > > > > that
-> > > > > would kill performance.  I can probably change the BUG_ON in
-> > > > > ext4_put_in_cache() to rather set the cache state to "invalid=
-", which
-> > > > would
-> > > > > at
-> > > > > least prevent the BUG_ON.  The filesystem was probably well a=
-nd truly
-> > > > > trashed,
-> > > > > though, so sooner or later the ext4 fs code would have hit so=
-mething
-> > to
-> > > > > cause
-> > > > > it to be very unhappy.  Hoepfully it would be an ext4_error()=
- call to
-> > > > mark
-> > > > > the
-> > > > > file system as corrupted, as opposed to another BUG_ON.
-> > > > > *
-> > > > > Have a nice day.
-> > > > >
-> > > > > Thanks,
-> > > > > Randall
-> > > >
-> >
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+A second bug in test 127 occurs when i_size and the end of
+the hole appear in the same page.  Because punch hole needs
+to flush the pages in the hole, it will need to properly
+unmap the partial page appearing after i_size.
+
+A similar bug occurred during extra fsx testing for the
+first two patches.  This bug happens because truncate also
+does not zero and unmap the partial page at the end of the
+file.
+
+Similar bugs also occurred when a write operation begins or
+ends in a hole or extends EOF.  The partial page of the write
+operation needs to be zeroed and unmapped.
+
+These bugs are corrected using a new ext4_discard_partial_page_buffers
+routine that zeros a specified region of a page, and unmaps buffer
+heads for any block aligned region of the page that was completely
+zeroed.
+
+This set also contains a fix for a bug reported by Lukas while
+working on a new patch to add discard support to loop devices using
+punch hole.  This bug occurs when calculating the byte block offset for
+very large holes.  Since the code now needs the byte offset of the
+pages instead of the blocks, the problem code is simply removed.
+
+Lastly the set contains a patch to lock i_mutex for punch hole.
+Yongquiang noticed that the vfs locks i_mutex for truncate,
+but not for fallocate, so fallocate will need to take i_mutex
+before calling punch hole.
+ 
+This patch set has passed the following tests
+(for both 1k and 4k blocksizes):
+xfstests 75, 112, 127, 130, 252 and 256
+fsx stress test (12 hours)
+ 
+v1 -> v2
+Added EXT4_BLOCK_ZERO_DISCARD_BUFFER flag
+
+v2 -> v3
+Moved code out of ext4_zero_block_page_range and in
+to new ext4_unmap_page_range function
+
+v3 -> v4
+Renamed ext4_unmap_page_range to ext4_unmap_partial_page_buffers
+Moved ext4_unmap_partial_page_buffers from inode.c to extents.c
+Corrected comments for non block/page aligned handling
+Added checks to avoid unnecessary page unmaps
+Removed unneeded journaling and mapping from new routine
+
+v4 -> v5
+Renamed ext4_unmap_partial_page_buffers to
+ext4_discard_partial_page_buffers_no_lock and added
+new ext4_discard_partial_page_buffers wrapper function
+
+Modified ext4_discard_partial_page_buffers_no_lock to
+zero the page as well as unmap buffers
+
+Moved ext4_discard_partial_page_buffers functions
+back to inode.c, and also put in a separate patch.
+
+Added extra patches for write bugs and truncate bugs
+
+Added extra patch for large hole calculation
+
+v5 -> v6
+Merged patch 4 into patch 2 since block offsets are
+no longer needed
+
+Removed uneeded ClearPageUptodate when unmapping
+buffer heads
+
+Patch set now passes test 130.  The
+ext4_discard_partial_page_buffers_no_lock routine
+was modified to map buffer heads for unblock aligned
+regions of the page (if needed) so that they can be
+updated with the contents of the block before being
+partially zeroed
+
+v6 -> v7
+Added feedback to simplify ext4_discard_partial_page_buffers_no_lock
+
+Remove journaling for buffer heads that are block aligned
+
+Do not mark unmapped buffers dirty (causes a warning)
+
+Added patch to lock i_mutex for punch hole
+
+Allison Henderson (6):
+  ext4: Add new ext4_discard_partial_page_buffers routines
+  ext4: fix xfstests 75, 112, 127 punch hole failure
+  ext4: fix 2nd xfstests 127 punch hole failure
+  ext4: Lock i_mutex for punch hole
+  ext4: fix fsx truncate failure
+  ext4: fix partial page writes
+
+ fs/ext4/ext4.h     |   11 +++
+ fs/ext4/extents.c  |  126 ++++++++++++++++++++-------
+ fs/ext4/indirect.c |   16 +++-
+ fs/ext4/inode.c    |  243 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 363 insertions(+), 33 deletions(-)
+
