@@ -1,40 +1,44 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 25832] kernel crashes when a mounted ext3/4 file system is
- physically removed
-Date: Wed, 31 Aug 2011 05:07:29 GMT
-Message-ID: <201108310507.p7V57TTe007178@demeter2.kernel.org>
-References: <bug-25832-13602@https.bugzilla.kernel.org/>
+From: Ivan Shmakov <ivan@gray.siamics.net>
+Subject: ext2fs_block_iterate (e2, EXT2_RESIZE_INO, ...) => EXT2_ET_FILE_TOO_BIG?
+Date: Wed, 31 Aug 2011 17:52:35 +0700
+Message-ID: <867h5tdf9o.fsf@gray.siamics.net>
+Reply-To: Ivan Shmakov <oneingray@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:48770 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752560Ab1HaFHa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Aug 2011 01:07:30 -0400
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.4) with ESMTP id p7V57TSq007179
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 05:07:29 GMT
-In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
+Received: from lo.gmane.org ([80.91.229.12]:39448 "EHLO lo.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753914Ab1HaKwv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 31 Aug 2011 06:52:51 -0400
+Received: from list by lo.gmane.org with local (Exim 4.69)
+	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
+	id 1QyiPa-0007ka-6s
+	for linux-ext4@vger.kernel.org; Wed, 31 Aug 2011 12:52:50 +0200
+Received: from gray.am-1.org ([188.120.231.229])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 12:52:50 +0200
+Received: from oneingray by gray.am-1.org with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 12:52:50 +0200
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=25832
+	Curiosly enough, ext2fs_block_iterate () returns
+	EXT2FS_BLOCK_ITERATE for EXT2_RESIZE_INO (the binary in question
+	is statically linked against libext2fs, 1.41.12 debian 2):
 
+(gdb) print ext2fs_block_iterate (e2, ino, 0, 0, db_add_block, (void *)sp)
+$13 = 2133571410
+(gdb) 
 
+	Is it because the blocks belonging to this inode aren't supposed
+	to belong to the filesystem itself, I wonder?
 
-
-
---- Comment #86 from rocko <rockorequin@hotmail.com>  2011-08-31 05:07:27 ---
-@Alan: re your comment #78, how did you compile in netconsole support? I have
-the following set in .config for my builds, which is the default in Ubuntu's
-kernel:
-
-CONFIG_NETCONSOLE=m
-CONFIG_NETCONSOLE_DYNAMIC=y
+	TIA.
 
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+FSF associate member #7257	Coming soon: Software Freedom Day
+http://mail.sf-day.org/lists/listinfo/ planning-ru (ru), sfd-discuss (en)
+
