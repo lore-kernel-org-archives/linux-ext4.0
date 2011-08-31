@@ -1,40 +1,51 @@
-From: Surbhi Palande <csurbhi@gmail.com>
-Subject: [PATCH] mke2fs.8: Fix the documentation of maximum journal size
-Date: Wed, 31 Aug 2011 16:35:57 +0300
-Message-ID: <1314797757-12604-1-git-send-email-csurbhi@gmail.com>
-Cc: tytso@mit.edu
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 25832] kernel crashes when a mounted ext3/4 file system is
+ physically removed
+Date: Wed, 31 Aug 2011 14:36:00 GMT
+Message-ID: <201108311436.p7VEa0uQ001551@demeter1.kernel.org>
+References: <bug-25832-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:57605 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755548Ab1HaNgD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Aug 2011 09:36:03 -0400
-Received: by bke11 with SMTP id 11so830715bke.19
-        for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 06:36:01 -0700 (PDT)
+Received: from demeter1.kernel.org ([140.211.167.39]:41887 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750794Ab1HaOgC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Aug 2011 10:36:02 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.4) with ESMTP id p7VEa04i001552
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 14:36:00 GMT
+In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix the max journal size in mke2fs man page.
+https://bugzilla.kernel.org/show_bug.cgi?id=25832
 
-Signed-off-by: Surbhi Palande <csurbhi@gmail.com>
----
- misc/mke2fs.8.in |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
 
-diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
-index 6901497..4cd40e4 100644
---- a/misc/mke2fs.8.in
-+++ b/misc/mke2fs.8.in
-@@ -345,7 +345,8 @@ Create an internal journal (i.e., stored inside the filesystem) of size
- megabytes.
- The size of the journal must be at least 1024 filesystem blocks
- (i.e., 1MB if using 1k blocks, 4MB if using 4k blocks, etc.)
--and may be no more than 102,400 filesystem blocks.
-+and may be no more than 10240000 filesystem blocks or half the total
-+file system size (which ever is smaller)
- @JDEV@.TP
- @JDEV@.BI device= external-journal
- @JDEV@Attach the filesystem to the journal block device located on
+
+
+
+--- Comment #87 from Alan Stern <stern@rowland.harvard.edu>  2011-08-31 14:35:39 ---
+I think all I had was  CONFIG_NETCONSOLE=y.
+
+As for fixing the problem...  To be honest, you shouldn't expect it to get
+fixed until somebody can identify what's causing it.  Since you seem to be one
+of the very few people experiencing it regularly, the situation doesn't look
+good until you can provide more information.
+
+The best course of action is to narrow down the variables as much as possible. 
+That means not running any extraneous programs (i.e., don't run a graphical
+desktop, and indeed, don't run X at all).  It also means coming up with a very
+repeatable scenario to trigger the problem.  Something like what you described
+in comment #75 would be good.
+
+Speaking of which, you mentioned in that comment that on each loop through the
+test, the driver letter would go up by one.  That should not have happened! 
+It's another indication of something strange.  Can you verify -- does this
+still happen with 3.1-rc4?
+
 -- 
-1.7.1
-
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
