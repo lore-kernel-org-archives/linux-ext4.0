@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 15/37] libext2fs: Create the block bitmap checksum
-Date: Wed, 31 Aug 2011 17:36:47 -0700
-Message-ID: <20110901003647.1176.41150.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 17/37] e2fsck: Verify block bitmap checksum
+Date: Wed, 31 Aug 2011 17:37:00 -0700
+Message-ID: <20110901003700.1176.54308.stgit@elm3c44.beaverton.ibm.com>
 References: <20110901003509.1176.51159.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,153 +16,147 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:45744 "EHLO e4.ny.us.ibm.com"
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:48039 "EHLO e6.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757349Ab1IAAgv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 31 Aug 2011 20:36:51 -0400
-Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
-	by e4.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p810DSup007524
-	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 20:13:28 -0400
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p810aooV1847468
-	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 20:36:50 -0400
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p7VKaZl4008361
-	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 17:36:37 -0300
+	id S1757010Ab1IAAhF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 31 Aug 2011 20:37:05 -0400
+Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
+	by e6.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p810Csxa026853
+	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 20:12:54 -0400
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p810b4QO182696
+	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 20:37:04 -0400
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p810b1N3015333
+	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 20:37:03 -0400
 In-Reply-To: <20110901003509.1176.51159.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Provide a field in the block group descriptor to store block bitmap checksum,
-and some helper functions to calculate and verify it.
+Check block bitmap checksum and write a new checksum if the verification fails.
+This is ok because e2fsck has already computed the correct block bitmap.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- lib/ext2fs/blknum.c     |   11 +++++++++++
- lib/ext2fs/csum.c       |   15 +++++++++++++++
- lib/ext2fs/ext2_fs.h    |    3 ++-
- lib/ext2fs/ext2fs.h     |    1 +
- lib/ext2fs/rw_bitmaps.c |   14 ++++++++++++++
- lib/ext2fs/swapfs.c     |    1 +
- 6 files changed, 44 insertions(+), 1 deletions(-)
+ e2fsck/pass5.c   |   60 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ e2fsck/problem.c |    5 +++++
+ e2fsck/problem.h |    3 +++
+ 3 files changed, 68 insertions(+), 0 deletions(-)
 
 
-diff --git a/lib/ext2fs/blknum.c b/lib/ext2fs/blknum.c
-index 47d3fda..07b2cb3 100644
---- a/lib/ext2fs/blknum.c
-+++ b/lib/ext2fs/blknum.c
-@@ -183,6 +183,17 @@ static struct ext4_group_desc *ext4fs_group_desc(ext2_filsys fs,
- }
+diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
+index a0cc564..63b7e99 100644
+--- a/e2fsck/pass5.c
++++ b/e2fsck/pass5.c
+@@ -27,6 +27,7 @@ static void check_inode_bitmaps(e2fsck_t ctx);
+ static void check_inode_end(e2fsck_t ctx);
+ static void check_block_end(e2fsck_t ctx);
+ static void check_inode_bitmap_checksum(e2fsck_t ctx);
++static void check_block_bitmap_checksum(e2fsck_t ctx);
  
- /*
-+ * Return the block bitmap checksum of a group
-+ */
-+blk64_t ext2fs_block_bitmap_checksum(ext2_filsys fs, dgrp_t group)
-+{
-+	struct ext4_group_desc *gdp;
-+
-+	gdp = ext4fs_group_desc(fs, fs->group_desc, group);
-+	return gdp->bg_block_bitmap_csum;
-+}
-+
-+/*
-  * Return the block bitmap block of a group
-  */
- blk64_t ext2fs_block_bitmap_loc(ext2_filsys fs, dgrp_t group)
-diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
-index 56b75da..f594c90 100644
---- a/lib/ext2fs/csum.c
-+++ b/lib/ext2fs/csum.c
-@@ -74,6 +74,21 @@ void ext2fs_inode_bitmap_csum_set(ext2_filsys fs, dgrp_t group, char *bitmap,
- 	gdp->bg_inode_bitmap_csum = ext2fs_bitmap_csum(fs, group, bitmap, size);
- }
- 
-+void ext2fs_block_bitmap_csum_set(ext2_filsys fs, dgrp_t group, char *bitmap,
-+				  int size)
-+{
-+	struct ext4_group_desc *gdp = (struct ext4_group_desc *)
-+			ext2fs_group_desc(fs, fs->group_desc, group);
-+
-+	if (fs->super->s_desc_size < EXT2_MIN_DESC_SIZE_64BIT)
-+		return;
-+	if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		return;
-+
-+	gdp->bg_block_bitmap_csum = ext2fs_bitmap_csum(fs, group, bitmap, size);
-+}
-+
- __u32 ext2fs_inode_csum(ext2_filsys fs, ext2_ino_t inum,
- 			struct ext2_inode_large *inode)
+ void e2fsck_pass5(e2fsck_t ctx)
  {
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index 367bfdf..ec28fac 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -159,7 +159,8 @@ struct ext4_group_desc
- 	__u16	bg_free_inodes_count;	/* Free inodes count */
- 	__u16	bg_used_dirs_count;	/* Directories count */
- 	__u16	bg_flags;		/* EXT4_BG_flags (INODE_UNINIT, etc) */
--	__u32	bg_reserved[2];		/* Likely block/inode bitmap checksum */
-+	__u32	bg_reserved[1];		/* unclaimed */
-+	__u32	bg_block_bitmap_csum;	/* crc32c(uuid+group+bbitmap) */
- 	__u16	bg_itable_unused;	/* Unused inodes count */
- 	__u16	bg_checksum;		/* crc16(sb_uuid+group+desc) */
- 	__u32	bg_block_bitmap_hi;	/* Blocks bitmap block MSB */
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 0899e34..0cc3012 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -782,6 +782,7 @@ extern void ext2fs_free_blocks_count_add(struct ext2_super_block *super,
- extern struct ext2_group_desc *ext2fs_group_desc(ext2_filsys fs,
- 					  struct opaque_ext2_group_desc *gdp,
- 					  dgrp_t group);
-+extern blk64_t ext2fs_block_bitmap_csum(ext2_filsys fs, dgrp_t group);
- extern blk64_t ext2fs_block_bitmap_loc(ext2_filsys fs, dgrp_t group);
- extern void ext2fs_block_bitmap_loc_set(ext2_filsys fs, dgrp_t group,
- 					blk64_t blk);
-diff --git a/lib/ext2fs/rw_bitmaps.c b/lib/ext2fs/rw_bitmaps.c
-index 57aba59..802ce9f 100644
---- a/lib/ext2fs/rw_bitmaps.c
-+++ b/lib/ext2fs/rw_bitmaps.c
-@@ -91,6 +91,10 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
- 				for (j = nbits; j < fs->blocksize * 8; j++)
- 					ext2fs_set_bit(j, block_buf);
- 		}
-+
-+		ext2fs_block_bitmap_csum_set(fs, i, block_buf, block_nbytes);
-+		ext2fs_group_desc_csum_set(fs, i);
-+
- 		blk = ext2fs_block_bitmap_loc(fs, i);
- 		if (blk) {
- 			retval = io_channel_write_blk64(fs->io, blk, 1,
-@@ -259,6 +263,16 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
- 					retval = EXT2_ET_BLOCK_BITMAP_READ;
- 					goto cleanup;
- 				}
-+				/* verify block bitmap checksum */
-+				gdp = (struct ext4_group_desc *)
-+					ext2fs_group_desc(fs, fs->group_desc,
-+							  i);
-+				if (!(fs->flags &
-+				      EXT2_FLAG_IGNORE_CSUM_ERRORS) &&
-+				    !ext2fs_bitmap_csum_verify(fs, i,
-+					gdp->bg_block_bitmap_csum,
-+					block_bitmap, block_nbytes))
-+					return EXT2_ET_BLOCK_BITMAP_READ;
- 			} else
- 				memset(block_bitmap, 0, block_nbytes);
- 			cnt = block_nbytes << 3;
-diff --git a/lib/ext2fs/swapfs.c b/lib/ext2fs/swapfs.c
-index 747e130..f657c47 100644
---- a/lib/ext2fs/swapfs.c
-+++ b/lib/ext2fs/swapfs.c
-@@ -126,6 +126,7 @@ void ext2fs_swap_group_desc2(ext2_filsys fs, struct ext2_group_desc *gdp)
- 		ext2fs_swab16(gdp4->bg_used_dirs_count_hi);
- 	gdp4->bg_itable_unused_hi = ext2fs_swab16(gdp4->bg_itable_unused_hi);
- 	gdp4->bg_inode_bitmap_csum = ext2fs_swab32(gdp4->bg_inode_bitmap_csum);
-+	gdp4->bg_block_bitmap_csum = ext2fs_swab32(gdp4->bg_block_bitmap_csum);
+@@ -67,6 +68,7 @@ void e2fsck_pass5(e2fsck_t ctx)
+ 		return;
+ 
+ 	check_inode_bitmap_checksum(ctx);
++	check_block_bitmap_checksum(ctx);
+ 
+ 	ext2fs_free_inode_bitmap(ctx->inode_used_map);
+ 	ctx->inode_used_map = 0;
+@@ -134,6 +136,64 @@ static void check_inode_bitmap_checksum(e2fsck_t ctx)
+ 	ext2fs_free_mem(&buf);
  }
  
- void ext2fs_swap_group_desc(struct ext2_group_desc *gdp)
++static void check_block_bitmap_checksum(e2fsck_t ctx)
++{
++	struct problem_context	pctx;
++	struct ext4_group_desc	*gdp;
++	char		*buf;
++	dgrp_t		i;
++	int		nbytes;
++	blk64_t		blk_itr;
++	errcode_t	retval;
++	int		csum_flag = 0;
++
++	/* If bitmap is dirty from being fixed, checksum will be corrected */
++	if (ext2fs_test_bb_dirty(ctx->fs))
++		return;
++
++	nbytes = (size_t)((EXT2_BLOCKS_PER_GROUP(ctx->fs->super) + 7) / 8);
++	retval = ext2fs_get_memalign(ctx->fs->blocksize, ctx->fs->blocksize,
++				     &buf);
++	if (retval)
++		return;
++
++	if (EXT2_HAS_RO_COMPAT_FEATURE(ctx->fs->super,
++				       EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
++		csum_flag = 1;
++
++	clear_problem_context(&pctx);
++	for (i = 0; i < ctx->fs->group_desc_count; i++) {
++		if (csum_flag && ext2fs_bg_flags_test(ctx->fs, i,
++						      EXT2_BG_BLOCK_UNINIT))
++			continue;
++
++		blk_itr = EXT2FS_B2C(ctx->fs,
++				     ctx->fs->super->s_first_data_block) +
++			  (i * (nbytes << 3));
++		gdp = (struct ext4_group_desc *)ext2fs_group_desc(ctx->fs,
++				ctx->fs->group_desc, i);
++		retval = ext2fs_get_block_bitmap_range2(ctx->fs->block_map,
++							blk_itr, nbytes << 3,
++							buf);
++		if (retval)
++			break;
++
++		if (ext2fs_bitmap_csum_verify(ctx->fs, i,
++					      gdp->bg_block_bitmap_csum, buf,
++					      nbytes))
++			continue;
++		pctx.group = i;
++		if (!fix_problem(ctx, PR_5_BLOCK_BITMAP_CSUM_INVALID, &pctx))
++			continue;
++
++		/* Fixing one checksum will rewrite all of them */
++		ext2fs_mark_bb_dirty(ctx->fs);
++		break;
++	}
++
++	ext2fs_free_mem(&buf);
++}
++
+ static void e2fsck_discard_blocks(e2fsck_t ctx, io_manager manager,
+ 				  blk64_t start, blk64_t count)
+ {
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index 35a8055..9629b9e 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -1664,6 +1664,11 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("@g %g @i bitmap does not match checksum\n"),
+ 	  PROMPT_FIX, PR_LATCH_IBITMAP | PR_PREEN_OK },
+ 
++	/* Group N block bitmap does not match checksum */
++	{ PR_5_BLOCK_BITMAP_CSUM_INVALID,
++	  N_("@g %g @b bitmap does not match checksum\n"),
++	  PROMPT_FIX, PR_LATCH_BBITMAP | PR_PREEN_OK },
++
+ 	/* Post-Pass 5 errors */
+ 
+ 	/* Recreate journal if E2F_FLAG_JOURNAL_INODE flag is set */
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index 9766113..8cc461b 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -1004,6 +1004,9 @@ struct problem_context {
+ /* Inode bitmap checksum does not match */
+ #define PR_5_INODE_BITMAP_CSUM_INVALID	0x05001A
+ 
++/* Block bitmap checksum does not match */
++#define PR_5_BLOCK_BITMAP_CSUM_INVALID	0x05001B
++
+ /*
+  * Post-Pass 5 errors
+  */
 
