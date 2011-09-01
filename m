@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 05/16] ext4: Create a rocompat flag for extended metadata
-	checksumming
-Date: Wed, 31 Aug 2011 17:31:04 -0700
-Message-ID: <20110901003104.31048.86177.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 07/16] ext4: Create bitmap checksum helper functions
+Date: Wed, 31 Aug 2011 17:31:19 -0700
+Message-ID: <20110901003119.31048.40300.stgit@elm3c44.beaverton.ibm.com>
 References: <20110901003030.31048.99467.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -23,48 +22,89 @@ In-Reply-To: <20110901003030.31048.99467.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This patch introduces a rocompat feature flag to signal the presence of
-checksums for metadata blocks.  It also pulls in CRC32c since we'll be
-using that for the new checksums.
+These helper functions will be used to calculate and verify the block and inode
+bitmap checksums.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/ext4/Kconfig |    1 +
- fs/ext4/ext4.h  |    4 +++-
- 2 files changed, 4 insertions(+), 1 deletions(-)
+ fs/ext4/bitmap.c |   44 ++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ext4.h   |    6 ++++++
+ 2 files changed, 50 insertions(+), 0 deletions(-)
 
 
-diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
-index 9ed1bb1..97f4a7d 100644
---- a/fs/ext4/Kconfig
-+++ b/fs/ext4/Kconfig
-@@ -2,6 +2,7 @@ config EXT4_FS
- 	tristate "The Extended 4 (ext4) filesystem"
- 	select JBD2
- 	select CRC16
-+	select LIBCRC32C
- 	help
- 	  This is the next generation of the ext3 filesystem.
+diff --git a/fs/ext4/bitmap.c b/fs/ext4/bitmap.c
+index fa3af81..5421152 100644
+--- a/fs/ext4/bitmap.c
++++ b/fs/ext4/bitmap.c
+@@ -9,6 +9,7 @@
  
+ #include <linux/buffer_head.h>
+ #include <linux/jbd2.h>
++#include <linux/crc32c.h>
+ #include "ext4.h"
+ 
+ #ifdef EXT4FS_DEBUG
+@@ -29,3 +30,46 @@ unsigned int ext4_count_free(struct buffer_head *map, unsigned int numchars)
+ 
+ #endif  /*  EXT4FS_DEBUG  */
+ 
++__le32 ext4_bitmap_csum(struct super_block *sb, ext4_group_t group,
++			struct buffer_head *bh, int sz)
++{
++	__le32 crc;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++
++	if (sbi->s_desc_size < EXT4_MIN_DESC_SIZE_64BIT)
++		return 0;
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
++		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		return 0;
++
++	group = cpu_to_le32(group);
++	crc = crc32c_le(~0, sbi->s_es->s_uuid, sizeof(sbi->s_es->s_uuid));
++	crc = crc32c_le(crc, (__u8 *)&group, sizeof(group));
++	crc = crc32c_le(crc, (__u8 *)bh->b_data, sz);
++
++	return cpu_to_le32(crc);
++}
++
++int ext4_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
++			    __le32 provided, struct buffer_head *bh, int sz)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++
++	if (sbi->s_desc_size >= EXT4_MIN_DESC_SIZE_64BIT &&
++	    EXT4_HAS_RO_COMPAT_FEATURE(sb,
++		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) &&
++	    (provided != ext4_bitmap_csum(sb, group, bh, sz)))
++		return 0;
++	return 1;
++}
++
++void ext4_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
++			  __le32 *csum, struct buffer_head *bh, int sz)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++
++	if (sbi->s_desc_size >= EXT4_MIN_DESC_SIZE_64BIT &&
++	    EXT4_HAS_RO_COMPAT_FEATURE(sb,
++				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		*csum = ext4_bitmap_csum(sb, group, bh, sz);
++}
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index ecb86c2..f79ddac 100644
+index e2361cc..bc7ace1 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1359,6 +1359,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
- #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
- #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
- #define EXT4_FEATURE_RO_COMPAT_QUOTA		0x0100
-+#define EXT4_FEATURE_RO_COMPAT_METADATA_CSUM	0x0400
+@@ -1722,6 +1722,12 @@ struct mmpd_data {
  
- #define EXT4_FEATURE_INCOMPAT_COMPRESSION	0x0001
- #define EXT4_FEATURE_INCOMPAT_FILETYPE		0x0002
-@@ -1401,7 +1402,8 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
- 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK | \
- 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE | \
- 					 EXT4_FEATURE_RO_COMPAT_BTREE_DIR |\
--					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE)
-+					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE |\
-+					 EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)
+ /* bitmap.c */
+ extern unsigned int ext4_count_free(struct buffer_head *, unsigned);
++__le32 ext4_bitmap_csum(struct super_block *sb, ext4_group_t group,
++			struct buffer_head *bh, int sz);
++int ext4_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
++			    __le32 provided, struct buffer_head *bh, int sz);
++void ext4_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
++			  __le32 *csum, struct buffer_head *bh, int sz);
  
- /*
-  * Default values for user and/or group using reserved blocks
+ /* balloc.c */
+ extern unsigned int ext4_block_group(struct super_block *sb,
