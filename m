@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 08/37] tune2fs: Add inode checksum support
-Date: Wed, 31 Aug 2011 17:36:02 -0700
-Message-ID: <20110901003602.1176.24747.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 09/37] e2fsck: Verify and correct inode checksums
+Date: Wed, 31 Aug 2011 17:36:09 -0700
+Message-ID: <20110901003609.1176.69789.stgit@elm3c44.beaverton.ibm.com>
 References: <20110901003509.1176.51159.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,161 +16,157 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:47917 "EHLO e6.ny.us.ibm.com"
+Received: from e8.ny.us.ibm.com ([32.97.182.138]:34273 "EHLO e8.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757244Ab1IAAgG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 31 Aug 2011 20:36:06 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e6.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p810BukQ026372
-	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 20:11:56 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p810a5Fu164824
-	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 20:36:05 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p810a49k005006
-	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 21:36:05 -0300
+	id S1757321Ab1IAAgN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 31 Aug 2011 20:36:13 -0400
+Received: from d01relay07.pok.ibm.com (d01relay07.pok.ibm.com [9.56.227.147])
+	by e8.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p810MDvx022117
+	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 20:22:13 -0400
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p810aBIV2723924
+	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 20:36:11 -0400
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p810aAtE013019
+	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 20:36:11 -0400
 In-Reply-To: <20110901003509.1176.51159.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds to tune2fs the ability to toggle the metadata checksum rocompat
-feature flag, which will rewrite the inode table with checksums.
+Detect mismatches of the inode and checksum, and prompt the user to fix the
+situation.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- misc/tune2fs.c |   77 +++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 files changed, 75 insertions(+), 2 deletions(-)
+ e2fsck/pass1.c   |   52 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ e2fsck/problem.c |   15 +++++++++++++++
+ e2fsck/problem.h |    9 +++++++++
+ 3 files changed, 76 insertions(+), 0 deletions(-)
 
 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 82833ad..283ad1d 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -82,6 +82,7 @@ static int stride_set, stripe_width_set;
- static char *extended_cmd;
- static unsigned long new_inode_size;
- static char *ext_mount_opts;
-+static int rewrite_checksums;
- 
- int journal_size, journal_flags;
- char *journal_device;
-@@ -131,7 +132,8 @@ static __u32 ok_features[3] = {
- 		EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
- 		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
- 		EXT4_FEATURE_RO_COMPAT_GDT_CSUM |
--		EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER
-+		EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER |
-+		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM
- };
- 
- static __u32 clear_ok_features[3] = {
-@@ -147,7 +149,8 @@ static __u32 clear_ok_features[3] = {
- 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
- 		EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
- 		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
--		EXT4_FEATURE_RO_COMPAT_GDT_CSUM
-+		EXT4_FEATURE_RO_COMPAT_GDT_CSUM |
-+		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM
- };
- 
- /*
-@@ -330,6 +333,16 @@ static void update_mntopts(ext2_filsys fs, char *mntopts)
- 	ext2fs_mark_super_dirty(fs);
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index ba17b30..e9b0876 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -540,6 +540,50 @@ extern void e2fsck_setup_tdb_icount(e2fsck_t ctx, int flags,
+ 		*ret = 0;
  }
  
-+static int check_fsck_needed(ext2_filsys fs)
++static int validate_inode_checksum(ext2_filsys fs,
++				   e2fsck_t ctx,
++				   struct problem_context *pctx,
++				   ext2_ino_t ino,
++				   struct ext2_inode_large *inode)
 +{
-+	if (fs->super->s_state & EXT2_VALID_FS)
-+		return 0;
-+	printf("\n%s\n", _(please_fsck));
-+	if (mount_flags & EXT2_MF_READONLY)
-+		printf(_("(and reboot afterwards!)\n"));
-+	return 1;
-+}
++	struct ext2_inode_large *linode = (struct ext2_inode_large *)inode;
 +
- static void request_fsck_afterwards(ext2_filsys fs)
- {
- 	static int requested = 0;
-@@ -343,6 +356,49 @@ static void request_fsck_afterwards(ext2_filsys fs)
- }
- 
- /*
-+ * Forcibly set checksums in all inodes.
-+ */
-+static void rewrite_inodes(ext2_filsys fs)
-+{
-+	struct ext2_inode_large inode;
-+	ext2_inode_scan	scan;
-+	errcode_t	retval;
-+	ext2_ino_t	ino;
-+
++	/* Ignore non-Linux filesystems */
 +	if (fs->super->s_creator_os != EXT2_OS_LINUX)
-+		return;
++		return 0;
 +
-+	retval = ext2fs_open_inode_scan(fs, 0, &scan);
-+	if (retval) {
-+		com_err("set_csum", retval, "While opening inode scan");
-+		exit(1);
++	/* Check for checksums present even w/o feature flag */
++	if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) &&
++	    linode->i_checksum &&
++	    fix_problem(ctx, PR_1_INODE_CSUM_NONZERO, pctx)) {
++		e2fsck_write_inode(ctx, ino, inode, "pass1");
++		return PR_1_INODE_CSUM_NONZERO;
 +	}
 +
-+	do {
-+		retval = ext2fs_get_next_inode(scan, &ino, &inode);
-+		if (retval) {
-+			com_err("set_csum", retval, "while getting next inode");
-+			exit(1);
-+		}
-+		if (!ino)
-+			break;
-+		retval = ext2fs_write_inode(fs, ino, &inode);
-+		if (retval) {
-+			com_err("set_csum", retval, "while writing inode");
-+			exit(1);
-+		}
-+	} while (ino);
-+	ext2fs_close_inode_scan(scan);
++	/* Check for invalid inode checksum */
++	if (ext2fs_inode_csum_verify(fs, ino, linode))
++		return 0;
++
++	/*
++	 * TODO: Change the following check to use the inode badness patch.
++	 * For the moment we'll just assume that the user wants to clear the
++	 * bad inode.
++	 */
++	if (fix_problem(ctx, PR_1_INODE_CORRUPT, pctx)) {
++		e2fsck_clear_inode(ctx, ino, inode, 0, "pass1");
++		if (ino == EXT2_BAD_INO)
++			ext2fs_mark_inode_bitmap2(ctx->inode_used_map,
++						  ino);
++		return PR_1_INODE_CORRUPT;
++	} else if (fix_problem(ctx, PR_1_INODE_CSUM_INVALID, pctx)) {
++		e2fsck_write_inode(ctx, ino, inode, "pass1");
++		return PR_1_INODE_CSUM_INVALID;
++	}
++
++	return 0;
 +}
 +
-+static void rewrite_metadata_checksums(ext2_filsys fs)
-+{
-+	fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
-+	rewrite_inodes(fs);
-+	fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
-+}
-+
-+/*
-  * Update the feature set as provided by the user.
-  */
- static void update_feature_set(ext2_filsys fs, char *features)
-@@ -448,6 +504,20 @@ static void update_feature_set(ext2_filsys fs, char *features)
- 	}
+ void e2fsck_pass1(e2fsck_t ctx)
+ {
+ 	int	i;
+@@ -707,8 +751,10 @@ void e2fsck_pass1(e2fsck_t ctx)
  
- 	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
-+		       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+		if (check_fsck_needed(fs))
-+			exit(1);
-+		rewrite_checksums = 1;
-+	}
-+
-+	if (FEATURE_OFF(E2P_FEATURE_RO_INCOMPAT,
-+			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+		if (check_fsck_needed(fs))
-+			exit(1);
-+		rewrite_checksums = 1;
-+	}
-+
-+	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
- 		       EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
- 		for (i = 0; i < fs->group_desc_count; i++) {
- 			gd = ext2fs_group_desc(fs, fs->group_desc, i);
-@@ -1824,7 +1894,10 @@ retry_open:
- 			fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
+ 	while (1) {
+ 		old_op = ehandler_operation(_("getting next inode from scan"));
++		ctx->fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
+ 		pctx.errcode = ext2fs_get_next_inode_full(scan, &ino,
+ 							  inode, inode_size);
++		ctx->fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
+ 		ehandler_operation(old_op);
+ 		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
+ 			return;
+@@ -740,6 +786,12 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 			}
  		}
- 		ext2fs_mark_super_dirty(fs);
-+		rewrite_checksums = 1;
- 	}
-+	if (rewrite_checksums)
-+		rewrite_metadata_checksums(fs);
- 	if (I_flag) {
- 		if (mount_flags & EXT2_MF_MOUNTED) {
- 			fputs(_("The inode size may only be "
+ 
++		check_inode_extra_space(ctx, &pctx);
++		/* Validate inode checksum.  i_extra_isize must be sane. */
++		if (validate_inode_checksum(fs, ctx, &pctx, ino, inode) ==
++		    PR_1_INODE_CORRUPT)
++			continue;
++
+ 		/*
+ 		 * Test for incorrect extent flag settings.
+ 		 *
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index c5bebf8..b5176d4 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -905,6 +905,21 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("Error converting subcluster @b @B: %m\n"),
+ 	  PROMPT_NONE, PR_FATAL },
+ 
++	/* inode checksum probably not set */
++	{ PR_1_INODE_CSUM_INVALID,
++	  N_("@i %i checksum incorrect.  "),
++	  PROMPT_FIX, PR_PREEN_OK },
++
++	/* inode checksum probably set, but does not match */
++	{ PR_1_INODE_CORRUPT,
++	  N_("@i %i checksum shows corruption.  "),
++	  PROMPT_CLEAR, PR_PREEN_OK },
++
++	/* inode checksumming disabled, yet checksum is probably set? */
++	{ PR_1_INODE_CSUM_NONZERO,
++	  N_("@i %i checksum should not be set.  "),
++	  PROMPT_CLEAR, PR_PREEN_OK },
++
+ 	/* Pass 1b errors */
+ 
+ 	/* Pass 1B: Rescan for duplicate/bad blocks */
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index a4d96ae..4e353b7 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -529,6 +529,15 @@ struct problem_context {
+ /* Failed to convert subcluster bitmap */
+ #define PR_1_CONVERT_SUBCLUSTER		0x010061
+ 
++/* inode checksum probably not set */
++#define PR_1_INODE_CSUM_INVALID		0x010062
++
++/* inode checksum probably set, but does not match */
++#define PR_1_INODE_CORRUPT		0x010063
++
++/* inode checksum should not be set */
++#define PR_1_INODE_CSUM_NONZERO		0x010064
++
+ /*
+  * Pass 1b errors
+  */
 
