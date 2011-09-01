@@ -1,62 +1,42 @@
-From: Arnaud Lacombe <lacombar@gmail.com>
-Subject: Re: linux-next: Tree for Aug 30 (jbd2 + bug.h)
-Date: Thu, 1 Sep 2011 16:30:47 -0400
-Message-ID: <CACqU3MXZ52fM_xFFxmPm3wby8bD9isAsomxbvh_Dj+bBb9uFdg@mail.gmail.com>
-References: <20110830171605.168f29decb0558fa31e59210@canb.auug.org.au>
-	<20110831131429.0513af51.rdunlap@xenotime.net>
-	<201109011343.22014.arnd@arndb.de>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [PATCH 3/3] crc32c: Implement a self-test for CRC32c
+Date: Thu, 1 Sep 2011 15:18:54 -0700
+Message-ID: <20110901221854.GA12086@tux1.beaverton.ibm.com>
+References: <20110901003317.32645.16843.stgit@elm3c44.beaverton.ibm.com> <20110901003336.32645.32746.stgit@elm3c44.beaverton.ibm.com> <03ac01cc6869$9cd23b60$d676b220$@systemfabricworks.com>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Randy Dunlap <rdunlap@xenotime.net>,
-	Stephen Rothwell <sfr@canb.auug.org.au>,
-	linux-ext4@vger.kernel.org, linux-next@vger.kernel.org,
-	LKML <linux-kernel@vger.kernel.org>
-To: Arnd Bergmann <arnd@arndb.de>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <201109011343.22014.arnd@arndb.de>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "'Andreas Dilger'" <adilger.kernel@dilger.ca>,
+	"'Herbert Xu'" <herbert@gondor.apana.org.au>,
+	"'Theodore Tso'" <tytso@mit.edu>,
+	"'David Miller'" <davem@davemloft.net>,
+	"'linux-kernel'" <linux-kernel@vger.kernel.org>,
+	"'Mingming Cao'" <cmm@us.ibm.com>,
+	"'linux-crypto'" <linux-crypto@vger.kernel.org>,
+	"'linux-fsdevel'" <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Bob Pearson <rpearson@systemfabricworks.com>
+Return-path: <linux-crypto-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <03ac01cc6869$9cd23b60$d676b220$@systemfabricworks.com>
+Sender: linux-crypto-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+On Thu, Sep 01, 2011 at 12:40:08AM -0500, Bob Pearson wrote:
+> Hi Darrick,
+> 
+> The same code in crc32.c was helpful to measure performance and help code
+> tuning as well as indicate correctness. Otherwise the code in crypto may be
+> enough to test all the corner cases. If this survives the review I wonder if
+> there is a way to combine crc32 and crc32c together somehow. I like yours
+> because you can load/unload and not need the memory permanently.
 
-On Thu, Sep 1, 2011 at 7:43 AM, Arnd Bergmann <arnd@arndb.de> wrote:
-> On Wednesday 31 August 2011, Randy Dunlap wrote:
->> On Tue, 30 Aug 2011 17:16:05 +1000 Stephen Rothwell wrote:
->>
->> > Hi all,
->>
->> [Sorry about the delay. =A0My build machine is being slow.
->> If this is alread fixed, sorry about the noise.]
->>
->>
->> When CONFIG_BUG is not enabled (I see this on x86_64):
->>
->> fs/jbd2/transaction.c: In function 'jbd2_journal_dirty_metadata':
->> fs/jbd2/transaction.c:1176: error: implicit declaration of function =
-'__WARN'
->>
->>
->> asm-generic/bug.h does not provide a version of __WARN() when
->> CONFIG_BUG is not enabled...
->>
->
-> Hmm, my feeling is that we shouldn't do that either, and that jbd2 sh=
-ould
-> be changed. If we want a function that does what __WARN() does today,=
- we
-> should probably make a conscious decision about what we want it to be=
- called
-> and not have it start with "__".
->
-Why is WARN_ON() not used here ?
+I suspect it would be pretty easy to adapt the Makefile to generate the
+relevant .c and .h files; in particular it could be useful to use the crypto
+framework for crc32 on the off chance anyone wants to provide hwaccel for that
+too.
 
- - Arnaud
+That said, merging libcrc32c-test vectors with the existing one (sorry, I
+didn't realize that existed) shouldn't be too difficult.
 
-> =A0 =A0 =A0 =A0Arnd
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-next"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
+--D
