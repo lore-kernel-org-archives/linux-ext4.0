@@ -1,171 +1,176 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] mke2fs: Use ext2fs_flush() only once
-Date: Thu, 1 Sep 2011 10:38:30 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1109011038210.3665@dhcp-27-109.brq.redhat.com>
-References: <1311941612-9108-1-git-send-email-lczerner@redhat.com> <alpine.LFD.2.00.1108111657280.29009@dhcp-27-109.brq.redhat.com>
+Subject: Re: [PATCH 1/2 v4] e2fsprogs: Fix how we treat user-spcified filesystem
+ size
+Date: Thu, 1 Sep 2011 10:38:48 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1109011038420.3665@dhcp-27-109.brq.redhat.com>
+References: <1307269845-15062-1-git-send-email-lczerner@redhat.com> <alpine.LFD.2.00.1108111702280.29009@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
 To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:11558 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:10616 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755929Ab1IAIie (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 1 Sep 2011 04:38:34 -0400
-In-Reply-To: <alpine.LFD.2.00.1108111657280.29009@dhcp-27-109.brq.redhat.com>
+	id S1756337Ab1IAIix (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 1 Sep 2011 04:38:53 -0400
+In-Reply-To: <alpine.LFD.2.00.1108111702280.29009@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 On Thu, 11 Aug 2011, Lukas Czerner wrote:
 
-> On Fri, 29 Jul 2011, Lukas Czerner wrote:
+> On Sun, 5 Jun 2011, Lukas Czerner wrote:
 > 
-> > We are doing ext2fs_flush() twice right now at the end of the mke2fs.
-> > First by directly calling ext2fs_flush() which is intended to write
-> > superblock and fs accounting information. And then it is invoked again
-> > when we are calling ext2fs_close(), only this time, because the fs is
-> > not dirty, we are writing out only superblock.
+> > mke2fs and resize2fs allows specifying filesystem size as a parameter,
+> > former called as blocks-count. However it has been a little bit messy so
+> > this commit fixes it mainly by updating man pages.
 > > 
-> > I think it is bad to call it twice because even when writing only super
-> > block it takes some time on bigger file systems and moreover
-> > ext2fs_close() can fail without any reasonable explanation for the user.
-> > Also ext2fs_flush() is printing out progress and it is confusing for the
-> > users.
+> > We can not specify filesystem size in blocks count without specifying
+> > blocksize as well. It is because we need blocks count to determine
+> > filesystem type, and we need filesystem type to determine blocksize. So
+> > it should not be allowed, however due to compatibility reason it should
+> > be still possible, so at least print warning message for now, so we can
+> > easily restrict that later.
 > > 
-> > Fix all this by removing the ext2fs_flush() and leaving it all to
-> > ext2fs_close(). However we need to introduce new variables to store
-> > check interval and max mount count, because fs structure is freed on
-> > ext2fs_close() and we really want to print those information as the last
-> > info for the user.
+> > Filesystem size can be specified using units as suffixes. This was not
+> > documented for mke2fs, so this commits adds proper documentation into
+> > mke2fs man page.
 > 
-> Ping
+> Hi Ted,
+> 
+> any chance merging that ?
+> 
+> Thanks!
+> -Lukas
 
-Ping^2
+ping^2
 
 > 
 > > 
 > > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> > Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 > > ---
-> >  misc/mke2fs.c                   |   15 ++++++++-------
-> >  misc/tune2fs.c                  |    3 ++-
-> >  misc/util.c                     |    5 ++---
-> >  misc/util.h                     |    2 +-
-> >  tests/m_extent_journal/expect.1 |    2 +-
-> >  tests/m_uninit/expect.1         |    2 +-
-> >  6 files changed, 15 insertions(+), 14 deletions(-)
+> > [v2]: do not spell units - mebibytes etc... - but rather use just abbrev.
+> > [v3]: Change some phrasing in man pages, mainly with the help from Eric Sandeen
+> > [v4]: Remove 'b' unit designator.
+> >  lib/e2p/parse_num.c   |    1 -
+> >  misc/mke2fs.8.in      |   34 ++++++++++++++++++++++++++++------
+> >  resize/resize2fs.8.in |   23 ++++++++---------------
+> >  3 files changed, 36 insertions(+), 22 deletions(-)
 > > 
-> > diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> > index e062bda..481e550 100644
-> > --- a/misc/mke2fs.c
-> > +++ b/misc/mke2fs.c
-> > @@ -2143,7 +2143,7 @@ int main (int argc, char *argv[])
-> >  	ext2_filsys	fs;
-> >  	badblocks_list	bb_list = 0;
-> >  	unsigned int	journal_blocks;
-> > -	unsigned int	i;
-> > +	unsigned int	i, max_mnt_count, checkinterval;
-> >  	int		val, hash_alg;
-> >  	int		flags;
-> >  	int		old_bitmaps;
-> > @@ -2469,22 +2469,23 @@ no_journal:
-> >  	if (!quiet)
-> >  		printf(_("Writing superblocks and "
-> >  		       "filesystem accounting information: "));
-> > -	retval = ext2fs_flush(fs);
-> > +	checkinterval = fs->super->s_checkinterval;
-> > +	max_mnt_count = fs->super->s_max_mnt_count;
-> > +	retval = ext2fs_close(fs);
-> >  	if (retval) {
-> >  		fprintf(stderr,
-> >  			_("\nWarning, had trouble writing out superblocks."));
-> > -	}
-> > -	if (!quiet) {
-> > +	} else if (!quiet) {
-> >  		printf(_("done\n\n"));
-> >  		if (!getenv("MKE2FS_SKIP_CHECK_MSG"))
-> > -			print_check_message(fs);
-> > +			print_check_message(max_mnt_count, checkinterval);
+> > diff --git a/lib/e2p/parse_num.c b/lib/e2p/parse_num.c
+> > index 83a329a..8e2751b 100644
+> > --- a/lib/e2p/parse_num.c
+> > +++ b/lib/e2p/parse_num.c
+> > @@ -37,7 +37,6 @@ unsigned long long parse_num_blocks2(const char *arg, int log_block_size)
+> >  		num >>= (1+log_block_size);
+> >  		break;
+> >  	case '\0':
+> > -		break;
+> >  	default:
+> >  		return 0;
 > >  	}
-> > -	val = ext2fs_close(fs);
-> > +
-> >  	remove_error_table(&et_ext2_error_table);
-> >  	remove_error_table(&et_prof_error_table);
-> >  	profile_release(profile);
-> >  	for (i=0; fs_types[i]; i++)
-> >  		free(fs_types[i]);
-> >  	free(fs_types);
-> > -	return (retval || val) ? 1 : 0;
-> > +	return retval;
-> >  }
-> > diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-> > index 5bf5187..0e1e1cf 100644
-> > --- a/misc/tune2fs.c
-> > +++ b/misc/tune2fs.c
-> > @@ -568,7 +568,8 @@ static void add_journal(ext2_filsys fs)
-> >  		if ((mount_flags & EXT2_MF_MOUNTED) == 0)
-> >  			fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
-> >  	}
-> > -	print_check_message(fs);
-> > +	print_check_message(fs->super->s_max_mnt_count,
-> > +			    fs->super->s_checkinterval);
-> >  	return;
-> >  
-> >  err:
-> > diff --git a/misc/util.c b/misc/util.c
-> > index 51bdb60..18329ee 100644
-> > --- a/misc/util.c
-> > +++ b/misc/util.c
-> > @@ -282,12 +282,11 @@ unsigned int figure_journal_size(int size, ext2_filsys fs)
-> >  	return j_blocks;
-> >  }
-> >  
-> > -void print_check_message(ext2_filsys fs)
-> > +void print_check_message(unsigned int mnt, unsigned int check)
-> >  {
-> >  	printf(_("This filesystem will be automatically "
-> >  		 "checked every %d mounts or\n"
-> >  		 "%g days, whichever comes first.  "
-> >  		 "Use tune2fs -c or -i to override.\n"),
-> > -	       fs->super->s_max_mnt_count,
-> > -	       (double)fs->super->s_checkinterval / (3600 * 24));
-> > +		mnt, check / (3600 * 24));
-> >  }
-> > diff --git a/misc/util.h b/misc/util.h
-> > index e0c99f6..d05f17e 100644
-> > --- a/misc/util.h
-> > +++ b/misc/util.h
-> > @@ -23,4 +23,4 @@ extern void check_plausibility(const char *device);
-> >  extern void parse_journal_opts(const char *opts);
-> >  extern void check_mount(const char *device, int force, const char *type);
-> >  extern unsigned int figure_journal_size(int size, ext2_filsys fs);
-> > -extern void print_check_message(ext2_filsys fs);
-> > +extern void print_check_message(unsigned int, unsigned int);
-> > diff --git a/tests/m_extent_journal/expect.1 b/tests/m_extent_journal/expect.1
-> > index 88ea2d9..a8c5b63 100644
-> > --- a/tests/m_extent_journal/expect.1
-> > +++ b/tests/m_extent_journal/expect.1
-> > @@ -18,7 +18,7 @@ Writing inode tables: 0/81/82/83/84/85/86/87/8   done
-> >  Creating journal (4096 blocks): done
-> >  Writing superblocks and filesystem accounting information: 0/81/82/83/84/85/86/87/8   done
-> >  
-> > -0/81/82/83/84/85/86/87/8   Filesystem features: has_journal ext_attr resize_inode dir_index filetype extent sparse_super
-> > +Filesystem features: has_journal ext_attr resize_inode dir_index filetype extent sparse_super
-> >   
-> >  Pass 1: Checking inodes, blocks, and sizes
-> >  Pass 2: Checking directory structure
-> > diff --git a/tests/m_uninit/expect.1 b/tests/m_uninit/expect.1
-> > index 173c072..a3c059d 100644
-> > --- a/tests/m_uninit/expect.1
-> > +++ b/tests/m_uninit/expect.1
-> > @@ -17,7 +17,7 @@ Allocating group tables:  0/16 1/16 2/16 3/16 4/16 5/16
-> >  Writing inode tables:  0/16 1/16 2/16 3/16 4/16 5/16 6/16 7/16 8/16 9/1610/1611/1612/1613/1614/1615/16     done                            
-> >  Writing superblocks and filesystem accounting information:  0/16 1/16 2/16 3/16 4/16 5/16 6/16 7/16 8/16 9/1610/1611/1612/1613/1614/1615/16     done
-> >  
-> > - 0/16 1/16 2/16 3/16 4/16 5/16 6/16 7/16 8/16 9/1610/1611/1612/1613/1614/1615/16     Filesystem features: ext_attr resize_inode dir_index filetype sparse_super uninit_bg
-> > +Filesystem features: ext_attr resize_inode dir_index filetype sparse_super uninit_bg
-> >   
-> >  Pass 1: Checking inodes, blocks, and sizes
-> >  Pass 2: Checking directory structure
+> > diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
+> > index 4a3b0c3..f315910 100644
+> > --- a/misc/mke2fs.8.in
+> > +++ b/misc/mke2fs.8.in
+> > @@ -108,7 +108,7 @@ mke2fs \- create an ext2/ext3/ext4 filesystem
+> >  ]
+> >  .I device
+> >  [
+> > -.I blocks-count
+> > +.I filesystem-size
+> >  ]
+> >  @JDEV@.sp
+> >  @JDEV@.B "mke2fs \-O journal_dev"
+> > @@ -136,7 +136,7 @@ mke2fs \- create an ext2/ext3/ext4 filesystem
+> >  @JDEV@]
+> >  @JDEV@.I external-journal
+> >  @JDEV@[
+> > -@JDEV@.I blocks-count
+> > +@JDEV@.I filesystem-size
+> >  @JDEV@]
+> >  .SH DESCRIPTION
+> >  .B mke2fs
+> > @@ -145,10 +145,32 @@ partition.
+> >  .I device
+> >  is the special file corresponding to the device (e.g
+> >  .IR /dev/hdXX ).
+> > -.I blocks-count
+> > -is the number of blocks on the device.  If omitted,
+> > -.B mke2fs
+> > -automagically figures the file system size.  If called as
+> > +.I filesystem-size
+> > +is the size of the filesystem you want to create. Optionally, the
+> > +.I filesystem-size
+> > +parameter may be suffixed by one of the following unit
+> > +designators: 's', 'K', 'M', 'G', or 'T',
+> > +for  512 byte sectors, KiB (2^10 Bytes), MiB (2^20 Bytes),
+> > +GiB (2^30 Bytes), or TiB (2^40 Bytes) respectively, which are binary (power-of-2),
+> > +not decimal, units. If no units are specified, then the
+> > +.I filesystem-size
+> > +parameter shall specify the number of filesystem blocks.
+> > +Note that you should not specify
+> > +.I filesystem-size
+> > +in block units (or without any units at all) without also specifying block
+> > +size with the
+> > +.B \-b
+> > +option. This will be allowed for now due to compatibility reasons,
+> > +however it may be restricted in the future. For now, 1024-byte blocks will
+> > +be assumed in this case, regardless of the filesystem blocksize ultimately
+> > +chosen by mke2fs.
+> > +The
+> > +.I filesystem-size
+> > +may never be larger than the size of the partition.
+> > +If the
+> > +.I filesystem-size
+> > +parameter is not specified, it will default to the size of the partition.
+> > +If called as
+> >  .B mkfs.ext3
+> >  a journal is created as if the
+> >  .B \-j
+> > diff --git a/resize/resize2fs.8.in b/resize/resize2fs.8.in
+> > index e02345d..0f4153c 100644
+> > --- a/resize/resize2fs.8.in
+> > +++ b/resize/resize2fs.8.in
+> > @@ -36,29 +36,22 @@ filesystems mounted using ext3 and ext4.).
+> >  The 
+> >  .I size
+> >  parameter specifies the requested new size of the filesystem.
+> > -If no units are specified, the units of the
+> > -.I size
+> > -parameter shall be the filesystem blocksize of the filesystem.
+> >  Optionally, the 
+> >  .I size
+> > -parameter may be suffixed by one of the following the units 
+> > -designators: 's', 'K', 'M', or 'G',
+> > -for 512 byte sectors, kilobytes, megabytes, or gigabytes, respectively.
+> > -The 
+> > +parameter may be suffixed by one of the following the unit
+> > +designators: 's', 'K', 'M', 'G', or 'T',
+> > +for 512 byte sectors, KiB (2^10 Bytes), MiB (2^20 Bytes),
+> > +GiB (2^30 Bytes), or TiB (2^40 Bytes) respectively, which are binary (power-of-2),
+> > +not decimal, units.
+> > +If no units are specified, then the
+> > +.I size
+> > +parameter shall specify the number of filesystem blocks. The
+> >  .I size
+> >  of the filesystem may never be larger than the size of the partition.
+> >  If 
+> >  .I size
+> >  parameter is not specified, it will default to the size of the partition.
+> >  .PP
+> > -Note: when kilobytes is used above, I mean
+> > -.IR real ,
+> > -power-of-2 kilobytes, (i.e., 1024 bytes), which some politically correct
+> > -folks insist should be the stupid-sounding ``kibibytes''.  The same
+> > -holds true for megabytes, also sometimes known as ``mebibytes'', or
+> > -gigabytes, as the amazingly silly ``gibibytes''.  Makes you want to
+> > -gibber, doesn't it?
+> > -.PP
+> >  The
+> >  .B resize2fs
+> >  program does not manipulate the size of partitions.  If you wish to enlarge
 > > 
 > 
 > 
