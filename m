@@ -1,35 +1,49 @@
-From: Herbert Xu <herbert@gondor.apana.org.au>
-Subject: Re: [PATCH 3/3] crc32c: Implement a self-test for CRC32c
-Date: Thu, 1 Sep 2011 14:41:11 +0800
-Message-ID: <20110901064111.GA27893@gondor.apana.org.au>
-References: <20110901003317.32645.16843.stgit@elm3c44.beaverton.ibm.com> <20110901003336.32645.32746.stgit@elm3c44.beaverton.ibm.com> <03ac01cc6869$9cd23b60$d676b220$@systemfabricworks.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: lock i_mutex for fallocate?
+Date: Thu, 1 Sep 2011 17:08:48 +1000
+Message-ID: <20110901070848.GQ32358@dastard>
+References: <4E5ED2D5.8040302@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "'Darrick J. Wong'" <djwong@us.ibm.com>,
-	'Andreas Dilger' <adilger.kernel@dilger.ca>,
-	'Theodore Tso' <tytso@mit.edu>,
-	'David Miller' <davem@davemloft.net>,
-	'linux-kernel' <linux-kernel@vger.kernel.org>,
-	'Mingming Cao' <cmm@us.ibm.com>,
-	'linux-crypto' <linux-crypto@vger.kernel.org>,
-	'linux-fsdevel' <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Bob Pearson <rpearson@systemfabricworks.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-kernel@vger.kernel.org,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Andreas Dilger <adilger@dilger.ca>
+To: Allison Henderson <achender@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:46639 "EHLO
+	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755636Ab1IAHIv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Sep 2011 03:08:51 -0400
 Content-Disposition: inline
-In-Reply-To: <03ac01cc6869$9cd23b60$d676b220$@systemfabricworks.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <4E5ED2D5.8040302@linux.vnet.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 01, 2011 at 12:40:08AM -0500, Bob Pearson wrote:
-> Hi Darrick,
+On Wed, Aug 31, 2011 at 05:33:25PM -0700, Allison Henderson wrote:
+> Hi All,
 > 
-> The same code in crc32.c was helpful to measure performance and help code tuning as well as indicate correctness. Otherwise the code in crypto may be enough to test all the corner cases. If this survives the review I wonder if there is a way to combine crc32 and crc32c together somehow. I like yours because you can load/unload and not need the memory permanently.
+> In ext4 punch hole, we realized that the punch hole operation needs
+> to be done under i_mutex just like truncate.  i_mutex for truncate
+> is held in the vfs layer, so we dont need to lock it at the file
+> system layer, but vfs does not lock i_mutex for fallocate.  We can
+> lock i_mutex for fallocate at the fs layer, but question was raised
+> then: should i_mutex for fallocate be held in the vfs layer instead?
 
-You can unload the crypto testmgr module too.
+No.
+
+> I do not know if other file systems need i_mutex to be locked for
+> fallocate,
+
+For one, XFS does not require i_mutex to be held for any extent
+manipulation of any kind (allocation, truncation, hole punch,
+unwritten extent conversion, etc).
+
+Hence the current structure of having the filesystem take i_mutex if
+it needs it to protect allocations against races is appropriate.
 
 Cheers,
+
+Dave.
 -- 
-Email: Herbert Xu <herbert@gondor.apana.org.au>
-Home Page: http://gondor.apana.org.au/~herbert/
-PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
+Dave Chinner
+david@fromorbit.com
