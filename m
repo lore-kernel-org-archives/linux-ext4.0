@@ -1,275 +1,262 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 1/5 v2] e2fsprogs: create open() and stat() helpers
-Date: Thu, 1 Sep 2011 10:39:50 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1109011039350.3665@dhcp-27-109.brq.redhat.com>
-References: <1313167380-3283-1-git-send-email-lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: remove deprecated oldalloc
+Date: Thu, 1 Sep 2011 10:41:21 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1109011041160.3665@dhcp-27-109.brq.redhat.com>
+References: <1307453714-2741-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger@dilger.ca
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
 To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:13156 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:18111 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756165Ab1IAIj4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 1 Sep 2011 04:39:56 -0400
-In-Reply-To: <1313167380-3283-1-git-send-email-lczerner@redhat.com>
+	id S1756242Ab1IAIl0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 1 Sep 2011 04:41:26 -0400
+In-Reply-To: <1307453714-2741-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 12 Aug 2011, Lukas Czerner wrote:
+On Tue, 7 Jun 2011, Lukas Czerner wrote:
 
-> In many places we are using #ifdef HAVE_OPEN64 to determine if we can
-> use open64() but that's ugly. This commit creates two new helpers
-> ext2fs_open_file() for open() and ext2fs_stat() for stat(). Also we need
-> new typedef ext2fs_struct_stat for struct stat.
+> For a long time now orlov is the default block allocator in the ext4. It
+> performs better than the old one and no one seems to claim otherwise so
+> we can safely drop it and make oldalloc and orlov mount option
+> deprecated.
+> 
+> This is a part of the effort to reduce number of ext4 options hence the
+> test matrix.
 
-Hi Ted,
+ping
 
-ping on the whole series.
-
-Thanks!
--Lukas
 > 
 > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 > ---
-> v2: This is the actually the first version of the patch
+>  Documentation/filesystems/ext4.txt |    8 --
+>  fs/ext4/ext4.h                     |    1 -
+>  fs/ext4/ialloc.c                   |  136 +-----------------------------------
+>  fs/ext4/super.c                    |    8 +-
+>  4 files changed, 7 insertions(+), 146 deletions(-)
 > 
->  lib/ext2fs/ext2fs.h      |   38 ++++++++++++++++++++++++++++++++++++++
->  lib/ext2fs/getsectsize.c |   12 ++----------
->  lib/ext2fs/getsize.c     |    6 +-----
->  lib/ext2fs/unix_io.c     |   10 +++-------
->  misc/e2image.c           |   18 +++---------------
->  misc/util.c              |   10 ++--------
->  resize/main.c            |    6 +-----
->  7 files changed, 50 insertions(+), 50 deletions(-)
-> 
-> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-> index dc83fb0..bf61b37 100644
-> --- a/lib/ext2fs/ext2fs.h
-> +++ b/lib/ext2fs/ext2fs.h
-> @@ -584,6 +584,12 @@ typedef struct ext2_icount *ext2_icount_t;
->  #define EXT2FS_NUM_B2C(fs, blks)	(((blks) + EXT2FS_CLUSTER_MASK(fs)) >> \
->  					 (fs)->cluster_ratio_bits)
+> diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
+> index 3ae9bc9..ec469fa 100644
+> --- a/Documentation/filesystems/ext4.txt
+> +++ b/Documentation/filesystems/ext4.txt
+> @@ -201,14 +201,6 @@ inode_readahead_blks=n	This tuning parameter controls the maximum
+>  			table readahead algorithm will pre-read into
+>  			the buffer cache.  The default value is 32 blocks.
 >  
-> +#ifdef HAVE_OPEN64
-> +typedef struct stat64 ext2fs_struct_stat;
-> +#else
-> +typedef struct stat ext2fs_struct_stat;
-> +#endif
-> +
+> -orlov		(*)	This enables the new Orlov block allocator. It is
+> -			enabled by default.
+> -
+> -oldalloc		This disables the Orlov block allocator and enables
+> -			the old block allocator.  Orlov should have better
+> -			performance - we'd like to get some feedback if it's
+> -			the contrary for you.
+> -
+>  user_xattr		Enables Extended User Attributes.  Additionally, you
+>  			need to have extended attribute support enabled in the
+>  			kernel configuration (CONFIG_EXT4_FS_XATTR).  See the
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 1921392..7e0b8aa 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -884,7 +884,6 @@ struct ext4_inode_info {
 >  /*
->   * function prototypes
+>   * Mount flags
 >   */
-> @@ -1388,6 +1394,8 @@ extern blk_t ext2fs_inode_data_blocks(ext2_filsys fs,
->  				      struct ext2_inode *inode);
->  extern unsigned int ext2fs_div_ceil(unsigned int a, unsigned int b);
->  extern __u64 ext2fs_div64_ceil(__u64 a, __u64 b);
-> +extern int ext2fs_open_file(const char *pathname, int flags, ...);
-> +extern int ext2fs_stat(const char *path, ext2fs_struct_stat *buf);
->  
->  /*
->   * The actual inlined functions definitions themselves...
-> @@ -1638,6 +1646,36 @@ _INLINE_ __u64 ext2fs_div64_ceil(__u64 a, __u64 b)
->  	return ((a - 1) / b) + 1;
+> -#define EXT4_MOUNT_OLDALLOC		0x00002  /* Don't use the new Orlov allocator */
+>  #define EXT4_MOUNT_GRPID		0x00004	/* Create files with directory's group */
+>  #define EXT4_MOUNT_DEBUG		0x00008	/* Some debugging messages */
+>  #define EXT4_MOUNT_ERRORS_CONT		0x00010	/* Continue on errors */
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index 21bb2f6..0b5ec23 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -293,118 +293,6 @@ error_return:
+>  	ext4_std_error(sb, fatal);
 >  }
 >  
-> +_INLINE_ int ext2fs_open_file(const char *pathname, int flags, ...)
-> +{
-> +	va_list args;
-> +	mode_t mode;
-> +
-> +	va_start(args, flags);
-> +	mode = va_arg(args, mode_t);
-> +	va_end(args);
-> +
-> +	if (mode)
-> +#ifdef HAVE_OPEN64
-> +		return open64(pathname, flags, mode);
-> +	else
-> +		return open64(pathname, flags);
-> +#else
-> +		return open(pathname, flags, mode);
-> +	else
-> +		return open(pathname, flags);
-> +#endif
-> +}
-> +
-> +_INLINE_ int ext2fs_stat(const char *path, ext2fs_struct_stat *buf)
-> +{
-> +#ifdef HAVE_OPEN64
-> +	return stat64(path, buf);
-> +#else
-> +	return open(path, buf);
-> +#endif
-> +}
-> +
->  #undef _INLINE_
->  #endif
->  
-> diff --git a/lib/ext2fs/getsectsize.c b/lib/ext2fs/getsectsize.c
-> index 64f42a6..f129be1 100644
-> --- a/lib/ext2fs/getsectsize.c
-> +++ b/lib/ext2fs/getsectsize.c
-> @@ -45,11 +45,7 @@ errcode_t ext2fs_get_device_sectsize(const char *file, int *sectsize)
->  {
->  	int	fd;
->  
-> -#ifdef HAVE_OPEN64
-> -	fd = open64(file, O_RDONLY);
-> -#else
-> -	fd = open(file, O_RDONLY);
-> -#endif
-> +	fd = ext2fs_open_file(file, O_RDONLY);
->  	if (fd < 0)
->  		return errno;
->  
-> @@ -71,11 +67,7 @@ errcode_t ext2fs_get_device_phys_sectsize(const char *file, int *sectsize)
->  {
->  	int	fd;
->  
-> -#ifdef HAVE_OPEN64
-> -	fd = open64(file, O_RDONLY);
-> -#else
-> -	fd = open(file, O_RDONLY);
-> -#endif
-> +	fd = ext2fs_open_file(file, O_RDONLY);
->  	if (fd < 0)
->  		return errno;
->  
-> diff --git a/lib/ext2fs/getsize.c b/lib/ext2fs/getsize.c
-> index 0c91b5b..41da6b9 100644
-> --- a/lib/ext2fs/getsize.c
-> +++ b/lib/ext2fs/getsize.c
-> @@ -159,11 +159,7 @@ errcode_t ext2fs_get_device_size2(const char *file, int blocksize,
->  	char ch;
->  #endif /* HAVE_SYS_DISKLABEL_H */
->  
-> -#ifdef HAVE_OPEN64
-> -	fd = open64(file, O_RDONLY);
-> -#else
-> -	fd = open(file, O_RDONLY);
-> -#endif
-> +	fd = ext2fs_open_file(file, O_RDONLY);
->  	if (fd < 0)
->  		return errno;
->  
-> diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
-> index c1d0561..21a273d 100644
-> --- a/lib/ext2fs/unix_io.c
-> +++ b/lib/ext2fs/unix_io.c
-> @@ -441,7 +441,7 @@ static errcode_t unix_open(const char *name, int flags, io_channel *channel)
->  	struct unix_private_data *data = NULL;
->  	errcode_t	retval;
->  	int		open_flags, zeroes = 0;
-> -	struct stat	st;
-> +	ext2fs_struct_stat st;
->  #ifdef __linux__
->  	struct 		utsname ut;
->  #endif
-> @@ -482,11 +482,7 @@ static errcode_t unix_open(const char *name, int flags, io_channel *channel)
->  #endif
->  	data->flags = flags;
->  
-> -#ifdef HAVE_OPEN64
-> -	data->dev = open64(io->name, open_flags);
-> -#else
-> -	data->dev = open(io->name, open_flags);
-> -#endif
-> +	data->dev = ext2fs_open_file(io->name, open_flags);
->  	if (data->dev < 0) {
->  		retval = errno;
->  		goto cleanup;
-> @@ -552,7 +548,7 @@ static errcode_t unix_open(const char *name, int flags, io_channel *channel)
->  	     (ut.release[2] == '4') && (ut.release[3] == '.') &&
->  	     (ut.release[4] == '1') && (ut.release[5] >= '0') &&
->  	     (ut.release[5] < '8')) &&
-> -	    (fstat(data->dev, &st) == 0) &&
-> +	    (ext2fs_stat(io->name, &st) == 0) &&
->  	    (S_ISBLK(st.st_mode))) {
->  		struct rlimit	rlim;
->  
-> diff --git a/misc/e2image.c b/misc/e2image.c
-> index 83a9d02..ca6fd41 100644
-> --- a/misc/e2image.c
-> +++ b/misc/e2image.c
-> @@ -1176,11 +1176,7 @@ static void install_image(char *device, char *image_fn, int type)
->  		exit(1);
->  	}
->  
-> -#ifdef HAVE_OPEN64
-> -	fd = open64(image_fn, O_RDONLY);
-> -#else
-> -	fd = open(image_fn, O_RDONLY);
-> -#endif
-> +	fd = ext2fs_open_file(image_fn, O_RDONLY);
->  	if (fd < 0) {
->  		perror(image_fn);
->  		exit(1);
-> @@ -1212,11 +1208,7 @@ static void install_image(char *device, char *image_fn, int type)
->  static struct ext2_qcow2_hdr *check_qcow2_image(int *fd, char *name)
->  {
->  
-> -#ifdef HAVE_OPEN64
-> -	*fd = open64(name, O_RDONLY, 0600);
-> -#else
-> -	*fd = open(name, O_RDONLY, 0600);
-> -#endif
-> +	*fd = ext2fs_open_file(name, O_RDONLY, 0600);
->  	if (*fd < 0)
->  		return NULL;
->  
-> @@ -1300,11 +1292,7 @@ skip_device:
->  	if (strcmp(image_fn, "-") == 0)
->  		fd = 1;
->  	else {
-> -#ifdef HAVE_OPEN64
-> -		fd = open64(image_fn, O_CREAT|O_TRUNC|O_WRONLY, 0600);
-> -#else
-> -		fd = open(image_fn, O_CREAT|O_TRUNC|O_WRONLY, 0600);
-> -#endif
-> +		fd = ext2fs_open_file(image_fn, O_CREAT|O_TRUNC|O_WRONLY, 0600);
->  		if (fd < 0) {
->  			com_err(program_name, errno,
->  				_("while trying to open %s"), argv[optind+1]);
-> diff --git a/misc/util.c b/misc/util.c
-> index 51bdb60..cd78b00 100644
-> --- a/misc/util.c
-> +++ b/misc/util.c
-> @@ -79,15 +79,9 @@ void proceed_question(void)
->  void check_plausibility(const char *device)
->  {
->  	int val;
-> -#ifdef HAVE_OPEN64
-> -	struct stat64 s;
-> +	ext2fs_struct_stat s;
->  
-> -	val = stat64(device, &s);
-> -#else
-> -	struct stat s;
+> -/*
+> - * There are two policies for allocating an inode.  If the new inode is
+> - * a directory, then a forward search is made for a block group with both
+> - * free space and a low directory-to-inode ratio; if that fails, then of
+> - * the groups with above-average free space, that group with the fewest
+> - * directories already is chosen.
+> - *
+> - * For other inodes, search forward from the parent directory\'s block
+> - * group to find a free inode.
+> - */
+> -static int find_group_dir(struct super_block *sb, struct inode *parent,
+> -				ext4_group_t *best_group)
+> -{
+> -	ext4_group_t ngroups = ext4_get_groups_count(sb);
+> -	unsigned int freei, avefreei;
+> -	struct ext4_group_desc *desc, *best_desc = NULL;
+> -	ext4_group_t group;
+> -	int ret = -1;
 > -
-> -	val = stat(device, &s);
-> -#endif
-> +	val = ext2fs_stat(device, &s);
+> -	freei = percpu_counter_read_positive(&EXT4_SB(sb)->s_freeinodes_counter);
+> -	avefreei = freei / ngroups;
+> -
+> -	for (group = 0; group < ngroups; group++) {
+> -		desc = ext4_get_group_desc(sb, group, NULL);
+> -		if (!desc || !ext4_free_inodes_count(sb, desc))
+> -			continue;
+> -		if (ext4_free_inodes_count(sb, desc) < avefreei)
+> -			continue;
+> -		if (!best_desc ||
+> -		    (ext4_free_blks_count(sb, desc) >
+> -		     ext4_free_blks_count(sb, best_desc))) {
+> -			*best_group = group;
+> -			best_desc = desc;
+> -			ret = 0;
+> -		}
+> -	}
+> -	return ret;
+> -}
+> -
+> -#define free_block_ratio 10
+> -
+> -static int find_group_flex(struct super_block *sb, struct inode *parent,
+> -			   ext4_group_t *best_group)
+> -{
+> -	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> -	struct ext4_group_desc *desc;
+> -	struct flex_groups *flex_group = sbi->s_flex_groups;
+> -	ext4_group_t parent_group = EXT4_I(parent)->i_block_group;
+> -	ext4_group_t parent_fbg_group = ext4_flex_group(sbi, parent_group);
+> -	ext4_group_t ngroups = ext4_get_groups_count(sb);
+> -	int flex_size = ext4_flex_bg_size(sbi);
+> -	ext4_group_t best_flex = parent_fbg_group;
+> -	int blocks_per_flex = sbi->s_blocks_per_group * flex_size;
+> -	int flexbg_free_blocks;
+> -	int flex_freeb_ratio;
+> -	ext4_group_t n_fbg_groups;
+> -	ext4_group_t i;
+> -
+> -	n_fbg_groups = (ngroups + flex_size - 1) >>
+> -		sbi->s_log_groups_per_flex;
+> -
+> -find_close_to_parent:
+> -	flexbg_free_blocks = atomic_read(&flex_group[best_flex].free_blocks);
+> -	flex_freeb_ratio = flexbg_free_blocks * 100 / blocks_per_flex;
+> -	if (atomic_read(&flex_group[best_flex].free_inodes) &&
+> -	    flex_freeb_ratio > free_block_ratio)
+> -		goto found_flexbg;
+> -
+> -	if (best_flex && best_flex == parent_fbg_group) {
+> -		best_flex--;
+> -		goto find_close_to_parent;
+> -	}
+> -
+> -	for (i = 0; i < n_fbg_groups; i++) {
+> -		if (i == parent_fbg_group || i == parent_fbg_group - 1)
+> -			continue;
+> -
+> -		flexbg_free_blocks = atomic_read(&flex_group[i].free_blocks);
+> -		flex_freeb_ratio = flexbg_free_blocks * 100 / blocks_per_flex;
+> -
+> -		if (flex_freeb_ratio > free_block_ratio &&
+> -		    (atomic_read(&flex_group[i].free_inodes))) {
+> -			best_flex = i;
+> -			goto found_flexbg;
+> -		}
+> -
+> -		if ((atomic_read(&flex_group[best_flex].free_inodes) == 0) ||
+> -		    ((atomic_read(&flex_group[i].free_blocks) >
+> -		      atomic_read(&flex_group[best_flex].free_blocks)) &&
+> -		     atomic_read(&flex_group[i].free_inodes)))
+> -			best_flex = i;
+> -	}
+> -
+> -	if (!atomic_read(&flex_group[best_flex].free_inodes) ||
+> -	    !atomic_read(&flex_group[best_flex].free_blocks))
+> -		return -1;
+> -
+> -found_flexbg:
+> -	for (i = best_flex * flex_size; i < ngroups &&
+> -		     i < (best_flex + 1) * flex_size; i++) {
+> -		desc = ext4_get_group_desc(sb, i, NULL);
+> -		if (ext4_free_inodes_count(sb, desc)) {
+> -			*best_group = i;
+> -			goto out;
+> -		}
+> -	}
+> -
+> -	return -1;
+> -out:
+> -	return 0;
+> -}
+> -
+>  struct orlov_stats {
+>  	__u32 free_inodes;
+>  	__u32 free_blocks;
+> @@ -817,7 +705,6 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode,
+>  	struct inode *ret;
+>  	ext4_group_t i;
+>  	int free = 0;
+> -	static int once = 1;
+>  	ext4_group_t flex_group;
 >  
->  	if(val == -1) {
->  		fprintf(stderr, _("Could not stat %s --- %s\n"),
-> diff --git a/resize/main.c b/resize/main.c
-> index 28a49ba..daa68c5 100644
-> --- a/resize/main.c
-> +++ b/resize/main.c
-> @@ -256,11 +256,7 @@ int main (int argc, char ** argv)
->  		len = 2 * len;
+>  	/* Cannot create files in a deleted directory */
+> @@ -843,26 +730,9 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode,
+>  		goto got_group;
 >  	}
 >  
-> -#ifdef HAVE_OPEN64
-> -	fd = open64(device_name, O_RDWR);
-> -#else
-> -	fd = open(device_name, O_RDWR);
-> -#endif
-> +	fd = ext2fs_open_file(device_name, O_RDWR);
->  	if (fd < 0) {
->  		com_err("open", errno, _("while opening %s"),
->  			device_name);
+> -	if (sbi->s_log_groups_per_flex && test_opt(sb, OLDALLOC)) {
+> -		ret2 = find_group_flex(sb, dir, &group);
+> -		if (ret2 == -1) {
+> -			ret2 = find_group_other(sb, dir, &group, mode);
+> -			if (ret2 == 0 && once) {
+> -				once = 0;
+> -				printk(KERN_NOTICE "ext4: find_group_flex "
+> -				       "failed, fallback succeeded dir %lu\n",
+> -				       dir->i_ino);
+> -			}
+> -		}
+> -		goto got_group;
+> -	}
+> -
+> -	if (S_ISDIR(mode)) {
+> -		if (test_opt(sb, OLDALLOC))
+> -			ret2 = find_group_dir(sb, dir, &group);
+> -		else
+> -			ret2 = find_group_orlov(sb, dir, &group, mode, qstr);
+> -	} else
+> +	if (S_ISDIR(mode))
+> +		ret2 = find_group_orlov(sb, dir, &group, mode, qstr);
+> +	else
+>  		ret2 = find_group_other(sb, dir, &group, mode);
+>  
+>  got_group:
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index cc5c157..e1f8f73 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1031,8 +1031,6 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
+>  		seq_puts(seq, ",nouid32");
+>  	if (test_opt(sb, DEBUG) && !(def_mount_opts & EXT4_DEFM_DEBUG))
+>  		seq_puts(seq, ",debug");
+> -	if (test_opt(sb, OLDALLOC))
+> -		seq_puts(seq, ",oldalloc");
+>  #ifdef CONFIG_EXT4_FS_XATTR
+>  	if (test_opt(sb, XATTR_USER))
+>  		seq_puts(seq, ",user_xattr");
+> @@ -1541,10 +1539,12 @@ static int parse_options(char *options, struct super_block *sb,
+>  			set_opt(sb, DEBUG);
+>  			break;
+>  		case Opt_oldalloc:
+> -			set_opt(sb, OLDALLOC);
+> +			ext4_msg(sb, KERN_WARNING,
+> +				 "Ignoring deprecated oldalloc option");
+>  			break;
+>  		case Opt_orlov:
+> -			clear_opt(sb, OLDALLOC);
+> +			ext4_msg(sb, KERN_WARNING,
+> +				 "Ignoring deprecated orlov option");
+>  			break;
+>  #ifdef CONFIG_EXT4_FS_XATTR
+>  		case Opt_user_xattr:
 > 
 
 -- 
