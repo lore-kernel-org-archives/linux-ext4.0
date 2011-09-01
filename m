@@ -1,46 +1,62 @@
-From: Josef Bacik <josef@redhat.com>
-Subject: Re: lock i_mutex for fallocate?
-Date: Thu, 1 Sep 2011 13:59:27 -0400
-Message-ID: <20110901175926.GC29299@dhcp231-156.rdu.redhat.com>
-References: <4E5ED2D5.8040302@linux.vnet.ibm.com> <4E5EDBE4.8010604@linux.vnet.ibm.com>
+From: Arnaud Lacombe <lacombar@gmail.com>
+Subject: Re: linux-next: Tree for Aug 30 (jbd2 + bug.h)
+Date: Thu, 1 Sep 2011 16:30:47 -0400
+Message-ID: <CACqU3MXZ52fM_xFFxmPm3wby8bD9isAsomxbvh_Dj+bBb9uFdg@mail.gmail.com>
+References: <20110830171605.168f29decb0558fa31e59210@canb.auug.org.au>
+	<20110831131429.0513af51.rdunlap@xenotime.net>
+	<201109011343.22014.arnd@arndb.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@dilger.ca>
-To: Allison Henderson <achender@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:5600 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756663Ab1IAR7o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 1 Sep 2011 13:59:44 -0400
-Content-Disposition: inline
-In-Reply-To: <4E5EDBE4.8010604@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Randy Dunlap <rdunlap@xenotime.net>,
+	Stephen Rothwell <sfr@canb.auug.org.au>,
+	linux-ext4@vger.kernel.org, linux-next@vger.kernel.org,
+	LKML <linux-kernel@vger.kernel.org>
+To: Arnd Bergmann <arnd@arndb.de>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <201109011343.22014.arnd@arndb.de>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Aug 31, 2011 at 06:12:04PM -0700, Allison Henderson wrote:
-> Oh, I meant for this to go to linux-fsdevel instead of linux-kernel, but  
-> all feedback is welcome!  :)
+Hi,
+
+On Thu, Sep 1, 2011 at 7:43 AM, Arnd Bergmann <arnd@arndb.de> wrote:
+> On Wednesday 31 August 2011, Randy Dunlap wrote:
+>> On Tue, 30 Aug 2011 17:16:05 +1000 Stephen Rothwell wrote:
+>>
+>> > Hi all,
+>>
+>> [Sorry about the delay. =A0My build machine is being slow.
+>> If this is alread fixed, sorry about the noise.]
+>>
+>>
+>> When CONFIG_BUG is not enabled (I see this on x86_64):
+>>
+>> fs/jbd2/transaction.c: In function 'jbd2_journal_dirty_metadata':
+>> fs/jbd2/transaction.c:1176: error: implicit declaration of function =
+'__WARN'
+>>
+>>
+>> asm-generic/bug.h does not provide a version of __WARN() when
+>> CONFIG_BUG is not enabled...
+>>
 >
-> On 08/31/2011 05:33 PM, Allison Henderson wrote:
->> Hi All,
->>
->> In ext4 punch hole, we realized that the punch hole operation needs to
->> be done under i_mutex just like truncate. i_mutex for truncate is held
->> in the vfs layer, so we dont need to lock it at the file system layer,
->> but vfs does not lock i_mutex for fallocate. We can lock i_mutex for
->> fallocate at the fs layer, but question was raised then: should i_mutex
->> for fallocate be held in the vfs layer instead? I do not know if other
->> file systems need i_mutex to be locked for fallocate, or if they might
->> be locking it already, so I am doing some investigating on this idea,
->> and also the appropriate use of i_mutex in general. Can someone provide
->> some insight this topic? Thx!
->>
+> Hmm, my feeling is that we shouldn't do that either, and that jbd2 sh=
+ould
+> be changed. If we want a function that does what __WARN() does today,=
+ we
+> should probably make a conscious decision about what we want it to be=
+ called
+> and not have it start with "__".
+>
+Why is WARN_ON() not used here ?
 
-Btrfs has range locking for our extents, so we don't really need to be holding
-the i_mutex, even tho it appears we do it anyway.  So I'd rather this not be
-moved to VFS for us who can do more fine grained locking.  Thanks,
+ - Arnaud
 
-Josef
+> =A0 =A0 =A0 =A0Arnd
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-next"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
