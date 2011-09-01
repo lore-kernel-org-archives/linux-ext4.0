@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 07/16] ext4: Create bitmap checksum helper functions
-Date: Wed, 31 Aug 2011 17:31:19 -0700
-Message-ID: <20110901003119.31048.40300.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 08/16] ext4: Calculate and verify checksums for inode bitmaps
+Date: Wed, 31 Aug 2011 17:31:28 -0700
+Message-ID: <20110901003127.31048.13983.stgit@elm3c44.beaverton.ibm.com>
 References: <20110901003030.31048.99467.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -22,89 +22,123 @@ In-Reply-To: <20110901003030.31048.99467.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-These helper functions will be used to calculate and verify the block and inode
-bitmap checksums.
+Compute and verify the checksum of the inode bitmap; the checkum is stored in
+the block group descriptor.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/ext4/bitmap.c |   44 ++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/ext4.h   |    6 ++++++
- 2 files changed, 50 insertions(+), 0 deletions(-)
+ fs/ext4/ext4.h   |    3 ++-
+ fs/ext4/ialloc.c |   33 ++++++++++++++++++++++++++++++---
+ 2 files changed, 32 insertions(+), 4 deletions(-)
 
 
-diff --git a/fs/ext4/bitmap.c b/fs/ext4/bitmap.c
-index fa3af81..5421152 100644
---- a/fs/ext4/bitmap.c
-+++ b/fs/ext4/bitmap.c
-@@ -9,6 +9,7 @@
- 
- #include <linux/buffer_head.h>
- #include <linux/jbd2.h>
-+#include <linux/crc32c.h>
- #include "ext4.h"
- 
- #ifdef EXT4FS_DEBUG
-@@ -29,3 +30,46 @@ unsigned int ext4_count_free(struct buffer_head *map, unsigned int numchars)
- 
- #endif  /*  EXT4FS_DEBUG  */
- 
-+__le32 ext4_bitmap_csum(struct super_block *sb, ext4_group_t group,
-+			struct buffer_head *bh, int sz)
-+{
-+	__le32 crc;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+
-+	if (sbi->s_desc_size < EXT4_MIN_DESC_SIZE_64BIT)
-+		return 0;
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		return 0;
-+
-+	group = cpu_to_le32(group);
-+	crc = crc32c_le(~0, sbi->s_es->s_uuid, sizeof(sbi->s_es->s_uuid));
-+	crc = crc32c_le(crc, (__u8 *)&group, sizeof(group));
-+	crc = crc32c_le(crc, (__u8 *)bh->b_data, sz);
-+
-+	return cpu_to_le32(crc);
-+}
-+
-+int ext4_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
-+			    __le32 provided, struct buffer_head *bh, int sz)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+
-+	if (sbi->s_desc_size >= EXT4_MIN_DESC_SIZE_64BIT &&
-+	    EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) &&
-+	    (provided != ext4_bitmap_csum(sb, group, bh, sz)))
-+		return 0;
-+	return 1;
-+}
-+
-+void ext4_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
-+			  __le32 *csum, struct buffer_head *bh, int sz)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+
-+	if (sbi->s_desc_size >= EXT4_MIN_DESC_SIZE_64BIT &&
-+	    EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		*csum = ext4_bitmap_csum(sb, group, bh, sz);
-+}
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index e2361cc..bc7ace1 100644
+index bc7ace1..248cbd2 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1722,6 +1722,12 @@ struct mmpd_data {
+@@ -279,7 +279,8 @@ struct ext4_group_desc
+ 	__le16	bg_free_inodes_count_hi;/* Free inodes count MSB */
+ 	__le16	bg_used_dirs_count_hi;	/* Directories count MSB */
+ 	__le16  bg_itable_unused_hi;    /* Unused inodes count MSB */
+-	__u32	bg_reserved2[3];
++	__le32	bg_inode_bitmap_csum;	/* crc32c(uuid+group+ibitmap) */
++	__u32	bg_reserved2[2];
+ };
  
- /* bitmap.c */
- extern unsigned int ext4_count_free(struct buffer_head *, unsigned);
-+__le32 ext4_bitmap_csum(struct super_block *sb, ext4_group_t group,
-+			struct buffer_head *bh, int sz);
-+int ext4_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
-+			    __le32 provided, struct buffer_head *bh, int sz);
-+void ext4_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
-+			  __le32 *csum, struct buffer_head *bh, int sz);
+ /*
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 9c63f27..53faffc 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -82,12 +82,18 @@ static unsigned ext4_init_inode_bitmap(struct super_block *sb,
+ 		ext4_free_inodes_set(sb, gdp, 0);
+ 		ext4_itable_unused_set(sb, gdp, 0);
+ 		memset(bh->b_data, 0xff, sb->s_blocksize);
++		ext4_bitmap_csum_set(sb, block_group,
++				     &gdp->bg_inode_bitmap_csum, bh,
++				     (EXT4_INODES_PER_GROUP(sb) + 7) / 8);
+ 		return 0;
+ 	}
  
- /* balloc.c */
- extern unsigned int ext4_block_group(struct super_block *sb,
+ 	memset(bh->b_data, 0, (EXT4_INODES_PER_GROUP(sb) + 7) / 8);
+ 	ext4_mark_bitmap_end(EXT4_INODES_PER_GROUP(sb), sb->s_blocksize * 8,
+ 			bh->b_data);
++	ext4_bitmap_csum_set(sb, block_group, &gdp->bg_inode_bitmap_csum, bh,
++			     (EXT4_INODES_PER_GROUP(sb) + 7) / 8);
++	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
+ 
+ 	return EXT4_INODES_PER_GROUP(sb);
+ }
+@@ -118,12 +124,12 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 		return NULL;
+ 	}
+ 	if (bitmap_uptodate(bh))
+-		return bh;
++		goto verify;
+ 
+ 	lock_buffer(bh);
+ 	if (bitmap_uptodate(bh)) {
+ 		unlock_buffer(bh);
+-		return bh;
++		goto verify;
+ 	}
+ 
+ 	ext4_lock_group(sb, block_group);
+@@ -131,6 +137,7 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 		ext4_init_inode_bitmap(sb, bh, block_group, desc);
+ 		set_bitmap_uptodate(bh);
+ 		set_buffer_uptodate(bh);
++		set_buffer_verified(bh);
+ 		ext4_unlock_group(sb, block_group);
+ 		unlock_buffer(bh);
+ 		return bh;
+@@ -144,7 +151,7 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 		 */
+ 		set_bitmap_uptodate(bh);
+ 		unlock_buffer(bh);
+-		return bh;
++		goto verify;
+ 	}
+ 	/*
+ 	 * submit the buffer_head for read. We can
+@@ -161,6 +168,21 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 			    block_group, bitmap_blk);
+ 		return NULL;
+ 	}
++
++verify:
++	ext4_lock_group(sb, block_group);
++	if (!buffer_verified(bh) &&
++	    !ext4_bitmap_csum_verify(sb, block_group,
++				     desc->bg_inode_bitmap_csum, bh,
++				     (EXT4_INODES_PER_GROUP(sb) + 7) / 8)) {
++		ext4_unlock_group(sb, block_group);
++		put_bh(bh);
++		ext4_error(sb, "Corrupt inode bitmap - block_group = %u, "
++			   "inode_bitmap = %llu", block_group, bitmap_blk);
++		return NULL;
++	}
++	ext4_unlock_group(sb, block_group);
++	set_buffer_verified(bh);
+ 	return bh;
+ }
+ 
+@@ -265,6 +287,8 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
+ 		ext4_used_dirs_set(sb, gdp, count);
+ 		percpu_counter_dec(&sbi->s_dirs_counter);
+ 	}
++	ext4_bitmap_csum_set(sb, block_group, &gdp->bg_inode_bitmap_csum,
++			     bitmap_bh, (EXT4_INODES_PER_GROUP(sb) + 7) / 8);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
+ 	ext4_unlock_group(sb, block_group);
+ 
+@@ -784,6 +808,9 @@ static int ext4_claim_inode(struct super_block *sb,
+ 			atomic_inc(&sbi->s_flex_groups[f].used_dirs);
+ 		}
+ 	}
++	ext4_bitmap_csum_set(sb, group, &gdp->bg_inode_bitmap_csum,
++			     inode_bitmap_bh,
++			     (EXT4_INODES_PER_GROUP(sb) + 7) / 8);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, group, gdp);
+ err_ret:
+ 	ext4_unlock_group(sb, group);
