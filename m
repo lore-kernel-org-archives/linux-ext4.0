@@ -1,72 +1,47 @@
-From: Chen Huan <chenhuan@nrchpc.ac.cn>
-Subject: Re: e2fsck aborts when invalid indirect block is encountered
-Date: Thu, 1 Sep 2011 16:52:04 +0800
-Message-ID: <20110901085204.GA12928@notebook.chenhuan>
-References: <20110901063410.GA8313@notebook.chenhuan>
- <6826A7C1-1DE4-4F0B-8654-201A3F6D1BF2@dilger.ca>
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: Re: linux-next: Tree for Aug 30 (jbd2 + bug.h)
+Date: Thu, 1 Sep 2011 13:43:21 +0200
+Message-ID: <201109011343.22014.arnd@arndb.de>
+References: <20110830171605.168f29decb0558fa31e59210@canb.auug.org.au> <20110831131429.0513af51.rdunlap@xenotime.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: Stephen Rothwell <sfr@canb.auug.org.au>,
+	linux-ext4@vger.kernel.org, linux-next@vger.kernel.org,
+	LKML <linux-kernel@vger.kernel.org>
+To: Randy Dunlap <rdunlap@xenotime.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [221.122.61.228] ([221.122.61.228]:38016 "EHLO mx.nrchpc.ac.cn"
-	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752598Ab1IAKMC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 1 Sep 2011 06:12:02 -0400
-Content-Disposition: inline
-In-Reply-To: <6826A7C1-1DE4-4F0B-8654-201A3F6D1BF2@dilger.ca>
+Received: from moutng.kundenserver.de ([212.227.17.9]:60066 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753055Ab1IALna (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Sep 2011 07:43:30 -0400
+In-Reply-To: <20110831131429.0513af51.rdunlap@xenotime.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-* Andreas Dilger <adilger@dilger.ca> [2011-09-01 02:17:14 -0600]:
+On Wednesday 31 August 2011, Randy Dunlap wrote:
+> On Tue, 30 Aug 2011 17:16:05 +1000 Stephen Rothwell wrote:
+> 
+> > Hi all,
+> 
+> [Sorry about the delay.  My build machine is being slow.
+> If this is alread fixed, sorry about the noise.]
+> 
+> 
+> When CONFIG_BUG is not enabled (I see this on x86_64):
+> 
+> fs/jbd2/transaction.c: In function 'jbd2_journal_dirty_metadata':
+> fs/jbd2/transaction.c:1176: error: implicit declaration of function '__WARN'
+> 
+> 
+> asm-generic/bug.h does not provide a version of __WARN() when
+> CONFIG_BUG is not enabled...
+> 
 
-> On 2011-09-01, at 12:34 AM, Chen Huan wrote:
-> > During a recent read-only checking of an corrupted ext3 file system,
-> > I found a strange behaviour of e2fsck: when an inode has an invalid
-> > indirect block number, e2fsck aborts with the following message:
-> > 
-> >    e2fsck 1.39 (29-May-2006)
-> 
-> Please retest with a new version of e2fsprogs.  The current release
-> version is 1.41.14, and the work-in-progress for version 1.42 is
-> available via Git.
+Hmm, my feeling is that we shouldn't do that either, and that jbd2 should
+be changed. If we want a function that does what __WARN() does today, we
+should probably make a conscious decision about what we want it to be called
+and not have it start with "__".
 
-The problem remains in e2fsck 1.42-WIP (02-Jul-2011)
-
-> 
-> >    Pass 1: Checking inodes, blocks, and sizes
-> >    Inode 12 has illegal block(s).  Clear? no
-> > 
-> >    Illegal block #-1 (4294967295) in inode 12.  IGNORED.
-> >    Error while iterating over blocks in inode 12: Illegal indirect block found
-> >    e2fsck: aborted
-> > 
-> > You can reproduce it with this code snippet:
-> > 
-> >    #!/bin/sh
-> > 
-> >    dev=/dev/sde
-> >    mnt=/mnt
-> > 
-> >    mkfs.ext3 -F $dev
-> >    mount $dev $mnt
-> >    dd if=/dev/zero of=$mnt/file bs=1M count=1
-> >    umount $dev
-> >    debugfs -w -R 'sif file block[IND] 0xFFFFFFFF' $dev
-> >    e2fsck -f -n $dev
-> > 
-> > Doing a fixing without -n option can safely delete this bad blocknum.
-> > 
-> > My question is: Is this behaviour a bug or intended?
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-> Cheers, Andreas
-> 
-> 
-> 
-> 
-> 
+	Arnd
