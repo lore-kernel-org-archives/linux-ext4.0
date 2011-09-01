@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 27/37] e2fsck: Check directory leaf block checksums
-Date: Wed, 31 Aug 2011 17:38:04 -0700
-Message-ID: <20110901003804.1176.90447.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 28/37] tune2fs: Rebuild and checksum directories when toggling
+	metadata_csum or changing UUID
+Date: Wed, 31 Aug 2011 17:38:11 -0700
+Message-ID: <20110901003811.1176.6578.stgit@elm3c44.beaverton.ibm.com>
 References: <20110901003509.1176.51159.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,275 +17,268 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:43773 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756619Ab1IAAiO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Aug 2011 20:38:14 -0400
+Received: from e34.co.us.ibm.com ([32.97.110.152]:48886 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756849Ab1IAAiS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Aug 2011 20:38:18 -0400
 Received: from d03relay03.boulder.ibm.com (d03relay03.boulder.ibm.com [9.17.195.228])
-	by e36.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p810VYvA001640
-	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 18:31:34 -0600
-Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
-	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p810c796181062
-	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 18:38:07 -0600
-Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av04.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p7VIc5lv013079
-	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 12:38:06 -0600
+	by e34.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p810cDjN021697
+	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 18:38:13 -0600
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p810cDfh161114
+	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 18:38:13 -0600
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p7VIcBgA027830
+	for <linux-ext4@vger.kernel.org>; Wed, 31 Aug 2011 12:38:12 -0600
 In-Reply-To: <20110901003509.1176.51159.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Checks that directory leaf blocks have the necessary fake dir_entry at the end
-of the block to hold a checksum and that the checksum is valid.  It will resize
-the block and/or rebuild the directory if necessary.
+Since all the metadata checksums depend on the fs UUID, tune2fs must be able to
+rewrite the checksums of _all_ metadata.  It's not that hard to add in the bits
+to resize the directory block structures at the same time.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- e2fsck/e2fsck.h  |    1 +
- e2fsck/pass2.c   |   76 ++++++++++++++++++++++++++++++++++++++++++++++++------
- e2fsck/pass3.c   |    4 +++
- e2fsck/problem.c |   10 +++++++
- e2fsck/problem.h |    6 ++++
- e2fsck/rehash.c  |   12 +++++++++
- 6 files changed, 101 insertions(+), 8 deletions(-)
+ misc/tune2fs.c |  198 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 197 insertions(+), 1 deletions(-)
 
 
-diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-index d515a9d..2a7a80e 100644
---- a/e2fsck/e2fsck.h
-+++ b/e2fsck/e2fsck.h
-@@ -473,6 +473,7 @@ extern void region_free(region_t region);
- extern int region_allocate(region_t region, region_addr_t start, int n);
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 0c0a911..ba5b9d2 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -97,6 +97,8 @@ struct blk_move {
  
- /* rehash.c */
-+int e2fsck_dir_will_be_rehashed(e2fsck_t ctx, ext2_ino_t ino);
- errcode_t e2fsck_rehash_dir(e2fsck_t ctx, ext2_ino_t ino);
- void e2fsck_rehash_directories(e2fsck_t ctx);
  
-diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
-index 93a09d1..4563c9c 100644
---- a/e2fsck/pass2.c
-+++ b/e2fsck/pass2.c
-@@ -748,7 +748,8 @@ static int check_dir_block(ext2_filsys fs,
- 	struct problem_context	pctx;
- 	int	dups_found = 0;
- 	int	ret;
--	int	csum_size = 0;
-+	int	dx_csum_size = 0, de_csum_size = 0;
-+	int	is_leaf = 1;
+ static const char *please_fsck = N_("Please run e2fsck on the filesystem.\n");
++static const char *please_dir_fsck =
++		N_("Please run e2fsck -D on the filesystem.\n");
  
- 	cd = (struct check_dir_struct *) priv_data;
- 	buf = cd->buf;
-@@ -761,8 +762,10 @@ static int check_dir_block(ext2_filsys fs,
- 		return DIRENT_ABORT;
+ #ifdef CONFIG_BUILD_FINDFS
+ void do_findfs(int argc, char **argv);
+@@ -343,6 +345,18 @@ static int check_fsck_needed(ext2_filsys fs)
+ 	return 1;
+ }
  
- 	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
--				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
--		csum_size = sizeof(struct ext2_dx_tail);
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+		dx_csum_size = sizeof(struct ext2_dx_tail);
-+		de_csum_size = sizeof(struct ext2_dir_entry_tail);
-+	}
- 
- 	/*
- 	 * Make sure the inode is still in use (could have been
-@@ -806,11 +809,15 @@ static int check_dir_block(ext2_filsys fs,
- 	if (cd->pctx.errcode == EXT2_ET_DIR_CORRUPTED)
- 		cd->pctx.errcode = 0; /* We'll handle this ourselves */
- 	if (cd->pctx.errcode) {
-+		char *buf2;
- 		if (!fix_problem(ctx, PR_2_READ_DIRBLOCK, &cd->pctx)) {
- 			ctx->flags |= E2F_FLAG_ABORT;
- 			return DIRENT_ABORT;
- 		}
--		memset(buf, 0, fs->blocksize);
-+		ext2fs_new_dir_block(fs, db->blockcnt == 0 ? ino : 0,
-+				     EXT2_ROOT_INO, &buf2);
-+		memcpy(buf, buf2, fs->blocksize);
-+		ext2fs_free_mem(&buf2);
- 	}
- #ifdef ENABLE_HTREE
- 	dx_dir = e2fsck_get_dx_dir_info(ctx, ino);
-@@ -855,13 +862,49 @@ static int check_dir_block(ext2_filsys fs,
- 			   (rec_len == fs->blocksize) &&
- 			   (dirent->name_len == 0) &&
- 			   (ext2fs_le16_to_cpu(limit->limit) ==
--			    ((fs->blocksize - (8 + csum_size)) /
-+			    ((fs->blocksize - (8 + dx_csum_size)) /
- 			     sizeof(struct ext2_dx_entry))))
- 			dx_db->type = DX_DIRBLOCK_NODE;
-+		is_leaf = 0;
- 	}
- out_htree:
- #endif /* ENABLE_HTREE */
- 
-+	/* Verify checksum. */
-+	if (is_leaf && de_csum_size) {
-+		/* No space for csum?  Rebuild dirs in pass 3A. */
-+		if (!ext2fs_dirent_has_tail(fs, (struct ext2_dir_entry *)buf)) {
-+			de_csum_size = 0;
-+			if (e2fsck_dir_will_be_rehashed(ctx, ino))
-+				goto skip_checksum;
-+			if (!fix_problem(cd->ctx, PR_2_LEAF_NODE_MISSING_CSUM,
-+					 &cd->pctx))
-+				goto skip_checksum;
-+			if (!ctx->dirs_to_hash)
-+				ext2fs_u32_list_create(&ctx->dirs_to_hash, 50);
-+			if (ctx->dirs_to_hash)
-+				ext2fs_u32_list_add(ctx->dirs_to_hash, ino);
-+			goto skip_checksum;
-+		}
-+		if (!ext2fs_dirent_csum_verify(fs, ino,
-+					       (struct ext2_dir_entry *)buf)) {
-+			char *buf2;
-+			if (!fix_problem(cd->ctx, PR_2_LEAF_NODE_CSUM_INVALID,
-+					 &cd->pctx))
-+				goto skip_checksum;
-+			ext2fs_new_dir_block(fs,
-+					     db->blockcnt == 0 ? ino : 0,
-+					     EXT2_ROOT_INO, &buf2);
-+			memcpy(buf, buf2, fs->blocksize);
-+			ext2fs_free_mem(&buf2);
-+			dir_modified++;
-+		}
-+	}
-+	/* htree nodes don't use fake dirents to store checksums */
-+	if (!is_leaf)
-+		de_csum_size = 0;
-+
-+skip_checksum:
- 	dict_init(&de_dict, DICTCOUNT_T_MAX, dict_de_cmp);
- 	prev = 0;
- 	do {
-@@ -1134,7 +1177,7 @@ out_htree:
- 			(void) ext2fs_get_rec_len(fs, dirent, &rec_len);
- 		offset += rec_len;
- 		dot_state++;
--	} while (offset < fs->blocksize);
-+	} while (offset < fs->blocksize - de_csum_size);
- #if 0
- 	printf("\n");
- #endif
-@@ -1151,16 +1194,33 @@ out_htree:
- 			parse_int_node(fs, db, cd, dx_dir, buf);
- 	}
- #endif /* ENABLE_HTREE */
--	if (offset != fs->blocksize) {
--		cd->pctx.num = rec_len - fs->blocksize + offset;
-+
-+	if (offset != fs->blocksize - de_csum_size) {
-+		cd->pctx.num = rec_len - (fs->blocksize - de_csum_size) +
-+			       offset;
- 		if (fix_problem(ctx, PR_2_FINAL_RECLEN, &cd->pctx)) {
- 			dirent->rec_len = cd->pctx.num;
- 			dir_modified++;
- 		}
- 	}
- 	if (dir_modified) {
-+		/* leaf block with no tail?  Rehash dirs later. */
-+		if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) &&
-+		    is_leaf &&
-+		    !ext2fs_dirent_has_tail(fs, (struct ext2_dir_entry *)buf)) {
-+			if (!ctx->dirs_to_hash)
-+				ext2fs_u32_list_create(&ctx->dirs_to_hash, 50);
-+			if (ctx->dirs_to_hash)
-+				ext2fs_u32_list_add(ctx->dirs_to_hash, ino);
-+		}
-+
-+		if (e2fsck_dir_will_be_rehashed(ctx, ino))
-+			ctx->fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
- 		cd->pctx.errcode = ext2fs_write_dir_block(fs, block_nr, buf,
- 							  ino);
-+		if (e2fsck_dir_will_be_rehashed(ctx, ino))
-+			ctx->fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
- 		if (cd->pctx.errcode) {
- 			if (!fix_problem(ctx, PR_2_WRITE_DIRBLOCK,
- 					 &cd->pctx))
-diff --git a/e2fsck/pass3.c b/e2fsck/pass3.c
-index 2360aff..ada6646 100644
---- a/e2fsck/pass3.c
-+++ b/e2fsck/pass3.c
-@@ -654,8 +654,12 @@ static void fix_dotdot(e2fsck_t ctx, ext2_ino_t ino, ext2_ino_t parent)
- 
- 	clear_problem_context(&pctx);
- 	pctx.ino = ino;
-+	if (e2fsck_dir_will_be_rehashed(ctx, ino))
-+		ctx->fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
- 	retval = ext2fs_dir_iterate(fs, ino, DIRENT_FLAG_INCLUDE_EMPTY,
- 				    0, fix_dotdot_proc, &fp);
-+	if (e2fsck_dir_will_be_rehashed(ctx, ino))
-+		ctx->fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
- 	if (retval || !fp.done) {
- 		pctx.errcode = retval;
- 		fix_problem(ctx, retval ? PR_3_FIX_PARENT_ERR :
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index 637b254..835f0ff 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -1353,6 +1353,16 @@ static struct e2fsck_problem problem_table[] = {
- 	  N_("@p @h %d: node fails checksum\n"),
- 	  PROMPT_CLEAR_HTREE, PR_PREEN_OK },
- 
-+	/* leaf node fails checksum */
-+	{ PR_2_LEAF_NODE_CSUM_INVALID,
-+	  N_("@d @i %i, %B, offset %N: @d fails checksum\n"),
-+	  PROMPT_SALVAGE, 0 },
-+
-+	/* leaf node fails checksum */
-+	{ PR_2_LEAF_NODE_MISSING_CSUM,
-+	  N_("@d @i %i, %B, offset %N: @d has no checksum\n"),
-+	  PROMPT_FIX, PR_PREEN_OK },
-+
- 	/* Pass 3 errors */
- 
- 	/* Pass 3: Checking directory connectivity */
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index d4e596f..df29057 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -809,6 +809,12 @@ struct problem_context {
- /* htree node fails checksum */
- #define PR_2_HTREE_NODE_CSUM_INVALID	0x02004A
- 
-+/* dir leaf node fails checksum */
-+#define PR_2_LEAF_NODE_CSUM_INVALID	0x02004B
-+
-+/* no space in leaf for checksum */
-+#define PR_2_LEAF_NODE_MISSING_CSUM	0x02004C
-+
- /*
-  * Pass 3 errors
-  */
-diff --git a/e2fsck/rehash.c b/e2fsck/rehash.c
-index 25cc8b8..ae6d406 100644
---- a/e2fsck/rehash.c
-+++ b/e2fsck/rehash.c
-@@ -51,6 +51,15 @@
- #include "e2fsck.h"
- #include "problem.h"
- 
-+int e2fsck_dir_will_be_rehashed(e2fsck_t ctx, ext2_ino_t ino)
++static void request_dir_fsck_afterwards(ext2_filsys fs)
 +{
-+	if (ctx->options & E2F_OPT_COMPRESS_DIRS)
-+		return 1;
-+	if (!ctx->dirs_to_hash)
-+		return 0;
-+	return ext2fs_u32_list_test(ctx->dirs_to_hash, ino);
++	static int requested;
++
++	if (requested++)
++		return;
++	fs->super->s_state &= ~EXT2_VALID_FS;
++	printf("\n%s\n", _(please_dir_fsck));
++	if (mount_flags & EXT2_MF_READONLY)
++		printf(_("(and reboot afterwards!)\n"));
 +}
 +
- struct fill_dir_struct {
- 	char *buf;
- 	struct ext2_inode_large *inode;
-@@ -905,8 +914,11 @@ void e2fsck_rehash_directories(e2fsck_t ctx)
- 			if (!ext2fs_u32_list_iterate(iter, &ino))
- 				break;
+ static void request_fsck_afterwards(ext2_filsys fs)
+ {
+ 	static int requested = 0;
+@@ -399,6 +413,177 @@ static errcode_t rewrite_extents(ext2_filsys fs, ext2_ino_t ino,
+ }
+ 
+ /*
++ * Rewrite directory blocks with checksums
++ */
++struct rewrite_dir_context {
++	char *buf;
++	errcode_t errcode;
++	ext2_ino_t dir;
++	int is_htree;
++};
++
++static int rewrite_dir_block(ext2_filsys fs,
++			     blk64_t	*blocknr,
++			     e2_blkcnt_t blockcnt,
++			     blk64_t	ref_block EXT2FS_ATTR((unused)),
++			     int	ref_offset EXT2FS_ATTR((unused)),
++			     void	*priv_data)
++{
++	struct ext2_dx_countlimit *dcl = NULL;
++	struct rewrite_dir_context *ctx = priv_data;
++	int dcl_offset, changed = 0;
++
++	ctx->errcode = ext2fs_read_dir_block3(fs, *blocknr, ctx->buf, 0,
++					      ctx->dir);
++	if (ctx->errcode)
++		return BLOCK_ABORT;
++
++	/* if htree node... */
++	if (ctx->is_htree)
++		dcl = ext2fs_get_dx_countlimit(fs,
++				(struct ext2_dir_entry *)ctx->buf, &dcl_offset);
++	if (dcl) {
++		if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
++			/* Ensure limit is the max size */
++			int max_entries = (fs->blocksize - dcl_offset) /
++					  sizeof(struct ext2_dx_entry);
++			if (ext2fs_le16_to_cpu(dcl->limit) != max_entries) {
++				changed = 1;
++				dcl->limit = ext2fs_cpu_to_le16(max_entries);
++			}
++		} else {
++			/* If htree block is full then rebuild the dir */
++			if (ext2fs_le16_to_cpu(dcl->count) ==
++			    ext2fs_le16_to_cpu(dcl->limit)) {
++				request_dir_fsck_afterwards(fs);
++				return 0;
++			}
++			/*
++			 * Ensure dcl->limit is small enough to leave room for
++			 * the checksum tail.
++			 */
++			int max_entries = (fs->blocksize - (dcl_offset +
++						sizeof(struct ext2_dx_tail))) /
++					  sizeof(struct ext2_dx_entry);
++			if (ext2fs_le16_to_cpu(dcl->limit) != max_entries)
++				dcl->limit = ext2fs_cpu_to_le16(max_entries);
++			/* Always rewrite checksum */
++			changed = 1;
++		}
++	} else {
++		int rec_len, name_size;
++		char *top = ctx->buf + fs->blocksize;
++		struct ext2_dir_entry *de = (struct ext2_dir_entry *)ctx->buf;
++		struct ext2_dir_entry *last_de = NULL, *penultimate_de = NULL;
++
++		/* Find last and penultimate dirent */
++		while ((char *)de < top) {
++			penultimate_de = last_de;
++			last_de = de;
++			ctx->errcode = ext2fs_get_rec_len(fs, de, &rec_len);
++			if (!ctx->errcode && !rec_len)
++				ctx->errcode = EXT2_ET_DIR_CORRUPTED;
++			if (ctx->errcode)
++				return BLOCK_ABORT;
++			de = (struct ext2_dir_entry *)(((void *)de) + rec_len);
++		}
++		ctx->errcode = ext2fs_get_rec_len(fs, last_de, &rec_len);
++		if (ctx->errcode)
++			return BLOCK_ABORT;
++		name_size = last_de->name_len & 0xFF;
++
++		if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
++			if (!penultimate_de)
++				return 0;
++			if (last_de->inode ||
++			    name_size ||
++			    rec_len != sizeof(struct ext2_dir_entry_tail))
++				return 0;
++			/*
++			 * The last dirent is unused and the right length to
++			 * have stored a checksum.  Erase it.
++			 */
++			ctx->errcode = ext2fs_get_rec_len(fs, penultimate_de,
++							  &rec_len);
++			if (!rec_len)
++				ctx->errcode = EXT2_ET_DIR_CORRUPTED;
++			if (ctx->errcode)
++				return BLOCK_ABORT;
++			ext2fs_set_rec_len(fs, rec_len +
++					sizeof(struct ext2_dir_entry_tail),
++					penultimate_de);
++			changed = 1;
++		} else {
++			int csum_size = sizeof(struct ext2_dir_entry_tail);
++			struct ext2_dir_entry_tail *t;
++
++			/*
++			 * If the last dirent looks like the tail, just update
++			 * the checksum.
++			 */
++			if (!last_de->inode && !name_size &&
++			    rec_len == csum_size) {
++				changed = 1;
++				goto out;
++			}
++			if (name_size & 3)
++				name_size = (name_size & ~3) + 4;
++			/* If there's not enough space for the tail, e2fsck */
++			if (rec_len <= (8 + name_size + csum_size)) {
++				request_dir_fsck_afterwards(fs);
++				return 0;
++			}
++			/* Shorten that last de and insert the tail */
++			ext2fs_set_rec_len(fs, rec_len - csum_size, last_de);
++			t = (struct ext2_dir_entry_tail *)
++					(ctx->buf + fs->blocksize - csum_size);
++			bzero(t, csum_size);
++			ext2fs_set_rec_len(fs, csum_size,
++					   (struct ext2_dir_entry *)t);
++
++			/* Always update checksum */
++			changed = 1;
++		}
++	}
++
++out:
++	if (!changed)
++		return 0;
++
++	ctx->errcode = ext2fs_write_dir_block3(fs, *blocknr, ctx->buf,
++					       0, ctx->dir);
++	if (ctx->errcode)
++		return BLOCK_ABORT;
++
++	return 0;
++}
++
++errcode_t rewrite_directory(ext2_filsys fs, ext2_ino_t dir,
++			    struct ext2_inode_large *inode)
++{
++	errcode_t	retval;
++	struct rewrite_dir_context ctx;
++
++	retval = ext2fs_get_mem(fs->blocksize, &ctx.buf);
++	if (retval)
++		return retval;
++
++	ctx.is_htree = (inode->i_flags & EXT2_INDEX_FL);
++	ctx.dir = dir;
++	retval = ext2fs_block_iterate3(fs, dir, BLOCK_FLAG_READ_ONLY |
++						BLOCK_FLAG_DATA_ONLY,
++				       0, rewrite_dir_block, &ctx);
++
++	ext2fs_free_mem(&ctx.buf);
++	if (retval)
++		return retval;
++
++	return ctx.errcode;
++}
++
++/*
+  * Forcibly set checksums in all inodes.
+  */
+ static void rewrite_inodes(ext2_filsys fs)
+@@ -437,6 +622,15 @@ static void rewrite_inodes(ext2_filsys fs)
+ 				"while rewriting extents");
+ 			exit(1);
  		}
-+#if 0
-+		/* Why is lost_and_found never cleaned up or hashed? */
- 		if (ino == ctx->lost_and_found)
- 			continue;
-+#endif
- 		pctx.dir = ino;
- 		if (first) {
- 			fix_problem(ctx, PR_3A_PASS_HEADER, &pctx);
++
++		if (LINUX_S_ISDIR(inode->i_mode)) {
++			retval = rewrite_directory(fs, ino, inode);
++			if (retval) {
++				com_err("rewrite_directory", retval,
++					"while rewriting directories");
++				exit(1);
++			}
++		}
+ 	} while (ino);
+ 	ext2fs_close_inode_scan(scan);
+ }
+@@ -1948,7 +2142,9 @@ retry_open:
+ 			fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
+ 		}
+ 		ext2fs_mark_super_dirty(fs);
+-		rewrite_checksums = 1;
++		if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++			rewrite_checksums = 1;
+ 	}
+ 	if (rewrite_checksums)
+ 		rewrite_metadata_checksums(fs);
 
