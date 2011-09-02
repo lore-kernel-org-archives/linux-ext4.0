@@ -1,8 +1,9 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCH 14/16] ext4: Make inode checksum cover empty space
-Date: Fri, 2 Sep 2011 11:42:06 -0700
-Message-ID: <20110902184206.GF12086@tux1.beaverton.ibm.com>
-References: <20110901003030.31048.99467.stgit@elm3c44.beaverton.ibm.com> <20110901003207.31048.55390.stgit@elm3c44.beaverton.ibm.com> <4540D5DB-53D9-4C33-BC6B-868870D42AF3@dilger.ca>
+Subject: Re: [PATCH 13/16] ext4: Calculate and verify checksums of extended
+	attribute blocks
+Date: Fri, 2 Sep 2011 11:43:32 -0700
+Message-ID: <20110902184332.GG12086@tux1.beaverton.ibm.com>
+References: <20110901003030.31048.99467.stgit@elm3c44.beaverton.ibm.com> <20110901003200.31048.70117.stgit@elm3c44.beaverton.ibm.com> <F4A42DCE-F91C-419B-9153-65A7EA91D241@dilger.ca>
 Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -17,57 +18,43 @@ Cc: Theodore Tso <tytso@mit.edu>,
 	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
 To: Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:48974 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754314Ab1IBSm1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Sep 2011 14:42:27 -0400
+Received: from e35.co.us.ibm.com ([32.97.110.153]:34466 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754314Ab1IBSnz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Sep 2011 14:43:55 -0400
 Content-Disposition: inline
-In-Reply-To: <4540D5DB-53D9-4C33-BC6B-868870D42AF3@dilger.ca>
+In-Reply-To: <F4A42DCE-F91C-419B-9153-65A7EA91D241@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 01, 2011 at 01:43:53AM -0600, Andreas Dilger wrote:
+On Thu, Sep 01, 2011 at 01:42:26AM -0600, Andreas Dilger wrote:
 > On 2011-08-31, at 6:32 PM, Darrick J. Wong wrote:
-> > Extend the inode checksum to cover the empty space between the end of the
-> > inode's data fields and the end of the space allocated for the inode.  This
-> > enables us to cover extended attribute data that might live in the empty space.
+> > Calculate and verify the checksums of extended attribute blocks.  This only
+> > applies to separate EA blocks that are pointed to by inode->i_file_acl (i.e.
+> > external EA blocks); the checksum lives in the EA header.
+> > 
+> > diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+> > index 25b7387..b2b20af 100644
+> > --- a/fs/ext4/xattr.h
+> > +++ b/fs/ext4/xattr.h
+> > @@ -27,7 +27,8 @@ struct ext4_xattr_header {
+> > 	__le32	h_refcount;	/* reference count */
+> > 	__le32	h_blocks;	/* number of disk blocks used */
+> > 	__le32	h_hash;		/* hash value of all attributes */
+> > -	__u32	h_reserved[4];	/* zero right now */
+> > +	__le32	h_checksum;	/* crc32c(uuid+inum+xattrblock) */
 > 
-> I'm not sure that this should be a separate patch from the first inode
-> checksum patch, but probably isn't harmful.
+> This comment is incorrect - the inum cannot be part of the checksum if
+> the block is shared.  That said, I wouldn't object if the checksum DID
+> include the inum if the block was not shared (h_refcount == 1).  Since
+> the h_refcount needs to be modified and the checksum recomputed if other
+> inodes share this block, this doesn't impose any extra overhead.
 
-The only reason why it's separate is that this patch enables checksumming of
-in-inode EA blocks.  If someone wants me to reduce the patch count I can merge
-them, but ... there's plenty of other things to work on.
+Oops, I guess I was typing too fast.  "inum" should be "ea_block_num".  Though
+I suspect that in the common case files don't share EA blocks, so we could do
+inum when refcount==1.
 
 --D
 > 
-> > Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
-> > ---
-> > fs/ext4/inode.c |    4 +---
-> > 1 files changed, 1 insertions(+), 3 deletions(-)
-> > 
-> > 
-> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> > index 44a7f88..e24ba98 100644
-> > --- a/fs/ext4/inode.c
-> > +++ b/fs/ext4/inode.c
-> > @@ -53,7 +53,6 @@
-> > static __le32 ext4_inode_csum(struct inode *inode, struct ext4_inode *raw)
-> > {
-> > 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-> > -	struct ext4_inode_info *ei = EXT4_I(inode);
-> > 	int offset = offsetof(struct ext4_inode, i_checksum);
-> > 	__le32 inum = cpu_to_le32(inode->i_ino);
-> > 	__u32 crc = 0;
-> > @@ -70,8 +69,7 @@ static __le32 ext4_inode_csum(struct inode *inode, struct ext4_inode *raw)
-> > 	crc = crc32c_le(crc, (__u8 *)raw, offset);
-> > 	offset += sizeof(raw->i_checksum); /* skip checksum */
-> > 	crc = crc32c_le(crc, (__u8 *)raw + offset,
-> > -		    EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize -
-> > -		    offset);
-> > +		    EXT4_INODE_SIZE(inode->i_sb) - offset);
-> > 	return cpu_to_le32(crc);
-> > }
-> > 
-> > 
+> Cheers, Andreas
 > 
