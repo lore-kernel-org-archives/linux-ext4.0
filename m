@@ -1,8 +1,8 @@
 From: Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: [PATCH 08/16] ext4: Calculate and verify checksums for inode bitmaps
-Date: Fri, 2 Sep 2011 15:27:21 -0600
-Message-ID: <8D646179-FD76-4362-A051-8C6ADB3CE1B3@dilger.ca>
-References: <20110901003030.31048.99467.stgit@elm3c44.beaverton.ibm.com> <20110901003127.31048.13983.stgit@elm3c44.beaverton.ibm.com> <2A834E5A-F07E-4B1E-835B-FBEE3FD7A103@dilger.ca> <20110902191828.GL12086@tux1.beaverton.ibm.com>
+Subject: Re: [PATCH 06/16] ext4: Calculate and verify inode checksums
+Date: Fri, 2 Sep 2011 16:02:17 -0600
+Message-ID: <E649CC48-DE08-4DCA-8903-B563A6F36755@dilger.ca>
+References: <20110901003030.31048.99467.stgit@elm3c44.beaverton.ibm.com> <20110901003112.31048.36302.stgit@elm3c44.beaverton.ibm.com> <C1CC4631-3651-4493-A45E-465A620B1FB7@dilger.ca> <20110902193220.GM12086@tux1.beaverton.ibm.com>
 Mime-Version: 1.0 (Apple Message framework v1084)
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 8BIT
@@ -17,217 +17,191 @@ Cc: Theodore Tso <tytso@mit.edu>,
 	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
 To: djwong@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:15007 "EHLO
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:26523 "EHLO
 	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755986Ab1IBV1X convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Sep 2011 17:27:23 -0400
-In-Reply-To: <20110902191828.GL12086@tux1.beaverton.ibm.com>
+	with ESMTP id S1756095Ab1IBWCT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Sep 2011 18:02:19 -0400
+In-Reply-To: <20110902193220.GM12086@tux1.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-09-02, at 1:18 PM, Darrick J. Wong wrote:
-> On Wed, Aug 31, 2011 at 10:49:05PM -0600, Andreas Dilger wrote:
+On 2011-09-02, at 1:32 PM, Darrick J. Wong wrote:
+> On Wed, Aug 31, 2011 at 08:30:25PM -0600, Andreas Dilger wrote:
 >> On 2011-08-31, at 6:31 PM, Darrick J. Wong wrote:
->>> Compute and verify the checksum of the inode bitmap; the checkum is stored in
->>> the block group descriptor.
->> 
->> I would prefer if there was a 16-bit checksum for the (most common)
->> 32-byte group descriptors, and this was extended to a 32-bit checksum
->> for the (much less common) 64-byte+ group descriptors.  For filesystems
->> that are newly formatted with the 64bit feature it makes no difference,
->> but virtually all ext3/4 filesystems have only the smaller group descriptors.
->> 
->> Regardless of whether using half of the crc32c is better or worse than
->> using crc16 for the bitmap blocks, storing _any_ checksum is better than
->> storing nothing at all.  I would propose the following:
-> 
-> That's an interesting reframing of the argument that I hadn't considered.
-> I'd fallen into the idea of needing crc32c because of its bit error
-> guarantees (all corruptions of odd numbers of bits and all corruptions of
-> fewer than ...4? bits) that I hadn't quite realized that even if crc16
-> can't guarantee to find any corruption at all, it still _might_, and that's
-> better than nothing.
-> 
-> Ok, let's split the 32-bit fields and use crc16 for the case of 32-byte block
-> group descriptors.
-
-I noticed the crc16 calculation is actually _slower_ than crc32c,
-probably because the CPU cannot use 32-bit values when computing the
-result, so it has to do a lot of word masking, per your table at
-https://ext4.wiki.kernel.org/index.php/Ext4_Metadata_Checksums.
-Also, there is the question of whether computing two different
-checksums is needlessly complicating the code, or if it is easier
-to just compute crc32c all the time and only make the storing of
-the high 16 bits conditional.
-
-What I'm suggesting is always computing the crc32c, but for filesystems
-that are not formatted with the 64bit option just store the low 16 bits
-of the crc32c value into bg_{block,inode}_bitmap_csum_lo.  This is much
-better than not computing a checksum here at all.  The only open question
-is whether 1/2 of crc32c is substantially worse at detecting errors than
-crc16 or not?
-
-
-I was also thinking whether the EXT4_FEATURE_RO_COMPAT_METADATA_CSUM
-feature should also cause the bg_checksum to do the same (store only
-low 16 bits of crc32c) just for the improved speed?
-
-It might be interesting to redo the table that you computed, but
-using a loop that is only computing the checksums for small blocks
-of data (e.g. 32 bytes and 4096 bytes in a loop for a total of 512MB)
-to see what the overhead of the cryptoapi and hardware calls are.
-
->> struct ext4_group_desc
->> {
->>        __le32 bg_block_bitmap_lo;	/* Blocks bitmap block */
->>        __le32 bg_inode_bitmap_lo;	/* Inodes bitmap block */
->>        __le32 bg_inode_table_lo;	/* Inodes table block */
->>        __le16 bg_free_blocks_count_lo;	/* Free blocks count */
->>        __le16 bg_free_inodes_count_lo;	/* Free inodes count */
->>        __le16 bg_used_dirs_count_lo;	/* Directories count */
->>        __le16 bg_flags;		/* EXT4_BG_flags (INODE_UNINIT, etc) */
->>        __le32 bg_exclude_bitmap_lo;	/* Exclude bitmap block */
->>        __le16 bg_block_bitmap_csum_lo;	/* Block bitmap checksum */
->> 	__le16 bg_inode_bitmap_csum_lo;	/* Inode bitmap checksum */
->>        __le16 bg_itable_unused_lo;	/* Unused inodes count */
->>        __le16 bg_checksum;		/* crc16(sb_uuid+group+desc) */
->>        __le32 bg_block_bitmap_hi;	/* Blocks bitmap block MSB */
->>        __le32 bg_inode_bitmap_hi;	/* Inodes bitmap block MSB */
->>        __le32 bg_inode_table_hi;	/* Inodes table block MSB */
->>        __le16 bg_free_blocks_count_hi;	/* Free blocks count MSB */
->>        __le16 bg_free_inodes_count_hi;	/* Free inodes count MSB */
->>        __le16 bg_used_dirs_count_hi;	/* Directories count MSB */
->>        __le16 bg_itable_unused_hi;	/* Unused inodes count MSB */
->> 	__le32 bg_exclude_bitmap_hi;	/* Exclude bitmap block MSB */
->> 	__le16 bg_block_bitmap_csum_hi;	/* Blocks bitmap checksum MSB */
->> 	__le16 bg_inode_bitmap_csum_hi;	/* Inodes bitmap checksum MSB */
->>        __le32 bg_reserved2;
->> };
->> 
->> This is also different from your layout because it locates the block bitmap
->> checksum field before the inode bitmap checksum, to more closely match the
->> order of other fields in this structure.
-> 
-> Er.. I reversed the order in the structure definition just prior to publishing,
-> and forgot to update the wiki page.  Well I guess I'm about to update it again.
-> :)
-> 
->>> /*
->>> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
->>> index 9c63f27..53faffc 100644
->>> --- a/fs/ext4/ialloc.c
->>> +++ b/fs/ext4/ialloc.c
->>> @@ -82,12 +82,18 @@ static unsigned ext4_init_inode_bitmap(struct super_block *sb,
->>> 		ext4_free_inodes_set(sb, gdp, 0);
->>> 		ext4_itable_unused_set(sb, gdp, 0);
->>> 		memset(bh->b_data, 0xff, sb->s_blocksize);
->>> +		ext4_bitmap_csum_set(sb, block_group,
->>> +				     &gdp->bg_inode_bitmap_csum, bh,
->>> +				     (EXT4_INODES_PER_GROUP(sb) + 7) / 8);
->> 
->> The number of inodes per group is already always a multiple of 8.
-> 
-> Ok.  I suppose we can fix that in the lines below too.
-> 
->>> 		return 0;
->>> 	}
+>>> This patch introduces to ext4 the ability to calculate and verify inode
+>>> checksums.  This requires the use of a new ro compatibility flag and some
+>>> accompanying e2fsprogs patches to provide the relevant features in tune2fs and e2fsck.
 >>> 
->>> 	memset(bh->b_data, 0, (EXT4_INODES_PER_GROUP(sb) + 7) / 8);
->>> 	ext4_mark_bitmap_end(EXT4_INODES_PER_GROUP(sb), sb->s_blocksize * 8,
->>> 			bh->b_data);
->>> +	ext4_bitmap_csum_set(sb, block_group, &gdp->bg_inode_bitmap_csum, bh,
->>> +			     (EXT4_INODES_PER_GROUP(sb) + 7) / 8);
->>> +	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
 >>> 
->>> 	return EXT4_INODES_PER_GROUP(sb);
->>> }
->>> @@ -118,12 +124,12 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
->>> 		return NULL;
->>> 	}
->>> 	if (bitmap_uptodate(bh))
->>> -		return bh;
->>> +		goto verify;
->>> 
->>> 	lock_buffer(bh);
->>> 	if (bitmap_uptodate(bh)) {
->>> 		unlock_buffer(bh);
->>> -		return bh;
->>> +		goto verify;
->>> 	}
->>> 
->>> 	ext4_lock_group(sb, block_group);
->>> @@ -131,6 +137,7 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
->>> 		ext4_init_inode_bitmap(sb, bh, block_group, desc);
->>> 		set_bitmap_uptodate(bh);
->>> 		set_buffer_uptodate(bh);
->>> +		set_buffer_verified(bh);
->>> 		ext4_unlock_group(sb, block_group);
->>> 		unlock_buffer(bh);
->>> 		return bh;
->>> @@ -144,7 +151,7 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
->>> 		 */
->>> 		set_bitmap_uptodate(bh);
->>> 		unlock_buffer(bh);
->>> -		return bh;
->>> +		goto verify;
->>> 	}
->>> 	/*
->>> 	 * submit the buffer_head for read. We can
->>> @@ -161,6 +168,21 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
->>> 			    block_group, bitmap_blk);
->>> 		return NULL;
->>> 	}
+>>> +static __le32 ext4_inode_csum(struct inode *inode, struct ext4_inode *raw)
+>>> +{
+>>> +	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+>>> +	struct ext4_inode_info *ei = EXT4_I(inode);
+>>> +	int offset = offsetof(struct ext4_inode, i_checksum);
+>> 
+>> This could be declared "const int" so that it is not consuming space on
+>> the stack, or just put it inline in the code instead of a stack variable
+>> since it is a compile time constant.
+>> 
+>>> +	__le32 inum = cpu_to_le32(inode->i_ino);
+>>> +	__u32 crc = 0;
 >>> +
->>> +verify:
->>> +	ext4_lock_group(sb, block_group);
->>> +	if (!buffer_verified(bh) &&
->>> +	    !ext4_bitmap_csum_verify(sb, block_group,
->>> +				     desc->bg_inode_bitmap_csum, bh,
->>> +				     (EXT4_INODES_PER_GROUP(sb) + 7) / 8)) {
->>> +		ext4_unlock_group(sb, block_group);
->>> +		put_bh(bh);
->>> +		ext4_error(sb, "Corrupt inode bitmap - block_group = %u, "
->>> +			   "inode_bitmap = %llu", block_group, bitmap_blk);
->>> +		return NULL;
+>>> +	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
+>>> +	    cpu_to_le32(EXT4_OS_LINUX))
 >> 
->> At some point we should add a flag like EXT4_BG_INODE_ERROR so that the
->> group can be marked in error on disk, and skipped for future allocations,
->> but the whole filesystem does not need to be remounted read-only.  That's
->> for another patch, however.
+>> This can be marked unlikely() I think.
 > 
-> Agreed. :)
+> Ok.
 > 
-> --D
-> 
->>> +	}
->>> +	ext4_unlock_group(sb, block_group);
->>> +	set_buffer_verified(bh);
->>> 	return bh;
->>> }
->>> 
->>> @@ -265,6 +287,8 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
->>> 		ext4_used_dirs_set(sb, gdp, count);
->>> 		percpu_counter_dec(&sbi->s_dirs_counter);
->>> 	}
->>> +	ext4_bitmap_csum_set(sb, block_group, &gdp->bg_inode_bitmap_csum,
->>> +			     bitmap_bh, (EXT4_INODES_PER_GROUP(sb) + 7) / 8);
->>> 	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
->>> 	ext4_unlock_group(sb, block_group);
->>> 
->>> @@ -784,6 +808,9 @@ static int ext4_claim_inode(struct super_block *sb,
->>> 			atomic_inc(&sbi->s_flex_groups[f].used_dirs);
->>> 		}
->>> 	}
->>> +	ext4_bitmap_csum_set(sb, group, &gdp->bg_inode_bitmap_csum,
->>> +			     inode_bitmap_bh,
->>> +			     (EXT4_INODES_PER_GROUP(sb) + 7) / 8);
->>> 	gdp->bg_checksum = ext4_group_desc_csum(sbi, group, gdp);
->>> err_ret:
->>> 	ext4_unlock_group(sb, group);
->>> 
+>>> +		return 0;
+>>> +	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+>>> +		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
+>>> +		return 0;
+>>> +
+>>> +	crc = crc32c_le(~0, sbi->s_es->s_uuid, sizeof(sbi->s_es->s_uuid));
+>>> +	crc = crc32c_le(crc, (__u8 *)&inum, sizeof(inum));
 >> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> I wonder if it makes sense to pre-compute the crc32c of s_uuid (stored
+>> in sbi) and/or s_uuid+inum (stored in struct ext4_inode_info).  I suspect
+>> precomputing the s_uuid checksum is worthwhile, but I'm not sure whether
+>> precomputing the inode checksum is worthwhile unless it doesn't reduce
+>> the number of ext4_inode_info structs per page in the slab.
+> 
+> Sounds like a good idea, I'll look into it.
 
+Looking more closely at the cryptoapi code, I'm fairly confident that
+storing the partial crc32c for the uuid+inum+generation into the inode
+is going to be worthwhile, compared to calling crc32c_le() 3 extra times.
+
+>>> +	crc = crc32c_le(crc, (__u8 *)raw, offset);
+>>> +	offset += sizeof(raw->i_checksum); /* skip checksum */
+>>> +	crc = crc32c_le(crc, (__u8 *)raw + offset,
+>>> +		    EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize -
+>>> +		    offset);
+>> 
+>> I suspect it would be more efficient to set raw->i_checksum = 0, then
+>> compute the checksum on the whole raw inode buffer, and fill in
+>> raw->i_checksum = cpu_to_le32(crc) at the end.  That would mean the
+>> caller ext4_inode_csum_verify() should save the original checksum for
+>> comparison with the returned value.
+> 
+> You mean to avoid the overhead of the add/store and the second function call?
+
+Mostly the overhead of the extra calls into crc32c_le() and the cryptoapi.
+There are a lot of extra pointer indirections in that code, and calling
+into cryptoapi for 4-byte values adds (vaguely) 60-100 operations per word
+on top of the actual checksum operations, unless it all disappears at
+compile time (hard to see at first glance).
+
+>> The one problem with this is that it is racy w.r.t other users
+> 
+> Yeah, I was thinking that if I move the *_csum_set() calls to a jbd2 callback
+> (for journal mode, obviously) then this might clash with that.  Maybe a better
+> approach would be to calculate/verify an entire block's worth of inodes at a
+> time.  Then again, if you only want to touch /one/ inode out of a whole block,
+> that's a lot of unnecessary work.
+
+However, if you are doing that from the jbd2 callback, the code also has
+exclusive control over the buffer at that time, so computing the checksum
+on the zeroed bytes in a single pass is not racy, and would definitely be
+less overhead for such a small number of bytes.
+
+>>> +	return cpu_to_le32(crc);
+>>> +}
+>>> +
+>>> +static int ext4_inode_csum_verify(struct inode *inode, struct ext4_inode *raw)
+>>> +{
+>>> +	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os ==
+>>> +	    cpu_to_le32(EXT4_OS_LINUX) &&
+>>> +	    EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+>>> +		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) &&
+>>> +	    (raw->i_checksum != ext4_inode_csum(inode, raw)))
+>> 
+>> This check can be marked unlikely(), since the rare case of a checksum
+>> failure can cause a stall in the execution pipeline.  It might make sense
+>> to put the unlikely() at the lone callsite to move the whole function call
+>> overhead out-of-line.
+> 
+> I suppose so, both for this and for all the other _verify() functions.
+
+Right.
+
+>>> +		return 0;
+>>> +	return 1;
+>>> +}
+>>> +
+>>> +static void ext4_inode_csum_set(struct inode *inode, struct ext4_inode *raw)
+>>> +{
+>>> +	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
+>>> +	    cpu_to_le32(EXT4_OS_LINUX) ||
+>>> +	    !EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+>>> +		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
+>>> +		return;
+>>> +
+>>> +	raw->i_checksum = ext4_inode_csum(inode, raw);
+>>> +}
+>>> +
+>>> static inline int ext4_begin_ordered_truncate(struct inode *inode,
+>>> 					      loff_t new_size)
+>>> {
+>>> @@ -3410,6 +3458,15 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+>>> 	if (ret < 0)
+>>> 		goto bad_inode;
+>>> 	raw_inode = ext4_raw_inode(&iloc);
+>>> +
+>>> +	if (!ext4_inode_csum_verify(inode, raw_inode)) {
+>>> +		EXT4_ERROR_INODE(inode, "checksum invalid (0x%x != 0x%x)",
+>>> +		       le32_to_cpu(ext4_inode_csum(inode, raw_inode)),
+>>> +		       le32_to_cpu(raw_inode->i_checksum));
+>>> +		ret = -EIO;
+>>> +		goto bad_inode;
+>>> +	}
+>>> +
+>>> 	inode->i_mode = le16_to_cpu(raw_inode->i_mode);
+>>> 	inode->i_uid = (uid_t)le16_to_cpu(raw_inode->i_uid_low);
+>>> 	inode->i_gid = (gid_t)le16_to_cpu(raw_inode->i_gid_low);
+>>> @@ -3490,6 +3547,9 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+>>> 		ei->i_extra_isize = le16_to_cpu(raw_inode->i_extra_isize);
+>>> 		if (EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize >
+>>> 		    EXT4_INODE_SIZE(inode->i_sb)) {
+>>> +			EXT4_ERROR_INODE(inode, "bad extra_isize (%u != %u)",
+>>> +				EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize,
+>>> +				EXT4_INODE_SIZE(inode->i_sb));
+>>> 			ret = -EIO;
+>>> 			goto bad_inode;
+>>> 		}
+>>> @@ -3731,6 +3791,8 @@ static int ext4_do_update_inode(handle_t *handle,
+>>> 		raw_inode->i_extra_isize = cpu_to_le16(ei->i_extra_isize);
+>>> 	}
+>>> 
+>>> +	ext4_inode_csum_set(inode, raw_inode);
+>> 
+>> This might warrant a comment to always be the last function before
+>> submitting the inode to the journal.
+> 
+> Ok.
+> 
+>>> 	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
+>>> 	rc = ext4_handle_dirty_metadata(handle, NULL, bh);
+>>> 	if (!err)
+>> 
+>> Also, rather than just making the checksum be updated at commit time, it
+>> makes more sense to have ext4_do_update_inode() only be called once per
+>> commit, since this is an expensive function.
+> 
+> If I made jbd2 responsible for calling back into ext4 to apply checksums just
+> prior to submit_bh()ing metadata blocks, I think that would take care of this.
+
+Yes, that would be the most desirable case, but it also means that the
+journal code needs to pin all of these inodes in memory until after it
+commits.  Possibly the new ext4 ordered journal mode already does this,
+but not sure about other journal modes.
+
+I definitely like the idea of using the jbd2 pre-commit callbacks, but
+I don't think it is necessarily needed for the first version of the
+patches.  Better to get the "simple" implementation working correctly
+(so that we are sure it is doing the right thing), and then migrate it
+over to using the commit callbacks so that we can verify it is still
+correct.
+
+Cheers, Andreas
