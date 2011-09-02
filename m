@@ -1,102 +1,150 @@
-From: Christian Kujau <lists@nerdbynature.de>
-Subject: EXT4-fs (dm-1): Couldn't remount RDWR because of unprocessed orphan
- inode list
-Date: Fri, 2 Sep 2011 14:00:51 -0700 (PDT)
-Message-ID: <alpine.DEB.2.01.1109021346290.9183@trent.utfs.org>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger.kernel@dilger.ca>
+Subject: Re: [PATCH 09/16] ext4: Calculate and verify block bitmap checksum
+Date: Fri, 2 Sep 2011 15:06:57 -0600
+Message-ID: <318F91B6-2E4A-4E0E-9189-70AE2592AE51@dilger.ca>
+References: <20110901003030.31048.99467.stgit@elm3c44.beaverton.ibm.com> <20110901003134.31048.23806.stgit@elm3c44.beaverton.ibm.com> <2492E720-3316-4561-8C9C-BBC6E8670EAD@dilger.ca> <20110902190829.GJ12086@tux1.beaverton.ibm.com>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Theodore Tso <tytso@mit.edu>,
+	Sunil Mushran <sunil.mushran@oracle.com>,
+	Amir Goldstein <amir73il@gmail.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Andi Kleen <andi@firstfloor.org>,
+	Mingming Cao <cmm@us.ibm.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
+To: djwong@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from trent.utfs.org ([194.246.123.103]:44071 "EHLO trent.utfs.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755787Ab1IBVAy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 2 Sep 2011 17:00:54 -0400
-Received: from trent.utfs.org (localhost [127.0.0.1])
-	by trent.utfs.org (Postfix) with ESMTP id 576B23DAD0
-	for <linux-ext4@vger.kernel.org>; Fri,  2 Sep 2011 23:00:51 +0200 (CEST)
-Received: from localhost (localhost [127.0.0.1])
-	by trent.utfs.org (Postfix) with ESMTP id 3FC423DA41
-	for <linux-ext4@vger.kernel.org>; Fri,  2 Sep 2011 23:00:51 +0200 (CEST)
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:47218 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755787Ab1IBVG6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Sep 2011 17:06:58 -0400
+In-Reply-To: <20110902190829.GJ12086@tux1.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On 2011-09-02, at 1:08 PM, Darrick J. Wong wrote:
+> On Thu, Sep 01, 2011 at 12:08:44AM -0600, Andreas Dilger wrote:
+>> On 2011-08-31, at 6:31 PM, Darrick J. Wong wrote:
+>>> Compute and verify the checksum of the block bitmap; this checksum is stored in the block group descriptor.
+>> 
+>> Since this is CPU intensive, it might make sense to start computing the
+>> block bitmap checksums as soon as the buffer is uptodate, instead of
+>> waiting for all of the buffers to be read and _then_ doing the checksums.
+>> 
+>> Even better might be to do move all of the above code to do the checksum
+>> to be in a new the b_end_io callback, so that it can start as soon as each
+>> buffer is read from disk, to maximize CPU and IO overlap, like:
+> 
+> Good suggestion.  I'll put it into the next rev.
+> 
+> --D
+> 
+>> struct ext4_csum_data {
+>>        struct superblock *cd_sb;
+>>        ext4_group_t       cd_group;
+>> };
+>> 
+>> static void ext4_end_buffered_read_sync_csum(struct buffer_head *bh,
+>>                                             int uptodate)
+>> {
+>> 	struct superblock *sb = (struct ext4_csum_data *)(bh->b_private)->cd_sb;
+>> 	ext4_group_t group = (struct ext4_csum_data *)(bh->b_private)->cd_group;
+>> 
+>> 	end_buffer_read_sync(bh, uptodate);
 
-for some time now, the following message keeps pooping up in my logs:
+Actually, the call to end_buffer_read_sync() should go _after_ the
+checksum is calculated, so that no other thread can start using
+the buffer before the checksum is verified (i.e. any checks on
+buffer_uptodate() could incorrectly succeed before the checksum
+is computed and set_buffer_verified(bh) is called, and it would
+incorrectly return an IO error thinking the checksum failed).
 
- > EXT4-fs (dm-1): Couldn't remount RDWR because of unprocessed orphan 
- > inode list.  Please umount/remount instead
+Also, end_buffer_sync_read() drops the reference to bh, but this
+code is accessing bh->b_data, so another reason to move it after
+the checksum is computed.
 
-I don't know when it started. Maybe 2 months ago, I'd guess. The ext4 fs 
-is on top of a dm-crypt device, attached via firewire to a 1TB external 
-disk enclosure. The system (powerpc 32) is loosely following vanilla 
-kernels, currently running 3.1.0-rc4.
+Cheers, Andreas
 
-The filesystem is normally mounted r/o but remounted r/w every day to 
-receive backups, then remounted r/o again. Running e2fsck-1.41.12 with -n 
-on the r/o-mounted devices gives the output below.
+>> 	if (uptodate) {
+>> 		struct ext4_group_desc *desc;
+>> 
+>> 		desc = ext4_get_group_desc(sb, group, NULL);
+>> 		if (!desc)
+>> 			return;
+>> 
+>> 		ext4_lock_group(sb, group);
+>> 		if (ext4_valid_block_bitmap(sb, desc, group, bh) &&
+>> 		    ext4_bitmap_csum_verify(sb, group,
+>> 					    desc->bg_block_bitmap_csum, bh,
+>> 					    (EXT4_BLOCKS_PER_GROUP(sb) + 7) / 8))
+>> 			set_buffer_verified(bh);
+>> 
+>> 		ext4_unlock_group(rcd->rcd_sb, rcd->rcd_group);
+>> 	}
+>> }
+>> 
+>> Then later in the code can just check buffer_verified() in the caller:
+>> 
+>> ext4_read_block_bitmap()
+>> {
+>>        /* read all groups the page covers into the cache */
+>>        for (i = 0; i < groups_per_page; i++) {
+>> 		:
+>> 		:
+>>                set_bitmap_uptodate(bh[i]);
+>>                ecd[i].cd_sb = sb;
+>>                ecd[i].cd_group = first_group + i;
+>>                bh[i]->b_end_io = ext4_end_buffer_read_sync_csum;
+>>                submit_bh(READ, bh[i]);
+>>                mb_debug(1, "read bitmap for group %u\n", first_group + i);
+>> 	}
+>> 
+>> 	err = 0;
+>>        /* always wait for I/O completion before returning */
+>>        for (i = 0; i < groups_per_page; i++) {
+>>                if (bh[i]) {
+>>                        wait_on_buffer(bh[i]);
+>> 			if (!buffer_uptodate(bh[i]) ||
+>> 			    !buffer_verified(bh[i]))
+>> 				err = -EIO;
+>> 		}
+>> 	}
+>> 
+>> 
+>>> 	err = 0;
+>>> 	first_block = page->index * blocks_per_page;
+>>> 	for (i = 0; i < blocks_per_page; i++) {
+>>> @@ -2829,6 +2856,9 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+>>> 	}
+>>> 	len = ext4_free_blks_count(sb, gdp) - ac->ac_b_ex.fe_len;
+>>> 	ext4_free_blks_set(sb, gdp, len);
+>>> +	ext4_bitmap_csum_set(sb, ac->ac_b_ex.fe_group,
+>>> +			     &gdp->bg_block_bitmap_csum, bitmap_bh,
+>>> +			     (EXT4_BLOCKS_PER_GROUP(sb) + 7) / 8);
+>>> 	gdp->bg_checksum = ext4_group_desc_csum(sbi, ac->ac_b_ex.fe_group, gdp);
+>>> 
+>>> 	ext4_unlock_group(sb, ac->ac_b_ex.fe_group);
+>>> @@ -4638,6 +4668,8 @@ do_more:
+>>> 
+>>> 	ret = ext4_free_blks_count(sb, gdp) + count;
+>>> 	ext4_free_blks_set(sb, gdp, ret);
+>>> +	ext4_bitmap_csum_set(sb, block_group, &gdp->bg_block_bitmap_csum,
+>>> +			     bitmap_bh, (EXT4_BLOCKS_PER_GROUP(sb) + 7) / 8);
+>>> 	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
+>>> 	ext4_unlock_group(sb, block_group);
+>>> 	percpu_counter_add(&sbi->s_freeblocks_counter, count);
+>>> @@ -4780,6 +4812,8 @@ int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
+>>> 	mb_free_blocks(NULL, &e4b, bit, count);
+>>> 	blk_free_count = blocks_freed + ext4_free_blks_count(sb, desc);
+>>> 	ext4_free_blks_set(sb, desc, blk_free_count);
+>>> +	ext4_bitmap_csum_set(sb, block_group, &desc->bg_block_bitmap_csum,
+>>> +			     bitmap_bh, (EXT4_BLOCKS_PER_GROUP(sb) + 7) / 8);
+>>> 	desc->bg_checksum = ext4_group_desc_csum(sbi, block_group, desc);
+>>> 	ext4_unlock_group(sb, block_group);
+>>> 	percpu_counter_add(&sbi->s_freeblocks_counter, blocks_freed);
+>>> 
+>> 
 
-I've unmounted the disk some weeks ago, ran e2fsck for real and it fixed 
-the errors. But now more errors seem to have occured.
-
-Anyone got an idea why this keeps happening? Bad memory? Bad cables? Disk? 
-No other hardware related errors are in the logs and the box is otherwise 
-quite stable.
-
-Thanks,
-Christian.
-
--------------------------------------------------
-# fsck.ext4 -vnf /dev/mapper/wdc0 
-e2fsck 1.41.12 (17-May-2010)
-Warning!  /dev/mapper/wdc0 is mounted.
-Pass 1: Checking inodes, blocks, and sizes
-Inodes that were part of a corrupted orphan linked list found.  Fix? no
-
-Inode 16385 was part of the orphaned inode list.  IGNORED.
-Deleted inode 16439 has zero dtime.  Fix? no
-
-Inode 2260993 was part of the orphaned inode list.  IGNORED.
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-Block bitmap differences:  -(9298--9299) -8921121
-Fix? no
-
-Inode bitmap differences:  -16385 -16439 -2260993
-Fix? no
-
-Directories count wrong for group #2 (72, counted=70).
-Fix? no
-
-Directories count wrong for group #276 (76, counted=75).
-Fix? no
-
-/dev/mapper/wdc0: ********** WARNING: Filesystem still has errors **********
-
-
-  562145 inodes used (0.92%)
-    3952 non-contiguous files (0.7%)
-    2544 non-contiguous directories (0.5%)
-         # of inodes with ind/dind/tind blocks: 0/0/0
-         Extent depth histogram: 555449/932
-215226375 blocks used (88.14%)
-       0 bad blocks
-       5 large files
-
-  353453 regular files
-  202351 directories
-       0 character device files
-       0 block device files
-       7 fifos
- 2491335 links
-    6235 symbolic links (5657 fast symbolic links)
-      87 sockets
---------
- 3053468 files
-
--- 
-BOFH excuse #19:
-
-floating point processor overflow
