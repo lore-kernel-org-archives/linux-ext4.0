@@ -1,9 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCH 10/16] ext4: Verify and calculate checksums for extent
-	tree blocks
-Date: Fri, 2 Sep 2011 12:02:19 -0700
-Message-ID: <20110902190219.GI12086@tux1.beaverton.ibm.com>
-References: <20110901003030.31048.99467.stgit@elm3c44.beaverton.ibm.com> <20110901003140.31048.74275.stgit@elm3c44.beaverton.ibm.com> <26584BE9-B716-40D5-B3B4-8C5912869648@dilger.ca>
+Subject: Re: [PATCH 09/16] ext4: Calculate and verify block bitmap checksum
+Date: Fri, 2 Sep 2011 12:08:29 -0700
+Message-ID: <20110902190829.GJ12086@tux1.beaverton.ibm.com>
+References: <20110901003030.31048.99467.stgit@elm3c44.beaverton.ibm.com> <20110901003134.31048.23806.stgit@elm3c44.beaverton.ibm.com> <2492E720-3316-4561-8C9C-BBC6E8670EAD@dilger.ca>
 Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -18,230 +17,319 @@ Cc: Theodore Tso <tytso@mit.edu>,
 	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
 To: Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e8.ny.us.ibm.com ([32.97.182.138]:60076 "EHLO e8.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754342Ab1IBTCl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 2 Sep 2011 15:02:41 -0400
+Received: from e36.co.us.ibm.com ([32.97.110.154]:43960 "EHLO
+	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754342Ab1IBTIh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Sep 2011 15:08:37 -0400
 Content-Disposition: inline
-In-Reply-To: <26584BE9-B716-40D5-B3B4-8C5912869648@dilger.ca>
+In-Reply-To: <2492E720-3316-4561-8C9C-BBC6E8670EAD@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 01, 2011 at 12:40:06AM -0600, Andreas Dilger wrote:
+On Thu, Sep 01, 2011 at 12:08:44AM -0600, Andreas Dilger wrote:
 > On 2011-08-31, at 6:31 PM, Darrick J. Wong wrote:
-> > Calculate and verify the checksum for each extent tree block.  The checksum is
-> > located immediately after the last ext4_extent in the block, which is typically
-> > 4-8 bytes in size.
-> 
-> It would be more correct to write "... located in the space immediately
-> following the last possible ext4_extent in the block."
-
-Agreed.
-
+> > Compute and verify the checksum of the block bitmap; this checksum is stored in
+> > the block group descriptor.
+> > 
 > > Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 > > ---
-> > fs/ext4/ext4_extents.h |   25 ++++++++++++++++++-
-> > fs/ext4/extents.c      |   64 +++++++++++++++++++++++++++++++++++++++++++++---
-> > 2 files changed, 84 insertions(+), 5 deletions(-)
+> > fs/ext4/balloc.c  |   43 ++++++++++++++++++++++++++++++++++---------
+> > fs/ext4/ext4.h    |    7 ++++++-
+> > fs/ext4/ialloc.c  |    5 +++++
+> > fs/ext4/mballoc.c |   34 ++++++++++++++++++++++++++++++++++
+> > 4 files changed, 79 insertions(+), 10 deletions(-)
 > > 
 > > 
-> > diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-> > index 095c36f..24b106a 100644
-> > --- a/fs/ext4/ext4_extents.h
-> > +++ b/fs/ext4/ext4_extents.h
-> > @@ -62,10 +62,22 @@
-> > /*
-> >  * ext4_inode has i_block array (60 bytes total).
-> >  * The first 12 bytes store ext4_extent_header;
-> > - * the remainder stores an array of ext4_extent.
-> > + * the remainder stores an array of ext4_extent,
-> > + * followed by ext4_extent_tail.
-> >  */
+> > diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+> > index f8224ad..36d3020 100644
+> > --- a/fs/ext4/balloc.c
+> > +++ b/fs/ext4/balloc.c
+> > @@ -105,6 +105,10 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
+> > 			ext4_free_inodes_set(sb, gdp, 0);
+> > 			ext4_itable_unused_set(sb, gdp, 0);
+> > 			memset(bh->b_data, 0xff, sb->s_blocksize);
+> > +			ext4_bitmap_csum_set(sb, block_group,
+> > +					     &gdp->bg_block_bitmap_csum, bh,
+> > +					     (EXT4_BLOCKS_PER_GROUP(sb) + 7) /
+> > +					     8);
+> > 			return 0;
+> > 		}
+> > 		memset(bh->b_data, 0, sb->s_blocksize);
+> > @@ -175,6 +179,11 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
+> > 		 */
+> > 		ext4_mark_bitmap_end(group_blocks, sb->s_blocksize * 8,
+> > 				     bh->b_data);
+> > +		ext4_bitmap_csum_set(sb, block_group,
+> > +				     &gdp->bg_block_bitmap_csum, bh,
+> > +				     (EXT4_BLOCKS_PER_GROUP(sb) + 7) / 8);
+> > +		gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group,
+> > +							gdp);
+> > 	}
+> > 	return free_blocks - ext4_group_used_meta_blocks(sb, block_group, gdp);
+> > }
+> > @@ -232,10 +241,10 @@ struct ext4_group_desc * ext4_get_group_desc(struct super_block *sb,
+> > 	return desc;
+> > }
 > > 
-> > /*
-> > + * This is the extent tail on-disk structure.
-> > + * All other extent structures are 12 bytes long.  It turns out that
-> > + * block_size % 12 >= 4 for all valid block sizes (1k, 2k, 4k).
-> > + * Therefore, this tail structure can be crammed into the end of the block
-> > + * without having to rebalance the tree.
-> > + */
-> > +struct ext4_extent_tail {
-> > +	__le32	et_checksum;	/* crc32c(uuid+inum+extent_block) */
-> > +};
-> 
-> Did you do any analysis of extent blocks to see whether there is enough
-> space in most extents to have a larger extent tail that stores the inode
-> number and generation?  This would be the same as with some directory
-> blocks needing to add a directory entry to hold the checksum.
-
-With 12-byte structures we're guaranteed 4 bytes that can be inserted without
-needing to change any on-disk structures.
-
-Most extent blocks aren't full, and provided that you decrease eh_max, you
-could free up 8 more bytes for extra info.  Of course then you'd have to write
-code to rebalance the extent tree whenever you find a full extent block.
-
-It's also possible that we could simply bake i_generation into the checksum
-whenever we bake in i_inum.
-
-> > +/*
-> >  * This is the extent on-disk structure.
-> >  * It's used at the bottom of the tree.
-> >  */
-> > @@ -101,6 +113,17 @@ struct ext4_extent_header {
+> > -static int ext4_valid_block_bitmap(struct super_block *sb,
+> > -					struct ext4_group_desc *desc,
+> > -					unsigned int block_group,
+> > -					struct buffer_head *bh)
+> > +int ext4_valid_block_bitmap(struct super_block *sb,
+> > +			    struct ext4_group_desc *desc,
+> > +			    unsigned int block_group,
+> > +			    struct buffer_head *bh)
+> > {
+> > 	ext4_grpblk_t offset;
+> > 	ext4_grpblk_t next_zero_bit;
+> > @@ -312,12 +321,12 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
+> > 	}
 > > 
-> > #define EXT4_EXT_MAGIC		cpu_to_le16(0xf30a)
+> > 	if (bitmap_uptodate(bh))
+> > -		return bh;
+> > +		goto verify;
 > > 
-> > +#define EXT4_EXTENT_TAIL_OFFSET(hdr) \
-> > +	(sizeof(struct ext4_extent_header) + \
-> > +	 (sizeof(struct ext4_extent) * le16_to_cpu((hdr)->eh_max)))
+> > 	lock_buffer(bh);
+> > 	if (bitmap_uptodate(bh)) {
+> > 		unlock_buffer(bh);
+> > -		return bh;
+> > +		goto verify;
+> > 	}
+> > 	ext4_lock_group(sb, block_group);
+> > 	if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+> > @@ -336,7 +345,7 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
+> > 		 */
+> > 		set_bitmap_uptodate(bh);
+> > 		unlock_buffer(bh);
+> > -		return bh;
+> > +		goto verify;
+> > 	}
+> > 	/*
+> > 	 * submit the buffer_head for read. We can
+> > @@ -353,11 +362,27 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
+> > 			    block_group, bitmap_blk);
+> > 		return NULL;
+> > 	}
+> > -	ext4_valid_block_bitmap(sb, desc, block_group, bh);
 > > +
-> > +static inline struct ext4_extent_tail *
-> > +find_ext4_extent_tail(struct ext4_extent_header *eh)
+> > +verify:
+> > +	if (buffer_verified(bh))
+> > +		return bh;
+> > 	/*
+> > 	 * file system mounted not to panic on error,
+> > -	 * continue with corrupt bitmap
+> > +	 * -EIO with corrupt bitmap
+> > 	 */
+> > +	ext4_lock_group(sb, block_group);
+> > +	if (!ext4_valid_block_bitmap(sb, desc, block_group, bh) ||
+> > +	    !ext4_bitmap_csum_verify(sb, block_group,
+> > +				     desc->bg_block_bitmap_csum, bh,
+> > +				     (EXT4_BLOCKS_PER_GROUP(sb) + 7) / 8)) {
+> > +		ext4_unlock_group(sb, block_group);
+> > +		put_bh(bh);
+> > +		ext4_error(sb, "Corrupt block bitmap - block_group = %u, "
+> > +			   "block_bitmap = %llu", block_group, bitmap_blk);
+> > +		return NULL;
+> > +	}
+> > +	ext4_unlock_group(sb, block_group);
+> > +	set_buffer_verified(bh);
+> > 	return bh;
+> > }
+> > 
+> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> > index 248cbd2..df149b3 100644
+> > --- a/fs/ext4/ext4.h
+> > +++ b/fs/ext4/ext4.h
+> > @@ -269,7 +269,8 @@ struct ext4_group_desc
+> > 	__le16	bg_free_inodes_count_lo;/* Free inodes count */
+> > 	__le16	bg_used_dirs_count_lo;	/* Directories count */
+> > 	__le16	bg_flags;		/* EXT4_BG_flags (INODE_UNINIT, etc) */
+> > -	__u32	bg_reserved[2];		/* Likely block/inode bitmap checksum */
+> > +	__u32	bg_reserved[1];		/* unclaimed */
+> > +	__le32	bg_block_bitmap_csum;	/* crc32c(uuid+group+bbitmap) */
 > 
-> I don't really like using "find" in this function name, since it implies
-> a search is needed.  Maybe a name like ext4_extent_tail_ptr()?
+> Same comment as for the inode bitmap checksum - it should be split into
+> two __le16 fields, so that we get at least some coverage for the vast
+> majority of existing filesystems.
+> 
+> > 	__le16  bg_itable_unused_lo;	/* Unused inodes count */
+> > 	__le16  bg_checksum;		/* crc16(sb_uuid+group+desc) */
+> > 	__le32	bg_block_bitmap_hi;	/* Blocks bitmap block MSB */
+> > @@ -1731,6 +1732,10 @@ void ext4_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
+> > 			  __le32 *csum, struct buffer_head *bh, int sz);
+> > 
+> > /* balloc.c */
+> > +extern int ext4_valid_block_bitmap(struct super_block *sb,
+> > +				   struct ext4_group_desc *desc,
+> > +				   unsigned int block_group,
+> > +				   struct buffer_head *bh);
+> > extern unsigned int ext4_block_group(struct super_block *sb,
+> > 			ext4_fsblk_t blocknr);
+> > extern ext4_grpblk_t ext4_block_group_offset(struct super_block *sb,
+> > diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> > index 53faffc..a335d19 100644
+> > --- a/fs/ext4/ialloc.c
+> > +++ b/fs/ext4/ialloc.c
+> > @@ -984,6 +984,11 @@ got:
+> > 			free = ext4_free_blocks_after_init(sb, group, gdp);
+> > 			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
+> > 			ext4_free_blks_set(sb, gdp, free);
+> > +			ext4_bitmap_csum_set(sb, group,
+> > +					     &gdp->bg_block_bitmap_csum,
+> > +					     block_bitmap_bh,
+> > +					     (EXT4_BLOCKS_PER_GROUP(sb) + 7) /
+> > +					     8);
+> > 			gdp->bg_checksum = ext4_group_desc_csum(sbi, group,
+> > 								gdp);
+> > 		}
+> > diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> > index 17a5a57..8dc3055 100644
+> > --- a/fs/ext4/mballoc.c
+> > +++ b/fs/ext4/mballoc.c
+> > @@ -895,6 +895,33 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
+> > 		if (bh[i] && !buffer_uptodate(bh[i]))
+> > 			goto out;
+> > 
+> > +	for (i = 0; i < groups_per_page; i++) {
+> > +		struct ext4_group_desc *desc;
+> > +
+> > +		if (!bh[i] || !bh[i]->b_end_io)
+> > +			continue;
+> 
+> Please don't treat pointers as boolean values.  I'd prefer to see a
+> proper comparison like "bh[i] == NULL" here.
+> 
+> Also, it isn't obvious why the check for b_end_io is needed here?
 
-Ok.
+If b_end_io is set then the block is being read in and needs checking.
+BH_Verified would work just as well here and be a little clearer.  I think I
+had this patch written before I added the BH_Verified flag and forgot to update
+this patch.  Oops. Good catch.
+
+> > +		desc = ext4_get_group_desc(sb, first_group + i, NULL);
+> > +		if (!desc)
+> > +			goto out;
+> > +
+> > +		if (buffer_verified(bh[i]))
+> > +			continue;
+> > +		ext4_lock_group(sb, first_group + i);
+> > +		if (!ext4_valid_block_bitmap(sb, desc, first_group + i,
+> > +					     bh[i]) ||
+> > +		    !ext4_bitmap_csum_verify(sb, first_group + i,
+> > +					     desc->bg_block_bitmap_csum, bh[i],
+> > +					     (EXT4_BLOCKS_PER_GROUP(sb) + 7) /
+> > +					      8)) {
+> > +			ext4_unlock_group(sb, first_group + i);
+> > +			ext4_error(sb, "Corrupt block bitmap, group = %u",
+> > +				   first_group + i);
+> > +			goto out;
+> > +		}
+> > +		ext4_unlock_group(sb, first_group + i);
+> > +		set_buffer_verified(bh[i]);
+> > +	}
+> 
+> Since this is CPU intensive, it might make sense to start computing the
+> block bitmap checksums as soon as the buffer is uptodate, instead of
+> waiting for all of the buffers to be read and _then_ doing the checksums.
+> 
+> Even better might be to do move all of the above code to do the checksum
+> to be in a new the b_end_io callback, so that it can start as soon as each
+> buffer is read from disk, to maximize CPU and IO overlap, like:
+
+Good suggestion.  I'll put it into the next rev.
 
 --D
 
-> > +{
-> > +	return (struct ext4_extent_tail *)(((void *)eh) +
-> > +					   EXT4_EXTENT_TAIL_OFFSET(eh));
-> > +}
-> > +
-> > /*
-> >  * Array of ext4_ext_path contains path to some extent.
-> >  * Creation/lookup routines use it for traversal/splitting/etc.
-> > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> > index 4ac4303..94f09ce 100644
-> > --- a/fs/ext4/extents.c
-> > +++ b/fs/ext4/extents.c
-> > @@ -41,11 +41,57 @@
-> > #include <linux/falloc.h>
-> > #include <asm/uaccess.h>
-> > #include <linux/fiemap.h>
-> > +#include <linux/crc32c.h>
-> > #include "ext4_jbd2.h"
-> > #include "ext4_extents.h"
-> > 
-> > #include <trace/events/ext4.h>
-> > 
-> > +static __le32 ext4_extent_block_csum(struct inode *inode,
-> > +				     struct ext4_extent_header *eh)
-> > +{
-> > +	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-> > +	__le32 inum = cpu_to_le32(inode->i_ino);
-> > +	__u32 crc = 0;
-> > +
-> > +	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-> > +		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-> > +		return 0;
-> > +
-> > +	crc = crc32c_le(~0, sbi->s_es->s_uuid, sizeof(sbi->s_es->s_uuid));
-> > +	crc = crc32c_le(crc, (__u8 *)&inum, sizeof(inum));
-> > +	crc = crc32c_le(crc, (__u8 *)eh, EXT4_EXTENT_TAIL_OFFSET(eh));
-> > +	return cpu_to_le32(crc);
-> > +}
-> > +
-> > +static int ext4_extent_block_csum_verify(struct inode *inode,
-> > +					 struct ext4_extent_header *eh)
-> > +{
-> > +	struct ext4_extent_tail *et;
-> > +
-> > +	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-> > +		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-> > +		return 1;
-> > +
-> > +	et = find_ext4_extent_tail(eh);
-> > +	if (et->et_checksum != ext4_extent_block_csum(inode, eh))
-> > +		return 0;
-> > +	return 1;
-> > +}
-> > +
-> > +static void ext4_extent_block_csum_set(struct inode *inode,
-> > +				       struct ext4_extent_header *eh)
-> > +{
-> > +	struct ext4_extent_tail *et;
-> > +
-> > +	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-> > +		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-> > +		return;
-> > +
-> > +	et = find_ext4_extent_tail(eh);
-> > +	et->et_checksum = ext4_extent_block_csum(inode, eh);
-> > +}
-> > +
-> > static int ext4_split_extent(handle_t *handle,
-> > 				struct inode *inode,
-> > 				struct ext4_ext_path *path,
-> > @@ -101,6 +147,7 @@ static int ext4_ext_dirty(handle_t *handle, struct inode *inode,
-> > {
-> > 	int err;
-> > 	if (path->p_bh) {
-> > +		ext4_extent_block_csum_set(inode, ext_block_hdr(path->p_bh));
-> > 		/* path points to block */
-> > 		err = ext4_handle_dirty_metadata(handle, inode, path->p_bh);
-> > 	} else {
-> > @@ -382,6 +429,12 @@ static int __ext4_ext_check(const char *function, unsigned int line,
-> > 		error_msg = "invalid extent entries";
-> > 		goto corrupted;
+> struct ext4_csum_data {
+>         struct superblock *cd_sb;
+>         ext4_group_t       cd_group;
+> };
+> 
+> static void ext4_end_buffered_read_sync_csum(struct buffer_head *bh,
+>                                              int uptodate)
+> {
+>         struct superblock *sb = (struct ext4_csum_data *)(bh->b_private)->cd_sb;
+> 	ext4_group_t group = (struct ext4_csum_data *)(bh->b_private)->cd_group;
+> 
+>         end_buffered_read_sync(bh, uptodate);
+> 
+>         if (uptodate) {
+> 		struct ext4_group_desc *desc;
+> 
+> 
+> 		desc = ext4_get_group_desc(sb, group, NULL);
+> 		if (!desc)
+> 			return;
+> 
+> 		ext4_lock_group(sb, group);
+> 		if (ext4_valid_block_bitmap(sb, desc, group, bh) &&
+> 		    ext4_bitmap_csum_verify(sb, group,
+> 					    desc->bg_block_bitmap_csum, bh,
+> 					    (EXT4_BLOCKS_PER_GROUP(sb) + 7) / 8))
+> 			set_buffer_verified(bh);
+> 
+> 		ext4_unlock_group(rcd->rcd_sb, rcd->rcd_group);
+> 	}
+> }
+> 
+> Then later in the code can just check buffer_verified() in the caller:
+> 
+> ext4_read_block_bitmap()
+> {
+>         /* read all groups the page covers into the cache */
+>         for (i = 0; i < groups_per_page; i++) {
+> 		:
+> 		:
+>                 set_bitmap_uptodate(bh[i]);
+>                 ecd[i].cd_sb = sb;
+>                 ecd[i].cd_group = first_group + i;
+>                 bh[i]->b_end_io = ext4_end_buffer_read_sync_csum;
+>                 submit_bh(READ, bh[i]);
+>                 mb_debug(1, "read bitmap for group %u\n", first_group + i);
+> 	}
+> 
+> 	err = 0;
+>         /* always wait for I/O completion before returning */
+>         for (i = 0; i < groups_per_page; i++) {
+>                 if (bh[i]) {
+>                         wait_on_buffer(bh[i]);
+> 			if (!buffer_uptodate(bh[i]) ||
+> 			    !buffer_verified(bh[i]))
+> 				err = -EIO;
+> 		}
+> 	}
+> 
+> 
+> > 	err = 0;
+> > 	first_block = page->index * blocks_per_page;
+> > 	for (i = 0; i < blocks_per_page; i++) {
+> > @@ -2829,6 +2856,9 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
 > > 	}
-> > +	/* Verify checksum on non-root extent tree nodes */
-> > +	if (ext_depth(inode) != depth &&
-> > +	    !ext4_extent_block_csum_verify(inode, eh)) {
-> > +		error_msg = "extent tree corrupted";
-> > +		goto corrupted;
-> > +	}
-> > 	return 0;
+> > 	len = ext4_free_blks_count(sb, gdp) - ac->ac_b_ex.fe_len;
+> > 	ext4_free_blks_set(sb, gdp, len);
+> > +	ext4_bitmap_csum_set(sb, ac->ac_b_ex.fe_group,
+> > +			     &gdp->bg_block_bitmap_csum, bitmap_bh,
+> > +			     (EXT4_BLOCKS_PER_GROUP(sb) + 7) / 8);
+> > 	gdp->bg_checksum = ext4_group_desc_csum(sbi, ac->ac_b_ex.fe_group, gdp);
 > > 
-> > corrupted:
-> > @@ -922,6 +975,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
-> > 		le16_add_cpu(&neh->eh_entries, m);
-> > 	}
+> > 	ext4_unlock_group(sb, ac->ac_b_ex.fe_group);
+> > @@ -4638,6 +4668,8 @@ do_more:
 > > 
-> > +	ext4_extent_block_csum_set(inode, neh);
-> > 	set_buffer_uptodate(bh);
-> > 	unlock_buffer(bh);
-> > 
-> > @@ -1000,6 +1054,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
-> > 				sizeof(struct ext4_extent_idx) * m);
-> > 			le16_add_cpu(&neh->eh_entries, m);
-> > 		}
-> > +		ext4_extent_block_csum_set(inode, neh);
-> > 		set_buffer_uptodate(bh);
-> > 		unlock_buffer(bh);
-> > 
-> > @@ -1098,6 +1153,7 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
-> > 	else
-> > 		neh->eh_max = cpu_to_le16(ext4_ext_space_block(inode, 0));
-> > 	neh->eh_magic = EXT4_EXT_MAGIC;
-> > +	ext4_extent_block_csum_set(inode, neh);
-> > 	set_buffer_uptodate(bh);
-> > 	unlock_buffer(bh);
-> > 
-> > @@ -2458,10 +2514,6 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
-> > 		if (uninitialized && num)
-> > 			ext4_ext_mark_uninitialized(ex);
-> > 
-> > -		err = ext4_ext_dirty(handle, inode, path + depth);
-> > -		if (err)
-> > -			goto out;
-> > -
-> > 		/*
-> > 		 * If the extent was completely released,
-> > 		 * we need to remove it from the leaf
-> > @@ -2483,6 +2535,10 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
-> > 			le16_add_cpu(&eh->eh_entries, -1);
-> > 		}
-> > 
-> > +		err = ext4_ext_dirty(handle, inode, path + depth);
-> > +		if (err)
-> > +			goto out;
-> > +
-> > 		ext_debug("new extent: %u:%u:%llu\n", block, num,
-> > 				ext4_ext_pblock(ex));
-> > 		ex--;
+> > 	ret = ext4_free_blks_count(sb, gdp) + count;
+> > 	ext4_free_blks_set(sb, gdp, ret);
+> > +	ext4_bitmap_csum_set(sb, block_group, &gdp->bg_block_bitmap_csum,
+> > +			     bitmap_bh, (EXT4_BLOCKS_PER_GROUP(sb) + 7) / 8);
+> > 	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
+> > 	ext4_unlock_group(sb, block_group);
+> > 	percpu_counter_add(&sbi->s_freeblocks_counter, count);
+> > @@ -4780,6 +4812,8 @@ int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
+> > 	mb_free_blocks(NULL, &e4b, bit, count);
+> > 	blk_free_count = blocks_freed + ext4_free_blks_count(sb, desc);
+> > 	ext4_free_blks_set(sb, desc, blk_free_count);
+> > +	ext4_bitmap_csum_set(sb, block_group, &desc->bg_block_bitmap_csum,
+> > +			     bitmap_bh, (EXT4_BLOCKS_PER_GROUP(sb) + 7) / 8);
+> > 	desc->bg_checksum = ext4_group_desc_csum(sbi, block_group, desc);
+> > 	ext4_unlock_group(sb, block_group);
+> > 	percpu_counter_add(&sbi->s_freeblocks_counter, blocks_freed);
 > > 
 > 
