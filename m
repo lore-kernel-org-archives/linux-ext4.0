@@ -1,45 +1,58 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14562] On umount warn in page_alloc.c:1751
- __alloc_pages_slowpath
-Date: Fri, 2 Sep 2011 14:23:59 GMT
-Message-ID: <201109021423.p82ENxlV002388@demeter1.kernel.org>
-References: <bug-14562-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@whamcloud.com>
+Subject: e2fsck sigcatcher breaks valgrind
+Date: Fri, 2 Sep 2011 11:38:09 -0600
+Message-ID: <A1043F1C-DAAD-4FAB-B8F4-82AB00E21DEF@whamcloud.com>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: linux-ext4 List <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>, Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:41448 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752166Ab1IBOYA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Sep 2011 10:24:00 -0400
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.4) with ESMTP id p82EO0WA002389
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 2 Sep 2011 14:24:00 GMT
-In-Reply-To: <bug-14562-13602@https.bugzilla.kernel.org/>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:44592 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753713Ab1IBRiN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Sep 2011 13:38:13 -0400
+Received: by gxk21 with SMTP id 21so2325050gxk.19
+        for <linux-ext4@vger.kernel.org>; Fri, 02 Sep 2011 10:38:13 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=14562
+I was reading Eric's recent commit message in "next" about how he used
+e2fsprogs "./test_script --valgrind" to find the uninitialized memory and
+thought I would try it myself.  To my dismay it was failing on my system with:
+
+==2806==    at 0x3566A0F5BE: __libc_sigaction (in /lib64/libpthread-2.12.2.so)
+==2806==    by 0x4321A3: sigcatcher_setup (sigcatcher.c:224)
+==2806==    by 0x40F4DE: main (unix.c:1027)
+==2806==  Address 0x7fefffe18 is on thread 1's stack
+==2806==
+==2806== Syscall param rt_sigaction(act->sa_mask) points to uninitialised byte(s)
+
+After a bunch of testing as to why this system was not working correctly,
+it turns out that the problem is in the later commit 9b3018a82e843d.
+Reverting that commit fixes the problem and allows --valgrind tests to pass.
 
 
-sanjeev mk <sanjeevmk4890@gmail.com> changed:
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |sanjeevmk4890@gmail.com
+I also noticed (for Lukas), "./test_script --valgrind i_e2image" fails with:
+
+i_e2image: Create/convert raw and qcow2 disk images: ./i_e2image/script: line 2: test: too many arguments
+
+That is due to:
+
+   if test -x $E2IMAGE; then
+
+expanding to:
+
+   if test -x valgrind -q --sim-hints=lax-ioctls ../misc/e2image; then
+
+It probably needs some parameter manipulation to check only the last parameter.
+
+Cheers, Andreas
+--
+Andreas Dilger 
+Principal Engineer
+Whamcloud, Inc.
 
 
 
-
---- Comment #6 from sanjeev mk <sanjeevmk4890@gmail.com>  2011-09-02 14:23:55 ---
-Not reproduced on 2.6.39.4 and 2.6.38.8. Mounted my 200 GB ext4 filesystem with
-auto_da_alloc option. No warnings. Relevant dmesg output after mounting:
-
-[  309.283335] EXT4-fs (sdb8): mounted filesystem with ordered data mode. Opts:
-auto_da_alloc
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
