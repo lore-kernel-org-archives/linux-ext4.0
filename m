@@ -1,17 +1,17 @@
 From: Prasad Joshi <prasadjoshi.linux@gmail.com>
-Subject: [PATCH] Assume yes when test device is not partitioned
-Date: Sat,  3 Sep 2011 14:02:03 +0530
-Message-ID: <1315038723-2009-1-git-send-email-prasadjoshi.linux@gmail.com>
+Subject: [PATCH] xfstests: Assume yes when test device is not partitioned
+Date: Sat,  3 Sep 2011 14:03:19 +0530
+Message-ID: <1315038799-2150-1-git-send-email-prasadjoshi.linux@gmail.com>
 Cc: Chaitanya Kulkarni <chaitanyakulkarni15@gmail.com>,
 	xfs@oss.sgi.com, linux-ext4@vger.kernel.org
 To: prasadjoshi.linux@gmail.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f66.google.com ([209.85.210.66]:43875 "EHLO
+Received: from mail-pz0-f66.google.com ([209.85.210.66]:49205 "EHLO
 	mail-pz0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752350Ab1ICIcO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 3 Sep 2011 04:32:14 -0400
-Received: by pzk34 with SMTP id 34so2789847pzk.1
-        for <linux-ext4@vger.kernel.org>; Sat, 03 Sep 2011 01:32:13 -0700 (PDT)
+	with ESMTP id S1752350Ab1ICId1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 3 Sep 2011 04:33:27 -0400
+Received: by pzk34 with SMTP id 34so2790493pzk.1
+        for <linux-ext4@vger.kernel.org>; Sat, 03 Sep 2011 01:33:27 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
