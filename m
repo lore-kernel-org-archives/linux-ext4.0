@@ -1,207 +1,106 @@
-From: Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: [PATCH 06/16] ext4: Calculate and verify inode checksums
-Date: Fri, 2 Sep 2011 16:02:17 -0600
-Message-ID: <E649CC48-DE08-4DCA-8903-B563A6F36755@dilger.ca>
-References: <20110901003030.31048.99467.stgit@elm3c44.beaverton.ibm.com> <20110901003112.31048.36302.stgit@elm3c44.beaverton.ibm.com> <C1CC4631-3651-4493-A45E-465A620B1FB7@dilger.ca> <20110902193220.GM12086@tux1.beaverton.ibm.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Theodore Tso <tytso@mit.edu>,
-	Sunil Mushran <sunil.mushran@oracle.com>,
-	Amir Goldstein <amir73il@gmail.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Andi Kleen <andi@firstfloor.org>,
-	Mingming Cao <cmm@us.ibm.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
-To: djwong@us.ibm.com
+From: Prasad Joshi <prasadjoshi.linux@gmail.com>
+Subject: [PATCH] Assume yes when test device is not partitioned
+Date: Sat,  3 Sep 2011 14:02:03 +0530
+Message-ID: <1315038723-2009-1-git-send-email-prasadjoshi.linux@gmail.com>
+Cc: Chaitanya Kulkarni <chaitanyakulkarni15@gmail.com>,
+	xfs@oss.sgi.com, linux-ext4@vger.kernel.org
+To: prasadjoshi.linux@gmail.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:26523 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756095Ab1IBWCT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Sep 2011 18:02:19 -0400
-In-Reply-To: <20110902193220.GM12086@tux1.beaverton.ibm.com>
+Received: from mail-pz0-f66.google.com ([209.85.210.66]:43875 "EHLO
+	mail-pz0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752350Ab1ICIcO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 3 Sep 2011 04:32:14 -0400
+Received: by pzk34 with SMTP id 34so2789847pzk.1
+        for <linux-ext4@vger.kernel.org>; Sat, 03 Sep 2011 01:32:13 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-09-02, at 1:32 PM, Darrick J. Wong wrote:
-> On Wed, Aug 31, 2011 at 08:30:25PM -0600, Andreas Dilger wrote:
->> On 2011-08-31, at 6:31 PM, Darrick J. Wong wrote:
->>> This patch introduces to ext4 the ability to calculate and verify inode
->>> checksums.  This requires the use of a new ro compatibility flag and some
->>> accompanying e2fsprogs patches to provide the relevant features in tune2fs and e2fsck.
->>> 
->>> 
->>> +static __le32 ext4_inode_csum(struct inode *inode, struct ext4_inode *raw)
->>> +{
->>> +	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
->>> +	struct ext4_inode_info *ei = EXT4_I(inode);
->>> +	int offset = offsetof(struct ext4_inode, i_checksum);
->> 
->> This could be declared "const int" so that it is not consuming space on
->> the stack, or just put it inline in the code instead of a stack variable
->> since it is a compile time constant.
->> 
->>> +	__le32 inum = cpu_to_le32(inode->i_ino);
->>> +	__u32 crc = 0;
->>> +
->>> +	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
->>> +	    cpu_to_le32(EXT4_OS_LINUX))
->> 
->> This can be marked unlikely() I think.
-> 
-> Ok.
-> 
->>> +		return 0;
->>> +	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
->>> +		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
->>> +		return 0;
->>> +
->>> +	crc = crc32c_le(~0, sbi->s_es->s_uuid, sizeof(sbi->s_es->s_uuid));
->>> +	crc = crc32c_le(crc, (__u8 *)&inum, sizeof(inum));
->> 
->> I wonder if it makes sense to pre-compute the crc32c of s_uuid (stored
->> in sbi) and/or s_uuid+inum (stored in struct ext4_inode_info).  I suspect
->> precomputing the s_uuid checksum is worthwhile, but I'm not sure whether
->> precomputing the inode checksum is worthwhile unless it doesn't reduce
->> the number of ext4_inode_info structs per page in the slab.
-> 
-> Sounds like a good idea, I'll look into it.
+If an entire device used for file system creation, the mkfs.ext2/3/4
+asks for confirmation before proceeding. Since the device is
+configured for testing it is safe to assume positive response
+during mkfs.
 
-Looking more closely at the cryptoapi code, I'm fairly confident that
-storing the partial crc32c for the uuid+inum+generation into the inode
-is going to be worthwhile, compared to calling crc32c_le() 3 extra times.
+The patch also replaces hard coded mkfs path with MKFS_PROG variable.
 
->>> +	crc = crc32c_le(crc, (__u8 *)raw, offset);
->>> +	offset += sizeof(raw->i_checksum); /* skip checksum */
->>> +	crc = crc32c_le(crc, (__u8 *)raw + offset,
->>> +		    EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize -
->>> +		    offset);
->> 
->> I suspect it would be more efficient to set raw->i_checksum = 0, then
->> compute the checksum on the whole raw inode buffer, and fill in
->> raw->i_checksum = cpu_to_le32(crc) at the end.  That would mean the
->> caller ext4_inode_csum_verify() should save the original checksum for
->> comparison with the returned value.
-> 
-> You mean to avoid the overhead of the add/store and the second function call?
+Signed-off-by: Chaitanya Kulkarni <chaitanyakulkarni15@gmail.com>
+Signed-off-by: Prasad Joshi <prasadjoshi.linux@gmail.com>
+---
+ 032       |    4 ++--
+ 049       |    2 +-
+ 073       |    2 +-
+ common.rc |    4 ++--
+ 4 files changed, 6 insertions(+), 6 deletions(-)
 
-Mostly the overhead of the extra calls into crc32c_le() and the cryptoapi.
-There are a lot of extra pointer indirections in that code, and calling
-into cryptoapi for 4-byte values adds (vaguely) 60-100 operations per word
-on top of the actual checksum operations, unless it all disappears at
-compile time (hard to see at first glance).
+diff --git a/032 b/032
+index 4261ca2..bf88492 100755
+--- a/032
++++ b/032
+@@ -45,7 +45,7 @@ _require_nobigloopfs
+ _require_scratch
+ 
+ echo "Silence is golden."
+-for fs in `echo /sbin/mkfs.* | sed -e 's/.sbin.mkfs.//g'`
++for fs in `echo ${MKFS_PROG}.* | sed -e 's/.sbin.mkfs.//g'`
+ do
+ 	preop=""	# for special input needs
+ 	preargs=""	# for any special pre-device options
+@@ -78,7 +78,7 @@ do
+ 	if [ $? -eq 0 ] ; then
+ 		# next, ensure we don't overwrite it
+ 		echo "=== Attempting XFS overwrite of $fs..." >>$seq.full
+-		/sbin/mkfs.xfs $SCRATCH_DEV >>$seq.full 2>&1
++		${MKFS_PROG}.xfs $SCRATCH_DEV >>$seq.full 2>&1
+ 
+ 		[ $? -eq 0 ] && echo "Failed - overwrote fs type ${fs}!"
+ 	else
+diff --git a/049 b/049
+index c6c4faa..8d4a22f 100755
+--- a/049
++++ b/049
+@@ -83,7 +83,7 @@ mount -t ext2 $SCRATCH_DEV $SCRATCH_MNT >> $seq.full 2>&1 \
+     || _fail "!!! failed to mount"
+ 
+ _log "Create xfs fs in file on scratch"
+-/sbin/mkfs.xfs -f -dfile,name=$SCRATCH_MNT/test.xfs,size=40m \
++${MKFS_PROG}.xfs -f -dfile,name=$SCRATCH_MNT/test.xfs,size=40m \
+     >> $seq.full 2>&1 \
+     || _fail "!!! failed to mkfs xfs"
+ 
+diff --git a/073 b/073
+index 18257d4..fc0951f 100755
+--- a/073
++++ b/073
+@@ -155,7 +155,7 @@ _verify_copy $imgs.image $SCRATCH_DEV $SCRATCH_MNT
+ 
+ echo 
+ echo === copying scratch device to single target, large ro device
+-/sbin/mkfs.xfs -dfile,name=$imgs.source,size=100g | _filter_mkfs 2>/dev/null
++${MKFS_PROG}.xfs -dfile,name=$imgs.source,size=100g | _filter_mkfs 2>/dev/null
+ rmdir $imgs.source_dir 2>/dev/null
+ mkdir $imgs.source_dir
+ 
+diff --git a/common.rc b/common.rc
+index 35f782b..a356c02 100644
+--- a/common.rc
++++ b/common.rc
+@@ -314,7 +314,7 @@ _scratch_mkfs()
+         $MKFS_BTRFS_PROG $MKFS_OPTIONS $* $SCRATCH_DEV > /dev/null
+ 	;;
+     *)
+-	/sbin/mkfs -t $FSTYP -- $MKFS_OPTIONS $* $SCRATCH_DEV
++	yes | $MKFS_PROG -t $FSTYP -- $MKFS_OPTIONS $* $SCRATCH_DEV
+ 	;;
+     esac
+ }
+@@ -333,7 +333,7 @@ _scratch_mkfs_sized()
+ 	_scratch_mkfs_xfs -d size=$fssize -b size=$blocksize
+ 	;;
+     ext2|ext3|ext4|ext4dev)
+-	/sbin/mkfs.$FSTYP $MKFS_OPTIONS -b $blocksize $SCRATCH_DEV $blocks
++	yes | ${MKFS_PROG}.$FSTYP $MKFS_OPTIONS -b $blocksize $SCRATCH_DEV $blocks
+ 	;;
+     btrfs)
+ 	$MKFS_BTRFS_PROG $MKFS_OPTIONS -b $fssize $SCRATCH_DEV
+-- 
+1.7.4.1
 
->> The one problem with this is that it is racy w.r.t other users
-> 
-> Yeah, I was thinking that if I move the *_csum_set() calls to a jbd2 callback
-> (for journal mode, obviously) then this might clash with that.  Maybe a better
-> approach would be to calculate/verify an entire block's worth of inodes at a
-> time.  Then again, if you only want to touch /one/ inode out of a whole block,
-> that's a lot of unnecessary work.
-
-However, if you are doing that from the jbd2 callback, the code also has
-exclusive control over the buffer at that time, so computing the checksum
-on the zeroed bytes in a single pass is not racy, and would definitely be
-less overhead for such a small number of bytes.
-
->>> +	return cpu_to_le32(crc);
->>> +}
->>> +
->>> +static int ext4_inode_csum_verify(struct inode *inode, struct ext4_inode *raw)
->>> +{
->>> +	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os ==
->>> +	    cpu_to_le32(EXT4_OS_LINUX) &&
->>> +	    EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
->>> +		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) &&
->>> +	    (raw->i_checksum != ext4_inode_csum(inode, raw)))
->> 
->> This check can be marked unlikely(), since the rare case of a checksum
->> failure can cause a stall in the execution pipeline.  It might make sense
->> to put the unlikely() at the lone callsite to move the whole function call
->> overhead out-of-line.
-> 
-> I suppose so, both for this and for all the other _verify() functions.
-
-Right.
-
->>> +		return 0;
->>> +	return 1;
->>> +}
->>> +
->>> +static void ext4_inode_csum_set(struct inode *inode, struct ext4_inode *raw)
->>> +{
->>> +	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
->>> +	    cpu_to_le32(EXT4_OS_LINUX) ||
->>> +	    !EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
->>> +		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
->>> +		return;
->>> +
->>> +	raw->i_checksum = ext4_inode_csum(inode, raw);
->>> +}
->>> +
->>> static inline int ext4_begin_ordered_truncate(struct inode *inode,
->>> 					      loff_t new_size)
->>> {
->>> @@ -3410,6 +3458,15 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
->>> 	if (ret < 0)
->>> 		goto bad_inode;
->>> 	raw_inode = ext4_raw_inode(&iloc);
->>> +
->>> +	if (!ext4_inode_csum_verify(inode, raw_inode)) {
->>> +		EXT4_ERROR_INODE(inode, "checksum invalid (0x%x != 0x%x)",
->>> +		       le32_to_cpu(ext4_inode_csum(inode, raw_inode)),
->>> +		       le32_to_cpu(raw_inode->i_checksum));
->>> +		ret = -EIO;
->>> +		goto bad_inode;
->>> +	}
->>> +
->>> 	inode->i_mode = le16_to_cpu(raw_inode->i_mode);
->>> 	inode->i_uid = (uid_t)le16_to_cpu(raw_inode->i_uid_low);
->>> 	inode->i_gid = (gid_t)le16_to_cpu(raw_inode->i_gid_low);
->>> @@ -3490,6 +3547,9 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
->>> 		ei->i_extra_isize = le16_to_cpu(raw_inode->i_extra_isize);
->>> 		if (EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize >
->>> 		    EXT4_INODE_SIZE(inode->i_sb)) {
->>> +			EXT4_ERROR_INODE(inode, "bad extra_isize (%u != %u)",
->>> +				EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize,
->>> +				EXT4_INODE_SIZE(inode->i_sb));
->>> 			ret = -EIO;
->>> 			goto bad_inode;
->>> 		}
->>> @@ -3731,6 +3791,8 @@ static int ext4_do_update_inode(handle_t *handle,
->>> 		raw_inode->i_extra_isize = cpu_to_le16(ei->i_extra_isize);
->>> 	}
->>> 
->>> +	ext4_inode_csum_set(inode, raw_inode);
->> 
->> This might warrant a comment to always be the last function before
->> submitting the inode to the journal.
-> 
-> Ok.
-> 
->>> 	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
->>> 	rc = ext4_handle_dirty_metadata(handle, NULL, bh);
->>> 	if (!err)
->> 
->> Also, rather than just making the checksum be updated at commit time, it
->> makes more sense to have ext4_do_update_inode() only be called once per
->> commit, since this is an expensive function.
-> 
-> If I made jbd2 responsible for calling back into ext4 to apply checksums just
-> prior to submit_bh()ing metadata blocks, I think that would take care of this.
-
-Yes, that would be the most desirable case, but it also means that the
-journal code needs to pin all of these inodes in memory until after it
-commits.  Possibly the new ext4 ordered journal mode already does this,
-but not sure about other journal modes.
-
-I definitely like the idea of using the jbd2 pre-commit callbacks, but
-I don't think it is necessarily needed for the first version of the
-patches.  Better to get the "simple" implementation working correctly
-(so that we are sure it is doing the right thing), and then migrate it
-over to using the commit callbacks so that we can verify it is still
-correct.
-
-Cheers, Andreas
