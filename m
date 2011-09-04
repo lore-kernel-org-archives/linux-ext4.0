@@ -1,49 +1,43 @@
-From: "Martin K. Petersen" <martin.petersen@oracle.com>
-Subject: Re: [PATCH v1 00/16] ext4: Add metadata checksumming
-Date: Sun, 04 Sep 2011 13:17:27 -0400
-Message-ID: <yq14o0scjmg.fsf@sermon.lab.mkp.net>
-References: <20110901003030.31048.99467.stgit@elm3c44.beaverton.ibm.com>
-	<CAGpXXZ+Cq9_aS4BPC5BKNj6aWHzzL7+e8ZQKO3=C7UV+xcnqWA@mail.gmail.com>
-	<20110902182214.GC12086@tux1.beaverton.ibm.com>
-	<yq1d3fgwn5c.fsf@sermon.lab.mkp.net>
-	<6fdb58aed1dae8020900e65cbfb34b28.squirrel@www.firstfloor.org>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
-	djwong@us.ibm.com, "Greg Freemyer" <greg.freemyer@gmail.com>,
-	"Andreas Dilger" <adilger.kernel@dilger.ca>,
-	"Theodore Tso" <tytso@mit.edu>,
-	"Sunil Mushran" <sunil.mushran@oracle.com>,
-	"Amir Goldstein" <amir73il@gmail.com>,
-	"linux-kernel" <linux-kernel@vger.kernel.org>,
-	"Mingming Cao" <cmm@us.ibm.com>,
-	"Joel Becker" <jlbec@evilplan.org>,
-	"linux-fsdevel" <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, "Coly Li" <colyli@gmail.com>
-To: "Andi Kleen" <andi@firstfloor.org>
+From: Andreas Dilger <aedilger@gmail.com>
+Subject: Re: [PATCH 01/37] e2fsprogs: Read and write full-sized inodes
+Date: Sun, 4 Sep 2011 11:40:04 -0600
+Message-ID: <56D52981-70CD-4A60-B8C4-01A22F5A5433@gmail.com>
+References: <20110901003509.1176.51159.stgit@elm3c44.beaverton.ibm.com> <20110901003517.1176.46651.stgit@elm3c44.beaverton.ibm.com> <0151C905-AE23-4729-92B9-9EAFA44A92FD@dilger.ca> <20110904140419.GE3461@thunk.org>
+Mime-Version: 1.0 (iPhone Mail 8L1)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	"Darrick J. Wong" <djwong@us.ibm.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Sunil Mushran <sunil.mushran@oracle.com>,
+	AmirGoldstein <amir73il@gmail.com>,
+	Andi Kleen <andi@firstfloor.org>, MingmingCao <cmm@us.ibm.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Coly Li <colyli@gmail.com>
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet15.oracle.com ([148.87.113.117]:53568 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751085Ab1IDRS0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 4 Sep 2011 13:18:26 -0400
-In-Reply-To: <6fdb58aed1dae8020900e65cbfb34b28.squirrel@www.firstfloor.org>
-	(Andi Kleen's message of "Sun, 4 Sep 2011 18:54:28 +0200")
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:44947 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752025Ab1IDRj3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 4 Sep 2011 13:39:29 -0400
+Received: by gxk21 with SMTP id 21so2986607gxk.19
+        for <linux-ext4@vger.kernel.org>; Sun, 04 Sep 2011 10:39:27 -0700 (PDT)
+In-Reply-To: <20110904140419.GE3461@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
->>>>> "Andi" == Andi Kleen <andi@firstfloor.org> writes:
+On 2011-09-04, at 8:04 AM, Ted Ts'o <tytso@mit.edu> wrote:
 
->> On Westmere and beyond it is possible to accelerate generic CRC
->> calculation using the PCLMULQDQ operation. There are many of our CRC
+> On Sat, Sep 03, 2011 at 12:05:39PM -0600, Andreas Dilger wrote:
+>> Why not just get rid of ext2_inode and replace it with
+>> ext2_inode_large?  Less change to the code, and less confusion for
+>> developers.
+> 
+> struct ext2_inode_large is there to make sure we don't break ABI
+> compatibility for shared libraries.
 
-Andi> Faster than the lookup table? That's hard to believe.
+What about renaming ext2_inode to ext2_inode_{small,orig} and then (optionally) rename ext2_inode_large to ext2_inode?  That still avoids the code churn and continual risk of errors by developers using the small inode instead of the large inode, but keeps ABI compatibility. 
 
-Using PCLMULQDQ you can parallelize the calculation. You can even boost
-hw CRC32C performance that way.
-
-  http://download.intel.com/design/intarch/papers/323405.pdf
-
-  http://download.intel.com/design/intarch/papers/323102.pdf
-
--- 
-Martin K. Petersen	Oracle Linux Engineering
+Cheers, Andreas
