@@ -1,8 +1,8 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 09/37] e2fsck: Verify and correct inode checksums
-Date: Sun, 4 Sep 2011 12:17:49 -0600
-Message-ID: <602E4E43-7583-4E33-92FB-46CFB14A567F@dilger.ca>
-References: <20110901003509.1176.51159.stgit@elm3c44.beaverton.ibm.com> <20110901003609.1176.69789.stgit@elm3c44.beaverton.ibm.com>
+Subject: Re: [PATCH 10/37] mke2fs: Allow metadata checksums to be turned on at mkfs time
+Date: Sun, 4 Sep 2011 12:28:24 -0600
+Message-ID: <4764BABB-0FFB-4AE5-B6A3-EF804AA59FC8@dilger.ca>
+References: <20110901003509.1176.51159.stgit@elm3c44.beaverton.ibm.com> <20110901003615.1176.76957.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0 (iPhone Mail 8L1)
 Content-Type: text/plain;
 	charset=us-ascii
@@ -19,159 +19,91 @@ Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Coly Li <colyli@gmail.com>
 To: "Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from shawmail.shawcable.com ([64.59.128.220]:29774 "EHLO
+Received: from shawmail.shawcable.com ([64.59.128.220]:31112 "EHLO
 	mail.shawcable.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752430Ab1IDSRI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 4 Sep 2011 14:17:08 -0400
-In-Reply-To: <20110901003609.1176.69789.stgit@elm3c44.beaverton.ibm.com>
+	with ESMTP id S1752219Ab1IDS1n convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 4 Sep 2011 14:27:43 -0400
+In-Reply-To: <20110901003615.1176.76957.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 On 2011-08-31, at 6:36 PM, "Darrick J. Wong" <djwong@us.ibm.com> wrote:
-> Detect mismatches of the inode and checksum, and prompt the user to fix the
-> situation.
+> Write out checksummed inodes even when writing out a zeroed table.
 > 
 > Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 > ---
-> e2fsck/pass1.c   |   52 ++++++++++++++++++++++++++++++++++++++++++++++++++++
-> e2fsck/problem.c |   15 +++++++++++++++
-> e2fsck/problem.h |    9 +++++++++
-> 3 files changed, 76 insertions(+), 0 deletions(-)
+> misc/mke2fs.c |   37 ++++++++++++++++++++++++++++++-------
+> 1 files changed, 30 insertions(+), 7 deletions(-)
 > 
 > 
-> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-> index ba17b30..e9b0876 100644
-> --- a/e2fsck/pass1.c
-> +++ b/e2fsck/pass1.c
-> @@ -540,6 +540,50 @@ extern void e2fsck_setup_tdb_icount(e2fsck_t ctx, int flags,
->        *ret = 0;
-> }
+> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+> index 2d57d09..bbc0533 100644
+> --- a/misc/mke2fs.c
+> +++ b/misc/mke2fs.c
+> @@ -309,6 +309,8 @@ static void write_inode_tables(ext2_filsys fs, int lazy_flag, int itable_zeroed)
+>    dgrp_t        i;
+>    int        num;
+>    struct ext2fs_numeric_progress_struct progress;
+> +    ext2_ino_t    ino;
+> +    struct ext2_inode_large inode;
 > 
-> +static int validate_inode_checksum(ext2_filsys fs,
-> +                   e2fsck_t ctx,
-> +                   struct problem_context *pctx,
-> +                   ext2_ino_t ino,
-> +                   struct ext2_inode_large *inode)
-> +{
-> +    struct ext2_inode_large *linode = (struct ext2_inode_large *)inode;
-> +
-> +    /* Ignore non-Linux filesystems */
-> +    if (fs->super->s_creator_os != EXT2_OS_LINUX)
-> +        return 0;
-> +
-> +    /* Check for checksums present even w/o feature flag */
-> +    if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-> +                    EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) &&
-> +        linode->i_checksum &&
-> +        fix_problem(ctx, PR_1_INODE_CSUM_NONZERO, pctx)) {
-> +        e2fsck_write_inode(ctx, ino, inode, "pass1");
-> +        return PR_1_INODE_CSUM_NONZERO;
-> +    }
-> +
-> +    /* Check for invalid inode checksum */
-> +    if (ext2fs_inode_csum_verify(fs, ino, linode))
-> +        return 0;
-> +
-> +    /*
-> +     * TODO: Change the following check to use the inode badness patch.
-> +     * For the moment we'll just assume that the user wants to clear the
-> +     * bad inode.
-> +     */
-> +    if (fix_problem(ctx, PR_1_INODE_CORRUPT, pctx)) {
-> +        e2fsck_clear_inode(ctx, ino, inode, 0, "pass1");
-
-IMHO this would make the checksums _less_ robust than the current code. 
-
-Currently it is possible to handle minor corruptions without erasing the whole inode.  If there was a problem that affected the whole filesystem (e.g. if the METADATA_CSUM flag is set with debugfs, change the filesystem UUID, etc) this would irrevocably erase the entire filesystem when "e2fsck -p/-y" was run. 
-
-I think making it contribute to the inode badness in e2fsck is the only way to go. For the kernel it is OK to treat a bad checksum as -EIO, since that doesn't actually cause the inode to be erased, unlike this check. 
-
-> +        if (ino == EXT2_BAD_INO)
-> +            ext2fs_mark_inode_bitmap2(ctx->inode_used_map,
-> +                          ino);
-> +        return PR_1_INODE_CORRUPT;
-> +    } else if (fix_problem(ctx, PR_1_INODE_CSUM_INVALID, pctx)) {
-> +        e2fsck_write_inode(ctx, ino, inode, "pass1");
-> +        return PR_1_INODE_CSUM_INVALID;
-> +    }
-> +
-> +    return 0;
-> +}
-> +
-> void e2fsck_pass1(e2fsck_t ctx)
-> {
->    int    i;
-> @@ -707,8 +751,10 @@ void e2fsck_pass1(e2fsck_t ctx)
-> 
->    while (1) {
->        old_op = ehandler_operation(_("getting next inode from scan"));
-> +        ctx->fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
->        pctx.errcode = ext2fs_get_next_inode_full(scan, &ino,
->                              inode, inode_size);
-> +        ctx->fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
->        ehandler_operation(old_op);
->        if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
->            return;
-> @@ -740,6 +786,12 @@ void e2fsck_pass1(e2fsck_t ctx)
->            }
+>    ext2fs_numeric_progress_init(fs, &progress,
+>                     _("Writing inode tables: "),
+> @@ -330,12 +332,32 @@ static void write_inode_tables(ext2_filsys fs, int lazy_flag, int itable_zeroed)
+>            ext2fs_bg_flags_set(fs, i, EXT2_BG_INODE_ZEROED);
+>            ext2fs_group_desc_csum_set(fs, i);
 >        }
-> 
-> +        check_inode_extra_space(ctx, &pctx);
+> -        retval = ext2fs_zero_blocks2(fs, blk, num, &blk, &num);
+> -        if (retval) {
+> -            fprintf(stderr, _("\nCould not write %d "
+> -                  "blocks in inode table starting at %llu: %s\n"),
+> -                num, blk, error_message(retval));
+> -            exit(1);
+> +        if (fs->super->s_creator_os == EXT2_OS_LINUX &&
+> +            fs->super->s_feature_ro_compat &
+> +            EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) {
 
-This is already being called once per inode (later on) so there is no reason to call it twice for every inode. 
+Somehow it doesn't look like this is skipping the zeroing of the inode table blocks if lazy itable zeroing is set. 
 
-> +        /* Validate inode checksum.  i_extra_isize must be sane. */
-> +        if (validate_inode_checksum(fs, ctx, &pctx, ino, inode) ==
-> +            PR_1_INODE_CORRUPT)
-> +            continue;
-> +
->        /*
->         * Test for incorrect extent flag settings.
->         *
-> diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-> index c5bebf8..b5176d4 100644
-> --- a/e2fsck/problem.c
-> +++ b/e2fsck/problem.c
-> @@ -905,6 +905,21 @@ static struct e2fsck_problem problem_table[] = {
->      N_("Error converting subcluster @b @B: %m\n"),
->      PROMPT_NONE, PR_FATAL },
+Any measurements on how much this slows down inode table writing (which is already the slowest part of mke2fs)?
+
+> +            bzero(&inode, sizeof(inode));
+> +            for (ino = fs->super->s_inodes_per_group * i;
+> +                 ino < fs->super->s_inodes_per_group * (i + 1);
+> +                 ino++) {
+
+Why recompute "ino" each time through this loop?  It should be enough to simply initialize it at 1 and then increment it for each inode written. 
+
+> +                if (!ino)
+> +                    continue;
+> +                retval = ext2fs_write_inode(fs, ino, &inode);
+> +                if (retval) {
+> +                    com_err("inode_init", retval,
+> +                        "while writing inode %d\n",
+> +                        ino);
+> +                    exit(1);
+> +                }
+> +            }
+> +        } else {
+> +            retval = ext2fs_zero_blocks2(fs, blk, num, &blk, &num);
+> +            if (retval) {
+> +                fprintf(stderr, _("\nCould not write %d "
+> +                    "blocks in inode table starting "
+> +                    "at %llu: %s\n"),
+> +                    num, blk, error_message(retval));
+> +                exit(1);
+> +            }
+>        }
+>        if (sync_kludge) {
+>            if (sync_kludge == 1)
+> @@ -829,7 +851,8 @@ static __u32 ok_features[3] = {
+>        EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
+>        EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|
+>        EXT4_FEATURE_RO_COMPAT_GDT_CSUM|
+> -        EXT4_FEATURE_RO_COMPAT_BIGALLOC
+> +        EXT4_FEATURE_RO_COMPAT_BIGALLOC|
+> +        EXT4_FEATURE_RO_COMPAT_METADATA_CSUM
+> };
 > 
-> +    /* inode checksum probably not set */
-> +    { PR_1_INODE_CSUM_INVALID,
-> +      N_("@i %i checksum incorrect.  "),
-> +      PROMPT_FIX, PR_PREEN_OK },
-> +
-> +    /* inode checksum probably set, but does not match */
-> +    { PR_1_INODE_CORRUPT,
-> +      N_("@i %i checksum shows corruption.  "),
-> +      PROMPT_CLEAR, PR_PREEN_OK },
-> +
-> +    /* inode checksumming disabled, yet checksum is probably set? */
-> +    { PR_1_INODE_CSUM_NONZERO,
-> +      N_("@i %i checksum should not be set.  "),
-> +      PROMPT_CLEAR, PR_PREEN_OK },
-> +
->    /* Pass 1b errors */
 > 
->    /* Pass 1B: Rescan for duplicate/bad blocks */
-> diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-> index a4d96ae..4e353b7 100644
-> --- a/e2fsck/problem.h
-> +++ b/e2fsck/problem.h
-> @@ -529,6 +529,15 @@ struct problem_context {
-> /* Failed to convert subcluster bitmap */
-> #define PR_1_CONVERT_SUBCLUSTER        0x010061
-> 
-> +/* inode checksum probably not set */
-> +#define PR_1_INODE_CSUM_INVALID        0x010062
-> +
-> +/* inode checksum probably set, but does not match */
-> +#define PR_1_INODE_CORRUPT        0x010063
-> +
-> +/* inode checksum should not be set */
-> +#define PR_1_INODE_CSUM_NONZERO        0x010064
-> +
-> /*
->  * Pass 1b errors
->  */
 > 
