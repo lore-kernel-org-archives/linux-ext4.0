@@ -1,46 +1,38 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 25832] kernel crashes when a mounted ext3/4 file system is
- physically removed
-Date: Sun, 4 Sep 2011 14:00:32 GMT
-Message-ID: <201109041400.p84E0Wrh001738@demeter2.kernel.org>
-References: <bug-25832-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 01/37] e2fsprogs: Read and write full-sized inodes
+Date: Sun, 4 Sep 2011 10:04:19 -0400
+Message-ID: <20110904140419.GE3461@thunk.org>
+References: <20110901003509.1176.51159.stgit@elm3c44.beaverton.ibm.com>
+ <20110901003517.1176.46651.stgit@elm3c44.beaverton.ibm.com>
+ <0151C905-AE23-4729-92B9-9EAFA44A92FD@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "Darrick J. Wong" <djwong@us.ibm.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Sunil Mushran <sunil.mushran@oracle.com>,
+	Amir Goldstein <amir73il@gmail.com>,
+	Andi Kleen <andi@firstfloor.org>,
+	Mingming Cao <cmm@us.ibm.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Coly Li <colyli@gmail.com>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:54940 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753861Ab1IDOAc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 4 Sep 2011 10:00:32 -0400
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.4) with ESMTP id p84E0WLb001739
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sun, 4 Sep 2011 14:00:32 GMT
-In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:33073 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753861Ab1IDOE2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 4 Sep 2011 10:04:28 -0400
+Content-Disposition: inline
+In-Reply-To: <0151C905-AE23-4729-92B9-9EAFA44A92FD@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=25832
+On Sat, Sep 03, 2011 at 12:05:39PM -0600, Andreas Dilger wrote:
+> Why not just get rid of ext2_inode and replace it with
+> ext2_inode_large?  Less change to the code, and less confusion for
+> developers.
 
+struct ext2_inode_large is there to make sure we don't break ABI
+compatibility for shared libraries.
 
-
-
-
---- Comment #92 from rocko <rockorequin@hotmail.com>  2011-09-04 14:00:29 ---
-Hey, that is good news!
-
-I can't find that setting at all in my config. I only have these for
-CONFIG_EXT4_:
-
-CONFIG_EXT4_FS=y
-CONFIG_EXT4_FS_XATTR=y
-CONFIG_EXT4_FS_POSIX_ACL=y
-CONFIG_EXT4_FS_SECURITY=y
-# CONFIG_EXT4_DEBUG is not set
-
-What is it supposed to do?
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+						- Ted
