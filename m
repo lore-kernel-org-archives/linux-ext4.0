@@ -1,42 +1,88 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 25832] kernel crashes when a mounted ext3/4 file system is
- physically removed
-Date: Sun, 4 Sep 2011 03:53:20 GMT
-Message-ID: <201109040353.p843rK51019911@demeter2.kernel.org>
-References: <bug-25832-13602@https.bugzilla.kernel.org/>
+From: "Martin K. Petersen" <martin.petersen@oracle.com>
+Subject: Re: [PATCH v1 00/16] ext4: Add metadata checksumming
+Date: Sun, 04 Sep 2011 07:41:03 -0400
+Message-ID: <yq1d3fgwn5c.fsf@sermon.lab.mkp.net>
+References: <20110901003030.31048.99467.stgit@elm3c44.beaverton.ibm.com>
+	<CAGpXXZ+Cq9_aS4BPC5BKNj6aWHzzL7+e8ZQKO3=C7UV+xcnqWA@mail.gmail.com>
+	<20110902182214.GC12086@tux1.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:52894 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753091Ab1IDDxX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 3 Sep 2011 23:53:23 -0400
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.4) with ESMTP id p843rMC7019912
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sun, 4 Sep 2011 03:53:22 GMT
-In-Reply-To: <bug-25832-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain
+Cc: Greg Freemyer <greg.freemyer@gmail.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Theodore Tso <tytso@mit.edu>,
+	Sunil Mushran <sunil.mushran@oracle.com>,
+	Amir Goldstein <amir73il@gmail.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Andi Kleen <andi@firstfloor.org>,
+	Mingming Cao <cmm@us.ibm.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
+To: djwong@us.ibm.com
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20110902182214.GC12086@tux1.beaverton.ibm.com> (Darrick
+	J. Wong's message of "Fri, 2 Sep 2011 11:22:14 -0700")
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=25832
+>>>>> "Darrick" == Darrick J Wong <djwong@us.ibm.com> writes:
+
+Darrick,
+
+Darrick> Furthermore, the nice thing about the in-filesystem checksum is
+Darrick> that we bake in other things like the FS UUID and the inode
+Darrick> number, which gives you a somewhat better assurance that the
+Darrick> data block belongs to the fs and the file that the code think
+Darrick> it belongs to.
+
+Yeah, I view DIF/DIX mostly as in-flight protection for writes. Whereas
+FS metadata checksumming is great for problem detection at read time.
+
+Another problem with using the DIF app tag to store filesystem metadata
+is that many array vendors use it internally and thus only disk drives
+are likely to provide the app tag space.
 
 
+Darrick> The DIX interface allows for a 32-bit block number and a 16-bit
+Darrick> application tag ... which is unfortunately small given 64-bit
+Darrick> block numbers and 32-bit inode numbers.
+
+I never understood the 32-bit ref tag. Seems silly to have a check that
+wraps at the exact boundary where problems are most likely to occur.
+
+I advocated for a DIF Type with 16-bit guard tag and 48-bit ref tag but
+that never went anywhere. Too bad - would have been easy for the storage
+vendors to implement.
 
 
+Darrick> As a side note, the crc-t10dif implementation is quite slow --
+Darrick> the hardware accelerated crc32c is 15x faster, and the sw
+Darrick> implementation is usually 3-6x faster.  I suspect somebody will
+Darrick> want to fix that before DIF becomes more widespread...
 
---- Comment #90 from rocko <rockorequin@hotmail.com>  2011-09-04 03:53:16 ---
-BTW, CONFIG_NETCONSOLE=y doesn't make any difference for me (it still crashes
-the kernel), although I didn't really expect it to since I had it compiled in
-as a module and was specifically loading it prior to running the test that
-crashes the kernel.
+The CRC32C op on Nehalem and beyond is really, really fast. It's
+essentially free except for pulling the data through the cache. So it's
+not entirely fair to use that as baseline for a pure software
+implementation. What is the faster sw implementation are you referring
+to, btw.?
 
-So I have a reproducible test case (which, even better, works in VirtualBox
-VM), but the error information generated in the crash log isn't sufficient for
-tracking down this problem. Where do I go from here?
+lib/crc-t10dif is a regular 256-entry table-based CRC implementation. It
+is done pretty much like all our other software CRCs. I seem to recall
+attempting a bigger table but that yielded worse real life results due
+to cache pollution.
+
+On Westmere and beyond it is possible to accelerate generic CRC
+calculation using the PCLMULQDQ operation. There are many of our CRC
+functions that could benefit from this. However, so far intel have not
+been willing to contribute the relevant code to Linux.
+
+
+Darrick> The good news is that if you're really worried about integrity,
+Darrick> metadata_csum and DIF/DIX aren't mutually exclusive features.
+Darrick> Rejecting corrupted write commands at write time seems like a
+Darrick> useful feature. :)
+
+Yup!
 
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Martin K. Petersen	Oracle Linux Engineering
