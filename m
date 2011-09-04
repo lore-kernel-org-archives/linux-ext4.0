@@ -1,58 +1,66 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 13/37] dumpe2fs: Display inode bitmap checksum
-Date: Sun, 4 Sep 2011 12:30:32 -0600
-Message-ID: <632170F9-0528-44AF-A299-5EE2BFEB70F2@dilger.ca>
-References: <20110901003509.1176.51159.stgit@elm3c44.beaverton.ibm.com> <20110901003634.1176.10897.stgit@elm3c44.beaverton.ibm.com>
-Mime-Version: 1.0 (iPhone Mail 8L1)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	Theodore Tso <tytso@mit.edu>,
-	"Darrick J. Wong" <djwong@us.ibm.com>,
-	Sunil Mushran <sunil.mushran@oracle.com>,
-	Amir Goldstein <amir73il@gmail.com>,
-	Andi Kleen <andi@firstfloor.org>,
-	Mingming Cao <cmm@us.ibm.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Coly Li <colyli@gmail.com>
-To: "Darrick J. Wong" <djwong@us.ibm.com>
+From: "Martin K. Petersen" <martin.petersen@oracle.com>
+Subject: Re: [PATCH v1 00/16] ext4: Add metadata checksumming
+Date: Sun, 04 Sep 2011 18:19:16 -0400
+Message-ID: <yq139gcymqj.fsf@sermon.lab.mkp.net>
+References: <20110901003030.31048.99467.stgit@elm3c44.beaverton.ibm.com>
+	<CAGpXXZ+Cq9_aS4BPC5BKNj6aWHzzL7+e8ZQKO3=C7UV+xcnqWA@mail.gmail.com>
+	<20110902182214.GC12086@tux1.beaverton.ibm.com>
+	<yq1d3fgwn5c.fsf@sermon.lab.mkp.net>
+	<6fdb58aed1dae8020900e65cbfb34b28.squirrel@www.firstfloor.org>
+	<yq14o0scjmg.fsf@sermon.lab.mkp.net>
+	<88f8907569619968aa7b4a8c669d5aba.squirrel@www.firstfloor.org>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
+	djwong@us.ibm.com, "Greg Freemyer" <greg.freemyer@gmail.com>,
+	"Andreas Dilger" <adilger.kernel@dilger.ca>,
+	"Theodore Tso" <tytso@mit.edu>,
+	"Sunil Mushran" <sunil.mushran@oracle.com>,
+	"Amir Goldstein" <amir73il@gmail.com>,
+	"linux-kernel" <linux-kernel@vger.kernel.org>,
+	"Mingming Cao" <cmm@us.ibm.com>,
+	"Joel Becker" <jlbec@evilplan.org>,
+	"linux-fsdevel" <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, "Coly Li" <colyli@gmail.com>
+To: "Andi Kleen" <andi@firstfloor.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from shawmail.shawcable.com ([64.59.128.220]:31377 "EHLO
-	mail.shawcable.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752423Ab1IDS3v (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 4 Sep 2011 14:29:51 -0400
-In-Reply-To: <20110901003634.1176.10897.stgit@elm3c44.beaverton.ibm.com>
+Received: from acsinet15.oracle.com ([141.146.126.227]:52889 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751072Ab1IDWUT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 4 Sep 2011 18:20:19 -0400
+In-Reply-To: <88f8907569619968aa7b4a8c669d5aba.squirrel@www.firstfloor.org>
+	(Andi Kleen's message of "Sun, 4 Sep 2011 19:44:55 +0200")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-08-31, at 6:36 PM, "Darrick J. Wong" <djwong@us.ibm.com> wrote:
-> Display the inode bitmap checksum for each block group.
-> 
-> Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
-> ---
-> misc/dumpe2fs.c |    5 +++++
-> 1 files changed, 5 insertions(+), 0 deletions(-)
-> 
-> 
-> diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
-> index 7d74e84..ed207cb 100644
-> --- a/misc/dumpe2fs.c
-> +++ b/misc/dumpe2fs.c
-> @@ -220,6 +220,11 @@ static void list_desc (ext2_filsys fs)
->        print_number(ext2fs_inode_bitmap_loc(fs, i));
->        print_bg_rel_offset(fs, ext2fs_inode_bitmap_loc(fs, i), 0,
->                    first_block, last_block);
-> +        if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT &&
-> +            fs->super->s_feature_ro_compat &
-> +            EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)
-> +            printf(_(", checksum 0x%08x"),
+>>>>> "Andi" == Andi Kleen <andi@firstfloor.org> writes:
 
-Since this line is already very long, printing "csum" should be enough. 
+Andi> Doesn't have any performance numbers.
 
-> +                  ext2fs_inode_bitmap_checksum(fs, i));
->        fputs(_("\n  Inode table at "), stdout);
->        print_range(ext2fs_inode_table_loc(fs, i),
->                ext2fs_inode_table_loc(fs, i) +
-> 
+It's been a while since I read them. I thought they had some compelling
+numbers. Anyway, made a big difference in real life testing here. For
+sustained I/O we're talking an order of magnitude.
+
+
+Andi> You need to keep in mind that PCLMULQDQ uses FPU state, so any
+Andi> speedup for the kernel must be large enough to amortize the cost
+Andi> of saving the FPU state.
+
+Yeah, my test cases were for bulk database I/O, not for writing a
+handful of fs metadata blocks. Plus for the DB tests the CRC was
+generated in userland.
+
+I seem to recall Joel picking something other than the hw-accelerated
+CRC32C for ocfs2 metadata and that didn't cause any problems.
+
+That said, I do see a difference between IP checksum and CRC on normal
+FS workloads with DIX enabled here.
+
+
+Andi> Typically that only works out for quite large buffers, but kernel
+Andi> buffers are relatively small.
+
+*nod*
+
+-- 
+Martin K. Petersen	Oracle Linux Engineering
