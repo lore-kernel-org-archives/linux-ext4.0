@@ -1,53 +1,64 @@
-From: Tejun Heo <tj@kernel.org>
-Subject: Re: [PATCH] percpu_counter: Put a reasonable upper bound on
- percpu_counter_batch
-Date: Tue, 6 Sep 2011 12:48:57 +0900
-Message-ID: <20110906034851.GC18425@mtj.dyndns.org>
-References: <20110826072622.406d3395@kryten>
- <20110826072927.5b4781f9@kryten>
- <1314347983.2563.1.camel@edumazet-HP-Compaq-6005-Pro-SFF-PC>
- <20110829214609.495ee299@kryten>
+From: Tao Ma <tm@tao.ma>
+Subject: Re: [PATCH] ext4: fix possible overflow in ext4_trim_fs()
+Date: Tue, 06 Sep 2011 12:15:45 +0800
+Message-ID: <4E659E71.7050008@tao.ma>
+References: <1315233249-27167-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Dumazet <eric.dumazet@gmail.com>, tytso@mit.edu,
-	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Anton Blanchard <anton@samba.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f42.google.com ([209.85.210.42]:33204 "EHLO
-	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752036Ab1IFDtE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Sep 2011 23:49:04 -0400
-Content-Disposition: inline
-In-Reply-To: <20110829214609.495ee299@kryten>
+Received: from oproxy3-pub.bluehost.com ([69.89.21.8]:58086 "HELO
+	oproxy3-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1750856Ab1IFEPt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Sep 2011 00:15:49 -0400
+In-Reply-To: <1315233249-27167-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 29, 2011 at 09:46:09PM +1000, Anton Blanchard wrote:
-> 
-> When testing on a 1024 thread ppc64 box I noticed a large amount of
-> CPU time in ext4 code.
-> 
-> ext4_has_free_blocks has a fast path to avoid summing every free and
-> dirty block per cpu counter, but only if the global count shows more
-> free blocks than the maximum amount that could be stored in all the
-> per cpu counters.
-> 
-> Since percpu_counter_batch scales with num_online_cpus() and the maximum
-> amount in all per cpu counters is percpu_counter_batch * num_online_cpus(),
-> this breakpoint grows at O(n^2).
-> 
-> This issue will also hit with users of percpu_counter_compare which
-> does a similar thing for one percpu counter.
-> 
-> I chose to cap percpu_counter_batch at 1024 as a conservative first
-> step, but we may want to reduce it further based on further benchmarking.
-> 
-> Signed-off-by: Anton Blanchard <anton@samba.org>
+Hi Lucas,
+On 09/05/2011 10:34 PM, Lukas Czerner wrote:
+> In ext4_trim_fs it is possible that start+len might overflow. Fix it by
+> decrementing the len so that start+len equals to the file system size in
+> the worst case.
+Actually start + len can never overflow since they are changed by
+start = range->start >> sb->s_blocksize_bits;
+len = range->len >> sb->s_blocksize_bits;
 
-Applied to percpu/for-3.2.
+range->start and range->len are u64, and after they are shifted with
+blocksize_bits, start+len(ext4_fsblk_t is also 64bit) can't overflow.
 
-Thanks.
+Thanks
+Tao
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> ---
+>  fs/ext4/mballoc.c |    6 +++++-
+>  1 files changed, 5 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 17a5a57..d86dc14 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -4952,14 +4952,18 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+>  	uint64_t start, len, minlen, trimmed = 0;
+>  	ext4_fsblk_t first_data_blk =
+>  			le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
+> +	ext4_fsblk_t max_blks = ext4_blocks_count(EXT4_SB(sb)->s_es);
+>  	int ret = 0;
+>  
+>  	start = range->start >> sb->s_blocksize_bits;
+>  	len = range->len >> sb->s_blocksize_bits;
+>  	minlen = range->minlen >> sb->s_blocksize_bits;
+>  
+> -	if (unlikely(minlen > EXT4_BLOCKS_PER_GROUP(sb)))
+> +	if (unlikely(minlen > EXT4_BLOCKS_PER_GROUP(sb)) ||
+> +	    unlikely(start > max_blks))
+>  		return -EINVAL;
+> +	if (unlikely(len > max_blks))
+> +		len = max_blks - start;
+>  	if (start + len <= first_data_blk)
+>  		goto out;
+>  	if (start < first_data_blk) {
 
--- 
-tejun
