@@ -1,71 +1,58 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Christian Kujau <lists@nerdbynature.de>
 Subject: Re: EXT4-fs (dm-1): Couldn't remount RDWR because of unprocessed
  orphan inode list
-Date: Tue, 06 Sep 2011 11:44:45 -0500
-Message-ID: <4E664DFD.80308@redhat.com>
-References: <alpine.DEB.2.01.1109021346290.9183@trent.utfs.org> <4E66478E.90102@redhat.com> <alpine.DEB.2.01.1109060923340.9183@trent.utfs.org>
+Date: Tue, 6 Sep 2011 11:14:50 -0700 (PDT)
+Message-ID: <alpine.DEB.2.01.1109061105450.9183@trent.utfs.org>
+References: <alpine.DEB.2.01.1109021346290.9183@trent.utfs.org> <4E66478E.90102@redhat.com> <alpine.DEB.2.01.1109060923340.9183@trent.utfs.org> <4E664DFD.80308@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: linux-ext4@vger.kernel.org
-To: Christian Kujau <lists@nerdbynature.de>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38624 "EHLO mx1.redhat.com"
+Received: from trent.utfs.org ([194.246.123.103]:48245 "EHLO trent.utfs.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753061Ab1IFR3s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Sep 2011 13:29:48 -0400
-In-Reply-To: <alpine.DEB.2.01.1109060923340.9183@trent.utfs.org>
+	id S1753628Ab1IFSOy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Sep 2011 14:14:54 -0400
+In-Reply-To: <4E664DFD.80308@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 9/6/11 11:37 AM, Christian Kujau wrote:
-> On Tue, 6 Sep 2011 at 11:17, Eric Sandeen wrote:
->> It's probably not a bug or flaw; orphan inodes can occur for legitimate
->> reasons (fs goes down while someone is holding open an unlinked file),
+On Tue, 6 Sep 2011 at 11:44, Eric Sandeen wrote:
+> > remount the filesystem rw and then ro again every day. I guess this equals
+> > the scenario of "fs goes down (remount!) while someone is holding open a 
+> > file"?
 > 
-> The filesystem is being constantly accessed by an application, holding at 
-> least one file open (readonly). And then there is this mechanism trying to 
-> remount the filesystem rw and then ro again every day. I guess this equals
-> the scenario of "fs goes down (remount!) while someone is holding open a 
-> file"?
+> well, no - "goes down" means "crashed or lost power"
 
-well, no - "goes down" means "crashed or lost power"
+Hm, the machine and its storage is online all the time and the messages 
+occur inbetween downtimes.
 
->> Did you happen to also get a message like this on the original mount?
->>                 ext4_msg(sb, KERN_ERR, "write access "
->>                         "unavailable, skipping orphan cleanup");
+> well, as the commit said, it'd be nice to handle it in remount, yes... :(
+
+If my daily remounts are causing this, it's unforuntate. But it's nice to 
+know that now. It'd be more worrying that someting else is slowly 
+corrupting the fs.
+
+> well, seems like you need to get to the root cause of the unprocessed
+> orphan inodes.
 > 
-> I think I've seen this message before, but I'm nore sure where and it's 
-> not in the logs of this particular system.
-> 
->> See also commit: 
->>
->> commit ead6596b9e776ac32d82f7d1931d7638e6d4a7bd
->> Author: Eric Sandeen <sandeen@redhat.com>
->> Date:   Sat Feb 10 01:46:08 2007 -0800
->>
->>     [PATCH] ext4: refuse ro to rw remount of fs with orphan inodes
-> 
-> Yes, I've seen this commit when I was searching where this message came
-> from. And I think I understand now why this is happening, but 
-> still...if I may ask: can't this be handled more elegantly? Do other 
-> filesystems have the same problem?
+> I don't yet have my post-vacation thinking cap back on... does cycling
+> rw/ro/rw/ro with open & unlinked files cause an orphan inode situation?
 
-well, as the commit said, it'd be nice to handle it in remount, yes... :(
+This is almost all I do on this fs. The whole process is:
 
-> Right now the procedure is to pause the application, stop the nfs exports,
-> unmount, fsck, mount, start nfs exports and resume the application. And
-> every few days/weeks this has to be repeated, "just because" these daily
-> remounts occur (which are the main reason for this, I suppose).
+1) fs is ro most of the time, while a remote application accesses it via 
+   a readonly nfs mount.
+2) once a day the fs gets remounted rw (the remote application does not 
+   know this and is still accessing the fs via the same ro-nfs mount
+3) backups are being pushed to the fs (via rsync, using hardlinks a lot)
+4) fs is remounted ro again
+5) at some point the remote application notices that the nfs mount went
+   stale and has to remount its readonly nfs-mount
 
-well, seems like you need to get to the root cause of the unprocessed
-orphan inodes.
+Thanks,
+Christian.
+-- 
+BOFH excuse #93:
 
-I don't yet have my post-vacation thinking cap back on... does cycling
-rw/ro/rw/ro with open & unlinked files cause an orphan inode situation?
-
--Eric
-
-> Thanks for replying,
-> Christian.
-
+Feature not yet implemented
