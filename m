@@ -1,85 +1,109 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: fix possible overflow in ext4_trim_fs()
-Date: Tue, 6 Sep 2011 08:26:07 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1109060821420.4596@dhcp-27-109.brq.redhat.com>
-References: <1315233249-27167-1-git-send-email-lczerner@redhat.com> <4E659E71.7050008@tao.ma>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu
-To: Tao Ma <tm@tao.ma>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: only call ext4_jbd2_file_inode when an inode has been extended
+Date: Tue,  6 Sep 2011 02:38:26 -0400
+Message-ID: <1315291106-25551-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Allison Henderson <achender@linux.vnet.ibm.com>,
+	Jan Kara <jack@suse.cz>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:15322 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752781Ab1IFG0O (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Sep 2011 02:26:14 -0400
-In-Reply-To: <4E659E71.7050008@tao.ma>
+Received: from li9-11.members.linode.com ([67.18.176.11]:58575 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752802Ab1IFGib (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Sep 2011 02:38:31 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 6 Sep 2011, Tao Ma wrote:
+In delayed allocation mode, it's important to only call
+ext4_jbd2_file_inode when the file has been extended.  This is
+necessary to avoid a race which first got introduced in commit
+678aaf481, but which was made much more common with the introduction
+of the "punch hole" functionality.  (Especially when dioread_nolock
+was enabled; when I could reliably reproduce this problem with
+xfstests #74.)
 
-> Hi Lucas,
-> On 09/05/2011 10:34 PM, Lukas Czerner wrote:
-> > In ext4_trim_fs it is possible that start+len might overflow. Fix it by
-> > decrementing the len so that start+len equals to the file system size in
-> > the worst case.
-> Actually start + len can never overflow since they are changed by
-> start = range->start >> sb->s_blocksize_bits;
-> len = range->len >> sb->s_blocksize_bits;
-> 
-> range->start and range->len are u64, and after they are shifted with
-> blocksize_bits, start+len(ext4_fsblk_t is also 64bit) can't overflow.
-> 
-> Thanks
-> Tao
+The race is this: If while trying to writeback a delayed allocation
+inode, there is a need to map delalloc blocks, and we run out of space
+in the journal, *and* at the same time the inode is already on the
+committing transaction's t_inode_list (because for example while doing
+the punch hole operation, ext4_jbd2_file_inode() is called), then the
+commit operation will wait for the inode to finish all of its pending
+writebacks by calling filemap_fdatawait(), but since that inode has
+one or more pages with the PageWriteback flag set, the commit
+operation will wait forever, and the so the writeback of the inode can
+never take place, and the kjournald thread and the writeback thread
+end up waiting for each other --- forever.
 
-Hi Tao,
+It's important at this point to recall why an inode is placed on the
+t_inode_list; it is to provide the data=ordered guarantees that we
+don't end up exposing stale data.  In the case where we are truncating
+or punching a hole in the inode, there is no possibility that stale
+data could be exposed in the first place, so we don't need to put the
+inode on the t_inode_list!
 
-I am really sorry for badly worded commit description. The problem is
-real, however as you pointed out the overflow does not happen in
-len+start addition but in ext4_get_group_no_and_offset() when we are
-storing group number into the ext4_group_t which is 32 bit long, but
-the result of do_div() might be bigger than that.
+The right long-term fix is to get rid of data=ordered mode altogether,
+and only update the extent tree or indirect blocks after the data has
+been written.  Until then, this change will also avoid some
+unnecessary waiting in the commit operation.
 
-I will rephrase the commit description and resend the patch. I was doing
-similar thing for xfs and I have just used almost the same description
-which is wrong.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Allison Henderson <achender@linux.vnet.ibm.com>
+Cc: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/inode.c |   23 ++++++++---------------
+ 1 files changed, 8 insertions(+), 15 deletions(-)
 
-Thanks!
--Lukas
-
-> > 
-> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> > ---
-> >  fs/ext4/mballoc.c |    6 +++++-
-> >  1 files changed, 5 insertions(+), 1 deletions(-)
-> > 
-> > diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> > index 17a5a57..d86dc14 100644
-> > --- a/fs/ext4/mballoc.c
-> > +++ b/fs/ext4/mballoc.c
-> > @@ -4952,14 +4952,18 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
-> >  	uint64_t start, len, minlen, trimmed = 0;
-> >  	ext4_fsblk_t first_data_blk =
-> >  			le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
-> > +	ext4_fsblk_t max_blks = ext4_blocks_count(EXT4_SB(sb)->s_es);
-> >  	int ret = 0;
-> >  
-> >  	start = range->start >> sb->s_blocksize_bits;
-> >  	len = range->len >> sb->s_blocksize_bits;
-> >  	minlen = range->minlen >> sb->s_blocksize_bits;
-> >  
-> > -	if (unlikely(minlen > EXT4_BLOCKS_PER_GROUP(sb)))
-> > +	if (unlikely(minlen > EXT4_BLOCKS_PER_GROUP(sb)) ||
-> > +	    unlikely(start > max_blks))
-> >  		return -EINVAL;
-> > +	if (unlikely(len > max_blks))
-> > +		len = max_blks - start;
-> >  	if (start + len <= first_data_blk)
-> >  		goto out;
-> >  	if (start < first_data_blk) {
-> 
-> 
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index d1b1ef7..f86b149 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1471,13 +1471,13 @@ static void mpage_da_map_and_submit(struct mpage_da_data *mpd)
+ 
+ 		for (i = 0; i < map.m_len; i++)
+ 			unmap_underlying_metadata(bdev, map.m_pblk + i);
+-	}
+ 
+-	if (ext4_should_order_data(mpd->inode)) {
+-		err = ext4_jbd2_file_inode(handle, mpd->inode);
+-		if (err)
+-			/* This only happens if the journal is aborted */
+-			return;
++		if (ext4_should_order_data(mpd->inode)) {
++			err = ext4_jbd2_file_inode(handle, mpd->inode);
++			if (err)
++				/* Only if the journal is aborted */
++				return;
++		}
+ 	}
+ 
+ 	/*
+@@ -3173,12 +3173,8 @@ int ext4_discard_partial_page_buffers_no_lock(handle_t *handle,
+ 		err = 0;
+ 		if (ext4_should_journal_data(inode)) {
+ 			err = ext4_handle_dirty_metadata(handle, inode, bh);
+-		} else {
+-			if (ext4_should_order_data(inode) &&
+-			   EXT4_I(inode)->jinode)
+-				err = ext4_jbd2_file_inode(handle, inode);
++		} else
+ 			mark_buffer_dirty(bh);
+-		}
+ 
+ 		BUFFER_TRACE(bh, "Partial buffer zeroed");
+ next:
+@@ -3301,11 +3297,8 @@ int ext4_block_zero_page_range(handle_t *handle,
+ 	err = 0;
+ 	if (ext4_should_journal_data(inode)) {
+ 		err = ext4_handle_dirty_metadata(handle, inode, bh);
+-	} else {
+-		if (ext4_should_order_data(inode) && EXT4_I(inode)->jinode)
+-			err = ext4_jbd2_file_inode(handle, inode);
++	} else
+ 		mark_buffer_dirty(bh);
+-	}
+ 
+ unlock:
+ 	unlock_page(page);
 -- 
+1.7.4.1.22.gec8e1.dirty
+
