@@ -1,96 +1,74 @@
-From: MaoXiaoyun <tinnycloud@hotmail.com>
-Subject: RE: ext4 BUG in dom0 Kernel 2.6.32.36
-Date: Tue, 6 Sep 2011 23:11:56 +0800
-Message-ID: <BLU157-W4106FA4CF4EBA78C63FDA0DA1C0@phx.gbl>
-References: <BLU157-W499E698F650F554E645F9DDA1C0@phx.gbl>,
-	<20110906145347.GA4133@dumpdata.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: only call ext4_jbd2_file_inode when an inode has
+ been extended
+Date: Tue, 6 Sep 2011 11:36:01 -0400
+Message-ID: <20110906153601.GA20571@thunk.org>
+References: <1315291106-25551-1-git-send-email-tytso@mit.edu>
+ <20110906100253.GB23747@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1819275364=="
-Cc: jeremy@goop.org, linux-ext4@vger.kernel.org,
-	xen devel <xen-devel@lists.xensource.com>
-To: <konrad.wilk@oracle.com>
-Return-path: <xen-devel-bounces@lists.xensource.com>
-In-Reply-To: <20110906145347.GA4133@dumpdata.com>
-List-Unsubscribe: <http://lists.xensource.com/mailman/listinfo/xen-devel>,
-	<mailto:xen-devel-request@lists.xensource.com?subject=unsubscribe>
-List-Post: <mailto:xen-devel@lists.xensource.com>
-List-Help: <mailto:xen-devel-request@lists.xensource.com?subject=help>
-List-Subscribe: <http://lists.xensource.com/mailman/listinfo/xen-devel>,
-	<mailto:xen-devel-request@lists.xensource.com?subject=subscribe>
-Sender: xen-devel-bounces@lists.xensource.com
-Errors-To: xen-devel-bounces@lists.xensource.com
-List-Id: linux-ext4.vger.kernel.org
-
---===============1819275364==
-Content-Type: multipart/alternative;
-	boundary="_88720937-3531-4584-a055-432612a6bc85_"
-
---_88720937-3531-4584-a055-432612a6bc85_
-Content-Type: text/plain; charset="gb2312"
-Content-Transfer-Encoding: 8bit
-
-
- 
-
-> Date: Tue, 6 Sep 2011 10:53:47 -0400
-> From: konrad.wilk@oracle.com
-> To: tinnycloud@hotmail.com
-> CC: linux-ext4@vger.kernel.org; xen-devel@lists.xensource.com; jeremy@goop.org
-> Subject: Re: ext4 BUG in dom0 Kernel 2.6.32.36
-> 
-> On Tue, Sep 06, 2011 at 03:24:14PM +0800, MaoXiaoyun wrote:
-> > 
-> > 
-> > Hi:
-> > 
-> > I've met an ext4 Bug in dom0 kernel 2.6.32.36. (See kernel stack below)
-> 
-> Did you try the 3.0 kernel?
-No,  I am afried the change would be to much for our current env.
-May result in other stable issue.
-So, I want to dig out what really happen. Hopes.
- 
-Thanks. 		 	   		  
---_88720937-3531-4584-a055-432612a6bc85_
-Content-Type: text/html; charset="gb2312"
-Content-Transfer-Encoding: 8bit
-
-<html>
-<head>
-<style><!--
-.hmmessage P
-{
-margin:0px;
-padding:0px
-}
-body.hmmessage
-{
-font-size: 10pt;
-font-family:Î¢ÈíÑÅºÚ
-}
---></style>
-</head>
-<body class='hmmessage'><div dir='ltr'>
-&nbsp;<BR>
-<DIV>
-&gt; Date: Tue, 6 Sep 2011 10:53:47 -0400<BR>&gt; From: konrad.wilk@oracle.com<BR>&gt; To: tinnycloud@hotmail.com<BR>&gt; CC: linux-ext4@vger.kernel.org; xen-devel@lists.xensource.com; jeremy@goop.org<BR>&gt; Subject: Re: ext4 BUG in dom0 Kernel 2.6.32.36<BR>&gt; <BR>&gt; On Tue, Sep 06, 2011 at 03:24:14PM +0800, MaoXiaoyun wrote:<BR>&gt; &gt; <BR>&gt; &gt; <BR>&gt; &gt; Hi:<BR>&gt; &gt; <BR>&gt; &gt; I've met an ext4 Bug in dom0 kernel 2.6.32.36. (See kernel stack below)<BR>&gt; <BR>&gt; Did you try the 3.0 kernel?<BR>No,&nbsp; I am afried the change would be to much for our current env.</DIV>
-<DIV>May result in other stable issue.</DIV>
-<DIV>So, I want to dig out what really happen. Hopes.</DIV>
-<DIV>&nbsp;</DIV>
-<DIV>Thanks.</DIV> 		 	   		  </div></body>
-</html>
---_88720937-3531-4584-a055-432612a6bc85_--
-
-
---===============1819275364==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Allison Henderson <achender@linux.vnet.ibm.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:57411 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754980Ab1IFPgG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Sep 2011 11:36:06 -0400
 Content-Disposition: inline
+In-Reply-To: <20110906100253.GB23747@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-_______________________________________________
-Xen-devel mailing list
-Xen-devel@lists.xensource.com
-http://lists.xensource.com/xen-devel
+On Tue, Sep 06, 2011 at 12:02:53PM +0200, Jan Kara wrote:
+>   Umm, I don't quite understand the race. It seems to me we can block on
+> lack of journal space during writeback only in ext4_da_writepages() where
+> we do ext4_journal_start(). But at that point there shouldn't be any pages
+> with PageWriteback set which were not submitted for IO. So it's not clear
+> to me why PageWriteback bit does not get cleared when IO finishes and
+> kjournald would then continue. Is it because IO completion is somehow
+> blocked on journal?
 
---===============1819275364==--
+No, you're right.  I looked more closely at it and the problem is
+because of the end_io handling.  There was a thead blocked in
+mpage_da_map_and_submit path but it was blocked in
+ext4_get_wite_access(), and it was not holding PageWriteback at the
+time.
+
+> That would seem possible as I'm looking e.g. into
+> ext4_convert_unwritten_extents(). But then any waiting for writeback from
+> kjournald is prone to deadlocks. In fact regardless of what kjournald does
+> there does not seem to be sane lock ordering since we have:
+> 
+> transaction start -> PageWriteback -> transaction start
+>                   ^                ^
+>                   |         end_io handling if I'm right
+>       enforced by write_cache_pages_da
+> 
+>   Which is really nasty. We cannot end page writeback until the page is
+> readable from disk which means until we have properly updated extent tree.
+> But for extent tree update we need a transaction. The only way out I can
+> see is to reserve space for extent tree update in a transaction in
+> writepages() and holding the transaction open until end_io time when we
+> change extent tree and close the transaction. But I'm afraid that's going
+> to suck under heavy load... 
+
+Yes, that's a problem with ext4_convert_unwritten_extents() being
+called out of end_io handling, and of course dioread_nolock does a lot
+more of that, hence why it shows up in that mode.
+
+I think the long-term solution here is that we have to reserve space
+and make the allocation decision at writepages() time, but we don't
+actually modify any on-disk state, hence we don't have to hold a
+transaction open.  We just prevent those disk blocks from getting
+allocated anywhere else, and we tentative assoicate physical blocks
+with the logical block numbers, but in a memory structure only.  Then
+when the pages are written, we can drop PageWriteback.  We don't have
+to wait until the extent blocks are written to disk, so long as any
+callers of ext4_map_blocks() get the right information (via an
+in-memory cache that we would have to add to make this whole thing
+first), and so long as fsync() not only calls filemap_fdatawrite(),
+but also waits for the metadata updates to the extent tree/indirect
+blocks have been completed.
+
+						- Ted
