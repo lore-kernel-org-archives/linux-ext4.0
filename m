@@ -1,88 +1,164 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: BUG: i_size and i_blocks corruption on ext4 with ^huge_file
-Date: Tue, 06 Sep 2011 10:58:59 -0500
-Message-ID: <4E664343.8020009@redhat.com>
-References: <4E5AEF3B.8090207@wm.jp.nec.com>
+Subject: Re: EXT4-fs (dm-1): Couldn't remount RDWR because of unprocessed
+ orphan inode list
+Date: Tue, 06 Sep 2011 11:17:18 -0500
+Message-ID: <4E66478E.90102@redhat.com>
+References: <alpine.DEB.2.01.1109021346290.9183@trent.utfs.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Utako Kusaka <u-kusaka@wm.jp.nec.com>
+Cc: linux-ext4@vger.kernel.org
+To: Christian Kujau <lists@nerdbynature.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56093 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52666 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754598Ab1IFP7D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Sep 2011 11:59:03 -0400
-In-Reply-To: <4E5AEF3B.8090207@wm.jp.nec.com>
+	id S1751364Ab1IFQRX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Sep 2011 12:17:23 -0400
+In-Reply-To: <alpine.DEB.2.01.1109021346290.9183@trent.utfs.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 8/28/11 8:45 PM, Utako Kusaka wrote:
+On 9/2/11 4:00 PM, Christian Kujau wrote:
 > Hi,
 > 
-> In ext4 with ^huge_file, s_maxbytes is 2199023251456. But when I create a file
-> size of 2199023251456 bytes, i_size and i_blocks are corrupted.
+> for some time now, the following message keeps pooping up in my logs:
 > 
-> If a file size of 2TB is created, i_blocks including metadata blocks will be
-> over 32bit. 
+>  > EXT4-fs (dm-1): Couldn't remount RDWR because of unprocessed orphan 
+>  > inode list.  Please umount/remount instead
+> 
+> I don't know when it started. Maybe 2 months ago, I'd guess. The ext4 fs 
+> is on top of a dm-crypt device, attached via firewire to a 1TB external 
+> disk enclosure. The system (powerpc 32) is loosely following vanilla 
+> kernels, currently running 3.1.0-rc4.
+> 
+> The filesystem is normally mounted r/o but remounted r/w every day to 
+> receive backups, then remounted r/o again. Running e2fsck-1.41.12 with -n 
+> on the r/o-mounted devices gives the output below.
+> 
+> I've unmounted the disk some weeks ago, ran e2fsck for real and it fixed 
+> the errors. But now more errors seem to have occured.
+> 
+> Anyone got an idea why this keeps happening? Bad memory? Bad cables? Disk? 
+> No other hardware related errors are in the logs and the box is otherwise 
+> quite stable.
 
-For what sized filesystem block?  2T/4k is 2^29...
+It's probably not a bug or flaw; orphan inodes can occur for legitimate
+reasons (fs goes down while someone is holding open an unlinked file),
+and then they must be cleaned up.  If orphan inode processing was skipped
+for some reason on the original mount, you can get this error.
 
-Oh right, i_blocks is 512 units in this case.  :(  Argh.
+Did you happen to also get a message like this on the original mount?
 
-> So ext4_inode_blocks_set returns EFBIG, and i_size and i_blocks
-> are not updated in ext4_do_update_inode.
+        if (bdev_read_only(sb->s_bdev)) {
+                ext4_msg(sb, KERN_ERR, "write access "
+                        "unavailable, skipping orphan cleanup");
+                return;
+        }
 
-Seems like this could get quite tricky.
+?
 
-What if there is a very badly fragmented file which requires a lot of metadata?
-How could we calculate s_maxbytes to stop i_blocks from overflowing 32 bits?
+See also commit: 
 
-In ext3 we could calculate metadata blocks for a given size, but not in this case...
+commit ead6596b9e776ac32d82f7d1931d7638e6d4a7bd
+Author: Eric Sandeen <sandeen@redhat.com>
+Date:   Sat Feb 10 01:46:08 2007 -0800
 
-I suppose we could refuse to add blocks if we would overflow, but then s_maxbytes
-is misleading.
+    [PATCH] ext4: refuse ro to rw remount of fs with orphan inodes
+    
+    In the rare case where we have skipped orphan inode processing due to a
+    readonly block device, and the block device subsequently changes back to
+    read-write, disallow a remount,rw transition of the filesystem when we have an
+    unprocessed orphan inodes as this would corrupt the list.
+    
+    Ideally we should process the orphan inode list during the remount, but that's
+    trickier, and this plugs the hole for now.
+    
+    Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+    Cc: "Stephen C. Tweedie" <sct@redhat.com>
+    Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+    Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 486a641..463b52b 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2419,6 +2419,22 @@ static int ext4_remount (struct super_block * sb, int * flags, char * data)
+                                err = -EROFS;
+                                goto restore_opts;
+                        }
++
++                       /*
++                        * If we have an unprocessed orphan list hanging
++                        * around from a previously readonly bdev mount,
++                        * require a full umount/remount for now.
++                        */
++                       if (es->s_last_orphan) {
++                               printk(KERN_WARNING "EXT4-fs: %s: couldn't "
++                                      "remount RDWR because of unprocessed "
++                                      "orphan inode list.  Please "
++                                      "umount/remount instead.\n",
++                                      sb->s_id);
++                               err = -EINVAL;
++                               goto restore_opts;
++                       }
++
+                        /*
+                         * Mounting a RDONLY partition read-write, so reread
+                         * and store the current valid flag.  (It may have
 
 -Eric
 
-> e.g. fallocate
+> Thanks,
+> Christian.
 > 
-> ext4_fallocate
->     ext4_map_blocks
->     ext4_falloc_update_inode
->     ext4_mark_inode_dirty
->          ext4_do_update_inode
->               ext4_inode_blocks_set	<---- error
-> 
-> 
-> # uname -a
-> Linux mcds1 3.0.0 #2 SMP Mon Aug 8 17:58:28 JST 2011 x86_64 x86_64 x86_64 GNU/Linux
-> # mkfs -t ext4 -O ^huge_file /dev/vg0/lv0
-> # mount /dev/vg0/lv0 /mnt/mp1
-> # fallocate -o 0 -l 2199023251456 /mnt/mp1/testfile
-> # stat /mnt/mp1/testfile
->   File: `/mnt/mp1/testfile'
->   Size: 2199023251456	Blocks: 4294967688 IO Block: 4096   regular file
-> Device: fd00h/64768d	Inode: 12          Links: 1
-> Access: (0644/-rw-r--r--)  Uid: (    0/    root)   Gid: (    0/    root)
-> Access: 2011-08-09 10:20:31.008699267 +0900
-> Modify: 2011-08-09 10:20:31.008699267 +0900
-> Change: 2011-08-09 10:20:42.769699811 +0900
-> 
-> # umount /mnt/mp1
-> # e2fsck -ttf /dev/vg0/lv0
+> -------------------------------------------------
+> # fsck.ext4 -vnf /dev/mapper/wdc0 
 > e2fsck 1.41.12 (17-May-2010)
+> Warning!  /dev/mapper/wdc0 is mounted.
 > Pass 1: Checking inodes, blocks, and sizes
-> Inode 12, i_size is 2198888873984, should be 2199023251456.  Fix<y>? yes
+> Inodes that were part of a corrupted orphan linked list found.  Fix? no
 > 
-> Inode 12, i_blocks is 4294705232, should be 4294967688.  Fix<y>? yes
+> Inode 16385 was part of the orphaned inode list.  IGNORED.
+> Deleted inode 16439 has zero dtime.  Fix? no
 > 
-> :
+> Inode 2260993 was part of the orphaned inode list.  IGNORED.
+> Pass 2: Checking directory structure
+> Pass 3: Checking directory connectivity
+> Pass 4: Checking reference counts
+> Pass 5: Checking group summary information
+> Block bitmap differences:  -(9298--9299) -8921121
+> Fix? no
 > 
-> --
-> Utako Kusaka
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Inode bitmap differences:  -16385 -16439 -2260993
+> Fix? no
+> 
+> Directories count wrong for group #2 (72, counted=70).
+> Fix? no
+> 
+> Directories count wrong for group #276 (76, counted=75).
+> Fix? no
+> 
+> /dev/mapper/wdc0: ********** WARNING: Filesystem still has errors **********
+> 
+> 
+>   562145 inodes used (0.92%)
+>     3952 non-contiguous files (0.7%)
+>     2544 non-contiguous directories (0.5%)
+>          # of inodes with ind/dind/tind blocks: 0/0/0
+>          Extent depth histogram: 555449/932
+> 215226375 blocks used (88.14%)
+>        0 bad blocks
+>        5 large files
+> 
+>   353453 regular files
+>   202351 directories
+>        0 character device files
+>        0 block device files
+>        7 fifos
+>  2491335 links
+>     6235 symbolic links (5657 fast symbolic links)
+>       87 sockets
+> --------
+>  3053468 files
+> 
 
