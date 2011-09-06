@@ -1,60 +1,68 @@
-From: Christian Kujau <lists@nerdbynature.de>
-Subject: Re: EXT4-fs (dm-1): Couldn't remount RDWR because of unprocessed
- orphan inode list
-Date: Tue, 6 Sep 2011 09:37:46 -0700 (PDT)
-Message-ID: <alpine.DEB.2.01.1109060923340.9183@trent.utfs.org>
-References: <alpine.DEB.2.01.1109021346290.9183@trent.utfs.org> <4E66478E.90102@redhat.com>
+From: Allison Henderson <achender@linux.vnet.ibm.com>
+Subject: Re: [PATCH 0/6 v7] ext4: fix 1k block bugs
+Date: Tue, 06 Sep 2011 09:38:27 -0700
+Message-ID: <4E664C83.2080001@linux.vnet.ibm.com>
+References: <1314750513-10045-1-git-send-email-achender@linux.vnet.ibm.com> <20110906045942.GA4059@thunk.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from trent.utfs.org ([194.246.123.103]:44346 "EHLO trent.utfs.org"
+Received: from e7.ny.us.ibm.com ([32.97.182.137]:46992 "EHLO e7.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750731Ab1IFQht (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Sep 2011 12:37:49 -0400
-In-Reply-To: <4E66478E.90102@redhat.com>
+	id S1752000Ab1IFQic (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Sep 2011 12:38:32 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e7.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p86FIFbl007681
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Sep 2011 11:18:15 -0400
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p86GcTtT183628
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Sep 2011 12:38:30 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p86GcTGb018835
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Sep 2011 12:38:29 -0400
+In-Reply-To: <20110906045942.GA4059@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 6 Sep 2011 at 11:17, Eric Sandeen wrote:
-> It's probably not a bug or flaw; orphan inodes can occur for legitimate
-> reasons (fs goes down while someone is holding open an unlinked file),
-
-The filesystem is being constantly accessed by an application, holding at 
-least one file open (readonly). And then there is this mechanism trying to 
-remount the filesystem rw and then ro again every day. I guess this equals
-the scenario of "fs goes down (remount!) while someone is holding open a 
-file"?
-
-> Did you happen to also get a message like this on the original mount?
->                 ext4_msg(sb, KERN_ERR, "write access "
->                         "unavailable, skipping orphan cleanup");
-
-I think I've seen this message before, but I'm nore sure where and it's 
-not in the logs of this particular system.
-
-> See also commit: 
+On 09/05/2011 09:59 PM, Ted Ts'o wrote:
+> Allison,
 >
-> commit ead6596b9e776ac32d82f7d1931d7638e6d4a7bd
-> Author: Eric Sandeen <sandeen@redhat.com>
-> Date:   Sat Feb 10 01:46:08 2007 -0800
-> 
->     [PATCH] ext4: refuse ro to rw remount of fs with orphan inodes
+> Many, many thanks for your work on this patch series!!  It's clearly
+> been a very long slog.
+>
+> I've pulled in the first three patches, since I think those are
+> clearly correct at this point.  One minor change I've made was I fixed
+> the spelling the flag, which I channged to
+> EXT4_DISCARD_PARTIAL_PG_ZERO_UNMAPPED.  (Sorry, but seeing MAPED
+> everywhere was just grating on my nerves.  :-)
+>
+> I didn't want to apply your 4th patch in the series since we're
+> planning on reducing the usage of i_mutex in the fs/ext4 code proper,
+> as recommended by Christoph.  It wasn't immediately obvious to me
+> whether it was safe to apply any of the patches after #4, so for now
+> I've just merged in the first three, since they clearly fix real
+> problems that show up in xfstests.
+>
+> Can you comment on whether patches #5, #6, and #7 depend on #4?
+>
+> Thanks,
+>
+> 						- Ted
 
-Yes, I've seen this commit when I was searching where this message came
-from. And I think I understand now why this is happening, but 
-still...if I may ask: can't this be handled more elegantly? Do other 
-filesystems have the same problem?
+Hi Ted,
 
-Right now the procedure is to pause the application, stop the nfs exports,
-unmount, fsck, mount, start nfs exports and resume the application. And
-every few days/weeks this has to be repeated, "just because" these daily
-remounts occur (which are the main reason for this, I suppose).
+Patches 5 and 6 do not depend on 4, and this set only has 6 patches, so 
+no need to worry about patch 7 :)  So it is ok to just skip patch 4, I 
+will see if I can find another way to solve the race conditions 
+Yongqiang pointed out with out the use of i_mutex.  Many thanks to you 
+too for all the help along the way. :)
 
-Thanks for replying,
-Christian.
--- 
-BOFH excuse #190:
+Allison Henderson
 
-Proprietary Information.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
