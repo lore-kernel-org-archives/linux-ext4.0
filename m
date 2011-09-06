@@ -1,42 +1,36 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 0/6 v7] ext4: fix 1k block bugs
-Date: Tue, 6 Sep 2011 00:59:42 -0400
-Message-ID: <20110906045942.GA4059@thunk.org>
-References: <1314750513-10045-1-git-send-email-achender@linux.vnet.ibm.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 41682] INFO: possible circular locking dependency detected ..
+ at ext4_evict_inode
+Date: Tue, 6 Sep 2011 05:56:55 GMT
+Message-ID: <201109060556.p865utcL032648@demeter1.kernel.org>
+References: <bug-41682-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Allison Henderson <achender@linux.vnet.ibm.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:59837 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751121Ab1IFE7r (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Sep 2011 00:59:47 -0400
-Content-Disposition: inline
-In-Reply-To: <1314750513-10045-1-git-send-email-achender@linux.vnet.ibm.com>
+Received: from demeter1.kernel.org ([140.211.167.39]:56624 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752031Ab1IFF44 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Sep 2011 01:56:56 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.4) with ESMTP id p865utIt032649
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Sep 2011 05:56:55 GMT
+In-Reply-To: <bug-41682-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Allison,
+https://bugzilla.kernel.org/show_bug.cgi?id=41682
 
-Many, many thanks for your work on this patch series!!  It's clearly
-been a very long slog.
 
-I've pulled in the first three patches, since I think those are
-clearly correct at this point.  One minor change I've made was I fixed
-the spelling the flag, which I channged to
-EXT4_DISCARD_PARTIAL_PG_ZERO_UNMAPPED.  (Sorry, but seeing MAPED
-everywhere was just grating on my nerves.  :-)
 
-I didn't want to apply your 4th patch in the series since we're
-planning on reducing the usage of i_mutex in the fs/ext4 code proper,
-as recommended by Christoph.  It wasn't immediately obvious to me
-whether it was safe to apply any of the patches after #4, so for now
-I've just merged in the first three, since they clearly fix real
-problems that show up in xfstests.
 
-Can you comment on whether patches #5, #6, and #7 depend on #4?
 
-Thanks,
+--- Comment #12 from Shaun Ruffell <sruffell@sruffell.net>  2011-09-06 05:56:45 ---
+Probably this comment isn't needed, but I too have applied the patch and
+haven't had any other strange behavior on 3.1-rc4.
 
-						- Ted
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
