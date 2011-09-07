@@ -1,63 +1,64 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: [BUG] ext3: cannot unfreeze a filesystem due to a deadlock
-Date: Wed, 7 Sep 2011 12:45:34 -0400
-Message-ID: <CAGpXXZL=+K0ETvM0kGE6zqe3pB7AS_exU+dCbpm+uUSG2JJ+0A@mail.gmail.com>
-References: <20110907122929.3715.61FB500B@jp.fujitsu.com> <20110907064006.GA16042@infradead.org>
+From: Anton Blanchard <anton@samba.org>
+Subject: Re: [PATCH] percpu_counter: Put a reasonable upper bound on
+ percpu_counter_batch
+Date: Wed, 7 Sep 2011 21:08:55 +1000
+Message-ID: <20110907210855.414d417e@kryten>
+References: <20110826072622.406d3395@kryten>
+	<20110826072927.5b4781f9@kryten>
+	<1314347983.2563.1.camel@edumazet-HP-Compaq-6005-Pro-SFF-PC>
+	<20110829214609.495ee299@kryten>
+	<20110906034851.GC18425@mtj.dyndns.org>
+	<EEB2FCE2-3C14-406E-BD0E-FD27D091C492@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
-	Jan Kara <jack@suse.cz>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20110907064006.GA16042@infradead.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Tejun Heo <tj@kernel.org>, Eric Dumazet <eric.dumazet@gmail.com>,
+	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Theodore Tso <tytso@MIT.EDU>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ozlabs.org ([203.10.76.45]:56420 "EHLO ozlabs.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754851Ab1IGRFN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Sep 2011 13:05:13 -0400
+In-Reply-To: <EEB2FCE2-3C14-406E-BD0E-FD27D091C492@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 7, 2011 at 2:40 AM, Christoph Hellwig <hch@infradead.org> w=
-rote:
-> On Wed, Sep 07, 2011 at 12:29:30PM +0900, Masayoshi MIZUMA wrote:
->> Hi,
->>
->> When I checked the freeze feature for ext3 filesystem using fsfreeze
->> command at 3.1.0-rc4, I think the following deadlock problem happene=
-d.
->>
->> How to reproduce:
->> =A0# mkfs -t ext3 /dev/sdd1
->> =A0# mount /dev/sdd1 /MNT
->> =A0# ./fsstress -d /MNT/tmp -n 10 -p 1000 > /dev/null 2>&1 &
->> =A0# fsfreeze -f /MNT
->> =A0# fsfreeze -u /MNT
->
-> Can you add this testcase to xfstests?
 
-Christoph,
+Hi Ted,
 
-Isn't that just a matter of extending test 068 to ext4
+> Um, this was an ext4 patch and I pointed out it could cause
+> problems.  (Specifically, data loss=E2=80=A6)
 
-=3D=3D=3D=3D
---- 068 2011-06-30 18:41:17.000000000 -0400
-+++ 068.new     2011-09-07 12:41:35.000000000 -0400
-@@ -51,7 +51,7 @@
- . ./common.filter
+I'm a bit confused. While the comment mentions ext4, the patch is just
+putting an upper bound on the size of percpu_counter_batch and it is
+useful for percpu_counter_compare() too:
 
- # real QA test starts here
--_supported_fs xfs
-+_supported_fs xfs ext3 ext4
- _supported_os Linux IRIX
+ static void compute_batch_value(void)
+ {
+        int nr =3D num_online_cpus();
 
- _require_scratch
-=3D=3D=3D=3D
+-       percpu_counter_batch =3D max(32, nr*2);
++       /*
++        * The cutoff point for the percpu_counter_compare() fast path =
+grows
++        * at num_online_cpus^2 and on a big enough machine it will be
++        * unlikely to hit.
++        * We clamp the batch value to 1024 so the cutoff point only gr=
+ows
++        * linearly past 512 CPUs.
++        */
++       percpu_counter_batch =3D clamp(nr*2, 32, 1024);
+ }
 
-That's a totally untested patch if someone wants to try it.
+The batch value should be opaque to the rest of the kernel. If ext4
+requires a specific batch value we can use the functions that take
+an explicit one (eg __percpu_counter_add).
 
-Greg
+Anton
 --
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
 the body of a message to majordomo@vger.kernel.org
 More majordomo info at  http://vger.kernel.org/majordomo-info.html
