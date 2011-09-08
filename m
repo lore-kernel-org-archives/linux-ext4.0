@@ -1,43 +1,40 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v2] ext4: make quota as first class supported feature
-Date: Sat, 10 Sep 2011 22:24:09 +0200
-Message-ID: <20110910202409.GB6709@quack.suse.cz>
-References: <1313780769-21713-1-git-send-email-adityakali@google.com>
- <0EC4FCD1-1DBB-417C-BE5D-4B39ABD67A56@dilger.ca>
- <20110829204602.GI5672@quack.suse.cz>
- <20110909154057.GA7738@infradead.org>
+Subject: Re: [RFC PATCH 3/5] ext4: add operations on delayed extent tree
+Date: Thu, 8 Sep 2011 20:58:51 +0200
+Message-ID: <20110908185851.GB2393@quack.suse.cz>
+References: <1314694821-17213-1-git-send-email-xiaoqiangnk@gmail.com>
+ <1314694821-17213-4-git-send-email-xiaoqiangnk@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
-	Aditya Kali <adityakali@google.com>,
-	"tytso@mit.edu" <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-ext4@vger.kernel.org, achender@linux.vnet.ibm.com,
+	adityakali@google.com, tytso@mit.edu
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:43572 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:43998 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933495Ab1IJUYM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 10 Sep 2011 16:24:12 -0400
+	id S933495Ab1IJUdo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 10 Sep 2011 16:33:44 -0400
+Received: from relay1.suse.de (charybdis-ext.suse.de [195.135.221.2])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx2.suse.de (Postfix) with ESMTP id 82C5489471
+	for <linux-ext4@vger.kernel.org>; Sat, 10 Sep 2011 22:33:43 +0200 (CEST)
 Content-Disposition: inline
-In-Reply-To: <20110909154057.GA7738@infradead.org>
+In-Reply-To: <1314694821-17213-4-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 09-09-11 11:40:57, Christoph Hellwig wrote:
-> On Mon, Aug 29, 2011 at 10:46:02PM +0200, Jan Kara wrote:
-> > The only pain point is repquota(8) - that needs a new kernel interface to
-> > work reliably (for ocfs2 and xfs we workaround the inability to iterate
-> > over all quota structures from userspace by using getpwent but that's just
-> > ugly).
+On Tue 30-08-11 17:00:19, Yongqiang Yang wrote:
+> This patch adds operations on a delayed extent tree.
 > 
-> Feel free to a new quotactl case to support it, but I don't reall see
-> the problem of the getpwent loop.
-  Well, the trouble is with systems which have accounts stored e.g. in
-LDAP with thousands / tens thousands of users (although each machine is
-used only by a small subset of users). Then iterating with getpwent gets
-really inefficient...
+> Signed-off-by; Yongqiang Yang <xiaoqiangnk@gmail.com>
+> 
+> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+  I don't have time to do a full review of the series now but I definitely
+think you should use RB tree to track extents. For big files written in
+random manner we will just burn lots of CPU cycles needlessly...
 
-									Honza
+								Honza
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
