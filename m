@@ -1,7 +1,7 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Subject: Re: [RFC PATCH 3/5] ext4: add operations on delayed extent tree
-Date: Fri, 9 Sep 2011 09:14:02 +0800
-Message-ID: <CAGBYx2a6nP75B_MigovDUPHSGALqQ-ar5Qb37vwTBgurxgfBjg@mail.gmail.com>
+Date: Fri, 9 Sep 2011 10:46:57 +0800
+Message-ID: <CAGBYx2Yvvf7R4Thw6b7HjtQFZxw1yGG_-Syzgh8YuxuVxdOs+A@mail.gmail.com>
 References: <1314694821-17213-1-git-send-email-xiaoqiangnk@gmail.com>
 	<1314694821-17213-4-git-send-email-xiaoqiangnk@gmail.com>
 	<20110908185851.GB2393@quack.suse.cz>
@@ -12,12 +12,12 @@ Cc: linux-ext4@vger.kernel.org, achender@linux.vnet.ibm.com,
 	adityakali@google.com, tytso@mit.edu
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gw0-f42.google.com ([74.125.83.42]:46375 "EHLO
-	mail-gw0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758132Ab1IIBOD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Sep 2011 21:14:03 -0400
-Received: by gwb17 with SMTP id 17so651957gwb.1
-        for <linux-ext4@vger.kernel.org>; Thu, 08 Sep 2011 18:14:03 -0700 (PDT)
+Received: from mail-yi0-f46.google.com ([209.85.218.46]:49452 "EHLO
+	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751175Ab1IICq6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Sep 2011 22:46:58 -0400
+Received: by yie30 with SMTP id 30so491246yie.19
+        for <linux-ext4@vger.kernel.org>; Thu, 08 Sep 2011 19:46:58 -0700 (PDT)
 In-Reply-To: <20110908185851.GB2393@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -34,10 +34,9 @@ nitely
 > think you should use RB tree to track extents. For big files written =
 in
 > random manner we will just burn lots of CPU cycles needlessly...
-I planned to use RB instead,  I sent out this series to collect feedbac=
-ks.
-
-Thank you.
+BTW:  Do we need to use RB tree for preallocations as well?  I
+suspects that preallocations has same problem with delayed extent
+list.
 
 Yongqiang.
 >
