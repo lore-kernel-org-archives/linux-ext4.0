@@ -1,137 +1,507 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: [BUG] ext3: cannot unfreeze a filesystem due to a deadlock
-Date: Thu, 8 Sep 2011 23:05:54 -0400
-Message-ID: <CAGpXXZKtn0NUoJK1ejz3qASw07enxetd+fq-kTW_CRP9+a85KQ@mail.gmail.com>
-References: <20110907122929.3715.61FB500B@jp.fujitsu.com> <20110907173444.GF7725@quack.suse.cz>
- <CAGpXXZ+JdCXv3K4ASWhum=iW7TTQ+k0HYBHkQNnVWVQ7j-Wtrg@mail.gmail.com> <20110907223208.GH7725@quack.suse.cz>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [RFC PATCH 3/5] ext4: add operations on delayed extent tree
+Date: Fri, 9 Sep 2011 11:32:36 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1109091115130.3534@dhcp-27-109.brq.redhat.com>
+References: <1314694821-17213-1-git-send-email-xiaoqiangnk@gmail.com> <1314694821-17213-4-git-send-email-xiaoqiangnk@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Valerie Aurora <val@vaaconsulting.com>
-To: Jan Kara <jack@suse.cz>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org, achender@linux.vnet.ibm.com,
+	adityakali@google.com, tytso@mit.edu
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yi0-f46.google.com ([209.85.218.46]:57331 "EHLO
-	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752056Ab1IIDGZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Sep 2011 23:06:25 -0400
-In-Reply-To: <20110907223208.GH7725@quack.suse.cz>
+Received: from mx1.redhat.com ([209.132.183.28]:27304 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753406Ab1IIJcp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 9 Sep 2011 05:32:45 -0400
+In-Reply-To: <1314694821-17213-4-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 7, 2011 at 6:32 PM, Jan Kara <jack@suse.cz> wrote:
->
-> On Wed 07-09-11 13:56:08, Greg Freemyer wrote:
-> > On Wed, Sep 7, 2011 at 1:34 PM, Jan Kara <jack@suse.cz> wrote:
-> > > =A0Hello,
-> > >
-> > > =A0Thanks for report!
-> > >
-> > > On Wed 07-09-11 12:29:30, Masayoshi MIZUMA wrote:
-> > >> When I checked the freeze feature for ext3 filesystem using fsfr=
-eeze
-> > >> command at 3.1.0-rc4, I think the following deadlock problem hap=
-pened.
-> > >>
-> > >> How to reproduce:
-> > >> =A0# mkfs -t ext3 /dev/sdd1
-> > >> =A0# mount /dev/sdd1 /MNT
-> > >> =A0# ./fsstress -d /MNT/tmp -n 10 -p 1000 > /dev/null 2>&1 &
-> > >> =A0# fsfreeze -f /MNT
-> > >> =A0# fsfreeze -u /MNT
-> > >>
-> > >> =A0If this deadlock is reproduced, "fsfreeze -u /MNT" does not r=
-eturn.
-> > >>
-> > >> The detail of deadlock:
-> > >> o [flush-8:16:1523]
-> > >> =A0 wb_do_writeback
-> > >> =A0 =A0wb_writeback
-> > >> =A0 =A0...
-> > >> =A0 =A0 =A0ext3_journalled_writepage
-> > >> =A0 =A0 =A0 journal_start
-> > >> =A0 =A0 =A0 =A0start_this_handle
-> > >> =A0 =A0 =A0 =A0# waiting until journal->j_barrier_count turns 0.=
-=2E.
-> > >> =A0 =A0 =A0 =A0# j_barrier_count was incremented by journal_lock=
-_updates()
-> > >> =A0 =A0 =A0 =A0# via ext3_freeze().
-> > >>
-> > >> o [fsstress:2673]
-> > >> =A0 sys_sync
-> > >> =A0 =A0sync_filesystems
-> > >> =A0 =A0 iterate_supers
-> > >> =A0 =A0 =A0down_read(sb->s_umount)
-> > >> =A0 =A0 =A0sync_one_sb
-> > >> =A0 =A0 =A0 __sync_filesystem
-> > >> =A0 =A0 =A0 =A0writeback_inodes_sb
-> > >> =A0 =A0 =A0 =A0 writeback_inodes_sb_nr
-> > >> =A0 =A0 =A0 =A0 =A0wait_for_completion
-> > >> =A0 =A0 =A0 =A0 =A0 wait_for_common
-> > >> =A0 =A0 =A0 =A0 =A0 # waiting for completion of [flush-8:16:1523=
-]...
-> > >>
-> > >> o [fsfreeze:2749]
-> > >> =A0 sys_ioctl
-> > >> =A0 =A0do_vfs_ioctl
-> > >> =A0 =A0 thaw_super
-> > >> =A0 =A0 # waiting for down_write(sb->s_umount)...
-> > >> =A0 =A0 # [fsfreeze:2673] did down_read(sb->s_umount).
-> > > =A0Yes, this is a classical deadlock that can happen for any file=
-system. The
-> > > problem is flusher thread holds s_umount semaphore (either direct=
-ly, or as
-> > > in your case, indirectly via blocked sync) and tries to do some I=
-O which
-> > > blocks on frozen filesystem. It's particularly easy to hit for ex=
-t3 because
-> > > it doesn't do vfs_check_frozen() checks but all other filesystems=
- have the
-> > > race window as well. Val Henson is working on fixing the problem =
-- she even
-> > > has some first version of patches I believe.
-> > >
-> > > =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0Honza
-> >
-> > xfstests test 068 has been around since kernel 2.4 days and should
-> > have caught it if xfs is impacted.
-> >
-> > I know I ran the 2002 version many times to prove to myself that
-> > fsfreeze for xfs was stable when teamed with LVM. =A0(It wasn't whe=
-n I
-> > first wrote 068 way back then).
-> >
-> > 068 has been greatly simplified since 2002, but it still looks like=
- it
-> > should do a good job.
-> >
-> > Is there a problem with 068? =A0Does it need extra test coverage ev=
-en for xfs?
-> =A0I believe at least mmapped writes can trigger the deadlock even fo=
-r xfs
-> and fsstress (slightly surprisingly) does not test that. It's a narro=
-w race
-> window but it is there and it has been triggered in practice (for ext=
-4 but
-> it's a race in VFS code used by both XFS and ext4). So maybe extendin=
-g
-> fsstress would be a way to go?
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0Honza
+On Tue, 30 Aug 2011, Yongqiang Yang wrote:
 
-=A0That's a surprisingly large hole in xfstests.
+> This patch adds operations on a delayed extent tree.
+> 
+> Signed-off-by; Yongqiang Yang <xiaoqiangnk@gmail.com>
+> 
+> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+> ---
+>  fs/ext4/Makefile          |    2 +-
+>  fs/ext4/delayed_extents.c |  390 +++++++++++++++++++++++++++++++++++++++++++++
+>  fs/ext4/delayed_extents.h |   25 +++
+>  3 files changed, 416 insertions(+), 1 deletions(-)
+>  create mode 100644 fs/ext4/delayed_extents.c
+> 
+> diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
+> index 56fd8f86..ee16ad3 100644
+> --- a/fs/ext4/Makefile
+> +++ b/fs/ext4/Makefile
+> @@ -7,7 +7,7 @@ obj-$(CONFIG_EXT4_FS) += ext4.o
+>  ext4-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o page-io.o \
+>  		ioctl.o namei.o super.o symlink.o hash.o resize.o extents.o \
+>  		ext4_jbd2.o migrate.o mballoc.o block_validity.o move_extent.o \
+> -		mmp.o indirect.o
+> +		mmp.o indirect.o delayed_extents.o
+>  
+>  ext4-$(CONFIG_EXT4_FS_XATTR)		+= xattr.o xattr_user.o xattr_trusted.o
+>  ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
+> diff --git a/fs/ext4/delayed_extents.c b/fs/ext4/delayed_extents.c
+> new file mode 100644
+> index 0000000..6275b19
+> --- /dev/null
+> +++ b/fs/ext4/delayed_extents.c
+> @@ -0,0 +1,390 @@
+> +/*
+> + *  fs/ext4/delayed_extents.c
+> + *
+> + * Written by Yongqiang Yang <xiaoqiangnk@gmail.com>
+> + *
+> + * Ext4 delayed-extents-list core functions.
+> + */
+> +
+> +#include "ext4.h"
+> +#include "delayed_extents.h"
+> +#include "ext4_extents.h"
+> +
+> +/*
+> + * delayed extent implementation for ext4.
+> + *
+> + *
+> + * ==========================================================================
+> + * 1. Why delayed extent implementation ?
+> + *
+> + * Without delayed extent, ext4 identifies a delayed extent by looking up
+> + * page cache, this has several deficiencies - complicated, buggy, and
+> + * inefficient code.
+> + *
+> + * FIEMAP, SEEK_HOLE/DATA, bigalloc, punch hole and writeout all need to know if
+> + * a block or a range of blocks are belonged to a delayed extent.
+> + *
+> + * Let us have a look at how they do without delayed extents implementation.
+> + *   --	FIEMAP
+> + *	FIEMAP looks up page cache to identify delayed allocations from holes.
+> + *
+> + *   --	SEEK_HOLE/DATA
+> + *	SEEK_HOLE/DATA has the same problem as FIEMAP.
+> + *
+> + *   --	bigalloc
+> + *	bigalloc looks up page cache to figure out if a block is already
+> + *	under delayed allocation or not to determine whether quota reserving
+> + *	is needed for the cluster.
+> + *
+> + *   -- punch hole
+> + *	punch hole looks up page cache to identify a delayed extent.
+> + *
+> + *   --	writeout
+> + *	Writeout looks up whole page cache to see if a buffer is mapped, If
+> + *	there are not very many delayed buffers, then it is time comsuming.
+> + *
+> + * With delayed extents implementation, FIEMAP, SEEK_HOLE/DATA, bigalloc and
+> + * writeout can figure out if a block or a range of blocks is under delayed
+> + * allocation(belonged to a delayed extent) or not by searching the delayed
+> + * extent list.
+> + *
+> + *
+> + * ==========================================================================
+> + * 2. ext4 delayed extents impelmentation
+> + *
+> + *   --	delayed extent
+> + *	A delayed extent is a range of blocks which are contiguous logically and
+> + *	under delayed allocation.  Unlike extent in ext4, delayed extent in ext4
+> + *	is a in-memory struct, there is no corresponding on-disk data.  There is
+> + *	no limit on length of delayed extent, so a delayed extent can contain as
+> + *	many blocks as they are contiguous logically.
+> + *
+> + *   --	delayed extent list
+> + *	Every inode has a delayed extent list and all under delayed allocation
+> + *	blocks are added to the list as dealyed extents.  Delayed extents in
+> + *	the list are sorted by logical block no.
+> + *
+> + *   --	operations on a delayed extent list
+> + *	There are three operations on a delayed extent list: find next delayed
+> + *	adding a space(a range of blocks) to a list and removing a space from
+> + *	a list.
+> + *
+> + *   --	race on a delayed extent list
+> + *	Delayed extent list is protected inode->i_data_sem like extent tree.
+> + *
+> + *
+> + * ==========================================================================
+> + * 3. performance analysis
+> + *   --	overhead
+> + *	1. Apart from operations on a delayed extent list, we need to
+> + *	down_write(inode->i_data_sem) in delayed write path to maintain delayed
+> + *	extent list, this can have impact on parallel read-write and write-write
+> + *
+> + *	2. There is a cache extent for write access, so if writes are not very
+> + *	random, adding space operaions are in O(1) time.
+> + *
+> + *   -- gain
+> + *	3. Code is much simpler, more readable, more maintainable and
+> + *      more efficient.
+> + *
+> + * 4. TODO
+> + *   -- cache_de in de_find_extent
+> + *	de_find_extent is used heavily by bgalloc, so de_find_extent should use
+> + *	cache_de.
+> + *
+> + * ==========================================================================
+> + * 4. More sophiscated data structure like tree ?
+> + * Does we need rb tree instead?
+> + *
+> + */
+> +static struct kmem_cache *ext4_de_cachep;
+> +
+> +int __init ext4_init_de(void)
+> +{
+> +	ext4_de_cachep = KMEM_CACHE(ext4_delayed_extent,
+> +				    SLAB_RECLAIM_ACCOUNT);
+> +	if (ext4_de_cachep == NULL)
+> +		return -ENOMEM;
+> +	return 0;
+> +}
+> +
+> +void ext4_exit_de(void)
+> +{
+> +	kmem_cache_destroy(ext4_de_cachep);
+> +}
+> +
+> +#ifdef DE_DEBUG
+> +void ext4_de_print_list(struct inode *inode)
+> +{
+> +	struct ext4_delayed_info *delayed_info;
+> +	struct list_head *cur;
+> +
+> +	printk(KERN_DEBUG "delayed extents for inode %lu:", inode->i_ino);
+> +	delayed_info = &EXT4_I(inode)->i_delayed_info;
+> +	list_for_each(cur, &delayed_info->de_list) {
+> +		struct ext4_delayed_extent *de;
+> +		de = list_entry(cur, struct ext4_delayed_extent, de_list);
+> +		printk(KERN_DEBUG " [%u, %u)", de->de_start, de->de_end);
+> +	}
+> +	printk(KERN_DEBUG "\n");
+> +}
+> +#else
+> +#define ext4_de_print_list(inode)
+> +#endif
+> +
+> +#define list_tail(list, type, member)		\
+> +	list_entry((list)->prev, type, member)
+> +
+> +#define list_next(head, elm, member)					\
+> +	((elm)->member.next != head ?					\
+> +	list_entry((elm)->member.next, typeof(*elm), member) : NULL)
+> +
+> +#define list_prev(head, elm, member)					\
+> +	((elm)->member.prev != head ?					\
+> +	list_entry((elm)->member.prev, typeof(*elm), member) : NULL)
+> +
+> +/*
+> + * ext4_de_first_extent_since: find the 1st delayed extent covering @start
+> + * if it exists, otherwise, the next extent after @start.
+> + *
+> + * @inode: the inode which owns delayed extents
+> + * @start: logic block
+> + *
+> + * Return next delayed block after the found extent.  Delayed extent is returned
+> + * the extent is returned via @de.
+> + */
+> +ext4_lblk_t ext4_de_find_extent(struct inode *inode,
+> +				struct ext4_delayed_extent *de)
+> +{
+> +	struct ext4_delayed_info *delayed_info;
+> +	struct list_head *cur;
+> +	struct ext4_delayed_extent *de1;
+> +
+> +	de->de_end = 0;
+> +	delayed_info = &EXT4_I(inode)->i_delayed_info;
+> +	if (list_empty(&delayed_info->de_list))
+> +		return EXT_MAX_BLOCKS;
+> +
+> +	de1 = list_tail(&delayed_info->de_list, struct ext4_delayed_extent,
+> +			de_list);
+> +	if (de->de_start >= de1->de_end)
+> +		return EXT_MAX_BLOCKS;
+> +
+> +	list_for_each(cur, &delayed_info->de_list) {
+> +		de1 = list_entry(cur, struct ext4_delayed_extent, de_list);
+> +		if (de->de_end != 0)
+> +			return de1->de_start;
+> +
+> +		if (de1->de_end <= de->de_start)
+> +			/* @de is followed by @*start and they are
+> +			 * not contiguous.
+> +			 * |------------|.........|
+> +			 *	de		*start
+> +			 */
+> +			continue;
+> +		de->de_start = de1->de_start;
+> +		de->de_end = de1->de_end;
+> +	}
+> +
+> +	BUG_ON(de->de_end == 0);
+> +	return EXT_MAX_BLOCKS;
+> +}
+> +
+> +static struct ext4_delayed_extent *
+> +ext4_de_add_entry(struct list_head *head, ext4_lblk_t start, ext4_lblk_t end)
+> +{
+> +	struct ext4_delayed_extent *de;
+> +	de = kmem_cache_alloc(ext4_de_cachep, GFP_NOFS);
+> +	if (de == NULL)
+> +		return NULL;
+> +	de->de_start = start;
+> +	de->de_end = end;
+> +	INIT_LIST_HEAD(&de->de_list);
+> +	list_add(&de->de_list, head);
+> +	return de;
+> +}
+> +
+> +static void ext4_de_remove_entry(struct inode *inode,
+> +				 struct ext4_delayed_extent *de)
+> +{
+> +	struct ext4_delayed_info *delayed_info = &EXT4_I(inode)->i_delayed_info;
+> +
+> +	list_del(&de->de_list);
+> +	kmem_cache_free(ext4_de_cachep, de);
+> +	if (delayed_info->cache_de == de)
+> +		delayed_info->cache_de = NULL;
+> +}
+> +
+> +static void ext4_de_try_to_merge_left(struct inode *inode,
+> +				      struct ext4_delayed_extent *de)
+> +{
+> +	struct ext4_delayed_extent *de1;
+> +
+> +	de1 = list_prev(&EXT4_I(inode)->i_delayed_info.de_list, de, de_list);
+> +	if (de1 && de1->de_end == de->de_start) {
+> +		de->de_start = de1->de_start;
+> +		ext4_de_remove_entry(inode, de1);
+> +	}
+> +}
+> +
+> +static void ext4_de_try_to_merge_right(struct inode *inode,
+> +				       struct ext4_delayed_extent *de)
+> +{
+> +	struct ext4_delayed_extent *de1;
+> +
+> +	de1 = list_next(&EXT4_I(inode)->i_delayed_info.de_list, de, de_list);
+> +	if (de1 && de1->de_start == de->de_end) {
+> +		de->de_end = de1->de_end;
+> +		ext4_de_remove_entry(inode, de1);
+> +	}
+> +}
+> +
+> +/*
+> + * ext4_de_add_space() adds a space to a delayed extent list.
+> + * Caller hold inode->i_data_sem.
+> + *
+> + * Return 0 on success, error code on failure.
+> + */
+> +int ext4_de_add_space(struct inode *inode, ext4_lblk_t start, ext4_lblk_t len)
+> +{
+> +	ext4_lblk_t end = start + len;
 
-That sounds like a pretty core and significant change.  I'll have to
-leave that to one of the main developers.
+In the first patch you are saying that:
 
-Greg
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ext4_lblk_t de_end;     /* block at which extent ends */
+
+which implies to me that the de_end is the last block of the extent. But
+start+len certainly is not the last block, but rather last+1.
+
+I am mentioning this because we have had similar problems in the past
+where the documentation said that EXT_MAX_BLOCK was a maximum logical
+block, but it was in fact used as a maximum count of blocks and that
+caused problems. So I would like to be clear on this, what the "end"
+actually really means to avoid confusion.
+
+Also in ext4_extent we are using "start" and "len" approach, I can not
+say which is better to use, but it might be better to be consistent in
+ext4 code.
+
+Thanks!
+-Lukas
+
+> +	struct ext4_delayed_info *delayed_info;
+> +	struct ext4_delayed_extent *de;
+> +	struct list_head *cur;
+> +
+> +	/* ext4_de_add_space is called with len = 1. */
+> +	BUG_ON(len != 1);
+> +	delayed_info = &EXT4_I(inode)->i_delayed_info;
+> +	de = delayed_info->cache_de;
+> +	de_debug("add [%u, %u) to delayed extent list of inode %lu\n",
+> +		 start, end, inode->i_ino);
+> +
+> +	if (de && de->de_end == start) {
+> +		de->de_end = end;
+> +		ext4_de_try_to_merge_right(inode, de);
+> +		goto out;
+> +	} else if (de && de->de_start == end) {
+> +		de->de_start = start;
+> +		ext4_de_try_to_merge_left(inode, de);
+> +		goto out;
+> +	} else if (de && de->de_start <= start && de->de_end >= end)
+> +		goto out;
+> +
+> +	/* We traverse the list backwards. */
+> +	list_for_each_prev(cur, &delayed_info->de_list) {
+> +		de = list_entry(cur, struct ext4_delayed_extent, de_list);
+> +		if (de->de_start > end)
+> +			/* de folllows [start, end) and they are
+> +			 * not contiguous.
+> +			 * |------------|----|-----------|
+> +			 *   [start, end)	   de
+> +			 */
+> +			continue;
+> +
+> +		if (de->de_end == start) {
+> +			/* de is followed by [start, end) and they are
+> +			 * contiguous.
+> +			 * |-----------|---------------|
+> +			 *	de	  [start, end)
+> +			 */
+> +			de->de_end = end;
+> +			goto out;
+> +		} else if (de->de_start == end) {
+> +			/* de follows [start, end) and they are contiguous.
+> +			 * |-------------|------------|
+> +			 *  [start, end)	de
+> +			 */
+> +			de->de_start = start;
+> +			ext4_de_try_to_merge_left(inode, de);
+> +			goto out;
+> +		} else if (start >= de->de_start && end <= de->de_end)
+> +			goto out;
+> +
+> +		break;
+> +	}
+> +
+> +	de = ext4_de_add_entry(cur, start, end);
+> +	if (!de)
+> +		return -ENOMEM;
+> +out:
+> +	delayed_info->cache_de = de;
+> +	ext4_de_print_list(inode);
+> +
+> +	return 0;
+> +}
+> +
+> +/*
+> + * ext4_de_remove_space() removes a space from a delayed extent list.
+> + * Caller hold inode->i_data_sem.
+> + *
+> + * Return 0 on success, error code on failure.
+> + */
+> +int ext4_de_remove_space(struct inode *inode, ext4_lblk_t start,
+> +			 ext4_lblk_t len)
+> +{
+> +	ext4_lblk_t end = start + len;
+> +	struct ext4_delayed_info *delayed_info;
+> +	struct list_head *cur;
+> +
+> +	delayed_info = &EXT4_I(inode)->i_delayed_info;
+> +
+> +	de_debug("remove [%u, %u) from delayed extent list of inode %lu\n",
+> +		 start, end, inode->i_ino);
+> +
+> +	list_for_each(cur, &delayed_info->de_list) {
+> +		struct ext4_delayed_extent *de, *new_de;
+> +		new_de = NULL;
+> +		de = list_entry(cur, struct ext4_delayed_extent, de_list);
+> +		if (de->de_end <= start)
+> +			/* de resides before [start, end)
+> +			 * |---------|...|-----------|
+> +			 *      de        [start, end)
+> +			 */
+> +			continue;
+> +
+> +		if (de->de_start >= end)
+> +			/* de resides after [start, end)
+> +			 * |---------|...|-----------|
+> +			 * [start,end)         de
+> +			 */
+> +			break;
+> +
+> +		/* de and [start, end) intersect */
+> +		if (de->de_start < start && de->de_end <= end) {
+> +			/*
+> +			 * |-----------------|--------|.........|
+> +			 * de->de_start   start  de->de_end    end
+> +			 */
+> +			de->de_end = start;
+> +			start = de->de_end;
+> +		} else if ((de->de_start >= start && de->de_end <= end)) {
+> +			/*
+> +			 * |............|--------|.........|
+> +			 * start    de->start de->end    end
+> +			 */
+> +			start = de->de_end;
+> +			cur = de->de_list.prev;
+> +			ext4_de_remove_entry(inode, de);
+> +		} else if (de->de_start < start && de->de_end > end) {
+> +			/*
+> +			 * |------------|--------|---------|
+> +			 * de->start  start     end     de->de_end
+> +			 */
+> +			if (!ext4_de_add_entry(&de->de_list, end, de->de_end))
+> +				return -ENOMEM;
+> +			de->de_end = start;
+> +			break;
+> +		} else if (de->de_start >= start && de->de_end > end) {
+> +			/*
+> +			 * |.............|---------|--------|
+> +			 * start   de->de_start   end   de->de_end
+> +			 */
+> +			de->de_start = end;
+> +			break;
+> +		} else
+> +			BUG();
+> +	}
+> +
+> +	ext4_de_print_list(inode);
+> +	return 0;
+> +}
+> diff --git a/fs/ext4/delayed_extents.h b/fs/ext4/delayed_extents.h
+> index b7baaef..dd3bdb5 100644
+> --- a/fs/ext4/delayed_extents.h
+> +++ b/fs/ext4/delayed_extents.h
+> @@ -8,6 +8,21 @@
+>  #ifndef _EXT4_DELAYED_EXTENTS_H
+>  #define _EXT4_DELAYED_EXTENTS_H
+>  
+> +/*
+> + * Turn on DE_DEBUG to get lots of info about delayed extents operations.
+> + */
+> +#define DE_DEBUG__
+> +#ifdef DE_DEBUG
+> +#define de_debug(f, a...)						\
+> +	do {								\
+> +		printk(KERN_DEBUG "EXT4-fs delayed-extents (%s, %d): "	\
+> +			"%s:", __FILE__, __LINE__, __func__);		\
+> +		printk(KERN_DEBUG f, ## a);				\
+> +	} while (0)
+> +#else
+> +#define de_debug(f, a...)
+> +#endif
+> +
+>  struct ext4_delayed_extent {
+>  	struct list_head de_list;
+>  	ext4_lblk_t de_start;	/* first block extent covers */
+> @@ -19,4 +34,14 @@ struct ext4_delayed_info {
+>  	struct ext4_delayed_extent *cache_de;	/* recently accessed extent */
+>  };
+>  
+> +extern int __init ext4_init_de(void);
+> +extern void ext4_exit_de(void);
+> +
+> +extern int ext4_de_add_space(struct inode *inode, ext4_lblk_t start,
+> +				ext4_lblk_t len);
+> +extern int ext4_de_remove_space(struct inode *inode, ext4_lblk_t start,
+> +				ext4_lblk_t len);
+> +extern ext4_lblk_t ext4_de_find_extent(struct inode *inode,
+> +				struct ext4_delayed_extent *de);
+> +
+>  #endif /* _EXT4_DELAYED_EXTENTS_H */
+> 
+
+-- 
