@@ -1,29 +1,34 @@
-From: Alan Stern <stern@rowland.harvard.edu>
-Subject: Re: [Bug 25832] kernel crashes when a mounted ext3/4 file system is
- physically removed
-Date: Sun, 11 Sep 2011 21:58:03 -0400 (EDT)
-Message-ID: <Pine.LNX.4.44L0.1109112155440.24831-100000@netrider.rowland.org>
-References: <20110909191354.GC3818@thunk.org>
+From: "Mr. Daniel Tsai" <danieltsai0@aol.com>
+Subject: Business transaction.
+Date: Sun, 11 Sep 2011 17:07:14 +0200
+Message-ID: <20110911150716.2E14E4276B7_E6CCEA4F@radon.cen.brad.ac.uk>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org, <rockorequin@hotmail.com>
-To: Ted Ts'o <tytso@mit.edu>
+Content-Type: text/plain;
+	charset="Windows-1251"
+Content-Transfer-Encoding: 7bit
+To: danieltsai0@aol.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from netrider.rowland.org ([192.131.102.5]:57011 "HELO
-	netrider.rowland.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752230Ab1ILB6G (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 11 Sep 2011 21:58:06 -0400
-In-Reply-To: <20110909191354.GC3818@thunk.org>
+Received: from hydrogen.cen.brad.ac.uk ([143.53.238.3]:45789 "EHLO
+	hydrogen.cen.brad.ac.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754454Ab1ILDSs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 11 Sep 2011 23:18:48 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ted:
+Hello my friend. My name is Daniel Tsai and
 
-You also ought to look at this bug report and the follow-up thread.  
-The symptoms are similar, although not exactly the same.
+I live in Hong Kong. I want you to be my
 
-	http://marc.info/?l=linux-kernel&m=131504588401397&w=2
-	([BUG] D state process after unplug and umount usb disk)
+partner in a business transaction of 44.5Million USD.
 
-Alan Stern
+If you are interested for more details,
 
+you MUST reply me to my private email address:
+
+danieltsai11@yahoo.com.hk or danieltsai95@aol.com
+
+when I get your message, I will tell you what
+
+to do next. Thank you.
+
+Mr. Daniel Tsai
