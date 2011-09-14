@@ -1,40 +1,51 @@
-From: "Yury V. Zaytsev" <yury@shurup.com>
-Subject: Re: [PATCH 0/1 v2 RESEND] mke2fs: check that auto-detected
- blocksize <= sys_page_size
-Date: Wed, 14 Sep 2011 10:56:50 +0200
-Message-ID: <1315990610.15131.3.camel@newpride>
-References: <1312966102.4477.98.camel@newpride>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] mke2fs: Use ext2fs_flush() only once
+Date: Tue, 13 Sep 2011 22:58:43 -0400
+Message-ID: <20110914025843.GA3429@dhcp-172-31-195-159.cam.corp.google.com>
+References: <1311941612-9108-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: linux-ext4@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailgateway3.uni-freiburg.de ([132.230.2.213]:47651 "EHLO
-	mailgateway3.uni-freiburg.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754662Ab1INI4x (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 14 Sep 2011 04:56:53 -0400
-In-Reply-To: <1312966102.4477.98.camel@newpride>
+Received: from li9-11.members.linode.com ([67.18.176.11]:42645 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932381Ab1INMlw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 Sep 2011 08:41:52 -0400
+Content-Disposition: inline
+In-Reply-To: <1311941612-9108-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi!
+Thanks, applied, with an obvious bugfix:
 
-On Wed, 2011-08-10 at 10:48 +0200, Yury V. Zaytsev wrote:
+> -void print_check_message(ext2_filsys fs)
+> +void print_check_message(unsigned int mnt, unsigned int check)
+>  {
+>  	printf(_("This filesystem will be automatically "
+>  		 "checked every %d mounts or\n"
+>  		 "%g days, whichever comes first.  "
+>  		 "Use tune2fs -c or -i to override.\n"),
+> -	       fs->super->s_max_mnt_count,
+> -	       (double)fs->super->s_checkinterval / (3600 * 24));
+> +		mnt, check / (3600 * 24));
+>  }
 
-> If there is anything else I can/should do, please do kindly let me
-> know.
+=2E./../misc/util.c: In function =E2=80=98print_check_message=E2=80=99:
+=2E./../misc/util.c:291: warning: format =E2=80=98%g=E2=80=99 expects t=
+ype =E2=80=98double=E2=80=99, but argument 3 has type =E2=80=98unsigned=
+ int=E2=80=99
 
-The patch has been submitted back in June and acked in July, I'd highly
-appreciate you applying it or letting me know of how I could help [1].
+the (double) cast was dropped in your patch.
 
-Thanks!
+The message should be made a bit better in the case that
+s_max_mnt_count or s_checkinterval is zero, but that's a separate
+patch.
 
-[1]: http://patchwork.ozlabs.org/patch/109351/
-
--- 
-Sincerely yours,
-Yury V. Zaytsev
-
-
+					- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
