@@ -1,65 +1,89 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: i_mutex questions
-Date: Tue, 13 Sep 2011 22:23:50 -0600
-Message-ID: <8548BAE6-6464-4F1B-BD25-5F395514D753@dilger.ca>
-References: <4E6FA1F9.6080802@linux.vnet.ibm.com> <CAGBYx2b9PjBHOeuQSsU8n5W=A+A7davW0Dw=QMjRdfh6aL7rBQ@mail.gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Ted Ts'o <tytso@mit.edu>, Lukas Czerner <lczerner@redhat.com>,
-	Zhen Liang <liang@whamcloud.com>
-To: Allison Henderson <achender@linux.vnet.ibm.com>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:20759 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750761Ab1INEXz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Sep 2011 00:23:55 -0400
-In-Reply-To: <CAGBYx2b9PjBHOeuQSsU8n5W=A+A7davW0Dw=QMjRdfh6aL7rBQ@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>
+Subject: Re: [BUG] ext3: cannot unfreeze a filesystem due to a deadlock
+Date: Wed, 14 Sep 2011 15:24:54 +0900
+Message-ID: <20110914152454.7F2B.61FB500B@jp.fujitsu.com>
+References: <20110907173444.GF7725@quack.suse.cz> <CAD-Xujm80u_DeFd-edO7RL_6OozZ7mWsrX7auxVMtNbb0LZBOw@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="US-ASCII"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Valerie Aurora <val@vaaconsulting.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <CAD-Xujm80u_DeFd-edO7RL_6OozZ7mWsrX7auxVMtNbb0LZBOw@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2011-09-13, at 7:29 PM, Yongqiang Yang wrote:
-> On Wed, Sep 14, 2011 at 2:33 AM, Allison Henderson
-> <achender@linux.vnet.ibm.com> wrote:
->> Hi All,
->> 
->> I have been trying to find a way to synchronize punch hole with read and
->> write operations with out the use of i_mutex.  The concern is that after
->> punch hole has released the pages inside the hole, another process may remap
->> the page to a block before punch has taken i_data_sem.  I think putting
->> i_mutex around the punch hole operation would fix this, but since we are
->> trying to avoid further improper use of i_mutex, I am trying to avoid that
->> solution.
->> 
->> I cannot use i_data_sem to protect the pages because it seems most of the
->> code has already established a locking order of pages first, then
->> i_data_sem.  So moving i_data_sem up tends to cause a lot of dead locks.
->>  I'm thinking that there probably needs to be a another mutex involved some
->> where, but I wasnt sure if some one is already working on the idea of
->> introducing a replacement for i_mutex.  So I just wanted to know if there
->> are any plans already in motion for this, or if any one else could suggest
->> some ideas for the punch hole issue.  Thx all!
+
+(2011/09/13 12:00), Valerie Aurora wrote:
+
+> On Wed, Sep 7, 2011 at 10:34 AM, Jan Kara <jack@suse.cz> wrote:
+> >  Hello,
+> >
+> >  Thanks for report!
+> >
+> > On Wed 07-09-11 12:29:30, Masayoshi MIZUMA wrote:
+> >> When I checked the freeze feature for ext3 filesystem using fsfreeze
+> >> command at 3.1.0-rc4, I think the following deadlock problem happened.
+> >>
+> >> How to reproduce:
+> >>  # mkfs -t ext3 /dev/sdd1
+> >>  # mount /dev/sdd1 /MNT
+> >>  # ./fsstress -d /MNT/tmp -n 10 -p 1000 > /dev/null 2>&1 &
+> >>  # fsfreeze -f /MNT
+> >>  # fsfreeze -u /MNT
+> >>
+> >>  If this deadlock is reproduced, "fsfreeze -u /MNT" does not return.
+> >>
+> >> The detail of deadlock:
+> >> o [flush-8:16:1523]
+> >>   wb_do_writeback
+> >>    wb_writeback
+> >>    ...
+> >>      ext3_journalled_writepage
+> >>       journal_start
+> >>        start_this_handle
+> >>        # waiting until journal->j_barrier_count turns 0...
+> >>        # j_barrier_count was incremented by journal_lock_updates()
+> >>        # via ext3_freeze().
+> >>
+> >> o [fsstress:2673]
+> >>   sys_sync
+> >>    sync_filesystems
+> >>     iterate_supers
+> >>      down_read(sb->s_umount)
+> >>      sync_one_sb
+> >>       __sync_filesystem
+> >>        writeback_inodes_sb
+> >>         writeback_inodes_sb_nr
+> >>          wait_for_completion
+> >>           wait_for_common
+> >>           # waiting for completion of [flush-8:16:1523]...
+> >>
+> >> o [fsfreeze:2749]
+> >>   sys_ioctl
+> >>    do_vfs_ioctl
+> >>     thaw_super
+> >>     # waiting for down_write(sb->s_umount)...
+> >>     # [fsfreeze:2673] did down_read(sb->s_umount).
+> > Yes, this is a classical deadlock that can happen for any filesystem. The
+> > problem is flusher thread holds s_umount semaphore (either directly, or as
+> > in your case, indirectly via blocked sync) and tries to do some IO which
+> > blocks on frozen filesystem. It's particularly easy to hit for ext3 because
+> > it doesn't do vfs_check_frozen() checks but all other filesystems have the
+> > race window as well. Val Henson is working on fixing the problem - she even
+> > has some first version of patches I believe.
 > 
-> Lukas sent out a patch ([PATCH] ext4: Make reads/writes atomic with
-> i_rwlock semaphore) which collected some feedbacks suggesting using
-> extent lock instead of a read-write semaphore.  If there is extent
-> lock implementation in ext4, then fallocate can use it, maybe
-> dioread-nolock can use it as well, e.g. locking a range and unlocking
-> the range until the extent is converted from unwritten to init.
+> Yes, if the bug reporter could test the patches I just sent out, that
+> would be great.  I'm happy to resend privately.  Thanks!
 
-We have a prototype patch for extent locking for ext4.  We are planning to
-use this for parallel locking of htree directories, but it could potentially
-be modified to for extent locking of files.
+I put your patches to 3.1.0-rc4 and tested it. Then, the deadlock was
+not reproduced, so your patches work fine, thank you!
 
-The current patch is below, but it hasn't gone through a lot of testing:
+Masayoshi
 
-http://review.whamcloud.com/#patch,sidebyside,375,2,ldiskfs/kernel_patches/patches/ext4_pdirop-rhel6.patch
-
-Cheers, Andreas
-
-
-
+> 
+> -VAL
 
 
