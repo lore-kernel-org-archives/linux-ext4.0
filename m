@@ -1,40 +1,42 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] libext2fs: add new test: tst_inode_size
-Date: Wed, 14 Sep 2011 18:15:59 -0400
-Message-ID: <20110914221559.GB15782@thunk.org>
-References: <1316020593-19050-1-git-send-email-tytso@mit.edu>
- <0E958708-A440-43C9-B69F-4E677AB82580@dilger.ca>
+From: Valerie Aurora <val@vaaconsulting.com>
+Subject: Re: [RFC PATCH 0/3] VFS: Fix s_umount thaw/write deadlock
+Date: Wed, 14 Sep 2011 16:22:29 -0700
+Message-ID: <CAD-Xujm2YY8TarQEJLC8c4VgZpssjDdts8=Pz2NLgt+kT5zDCA@mail.gmail.com>
+References: <CAD-Xujmjai2evYC4a4CdNPtjh_9xhbELcZePtGSS54VPRGpznA@mail.gmail.com>
+	<20110914130526.GA7903@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-fsdevel@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
+	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
+	Greg Freemyer <greg.freemyer@gmail.com>,
+	linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:56798 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750698Ab1INWQB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 14 Sep 2011 18:16:01 -0400
-Content-Disposition: inline
-In-Reply-To: <0E958708-A440-43C9-B69F-4E677AB82580@dilger.ca>
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:64841 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751077Ab1INXWa convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Sep 2011 19:22:30 -0400
+In-Reply-To: <20110914130526.GA7903@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 14, 2011 at 02:47:08PM -0600, Andreas Dilger wrote:
-> One thing I noticed with this check_field() macro is that it doesn't
-> actually detect the case if the size of a field is changed.  This hit
-> me when I was making a cleanup to the large journal patch which renamed
-> s_jnl_blocks[15] to s_jnl_size_lo and s_jnl_blocks[16] to s_jnl_size_hi
-> for clarity.  The tst_super_size test passed just fine, but the e2fsck
-> test scripts failed in weird and wonderful ways.
-> 
-> A better solution might be to explicitly pass the expected field size
-> instead of getting both the size and offset from the structure itself.
-> Since these structures change very rarely it isn't much maintenance,
-> but it would be lousy if code was released that had some incorrect
-> field offset because someone increased or decreased an earlier field
-> without thinking enough, and those fields weren't used in normal tests.
-> 
-> I can submit a patch if you are interested.
+On Wed, Sep 14, 2011 at 6:05 AM, Jan Kara <jack@suse.cz> wrote:
+>> fs/reiserfs/procfs.c
+>> =A0- dropped after get_super() call in /proc operation
+>> =A0 =A0XXX don't know, need a reiser expert
+> =A0Where exactly do we hold s_umount? Anyway, nothing in reiserfs/pro=
+cfs.c
+> does not seem to involve writes.
 
-Good point.  Yes, I agree it would be worth while to do this.
+Sorry, this actually calls sget(), not get_super().  And I agree,
+there aren't any writes.  Audit updated accordingly.
 
-     	     	    	     	      - Ted
+Thanks!
+
+-VAL
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
