@@ -1,89 +1,78 @@
-From: Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>
-Subject: Re: [BUG] ext3: cannot unfreeze a filesystem due to a deadlock
-Date: Wed, 14 Sep 2011 15:24:54 +0900
-Message-ID: <20110914152454.7F2B.61FB500B@jp.fujitsu.com>
-References: <20110907173444.GF7725@quack.suse.cz> <CAD-Xujm80u_DeFd-edO7RL_6OozZ7mWsrX7auxVMtNbb0LZBOw@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Valerie Aurora <val@vaaconsulting.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <CAD-Xujm80u_DeFd-edO7RL_6OozZ7mWsrX7auxVMtNbb0LZBOw@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Tao Ma <tm@tao.ma>
+Subject: [PATCH] ext4: Don't check io->flag when setting EXT4_STATE_DIO_UNWRITTEN inode state.
+Date: Wed, 14 Sep 2011 15:16:27 +0800
+Message-ID: <1315984587-5039-1-git-send-email-tm@tao.ma>
+Cc: Eric Sandeen <sandeen@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from oproxy6-pub.bluehost.com ([67.222.54.6]:41695 "HELO
+	oproxy6-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1750910Ab1INH3X (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Sep 2011 03:29:23 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+From: Tao Ma <boyu.mt@taobao.com>
 
-(2011/09/13 12:00), Valerie Aurora wrote:
+When we want to convert the unitialized extent in direct write,
+we can either do it in ext4_end_io_nolock(AIO case) or in
+ ext4_ext_direct_IO(non AIO case) and EXT4_I(inode)->cur_aio_dio
+is a guard for ext4_ext_map_blocks to find the right case.
+In e9e3bcecf, we mistakenly change it by:
+-			if (io)
++			if (io && !(io->flag & EXT4_IO_END_UNWRITTEN)) {
+ 				io->flag = EXT4_IO_END_UNWRITTEN;
+-			else
++				atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
++			} else
+ 				ext4_set_inode_state(inode,
+ 						     EXT4_STATE_DIO_UNWRITTEN);
 
-> On Wed, Sep 7, 2011 at 10:34 AM, Jan Kara <jack@suse.cz> wrote:
-> >  Hello,
-> >
-> >  Thanks for report!
-> >
-> > On Wed 07-09-11 12:29:30, Masayoshi MIZUMA wrote:
-> >> When I checked the freeze feature for ext3 filesystem using fsfreeze
-> >> command at 3.1.0-rc4, I think the following deadlock problem happened.
-> >>
-> >> How to reproduce:
-> >>  # mkfs -t ext3 /dev/sdd1
-> >>  # mount /dev/sdd1 /MNT
-> >>  # ./fsstress -d /MNT/tmp -n 10 -p 1000 > /dev/null 2>&1 &
-> >>  # fsfreeze -f /MNT
-> >>  # fsfreeze -u /MNT
-> >>
-> >>  If this deadlock is reproduced, "fsfreeze -u /MNT" does not return.
-> >>
-> >> The detail of deadlock:
-> >> o [flush-8:16:1523]
-> >>   wb_do_writeback
-> >>    wb_writeback
-> >>    ...
-> >>      ext3_journalled_writepage
-> >>       journal_start
-> >>        start_this_handle
-> >>        # waiting until journal->j_barrier_count turns 0...
-> >>        # j_barrier_count was incremented by journal_lock_updates()
-> >>        # via ext3_freeze().
-> >>
-> >> o [fsstress:2673]
-> >>   sys_sync
-> >>    sync_filesystems
-> >>     iterate_supers
-> >>      down_read(sb->s_umount)
-> >>      sync_one_sb
-> >>       __sync_filesystem
-> >>        writeback_inodes_sb
-> >>         writeback_inodes_sb_nr
-> >>          wait_for_completion
-> >>           wait_for_common
-> >>           # waiting for completion of [flush-8:16:1523]...
-> >>
-> >> o [fsfreeze:2749]
-> >>   sys_ioctl
-> >>    do_vfs_ioctl
-> >>     thaw_super
-> >>     # waiting for down_write(sb->s_umount)...
-> >>     # [fsfreeze:2673] did down_read(sb->s_umount).
-> > Yes, this is a classical deadlock that can happen for any filesystem. The
-> > problem is flusher thread holds s_umount semaphore (either directly, or as
-> > in your case, indirectly via blocked sync) and tries to do some IO which
-> > blocks on frozen filesystem. It's particularly easy to hit for ext3 because
-> > it doesn't do vfs_check_frozen() checks but all other filesystems have the
-> > race window as well. Val Henson is working on fixing the problem - she even
-> > has some first version of patches I believe.
-> 
-> Yes, if the bug reporter could test the patches I just sent out, that
-> would be great.  I'm happy to resend privately.  Thanks!
+So now if we map 2 blocks, and the first one set the EXT_IO_END_UNWRITTEN, the
+2nd mapping will set inode state because of the check for the flag. This is
+wrong.
 
-I put your patches to 3.1.0-rc4 and tested it. Then, the deadlock was
-not reproduced, so your patches work fine, thank you!
+Cc: Eric Sandeen <sandeen@redhat.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+---
+ fs/ext4/extents.c |   16 ++++++++++------
+ 1 files changed, 10 insertions(+), 6 deletions(-)
 
-Masayoshi
-
-> 
-> -VAL
-
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 57cf568..8db6743 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3190,9 +3190,11 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
+ 		 * that this IO needs to conversion to written when IO is
+ 		 * completed
+ 		 */
+-		if (io && !(io->flag & EXT4_IO_END_UNWRITTEN)) {
+-			io->flag = EXT4_IO_END_UNWRITTEN;
+-			atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
++		if (io) {
++			if (!(io->flag & EXT4_IO_END_UNWRITTEN)) {
++				io->flag = EXT4_IO_END_UNWRITTEN;
++				atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
++			}
+ 		} else
+ 			ext4_set_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
+ 		if (ext4_should_dioread_nolock(inode))
+@@ -3572,9 +3574,11 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ 		 * that we need to perform conversion when IO is done.
+ 		 */
+ 		if ((flags & EXT4_GET_BLOCKS_PRE_IO)) {
+-			if (io && !(io->flag & EXT4_IO_END_UNWRITTEN)) {
+-				io->flag = EXT4_IO_END_UNWRITTEN;
+-				atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
++			if (io) {
++				if (!(io->flag & EXT4_IO_END_UNWRITTEN)) {
++					io->flag = EXT4_IO_END_UNWRITTEN;
++					atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
++				}
+ 			} else
+ 				ext4_set_inode_state(inode,
+ 						     EXT4_STATE_DIO_UNWRITTEN);
+-- 
+1.7.4.1
 
