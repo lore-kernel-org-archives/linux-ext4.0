@@ -1,55 +1,88 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 11/37] libext2fs: Create the inode bitmap checksum
-Date: Wed, 14 Sep 2011 13:02:59 -0400
-Message-ID: <20110914170259.GG3429@dhcp-172-31-195-159.cam.corp.google.com>
-References: <20110901003509.1176.51159.stgit@elm3c44.beaverton.ibm.com>
- <20110901003622.1176.1504.stgit@elm3c44.beaverton.ibm.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext4: Don't check io->flag when setting EXT4_STATE_DIO_UNWRITTEN
+ inode state.
+Date: Wed, 14 Sep 2011 12:06:10 -0500
+Message-ID: <4E70DF02.1000202@redhat.com>
+References: <1315984587-5039-1-git-send-email-tm@tao.ma>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	Sunil Mushran <sunil.mushran@oracle.com>,
-	Amir Goldstein <amir73il@gmail.com>,
-	Andi Kleen <andi@firstfloor.org>,
-	Mingming Cao <cmm@us.ibm.com>,
-	Joel Becker <jlbec@evilplan.org>, linux-ext4@vger.kernel.org,
-	Coly Li <colyli@gmail.com>
-To: "Darrick J. Wong" <djwong@us.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:52973 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754825Ab1INRDH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 14 Sep 2011 13:03:07 -0400
-Content-Disposition: inline
-In-Reply-To: <20110901003622.1176.1504.stgit@elm3c44.beaverton.ibm.com>
+Received: from mx1.redhat.com ([209.132.183.28]:6996 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754825Ab1INRGP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 Sep 2011 13:06:15 -0400
+In-Reply-To: <1315984587-5039-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 31, 2011 at 05:36:22PM -0700, Darrick J. Wong wrote:
-> diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-> index 1f08673..367bfdf 100644
-> --- a/lib/ext2fs/ext2_fs.h
-> +++ b/lib/ext2fs/ext2_fs.h
-> @@ -169,7 +169,8 @@ struct ext4_group_desc
->  	__u16	bg_free_inodes_count_hi;/* Free inodes count MSB */
->  	__u16	bg_used_dirs_count_hi;	/* Directories count MSB */
->  	__u16	bg_itable_unused_hi;	/* Unused inodes count MSB */
-> -	__u32	bg_reserved2[3];
-> +	__u32	bg_inode_bitmap_csum;	/* crc32c(uuid+group+ibitmap) */
-> +	__u32	bg_reserved2[2];
->  };
+On 9/14/11 2:16 AM, Tao Ma wrote:
+> From: Tao Ma <boyu.mt@taobao.com>
+> 
+> When we want to convert the unitialized extent in direct write,
+> we can either do it in ext4_end_io_nolock(AIO case) or in
+>  ext4_ext_direct_IO(non AIO case) and EXT4_I(inode)->cur_aio_dio
+> is a guard for ext4_ext_map_blocks to find the right case.
+> In e9e3bcecf, we mistakenly change it by:
+> -			if (io)
+> +			if (io && !(io->flag & EXT4_IO_END_UNWRITTEN)) {
+>  				io->flag = EXT4_IO_END_UNWRITTEN;
+> -			else
+> +				atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
+> +			} else
+>  				ext4_set_inode_state(inode,
+>  						     EXT4_STATE_DIO_UNWRITTEN);
+> 
+> So now if we map 2 blocks, and the first one set the EXT_IO_END_UNWRITTEN, the
+> 2nd mapping will set inode state because of the check for the flag. This is
+> wrong.
 
+Argh, yes, I think you are right.  Pesky else clause.  :(
 
-One of the reasons why I like to coalesce the patches to the data
-structures into their own separate commit, is it's hard when I'm
-reviewing individual patches in a mail reader what's going on from a
-big picture spective.  (Heck, even just *finding* the patches that
-modify the on-disk format is hard....)
+Do you have a testcase for this?  And what is the user-visible outcome of the error,
+is it data corruption?
 
-But as near as I can tell, your patch series only uses one of the
-32-bit fields in bg_reserved.  Is there a good reason why
-bg_inode_bitmap_csum can't also used one of the two fields in
-bg_reserved?  That way we get two 32-bit checksums for both struct
-ext2_group_desc and struct ext4_group_desc.  Is there a third 32-bit
-per-block group checksum I'm forgetting about? 
+> Cc: Eric Sandeen <sandeen@redhat.com>
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+> ---
+>  fs/ext4/extents.c |   16 ++++++++++------
+>  1 files changed, 10 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 57cf568..8db6743 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -3190,9 +3190,11 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
+>  		 * that this IO needs to conversion to written when IO is
+>  		 * completed
+>  		 */
+> -		if (io && !(io->flag & EXT4_IO_END_UNWRITTEN)) {
+> -			io->flag = EXT4_IO_END_UNWRITTEN;
+> -			atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
+> +		if (io) {
+> +			if (!(io->flag & EXT4_IO_END_UNWRITTEN)) {
+> +				io->flag = EXT4_IO_END_UNWRITTEN;
+> +				atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
+> +			}
+>  		} else
+>  			ext4_set_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
+>  		if (ext4_should_dioread_nolock(inode))
+> @@ -3572,9 +3574,11 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+>  		 * that we need to perform conversion when IO is done.
+>  		 */
+>  		if ((flags & EXT4_GET_BLOCKS_PRE_IO)) {
+> -			if (io && !(io->flag & EXT4_IO_END_UNWRITTEN)) {
+> -				io->flag = EXT4_IO_END_UNWRITTEN;
+> -				atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
+> +			if (io) {
+> +				if (!(io->flag & EXT4_IO_END_UNWRITTEN)) {
+> +					io->flag = EXT4_IO_END_UNWRITTEN;
+> +					atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
+> +				}
+>  			} else
+>  				ext4_set_inode_state(inode,
+>  						     EXT4_STATE_DIO_UNWRITTEN);
 
-	  		     		       - Ted
