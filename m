@@ -1,70 +1,40 @@
-From: Tao Ma <tm@tao.ma>
-Subject: [PATCH] ext4: Check io list state and avoid an unnecessary mutex_lock in ext4_end_io_work.
-Date: Wed, 14 Sep 2011 16:33:02 +0800
-Message-ID: <1315989182-6170-1-git-send-email-tm@tao.ma>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
+From: "Yury V. Zaytsev" <yury@shurup.com>
+Subject: Re: [PATCH 0/1 v2 RESEND] mke2fs: check that auto-detected
+ blocksize <= sys_page_size
+Date: Wed, 14 Sep 2011 10:56:50 +0200
+Message-ID: <1315990610.15131.3.camel@newpride>
+References: <1312966102.4477.98.camel@newpride>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy4-pub.bluehost.com ([69.89.21.11]:57258 "HELO
-	oproxy4-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752811Ab1INIdN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Sep 2011 04:33:13 -0400
+Received: from mailgateway3.uni-freiburg.de ([132.230.2.213]:47651 "EHLO
+	mailgateway3.uni-freiburg.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754662Ab1INI4x (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 Sep 2011 04:56:53 -0400
+In-Reply-To: <1312966102.4477.98.camel@newpride>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Tao Ma <boyu.mt@taobao.com>
+Hi!
 
-When we finish the end io work in ext4_flush_completed_IO, we take
-the io work away from the list, but don't free it. Then in the workqueue,
-we can check the list state and then avoid the extra work if it is also
-done. It is good, but we check list state in ext4_end_io_nolock with i_mutex held
-instead of the spin_lock in other places. This is wrong.
+On Wed, 2011-08-10 at 10:48 +0200, Yury V. Zaytsev wrote:
 
-So check the state within spin_lock and another side effect is that the heavy extra
-mutex_lock can be avoided.
+> If there is anything else I can/should do, please do kindly let me
+> know.
 
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
----
- fs/ext4/page-io.c |   11 ++++++++---
- 1 files changed, 8 insertions(+), 3 deletions(-)
+The patch has been submitted back in June and acked in July, I'd highly
+appreciate you applying it or letting me know of how I could help [1].
 
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 92f38ee..f6b40f1 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -100,9 +100,6 @@ int ext4_end_io_nolock(ext4_io_end_t *io)
- 		   "list->prev 0x%p\n",
- 		   io, inode->i_ino, io->list.next, io->list.prev);
- 
--	if (list_empty(&io->list))
--		return ret;
--
- 	if (!(io->flag & EXT4_IO_END_UNWRITTEN))
- 		return ret;
- 
-@@ -142,6 +139,13 @@ static void ext4_end_io_work(struct work_struct *work)
- 	unsigned long		flags;
- 	int			ret;
- 
-+	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
-+	if (list_empty(&io->list)) {
-+		spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
-+		goto free;
-+	}
-+	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
-+
- 	if (!mutex_trylock(&inode->i_mutex)) {
- 		/*
- 		 * Requeue the work instead of waiting so that the work
-@@ -170,6 +174,7 @@ static void ext4_end_io_work(struct work_struct *work)
- 		list_del_init(&io->list);
- 	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
- 	mutex_unlock(&inode->i_mutex);
-+free:
- 	ext4_free_io_end(io);
- }
- 
+Thanks!
+
+[1]: http://patchwork.ozlabs.org/patch/109351/
+
 -- 
-1.7.0.4
+Sincerely yours,
+Yury V. Zaytsev
+
 
