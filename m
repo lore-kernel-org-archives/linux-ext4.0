@@ -1,36 +1,37 @@
-From: Amir Goldstein <amir73il@gmail.com>
+From: Ted Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH v2] e2fsprogs: add 64bit-online-resize support
-Date: Thu, 15 Sep 2011 17:36:14 +0300
-Message-ID: <CAOQ4uxjkt4NFEPtekWeu=Xag0nScQ6MJ4U748MpUm6XZE3F+Rg@mail.gmail.com>
+Date: Thu, 15 Sep 2011 11:16:32 -0400
+Message-ID: <20110915151632.GI15782@thunk.org>
 References: <1314692003-12395-1-git-send-email-xiaoqiangnk@gmail.com>
-	<20110914155619.GD3429@dhcp-172-31-195-159.cam.corp.google.com>
+ <20110914155619.GD3429@dhcp-172-31-195-159.cam.corp.google.com>
+ <CAOQ4uxjkt4NFEPtekWeu=Xag0nScQ6MJ4U748MpUm6XZE3F+Rg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
 Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>, adilger@dilger.ca,
 	linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ew0-f43.google.com ([209.85.215.43]:57421 "EHLO
-	mail-ew0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933096Ab1IOOmE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Sep 2011 10:42:04 -0400
-Received: by ewy20 with SMTP id 20so1898955ewy.2
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Sep 2011 07:42:02 -0700 (PDT)
-In-Reply-To: <20110914155619.GD3429@dhcp-172-31-195-159.cam.corp.google.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:54869 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756403Ab1IOPQi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 Sep 2011 11:16:38 -0400
+Content-Disposition: inline
+In-Reply-To: <CAOQ4uxjkt4NFEPtekWeu=Xag0nScQ6MJ4U748MpUm6XZE3F+Rg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 14, 2011 at 6:56 PM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Tue, Aug 30, 2011 at 04:13:23PM +0800, Yongqiang Yang wrote:
->> This patch adds 64bit-resize support to e2fsprogs.
->
-> Thanks, applied.
->
+On Thu, Sep 15, 2011 at 05:36:14PM +0300, Amir Goldstein wrote:
+> 
+> Are you planning to pull the kernel 64bit-resize patches for 3.2
+> merge window?
 
+It depends on how much time I have.  My main priority is to get
+another snapshot release of e2fsprogs out.  I have some $WORK projects
+I need to focus on as well, and I've also been assisting with the
+kernel.org security penetration cleanup, so my time has been pretty
+badly slammed as of late.
 
-Hi Ted,
+I included the the userspace support for the new resize ioctl since
+it's pretty simple, and very unlikely to change.
 
-Are you planning to pull the kernel 64bit-resize patches for 3.2 merge window?
-
-Cheers,
-Amir.
+					- Ted
