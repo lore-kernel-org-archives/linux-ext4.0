@@ -1,44 +1,61 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: On-disk field assignments for metadata checksum and snapshots
-Date: Thu, 15 Sep 2011 13:57:55 -0400
-Message-ID: <20110915175755.GK15782@thunk.org>
-References: <E1R4Dby-0005qO-I2@tytso-glaptop.cam.corp.google.com>
- <CAOQ4uxihCk=o2C8Htzn5JgnbZ3zRSS+JhaiCw=gcDdgLojd94Q@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Darrick J. Wong" <djwong@us.ibm.com>, linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger.kernel@dilger.ca>
+Subject: Re: [PATCH] libext2fs: reserve exclude bitmap fields in group descriptor
+Date: Thu, 15 Sep 2011 13:08:34 -0600
+Message-ID: <F609F599-7286-4E6C-93B2-FEB9F9F5C077@dilger.ca>
+References: <CAOQ4uxjydz_6Upm5AUErHct2J0VKSN3-d-XT+Jn=q9BJFWQtaw@mail.gmail.com> <20110915131606.GG15782@thunk.org> <CAOQ4uxi0Xq89Va_ttTGJGZO342Mpa7HG03DhjhEsfHsubeso7A@mail.gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: "Ted Ts'o" <tytso@mit.edu>, "Darrick J. Wong" <djwong@us.ibm.com>,
+	Sunil Mushran <sunil.mushran@oracle.com>,
+	Andi Kleen <andi@firstfloor.org>,
+	Mingming Cao <cmm@us.ibm.com>,
+	Joel Becker <jlbec@evilplan.org>, linux-ext4@vger.kernel.org,
+	Coly Li <colyli@gmail.com>,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>
 To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:44437 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934040Ab1IOR56 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 15 Sep 2011 13:57:58 -0400
-Content-Disposition: inline
-In-Reply-To: <CAOQ4uxihCk=o2C8Htzn5JgnbZ3zRSS+JhaiCw=gcDdgLojd94Q@mail.gmail.com>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:57838 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934472Ab1IOTIm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Sep 2011 15:08:42 -0400
+In-Reply-To: <CAOQ4uxi0Xq89Va_ttTGJGZO342Mpa7HG03DhjhEsfHsubeso7A@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 15, 2011 at 07:01:47PM +0300, Amir Goldstein wrote:
-> > + =A0 =A0 =A0 { =A0 =A0 =A0 E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT=
-_EXCLUDE_BITMAP,
-> > + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 "snapshot" },
->=20
-> The feature name should read "exclude_bitmap".
-> This is a COMPAT feature which should be set by default on every mkfs=
-=2Eext4.
-> The "has_snapshot" (or "snapshots") feature is a RO_COMPAT feature, w=
-hich
-> can be turned on and off, depending on whether you want to enable or
-> disable snapshots.
+On 2011-09-15, at 7:47 AM, Amir Goldstein wrote:
+> On Thu, Sep 15, 2011 at 4:16 PM, Ted Ts'o <tytso@mit.edu> wrote:
+>> On Thu, Sep 15, 2011 at 09:50:20AM +0300, Amir Goldstein wrote:
+>>> -#define EXT2_FEATURE_COMPAT_EXCLUDE_INODE      0x0080
+>>> +/* #define EXT2_FEATURE_COMPAT_EXCLUDE_INODE   0x0080 not used */
+>>> +#define EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP     0x0100
+>> 
+>> Why this change?  Is it because you're already using 0x0100 in
+>> shipping systems?
+> 
+> I am using 0x80 in shipping systems and it signifies something a bit
+> different then the proposed 0x100.
+> 
+> EXCLUDE_INODE means that special inode 9 is used to reference exclude
+> bitmap blocks.  EXCLUDE_BITMAP means that exclude bitmap blocks are
+> referenced from group descriptors.
+> With this distinction it will be easier for me to make the migration.
 
-Yeah, I was trying to use a name which would be a bit more descriptive
-than "exclude_bitmap", but I agree that will get very confusing with
-the "has_snapshot" feature name.
+In that light, why not continue to use an inode to map the exclude bitmap
+blocks, where the bitmap offset is (group * blocksize), instead of
+explicitly listing all of the blocks in the group descriptor?  This is
+how the buddy bitmap works in memory only, but it could be done for the
+exclude bitmap on disk.
 
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The advantage of this is that it would allow the 32-bit bitmap checksums
+to both fit into the group descriptor.  The disadvantage is that there
+is a chance this inode would become corrupted and the location of the
+exclude bitmaps is lost.  I don't know how serious that is (e.g. if e2fsck
+could fix it by regenerating the bitmaps, or just deleting the snapshot).
+
+Cheers, Andreas
+
+
+
+
+
