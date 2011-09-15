@@ -1,198 +1,113 @@
-From: Valerie Aurora <val@vaaconsulting.com>
-Subject: Re: [RFC PATCH 1/3] VFS: Fix s_umount thaw/write deadlock
-Date: Wed, 14 Sep 2011 16:53:38 -0700
-Message-ID: <CAD-Xuj=XnUBQ=-gmrdaBj6ABJei25ELR-Mg1XMRw4wEL=JwWcQ@mail.gmail.com>
-References: <CAD-Xujmjai2evYC4a4CdNPtjh_9xhbELcZePtGSS54VPRGpznA@mail.gmail.com>
-	<CAD-Xujm87Aj6y09GRXPVMZM+9N_7wyte-YNp7t0Wi3R2qH2mHQ@mail.gmail.com>
-	<20110914140047.GB7903@quack.suse.cz>
+From: Tao Ma <tm@tao.ma>
+Subject: Re: [PATCH] ext4: Don't check io->flag when setting EXT4_STATE_DIO_UNWRITTEN
+ inode state.
+Date: Thu, 15 Sep 2011 10:24:20 +0800
+Message-ID: <4E7161D4.8000707@tao.ma>
+References: <1315984587-5039-1-git-send-email-tm@tao.ma> <4E70DF02.1000202@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-fsdevel@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
-	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
-	Greg Freemyer <greg.freemyer@gmail.com>,
-	linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>
-To: Jan Kara <jack@suse.cz>
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:36927 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751277Ab1INXxk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Sep 2011 19:53:40 -0400
-In-Reply-To: <20110914140047.GB7903@quack.suse.cz>
+Received: from oproxy1-pub.bluehost.com ([66.147.249.253]:47004 "HELO
+	oproxy1-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1752560Ab1IOCZJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Sep 2011 22:25:09 -0400
+In-Reply-To: <4E70DF02.1000202@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 14, 2011 at 7:00 AM, Jan Kara <jack@suse.cz> wrote:
-> On Mon 12-09-11 19:57:11, Valerie Aurora wrote:
->> Val, if you are sending patches as attachments, make them at least
->> text/plain please!
-
-Oops, sorry.
-
->> diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
->> index 04cf3b9..d1dca03 100644
->> --- a/fs/fs-writeback.c
->> +++ b/fs/fs-writeback.c
->> @@ -537,6 +537,9 @@ static long writeback_sb_inodes(struct super_blo=
-ck *sb,
->> =A0 =A0 =A0 long write_chunk;
->> =A0 =A0 =A0 long wrote =3D 0; =A0/* count both pages and inodes */
+On 09/15/2011 01:06 AM, Eric Sandeen wrote:
+> On 9/14/11 2:16 AM, Tao Ma wrote:
+>> From: Tao Ma <boyu.mt@taobao.com>
 >>
->> + =A0 =A0 if (vfs_is_frozen(sb))
->> + =A0 =A0 =A0 =A0 =A0 =A0 return 0;
->> +
-> =A0Umm, maybe we could make this more robust by skipping the superblo=
-ck in
-> __writeback_inodes_wb() and just explicitely stopping the writeback w=
-hen
-> work->sb is set (i.e. writeback is required only for frozen sb) in
-> wb_writeback()?
-
-Sorry, I don't quite understand what the goal is here?  I'm happy to
-make the change, just want to make sure I'm accomplishing what you
-want.
-
->> =A0 =A0 =A0 while (!list_empty(&wb->b_io)) {
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct inode *inode =3D wb_inode(wb->b_i=
-o.prev);
+>> When we want to convert the unitialized extent in direct write,
+>> we can either do it in ext4_end_io_nolock(AIO case) or in
+>>  ext4_ext_direct_IO(non AIO case) and EXT4_I(inode)->cur_aio_dio
+>> is a guard for ext4_ext_map_blocks to find the right case.
+>> In e9e3bcecf, we mistakenly change it by:
+>> -			if (io)
+>> +			if (io && !(io->flag & EXT4_IO_END_UNWRITTEN)) {
+>>  				io->flag = EXT4_IO_END_UNWRITTEN;
+>> -			else
+>> +				atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
+>> +			} else
+>>  				ext4_set_inode_state(inode,
+>>  						     EXT4_STATE_DIO_UNWRITTEN);
 >>
->> @@ -1238,39 +1241,43 @@ EXPORT_SYMBOL(writeback_inodes_sb);
->> =A0 * writeback_inodes_sb_if_idle =A0 =A0 =A0 - =A0 =A0 =A0 start wr=
-iteback if none underway
->> =A0 * @sb: the superblock
->> =A0 *
->> - * Invoke writeback_inodes_sb if no writeback is currently underway=
-=2E
->> - * Returns 1 if writeback was started, 0 if not.
->> + * Invoke writeback_inodes_sb if no writeback is currently underway
->> + * and no one else holds the s_umount lock. =A0Returns 1 if writeba=
-ck
->> + * was started, 0 if not.
->> =A0 */
->> =A0int writeback_inodes_sb_if_idle(struct super_block *sb)
->> =A0{
->> =A0 =A0 =A0 if (!writeback_in_progress(sb->s_bdi)) {
->> - =A0 =A0 =A0 =A0 =A0 =A0 down_read(&sb->s_umount);
->> - =A0 =A0 =A0 =A0 =A0 =A0 writeback_inodes_sb(sb);
->> - =A0 =A0 =A0 =A0 =A0 =A0 up_read(&sb->s_umount);
->> - =A0 =A0 =A0 =A0 =A0 =A0 return 1;
->> - =A0 =A0 } else
->> - =A0 =A0 =A0 =A0 =A0 =A0 return 0;
->> + =A0 =A0 =A0 =A0 =A0 =A0 if (down_read_trylock(&sb->s_umount)) {
-> =A0What's exactly the deadlock trylock protects from here? Or is it j=
-ust an
-> optimization?
+>> So now if we map 2 blocks, and the first one set the EXT_IO_END_UNWRITTEN, the
+>> 2nd mapping will set inode state because of the check for the flag. This is
+>> wrong.
+> 
+> Argh, yes, I think you are right.  Pesky else clause.  :(
+> 
+> Do you have a testcase for this?  And what is the user-visible outcome of the error,
+> is it data corruption?
+sure, a very simple case can expose this.
 
-The trylock is an optimization Dave Chinner suggested.  The first
-version I wrote acquired the lock and then checked vfs_is_frozen().
+fallocate -o 0 -l 1048576 $MNT_DIR/b
+aio_test $MNT_DIR/b 4096 4096
+aio_test $MNT_DIR/b 0 12288
 
-This function and the similar following one each have one caller,
-btrfs in one case and ext4 in the other, and they are both trying to
-get more writes to go out to disk in the hope of freeing up disk
-space.
+The 2nd aio test will set the inode state. Currently, at least from my
+test, it doesn't cause any data corruption because we only check
+EXT4_STATE_DIO_UNWRITTEN like this:
+if (ret > 0 && ext4_test_inode_state(inode,
+                                    EXT4_STATE_DIO_UNWRITTEN))
+So only if __blockdev_direct_IO returns us ret > 0, we will test this
+flag. But the inode will have this flag from then on. I am not sure
+whether there are other places complaining of it.
 
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 writeback_inodes_sb(sb);
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 up_read(&sb->s_umount);
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return 1;
->> + =A0 =A0 =A0 =A0 =A0 =A0 }
->> + =A0 =A0 }
->> + =A0 =A0 return 0;
->> =A0}
->> =A0EXPORT_SYMBOL(writeback_inodes_sb_if_idle);
+But I think we need this fix, first to make it more readable(at least it
+is a little bit hard for me to understand the old one ;) ) and second to
+avoid any future possible bug.
+
+Thanks
+Tao
+
+
+> 
+>> Cc: Eric Sandeen <sandeen@redhat.com>
+>> Cc: "Theodore Ts'o" <tytso@mit.edu>
+>> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+>> ---
+>>  fs/ext4/extents.c |   16 ++++++++++------
+>>  1 files changed, 10 insertions(+), 6 deletions(-)
 >>
->> =A0/**
->> - * writeback_inodes_sb_if_idle =A0 =A0 =A0 - =A0 =A0 =A0 start writ=
-eback if none underway
->> + * writeback_inodes_sb_nr_if_idle =A0 =A0- =A0 =A0 =A0 start writeb=
-ack if none underway
->> =A0 * @sb: the superblock
->> =A0 * @nr: the number of pages to write
->> =A0 *
->> - * Invoke writeback_inodes_sb if no writeback is currently underway=
-=2E
->> - * Returns 1 if writeback was started, 0 if not.
->> + * Invoke writeback_inodes_sb if no writeback is currently underway
->> + * and no one else holds the s_umount lock. =A0Returns 1 if writeba=
-ck
->> + * was started, 0 if not.
->> =A0 */
->> =A0int writeback_inodes_sb_nr_if_idle(struct super_block *sb,
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0u=
-nsigned long nr)
->> =A0{
->> =A0 =A0 =A0 if (!writeback_in_progress(sb->s_bdi)) {
->> - =A0 =A0 =A0 =A0 =A0 =A0 down_read(&sb->s_umount);
->> - =A0 =A0 =A0 =A0 =A0 =A0 writeback_inodes_sb_nr(sb, nr);
->> - =A0 =A0 =A0 =A0 =A0 =A0 up_read(&sb->s_umount);
->> - =A0 =A0 =A0 =A0 =A0 =A0 return 1;
->> - =A0 =A0 } else
->> - =A0 =A0 =A0 =A0 =A0 =A0 return 0;
->> + =A0 =A0 =A0 =A0 =A0 =A0 if (down_read_trylock(&sb->s_umount)) {
-> =A0The same question here...
->
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 writeback_inodes_sb_nr(sb,=
- nr);
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 up_read(&sb->s_umount);
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return 1;
->> + =A0 =A0 =A0 =A0 =A0 =A0 }
->> + =A0 =A0 }
->> + =A0 =A0 return 0;
->> =A0}
->> =A0EXPORT_SYMBOL(writeback_inodes_sb_nr_if_idle);
->>
->> diff --git a/fs/quota/quota.c b/fs/quota/quota.c
->> index b34bdb2..993ce22 100644
->> --- a/fs/quota/quota.c
->> +++ b/fs/quota/quota.c
->> @@ -366,6 +366,18 @@ SYSCALL_DEFINE4(quotactl, unsigned int, cmd, co=
-nst char __user *, special,
->> =A0 =A0 =A0 if (IS_ERR(sb))
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 return PTR_ERR(sb);
->>
->> + =A0 =A0 /*
->> + =A0 =A0 =A0* It's not clear which quota functions may write to the=
- file
->> + =A0 =A0 =A0* system (all?). =A0Check for a frozen fs and bail out =
-now.
->> + =A0 =A0 =A0*/
->> + =A0 =A0 if (vfs_is_frozen(sb)) {
->> + =A0 =A0 =A0 =A0 =A0 =A0 drop_super(sb);
->> + =A0 =A0 =A0 =A0 =A0 =A0 /* XXX Should quotactl_block() error path =
-do this too? */
-> =A0Yes, it does. Thanks for spotting this.
+>> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+>> index 57cf568..8db6743 100644
+>> --- a/fs/ext4/extents.c
+>> +++ b/fs/ext4/extents.c
+>> @@ -3190,9 +3190,11 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
+>>  		 * that this IO needs to conversion to written when IO is
+>>  		 * completed
+>>  		 */
+>> -		if (io && !(io->flag & EXT4_IO_END_UNWRITTEN)) {
+>> -			io->flag = EXT4_IO_END_UNWRITTEN;
+>> -			atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
+>> +		if (io) {
+>> +			if (!(io->flag & EXT4_IO_END_UNWRITTEN)) {
+>> +				io->flag = EXT4_IO_END_UNWRITTEN;
+>> +				atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
+>> +			}
+>>  		} else
+>>  			ext4_set_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
+>>  		if (ext4_should_dioread_nolock(inode))
+>> @@ -3572,9 +3574,11 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+>>  		 * that we need to perform conversion when IO is done.
+>>  		 */
+>>  		if ((flags & EXT4_GET_BLOCKS_PRE_IO)) {
+>> -			if (io && !(io->flag & EXT4_IO_END_UNWRITTEN)) {
+>> -				io->flag = EXT4_IO_END_UNWRITTEN;
+>> -				atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
+>> +			if (io) {
+>> +				if (!(io->flag & EXT4_IO_END_UNWRITTEN)) {
+>> +					io->flag = EXT4_IO_END_UNWRITTEN;
+>> +					atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
+>> +				}
+>>  			} else
+>>  				ext4_set_inode_state(inode,
+>>  						     EXT4_STATE_DIO_UNWRITTEN);
+> 
 
-=46ixed, thanks for confirming.
-
->> + =A0 =A0 =A0 =A0 =A0 =A0 if (pathp && !IS_ERR(pathp))
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 path_put(pathp);
->> + =A0 =A0 =A0 =A0 =A0 =A0 return -EBUSY;
->> + =A0 =A0 }
->> +
->> =A0 =A0 =A0 ret =3D do_quotactl(sb, type, cmds, id, addr, pathp);
->>
->> =A0 =A0 =A0 drop_super(sb);
-> ...
->> diff --git a/fs/sync.c b/fs/sync.c
->> index c98a747..db15b11 100644
->> --- a/fs/sync.c
->> +++ b/fs/sync.c
->> @@ -68,7 +68,7 @@ int sync_filesystem(struct super_block *sb)
->> =A0 =A0 =A0 /*
->> =A0 =A0 =A0 =A0* No point in syncing out anything if the filesystem =
-is read-only.
->> =A0 =A0 =A0 =A0*/
->> - =A0 =A0 if (sb->s_flags & MS_RDONLY)
->> + =A0 =A0 if ((sb->s_flags & MS_RDONLY) && !vfs_is_frozen(sb))
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0^^^^
-> The check should be: (sb->s_flags & MS_RDONLY || vfs_is_frozen(sb))
-
-=46ixed, and I reviewed the other checks for similar mistakes.  Thanks!
-I'll resend soon.
-
--VAL
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
