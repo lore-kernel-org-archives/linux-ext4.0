@@ -1,36 +1,53 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/2] libext2fs: add metadata checksum and snapshot
- feature flags
-Date: Thu, 15 Sep 2011 19:11:27 -0400
-Message-ID: <20110915231127.GK28181@thunk.org>
-References: <1316127052-1890-1-git-send-email-tytso@mit.edu>
- <1316127052-1890-2-git-send-email-tytso@mit.edu>
- <F041558F-1F4B-4ADE-9DC2-53708C9124B8@dilger.ca>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: [PATCH] ext4: Prevent stack overrun in ext4_file_open when
+	recording last known mountpoint
+Date: Thu, 15 Sep 2011 16:16:45 -0700
+Message-ID: <20110915231645.GE12086@tux1.beaverton.ibm.com>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"Darrick J. Wong" <djwong@us.ibm.com>,
-	Amir Goldstein <amir73il@gmail.com>
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:50516 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935246Ab1IOXLa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 15 Sep 2011 19:11:30 -0400
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:52293 "EHLO e6.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932690Ab1IOXQv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 Sep 2011 19:16:51 -0400
 Content-Disposition: inline
-In-Reply-To: <F041558F-1F4B-4ADE-9DC2-53708C9124B8@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 15, 2011 at 05:09:13PM -0600, Andreas Dilger wrote:
-> 
-> I thought it would be better to move s_checksum to be the last field in the
-> superblock to avoid multiple calls to the CRC function? 
+In ext4_file_open, the filesystem records the mountpoint of the first file that
+is opened after mounting the filesystem.  It does this by allocating a 64-byte
+stack buffer, calling d_path() to grab the mount point through which this file
+was accessed, and then memcpy()ing 64 bytes into the superblock's
+s_last_mounted field, starting from the return value of d_path(), which is
+stored as "cp".  However, if cp > buf (which it frequently is since path
+components are prepended starting at the end of buf) then we can end up copying
+stack data into the superblock.
 
-Did you see my comment about just zero'ing the checksum field before
-running the CRC?  We're going to have to do that for other data
-structures, such as the inode structure, and it's what we do with the
-block group descriptor checksum.  Might as well do that everywhere for
-consistency's sake.
+Writing stack variables into the superblock doesn't sound like a great idea, so
+use strncpy instead.
 
-						- Ted
+Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+---
+
+ fs/ext4/file.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index e4095e9..67223e0 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -181,8 +181,8 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
+ 		path.dentry = mnt->mnt_root;
+ 		cp = d_path(&path, buf, sizeof(buf));
+ 		if (!IS_ERR(cp)) {
+-			memcpy(sbi->s_es->s_last_mounted, cp,
+-			       sizeof(sbi->s_es->s_last_mounted));
++			strncpy(sbi->s_es->s_last_mounted, cp,
++				sizeof(sbi->s_es->s_last_mounted));
+ 			ext4_mark_super_dirty(sb);
+ 		}
+ 	}
