@@ -1,81 +1,68 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: On-disk field assignments for metadata checksum and snapshots
-Date: Thu, 15 Sep 2011 17:26:02 -0600
-Message-ID: <61355884-798E-4BE1-8CF6-D990851CA3B1@dilger.ca>
-References: <E1R4Dby-0005qO-I2@tytso-glaptop.cam.corp.google.com> <20110915165512.GA12086@tux1.beaverton.ibm.com> <20110915171934.GB12086@tux1.beaverton.ibm.com> <7755CB79-FD71-49BE-AF93-0A49CA25CEAC@dilger.ca> <20110915200519.GC12086@tux1.beaverton.ibm.com>
+Subject: Re: [PATCH 1/2] libext2fs: add metadata checksum and snapshot feature flags
+Date: Thu, 15 Sep 2011 17:34:41 -0600
+Message-ID: <14955E98-C987-40D6-A881-5D40077C2FB2@dilger.ca>
+References: <1316127052-1890-1-git-send-email-tytso@mit.edu> <1316127052-1890-2-git-send-email-tytso@mit.edu> <F041558F-1F4B-4ADE-9DC2-53708C9124B8@dilger.ca> <20110915231127.GK28181@thunk.org>
 Mime-Version: 1.0 (Apple Message framework v1084)
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 8BIT
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Amir Goldstein <amir73il@gmail.com>, linux-ext4@vger.kernel.org
-To: djwong@us.ibm.com
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	"Darrick J. Wong" <djwong@us.ibm.com>,
+	Amir Goldstein <amir73il@gmail.com>
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:54259 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S935365Ab1IOX0D convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Sep 2011 19:26:03 -0400
-In-Reply-To: <20110915200519.GC12086@tux1.beaverton.ibm.com>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:22205 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S935453Ab1IOXen convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Sep 2011 19:34:43 -0400
+In-Reply-To: <20110915231127.GK28181@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-09-15, at 2:05 PM, Darrick J. Wong wrote:
-> On Thu, Sep 15, 2011 at 01:10:41PM -0600, Andreas Dilger wrote:
+On 2011-09-15, at 5:11 PM, Ted Ts'o wrote:
+> On Thu, Sep 15, 2011 at 05:09:13PM -0600, Andreas Dilger wrote:
 >> 
->> It really would be interesting to measure the crc32c() and crc16() performance
->> for 512MB in chunks of 4, 32, 128, 256, and 4096 bytes (which is the largest
->> that we will generally use until we get to data checksums).  That would give
->> us a good idea how fast the checksums _really_ are in our actual usage.
+>> I thought it would be better to move s_checksum to be the last field in the
+>> superblock to avoid multiple calls to the CRC function? 
 > 
-> Ok, here's a rough cut with the Xeon X5650 at work:
-> 
-> crc32c-sby8-le@4: sz=536870912 time=1722.019ms speed=304461.26K/s
-> crc32c-sby8-le@32: sz=536870912 time=410.747ms speed=1276424.81K/s
-> crc32c-sby8-le@128: sz=536870912 time=338.527ms speed=1548731.75K/s
-> crc32c-sby8-le@256: sz=536870912 time=329.869ms speed=1589382.17K/s
-  :
-  :
-> crc32c-sby8-le@536870912: sz=536870912 time=309.269ms speed=1695251.44K/s 
+> Did you see my comment about just zero'ing the checksum field before
+> running the CRC?  We're going to have to do that for other data
+> structures, such as the inode structure, and it's what we do with the
+> block group descriptor checksum.
 
-This gets 75% peak speed at 32 bytes, and is 91% of the peak at 128 bytes.
+That isn't correct.  The group descriptor checksum is computed in chunks:
 
-> crc16@4:         sz=536870912 time=1605.590ms speed=326539.15K/s
-> crc16@32:        sz=536870912 time=1440.110ms speed=364061.15K/s
-> crc16@128:       sz=536870912 time=1374.726ms speed=381376.47K/s
-  :
-  :
-> crc16@536870912: sz=536870912 time=1366.145ms speed=383771.74K/s
+__le16 ext4_group_desc_csum(struct ext4_sb_info *sbi, __u32 block_group,
+                            struct ext4_group_desc *gdp)
+{
+                int offset = offsetof(struct ext4_group_desc, bg_checksum);
+                __le32 le_group = cpu_to_le32(block_group);
 
-This basically doesn't change regardless of the data size, and is only
-marginally faster than the optimized crc32c at 4 byte size.
+                crc = crc16(~0, sbi->s_es->s_uuid, sizeof(sbi->s_es->s_uuid));
+                crc = crc16(crc, (__u8 *)&le_group, sizeof(le_group));
+                crc = crc16(crc, (__u8 *)gdp, offset);
+                offset += sizeof(gdp->bg_checksum); /* skip checksum */
+****HERE****
+                /* for checksum of struct ext4_group_desc do the rest...*/
+                if ((sbi->s_es->s_feature_incompat &
+                     cpu_to_le32(EXT4_FEATURE_INCOMPAT_64BIT)) &&
+                    offset < le16_to_cpu(sbi->s_es->s_desc_size))
+                        crc = crc16(crc, (__u8 *)gdp + offset,
+                                    le16_to_cpu(sbi->s_es->s_desc_size) -
+                                        offset);
+ }
 
-> crc32c-intel@4:         sz=536870912 time=1025.192ms speed=511404.47K/s
-> crc32c-intel@32:        sz=536870912 time=135.124ms speed=3880043.59K/s
-> crc32c-intel@128:       sz=536870912 time=121.991ms speed=4297766.44K/s
-> crc32c-intel@256:       sz=536870912 time=120.008ms speed=4368783.42K/s
-  :
-  :
-> crc32c-intel@536870912: sz=536870912 time=118.369ms speed=4429255.67K/s
+Darrick and I discussed zeroing the checksum fields, but then there is a
+race with other threads accessing the same structure.
 
-This is already faster than crc16 at 4 byte size, and is miles ahead at
-32 byte size (the group descriptor CRC chunk size, regardless of whether
-a 32-byte or 64-byte descriptor is actually used).
+If we went to a crc32c LSB for filesystems with RO_COMPAT_CSUM it would
+be possible to change how it is computed.  Since we have freedom to move
+the checksum field now, why have the added complexity to do zeroing of
+the field or two chunks?
 
-> As you can see from the results, the algorithm(s) that are fast generally
-> don't reach full speed until they hit 4KB chunk sizes.  powerpc64 and a
-> laptop seems to yield speed scaling similar results.
-
-While it is true they don't reach peak speed until 4kB, even at chunk
-sizes as small as 32 bytes crc32c is a clear winner.  This makes me think
-that using CRC32c LSB for the group descriptor checksums when RO_COMPAT_CSUM
-is present may be worth the effort.
-
-> crc32c-sby8-* = my new crc32c implementation
-> crc16 = kernel's crc16 implementation
-> crc32c = kernel's current crc32c sw implementation
-> crc16-t10dif = t10dif crc16 implementation
-> crc32c-intel = hw accelerated crc32c
-> 
-> --D
+Since we naturally have to break the checksum calculation for 128-byte
+inodes and 32-byte descriptors, due to old versions of those structs,
+there is little overhead in just skipping the field, and no races.
 
 Cheers, Andreas
 
