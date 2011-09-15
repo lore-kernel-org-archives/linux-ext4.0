@@ -1,120 +1,55 @@
-From: "Amir G." <amir73il@users.sourceforge.net>
-Subject: Re: [PATCH] libext2fs: fix the range validation in bitmap_range2 funcs
-Date: Thu, 15 Sep 2011 09:54:13 +0300
-Message-ID: <CAOQ4uxgGQGFVwnXViv3fDqVnO4nPgrcX-gA7gZNG4=tBXVO9EA@mail.gmail.com>
-References: <1308064592-29935-1-git-send-email-amir73il@users.sourceforge.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+From: Robin Dong <hao.bigrat@gmail.com>
+Subject: [PATCH 1/4] ext4: use stream-alloc when mb_group_prealloc set to zero
+Date: Thu, 15 Sep 2011 15:09:37 +0800
+Message-ID: <1316070580-10723-1-git-send-email-hao.bigrat@gmail.com>
+Cc: Robin Dong <sanbai@taobao.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:44304 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750788Ab1IOGyO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Sep 2011 02:54:14 -0400
-Received: by wyh22 with SMTP id 22so2384555wyh.19
-        for <linux-ext4@vger.kernel.org>; Wed, 14 Sep 2011 23:54:13 -0700 (PDT)
-In-Reply-To: <1308064592-29935-1-git-send-email-amir73il@users.sourceforge.net>
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:32913 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750788Ab1IOHKD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Sep 2011 03:10:03 -0400
+Received: by pzk32 with SMTP id 32so2239825pzk.19
+        for <linux-ext4@vger.kernel.org>; Thu, 15 Sep 2011 00:10:02 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 14, 2011 at 6:16 PM,  <amir73il@users.sourceforge.net> wrot=
-e:
-> From: Amir Goldstein <amir73il@users.sf.net>
->
-> The condition ((start+num) & ~0xffffffffULL) in bitmap_ragne2
-> and generic_bmap_range funcs in get_bitmap64.c was wrong and
-> inconsistent with the condition (start+num-1 > bmap->real_end)
-> in generic_bitmap_range funcs in get_bitmap.c.
->
-> I got the following error from tune2fs on a 16TB fs:
-> Illegal block number passed to ext2fs_unmark_block_bitmap #4294967295
-> for block bitmap for 16TB.img
-> tune2fs: Invalid argument while reading bitmaps
->
-> Fix to condition to ((start+num-1) & ~0xffffffffULL), because
-> the bit (start+num) is not going to be changed by the funcs.
->
-> Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
+From: Robin Dong <sanbai@taobao.com>
 
-ping
+The kernel will crash on 
 
-> ---
-> =A0lib/ext2fs/gen_bitmap64.c | =A0 10 +++++-----
-> =A01 files changed, 5 insertions(+), 5 deletions(-)
->
-> diff --git a/lib/ext2fs/gen_bitmap64.c b/lib/ext2fs/gen_bitmap64.c
-> index df095ac..69c399a 100644
-> --- a/lib/ext2fs/gen_bitmap64.c
-> +++ b/lib/ext2fs/gen_bitmap64.c
-> @@ -382,7 +382,7 @@ errcode_t ext2fs_set_generic_bmap_range(ext2fs_ge=
-neric_bitmap bmap,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return EINVAL;
->
-> =A0 =A0 =A0 =A0if (EXT2FS_IS_32_BITMAP(bmap)) {
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if ((start+num) & ~0xffffffffULL) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if ((start+num-1) & ~0xffffffffULL) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext2fs_warn_bitmap2(bm=
-ap, EXT2FS_UNMARK_ERROR,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A00xffffffff);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return EINVAL;
-> @@ -405,7 +405,7 @@ errcode_t ext2fs_get_generic_bmap_range(ext2fs_ge=
-neric_bitmap bmap,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return EINVAL;
->
-> =A0 =A0 =A0 =A0if (EXT2FS_IS_32_BITMAP(bmap)) {
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if ((start+num) & ~0xffffffffULL) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if ((start+num-1) & ~0xffffffffULL) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext2fs_warn_bitmap2(bm=
-ap,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0EXT2FS_UNMARK_ERROR, 0xffffffff);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return EINVAL;
-> @@ -476,7 +476,7 @@ int ext2fs_test_block_bitmap_range2(ext2fs_block_=
-bitmap bmap,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 bmap, block);
->
-> =A0 =A0 =A0 =A0if (EXT2FS_IS_32_BITMAP(bmap)) {
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if ((block+num) & ~0xffffffffULL) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if ((block+num-1) & ~0xffffffffULL) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext2fs_warn_bitmap2((e=
-xt2fs_generic_bitmap) bmap,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0EXT2FS_UNMARK_ERROR, 0xffffffff);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return EINVAL;
-> @@ -498,7 +498,7 @@ void ext2fs_mark_block_bitmap_range2(ext2fs_block=
-_bitmap bmap,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return;
->
-> =A0 =A0 =A0 =A0if (EXT2FS_IS_32_BITMAP(bmap)) {
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if ((block+num) & ~0xffffffffULL) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if ((block+num-1) & ~0xffffffffULL) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext2fs_warn_bitmap2((e=
-xt2fs_generic_bitmap) bmap,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0EXT2FS_UNMARK_ERROR, 0xffffffff);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return;
-> @@ -526,7 +526,7 @@ void ext2fs_unmark_block_bitmap_range2(ext2fs_blo=
-ck_bitmap bmap,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return;
->
-> =A0 =A0 =A0 =A0if (EXT2FS_IS_32_BITMAP(bmap)) {
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if ((block+num) & ~0xffffffffULL) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if ((block+num-1) & ~0xffffffffULL) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext2fs_warn_bitmap2((e=
-xt2fs_generic_bitmap) bmap,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0EXT2FS_UNMARK_ERROR, 0xffffffff);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return;
-> --
-> 1.7.4.1
->
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ext4_mb_mark_diskspace_used:
+	BUG_ON(ac->ac_b_ex.fe_len <= 0);
+
+after we set /sys/fs/ext4/sda/mb_group_prealloc to zero and create new files in an ext4 filesystem.
+
+The reason is: ac_b_ex.fe_len also set to zero(mb_group_prealloc) in ext4_mb_normalize_group_request
+because the ac_flags contains EXT4_MB_HINT_GROUP_ALLOC.
+
+I think when someone set mb_group_prealloc to zero, it means DO NOT USE GROUP PREALLOCATION,
+so we should set alloc-strategy to STREAM in this case.
+
+Signed-off-by: Robin Dong <sanbai@taobao.com>
+---
+ fs/ext4/mballoc.c |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 17a5a57..6b58247 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -3969,6 +3969,11 @@ static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
+ 		return;
+ 	}
+ 
++	if (sbi->s_mb_group_prealloc <= 0) {
++		ac->ac_flags |= EXT4_MB_STREAM_ALLOC;
++		return;
++	}
++
+ 	/* don't use group allocation for large files */
+ 	size = max(size, isize);
+ 	if (size > sbi->s_mb_stream_request) {
+-- 
+1.7.4.1
+
