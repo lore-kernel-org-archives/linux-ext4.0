@@ -1,62 +1,41 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/2] libext2fs: add metadata checksum and snapshot
- feature flags
-Date: Thu, 15 Sep 2011 21:06:04 -0400
-Message-ID: <20110916010604.GM28181@thunk.org>
-References: <1316127052-1890-1-git-send-email-tytso@mit.edu>
- <1316127052-1890-2-git-send-email-tytso@mit.edu>
- <F041558F-1F4B-4ADE-9DC2-53708C9124B8@dilger.ca>
- <20110915231127.GK28181@thunk.org>
- <14955E98-C987-40D6-A881-5D40077C2FB2@dilger.ca>
- <20110915234131.GL28181@thunk.org>
- <F48B39D1-7E73-4F3B-AA41-3D419CB5EF61@dilger.ca>
+Subject: Re: [PATCH] libext2fs: fix the range validation in bitmap_range2
+ funcs
+Date: Thu, 15 Sep 2011 22:23:59 -0400
+Message-ID: <20110916022359.GO28181@thunk.org>
+References: <1308064592-29935-1-git-send-email-amir73il@users.sourceforge.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"Darrick J. Wong" <djwong@us.ibm.com>,
-	Amir Goldstein <amir73il@gmail.com>
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org, Amir Goldstein <amir73il@users.sf.net>
+To: amir73il@users.sourceforge.net
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:35920 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:45023 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750868Ab1IPBGJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 15 Sep 2011 21:06:09 -0400
+	id S1751591Ab1IPCYB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 Sep 2011 22:24:01 -0400
 Content-Disposition: inline
-In-Reply-To: <F48B39D1-7E73-4F3B-AA41-3D419CB5EF61@dilger.ca>
+In-Reply-To: <1308064592-29935-1-git-send-email-amir73il@users.sourceforge.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 15, 2011 at 06:09:04PM -0600, Andreas Dilger wrote:
+On Tue, Jun 14, 2011 at 06:16:32PM +0300, amir73il@users.sourceforge.net wrote:
+> From: Amir Goldstein <amir73il@users.sf.net>
 > 
-> If you are reading the structure (not modifying it) and trying to verify
-> the checksum, it would be necessary to read-lock the structure, zero
-> the field, compute the checksum, reset the field, unlock, and then
-> compare checksums.  Alternately, one would have to make a copy of the
-> struct to zero out the field and compute the checksum on the copy.  Both
-> are more complex than just doing the checksum on two separate chunks.
+> The condition ((start+num) & ~0xffffffffULL) in bitmap_ragne2
+> and generic_bmap_range funcs in get_bitmap64.c was wrong and
+> inconsistent with the condition (start+num-1 > bmap->real_end)
+> in generic_bitmap_range funcs in get_bitmap.c.
+> 
+> I got the following error from tune2fs on a 16TB fs:
+> Illegal block number passed to ext2fs_unmark_block_bitmap #4294967295
+> for block bitmap for 16TB.img
+> tune2fs: Invalid argument while reading bitmaps
+> 
+> Fix to condition to ((start+num-1) & ~0xffffffffULL), because
+> the bit (start+num) is not going to be changed by the funcs.
+> 
+> Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
 
-You have to read-lock the structure before calculating the checksum in
-any case, since otherwise when someone else is modifying the
-structure, before they have a chance to update the checksum, you'll
-calculate the checksum and discover that it is incorrect.
-
-In practice we would probably be calculating the checksum when the
-inode if first read into memory, before it it is visible to the rest
-of the system, so this shouldn't be an issue.  But if it is visible to
-the rest of the system, even you put the checksum at the end, if
-someone else can modify the data structure while you are calculating
-it, the checksum will be wrong.
-
-> No, because for group descriptors, the size is conditional on whether
-> RO_COMPAT_GDT_CSUM is set, so it is just as easy to always compute the
-> first 32-byte crc32 (excluding the bg_checksum field) and then only
-> conditionally compute the second 32-byte checksum.  The same is true
-> of the inode checksum and s_inode_size, if the checksum is at the last
-> field of struct ext2_inode.
-
-But wouldn't it be faster to zero out the two fields, and then
-caluclate a single 64-byte checksum?  That way we avoid the setup
-costs of the crc32, especially in the case of the crc32c-sby8-[lb]e
-implementation.
+Applied, thanks.
 
 						- Ted
