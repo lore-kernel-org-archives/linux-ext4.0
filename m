@@ -1,56 +1,49 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 05/25] libext2:  move buf variable completely under ifdef
-Date: Fri, 16 Sep 2011 15:49:20 -0500
-Message-ID: <1316206180-6375-6-git-send-email-sandeen@redhat.com>
+Subject: [PATCH 07/25] e2fsck: handle null fs in print_pathname()
+Date: Fri, 16 Sep 2011 15:49:22 -0500
+Message-ID: <1316206180-6375-8-git-send-email-sandeen@redhat.com>
 References: <1316206180-6375-1-git-send-email-sandeen@redhat.com>
 Cc: Eric Sandeen <sandeen@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sandeen.net ([63.231.237.45]:46732 "EHLO mail.sandeen.net"
+Received: from sandeen.net ([63.231.237.45]:46737 "EHLO mail.sandeen.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755546Ab1IPUtp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1755510Ab1IPUtp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 16 Sep 2011 16:49:45 -0400
 In-Reply-To: <1316206180-6375-1-git-send-email-sandeen@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If !WORDS_BIGENDIAN, it is pointless to test whether buf
-is NULL, because it is initialized to NULL and never changed.
-This makes Coverity complain, so we can just move all handling
-of "buf" under the #ifdef.
+testing fs for NULL in expand_percent_expression():
+
+	e2fsck_ctx = fs ? (e2fsck_t) fs->priv_data : NULL;
+
+implies that fs could be NULL, but it's passed to print_pathname()
+which defererences it without further testing.
+
+So make this safe by returning "???" for a nul fs.
 
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
- lib/ext2fs/ext_attr.c |    7 ++++---
- 1 files changed, 4 insertions(+), 3 deletions(-)
+ e2fsck/message.c |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
-index 52664eb..ddcc89f 100644
---- a/lib/ext2fs/ext_attr.c
-+++ b/lib/ext2fs/ext_attr.c
-@@ -82,9 +82,9 @@ errcode_t ext2fs_write_ext_attr2(ext2_filsys fs, blk64_t block, void *inbuf)
- {
- 	errcode_t	retval;
- 	char		*write_buf;
-+#ifdef WORDS_BIGENDIAN
- 	char		*buf = NULL;
+diff --git a/e2fsck/message.c b/e2fsck/message.c
+index 565c3cd..f178321 100644
+--- a/e2fsck/message.c
++++ b/e2fsck/message.c
+@@ -203,8 +203,9 @@ static void print_pathname(ext2_filsys fs, ext2_ino_t dir, ext2_ino_t ino)
+ 		return;
+ 	}
  
--#ifdef WORDS_BIGENDIAN
- 	retval = ext2fs_get_mem(fs->blocksize, &buf);
- 	if (retval)
- 		return retval;
-@@ -94,8 +94,9 @@ errcode_t ext2fs_write_ext_attr2(ext2_filsys fs, blk64_t block, void *inbuf)
- 	write_buf = (char *) inbuf;
- #endif
- 	retval = io_channel_write_blk64(fs->io, block, 1, write_buf);
--	if (buf)
--		ext2fs_free_mem(&buf);
-+#ifdef WORDS_BIGENDIAN
-+	ext2fs_free_mem(&buf);
-+#endif
- 	if (!retval)
- 		ext2fs_mark_changed(fs);
- 	return retval;
+-	retval = ext2fs_get_pathname(fs, dir, ino, &path);
+-	if (retval)
++	if (fs)
++		retval = ext2fs_get_pathname(fs, dir, ino, &path);
++	if (!fs || retval)
+ 		fputs("???", stdout);
+ 	else {
+ 		safe_print(path, -1);
 -- 
 1.7.4.1
 
