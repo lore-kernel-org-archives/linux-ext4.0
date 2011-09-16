@@ -1,98 +1,72 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [PATCH] libext2fs: reserve exclude bitmap fields in group descriptor
-Date: Fri, 16 Sep 2011 19:43:19 +0800
-Message-ID: <CAGBYx2YR6o0HG3xrvNJC6mp8d3Eh+3R_j_JHkdHXKFtp3p7ubA@mail.gmail.com>
-References: <CAOQ4uxjydz_6Upm5AUErHct2J0VKSN3-d-XT+Jn=q9BJFWQtaw@mail.gmail.com>
-	<20110915131606.GG15782@thunk.org>
-	<CAOQ4uxi0Xq89Va_ttTGJGZO342Mpa7HG03DhjhEsfHsubeso7A@mail.gmail.com>
-	<F609F599-7286-4E6C-93B2-FEB9F9F5C077@dilger.ca>
-	<20110915215759.GG28181@thunk.org>
-	<CAOQ4uxg1W2WQE-SsBKnjNKnwquRUuXPxhYaDbnkMRQNt23jqsA@mail.gmail.com>
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: Re: On-disk field assignments for metadata checksum and snapshots
+Date: Fri, 16 Sep 2011 14:48:28 +0300
+Message-ID: <CAOQ4uxgprEywkyeqAvQp9Cj=vs4RGDh35dLUyUuWThLdTccFWQ@mail.gmail.com>
+References: <E1R4Dby-0005qO-I2@tytso-glaptop.cam.corp.google.com>
+	<CAOQ4uxihCk=o2C8Htzn5JgnbZ3zRSS+JhaiCw=gcDdgLojd94Q@mail.gmail.com>
+	<20110915175755.GK15782@thunk.org>
+	<CAOQ4uxgXzNrrsAiii9iUetiiz-RdK+SixoRiPfGEp7zTPsLCGQ@mail.gmail.com>
+	<CAGBYx2ZZzftLcbkTXJY6nYed4eSRhXNC6oPzm7rfLiSt0YGMxQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Ted Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	"Darrick J. Wong" <djwong@us.ibm.com>,
-	Sunil Mushran <sunil.mushran@oracle.com>,
-	Andi Kleen <andi@firstfloor.org>,
-	Mingming Cao <cmm@us.ibm.com>,
-	Joel Becker <jlbec@evilplan.org>, linux-ext4@vger.kernel.org,
-	Coly Li <colyli@gmail.com>
-To: Amir Goldstein <amir73il@gmail.com>
+Cc: "Ted Ts'o" <tytso@mit.edu>, "Darrick J. Wong" <djwong@us.ibm.com>,
+	linux-ext4@vger.kernel.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:38037 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751073Ab1IPLnV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Sep 2011 07:43:21 -0400
-Received: by gyg10 with SMTP id 10so2813575gyg.19
-        for <linux-ext4@vger.kernel.org>; Fri, 16 Sep 2011 04:43:21 -0700 (PDT)
-In-Reply-To: <CAOQ4uxg1W2WQE-SsBKnjNKnwquRUuXPxhYaDbnkMRQNt23jqsA@mail.gmail.com>
+Received: from mail-wy0-f180.google.com ([74.125.82.180]:40430 "EHLO
+	mail-wy0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751968Ab1IPLsa convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Sep 2011 07:48:30 -0400
+Received: by wyj26 with SMTP id 26so4641496wyj.11
+        for <linux-ext4@vger.kernel.org>; Fri, 16 Sep 2011 04:48:28 -0700 (PDT)
+In-Reply-To: <CAGBYx2ZZzftLcbkTXJY6nYed4eSRhXNC6oPzm7rfLiSt0YGMxQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 16, 2011 at 2:45 PM, Amir Goldstein <amir73il@gmail.com> wr=
-ote:
-> On Fri, Sep 16, 2011 at 12:57 AM, Ted Ts'o <tytso@mit.edu> wrote:
->> On Thu, Sep 15, 2011 at 01:08:34PM -0600, Andreas Dilger wrote:
->>> In that light, why not continue to use an inode to map the exclude =
-bitmap
->>> blocks, where the bitmap offset is (group * blocksize), instead of
->>> explicitly listing all of the blocks in the group descriptor? =A0Th=
-is is
->>> how the buddy bitmap works in memory only, but it could be done for=
- the
->>> exclude bitmap on disk.
+On Fri, Sep 16, 2011 at 2:35 PM, Yongqiang Yang <xiaoqiangnk@gmail.com>=
+ wrote:
+> On Fri, Sep 16, 2011 at 2:52 PM, Amir Goldstein <amir73il@gmail.com> =
+wrote:
+>> On Thu, Sep 15, 2011 at 8:57 PM, Ted Ts'o <tytso@mit.edu> wrote:
+>>> On Thu, Sep 15, 2011 at 07:01:47PM +0300, Amir Goldstein wrote:
+>>>> > + =A0 =A0 =A0 { =A0 =A0 =A0 E2P_FEATURE_COMPAT, EXT2_FEATURE_COM=
+PAT_EXCLUDE_BITMAP,
+>>>> > + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 "snapshot" },
+>>>>
+>>>> The feature name should read "exclude_bitmap".
+>>>> This is a COMPAT feature which should be set by default on every m=
+kfs.ext4.
+>>>> The "has_snapshot" (or "snapshots") feature is a RO_COMPAT feature=
+, which
+>>>> can be turned on and off, depending on whether you want to enable =
+or
+>>>> disable snapshots.
+>>>
+>>> Yeah, I was trying to use a name which would be a bit more descript=
+ive
+>>> than "exclude_bitmap", but I agree that will get very confusing wit=
+h
+>>> the "has_snapshot" feature name.
+>>>
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 =A0- Ted
+>>>
 >>
->
-> And this exactly is how the exclude inode works, except only the DIND
-> block is used
-> for mapping, just like the resize inode.
->
->> I seem to recall the use of an inode to map the exclude bitmap added=
- a
->> huge amount of complexity to the snapshot patches. =A0Amir, am I
->> remembering this correctly?
->>
->
-> No, I am not sure this is accurate.
-> I think after we over viewed the e2fsprogs snapshots patch set, you
-> has 2 observations:
-> 1. the largest part (in lines of code) of the e2fsprogs snapshot patc=
-h set
-> =A0 =A0is related to the exclude inode/bitmap code.
-> 2. it reminded you of resize inode too much and you didn't like that
-> 3. There was also the issue of whether or not to allow the removal of
-> the exclude inode/bitmap
-> =A0 =A0and then re-allocation would not be in optimal layout
->
-> In retrospect, after Yongqiang has implemented the alternative exclud=
-e
-> bitmap patch set
-> for e2fsprogs, I can say:
-> 1. The alternative patch set is not smaller
-> 2. It is a lot more elegant and deals with correct layout of exclude
-> bitmap (next to block bitmap)
-> 3. It will be able to deal with 64bit fs (unlike exclude/resize inode=
-)
-> and 64bit resize
->
-> Yongqiang, do you have anything else to add to the exclude inode vs.
-> group desc issue?
-Nope, regarding resize group desc is better than exclude inode.  For
-meta_bg, group desc is much more welcome.
+>> maybe we can simply call it snapshot_bitmap, if it pleases everyone =
+;-)
+> active_snapshot_bitmap will be clearer.:-)
 
+clearer to who?
+this name is printed by "tune2fs -l"
+potential readers of this output, who did not read the documentation
+first, are just as likely to know what
+"exclude_bitmap" means as when they read "resize_inode" or "flex_bg",
+but at least "snapshot_bitmap"
+will give them a clue.
 
-Yongqiang.
->
-> Amir.
->
-
-
-
---=20
-Best Wishes
-Yongqiang Yang
+Amir.
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
