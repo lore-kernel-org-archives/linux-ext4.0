@@ -1,77 +1,271 @@
-From: Alan Stern <stern@rowland.harvard.edu>
-Subject: RE: [Bug 25832] kernel crashes when a mounted ext3/4 file system is
- physically removed
-Date: Sat, 17 Sep 2011 09:21:23 -0400 (EDT)
-Message-ID: <Pine.LNX.4.44L0.1109170913500.15004-100000@netrider.rowland.org>
-References: <BAY151-W1224E6C1A20D179965A149A1090@phx.gbl>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: tytso@mit.edu, <linux-ext4@vger.kernel.org>
-To: Rocko Requin <rockorequin@hotmail.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 1/3] ext4: migrate cleanup
+Date: Sat, 17 Sep 2011 17:32:57 +0400
+Message-ID: <1316266379-18737-1-git-send-email-dmonakhov@openvz.org>
+Cc: aneesh.kumar@linux.vnet.ibm.com, tytso@mit.edu,
+	Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from netrider.rowland.org ([192.131.102.5]:45364 "HELO
-	netrider.rowland.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751929Ab1IQNVY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 17 Sep 2011 09:21:24 -0400
-In-Reply-To: <BAY151-W1224E6C1A20D179965A149A1090@phx.gbl>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:64332 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751735Ab1IQNdK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 17 Sep 2011 09:33:10 -0400
+Received: by bkbzt4 with SMTP id zt4so4173708bkb.19
+        for <linux-ext4@vger.kernel.org>; Sat, 17 Sep 2011 06:33:08 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Please don't include an entire 400-line message in your reply if you're
-only going to add a few new lines of text.  Use some judicious trimming.
+This patch cleanup code a bit, actual logic not changed
+- Move current block pointer to migrate_structure, let's all
+  walk info will be in one structure.
+- Get rid of usless null ind-block ptr checks, caller already
+  does that check.
 
-On Sat, 17 Sep 2011, Rocko Requin wrote:
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/ext4/migrate.c |  101 ++++++++++++++++++-----------------------------------
+ 1 files changed, 34 insertions(+), 67 deletions(-)
 
-> Here's a log of the latest kernel from git crashing with that patch
-> applied (as well as Ted's patch), does it help any?
-
-It does.  It shows a new problem that's completely unrelated to the 
-earlier one.
-
-> The gnome-terminal console cursor
-
-Why were you using gnome-terminal?  You should be running the tests at
-a console VT, not under X at all.  Ctrl-Alt-F2 or the equivalent...
-
->  stopped flashing after the last
-> 'detaching wakeup' message for a while (it *seemed* to have locked up
-> at this point) but then it came back after what looks like 17 seconds
-> or so from the log (apport reported something else crashing at this
-> point) and then the oops happened and it crashed for good.
-
-Here's another patch to address the new problem.  You can apply it on 
-top of all the other patches.
-
-Alan Stern
-
-
-Index: usb-3.1/block/blk-core.c
-===================================================================
---- usb-3.1.orig/block/blk-core.c
-+++ usb-3.1/block/blk-core.c
-@@ -367,8 +367,10 @@ void blk_cleanup_queue(struct request_qu
- 	queue_flag_set_unlocked(QUEUE_FLAG_DEAD, q);
- 	mutex_unlock(&q->sysfs_lock);
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index b57b98f..e263d78 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -21,13 +21,14 @@
+  * The contiguous blocks details which can be
+  * represented by a single extent
+  */
+-struct list_blocks_struct {
+-	ext4_lblk_t first_block, last_block;
++struct migrate_struct {
++	ext4_lblk_t first_block, last_block, curr_block;
+ 	ext4_fsblk_t first_pblock, last_pblock;
++
+ };
  
--	if (q->elevator)
-+	if (q->elevator) {
- 		elevator_exit(q->elevator);
-+		q->elevator = NULL;
-+	}
+ static int finish_range(handle_t *handle, struct inode *inode,
+-				struct list_blocks_struct *lb)
++				struct migrate_struct *lb)
  
- 	blk_throtl_exit(q);
+ {
+ 	int retval = 0, needed;
+@@ -87,8 +88,7 @@ err_out:
+ }
  
-Index: usb-3.1/block/elevator.c
-===================================================================
---- usb-3.1.orig/block/elevator.c
-+++ usb-3.1/block/elevator.c
-@@ -812,7 +812,7 @@ void elv_completed_request(struct reques
+ static int update_extent_range(handle_t *handle, struct inode *inode,
+-				ext4_fsblk_t pblock, ext4_lblk_t blk_num,
+-				struct list_blocks_struct *lb)
++				ext4_fsblk_t pblock, struct migrate_struct *lb)
+ {
+ 	int retval;
+ 	/*
+@@ -96,9 +96,10 @@ static int update_extent_range(handle_t *handle, struct inode *inode,
  	 */
- 	if (blk_account_rq(rq)) {
- 		q->in_flight[rq_is_sync(rq)]--;
--		if ((rq->cmd_flags & REQ_SORTED) &&
-+		if ((rq->cmd_flags & REQ_SORTED) && e &&
- 		    e->ops->elevator_completed_req_fn)
- 			e->ops->elevator_completed_req_fn(q, rq);
+ 	if (lb->first_pblock &&
+ 		(lb->last_pblock+1 == pblock) &&
+-		(lb->last_block+1 == blk_num)) {
++		(lb->last_block+1 == lb->curr_block)) {
+ 		lb->last_pblock = pblock;
+-		lb->last_block = blk_num;
++		lb->last_block = lb->curr_block;
++		lb->curr_block++;
+ 		return 0;
  	}
+ 	/*
+@@ -106,64 +107,47 @@ static int update_extent_range(handle_t *handle, struct inode *inode,
+ 	 */
+ 	retval = finish_range(handle, inode, lb);
+ 	lb->first_pblock = lb->last_pblock = pblock;
+-	lb->first_block = lb->last_block = blk_num;
+-
++	lb->first_block = lb->last_block = lb->curr_block;
++	lb->curr_block++;
+ 	return retval;
+ }
+ 
+ static int update_ind_extent_range(handle_t *handle, struct inode *inode,
+-				   ext4_fsblk_t pblock, ext4_lblk_t *blk_nump,
+-				   struct list_blocks_struct *lb)
++				ext4_fsblk_t pblock, struct migrate_struct *lb)
+ {
+ 	struct buffer_head *bh;
+ 	__le32 *i_data;
+ 	int i, retval = 0;
+-	ext4_lblk_t blk_count = *blk_nump;
+ 	unsigned long max_entries = inode->i_sb->s_blocksize >> 2;
+ 
+-	if (!pblock) {
+-		/* Only update the file block number */
+-		*blk_nump += max_entries;
+-		return 0;
+-	}
+-
+ 	bh = sb_bread(inode->i_sb, pblock);
+ 	if (!bh)
+ 		return -EIO;
+ 
+ 	i_data = (__le32 *)bh->b_data;
+-	for (i = 0; i < max_entries; i++, blk_count++) {
++	for (i = 0; i < max_entries; i++) {
+ 		if (i_data[i]) {
+ 			retval = update_extent_range(handle, inode,
+-						le32_to_cpu(i_data[i]),
+-						blk_count, lb);
++						le32_to_cpu(i_data[i]), lb);
+ 			if (retval)
+ 				break;
++		} else {
++			lb->curr_block++;
+ 		}
+ 	}
+-
+-	/* Update the file block number */
+-	*blk_nump = blk_count;
+ 	put_bh(bh);
+ 	return retval;
+ 
+ }
+ 
+ static int update_dind_extent_range(handle_t *handle, struct inode *inode,
+-				    ext4_fsblk_t pblock, ext4_lblk_t *blk_nump,
+-				    struct list_blocks_struct *lb)
++				ext4_fsblk_t pblock, struct migrate_struct *lb)
+ {
+ 	struct buffer_head *bh;
+ 	__le32 *i_data;
+ 	int i, retval = 0;
+-	ext4_lblk_t blk_count = *blk_nump;
+ 	unsigned long max_entries = inode->i_sb->s_blocksize >> 2;
+ 
+-	if (!pblock) {
+-		/* Only update the file block number */
+-		*blk_nump += max_entries * max_entries;
+-		return 0;
+-	}
+ 	bh = sb_bread(inode->i_sb, pblock);
+ 	if (!bh)
+ 		return -EIO;
+@@ -172,38 +156,27 @@ static int update_dind_extent_range(handle_t *handle, struct inode *inode,
+ 	for (i = 0; i < max_entries; i++) {
+ 		if (i_data[i]) {
+ 			retval = update_ind_extent_range(handle, inode,
+-						le32_to_cpu(i_data[i]),
+-						&blk_count, lb);
++						le32_to_cpu(i_data[i]), lb);
+ 			if (retval)
+ 				break;
+ 		} else {
+ 			/* Only update the file block number */
+-			blk_count += max_entries;
++			lb->curr_block += max_entries;
+ 		}
+ 	}
+-
+-	/* Update the file block number */
+-	*blk_nump = blk_count;
+ 	put_bh(bh);
+ 	return retval;
+ 
+ }
+ 
+ static int update_tind_extent_range(handle_t *handle, struct inode *inode,
+-				     ext4_fsblk_t pblock, ext4_lblk_t *blk_nump,
+-				     struct list_blocks_struct *lb)
++				ext4_fsblk_t pblock, struct migrate_struct *lb)
+ {
+ 	struct buffer_head *bh;
+ 	__le32 *i_data;
+ 	int i, retval = 0;
+-	ext4_lblk_t blk_count = *blk_nump;
+ 	unsigned long max_entries = inode->i_sb->s_blocksize >> 2;
+ 
+-	if (!pblock) {
+-		/* Only update the file block number */
+-		*blk_nump += max_entries * max_entries * max_entries;
+-		return 0;
+-	}
+ 	bh = sb_bread(inode->i_sb, pblock);
+ 	if (!bh)
+ 		return -EIO;
+@@ -211,17 +184,15 @@ static int update_tind_extent_range(handle_t *handle, struct inode *inode,
+ 	i_data = (__le32 *)bh->b_data;
+ 	for (i = 0; i < max_entries; i++) {
+ 		if (i_data[i]) {
+-			retval = update_dind_extent_range(handle, inode,
+-						le32_to_cpu(i_data[i]),
+-						&blk_count, lb);
++			retval = update_ind_extent_range(handle, inode,
++						le32_to_cpu(i_data[i]), lb);
+ 			if (retval)
+ 				break;
+-		} else
++		} else {
+ 			/* Only update the file block number */
+-			blk_count += max_entries * max_entries;
++			lb->curr_block += max_entries * max_entries;
++		}
+ 	}
+-	/* Update the file block number */
+-	*blk_nump = blk_count;
+ 	put_bh(bh);
+ 	return retval;
+ 
+@@ -462,10 +433,9 @@ int ext4_ext_migrate(struct inode *inode)
+ 	handle_t *handle;
+ 	int retval = 0, i;
+ 	__le32 *i_data;
+-	ext4_lblk_t blk_count = 0;
+ 	struct ext4_inode_info *ei;
+ 	struct inode *tmp_inode = NULL;
+-	struct list_blocks_struct lb;
++	struct migrate_struct lb;
+ 	unsigned long max_entries;
+ 	__u32 goal;
+ 
+@@ -551,35 +521,32 @@ int ext4_ext_migrate(struct inode *inode)
+ 
+ 	/* 32 bit block address 4 bytes */
+ 	max_entries = inode->i_sb->s_blocksize >> 2;
+-	for (i = 0; i < EXT4_NDIR_BLOCKS; i++, blk_count++) {
++	for (i = 0; i < EXT4_NDIR_BLOCKS; i++) {
+ 		if (i_data[i]) {
+ 			retval = update_extent_range(handle, tmp_inode,
+-						le32_to_cpu(i_data[i]),
+-						blk_count, &lb);
++						le32_to_cpu(i_data[i]), &lb);
+ 			if (retval)
+ 				goto err_out;
+-		}
++		} else
++			lb.curr_block++;
+ 	}
+ 	if (i_data[EXT4_IND_BLOCK]) {
+ 		retval = update_ind_extent_range(handle, tmp_inode,
+-					le32_to_cpu(i_data[EXT4_IND_BLOCK]),
+-					&blk_count, &lb);
++				le32_to_cpu(i_data[EXT4_IND_BLOCK]), &lb);
+ 			if (retval)
+ 				goto err_out;
+ 	} else
+-		blk_count +=  max_entries;
++		lb.curr_block += max_entries;
+ 	if (i_data[EXT4_DIND_BLOCK]) {
+ 		retval = update_dind_extent_range(handle, tmp_inode,
+-					le32_to_cpu(i_data[EXT4_DIND_BLOCK]),
+-					&blk_count, &lb);
++				le32_to_cpu(i_data[EXT4_DIND_BLOCK]), &lb);
+ 			if (retval)
+ 				goto err_out;
+ 	} else
+-		blk_count += max_entries * max_entries;
++		lb.curr_block += max_entries * max_entries;
+ 	if (i_data[EXT4_TIND_BLOCK]) {
+ 		retval = update_tind_extent_range(handle, tmp_inode,
+-					le32_to_cpu(i_data[EXT4_TIND_BLOCK]),
+-					&blk_count, &lb);
++				le32_to_cpu(i_data[EXT4_TIND_BLOCK]), &lb);
+ 			if (retval)
+ 				goto err_out;
+ 	}
+-- 
+1.7.2.3
 
