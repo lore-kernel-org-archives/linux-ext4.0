@@ -1,75 +1,142 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH] e2fsck: add migration inodes cleanup support
-Date: Sat, 17 Sep 2011 17:33:29 +0400
-Message-ID: <1316266409-18932-1-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 2/3] ext4: fix quota accounting during migration
+Date: Sat, 17 Sep 2011 17:32:58 +0400
+Message-ID: <1316266379-18737-2-git-send-email-dmonakhov@openvz.org>
+References: <1316266379-18737-1-git-send-email-dmonakhov@openvz.org>
 Cc: aneesh.kumar@linux.vnet.ibm.com, tytso@mit.edu,
 	Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:64332 "EHLO
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:36485 "EHLO
 	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751929Ab1IQNdg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 17 Sep 2011 09:33:36 -0400
-Received: by mail-bw0-f46.google.com with SMTP id zt4so4173708bkb.19
-        for <linux-ext4@vger.kernel.org>; Sat, 17 Sep 2011 06:33:35 -0700 (PDT)
+	with ESMTP id S1751929Ab1IQNdh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 17 Sep 2011 09:33:37 -0400
+Received: by bkbzt4 with SMTP id zt4so4173900bkb.19
+        for <linux-ext4@vger.kernel.org>; Sat, 17 Sep 2011 06:33:36 -0700 (PDT)
+In-Reply-To: <1316266379-18737-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Inodes with MIGRATION flag enabled are temporal
-and does not own it's data blocks.
+tmp_inode should have same uid/gid as  original inode.
+Otherwise new metadata blocks will be accounted in to wrong
+quota-id which result in quota leak after indirect blocks swap.
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- e2fsck/super.c       |    9 ++++++++-
- lib/ext2fs/ext2_fs.h |    1 +
- 2 files changed, 9 insertions(+), 1 deletions(-)
+ fs/ext4/ext4.h    |    3 ++-
+ fs/ext4/ialloc.c  |    9 ++++++---
+ fs/ext4/migrate.c |    7 +++++--
+ fs/ext4/namei.c   |    8 ++++----
+ 4 files changed, 17 insertions(+), 10 deletions(-)
 
-diff --git a/e2fsck/super.c b/e2fsck/super.c
-index a61eb33..69566a3 100644
---- a/e2fsck/super.c
-+++ b/e2fsck/super.c
-@@ -46,6 +46,7 @@ struct process_block_struct {
- 	char 		*buf;
- 	struct problem_context *pctx;
- 	int		truncating;
-+	int		release_data_block;
- 	int		truncate_offset;
- 	e2_blkcnt_t	truncate_block;
- 	int		truncated_blocks;
-@@ -88,7 +89,8 @@ static int release_inode_block(ext2_filsys fs,
- 		fix_problem(ctx, PR_0_ORPHAN_ALREADY_CLEARED_BLOCK, pctx);
- 		goto return_abort;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index e717dfd..3aa2f7c 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1775,7 +1775,8 @@ extern int ext4fs_dirhash(const char *name, int len, struct
+ 
+ /* ialloc.c */
+ extern struct inode *ext4_new_inode(handle_t *, struct inode *, int,
+-				    const struct qstr *qstr, __u32 goal);
++				const struct qstr *qstr, __u32 goal,
++				uid_t *owner);
+ extern void ext4_free_inode(handle_t *, struct inode *);
+ extern struct inode * ext4_orphan_get(struct super_block *, unsigned long);
+ extern unsigned long ext4_count_free_inodes(struct super_block *);
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 9c63f27..9bfa93e 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -802,7 +802,7 @@ err_ret:
+  * group to find a free inode.
+  */
+ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode,
+-			     const struct qstr *qstr, __u32 goal)
++			const struct qstr *qstr, __u32 goal, uid_t *owner)
+ {
+ 	struct super_block *sb;
+ 	struct buffer_head *inode_bitmap_bh = NULL;
+@@ -987,8 +987,11 @@ got:
+ 		flex_group = ext4_flex_group(sbi, group);
+ 		atomic_dec(&sbi->s_flex_groups[flex_group].free_inodes);
  	}
 -
-+	if (!pb->release_data_block && blockcnt >= 0)
-+		return 0;
- 	/*
- 	 * If we are deleting an orphan, then we leave the fields alone.
- 	 * If we are truncating an orphan, then update the inode fields
-@@ -178,6 +180,11 @@ static int release_inode_blocks(e2fsck_t ctx, ext2_ino_t ino,
- 		pb.truncate_block = 0;
- 		pb.truncate_offset = 0;
- 	}
-+	if (inode->i_flags & EXT4_MIGRATE_FL)
-+		pb.release_data_block = 0;
-+	else
-+		pb.release_data_block = 1;
-+
- 	pb.truncated_blocks = 0;
- 	retval = ext2fs_block_iterate3(fs, ino, BLOCK_FLAG_DEPTH_TRAVERSE,
- 				      block_buf, release_inode_block, &pb);
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index 54cb3d4..e2fc101 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -284,6 +284,7 @@ struct ext2_dx_countlimit {
- #define EXT4_SNAPFILE_FL		0x01000000  /* Inode is a snapshot */
- #define EXT4_SNAPFILE_DELETED_FL	0x04000000  /* Snapshot is being deleted */
- #define EXT4_SNAPFILE_SHRUNK_FL		0x08000000  /* Snapshot shrink has completed */
-+#define EXT4_MIGRATE_FL                 0x10000000 /* Inode used for data migration */
- #define EXT2_RESERVED_FL		0x80000000 /* reserved for ext2 lib */
+-	if (test_opt(sb, GRPID)) {
++	if (owner) {
++		inode->i_mode = mode;
++		inode->i_uid = owner[0];
++		inode->i_gid = owner[1];
++	} else if (test_opt(sb, GRPID)) {
+ 		inode->i_mode = mode;
+ 		inode->i_uid = current_fsuid();
+ 		inode->i_gid = dir->i_gid;
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index e263d78..74f2900 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -438,6 +438,7 @@ int ext4_ext_migrate(struct inode *inode)
+ 	struct migrate_struct lb;
+ 	unsigned long max_entries;
+ 	__u32 goal;
++	uid_t owner[2];
  
- #define EXT2_FL_USER_VISIBLE		0x004BDFFF /* User visible flags */
+ 	/*
+ 	 * If the filesystem does not support extents, or the inode
+@@ -465,10 +466,12 @@ int ext4_ext_migrate(struct inode *inode)
+ 	}
+ 	goal = (((inode->i_ino - 1) / EXT4_INODES_PER_GROUP(inode->i_sb)) *
+ 		EXT4_INODES_PER_GROUP(inode->i_sb)) + 1;
++	owner[0] = inode->i_uid;
++	owner[1] = inode->i_gid;
+ 	tmp_inode = ext4_new_inode(handle, inode->i_sb->s_root->d_inode,
+-				   S_IFREG, NULL, goal);
++				S_IFREG, NULL, goal, owner);
+ 	if (IS_ERR(tmp_inode)) {
+-		retval = -ENOMEM;
++		retval = PTR_ERR(inode);
+ 		ext4_journal_stop(handle);
+ 		return retval;
+ 	}
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index f8068c7..d5f50de 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1755,7 +1755,7 @@ retry:
+ 	if (IS_DIRSYNC(dir))
+ 		ext4_handle_sync(handle);
+ 
+-	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name, 0);
++	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name, 0, NULL);
+ 	err = PTR_ERR(inode);
+ 	if (!IS_ERR(inode)) {
+ 		inode->i_op = &ext4_file_inode_operations;
+@@ -1791,7 +1791,7 @@ retry:
+ 	if (IS_DIRSYNC(dir))
+ 		ext4_handle_sync(handle);
+ 
+-	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name, 0);
++	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name, 0, NULL);
+ 	err = PTR_ERR(inode);
+ 	if (!IS_ERR(inode)) {
+ 		init_special_inode(inode, inode->i_mode, rdev);
+@@ -1831,7 +1831,7 @@ retry:
+ 		ext4_handle_sync(handle);
+ 
+ 	inode = ext4_new_inode(handle, dir, S_IFDIR | mode,
+-			       &dentry->d_name, 0);
++				&dentry->d_name, 0, NULL);
+ 	err = PTR_ERR(inode);
+ 	if (IS_ERR(inode))
+ 		goto out_stop;
+@@ -2278,7 +2278,7 @@ retry:
+ 		ext4_handle_sync(handle);
+ 
+ 	inode = ext4_new_inode(handle, dir, S_IFLNK|S_IRWXUGO,
+-			       &dentry->d_name, 0);
++				&dentry->d_name, 0, NULL);
+ 	err = PTR_ERR(inode);
+ 	if (IS_ERR(inode))
+ 		goto out_stop;
 -- 
 1.7.2.3
 
