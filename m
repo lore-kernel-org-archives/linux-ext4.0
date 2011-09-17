@@ -1,53 +1,61 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 00/25] e2fsprogs: Misc cleanups & fixes
-Date: Fri, 16 Sep 2011 19:58:58 -0500
-Message-ID: <4E73F0D2.8040607@redhat.com>
-References: <1316206180-6375-1-git-send-email-sandeen@redhat.com> <4E73BF52.4090704@redhat.com> <20110916220540.GC16246@thunk.org> <4E73CD3D.2060601@redhat.com> <20110916234932.GZ16246@thunk.org>
+Subject: [PATCH] debugfs: initialize inode to 0 in list_dir_proc() if no inode
+ nr
+Date: Fri, 16 Sep 2011 20:36:02 -0500
+Message-ID: <4E73F982.3020806@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:2974 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:3991 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752166Ab1IQA7B (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 16 Sep 2011 20:59:01 -0400
-In-Reply-To: <20110916234932.GZ16246@thunk.org>
+	id S932197Ab1IQBgD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 16 Sep 2011 21:36:03 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p8H1a3xC019518
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Fri, 16 Sep 2011 21:36:03 -0400
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p8H1a2Cp030855
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 16 Sep 2011 21:36:03 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 9/16/11 6:49 PM, Ted Ts'o wrote:
-> On Fri, Sep 16, 2011 at 05:27:09PM -0500, Eric Sandeen wrote:
->>
->> sounds like a plan ... though too bad that's One More Thing which
->> must be done prior to a 64-bit-capable release :(
->>
->> by the way, any plans to put a new -WIP-tagged tarball anywhere?
-> 
-> Sorry, I hadn't gotten around to sending out an announcement yet.
-> Since kernel.org is down, I've gone back to using the old sourceforge
-> distribution method:
-> 
-> http://sourceforge.net/projects/e2fsprogs/files/e2fsprogs-TEST/1.42-WIP-0916/
-> 
-> As always, the tarball is GPG-signed, and the git tag is als
-> GPG-signed, from these two sites:
-> 
-> 	git://github.com/tytso/e2fsprogs.git
-> 	git://e2fsprogs.git.sourceforge.net/gitroot/e2fsprogs/e2fsprogs
-> 
-> BTW, I already know that the 0916 release is broken on big-endian
-> machines.  A Debian developer filed a FTBFS bug in hours.  That's
-> fixed on the next branch that I'll be pushing out shortly, along with
-> your patches.
-> 
-> 						- Ted
-> 
+If (!ino), the inode will be uninitialized when we print it
+in the PARSE_OPT case.
 
-Thanks, will that be another -WIP then?
+So do the same as the LONG_OPT case, and memset it to 0 if
+(!ino).
 
-As soon as there's a nice -WIP release I'll push a new one to rawhide
-as well.
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
--Eric
+diff --git a/debugfs/ls.c b/debugfs/ls.c
+index e01fd20..f21e96e 100644
+--- a/debugfs/ls.c
++++ b/debugfs/ls.c
+@@ -73,15 +73,18 @@ static int list_dir_proc(ext2_ino_t dir EXT2FS_ATTR((unused)),
+ 		lbr = rbr = ' ';
+ 	}
+ 	if (ls->options & PARSE_OPT) {
+-		if (ino && debugfs_read_inode(ino, &inode, name)) return 0;
++		if (ino) {
++			if (debugfs_read_inode(ino, &inode, name))
++				return 0;
++		} else
++			memset(&inode, 0, sizeof(struct ext2_inode));
+ 		fprintf(ls->f,"/%u/%06o/%d/%d/%s/",ino,inode.i_mode,inode.i_uid, inode.i_gid,name);
+ 		if (LINUX_S_ISDIR(inode.i_mode))
+ 			fprintf(ls->f, "/");
+ 		else
+ 			fprintf(ls->f, "%lld/", EXT2_I_SIZE(&inode));
+ 		fprintf(ls->f, "\n");
+-	}
+-	else if (ls->options & LONG_OPT) {
++	} else if (ls->options & LONG_OPT) {
+ 		if (ino) {
+ 			if (debugfs_read_inode(ino, &inode, name))
+ 				return 0;
+
