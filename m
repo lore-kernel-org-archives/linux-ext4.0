@@ -1,30 +1,42 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 25/25] mke2fs: free tdb_dir string if it came from the
- profile
-Date: Fri, 16 Sep 2011 19:58:13 -0400
-Message-ID: <20110916235813.GD16246@thunk.org>
-References: <1316206180-6375-1-git-send-email-sandeen@redhat.com>
- <1316206180-6375-26-git-send-email-sandeen@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 09/25] uuidd: Add missing break to option case statement
+Date: Fri, 16 Sep 2011 19:47:48 -0500
+Message-ID: <4E73EE34.4050105@redhat.com>
+References: <1316206180-6375-1-git-send-email-sandeen@redhat.com> <1316206180-6375-10-git-send-email-sandeen@redhat.com> <20110916225417.GL16246@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:60927 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754869Ab1IPX6O (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 16 Sep 2011 19:58:14 -0400
-Content-Disposition: inline
-In-Reply-To: <1316206180-6375-26-git-send-email-sandeen@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:5592 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932990Ab1IQArv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 16 Sep 2011 20:47:51 -0400
+In-Reply-To: <20110916225417.GL16246@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 16, 2011 at 03:49:40PM -0500, Eric Sandeen wrote:
-> if tdb_dir points to a string allocated from profile_get_string,
-> it should be freed again before we exit.
+On 9/16/11 5:54 PM, Ted Ts'o wrote:
+> On Fri, Sep 16, 2011 at 03:49:24PM -0500, Eric Sandeen wrote:
+>> Specifying the "-n" option to uuidd would incorrectly
+>> fall through to the "-p" case, and assign that number to
+>> the pidfile_path.
+>>
+>> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 > 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> Applied, thanks.
+> 
+> Can you do me a favor and make sure this gets fixed in util-linux-ng
+> as well?
 
-Applied, thanks!
+sure thing
 
-						- Ted
+-eric
+
+> 	 			- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
