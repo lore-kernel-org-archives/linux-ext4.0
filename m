@@ -1,142 +1,63 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 2/3] ext4: fix quota accounting during migration
-Date: Sat, 17 Sep 2011 17:32:58 +0400
-Message-ID: <1316266379-18737-2-git-send-email-dmonakhov@openvz.org>
-References: <1316266379-18737-1-git-send-email-dmonakhov@openvz.org>
-Cc: aneesh.kumar@linux.vnet.ibm.com, tytso@mit.edu,
-	Dmitry Monakhov <dmonakhov@openvz.org>
-To: linux-ext4@vger.kernel.org
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 01/37] e2fsprogs: Read and write full-sized inodes
+Date: Sat, 17 Sep 2011 21:52:16 -0400
+Message-ID: <20110918015216.GF16246@thunk.org>
+References: <20110901003509.1176.51159.stgit@elm3c44.beaverton.ibm.com>
+ <20110901003517.1176.46651.stgit@elm3c44.beaverton.ibm.com>
+ <20110914163901.GE3429@dhcp-172-31-195-159.cam.corp.google.com>
+ <20110915202500.GD12086@tux1.beaverton.ibm.com>
+ <ABCC5DB6-7EC7-4C1A-994A-509CC663F6FE@gmail.com>
+ <20110916010430.GG12086@tux1.beaverton.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <aedilger@gmail.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Sunil Mushran <sunil.mushran@oracle.com>,
+	Amir Goldstein <amir73il@gmail.com>,
+	Andi Kleen <andi@firstfloor.org>,
+	Mingming Cao <cmm@us.ibm.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Coly Li <colyli@gmail.com>
+To: "Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:36485 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751929Ab1IQNdh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 17 Sep 2011 09:33:37 -0400
-Received: by bkbzt4 with SMTP id zt4so4173900bkb.19
-        for <linux-ext4@vger.kernel.org>; Sat, 17 Sep 2011 06:33:36 -0700 (PDT)
-In-Reply-To: <1316266379-18737-1-git-send-email-dmonakhov@openvz.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:56980 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753505Ab1IRBw2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 17 Sep 2011 21:52:28 -0400
+Content-Disposition: inline
+In-Reply-To: <20110916010430.GG12086@tux1.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-tmp_inode should have same uid/gid as  original inode.
-Otherwise new metadata blocks will be accounted in to wrong
-quota-id which result in quota leak after indirect blocks swap.
+On Thu, Sep 15, 2011 at 06:04:30PM -0700, Darrick J. Wong wrote:
+> Though I guess I should ask: Is it required that e2fsprogs build on compilers
+> that won't do variable-sized stack arrays?  I think that limits us to C99
+> compilers that support the feature, but I'm not 100% sure when gcc added that.
+> Or if we care about other things like ... Visual Studio? ;)
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/ext4.h    |    3 ++-
- fs/ext4/ialloc.c  |    9 ++++++---
- fs/ext4/migrate.c |    7 +++++--
- fs/ext4/namei.c   |    8 ++++----
- 4 files changed, 17 insertions(+), 10 deletions(-)
+There are people who have ported libext2fs to Windows, so MSVC
+compatibility is something I'd rather not give up.  The other issue
+with VLA's is you have to be very careful about buffer overruns, for
+the obvious reasons.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index e717dfd..3aa2f7c 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1775,7 +1775,8 @@ extern int ext4fs_dirhash(const char *name, int len, struct
- 
- /* ialloc.c */
- extern struct inode *ext4_new_inode(handle_t *, struct inode *, int,
--				    const struct qstr *qstr, __u32 goal);
-+				const struct qstr *qstr, __u32 goal,
-+				uid_t *owner);
- extern void ext4_free_inode(handle_t *, struct inode *);
- extern struct inode * ext4_orphan_get(struct super_block *, unsigned long);
- extern unsigned long ext4_count_free_inodes(struct super_block *);
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 9c63f27..9bfa93e 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -802,7 +802,7 @@ err_ret:
-  * group to find a free inode.
-  */
- struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode,
--			     const struct qstr *qstr, __u32 goal)
-+			const struct qstr *qstr, __u32 goal, uid_t *owner)
- {
- 	struct super_block *sb;
- 	struct buffer_head *inode_bitmap_bh = NULL;
-@@ -987,8 +987,11 @@ got:
- 		flex_group = ext4_flex_group(sbi, group);
- 		atomic_dec(&sbi->s_flex_groups[flex_group].free_inodes);
- 	}
--
--	if (test_opt(sb, GRPID)) {
-+	if (owner) {
-+		inode->i_mode = mode;
-+		inode->i_uid = owner[0];
-+		inode->i_gid = owner[1];
-+	} else if (test_opt(sb, GRPID)) {
- 		inode->i_mode = mode;
- 		inode->i_uid = current_fsuid();
- 		inode->i_gid = dir->i_gid;
-diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index e263d78..74f2900 100644
---- a/fs/ext4/migrate.c
-+++ b/fs/ext4/migrate.c
-@@ -438,6 +438,7 @@ int ext4_ext_migrate(struct inode *inode)
- 	struct migrate_struct lb;
- 	unsigned long max_entries;
- 	__u32 goal;
-+	uid_t owner[2];
- 
- 	/*
- 	 * If the filesystem does not support extents, or the inode
-@@ -465,10 +466,12 @@ int ext4_ext_migrate(struct inode *inode)
- 	}
- 	goal = (((inode->i_ino - 1) / EXT4_INODES_PER_GROUP(inode->i_sb)) *
- 		EXT4_INODES_PER_GROUP(inode->i_sb)) + 1;
-+	owner[0] = inode->i_uid;
-+	owner[1] = inode->i_gid;
- 	tmp_inode = ext4_new_inode(handle, inode->i_sb->s_root->d_inode,
--				   S_IFREG, NULL, goal);
-+				S_IFREG, NULL, goal, owner);
- 	if (IS_ERR(tmp_inode)) {
--		retval = -ENOMEM;
-+		retval = PTR_ERR(inode);
- 		ext4_journal_stop(handle);
- 		return retval;
- 	}
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index f8068c7..d5f50de 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1755,7 +1755,7 @@ retry:
- 	if (IS_DIRSYNC(dir))
- 		ext4_handle_sync(handle);
- 
--	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name, 0);
-+	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name, 0, NULL);
- 	err = PTR_ERR(inode);
- 	if (!IS_ERR(inode)) {
- 		inode->i_op = &ext4_file_inode_operations;
-@@ -1791,7 +1791,7 @@ retry:
- 	if (IS_DIRSYNC(dir))
- 		ext4_handle_sync(handle);
- 
--	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name, 0);
-+	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name, 0, NULL);
- 	err = PTR_ERR(inode);
- 	if (!IS_ERR(inode)) {
- 		init_special_inode(inode, inode->i_mode, rdev);
-@@ -1831,7 +1831,7 @@ retry:
- 		ext4_handle_sync(handle);
- 
- 	inode = ext4_new_inode(handle, dir, S_IFDIR | mode,
--			       &dentry->d_name, 0);
-+				&dentry->d_name, 0, NULL);
- 	err = PTR_ERR(inode);
- 	if (IS_ERR(inode))
- 		goto out_stop;
-@@ -2278,7 +2278,7 @@ retry:
- 		ext4_handle_sync(handle);
- 
- 	inode = ext4_new_inode(handle, dir, S_IFLNK|S_IRWXUGO,
--			       &dentry->d_name, 0);
-+				&dentry->d_name, 0, NULL);
- 	err = PTR_ERR(inode);
- 	if (IS_ERR(inode))
- 		goto out_stop;
--- 
-1.7.2.3
+At least for e2fsprogs, we don't have to worried about locking, so at
+least for read verification, in the case of reading the base 128 byte
+inode it would be possible to just verify the whole inode while it is
+in the disk buffer.  And on the write side, since we need to do the
+read/modify/write cycle, at least in the normal case it's not clear to
+me that we need to use dynamic allocation in as many places as we
+might think, if we're a bit clever about things.
 
+Even if we need to save and restore the checksum fields in the disk
+buffer, and zero them out while we do the checksum, it's still faster
+than needing to copy the whole inode, even if we avoid doing the
+malloc by using VLA....
+
+There will be a few cases where we need to malloc and grab the whole
+inode (debugfs has one case already), but in most cases I suspect it
+can be avoided.
+
+Regards,
+
+						- Ted
