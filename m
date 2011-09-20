@@ -1,50 +1,117 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: What to put for unknown stripe-width?
-Date: Tue, 20 Sep 2011 08:47:01 -0400
-Message-ID: <9D3B900A-8FCF-41B1-852A-FADD953FBDBD@mit.edu>
-References: <4E786B53.5020407@shiftmail.org>
-Mime-Version: 1.0 (Apple Message framework v1244.3)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org
-To: torn5 <torn5@shiftmail.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DMZ-MAILSEC-SCANNER-5.MIT.EDU ([18.7.68.34]:45773 "EHLO
-	dmz-mailsec-scanner-5.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753359Ab1ITMq7 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 20 Sep 2011 08:46:59 -0400
-In-Reply-To: <4E786B53.5020407@shiftmail.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Johannes Weiner <jweiner@redhat.com>
+Subject: [patch 1/4] mm: exclude reserved pages from dirtyable memory
+Date: Tue, 20 Sep 2011 15:45:12 +0200
+Message-ID: <1316526315-16801-2-git-send-email-jweiner@redhat.com>
+References: <1316526315-16801-1-git-send-email-jweiner@redhat.com>
+Cc: Mel Gorman <mgorman@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Dave Chinner <david@fromorbit.com>,
+        Wu Fengguang <fengguang.wu@intel.com>, Jan Kara <jack@suse.cz>,
+        Rik van Riel <riel@redhat.com>, Minchan Kim <minchan.kim@gmail.com>,
+        Chris Mason <chris.mason@oracle.com>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>, xfs@oss.sgi.com,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1316526315-16801-1-git-send-email-jweiner@redhat.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
+The amount of dirtyable pages should not include the total number of
+free pages: there is a number of reserved pages that the page
+allocator and kswapd always try to keep free.
 
-On Sep 20, 2011, at 6:30 AM, torn5 wrote:
+The closer (reclaimable pages - dirty pages) is to the number of
+reserved pages, the more likely it becomes for reclaim to run into
+dirty pages:
 
-> Hello there,
-> I am planning some ext4 filesystems which are currently in (LVM over) a RAID array having:
-> 
-> stride=1MiB   stripe-witdth=4MiB
-> 
-> BUT ... their RAID could be enlarged with more disks in the future and/or they are likely to be moved around live (leveraging LVM, which I will align) to other RAIDs which also will have stride=1MiB but unknown, as of now, stripe-width.
-> That's on HDDs, with platters.
+       +----------+ ---
+       |   anon   |  |
+       +----------+  |
+       |          |  |
+       |          |  -- dirty limit new    -- flusher new
+       |   file   |  |                     |
+       |          |  |                     |
+       |          |  -- dirty limit old    -- flusher old
+       |          |                        |
+       +----------+                       --- reclaim
+       | reserved |
+       +----------+
+       |  kernel  |
+       +----------+
 
-You can't change the stride width without essentially recreating the RAID system.   Let's assume you're doing RAID 5 with four disks.   Then the picture looks like this:
+Not treating reserved pages as dirtyable on a global level is only a
+conceptual fix.  In reality, dirty pages are not distributed equally
+across zones and reclaim runs into dirty pages on a regular basis.
 
-       DISK A                DISK B                 DISK C                 DISK D
-| --- chunk 0 ---|  | --- chunk 1 ---|  | --- chunk  2 ---|  | ---  Parity     ---|  
-| --- chunk 3 ---|  | --- chunk 4 ---|  | ---  Parity     ---|  | --- chunk 5  ---| 
-| --- chunk 6 ---|  | ---  Parity    ---|  | --- chunk  7 ---|  | --- chunk 8  ---|  
-| ---   Parity   ---|  | --- chunk 9 ---|  | --- chunk 10 --|  | --- chunk 11---| 
+But it is important to get this right before tackling the problem on a
+per-zone level, where the distance between reclaim and the dirty pages
+is mostly much smaller in absolute numbers.
 
-Each of the chunks are 1MB, and the stripe size is 3MB.     But if you add a new hypothetical disk E, you can't just add it next to Disk D, because then you'd have to renumber all of the chunks.  Instead you might add Disks F, G, and H as well, and then tack them on to the end of the disks A, B, C, and D.   But the stripe size stays the same without some serious surgery.    But even if you did the surgery, there's the problem of what to do with the file system.
+Signed-off-by: Johannes Weiner <jweiner@redhat.com>
+---
+ include/linux/mmzone.h |    1 +
+ mm/page-writeback.c    |    8 +++++---
+ mm/page_alloc.c        |    1 +
+ 3 files changed, 7 insertions(+), 3 deletions(-)
 
-Why does the file system care about the RAID parameters?   Well, suppose you do a 1MB write to replace chunk #0.   You will also need to read chunks #1 and #2 so you can calculate the parity chunk on disk D.   This is called a read/modify/write cycle, and it's inefficient.    To avoid that, you need to do writes which are aligned on the stripe, and sized for the stripe.   So for the best file system performance, the file system should align its files so that they begin at the beginning of a RAID stripe.  So even if you could change the parameters of your RAID array (which would require radical surgery involving lots of data movement), the file system would also need to be changed to support optimized writes on the new stripe size.   But that's OK, because I don't know of any RAID array tha
- t supports this kind of radical surgery in parameters in the first case.  :-)
+diff --git a/include/linux/mmzone.h b/include/linux/mmzone.h
+index 1ed4116..e28f8e0 100644
+--- a/include/linux/mmzone.h
++++ b/include/linux/mmzone.h
+@@ -316,6 +316,7 @@ struct zone {
+ 	 * sysctl_lowmem_reserve_ratio sysctl changes.
+ 	 */
+ 	unsigned long		lowmem_reserve[MAX_NR_ZONES];
++	unsigned long		totalreserve_pages;
+ 
+ #ifdef CONFIG_NUMA
+ 	int node;
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index da6d263..9f896db 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -169,8 +169,9 @@ static unsigned long highmem_dirtyable_memory(unsigned long total)
+ 		struct zone *z =
+ 			&NODE_DATA(node)->node_zones[ZONE_HIGHMEM];
+ 
+-		x += zone_page_state(z, NR_FREE_PAGES) +
+-		     zone_reclaimable_pages(z);
++		x += zone_page_state(z, NR_FREE_PAGES) -
++			zone->totalreserve_pages;
++		x += zone_reclaimable_pages(z);
+ 	}
+ 	/*
+ 	 * Make sure that the number of highmem pages is never larger
+@@ -194,7 +195,8 @@ static unsigned long determine_dirtyable_memory(void)
+ {
+ 	unsigned long x;
+ 
+-	x = global_page_state(NR_FREE_PAGES) + global_reclaimable_pages();
++	x = global_page_state(NR_FREE_PAGES) - totalreserve_pages;
++	x += global_reclaimable_pages();
+ 
+ 	if (!vm_highmem_is_dirtyable)
+ 		x -= highmem_dirtyable_memory(x);
+diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+index 1dba05e..7e8e2ee 100644
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -5075,6 +5075,7 @@ static void calculate_totalreserve_pages(void)
+ 
+ 			if (max > zone->present_pages)
+ 				max = zone->present_pages;
++			zone->totalreserve_pages = max;
+ 			reserve_pages += max;
+ 		}
+ 	}
+-- 
+1.7.6
 
-The other thing to consider is small writes.   If you are doing small writes, a large stripe size is a disaster, because a 32k random write by a program like MySQL will turn into a 3MB read + 3MB write request.  Large stripe sizes are good for sequential writes of large files, but not so much for small random writes.
-
-										- Ted
-
-
-
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
