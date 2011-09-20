@@ -1,37 +1,56 @@
-From: Dmitry Torokhov <dmitry.torokhov@gmail.com>
-Subject: Re: EXT4: lockdep complaints on 3.1-rc4+
-Date: Tue, 20 Sep 2011 11:21:33 -0700
-Message-ID: <20110920182133.GB4187@core.coreip.homeip.net>
-References: <20110920175551.GA4187@core.coreip.homeip.net>
- <CA+5PVA7WA6QorzgiOHEDw9HCoLO0UbGYMS34r3Ds01w854YoHA@mail.gmail.com>
+From: Rik van Riel <riel@redhat.com>
+Subject: Re: [patch 2/4] mm: writeback: distribute write pages across allowable
+ zones
+Date: Tue, 20 Sep 2011 14:36:00 -0400
+Message-ID: <4E78DD10.4000900@redhat.com>
+References: <1316526315-16801-1-git-send-email-jweiner@redhat.com> <1316526315-16801-3-git-send-email-jweiner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
-To: Josh Boyer <jwboyer@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:53827 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750814Ab1ITSVj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Sep 2011 14:21:39 -0400
-Content-Disposition: inline
-In-Reply-To: <CA+5PVA7WA6QorzgiOHEDw9HCoLO0UbGYMS34r3Ds01w854YoHA@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Andrew Morton <akpm@linux-foundation.org>, Mel Gorman <mgorman@suse.de>,
+        Christoph Hellwig <hch@infradead.org>,
+        Dave Chinner <david@fromorbit.com>,
+        Wu Fengguang <fengguang.wu@intel.com>, Jan Kara <jack@suse.cz>,
+        Minchan Kim <minchan.kim@gmail.com>,
+        Chris Mason <chris.mason@oracle.com>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>, xfs@oss.sgi.com,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+To: Johannes Weiner <jweiner@redhat.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1316526315-16801-3-git-send-email-jweiner@redhat.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Sep 20, 2011 at 01:59:05PM -0400, Josh Boyer wrote:
-> On Tue, Sep 20, 2011 at 1:55 PM, Dmitry Torokhov
-> <dmitry.torokhov@gmail.com> wrote:
-> > Hi,
-> >
-> > Not sure if it has been reported but I just got the following lockdep
-> > warning on 3.1-rc4+ + my input queue (which does not touch FS code at
-> > all):
-> 
-> IIRC, that should be fixed with
-> 8c0bec2151a47906bf779c6715a10ce04453ab77, which is in -rc5
-> 
+On 09/20/2011 09:45 AM, Johannes Weiner wrote:
+> This patch allows allocators to pass __GFP_WRITE when they know in
+> advance that the allocated page will be written to and become dirty
+> soon.  The page allocator will then attempt to distribute those
+> allocations across zones, such that no single zone will end up full of
+> dirty, and thus more or less, unreclaimable pages.
+>
+> The global dirty limits are put in proportion to the respective zone's
+> amount of dirtyable memory and allocations diverted to other zones
+> when the limit is reached.
+>
+> For now, the problem remains for NUMA configurations where the zones
+> allowed for allocation are in sum not big enough to trigger the global
+> dirty limits, but a future approach to solve this can reuse the
+> per-zone dirty limit infrastructure laid out in this patch to have
+> dirty throttling and the flusher threads consider individual zones.
+>
+> Signed-off-by: Johannes Weiner<jweiner@redhat.com>
 
-Ah, excellent. Sorry for the noise.
+Reviewed-by: Rik van Riel <riel@redhat.com>
 
--- 
-Dmitry
+The amount of work done in a __GFP_WRITE allocation looks
+a little daunting, but doing that a million times probably
+outweighs waiting on the disk even once, so...
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
