@@ -1,35 +1,74 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [patch 3/4] mm: filemap: pass __GFP_WRITE from
- grab_cache_page_write_begin()
-Date: Tue, 20 Sep 2011 10:25:53 -0400
-Message-ID: <20110920142553.GA2593@infradead.org>
-References: <1316526315-16801-1-git-send-email-jweiner@redhat.com>
- <1316526315-16801-4-git-send-email-jweiner@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>, Mel Gorman <mgorman@suse.de>,
-	Christoph Hellwig <hch@infradead.org>,
-	Dave Chinner <david@fromorbit.com>,
-	Wu Fengguang <fengguang.wu@intel.com>, Jan Kara <jack@suse.cz>,
-	Rik van Riel <riel@redhat.com>, Minchan Kim <minchan.kim@gmail.com>,
-	Chris Mason <chris.mason@oracle.com>, Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>, xfs@oss.sgi.com,
-	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Johannes Weiner <jweiner@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <1316526315-16801-4-git-send-email-jweiner@redhat.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 0/4] ext4: cleanup and bugfixes for grow/shrink logic
+Date: Tue, 20 Sep 2011 18:49:26 +0400
+Message-ID: <1316530170-3965-1-git-send-email-dmonakhov@openvz.org>
+Cc: tytso@mit.edu, achender@linux.vnet.ibm.com,
+	Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:39267 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750915Ab1ITOtL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Sep 2011 10:49:11 -0400
+Received: by bkbzt4 with SMTP id zt4so535159bkb.19
+        for <linux-ext4@vger.kernel.org>; Tue, 20 Sep 2011 07:49:10 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-In addition to regular write shouldn't __do_fault and do_wp_page also
-calls this if they are called on file backed mappings?
+Hi, finally have some time to run some tests on recent kernels.
+And it appeared that fallocate interface is buggy
+ - fallocate: result in fsck complain due to blocks beyond i_size
+   without  EOFBLOCKS_FL
+ - punch_hole: also provoke fsck complain and even EIO due to
+   incorrect EOFBLOCKS_FL update
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+#LOG:
+#Following two patches are mostly cleanup 
+ext4-cleanup-ext4_ext_grow_indepth-code.patch
+ext4-move-inode-indepth-shrink-logic-to-didicated-fu.patch
+# Later patches are fixes for issues.
+ext4-Do-not-clear-EOFBLOCKS_FL-too-soon.patch
+ext4-fix-punch_hole-extend-handler.patch
+I've also attached my temp testcase for both issues
+Will submit generic xfstests based on it soon.
+
+########### TESTCASE###################
+#! /bin/bash
+#############################################################################
+# dmonakhov@openvz.org
+# Trivial fsstress test  
+# TODO: Add to xfstests
+# Required patches
+# kill fsstress reliably
+#  Message-Id: <1316357699-22692-1-git-send-email-dmonakhov@openvz.org>
+# In order unresvsp to work kernel should contain following patch
+#  Message-Id: <1316528400-1797-1-git-send-email-dmonakhov@openvz.org>
+#############################################################################
+# FIXES FOR ext4.git:3.1.0-rc2+
+#0001-ext4-cleanup-ext4_ext_grow_indepth-code.patch
+#0002-ext4-move-inode-indepth-shrink-logic-to-didicated-fu.patch
+#0003-ext4-Do-not-clear-EOFBLOCKS_FL-too-soon.patch
+#0004-ext4-fix-punch_hole-extend-handler.patch
+#############################################################################
+IMG=/dev/sdc
+MNT=./mnt
+#MNT_EXTRA_OPS="-oloop"
+## Create small image
+#dd if=/dev/zero of=$IMG bs=1M count=1024000
+mkfs.ext4 -F -b4096 $IMG 102400
+mkdir -p $MNT
+mount -text4 $IMG $MNT $MNT_EXTRA_OPS || exit
+## Run stress
+~/fsstress -p8 -f fsync=0 -f sync=0 -f fdatasync=0 -f setattr=0  -f unresvsp=2 -d $MNT/TEST -n99999999 &
+PID=$!
+## dd writers will do write/truncate =>  ENOSPC condition
+for ((i=0;i < 10;i++))
+do
+    dd if=/dev/zero of=$MNT/FILE bs=1M
+    sleep 2
+done
+kill $!
+wait $!
+umount $MNT
+fsck.ext4 -f -n $IMG
+
