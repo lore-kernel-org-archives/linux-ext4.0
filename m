@@ -1,74 +1,90 @@
-From: torn5 <torn5@shiftmail.org>
+From: Ted Ts'o <tytso@mit.edu>
 Subject: Re: What to put for unknown stripe-width?
-Date: Tue, 20 Sep 2011 17:29:34 +0200
-Message-ID: <4E78B15E.9060702@shiftmail.org>
+Date: Tue, 20 Sep 2011 12:00:34 -0400
+Message-ID: <20110920160034.GD13772@thunk.org>
 References: <4E786B53.5020407@shiftmail.org>
  <9D3B900A-8FCF-41B1-852A-FADD953FBDBD@mit.edu>
+ <4E78B15E.9060702@shiftmail.org>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
+To: torn5 <torn5@shiftmail.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from blade3.isti.cnr.it ([194.119.192.19]:56753 "EHLO
-	BLADE3.ISTI.CNR.IT" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750784Ab1ITP36 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Sep 2011 11:29:58 -0400
-Received: from [192.168.7.52] (firewall.itb.cnr.it [155.253.6.254])
- by mx.isti.cnr.it (PMDF V6.5-x5 #31918)
- with ESMTPSA id <01O6A8TIZXOCXPMQ8Y@mx.isti.cnr.it> for
- linux-ext4@vger.kernel.org; Tue, 20 Sep 2011 17:29:34 +0200 (MEST)
-In-reply-to: <9D3B900A-8FCF-41B1-852A-FADD953FBDBD@mit.edu>
+Received: from li9-11.members.linode.com ([67.18.176.11]:59139 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751366Ab1ITQAi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 20 Sep 2011 12:00:38 -0400
+Content-Disposition: inline
+In-Reply-To: <4E78B15E.9060702@shiftmail.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 09/20/11 14:47, Theodore Tso wrote:
-> But that's OK, because I don't know of any RAID array that supports 
-> this kind of radical surgery in parameters in the first case. :-)
+On Tue, Sep 20, 2011 at 05:29:34PM +0200, torn5 wrote:
+> 
+> No this is not correct, for MD at least.
+> MD uses strips to compute parity, which are always 4k wide for each
+> device. The reads in your example would be 32k read from two
+> devices, followed by 32k write to two devices.
 
-Ted, thanks for your reply,
+Then where the heck are these 1MB numbers that you cited originally
+coming from?  If by that you mean the LVM PE size, that doesn't matter
+to the file system.  It matters as far as your efficiency of doing LVM
+snapshots, but what matters from the perspective of the file system's
+stripe-width (stride doesn't really matter with the ext4 flex_bg
+layout) is the RAID parameters at the MD level, NOT the LVM
+parameters.  (This is assuming LVM is properly aligning its PE's with
+the RAID stripe sizes, but I'll assume for the purposes of this
+discussion that LVM is competently implemented...)
 
-Linux MD raid supports this, it's called reshape. Most parameters 
-changes are supported, in particular the addition of a new disk and 
-restriping of a raid5 is supported *live*. It's not very stable though...
+> So, regarding my original problem, the way you use stride-size in
+> ext4 is that you begin every new file at the start of a stripe?
 
-But apart from the MD live reshape/restripe, what I could do more likely 
-is to move such filesystem *live* across various RAIDs I have, 
-leveraging LVM's "pvmove". Such RAIDs are almost all of 1MB stride, but 
-with various number of elements, hence they have a different stripe-width.
+The design goal (not completely implemented at the moment) is that
+block allocation will try (but may not succeed if the free space is
+fragmented, etc.) to align files to begin at the start of a stripe,
+and that file writes will be try to avoid RAID 5 read/modify/write
+cycles.
 
+> For growing an existing file what do you do, do you continue to
+> write it from where it was, without holes, or you put a hole, select
+> a new location at the start of a new stripe and start from there?
 
-> The other thing to consider is small writes.   If you are doing small writes, a large stripe size is a disaster, because a 32k random write by a program like MySQL will turn into a 3MB read + 3MB write request.
+We will try to arrange things so that subsequent reads and writes are
+well aligned.  So the assumption here is that the application will
+also be intelligent enough to do the right thing.  (i.e., if you have
+a 32k stripe width, writes need to be 32k aligned and in multiples of
+32k at the logical block layer, which the file system will translate
+into appropriately aligned reads and writes to the RAID array.)
 
-No this is not correct, for MD at least.
-MD uses strips to compute parity, which are always 4k wide for each 
-device. The reads in your example would be 32k read from two devices, 
-followed by 32k write to two devices. I am testing this now with iostat 
-to confirm what I'm saying with a dd 4k write: I see various spurious 
-read and writes (probably due to MD and LVM accounting, dirty flags etc) 
-which sum up to about 108k read and 18k write (that's the aggregated sum 
-from all drives) for a single 4k write to the MD device. That's 
-definitely not as large as even a single chunk which is 1MB.
-What chunksize does is to regulate every how much data the placement of 
-parity is changed (i.e. your ascii-art picture was correct). Large 
-chunksize like I use, means that reads smaller than 1MB hopefully come 
-from 1 spindle only. This is useful for us.
+> Regarding multiple very small files wrote together by pdflush, what
+> do they do? They are sticked together on the same stripe without
+> holes, or each one goes to a different stripe?
 
+pdflush has no idea about RAID, so for small files it's all up in the
+air.
 
-So, regarding my original problem, the way you use stride-size in ext4 
-is that you begin every new file at the start of a stripe?
+> Is the change of stripe-width with tune2fs supported on a live,
+> mounted fs? (I mean maybe with a mount -o remount but no umount)
 
-For growing an existing file what do you do, do you continue to write it 
-from where it was, without holes, or you put a hole, select a new 
-location at the start of a new stripe and start from there?
+It's supported, but it's not going to change the layout of the live,
+mounted file system.
 
-Regarding multiple very small files wrote together by pdflush, what do 
-they do? They are sticked together on the same stripe without holes, or 
-each one goes to a different stripe?
+I'm going to strongly caution you about using fancy-shmancy features
+like this MD reshape.  You yourself have said it's not stable.  But do
+you really need it?  You haven't said what your application is, but it
+may be much better to simply add new disks in multiples of your
+existing stripe width, and just keep things simple.
 
-Is the change of stripe-width with tune2fs supported on a live, mounted 
-fs? (I mean maybe with a mount -o remount but no umount)
+Also, why are you using RAID?  Is it for reliability, or performance,
+or both?  Have you seen some of the recent (well, in the last 4-5
+years paper about relibility of disks and RAID)?  Especially
+interesting comments such as
 
-Thanks for your help,
+    "Protecting online data only via RAID 5 today verges on
+    professional malpractice"
 
-T.
+http://storagemojo.com/2007/02/26/netapp-weighs-in-on-disks/
+
+Regards,
+
+					- Ted
