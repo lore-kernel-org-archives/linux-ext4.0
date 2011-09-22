@@ -1,140 +1,220 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: [PATCH 1/2] libext2fs: add metadata checksum and snapshot feature flags
-Date: Thu, 22 Sep 2011 05:12:32 +0300
-Message-ID: <CAOQ4uxjee5XfA9uANys1mO94QbyBAC5zJM+=CmAbuE5ycgS=Gg@mail.gmail.com>
-References: <1316127052-1890-1-git-send-email-tytso@mit.edu>
-	<1316127052-1890-2-git-send-email-tytso@mit.edu>
-	<20110920185604.GK12086@tux1.beaverton.ibm.com>
-	<CAOQ4uxiM9uet14rgNN9-ohTW6W1OrQgU4-OoteHYA3iHxtuLAw@mail.gmail.com>
-	<20110921204042.GL12086@tux1.beaverton.ibm.com>
+From: Johannes Weiner <jweiner@redhat.com>
+Subject: Re: [patch 2/4] mm: writeback: distribute write pages across
+ allowable zones
+Date: Thu, 22 Sep 2011 10:52:42 +0200
+Message-ID: <20110922085242.GA29046@redhat.com>
+References: <1316526315-16801-1-git-send-email-jweiner@redhat.com>
+ <1316526315-16801-3-git-send-email-jweiner@redhat.com>
+ <20110921160226.1bf74494.akpm@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: djwong@us.ibm.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:40504 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750901Ab1IVCMe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Sep 2011 22:12:34 -0400
-Received: by wyg34 with SMTP id 34so2517596wyg.19
-        for <linux-ext4@vger.kernel.org>; Wed, 21 Sep 2011 19:12:32 -0700 (PDT)
-In-Reply-To: <20110921204042.GL12086@tux1.beaverton.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Mel Gorman <mgorman@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Dave Chinner <david@fromorbit.com>,
+        Wu Fengguang <fengguang.wu@intel.com>, Jan Kara <jack@suse.cz>,
+        Rik van Riel <riel@redhat.com>, Minchan Kim <minchan.kim@gmail.com>,
+        Chris Mason <chris.mason@oracle.com>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>, xfs@oss.sgi.com,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>
+To: Andrew Morton <akpm@google.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20110921160226.1bf74494.akpm@google.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Sep 21, 2011 at 11:40 PM, Darrick J. Wong <djwong@us.ibm.com> w=
-rote:
-> On Wed, Sep 21, 2011 at 11:03:57AM +0300, Amir Goldstein wrote:
->> On Tue, Sep 20, 2011 at 9:56 PM, Darrick J. Wong <djwong@us.ibm.com>=
- wrote:
->> > On Thu, Sep 15, 2011 at 06:50:51PM -0400, Theodore Ts'o wrote:
-> <snip>
->> >> diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
->> >> index 4fec5db..1c86cb2 100644
->> >> --- a/lib/ext2fs/ext2_fs.h
->> >> +++ b/lib/ext2fs/ext2_fs.h
->> >> @@ -142,7 +142,9 @@ struct ext2_group_desc
->> >> =A0 =A0 =A0 __u16 =A0 bg_free_inodes_count; =A0 /* Free inodes co=
-unt */
->> >> =A0 =A0 =A0 __u16 =A0 bg_used_dirs_count; =A0 =A0 /* Directories =
-count */
->> >> =A0 =A0 =A0 __u16 =A0 bg_flags;
->> >> - =A0 =A0 __u32 =A0 bg_reserved[2];
->> >> + =A0 =A0 __u32 =A0 bg_exclude_bitmap_lo; =A0 /* Exclude bitmap f=
-or snapshots */
->> >> + =A0 =A0 __u16 =A0 bg_block_bitmap_csum_lo;/* crc32c(s_uuid+grp_=
-num+bitmap) LSB */
->> >> + =A0 =A0 __u16 =A0 bg_inode_bitmap_csum_lo;/* crc32c(s_uuid+grp_=
-num+bitmap) LSB */
->> >> =A0 =A0 =A0 __u16 =A0 bg_itable_unused; =A0 =A0 =A0 /* Unused ino=
-des count */
->> >> =A0 =A0 =A0 __u16 =A0 bg_checksum; =A0 =A0 =A0 =A0 =A0 =A0/* crc1=
-6(s_uuid+grouo_num+group_desc)*/
->> >> =A0};
->> >> @@ -159,7 +161,9 @@ struct ext4_group_desc
->> >> =A0 =A0 =A0 __u16 =A0 bg_free_inodes_count; =A0 /* Free inodes co=
-unt */
->> >> =A0 =A0 =A0 __u16 =A0 bg_used_dirs_count; =A0 =A0 /* Directories =
-count */
->> >> =A0 =A0 =A0 __u16 =A0 bg_flags; =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* EX=
-T4_BG_flags (INODE_UNINIT, etc) */
->> >> - =A0 =A0 __u32 =A0 bg_reserved[2]; =A0 =A0 =A0 =A0 /* Likely blo=
-ck/inode bitmap checksum */
->> >> + =A0 =A0 __u32 =A0 bg_exclude_bitmap_lo; =A0 /* Exclude bitmap f=
-or snapshots */
->> >> + =A0 =A0 __u16 =A0 bg_block_bitmap_csum_lo;/* crc32c(s_uuid+grp_=
-num+bitmap) LSB */
->> >> + =A0 =A0 __u16 =A0 bg_inode_bitmap_csum_lo;/* crc32c(s_uuid+grp_=
-num+bitmap) LSB */
->> >> =A0 =A0 =A0 __u16 =A0 bg_itable_unused; =A0 =A0 =A0 /* Unused ino=
-des count */
->> >> =A0 =A0 =A0 __u16 =A0 bg_checksum; =A0 =A0 =A0 =A0 =A0 =A0/* crc1=
-6(sb_uuid+group+desc) */
->> >> =A0 =A0 =A0 __u32 =A0 bg_block_bitmap_hi; =A0 =A0 /* Blocks bitma=
-p block MSB */
->> >> @@ -169,7 +173,10 @@ struct ext4_group_desc
->> >> =A0 =A0 =A0 __u16 =A0 bg_free_inodes_count_hi;/* Free inodes coun=
-t MSB */
->> >> =A0 =A0 =A0 __u16 =A0 bg_used_dirs_count_hi; =A0/* Directories co=
-unt MSB */
->> >> =A0 =A0 =A0 __u16 =A0 bg_itable_unused_hi; =A0 =A0/* Unused inode=
-s count MSB */
->> >> - =A0 =A0 __u32 =A0 bg_reserved2[3];
->> >> + =A0 =A0 __u32 =A0 bg_exclude_bitmap_hi; =A0 /* Exclude bitmap b=
-lock MSB */
->> >> + =A0 =A0 __u16 =A0 bg_block_bitmap_csum_hi;/* crc32c(s_uuid+grp_=
-num+bitmap) MSB */
->> >> + =A0 =A0 __u16 =A0 bg_inode_bitmap_csum_hi;/* crc32c(s_uuid+grp_=
-num+bitmap) MSB */
->> >> + =A0 =A0 __u32 =A0 bg_reserved;
->> >
->> > Should we attach a checksum to the exclude bitmap? =A0That would, =
-unfortunately,
->> > put the 64-byte block group pretty close to full, unless we're ok =
-with making
->> > the bg even bigger...
->>
->> Good point.
->> My initial approach (which I probably expressed somewhere) was that =
-when
->> exclude_bitmap feature is set, the block bitmap checksum should cove=
-r both
->> block bitmap and exclude bitmap.
->> The reason being that exclude bitmap adds little entropy over block =
-bitmap:
->> - it should always be a sub set of block bitmap bits
->> - clearing exclude bit is done together with clearing the block used=
- bit
->> - the only case of modifying exclude bitmap only is when a used bloc=
-k becomes
->> =A0 excluded (a.k.a moved to snapshot)
->>
->> so how do you feel about compressing 2 blocks into 16bits of checksu=
-m :-/?
->
-> Hrm.... is it generally the case that both block and exclude bitmaps =
-are loaded
-> at the same time? =A0I don't think it'd be difficult to checksum both=
- blocks
-> unless it's common that one of the two are not in memory.
->
+On Wed, Sep 21, 2011 at 04:02:26PM -0700, Andrew Morton wrote:
+> On Tue, 20 Sep 2011 15:45:13 +0200
+> Johannes Weiner <jweiner@redhat.com> wrote:
+> 
+> > This patch allows allocators to pass __GFP_WRITE when they know in
+> > advance that the allocated page will be written to and become dirty
+> > soon.  The page allocator will then attempt to distribute those
+> > allocations across zones, such that no single zone will end up full of
+> > dirty, and thus more or less, unreclaimable pages.
+> 
+> Across all zones, or across the zones within the node or what?  Some
+> more description of how all this plays with NUMA is needed, please.
 
-Hrm indeed. no. exclude bitmap is currently not loaded always together =
-with
-block bitmap, so unless this is changed, we'll have to think of somethi=
-ng else.
-However that brings me to wonder:
-block/inode/exclude bitmap seldom change more than a handful of bits/wo=
-rds
-at a time.
-Does it make sense to diff update the CRC of the bitmaps instead of
-recomputing it?
+Across the zones the allocator considers for allocation, which on NUMA
+is determined by the allocating task's NUMA memory policy.
 
-Amir.
+> > The global dirty limits are put in proportion to the respective zone's
+> > amount of dirtyable memory
+> 
+> I don't know what this means.  How can a global limit be controlled by
+> what is happening within each single zone?  Please describe this design
+> concept fully.
+
+Yikes, it's mein English.
+
+A zone's dirty limit is to the zone's contribution of dirtyable memory
+what the global dirty limit is to the global amount of dirtyable
+memory.
+
+As a result, the sum of the dirty limits of all existing zones equals
+the global dirty limit, such that no single zone receives more than
+its fair share of the globally allowable dirty pages.
+
+When the allocator tries to allocate from the list of allowable zones,
+it skips those that have reached their maximum share of dirty pages.
+
+> > For now, the problem remains for NUMA configurations where the zones
+> > allowed for allocation are in sum not big enough to trigger the global
+> > dirty limits, but a future approach to solve this can reuse the
+> > per-zone dirty limit infrastructure laid out in this patch to have
+> > dirty throttling and the flusher threads consider individual zones.
+
+> > +static unsigned long zone_dirtyable_memory(struct zone *zone)
+> 
+> Appears to return the number of pages in a particular zone which are
+> considered "dirtyable".  Some discussion of how this decision is made
+> would be illuminating.
+
+Is the proportional relationship between zones and the global level a
+satisfactory explanation?
+
+Because I am looking for a central place to explain all this.
+
+> > +{
+> > +	unsigned long x;
+> > +	/*
+> > +	 * To keep a reasonable ratio between dirty memory and lowmem,
+> > +	 * highmem is not considered dirtyable on a global level.
+> 
+> Whereabouts in the kernel is this policy implemented? 
+> determine_dirtyable_memory()?  It does (or can) consider highmem
+> pages?  Comment seems wrong?
+
+Yes, in determine_dirtyable_memory().
+
+It is possible to configure an unreasonable ratio between dirty memory
+and lowmem with the vm_highmem_is_dirtyable sysctl.  The point is that
+even though highmem is subtracted from the effective amount of global
+dirtyable memory again (which is strictly a big-picture measure), we
+only care about the individual zone here and so highmem can very much
+always hold dirty pages up to its dirty limit.
+
+> Should we rename determine_dirtyable_memory() to
+> global_dirtyable_memory(), to get some sense of its relationship with
+> zone_dirtyable_memory()?
+
+Sounds good.
+
+> > +	 * But we allow individual highmem zones to hold a potentially
+> > +	 * bigger share of that global amount of dirty pages as long
+> > +	 * as they have enough free or reclaimable pages around.
+> > +	 */
+> > +	x = zone_page_state(zone, NR_FREE_PAGES) - zone->totalreserve_pages;
+> > +	x += zone_reclaimable_pages(zone);
+> > +	return x;
+> > +}
+> > +
+> > 
+> > ...
+> >
+> > -void global_dirty_limits(unsigned long *pbackground, unsigned long *pdirty)
+> > +static void dirty_limits(struct zone *zone,
+> > +			 unsigned long *pbackground,
+> > +			 unsigned long *pdirty)
+> >  {
+> > +	unsigned long uninitialized_var(zone_memory);
+> > +	unsigned long available_memory;
+> > +	unsigned long global_memory;
+> >  	unsigned long background;
+> > -	unsigned long dirty;
+> > -	unsigned long uninitialized_var(available_memory);
+> >  	struct task_struct *tsk;
+> > +	unsigned long dirty;
+> >  
+> > -	if (!vm_dirty_bytes || !dirty_background_bytes)
+> > -		available_memory = determine_dirtyable_memory();
+> > +	global_memory = determine_dirtyable_memory();
+> > +	if (zone)
+> > +		available_memory = zone_memory = zone_dirtyable_memory(zone);
+> > +	else
+> > +		available_memory = global_memory;
+> >  
+> > -	if (vm_dirty_bytes)
+> > +	if (vm_dirty_bytes) {
+> >  		dirty = DIV_ROUND_UP(vm_dirty_bytes, PAGE_SIZE);
+> > -	else
+> > +		if (zone)
+> 
+> So passing zone==NULL alters dirty_limits()'s behaviour.  Seems that it
+> flips the function between global_dirty_limits and zone_dirty_limits?
+
+Yes.
+
+> Would it be better if we actually had separate global_dirty_limits()
+> and zone_dirty_limits() rather than a magical mode?
+
+I did that the first time around, but Mel raised the valid point that
+this will be bad for maintainability.
+
+The global dirty limit and the per-zone dirty limit are not only
+incidentally calculated the same way, they are intentionally similar
+in the geometrical sense (modulo workarounds for not having fp
+arithmetic), so it would be good to keep this stuff together.
+
+But the same applies to determine_dirtyable_memory() and
+zone_dirtyable_memory(), so they should be done the same way and I
+don't care too much which that would be.
+
+If noone complains, I would structure the code such that
+global_dirtyable_memory() and zone_dirtyable_memory(), as well as
+global_dirty_limits() and zone_dirty_limits() are separate functions
+next to each other with a big fat comment above that block explaining
+the per-zone dirty limits and the proportional relationship to the
+global parameters.
+
+> > +			dirty = dirty * zone_memory / global_memory;
+> > +	} else
+> >  		dirty = (vm_dirty_ratio * available_memory) / 100;
+> >  
+> > -	if (dirty_background_bytes)
+> > +	if (dirty_background_bytes) {
+> >  		background = DIV_ROUND_UP(dirty_background_bytes, PAGE_SIZE);
+> > -	else
+> > +		if (zone)
+> > +			background = background * zone_memory / global_memory;
+> > +	} else
+> >  		background = (dirty_background_ratio * available_memory) / 100;
+> >  
+> >  	if (background >= dirty)
+> > 
+> > ...
+> >
+> > +bool zone_dirty_ok(struct zone *zone)
+> 
+> Full description of the return value, please.
+
+Returns false when the zone has reached its maximum share of the
+global allowed dirty pages, true otherwise.
+
+> 
+> > +{
+> > +	unsigned long background_thresh, dirty_thresh;
+> > +
+> > +	dirty_limits(zone, &background_thresh, &dirty_thresh);
+> > +
+> > +	return zone_page_state(zone, NR_FILE_DIRTY) +
+> > +		zone_page_state(zone, NR_UNSTABLE_NFS) +
+> > +		zone_page_state(zone, NR_WRITEBACK) <= dirty_thresh;
+> > +}
+> 
+> We never needed to calculate &background_thresh,.  I wonder if that
+> matters.
+
+I didn't think dirty_limits() could take another branch, but if I
+split up the function I will drop it.  It's not rocket science and can
+be easily added on demand.
+
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
