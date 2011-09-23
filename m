@@ -1,44 +1,53 @@
-From: Carlos Maiolino <cmaiolino@redhat.com>
-Subject: [PATCH] Add better example about how to compress e2image raw image
-Date: Fri, 23 Sep 2011 15:47:52 -0300
-Message-ID: <1316803672-25550-1-git-send-email-cmaiolino@redhat.com>
-Cc: Carlos Maiolino <cmaiolino@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] Add better example about how to compress e2image raw image
+Date: Fri, 23 Sep 2011 14:24:23 -0600
+Message-ID: <BAB1C1C4-D0BB-4398-89A5-EC8B1E20801B@dilger.ca>
+References: <1316803672-25550-1-git-send-email-cmaiolino@redhat.com>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: linux-ext4@vger.kernel.org
+To: Carlos Maiolino <cmaiolino@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [187.60.101.4] ([187.60.101.4]:46991 "EHLO
-	andromeda.usersys.redhat.com" rhost-flags-FAIL-FAIL-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751578Ab1IWS4r (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 23 Sep 2011 14:56:47 -0400
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:58462 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752061Ab1IWUYY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Sep 2011 16:24:24 -0400
+In-Reply-To: <1316803672-25550-1-git-send-email-cmaiolino@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The current example in the man page uses bzip2 to compress
-the raw image file created by the e2image, but, bzip2 does
-not honors sparse files, which causes the image to have the
-same size of the filesystem.
-Using tar together with bzip2 will make the compressed file
-to honor the sparsed file, which makes it more transportable
-than the current one if the filesystem is large.
+On 2011-09-23, at 12:47 PM, Carlos Maiolino wrote:
+> The current example in the man page uses bzip2 to compress
+> the raw image file created by the e2image, but, bzip2 does
+> not honors sparse files, which causes the image to have the
+> same size of the filesystem.
+> Using tar together with bzip2 will make the compressed file
+> to honor the sparsed file, which makes it more transportable
+> than the current one if the filesystem is large.
+> 
+> Signed-off-by: Carlos Maiolino <cmaiolino@redhat.com>
+> ---
+> misc/e2image.8.in |    2 +-
+> 1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/misc/e2image.8.in b/misc/e2image.8.in
+> index 74d2a0b..fcf3d20 100644
+> --- a/misc/e2image.8.in
+> +++ b/misc/e2image.8.in
+> @@ -115,7 +115,7 @@ as part of bug reports to e2fsprogs.  When used in this capacity, the
+> recommended command is as follows (replace hda1 with the appropriate device):
+> .PP
+> .br
+> -\	\fBe2image \-r /dev/hda1 \- | bzip2 > hda1.e2i.bz2\fR
+> +\	\fBe2image \-r /dev/hda1 hda1.e2i && tar Sjcvf e2i.tar.bz2 hda1.e2i\fR
 
-Signed-off-by: Carlos Maiolino <cmaiolino@redhat.com>
----
- misc/e2image.8.in |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+Even better would be the use of the QCOW2 format that Lukas added, if it could also be operated on directly by the e2fsprogs utils (I don't know if that is possible or not).
 
-diff --git a/misc/e2image.8.in b/misc/e2image.8.in
-index 74d2a0b..fcf3d20 100644
---- a/misc/e2image.8.in
-+++ b/misc/e2image.8.in
-@@ -115,7 +115,7 @@ as part of bug reports to e2fsprogs.  When used in this capacity, the
- recommended command is as follows (replace hda1 with the appropriate device):
- .PP
- .br
--\	\fBe2image \-r /dev/hda1 \- | bzip2 > hda1.e2i.bz2\fR
-+\	\fBe2image \-r /dev/hda1 hda1.e2i && tar Sjcvf e2i.tar.bz2 hda1.e2i\fR
- .PP
- This will only send the metadata information, without any data blocks.  
- However, the filenames in the directory blocks can still reveal
--- 
-1.7.5.2
+
+Cheers, Andreas
+
+
+
+
 
