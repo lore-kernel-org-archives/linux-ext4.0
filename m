@@ -1,137 +1,457 @@
 From: Andreas Dilger <adilger@whamcloud.com>
-Subject: [PATCH 2/4] tune2fs: kill external journal if device not found
-Date: Fri, 23 Sep 2011 17:38:42 -0600
-Message-ID: <1316821124-7461-2-git-send-email-adilger@whamcloud.com>
+Subject: [PATCH 4/4] e2fsck: regression tests for INCOMPAT_MMP feature
+Date: Fri, 23 Sep 2011 17:38:44 -0600
+Message-ID: <1316821124-7461-4-git-send-email-adilger@whamcloud.com>
 References: <1316821124-7461-1-git-send-email-adilger@whamcloud.com>
 Cc: Andreas Dilger <adilger@whamcloud.com>
 To: tytso@mit.edu, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:48272 "EHLO
 	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753136Ab1IWXit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Sep 2011 19:38:49 -0400
+	with ESMTP id S1753144Ab1IWXix (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Sep 2011 19:38:53 -0400
 In-Reply-To: <1316821124-7461-1-git-send-email-adilger@whamcloud.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Continue to remove the external journal device even if the device
-cannot be found.
+Add tests for the MMP feature - creating a filesystem with mke2fs
+and MMP enabled, enable/disable MMP with tune2fs, disabling the
+e2fsck MMP flag with tune2fs after a failed e2fsck, and e2fsck
+checking and fixing a corrupt MMP block.
 
-Add a test to verify that the journal device/UUID are actually removed
-from the superblock.  It isn't possible to use a real journal device
-for testing without loopback devices and such (it must be a block device)
-and this would invite complexity and failures in the regression test.
+The MMP tests need to be run from a real disk, not tmpfs, because
+tmpfs doesn't support O_DIRECT reads, which MMP uses to ensure
+that reads from the MMP block are not filled from the page cache.
+Using a local disk does not slow down the tests noticably, since
+they wait to detect if the MMP block is being modified.
 
 Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
 
 #
-# total: 0 errors, 0 warnings, 82 lines checked
+# ERROR: trailing whitespace
+# #19: FILE: tests/f_mmp/expect.1:13:
+# +Superblock backups stored on blocks: $
 #
-# Your patch has no obvious style problems and is ready for submission.
+# ERROR: Invalid UTF-8, patch and commit message should be encoded in UTF-8
+# #22: FILE: tests/f_mmp/expect.1:16:
+# +Allocating group tables: 0/21/2   done
+#                              ^
+#
+# ERROR: trailing whitespace
+# #22: FILE: tests/f_mmp/expect.1:16:
+# +Allocating group tables: 0/2^H^H^H1/2^H^H^H   ^H^H^Hdone                            $
+#
+# ERROR: Invalid UTF-8, patch and commit message should be encoded in UTF-8
+# #23: FILE: tests/f_mmp/expect.1:17:
+# +Writing inode tables: 0/21/2   done
+#                           ^
+#
+# ERROR: trailing whitespace
+# #23: FILE: tests/f_mmp/expect.1:17:
+# +Writing inode tables: 0/2^H^H^H1/2^H^H^H   ^H^H^Hdone                            $
+#
+# ERROR: Invalid UTF-8, patch and commit message should be encoded in UTF-8
+# #25: FILE: tests/f_mmp/expect.1:19:
+# +Writing superblocks and filesystem accounting information: 0/21/2   done
+#                                                                ^
+#
+# ERROR: trailing whitespace
+# #28: FILE: tests/f_mmp/expect.1:22:
+# + $
+#
+# total: 7 errors, 0 warnings, 289 lines checked
+#
+# Your patch has style problems, please review.  If any of these errors
+# are false positives report them to the maintainer, see
+# CHECKPATCH in MAINTAINERS.
 ---
- misc/tune2fs.c            |   18 ++++++++++--------
- tests/u_ext_jnl_rm/script |   28 ++++++++++++++++++++++++++++
- 2 files changed, 38 insertions(+), 8 deletions(-)
- create mode 100644 tests/u_ext_jnl_rm/script
+ tests/f_mmp/expect.1         |   79 ++++++++++++++++++++++++++++++++++++++++++
+ tests/f_mmp/script           |   15 ++++++++
+ tests/f_mmp_1on/name         |    1 +
+ tests/f_mmp_1on/script       |   40 +++++++++++++++++++++
+ tests/f_mmp_2off/name        |    1 +
+ tests/f_mmp_2off/script      |   40 +++++++++++++++++++++
+ tests/f_mmp_e2fsck/name      |    1 +
+ tests/f_mmp_e2fsck/script    |   67 +++++++++++++++++++++++++++++++++++
+ tests/f_mmp_garbage/expect.1 |    9 +++++
+ tests/f_mmp_garbage/expect.2 |    7 ++++
+ tests/f_mmp_garbage/name     |    1 +
+ tests/f_mmp_garbage/script   |   28 +++++++++++++++
+ 12 files changed, 289 insertions(+), 0 deletions(-)
+ create mode 100644 tests/f_mmp/expect.1
+ create mode 100644 tests/f_mmp/script
+ create mode 100644 tests/f_mmp_1on/name
+ create mode 100644 tests/f_mmp_1on/script
+ create mode 100644 tests/f_mmp_2off/name
+ create mode 100644 tests/f_mmp_2off/script
+ create mode 100644 tests/f_mmp_e2fsck/name
+ create mode 100644 tests/f_mmp_e2fsck/script
+ create mode 100644 tests/f_mmp_garbage/expect.1
+ create mode 100644 tests/f_mmp_garbage/expect.2
+ create mode 100644 tests/f_mmp_garbage/name
+ create mode 100644 tests/f_mmp_garbage/script
 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 3e12697..fa9728b 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -184,7 +184,7 @@ static void remove_journal_device(ext2_filsys fs)
- 		journal_path =
- 			ext2fs_find_block_device(fs->super->s_journal_dev);
- 		if (!journal_path)
--			return;
-+			goto no_valid_journal;
- 	}
- 
- #ifdef CONFIG_TESTIO_DEBUG
-@@ -202,7 +202,8 @@ static void remove_journal_device(ext2_filsys fs)
- 			_("while trying to open external journal"));
- 		goto no_valid_journal;
- 	}
--	if (!(jfs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_JOURNAL_DEV)) {
-+	if (!(jfs->super->s_feature_incompat &
-+	      EXT3_FEATURE_INCOMPAT_JOURNAL_DEV)) {
- 		fprintf(stderr, _("%s is not a journal device.\n"),
- 			journal_path);
- 		goto no_valid_journal;
-@@ -216,8 +217,8 @@ static void remove_journal_device(ext2_filsys fs)
- 	}
- 
- 	jsb = (journal_superblock_t *) buf;
--	if ((jsb->s_header.h_magic != (unsigned) ntohl(JFS_MAGIC_NUMBER)) ||
--	    (jsb->s_header.h_blocktype != (unsigned) ntohl(JFS_SUPERBLOCK_V2))) {
-+	if ((jsb->s_header.h_magic != (unsigned)ntohl(JFS_MAGIC_NUMBER)) ||
-+	    (jsb->s_header.h_blocktype != (unsigned)ntohl(JFS_SUPERBLOCK_V2))) {
- 		fputs(_("Journal superblock not found!\n"), stderr);
- 		goto no_valid_journal;
- 	}
-@@ -225,8 +226,7 @@ static void remove_journal_device(ext2_filsys fs)
- 	/* Find the filesystem UUID */
- 	nr_users = ntohl(jsb->s_nr_users);
- 	for (i = 0; i < nr_users; i++) {
--		if (memcmp(fs->super->s_uuid,
--			   &jsb->s_users[i*16], 16) == 0)
-+		if (memcmp(fs->super->s_uuid, &jsb->s_users[i * 16], 16) == 0)
- 			break;
- 	}
- 	if (i >= nr_users) {
-@@ -237,7 +237,7 @@ static void remove_journal_device(ext2_filsys fs)
- 	}
- 	nr_users--;
- 	for (i = 0; i < nr_users; i++)
--		memcpy(&jsb->s_users[i*16], &jsb->s_users[(i+1)*16], 16);
-+		memcpy(&jsb->s_users[i * 16], &jsb->s_users[(i + 1) * 16], 16);
- 	jsb->s_nr_users = htonl(nr_users);
- 
- 	/* Write back the journal superblock */
-@@ -251,7 +251,9 @@ static void remove_journal_device(ext2_filsys fs)
- 
- no_valid_journal:
- 	if (commit_remove_journal == 0) {
--		fputs(_("Journal NOT removed\n"), stderr);
-+		fputs(_("Cannot locate journal device. It was NOT removed\n"
-+			"Use -f option to remove missing journal device.\n"),
-+		      stderr);
- 		exit(1);
- 	}
- 	fs->super->s_journal_dev = 0;
-diff --git a/tests/u_ext_jnl_rm/script b/tests/u_ext_jnl_rm/script
+diff --git a/tests/f_mmp/expect.1 b/tests/f_mmp/expect.1
 new file mode 100644
-index 0000000..d7217b6
+index 0000000..3a00815
 --- /dev/null
-+++ b/tests/u_ext_jnl_rm/script
-@@ -0,0 +1,28 @@
-+printf "remove missing external journal device: "
-+OUT=$test_name.log
++++ b/tests/f_mmp/expect.1
+@@ -0,0 +1,79 @@
++Filesystem label=
++OS type: Linux
++Block size=2048 (log=1)
++Fragment size=2048 (log=1)
++Stride=0 blocks, Stripe width=0 blocks
++16384 inodes, 32768 blocks
++1638 blocks (5.00%) reserved for the super user
++First data block=0
++Maximum filesystem blocks=33554432
++2 block groups
++16384 blocks per group, 16384 fragments per group
++8192 inodes per group
++Superblock backups stored on blocks: 
++	16384
 +
-+dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
++Allocating group tables: 0/21/2   done                            
++Writing inode tables: 0/21/2   done                            
++Multiple mount protection is enabled with update interval 5 seconds.
++Writing superblocks and filesystem accounting information: 0/21/2   done
 +
-+echo mke2fs -q -F -o Linux -b 1024 $TMPFILE >> $OUT
-+$MKE2FS -q -F -o Linux -I 128 -b 1024 $TMPFILE >> $OUT 2>&1
++Filesystem features: ext_attr resize_inode dir_index filetype mmp sparse_super
++ 
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 11/16384 files (0.0% non-contiguous), 1105/32768 blocks
++Exit status is 0
 +
-+echo "debugfs add journal device/UUID" >> $OUT
-+$DEBUGFS -w -f - $TMPFILE <<- EOF >> $OUT 2>&1
-+	feature has_journal
-+	ssv journal_dev 0x9999
-+	ssv journal_uuid 1db3f677-6832-4adb-bafc-8e4059c30a33
-+EOF
++Filesystem volume name:   <none>
++Last mounted on:          <not available>
++Filesystem magic number:  0xEF53
++Filesystem revision #:    1 (dynamic)
++Filesystem features:      ext_attr resize_inode dir_index filetype mmp sparse_super
++Default mount options:    (none)
++Filesystem state:         clean
++Errors behavior:          Continue
++Filesystem OS type:       Linux
++Inode count:              16384
++Block count:              32768
++Reserved block count:     1638
++Free blocks:              31663
++Free inodes:              16373
++First block:              0
++Block size:               2048
++Fragment size:            2048
++Reserved GDT blocks:      31
++Blocks per group:         16384
++Fragments per group:      16384
++Inodes per group:         8192
++Inode blocks per group:   512
++Mount count:              0
++Check interval:           15552000 (6 months)
++Reserved blocks uid:      0
++Reserved blocks gid:      0
++First inode:              11
++Inode size:	          128
++Default directory hash:   half_md4
++MMP block number:         557
++MMP update interval:      5
 +
-+echo "tune2fs -f -O ^has_journal $TMPFILE" >> $OUT
-+$TUNE2FS -f -O ^has_journal $TMPFILE >> $OUT 2>&1
-+$DUMPE2FS -h $TMPFILE >> $OUT 2>&1
-+if [ "$(grep 'Journal UUID:' $OUT)" ]; then
-+	rm -f $test_name.ok
-+	mv $test_name.log $test_name.failed
++
++Group 0: (Blocks 0-16383)
++  Primary superblock at 0, Group descriptors at 1-1
++  Reserved GDT blocks at 2-32
++  Block bitmap at 33 (+33), Inode bitmap at 34 (+34)
++  Inode table at 35-546 (+35)
++  15826 free blocks, 8181 free inodes, 2 directories
++  Free blocks: 558-16383
++  Free inodes: 12-8192
++Group 1: (Blocks 16384-32767)
++  Backup superblock at 16384, Group descriptors at 16385-16385
++  Reserved GDT blocks at 16386-16416
++  Block bitmap at 16417 (+33), Inode bitmap at 16418 (+34)
++  Inode table at 16419-16930 (+35)
++  15837 free blocks, 8192 free inodes, 0 directories
++  Free blocks: 16931-32767
++  Free inodes: 8193-16384
+diff --git a/tests/f_mmp/script b/tests/f_mmp/script
+new file mode 100644
+index 0000000..1547463
+--- /dev/null
++++ b/tests/f_mmp/script
+@@ -0,0 +1,15 @@
++DESCRIPTION="enable MMP during mke2fs"
++FS_SIZE=65536
++MKE2FS_DEVICE_SECTSIZE=2048
++export MKE2FS_DEVICE_SECTSIZE
++TMPFILE=test.img
++> $TMPFILE
++stat -f $TMPFILE | grep -q "Type: tmpfs"
++if [ $? == 0 ]; then
++	rm -f $TMPFILE
++	echo "skipped for tmpfs (no O_DIRECT support)"
++	return 0
++fi
++MKE2FS_OPTS="-O mmp"
++. $cmd_dir/run_mke2fs
++unset MKE2FS_DEVICE_SECTSIZE
+diff --git a/tests/f_mmp_1on/name b/tests/f_mmp_1on/name
+new file mode 100644
+index 0000000..62e16b2
+--- /dev/null
++++ b/tests/f_mmp_1on/name
+@@ -0,0 +1 @@
++enable MMP using tune2fs
+diff --git a/tests/f_mmp_1on/script b/tests/f_mmp_1on/script
+new file mode 100644
+index 0000000..ee9884f
+--- /dev/null
++++ b/tests/f_mmp_1on/script
+@@ -0,0 +1,40 @@
++FSCK_OPT=-yf
++
++TMPFILE=test.img
++rm -f $test_name.failed $test_name.ok
++> $TMPFILE
++
++stat -f $TMPFILE | grep -q "Type: tmpfs"
++if [ $? == 0 ] ; then
++	rm -f $TMPFILE
++	echo "skipped for tmpfs (no O_DIRECT support)"
++	return 0
++fi
++
++$MKE2FS -q -F -o Linux -b 1024 $TMPFILE 100 > $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "mke2fs failed" > $test_name.failed
 +	echo "failed"
-+else
++	return $status
++fi
++
++$TUNE2FS -O mmp -E mmp_update_interval=1 $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "tune2fs -O mmp failed with $status" > $test_name.failed
++	echo "failed"
++	return $status
++fi
++
++$FSCK $FSCK_OPT $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" = 0 ] ; then
 +	echo "ok"
-+	mv $test_name.log $test_name.ok
-+	rm -f $test_name.failed
++	touch $test_name.ok
++else
++	echo "e2fsck with MMP enabled failed with $status" > $test_name.failed
++	echo "failed"
++	return $status
 +fi
 +rm -f $TMPFILE
+diff --git a/tests/f_mmp_2off/name b/tests/f_mmp_2off/name
+new file mode 100644
+index 0000000..d7cac51
+--- /dev/null
++++ b/tests/f_mmp_2off/name
+@@ -0,0 +1 @@
++disable MMP using tune2fs
+diff --git a/tests/f_mmp_2off/script b/tests/f_mmp_2off/script
+new file mode 100644
+index 0000000..ec9f71e
+--- /dev/null
++++ b/tests/f_mmp_2off/script
+@@ -0,0 +1,40 @@
++FSCK_OPT=-yf
++
++TMPFILE=test.img
++rm -f $test_name.failed $test_name.ok
++> $TMPFILE
++
++stat -f $TMPFILE | grep -q "Type: tmpfs"
++if [ $? == 0 ]; then
++	rm -f $TMPFILE
++	echo "skipped for tmpfs (no O_DIRECT support)"
++	return 0
++fi
++
++$MKE2FS -q -F -o Linux -b 1024 -O mmp $TMPFILE 100 > $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "mke2fs -O mmp failed" > $test_name.failed
++	echo "failed"
++	return $status
++fi
++
++$TUNE2FS -O ^mmp $TMPFILE > $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "tune2fs -O ^mmp failed" > $test_name.failed
++	echo "failed"
++	return $status
++fi
++
++$FSCK $FSCK_OPT $TMPFILE > $test_name.log 2>&1
++status=$?
++if [ "$status" = 0 ] ; then
++	echo "ok"
++	touch $test_name.ok
++else
++	echo "e2fsck after MMP disable failed" > $test_name.failed
++	echo "failed"
++	return $status
++fi
++rm -f $TMPFILE
+diff --git a/tests/f_mmp_e2fsck/name b/tests/f_mmp_e2fsck/name
+new file mode 100644
+index 0000000..20d66d6
+--- /dev/null
++++ b/tests/f_mmp_e2fsck/name
+@@ -0,0 +1 @@
++disable MMP with tune2fs after e2fsck killed
+diff --git a/tests/f_mmp_e2fsck/script b/tests/f_mmp_e2fsck/script
+new file mode 100644
+index 0000000..548734a
+--- /dev/null
++++ b/tests/f_mmp_e2fsck/script
+@@ -0,0 +1,67 @@
++FSCK_OPT=-yf
++
++TMPFILE=test.img
++rm -f $test_name.failed $test_name.ok
++> $TMPFILE
++
++stat -f $TMPFILE | grep -q "Type: tmpfs"
++if [ $? == 0 ]; then
++	rm -f $TMPFILE
++	echo "skipped for tmpfs (no O_DIRECT support)"
++	return 0
++fi
++
++echo "make the test image ..." > $test_name.log
++$MKE2FS -q -F -o Linux -b 1024 -O mmp -E mmp_update_interval=1 $TMPFILE 100 >> $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "mke2fs -O mmp failed" > $test_name.failed
++	echo "failed"
++	return $status
++fi
++
++# this will cause debugfs to create the $test_name.mark file once it has
++# passed the MMP startup, then continue reading input until it is killed
++MARKFILE=$test_name.new
++rm -f $MARKFILE
++echo "set mmp sequence to EXT2_MMP_SEQ_FSCK..." >> $test_name.log
++( { echo dump_mmp; echo "dump_inode <2> $MARKFILE"; cat /dev/zero; } |
++	$DEBUGFS -w $TMPFILE >> $test_name.log 2>&1 & ) > /dev/null 2>&1 &
++echo "wait until debugfs has started ..." >> $test_name.log
++while [ ! -e $MARKFILE ]; do
++	sleep 1
++done
++rm -f $MARKFILE
++echo "kill debugfs abruptly (simulates e2fsck failure) ..." >> $test_name.log
++killall -9 debugfs >> $test_name.log
++
++
++echo "e2fsck (should fail mmp_seq = EXT2_MMP_SEQ_FSCK) ..." >> $test_name.log
++$FSCK $FSCK_OPT $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" == 0 ] ; then
++	echo "e2fsck with MMP as EXT2_MMP_SEQ_FSCK ran!" > $test_name.failed
++	echo "failed"
++	return 1
++fi
++
++echo "clear mmp_seq with tune2fs ..." >> $test_name.log
++$TUNE2FS -f -E clear_mmp $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "tune2fs clearing EXT2_MMP_SEQ_FSCK failed" > $test_name.failed
++	echo "failed"
++	return 1
++fi
++
++echo "run e2fsck again (should pass with clean mmp_seq) ..." >> $test_name.log
++$FSCK $FSCK_OPT $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "e2fsck after clearing EXT2_MMP_SEQ_FSCK failed"> $test_name.failed
++	echo "failed"
++	return $status
++fi
++
++echo "ok"
++rm -f $TMPFILE
+diff --git a/tests/f_mmp_garbage/expect.1 b/tests/f_mmp_garbage/expect.1
+new file mode 100644
+index 0000000..4ee5cfb
+--- /dev/null
++++ b/tests/f_mmp_garbage/expect.1
+@@ -0,0 +1,9 @@
++Superblock has invalid MMP magic.  Fix? yes
++
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 11/16 files (0.0% non-contiguous), 22/100 blocks
++Exit status is 0
+diff --git a/tests/f_mmp_garbage/expect.2 b/tests/f_mmp_garbage/expect.2
+new file mode 100644
+index 0000000..3bf3869
+--- /dev/null
++++ b/tests/f_mmp_garbage/expect.2
+@@ -0,0 +1,7 @@
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 11/16 files (0.0% non-contiguous), 22/100 blocks
++Exit status is 0
+diff --git a/tests/f_mmp_garbage/name b/tests/f_mmp_garbage/name
+new file mode 100644
+index 0000000..17e0b14
+--- /dev/null
++++ b/tests/f_mmp_garbage/name
+@@ -0,0 +1 @@
++repair MMP when it is corrupted
+diff --git a/tests/f_mmp_garbage/script b/tests/f_mmp_garbage/script
+new file mode 100644
+index 0000000..3c80032
+--- /dev/null
++++ b/tests/f_mmp_garbage/script
+@@ -0,0 +1,28 @@
++FSCK_OPT=-yf
++
++TMPFILE=test.img
++rm -f $test_name.failed $test_name.ok
++> $TMPFILE
++
++stat -f $TMPFILE | grep -q "Type: tmpfs"
++if [ $? == 0 ] ; then
++	rm -f $TMPFILE
++	echo "skipped for tmpfs (no O_DIRECT support)"
++	return 0
++fi
++
++echo "make the test image ..." > $test_name.log
++$MKE2FS -q -F -o Linux -b 1024 -O mmp -E mmp_update_interval=1 $TMPFILE 100 >> $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "mke2fs -O mmp failed" > $test_name.failed
++	echo "failed"
++	return $status
++fi
++
++# create a corrupted image
++echo "modify the mmp sequence ..." >> $test_name.log
++$DEBUGFS -w -R "set_mmp_value magic 0x12345678" $TMPFILE >> $test_name.log 2>&1
++
++SKIP_GUNZIP=true
++. $cmd_dir/run_e2fsck
 -- 
 1.7.3.4
 
