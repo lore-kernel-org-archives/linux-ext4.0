@@ -1,51 +1,53 @@
 From: Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: [PATCH 1/4] misc: quiet minor compiler errors
-Date: Fri, 23 Sep 2011 17:44:13 -0600
-Message-ID: <A044F830-D13A-40CE-9DC5-1CD3A91314BF@whamcloud.com>
-References: <1316821124-7461-1-git-send-email-adilger@whamcloud.com>
+Subject: Re: [PATCH 4/4] e2fsck: regression tests for INCOMPAT_MMP feature
+Date: Fri, 23 Sep 2011 17:51:57 -0600
+Message-ID: <324442E2-9768-41F8-AF0D-0B6C1F96AB97@whamcloud.com>
+References: <1316821124-7461-1-git-send-email-adilger@whamcloud.com> <1316821124-7461-4-git-send-email-adilger@whamcloud.com>
 Mime-Version: 1.0 (Apple Message framework v1084)
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@whamcloud.com>
+Content-Transfer-Encoding: 8BIT
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:62434 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752979Ab1IWXoR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Sep 2011 19:44:17 -0400
-Received: by gwb15 with SMTP id 15so4089045gwb.19
-        for <linux-ext4@vger.kernel.org>; Fri, 23 Sep 2011 16:44:17 -0700 (PDT)
-In-Reply-To: <1316821124-7461-1-git-send-email-adilger@whamcloud.com>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:48895 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750720Ab1IWXwB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Sep 2011 19:52:01 -0400
+Received: by gyg10 with SMTP id 10so2925282gyg.19
+        for <linux-ext4@vger.kernel.org>; Fri, 23 Sep 2011 16:52:01 -0700 (PDT)
+In-Reply-To: <1316821124-7461-4-git-send-email-adilger@whamcloud.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 On 2011-09-23, at 5:38 PM, Andreas Dilger wrote:
-> Several compiler errors are quieted:
-> - use of stat64/open64 on OSX (deprecated API)
-
-I forgot to mention in the commit summary, but worthwhile to mention so
-that this patch is accepted upstream promptly, is that this also fixes
-a bug in the ext2fs_stat() implementation if stat64() does not exist.
-
-The fallback code was incorrectly using open() instead of stat(), but
-since stat64() has existed for ages it would only be seen in unusual
-cases (e.g. compiling on OS/X).
-
-> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-> index 1b9acc3..ab47621 100644
-> --- a/lib/ext2fs/ext2fs.h
-> +++ b/lib/ext2fs/ext2fs.h
+> Add tests for the MMP feature - creating a filesystem with mke2fs
+> and MMP enabled, enable/disable MMP with tune2fs, disabling the
+> e2fsck MMP flag with tune2fs after a failed e2fsck, and e2fsck
+> checking and fixing a corrupt MMP block.
 > 
-> _INLINE_ int ext2fs_stat(const char *path, ext2fs_struct_stat *buf)
-> {
-> -#ifdef HAVE_OPEN64
-> +#if defined(HAVE_STAT64) && !defined(__OSX_AVAILABLE_BUT_DEPRECATED)
-> 	return stat64(path, buf);
-> #else
-> -	return open(path, buf);
-> +	return stat(path, buf);
-> +#endif
-> +}
+> The MMP tests need to be run from a real disk, not tmpfs, because
+> tmpfs doesn't support O_DIRECT reads, which MMP uses to ensure
+> that reads from the MMP block are not filled from the page cache.
+> Using a local disk does not slow down the tests noticably, since
+> they wait to detect if the MMP block is being modified.
+> 
+> Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
+> 
+> #
+> # ERROR: trailing whitespace
+> # #19: FILE: tests/f_mmp/expect.1:13:
+> # +Superblock backups stored on blocks: $
+> #
+> # ERROR: Invalid UTF-8, patch and commit message should be encoded in UTF-8
+> # #22: FILE: tests/f_mmp/expect.1:16:
+> # +Allocating group tables: 0/21/2   done
+> #                              ^
+
+Sigh, my bad.  I installed an automatic git prepare_commit_msg hook that
+runs checkpatch.pl against the patch, but it doesn't like the format of
+the expect output (which is not C code and probably should be ignored).
+
+Please delete this stuff out of the comments, or I can resubmit if you want.
 
 Cheers, Andreas
 --
