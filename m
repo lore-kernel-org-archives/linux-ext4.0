@@ -1,53 +1,40 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] Add better example about how to compress e2image raw image
-Date: Fri, 23 Sep 2011 14:24:23 -0600
-Message-ID: <BAB1C1C4-D0BB-4398-89A5-EC8B1E20801B@dilger.ca>
-References: <1316803672-25550-1-git-send-email-cmaiolino@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org
-To: Carlos Maiolino <cmaiolino@redhat.com>
+From: H Hartley Sweeten <hartleys@visionengravers.com>
+Subject: [PATCH] ext2/xattr_security.c: local functions should be static
+Date: Fri, 23 Sep 2011 13:51:24 -0700
+Message-ID: <201109231351.24566.hartleys@visionengravers.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: <linux-ext4@vger.kernel.org>, <jack@suse.cz>
+To: Linux Kernel <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:58462 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752061Ab1IWUYY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Sep 2011 16:24:24 -0400
-In-Reply-To: <1316803672-25550-1-git-send-email-cmaiolino@redhat.com>
+Received: from mail209.messagelabs.com ([216.82.255.3]:4184 "EHLO
+	mail209.messagelabs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752152Ab1IWUvr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Sep 2011 16:51:47 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-09-23, at 12:47 PM, Carlos Maiolino wrote:
-> The current example in the man page uses bzip2 to compress
-> the raw image file created by the e2image, but, bzip2 does
-> not honors sparse files, which causes the image to have the
-> same size of the filesystem.
-> Using tar together with bzip2 will make the compressed file
-> to honor the sparsed file, which makes it more transportable
-> than the current one if the filesystem is large.
-> 
-> Signed-off-by: Carlos Maiolino <cmaiolino@redhat.com>
-> ---
-> misc/e2image.8.in |    2 +-
-> 1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/misc/e2image.8.in b/misc/e2image.8.in
-> index 74d2a0b..fcf3d20 100644
-> --- a/misc/e2image.8.in
-> +++ b/misc/e2image.8.in
-> @@ -115,7 +115,7 @@ as part of bug reports to e2fsprogs.  When used in this capacity, the
-> recommended command is as follows (replace hda1 with the appropriate device):
-> .PP
-> .br
-> -\	\fBe2image \-r /dev/hda1 \- | bzip2 > hda1.e2i.bz2\fR
-> +\	\fBe2image \-r /dev/hda1 hda1.e2i && tar Sjcvf e2i.tar.bz2 hda1.e2i\fR
+This quiets the sparse noise:
 
-Even better would be the use of the QCOW2 format that Lukas added, if it could also be operated on directly by the e2fsprogs utils (I don't know if that is possible or not).
+warning: symbol 'ext2_initxattrs' was not declared. Should it be static?
 
+Signed-off-by: H Hartley Sweeten <hsweeten@visionengravers.com>
+Cc: Jan Kara <jack@suse.cz>
 
-Cheers, Andreas
+---
 
-
-
-
-
+diff --git a/fs/ext2/xattr_security.c b/fs/ext2/xattr_security.c
+index c922adc..ed1a5d5 100644
+--- a/fs/ext2/xattr_security.c
++++ b/fs/ext2/xattr_security.c
+@@ -46,7 +46,7 @@ ext2_xattr_security_set(struct dentry *dentry, const char *name,
+ 			      value, size, flags);
+ }
+ 
+-int ext2_initxattrs(struct inode *inode, const struct xattr *xattr_array,
++static int ext2_initxattrs(struct inode *inode, const struct xattr *xattr_array,
+ 		    void *fs_info)
+ {
+ 	const struct xattr *xattr;
