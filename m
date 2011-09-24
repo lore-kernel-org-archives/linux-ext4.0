@@ -1,59 +1,86 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: [PATCH 4/4] e2fsck: regression tests for INCOMPAT_MMP feature
-Date: Fri, 23 Sep 2011 17:51:57 -0600
-Message-ID: <324442E2-9768-41F8-AF0D-0B6C1F96AB97@whamcloud.com>
-References: <1316821124-7461-1-git-send-email-adilger@whamcloud.com> <1316821124-7461-4-git-send-email-adilger@whamcloud.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [RFC] jbd2 metadata checksumming
+Date: Fri, 23 Sep 2011 18:07:46 -0600
+Message-ID: <4FFF8C58-425B-431C-9144-0A6B7568A39F@dilger.ca>
+References: <20110923225135.GN12086@tux1.beaverton.ibm.com>
 Mime-Version: 1.0 (Apple Message framework v1084)
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 8BIT
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:48895 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750720Ab1IWXwB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Sep 2011 19:52:01 -0400
-Received: by gyg10 with SMTP id 10so2925282gyg.19
-        for <linux-ext4@vger.kernel.org>; Fri, 23 Sep 2011 16:52:01 -0700 (PDT)
-In-Reply-To: <1316821124-7461-4-git-send-email-adilger@whamcloud.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Joel Becker <jlbec@evilplan.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: djwong@us.ibm.com
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20110923225135.GN12086@tux1.beaverton.ibm.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2011-09-23, at 5:38 PM, Andreas Dilger wrote:
-> Add tests for the MMP feature - creating a filesystem with mke2fs
-> and MMP enabled, enable/disable MMP with tune2fs, disabling the
-> e2fsck MMP flag with tune2fs after a failed e2fsck, and e2fsck
-> checking and fixing a corrupt MMP block.
+On 2011-09-23, at 4:51 PM, Darrick J. Wong wrote:
+> While I'm working on adding metadata checksumming to ext4, I figured that I
+> ought to look into the similar feature in jbd2.  At first I thought I'd simply
+> change the default crc algorithm to crc32c and update the field in the commit
+> block, but then it was suggested to me that I move that field into the journal
+> superblock so that during recovery we don't have to scan ahead through the
+> transaction to find the commit block so that we can learn the algorithm type.
 > 
-> The MMP tests need to be run from a real disk, not tmpfs, because
-> tmpfs doesn't support O_DIRECT reads, which MMP uses to ensure
-> that reads from the MMP block are not filled from the page cache.
-> Using a local disk does not slow down the tests noticably, since
-> they wait to detect if the MMP block is being modified.
-> 
-> Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
-> 
-> #
-> # ERROR: trailing whitespace
-> # #19: FILE: tests/f_mmp/expect.1:13:
-> # +Superblock backups stored on blocks: $
-> #
-> # ERROR: Invalid UTF-8, patch and commit message should be encoded in UTF-8
-> # #22: FILE: tests/f_mmp/expect.1:16:
-> # +Allocating group tables: 0/21/2   done
-> #                              ^
+> Doing that seems to require a format change to the superblock to add that
+> field.  I think that adding the crc-type field to the superblock is a rocompat
+> change since we're not changing existing fields, just adding fields.  It looks
+> like the kernel and e2fsprogs code both reject a journal if they find unknown
+> rocompat bits set.  (Using a journal in ro mode is not useful.)
 
-Sigh, my bad.  I installed an automatic git prepare_commit_msg hook that
-runs checkpatch.pl against the patch, but it doesn't like the format of
-the expect output (which is not C code and probably should be ignored).
+The question is whether the "rejected journal" means that it is ignored
+during recovery and not replayed at all, or if it prevents mounting?  If it
+is ignored and not replayed, but mount continues, that would lead to filesystem
+corruption, very bad.
 
-Please delete this stuff out of the comments, or I can resubmit if you want.
+If it prevents mounting, and needs an updated kernel and/or e2fsprogs to
+clear (presumably the kernel will not enable this itself unless told to
+do so by EXT4_FEATURE_INCOMPAT_METADATA_CSUM), that is not so bad, and
+will still allow downgrading to an older kernel as long as the journal is
+replayed.
+
+> I decided to dig deeper to see what exactly the journal checksum covers.  It
+> appears to me that the superblock, revocation blocks, and commit blocks are not
+> covered by a checksum.  Revocation blocks ought to be checksummed because a
+> lost write involving the second sector of a suitably large revocation block
+> could result in the wrong blocks being skipped during recovery.  It seems like
+> it would be easy to extend the current journal_checksum feature to cover the
+> commit block, and adding a checksum to the superblock seems trivial.
+> 
+> Lastly, if I'm already making change, I might as well bake the journal UUID
+> into the checksum as well.  The transaction ID is already in each metadata
+> block by virtue of the common block header.
+> 
+> So to summarize, I propose:
+> 
+> 1. Adding a JBD2_FEATURE_ROCOMPAT_CHECKSUM_V2 field, which provides:
+> 2. A u8 field at offset 0x50 in the superblock which identifies the checksum
+>   algorithm that's in use;
+> 3. A u32 field at offset 0x54 in the superblock to hold the superblock's
+>   checksum;
+
+Why not put it at the end of the superblock, so that it can cover the whole
+thing?
+
+> 4. Changing the revocation block code to put a checksum in the 4 bytes
+>   following the revocation data, and to ensure those 4 bytes always exist;
+
+It would be easier to see the changes if you included the structs.
+
+> 5. Adding the journal UUID to each checksum computation;
+> 6. Extend the commit checksum to cover the commit block itself, with the commit
+>   block checksum field zeroed during the computation, of course;
+> 7. Changing the default algorithm to crc32c; and
+> 8. Updating ext4 to enable both checksum fields at journal load time, if the
+>   user supplies the journal_checksum mount option.
+
+Probably this should also be conditional on the ext4 code using the
+EXT4_FEATURE_INCOMPAT_METADATA_CSUM, so that we know the kernel will
+be able to recover, and the user has explicitly requested this.
+
+There is a mechanism for the ext4 code to pass features to the jbd2 code
+already, so this shouldn't be a problem.
+
 
 Cheers, Andreas
---
-Andreas Dilger 
-Principal Engineer
-Whamcloud, Inc.
-
-
-
