@@ -1,34 +1,31 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH e2fsprogs] Add flag to ext2fs_flush and ext2fs_close to
- avoid fsync.
-Date: Sat, 24 Sep 2011 12:53:50 -0400
-Message-ID: <20110924165350.GC2779@thunk.org>
-References: <20110923102342.GC31740@amd.home.annexia.org>
+Subject: Re: [PATCH 1/4] misc: quiet minor compiler errors
+Date: Sat, 24 Sep 2011 14:49:09 -0400
+Message-ID: <20110924184909.GD2779@thunk.org>
+References: <1316821124-7461-1-git-send-email-adilger@whamcloud.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, berrange@redhat.com
-To: "Richard W.M. Jones" <rjones@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@whamcloud.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:40389 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:48273 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751386Ab1IXQxw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 24 Sep 2011 12:53:52 -0400
+	id S1752324Ab1IXStN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 24 Sep 2011 14:49:13 -0400
 Content-Disposition: inline
-In-Reply-To: <20110923102342.GC31740@amd.home.annexia.org>
+In-Reply-To: <1316821124-7461-1-git-send-email-adilger@whamcloud.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 23, 2011 at 11:23:42AM +0100, Richard W.M. Jones wrote:
-> [Hopefully sent to the right place this time ...]
+On Fri, Sep 23, 2011 at 05:38:41PM -0600, Andreas Dilger wrote:
+> Several compiler errors are quieted:
+> - zero-length gnu_printf format string
+> - unused variable
+> - uninitalized variable (though it isn't actually used for anything)
+> - use of stat64/open64 on OSX (deprecated API)
 > 
-> This patch allows users of the ext2fs library to avoid doing an fsync
-> on close (obviously this is optional, and doesn't affect existing callers).
-> 
-> Where this helps us is when constructing a throwaway ext2 filesystem
-> just to boot a virtual machine.  By avoiding the 2 x fsync, we save
-> over 5 seconds and many many unnecessary disk writes.
+> Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
 
-Added to the e2fsprogs next branch, thanks.  It will be part of the
-e2fsprogs 1.42 release.
+Applied, thanks.
 
 						- Ted
