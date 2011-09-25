@@ -1,68 +1,109 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: [PATCH 4/4] e2fsck: regression tests for INCOMPAT_MMP feature
-Date: Sun, 25 Sep 2011 00:04:14 -0600
-Message-ID: <A094EB47-CDD0-4A72-8659-841FC9848BFD@whamcloud.com>
-References: <1316821124-7461-1-git-send-email-adilger@whamcloud.com> <1316821124-7461-4-git-send-email-adilger@whamcloud.com> <20110924185155.GG2779@thunk.org>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+From: MaoXiaoyun <tinnycloud@hotmail.com>
+Subject: [patch 1/1] ext4-fix-dirty-extent-when-origin-leaf-extent-reac.patch
+Date: Sun, 25 Sep 2011 16:45:39 +0800
+Message-ID: <BLU157-W25EB1EAC24CC11FA14859ADAF20@phx.gbl>
+References: <BLU157-W499E698F650F554E645F9DDA1C0@phx.gbl>,,<20110906145347.GA4133@dumpdata.com>,<BLU157-W4106FA4CF4EBA78C63FDA0DA1C0@phx.gbl>,<4E666C86.5090707@goop.org>,<BLU157-W323C330706CB8D7E976BC3DA1F0@phx.gbl>,<BLU157-W7DABA5FE01C50C29B1A64DA060@phx.gbl>
+Mime-Version: 1.0
+Content-Type: multipart/mixed;
+	boundary="_382051e3-f4e4-4822-8610-a3f7da59baf0_"
+Cc: <konrad.wilk@oracle.com>,
+	xen devel <xen-devel@lists.xensource.com>, <tytso@mit.edu>,
+	<jack@suse.cz>
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:34055 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751030Ab1IYGET (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 25 Sep 2011 02:04:19 -0400
-Received: by gyg10 with SMTP id 10so3446295gyg.19
-        for <linux-ext4@vger.kernel.org>; Sat, 24 Sep 2011 23:04:19 -0700 (PDT)
-In-Reply-To: <20110924185155.GG2779@thunk.org>
+Received: from blu0-omc1-s28.blu0.hotmail.com ([65.55.116.39]:47340 "EHLO
+	blu0-omc1-s28.blu0.hotmail.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751504Ab1IYIpk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 25 Sep 2011 04:45:40 -0400
+In-Reply-To: <BLU157-W7DABA5FE01C50C29B1A64DA060@phx.gbl>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-09-24, at 12:51 PM, Ted Ts'o wrote:
-> On Fri, Sep 23, 2011 at 05:38:44PM -0600, Andreas Dilger wrote:
->> Add tests for the MMP feature - creating a filesystem with mke2fs
->> and MMP enabled, enable/disable MMP with tune2fs, disabling the
->> e2fsck MMP flag with tune2fs after a failed e2fsck, and e2fsck
->> checking and fixing a corrupt MMP block.
->> 
->> The MMP tests need to be run from a real disk, not tmpfs, because
->> tmpfs doesn't support O_DIRECT reads, which MMP uses to ensure
->> that reads from the MMP block are not filled from the page cache.
->> Using a local disk does not slow down the tests noticably, since
->> they wait to detect if the MMP block is being modified.
->> 
->> Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
-> 
-> Applied, although I needed to refrob the test names.  The first
-> character denotes not the test is for:
-> 
-> *) f_* tests are for e2fsck
-> *) m_* tests are for tune2fs
-
-You mean m_* for mke2fs and t_* for tune2fs, I think.
-
-> *) u_* tests are for e2undofs
-> 
-> This allows someone to test mke2fs by running the command:
-
-FYI, the reason that I ordered the MMP tests in that way is because it
-makes sense to verify that mke2fs can create a filesystem with the MMP
-feature before using a filesystem created by mke2fs with MMP to test if
-e2fsck handles it correctly.
-
-At this point, it is unlikely that there will be a problem with this in
-the future, because the code is working today, and at worst it means that
-the e2fsck f_mmp_* tests might incorrectly pass before m_mmp_* fails, or
-something, so I don't insist on changing it back.
-
-In any case, thanks for merging the patches.
-
-Cheers, Andreas
---
-Andreas Dilger 
-Principal Engineer
-Whamcloud, Inc.
+--_382051e3-f4e4-4822-8610-a3f7da59baf0_
+Content-Type: text/plain; charset="gb2312"
+Content-Transfer-Encoding: 8bit
 
 
+ 
+Hi:
+ 
+   We met an ext4 BUG_ON in extents.c:1716 which crash kernel flush thread, and result in disk unvailiable.
+ 
+   BUG details refer to: http://www.gossamer-threads.com/lists/xen/devel/217091?do=post_view_threaded
+ 
+   Attached is the fix, verified in our env. 
+ 
+   Without this patch, more than 3 servers hit BUG_ON in our hundreds of servers every day.
+ 
+   
+   many thanks. 		 	   		  
+--_382051e3-f4e4-4822-8610-a3f7da59baf0_
+Content-Type: application/octet-stream
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+	filename="0001-ext4-fix_dirty_extent_when_split_max&last_extent.patch"
 
+RnJvbSA0NWEwMjdkOTYxZjcyNjMyYjE1YjQ2MzM3ZWJiZDczMTdmNzUyOGVkIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQpGcm9tOiBYaWFveXVuIE1hbyA8eGlhb3l1bi5tYW94eUBhbGl5dW4taW5j
+LmNvbT4KRGF0ZTogU3VuLCAyNSBTZXAgMjAxMSAxNjoyNDowMyArMDgwMApTdWJqZWN0OiBbUEFU
+Q0hdIGV4dDQgOiBmaXggZGlydHkgZXh0ZW50IHdoZW4gb3JpZ2luIGxlYWYgZXh0ZW50IHJlYWNo
+IG1heAoKRXh0ZW50cyBhcmUgc3VwcG9zZWQgdG8gYmUgZGlydGllZCBpbiBleHQ0X2V4dF9pbnNl
+cnRfZXh0ZW50LgpUd28gZXhpc3Rpbmcgc2NlbmFyaW9zCjEpIHBhdGggaGFzIGZyZWUgc3BhY2Vz
+CiAgIGV4dGVudCBpbiBwYXRoIHdpbGwgYmUgZGlydGllZCwgdGhpcyBpcyBjb3JyZWN0CjIpIHBh
+dGggaGFzIG5vIGZyZWUgc3BhY2VzCiAgIEFjdHVhbGx5IG5ldyBwYXRoIGlzIGRpcnRpZWQsIHRo
+ZSBvcmlnaW4gcGF0aCBpc24ndCBkaXJ0ZWQsIG1pZ2h0IGNhdXNlIHByb2JsZW0KCnRoZXJlJ3Mg
+YSBjaGFuY2UgdGhhdCBleHRlbnQgaXMgZm9yZ290dGVuIHRvIG1hcmsgZGlydHkgaW4gZXh0NF9l
+eHRfY29udmVydF90b19pbml0aWFsaXplZCgpCgpGb3IgZXhhbXBsZTogZXggaXMgdGhlIGxhc3Qg
+ZXh0ZW5kIGluIGxlYWYgd2hpY2ggaGFzIG5vIGZyZWUgc3BhY2UKZXg6CnsKICBlZV9ibG9jayAg
+ICAgICAgICA6IDM4ODUKICBpc191bmluaXRpYWxpemVkICA6IFllcwogIGFjdHVhbGx5IGVlX2xl
+biAgIDogMjExCiAgcGJfYmxvY2sgICAgICAgICAgOiAxMTMwMjA2OTcKfQphZnRlciBpbnNlcnQg
+aWJsb2NrIDM4ODYgbWF4X2Jsb2NrczogMjEwLCAgZXggd2lsbCBiZSBzcGxpdCBpbnRvCmV4CnsK
+ICBlZV9ibG9jayAgICAgICAgICA6IDM4ODUKICBpc191bmluaXRpYWxpemVkICA6IFllcwogIGFj
+dHVhbGx5IGVlX2xlbiAgIDogMQogIHBiX2Jsb2NrICAgICAgICAgIDogMTEzMDIwNjk3Cn0KbmV3
+ZXggaW4gbmV3IHBhdGgKewogIGVlX2Jsb2NrICAgICAgICAgIDogMzg4NgogIGlzX3VuaW5pdGlh
+bGl6ZWQgIDogbm8KICBhY3R1YWxseSBlZV9sZW4gICA6IDIwMAogIHBiX2Jsb2NrICAgICAgICAg
+IDogMTEzMDIwNjk4Cn0KCmV4IGlzIG5vdCBkaXJ0aWVkIGJvdGggaW4gZXh0NF9leHRfY29udmVy
+dF90b19pbml0aWFsaXplZCgpIGFuZCBleHQ0X2V4dF9pbnNlcnRfZXh0ZW50KCkKYWx0aG91Z2gg
+ZWVfbGVuIGlzIHVwZGF0ZWQsIHNvIHRoZSBwYWdlIGNhY2hlIGNvbnRhaW5zIGV4IG1heSBiZSBm
+cmVlZC4gSWYgdGhpcyBoYXBwZW5zLAp0aGUgbGF0ZXIgZXh0NF9leHRfY29udmVydF90b19pbml0
+aWFsaXplZCgpIG9uIHRoaXMgZXh0ZW50IHdpbGwgbG9hZCB0aGUgc3RhbGUgZGF0YSBmcm9tIGRp
+c2suCkFuZCB0aGlzIHN0YWxlIGV4IG92ZXJsYXBzIHdpdGggbmV3ZXgsIHdpbGwgY2F1c2UgdGhl
+IEJVR19PTihuZXdleHQtPmVlX2Jsb2NrID09IG5lYXJleC0+ZWVfYmxvY2spLAppbiBleHQ0X2V4
+dF9pbnNlcnRfZXh0ZW50KCkuIFRoZSBwYXRjaCBkaXJ0aWVzIHRoZSBleCBpbiBzY2VuYXJpbyAy
+KQoKU2lnbmVkLW9mZi1ieTogWGlhb3l1biBNYW8gPHhpYW95dW4ubWFveHlAYWxpeXVuLWluYy5j
+b20+ClNpZ25lZC1vZmYtYnk6IFlpbmdiaW4gV2FuZyA8eWluZ2Jpbi53YW5neWJAYWxpeXVuLWlu
+Yy5jb20+ClNpZ25lZC1vZmYtYnk6IEppYSBXYW4gPGppYS53YW5qQGFsaXl1bi1pbmMuY29tPgot
+LS0KIGZzL2V4dDQvZXh0ZW50cy5jIHwgICAyOSArKysrKysrKysrKysrKysrKysrKysrKysrKysr
+KwogMSBmaWxlcyBjaGFuZ2VkLCAyOSBpbnNlcnRpb25zKCspLCAwIGRlbGV0aW9ucygtKQoKZGlm
+ZiAtLWdpdCBhL2ZzL2V4dDQvZXh0ZW50cy5jIGIvZnMvZXh0NC9leHRlbnRzLmMKaW5kZXggNDg5
+MGQ2Zi4uMmUwNDFjMiAxMDA2NDQKLS0tIGEvZnMvZXh0NC9leHRlbnRzLmMKKysrIGIvZnMvZXh0
+NC9leHRlbnRzLmMKQEAgLTI1NTYsNiArMjU1Niw4IEBAIHN0YXRpYyBpbnQgZXh0NF9leHRfY29u
+dmVydF90b19pbml0aWFsaXplZChoYW5kbGVfdCAqaGFuZGxlLAogCWludCBlcnIgPSAwOwogCWlu
+dCByZXQgPSAwOwogCWludCBtYXlfemVyb291dDsKKwlpbnQgaW5zZXJ0X21heF9leHRlbnQgPSAw
+OworCXN0cnVjdCBleHQ0X2V4dF9wYXRoICpvbGRfbGVhZl9wYXRoID0gTlVMTDsKIAogCWV4dF9k
+ZWJ1ZygiZXh0NF9leHRfY29udmVydF90b19pbml0aWFsaXplZDogaW5vZGUgJWx1LCBsb2dpY2Fs
+IgogCQkiYmxvY2sgJWxsdSwgbWF4X2Jsb2NrcyAldVxuIiwgaW5vZGUtPmlfaW5vLApAQCAtMjgx
+Niw2ICsyODE4LDkgQEAgc3RhdGljIGludCBleHQ0X2V4dF9jb252ZXJ0X3RvX2luaXRpYWxpemVk
+KGhhbmRsZV90ICpoYW5kbGUsCiAJZXJyID0gZXh0NF9leHRfZGlydHkoaGFuZGxlLCBpbm9kZSwg
+cGF0aCArIGRlcHRoKTsKIAlnb3RvIG91dDsKIGluc2VydDoKKwlpZiAocGF0aFtkZXB0aF0ucF9l
+eHQgPT0gRVhUX01BWF9FWFRFTlQocGF0aFtkZXB0aF0ucF9oZHIpKQorCQlpbnNlcnRfbWF4X2V4
+dGVudCA9IDE7CisKIAllcnIgPSBleHQ0X2V4dF9pbnNlcnRfZXh0ZW50KGhhbmRsZSwgaW5vZGUs
+IHBhdGgsICZuZXdleCwgMCk7CiAJaWYgKGVyciA9PSAtRU5PU1BDICYmIG1heV96ZXJvb3V0KSB7
+CiAJCWVyciA9ICBleHQ0X2V4dF96ZXJvb3V0KGlub2RlLCAmb3JpZ19leCk7CkBAIC0yODMwLDYg
+KzI4MzUsMzAgQEAgaW5zZXJ0OgogCQlyZXR1cm4gYWxsb2NhdGVkOwogCX0gZWxzZSBpZiAoZXJy
+KQogCQlnb3RvIGZpeF9leHRlbnRfbGVuOworCisJaWYgKGluc2VydF9tYXhfZXh0ZW50KSB7CisJ
+CW9sZF9sZWFmX3BhdGggPSBleHQ0X2V4dF9maW5kX2V4dGVudChpbm9kZSwgZWVfYmxvY2ssIE5V
+TEwpOworCQlpZiAoSVNfRVJSKG9sZF9sZWFmX3BhdGgpKSB7CisJCQllcnIgPSBQVFJfRVJSKG9s
+ZF9sZWFmX3BhdGgpOworCQkJb2xkX2xlYWZfcGF0aCA9IE5VTEw7CisJCQlnb3RvIG91dDsKKwkJ
+fQorCQlkZXB0aCA9IGV4dF9kZXB0aChpbm9kZSk7CisKKwkJZXJyID0gZXh0NF9leHRfZ2V0X2Fj
+Y2VzcyhoYW5kbGUsIGlub2RlLCBvbGRfbGVhZl9wYXRoICsgZGVwdGgpOworCQlpZiAoZXJyKQor
+CQkJZ290byBvdXQ7CisKKwkJb2xkX2xlYWZfcGF0aFtkZXB0aF0ucF9leHQtPmVlX2xlbiA9IGNw
+dV90b19sZTE2KGlibG9jayAtIGVlX2Jsb2NrKTsKKwkJZXh0NF9leHRfbWFya191bmluaXRpYWxp
+emVkKG9sZF9sZWFmX3BhdGhbZGVwdGhdLnBfZXh0KTsKKworCQllcnIgPSBleHQ0X2V4dF9kaXJ0
+eShoYW5kbGUsIGlub2RlLCBvbGRfbGVhZl9wYXRoICsgZGVwdGgpOworCisJCWlmIChvbGRfbGVh
+Zl9wYXRoKSB7CisJCQlleHQ0X2V4dF9kcm9wX3JlZnMob2xkX2xlYWZfcGF0aCk7CisJCQlrZnJl
+ZShvbGRfbGVhZl9wYXRoKTsKKwkJfQorCX0KIG91dDoKIAlleHQ0X2V4dF9zaG93X2xlYWYoaW5v
+ZGUsIHBhdGgpOwogCXJldHVybiBlcnIgPyBlcnIgOiBhbGxvY2F0ZWQ7Ci0tIAoxLjUuNS42Cgo=
+
+--_382051e3-f4e4-4822-8610-a3f7da59baf0_--
