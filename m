@@ -1,183 +1,77 @@
-From: "Rafael J. Wysocki" <rjw@sisk.pl>
-Subject: [Update][PATCH] PM / Hibernate: Freeze kernel threads after preallocating memory
-Date: Sun, 25 Sep 2011 15:40:09 +0200
-Message-ID: <201109251540.09487.rjw@sisk.pl>
-References: <4E1C70AD.1010101@u-club.de> <20110807001446.GI3162@dastard> <201109250056.12545.rjw@sisk.pl>
+From: Christoph <cr2005@u-club.de>
+Subject: Re: [PATCH] PM / Freezer: Freeze filesystems while freezing processes
+ (v2)
+Date: Sun, 25 Sep 2011 23:57:27 +0200
+Message-ID: <4E7FA3C7.5050503@u-club.de>
+References: <4E1C70AD.1010101@u-club.de> <201109250056.12545.rjw@sisk.pl> <4E7F04B7.4020002@u-club.de> <201109251532.20025.rjw@sisk.pl>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=ISO-8859-2
 Content-Transfer-Encoding: 7bit
-Cc: Linux PM mailing list <linux-pm@lists.linux-foundation.org>,
+Cc: Dave Chinner <david@fromorbit.com>,
+	Linux PM mailing list <linux-pm@lists.linux-foundation.org>,
 	Pavel Machek <pavel@ucw.cz>,
 	Nigel Cunningham <nigel@tuxonice.net>,
-	Christoph Hellwig <hch@infradead.org>,
-	Christoph <cr2005@u-club.de>, xfs@oss.sgi.com,
+	Christoph Hellwig <hch@infradead.org>, xfs@oss.sgi.com,
 	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
-	"Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <201109250056.12545.rjw@sisk.pl>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+	Theodore Ts'o <tytso@mit.edu>, linux-fsdevel@vger.kernel.org
+To: "Rafael J. Wysocki" <rjw@sisk.pl>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.uscreen.net ([62.67.233.10]:41928 "EHLO mail.uscreen.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751023Ab1IYV5f (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 25 Sep 2011 17:57:35 -0400
+In-Reply-To: <201109251532.20025.rjw@sisk.pl>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Rafael J. Wysocki <rjw@sisk.pl>
+On 25.09.2011 15:32, Rafael J. Wysocki wrote:
+> On Sunday, September 25, 2011, Christoph wrote:
+>> test results of the patch below:
+>> 
+>> 1. real machine
+>> 
+>> suspends fine but on wakeup, after loading image: hard reset. nvidia
+>> gpu => disabled compitz  => wakeup worked two times.
+> 
+> Hmm, so there's a separate bug related to NVidia I guess.
 
-There is a problem with the current ordering of hibernate code which
-leads to deadlocks in some filesystems' memory shrinkers.  Namely,
-some filesystems use freezable kernel threads that are inactive when
-the hibernate memory preallocation is carried out.  Those same
-filesystems use memory shrinkers that may be triggered by the
-hibernate memory preallocation.  If those memory shrinkers wait for
-the frozen kernel threads, the hibernate process deadlocks (this
-happens with XFS, for one example).
+Maybe.
 
-Apparently, it is not technically viable to redesign the filesystems
-in question to avoid the situation described above, so the only
-possible solution of this issue is to defer the freezing of kernel
-threads until the hibernate memory preallocation is done, which is
-implemented by this change.
+Just made another test: the machine (macbook) woke up, loaded image, thaw.
+It got stuck at vt#1, displaying console with login. Cursor blinking, but
+no (usb) keyboard or network enabled. Bricked?!!
 
-Unfortunately, this requires the memory preallocation to be done
-before the "prepare" stage of device freeze, so after this change the
-only way drivers can allocate additional memory for their freeze
-routines in a clean way is to use PM notifiers.
 
-Signed-off-by: Rafael J. Wysocki <rjw@sisk.pl>
----
- Documentation/power/devices.txt |    4 ----
- include/linux/freezer.h         |    4 +++-
- kernel/power/hibernate.c        |   12 ++++++++----
- kernel/power/power.h            |    3 ++-
- kernel/power/process.c          |   30 ++++++++++++++++++++----------
- 5 files changed, 33 insertions(+), 20 deletions(-)
+On the other hand I've got another box with nvidia gpu:
 
-Index: linux/kernel/power/process.c
-===================================================================
---- linux.orig/kernel/power/process.c
-+++ linux/kernel/power/process.c
-@@ -135,7 +135,7 @@ static int try_to_freeze_tasks(bool sig_
- }
- 
- /**
-- *	freeze_processes - tell processes to enter the refrigerator
-+ * freeze_processes - Signal user space processes to enter the refrigerator.
-  */
- int freeze_processes(void)
- {
-@@ -143,20 +143,30 @@ int freeze_processes(void)
- 
- 	printk("Freezing user space processes ... ");
- 	error = try_to_freeze_tasks(true);
--	if (error)
--		goto Exit;
--	printk("done.\n");
-+	if (!error) {
-+		printk("done.");
-+		oom_killer_disable();
-+	}
-+	printk("\n");
-+	BUG_ON(in_atomic());
-+
-+	return error;
-+}
-+
-+/**
-+ * freeze_kernel_threads - Make freezable kernel threads go to the refrigerator.
-+ */
-+int freeze_kernel_threads(void)
-+{
-+	int error;
- 
- 	printk("Freezing remaining freezable tasks ... ");
- 	error = try_to_freeze_tasks(false);
--	if (error)
--		goto Exit;
--	printk("done.");
-+	if (!error)
-+		printk("done.");
- 
--	oom_killer_disable();
-- Exit:
--	BUG_ON(in_atomic());
- 	printk("\n");
-+	BUG_ON(in_atomic());
- 
- 	return error;
- }
-Index: linux/include/linux/freezer.h
-===================================================================
---- linux.orig/include/linux/freezer.h
-+++ linux/include/linux/freezer.h
-@@ -49,6 +49,7 @@ extern int thaw_process(struct task_stru
- 
- extern void refrigerator(void);
- extern int freeze_processes(void);
-+extern int freeze_kernel_threads(void);
- extern void thaw_processes(void);
- 
- static inline int try_to_freeze(void)
-@@ -171,7 +172,8 @@ static inline void clear_freeze_flag(str
- static inline int thaw_process(struct task_struct *p) { return 1; }
- 
- static inline void refrigerator(void) {}
--static inline int freeze_processes(void) { BUG(); return 0; }
-+static inline int freeze_processes(void) { return -ENOSYS; }
-+static inline int freeze_kernel_threads(void) { return -ENOSYS; }
- static inline void thaw_processes(void) {}
- 
- static inline int try_to_freeze(void) { return 0; }
-Index: linux/kernel/power/power.h
-===================================================================
---- linux.orig/kernel/power/power.h
-+++ linux/kernel/power/power.h
-@@ -228,7 +228,8 @@ extern int pm_test_level;
- #ifdef CONFIG_SUSPEND_FREEZER
- static inline int suspend_freeze_processes(void)
- {
--	return freeze_processes();
-+	int error = freeze_processes();
-+	return error ? : freeze_kernel_threads();
- }
- 
- static inline void suspend_thaw_processes(void)
-Index: linux/kernel/power/hibernate.c
-===================================================================
---- linux.orig/kernel/power/hibernate.c
-+++ linux/kernel/power/hibernate.c
-@@ -334,13 +334,17 @@ int hibernation_snapshot(int platform_mo
- 	if (error)
- 		goto Close;
- 
--	error = dpm_prepare(PMSG_FREEZE);
--	if (error)
--		goto Complete_devices;
--
- 	/* Preallocate image memory before shutting down devices. */
- 	error = hibernate_preallocate_memory();
- 	if (error)
-+		goto Close;
-+
-+	error = freeze_kernel_threads();
-+	if (error)
-+		goto Close;
-+
-+	error = dpm_prepare(PMSG_FREEZE);
-+	if (error)
- 		goto Complete_devices;
- 
- 	suspend_console();
-Index: linux/Documentation/power/devices.txt
-===================================================================
---- linux.orig/Documentation/power/devices.txt
-+++ linux/Documentation/power/devices.txt
-@@ -279,10 +279,6 @@ When the system goes into the standby or
- 	time.)  Unlike the other suspend-related phases, during the prepare
- 	phase the device tree is traversed top-down.
- 
--	In addition to that, if device drivers need to allocate additional
--	memory to be able to hadle device suspend correctly, that should be
--	done in the prepare phase.
--
- 	After the prepare callback method returns, no new children may be
- 	registered below the device.  The method may also prepare the device or
- 	driver in some way for the upcoming system power transition (for
+debian5 32bit
+2.6.38.2+ #3 SMP Fri Apr 1
+nvidia 260.19.36
+
+It's up since I compiled the kernel: I use it twice a week and I kept it
+freezed all the time. It was solid rock until today: hard reset on resume.
+WTF? (I remember this version combo was stable on the macbook but the
+kernel lacks a solid wireless driver).
+
+There are a stupid situation where you can't debug. What else can go
+wrong? This is off topic but it's a cute kernel crash while I gave the
+nouveau driver a chance:
+
+http://events.ccc.de/camp/2011/wiki/File:Dome22.jpg
+
+chris
+
+http://events.ccc.de/camp/2011/wiki/DomeTent
+
+> 
+>> 2. virtualbox / stress test / xfs and ext4
+>> 
+>> on 3rd resume, it booted up "normal" like this:
+>> 
+>> [    3.351813] Freeing unused kernel memory: 568k freed [
+>> 3.460973] Freeing unused kernel memory: 284k freed
+>> 
+>> [   17.328356] PM: Preparing processes for restore.
+>> 
+
+...
