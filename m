@@ -1,38 +1,263 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 4/4] e2fsck: regression tests for INCOMPAT_MMP feature
-Date: Sun, 25 Sep 2011 08:05:05 -0400
-Message-ID: <20110925120505.GA14539@thunk.org>
-References: <1316821124-7461-1-git-send-email-adilger@whamcloud.com>
- <1316821124-7461-4-git-send-email-adilger@whamcloud.com>
- <20110924185155.GG2779@thunk.org>
- <A094EB47-CDD0-4A72-8659-841FC9848BFD@whamcloud.com>
+From: "Rafael J. Wysocki" <rjw@sisk.pl>
+Subject: Re: [PATCH] PM / Freezer: Freeze filesystems while freezing processes (v2)
+Date: Sun, 25 Sep 2011 15:32:19 +0200
+Message-ID: <201109251532.20025.rjw@sisk.pl>
+References: <4E1C70AD.1010101@u-club.de> <201109250056.12545.rjw@sisk.pl> <4E7F04B7.4020002@u-club.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@whamcloud.com>
+Content-Type: Text/Plain;
+  charset="iso-8859-2"
+Content-Transfer-Encoding: 7bit
+Cc: Dave Chinner <david@fromorbit.com>,
+	Linux PM mailing list <linux-pm@lists.linux-foundation.org>,
+	Pavel Machek <pavel@ucw.cz>,
+	Nigel Cunningham <nigel@tuxonice.net>,
+	Christoph Hellwig <hch@infradead.org>, xfs@oss.sgi.com,
+	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
+	"Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org
+To: Christoph <cr2005@u-club.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:35035 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752278Ab1IYMFJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 25 Sep 2011 08:05:09 -0400
-Content-Disposition: inline
-In-Reply-To: <A094EB47-CDD0-4A72-8659-841FC9848BFD@whamcloud.com>
+Received: from ogre.sisk.pl ([217.79.144.158]:54539 "EHLO ogre.sisk.pl"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752559Ab1IYNaJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 25 Sep 2011 09:30:09 -0400
+In-Reply-To: <4E7F04B7.4020002@u-club.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Sep 25, 2011 at 12:04:14AM -0600, Andreas Dilger wrote:
-> FYI, the reason that I ordered the MMP tests in that way is because it
-> makes sense to verify that mke2fs can create a filesystem with the MMP
-> feature before using a filesystem created by mke2fs with MMP to test if
-> e2fsck handles it correctly.
+On Sunday, September 25, 2011, Christoph wrote:
+> test results of the patch below:
+> 
+> 1. real machine
+> 
+> suspends fine but on wakeup, after loading image: hard reset.
+> nvidia gpu => disabled compitz  => wakeup worked two times.
 
-There are other e2fsck tests that use mke2fs, and for better or for
-worse I've never worried about test ordering.  If mke2fs blows up for
-whatever reason, then some f_* tests will fail for reasons that have
-nothing to do with e2fsck.  Since the test suite doesn't take that
-long to run, most of the time people will let the tests run to
-completion and the wise developer will notice the string of mke2fs
-failures, and decide to tackle that first.  (Or it will be obvious the
-moment he or she looks like the failed log files.)
+Hmm, so there's a separate bug related to NVidia I guess.
 
-       	     	       	    	       - Ted
+> 2. virtualbox / stress test / xfs and ext4
+> 
+> on 3rd resume, it booted up "normal" like this:
+> 
+> [    3.351813] Freeing unused kernel memory: 568k freed
+> [    3.460973] Freeing unused kernel memory: 284k freed
+> 
+> [   17.328356] PM: Preparing processes for restore.
+> 
+> [   17.328357] Freezing user space processes ...
+> [   37.345414] Freezing of tasks failed after 20.01 seconds (1 tasks
+> refusing to freeze, wq_busy=0):
+> [   37.475244]  ffff88001f06fd68 0000000000000086 0000000000000000
+> 0000000000000000
+> [   37.526163]  ffff88001f06e010 ffff88001f4c4410 0000000000012ec0
+> ffff88001f06ffd8
+> [   37.580110]  ffff88001f06ffd8 0000000000012ec0 ffffffff8160d020
+> ffff88001f4c4410
+> [   37.626167] Call Trace:
+> [   37.626769]  [<ffffffff81049944>] schedule+0x55/0x57
+> [   37.674925]  [<ffffffff81360dbe>] __mutex_lock_common+0x117/0x178
+> [   37.792559]  [<ffffffff81113ef2>] ? user_path_at+0x61/0x90
+> [   37.888501]  [<ffffffff81360e35>] __mutex_lock_slowpath+0x16/0x18
+> [   37.986966]  [<ffffffff81360efb>] mutex_lock+0x1e/0x32
+> [   38.086931]  [<ffffffffa00a4d43>] show_manufacturer+0x23/0x51 [usbcore]
+> [   38.212500]  [<ffffffff8125cd44>] dev_attr_show+0x22/0x49
+> [   38.282319]  [<ffffffff810c6f8c>] ? __get_free_pages+0x9/0x38
+> [   38.397449]  [<ffffffff8115febb>] sysfs_read_file+0xa9/0x12b
+> [   38.491607]  [<ffffffff81107ff6>] vfs_read+0xa6/0x102
+> [   38.541994]  [<ffffffff81105ebf>] ? do_sys_open+0xee/0x100
+> [   38.564907]  [<ffffffff8110810b>] sys_read+0x45/0x6c
+> [   38.578397]  [<ffffffff81368412>] system_call_fastpath+0x16/0x1b
+> [   38.590083]
+> [   38.598046] Restarting tasks ... done.
+> [   38.660448] XFS (sda3): Mounting Filesystem
+> 
+> restarted the test runs, increased delay between awake and sleep from 20
+> to 25 sec:
+> 
+> 36 time successful hibernate+resume so far.
+
+OK, cool.  Thanks for testing!
+
+Rafael
+
+
+> On 25.09.2011 00:56, Rafael J. Wysocki wrote:
+> > On Sunday, August 07, 2011, Dave Chinner wrote:
+> >> On Sat, Aug 06, 2011 at 11:17:18PM +0200, Rafael J. Wysocki wrote:
+> >>> From: Rafael J. Wysocki <rjw@sisk.pl>
+> >>>
+> >>> Freeze all filesystems during the freezing of tasks by calling
+> >>> freeze_bdev() for each of them and thaw them during the thawing
+> >>> of tasks with the help of thaw_bdev().
+> >>>
+> >>> This is needed by hibernation, because some filesystems (e.g. XFS)
+> >>> deadlock with the preallocation of memory used by it if the memory
+> >>> pressure caused by it is too heavy.
+> >>>
+> >>> The additional benefit of this change is that, if something goes
+> >>> wrong after filesystems have been frozen, they will stay in a
+> >>> consistent state and journal replays won't be necessary (e.g. after
+> >>> a failing suspend or resume).  In particular, this should help to
+> >>> solve a long-standing issue that in some cases during resume from
+> >>> hibernation the boot loader causes the journal to be replied for the
+> >>> filesystem containing the kernel image and initrd causing it to
+> >>> become inconsistent with the information stored in the hibernation
+> >>> image.
+> >>>
+> >>> This change is based on earlier work by Nigel Cunningham.
+> >>>
+> >>> Signed-off-by: Rafael J. Wysocki <rjw@sisk.pl>
+> >>> ---
+> > 
+> > Below is an alternative fix, the changelog pretty much explains the idea.
+> > 
+> > I've tested it on Toshiba Portege R500, but I don't have an XFS partition
+> > to verify that it really helps, so I'd appreciate it if someone able to
+> > reproduce the original issue could test it and report back.
+> > 
+> > Thanks,
+> > Rafael
+> > 
+> > ---
+> > From: Rafael J. Wysocki <rjw@sisk.pl>
+> > Subject: PM / Hibernate: Freeze kernel threads after preallocating memory
+> > 
+> > There is a problem with the current ordering of hibernate code which
+> > leads to deadlocks in some filesystems' memory shrinkers.  Namely,
+> > some filesystems use freezable kernel threads that are inactive when
+> > the hibernate memory preallocation is carried out.  Those same
+> > filesystems use memory shrinkers that may be triggered by the
+> > hibernate memory preallocation.  If those memory shrinkers wait for
+> > the frozen kernel threads, the hibernate process deadlocks (this
+> > happens with XFS, for one example).
+> > 
+> > Apparently, it is not technically viable to redesign the filesystems
+> > in question to avoid the situation described above, so the only
+> > possible solution of this issue is to defer the freezing of kernel
+> > threads until the hibernate memory preallocation is done, which is
+> > implemented by this change.
+> > 
+> > Signed-off-by: Rafael J. Wysocki <rjw@sisk.pl>
+> > ---
+> >  include/linux/freezer.h  |    4 +++-
+> >  kernel/power/hibernate.c |   12 ++++++++----
+> >  kernel/power/power.h     |    3 ++-
+> >  kernel/power/process.c   |   30 ++++++++++++++++++++----------
+> >  4 files changed, 33 insertions(+), 16 deletions(-)
+> > 
+> > Index: linux/kernel/power/process.c
+> > ===================================================================
+> > --- linux.orig/kernel/power/process.c
+> > +++ linux/kernel/power/process.c
+> > @@ -135,7 +135,7 @@ static int try_to_freeze_tasks(bool sig_
+> >  }
+> >  
+> >  /**
+> > - *	freeze_processes - tell processes to enter the refrigerator
+> > + * freeze_processes - Signal user space processes to enter the refrigerator.
+> >   */
+> >  int freeze_processes(void)
+> >  {
+> > @@ -143,20 +143,30 @@ int freeze_processes(void)
+> >  
+> >  	printk("Freezing user space processes ... ");
+> >  	error = try_to_freeze_tasks(true);
+> > -	if (error)
+> > -		goto Exit;
+> > -	printk("done.\n");
+> > +	if (!error) {
+> > +		printk("done.");
+> > +		oom_killer_disable();
+> > +	}
+> > +	printk("\n");
+> > +	BUG_ON(in_atomic());
+> > +
+> > +	return error;
+> > +}
+> > +
+> > +/**
+> > + * freeze_kernel_threads - Make freezable kernel threads go to the refrigerator.
+> > + */
+> > +int freeze_kernel_threads(void)
+> > +{
+> > +	int error;
+> >  
+> >  	printk("Freezing remaining freezable tasks ... ");
+> >  	error = try_to_freeze_tasks(false);
+> > -	if (error)
+> > -		goto Exit;
+> > -	printk("done.");
+> > +	if (!error)
+> > +		printk("done.");
+> >  
+> > -	oom_killer_disable();
+> > - Exit:
+> > -	BUG_ON(in_atomic());
+> >  	printk("\n");
+> > +	BUG_ON(in_atomic());
+> >  
+> >  	return error;
+> >  }
+> > Index: linux/include/linux/freezer.h
+> > ===================================================================
+> > --- linux.orig/include/linux/freezer.h
+> > +++ linux/include/linux/freezer.h
+> > @@ -49,6 +49,7 @@ extern int thaw_process(struct task_stru
+> >  
+> >  extern void refrigerator(void);
+> >  extern int freeze_processes(void);
+> > +extern int freeze_kernel_threads(void);
+> >  extern void thaw_processes(void);
+> >  
+> >  static inline int try_to_freeze(void)
+> > @@ -171,7 +172,8 @@ static inline void clear_freeze_flag(str
+> >  static inline int thaw_process(struct task_struct *p) { return 1; }
+> >  
+> >  static inline void refrigerator(void) {}
+> > -static inline int freeze_processes(void) { BUG(); return 0; }
+> > +static inline int freeze_processes(void) { return -ENOSYS; }
+> > +static inline int freeze_kernel_threads(void) { return -ENOSYS; }
+> >  static inline void thaw_processes(void) {}
+> >  
+> >  static inline int try_to_freeze(void) { return 0; }
+> > Index: linux/kernel/power/power.h
+> > ===================================================================
+> > --- linux.orig/kernel/power/power.h
+> > +++ linux/kernel/power/power.h
+> > @@ -228,7 +228,8 @@ extern int pm_test_level;
+> >  #ifdef CONFIG_SUSPEND_FREEZER
+> >  static inline int suspend_freeze_processes(void)
+> >  {
+> > -	return freeze_processes();
+> > +	int error = freeze_processes();
+> > +	return error ? : freeze_kernel_threads();
+> >  }
+> >  
+> >  static inline void suspend_thaw_processes(void)
+> > Index: linux/kernel/power/hibernate.c
+> > ===================================================================
+> > --- linux.orig/kernel/power/hibernate.c
+> > +++ linux/kernel/power/hibernate.c
+> > @@ -334,13 +334,17 @@ int hibernation_snapshot(int platform_mo
+> >  	if (error)
+> >  		goto Close;
+> >  
+> > -	error = dpm_prepare(PMSG_FREEZE);
+> > -	if (error)
+> > -		goto Complete_devices;
+> > -
+> >  	/* Preallocate image memory before shutting down devices. */
+> >  	error = hibernate_preallocate_memory();
+> >  	if (error)
+> > +		goto Close;
+> > +
+> > +	error = freeze_kernel_threads();
+> > +	if (error)
+> > +		goto Close;
+> > +
+> > +	error = dpm_prepare(PMSG_FREEZE);
+> > +	if (error)
+> >  		goto Complete_devices;
+> >  
+> >  	suspend_console();
+> 
+
