@@ -1,86 +1,33 @@
 From: "Rafael J. Wysocki" <rjw@sisk.pl>
 Subject: Re: [PATCH] PM / Freezer: Freeze filesystems while freezing processes (v2)
-Date: Sun, 25 Sep 2011 15:32:19 +0200
-Message-ID: <201109251532.20025.rjw@sisk.pl>
-References: <4E1C70AD.1010101@u-club.de> <201109250056.12545.rjw@sisk.pl> <4E7F04B7.4020002@u-club.de>
+Date: Sun, 25 Sep 2011 15:37:16 +0200
+Message-ID: <201109251537.16446.rjw@sisk.pl>
+References: <4E1C70AD.1010101@u-club.de> <201109250056.12545.rjw@sisk.pl> <4E7EBCF7.8090906@tuxonice.net>
 Mime-Version: 1.0
 Content-Type: Text/Plain;
-  charset="iso-8859-2"
+  charset="iso-8859-1"
 Content-Transfer-Encoding: 7bit
 Cc: Dave Chinner <david@fromorbit.com>,
 	Linux PM mailing list <linux-pm@lists.linux-foundation.org>,
 	Pavel Machek <pavel@ucw.cz>,
-	Nigel Cunningham <nigel@tuxonice.net>,
-	Christoph Hellwig <hch@infradead.org>, xfs@oss.sgi.com,
+	Christoph Hellwig <hch@infradead.org>,
+	Christoph <cr2005@u-club.de>, xfs@oss.sgi.com,
 	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
 	"Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org
-To: Christoph <cr2005@u-club.de>
+To: Nigel Cunningham <nigel@tuxonice.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ogre.sisk.pl ([217.79.144.158]:54539 "EHLO ogre.sisk.pl"
+Received: from ogre.sisk.pl ([217.79.144.158]:54563 "EHLO ogre.sisk.pl"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752559Ab1IYNaJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 25 Sep 2011 09:30:09 -0400
-In-Reply-To: <4E7F04B7.4020002@u-club.de>
+	id S1752649Ab1IYNfF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 25 Sep 2011 09:35:05 -0400
+In-Reply-To: <4E7EBCF7.8090906@tuxonice.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sunday, September 25, 2011, Christoph wrote:
-> test results of the patch below:
+On Sunday, September 25, 2011, Nigel Cunningham wrote:
+> Hi.
 > 
-> 1. real machine
-> 
-> suspends fine but on wakeup, after loading image: hard reset.
-> nvidia gpu => disabled compitz  => wakeup worked two times.
-
-Hmm, so there's a separate bug related to NVidia I guess.
-
-> 2. virtualbox / stress test / xfs and ext4
-> 
-> on 3rd resume, it booted up "normal" like this:
-> 
-> [    3.351813] Freeing unused kernel memory: 568k freed
-> [    3.460973] Freeing unused kernel memory: 284k freed
-> 
-> [   17.328356] PM: Preparing processes for restore.
-> 
-> [   17.328357] Freezing user space processes ...
-> [   37.345414] Freezing of tasks failed after 20.01 seconds (1 tasks
-> refusing to freeze, wq_busy=0):
-> [   37.475244]  ffff88001f06fd68 0000000000000086 0000000000000000
-> 0000000000000000
-> [   37.526163]  ffff88001f06e010 ffff88001f4c4410 0000000000012ec0
-> ffff88001f06ffd8
-> [   37.580110]  ffff88001f06ffd8 0000000000012ec0 ffffffff8160d020
-> ffff88001f4c4410
-> [   37.626167] Call Trace:
-> [   37.626769]  [<ffffffff81049944>] schedule+0x55/0x57
-> [   37.674925]  [<ffffffff81360dbe>] __mutex_lock_common+0x117/0x178
-> [   37.792559]  [<ffffffff81113ef2>] ? user_path_at+0x61/0x90
-> [   37.888501]  [<ffffffff81360e35>] __mutex_lock_slowpath+0x16/0x18
-> [   37.986966]  [<ffffffff81360efb>] mutex_lock+0x1e/0x32
-> [   38.086931]  [<ffffffffa00a4d43>] show_manufacturer+0x23/0x51 [usbcore]
-> [   38.212500]  [<ffffffff8125cd44>] dev_attr_show+0x22/0x49
-> [   38.282319]  [<ffffffff810c6f8c>] ? __get_free_pages+0x9/0x38
-> [   38.397449]  [<ffffffff8115febb>] sysfs_read_file+0xa9/0x12b
-> [   38.491607]  [<ffffffff81107ff6>] vfs_read+0xa6/0x102
-> [   38.541994]  [<ffffffff81105ebf>] ? do_sys_open+0xee/0x100
-> [   38.564907]  [<ffffffff8110810b>] sys_read+0x45/0x6c
-> [   38.578397]  [<ffffffff81368412>] system_call_fastpath+0x16/0x1b
-> [   38.590083]
-> [   38.598046] Restarting tasks ... done.
-> [   38.660448] XFS (sda3): Mounting Filesystem
-> 
-> restarted the test runs, increased delay between awake and sleep from 20
-> to 25 sec:
-> 
-> 36 time successful hibernate+resume so far.
-
-OK, cool.  Thanks for testing!
-
-Rafael
-
-
-> On 25.09.2011 00:56, Rafael J. Wysocki wrote:
+> On 25/09/11 08:56, Rafael J. Wysocki wrote:
 > > On Sunday, August 07, 2011, Dave Chinner wrote:
 > >> On Sat, Aug 06, 2011 at 11:17:18PM +0200, Rafael J. Wysocki wrote:
 > >>> From: Rafael J. Wysocki <rjw@sisk.pl>
@@ -137,127 +84,29 @@ Rafael
 > > implemented by this change.
 > > 
 > > Signed-off-by: Rafael J. Wysocki <rjw@sisk.pl>
-> > ---
-> >  include/linux/freezer.h  |    4 +++-
-> >  kernel/power/hibernate.c |   12 ++++++++----
-> >  kernel/power/power.h     |    3 ++-
-> >  kernel/power/process.c   |   30 ++++++++++++++++++++----------
-> >  4 files changed, 33 insertions(+), 16 deletions(-)
-> > 
-> > Index: linux/kernel/power/process.c
-> > ===================================================================
-> > --- linux.orig/kernel/power/process.c
-> > +++ linux/kernel/power/process.c
-> > @@ -135,7 +135,7 @@ static int try_to_freeze_tasks(bool sig_
-> >  }
-> >  
-> >  /**
-> > - *	freeze_processes - tell processes to enter the refrigerator
-> > + * freeze_processes - Signal user space processes to enter the refrigerator.
-> >   */
-> >  int freeze_processes(void)
-> >  {
-> > @@ -143,20 +143,30 @@ int freeze_processes(void)
-> >  
-> >  	printk("Freezing user space processes ... ");
-> >  	error = try_to_freeze_tasks(true);
-> > -	if (error)
-> > -		goto Exit;
-> > -	printk("done.\n");
-> > +	if (!error) {
-> > +		printk("done.");
-> > +		oom_killer_disable();
-> > +	}
-> > +	printk("\n");
-> > +	BUG_ON(in_atomic());
-> > +
-> > +	return error;
-> > +}
-> > +
-> > +/**
-> > + * freeze_kernel_threads - Make freezable kernel threads go to the refrigerator.
-> > + */
-> > +int freeze_kernel_threads(void)
-> > +{
-> > +	int error;
-> >  
-> >  	printk("Freezing remaining freezable tasks ... ");
-> >  	error = try_to_freeze_tasks(false);
-> > -	if (error)
-> > -		goto Exit;
-> > -	printk("done.");
-> > +	if (!error)
-> > +		printk("done.");
-> >  
-> > -	oom_killer_disable();
-> > - Exit:
-> > -	BUG_ON(in_atomic());
-> >  	printk("\n");
-> > +	BUG_ON(in_atomic());
-> >  
-> >  	return error;
-> >  }
-> > Index: linux/include/linux/freezer.h
-> > ===================================================================
-> > --- linux.orig/include/linux/freezer.h
-> > +++ linux/include/linux/freezer.h
-> > @@ -49,6 +49,7 @@ extern int thaw_process(struct task_stru
-> >  
-> >  extern void refrigerator(void);
-> >  extern int freeze_processes(void);
-> > +extern int freeze_kernel_threads(void);
-> >  extern void thaw_processes(void);
-> >  
-> >  static inline int try_to_freeze(void)
-> > @@ -171,7 +172,8 @@ static inline void clear_freeze_flag(str
-> >  static inline int thaw_process(struct task_struct *p) { return 1; }
-> >  
-> >  static inline void refrigerator(void) {}
-> > -static inline int freeze_processes(void) { BUG(); return 0; }
-> > +static inline int freeze_processes(void) { return -ENOSYS; }
-> > +static inline int freeze_kernel_threads(void) { return -ENOSYS; }
-> >  static inline void thaw_processes(void) {}
-> >  
-> >  static inline int try_to_freeze(void) { return 0; }
-> > Index: linux/kernel/power/power.h
-> > ===================================================================
-> > --- linux.orig/kernel/power/power.h
-> > +++ linux/kernel/power/power.h
-> > @@ -228,7 +228,8 @@ extern int pm_test_level;
-> >  #ifdef CONFIG_SUSPEND_FREEZER
-> >  static inline int suspend_freeze_processes(void)
-> >  {
-> > -	return freeze_processes();
-> > +	int error = freeze_processes();
-> > +	return error ? : freeze_kernel_threads();
-> >  }
-> >  
-> >  static inline void suspend_thaw_processes(void)
-> > Index: linux/kernel/power/hibernate.c
-> > ===================================================================
-> > --- linux.orig/kernel/power/hibernate.c
-> > +++ linux/kernel/power/hibernate.c
-> > @@ -334,13 +334,17 @@ int hibernation_snapshot(int platform_mo
-> >  	if (error)
-> >  		goto Close;
-> >  
-> > -	error = dpm_prepare(PMSG_FREEZE);
-> > -	if (error)
-> > -		goto Complete_devices;
-> > -
-> >  	/* Preallocate image memory before shutting down devices. */
-> >  	error = hibernate_preallocate_memory();
-> >  	if (error)
-> > +		goto Close;
-> > +
-> > +	error = freeze_kernel_threads();
-> > +	if (error)
-> > +		goto Close;
-> > +
-> > +	error = dpm_prepare(PMSG_FREEZE);
-> > +	if (error)
-> >  		goto Complete_devices;
-> >  
-> >  	suspend_console();
 > 
+> TuxOnIce has the following logic at the moment: Freeze all threads.
+> Calculate whether we have enough memory for the image, thaw kernel
+> threads only, free memory and try again if it looks like we don't have
+> enough.
 
+Well, it seems that the freezing of kernel threads in the first step
+is not necessary.  You can do (1) freeze user space, (2) check if there's
+enough free memory, (3) free memory if necessary, (4) freeze kernel
+threads instead.  Which is what my patch does, actually. :-)
+
+> I've never heard of a deadlock, though I suppose one would be
+> possible if you had the added complication of userspace
+> drivers/filesystems - it would be good to be able to distinguish and
+> thaw them.
+
+Yes, there is a known problem with FUSE in that area.
+
+> It does this prior to the atomic copy, using a user-supplied estimate of
+> the amount of memory drivers will need - the actual amount used is show
+> in debugging info at the end of the cycle. Apart from that, if you have
+> everything else frozen, everything else is pretty deterministic
+> (assuming you don't have any memory leaks in your image-writing code).
+
+Thanks,
+Rafael
