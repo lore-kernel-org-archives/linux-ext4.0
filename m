@@ -1,271 +1,166 @@
 From: Eric Gouriou <egouriou@google.com>
-Subject: [PATCH 1/2] ext4: optimize ext4_ext_convert_to_initialized()
-Date: Sun, 25 Sep 2011 23:54:28 -0700
-Message-ID: <1317020069-16355-1-git-send-email-egouriou@google.com>
+Subject: [PATCH 2/2] ext4: optimize memmmove lengths in extent/index insertions
+Date: Sun, 25 Sep 2011 23:54:29 -0700
+Message-ID: <1317020069-16355-2-git-send-email-egouriou@google.com>
+References: <1317020069-16355-1-git-send-email-egouriou@google.com>
 Cc: linux-ext4@vger.kernel.org, Eric Gouriou <egouriou@google.com>
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.44.51]:15274 "EHLO
+Received: from smtp-out.google.com ([216.239.44.51]:15286 "EHLO
 	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751466Ab1IZGyn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Sep 2011 02:54:43 -0400
+	with ESMTP id S1751495Ab1IZGyo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Sep 2011 02:54:44 -0400
+In-Reply-To: <1317020069-16355-1-git-send-email-egouriou@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch introduces a fast path in ext4_ext_convert_to_initialized()
-for the case when the conversion can be performed by transferring
-the newly initialized blocks from the uninitialized extent into
-an adjacent initialized extent. Doing so removes the expensive
-invocations of memmove() which occur during extent insertion and
-the subsequent merge.
+ext4_ext_insert_extent() (respectively ext4_ext_insert_index())
+was using EXT_MAX_EXTENT() (resp. EXT_MAX_INDEX()) to determine
+how many entries needed to be moved beyond the insertion point.
+In practice this means that (320 - I) * 24 bytes were memmove()'d
+when I is the insertion point, rather than (#entries - I) * 24 bytes.
 
-In practice this should be the common case for clients performing
-append writes into files pre-allocated via
-fallocate(FALLOC_FL_KEEP_SIZE). In such a workload performed via
-direct IO and when using a suboptimal implementation of memmove()
-(x86_64 prior to the 2.6.39 rewrite), this patch reduces kernel CPU
-consumption by 32%.
+This patch uses EXT_LAST_EXTENT() (resp. EXT_LAST_INDEX()) instead
+to only move existing entries. The code flow is also simplified
+slightly to highlight similarities and reduce code duplication in
+the insertion logic.
 
-Two new trace points are added to ext4_ext_convert_to_initialized()
-to offer visibility into its operations. No exit trace point has
-been added due to the multiplicity of return points. This can be
-revisited once the upstream cleanup is backported.
+This patch reduces system CPU consumption by over 25% on a 4kB
+synchronous append DIO write workload when used with the
+pre-2.6.39 x86_64 memmove() implementation. With the much faster
+2.6.39 memmove() implementation we still see a decrease in
+system CPU usage between 2% and 7%.
+
+Note that the ext_debug() output changes with this patch, splitting
+some log information between entries. Users of the ext_debug() output
+should note that the "move %d" units changed from reporting the number
+of bytes moved to reporting the number of entries moved.
 
 Signed-off-by: Eric Gouriou <egouriou@google.com>
 ---
- fs/ext4/extents.c           |   92 +++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/super.c             |    1 +
- include/trace/events/ext4.h |   82 ++++++++++++++++++++++++++++++++++++++
- 3 files changed, 175 insertions(+), 0 deletions(-)
+ fs/ext4/extents.c |   85 ++++++++++++++++++++++++++---------------------------
+ 1 files changed, 42 insertions(+), 43 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 9124cd2..0a7dd85 100644
+index 0a7dd85..30dd641 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -2909,12 +2909,23 @@ out:
-  *   a> There is no split required: Entire extent should be initialized
-  *   b> Splits in two extents: Write is happening at either end of the extent
-  *   c> Splits in three extents: Somone is writing in middle of the extent
-+ *
-+ * Pre-conditions:
-+ *  - The extent pointed to by 'path' is uninitialized.
-+ *  - The extent pointed to by 'path' contains a superset
-+ *    of the logical span [map->m_lblk, map->m_lblk + map->m_len).
-+ *
-+ * Post-conditions on success:
-+ *  - the returned value is the number of blocks beyond map->l_lblk
-+ *    that are allocated and initialized.
-+ *    It is guaranteed to be >= map->m_len.
-  */
- static int ext4_ext_convert_to_initialized(handle_t *handle,
- 					   struct inode *inode,
- 					   struct ext4_map_blocks *map,
- 					   struct ext4_ext_path *path)
- {
-+	struct ext4_extent_header *eh;
- 	struct ext4_map_blocks split_map;
- 	struct ext4_extent zero_ex;
- 	struct ext4_extent *ex;
-@@ -2938,6 +2949,87 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 	ee_len = ext4_ext_get_actual_len(ex);
- 	allocated = ee_len - (map->m_lblk - ee_block);
+@@ -751,31 +751,25 @@ static int ext4_ext_insert_index(handle_t *handle, struct inode *inode,
+ 		return -EIO;
+ 	}
  
-+	trace_ext4_ext_convert_to_initialized_enter(inode, map, ex);
-+
-+	/* Pre-conditions */
-+	BUG_ON(!ext4_ext_is_uninitialized(ex));
-+	BUG_ON(!in_range(map->m_lblk, ee_block, ee_len));
-+	BUG_ON(map->m_lblk + map->m_len > ee_block + ee_len);
-+
-+	/*
-+	 * Attempt to transfer newly initialized blocks from the currently
-+	 * uninitialized extent to its left neighbor. This is much cheaper
-+	 * than an insertion followed by a merge as those involve costly
-+	 * memmove() calls. This is the common case in steady state for
-+	 * workloads doing fallocate(FALLOC_FL_KEEP_SIZE) followed by append
-+	 * writes.
-+	 *
-+	 * Limitations of the current logic:
-+	 *  - L1: we only deal with writes at the start of the extent.
-+	 *    The approach could be extended to writes at the end
-+	 *    of the extent but this scenario was deemed less common.
-+	 *  - L2: we do not deal with writes covering the whole extent.
-+	 *    This would require removing the extent if the transfer
-+	 *    is possible.
-+	 *  - L3: we only attempt to merge with an extent stored in the
-+	 *    same extent tree node.
-+	 */
-+	if ((map->m_lblk == ee_block) &&	/*L1*/
-+		(map->m_len < ee_len) &&	/*L2*/
-+		(ex > EXT_FIRST_EXTENT(eh))) {	/*L3*/
-+		struct ext4_extent *prev_ex;
-+		ext4_lblk_t prev_lblk;
-+		ext4_fsblk_t prev_pblk, ee_pblk;
-+		unsigned int prev_len, write_len;
-+
-+		prev_ex = ex - 1;
-+		prev_lblk = le32_to_cpu(prev_ex->ee_block);
-+		prev_len = ext4_ext_get_actual_len(prev_ex);
-+		prev_pblk = ext4_ext_pblock(prev_ex);
-+		ee_pblk = ext4_ext_pblock(ex);
-+		write_len = map->m_len;
-+
-+		/*
-+		 * A transfer of blocks from 'ex' to 'prev_ex' is allowed
-+		 * upon those conditions:
-+		 * - C1: prev_ex is initialized,
-+		 * - C2: prev_ex is logically abutting ex,
-+		 * - C3: prev_ex is physically abutting ex,
-+		 * - C4: prev_ex can receive the additional blocks without
-+		 *   overflowing the (initialized) length limit.
-+		 */
-+		if ((!ext4_ext_is_uninitialized(prev_ex)) &&		/*C1*/
-+			((prev_lblk + prev_len) == ee_block) &&		/*C2*/
-+			((prev_pblk + prev_len) == ee_pblk) &&		/*C3*/
-+			(prev_len < (EXT_INIT_MAX_LEN - write_len))) {	/*C4*/
-+			err = ext4_ext_get_access(handle, inode, path + depth);
-+			if (err)
-+				goto out;
-+
-+			trace_ext4_ext_convert_to_initialized_fastpath(inode,
-+				map, ex, prev_ex);
-+
-+			/* Shift the start of ex by 'write_len' blocks */
-+			ex->ee_block = cpu_to_le32(ee_block + write_len);
-+			ext4_ext_store_pblock(ex, ee_pblk + write_len);
-+			ex->ee_len = cpu_to_le16(ee_len - write_len);
-+			ext4_ext_mark_uninitialized(ex); /* Restore the flag */
-+
-+			/* Extend prev_ex by 'write_len' blocks */
-+			prev_ex->ee_len = cpu_to_le16(prev_len + write_len);
-+
-+			/* Mark the block containing both extents as dirty */
-+			ext4_ext_dirty(handle, inode, path + depth);
-+
-+			/* Update path to point to the right extent */
-+			path[depth].p_ext = prev_ex;
-+
-+			/* Result: number of initialized blocks past m_lblk */
-+			allocated = write_len;
-+			goto out;
-+		}
+-	len = EXT_MAX_INDEX(curp->p_hdr) - curp->p_idx;
+ 	if (logical > le32_to_cpu(curp->p_idx->ei_block)) {
+ 		/* insert after */
+-		if (curp->p_idx != EXT_LAST_INDEX(curp->p_hdr)) {
+-			len = (len - 1) * sizeof(struct ext4_extent_idx);
+-			len = len < 0 ? 0 : len;
+-			ext_debug("insert new index %d after: %llu. "
+-					"move %d from 0x%p to 0x%p\n",
+-					logical, ptr, len,
+-					(curp->p_idx + 1), (curp->p_idx + 2));
+-			memmove(curp->p_idx + 2, curp->p_idx + 1, len);
+-		}
++		ext_debug("insert new index %d after: %llu\n", logical, ptr);
+ 		ix = curp->p_idx + 1;
+ 	} else {
+ 		/* insert before */
+-		len = len * sizeof(struct ext4_extent_idx);
+-		len = len < 0 ? 0 : len;
+-		ext_debug("insert new index %d before: %llu. "
+-				"move %d from 0x%p to 0x%p\n",
+-				logical, ptr, len,
+-				curp->p_idx, (curp->p_idx + 1));
+-		memmove(curp->p_idx + 1, curp->p_idx, len);
++		ext_debug("insert new index %d before: %llu\n", logical, ptr);
+ 		ix = curp->p_idx;
+ 	}
+ 
++	len = EXT_LAST_INDEX(curp->p_hdr) - ix + 1;
++	BUG_ON(len < 0);
++	if (len > 0) {
++		ext_debug("insert new index %d: "
++				"move %d indices from 0x%p to 0x%p\n",
++				logical, len, ix, ix + 1);
++		memmove(ix + 1, ix, len * sizeof(struct ext4_extent_idx));
 +	}
 +
- 	WARN_ON(map->m_lblk < ee_block);
- 	/*
- 	 * It is safe to convert extent to initialized via explicit
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 44d0c8d..cad6454 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -45,6 +45,7 @@
- #include <linux/freezer.h>
+ 	ix->ei_block = cpu_to_le32(logical);
+ 	ext4_idx_store_pblock(ix, ptr);
+ 	le16_add_cpu(&curp->p_hdr->eh_entries, 1);
+@@ -1778,41 +1772,46 @@ has_space:
+ 				ext4_ext_pblock(newext),
+ 				ext4_ext_is_uninitialized(newext),
+ 				ext4_ext_get_actual_len(newext));
+-		path[depth].p_ext = EXT_FIRST_EXTENT(eh);
+-	} else if (le32_to_cpu(newext->ee_block)
++		nearex = EXT_FIRST_EXTENT(eh);
++	} else {
++		if (le32_to_cpu(newext->ee_block)
+ 			   > le32_to_cpu(nearex->ee_block)) {
+-/*		BUG_ON(newext->ee_block == nearex->ee_block); */
+-		if (nearex != EXT_LAST_EXTENT(eh)) {
+-			len = EXT_MAX_EXTENT(eh) - nearex;
+-			len = (len - 1) * sizeof(struct ext4_extent);
+-			len = len < 0 ? 0 : len;
+-			ext_debug("insert %d:%llu:[%d]%d after: nearest 0x%p, "
+-					"move %d from 0x%p to 0x%p\n",
++			/* Insert after */
++			ext_debug("insert %d:%llu:[%d]%d %s before: "
++					"nearest 0x%p\n"
++					le32_to_cpu(newext->ee_block),
++					ext4_ext_pblock(newext),
++					ext4_ext_is_uninitialized(newext),
++					ext4_ext_get_actual_len(newext),
++					nearex);
++			nearex++;
++		} else {
++			/* Insert before */
++			BUG_ON(newext->ee_block == nearex->ee_block);
++			ext_debug("insert %d:%llu:[%d]%d %s after: "
++					"nearest 0x%p\n"
+ 					le32_to_cpu(newext->ee_block),
+ 					ext4_ext_pblock(newext),
+ 					ext4_ext_is_uninitialized(newext),
+ 					ext4_ext_get_actual_len(newext),
+-					nearex, len, nearex + 1, nearex + 2);
+-			memmove(nearex + 2, nearex + 1, len);
++					nearex);
++		}
++		len = EXT_LAST_EXTENT(eh) - nearex + 1;
++		if (len > 0) {
++			ext_debug("insert %d:%llu:[%d]%d: "
++					"move %d extents from 0x%p to 0x%p\n",
++					le32_to_cpu(newext->ee_block),
++					ext4_ext_pblock(newext),
++					ext4_ext_is_uninitialized(newext),
++					ext4_ext_get_actual_len(newext),
++					len, nearex, nearex + 1);
++			memmove(nearex + 1, nearex,
++				len * sizeof(struct ext4_extent));
+ 		}
+-		path[depth].p_ext = nearex + 1;
+-	} else {
+-		BUG_ON(newext->ee_block == nearex->ee_block);
+-		len = (EXT_MAX_EXTENT(eh) - nearex) * sizeof(struct ext4_extent);
+-		len = len < 0 ? 0 : len;
+-		ext_debug("insert %d:%llu:[%d]%d before: nearest 0x%p, "
+-				"move %d from 0x%p to 0x%p\n",
+-				le32_to_cpu(newext->ee_block),
+-				ext4_ext_pblock(newext),
+-				ext4_ext_is_uninitialized(newext),
+-				ext4_ext_get_actual_len(newext),
+-				nearex, len, nearex, nearex + 1);
+-		memmove(nearex + 1, nearex, len);
+-		path[depth].p_ext = nearex;
+ 	}
  
- #include "ext4.h"
-+#include "ext4_extents.h"
- #include "ext4_jbd2.h"
- #include "xattr.h"
- #include "acl.h"
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index b50a547..35b1219 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -9,6 +9,7 @@
- 
- struct ext4_allocation_context;
- struct ext4_allocation_request;
-+struct ext4_extent;
- struct ext4_prealloc_space;
- struct ext4_inode_info;
- struct mpage_da_data;
-@@ -1386,6 +1387,87 @@ DEFINE_EVENT(ext4__truncate, ext4_truncate_exit,
- 	TP_ARGS(inode)
- );
- 
-+/* 'ux' is the uninitialized extent. */
-+TRACE_EVENT(ext4_ext_convert_to_initialized_enter,
-+	TP_PROTO(struct inode *inode, struct ext4_map_blocks *map,
-+		 struct ext4_extent *ux),
-+
-+	TP_ARGS(inode, map, ux),
-+
-+	TP_STRUCT__entry(
-+		__field(	ino_t,		ino	)
-+		__field(	dev_t,		dev	)
-+		__field(	ext4_lblk_t,	m_lblk	)
-+		__field(	unsigned,	m_len	)
-+		__field(	ext4_lblk_t,	u_lblk	)
-+		__field(	unsigned,	u_len	)
-+		__field(	ext4_fsblk_t,	u_pblk	)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->ino		= inode->i_ino;
-+		__entry->dev		= inode->i_sb->s_dev;
-+		__entry->m_lblk		= map->m_lblk;
-+		__entry->m_len		= map->m_len;
-+		__entry->u_lblk		= le32_to_cpu(ux->ee_block);
-+		__entry->u_len		= ext4_ext_get_actual_len(ux);
-+		__entry->u_pblk		= ext4_ext_pblock(ux);
-+	),
-+
-+	TP_printk("dev %d,%d ino %lu m_lblk %u m_len %u u_lblk %u u_len %u "
-+		  "u_pblk %llu",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  (unsigned long) __entry->ino,
-+		  __entry->m_lblk, __entry->m_len,
-+		  __entry->u_lblk, __entry->u_len, __entry->u_pblk)
-+);
-+
-+/*
-+ * 'ux' is the uninitialized extent.
-+ * 'ix' is the initialized extent to which blocks are transferred.
-+ */
-+TRACE_EVENT(ext4_ext_convert_to_initialized_fastpath,
-+	TP_PROTO(struct inode *inode, struct ext4_map_blocks *map,
-+		 struct ext4_extent *ux, struct ext4_extent *ix),
-+
-+	TP_ARGS(inode, map, ux, ix),
-+
-+	TP_STRUCT__entry(
-+		__field(	ino_t,		ino	)
-+		__field(	dev_t,		dev	)
-+		__field(	ext4_lblk_t,	m_lblk	)
-+		__field(	unsigned,	m_len	)
-+		__field(	ext4_lblk_t,	u_lblk	)
-+		__field(	unsigned,	u_len	)
-+		__field(	ext4_fsblk_t,	u_pblk	)
-+		__field(	ext4_lblk_t,	i_lblk	)
-+		__field(	unsigned,	i_len	)
-+		__field(	ext4_fsblk_t,	i_pblk	)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->ino		= inode->i_ino;
-+		__entry->dev		= inode->i_sb->s_dev;
-+		__entry->m_lblk		= map->m_lblk;
-+		__entry->m_len		= map->m_len;
-+		__entry->u_lblk		= le32_to_cpu(ux->ee_block);
-+		__entry->u_len		= ext4_ext_get_actual_len(ux);
-+		__entry->u_pblk		= ext4_ext_pblock(ux);
-+		__entry->i_lblk		= le32_to_cpu(ix->ee_block);
-+		__entry->i_len		= ext4_ext_get_actual_len(ix);
-+		__entry->i_pblk		= ext4_ext_pblock(ix);
-+	),
-+
-+	TP_printk("dev %d,%d ino %lu m_lblk %u m_len %u "
-+		  "u_lblk %u u_len %u u_pblk %llu "
-+		  "i_lblk %u i_len %u i_pblk %llu ",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  (unsigned long) __entry->ino,
-+		  __entry->m_lblk, __entry->m_len,
-+		  __entry->u_lblk, __entry->u_len, __entry->u_pblk,
-+		  __entry->i_lblk, __entry->i_len, __entry->i_pblk)
-+);
-+
- DECLARE_EVENT_CLASS(ext4__map_blocks_enter,
- 	TP_PROTO(struct inode *inode, ext4_lblk_t lblk,
- 		 unsigned int len, unsigned int flags),
+ 	le16_add_cpu(&eh->eh_entries, 1);
+-	nearex = path[depth].p_ext;
++	path[depth].p_ext = nearex;
+ 	nearex->ee_block = newext->ee_block;
+ 	ext4_ext_store_pblock(nearex, ext4_ext_pblock(newext));
+ 	nearex->ee_len = newext->ee_len;
 -- 
 1.7.3.1
 
