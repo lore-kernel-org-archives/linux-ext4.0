@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 1/3] crc32c: Implement CRC32c with slicing-by-8 algorithm
-Date: Tue, 27 Sep 2011 15:12:46 -0700
-Message-ID: <20110927221246.21653.8635.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 3/3] crc32c: Implement a self-test for CRC32c
+Date: Tue, 27 Sep 2011 15:13:00 -0700
+Message-ID: <20110927221300.21653.39618.stgit@elm3c44.beaverton.ibm.com>
 References: <20110927221239.21653.17489.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -22,815 +22,302 @@ In-Reply-To: <20110927221239.21653.17489.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-The existing CRC32c implementation uses Sarwate's algorithm to calculate the
-code one byte at a time.  Using slicing-by-8, we can process buffers 8 bytes at
-a time, for a substantial increase in performance.
+This is a self-test for the CRC32c code.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- crypto/Makefile      |   11 +
- crypto/crc32c.c      |  635 ++++++++++++++++++++++++++++++++++++++++++--------
- crypto/crc32c_defs.h |   34 +++
- 3 files changed, 576 insertions(+), 104 deletions(-)
- create mode 100644 crypto/crc32c_defs.h
+ crypto/tcrypt.c  |    6 ++
+ crypto/testmgr.c |   36 +++++++++--
+ crypto/testmgr.h |  177 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 211 insertions(+), 8 deletions(-)
 
 
-diff --git a/crypto/Makefile b/crypto/Makefile
-index ce5a813..00811ef 100644
---- a/crypto/Makefile
-+++ b/crypto/Makefile
-@@ -94,3 +94,14 @@ obj-$(CONFIG_CRYPTO_USER_API_SKCIPHER) += algif_skcipher.o
- #
- obj-$(CONFIG_XOR_BLOCKS) += xor.o
- obj-$(CONFIG_ASYNC_CORE) += async_tx/
-+
-+hostprogs-y	:= gen_crc32ctable
-+clean-files	:= crc32ctable.h
-+
-+$(obj)/crc32c.o: $(obj)/crc32c_table.h
-+
-+quiet_cmd_crc32c = GEN     $@
-+      cmd_crc32c = $< > $@
-+
-+$(obj)/crc32c_table.h: $(obj)/gen_crc32ctable
-+	$(call cmd,crc32c)
-diff --git a/crypto/crc32c.c b/crypto/crc32c.c
-index 3f9ad28..d18f6a1 100644
---- a/crypto/crc32c.c
-+++ b/crypto/crc32c.c
-@@ -33,6 +33,35 @@
-  * Software Foundation; either version 2 of the License, or (at your option)
-  * any later version.
-  *
-+ * The current crc32c implementation is adapted from Bob Pearson's slice-by-8
-+ * crc32 kernel patch from mid-2011.
-+ *
-+ * August 26, 2011 Darrick J. Wong <djwong at us.ibm.com>
-+ * Reuse Bob Pearson's slice-by-8 implementation for e2fsprogs.
-+ *
-+ * July 20, 2011 Bob Pearson <rpearson at systemfabricworks.com>
-+ * added slice by 8 algorithm to the existing conventional and
-+ * slice by 4 algorithms.
-+ *
-+ * Oct 15, 2000 Matt Domsch <Matt_Domsch@dell.com>
-+ * Nicer crc32 functions/docs submitted by linux@horizon.com.  Thanks!
-+ * Code was from the public domain, copyright abandoned.  Code was
-+ * subsequently included in the kernel, thus was re-licensed under the
-+ * GNU GPL v2.
-+ *
-+ * Oct 12, 2000 Matt Domsch <Matt_Domsch@dell.com>
-+ * Same crc32 function was used in 5 other places in the kernel.
-+ * I made one version, and deleted the others.
-+ * There are various incantations of crc32().  Some use a seed of 0 or ~0.
-+ * Some xor at the end with ~0.  The generic crc32() function takes
-+ * seed as an argument, and doesn't xor at the end.  Then individual
-+ * users can do whatever they need.
-+ *   drivers/net/smc9194.c uses seed ~0, doesn't xor with ~0.
-+ *   fs/jffs2 uses seed 0, doesn't xor with ~0.
-+ *   fs/partitions/efi.c uses seed ~0, xor's with ~0.
-+ *
-+ * This source code is licensed under the GNU General Public License,
-+ * Version 2.  See the file COPYING for more details.
-  */
- 
- #include <crypto/internal/hash.h>
-@@ -40,6 +69,7 @@
- #include <linux/module.h>
- #include <linux/string.h>
- #include <linux/kernel.h>
-+#include "crc32c_defs.h"
- 
- #define CHKSUM_BLOCK_SIZE	1
- #define CHKSUM_DIGEST_SIZE	4
-@@ -52,92 +82,398 @@ struct chksum_desc_ctx {
- 	u32 crc;
+diff --git a/crypto/tcrypt.c b/crypto/tcrypt.c
+index 2222617..73c10f8 100644
+--- a/crypto/tcrypt.c
++++ b/crypto/tcrypt.c
+@@ -64,7 +64,7 @@ static char *check[] = {
+ 	"cast6", "arc4", "michael_mic", "deflate", "crc32c", "tea", "xtea",
+ 	"khazad", "wp512", "wp384", "wp256", "tnepres", "xeta",  "fcrypt",
+ 	"camellia", "seed", "salsa20", "rmd128", "rmd160", "rmd256", "rmd320",
+-	"lzo", "cts", "zlib", NULL
++	"lzo", "cts", "zlib", "crc32c-be", NULL
  };
  
--/*
-- * This is the CRC-32C table
-- * Generated with:
-- * width = 32 bits
-- * poly = 0x1EDC6F41
-- * reflect input bytes = true
-- * reflect output bytes = true
-- */
-+#if CRC_LE_BITS > 8
-+# define tole(x) (__force u32) __constant_cpu_to_le32(x)
-+#else
-+# define tole(x) (x)
-+#endif
+ static int test_cipher_jiffies(struct blkcipher_desc *desc, int enc,
+@@ -944,6 +944,10 @@ static int do_test(int m)
+ 		ret += tcrypt_test("rfc4309(ccm(aes))");
+ 		break;
  
--static const u32 crc32c_table[256] = {
--	0x00000000L, 0xF26B8303L, 0xE13B70F7L, 0x1350F3F4L,
--	0xC79A971FL, 0x35F1141CL, 0x26A1E7E8L, 0xD4CA64EBL,
--	0x8AD958CFL, 0x78B2DBCCL, 0x6BE22838L, 0x9989AB3BL,
--	0x4D43CFD0L, 0xBF284CD3L, 0xAC78BF27L, 0x5E133C24L,
--	0x105EC76FL, 0xE235446CL, 0xF165B798L, 0x030E349BL,
--	0xD7C45070L, 0x25AFD373L, 0x36FF2087L, 0xC494A384L,
--	0x9A879FA0L, 0x68EC1CA3L, 0x7BBCEF57L, 0x89D76C54L,
--	0x5D1D08BFL, 0xAF768BBCL, 0xBC267848L, 0x4E4DFB4BL,
--	0x20BD8EDEL, 0xD2D60DDDL, 0xC186FE29L, 0x33ED7D2AL,
--	0xE72719C1L, 0x154C9AC2L, 0x061C6936L, 0xF477EA35L,
--	0xAA64D611L, 0x580F5512L, 0x4B5FA6E6L, 0xB93425E5L,
--	0x6DFE410EL, 0x9F95C20DL, 0x8CC531F9L, 0x7EAEB2FAL,
--	0x30E349B1L, 0xC288CAB2L, 0xD1D83946L, 0x23B3BA45L,
--	0xF779DEAEL, 0x05125DADL, 0x1642AE59L, 0xE4292D5AL,
--	0xBA3A117EL, 0x4851927DL, 0x5B016189L, 0xA96AE28AL,
--	0x7DA08661L, 0x8FCB0562L, 0x9C9BF696L, 0x6EF07595L,
--	0x417B1DBCL, 0xB3109EBFL, 0xA0406D4BL, 0x522BEE48L,
--	0x86E18AA3L, 0x748A09A0L, 0x67DAFA54L, 0x95B17957L,
--	0xCBA24573L, 0x39C9C670L, 0x2A993584L, 0xD8F2B687L,
--	0x0C38D26CL, 0xFE53516FL, 0xED03A29BL, 0x1F682198L,
--	0x5125DAD3L, 0xA34E59D0L, 0xB01EAA24L, 0x42752927L,
--	0x96BF4DCCL, 0x64D4CECFL, 0x77843D3BL, 0x85EFBE38L,
--	0xDBFC821CL, 0x2997011FL, 0x3AC7F2EBL, 0xC8AC71E8L,
--	0x1C661503L, 0xEE0D9600L, 0xFD5D65F4L, 0x0F36E6F7L,
--	0x61C69362L, 0x93AD1061L, 0x80FDE395L, 0x72966096L,
--	0xA65C047DL, 0x5437877EL, 0x4767748AL, 0xB50CF789L,
--	0xEB1FCBADL, 0x197448AEL, 0x0A24BB5AL, 0xF84F3859L,
--	0x2C855CB2L, 0xDEEEDFB1L, 0xCDBE2C45L, 0x3FD5AF46L,
--	0x7198540DL, 0x83F3D70EL, 0x90A324FAL, 0x62C8A7F9L,
--	0xB602C312L, 0x44694011L, 0x5739B3E5L, 0xA55230E6L,
--	0xFB410CC2L, 0x092A8FC1L, 0x1A7A7C35L, 0xE811FF36L,
--	0x3CDB9BDDL, 0xCEB018DEL, 0xDDE0EB2AL, 0x2F8B6829L,
--	0x82F63B78L, 0x709DB87BL, 0x63CD4B8FL, 0x91A6C88CL,
--	0x456CAC67L, 0xB7072F64L, 0xA457DC90L, 0x563C5F93L,
--	0x082F63B7L, 0xFA44E0B4L, 0xE9141340L, 0x1B7F9043L,
--	0xCFB5F4A8L, 0x3DDE77ABL, 0x2E8E845FL, 0xDCE5075CL,
--	0x92A8FC17L, 0x60C37F14L, 0x73938CE0L, 0x81F80FE3L,
--	0x55326B08L, 0xA759E80BL, 0xB4091BFFL, 0x466298FCL,
--	0x1871A4D8L, 0xEA1A27DBL, 0xF94AD42FL, 0x0B21572CL,
--	0xDFEB33C7L, 0x2D80B0C4L, 0x3ED04330L, 0xCCBBC033L,
--	0xA24BB5A6L, 0x502036A5L, 0x4370C551L, 0xB11B4652L,
--	0x65D122B9L, 0x97BAA1BAL, 0x84EA524EL, 0x7681D14DL,
--	0x2892ED69L, 0xDAF96E6AL, 0xC9A99D9EL, 0x3BC21E9DL,
--	0xEF087A76L, 0x1D63F975L, 0x0E330A81L, 0xFC588982L,
--	0xB21572C9L, 0x407EF1CAL, 0x532E023EL, 0xA145813DL,
--	0x758FE5D6L, 0x87E466D5L, 0x94B49521L, 0x66DF1622L,
--	0x38CC2A06L, 0xCAA7A905L, 0xD9F75AF1L, 0x2B9CD9F2L,
--	0xFF56BD19L, 0x0D3D3E1AL, 0x1E6DCDEEL, 0xEC064EEDL,
--	0xC38D26C4L, 0x31E6A5C7L, 0x22B65633L, 0xD0DDD530L,
--	0x0417B1DBL, 0xF67C32D8L, 0xE52CC12CL, 0x1747422FL,
--	0x49547E0BL, 0xBB3FFD08L, 0xA86F0EFCL, 0x5A048DFFL,
--	0x8ECEE914L, 0x7CA56A17L, 0x6FF599E3L, 0x9D9E1AE0L,
--	0xD3D3E1ABL, 0x21B862A8L, 0x32E8915CL, 0xC083125FL,
--	0x144976B4L, 0xE622F5B7L, 0xF5720643L, 0x07198540L,
--	0x590AB964L, 0xAB613A67L, 0xB831C993L, 0x4A5A4A90L,
--	0x9E902E7BL, 0x6CFBAD78L, 0x7FAB5E8CL, 0x8DC0DD8FL,
--	0xE330A81AL, 0x115B2B19L, 0x020BD8EDL, 0xF0605BEEL,
--	0x24AA3F05L, 0xD6C1BC06L, 0xC5914FF2L, 0x37FACCF1L,
--	0x69E9F0D5L, 0x9B8273D6L, 0x88D28022L, 0x7AB90321L,
--	0xAE7367CAL, 0x5C18E4C9L, 0x4F48173DL, 0xBD23943EL,
--	0xF36E6F75L, 0x0105EC76L, 0x12551F82L, 0xE03E9C81L,
--	0x34F4F86AL, 0xC69F7B69L, 0xD5CF889DL, 0x27A40B9EL,
--	0x79B737BAL, 0x8BDCB4B9L, 0x988C474DL, 0x6AE7C44EL,
--	0xBE2DA0A5L, 0x4C4623A6L, 0x5F16D052L, 0xAD7D5351L
--};
-+#if CRC_BE_BITS > 8
-+# define tobe(x) (__force u32) __constant_cpu_to_be32(x)
-+#else
-+# define tobe(x) (x)
-+#endif
- 
--/*
-- * Steps through buffer one byte at at time, calculates reflected
-- * crc using table.
-- */
-+#include "crc32c_table.h"
++	case 46:
++		ret += tcrypt_test("crc32c-be");
++		break;
 +
-+#if CRC_LE_BITS == 32
-+/* slice by 4 algorithm */
-+static u32 crc32c_le_body(u32 crc, u8 const *buf, size_t len)
-+{
-+	const u8 *p8;
-+	const u32 *p32;
-+	size_t init_bytes;
-+	size_t words;
-+	size_t end_bytes;
-+	size_t i;
-+	u32 q;
-+	u8 i0, i1, i2, i3;
-+
-+	crc = (__force u32) __cpu_to_le32(crc);
-+
-+	/* unroll loop into 'init_bytes' odd bytes followed by
-+	 * 'words' aligned 4 byte words followed by
-+	 * 'end_bytes' odd bytes at the end */
-+	p8 = buf;
-+	p32 = (u32 *)PTR_ALIGN(p8, 4);
-+	init_bytes = min((uintptr_t)p32 - (uintptr_t)p8, len);
-+	words = (len - init_bytes) >> 2;
-+	end_bytes = (len - init_bytes) & 3;
-+
-+	for (i = 0; i < init_bytes; i++) {
-+#ifdef __LITTLE_ENDIAN
-+		i0 = *p8++ ^ crc;
-+		crc = t0_le[i0] ^ (crc >> 8);
-+#else
-+		i0 = *p8++ ^ (crc >> 24);
-+		crc = t0_le[i0] ^ (crc << 8);
-+#endif
-+	}
-+
-+	/* using pre-increment below slightly faster */
-+	p32--;
- 
--static u32 crc32c(u32 crc, const u8 *data, unsigned int length)
-+	for (i = 0; i < words; i++) {
-+#ifdef __LITTLE_ENDIAN
-+		q = *++p32 ^ crc;
-+		i3 = q;
-+		i2 = q >> 8;
-+		i1 = q >> 16;
-+		i0 = q >> 24;
-+		crc = t3_le[i3] ^ t2_le[i2] ^ t1_le[i1] ^ t0_le[i0];
-+#else
-+		q = *++p32 ^ crc;
-+		i3 = q >> 24;
-+		i2 = q >> 16;
-+		i1 = q >> 8;
-+		i0 = q;
-+		crc = t3_le[i3] ^ t2_le[i2] ^ t1_le[i1] ^ t0_le[i0];
-+#endif
-+	}
-+
-+	p8 = (u8 *)(++p32);
-+
-+	for (i = 0; i < end_bytes; i++) {
-+#ifdef __LITTLE_ENDIAN
-+		i0 = *p8++ ^ crc;
-+		crc = t0_le[i0] ^ (crc >> 8);
-+#else
-+		i0 = *p8++ ^ (crc >> 24);
-+		crc = t0_le[i0] ^ (crc << 8);
-+#endif
-+	}
-+
-+	return __le32_to_cpu((__force __le32)crc);
-+}
-+#endif
-+
-+#if CRC_BE_BITS == 32
-+static u32 crc32c_be_body(u32 crc, u8 const *buf, size_t len)
- {
--	while (length--)
--		crc = crc32c_table[(crc ^ *data++) & 0xFFL] ^ (crc >> 8);
-+	const u8 *p8;
-+	const u32 *p32;
-+	size_t init_bytes;
-+	size_t words;
-+	size_t end_bytes;
-+	size_t i;
-+	u32 q;
-+	u8 i0, i1, i2, i3;
-+
-+	crc = (__force u32) __cpu_to_be32(crc);
-+
-+	p8 = buf;
-+	p32 = (u32 *)PTR_ALIGN(p8, 4);
-+	init_bytes = min((uintptr_t)p32 - (uintptr_t)p8, len);
-+	words = (len - init_bytes) >> 2;
-+	end_bytes = (len - init_bytes) & 3;
-+
-+	for (i = 0; i < init_bytes; i++) {
-+#ifdef __LITTLE_ENDIAN
-+		i0 = *p8++ ^ crc;
-+		crc = t0_be[i0] ^ (crc >> 8);
-+#else
-+		i0 = *p8++ ^ (crc >> 24);
-+		crc = t0_be[i0] ^ (crc << 8);
-+#endif
-+	}
-+
-+	p32--;
-+
-+	for (i = 0; i < words; i++) {
-+#ifdef __LITTLE_ENDIAN
-+		q = *++p32 ^ crc;
-+		i3 = q;
-+		i2 = q >> 8;
-+		i1 = q >> 16;
-+		i0 = q >> 24;
-+		crc = t3_be[i3] ^ t2_be[i2] ^ t1_be[i1] ^ t0_be[i0];
-+#else
-+		q = *++p32 ^ crc;
-+		i3 = q >> 24;
-+		i2 = q >> 16;
-+		i1 = q >> 8;
-+		i0 = q;
-+		crc = t3_be[i3] ^ t2_be[i2] ^ t1_be[i1] ^ t0_be[i0];
-+#endif
-+	}
-+
-+	p8 = (u8 *)(++p32);
-+
-+	for (i = 0; i < end_bytes; i++) {
-+#ifdef __LITTLE_ENDIAN
-+		i0 = *p8++ ^ crc;
-+		crc = t0_be[i0] ^ (crc >> 8);
-+#else
-+		i0 = *p8++ ^ (crc >> 24);
-+		crc = t0_be[i0] ^ (crc << 8);
-+#endif
-+	}
-+
-+	return __be32_to_cpu((__force __be32)crc);
-+}
-+#endif
-+
-+#if CRC_LE_BITS == 64
-+/* slice by 8 algorithm */
-+static u32 crc32c_le_body(u32 crc, u8 const *buf, size_t len)
-+{
-+	const u8 *p8;
-+	const u32 *p32;
-+	size_t init_bytes;
-+	size_t words;
-+	size_t end_bytes;
-+	size_t i;
-+	u32 q;
-+	u8 i0, i1, i2, i3;
-+
-+	crc = (__force u32) __cpu_to_le32(crc);
-+
-+	p8 = buf;
-+	p32 = (u32 *)PTR_ALIGN(p8, 8);
-+	init_bytes = min((uintptr_t)p32 - (uintptr_t)p8, len);
-+	words = (len - init_bytes) >> 3;
-+	end_bytes = (len - init_bytes) & 7;
-+
-+	for (i = 0; i < init_bytes; i++) {
-+#ifdef __LITTLE_ENDIAN
-+		i0 = *p8++ ^ crc;
-+		crc = t0_le[i0] ^ (crc >> 8);
-+#else
-+		i0 = *p8++ ^ (crc >> 24);
-+		crc = t0_le[i0] ^ (crc << 8);
-+#endif
-+	}
-+
-+	p32--;
-+
-+	for (i = 0; i < words; i++) {
-+#ifdef __LITTLE_ENDIAN
-+		q = *++p32 ^ crc;
-+		i3 = q;
-+		i2 = q >> 8;
-+		i1 = q >> 16;
-+		i0 = q >> 24;
-+		crc = t7_le[i3] ^ t6_le[i2] ^ t5_le[i1] ^ t4_le[i0];
-+
-+		q = *++p32;
-+		i3 = q;
-+		i2 = q >> 8;
-+		i1 = q >> 16;
-+		i0 = q >> 24;
-+		crc ^= t3_le[i3] ^ t2_le[i2] ^ t1_le[i1] ^ t0_le[i0];
-+#else
-+		q = *++p32 ^ crc;
-+		i3 = q >> 24;
-+		i2 = q >> 16;
-+		i1 = q >> 8;
-+		i0 = q;
-+		crc = t7_le[i3] ^ t6_le[i2] ^ t5_le[i1] ^ t4_le[i0];
-+
-+		q = *++p32;
-+		i3 = q >> 24;
-+		i2 = q >> 16;
-+		i1 = q >> 8;
-+		i0 = q;
-+		crc ^= t3_le[i3] ^ t2_le[i2] ^ t1_le[i1] ^ t0_le[i0];
-+#endif
-+	}
-+
-+	p8 = (u8 *)(++p32);
-+
-+	for (i = 0; i < end_bytes; i++) {
-+#ifdef __LITTLE_ENDIAN
-+		i0 = *p8++ ^ crc;
-+		crc = t0_le[i0] ^ (crc >> 8);
-+#else
-+		i0 = *p8++ ^ (crc >> 24);
-+		crc = t0_le[i0] ^ (crc << 8);
-+#endif
-+	}
-+
-+	return __le32_to_cpu(crc);
-+}
-+#endif
-+
-+#if CRC_BE_BITS == 64
-+static u32 crc32c_be_body(u32 crc, u8 const *buf, size_t len)
-+{
-+	const u8 *p8;
-+	const u32 *p32;
-+	size_t init_bytes;
-+	size_t words;
-+	size_t end_bytes;
-+	size_t i;
-+	u32 q;
-+	u8 i0, i1, i2, i3;
-+
-+	crc = (__force u32) __cpu_to_be32(crc);
-+
-+	p8 = buf;
-+	p32 = (u32 *)PTR_ALIGN(p8, 8);
-+	init_bytes = min((uintptr_t)p32 - (uintptr_t)p8, len);
-+	words = (len - init_bytes) >> 3;
-+	end_bytes = (len - init_bytes) & 7;
-+
-+	for (i = 0; i < init_bytes; i++) {
-+#ifdef __LITTLE_ENDIAN
-+		i0 = *p8++ ^ crc;
-+		crc = t0_be[i0] ^ (crc >> 8);
-+#else
-+		i0 = *p8++ ^ (crc >> 24);
-+		crc = t0_be[i0] ^ (crc << 8);
-+#endif
-+	}
-+
-+	p32--;
-+
-+	for (i = 0; i < words; i++) {
-+#ifdef __LITTLE_ENDIAN
-+		q = *++p32 ^ crc;
-+		i3 = q;
-+		i2 = q >> 8;
-+		i1 = q >> 16;
-+		i0 = q >> 24;
-+		crc = t7_be[i3] ^ t6_be[i2] ^ t5_be[i1] ^ t4_be[i0];
-+
-+		q = *++p32;
-+		i3 = q;
-+		i2 = q >> 8;
-+		i1 = q >> 16;
-+		i0 = q >> 24;
-+		crc ^= t3_be[i3] ^ t2_be[i2] ^ t1_be[i1] ^ t0_be[i0];
-+#else
-+		q = *++p32 ^ crc;
-+		i3 = q >> 24;
-+		i2 = q >> 16;
-+		i1 = q >> 8;
-+		i0 = q;
-+		crc = t7_be[i3] ^ t6_be[i2] ^ t5_be[i1] ^ t4_be[i0];
-+
-+		q = *++p32;
-+		i3 = q >> 24;
-+		i2 = q >> 16;
-+		i1 = q >> 8;
-+		i0 = q;
-+		crc ^= t3_be[i3] ^ t2_be[i2] ^ t1_be[i1] ^ t0_be[i0];
-+#endif
-+	}
-+
-+	p8 = (u8 *)(++p32);
-+
-+	for (i = 0; i < end_bytes; i++) {
-+#ifdef __LITTLE_ENDIAN
-+		i0 = *p8++ ^ crc;
-+		crc = t0_be[i0] ^ (crc >> 8);
-+#else
-+		i0 = *p8++ ^ (crc >> 24);
-+		crc = t0_be[i0] ^ (crc << 8);
-+#endif
-+	}
-+
-+	return __be32_to_cpu(crc);
-+}
-+#endif
-+
-+/**
-+ * crc32c_le() - Calculate bitwise little-endian CRC32c.
-+ * @crc: seed value for computation.  ~0 for ext4, sometimes 0 for
-+ *	other uses, or the previous crc32c value if computing incrementally.
-+ * @p: pointer to buffer over which CRC is run
-+ * @len: length of buffer @p
-+ */
-+static u32 crc32c_le(u32 crc, unsigned char const *p, size_t len)
-+{
-+#if CRC_LE_BITS == 1
-+	int i;
-+	while (len--) {
-+		crc ^= *p++;
-+		for (i = 0; i < 8; i++)
-+			crc = (crc >> 1) ^ ((crc & 1) ? CRCPOLY_LE : 0);
-+	}
-+# elif CRC_LE_BITS == 2
-+	while (len--) {
-+		crc ^= *p++;
-+		crc = (crc >> 2) ^ t0_le[crc & 0x03];
-+		crc = (crc >> 2) ^ t0_le[crc & 0x03];
-+		crc = (crc >> 2) ^ t0_le[crc & 0x03];
-+		crc = (crc >> 2) ^ t0_le[crc & 0x03];
-+	}
-+# elif CRC_LE_BITS == 4
-+	while (len--) {
-+		crc ^= *p++;
-+		crc = (crc >> 4) ^ t0_le[crc & 0x0f];
-+		crc = (crc >> 4) ^ t0_le[crc & 0x0f];
-+	}
-+# elif CRC_LE_BITS == 8
-+	while (len--) {
-+		crc ^= *p++;
-+		crc = (crc >> 8) ^ t0_le[crc & 0xff];
-+	}
-+# else
-+	crc = crc32c_le_body(crc, p, len);
-+# endif
-+	return crc;
-+}
- 
-+/**
-+ * crc32c_be() - Calculate bitwise big-endian CRC32c.
-+ * @crc: seed value for computation.  ~0 for ext4, sometimes 0 for
-+ *	other uses, or the previous crc32c value if computing incrementally.
-+ * @p: pointer to buffer over which CRC is run
-+ * @len: length of buffer @p
-+ */
-+static u32 crc32c_be(u32 crc, unsigned char const *p, size_t len)
-+{
-+#if CRC_BE_BITS == 1
-+	int i;
-+	while (len--) {
-+		crc ^= *p++ << 24;
-+		for (i = 0; i < 8; i++)
-+			crc = (crc << 1) ^
-+			      ((crc & 0x80000000) ? CRCPOLY_BE : 0);
-+	}
-+# elif CRC_BE_BITS == 2
-+	while (len--) {
-+		crc ^= *p++ << 24;
-+		crc = (crc << 2) ^ t0_be[crc >> 30];
-+		crc = (crc << 2) ^ t0_be[crc >> 30];
-+		crc = (crc << 2) ^ t0_be[crc >> 30];
-+		crc = (crc << 2) ^ t0_be[crc >> 30];
-+	}
-+# elif CRC_BE_BITS == 4
-+	while (len--) {
-+		crc ^= *p++ << 24;
-+		crc = (crc << 4) ^ t0_be[crc >> 28];
-+		crc = (crc << 4) ^ t0_be[crc >> 28];
-+	}
-+# elif CRC_BE_BITS == 8
-+	while (len--) {
-+		crc ^= *p++ << 24;
-+		crc = (crc << 8) ^ t0_be[crc >> 24];
-+	}
-+# else
-+	crc = crc32c_be_body(crc, p, len);
-+# endif
- 	return crc;
+ 	case 100:
+ 		ret += tcrypt_test("hmac(md5)");
+ 		break;
+diff --git a/crypto/testmgr.c b/crypto/testmgr.c
+index b6b93d4..738b79f 100644
+--- a/crypto/testmgr.c
++++ b/crypto/testmgr.c
+@@ -1457,7 +1457,8 @@ static int alg_test_hash(const struct alg_test_desc *desc, const char *driver,
  }
  
-@@ -146,7 +482,7 @@ static u32 crc32c(u32 crc, const u8 *data, unsigned int length)
-  * crc using table.
-  */
- 
--static int chksum_init(struct shash_desc *desc)
-+static int crc32c_init(struct shash_desc *desc)
+ static int alg_test_crc32c(const struct alg_test_desc *desc,
+-			   const char *driver, u32 type, u32 mask)
++			   const char *driver, u32 type, u32 mask,
++			   int big_endian)
  {
- 	struct chksum_ctx *mctx = crypto_shash_ctx(desc->tfm);
- 	struct chksum_desc_ctx *ctx = shash_desc_ctx(desc);
-@@ -156,12 +492,21 @@ static int chksum_init(struct shash_desc *desc)
- 	return 0;
+ 	struct crypto_shash *tfm;
+ 	u32 val;
+@@ -1484,7 +1485,10 @@ static int alg_test_crc32c(const struct alg_test_desc *desc,
+ 		sdesc.shash.tfm = tfm;
+ 		sdesc.shash.flags = 0;
+ 
+-		*(u32 *)sdesc.ctx = le32_to_cpu(420553207);
++		if (big_endian)
++			*(u32 *)sdesc.ctx = be32_to_cpu(420553207);
++		else
++			*(u32 *)sdesc.ctx = le32_to_cpu(420553207);
+ 		err = crypto_shash_final(&sdesc.shash, (u8 *)&val);
+ 		if (err) {
+ 			printk(KERN_ERR "alg: crc32c: Operation failed for "
+@@ -1505,6 +1509,18 @@ out:
+ 	return err;
  }
  
-+static int crc32c_cra_init(struct crypto_tfm *tfm)
++static int alg_test_crc32c_be(const struct alg_test_desc *desc,
++			      const char *driver, u32 type, u32 mask)
 +{
-+	struct chksum_ctx *mctx = crypto_tfm_ctx(tfm);
-+
-+	mctx->key = ~0;
-+	return 0;
++	return alg_test_crc32c(desc, driver, type, mask, 1);
 +}
 +
-+/* Little Endian version of algorithm */
++static int alg_test_crc32c_le(const struct alg_test_desc *desc,
++			      const char *driver, u32 type, u32 mask)
++{
++	return alg_test_crc32c(desc, driver, type, mask, 0);
++}
++
+ static int alg_test_cprng(const struct alg_test_desc *desc, const char *driver,
+ 			  u32 type, u32 mask)
+ {
+@@ -1707,12 +1723,22 @@ static const struct alg_test_desc alg_test_descs[] = {
+ 		}
+ 	}, {
+ 		.alg = "crc32c",
+-		.test = alg_test_crc32c,
++		.test = alg_test_crc32c_le,
++		.fips_allowed = 1,
++		.suite = {
++			.hash = {
++				.vecs = crc32c_le_tv_template,
++				.count = CRC32C_LE_TEST_VECTORS
++			}
++		}
++	}, {
++		.alg = "crc32c-be",
++		.test = alg_test_crc32c_be,
+ 		.fips_allowed = 1,
+ 		.suite = {
+ 			.hash = {
+-				.vecs = crc32c_tv_template,
+-				.count = CRC32C_TEST_VECTORS
++				.vecs = crc32c_be_tv_template,
++				.count = CRC32C_BE_TEST_VECTORS
+ 			}
+ 		}
+ 	}, {
+diff --git a/crypto/testmgr.h b/crypto/testmgr.h
+index 27adc92..8223738 100644
+--- a/crypto/testmgr.h
++++ b/crypto/testmgr.h
+@@ -10172,9 +10172,10 @@ static struct hash_testvec michael_mic_tv_template[] = {
  /*
-  * Setting the seed allows arbitrary accumulators and flexible XOR policy
-  * If your algorithm starts with ~0, then XOR with ~0 before you set
-  * the seed.
+  * CRC32C test vectors
   */
--static int chksum_setkey(struct crypto_shash *tfm, const u8 *key,
-+static int crc32c_le_setkey(struct crypto_shash *tfm, const u8 *key,
- 			 unsigned int keylen)
- {
- 	struct chksum_ctx *mctx = crypto_shash_ctx(tfm);
-@@ -174,16 +519,16 @@ static int chksum_setkey(struct crypto_shash *tfm, const u8 *key,
- 	return 0;
- }
+-#define CRC32C_TEST_VECTORS 14
++#define CRC32C_LE_TEST_VECTORS 14
++#define CRC32C_BE_TEST_VECTORS 14
  
--static int chksum_update(struct shash_desc *desc, const u8 *data,
-+static int crc32c_le_update(struct shash_desc *desc, const u8 *data,
- 			 unsigned int length)
- {
- 	struct chksum_desc_ctx *ctx = shash_desc_ctx(desc);
- 
--	ctx->crc = crc32c(ctx->crc, data, length);
-+	ctx->crc = crc32c_le(ctx->crc, data, length);
- 	return 0;
- }
- 
--static int chksum_final(struct shash_desc *desc, u8 *out)
-+static int crc32c_le_final(struct shash_desc *desc, u8 *out)
- {
- 	struct chksum_desc_ctx *ctx = shash_desc_ctx(desc);
- 
-@@ -191,44 +536,96 @@ static int chksum_final(struct shash_desc *desc, u8 *out)
- 	return 0;
- }
- 
--static int __chksum_finup(u32 *crcp, const u8 *data, unsigned int len, u8 *out)
-+static int __crc32c_le_finup(u32 *crcp, const u8 *data, unsigned int len,
-+			     u8 *out)
- {
--	*(__le32 *)out = ~cpu_to_le32(crc32c(*crcp, data, len));
-+	*(__le32 *)out = ~cpu_to_le32(crc32c_le(*crcp, data, len));
- 	return 0;
- }
- 
--static int chksum_finup(struct shash_desc *desc, const u8 *data,
-+static int crc32c_le_finup(struct shash_desc *desc, const u8 *data,
- 			unsigned int len, u8 *out)
- {
- 	struct chksum_desc_ctx *ctx = shash_desc_ctx(desc);
- 
--	return __chksum_finup(&ctx->crc, data, len, out);
-+	return __crc32c_le_finup(&ctx->crc, data, len, out);
- }
- 
--static int chksum_digest(struct shash_desc *desc, const u8 *data,
-+static int crc32c_le_digest(struct shash_desc *desc, const u8 *data,
- 			 unsigned int length, u8 *out)
- {
- 	struct chksum_ctx *mctx = crypto_shash_ctx(desc->tfm);
- 
--	return __chksum_finup(&mctx->key, data, length, out);
-+	return __crc32c_le_finup(&mctx->key, data, length, out);
- }
- 
--static int crc32c_cra_init(struct crypto_tfm *tfm)
-+/* Big Endian version of algorithm */
-+/*
-+ * Setting the seed allows arbitrary accumulators and flexible XOR policy
-+ * If your algorithm starts with ~0, then XOR with ~0 before you set
-+ * the seed.
-+ */
-+static int crc32c_be_setkey(struct crypto_shash *tfm, const u8 *key,
-+			 unsigned int keylen)
- {
--	struct chksum_ctx *mctx = crypto_tfm_ctx(tfm);
-+	struct chksum_ctx *mctx = crypto_shash_ctx(tfm);
- 
--	mctx->key = ~0;
-+	if (keylen != sizeof(mctx->key)) {
-+		crypto_shash_set_flags(tfm, CRYPTO_TFM_RES_BAD_KEY_LEN);
-+		return -EINVAL;
-+	}
-+	mctx->key = be32_to_cpu(*(__be32 *)key);
- 	return 0;
- }
- 
--static struct shash_alg alg = {
-+static int crc32c_be_update(struct shash_desc *desc, const u8 *data,
-+			 unsigned int length)
-+{
-+	struct chksum_desc_ctx *ctx = shash_desc_ctx(desc);
-+
-+	ctx->crc = crc32c_be(ctx->crc, data, length);
-+	return 0;
-+}
-+
-+static int crc32c_be_final(struct shash_desc *desc, u8 *out)
-+{
-+	struct chksum_desc_ctx *ctx = shash_desc_ctx(desc);
-+
-+	*(__be32 *)out = ~cpu_to_be32p(&ctx->crc);
-+	return 0;
-+}
-+
-+static int __crc32c_be_finup(u32 *crcp, const u8 *data, unsigned int len,
-+			     u8 *out)
-+{
-+	*(__be32 *)out = ~cpu_to_be32(crc32c_be(*crcp, data, len));
-+	return 0;
-+}
-+
-+static int crc32c_be_finup(struct shash_desc *desc, const u8 *data,
-+			unsigned int len, u8 *out)
-+{
-+	struct chksum_desc_ctx *ctx = shash_desc_ctx(desc);
-+
-+	return __crc32c_be_finup(&ctx->crc, data, len, out);
-+}
-+
-+static int crc32c_be_digest(struct shash_desc *desc, const u8 *data,
-+			 unsigned int length, u8 *out)
-+{
-+	struct chksum_ctx *mctx = crypto_shash_ctx(desc->tfm);
-+
-+	return __crc32c_be_finup(&mctx->key, data, length, out);
-+}
-+
-+static struct shash_alg alg_le = {
- 	.digestsize		=	CHKSUM_DIGEST_SIZE,
--	.setkey			=	chksum_setkey,
--	.init		=	chksum_init,
--	.update		=	chksum_update,
--	.final		=	chksum_final,
--	.finup		=	chksum_finup,
--	.digest		=	chksum_digest,
-+	.setkey			=	crc32c_le_setkey,
-+	.init		=	crc32c_init,
-+	.update		=	crc32c_le_update,
-+	.final		=	crc32c_le_final,
-+	.finup		=	crc32c_le_finup,
-+	.digest		=	crc32c_le_digest,
- 	.descsize		=	sizeof(struct chksum_desc_ctx),
- 	.base			=	{
- 		.cra_name		=	"crc32c",
-@@ -242,14 +639,44 @@ static struct shash_alg alg = {
- 	}
+-static struct hash_testvec crc32c_tv_template[] = {
++static struct hash_testvec crc32c_le_tv_template[] = {
+ 	{
+ 		.psize = 0,
+ 		.digest = "\x00\x00\x00\x00",
+@@ -10346,4 +10347,176 @@ static struct hash_testvec crc32c_tv_template[] = {
+ 	},
  };
  
-+static struct shash_alg alg_be = {
-+	.digestsize		=	CHKSUM_DIGEST_SIZE,
-+	.setkey			=	crc32c_be_setkey,
-+	.init		=	crc32c_init,
-+	.update		=	crc32c_be_update,
-+	.final		=	crc32c_be_final,
-+	.finup		=	crc32c_be_finup,
-+	.digest		=	crc32c_be_digest,
-+	.descsize		=	sizeof(struct chksum_desc_ctx),
-+	.base			=	{
-+		.cra_name		=	"crc32c-be",
-+		.cra_driver_name	=	"crc32c-generic",
-+		.cra_priority		=	100,
-+		.cra_blocksize		=	CHKSUM_BLOCK_SIZE,
-+		.cra_alignmask		=	3,
-+		.cra_ctxsize		=	sizeof(struct chksum_ctx),
-+		.cra_module		=	THIS_MODULE,
-+		.cra_init		=	crc32c_cra_init,
-+	}
++static struct hash_testvec crc32c_be_tv_template[] = {
++	{
++		.psize = 0,
++		.digest = "\x00\x00\x00\x00",
++	},
++	{
++		.key = "\x87\xa9\xcb\xed",
++		.ksize = 4,
++		.psize = 0,
++		.digest = "\x78\x56\x34\x12",
++	},
++	{
++		.key = "\xff\xff\xff\xff",
++		.ksize = 4,
++		.plaintext = "\x01\x02\x03\x04\x05\x06\x07\x08"
++			     "\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10"
++			     "\x11\x12\x13\x14\x15\x16\x17\x18"
++			     "\x19\x1a\x1b\x1c\x1d\x1e\x1f\x20"
++			     "\x21\x22\x23\x24\x25\x26\x27\x28",
++		.psize = 40,
++		.digest = "\x94\x8f\x5f\x9f",
++	},
++	{
++		.key = "\xff\xff\xff\xff",
++		.ksize = 4,
++		.plaintext = "\x29\x2a\x2b\x2c\x2d\x2e\x2f\x30"
++			     "\x31\x32\x33\x34\x35\x36\x37\x38"
++			     "\x39\x3a\x3b\x3c\x3d\x3e\x3f\x40"
++			     "\x41\x42\x43\x44\x45\x46\x47\x48"
++			     "\x49\x4a\x4b\x4c\x4d\x4e\x4f\x50",
++		.psize = 40,
++		.digest = "\xcf\x13\x15\xf9",
++	},
++	{
++		.key = "\xff\xff\xff\xff",
++		.ksize = 4,
++		.plaintext = "\x51\x52\x53\x54\x55\x56\x57\x58"
++			     "\x59\x5a\x5b\x5c\x5d\x5e\x5f\x60"
++			     "\x61\x62\x63\x64\x65\x66\x67\x68"
++			     "\x69\x6a\x6b\x6c\x6d\x6e\x6f\x70"
++			     "\x71\x72\x73\x74\x75\x76\x77\x78",
++		.psize = 40,
++		.digest = "\xe1\x9f\x51\x45",
++	},
++	{
++		.key = "\xff\xff\xff\xff",
++		.ksize = 4,
++		.plaintext = "\x79\x7a\x7b\x7c\x7d\x7e\x7f\x80"
++			     "\x81\x82\x83\x84\x85\x86\x87\x88"
++			     "\x89\x8a\x8b\x8c\x8d\x8e\x8f\x90"
++			     "\x91\x92\x93\x94\x95\x96\x97\x98"
++			     "\x99\x9a\x9b\x9c\x9d\x9e\x9f\xa0",
++		.psize = 40,
++		.digest = "\xa6\x83\x88\x73",
++	},
++	{
++		.key = "\xff\xff\xff\xff",
++		.ksize = 4,
++		.plaintext = "\xa1\xa2\xa3\xa4\xa5\xa6\xa7\xa8"
++			     "\xa9\xaa\xab\xac\xad\xae\xaf\xb0"
++			     "\xb1\xb2\xb3\xb4\xb5\xb6\xb7\xb8"
++			     "\xb9\xba\xbb\xbc\xbd\xbe\xbf\xc0"
++			     "\xc1\xc2\xc3\xc4\xc5\xc6\xc7\xc8",
++		.psize = 40,
++		.digest = "\x69\x84\x78\xe0",
++	},
++	{
++		.key = "\xff\xff\xff\xff",
++		.ksize = 4,
++		.plaintext = "\xc9\xca\xcb\xcc\xcd\xce\xcf\xd0"
++			     "\xd1\xd2\xd3\xd4\xd5\xd6\xd7\xd8"
++			     "\xd9\xda\xdb\xdc\xdd\xde\xdf\xe0"
++			     "\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8"
++			     "\xe9\xea\xeb\xec\xed\xee\xef\xf0",
++		.psize = 40,
++		.digest = "\xae\xea\x9b\xcc",
++	},
++	{
++		.key = "\x80\xea\xd3\xf1",
++		.ksize = 4,
++		.plaintext = "\x29\x2a\x2b\x2c\x2d\x2e\x2f\x30"
++			     "\x31\x32\x33\x34\x35\x36\x37\x38"
++			     "\x39\x3a\x3b\x3c\x3d\x3e\x3f\x40"
++			     "\x41\x42\x43\x44\x45\x46\x47\x48"
++			     "\x49\x4a\x4b\x4c\x4d\x4e\x4f\x50",
++		.psize = 40,
++		.digest = "\x3a\xde\xd7\xf0",
++	},
++	{
++		.key = "\xf3\x4a\x1d\x5d",
++		.ksize = 4,
++		.plaintext = "\x51\x52\x53\x54\x55\x56\x57\x58"
++			     "\x59\x5a\x5b\x5c\x5d\x5e\x5f\x60"
++			     "\x61\x62\x63\x64\x65\x66\x67\x68"
++			     "\x69\x6a\x6b\x6c\x6d\x6e\x6f\x70"
++			     "\x71\x72\x73\x74\x75\x76\x77\x78",
++		.psize = 40,
++		.digest = "\xa4\x9e\x8b\x7e",
++	},
++	{
++		.key = "\x2e\x80\x04\x59",
++		.ksize = 4,
++		.plaintext = "\x79\x7a\x7b\x7c\x7d\x7e\x7f\x80"
++			     "\x81\x82\x83\x84\x85\x86\x87\x88"
++			     "\x89\x8a\x8b\x8c\x8d\x8e\x8f\x90"
++			     "\x91\x92\x93\x94\x95\x96\x97\x98"
++			     "\x99\x9a\x9b\x9c\x9d\x9e\x9f\xa0",
++		.psize = 40,
++		.digest = "\x38\x90\xea\xc0",
++	},
++	{
++		.key = "\xa6\xcc\x19\x85",
++		.ksize = 4,
++		.plaintext = "\xa1\xa2\xa3\xa4\xa5\xa6\xa7\xa8"
++			     "\xa9\xaa\xab\xac\xad\xae\xaf\xb0"
++			     "\xb1\xb2\xb3\xb4\xb5\xb6\xb7\xb8"
++			     "\xb9\xba\xbb\xbc\xbd\xbe\xbf\xc0"
++			     "\xc1\xc2\xc3\xc4\xc5\xc6\xc7\xc8",
++		.psize = 40,
++		.digest = "\x37\x77\x50\x00",
++	},
++	{
++		.key = "\x41\xfc\xfe\x2d",
++		.ksize = 4,
++		.plaintext = "\xc9\xca\xcb\xcc\xcd\xce\xcf\xd0"
++			     "\xd1\xd2\xd3\xd4\xd5\xd6\xd7\xd8"
++			     "\xd9\xda\xdb\xdc\xdd\xde\xdf\xe0"
++			     "\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8"
++			     "\xe9\xea\xeb\xec\xed\xee\xef\xf0",
++		.psize = 40,
++		.digest = "\x15\x01\x15\xb6",
++	},
++	{
++		.key = "\xff\xff\xff\xff",
++		.ksize = 4,
++		.plaintext = "\x01\x02\x03\x04\x05\x06\x07\x08"
++			     "\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10"
++			     "\x11\x12\x13\x14\x15\x16\x17\x18"
++			     "\x19\x1a\x1b\x1c\x1d\x1e\x1f\x20"
++			     "\x21\x22\x23\x24\x25\x26\x27\x28"
++			     "\x29\x2a\x2b\x2c\x2d\x2e\x2f\x30"
++			     "\x31\x32\x33\x34\x35\x36\x37\x38"
++			     "\x39\x3a\x3b\x3c\x3d\x3e\x3f\x40"
++			     "\x41\x42\x43\x44\x45\x46\x47\x48"
++			     "\x49\x4a\x4b\x4c\x4d\x4e\x4f\x50"
++			     "\x51\x52\x53\x54\x55\x56\x57\x58"
++			     "\x59\x5a\x5b\x5c\x5d\x5e\x5f\x60"
++			     "\x61\x62\x63\x64\x65\x66\x67\x68"
++			     "\x69\x6a\x6b\x6c\x6d\x6e\x6f\x70"
++			     "\x71\x72\x73\x74\x75\x76\x77\x78"
++			     "\x79\x7a\x7b\x7c\x7d\x7e\x7f\x80"
++			     "\x81\x82\x83\x84\x85\x86\x87\x88"
++			     "\x89\x8a\x8b\x8c\x8d\x8e\x8f\x90"
++			     "\x91\x92\x93\x94\x95\x96\x97\x98"
++			     "\x99\x9a\x9b\x9c\x9d\x9e\x9f\xa0"
++			     "\xa1\xa2\xa3\xa4\xa5\xa6\xa7\xa8"
++			     "\xa9\xaa\xab\xac\xad\xae\xaf\xb0"
++			     "\xb1\xb2\xb3\xb4\xb5\xb6\xb7\xb8"
++			     "\xb9\xba\xbb\xbc\xbd\xbe\xbf\xc0"
++			     "\xc1\xc2\xc3\xc4\xc5\xc6\xc7\xc8"
++			     "\xc9\xca\xcb\xcc\xcd\xce\xcf\xd0"
++			     "\xd1\xd2\xd3\xd4\xd5\xd6\xd7\xd8"
++			     "\xd9\xda\xdb\xdc\xdd\xde\xdf\xe0"
++			     "\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8"
++			     "\xe9\xea\xeb\xec\xed\xee\xef\xf0",
++		.psize = 240,
++		.np = 2,
++		.digest = "\x14\xbe\x65\xaf",
++		.tap = { 31, 209 }
++	},
 +};
 +
- static int __init crc32c_mod_init(void)
- {
--	return crypto_register_shash(&alg);
-+	int ret;
-+
-+	ret = crypto_register_shash(&alg_le);
-+	if (ret)
-+		return ret;
-+	ret = crypto_register_shash(&alg_be);
-+	if (ret)
-+		crypto_unregister_shash(&alg_le);
-+	return ret;
- }
- 
- static void __exit crc32c_mod_fini(void)
- {
--	crypto_unregister_shash(&alg);
-+	crypto_unregister_shash(&alg_be);
-+	crypto_unregister_shash(&alg_le);
- }
- 
- module_init(crc32c_mod_init);
-diff --git a/crypto/crc32c_defs.h b/crypto/crc32c_defs.h
-new file mode 100644
-index 0000000..977df8f
---- /dev/null
-+++ b/crypto/crc32c_defs.h
-@@ -0,0 +1,34 @@
-+/*
-+ * This is the CRC32c polynomial, as outlined by Castagnoli.
-+ * x^32+x^28+x^27+x^26+x^25+x^23+x^22+x^20+x^19+x^18+x^14+x^13+x^11+x^10+x^9+
-+ * x^8+x^6+x^0
-+ */
-+#define CRCPOLY_LE 0x82F63B78
-+#define CRCPOLY_BE 0x1EDC6F41
-+
-+/* How many bits at a time to use.  Valid values are 1, 2, 4, 8, 32 and 64. */
-+/* For less performance-sensitive, use 4 */
-+#ifndef CRC_LE_BITS
-+# define CRC_LE_BITS 64
-+#endif
-+#ifndef CRC_BE_BITS
-+# define CRC_BE_BITS 64
-+#endif
-+
-+/*
-+ * Little-endian CRC computation.  Used with serial bit streams sent
-+ * lsbit-first.  Be sure to use cpu_to_le32() to append the computed CRC.
-+ */
-+#if CRC_LE_BITS > 64 || CRC_LE_BITS < 1 || CRC_LE_BITS == 16 || \
-+	CRC_LE_BITS & CRC_LE_BITS-1
-+# error "CRC_LE_BITS must be one of {1, 2, 4, 8, 32, 64}"
-+#endif
-+
-+/*
-+ * Big-endian CRC computation.  Used with serial bit streams sent
-+ * msbit-first.  Be sure to use cpu_to_be32() to append the computed CRC.
-+ */
-+#if CRC_BE_BITS > 64 || CRC_BE_BITS < 1 || CRC_BE_BITS == 16 || \
-+	CRC_BE_BITS & CRC_BE_BITS-1
-+# error "CRC_BE_BITS must be one of {1, 2, 4, 8, 32, 64}"
-+#endif
+ #endif	/* _CRYPTO_TESTMGR_H */
