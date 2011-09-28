@@ -1,100 +1,100 @@
-From: Mel Gorman <mgorman@suse.de>
-Subject: Re: [patch 2/2/4] mm: try to distribute dirty pages fairly across
- zones
-Date: Wed, 28 Sep 2011 10:36:29 +0100
-Message-ID: <20110928093629.GE11313@suse.de>
-References: <1316526315-16801-1-git-send-email-jweiner@redhat.com>
- <1316526315-16801-3-git-send-email-jweiner@redhat.com>
- <20110921160226.1bf74494.akpm@google.com>
- <20110922085242.GA29046@redhat.com>
- <20110923144248.GC2606@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: Andrew Morton <akpm@google.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Dave Chinner <david@fromorbit.com>,
-	Wu Fengguang <fengguang.wu@intel.com>, Jan Kara <jack@suse.cz>,
-	Rik van Riel <riel@redhat.com>,
-	Minchan Kim <minchan.kim@gmail.com>,
-	Chris Mason <chris.mason@oracle.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>, xfs@oss.sgi.com,
-	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Johannes Weiner <jweiner@redhat.com>
+From: Tao Ma <tm@tao.ma>
+Subject: [PATCH] ext4: fix BUG_ON() in ext4_ext_insert_extent()
+Date: Wed, 28 Sep 2011 18:45:03 +0800
+Message-ID: <1317206703-5604-1-git-send-email-tm@tao.ma>
+References: <20110927193523.GB3309@thunk.org>
+Cc: Greg Kroah-Hartman <greg@kroah.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Xiaoyun Mao <xiaoyun.maoxy@aliyun-inc.com>,
+	Yingbin Wang <yingbin.wangyb@aliyun-inc.com>,
+	Jia Wan <jia.wanj@aliyun-inc.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:45083 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751434Ab1I1Jge (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 28 Sep 2011 05:36:34 -0400
-Content-Disposition: inline
-In-Reply-To: <20110923144248.GC2606@redhat.com>
+Received: from oproxy6-pub.bluehost.com ([67.222.54.6]:52227 "HELO
+	oproxy6-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753772Ab1I1Kp3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Sep 2011 06:45:29 -0400
+In-Reply-To: <20110927193523.GB3309@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 23, 2011 at 04:42:48PM +0200, Johannes Weiner wrote:
-> The maximum number of dirty pages that exist in the system at any time
-> is determined by a number of pages considered dirtyable and a
-> user-configured percentage of those, or an absolute number in bytes.
-> 
-> This number of dirtyable pages is the sum of memory provided by all
-> the zones in the system minus their lowmem reserves and high
-> watermarks, so that the system can retain a healthy number of free
-> pages without having to reclaim dirty pages.
-> 
-> But there is a flaw in that we have a zoned page allocator which does
-> not care about the global state but rather the state of individual
-> memory zones.  And right now there is nothing that prevents one zone
-> from filling up with dirty pages while other zones are spared, which
-> frequently leads to situations where kswapd, in order to restore the
-> watermark of free pages, does indeed have to write pages from that
-> zone's LRU list.  This can interfere so badly with IO from the flusher
-> threads that major filesystems (btrfs, xfs, ext4) mostly ignore write
-> requests from reclaim already, taking away the VM's only possibility
-> to keep such a zone balanced, aside from hoping the flushers will soon
-> clean pages from that zone.
-> 
-> Enter per-zone dirty limits.  They are to a zone's dirtyable memory
-> what the global limit is to the global amount of dirtyable memory, and
-> try to make sure that no single zone receives more than its fair share
-> of the globally allowed dirty pages in the first place.  As the number
-> of pages considered dirtyable exclude the zones' lowmem reserves and
-> high watermarks, the maximum number of dirty pages in a zone is such
-> that the zone can always be balanced without requiring page cleaning.
-> 
-> As this is a placement decision in the page allocator and pages are
-> dirtied only after the allocation, this patch allows allocators to
-> pass __GFP_WRITE when they know in advance that the page will be
-> written to and become dirty soon.  The page allocator will then
-> attempt to allocate from the first zone of the zonelist - which on
-> NUMA is determined by the task's NUMA memory policy - that has not
-> exceeded its dirty limit.
-> 
-> At first glance, it would appear that the diversion to lower zones can
-> increase pressure on them, but this is not the case.  With a full high
-> zone, allocations will be diverted to lower zones eventually, so it is
-> more of a shift in timing of the lower zone allocations.  Workloads
-> that previously could fit their dirty pages completely in the higher
-> zone may be forced to allocate from lower zones, but the amount of
-> pages that 'spill over' are limited themselves by the lower zones'
-> dirty constraints, and thus unlikely to become a problem.
-> 
-> For now, the problem of unfair dirty page distribution remains for
-> NUMA configurations where the zones allowed for allocation are in sum
-> not big enough to trigger the global dirty limits, wake up the flusher
-> threads and remedy the situation.  Because of this, an allocation that
-> could not succeed on any of the considered zones is allowed to ignore
-> the dirty limits before going into direct reclaim or even failing the
-> allocation, until a future patch changes the global dirty throttling
-> and flusher thread activation so that they take individual zone states
-> into account.
-> 
-> Signed-off-by: Johannes Weiner <jweiner@redhat.com>
+Hi Ted,
+On 09/28/2011 03:35 AM, Ted Ts'o wrote:
+> On Mon, Sep 26, 2011 at 10:28:08AM -0400, Konrad Rzeszutek Wilk wrote:
+>>> > >  
+>>> > >    Attached is the fix, verified in our env. 
+>> > 
+>> > So.. you are asking for this upstream git commit to be back-ported
+>> > to 2.6.32, right?
+> I'm curious --- is there a good reason why Xen users are using an
+> upstream 2.6.32 kernel?  If they are using a distro kernel, fine, but
+> then the distro kernel should be providing the support.  But at this
+> point, 2.6.32 is so positively *ancient* that, I'm personally not
+> interesting in providing free, unpaid distro support for users who
+> aren't willing to either (a) pay $$$ and get a supported distro
+> kernel, or (b) use a much more modern kernel.  At this point, Guest
+> and Host Xen support is available in 3.0 kernels, so there's really no
+> excuse, right?
+actually this bug does show up in 2.6.39 and I think stable tree still
+needs this fix. After some careful test, my colleague has generated
+the patch. Please considering ack it so that Greg can add it into the
+stable tree.
 
-Acked-by: Mel Gorman <mgorman@suse.de>
+Thanks
+Tao
 
+>From 600d493b14ebd776cf8ea0e9dcdccc0d54200403 Mon Sep 17 00:00:00 2001
+From: Zheng Liu <wenqing.lz@taobao.com>
+Date: Wed, 28 Sep 2011 16:26:05 +0800
+Subject: [PATCH] ext4: fix BUG_ON() in ext4_ext_insert_extent()
+
+We will meet with a BUG_ON() if following script is run.
+
+mkfs.ext4 -b 4096 /dev/sdb1 1000000
+mount -t ext4 /dev/sdb1 /mnt/sdb1
+fallocate -l 100M /mnt/sdb1/test
+sync
+for((i=0;i<170;i++))
+do
+        dd if=/dev/zero of=/mnt/sdb1/test conv=notrunc bs=256k count=1 seek=`expr $i \* 2`
+done
+umount /mnt/sdb1
+mount -t ext4 /dev/sdb1 /mnt/sdb1
+dd if=/dev/zero of=/mnt/sdb1/test conv=notrunc bs=256k count=1 seek=341
+umount /mnt/sdb1
+mount /dev/sdb1 /mnt/sdb1
+dd if=/dev/zero of=/mnt/sdb1/test conv=notrunc bs=256k count=1 seek=340
+sync
+
+The reason is that it forgot to mark dirty when splitting two extents in
+ext4_ext_convert_to_initialized(). Althrough ex has been updated in memory,
+it is not dirtied both in ext4_ext_convert_to_initialized() and
+ext4_ext_insert_extent(). The disk layout is corrupted. Then it will meet with
+a BUG_ON() when writting at the start of that extent again.
+
+Cc: stable@kernel.org #for 2.6.39
+Cc: Greg Kroah-Hartman <greg@kroah.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Xiaoyun Mao <xiaoyun.maoxy@aliyun-inc.com>
+Cc: Yingbin Wang <yingbin.wangyb@aliyun-inc.com>
+Cc: Jia Wan <jia.wanj@aliyun-inc.com>
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+---
+ fs/ext4/extents.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 4890d6f..cd20425 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2607,6 +2607,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 		ex1 = ex;
+ 		ex1->ee_len = cpu_to_le16(map->m_lblk - ee_block);
+ 		ext4_ext_mark_uninitialized(ex1);
++		ext4_ext_dirty(handle, inode, path + depth);
+ 		ex2 = &newex;
+ 	}
+ 	/*
 -- 
-Mel Gorman
-SUSE Labs
+1.7.4.1
+
