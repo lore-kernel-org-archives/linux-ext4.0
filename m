@@ -1,100 +1,39 @@
-From: Tao Ma <tm@tao.ma>
-Subject: [PATCH] ext4: fix BUG_ON() in ext4_ext_insert_extent()
-Date: Wed, 28 Sep 2011 18:45:03 +0800
-Message-ID: <1317206703-5604-1-git-send-email-tm@tao.ma>
-References: <20110927193523.GB3309@thunk.org>
-Cc: Greg Kroah-Hartman <greg@kroah.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Xiaoyun Mao <xiaoyun.maoxy@aliyun-inc.com>,
-	Yingbin Wang <yingbin.wangyb@aliyun-inc.com>,
-	Jia Wan <jia.wanj@aliyun-inc.com>
-To: linux-ext4@vger.kernel.org
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [02/23] ext4: enforce bigalloc restrictions (e.g., no online
+ resizing, etc.)
+Date: Wed, 28 Sep 2011 08:55:45 -0400
+Message-ID: <20110928125545.GB13578@thunk.org>
+References: <1309970166-11770-2-git-send-email-tytso@mit.edu>
+ <1309970166-11770-3-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: devel@dbtest.test.cnz.alimama.com,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Robin Dong <sanbai@taobao.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy6-pub.bluehost.com ([67.222.54.6]:52227 "HELO
-	oproxy6-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753772Ab1I1Kp3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Sep 2011 06:45:29 -0400
-In-Reply-To: <20110927193523.GB3309@thunk.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:38868 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752101Ab1I1Mzv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 28 Sep 2011 08:55:51 -0400
+Content-Disposition: inline
+In-Reply-To: <1309970166-11770-3-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
-On 09/28/2011 03:35 AM, Ted Ts'o wrote:
-> On Mon, Sep 26, 2011 at 10:28:08AM -0400, Konrad Rzeszutek Wilk wrote:
->>> > >  
->>> > >    Attached is the fix, verified in our env. 
->> > 
->> > So.. you are asking for this upstream git commit to be back-ported
->> > to 2.6.32, right?
-> I'm curious --- is there a good reason why Xen users are using an
-> upstream 2.6.32 kernel?  If they are using a distro kernel, fine, but
-> then the distro kernel should be providing the support.  But at this
-> point, 2.6.32 is so positively *ancient* that, I'm personally not
-> interesting in providing free, unpaid distro support for users who
-> aren't willing to either (a) pay $$$ and get a supported distro
-> kernel, or (b) use a much more modern kernel.  At this point, Guest
-> and Host Xen support is available in 3.0 kernels, so there's really no
-> excuse, right?
-actually this bug does show up in 2.6.39 and I think stable tree still
-needs this fix. After some careful test, my colleague has generated
-the patch. Please considering ack it so that Greg can add it into the
-stable tree.
+On Tue, Sep 20, 2011 at 10:20:01AM +0800, Robin Dong wrote:
+> From: Theodore Ts'o <tytso@mit.edu>
+> 
+> At least initially if the bigalloc feature is enabled, we will not
+> support non-extent mapped inodes, online resizing, online defrag, or
+> the FITRIM ioctl.  This simplifies the initial implementation.
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Signed-off-by: Robin Dong <sanbai@taobao.com>
+> Acked-by:
 
-Thanks
-Tao
+Hi Robin,
 
->From 600d493b14ebd776cf8ea0e9dcdccc0d54200403 Mon Sep 17 00:00:00 2001
-From: Zheng Liu <wenqing.lz@taobao.com>
-Date: Wed, 28 Sep 2011 16:26:05 +0800
-Subject: [PATCH] ext4: fix BUG_ON() in ext4_ext_insert_extent()
+What was your purpose in resending these patches?  Did you modify them
+in any way?   I can diff them all, but it's a pain...
 
-We will meet with a BUG_ON() if following script is run.
-
-mkfs.ext4 -b 4096 /dev/sdb1 1000000
-mount -t ext4 /dev/sdb1 /mnt/sdb1
-fallocate -l 100M /mnt/sdb1/test
-sync
-for((i=0;i<170;i++))
-do
-        dd if=/dev/zero of=/mnt/sdb1/test conv=notrunc bs=256k count=1 seek=`expr $i \* 2`
-done
-umount /mnt/sdb1
-mount -t ext4 /dev/sdb1 /mnt/sdb1
-dd if=/dev/zero of=/mnt/sdb1/test conv=notrunc bs=256k count=1 seek=341
-umount /mnt/sdb1
-mount /dev/sdb1 /mnt/sdb1
-dd if=/dev/zero of=/mnt/sdb1/test conv=notrunc bs=256k count=1 seek=340
-sync
-
-The reason is that it forgot to mark dirty when splitting two extents in
-ext4_ext_convert_to_initialized(). Althrough ex has been updated in memory,
-it is not dirtied both in ext4_ext_convert_to_initialized() and
-ext4_ext_insert_extent(). The disk layout is corrupted. Then it will meet with
-a BUG_ON() when writting at the start of that extent again.
-
-Cc: stable@kernel.org #for 2.6.39
-Cc: Greg Kroah-Hartman <greg@kroah.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Xiaoyun Mao <xiaoyun.maoxy@aliyun-inc.com>
-Cc: Yingbin Wang <yingbin.wangyb@aliyun-inc.com>
-Cc: Jia Wan <jia.wanj@aliyun-inc.com>
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
----
- fs/ext4/extents.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 4890d6f..cd20425 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2607,6 +2607,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 		ex1 = ex;
- 		ex1->ee_len = cpu_to_le16(map->m_lblk - ee_block);
- 		ext4_ext_mark_uninitialized(ex1);
-+		ext4_ext_dirty(handle, inode, path + depth);
- 		ex2 = &newex;
- 	}
- 	/*
--- 
-1.7.4.1
-
+       	      	    	      	       	    - Ted
