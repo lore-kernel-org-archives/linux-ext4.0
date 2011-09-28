@@ -1,45 +1,81 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCH 2/3] libcrc32c: Expose big-endian version of crc32c
-Date: Wed, 28 Sep 2011 09:51:45 -0700
-Message-ID: <20110928165133.GQ12086@tux1.beaverton.ibm.com>
-References: <20110927221239.21653.17489.stgit@elm3c44.beaverton.ibm.com> <20110927221253.21653.28062.stgit@elm3c44.beaverton.ibm.com> <20110928035356.GA6671@gondor.apana.org.au>
-Reply-To: djwong@us.ibm.com
+From: Minchan Kim <minchan.kim@gmail.com>
+Subject: Re: [patch 2/2/4] mm: try to distribute dirty pages fairly across
+ zones
+Date: Thu, 29 Sep 2011 03:09:07 +0900
+Message-ID: <20110928180907.GD1696@barrios-desktop>
+References: <1316526315-16801-1-git-send-email-jweiner@redhat.com>
+ <1316526315-16801-3-git-send-email-jweiner@redhat.com>
+ <20110921160226.1bf74494.akpm@google.com>
+ <20110922085242.GA29046@redhat.com>
+ <20110923144248.GC2606@redhat.com>
+ <20110928055640.GB14561@barrios-desktop>
+ <20110928071154.GA23535@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	Theodore Tso <tytso@mit.edu>,
-	David Miller <davem@davemloft.net>,
-	Bob Pearson <rpearson@systemfabricworks.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Mingming Cao <cmm@us.ibm.com>,
-	linux-crypto <linux-crypto@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Herbert Xu <herbert@gondor.apana.org.au>
-Return-path: <linux-crypto-owner@vger.kernel.org>
+Cc: Andrew Morton <akpm@google.com>, Mel Gorman <mgorman@suse.de>,
+	Christoph Hellwig <hch@infradead.org>,
+	Dave Chinner <david@fromorbit.com>,
+	Wu Fengguang <fengguang.wu@intel.com>, Jan Kara <jack@suse.cz>,
+	Rik van Riel <riel@redhat.com>,
+	Chris Mason <chris.mason@oracle.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>, xfs@oss.sgi.com,
+	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Johannes Weiner <jweiner@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20110928035356.GA6671@gondor.apana.org.au>
-Sender: linux-crypto-owner@vger.kernel.org
+In-Reply-To: <20110928071154.GA23535@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Sep 28, 2011 at 01:53:59PM +1000, Herbert Xu wrote:
-> On Tue, Sep 27, 2011 at 03:12:53PM -0700, Darrick J. Wong wrote:
-> > Provide a big-endian version of crc32c for modules that want it.
+On Wed, Sep 28, 2011 at 09:11:54AM +0200, Johannes Weiner wrote:
+> On Wed, Sep 28, 2011 at 02:56:40PM +0900, Minchan Kim wrote:
+> > On Fri, Sep 23, 2011 at 04:42:48PM +0200, Johannes Weiner wrote:
+> > > The maximum number of dirty pages that exist in the system at any time
+> > > is determined by a number of pages considered dirtyable and a
+> > > user-configured percentage of those, or an absolute number in bytes.
+> > 
+> > It's explanation of old approach.
 > 
-> Who is going to use this?
+> What do you mean?  This does not change with this patch.  We still
+> have a number of dirtyable pages and a limit that is applied
+> relatively to this number.
+> 
+> > > This number of dirtyable pages is the sum of memory provided by all
+> > > the zones in the system minus their lowmem reserves and high
+> > > watermarks, so that the system can retain a healthy number of free
+> > > pages without having to reclaim dirty pages.
+> > 
+> > It's a explanation of new approach.
+> 
+> Same here, this aspect is also not changed with this patch!
+> 
+> > > But there is a flaw in that we have a zoned page allocator which does
+> > > not care about the global state but rather the state of individual
+> > > memory zones.  And right now there is nothing that prevents one zone
+> > > from filling up with dirty pages while other zones are spared, which
+> > > frequently leads to situations where kswapd, in order to restore the
+> > > watermark of free pages, does indeed have to write pages from that
+> > > zone's LRU list.  This can interfere so badly with IO from the flusher
+> > > threads that major filesystems (btrfs, xfs, ext4) mostly ignore write
+> > > requests from reclaim already, taking away the VM's only possibility
+> > > to keep such a zone balanced, aside from hoping the flushers will soon
+> > > clean pages from that zone.
+> > 
+> > It's a explanation of old approach, again!
+> > Shoudn't we move above phrase of new approach into below?
+> 
+> Everything above describes the current behaviour (at the point of this
+> patch, so respecting lowmem_reserve e.g. is part of the current
+> behaviour by now) and its problems.  And below follows a description
+> of how the patch tries to fix it.
 
-Well, I was using it for jbd2 ... but since you ask, it seems to work just as
-well with crc32c-le, so I think I'll just drop the -be version.
+It seems that it's not a good choice to use "old" and "new" terms.
+Hannes, please ignore, it's not a biggie.
 
---D
-> 
-> Thanks,
-> -- 
-> Email: Herbert Xu <herbert@gondor.apana.org.au>
-> Home Page: http://gondor.apana.org.au/~herbert/
-> PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+-- 
+Kind regards,
+Minchan Kim
