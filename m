@@ -1,84 +1,144 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: [RFC] Add inline data support in ext4
-Date: Wed, 28 Sep 2011 17:06:12 +0800
-Message-ID: <4E82E384.80405@tao.ma>
-References: <4E81770D.8090309@tao.ma> <4E1AC23D-3CC8-4C8C-BA54-F2AB9958D13A@dilger.ca>
+From: Jeff Liu <jeff.liu@oracle.com>
+Subject: Re: Add SEEK_DATA/SEEK_HOLE support V2
+Date: Wed, 28 Sep 2011 17:06:30 +0800
+Message-ID: <4E82E396.8010506@oracle.com>
+References: <4E82BF7B.7000403@oracle.com>	<CAGBYx2YzeBvQPEV7uuHmxwZQD+oE+nuF_bd+CZwzm1F0n8o-ZA@mail.gmail.com>	<4E82D48C.2000603@oracle.com>	<CAGBYx2YP0=BW-86-9zaaTqu+-x85JqEECkpsQH89AD6L7sGeKg@mail.gmail.com>	<4E82DD8C.9010505@oracle.com> <CAGBYx2bqHz_0+Db8uZodQ6J-hc8K_0CZR4hx=XgnLA50inOY0Q@mail.gmail.com>
+Reply-To: jeff.liu@oracle.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Ted Ts'o <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org,
+	Sunil Mushran <sunil.mushran@oracle.com>
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy4-pub.bluehost.com ([69.89.21.11]:34212 "HELO
-	oproxy4-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751839Ab1I1JGR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Sep 2011 05:06:17 -0400
-In-Reply-To: <4E1AC23D-3CC8-4C8C-BA54-F2AB9958D13A@dilger.ca>
+Received: from acsinet15.oracle.com ([141.146.126.227]:53915 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751417Ab1I1JGp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Sep 2011 05:06:45 -0400
+In-Reply-To: <CAGBYx2bqHz_0+Db8uZodQ6J-hc8K_0CZR4hx=XgnLA50inOY0Q@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Andreas,
-	Thanks for the feedback.
-On 09/28/2011 03:34 AM, Andreas Dilger wrote:
-> On 2011-09-27, at 1:11 AM, Tao Ma wrote:
->> Hi Ted, Andreas and the list,
->> 	As you may already know, we are beginning to evaluate the
->> bigalloc features in our production system. The performance looks
->> promising, but we have also met with a severe problem with bigalloc.
->>
->> As ext4 now allocates one block for the directory even if it is empty,
->> it is really space-consuming for some applications which uses hashes
->> and create large numbers of directories(AUFS in squid for example).
->>
->> ocfs2 now uses inline data for a new created file/dir so that some
->> small ones can have their data within the inodes. It is really helpful
->> and we are considering adding the same to ext4.
->>
->> What is your option? I haven't been involved in ext4 for a long time,
->> so I am not sure whether there was a similar try which was abandoned
->> finally. Anyway, with bigalloc added, it is really needed for us to
->> support inline data now.
-> 
-> At one time we discussed storing file tails in xattrs to allow small
-> files stored inside the inode itself.  There is already an EXT2_TAIL_FL
-> that was used on reiserfs that could be reused for ext4, though it
-> would need a new INCOMPAT feature flag.  This idea could be expanded
-> to sharing a single bigalloc chunk as an xattr block between multiple
-> files, and each one storing their file/dir data in a "system.data"
-> xattr (or something similar).
-> 
-> For small directories, the "." and ".." entries could even be stored
-> inside the inode in this "system.data" xattr, since they are only 24
-> bytes in size and there are ~100 bytes of xattr space in a 256-byte
-> inode.  By making all "small data" (smaller than, say 1/2 of a chunk)
-> an xattr, the xattr code can use the most efficient location for the
-> storage, either inside the inode, or in a shared block.
-> 
-> I read once that there are many directories with only one or two
-> files in them, and 100 bytes could hold 3 or 4 dirents, or more
-> for larger inodes.  This would probably be an improvement even for
-> non-bigalloc filesystems, since small directories could be handled
-> without seeks, as could very small files.
-> 
-> A quick check of my home directory shows mostly small subdirectories:
-> 
-> dirs=44859 files=677028 filename_chars=12909288 mean_chars=19
-> dirs: zero_dirent=1609 one_dirent=12937 two_dirent=2456 mean_dirent=17
-> 
-> so more 37% of directories have 2 or fewer files/subdirs, and the
-> average size of a directory is ((19 + 3 + 8) * 17) = 510 bytes.
-> The +3 is for rounding the name up to a multiple of 4, and +8 is
-> for the inode, length, and type fields in the dirent.  The same looks
-> to be true for /usr as well.
-> 
-> So, in this case, close to half of directories could be held entirely
-> within the system.data xattr inside a 512-byte inode.
-yeah, actually my home are similar like yours. So I guess others have
-similar ones which makes in-inode data very beneficial. And actually
-ocfs2 works like what you describes above. It shares the spaces after
-the field of an inode with xattr and it works well. So I will try to
-generate some rough codes to test how it works.
+On 09/28/2011 04:53 PM, Yongqiang Yang wrote:
 
-Thanks
-Tao
+> On Wed, Sep 28, 2011 at 4:40 PM, Jeff Liu <jeff.liu@oracle.com> wrote:
+>> On 09/28/2011 04:11 PM, Yongqiang Yang wrote:
+>>
+>>> On Wed, Sep 28, 2011 at 4:02 PM, Jeff Liu <jeff.liu@oracle.com> wrote:
+>>>> On 09/28/2011 03:21 PM, Yongqiang Yang wrote:
+>>>>
+>>>>> On Wed, Sep 28, 2011 at 2:32 PM, Jeff Liu <jeff.liu@oracle.com> wrote:
+>>>>>> Hello all,
+>>>>>>
+>>>>>> This is the V2 for add SEEK_DATA/SEEK_HOLE support to ext4.
+>>>>>> In V1, I copied all the codes regarding fetching delayed-extents out to
+>>>>>> my seek callback function, it's stupid to duplicate the code blocks.
+>>>>>>
+>>>>>> Now the idea is, since the delayed-extents is the main concern to search
+>>>>>> extents for both fiemap and seek, so IMHO, it's better to consolidate
+>>>>>> this procedure into a new function(get_delayed_extent() in my patch),
+>>>>>> and call it in fiemap and seek call-back functions if necessary.  In
+>>>>>> this way, when yongqiang's delayed-extents tree is ready, we only need
+>>>>>> to modify the code block at get_delayed_extent() accordingly.
+>>>>>>
+>>>>>> In addition, yongqiang has pointed out there might be a deadlock, but
+>>>>>> per my understood, as the target inode already locked via i_mutex in
+>>>>>> ext4_llseek() before, this lock can prevent any modification to the
+>>>>>> file, and we call find_get_pages_tag() when trying to fetch the dirty
+>>>>>> pages, this function using rcu read lock, it also safe to read.  So I
+>>>>>> have no idea what's wrong, could anyone please kindly point me out in
+>>>>>> this case?  I'm definitely a newbie to this list, sorry for my ignorant.
+>>>>> Ok.  There is no deadlock, fiemap releases i_data_sem before calling
+>>>>> get_delayed_extent().
+>>>>>
+>>>>> BTW: It seems that there is a bug in fiemap according to code, I am
+>>>>> not sure which commit introduced it, delayed extents beyond last
+>>>>> allocated block are ignored.
+>>>>
+>>>> Hmm... could you show me a bit more detailed info with the test scenario
+>>>> if convenient? I can help testing, at least 3.1.0-rc2+ is works to me.
+>>> Could you test a file with map info like AAAADDDDDHHHHDDDD,
+>>> A-allocated block, D-deayed block, H-hole.  then filefrag -v and have
+>>> a look if extent map info is right.
+>>
+>> Do you means, open a file, write something, fsync(), then write
+>> something, seek to some position and write something again?
+> Yep.
+>> If so, looks the filefrag -v result is ok by waiting for a few seconds.
+> What do you mean waiting for a few seconds?
+
+If run filefrag -v immediately against a just created file, the delayed
+extents will not shown, we have to wait a little while until they are
+really allocated IMHO.
+
+Thanks,
+-Jeff
+
+> 
+> 
+> Yongqiang.
+>>
+>> Thanks,
+>> -Jeff
+>>
+>>>
+>>> Thanks,
+>>> Yongqiang.
+>>>>
+>>>> Also, upstream coreutils-cp(1) has been well tested for ext4, it could
+>>>> be used for fiemap tests based on the extent_scan module:
+>>>> http://git.savannah.gnu.org/cgit/coreutils.git/tree/src/extent-scan.c?h=next&id=b56b53bd70b1f8fa2b5a95d4569bb72a2419b5cd
+>>>>
+>>>> Thanks,
+>>>> -Jeff
+>>>>
+>>>>>
+>>>>> Yongqiang.
+>>>>>>
+>>>>>> Anyway, I'd like to post the revised for your guys review first.
+>>>>>> In have split the modification to two patches this time, since I hope to
+>>>>>> make it looks more convenient for the review purpose.
+>>>>>>
+>>>>>> The 1st patch, remove the delayed-extents fetching procedure to a
+>>>>>> function named as get_delayed_extent(), and modify the
+>>>>>> ext4_ext_fiemap_cb() accordingly.
+>>>>>>
+>>>>>> The 2nd path add the ext4_ext_seek_cb() to implement the
+>>>>>> SEEK_HOLE/SEEK_DATA stuff based on previous code change.
+>>>>>>
+>>>>>> Testing:
+>>>>>> ========
+>>>>>> In addition to the test cases mentioned in V1, I also done another tests
+>>>>>> through sunil's seek test program, please refer to:
+>>>>>> http://oss.oracle.com/~smushran/seek_data/seek_test.c
+>>>>>>
+>>>>>> To ensure the 1st patch does not cause regression issue on fiemap, I
+>>>>>> have done some tests via cp(1) with fiemap copy support, the sparse file
+>>>>>> used for this test is produced by:
+>>>>>> python -c "f=open('./sptest', 'w'); [(f.seek(x) or f.write(str(x))) for
+>>>>>> x in range(1, 1000000000, 99999)]; f.close()
+>>>>>>
+>>>>>>
+>>>>>> Any feedback are appreciated!
+>>>>>>
+>>>>>>
+>>>>>> Thanks,
+>>>>>> -Jeff
+>>>>>>
+>>>>>
+>>>>>
+>>>>>
+>>>>
+>>>>
+>>>>
+>>>
+>>>
+>>>
+>>
+>>
+>>
+> 
+> 
+> 
+
+
