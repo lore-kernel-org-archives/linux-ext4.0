@@ -1,39 +1,45 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [02/23] ext4: enforce bigalloc restrictions (e.g., no online
- resizing, etc.)
-Date: Wed, 28 Sep 2011 08:55:45 -0400
-Message-ID: <20110928125545.GB13578@thunk.org>
-References: <1309970166-11770-2-git-send-email-tytso@mit.edu>
- <1309970166-11770-3-git-send-email-tytso@mit.edu>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [PATCH 2/3] libcrc32c: Expose big-endian version of crc32c
+Date: Wed, 28 Sep 2011 09:51:45 -0700
+Message-ID: <20110928165133.GQ12086@tux1.beaverton.ibm.com>
+References: <20110927221239.21653.17489.stgit@elm3c44.beaverton.ibm.com> <20110927221253.21653.28062.stgit@elm3c44.beaverton.ibm.com> <20110928035356.GA6671@gondor.apana.org.au>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: devel@dbtest.test.cnz.alimama.com,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Robin Dong <sanbai@taobao.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38868 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752101Ab1I1Mzv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 28 Sep 2011 08:55:51 -0400
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	Theodore Tso <tytso@mit.edu>,
+	David Miller <davem@davemloft.net>,
+	Bob Pearson <rpearson@systemfabricworks.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Mingming Cao <cmm@us.ibm.com>,
+	linux-crypto <linux-crypto@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Herbert Xu <herbert@gondor.apana.org.au>
+Return-path: <linux-crypto-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1309970166-11770-3-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20110928035356.GA6671@gondor.apana.org.au>
+Sender: linux-crypto-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Sep 20, 2011 at 10:20:01AM +0800, Robin Dong wrote:
-> From: Theodore Ts'o <tytso@mit.edu>
+On Wed, Sep 28, 2011 at 01:53:59PM +1000, Herbert Xu wrote:
+> On Tue, Sep 27, 2011 at 03:12:53PM -0700, Darrick J. Wong wrote:
+> > Provide a big-endian version of crc32c for modules that want it.
 > 
-> At least initially if the bigalloc feature is enabled, we will not
-> support non-extent mapped inodes, online resizing, online defrag, or
-> the FITRIM ioctl.  This simplifies the initial implementation.
+> Who is going to use this?
+
+Well, I was using it for jbd2 ... but since you ask, it seems to work just as
+well with crc32c-le, so I think I'll just drop the -be version.
+
+--D
 > 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> Signed-off-by: Robin Dong <sanbai@taobao.com>
-> Acked-by:
-
-Hi Robin,
-
-What was your purpose in resending these patches?  Did you modify them
-in any way?   I can diff them all, but it's a pain...
-
-       	      	    	      	       	    - Ted
+> Thanks,
+> -- 
+> Email: Herbert Xu <herbert@gondor.apana.org.au>
+> Home Page: http://gondor.apana.org.au/~herbert/
+> PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
