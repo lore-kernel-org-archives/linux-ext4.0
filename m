@@ -1,232 +1,65 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [RFC PATCH V2 6/6] ext4: reimplement fiemap on delayed extent tree
-Date: Thu, 29 Sep 2011 13:08:46 +0800
-Message-ID: <1317272926-13303-7-git-send-email-xiaoqiangnk@gmail.com>
-References: <1317272926-13303-1-git-send-email-xiaoqiangnk@gmail.com>
-Cc: jack@suse.cz, jeff.liu@oracle.com, achender@linux.vnet.ibm.com,
-	adityakali@google.com, Yongqiang Yang <xiaoqiangnk@gmail.com>
-To: linux-ext4@vger.kernel.org
+From: Tao Ma <tm@tao.ma>
+Subject: Re: [RFC PATCH V2 2/6] ext4: add a delayed extents tree in inode
+ info
+Date: Thu, 29 Sep 2011 14:56:38 +0800
+Message-ID: <4E8416A6.3070302@tao.ma>
+References: <1317272926-13303-1-git-send-email-xiaoqiangnk@gmail.com> <1317272926-13303-3-git-send-email-xiaoqiangnk@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, jack@suse.cz, jeff.liu@oracle.com,
+	achender@linux.vnet.ibm.com, adityakali@google.com
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yi0-f46.google.com ([209.85.218.46]:33073 "EHLO
-	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751638Ab1I2Gln (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Sep 2011 02:41:43 -0400
-Received: by mail-yi0-f46.google.com with SMTP id 18so248472yib.19
-        for <linux-ext4@vger.kernel.org>; Wed, 28 Sep 2011 23:41:43 -0700 (PDT)
-In-Reply-To: <1317272926-13303-1-git-send-email-xiaoqiangnk@gmail.com>
+Received: from oproxy3-pub.bluehost.com ([69.89.21.8]:46755 "HELO
+	oproxy3-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751840Ab1I2G4r (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Sep 2011 02:56:47 -0400
+In-Reply-To: <1317272926-13303-3-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch reimplements fiemap on delayed extent tree.
+Hi Yongqiang,
+On 09/29/2011 01:08 PM, Yongqiang Yang wrote:
+> This patch adds a delayed extents tree in inode info, so that
+> delayed extents can be look up quickly.  Without the tree
+> delayed extents are identified by looking up page cache.
+> 
+> With the tree, FIEMAP, SEEK_HOLE/DATA, bigalloc and writeout
+> path can be optimized a lot.
+> 
+> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+> ---
+>  fs/ext4/ext4.h |    5 +++++
+>  1 files changed, 5 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index ccfa81f..d3c6b97 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -760,6 +760,8 @@ struct ext4_ext_cache {
+>  	__u32		ec_len; /* must be 32bit to return holes */
+>  };
+>  
+> +#include "delayed_extents.h"
+> +
+>  /*
+>   * fourth extended file system inode data in memory
+>   */
+> @@ -837,6 +839,9 @@ struct ext4_inode_info {
+>  	struct list_head i_prealloc_list;
+>  	spinlock_t i_prealloc_lock;
+>  
+> +	/* delayed extents */
+> +	struct ext4_de_tree i_de_tree;
+> +
+Can we integrate this patch with patch 1/6?
+I think it would be beneficial for the reviewer to see both the
+definition of the structure and the place you put it.
 
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
----
- fs/ext4/extents.c |  186 +++++++----------------------------------------------
- 1 files changed, 23 insertions(+), 163 deletions(-)
+Thanks
+Tao
+>  	/* ialloc */
+>  	ext4_group_t	i_last_alloc_group;
+>  
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index bdbb984..c2ae125 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3909,193 +3909,53 @@ static int ext4_ext_fiemap_cb(struct inode *inode, ext4_lblk_t next,
- 		       struct ext4_ext_cache *newex, struct ext4_extent *ex,
- 		       void *data)
- {
-+	struct delayed_extent de;
- 	__u64	logical;
- 	__u64	physical;
- 	__u64	length;
- 	__u32	flags = 0;
-+	ext4_lblk_t next_del;
- 	int		ret = 0;
- 	struct fiemap_extent_info *fieinfo = data;
- 	unsigned char blksize_bits;
- 
--	blksize_bits = inode->i_sb->s_blocksize_bits;
--	logical = (__u64)newex->ec_block << blksize_bits;
-+	de.start = newex->ec_block;
-+	down_read(&EXT4_I(inode)->i_data_sem);
-+	next_del = ext4_de_find_extent(inode, &de);
-+	up_read(&EXT4_I(inode)->i_data_sem);
- 
-+	next = min(next_del, next);
- 	if (newex->ec_start == 0) {
- 		/*
- 		 * No extent in extent-tree contains block @newex->ec_start,
- 		 * then the block may stay in 1)a hole or 2)delayed-extent.
--		 *
--		 * Holes or delayed-extents are processed as follows.
--		 * 1. lookup dirty pages with specified range in pagecache.
--		 *    If no page is got, then there is no delayed-extent and
--		 *    return with EXT_CONTINUE.
--		 * 2. find the 1st mapped buffer,
--		 * 3. check if the mapped buffer is both in the request range
--		 *    and a delayed buffer. If not, there is no delayed-extent,
--		 *    then return.
--		 * 4. a delayed-extent is found, the extent will be collected.
- 		 */
--		ext4_lblk_t	end = 0;
--		pgoff_t		last_offset;
--		pgoff_t		offset;
--		pgoff_t		index;
--		pgoff_t		start_index = 0;
--		struct page	**pages = NULL;
--		struct buffer_head *bh = NULL;
--		struct buffer_head *head = NULL;
--		unsigned int nr_pages = PAGE_SIZE / sizeof(struct page *);
--
--		pages = kmalloc(PAGE_SIZE, GFP_KERNEL);
--		if (pages == NULL)
--			return -ENOMEM;
--
--		offset = logical >> PAGE_SHIFT;
--repeat:
--		last_offset = offset;
--		head = NULL;
--		ret = find_get_pages_tag(inode->i_mapping, &offset,
--					PAGECACHE_TAG_DIRTY, nr_pages, pages);
--
--		if (!(flags & FIEMAP_EXTENT_DELALLOC)) {
--			/* First time, try to find a mapped buffer. */
--			if (ret == 0) {
--out:
--				for (index = 0; index < ret; index++)
--					page_cache_release(pages[index]);
--				/* just a hole. */
--				kfree(pages);
--				return EXT_CONTINUE;
--			}
--			index = 0;
--
--next_page:
--			/* Try to find the 1st mapped buffer. */
--			end = ((__u64)pages[index]->index << PAGE_SHIFT) >>
--				  blksize_bits;
--			if (!page_has_buffers(pages[index]))
--				goto out;
--			head = page_buffers(pages[index]);
--			if (!head)
--				goto out;
--
--			index++;
--			bh = head;
--			do {
--				if (end >= newex->ec_block +
--					newex->ec_len)
--					/* The buffer is out of
--					 * the request range.
--					 */
--					goto out;
--
--				if (buffer_mapped(bh) &&
--				    end >= newex->ec_block) {
--					start_index = index - 1;
--					/* get the 1st mapped buffer. */
--					goto found_mapped_buffer;
--				}
--
--				bh = bh->b_this_page;
--				end++;
--			} while (bh != head);
--
--			/* No mapped buffer in the range found in this page,
--			 * We need to look up next page.
--			 */
--			if (index >= ret) {
--				/* There is no page left, but we need to limit
--				 * newex->ec_len.
--				 */
--				newex->ec_len = end - newex->ec_block;
--				goto out;
--			}
--			goto next_page;
--		} else {
--			/*Find contiguous delayed buffers. */
--			if (ret > 0 && pages[0]->index == last_offset)
--				head = page_buffers(pages[0]);
--			bh = head;
--			index = 1;
--			start_index = 0;
--		}
--
--found_mapped_buffer:
--		if (bh != NULL && buffer_delay(bh)) {
--			/* 1st or contiguous delayed buffer found. */
--			if (!(flags & FIEMAP_EXTENT_DELALLOC)) {
--				/*
--				 * 1st delayed buffer found, record
--				 * the start of extent.
--				 */
--				flags |= FIEMAP_EXTENT_DELALLOC;
--				newex->ec_block = end;
--				logical = (__u64)end << blksize_bits;
--			}
--			/* Find contiguous delayed buffers. */
--			do {
--				if (!buffer_delay(bh))
--					goto found_delayed_extent;
--				bh = bh->b_this_page;
--				end++;
--			} while (bh != head);
--
--			for (; index < ret; index++) {
--				if (!page_has_buffers(pages[index])) {
--					bh = NULL;
--					break;
--				}
--				head = page_buffers(pages[index]);
--				if (!head) {
--					bh = NULL;
--					break;
--				}
--
--				if (pages[index]->index !=
--				    pages[start_index]->index + index
--				    - start_index) {
--					/* Blocks are not contiguous. */
--					bh = NULL;
--					break;
--				}
--				bh = head;
--				do {
--					if (!buffer_delay(bh))
--						/* Delayed-extent ends. */
--						goto found_delayed_extent;
--					bh = bh->b_this_page;
--					end++;
--				} while (bh != head);
--			}
--		} else if (!(flags & FIEMAP_EXTENT_DELALLOC))
--			/* a hole found. */
--			goto out;
--
--found_delayed_extent:
--		newex->ec_len = min(end - newex->ec_block,
--						(ext4_lblk_t)EXT_INIT_MAX_LEN);
--		if (ret == nr_pages && bh != NULL &&
--			newex->ec_len < EXT_INIT_MAX_LEN &&
--			buffer_delay(bh)) {
--			/* Have not collected an extent and continue. */
--			for (index = 0; index < ret; index++)
--				page_cache_release(pages[index]);
--			goto repeat;
-+		if (de.len == 0)
-+			/* A hole found. */
-+			return EXT_CONTINUE;
-+
-+		if (de.start > newex->ec_block) {
-+			/* A hole found. */
-+			newex->ec_len = min(de.start - newex->ec_block,
-+					    newex->ec_len);
-+			return EXT_CONTINUE;
- 		}
- 
--		for (index = 0; index < ret; index++)
--			page_cache_release(pages[index]);
--		kfree(pages);
-+		flags |= FIEMAP_EXTENT_DELALLOC;
-+		newex->ec_len = de.start + de.len - newex->ec_block;
- 	}
- 
--	physical = (__u64)newex->ec_start << blksize_bits;
--	length =   (__u64)newex->ec_len << blksize_bits;
