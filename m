@@ -1,129 +1,195 @@
-From: Tao Ma <tm@tao.ma>
-Subject: [PATCH v2] ext4: Create helper function for EXT4_IO_END_UNWRITTEN and i_aiodio_unwritten.
-Date: Fri, 30 Sep 2011 17:41:56 +0800
-Message-ID: <1317375716-6125-1-git-send-email-tm@tao.ma>
-Cc: Eric Sandeen <sandeen@redhat.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy8-pub.bluehost.com ([69.89.22.20]:54158 "HELO
-	oproxy8-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1754093Ab1I3JmJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Sep 2011 05:42:09 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Michal Hocko <mhocko@suse.cz>
+Subject: Re: [patch 1/5] mm: exclude reserved pages from dirtyable memory
+Date: Fri, 30 Sep 2011 15:53:14 +0200
+Message-ID: <20110930135314.GA869@tiehlicka.suse.cz>
+References: <1317367044-475-1-git-send-email-jweiner@redhat.com>
+ <1317367044-475-2-git-send-email-jweiner@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Mel Gorman <mgorman@suse.de>, Christoph Hellwig <hch@infradead.org>,
+	Dave Chinner <david@fromorbit.com>,
+	Wu Fengguang <fengguang.wu@intel.com>, Jan Kara <jack@suse.cz>,
+	Rik van Riel <riel@redhat.com>, Minchan Kim <minchan.kim@gmail.com>,
+	Chris Mason <chris.mason@oracle.com>, Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Shaohua Li <shaohua.li@intel.com>, xfs@oss.sgi.com,
+	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Johannes Weiner <jweiner@redhat.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <1317367044-475-2-git-send-email-jweiner@redhat.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Tao Ma <boyu.mt@taobao.com>
+On Fri 30-09-11 09:17:20, Johannes Weiner wrote:
+> The amount of dirtyable pages should not include the full number of
+> free pages: there is a number of reserved pages that the page
+> allocator and kswapd always try to keep free.
+> 
+> The closer (reclaimable pages - dirty pages) is to the number of
+> reserved pages, the more likely it becomes for reclaim to run into
+> dirty pages:
+> 
+>        +----------+ ---
+>        |   anon   |  |
+>        +----------+  |
+>        |          |  |
+>        |          |  -- dirty limit new    -- flusher new
+>        |   file   |  |                     |
+>        |          |  |                     |
+>        |          |  -- dirty limit old    -- flusher old
+>        |          |                        |
+>        +----------+                       --- reclaim
+>        | reserved |
+>        +----------+
+>        |  kernel  |
+>        +----------+
+> 
+> This patch introduces a per-zone dirty reserve that takes both the
+> lowmem reserve as well as the high watermark of the zone into account,
+> and a global sum of those per-zone values that is subtracted from the
+> global amount of dirtyable pages.  The lowmem reserve is unavailable
+> to page cache allocations and kswapd tries to keep the high watermark
+> free.  We don't want to end up in a situation where reclaim has to
+> clean pages in order to balance zones.
+> 
+> Not treating reserved pages as dirtyable on a global level is only a
+> conceptual fix.  In reality, dirty pages are not distributed equally
+> across zones and reclaim runs into dirty pages on a regular basis.
+> 
+> But it is important to get this right before tackling the problem on a
+> per-zone level, where the distance between reclaim and the dirty pages
+> is mostly much smaller in absolute numbers.
+> 
+> Signed-off-by: Johannes Weiner <jweiner@redhat.com>
+> Reviewed-by: Rik van Riel <riel@redhat.com>
 
-EXT4_IO_END_UNWRITTEN flag set and the increase of i_aiodio_unwritten
-should be done simultaneously since ext4_end_io_nolock always clear the
-flag and decrease the counter in the same time.
+Makes sense.
+Reviewed-by: Michal Hocko <mhocko@suse.cz>
 
-We have found some bugs that the flag is set while leaving
-i_aiodio_unwritten unchanged(commit 32c80b32c053d). So this patch just tries
-to create a helper function to wrap them to avoid any future bug.
-The idea is inspired by Eric.
+> ---
+>  include/linux/mmzone.h |    6 ++++++
+>  include/linux/swap.h   |    1 +
+>  mm/page-writeback.c    |    6 ++++--
+>  mm/page_alloc.c        |   19 +++++++++++++++++++
+>  4 files changed, 30 insertions(+), 2 deletions(-)
+> 
+> diff --git a/include/linux/mmzone.h b/include/linux/mmzone.h
+> index 1ed4116..37a61e7 100644
+> --- a/include/linux/mmzone.h
+> +++ b/include/linux/mmzone.h
+> @@ -317,6 +317,12 @@ struct zone {
+>  	 */
+>  	unsigned long		lowmem_reserve[MAX_NR_ZONES];
+>  
+> +	/*
+> +	 * This is a per-zone reserve of pages that should not be
+> +	 * considered dirtyable memory.
+> +	 */
+> +	unsigned long		dirty_balance_reserve;
+> +
+>  #ifdef CONFIG_NUMA
+>  	int node;
+>  	/*
+> diff --git a/include/linux/swap.h b/include/linux/swap.h
+> index 3808f10..5e70f65 100644
+> --- a/include/linux/swap.h
+> +++ b/include/linux/swap.h
+> @@ -209,6 +209,7 @@ struct swap_list_t {
+>  /* linux/mm/page_alloc.c */
+>  extern unsigned long totalram_pages;
+>  extern unsigned long totalreserve_pages;
+> +extern unsigned long dirty_balance_reserve;
+>  extern unsigned int nr_free_buffer_pages(void);
+>  extern unsigned int nr_free_pagecache_pages(void);
+>  
+> diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+> index da6d263..c8acf8a 100644
+> --- a/mm/page-writeback.c
+> +++ b/mm/page-writeback.c
+> @@ -170,7 +170,8 @@ static unsigned long highmem_dirtyable_memory(unsigned long total)
+>  			&NODE_DATA(node)->node_zones[ZONE_HIGHMEM];
+>  
+>  		x += zone_page_state(z, NR_FREE_PAGES) +
+> -		     zone_reclaimable_pages(z);
+> +		     zone_reclaimable_pages(z) -
+> +		     zone->dirty_balance_reserve;
+>  	}
+>  	/*
+>  	 * Make sure that the number of highmem pages is never larger
+> @@ -194,7 +195,8 @@ static unsigned long determine_dirtyable_memory(void)
+>  {
+>  	unsigned long x;
+>  
+> -	x = global_page_state(NR_FREE_PAGES) + global_reclaimable_pages();
+> +	x = global_page_state(NR_FREE_PAGES) + global_reclaimable_pages() -
+> +	    dirty_balance_reserve;
+>  
+>  	if (!vm_highmem_is_dirtyable)
+>  		x -= highmem_dirtyable_memory(x);
+> diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+> index 1dba05e..f8cba89 100644
+> --- a/mm/page_alloc.c
+> +++ b/mm/page_alloc.c
+> @@ -96,6 +96,14 @@ EXPORT_SYMBOL(node_states);
+>  
+>  unsigned long totalram_pages __read_mostly;
+>  unsigned long totalreserve_pages __read_mostly;
+> +/*
+> + * When calculating the number of globally allowed dirty pages, there
+> + * is a certain number of per-zone reserves that should not be
+> + * considered dirtyable memory.  This is the sum of those reserves
+> + * over all existing zones that contribute dirtyable memory.
+> + */
+> +unsigned long dirty_balance_reserve __read_mostly;
+> +
+>  int percpu_pagelist_fraction;
+>  gfp_t gfp_allowed_mask __read_mostly = GFP_BOOT_MASK;
+>  
+> @@ -5076,8 +5084,19 @@ static void calculate_totalreserve_pages(void)
+>  			if (max > zone->present_pages)
+>  				max = zone->present_pages;
+>  			reserve_pages += max;
+> +			/*
+> +			 * Lowmem reserves are not available to
+> +			 * GFP_HIGHUSER page cache allocations and
+> +			 * kswapd tries to balance zones to their high
+> +			 * watermark.  As a result, neither should be
+> +			 * regarded as dirtyable memory, to prevent a
+> +			 * situation where reclaim has to clean pages
+> +			 * in order to balance the zones.
+> +			 */
+> +			zone->dirty_balance_reserve = max;
+>  		}
+>  	}
+> +	dirty_balance_reserve = reserve_pages;
+>  	totalreserve_pages = reserve_pages;
+>  }
+>  
+> -- 
+> 1.7.6.2
+> 
+> --
+> To unsubscribe, send a message with 'unsubscribe linux-mm' in
+> the body to majordomo@kvack.org.  For more info on Linux MM,
+> see: http://www.linux-mm.org/ .
+> Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+> Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
 
-Cc: Eric Sandeen <sandeen@redhat.com>
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
----
-This patch is based on another bug fix which hasn't been merged yet.
-http://marc.info/?l=linux-ext4&m=131598536608613&w=2
-
- fs/ext4/ext4.h    |    9 +++++++++
- fs/ext4/extents.c |   18 ++++++------------
- fs/ext4/inode.c   |    5 +----
- fs/ext4/page-io.c |    6 ++----
- 4 files changed, 18 insertions(+), 20 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 4cb030c..a9325f5 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1241,6 +1241,15 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
- 		 ino <= le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count));
- }
- 
-+static inline void ext4_set_io_unwritten_flag(struct inode *inode,
-+					      struct ext4_io_end *io_end)
-+{
-+	if (!(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
-+		io_end->flag |= EXT4_IO_END_UNWRITTEN;
-+		atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
-+	}
-+}
-+
- /*
-  * Inode dynamic state flags
-  */
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 8f23589..31750af 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3190,12 +3190,9 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
- 		 * that this IO needs to conversion to written when IO is
- 		 * completed
- 		 */
--		if (io) {
--			if (!(io->flag & EXT4_IO_END_UNWRITTEN)) {
--				io->flag = EXT4_IO_END_UNWRITTEN;
--				atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
--			}
--		} else
-+		if (io)
-+			ext4_set_io_unwritten_flag(inode, io);
-+		else
- 			ext4_set_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
- 		if (ext4_should_dioread_nolock(inode))
- 			map->m_flags |= EXT4_MAP_UNINIT;
-@@ -3574,12 +3571,9 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 		 * that we need to perform conversion when IO is done.
- 		 */
- 		if ((flags & EXT4_GET_BLOCKS_PRE_IO)) {
--			if (io) {
--				if (!(io->flag & EXT4_IO_END_UNWRITTEN)) {
--					io->flag = EXT4_IO_END_UNWRITTEN;
--					atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
--				}
--			} else
-+			if (io)
-+				ext4_set_io_unwritten_flag(inode, io);
-+			else
- 				ext4_set_inode_state(inode,
- 						     EXT4_STATE_DIO_UNWRITTEN);
- 		}
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4b37501..5d6fc9b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2685,10 +2685,7 @@ static void ext4_end_io_buffer_write(struct buffer_head *bh, int uptodate)
- 	 * but being more careful is always safe for the future change.
- 	 */
- 	inode = io_end->inode;
--	if (!(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
--		io_end->flag |= EXT4_IO_END_UNWRITTEN;
--		atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
--	}
-+	ext4_set_io_unwritten_flag(inode, io_end);
- 
- 	/* Add the io_end to per-inode completed io list*/
- 	spin_lock_irqsave(&EXT4_I(inode)->i_completed_io_lock, flags);
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 92f38ee..f5eec5e 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -350,10 +350,8 @@ submit_and_retry:
- 	if ((io_end->num_io_pages >= MAX_IO_PAGES) &&
- 	    (io_end->pages[io_end->num_io_pages-1] != io_page))
- 		goto submit_and_retry;
--	if (buffer_uninit(bh) && !(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
--		io_end->flag |= EXT4_IO_END_UNWRITTEN;
--		atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
--	}
-+	if (buffer_uninit(bh))
-+		ext4_set_io_unwritten_flag(inode, io_end);
- 	io->io_end->size += bh->b_size;
- 	io->io_next_block++;
- 	ret = bio_add_page(io->io_bio, bh->b_page, bh->b_size, bh_offset(bh));
 -- 
-1.7.1
+Michal Hocko
+SUSE Labs
+SUSE LINUX s.r.o.
+Lihovarska 1060/12
+190 00 Praha 9    
+Czech Republic
 
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
