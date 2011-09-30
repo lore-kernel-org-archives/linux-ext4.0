@@ -1,218 +1,246 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [RFC PATCH V2 6/6] ext4: reimplement fiemap on delayed extent tree
-Date: Fri, 30 Sep 2011 08:54:16 +0800
-Message-ID: <CAGBYx2bOO8ERru_i6dViVC0iOfkjJf4epT_R1WCoHCKt2_J_+w@mail.gmail.com>
+Subject: Re: [RFC PATCH V2 5/6] ext4: let ext4 maintian delayed extent trees
+Date: Fri, 30 Sep 2011 10:08:50 +0800
+Message-ID: <CAGBYx2YjSJ5pks4gM+9M0c=okTRXvsjbiQCb78NkO8QP_Kx3Kw@mail.gmail.com>
 References: <1317272926-13303-1-git-send-email-xiaoqiangnk@gmail.com>
-	<1317272926-13303-7-git-send-email-xiaoqiangnk@gmail.com>
-	<85F66E77-79B5-43CC-BE44-552925ABC343@oracle.com>
+	<1317272926-13303-6-git-send-email-xiaoqiangnk@gmail.com>
+	<4E848124.6070500@tao.ma>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: base64
-Cc: linux-ext4@vger.kernel.org, jack@suse.cz,
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, jack@suse.cz, jeff.liu@oracle.com,
 	achender@linux.vnet.ibm.com, adityakali@google.com
-To: Jeff liu <jeff.liu@oracle.com>
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:39094 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751154Ab1I3AyR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Sep 2011 20:54:17 -0400
-Received: by yxl31 with SMTP id 31so1141298yxl.19
-        for <linux-ext4@vger.kernel.org>; Thu, 29 Sep 2011 17:54:17 -0700 (PDT)
-In-Reply-To: <85F66E77-79B5-43CC-BE44-552925ABC343@oracle.com>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:53986 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751851Ab1I3CIw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Sep 2011 22:08:52 -0400
+Received: by vws1 with SMTP id 1so998600vws.19
+        for <linux-ext4@vger.kernel.org>; Thu, 29 Sep 2011 19:08:51 -0700 (PDT)
+In-Reply-To: <4E848124.6070500@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-T24gVGh1LCBTZXAgMjksIDIwMTEgYXQgMTE6MjggUE0sIEplZmYgbGl1IDxqZWZmLmxpdUBvcmFj
-bGUuY29tPiB3cm90ZToKPiBIaSBZb25ncWlhbmcsCj4KPj4gVGhpcyBwYXRjaCByZWltcGxlbWVu
-dHMgZmllbWFwIG9uIGRlbGF5ZWQgZXh0ZW50IHRyZWUuCj4+Cj4+IFNpZ25lZC1vZmYtYnk6IFlv
-bmdxaWFuZyBZYW5nIDx4aWFvcWlhbmdua0BnbWFpbC5jb20+Cj4+IC0tLQo+PiBmcy9leHQ0L2V4
-dGVudHMuYyB8IKAxODYgKysrKysrKy0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0KPj4gMSBmaWxlcyBjaGFuZ2VkLCAyMyBpbnNlcnRpb25zKCspLCAxNjMgZGVs
-ZXRpb25zKC0pCj4+Cj4+IGRpZmYgLS1naXQgYS9mcy9leHQ0L2V4dGVudHMuYyBiL2ZzL2V4dDQv
-ZXh0ZW50cy5jCj4+IGluZGV4IGJkYmI5ODQuLmMyYWUxMjUgMTAwNjQ0Cj4+IC0tLSBhL2ZzL2V4
-dDQvZXh0ZW50cy5jCj4+ICsrKyBiL2ZzL2V4dDQvZXh0ZW50cy5jCj4+IEBAIC0zOTA5LDE5MyAr
-MzkwOSw1MyBAQCBzdGF0aWMgaW50IGV4dDRfZXh0X2ZpZW1hcF9jYihzdHJ1Y3QgaW5vZGUgKmlu
-b2RlLCBleHQ0X2xibGtfdCBuZXh0LAo+PiCgIKAgoCCgIKAgoCCgIKAgoCCgIKBzdHJ1Y3QgZXh0
-NF9leHRfY2FjaGUgKm5ld2V4LCBzdHJ1Y3QgZXh0NF9leHRlbnQgKmV4LAo+PiCgIKAgoCCgIKAg
-oCCgIKAgoCCgIKB2b2lkICpkYXRhKQo+PiB7Cj4+ICsgoCCgIHN0cnVjdCBkZWxheWVkX2V4dGVu
-dCBkZTsKPj4goCCgIKAgX191NjQgoCBsb2dpY2FsOwo+PiCgIKAgoCBfX3U2NCCgIHBoeXNpY2Fs
-Owo+PiCgIKAgoCBfX3U2NCCgIGxlbmd0aDsKPj4goCCgIKAgX191MzIgoCBmbGFncyA9IDA7Cj4+
-ICsgoCCgIGV4dDRfbGJsa190IG5leHRfZGVsOwo+PiCgIKAgoCBpbnQgoCCgIKAgoCCgIKAgcmV0
-ID0gMDsKPj4goCCgIKAgc3RydWN0IGZpZW1hcF9leHRlbnRfaW5mbyAqZmllaW5mbyA9IGRhdGE7
-Cj4+IKAgoCCgIHVuc2lnbmVkIGNoYXIgYmxrc2l6ZV9iaXRzOwo+Pgo+PiAtIKAgoCBibGtzaXpl
-X2JpdHMgPSBpbm9kZS0+aV9zYi0+c19ibG9ja3NpemVfYml0czsKPj4gLSCgIKAgbG9naWNhbCA9
-IChfX3U2NCluZXdleC0+ZWNfYmxvY2sgPDwgYmxrc2l6ZV9iaXRzOwo+PiArIKAgoCBkZS5zdGFy
-dCA9IG5ld2V4LT5lY19ibG9jazsKPj4gKyCgIKAgZG93bl9yZWFkKCZFWFQ0X0koaW5vZGUpLT5p
-X2RhdGFfc2VtKTsKPj4gKyCgIKAgbmV4dF9kZWwgPSBleHQ0X2RlX2ZpbmRfZXh0ZW50KGlub2Rl
-LCAmZGUpOwo+PiArIKAgoCB1cF9yZWFkKCZFWFQ0X0koaW5vZGUpLT5pX2RhdGFfc2VtKTsKPj4K
-Pj4gKyCgIKAgbmV4dCA9IG1pbihuZXh0X2RlbCwgbmV4dCk7Cj4+IKAgoCCgIGlmIChuZXdleC0+
-ZWNfc3RhcnQgPT0gMCkgewo+PiCgIKAgoCCgIKAgoCCgIC8qCj4+IKAgoCCgIKAgoCCgIKAgoCog
-Tm8gZXh0ZW50IGluIGV4dGVudC10cmVlIGNvbnRhaW5zIGJsb2NrIEBuZXdleC0+ZWNfc3RhcnQs
-Cj4+IKAgoCCgIKAgoCCgIKAgoCogdGhlbiB0aGUgYmxvY2sgbWF5IHN0YXkgaW4gMSlhIGhvbGUg
-b3IgMilkZWxheWVkLWV4dGVudC4KPj4gLSCgIKAgoCCgIKAgoCCgKgo+PiAtIKAgoCCgIKAgoCCg
-IKAqIEhvbGVzIG9yIGRlbGF5ZWQtZXh0ZW50cyBhcmUgcHJvY2Vzc2VkIGFzIGZvbGxvd3MuCj4+
-IC0goCCgIKAgoCCgIKAgoCogMS4gbG9va3VwIGRpcnR5IHBhZ2VzIHdpdGggc3BlY2lmaWVkIHJh
-bmdlIGluIHBhZ2VjYWNoZS4KPj4gLSCgIKAgoCCgIKAgoCCgKiCgIKBJZiBubyBwYWdlIGlzIGdv
-dCwgdGhlbiB0aGVyZSBpcyBubyBkZWxheWVkLWV4dGVudCBhbmQKPj4gLSCgIKAgoCCgIKAgoCCg
-KiCgIKByZXR1cm4gd2l0aCBFWFRfQ09OVElOVUUuCj4+IC0goCCgIKAgoCCgIKAgoCogMi4gZmlu
-ZCB0aGUgMXN0IG1hcHBlZCBidWZmZXIsCj4+IC0goCCgIKAgoCCgIKAgoCogMy4gY2hlY2sgaWYg
-dGhlIG1hcHBlZCBidWZmZXIgaXMgYm90aCBpbiB0aGUgcmVxdWVzdCByYW5nZQo+PiAtIKAgoCCg
-IKAgoCCgIKAqIKAgoGFuZCBhIGRlbGF5ZWQgYnVmZmVyLiBJZiBub3QsIHRoZXJlIGlzIG5vIGRl
-bGF5ZWQtZXh0ZW50LAo+PiAtIKAgoCCgIKAgoCCgIKAqIKAgoHRoZW4gcmV0dXJuLgo+PiAtIKAg
-oCCgIKAgoCCgIKAqIDQuIGEgZGVsYXllZC1leHRlbnQgaXMgZm91bmQsIHRoZSBleHRlbnQgd2ls
-bCBiZSBjb2xsZWN0ZWQuCj4+IKAgoCCgIKAgoCCgIKAgoCovCj4+IC0goCCgIKAgoCCgIKAgZXh0
-NF9sYmxrX3QgoCCgIGVuZCA9IDA7Cj4+IC0goCCgIKAgoCCgIKAgcGdvZmZfdCCgIKAgoCCgIGxh
-c3Rfb2Zmc2V0Owo+PiAtIKAgoCCgIKAgoCCgIHBnb2ZmX3QgoCCgIKAgoCBvZmZzZXQ7Cj4+IC0g
-oCCgIKAgoCCgIKAgcGdvZmZfdCCgIKAgoCCgIGluZGV4Owo+PiAtIKAgoCCgIKAgoCCgIHBnb2Zm
-X3QgoCCgIKAgoCBzdGFydF9pbmRleCA9IDA7Cj4+IC0goCCgIKAgoCCgIKAgc3RydWN0IHBhZ2Ug
-oCCgICoqcGFnZXMgPSBOVUxMOwo+PiAtIKAgoCCgIKAgoCCgIHN0cnVjdCBidWZmZXJfaGVhZCAq
-YmggPSBOVUxMOwo+PiAtIKAgoCCgIKAgoCCgIHN0cnVjdCBidWZmZXJfaGVhZCAqaGVhZCA9IE5V
-TEw7Cj4+IC0goCCgIKAgoCCgIKAgdW5zaWduZWQgaW50IG5yX3BhZ2VzID0gUEFHRV9TSVpFIC8g
-c2l6ZW9mKHN0cnVjdCBwYWdlICopOwo+PiAtCj4+IC0goCCgIKAgoCCgIKAgcGFnZXMgPSBrbWFs
-bG9jKFBBR0VfU0laRSwgR0ZQX0tFUk5FTCk7Cj4+IC0goCCgIKAgoCCgIKAgaWYgKHBhZ2VzID09
-IE5VTEwpCj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCByZXR1cm4gLUVOT01FTTsKPj4gLQo+PiAt
-IKAgoCCgIKAgoCCgIG9mZnNldCA9IGxvZ2ljYWwgPj4gUEFHRV9TSElGVDsKPj4gLXJlcGVhdDoK
-Pj4gLSCgIKAgoCCgIKAgoCBsYXN0X29mZnNldCA9IG9mZnNldDsKPj4gLSCgIKAgoCCgIKAgoCBo
-ZWFkID0gTlVMTDsKPj4gLSCgIKAgoCCgIKAgoCByZXQgPSBmaW5kX2dldF9wYWdlc190YWcoaW5v
-ZGUtPmlfbWFwcGluZywgJm9mZnNldCwKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAg
-oCCgIKAgoCBQQUdFQ0FDSEVfVEFHX0RJUlRZLCBucl9wYWdlcywgcGFnZXMpOwo+PiAtCj4+IC0g
-oCCgIKAgoCCgIKAgaWYgKCEoZmxhZ3MgJiBGSUVNQVBfRVhURU5UX0RFTEFMTE9DKSkgewo+PiAt
-IKAgoCCgIKAgoCCgIKAgoCCgIKAgLyogRmlyc3QgdGltZSwgdHJ5IHRvIGZpbmQgYSBtYXBwZWQg
-YnVmZmVyLiAqLwo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgaWYgKHJldCA9PSAwKSB7Cj4+IC1v
-dXQ6Cj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIGZvciAoaW5kZXggPSAwOyBpbmRl
-eCA8IHJldDsgaW5kZXgrKykKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAg
-oCBwYWdlX2NhY2hlX3JlbGVhc2UocGFnZXNbaW5kZXhdKTsKPj4gLSCgIKAgoCCgIKAgoCCgIKAg
-oCCgIKAgoCCgIKAgLyoganVzdCBhIGhvbGUuICovCj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCCg
-IKAgoCCgIGtmcmVlKHBhZ2VzKTsKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgcmV0
-dXJuIEVYVF9DT05USU5VRTsKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIH0KPj4gLSCgIKAgoCCg
-IKAgoCCgIKAgoCCgIGluZGV4ID0gMDsKPj4gLQo+PiAtbmV4dF9wYWdlOgo+PiAtIKAgoCCgIKAg
-oCCgIKAgoCCgIKAgLyogVHJ5IHRvIGZpbmQgdGhlIDFzdCBtYXBwZWQgYnVmZmVyLiAqLwo+PiAt
-IKAgoCCgIKAgoCCgIKAgoCCgIKAgZW5kID0gKChfX3U2NClwYWdlc1tpbmRleF0tPmluZGV4IDw8
-IFBBR0VfU0hJRlQpID4+Cj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgYmxrc2l6
-ZV9iaXRzOwo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgaWYgKCFwYWdlX2hhc19idWZmZXJzKHBh
-Z2VzW2luZGV4XSkpCj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIGdvdG8gb3V0Owo+
-PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgaGVhZCA9IHBhZ2VfYnVmZmVycyhwYWdlc1tpbmRleF0p
-Owo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgaWYgKCFoZWFkKQo+PiAtIKAgoCCgIKAgoCCgIKAg
-oCCgIKAgoCCgIKAgoCBnb3RvIG91dDsKPj4gLQo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgaW5k
-ZXgrKzsKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIGJoID0gaGVhZDsKPj4gLSCgIKAgoCCgIKAg
-oCCgIKAgoCCgIGRvIHsKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgaWYgKGVuZCA+
-PSBuZXdleC0+ZWNfYmxvY2sgKwo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAg
-oCCgIG5ld2V4LT5lY19sZW4pCj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCg
-IKAgLyogVGhlIGJ1ZmZlciBpcyBvdXQgb2YKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCg
-IKAgoCCgIKAgoCCgKiB0aGUgcmVxdWVzdCByYW5nZS4KPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCg
-IKAgoCCgIKAgoCCgIKAgoCCgKi8KPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCg
-IKAgoCBnb3RvIG91dDsKPj4gLQo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCBpZiAo
-YnVmZmVyX21hcHBlZChiaCkgJiYKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCg
-IGVuZCA+PSBuZXdleC0+ZWNfYmxvY2spIHsKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCg
-IKAgoCCgIKAgoCBzdGFydF9pbmRleCA9IGluZGV4IC0gMTsKPj4gLSCgIKAgoCCgIKAgoCCgIKAg
-oCCgIKAgoCCgIKAgoCCgIKAgoCAvKiBnZXQgdGhlIDFzdCBtYXBwZWQgYnVmZmVyLiAqLwo+PiAt
-IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIGdvdG8gZm91bmRfbWFwcGVkX2J1
-ZmZlcjsKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgfQo+PiAtCj4+IC0goCCgIKAg
-oCCgIKAgoCCgIKAgoCCgIKAgoCCgIGJoID0gYmgtPmJfdGhpc19wYWdlOwo+PiAtIKAgoCCgIKAg
-oCCgIKAgoCCgIKAgoCCgIKAgoCBlbmQrKzsKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIH0gd2hp
-bGUgKGJoICE9IGhlYWQpOwo+PiAtCj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCAvKiBObyBtYXBw
-ZWQgYnVmZmVyIGluIHRoZSByYW5nZSBmb3VuZCBpbiB0aGlzIHBhZ2UsCj4+IC0goCCgIKAgoCCg
-IKAgoCCgIKAgoCCgKiBXZSBuZWVkIHRvIGxvb2sgdXAgbmV4dCBwYWdlLgo+PiAtIKAgoCCgIKAg
-oCCgIKAgoCCgIKAgoCovCj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCBpZiAoaW5kZXggPj0gcmV0
-KSB7Cj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIC8qIFRoZXJlIGlzIG5vIHBhZ2Ug
-bGVmdCwgYnV0IHdlIG5lZWQgdG8gbGltaXQKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCg
-IKAgoCogbmV3ZXgtPmVjX2xlbi4KPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCov
-Cj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIG5ld2V4LT5lY19sZW4gPSBlbmQgLSBu
-ZXdleC0+ZWNfYmxvY2s7Cj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIGdvdG8gb3V0
-Owo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgfQo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgZ290
-byBuZXh0X3BhZ2U7Cj4+IC0goCCgIKAgoCCgIKAgfSBlbHNlIHsKPj4gLSCgIKAgoCCgIKAgoCCg
-IKAgoCCgIC8qRmluZCBjb250aWd1b3VzIGRlbGF5ZWQgYnVmZmVycy4gKi8KPj4gLSCgIKAgoCCg
-IKAgoCCgIKAgoCCgIGlmIChyZXQgPiAwICYmIHBhZ2VzWzBdLT5pbmRleCA9PSBsYXN0X29mZnNl
-dCkKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgaGVhZCA9IHBhZ2VfYnVmZmVycyhw
-YWdlc1swXSk7Cj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCBiaCA9IGhlYWQ7Cj4+IC0goCCgIKAg
-oCCgIKAgoCCgIKAgoCBpbmRleCA9IDE7Cj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCBzdGFydF9p
-bmRleCA9IDA7Cj4+IC0goCCgIKAgoCCgIKAgfQo+PiAtCj4+IC1mb3VuZF9tYXBwZWRfYnVmZmVy
-Ogo+PiAtIKAgoCCgIKAgoCCgIGlmIChiaCAhPSBOVUxMICYmIGJ1ZmZlcl9kZWxheShiaCkpIHsK
-Pj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIC8qIDFzdCBvciBjb250aWd1b3VzIGRlbGF5ZWQgYnVm
-ZmVyIGZvdW5kLiAqLwo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgaWYgKCEoZmxhZ3MgJiBGSUVN
-QVBfRVhURU5UX0RFTEFMTE9DKSkgewo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCAv
-Kgo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgKiAxc3QgZGVsYXllZCBidWZmZXIg
-Zm91bmQsIHJlY29yZAo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgKiB0aGUgc3Rh
-cnQgb2YgZXh0ZW50Lgo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgKi8KPj4gLSCg
-IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgZmxhZ3MgfD0gRklFTUFQX0VYVEVOVF9ERUxBTExP
-QzsKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgbmV3ZXgtPmVjX2Jsb2NrID0gZW5k
-Owo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCBsb2dpY2FsID0gKF9fdTY0KWVuZCA8
-PCBibGtzaXplX2JpdHM7Cj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCB9Cj4+IC0goCCgIKAgoCCg
-IKAgoCCgIKAgoCAvKiBGaW5kIGNvbnRpZ3VvdXMgZGVsYXllZCBidWZmZXJzLiAqLwo+PiAtIKAg
-oCCgIKAgoCCgIKAgoCCgIKAgZG8gewo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCBp
-ZiAoIWJ1ZmZlcl9kZWxheShiaCkpCj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAg
-oCCgIKAgZ290byBmb3VuZF9kZWxheWVkX2V4dGVudDsKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCg
-IKAgoCCgIKAgYmggPSBiaC0+Yl90aGlzX3BhZ2U7Cj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCCg
-IKAgoCCgIGVuZCsrOwo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgfSB3aGlsZSAoYmggIT0gaGVh
-ZCk7Cj4+IC0KPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIGZvciAoOyBpbmRleCA8IHJldDsgaW5k
-ZXgrKykgewo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCBpZiAoIXBhZ2VfaGFzX2J1
-ZmZlcnMocGFnZXNbaW5kZXhdKSkgewo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCg
-IKAgoCCgIGJoID0gTlVMTDsKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAg
-oCBicmVhazsKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgfQo+PiAtIKAgoCCgIKAg
-oCCgIKAgoCCgIKAgoCCgIKAgoCBoZWFkID0gcGFnZV9idWZmZXJzKHBhZ2VzW2luZGV4XSk7Cj4+
-IC0goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIGlmICghaGVhZCkgewo+PiAtIKAgoCCgIKAg
-oCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIGJoID0gTlVMTDsKPj4gLSCgIKAgoCCgIKAgoCCg
-IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCBicmVhazsKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAg
-oCCgIKAgfQo+PiAtCj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIGlmIChwYWdlc1tp
-bmRleF0tPmluZGV4ICE9Cj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCBwYWdl
-c1tzdGFydF9pbmRleF0tPmluZGV4ICsgaW5kZXgKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAg
-oCCgIKAgoCCgIC0gc3RhcnRfaW5kZXgpIHsKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCg
-IKAgoCCgIKAgoCAvKiBCbG9ja3MgYXJlIG5vdCBjb250aWd1b3VzLiAqLwo+PiAtIKAgoCCgIKAg
-oCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIGJoID0gTlVMTDsKPj4gLSCgIKAgoCCgIKAgoCCg
-IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCBicmVhazsKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAg
-oCCgIKAgfQo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCBiaCA9IGhlYWQ7Cj4+IC0g
-oCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIGRvIHsKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCg
-IKAgoCCgIKAgoCCgIKAgoCBpZiAoIWJ1ZmZlcl9kZWxheShiaCkpCj4+IC0goCCgIKAgoCCgIKAg
-oCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCAvKiBEZWxheWVkLWV4dGVudCBlbmRzLiAq
-Lwo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgZ290byBm
-b3VuZF9kZWxheWVkX2V4dGVudDsKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCg
-IKAgoCBiaCA9IGJoLT5iX3RoaXNfcGFnZTsKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCg
-IKAgoCCgIKAgoCBlbmQrKzsKPj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgfSB3aGls
-ZSAoYmggIT0gaGVhZCk7Cj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCB9Cj4+IC0goCCgIKAgoCCg
-IKAgfSBlbHNlIGlmICghKGZsYWdzICYgRklFTUFQX0VYVEVOVF9ERUxBTExPQykpCj4+IC0goCCg
-IKAgoCCgIKAgoCCgIKAgoCAvKiBhIGhvbGUgZm91bmQuICovCj4+IC0goCCgIKAgoCCgIKAgoCCg
-IKAgoCBnb3RvIG91dDsKPj4gLQo+PiAtZm91bmRfZGVsYXllZF9leHRlbnQ6Cj4+IC0goCCgIKAg
-oCCgIKAgbmV3ZXgtPmVjX2xlbiA9IG1pbihlbmQgLSBuZXdleC0+ZWNfYmxvY2ssCj4+IC0goCCg
-IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCAoZXh0NF9sYmxrX3QpRVhU
-X0lOSVRfTUFYX0xFTik7Cj4+IC0goCCgIKAgoCCgIKAgaWYgKHJldCA9PSBucl9wYWdlcyAmJiBi
-aCAhPSBOVUxMICYmCj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCBuZXdleC0+ZWNfbGVuIDwgRVhU
-X0lOSVRfTUFYX0xFTiAmJgo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgYnVmZmVyX2RlbGF5KGJo
-KSkgewo+PiAtIKAgoCCgIKAgoCCgIKAgoCCgIKAgLyogSGF2ZSBub3QgY29sbGVjdGVkIGFuIGV4
-dGVudCBhbmQgY29udGludWUuICovCj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCBmb3IgKGluZGV4
-ID0gMDsgaW5kZXggPCByZXQ7IGluZGV4KyspCj4+IC0goCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAg
-oCCgIHBhZ2VfY2FjaGVfcmVsZWFzZShwYWdlc1tpbmRleF0pOwo+PiAtIKAgoCCgIKAgoCCgIKAg
-oCCgIKAgZ290byByZXBlYXQ7Cj4+ICsgoCCgIKAgoCCgIKAgaWYgKGRlLmxlbiA9PSAwKQo+PiAr
-IKAgoCCgIKAgoCCgIKAgoCCgIKAgLyogQSBob2xlIGZvdW5kLiAqLwo+PiArIKAgoCCgIKAgoCCg
-IKAgoCCgIKAgcmV0dXJuIEVYVF9DT05USU5VRTsKPj4gKwo+PiArIKAgoCCgIKAgoCCgIGlmIChk
-ZS5zdGFydCA+IG5ld2V4LT5lY19ibG9jaykgewo+PiArIKAgoCCgIKAgoCCgIKAgoCCgIKAgLyog
-QSBob2xlIGZvdW5kLiAqLwo+PiArIKAgoCCgIKAgoCCgIKAgoCCgIKAgbmV3ZXgtPmVjX2xlbiA9
-IG1pbihkZS5zdGFydCAtIG5ld2V4LT5lY19ibG9jaywKPj4gKyCgIKAgoCCgIKAgoCCgIKAgoCCg
-IKAgoCCgIKAgoCCgIKAgoCCgIKAgbmV3ZXgtPmVjX2xlbik7Cj4+ICsgoCCgIKAgoCCgIKAgoCCg
-IKAgoCByZXR1cm4gRVhUX0NPTlRJTlVFOwo+PiCgIKAgoCCgIKAgoCCgIH0KPj4KPj4gLSCgIKAg
-oCCgIKAgoCBmb3IgKGluZGV4ID0gMDsgaW5kZXggPCByZXQ7IGluZGV4KyspCj4+IC0goCCgIKAg
-oCCgIKAgoCCgIKAgoCBwYWdlX2NhY2hlX3JlbGVhc2UocGFnZXNbaW5kZXhdKTsKPj4gLSCgIKAg
-oCCgIKAgoCBrZnJlZShwYWdlcyk7Cj4+ICsgoCCgIKAgoCCgIKAgZmxhZ3MgfD0gRklFTUFQX0VY
-VEVOVF9ERUxBTExPQzsKPj4gKyCgIKAgoCCgIKAgoCBuZXdleC0+ZWNfbGVuID0gZGUuc3RhcnQg
-KyBkZS5sZW4gLSBuZXdleC0+ZWNfYmxvY2s7Cj4+IKAgoCCgIH0KPgo+IEhvdyBhYm91dCB0byBp
-c29sYXRlICJnZXQgZGVsYXllZCBleHRlbnQgaW5mbyIgYXMgYWJvdmUgdG8gYW4gaW5saW5lIGZ1
-bmN0aW9uPwo+IFdlIGNhbiBnYXRoZXIgdGhlbSB2aWEgbmV3ZXgtPnh4eCB0aGVuLCBzbyBvdGhl
-ciBmZWF0dXJlcyBuZWVkIHRvIGl0ZXJhdGUgdGhyb3VnaCBmaWxlIHNwZWNpYWwgcmFuZ2UgbGlr
-ZSBTRUVLX0hPTEUvREFUQSBjb3VsZCBiZSBiZW5lZml0Cj4gZnJvbSBpdCBpbiB0aGVpciBjYWxs
-YmFjayBmdW5jdGlvbnMuClN1cmUuCgpUaHghCgpZb25ncWlhbmcuCj4KPgo+IFRoYW5rcywKPiAt
-SmVmZgo+Pgo+PiAtIKAgoCBwaHlzaWNhbCA9IChfX3U2NCluZXdleC0+ZWNfc3RhcnQgPDwgYmxr
-c2l6ZV9iaXRzOwo+PiAtIKAgoCBsZW5ndGggPSCgIChfX3U2NCluZXdleC0+ZWNfbGVuIDw8IGJs
-a3NpemVfYml0czsKPj4gLQo+PiCgIKAgoCBpZiAoZXggJiYgZXh0NF9leHRfaXNfdW5pbml0aWFs
-aXplZChleCkpCj4+IKAgoCCgIKAgoCCgIKAgZmxhZ3MgfD0gRklFTUFQX0VYVEVOVF9VTldSSVRU
-RU47Cj4+Cj4+IKAgoCCgIGlmIChuZXh0ID09IEVYVF9NQVhfQkxPQ0tTKQo+PiCgIKAgoCCgIKAg
-oCCgIGZsYWdzIHw9IEZJRU1BUF9FWFRFTlRfTEFTVDsKPj4KPj4gKyCgIKAgYmxrc2l6ZV9iaXRz
-ID0gaW5vZGUtPmlfc2ItPnNfYmxvY2tzaXplX2JpdHM7Cj4+ICsgoCCgIGxvZ2ljYWwgPSAoX191
-NjQpbmV3ZXgtPmVjX2Jsb2NrIDw8IGJsa3NpemVfYml0czsKPj4gKyCgIKAgcGh5c2ljYWwgPSAo
-X191NjQpbmV3ZXgtPmVjX3N0YXJ0IDw8IGJsa3NpemVfYml0czsKPj4gKyCgIKAgbGVuZ3RoID0g
-oCAoX191NjQpbmV3ZXgtPmVjX2xlbiA8PCBibGtzaXplX2JpdHM7Cj4+ICsKPj4goCCgIKAgcmV0
-ID0gZmllbWFwX2ZpbGxfbmV4dF9leHRlbnQoZmllaW5mbywgbG9naWNhbCwgcGh5c2ljYWwsCj4+
-IKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgbGVuZ3RoLCBmbGFncyk7Cj4+
-IKAgoCCgIGlmIChyZXQgPCAwKQo+PiAtLQo+PiAxLjcuNS4xCj4+Cj4+IC0tCj4+IFRvIHVuc3Vi
-c2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1l
-eHQ0IiBpbgo+PiB0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVs
-Lm9yZwo+PiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0IKBodHRwOi8vdmdlci5rZXJuZWwub3JnL21h
-am9yZG9tby1pbmZvLmh0bWwKPgo+CgoKCi0tIApCZXN0IFdpc2hlcwpZb25ncWlhbmcgWWFuZwo=
+On Thu, Sep 29, 2011 at 10:31 PM, Tao Ma <tm@tao.ma> wrote:
+> On 09/29/2011 01:08 PM, Yongqiang Yang wrote:
+>> This patch let ext4 maintain delayed extent trees.
+>>
+>> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+>> ---
+>> =A0fs/ext4/ext4.h =A0 =A0 | =A0 =A01 +
+>> =A0fs/ext4/extents.c =A0| =A0 =A02 ++
+>> =A0fs/ext4/indirect.c | =A0 =A03 +++
+>> =A0fs/ext4/inode.c =A0 =A0| =A0 28 ++++++++++++++++++++++++++--
+>> =A0fs/ext4/super.c =A0 =A0| =A0 12 +++++++++++-
+>> =A05 files changed, 43 insertions(+), 3 deletions(-)
+>>
+>> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+>> index d3c6b97..177ec0a 100644
+>> --- a/fs/ext4/ext4.h
+>> +++ b/fs/ext4/ext4.h
+>> @@ -519,6 +519,7 @@ struct ext4_new_group_data {
+>> =A0#define EXT4_GET_BLOCKS_PUNCH_OUT_EXT =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A00x0020
+>> =A0 =A0 =A0 /* Don't normalize allocation size (used for fallocate) =
+*/
+>> =A0#define EXT4_GET_BLOCKS_NO_NORMALIZE =A0 =A0 =A0 =A0 0x0040
+>> +#define EXT4_GET_BLOCKS_DEALLOC =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A00x0080
+>>
+>> =A0/*
+>> =A0 * Flags used by ext4_free_blocks
+>> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+>> index 9124cd2..bdbb984 100644
+>> --- a/fs/ext4/extents.c
+>> +++ b/fs/ext4/extents.c
+>> @@ -3688,6 +3688,8 @@ void ext4_ext_truncate(struct inode *inode)
+>>
+>> =A0 =A0 =A0 last_block =3D (inode->i_size + sb->s_blocksize - 1)
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 >> EXT4_BLOCK_SIZE_BITS(=
+sb);
+>> + =A0 =A0 err =3D ext4_de_remove_space(inode, last_block,
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT=
+_MAX_BLOCKS - last_block);
+>> =A0 =A0 =A0 err =3D ext4_ext_remove_space(inode, last_block);
+>>
+>> =A0 =A0 =A0 /* In a multi-transaction truncate, we only make the fin=
+al
+>> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+>> index 0962642..25cdb5b 100644
+>> --- a/fs/ext4/indirect.c
+>> +++ b/fs/ext4/indirect.c
+>> @@ -22,6 +22,7 @@
+>>
+>> =A0#include <linux/module.h>
+>> =A0#include "ext4_jbd2.h"
+>> +#include "ext4_extents.h"
+>> =A0#include "truncate.h"
+>>
+>> =A0#include <trace/events/ext4.h>
+>> @@ -1383,6 +1384,8 @@ void ext4_ind_truncate(struct inode *inode)
+>> =A0 =A0 =A0 down_write(&ei->i_data_sem);
+>>
+>> =A0 =A0 =A0 ext4_discard_preallocations(inode);
+>> + =A0 =A0 ext4_de_remove_space(inode, last_block,
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT_MAX_BLOCKS =
+- last_block);
+>>
+>> =A0 =A0 =A0 /*
+>> =A0 =A0 =A0 =A0* The orphan list entry will now protect us from any =
+crash which
+>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+>> index f86b149..0f9f108 100644
+>> --- a/fs/ext4/inode.c
+>> +++ b/fs/ext4/inode.c
+>> @@ -442,7 +442,15 @@ int ext4_map_blocks(handle_t *handle, struct in=
+ode *inode,
+>> =A0 =A0 =A0 up_read((&EXT4_I(inode)->i_data_sem));
+>>
+>> =A0 =A0 =A0 if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
+>> - =A0 =A0 =A0 =A0 =A0 =A0 int ret =3D check_block_validity(inode, ma=
+p);
+>> + =A0 =A0 =A0 =A0 =A0 =A0 int ret;
+>> + =A0 =A0 =A0 =A0 =A0 =A0 if (flags & EXT4_GET_BLOCKS_DELALLOC_RESER=
+VE) {
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* delayed alloc may be al=
+located by fallocate,
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* we need to handle del=
+ayed extent here.
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0*/
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 down_write((&EXT4_I(inode)=
+->i_data_sem));
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto delayed_mapped;
+>> + =A0 =A0 =A0 =A0 =A0 =A0 }
+>> + =A0 =A0 =A0 =A0 =A0 =A0 ret =3D check_block_validity(inode, map);
+> I am not quite sure of this. So do you mean when we write_begin the
+> extent isn't allocated, while in the time of writepage, the extent is
+> fallocted, right? If this is the case, where do we update the reserve=
+_space?
+> I mean in ext4_da_get_block_prep, we call ext4_da_reserve_space, and =
+if
+> there is no fallocate, we will call ext4_da_update_reserve_space in
+> ext4_ext_handle_uninitialized_extents. So in your case, the 2nd
+> ext4_da_update_reserve_space wouldn't be called. I am not sure whethe=
+r
+> there will be some problem or not.
+Hi  Tao,
+
+What if fallocated blocks have been allocated by direct I/O?  I placed
+a BUG() here, it was indeed triggered by xfstests 127.
+
+The comment is not clear, sorry for that.
+
+Yongqiang.
+>
+> Thanks
+> Tao
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (ret !=3D 0)
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return ret;
+>> =A0 =A0 =A0 }
+>> @@ -517,8 +525,18 @@ int ext4_map_blocks(handle_t *handle, struct in=
+ode *inode,
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 (flags & EXT4_GET_BLOCKS=
+_DELALLOC_RESERVE))
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_da_update_reserve_s=
+pace(inode, retval, 1);
+>> =A0 =A0 =A0 }
+>> - =A0 =A0 if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
+>> + =A0 =A0 if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) {
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_clear_inode_state(inode, EXT4_STATE=
+_DELALLOC_RESERVED);
+>> +delayed_mapped:
+>> + =A0 =A0 =A0 =A0 =A0 =A0 if (retval > 0 && map->m_flags & EXT4_MAP_=
+MAPPED) {
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 int ret;
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* delayed allocation bloc=
+ks has been allocated */
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ret =3D ext4_de_remove_spa=
+ce(inode, map->m_lblk,
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 =A0map->m_len);
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (ret < 0)
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 retval =3D=
+ ret;
+>> + =A0 =A0 =A0 =A0 =A0 =A0 }
+>> + =A0 =A0 }
+>>
+>> =A0 =A0 =A0 up_write((&EXT4_I(inode)->i_data_sem));
+>> =A0 =A0 =A0 if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
+>> @@ -1630,6 +1648,12 @@ static int ext4_da_get_block_prep(struct inod=
+e *inode, sector_t iblock,
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* not enough space to r=
+eserve */
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return ret;
+>>
+>> + =A0 =A0 =A0 =A0 =A0 =A0 down_write((&EXT4_I(inode)->i_data_sem));
+>> + =A0 =A0 =A0 =A0 =A0 =A0 ret =3D ext4_de_add_space(inode, map.m_lbl=
+k, map.m_len);
+>> + =A0 =A0 =A0 =A0 =A0 =A0 up_write((&EXT4_I(inode)->i_data_sem));
+>> + =A0 =A0 =A0 =A0 =A0 =A0 if (ret)
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return ret;
+>> +
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 map_bh(bh, inode->i_sb, invalid_block);
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 set_buffer_new(bh);
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 set_buffer_delay(bh);
+>> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+>> index 247fcdd..a248551 100644
+>> --- a/fs/ext4/super.c
+>> +++ b/fs/ext4/super.c
+>> @@ -49,6 +49,7 @@
+>> =A0#include "xattr.h"
+>> =A0#include "acl.h"
+>> =A0#include "mballoc.h"
+>> +#include "ext4_extents.h"
+>>
+>> =A0#define CREATE_TRACE_POINTS
+>> =A0#include <trace/events/ext4.h>
+>> @@ -967,6 +968,7 @@ void ext4_clear_inode(struct inode *inode)
+>> =A0 =A0 =A0 end_writeback(inode);
+>> =A0 =A0 =A0 dquot_drop(inode);
+>> =A0 =A0 =A0 ext4_discard_preallocations(inode);
+>> + =A0 =A0 ext4_de_remove_space(inode, 0, EXT_MAX_BLOCKS);
+>> =A0 =A0 =A0 if (EXT4_I(inode)->jinode) {
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 jbd2_journal_release_jbd_inode(EXT4_JOUR=
+NAL(inode),
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
+=A0 =A0 =A0 =A0 =A0 =A0EXT4_I(inode)->jinode);
+>> @@ -4976,9 +4978,14 @@ static int __init ext4_init_fs(void)
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 init_waitqueue_head(&ext4__ioend_wq[i]);
+>> =A0 =A0 =A0 }
+>>
+>> - =A0 =A0 err =3D ext4_init_pageio();
+>> + =A0 =A0 err =3D ext4_init_de();
+>> =A0 =A0 =A0 if (err)
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 return err;
+>> +
+>> + =A0 =A0 err =3D ext4_init_pageio();
+>> + =A0 =A0 if (err)
+>> + =A0 =A0 =A0 =A0 =A0 =A0 goto out8;
+>> +
+>> =A0 =A0 =A0 err =3D ext4_init_system_zone();
+>> =A0 =A0 =A0 if (err)
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out7;
+>> @@ -5030,6 +5037,9 @@ out6:
+>> =A0 =A0 =A0 ext4_exit_system_zone();
+>> =A0out7:
+>> =A0 =A0 =A0 ext4_exit_pageio();
+>> +out8:
+>> + =A0 =A0 ext4_exit_de();
+>> +
+>> =A0 =A0 =A0 return err;
+>> =A0}
+>>
+>
+>
+
+
+
+--=20
+Best Wishes
+Yongqiang Yang
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
