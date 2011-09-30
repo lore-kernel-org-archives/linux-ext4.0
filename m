@@ -1,48 +1,45 @@
-From: Johannes Weiner <jweiner@redhat.com>
-Subject: [patch 5/5] Btrfs: pass __GFP_WRITE for buffered write page allocations
-Date: Fri, 30 Sep 2011 09:17:24 +0200
-Message-ID: <1317367044-475-6-git-send-email-jweiner@redhat.com>
+From: Pekka Enberg <penberg@cs.helsinki.fi>
+Subject: Re: [patch 3/5] mm: try to distribute dirty pages fairly across zones
+Date: Fri, 30 Sep 2011 10:35:25 +0300
+Message-ID: <CAOJsxLFWfH5zDG8ui=yQyOcZY_nXhK6r+ziapLg9Zhmb3ibuWQ@mail.gmail.com>
 References: <1317367044-475-1-git-send-email-jweiner@redhat.com>
-Cc: Mel Gorman <mgorman@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Dave Chinner <david@fromorbit.com>,
-        Wu Fengguang <fengguang.wu@intel.com>, Jan Kara <jack@suse.cz>,
-        Rik van Riel <riel@redhat.com>, Minchan Kim <minchan.kim@gmail.com>,
-        Chris Mason <chris.mason@oracle.com>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Shaohua Li <shaohua.li@intel.com>, xfs@oss.sgi.com,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+	<1317367044-475-4-git-send-email-jweiner@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
+Cc: Andrew Morton <akpm@linux-foundation.org>, Mel Gorman <mgorman@suse.de>,
+	Christoph Hellwig <hch@infradead.org>, Dave Chinner <david@fromorbit.com>,
+	Wu Fengguang <fengguang.wu@intel.com>, Jan Kara <jack@suse.cz>, Rik van Riel <riel@redhat.com>,
+	Minchan Kim <minchan.kim@gmail.com>, Chris Mason <chris.mason@oracle.com>,
+	"Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
+	Shaohua Li <shaohua.li@intel.com>, xfs@oss.sgi.com, linux-btrfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Johannes Weiner <jweiner@redhat.com>
 Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1317367044-475-1-git-send-email-jweiner@redhat.com>
+In-Reply-To: <1317367044-475-4-git-send-email-jweiner@redhat.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Tell the page allocator that pages allocated for a buffered write are
-expected to become dirty soon.
+Hi Johannes!
 
-Signed-off-by: Johannes Weiner <jweiner@redhat.com>
-Reviewed-by: Rik van Riel <riel@redhat.com>
----
- fs/btrfs/file.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+On Fri, Sep 30, 2011 at 10:17 AM, Johannes Weiner <jweiner@redhat.com> wrot=
+e:
+> But there is a flaw in that we have a zoned page allocator which does
+> not care about the global state but rather the state of individual
+> memory zones. =A0And right now there is nothing that prevents one zone
+> from filling up with dirty pages while other zones are spared, which
+> frequently leads to situations where kswapd, in order to restore the
+> watermark of free pages, does indeed have to write pages from that
+> zone's LRU list. =A0This can interfere so badly with IO from the flusher
+> threads that major filesystems (btrfs, xfs, ext4) mostly ignore write
+> requests from reclaim already, taking away the VM's only possibility
+> to keep such a zone balanced, aside from hoping the flushers will soon
+> clean pages from that zone.
 
-diff --git a/fs/btrfs/file.c b/fs/btrfs/file.c
-index e7872e4..ea1b892 100644
---- a/fs/btrfs/file.c
-+++ b/fs/btrfs/file.c
-@@ -1084,7 +1084,7 @@ static noinline int prepare_pages(struct btrfs_root *root, struct file *file,
- again:
- 	for (i = 0; i < num_pages; i++) {
- 		pages[i] = find_or_create_page(inode->i_mapping, index + i,
--					       GFP_NOFS);
-+					       GFP_NOFS | __GFP_WRITE);
- 		if (!pages[i]) {
- 			faili = i - 1;
- 			err = -ENOMEM;
--- 
-1.7.6.2
+The obvious question is: how did you test this? Can you share the results?
+
+                        Pekka
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
