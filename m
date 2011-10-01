@@ -1,38 +1,75 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] libext2fs: Always swab MMP block on BE machines
-Date: Fri, 30 Sep 2011 19:03:22 -0400
-Message-ID: <20110930230322.GO12440@thunk.org>
-References: <20110930194126.GU12086@tux1.beaverton.ibm.com>
+From: Minchan Kim <minchan.kim@gmail.com>
+Subject: Re: [patch 1/5] mm: exclude reserved pages from dirtyable memory
+Date: Sat, 1 Oct 2011 16:10:01 +0900
+Message-ID: <20111001071001.GB6601@barrios-desktop>
+References: <1317367044-475-1-git-send-email-jweiner@redhat.com>
+ <1317367044-475-2-git-send-email-jweiner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:60655 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751831Ab1I3XDY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 30 Sep 2011 19:03:24 -0400
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Mel Gorman <mgorman@suse.de>,
+	Christoph Hellwig <hch@infradead.org>,
+	Dave Chinner <david@fromorbit.com>,
+	Wu Fengguang <fengguang.wu@intel.com>, Jan Kara <jack@suse.cz>,
+	Rik van Riel <riel@redhat.com>,
+	Chris Mason <chris.mason@oracle.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Shaohua Li <shaohua.li@intel.com>, xfs@oss.sgi.com,
+	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Johannes Weiner <jweiner@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20110930194126.GU12086@tux1.beaverton.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1317367044-475-2-git-send-email-jweiner@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Sep 30, 2011 at 12:41:26PM -0700, Darrick J. Wong wrote:
-> The MMP code in libext2fs tries to gate MMP block swab'ing with this test:
+On Fri, Sep 30, 2011 at 09:17:20AM +0200, Johannes Weiner wrote:
+> The amount of dirtyable pages should not include the full number of
+> free pages: there is a number of reserved pages that the page
+> allocator and kswapd always try to keep free.
 > 
-> #ifdef EXT2FS_ENABLE_SWAPFS
-> if (fs->super->s_magic == ext2fs_swab16(EXT2_SUPER_MAGIC))
+> The closer (reclaimable pages - dirty pages) is to the number of
+> reserved pages, the more likely it becomes for reclaim to run into
+> dirty pages:
 > 
-> However, EXT2FS_ENABLE_SWAPFS never seems to be defined anywhere (all possible
-> #define's were cleaned out of e2fsprogs ages ago), and even if any still
-> existed, the field fs->super->s_magic is always in host byteorder, so the test
-> always fails.  So, we can change the #ifdef to WORDS_BIGENDIAN (which is
-> conditionally defined on BE platforms) and get rid of the broken if test.
+>        +----------+ ---
+>        |   anon   |  |
+>        +----------+  |
+>        |          |  |
+>        |          |  -- dirty limit new    -- flusher new
+>        |   file   |  |                     |
+>        |          |  |                     |
+>        |          |  -- dirty limit old    -- flusher old
+>        |          |                        |
+>        +----------+                       --- reclaim
+>        | reserved |
+>        +----------+
+>        |  kernel  |
+>        +----------+
 > 
-> (This fix came up while testing the metadata checksumming patchset)
+> This patch introduces a per-zone dirty reserve that takes both the
+> lowmem reserve as well as the high watermark of the zone into account,
+> and a global sum of those per-zone values that is subtracted from the
+> global amount of dirtyable pages.  The lowmem reserve is unavailable
+> to page cache allocations and kswapd tries to keep the high watermark
+> free.  We don't want to end up in a situation where reclaim has to
+> clean pages in order to balance zones.
 > 
-> Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+> Not treating reserved pages as dirtyable on a global level is only a
+> conceptual fix.  In reality, dirty pages are not distributed equally
+> across zones and reclaim runs into dirty pages on a regular basis.
+> 
+> But it is important to get this right before tackling the problem on a
+> per-zone level, where the distance between reclaim and the dirty pages
+> is mostly much smaller in absolute numbers.
+> 
+> Signed-off-by: Johannes Weiner <jweiner@redhat.com>
+> Reviewed-by: Rik van Riel <riel@redhat.com>
+Reviewed-by: Minchan Kim <minchan.kim@gmail.com>
 
-Applied, thanks.
-
-						- Ted
+-- 
+Kinds regards,
+Minchan Kim
