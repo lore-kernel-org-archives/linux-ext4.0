@@ -1,75 +1,59 @@
-From: Minchan Kim <minchan.kim@gmail.com>
-Subject: Re: [patch 1/5] mm: exclude reserved pages from dirtyable memory
-Date: Sat, 1 Oct 2011 16:10:01 +0900
-Message-ID: <20111001071001.GB6601@barrios-desktop>
-References: <1317367044-475-1-git-send-email-jweiner@redhat.com>
- <1317367044-475-2-git-send-email-jweiner@redhat.com>
+From: Dave Young <hidave.darkstar@gmail.com>
+Subject: [BUG] copy file result with zero
+Date: Sat, 1 Oct 2011 22:01:35 +0800
+Message-ID: <CABqxG0feuZCmx=RfxU-50uFK9-P2vNbAMqJUdWM5RhuJifD5Ow@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Mel Gorman <mgorman@suse.de>,
-	Christoph Hellwig <hch@infradead.org>,
-	Dave Chinner <david@fromorbit.com>,
-	Wu Fengguang <fengguang.wu@intel.com>, Jan Kara <jack@suse.cz>,
-	Rik van Riel <riel@redhat.com>,
-	Chris Mason <chris.mason@oracle.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Shaohua Li <shaohua.li@intel.com>, xfs@oss.sgi.com,
-	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Johannes Weiner <jweiner@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-ext4@vger.kernel.org
+To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1317367044-475-2-git-send-email-jweiner@redhat.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Sep 30, 2011 at 09:17:20AM +0200, Johannes Weiner wrote:
-> The amount of dirtyable pages should not include the full number of
-> free pages: there is a number of reserved pages that the page
-> allocator and kswapd always try to keep free.
-> 
-> The closer (reclaimable pages - dirty pages) is to the number of
-> reserved pages, the more likely it becomes for reclaim to run into
-> dirty pages:
-> 
->        +----------+ ---
->        |   anon   |  |
->        +----------+  |
->        |          |  |
->        |          |  -- dirty limit new    -- flusher new
->        |   file   |  |                     |
->        |          |  |                     |
->        |          |  -- dirty limit old    -- flusher old
->        |          |                        |
->        +----------+                       --- reclaim
->        | reserved |
->        +----------+
->        |  kernel  |
->        +----------+
-> 
-> This patch introduces a per-zone dirty reserve that takes both the
-> lowmem reserve as well as the high watermark of the zone into account,
-> and a global sum of those per-zone values that is subtracted from the
-> global amount of dirtyable pages.  The lowmem reserve is unavailable
-> to page cache allocations and kswapd tries to keep the high watermark
-> free.  We don't want to end up in a situation where reclaim has to
-> clean pages in order to balance zones.
-> 
-> Not treating reserved pages as dirtyable on a global level is only a
-> conceptual fix.  In reality, dirty pages are not distributed equally
-> across zones and reclaim runs into dirty pages on a regular basis.
-> 
-> But it is important to get this right before tackling the problem on a
-> per-zone level, where the distance between reclaim and the dirty pages
-> is mostly much smaller in absolute numbers.
-> 
-> Signed-off-by: Johannes Weiner <jweiner@redhat.com>
-> Reviewed-by: Rik van Riel <riel@redhat.com>
-Reviewed-by: Minchan Kim <minchan.kim@gmail.com>
+Hi,
 
+Weird problem, when I build app from source,
+make; make install
+run the command, but got "cannot execute binary file"
+
+hexdump shows the installed binary is full of zero
+
+Is it related to ext4 fiemap problem described below?
+http://lwn.net/Articles/429349/
+
+I finally managed to find the way to reproduce this:
+just cp a elf binary A  to file B, then cp B to file C,  then you will get:
+A == B != C
+
+ie.
+cp /bin/ls ls1
+cp ls1 ls2
+
+ls2 will be filled with zero
+
+Below is a strace log of install, kernel version is 3.1.0-rc6+
+geteuid()                               = 0
+umask(0)                                = 022
+stat("/tmp/vpnc", 0x7fff85363710)       = -1 ENOENT (No such file or directory)
+stat("vpnc", {st_mode=S_IFREG|0755, st_size=368662, ...}) = 0
+lstat("/tmp/vpnc", 0x7fff85363250)      = -1 ENOENT (No such file or directory)
+open("vpnc", O_RDONLY)                  = 3
+fstat(3, {st_mode=S_IFREG|0755, st_size=368662, ...}) = 0
+open("/tmp/vpnc", O_WRONLY|O_CREAT|O_EXCL, 0755) = 4
+fstat(4, {st_mode=S_IFREG|0755, st_size=0, ...}) = 0
+uname({sys="Linux", node="darkstar", ...}) = 0
+ioctl(3, FS_IOC_FIEMAP, 0x7fff85361f60) = 0
+ftruncate(4, 368662)                    = 0
+fsetxattr(4, "system.posix_acl_access",
+"\x02\x00\x00\x00\x01\x00\x06\x00\xff\xff\xff\xff\x04\x00\x00\x00\xff\xff\xff\xff
+\x00\x00\x00\xff\xff\xff\xff", 28, 0) = 0
+close(4)                                = 0
+close(3)                                = 0
+chmod("/tmp/vpnc", 0755)                = 0
+close(0)                                = 0
+close(1)                                = 0
+close(2)                                = 0
+exit_group(0)                           = ?
 -- 
-Kinds regards,
-Minchan Kim
+Regards
+Dave
