@@ -1,59 +1,75 @@
-From: Dave Young <hidave.darkstar@gmail.com>
-Subject: [BUG] copy file result with zero
-Date: Sat, 1 Oct 2011 22:01:35 +0800
-Message-ID: <CABqxG0feuZCmx=RfxU-50uFK9-P2vNbAMqJUdWM5RhuJifD5Ow@mail.gmail.com>
+From: Joakim Tjernlund <joakim.tjernlund@transmode.se>
+Subject: Re: [PATCH v4] crc32c: Implement CRC32c with slicing-by-8 algorithm
+Date: Sat, 1 Oct 2011 16:02:10 +0200
+Message-ID: <OF54094699.6F5CF2B6-ONC125791C.004C901C-C125791C.004D1A61@transmode.se>
+References: <20110930192956.4176.29905.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-ext4@vger.kernel.org
-To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	Mingming Cao <cmm@us.ibm.com>,
+	David Miller <davem@davemloft.net>,
+	Herbert Xu <herbert@gondor.apana.org.au>,
+	linux-crypto <linux-crypto@vger.kernel.org>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Bob Pearson <rpearson@systemfabricworks.com>,
+	Theodore Tso <tytso@mit.edu>
+To: "Darrick J. Wong" <djwong@us.ibm.com>
+Return-path: <linux-crypto-owner@vger.kernel.org>
+In-Reply-To: <20110930192956.4176.29905.stgit@elm3c44.beaverton.ibm.com>
+Sender: linux-crypto-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi,
 
-Weird problem, when I build app from source,
-make; make install
-run the command, but got "cannot execute binary file"
+"Darrick J. Wong" <djwong@us.ibm.com> wrote on 2011/09/30 21:29:56:
+>
+> The existing CRC32c implementation uses Sarwate's algorithm to calculate the
+> code one byte at a time.  Using a slicing-by-8 algorithm adapted from Bob
+> Pearson, we can process buffers 8 bytes at a time, for a substantial increase
+> in performance.
+>
+> The motivation for this patchset is that I am working on adding full metadata
+> checksumming to ext4 and jbd2.  As far as performance impact of adding
+> checksumming goes, I see nearly no change with a standard mail server ffsb
+> simulation.  On a test that involves only metadata operations (file creation
+> and deletion, and fallocate/truncate), I see a drop of about 50 pcercent with
+> the current kernel crc32c implementation; this improves to a drop of about 20
+> percent with the enclosed crc32c code.
+>
+> When metadata is usually a small fraction of total IO, this new implementation
+> doesn't help much because metadata is usually a small fraction of total IO.
+> However, when we are doing IO that is almost all metadata (such as rm -rf'ing a
+> tree), then this patch speeds up the operation substantially.
+>
+> Given that iscsi, sctp, and btrfs also use crc32c, this patchset should improve
+> their speed as well.  I have some preliminary results[1] that show the
+> difference in various crc algorithms that I've come across: the "crc32c-by8-le"
+> column is the new algorithm in the patch; the "crc32c" column is the current
+> crc32c kernel implementation; and the "crc32-kern-le" column is the current
+> crc32 kernel implementation, which is similar to the results one gets for
+> CONFIG_CRC32C_SLICEBY4=y.  As you can see, the new implementation runs at
+> nearly 4x the speed of the current implementation; even the slimmer slice-by-4
+> implementation is generally 2-3x faster.
+>
+> However, the implementation allows the kernel builder to select from a variety
+> of space-speed tradeoffs, should my results not hold true on a particular
+> class of system.
+>
+> v2: Use the crypto testmgr api for self-test.
+> v3: Get rid of the -be version, which had no users.
+> v4: Allow kernel builder a choice of speed vs. space optimization.
+>
+> [1]http://djwong.org/docs/ext4_metadata_checksums.html
+> (cached copy of the ext4 wiki)
+>
+> Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 
-hexdump shows the installed binary is full of zero
+This is based on an old version of Bobs slice by 8 that has lots duplication and
+hard to maintain.
 
-Is it related to ext4 fiemap problem described below?
-http://lwn.net/Articles/429349/
+Start from Bobs latest patches and add crc32c to lib/crc32.c
 
-I finally managed to find the way to reproduce this:
-just cp a elf binary A  to file B, then cp B to file C,  then you will get:
-A == B != C
+Also, for crc32c I think you only need slice by 4 and slice by 8
 
-ie.
-cp /bin/ls ls1
-cp ls1 ls2
-
-ls2 will be filled with zero
-
-Below is a strace log of install, kernel version is 3.1.0-rc6+
-geteuid()                               = 0
-umask(0)                                = 022
-stat("/tmp/vpnc", 0x7fff85363710)       = -1 ENOENT (No such file or directory)
-stat("vpnc", {st_mode=S_IFREG|0755, st_size=368662, ...}) = 0
-lstat("/tmp/vpnc", 0x7fff85363250)      = -1 ENOENT (No such file or directory)
-open("vpnc", O_RDONLY)                  = 3
-fstat(3, {st_mode=S_IFREG|0755, st_size=368662, ...}) = 0
-open("/tmp/vpnc", O_WRONLY|O_CREAT|O_EXCL, 0755) = 4
-fstat(4, {st_mode=S_IFREG|0755, st_size=0, ...}) = 0
-uname({sys="Linux", node="darkstar", ...}) = 0
-ioctl(3, FS_IOC_FIEMAP, 0x7fff85361f60) = 0
-ftruncate(4, 368662)                    = 0
-fsetxattr(4, "system.posix_acl_access",
-"\x02\x00\x00\x00\x01\x00\x06\x00\xff\xff\xff\xff\x04\x00\x00\x00\xff\xff\xff\xff
-\x00\x00\x00\xff\xff\xff\xff", 28, 0) = 0
-close(4)                                = 0
-close(3)                                = 0
-chmod("/tmp/vpnc", 0755)                = 0
-close(0)                                = 0
-close(1)                                = 0
-close(2)                                = 0
-exit_group(0)                           = ?
--- 
-Regards
-Dave
+ Jocke
