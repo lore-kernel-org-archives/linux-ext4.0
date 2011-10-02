@@ -1,110 +1,107 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 3/6] Implement project id support for generic quota
-Date: Sun,  2 Oct 2011 23:44:38 +0400
-Message-ID: <1317584681-29967-3-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 4/6] ext4: get rid of didicated MOUNT_QUOTA option
+Date: Sun,  2 Oct 2011 23:44:39 +0400
+Message-ID: <1317584681-29967-4-git-send-email-dmonakhov@openvz.org>
 References: <1317584681-29967-1-git-send-email-dmonakhov@openvz.org>
 Cc: linux-ext4@vger.kernel.org, jack@suse.cz, viro@ZenIV.linux.org.uk,
 	adityakali@google.com, Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:48569 "EHLO
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:64605 "EHLO
 	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753973Ab1JBTlQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Oct 2011 15:41:16 -0400
+	with ESMTP id S1754298Ab1JBTlS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Oct 2011 15:41:18 -0400
 In-Reply-To: <1317584681-29967-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Since all preparation code are already in quota-tree,
-So this patch is really small.
+Currently didicated quota option is used only for options parsing phase,
+which is very inefficient. Also show_opts output are not obvious in case
+of journaled quota.
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/quota/dquot.c      |   10 ++++++++++
- fs/quota/quotaio_v2.h |    6 ++++--
- include/linux/quota.h |    9 ++++++++-
- 3 files changed, 22 insertions(+), 3 deletions(-)
+ fs/ext4/ext4.h  |    2 +-
+ fs/ext4/super.c |   16 +++++++---------
+ 2 files changed, 8 insertions(+), 10 deletions(-)
 
-diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
-index 5b572c8..aca0430 100644
---- a/fs/quota/dquot.c
-+++ b/fs/quota/dquot.c
-@@ -1135,6 +1135,11 @@ static int need_print_warning(struct dquot *dquot)
- 			return current_fsuid() == dquot->dq_id;
- 		case GRPQUOTA:
- 			return in_group_p(dquot->dq_id);
-+		case PRJQUOTA:
-+			/* XXX: Currently there is no way to understand
-+			   which project_id this task belonges to, So print
-+			   a warn message unconditionally. -dmon */
-+			return 1;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 9eedecb..e92c51a 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -904,9 +904,9 @@ struct ext4_inode_info {
+ #define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
+ #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mapping */
+ #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
+-#define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
+ #define EXT4_MOUNT_USRQUOTA		0x100000 /* "old" user quota */
+ #define EXT4_MOUNT_GRPQUOTA		0x200000 /* "old" group quota */
++#define EXT4_MOUNT_QUOTA		0x300000 /* Some quota option set */
+ #define EXT4_MOUNT_DIOREAD_NOLOCK	0x400000 /* Enable support for dio read nolocking */
+ #define EXT4_MOUNT_JOURNAL_CHECKSUM	0x800000 /* Journal checksums */
+ #define EXT4_MOUNT_JOURNAL_ASYNC_COMMIT	0x1000000 /* Journal Async Commit */
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 44d0c8d..74d2726 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1459,7 +1459,6 @@ static int set_qf_name(struct super_block *sb, int qtype, substring_t *args)
+ 		sbi->s_qf_names[qtype] = NULL;
+ 		return 0;
  	}
- 	return 0;
+-	set_opt(sb, QUOTA);
+ 	return 1;
  }
-@@ -1380,6 +1385,11 @@ static void __dquot_initialize(struct inode *inode, int type)
- 		case GRPQUOTA:
- 			id = inode->i_gid;
+ 
+@@ -1694,10 +1693,12 @@ static int parse_options(char *options, struct super_block *sb,
+ 		case Opt_offusrjquota:
+ 			if (!clear_qf_name(sb, USRQUOTA))
+ 				return 0;
++			clear_opt(sb, USRQUOTA);
  			break;
-+		case PRJQUOTA:
-+			if (!inode->i_sb->s_op->get_prjid)
-+				continue;
-+			id = inode->i_sb->s_op->get_prjid(inode);
-+			break;
- 		}
- 		got[cnt] = dqget(sb, id, cnt);
+ 		case Opt_offgrpjquota:
+ 			if (!clear_qf_name(sb, GRPQUOTA))
+ 				return 0;
++			clear_opt(sb, USRQUOTA);
+ 			break;
+ 
+ 		case Opt_jqfmt_vfsold:
+@@ -1720,11 +1721,9 @@ set_qf_format:
+ 			break;
+ 		case Opt_quota:
+ 		case Opt_usrquota:
+-			set_opt(sb, QUOTA);
+ 			set_opt(sb, USRQUOTA);
+ 			break;
+ 		case Opt_grpquota:
+-			set_opt(sb, QUOTA);
+ 			set_opt(sb, GRPQUOTA);
+ 			break;
+ 		case Opt_noquota:
+@@ -1734,8 +1733,6 @@ set_qf_format:
+ 				return 0;
+ 			}
+ 			clear_opt(sb, QUOTA);
+-			clear_opt(sb, USRQUOTA);
+-			clear_opt(sb, GRPQUOTA);
+ 			break;
+ #else
+ 		case Opt_quota:
+@@ -1894,23 +1891,24 @@ set_qf_format:
  	}
-diff --git a/fs/quota/quotaio_v2.h b/fs/quota/quotaio_v2.h
-index f1966b4..bfab9df 100644
---- a/fs/quota/quotaio_v2.h
-+++ b/fs/quota/quotaio_v2.h
-@@ -13,12 +13,14 @@
-  */
- #define V2_INITQMAGICS {\
- 	0xd9c01f11,	/* USRQUOTA */\
--	0xd9c01927	/* GRPQUOTA */\
-+	0xd9c01927,	/* GRPQUOTA */\
-+	0xd9c03f14	/* PRJQUOTA */\
- }
+ #ifdef CONFIG_QUOTA
+ 	if (sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA]) {
++		int jquota = 0;
+ 		if (test_opt(sb, USRQUOTA) && sbi->s_qf_names[USRQUOTA])
+-			clear_opt(sb, USRQUOTA);
++			jquota |= EXT4_MOUNT_USRQUOTA;
  
- #define V2_INITQVERSIONS {\
- 	1,		/* USRQUOTA */\
--	1		/* GRPQUOTA */\
-+	1,		/* GRPQUOTA */	\
-+	1		/* PRJQUOTA */\
- }
+ 		if (test_opt(sb, GRPQUOTA) && sbi->s_qf_names[GRPQUOTA])
+-			clear_opt(sb, GRPQUOTA);
++			jquota |= EXT4_MOUNT_GRPQUOTA;
  
- /* First generic header */
-diff --git a/include/linux/quota.h b/include/linux/quota.h
-index cb78556..f8696cd 100644
---- a/include/linux/quota.h
-+++ b/include/linux/quota.h
-@@ -36,11 +36,17 @@
- #include <linux/errno.h>
- #include <linux/types.h>
- 
--#define __DQUOT_VERSION__	"dquot_6.5.2"
-+#define __DQUOT_VERSION__	"dquot_6.6.0"
- 
-+#ifdef CONFIG_PROJECT_ID
-+#define MAXQUOTAS 3
-+#else
- #define MAXQUOTAS 2
-+#endif
-+
- #define USRQUOTA  0		/* element used for user quotas */
- #define GRPQUOTA  1		/* element used for group quotas */
-+#define PRJQUOTA  2		/* element used for project quotas */
- 
- /*
-  * Definitions for the default names of the quotas files.
-@@ -48,6 +54,7 @@
- #define INITQFNAMES { \
- 	"user",    /* USRQUOTA */ \
- 	"group",   /* GRPQUOTA */ \
-+	"project",  /* RPJQUOTA */	\
- 	"undefined", \
- };
- 
--- 
-1.7.1
-
+-		if (test_opt(sb, GRPQUOTA) || test_opt(sb, USRQUOTA)) {
++		if (test_opt(sb, QUOTA) != jquota) {
+ 			ext4_msg(sb, KERN_ERR, "old and new quota "
+ 					"format mixing");
+ 			return 0;
+ 		}
