@@ -1,21 +1,20 @@
 From: Andreas Dilger <aedilger@gmail.com>
 Subject: Re: [BUG] copy file result with zero
-Date: Sun, 2 Oct 2011 00:59:22 -0700
-Message-ID: <89E75765-AC24-4EF4-9547-6EE7A1A38B5A@dilger.ca>
+Date: Sun, 2 Oct 2011 01:02:04 -0700
+Message-ID: <CA140AD1-B715-46BF-81B3-EA2069CBC131@dilger.ca>
 References: <CABqxG0feuZCmx=RfxU-50uFK9-P2vNbAMqJUdWM5RhuJifD5Ow@mail.gmail.com> <20111001143900.GH28234@thunk.org> <CABqxG0eiRiCSirXi5rBB0bJ2AJSQjF2dje2BcjbVYEYWgf-zpw@mail.gmail.com> <A2FF8835-2386-47F9-AFF8-4E09BEC4F80E@oracle.com>
 Mime-Version: 1.0 (Apple Message framework v1084)
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 8BIT
-Cc: Dave Young <hidave.darkstar@gmail.com>, "Ted Ts'o" <tytso@mit.edu>,
+Cc: Jeff liu <jeff.liu@oracle.com>, Ted Ts'o <tytso@mit.edu>,
 	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Jeff liu <jeff.liu@oracle.com>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>
+	linux-ext4 development <linux-ext4@vger.kernel.org>
+To: Dave Young <hidave.darkstar@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:42309 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751156Ab1JBG7k convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Oct 2011 02:59:40 -0400
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:54005 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751454Ab1JBHCW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Oct 2011 03:02:22 -0400
 In-Reply-To: <A2FF8835-2386-47F9-AFF8-4E09BEC4F80E@oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -23,8 +22,6 @@ List-ID: <linux-ext4.vger.kernel.org>
 On 2011-10-01, at 11:41 PM, Jeff liu wrote:
 >> On Sat, Oct 1, 2011 at 10:39 PM, Ted Ts'o <tytso@mit.edu> wrote:
 >>> On Sat, Oct 01, 2011 at 10:01:35PM +0800, Dave Young wrote:
->>>> Hi,
->>>> 
 >>>> Weird problem, when I build app from source,
 >>>> make; make install
 >>>> run the command, but got "cannot execute binary file"
@@ -43,9 +40,9 @@ On 2011-10-01, at 11:41 PM, Jeff liu wrote:
 > 
 > Actually, upstream cp(1) using FIEMAP only if the source file is sparse,  or else, it will do normal copy, i.e, block based.
 
-My understanding is that cp uses the blocks count to determine whether the file is sparse or not.  In the case of delayed allocation (where blocks are not yet allocated, if they are not reflected in the i_blocks count) it might mistakenly think that the file is sparse.
+Are there any distros that are shipping with a version of cp that depends on FIEMAP?  That would dramatically increase the severity of this problem, since orders of magnitude more users will hit the problem.
 
-Given the danger of this bug, it is important to ensure ext4 returns DELALLOC extents for pages in the page cache.  I think Yongqiang Yang just submitted a patch series to do this for ext4, so it would be important to verify it fixes this problem.
+Dave, what distro were you seeing this problem on, and had you installed/upgraded your coreutils and/or kernel yourself?
 
 >> Do you means It should work in 3.1.0-rc6 even with cp which depends fiemap?
 >> 
