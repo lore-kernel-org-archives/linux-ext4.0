@@ -1,36 +1,67 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH v2] ext4: make quota as first class supported feature
-Date: Sun, 2 Oct 2011 10:34:41 -0400
-Message-ID: <20111002143441.GA10851@infradead.org>
-References: <1313780769-21713-1-git-send-email-adityakali@google.com>
- <0EC4FCD1-1DBB-417C-BE5D-4B39ABD67A56@dilger.ca>
- <20110829204602.GI5672@quack.suse.cz>
- <20110909154057.GA7738@infradead.org>
- <20110910202409.GB6709@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Andreas Dilger <adilger@dilger.ca>,
-	Aditya Kali <adityakali@google.com>,
-	"tytso@mit.edu" <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 1/6] RFC: introduce extended inode owner identifier v8
+Date: Sun,  2 Oct 2011 23:44:36 +0400
+Message-ID: <1317584681-29967-1-git-send-email-dmonakhov@openvz.org>
+Cc: linux-ext4@vger.kernel.org, jack@suse.cz, viro@ZenIV.linux.org.uk,
+	adityakali@google.com, Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:43702
-	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752627Ab1JBOes (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Oct 2011 10:34:48 -0400
-Content-Disposition: inline
-In-Reply-To: <20110910202409.GB6709@quack.suse.cz>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:48569 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751680Ab1JBTlO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Oct 2011 15:41:14 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Sep 10, 2011 at 10:24:09PM +0200, Jan Kara wrote:
->   Well, the trouble is with systems which have accounts stored e.g. in
-> LDAP with thousands / tens thousands of users (although each machine is
-> used only by a small subset of users). Then iterating with getpwent gets
-> really inefficient...
+Hi, I've updated old standing project quota id patch-set.
+Please take a look at it and replay me your opinion, especially if you
+do not like it by some reason :) This is really important because i do
+want this feature to be merged sooner or later.
 
-Please make sure to Cc the xfs list when adding an interface like this,
-as it's trivial to implement for us.
+*Feature description*
+1) Inode may has a project identifier which has same meaning as uid/gid.
+2) Id is stored in inode's xattr named "system.project_id"
+3) Id is inherent from parent inode on creation.
+4) This id is cached in memory fs_inode structure and may be accessible
+   via s_op->get_prjid(). This field it restricted by CONFIG_PROJECT_ID.
+   So no wasting of memory happens.
 
+5) Since id is cached in memory it may be used for different purposes
+   such as:
+5A) Implement additional quota id space orthogonal to uid/gid. This is
+    useful in managing quota for some filesystem hierarchy(chroot or
+    container over bindmount)
+
+*User interface *
+Project id is managed via generic xattr interface "system.project_id"
+This good because
+ 1) We may use already existing interface.
+ 2) xattr already supported by generic utilities tar/rsync and etc
+
+PATCH SET TOC:
+1) generic projectid support
+2) generic project quota support
+3) ext4: small mount flags cleanup
+4) ext4 project support implementation
+ 4A) ext4: generic project support
+ 4B) ext4: project quota support
+
+Patch against 3.1.0-rc8-next-20110930
+Actually vfs part is really small, and most changes happen in ext4-tree
+
+Changes against V7
+ - Small fix for project switch error path
+ - Remove usless macro expressions
+Changes against v6
+ - get rid of iattr stuff, current __dquot_transfer() provides sane interface
+   for quota manipulation. i_prjid can must be changed only by fs-speciffic
+   methods so only get() method is really necessery.
+ - remove #ifdef tricks from generic code.
+ - move i_prjid from vfs_inode to fs_inode, to prevent inode bloating.
+ - get rid of isolation logic, because this feature confuse most users.
+Changes against v5
+ - convert dquota_transfer to struct iattr interface. Not it is possible
+   to change i_prjid via notify_changes()
+ - some bugfixes.
+
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
