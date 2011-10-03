@@ -1,568 +1,133 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 5/6] ext4: Implement project ID support for ext4 filesystem
-Date: Sun,  2 Oct 2011 23:44:40 +0400
-Message-ID: <1317584681-29967-5-git-send-email-dmonakhov@openvz.org>
-References: <1317584681-29967-1-git-send-email-dmonakhov@openvz.org>
-Cc: linux-ext4@vger.kernel.org, jack@suse.cz, viro@ZenIV.linux.org.uk,
-	adityakali@google.com, Dmitry Monakhov <dmonakhov@openvz.org>
-To: linux-fsdevel@vger.kernel.org
+From: Justin Gottula <justin@jgottula.com>
+Subject: 3.1-rc8 OOPS in =?utf-8?b?amJkMl9qb3VybmFsX2ZpbGVfaW5vZGU=?= (fs/jbd2/transaction.c line 2142)
+Date: Mon, 3 Oct 2011 01:44:11 +0000 (UTC)
+Message-ID: <loom.20111003T032009-943@post.gmane.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:48569 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754320Ab1JBTlV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Oct 2011 15:41:21 -0400
-In-Reply-To: <1317584681-29967-1-git-send-email-dmonakhov@openvz.org>
+Received: from lo.gmane.org ([80.91.229.12]:39942 "EHLO lo.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754847Ab1JCBpG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 2 Oct 2011 21:45:06 -0400
+Received: from list by lo.gmane.org with local (Exim 4.69)
+	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
+	id 1RAXaZ-0003G2-Oi
+	for linux-ext4@vger.kernel.org; Mon, 03 Oct 2011 03:45:04 +0200
+Received: from cpe-75-84-211-179.socal.res.rr.com ([75.84.211.179])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Mon, 03 Oct 2011 03:45:03 +0200
+Received: from justin by cpe-75-84-211-179.socal.res.rr.com with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Mon, 03 Oct 2011 03:45:03 +0200
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-* Abstract
-  A subtree of a directory tree T is a tree consisting of a directory
-  (the subtree root) in T and all of its descendants in T.
+Hi,
 
-  *NOTE*: User is allowed to break pure subtree hierarchy via manual
-          id manipulation.
+Please tell me if this is the right place to report this; it appears to be an
+ext4-specific issue.
 
-  Project subtrees assumptions:
-  (1) Each inode has an id. This id is persistently stored inside
-      inode (xattr, usually inside ibody)
-  (2) Project id is inherent from parent directory
+I had a kernel panic occur today during some particularly heavy hard drive 
+activity on an ext4 filesystem, running a bleeding edge kernel (3.1-rc8). 
+Unfortunately it's not an easily reproducible bug, it was pretty much a random 
+occurrence.
 
-  This feature is similar to project-id in XFS. One may assign some id to
-  a subtree. Each entry from the subtree may be accounted in directory
-  project quota. Will appear in later patches.
+Here's the excerpt from dmesg (these were the only pertinent lines):
 
-* Disk layout
-  Project id is stored on disk inside xattr usually inside ibody.
-  Xattr is used only as a data storage, It has not user visible xattr
-  interface.
+[ 5922.546229] BUG: unable to handle kernel NULL pointer dereference at         
+  (null)
+[ 5922.546272] IP: [<ffffffffa00ccac8>] jbd2_journal_file_inode+0x38/0xf0 [jbd2]
+[ 5922.546308] PGD 195b3f067 PUD 1c1a70067 PMD 0 
+[ 5922.546339] Oops: 0000 [#1] PREEMPT SMP 
+[ 5922.546361] CPU 1 
+[ 5922.546370] Modules linked in: it87 hwmon_vid coretemp ipv6 vboxnetflt 
+vboxnetadp vboxdrv fuse loop uvcvideo joydev videodev snd_usb_audio usbhid 
+usb_storage media hid xpad v4l2_compat_ioctl32 ff_memless snd_usbmidi_lib uas 
+evdev ppdev radeon sg snd_hda_codec_hdmi parport_pc snd_hda_codec_realtek 
+i2c_i801 psmouse parport serio_raw iTCO_wdt ttm floppy iTCO_vendor_support 
+drm_kms_helper drm snd_oxygen snd_hda_intel snd_oxygen_lib i2c_algo_bit 
+processor intel_agp snd_hda_codec intel_gtt i2c_core snd_hwdep button 
+snd_mpu401_uart snd_rawmidi snd_seq_dummy snd_seq_oss snd_seq_midi_event snd_seq
+snd_seq_device snd_pcm_oss snd_pcm snd_timer snd_page_alloc snd_mixer_oss snd 
+soundcore pcspkr r8169 mii xhci_hcd btrfs lzo zlib_deflate libcrc32c crc32c ext4
+mbcache jbd2 crc16 uhci_hcd ehci_hcd usbcore sr_mod cdrom ahci libahci sd_mod 
+pata_jmicron libata scsi_mod
+[ 5922.546911] 
+[ 5922.546919] Pid: 951, comm: flush-8:16 Not tainted 3.1.0-rc8-mainline #1 
+Gigabyte Technology Co., Ltd. EP35-DS3R/EP35-DS3R
+[ 5922.546963] RIP: 0010:[<ffffffffa00ccac8>]  [<ffffffffa00ccac8>] 
+jbd2_journal_file_inode+0x38/0xf0 [jbd2]
+[ 5922.546999] RSP: 0000:ffff88020fda5960  EFLAGS: 00010246
+[ 5922.547019] RAX: 00000000fffffffb RBX: ffff8801293f5500 RCX: 0000000000000001
+[ 5922.547043] RDX: ffff88020e5c7c00 RSI: 0000000000000000 RDI: ffff880202ada750
+[ 5922.547067] RBP: ffff88020fda5980 R08: 00000000182c0e00 R09: 0000000000000001
+[ 5922.547091] R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
+[ 5922.547115] R13: ffff88020fdb0800 R14: ffff880202ada750 R15: ffff88004f00e890
+[ 5922.547139] FS:  0000000000000000(0000) GS:ffff88021fc80000(0000) 
+knlGS:0000000000000000
+[ 5922.547166] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[ 5922.547185] CR2: 0000000000000000 CR3: 000000014411a000 CR4: 00000000000406e0
+[ 5922.547209] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+[ 5922.547233] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+[ 5922.547256] Process flush-8:16 (pid: 951, threadinfo ffff88020fda4000, task 
+ffff88021012b250)
+[ 5922.547284] Stack:
+[ 5922.547296]  ffff88020fda5a80 000000000000bada 0000000000000001 
+ffff880202ada750
+[ 5922.547334]  ffff88020fda5a00 ffffffffa00ef35c ffffea00046022c0 
+ffffffffa00efd3b
+[ 5922.547369]  ffffea00081e0840 0000000000000000 ffffffffa0125630 
+00000000072e62da
+[ 5922.547403] Call Trace:
+[ 5922.547419]  [<ffffffffa00ef35c>] mpage_da_map_and_submit+0x2bc/0x400 [ext4]
+[ 5922.547449]  [<ffffffffa00efd3b>] ? ext4_da_writepages+0x35b/0x6b0 [ext4]
+[ 5922.547476]  [<ffffffffa00efd86>] ext4_da_writepages+0x3a6/0x6b0 [ext4]
+[ 5922.547503]  [<ffffffff81108534>] do_writepages+0x24/0x40
+[ 5922.547523]  [<ffffffff811848a3>] writeback_single_inode+0x183/0x490
+[ 5922.547546]  [<ffffffff81184faa>] writeback_sb_inodes+0x1aa/0x270
+[ 5922.547567]  [<ffffffff8118510e>] __writeback_inodes_wb+0x9e/0xd0
+[ 5922.547589]  [<ffffffff811854db>] wb_writeback+0x39b/0x3d0
+[ 5922.547610]  [<ffffffff811855a8>] wb_check_old_data_flush+0x98/0xa0
+[ 5922.547632]  [<ffffffff811865fc>] wb_do_writeback+0x1ac/0x250
+[ 5922.547653]  [<ffffffff81071770>] ? init_timer_deferrable_key+0x30/0x30
+[ 5922.547676]  [<ffffffff8118672c>] bdi_writeback_thread+0x8c/0x340
+[ 5922.547698]  [<ffffffff811866a0>] ? wb_do_writeback+0x250/0x250
+[ 5922.547720]  [<ffffffff810846fc>] kthread+0x8c/0xa0
+[ 5922.547738]  [<ffffffff81408734>] kernel_thread_helper+0x4/0x10
+[ 5922.547759]  [<ffffffff81084670>] ? kthread_worker_fn+0x190/0x190
+[ 5922.547780]  [<ffffffff81408730>] ? gs_change+0x13/0x13
+[ 5922.547797] Code: 89 65 e8 4c 89 6d f0 4c 89 75 f8 66 66 66 66 90 b8 fb ff ff
+ ff 48 8b 1f 49 89 f4 f6 47 14 04 4c 8b 2b 75 72 41 f6 45 00 02 75 6b 
+[ 5922.548006] RIP  [<ffffffffa00ccac8>] jbd2_journal_file_inode+0x38/0xf0 
+[jbd2]
+[ 5922.548036]  RSP <ffff88020fda5960>
+[ 5922.548048] CR2: 0000000000000000
+[ 5922.607946] ---[ end trace 6f21f07839837a01 ]---
 
-* User interface
-  Project id is accessible via generic xattr interface "system.project_id"
+I learned how to make gdb give me the offending lines from the call stack. Let 
+me know if this is sufficient information or if there's a better way to do this:
 
-* Notes
-  ext4_setattr interface to prjid: Semantically prjid must being changed
-  similar to uid/gid, but project_id is stored inside xattr so on-disk
-  structures updates is not that trivial, so I've move prjid change
-  logic to separate function.
+[<ffffffffa00ccac8>] jbd2_journal_file_inode+0x38/0xf0 [jbd2]
+Line 2142 of "fs/jbd2/transaction.c"
+[<ffffffffa00ef35c>] mpage_da_map_and_submit+0x2bc/0x400 [ext4]
+Line 1478 of "fs/ext4/inode.c"
+[<ffffffffa00efd3b>] ? ext4_da_writepages+0x35b/0x6b0 [ext4]
+Line 2140 of "fs/ext4/inode.c"
+[<ffffffffa00efd86>] ext4_da_writepages+0x3a6/0x6b0 [ext4]
+Line 2160 of "fs/ext4/inode.c"
+[<ffffffff81108534>] do_writepages+0x24/0x40
+Line 1264 of "mm/page-writeback.c"
+[ 5922.547523]  [<ffffffff811848a3>] writeback_single_inode+0x183/0x490
+Line 405 of "fs/fs-writeback.c"
 
-TODO[INPROGRESS] add project quota support for lib/ext2fs lib/quota
+If you need my kernel config or other relevant details, I can provide them. I 
+still have the source tree, config, and other bits and pieces that I used to 
+build the kernel so I'm in a good position to help diagnose the problem.
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/Kconfig           |    8 ++
- fs/ext4/Makefile          |    1 +
- fs/ext4/ext4.h            |    4 +
- fs/ext4/ialloc.c          |    6 ++
- fs/ext4/inode.c           |    4 +
- fs/ext4/project.c         |  213 +++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/project.h         |   45 ++++++++++
- fs/ext4/super.c           |   16 +++-
- fs/ext4/xattr.c           |    7 ++
- fs/ext4/xattr.h           |    2 +
- include/linux/ext3_fs_i.h |    1 +
- 11 files changed, 306 insertions(+), 1 deletions(-)
- create mode 100644 fs/ext4/project.c
- create mode 100644 fs/ext4/project.h
 
-diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
-index 9ed1bb1..1c04c9f 100644
---- a/fs/ext4/Kconfig
-+++ b/fs/ext4/Kconfig
-@@ -74,6 +74,14 @@ config EXT4_FS_SECURITY
- 
- 	  If you are not using a security module that requires using
- 	  extended attributes for file security labels, say N.
-+config EXT4_PROJECT_ID
-+	bool "Ext4 project_id support"
-+	depends on PROJECT_ID
-+	depends on EXT4_FS_XATTR
-+	help
-+	  Enables project inode identifier support for ext4 filesystem.
-+	  This feature allow to assign some id to inodes similar to
-+	  uid/gid. 
- 
- config EXT4_DEBUG
- 	bool "EXT4 debugging support"
-diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
-index 56fd8f8..692fe56 100644
---- a/fs/ext4/Makefile
-+++ b/fs/ext4/Makefile
-@@ -12,3 +12,4 @@ ext4-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o page-io.o \
- ext4-$(CONFIG_EXT4_FS_XATTR)		+= xattr.o xattr_user.o xattr_trusted.o
- ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
- ext4-$(CONFIG_EXT4_FS_SECURITY)		+= xattr_security.o
-+ext4-$(CONFIG_EXT4_PROJECT_ID)		+= project.o
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index e92c51a..93151e7 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -867,6 +867,9 @@ struct ext4_inode_info {
- 	 */
- 	tid_t i_sync_tid;
- 	tid_t i_datasync_tid;
-+#ifdef CONFIG_EXT4_PROJECT_ID
-+	__u32 i_prjid;
-+#endif
- };
- 
- /*
-@@ -904,6 +907,7 @@ struct ext4_inode_info {
- #define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
- #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mapping */
- #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
-+#define EXT4_MOUNT_PROJECT_ID		0x40000 /* project owner id support */
- #define EXT4_MOUNT_USRQUOTA		0x100000 /* "old" user quota */
- #define EXT4_MOUNT_GRPQUOTA		0x200000 /* "old" group quota */
- #define EXT4_MOUNT_QUOTA		0x300000 /* Some quota option set */
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index fd96ea1..af81b5f 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -28,6 +28,7 @@
- #include "ext4_jbd2.h"
- #include "xattr.h"
- #include "acl.h"
-+#include "project.h"
- 
- #include <trace/events/ext4.h>
- 
-@@ -1033,6 +1034,8 @@ got:
- 
- 	ei->i_extra_isize = EXT4_SB(sb)->s_want_extra_isize;
- 
-+	ext4_setprjid(inode, ext4_getprjid(dir));
-+
- 	ret = inode;
- 	dquot_initialize(inode);
- 	err = dquot_alloc_inode(inode);
-@@ -1046,6 +1049,9 @@ got:
- 	err = ext4_init_security(handle, inode, dir, qstr);
- 	if (err)
- 		goto fail_free_drop;
-+	err = ext4_prj_init(handle, inode);
-+	if (err)
-+		goto fail_free_drop;
- 
- 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS)) {
- 		/* set extent flag only for directory, file and normal symlink*/
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 0defe0b..b005f04 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -44,6 +44,7 @@
- #include "acl.h"
- #include "ext4_extents.h"
- #include "truncate.h"
-+#include "project.h"
- 
- #include <trace/events/ext4.h>
- 
-@@ -3541,6 +3542,9 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	}
- 	if (ret)
- 		goto bad_inode;
-+	ret = ext4_prj_read(inode);
-+	if (ret)
-+		goto bad_inode;
- 
- 	if (S_ISREG(inode->i_mode)) {
- 		inode->i_op = &ext4_file_inode_operations;
-diff --git a/fs/ext4/project.c b/fs/ext4/project.c
-new file mode 100644
-index 0000000..a262a49
---- /dev/null
-+++ b/fs/ext4/project.c
-@@ -0,0 +1,213 @@
-+/*
-+ * linux/fs/ext4/projectid.c
-+ *
-+ * Copyright (C) 2011 Parallels Inc
-+ * Dmitry Monakhov <dmonakhov@openvz.org>
-+ */
-+
-+#include <linux/init.h>
-+#include <linux/sched.h>
-+#include <linux/slab.h>
-+#include <linux/capability.h>
-+#include <linux/fs.h>
-+#include <linux/quotaops.h>
-+#include "ext4_jbd2.h"
-+#include "ext4.h"
-+#include "xattr.h"
-+#include "project.h"
-+
-+
-+/*
-+ * PROJECT SUBTREE
-+ * A subtree of a directory tree T is a tree consisting of a directory
-+ * (the subtree root) in T and all of its descendants in T.
-+ *
-+ * Project Subtree's assumptions:
-+ * (1) Each inode has subtree id. This id is persistently stored inside
-+ *     inode's xattr, usually inside ibody
-+ * (2) Subtree id is inherent from parent directory
-+ */
-+
-+/*
-+ * Read project_id id from inode's xattr
-+ * Locking: none
-+ */
-+int ext4_prj_xattr_read(struct inode *inode, unsigned int *prjid)
-+{
-+	__le32 dsk_prjid;
-+	int retval;
-+	retval = ext4_xattr_get(inode, EXT4_XATTR_INDEX_PROJECT_ID, "",
-+				&dsk_prjid, sizeof (dsk_prjid));
-+	if (retval > 0) {
-+		if (retval != sizeof(dsk_prjid))
-+			return -EIO;
-+		else
-+			retval = 0;
-+	}
-+	*prjid = le32_to_cpu(dsk_prjid);
-+	return retval;
-+
-+}
-+
-+/*
-+ * Save project_id id to inode's xattr
-+ * Locking: none
-+ */
-+int ext4_prj_xattr_write(handle_t *handle, struct inode *inode,
-+				unsigned int prjid, int xflags)
-+{
-+	__le32 dsk_prjid = cpu_to_le32(prjid);
-+	int retval;
-+	retval = ext4_xattr_set_handle(handle,
-+				inode, EXT4_XATTR_INDEX_PROJECT_ID, "",
-+				&dsk_prjid, sizeof (dsk_prjid), xflags);
-+	if (retval > 0) {
-+		if (retval != sizeof(dsk_prjid))
-+			retval =  -EIO;
-+		else
-+			retval = 0;
-+	}
-+	return retval;
-+}
-+
-+/*
-+ * Change project_id id.
-+ * Called under inode->i_mutex
-+ */
-+int ext4_prj_change(struct inode *inode, unsigned int new_prjid)
-+{
-+	/*
-+	 * One data_trans_blocks chunk for xattr update.
-+	 * One quota_trans_blocks chunk for quota transfer, and one
-+	 * quota_trans_block chunk for emergency quota rollback transfer,
-+	 * because quota rollback may result new quota blocks allocation.
-+	 */
-+	unsigned credits = EXT4_DATA_TRANS_BLOCKS(inode->i_sb) +
-+		EXT4_QUOTA_TRANS_BLOCKS(inode->i_sb) * 2;
-+	int ret, ret2 = 0;
-+	unsigned retries = 0;
-+	handle_t *handle;
-+	struct dquot *dquot[MAXQUOTAS] = {};
-+	int old_id = ext4_getprjid(inode);
-+	dquot_initialize(inode);
-+
-+	dquot[PRJQUOTA] = dqget(inode->i_sb, new_prjid, PRJQUOTA);
-+retry:
-+	handle = ext4_journal_start(inode, credits);
-+	if (IS_ERR(handle)) {
-+		ret = PTR_ERR(handle);
-+		ext4_std_error(inode->i_sb, ret);
-+		goto out;
-+	}
-+	/* Inode may not have project_id xattr yet. Create it explicitly */
-+	ret = ext4_prj_xattr_write(handle, inode, old_id, XATTR_CREATE);
-+	if (ret == -EEXIST)
-+		ret = 0;
-+	if (ret) {
-+		ret2 = ext4_journal_stop(handle);
-+		if (ret2)
-+			ret = ret2;
-+		if (ret == -ENOSPC &&
-+			ext4_should_retry_alloc(inode->i_sb, &retries))
-+			goto retry;
-+	}
-+#ifdef CONFIG_QUOTA
-+	ret = __dquot_transfer(inode, dquot);
-+	if (ret)
-+		return ret;
-+#endif
-+	ret = ext4_prj_xattr_write(handle, inode, new_prjid, XATTR_REPLACE);
-+	if (ret) {
-+		/*
-+		 * Function may fail only due to fatal error, Nor than less
-+		 * we have try to rollback quota changes.
-+		 */
-+#ifdef CONFIG_QUOTA
-+		__dquot_transfer(inode, dquot);
-+#endif
-+		ext4_std_error(inode->i_sb, ret);
-+
-+	} else
-+		ext4_setprjid(inode, new_prjid);
-+
-+	ret2 = ext4_journal_stop(handle);
-+out:
-+	dqput(dquot[PRJQUOTA]);
-+	if (ret2)
-+		ret = ret2;
-+	return ret;
-+}
-+
-+int ext4_prj_read(struct inode *inode)
-+{
-+	int ret = 0;
-+	int prjid = 0;
-+	if(test_opt(inode->i_sb, PROJECT_ID)) {
-+		ret = ext4_prj_xattr_read(inode, &prjid);
-+		if (ret == -ENODATA) {
-+			prjid = 0;
-+			ret = 0;
-+		}
-+	}
-+	if (!ret)
-+		ext4_setprjid(inode, prjid);
-+	return ret;
-+}
-+/*
-+ * Initialize the projectid xattr of a new inode. Called from ext4_new_inode.
-+ *
-+ * dir->i_mutex: down
-+ * inode->i_mutex: up (access to inode is still exclusive)
-+ * Note: caller must assign correct project id to inode before.
-+ */
-+int ext4_prj_init(handle_t *handle, struct inode *inode)
-+{
-+	return ext4_prj_xattr_write(handle, inode, EXT4_I(inode)->i_prjid,
-+				XATTR_CREATE);
-+}
-+
-+static size_t
-+ext4_xattr_prj_list(struct dentry *dentry, char *list, size_t list_size,
-+		const char *name, size_t name_len, int type)
-+{
-+	if (list && XATTR_PRJID_LEN <= list_size)
-+		memcpy(list, XATTR_PRJID, XATTR_PRJID_LEN);
-+	return XATTR_PRJID_LEN;
-+
-+}
-+
-+static int
-+ext4_xattr_prj_get(struct dentry *dentry, const char *name,
-+		       void *buffer, size_t size, int type)
-+{
-+	int ret;
-+	unsigned prjid;
-+	char buf[32];
-+	if (strcmp(name, "") != 0)
-+		return -EINVAL;
-+	ret = ext4_prj_xattr_read(dentry->d_inode, &prjid);
-+	if (ret)
-+		return ret;
-+	snprintf(buf, sizeof(buf)-1, "%u", prjid);
-+	buf[31] = '\0';
-+	strncpy(buffer, buf, size);
-+	return strlen(buf);
-+}
-+
-+static int
-+ext4_xattr_prj_set(struct dentry *dentry, const char *name,
-+		const void *value, size_t size, int flags, int type)
-+{
-+	unsigned int new_prjid;
-+	if (strcmp(name, "") != 0)
-+		return -EINVAL;
-+	new_prjid = simple_strtoul(value, (char **)&value, 0);
-+	return ext4_prj_change(dentry->d_inode, new_prjid);
-+}
-+
-+const struct xattr_handler ext4_xattr_prj_handler = {
-+	.prefix	= XATTR_PRJID,
-+	.list	= ext4_xattr_prj_list,
-+	.get	= ext4_xattr_prj_get,
-+	.set	= ext4_xattr_prj_set,
-+};
-diff --git a/fs/ext4/project.h b/fs/ext4/project.h
-new file mode 100644
-index 0000000..054ec4c
---- /dev/null
-+++ b/fs/ext4/project.h
-@@ -0,0 +1,45 @@
-+#include <linux/xattr.h>
-+#include <linux/fs.h>
-+
-+#ifdef CONFIG_EXT4_PROJECT_ID
-+extern int ext4_prj_xattr_read(struct inode *inode, unsigned int *prjid);
-+extern int ext4_prj_xattr_write(handle_t *handle, struct inode *inode,
-+				unsigned int prjid, int xflags);
-+extern int ext4_prj_init(handle_t *handle, struct inode *inode);
-+extern int ext4_prj_read(struct inode *inode);
-+extern int ext4_prj_change(struct inode *inode, unsigned int new_prjid);
-+static inline u32 ext4_getprjid(const struct inode *inode)
-+{
-+	const struct ext4_inode_info *ei =
-+		container_of(inode, const struct ext4_inode_info, vfs_inode);
-+	return ei->i_prjid;
-+}
-+static inline void ext4_setprjid(struct inode *inode, u32 id)
-+{
-+	EXT4_I(inode)->i_prjid = id;
-+}
-+#else
-+#define ext4_getprjid(inode) do {} while (0)
-+#define ext4_setprjid(inode, id) do {} while (0)
-+static inline int ext4_prj_xattr_read(struct inode *inode, unsigned int *prjid)
-+{
-+	return -ENOTSUPP;
-+}
-+static inline int ext4_prj_xattr_write(handle_t *handle, struct inode *inode,
-+				unsigned int prjid, int xflags)
-+{
-+	return -ENOTSUPP;
-+}
-+static inline int ext4_prj_read(struct inode *inode)
-+{
-+	return 0;
-+}
-+static inline int ext4_prj_change(struct inode *inode, unsigned int new_prjid)
-+{
-+	return -ENOTSUPP;
-+}
-+static inline int ext4_prj_init(handle_t *handle, struct inode *inode)
-+{
-+	return 0;
-+}
-+#endif
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 74d2726..fefc007 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -49,6 +49,7 @@
- #include "xattr.h"
- #include "acl.h"
- #include "mballoc.h"
-+#include "project.h"
- 
- #define CREATE_TRACE_POINTS
- #include <trace/events/ext4.h>
-@@ -1129,6 +1130,9 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
- 	if (test_opt(sb, DISCARD) && !(def_mount_opts & EXT4_DEFM_DISCARD))
- 		seq_puts(seq, ",discard");
- 
-+	if (test_opt(sb, PROJECT_ID))
-+		seq_puts(seq, ",prjid");
-+
- 	if (test_opt(sb, NOLOAD))
- 		seq_puts(seq, ",norecovery");
- 
-@@ -1272,6 +1276,9 @@ static const struct super_operations ext4_sops = {
- 	.quota_write	= ext4_quota_write,
- #endif
- 	.bdev_try_to_free_page = bdev_try_to_free_page,
-+#ifdef CONFIG_EXT4_PROJECT_ID
-+	.get_prjid      = ext4_getprjid,
-+#endif
- };
- 
- static const struct super_operations ext4_nojournal_sops = {
-@@ -1291,6 +1298,9 @@ static const struct super_operations ext4_nojournal_sops = {
- 	.quota_write	= ext4_quota_write,
- #endif
- 	.bdev_try_to_free_page = bdev_try_to_free_page,
-+#ifdef CONFIG_EXT4_PROJECT_ID
-+	.get_prjid      = ext4_getprjid,
-+#endif
- };
- 
- static const struct export_operations ext4_export_ops = {
-@@ -1318,7 +1328,7 @@ enum {
- 	Opt_nomblk_io_submit, Opt_block_validity, Opt_noblock_validity,
- 	Opt_inode_readahead_blks, Opt_journal_ioprio,
- 	Opt_dioread_nolock, Opt_dioread_lock,
--	Opt_discard, Opt_nodiscard,
-+	Opt_discard, Opt_nodiscard, Opt_project_id,
- 	Opt_init_inode_table, Opt_noinit_inode_table,
- };
- 
-@@ -1395,6 +1405,7 @@ static const match_table_t tokens = {
- 	{Opt_init_inode_table, "init_itable=%u"},
- 	{Opt_init_inode_table, "init_itable"},
- 	{Opt_noinit_inode_table, "noinit_itable"},
-+	{Opt_project_id, "prjid"},
- 	{Opt_err, NULL},
- };
- 
-@@ -1882,6 +1893,9 @@ set_qf_format:
- 		case Opt_noinit_inode_table:
- 			clear_opt(sb, INIT_INODE_TABLE);
- 			break;
-+		case Opt_project_id:
-+			set_opt(sbi->s_mount_opt, PROJECT_ID);
-+			break;
- 		default:
- 			ext4_msg(sb, KERN_ERR,
- 			       "Unrecognized mount option \"%s\" "
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index c757adc..13dc05d 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -107,6 +107,10 @@ static const struct xattr_handler *ext4_xattr_handler_map[] = {
- #ifdef CONFIG_EXT4_FS_SECURITY
- 	[EXT4_XATTR_INDEX_SECURITY]	     = &ext4_xattr_security_handler,
- #endif
-+#ifdef CONFIG_EXT4_PROJECT_ID
-+	[EXT4_XATTR_INDEX_PROJECT_ID]	     = &ext4_xattr_prj_handler,
-+#endif
-+
- };
- 
- const struct xattr_handler *ext4_xattr_handlers[] = {
-@@ -119,6 +123,9 @@ const struct xattr_handler *ext4_xattr_handlers[] = {
- #ifdef CONFIG_EXT4_FS_SECURITY
- 	&ext4_xattr_security_handler,
- #endif
-+#ifdef CONFIG_EXT4_PROJECT_ID
-+	&ext4_xattr_prj_handler,
-+#endif
- 	NULL
- };
- 
-diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index 25b7387..4f03863 100644
---- a/fs/ext4/xattr.h
-+++ b/fs/ext4/xattr.h
-@@ -21,6 +21,7 @@
- #define EXT4_XATTR_INDEX_TRUSTED		4
- #define	EXT4_XATTR_INDEX_LUSTRE			5
- #define EXT4_XATTR_INDEX_SECURITY	        6
-+#define EXT4_XATTR_INDEX_PROJECT_ID	        7
- 
- struct ext4_xattr_header {
- 	__le32	h_magic;	/* magic number for identification */
-@@ -70,6 +71,7 @@ extern const struct xattr_handler ext4_xattr_trusted_handler;
- extern const struct xattr_handler ext4_xattr_acl_access_handler;
- extern const struct xattr_handler ext4_xattr_acl_default_handler;
- extern const struct xattr_handler ext4_xattr_security_handler;
-+extern const struct xattr_handler ext4_xattr_prj_handler;
- 
- extern ssize_t ext4_listxattr(struct dentry *, char *, size_t);
- 
-diff --git a/include/linux/ext3_fs_i.h b/include/linux/ext3_fs_i.h
-index f42c098..77ad18f 100644
---- a/include/linux/ext3_fs_i.h
-+++ b/include/linux/ext3_fs_i.h
-@@ -87,6 +87,7 @@ struct ext3_inode_info {
- 	 * near to their parent directory's inode.
- 	 */
- 	__u32	i_block_group;
-+	__u32	i_prjid;
- 	unsigned long	i_state_flags;	/* Dynamic state flags for ext3 */
- 
- 	/* block reservation info */
--- 
-1.7.1
+Thanks,
+Justin
 
