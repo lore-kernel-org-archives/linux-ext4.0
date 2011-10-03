@@ -1,74 +1,80 @@
-From: =?UTF-8?B?UMOhZHJhaWcgQnJhZHk=?= <P@draigBrady.com>
-Subject: Re: [BUG] copy file result with zero
-Date: Mon, 03 Oct 2011 12:08:58 +0100
-Message-ID: <4E8997CA.7060404@draigBrady.com>
-References: <CABqxG0feuZCmx=RfxU-50uFK9-P2vNbAMqJUdWM5RhuJifD5Ow@mail.gmail.com>
-	<20111001143900.GH28234@thunk.org>
-	<CABqxG0eiRiCSirXi5rBB0bJ2AJSQjF2dje2BcjbVYEYWgf-zpw@mail.gmail.com>
-	<A2FF8835-2386-47F9-AFF8-4E09BEC4F80E@oracle.com>
-	<CA140AD1-B715-46BF-81B3-EA2069CBC131@dilger.ca>
-	<CABqxG0eMarBn_8xHCOZPq3pae4K01C51Rmxdox7uZr0gWOHGGw@mail.gmail.com>
+From: Mel Gorman <mgorman@suse.de>
+Subject: Re: [patch 1/5] mm: exclude reserved pages from dirtyable memory
+Date: Mon, 3 Oct 2011 12:22:05 +0100
+Message-ID: <20111003112205.GA5011@suse.de>
+References: <1317367044-475-1-git-send-email-jweiner@redhat.com>
+ <1317367044-475-2-git-send-email-jweiner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-Cc: Andreas Dilger <aedilger-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
-	Linux Kernel Mailing List <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Coreutils <coreutils-mXXj517/zsQ@public.gmane.org>, Ted Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
-	linux-ext4 development <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: Dave Young <hidave.darkstar-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Return-path: <coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org>
-In-Reply-To: <CABqxG0eMarBn_8xHCOZPq3pae4K01C51Rmxdox7uZr0gWOHGGw-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
-List-Unsubscribe: <https://lists.gnu.org/mailman/options/coreutils>,
-	<mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=unsubscribe>
-List-Archive: </archive/html/coreutils>
-List-Post: <mailto:coreutils-mXXj517/zsQ@public.gmane.org>
-List-Help: <mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.gnu.org/mailman/listinfo/coreutils>,
-	<mailto:coreutils-request-mXXj517/zsQ@public.gmane.org?subject=subscribe>
-Errors-To: coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org
-Sender: coreutils-bounces+gcgcg-coreutils=m.gmane.org-mXXj517/zsQ@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=iso-8859-15
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@infradead.org>,
+	Dave Chinner <david@fromorbit.com>,
+	Wu Fengguang <fengguang.wu@intel.com>, Jan Kara <jack@suse.cz>,
+	Rik van Riel <riel@redhat.com>,
+	Minchan Kim <minchan.kim@gmail.com>,
+	Chris Mason <chris.mason@oracle.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Shaohua Li <shaohua.li@intel.com>, xfs@oss.sgi.com,
+	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Johannes Weiner <jweiner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:47161 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752592Ab1JCLWM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Oct 2011 07:22:12 -0400
+Content-Disposition: inline
+In-Reply-To: <1317367044-475-2-git-send-email-jweiner@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/02/2011 09:43 AM, Dave Young wrote:
-> On Sun, Oct 2, 2011 at 4:02 PM, Andreas Dilger <aedilger-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org> wrote:
->> On 2011-10-01, at 11:41 PM, Jeff liu wrote:
->>>> On Sat, Oct 1, 2011 at 10:39 PM, Ted Ts'o <tytso-3s7WtUTddSA@public.gmane.org> wrote:
->>>>> On Sat, Oct 01, 2011 at 10:01:35PM +0800, Dave Young wrote:
->>>>>> Weird problem, when I build app from source,
->>>>>> make; make install
->>>>>> run the command, but got "cannot execute binary file"
->>>>>>
->>>>>> hexdump shows the installed binary is full of zero
->>>>>>
->>>>>> Is it related to ext4 fiemap problem described below?
->>>>>> http://lwn.net/Articles/429349/
->>>>>
->>>>> There is general agreement that /bin/cp should not have been relying
->>>>> on FIEMAP, and I believe the more recent versions of /bin/cp have
->>>>> removed that code by default pending implementation of
->>>>> SEEK_HOLE/SEEK_DATA.  That being said, ext4 had a workaround to its
->>>>> FIEMAP implementation that landed in 2.6.39, and you're using
->>>>> 3.1.0-rc6.
->>>
->>> Actually, upstream cp(1) using FIEMAP only if the source file is sparse,  or else, it will do normal copy, i.e, block based.
->>
->> Are there any distros that are shipping with a version of cp that depends on FIEMAP?  That would dramatically increase the severity of this problem, since orders of magnitude more users will hit the problem.
+On Fri, Sep 30, 2011 at 09:17:20AM +0200, Johannes Weiner wrote:
+> The amount of dirtyable pages should not include the full number of
+> free pages: there is a number of reserved pages that the page
+> allocator and kswapd always try to keep free.
 > 
-> I'm not sure if it depends on FIEMAP, I think it should be not so old.
+> The closer (reclaimable pages - dirty pages) is to the number of
+> reserved pages, the more likely it becomes for reclaim to run into
+> dirty pages:
 > 
->>
->> Dave, what distro were you seeing this problem on, and had you installed/upgraded your coreutils and/or kernel yourself?
+>        +----------+ ---
+>        |   anon   |  |
+>        +----------+  |
+>        |          |  |
+>        |          |  -- dirty limit new    -- flusher new
+>        |   file   |  |                     |
+>        |          |  |                     |
+>        |          |  -- dirty limit old    -- flusher old
+>        |          |                        |
+>        +----------+                       --- reclaim
+>        | reserved |
+>        +----------+
+>        |  kernel  |
+>        +----------+
 > 
-> Slackware 13.37, coreutils 8.11
-> kernel is always built from linus's git by myself
+> This patch introduces a per-zone dirty reserve that takes both the
+> lowmem reserve as well as the high watermark of the zone into account,
+> and a global sum of those per-zone values that is subtracted from the
+> global amount of dirtyable pages.  The lowmem reserve is unavailable
+> to page cache allocations and kswapd tries to keep the high watermark
+> free.  We don't want to end up in a situation where reclaim has to
+> clean pages in order to balance zones.
+> 
+> Not treating reserved pages as dirtyable on a global level is only a
+> conceptual fix.  In reality, dirty pages are not distributed equally
+> across zones and reclaim runs into dirty pages on a regular basis.
+> 
+> But it is important to get this right before tackling the problem on a
+> per-zone level, where the distance between reclaim and the dirty pages
+> is mostly much smaller in absolute numbers.
+> 
+> Signed-off-by: Johannes Weiner <jweiner@redhat.com>
+> Reviewed-by: Rik van Riel <riel@redhat.com>
 
-Coreutils 8.11 was only released for 13 days,
-before 8.12 was released specifically to avoid this issue.
-Slackware should update.
+Acked-by: Mel Gorman <mgorman@suse.de>
 
-Coreutils 8.12 only uses a fiemap based copy for
-sparse files, where it will do a sync first.
-The sparseness heuristic is st_blocks < st_size / st_blksize
-
-cheers,
-Pádraig.
+-- 
+Mel Gorman
+SUSE Labs
