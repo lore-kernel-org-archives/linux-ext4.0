@@ -1,43 +1,71 @@
-From: Herbert Xu <herbert@gondor.apana.org.au>
-Subject: Re: [PATCH v4] crc32c: Implement CRC32c with slicing-by-8 algorithm
-Date: Mon, 3 Oct 2011 21:35:13 +0100
-Message-ID: <20111003203513.GA10346@gondor.apana.org.au>
-References: <20110930192956.4176.29905.stgit@elm3c44.beaverton.ibm.com> <OF54094699.6F5CF2B6-ONC125791C.004C901C-C125791C.004D1A61@transmode.se> <20111003153634.GA12447@tux1.beaverton.ibm.com> <OFA190E2A9.231A7DD6-ONC125791E.006F1765-C125791E.00705758@transmode.se>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: djwong@us.ibm.com, Andreas Dilger <adilger.kernel@dilger.ca>,
-	Mingming Cao <cmm@us.ibm.com>,
-	David Miller <davem@davemloft.net>,
-	linux-crypto <linux-crypto@vger.kernel.org>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Bob Pearson <rpearson@systemfabricworks.com>,
-	Theodore Tso <tytso@mit.edu>
-To: Joakim Tjernlund <joakim.tjernlund@transmode.se>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <OFA190E2A9.231A7DD6-ONC125791E.006F1765-C125791E.00705758@transmode.se>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Yargil <yargil@free.fr>
+Subject: [PATCH] ext4: don't work without procfs
+Date: Mon,  3 Oct 2011 22:46:01 +0200
+Message-ID: <1317674761-17837-1-git-send-email-yargil@free.fr>
+Cc: Yargil <yargil@free.fr>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1-g21.free.fr ([212.27.42.1]:50573 "EHLO smtp1-g21.free.fr"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932558Ab1JCUqV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Oct 2011 16:46:21 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 03, 2011 at 10:27:03PM +0200, Joakim Tjernlund wrote:
->
-> > > Start from Bobs latest patches and add crc32c to lib/crc32.c
-> >
-> > If I did that, how should I handle patching in the hardware accelerated version
-> > on Intel systems?  That switcheroo ability seems to have been Herbert Xu's
-> > motivation for moving crc32c into crypto/ in the first place:
-> 
-> I don't know, I haven't looked at that problem. I suspect it moved because that
-> was the easiest solution. Having an identical impl. of crc32(only the table values differ)
-> in crypto compared to the one in lib is not the way forward though.
+Regression from commit dd68314ccf3fb918c1fb6471817edbc60ece4b52
+---
+ fs/ext4/super.c |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
 
-You can always get crypto/crc32c.c to use call helpers from
-lib/crc32.c.
-
-Cheers,
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 44d0c8d..8e7298d 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -53,7 +53,9 @@
+ #define CREATE_TRACE_POINTS
+ #include <trace/events/ext4.h>
+ 
++#ifdef CONFIG_PROC_FS
+ static struct proc_dir_entry *ext4_proc_root;
++#endif
+ static struct kset *ext4_kset;
+ static struct ext4_lazy_init *ext4_li_info;
+ static struct mutex ext4_li_mtx;
+@@ -812,9 +814,11 @@ static void ext4_put_super(struct super_block *sb)
+ 		es->s_state = cpu_to_le16(sbi->s_mount_state);
+ 		ext4_commit_super(sb, 1);
+ 	}
++#ifdef CONFIG_PROC_FS
+ 	if (sbi->s_proc) {
+ 		remove_proc_entry(sb->s_id, ext4_proc_root);
+ 	}
++#endif
+ 	kobject_del(&sbi->s_kobj);
+ 
+ 	for (i = 0; i < sbi->s_gdb_count; i++)
+@@ -4984,9 +4988,11 @@ static int __init ext4_init_fs(void)
+ 	ext4_kset = kset_create_and_add("ext4", NULL, fs_kobj);
+ 	if (!ext4_kset)
+ 		goto out6;
++#ifdef CONFIG_PROC_FS
+ 	ext4_proc_root = proc_mkdir("fs/ext4", NULL);
+ 	if (!ext4_proc_root)
+ 		goto out5;
++#endif
+ 
+ 	err = ext4_init_feat_adverts();
+ 	if (err)
+@@ -5022,8 +5028,10 @@ out2:
+ out3:
+ 	ext4_exit_feat_adverts();
+ out4:
++#ifdef CONFIG_PROC_FS
+ 	remove_proc_entry("fs/ext4", NULL);
+ out5:
++#endif
+ 	kset_unregister(ext4_kset);
+ out6:
+ 	ext4_exit_system_zone();
 -- 
-Email: Herbert Xu <herbert@gondor.apana.org.au>
-Home Page: http://gondor.apana.org.au/~herbert/
-PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
+1.7.2.5
+
