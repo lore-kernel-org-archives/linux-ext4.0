@@ -1,54 +1,57 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] mke2fs: Fix up usage & error text for cluster size specification
-Date: Tue, 04 Oct 2011 17:12:11 -0500
-Message-ID: <4E8B84BB.6040004@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext3/balloc.c: local functions should be static
+Date: Wed, 5 Oct 2011 01:29:58 +0200
+Message-ID: <20111004232958.GA21205@quack.suse.cz>
+References: <201109231355.52431.hartleys@visionengravers.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, jack@suse.cz,
+	akpm@linux-foundation.org, adilger.kernel@dilger.ca
+To: H Hartley Sweeten <hartleys@visionengravers.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:19172 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:39064 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932820Ab1JDWMW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Oct 2011 18:12:22 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p94MCMAF007954
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Tue, 4 Oct 2011 18:12:22 -0400
-Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p94MCEOC020740
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 4 Oct 2011 18:12:21 -0400
+	id S933677Ab1JDXaA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Oct 2011 19:30:00 -0400
+Content-Disposition: inline
+In-Reply-To: <201109231355.52431.hartleys@visionengravers.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Commit c6ed60cd removed "f" (fragment size) from the getopt string,
-and re-used its spot in the getopt switch, but didn't update the
-usage message or the error message during parsing.
+On Fri 23-09-11 13:55:52, H Hartley Sweeten wrote:
+> This quites the sparse noise:
+> 
+> warning: symbol 'ext3_trim_all_free' was not declared. Should it be static?
+> 
+> Signed-off-by: H Hartley Sweeten <hsweeten@visionengravers.com>
+> Cc: Jan Kara <jack@suse.cz>
+> Cc: Andrew Morton <akpm@linux-foundation.org>
+> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+  Thanks, merged into my tree.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index c439e37..0a50f3a 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -113,7 +113,7 @@ int linux_version_code = 0;
- static void usage(void)
- {
- 	fprintf(stderr, _("Usage: %s [-c|-l filename] [-b block-size] "
--	"[-f fragment-size]\n\t[-i bytes-per-inode] [-I inode-size] "
-+	"[-C cluster-size]\n\t[-i bytes-per-inode] [-I inode-size] "
- 	"[-J journal-options]\n"
- 	"\t[-G meta group size] [-N number-of-inodes]\n"
- 	"\t[-m reserved-blocks-percentage] [-o creator-os]\n"
-@@ -1324,7 +1324,7 @@ profile_error:
- 			if (cluster_size < EXT2_MIN_CLUSTER_SIZE ||
- 			    cluster_size > EXT2_MAX_CLUSTER_SIZE || *tmp) {
- 				com_err(program_name, 0,
--					_("invalid fragment size - %s"),
-+					_("invalid cluster size - %s"),
- 					optarg);
- 				exit(1);
- 			}
-
+								Honza
+> 
+> ---
+> 
+> diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
+> index 6386d76..8e62ec5 100644
+> --- a/fs/ext3/balloc.c
+> +++ b/fs/ext3/balloc.c
+> @@ -1924,9 +1924,10 @@ unsigned long ext3_bg_num_gdb(struct super_block *sb, int group)
+>   * reaches any used block. Then issue a TRIM command on this extent and free
+>   * the extent in the block bitmap. This is done until whole group is scanned.
+>   */
+> -ext3_grpblk_t ext3_trim_all_free(struct super_block *sb, unsigned int group,
+> -				ext3_grpblk_t start, ext3_grpblk_t max,
+> -				ext3_grpblk_t minblocks)
+> +static ext3_grpblk_t ext3_trim_all_free(struct super_block *sb,
+> +					unsigned int group,
+> +					ext3_grpblk_t start, ext3_grpblk_t max,
+> +					ext3_grpblk_t minblocks)
+>  {
+>  	handle_t *handle;
+>  	ext3_grpblk_t next, free_blocks, bit, freed, count = 0;
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
