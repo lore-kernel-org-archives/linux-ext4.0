@@ -1,114 +1,65 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 4/4] crc32: Select an algorithm via kconfig
-Date: Tue, 04 Oct 2011 16:54:29 -0700
-Message-ID: <20111004235429.1560.89556.stgit@elm3c44.beaverton.ibm.com>
-References: <20111004235357.1560.12602.stgit@elm3c44.beaverton.ibm.com>
+Subject: Re: [PATCH v4] crc32c: Implement CRC32c with slicing-by-8 algorithm
+Date: Tue, 4 Oct 2011 16:54:46 -0700
+Message-ID: <20111004235446.GC12447@tux1.beaverton.ibm.com>
+References: <20110930192956.4176.29905.stgit@elm3c44.beaverton.ibm.com> <OF54094699.6F5CF2B6-ONC125791C.004C901C-C125791C.004D1A61@transmode.se> <20111003153634.GA12447@tux1.beaverton.ibm.com> <OFA190E2A9.231A7DD6-ONC125791E.006F1765-C125791E.00705758@transmode.se> <20111003203513.GA10346@gondor.apana.org.au> <20111004005510.GB12447@tux1.beaverton.ibm.com> <20111004065953.GA16606@gondor.apana.org.au>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: Joakim Tjernlund <joakim.tjernlund@transmode.se>,
-	Bob Pearson <rpearson@systemfabricworks.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Mingming Cao <cmm@us.ibm.com>,
-	linux-crypto <linux-crypto@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger.kernel@dilger.ca>,
-	Herbert Xu <herbert@gondor.apana.org.au>,
-	Theodore Tso <tytso@mit.edu>,
 	David Miller <davem@davemloft.net>,
-	"Darrick J. Wong" <djwong@us.ibm.com>
+	linux-crypto <linux-crypto@vger.kernel.org>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Bob Pearson <rpearson@systemfabricworks.com>,
+	Theodore Tso <tytso@mit.edu>
+To: Herbert Xu <herbert@gondor.apana.org.au>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:45121 "EHLO e9.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933983Ab1JDXyd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Oct 2011 19:54:33 -0400
-In-Reply-To: <20111004235357.1560.12602.stgit@elm3c44.beaverton.ibm.com>
+Received: from e31.co.us.ibm.com ([32.97.110.149]:56280 "EHLO
+	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933983Ab1JDXyk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Oct 2011 19:54:40 -0400
+Received: from /spool/local
+	by us.ibm.com with XMail ESMTP
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Tue, 4 Oct 2011 17:54:40 -0600
+Content-Disposition: inline
+In-Reply-To: <20111004065953.GA16606@gondor.apana.org.au>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Allow the kernel builder to choose a crc32* algorithm for the kernel.
+On Tue, Oct 04, 2011 at 07:59:53AM +0100, Herbert Xu wrote:
+> On Mon, Oct 03, 2011 at 05:55:10PM -0700, Darrick J. Wong wrote:
+> >
+> > So what I think I'm hearing is...
+> > 
+> > 1. Apply Bob's slice-by-8 algorithm patch to regular crc32.
+> > 2. Adapt crc32's build code to generate crc32c as well.
+> > 3. Remove crypto/crc32c.c's implementation and have it wrap the code generated
+> >    by #2.
+> > 4. Retain the current libcrc32c.  I guess if you don't configure CRYPTO and
+> >    CRYPTO_CRC32C then it could also just reference the generated crc32c functions
+> >    directly.
+> > 
+> > Is this a satisfactory way to move forward?
+> 
+> All good except that you don't really have to touch libcrc32c
+> at all.
 
-Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
----
- lib/Kconfig     |   35 +++++++++++++++++++++++++++++++++++
- lib/crc32defs.h |   18 ++++++++++++++++++
- 2 files changed, 53 insertions(+), 0 deletions(-)
+Ok, let's see what you think of my v5 patchset. :)
 
-
-diff --git a/lib/Kconfig b/lib/Kconfig
-index 477be04..9f08b64 100644
---- a/lib/Kconfig
-+++ b/lib/Kconfig
-@@ -70,6 +70,41 @@ config CRC32_SELFTEST
- 	  and crc32_be over byte strings with random alignment and length
- 	  and computes the total elapsed time and number of bytes processed.
- 
-+choice
-+	prompt "CRC32 implementation"
-+	depends on CRC32
-+	default CRC32_SLICEBY8
-+
-+config CRC32_SLICEBY8
-+	bool "Slice by 8 bytes"
-+	help
-+	  Calculate checksum 8 bytes at a time with a clever slicing algorithm.
-+	  This is the fastest algorithm, but comes with a 8KiB lookup table.
-+	  Most modern processors have enough cache that this shouldn't be
-+	  a problem.
-+
-+	  If you don't know which to choose, choose this one.
-+
-+config CRC32_SLICEBY4
-+	bool "Slice by 4 bytes"
-+	help
-+	  Calculate checksum 8 bytes at a time with a clever slicing algorithm.
-+	  This is reasonably fast, but has a 4KiB lookup table.
-+
-+config CRC32_SARWATE
-+	bool "Sarwate's Algorithm (one byte at a time)"
-+	help
-+	  Calculate checksum a byte at a time using Sarwate's algorithm.  This
-+	  is not particularly fast, but has a small 256 byte lookup table.
-+
-+config CRC32_BIT
-+	bool "Classic Algorithm (one bit at a time)"
-+	help
-+	  Calculate checksum one bit at a time.  This is VERY slow, but has
-+	  no lookup table.  This is provided as a debugging option.
-+
-+endchoice
-+
- config CRC7
- 	tristate "CRC7 functions"
- 	help
-diff --git a/lib/crc32defs.h b/lib/crc32defs.h
-index 6fd1917..64cba2c 100644
---- a/lib/crc32defs.h
-+++ b/lib/crc32defs.h
-@@ -13,6 +13,24 @@
-  */
- #define CRC32C_POLY_LE 0x82F63B78
- 
-+/* Try to choose an implementation variant via Kconfig */
-+#ifdef CONFIG_CRC32_SLICEBY8
-+# define CRC_LE_BITS 64
-+# define CRC_BE_BITS 64
-+#endif
-+#ifdef CONFIG_CRC32_SLICEBY4
-+# define CRC_LE_BITS 32
-+# define CRC_BE_BITS 32
-+#endif
-+#ifdef CONFIG_CRC32_SARWATE
-+# define CRC_LE_BITS 8
-+# define CRC_BE_BITS 8
-+#endif
-+#ifdef CONFIG_CRC32_BIT
-+# define CRC_LE_BITS 1
-+# define CRC_BE_BITS 1
-+#endif
-+
- /*
-  * How many bits at a time to use.  Valid values are 1, 2, 4, 8, 32 and 64.
-  * For less performance-sensitive, use 4 or 8 to save table size.
+--D
+> 
+> Cheers,
+> -- 
+> Email: Herbert Xu <herbert@gondor.apana.org.au>
+> Home Page: http://gondor.apana.org.au/~herbert/
+> PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
