@@ -1,41 +1,65 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: mkfs'ing a 48-bit fs... or not.
-Date: Mon, 03 Oct 2011 23:03:40 -0500
-Message-ID: <4E8A859C.2070501@redhat.com>
-References: <4E8A2F3F.30700@sandeen.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@sandeen.net>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 1/2] Add "big" and "huge" types to mke2fs.conf
+Date: Tue,  4 Oct 2011 00:26:59 -0400
+Message-ID: <1317702420-31085-1-git-send-email-tytso@mit.edu>
+References: <20111004040033.GM6684@thunk.org>
+Cc: sandeen@sandeen.net, Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:20990 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750799Ab1JDEDn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Oct 2011 00:03:43 -0400
-In-Reply-To: <4E8A2F3F.30700@sandeen.net>
+Received: from li9-11.members.linode.com ([67.18.176.11]:47291 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750966Ab1JDE1D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Oct 2011 00:27:03 -0400
+In-Reply-To: <20111004040033.GM6684@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/3/11 4:55 PM, Eric Sandeen wrote:
-> Has anyone tried mke2fs at its limits?  The latest git tree seems to fail in several ways.
-> (Richard Jones reported the initial failure)
-> 
-> # truncate --size 1152921504606846976 reallybigfile 
-> # mke2fs -t ext4 reallybigfile
+mke2fs attempts to use the "big" and "huge" types, and now that mke2fs
+will complain if there are file system types which are undefined,
+let's add definitions for them.
 
-...
+Thanks to Richard Jones for reporting this problem.
 
-> Trying it with "-O bigalloc" (which should be automatic at this size,
-> I think?) just goes away for a very long time, I'm not sure what it's
-> thinking about, or if it's in a loop somewhere (looking now).
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ misc/mke2fs-hurd.conf |    6 ++++++
+ misc/mke2fs.conf      |    6 ++++++
+ 2 files changed, 12 insertions(+), 0 deletions(-)
 
-It comes up with too many inodes, then tries to reduce the count,
-but the "waste not want not" logic bumps it back up... ipg eventually
-goes "below" 0 but it's unsigned so it goes on in this loop forever.
+diff --git a/misc/mke2fs-hurd.conf b/misc/mke2fs-hurd.conf
+index 52ed7e5..4f0527d 100644
+--- a/misc/mke2fs-hurd.conf
++++ b/misc/mke2fs-hurd.conf
+@@ -21,6 +21,12 @@
+ 	floppy = {
+ 		inode_ratio = 8192
+ 	}
++	big = {
++		inode_ratio = 32768
++	}
++	huge = {
++		inode_ratio = 65536
++	}
+ 	news = {
+ 		inode_ratio = 4096
+ 	}
+diff --git a/misc/mke2fs.conf b/misc/mke2fs.conf
+index 775e046..0871f77 100644
+--- a/misc/mke2fs.conf
++++ b/misc/mke2fs.conf
+@@ -30,6 +30,12 @@
+ 		inode_size = 128
+ 		inode_ratio = 8192
+ 	}
++	big = {
++		inode_ratio = 32768
++	}
++	huge = {
++		inode_ratio = 65536
++	}
+ 	news = {
+ 		inode_ratio = 4096
+ 	}
+-- 
+1.7.4.1.22.gec8e1.dirty
 
-Some of this is my fault... I put that retry logic in years ago.  :(
-
-I'll see what I can do to fix it up.
-
--Eric
