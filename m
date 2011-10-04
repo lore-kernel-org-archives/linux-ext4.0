@@ -1,46 +1,42 @@
-From: Herbert Xu <herbert@gondor.apana.org.au>
-Subject: Re: [PATCH v4] crc32c: Implement CRC32c with slicing-by-8 algorithm
-Date: Tue, 4 Oct 2011 07:59:53 +0100
-Message-ID: <20111004065953.GA16606@gondor.apana.org.au>
-References: <20110930192956.4176.29905.stgit@elm3c44.beaverton.ibm.com> <OF54094699.6F5CF2B6-ONC125791C.004C901C-C125791C.004D1A61@transmode.se> <20111003153634.GA12447@tux1.beaverton.ibm.com> <OFA190E2A9.231A7DD6-ONC125791E.006F1765-C125791E.00705758@transmode.se> <20111003203513.GA10346@gondor.apana.org.au> <20111004005510.GB12447@tux1.beaverton.ibm.com>
+From: "Richard W.M. Jones" <rjones@redhat.com>
+Subject: Re: mkfs'ing a 48-bit fs... or not.
+Date: Tue, 4 Oct 2011 08:06:13 +0100
+Message-ID: <20111004070613.GA10216@amd.home.annexia.org>
+References: <4E8A2F3F.30700@sandeen.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Joakim Tjernlund <joakim.tjernlund@transmode.se>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Mingming Cao <cmm@us.ibm.com>,
-	David Miller <davem@davemloft.net>,
-	linux-crypto <linux-crypto@vger.kernel.org>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Bob Pearson <rpearson@systemfabricworks.com>,
-	Theodore Tso <tytso@mit.edu>
-To: "Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: unlisted-recipients:; (no To-header on input)
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:41220 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754438Ab1JDHGU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Oct 2011 03:06:20 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p9476KNM025756
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Tue, 4 Oct 2011 03:06:20 -0400
+Received: from localhost (vpn1-7-184.ams2.redhat.com [10.36.7.184])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id p9476IYX008976
+	for <linux-ext4@vger.kernel.org>; Tue, 4 Oct 2011 03:06:19 -0400
 Content-Disposition: inline
-In-Reply-To: <20111004005510.GB12447@tux1.beaverton.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <4E8A2F3F.30700@sandeen.net>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 03, 2011 at 05:55:10PM -0700, Darrick J. Wong wrote:
->
-> So what I think I'm hearing is...
-> 
-> 1. Apply Bob's slice-by-8 algorithm patch to regular crc32.
-> 2. Adapt crc32's build code to generate crc32c as well.
-> 3. Remove crypto/crc32c.c's implementation and have it wrap the code generated
->    by #2.
-> 4. Retain the current libcrc32c.  I guess if you don't configure CRYPTO and
->    CRYPTO_CRC32C then it could also just reference the generated crc32c functions
->    directly.
-> 
-> Is this a satisfactory way to move forward?
 
-All good except that you don't really have to touch libcrc32c
-at all.
+Thanks Eric.  Here is the original thread (see also the replies).
 
-Cheers,
+https://lists.fedoraproject.org/pipermail/devel/2011-October/157618.html
+
+In theory I could test this up to ~ 2**63, but it requires a number of
+bugfixes and changes in qemu.  Obviously that size is ridiculous :-)
+but it may reveal bugs that wouldn't be found by ordinary testing.
+
+Rich.
+
 -- 
-Email: Herbert Xu <herbert@gondor.apana.org.au>
-Home Page: http://gondor.apana.org.au/~herbert/
-PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
+Richard Jones, Virtualization Group, Red Hat http://people.redhat.com/~rjones
+virt-p2v converts physical machines to virtual machines.  Boot with a
+live CD or over the network (PXE) and turn machines into Xen guests.
+http://et.redhat.com/~rjones/virt-p2v
