@@ -1,76 +1,151 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH v2] ext4: Prevent stack overrun in ext4_file_open when
- recording last known mountpoint
-Date: Tue, 4 Oct 2011 13:30:23 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1110041127420.7833@dhcp-27-109.brq.redhat.com>
-References: <20110915231645.GE12086@tux1.beaverton.ibm.com> <m239fwfk4k.fsf@firstfloor.org> <20110916184005.GH12086@tux1.beaverton.ibm.com> <20110930194655.GX12086@tux1.beaverton.ibm.com>
+Subject: Re: [PATCH] ext4: don't work without procfs
+Date: Tue, 4 Oct 2011 13:33:53 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1110041330590.4206@dhcp-27-109.brq.redhat.com>
+References: <1317674761-17837-1-git-send-email-yargil@free.fr> <alpine.LFD.2.00.1110041100260.7833@dhcp-27-109.brq.redhat.com> <1317726219.4e8ae80b24893@imp.free.fr>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Andi Kleen <andi@firstfloor.org>, "Theodore Ts'o" <tytso@mit.edu>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Darrick J. Wong" <djwong@us.ibm.com>
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
+To: yargil@free.fr
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45631 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:1032 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755398Ab1JDLag (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Oct 2011 07:30:36 -0400
-In-Reply-To: <20110930194655.GX12086@tux1.beaverton.ibm.com>
+	id S1755764Ab1JDLd7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Oct 2011 07:33:59 -0400
+In-Reply-To: <1317726219.4e8ae80b24893@imp.free.fr>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 30 Sep 2011, Darrick J. Wong wrote:
+On Tue, 4 Oct 2011, yargil@free.fr wrote:
 
-> On Fri, Sep 16, 2011 at 11:40:05AM -0700, Darrick J. Wong wrote:
-> > In ext4_file_open, the filesystem records the mountpoint of the first file that
-> > is opened after mounting the filesystem.  It does this by allocating a 64-byte
-> > stack buffer, calling d_path() to grab the mount point through which this file
-> > was accessed, and then memcpy()ing 64 bytes into the superblock's
-> > s_last_mounted field, starting from the return value of d_path(), which is
-> > stored as "cp".  However, if cp > buf (which it frequently is since path
-> > components are prepended starting at the end of buf) then we can end up copying
-> > stack data into the superblock.
-> > 
-> > Writing stack variables into the superblock doesn't sound like a great idea, so
-> > use strlcpy instead.  Andi Kleen suggested using strlcpy instead of strncpy.
+> Selon Lukas Czerner <lczerner@redhat.com>:
 > 
-> Ok, it's been a couple of weeks.... any thoughts, Ted?
+> > On Mon, 3 Oct 2011, Yargil wrote:
+> >
+> > > Regression from commit dd68314ccf3fb918c1fb6471817edbc60ece4b52
+> >
+> > Hi,
+> >
+> > the commit you've mentioned does not have anything to do with procfs.
+> > Maybe you meant commit
+> >
+> > c9de560ded61faa5b754137b7753da252391c55a
+> > 	ext4: Add multi block allocator for ext4
+> >
+> > which adds multi block allocator for ext4 (mballoc.c) and has been added
+> > in Jan 29 2008.
+> >
+> > > ---
+> > >  fs/ext4/super.c |    8 ++++++++
+> > >  1 files changed, 8 insertions(+), 0 deletions(-)
+> > >
+> > > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> > > index 44d0c8d..8e7298d 100644
+> > > --- a/fs/ext4/super.c
+> > > +++ b/fs/ext4/super.c
+> > > @@ -53,7 +53,9 @@
+> > >  #define CREATE_TRACE_POINTS
+> > >  #include <trace/events/ext4.h>
+> > >
+> > > +#ifdef CONFIG_PROC_FS
+> > >  static struct proc_dir_entry *ext4_proc_root;
+> > > +#endif
+> >
+> > This is not needed I think, since proc_dir_entry is defined in
+> > linux/proc_fs.h even if CONFIG_PROC_FS is not defined.
+> >
+> > >  static struct kset *ext4_kset;
+> > >  static struct ext4_lazy_init *ext4_li_info;
+> > >  static struct mutex ext4_li_mtx;
+> > > @@ -812,9 +814,11 @@ static void ext4_put_super(struct super_block *sb)
+> > >  		es->s_state = cpu_to_le16(sbi->s_mount_state);
+> > >  		ext4_commit_super(sb, 1);
+> > >  	}
+> > > +#ifdef CONFIG_PROC_FS
+> > >  	if (sbi->s_proc) {
+> > >  		remove_proc_entry(sb->s_id, ext4_proc_root);
+> >
+> > This function exists even if CONFIG_PROC_FS is not defined.
+> >
+> > #define remove_proc_entry(name, parent) do {} while (0)
+> >
+> >
+> > >  	}
+> > > +#endif
+> > >  	kobject_del(&sbi->s_kobj);
+> > >
+> > >  	for (i = 0; i < sbi->s_gdb_count; i++)
+> > > @@ -4984,9 +4988,11 @@ static int __init ext4_init_fs(void)
+> > >  	ext4_kset = kset_create_and_add("ext4", NULL, fs_kobj);
+> > >  	if (!ext4_kset)
+> > >  		goto out6;
+> > > +#ifdef CONFIG_PROC_FS
+> > >  	ext4_proc_root = proc_mkdir("fs/ext4", NULL);
+> >
+> > The same here
+> >
+> > static inline struct proc_dir_entry *proc_mkdir(const char *name,
+> > 	struct proc_dir_entry *parent) {return NULL;}
+> >
+> >
+> > >  	if (!ext4_proc_root)
+> > >  		goto out5;
+> > However this is wrong, because in case that procfs is not compiled in
+> > ext4_proc_root will be NULL, but there is no reason to error out in this
+> > case.
+> >
+> > The question is whether we should error out in case that it fails even
+> > if we have procfs compiled in. I am slightly in favour of just printing
+> > a warning in !CONFIG_PROC_FS case.
+> >
+> > Also this is probably why you blame commit
+> > dd68314ccf3fb918c1fb6471817edbc60ece4b52 for the regression, since this
+> > check was added with this commit. But I think that there is no reasong
+> > to #ifdef everything procfs related.
 > 
-> --D
+> I did that to avoid warning. But if printing warning is not a problem then the
+> only part of code to be #ifdef is the test of the return value of proc_mkdir in
+> the ext4_init_fs function.
 
-Makes sense.
+Exactly, it has the advantage of not spawning #ifdefs in super.c and the
+advantage of not preventing the mount in case that the proc_mkdir() fails
+for some reason, because we actually do not need that for file system to
+work properly.
 
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+Thanks!
+-Lukas
 
-> > 
-> > Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
-> > ---
-> > 
-> >  fs/ext4/file.c |    4 ++--
-> >  1 files changed, 2 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> > index e4095e9..9781099 100644
-> > --- a/fs/ext4/file.c
-> > +++ b/fs/ext4/file.c
-> > @@ -181,8 +181,8 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
-> >  		path.dentry = mnt->mnt_root;
-> >  		cp = d_path(&path, buf, sizeof(buf));
-> >  		if (!IS_ERR(cp)) {
-> > -			memcpy(sbi->s_es->s_last_mounted, cp,
-> > -			       sizeof(sbi->s_es->s_last_mounted));
-> > +			strlcpy(sbi->s_es->s_last_mounted, cp,
-> > +				sizeof(sbi->s_es->s_last_mounted));
-> >  			ext4_mark_super_dirty(sb);
-> >  		}
-> >  	}
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
+> 
+> >
+> >
+> > > +#endif
+> > >
+> > >  	err = ext4_init_feat_adverts();
+> > >  	if (err)
+> > > @@ -5022,8 +5028,10 @@ out2:
+> > >  out3:
+> > >  	ext4_exit_feat_adverts();
+> > >  out4:
+> > > +#ifdef CONFIG_PROC_FS
+> > >  	remove_proc_entry("fs/ext4", NULL);
+> >
+> > same here.
+> >
+> > >  out5:
+> > > +#endif
+> > >  	kset_unregister(ext4_kset);
+> > >  out6:
+> > >  	ext4_exit_system_zone();
+> > >
+> >
+> > -Lukas
+> >
+> 
+> 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
+
+-- 
