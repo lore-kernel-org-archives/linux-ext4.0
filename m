@@ -1,151 +1,51 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: don't work without procfs
-Date: Tue, 4 Oct 2011 13:33:53 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1110041330590.4206@dhcp-27-109.brq.redhat.com>
-References: <1317674761-17837-1-git-send-email-yargil@free.fr> <alpine.LFD.2.00.1110041100260.7833@dhcp-27-109.brq.redhat.com> <1317726219.4e8ae80b24893@imp.free.fr>
+From: Eric Sandeen <sandeen@sandeen.net>
+Subject: Re: [PATCH 2/2] libext2fs: fix bad cast which causes problems for
+ file systems > 512EB
+Date: Tue, 04 Oct 2011 06:47:12 -0500
+Message-ID: <4E8AF240.7010905@sandeen.net>
+References: <20111004040033.GM6684@thunk.org> <1317702420-31085-1-git-send-email-tytso@mit.edu> <1317702420-31085-2-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
-To: yargil@free.fr
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:1032 "EHLO mx1.redhat.com"
+Received: from sandeen.net ([63.231.237.45]:38228 "EHLO mail.sandeen.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755764Ab1JDLd7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Oct 2011 07:33:59 -0400
-In-Reply-To: <1317726219.4e8ae80b24893@imp.free.fr>
+	id S1755994Ab1JDLrN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Oct 2011 07:47:13 -0400
+In-Reply-To: <1317702420-31085-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 4 Oct 2011, yargil@free.fr wrote:
+On 10/3/11 11:27 PM, Theodore Ts'o wrote:
+> If the number of block groups exceeds 2**32, a bad cast would lead to
+> a bogus "Not enough space to build proposed filesystem while setting
+> up superblock" failure.
 
-> Selon Lukas Czerner <lczerner@redhat.com>:
-> 
-> > On Mon, 3 Oct 2011, Yargil wrote:
-> >
-> > > Regression from commit dd68314ccf3fb918c1fb6471817edbc60ece4b52
-> >
-> > Hi,
-> >
-> > the commit you've mentioned does not have anything to do with procfs.
-> > Maybe you meant commit
-> >
-> > c9de560ded61faa5b754137b7753da252391c55a
-> > 	ext4: Add multi block allocator for ext4
-> >
-> > which adds multi block allocator for ext4 (mballoc.c) and has been added
-> > in Jan 29 2008.
-> >
-> > > ---
-> > >  fs/ext4/super.c |    8 ++++++++
-> > >  1 files changed, 8 insertions(+), 0 deletions(-)
-> > >
-> > > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> > > index 44d0c8d..8e7298d 100644
-> > > --- a/fs/ext4/super.c
-> > > +++ b/fs/ext4/super.c
-> > > @@ -53,7 +53,9 @@
-> > >  #define CREATE_TRACE_POINTS
-> > >  #include <trace/events/ext4.h>
-> > >
-> > > +#ifdef CONFIG_PROC_FS
-> > >  static struct proc_dir_entry *ext4_proc_root;
-> > > +#endif
-> >
-> > This is not needed I think, since proc_dir_entry is defined in
-> > linux/proc_fs.h even if CONFIG_PROC_FS is not defined.
-> >
-> > >  static struct kset *ext4_kset;
-> > >  static struct ext4_lazy_init *ext4_li_info;
-> > >  static struct mutex ext4_li_mtx;
-> > > @@ -812,9 +814,11 @@ static void ext4_put_super(struct super_block *sb)
-> > >  		es->s_state = cpu_to_le16(sbi->s_mount_state);
-> > >  		ext4_commit_super(sb, 1);
-> > >  	}
-> > > +#ifdef CONFIG_PROC_FS
-> > >  	if (sbi->s_proc) {
-> > >  		remove_proc_entry(sb->s_id, ext4_proc_root);
-> >
-> > This function exists even if CONFIG_PROC_FS is not defined.
-> >
-> > #define remove_proc_entry(name, parent) do {} while (0)
-> >
-> >
-> > >  	}
-> > > +#endif
-> > >  	kobject_del(&sbi->s_kobj);
-> > >
-> > >  	for (i = 0; i < sbi->s_gdb_count; i++)
-> > > @@ -4984,9 +4988,11 @@ static int __init ext4_init_fs(void)
-> > >  	ext4_kset = kset_create_and_add("ext4", NULL, fs_kobj);
-> > >  	if (!ext4_kset)
-> > >  		goto out6;
-> > > +#ifdef CONFIG_PROC_FS
-> > >  	ext4_proc_root = proc_mkdir("fs/ext4", NULL);
-> >
-> > The same here
-> >
-> > static inline struct proc_dir_entry *proc_mkdir(const char *name,
-> > 	struct proc_dir_entry *parent) {return NULL;}
-> >
-> >
-> > >  	if (!ext4_proc_root)
-> > >  		goto out5;
-> > However this is wrong, because in case that procfs is not compiled in
-> > ext4_proc_root will be NULL, but there is no reason to error out in this
-> > case.
-> >
-> > The question is whether we should error out in case that it fails even
-> > if we have procfs compiled in. I am slightly in favour of just printing
-> > a warning in !CONFIG_PROC_FS case.
-> >
-> > Also this is probably why you blame commit
-> > dd68314ccf3fb918c1fb6471817edbc60ece4b52 for the regression, since this
-> > check was added with this commit. But I think that there is no reasong
-> > to #ifdef everything procfs related.
-> 
-> I did that to avoid warning. But if printing warning is not a problem then the
-> only part of code to be #ifdef is the test of the return value of proc_mkdir in
-> the ext4_init_fs function.
+It's the proper cast now, but I don't think it fixes the problem, since they
+are both __u32...
 
-Exactly, it has the advantage of not spawning #ifdefs in super.c and the
-advantage of not preventing the mount in case that the proc_mkdir() fails
-for some reason, because we actually do not need that for file system to
-work properly.
+But in any case, for the actual change at least:
 
-Thanks!
--Lukas
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+>  lib/ext2fs/initialize.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
 > 
-> >
-> >
-> > > +#endif
-> > >
-> > >  	err = ext4_init_feat_adverts();
-> > >  	if (err)
-> > > @@ -5022,8 +5028,10 @@ out2:
-> > >  out3:
-> > >  	ext4_exit_feat_adverts();
-> > >  out4:
-> > > +#ifdef CONFIG_PROC_FS
-> > >  	remove_proc_entry("fs/ext4", NULL);
-> >
-> > same here.
-> >
-> > >  out5:
-> > > +#endif
-> > >  	kset_unregister(ext4_kset);
-> > >  out6:
-> > >  	ext4_exit_system_zone();
-> > >
-> >
-> > -Lukas
-> >
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+> diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
+> index 2875f97..b050a0a 100644
+> --- a/lib/ext2fs/initialize.c
+> +++ b/lib/ext2fs/initialize.c
+> @@ -248,7 +248,7 @@ errcode_t ext2fs_initialize(const char *name, int flags,
+>  	}
+>  
+>  retry:
+> -	fs->group_desc_count = (blk_t) ext2fs_div64_ceil(
+> +	fs->group_desc_count = (dgrp_t) ext2fs_div64_ceil(
+>  		ext2fs_blocks_count(super) - super->s_first_data_block,
+>  		EXT2_BLOCKS_PER_GROUP(super));
+>  	if (fs->group_desc_count == 0) {
 
--- 
