@@ -1,120 +1,122 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/5] libquota: remove get_qf_name()
-Date: Tue,  4 Oct 2011 12:16:36 -0400
-Message-ID: <1317744998-8238-3-git-send-email-tytso@mit.edu>
+Subject: [PATCH 4/5] libquota: use ext2_loff_t instead of loff_t
+Date: Tue,  4 Oct 2011 12:16:37 -0400
+Message-ID: <1317744998-8238-4-git-send-email-tytso@mit.edu>
 References: <1317744998-8238-1-git-send-email-tytso@mit.edu>
 Cc: Aditya Kali <adityakali@google.com>, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:43532 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:43540 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932151Ab1JDQQm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Oct 2011 12:16:42 -0400
+	id S932281Ab1JDQQq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Oct 2011 12:16:46 -0400
 In-Reply-To: <1317744998-8238-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The get_qf_name() function used PATH_MAX, which is non-portable.
-Worse, it blindly assumed that PATH_MAX was the size of the buffer
-passed to it --- which in the one and only place where it was used in
-libquota, was a buffer declared to a fixed size 256 bytes.
-
-Fix this by simply getting rid of the function altogether.
+The type loff_t is not portable.  Use ext2_loff_t which handles this
+for us.
 
 Cc: Aditya Kali <adityakali@google.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- lib/quota/mkquota.c |    6 +++---
- lib/quota/mkquota.h |    5 +----
- lib/quota/quotaio.c |   12 ------------
- misc/tune2fs.c      |    4 ++--
- 4 files changed, 6 insertions(+), 21 deletions(-)
+ lib/quota/quotaio.c      |    8 +++++---
+ lib/quota/quotaio.h      |    4 ++--
+ lib/quota/quotaio_tree.c |   16 +++++++++-------
+ 3 files changed, 16 insertions(+), 12 deletions(-)
 
-diff --git a/lib/quota/mkquota.c b/lib/quota/mkquota.c
-index 263b62b..35cac66 100644
---- a/lib/quota/mkquota.c
-+++ b/lib/quota/mkquota.c
-@@ -65,16 +65,16 @@ int is_quota_on(ext2_filsys fs, int type)
-  * Returns 0 if not able to find the quota file, otherwise returns its
-  * inode number.
-  */
--int quota_file_exists(ext2_filsys fs, int qtype, int fmt)
-+int quota_file_exists(ext2_filsys fs, int qtype)
- {
- 	char qf_name[256];
- 	errcode_t ret;
- 	ext2_ino_t ino;
- 
--	if (qtype >= MAXQUOTAS || fmt > QFMT_VFS_V1)
-+	if (qtype >= MAXQUOTAS)
- 		return -EINVAL;
- 
--	get_qf_name(qtype, fmt, qf_name);
-+	snprintf(qf_name, sizeof(qf_name), "aquota.%s", type2name(qtype));
- 
- 	ret = ext2fs_lookup(fs, EXT2_ROOT_INO, qf_name, strlen(qf_name), 0,
- 			    &ino);
-diff --git a/lib/quota/mkquota.h b/lib/quota/mkquota.h
-index 00d3c2f..e3ec8c2 100644
---- a/lib/quota/mkquota.h
-+++ b/lib/quota/mkquota.h
-@@ -55,10 +55,7 @@ void release_quota_context(quota_ctx_t *qctx);
- 
- errcode_t remove_quota_inode(ext2_filsys fs, int qtype);
- int is_quota_on(ext2_filsys fs, int type);
--int quota_file_exists(ext2_filsys fs, int qtype, int fmt);
-+int quota_file_exists(ext2_filsys fs, int qtype);
- void set_sb_quota_inum(ext2_filsys fs, ext2_ino_t ino, int qtype);
- 
--/* in quotaio.c */
--const char *get_qf_name(int type, int fmt, char *buf);
--
- #endif  /* __QUOTA_QUOTAIO_H__ */
 diff --git a/lib/quota/quotaio.c b/lib/quota/quotaio.c
-index ef92f5a..f651353 100644
+index f651353..0457886 100644
 --- a/lib/quota/quotaio.c
 +++ b/lib/quota/quotaio.c
-@@ -49,18 +49,6 @@ const char *type2name(int type)
- 	return extensions[type];
+@@ -133,7 +133,8 @@ static ext2_off64_t compute_inode_size(ext2_filsys fs, ext2_ino_t ino)
  }
  
--/**
-- * Creates a quota file name for given type and format.
-- */
--const char *get_qf_name(int type, int fmt, char *buf)
--{
--	BUG_ON(!buf);
--	snprintf(buf, PATH_MAX, "%s.%s",
--		 basenames[fmt], extensions[type]);
--
--	return buf;
--}
--
- /*
-  * Set grace time if needed
-  */
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index e2fdb4a..88e814b 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -710,7 +710,7 @@ void handle_quota_options(ext2_filsys fs)
- 	init_quota_context(&qctx, fs, -1);
+ /* Functions to read/write quota file. */
+-static unsigned int quota_write_nomount(struct quota_file *qf, loff_t offset,
++static unsigned int quota_write_nomount(struct quota_file *qf,
++					ext2_loff_t offset,
+ 					void *buf, unsigned int size)
+ {
+ 	ext2_file_t	e2_file = qf->e2_file;
+@@ -156,8 +157,9 @@ static unsigned int quota_write_nomount(struct quota_file *qf, loff_t offset,
+ 	return bytes_written;
+ }
  
- 	if (usrquota == QOPT_ENABLE && !fs->super->s_usr_quota_inum) {
--		if ((qf_ino = quota_file_exists(fs, USRQUOTA, QFMT_VFS_V1)) > 0)
-+		if ((qf_ino = quota_file_exists(fs, USRQUOTA)) > 0)
- 			set_sb_quota_inum(fs, qf_ino, USRQUOTA);
- 		else
- 			write_quota_inode(qctx, USRQUOTA);
-@@ -719,7 +719,7 @@ void handle_quota_options(ext2_filsys fs)
- 	}
+-static unsigned int quota_read_nomount(struct quota_file *qf, loff_t offset,
+-					void *buf, unsigned int size)
++static unsigned int quota_read_nomount(struct quota_file *qf,
++				       ext2_loff_t offset,
++				       void *buf, unsigned int size)
+ {
+ 	ext2_file_t	e2_file = qf->e2_file;
+ 	unsigned int	bytes_read = 0;
+diff --git a/lib/quota/quotaio.h b/lib/quota/quotaio.h
+index f2c34f2..333a59f 100644
+--- a/lib/quota/quotaio.h
++++ b/lib/quota/quotaio.h
+@@ -56,9 +56,9 @@ struct quota_handle {
+ 	int qh_fmt;		/* Quotafile format */
+ 	int qh_io_flags;	/* IO flags for file */
+ 	struct quota_file qh_qf;
+-	unsigned int (*e2fs_read)(struct quota_file *qf, loff_t offset,
++	unsigned int (*e2fs_read)(struct quota_file *qf, ext2_loff_t offset,
+ 			 void *buf, unsigned int size);
+-	unsigned int (*e2fs_write)(struct quota_file *qf, loff_t offset,
++	unsigned int (*e2fs_write)(struct quota_file *qf, ext2_loff_t offset,
+ 			  void *buf, unsigned int size);
+ 	struct quotafile_ops *qh_ops;	/* Operations on quotafile */
+ 	struct util_dqinfo qh_info;	/* Generic quotafile info */
+diff --git a/lib/quota/quotaio_tree.c b/lib/quota/quotaio_tree.c
+index 1daea75..0890ca3 100644
+--- a/lib/quota/quotaio_tree.c
++++ b/lib/quota/quotaio_tree.c
+@@ -392,8 +392,8 @@ void qtree_delete_dquot(struct dquot *dquot)
+ }
  
- 	if (grpquota == QOPT_ENABLE && !fs->super->s_grp_quota_inum) {
--		if ((qf_ino = quota_file_exists(fs, GRPQUOTA, QFMT_VFS_V1)) > 0)
-+		if ((qf_ino = quota_file_exists(fs, GRPQUOTA)) > 0)
- 			set_sb_quota_inum(fs, qf_ino, GRPQUOTA);
- 		else
- 			write_quota_inode(qctx, GRPQUOTA);
+ /* Find entry in block */
+-static loff_t find_block_dqentry(struct quota_handle *h,
+-				 struct dquot *dquot, uint blk)
++static ext2_loff_t find_block_dqentry(struct quota_handle *h,
++				      struct dquot *dquot, uint blk)
+ {
+ 	struct qtree_mem_dqinfo *info = &h->qh_info.u.v2_mdqi.dqi_qtree;
+ 	dqbuf_t buf = getdqbuf();
+@@ -415,11 +415,12 @@ static loff_t find_block_dqentry(struct quota_handle *h,
+ }
+ 
+ /* Find entry for given id in the tree */
+-static loff_t find_tree_dqentry(struct quota_handle *h, struct dquot *dquot,
+-				uint blk, int depth)
++static ext2_loff_t find_tree_dqentry(struct quota_handle *h,
++				     struct dquot *dquot,
++				     uint blk, int depth)
+ {
+ 	dqbuf_t buf = getdqbuf();
+-	loff_t ret = 0;
++	ext2_loff_t ret = 0;
+ 	u_int32_t *ref = (u_int32_t *) buf;
+ 
+ 	read_blk(h, blk, buf);
+@@ -437,7 +438,8 @@ out_buf:
+ }
+ 
+ /* Find entry for given id in the tree - wrapper function */
+-static inline loff_t find_dqentry(struct quota_handle *h, struct dquot *dquot)
++static inline ext2_loff_t find_dqentry(struct quota_handle *h,
++				       struct dquot *dquot)
+ {
+ 	return find_tree_dqentry(h, dquot, QT_TREEOFF, 0);
+ }
+@@ -449,7 +451,7 @@ static inline loff_t find_dqentry(struct quota_handle *h, struct dquot *dquot)
+ struct dquot *qtree_read_dquot(struct quota_handle *h, qid_t id)
+ {
+ 	struct qtree_mem_dqinfo *info = &h->qh_info.u.v2_mdqi.dqi_qtree;
+-	loff_t offset;
++	ext2_loff_t offset;
+ 	ssize_t ret;
+ 	char *ddquot = smalloc(info->dqi_entry_size);
+ 	struct dquot *dquot = get_empty_dquot();
 -- 
 1.7.4.1.22.gec8e1.dirty
 
