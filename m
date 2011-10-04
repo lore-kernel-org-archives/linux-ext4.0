@@ -1,44 +1,54 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] e2fsprogs: Fix thinko in ext2fs_initialize bigalloc case
-Date: Mon, 03 Oct 2011 17:01:18 -0500
-Message-ID: <4E8A30AE.10805@redhat.com>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [PATCH v4] crc32c: Implement CRC32c with slicing-by-8 algorithm
+Date: Mon, 3 Oct 2011 17:55:10 -0700
+Message-ID: <20111004005510.GB12447@tux1.beaverton.ibm.com>
+References: <20110930192956.4176.29905.stgit@elm3c44.beaverton.ibm.com> <OF54094699.6F5CF2B6-ONC125791C.004C901C-C125791C.004D1A61@transmode.se> <20111003153634.GA12447@tux1.beaverton.ibm.com> <OFA190E2A9.231A7DD6-ONC125791E.006F1765-C125791E.00705758@transmode.se> <20111003203513.GA10346@gondor.apana.org.au>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28062 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757668Ab1JCWBT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Oct 2011 18:01:19 -0400
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p93M1JsV005198
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Mon, 3 Oct 2011 18:01:19 -0400
-Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id p93M1ImR012446
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 3 Oct 2011 18:01:18 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Joakim Tjernlund <joakim.tjernlund@transmode.se>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Mingming Cao <cmm@us.ibm.com>,
+	David Miller <davem@davemloft.net>,
+	linux-crypto <linux-crypto@vger.kernel.org>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Bob Pearson <rpearson@systemfabricworks.com>,
+	Theodore Tso <tytso@mit.edu>
+To: Herbert Xu <herbert@gondor.apana.org.au>
+Return-path: <linux-crypto-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20111003203513.GA10346@gondor.apana.org.au>
+Sender: linux-crypto-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Surely we should be setting s_clusters_per_group, not
-s_blocks_per_group, to EXT2_MAX_CLUSTERS_PER_GROUP here.
+On Mon, Oct 03, 2011 at 09:35:13PM +0100, Herbert Xu wrote:
+> On Mon, Oct 03, 2011 at 10:27:03PM +0200, Joakim Tjernlund wrote:
+> >
+> > > > Start from Bobs latest patches and add crc32c to lib/crc32.c
+> > >
+> > > If I did that, how should I handle patching in the hardware accelerated version
+> > > on Intel systems?  That switcheroo ability seems to have been Herbert Xu's
+> > > motivation for moving crc32c into crypto/ in the first place:
+> > 
+> > I don't know, I haven't looked at that problem. I suspect it moved because that
+> > was the easiest solution. Having an identical impl. of crc32(only the table values differ)
+> > in crypto compared to the one in lib is not the way forward though.
+> 
+> You can always get crypto/crc32c.c to use call helpers from
+> lib/crc32.c.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+So what I think I'm hearing is...
 
-diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
-index 47f0b1c..2875f97 100644
---- a/lib/ext2fs/initialize.c
-+++ b/lib/ext2fs/initialize.c
-@@ -218,7 +218,7 @@ errcode_t ext2fs_initialize(const char *name, int flags,
- 		else
- 			super->s_clusters_per_group = fs->blocksize * 8;
- 		if (super->s_clusters_per_group > EXT2_MAX_CLUSTERS_PER_GROUP(super))
--			super->s_blocks_per_group = EXT2_MAX_CLUSTERS_PER_GROUP(super);
-+			super->s_clusters_per_group = EXT2_MAX_CLUSTERS_PER_GROUP(super);
- 		super->s_blocks_per_group = EXT2FS_C2B(fs,
- 				       super->s_clusters_per_group);
- 	} else {
+1. Apply Bob's slice-by-8 algorithm patch to regular crc32.
+2. Adapt crc32's build code to generate crc32c as well.
+3. Remove crypto/crc32c.c's implementation and have it wrap the code generated
+   by #2.
+4. Retain the current libcrc32c.  I guess if you don't configure CRYPTO and
+   CRYPTO_CRC32C then it could also just reference the generated crc32c functions
+   directly.
 
+Is this a satisfactory way to move forward?
+
+--D
