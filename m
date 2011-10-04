@@ -1,51 +1,39 @@
-From: Eric Sandeen <sandeen@sandeen.net>
-Subject: Re: [PATCH 2/2] libext2fs: fix bad cast which causes problems for
- file systems > 512EB
-Date: Tue, 04 Oct 2011 06:47:12 -0500
-Message-ID: <4E8AF240.7010905@sandeen.net>
-References: <20111004040033.GM6684@thunk.org> <1317702420-31085-1-git-send-email-tytso@mit.edu> <1317702420-31085-2-git-send-email-tytso@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+From: Yargil <yargil@free.fr>
+Subject: [PATCH v2] ext4: don't work without procfs
+Date: Tue,  4 Oct 2011 17:44:09 +0200
+Message-ID: <1317743049-4641-1-git-send-email-yargil@free.fr>
+Cc: Yargil <yargil@free.fr>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sandeen.net ([63.231.237.45]:38228 "EHLO mail.sandeen.net"
+Received: from smtp1-g21.free.fr ([212.27.42.1]:37718 "EHLO smtp1-g21.free.fr"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755994Ab1JDLrN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Oct 2011 07:47:13 -0400
-In-Reply-To: <1317702420-31085-2-git-send-email-tytso@mit.edu>
+	id S932656Ab1JDPo0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Oct 2011 11:44:26 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/3/11 11:27 PM, Theodore Ts'o wrote:
-> If the number of block groups exceeds 2**32, a bad cast would lead to
-> a bogus "Not enough space to build proposed filesystem while setting
-> up superblock" failure.
+Regression from commit dd68314ccf3fb918c1fb6471817edbc60ece4b52
+The problem come from the test of the return value of proc_mkdir
+that is always false without procfs and abort the init of ext4.
+---
+ fs/ext4/super.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-It's the proper cast now, but I don't think it fixes the problem, since they
-are both __u32...
-
-But in any case, for the actual change at least:
-
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
-
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  lib/ext2fs/initialize.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
-> index 2875f97..b050a0a 100644
-> --- a/lib/ext2fs/initialize.c
-> +++ b/lib/ext2fs/initialize.c
-> @@ -248,7 +248,7 @@ errcode_t ext2fs_initialize(const char *name, int flags,
->  	}
->  
->  retry:
-> -	fs->group_desc_count = (blk_t) ext2fs_div64_ceil(
-> +	fs->group_desc_count = (dgrp_t) ext2fs_div64_ceil(
->  		ext2fs_blocks_count(super) - super->s_first_data_block,
->  		EXT2_BLOCKS_PER_GROUP(super));
->  	if (fs->group_desc_count == 0) {
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 44d0c8d..9b51b17 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4985,8 +4985,10 @@ static int __init ext4_init_fs(void)
+ 	if (!ext4_kset)
+ 		goto out6;
+ 	ext4_proc_root = proc_mkdir("fs/ext4", NULL);
++#ifdef CONFIG_PROC_FS
+ 	if (!ext4_proc_root)
+ 		goto out5;
++#endif
+ 
+ 	err = ext4_init_feat_adverts();
+ 	if (err)
+-- 
+1.7.2.5
 
