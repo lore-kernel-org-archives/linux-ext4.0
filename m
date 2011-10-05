@@ -1,50 +1,51 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH v2] ext4: don't work without procfs
-Date: Wed, 5 Oct 2011 15:00:45 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1110051456440.4423@dhcp-27-109.brq.redhat.com>
-References: <1317743049-4641-1-git-send-email-yargil@free.fr>
+From: Alex Elder <aelder@sgi.com>
+Subject: Re: [PATCH 1/2] xfstest: fsstress should kill children tasks
+ before exit
+Date: Wed, 5 Oct 2011 08:20:38 -0500
+Message-ID: <1317820838.2226.11.camel@doink>
+References: <1316357699-22692-1-git-send-email-dmonakhov@openvz.org>
+Reply-To: <aelder@sgi.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org
-To: Yargil <yargil@free.fr>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60594 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934365Ab1JENAu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 5 Oct 2011 09:00:50 -0400
-In-Reply-To: <1317743049-4641-1-git-send-email-yargil@free.fr>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: <xfs@oss.sgi.com>, <linux-ext4@vger.kernel.org>,
+	<linux-fsdevel@vger.kernel.org>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1316357699-22692-1-git-send-email-dmonakhov@openvz.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 4 Oct 2011, Yargil wrote:
-
-> Regression from commit dd68314ccf3fb918c1fb6471817edbc60ece4b52
-> The problem come from the test of the return value of proc_mkdir
-> that is always false without procfs and abort the init of ext4.
-
-Looks good. Thanks!
-
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
-
-> ---
->  fs/ext4/super.c |    2 ++
->  1 files changed, 2 insertions(+), 0 deletions(-)
+On Sun, 2011-09-18 at 18:54 +0400, Dmitry Monakhov wrote:
+> It is very hard to predict runtime for fsstress. In many cases it
+> is useful to give test to run a reasonable time, and then kill it.
+> But currently there is no reliable way to kill test without leaving
+> running children.
+> This patch add sanity cleanup logic which looks follow:
+>  - On sigterm received by parent, it resend signal to it's children
+>  - Wait for each child to terminates
+>  - EXTRA_SANITY: Even if parent was killed by other signal, children
+>    will be terminated with SIGKILL to preven staled children.
 > 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 44d0c8d..9b51b17 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -4985,8 +4985,10 @@ static int __init ext4_init_fs(void)
->  	if (!ext4_kset)
->  		goto out6;
->  	ext4_proc_root = proc_mkdir("fs/ext4", NULL);
-> +#ifdef CONFIG_PROC_FS
->  	if (!ext4_proc_root)
->  		goto out5;
-> +#endif
->  
->  	err = ext4_init_feat_adverts();
->  	if (err)
+> So now one can simply run fsstress like this:
+> ./fsstress -p 1000 -n999999999 -d $TEST_DIR &
+> PID=$!
+> sleep 300
+> kill $PID
+> wait $PID
 > 
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 
--- 
+I think this is an interesting change and it looks
+OK to me.  I agree with Christoph's suggestion (on
+the second patch in this series) that it would be
+nice to have at least one of the tests make use of
+it, if nothing else just to document that it's a
+reasonable thing to do.
+
+But even without that I think this is both useful
+and harmless.
+
+Reviewed-by: Alex Elder <aelder@sgi.com>
+
+
