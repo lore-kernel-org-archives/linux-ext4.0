@@ -1,267 +1,92 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: remove deprecated oldalloc
-Date: Wed, 5 Oct 2011 16:32:52 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1110051632441.4423@dhcp-27-109.brq.redhat.com>
-References: <1307453714-2741-1-git-send-email-lczerner@redhat.com> <alpine.LFD.2.00.1109011041160.3665@dhcp-27-109.brq.redhat.com>
+Subject: Re: [PATCH] ext4: Documenatation: remove acl and user_xattr mount
+ options
+Date: Wed, 5 Oct 2011 16:33:10 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1110051633020.4423@dhcp-27-109.brq.redhat.com>
+References: <1309274477-451-1-git-send-email-lczerner@redhat.com> <alpine.LFD.2.00.1108111655380.29009@dhcp-27-109.brq.redhat.com> <alpine.LFD.2.00.1109011038040.3665@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
 To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58654 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:33937 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934462Ab1JEOc4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 5 Oct 2011 10:32:56 -0400
-In-Reply-To: <alpine.LFD.2.00.1109011041160.3665@dhcp-27-109.brq.redhat.com>
+	id S934620Ab1JEOdO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 5 Oct 2011 10:33:14 -0400
+In-Reply-To: <alpine.LFD.2.00.1109011038040.3665@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 On Thu, 1 Sep 2011, Lukas Czerner wrote:
 
-> On Tue, 7 Jun 2011, Lukas Czerner wrote:
+> On Thu, 11 Aug 2011, Lukas Czerner wrote:
 > 
-> > For a long time now orlov is the default block allocator in the ext4. It
-> > performs better than the old one and no one seems to claim otherwise so
-> > we can safely drop it and make oldalloc and orlov mount option
-> > deprecated.
+> > On Tue, 28 Jun 2011, Lukas Czerner wrote:
 > > 
-> > This is a part of the effort to reduce number of ext4 options hence the
-> > test matrix.
+> > > Acl and user_xattr mount options are no longer needed since those
+> > > features are enabled by default if configured in (seee commit
+> > > ea6633369458992241599c9d9ebadffaeddec164). We can not easily
+> > > deprecate mount options itself (since it is probably too early),
+> > > but we can remove it from documentation first.
+> > > 
+> > > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> > 
+> > Hi Ted,
+> > 
+> > any chance picking that up ?
+> > 
+> > Thanks!
+> > -Lukas
 > 
-> ping
+> ping^2
 
-ping^2
-
+ping^3 
 > 
 > > 
-> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> > ---
-> >  Documentation/filesystems/ext4.txt |    8 --
-> >  fs/ext4/ext4.h                     |    1 -
-> >  fs/ext4/ialloc.c                   |  136 +-----------------------------------
-> >  fs/ext4/super.c                    |    8 +-
-> >  4 files changed, 7 insertions(+), 146 deletions(-)
+> > > ---
+> > >  Documentation/filesystems/ext4.txt |   25 +++++++++++--------------
+> > >  1 files changed, 11 insertions(+), 14 deletions(-)
+> > > 
+> > > diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
+> > > index 3ae9bc9..9544e2c 100644
+> > > --- a/Documentation/filesystems/ext4.txt
+> > > +++ b/Documentation/filesystems/ext4.txt
+> > > @@ -209,22 +209,19 @@ oldalloc		This disables the Orlov block allocator and enables
+> > >  			performance - we'd like to get some feedback if it's
+> > >  			the contrary for you.
+> > >  
+> > > -user_xattr		Enables Extended User Attributes.  Additionally, you
+> > > -			need to have extended attribute support enabled in the
+> > > -			kernel configuration (CONFIG_EXT4_FS_XATTR).  See the
+> > > -			attr(5) manual page and http://acl.bestbits.at/ to
+> > > -			learn more about extended attributes.
+> > > -
+> > > -nouser_xattr		Disables Extended User Attributes.
+> > > -
+> > > -acl			Enables POSIX Access Control Lists support.
+> > > -			Additionally, you need to have ACL support enabled in
+> > > -			the kernel configuration (CONFIG_EXT4_FS_POSIX_ACL).
+> > > -			See the acl(5) manual page and http://acl.bestbits.at/
+> > > -			for more information.
+> > > +nouser_xattr		Disables Extended User Attributes. If you have extended
+> > > +			attribute support enabled in the kernel configuration
+> > > +			(CONFIG_EXT4_FS_XATTR), extended attribute support
+> > > +			is enabled by default on mount. See the attr(5) manual
+> > > +			page and http://acl.bestbits.at/ for more information
+> > > +			about extended attributes.
+> > >  
+> > >  noacl			This option disables POSIX Access Control List
+> > > -			support.
+> > > +			support. If ACL support is enabled in the kernel
+> > > +			configuration (CONFIG_EXT4_FS_POSIX_ACL), ACL is
+> > > +			enabled by default on mount. See the acl(5) manual
+> > > +			page and http://acl.bestbits.at/ for more information
+> > > +			about acl.
+> > >  
+> > >  bsddf		(*)	Make 'df' act like BSD.
+> > >  minixdf			Make 'df' act like Minix.
+> > > 
 > > 
-> > diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
-> > index 3ae9bc9..ec469fa 100644
-> > --- a/Documentation/filesystems/ext4.txt
-> > +++ b/Documentation/filesystems/ext4.txt
-> > @@ -201,14 +201,6 @@ inode_readahead_blks=n	This tuning parameter controls the maximum
-> >  			table readahead algorithm will pre-read into
-> >  			the buffer cache.  The default value is 32 blocks.
-> >  
-> > -orlov		(*)	This enables the new Orlov block allocator. It is
-> > -			enabled by default.
-> > -
-> > -oldalloc		This disables the Orlov block allocator and enables
-> > -			the old block allocator.  Orlov should have better
-> > -			performance - we'd like to get some feedback if it's
-> > -			the contrary for you.
-> > -
-> >  user_xattr		Enables Extended User Attributes.  Additionally, you
-> >  			need to have extended attribute support enabled in the
-> >  			kernel configuration (CONFIG_EXT4_FS_XATTR).  See the
-> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> > index 1921392..7e0b8aa 100644
-> > --- a/fs/ext4/ext4.h
-> > +++ b/fs/ext4/ext4.h
-> > @@ -884,7 +884,6 @@ struct ext4_inode_info {
-> >  /*
-> >   * Mount flags
-> >   */
-> > -#define EXT4_MOUNT_OLDALLOC		0x00002  /* Don't use the new Orlov allocator */
-> >  #define EXT4_MOUNT_GRPID		0x00004	/* Create files with directory's group */
-> >  #define EXT4_MOUNT_DEBUG		0x00008	/* Some debugging messages */
-> >  #define EXT4_MOUNT_ERRORS_CONT		0x00010	/* Continue on errors */
-> > diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> > index 21bb2f6..0b5ec23 100644
-> > --- a/fs/ext4/ialloc.c
-> > +++ b/fs/ext4/ialloc.c
-> > @@ -293,118 +293,6 @@ error_return:
-> >  	ext4_std_error(sb, fatal);
-> >  }
-> >  
-> > -/*
-> > - * There are two policies for allocating an inode.  If the new inode is
-> > - * a directory, then a forward search is made for a block group with both
-> > - * free space and a low directory-to-inode ratio; if that fails, then of
-> > - * the groups with above-average free space, that group with the fewest
-> > - * directories already is chosen.
-> > - *
-> > - * For other inodes, search forward from the parent directory\'s block
-> > - * group to find a free inode.
-> > - */
-> > -static int find_group_dir(struct super_block *sb, struct inode *parent,
-> > -				ext4_group_t *best_group)
-> > -{
-> > -	ext4_group_t ngroups = ext4_get_groups_count(sb);
-> > -	unsigned int freei, avefreei;
-> > -	struct ext4_group_desc *desc, *best_desc = NULL;
-> > -	ext4_group_t group;
-> > -	int ret = -1;
-> > -
-> > -	freei = percpu_counter_read_positive(&EXT4_SB(sb)->s_freeinodes_counter);
-> > -	avefreei = freei / ngroups;
-> > -
-> > -	for (group = 0; group < ngroups; group++) {
-> > -		desc = ext4_get_group_desc(sb, group, NULL);
-> > -		if (!desc || !ext4_free_inodes_count(sb, desc))
-> > -			continue;
-> > -		if (ext4_free_inodes_count(sb, desc) < avefreei)
-> > -			continue;
-> > -		if (!best_desc ||
-> > -		    (ext4_free_blks_count(sb, desc) >
-> > -		     ext4_free_blks_count(sb, best_desc))) {
-> > -			*best_group = group;
-> > -			best_desc = desc;
-> > -			ret = 0;
-> > -		}
-> > -	}
-> > -	return ret;
-> > -}
-> > -
-> > -#define free_block_ratio 10
-> > -
-> > -static int find_group_flex(struct super_block *sb, struct inode *parent,
-> > -			   ext4_group_t *best_group)
-> > -{
-> > -	struct ext4_sb_info *sbi = EXT4_SB(sb);
-> > -	struct ext4_group_desc *desc;
-> > -	struct flex_groups *flex_group = sbi->s_flex_groups;
-> > -	ext4_group_t parent_group = EXT4_I(parent)->i_block_group;
-> > -	ext4_group_t parent_fbg_group = ext4_flex_group(sbi, parent_group);
-> > -	ext4_group_t ngroups = ext4_get_groups_count(sb);
-> > -	int flex_size = ext4_flex_bg_size(sbi);
-> > -	ext4_group_t best_flex = parent_fbg_group;
-> > -	int blocks_per_flex = sbi->s_blocks_per_group * flex_size;
-> > -	int flexbg_free_blocks;
-> > -	int flex_freeb_ratio;
-> > -	ext4_group_t n_fbg_groups;
-> > -	ext4_group_t i;
-> > -
-> > -	n_fbg_groups = (ngroups + flex_size - 1) >>
-> > -		sbi->s_log_groups_per_flex;
-> > -
-> > -find_close_to_parent:
-> > -	flexbg_free_blocks = atomic_read(&flex_group[best_flex].free_blocks);
-> > -	flex_freeb_ratio = flexbg_free_blocks * 100 / blocks_per_flex;
-> > -	if (atomic_read(&flex_group[best_flex].free_inodes) &&
-> > -	    flex_freeb_ratio > free_block_ratio)
-> > -		goto found_flexbg;
-> > -
-> > -	if (best_flex && best_flex == parent_fbg_group) {
-> > -		best_flex--;
-> > -		goto find_close_to_parent;
-> > -	}
-> > -
-> > -	for (i = 0; i < n_fbg_groups; i++) {
-> > -		if (i == parent_fbg_group || i == parent_fbg_group - 1)
-> > -			continue;
-> > -
-> > -		flexbg_free_blocks = atomic_read(&flex_group[i].free_blocks);
-> > -		flex_freeb_ratio = flexbg_free_blocks * 100 / blocks_per_flex;
-> > -
-> > -		if (flex_freeb_ratio > free_block_ratio &&
-> > -		    (atomic_read(&flex_group[i].free_inodes))) {
-> > -			best_flex = i;
-> > -			goto found_flexbg;
-> > -		}
-> > -
-> > -		if ((atomic_read(&flex_group[best_flex].free_inodes) == 0) ||
-> > -		    ((atomic_read(&flex_group[i].free_blocks) >
-> > -		      atomic_read(&flex_group[best_flex].free_blocks)) &&
-> > -		     atomic_read(&flex_group[i].free_inodes)))
-> > -			best_flex = i;
-> > -	}
-> > -
-> > -	if (!atomic_read(&flex_group[best_flex].free_inodes) ||
-> > -	    !atomic_read(&flex_group[best_flex].free_blocks))
-> > -		return -1;
-> > -
-> > -found_flexbg:
-> > -	for (i = best_flex * flex_size; i < ngroups &&
-> > -		     i < (best_flex + 1) * flex_size; i++) {
-> > -		desc = ext4_get_group_desc(sb, i, NULL);
-> > -		if (ext4_free_inodes_count(sb, desc)) {
-> > -			*best_group = i;
-> > -			goto out;
-> > -		}
-> > -	}
-> > -
-> > -	return -1;
-> > -out:
-> > -	return 0;
-> > -}
-> > -
-> >  struct orlov_stats {
-> >  	__u32 free_inodes;
-> >  	__u32 free_blocks;
-> > @@ -817,7 +705,6 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode,
-> >  	struct inode *ret;
-> >  	ext4_group_t i;
-> >  	int free = 0;
-> > -	static int once = 1;
-> >  	ext4_group_t flex_group;
-> >  
-> >  	/* Cannot create files in a deleted directory */
-> > @@ -843,26 +730,9 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode,
-> >  		goto got_group;
-> >  	}
-> >  
-> > -	if (sbi->s_log_groups_per_flex && test_opt(sb, OLDALLOC)) {
-> > -		ret2 = find_group_flex(sb, dir, &group);
-> > -		if (ret2 == -1) {
-> > -			ret2 = find_group_other(sb, dir, &group, mode);
-> > -			if (ret2 == 0 && once) {
-> > -				once = 0;
-> > -				printk(KERN_NOTICE "ext4: find_group_flex "
-> > -				       "failed, fallback succeeded dir %lu\n",
-> > -				       dir->i_ino);
-> > -			}
-> > -		}
-> > -		goto got_group;
-> > -	}
-> > -
-> > -	if (S_ISDIR(mode)) {
-> > -		if (test_opt(sb, OLDALLOC))
-> > -			ret2 = find_group_dir(sb, dir, &group);
-> > -		else
-> > -			ret2 = find_group_orlov(sb, dir, &group, mode, qstr);
-> > -	} else
-> > +	if (S_ISDIR(mode))
-> > +		ret2 = find_group_orlov(sb, dir, &group, mode, qstr);
-> > +	else
-> >  		ret2 = find_group_other(sb, dir, &group, mode);
-> >  
-> >  got_group:
-> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> > index cc5c157..e1f8f73 100644
-> > --- a/fs/ext4/super.c
-> > +++ b/fs/ext4/super.c
-> > @@ -1031,8 +1031,6 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
-> >  		seq_puts(seq, ",nouid32");
-> >  	if (test_opt(sb, DEBUG) && !(def_mount_opts & EXT4_DEFM_DEBUG))
-> >  		seq_puts(seq, ",debug");
-> > -	if (test_opt(sb, OLDALLOC))
-> > -		seq_puts(seq, ",oldalloc");
-> >  #ifdef CONFIG_EXT4_FS_XATTR
-> >  	if (test_opt(sb, XATTR_USER))
-> >  		seq_puts(seq, ",user_xattr");
-> > @@ -1541,10 +1539,12 @@ static int parse_options(char *options, struct super_block *sb,
-> >  			set_opt(sb, DEBUG);
-> >  			break;
-> >  		case Opt_oldalloc:
-> > -			set_opt(sb, OLDALLOC);
-> > +			ext4_msg(sb, KERN_WARNING,
-> > +				 "Ignoring deprecated oldalloc option");
-> >  			break;
-> >  		case Opt_orlov:
-> > -			clear_opt(sb, OLDALLOC);
-> > +			ext4_msg(sb, KERN_WARNING,
-> > +				 "Ignoring deprecated orlov option");
-> >  			break;
-> >  #ifdef CONFIG_EXT4_FS_XATTR
-> >  		case Opt_user_xattr:
 > > 
 > 
 > 
