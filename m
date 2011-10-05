@@ -1,30 +1,264 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] mke2fs: Fix up usage & error text for cluster size
- specification
-Date: Wed, 5 Oct 2011 02:01:25 -0400
-Message-ID: <20111005060125.GB4297@thunk.org>
-References: <4E8B84BB.6040004@redhat.com>
+From: Thomas Gleixner <tglx@linutronix.de>
+Subject: fs: jdb/jbd2: Put identical code in a common header
+Date: Wed, 5 Oct 2011 13:29:29 +0200 (CEST)
+Message-ID: <alpine.LFD.2.02.1110051328010.18778@ionos>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: LKML <linux-kernel@vger.kernel.org>, Theodore Ts'o <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:56504 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932975Ab1JEGCO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 5 Oct 2011 02:02:14 -0400
-Content-Disposition: inline
-In-Reply-To: <4E8B84BB.6040004@redhat.com>
+Received: from www.linutronix.de ([62.245.132.108]:60635 "EHLO
+	Galois.linutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934397Ab1JEL3c (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Oct 2011 07:29:32 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 04, 2011 at 05:12:11PM -0500, Eric Sandeen wrote:
-> Commit c6ed60cd removed "f" (fragment size) from the getopt string,
-> and re-used its spot in the getopt switch, but didn't update the
-> usage message or the error message during parsing.
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+The state bits and the lock functions of jbd and jbd2 are
+identical. Share them.
 
-Thanks, applied.
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+---
+ include/linux/jbd.h        |   64 ------------------------------------------
+ include/linux/jbd2.h       |   65 -------------------------------------------
+ include/linux/jbd_common.h |   68 +++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 70 insertions(+), 127 deletions(-)
 
-						- Ted
+Index: linux-2.6/include/linux/jbd.h
+===================================================================
+--- linux-2.6.orig/include/linux/jbd.h
++++ linux-2.6/include/linux/jbd.h
+@@ -244,6 +244,7 @@ typedef struct journal_superblock_s
+ 
+ #include <linux/fs.h>
+ #include <linux/sched.h>
++#include <linux/jbd_common.h>
+ 
+ #define J_ASSERT(assert)	BUG_ON(!(assert))
+ 
+@@ -270,69 +271,6 @@ typedef struct journal_superblock_s
+ #define J_EXPECT_JH(jh, expr, why...)	__journal_expect(expr, ## why)
+ #endif
+ 
+-enum jbd_state_bits {
+-	BH_JBD			/* Has an attached ext3 journal_head */
+-	  = BH_PrivateStart,
+-	BH_JWrite,		/* Being written to log (@@@ DEBUGGING) */
+-	BH_Freed,		/* Has been freed (truncated) */
+-	BH_Revoked,		/* Has been revoked from the log */
+-	BH_RevokeValid,		/* Revoked flag is valid */
+-	BH_JBDDirty,		/* Is dirty but journaled */
+-	BH_State,		/* Pins most journal_head state */
+-	BH_JournalHead,		/* Pins bh->b_private and jh->b_bh */
+-	BH_Unshadow,		/* Dummy bit, for BJ_Shadow wakeup filtering */
+-};
+-
+-BUFFER_FNS(JBD, jbd)
+-BUFFER_FNS(JWrite, jwrite)
+-BUFFER_FNS(JBDDirty, jbddirty)
+-TAS_BUFFER_FNS(JBDDirty, jbddirty)
+-BUFFER_FNS(Revoked, revoked)
+-TAS_BUFFER_FNS(Revoked, revoked)
+-BUFFER_FNS(RevokeValid, revokevalid)
+-TAS_BUFFER_FNS(RevokeValid, revokevalid)
+-BUFFER_FNS(Freed, freed)
+-
+-static inline struct buffer_head *jh2bh(struct journal_head *jh)
+-{
+-	return jh->b_bh;
+-}
+-
+-static inline struct journal_head *bh2jh(struct buffer_head *bh)
+-{
+-	return bh->b_private;
+-}
+-
+-static inline void jbd_lock_bh_state(struct buffer_head *bh)
+-{
+-	bit_spin_lock(BH_State, &bh->b_state);
+-}
+-
+-static inline int jbd_trylock_bh_state(struct buffer_head *bh)
+-{
+-	return bit_spin_trylock(BH_State, &bh->b_state);
+-}
+-
+-static inline int jbd_is_locked_bh_state(struct buffer_head *bh)
+-{
+-	return bit_spin_is_locked(BH_State, &bh->b_state);
+-}
+-
+-static inline void jbd_unlock_bh_state(struct buffer_head *bh)
+-{
+-	bit_spin_unlock(BH_State, &bh->b_state);
+-}
+-
+-static inline void jbd_lock_bh_journal_head(struct buffer_head *bh)
+-{
+-	bit_spin_lock(BH_JournalHead, &bh->b_state);
+-}
+-
+-static inline void jbd_unlock_bh_journal_head(struct buffer_head *bh)
+-{
+-	bit_spin_unlock(BH_JournalHead, &bh->b_state);
+-}
+-
+ struct jbd_revoke_table_s;
+ 
+ /**
+Index: linux-2.6/include/linux/jbd2.h
+===================================================================
+--- linux-2.6.orig/include/linux/jbd2.h
++++ linux-2.6/include/linux/jbd2.h
+@@ -275,6 +275,7 @@ typedef struct journal_superblock_s
+ 
+ #include <linux/fs.h>
+ #include <linux/sched.h>
++#include <linux/jbd_common.h>
+ 
+ #define J_ASSERT(assert)	BUG_ON(!(assert))
+ 
+@@ -302,70 +303,6 @@ typedef struct journal_superblock_s
+ #define J_EXPECT_JH(jh, expr, why...)	__journal_expect(expr, ## why)
+ #endif
+ 
+-enum jbd_state_bits {
+-	BH_JBD			/* Has an attached ext3 journal_head */
+-	  = BH_PrivateStart,
+-	BH_JWrite,		/* Being written to log (@@@ DEBUGGING) */
+-	BH_Freed,		/* Has been freed (truncated) */
+-	BH_Revoked,		/* Has been revoked from the log */
+-	BH_RevokeValid,		/* Revoked flag is valid */
+-	BH_JBDDirty,		/* Is dirty but journaled */
+-	BH_State,		/* Pins most journal_head state */
+-	BH_JournalHead,		/* Pins bh->b_private and jh->b_bh */
+-	BH_Unshadow,		/* Dummy bit, for BJ_Shadow wakeup filtering */
+-	BH_JBDPrivateStart,	/* First bit available for private use by FS */
+-};
+-
+-BUFFER_FNS(JBD, jbd)
+-BUFFER_FNS(JWrite, jwrite)
+-BUFFER_FNS(JBDDirty, jbddirty)
+-TAS_BUFFER_FNS(JBDDirty, jbddirty)
+-BUFFER_FNS(Revoked, revoked)
+-TAS_BUFFER_FNS(Revoked, revoked)
+-BUFFER_FNS(RevokeValid, revokevalid)
+-TAS_BUFFER_FNS(RevokeValid, revokevalid)
+-BUFFER_FNS(Freed, freed)
+-
+-static inline struct buffer_head *jh2bh(struct journal_head *jh)
+-{
+-	return jh->b_bh;
+-}
+-
+-static inline struct journal_head *bh2jh(struct buffer_head *bh)
+-{
+-	return bh->b_private;
+-}
+-
+-static inline void jbd_lock_bh_state(struct buffer_head *bh)
+-{
+-	bit_spin_lock(BH_State, &bh->b_state);
+-}
+-
+-static inline int jbd_trylock_bh_state(struct buffer_head *bh)
+-{
+-	return bit_spin_trylock(BH_State, &bh->b_state);
+-}
+-
+-static inline int jbd_is_locked_bh_state(struct buffer_head *bh)
+-{
+-	return bit_spin_is_locked(BH_State, &bh->b_state);
+-}
+-
+-static inline void jbd_unlock_bh_state(struct buffer_head *bh)
+-{
+-	bit_spin_unlock(BH_State, &bh->b_state);
+-}
+-
+-static inline void jbd_lock_bh_journal_head(struct buffer_head *bh)
+-{
+-	bit_spin_lock(BH_JournalHead, &bh->b_state);
+-}
+-
+-static inline void jbd_unlock_bh_journal_head(struct buffer_head *bh)
+-{
+-	bit_spin_unlock(BH_JournalHead, &bh->b_state);
+-}
+-
+ /* Flags in jbd_inode->i_flags */
+ #define __JI_COMMIT_RUNNING 0
+ /* Commit of the inode data in progress. We use this flag to protect us from
+Index: linux-2.6/include/linux/jbd_common.h
+===================================================================
+--- /dev/null
++++ linux-2.6/include/linux/jbd_common.h
+@@ -0,0 +1,68 @@
++#ifndef _LINUX_JBD_STATE_H
++#define _LINUX_JBD_STATE_H
++
++enum jbd_state_bits {
++	BH_JBD			/* Has an attached ext3 journal_head */
++	  = BH_PrivateStart,
++	BH_JWrite,		/* Being written to log (@@@ DEBUGGING) */
++	BH_Freed,		/* Has been freed (truncated) */
++	BH_Revoked,		/* Has been revoked from the log */
++	BH_RevokeValid,		/* Revoked flag is valid */
++	BH_JBDDirty,		/* Is dirty but journaled */
++	BH_State,		/* Pins most journal_head state */
++	BH_JournalHead,		/* Pins bh->b_private and jh->b_bh */
++	BH_Unshadow,		/* Dummy bit, for BJ_Shadow wakeup filtering */
++	BH_JBDPrivateStart,	/* First bit available for private use by FS */
++};
++
++BUFFER_FNS(JBD, jbd)
++BUFFER_FNS(JWrite, jwrite)
++BUFFER_FNS(JBDDirty, jbddirty)
++TAS_BUFFER_FNS(JBDDirty, jbddirty)
++BUFFER_FNS(Revoked, revoked)
++TAS_BUFFER_FNS(Revoked, revoked)
++BUFFER_FNS(RevokeValid, revokevalid)
++TAS_BUFFER_FNS(RevokeValid, revokevalid)
++BUFFER_FNS(Freed, freed)
++
++static inline struct buffer_head *jh2bh(struct journal_head *jh)
++{
++	return jh->b_bh;
++}
++
++static inline struct journal_head *bh2jh(struct buffer_head *bh)
++{
++	return bh->b_private;
++}
++
++static inline void jbd_lock_bh_state(struct buffer_head *bh)
++{
++	bit_spin_lock(BH_State, &bh->b_state);
++}
++
++static inline int jbd_trylock_bh_state(struct buffer_head *bh)
++{
++	return bit_spin_trylock(BH_State, &bh->b_state);
++}
++
++static inline int jbd_is_locked_bh_state(struct buffer_head *bh)
++{
++	return bit_spin_is_locked(BH_State, &bh->b_state);
++}
++
++static inline void jbd_unlock_bh_state(struct buffer_head *bh)
++{
++	bit_spin_unlock(BH_State, &bh->b_state);
++}
++
++static inline void jbd_lock_bh_journal_head(struct buffer_head *bh)
++{
++	bit_spin_lock(BH_JournalHead, &bh->b_state);
++}
++
++static inline void jbd_unlock_bh_journal_head(struct buffer_head *bh)
++{
++	bit_spin_unlock(BH_JournalHead, &bh->b_state);
++}
++
++#endif
