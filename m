@@ -1,65 +1,58 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCH v4] crc32c: Implement CRC32c with slicing-by-8 algorithm
-Date: Tue, 4 Oct 2011 16:54:46 -0700
-Message-ID: <20111004235446.GC12447@tux1.beaverton.ibm.com>
-References: <20110930192956.4176.29905.stgit@elm3c44.beaverton.ibm.com> <OF54094699.6F5CF2B6-ONC125791C.004C901C-C125791C.004D1A61@transmode.se> <20111003153634.GA12447@tux1.beaverton.ibm.com> <OFA190E2A9.231A7DD6-ONC125791E.006F1765-C125791E.00705758@transmode.se> <20111003203513.GA10346@gondor.apana.org.au> <20111004005510.GB12447@tux1.beaverton.ibm.com> <20111004065953.GA16606@gondor.apana.org.au>
-Reply-To: djwong@us.ibm.com
+From: "COCA COLA 2011" <a.kumar@ncl.res.in>
+Subject: (unknown)
+Date: Wed, 5 Oct 2011 11:19:35 +0530
+Message-ID: <20111005054943.QXOM1579.viefep20-int.chello.at__46604.3397588239$1317793884$gmane$org@edge04.upcmail.net>
+Reply-To: <drawsupdate222@qatar.io>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Joakim Tjernlund <joakim.tjernlund@transmode.se>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Mingming Cao <cmm@us.ibm.com>,
-	David Miller <davem@davemloft.net>,
-	linux-crypto <linux-crypto@vger.kernel.org>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Bob Pearson <rpearson@systemfabricworks.com>,
-	Theodore Tso <tytso@mit.edu>
-To: Herbert Xu <herbert@gondor.apana.org.au>
+Content-Type: multipart/mixed;
+	boundary="----=_NextPart_000_001F_01C2A9A6.19485D02"
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e31.co.us.ibm.com ([32.97.110.149]:56280 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933983Ab1JDXyk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Oct 2011 19:54:40 -0400
-Received: from /spool/local
-	by us.ibm.com with XMail ESMTP
-	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 4 Oct 2011 17:54:40 -0600
-Content-Disposition: inline
-In-Reply-To: <20111004065953.GA16606@gondor.apana.org.au>
+Received: from fep32.mx.upcmail.net ([62.179.121.50]:46518 "EHLO
+	fep32.mx.upcmail.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933071Ab1JEFvQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Oct 2011 01:51:16 -0400
+Subject: 
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 04, 2011 at 07:59:53AM +0100, Herbert Xu wrote:
-> On Mon, Oct 03, 2011 at 05:55:10PM -0700, Darrick J. Wong wrote:
-> >
-> > So what I think I'm hearing is...
-> > 
-> > 1. Apply Bob's slice-by-8 algorithm patch to regular crc32.
-> > 2. Adapt crc32's build code to generate crc32c as well.
-> > 3. Remove crypto/crc32c.c's implementation and have it wrap the code generated
-> >    by #2.
-> > 4. Retain the current libcrc32c.  I guess if you don't configure CRYPTO and
-> >    CRYPTO_CRC32C then it could also just reference the generated crc32c functions
-> >    directly.
-> > 
-> > Is this a satisfactory way to move forward?
-> 
-> All good except that you don't really have to touch libcrc32c
-> at all.
+This is a multi-part message in MIME format.
 
-Ok, let's see what you think of my v5 patchset. :)
+------=_NextPart_000_001F_01C2A9A6.19485D02
+Content-Type: text/plain;
+	charset="Windows-1251"
+Content-Transfer-Encoding: 7bit
 
---D
-> 
-> Cheers,
-> -- 
-> Email: Herbert Xu <herbert@gondor.apana.org.au>
-> Home Page: http://gondor.apana.org.au/~herbert/
-> PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+DOWNLOAD ATTACHTMENT
 
+------=_NextPart_000_001F_01C2A9A6.19485D02
+Content-Type: application/octet-stream;
+	name="COCA COLA2.rtf"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+	filename="COCA COLA2.rtf"
+
+e1xydGYxXGFuc2lcYW5zaWNwZzEyNTJcZGVmZjB7XGZvbnR0Ymx7XGYwXGZu
+aWxcZmNoYXJzZXQwIENhbGlicmk7fX0NCntcKlxnZW5lcmF0b3IgTXNmdGVk
+aXQgNS40MS4yMS4yNTA5O31cdmlld2tpbmQ0XHVjMVxwYXJkXHNhMjAwXHNs
+Mjc2XHNsbXVsdDFcbGFuZzlcZjBcZnMyMiBZb3UgaGF2ZSBiZWVuIHNlbGVj
+dGVkIGluIHRoZSBvbi1nb2luZyBDT0NBIENPTEEgYXdhcmQgaGVsZCB0aGlz
+ICBPY3RvYmVyXHBhcg0KMjAxMS5XZSB0aGUgUHJvbW8gQm9hcmQgYXJlIHBs
+ZWFzZWQgdG8gaW5mb3JtIHlvdSB0aGF0IHlvdSBhbG9uZ3NpZGUgZm91cig0
+KVxwYXINCm90aGVybHVja3kgd2lubmVycyBoYXZlIGJlZW4gYXBwcm92ZWQg
+Zm9yIGEgcGF5bWVudCBvZiAxLDAwMCAwMDBHQlAgKE9uZVxwYXINCk1pbGxp
+b24gUG91bmRzIFN0ZXJsaW5nKS5ccGFyDQpJZiB5b3UgZGlkIHJlY2VpdmUg
+dGhpcyBlbWFpbCwgaXQgbWVhbnMgeW91IGFyZSBvbmUgb2YgdGhlIGZpdmUo
+NSlsdWNreVxwYXINCndpbm5lcnMuXHBhcg0KXHBhcg0KKkNMQUlNUyBQUk9D
+RVNTSU5HIE9GRklDRVI6XHBhcg0KKk5hbWU6TXIgVE9NTVkgUk9HRVJccGFy
+DQpFbWFpbDogZHJhd3N1cGRhdGUyMjJAcWF0YXIuaW9ccGFyDQpccGFyDQpZ
+b3UgYXJlIGFsc28gYWR2aXNlZCB0byBwcm92aWRlIGhpbSB3aXRoIHRoZSB1
+bmRlciBsaXN0ZWQgaW5mb3JtYXRpb25ccGFyDQphcyBzb29uIGFzIHBvc3Np
+YmxlOlxwYXINClxwYXINCipOQU1FIElOIEZVTEw6XHBhcg0KKkRFTElWRVJZ
+IEFERFJFU1M6XHBhcg0KKlNFWDpccGFyDQoqQUdFOlxwYXINCipDT1VOVFJZ
+OlxwYXINCipOQVRJT05BTElUWTpccGFyDQoqT0NDVVBBVElPTjpccGFyDQoq
+TU9CSUxFIE5VTUJFUjpccGFyDQpFTUFJTCBJRDpccGFyDQpccGFyDQpXZSBh
+cmUgZ2xhZCB0byBoYXZlIHlvdSBhcyBvbmUgb2Ygb3VyIGx1Y2tseSB3aW5u
+ZXJzLlxwYXINCn0NCgA=
+
+------=_NextPart_000_001F_01C2A9A6.19485D02--
