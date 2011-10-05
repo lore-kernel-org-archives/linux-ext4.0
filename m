@@ -1,58 +1,30 @@
-From: "COCA COLA 2011" <a.kumar@ncl.res.in>
-Subject: (unknown)
-Date: Wed, 5 Oct 2011 11:19:35 +0530
-Message-ID: <20111005054943.QXOM1579.viefep20-int.chello.at__46604.3397588239$1317793884$gmane$org@edge04.upcmail.net>
-Reply-To: <drawsupdate222@qatar.io>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] mke2fs: Fix up usage & error text for cluster size
+ specification
+Date: Wed, 5 Oct 2011 02:01:25 -0400
+Message-ID: <20111005060125.GB4297@thunk.org>
+References: <4E8B84BB.6040004@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----=_NextPart_000_001F_01C2A9A6.19485D02"
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fep32.mx.upcmail.net ([62.179.121.50]:46518 "EHLO
-	fep32.mx.upcmail.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933071Ab1JEFvQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Oct 2011 01:51:16 -0400
-Subject: 
+Received: from li9-11.members.linode.com ([67.18.176.11]:56504 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932975Ab1JEGCO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 5 Oct 2011 02:02:14 -0400
+Content-Disposition: inline
+In-Reply-To: <4E8B84BB.6040004@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a multi-part message in MIME format.
+On Tue, Oct 04, 2011 at 05:12:11PM -0500, Eric Sandeen wrote:
+> Commit c6ed60cd removed "f" (fragment size) from the getopt string,
+> and re-used its spot in the getopt switch, but didn't update the
+> usage message or the error message during parsing.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-------=_NextPart_000_001F_01C2A9A6.19485D02
-Content-Type: text/plain;
-	charset="Windows-1251"
-Content-Transfer-Encoding: 7bit
+Thanks, applied.
 
-DOWNLOAD ATTACHTMENT
-
-------=_NextPart_000_001F_01C2A9A6.19485D02
-Content-Type: application/octet-stream;
-	name="COCA COLA2.rtf"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
-	filename="COCA COLA2.rtf"
-
-e1xydGYxXGFuc2lcYW5zaWNwZzEyNTJcZGVmZjB7XGZvbnR0Ymx7XGYwXGZu
-aWxcZmNoYXJzZXQwIENhbGlicmk7fX0NCntcKlxnZW5lcmF0b3IgTXNmdGVk
-aXQgNS40MS4yMS4yNTA5O31cdmlld2tpbmQ0XHVjMVxwYXJkXHNhMjAwXHNs
-Mjc2XHNsbXVsdDFcbGFuZzlcZjBcZnMyMiBZb3UgaGF2ZSBiZWVuIHNlbGVj
-dGVkIGluIHRoZSBvbi1nb2luZyBDT0NBIENPTEEgYXdhcmQgaGVsZCB0aGlz
-ICBPY3RvYmVyXHBhcg0KMjAxMS5XZSB0aGUgUHJvbW8gQm9hcmQgYXJlIHBs
-ZWFzZWQgdG8gaW5mb3JtIHlvdSB0aGF0IHlvdSBhbG9uZ3NpZGUgZm91cig0
-KVxwYXINCm90aGVybHVja3kgd2lubmVycyBoYXZlIGJlZW4gYXBwcm92ZWQg
-Zm9yIGEgcGF5bWVudCBvZiAxLDAwMCAwMDBHQlAgKE9uZVxwYXINCk1pbGxp
-b24gUG91bmRzIFN0ZXJsaW5nKS5ccGFyDQpJZiB5b3UgZGlkIHJlY2VpdmUg
-dGhpcyBlbWFpbCwgaXQgbWVhbnMgeW91IGFyZSBvbmUgb2YgdGhlIGZpdmUo
-NSlsdWNreVxwYXINCndpbm5lcnMuXHBhcg0KXHBhcg0KKkNMQUlNUyBQUk9D
-RVNTSU5HIE9GRklDRVI6XHBhcg0KKk5hbWU6TXIgVE9NTVkgUk9HRVJccGFy
-DQpFbWFpbDogZHJhd3N1cGRhdGUyMjJAcWF0YXIuaW9ccGFyDQpccGFyDQpZ
-b3UgYXJlIGFsc28gYWR2aXNlZCB0byBwcm92aWRlIGhpbSB3aXRoIHRoZSB1
-bmRlciBsaXN0ZWQgaW5mb3JtYXRpb25ccGFyDQphcyBzb29uIGFzIHBvc3Np
-YmxlOlxwYXINClxwYXINCipOQU1FIElOIEZVTEw6XHBhcg0KKkRFTElWRVJZ
-IEFERFJFU1M6XHBhcg0KKlNFWDpccGFyDQoqQUdFOlxwYXINCipDT1VOVFJZ
-OlxwYXINCipOQVRJT05BTElUWTpccGFyDQoqT0NDVVBBVElPTjpccGFyDQoq
-TU9CSUxFIE5VTUJFUjpccGFyDQpFTUFJTCBJRDpccGFyDQpccGFyDQpXZSBh
-cmUgZ2xhZCB0byBoYXZlIHlvdSBhcyBvbmUgb2Ygb3VyIGx1Y2tseSB3aW5u
-ZXJzLlxwYXINCn0NCgA=
-
-------=_NextPart_000_001F_01C2A9A6.19485D02--
+						- Ted
