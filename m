@@ -1,55 +1,54 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext3/xattr_seciruty.c: local functions should be static
-Date: Wed, 5 Oct 2011 22:18:16 +0200
-Message-ID: <20111005201816.GJ23467@quack.suse.cz>
-References: <201109231507.09998.hartleys@visionengravers.com>
- <20111004233746.GC21205@quack.suse.cz>
- <ADE657CA350FB648AAC2C43247A983F001F39DCFE896@AUSP01VMBX24.collaborationhost.net>
+From: Christian Kujau <lists@nerdbynature.de>
+Subject: Re: EXT4-fs (dm-1): Couldn't remount RDWR because of unprocessed
+ orphan inode list
+Date: Wed, 5 Oct 2011 18:34:36 -0700 (PDT)
+Message-ID: <alpine.DEB.2.01.1110051823380.8000@trent.utfs.org>
+References: <alpine.DEB.2.01.1109021346290.9183@trent.utfs.org> <4E66478E.90102@redhat.com> <alpine.DEB.2.01.1109060923340.9183@trent.utfs.org> <4E664DFD.80308@redhat.com> <20110908185139.GA2393@quack.suse.cz> <alpine.DEB.2.01.1109091809180.9183@trent.utfs.org>
+ <20110910200414.GA6709@quack.suse.cz> <alpine.DEB.2.01.1109122150060.9183@trent.utfs.org> <alpine.DEB.2.01.1109152044090.5628@trent.utfs.org> <20111005180339.GG23467@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>
-To: H Hartley Sweeten <hartleys@visionengravers.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
+	mszeredi@suse.cz, Al Viro <viro@ZenIV.linux.org.uk>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:41433 "EHLO mx2.suse.de"
+Received: from trent.utfs.org ([194.246.123.103]:57808 "EHLO trent.utfs.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935179Ab1JEUSR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 5 Oct 2011 16:18:17 -0400
-Content-Disposition: inline
-In-Reply-To: <ADE657CA350FB648AAC2C43247A983F001F39DCFE896@AUSP01VMBX24.collaborationhost.net>
+	id S1751906Ab1JFBej (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 5 Oct 2011 21:34:39 -0400
+In-Reply-To: <20111005180339.GG23467@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 05-10-11 12:27:06, H Hartley Sweeten wrote:
-> On Tuesday, October 04, 2011 4:38 PM, Jan Kara wrote:
-> > On Fri 23-09-11 15:07:09, H Hartley Sweeten wrote:
-> >> Quiets the sparse noise:
-> >> 
-> >> warning: symbol 'ext3_initxattrs' was not declared. Should it be static?
-> >> 
-> >> Signed-off-by: H Hartley Sweeten <hsweeten@visionengravers.com>
-> >> Cc: Jan Kara <jack@suse.cz>
-> >> Cc: Andrew Morton <akpm@linux-foundation.org>
-> >> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-> >  Here applies the same comment as to the ext2 patch - not in current
-> > Linus' kernel AFAICS.
-> 
-> These are in linux-next due to:
-> 
-> commit 9d8f13ba3f4833219e50767b022b82cd0da930eb
-> Author: Mimi Zohar <zohar@linux.vnet.ibm.com>
-> Date:   Mon Jun 6 15:29:25 2011 -0400
-> 
->     security: new security_inode_init_security API adds function callback
-> 
-> I can repost these after this commit hits Linus' kernel if necessary.
-  I see. OK, please repost when they hit Linus' kernel since I guess it's
-not urgent to merge these.
+On Wed, 5 Oct 2011 at 20:03, Jan Kara wrote:
+>> With Miklos' patches applied to -rc5, this happend again just now :-(
+>>
+> Thanks for careful testing! Hmm, since you are able to reproduce on ppc
+> but not on x86 there might be some memory ordering bug in Miklos' patches
+> or it's simply because of different timing. Miklos, care to debug this
+> further?
 
-								Honza
+Just to be clear: I'm still not entirely sure how to reproduce this at 
+will. I *assumed* that the daily remount-rw-and-ro-again routine that left 
+some inodes in limbo and eventually lead to those "unprocessed orphan 
+inodes". With that in mind I tried to reproduce this with the help of a 
+test-script (test-remount.sh, [0]) - but the message did not occur while 
+the script was running.
+
+I've ran the script again today on the said powerpc machine on a 
+loop-mounted 500MB ext4 partition. But even after 100 iterations no
+such message occured.
+
+So maybe it's caused by something else or my test-script just doesn't get 
+the scenario right and there's something subtle to this whole 
+remounting-business I haven't figured out yet, leading to those orphan 
+inodes.
+
+I'm at 3.1.0-rc9 now and will wait until the errors occur again.
+
+Christian.
+
+[0] nerdbynature.de/bits/3.1-rc4/ext4/
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+BOFH excuse #423:
+
+It's not RFC-822 compliant.
