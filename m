@@ -1,44 +1,33 @@
-From: Fabrice Jouhaud <yargil@free.fr>
-Subject: [PATCH v3] [SIGNED-OFF] ext4: don't work without procfs
-Date: Thu,  6 Oct 2011 17:51:16 +0200
-Message-ID: <1317916276-2509-1-git-send-email-yargil@free.fr>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
-	linux-kernel@vger.kernel.org, Yargil <yargil@free.fr>
-To: linux-ext4@vger.kernel.org
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Free resources in some error path in
+ ext4_fill_super.
+Date: Thu, 6 Oct 2011 11:58:57 -0400
+Message-ID: <20111006155857.GB19049@thunk.org>
+References: <1313767689-2786-1-git-send-email-tm@tao.ma>
+ <1313767689-2786-2-git-send-email-tm@tao.ma>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1-g21.free.fr ([212.27.42.1]:45440 "EHLO smtp1-g21.free.fr"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751420Ab1JFPwj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 6 Oct 2011 11:52:39 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:33686 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S964980Ab1JFP66 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 6 Oct 2011 11:58:58 -0400
+Content-Disposition: inline
+In-Reply-To: <1313767689-2786-2-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Yargil <yargil@free.fr>
+On Fri, Aug 19, 2011 at 11:28:09PM +0800, Tao Ma wrote:
+> From: Tao Ma <boyu.mt@taobao.com>
+> 
+> Some of the error path in ext4_fill_super don't release the
+> resouces properly. So this patch just try to release them
+> in the right way.
+> 
+> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 
-Regression from commit dd68314ccf3fb918c1fb6471817edbc60ece4b52
-The problem come from the test of the return value of proc_mkdir
-that is always false without procfs and abort the init of ext4.
+Thanks, applied.
 
-Signed-off-by: Fabrice Jouhaud <yargil@free.fr>
----
- fs/ext4/super.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 44d0c8d..9b51b17 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4985,8 +4985,10 @@ static int __init ext4_init_fs(void)
- 	if (!ext4_kset)
- 		goto out6;
- 	ext4_proc_root = proc_mkdir("fs/ext4", NULL);
-+#ifdef CONFIG_PROC_FS
- 	if (!ext4_proc_root)
- 		goto out5;
-+#endif
- 
- 	err = ext4_init_feat_adverts();
- 	if (err)
--- 
-1.7.2.5
-
+						- Ted
