@@ -1,30 +1,32 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 1/2] xfstest: fsstress should kill children tasks before
- exit
-Date: Thu, 6 Oct 2011 15:51:09 -0400
-Message-ID: <20111006195109.GH13434@infradead.org>
+Subject: Re: [PATCH 2/2] xfstest: fsstress add EXT2_IOC_{SET,GET}FLAGS
+ operations
+Date: Thu, 6 Oct 2011 15:52:06 -0400
+Message-ID: <20111006195205.GI13434@infradead.org>
 References: <1316357699-22692-1-git-send-email-dmonakhov@openvz.org>
- <1317820838.2226.11.camel@doink>
- <87zkhf369y.fsf@dmbot.sw.ru>
+ <1316357699-22692-2-git-send-email-dmonakhov@openvz.org>
+ <1317820840.2226.12.camel@doink>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: aelder@sgi.com, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com
+To: Alex Elder <aelder@sgi.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:60975
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1759168Ab1JFTwH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Oct 2011 15:52:07 -0400
 Content-Disposition: inline
-In-Reply-To: <87zkhf369y.fsf@dmbot.sw.ru>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1317820840.2226.12.camel@doink>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 05, 2011 at 05:41:13PM +0400, Dmitry Monakhov wrote:
-> Ok i'll resend patch shortly, Actually test_case was explained inside
-> description. So far i've able to caught 3 different minor
-> fs-corruptions, one BUG_ON on ext4. And when i've run this test
-> on host with 24-cores it deadlock inside dcache core. 
+On Wed, Oct 05, 2011 at 08:20:40AM -0500, Alex Elder wrote:
+> I have a question below.  I think this is probably
+> a good addition, though it should be made so it
+> works for more than EXTx.
 
-Having the test in the commit message doesn't really help with running
-it as part of a regression test suite :)
-
-Please report the details on the dcache deadlock to linux-fsdevel.
+I actually works on more than extN, but at this point it requires
+the ext2 headers to compiled, which isn't too nice.
 
