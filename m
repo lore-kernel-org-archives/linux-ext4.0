@@ -1,133 +1,133 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] libext2fs: make ext2fs_open_file() always use 3 arguments instead of varargs
-Date: Thu,  6 Oct 2011 13:30:38 -0400
-Message-ID: <1317922238-3847-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Allison Henderson <achender@linux.vnet.ibm.com>
+Subject: Re: Plan for reducing i_mutex in ext4
+Date: Thu, 06 Oct 2011 10:36:46 -0700
+Message-ID: <4E8DE72E.2060103@linux.vnet.ibm.com>
+References: <4E8A0630.7060605@linux.vnet.ibm.com> <alpine.LFD.2.00.1110041024470.7833@dhcp-27-109.brq.redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	"Ted Ts'o" <tytso@mit.edu>, Christoph Hellwig <hch@infradead.org>
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33817 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758729Ab1JFRal (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 6 Oct 2011 13:30:41 -0400
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:38162 "EHLO e3.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755803Ab1JFRp1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 6 Oct 2011 13:45:27 -0400
+Received: from /spool/local
+	by us.ibm.com with XMail ESMTP
+	for <linux-ext4@vger.kernel.org> from <achender@linux.vnet.ibm.com>;
+	Thu, 6 Oct 2011 13:38:12 -0400
+Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
+	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p96HavAD133586
+	for <linux-ext4@vger.kernel.org>; Thu, 6 Oct 2011 13:36:58 -0400
+Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av04.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p96Han1E013835
+	for <linux-ext4@vger.kernel.org>; Thu, 6 Oct 2011 11:36:49 -0600
+In-Reply-To: <alpine.LFD.2.00.1110041024470.7833@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Some architectures have narrow mode_t's which can cause some
-portability warnings with varargs.
+On 10/04/2011 01:38 AM, Lukas Czerner wrote:
+> On Mon, 3 Oct 2011, Allison Henderson wrote:
+>
+>> Hi all,
+>>
+>> I've been working on locating all the existing uses of i_mutex in the current
+>> ext4 code because I know we are planning to reduce the usage of i_mutex in
+>> ext4.  So I've gone through the ext4 code and also the vfs code and come up
+>> with a list of ext4 items that appear to be protected under i_mutex.  I'm
+>> thinking about doing a patch to replace i_mutex with a private ext4 mutex, and
+>> I wanted to update folks on this idea and pick up any feed back people might
+>> have.
+>>
+>> I'm thinking maybe we can have a separate mutex for functions that only modify
+>> meta data like ext4_ioctl and ext4_setattr to help relieve unneeded
+>> contention.  And then the rest of functions that are modifying data can go
+>> under a data mutex (including truncate since sometimes ext4_ioctl and
+>> ext4_setattr will call ext4_truncate if they modify i_size).
+>
+> Just the other day I was talking with Christoph (adding him to cc) about
+> this, but unfortunately I still did not have time to look at this, but I
+> am glad that someone did.
+>
+> His suggestion was a bit more general than creating separate ext4
+> specific mutex. His idea was to change i_mutex to union of plain mutex
+> for directories and a rwlock for regular files. Then this union can be
+> used in other file systems as well, for example to replace xfs_iolock in
+> xfs.
+>
+> Also it might be nice to do something smarter than just a rwlock for
+> regular files. It would be nice to have an structure of extent locks, so
+> we can use it for file system using extents, which will improve
+> scalability while hammering a single file from different processes.
+>
+> Note that currently ext4 concurrent read/write are atomic only wrt
+> individual pages, but not on the system call as the whole. This might
+> cause read() to return data mixed from several different writes, which
+> is not posix conform. That could be solved with the generic rwlock for
+> files, or even better with the system of extent locking.
+>
+> But Christoph, can probably describe hi idea a bit better.
+>
+> Thanks!
+> -Lukas
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- lib/ext2fs/ext2fs.h      |    9 ++-------
- lib/ext2fs/getsectsize.c |    4 ++--
- lib/ext2fs/getsize.c     |    2 +-
- lib/ext2fs/unix_io.c     |    2 +-
- misc/e2image.c           |    2 +-
- resize/main.c            |    2 +-
- 6 files changed, 8 insertions(+), 13 deletions(-)
+Hi Lukas,
 
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index b04b0d1..411a383 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -1438,7 +1438,7 @@ extern blk_t ext2fs_inode_data_blocks(ext2_filsys fs,
- 				      struct ext2_inode *inode);
- extern unsigned int ext2fs_div_ceil(unsigned int a, unsigned int b);
- extern __u64 ext2fs_div64_ceil(__u64 a, __u64 b);
--extern int ext2fs_open_file(const char *pathname, int flags, ...);
-+extern int ext2fs_open_file(const char *pathname, int flags, mode_t mode);
- extern int ext2fs_stat(const char *path, ext2fs_struct_stat *buf);
- extern int ext2fs_fstat(int fd, ext2fs_struct_stat *buf);
- 
-@@ -1691,14 +1691,9 @@ _INLINE_ __u64 ext2fs_div64_ceil(__u64 a, __u64 b)
- 	return ((a - 1) / b) + 1;
- }
- 
--_INLINE_ int ext2fs_open_file(const char *pathname, int flags, ...)
-+_INLINE_ int ext2fs_open_file(const char *pathname, int flags, mode_t mode)
- {
- 	va_list args;
--	mode_t mode;
--
--	va_start(args, flags);
--	mode = va_arg(args, mode_t);
--	va_end(args);
- 
- 	if (mode)
- #if defined(HAVE_OPEN64) && !defined(__OSX_AVAILABLE_BUT_DEPRECATED)
-diff --git a/lib/ext2fs/getsectsize.c b/lib/ext2fs/getsectsize.c
-index 9d61553..30faecc 100644
---- a/lib/ext2fs/getsectsize.c
-+++ b/lib/ext2fs/getsectsize.c
-@@ -46,7 +46,7 @@ errcode_t ext2fs_get_device_sectsize(const char *file, int *sectsize)
- {
- 	int	fd;
- 
--	fd = ext2fs_open_file(file, O_RDONLY);
-+	fd = ext2fs_open_file(file, O_RDONLY, 0);
- 	if (fd < 0)
- 		return errno;
- 
-@@ -68,7 +68,7 @@ errcode_t ext2fs_get_device_phys_sectsize(const char *file, int *sectsize)
- {
- 	int	fd;
- 
--	fd = ext2fs_open_file(file, O_RDONLY);
-+	fd = ext2fs_open_file(file, O_RDONLY, 0);
- 	if (fd < 0)
- 		return errno;
- 
-diff --git a/lib/ext2fs/getsize.c b/lib/ext2fs/getsize.c
-index a2e6e47..1e0ed16 100644
---- a/lib/ext2fs/getsize.c
-+++ b/lib/ext2fs/getsize.c
-@@ -160,7 +160,7 @@ errcode_t ext2fs_get_device_size2(const char *file, int blocksize,
- 	char ch;
- #endif /* HAVE_SYS_DISKLABEL_H */
- 
--	fd = ext2fs_open_file(file, O_RDONLY);
-+	fd = ext2fs_open_file(file, O_RDONLY, 0);
- 	if (fd < 0)
- 		return errno;
- 
-diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
-index 787990d..5337022 100644
---- a/lib/ext2fs/unix_io.c
-+++ b/lib/ext2fs/unix_io.c
-@@ -486,7 +486,7 @@ static errcode_t unix_open(const char *name, int flags, io_channel *channel)
- #endif
- 	data->flags = flags;
- 
--	data->dev = ext2fs_open_file(io->name, open_flags);
-+	data->dev = ext2fs_open_file(io->name, open_flags, 0);
- 	if (data->dev < 0) {
- 		retval = errno;
- 		goto cleanup;
-diff --git a/misc/e2image.c b/misc/e2image.c
-index c108a7a..23a4df2 100644
---- a/misc/e2image.c
-+++ b/misc/e2image.c
-@@ -1178,7 +1178,7 @@ static void install_image(char *device, char *image_fn, int type)
- 		exit(1);
- 	}
- 
--	fd = ext2fs_open_file(image_fn, O_RDONLY);
-+	fd = ext2fs_open_file(image_fn, O_RDONLY, 0);
- 	if (fd < 0) {
- 		perror(image_fn);
- 		exit(1);
-diff --git a/resize/main.c b/resize/main.c
-index e6e9e7b..1ab0e04 100644
---- a/resize/main.c
-+++ b/resize/main.c
-@@ -258,7 +258,7 @@ int main (int argc, char ** argv)
- 		len = 2 * len;
- 	}
- 
--	fd = ext2fs_open_file(device_name, O_RDWR);
-+	fd = ext2fs_open_file(device_name, O_RDWR, 0);
- 	if (fd < 0) {
- 		com_err("open", errno, _("while opening %s"),
- 			device_name);
--- 
-1.7.4.1.22.gec8e1.dirty
+Sorry for the delay, and thanks for the response :)  Alrighty, I will 
+have to do some prototyping and see if I can work in some of these 
+concepts into a solution.  At the moment, Im trying to make sure I come 
+up with something that still provides all the existing functionality so 
+I dont introduce any new race problems, but there's certainly a lot of 
+room for optimizing too.  Thx!
+
+Allison Henderson
+>
+>>
+>> So these are ext4 functions that currently lock i_mutex:
+>>
+>> ext4_sync_file
+>> ext4_fallocate
+>> ext4_move_extents via two helper routines:
+>> 	mext_inode_double_lock and mext_inode_double_unlock
+>> ext4_ioctl (for the EXT4_IOC_SETFLAGS ioctl)
+>> ext4_quota_write
+>> ext4_llseek
+>> ext4_end_io_work
+>> ext4_evict_inode (only while calling ext4_flush_completed_IO)
+>> ext4_ind_direct_IO (only while calling ext4_flush_completed_IO)
+>>
+>>
+>> And these are ext4 functions that have i_mutex locked by the vfs layer.  So we
+>> will need to lock the new private mutex here too if we want them to be
+>> synchronous with the above functions.
+>>
+>> ext4_setattr
+>> ext4_da_writepages
+>> ext4_rmdir
+>> ext4_unlink
+>> ext4_symlink
+>> ext4_link
+>> ext4_rename
+>>
+>> And one unique case:
+>> ext4_fiemap calls generic_block_fiemap and passes it a function pointer to
+>> ext4_get_block.  generic_block_fiemap will lock i_mutex before calling the
+>> pointer.  I dont think ext4_get_block needs i_mutex locked all the time, so I
+>> think we can just make a wrapper for ext4_get_block that locks the new private
+>> mutex and then we can pass a pointer to the wrapper.
+>>
+>>
+>> That's my list so far, if anyone knows of one I missed please let me know, and
+>> also if you spot any other places where we can reduce unneeded contention by
+>> using a separate lock.  Thx!
+>>
+>> Allison Henderson
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>
 
