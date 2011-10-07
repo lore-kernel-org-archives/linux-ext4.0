@@ -1,80 +1,65 @@
 From: Tao Ma <tm@tao.ma>
-Subject: [PATCH] ext3: Remove the obsolete broken EXT3_IOC32_WAIT_FOR_READONLY.
-Date: Fri,  7 Oct 2011 23:21:18 +0800
-Message-ID: <1318000878-2928-1-git-send-email-tm@tao.ma>
-Cc: Jan Kara <jack@suse.cz>
+Subject: [PATCH] ext4: Fix the wrong comment in ext4_ext_search_right.
+Date: Fri,  7 Oct 2011 23:30:26 +0800
+Message-ID: <1318001428-3108-1-git-send-email-tm@tao.ma>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy3-pub.bluehost.com ([69.89.21.8]:60253 "HELO
-	oproxy3-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753001Ab1JGPXb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Oct 2011 11:23:31 -0400
+Received: from oproxy5-pub.bluehost.com ([67.222.38.55]:52199 "HELO
+	oproxy5-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753044Ab1JGPch (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Oct 2011 11:32:37 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Tao Ma <boyu.mt@taobao.com>
 
-There are no user of EXT3_IOC32_WAIT_FOR_READONLY and also it is
-broken. No one set the set_ro_timer, no one wake up us and our
-state is set to TASK_INTERRUPTIBLE not RUNNING. So remove it.
+With ext4_ext_search_right, the comment is wrong. We returns 0 @phys when
+*logical is the 'largest' allocated block, not smallest. So change it.
+Some other typos are also included.
 
-Cc: Jan Kara <jack@suse.cz>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext3/ioctl.c            |   24 ------------------------
- include/linux/ext3_fs_sb.h |    4 ----
- 2 files changed, 0 insertions(+), 28 deletions(-)
+ fs/ext4/extents.c |    4 ++--
+ fs/ext4/inode.c   |    2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext3/ioctl.c b/fs/ext3/ioctl.c
-index c7f4394..ba1b54e 100644
---- a/fs/ext3/ioctl.c
-+++ b/fs/ext3/ioctl.c
-@@ -150,30 +150,6 @@ setversion_out:
- 		mnt_drop_write(filp->f_path.mnt);
- 		return err;
- 	}
--#ifdef CONFIG_JBD_DEBUG
--	case EXT3_IOC_WAIT_FOR_READONLY:
--		/*
--		 * This is racy - by the time we're woken up and running,
--		 * the superblock could be released.  And the module could
--		 * have been unloaded.  So sue me.
--		 *
--		 * Returns 1 if it slept, else zero.
--		 */
--		{
--			struct super_block *sb = inode->i_sb;
--			DECLARE_WAITQUEUE(wait, current);
--			int ret = 0;
--
--			set_current_state(TASK_INTERRUPTIBLE);
--			add_wait_queue(&EXT3_SB(sb)->ro_wait_queue, &wait);
--			if (timer_pending(&EXT3_SB(sb)->turn_ro_timer)) {
--				schedule();
--				ret = 1;
--			}
--			remove_wait_queue(&EXT3_SB(sb)->ro_wait_queue, &wait);
--			return ret;
--		}
--#endif
- 	case EXT3_IOC_GETRSVSZ:
- 		if (test_opt(inode->i_sb, RESERVATION)
- 			&& S_ISREG(inode->i_mode)
-diff --git a/include/linux/ext3_fs_sb.h b/include/linux/ext3_fs_sb.h
-index 258088a..6436525 100644
---- a/include/linux/ext3_fs_sb.h
-+++ b/include/linux/ext3_fs_sb.h
-@@ -76,10 +76,6 @@ struct ext3_sb_info {
- 	struct mutex s_resize_lock;
- 	unsigned long s_commit_interval;
- 	struct block_device *journal_bdev;
--#ifdef CONFIG_JBD_DEBUG
--	struct timer_list turn_ro_timer;	/* For turning read-only (crash simulation) */
--	wait_queue_head_t ro_wait_queue;	/* For people waiting for the fs to go read-only */
--#endif
- #ifdef CONFIG_QUOTA
- 	char *s_qf_names[MAXQUOTAS];		/* Names of quota files with journalled quota */
- 	int s_jquota_fmt;			/* Format of quota to use */
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index dee73d2..f6b333c 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1260,7 +1260,7 @@ static int ext4_ext_search_left(struct inode *inode,
+ /*
+  * search the closest allocated block to the right for *logical
+  * and returns it at @logical + it's physical address at @phys
+- * if *logical is the smallest allocated block, the function
++ * if *logical is the largest allocated block, the function
+  * returns 0 at @phys
+  * return value contains 0 (success) or error code
+  */
+@@ -2158,7 +2158,7 @@ int ext4_ext_calc_credits_for_single_extent(struct inode *inode, int nrblocks,
+ 			 *  need to account for leaf block credit
+ 			 *
+ 			 *  bitmaps and block group descriptor blocks
+-			 *  and other metadat blocks still need to be
++			 *  and other metadata blocks still need to be
+ 			 *  accounted.
+ 			 */
+ 			/* 1 bitmap, 1 block group descriptor */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 0e2c0d1..56c4f72 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -455,7 +455,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 	 * Returns if the blocks have already allocated
+ 	 *
+ 	 * Note that if blocks have been preallocated
+-	 * ext4_ext_get_block() returns th create = 0
++	 * ext4_ext_get_block() returns the create = 0
+ 	 * with buffer head unmapped.
+ 	 */
+ 	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED)
 -- 
 1.7.1
 
