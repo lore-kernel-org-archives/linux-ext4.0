@@ -1,345 +1,479 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [Ext4 Secure Delete 3/7v4] ext4: Secure Delete: Add secure
-	delete functions
-Date: Fri, 7 Oct 2011 11:07:11 -0700
-Message-ID: <20111007180711.GH12447@tux1.beaverton.ibm.com>
-References: <1317971465-8517-1-git-send-email-achender@linux.vnet.ibm.com> <1317971465-8517-4-git-send-email-achender@linux.vnet.ibm.com>
+Subject: Re: [Ext4 Secure Delete 7/7v4] ext4/jbd2: Secure Delete: Secure
+	delete journal blocks
+Date: Fri, 7 Oct 2011 11:35:31 -0700
+Message-ID: <20111007183531.GI12447@tux1.beaverton.ibm.com>
+References: <1317971465-8517-1-git-send-email-achender@linux.vnet.ibm.com> <1317971465-8517-8-git-send-email-achender@linux.vnet.ibm.com>
 Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
 To: Allison Henderson <achender@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:52224 "EHLO e3.ny.us.ibm.com"
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:55329 "EHLO e2.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751812Ab1JGSHR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 7 Oct 2011 14:07:17 -0400
+	id S1752664Ab1JGSfs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 7 Oct 2011 14:35:48 -0400
 Received: from /spool/local
 	by us.ibm.com with XMail ESMTP
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Fri, 7 Oct 2011 14:07:07 -0400
+	Fri, 7 Oct 2011 14:35:43 -0400
 Content-Disposition: inline
-In-Reply-To: <1317971465-8517-4-git-send-email-achender@linux.vnet.ibm.com>
+In-Reply-To: <1317971465-8517-8-git-send-email-achender@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Oct 07, 2011 at 12:11:01AM -0700, Allison Henderson wrote:
-> This patch adds two new routines: ext4_secure_delete_pblks
-> and ext4_secure_delete_lblks.
+On Fri, Oct 07, 2011 at 12:11:05AM -0700, Allison Henderson wrote:
+> This patch modifies both ext4 and jbd2 such that the journal
+> blocks which may contain file data, are securely deleted
+> after the files data blocks are deleted.
 > 
-> ext4_secure_delete_pblks() will write zeros to the specified
-> physical blocks or random data if the EXT4_SECRM_RANDOM_FL flag is
-> set.  If the device supports secure discard, the secure
-> discard will be used instead. ext4_secure_delete_lblks handels walking
-
-handles
-
-> the logical blocks of a file and calling ext4_secure_delete_pblks()
-> as needed.
+> Because old journal blocks may contain file data, we need
+> a way to find those blocks again when it comes time to secure
+> delete the file.  This patch adds a new list to the journal
+> structure to keep track of which vfs blocks the journal blocks
+> contain.
+> 
+> After a truncate or a punch hole operation has completed, a
+> new function ext4_secure_delete_jblks is called that flushes
+> the journal, and then searches the list for any journal blocks
+> that were used to journal the blocks that were just removed.
+> The found journal blocks are then secure deleted.
 > 
 > Signed-off-by: Allison Henderson <achender@linux.vnet.ibm.com>
 > ---
-> v1->v2
-> Removed check for discard mount option and replaced with
-> check for secure discard and discard_zeroes_data
-> 
-> Added BLKDEV_DISCARD_SECURE to the sb_issue_discard call
-> 
-> v2->v3
-> Removed code for discard.  A seperate patch will
-
-separate
-
-> be done to add that code in the block layer
-> 
-> v3->v4
-> Discard code will be kept in the vfs layer.  Code
-> for secure delete is now in its own function,
-> ext4_secure_delete_pblks and is called
-> by a new function ext4_secure_delete_lblks
-> before any blocks are released
-> 
-> :100644 100644 5c9f88c... 34f82a1... M	fs/ext4/ext4.h
-> :100644 100644 095c36f... 10180e3... M	fs/ext4/ext4_extents.h
-> :100644 100644 57cf568... 40d4e50... M	fs/ext4/extents.c
-> :100644 100644 9dc8c14... 0a526c4... M	fs/ext4/inode.c
->  fs/ext4/ext4.h         |    5 +
->  fs/ext4/ext4_extents.h |    2 +
->  fs/ext4/extents.c      |    2 +-
->  fs/ext4/inode.c        |  196 ++++++++++++++++++++++++++++++++++++++++++++++++
->  4 files changed, 204 insertions(+), 1 deletions(-)
+> :100644 100644 0cba63b... fdf73b5... M	fs/ext4/ext4.h
+> :100644 100644 984fac2... 81df943... M	fs/ext4/extents.c
+> :100644 100644 bd1facd... 083c516... M	fs/ext4/inode.c
+> :100644 100644 eef6979... 2734e7b... M	fs/jbd2/commit.c
+> :100644 100644 f24df13... 6dd8af7... M	fs/jbd2/journal.c
+> :100644 100644 38f307b... 8b84b43... M	include/linux/jbd2.h
+>  fs/ext4/ext4.h       |    3 +
+>  fs/ext4/extents.c    |   12 +++++
+>  fs/ext4/inode.c      |  110 +++++++++++++++++++++++++++++++++++++++++++++++++
+>  fs/jbd2/commit.c     |    6 +++
+>  fs/jbd2/journal.c    |  112 ++++++++++++++++++++++++++++++++++++++++++++++++++
+>  include/linux/jbd2.h |   21 +++++++++
+>  6 files changed, 264 insertions(+), 0 deletions(-)
 > 
 > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 5c9f88c..34f82a1 100644
+> index 0cba63b..fdf73b5 100644
 > --- a/fs/ext4/ext4.h
 > +++ b/fs/ext4/ext4.h
-> @@ -2220,6 +2220,11 @@ extern int ext4_map_blocks(handle_t *handle, struct inode *inode,
->  			   struct ext4_map_blocks *map, int flags);
->  extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
->  			__u64 start, __u64 len);
-> +extern int ext4_secure_delete_lblks(struct inode *inode,
-> +			ext4_lblk_t first_block, unsigned long count);
-> +extern int ext4_secure_delete_pblks(struct inode *inode,
-> +			ext4_fsblk_t block, unsigned long count);
+> @@ -2230,6 +2230,9 @@ extern int ext4_secure_delete_lblks(struct inode *inode,
+>  			ext4_lblk_t first_block, unsigned long count);
+>  extern int ext4_secure_delete_pblks(struct inode *inode,
+>  			ext4_fsblk_t block, unsigned long count);
+> +extern int ext4_secure_delete_jblks(struct inode *inode,
+> +				ext4_lblk_t first_block, unsigned long count);
 > +
+> 
 >  /* move_extent.c */
 >  extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
->  			     __u64 start_orig, __u64 start_donor,
-> diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-> index 095c36f..10180e3 100644
-> --- a/fs/ext4/ext4_extents.h
-> +++ b/fs/ext4/ext4_extents.h
-> @@ -290,5 +290,7 @@ extern struct ext4_ext_path *ext4_ext_find_extent(struct inode *, ext4_lblk_t,
->  							struct ext4_ext_path *);
->  extern void ext4_ext_drop_refs(struct ext4_ext_path *);
->  extern int ext4_ext_check_inode(struct inode *inode);
-> +extern int ext4_ext_check_cache(struct inode *inode, ext4_lblk_t block,
-> +		struct ext4_ext_cache *ex);
->  #endif /* _EXT4_EXTENTS */
-> 
 > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 57cf568..40d4e50 100644
+> index 984fac2..81df943 100644
 > --- a/fs/ext4/extents.c
 > +++ b/fs/ext4/extents.c
-> @@ -2034,7 +2034,7 @@ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
->   *
->   * Return 0 if cache is invalid; 1 if the cache is valid
->   */
-> -static int ext4_ext_check_cache(struct inode *inode, ext4_lblk_t block,
-> +int ext4_ext_check_cache(struct inode *inode, ext4_lblk_t block,
->  	struct ext4_ext_cache *ex){
->  	struct ext4_ext_cache *cex;
->  	struct ext4_sb_info *sbi;
+> @@ -4159,6 +4159,7 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
+>  	struct super_block *sb = inode->i_sb;
+>  	struct ext4_ext_cache cache_ex;
+>  	ext4_lblk_t first_block, last_block, num_blocks, iblock, max_blocks;
+> +	ext4_lblk_t first_secrm_blk, last_secrm_blk, secrm_blk_count;
+>  	struct address_space *mapping = inode->i_mapping;
+>  	struct ext4_map_blocks map;
+>  	handle_t *handle;
+> @@ -4317,6 +4318,17 @@ out:
+>  	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
+>  	ext4_mark_inode_dirty(handle, inode);
+>  	ext4_journal_stop(handle);
+> +
+> +	if (!err && EXT4_I(inode)->i_flags & EXT4_SECRM_FL) {
+> +		first_secrm_blk = offset >> EXT4_BLOCK_SIZE_BITS(sb);
+> +		last_secrm_blk = (offset + length + sb->s_blocksize - 1) >>
+> +			EXT4_BLOCK_SIZE_BITS(sb);
+> +		secrm_blk_count = last_secrm_blk - first_secrm_blk;
+> +
+> +		err = ext4_secure_delete_jblks(inode,
+> +		   first_secrm_blk, secrm_blk_count);
+> +	}
+> +
+>  	return err;
+>  }
+>  int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
 > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 9dc8c14..0a526c4 100644
+> index bd1facd..083c516 100644
 > --- a/fs/ext4/inode.c
 > +++ b/fs/ext4/inode.c
-> @@ -38,6 +38,7 @@
->  #include <linux/printk.h>
->  #include <linux/slab.h>
->  #include <linux/ratelimit.h>
-> +#include <linux/random.h>
-> 
->  #include "ext4_jbd2.h"
->  #include "xattr.h"
-> @@ -713,6 +714,201 @@ static int ext4_ind_hole_lookup(struct inode *inode, ext4_lblk_t block)
->  	return 0;
+> @@ -909,6 +909,110 @@ int ext4_secure_delete_lblks(struct inode *inode, ext4_lblk_t first_block,
+>  	return err;
 >  }
 > 
-> +
 > +/*
-> + * ext4_secure_delete_pblks
+> + * ext4_secure_delete_jblks()
 > + *
-> + * Securely delete physical blocks.
-> + * If the devices supports secure discard,
-> + * blocks will be discarded.  Otherwise
-> + * the blocks will be either zeroed or
-> + * randomized if the random secure delete
-> + * flag is on
-
-The fact that random secure delete produces zeroed blocks on discard devices is
-documented somewhere user-visible, right?  Just in case someone actually
-depends on the randomizing.
-
-> + * inode: The files inode
-> + * block: The physical block at which to start deleteing
-
-deleting
-
-> + * count: The number of blocks to delete
-> + *
-> + * Returns 0 on sucess or negative on error
-> + */
-> +int ext4_secure_delete_pblks(struct inode *inode, ext4_fsblk_t block,
-> +		unsigned long count){
-> +
-> +	struct fstrim_range range;
-> +	ext4_fsblk_t iblock, last_block;
-> +	struct buffer_head *bh;
-> +	struct super_block *sb = inode->i_sb;
-> +	struct request_queue *q = bdev_get_queue(sb->s_bdev);
-> +	struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
-> +	int err = 0;
-> +
-> +	last_block = block + count;
-> +	/*
-> +	 * Check to see if the device supports secure discard,
-> +	 * And also that read after discard returns zeros
-> +	 */
-> +	if (blk_queue_secdiscard(q) && q->limits.discard_zeroes_data) {
-> +		err = sb_issue_discard(sb, block, count,
-> +			GFP_NOFS, BLKDEV_DISCARD_SECURE);
-> +		if (err)
-> +			goto zero_out;
-> +
-> +		range.start = block;
-> +		range.len = count;
-> +		range.minlen = 1;
-> +		err = ext4_trim_fs(sb, &range);
-> +
-> +		if (err)
-> +			goto zero_out;
-> +
-> +		return 0;
-> +	}
-> +
-> +	if (EXT4_I(inode)->i_flags & EXT4_SECRM_RANDOM_FL) {
-> +		for (iblock = block; iblock < last_block; iblock++) {
-> +			bh = sb_getblk(sb, iblock);
-> +			get_random_bytes(bh->b_data, bh->b_size);
-> +			set_buffer_dirty(bh);
-> +
-> +			sync_dirty_buffer(bh);
-> +			if (buffer_req(bh) && !buffer_uptodate(bh)) {
-> +				es->s_last_error_block =
-> +					cpu_to_le64(bh->b_blocknr);
-> +				ext4_error_inode(inode, __func__,
-> +					__LINE__, bh->b_blocknr,
-> +					"IO error syncing itable block");
-
-itable block?
-
-> +				err = -EIO;
-> +				brelse(bh);
-> +				goto zero_out;
-> +			}
-> +			brelse(bh);
-> +		}
-> +		return 0;
-> +	}
-> +
-> +zero_out:
-> +	return sb_issue_zeroout(sb, block, count, GFP_NOFS);
-> +
-> +}
-> +
-> +/*
-> + * ext4_secure_delete_lblks
-> + *
-> + * Secure deletes the data blocks of a file
-> + * starting at the given logical block
+> + * Secure deletes the journal blocks that contain
+> + * the specified logical blocks
 > + *
 > + * @inode: The files inode
 > + * @first_block: Starting logical block
 > + * @count: The number of blocks to secure delete
+> + *         from the journal
 > + *
 > + * Returns 0 on sucess or negative on error
 > + */
-> +int ext4_secure_delete_lblks(struct inode *inode, ext4_lblk_t first_block,
-> +				unsigned long count){
-> +	handle_t *handle;
-> +	struct ext4_map_blocks map;
-> +	struct ext4_ext_cache cache_ex;
-> +	ext4_lblk_t num_blocks, max_blocks = 0;
-> +	ext4_lblk_t last_block = first_block + count;
-> +	ext4_lblk_t iblock = first_block;
-> +	int ret, credits, hole_len, err = 0;
+> +int ext4_secure_delete_jblks(struct inode *inode,
+> +				ext4_lblk_t first_block, unsigned long count){
 > +
-> +	credits = ext4_writepage_trans_blocks(inode);
-> +	handle = ext4_journal_start(inode, credits);
-> +	if (IS_ERR(handle))
-> +		return PTR_ERR(handle);
+> +	unsigned long long jbd2_pblk_start = 0;
+> +	unsigned long long jbd2_pblk_count = 0;
+> +	ext4_lblk_t last_block = 0;
+> +	struct list_head *tmp = NULL;
+> +	struct list_head *cur = NULL;
+> +	struct jbd2_blk_pair *b_pair = NULL;
+> +	int err = 0;
+> +	journal_t *journal = EXT4_JOURNAL(inode);
 > +
-> +	down_write(&EXT4_I(inode)->i_data_sem);
-> +	ext4_ext_invalidate_cache(inode);
-> +	ext4_discard_preallocations(inode);
-> +
-> +	/* Do not allow last_block to wrap when caller passes EXT_MAX_BLOCK */
+> +	/* Do not allow last_block to wrap */
+> +	last_block = first_block + count;
 > +	if (last_block < first_block)
 > +		last_block = EXT_MAX_BLOCKS;
 > +
-> +	while (iblock < last_block) {
-> +		max_blocks = last_block - iblock;
-> +		num_blocks = 1;
-> +		memset(&map, 0, sizeof(map));
-> +		map.m_lblk = iblock;
-> +		map.m_len = max_blocks;
+> +	/*
+> +	 * Force the journal to finnish up any pending transactions
+> +	 * before we start secure deleteing journal blocks
+> +	 */
+> +	err = ext4_force_commit((inode)->i_sb);
+> +	if (err)
+> +		return err;
 > +
-> +		if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
-> +			ret = ext4_ext_map_blocks(handle, inode, &map, 0);
-> +		else
-> +			ret = ext4_ind_map_blocks(handle, inode, &map, 0);
+> +	spin_lock(&journal->j_pair_lock);
 > +
-> +		if (ret > 0) {
-> +			err = ext4_secure_delete_pblks(inode,
-> +				map.m_pblk, map.m_len);
-> +			if (err)
-> +				break;
-> +			num_blocks = ret;
-> +		} else if (ret == 0) {
-> +			if (ext4_test_inode_flag(inode,
-> +				EXT4_INODE_EXTENTS)) {
+> +	/* Loop over the journals blocks looking for our logical blocks */
+> +	list_for_each_safe(cur, tmp, &journal->blk_pairs) {
+> +		b_pair = list_entry(cur, struct jbd2_blk_pair, list);
+
+Um.... I don't think ext4 should be accessing journal internals.  At a bare
+minimum the stuff that mucks around with jbd2 ought to be in fs/jbd2 and
+the ext4 parts stuffed in a wrapper in ext4_jbd2.[ch], since ocfs2 also uses
+jbd2.
+
+I'm also wondering -- this logical <-> journal block mapping doesn't seem to be
+committed to disk anywhere.  What happens if jbd2 crashes before we get to
+zeroing journal blocks?  Specifically, would the journal recovery code know
+that a given journal block also needs secure deletion?
+
+Here's a counterproposal: What if ext4 told jbd2 which blocks need to be
+securely deleted while ext4 is creating the transactions?  jbd2 could then set
+a JBD2_FLAG_SECURE_DELETE flag in journal_block_tag_t.t_flags (the descriptor
+block), which would tell the recovery and commit code that the associated
+journal block needs secure deletion when processing is complete.  I _think_ you
+could just extend the functions called by ext4_jbd2.c to take a flags
+parameter.  Does this sound better?  Or even sane? :)
+
+(Not sure if ocfs2 cares about secure delete at all.)
+
+--D
+
+> +		if ((b_pair->vfs_inode == inode) &&
+> +			(b_pair->vfs_lblk >= first_block) &&
+> +			(b_pair->vfs_lblk < last_block)) {
+> +
+> +			/*
+> +			 * It is likely that the journal blocks will be
+> +			 * consecutive, so lets try to secure delete them
+> +			 * in ranges
+> +			 */
+> +			if (jbd2_pblk_count == 0) {
 > +				/*
-> +				 * If map blocks could not find the block,
-> +				 * then it is in a hole.  If the hole was
-> +				 * not already cached, then map blocks should
-> +				 * put it in the cache.  So we can get the hole
-> +				 * out of the cache
+> +				 * If there are no blocks in our range,
+> +				 * then this one will be the first
 > +				 */
-> +				memset(&cache_ex, 0, sizeof(cache_ex));
-> +				if ((ext4_ext_check_cache(inode, iblock,
-> +					&cache_ex)) && !cache_ex.ec_start) {
-> +
-> +					/* The hole is cached */
-> +					num_blocks = cache_ex.ec_block +
-> +						cache_ex.ec_len - iblock;
-> +
-> +				} else {
-> +					/* reached EOF of extent file */
-> +					break;
-> +				}
+> +				jbd2_pblk_start = b_pair->jbd2_pblk;
+> +				jbd2_pblk_count = 1;
+> +			} else if ((b_pair->jbd2_pblk) ==
+> +				   (jbd2_pblk_start + jbd2_pblk_count)) {
+> +				/*
+> +				 * If this journal block is physically
+> +				 * consecutive, then just increase the range
+> +				 */
+> +				jbd2_pblk_count++;
+> +			} else if ((b_pair->jbd2_pblk) ==
+> +					(jbd2_pblk_start - 1) &&
+> +					jbd2_pblk_start > 0) {
+> +				/*
+> +				 * If this journal block is physically
+> +				 * consecutive (from the start of the
+> +				 * range), just increase the range from the
+> +				 * other end.
+> +				 */
+> +				jbd2_pblk_count++;
+> +				jbd2_pblk_start--;
 > +			} else {
-> +				hole_len = ext4_ind_hole_lookup(inode, iblock);
+> +				/*
+> +				 * If the block was not consecutive, secure
+> +				 * delete the range, and restart the current
+> +				 * range
+> +				 */
 > +
-> +				if (hole_len > 0) {
-> +					/* Skip over the hole */
-> +					num_blocks = hole_len;
-> +				} else if (hole_len == 0) {
-> +					/* No hole, EOF reached */
-> +					break;
-> +				} else {
-> +					/* Hole look up err */
-> +					err = hole_len;
-> +					break;
-> +				}
+> +				err = ext4_secure_delete_pblks(journal->j_inode,
+> +					jbd2_pblk_start, jbd2_pblk_count);
+> +				if (err)
+> +					goto out;
+> +				jbd2_pblk_start = b_pair->jbd2_pblk;
+> +				jbd2_pblk_count = 1;
 > +			}
-> +		} else {
-> +			/* Map blocks error */
-> +			err = ret;
-> +			break;
 > +		}
-> +
-> +		if (num_blocks == 0) {
-> +			/* This condition should never happen */
-> +			ext_debug("Block lookup failed");
-> +			err = -EIO;
-> +			break;
-> +		}
-> +
-> +		iblock += num_blocks;
 > +	}
 > +
-> +	if (IS_SYNC(inode))
-> +		ext4_handle_sync(handle);
+> +	/* Secure delete any blocks still in our range */
+> +	if (jbd2_pblk_count > 0)
+> +		err = ext4_secure_delete_pblks(journal->j_inode,
+> +			jbd2_pblk_start, jbd2_pblk_count);
 > +
-> +	up_write(&EXT4_I(inode)->i_data_sem);
-> +
-> +	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
-> +	ext4_mark_inode_dirty(handle, inode);
-> +	ext4_journal_stop(handle);
-> +
+> +out:
+> +	spin_unlock(&journal->j_pair_lock);
 > +	return err;
 > +}
 > +
 >  struct buffer_head *ext4_bread(handle_t *handle, struct inode *inode,
 >  			       ext4_lblk_t block, int create, int *err)
 >  {
+> @@ -3447,6 +3551,12 @@ void ext4_truncate(struct inode *inode)
+>  	else
+>  		ext4_ind_truncate(inode);
+> 
+> +	if (EXT4_I(inode)->i_flags & EXT4_SECRM_FL) {
+> +		err = ext4_secure_delete_jblks(inode,
+> +			inode->i_size >> EXT4_BLOCK_SIZE_BITS(inode->i_sb),
+> +			EXT_MAX_BLOCKS);
+> +	}
+> +
+>  	trace_ext4_truncate_exit(inode);
+>  }
+> 
+> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+> index eef6979..2734e7b 100644
+> --- a/fs/jbd2/commit.c
+> +++ b/fs/jbd2/commit.c
+> @@ -593,6 +593,12 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+>  			jbd2_journal_abort(journal, flags);
+>  			continue;
+>  		}
+> +
+> +		err = jbd2_record_pair(journal, jh2bh(jh), jh2bh(new_jh));
+> +		if (err) {
+> +			jbd2_journal_abort(journal, flags);
+> +			continue;
+> +		}
+>  		set_bit(BH_JWrite, &jh2bh(new_jh)->b_state);
+>  		wbuf[bufs++] = jh2bh(new_jh);
+> 
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index f24df13..6dd8af7 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -248,6 +248,100 @@ static void journal_kill_thread(journal_t *journal)
+>  	}
+>  	write_unlock(&journal->j_state_lock);
+>  }
+> +/*
+> + * jbd2_record_pair()
+> + * Updates the journals list of block pairs to contain an new pair of journal
+> + * to vfs blocks.  This list is an in memory record of the journals blocks to
+> + * help facilitate finding out what vfs blocks the journal blocks contain.
+> + * Secure delete uses this list to clear out stale journal blocks that may
+> + * still contain file data that needs to be secure deleted. This list is updated
+> + * when a vfs data block is written to the journal or when a descriptor block
+> + * is written to the journal.
+> + *
+> + * journal: The journal to update
+> + * vfs_bh:  The vfs buffer_head that the jbd2_bh is journaling.  This
+> + *          may be NULL if jbd2_bh does not represent a vfs block.
+> + * jbd2_bh: The jbd2 buffer_head that has just been allocated for some
+> + *          use in the journal. jbd2_bh may not be NULL.
+> + *
+> + * Returns 0 on sucess or negative on failure
+> + */
+> +int jbd2_record_pair(journal_t *journal,
+> +		struct buffer_head *vfs_bh,
+> +		struct buffer_head *jbd2_bh){
+> +
+> +	struct page *page;
+> +	struct buffer_head *bh;
+> +	struct buffer_head *head;
+> +	pgoff_t index;
+> +	struct jbd2_blk_pair *b_pair = NULL;
+> +	struct list_head *cur;
+> +	unsigned long long vfs_lblk = 0;
+> +	unsigned long long vfs_pblk = 0;
+> +	struct inode *vfs_inode = NULL;
+> +
+> +	/* If we have the vfs bh, figure out the logical block offset */
+> +	if (vfs_bh) {
+> +		page = vfs_bh->b_page;
+> +		vfs_inode = page->mapping->host;
+> +		vfs_pblk = vfs_bh->b_blocknr;
+> +		index = page->index;
+> +
+> +		/* Find the block offset of the page */
+> +		vfs_lblk = index <<
+> +			(PAGE_CACHE_SHIFT - vfs_inode->i_sb->s_blocksize_bits);
+> +
+> +		/* Then add in the block offset of the bh in the page */
+> +		bh = page_buffers(page);
+> +		head = bh;
+> +		do {
+> +			if (bh == vfs_bh)
+> +				break;
+> +			bh = bh->b_this_page;
+> +			vfs_lblk++;
+> +		} while (bh != head);
+> +	}
+> +
+> +	spin_lock(&journal->j_pair_lock);
+> +	/*
+> +	 * Add the pair to the list.  If there is already a pair
+> +	 * for this journal block, just update it with the new vfs
+> +	 * block info
+> +	 */
+> +	list_for_each(cur, &journal->blk_pairs) {
+> +		b_pair = list_entry(cur, struct jbd2_blk_pair, list);
+> +		if (b_pair->jbd2_pblk == jbd2_bh->b_blocknr) {
+> +			b_pair->vfs_inode = vfs_inode;
+> +			b_pair->vfs_pblk = vfs_pblk;
+> +			b_pair->vfs_lblk = vfs_lblk;
+> +			b_pair->jbd2_pblk = jbd2_bh->b_blocknr;
+> +
+> +			break;
+> +		} else
+> +			b_pair = NULL;
+> +	}
+> +
+> +	/*
+> +	 * If the journal block was not found in the list,
+> +	 * add a new pair to the list
+> +	 */
+> +	if (!b_pair) {
+> +		b_pair = kzalloc(sizeof(struct jbd2_blk_pair), GFP_NOFS);
+> +		if (!b_pair) {
+> +			spin_unlock(&journal->j_pair_lock);
+> +			return -ENOMEM;
+> +		}
+> +		b_pair->jbd2_pblk = jbd2_bh->b_blocknr;
+> +		b_pair->vfs_inode = vfs_inode;
+> +		b_pair->vfs_pblk = vfs_pblk;
+> +		b_pair->vfs_lblk = vfs_lblk;
+> +
+> +		list_add(&b_pair->list, &journal->blk_pairs);
+> +	}
+> +
+> +	spin_unlock(&journal->j_pair_lock);
+> +	return 0;
+> +}
+> 
+>  /*
+>   * jbd2_journal_write_metadata_buffer: write a metadata buffer to the journal.
+> @@ -739,7 +833,13 @@ struct journal_head *jbd2_journal_get_descriptor_buffer(journal_t *journal)
+>  	lock_buffer(bh);
+>  	memset(bh->b_data, 0, journal->j_blocksize);
+>  	set_buffer_uptodate(bh);
+> +	err = jbd2_record_pair(journal, NULL, bh);
+> +
+>  	unlock_buffer(bh);
+> +
+> +	if (err)
+> +		return NULL;
+> +
+>  	BUFFER_TRACE(bh, "return this buffer");
+>  	return jbd2_journal_add_journal_head(bh);
+>  }
+> @@ -895,9 +995,11 @@ static journal_t * journal_init_common (void)
+>  	init_waitqueue_head(&journal->j_wait_commit);
+>  	init_waitqueue_head(&journal->j_wait_updates);
+>  	mutex_init(&journal->j_barrier);
+> +	INIT_LIST_HEAD(&journal->blk_pairs);
+>  	mutex_init(&journal->j_checkpoint_mutex);
+>  	spin_lock_init(&journal->j_revoke_lock);
+>  	spin_lock_init(&journal->j_list_lock);
+> +	spin_lock_init(&journal->j_pair_lock);
+>  	rwlock_init(&journal->j_state_lock);
+> 
+>  	journal->j_commit_interval = (HZ * JBD2_DEFAULT_MAX_COMMIT_AGE);
+> @@ -1361,6 +1463,8 @@ recovery_error:
+>  int jbd2_journal_destroy(journal_t *journal)
+>  {
+>  	int err = 0;
+> +	struct list_head *cur;
+> +	struct jbd2_blk_pair *b_pair;
+> 
+>  	/* Wait for the commit thread to wake up and die. */
+>  	journal_kill_thread(journal);
+> @@ -1405,6 +1509,14 @@ int jbd2_journal_destroy(journal_t *journal)
+>  		iput(journal->j_inode);
+>  	if (journal->j_revoke)
+>  		jbd2_journal_destroy_revoke(journal);
+> +
+> +	spin_lock(&journal->j_pair_lock);
+> +	list_for_each_prev(cur, &journal->blk_pairs) {
+> +		b_pair = list_entry(cur, struct jbd2_blk_pair, list);
+> +		kfree(b_pair);
+> +	}
+> +	spin_unlock(&journal->j_pair_lock);
+> +
+>  	kfree(journal->j_wbuf);
+>  	kfree(journal);
+> 
+> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> index 38f307b..8b84b43 100644
+> --- a/include/linux/jbd2.h
+> +++ b/include/linux/jbd2.h
+> @@ -698,6 +698,19 @@ jbd2_time_diff(unsigned long start, unsigned long end)
+> 
+>  #define JBD2_NR_BATCH	64
+> 
+> +
+> +/*
+> + * List for keeping track of which vfs
+> + * block a journal block contians.
+> + */
+> +struct jbd2_blk_pair {
+> +	struct inode *vfs_inode;
+> +	unsigned long long vfs_pblk;
+> +	unsigned long long vfs_lblk;
+> +	unsigned long long jbd2_pblk;
+> +	struct list_head list;
+> +};
+> +
+>  /**
+>   * struct journal_s - The journal_s type is the concrete type associated with
+>   *     journal_t.
+> @@ -1002,6 +1015,9 @@ struct journal_s
+>  	 * superblock pointer here
+>  	 */
+>  	void *j_private;
+> +
+> +	spinlock_t              j_pair_lock;
+> +	struct list_head blk_pairs;
+>  };
+> 
+>  /*
+> @@ -1080,6 +1096,11 @@ jbd2_journal_write_metadata_buffer(transaction_t	  *transaction,
+>  			      struct journal_head **jh_out,
+>  			      unsigned long long   blocknr);
+> 
+> +extern int jbd2_record_pair(journal_t *journal,
+> +		struct buffer_head *vfs_bh,
+> +		struct buffer_head *jbd2_bh);
+> +
+> +
+>  /* Transaction locking */
+>  extern void		__wait_on_journal (journal_t *);
+> 
 > -- 
 > 1.7.1
 > 
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
 
