@@ -1,71 +1,67 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: [Ext4 Secure Delete 1/7v4] ext4: Secure Delete: Add new EXT4_SECRM_RANDOM_FL flag
-Date: Fri,  7 Oct 2011 00:10:59 -0700
-Message-ID: <1317971465-8517-2-git-send-email-achender@linux.vnet.ibm.com>
-References: <1317971465-8517-1-git-send-email-achender@linux.vnet.ibm.com>
-Cc: Allison Henderson <achender@linux.vnet.ibm.com>
-To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e7.ny.us.ibm.com ([32.97.182.137]:60278 "EHLO e7.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751389Ab1JGHI1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 7 Oct 2011 03:08:27 -0400
-In-Reply-To: <1317971465-8517-1-git-send-email-achender@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Joakim Tjernlund <joakim.tjernlund@transmode.se>
+Subject: Re: [PATCH v5 0/4] crc32c: Add faster algorithm and self-test code
+Date: Fri, 7 Oct 2011 09:38:01 +0200
+Message-ID: <OF47136962.36AF976D-ONC1257922.0029A6FB-C1257922.0029EF1C@transmode.se>
+References: <20111004235357.1560.12602.stgit@elm3c44.beaverton.ibm.com> <20111006202042.GD12447@tux1.beaverton.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	Mingming Cao <cmm@us.ibm.com>,
+	David Miller <davem@davemloft.net>,
+	Herbert Xu <herbert@gondor.apana.org.au>,
+	linux-crypto <linux-crypto@vger.kernel.org>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Bob Pearson <rpearson@systemfabricworks.com>,
+	Theodore Tso <tytso@mit.edu>
+To: djwong@us.ibm.com
+Return-path: <linux-crypto-owner@vger.kernel.org>
+In-Reply-To: <20111006202042.GD12447@tux1.beaverton.ibm.com>
+Sender: linux-crypto-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-This patch adds a new attribute flag EXT4_SECRM_RANDOM_FL.
-During a secure delete, this flag will cause blocks to be
-overwritten with random data instead of zeros.
+"Darrick J. Wong" <djwong@us.ibm.com> wrote on 2011/10/06 22:20:42:
+> Subject: Re: [PATCH v5 0/4] crc32c: Add faster algorithm and self-test code
+>
+> On Tue, Oct 04, 2011 at 04:53:57PM -0700, Darrick J. Wong wrote:
+> > Hi all,
+> >
+> > This patchset (re)uses Bob Pearson's crc32 slice-by-8 code to stamp out a
+> > software crc32c implementation.  It requires that all ten of his patches (at
+> > least the ones dated 31 Aug 2011) be applied.  It removes the crc32c
+> > implementation in crypto/ in favor of using the stamped-out one in lib/.  There
+> > is also a change to Kconfig so that the kernel builder can pick an
+> > implementation best suited for the hardware.
+> >
+> > The motivation for this patchset is that I am working on adding full metadata
+> > checksumming to ext4.  As far as performance impact of adding checksumming
+> > goes, I see nearly no change with a standard mail server ffsb simulation.  On a
+> > test that involves only file creation and deletion and extent tree writes, I
+> > see a drop of about 50 pcercent with the current kernel crc32c implementation;
+> > this improves to a drop of about 20 percent with the enclosed crc32c code.
+> >
+> > When metadata is usually a small fraction of total IO, this new implementation
+> > doesn't help much because metadata is usually a small fraction of total IO.
+> > However, when we are doing IO that is almost all metadata (such as rm -rf'ing a
+> > tree), then this patch speeds up the operation substantially.
+> >
+> > Incidentally, given that iscsi, sctp, and btrfs also use crc32c, this patchset
+> > should improve their speed as well.  I have not yet quantified that, however.
+>
+> As for Mr. Tjernlund's unresolved questions regarding the v4 patch, I have
+> tested this new code on x64/x32/ppc32/ppc64 and it seems to work fine, both
+> with the crc32c selftest and also on a practical level with ext4 metadata
+> checksumming enabled.  Updating to Bob's newest calculation code brings about a
+> 10-15% speedup on the ppc64 box.  I also see that slice-by-8 is about 20%
+> faster than slice-by-4 on my ppc32 box.
+>
+> I did _not_ see any failures on ppc32 when running an extended ext4+checksum
+> test suite.
 
-Signed-off-by: Allison Henderson <achender@linux.vnet.ibm.com>
----
-:100644 100644 e717dfd... db54ce4... M	fs/ext4/ext4.h
- fs/ext4/ext4.h |    9 ++++++---
- 1 files changed, 6 insertions(+), 3 deletions(-)
+Hi Darrick, I finally had some time to look this series over and I like
+this much better. Thank you for your patience with me :)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index e717dfd..db54ce4 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -350,17 +350,18 @@ struct flex_groups {
- #define EXT4_EXTENTS_FL			0x00080000 /* Inode uses extents */
- #define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for large EA */
- #define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
-+#define EXT4_SECRM_RANDOM_FL		0x10000000 /* Use random data instead of zeros */
- #define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
- 
--#define EXT4_FL_USER_VISIBLE		0x004BDFFF /* User visible flags */
--#define EXT4_FL_USER_MODIFIABLE		0x004B80FF /* User modifiable flags */
-+#define EXT4_FL_USER_VISIBLE		0x104BDFFF /* User visible flags */
-+#define EXT4_FL_USER_MODIFIABLE		0x104B80FF /* User modifiable flags */
- 
- /* Flags that should be inherited by new inodes from their parent. */
- #define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
- 			   EXT4_SYNC_FL | EXT4_IMMUTABLE_FL | EXT4_APPEND_FL |\
- 			   EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
- 			   EXT4_NOCOMPR_FL | EXT4_JOURNAL_DATA_FL |\
--			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL)
-+			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL | EXT4_SECRM_RANDOM_FL)
- 
- /* Flags that are appropriate for regular files (all but dir-specific ones). */
- #define EXT4_REG_FLMASK (~(EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL))
-@@ -407,6 +408,7 @@ enum {
- 	EXT4_INODE_EXTENTS	= 19,	/* Inode uses extents */
- 	EXT4_INODE_EA_INODE	= 21,	/* Inode used for large EA */
- 	EXT4_INODE_EOFBLOCKS	= 22,	/* Blocks allocated beyond EOF */
-+	EXT4_INODE_SECRM_RANDOM = 28,   /* Use random data instead of zeros */
- 	EXT4_INODE_RESERVED	= 31,	/* reserved for ext4 lib */
- };
- 
-@@ -453,6 +455,7 @@ static inline void ext4_check_flag_values(void)
- 	CHECK_FLAG_VALUE(EXTENTS);
- 	CHECK_FLAG_VALUE(EA_INODE);
- 	CHECK_FLAG_VALUE(EOFBLOCKS);
-+	CHECK_FLAG_VALUE(SECRM_RANDOM);
- 	CHECK_FLAG_VALUE(RESERVED);
- }
- 
--- 
-1.7.1
+Acked-By: Joakim Tjernlund <joakim.tjernlund@transmode.se>
 
+ Jocke
