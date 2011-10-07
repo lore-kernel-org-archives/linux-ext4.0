@@ -1,86 +1,71 @@
 From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: [Ext4 Secure Delete 4/7v4] ext4: Secure Delete: Secure delete file data
-Date: Fri,  7 Oct 2011 00:11:02 -0700
-Message-ID: <1317971465-8517-5-git-send-email-achender@linux.vnet.ibm.com>
+Subject: [Ext4 Secure Delete 1/7v4] ext4: Secure Delete: Add new EXT4_SECRM_RANDOM_FL flag
+Date: Fri,  7 Oct 2011 00:10:59 -0700
+Message-ID: <1317971465-8517-2-git-send-email-achender@linux.vnet.ibm.com>
 References: <1317971465-8517-1-git-send-email-achender@linux.vnet.ibm.com>
 Cc: Allison Henderson <achender@linux.vnet.ibm.com>
 To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:47808 "EHLO e4.ny.us.ibm.com"
+Received: from e7.ny.us.ibm.com ([32.97.182.137]:60278 "EHLO e7.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758800Ab1JGHHP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 7 Oct 2011 03:07:15 -0400
-Received: from /spool/local
-	by e4.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <achender@linux.vnet.ibm.com>;
-	Fri, 7 Oct 2011 03:07:14 -0400
+	id S1751389Ab1JGHI1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 7 Oct 2011 03:08:27 -0400
 In-Reply-To: <1317971465-8517-1-git-send-email-achender@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch modifies punch hole and truncate to securely
-delete the data blocks of a file.
-
-During a truncate or punch hole, files that have the EXT4_SECRM_FL
-attribute flag on will have their blocks secure deleted before
-they are released.
+This patch adds a new attribute flag EXT4_SECRM_RANDOM_FL.
+During a secure delete, this flag will cause blocks to be
+overwritten with random data instead of zeros.
 
 Signed-off-by: Allison Henderson <achender@linux.vnet.ibm.com>
 ---
-:100644 100644 40d4e50... 984fac2... M	fs/ext4/extents.c
-:100644 100644 0a526c4... bd1facd... M	fs/ext4/inode.c
- fs/ext4/extents.c |    7 +++++++
- fs/ext4/inode.c   |   12 ++++++++++++
- 2 files changed, 19 insertions(+), 0 deletions(-)
+:100644 100644 e717dfd... db54ce4... M	fs/ext4/ext4.h
+ fs/ext4/ext4.h |    9 ++++++---
+ 1 files changed, 6 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 40d4e50..984fac2 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4201,6 +4201,13 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
- 	/* finish any pending end_io work */
- 	ext4_flush_completed_IO(inode);
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index e717dfd..db54ce4 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -350,17 +350,18 @@ struct flex_groups {
+ #define EXT4_EXTENTS_FL			0x00080000 /* Inode uses extents */
+ #define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for large EA */
+ #define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
++#define EXT4_SECRM_RANDOM_FL		0x10000000 /* Use random data instead of zeros */
+ #define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
  
-+	if (EXT4_I(inode)->i_flags & EXT4_SECRM_FL) {
-+		err = ext4_secure_delete_lblks(inode, first_block,
-+			last_block - first_block);
-+		if (err)
-+			return err;
-+	}
-+
- 	credits = ext4_writepage_trans_blocks(inode);
- 	handle = ext4_journal_start(inode, credits);
- 	if (IS_ERR(handle))
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 0a526c4..bd1facd 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3420,6 +3420,8 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
-  */
- void ext4_truncate(struct inode *inode)
- {
-+	int err = 0;
-+	ext4_lblk_t last_block;
- 	trace_ext4_truncate_enter(inode);
+-#define EXT4_FL_USER_VISIBLE		0x004BDFFF /* User visible flags */
+-#define EXT4_FL_USER_MODIFIABLE		0x004B80FF /* User modifiable flags */
++#define EXT4_FL_USER_VISIBLE		0x104BDFFF /* User visible flags */
++#define EXT4_FL_USER_MODIFIABLE		0x104B80FF /* User modifiable flags */
  
- 	if (!ext4_can_truncate(inode))
-@@ -3430,6 +3432,16 @@ void ext4_truncate(struct inode *inode)
- 	if (inode->i_size == 0 && !test_opt(inode->i_sb, NO_AUTO_DA_ALLOC))
- 		ext4_set_inode_state(inode, EXT4_STATE_DA_ALLOC_CLOSE);
+ /* Flags that should be inherited by new inodes from their parent. */
+ #define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
+ 			   EXT4_SYNC_FL | EXT4_IMMUTABLE_FL | EXT4_APPEND_FL |\
+ 			   EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
+ 			   EXT4_NOCOMPR_FL | EXT4_JOURNAL_DATA_FL |\
+-			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL)
++			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL | EXT4_SECRM_RANDOM_FL)
  
-+	last_block = (inode->i_size + EXT4_BLOCK_SIZE(inode->i_sb)-1)
-+		>> EXT4_BLOCK_SIZE_BITS(inode->i_sb);
-+
-+	if (EXT4_I(inode)->i_flags & EXT4_SECRM_FL) {
-+		err = ext4_secure_delete_lblks(inode,
-+			last_block, EXT_MAX_BLOCKS);
-+		if (err)
-+			return;
-+	}
-+
- 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
- 		ext4_ext_truncate(inode);
- 	else
+ /* Flags that are appropriate for regular files (all but dir-specific ones). */
+ #define EXT4_REG_FLMASK (~(EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL))
+@@ -407,6 +408,7 @@ enum {
+ 	EXT4_INODE_EXTENTS	= 19,	/* Inode uses extents */
+ 	EXT4_INODE_EA_INODE	= 21,	/* Inode used for large EA */
+ 	EXT4_INODE_EOFBLOCKS	= 22,	/* Blocks allocated beyond EOF */
++	EXT4_INODE_SECRM_RANDOM = 28,   /* Use random data instead of zeros */
+ 	EXT4_INODE_RESERVED	= 31,	/* reserved for ext4 lib */
+ };
+ 
+@@ -453,6 +455,7 @@ static inline void ext4_check_flag_values(void)
+ 	CHECK_FLAG_VALUE(EXTENTS);
+ 	CHECK_FLAG_VALUE(EA_INODE);
+ 	CHECK_FLAG_VALUE(EOFBLOCKS);
++	CHECK_FLAG_VALUE(SECRM_RANDOM);
+ 	CHECK_FLAG_VALUE(RESERVED);
+ }
+ 
 -- 
 1.7.1
 
