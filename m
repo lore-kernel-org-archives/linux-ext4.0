@@ -1,144 +1,92 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] libext2fs: make ext2fs_open_file() always use 3 arguments
- instead of varargs
-Date: Fri, 07 Oct 2011 10:47:32 -0500
-Message-ID: <4E8F1F14.2000609@redhat.com>
-References: <1317922238-3847-1-git-send-email-tytso@mit.edu>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [Ext4 Secure Delete 1/7v4] ext4: Secure Delete: Add new
+	EXT4_SECRM_RANDOM_FL flag
+Date: Fri, 7 Oct 2011 10:02:55 -0700
+Message-ID: <20111007170255.GE12447@tux1.beaverton.ibm.com>
+References: <1317971465-8517-1-git-send-email-achender@linux.vnet.ibm.com> <1317971465-8517-2-git-send-email-achender@linux.vnet.ibm.com>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Allison Henderson <achender@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60036 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753291Ab1JGPrk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 7 Oct 2011 11:47:40 -0400
-In-Reply-To: <1317922238-3847-1-git-send-email-tytso@mit.edu>
+Received: from e33.co.us.ibm.com ([32.97.110.151]:33794 "EHLO
+	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750753Ab1JGRFB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Oct 2011 13:05:01 -0400
+Received: from /spool/local
+	by us.ibm.com with XMail ESMTP
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Fri, 7 Oct 2011 11:04:53 -0600
+Content-Disposition: inline
+In-Reply-To: <1317971465-8517-2-git-send-email-achender@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/6/11 12:30 PM, Theodore Ts'o wrote:
-> Some architectures have narrow mode_t's which can cause some
-> portability warnings with varargs.
+On Fri, Oct 07, 2011 at 12:10:59AM -0700, Allison Henderson wrote:
+> This patch adds a new attribute flag EXT4_SECRM_RANDOM_FL.
+> During a secure delete, this flag will cause blocks to be
+> overwritten with random data instead of zeros.
 > 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-
-seems fine.
-
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
-
-
+> Signed-off-by: Allison Henderson <achender@linux.vnet.ibm.com>
 > ---
->  lib/ext2fs/ext2fs.h      |    9 ++-------
->  lib/ext2fs/getsectsize.c |    4 ++--
->  lib/ext2fs/getsize.c     |    2 +-
->  lib/ext2fs/unix_io.c     |    2 +-
->  misc/e2image.c           |    2 +-
->  resize/main.c            |    2 +-
->  6 files changed, 8 insertions(+), 13 deletions(-)
+> :100644 100644 e717dfd... db54ce4... M	fs/ext4/ext4.h
+>  fs/ext4/ext4.h |    9 ++++++---
+>  1 files changed, 6 insertions(+), 3 deletions(-)
 > 
-> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-> index b04b0d1..411a383 100644
-> --- a/lib/ext2fs/ext2fs.h
-> +++ b/lib/ext2fs/ext2fs.h
-> @@ -1438,7 +1438,7 @@ extern blk_t ext2fs_inode_data_blocks(ext2_filsys fs,
->  				      struct ext2_inode *inode);
->  extern unsigned int ext2fs_div_ceil(unsigned int a, unsigned int b);
->  extern __u64 ext2fs_div64_ceil(__u64 a, __u64 b);
-> -extern int ext2fs_open_file(const char *pathname, int flags, ...);
-> +extern int ext2fs_open_file(const char *pathname, int flags, mode_t mode);
->  extern int ext2fs_stat(const char *path, ext2fs_struct_stat *buf);
->  extern int ext2fs_fstat(int fd, ext2fs_struct_stat *buf);
->  
-> @@ -1691,14 +1691,9 @@ _INLINE_ __u64 ext2fs_div64_ceil(__u64 a, __u64 b)
->  	return ((a - 1) / b) + 1;
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index e717dfd..db54ce4 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -350,17 +350,18 @@ struct flex_groups {
+>  #define EXT4_EXTENTS_FL			0x00080000 /* Inode uses extents */
+>  #define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for large EA */
+>  #define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
+> +#define EXT4_SECRM_RANDOM_FL		0x10000000 /* Use random data instead of zeros */
+>  #define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
+> 
+> -#define EXT4_FL_USER_VISIBLE		0x004BDFFF /* User visible flags */
+> -#define EXT4_FL_USER_MODIFIABLE		0x004B80FF /* User modifiable flags */
+> +#define EXT4_FL_USER_VISIBLE		0x104BDFFF /* User visible flags */
+> +#define EXT4_FL_USER_MODIFIABLE		0x104B80FF /* User modifiable flags */
+
+Is there a reason why this #define is 0x104BDFFF instead of a bunch of flags
+or'd together in a manner similar to the one below it?
+
+--D
+> 
+>  /* Flags that should be inherited by new inodes from their parent. */
+>  #define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
+>  			   EXT4_SYNC_FL | EXT4_IMMUTABLE_FL | EXT4_APPEND_FL |\
+>  			   EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
+>  			   EXT4_NOCOMPR_FL | EXT4_JOURNAL_DATA_FL |\
+> -			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL)
+> +			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL | EXT4_SECRM_RANDOM_FL)
+> 
+>  /* Flags that are appropriate for regular files (all but dir-specific ones). */
+>  #define EXT4_REG_FLMASK (~(EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL))
+> @@ -407,6 +408,7 @@ enum {
+>  	EXT4_INODE_EXTENTS	= 19,	/* Inode uses extents */
+>  	EXT4_INODE_EA_INODE	= 21,	/* Inode used for large EA */
+>  	EXT4_INODE_EOFBLOCKS	= 22,	/* Blocks allocated beyond EOF */
+> +	EXT4_INODE_SECRM_RANDOM = 28,   /* Use random data instead of zeros */
+>  	EXT4_INODE_RESERVED	= 31,	/* reserved for ext4 lib */
+>  };
+> 
+> @@ -453,6 +455,7 @@ static inline void ext4_check_flag_values(void)
+>  	CHECK_FLAG_VALUE(EXTENTS);
+>  	CHECK_FLAG_VALUE(EA_INODE);
+>  	CHECK_FLAG_VALUE(EOFBLOCKS);
+> +	CHECK_FLAG_VALUE(SECRM_RANDOM);
+>  	CHECK_FLAG_VALUE(RESERVED);
 >  }
->  
-> -_INLINE_ int ext2fs_open_file(const char *pathname, int flags, ...)
-> +_INLINE_ int ext2fs_open_file(const char *pathname, int flags, mode_t mode)
->  {
->  	va_list args;
-> -	mode_t mode;
-> -
-> -	va_start(args, flags);
-> -	mode = va_arg(args, mode_t);
-> -	va_end(args);
->  
->  	if (mode)
->  #if defined(HAVE_OPEN64) && !defined(__OSX_AVAILABLE_BUT_DEPRECATED)
-> diff --git a/lib/ext2fs/getsectsize.c b/lib/ext2fs/getsectsize.c
-> index 9d61553..30faecc 100644
-> --- a/lib/ext2fs/getsectsize.c
-> +++ b/lib/ext2fs/getsectsize.c
-> @@ -46,7 +46,7 @@ errcode_t ext2fs_get_device_sectsize(const char *file, int *sectsize)
->  {
->  	int	fd;
->  
-> -	fd = ext2fs_open_file(file, O_RDONLY);
-> +	fd = ext2fs_open_file(file, O_RDONLY, 0);
->  	if (fd < 0)
->  		return errno;
->  
-> @@ -68,7 +68,7 @@ errcode_t ext2fs_get_device_phys_sectsize(const char *file, int *sectsize)
->  {
->  	int	fd;
->  
-> -	fd = ext2fs_open_file(file, O_RDONLY);
-> +	fd = ext2fs_open_file(file, O_RDONLY, 0);
->  	if (fd < 0)
->  		return errno;
->  
-> diff --git a/lib/ext2fs/getsize.c b/lib/ext2fs/getsize.c
-> index a2e6e47..1e0ed16 100644
-> --- a/lib/ext2fs/getsize.c
-> +++ b/lib/ext2fs/getsize.c
-> @@ -160,7 +160,7 @@ errcode_t ext2fs_get_device_size2(const char *file, int blocksize,
->  	char ch;
->  #endif /* HAVE_SYS_DISKLABEL_H */
->  
-> -	fd = ext2fs_open_file(file, O_RDONLY);
-> +	fd = ext2fs_open_file(file, O_RDONLY, 0);
->  	if (fd < 0)
->  		return errno;
->  
-> diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
-> index 787990d..5337022 100644
-> --- a/lib/ext2fs/unix_io.c
-> +++ b/lib/ext2fs/unix_io.c
-> @@ -486,7 +486,7 @@ static errcode_t unix_open(const char *name, int flags, io_channel *channel)
->  #endif
->  	data->flags = flags;
->  
-> -	data->dev = ext2fs_open_file(io->name, open_flags);
-> +	data->dev = ext2fs_open_file(io->name, open_flags, 0);
->  	if (data->dev < 0) {
->  		retval = errno;
->  		goto cleanup;
-> diff --git a/misc/e2image.c b/misc/e2image.c
-> index c108a7a..23a4df2 100644
-> --- a/misc/e2image.c
-> +++ b/misc/e2image.c
-> @@ -1178,7 +1178,7 @@ static void install_image(char *device, char *image_fn, int type)
->  		exit(1);
->  	}
->  
-> -	fd = ext2fs_open_file(image_fn, O_RDONLY);
-> +	fd = ext2fs_open_file(image_fn, O_RDONLY, 0);
->  	if (fd < 0) {
->  		perror(image_fn);
->  		exit(1);
-> diff --git a/resize/main.c b/resize/main.c
-> index e6e9e7b..1ab0e04 100644
-> --- a/resize/main.c
-> +++ b/resize/main.c
-> @@ -258,7 +258,7 @@ int main (int argc, char ** argv)
->  		len = 2 * len;
->  	}
->  
-> -	fd = ext2fs_open_file(device_name, O_RDWR);
-> +	fd = ext2fs_open_file(device_name, O_RDWR, 0);
->  	if (fd < 0) {
->  		com_err("open", errno, _("while opening %s"),
->  			device_name);
+> 
+> -- 
+> 1.7.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
