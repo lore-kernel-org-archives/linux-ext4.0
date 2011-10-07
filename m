@@ -1,65 +1,82 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH v3] [SIGNED-OFF] ext4: don't work without procfs
-Date: Fri, 7 Oct 2011 10:30:46 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1110071028240.7183@dhcp-27-109.brq.redhat.com>
-References: <1317916276-2509-1-git-send-email-yargil@free.fr> <1317916878.1823.2.camel@Joe-Laptop>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Fabrice Jouhaud <yargil@free.fr>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, adilger.kernel@dilger.ca,
-	linux-kernel@vger.kernel.org
-To: Joe Perches <joe@perches.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1317916878.1823.2.camel@Joe-Laptop>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Tao Ma <tm@tao.ma>
+Subject: [PATCH v2] ext4: Free resources in the error path of ext4_mb_init.
+Date: Fri,  7 Oct 2011 23:07:36 +0800
+Message-ID: <1318000056-2496-1-git-send-email-tm@tao.ma>
+References: <20111006142220.GA19049@thunk.org>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from oproxy9.bluehost.com ([69.89.24.6]:59848 "HELO
+	oproxy9.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1752906Ab1JGPJu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Oct 2011 11:09:50 -0400
+In-Reply-To: <20111006142220.GA19049@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 6 Oct 2011, Joe Perches wrote:
+From: Tao Ma <boyu.mt@taobao.com>
 
-> On Thu, 2011-10-06 at 17:51 +0200, Fabrice Jouhaud wrote:
-> > From: Yargil <yargil@free.fr>
-> 
-> It would be better to use your full name on the "From: " line
-> 
-> > Regression from commit dd68314ccf3fb918c1fb6471817edbc60ece4b52
-> > The problem come from the test of the return value of proc_mkdir
-> > that is always false without procfs and abort the init of ext4.
-> > 
-> > Signed-off-by: Fabrice Jouhaud <yargil@free.fr>
-> > ---
-> >  fs/ext4/super.c |    2 ++
-> >  1 files changed, 2 insertions(+), 0 deletions(-)
-> > 
-> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> > index 44d0c8d..9b51b17 100644
-> > --- a/fs/ext4/super.c
-> > +++ b/fs/ext4/super.c
-> > @@ -4985,8 +4985,10 @@ static int __init ext4_init_fs(void)
-> >  	if (!ext4_kset)
-> >  		goto out6;
-> >  	ext4_proc_root = proc_mkdir("fs/ext4", NULL);
-> > +#ifdef CONFIG_PROC_FS
-> >  	if (!ext4_proc_root)
-> >  		goto out5;
-> > +#endif
-> 
-> It would make more sense as:
-> 
-> +#ifdef CONFIG_PROC_FS
-> 	ext4_proc_root = proc_mkdir("fs/ext4", NULL);
->   	if (!ext4_proc_root)
->  		goto out5;
-> +#endif
+In commit 79a77c5ac, we move ext4_mb_init_backend after the allocation
+of s_locality_group to avoid memory leak in error path, but there are
+still some other error paths in ext4_mb_init that need to do the same
+work. So this patch adds all the error patch for ext4_mb_init. And all
+the pointers are reset to NULL in case the caller may double free them.
 
-Actually it does not really matter, important is not to check the
-condition in case that proc is not configured in.
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+---
+ fs/ext4/mballoc.c |   23 +++++++++++++++--------
+ 1 files changed, 15 insertions(+), 8 deletions(-)
 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 17a5a57..1e194c5 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2490,7 +2490,7 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
+ 	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
+ 	if (sbi->s_locality_groups == NULL) {
+ 		ret = -ENOMEM;
+-		goto out;
++		goto out_free_groupinfo_slab;
+ 	}
+ 	for_each_possible_cpu(i) {
+ 		struct ext4_locality_group *lg;
+@@ -2503,9 +2503,8 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
+ 
+ 	/* init file for buddy data */
+ 	ret = ext4_mb_init_backend(sb);
+-	if (ret != 0) {
+-		goto out;
+-	}
++	if (ret != 0)
++		goto out_free_locality_groups;
+ 
+ 	if (sbi->s_proc)
+ 		proc_create_data("mb_groups", S_IRUGO, sbi->s_proc,
+@@ -2513,11 +2512,19 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
+ 
+ 	if (sbi->s_journal)
+ 		sbi->s_journal->j_commit_callback = release_blocks_on_commit;
++
++	return 0;
++
++out_free_locality_groups:
++	free_percpu(sbi->s_locality_groups);
++	sbi->s_locality_groups = NULL;
++out_free_groupinfo_slab:
++	ext4_groupinfo_destroy_slabs();
+ out:
+-	if (ret) {
+-		kfree(sbi->s_mb_offsets);
+-		kfree(sbi->s_mb_maxs);
+-	}
++	kfree(sbi->s_mb_offsets);
++	sbi->s_mb_offsets = NULL;
++	kfree(sbi->s_mb_maxs);
++	sbi->s_mb_maxs = NULL;
+ 	return ret;
+ }
+ 
 -- 
+1.7.1
+
