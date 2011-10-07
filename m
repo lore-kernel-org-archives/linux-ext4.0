@@ -1,74 +1,43 @@
 From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: [Ext4 Secure Delete 0/7 v4] Ext4 secure delete
-Date: Fri,  7 Oct 2011 00:10:58 -0700
-Message-ID: <1317971465-8517-1-git-send-email-achender@linux.vnet.ibm.com>
+Subject: [Ext4 Secure Delete 6/7v4] ext4: Secure Delete: Secure delete meta data blocks
+Date: Fri,  7 Oct 2011 00:11:04 -0700
+Message-ID: <1317971465-8517-7-git-send-email-achender@linux.vnet.ibm.com>
+References: <1317971465-8517-1-git-send-email-achender@linux.vnet.ibm.com>
 Cc: Allison Henderson <achender@linux.vnet.ibm.com>
 To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:40723 "EHLO e6.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758772Ab1JGHHM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 7 Oct 2011 03:07:12 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1317971465-8517-1-git-send-email-achender@linux.vnet.ibm.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi all,
+This patch modifies ext4_free_blocks to securely delete meta blocks
+when needed
 
-Sorry for the delay in getting this next version out.
-I had some tasks to take care of, and now I'm picking up my
-secure delete work again. I'm still not quite done yet,
-but a lot has changed and I wanted to update people so that
-we have an idea of where its going.  Currently the patch
-deals with data blocks, meta blocks, directory entries,
-journal blocks, and also provides an option for secure
-deleting with random data instead of just zeros.
-I'm also planning on adding some more patches to
-deal with inodes and also a mount option that turns
-on secure delete by default.  Im still not quite done
-debugging, but Im just sending it out early to get
-some more eyes on it. Feed back appreciated!  :)
+Signed-off-by: Allison Henderson <achender@linux.vnet.ibm.com>
+---
+:100644 100644 17a5a57... d25bb4d... M	fs/ext4/mballoc.c
+ fs/ext4/mballoc.c |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
 
-v3->v4
-Added a new file attribute flag EXT4_SECRM_RANDOM_FL
-This flag causes the secure delete operations to over write
-blocks with random data instead of zeros.
-
-New function ext4_secure_delete_lblks added to walk
-data blocks and secure delete them before any blocks
-are removed.
-
-Meta blocks are secure deleted before they are
-released
-
-New function added to identify holes in ind files.
-Used by ext4_secure_delete_lblks to skip over holes
-during secure delete.
-
-Added another list in the journal structure to track
-journal blocks so that they can be secure deleted later.
-
-Added new ext4_secure_delete_jblks that secure deletes
-journal blocks that were used to journal the specified
-logical blocks
-
-Allison Henderson (7):
-  ext4: Secure Delete: Add new EXT4_SECRM_RANDOM_FL flag
-  ext4: Secure Delete: Add ext4_ind_hole_lookup function
-  ext4: Secure Delete: Add secure delete functions
-  ext4: Secure Delete: Secure delete file data
-  ext4: Secure Delete: Secure delete directory entry
-  ext4: Secure Delete: Secure delete meta data blocks
-  ext4/jbd2: Secure Delete: Secure delete journal blocks
-
- fs/ext4/ext4.h         |   28 +++-
- fs/ext4/ext4_extents.h |    2 +
- fs/ext4/extents.c      |   21 +++-
- fs/ext4/indirect.c     |    2 +-
- fs/ext4/inode.c        |  391 ++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/mballoc.c      |    8 +
- fs/ext4/namei.c        |   64 +++++++-
- fs/jbd2/commit.c       |    6 +
- fs/jbd2/journal.c      |  112 ++++++++++++++
- include/linux/jbd2.h   |   21 +++
- 10 files changed, 642 insertions(+), 13 deletions(-)
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 17a5a57..d25bb4d 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4607,6 +4607,14 @@ do_more:
+ 	if (err)
+ 		goto error_return;
+ 
++	if ((flags & EXT4_FREE_BLOCKS_METADATA) &&
++		EXT4_I(inode)->i_flags & EXT4_SECRM_FL) {
++
++		err = ext4_secure_delete_pblks(inode, block, count);
++		if (err)
++			goto error_return;
++	}
++
+ 	if ((flags & EXT4_FREE_BLOCKS_METADATA) && ext4_handle_valid(handle)) {
+ 		struct ext4_free_data *new_entry;
+ 		/*
+-- 
+1.7.1
 
