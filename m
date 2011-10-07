@@ -1,67 +1,65 @@
-From: Joakim Tjernlund <joakim.tjernlund@transmode.se>
-Subject: Re: [PATCH v5 0/4] crc32c: Add faster algorithm and self-test code
-Date: Fri, 7 Oct 2011 09:38:01 +0200
-Message-ID: <OF47136962.36AF976D-ONC1257922.0029A6FB-C1257922.0029EF1C@transmode.se>
-References: <20111004235357.1560.12602.stgit@elm3c44.beaverton.ibm.com> <20111006202042.GD12447@tux1.beaverton.ibm.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH v3] [SIGNED-OFF] ext4: don't work without procfs
+Date: Fri, 7 Oct 2011 10:30:46 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1110071028240.7183@dhcp-27-109.brq.redhat.com>
+References: <1317916276-2509-1-git-send-email-yargil@free.fr> <1317916878.1823.2.camel@Joe-Laptop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	Mingming Cao <cmm@us.ibm.com>,
-	David Miller <davem@davemloft.net>,
-	Herbert Xu <herbert@gondor.apana.org.au>,
-	linux-crypto <linux-crypto@vger.kernel.org>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Bob Pearson <rpearson@systemfabricworks.com>,
-	Theodore Tso <tytso@mit.edu>
-To: djwong@us.ibm.com
-Return-path: <linux-crypto-owner@vger.kernel.org>
-In-Reply-To: <20111006202042.GD12447@tux1.beaverton.ibm.com>
-Sender: linux-crypto-owner@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Fabrice Jouhaud <yargil@free.fr>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, adilger.kernel@dilger.ca,
+	linux-kernel@vger.kernel.org
+To: Joe Perches <joe@perches.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1317916878.1823.2.camel@Joe-Laptop>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-"Darrick J. Wong" <djwong@us.ibm.com> wrote on 2011/10/06 22:20:42:
-> Subject: Re: [PATCH v5 0/4] crc32c: Add faster algorithm and self-test code
->
-> On Tue, Oct 04, 2011 at 04:53:57PM -0700, Darrick J. Wong wrote:
-> > Hi all,
-> >
-> > This patchset (re)uses Bob Pearson's crc32 slice-by-8 code to stamp out a
-> > software crc32c implementation.  It requires that all ten of his patches (at
-> > least the ones dated 31 Aug 2011) be applied.  It removes the crc32c
-> > implementation in crypto/ in favor of using the stamped-out one in lib/.  There
-> > is also a change to Kconfig so that the kernel builder can pick an
-> > implementation best suited for the hardware.
-> >
-> > The motivation for this patchset is that I am working on adding full metadata
-> > checksumming to ext4.  As far as performance impact of adding checksumming
-> > goes, I see nearly no change with a standard mail server ffsb simulation.  On a
-> > test that involves only file creation and deletion and extent tree writes, I
-> > see a drop of about 50 pcercent with the current kernel crc32c implementation;
-> > this improves to a drop of about 20 percent with the enclosed crc32c code.
-> >
-> > When metadata is usually a small fraction of total IO, this new implementation
-> > doesn't help much because metadata is usually a small fraction of total IO.
-> > However, when we are doing IO that is almost all metadata (such as rm -rf'ing a
-> > tree), then this patch speeds up the operation substantially.
-> >
-> > Incidentally, given that iscsi, sctp, and btrfs also use crc32c, this patchset
-> > should improve their speed as well.  I have not yet quantified that, however.
->
-> As for Mr. Tjernlund's unresolved questions regarding the v4 patch, I have
-> tested this new code on x64/x32/ppc32/ppc64 and it seems to work fine, both
-> with the crc32c selftest and also on a practical level with ext4 metadata
-> checksumming enabled.  Updating to Bob's newest calculation code brings about a
-> 10-15% speedup on the ppc64 box.  I also see that slice-by-8 is about 20%
-> faster than slice-by-4 on my ppc32 box.
->
-> I did _not_ see any failures on ppc32 when running an extended ext4+checksum
-> test suite.
+On Thu, 6 Oct 2011, Joe Perches wrote:
 
-Hi Darrick, I finally had some time to look this series over and I like
-this much better. Thank you for your patience with me :)
+> On Thu, 2011-10-06 at 17:51 +0200, Fabrice Jouhaud wrote:
+> > From: Yargil <yargil@free.fr>
+> 
+> It would be better to use your full name on the "From: " line
+> 
+> > Regression from commit dd68314ccf3fb918c1fb6471817edbc60ece4b52
+> > The problem come from the test of the return value of proc_mkdir
+> > that is always false without procfs and abort the init of ext4.
+> > 
+> > Signed-off-by: Fabrice Jouhaud <yargil@free.fr>
+> > ---
+> >  fs/ext4/super.c |    2 ++
+> >  1 files changed, 2 insertions(+), 0 deletions(-)
+> > 
+> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> > index 44d0c8d..9b51b17 100644
+> > --- a/fs/ext4/super.c
+> > +++ b/fs/ext4/super.c
+> > @@ -4985,8 +4985,10 @@ static int __init ext4_init_fs(void)
+> >  	if (!ext4_kset)
+> >  		goto out6;
+> >  	ext4_proc_root = proc_mkdir("fs/ext4", NULL);
+> > +#ifdef CONFIG_PROC_FS
+> >  	if (!ext4_proc_root)
+> >  		goto out5;
+> > +#endif
+> 
+> It would make more sense as:
+> 
+> +#ifdef CONFIG_PROC_FS
+> 	ext4_proc_root = proc_mkdir("fs/ext4", NULL);
+>   	if (!ext4_proc_root)
+>  		goto out5;
+> +#endif
 
-Acked-By: Joakim Tjernlund <joakim.tjernlund@transmode.se>
+Actually it does not really matter, important is not to check the
+condition in case that proc is not configured in.
 
- Jocke
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
+-- 
