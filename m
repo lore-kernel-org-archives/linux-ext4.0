@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 04/28] ext4: Prevent stack overrun in ext4_file_open when
-	recording last known mountpoint
-Date: Sat, 08 Oct 2011 00:54:10 -0700
-Message-ID: <20111008075410.20506.47923.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 07/28] ext4: Create a rocompat flag for extended metadata
+	checksumming
+Date: Sat, 08 Oct 2011 00:54:29 -0700
+Message-ID: <20111008075429.20506.95505.stgit@elm3c44.beaverton.ibm.com>
 References: <20111008075343.20506.23155.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -25,36 +25,45 @@ In-Reply-To: <20111008075343.20506.23155.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-In ext4_file_open, the filesystem records the mountpoint of the first file that
-is opened after mounting the filesystem.  It does this by allocating a 64-byte
-stack buffer, calling d_path() to grab the mount point through which this file
-was accessed, and then memcpy()ing 64 bytes into the superblock's
-s_last_mounted field, starting from the return value of d_path(), which is
-stored as "cp".  However, if cp > buf (which it frequently is since path
-components are prepended starting at the end of buf) then we can end up copying
-stack data into the superblock.
-
-Writing stack variables into the superblock doesn't sound like a great idea, so
-use strlcpy instead.  Andi Kleen suggested using strlcpy instead of strncpy.
+This patch introduces a rocompat feature flag to signal the presence of
+checksums for metadata blocks.  It also provides storage for a precomputed UUID
+checksum.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/ext4/file.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ fs/ext4/ext4.h |    7 ++++++-
+ 1 files changed, 6 insertions(+), 1 deletions(-)
 
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index e4095e9..9781099 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -181,8 +181,8 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
- 		path.dentry = mnt->mnt_root;
- 		cp = d_path(&path, buf, sizeof(buf));
- 		if (!IS_ERR(cp)) {
--			memcpy(sbi->s_es->s_last_mounted, cp,
--			       sizeof(sbi->s_es->s_last_mounted));
-+			strlcpy(sbi->s_es->s_last_mounted, cp,
-+				sizeof(sbi->s_es->s_last_mounted));
- 			ext4_mark_super_dirty(sb);
- 		}
- 	}
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index b7d7bd0..8ee8646 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1222,6 +1222,9 @@ struct ext4_sb_info {
+ 
+ 	/* record the last minlen when FITRIM is called. */
+ 	atomic_t s_last_trim_minblks;
++
++	/* Precomputed FS UUID checksum */
++	__u32 s_uuid_crc;
+ };
+ 
+ static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
+@@ -1360,6 +1363,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+ #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
+ #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
+ #define EXT4_FEATURE_RO_COMPAT_QUOTA		0x0100
++#define EXT4_FEATURE_RO_COMPAT_METADATA_CSUM	0x0400
+ 
+ #define EXT4_FEATURE_INCOMPAT_COMPRESSION	0x0001
+ #define EXT4_FEATURE_INCOMPAT_FILETYPE		0x0002
+@@ -1402,7 +1406,8 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+ 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK | \
+ 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE | \
+ 					 EXT4_FEATURE_RO_COMPAT_BTREE_DIR |\
+-					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE)
++					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE |\
++					 EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)
+ 
+ /*
+  * Default values for user and/or group using reserved blocks
