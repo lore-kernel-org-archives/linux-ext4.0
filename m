@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 38/47] mke2fs: Warn if not enabling all the features that
-	metadata_csum wants
-Date: Sat, 08 Oct 2011 00:37:18 -0700
-Message-ID: <20111008073718.17888.55248.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 40/47] e2fsck: Verify and correct MMP checksum problems
+Date: Sat, 08 Oct 2011 00:37:32 -0700
+Message-ID: <20111008073732.17888.23812.stgit@elm3c44.beaverton.ibm.com>
 References: <20111008073315.17888.22132.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,84 +16,78 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e8.ny.us.ibm.com ([32.97.182.138]:56372 "EHLO e8.ny.us.ibm.com"
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:46978 "EHLO e3.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751612Ab1JHHjq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 8 Oct 2011 03:39:46 -0400
-Received: from d01relay07.pok.ibm.com (d01relay07.pok.ibm.com [9.56.227.147])
-	by e8.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p987OUqI005281
-	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 03:24:30 -0400
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p987bN1p3207422
-	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 03:37:23 -0400
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p987bKEr009174
-	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 04:37:21 -0300
+	id S1751612Ab1JHHju (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 8 Oct 2011 03:39:50 -0400
+Received: from /spool/local
+	by us.ibm.com with XMail ESMTP
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Sat, 8 Oct 2011 03:39:49 -0400
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p987bYGd3125360
+	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 03:37:34 -0400
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p987bXxU013559
+	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 03:37:34 -0400
 In-Reply-To: <20111008073315.17888.22132.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-There are some features (gdt_csum, 64bit, bg_use_meta_csum) that help
-metadata_csum to work optimally.  Print a warning if the user tries to create a
-filesystem without those features.
+Check and handle MMP checksum problems by resetting the block.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- misc/mke2fs.c |   35 ++++++++++++++++++++++++++++++++++-
- 1 files changed, 34 insertions(+), 1 deletions(-)
+ e2fsck/problem.c |    5 +++++
+ e2fsck/problem.h |    3 +++
+ e2fsck/unix.c    |    5 +++++
+ 3 files changed, 13 insertions(+), 0 deletions(-)
 
 
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 45bab5c..fc57372 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -865,7 +865,8 @@ static __u32 ok_features[3] = {
- 		EXT2_FEATURE_INCOMPAT_META_BG|
- 		EXT4_FEATURE_INCOMPAT_FLEX_BG|
- 		EXT4_FEATURE_INCOMPAT_MMP |
--		EXT4_FEATURE_INCOMPAT_64BIT,
-+		EXT4_FEATURE_INCOMPAT_64BIT |
-+		EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM,
- 	/* R/O compat */
- 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE|
- 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
-@@ -2278,6 +2279,38 @@ int main (int argc, char *argv[])
- 		exit(1);
- 	}
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index 76a13de..f0b92ec 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -428,6 +428,11 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("@S has invalid MMP magic.  "),
+ 	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK},
  
-+	/* Check the user's mkfs options for metadata checksumming */
-+	if (!quiet &&
-+	    EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+		if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+				EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
-+			printf(_("Group descriptor checksums "
-+				 "are not enabled.  This reduces the "
-+				 "coverage of metadata checksumming.  "
-+				 "Pass -O uninit_bg to rectify.\n"));
-+		if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+				EXT4_FEATURE_RO_COMPAT_GDT_CSUM) &&
-+		    !EXT2_HAS_INCOMPAT_FEATURE(fs->super,
-+				EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM))
-+			printf(_("Group descriptor checksums will not use "
-+				 "the faster metadata_checksum algorithm.  "
-+				 "Pass -O bg_use_meta_csum to rectify.\n"));
-+		if (!EXT2_HAS_INCOMPAT_FEATURE(fs->super,
-+				EXT3_FEATURE_INCOMPAT_EXTENTS))
-+			printf(_("Extents are not enabled.  The file extent "
-+				 "tree can be checksummed, whereas block maps "
-+				 "cannot.  Not enabling extents reduces the "
-+				 "coverage of metadata checksumming.  "
-+				 "Pass -O extents to rectify.\n"));
-+		if (!EXT2_HAS_INCOMPAT_FEATURE(fs->super,
-+				EXT4_FEATURE_INCOMPAT_64BIT))
-+			printf(_("64-bit filesystem support is not "
-+				 "enabled.  The larger fields afforded by "
-+				 "this feature enable full-strength "
-+				 "checksumming.  Pass -O 64bit to rectify.\n"));
-+	}
++	/* Superblock has invalid MMP checksum. */
++	{ PR_0_MMP_CSUM_INVALID,
++	  N_("@S has invalid MMP checksum.  "),
++	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK},
 +
- 	/* Can't undo discard ... */
- 	if (!noaction && discard && (io_ptr != undo_io_manager)) {
- 		retval = mke2fs_discard_device(fs);
+ 	/* Pass 1 errors */
+ 
+ 	/* Pass 1: Checking inodes, blocks, and sizes */
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index fdb7f99..da6cd64 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -242,6 +242,9 @@ struct problem_context {
+ /* Superblock has invalid MMP magic. */
+ #define PR_0_MMP_INVALID_MAGIC			0x000043
+ 
++/* Superblock has invalid MMP checksum. */
++#define PR_0_MMP_CSUM_INVALID			0x000044
++
+ 
+ /*
+  * Pass 1 errors
+diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+index 1d81762..423cc27 100644
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -1084,6 +1084,11 @@ check_error:
+ 			ext2fs_mmp_clear(fs);
+ 			retval = 0;
+ 		}
++	} else if (retval == EXT2_ET_MMP_CSUM_INVALID) {
++		if (fix_problem(ctx, PR_0_MMP_CSUM_INVALID, &pctx)) {
++			ext2fs_mmp_clear(fs);
++			retval = 0;
++		}
+ 	}
+ 	return retval;
+ }
 
