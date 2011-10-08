@@ -1,43 +1,49 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] ext4: MMP: fix error message rate-limiting logic
- in kmmpd
-Date: Sat, 8 Oct 2011 17:25:19 -0400
-Message-ID: <20111008212519.GO7948@thunk.org>
-References: <1316737389-5522-1-git-send-email-nikitas_angelinas@xyratex.com>
- <1317339500-4341-1-git-send-email-nikitas_angelinas@xyratex.com>
- <1317339500-4341-3-git-send-email-nikitas_angelinas@xyratex.com>
+Subject: Re: [PATCH] ext4: Fix comparison endianness problem in MMP
+ initialization
+Date: Sat, 8 Oct 2011 17:27:44 -0400
+Message-ID: <20111008212744.GP7948@thunk.org>
+References: <20110930194900.GY12086@tux1.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: adilger.kernel@dilger.ca, adilger@whamcloud.com,
-	johann@whamcloud.com, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, nikitas_angelinas@xyratex.com,
-	andrew_perepechko@xyratex.com
-To: Nikitas Angelinas <nikitasangelinas@gmail.com>
+Cc: linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:54794 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:54798 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753742Ab1JHVZT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 8 Oct 2011 17:25:19 -0400
+	id S1753790Ab1JHV1p (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 8 Oct 2011 17:27:45 -0400
 Content-Disposition: inline
-In-Reply-To: <1317339500-4341-3-git-send-email-nikitas_angelinas@xyratex.com>
+In-Reply-To: <20110930194900.GY12086@tux1.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 30, 2011 at 12:38:20AM +0100, Nikitas Angelinas wrote:
-> Current logic would print an error message only once, and then
-> 'failed_writes' would stay at 1. Rework the loop to increment
-> 'failed_writes' and print the error message every s_mmp_update_interval
-> * 60 seconds, as intended according to the comment.
+On Fri, Sep 30, 2011 at 12:49:00PM -0700, Darrick J. Wong wrote:
+> As part of startup, the MMP initialization code does this:
 > 
-> Perhaps it would be better to reset 'failed_writes' to 0 on every
-> successful write, such that new errors are noticed sooner, but maybe in
-> the interest of efficiency it would be best not to add an operation on
-> every kmmpd thread run?
+> mmp->mmp_seq = seq = cpu_to_le32(mmp_new_seq());
 > 
-> Signed-off-by: Nikitas Angelinas <nikitas_angelinas@xyratex.com>
-> Signed-off-by: Andrew Perepechko <andrew_perepechko@xyratex.com>
-> Acked-by: Andreas Dilger <adilger@dilger.ca>
+> Next, mmp->mmp_seq is written out to disk, a delay happens, and then the MMP
+> block is read back in and the sequence value is tested:
+> 
+> if (seq != le32_to_cpu(mmp->mmp_seq)) {
+> 	/* fail the mount */
+> 
+> On a LE system such as x86, the *le32* functions do nothing and this works.
+> Unfortunately, on a BE system such as ppc64, this comparison becomes:
+> 
+> if (cpu_to_le32(new_seq) != le32_to_cpu(cpu_to_le32(new_seq)) {
+> 	/* fail the mount */
+> 
+> Except for a few palindromic sequence numbers, this test always causes the
+> mount to fail, which makes MMP filesystems generally unmountable on ppc64.  The
+> attached patch fixes this situation.
+> 
+> (This fix came up while testing the metadata checksumming patchset)
+> 
+> Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 
-Thanks, applied.
+Applied, thanks.
 
 						- Ted
