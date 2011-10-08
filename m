@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 27/28] jbd2: Checksum commit blocks
-Date: Sat, 08 Oct 2011 00:56:42 -0700
-Message-ID: <20111008075642.20506.1528.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 22/28] jbd2: Update structure definitions and flags to support
+	extended checksumming
+Date: Sat, 08 Oct 2011 00:56:08 -0700
+Message-ID: <20111008075608.20506.43878.stgit@elm3c44.beaverton.ibm.com>
 References: <20111008075343.20506.23155.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -19,146 +20,230 @@ Cc: Sunil Mushran <sunil.mushran@oracle.com>,
 To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e32.co.us.ibm.com ([32.97.110.150]:52487 "EHLO
-	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754380Ab1JHH7O (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 8 Oct 2011 03:59:14 -0400
-Received: from /spool/local
-	by us.ibm.com with XMail ESMTP
-	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Sat, 8 Oct 2011 01:59:14 -0600
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20111008075343.20506.23155.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Calculate and verify the checksum of commit blocks.  In checksum v2, deprecate
-most of the checksum v1 commit block checksum fields, since each block has its
-own checksum.
+Add structure definitions, flags, and constants to extend checksum protection
+to all journal blocks.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/jbd2/commit.c     |   21 ++++++++++++++++++++-
- fs/jbd2/recovery.c   |   31 +++++++++++++++++++++++++++++++
- include/linux/jbd2.h |   11 +++++++++++
- 3 files changed, 62 insertions(+), 1 deletions(-)
+ fs/ext4/super.c      |   55 ++++++++++++++++++++++++++++++++++++++------------
+ fs/jbd2/journal.c    |   50 +++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/jbd2.h |    8 ++++++-
+ 3 files changed, 99 insertions(+), 14 deletions(-)
 
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index e2c355c..2bce8dc 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -86,6 +86,24 @@ nope:
- 	__brelse(bh);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 5538fb7..a715b3e 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3141,6 +3141,44 @@ static void ext4_destroy_lazyinit_thread(void)
+ 	kthread_stop(ext4_lazyinit_task);
  }
  
-+static void jbd2_commit_block_csum_set(journal_t *j,
-+				       struct journal_head *descriptor)
++static int set_journal_csum_feature_set(struct super_block *sb)
 +{
-+	struct commit_header *h;
-+	__u32 crc;
++	int ret = 1;
++	int compat, incompat;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
 +
-+	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
-+		return;
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
++				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
++		/* journal checksum v2 */
++		compat = 0;
++		incompat = JBD2_FEATURE_INCOMPAT_CSUM_V2;
++	} else {
++		/* journal checksum v1 */
++		compat = JBD2_FEATURE_COMPAT_CHECKSUM;
++		incompat = 0;
++	}
 +
-+	h = (struct commit_header *)(jh2bh(descriptor)->b_data);
-+	h->h_chksum_type = 0;
-+	h->h_chksum_size = 0;
-+	h->h_chksum[0] = 0;
-+	crc = jbd2_chksum(j, j->j_uuid_crc, jh2bh(descriptor)->b_data,
-+			  j->j_blocksize);
-+	h->h_chksum[0] = cpu_to_be32(crc);
++	if (test_opt(sb, JOURNAL_ASYNC_COMMIT)) {
++		ret = jbd2_journal_set_features(sbi->s_journal,
++				compat, 0,
++				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT |
++				incompat);
++	} else if (test_opt(sb, JOURNAL_CHECKSUM)) {
++		ret = jbd2_journal_set_features(sbi->s_journal,
++				compat, 0,
++				incompat);
++		jbd2_journal_clear_features(sbi->s_journal, 0, 0,
++				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT);
++	} else {
++		jbd2_journal_clear_features(sbi->s_journal,
++				JBD2_FEATURE_COMPAT_CHECKSUM, 0,
++				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT |
++				JBD2_FEATURE_INCOMPAT_CSUM_V2);
++	}
++
++	return ret;
 +}
 +
- /*
-  * Done it all: now submit the commit record.  We should have
-  * cleaned up our previous buffers by now, so if we are in abort
-@@ -129,6 +147,7 @@ static int journal_submit_commit_record(journal_t *journal,
- 		tmp->h_chksum_size 	= JBD2_CRC32_CHKSUM_SIZE;
- 		tmp->h_chksum[0] 	= cpu_to_be32(crc32_sum);
+ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 				__releases(kernel_lock)
+ 				__acquires(kernel_lock)
+@@ -3667,19 +3705,10 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		goto failed_mount_wq;
  	}
-+	jbd2_commit_block_csum_set(journal, descriptor);
  
- 	JBUFFER_TRACE(descriptor, "submit commit block");
- 	lock_buffer(bh);
-@@ -351,7 +370,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 	struct blk_plug plug;
- 	int csum_size = 0;
+-	if (test_opt(sb, JOURNAL_ASYNC_COMMIT)) {
+-		jbd2_journal_set_features(sbi->s_journal,
+-				JBD2_FEATURE_COMPAT_CHECKSUM, 0,
+-				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT);
+-	} else if (test_opt(sb, JOURNAL_CHECKSUM)) {
+-		jbd2_journal_set_features(sbi->s_journal,
+-				JBD2_FEATURE_COMPAT_CHECKSUM, 0, 0);
+-		jbd2_journal_clear_features(sbi->s_journal, 0, 0,
+-				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT);
+-	} else {
+-		jbd2_journal_clear_features(sbi->s_journal,
+-				JBD2_FEATURE_COMPAT_CHECKSUM, 0,
+-				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT);
++	if (!set_journal_csum_feature_set(sb)) {
++		ext4_msg(sb, KERN_ERR, "Failed to set journal checksum "
++			 "feature set");
++		goto failed_mount_wq;
+ 	}
  
--	if (JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
-+	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2))
- 		csum_size = sizeof(struct jbd2_journal_block_tail);
+ 	/* We have now updated the journal if required, so we can
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index f24df13..8d8985e 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -100,6 +100,15 @@ static int journal_convert_superblock_v1(journal_t *, journal_superblock_t *);
+ static void __journal_abort_soft (journal_t *journal, int errno);
+ static int jbd2_journal_create_slab(size_t slab_size);
  
- 	/*
-diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-index ecb1eda..3db9625 100644
---- a/fs/jbd2/recovery.c
-+++ b/fs/jbd2/recovery.c
-@@ -372,6 +372,24 @@ static int calc_chksums(journal_t *journal, struct buffer_head *bh,
- 	return 0;
- }
- 
-+static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
++/* Checksumming functions */
++int jbd2_verify_csum_type(journal_t *j, journal_superblock_t *sb)
 +{
-+	struct commit_header *h;
-+	__u32 provided, calculated;
-+
 +	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
 +		return 1;
 +
-+	h = buf;
-+	provided = h->h_chksum[0];
-+	h->h_chksum[0] = 0;
-+	calculated = jbd2_chksum(j, j->j_uuid_crc, buf, j->j_blocksize);
-+	h->h_chksum[0] = provided;
-+
-+	provided = be32_to_cpu(provided);
-+	return provided == calculated;
++	return sb->s_checksum_type == JBD2_CRC32C_CHKSUM;
 +}
 +
- static int do_one_pass(journal_t *journal,
- 			struct recovery_info *info, enum passtype pass)
- {
-@@ -682,6 +700,19 @@ static int do_one_pass(journal_t *journal,
- 				}
- 				crc32_sum = ~0;
- 			}
-+			if (pass == PASS_SCAN &&
-+			    !jbd2_commit_block_csum_verify(journal,
-+							   bh->b_data)) {
-+				info->end_transaction = next_commit_ID;
+ /*
+  * Helper function used to manage commit timeouts
+  */
+@@ -1222,6 +1231,9 @@ static int journal_get_superblock(journal_t *journal)
+ 		}
+ 	}
+ 
++	if (buffer_verified(bh))
++		return 0;
 +
-+				if (!JBD2_HAS_INCOMPAT_FEATURE(journal,
-+				     JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT)) {
-+					journal->j_failed_commit =
-+						next_commit_ID;
-+					brelse(bh);
-+					break;
-+				}
-+			}
- 			brelse(bh);
- 			next_commit_ID++;
- 			continue;
+ 	sb = journal->j_superblock;
+ 
+ 	err = -EINVAL;
+@@ -1251,6 +1263,21 @@ static int journal_get_superblock(journal_t *journal)
+ 		goto out;
+ 	}
+ 
++	if (JBD2_HAS_COMPAT_FEATURE(journal, JBD2_FEATURE_COMPAT_CHECKSUM) &&
++	    JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2)) {
++		/* Can't have checksum v1 and v2 on at the same time! */
++		printk(KERN_ERR "JBD: Can't enable checksumming v1 and v2 "
++		       "at the same time!\n");
++		goto out;
++	}
++
++	if (!jbd2_verify_csum_type(journal, sb)) {
++		printk(KERN_ERR "JBD: Unknown checksum type\n");
++		goto out;
++	}
++
++	set_buffer_verified(bh);
++
+ 	return 0;
+ 
+ out:
+@@ -1494,6 +1521,10 @@ int jbd2_journal_check_available_features (journal_t *journal, unsigned long com
+ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
+ 			  unsigned long ro, unsigned long incompat)
+ {
++#define INCOMPAT_FEATURE_ON(f) \
++		((incompat & (f)) && !(sb->s_feature_incompat & cpu_to_be32(f)))
++#define COMPAT_FEATURE_ON(f) \
++		((compat & (f)) && !(sb->s_feature_compat & cpu_to_be32(f)))
+ 	journal_superblock_t *sb;
+ 
+ 	if (jbd2_journal_check_used_features(journal, compat, ro, incompat))
+@@ -1502,16 +1533,35 @@ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
+ 	if (!jbd2_journal_check_available_features(journal, compat, ro, incompat))
+ 		return 0;
+ 
++	/* Asking for checksumming v2 and v1?  Only give them v2. */
++	if (incompat & JBD2_FEATURE_INCOMPAT_CSUM_V2 &&
++	    compat & JBD2_FEATURE_COMPAT_CHECKSUM)
++		compat &= ~JBD2_FEATURE_COMPAT_CHECKSUM;
++
+ 	jbd_debug(1, "Setting new features 0x%lx/0x%lx/0x%lx\n",
+ 		  compat, ro, incompat);
+ 
+ 	sb = journal->j_superblock;
+ 
++	/* If enabling v2 checksums, update superblock */
++	if (INCOMPAT_FEATURE_ON(JBD2_FEATURE_INCOMPAT_CSUM_V2)) {
++		sb->s_checksum_type = JBD2_CRC32C_CHKSUM;
++		sb->s_feature_compat &=
++			~cpu_to_be32(JBD2_FEATURE_COMPAT_CHECKSUM);
++	}
++
++	/* If enabling v1 checksums, downgrade superblock */
++	if (COMPAT_FEATURE_ON(JBD2_FEATURE_COMPAT_CHECKSUM))
++		sb->s_feature_incompat &=
++			~cpu_to_be32(JBD2_FEATURE_INCOMPAT_CSUM_V2);
++
+ 	sb->s_feature_compat    |= cpu_to_be32(compat);
+ 	sb->s_feature_ro_compat |= cpu_to_be32(ro);
+ 	sb->s_feature_incompat  |= cpu_to_be32(incompat);
+ 
+ 	return 1;
++#undef COMPAT_FEATURE_ON
++#undef INCOMPAT_FEATURE_ON
+ }
+ 
+ /*
 diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 69e305d..633fea2 100644
+index 3284706..69ca172 100644
 --- a/include/linux/jbd2.h
 +++ b/include/linux/jbd2.h
-@@ -155,6 +155,17 @@ typedef struct journal_header_s
- #define JBD2_CHECKSUM_BYTES (32 / sizeof(u32))
+@@ -147,6 +147,7 @@ typedef struct journal_header_s
+ #define JBD2_CRC32_CHKSUM   1
+ #define JBD2_MD5_CHKSUM     2
+ #define JBD2_SHA1_CHKSUM    3
++#define JBD2_CRC32C_CHKSUM  4
+ 
+ #define JBD2_CRC32_CHKSUM_SIZE 4
+ 
+@@ -263,13 +264,15 @@ typedef struct journal_superblock_s
+ #define JBD2_FEATURE_INCOMPAT_REVOKE		0x00000001
+ #define JBD2_FEATURE_INCOMPAT_64BIT		0x00000002
+ #define JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT	0x00000004
++#define JBD2_FEATURE_INCOMPAT_CSUM_V2		0x00000008
+ 
+ /* Features known to this kernel version: */
+ #define JBD2_KNOWN_COMPAT_FEATURES	JBD2_FEATURE_COMPAT_CHECKSUM
+ #define JBD2_KNOWN_ROCOMPAT_FEATURES	0
+ #define JBD2_KNOWN_INCOMPAT_FEATURES	(JBD2_FEATURE_INCOMPAT_REVOKE | \
+ 					JBD2_FEATURE_INCOMPAT_64BIT | \
+-					JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT)
++					JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT | \
++					JBD2_FEATURE_INCOMPAT_CSUM_V2)
+ 
+ #ifdef __KERNEL__
+ 
+@@ -1004,6 +1007,9 @@ struct journal_s
+ 	 * superblock pointer here
+ 	 */
+ 	void *j_private;
++
++	/* Precomputed UUID checksum */
++	__u32 j_uuid_crc;
+ };
+ 
  /*
-  * Commit block header for storing transactional checksums:
-+ *
-+ * NOTE: If FEATURE_COMPAT_CHECKSUM (checksum v1) is set, the h_chksum*
-+ * fields are used to store a checksum of the descriptor and data blocks.
-+ *
-+ * If FEATURE_INCOMPAT_CSUM_V2 (checksum v2) is set, then the h_chksum
-+ * field is used to store crc32c(uuid+commit_block).  Each journal metadata
-+ * block gets its own checksum, and data block checksums are stored in
-+ * journal_block_tag (in the descriptor).  The other h_chksum* fields are
-+ * not used.
-+ *
-+ * Checksum v1 and v2 are mutually exclusive features.
-  */
- struct commit_header {
- 	__be32		h_magic;
-
