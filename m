@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 02/47] libext2fs: Add metadata checksum flag
-Date: Sat, 08 Oct 2011 00:33:29 -0700
-Message-ID: <20111008073329.17888.70945.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 07/47] e2fsck: Verify and correct inode checksums
+Date: Sat, 08 Oct 2011 00:34:00 -0700
+Message-ID: <20111008073400.17888.93726.stgit@elm3c44.beaverton.ibm.com>
 References: <20111008073315.17888.22132.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,67 +16,148 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e33.co.us.ibm.com ([32.97.110.151]:53485 "EHLO
-	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751132Ab1JHHgY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 8 Oct 2011 03:36:24 -0400
-Received: from /spool/local
-	by us.ibm.com with XMail ESMTP
-	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Sat, 8 Oct 2011 01:36:24 -0600
-Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
-	by d03relay01.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p987XWeq197092
-	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 01:33:32 -0600
-Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av04.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p987XUpO022986
-	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 01:33:31 -0600
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:49547 "EHLO e6.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751132Ab1JHHg2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 8 Oct 2011 03:36:28 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e6.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p9879qFt021630
+	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 03:09:52 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p987Y32f477084
+	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 03:34:03 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p987Y1mM018336
+	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 04:34:02 -0300
 In-Reply-To: <20111008073315.17888.22132.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add a feature flag to enable metadata checksumming in e2fsprogs.  Also add a
-runtime flag to disable checksum verification; this flag will be used by
-debugfs to salvage filesystems and tune2fs when resetting checksums.
+Detect mismatches of the inode and checksum, and prompt the user to fix the
+situation.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- lib/blkid/probe.h   |    1 +
- lib/ext2fs/ext2fs.h |    4 +++-
- 2 files changed, 4 insertions(+), 1 deletions(-)
+ e2fsck/pass1.c   |   43 +++++++++++++++++++++++++++++++++++++++++++
+ e2fsck/problem.c |   15 +++++++++++++++
+ e2fsck/problem.h |    9 +++++++++
+ 3 files changed, 67 insertions(+), 0 deletions(-)
 
 
-diff --git a/lib/blkid/probe.h b/lib/blkid/probe.h
-index 37e80ef..d6809e1 100644
---- a/lib/blkid/probe.h
-+++ b/lib/blkid/probe.h
-@@ -110,6 +110,7 @@ struct ext2_super_block {
- #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
- #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
- #define EXT4_FEATURE_RO_COMPAT_QUOTA		0x0100
-+#define EXT4_FEATURE_RO_COMPAT_METADATA_CSUM	0x0400
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index d051703..96f87e8 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -540,6 +540,41 @@ extern void e2fsck_setup_tdb_icount(e2fsck_t ctx, int flags,
+ 		*ret = 0;
+ }
  
- /* for s_feature_incompat */
- #define EXT2_FEATURE_INCOMPAT_FILETYPE		0x0002
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index b04b0d1..4a3e7af 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -199,6 +199,7 @@ typedef struct ext2_file *ext2_file_t;
- #define EXT2_FLAG_PRINT_PROGRESS	0x40000
- #define EXT2_FLAG_DIRECT_IO		0x80000
- #define EXT2_FLAG_SKIP_MMP		0x100000
-+#define EXT2_FLAG_IGNORE_CSUM_ERRORS	0x200000
++static int validate_inode_checksum(ext2_filsys fs,
++				   e2fsck_t ctx,
++				   struct problem_context *pctx,
++				   ext2_ino_t ino,
++				   struct ext2_inode *inode)
++{
++	struct ext2_inode_large *linode = (struct ext2_inode_large *)inode;
++
++	/* Ignore non-Linux filesystems */
++	if (fs->super->s_creator_os != EXT2_OS_LINUX)
++		return 0;
++
++	/* Check for invalid inode checksum */
++	if (ext2fs_inode_csum_verify(fs, ino, linode))
++		return 0;
++
++	/*
++	 * TODO: Change the following check to use the inode badness patch.
++	 * For the moment we'll just assume that the user wants to clear the
++	 * bad inode.
++	 */
++	if (fix_problem(ctx, PR_1_INODE_CORRUPT, pctx)) {
++		e2fsck_clear_inode(ctx, ino, inode, 0, "pass1");
++		if (ino == EXT2_BAD_INO)
++			ext2fs_mark_inode_bitmap2(ctx->inode_used_map,
++						  ino);
++		return PR_1_INODE_CORRUPT;
++	} else if (fix_problem(ctx, PR_1_INODE_CSUM_INVALID, pctx)) {
++		e2fsck_write_inode(ctx, ino, inode, "pass1");
++		return PR_1_INODE_CSUM_INVALID;
++	}
++
++	return 0;
++}
++
+ void e2fsck_pass1(e2fsck_t ctx)
+ {
+ 	int	i;
+@@ -717,8 +752,10 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 				fatal_error(ctx, 0);
+ 		}
+ 		old_op = ehandler_operation(_("getting next inode from scan"));
++		ctx->fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
+ 		pctx.errcode = ext2fs_get_next_inode_full(scan, &ino,
+ 							  inode, inode_size);
++		ctx->fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
+ 		ehandler_operation(old_op);
+ 		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
+ 			return;
+@@ -750,6 +787,12 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 			}
+ 		}
  
++		check_inode_extra_space(ctx, &pctx);
++		/* Validate inode checksum.  i_extra_isize must be sane. */
++		if (validate_inode_checksum(fs, ctx, &pctx, ino, inode) ==
++		    PR_1_INODE_CORRUPT)
++			continue;
++
+ 		/*
+ 		 * Test for incorrect extent flag settings.
+ 		 *
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index 6ee3fa4..86cd954 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -934,6 +934,21 @@ static struct e2fsck_problem problem_table[] = {
+ 	/* Quota inode is user visible */
+ 	{ PR_1_QUOTA_INODE_NOT_HIDDEN,
+ 	  N_("@q @i is visible to the user.  "),
++	  PROMPT_FIX, PR_PREEN_OK },
++
++	/* inode checksum probably not set */
++	{ PR_1_INODE_CSUM_INVALID,
++	  N_("@i %i checksum incorrect.  "),
++	  PROMPT_FIX, PR_PREEN_OK },
++
++	/* inode checksum probably set, but does not match */
++	{ PR_1_INODE_CORRUPT,
++	  N_("@i %i checksum shows corruption.  "),
++	  PROMPT_CLEAR, PR_PREEN_OK },
++
++	/* inode checksumming disabled, yet checksum is probably set? */
++	{ PR_1_INODE_CSUM_NONZERO,
++	  N_("@i %i checksum should not be set.  "),
+ 	  PROMPT_CLEAR, PR_PREEN_OK },
+ 
+ 	/* Invalid bad inode */
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index 9db29d8..e1c7f26 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -550,6 +550,15 @@ struct problem_context {
+ /* Invalid bad inode */
+ #define PR_1_INVALID_BAD_INODE		0x010065
+ 
++/* inode checksum probably not set */
++#define PR_1_INODE_CSUM_INVALID		0x010066
++
++/* inode checksum probably set, but does not match */
++#define PR_1_INODE_CORRUPT		0x010067
++
++/* inode checksum should not be set */
++#define PR_1_INODE_CSUM_NONZERO		0x010068
++
  /*
-  * Special flag in the ext2 inode i_flag field that means that this is
-@@ -584,7 +585,8 @@ typedef struct ext2_icount *ext2_icount_t;
- 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|\
- 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM|\
- 					 EXT4_FEATURE_RO_COMPAT_BIGALLOC|\
--					 EXT4_FEATURE_RO_COMPAT_QUOTA)
-+					 EXT4_FEATURE_RO_COMPAT_QUOTA|\
-+					 EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)
- 
- /*
-  * These features are only allowed if EXT2_FLAG_SOFTSUPP_FEATURES is passed
+  * Pass 1b errors
+  */
 
