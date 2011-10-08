@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 21/28] ext4: Add checksums to the MMP block
-Date: Sat, 08 Oct 2011 00:56:02 -0700
-Message-ID: <20111008075602.20506.69371.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 25/28] jbd2: Checksum revocation blocks
+Date: Sat, 08 Oct 2011 00:56:29 -0700
+Message-ID: <20111008075629.20506.75766.stgit@elm3c44.beaverton.ibm.com>
 References: <20111008075343.20506.23155.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -24,124 +24,149 @@ In-Reply-To: <20111008075343.20506.23155.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Compute and verify a checksum for the MMP block.
+Compute and verify revoke blocks inside the journal.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/ext4/ext4.h |    6 +++++-
- fs/ext4/mmp.c  |   44 +++++++++++++++++++++++++++++++++++++++-----
- 2 files changed, 44 insertions(+), 6 deletions(-)
+ fs/jbd2/recovery.c   |   35 +++++++++++++++++++++++++++++++++--
+ fs/jbd2/revoke.c     |   27 ++++++++++++++++++++++++++-
+ include/linux/jbd2.h |    4 ++++
+ 3 files changed, 63 insertions(+), 3 deletions(-)
 
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 4325d1f..0df2dd1 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1743,7 +1743,8 @@ struct mmp_struct {
- 	__le16	mmp_check_interval;
+diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
+index 1cad869..4f4eda4 100644
+--- a/fs/jbd2/recovery.c
++++ b/fs/jbd2/recovery.c
+@@ -662,8 +662,17 @@ static int do_one_pass(journal_t *journal,
+ 			err = scan_revoke_records(journal, bh,
+ 						  next_commit_ID, info);
+ 			brelse(bh);
+-			if (err)
+-				goto failed;
++			if (err) {
++				if (err != -EINVAL)
++					goto failed;
++				/*
++				 * Ignoring corrupt revoke blocks is safe
++				 * because at worst it results in unnecessary
++				 * writes during recovery.
++				 */
++				jbd_debug(3, "Skipping corrupt revoke "
++					  "block.\n");
++			}
+ 			continue;
  
- 	__le16	mmp_pad1;
--	__le32	mmp_pad2[227];
-+	__le32	mmp_pad2[226];
-+	__le32	mmp_checksum;		/* crc32c(uuid+mmp_block) */
- };
+ 		default:
+@@ -703,6 +712,25 @@ static int do_one_pass(journal_t *journal,
+ 	return err;
+ }
  
- /* arguments passed to the mmp thread */
-@@ -2328,6 +2329,9 @@ extern int ext4_bio_write_page(struct ext4_io_submit *io,
- 
- /* mmp.c */
- extern int ext4_multi_mount_protect(struct super_block *, ext4_fsblk_t);
-+extern void ext4_mmp_csum_set(struct super_block *sb, struct mmp_struct *mmp);
-+extern int ext4_mmp_csum_verify(struct super_block *sb,
-+				struct mmp_struct *mmp);
- 
- /* BH_Uninit flag: blocks are allocated but uninitialized on disk */
- enum ext4_state_bits {
-diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
-index a7a4986..77415b2 100644
---- a/fs/ext4/mmp.c
-+++ b/fs/ext4/mmp.c
-@@ -6,12 +6,45 @@
- 
- #include "ext4.h"
- 
-+/* Checksumming functions */
-+static __u32 ext4_mmp_csum(struct super_block *sb, struct mmp_struct *mmp)
++static int jbd2_revoke_block_csum_verify(journal_t *j,
++					 void *buf)
 +{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	int offset = offsetof(struct mmp_struct, mmp_checksum);
-+	__u32 crc;
++	struct jbd2_journal_revoke_tail *tail;
++	__u32 provided, calculated;
 +
-+	crc = ext4_chksum(sbi, sbi->s_uuid_crc, (char *)mmp, offset);
-+
-+	return cpu_to_le32(crc);
-+}
-+
-+int ext4_mmp_csum_verify(struct super_block *sb, struct mmp_struct *mmp)
-+{
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
 +		return 1;
 +
-+	return mmp->mmp_checksum == ext4_mmp_csum(sb, mmp);
-+}
++	tail = (struct jbd2_journal_revoke_tail *)(buf + j->j_blocksize -
++			sizeof(struct jbd2_journal_revoke_tail));
++	provided = tail->r_checksum;
++	tail->r_checksum = 0;
++	calculated = jbd2_chksum(j, j->j_uuid_crc, buf, j->j_blocksize);
++	tail->r_checksum = provided;
 +
-+void ext4_mmp_csum_set(struct super_block *sb, struct mmp_struct *mmp)
++	provided = be32_to_cpu(provided);
++	return provided == calculated;
++}
+ 
+ /* Scan a revoke record, marking all blocks mentioned as revoked. */
+ 
+@@ -717,6 +745,9 @@ static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
+ 	offset = sizeof(jbd2_journal_revoke_header_t);
+ 	max = be32_to_cpu(header->r_count);
+ 
++	if (!jbd2_revoke_block_csum_verify(journal, header))
++		return -EINVAL;
++
+ 	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_64BIT))
+ 		record_len = 8;
+ 
+diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
+index 69fd935..e704d4a 100644
+--- a/fs/jbd2/revoke.c
++++ b/fs/jbd2/revoke.c
+@@ -548,6 +548,7 @@ static void write_one_revoke_record(journal_t *journal,
+ 				    struct jbd2_revoke_record_s *record,
+ 				    int write_op)
+ {
++	int csum_size = 0;
+ 	struct journal_head *descriptor;
+ 	int offset;
+ 	journal_header_t *header;
+@@ -562,9 +563,13 @@ static void write_one_revoke_record(journal_t *journal,
+ 	descriptor = *descriptorp;
+ 	offset = *offsetp;
+ 
++	/* Do we need to leave space at the end for a checksum? */
++	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2))
++		csum_size = sizeof(struct jbd2_journal_revoke_tail);
++
+ 	/* Make sure we have a descriptor with space left for the record */
+ 	if (descriptor) {
+-		if (offset == journal->j_blocksize) {
++		if (offset >= journal->j_blocksize - csum_size) {
+ 			flush_descriptor(journal, descriptor, offset, write_op);
+ 			descriptor = NULL;
+ 		}
+@@ -601,6 +606,24 @@ static void write_one_revoke_record(journal_t *journal,
+ 	*offsetp = offset;
+ }
+ 
++static void jbd2_revoke_csum_set(journal_t *j,
++				 struct journal_head *descriptor)
 +{
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	struct jbd2_journal_revoke_tail *tail;
++	__u32 crc;
++
++	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
 +		return;
 +
-+	mmp->mmp_checksum = ext4_mmp_csum(sb, mmp);
++	tail = (struct jbd2_journal_revoke_tail *)
++			(jh2bh(descriptor)->b_data + j->j_blocksize -
++			sizeof(struct jbd2_journal_revoke_tail));
++	tail->r_checksum = 0;
++	crc = jbd2_chksum(j, j->j_uuid_crc, jh2bh(descriptor)->b_data,
++			  j->j_blocksize);
++	tail->r_checksum = cpu_to_be32(crc);
 +}
 +
  /*
-  * Write the MMP block using WRITE_SYNC to try to get the block on-disk
-  * faster.
-  */
--static int write_mmp_block(struct buffer_head *bh)
-+static int write_mmp_block(struct super_block *sb, struct buffer_head *bh)
- {
-+	struct mmp_struct *mmp = (struct mmp_struct *)(bh->b_data);
+  * Flush a revoke descriptor out to the journal.  If we are aborting,
+  * this is a noop; otherwise we are generating a buffer which needs to
+@@ -622,6 +645,8 @@ static void flush_descriptor(journal_t *journal,
+ 
+ 	header = (jbd2_journal_revoke_header_t *) jh2bh(descriptor)->b_data;
+ 	header->r_count = cpu_to_be32(offset);
++	jbd2_revoke_csum_set(journal, descriptor);
 +
-+	ext4_mmp_csum_set(sb, mmp);
- 	mark_buffer_dirty(bh);
- 	lock_buffer(bh);
- 	bh->b_end_io = end_buffer_write_sync;
-@@ -59,7 +92,8 @@ static int read_mmp_block(struct super_block *sb, struct buffer_head **bh,
- 	}
+ 	set_buffer_jwrite(bh);
+ 	BUFFER_TRACE(bh, "write");
+ 	set_buffer_dirty(bh);
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index be44094..125d5be 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -194,6 +194,10 @@ typedef struct jbd2_journal_revoke_header_s
+ 	__be32		 r_count;	/* Count of bytes used in the block */
+ } jbd2_journal_revoke_header_t;
  
- 	mmp = (struct mmp_struct *)((*bh)->b_data);
--	if (le32_to_cpu(mmp->mmp_magic) != EXT4_MMP_MAGIC)
-+	if (le32_to_cpu(mmp->mmp_magic) != EXT4_MMP_MAGIC ||
-+	    !ext4_mmp_csum_verify(sb, mmp))
- 		return -EINVAL;
++/* Tail of revoke block, for checksumming */
++struct jbd2_journal_revoke_tail {
++	__be32		r_checksum;	/* crc32c(uuid+revoke_block) */
++};
  
- 	return 0;
-@@ -120,7 +154,7 @@ static int kmmpd(void *data)
- 		mmp->mmp_time = cpu_to_le64(get_seconds());
- 		last_update_time = jiffies;
- 
--		retval = write_mmp_block(bh);
-+		retval = write_mmp_block(sb, bh);
- 		/*
- 		 * Don't spew too many error messages. Print one every
- 		 * (s_mmp_update_interval * 60) seconds.
-@@ -199,7 +233,7 @@ static int kmmpd(void *data)
- 	mmp->mmp_seq = cpu_to_le32(EXT4_MMP_SEQ_CLEAN);
- 	mmp->mmp_time = cpu_to_le64(get_seconds());
- 
--	retval = write_mmp_block(bh);
-+	retval = write_mmp_block(sb, bh);
- 
- failed:
- 	kfree(data);
-@@ -298,7 +332,7 @@ skip:
- 	seq = mmp_new_seq();
- 	mmp->mmp_seq = cpu_to_le32(seq);
- 
--	retval = write_mmp_block(bh);
-+	retval = write_mmp_block(sb, bh);
- 	if (retval)
- 		goto failed;
- 
+ /* Definitions for the journal tag flags word: */
+ #define JBD2_FLAG_ESCAPE		1	/* on-disk block is escaped */
