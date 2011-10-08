@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 32/47] libext2fs: Use i_generation in inode-related metadata
-	checksums
-Date: Sat, 08 Oct 2011 00:36:40 -0700
-Message-ID: <20111008073640.17888.74853.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 44/47] e2fsck: Check revoke block checksum during recovery
+Date: Sat, 08 Oct 2011 00:37:57 -0700
+Message-ID: <20111008073757.17888.62465.stgit@elm3c44.beaverton.ibm.com>
 References: <20111008073315.17888.22132.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,199 +16,108 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:49959 "EHLO e6.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750991Ab1JHHje (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 8 Oct 2011 03:39:34 -0400
-Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
-	by e6.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p987CXBs024086
-	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 03:12:33 -0400
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p987ah111613840
-	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 03:36:43 -0400
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p987agOj011723
-	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 03:36:43 -0400
+Received: from e35.co.us.ibm.com ([32.97.110.153]:53476 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750991Ab1JHHjj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 8 Oct 2011 03:39:39 -0400
+Received: from /spool/local
+	by e35.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Sat, 8 Oct 2011 01:39:38 -0600
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p987c0W0094110
+	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 01:38:00 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p987bwMP020700
+	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 01:37:59 -0600
 In-Reply-To: <20111008073315.17888.22132.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Whenever we are calculating a checksum for a piece of metadata that is
-associated with an inode, incorporate i_generation into that calculation so
-that old metadata blocks cannot be re-associated after a delete/create cycle.
+Verify the revoke block checksum when recovering the journal.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- lib/ext2fs/csum.c  |   45 +++++++++++++++++++++++++++++++++++++--------
- lib/ext2fs/mkdir.c |    4 ++--
- 2 files changed, 39 insertions(+), 10 deletions(-)
+ e2fsck/recovery.c       |   37 +++++++++++++++++++++++++++++++++++--
+ lib/ext2fs/kernel-jbd.h |    4 ++++
+ 2 files changed, 39 insertions(+), 2 deletions(-)
 
 
-diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
-index d89fa37..e2c32f4 100644
---- a/lib/ext2fs/csum.c
-+++ b/lib/ext2fs/csum.c
-@@ -71,7 +71,8 @@ static errcode_t ext2fs_ext_attr_block_csum(ext2_filsys fs, ext2_ino_t inum,
- {
- 	errcode_t retval = 0;
- 	char *buf = (char *)hdr;
--	__u32 ncrc, old_crc = hdr->h_checksum;
-+	__u32 gen, ncrc, old_crc = hdr->h_checksum;
-+	struct ext2_inode inode;
+diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
+index b669941..8979193 100644
+--- a/e2fsck/recovery.c
++++ b/e2fsck/recovery.c
+@@ -674,8 +674,17 @@ static int do_one_pass(journal_t *journal,
+ 			err = scan_revoke_records(journal, bh,
+ 						  next_commit_ID, info);
+ 			brelse(bh);
+-			if (err)
+-				goto failed;
++			if (err) {
++				if (err != -EINVAL)
++					goto failed;
++				/*
++				 * Ignoring corrupt revoke blocks is safe
++				 * because at worst it results in unnecessary
++				 * writes during recovery.
++				 */
++				jbd_debug(3, "Skipping corrupt revoke "
++					  "block.\n");
++			}
+ 			continue;
  
- 	hdr->h_checksum = 0;
- #ifdef WORDS_BIGENDIAN
-@@ -88,14 +89,21 @@ static errcode_t ext2fs_ext_attr_block_csum(ext2_filsys fs, ext2_ino_t inum,
- 		ncrc = ext2fs_crc32c_le(ncrc, (unsigned char *)&block,
- 					sizeof(block));
- 	} else {
-+		retval = ext2fs_read_inode(fs, inum, &inode);
-+		if (retval)
-+			goto out;
- 		inum = ext2fs_cpu_to_le32(inum);
-+		gen = ext2fs_cpu_to_le32(inode.i_generation);
- 		ncrc = ext2fs_crc32c_le(ncrc, (unsigned char *)&inum,
- 					sizeof(inum));
-+		ncrc = ext2fs_crc32c_le(ncrc, (unsigned char *)&gen,
-+					sizeof(gen));
- 	}
- 	ncrc = ext2fs_crc32c_le(ncrc, (unsigned char *)buf, fs->blocksize);
- 	hdr->h_checksum = old_crc;
- 	*crc = ncrc;
- 
-+out:
- #ifdef WORDS_BIGENDIAN
- 	ext2fs_free_mem(&buf);
- #endif
-@@ -190,7 +198,8 @@ static errcode_t ext2fs_dirent_csum(ext2_filsys fs, ext2_ino_t inum,
- {
- 	errcode_t retval = 0;
- 	char *buf = (char *)dirent;
--	__u32 ncrc;
-+	__u32 ncrc, gen;
-+	struct ext2_inode inode;
- 
- #ifdef WORDS_BIGENDIAN
- 	retval = ext2fs_get_mem(fs->blocksize, &buf);
-@@ -202,15 +211,20 @@ static errcode_t ext2fs_dirent_csum(ext2_filsys fs, ext2_ino_t inum,
- 		goto out;
- #endif
- 
-+	retval = ext2fs_read_inode(fs, inum, &inode);
-+	if (retval)
-+		goto out;
- 	inum = ext2fs_cpu_to_le32(inum);
-+	gen = ext2fs_cpu_to_le32(inode.i_generation);
- 	ncrc = ext2fs_crc32c_le(~0, fs->super->s_uuid,
- 				sizeof(fs->super->s_uuid));
- 	ncrc = ext2fs_crc32c_le(ncrc, (unsigned char *)&inum, sizeof(inum));
-+	ncrc = ext2fs_crc32c_le(ncrc, (unsigned char *)&gen, sizeof(gen));
- 	ncrc = ext2fs_crc32c_le(ncrc, (unsigned char *)buf, size);
- 	*crc = ncrc;
- 
--#ifdef WORDS_BIGENDIAN
- out:
-+#ifdef WORDS_BIGENDIAN
- 	ext2fs_free_mem(&buf);
- #endif
- 
-@@ -270,7 +284,8 @@ static errcode_t ext2fs_dx_csum(ext2_filsys fs, ext2_ino_t inum,
- 	errcode_t retval = 0;
- 	char *buf = (char *)dirent;
- 	int size;
--	__u32 ncrc;
-+	__u32 ncrc, gen;
-+	struct ext2_inode inode;
- 
- 	size = count_offset + (count * sizeof(struct ext2_dx_entry));
- 
-@@ -289,15 +304,20 @@ static errcode_t ext2fs_dx_csum(ext2_filsys fs, ext2_ino_t inum,
- 		goto out;
- #endif
- 
-+	retval = ext2fs_read_inode(fs, inum, &inode);
-+	if (retval)
-+		goto out;
- 	inum = ext2fs_cpu_to_le32(inum);
-+	gen = ext2fs_cpu_to_le32(inode.i_generation);
- 	ncrc = ext2fs_crc32c_le(~0, fs->super->s_uuid,
- 				sizeof(fs->super->s_uuid));
- 	ncrc = ext2fs_crc32c_le(ncrc, (unsigned char *)&inum, sizeof(inum));
-+	ncrc = ext2fs_crc32c_le(ncrc, (unsigned char *)&gen, sizeof(gen));
- 	ncrc = ext2fs_crc32c_le(ncrc, (unsigned char *)buf, size);
- 	*crc = ncrc;
- 
--#ifdef WORDS_BIGENDIAN
- out:
-+#ifdef WORDS_BIGENDIAN
- 	ext2fs_free_mem(&buf);
- #endif
- 
-@@ -409,19 +429,26 @@ static errcode_t ext2fs_extent_block_csum(ext2_filsys fs, ext2_ino_t inum,
- 					  __u32 *crc)
- {
- 	int size;
--	__u32 ncrc;
--	errcode_t retval = 0;
-+	__u32 ncrc, gen;
-+	errcode_t retval;
-+	struct ext2_inode inode;
- 
- 	size = EXT3_EXTENT_TAIL_OFFSET(eh) + offsetof(struct ext3_extent_tail,
- 						      et_checksum);
- 
-+	retval = ext2fs_read_inode(fs, inum, &inode);
-+	if (retval)
-+		goto out;
- 	inum = ext2fs_cpu_to_le32(inum);
-+	gen = ext2fs_cpu_to_le32(inode.i_generation);
- 	ncrc = ext2fs_crc32c_le(~0, fs->super->s_uuid,
- 			       sizeof(fs->super->s_uuid));
- 	ncrc = ext2fs_crc32c_le(ncrc, (unsigned char *)&inum, sizeof(inum));
-+	ncrc = ext2fs_crc32c_le(ncrc, (unsigned char *)&gen, sizeof(gen));
- 	ncrc = ext2fs_crc32c_le(ncrc, (unsigned char *)eh, size);
- 	*crc = ncrc;
- 
-+out:
- 	return retval;
+ 		default:
+@@ -715,6 +724,27 @@ static int do_one_pass(journal_t *journal,
+ 	return err;
  }
  
-@@ -566,7 +593,7 @@ static errcode_t ext2fs_inode_csum(ext2_filsys fs, ext2_ino_t inum,
- 			       struct ext2_inode_large *inode,
- 			       __u32 *crc)
- {
--	__u32 ncrc;
-+	__u32 ncrc, gen;
- 	struct ext2_inode_large *desc = inode;
- 	size_t size = fs->super->s_inode_size;
- 	__u16 old_lo;
-@@ -594,9 +621,11 @@ static errcode_t ext2fs_inode_csum(ext2_filsys fs, ext2_ino_t inum,
- #endif
++static int jbd2_revoke_block_csum_verify(journal_t *j,
++					 void *buf)
++{
++	struct journal_revoke_tail *tail;
++	__u32 provided, calculated;
++
++	if (!JFS_HAS_INCOMPAT_FEATURE(j, JFS_FEATURE_INCOMPAT_CSUM_V2))
++		return 1;
++
++	tail = (struct journal_revoke_tail *)(buf + j->j_blocksize -
++			sizeof(struct journal_revoke_tail));
++	provided = tail->r_checksum;
++	tail->r_checksum = 0;
++	calculated = ext2fs_crc32c_le(~0, j->j_superblock->s_uuid,
++				      sizeof(j->j_superblock->s_uuid));
++	calculated = ext2fs_crc32c_le(calculated, buf, j->j_blocksize);
++	tail->r_checksum = provided;
++
++	provided = ext2fs_be32_to_cpu(provided);
++	return provided == calculated;
++}
  
- 	inum = ext2fs_cpu_to_le32(inum);
-+	gen = ext2fs_cpu_to_le32(inode->i_generation);
- 	ncrc = ext2fs_crc32c_le(~0, fs->super->s_uuid,
- 				sizeof(fs->super->s_uuid));
- 	ncrc = ext2fs_crc32c_le(ncrc, (unsigned char *)&inum, sizeof(inum));
-+	ncrc = ext2fs_crc32c_le(ncrc, (unsigned char *)&gen, sizeof(gen));
- 	ncrc = ext2fs_crc32c_le(ncrc, (unsigned char *)desc, size);
- 	*crc = ncrc;
+ /* Scan a revoke record, marking all blocks mentioned as revoked. */
  
-diff --git a/lib/ext2fs/mkdir.c b/lib/ext2fs/mkdir.c
-index 0d1b7b8..e4c7d05 100644
---- a/lib/ext2fs/mkdir.c
-+++ b/lib/ext2fs/mkdir.c
-@@ -95,10 +95,10 @@ errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
- 	/*
- 	 * Write out the inode and inode data block
- 	 */
--	retval = ext2fs_write_dir_block4(fs, blk, block, 0, ino);
-+	retval = ext2fs_write_new_inode(fs, ino, &inode);
- 	if (retval)
- 		goto cleanup;
--	retval = ext2fs_write_new_inode(fs, ino, &inode);
-+	retval = ext2fs_write_dir_block4(fs, blk, block, 0, ino);
- 	if (retval)
- 		goto cleanup;
+@@ -729,6 +759,9 @@ static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
+ 	offset = sizeof(journal_revoke_header_t);
+ 	max = be32_to_cpu(header->r_count);
  
++	if (!jbd2_revoke_block_csum_verify(journal, header))
++		return -EINVAL;
++
+ 	if (JFS_HAS_INCOMPAT_FEATURE(journal, JFS_FEATURE_INCOMPAT_64BIT))
+ 		record_len = 8;
+ 
+diff --git a/lib/ext2fs/kernel-jbd.h b/lib/ext2fs/kernel-jbd.h
+index 08479d3..187cb38 100644
+--- a/lib/ext2fs/kernel-jbd.h
++++ b/lib/ext2fs/kernel-jbd.h
+@@ -157,6 +157,10 @@ typedef struct journal_revoke_header_s
+ 	int		 r_count;	/* Count of bytes used in the block */
+ } journal_revoke_header_t;
+ 
++/* Tail of revoke block, for checksumming */
++struct journal_revoke_tail {
++	__u32		r_checksum;
++};
+ 
+ /* Definitions for the journal tag flags word: */
+ #define JFS_FLAG_ESCAPE		1	/* on-disk block is escaped */
 
