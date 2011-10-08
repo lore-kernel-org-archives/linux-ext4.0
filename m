@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 08/47] mke2fs: Allow metadata checksums to be turned on at
-	mkfs time
-Date: Sat, 08 Oct 2011 00:34:06 -0700
-Message-ID: <20111008073406.17888.55144.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 06/47] tune2fs: Add inode checksum support
+Date: Sat, 08 Oct 2011 00:33:53 -0700
+Message-ID: <20111008073353.17888.76373.stgit@elm3c44.beaverton.ibm.com>
 References: <20111008073315.17888.22132.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,84 +16,198 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e7.ny.us.ibm.com ([32.97.182.137]:48780 "EHLO e7.ny.us.ibm.com"
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:40639 "EHLO e3.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751387Ab1JHHg2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 8 Oct 2011 03:36:28 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e7.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p986F541013123
-	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 02:15:05 -0400
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p987Y9XQ477102
-	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 03:34:09 -0400
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p987Y7iK005825
-	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 03:34:09 -0400
+	id S1751132Ab1JHHgb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 8 Oct 2011 03:36:31 -0400
+Received: from /spool/local
+	by us.ibm.com with XMail ESMTP
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Sat, 8 Oct 2011 03:36:30 -0400
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p987XuIl210716
+	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 03:33:56 -0400
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p987XsQ1002074
+	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 04:33:56 -0300
 In-Reply-To: <20111008073315.17888.22132.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Write out checksummed inodes even when writing out a zeroed table.
+This patch adds to tune2fs the ability to toggle the metadata checksum rocompat
+feature flag, which will rewrite the inode table with checksums.  Disallow
+changing the UUID while the fs is mounted, because rewriting the metadata
+objects is racy.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- misc/mke2fs.c |   30 +++++++++++++++++++++++++++++-
- 1 files changed, 29 insertions(+), 1 deletions(-)
+ misc/tune2fs.c |  104 +++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 102 insertions(+), 2 deletions(-)
 
 
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 244e0c8..6e9f399 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -304,6 +304,27 @@ _("Warning: the backup superblock/group descriptors at block %u contain\n"
- 	ext2fs_badblocks_list_iterate_end(bb_iter);
- }
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 36368fb..92d17e9 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -91,6 +91,7 @@ static char *extended_cmd;
+ static unsigned long new_inode_size;
+ static char *ext_mount_opts;
+ static int usrquota, grpquota;
++static int rewrite_checksums;
  
-+static void write_reserved_inodes(ext2_filsys fs)
-+{
-+	errcode_t	retval;
-+	ext2_ino_t	ino;
-+	struct ext2_inode *inode;
-+
-+	retval = ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
-+	if (retval) {
-+		com_err("inode_init", retval,
-+			"while allocating memory");
-+		exit(1);
-+	}
-+	bzero(inode, EXT2_INODE_SIZE(fs->super));
-+
-+	for (ino = 1; ino < EXT2_FIRST_INO(fs->super); ino++)
-+		ext2fs_write_inode_full(fs, ino, inode,
-+					EXT2_INODE_SIZE(fs->super));
-+
-+	ext2fs_free_mem(&inode);
-+}
-+
- static void write_inode_tables(ext2_filsys fs, int lazy_flag, int itable_zeroed)
- {
- 	errcode_t	retval;
-@@ -349,6 +370,12 @@ static void write_inode_tables(ext2_filsys fs, int lazy_flag, int itable_zeroed)
- 	ext2fs_zero_blocks2(0, 0, 0, 0, 0);
- 	ext2fs_numeric_progress_close(fs, &progress,
- 				      _("done                            \n"));
-+
-+	/* Reserved inodes must always have correct checksums */
-+	if (fs->super->s_creator_os == EXT2_OS_LINUX &&
-+	    fs->super->s_feature_ro_compat &
-+	    EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)
-+		write_reserved_inodes(fs);
- }
- 
- static void create_root_dir(ext2_filsys fs)
-@@ -847,7 +874,8 @@ static __u32 ok_features[3] = {
- 		EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|
- 		EXT4_FEATURE_RO_COMPAT_GDT_CSUM|
- 		EXT4_FEATURE_RO_COMPAT_BIGALLOC|
+ int journal_size, journal_flags;
+ char *journal_device;
+@@ -142,7 +143,8 @@ static __u32 ok_features[3] = {
+ 		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
+ 		EXT4_FEATURE_RO_COMPAT_GDT_CSUM |
+ 		EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER |
 -		EXT4_FEATURE_RO_COMPAT_QUOTA
-+		EXT4_FEATURE_RO_COMPAT_QUOTA|
++		EXT4_FEATURE_RO_COMPAT_QUOTA |
 +		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM
  };
  
+ static __u32 clear_ok_features[3] = {
+@@ -160,7 +162,8 @@ static __u32 clear_ok_features[3] = {
+ 		EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
+ 		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
+ 		EXT4_FEATURE_RO_COMPAT_GDT_CSUM |
+-		EXT4_FEATURE_RO_COMPAT_QUOTA
++		EXT4_FEATURE_RO_COMPAT_QUOTA |
++		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM
+ };
  
+ /*
+@@ -351,6 +354,16 @@ static int update_mntopts(ext2_filsys fs, char *mntopts)
+ 	return 0;
+ }
+ 
++static int check_fsck_needed(ext2_filsys fs)
++{
++	if (fs->super->s_state & EXT2_VALID_FS)
++		return 0;
++	printf("\n%s\n", _(please_fsck));
++	if (mount_flags & EXT2_MF_READONLY)
++		printf(_("(and reboot afterwards!)\n"));
++	return 1;
++}
++
+ static void request_fsck_afterwards(ext2_filsys fs)
+ {
+ 	static int requested = 0;
+@@ -364,6 +377,59 @@ static void request_fsck_afterwards(ext2_filsys fs)
+ }
+ 
+ /*
++ * Forcibly set checksums in all inodes.
++ */
++static void rewrite_inodes(ext2_filsys fs)
++{
++	int length = EXT2_INODE_SIZE(fs->super);
++	struct ext2_inode *inode;
++	ext2_inode_scan	scan;
++	errcode_t	retval;
++	ext2_ino_t	ino;
++
++	if (fs->super->s_creator_os != EXT2_OS_LINUX)
++		return;
++
++	retval = ext2fs_open_inode_scan(fs, 0, &scan);
++	if (retval) {
++		com_err("set_csum", retval, "while opening inode scan");
++		exit(1);
++	}
++
++	retval = ext2fs_get_mem(length, &inode);
++	if (retval) {
++		com_err("set_csum", retval, "while allocating memory");
++		exit(1);
++	}
++
++	do {
++		retval = ext2fs_get_next_inode_full(scan, &ino, inode, length);
++		if (retval) {
++			com_err("set_csum", retval, "while getting next inode");
++			exit(1);
++		}
++		if (!ino)
++			break;
++
++		retval = ext2fs_write_inode_full(fs, ino, inode, length);
++		if (retval) {
++			com_err("set_csum", retval, "while writing inode");
++			exit(1);
++		}
++	} while (ino);
++
++	ext2fs_free_mem(&inode);
++	ext2fs_close_inode_scan(scan);
++}
++
++static void rewrite_metadata_checksums(ext2_filsys fs)
++{
++	fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
++	rewrite_inodes(fs);
++	fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
++}
++
++/*
+  * Update the feature set as provided by the user.
+  */
+ static int update_feature_set(ext2_filsys fs, char *features)
+@@ -536,6 +602,20 @@ mmp_error:
+ 	}
+ 
+ 	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
++		       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
++		if (check_fsck_needed(fs))
++			exit(1);
++		rewrite_checksums = 1;
++	}
++
++	if (FEATURE_OFF(E2P_FEATURE_RO_INCOMPAT,
++			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
++		if (check_fsck_needed(fs))
++			exit(1);
++		rewrite_checksums = 1;
++	}
++
++	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
+ 		       EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
+ 		for (i = 0; i < fs->group_desc_count; i++) {
+ 			gd = ext2fs_group_desc(fs, fs->group_desc, i);
+@@ -2112,6 +2192,23 @@ retry_open:
+ 		int set_csum = 0;
+ 		dgrp_t i;
+ 
++		if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
++			/*
++			 * Changing the UUID requires rewriting all metadata,
++			 * which can race with a mounted fs.  Don't allow that.
++			 */
++			if (mount_flags & EXT2_MF_MOUNTED) {
++				fputs(_("The UUID may only be "
++					"changed when the filesystem is "
++					"unmounted.\n"), stderr);
++				exit(1);
++			}
++
++			if (check_fsck_needed(fs))
++				exit(1);
++		}
++
+ 		if (sb->s_feature_ro_compat &
+ 		    EXT4_FEATURE_RO_COMPAT_GDT_CSUM) {
+ 			/*
+@@ -2143,7 +2240,10 @@ retry_open:
+ 			fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
+ 		}
+ 		ext2fs_mark_super_dirty(fs);
++		rewrite_checksums = 1;
+ 	}
++	if (rewrite_checksums)
++		rewrite_metadata_checksums(fs);
+ 	if (I_flag) {
+ 		if (mount_flags & EXT2_MF_MOUNTED) {
+ 			fputs(_("The inode size may only be "
 
