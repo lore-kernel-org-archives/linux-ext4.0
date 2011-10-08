@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 24/28] jbd2: Update structure definitions and flags to support
-	extended checksumming
-Date: Sat, 08 Oct 2011 00:56:22 -0700
-Message-ID: <20111008075622.20506.23191.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 10/28] ext4: Calculate and verify superblock checksum
+Date: Sat, 08 Oct 2011 00:54:49 -0700
+Message-ID: <20111008075449.20506.10158.stgit@elm3c44.beaverton.ibm.com>
 References: <20111008075343.20506.23155.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -20,122 +19,256 @@ Cc: Sunil Mushran <sunil.mushran@oracle.com>,
 To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e7.ny.us.ibm.com ([32.97.182.137]:52039 "EHLO e7.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754713Ab1JHH7R (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 8 Oct 2011 03:59:17 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <20111008075343.20506.23155.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Add structure definitions, flags, and constants to extend checksum protection
-to all journal blocks.
+Calculate and verify the superblock checksum.  Since the UUID and block group
+number are embedded in each copy of the superblock, we need only checksum the
+entire block.  Refactor some of the code to eliminate open-coding of the
+checksum update call.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/jbd2/journal.c    |   37 +++++++++++++++++++++++++++++++++++++
- include/linux/jbd2.h |    5 ++++-
- 2 files changed, 41 insertions(+), 1 deletions(-)
+ fs/ext4/ext4.h      |   11 ++++++++++-
+ fs/ext4/ext4_jbd2.c |    9 ++++++++-
+ fs/ext4/ext4_jbd2.h |    7 +++++--
+ fs/ext4/inode.c     |    3 +--
+ fs/ext4/namei.c     |    4 ++--
+ fs/ext4/resize.c    |    6 +++++-
+ fs/ext4/super.c     |   47 +++++++++++++++++++++++++++++++++++++++++++++++
+ 7 files changed, 78 insertions(+), 9 deletions(-)
 
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 5c76a8b..d494c14 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -109,6 +109,34 @@ int jbd2_verify_csum_type(journal_t *j, journal_superblock_t *sb)
- 	return sb->s_checksum_type == JBD2_CRC32C_CHKSUM;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 9012911..c99e44c 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1070,7 +1070,9 @@ struct ext4_super_block {
+ 	__u8	s_last_error_func[32];	/* function where the error happened */
+ #define EXT4_S_ERR_END offsetof(struct ext4_super_block, s_mount_opts)
+ 	__u8	s_mount_opts[64];
+-	__le32	s_reserved[112];        /* Padding to the end of the block */
++	__u32	s_reserved1[3];		/* Padding */
++	__le32	s_reserved2[108];       /* Padding to the end of the block */
++	__le32	s_checksum;		/* crc32c(superblock) */
+ };
+ 
+ #define EXT4_S_ERR_LEN (EXT4_S_ERR_END - EXT4_S_ERR_START)
+@@ -1906,6 +1908,10 @@ extern int ext4_group_extend(struct super_block *sb,
+ 				ext4_fsblk_t n_blocks_count);
+ 
+ /* super.c */
++extern int ext4_superblock_csum_verify(struct super_block *sb,
++				       struct ext4_super_block *es);
++extern void ext4_superblock_csum_set(struct super_block *sb,
++				     struct ext4_super_block *es);
+ extern void *ext4_kvmalloc(size_t size, gfp_t flags);
+ extern void *ext4_kvzalloc(size_t size, gfp_t flags);
+ extern void ext4_kvfree(void *ptr);
+@@ -2180,6 +2186,9 @@ static inline void ext4_unlock_group(struct super_block *sb,
+ 
+ static inline void ext4_mark_super_dirty(struct super_block *sb)
+ {
++	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
++
++	ext4_superblock_csum_set(sb, es);
+ 	if (EXT4_SB(sb)->s_journal == NULL)
+ 		sb->s_dirt =1;
+ }
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index f5240aa..04ddc97 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -136,16 +136,23 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
  }
  
-+static __u32 jbd2_superblock_csum(journal_t *j, journal_superblock_t *sb)
+ int __ext4_handle_dirty_super(const char *where, unsigned int line,
+-			      handle_t *handle, struct super_block *sb)
++			      handle_t *handle, struct super_block *sb,
++			      int now)
+ {
+ 	struct buffer_head *bh = EXT4_SB(sb)->s_sbh;
+ 	int err = 0;
+ 
+ 	if (ext4_handle_valid(handle)) {
++		ext4_superblock_csum_set(sb,
++				(struct ext4_super_block *)bh->b_data);
+ 		err = jbd2_journal_dirty_metadata(handle, bh);
+ 		if (err)
+ 			ext4_journal_abort_handle(where, line, __func__,
+ 						  bh, handle, err);
++	} else if (now) {
++		ext4_superblock_csum_set(sb,
++				(struct ext4_super_block *)bh->b_data);
++		mark_buffer_dirty(bh);
+ 	} else
+ 		sb->s_dirt = 1;
+ 	return err;
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 5802fa1..ed9b78d 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -141,7 +141,8 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+ 				 struct buffer_head *bh);
+ 
+ int __ext4_handle_dirty_super(const char *where, unsigned int line,
+-			      handle_t *handle, struct super_block *sb);
++			      handle_t *handle, struct super_block *sb,
++			      int now);
+ 
+ #define ext4_journal_get_write_access(handle, bh) \
+ 	__ext4_journal_get_write_access(__func__, __LINE__, (handle), (bh))
+@@ -153,8 +154,10 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
+ #define ext4_handle_dirty_metadata(handle, inode, bh) \
+ 	__ext4_handle_dirty_metadata(__func__, __LINE__, (handle), (inode), \
+ 				     (bh))
++#define ext4_handle_dirty_super_now(handle, sb) \
++	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb), 1)
+ #define ext4_handle_dirty_super(handle, sb) \
+-	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb))
++	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb), 0)
+ 
+ handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks);
+ int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 986e238..6e64e0b 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3700,8 +3700,7 @@ static int ext4_do_update_inode(handle_t *handle,
+ 					EXT4_FEATURE_RO_COMPAT_LARGE_FILE);
+ 			sb->s_dirt = 1;
+ 			ext4_handle_sync(handle);
+-			err = ext4_handle_dirty_metadata(handle, NULL,
+-					EXT4_SB(sb)->s_sbh);
++			err = ext4_handle_dirty_super_now(handle, sb);
+ 		}
+ 	}
+ 	raw_inode->i_generation = cpu_to_le32(inode->i_generation);
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 50c7294..d0158f2 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2014,7 +2014,7 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
+ 	/* Insert this inode at the head of the on-disk orphan list... */
+ 	NEXT_ORPHAN(inode) = le32_to_cpu(EXT4_SB(sb)->s_es->s_last_orphan);
+ 	EXT4_SB(sb)->s_es->s_last_orphan = cpu_to_le32(inode->i_ino);
+-	err = ext4_handle_dirty_metadata(handle, NULL, EXT4_SB(sb)->s_sbh);
++	err = ext4_handle_dirty_super_now(handle, sb);
+ 	rc = ext4_mark_iloc_dirty(handle, inode, &iloc);
+ 	if (!err)
+ 		err = rc;
+@@ -2087,7 +2087,7 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
+ 		if (err)
+ 			goto out_brelse;
+ 		sbi->s_es->s_last_orphan = cpu_to_le32(ino_next);
+-		err = ext4_handle_dirty_metadata(handle, NULL, sbi->s_sbh);
++		err = ext4_handle_dirty_super_now(handle, inode->i_sb);
+ 	} else {
+ 		struct ext4_iloc iloc2;
+ 		struct inode *i_prev =
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 707d3f1..2ad7008 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -511,7 +511,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 	ext4_kvfree(o_group_desc);
+ 
+ 	le16_add_cpu(&es->s_reserved_gdt_blocks, -1);
+-	err = ext4_handle_dirty_metadata(handle, NULL, EXT4_SB(sb)->s_sbh);
++	err = ext4_handle_dirty_super_now(handle, sb);
+ 	if (err)
+ 		ext4_std_error(sb, err);
+ 
+@@ -682,6 +682,8 @@ static void update_backups(struct super_block *sb,
+ 		goto exit_err;
+ 	}
+ 
++	ext4_superblock_csum_set(sb, (struct ext4_super_block *)data);
++
+ 	while ((group = ext4_list_backups(sb, &three, &five, &seven)) < last) {
+ 		struct buffer_head *bh;
+ 
+@@ -925,6 +927,8 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 	/* Update the global fs size fields */
+ 	sbi->s_groups_count++;
+ 
++	ext4_superblock_csum_set(sb,
++				 (struct ext4_super_block *)primary->b_data);
+ 	err = ext4_handle_dirty_metadata(handle, NULL, primary);
+ 	if (unlikely(err)) {
+ 		ext4_std_error(sb, err);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index f02de28..58157ec 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -120,6 +120,38 @@ static int ext4_verify_csum_type(struct super_block *sb,
+ 	return es->s_checksum_type == EXT4_CRC32C_CHKSUM;
+ }
+ 
++static __le32 ext4_superblock_csum(struct super_block *sb,
++				   struct ext4_super_block *es)
 +{
-+	__u32 crc, old_crc;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	int offset = offsetof(struct ext4_super_block, s_checksum);
++	__u32 crc;
 +
-+	old_crc = sb->s_checksum;
-+	sb->s_checksum = 0;
-+	crc = jbd2_chksum(j, ~0, (char *)sb, sizeof(journal_superblock_t));
-+	sb->s_checksum = old_crc;
++	crc = ext4_chksum(sbi, ~0, (char *)es, offset);
 +
-+	return cpu_to_be32(crc);
++	return cpu_to_le32(crc);
 +}
 +
-+int jbd2_superblock_csum_verify(journal_t *j, journal_superblock_t *sb)
++int ext4_superblock_csum_verify(struct super_block *sb,
++				struct ext4_super_block *es)
 +{
-+	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
++				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
 +		return 1;
 +
-+	return sb->s_checksum == jbd2_superblock_csum(j, sb);
++	return es->s_checksum == ext4_superblock_csum(sb, es);
 +}
 +
-+void jbd2_superblock_csum_set(journal_t *j, journal_superblock_t *sb)
++void ext4_superblock_csum_set(struct super_block *sb,
++			      struct ext4_super_block *es)
 +{
-+	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
++		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
 +		return;
 +
-+	sb->s_checksum = jbd2_superblock_csum(j, sb);
++	es->s_checksum = ext4_superblock_csum(sb, es);
 +}
 +
- /*
-  * Helper function used to manage commit timeouts
-  */
-@@ -1178,6 +1206,7 @@ void jbd2_journal_update_superblock(journal_t *journal, int wait)
- 	sb->s_sequence = cpu_to_be32(journal->j_tail_sequence);
- 	sb->s_start    = cpu_to_be32(journal->j_tail);
- 	sb->s_errno    = cpu_to_be32(journal->j_errno);
-+	jbd2_superblock_csum_set(journal, sb);
- 	read_unlock(&journal->j_state_lock);
- 
- 	BUFFER_TRACE(bh, "marking dirty");
-@@ -1286,6 +1315,11 @@ static int journal_get_superblock(journal_t *journal)
+ void *ext4_kvmalloc(size_t size, gfp_t flags)
+ {
+ 	void *ret;
+@@ -3184,6 +3216,20 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
  		}
  	}
  
-+	if (!jbd2_superblock_csum_verify(journal, sb)) {
-+		printk(KERN_ERR "JBD: journal checksum error\n");
-+		goto out;
++	/* Check superblock checksum */
++	if (!ext4_superblock_csum_verify(sb, es)) {
++		ext4_msg(sb, KERN_ERR, "VFS: Found ext4 filesystem with "
++			 "invalid superblock checksum.  Run e2fsck?");
++		silent = 1;
++		goto cantfind_ext4;
 +	}
 +
- 	set_buffer_verified(bh);
- 
- 	return 0;
-@@ -1580,6 +1614,7 @@ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
- 	sb->s_feature_compat    |= cpu_to_be32(compat);
- 	sb->s_feature_ro_compat |= cpu_to_be32(ro);
- 	sb->s_feature_incompat  |= cpu_to_be32(incompat);
-+	jbd2_journal_update_superblock(journal, 0);
- 
- 	return 1;
- #undef COMPAT_FEATURE_ON
-@@ -1610,6 +1645,7 @@ void jbd2_journal_clear_features(journal_t *journal, unsigned long compat,
- 	sb->s_feature_compat    &= ~cpu_to_be32(compat);
- 	sb->s_feature_ro_compat &= ~cpu_to_be32(ro);
- 	sb->s_feature_incompat  &= ~cpu_to_be32(incompat);
-+	jbd2_journal_update_superblock(journal, 0);
- }
- EXPORT_SYMBOL(jbd2_journal_clear_features);
- 
-@@ -1658,6 +1694,7 @@ static int journal_convert_superblock_v1(journal_t *journal,
- 
- 	sb->s_nr_users = cpu_to_be32(1);
- 	sb->s_header.h_blocktype = cpu_to_be32(JBD2_SUPERBLOCK_V2);
-+	jbd2_superblock_csum_set(journal, sb);
- 	journal->j_format_version = 2;
- 
- 	bh = journal->j_sb_buffer;
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 53df865..be44094 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -243,7 +243,10 @@ typedef struct journal_superblock_s
- 	__be32	s_max_trans_data;	/* Limit of data blocks per trans. */
- 
- /* 0x0050 */
--	__u32	s_padding[44];
-+	__u8	s_checksum_type;	/* checksum type */
-+	__u8	s_padding2[3];
-+	__u32	s_padding[42];
-+	__be32	s_checksum;		/* crc32c(superblock) */
- 
- /* 0x0100 */
- 	__u8	s_users[16*48];		/* ids of all fs'es sharing the log */
++	/* Precompute first piece of crc */
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
++			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		sbi->s_uuid_crc = ext4_chksum(sbi, ~0, es->s_uuid,
++					      sizeof(es->s_uuid));
++
+ 	/* Set defaults before we parse the mount options */
+ 	def_mount_opts = le32_to_cpu(es->s_default_mount_opts);
+ 	set_opt(sb, INIT_INODE_TABLE);
+@@ -4140,6 +4186,7 @@ static int ext4_commit_super(struct super_block *sb, int sync)
+ 				&EXT4_SB(sb)->s_freeinodes_counter));
+ 	sb->s_dirt = 0;
+ 	BUFFER_TRACE(sbh, "marking dirty");
++	ext4_superblock_csum_set(sb, es);
+ 	mark_buffer_dirty(sbh);
+ 	if (sync) {
+ 		error = sync_dirty_buffer(sbh);
 
