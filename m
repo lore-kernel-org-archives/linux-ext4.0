@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 47/47] e2fsck: Verify data block checksums when recovering
-	journal
-Date: Sat, 08 Oct 2011 00:38:16 -0700
-Message-ID: <20111008073816.17888.16691.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 41/47] tune2fs: Force MMP update when changing metadata_csum
+	flag
+Date: Sat, 08 Oct 2011 00:37:38 -0700
+Message-ID: <20111008073738.17888.8507.stgit@elm3c44.beaverton.ibm.com>
 References: <20111008073315.17888.22132.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,152 +17,42 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:51378 "EHLO e9.ny.us.ibm.com"
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:34511 "EHLO e4.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752197Ab1JHHkb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 8 Oct 2011 03:40:31 -0400
-Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
-	by e9.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p9872PDB005248
-	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 03:02:25 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p987cJ9L228382
-	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 03:38:19 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p987cI5W028720
-	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 04:38:19 -0300
+	id S1752197Ab1JHHk3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 8 Oct 2011 03:40:29 -0400
+Received: from /spool/local
+	by e4.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Sat, 8 Oct 2011 03:40:28 -0400
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p987bfjQ228994
+	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 03:37:41 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p987besC020512
+	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 03:37:41 -0400
 In-Reply-To: <20111008073315.17888.22132.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Check the data block checksums when recovering the journal.
+When changing the metadata_csum flag, always force out a new MMP block.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- e2fsck/jfs_user.h       |   11 -----------
- e2fsck/recovery.c       |   32 ++++++++++++++++++++++++++++++++
- lib/ext2fs/kernel-jbd.h |   31 +++++++++++++++++++++++++++++++
- 3 files changed, 63 insertions(+), 11 deletions(-)
+ misc/tune2fs.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
 
-diff --git a/e2fsck/jfs_user.h b/e2fsck/jfs_user.h
-index 9e33306..4baba54 100644
---- a/e2fsck/jfs_user.h
-+++ b/e2fsck/jfs_user.h
-@@ -104,17 +104,6 @@ _INLINE_ void do_cache_destroy(lkmem_cache_t *cache)
- 	free(cache);
- }
- 
--/*
-- * helper functions to deal with 32 or 64bit block numbers.
-- */
--_INLINE_ size_t journal_tag_bytes(journal_t *journal)
--{
--	if (JFS_HAS_INCOMPAT_FEATURE(journal, JFS_FEATURE_INCOMPAT_64BIT))
--		return JBD_TAG_SIZE64;
--	else
--		return JBD_TAG_SIZE32;
--}
--
- #undef _INLINE_
- #endif
- 
-diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
-index beafacc..5cda381 100644
---- a/e2fsck/recovery.c
-+++ b/e2fsck/recovery.c
-@@ -395,6 +395,25 @@ static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
- 	return provided == calculated;
- }
- 
-+static int jbd2_block_tag_csum_verify(journal_t *j, journal_block_tag_t *tag,
-+				      void *buf, __u32 sequence)
-+{
-+	__u32 provided, calculated;
-+
-+	if (!JFS_HAS_INCOMPAT_FEATURE(j, JFS_FEATURE_INCOMPAT_CSUM_V2))
-+		return 1;
-+
-+	sequence = ext2fs_cpu_to_be32(sequence);
-+	calculated = ext2fs_crc32c_le(~0, j->j_superblock->s_uuid,
-+				      sizeof(j->j_superblock->s_uuid));
-+	calculated = ext2fs_crc32c_le(calculated, (__u8 *)&sequence,
-+				      sizeof(sequence));
-+	calculated = ext2fs_crc32c_le(calculated, buf, j->j_blocksize);
-+	provided = ext2fs_be32_to_cpu(tag->t_checksum);
-+
-+	return provided == ext2fs_cpu_to_be32(calculated);
-+}
-+
- static int do_one_pass(journal_t *journal,
- 			struct recovery_info *info, enum passtype pass)
- {
-@@ -575,6 +594,19 @@ static int do_one_pass(journal_t *journal,
- 						goto skip_write;
- 					}
- 
-+					/* Look for block corruption */
-+					if (!jbd2_block_tag_csum_verify(
-+						journal, tag, obh->b_data,
-+						be32_to_cpu(tmp->h_sequence))) {
-+						brelse(obh);
-+						success = -EIO;
-+						printk(KERN_ERR "JBD: Invalid "
-+						       "checksum recovering "
-+						       "block %ld in log\n",
-+						       blocknr);
-+						continue;
-+					}
-+
- 					/* Find a buffer for the new
- 					 * data being restored */
- 					nbh = __getblk(journal->j_fs_dev,
-diff --git a/lib/ext2fs/kernel-jbd.h b/lib/ext2fs/kernel-jbd.h
-index c650582..a86150c 100644
---- a/lib/ext2fs/kernel-jbd.h
-+++ b/lib/ext2fs/kernel-jbd.h
-@@ -153,6 +153,7 @@ typedef struct journal_block_tag_s
- 	__u32		t_blocknr;	/* The on-disk block number */
- 	__u32		t_flags;	/* See below */
- 	__u32		t_blocknr_high; /* most-significant high 32bits. */
-+	__u32		t_checksum;	/* crc32c(uuid+seq+block) */
- } journal_block_tag_t;
- 
- #define JBD_TAG_SIZE64 (sizeof(journal_block_tag_t))
-@@ -261,6 +262,36 @@ typedef struct journal_superblock_s
- 					 JFS_FEATURE_INCOMPAT_64BIT|\
- 					 JFS_FEATURE_INCOMPAT_CSUM_V2)
- 
-+#if (defined(E2FSCK_INCLUDE_INLINE_FUNCS) || !defined(NO_INLINE_FUNCS))
-+#ifdef E2FSCK_INCLUDE_INLINE_FUNCS
-+#define _INLINE_ extern
-+#else
-+#ifdef __GNUC__
-+#define _INLINE_ extern __inline__
-+#else				/* For Watcom C */
-+#define _INLINE_ extern inline
-+#endif
-+#endif
-+
-+/*
-+ * helper functions to deal with 32 or 64bit block numbers.
-+ */
-+_INLINE_ size_t journal_tag_bytes(journal_t *journal)
-+{
-+	journal_block_tag_t tag;
-+	size_t x = 0;
-+
-+	if (JFS_HAS_INCOMPAT_FEATURE(journal, JFS_FEATURE_INCOMPAT_CSUM_V2))
-+		x += sizeof(tag.t_checksum);
-+
-+	if (JFS_HAS_INCOMPAT_FEATURE(journal, JFS_FEATURE_INCOMPAT_64BIT))
-+		return x + JBD_TAG_SIZE64;
-+	else
-+		return x + JBD_TAG_SIZE32;
-+}
-+#undef _INLINE_
-+#endif
-+
- #ifdef __KERNEL__
- 
- #include <linux/fs.h>
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 4f02905..ad7ed95 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -705,6 +705,7 @@ static void rewrite_metadata_checksums(ext2_filsys fs)
+ 	ext2fs_read_bitmaps(fs);
+ 	ext2fs_mark_ib_dirty(fs);
+ 	ext2fs_mark_bb_dirty(fs);
++	ext2fs_mmp_update2(fs, 1);
+ 	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
+ 	fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
+ 	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
 
