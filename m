@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 33/47] libext2fs: Record the checksum algorithm in use in the
-	superblock
-Date: Sat, 08 Oct 2011 00:36:47 -0700
-Message-ID: <20111008073647.17888.17591.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 37/47] tune2fs: Rewrite block group checksums when changing
+	bg_use_meta_csum feature
+Date: Sat, 08 Oct 2011 00:37:12 -0700
+Message-ID: <20111008073712.17888.20983.stgit@elm3c44.beaverton.ibm.com>
 References: <20111008073315.17888.22132.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,173 +17,134 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:49900 "EHLO e6.ny.us.ibm.com"
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:49662 "EHLO e1.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750991Ab1JHHjP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 8 Oct 2011 03:39:15 -0400
-Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
-	by e6.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p987CesG024147
-	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 03:12:40 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p987aoUr239092
-	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 03:36:50 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p987amxn019089
-	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 03:36:50 -0400
+	id S1750991Ab1JHHjR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 8 Oct 2011 03:39:17 -0400
+Received: from /spool/local
+	by us.ibm.com with XMail ESMTP
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Sat, 8 Oct 2011 03:39:16 -0400
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p987bFAS267340
+	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 03:37:15 -0400
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p987bD7B011690
+	for <linux-ext4@vger.kernel.org>; Sat, 8 Oct 2011 01:37:15 -0600
 In-Reply-To: <20111008073315.17888.22132.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Record the type of checksum algorithm we're using for metadata in the
-superblock, in case we ever want/need to change the algorithm.
+When toggling the bg_use_meta_csum feature, we should rewrite the block groups
+with the desired checksum.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- debugfs/set_fields.c      |    1 +
- lib/e2p/ls.c              |   15 ++++++++++++++-
- lib/ext2fs/csum.c         |    9 +++++++++
- lib/ext2fs/ext2_err.et.in |    3 +++
- lib/ext2fs/ext2_fs.h      |    5 ++++-
- lib/ext2fs/ext2fs.h       |    1 +
- lib/ext2fs/openfs.c       |   12 ++++++++----
- 7 files changed, 40 insertions(+), 6 deletions(-)
+ misc/tune2fs.c |   49 +++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 files changed, 47 insertions(+), 2 deletions(-)
 
 
-diff --git a/debugfs/set_fields.c b/debugfs/set_fields.c
-index d461275..0103497 100644
---- a/debugfs/set_fields.c
-+++ b/debugfs/set_fields.c
-@@ -148,6 +148,7 @@ static struct field_set_info super_fields[] = {
- 	{ "grp_quota_inum", &set_sb.s_grp_quota_inum, NULL, 4, parse_uint },
- 	{ "overhead_blocks", &set_sb.s_overhead_blocks, NULL, 4, parse_uint },
- 	{ "checksum", &set_sb.s_checksum, NULL, 4, parse_uint },
-+	{ "checksum_type", &set_sb.s_checksum_type, NULL, 1, parse_uint },
- 	{ 0, 0, 0, 0 }
- };
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 708bc20..4f02905 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -92,6 +92,7 @@ static unsigned long new_inode_size;
+ static char *ext_mount_opts;
+ static int usrquota, grpquota;
+ static int rewrite_checksums;
++static int rewrite_bgs_for_checksum;
  
-diff --git a/lib/e2p/ls.c b/lib/e2p/ls.c
-index f05e16d..d2e84eb 100644
---- a/lib/e2p/ls.c
-+++ b/lib/e2p/ls.c
-@@ -196,6 +196,16 @@ static __u64 e2p_free_blocks_count(struct ext2_super_block *super)
- #define EXT2_GOOD_OLD_REV 0
- #endif
+ int journal_size, journal_flags;
+ char *journal_device;
+@@ -137,7 +138,8 @@ static __u32 ok_features[3] = {
+ 	EXT2_FEATURE_INCOMPAT_FILETYPE |
+ 		EXT3_FEATURE_INCOMPAT_EXTENTS |
+ 		EXT4_FEATURE_INCOMPAT_FLEX_BG |
+-		EXT4_FEATURE_INCOMPAT_MMP,
++		EXT4_FEATURE_INCOMPAT_MMP |
++		EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM,
+ 	/* R/O compat */
+ 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
+ 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
+@@ -157,7 +159,8 @@ static __u32 clear_ok_features[3] = {
+ 	/* Incompat */
+ 	EXT2_FEATURE_INCOMPAT_FILETYPE |
+ 		EXT4_FEATURE_INCOMPAT_FLEX_BG |
+-		EXT4_FEATURE_INCOMPAT_MMP,
++		EXT4_FEATURE_INCOMPAT_MMP |
++		EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM,
+ 	/* R/O compat */
+ 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
+ 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
+@@ -693,7 +696,11 @@ static void rewrite_inodes(ext2_filsys fs)
  
-+static const char *checksum_type(__u8 type)
-+{
-+	switch (type) {
-+	case EXT2_CRC32C_CHKSUM:
-+		return "crc32c";
-+	default:
-+		return "unknown";
-+	}
-+}
-+
- void list_super2(struct ext2_super_block * sb, FILE *f)
+ static void rewrite_metadata_checksums(ext2_filsys fs)
  {
- 	int inode_blocks_per_group;
-@@ -421,9 +431,12 @@ void list_super2(struct ext2_super_block * sb, FILE *f)
- 		fprintf(f, "Group quota inode:        %u\n",
- 			sb->s_grp_quota_inum);
- 
--	if (sb->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)
-+	if (sb->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) {
-+		fprintf(f, "Checksum type:            %s\n",
-+			checksum_type(sb->s_checksum_type));
- 		fprintf(f, "Checksum:                 0x%08x\n",
- 			sb->s_checksum);
-+	}
++	int i;
++
+ 	fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
++	for (i = 0; i < fs->group_desc_count; i++)
++		ext2fs_group_desc_csum_set(fs, i);
+ 	rewrite_inodes(fs);
+ 	ext2fs_read_bitmaps(fs);
+ 	ext2fs_mark_ib_dirty(fs);
+@@ -709,6 +716,28 @@ static void rewrite_metadata_checksums(ext2_filsys fs)
  }
  
- void list_super (struct ext2_super_block * s)
-diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
-index e2c32f4..9e4536e 100644
---- a/lib/ext2fs/csum.c
-+++ b/lib/ext2fs/csum.c
-@@ -30,6 +30,15 @@
- #define STATIC static
- #endif
- 
-+int ext2fs_verify_csum_type(ext2_filsys fs, struct ext2_super_block *sb)
+ /*
++ * Rewrite just the block group checksums.  Only call this function if
++ * you're _not_ calling rewrite_metadata_checksums; this function exists
++ * to handle the case that you're changing bg_use_meta_csum and NOT changing
++ * either gdt_csum or metadata_csum.
++ */
++static void rewrite_bg_checksums(ext2_filsys fs)
 +{
-+	if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		return 1;
++	int i;
 +
-+	return sb->s_checksum_type == EXT2_CRC32C_CHKSUM;
++	if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++					EXT4_FEATURE_RO_COMPAT_GDT_CSUM) ||
++	    !EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		return;
++
++	for (i = 0; i < fs->group_desc_count; i++)
++		ext2fs_group_desc_csum_set(fs, i);
++	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
++	ext2fs_mark_super_dirty(fs);
 +}
 +
- static __u32 ext2fs_superblock_csum(ext2_filsys fs, struct ext2_super_block *sb)
- {
- 	int offset = offsetof(struct ext2_super_block, s_checksum);
-diff --git a/lib/ext2fs/ext2_err.et.in b/lib/ext2fs/ext2_err.et.in
-index e4d2caa..3b92eac 100644
---- a/lib/ext2fs/ext2_err.et.in
-+++ b/lib/ext2fs/ext2_err.et.in
-@@ -458,4 +458,7 @@ ec	EXT2_ET_EXT_ATTR_BLOCK_CORRUPT,
- ec	EXT2_ET_SB_CSUM_INVALID,
- 	"Superblock fails checksum"
- 
-+ec	EXT2_ET_UNKNOWN_CSUM,
-+	"Unknown checksum algorithm"
-+
- 	end
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index 3d2ade0..d6cd6e0 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -553,6 +553,9 @@ struct ext2_inode_large {
- #define ext4_offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
- #endif
- 
-+/* Metadata checksum algorithms */
-+#define EXT2_CRC32C_CHKSUM		1
-+
- /*
-  * Structure of the super block
++/*
+  * Update the feature set as provided by the user.
   */
-@@ -638,7 +641,7 @@ struct ext2_super_block {
- 	__u64   s_mmp_block;            /* Block for multi-mount protection */
- 	__u32   s_raid_stripe_width;    /* blocks on all data disks (N*stride)*/
- 	__u8	s_log_groups_per_flex;	/* FLEX_BG group size */
--	__u8    s_reserved_char_pad;
-+	__u8    s_checksum_type;	/* metadata checksum algorithm */
- 	__u16	s_reserved_pad;		/* Padding to next 32bits */
- 	__u64	s_kbytes_written;	/* nr of lifetime kilobytes written */
- 	__u32	s_snapshot_inum;	/* Inode number of active snapshot */
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index b921f83..9311336 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -929,6 +929,7 @@ extern __u32 ext2fs_crc32c_be(__u32 crc, unsigned char const *p, size_t len);
- extern __u32 ext2fs_crc32c_le(__u32 crc, unsigned char const *p, size_t len);
- 
- /* csum.c */
-+extern int ext2fs_verify_csum_type(ext2_filsys fs, struct ext2_super_block *sb);
- extern errcode_t ext2fs_superblock_csum_set(ext2_filsys fs,
- 					    struct ext2_super_block *sb);
- extern int ext2fs_superblock_csum_verify(ext2_filsys fs,
-diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
-index 334240c..2a672e0 100644
---- a/lib/ext2fs/openfs.c
-+++ b/lib/ext2fs/openfs.c
-@@ -203,10 +203,14 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
- 	}
- #endif
- 
--	if (!(fs->flags & EXT2_FLAG_IGNORE_CSUM_ERRORS) &&
--	    !ext2fs_superblock_csum_verify(fs, fs->super)) {
--		retval = EXT2_ET_SB_CSUM_INVALID;
--		goto cleanup;
-+	if (!(fs->flags & EXT2_FLAG_IGNORE_CSUM_ERRORS)) {
-+		retval = 0;
-+		if (!ext2fs_verify_csum_type(fs, fs->super))
-+			retval = EXT2_ET_UNKNOWN_CSUM;
-+		if (!ext2fs_superblock_csum_verify(fs, fs->super))
-+			retval = EXT2_ET_SB_CSUM_INVALID;
-+		if (retval)
-+			goto cleanup;
+ static int update_feature_set(ext2_filsys fs, char *features)
+@@ -880,6 +909,20 @@ mmp_error:
+ 		}
  	}
  
- 	if (fs->super->s_magic != EXT2_SUPER_MAGIC) {
++	if (FEATURE_ON(E2P_FEATURE_INCOMPAT,
++		       EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM)) {
++		if (check_fsck_needed(fs))
++			exit(1);
++		rewrite_bgs_for_checksum = 1;
++	}
++
++	if (FEATURE_OFF(E2P_FEATURE_INCOMPAT,
++			EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM)) {
++		if (check_fsck_needed(fs))
++			exit(1);
++		rewrite_bgs_for_checksum = 1;
++	}
++
+ 	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
+ 		       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
+ 		if (check_fsck_needed(fs))
+@@ -2525,6 +2568,8 @@ retry_open:
+ 	}
+ 	if (rewrite_checksums)
+ 		rewrite_metadata_checksums(fs);
++	else if (rewrite_bgs_for_checksum)
++		rewrite_bg_checksums(fs);
+ 	if (I_flag) {
+ 		if (mount_flags & EXT2_MF_MOUNTED) {
+ 			fputs(_("The inode size may only be "
 
