@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 23/28] jbd2: Grab a reference to the crc32c driver only when
-	necessary
-Date: Sat, 08 Oct 2011 00:56:15 -0700
-Message-ID: <20111008075615.20506.97385.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 28/28] jbd2: Checksum data blocks that are stored in the
+	journal
+Date: Sat, 08 Oct 2011 00:56:48 -0700
+Message-ID: <20111008075648.20506.27838.stgit@elm3c44.beaverton.ibm.com>
 References: <20111008075343.20506.23155.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -20,127 +20,143 @@ Cc: Sunil Mushran <sunil.mushran@oracle.com>,
 To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <20111008075343.20506.23155.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Obtain a reference to the crc32c driver only when the journal needs it for
-checksum v2.
+Calculate and verify checksums of each data block being stored in the journal.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/jbd2/Kconfig      |    2 ++
- fs/jbd2/journal.c    |   22 ++++++++++++++++++++++
- include/linux/jbd2.h |   23 +++++++++++++++++++++++
- 3 files changed, 47 insertions(+), 0 deletions(-)
+ fs/jbd2/commit.c     |   22 ++++++++++++++++++++++
+ fs/jbd2/journal.c    |   10 ++++++++--
+ fs/jbd2/recovery.c   |   30 ++++++++++++++++++++++++++++++
+ include/linux/jbd2.h |    1 +
+ 4 files changed, 61 insertions(+), 2 deletions(-)
 
 
-diff --git a/fs/jbd2/Kconfig b/fs/jbd2/Kconfig
-index f32f346..69a48c2 100644
---- a/fs/jbd2/Kconfig
-+++ b/fs/jbd2/Kconfig
-@@ -1,6 +1,8 @@
- config JBD2
- 	tristate
- 	select CRC32
-+	select CRYPTO
-+	select CRYPTO_CRC32C
- 	help
- 	  This is a generic journaling layer for block devices that support
- 	  both 32-bit and 64-bit block numbers.  It is currently used by
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 2bce8dc..0459e19 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -339,6 +339,26 @@ static void jbd2_descr_block_csum_set(journal_t *j,
+ 	tail->t_checksum = cpu_to_be32(crc);
+ }
+ 
++static void jbd2_block_tag_csum_set(journal_t *j, journal_block_tag_t *tag,
++				    struct buffer_head *bh, __u32 sequence)
++{
++	struct page *page = bh->b_page;
++	__u8 *addr;
++	__u32 crc;
++
++	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
++		return;
++
++	sequence = cpu_to_be32(sequence);
++	addr = kmap_atomic(page, KM_USER0);
++	crc = jbd2_chksum(j, j->j_uuid_crc, (__u8 *)&sequence,
++			  sizeof(sequence));
++	crc = jbd2_chksum(j, crc, addr + offset_in_page(bh->b_data),
++			  bh->b_size);
++	kunmap_atomic(addr, KM_USER0);
++
++	tag->t_checksum = cpu_to_be32(crc);
++}
+ /*
+  * jbd2_journal_commit_transaction
+  *
+@@ -649,6 +669,8 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 		tag = (journal_block_tag_t *) tagp;
+ 		write_tag_block(tag_bytes, tag, jh2bh(jh)->b_blocknr);
+ 		tag->t_flags = cpu_to_be32(tag_flag);
++		jbd2_block_tag_csum_set(journal, tag, jh2bh(new_jh),
++					commit_transaction->t_tid);
+ 		tagp += tag_bytes;
+ 		space_left -= tag_bytes;
+ 
 diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 8d8985e..5c76a8b 100644
+index d494c14..24a0241 100644
 --- a/fs/jbd2/journal.c
 +++ b/fs/jbd2/journal.c
-@@ -1276,6 +1276,16 @@ static int journal_get_superblock(journal_t *journal)
- 		goto out;
- 	}
- 
-+	/* Load the checksum driver */
-+	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2)) {
-+		journal->j_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
-+		if (IS_ERR(journal->j_chksum_driver)) {
-+			err = PTR_ERR(journal->j_chksum_driver);
-+			journal->j_chksum_driver = NULL;
-+			goto out;
-+		}
-+	}
+@@ -1981,10 +1981,16 @@ int jbd2_journal_blocks_per_page(struct inode *inode)
+  */
+ size_t journal_tag_bytes(journal_t *journal)
+ {
++	journal_block_tag_t tag;
++	size_t x = 0;
 +
- 	set_buffer_verified(bh);
- 
- 	return 0;
-@@ -1432,6 +1442,8 @@ int jbd2_journal_destroy(journal_t *journal)
- 		iput(journal->j_inode);
- 	if (journal->j_revoke)
- 		jbd2_journal_destroy_revoke(journal);
-+	if (journal->j_chksum_driver)
-+		crypto_free_shash(journal->j_chksum_driver);
- 	kfree(journal->j_wbuf);
- 	kfree(journal);
- 
-@@ -1548,6 +1560,16 @@ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
- 		sb->s_checksum_type = JBD2_CRC32C_CHKSUM;
- 		sb->s_feature_compat &=
- 			~cpu_to_be32(JBD2_FEATURE_COMPAT_CHECKSUM);
++	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2))
++		x += sizeof(tag.t_checksum);
 +
-+		/* Load the checksum driver */
-+		if (journal->j_chksum_driver == NULL) {
-+			journal->j_chksum_driver = crypto_alloc_shash("crc32c",
-+								      0, 0);
-+			if (IS_ERR(journal->j_chksum_driver)) {
-+				journal->j_chksum_driver = NULL;
-+				return 0;
-+			}
-+		}
- 	}
- 
- 	/* If enabling v1 checksums, downgrade superblock */
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 69ca172..53df865 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -31,6 +31,7 @@
- #include <linux/mutex.h>
- #include <linux/timer.h>
- #include <linux/slab.h>
-+#include <crypto/hash.h>
- #endif
- 
- #define journal_oom_retry 1
-@@ -1010,6 +1011,9 @@ struct journal_s
- 
- 	/* Precomputed UUID checksum */
- 	__u32 j_uuid_crc;
-+
-+	/* Reference to checksum algorithm driver via cryptoapi */
-+	struct crypto_shash *j_chksum_driver;
- };
+ 	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_64BIT))
+-		return JBD2_TAG_SIZE64;
++		return x + JBD2_TAG_SIZE64;
+ 	else
+-		return JBD2_TAG_SIZE32;
++		return x + JBD2_TAG_SIZE32;
+ }
  
  /*
-@@ -1328,6 +1332,25 @@ static inline int jbd_space_needed(journal_t *journal)
+diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
+index 3db9625..ec315ba 100644
+--- a/fs/jbd2/recovery.c
++++ b/fs/jbd2/recovery.c
+@@ -390,6 +390,23 @@ static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
+ 	return provided == calculated;
+ }
  
- extern int jbd_blocks_per_page(struct inode *inode);
- 
-+static inline u32 jbd2_chksum(journal_t *journal, u32 crc,
-+			      const void *address, unsigned int length)
++static int jbd2_block_tag_csum_verify(journal_t *j, journal_block_tag_t *tag,
++				      void *buf, __u32 sequence)
 +{
-+	struct {
-+		struct shash_desc shash;
-+		char ctx[crypto_shash_descsize(journal->j_chksum_driver)];
-+	} desc;
-+	int err;
++	__u32 provided, calculated;
 +
-+	desc.shash.tfm = journal->j_chksum_driver;
-+	desc.shash.flags = 0;
-+	*(u32 *)desc.ctx = crc;
++	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
++		return 1;
 +
-+	err = crypto_shash_update(&desc.shash, address, length);
-+	BUG_ON(err);
++	sequence = cpu_to_be32(sequence);
++	calculated = jbd2_chksum(j, j->j_uuid_crc, (__u8 *)&sequence,
++				 sizeof(sequence));
++	calculated = jbd2_chksum(j, calculated, buf, j->j_blocksize);
++	provided = be32_to_cpu(tag->t_checksum);
 +
-+	return *(u32 *)desc.ctx;
++	return provided == cpu_to_be32(calculated);
 +}
 +
- #ifdef __KERNEL__
+ static int do_one_pass(journal_t *journal,
+ 			struct recovery_info *info, enum passtype pass)
+ {
+@@ -566,6 +583,19 @@ static int do_one_pass(journal_t *journal,
+ 						goto skip_write;
+ 					}
  
- #define buffer_trace_init(bh)	do {} while (0)
++					/* Look for block corruption */
++					if (!jbd2_block_tag_csum_verify(
++						journal, tag, obh->b_data,
++						be32_to_cpu(tmp->h_sequence))) {
++						brelse(obh);
++						success = -EIO;
++						printk(KERN_ERR "JBD: Invalid "
++						       "checksum recovering "
++						       "block %llu in log\n",
++						       blocknr);
++						continue;
++					}
++
+ 					/* Find a buffer for the new
+ 					 * data being restored */
+ 					nbh = __getblk(journal->j_fs_dev,
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 633fea2..098b30b 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -190,6 +190,7 @@ typedef struct journal_block_tag_s
+ 	__be32		t_blocknr;	/* The on-disk block number */
+ 	__be32		t_flags;	/* See below */
+ 	__be32		t_blocknr_high; /* most-significant high 32bits. */
++	__be32		t_checksum;	/* crc32c(uuid+seq+block) */
+ } journal_block_tag_t;
+ 
+ #define JBD2_TAG_SIZE32 (offsetof(journal_block_tag_t, t_blocknr_high))
+
