@@ -1,43 +1,32 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: remove deprecated oldalloc
-Date: Sat, 8 Oct 2011 14:09:05 -0400
-Message-ID: <20111008180905.GG7948@thunk.org>
-References: <1307453714-2741-1-git-send-email-lczerner@redhat.com>
- <alpine.LFD.2.00.1108111658520.29009@dhcp-27-109.brq.redhat.com>
- <BF21E0BA-332B-4ADD-901C-5B0E8590898A@dilger.ca>
+Subject: Re: [PATCH] ext4: Fix the wrong comment in ext4_ext_search_right.
+Date: Sat, 8 Oct 2011 15:50:52 -0400
+Message-ID: <20111008195052.GH7948@thunk.org>
+References: <1318001428-3108-1-git-send-email-tm@tao.ma>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:58473 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:45963 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753423Ab1JHSJK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 8 Oct 2011 14:09:10 -0400
+	id S1750972Ab1JHTuy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 8 Oct 2011 15:50:54 -0400
 Content-Disposition: inline
-In-Reply-To: <BF21E0BA-332B-4ADD-901C-5B0E8590898A@dilger.ca>
+In-Reply-To: <1318001428-3108-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 11, 2011 at 03:05:55PM -0600, Andreas Dilger wrote:
+On Fri, Oct 07, 2011 at 11:30:26PM +0800, Tao Ma wrote:
+> From: Tao Ma <boyu.mt@taobao.com>
 > 
-> That said, "orlov" is also mostly meaningless with flex_bg as well, since
-> there is very little real benefit/affinity from inodes being "close" to
-> their data blocks.  We gain far more benefit from keeping the inodes
-> together than spreading them out and keeping them close to the data blocks.
+> With ext4_ext_search_right, the comment is wrong. We returns 0 @phys when
+> *logical is the 'largest' allocated block, not smallest. So change it.
+> Some other typos are also included.
+> 
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 
-I'm going to be applying the patch remove the oldalloc allocator, but
-just for the record --- Orlov *does* matter (which is why it's a good
-thing the default allocator also uses an Orlov-like approach that's
-flex_bg aware).
-
-In fact, we saw significant latency drops that grew over time as more
-and more blocks got allocated.  I traced it back to using bigalloc,
-which increased the average distance between the inode tables and the
-data blocks.
-
-So as you use larger bigalloc cluster sizes, which increases the block
-group size, it's a good idea to decrease the flex_bg size.  Which is
-another way of saying that Orlov matters.
+Applied, thanks.
 
 						- Ted
