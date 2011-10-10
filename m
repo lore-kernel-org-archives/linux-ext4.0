@@ -1,66 +1,41 @@
-From: =?utf-8?B?5LuFMTDlhYPmr4/lpKk=?= <admin@china-oil.net>
-Subject: =?utf-8?B?576k5Y+R6L2v5Lu2K+S5sOWutuaQnOe0ouacuisxMDnlsYrlub/kuqTkvJrkubDlrrY=?=
-	=?utf-8?B?44CB5rW35YWz5pWw5o2uLEIyQuivouebmOS5sOWutjUwMOS4h+OAgg==?=
-Date: Mon, 10 Oct 2011 19:03:49 +0000 (UTC)
-Message-ID: <20121011025811466166@china-oil.net>
-Reply-To: <1339625218@qq.com>
+From: Jonathan Corbet <corbet@lwn.net>
+Subject: Re: [Ext4 Secure Delete 7/7v4] ext4/jbd2: Secure Delete: Secure
+ delete journal blocks
+Date: Mon, 10 Oct 2011 13:47:36 -0600
+Message-ID: <20111010134736.5b721a22@bike.lwn.net>
+References: <1317971465-8517-1-git-send-email-achender@linux.vnet.ibm.com>
+	<1317971465-8517-8-git-send-email-achender@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
-Content-Transfer-Encoding: base64
-To: <linlinstoneceramic@163.com>, <linniegurl14@gmail.com>,
-	<linqingzao@sina.com>, <linson1988@yahoo.com.cn>,
-	<lintonjohnny74@yahoo.com>, <linux-ext4@vger.kernel.org>,
-	<linxh88@hotmail.co
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 8bit
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Allison Henderson <achender@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [221.234.43.140] ([221.234.43.140]:4022 "HELO china-oil.net"
-	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with SMTP
-	id S1753421Ab1JJTDo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Oct 2011 15:03:44 -0400
-Date: Thu, 11 Oct 2012 02:57:58 +0800
+Received: from tex.lwn.net ([70.33.254.29]:53215 "EHLO vena.lwn.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751830Ab1JJTrh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Oct 2011 15:47:37 -0400
+In-Reply-To: <1317971465-8517-8-git-send-email-achender@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-576k5Y+R6L2v5Lu2KzEwOeWxiuW5v+S6pOS8muS5sOWutuOAgea1t+WFs+aVsOaNruOAgeaQnOe0
-ouW8leaTjuS5sOWutixCMkLor6Lnm5jkubDlrrblhbE1MDDkuIcs5LuFMTDlhYPmr4/lpKnjgIIg
-DQrnvqTlj5Hova/ku7YrMTA55bGK5bm/5Lqk5Lya5Lmw5a6244CB5rW35YWz5pWw5o2u44CB5pCc
-57Si5byV5pOO5Lmw5a62LEIyQuivouebmOS5sOWutuWFsTUwMOS4hyzku4UxMOWFg+avj+WkqeOA
-giANCuS/neivgeavj+WkqemDveacieS5sOWutuWbnuWkjeOAgg0K5L+d6K+B5q+P5aSp6YO95pyJ
-5Lmw5a625Zue5aSN44CCDQrkv53or4Hmr4/lpKnpg73mnInkubDlrrblm57lpI3jgIINCg0KMeOA
-gee+pOWPkei9r+S7tu+8miDmk43kvZznroDljZXvvIzlip/og73lvLrlpKfvvIzmqKHku7/kurrl
-t6Xmk43kvZzmqKHlvI/vvIzliLDovr7njofpq5jvvIzml6Xlj5HpgIE15LiH5bCB5Lul5LiK44CC
-IA0KMuOAgTUwMOS4h+S5sOWutui1hOa6kO+8miDotaDpgIHnmoQ1MDDkuIfkubDlrrbotYTmupDl
-upPvvIzmm7TmlrAgKOWPr+S7peaMieeFp+aCqOeahOS6p+WTgeaPkOWPluWHuuadpe+8jOabtOey
-vuWHhuW8gOWPkSnjgIIgDQoz44CB6LaF57qn5rW35aSW5Lmw5a62RW1haWzmkJzntKLmnLrvvJog
-5YaF572u5LqGNjAw5LiH6KGM5Lia5YWz6ZSu6K+N77yM5qC55o2u6ZW/5bC+6K+N5pCc57Si77yM
-57uT5p6c5pu057K+56Gu5Yy56YWN77yb5q+P5aSp6IO95pCc57SiMS0y5LiH5Lul5LiK5Lmw5a62
-55yf5a6eRU1BSUzvvIzmiJDljZXnjofpq5jjgIIgDQogDQoNCuimgeeahOaKk+e0p+iBlOezu1FR
-OiAxMzM5NjI1MjE4ICAgIOaIluiAheeri+WNs+WbnuWkjemCrueusTogMTMzOTYyNTIxOEBxcS5j
-b20NCuimgeeahOaKk+e0p+iBlOezu1FROiAxMzM5NjI1MjE4ICAgIOaIluiAheeri+WNs+WbnuWk
-jemCrueusTogMTMzOTYyNTIxOEBxcS5jb20NCuimgeeahOaKk+e0p+iBlOezu1FROiAxMzM5NjI1
-MjE4ICAgIOaIluiAheeri+WNs+WbnuWkjemCrueusTogMTMzOTYyNTIxOEBxcS5jb20NCiANCuWF
-jei0uei1oOmAgToNCuS4gOWFsTjkuKrljIUo5pWw5o2u5piv5YWo6KGM5Lia55qE77yM5oyJ54Wn
-6KGM5Lia5YiG5aW957G777yM5bm25LiU5Y+v5Lul5oyJ54Wn5YWz6ZSu6K+N5p+l6K+i55qEKe+8
-miANCjHvvIwyMDEx5pil5a2jMTA55bGK5bm/5Lqk5Lya5Lmw5a62546w5Zy66K+i55uY5pWw5o2u
-5bqT5paw6bKc5Ye654KJ77yM6LaF57qn5paw6bKc5Lmw5a6277yM5paw6bKc5pWw5o2u77yM5a65
-5piT5oiQ5Y2V77yBIA0KMu+8jOi0reS5sOWQjuWPr+S7peWFjei0ueabtOaWsDIwMTHnp4vlraPl
-ub/kuqTkvJorMjAxMuaYpeWto+W5v+S6pOS8muS5sOWutuaVsOaNruOAguWkqui2heWAvOS6huOA
-gg0KM++8jOacgOaWsOWFqOeQg+S5sOWutuW6kyzlhbE0NTE2NjDmnaHmlbDmja7jgIIgKOacgOaW
-sOabtOaWsOaXpeacnyAyMDExLTA1LTE25pelKQ0KNO+8jDIwMDjlubQsMjAwOeW5tCwyMDEw5bm0
-IOaYpeWtoyvnp4vlraPlub/kuqTkvJrkubDlrrblkI3lvZXvvIwxMDMgMTA0IDEwNSAxMDYgMTA3
-IDEwOCDlhbHlha3lsYog5YWxMTIwLjbkuIfmlbDmja7jgIINCjXvvIwyMDEw5bm05Zu96ZmF5L+D
-6ZSA5Y2P5Lya77yIUFBBSe+8ieaIkOWRmOWQjeWNlSBQUEFJIE1lbWJlcnMgRGlyZWN0b3J577yM
-6Z2e5bi46YeN6KaB55qE5aSn5Lmw5a6244CCDQo277yMMjAxMOW5tOWIsOmmmea4r+mHh+i0reea
-hOWbveWkluWuouS6uuWQjeW9lSjpppnmuK/otLjlj5HlsYDmj5Dkvpsp77yM5YWxNy4y5LiH5pWw
-5o2u77yM6LaF57qn6YeN6KaB55qE5Lmw5a6244CCDQo377yMNDguNjjkuIfmnaHmnIDmlrDkubDl
-rrbor6Lnm5jvvIzotK3kubDlkI7mr4/mnIjmm7TmlrAgMS0y5LiH5p2h77yM5YyF5ousMumDqOWI
-hu+8jDHvvIzmnIDmlrDnmoTor6Lnm5ggMu+8jOacgOaWsOeahOWxleS8muS5sOWutuOAguWFjei0
-ueabtOaWsDM25Liq5pyI44CCDQo477yMMjAwOeW5tOa1t+WFs+aPkOWNleaVsOaNrnBpZXJz54mI
-5pWw5o2uIDHljYPkuIfjgIINCg0KDQror5rkv6HkuLrmnKzvvIzmlK/mjIHmlK/ku5jlrp3mi4Xk
-v53kuqTmmJMgKOWFiOWPkei0p+W5tuWuieijheiuvue9rue+pOWPkei9r+S7tu+8jOeEtuWQjuS7
-mOasvikg5b275bqV5omT5raI5oKo55qEIOmhvuiZkeOAgg0KDQogDQoNCg0KIA0KDQrnsr7lh4bm
-lbDmja4t5oiQ5Y2V546H5p6B6auYDQrnsr7lh4bmlbDmja4t5oiQ5Y2V546H5p6B6auYDQrnsr7l
-h4bmlbDmja4t5oiQ5Y2V546H5p6B6auYDQrnsr7lh4bmlbDmja4t5oiQ5Y2V546H5p6B6auYDQrn
-sr7lh4bmlbDmja4t5oiQ5Y2V546H5p6B6auYDQo=
+One quick question:
 
+On Fri,  7 Oct 2011 00:11:05 -0700
+Allison Henderson <achender@linux.vnet.ibm.com> wrote:
 
+> +	/* Secure delete any blocks still in our range */
+> +	if (jbd2_pblk_count > 0)
+> +		err = ext4_secure_delete_pblks(journal->j_inode,
+> +			jbd2_pblk_start, jbd2_pblk_count);
+> +
+> +out:
+> +	spin_unlock(&journal->j_pair_lock);
+
+ext4_secure_delete_pblks() appears to do its job synchronously - it has
+calls to things like sync_dirty_buffer() and such.  How can you do that
+while holding ->j_pair_lock?
+
+Thanks,
+
+jon
