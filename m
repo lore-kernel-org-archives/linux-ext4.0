@@ -1,59 +1,61 @@
 From: Allison Henderson <achender@linux.vnet.ibm.com>
 Subject: Re: [Ext4 Secure Delete 7/7v4] ext4/jbd2: Secure Delete: Secure delete
  journal blocks
-Date: Mon, 10 Oct 2011 16:35:24 -0700
-Message-ID: <4E93813C.1020708@linux.vnet.ibm.com>
-References: <1317971465-8517-1-git-send-email-achender@linux.vnet.ibm.com> <1317971465-8517-8-git-send-email-achender@linux.vnet.ibm.com> <20111010134736.5b721a22@bike.lwn.net>
+Date: Mon, 10 Oct 2011 16:36:25 -0700
+Message-ID: <4E938179.6000200@linux.vnet.ibm.com>
+References: <1317971465-8517-1-git-send-email-achender@linux.vnet.ibm.com> <1317971465-8517-8-git-send-email-achender@linux.vnet.ibm.com> <20111010140046.546e3c67@bike.lwn.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
 To: Jonathan Corbet <corbet@lwn.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:49749 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751213Ab1JJXgK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Oct 2011 19:36:10 -0400
+Received: from e32.co.us.ibm.com ([32.97.110.150]:42278 "EHLO
+	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751595Ab1JJXgc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Oct 2011 19:36:32 -0400
 Received: from /spool/local
-	by e34.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by us.ibm.com with XMail ESMTP
 	for <linux-ext4@vger.kernel.org> from <achender@linux.vnet.ibm.com>;
-	Mon, 10 Oct 2011 17:36:10 -0600
-In-Reply-To: <20111010134736.5b721a22@bike.lwn.net>
+	Mon, 10 Oct 2011 17:36:31 -0600
+In-Reply-To: <20111010140046.546e3c67@bike.lwn.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/10/2011 12:47 PM, Jonathan Corbet wrote:
-> One quick question:
->
+On 10/10/2011 01:00 PM, Jonathan Corbet wrote:
 > On Fri,  7 Oct 2011 00:11:05 -0700
 > Allison Henderson<achender@linux.vnet.ibm.com>  wrote:
 >
->> +	/* Secure delete any blocks still in our range */
->> +	if (jbd2_pblk_count>  0)
->> +		err = ext4_secure_delete_pblks(journal->j_inode,
->> +			jbd2_pblk_start, jbd2_pblk_count);
->> +
->> +out:
->> +	spin_unlock(&journal->j_pair_lock);
+>> +	/*
+>> +	 * If the journal block was not found in the list,
+>> +	 * add a new pair to the list
+>> +	 */
+>> +	if (!b_pair) {
+>> +		b_pair = kzalloc(sizeof(struct jbd2_blk_pair), GFP_NOFS);
+>> +		if (!b_pair) {
+>> +			spin_unlock(&journal->j_pair_lock);
+>> +			return -ENOMEM;
+>> +		}
 >
-> ext4_secure_delete_pblks() appears to do its job synchronously - it has
-> calls to things like sync_dirty_buffer() and such.  How can you do that
-> while holding ->j_pair_lock?
+> Here too...  that really needs to be GFP_ATOMIC.
+>
+> I'm wondering, though...it looks like, over a short period of time, you
+> will create an unordered linked list containing one entry for every
+> physical block in the journal.  You'll take a lock and search the whole
+> list for every block that is committed.  Wouldn't it be better just to
+> have an array indexed by the journal logical block offset?  Less memory,
+> faster access...?  Or am I missing something fundamental here?
 >
 > Thanks,
 >
 > jon
->
 
 Hi Jon,
 
-Well j_pair_lock is a lock I added to protect the new list of vfs
--> jbd2 block pairs. It is locked by the journal commit thread to
-update the list when ever a journal block is modified. The above
-code here is called by the same thread that performs a punch hole or
-truncate operation, not the journal commit thread. So I'm not
-immediately seeing why there would be any lock problems. Is there
-another case I'm missing?
+I think that's a good suggestion. Initially I had made it a linked
+list since most of the journals existing lists were implemented as
+linked lists, but since this list ends up being a fixed size, an
+array is a good optimization here. Thx!
 
 Allison
 
