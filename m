@@ -1,108 +1,164 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: [Ext4 Secure Delete 0/7 v4] Ext4 secure delete
-Date: Mon, 10 Oct 2011 10:20:48 -0700
-Message-ID: <4E932970.9020901@linux.vnet.ibm.com>
-References: <1317971465-8517-1-git-send-email-achender@linux.vnet.ibm.com> <9097F954-EA60-481E-B05C-5FACDBA2641A@gmail.com> <4E8F31D6.108@linux.vnet.ibm.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: e2fsprogs: use ALL_CFLAGS to build gen_crc32ctable
+Date: Mon, 10 Oct 2011 12:39:10 -0500
+Message-ID: <4E932DBE.7080203@redhat.com>
+References: <4E89DF57.90806@redhat.com> <20111004030232.GA28372@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: Andreas Dilger <aedilger@gmail.com>
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:50326 "EHLO e4.ny.us.ibm.com"
+Received: from mx1.redhat.com ([209.132.183.28]:22508 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750890Ab1JJRVn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Oct 2011 13:21:43 -0400
-Received: from /spool/local
-	by e4.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <achender@linux.vnet.ibm.com>;
-	Mon, 10 Oct 2011 13:21:39 -0400
-In-Reply-To: <4E8F31D6.108@linux.vnet.ibm.com>
+	id S1752490Ab1JJRjO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Oct 2011 13:39:14 -0400
+In-Reply-To: <20111004030232.GA28372@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/07/2011 10:07 AM, Allison Henderson wrote:
-> On 10/07/2011 08:21 AM, Andreas Dilger wrote:
->> On 2011-10-07, at 1:10 AM, Allison Henderson<achender@linux.vnet.ibm.com>   wrote:
->>> Sorry for the delay in getting this next version out.
->>> I had some tasks to take care of, and now I'm picking up my
->>> secure delete work again. I'm still not quite done yet,
->>> but a lot has changed and I wanted to update people so that
->>> we have an idea of where its going.  Currently the patch
->>> deals with data blocks, meta blocks, directory entries,
->>> journal blocks, and also provides an option for secure
->>> deleting with random data instead of just zeros.
->>> I'm also planning on adding some more patches to
->>> deal with inodes and also a mount option that turns
->>> on secure delete by default.  Im still not quite done
->>> debugging, but Im just sending it out early to get
->>> some more eyes on it. Feed back appreciated!  :)
->>>
->>> v3->v4
->>> Added a new file attribute flag EXT4_SECRM_RANDOM_FL
->>> This flag causes the secure delete operations to over write
->>> blocks with random data instead of zeros.
+On 10/3/11 10:02 PM, Ted Ts'o wrote:
+> On Mon, Oct 03, 2011 at 06:14:15AM -0000, Eric Sandeen wrote:
+>> With just BUILD_CFLAGS this we don't get the right include
+>> paths (i.e. within the tree) to build the gen_crc32ctable binary.
 >>
->> Since inode flags are in short supply, and I suspect users that want this want it for all files, this should probably be a superblock flag?
->>
-> That is a really good point.  The first thing that comes to mind though would be the fact that it is a lot slower when the random flag is on especially for really big files.  So that would be one case where I could imagine a user might want the ability to set different options per file.  But since the flags are a limited resource, I can see where we may not want to spend it so quickly.  I will see if maybe there is some way I can optimize it, but I would like to see more folks weigh in on this topic too.
->
+>> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+>=20
+> We can't use ALL_CFLAGS because in the cross compilation case, it
+> might contain some compiler directives that make sense for the target
+> platform, but not for the host platform.  BUILD_CFLAGS is specificall=
+y
+> designed for this case.  For programs like gen_crc32ctable that need
+> to compiled and run on the host OS, you have to do the following so
+> the right thing happens when you are cross-compiling e2fsprogs (yes,
+> there are people who do this!):
+>=20
+> gen_crc32ctable: $(srcdir)/gen_crc32ctable.c
+> 	$(E) "	CC $@"
+> 	$(Q) $(BUILD_CC) $(BUILD_CFLAGS) -o gen_crc32ctable \
+> 		$(srcdir)/gen_crc32ctable.c
+>=20
+> Note the use of $(BUILD_CC) instead of $(CC).
+>=20
+> The better fix is to note that gen_crc32ctable doesn't actually need
+> anything from ext2fs.h, and move that #include to crc32c.c.
+>=20
+> 	      		    	      - Ted
+>=20
+> commit 8232f2ddaece256afd323eb5a289a5ec1b7fbd1a
+> Author: Theodore Ts'o <tytso@mit.edu>
+> Date:   Mon Oct 3 22:49:45 2011 -0400
+>=20
+>     libext2fs: move #include "ext2fs.h" from crc32c_defs.h to crc32c.=
+c
+>    =20
+>     The byte swap functions which are defined in ext2fs.h are only ne=
+eded
+>     by crc32.c, and not by gen_crc32ctable.c.  The gen_crc32ctable pr=
+ogram
+>     needs to be compiled on the host OS, where ext2fs.h may not be
+>     present.  So move the use of the header function to crc32c.c, to =
+avoid
+>     compilation problems.
+>    =20
+>     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+>=20
+> diff --git a/lib/ext2fs/crc32c.c b/lib/ext2fs/crc32c.c
+> index 65bca5c..6be4336 100644
+> --- a/lib/ext2fs/crc32c.c
+> +++ b/lib/ext2fs/crc32c.c
+> @@ -40,6 +40,23 @@
+>  #define PTR_ALIGN(p, a)		((typeof(p))ALIGN((unsigned long)(p), (a)))
+>  #include "crc32c_defs.h"
+> =20
+> +#include "ext2fs.h"
+> +#ifdef WORDS_BIGENDIAN
 
-I've had another suggestion for this come up, so I wanted to put it out 
-here to see what people think.  Instead of a new flag, we could use a 
-flag that is mutually exclusive like the undelete flag, since a file 
-that is secure deleted, should not be undeletable.  Would this be 
-something that people would be interested in doing?
+well, this has the exact same problem as originally reported, because
+we still don't have the include paths to find ext2fs.h in the tree,
+and it is still included via crc32c_defs.h
 
+Perhaps I should have been more explicit about it last time.
 
->>> New function ext4_secure_delete_lblks added to walk
->>> data blocks and secure delete them before any blocks
->>> are removed.
->>>
->>> Meta blocks are secure deleted before they are
->>> released
->>>
->>> New function added to identify holes in ind files.
->>> Used by ext4_secure_delete_lblks to skip over holes
->>> during secure delete.
->>>
->>> Added another list in the journal structure to track
->>> journal blocks so that they can be secure deleted later.
->>>
->>> Added new ext4_secure_delete_jblks that secure deletes
->>> journal blocks that were used to journal the specified
->>> logical blocks
->>>
->>> Allison Henderson (7):
->>>    ext4: Secure Delete: Add new EXT4_SECRM_RANDOM_FL flag
->>>    ext4: Secure Delete: Add ext4_ind_hole_lookup function
->>>    ext4: Secure Delete: Add secure delete functions
->>>    ext4: Secure Delete: Secure delete file data
->>>    ext4: Secure Delete: Secure delete directory entry
->>>    ext4: Secure Delete: Secure delete meta data blocks
->>>    ext4/jbd2: Secure Delete: Secure delete journal blocks
->>>
->>> fs/ext4/ext4.h         |   28 +++-
->>> fs/ext4/ext4_extents.h |    2 +
->>> fs/ext4/extents.c      |   21 +++-
->>> fs/ext4/indirect.c     |    2 +-
->>> fs/ext4/inode.c        |  391 ++++++++++++++++++++++++++++++++++++++++++++++++
->>> fs/ext4/mballoc.c      |    8 +
->>> fs/ext4/namei.c        |   64 +++++++-
->>> fs/jbd2/commit.c       |    6 +
->>> fs/jbd2/journal.c      |  112 ++++++++++++++
->>> include/linux/jbd2.h   |   21 +++
->>> 10 files changed, 642 insertions(+), 13 deletions(-)
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->
+I get:
+
+making all in lib/ext2fs
+make[2]: Entering directory `/src2/git/fedora/e2fsprogs/e2fsprogs-1.42/=
+lib/ext2fs'
+gcc -g -O2 -o gen_crc32ctable \
+		./gen_crc32ctable.c
+In file included from ./crc32c_defs.h:45,
+                 from ./gen_crc32ctable.c:2:
+=2E/ext2fs.h:73:31: error: ext2fs/ext2_types.h: No such file or directo=
+ry
+=2E/ext2fs.h:74:28: error: ext2fs/ext2_fs.h: No such file or directory
+=2E/ext2fs.h:75:33: error: ext2fs/ext3_extents.h: No such file or direc=
+tory
+In file included from ./crc32c_defs.h:45,
+                 from ./gen_crc32ctable.c:2:
+=2E/ext2fs.h:78: error: expected =91=3D=92, =91,=92, =91;=92, =91asm=92=
+ or =91__attribute__=92 before =91ext2_ino_t=92
+
+=2E..
+
+Looking into it, but if you have an obvious solution I'm all ears.
+
+-Eric
+
+> +#define __constant_cpu_to_le32(x) ___constant_swab32((x))
+> +#define __constant_cpu_to_be32(x) (x)
+> +#define __be32_to_cpu(x) (x)
+> +#define __cpu_to_be32(x) (x)
+> +#define __cpu_to_le32(x) (ext2fs_cpu_to_le32((x)))
+> +#define __le32_to_cpu(x) (ext2fs_le32_to_cpu((x)))
+> +#else
+> +#define __constant_cpu_to_le32(x) (x)
+> +#define __constant_cpu_to_be32(x) ___constant_swab32((x))
+> +#define __be32_to_cpu(x) (ext2fs_be32_to_cpu((x)))
+> +#define __cpu_to_be32(x) (ext2fs_cpu_to_be32((x)))
+> +#define __cpu_to_le32(x) (x)
+> +#define __le32_to_cpu(x) (x)
+> +#endif
+> +
+>  #if CRC_LE_BITS > 8
+>  # define tole(x) (__force uint32_t) __constant_cpu_to_le32(x)
+>  #else
+> diff --git a/lib/ext2fs/crc32c_defs.h b/lib/ext2fs/crc32c_defs.h
+> index ced4f67..023f2c0 100644
+> --- a/lib/ext2fs/crc32c_defs.h
+> +++ b/lib/ext2fs/crc32c_defs.h
+> @@ -42,23 +42,6 @@
+>  		(((uint32_t)(x) & (uint32_t)0xff000000UL) >> 24)))
+> =20
+> =20
+> -#include "ext2fs.h"
+> -#ifdef WORDS_BIGENDIAN
+> -#define __constant_cpu_to_le32(x) ___constant_swab32((x))
+> -#define __constant_cpu_to_be32(x) (x)
+> -#define __be32_to_cpu(x) (x)
+> -#define __cpu_to_be32(x) (x)
+> -#define __cpu_to_le32(x) (ext2fs_cpu_to_le32((x)))
+> -#define __le32_to_cpu(x) (ext2fs_le32_to_cpu((x)))
+> -#else
+> -#define __constant_cpu_to_le32(x) (x)
+> -#define __constant_cpu_to_be32(x) ___constant_swab32((x))
+> -#define __be32_to_cpu(x) (ext2fs_be32_to_cpu((x)))
+> -#define __cpu_to_be32(x) (ext2fs_cpu_to_be32((x)))
+> -#define __cpu_to_le32(x) (x)
+> -#define __le32_to_cpu(x) (x)
+> -#endif
+> -
+>  #if (__GNUC__ >=3D 3)
+>  #define likely(x)	__builtin_expect(!!(x), 1)
+>  #define unlikely(x)	__builtin_expect(!!(x), 0)
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
