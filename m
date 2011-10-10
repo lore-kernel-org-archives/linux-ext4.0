@@ -1,48 +1,45 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext3: Remove the obsolete broken
- EXT3_IOC32_WAIT_FOR_READONLY.
-Date: Mon, 10 Oct 2011 18:27:00 +0200
-Message-ID: <20111010162700.GG3944@quack.suse.cz>
-References: <1318000878-2928-1-git-send-email-tm@tao.ma>
- <20111007221233.GD30754@quack.suse.cz>
- <20111008205235.GL7948@thunk.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v3] ext4: fix possible overflow in ext4_trim_fs()
+Date: Mon, 10 Oct 2011 12:47:11 -0400
+Message-ID: <20111010164711.GW7948@thunk.org>
+References: <1315410777-24237-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Tao Ma <tm@tao.ma>,
-	linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Ted Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, tm@tao.ma
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:46323 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750893Ab1JJQ1C (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Oct 2011 12:27:02 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:41955 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752759Ab1JJQrN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Oct 2011 12:47:13 -0400
 Content-Disposition: inline
-In-Reply-To: <20111008205235.GL7948@thunk.org>
+In-Reply-To: <1315410777-24237-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat 08-10-11 16:52:35, Ted Tso wrote:
-> On Sat, Oct 08, 2011 at 12:12:33AM +0200, Jan Kara wrote:
-> > On Fri 07-10-11 23:21:18, Tao Ma wrote:
-> > > From: Tao Ma <boyu.mt@taobao.com>
-> > > 
-> > > There are no user of EXT3_IOC32_WAIT_FOR_READONLY and also it is
-> > > broken. No one set the set_ro_timer, no one wake up us and our
-> > > state is set to TASK_INTERRUPTIBLE not RUNNING. So remove it.
-> >   Hmm, I vaguely recall Andrew had some debugging patches which were using
-> > turn_ro_timer and this functionality. But I'm not sure if they are still
-> > usable or if they still make sense when one can easily test crashing using
-> > virtual machines... Andrew?
+On Wed, Sep 07, 2011 at 05:52:57PM +0200, Lukas Czerner wrote:
+> The overflow can happen when we are calling get_group_no_and_offset()
+> which stores the result of do_div() in 32 bit long type. However the
+> result might be bigger than that if big blocknr is passed in. This will
+> most likely happen when calling FITRIM with the default argument len =
+> ULLONG_MAX.
 > 
-> That's why I decided to accept the corresponding patch for ext4; if
-> the rest of debugging patch is out-of-tree, then might as well have it
-> all out-of-tree --- and killall qemu is probably a better way of
-> testing this anyway.
-  OK. I've merged the patch in my tree. If Andrew shouts loudly, I can
-always revert it :)
+> Fix this by using "end" variable instead of "start+len" as it is easier
+> to get right and specifically check that the end is not beyond the end
+> of the file system, so we are sure that the result of
+> get_group_no_and_offset() will not overflow. Otherwise truncate it to
+> the size of the file system.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Hi Lukas,
+
+Since I've merged the bigalloc patches that uses clusters instead of
+blocks for various file system parameters.  I made a quick attempt to
+port your patch, and it wasn't obvious (and I don't have your testing
+framework).  Could you do me a favor and forward port your patch to
+either the dev or master branch on the ext4 github repository?
+
+Thanks!!
+
+					- Ted
