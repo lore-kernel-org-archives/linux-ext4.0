@@ -1,72 +1,59 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: "- 8" in EXT2_MAX_BLOCKS_PER_GROUP
-Date: Mon, 10 Oct 2011 15:34:13 -0500
-Message-ID: <4E9356C5.1070605@redhat.com>
-References: <4E931453.3010002@redhat.com> <4E933CD0.4050003@redhat.com> <20111010201151.GM12447@tux1.beaverton.ibm.com>
+From: Allison Henderson <achender@linux.vnet.ibm.com>
+Subject: Re: [Ext4 Secure Delete 7/7v4] ext4/jbd2: Secure Delete: Secure delete
+ journal blocks
+Date: Mon, 10 Oct 2011 16:35:24 -0700
+Message-ID: <4E93813C.1020708@linux.vnet.ibm.com>
+References: <1317971465-8517-1-git-send-email-achender@linux.vnet.ibm.com> <1317971465-8517-8-git-send-email-achender@linux.vnet.ibm.com> <20111010134736.5b721a22@bike.lwn.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: djwong@us.ibm.com
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Jonathan Corbet <corbet@lwn.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:24186 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752939Ab1JJUeQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Oct 2011 16:34:16 -0400
-In-Reply-To: <20111010201151.GM12447@tux1.beaverton.ibm.com>
+Received: from e34.co.us.ibm.com ([32.97.110.152]:49749 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751213Ab1JJXgK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Oct 2011 19:36:10 -0400
+Received: from /spool/local
+	by e34.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <achender@linux.vnet.ibm.com>;
+	Mon, 10 Oct 2011 17:36:10 -0600
+In-Reply-To: <20111010134736.5b721a22@bike.lwn.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/10/11 3:11 PM, Darrick J. Wong wrote:
-> On Mon, Oct 10, 2011 at 01:43:28PM -0500, Eric Sandeen wrote:
->> On 10/10/11 10:50 AM, Eric Sandeen wrote:
->>> When looking at the maximal filesystem size issue, I found myself
->>> wondering what the "- 8" is in here, it's not commented
->>> or documented anywhere:
->>>
->>> #define EXT2_MAX_BLOCKS_PER_GROUP(s)    (((1 << 16) - 8) *      \
->>>                                           (EXT2_CLUSTER_SIZE(s) / \
->>>                                            EXT2_BLOCK_SIZE(s)))
->>>
->>>
->>> (pre-bigalloc, it was just ((1 << 16) - 8) )
->>>
->>> Anyone know?
->>
->> Ah, Darrick pointed out
->>
->> http://osdir.com/ml/file-systems.ext2.devel/2006-03/msg00032.html
->>
->> So it would have been - 1, to not overflow __u16, but since we have
->> multiples of 8, we get - 8.
->>
->> But now we have bg_free_blocks_count_hi, giving us 32 bits of counter.
->> With EXT4_FEATURE_INCOMPAT_64BIT, MAX_BLOCKS_PER_GROUP should grow, no?
-> 
-> As far as I know, each group contains a block bitmap that is exactly 1 block
-> long, and block can be no longer than 4096 bytes in length.  Therefore, a group
-> can have no more than 4096 * 8 = 32768 blocks, correct?  To get more we'd have
-> to allow blocks larger than 4K (mkfs won't allow that) or change the disk
-> format to allow multi-block block bitmaps.
-> 
-> Unless of course a block bitmap can be the size of a cluster.... which afaict
-> is not the case.
+On 10/10/2011 12:47 PM, Jonathan Corbet wrote:
+> One quick question:
+>
+> On Fri,  7 Oct 2011 00:11:05 -0700
+> Allison Henderson<achender@linux.vnet.ibm.com>  wrote:
+>
+>> +	/* Secure delete any blocks still in our range */
+>> +	if (jbd2_pblk_count>  0)
+>> +		err = ext4_secure_delete_pblks(journal->j_inode,
+>> +			jbd2_pblk_start, jbd2_pblk_count);
+>> +
+>> +out:
+>> +	spin_unlock(&journal->j_pair_lock);
+>
+> ext4_secure_delete_pblks() appears to do its job synchronously - it has
+> calls to things like sync_dirty_buffer() and such.  How can you do that
+> while holding ->j_pair_lock?
+>
+> Thanks,
+>
+> jon
+>
 
-You are right:
+Hi Jon,
 
-        if (fs_param.s_blocks_per_group) {
-                if (fs_param.s_blocks_per_group < 256 ||
-                    fs_param.s_blocks_per_group > 8 * (unsigned) blocksize) {
-                        com_err(program_name, 0,
-                                _("blocks per group count out of range"));
+Well j_pair_lock is a lock I added to protect the new list of vfs
+-> jbd2 block pairs. It is locked by the journal commit thread to
+update the list when ever a journal block is modified. The above
+code here is called by the same thread that performs a punch hole or
+truncate operation, not the journal commit thread. So I'm not
+immediately seeing why there would be any lock problems. Is there
+another case I'm missing?
 
-So I guess 64k blocks on ia64 or ppc64 would get us up to 512k blocks per group.
-
-but then MAX_BLOCKS_PER_GROUP limits us to less than that, at least for now.
-
-So still not sure what bg_free_blocks_count_hi does for us.
-
--Eric
-
-> --D
+Allison
 
