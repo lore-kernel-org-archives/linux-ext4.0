@@ -1,45 +1,39 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v3] ext4: fix possible overflow in ext4_trim_fs()
-Date: Mon, 10 Oct 2011 12:47:11 -0400
-Message-ID: <20111010164711.GW7948@thunk.org>
-References: <1315410777-24237-1-git-send-email-lczerner@redhat.com>
+Subject: Re: [patch]ext4: add block plug for .writepages
+Date: Mon, 10 Oct 2011 12:51:16 -0400
+Message-ID: <20111010165116.GX7948@thunk.org>
+References: <1317004226.29510.172.camel@sli10-conroe>
+ <20110926073025.GB21079@infradead.org>
+ <1317022727.29510.175.camel@sli10-conroe>
+ <20110926094554.GA30827@infradead.org>
+ <1317179380.22361.8.camel@sli10-conroe>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tm@tao.ma
-To: Lukas Czerner <lczerner@redhat.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Jens Axboe <axboe@kernel.dk>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	lkml <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
+To: Shaohua Li <shaohua.li@intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:41955 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:54943 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752759Ab1JJQrN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Oct 2011 12:47:13 -0400
+	id S1752967Ab1JJQvZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Oct 2011 12:51:25 -0400
 Content-Disposition: inline
-In-Reply-To: <1315410777-24237-1-git-send-email-lczerner@redhat.com>
+In-Reply-To: <1317179380.22361.8.camel@sli10-conroe>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 07, 2011 at 05:52:57PM +0200, Lukas Czerner wrote:
-> The overflow can happen when we are calling get_group_no_and_offset()
-> which stores the result of do_div() in 32 bit long type. However the
-> result might be bigger than that if big blocknr is passed in. This will
-> most likely happen when calling FITRIM with the default argument len =
-> ULLONG_MAX.
+On Wed, Sep 28, 2011 at 11:09:40AM +0800, Shaohua Li wrote:
+> I searched a little bit, looks only ext4 need it. here is the patch.
 > 
-> Fix this by using "end" variable instead of "start+len" as it is easier
-> to get right and specifically check that the end is not beyond the end
-> of the file system, so we are sure that the result of
-> get_group_no_and_offset() will not overflow. Otherwise truncate it to
-> the size of the file system.
 > 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Add block plug for ext4 .writepages. Though ext4 .writepages
+> already handles request merge very well, block plug is still
+> helpful to reduce block lock contention.
+> 
+> Signed-off-by: Shaohua Li <shaohua.li@intel.com>
 
-Hi Lukas,
-
-Since I've merged the bigalloc patches that uses clusters instead of
-blocks for various file system parameters.  I made a quick attempt to
-port your patch, and it wasn't obvious (and I don't have your testing
-framework).  Could you do me a favor and forward port your patch to
-either the dev or master branch on the ext4 github repository?
-
-Thanks!!
+Thanks, applied.
 
 					- Ted
