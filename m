@@ -1,39 +1,48 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: "- 8" in EXT2_MAX_BLOCKS_PER_GROUP
-Date: Mon, 10 Oct 2011 10:50:43 -0500
-Message-ID: <4E931453.3010002@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext3: Remove the obsolete broken
+ EXT3_IOC32_WAIT_FOR_READONLY.
+Date: Mon, 10 Oct 2011 18:27:00 +0200
+Message-ID: <20111010162700.GG3944@quack.suse.cz>
+References: <1318000878-2928-1-git-send-email-tm@tao.ma>
+ <20111007221233.GD30754@quack.suse.cz>
+ <20111008205235.GL7948@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Tao Ma <tm@tao.ma>,
+	linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:21501 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:46323 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750804Ab1JJPuq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Oct 2011 11:50:46 -0400
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p9AFojEm018858
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Mon, 10 Oct 2011 11:50:46 -0400
-Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p9AFoiE4031094
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 10 Oct 2011 11:50:44 -0400
+	id S1750893Ab1JJQ1C (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Oct 2011 12:27:02 -0400
+Content-Disposition: inline
+In-Reply-To: <20111008205235.GL7948@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When looking at the maximal filesystem size issue, I found myself
-wondering what the "- 8" is in here, it's not commented
-or documented anywhere:
+On Sat 08-10-11 16:52:35, Ted Tso wrote:
+> On Sat, Oct 08, 2011 at 12:12:33AM +0200, Jan Kara wrote:
+> > On Fri 07-10-11 23:21:18, Tao Ma wrote:
+> > > From: Tao Ma <boyu.mt@taobao.com>
+> > > 
+> > > There are no user of EXT3_IOC32_WAIT_FOR_READONLY and also it is
+> > > broken. No one set the set_ro_timer, no one wake up us and our
+> > > state is set to TASK_INTERRUPTIBLE not RUNNING. So remove it.
+> >   Hmm, I vaguely recall Andrew had some debugging patches which were using
+> > turn_ro_timer and this functionality. But I'm not sure if they are still
+> > usable or if they still make sense when one can easily test crashing using
+> > virtual machines... Andrew?
+> 
+> That's why I decided to accept the corresponding patch for ext4; if
+> the rest of debugging patch is out-of-tree, then might as well have it
+> all out-of-tree --- and killall qemu is probably a better way of
+> testing this anyway.
+  OK. I've merged the patch in my tree. If Andrew shouts loudly, I can
+always revert it :)
 
-#define EXT2_MAX_BLOCKS_PER_GROUP(s)    (((1 << 16) - 8) *      \
-                                          (EXT2_CLUSTER_SIZE(s) / \
-                                           EXT2_BLOCK_SIZE(s)))
-
-
-(pre-bigalloc, it was just ((1 << 16) - 8) )
-
-Anyone know?
-
--Eric
-
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
