@@ -1,39 +1,108 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [patch]ext4: add block plug for .writepages
-Date: Mon, 10 Oct 2011 12:51:16 -0400
-Message-ID: <20111010165116.GX7948@thunk.org>
-References: <1317004226.29510.172.camel@sli10-conroe>
- <20110926073025.GB21079@infradead.org>
- <1317022727.29510.175.camel@sli10-conroe>
- <20110926094554.GA30827@infradead.org>
- <1317179380.22361.8.camel@sli10-conroe>
+From: Allison Henderson <achender@linux.vnet.ibm.com>
+Subject: Re: [Ext4 Secure Delete 0/7 v4] Ext4 secure delete
+Date: Mon, 10 Oct 2011 10:20:48 -0700
+Message-ID: <4E932970.9020901@linux.vnet.ibm.com>
+References: <1317971465-8517-1-git-send-email-achender@linux.vnet.ibm.com> <9097F954-EA60-481E-B05C-5FACDBA2641A@gmail.com> <4E8F31D6.108@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Jens Axboe <axboe@kernel.dk>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	lkml <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
-To: Shaohua Li <shaohua.li@intel.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: Andreas Dilger <aedilger@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:54943 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752967Ab1JJQvZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Oct 2011 12:51:25 -0400
-Content-Disposition: inline
-In-Reply-To: <1317179380.22361.8.camel@sli10-conroe>
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:50326 "EHLO e4.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750890Ab1JJRVn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Oct 2011 13:21:43 -0400
+Received: from /spool/local
+	by e4.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <achender@linux.vnet.ibm.com>;
+	Mon, 10 Oct 2011 13:21:39 -0400
+In-Reply-To: <4E8F31D6.108@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 28, 2011 at 11:09:40AM +0800, Shaohua Li wrote:
-> I searched a little bit, looks only ext4 need it. here is the patch.
-> 
-> 
-> Add block plug for ext4 .writepages. Though ext4 .writepages
-> already handles request merge very well, block plug is still
-> helpful to reduce block lock contention.
-> 
-> Signed-off-by: Shaohua Li <shaohua.li@intel.com>
+On 10/07/2011 10:07 AM, Allison Henderson wrote:
+> On 10/07/2011 08:21 AM, Andreas Dilger wrote:
+>> On 2011-10-07, at 1:10 AM, Allison Henderson<achender@linux.vnet.ibm.com>   wrote:
+>>> Sorry for the delay in getting this next version out.
+>>> I had some tasks to take care of, and now I'm picking up my
+>>> secure delete work again. I'm still not quite done yet,
+>>> but a lot has changed and I wanted to update people so that
+>>> we have an idea of where its going.  Currently the patch
+>>> deals with data blocks, meta blocks, directory entries,
+>>> journal blocks, and also provides an option for secure
+>>> deleting with random data instead of just zeros.
+>>> I'm also planning on adding some more patches to
+>>> deal with inodes and also a mount option that turns
+>>> on secure delete by default.  Im still not quite done
+>>> debugging, but Im just sending it out early to get
+>>> some more eyes on it. Feed back appreciated!  :)
+>>>
+>>> v3->v4
+>>> Added a new file attribute flag EXT4_SECRM_RANDOM_FL
+>>> This flag causes the secure delete operations to over write
+>>> blocks with random data instead of zeros.
+>>
+>> Since inode flags are in short supply, and I suspect users that want this want it for all files, this should probably be a superblock flag?
+>>
+> That is a really good point.  The first thing that comes to mind though would be the fact that it is a lot slower when the random flag is on especially for really big files.  So that would be one case where I could imagine a user might want the ability to set different options per file.  But since the flags are a limited resource, I can see where we may not want to spend it so quickly.  I will see if maybe there is some way I can optimize it, but I would like to see more folks weigh in on this topic too.
+>
 
-Thanks, applied.
+I've had another suggestion for this come up, so I wanted to put it out 
+here to see what people think.  Instead of a new flag, we could use a 
+flag that is mutually exclusive like the undelete flag, since a file 
+that is secure deleted, should not be undeletable.  Would this be 
+something that people would be interested in doing?
 
-					- Ted
+
+>>> New function ext4_secure_delete_lblks added to walk
+>>> data blocks and secure delete them before any blocks
+>>> are removed.
+>>>
+>>> Meta blocks are secure deleted before they are
+>>> released
+>>>
+>>> New function added to identify holes in ind files.
+>>> Used by ext4_secure_delete_lblks to skip over holes
+>>> during secure delete.
+>>>
+>>> Added another list in the journal structure to track
+>>> journal blocks so that they can be secure deleted later.
+>>>
+>>> Added new ext4_secure_delete_jblks that secure deletes
+>>> journal blocks that were used to journal the specified
+>>> logical blocks
+>>>
+>>> Allison Henderson (7):
+>>>    ext4: Secure Delete: Add new EXT4_SECRM_RANDOM_FL flag
+>>>    ext4: Secure Delete: Add ext4_ind_hole_lookup function
+>>>    ext4: Secure Delete: Add secure delete functions
+>>>    ext4: Secure Delete: Secure delete file data
+>>>    ext4: Secure Delete: Secure delete directory entry
+>>>    ext4: Secure Delete: Secure delete meta data blocks
+>>>    ext4/jbd2: Secure Delete: Secure delete journal blocks
+>>>
+>>> fs/ext4/ext4.h         |   28 +++-
+>>> fs/ext4/ext4_extents.h |    2 +
+>>> fs/ext4/extents.c      |   21 +++-
+>>> fs/ext4/indirect.c     |    2 +-
+>>> fs/ext4/inode.c        |  391 ++++++++++++++++++++++++++++++++++++++++++++++++
+>>> fs/ext4/mballoc.c      |    8 +
+>>> fs/ext4/namei.c        |   64 +++++++-
+>>> fs/jbd2/commit.c       |    6 +
+>>> fs/jbd2/journal.c      |  112 ++++++++++++++
+>>> include/linux/jbd2.h   |   21 +++
+>>> 10 files changed, 642 insertions(+), 13 deletions(-)
+>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
