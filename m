@@ -1,47 +1,66 @@
-From: Miklos Szeredi <mszeredi@suse.cz>
-Subject: Re: EXT4-fs (dm-1): Couldn't remount RDWR because of unprocessed
- orphan inode list
-Date: Tue, 11 Oct 2011 10:45:05 +0200
-Message-ID: <1318322705.5661.1.camel@tucsk.pomaz.szeredi.hu>
-References: <alpine.DEB.2.01.1109021346290.9183@trent.utfs.org>
-	 <4E66478E.90102@redhat.com>
-	 <alpine.DEB.2.01.1109060923340.9183@trent.utfs.org>
-	 <4E664DFD.80308@redhat.com> <20110908185139.GA2393@quack.suse.cz>
-	 <alpine.DEB.2.01.1109091809180.9183@trent.utfs.org>
-	 <20110910200414.GA6709@quack.suse.cz>
-	 <alpine.DEB.2.01.1109122150060.9183@trent.utfs.org>
-	 <alpine.DEB.2.01.1109152044090.5628@trent.utfs.org>
-	 <20111005180339.GG23467@quack.suse.cz>
-	 <alpine.DEB.2.01.1110051823380.8000@trent.utfs.org>
-	 <4E8D7F11.8050309@jp.fujitsu.com>
+From: =?utf-8?B?5LuFMTDlhYPmr4/lpKk=?= <user@tuwharetoafm.co.nz>
+Subject: =?utf-8?B?576k5Y+R6L2v5Lu2K+S5sOWutuaQnOe0ouacuisxMDnlsYrlub/kuqTkvJrkubDlrrY=?=
+	=?utf-8?B?44CB5rW35YWz5pWw5o2uLEIyQuivouebmOS5sOWutjUwMOS4h+OAgg==?=
+Date: Tue, 11 Oct 2011 09:18:55 +0000 (UTC)
+Message-ID: <20121011152205701173@tuwharetoafm.co.nz>
+Reply-To: <1339625218@qq.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Christian Kujau <lists@nerdbynature.de>,
-	Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
-	Al Viro <viro@ZenIV.linux.org.uk>
-To: toshi.okajima@jp.fujitsu.com
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <4E8D7F11.8050309@jp.fujitsu.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain;
+	charset="utf-8"
+Content-Transfer-Encoding: base64
+To: <linjs82@msn.com>, <linkmaster@50701.com>, <links@gmail.com>,
+	<linksmartcommunications@yahoo.com>, <linlianc@hotmail.com>,
+	<linn_shio@msn.com>, <linophone@ymail.com>,
+	<linshi2792338@1
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from www.ttt91-9fm.co.nz ([222.154.233.154]:9318 "EHLO
+	tuwharetoafm.co.nz" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752558Ab1JKJSs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Oct 2011 05:18:48 -0400
+Date: Thu, 11 Oct 2012 15:21:55 +0800
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 2011-10-06 at 19:12 +0900, Toshiyuki Okajima wrote:
-
-> With Miklos' patches applies to -rc8, I could display
-> "Couldn't remount RDWR because of unprocessed orphan inode list".
-> on my x86_64 machine by my reproducer.
-> 
-> Because actual removal starts from over a range between mnt_want_write() and
-> mnt_drop_write() even if do_unlinkat() or do_rmdir() calls mnt_want_write()
-> and mnt_drop_write() to prevent a filesystem from re-mounting read-only.
-
-
-Thanks for the reproducer.
-
-I'm looking at this now...
-
-Miklos
+576k5Y+R6L2v5Lu2KzEwOeWxiuW5v+S6pOS8muS5sOWutuOAgea1t+WFs+aVsOaNruOAgeaQnOe0
+ouW8leaTjuS5sOWutixCMkLor6Lnm5jkubDlrrblhbE1MDDkuIcs5LuFMTDlhYPmr4/lpKnjgIIg
+DQrnvqTlj5Hova/ku7YrMTA55bGK5bm/5Lqk5Lya5Lmw5a6244CB5rW35YWz5pWw5o2u44CB5pCc
+57Si5byV5pOO5Lmw5a62LEIyQuivouebmOS5sOWutuWFsTUwMOS4hyzku4UxMOWFg+avj+WkqeOA
+giANCuS/neivgeavj+WkqemDveacieS5sOWutuWbnuWkjeOAgg0K5L+d6K+B5q+P5aSp6YO95pyJ
+5Lmw5a625Zue5aSN44CCDQrkv53or4Hmr4/lpKnpg73mnInkubDlrrblm57lpI3jgIINCg0KMeOA
+gee+pOWPkei9r+S7tu+8miDmk43kvZznroDljZXvvIzlip/og73lvLrlpKfvvIzmqKHku7/kurrl
+t6Xmk43kvZzmqKHlvI/vvIzliLDovr7njofpq5jvvIzml6Xlj5HpgIE15LiH5bCB5Lul5LiK44CC
+IA0KMuOAgTUwMOS4h+S5sOWutui1hOa6kO+8miDotaDpgIHnmoQ1MDDkuIfkubDlrrbotYTmupDl
+upPvvIzmm7TmlrAgKOWPr+S7peaMieeFp+aCqOeahOS6p+WTgeaPkOWPluWHuuadpe+8jOabtOey
+vuWHhuW8gOWPkSnjgIIgDQoz44CB6LaF57qn5rW35aSW5Lmw5a62RW1haWzmkJzntKLmnLrvvJog
+5YaF572u5LqGNjAw5LiH6KGM5Lia5YWz6ZSu6K+N77yM5qC55o2u6ZW/5bC+6K+N5pCc57Si77yM
+57uT5p6c5pu057K+56Gu5Yy56YWN77yb5q+P5aSp6IO95pCc57SiMS0y5LiH5Lul5LiK5Lmw5a62
+55yf5a6eRU1BSUzvvIzmiJDljZXnjofpq5jjgIIgDQogDQoNCuimgeeahOaKk+e0p+iBlOezu1FR
+OiAxMzM5NjI1MjE4ICAgIOaIluiAheeri+WNs+WbnuWkjemCrueusTogMTMzOTYyNTIxOEBxcS5j
+b20NCuimgeeahOaKk+e0p+iBlOezu1FROiAxMzM5NjI1MjE4ICAgIOaIluiAheeri+WNs+WbnuWk
+jemCrueusTogMTMzOTYyNTIxOEBxcS5jb20NCuimgeeahOaKk+e0p+iBlOezu1FROiAxMzM5NjI1
+MjE4ICAgIOaIluiAheeri+WNs+WbnuWkjemCrueusTogMTMzOTYyNTIxOEBxcS5jb20NCiANCuWF
+jei0uei1oOmAgToNCuS4gOWFsTjkuKrljIUo5pWw5o2u5piv5YWo6KGM5Lia55qE77yM5oyJ54Wn
+6KGM5Lia5YiG5aW957G777yM5bm25LiU5Y+v5Lul5oyJ54Wn5YWz6ZSu6K+N5p+l6K+i55qEKe+8
+miANCjHvvIwyMDEx5pil5a2jMTA55bGK5bm/5Lqk5Lya5Lmw5a62546w5Zy66K+i55uY5pWw5o2u
+5bqT5paw6bKc5Ye654KJ77yM6LaF57qn5paw6bKc5Lmw5a6277yM5paw6bKc5pWw5o2u77yM5a65
+5piT5oiQ5Y2V77yBIA0KMu+8jOi0reS5sOWQjuWPr+S7peWFjei0ueabtOaWsDIwMTHnp4vlraPl
+ub/kuqTkvJorMjAxMuaYpeWto+W5v+S6pOS8muS5sOWutuaVsOaNruOAguWkqui2heWAvOS6huOA
+gg0KM++8jOacgOaWsOWFqOeQg+S5sOWutuW6kyzlhbE0NTE2NjDmnaHmlbDmja7jgIIgKOacgOaW
+sOabtOaWsOaXpeacnyAyMDExLTA1LTE25pelKQ0KNO+8jDIwMDjlubQsMjAwOeW5tCwyMDEw5bm0
+IOaYpeWtoyvnp4vlraPlub/kuqTkvJrkubDlrrblkI3lvZXvvIwxMDMgMTA0IDEwNSAxMDYgMTA3
+IDEwOCDlhbHlha3lsYog5YWxMTIwLjbkuIfmlbDmja7jgIINCjXvvIwyMDEw5bm05Zu96ZmF5L+D
+6ZSA5Y2P5Lya77yIUFBBSe+8ieaIkOWRmOWQjeWNlSBQUEFJIE1lbWJlcnMgRGlyZWN0b3J577yM
+6Z2e5bi46YeN6KaB55qE5aSn5Lmw5a6244CCDQo277yMMjAxMOW5tOWIsOmmmea4r+mHh+i0reea
+hOWbveWkluWuouS6uuWQjeW9lSjpppnmuK/otLjlj5HlsYDmj5Dkvpsp77yM5YWxNy4y5LiH5pWw
+5o2u77yM6LaF57qn6YeN6KaB55qE5Lmw5a6244CCDQo377yMNDguNjjkuIfmnaHmnIDmlrDkubDl
+rrbor6Lnm5jvvIzotK3kubDlkI7mr4/mnIjmm7TmlrAgMS0y5LiH5p2h77yM5YyF5ousMumDqOWI
+hu+8jDHvvIzmnIDmlrDnmoTor6Lnm5ggMu+8jOacgOaWsOeahOWxleS8muS5sOWutuOAguWFjei0
+ueabtOaWsDM25Liq5pyI44CCDQo477yMMjAwOeW5tOa1t+WFs+aPkOWNleaVsOaNrnBpZXJz54mI
+5pWw5o2uIDHljYPkuIfjgIINCg0KDQror5rkv6HkuLrmnKzvvIzmlK/mjIHmlK/ku5jlrp3mi4Xk
+v53kuqTmmJMgKOWFiOWPkei0p+W5tuWuieijheiuvue9rue+pOWPkei9r+S7tu+8jOeEtuWQjuS7
+mOasvikg5b275bqV5omT5raI5oKo55qEIOmhvuiZkeOAgg0KDQogDQoNCg0KIA0KDQrnsr7lh4bm
+lbDmja4t5oiQ5Y2V546H5p6B6auYDQrnsr7lh4bmlbDmja4t5oiQ5Y2V546H5p6B6auYDQrnsr7l
+h4bmlbDmja4t5oiQ5Y2V546H5p6B6auYDQrnsr7lh4bmlbDmja4t5oiQ5Y2V546H5p6B6auYDQrn
+sr7lh4bmlbDmja4t5oiQ5Y2V546H5p6B6auYDQo=
 
 
