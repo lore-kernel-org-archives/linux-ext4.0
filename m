@@ -1,64 +1,61 @@
-From: Jonathan Corbet <corbet@lwn.net>
-Subject: Re: [Ext4 Secure Delete 7/7v4] ext4/jbd2: Secure Delete: Secure
- delete journal blocks
-Date: Mon, 10 Oct 2011 17:41:15 -0600
-Message-ID: <20111010174115.054c3f1f@bike.lwn.net>
-References: <1317971465-8517-1-git-send-email-achender@linux.vnet.ibm.com>
-	<1317971465-8517-8-git-send-email-achender@linux.vnet.ibm.com>
-	<20111010134736.5b721a22@bike.lwn.net>
-	<4E93813C.1020708@linux.vnet.ibm.com>
+From: NamJae Jeon <linkinjeon@gmail.com>
+Subject: Re: [patch]ext4: add block plug for .writepages
+Date: Tue, 11 Oct 2011 09:07:56 +0900
+Message-ID: <CAKYAXd_Akk_9yNM-ZN=8hYM=0JEKSzzqXLjbQY9auPK0Qe6NoQ@mail.gmail.com>
+References: <1317004226.29510.172.camel@sli10-conroe>
+	<20110926073025.GB21079@infradead.org>
+	<1317022727.29510.175.camel@sli10-conroe>
+	<20110926094554.GA30827@infradead.org>
+	<1317179380.22361.8.camel@sli10-conroe>
+	<20111010165116.GX7948@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 8bit
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Allison Henderson <achender@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: "Ted Ts'o" <tytso@mit.edu>, Shaohua Li <shaohua.li@intel.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	Jens Axboe <axboe@kernel.dk>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	lkml <l
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from tex.lwn.net ([70.33.254.29]:58361 "EHLO vena.lwn.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751213Ab1JJXlR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Oct 2011 19:41:17 -0400
-In-Reply-To: <4E93813C.1020708@linux.vnet.ibm.com>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:47421 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752511Ab1JKAH5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Oct 2011 20:07:57 -0400
+In-Reply-To: <20111010165116.GX7948@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 10 Oct 2011 16:35:24 -0700
-Allison Henderson <achender@linux.vnet.ibm.com> wrote:
+2011/10/11 Ted Ts'o <tytso@mit.edu>:
+> On Wed, Sep 28, 2011 at 11:09:40AM +0800, Shaohua Li wrote:
+>> I searched a little bit, looks only ext4 need it. here is the patch.
+>>
+>>
+>> Add block plug for ext4 .writepages. Though ext4 .writepages
+>> already handles request merge very well, block plug is still
+>> helpful to reduce block lock contention.
+>>
+>> Signed-off-by: Shaohua Li <shaohua.li@intel.com>
+You found good point.
+If there are other filesystem that didn't use generic_writepages,
+these are needed as this patch.
 
-> On 10/10/2011 12:47 PM, Jonathan Corbet wrote:
-> > One quick question:
-> >
-> > On Fri,  7 Oct 2011 00:11:05 -0700
-> > Allison Henderson<achender@linux.vnet.ibm.com>  wrote:
-> >
-> >> +	/* Secure delete any blocks still in our range */
-> >> +	if (jbd2_pblk_count>  0)
-> >> +		err = ext4_secure_delete_pblks(journal->j_inode,
-> >> +			jbd2_pblk_start, jbd2_pblk_count);
-> >> +
-> >> +out:
-> >> +	spin_unlock(&journal->j_pair_lock);
-> >
-> > ext4_secure_delete_pblks() appears to do its job synchronously - it has
-> > calls to things like sync_dirty_buffer() and such.  How can you do that
-> > while holding ->j_pair_lock?
-> >
-> > Thanks,
-> >
-> > jon
-> >
-> 
-> Hi Jon,
-> 
-> Well j_pair_lock is a lock I added to protect the new list of vfs
-> -> jbd2 block pairs. It is locked by the journal commit thread to
-> update the list when ever a journal block is modified. The above
-> code here is called by the same thread that performs a punch hole or
-> truncate operation, not the journal commit thread. So I'm not
-> immediately seeing why there would be any lock problems. Is there
-> another case I'm missing?
-
-The problem is that ext4_secure_delete_pblks() can sleep, unless I've
-misunderstood things very badly.  That's not something you want to do
-while holding a spinlock...
-
-jon
+Reviewed-by: NamJae Jeon <linkinjeon@gmail.com>
+>
+> Thanks, applied.
+>
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0-=
+ Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kerne=
+l" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =C2=A0http://vger.kernel.org/majordomo-info.ht=
+ml
+> Please read the FAQ at =C2=A0http://www.tux.org/lkml/
+>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
