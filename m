@@ -1,66 +1,109 @@
-From: =?utf-8?B?5LuFMTDlhYPmr4/lpKk=?= <user@tuwharetoafm.co.nz>
-Subject: =?utf-8?B?576k5Y+R6L2v5Lu2K+S5sOWutuaQnOe0ouacuisxMDnlsYrlub/kuqTkvJrkubDlrrY=?=
-	=?utf-8?B?44CB5rW35YWz5pWw5o2uLEIyQuivouebmOS5sOWutjUwMOS4h+OAgg==?=
-Date: Tue, 11 Oct 2011 09:18:55 +0000 (UTC)
-Message-ID: <20121011152205701173@tuwharetoafm.co.nz>
-Reply-To: <1339625218@qq.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH v4] [SIGNED-OFF] ext4: don't work without procfs
+Date: Tue, 11 Oct 2011 11:27:11 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1110111123330.3343@dhcp-27-109.brq.redhat.com>
+References: <1317920054-2860-1-git-send-email-yargil@free.fr> <20111008202704.GK7948@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
-Content-Transfer-Encoding: base64
-To: <linjs82@msn.com>, <linkmaster@50701.com>, <links@gmail.com>,
-	<linksmartcommunications@yahoo.com>, <linlianc@hotmail.com>,
-	<linn_shio@msn.com>, <linophone@ymail.com>,
-	<linshi2792338@1
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Fabrice Jouhaud <yargil@free.fr>, linux-ext4@vger.kernel.org,
+	adilger.kernel@dilger.ca, linux-kernel@vger.kernel.org
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.ttt91-9fm.co.nz ([222.154.233.154]:9318 "EHLO
-	tuwharetoafm.co.nz" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752558Ab1JKJSs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Oct 2011 05:18:48 -0400
-Date: Thu, 11 Oct 2012 15:21:55 +0800
+Received: from mx1.redhat.com ([209.132.183.28]:9386 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753619Ab1JKJ1U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 11 Oct 2011 05:27:20 -0400
+In-Reply-To: <20111008202704.GK7948@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-576k5Y+R6L2v5Lu2KzEwOeWxiuW5v+S6pOS8muS5sOWutuOAgea1t+WFs+aVsOaNruOAgeaQnOe0
-ouW8leaTjuS5sOWutixCMkLor6Lnm5jkubDlrrblhbE1MDDkuIcs5LuFMTDlhYPmr4/lpKnjgIIg
-DQrnvqTlj5Hova/ku7YrMTA55bGK5bm/5Lqk5Lya5Lmw5a6244CB5rW35YWz5pWw5o2u44CB5pCc
-57Si5byV5pOO5Lmw5a62LEIyQuivouebmOS5sOWutuWFsTUwMOS4hyzku4UxMOWFg+avj+WkqeOA
-giANCuS/neivgeavj+WkqemDveacieS5sOWutuWbnuWkjeOAgg0K5L+d6K+B5q+P5aSp6YO95pyJ
-5Lmw5a625Zue5aSN44CCDQrkv53or4Hmr4/lpKnpg73mnInkubDlrrblm57lpI3jgIINCg0KMeOA
-gee+pOWPkei9r+S7tu+8miDmk43kvZznroDljZXvvIzlip/og73lvLrlpKfvvIzmqKHku7/kurrl
-t6Xmk43kvZzmqKHlvI/vvIzliLDovr7njofpq5jvvIzml6Xlj5HpgIE15LiH5bCB5Lul5LiK44CC
-IA0KMuOAgTUwMOS4h+S5sOWutui1hOa6kO+8miDotaDpgIHnmoQ1MDDkuIfkubDlrrbotYTmupDl
-upPvvIzmm7TmlrAgKOWPr+S7peaMieeFp+aCqOeahOS6p+WTgeaPkOWPluWHuuadpe+8jOabtOey
-vuWHhuW8gOWPkSnjgIIgDQoz44CB6LaF57qn5rW35aSW5Lmw5a62RW1haWzmkJzntKLmnLrvvJog
-5YaF572u5LqGNjAw5LiH6KGM5Lia5YWz6ZSu6K+N77yM5qC55o2u6ZW/5bC+6K+N5pCc57Si77yM
-57uT5p6c5pu057K+56Gu5Yy56YWN77yb5q+P5aSp6IO95pCc57SiMS0y5LiH5Lul5LiK5Lmw5a62
-55yf5a6eRU1BSUzvvIzmiJDljZXnjofpq5jjgIIgDQogDQoNCuimgeeahOaKk+e0p+iBlOezu1FR
-OiAxMzM5NjI1MjE4ICAgIOaIluiAheeri+WNs+WbnuWkjemCrueusTogMTMzOTYyNTIxOEBxcS5j
-b20NCuimgeeahOaKk+e0p+iBlOezu1FROiAxMzM5NjI1MjE4ICAgIOaIluiAheeri+WNs+WbnuWk
-jemCrueusTogMTMzOTYyNTIxOEBxcS5jb20NCuimgeeahOaKk+e0p+iBlOezu1FROiAxMzM5NjI1
-MjE4ICAgIOaIluiAheeri+WNs+WbnuWkjemCrueusTogMTMzOTYyNTIxOEBxcS5jb20NCiANCuWF
-jei0uei1oOmAgToNCuS4gOWFsTjkuKrljIUo5pWw5o2u5piv5YWo6KGM5Lia55qE77yM5oyJ54Wn
-6KGM5Lia5YiG5aW957G777yM5bm25LiU5Y+v5Lul5oyJ54Wn5YWz6ZSu6K+N5p+l6K+i55qEKe+8
-miANCjHvvIwyMDEx5pil5a2jMTA55bGK5bm/5Lqk5Lya5Lmw5a62546w5Zy66K+i55uY5pWw5o2u
-5bqT5paw6bKc5Ye654KJ77yM6LaF57qn5paw6bKc5Lmw5a6277yM5paw6bKc5pWw5o2u77yM5a65
-5piT5oiQ5Y2V77yBIA0KMu+8jOi0reS5sOWQjuWPr+S7peWFjei0ueabtOaWsDIwMTHnp4vlraPl
-ub/kuqTkvJorMjAxMuaYpeWto+W5v+S6pOS8muS5sOWutuaVsOaNruOAguWkqui2heWAvOS6huOA
-gg0KM++8jOacgOaWsOWFqOeQg+S5sOWutuW6kyzlhbE0NTE2NjDmnaHmlbDmja7jgIIgKOacgOaW
-sOabtOaWsOaXpeacnyAyMDExLTA1LTE25pelKQ0KNO+8jDIwMDjlubQsMjAwOeW5tCwyMDEw5bm0
-IOaYpeWtoyvnp4vlraPlub/kuqTkvJrkubDlrrblkI3lvZXvvIwxMDMgMTA0IDEwNSAxMDYgMTA3
-IDEwOCDlhbHlha3lsYog5YWxMTIwLjbkuIfmlbDmja7jgIINCjXvvIwyMDEw5bm05Zu96ZmF5L+D
-6ZSA5Y2P5Lya77yIUFBBSe+8ieaIkOWRmOWQjeWNlSBQUEFJIE1lbWJlcnMgRGlyZWN0b3J577yM
-6Z2e5bi46YeN6KaB55qE5aSn5Lmw5a6244CCDQo277yMMjAxMOW5tOWIsOmmmea4r+mHh+i0reea
-hOWbveWkluWuouS6uuWQjeW9lSjpppnmuK/otLjlj5HlsYDmj5Dkvpsp77yM5YWxNy4y5LiH5pWw
-5o2u77yM6LaF57qn6YeN6KaB55qE5Lmw5a6244CCDQo377yMNDguNjjkuIfmnaHmnIDmlrDkubDl
-rrbor6Lnm5jvvIzotK3kubDlkI7mr4/mnIjmm7TmlrAgMS0y5LiH5p2h77yM5YyF5ousMumDqOWI
-hu+8jDHvvIzmnIDmlrDnmoTor6Lnm5ggMu+8jOacgOaWsOeahOWxleS8muS5sOWutuOAguWFjei0
-ueabtOaWsDM25Liq5pyI44CCDQo477yMMjAwOeW5tOa1t+WFs+aPkOWNleaVsOaNrnBpZXJz54mI
-5pWw5o2uIDHljYPkuIfjgIINCg0KDQror5rkv6HkuLrmnKzvvIzmlK/mjIHmlK/ku5jlrp3mi4Xk
-v53kuqTmmJMgKOWFiOWPkei0p+W5tuWuieijheiuvue9rue+pOWPkei9r+S7tu+8jOeEtuWQjuS7
-mOasvikg5b275bqV5omT5raI5oKo55qEIOmhvuiZkeOAgg0KDQogDQoNCg0KIA0KDQrnsr7lh4bm
-lbDmja4t5oiQ5Y2V546H5p6B6auYDQrnsr7lh4bmlbDmja4t5oiQ5Y2V546H5p6B6auYDQrnsr7l
-h4bmlbDmja4t5oiQ5Y2V546H5p6B6auYDQrnsr7lh4bmlbDmja4t5oiQ5Y2V546H5p6B6auYDQrn
-sr7lh4bmlbDmja4t5oiQ5Y2V546H5p6B6auYDQo=
+On Sat, 8 Oct 2011, Ted Ts'o wrote:
 
+> On Thu, Oct 06, 2011 at 06:54:14PM +0200, Fabrice Jouhaud wrote:
+> > Regression from commit dd68314ccf3fb918c1fb6471817edbc60ece4b52
+> > The problem come from the test of the return value of proc_mkdir
+> > that is always false without procfs and abort the init of ext4.
+> > 
+> > Signed-off-by: Fabrice Jouhaud <yargil@free.fr>
+> 
+> Thanks, here's the patch that I ultimately checked in.
+> 
+> commit d44651d0f922b7aaeddd9fc04f2f5700a65983dd
+> Author: Fabrice Jouhaud <yargil@free.fr>
+> Date:   Sat Oct 8 16:26:03 2011 -0400
+> 
+>     ext4: fix ext4 so it works without CONFIG_PROC_FS
+>     
+>     This fixes a bug which was introduced in dd68314ccf3fb.  The problem
+>     came from the test of the return value of proc_mkdir which is always
+>     false without procfs, and this would initialization of ext4.
+>     
+>     Signed-off-by: Fabrice Jouhaud <yargil@free.fr>
+>     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 42f76c6..dcc4605 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -3540,10 +3540,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  		goto failed_mount;
+>  	}
+>  
+> -#ifdef CONFIG_PROC_FS
+>  	if (ext4_proc_root)
+>  		sbi->s_proc = proc_mkdir(sb->s_id, ext4_proc_root);
+> -#endif
+>  
+>  	bgl_lock_init(sbi->s_blockgroup_lock);
+>  
+> @@ -5070,13 +5068,11 @@ static int __init ext4_init_fs(void)
+>  		return err;
+>  	err = ext4_init_system_zone();
+>  	if (err)
+> -		goto out7;
+> +		goto out6;
+>  	ext4_kset = kset_create_and_add("ext4", NULL, fs_kobj);
+>  	if (!ext4_kset)
+> -		goto out6;
+> -	ext4_proc_root = proc_mkdir("fs/ext4", NULL);
+> -	if (!ext4_proc_root)
+>  		goto out5;
+> +	ext4_proc_root = proc_mkdir("fs/ext4", NULL);
 
+Hi Ted,
+
+I am not sure that this is very good. As I said several patch versions
+back, it would be nice to print a warning in case that proc_mkdir()
+fails even though procfs is compiled in. Otherwise this might hide
+possible bugs.
+
+Thanks!
+-Lukas
+
+>  
+>  	err = ext4_init_feat_adverts();
+>  	if (err)
+> @@ -5112,12 +5108,12 @@ out2:
+>  out3:
+>  	ext4_exit_feat_adverts();
+>  out4:
+> -	remove_proc_entry("fs/ext4", NULL);
+> -out5:
+> +	if (ext4_proc_root)
+> +		remove_proc_entry("fs/ext4", NULL);
+>  	kset_unregister(ext4_kset);
+> -out6:
+> +out5:
+>  	ext4_exit_system_zone();
+> -out7:
+> +out6:
+>  	ext4_exit_pageio();
+>  	return err;
+>  }
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
+-- 
