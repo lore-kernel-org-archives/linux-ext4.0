@@ -1,8 +1,8 @@
 From: Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: [PATCH 11/28] ext4: Calculate and verify inode checksums
-Date: Wed, 12 Oct 2011 12:45:01 -0700
-Message-ID: <1CCC75F1-41BE-49E9-8A03-372FC76E0202@dilger.ca>
-References: <20111008075343.20506.23155.stgit@elm3c44.beaverton.ibm.com> <20111008075456.20506.47319.stgit@elm3c44.beaverton.ibm.com>
+Subject: Re: [PATCH 12/28] ext4: Use i_generation in inode-related metadata checksums
+Date: Wed, 12 Oct 2011 12:52:30 -0700
+Message-ID: <BFA9D351-575B-4B48-B5D8-D01DF5317A7C@dilger.ca>
+References: <20111008075343.20506.23155.stgit@elm3c44.beaverton.ibm.com> <20111008075502.20506.15728.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0 (Apple Message framework v1084)
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 8BIT
@@ -18,99 +18,75 @@ Cc: Theodore Tso <tytso@mit.edu>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
 To: "Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20111008075456.20506.47319.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:58485 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751386Ab1JLTvb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Oct 2011 15:51:31 -0400
+In-Reply-To: <20111008075502.20506.15728.stgit@elm3c44.beaverton.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-10-08, at 12:54 AM, Darrick J. Wong wrote:
-> This patch introduces to ext4 the ability to calculate and verify inode
-> checksums.  This requires the use of a new ro compatibility flag and some
-> accompanying e2fsprogs patches to provide the relevant features in tune2fs and
-> e2fsck.
+On 2011-10-08, at 12:55 AM, Darrick J. Wong wrote:
+> Whenever we are calculating a checksum for a piece of metadata that is
+> associated with an inode, incorporate i_generation into that calculation
+> so that old metadata blocks cannot be re-associated after a delete/create cycle.
+
+It would be better to fold this into the previous patch, since it will
+otherwise cause the inode checksum algorithm to change in the middle of the patch series.
+
+On a related note, in ext4_new_inode() it would be useful to change the
+setting of i_generation so that it skips i_generation == 0, which doesn't
+contribute to the checksum:
+
+        spin_lock(&sbi->s_next_gen_lock);
+        inode->i_generation = sbi->s_next_generation++;
++	if (unlikely(inode->i_generation == 0))
++	        inode->i_generation = sbi->s_next_generation++;
+        spin_unlock(&sbi->s_next_gen_lock);
+
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index 6e5876a..d4b59e9 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -1031,11 +1031,14 @@ got:
+> 	/* Precompute second piece of crc */
+> 	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+> 			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
+> +		__u32 crc;
+> 		struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+> 		__le32 inum = cpu_to_le32(inode->i_ino);
+> -		ei->i_uuid_inum_crc = ext4_chksum(sbi, sbi->s_uuid_crc,
+> -						  (__u8 *)&inum,
+> -						  sizeof(inum));
+> +		__le32 gen = cpu_to_le32(inode->i_generation);
+> +		crc = ext4_chksum(sbi, sbi->s_uuid_crc, (__u8 *)&inum,
+> +				  sizeof(inum));
+> +		ei->i_uuid_inum_crc = ext4_chksum(sbi, crc, (__u8 *)&gen,
+> +						  sizeof(gen));
+> 	}
 > 
-> +static __u32 ext4_inode_csum(struct inode *inode, struct ext4_inode *raw,
-> +			      struct ext4_inode_info *ei)
-> +{
-> +	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-> +	__u16 crc_lo;
-> +	__u16 crc_hi = 0;
-> +	__u32 crc;
-> +
-> +	crc_lo = raw->i_checksum_lo;
-> +	raw->i_checksum_lo = 0;
-> +	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
-> +	    EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi)) {
-> +		crc_hi = raw->i_checksum_hi;
-> +		raw->i_checksum_hi = 0;
-> +	}
-> +
-> +	crc = ext4_chksum(sbi, ei->i_uuid_inum_crc, (__u8 *)raw,
-> +			  EXT4_INODE_SIZE(inode->i_sb));
-> +
-> +	raw->i_checksum_lo = crc_lo;
-> +	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
-> +	    EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi))
-> +		raw->i_checksum_hi = crc_hi;
-> +
-> +	return crc;
-> +}
+> 	ext4_clear_state_flags(ei); /* Only relevant on 32-bit archs */
+> 
+> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+> index f18bfe3..fdf0b1e 100644
+> --- a/fs/ext4/ioctl.c
+> +++ b/fs/ext4/ioctl.c
+> @@ -149,6 +149,10 @@ flags_out:
+> 		if (!inode_owner_or_capable(inode))
+> 			return -EPERM;
+> 
+> +		if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+> +				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
+> +			return -ENOTTY;
 
-This computes both the _lo and _hi parts of the checksum and overwrites what is in the inode...
-
-> +static int ext4_inode_csum_verify(struct inode *inode, struct ext4_inode *raw,
-> +				  struct ext4_inode_info *ei)
-> +{
-> +	__u32 provided, calculated;
-> +
-> +	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
-> +	    cpu_to_le32(EXT4_OS_LINUX) ||
-> +	    !EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-> +		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-> +		return 1;
-> +
-> +	provided = le16_to_cpu(raw->i_checksum_lo);
-> +	calculated = ext4_inode_csum(inode, raw, ei);
-
-This only saves the _lo part of the checksum before computing the new
-checksum (which overwrites both _lo and _hi fields), so the _hi part
-of the checksum is never properly validated below.
-
-> +	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
-> +	    EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi))
-> +		provided |= ((__u32)le16_to_cpu(raw->i_checksum_hi)) << 16;
-
-This should be moved up to save _hi before calling ext4_inode_csum().
-
-> +	else
-> +		calculated &= 0xFFFF;
-> +
-> +	return provided == calculated;
-> +}
-
-> +static void ext4_inode_csum_set(struct inode *inode, struct ext4_inode *raw,
-> +				struct ext4_inode_info *ei)
-> +{
-> +	__u32 crc;
-> +
-> +	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
-> +	    cpu_to_le32(EXT4_OS_LINUX) ||
-> +	    !EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-> +		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-> +		return;
-> +
-> +	crc = ext4_inode_csum(inode, raw, ei);
-> +	raw->i_checksum_lo = cpu_to_le16(crc & 0xFFFF);
-> +	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
-> +	    EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi))
-> +		raw->i_checksum_hi = cpu_to_le16(crc >> 16);
-
-What is the point of storing the returned crc into raw->i_checksum_lo
-and raw->i_checksum_hi, if this is done internal to ext4_inode_csum()
-already?
-
-Also, would it be better to call the temporary variable "csum" instead
-of "crc", since we may use something other than crc32c as the hash
-function in the future.
+This should get an ext4_warning() in the non-checksum case to warn
+users that this ioctl is deprecated and will be removed in the
+future unless there is a good reason to keep it.
 
 Cheers, Andreas
+
+
+
+
+
