@@ -1,110 +1,68 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] resize: Do not fail if EXT4_IOC_RESIZE_FS ioctl doesn't
- exist
-Date: Sun, 16 Oct 2011 12:39:50 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1110161233130.19533@dhcp-27-109.brq.redhat.com>
-References: <1318607374-17246-1-git-send-email-lczerner@redhat.com> <CAOQ4uxj1cz4Kp24orbskngqnn2TwV88s=HSDRa-AcapFGHaNEA@mail.gmail.com>
+From: =?utf-8?B?5L+d6K+B5pyJ5Lmw5a625Zue5aSN?= <admin@cjfoodone.net>
+Subject: =?utf-8?B?576k5Y+R6L2v5Lu2K+S5sOWutuaQnOe0ouacuivmnIDmlrDlub/kuqTkvJrkubDlrrbjgIHmtbc=?=
+	=?utf-8?B?5YWz5pWw5o2uLEIyQuivouebmOS5sOWutjUwMOS4h+OAgg==?=
+Date: Sun, 16 Oct 2011 22:41:24 +0000 (UTC)
+Message-ID: <20121017063615233140@cjfoodone.net>
+Reply-To: <1339625218@qq.com>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1192053958-1318761594=:19533"
-Cc: Lukas Czerner <lczerner@redhat.com>, Theodore Tso <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org, xiaoqiangnk@gmail.com
-To: Amir Goldstein <amir73il@gmail.com>
+Content-Type: text/plain;
+	charset="utf-8"
+Content-Transfer-Encoding: base64
+To: <lisavan@pacbell.net>, <lisbeth@singnet.com>,
+	<link-tt@hotmail.com>, <lishengoilpainting@163.net>,
+	<lisig@public.wfptt.sd.cn>, <lists@3bags.com>,
+	<lit_power@yahoo.com>, <litdpres@gmai
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39004 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750764Ab1JPKj4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 16 Oct 2011 06:39:56 -0400
-In-Reply-To: <CAOQ4uxj1cz4Kp24orbskngqnn2TwV88s=HSDRa-AcapFGHaNEA@mail.gmail.com>
+Received: from [116.121.26.84] ([116.121.26.84]:2485 "EHLO cjfoodone.net"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751427Ab1JPWlS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 16 Oct 2011 18:41:18 -0400
+Date: Wed, 17 Oct 2012 06:36:09 +0800
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+576k5Y+R6L2v5Lu2K+S5sOWutuaQnOe0ouacuisxMDnlsYrlub/kuqTkvJrkubDlrrbjgIHlsZXk
+vJrkubDlrrbjgIHmtbflhbPmlbDmja4sQjJC6K+i55uY5Lmw5a62NTAw5LiH44CCDQoNCuS4gOWF
+sTjkuKrljIUo5pWw5o2u5piv5YWo6KGM5Lia55qE77yM5oyJ54Wn6KGM5Lia5YiG5aW957G777yM
+5bm25LiU5Y+v5Lul5oyJ54Wn5YWz6ZSu6K+N5p+l6K+i55qEKe+8miANCjHvvIwyMDEx5pil5a2j
+MTA55bGK5bm/5Lqk5Lya5Lmw5a625pWw5o2u5bqT5paw6bKc5Ye654KJ77yM6LaF57qn5paw6bKc
+5Lmw5a6277yM5paw6bKc5pWw5o2u77yM5a655piT5oiQ5Y2V77yBIA0KMu+8jOacgOaWsOWFqOeQ
+g+S5sOWutuW6kyzlhbE0NTE2NjDmnaHmlbDmja7jgIIgDQoz77yMMjAwOOW5tCwyMDA55bm0LDIw
+MTDlubQg5pil5a2jK+eni+Wto+W5v+S6pOS8muS5sOWutuWQjeW9le+8jDEwMyAxMDQgMTA1IDEw
+NiAxMDcgMTA4IOWFseWFreWxiiDlhbExMjAuNuS4h+aVsOaNruOAgg0KNO+8jDIwMTDlubTlm73p
+mYXkv4PplIDljY/kvJrvvIhQUEFJ77yJ5oiQ5ZGY5ZCN5Y2VIFBQQUkgTWVtYmVycyBEaXJlY3Rv
+cnnvvIzpnZ7luLjph43opoHnmoTlpKfkubDlrrbjgIINCjXvvIwyMDEw5bm05Yiw6aaZ5riv6YeH
+6LSt55qE5Zu95aSW5a6i5Lq65ZCN5b2VKOmmmea4r+i0uOWPkeWxgOaPkOS+mynvvIzlhbE3LjLk
+uIfmlbDmja7vvIzotoXnuqfph43opoHnmoTkubDlrrbjgIINCjbvvIw2MC445LiH5p2h5pyA5paw
+5Zu95aSWQjJC5Lmw5a626K+i55uY44CCDQo377yMMjAwOeW5tOa1t+WFs+aPkOWNleaVsOaNrnBp
+ZXJz54mI5pWw5o2uIDHljYPkuIfjgIINCjjvvIznvqTlj5Hova/ku7bvvIznvqTlj5Hova/ku7bn
+moTpg6jnvbLkuI7lronoo4XjgIINCg0K5YWxIDUwMOS4h+S4quS5sOWutu+8jOavj+S4quWdh+ac
+iUVtYWlsLiANCg0K5L+d6K+B5q+P5aSp6YO95pyJ5Lmw5a625Zue5aSN44CCDQrkv53or4Hmr4/l
+pKnpg73mnInkubDlrrblm57lpI3jgIINCg0K6KaB55qE5oqT57Sn6IGU57O7UVE6IDEzMzk2MjUy
+MTggICDmiJbogIXnq4vljbPlm57lpI3pgq7nrrE6IDEzMzk2MjUyMThAcXEuY29tDQropoHnmoTm
+ipPntKfogZTns7tRUTogMTMzOTYyNTIxOCAgIOaIluiAheeri+WNs+WbnuWkjemCrueusTogMTMz
+OTYyNTIxOEBxcS5jb20NCuimgeeahOaKk+e0p+iBlOezu1FROiAxMzM5NjI1MjE4ICAg5oiW6ICF
+56uL5Y2z5Zue5aSN6YKu566xOiAxMzM5NjI1MjE4QHFxLmNvbQ0KDQror5rkv6HkuLrmnKzvvIzl
+poLmnpzkuI3kv6Hku7vmnKzkuros5Y+v5Lul6LWw5reY5a6d5Lqk5piTLOaUtui0p+mqjOivgeWQ
+juWGjeS7mOasvizov5nmmK/lr7nmgqjmnIDlpb3nmoTkv53pmpzkuobjgIIgDQoNCuS/neivgeav
+j+WkqemDveacieS5sOWutuWbnuWkjeOAgg0K5L+d6K+B5q+P5aSp6YO95pyJ5Lmw5a625Zue5aSN
+44CCDQrkv53or4Hmr4/lpKnpg73mnInkubDlrrblm57lpI3jgIINCg0KDQoNCg0K5bm/5Lqk5Lya
+5Lmw5a625oyJ5Lqn5ZOB57G75Yir5YiG57G777yM5YiG5Li65Lul5LiL5Yeg57G777yaDQoxIOWK
+nuWFrOiuvuWkhw0KMiDnvJbnu4flj4rol6Tpk4Hlt6Xoibrlk4ENCjMg546755KDDQo0IOmkkOWO
+qOeUqOWFtw0KNSDovabovoYNCjYg5aSn5Z6L5py65qKw5Y+K6K6+5aSHDQo3IOeUteWtkOeUteaw
+lA0KOCDnlLXlrZDmtojotLnlk4ENCjkg57q657uHDQoxMCDmnI3oo4UNCjExIOS4quS6uuaKpOeQ
+hg0KMTIg5bel56iL5py65qKwDQoxMyDlt6XlhbcNCjE0IOWMluW3pQ0KMTUg6K6h566X5py65Y+K
+6YCa6K6vDQoxNiDlrrblsYXnlKjlk4ENCjE3IOWutuWxheijhemlsA0KMTgg5a625YW3DQoxOSDl
+rrbnlKjnlLXlmagNCjIwIOW7uuetkeWPiuijhemlsOadkOaWmQ0KMjEg6IqC5pel55So5ZOBDQoy
+MiDnpLzlk4Hlj4rotaDlk4ENCjIzIOaRqeaJmOi9pg0KMjQg5rG96L2m6YWN5Lu2DQoyNSDpo5/l
+k4ENCjI2IOmZtueTtw0KMjcg6ZOB55+zDQoyOCDnjqnlhbcNCjI5IOWNq+a1tA0KMzAg5LqU6YeR
+DQozMSDlsI/lnovmnLrmorANCjMyIOmeiw0KMzMg5LyR6Zey55So5ZOBDQozNCDljLvnlpcNCjM1
+IOa1tOWupOS6p+WTgQ0KMzYg5Zut5p6XDQozNyDnhafmmI7kuqflk4ENCjM4IOmSn+ihqOecvOmV
+nA0KMzkg6Ieq6KGM6L2mDQo0MCDljIUNCg0KDQrkv53or4Hmr4/lpKnpg73mnInkubDlrrblm57l
+pI3jgIINCuS/neivgeavj+WkqemDveacieS5sOWutuWbnuWkjeOAgg0K5L+d6K+B5q+P5aSp6YO9
+5pyJ5Lmw5a625Zue5aSN44CCDQrkv53or4Hmr4/lpKnpg73mnInkubDlrrblm57lpI3jgIINCuS/
+neivgeavj+WkqemDveacieS5sOWutuWbnuWkjeOAgg0K
 
---8323328-1192053958-1318761594=:19533
-Content-Type: TEXT/PLAIN; charset=ISO-8859-1
-Content-Transfer-Encoding: 8BIT
 
-On Sun, 16 Oct 2011, Amir Goldstein wrote:
+.
 
-> On Fri, Oct 14, 2011 at 5:49 PM, Lukas Czerner <lczerner@redhat.com> wrote:
-> > Commit 9f6ba888f027ba4daf57ac61a11a6dce98e42347 added support for new
-> > online resize ioctl EXT4_IOC_RESIZE_FS. It is also trying to avoid
-> > failure when this ioctl() is not supported by the kernel however
-> > it is checking wrong error code (EINVAL).
-> >
-> > When the ioctl does not exist, errno is set to ENOTTY, so we should
-> > check for that, rather than EINVAL which means that ioctl arguments
-> > are not valid. So change the code to check for ENOTTY and allow
-> > resize2fs to try to use the old approach. Also add some comments.
-> >
-> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> > ---
-> >
-> > Btw I can not find the new kernel code anywhere. It is not in Linus tree,
-> > it also is not in the github ext4 master, nor dev tree. Where it is then ?
-> 
-> AFAIK, the latest version of the patches is here:
-> https://github.com/YANGYongqiang/ext4-patch-queue
-> 
-> and I suppose Ted should have it in patchworks as well.
-> 
-> Ted,
-> 
-> Are you planning to merge new online resize for 3.2?
-
-Thanks Amir,
-
-also it would be nice if the kernel functionality was merged before the
-corresponding user-space tools as I thought it is the right course of
-action.
-
-Also Ted, could you merge this patch ASAP, since the online resize2fs is
-unusable in the current state.
-
-Thanks!
--Lukas
-
-> 
-> Thanks,
-> Amir.
-> 
-> 
-> 
-> > The problem is that the recent released e2fsprogs are broken for all
-> > kernels. To be more specific, resize2fs is broken for all kernels.
-> >
-> >
-> >  resize/online.c |    7 ++++++-
-> >  1 files changed, 6 insertions(+), 1 deletions(-)
-> >
-> > diff --git a/resize/online.c b/resize/online.c
-> > index 77290c2..1a77839 100644
-> > --- a/resize/online.c
-> > +++ b/resize/online.c
-> > @@ -72,7 +72,12 @@ errcode_t online_resize_fs(ext2_filsys fs, const char *mtpt,
-> >        }
-> >
-> >        if (ioctl(fd, EXT4_IOC_RESIZE_FS, new_size)) {
-> > -               if (errno != EINVAL) {
-> > +               /*
-> > +                * If kernel does not support EXT4_IOC_RESIZE_FS, use the
-> > +                * old online resize. Note that the old approach does not
-> > +                * handle >32 bit file systems
-> > +                */
-> > +               if (errno != ENOTTY) {
-> >                        if (errno == EPERM)
-> >                                com_err(program_name, 0,
-> >                                _("Permission denied to resize filesystem"));
-> > --
-> > 1.7.4.4
-> >
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >
-> 
-
--- 
---8323328-1192053958-1318761594=:19533--
