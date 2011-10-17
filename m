@@ -1,54 +1,48 @@
-From: Bas van Schaik <bas@tuxes.nl>
-Subject: Re: Used dd to copy an ext4 filesystem, but target contained an old
- (mounted!) filesystem
-Date: Mon, 17 Oct 2011 13:37:10 +0100
-Message-ID: <4E9C2176.9090906@tuxes.nl>
-References: <4E9C1704.5000304@tuxes.nl>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Check extent overflow with the right range.
+Date: Mon, 17 Oct 2011 10:16:05 -0400
+Message-ID: <20111017141605.GA25017@thunk.org>
+References: <20111017081036.GN30887@longonot.mountain>
+ <1318841128-4540-1-git-send-email-tm@tao.ma>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, dan.carpenter@oracle.com
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from hermes.tetra.nl ([87.251.57.141]:39163 "EHLO hermes.tetra.nl"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752230Ab1JQMhg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 17 Oct 2011 08:37:36 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by hermes.tetra.nl (Postfix) with ESMTP id 96C2B5E8001
-	for <linux-ext4@vger.kernel.org>; Mon, 17 Oct 2011 14:37:34 +0200 (CEST)
-Received: from hermes.tetra.nl ([127.0.0.1])
-	by localhost (hermes.tetra.nl [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id KWX-uRkFCCQX for <linux-ext4@vger.kernel.org>;
-	Mon, 17 Oct 2011 14:37:26 +0200 (CEST)
-Received: from guust.tuxes.nl (unknown [172.26.5.63])
-	(using TLSv1 with cipher ADH-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by hermes.tetra.nl (Postfix) with ESMTP id 631265F8001
-	for <linux-ext4@vger.kernel.org>; Mon, 17 Oct 2011 14:37:25 +0200 (CEST)
-Received: from localhost (localhost [127.0.0.1])
-	by guust.tuxes.nl (Postfix) with ESMTP id 0A65B2DC002
-	for <linux-ext4@vger.kernel.org>; Mon, 17 Oct 2011 13:33:48 +0100 (BST)
-Received: from guust.tuxes.nl ([127.0.0.1])
-	by localhost (guust.tuxes.nl [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id 5uaOTZF0FAEn for <linux-ext4@vger.kernel.org>;
-	Mon, 17 Oct 2011 13:33:34 +0100 (BST)
-Received: from [129.67.194.130] (bilby.oerc.ox.ac.uk [129.67.194.130])
-	(using TLSv1 with cipher AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	(Authenticated sender: bas@guust)
-	by guust.tuxes.nl (Postfix) with ESMTP id 95BE52DC001
-	for <linux-ext4@vger.kernel.org>; Mon, 17 Oct 2011 13:33:34 +0100 (BST)
-In-Reply-To: <4E9C1704.5000304@tuxes.nl>
+Received: from li9-11.members.linode.com ([67.18.176.11]:34008 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751167Ab1JQOQJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 17 Oct 2011 10:16:09 -0400
+Content-Disposition: inline
+In-Reply-To: <1318841128-4540-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 17/10/11 12:52, Bas van Schaik wrote:
-> (something to the wrong mailinglist)
+On Mon, Oct 17, 2011 at 04:45:28PM +0800, Tao Ma wrote:
+> From: Tao Ma <boyu.mt@taobao.com>
+> 
+> In 4fd30c033, we move the range check before we change ix to avoid the memory stamp.
+> But actually we should check against the EXT_MAX_INDEX, not EXT_LAST_INDEX.
+> 
+> So this patch revert the old patch and adds a new check before we setting ix.
+> 
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+> ---
+> Ted, since 4fd30c033 is in your dev branch, I am fine to integrate these 2 patches to one.
 
-Apologies, I seem to have sent my message to the wrong mailinglist.
 
-   Bas
+Hi Tao,
 
+I have integrated this with the the existing patch in dev branch (since
+it isn't in the master branch yet, and hence hasn't been locked down).
 
+I'm wondering though how you originally ran into this case, though.
+If there is no more room in the tree node, we should have never
+entered ext4_ext_extent_index() in the first place.  Was this a
+theoretical concern or did you actually see this happen.  And if so,
+was it due to a file system corruption, or another bug someplace else.
 
-ps.: of course, I'm still interested in tips & tricks!
+Thanks,
+
+						- Ted
