@@ -1,35 +1,276 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Check extent overflow with the right range.
-Date: Tue, 18 Oct 2011 11:07:45 -0400
-Message-ID: <20111018150745.GA17025@thunk.org>
-References: <20111017081036.GN30887@longonot.mountain>
- <1318841128-4540-1-git-send-email-tm@tao.ma>
- <20111017141605.GA25017@thunk.org>
- <4E9CE414.9040706@tao.ma>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: fs: jdb/jbd2: Put identical code in a common header
+Date: Tue, 18 Oct 2011 22:40:31 +0200
+Message-ID: <20111018204031.GE4599@quack.suse.cz>
+References: <alpine.LFD.2.02.1110051328010.18778@ionos>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Tao Ma <tm@tao.ma>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:57307 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932382Ab1JRPHs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 18 Oct 2011 11:07:48 -0400
+Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+	Thomas Gleixner <tglx@linutronix.de>
+To: Ted Tso <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <4E9CE414.9040706@tao.ma>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <alpine.LFD.2.02.1110051328010.18778@ionos>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Oct 18, 2011 at 10:27:32AM +0800, Tao Ma wrote:
-> We have met with some corruption, but not sure whether it is related to
-> this or not. To be honest, we went through the code and find that this
-> may be a possible cause. So if you think it could never happen, we are
-> OK to drop this patch.
+On Wed 05-10-11 13:29:29, Thomas Gleixner wrote:
+> The state bits and the lock functions of jbd and jbd2 are
+> identical. Share them.
+  Hum, Ted, I don't think this got picked up. What's your opinion?
 
-I have no problem adding sanity checks; it makes for more robust code.
-I just wanted to make sure there wasn't a real bug hiding somewhere
-that wasn't getting addressed.
+								Honza
 
-Thanks,
-
-					- Ted
+> Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+> ---
+>  include/linux/jbd.h        |   64 ------------------------------------------
+>  include/linux/jbd2.h       |   65 -------------------------------------------
+>  include/linux/jbd_common.h |   68 +++++++++++++++++++++++++++++++++++++++++++++
+>  3 files changed, 70 insertions(+), 127 deletions(-)
+> 
+> Index: linux-2.6/include/linux/jbd.h
+> ===================================================================
+> --- linux-2.6.orig/include/linux/jbd.h
+> +++ linux-2.6/include/linux/jbd.h
+> @@ -244,6 +244,7 @@ typedef struct journal_superblock_s
+>  
+>  #include <linux/fs.h>
+>  #include <linux/sched.h>
+> +#include <linux/jbd_common.h>
+>  
+>  #define J_ASSERT(assert)	BUG_ON(!(assert))
+>  
+> @@ -270,69 +271,6 @@ typedef struct journal_superblock_s
+>  #define J_EXPECT_JH(jh, expr, why...)	__journal_expect(expr, ## why)
+>  #endif
+>  
+> -enum jbd_state_bits {
+> -	BH_JBD			/* Has an attached ext3 journal_head */
+> -	  = BH_PrivateStart,
+> -	BH_JWrite,		/* Being written to log (@@@ DEBUGGING) */
+> -	BH_Freed,		/* Has been freed (truncated) */
+> -	BH_Revoked,		/* Has been revoked from the log */
+> -	BH_RevokeValid,		/* Revoked flag is valid */
+> -	BH_JBDDirty,		/* Is dirty but journaled */
+> -	BH_State,		/* Pins most journal_head state */
+> -	BH_JournalHead,		/* Pins bh->b_private and jh->b_bh */
+> -	BH_Unshadow,		/* Dummy bit, for BJ_Shadow wakeup filtering */
+> -};
+> -
+> -BUFFER_FNS(JBD, jbd)
+> -BUFFER_FNS(JWrite, jwrite)
+> -BUFFER_FNS(JBDDirty, jbddirty)
+> -TAS_BUFFER_FNS(JBDDirty, jbddirty)
+> -BUFFER_FNS(Revoked, revoked)
+> -TAS_BUFFER_FNS(Revoked, revoked)
+> -BUFFER_FNS(RevokeValid, revokevalid)
+> -TAS_BUFFER_FNS(RevokeValid, revokevalid)
+> -BUFFER_FNS(Freed, freed)
+> -
+> -static inline struct buffer_head *jh2bh(struct journal_head *jh)
+> -{
+> -	return jh->b_bh;
+> -}
+> -
+> -static inline struct journal_head *bh2jh(struct buffer_head *bh)
+> -{
+> -	return bh->b_private;
+> -}
+> -
+> -static inline void jbd_lock_bh_state(struct buffer_head *bh)
+> -{
+> -	bit_spin_lock(BH_State, &bh->b_state);
+> -}
+> -
+> -static inline int jbd_trylock_bh_state(struct buffer_head *bh)
+> -{
+> -	return bit_spin_trylock(BH_State, &bh->b_state);
+> -}
+> -
+> -static inline int jbd_is_locked_bh_state(struct buffer_head *bh)
+> -{
+> -	return bit_spin_is_locked(BH_State, &bh->b_state);
+> -}
+> -
+> -static inline void jbd_unlock_bh_state(struct buffer_head *bh)
+> -{
+> -	bit_spin_unlock(BH_State, &bh->b_state);
+> -}
+> -
+> -static inline void jbd_lock_bh_journal_head(struct buffer_head *bh)
+> -{
+> -	bit_spin_lock(BH_JournalHead, &bh->b_state);
+> -}
+> -
+> -static inline void jbd_unlock_bh_journal_head(struct buffer_head *bh)
+> -{
+> -	bit_spin_unlock(BH_JournalHead, &bh->b_state);
+> -}
+> -
+>  struct jbd_revoke_table_s;
+>  
+>  /**
+> Index: linux-2.6/include/linux/jbd2.h
+> ===================================================================
+> --- linux-2.6.orig/include/linux/jbd2.h
+> +++ linux-2.6/include/linux/jbd2.h
+> @@ -275,6 +275,7 @@ typedef struct journal_superblock_s
+>  
+>  #include <linux/fs.h>
+>  #include <linux/sched.h>
+> +#include <linux/jbd_common.h>
+>  
+>  #define J_ASSERT(assert)	BUG_ON(!(assert))
+>  
+> @@ -302,70 +303,6 @@ typedef struct journal_superblock_s
+>  #define J_EXPECT_JH(jh, expr, why...)	__journal_expect(expr, ## why)
+>  #endif
+>  
+> -enum jbd_state_bits {
+> -	BH_JBD			/* Has an attached ext3 journal_head */
+> -	  = BH_PrivateStart,
+> -	BH_JWrite,		/* Being written to log (@@@ DEBUGGING) */
+> -	BH_Freed,		/* Has been freed (truncated) */
+> -	BH_Revoked,		/* Has been revoked from the log */
+> -	BH_RevokeValid,		/* Revoked flag is valid */
+> -	BH_JBDDirty,		/* Is dirty but journaled */
+> -	BH_State,		/* Pins most journal_head state */
+> -	BH_JournalHead,		/* Pins bh->b_private and jh->b_bh */
+> -	BH_Unshadow,		/* Dummy bit, for BJ_Shadow wakeup filtering */
+> -	BH_JBDPrivateStart,	/* First bit available for private use by FS */
+> -};
+> -
+> -BUFFER_FNS(JBD, jbd)
+> -BUFFER_FNS(JWrite, jwrite)
+> -BUFFER_FNS(JBDDirty, jbddirty)
+> -TAS_BUFFER_FNS(JBDDirty, jbddirty)
+> -BUFFER_FNS(Revoked, revoked)
+> -TAS_BUFFER_FNS(Revoked, revoked)
+> -BUFFER_FNS(RevokeValid, revokevalid)
+> -TAS_BUFFER_FNS(RevokeValid, revokevalid)
+> -BUFFER_FNS(Freed, freed)
+> -
+> -static inline struct buffer_head *jh2bh(struct journal_head *jh)
+> -{
+> -	return jh->b_bh;
+> -}
+> -
+> -static inline struct journal_head *bh2jh(struct buffer_head *bh)
+> -{
+> -	return bh->b_private;
+> -}
+> -
+> -static inline void jbd_lock_bh_state(struct buffer_head *bh)
+> -{
+> -	bit_spin_lock(BH_State, &bh->b_state);
+> -}
+> -
+> -static inline int jbd_trylock_bh_state(struct buffer_head *bh)
+> -{
+> -	return bit_spin_trylock(BH_State, &bh->b_state);
+> -}
+> -
+> -static inline int jbd_is_locked_bh_state(struct buffer_head *bh)
+> -{
+> -	return bit_spin_is_locked(BH_State, &bh->b_state);
+> -}
+> -
+> -static inline void jbd_unlock_bh_state(struct buffer_head *bh)
+> -{
+> -	bit_spin_unlock(BH_State, &bh->b_state);
+> -}
+> -
+> -static inline void jbd_lock_bh_journal_head(struct buffer_head *bh)
+> -{
+> -	bit_spin_lock(BH_JournalHead, &bh->b_state);
+> -}
+> -
+> -static inline void jbd_unlock_bh_journal_head(struct buffer_head *bh)
+> -{
+> -	bit_spin_unlock(BH_JournalHead, &bh->b_state);
+> -}
+> -
+>  /* Flags in jbd_inode->i_flags */
+>  #define __JI_COMMIT_RUNNING 0
+>  /* Commit of the inode data in progress. We use this flag to protect us from
+> Index: linux-2.6/include/linux/jbd_common.h
+> ===================================================================
+> --- /dev/null
+> +++ linux-2.6/include/linux/jbd_common.h
+> @@ -0,0 +1,68 @@
+> +#ifndef _LINUX_JBD_STATE_H
+> +#define _LINUX_JBD_STATE_H
+> +
+> +enum jbd_state_bits {
+> +	BH_JBD			/* Has an attached ext3 journal_head */
+> +	  = BH_PrivateStart,
+> +	BH_JWrite,		/* Being written to log (@@@ DEBUGGING) */
+> +	BH_Freed,		/* Has been freed (truncated) */
+> +	BH_Revoked,		/* Has been revoked from the log */
+> +	BH_RevokeValid,		/* Revoked flag is valid */
+> +	BH_JBDDirty,		/* Is dirty but journaled */
+> +	BH_State,		/* Pins most journal_head state */
+> +	BH_JournalHead,		/* Pins bh->b_private and jh->b_bh */
+> +	BH_Unshadow,		/* Dummy bit, for BJ_Shadow wakeup filtering */
+> +	BH_JBDPrivateStart,	/* First bit available for private use by FS */
+> +};
+> +
+> +BUFFER_FNS(JBD, jbd)
+> +BUFFER_FNS(JWrite, jwrite)
+> +BUFFER_FNS(JBDDirty, jbddirty)
+> +TAS_BUFFER_FNS(JBDDirty, jbddirty)
+> +BUFFER_FNS(Revoked, revoked)
+> +TAS_BUFFER_FNS(Revoked, revoked)
+> +BUFFER_FNS(RevokeValid, revokevalid)
+> +TAS_BUFFER_FNS(RevokeValid, revokevalid)
+> +BUFFER_FNS(Freed, freed)
+> +
+> +static inline struct buffer_head *jh2bh(struct journal_head *jh)
+> +{
+> +	return jh->b_bh;
+> +}
+> +
+> +static inline struct journal_head *bh2jh(struct buffer_head *bh)
+> +{
+> +	return bh->b_private;
+> +}
+> +
+> +static inline void jbd_lock_bh_state(struct buffer_head *bh)
+> +{
+> +	bit_spin_lock(BH_State, &bh->b_state);
+> +}
+> +
+> +static inline int jbd_trylock_bh_state(struct buffer_head *bh)
+> +{
+> +	return bit_spin_trylock(BH_State, &bh->b_state);
+> +}
+> +
+> +static inline int jbd_is_locked_bh_state(struct buffer_head *bh)
+> +{
+> +	return bit_spin_is_locked(BH_State, &bh->b_state);
+> +}
+> +
+> +static inline void jbd_unlock_bh_state(struct buffer_head *bh)
+> +{
+> +	bit_spin_unlock(BH_State, &bh->b_state);
+> +}
+> +
+> +static inline void jbd_lock_bh_journal_head(struct buffer_head *bh)
+> +{
+> +	bit_spin_lock(BH_JournalHead, &bh->b_state);
+> +}
+> +
+> +static inline void jbd_unlock_bh_journal_head(struct buffer_head *bh)
+> +{
+> +	bit_spin_unlock(BH_JournalHead, &bh->b_state);
+> +}
+> +
+> +#endif
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
