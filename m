@@ -1,52 +1,60 @@
 From: Tao Ma <tm@tao.ma>
-Subject: Re: [PATCH] ext4: Check extent overflow with the right range.
-Date: Tue, 18 Oct 2011 10:27:32 +0800
-Message-ID: <4E9CE414.9040706@tao.ma>
-References: <20111017081036.GN30887@longonot.mountain> <1318841128-4540-1-git-send-email-tm@tao.ma> <20111017141605.GA25017@thunk.org>
+Subject: Re: [PATCH 03/28] ext4: ext4_mkdir should dirty dir_block with the
+ parent	inode
+Date: Tue, 18 Oct 2011 12:11:47 +0800
+Message-ID: <4E9CFC83.5010905@tao.ma>
+References: <20111008075343.20506.23155.stgit@elm3c44.beaverton.ibm.com> <20111008075403.20506.36338.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	Theodore Tso <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>,
+	linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy4-pub.bluehost.com ([69.89.21.11]:47948 "HELO
-	oproxy4-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1757187Ab1JRC1f (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Oct 2011 22:27:35 -0400
-In-Reply-To: <20111017141605.GA25017@thunk.org>
+Received: from oproxy6-pub.bluehost.com ([67.222.54.6]:54442 "HELO
+	oproxy6-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1750728Ab1JRELy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 18 Oct 2011 00:11:54 -0400
+In-Reply-To: <20111008075403.20506.36338.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
-On 10/17/2011 10:16 PM, Ted Ts'o wrote:
-> On Mon, Oct 17, 2011 at 04:45:28PM +0800, Tao Ma wrote:
->> From: Tao Ma <boyu.mt@taobao.com>
->>
->> In 4fd30c033, we move the range check before we change ix to avoid the memory stamp.
->> But actually we should check against the EXT_MAX_INDEX, not EXT_LAST_INDEX.
->>
->> So this patch revert the old patch and adds a new check before we setting ix.
->>
->> Cc: "Theodore Ts'o" <tytso@mit.edu>
->> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
->> ---
->> Ted, since 4fd30c033 is in your dev branch, I am fine to integrate these 2 patches to one.
-> 
-> 
-> Hi Tao,
-> 
-> I have integrated this with the the existing patch in dev branch (since
-> it isn't in the master branch yet, and hence hasn't been locked down).
-> 
-> I'm wondering though how you originally ran into this case, though.
-> If there is no more room in the tree node, we should have never
-> entered ext4_ext_extent_index() in the first place.  Was this a
-> theoretical concern or did you actually see this happen.  And if so,
-> was it due to a file system corruption, or another bug someplace else.
-We have met with some corruption, but not sure whether it is related to
-this or not. To be honest, we went through the code and find that this
-may be a possible cause. So if you think it could never happen, we are
-OK to drop this patch.
+Hi Darrick,
+On 10/08/2011 03:54 PM, Darrick J. Wong wrote:
+> ext4_mkdir calls ext4_handle_dirty_metadata with dir_block and the inode "dir".
+> Unfortunately, dir_block belongs to the newly created directory (which is
+> "inode"), not the parent directory (which is "dir").  Fix the incorrect
+> association.
+could you please re-send this patch and other fixes that isn't related
+to metadata checksum? I need this when implementing inlined dir, and I
+guess this can be merged in this merge window.
 
 Thanks
 Tao
+> 
+> Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+> ---
+>  fs/ext4/namei.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> 
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index 6d3fab4..50c7294 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -1863,7 +1863,7 @@ retry:
+>  	ext4_set_de_type(dir->i_sb, de, S_IFDIR);
+>  	inode->i_nlink = 2;
+>  	BUFFER_TRACE(dir_block, "call ext4_handle_dirty_metadata");
+> -	err = ext4_handle_dirty_metadata(handle, dir, dir_block);
+> +	err = ext4_handle_dirty_metadata(handle, inode, dir_block);
+>  	if (err)
+>  		goto out_clear_inode;
+>  	err = ext4_mark_inode_dirty(handle, inode);
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
