@@ -1,22 +1,20 @@
-From: Mrs Sabah Halif <c23hiepthanh.baclieu@moet.edu.vn>
+From: "Benjamin Albert" <Albert@Beam.com>
 Subject: (unknown)
-Date: Mon, 17 Oct 2011 22:10:00 -0700
-Message-ID: <CAMvLrUtZTHdwOvB2FtnOWTzXr1NxDfGdQPpmqthPAycV1KSwNg@mail.gmail.com>
-Reply-To: sabah_halif@yahoo.com.hk
+Date: Tue, 18 Oct 2011 12:13:10 +0530
+Message-ID: <20111018064315.YUBU1564.viefep18-int.chello.at__24554.2988567196$1318921824$gmane$org@edge04.upcmail.net>
+Reply-To: <benalbert2011@hotmail.co.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: undisclosed-recipients:;
+Content-Type: text/plain;
+	charset="Windows-1251"
+Content-Transfer-Encoding: 7bit
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:53547 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751810Ab1JRFKH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 18 Oct 2011 01:10:07 -0400
-Received: by yxp4 with SMTP id 4so225173yxp.19
-        for <linux-ext4@vger.kernel.org>; Mon, 17 Oct 2011 22:10:06 -0700 (PDT)
+Received: from fep23.mx.upcmail.net ([62.179.121.43]:46478 "EHLO
+	fep23.mx.upcmail.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750860Ab1JRHKN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 18 Oct 2011 03:10:13 -0400
 Subject: 
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
--- 
-Good day,my name is  Mrs Sabah Halif am in urgent need of your
-assistance please contact me via ( sabah_halif@yahoo.com.hk)
+I am contacting you in regards to a business transfer of a huge sum of money from a deceased account. Though I know that a transaction of this magnitude will make anyone apprehensive and worried, but I am assuring you that all will be well at the end of the day. I decided to contact you due to the urgency of this transaction.please email me on Email: benalbert2011@hotmail.co.uk
