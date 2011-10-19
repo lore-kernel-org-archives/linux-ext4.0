@@ -1,145 +1,37 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 7/8] xfstests: add new stress test
-Date: Wed, 19 Oct 2011 14:29:48 +0400
-Message-ID: <1319020189-13584-8-git-send-email-dmonakhov@openvz.org>
-References: <1319020189-13584-1-git-send-email-dmonakhov@openvz.org>
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>
-To: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
-	linux-ext4@vger.kernel.org, jack@suse.cz, hch@infradead.org,
-	aelder@sgi.com
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1319020189-13584-1-git-send-email-dmonakhov@openvz.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: Re: [PATCH 2/2] xfstest: fsstress add EXT2_IOC_{SET, GET}FLAGS operations
+Date: Wed, 19 Oct 2011 14:48:28 +0400
+Message-ID: <874nz5xnnn.fsf@dmbot.sw.ru>
+References: <1316357699-22692-1-git-send-email-dmonakhov@openvz.org> <1316357699-22692-2-git-send-email-dmonakhov@openvz.org> <1317820840.2226.12.camel@doink> <87ty7m327v.fsf@dmbot.sw.ru> <20111019092846.GA3083@infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: aelder@sgi.com, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:39744 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753520Ab1JSKsc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Oct 2011 06:48:32 -0400
+In-Reply-To: <20111019092846.GA3083@infradead.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-During stress testing we want to cover as much code paths as possible
-fsstress is very good for this purpose. But it has expandable nature
-(disk usage almost continually grow). So once it goes in no ENOSPC
-condition it will be where till the end. But by running 'dd' writers
-in parallel we can regularly trigger ENOSPC but only for a limited
-periods of time because each time it opens file with O_TRUNC.
+On Wed, 19 Oct 2011 05:28:46 -0400, Christoph Hellwig <hch@infradead.org> wrote:
+> Dmitry,
+> 
+> and updates on these patches?
+I've posted new version here:
+http://article.gmane.org/gmane.comp.file-systems.ext4/28602
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- 264     |   86 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 264.out |    5 +++
- group   |    1 +
- 3 files changed, 92 insertions(+), 0 deletions(-)
- create mode 100755 264
- create mode 100644 264.out
+Update for set flags patch now is named:
+[PATCH 4/8] xfstests: fsstress add FS_IOC_{SET,GET}FLAGS operations
 
-diff --git a/264 b/264
-new file mode 100755
-index 0000000..fc6df23
---- /dev/null
-+++ b/264
-@@ -0,0 +1,86 @@
-+#! /bin/bash
-+# FSQA Test No. 264
-+#
-+# Run fsstress and ENSPC hitters in parallel, check fs consistency an the end
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2006 Silicon Graphics, Inc.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#
-+#-----------------------------------------------------------------------
-+#
-+# creator
-+owner=dmonakhov@openvz.org
-+
-+seq=`basename $0`
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "rm -f $tmp.*; exit \$status" 0 1 2 3 15
-+
-+# get standard environment, filters and checks
-+. ./common.rc
-+. ./common.filter
-+# Disable all sync operations to get higher load
-+FSSTRESS_AVOID="$FSSTRESS_AVOID -ffsync=0 -fsync=0 -ffdatasync=0"
-+_workout()
-+{
-+	echo ""
-+	echo "Run fsstress"
-+	echo ""
-+	num_iterations=10
-+	enospc_time=2
-+	out=$SCRATCH_MNT/fsstress.$$
-+	args="-p128 -n999999999 -f setattr=1 $FSSTRESS_AVOID -d $out"
-+	echo "fsstress $args" >> $here/$seq.full
-+	$FSSTRESS_PROG $args > /dev/null 2>&1 &
-+	pid=$!
-+	echo "Run dd writers in parallel"
-+	for ((i=0; i < num_iterations; i++))
-+	do
-+		# File will be opened with O_TRUNC each time
-+		dd if=/dev/zero of=$SCRATCH_MNT/SPACE_CONSUMER bs=1M count=1 \
-+			> /dev/null 2>&1
-+		sleep $enospc_time
-+	done
-+	kill $pid
-+	wait $pid
-+}
-+
-+# real QA test starts here
-+_supported_fs generic
-+_supported_os Linux
-+_require_scratch
-+_need_to_be_root
-+
-+umount $SCRATCH_DEV 2>/dev/null
-+_scratch_mkfs_sized $((512 * 1024 * 1024)) >> $seq.full 2>&1
-+_scratch_mount
-+
-+if ! _workout; then
-+	umount $SCRATCH_DEV 2>/dev/null
-+	exit
-+fi
-+
-+if ! _scratch_unmount; then
-+	echo "failed to umount"
-+	status=1
-+	exit
-+fi
-+_check_scratch_fs
-+status=$?
-+exit
-diff --git a/264.out b/264.out
-new file mode 100644
-index 0000000..81b50e5
---- /dev/null
-+++ b/264.out
-@@ -0,0 +1,5 @@
-+QA output created by 264
-+
-+Run fsstress
-+
-+Run dd writers in parallel
-diff --git a/group b/group
-index 2a8970c..e79c29b 100644
---- a/group
-+++ b/group
-@@ -377,3 +377,4 @@ deprecated
- 261 auto quick quota
- 262 auto quick quota
- 263 rw auto quick
-+264 auto rw prealloc ioctl enospc
--- 
-1.7.1
-
+But still, ext4 panic in case of ordered+delalloc=>journalled switch
+"-f setattr=1", i've not posted fix for that bug yet, so please run
+this test carefully.
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
