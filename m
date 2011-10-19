@@ -1,7 +1,7 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 5/8] xfstests: Dump inode info when possible
-Date: Wed, 19 Oct 2011 14:29:46 +0400
-Message-ID: <1319020189-13584-6-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 7/8] xfstests: add new stress test
+Date: Wed, 19 Oct 2011 14:29:48 +0400
+Message-ID: <1319020189-13584-8-git-send-email-dmonakhov@openvz.org>
 References: <1319020189-13584-1-git-send-email-dmonakhov@openvz.org>
 Cc: Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
@@ -12,349 +12,134 @@ In-Reply-To: <1319020189-13584-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Fsstress exec behaviour is not completely determinated in case of
-low resources mode due to ENOMEM, ENOSPC, etc. In some places we
-call stat(2). This information may be halpfull for future
-investigations purposes. Let's dump stat info where possible.
+During stress testing we want to cover as much code paths as possible
+fsstress is very good for this purpose. But it has expandable nature
+(disk usage almost continually grow). So once it goes in no ENOSPC
+condition it will be where till the end. But by running 'dd' writers
+in parallel we can regularly trigger ENOSPC but only for a limited
+periods of time because each time it opens file with O_TRUNC.
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- ltp/fsstress.c |   92 +++++++++++++++++++++++++++++++++++++------------------
- 1 files changed, 62 insertions(+), 30 deletions(-)
+ 264     |   86 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 264.out |    5 +++
+ group   |    1 +
+ 3 files changed, 92 insertions(+), 0 deletions(-)
+ create mode 100755 264
+ create mode 100644 264.out
 
-diff --git a/ltp/fsstress.c b/ltp/fsstress.c
-index 756bdd6..baccbbd 100644
---- a/ltp/fsstress.c
-+++ b/ltp/fsstress.c
-@@ -1482,6 +1482,14 @@ zero_freq(void)
- 		p->freq = 0;
- }
- 
-+void inode_info(char *str, size_t sz, struct stat64 *s, int verbose)
+diff --git a/264 b/264
+new file mode 100755
+index 0000000..fc6df23
+--- /dev/null
++++ b/264
+@@ -0,0 +1,86 @@
++#! /bin/bash
++# FSQA Test No. 264
++#
++# Run fsstress and ENSPC hitters in parallel, check fs consistency an the end
++#
++#-----------------------------------------------------------------------
++# Copyright (c) 2006 Silicon Graphics, Inc.  All Rights Reserved.
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#
++#-----------------------------------------------------------------------
++#
++# creator
++owner=dmonakhov@openvz.org
++
++seq=`basename $0`
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1	# failure is the default!
++trap "rm -f $tmp.*; exit \$status" 0 1 2 3 15
++
++# get standard environment, filters and checks
++. ./common.rc
++. ./common.filter
++# Disable all sync operations to get higher load
++FSSTRESS_AVOID="$FSSTRESS_AVOID -ffsync=0 -fsync=0 -ffdatasync=0"
++_workout()
 +{
-+	if (verbose)
-+		snprintf(str, sz, "[%ld %ld %d %d %lld %lld]", (long)s->st_ino,
-+			 (long)s->st_nlink,  s->st_uid, s->st_gid,
-+			 (long long) s->st_blocks, (long long) s->st_size);
++	echo ""
++	echo "Run fsstress"
++	echo ""
++	num_iterations=10
++	enospc_time=2
++	out=$SCRATCH_MNT/fsstress.$$
++	args="-p128 -n999999999 -f setattr=1 $FSSTRESS_AVOID -d $out"
++	echo "fsstress $args" >> $here/$seq.full
++	$FSSTRESS_PROG $args > /dev/null 2>&1 &
++	pid=$!
++	echo "Run dd writers in parallel"
++	for ((i=0; i < num_iterations; i++))
++	do
++		# File will be opened with O_TRUNC each time
++		dd if=/dev/zero of=$SCRATCH_MNT/SPACE_CONSUMER bs=1M count=1 \
++			> /dev/null 2>&1
++		sleep $enospc_time
++	done
++	kill $pid
++	wait $pid
 +}
 +
- void
- allocsp_f(int opno, long r)
- {
-@@ -1493,6 +1501,7 @@ allocsp_f(int opno, long r)
- 	off64_t		off;
- 	struct stat64	stb;
- 	int		v;
-+	char		st[1024];
- 
- 	init_pathname(&f);
- 	if (!get_fname(FT_REGFILE, r, &f, NULL, NULL, &v)) {
-@@ -1519,6 +1528,8 @@ allocsp_f(int opno, long r)
- 		close(fd);
- 		return;
- 	}
++# real QA test starts here
++_supported_fs generic
++_supported_os Linux
++_require_scratch
++_need_to_be_root
 +
-+	inode_info(st, sizeof(st), &stb, v);
- 	lr = ((__int64_t)random() << 32) + random();
- 	off = (off64_t)(lr % MIN(stb.st_size + (1024 * 1024), MAXFSIZE));
- 	off %= maxfsize;
-@@ -1526,9 +1537,10 @@ allocsp_f(int opno, long r)
- 	fl.l_start = off;
- 	fl.l_len = 0;
- 	e = xfsctl(f.path, fd, XFS_IOC_ALLOCSP64, &fl) < 0 ? errno : 0;
--	if (v)
--		printf("%d/%d: xfsctl(XFS_IOC_ALLOCSP64) %s %lld 0 %d\n",
--			procid, opno, f.path, (long long)off, e);
-+	if (v) {
-+		printf("%d/%d: xfsctl(XFS_IOC_ALLOCSP64) %s%s %lld 0 %d\n",
-+		       procid, opno, f.path, st, (long long)off, e);
-+	}
- 	free_pathname(&f);
- 	close(fd);
- }
-@@ -1918,6 +1930,7 @@ dread_f(int opno, long r)
- 	off64_t		off;
- 	struct stat64	stb;
- 	int		v;
-+	char		st[1024];
- 
- 	init_pathname(&f);
- 	if (!get_fname(FT_REGFILE, r, &f, NULL, NULL, &v)) {
-@@ -1939,15 +1952,17 @@ dread_f(int opno, long r)
- 	if (fstat64(fd, &stb) < 0) {
- 		if (v)
- 			printf("%d/%d: dread - fstat64 %s failed %d\n",
--				procid, opno, f.path, errno);
-+			       procid, opno, f.path, errno);
- 		free_pathname(&f);
- 		close(fd);
- 		return;
- 	}
++umount $SCRATCH_DEV 2>/dev/null
++_scratch_mkfs_sized $((512 * 1024 * 1024)) >> $seq.full 2>&1
++_scratch_mount
 +
-+	inode_info(st, sizeof(st), &stb, v);
- 	if (stb.st_size == 0) {
- 		if (v)
--			printf("%d/%d: dread - %s zero size\n", procid, opno,
--				f.path);
-+			printf("%d/%d: dread - %s%s zero size\n", procid, opno,
-+			       f.path, st);
- 		free_pathname(&f);
- 		close(fd);
- 		return;
-@@ -1955,8 +1970,8 @@ dread_f(int opno, long r)
- 	if (xfsctl(f.path, fd, XFS_IOC_DIOINFO, &diob) < 0) {
- 		if (v)
- 			printf(
--			"%d/%d: dread - xfsctl(XFS_IOC_DIOINFO) %s failed %d\n",
--				procid, opno, f.path, errno);
-+			"%d/%d: dread - xfsctl(XFS_IOC_DIOINFO) %s%s failed %d\n",
-+				procid, opno, f.path, st, errno);
- 		free_pathname(&f);
- 		close(fd);
- 		return;
-@@ -1976,8 +1991,8 @@ dread_f(int opno, long r)
- 	e = read(fd, buf, len) < 0 ? errno : 0;
- 	free(buf);
- 	if (v)
--		printf("%d/%d: dread %s [%lld,%d] %d\n",
--			procid, opno, f.path, (long long)off, (int)len, e);
-+		printf("%d/%d: dread %s%s [%lld,%d] %d\n",
-+		       procid, opno, f.path, st, (long long)off, (int)len, e);
- 	free_pathname(&f);
- 	close(fd);
- }
-@@ -1996,6 +2011,7 @@ dwrite_f(int opno, long r)
- 	off64_t		off;
- 	struct stat64	stb;
- 	int		v;
-+	char		st[1024];
- 
- 	init_pathname(&f);
- 	if (!get_fname(FT_REGFILE, r, &f, NULL, NULL, &v)) {
-@@ -2022,11 +2038,12 @@ dwrite_f(int opno, long r)
- 		close(fd);
- 		return;
- 	}
-+	inode_info(st, sizeof(st), &stb, v);
- 	if (xfsctl(f.path, fd, XFS_IOC_DIOINFO, &diob) < 0) {
- 		if (v)
- 			printf("%d/%d: dwrite - xfsctl(XFS_IOC_DIOINFO)"
--				" %s failed %d\n",
--				procid, opno, f.path, errno);
-+				" %s%s failed %d\n",
-+			       procid, opno, f.path, st, errno);
- 		free_pathname(&f);
- 		close(fd);
- 		return;
-@@ -2049,8 +2066,8 @@ dwrite_f(int opno, long r)
- 	e = write(fd, buf, len) < 0 ? errno : 0;
- 	free(buf);
- 	if (v)
--		printf("%d/%d: dwrite %s [%lld,%d] %d\n",
--			procid, opno, f.path, (long long)off, (int)len, e);
-+		printf("%d/%d: dwrite %s%s [%lld,%d] %d\n",
-+		       procid, opno, f.path, st, (long long)off, (int)len, e);
- 	free_pathname(&f);
- 	close(fd);
- }
-@@ -2067,6 +2084,7 @@ fallocate_f(int opno, long r)
- 	off64_t		len;
- 	struct stat64	stb;
- 	int		v;
-+	char		st[1024];
- 	int mode = 0;
- 
- 	init_pathname(&f);
-@@ -2094,6 +2112,8 @@ fallocate_f(int opno, long r)
- 		close(fd);
- 		return;
- 	}
++if ! _workout; then
++	umount $SCRATCH_DEV 2>/dev/null
++	exit
++fi
 +
-+	inode_info(st, sizeof(st), &stb, v);
- 	lr = ((__int64_t)random() << 32) + random();
- 	off = (off64_t)(lr % MIN(stb.st_size + (1024 * 1024), MAXFSIZE));
- 	off %= maxfsize;
-@@ -2101,9 +2121,9 @@ fallocate_f(int opno, long r)
- 	mode |= FALLOC_FL_KEEP_SIZE & random();
- 	e = fallocate(fd, mode, (loff_t)off, (loff_t)len) < 0 ? errno : 0;
- 	if (v)
--		printf("%d/%d: fallocate(%d) %s %lld %lld %d\n",
-+		printf("%d/%d: fallocate(%d) %s %st %lld %lld %d\n",
- 		       procid, opno, mode,
--		       f.path, (long long)off, (long long)len, e);
-+		       f.path, st, (long long)off, (long long)len, e);
- 	free_pathname(&f);
- 	close(fd);
- #endif
-@@ -2154,6 +2174,7 @@ freesp_f(int opno, long r)
- 	off64_t		off;
- 	struct stat64	stb;
- 	int		v;
-+	char		st[1024];
- 
- 	init_pathname(&f);
- 	if (!get_fname(FT_REGFILE, r, &f, NULL, NULL, &v)) {
-@@ -2180,6 +2201,7 @@ freesp_f(int opno, long r)
- 		close(fd);
- 		return;
- 	}
-+	inode_info(st, sizeof(st), &stb, v);
- 	lr = ((__int64_t)random() << 32) + random();
- 	off = (off64_t)(lr % MIN(stb.st_size + (1024 * 1024), MAXFSIZE));
- 	off %= maxfsize;
-@@ -2188,8 +2210,8 @@ freesp_f(int opno, long r)
- 	fl.l_len = 0;
- 	e = xfsctl(f.path, fd, XFS_IOC_FREESP64, &fl) < 0 ? errno : 0;
- 	if (v)
--		printf("%d/%d: xfsctl(XFS_IOC_FREESP64) %s %lld 0 %d\n",
--			procid, opno, f.path, (long long)off, e);
-+		printf("%d/%d: xfsctl(XFS_IOC_FREESP64) %s%s %lld 0 %d\n",
-+		       procid, opno, f.path, st, (long long)off, e);
- 	free_pathname(&f);
- 	close(fd);
- }
-@@ -2392,6 +2414,7 @@ punch_f(int opno, long r)
- 	off64_t		len;
- 	struct stat64	stb;
- 	int		v;
-+	char		st[1024];
- 	int mode = FALLOC_FL_PUNCH_HOLE;
- 
- 	init_pathname(&f);
-@@ -2419,6 +2442,7 @@ punch_f(int opno, long r)
- 		close(fd);
- 		return;
- 	}
-+	inode_info(st, sizeof(st), &stb, v);
- 	lr = ((__int64_t)random() << 32) + random();
- 	off = (off64_t)(lr % MIN(stb.st_size + (1024 * 1024), MAXFSIZE));
- 	off %= maxfsize;
-@@ -2426,9 +2450,9 @@ punch_f(int opno, long r)
- 	mode |= FALLOC_FL_KEEP_SIZE & random();
- 	e = fallocate(fd, mode, (loff_t)off, (loff_t)len) < 0 ? errno : 0;
- 	if (v)
--		printf("%d/%d: punch hole(%d) %s %lld %lld %d\n",
-+		printf("%d/%d: punch hole(%d) %s %s %lld %lld %d\n",
- 		       procid, opno, mode,
--		       f.path, (long long)off, (long long)len, e);
-+		       f.path, st, (long long)off, (long long)len, e);
- 	free_pathname(&f);
- 	close(fd);
- #endif
-@@ -2446,6 +2470,7 @@ read_f(int opno, long r)
- 	off64_t		off;
- 	struct stat64	stb;
- 	int		v;
-+	char		st[1024];
- 
- 	init_pathname(&f);
- 	if (!get_fname(FT_REGFILE, r, &f, NULL, NULL, &v)) {
-@@ -2472,10 +2497,11 @@ read_f(int opno, long r)
- 		close(fd);
- 		return;
- 	}
-+	inode_info(st, sizeof(st), &stb, v);
- 	if (stb.st_size == 0) {
- 		if (v)
--			printf("%d/%d: read - %s zero size\n", procid, opno,
--				f.path);
-+			printf("%d/%d: read - %s%s zero size\n", procid, opno,
-+			       f.path, st);
- 		free_pathname(&f);
- 		close(fd);
- 		return;
-@@ -2488,8 +2514,8 @@ read_f(int opno, long r)
- 	e = read(fd, buf, len) < 0 ? errno : 0;
- 	free(buf);
- 	if (v)
--		printf("%d/%d: read %s [%lld,%d] %d\n",
--			procid, opno, f.path, (long long)off, (int)len, e);
-+		printf("%d/%d: read %s%s [%lld,%d] %d\n",
-+		       procid, opno, f.path, st, (long long)off, (int)len, e);
- 	free_pathname(&f);
- 	close(fd);
- }
-@@ -2596,6 +2622,7 @@ resvsp_f(int opno, long r)
- 	off64_t		off;
- 	struct stat64	stb;
- 	int		v;
-+	char		st[1024];
- 
- 	init_pathname(&f);
- 	if (!get_fname(FT_REGFILE, r, &f, NULL, NULL, &v)) {
-@@ -2622,6 +2649,7 @@ resvsp_f(int opno, long r)
- 		close(fd);
- 		return;
- 	}
-+	inode_info(st, sizeof(st), &stb, v);
- 	lr = ((__int64_t)random() << 32) + random();
- 	off = (off64_t)(lr % MIN(stb.st_size + (1024 * 1024), MAXFSIZE));
- 	off %= maxfsize;
-@@ -2630,8 +2658,8 @@ resvsp_f(int opno, long r)
- 	fl.l_len = (off64_t)(random() % (1024 * 1024));
- 	e = xfsctl(f.path, fd, XFS_IOC_RESVSP64, &fl) < 0 ? errno : 0;
- 	if (v)
--		printf("%d/%d: xfsctl(XFS_IOC_RESVSP64) %s %lld %lld %d\n",
--			procid, opno, f.path,
-+		printf("%d/%d: xfsctl(XFS_IOC_RESVSP64) %s%s %lld %lld %d\n",
-+		       procid, opno, f.path, st,
- 			(long long)off, (long long)fl.l_len, e);
- 	free_pathname(&f);
- 	close(fd);
-@@ -2822,6 +2850,7 @@ unresvsp_f(int opno, long r)
- 	off64_t		off;
- 	struct stat64	stb;
- 	int		v;
-+	char		st[1024];
- 
- 	init_pathname(&f);
- 	if (!get_fname(FT_REGFILE, r, &f, NULL, NULL, &v)) {
-@@ -2848,6 +2877,7 @@ unresvsp_f(int opno, long r)
- 		close(fd);
- 		return;
- 	}
-+	inode_info(st, sizeof(st), &stb, v);
- 	lr = ((__int64_t)random() << 32) + random();
- 	off = (off64_t)(lr % MIN(stb.st_size + (1024 * 1024), MAXFSIZE));
- 	off %= maxfsize;
-@@ -2856,8 +2886,8 @@ unresvsp_f(int opno, long r)
- 	fl.l_len = (off64_t)(random() % (1 << 20));
- 	e = xfsctl(f.path, fd, XFS_IOC_UNRESVSP64, &fl) < 0 ? errno : 0;
- 	if (v)
--		printf("%d/%d: xfsctl(XFS_IOC_UNRESVSP64) %s %lld %lld %d\n",
--			procid, opno, f.path,
-+		printf("%d/%d: xfsctl(XFS_IOC_UNRESVSP64) %s%s %lld %lld %d\n",
-+		       procid, opno, f.path, st,
- 			(long long)off, (long long)fl.l_len, e);
- 	free_pathname(&f);
- 	close(fd);
-@@ -2875,6 +2905,7 @@ write_f(int opno, long r)
- 	off64_t		off;
- 	struct stat64	stb;
- 	int		v;
-+	char		st[1024];
- 
- 	init_pathname(&f);
- 	if (!get_fname(FT_REGm, r, &f, NULL, NULL, &v)) {
-@@ -2901,6 +2932,7 @@ write_f(int opno, long r)
- 		close(fd);
- 		return;
- 	}
-+	inode_info(st, sizeof(st), &stb, v);
- 	lr = ((__int64_t)random() << 32) + random();
- 	off = (off64_t)(lr % MIN(stb.st_size + (1024 * 1024), MAXFSIZE));
- 	off %= maxfsize;
-@@ -2911,8 +2943,8 @@ write_f(int opno, long r)
- 	e = write(fd, buf, len) < 0 ? errno : 0;
- 	free(buf);
- 	if (v)
--		printf("%d/%d: write %s [%lld,%d] %d\n",
--			procid, opno, f.path, (long long)off, (int)len, e);
-+		printf("%d/%d: write %s%s [%lld,%d] %d\n",
-+		       procid, opno, f.path, st, (long long)off, (int)len, e);
- 	free_pathname(&f);
- 	close(fd);
- }
++if ! _scratch_unmount; then
++	echo "failed to umount"
++	status=1
++	exit
++fi
++_check_scratch_fs
++status=$?
++exit
+diff --git a/264.out b/264.out
+new file mode 100644
+index 0000000..81b50e5
+--- /dev/null
++++ b/264.out
+@@ -0,0 +1,5 @@
++QA output created by 264
++
++Run fsstress
++
++Run dd writers in parallel
+diff --git a/group b/group
+index 2a8970c..e79c29b 100644
+--- a/group
++++ b/group
+@@ -377,3 +377,4 @@ deprecated
+ 261 auto quick quota
+ 262 auto quick quota
+ 263 rw auto quick
++264 auto rw prealloc ioctl enospc
 -- 
 1.7.1
 
