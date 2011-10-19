@@ -1,29 +1,19 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 2/2] xfstest: fsstress add EXT2_IOC_{SET, GET}FLAGS
- operations
-Date: Wed, 19 Oct 2011 05:28:46 -0400
-Message-ID: <20111019092846.GA3083@infradead.org>
-References: <1316357699-22692-1-git-send-email-dmonakhov@openvz.org>
- <1316357699-22692-2-git-send-email-dmonakhov@openvz.org>
- <1317820840.2226.12.camel@doink>
- <87ty7m327v.fsf@dmbot.sw.ru>
+From: Dell Electronic End Of Year Promo <genekramer@embarqmail.com>
+Subject: Congrat**You Re Lucky Winner***
+Date: Wed, 19 Oct 2011 05:52:51 -0400 (EDT)
+Message-ID: <2072759505.333291.1319017971193.JavaMail.root@md42.embarq.synacor.com>
+Reply-To: dellelectronicdepartment01@w.cn
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: aelder@sgi.com, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:37701
-	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754469Ab1JSJ2t (ORCPT
+Received: from mailrelay.embarq.synacor.com ([208.47.184.3]:42987 "EHLO
+	mailrelay.embarq.synacor.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752883Ab1JSJww (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 19 Oct 2011 05:28:49 -0400
-Content-Disposition: inline
-In-Reply-To: <87ty7m327v.fsf@dmbot.sw.ru>
+	Wed, 19 Oct 2011 05:52:52 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Dmitry,
-
-and updates on these patches?
-
+YOUR EMAIL HAS JUST WON THE SUM OF 1,628,360.00 (GREAT BRITAIN POUNDS) DELL LOTTO INTERNATIONAL AWARD PROGRAMME NOTE: YOU HAVE TO CONTACT PROF.MONICA WALTER FOR MORE INFO
