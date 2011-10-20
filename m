@@ -1,7 +1,7 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 3/6] ext4: Do not clear EOFBLOCKS_FL too soon
-Date: Fri, 21 Oct 2011 01:08:56 +0400
-Message-ID: <1319144939-28801-4-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 4/6] ext4: remove messy logic from ext4_ext_rm_leaf
+Date: Fri, 21 Oct 2011 01:08:57 +0400
+Message-ID: <1319144939-28801-5-git-send-email-dmonakhov@openvz.org>
 References: <1319144939-28801-1-git-send-email-dmonakhov@openvz.org>
 Cc: Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org, tytso@mit.edu,
@@ -9,50 +9,164 @@ To: linux-ext4@vger.kernel.org, tytso@mit.edu,
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-bw0-f46.google.com ([209.85.214.46]:47056 "EHLO
 	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753083Ab1JTVIx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Oct 2011 17:08:53 -0400
+	with ESMTP id S1752940Ab1JTVI4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Oct 2011 17:08:56 -0400
 Received: by mail-bw0-f46.google.com with SMTP id zt19so4002126bkb.19
-        for <linux-ext4@vger.kernel.org>; Thu, 20 Oct 2011 14:08:52 -0700 (PDT)
+        for <linux-ext4@vger.kernel.org>; Thu, 20 Oct 2011 14:08:55 -0700 (PDT)
 In-Reply-To: <1319144939-28801-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4_ext_insert_extent() may fail due to number of reasons (ENOSPC)
-so let's update eof flag only after extent was successfully inserted.
+- Both callers(truncate and punch_hole) already aligned left end point
+  so we no longer need split logic here.
+- Remove dead duplicated code.
+- Call ext4_ext_dirty only after we have updated eh_entries, otherwise
+  we'll loose entries update. Regression caused by d583fb87a3ff0
+  266'th testcase in xfstests (http://patchwork.ozlabs.org/patch/120872)
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/ext4/extents.c |   10 ++++++----
- 1 files changed, 6 insertions(+), 4 deletions(-)
+ fs/ext4/extents.c |  103 ++++++----------------------------------------------
+ 1 files changed, 12 insertions(+), 91 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 315775e..d81085e 100644
+index d81085e..963f883 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -4115,10 +4115,7 @@ got_allocated_blocks:
- 			map->m_flags |= EXT4_MAP_UNINIT;
- 	}
+@@ -2306,13 +2306,12 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+ 	int err = 0, correct_index = 0;
+ 	int depth = ext_depth(inode), credits;
+ 	struct ext4_extent_header *eh;
+-	ext4_lblk_t a, b, block;
++	ext4_lblk_t a, b;
+ 	unsigned num;
+ 	ext4_lblk_t ex_ee_block;
+ 	unsigned short ex_ee_len;
+ 	unsigned uninitialized = 0;
+ 	struct ext4_extent *ex;
+-	struct ext4_map_blocks map;
  
--	err = check_eofblocks_fl(handle, inode, map->m_lblk, path, ar.len);
--	if (!err)
--		err = ext4_ext_insert_extent(handle, inode, path,
--					     &newex, flags);
-+	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
- 	if (err && free_on_err) {
- 		int fb_flags = flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE ?
- 			EXT4_FREE_BLOCKS_NO_QUOT_UPDATE : 0;
-@@ -4130,6 +4127,11 @@ got_allocated_blocks:
- 				 ext4_ext_get_actual_len(&newex), fb_flags);
- 		goto out2;
- 	}
-+	err = check_eofblocks_fl(handle, inode, map->m_lblk, path, ar.len);
-+	if (err) {
-+		ext4_discard_preallocations(inode);
-+		goto out2;
-+	}
+ 	/* the header must be checked already in ext4_ext_remove_space() */
+ 	ext_debug("truncate since %u in leaf\n", start);
+@@ -2355,86 +2354,18 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+ 			ex_ee_block = le32_to_cpu(ex->ee_block);
+ 			ex_ee_len = ext4_ext_get_actual_len(ex);
+ 			continue;
+-		} else if (a != ex_ee_block &&
+-			b != ex_ee_block + ex_ee_len - 1) {
+-			/*
+-			 * If this is a truncate, then this condition should
+-			 * never happen because at least one of the end points
+-			 * needs to be on the edge of the extent.
+-			 */
+-			if (end == EXT_MAX_BLOCKS - 1) {
+-				ext_debug("  bad truncate %u:%u\n",
+-						start, end);
+-				block = 0;
+-				num = 0;
+-				err = -EIO;
+-				goto out;
+-			}
+-			/*
+-			 * else this is a hole punch, so the extent needs to
+-			 * be split since neither edge of the hole is on the
+-			 * extent edge
+-			 */
+-			else{
+-				map.m_pblk = ext4_ext_pblock(ex);
+-				map.m_lblk = ex_ee_block;
+-				map.m_len = b - ex_ee_block;
+-
+-				err = ext4_split_extent(handle,
+-					inode, path, &map, 0,
+-					EXT4_GET_BLOCKS_PUNCH_OUT_EXT |
+-					EXT4_GET_BLOCKS_PRE_IO);
+-
+-				if (err < 0)
+-					goto out;
+-
+-				ex_ee_len = ext4_ext_get_actual_len(ex);
+-
+-				b = ex_ee_block+ex_ee_len - 1 < end ?
+-					ex_ee_block+ex_ee_len - 1 : end;
+-
+-				/* Then remove tail of this extent */
+-				block = ex_ee_block;
+-				num = a - block;
+-			}
++		} else if (b != ex_ee_block + ex_ee_len - 1) {
++			EXT4_ERROR_INODE(inode,"  bad truncate %u:%u\n",
++					 start, end);
++			err = -EIO;
++			goto out;
+ 		} else if (a != ex_ee_block) {
+ 			/* remove tail of the extent */
+-			block = ex_ee_block;
+-			num = a - block;
+-		} else if (b != ex_ee_block + ex_ee_len - 1) {
+-			/* remove head of the extent */
+-			block = b;
+-			num =  ex_ee_block + ex_ee_len - b;
+-
+-			/*
+-			 * If this is a truncate, this condition
+-			 * should never happen
+-			 */
+-			if (end == EXT_MAX_BLOCKS - 1) {
+-				ext_debug("  bad truncate %u:%u\n",
+-					start, end);
+-				err = -EIO;
+-				goto out;
+-			}
++			num = a - ex_ee_block;
+ 		} else {
+ 			/* remove whole extent: excellent! */
+-			block = ex_ee_block;
+ 			num = 0;
+-			if (a != ex_ee_block) {
+-				ext_debug("  bad truncate %u:%u\n",
+-					start, end);
+-				err = -EIO;
+-				goto out;
+-			}
+-
+-			if (b != ex_ee_block + ex_ee_len - 1) {
+-				ext_debug("  bad truncate %u:%u\n",
+-					start, end);
+-				err = -EIO;
+-				goto out;
+-			}
+ 		}
+-
+ 		/*
+ 		 * 3 for leaf, sb, and inode plus 2 (bmap and group
+ 		 * descriptor) for each block group; assume two block
+@@ -2464,19 +2395,10 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+ 				goto out;
+ 		}
  
- 	/* previous routine could use block we allocated */
- 	newblock = ext4_ext_pblock(&newex);
--- 
-1.7.1
-
+-		if (num == 0) {
++		if (num == 0)
+ 			/* this extent is removed; mark slot entirely unused */
+ 			ext4_ext_store_pblock(ex, 0);
+-		} else if (block != ex_ee_block) {
+-			/*
+-			 * If this was a head removal, then we need to update
+-			 * the physical block since it is now at a different
+-			 * location
+-			 */
+-			ext4_ext_store_pblock(ex, ext4_ext_pblock(ex) + (b-a));
+-		}
+ 
+-		ex->ee_block = cpu_to_le32(block);
+ 		ex->ee_len = cpu_to_le16(num);
+ 		/*
+ 		 * Do not mark uninitialized if all the blocks in the
+@@ -2484,11 +2406,6 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+ 		 */
+ 		if (uninitialized && num)
+ 			ext4_ext_mark_uninitialized(ex);
+-
+-		err = ext4_ext_dirty(handle, inode, path + depth);
+-		if (err)
+-			goto out;
