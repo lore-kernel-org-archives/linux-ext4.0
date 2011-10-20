@@ -1,43 +1,60 @@
-From: Johannes Segitz <johannes.segitz@gmail.com>
-Subject: Re: fsck.ext4 taking a very long time because of "should not have
- EOFBLOCKS_FL set"
-Date: Thu, 20 Oct 2011 09:48:51 +0200
-Message-ID: <CAFj9jjwrEK-_ZOFDK6d5=kUFORjNqXZo=Gvg_s6zY1EWuYCfAA@mail.gmail.com>
-References: <CAFj9jjyLbPjehM1QbVAK9qRQ3F45sRpp055cKGa6EijWi1CBUw@mail.gmail.com>
- <1DCB6B9B-6386-483E-B726-E2505690D224@gmail.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: new corruption pattern on ext4
+Date: Thu, 20 Oct 2011 13:40:15 +0400
+Message-ID: <87sjmorog0.fsf@dmbot.sw.ru>
+References: <1319020189-13584-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+To: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org, jack@suse.cz, hch@infradead.org,
+	aelder@sgi.com, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:46523 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752285Ab1JTHtI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Oct 2011 03:49:08 -0400
-Received: by eye27 with SMTP id 27so2480563eye.19
-        for <linux-ext4@vger.kernel.org>; Thu, 20 Oct 2011 00:49:06 -0700 (PDT)
-In-Reply-To: <1DCB6B9B-6386-483E-B726-E2505690D224@gmail.com>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:62054 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755119Ab1JTJkH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Oct 2011 05:40:07 -0400
+In-Reply-To: <1319020189-13584-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 19, 2011 at 18:22, Andreas Dilger <aedilger@gmail.com> wrote:
-> You could always strace e2fsck to see what it is printing.
+On Wed, 19 Oct 2011 14:29:41 +0400, Dmitry Monakhov <dmonakhov@openvz.org> wrote:
+> xfstests: fsstress should kill children tasks before exit
+> xfstests: add different logging option to fsstress
+> xfstests: add fallocate support to fsstress
+> xfstests: fsstress add FS_IOC_{SET,GET}FLAGS operations
+> xfstests: Dump inode info when possible
+> xfstests: add fiemap operation
+> 
+> # Following testcase will fail on recent kernel in case of ext4
+> # Some fixes are already available here:
+> # http://www.spinics.net/lists/linux-ext4/msg27857.html
+> xfstests: add new stress test
+FYI: i've run 264'th test on recent tytso/ext4.git(dcf2d804ed6ffe)
+and have got new type of fs-corruption, i haven't seen this before,
+at this moment I dont have a fix for that:
+Pass 1: Checking inodes, blocks, and sizes
+Inode 176 has an invalid extent
+      (logical block 236, invalid physical block 0, len 0)
+Clear? no
 
-i tried that put i can't see which inode is currently processed
+Inode 22293 has an invalid extent
+      (logical block 531, invalid physical block 0, len 0)
+Clear? no
 
-<snip fcntl lines>
-fcntl(5, F_SETLKW, {type=F_UNLCK, whence=SEEK_SET, start=556, len=1}) = 0
-fcntl(5, F_SETLKW, {type=F_WRLCK, whence=SEEK_SET, start=284, len=1}) = 0
-fcntl(5, F_SETLKW, {type=F_WRLCK, whence=SEEK_SET, start=164, len=1}) = 0
-fstat(5, {st_mode=S_IFREG|0600, st_size=376758272, ...}) = 0
-munmap(0x7fe2aee4e000, 376758272)       = 0
-ftruncate(5, 376762368)                 = 0
-pwrite(5, "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"..., 1024, 376758272) = 1024
-pwrite(5, "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"..., 1024, 376759296) = 1024
-pwrite(5, "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"..., 1024, 376760320) = 1024
-pwrite(5, "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"..., 1024, 376761344) = 1024
-mmap(NULL, 376762368, PROT_READ|PROT_WRITE, MAP_SHARED, 5, 0) = 0x7fe2aee4d000
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+...
 
-rinse repeat
-
-Bye,
-Johannes
+> 
+> # Following testcase will fail on recent kernel in case of ext3/4 
+> # Fixes available here:
+> #  http://patchwork.ozlabs.org/patch/120581/
+> #  http://patchwork.ozlabs.org/patch/120582/
+> xfstests: add new quota stress test
+> 
+> P.S: ext4 still contains bugs caused by ordered_mode=>journal_mode
+> switch for didicated inode (chattr +j ./afile), so you temproraly
+> disable this test by adding "-f setattr=0" to $FSSTRESS_AVOID var.
+>      
