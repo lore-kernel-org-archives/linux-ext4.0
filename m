@@ -1,40 +1,54 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [RFC] Metadata Replication for Ext4
-Date: Fri, 21 Oct 2011 11:54:28 -0400
-Message-ID: <20111021155428.GA21564@infradead.org>
-References: <CAGr1F2EHCE2D-Sf+RS7q20huToUtqD3xqn9G8dtKrVxxpP4Hcw@mail.gmail.com>
- <alpine.LFD.2.00.1110191553500.29698@dhcp-27-109.brq.redhat.com>
- <FF85E3C6-8AB3-4A63-9E3D-06D06C778CEC@dilger.ca>
- <CAGr1F2GWXd=pfb3JECDwwzd70AczBHb3_yimaRRxmRAe9du_CQ@mail.gmail.com>
- <4EA1952B.9070404@redhat.com>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [PATCH 1/4] crc32: Bolt on crc32c
+Date: Fri, 21 Oct 2011 09:57:03 -0700
+Message-ID: <20111021165703.GS12447@tux1.beaverton.ibm.com>
+References: <20111004235357.1560.12602.stgit@elm3c44.beaverton.ibm.com> <20111004235403.1560.55503.stgit@elm3c44.beaverton.ibm.com> <20111021122803.GA15803@gondor.apana.org.au>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Aditya Kali <adityakali@google.com>,
-	Andreas Dilger <adilger@dilger.ca>,
-	Lukas Czerner <lczerner@redhat.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Nauman Rafique <nauman@google.com>,
-	TheodoreTso <tytso@google.com>,
-	Ric Wheeler <rwheeler@redhat.com>,
-	"Alasdair G.Kergon" <agk@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:49808
-	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751847Ab1JUPyb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 21 Oct 2011 11:54:31 -0400
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	Theodore Tso <tytso@mit.edu>,
+	David Miller <davem@davemloft.net>,
+	Joakim Tjernlund <joakim.tjernlund@transmode.se>,
+	Bob Pearson <rpearson@systemfabricworks.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Mingming Cao <cmm@us.ibm.com>,
+	linux-crypto <linux-crypto@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Herbert Xu <herbert@gondor.apana.org.au>
+Return-path: <linux-crypto-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <4EA1952B.9070404@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20111021122803.GA15803@gondor.apana.org.au>
+Sender: linux-crypto-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Oct 21, 2011 at 10:52:11AM -0500, Eric Sandeen wrote:
-> With an SSD, you -really- don't know the independent failure domains,
-> with all the garbage collection & remapping that they may do, right?
+On Fri, Oct 21, 2011 at 02:28:03PM +0200, Herbert Xu wrote:
+> On Tue, Oct 04, 2011 at 04:54:03PM -0700, Darrick J. Wong wrote:
+> > Reuse the existing crc32 code to stamp out a crc32c implementation.
+> > 
+> > Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+> 
+> Did you want this to go through my tree? If so then there is a
+> problem since it doesn't apply at all.
 
-In fact some popular consumer SSDs do some fairly efficient data
-de-duplication which completly runs any metadata redundancy on a single
-of these devices void.
+My patchset builds upon Bob Pearson's crc32 patchset from early September.  Do
+my patches fail to apply after applying his patchset?
 
+Or, to speed things along, should I simply repost both Bob's and my patches as
+one big series?
+
+Bob, have you sent out a new iteration of your patches since September 6th?
+
+--D
+> 
+> Cheers,
+> -- 
+> Email: Herbert Xu <herbert@gondor.apana.org.au>
+> Home Page: http://gondor.apana.org.au/~herbert/
+> PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
