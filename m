@@ -1,54 +1,35 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCH 1/4] crc32: Bolt on crc32c
-Date: Fri, 21 Oct 2011 09:57:03 -0700
-Message-ID: <20111021165703.GS12447@tux1.beaverton.ibm.com>
-References: <20111004235357.1560.12602.stgit@elm3c44.beaverton.ibm.com> <20111004235403.1560.55503.stgit@elm3c44.beaverton.ibm.com> <20111021122803.GA15803@gondor.apana.org.au>
-Reply-To: djwong@us.ibm.com
+From: Andrew Lutomirski <andy@luto.us>
+Subject: How do I clear the append-only flag on symlinks?
+Date: Fri, 21 Oct 2011 11:07:51 -0700
+Message-ID: <CAObL_7FLTio3+X3iQ3sdHw156OvmjT92_AD0vKTSagNTkaF9fQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	Theodore Tso <tytso@mit.edu>,
-	David Miller <davem@davemloft.net>,
-	Joakim Tjernlund <joakim.tjernlund@transmode.se>,
-	Bob Pearson <rpearson@systemfabricworks.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Mingming Cao <cmm@us.ibm.com>,
-	linux-crypto <linux-crypto@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Herbert Xu <herbert@gondor.apana.org.au>
-Return-path: <linux-crypto-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20111021122803.GA15803@gondor.apana.org.au>
-Sender: linux-crypto-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:60826 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753811Ab1JUSIM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Oct 2011 14:08:12 -0400
+Received: by gyb13 with SMTP id 13so4097303gyb.19
+        for <linux-ext4@vger.kernel.org>; Fri, 21 Oct 2011 11:08:11 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Oct 21, 2011 at 02:28:03PM +0200, Herbert Xu wrote:
-> On Tue, Oct 04, 2011 at 04:54:03PM -0700, Darrick J. Wong wrote:
-> > Reuse the existing crc32 code to stamp out a crc32c implementation.
-> > 
-> > Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
-> 
-> Did you want this to go through my tree? If so then there is a
-> problem since it doesn't apply at all.
+By means that are best not admitted to, I managed to mark a large
+chunk of my filesystem append-only, including symlinks.  I cleared the
+flag from all the normal files and directories, but chattr and lsattr
+don't want to operate on symlinks.  They say things like:
 
-My patchset builds upon Bob Pearson's crc32 patchset from early September.  Do
-my patches fail to apply after applying his patchset?
+$ sudo lsattr /boot/vmlinuz
+lsattr: Operation not supported While reading flags on /boot/vmlinuz
 
-Or, to speed things along, should I simply repost both Bob's and my patches as
-one big series?
+and I can't delete them, because
 
-Bob, have you sent out a new iteration of your patches since September 6th?
+$ sudo rm /boot/vmlinuz
+rm: cannot remove `/boot/vmlinuz': Operation not permitted
 
---D
-> 
-> Cheers,
-> -- 
-> Email: Herbert Xu <herbert@gondor.apana.org.au>
-> Home Page: http://gondor.apana.org.au/~herbert/
-> PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Any ideas on how to clear the append-only flags?  debug2fs is a little
+scary, and hacking e2fsprogs to allow operation on symlinks seems to
+affect symlink targets and not the symlinks themselves.
+
+--Andy
