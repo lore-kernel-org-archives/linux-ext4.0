@@ -1,93 +1,66 @@
-From: Matt Parnell <mparnell@gmail.com>
-Subject: Re: Bug In ext4 in kernels > 2.6.39 - Not mounting with arguments/options
- I specify in fstab on root remount
-Date: Sat, 22 Oct 2011 02:53:34 -0500
-Message-ID: <4EA2767E.2080509@gmail.com>
-References: <4E6F1B49.3010803@gmail.com> <CABeR262=5V1wuXPDVr_qLTeFTc4zDSFKVYKvO_+1w60XmwJvKA@mail.gmail.com> <4E6F6D89.5040905@redhat.com> <CABeR260PEDEF1cyX5JPs3VC0hpThmKNtDAhDd-sPDZ2grtL+=g@mail.gmail.com> <20111009234433.GU7948@thunk.org> <4EA0E72D.8020305@gmail.com> <20111022050031.GC4196@thunk.org> <4EA27607.20407@gmail.com>
+From: Andrew Lutomirski <andy@luto.us>
+Subject: Re: How do I clear the append-only flag on symlinks?
+Date: Sat, 22 Oct 2011 01:57:45 -0700
+Message-ID: <CAObL_7F+Dhv8hFBkVN6q2oP_CBKnN2EbqmzfmqVh-KjOsyMkTw@mail.gmail.com>
+References: <CAObL_7FLTio3+X3iQ3sdHw156OvmjT92_AD0vKTSagNTkaF9fQ@mail.gmail.com>
+ <20111022051644.GD4196@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:65269 "EHLO
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:39063 "EHLO
 	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751883Ab1JVHxi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 22 Oct 2011 03:53:38 -0400
-Received: by iaek3 with SMTP id k3so5643766iae.19
-        for <linux-ext4@vger.kernel.org>; Sat, 22 Oct 2011 00:53:38 -0700 (PDT)
-In-Reply-To: <4EA27607.20407@gmail.com>
+	with ESMTP id S1753048Ab1JVI6G convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 22 Oct 2011 04:58:06 -0400
+Received: by iaek3 with SMTP id k3so5689295iae.19
+        for <linux-ext4@vger.kernel.org>; Sat, 22 Oct 2011 01:58:05 -0700 (PDT)
+In-Reply-To: <20111022051644.GD4196@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Also, I didn't intend to come across cross there... I appreciate the 
-efforts you are taking there.
-
-It's just, I don't know what could've changed between .29 and 3.0 that 
-would break an entire init system so that it won't remount root rw...
-
-On 10/22/2011 02:51 AM, Matt Parnell wrote:
-> That doesn't really help me at all, it's not rootflags=data=writeback 
-> causing this, it's starting to make me think that arch's init may be 
-> to blame, although I previously ruled it out...
+On Fri, Oct 21, 2011 at 10:16 PM, Ted Ts'o <tytso@mit.edu> wrote:
+> On Fri, Oct 21, 2011 at 11:07:51AM -0700, Andrew Lutomirski wrote:
+>> By means that are best not admitted to, I managed to mark a large
+>> chunk of my filesystem append-only, including symlinks. =A0I cleared=
+ the
+>> flag from all the normal files and directories, but chattr and lsatt=
+r
+>> don't want to operate on symlinks.
 >
-> This is all a big wtf though. I'm going to go complain at the arch 
-> devs now... I've not finished porting openrc to it yet.
+> Yes. =A0So how did you set a whole chunk of your file system
+> append-only?
+
+I want to be able to write to shared, locked, writable mappings
+without sleeping.  Updating file timestamps and stable pages get in
+the way.  I was trying out an approach to fixing the file_update_call
+in do_wp_page using a new inode flag.  Sadly, I figured out the hard
+way that 8196 is not actually a power of two.  (My patch is also
+garbage for other reasons, but I'll email out a different approach as
+an RFC sometime soon.)
+
+If you have any ideas for how to handle stable pages other than
+carrying a patch to disable them, I'd love to hear it.  The obvious
+approach of making a new writable copy of the page will involve
+pagecache internals that I'm not at all familiar with.
+
 >
-> On 10/22/2011 12:00 AM, Ted Ts'o wrote:
->> On Thu, Oct 20, 2011 at 10:29:49PM -0500, Matt Parnell wrote:
->>> The output of /proc/cmdline on 3.0.7:
->>>
->>> BOOT_IMAGE=/boot/vmlinuz26-zen root=/dev/sdb1 ro rootfstype=ext4
->>> rootflags=data=writeback noatime nodiratime barrier=0 discard
->>> noinitrd
->>>
->>>
->>> On 10/09/2011 06:44 PM, Ted Ts'o wrote:
->>>> On Sun, Oct 09, 2011 at 05:10:54PM -0500, Matt Parnell wrote:
->>>>> /proc/mounts (as you can see it's not being remounted rw for some
->>>>> reason - /dev/sdc1 is the flash drive I used to pipe this info onto):
->>>>>
->>>>> rootfs / rootfs rw 0 0
->>>>> /dev/root / ext4 ro,relatime,barrier=1 0 0
->> I haven't had a chance to check on v3.0 (I'm currently travelling and
->> penning this from an airplane), but on v3.1-rc3, it works for me under
->> KVM.  I fire up kvm-qemu this way:
->>
->> $QEMU -enable-kvm -boot order=c $NET \
->>        -drive file=$ROOT_QCOW2,if=virtio$SNAPSHOT \
->>        -drive file=$VDB,cache=none,if=virtio \
->>        -drive file=$VDC,cache=none,if=virtio \
->>        -drive file=$VDD,cache=none,if=virtio \
->>        -nographic -smp $NR_CPU -m $MEM \
->>        --kernel $KERNEL \
->>        --append "root=/dev/vda console=ttyS0,115200 
->> rootflags=data=writeback" |\
->> tee $LOGFILE
->>
->> with this in /proc/cmdline:
->>
->> candygram:~# cat /proc/cmdline
->> root=/dev/vda console=ttyS0,115200 rootflags=data=writeback maint
->>
->> ... and this is what I have in /proc/mounts:
->>
->> candygram:~# head -2 /proc/mounts
->> rootfs / rootfs rw 0 0
->> /dev/root / ext4 rw,noatime,user_xattr,acl,barrier=1,data=writeback 0 0
->>
->> ... and what I have in /etc/fstab:
->>
->> UUID=ce4d6b98-2aa9-42d4-a127-995a795a0b02    /    ext4    
->> noatime,data=writeback 0 1
->>
->> The kvm image I'm using is using Debian unstable image generated using
->> debootstrap, and uses no modules or initrd's --- which makes it easier
->> for me to boot since $KERNEL is set to:
->>
->>      /tyt/linux/ext4/arch/x86/boot/bzImage
->>
->> This allows me to fire up test kernel right from my build tree,
->> without needing to set up any kind of initrd nonsense.  :-)
->>
->>                                                     - Ted
+>> Any ideas on how to clear the append-only flags? =A0debug2fs is a li=
+ttle
+>> scary, and hacking e2fsprogs to allow operation on symlinks seems to
+>> affect symlink targets and not the symlinks themselves.
+>
+> I'd probably hack it into e2fsck, and let it offer to clear the
+> append-only flag on things that aren't regular files, on the theory
+> that they should have never been allowed to be set to begin with.
+>
+
+I'll take a look on Monday.
+
+--Andy
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
