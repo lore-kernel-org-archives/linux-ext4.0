@@ -1,50 +1,37 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 3/5] ext4: ext4_mkdir should dirty dir_block with the parent
-	inode
-Date: Fri, 21 Oct 2011 14:18:12 -0700
-Message-ID: <20111021211812.10784.27324.stgit@elm3c44.beaverton.ibm.com>
-References: <20111021211759.10784.17257.stgit@elm3c44.beaverton.ibm.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: How do I clear the append-only flag on symlinks?
+Date: Sat, 22 Oct 2011 01:16:44 -0400
+Message-ID: <20111022051644.GD4196@thunk.org>
+References: <CAObL_7FLTio3+X3iQ3sdHw156OvmjT92_AD0vKTSagNTkaF9fQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org,
-	linux-kernel <linux-kernel@vger.kernel.org>
-To: Tao Ma <tm@tao.ma>, Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Andrew Lutomirski <andy@luto.us>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:54585 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753044Ab1JUVSn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 21 Oct 2011 17:18:43 -0400
-Received: from /spool/local
-	by e2.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Fri, 21 Oct 2011 17:18:41 -0400
-In-Reply-To: <20111021211759.10784.17257.stgit@elm3c44.beaverton.ibm.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:51259 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751883Ab1JVHtP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 22 Oct 2011 03:49:15 -0400
+Content-Disposition: inline
+In-Reply-To: <CAObL_7FLTio3+X3iQ3sdHw156OvmjT92_AD0vKTSagNTkaF9fQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4_mkdir calls ext4_handle_dirty_metadata with dir_block and the inode "dir".
-Unfortunately, dir_block belongs to the newly created directory (which is
-"inode"), not the parent directory (which is "dir").  Fix the incorrect
-association.
+On Fri, Oct 21, 2011 at 11:07:51AM -0700, Andrew Lutomirski wrote:
+> By means that are best not admitted to, I managed to mark a large
+> chunk of my filesystem append-only, including symlinks.  I cleared the
+> flag from all the normal files and directories, but chattr and lsattr
+> don't want to operate on symlinks.
 
-Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
----
- fs/ext4/namei.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+Yes.  So how did you set a whole chunk of your file system
+append-only?
 
+> Any ideas on how to clear the append-only flags?  debug2fs is a little
+> scary, and hacking e2fsprogs to allow operation on symlinks seems to
+> affect symlink targets and not the symlinks themselves.
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 6d3fab4..50c7294 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1863,7 +1863,7 @@ retry:
- 	ext4_set_de_type(dir->i_sb, de, S_IFDIR);
- 	inode->i_nlink = 2;
- 	BUFFER_TRACE(dir_block, "call ext4_handle_dirty_metadata");
--	err = ext4_handle_dirty_metadata(handle, dir, dir_block);
-+	err = ext4_handle_dirty_metadata(handle, inode, dir_block);
- 	if (err)
- 		goto out_clear_inode;
- 	err = ext4_mark_inode_dirty(handle, inode);
+I'd probably hack it into e2fsck, and let it offer to clear the
+append-only flag on things that aren't regular files, on the theory
+that they should have never been allowed to be set to begin with.
 
+     	  	      	    	 	 - Ted
