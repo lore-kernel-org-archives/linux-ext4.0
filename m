@@ -1,64 +1,152 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Bug In ext4 in kernels > 2.6.39 - Not mounting with
- arguments/options I specify in fstab on root remount
-Date: Sat, 22 Oct 2011 05:32:18 -0400
-Message-ID: <20111022093218.GF4196@thunk.org>
-References: <4E6F1B49.3010803@gmail.com>
- <CABeR262=5V1wuXPDVr_qLTeFTc4zDSFKVYKvO_+1w60XmwJvKA@mail.gmail.com>
- <4E6F6D89.5040905@redhat.com>
- <CABeR260PEDEF1cyX5JPs3VC0hpThmKNtDAhDd-sPDZ2grtL+=g@mail.gmail.com>
- <20111009234433.GU7948@thunk.org>
- <4EA0E72D.8020305@gmail.com>
- <20111022050031.GC4196@thunk.org>
- <4EA27607.20407@gmail.com>
+From: Christoph <cr2005@u-club.de>
+Subject: Re: [PATCH] PM / Freezer: Freeze filesystems while freezing processes
+ (v2)
+Date: Sat, 22 Oct 2011 17:14:27 +0200
+Message-ID: <4EA2DDD3.8080306@u-club.de>
+References: <4E1C70AD.1010101@u-club.de> <201109251532.20025.rjw@sisk.pl>	<4E7FA3C7.5050503@u-club.de> <201109260010.50649.rjw@sisk.pl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: Matt Parnell <mparnell@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>, LKML <linux-kernel@vger.kernel.org>,
+	xfs@oss.sgi.com, Christoph Hellwig <hch@infradead.org>,
+	Nigel Cunningham <nigel@tuxonice.net>,
+	Pavel Machek <pavel@ucw.cz>, linux-fsdevel@vger.kernel.org,
+	Linux PM mailing list <linux-pm@lists.linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: "Rafael J. Wysocki" <rjw@sisk.pl>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:56398 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751792Ab1JVJcX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 22 Oct 2011 05:32:23 -0400
-Content-Disposition: inline
-In-Reply-To: <4EA27607.20407@gmail.com>
+Received: from mail.uscreen.net ([62.67.233.10]:33775 "EHLO mail.uscreen.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753267Ab1JVPOc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 22 Oct 2011 11:14:32 -0400
+In-Reply-To: <201109260010.50649.rjw@sisk.pl>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Oct 22, 2011 at 02:51:35AM -0500, Matt Parnell wrote:
-> That doesn't really help me at all, it's not
-> rootflags=data=writeback causing this, it's starting to make me
-> think that arch's init may be to blame, although I previously ruled
-> it out...
+> PM / Freezer: Freeze filesystems while freezing processes (v2)
+> 
+> On Sunday, August 07, 2011, Dave Chinner wrote:
+>> On Sat, Aug 06, 2011 at 11:17:18PM +0200, Rafael J. Wysocki wrote:
+>>> From: Rafael J. Wysocki <rjw@sisk.pl>
+>>> 
+>>> Freeze all filesystems during the freezing of tasks by calling 
+>>> freeze_bdev() for each of them and thaw them during the thawing of
+>>> tasks with the help of thaw_bdev().
+>>> 
+>>> This is needed by hibernation, because some filesystems (e.g. XFS) 
+>>> deadlock with the preallocation of memory used by it if the memory 
+>>> pressure caused by it is too heavy.
+>>> 
+...
+> 
+> Below is an alternative fix, the changelog pretty much explains the
+> idea.
+> 
+> I've tested it on Toshiba Portege R500, but I don't have an XFS
+> partition to verify that it really helps, so I'd appreciate it if
+> someone able to reproduce the original issue could test it and report
+> back.
 
-Well, it looks like rootflags=data=writeback is not making it to the
-file system.  That's why it's not showing up in /proc/mounts, from you
-showed us.  Can you look at the kernel dmesg?
+Hi Rafael!
 
-You should see something like this:
+Well, the kernel bugtracker is still down and I just like to post my
+experience with kernel (x64) v3.1-rc8/9 + patches. My machine is a
+MacBookPro, doomed with 4GB RAM running debian.
 
-[    1.421146] EXT3-fs (vda): error: couldn't mount because of unsupported optional features (240)
-[    1.434057] EXT4-fs (vda): couldn't mount as ext2 due to feature incompatibilities
-[    1.454631] EXT4-fs (vda): mounted filesystem with writeback data mode. Opts: data=writeback
-[    1.455966] VFS: Mounted root (ext4 filesystem) readonly on device 254:0.
+Bug #1
+
+on the way to hibernate, machine hangs on
+
+"PM: Preallocating image memory..."
+
+this patch worked for me now for weeks:
+"[PATCH] PM / Freezer: Freeze filesystems while freezing processes (v2)"
+https://lkml.org/lkml/2011/9/24/77
+
+I was able to reproduce this bug with virtualbox and tested the patch ~40
+cycles.
+
+Bug#2
+
+on resume from hibernate, hard reset (x64 only):
+http://marc.info/?l=linux-kernel&m=131653513414314&w=2
+
+With this patch I haven't got this issue again the last weeks.
+
+I wasn't able to reproduce this bug with virtualbox.
 
 
-The first line is the failure to mount the root file system as ext3.
-The 2nd is the failure to mount the file system as ext2, using the
-ext4 file system driver.  The last two lines show the options show the
-mount as ext4.
 
-What do those two lines look to you.  If you don't see "Opts:
-data=writeback", then somehow the rootflags option isn't getting passed
-down to the file system.  Then when you try to remount the file system
-read/write, the fact that you have "data=writeback" in your /etc/fstab
-causes the failure to remount.
 
-If you simply remove that from /etc/fstab, things should work better.
-The remount will preserve whatever data=journalling mode was in use
-when the root file system was originallymounted as.  If rootflags is
-non-functional, then the file system won't be mounted as
-data=writeback, but at least the boot sequence will continue without
-blowing out.
 
-							- Ted
+I only got one pm-hibernate issue. Last line:
+
+Disabling non-boot CPUs ...
+
+This time I've enabled debug hung task :)
+
+schedule_timeout
+...
+workqueue_cpu_callback
+notifier_call_chain
+...
+__cpu_notify
+_cpu_down
+printk
+disable_nonboot_cpus
+hibernation_snapshot
+hibernate
+...
+
+Any other idea besides the possibility it's caused by evil earth
+radiation, isn't it?
+
+
+Gruss,
+chris
+
+
+
+
+On 26.09.2011 00:10, Rafael J. Wysocki wrote:
+> On Sunday, September 25, 2011, Christoph wrote:
+>> On 25.09.2011 15:32, Rafael J. Wysocki wrote:
+>>> On Sunday, September 25, 2011, Christoph wrote:
+>>>> test results of the patch below:
+>>>>
+>>>> 1. real machine
+>>>>
+>>>> suspends fine but on wakeup, after loading image: hard reset. nvidia
+>>>> gpu => disabled compitz  => wakeup worked two times.
+>>>
+>>> Hmm, so there's a separate bug related to NVidia I guess.
+>>
+>> Maybe.
+>>
+>> Just made another test: the machine (macbook) woke up, loaded image, thaw.
+>> It got stuck at vt#1, displaying console with login. Cursor blinking, but
+>> no (usb) keyboard or network enabled. Bricked?!!
+>>
+>>
+>> On the other hand I've got another box with nvidia gpu:
+>>
+>> debian5 32bit
+>> 2.6.38.2+ #3 SMP Fri Apr 1
+>> nvidia 260.19.36
+>>
+>> It's up since I compiled the kernel: I use it twice a week and I kept it
+>> freezed all the time. It was solid rock until today: hard reset on resume.
+>> WTF? (I remember this version combo was stable on the macbook but the
+>> kernel lacks a solid wireless driver).
+> 
+> If that's an x86_64 system, there is a known bug causing problems like
+> this to happen.  There's a patch fixing it, but not conclusive:
+> http://marc.info/?l=linux-kernel&m=131653513414314&w=2
+> 
+> Thanks,
+> Rafael
+> 
+> _______________________________________________
+> xfs mailing list
+> xfs@oss.sgi.com
+> http://oss.sgi.com/mailman/listinfo/xfs
