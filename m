@@ -1,152 +1,77 @@
-From: Christoph <cr2005@u-club.de>
-Subject: Re: [PATCH] PM / Freezer: Freeze filesystems while freezing processes
- (v2)
-Date: Sat, 22 Oct 2011 17:14:27 +0200
-Message-ID: <4EA2DDD3.8080306@u-club.de>
-References: <4E1C70AD.1010101@u-club.de> <201109251532.20025.rjw@sisk.pl>	<4E7FA3C7.5050503@u-club.de> <201109260010.50649.rjw@sisk.pl>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>, LKML <linux-kernel@vger.kernel.org>,
-	xfs@oss.sgi.com, Christoph Hellwig <hch@infradead.org>,
-	Nigel Cunningham <nigel@tuxonice.net>,
-	Pavel Machek <pavel@ucw.cz>, linux-fsdevel@vger.kernel.org,
-	Linux PM mailing list <linux-pm@lists.linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-To: "Rafael J. Wysocki" <rjw@sisk.pl>
+From: Andreas Dilger <aedilger@gmail.com>
+Subject: Re: [PATCH 5/5] ext4: Fix endian problem in MMP initialization
+Date: Sat, 22 Oct 2011 11:25:31 -0600
+Message-ID: <67F2A39D-1E28-4660-8758-0B16DED30096@gmail.com>
+References: <20111021211759.10784.17257.stgit@elm3c44.beaverton.ibm.com> <20111021211825.10784.97113.stgit@elm3c44.beaverton.ibm.com>
+Mime-Version: 1.0 (iPhone Mail 8L1)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Tao Ma <tm@tao.ma>, Theodore Tso <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: "Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.uscreen.net ([62.67.233.10]:33775 "EHLO mail.uscreen.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753267Ab1JVPOc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 22 Oct 2011 11:14:32 -0400
-In-Reply-To: <201109260010.50649.rjw@sisk.pl>
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:61771 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754055Ab1JVRYk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 22 Oct 2011 13:24:40 -0400
+In-Reply-To: <20111021211825.10784.97113.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> PM / Freezer: Freeze filesystems while freezing processes (v2)
+You can add my
+
+ Acked-by: Andreas Dilger <adilger@dilger.ca>
+
+to this. 
+
+Cheers, Andreas
+
+On 2011-10-21, at 3:18 PM, "Darrick J. Wong" <djwong@us.ibm.com> wrote:
+
+> As part of startup, the MMP initialization code does this:
 > 
-> On Sunday, August 07, 2011, Dave Chinner wrote:
->> On Sat, Aug 06, 2011 at 11:17:18PM +0200, Rafael J. Wysocki wrote:
->>> From: Rafael J. Wysocki <rjw@sisk.pl>
->>> 
->>> Freeze all filesystems during the freezing of tasks by calling 
->>> freeze_bdev() for each of them and thaw them during the thawing of
->>> tasks with the help of thaw_bdev().
->>> 
->>> This is needed by hibernation, because some filesystems (e.g. XFS) 
->>> deadlock with the preallocation of memory used by it if the memory 
->>> pressure caused by it is too heavy.
->>> 
-...
+> mmp->mmp_seq = seq = cpu_to_le32(mmp_new_seq());
 > 
-> Below is an alternative fix, the changelog pretty much explains the
-> idea.
+> Next, mmp->mmp_seq is written out to disk, a delay happens, and then the MMP
+> block is read back in and the sequence value is tested:
 > 
-> I've tested it on Toshiba Portege R500, but I don't have an XFS
-> partition to verify that it really helps, so I'd appreciate it if
-> someone able to reproduce the original issue could test it and report
-> back.
-
-Hi Rafael!
-
-Well, the kernel bugtracker is still down and I just like to post my
-experience with kernel (x64) v3.1-rc8/9 + patches. My machine is a
-MacBookPro, doomed with 4GB RAM running debian.
-
-Bug #1
-
-on the way to hibernate, machine hangs on
-
-"PM: Preallocating image memory..."
-
-this patch worked for me now for weeks:
-"[PATCH] PM / Freezer: Freeze filesystems while freezing processes (v2)"
-https://lkml.org/lkml/2011/9/24/77
-
-I was able to reproduce this bug with virtualbox and tested the patch ~40
-cycles.
-
-Bug#2
-
-on resume from hibernate, hard reset (x64 only):
-http://marc.info/?l=linux-kernel&m=131653513414314&w=2
-
-With this patch I haven't got this issue again the last weeks.
-
-I wasn't able to reproduce this bug with virtualbox.
-
-
-
-
-
-I only got one pm-hibernate issue. Last line:
-
-Disabling non-boot CPUs ...
-
-This time I've enabled debug hung task :)
-
-schedule_timeout
-...
-workqueue_cpu_callback
-notifier_call_chain
-...
-__cpu_notify
-_cpu_down
-printk
-disable_nonboot_cpus
-hibernation_snapshot
-hibernate
-...
-
-Any other idea besides the possibility it's caused by evil earth
-radiation, isn't it?
-
-
-Gruss,
-chris
-
-
-
-
-On 26.09.2011 00:10, Rafael J. Wysocki wrote:
-> On Sunday, September 25, 2011, Christoph wrote:
->> On 25.09.2011 15:32, Rafael J. Wysocki wrote:
->>> On Sunday, September 25, 2011, Christoph wrote:
->>>> test results of the patch below:
->>>>
->>>> 1. real machine
->>>>
->>>> suspends fine but on wakeup, after loading image: hard reset. nvidia
->>>> gpu => disabled compitz  => wakeup worked two times.
->>>
->>> Hmm, so there's a separate bug related to NVidia I guess.
->>
->> Maybe.
->>
->> Just made another test: the machine (macbook) woke up, loaded image, thaw.
->> It got stuck at vt#1, displaying console with login. Cursor blinking, but
->> no (usb) keyboard or network enabled. Bricked?!!
->>
->>
->> On the other hand I've got another box with nvidia gpu:
->>
->> debian5 32bit
->> 2.6.38.2+ #3 SMP Fri Apr 1
->> nvidia 260.19.36
->>
->> It's up since I compiled the kernel: I use it twice a week and I kept it
->> freezed all the time. It was solid rock until today: hard reset on resume.
->> WTF? (I remember this version combo was stable on the macbook but the
->> kernel lacks a solid wireless driver).
+> if (seq != le32_to_cpu(mmp->mmp_seq)) {
+>    /* fail the mount */
 > 
-> If that's an x86_64 system, there is a known bug causing problems like
-> this to happen.  There's a patch fixing it, but not conclusive:
-> http://marc.info/?l=linux-kernel&m=131653513414314&w=2
+> On a LE system such as x86, the *le32* functions do nothing and this works.
+> Unfortunately, on a BE system such as ppc64, this comparison becomes:
 > 
-> Thanks,
-> Rafael
+> if (cpu_to_le32(new_seq) != le32_to_cpu(cpu_to_le32(new_seq)) {
+>    /* fail the mount */
 > 
-> _______________________________________________
-> xfs mailing list
-> xfs@oss.sgi.com
-> http://oss.sgi.com/mailman/listinfo/xfs
+> Except for a few palindromic sequence numbers, this test always causes the
+> mount to fail, which makes MMP filesystems generally unmountable on ppc64.  The
+> attached patch fixes this situation.
+> 
+> Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+> ---
+> fs/ext4/mmp.c |    3 ++-
+> 1 files changed, 2 insertions(+), 1 deletions(-)
+> 
+> 
+> diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
+> index 9bdef3f..a7a4986 100644
+> --- a/fs/ext4/mmp.c
+> +++ b/fs/ext4/mmp.c
+> @@ -295,7 +295,8 @@ skip:
+>    /*
+>     * write a new random sequence number.
+>     */
+> -    mmp->mmp_seq = seq = cpu_to_le32(mmp_new_seq());
+> +    seq = mmp_new_seq();
+> +    mmp->mmp_seq = cpu_to_le32(seq);
+> 
+>    retval = write_mmp_block(bh);
+>    if (retval)
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
