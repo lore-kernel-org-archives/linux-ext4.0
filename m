@@ -1,62 +1,78 @@
-From: "Amir G." <amir73il@users.sourceforge.net>
-Subject: Re: [PATCH 2/8] e2fsprogs: add exclude bitmap support in mkfs
-Date: Sun, 23 Oct 2011 15:55:02 +0200
-Message-ID: <CAOQ4uxh_z+2Ko9Hbfk9KtX72W4F0AaMqSNOB6YL_5=ALyd7+WQ@mail.gmail.com>
-References: <1319354488-6050-1-git-send-email-xiaoqiangnk@gmail.com>
-	<1319354488-6050-3-git-send-email-xiaoqiangnk@gmail.com>
+From: Andy Lutomirski <luto@amacapital.net>
+Subject: Re: [PATCHSET v3.1 0/7] data integrity: Stabilize pages during writeback
+ for various fses
+Date: Sun, 23 Oct 2011 09:38:50 -0700
+Message-ID: <4EA4431A.3010104@amacapital.net>
+References: <20110509230318.19566.66202.stgit@elm3c44.beaverton.ibm.com> <87tyd31fkc.fsf@devron.myhome.or.jp> <20110510123819.GB4402@quack.suse.cz> <87hb924s2x.fsf@devron.myhome.or.jp> <20110510132953.GE4402@quack.suse.cz> <878vue4qjb.fsf@devron.myhome.or.jp> <87zkmu3b2i.fsf@devron.myhome.or.jp> <20110510145421.GJ4402@quack.suse.cz> <87zkmupmaq.fsf@devron.myhome.or.jp> <20110510162237.GM4402@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, amir73il@users.sf.net
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+	"Darrick J. Wong" <djwong@us.ibm.com>,
+	Theodore Tso <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Jens Axboe <axboe@kernel.dk>,
+	"Martin K. Petersen" <martin.petersen@oracle.com>,
+	Jeff Layton <jlayton@redhat.com>,
+	Dave Chinner <david@fromorbit.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Dave Hansen <dave@linux.vnet.ibm.com>,
+	Christoph Hellwig <hch@infradead.org>, linux-mm@kvack.org,
+	Chris Mason <chris.mason@oracle.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	linux-scsi <linux-scsi@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, Mingming Cao <mcao@us.ibm.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:34549 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755552Ab1JWNzE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 23 Oct 2011 09:55:04 -0400
-Received: by wyg36 with SMTP id 36so5365114wyg.19
-        for <linux-ext4@vger.kernel.org>; Sun, 23 Oct 2011 06:55:02 -0700 (PDT)
-In-Reply-To: <1319354488-6050-3-git-send-email-xiaoqiangnk@gmail.com>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:41718 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752112Ab1JWQjF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 23 Oct 2011 12:39:05 -0400
+In-Reply-To: <20110510162237.GM4402@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch is missing some "meat".
-Some parts of the previous patch should probably belong to this one,
-like the patch to lib/ext2fs/alloc_tables.c.
-Please keep this in mind for the next post.
+On 05/10/2011 09:22 AM, Jan Kara wrote:
+> On Wed 11-05-11 01:12:13, OGAWA Hirofumi wrote:
+>> Jan Kara<jack@suse.cz>  writes:
+>>
+>>>> Did you already consider, to copy only if page was writeback (like
+>>>> copy-on-write)? I.e. if page is on I/O, copy, then switch the page for
+>>>> writing new data.
+>>>    Yes, that was considered as well. We'd have to essentially migrate the
+>>> page that is under writeback and should be written to. You are going to pay
+>>> the cost of page allocation, copy, increased memory&  cache pressure.
+>>> Depending on your backing storage and workload this may or may not be better
+>>> than waiting for IO...
+>>
+>> Maybe possible, but you really think on usual case just blocking is
+>> better?
+>    Define usual case... As Christoph noted, we don't currently have a real
+> practical case where blocking would matter (since frequent rewrites are
+> rather rare). So defining what is usual when we don't have a single real
+> case is kind of tough ;)
+>
 
-Sorry for not noticing this when reviewing in github,
-Amir.
+I'm a bit late to the party, but I have such a use case.  I have a 
+real-time program that generates logs.  There's a thread that makes sure 
+that there are always mlocked, MAP_SHARED, writable pages for the logs, 
+and under normal (or even very heavy) load, the mlocked pages always 
+stay far ahead of the logs.  On 2.6.39, it works great [1].  On 3.0, 
+it's unusable -- latencies of 30-100 ms are very common.
 
-On Sun, Oct 23, 2011 at 9:21 AM, Yongqiang Yang <xiaoqiangnk@gmail.com>=
- wrote:
-> Exclude bitmap is needed by ext4 snapshot. This patch adds
-> exclude bitmap support in mkfs.
->
-> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-> ---
-> =A0misc/mke2fs.c | =A0 =A01 +
-> =A01 files changed, 1 insertions(+), 0 deletions(-)
->
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index 3dcb3b7..2dc28e7 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -828,6 +828,7 @@ static void parse_extended_opts(struct ext2_super=
-_block *param,
-> =A0static __u32 ok_features[3] =3D {
-> =A0 =A0 =A0 =A0/* Compat */
-> =A0 =A0 =A0 =A0EXT3_FEATURE_COMPAT_HAS_JOURNAL |
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP |
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT2_FEATURE_COMPAT_RESIZE_INODE |
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT2_FEATURE_COMPAT_DIR_INDEX |
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT2_FEATURE_COMPAT_EXT_ATTR,
-> --
-> 1.7.5.1
->
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+In this case, neither throughput nor available memory matter at all -- 
+I'm not stressing either.  So copying the pages (especially if they're 
+mlocked) would be more than a small percentage win -- it would be the 
+difference between great performance and unusability.
+
+I wonder if we want a stronger version of mlock that says "this page 
+must not be swapped out and, in addition, ptes must always be mapped 
+with all appropriate permission bits set".  (This is only possible with 
+hardware dirty and accessed bits, but we could come close even without 
+them.)
+
+
+[1] file_update_time is a problem.  patches coming.
+
+--Andy
