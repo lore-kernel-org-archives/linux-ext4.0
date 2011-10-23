@@ -1,257 +1,175 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH 8/8] e2fsprogs: add exclude bitmap support in debugfs
-Date: Sun, 23 Oct 2011 15:21:28 +0800
-Message-ID: <1319354488-6050-9-git-send-email-xiaoqiangnk@gmail.com>
+Subject: [PATCH 7/8] e2fsprogs: add exclude bitmap support in e2image
+Date: Sun, 23 Oct 2011 15:21:27 +0800
+Message-ID: <1319354488-6050-8-git-send-email-xiaoqiangnk@gmail.com>
 References: <1319354488-6050-1-git-send-email-xiaoqiangnk@gmail.com>
 Cc: amir73il@users.sf.net, Yongqiang Yang <xiaoqiangnk@gmail.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-iy0-f174.google.com ([209.85.210.174]:58496 "EHLO
 	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755230Ab1JWJLK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 23 Oct 2011 05:11:10 -0400
+	with ESMTP id S1755230Ab1JWJLI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 23 Oct 2011 05:11:08 -0400
 Received: by mail-iy0-f174.google.com with SMTP id y12so71200iab.19
-        for <linux-ext4@vger.kernel.org>; Sun, 23 Oct 2011 02:11:10 -0700 (PDT)
+        for <linux-ext4@vger.kernel.org>; Sun, 23 Oct 2011 02:11:08 -0700 (PDT)
 In-Reply-To: <1319354488-6050-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Exclude bitmap is a feature needed by ext4 snapshot.  This patch
-adds exclude bitmap support in debugfs.
+Adds exclude bitmap support in e2image.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- debugfs/debug_cmds.ct |    9 +++++
- debugfs/debugfs.c     |   81 ++++++++++++++++++++++++++++++++++++++++++++++--
- debugfs/set_fields.c  |    1 +
- lib/ext2fs/bitops.h   |   49 +++++++++++++++++++++++++++++
- 4 files changed, 136 insertions(+), 4 deletions(-)
+ lib/ext2fs/e2image.h    |    1 +
+ lib/ext2fs/ext2fs.h     |    1 +
+ lib/ext2fs/imager.c     |   22 ++++++++++++++++++++++
+ lib/ext2fs/rw_bitmaps.c |   16 ++++++++++++++++
+ misc/e2image.c          |   22 ++++++++++++++++++++++
+ 5 files changed, 62 insertions(+), 0 deletions(-)
 
-diff --git a/debugfs/debug_cmds.ct b/debugfs/debug_cmds.ct
-index ea677da..2098f29 100644
---- a/debugfs/debug_cmds.ct
-+++ b/debugfs/debug_cmds.ct
-@@ -88,6 +88,15 @@ request do_setb, "Set a block's in-use flag",
- request do_testb, "Test a block's in-use flag",
- 	testb;
+diff --git a/lib/ext2fs/e2image.h b/lib/ext2fs/e2image.h
+index c918529..61d7ff9 100644
+--- a/lib/ext2fs/e2image.h
++++ b/lib/ext2fs/e2image.h
+@@ -41,6 +41,7 @@ struct ext2_image_hdr {
+ 	__u32	offset_super;	/* Byte offset of the sb and descriptors */
+ 	__u32	offset_inode;	/* Byte offset of the inode table  */
+ 	__u32	offset_inodemap; /* Byte offset of the inode bitmaps */
++	__u32	offset_excludemap; /* Byte offset of the exclude bitmaps */
+ 	__u32	offset_blockmap; /* Byte offset of the inode bitmaps */
+ 	__u32	offset_reserved[8];
+ };
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index d1f0d98..dab5ad7 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -526,6 +526,7 @@ typedef struct ext2_icount *ext2_icount_t;
+  */
+ #define IMAGER_FLAG_INODEMAP	1
+ #define IMAGER_FLAG_SPARSEWRITE	2
++#define IMAGER_FLAG_EXCLUDEMAP	3
  
-+request do_freee, "Clear a block's exclude flag",
-+	freee;
-+
-+request do_sete, "Set a block's exclude flag",
-+	sete;
-+
-+request do_teste, "Test a block's exclude flag",
-+	teste;
-+
- request do_modify_inode, "Modify an inode by structure",
- 	modify_inode, mi;
- 
-diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-index dd1435b..f839563 100644
---- a/debugfs/debugfs.c
-+++ b/debugfs/debugfs.c
-@@ -98,6 +98,11 @@ static void open_filesystem(char *device, int open_flags, blk64_t superblock,
- 			com_err(device, retval, "while reading inode bitmap");
- 			goto errout;
- 		}
-+		retval = ext2fs_read_exclude_bitmap(current_fs);
-+		if (retval) {
-+			com_err(device, retval, "while reading exclude bitmap");
-+			goto errout;
+ /*
+  * For checking structure magic numbers...
+diff --git a/lib/ext2fs/imager.c b/lib/ext2fs/imager.c
+index a0fb81e..c6b5af2 100644
+--- a/lib/ext2fs/imager.c
++++ b/lib/ext2fs/imager.c
+@@ -296,6 +296,17 @@ errcode_t ext2fs_image_bitmap_write(ext2_filsys fs, int fd, int flags)
+ 		itr = 1;
+ 		cnt = EXT2_INODES_PER_GROUP(fs->super) * fs->group_desc_count;
+ 		size = (EXT2_INODES_PER_GROUP(fs->super) / 8);
++	} else if (flags & IMAGER_FLAG_EXCLUDEMAP) {
++		if (!fs->exclude_map) {
++			retval = ext2fs_read_exclude_bitmap(fs);
++			if (retval)
++				return retval;
 +		}
- 		retval = ext2fs_read_block_bitmap(current_fs);
- 		if (retval) {
- 			com_err(device, retval, "while reading block bitmap");
-@@ -352,12 +357,14 @@ void do_show_super_stats(int argc, char *argv[])
- 					      EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
- 	for (i = 0; i < current_fs->group_desc_count; i++) {
- 		fprintf(out, " Group %2d: block bitmap at %llu, "
-+			"exlcude bitmap at %llu, "
- 		        "inode bitmap at %llu, "
- 		        "inode table at %llu\n"
- 		        "           %u free %s%s, "
- 		        "%u free %s, "
- 		        "%u used %s%s",
- 		        i, ext2fs_block_bitmap_loc(current_fs, i),
-+			ext2fs_exclude_bitmap_loc(current_fs, i),
- 		        ext2fs_inode_bitmap_loc(current_fs, i),
- 			ext2fs_inode_table_loc(current_fs, i),
- 		        ext2fs_bg_free_blocks_count(current_fs, i), units,
-@@ -375,10 +382,12 @@ void do_show_super_stats(int argc, char *argv[])
- 				ext2fs_bg_itable_unused(current_fs, i) != 1 ?
- 				"inodes" : "inode");
- 		first = 1;
--		print_bg_opts(current_fs, i, EXT2_BG_INODE_UNINIT, "Inode not init",
--			      &first, out);
--		print_bg_opts(current_fs, i, EXT2_BG_BLOCK_UNINIT, "Block not init",
--			      &first, out);
-+		print_bg_opts(current_fs, i, EXT2_BG_INODE_UNINIT,
-+			      "Inode not init", &first, out);
-+		print_bg_opts(current_fs, i, EXT2_BG_EXCLUDE_UNINIT,
-+			      "Exclude not init", &first, out);
-+		print_bg_opts(current_fs, i, EXT2_BG_BLOCK_UNINIT,
-+			      "Block not init", &first, out);
- 		if (gdt_csum) {
- 			fprintf(out, "%sChecksum 0x%04x",
- 				first ? "           [":", ", ext2fs_bg_checksum(current_fs, i));
-@@ -1074,6 +1083,70 @@ void do_testb(int argc, char *argv[])
++		bmap = fs->exclude_map;
++		err = EXT2_ET_MAGIC_EXCLUDE_BITMAP;
++		itr = fs->super->s_first_data_block;
++		cnt = EXT2_BLOCKS_PER_GROUP(fs->super) * fs->group_desc_count;
++		size = EXT2_BLOCKS_PER_GROUP(fs->super) / 8;
+ 	} else {
+ 		if (!fs->block_map) {
+ 			retval = ext2fs_read_block_bitmap(fs);
+@@ -373,6 +384,17 @@ errcode_t ext2fs_image_bitmap_read(ext2_filsys fs, int fd, int flags)
+ 		itr = 1;
+ 		cnt = EXT2_INODES_PER_GROUP(fs->super) * fs->group_desc_count;
+ 		size = (EXT2_INODES_PER_GROUP(fs->super) / 8);
++	} else if (flags & IMAGER_FLAG_EXCLUDEMAP) {
++		if (!fs->exclude_map) {
++			retval = ext2fs_read_exclude_bitmap(fs);
++			if (retval)
++				return retval;
++		}
++		bmap = fs->exclude_map;
++		err = EXT2_ET_MAGIC_EXCLUDE_BITMAP;
++		itr = fs->super->s_first_data_block;
++		cnt = EXT2_BLOCKS_PER_GROUP(fs->super) * fs->group_desc_count;
++		size = EXT2_BLOCKS_PER_GROUP(fs->super) / 8;
+ 	} else {
+ 		if (!fs->block_map) {
+ 			retval = ext2fs_read_block_bitmap(fs);
+diff --git a/lib/ext2fs/rw_bitmaps.c b/lib/ext2fs/rw_bitmaps.c
+index 3126733..6c8179b 100644
+--- a/lib/ext2fs/rw_bitmaps.c
++++ b/lib/ext2fs/rw_bitmaps.c
+@@ -274,6 +274,7 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block,
+ 	ext2fs_free_mem(&buf);
+ 
+ 	if (fs->flags & EXT2_FLAG_IMAGE_FILE) {
++		blk64_t	exclude_blk;
+ 		blk = (fs->image_header->offset_inodemap / fs->blocksize);
+ 		ino_cnt = fs->super->s_inodes_count;
+ 		while (inode_nbytes > 0) {
+@@ -294,10 +295,25 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block,
+ 		}
+ 		blk = (fs->image_header->offset_blockmap /
+ 		       fs->blocksize);
++		exclude_blk = (fs->image_header->offset_excludemap /
++			       fs->blocksize);
+ 		blk_cnt = (blk64_t)EXT2_CLUSTERS_PER_GROUP(fs->super) *
+ 			fs->group_desc_count;
+ 		while (block_nbytes > 0) {
+ 			if (do_exclude) {
++				retval = io_channel_read_blk64(fs->image_io,
++					    exclude_blk++, 1, exclude_bitmap);
++				if (retval)
++					goto cleanup;
++				cnt = fs->blocksize << 3;
++				if (cnt > blk_cnt)
++					cnt = blk_cnt;
++				retval = ext2fs_set_exclude_bitmap_range2(
++					       fs->exclude_map,
++					       blk_itr, cnt, exclude_bitmap);
++				if (retval)
++					goto cleanup;
++
+ 				retval = EXT2_ET_EXCLUDE_BITMAP_READ;
+ 				goto cleanup;
+ 			}
+diff --git a/misc/e2image.c b/misc/e2image.c
+index 4cd834a..44a602c 100644
+--- a/misc/e2image.c
++++ b/misc/e2image.c
+@@ -187,6 +187,18 @@ static void write_image_file(ext2_filsys fs, int fd)
+ 		exit(1);
  	}
- }
  
-+void do_freee(int argc, char *argv[])
-+{
-+	blk64_t block;
-+	blk64_t count = 1;
-+
-+	if (!EXT2_HAS_COMPAT_FEATURE(current_fs->super,
-+				    EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP))
-+		return;
-+	if (common_block_args_process(argc, argv, &block, &count))
-+		return;
-+	if (check_fs_read_write(argv[0]))
-+		return;
-+	while (count-- > 0) {
-+		if (!ext2fs_test_exclude_bitmap2(current_fs->exclude_map,
-+						 block))
-+			com_err(argv[0], 0, "Warning: block %llu already "
-+				"not excluded", block);
-+		ext2fs_unmark_exclude_bitmap2(current_fs->exclude_map, block);
-+		block++;
++	if (EXT2_HAS_COMPAT_FEATURE(fs->super,
++					EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP)) {
++		hdr.offset_excludemap = lseek(fd, 0, SEEK_CUR);
++		retval = ext2fs_image_bitmap_write(fs, fd,
++						   IMAGER_FLAG_EXCLUDEMAP);
++		if (retval) {
++			com_err(program_name, retval, _("while writing "
++							"exclude bitmap"));
++			exit(1);
++		}
 +	}
-+	ext2fs_mark_eb_dirty(current_fs);
-+}
 +
-+void do_sete(int argc, char *argv[])
-+{
-+	blk64_t block;
-+	blk64_t count = 1;
-+
-+	if (!EXT2_HAS_COMPAT_FEATURE(current_fs->super,
-+				    EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP))
-+		return;
-+	if (common_block_args_process(argc, argv, &block, &count))
-+		return;
-+	if (check_fs_read_write(argv[0]))
-+		return;
-+	while (count-- > 0) {
-+		if (ext2fs_test_exclude_bitmap2(current_fs->exclude_map, block))
-+			com_err(argv[0], 0, "Warning: block %llu already "
-+				"excluded", block);
-+		ext2fs_mark_exclude_bitmap2(current_fs->exclude_map, block);
-+		block++;
-+	}
-+	ext2fs_mark_eb_dirty(current_fs);
-+}
-+
-+void do_teste(int argc, char *argv[])
-+{
-+	blk64_t block;
-+	blk64_t count = 1;
-+
-+	if (!EXT2_HAS_COMPAT_FEATURE(current_fs->super,
-+				    EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP))
-+		return;
-+	if (common_block_args_process(argc, argv, &block, &count))
-+		return;
-+	while (count-- > 0) {
-+		if (ext2fs_test_exclude_bitmap2(current_fs->exclude_map, block))
-+			printf("Block %llu marked excluded\n", block);
-+		else
-+			printf("Block %llu not excluded\n", block);
-+		block++;
-+	}
-+}
-+
- static void modify_u8(char *com, const char *prompt,
- 		      const char *format, __u8 *val)
- {
-diff --git a/debugfs/set_fields.c b/debugfs/set_fields.c
-index d461275..7ecf7d8 100644
---- a/debugfs/set_fields.c
-+++ b/debugfs/set_fields.c
-@@ -205,6 +205,7 @@ static struct field_set_info inode_fields[] = {
+ 	hdr.offset_inodemap = ext2fs_llseek(fd, 0, SEEK_CUR);
+ 	retval = ext2fs_image_bitmap_write(fs, fd, IMAGER_FLAG_INODEMAP);
+ 	if (retval) {
+@@ -359,6 +371,16 @@ static void mark_table_blocks(ext2_filsys fs)
+ 		}
  
- static struct field_set_info ext2_bg_fields[] = {
- 	{ "block_bitmap", &set_gd.bg_block_bitmap, NULL, 4, parse_uint },
-+	{ "exclude_bitmap", &set_gd.bg_exclude_bitmap_lo, NULL, 4, parse_uint },
- 	{ "inode_bitmap", &set_gd.bg_inode_bitmap, NULL, 4, parse_uint },
- 	{ "inode_table", &set_gd.bg_inode_table, NULL, 4, parse_uint },
- 	{ "free_blocks_count", &set_gd.bg_free_blocks_count, NULL, 2, parse_uint },
-diff --git a/lib/ext2fs/bitops.h b/lib/ext2fs/bitops.h
-index 83a01e4..64d14f9 100644
---- a/lib/ext2fs/bitops.h
-+++ b/lib/ext2fs/bitops.h
-@@ -72,6 +72,13 @@ extern int ext2fs_unmark_block_bitmap(ext2fs_block_bitmap bitmap,
- 				       blk_t block);
- extern int ext2fs_test_block_bitmap(ext2fs_block_bitmap bitmap, blk_t block);
- 
-+extern int ext2fs_mark_exclude_bitmap(ext2fs_exclude_bitmap bitmap,
-+				      blk_t block);
-+extern int ext2fs_unmark_exclude_bitmap(ext2fs_exclude_bitmap bitmap,
-+					blk_t block);
-+extern int ext2fs_test_exclude_bitmap(ext2fs_exclude_bitmap bitmap,
-+				      blk_t block);
+ 		/*
++		 * Mark block used for the exclude bitmap
++		 */
++		if (EXT2_HAS_COMPAT_FEATURE(fs->super,
++					EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP) &&
++		    ext2fs_exclude_bitmap_loc(fs, i)) {
++			ext2fs_mark_block_bitmap2(meta_block_map,
++				     ext2fs_exclude_bitmap_loc(fs, i));
++		}
 +
- extern int ext2fs_mark_inode_bitmap(ext2fs_inode_bitmap bitmap, ext2_ino_t inode);
- extern int ext2fs_unmark_inode_bitmap(ext2fs_inode_bitmap bitmap,
- 				       ext2_ino_t inode);
-@@ -415,6 +422,27 @@ _INLINE_ int ext2fs_test_block_bitmap(ext2fs_block_bitmap bitmap,
- 					  block);
- }
- 
-+_INLINE_ int ext2fs_mark_exclude_bitmap(ext2fs_exclude_bitmap bitmap,
-+				       blk_t block)
-+{
-+	return ext2fs_mark_generic_bitmap((ext2fs_generic_bitmap) bitmap,
-+					  block);
-+}
-+
-+_INLINE_ int ext2fs_unmark_exclude_bitmap(ext2fs_exclude_bitmap bitmap,
-+					 blk_t block)
-+{
-+	return ext2fs_unmark_generic_bitmap((ext2fs_generic_bitmap) bitmap,
-+					    block);
-+}
-+
-+_INLINE_ int ext2fs_test_exclude_bitmap(ext2fs_exclude_bitmap bitmap,
-+				       blk_t block)
-+{
-+	return ext2fs_test_generic_bitmap((ext2fs_generic_bitmap) bitmap,
-+					  block);
-+}
-+
- _INLINE_ int ext2fs_mark_inode_bitmap(ext2fs_inode_bitmap bitmap,
- 				       ext2_ino_t inode)
- {
-@@ -534,6 +562,27 @@ _INLINE_ int ext2fs_test_block_bitmap2(ext2fs_block_bitmap bitmap,
- 					block);
- }
- 
-+_INLINE_ int ext2fs_mark_exclude_bitmap2(ext2fs_exclude_bitmap bitmap,
-+				       blk64_t block)
-+{
-+	return ext2fs_mark_generic_bitmap((ext2fs_generic_bitmap) bitmap,
-+					  block);
-+}
-+
-+_INLINE_ int ext2fs_unmark_exclude_bitmap2(ext2fs_exclude_bitmap bitmap,
-+					 blk64_t block)
-+{
-+	return ext2fs_unmark_generic_bitmap((ext2fs_generic_bitmap) bitmap,
-+					    block);
-+}
-+
-+_INLINE_ int ext2fs_test_exclude_bitmap2(ext2fs_exclude_bitmap bitmap,
-+				       blk64_t block)
-+{
-+	return ext2fs_test_generic_bitmap((ext2fs_generic_bitmap) bitmap,
-+					  block);
-+}
-+
- _INLINE_ int ext2fs_mark_inode_bitmap2(ext2fs_inode_bitmap bitmap,
- 				       ext2_ino_t inode)
- {
++		/*
+ 		 * Mark block used for the inode bitmap
+ 		 */
+ 		if (ext2fs_inode_bitmap_loc(fs, i)) {
 -- 
 1.7.5.1
 
