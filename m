@@ -1,78 +1,40 @@
-From: Andy Lutomirski <luto@amacapital.net>
-Subject: Re: [PATCHSET v3.1 0/7] data integrity: Stabilize pages during writeback
- for various fses
-Date: Sun, 23 Oct 2011 09:38:50 -0700
-Message-ID: <4EA4431A.3010104@amacapital.net>
-References: <20110509230318.19566.66202.stgit@elm3c44.beaverton.ibm.com> <87tyd31fkc.fsf@devron.myhome.or.jp> <20110510123819.GB4402@quack.suse.cz> <87hb924s2x.fsf@devron.myhome.or.jp> <20110510132953.GE4402@quack.suse.cz> <878vue4qjb.fsf@devron.myhome.or.jp> <87zkmu3b2i.fsf@devron.myhome.or.jp> <20110510145421.GJ4402@quack.suse.cz> <87zkmupmaq.fsf@devron.myhome.or.jp> <20110510162237.GM4402@quack.suse.cz>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 1/8] xfstests: fsstress should kill children tasks before
+ exit
+Date: Mon, 24 Oct 2011 05:06:45 -0400
+Message-ID: <20111024090645.GA31887@infradead.org>
+References: <1319020189-13584-1-git-send-email-dmonakhov@openvz.org>
+ <1319020189-13584-2-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-	"Darrick J. Wong" <djwong@us.ibm.com>,
-	Theodore Tso <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Jens Axboe <axboe@kernel.dk>,
-	"Martin K. Petersen" <martin.petersen@oracle.com>,
-	Jeff Layton <jlayton@redhat.com>,
-	Dave Chinner <david@fromorbit.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Dave Hansen <dave@linux.vnet.ibm.com>,
-	Christoph Hellwig <hch@infradead.org>, linux-mm@kvack.org,
-	Chris Mason <chris.mason@oracle.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	linux-scsi <linux-scsi@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Mingming Cao <mcao@us.ibm.com>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org, jack@suse.cz, hch@infradead.org,
+	aelder@sgi.com
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:41718 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752112Ab1JWQjF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 23 Oct 2011 12:39:05 -0400
-In-Reply-To: <20110510162237.GM4402@quack.suse.cz>
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:60465
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753773Ab1JXJGs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 24 Oct 2011 05:06:48 -0400
+Content-Disposition: inline
+In-Reply-To: <1319020189-13584-2-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/10/2011 09:22 AM, Jan Kara wrote:
-> On Wed 11-05-11 01:12:13, OGAWA Hirofumi wrote:
->> Jan Kara<jack@suse.cz>  writes:
->>
->>>> Did you already consider, to copy only if page was writeback (like
->>>> copy-on-write)? I.e. if page is on I/O, copy, then switch the page for
->>>> writing new data.
->>>    Yes, that was considered as well. We'd have to essentially migrate the
->>> page that is under writeback and should be written to. You are going to pay
->>> the cost of page allocation, copy, increased memory&  cache pressure.
->>> Depending on your backing storage and workload this may or may not be better
->>> than waiting for IO...
->>
->> Maybe possible, but you really think on usual case just blocking is
->> better?
->    Define usual case... As Christoph noted, we don't currently have a real
-> practical case where blocking would matter (since frequent rewrites are
-> rather rare). So defining what is usual when we don't have a single real
-> case is kind of tough ;)
->
+> +int 		should_stop = 0;
 
-I'm a bit late to the party, but I have such a use case.  I have a 
-real-time program that generates logs.  There's a thread that makes sure 
-that there are always mlocked, MAP_SHARED, writable pages for the logs, 
-and under normal (or even very heavy) load, the mlocked pages always 
-stay far ahead of the logs.  On 2.6.39, it works great [1].  On 3.0, 
-it's unusable -- latencies of 30-100 ms are very common.
+this should use sig_atomic_t, or at least volatile.
+>  
+>  void	add_to_flist(int, int, int);
+>  void	append_pathname(pathname_t *, char *);
+> @@ -253,6 +256,10 @@ void	usage(void);
+>  void	write_freq(void);
+>  void	zero_freq(void);
+>  
+> +void sg_handler(int signum) {
+> +	should_stop = 1;
+> +}
 
-In this case, neither throughput nor available memory matter at all -- 
-I'm not stressing either.  So copying the pages (especially if they're 
-mlocked) would be more than a small percentage win -- it would be the 
-difference between great performance and unusability.
+please use normal K&R / Linux style brace placement.
 
-I wonder if we want a stronger version of mlock that says "this page 
-must not be swapped out and, in addition, ptes must always be mapped 
-with all appropriate permission bits set".  (This is only possible with 
-hardware dirty and accessed bits, but we could come close even without 
-them.)
-
-
-[1] file_update_time is a problem.  patches coming.
-
---Andy
