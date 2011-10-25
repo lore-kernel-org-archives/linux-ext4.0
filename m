@@ -1,45 +1,56 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 3/6] ext4: Do not clear EOFBLOCKS_FL too soon
-Date: Tue, 25 Oct 2011 15:57:31 +0400
-Message-ID: <87obx5i8r8.fsf@dmbot.sw.ru>
-References: <1319144939-28801-1-git-send-email-dmonakhov@openvz.org> <1319144939-28801-4-git-send-email-dmonakhov@openvz.org> <20111025081834.GB31921@thunk.org>
+From: Kazuya Mio <k-mio@sx.jp.nec.com>
+Subject: [BUG] aborted ext4 leads to inifinity loop in balance_dirty_pages
+Date: Tue, 25 Oct 2011 21:04:53 +0900
+Message-ID: <4EA6A5E5.2050604@sx.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, achender@linux.vnet.ibm.com
-To: Ted Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>
+To: ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:50572 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756486Ab1JYL5J (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Oct 2011 07:57:09 -0400
-Received: by bkbzt19 with SMTP id zt19so402563bkb.19
-        for <linux-ext4@vger.kernel.org>; Tue, 25 Oct 2011 04:57:07 -0700 (PDT)
-In-Reply-To: <20111025081834.GB31921@thunk.org>
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:47089 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756188Ab1JYMFf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Oct 2011 08:05:35 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 25 Oct 2011 04:18:34 -0400, Ted Ts'o <tytso@mit.edu> wrote:
-> On Fri, Oct 21, 2011 at 01:08:56AM +0400, Dmitry Monakhov wrote:
-> > ext4_ext_insert_extent() may fail due to number of reasons (ENOSPC)
-> > so let's update eof flag only after extent was successfully inserted.
-> > 
-> > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> 
-> The problem with this patch is that if the check_eofblocks_fl() fails,
-> the patch jumps to out: and doesn't undo the block allocation and
-> extent tree manipulation.
-check_eofblocks_fl may fail only due to ext4_journal_get_write_access
-or ext4_mark_iloc_dirty, this means that something serious happen,
-so it is very unlikely we can undo block allocation.
-> 
-> I suspect a better way of solving this problem is to keep the existing
-> order, but to save the state of eofblocks flag, and if
-> ext4_ext_insert_extent() fails, to restore the state of the eofblocks
-> flag before jumping to the exit routine.
-Yes. This is definitely looks better, will redo.
-> 
-> 					- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Write systemcall calls balance_dirty_pages() for direct reclaim.
+However, if ext4 is aborted because of the journal abort, ext4_da_writepages()
+cannot reduce the number of dirty pages because EXT4_MF_FS_ABORTED is set to
+s_mount_flag. banalce_dirty_pages() has a busy loop, and we can pass this loop
+only if the number of dirty pages is less than the threshold. So this function
+loops infinity.
+
+When write systemcall and kjournald ran at the same time and the disk
+corruption happened, the problem occurred. The kernel version was 3.1-rc9.
+I corrupted the disk on purpose by using dmsetup command.
+
+
+process1 (write)                  process2 (kjournald)
+
+generic_perform_write
+  ext4_da_write_begin
+  ext4_da_write_end
+
+-------------- detect disk corruption --------------
+
+                                  jbd2_journal_commit_transaction
+                                     journal_submit_data_buffers
+                                     jbd2_journal_abort
+
+  balance_dirty_pages
+    writeback_inodes_wb
+      ...
+        ext4_da_writepages           <- do nothing if EXT4_MF_FS_ABORTED is set
+          ext4_journal_start
+            ext4_journal_start_sb    <- detect journal abort
+              ext4_abort             <- set EXT4_MF_FS_ABORTED
+
+
+One possible idea to fix this problem is that ext4_da_writepages()
+invalidates the dirty pages if the filesystem has been aborted.
+Do you have any ideas?
+
+Regards,
+Kazuya Mio
