@@ -1,53 +1,52 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: [PATCH] ext4: avoid setting directory i_nlink to zero
-Date: Tue, 25 Oct 2011 09:33:05 -0600
-Message-ID: <1319556785-34754-1-git-send-email-adilger@whamcloud.com>
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@whamcloud.com>
-To: tytso@mit.edu
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] ext4: use ext4_reserve_inode_write in ext4_xattr_set_handle
+Date: Tue, 25 Oct 2011 12:52:09 -0500
+Message-ID: <4EA6F749.3000308@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:27880 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752130Ab1JYPdt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Oct 2011 11:33:49 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:2704 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751961Ab1JYRwK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Oct 2011 13:52:10 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p9PHqAbX032609
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Oct 2011 13:52:10 -0400
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p9PHq95P016265
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Oct 2011 13:52:10 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If a directory with more than EXT4_LINK_MAX subdirectories, the nlink
-count is set to 1.  Subsequently, if any subdirectories are deleted,
-ext4_dec_count() decrements the i_nlink count, which may go to 0
-temporarily before being incremented back to 1.
+ext4_mark_iloc_dirty() says:
 
-While this is done under i_mutex, which prevents races for directory
-and inode operations that check i_nlink, the temporary i_nlink == 0
-case is exposed to userspace via stat() and similar calls that do not
-hold i_mutex.
+ * The caller must have previously called ext4_reserve_inode_write().
+ * Give this, we know that the caller already has write access to iloc->bh.
 
-Instead, change the code to not decrement i_nlink count for any
-directories that do not already have i_nlink larger than 2.
+ext4_xattr_set_handle, however, just open-codes it.  May as well use
+the helper function for consistency.
 
-Reported-by: Cliff White <cliffw@whamcloud.com>
-Reviewed-by: Johann Lombardi <johann@whamcloud.com>
-Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
+No bug here, just tidiness.
+
+(Note: on cleanup path, ext4_reserve_inode_write sets
+the bh to NULL if it returns an error, and brelse() of 
+a null bh is handled gracefully).
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
- fs/ext4/namei.c |    5 ++---
- 1 files changed, 2 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 1c924fa..b13cd39 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1707,9 +1707,8 @@ static void ext4_inc_count(handle_t *handle, struct inode *inode)
-  */
- static void ext4_dec_count(handle_t *handle, struct inode *inode)
- {
--	drop_nlink(inode);
--	if (S_ISDIR(inode->i_mode) && inode->i_nlink == 0)
--		inc_nlink(inode);
-+	if (!S_ISDIR(inode->i_mode) || inode->i_nlink > 2)
-+		drop_nlink(inode);
- }
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index c757adc..eefbdb0 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -985,11 +985,7 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ 	no_expand = ext4_test_inode_state(inode, EXT4_STATE_NO_EXPAND);
+ 	ext4_set_inode_state(inode, EXT4_STATE_NO_EXPAND);
  
- 
--- 
-1.7.3.4
-
+-	error = ext4_get_inode_loc(inode, &is.iloc);
+-	if (error)
+-		goto cleanup;
