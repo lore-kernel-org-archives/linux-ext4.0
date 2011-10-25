@@ -1,76 +1,53 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [BUG] aborted ext4 leads to inifinity loop in
- balance_dirty_pages
-Date: Tue, 25 Oct 2011 15:40:45 +0200
-Message-ID: <20111025134045.GB8072@quack.suse.cz>
-References: <4EA6A5E5.2050604@sx.jp.nec.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>,
-	Andreas Dilger <adilger@dilger.ca>
-To: Kazuya Mio <k-mio@sx.jp.nec.com>
+From: Andreas Dilger <adilger@whamcloud.com>
+Subject: [PATCH] ext4: avoid setting directory i_nlink to zero
+Date: Tue, 25 Oct 2011 09:33:05 -0600
+Message-ID: <1319556785-34754-1-git-send-email-adilger@whamcloud.com>
+Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@whamcloud.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:57884 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933466Ab1JYNku (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Oct 2011 09:40:50 -0400
-Content-Disposition: inline
-In-Reply-To: <4EA6A5E5.2050604@sx.jp.nec.com>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:27880 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752130Ab1JYPdt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Oct 2011 11:33:49 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 25-10-11 21:04:53, Kazuya Mio wrote:
-> Write systemcall calls balance_dirty_pages() for direct reclaim.
-> However, if ext4 is aborted because of the journal abort, ext4_da_writepages()
-> cannot reduce the number of dirty pages because EXT4_MF_FS_ABORTED is set to
-> s_mount_flag. banalce_dirty_pages() has a busy loop, and we can pass this loop
-> only if the number of dirty pages is less than the threshold. So this function
-> loops infinity.
-> 
-> When write systemcall and kjournald ran at the same time and the disk
-> corruption happened, the problem occurred. The kernel version was 3.1-rc9.
-> I corrupted the disk on purpose by using dmsetup command.
-> 
-> 
-> process1 (write)                  process2 (kjournald)
-> 
-> generic_perform_write
->   ext4_da_write_begin
->   ext4_da_write_end
-> 
-> -------------- detect disk corruption --------------
-> 
->                                   jbd2_journal_commit_transaction
->                                      journal_submit_data_buffers
->                                      jbd2_journal_abort
-> 
->   balance_dirty_pages
->     writeback_inodes_wb
->       ...
->         ext4_da_writepages           <- do nothing if EXT4_MF_FS_ABORTED is set
->           ext4_journal_start
->             ext4_journal_start_sb    <- detect journal abort
->               ext4_abort             <- set EXT4_MF_FS_ABORTED
-  Thanks for report!
+If a directory with more than EXT4_LINK_MAX subdirectories, the nlink
+count is set to 1.  Subsequently, if any subdirectories are deleted,
+ext4_dec_count() decrements the i_nlink count, which may go to 0
+temporarily before being incremented back to 1.
 
-> One possible idea to fix this problem is that ext4_da_writepages()
-> invalidates the dirty pages if the filesystem has been aborted.
-  Please no. Generally this boils down to what do we do with dirty data
-when there's error in writing them out. Currently we just throw them away
-(e.g. in media error case) but I don't think that's a generally good thing
-because e.g. admin may want to copy the data to other working storage or
-so. So I think we should rather keep the data and provide a mechanism for
-userspace to ask kernel to get rid of the data (so that we don't eventually
-run OOM).
+While this is done under i_mutex, which prevents races for directory
+and inode operations that check i_nlink, the temporary i_nlink == 0
+case is exposed to userspace via stat() and similar calls that do not
+hold i_mutex.
 
-> Do you have any ideas?
-  So the question is what would you like to achieve. If you just want to
-unblock a thread then a solution would be to make a thread at
-balance_dirty_pages() killable. If generally you want to get rid of dirty
-memory, then I don't have a really good answer but throwing dirty data away
-seems like a bad answer to me.
+Instead, change the code to not decrement i_nlink count for any
+directories that do not already have i_nlink larger than 2.
 
-								Honza
+Reported-by: Cliff White <cliffw@whamcloud.com>
+Reviewed-by: Johann Lombardi <johann@whamcloud.com>
+Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
+---
+ fs/ext4/namei.c |    5 ++---
+ 1 files changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 1c924fa..b13cd39 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1707,9 +1707,8 @@ static void ext4_inc_count(handle_t *handle, struct inode *inode)
+  */
+ static void ext4_dec_count(handle_t *handle, struct inode *inode)
+ {
+-	drop_nlink(inode);
+-	if (S_ISDIR(inode->i_mode) && inode->i_nlink == 0)
+-		inc_nlink(inode);
++	if (!S_ISDIR(inode->i_mode) || inode->i_nlink > 2)
++		drop_nlink(inode);
+ }
+ 
+ 
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.3.4
+
