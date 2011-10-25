@@ -1,118 +1,71 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Latency writing to an mlocked ext4 mapping
-Date: Tue, 25 Oct 2011 14:26:18 +0200
-Message-ID: <20111025122618.GA8072@quack.suse.cz>
-References: <CALCETrXbPWsgaZmsvHZGEX-CxB579tG+zusXiYhR-13RcEnGvQ@mail.gmail.com>
- <ACE78D84-0E94-4E7A-99BF-C20583018697@dilger.ca>
- <CALCETrU23vyCXPG6mJU9qaPeAGOWDQtur5C+LRT154V5FM=Ajg@mail.gmail.com>
- <CALCETrX=-CnNQ9+4tRbqMG4mfuy2FBPXXoJeBVDVPnEiRJYRFQ@mail.gmail.com>
- <CALCETrUcOKQAJTTmCSD3Q3wYS-zLqv6tBa4AdkK50bNobRhDUQ@mail.gmail.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH 5/6] ext4: fix punch_hole extend handler
+Date: Tue, 25 Oct 2011 16:35:45 +0400
+Message-ID: <87fwihi6zi.fsf@dmbot.sw.ru>
+References: <1319144939-28801-1-git-send-email-dmonakhov@openvz.org> <1319144939-28801-6-git-send-email-dmonakhov@openvz.org> <20111025120553.GF31921@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andreas Dilger <adilger@dilger.ca>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andy Lutomirski <luto@amacapital.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, achender@linux.vnet.ibm.com
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:47844 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932571Ab1JYM0V (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Oct 2011 08:26:21 -0400
-Content-Disposition: inline
-In-Reply-To: <CALCETrUcOKQAJTTmCSD3Q3wYS-zLqv6tBa4AdkK50bNobRhDUQ@mail.gmail.com>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:64650 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932940Ab1JYMfY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Oct 2011 08:35:24 -0400
+Received: by bkbzt19 with SMTP id zt19so446289bkb.19
+        for <linux-ext4@vger.kernel.org>; Tue, 25 Oct 2011 05:35:22 -0700 (PDT)
+In-Reply-To: <20111025120553.GF31921@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 19-10-11 22:59:55, Andy Lutomirski wrote:
-> On Wed, Oct 19, 2011 at 7:17 PM, Andy Lutomirski <luto@amacapital.net=
-> wrote:
-> > On Wed, Oct 19, 2011 at 6:15 PM, Andy Lutomirski <luto@amacapital.n=
-et> wrote:
-> >> On Wed, Oct 19, 2011 at 6:02 PM, Andreas Dilger <adilger@dilger.ca=
-> wrote:
-> >>> What kernel are you using? =A0A change to keep pages consistent d=
-uring writeout was landed not too long ago (maybe Linux 3.0) in order t=
-o allow checksumming of the data.
-> >>
-> >> 3.0.6, with no relevant patches. =A0(I have a one-liner added to t=
-he tcp
-> >> code that I'll submit sometime soon.) =A0Would this explain the la=
-tency
-> >> in file_update_time or is that a separate issue? =A0file_update_ti=
-me
-> >> seems like a good thing to make fully asynchronous (especially if =
-the
-> >> file in question is a fifo, but I've already moved my fifos to tmp=
-fs).
-> >
-> > On 2.6.39.4, I got one instance of:
-> >
-> > call_rwsem_down_read_failed ext4_map_blocks ext4_da_get_block_prep
-> > __block_write_begin ext4_da_write_begin ext4_page_mkwrite do_wp_pag=
-e
-> > handle_pte_fault handle_mm_fault do_page_fault page_fault
-> >
-> > but I'm not seeing the large numbers of the ext4_page_mkwrite trace
-> > that I get on 3.0.6. =A0file_update_time is now by far the dominant
-> > cause of latency.
->=20
-> The culprit seems to be do_wp_page -> file_update_time ->
-> mark_inode_dirty_sync.  This surprises me for two reasons:
->=20
->  - Why the _sync?  Are we worried that data will be written out befor=
-e
-> the metadata?  If so, surely there's a better way than adding latency
-> here.
-  _sync just means that inode will become dirty for fsync(2) purposes b=
-ut
-not for fdatasync(2) purposes - i.e. it's just a timestamp update (or
-it could be something similar).
+On Tue, 25 Oct 2011 08:05:53 -0400, "Ted Ts'o" <tytso@mit.edu> wrote:
+> On Fri, Oct 21, 2011 at 01:08:58AM +0400, Dmitry Monakhov wrote:
+> > Current implementation has following issues:
+> >  - EOFBLOCK does not changed if necessery
+> >  - ext4_ext_rm_leaf() may return -EAGAIN due to transaction restart
+> >  - punched extent converted to uninitialized incorrectly, i dont understand
+> >    why do we ever have to do that conversion, but once we do it let's do it
+> >    in a right way.
+> >  - fsync() logic is broken because ei->i_sync_tid was not updated
+> >  - Last but not the least all: punch hole logic is sited directly
+> >    in ext4_ext_map_blocks() on 3rd level of control, IMHO one can
+> >    easily screw-up his eyes while invastigating that code. We have
+> >    nothing to hide aren't we?
+> > 
+> > This patch performs following changes:
+> >  - Move punch hole logic to didicated function similar to uninitialized
+> >    extent handlers.
+> >  - Clear EOFBLOCK if necessery, unfortunately we can not reuse
+> >    check_eofblock_fl() function because it purpose to handle file
+> >    expansion, but in our case we have to recheck base invariant that:
+> >       clear_eof_flag = (eof_block >= last_allocated_block)
+> >  - Repeat punch hole after transaction restart.
+> >  - Update inode sync transaction id on exit.
+> > 
+> > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> 
+> I'm really sorry, but this was too complicated for me to review for
+> this merge window.  Maybe Allison or some of the people who worked on
+> the punch code could review this?  Or maybe this could be broken up
+> into smaller patches?
+Yes. ;( you right, it is kind of non obvious patch.
+i'll split this like follows:
+1) move punch_hole handler from ext4_ext_map_blocks to dedicated
+function as is (90% the original patch)
+2) fix other issues one by one.
+Will do
+> 
+> Or I can look at this again for the next merge window, but this is too
+> complicated for me to understand (and the punch code is too new for me
+> to have an deep understanding for quick reviews).  Sorry I didn't
+> review this sooner; between trying to get e2fsprogs 1.42 ready for
+> release and kernel.org recovery efforts, I got beind on my reviews.
+BTW can you please highlight your plans to make libquota in to working
+shape, right now it simply rewrites old quota file so fsck each time
+result int fs modifications. I have some patches in my queue which add
+quota check capabilities in libquota/e2fsck. 
 
->  - Why are we calling file_update_time at all?  Presumably we also
-> update the time when the page is written back (if not, that sounds
-> like a bug, since the contents may be changed after something saw the
-> mtime update), and, if so, why bother updating it on the first write?
-> Anything that relies on this behavior is, I think, unreliable, becaus=
-e
-> the page could be made writable arbitrarily early by another program
-> that changes nothing.
-  We don't update timestamp when the page is written back. I believe th=
-is
-is mostly because we don't know whether the data has been changed by a
-write syscall, which already updated the timestamp, or by mmap. That is
-also the reason why we update the timestamp at page fault time.
-
-  The reason why file_update_time() blocks for you is probably that it
-needs to get access to buffer where inode is stored on disk and because=
- a
-transaction including this buffer is committing at the moment, your thr=
-ead
-has to wait until the transaction commit finishes. This is mostly a pro=
-blem
-specific to how ext4 works so e.g. xfs shouldn't have it.
-
-  Generally I believe the attempts to achieve any RT-like latencies whe=
-n
-writing to a filesystem are rather hopeless. How much hopeless depends =
-on
-the load of the filesystem (e.g., in your case of mostly idle filesyste=
-m I
-can imagine some tweaks could reduce your latencies to an acceptable le=
-vel
-but once the disk gets loaded you'll be screwed). So I'd suggest that
-having RT thread just store log in memory (or write to a pipe) and have
-another non-RT thread write the data to disk would be a much more robus=
-t
-design.
-
-								Honza
---=20
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> Regards,
+> 
+> 						- Ted
