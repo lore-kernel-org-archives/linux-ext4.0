@@ -1,56 +1,59 @@
-From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: [BUG] aborted ext4 leads to inifinity loop in balance_dirty_pages
-Date: Tue, 25 Oct 2011 21:04:53 +0900
-Message-ID: <4EA6A5E5.2050604@sx.jp.nec.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 5/6] ext4: fix punch_hole extend handler
+Date: Tue, 25 Oct 2011 08:05:53 -0400
+Message-ID: <20111025120553.GF31921@thunk.org>
+References: <1319144939-28801-1-git-send-email-dmonakhov@openvz.org>
+ <1319144939-28801-6-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>
-To: ext4 <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, achender@linux.vnet.ibm.com
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:47089 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756188Ab1JYMFf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Oct 2011 08:05:35 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:59198 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756496Ab1JYMF7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Oct 2011 08:05:59 -0400
+Content-Disposition: inline
+In-Reply-To: <1319144939-28801-6-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Write systemcall calls balance_dirty_pages() for direct reclaim.
-However, if ext4 is aborted because of the journal abort, ext4_da_writepages()
-cannot reduce the number of dirty pages because EXT4_MF_FS_ABORTED is set to
-s_mount_flag. banalce_dirty_pages() has a busy loop, and we can pass this loop
-only if the number of dirty pages is less than the threshold. So this function
-loops infinity.
+On Fri, Oct 21, 2011 at 01:08:58AM +0400, Dmitry Monakhov wrote:
+> Current implementation has following issues:
+>  - EOFBLOCK does not changed if necessery
+>  - ext4_ext_rm_leaf() may return -EAGAIN due to transaction restart
+>  - punched extent converted to uninitialized incorrectly, i dont understand
+>    why do we ever have to do that conversion, but once we do it let's do it
+>    in a right way.
+>  - fsync() logic is broken because ei->i_sync_tid was not updated
+>  - Last but not the least all: punch hole logic is sited directly
+>    in ext4_ext_map_blocks() on 3rd level of control, IMHO one can
+>    easily screw-up his eyes while invastigating that code. We have
+>    nothing to hide aren't we?
+> 
+> This patch performs following changes:
+>  - Move punch hole logic to didicated function similar to uninitialized
+>    extent handlers.
+>  - Clear EOFBLOCK if necessery, unfortunately we can not reuse
+>    check_eofblock_fl() function because it purpose to handle file
+>    expansion, but in our case we have to recheck base invariant that:
+>       clear_eof_flag = (eof_block >= last_allocated_block)
+>  - Repeat punch hole after transaction restart.
+>  - Update inode sync transaction id on exit.
+> 
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 
-When write systemcall and kjournald ran at the same time and the disk
-corruption happened, the problem occurred. The kernel version was 3.1-rc9.
-I corrupted the disk on purpose by using dmsetup command.
+I'm really sorry, but this was too complicated for me to review for
+this merge window.  Maybe Allison or some of the people who worked on
+the punch code could review this?  Or maybe this could be broken up
+into smaller patches?
 
-
-process1 (write)                  process2 (kjournald)
-
-generic_perform_write
-  ext4_da_write_begin
-  ext4_da_write_end
-
--------------- detect disk corruption --------------
-
-                                  jbd2_journal_commit_transaction
-                                     journal_submit_data_buffers
-                                     jbd2_journal_abort
-
-  balance_dirty_pages
-    writeback_inodes_wb
-      ...
-        ext4_da_writepages           <- do nothing if EXT4_MF_FS_ABORTED is set
-          ext4_journal_start
-            ext4_journal_start_sb    <- detect journal abort
-              ext4_abort             <- set EXT4_MF_FS_ABORTED
-
-
-One possible idea to fix this problem is that ext4_da_writepages()
-invalidates the dirty pages if the filesystem has been aborted.
-Do you have any ideas?
+Or I can look at this again for the next merge window, but this is too
+complicated for me to understand (and the punch code is too new for me
+to have an deep understanding for quick reviews).  Sorry I didn't
+review this sooner; between trying to get e2fsprogs 1.42 ready for
+release and kernel.org recovery efforts, I got beind on my reviews.
 
 Regards,
-Kazuya Mio
+
+						- Ted
