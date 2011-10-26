@@ -1,47 +1,80 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 5/6] ext4: fix punch_hole extend handler
-Date: Wed, 26 Oct 2011 09:38:01 -0400
-Message-ID: <20111026133801.GX31921@thunk.org>
-References: <1319144939-28801-1-git-send-email-dmonakhov@openvz.org>
- <1319144939-28801-6-git-send-email-dmonakhov@openvz.org>
- <20111025120553.GF31921@thunk.org>
- <87fwihi6zi.fsf@dmbot.sw.ru>
+From: Tao Ma <tm@tao.ma>
+Subject: Re: [PATCH V1 02/17] ext4: Add the basic function for inline data
+ support.
+Date: Wed, 26 Oct 2011 22:38:08 +0800
+Message-ID: <4EA81B50.1060802@tao.ma>
+References: <4EA7B788.3040503@tao.ma> <1319614468-11227-1-git-send-email-tm@tao.ma> <1319614468-11227-2-git-send-email-tm@tao.ma> <E38E92E9-2937-47BA-A9F4-B1F75C9FDE4A@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, achender@linux.vnet.ibm.com
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu,
+	linux-kernel@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:59804 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932742Ab1JZNiI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 Oct 2011 09:38:08 -0400
-Content-Disposition: inline
-In-Reply-To: <87fwihi6zi.fsf@dmbot.sw.ru>
+Received: from oproxy5-pub.bluehost.com ([67.222.38.55]:42885 "HELO
+	oproxy5-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S932772Ab1JZOiZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Oct 2011 10:38:25 -0400
+In-Reply-To: <E38E92E9-2937-47BA-A9F4-B1F75C9FDE4A@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 25, 2011 at 04:35:45PM +0400, Dmitry Monakhov wrote:
-> BTW can you please highlight your plans to make libquota in to working
-> shape, right now it simply rewrites old quota file so fsck each time
-> result int fs modifications. I have some patches in my queue which add
-> quota check capabilities in libquota/e2fsck. 
+On 10/26/2011 04:36 PM, Andreas Dilger wrote:
+> On 2011-10-26, at 1:34 AM, Tao Ma wrote:
+>> Implement inline data with xattr. This idea is inspired by Andreas.
+>> So now we use "system.data" to store xattr.  For inode_size = 256,
+>> currently we uses all the space between i_extra_isize and inode_size.
+>> For inode_size > 256, we use half of that space.
+>>
+>> +#define EXT4_XATTR_SYSTEM_DATA_NAME		"data"
+> 
+> Did you check whether the "data" string takes 4 bytes or 8 in the
+> xattr header?  I believe it is storing the NUL termination (and
+> the code is using "sizeof(EXT4_XATTR_SYSTEM_DATA_NAME)" = 5), so
+> I believe it will round up to the next 4-byte boundary.  Using a
+> 3-byte name will save a bit of space, like "system.dat".
+Actually it will takes 4 bytes instead of 8, since in
+ext4_xattr_set_entry it uses memcpy to copy the name with namelen
+initialized with strlen("data"). So "data" is fine here. As for the
+calculation of max_inline_size, yes, it uses
+sizeof(EXT4_XATTR_SYSTEM_DATA_NAME) which should be changed to strlen.
+Thanks for the advice.
+> 
+>> +void ext4_write_inline_data(struct inode *inode, struct ext4_iloc *iloc,
+>> +			    void *buffer, loff_t pos, unsigned len)
+>> +{
+>> +	header = IHDR(inode, ext4_raw_inode(iloc));
+>> +	entry = (struct ext4_xattr_entry *)((void *)ext4_raw_inode(iloc) +
+>> +					    EXT4_I(inode)->i_inline_off);
+>> +	memcpy((void *)IFIRST(header) + le16_to_cpu(entry->e_value_offs) + pos,
+>> +	       buffer + pos, len);
+>> +}
+>> +
+>> +int ext4_init_inline_data(handle_t *handle, struct inode *inode,
+>> +			  struct ext4_iloc *iloc)
+>> +{
+>> +	size = ext4_get_max_inline_size(inode);
+>> +	value = kzalloc(size, GFP_NOFS);
+>> +	if (!value)
+>> +		return -ENOMEM;
+>> +
+>> +	error = ext4_xattr_ibody_set(handle, inode, &i, &is);
+>> +}
+> 
+> Since file data is changed very rarely, instead of consuming the full
+> xattr space that may not be needed, wouldn't it be better to change
+> ext4_write_inline_data() to just to the ext4_xattr_ibody_set() to save
+> the exact-sized buffer into the xattr?  That will allow other xattrs
+> to be stored in this space as well as the inline data.
+I am just worried about the cpu usage. You know, the xattr values in
+ext4 has to be packed so if we change the content of an inline file
+frequently(say append), the inline xattr value will be removed and added
+frequently which should consume much cpu cycles. What's more, the other
+xattr values has to be moved also if they are not aligned to the end of
+the inode. I am not sure whether it is good for performance or not.
+Another side effect is that we have to write the whole inline data every
+time as a new xattr value replace every time while the current solution
+just needs to memcpy the appended bytes.
 
-I've requested that Aditya make changes to libquota so it doesn't
-always rewrite the quota file at each fsck; I consider this a bug.
-Unfortunately he hasn't had a chance to get to this yet.  If you have
-patches which implement part of this, please feel free to submit your
-patches.
-
-I don't believe libquota is going to make sense the way it is
-currently written to be an exported library.  It's very tightly
-dependent on ext2fs, and it's not clear it would be useful to external
-programs.  It would require major changes to the API so it could be
-useful for other file systems.  Given that there are some other file
-systems (like ocfs2) which are using the quota formats as internal
-file, perhaps it would be worthwhile to abstract away the ext2fs
-specific functionality.  But I'm not entirely convinced, and perhaps
-we will just rename libquota to libinternal, assume that it will
-always be built statically, and then move things like profile.c into
-libinternal.a.
-
-						- Ted
+Thanks
+Tao
