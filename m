@@ -1,7 +1,7 @@
 From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V1 09/17] ext4: Create __ext4_insert_dentry for dir entry insertion.
-Date: Wed, 26 Oct 2011 15:34:20 +0800
-Message-ID: <1319614468-11227-9-git-send-email-tm@tao.ma>
+Subject: [PATCH V1 05/17] ext4: Add journalled write support for inline data.
+Date: Wed, 26 Oct 2011 15:34:16 +0800
+Message-ID: <1319614468-11227-5-git-send-email-tm@tao.ma>
 References: <4EA7B788.3040503@tao.ma>
  <1319614468-11227-1-git-send-email-tm@tao.ma>
 Cc: tytso@mit.edu, linux-kernel@vger.kernel.org, adilger@dilger.ca
@@ -13,149 +13,137 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Tao Ma <boyu.mt@taobao.com>
 
-The old add_dirent_to_buf handles all the work related to the
-work of adding dir entry to a dir block. Now we have inline data,
-so create 2 new function __ext4_find_dest_de and __ext4_insert_dentry
-that do the real work and let add_dirent_to_buf call them.
-
 Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/namei.c |  104 ++++++++++++++++++++++++++++++++++++-------------------
- 1 files changed, 68 insertions(+), 36 deletions(-)
+ fs/ext4/inode.c |   81 ++++++++++++++++++++++++++++++++++++++++++------------
+ 1 files changed, 63 insertions(+), 18 deletions(-)
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index d7661cb..2e83b92 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1243,6 +1243,66 @@ errout:
- 	return NULL;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 876cdfd..bbd4b3c 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1196,16 +1196,21 @@ static int ext4_journalled_write_end(struct file *file,
+ 
+ 	BUG_ON(!ext4_handle_valid(handle));
+ 
+-	if (copied < len) {
+-		if (!PageUptodate(page))
+-			copied = 0;
+-		page_zero_new_buffers(page, from+copied, to);
+-	}
++	if (ext4_has_inline_data(inode))
++		copied = ext4_write_inline_data_end(inode, pos, len,
++						    copied, page);
++	else {
++		if (copied < len) {
++			if (!PageUptodate(page))
++				copied = 0;
++			page_zero_new_buffers(page, from+copied, to);
++		}
+ 
+-	ret = walk_page_buffers(handle, page_buffers(page), from,
+-				to, &partial, write_end_fn);
+-	if (!partial)
+-		SetPageUptodate(page);
++		ret = walk_page_buffers(handle, page_buffers(page), from,
++					to, &partial, write_end_fn);
++		if (!partial)
++			SetPageUptodate(page);
++	}
+ 	new_i_size = pos + copied;
+ 	if (new_i_size > inode->i_size)
+ 		i_size_write(inode, pos+copied);
+@@ -1893,20 +1898,50 @@ static int bput_one(handle_t *handle, struct buffer_head *bh)
+ 	return 0;
  }
  
-+static inline int __ext4_find_dest_de(struct inode *dir, struct inode *inode,
-+				      struct buffer_head *bh,
-+				      void *buf, int buf_size,
-+				      const char *name, int namelen,
-+				      struct ext4_dir_entry_2 **dest_de)
++static struct buffer_head *
++ext4_journalled_write_inline_data(struct inode *inode,
++				  unsigned len,
++				  struct page *page)
 +{
-+	struct ext4_dir_entry_2 *de;
-+	unsigned short reclen = EXT4_DIR_REC_LEN(namelen);
-+	int nlen, rlen;
-+	unsigned int offset = 0;
-+	char *top;
++	int ret;
++	void *kaddr;
++	struct ext4_iloc iloc;
 +
-+	de = (struct ext4_dir_entry_2 *)buf;
-+	top = buf + buf_size - reclen;
-+	while ((char *) de <= top) {
-+		if (ext4_check_dir_entry(dir, NULL, de, bh,
-+					 buf, buf_size, offset))
-+			return -EIO;
-+		if (ext4_match(namelen, name, de))
-+			return -EEXIST;
-+		nlen = EXT4_DIR_REC_LEN(de->name_len);
-+		rlen = ext4_rec_len_from_disk(de->rec_len, buf_size);
-+		if ((de->inode ? rlen - nlen : rlen) >= reclen)
-+			break;
-+		de = (struct ext4_dir_entry_2 *)((char *)de + rlen);
-+		offset += rlen;
++	ret = ext4_get_inode_loc(inode, &iloc);
++	if (ret) {
++		ext4_std_error(inode->i_sb, ret);
++		return NULL;
 +	}
-+	if ((char *) de > top)
-+		return -ENOSPC;
 +
-+	*dest_de = de;
-+	return 0;
++	kaddr = kmap_atomic(page, KM_USER0);
++	ext4_write_inline_data(inode, &iloc, kaddr, 0, len);
++	kunmap_atomic(kaddr, KM_USER0);
++
++	return iloc.bh;
 +}
 +
-+static inline void __ext4_insert_dentry(struct inode *inode,
-+					struct ext4_dir_entry_2 *de,
-+					int buf_size,
-+					const char *name, int namelen)
-+{
+ static int __ext4_journalled_writepage(struct page *page,
+ 				       unsigned int len)
+ {
+ 	struct address_space *mapping = page->mapping;
+ 	struct inode *inode = mapping->host;
+-	struct buffer_head *page_bufs;
++	struct buffer_head *page_bufs = NULL;
+ 	handle_t *handle = NULL;
+ 	int ret = 0;
+ 	int err;
++	struct buffer_head *inode_bh = NULL;
+ 
+ 	ClearPageChecked(page);
+-	page_bufs = page_buffers(page);
+-	BUG_ON(!page_bufs);
+-	walk_page_buffers(handle, page_bufs, 0, len, NULL, bget_one);
 +
-+	int nlen, rlen;
-+
-+	nlen = EXT4_DIR_REC_LEN(de->name_len);
-+	rlen = ext4_rec_len_from_disk(de->rec_len, buf_size);
-+	if (de->inode) {
-+		struct ext4_dir_entry_2 *de1 =
-+				(struct ext4_dir_entry_2 *)((char *)de + nlen);
-+		de1->rec_len = ext4_rec_len_to_disk(rlen - nlen, buf_size);
-+		de->rec_len = ext4_rec_len_to_disk(nlen, buf_size);
-+		de = de1;
++	if (ext4_has_inline_data(inode)) {
++		BUG_ON(page->index != 0);
++		BUG_ON(len > ext4_get_max_inline_size(inode));
++		inode_bh = ext4_journalled_write_inline_data(inode, len, page);
++	} else {
++		page_bufs = page_buffers(page);
++		BUG_ON(!page_bufs);
++		walk_page_buffers(handle, page_bufs, 0, len, NULL, bget_one);
 +	}
-+	de->file_type = EXT4_FT_UNKNOWN;
-+	if (inode) {
-+		de->inode = cpu_to_le32(inode->i_ino);
-+		ext4_set_de_type(inode->i_sb, de, inode->i_mode);
-+	} else
-+		de->inode = 0;
-+	de->name_len = namelen;
-+	memcpy(de->name, name, namelen);
-+}
- /*
-  * Add a new entry into a directory (leaf) block.  If de is non-NULL,
-  * it points to a directory entry which is guaranteed to be large
-@@ -1258,31 +1318,17 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 	struct inode	*dir = dentry->d_parent->d_inode;
- 	const char	*name = dentry->d_name.name;
- 	int		namelen = dentry->d_name.len;
--	unsigned int	offset = 0;
- 	unsigned int	blocksize = dir->i_sb->s_blocksize;
- 	unsigned short	reclen;
--	int		nlen, rlen, err;
--	char		*top;
-+	int		err;
+ 	/* As soon as we unlock the page, it can go away, but we have
+ 	 * references to buffers so we are safe */
+ 	unlock_page(page);
+@@ -1919,11 +1954,19 @@ static int __ext4_journalled_writepage(struct page *page,
  
- 	reclen = EXT4_DIR_REC_LEN(namelen);
- 	if (!de) {
--		de = (struct ext4_dir_entry_2 *)bh->b_data;
--		top = bh->b_data + blocksize - reclen;
--		while ((char *) de <= top) {
--			if (ext4_check_dir_entry(dir, NULL, de, bh, bh->b_data,
--						 bh->b_size, offset))
--				return -EIO;
--			if (ext4_match(namelen, name, de))
--				return -EEXIST;
--			nlen = EXT4_DIR_REC_LEN(de->name_len);
--			rlen = ext4_rec_len_from_disk(de->rec_len, blocksize);
--			if ((de->inode? rlen - nlen: rlen) >= reclen)
--				break;
--			de = (struct ext4_dir_entry_2 *)((char *)de + rlen);
--			offset += rlen;
--		}
--		if ((char *) de > top)
--			return -ENOSPC;
-+		err = __ext4_find_dest_de(dir, inode,
-+					  bh, bh->b_data, blocksize,
-+					  name, namelen, &de);
-+		if (err)
-+			return err;
- 	}
- 	BUFFER_TRACE(bh, "get_write_access");
- 	err = ext4_journal_get_write_access(handle, bh);
-@@ -1292,22 +1338,8 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 	}
+ 	BUG_ON(!ext4_handle_valid(handle));
  
- 	/* By now the buffer is marked for journaling */
--	nlen = EXT4_DIR_REC_LEN(de->name_len);
--	rlen = ext4_rec_len_from_disk(de->rec_len, blocksize);
--	if (de->inode) {
--		struct ext4_dir_entry_2 *de1 = (struct ext4_dir_entry_2 *)((char *)de + nlen);
--		de1->rec_len = ext4_rec_len_to_disk(rlen - nlen, blocksize);
--		de->rec_len = ext4_rec_len_to_disk(nlen, blocksize);
--		de = de1;
--	}
--	de->file_type = EXT4_FT_UNKNOWN;
--	if (inode) {
--		de->inode = cpu_to_le32(inode->i_ino);
--		ext4_set_de_type(dir->i_sb, de, inode->i_mode);
--	} else
--		de->inode = 0;
--	de->name_len = namelen;
--	memcpy(de->name, name, namelen);
-+	__ext4_insert_dentry(inode, de, blocksize, name, namelen);
+-	ret = walk_page_buffers(handle, page_bufs, 0, len, NULL,
+-				do_journal_get_write_access);
++	if (ext4_has_inline_data(inode) && inode_bh) {
++		ret = ext4_journal_get_write_access(handle, inode_bh);
 +
- 	/*
- 	 * XXX shouldn't update any times until successful
- 	 * completion of syscall, but too many callers depend
++		err = ext4_handle_dirty_metadata(handle, inode, inode_bh);
++
++	} else {
++		ret = walk_page_buffers(handle, page_bufs, 0, len, NULL,
++					do_journal_get_write_access);
++
++		err = walk_page_buffers(handle, page_bufs, 0, len, NULL,
++					write_end_fn);
++	}
+ 
+-	err = walk_page_buffers(handle, page_bufs, 0, len, NULL,
+-				write_end_fn);
+ 	if (ret == 0)
+ 		ret = err;
+ 	EXT4_I(inode)->i_datasync_tid = handle->h_transaction->t_tid;
+@@ -1931,9 +1974,11 @@ static int __ext4_journalled_writepage(struct page *page,
+ 	if (!ret)
+ 		ret = err;
+ 
+-	walk_page_buffers(handle, page_bufs, 0, len, NULL, bput_one);
++	if (!ext4_has_inline_data(inode))
++		walk_page_buffers(handle, page_bufs, 0, len, NULL, bput_one);
+ 	ext4_set_inode_state(inode, EXT4_STATE_JDATA);
+ out:
++	brelse(inode_bh);
+ 	return ret;
+ }
+ 
 -- 
 1.7.0.4
