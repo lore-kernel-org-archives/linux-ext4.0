@@ -1,83 +1,47 @@
 From: Andreas Dilger <aedilger@gmail.com>
-Subject: Re: [PATCH V1 02/17] ext4: Add the basic function for inline data support.
-Date: Wed, 26 Oct 2011 16:28:42 -0600
-Message-ID: <DACDC44B-F60E-493E-9C15-67EDFCDFD34D@dilger.ca>
-References: <4EA7B788.3040503@tao.ma> <1319614468-11227-1-git-send-email-tm@tao.ma> <1319614468-11227-2-git-send-email-tm@tao.ma> <E38E92E9-2937-47BA-A9F4-B1F75C9FDE4A@dilger.ca> <4EA81B50.1060802@tao.ma>
+Subject: bigalloc and max file size
+Date: Wed, 26 Oct 2011 17:36:31 -0600
+Message-ID: <51BECC2B-2EBC-4FCB-B708-8431F7CB6E0D@dilger.ca>
 Mime-Version: 1.0 (Apple Message framework v1084)
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu,
-	linux-kernel@vger.kernel.org
-To: Tao Ma <tm@tao.ma>
+Cc: linux-ext4 development <linux-ext4@vger.kernel.org>,
+	Alex Zhuravlev <bzzz@whamcloud.com>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f181.google.com ([209.85.216.181]:52663 "EHLO
-	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752685Ab1JZW2y (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Oct 2011 18:28:54 -0400
-In-Reply-To: <4EA81B50.1060802@tao.ma>
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:60458 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753317Ab1JZXgl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Oct 2011 19:36:41 -0400
+Received: by pzk36 with SMTP id 36so5833367pzk.1
+        for <linux-ext4@vger.kernel.org>; Wed, 26 Oct 2011 16:36:40 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-10-26, at 8:38 AM, Tao Ma wrote:
-> On 10/26/2011 04:36 PM, Andreas Dilger wrote:
->> On 2011-10-26, at 1:34 AM, Tao Ma wrote:
->>> +void ext4_write_inline_data(struct inode *inode, struct ext4_iloc *iloc,
->>> +			    void *buffer, loff_t pos, unsigned len)
->>> +{
->>> +	header = IHDR(inode, ext4_raw_inode(iloc));
->>> +	entry = (struct ext4_xattr_entry *)((void *)ext4_raw_inode(iloc) +
->>> +					    EXT4_I(inode)->i_inline_off);
->>> +	memcpy((void *)IFIRST(header) + le16_to_cpu(entry->e_value_offs) + pos,
->>> +	       buffer + pos, len);
->>> +}
->>> +
->>> +int ext4_init_inline_data(handle_t *handle, struct inode *inode,
->>> +			  struct ext4_iloc *iloc)
->>> +{
->>> +	size = ext4_get_max_inline_size(inode);
->>> +	value = kzalloc(size, GFP_NOFS);
->>> +	if (!value)
->>> +		return -ENOMEM;
->>> +
->>> +	error = ext4_xattr_ibody_set(handle, inode, &i, &is);
->>> +}
->> 
->> Since file data is changed very rarely, instead of consuming the full
->> xattr space that may not be needed, wouldn't it be better to change
->> ext4_write_inline_data() to just to the ext4_xattr_ibody_set() to save
->> the exact-sized buffer into the xattr?  That will allow other xattrs
->> to be stored in this space as well as the inline data.
-> 
-> I am just worried about the cpu usage. You know, the xattr values in
-> ext4 has to be packed so if we change the content of an inline file
-> frequently(say append), the inline xattr value will be removed and added
-> frequently which should consume much cpu cycles.  What's more, the other
-> xattr values has to be moved also if they are not aligned to the end of
-> the inode. I am not sure whether it is good for performance or not.
+Ted,
+we were having a discussion about bigalloc and the maximum file size
+(as limited by the 2^32 logical block number in struct ext4_extent).
 
-I'd also guess it isn't the most CPU efficient mechanism, but the main
-question is whether this extra CPU usage is even noticeable compared
-to the IO time?  Even with the added CPU usage, there is a dramatic
-reduction in the IO (no external block to write), so it would always
-be a net win to do it that way.
+Currently the maximum file size is blocksize * 2^32, 16TB for 4kB blocks.
 
-> Another side effect is that we have to write the whole inline data every
-> time as a new xattr value replace every time while the current solution
-> just needs to memcpy the appended bytes.
+Since it is not possible to allocate sub-blocks in the bigalloc code,
+what about storing the "chunk number" in the extent logical block?
 
-What about only storing a new xattr if the file size is increasing, or
-when it is truncated to zero?  If the write is <= existing xattr size
-then it can use the same mechanism as today (inline overwrite of the
-xattr buffer, and update of the xattr checksum).  That avoids overhead
-for the case of repeatedly writing a small same-size value into the file.
-If some application is appending 1 byte at a time to a file, I think
-the CPU overhead in the xattr code is the least of their worries.
+This would allow us to create files up to chunksize * 2^32.  With
+a bigalloc chunk size of 1MB we could have a maximum file size of
+2^(20 + 32) = 2^52 = 4PB, which is within spitting distance of the
+maximum filesystem size of 2^56 bytes (4kB blocks * 2^48 blocks)
+with the current extent format, and beyond reasonable limits today.
 
-The main reason I don't like to consume all of the xattr space right
-away is that this will cause OTHER xattrs to immediately be pushed
-into the external xattr block (e.g. selinux, security, etc) and then
-we will be even worse off than before (file data in inode, xattr in
-external block, and added complexity for no benefit).
+This essentially allows creating files as large as the filesystem size
+without having to change the extent format, which is a good thing.
+
+Is this implemented in bigalloc?  If not, it would be great to do
+this before landing bigalloc in the upstream kernel, since it is
+basically free to do, can already fall under the INCOMPAT_BIGALLOC
+feature flag, and avoids issues in the near future.  I don't think
+the e2fsprogs with bigalloc support is released yet either, so it
+should still be OK to change the on-disk format?
 
 Cheers, Andreas
 
