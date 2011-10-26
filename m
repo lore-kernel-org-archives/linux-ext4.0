@@ -1,68 +1,37 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH V1 02/17] ext4: Add the basic function for inline data support.
-Date: Wed, 26 Oct 2011 02:36:56 -0600
-Message-ID: <E38E92E9-2937-47BA-A9F4-B1F75C9FDE4A@dilger.ca>
-References: <4EA7B788.3040503@tao.ma> <1319614468-11227-1-git-send-email-tm@tao.ma> <1319614468-11227-2-git-send-email-tm@tao.ma>
-Mime-Version: 1.0 (Apple Message framework v1084)
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: handle NULL p_ext in
+ ext4_ext_next_allocated_block()
+Date: Wed, 26 Oct 2011 04:38:42 -0400
+Message-ID: <20111026083842.GQ31921@thunk.org>
+References: <1318122074-16056-1-git-send-email-curtw@google.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu,
-	linux-kernel@vger.kernel.org
-To: Tao Ma <tm@tao.ma>
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+To: Curt Wohlgemuth <curtw@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:57505 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932494Ab1JZIhH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Oct 2011 04:37:07 -0400
-In-Reply-To: <1319614468-11227-2-git-send-email-tm@tao.ma>
+Received: from li9-11.members.linode.com ([67.18.176.11]:59698 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753174Ab1JZIiq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Oct 2011 04:38:46 -0400
+Content-Disposition: inline
+In-Reply-To: <1318122074-16056-1-git-send-email-curtw@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-10-26, at 1:34 AM, Tao Ma wrote:
-> Implement inline data with xattr. This idea is inspired by Andreas.
-> So now we use "system.data" to store xattr.  For inode_size = 256,
-> currently we uses all the space between i_extra_isize and inode_size.
-> For inode_size > 256, we use half of that space.
+On Sat, Oct 08, 2011 at 06:01:14PM -0700, Curt Wohlgemuth wrote:
+> In ext4_ext_next_allocated_block(), the path[depth] might
+> have a p_ext that is NULL -- see ext4_ext_binsearch().  In
+> such a case, dereferencing it will crash the machine.
 > 
-> +#define EXT4_XATTR_SYSTEM_DATA_NAME		"data"
+> This patch checks for p_ext == NULL in
+> ext4_ext_next_allocated_block() before dereferencinging it.
+> 
+> Tested using a hand-crafted an inode with eh_entries == 0 in
+> an extent block, verified that running FIEMAP on it crashes
+> without this patch, works fine with it.
+> 
+> Signed-off-by: Curt Wohlgemuth <curtw@google.com>
 
-Did you check whether the "data" string takes 4 bytes or 8 in the
-xattr header?  I believe it is storing the NUL termination (and
-the code is using "sizeof(EXT4_XATTR_SYSTEM_DATA_NAME)" = 5), so
-I believe it will round up to the next 4-byte boundary.  Using a
-3-byte name will save a bit of space, like "system.dat".
+Thanks, applied.
 
-> +void ext4_write_inline_data(struct inode *inode, struct ext4_iloc *iloc,
-> +			    void *buffer, loff_t pos, unsigned len)
-> +{
-> +	header = IHDR(inode, ext4_raw_inode(iloc));
-> +	entry = (struct ext4_xattr_entry *)((void *)ext4_raw_inode(iloc) +
-> +					    EXT4_I(inode)->i_inline_off);
-> +	memcpy((void *)IFIRST(header) + le16_to_cpu(entry->e_value_offs) + pos,
-> +	       buffer + pos, len);
-> +}
-> +
-> +int ext4_init_inline_data(handle_t *handle, struct inode *inode,
-> +			  struct ext4_iloc *iloc)
-> +{
-> +	size = ext4_get_max_inline_size(inode);
-> +	value = kzalloc(size, GFP_NOFS);
-> +	if (!value)
-> +		return -ENOMEM;
-> +
-> +	error = ext4_xattr_ibody_set(handle, inode, &i, &is);
-> +}
-
-Since file data is changed very rarely, instead of consuming the full
-xattr space that may not be needed, wouldn't it be better to change
-ext4_write_inline_data() to just to the ext4_xattr_ibody_set() to save
-the exact-sized buffer into the xattr?  That will allow other xattrs
-to be stored in this space as well as the inline data.
-
-
-Cheers, Andreas
-
-
-
-
-
+					- Ted
