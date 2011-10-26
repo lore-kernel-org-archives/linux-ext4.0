@@ -1,46 +1,68 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: handle NULL p_ext in
- ext4_ext_next_allocated_block()
-Date: Wed, 26 Oct 2011 04:26:48 -0400
-Message-ID: <20111026082648.GP31921@thunk.org>
-References: <1318122074-16056-1-git-send-email-curtw@google.com>
- <alpine.LFD.2.00.1110100841380.4851@dhcp-27-109.brq.redhat.com>
- <CAO81RMbLGDUihKORjQ5rGeRHPHg5ivvQtOGJL_oBe4QUiiO0hg@mail.gmail.com>
- <87ipnwnh96.fsf@dmbot.sw.ru>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH V1 02/17] ext4: Add the basic function for inline data support.
+Date: Wed, 26 Oct 2011 02:36:56 -0600
+Message-ID: <E38E92E9-2937-47BA-A9F4-B1F75C9FDE4A@dilger.ca>
+References: <4EA7B788.3040503@tao.ma> <1319614468-11227-1-git-send-email-tm@tao.ma> <1319614468-11227-2-git-send-email-tm@tao.ma>
+Mime-Version: 1.0 (Apple Message framework v1084)
 Content-Type: text/plain; charset=us-ascii
-Cc: Curt Wohlgemuth <curtw@google.com>,
-	Lukas Czerner <lczerner@redhat.com>, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu,
+	linux-kernel@vger.kernel.org
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:56357 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753130Ab1JZI0z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 Oct 2011 04:26:55 -0400
-Content-Disposition: inline
-In-Reply-To: <87ipnwnh96.fsf@dmbot.sw.ru>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:57505 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932494Ab1JZIhH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Oct 2011 04:37:07 -0400
+In-Reply-To: <1319614468-11227-2-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 11, 2011 at 11:01:57AM +0400, Dmitry Monakhov wrote:
-> > ext4_ext_walk_space() will get the i_data_sem, construct the path
-> > array, then release the semaphore.  But then it does a bazillion
-> > accesses on the extent/header/index pointers in the path array, with
-> > no protection against truncate, growth, or any other changes.  As far
-> > as I can tell, this is the only use of a path array retrieved from
-> > ext4_ext_find_extent() that isn't completely covered by i_data_sem.
->
-> In that case i_data sem protects us from nothing. Path collected can
-> simply disappear under us. And in fact i don't understand the
-> reason why we drop i_data_sem too soon. Are any reason to do that?
+On 2011-10-26, at 1:34 AM, Tao Ma wrote:
+> Implement inline data with xattr. This idea is inspired by Andreas.
+> So now we use "system.data" to store xattr.  For inode_size = 256,
+> currently we uses all the space between i_extra_isize and inode_size.
+> For inode_size > 256, we use half of that space.
+> 
+> +#define EXT4_XATTR_SYSTEM_DATA_NAME		"data"
 
-The one concern I have is that I don't want FIEMAP to slow down "real"
-ext4 processing.  So what I've hoping we'll be able to do is use a
-seq_lock sort of design, where if the pointer changes out from under
-us, FIEMAP is forced to redo its sampling.  But if there is some crazy
-userspace program which is calling FIEMAP all the time, I'd much
-rather that it not block ext4_map_blocks() if possible (which is what
-I using a seqlock to protect the FIEMAP routines would help).
+Did you check whether the "data" string takes 4 bytes or 8 in the
+xattr header?  I believe it is storing the NUL termination (and
+the code is using "sizeof(EXT4_XATTR_SYSTEM_DATA_NAME)" = 5), so
+I believe it will round up to the next 4-byte boundary.  Using a
+3-byte name will save a bit of space, like "system.dat".
 
-  	  	     	     	 	- Ted
+> +void ext4_write_inline_data(struct inode *inode, struct ext4_iloc *iloc,
+> +			    void *buffer, loff_t pos, unsigned len)
+> +{
+> +	header = IHDR(inode, ext4_raw_inode(iloc));
+> +	entry = (struct ext4_xattr_entry *)((void *)ext4_raw_inode(iloc) +
+> +					    EXT4_I(inode)->i_inline_off);
+> +	memcpy((void *)IFIRST(header) + le16_to_cpu(entry->e_value_offs) + pos,
+> +	       buffer + pos, len);
+> +}
+> +
+> +int ext4_init_inline_data(handle_t *handle, struct inode *inode,
+> +			  struct ext4_iloc *iloc)
+> +{
+> +	size = ext4_get_max_inline_size(inode);
+> +	value = kzalloc(size, GFP_NOFS);
+> +	if (!value)
+> +		return -ENOMEM;
+> +
+> +	error = ext4_xattr_ibody_set(handle, inode, &i, &is);
+> +}
+
+Since file data is changed very rarely, instead of consuming the full
+xattr space that may not be needed, wouldn't it be better to change
+ext4_write_inline_data() to just to the ext4_xattr_ibody_set() to save
+the exact-sized buffer into the xattr?  That will allow other xattrs
+to be stored in this space as well as the inline data.
+
+
+Cheers, Andreas
+
+
+
+
+
