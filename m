@@ -1,31 +1,38 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Don't check io->flag when setting
- EXT4_STATE_DIO_UNWRITTEN inode state.
-Date: Thu, 27 Oct 2011 04:00:01 -0400
-Message-ID: <20111027080001.GY31921@thunk.org>
-References: <1315984587-5039-1-git-send-email-tm@tao.ma>
+Subject: Re: [PATCH -next] jbd2: fix build when CONFIG_BUG is not enabled
+Date: Thu, 27 Oct 2011 04:06:11 -0400
+Message-ID: <20111027080611.GZ31921@thunk.org>
+References: <20111011201127.455df266dcbffb1d621f8576@canb.auug.org.au>
+ <4E9495C8.1030200@xenotime.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>
-To: Tao Ma <tm@tao.ma>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:49418 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752434Ab1J0IAK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 27 Oct 2011 04:00:10 -0400
+Cc: Stephen Rothwell <sfr@canb.auug.org.au>,
+	linux-next@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Arnd Bergmann <arnd@arndb.de>,
+	Arnaud Lacombe <lacombar@gmail.com>
+To: Randy Dunlap <rdunlap@xenotime.net>
+Return-path: <linux-next-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1315984587-5039-1-git-send-email-tm@tao.ma>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <4E9495C8.1030200@xenotime.net>
+Sender: linux-next-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Sep 14, 2011 at 03:16:27PM +0800, Tao Ma wrote:
-> From: Tao Ma <boyu.mt@taobao.com>
+On Tue, Oct 11, 2011 at 12:15:20PM -0700, Randy Dunlap wrote:
+> From: Randy Dunlap <rdunlap@xenotime.net>
 > 
-> When we want to convert the unitialized extent in direct write,
-> we can either do it in ext4_end_io_nolock(AIO case) or in
->  ext4_ext_direct_IO(non AIO case) and EXT4_I(inode)->cur_aio_dio
-> is a guard for ext4_ext_map_blocks to find the right case.
+> Fix build error when CONFIG_BUG is not enabled:
+> 
+> fs/jbd2/transaction.c:1175:3: error: implicit declaration of function '__WARN'
+> 
+> by changing __WARN() to WARN_ON(), as suggested by
+> Arnaud Lacombe <lacombar@gmail.com>.
+> 
+> Signed-off-by: Randy Dunlap <rdunlap@xenotime.net>
+> Cc: Arnd Bergmann <arnd@arndb.de>
+> Cc: Arnaud Lacombe <lacombar@gmail.com>
 
-Applied, thanks.
+Thanks, applied.
 
-						- Ted
+					- Ted
