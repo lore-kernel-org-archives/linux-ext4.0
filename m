@@ -1,59 +1,56 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: bigalloc and max file size
-Date: Thu, 27 Oct 2011 02:35:05 -0400
-Message-ID: <5846CEDC-A1ED-4BB4-8A3E-E726E696D3E9@mit.edu>
-References: <51BECC2B-2EBC-4FCB-B708-8431F7CB6E0D@dilger.ca>
-Mime-Version: 1.0 (Apple Message framework v1251.1)
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Tso <tytso@mit.edu>,
-	linux-ext4 development <linux-ext4@vger.kernel.org>,
-	Alex Zhuravlev <bzzz@whamcloud.com>
-To: Andreas Dilger <aedilger@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DMZ-MAILSEC-SCANNER-4.MIT.EDU ([18.9.25.15]:52309 "EHLO
-	dmz-mailsec-scanner-4.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750846Ab1J0GkN convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 27 Oct 2011 02:40:13 -0400
-In-Reply-To: <51BECC2B-2EBC-4FCB-B708-8431F7CB6E0D@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Valdis.Kletnieks@vt.edu
+Subject: Re: [PATCH V1 00/17] ext4: Add inline data support.
+Date: Thu, 27 Oct 2011 03:10:22 -0400
+Message-ID: <7941.1319699422@turing-police.cc.vt.edu>
+References: <4EA7B788.3040503@tao.ma>
+Mime-Version: 1.0
+Content-Type: multipart/signed; boundary="==_Exmh_1319699422_3371P";
+	 micalg=pgp-sha1; protocol="application/pgp-signature"
+Content-Transfer-Encoding: 7bit
+Cc: "Ted Ts'o" <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Andreas Dilger <adilger@dilger.ca>
+To: Tao Ma <tm@tao.ma>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: Your message of "Wed, 26 Oct 2011 15:32:24 +0800."
+             <4EA7B788.3040503@tao.ma>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+--==_Exmh_1319699422_3371P
+Content-Type: text/plain; charset=us-ascii
 
-On Oct 26, 2011, at 7:36 PM, Andreas Dilger wrote:
+On Wed, 26 Oct 2011 15:32:24 +0800, Tao Ma said:
 
-> Ted,
-> we were having a discussion about bigalloc and the maximum file size
-> (as limited by the 2^32 logical block number in struct ext4_extent).
->=20
-> Currently the maximum file size is blocksize * 2^32, 16TB for 4kB blo=
-cks.
->=20
-> Since it is not possible to allocate sub-blocks in the bigalloc code,
-> what about storing the "chunk number" in the extent logical block?
+> Currently I use all the space between i_extra_isize and inode_size if
+> inode_size = 256. For inode_size > 256, half of that space is used so as
+> to leave some space for other xattrs.
 
-This adds all sorts of complexity, and it's why we can't simply increas=
-e the block size above a page size.  Basically, avoiding all of the com=
-plex changes needed was the whole point of the bigalloc feature.
+I didn't check the code too closely - does this code DTRT if the user tries to
+then attach a moby-sized xattr (or set of xattrs - if it's got a security.selinux
+tag on it, and a security.capabilities xattr, and a user xattr or two, things are
+going to be getting full).
 
-Effectively, if we stored the "chunk number" in the extent tree blocks,=
- it's equivalent of setting the block size to the larger chunk size.  A=
-mong other things, it means that we have to support setting or clearing=
- the uninitialized bit in chunks larger than a page, and how dirtying a=
- 4k page in a sparse file would require clearing 64k or 1 megabyte (wha=
-tever the chunk size might be) either on disk or in memory.
+> This is only a V1 and there are still something to do(e.g. I am thinking
+> of using unused extent space), but I'd like to send it out earlier so
+> that it can be reviewed ASAP.
 
-In any case, it's not a simple change that we can make before the merge=
- window.   If someone wants to work on that, we can support that simply=
- by supporting block size > page size, with all of the complexity and p=
-ain which has prevented us from supporting that for the last ten years=85=
-=2E
+If this works out, would it make sense to investigate doing this for all
+tails in a V2?  So if your file was 4099 bytes long, you could save allocating
+a second block.  Assuming random distribution of tail sizes, this wil save
+an average of (space avail for tail)/(blocksize) per file.
 
--- Ted
+--==_Exmh_1319699422_3371P
+Content-Type: application/pgp-signature
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+Comment: Exmh version 2.5 07/13/2001
+
+iD8DBQFOqQPecC3lWbTT17ARAuHkAKCj3CNruCkDhLu8No83GgQQwl4iogCgghAR
+DGtFIx2AfT8RBBJ3T+agO7A=
+=DGK7
+-----END PGP SIGNATURE-----
+
+--==_Exmh_1319699422_3371P--
