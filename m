@@ -1,56 +1,91 @@
-From: Valdis.Kletnieks@vt.edu
-Subject: Re: [PATCH V1 00/17] ext4: Add inline data support.
-Date: Thu, 27 Oct 2011 03:10:22 -0400
-Message-ID: <7941.1319699422@turing-police.cc.vt.edu>
-References: <4EA7B788.3040503@tao.ma>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: [BUG] e2fsprogs: mke2fs -S and e2fsck cannot recover on ext4
+Date: Thu, 27 Oct 2011 16:13:16 +0900
+Message-ID: <4EA9048C.8050801@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="==_Exmh_1319699422_3371P";
-	 micalg=pgp-sha1; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
-Cc: "Ted Ts'o" <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>,
-	Andreas Dilger <adilger@dilger.ca>
-To: Tao Ma <tm@tao.ma>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: Your message of "Wed, 26 Oct 2011 15:32:24 +0800."
-             <4EA7B788.3040503@tao.ma>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>, adilger.kernel@dilger.ca
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from TYO200.gate.nec.co.jp ([202.32.8.215]:46847 "EHLO
+	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751950Ab1J0HTp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Oct 2011 03:19:45 -0400
+Received: from tyo202.gate.nec.co.jp ([10.7.69.202])
+	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id p9R7JhRW001762
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 27 Oct 2011 16:19:43 +0900 (JST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
---==_Exmh_1319699422_3371P
-Content-Type: text/plain; charset=us-ascii
+Hi,
 
-On Wed, 26 Oct 2011 15:32:24 +0800, Tao Ma said:
+If all of the superblock and backup superblocks are corrupted,
+mke2fs -S which reinitializes the superblock and
+group descriptors only is a last resort to recover.
 
-> Currently I use all the space between i_extra_isize and inode_size if
-> inode_size = 256. For inode_size > 256, half of that space is used so as
-> to leave some space for other xattrs.
+However, on ext4, all of the files are lost with this way.
+Because mke2fs -S for ext4 sets uninit_bg and then later e2fsck regards
+all of block group as uninitialized one so that it can not recover
+with bitmaps.
 
-I didn't check the code too closely - does this code DTRT if the user tries to
-then attach a moby-sized xattr (or set of xattrs - if it's got a security.selinux
-tag on it, and a security.capabilities xattr, and a user xattr or two, things are
-going to be getting full).
+Of course ext3 can recover all of the files with mke2fsk -S,
+ext4 should be able to recover as well.
+There is a avoidance (see #3 of the reproduce steps)
+but an appropriate fix would be needed for e2fsck.
 
-> This is only a V1 and there are still something to do(e.g. I am thinking
-> of using unused extent space), but I'd like to send it out earlier so
-> that it can be reviewed ASAP.
+* Reproduce steps and log are as follows:
+  My e2fprogs was e2fsprogs-1.42-WIP
 
-If this works out, would it make sense to investigate doing this for all
-tails in a V2?  So if your file was 4099 bytes long, you could save allocating
-a second block.  Assuming random distribution of tail sizes, this wil save
-an average of (space avail for tail)/(blocksize) per file.
+1. mkfe2s -t ext4 /dev/sdaX
+2. create some files on ext4
+3. mkfe2s -t ext4 -S -b 4096 /dev/sdaX　
+    # This problem does not occur,
+    # when we remove uninit_bg feature flag (-O ^uninit_bg).
+4. e2fsck /dev/sdaX
 
---==_Exmh_1319699422_3371P
-Content-Type: application/pgp-signature
+e2fsck 1.42-WIP (16-Oct-2011)
+Backing up journal inode block information.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.11 (GNU/Linux)
-Comment: Exmh version 2.5 07/13/2001
+/dev/sda8 contains a file system with errors, check forced.
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Root inode not allocated.  Allocate<y>? yes
 
-iD8DBQFOqQPecC3lWbTT17ARAuHkAKCj3CNruCkDhLu8No83GgQQwl4iogCgghAR
-DGtFIx2AfT8RBBJ3T+agO7A=
-=DGK7
------END PGP SIGNATURE-----
+/lost+found not found.  Create<y>? yes
 
---==_Exmh_1319699422_3371P--
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+Block bitmap differences:  -(8483--8486) -(33026--33027)
+Fix<y>? yes
+
+Free blocks count wrong for group #0 (24286, counted=24285).
+Fix<y>? yes
+
+Free blocks count wrong (1030071, counted=1030070).
+Fix<y>? yes
+
+Free inodes count wrong for group #0 (8191, counted=8190).
+Fix<y>? yes
+
+Directories count wrong for group #0 (1, counted=2).
+Fix<y>? yes
+
+Free inodes count wrong (262143, counted=262142).
+Fix<y>? yes
+
+
+/dev/sda8: ***** FILE SYSTEM WAS MODIFIED *****
+/dev/sda8: 2/262144 files (0.0% non-contiguous), 18506/1048576 blocks
+
+
+As I reported before, e2fsck -b also can not recover with
+backup superblock correctly.
+# http://marc.info/?l=linux-ext4&m=131541543931429&w=2
+
+Is there any ideas to fix these issues?
+
+Regards,
+Akira Fujita
