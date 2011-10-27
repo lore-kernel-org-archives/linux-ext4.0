@@ -1,8 +1,8 @@
 From: Tao Ma <tm@tao.ma>
 Subject: Re: [PATCH V1 02/17] ext4: Add the basic function for inline data
  support.
-Date: Thu, 27 Oct 2011 08:51:36 +0800
-Message-ID: <4EA8AB18.2060209@tao.ma>
+Date: Thu, 27 Oct 2011 08:51:49 +0800
+Message-ID: <4EA8AB25.4030506@tao.ma>
 References: <4EA7B788.3040503@tao.ma> <1319614468-11227-1-git-send-email-tm@tao.ma> <1319614468-11227-2-git-send-email-tm@tao.ma> <E38E92E9-2937-47BA-A9F4-B1F75C9FDE4A@dilger.ca> <4EA81B50.1060802@tao.ma> <DACDC44B-F60E-493E-9C15-67EDFCDFD34D@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
@@ -10,14 +10,10 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu,
 	linux-kernel@vger.kernel.org
 To: Andreas Dilger <aedilger@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy9.bluehost.com ([69.89.24.6]:53199 "HELO
-	oproxy9.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752388Ab1J0Avo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Oct 2011 20:51:44 -0400
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <DACDC44B-F60E-493E-9C15-67EDFCDFD34D@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 On 10/27/2011 06:28 AM, Andreas Dilger wrote:
 > On 2011-10-26, at 8:38 AM, Tao Ma wrote:
