@@ -1,91 +1,46 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix BUG_ON() in ext4_ext_insert_extent()
-Date: Thu, 27 Oct 2011 05:43:29 -0400
-Message-ID: <20111027094329.GB31921@thunk.org>
-References: <20110927193523.GB3309@thunk.org>
- <1317206703-5604-1-git-send-email-tm@tao.ma>
-Mime-Version: 1.0
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: bigalloc and max file size
+Date: Thu, 27 Oct 2011 07:48:34 -0400
+Message-ID: <B327AF5F-B58A-43A2-BCB2-D0345F550D43@mit.edu>
+References: <51BECC2B-2EBC-4FCB-B708-8431F7CB6E0D@dilger.ca> <5846CEDC-A1ED-4BB4-8A3E-E726E696D3E9@mit.edu> <EB03FF23-73BC-4FDC-B991-5EB3FEEB8DAE@whamcloud.com>
+Mime-Version: 1.0 (Apple Message framework v1251.1)
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Greg Kroah-Hartman <greg@kroah.com>,
-	Xiaoyun Mao <xiaoyun.maoxy@aliyun-inc.com>,
-	Yingbin Wang <yingbin.wangyb@aliyun-inc.com>,
-	Jia Wan <jia.wanj@aliyun-inc.com>
-To: Tao Ma <tm@tao.ma>
+Content-Transfer-Encoding: 8BIT
+Cc: Theodore Tso <tytso@mit.edu>,
+	linux-ext4 development <linux-ext4@vger.kernel.org>,
+	Alex Zhuravlev <bzzz@whamcloud.com>, Tao Ma <tm@tao.ma>,
+	"hao.bigrat@gmail.com" <hao.bigrat@gmail.com>
+To: Andreas Dilger <adilger@whamcloud.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:51321 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755177Ab1J0Jnf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 27 Oct 2011 05:43:35 -0400
-Content-Disposition: inline
-In-Reply-To: <1317206703-5604-1-git-send-email-tm@tao.ma>
+Received: from DMZ-MAILSEC-SCANNER-2.MIT.EDU ([18.9.25.13]:63648 "EHLO
+	dmz-mailsec-scanner-2.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754510Ab1J0Lsl convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 27 Oct 2011 07:48:41 -0400
+In-Reply-To: <EB03FF23-73BC-4FDC-B991-5EB3FEEB8DAE@whamcloud.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 28, 2011 at 06:45:03PM +0800, Tao Ma wrote:
-> actually this bug does show up in 2.6.39 and I think stable tree still
-> needs this fix. After some careful test, my colleague has generated
-> the patch. Please considering ack it so that Greg can add it into the
-> stable tree.
 
-Sorry for the delay, but yes.  This patch would be good for the stable
-tree for 2.6.39 (if Greg is still accepting patches for
-2.6.39-stable).  It doesn't apply for upstream ext4 since the code has
-been changed/refactored since then, but it's a good fix.
+On Oct 27, 2011, at 5:38 AM, Andreas Dilger wrote:
 
-     			      	    	- Ted
+> Writing 64kB is basically the minimum useful unit of IO to a modern disk drive, namely if you are doing any writes then zeroing 64kB isn't going to be noticeably slower than 4kB or 16kB. 
 
-> From 600d493b14ebd776cf8ea0e9dcdccc0d54200403 Mon Sep 17 00:00:00 2001
-> From: Zheng Liu <wenqing.lz@taobao.com>
-> Date: Wed, 28 Sep 2011 16:26:05 +0800
-> Subject: [PATCH] ext4: fix BUG_ON() in ext4_ext_insert_extent()
+That may be true if the cluster size is 64k, but if the cluster size is 1MB, the requirement to zero out 1MB chunks each time a 4k block is written would be painful. 
+
 > 
-> We will meet with a BUG_ON() if following script is run.
+>> In any case, it's not a simple change that we can make before the merge window.
 > 
-> mkfs.ext4 -b 4096 /dev/sdb1 1000000
-> mount -t ext4 /dev/sdb1 /mnt/sdb1
-> fallocate -l 100M /mnt/sdb1/test
-> sync
-> for((i=0;i<170;i++))
-> do
->         dd if=/dev/zero of=/mnt/sdb1/test conv=notrunc bs=256k count=1 seek=`expr $i \* 2`
-> done
-> umount /mnt/sdb1
-> mount -t ext4 /dev/sdb1 /mnt/sdb1
-> dd if=/dev/zero of=/mnt/sdb1/test conv=notrunc bs=256k count=1 seek=341
-> umount /mnt/sdb1
-> mount /dev/sdb1 /mnt/sdb1
-> dd if=/dev/zero of=/mnt/sdb1/test conv=notrunc bs=256k count=1 seek=340
-> sync
-> 
-> The reason is that it forgot to mark dirty when splitting two extents in
-> ext4_ext_convert_to_initialized(). Althrough ex has been updated in memory,
-> it is not dirtied both in ext4_ext_convert_to_initialized() and
-> ext4_ext_insert_extent(). The disk layout is corrupted. Then it will meet with
-> a BUG_ON() when writting at the start of that extent again.
-> 
-> Cc: stable@kernel.org #for 2.6.39
-> Cc: Greg Kroah-Hartman <greg@kroah.com>
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Xiaoyun Mao <xiaoyun.maoxy@aliyun-inc.com>
-> Cc: Yingbin Wang <yingbin.wangyb@aliyun-inc.com>
-> Cc: Jia Wan <jia.wanj@aliyun-inc.com>
-> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> ---
->  fs/ext4/extents.c |    1 +
->  1 files changed, 1 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 4890d6f..cd20425 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -2607,6 +2607,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
->  		ex1 = ex;
->  		ex1->ee_len = cpu_to_le16(map->m_lblk - ee_block);
->  		ext4_ext_mark_uninitialized(ex1);
-> +		ext4_ext_dirty(handle, inode, path + depth);
->  		ex2 = &newex;
->  	}
->  	/*
-> -- 
-> 1.7.4.1
-> 
+> Are you saying that bigalloc is already pushed for this merge window?  It sounds like there is someone else working on this issue already, and I'd like to give them and me a chance to resolve it before the on-disk format of bigalloc is cast in stone.
+
+Yes, it's already in the ext4 and e2fsprogs tree, and it's due to be pushed to Linus this week.  E2fsprogs with bigalloc support just entered Debian testing, so it's really too late change the bigalloc format without a new feature flag.
+
+> This is all a bit hand wavy, since I admit I haven't yet dug into this code, but I don't think it has exactly the same issues as large blocks, since fundamentally there are not multiple pages that address the same block number, so the filesystem can properly address the right logical blocks in the filesystem.
+
+That's a good point, but we could do that with a normal 64k block file system.   The block number which we use on-disk can be in multiples of 64k, but the "block number" that we use in the bmap function and in the bh_blocknr field attached to the pages could be in units of 4k pages.
+
+This is also a bit hand-wavy, but if we also can handle 64k directory blocks, then we could mount 64k block file systems as used in IA64/Power HPC systems on x86 systems, which would be really cool.
+
+-- Ted
+
+
