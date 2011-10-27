@@ -1,65 +1,104 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Time for a fresh slice-by-8 crc32.c posting?
-Date: Thu, 27 Oct 2011 11:32:21 -0700
-Message-ID: <20111027183221.GV12447@tux1.beaverton.ibm.com>
-References: <20111004235357.1560.12602.stgit@elm3c44.beaverton.ibm.com> <20111004235403.1560.55503.stgit@elm3c44.beaverton.ibm.com> <20111021122803.GA15803@gondor.apana.org.au> <20111021165703.GS12447@tux1.beaverton.ibm.com> <20111021191514.GA3997@gondor.apana.org.au> <20111026171556.GU12447@tux1.beaverton.ibm.com>
-Reply-To: djwong@us.ibm.com
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [BUG] e2fsprogs: mke2fs -S and e2fsck cannot recover on ext4
+Date: Thu, 27 Oct 2011 15:02:16 -0500
+Message-ID: <4EA9B8C8.7070302@redhat.com>
+References: <4EA9048C.8050801@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	Theodore Tso <tytso@mit.edu>,
-	David Miller <davem@davemloft.net>,
-	Joakim Tjernlund <joakim.tjernlund@transmode.se>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Mingming Cao <cmm@us.ibm.com>,
-	linux-crypto <linux-crypto@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org,
-	Herbert Xu <herbert@gondor.apana.org.au>,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Bob Pearson <rpearson@systemfabricworks.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20111026171556.GU12447@tux1.beaverton.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>, adilger.kernel@dilger.ca,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Akira Fujita <a-fujita@rs.jp.nec.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:29346 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752520Ab1J0UCX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 27 Oct 2011 16:02:23 -0400
+In-Reply-To: <4EA9048C.8050801@rs.jp.nec.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Bob,
-
-Would you mind posting your current crc32 patches to lkml again?  A couple of
-months have gone by, and it sure would be nice to replace the circa-July patch
-in -next with a newer one.  I recall that there were requests for some code
-changes even in Bob's 8/31 submission, so it'd be nice to have a fresh set from
-you with your latest changes.
-
-I'd also like to freshen my crc32c refactor patches and send them along too.
-
-To clarify, I tried the new crc32{,c}  on my ppc32 and it passed the self test.
-
---D
-
-On Wed, Oct 26, 2011 at 10:16:10AM -0700, Darrick J. Wong wrote:
-> On Fri, Oct 21, 2011 at 09:15:14PM +0200, Herbert Xu wrote:
-> > On Fri, Oct 21, 2011 at 09:57:03AM -0700, Darrick J. Wong wrote:
-> > > 
-> > > My patchset builds upon Bob Pearson's crc32 patchset from early September.  Do
-> > > my patches fail to apply after applying his patchset?
-> > > 
-> > > Or, to speed things along, should I simply repost both Bob's and my patches as
-> > > one big series?
-> > > 
-> > > Bob, have you sent out a new iteration of your patches since September 6th?
-> > 
-> > I'm fine with you pushing this through whichever tree that Bob's
-> > patches are going through.
+On 10/27/11 2:13 AM, Akira Fujita wrote:
+> Hi,
 > 
-> Bob,
+> If all of the superblock and backup superblocks are corrupted,
+> mke2fs -S which reinitializes the superblock and
+> group descriptors only is a last resort to recover.
 > 
-> Which tree (if any) are your patches going through?  
+> However, on ext4, all of the files are lost with this way.
+> Because mke2fs -S for ext4 sets uninit_bg and then later e2fsck regards
+> all of block group as uninitialized one so that it can not recover
+> with bitmaps.
 > 
-> --D
+> Of course ext3 can recover all of the files with mke2fsk -S,
+> ext4 should be able to recover as well.
+> There is a avoidance (see #3 of the reproduce steps)
+> but an appropriate fix would be needed for e2fsck.
 > 
+> * Reproduce steps and log are as follows:
+>   My e2fprogs was e2fsprogs-1.42-WIP
+> 
+> 1. mkfe2s -t ext4 /dev/sdaX
+> 2. create some files on ext4
+> 3. mkfe2s -t ext4 -S -b 4096 /dev/sdaX　
+>     # This problem does not occur,
+>     # when we remove uninit_bg feature flag (-O ^uninit_bg).
+
+It seems to me that the main bug here is that mkfs.ext4 should
+never mark blockgroups as uninit, when run with -S.  Marking
+them uninit goes against the described "not touching the inode
+table  and  the  block  and  inode bitmaps" behavior...
+
+-Eric
+
+> 4. e2fsck /dev/sdaX
+> 
+> e2fsck 1.42-WIP (16-Oct-2011)
+> Backing up journal inode block information.
+> 
+> /dev/sda8 contains a file system with errors, check forced.
+> Pass 1: Checking inodes, blocks, and sizes
+> Pass 2: Checking directory structure
+> Pass 3: Checking directory connectivity
+> Root inode not allocated.  Allocate<y>? yes
+> 
+> /lost+found not found.  Create<y>? yes
+> 
+> Pass 4: Checking reference counts
+> Pass 5: Checking group summary information
+> Block bitmap differences:  -(8483--8486) -(33026--33027)
+> Fix<y>? yes
+> 
+> Free blocks count wrong for group #0 (24286, counted=24285).
+> Fix<y>? yes
+> 
+> Free blocks count wrong (1030071, counted=1030070).
+> Fix<y>? yes
+> 
+> Free inodes count wrong for group #0 (8191, counted=8190).
+> Fix<y>? yes
+> 
+> Directories count wrong for group #0 (1, counted=2).
+> Fix<y>? yes
+> 
+> Free inodes count wrong (262143, counted=262142).
+> Fix<y>? yes
+> 
+> 
+> /dev/sda8: ***** FILE SYSTEM WAS MODIFIED *****
+> /dev/sda8: 2/262144 files (0.0% non-contiguous), 18506/1048576 blocks
+> 
+> 
+> As I reported before, e2fsck -b also can not recover with
+> backup superblock correctly.
+> # http://marc.info/?l=linux-ext4&m=131541543931429&w=2
+> 
+> Is there any ideas to fix these issues?
+> 
+> Regards,
+> Akira Fujita
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
