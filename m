@@ -1,140 +1,31 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH] ext4: fix BUG_ON() in ext4_ext_insert_extent() for .33
- longterm
-Date: Fri, 28 Oct 2011 20:36:22 +0800
-Message-ID: <20111028123622.GB26003@gmail.com>
-References: <20110927193523.GB3309@thunk.org>
- <1317206703-5604-1-git-send-email-tm@tao.ma>
- <20111027094329.GB31921@thunk.org>
- <20111027115322.GB6379@kroah.com>
- <20111028023607.GA23772@gmail.com>
- <20111028052406.GA21306@kroah.com>
- <20111028084652.GA25104@gmail.com>
- <20111028090759.GA22822@kroah.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ted Ts'o <tytso@mit.edu>, Tao Ma <tm@tao.ma>,
-	linux-ext4@vger.kernel.org,
-	Xiaoyun Mao <xiaoyun.maoxy@aliyun-inc.com>,
-	Yingbin Wang <yingbin.wangyb@aliyun-inc.com>,
-	Jia Wan <jia.wanj@aliyun-inc.com>
-To: Greg KH <greg@kroah.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 0/7] ext4: cleanups and regression fixes for grow/shrink logic V3
+Date: Fri, 28 Oct 2011 21:00:03 +0400
+Message-ID: <1319821210-7374-1-git-send-email-dmonakhov@openvz.org>
+Cc: achender@linux.vnet.ibm.com, tytso@mit.edu,
+	Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:35666 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753137Ab1J1MfS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Oct 2011 08:35:18 -0400
-Received: by iaby12 with SMTP id y12so4014031iab.19
-        for <linux-ext4@vger.kernel.org>; Fri, 28 Oct 2011 05:35:18 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <20111028090759.GA22822@kroah.com>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:45611 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753917Ab1J1RAR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Oct 2011 13:00:17 -0400
+Received: by bkbzt4 with SMTP id zt4so624020bkb.19
+        for <linux-ext4@vger.kernel.org>; Fri, 28 Oct 2011 10:00:15 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Oct 28, 2011 at 11:07:59AM +0200, Greg KH wrote:
-> On Fri, Oct 28, 2011 at 04:46:52PM +0800, Zheng Liu wrote:
-> > On Fri, Oct 28, 2011 at 07:24:06AM +0200, Greg KH wrote:
-> > > On Fri, Oct 28, 2011 at 10:36:08AM +0800, Zheng Liu wrote:
-> > > > On Thu, Oct 27, 2011 at 01:53:22PM +0200, Greg KH wrote:
-> > > > > On Thu, Oct 27, 2011 at 05:43:29AM -0400, Ted Ts'o wrote:
-> > > > > > On Wed, Sep 28, 2011 at 06:45:03PM +0800, Tao Ma wrote:
-> > > > > > > actually this bug does show up in 2.6.39 and I think stable tree still
-> > > > > > > needs this fix. After some careful test, my colleague has generated
-> > > > > > > the patch. Please considering ack it so that Greg can add it into the
-> > > > > > > stable tree.
-> > > > > > 
-> > > > > > Sorry for the delay, but yes.  This patch would be good for the stable
-> > > > > > tree for 2.6.39 (if Greg is still accepting patches for
-> > > > > > 2.6.39-stable).  It doesn't apply for upstream ext4 since the code has
-> > > > > > been changed/refactored since then, but it's a good fix.
-> > > > > 
-> > > > > No, .39 has not been maintained for quite some time now, sorry.
-> > > > Hi Greg,
-> > > > 
-> > > > Thank you for your attention. Actually this bug is between from .32 to
-> > > > .39. Please considering to apply this patch to other stable or longterm
-> > > > trees.
-> > > 
-> > > Ah, ok, that makes sense, can you provide me a patch that will apply to
-> > > the .32 and .33-longterm kernels?
-> > Hi Greg,
-> > 
-> > I couldn't download the .32 and .33-longterm kernels from kernel.org
-> > because the full sources were not found on that server. Thus this patch
-> > is generated from the .32-mainline kernel and can be applied to the .32
-> > and .33 kernels.
-> 
-> The .32 and .33 longterm kernels are part of the linux-stable tree on
-> git.kernel.org, they are in their own branch.  Please redo this against
-> those trees, as I'm pretty sure that there will be conflicts, due to all
-> of the different changes since the .0 releases.
-Hi Greg,
+changes from v2 (in responce to comments from tytso@)
+ - split punch_hole handler patch in to reviewable peaces.
+ - redesign error path for ext4_ext_map_blocks
 
-This patch is for .33 longterm kernel. Please apply it.
-
-regards,
-Zheng
-
->From 86c78ef9cd861146a48e8a643601c165b0e80849 Mon Sep 17 00:00:00 2001
-From: Zheng Liu <wenqing.lz@taobao.com>
-Date: Fri, 28 Oct 2011 19:45:31 +0800
-Subject: [PATCH] ext4: fix BUG_ON() in ext4_ext_insert_extent()
- 
-We will meet with a BUG_ON() if following script is run.
- 
-mkfs.ext4 -b 4096 /dev/sdb1 1000000
-mount -t ext4 /dev/sdb1 /mnt/sdb1
-fallocate -l 100M /mnt/sdb1/test
-sync
-for((i=0;i<170;i++))
-do
-        dd if=/dev/zero of=/mnt/sdb1/test conv=notrunc bs=256k count=1
-seek=`expr $i \* 2`
-done
-umount /mnt/sdb1
-mount -t ext4 /dev/sdb1 /mnt/sdb1
-dd if=/dev/zero of=/mnt/sdb1/test conv=notrunc bs=256k count=1 seek=341
-umount /mnt/sdb1
-mount /dev/sdb1 /mnt/sdb1
-dd if=/dev/zero of=/mnt/sdb1/test conv=notrunc bs=256k count=1 seek=340
-sync
- 
-The reason is that it forgot to mark dirty when splitting two extents in
-ext4_ext_convert_to_initialized(). Althrough ex has been updated in
-memory,
-it is not dirtied both in ext4_ext_convert_to_initialized() and 
-ext4_ext_insert_extent(). The disk layout is corrupted. Then it will
-meet with
-a BUG_ON() when writting at the start of that extent again.
- 
-Cc: stable@kernel.org #for 2.6.33
-Cc: Greg Kroah-Hartman <greg@kroah.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Xiaoyun Mao <xiaoyun.maoxy@aliyun-inc.com>
-Cc: Yingbin Wang <yingbin.wangyb@aliyun-inc.com>
-Cc: Jia Wan <jia.wanj@aliyun-inc.com>
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
----
- fs/ext4/extents.c |    1 + 
- 1 files changed, 1 insertions(+), 0 deletions(-)
- 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 505a281..6cb1bbd 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2566,6 +2566,7 @@ static int
-ext4_ext_convert_to_initialized(handle_t *handle,
-                ex1 = ex; 
-                ex1->ee_len = cpu_to_le16(iblock - ee_block);
-                ext4_ext_mark_uninitialized(ex1);
-+               ext4_ext_dirty(handle, inode, path + depth);
-                ex2 = &newex;
-        }
-        /*
--- 
-1.7.4.1
-
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+##First patch is a fix for real issue
+ ext4: Restore old EOFBLOCKS flag state after error
+##Code cleanup for shrink logic.
+ ext4: move inode indepth shrink logic to didicated function
+##The rest are punch hole logic fixes
+ ext4: Move punch hole logic to didicated function
+ ext4: punch_hole fix extent conversion
+ ext4: Update inode's transaction id after punch_hole
+ ext4: punch hole should be restarted after transaction restart
+ ext4: update EOFBLOCK flags after punch hole
