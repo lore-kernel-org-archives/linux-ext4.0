@@ -1,86 +1,83 @@
-From: Eryu Guan <guaneryu@gmail.com>
-Subject: [PATCH] ext2: Avoid creating new file in append-only dir when open(2) return error
-Date: Sat, 29 Oct 2011 02:03:34 +0800
-Message-ID: <1319825014-5668-1-git-send-email-guaneryu@gmail.com>
-Cc: Eryu Guan <guaneryu@gmail.com>, Jan Kara <jack@suse.cz>
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <aedilger@gmail.com>
+Subject: Re: [PATCH] Ext4: Don't normalize an falloc request if it can fit in 1 extent.
+Date: Fri, 28 Oct 2011 12:47:17 -0600
+Message-ID: <472B9A86-7C0A-4AAC-882E-9A739BBBE523@gmail.com>
+References: <1319824917-28345-1-git-send-email-gharm@google.com>
+Mime-Version: 1.0 (iPhone Mail 8L1)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Greg Harm <gharm@google.com>
+To: Greg Harm <gharm@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:39080 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753590Ab1J1SDs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Oct 2011 14:03:48 -0400
-Received: by ggnb1 with SMTP id b1so3899061ggn.19
-        for <linux-ext4@vger.kernel.org>; Fri, 28 Oct 2011 11:03:48 -0700 (PDT)
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:44738 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932668Ab1J1Sq2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Oct 2011 14:46:28 -0400
+Received: by vws1 with SMTP id 1so3647639vws.19
+        for <linux-ext4@vger.kernel.org>; Fri, 28 Oct 2011 11:46:27 -0700 (PDT)
+In-Reply-To: <1319824917-28345-1-git-send-email-gharm@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Newly created file on ext2 inherits inode flags from parent directory,
-so new inode created in append-only directory has S_APPEND flag set,
-may_open() called by do_last() checks that flag then returns -EPERM,
-but at that time the new inode is already created.
+On 2011-10-28, at 12:01 PM, Greg Harm <gharm@google.com> wrote:
+> If an fallocate request fits in EXT_UNINIT_MAX_LEN, then set the
+> EXT4_GET_BLOCKS_NO_NORMALIZE flag. For larger fallocate requests,
+> let mballoc.c normalize the request.
+> This fixes a problem where large requests were being split
+> into non-contiguous extents due to haldar@google.com's
+> "ext4: do not normalize block requests from fallocate."
+> 
+> Testing: Checked that 8.x MB falloc'ed files are still laid down
+> next to each other (contiguously).
+> Checked that the maximum size extent (127.9MB) is allocated as 1
+> extent.
+> Checked that a 1GB file is somewhat contiguous (often 5-6
+> non-contiguous extents now).
+> Checked that a 120MB file can still be falloc'ed even if there are no
+> single extents large enough to hold it.
 
-This can be reproduced by:
-	# mkdir -p /mnt/ext2/append-only
-	# chattr +a /mnt/ext2/append-only
-	# ./opentest /mnt/ext2/append-only/newtestfile
-	# ls -l /mnt/ext2/append-only/newtestfile
+It would be great to add these test cases to xfstests so that this doesn't break in the future. 
 
-opentest will return 'Operation not permitted', but the ls shows that
-newtestfile is already created.
-
-	# cat opentest.c
-	#include <stdio.h>
-	#include <sys/types.h>
-	#include <fcntl.h>
-	#include <sys/stat.h>
-
-	int main(int argc, char *argv[])
-	{
-		int fd;
-		fd = open(argv[1], O_RDWR|O_CREAT, 0666);
-		if (fd == -1)
-			perror("open failed");
-		return 0;
-	}
-
-To avoid this, check EXT2_APPEND_FL flag first in ext2_create before
-really allocating new inode.
-
-Cc: Jan Kara <jack@suse.cz>
-Signed-off-by: Eryu Guan <guaneryu@gmail.com>
----
- fs/ext2/namei.c |   11 +++++++++++
- 1 files changed, 11 insertions(+), 0 deletions(-)
-
-diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
-index 761fde8..b9f8998 100644
---- a/fs/ext2/namei.c
-+++ b/fs/ext2/namei.c
-@@ -32,6 +32,7 @@
- 
- #include <linux/pagemap.h>
- #include <linux/quotaops.h>
-+#include <linux/namei.h>
- #include "ext2.h"
- #include "xattr.h"
- #include "acl.h"
-@@ -97,6 +98,16 @@ struct dentry *ext2_get_parent(struct dentry *child)
- static int ext2_create (struct inode * dir, struct dentry * dentry, int mode, struct nameidata *nd)
- {
- 	struct inode *inode;
-+	int open_flag = nd->intent.open.file->f_flags;
-+
-+	if ((EXT2_I(dir)->i_flags & EXT2_FL_INHERITED) & EXT2_APPEND_FL) {
-+		if ((open_flag & O_ACCMODE) != O_RDONLY &&
-+		    !(open_flag & O_APPEND))
-+			return -EPERM;
-+		if (open_flag & O_TRUNC)
-+			return -EPERM;
-+	}
-+
- 
- 	dquot_initialize(dir);
- 
--- 
-1.7.7.1
-
+> Signed-off-by: Greg Harm <gharm@google.com>
+> ---
+> fs/ext4/extents.c |   13 ++++++++++---
+> 1 files changed, 10 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 57cf568..9819216 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -3761,6 +3761,7 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+>    int ret2 = 0;
+>    int retries = 0;
+>    struct ext4_map_blocks map;
+> +    int map_blocks_flags;
+>    unsigned int credits, blkbits = inode->i_blkbits;
+> 
+>    /*
+> @@ -3805,9 +3806,15 @@ retry:
+>            ret = PTR_ERR(handle);
+>            break;
+>        }
+> -        ret = ext4_map_blocks(handle, inode, &map,
+> -                      EXT4_GET_BLOCKS_CREATE_UNINIT_EXT |
+> -                      EXT4_GET_BLOCKS_NO_NORMALIZE);
+> +        map_blocks_flags = EXT4_GET_BLOCKS_CREATE_UNINIT_EXT;
+> +        /*
+> +         * Don't normalize the request if it can fit in one extent so
+> +         * that it doesn't get unnecessarily split into multiple
+> +         * extents.
+> +         */
+> +        if (len <= EXT_UNINIT_MAX_LEN << blkbits)
+> +            map_blocks_flags |= EXT4_GET_BLOCKS_NO_NORMALIZE;
+> +        ret = ext4_map_blocks(handle, inode, &map, map_blocks_flags);
+>        if (ret <= 0) {
+> #ifdef EXT4FS_DEBUG
+>            WARN_ON(ret <= 0);
+> -- 
+> 1.7.3.1
+> 
