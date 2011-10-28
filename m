@@ -1,69 +1,123 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 6/6] ext4: update EOFBLOCKS flag on fallocate properly
-Date: Fri, 28 Oct 2011 15:40:08 -0600
-Message-ID: <8E55A8AA-39D7-4FFB-831E-EC5AC25A6112@dilger.ca>
-References: <1319144939-28801-1-git-send-email-dmonakhov@openvz.org> <1319144939-28801-7-git-send-email-dmonakhov@openvz.org>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu,
-	achender@linux.vnet.ibm.com
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:10295 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753172Ab1J1VkD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Oct 2011 17:40:03 -0400
-In-Reply-To: <1319144939-28801-7-git-send-email-dmonakhov@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Andy Lutomirski <luto@amacapital.net>
+Subject: Re: Latency writing to an mlocked ext4 mapping
+Date: Fri, 28 Oct 2011 16:37:03 -0700
+Message-ID: <CALCETrWoZeFpznU5Nv=+PvL9QRkTnS4atiGXx0jqZP_E3TJPqw@mail.gmail.com>
+References: <CALCETrXbPWsgaZmsvHZGEX-CxB579tG+zusXiYhR-13RcEnGvQ@mail.gmail.com>
+	<ACE78D84-0E94-4E7A-99BF-C20583018697@dilger.ca>
+	<CALCETrU23vyCXPG6mJU9qaPeAGOWDQtur5C+LRT154V5FM=Ajg@mail.gmail.com>
+	<CALCETrX=-CnNQ9+4tRbqMG4mfuy2FBPXXoJeBVDVPnEiRJYRFQ@mail.gmail.com>
+	<CALCETrUcOKQAJTTmCSD3Q3wYS-zLqv6tBa4AdkK50bNobRhDUQ@mail.gmail.com>
+	<20111025122618.GA8072@quack.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "linux-mm@kvack.org" <linux-mm@kvack.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20111025122618.GA8072@quack.suse.cz>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2011-10-20, at 3:08 PM, Dmitry Monakhov wrote:
-> EOFBLOCK_FL should be updated if called w/o FALLOCATE_FL_KEEP_SIZE
-> Currently it happens only if new extent was allocated
-> Last fallocate cmd has updated size, but kept EOFBLOCK_FL set. And fsck
-> will complain about that.
-> 
-> Also remove ping pong in ext4_fallocate() in case of new extents, where
-> ext4_ext_map_blocks() clear EOFBLOCKS bit, and later
-> ext4_falloc_update_inode() restore it again.
+On Tue, Oct 25, 2011 at 5:26 AM, Jan Kara <jack@suse.cz> wrote:
+> On Wed 19-10-11 22:59:55, Andy Lutomirski wrote:
+>> On Wed, Oct 19, 2011 at 7:17 PM, Andy Lutomirski <luto@amacapital.net> w=
+rote:
+>> > On Wed, Oct 19, 2011 at 6:15 PM, Andy Lutomirski <luto@amacapital.net>=
+ wrote:
+>> >> On Wed, Oct 19, 2011 at 6:02 PM, Andreas Dilger <adilger@dilger.ca> w=
+rote:
+>> >>> What kernel are you using? =A0A change to keep pages consistent duri=
+ng writeout was landed not too long ago (maybe Linux 3.0) in order to allow=
+ checksumming of the data.
+>> >>
+>> >> 3.0.6, with no relevant patches. =A0(I have a one-liner added to the =
+tcp
+>> >> code that I'll submit sometime soon.) =A0Would this explain the laten=
+cy
+>> >> in file_update_time or is that a separate issue? =A0file_update_time
+>> >> seems like a good thing to make fully asynchronous (especially if the
+>> >> file in question is a fifo, but I've already moved my fifos to tmpfs)=
+.
+>> >
+>> > On 2.6.39.4, I got one instance of:
+>> >
+>> > call_rwsem_down_read_failed ext4_map_blocks ext4_da_get_block_prep
+>> > __block_write_begin ext4_da_write_begin ext4_page_mkwrite do_wp_page
+>> > handle_pte_fault handle_mm_fault do_page_fault page_fault
+>> >
+>> > but I'm not seeing the large numbers of the ext4_page_mkwrite trace
+>> > that I get on 3.0.6. =A0file_update_time is now by far the dominant
+>> > cause of latency.
+>>
+>> The culprit seems to be do_wp_page -> file_update_time ->
+>> mark_inode_dirty_sync. =A0This surprises me for two reasons:
+>>
+>> =A0- Why the _sync? =A0Are we worried that data will be written out befo=
+re
+>> the metadata? =A0If so, surely there's a better way than adding latency
+>> here.
+> =A0_sync just means that inode will become dirty for fsync(2) purposes bu=
+t
+> not for fdatasync(2) purposes - i.e. it's just a timestamp update (or
+> it could be something similar).
+>
+>> =A0- Why are we calling file_update_time at all? =A0Presumably we also
+>> update the time when the page is written back (if not, that sounds
+>> like a bug, since the contents may be changed after something saw the
+>> mtime update), and, if so, why bother updating it on the first write?
+>> Anything that relies on this behavior is, I think, unreliable, because
+>> the page could be made writable arbitrarily early by another program
+>> that changes nothing.
+> =A0We don't update timestamp when the page is written back. I believe thi=
+s
+> is mostly because we don't know whether the data has been changed by a
+> write syscall, which already updated the timestamp, or by mmap. That is
+> also the reason why we update the timestamp at page fault time.
+>
+> =A0The reason why file_update_time() blocks for you is probably that it
+> needs to get access to buffer where inode is stored on disk and because a
+> transaction including this buffer is committing at the moment, your threa=
+d
+> has to wait until the transaction commit finishes. This is mostly a probl=
+em
+> specific to how ext4 works so e.g. xfs shouldn't have it.
+>
+> =A0Generally I believe the attempts to achieve any RT-like latencies when
+> writing to a filesystem are rather hopeless. How much hopeless depends on
+> the load of the filesystem (e.g., in your case of mostly idle filesystem =
+I
+> can imagine some tweaks could reduce your latencies to an acceptable leve=
+l
+> but once the disk gets loaded you'll be screwed). So I'd suggest that
+> having RT thread just store log in memory (or write to a pipe) and have
+> another non-RT thread write the data to disk would be a much more robust
+> design.
 
-Looking into this code, I see some strange behaviour that you added in
-an earlier commit (21ca087a3q) to both ext4_ext_convert_to_initialized()
-and ext4_split_unwritten_extents(), but I'm trying to figure out if it
-is actually needed today.
+Windows seems to do pretty well at this, and I think it should be fixable o=
+n
+Linux too.  "All" that needs to be done is to remove the pte_wrprotect from
+page_mkclean_one.  The fallout from that might be unpleasant, though, but
+it would probably speed up a number of workloads.
 
->    ext4: Do not zero out uninitialized extents beyond i_size
-> 
->    The extents code will sometimes zero out blocks and mark them as
->    initialized instead of splitting an extent into several smaller ones.
->    This optimization however, causes problems if the extent is beyond
->    i_size because fsck will complain if there are uninitialized blocks
+Adding a whole separate process just to copy data from memory to disk sound=
+s
+a bit like a hack -- that's what mmap + mlock would do if it worked better.
+Incidentally, pipes are no good.  I haven't root-caused it yet, but both re=
+ading
+to and writing from pipes, even if O_NONBLOCK, can block.  I haven't root-c=
+aused
+it yet.
 
-Should this be "... if there are initialized blocks after i_size"?
+Anyway, I'll start sending patches to whittle away at the problem,
+starting right now :)
 
->    after i_size as this can not be distinguished from an inode that has
->    an incorrect i_size field.
+--Andy
 
-Shouldn't it be possible to just mark the file with EXT4_EOFBLOCK_FL
-so that the whole extent can be zeroed out and avoid the overhead of
-splitting the extent and having to zero out the blocks beyond EOF on
-the next file IO?
-
-Cheers, Andreas
 --
-Andreas Dilger 
-Principal Engineer
-Whamcloud, Inc.
-
-
-
-
-
-
-Cheers, Andreas
-
-
-
-
-
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
