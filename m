@@ -1,8 +1,8 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH] ext4: fix BUG_ON() in ext4_ext_insert_extent() for .32
+Subject: [PATCH] ext4: fix BUG_ON() in ext4_ext_insert_extent() for .33
  longterm
-Date: Fri, 28 Oct 2011 20:34:02 +0800
-Message-ID: <20111028123402.GA26003@gmail.com>
+Date: Fri, 28 Oct 2011 20:36:22 +0800
+Message-ID: <20111028123622.GB26003@gmail.com>
 References: <20110927193523.GB3309@thunk.org>
  <1317206703-5604-1-git-send-email-tm@tao.ma>
  <20111027094329.GB31921@thunk.org>
@@ -20,12 +20,12 @@ Cc: Ted Ts'o <tytso@mit.edu>, Tao Ma <tm@tao.ma>,
 	Jia Wan <jia.wanj@aliyun-inc.com>
 To: Greg KH <greg@kroah.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:44481 "EHLO
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:35666 "EHLO
 	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753154Ab1J1MdG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Oct 2011 08:33:06 -0400
-Received: by iaby12 with SMTP id y12so4012143iab.19
-        for <linux-ext4@vger.kernel.org>; Fri, 28 Oct 2011 05:33:06 -0700 (PDT)
+	with ESMTP id S1753137Ab1J1MfS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Oct 2011 08:35:18 -0400
+Received: by iaby12 with SMTP id y12so4014031iab.19
+        for <linux-ext4@vger.kernel.org>; Fri, 28 Oct 2011 05:35:18 -0700 (PDT)
 Content-Disposition: inline
 In-Reply-To: <20111028090759.GA22822@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
@@ -68,16 +68,16 @@ On Fri, Oct 28, 2011 at 11:07:59AM +0200, Greg KH wrote:
 > git.kernel.org, they are in their own branch.  Please redo this against
 > those trees, as I'm pretty sure that there will be conflicts, due to all
 > of the different changes since the .0 releases.
-Hi Greg
+Hi Greg,
 
-This patch is for .32 longterm kernel. Please try it again.
+This patch is for .33 longterm kernel. Please apply it.
 
 regards,
 Zheng
 
->From bc522003378af679afd227ff87497dfb4fd4d652 Mon Sep 17 00:00:00 2001
+>From 86c78ef9cd861146a48e8a643601c165b0e80849 Mon Sep 17 00:00:00 2001
 From: Zheng Liu <wenqing.lz@taobao.com>
-Date: Fri, 28 Oct 2011 19:41:19 +0800
+Date: Fri, 28 Oct 2011 19:45:31 +0800
 Subject: [PATCH] ext4: fix BUG_ON() in ext4_ext_insert_extent()
  
 We will meet with a BUG_ON() if following script is run.
@@ -107,7 +107,7 @@ ext4_ext_insert_extent(). The disk layout is corrupted. Then it will
 meet with
 a BUG_ON() when writting at the start of that extent again.
  
-Cc: stable@kernel.org #for 2.6.32
+Cc: stable@kernel.org #for 2.6.33
 Cc: Greg Kroah-Hartman <greg@kroah.com>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
 Cc: Xiaoyun Mao <xiaoyun.maoxy@aliyun-inc.com>
@@ -119,10 +119,10 @@ Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
  1 files changed, 1 insertions(+), 0 deletions(-)
  
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index f375559..93f7999 100644
+index 505a281..6cb1bbd 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -2592,6 +2592,7 @@ static int
+@@ -2566,6 +2566,7 @@ static int
 ext4_ext_convert_to_initialized(handle_t *handle,
                 ex1 = ex; 
                 ex1->ee_len = cpu_to_le16(iblock - ee_block);
