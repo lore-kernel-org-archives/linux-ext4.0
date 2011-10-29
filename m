@@ -1,91 +1,130 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Avoid creating new file in append-only dir when
- open(2) return error
-Date: Sat, 29 Oct 2011 14:54:21 -0400
-Message-ID: <20111029185421.GA16825@thunk.org>
-References: <1319824961-5587-1-git-send-email-guaneryu@gmail.com>
+Subject: Re: [PATCH] ext4: Check io list state and avoid an unnecessary
+ mutex_lock in ext4_end_io_work.
+Date: Sat, 29 Oct 2011 16:57:40 -0400
+Message-ID: <20111029205740.GB16825@thunk.org>
+References: <1315989182-6170-1-git-send-email-tm@tao.ma>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Eryu Guan <guaneryu@gmail.com>
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:41245 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:60542 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933857Ab1J2SyZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 29 Oct 2011 14:54:25 -0400
+	id S1752370Ab1J2U5q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 29 Oct 2011 16:57:46 -0400
 Content-Disposition: inline
-In-Reply-To: <1319824961-5587-1-git-send-email-guaneryu@gmail.com>
+In-Reply-To: <1315989182-6170-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Oct 29, 2011 at 02:02:41AM +0800, Eryu Guan wrote:
-> Newly created file on ext4 inherits inode flags from parent directory,
-> so new inode created in append-only directory has S_APPEND flag set,
-> may_open() called by do_last() checks that flag then returns -EPERM,
-> but at that time the new inode is already created.
+On Wed, Sep 14, 2011 at 04:33:02PM +0800, Tao Ma wrote:
+> From: Tao Ma <boyu.mt@taobao.com>
+> 
+> When we finish the end io work in ext4_flush_completed_IO, we take
+> the io work away from the list, but don't free it. Then in the workqueue,
+> we can check the list state and then avoid the extra work if it is also
+> done. It is good, but we check list state in ext4_end_io_nolock with i_mutex held
+> instead of the spin_lock in other places. This is wrong.
 
-I have the following patch in the ext4 tree that should take care of
-this issue for ext2/3/4.
+Hi Tao,
+
+Thanks for finding and pointing out this bug in ext4_end_io_nolock().
+Unfortunately your proposed fix doesn't take into account that there
+are other callers of ext4_end_io_nolock() besides ext4_end_io_work(),
+and so it's not sufficient to move the test from former function to
+the latter.
+
+Attached please find the patch which I am planning to check into the
+ext4 tree to address this bug which you have pointed out.
+
+Regards,
 
 						- Ted
 
-ext2,ext3,ext4: don't inherit APPEND_FL or IMMUTABLE_FL for new inodes
+commit c0e36d8410bfad4db4edefeb4175f85a5d216c8d
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Sat Oct 29 16:57:19 2011 -0400
 
-This doesn't make much sense, and it exposes a bug in the kernel where
-attempts to create a new file in an append-only directory using
-O_CREAT will fail (but still leave a zero-length file).  This was
-discovered when xfstests #79 was generalized so it could run on all
-file systems.
+    ext4: use spinlock before checking io->list in ext4_io_end_nolock()
+    
+    In ext4_end_io_nolock(), io->list is checked to see if it is empty
+    without taking the ei->i_completed_io_lock spinlock.  This violates
+    the locking protocol, and can cause very hard to debug failures.
+    
+    Also optimize ext4_end_io_work() so that if ext4_end_io_nolock() is
+    not going to do any work, don't try getting the i_mutex and possibly
+    requeuing the end_io request if the trylock doesn't succeed in grabbing
+    the mutex.
+    
+    Thanks to Tao Ma <boyu.mt@taobao.com> for spotting the error and
+    providing an initial fix to address the problem.
+    
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+    Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc:stable@kernel.org
----
- fs/ext4/ext4.h          |    3 +--
- include/linux/ext2_fs.h |    4 ++--
- include/linux/ext3_fs.h |    4 ++--
- 3 files changed, 5 insertions(+), 6 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index e717dfd..be593d5 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -357,8 +357,7 @@ struct flex_groups {
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 92f38ee..0af5607 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -90,21 +90,27 @@ void ext4_free_io_end(ext4_io_end_t *io)
+  */
+ int ext4_end_io_nolock(ext4_io_end_t *io)
+ {
+-	struct inode *inode = io->inode;
+-	loff_t offset = io->offset;
+-	ssize_t size = io->size;
+-	wait_queue_head_t *wq;
+-	int ret = 0;
++	unsigned long		flags;
++	struct inode		*inode = io->inode;
++	loff_t			offset = io->offset;
++	ssize_t			size = io->size;
++	struct ext4_inode_info	*ei = EXT4_I(inode);
++	wait_queue_head_t	*wq;
++	int			ret;
  
- /* Flags that should be inherited by new inodes from their parent. */
- #define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
--			   EXT4_SYNC_FL | EXT4_IMMUTABLE_FL | EXT4_APPEND_FL |\
--			   EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
-+			   EXT4_SYNC_FL | EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
- 			   EXT4_NOCOMPR_FL | EXT4_JOURNAL_DATA_FL |\
- 			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL)
+ 	ext4_debug("ext4_end_io_nolock: io 0x%p from inode %lu,list->next 0x%p,"
+ 		   "list->prev 0x%p\n",
+ 		   io, inode->i_ino, io->list.next, io->list.prev);
  
-diff --git a/include/linux/ext2_fs.h b/include/linux/ext2_fs.h
-index 53792bf..ce1b719 100644
---- a/include/linux/ext2_fs.h
-+++ b/include/linux/ext2_fs.h
-@@ -197,8 +197,8 @@ struct ext2_group_desc
+-	if (list_empty(&io->list))
+-		return ret;
++	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
++	if (list_empty(&io->list)) {
++		spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
++		return 0;
++	}
++	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
  
- /* Flags that should be inherited by new inodes from their parent. */
- #define EXT2_FL_INHERITED (EXT2_SECRM_FL | EXT2_UNRM_FL | EXT2_COMPR_FL |\
--			   EXT2_SYNC_FL | EXT2_IMMUTABLE_FL | EXT2_APPEND_FL |\
--			   EXT2_NODUMP_FL | EXT2_NOATIME_FL | EXT2_COMPRBLK_FL|\
-+			   EXT2_SYNC_FL | EXT2_NODUMP_FL |\
-+			   EXT2_NOATIME_FL | EXT2_COMPRBLK_FL |\
- 			   EXT2_NOCOMP_FL | EXT2_JOURNAL_DATA_FL |\
- 			   EXT2_NOTAIL_FL | EXT2_DIRSYNC_FL)
+ 	if (!(io->flag & EXT4_IO_END_UNWRITTEN))
+-		return ret;
++		return 0;
  
-diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
-index 67a803a..0244611 100644
---- a/include/linux/ext3_fs.h
-+++ b/include/linux/ext3_fs.h
-@@ -180,8 +180,8 @@ struct ext3_group_desc
+ 	ret = ext4_convert_unwritten_extents(inode, offset, size);
+ 	if (ret < 0) {
+@@ -142,6 +148,16 @@ static void ext4_end_io_work(struct work_struct *work)
+ 	unsigned long		flags;
+ 	int			ret;
  
- /* Flags that should be inherited by new inodes from their parent. */
- #define EXT3_FL_INHERITED (EXT3_SECRM_FL | EXT3_UNRM_FL | EXT3_COMPR_FL |\
--			   EXT3_SYNC_FL | EXT3_IMMUTABLE_FL | EXT3_APPEND_FL |\
--			   EXT3_NODUMP_FL | EXT3_NOATIME_FL | EXT3_COMPRBLK_FL|\
-+			   EXT3_SYNC_FL | EXT3_NODUMP_FL |\
-+			   EXT3_NOATIME_FL | EXT3_COMPRBLK_FL |\
- 			   EXT3_NOCOMPR_FL | EXT3_JOURNAL_DATA_FL |\
- 			   EXT3_NOTAIL_FL | EXT3_DIRSYNC_FL)
++	if (!(io->flag & EXT4_IO_END_UNWRITTEN))
++		goto free_io_end;
++
++	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
++	if (list_empty(&io->list)) {
++		spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
++		goto free_io_end;
++	}
++	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
++
+ 	if (!mutex_trylock(&inode->i_mutex)) {
+ 		/*
+ 		 * Requeue the work instead of waiting so that the work
+@@ -170,6 +186,7 @@ static void ext4_end_io_work(struct work_struct *work)
+ 		list_del_init(&io->list);
+ 	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
+ 	mutex_unlock(&inode->i_mutex);
++free_io_end:
+ 	ext4_free_io_end(io);
+ }
  
