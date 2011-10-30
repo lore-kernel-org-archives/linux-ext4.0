@@ -1,56 +1,147 @@
-From: Coly Li <i@coly.li>
-Subject: Re: bigalloc and max file size
-Date: Sun, 30 Oct 2011 13:37:59 +0800
-Message-ID: <4EACE2B7.9070402@coly.li>
-References: <51BECC2B-2EBC-4FCB-B708-8431F7CB6E0D@dilger.ca> <5846CEDC-A1ED-4BB4-8A3E-E726E696D3E9@mit.edu> <EB03FF23-73BC-4FDC-B991-5EB3FEEB8DAE@whamcloud.com> <B327AF5F-B58A-43A2-BCB2-D0345F550D43@mit.edu> <97D9C5CC-0F22-4BC7-BDFA-7781D33CA7F3@whamcloud.com> <E0A4425F-9C68-4929-83CD-9B2CA3F87979@mit.edu>
-Reply-To: i@coly.li
+From: Tao Ma <tm@tao.ma>
+Subject: Re: [PATCH] ext4: Check io list state and avoid an unnecessary mutex_lock
+ in ext4_end_io_work.
+Date: Sun, 30 Oct 2011 15:50:25 +0800
+Message-ID: <4EAD01C1.1060002@tao.ma>
+References: <1315989182-6170-1-git-send-email-tm@tao.ma> <20111029205740.GB16825@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andreas Dilger <adilger@whamcloud.com>,
-	linux-ext4 development <linux-ext4@vger.kernel.org>,
-	Alex Zhuravlev <bzzz@whamcloud.com>, Tao Ma <tm@tao.ma>,
-	"hao.bigrat@gmail.com" <hao.bigrat@gmail.com>
-To: Theodore Tso <tytso@MIT.EDU>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy1-pub.bluehost.com ([66.147.249.253]:46994 "HELO
+Received: from oproxy1-pub.bluehost.com ([66.147.249.253]:37570 "HELO
 	oproxy1-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751119Ab1J3F2P (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 30 Oct 2011 01:28:15 -0400
-In-Reply-To: <E0A4425F-9C68-4929-83CD-9B2CA3F87979@mit.edu>
+	with SMTP id S1752408Ab1J3Hud (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 30 Oct 2011 03:50:33 -0400
+In-Reply-To: <20111029205740.GB16825@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011=E5=B9=B410=E6=9C=8828=E6=97=A5 05:42, Theodore Tso Wrote:
->=20
-> On Oct 27, 2011, at 11:08 AM, Andreas Dilger wrote:
-[snip]
-> One could argue that I could add a patch which disabled the bigalloc =
-patch, and then make changes in the next merge window, but to be comple=
-tely honest I have my own selfish reason for not wanting to do that, wh=
-ich is the bigalloc patches have also been integrated into Google's int=
-ernal kernels already, and changing the bigalloc format without a new f=
-lag would make things complicated for me.   Given that we decided to lo=
-ck down the extent leaf format (even though I had wanted to make change=
-s to it, for example to support a full 64-bit block number) in deferenc=
-e to the fact that it was in ClusterFS deployed kernels, there is prece=
-dent for taking into account the status of formats used in non-mainline=
- kernels by the original authors of the feature.
->=20
 Hi Ted,
+On 10/30/2011 04:57 AM, Ted Ts'o wrote:
+> On Wed, Sep 14, 2011 at 04:33:02PM +0800, Tao Ma wrote:
+>> From: Tao Ma <boyu.mt@taobao.com>
+>>
+>> When we finish the end io work in ext4_flush_completed_IO, we take
+>> the io work away from the list, but don't free it. Then in the workqueue,
+>> we can check the list state and then avoid the extra work if it is also
+>> done. It is good, but we check list state in ext4_end_io_nolock with i_mutex held
+>> instead of the spin_lock in other places. This is wrong.
+> 
+> Hi Tao,
+> 
+> Thanks for finding and pointing out this bug in ext4_end_io_nolock().
+> Unfortunately your proposed fix doesn't take into account that there
+> are other callers of ext4_end_io_nolock() besides ext4_end_io_work(),
+> and so it's not sufficient to move the test from former function to
+> the latter.
+sorry, but I thought I had considered this case.
+There are 2 callers. One is ext4_end_io_work(which has the bug I pointed
+out), the other is ext4_flush_complete_IO which has already done the
+check before calling ext4_end_io_nolock. And that's the reason why I
+move the check from ext4_end_io_nolock to ext4_end_io_work. So for the
+ext4_flush_complete_IO case, your new patch will spin_lock twice for the
+checking. Do I miss something here?
 
-=46orgive me if this is out of topic.
-In our test, allocating directories W/ bigalloc and W/O inline-data may=
- occupy most of disk space. By now Ext4
-inline-data is not merged yet, I just wondering how Google uses bigallo=
-c without inline-data patch set ?
+Thanks
+Tao
+> 
+> Attached please find the patch which I am planning to check into the
+> ext4 tree to address this bug which you have pointed out.
+> 
+> Regards,
+> 
+> 						- Ted
+> 
+> commit c0e36d8410bfad4db4edefeb4175f85a5d216c8d
+> Author: Theodore Ts'o <tytso@mit.edu>
+> Date:   Sat Oct 29 16:57:19 2011 -0400
+> 
+>     ext4: use spinlock before checking io->list in ext4_io_end_nolock()
+>     
+>     In ext4_end_io_nolock(), io->list is checked to see if it is empty
+>     without taking the ei->i_completed_io_lock spinlock.  This violates
+>     the locking protocol, and can cause very hard to debug failures.
+>     
+>     Also optimize ext4_end_io_work() so that if ext4_end_io_nolock() is
+>     not going to do any work, don't try getting the i_mutex and possibly
+>     requeuing the end_io request if the trylock doesn't succeed in grabbing
+>     the mutex.
+>     
+>     Thanks to Tao Ma <boyu.mt@taobao.com> for spotting the error and
+>     providing an initial fix to address the problem.
+>     
+>     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+>     Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+> 
+> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+> index 92f38ee..0af5607 100644
+> --- a/fs/ext4/page-io.c
+> +++ b/fs/ext4/page-io.c
+> @@ -90,21 +90,27 @@ void ext4_free_io_end(ext4_io_end_t *io)
+>   */
+>  int ext4_end_io_nolock(ext4_io_end_t *io)
+>  {
+> -	struct inode *inode = io->inode;
+> -	loff_t offset = io->offset;
+> -	ssize_t size = io->size;
+> -	wait_queue_head_t *wq;
+> -	int ret = 0;
+> +	unsigned long		flags;
+> +	struct inode		*inode = io->inode;
+> +	loff_t			offset = io->offset;
+> +	ssize_t			size = io->size;
+> +	struct ext4_inode_info	*ei = EXT4_I(inode);
+> +	wait_queue_head_t	*wq;
+> +	int			ret;
+>  
+>  	ext4_debug("ext4_end_io_nolock: io 0x%p from inode %lu,list->next 0x%p,"
+>  		   "list->prev 0x%p\n",
+>  		   io, inode->i_ino, io->list.next, io->list.prev);
+>  
+> -	if (list_empty(&io->list))
+> -		return ret;
+> +	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
+> +	if (list_empty(&io->list)) {
+> +		spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
+> +		return 0;
+> +	}
+> +	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
+>  
+>  	if (!(io->flag & EXT4_IO_END_UNWRITTEN))
+> -		return ret;
+> +		return 0;
+>  
+>  	ret = ext4_convert_unwritten_extents(inode, offset, size);
+>  	if (ret < 0) {
+> @@ -142,6 +148,16 @@ static void ext4_end_io_work(struct work_struct *work)
+>  	unsigned long		flags;
+>  	int			ret;
+>  
+> +	if (!(io->flag & EXT4_IO_END_UNWRITTEN))
+> +		goto free_io_end;
+> +
+> +	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
+> +	if (list_empty(&io->list)) {
+> +		spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
+> +		goto free_io_end;
+> +	}
+> +	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
+> +
+>  	if (!mutex_trylock(&inode->i_mutex)) {
+>  		/*
+>  		 * Requeue the work instead of waiting so that the work
+> @@ -170,6 +186,7 @@ static void ext4_end_io_work(struct work_struct *work)
+>  		list_del_init(&io->list);
+>  	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
+>  	mutex_unlock(&inode->i_mutex);
+> +free_io_end:
+>  	ext4_free_io_end(io);
+>  }
+>  
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Thanks.
-
---=20
-Coly Li
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
