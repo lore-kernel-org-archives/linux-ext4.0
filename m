@@ -1,64 +1,45 @@
 From: Eryu Guan <guaneryu@gmail.com>
-Subject: Re: [PATCH] ext4: Avoid creating new file in append-only dir when
- open(2) return error
-Date: Sun, 30 Oct 2011 09:23:47 +0800
-Message-ID: <CA+dCu8_bMXy3FN9BWFUwCcg4=peH93Mv7CcypShfQETA71Hebw@mail.gmail.com>
-References: <1319824961-5587-1-git-send-email-guaneryu@gmail.com> <20111029185421.GA16825@thunk.org>
-Reply-To: guaneryu@gmail.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+Subject: [PATCH] ext4: remove comments about extent mount option in ext4_new_inode()
+Date: Sun, 30 Oct 2011 10:55:12 +0800
+Message-ID: <1319943312-5534-1-git-send-email-guaneryu@gmail.com>
+Cc: Eryu Guan <guaneryu@gmail.com>, "Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:64010 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932655Ab1J3BYJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 29 Oct 2011 21:24:09 -0400
-Received: by iaby12 with SMTP id y12so5609141iab.19
-        for <linux-ext4@vger.kernel.org>; Sat, 29 Oct 2011 18:24:08 -0700 (PDT)
-In-Reply-To: <20111029185421.GA16825@thunk.org>
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:40055 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933352Ab1J3Czo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 29 Oct 2011 22:55:44 -0400
+Received: by qabj40 with SMTP id j40so4436091qab.19
+        for <linux-ext4@vger.kernel.org>; Sat, 29 Oct 2011 19:55:43 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Oct 30, 2011 at 2:54 AM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Sat, Oct 29, 2011 at 02:02:41AM +0800, Eryu Guan wrote:
->> Newly created file on ext4 inherits inode flags from parent director=
-y,
->> so new inode created in append-only directory has S_APPEND flag set,
->> may_open() called by do_last() checks that flag then returns -EPERM,
->> but at that time the new inode is already created.
->
-> I have the following patch in the ext4 tree that should take care of
-> this issue for ext2/3/4.
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0- Ted
->
-> ext2,ext3,ext4: don't inherit APPEND_FL or IMMUTABLE_FL for new inode=
-s
->
-> This doesn't make much sense, and it exposes a bug in the kernel wher=
-e
-> attempts to create a new file in an append-only directory using
-> O_CREAT will fail (but still leave a zero-length file). =A0This was
-> discovered when xfstests #79 was generalized so it could run on all
-> file systems.
->
+Remove comments about 'extent' mount option in ext4_new_inode(),
+it's no longer existed.
 
-I also found this by checking xfstests 079 and wanted to fix it in a wa=
-y not
-changing the current behavior. Masking out EXTN_APPEND_FL from inherit =
-bits
-makes more sense.
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Eryu Guan <guaneryu@gmail.com>
+---
+ fs/ext4/ialloc.c |    6 +-----
+ 1 files changed, 1 insertions(+), 5 deletions(-)
 
-I think I should resend the comment cleanup part.
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 9c63f27..c25b9e5 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -1005,11 +1005,7 @@ got:
+ 	ei->i_dir_start_lookup = 0;
+ 	ei->i_disksize = 0;
+ 
+-	/*
+-	 * Don't inherit extent flag from directory, amongst others. We set
+-	 * extent flag on newly created directory and file only if -o extent
+-	 * mount option is specified
+-	 */
++	/* Don't inherit extent flag from directory, amongst others. */
+ 	ei->i_flags =
+ 		ext4_mask_flags(mode, EXT4_I(dir)->i_flags & EXT4_FL_INHERITED);
+ 	ei->i_file_acl = 0;
+-- 
+1.7.7.1
 
-Thanks!
-
-Eryu Guan
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
