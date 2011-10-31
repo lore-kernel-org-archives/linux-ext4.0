@@ -1,101 +1,54 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 5/5] ext4: io stat show result in sysfs
-Date: Mon, 31 Oct 2011 17:43:04 +0800
-Message-ID: <1320054184-14329-6-git-send-email-wenqing.lz@taobao.com>
-References: <1320054184-14329-1-git-send-email-wenqing.lz@taobao.com>
-Cc: Wang Shaoyan <wangshaoyan.pt@taobao.com>
-To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: bigalloc and max file size
+Date: Mon, 31 Oct 2011 06:15:23 -0400
+Message-ID: <A0C1821A-B597-4617-BD14-B638143DC3C2@mit.edu>
+References: <51BECC2B-2EBC-4FCB-B708-8431F7CB6E0D@dilger.ca> <5846CEDC-A1ED-4BB4-8A3E-E726E696D3E9@mit.edu> <EB03FF23-73BC-4FDC-B991-5EB3FEEB8DAE@whamcloud.com> <B327AF5F-B58A-43A2-BCB2-D0345F550D43@mit.edu> <97D9C5CC-0F22-4BC7-BDFA-7781D33CA7F3@whamcloud.com> <E0A4425F-9C68-4929-83CD-9B2CA3F87979@mit.edu> <4EAA2217.5020002@tao.ma>
+Mime-Version: 1.0 (Apple Message framework v1251.1)
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Theodore Tso <tytso@mit.edu>,
+	Andreas Dilger <adilger@whamcloud.com>,
+	linux-ext4 development <linux-ext4@vger.kernel.org>,
+	Alex Zhuravlev <bzzz@whamcloud.com>,
+	"hao.bigrat@gmail.com" <hao.bigrat@gmail.com>
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:51255 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932359Ab1JaJmE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Oct 2011 05:42:04 -0400
-In-Reply-To: <1320054184-14329-1-git-send-email-wenqing.lz@taobao.com>
+Received: from DMZ-MAILSEC-SCANNER-4.MIT.EDU ([18.9.25.15]:58285 "EHLO
+	dmz-mailsec-scanner-4.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S932508Ab1JaKP1 convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 31 Oct 2011 06:15:27 -0400
+In-Reply-To: <4EAA2217.5020002@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Wang Shaoyan <wangshaoyan.pt@taobao.com>
 
-Show statistic results in sysfs
+On Oct 27, 2011, at 11:31 PM, Tao Ma wrote:
 
-Signed-off-by: Wang Shaoyan <wangshaoyan.pt@taobao.com>
----
- fs/ext4/super.c |   48 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 48 insertions(+), 0 deletions(-)
+> Forget to say, if we increase the extent length to be cluster, there =
+are
+> also a good side effect. ;) Current bigalloc has a severe performance
+> regression in the following test case:
+> mount -t ext4 /dev/sdb1 /mnt/ext4
+> cp linux-3.0.tar.gz /mnt/ext4
+> cd /mnt/ext4
+> tar zxvf linux-3.0.tar.gz
+> umount /mnt/ext4
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 93ec9a7..049d06c 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2510,6 +2510,52 @@ static ssize_t inode_readahead_blks_store(struct ext4_attr *a,
- 	return count;
- }
- 
-+static inline unsigned long ext4_get_ios_counter(int rw, int flag);
-+static ssize_t io_stats_show(struct ext4_attr *a,
-+			     struct ext4_sb_info *sbi, char *buf)
-+{
-+	int i = 0;
-+	unsigned long ios_counters[EXT4_IOS_TYPE_END][2] = {{0,},};
-+
-+	for (i = 0; i < EXT4_IOS_TYPE_END; i++) {
-+		ios_counters[i][READ] = ext4_get_ios_counter(READ, i);
-+		ios_counters[i][WRITE] = ext4_get_ios_counter(WRITE, i);
-+	}
-+
-+	return snprintf(buf, PAGE_SIZE,
-+			"TYPE                     READ    WRITE\n"
-+			"super block        %8lu %8lu\n"
-+			"group descriptor   %8lu %8lu\n"
-+			"inode bitmap       %8lu %8lu\n"
-+			"block bitmap       %8lu %8lu\n"
-+			"inode table        %8lu %8lu\n"
-+			"extent block       %8lu %8lu\n"
-+			"indirect block     %8lu %8lu\n"
-+			"dir entry          %8lu %8lu\n"
-+			"extended attribute %8lu %8lu\n"
-+			"regular data       %8lu %8lu\n",
-+			ios_counters[EXT4_IOS_SUPER_BLOCK][READ],
-+			ios_counters[EXT4_IOS_SUPER_BLOCK][WRITE],
-+			ios_counters[EXT4_IOS_GROUP_DESC][READ],
-+			ios_counters[EXT4_IOS_GROUP_DESC][WRITE],
-+			ios_counters[EXT4_IOS_INODE_BITMAP][READ],
-+			ios_counters[EXT4_IOS_INODE_BITMAP][WRITE],
-+			ios_counters[EXT4_IOS_BLOCK_BITMAP][READ],
-+			ios_counters[EXT4_IOS_BLOCK_BITMAP][WRITE],
-+			ios_counters[EXT4_IOS_INODE_TABLE][READ],
-+			ios_counters[EXT4_IOS_INODE_TABLE][WRITE],
-+			ios_counters[EXT4_IOS_EXTENT_BLOCK][READ],
-+			ios_counters[EXT4_IOS_EXTENT_BLOCK][WRITE],
-+			ios_counters[EXT4_IOS_INDIRECT_BLOCK][READ],
-+			ios_counters[EXT4_IOS_INDIRECT_BLOCK][WRITE],
-+			ios_counters[EXT4_IOS_DIR_ENTRY][READ],
-+			ios_counters[EXT4_IOS_DIR_ENTRY][WRITE],
-+			ios_counters[EXT4_IOS_EXTENDED_ATTR][READ],
-+			ios_counters[EXT4_IOS_EXTENDED_ATTR][WRITE],
-+			ios_counters[EXT4_IOS_REGULAR_DATA][READ],
-+			ios_counters[EXT4_IOS_REGULAR_DATA][WRITE]);
-+}
-+
- static ssize_t sbi_ui_show(struct ext4_attr *a,
- 			   struct ext4_sb_info *sbi, char *buf)
- {
-@@ -2553,6 +2599,7 @@ EXT4_RO_ATTR(session_write_kbytes);
- EXT4_RO_ATTR(lifetime_write_kbytes);
- EXT4_RO_ATTR(extent_cache_hits);
- EXT4_RO_ATTR(extent_cache_misses);
-+EXT4_RO_ATTR(io_stats);
- EXT4_ATTR_OFFSET(inode_readahead_blks, 0644, sbi_ui_show,
- 		 inode_readahead_blks_store, s_inode_readahead_blks);
- EXT4_RW_ATTR_SBI_UI(inode_goal, s_inode_goal);
-@@ -2579,6 +2626,7 @@ static struct attribute *ext4_attrs[] = {
- 	ATTR_LIST(mb_stream_req),
- 	ATTR_LIST(mb_group_prealloc),
- 	ATTR_LIST(max_writeback_mb_bump),
-+	ATTR_LIST(io_stats),
- 	NULL,
- };
- 
--- 
-1.7.4.1
+I've been traveling, so I haven't had a chance to test this, but it mak=
+es no sense that changing the encoding fro the extent length would chan=
+ge the performance of the forced writeback caused by amount.   There ma=
+y be a performance bug that we should fix, or may have been fixed by ac=
+cident with the extent encoding change.=20
 
+Have you investigated why this got better when you changed the meaning =
+of the extent length field?   It makes no sense that such a format chan=
+ge would have such an impact=85.
+
+-- Ted
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
