@@ -1,75 +1,103 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/3] ext4: remove unnecessary call to waitqueue_active()
-Date: Mon, 31 Oct 2011 11:02:46 -0400
-Message-ID: <1320073367-28916-2-git-send-email-tytso@mit.edu>
-References: <20111031150206.GC16825@thunk.org>
- <1320073367-28916-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Tao Ma <tm@tao.ma>
+Subject: Re: [PATCH 1/3] ext4: Use correct locking for ext4_end_io_nolock()
+Date: Mon, 31 Oct 2011 23:28:06 +0800
+Message-ID: <4EAEBE86.1010303@tao.ma>
+References: <20111031150206.GC16825@thunk.org> <1320073367-28916-1-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Tao Ma <boyu.mt@taobao.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:37935 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933061Ab1JaPCt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 31 Oct 2011 11:02:49 -0400
+Received: from oproxy1-pub.bluehost.com ([66.147.249.253]:49371 "HELO
+	oproxy1-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S933175Ab1JaP2M (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Oct 2011 11:28:12 -0400
 In-Reply-To: <1320073367-28916-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The usage of waitqueue_active() is not necessary, and introduces (I
-believe) a hard-to-hit race.
+On 10/31/2011 11:02 PM, Theodore Ts'o wrote:
+> From: Tao Ma <boyu.mt@taobao.com>
+> 
+> We must hold i_completed_io_lock when manipulating anything on the
+> i_completed_io_list linked list.  This includes io->lock, which we
+> were checking in ext4_end_io_nolock().
+> 
+> So move this check to ext4_end_io_work().  This also has the bonus of
+> avoiding extra work if it is already done without needing to take the
+> mutex.
+> 
+> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+I am fine with it.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/page-io.c |   15 ++++-----------
- 1 files changed, 4 insertions(+), 11 deletions(-)
-
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index aed4096..4fa1d70 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -70,7 +70,6 @@ static void put_io_page(struct ext4_io_page *io_page)
- void ext4_free_io_end(ext4_io_end_t *io)
- {
- 	int i;
--	wait_queue_head_t *wq;
- 
- 	BUG_ON(!io);
- 	if (io->page)
-@@ -78,10 +77,8 @@ void ext4_free_io_end(ext4_io_end_t *io)
- 	for (i = 0; i < io->num_io_pages; i++)
- 		put_io_page(io->pages[i]);
- 	io->num_io_pages = 0;
--	wq = ext4_ioend_wq(io->inode);
--	if (atomic_dec_and_test(&EXT4_I(io->inode)->i_ioend_count) &&
--	    waitqueue_active(wq))
--		wake_up_all(wq);
-+	if (atomic_dec_and_test(&EXT4_I(io->inode)->i_ioend_count))
-+		wake_up_all(ext4_ioend_wq(io->inode));
- 	kmem_cache_free(io_end_cachep, io);
- }
- 
-@@ -96,7 +93,6 @@ int ext4_end_io_nolock(ext4_io_end_t *io)
- 	struct inode *inode = io->inode;
- 	loff_t offset = io->offset;
- 	ssize_t size = io->size;
--	wait_queue_head_t *wq;
- 	int ret = 0;
- 
- 	ext4_debug("ext4_end_io_nolock: io 0x%p from inode %lu,list->next 0x%p,"
-@@ -121,11 +117,8 @@ int ext4_end_io_nolock(ext4_io_end_t *io)
- 	if (io->flag & EXT4_IO_END_UNWRITTEN) {
- 		io->flag &= ~EXT4_IO_END_UNWRITTEN;
- 		/* Wake up anyone waiting on unwritten extent conversion */
--		wq = ext4_ioend_wq(io->inode);
--		if (atomic_dec_and_test(&EXT4_I(inode)->i_aiodio_unwritten) &&
--		    waitqueue_active(wq)) {
--			wake_up_all(wq);
--		}
-+		if (atomic_dec_and_test(&EXT4_I(inode)->i_aiodio_unwritten))
-+			wake_up_all(ext4_ioend_wq(io->inode));
- 	}
- 
- 	return ret;
--- 
-1.7.4.1.22.gec8e1.dirty
+Thanks
+Tao
+> ---
+>  fs/ext4/fsync.c   |    3 ---
+>  fs/ext4/page-io.c |   14 +++++++++++---
+>  2 files changed, 11 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+> index c942924..851ac5b 100644
+> --- a/fs/ext4/fsync.c
+> +++ b/fs/ext4/fsync.c
+> @@ -83,9 +83,6 @@ int ext4_flush_completed_IO(struct inode *inode)
+>  	int ret = 0;
+>  	int ret2 = 0;
+>  
+> -	if (list_empty(&ei->i_completed_io_list))
+> -		return ret;
+> -
+>  	dump_completed_IO(inode);
+>  	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
+>  	while (!list_empty(&ei->i_completed_io_list)){
+> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+> index 92f38ee..aed4096 100644
+> --- a/fs/ext4/page-io.c
+> +++ b/fs/ext4/page-io.c
+> @@ -87,6 +87,9 @@ void ext4_free_io_end(ext4_io_end_t *io)
+>  
+>  /*
+>   * check a range of space and convert unwritten extents to written.
+> + *
+> + * Called with inode->i_mutex; we depend on this when we manipulate
+> + * io->flag, since we could otherwise race with ext4_flush_completed_IO()
+>   */
+>  int ext4_end_io_nolock(ext4_io_end_t *io)
+>  {
+> @@ -100,9 +103,6 @@ int ext4_end_io_nolock(ext4_io_end_t *io)
+>  		   "list->prev 0x%p\n",
+>  		   io, inode->i_ino, io->list.next, io->list.prev);
+>  
+> -	if (list_empty(&io->list))
+> -		return ret;
+> -
+>  	if (!(io->flag & EXT4_IO_END_UNWRITTEN))
+>  		return ret;
+>  
+> @@ -142,6 +142,13 @@ static void ext4_end_io_work(struct work_struct *work)
+>  	unsigned long		flags;
+>  	int			ret;
+>  
+> +	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
+> +	if (list_empty(&io->list)) {
+> +		spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
+> +		goto free;
+> +	}
+> +	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
+> +
+>  	if (!mutex_trylock(&inode->i_mutex)) {
+>  		/*
+>  		 * Requeue the work instead of waiting so that the work
+> @@ -170,6 +177,7 @@ static void ext4_end_io_work(struct work_struct *work)
+>  		list_del_init(&io->list);
+>  	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
+>  	mutex_unlock(&inode->i_mutex);
+> +free:
+>  	ext4_free_io_end(io);
+>  }
+>  
 
