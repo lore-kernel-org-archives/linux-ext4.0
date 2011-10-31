@@ -1,103 +1,30 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: [PATCH 1/3] ext4: Use correct locking for ext4_end_io_nolock()
-Date: Mon, 31 Oct 2011 23:28:06 +0800
-Message-ID: <4EAEBE86.1010303@tao.ma>
-References: <20111031150206.GC16825@thunk.org> <1320073367-28916-1-git-send-email-tytso@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Tao Ma <boyu.mt@taobao.com>
-To: Theodore Ts'o <tytso@mit.edu>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: bigalloc and max file size
+Date: Mon, 31 Oct 2011 10:08:20 -0600
+Message-ID: <422BEB28-76D0-4FD8-B7AE-130C9AAE10C0@dilger.ca>
+References: <51BECC2B-2EBC-4FCB-B708-8431F7CB6E0D@dilger.ca> <5846CEDC-A1ED-4BB4-8A3E-E726E696D3E9@mit.edu> <EB03FF23-73BC-4FDC-B991-5EB3FEEB8DAE@whamcloud.com> <B327AF5F-B58A-43A2-BCB2-D0345F550D43@mit.edu> <97D9C5CC-0F22-4BC7-BDFA-7781D33CA7F3@whamcloud.com> <E0A4425F-9C68-4929-83CD-9B2CA3F87979@mit.edu> <4EACE2B7.9070402@coly.li> <F1D09DA1-3E1E-4D31-9F26-4AADAAF7A91D@mit.edu> <4EAE6BD4.9080705@coly.li> <583E0040-4EFA-4EBC-A738-A8968BB9135C@mit.edu>
+Mime-Version: 1.0 (iPhone Mail 8L1)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: "i@coly.li" <i@coly.li>, Theodore Tso <tytso@mit.edu>,
+	Andreas Dilger <adilger@whamcloud.com>,
+	linux-ext4 development <linux-ext4@vger.kernel.org>,
+	Alex Zhuravlev <bzzz@whamcloud.com>, Tao Ma <tm@tao.ma>,
+	"hao.bigrat@gmail.com" <hao.bigrat@gmail.com>
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy1-pub.bluehost.com ([66.147.249.253]:49371 "HELO
-	oproxy1-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S933175Ab1JaP2M (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Oct 2011 11:28:12 -0400
-In-Reply-To: <1320073367-28916-1-git-send-email-tytso@mit.edu>
+Received: from shawmail.shawcable.com ([64.59.128.220]:27308 "EHLO
+	mail.shawcable.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933054Ab1JaQH2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Oct 2011 12:07:28 -0400
+In-Reply-To: <583E0040-4EFA-4EBC-A738-A8968BB9135C@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/31/2011 11:02 PM, Theodore Ts'o wrote:
-> From: Tao Ma <boyu.mt@taobao.com>
-> 
-> We must hold i_completed_io_lock when manipulating anything on the
-> i_completed_io_list linked list.  This includes io->lock, which we
-> were checking in ext4_end_io_nolock().
-> 
-> So move this check to ext4_end_io_work().  This also has the bonus of
-> avoiding extra work if it is already done without needing to take the
-> mutex.
-> 
-> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-I am fine with it.
+On 2011-10-31, at 4:22 AM, Theodore Tso <tytso@MIT.EDU> wrote:
 
-Thanks
-Tao
-> ---
->  fs/ext4/fsync.c   |    3 ---
->  fs/ext4/page-io.c |   14 +++++++++++---
->  2 files changed, 11 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-> index c942924..851ac5b 100644
-> --- a/fs/ext4/fsync.c
-> +++ b/fs/ext4/fsync.c
-> @@ -83,9 +83,6 @@ int ext4_flush_completed_IO(struct inode *inode)
->  	int ret = 0;
->  	int ret2 = 0;
->  
-> -	if (list_empty(&ei->i_completed_io_list))
-> -		return ret;
-> -
->  	dump_completed_IO(inode);
->  	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
->  	while (!list_empty(&ei->i_completed_io_list)){
-> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-> index 92f38ee..aed4096 100644
-> --- a/fs/ext4/page-io.c
-> +++ b/fs/ext4/page-io.c
-> @@ -87,6 +87,9 @@ void ext4_free_io_end(ext4_io_end_t *io)
->  
->  /*
->   * check a range of space and convert unwritten extents to written.
-> + *
-> + * Called with inode->i_mutex; we depend on this when we manipulate
-> + * io->flag, since we could otherwise race with ext4_flush_completed_IO()
->   */
->  int ext4_end_io_nolock(ext4_io_end_t *io)
->  {
-> @@ -100,9 +103,6 @@ int ext4_end_io_nolock(ext4_io_end_t *io)
->  		   "list->prev 0x%p\n",
->  		   io, inode->i_ino, io->list.next, io->list.prev);
->  
-> -	if (list_empty(&io->list))
-> -		return ret;
-> -
->  	if (!(io->flag & EXT4_IO_END_UNWRITTEN))
->  		return ret;
->  
-> @@ -142,6 +142,13 @@ static void ext4_end_io_work(struct work_struct *work)
->  	unsigned long		flags;
->  	int			ret;
->  
-> +	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
-> +	if (list_empty(&io->list)) {
-> +		spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
-> +		goto free;
-> +	}
-> +	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
-> +
->  	if (!mutex_trylock(&inode->i_mutex)) {
->  		/*
->  		 * Requeue the work instead of waiting so that the work
-> @@ -170,6 +177,7 @@ static void ext4_end_io_work(struct work_struct *work)
->  		list_del_init(&io->list);
->  	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
->  	mutex_unlock(&inode->i_mutex);
-> +free:
->  	ext4_free_io_end(io);
->  }
->  
+> For cluster file systems, such as when you might build Hadoop on top of ext4, there's no real advantage of using RAID arrays as opposed to having single file systems on each disk.  In fact, due to the specd of being able to check multiple disk spindles in parallel, it's advantageous to build cluster file systems on single disk file systems.
 
+For Lustre at least there are a number of reasons why it uses large RAID devices to store the data instead of many small devices:
+- fewer devices that need to be managed. Lustre runs on systems with more than 13000 drives, and having to manage connection state for that many internal devices is a lot of overhead. 
