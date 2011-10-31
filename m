@@ -1,231 +1,174 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH V3 5/6] ext4: reimplement fiemap on delayed extent tree
-Date: Mon, 31 Oct 2011 08:55:46 +0800
-Message-ID: <1320022547-2284-6-git-send-email-xiaoqiangnk@gmail.com>
+Subject: [PATCH V3 4/6] ext4: let ext4 maintian delayed extent trees
+Date: Mon, 31 Oct 2011 08:55:45 +0800
+Message-ID: <1320022547-2284-5-git-send-email-xiaoqiangnk@gmail.com>
 References: <1320022547-2284-1-git-send-email-xiaoqiangnk@gmail.com>
 Cc: linux-ext4@vger.kernel.org, Yongqiang Yang <xiaoqiangnk@gmail.com>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-iy0-f174.google.com ([209.85.210.174]:58444 "EHLO
 	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753916Ab1JaDAJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 30 Oct 2011 23:00:09 -0400
+	with ESMTP id S1753933Ab1JaDAH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 30 Oct 2011 23:00:07 -0400
 Received: by mail-iy0-f174.google.com with SMTP id y12so6677937iab.19
-        for <linux-ext4@vger.kernel.org>; Sun, 30 Oct 2011 20:00:09 -0700 (PDT)
+        for <linux-ext4@vger.kernel.org>; Sun, 30 Oct 2011 20:00:07 -0700 (PDT)
 In-Reply-To: <1320022547-2284-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch reimplements fiemap on delayed extent tree.
+This patch let ext4 maintain delayed extent trees.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/extents.c |  186 +++++++----------------------------------------------
- 1 files changed, 23 insertions(+), 163 deletions(-)
+ fs/ext4/extents.c  |    2 ++
+ fs/ext4/indirect.c |    3 +++
+ fs/ext4/inode.c    |   30 ++++++++++++++++++++++++++++--
+ fs/ext4/super.c    |   12 +++++++++++-
+ 4 files changed, 44 insertions(+), 3 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index f878da1..ad6f5af 100644
+index 37a5df7..f878da1 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -4457,193 +4457,53 @@ static int ext4_ext_fiemap_cb(struct inode *inode, ext4_lblk_t next,
- 		       struct ext4_ext_cache *newex, struct ext4_extent *ex,
- 		       void *data)
- {
-+	struct delayed_extent de;
- 	__u64	logical;
- 	__u64	physical;
- 	__u64	length;
- 	__u32	flags = 0;
-+	ext4_lblk_t next_del;
- 	int		ret = 0;
- 	struct fiemap_extent_info *fieinfo = data;
- 	unsigned char blksize_bits;
+@@ -4233,6 +4233,8 @@ void ext4_ext_truncate(struct inode *inode)
  
--	blksize_bits = inode->i_sb->s_blocksize_bits;
--	logical = (__u64)newex->ec_block << blksize_bits;
-+	de.start = newex->ec_block;
-+	down_read(&EXT4_I(inode)->i_data_sem);
-+	next_del = ext4_de_find_extent(inode, &de);
-+	up_read(&EXT4_I(inode)->i_data_sem);
+ 	last_block = (inode->i_size + sb->s_blocksize - 1)
+ 			>> EXT4_BLOCK_SIZE_BITS(sb);
++	err = ext4_de_remove_space(inode, last_block,
++				   EXT_MAX_BLOCKS - last_block);
+ 	err = ext4_ext_remove_space(inode, last_block);
  
-+	next = min(next_del, next);
- 	if (newex->ec_start == 0) {
- 		/*
- 		 * No extent in extent-tree contains block @newex->ec_start,
- 		 * then the block may stay in 1)a hole or 2)delayed-extent.
--		 *
--		 * Holes or delayed-extents are processed as follows.
--		 * 1. lookup dirty pages with specified range in pagecache.
--		 *    If no page is got, then there is no delayed-extent and
--		 *    return with EXT_CONTINUE.
--		 * 2. find the 1st mapped buffer,
--		 * 3. check if the mapped buffer is both in the request range
--		 *    and a delayed buffer. If not, there is no delayed-extent,
--		 *    then return.
--		 * 4. a delayed-extent is found, the extent will be collected.
+ 	/* In a multi-transaction truncate, we only make the final
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 3cfc73f..f5f61b28 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -22,6 +22,7 @@
+ 
+ #include <linux/module.h>
+ #include "ext4_jbd2.h"
++#include "ext4_extents.h"
+ #include "truncate.h"
+ 
+ #include <trace/events/ext4.h>
+@@ -1399,6 +1400,8 @@ void ext4_ind_truncate(struct inode *inode)
+ 	down_write(&ei->i_data_sem);
+ 
+ 	ext4_discard_preallocations(inode);
++	ext4_de_remove_space(inode, last_block,
++			     EXT_MAX_BLOCKS - last_block);
+ 
+ 	/*
+ 	 * The orphan list entry will now protect us from any crash which
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f97d671..f573020 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -486,7 +486,16 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 	up_read((&EXT4_I(inode)->i_data_sem));
+ 
+ 	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
+-		int ret = check_block_validity(inode, map);
++		int ret;
++		if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) {
++			/* delayed alloc may be allocated by fallocate and
++			 * coverted to initialized by directIO.
++			 * we need to handle delayed extent here.
++			 */
++			down_write((&EXT4_I(inode)->i_data_sem));
++			goto delayed_mapped;
++		}
++		ret = check_block_validity(inode, map);
+ 		if (ret != 0)
+ 			return ret;
+ 	}
+@@ -568,8 +577,16 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 		 * set the BH_Da_Mapped bit on them. Its important to do this
+ 		 * under the protection of i_data_sem.
  		 */
--		ext4_lblk_t	end = 0;
--		pgoff_t		last_offset;
--		pgoff_t		offset;
--		pgoff_t		index;
--		pgoff_t		start_index = 0;
--		struct page	**pages = NULL;
--		struct buffer_head *bh = NULL;
--		struct buffer_head *head = NULL;
--		unsigned int nr_pages = PAGE_SIZE / sizeof(struct page *);
--
--		pages = kmalloc(PAGE_SIZE, GFP_KERNEL);
--		if (pages == NULL)
--			return -ENOMEM;
--
--		offset = logical >> PAGE_SHIFT;
--repeat:
--		last_offset = offset;
--		head = NULL;
--		ret = find_get_pages_tag(inode->i_mapping, &offset,
--					PAGECACHE_TAG_DIRTY, nr_pages, pages);
--
--		if (!(flags & FIEMAP_EXTENT_DELALLOC)) {
--			/* First time, try to find a mapped buffer. */
--			if (ret == 0) {
--out:
--				for (index = 0; index < ret; index++)
--					page_cache_release(pages[index]);
--				/* just a hole. */
--				kfree(pages);
--				return EXT_CONTINUE;
--			}
--			index = 0;
--
--next_page:
--			/* Try to find the 1st mapped buffer. */
--			end = ((__u64)pages[index]->index << PAGE_SHIFT) >>
--				  blksize_bits;
--			if (!page_has_buffers(pages[index]))
--				goto out;
--			head = page_buffers(pages[index]);
--			if (!head)
--				goto out;
--
--			index++;
--			bh = head;
--			do {
--				if (end >= newex->ec_block +
--					newex->ec_len)
--					/* The buffer is out of
--					 * the request range.
--					 */
--					goto out;
--
--				if (buffer_mapped(bh) &&
--				    end >= newex->ec_block) {
--					start_index = index - 1;
--					/* get the 1st mapped buffer. */
--					goto found_mapped_buffer;
--				}
--
--				bh = bh->b_this_page;
--				end++;
--			} while (bh != head);
--
--			/* No mapped buffer in the range found in this page,
--			 * We need to look up next page.
--			 */
--			if (index >= ret) {
--				/* There is no page left, but we need to limit
--				 * newex->ec_len.
--				 */
--				newex->ec_len = end - newex->ec_block;
--				goto out;
--			}
--			goto next_page;
--		} else {
--			/*Find contiguous delayed buffers. */
--			if (ret > 0 && pages[0]->index == last_offset)
--				head = page_buffers(pages[0]);
--			bh = head;
--			index = 1;
--			start_index = 0;
-+		if (de.len == 0)
-+			/* A hole found. */
-+			return EXT_CONTINUE;
-+
-+		if (de.start > newex->ec_block) {
-+			/* A hole found. */
-+			newex->ec_len = min(de.start - newex->ec_block,
-+					    newex->ec_len);
-+			return EXT_CONTINUE;
- 		}
- 
--found_mapped_buffer:
--		if (bh != NULL && buffer_delay(bh)) {
--			/* 1st or contiguous delayed buffer found. */
--			if (!(flags & FIEMAP_EXTENT_DELALLOC)) {
--				/*
--				 * 1st delayed buffer found, record
--				 * the start of extent.
--				 */
--				flags |= FIEMAP_EXTENT_DELALLOC;
--				newex->ec_block = end;
--				logical = (__u64)end << blksize_bits;
--			}
--			/* Find contiguous delayed buffers. */
--			do {
--				if (!buffer_delay(bh))
--					goto found_delayed_extent;
--				bh = bh->b_this_page;
--				end++;
--			} while (bh != head);
--
--			for (; index < ret; index++) {
--				if (!page_has_buffers(pages[index])) {
--					bh = NULL;
--					break;
--				}
--				head = page_buffers(pages[index]);
--				if (!head) {
--					bh = NULL;
--					break;
--				}
--
--				if (pages[index]->index !=
--				    pages[start_index]->index + index
--				    - start_index) {
--					/* Blocks are not contiguous. */
--					bh = NULL;
--					break;
--				}
--				bh = head;
--				do {
--					if (!buffer_delay(bh))
--						/* Delayed-extent ends. */
--						goto found_delayed_extent;
--					bh = bh->b_this_page;
--					end++;
--				} while (bh != head);
--			}
--		} else if (!(flags & FIEMAP_EXTENT_DELALLOC))
--			/* a hole found. */
--			goto out;
--
--found_delayed_extent:
--		newex->ec_len = min(end - newex->ec_block,
--						(ext4_lblk_t)EXT_INIT_MAX_LEN);
--		if (ret == nr_pages && bh != NULL &&
--			newex->ec_len < EXT_INIT_MAX_LEN &&
--			buffer_delay(bh)) {
--			/* Have not collected an extent and continue. */
--			for (index = 0; index < ret; index++)
--				page_cache_release(pages[index]);
--			goto repeat;
--		}
--
--		for (index = 0; index < ret; index++)
--			page_cache_release(pages[index]);
--		kfree(pages);
-+		flags |= FIEMAP_EXTENT_DELALLOC;
-+		newex->ec_len = de.start + de.len - newex->ec_block;
+-		if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED)
++		if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
++			int ret;
+ 			set_buffers_da_mapped(inode, map);
++delayed_mapped:
++			/* delayed allocation blocks has been allocated */
++			ret = ext4_de_remove_space(inode, map->m_lblk,
++						   map->m_len);
++			if (ret < 0)
++				retval = ret;
++		}
  	}
  
--	physical = (__u64)newex->ec_start << blksize_bits;
--	length =   (__u64)newex->ec_len << blksize_bits;
+ 	up_write((&EXT4_I(inode)->i_data_sem));
+@@ -1676,6 +1693,7 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 			      struct buffer_head *bh)
+ {
+ 	int retval;
++	int ret;
+ 	sector_t invalid_block = ~((sector_t) 0xffff);
+ 
+ 	if (invalid_block < ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es))
+@@ -1722,6 +1740,14 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ out_unlock:
+ 	up_read((&EXT4_I(inode)->i_data_sem));
+ 
++	if (retval ==0) {
++		down_write((&EXT4_I(inode)->i_data_sem));
++		ret = ext4_de_add_space(inode, map->m_lblk, map->m_len);
++		up_write((&EXT4_I(inode)->i_data_sem));
++		if (ret)
++			return ret;
++	}
++
+ 	return retval;
+ }
+ 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 9515e5f..3df7c7b 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -50,6 +50,7 @@
+ #include "xattr.h"
+ #include "acl.h"
+ #include "mballoc.h"
++#include "ext4_extents.h"
+ 
+ #define CREATE_TRACE_POINTS
+ #include <trace/events/ext4.h>
+@@ -984,6 +985,7 @@ void ext4_clear_inode(struct inode *inode)
+ 	end_writeback(inode);
+ 	dquot_drop(inode);
+ 	ext4_discard_preallocations(inode);
++	ext4_de_remove_space(inode, 0, EXT_MAX_BLOCKS);
+ 	if (EXT4_I(inode)->jinode) {
+ 		jbd2_journal_release_jbd_inode(EXT4_JOURNAL(inode),
+ 					       EXT4_I(inode)->jinode);
+@@ -5065,9 +5067,14 @@ static int __init ext4_init_fs(void)
+ 		init_waitqueue_head(&ext4__ioend_wq[i]);
+ 	}
+ 
+-	err = ext4_init_pageio();
++	err = ext4_init_de();
+ 	if (err)
+ 		return err;
++
++	err = ext4_init_pageio();
++	if (err)
++		goto out8;
++
+ 	err = ext4_init_system_zone();
+ 	if (err)
+ 		goto out6;
+@@ -5117,6 +5124,9 @@ out5:
+ 	ext4_exit_system_zone();
+ out6:
+ 	ext4_exit_pageio();
++out8:
++	ext4_exit_de();
++
+ 	return err;
+ }
+ 
+-- 
+1.7.5.1
+
