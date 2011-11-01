@@ -1,41 +1,90 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH] ext4: let ext4_ext_rm_leaf work with EXT_DEBUG defined
-Date: Tue,  1 Nov 2011 11:24:26 +0800
-Message-ID: <1320117866-16571-1-git-send-email-xiaoqiangnk@gmail.com>
-Cc: dmonakhov@openvz.org, linux-ext4@vger.kernel.org,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: [PATCH] ext4: fix a syntax error in ext4_ext_insert_extent
+Date: Tue,  1 Nov 2011 11:46:40 +0800
+Message-ID: <1320119200-21741-1-git-send-email-xiaoqiangnk@gmail.com>
+Cc: linux-ext4@vger.kernel.org, Yongqiang Yang <xiaoqiangnk@gmail.com>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:37211 "EHLO
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:50855 "EHLO
 	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750884Ab1KAFa5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Nov 2011 01:30:57 -0400
-Received: by iaby12 with SMTP id y12so7945580iab.19
-        for <linux-ext4@vger.kernel.org>; Mon, 31 Oct 2011 22:30:56 -0700 (PDT)
+	with ESMTP id S1750779Ab1KAFxM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Nov 2011 01:53:12 -0400
+Received: by iaby12 with SMTP id y12so7963202iab.19
+        for <linux-ext4@vger.kernel.org>; Mon, 31 Oct 2011 22:53:11 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Var block is removed by commit 750c9c47, so ex_ee_block is used
-instead.
+This patch fixes a syntax error which omits a comma. Besides this,
+logical block number is unsigend 32 bits, so printk should use %u
+instead %d.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/extents.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ fs/ext4/extents.c |   16 ++++++++--------
+ 1 files changed, 8 insertions(+), 8 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 2798945..4b10b58 100644
+index 4b10b58..61fa9e1 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -2424,7 +2424,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 		if (err)
- 			goto out;
+@@ -1682,7 +1682,7 @@ int ext4_ext_insert_extent(handle_t *handle, struct inode *inode,
+ 	/* try to insert block into found extent and return */
+ 	if (ex && !(flag & EXT4_GET_BLOCKS_PRE_IO)
+ 		&& ext4_can_extents_be_merged(inode, ex, newext)) {
+-		ext_debug("append [%d]%d block to %d:[%d]%d (from %llu)\n",
++		ext_debug("append [%d]%d block to %u:[%d]%d (from %llu)\n",
+ 			  ext4_ext_is_uninitialized(newext),
+ 			  ext4_ext_get_actual_len(newext),
+ 			  le32_to_cpu(ex->ee_block),
+@@ -1720,7 +1720,7 @@ int ext4_ext_insert_extent(handle_t *handle, struct inode *inode,
+ 	if (le32_to_cpu(newext->ee_block) > le32_to_cpu(fex->ee_block))
+ 		next = ext4_ext_next_leaf_block(path);
+ 	if (next != EXT_MAX_BLOCKS) {
+-		ext_debug("next leaf block - %d\n", next);
++		ext_debug("next leaf block - %u\n", next);
+ 		BUG_ON(npath != NULL);
+ 		npath = ext4_ext_find_extent(inode, next, NULL);
+ 		if (IS_ERR(npath))
+@@ -1758,7 +1758,7 @@ has_space:
  
--		ext_debug("new extent: %u:%u:%llu\n", block, num,
-+		ext_debug("new extent: %u:%u:%llu\n", ex_ee_block, num,
- 				ext4_ext_pblock(ex));
- 		ex--;
- 		ex_ee_block = le32_to_cpu(ex->ee_block);
+ 	if (!nearex) {
+ 		/* there is no extent in this leaf, create first one */
+-		ext_debug("first extent in the leaf: %d:%llu:[%d]%d\n",
++		ext_debug("first extent in the leaf: %u:%llu:[%d]%d\n",
+ 				le32_to_cpu(newext->ee_block),
+ 				ext4_ext_pblock(newext),
+ 				ext4_ext_is_uninitialized(newext),
+@@ -1768,8 +1768,8 @@ has_space:
+ 		if (le32_to_cpu(newext->ee_block)
+ 			   > le32_to_cpu(nearex->ee_block)) {
+ 			/* Insert after */
+-			ext_debug("insert %d:%llu:[%d]%d %s before: "
+-					"nearest 0x%p\n"
++			ext_debug("insert %u:%llu:[%d]%d before: "
++					"nearest %p\n",
+ 					le32_to_cpu(newext->ee_block),
+ 					ext4_ext_pblock(newext),
+ 					ext4_ext_is_uninitialized(newext),
+@@ -1779,8 +1779,8 @@ has_space:
+ 		} else {
+ 			/* Insert before */
+ 			BUG_ON(newext->ee_block == nearex->ee_block);
+-			ext_debug("insert %d:%llu:[%d]%d %s after: "
+-					"nearest 0x%p\n"
++			ext_debug("insert %u:%llu:[%d]%d after: "
++					"nearest %p\n",
+ 					le32_to_cpu(newext->ee_block),
+ 					ext4_ext_pblock(newext),
+ 					ext4_ext_is_uninitialized(newext),
+@@ -1789,7 +1789,7 @@ has_space:
+ 		}
+ 		len = EXT_LAST_EXTENT(eh) - nearex + 1;
+ 		if (len > 0) {
+-			ext_debug("insert %d:%llu:[%d]%d: "
++			ext_debug("insert %u:%llu:[%d]%d: "
+ 					"move %d extents from 0x%p to 0x%p\n",
+ 					le32_to_cpu(newext->ee_block),
+ 					ext4_ext_pblock(newext),
 -- 
 1.7.5.1
 
