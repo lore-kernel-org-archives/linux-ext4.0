@@ -1,139 +1,139 @@
 From: Robin Dong <hao.bigrat@gmail.com>
-Subject: [PATCH 6/8 bigalloc] ext4: directories allocate a cluster when it need spaces
-Date: Tue,  1 Nov 2011 18:53:35 +0800
-Message-ID: <1320144817-16397-7-git-send-email-hao.bigrat@gmail.com>
+Subject: [PATCH 8/8 bigalloc] ext4: make cluster works for mmap
+Date: Tue,  1 Nov 2011 18:53:37 +0800
+Message-ID: <1320144817-16397-9-git-send-email-hao.bigrat@gmail.com>
 References: <1320144817-16397-1-git-send-email-hao.bigrat@gmail.com>
 Cc: Robin Dong <sanbai@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-gx0-f174.google.com ([209.85.161.174]:55262 "EHLO
 	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753579Ab1KAKyF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Nov 2011 06:54:05 -0400
-Received: by ggnb1 with SMTP id b1so6909337ggn.19
-        for <linux-ext4@vger.kernel.org>; Tue, 01 Nov 2011 03:54:04 -0700 (PDT)
+	with ESMTP id S1753674Ab1KAKyO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Nov 2011 06:54:14 -0400
+Received: by mail-gx0-f174.google.com with SMTP id b1so6909337ggn.19
+        for <linux-ext4@vger.kernel.org>; Tue, 01 Nov 2011 03:54:14 -0700 (PDT)
 In-Reply-To: <1320144817-16397-1-git-send-email-hao.bigrat@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Robin Dong <sanbai@taobao.com>
 
-allocate a cluster instead of a block when directories need new space.
+When users write a page in mmap regioin, it need to zero out other
+pages around it.
 
 Signed-off-by: Robin Dong <sanbai@taobao.com>
 ---
- fs/ext4/namei.c |   54 +++++++++++++++++++++++++++++++++++++++---------------
- 1 files changed, 39 insertions(+), 15 deletions(-)
+ fs/ext4/inode.c |   69 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 68 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 1c924fa..e8618ea 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -49,6 +49,16 @@
- #define NAMEI_RA_SIZE	     (NAMEI_RA_CHUNKS * NAMEI_RA_BLOCKS)
- #define NAMEI_RA_INDEX(c,b)  (((c) * NAMEI_RA_BLOCKS) + (b))
- 
-+static void ext4_zero_append(handle_t *handle, struct inode *inode,
-+		struct buffer_head *bh, ext4_lblk_t block)
-+{
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 2b70377..56a5401 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4545,13 +4545,17 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	struct page *page = vmf->page;
+ 	loff_t size;
+ 	unsigned long len;
+-	int ret;
++	int ret, i, uninit = 0;
+ 	struct file *file = vma->vm_file;
+ 	struct inode *inode = file->f_path.dentry->d_inode;
 +	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+
-+	if ((sbi->s_cluster_ratio > 1) &&
-+				(block % sbi->s_cluster_ratio))
-+		memset(bh->b_data, 0, inode->i_sb->s_blocksize);
-+}
-+
- static struct buffer_head *ext4_append(handle_t *handle,
- 					struct inode *inode,
- 					ext4_lblk_t *block, int *err)
-@@ -59,6 +69,7 @@ static struct buffer_head *ext4_append(handle_t *handle,
- 
- 	bh = ext4_bread(handle, inode, *block, 1, err);
- 	if (bh) {
-+		ext4_zero_append(handle, inode, bh, *block);
- 		inode->i_size += inode->i_sb->s_blocksize;
- 		EXT4_I(inode)->i_disksize = inode->i_size;
- 		*err = ext4_journal_get_write_access(handle, bh);
-@@ -1811,10 +1822,12 @@ static int ext4_mkdir(struct inode *dir, struct dentry *dentry, int mode)
- {
+ 	struct address_space *mapping = inode->i_mapping;
++	struct ext4_write_cluster_ctxt *ewcc = NULL;
  	handle_t *handle;
- 	struct inode *inode;
--	struct buffer_head *dir_block = NULL;
-+	struct buffer_head *first_block = NULL;
-+	struct buffer_head *dir_block[EXT4_MAX_CTXT_PAGES];
- 	struct ext4_dir_entry_2 *de;
-+	struct ext4_sb_info *sbi = EXT4_SB(dir->i_sb);
- 	unsigned int blocksize = dir->i_sb->s_blocksize;
--	int err, retries = 0;
-+	int i, err, retries = 0;
+ 	get_block_t *get_block;
+ 	int retries = 0;
++	unsigned int flags = AOP_FLAG_NOFS;
++	unsigned long from, to;
  
- 	if (EXT4_DIR_LINK_MAX(dir))
- 		return -EMLINK;
-@@ -1824,6 +1837,7 @@ static int ext4_mkdir(struct inode *dir, struct dentry *dentry, int mode)
- retry:
- 	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
- 					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
-+					sbi->s_cluster_ratio +
- 					EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
- 	if (IS_ERR(handle))
- 		return PTR_ERR(handle);
-@@ -1840,14 +1854,20 @@ retry:
- 	inode->i_op = &ext4_dir_inode_operations;
- 	inode->i_fop = &ext4_dir_operations;
- 	inode->i_size = EXT4_I(inode)->i_disksize = inode->i_sb->s_blocksize;
--	dir_block = ext4_bread(handle, inode, 0, 1, &err);
--	if (!dir_block)
--		goto out_clear_inode;
--	BUFFER_TRACE(dir_block, "get_write_access");
--	err = ext4_journal_get_write_access(handle, dir_block);
--	if (err)
--		goto out_clear_inode;
--	de = (struct ext4_dir_entry_2 *) dir_block->b_data;
+ 	/*
+ 	 * This check is racy but catches the common case. We rely on
+@@ -4608,7 +4612,47 @@ retry_alloc:
+ 		ret = VM_FAULT_SIGBUS;
+ 		goto out;
+ 	}
 +
-+	for (i = 0; i < sbi->s_cluster_ratio; i++) {
-+		dir_block[i] = ext4_bread(handle, inode, i, 1, &err);
-+		if (!dir_block[i])
-+			goto out_clear_inode;
-+		BUFFER_TRACE(dir_block[i], "get_write_access");
-+		memset(dir_block[i]->b_data, 0, inode->i_sb->s_blocksize);
-+		set_buffer_uptodate(dir_block[i]);
-+		err = ext4_journal_get_write_access(handle, dir_block[i]);
-+		if (err)
-+			goto out_clear_inode;
++	ewcc = ext4_alloc_write_cluster_ctxt();
++	if (!ewcc) {
++		ret = -ENOMEM;
++		goto out;
 +	}
-+	first_block = dir_block[0];
-+	de = (struct ext4_dir_entry_2 *) first_block->b_data;
- 	de->inode = cpu_to_le32(inode->i_ino);
- 	de->name_len = 1;
- 	de->rec_len = ext4_rec_len_to_disk(EXT4_DIR_REC_LEN(de->name_len),
-@@ -1862,10 +1882,13 @@ retry:
- 	strcpy(de->name, "..");
- 	ext4_set_de_type(dir->i_sb, de, S_IFDIR);
- 	inode->i_nlink = 2;
--	BUFFER_TRACE(dir_block, "call ext4_handle_dirty_metadata");
--	err = ext4_handle_dirty_metadata(handle, dir, dir_block);
--	if (err)
--		goto out_clear_inode;
-+	BUFFER_TRACE(first_block, "call ext4_handle_dirty_metadata");
 +
-+	for (i = 0; i < sbi->s_cluster_ratio; i++) {
-+		err = ext4_handle_dirty_metadata(handle, dir, dir_block[i]);
-+		if (err)
-+			goto out_clear_inode;
++	if (sbi->s_cluster_ratio > 1) {
++		/* We need to know whether the block is allocated already
++		 */
++		struct ext4_map_blocks map;
++		map.m_lblk = page->index;
++		map.m_len = 1;
++		ret = ext4_map_blocks(handle, inode, &map, 0);
++		uninit = map.m_flags & EXT4_MAP_UNWRITTEN;
++		if (ret <= 0 || uninit) {
++			ret = ext4_prepare_cluster_left_pages(inode,
++					page->index, ewcc, flags);
++			if (ret)
++				goto err_out;
++		}
 +	}
- 	err = ext4_mark_inode_dirty(handle, inode);
- 	if (!err)
- 		err = ext4_add_entry(handle, dentry, inode);
-@@ -1885,7 +1908,8 @@ out_clear_inode:
- 	d_instantiate(dentry, inode);
- 	unlock_new_inode(inode);
- out_stop:
--	brelse(dir_block);
-+	for (i = 0; i < sbi->s_cluster_ratio; i++)
-+		brelse(dir_block[i]);
++
+ 	ret = __block_page_mkwrite(vma, vmf, get_block);
++	if (ret)
++		goto err_out;
++
++	if (sbi->s_cluster_ratio > 1 && uninit) {
++		ret = ext4_prepare_cluster_right_pages(inode, page->index,
++				ewcc, flags);
++		if (ret)
++			goto err_out;
++		for (i = 0; i < ewcc->w_num_pages; i++) {
++			if (!ewcc->w_pages[i] ||
++					!page_buffers(ewcc->w_pages[i]))
++				break;
++			block_commit_write(ewcc->w_pages[i],
++					0, PAGE_CACHE_SIZE);
++		}
++	}
++
+ 	if (!ret && ext4_should_journal_data(inode)) {
+ 		if (walk_page_buffers(handle, page_buffers(page), 0,
+ 			  PAGE_CACHE_SIZE, NULL, do_journal_get_write_access)) {
+@@ -4616,13 +4660,36 @@ retry_alloc:
+ 			ret = VM_FAULT_SIGBUS;
+ 			goto out;
+ 		}
++
++		for (i = 0; i < ewcc->w_num_pages; i++) {
++			page = ewcc->w_pages[i];
++			if (!page || !page_buffers(page))
++				continue;
++			from = page->index << PAGE_CACHE_SHIFT;
++			to = from + PAGE_CACHE_SIZE;
++			ret = walk_page_buffers(handle, page_buffers(page),
++				from, to, NULL, do_journal_get_write_access);
++			if (ret) {
++				ret = VM_FAULT_SIGBUS;
++				goto out;
++			}
++		}
+ 		ext4_set_inode_state(inode, EXT4_STATE_JDATA);
+ 	}
++
++err_out:
++	if (ewcc) {
++		ext4_free_write_cluster_ctxt(ewcc);
++		ewcc = NULL;
++	}
  	ext4_journal_stop(handle);
- 	if (err == -ENOSPC && ext4_should_retry_alloc(dir->i_sb, &retries))
- 		goto retry;
+ 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+ 		goto retry_alloc;
+ out_ret:
+ 	ret = block_page_mkwrite_return(ret);
++
+ out:
++	if (ewcc)
++		ext4_free_write_cluster_ctxt(ewcc);
+ 	return ret;
+ }
 -- 
 1.7.3.2
 
