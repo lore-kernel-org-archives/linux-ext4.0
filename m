@@ -1,76 +1,107 @@
-From: Coly Li <i@coly.li>
-Subject: Re: bigalloc and max file size
-Date: Tue, 01 Nov 2011 09:10:54 +0800
-Message-ID: <4EAF471E.3030701@coly.li>
-References: <B327AF5F-B58A-43A2-BCB2-D0345F550D43@mit.edu> <97D9C5CC-0F22-4BC7-BDFA-7781D33CA7F3@whamcloud.com> <E0A4425F-9C68-4929-83CD-9B2CA3F87979@mit.edu> <4EACE2B7.9070402@coly.li> <F1D09DA1-3E1E-4D31-9F26-4AADAAF7A91D@mit.edu> <4EAE6BD4.9080705@coly.li> <583E0040-4EFA-4EBC-A738-A8968BB9135C@mit.edu> <422BEB28-76D0-4FD8-B7AE-130C9AAE10C0@dilger.ca> <20111031162223.GD16825@thunk.org> <4EAEDD56.6000709@coly.li> <20111031193837.GH16825@thunk.org>
-Reply-To: i@coly.li
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andreas Dilger <adilger@dilger.ca>,
-	Andreas Dilger <adilger@whamcloud.com>,
-	linux-ext4 development <linux-ext4@vger.kernel.org>,
-	Alex Zhuravlev <bzzz@whamcloud.com>, Tao Ma <tm@tao.ma>,
-	"hao.bigrat@gmail.com" <hao.bigrat@gmail.com>
-To: Ted Ts'o <tytso@mit.edu>
+From: Eryu Guan <guaneryu@gmail.com>
+Subject: [PATCH 1/2] jbd/jbd2: validate sb->s_first in journal_get_superblock()
+Date: Tue,  1 Nov 2011 10:05:03 +0800
+Message-ID: <1320113103-27406-1-git-send-email-guaneryu@gmail.com>
+Cc: Eryu Guan <guaneryu@gmail.com>, Jan Kara <jack@suse.cz>,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy5-pub.bluehost.com ([67.222.38.55]:59867 "HELO
-	oproxy5-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S933239Ab1KABBE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Oct 2011 21:01:04 -0400
-In-Reply-To: <20111031193837.GH16825@thunk.org>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:54420 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751682Ab1KACFp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Oct 2011 22:05:45 -0400
+Received: by vws1 with SMTP id 1so5422570vws.19
+        for <linux-ext4@vger.kernel.org>; Mon, 31 Oct 2011 19:05:44 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011=E5=B9=B411=E6=9C=8801=E6=97=A5 03:38, Ted Ts'o Wrote:
-> On Tue, Nov 01, 2011 at 01:39:34AM +0800, Coly Li wrote:
->> In some application, we allocate a big file which occupies most spac=
-e of a file system, while the file system built on
->> (expensive) SSD. In such configuration, we want less blocks allocate=
-d for inode table and bitmap. If the max extent
->> length could be much big, there is chance to have much less block gr=
-oups, which results more blocks for regular file.
->> Current bigalloc code does well already, but there is still chance t=
-o do better. The sys-admin team believe
->> cluster-based-extent can help Ext4 to consume as less meta data memo=
-ry as raw disk does, and gain as more available data
->> blocks as raw disks does, too. This is a small number on one single =
-SSD, but in our cluster environment, this effort can
->> help to save a recognized amount of capex.
->=20
-> OK, but you're not running into the 16TB file size limitation, are
-> you? =20
-No, we are not in this problem.
+I hit a J_ASSERT(blocknr != 0) failure in cleanup_journal_tail() when
+mounting a fsfuzzed ext3 image. It turns out that the corrupted ext3
+image has s_first = 0 in journal superblock, and the 0 is passed to
+journal->j_head in journal_reset(), then to blocknr in
+cleanup_journal_tail(), in the end the J_ASSERT failed.
 
-> That would be a lot of SSD's. =20
-Yes, IMHO that's a lot of SSDs.
+So validate s_first after reading journal superblock from disk in
+journal_get_superblock() to ensure s_first is valid.
 
->I assume the issue then is you
-> want to minimize the number of extents, limited by the 15-bit extent
-> length field?
-Not only extents, but also minimize inode table blocks, bitmap blocks.
+The following script could reproduce it:
 
->=20
-> What cluster size are you thinking about?
-Currently we test 1MB cluster size. The extreme ideal configuration (of=
- one use case) is, there is only one block group
-on the whole file system. (In this use case) we are willing to try bigg=
-est possible cluster size if we are able to.
+fstype=ext3
+blocksize=1024
+img=$fstype.img
+offset=0
+found=0
+magic="c0 3b 39 98"
 
-And how do you plan to
-> initialize it?  Via fallocate, or by explicitly writing zeros to the
-> whole file (so all of the blocks are marked as initialzied?  Is it
-> going to be sparse file?
-In the above application I mentioned, the file is allocated by fallocat=
-e(2). Writing to the file is appending write with
-8MB length, when writing reaches file end, it goes back to the beginnin=
-g of the file and continue to write.
+dd if=/dev/zero of=$img bs=1M count=8
+mkfs -t $fstype -b $blocksize -F $img
+filesize=`stat -c %s $img`
+while [ $offset -lt $filesize ]
+do
+        if od -j $offset -N 4 -t x1 $img | grep -i "$magic";then
+                echo "Found journal: $offset"
+                found=1
+                break
+        fi
+        offset=`echo "$offset+$blocksize" | bc`
+done
 
-Thanks.
---=20
-Coly Li
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+if [ $found -ne 1 ];then
+        echo "Magic \"$magic\" not found"
+        exit 1
+fi
+
+dd if=/dev/zero of=$img seek=$(($offset+23)) conv=notrunc bs=1 count=1
+
+mkdir -p ./mnt
+mount -o loop $img ./mnt
+
+Cc: Jan Kara <jack@suse.cz>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Eryu Guan <guaneryu@gmail.com>
+---
+ fs/jbd/journal.c  |    8 ++++++++
+ fs/jbd2/journal.c |    8 ++++++++
+ 2 files changed, 16 insertions(+), 0 deletions(-)
+
+diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+index 9fe061f..0c401de 100644
+--- a/fs/jbd/journal.c
++++ b/fs/jbd/journal.c
+@@ -1135,6 +1135,14 @@ static int journal_get_superblock(journal_t *journal)
+ 		goto out;
+ 	}
+ 
++	if (be32_to_cpu(sb->s_first) == 0 ||
++		be32_to_cpu(sb->s_first) >= journal->j_maxlen) {
++		printk(KERN_WARNING
++			"JBD: Invalid start block of journal: %u\n",
++			be32_to_cpu(sb->s_first));
++		goto out;
++	}
++
+ 	return 0;
+ 
+ out:
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index f24df13..e2d0e13 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1251,6 +1251,14 @@ static int journal_get_superblock(journal_t *journal)
+ 		goto out;
+ 	}
+ 
++	if (be32_to_cpu(sb->s_first) == 0 ||
++		be32_to_cpu(sb->s_first) >= journal->j_maxlen) {
++		printk(KERN_WARNING
++			"JBD2: Invalid start block of journal: %u\n",
++			be32_to_cpu(sb->s_first));
++		goto out;
++	}
++
+ 	return 0;
+ 
+ out:
+-- 
+1.7.7.1
+
