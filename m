@@ -1,117 +1,57 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/2] jbd/jbd2: validate sb->s_first in
- journal_get_superblock()
-Date: Tue, 1 Nov 2011 23:29:55 +0100
-Message-ID: <20111101222955.GE18701@quack.suse.cz>
-References: <1320113103-27406-1-git-send-email-guaneryu@gmail.com>
+Subject: Re: [PATCH] ext3: call ext3_mark_recovery_complete() when recovery
+ is really needed
+Date: Tue, 1 Nov 2011 23:43:07 +0100
+Message-ID: <20111101224307.GF18701@quack.suse.cz>
+References: <1320113179-27491-1-git-send-email-guaneryu@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
-	Theodore Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Eryu Guan <guaneryu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:42861 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:43186 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932332Ab1KAW35 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Nov 2011 18:29:57 -0400
+	id S1752676Ab1KAWnI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Nov 2011 18:43:08 -0400
 Content-Disposition: inline
-In-Reply-To: <1320113103-27406-1-git-send-email-guaneryu@gmail.com>
+In-Reply-To: <1320113179-27491-1-git-send-email-guaneryu@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 01-11-11 10:05:03, Eryu Guan wrote:
-> I hit a J_ASSERT(blocknr != 0) failure in cleanup_journal_tail() when
-> mounting a fsfuzzed ext3 image. It turns out that the corrupted ext3
-> image has s_first = 0 in journal superblock, and the 0 is passed to
-> journal->j_head in journal_reset(), then to blocknr in
-> cleanup_journal_tail(), in the end the J_ASSERT failed.
+On Tue 01-11-11 10:06:19, Eryu Guan wrote:
+> Call ext3_mark_recovery_complete() in ext3_fill_super() only if
+> needs_recovery is non-zero.
 > 
-> So validate s_first after reading journal superblock from disk in
-> journal_get_superblock() to ensure s_first is valid.
-> 
-> The following script could reproduce it:
-> 
-> fstype=ext3
-> blocksize=1024
-> img=$fstype.img
-> offset=0
-> found=0
-> magic="c0 3b 39 98"
-> 
-> dd if=/dev/zero of=$img bs=1M count=8
-> mkfs -t $fstype -b $blocksize -F $img
-> filesize=`stat -c %s $img`
-> while [ $offset -lt $filesize ]
-> do
->         if od -j $offset -N 4 -t x1 $img | grep -i "$magic";then
->                 echo "Found journal: $offset"
->                 found=1
->                 break
->         fi
->         offset=`echo "$offset+$blocksize" | bc`
-> done
-> 
-> if [ $found -ne 1 ];then
->         echo "Magic \"$magic\" not found"
->         exit 1
-> fi
-> 
-> dd if=/dev/zero of=$img seek=$(($offset+23)) conv=notrunc bs=1 count=1
-> 
-> mkdir -p ./mnt
-> mount -o loop $img ./mnt
-  Thanks. I've fixed-up the style problems pointed out by Andreas and added
-the patch to my tree.
+> Besides that, print out "recovery complete" message after calling
+> ext3_mark_recovery_complete().
+  OK, I don't see a problem in this patch. But is there some benefit in it?
+I'm slightly nervous it could change something subtle...
 
 								Honza
-
 > 
 > Cc: Jan Kara <jack@suse.cz>
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
 > Signed-off-by: Eryu Guan <guaneryu@gmail.com>
 > ---
->  fs/jbd/journal.c  |    8 ++++++++
->  fs/jbd2/journal.c |    8 ++++++++
->  2 files changed, 16 insertions(+), 0 deletions(-)
+>  fs/ext3/super.c |    5 +++--
+>  1 files changed, 3 insertions(+), 2 deletions(-)
 > 
-> diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-> index 9fe061f..0c401de 100644
-> --- a/fs/jbd/journal.c
-> +++ b/fs/jbd/journal.c
-> @@ -1135,6 +1135,14 @@ static int journal_get_superblock(journal_t *journal)
->  		goto out;
->  	}
->  
-> +	if (be32_to_cpu(sb->s_first) == 0 ||
-> +		be32_to_cpu(sb->s_first) >= journal->j_maxlen) {
-> +		printk(KERN_WARNING
-> +			"JBD: Invalid start block of journal: %u\n",
-> +			be32_to_cpu(sb->s_first));
-> +		goto out;
+> diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+> index 7beb69a..2681e0d 100644
+> --- a/fs/ext3/super.c
+> +++ b/fs/ext3/super.c
+> @@ -2060,9 +2060,10 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
+>  	EXT3_SB(sb)->s_mount_state |= EXT3_ORPHAN_FS;
+>  	ext3_orphan_cleanup(sb, es);
+>  	EXT3_SB(sb)->s_mount_state &= ~EXT3_ORPHAN_FS;
+> -	if (needs_recovery)
+> +	if (needs_recovery) {
+> +		ext3_mark_recovery_complete(sb, es);
+>  		ext3_msg(sb, KERN_INFO, "recovery complete");
+> -	ext3_mark_recovery_complete(sb, es);
 > +	}
-> +
->  	return 0;
->  
->  out:
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index f24df13..e2d0e13 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -1251,6 +1251,14 @@ static int journal_get_superblock(journal_t *journal)
->  		goto out;
->  	}
->  
-> +	if (be32_to_cpu(sb->s_first) == 0 ||
-> +		be32_to_cpu(sb->s_first) >= journal->j_maxlen) {
-> +		printk(KERN_WARNING
-> +			"JBD2: Invalid start block of journal: %u\n",
-> +			be32_to_cpu(sb->s_first));
-> +		goto out;
-> +	}
-> +
->  	return 0;
->  
->  out:
+>  	ext3_msg(sb, KERN_INFO, "mounted filesystem with %s data mode",
+>  		test_opt(sb,DATA_FLAGS) == EXT3_MOUNT_JOURNAL_DATA ? "journal":
+>  		test_opt(sb,DATA_FLAGS) == EXT3_MOUNT_ORDERED_DATA ? "ordered":
 > -- 
 > 1.7.7.1
 > 
