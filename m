@@ -1,34 +1,46 @@
-From: "Mr.Vincent Cheng" <info@vincent.com>
-Subject: Protected Project.
-Date: Tue, 1 Nov 2011 01:49:31 +0100 (CET)
-Message-ID: <4682.74.115.1.96.1320108571.squirrel@aful.cgt.fr>
-Reply-To: vincent_cheng011@yahoo.co.jp
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-To: unlisted-recipients:; (no To-header on input)
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: [PATCH] ext4: let ext4_ext_convet_to_initialized initialize var(eh) before using it
+Date: Tue,  1 Nov 2011 09:21:21 +0800
+Message-ID: <1320110481-12080-1-git-send-email-xiaoqiangnk@gmail.com>
+Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.cgt.fr ([212.234.228.142]:60657 "EHLO smtp.cgt.fr"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751758Ab1KADOl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 31 Oct 2011 23:14:41 -0400
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:34100 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753711Ab1KAD1f (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Oct 2011 23:27:35 -0400
+Received: by iaby12 with SMTP id y12so7856389iab.19
+        for <linux-ext4@vger.kernel.org>; Mon, 31 Oct 2011 20:27:34 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+ext4_ext_convert_to_initialized() does not initialize eh before using it
+and this is introduced in commit 864d21652.
 
+Cc:Eric Gouriou <egouriou@google.com>
+Cc:"Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+---
 
+Hi Eric,
 
-   I am Mr. Vincent Cheng Hoi Chuen, GBS, JP Chairman of the Hong Kong and
-Shanghai Banking Corporation Limited.i have a business proposal of
-TwentyTwo million Five Hundred Thousand United State Dollars only for
-you to transact with me from my bank to your country.
+Was that patch tested?
 
-All confirmable documents to back up the claims will be made available
-toyou prior to your acceptance and as soon as I receive your return mail
-Via my email address: vincent_cheng011@yahoo.co.jp and I will let you know
-whatis required of you.Your earliest response to this letter will be
-appreciated.
+ fs/ext4/extents.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-Best Regards,
-Mr.Vincent Cheng
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 9dfdf8f..2798945 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2944,6 +2944,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 		eof_block = map->m_lblk + map->m_len;
+ 
+ 	depth = ext_depth(inode);
++	eh = path[depth].p_hdr;
+ 	ex = path[depth].p_ext;
+ 	ee_block = le32_to_cpu(ex->ee_block);
+ 	ee_len = ext4_ext_get_actual_len(ex);
+-- 
+1.7.5.1
 
