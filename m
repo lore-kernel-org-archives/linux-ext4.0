@@ -1,149 +1,74 @@
-From: Andy Lutomirski <luto@amacapital.net>
-Subject: Re: Latency writing to an mlocked ext4 mapping
-Date: Mon, 31 Oct 2011 16:14:47 -0700
-Message-ID: <CALCETrViG6t1forOFtO-R=bGABvtLcECxJ8m8Tenv6rwxLg_ew@mail.gmail.com>
-References: <CALCETrXbPWsgaZmsvHZGEX-CxB579tG+zusXiYhR-13RcEnGvQ@mail.gmail.com>
-	<ACE78D84-0E94-4E7A-99BF-C20583018697@dilger.ca>
-	<CALCETrU23vyCXPG6mJU9qaPeAGOWDQtur5C+LRT154V5FM=Ajg@mail.gmail.com>
-	<CALCETrX=-CnNQ9+4tRbqMG4mfuy2FBPXXoJeBVDVPnEiRJYRFQ@mail.gmail.com>
-	<CALCETrUcOKQAJTTmCSD3Q3wYS-zLqv6tBa4AdkK50bNobRhDUQ@mail.gmail.com>
-	<20111025122618.GA8072@quack.suse.cz>
-	<CALCETrWoZeFpznU5Nv=+PvL9QRkTnS4atiGXx0jqZP_E3TJPqw@mail.gmail.com>
-	<20111031231031.GD10107@quack.suse.cz>
+From: Coly Li <i@coly.li>
+Subject: Re: bigalloc and max file size
+Date: Tue, 01 Nov 2011 09:10:54 +0800
+Message-ID: <4EAF471E.3030701@coly.li>
+References: <B327AF5F-B58A-43A2-BCB2-D0345F550D43@mit.edu> <97D9C5CC-0F22-4BC7-BDFA-7781D33CA7F3@whamcloud.com> <E0A4425F-9C68-4929-83CD-9B2CA3F87979@mit.edu> <4EACE2B7.9070402@coly.li> <F1D09DA1-3E1E-4D31-9F26-4AADAAF7A91D@mit.edu> <4EAE6BD4.9080705@coly.li> <583E0040-4EFA-4EBC-A738-A8968BB9135C@mit.edu> <422BEB28-76D0-4FD8-B7AE-130C9AAE10C0@dilger.ca> <20111031162223.GD16825@thunk.org> <4EAEDD56.6000709@coly.li> <20111031193837.GH16825@thunk.org>
+Reply-To: i@coly.li
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: Andreas Dilger <adilger@dilger.ca>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+	Andreas Dilger <adilger@whamcloud.com>,
+	linux-ext4 development <linux-ext4@vger.kernel.org>,
+	Alex Zhuravlev <bzzz@whamcloud.com>, Tao Ma <tm@tao.ma>,
+	"hao.bigrat@gmail.com" <hao.bigrat@gmail.com>
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:45823 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934704Ab1JaXOs convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Oct 2011 19:14:48 -0400
-In-Reply-To: <20111031231031.GD10107@quack.suse.cz>
+Received: from oproxy5-pub.bluehost.com ([67.222.38.55]:59867 "HELO
+	oproxy5-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S933239Ab1KABBE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Oct 2011 21:01:04 -0400
+In-Reply-To: <20111031193837.GH16825@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 31, 2011 at 4:10 PM, Jan Kara <jack@suse.cz> wrote:
-> On Fri 28-10-11 16:37:03, Andy Lutomirski wrote:
->> On Tue, Oct 25, 2011 at 5:26 AM, Jan Kara <jack@suse.cz> wrote:
->> >> =A0- Why are we calling file_update_time at all? =A0Presumably we=
- also
->> >> update the time when the page is written back (if not, that sound=
-s
->> >> like a bug, since the contents may be changed after something saw=
- the
->> >> mtime update), and, if so, why bother updating it on the first wr=
-ite?
->> >> Anything that relies on this behavior is, I think, unreliable, be=
-cause
->> >> the page could be made writable arbitrarily early by another prog=
-ram
->> >> that changes nothing.
->> > =A0We don't update timestamp when the page is written back. I beli=
-eve this
->> > is mostly because we don't know whether the data has been changed =
-by a
->> > write syscall, which already updated the timestamp, or by mmap. Th=
-at is
->> > also the reason why we update the timestamp at page fault time.
->> >
->> > =A0The reason why file_update_time() blocks for you is probably th=
-at it
->> > needs to get access to buffer where inode is stored on disk and be=
-cause a
->> > transaction including this buffer is committing at the moment, you=
-r thread
->> > has to wait until the transaction commit finishes. This is mostly =
-a problem
->> > specific to how ext4 works so e.g. xfs shouldn't have it.
->> >
->> > =A0Generally I believe the attempts to achieve any RT-like latenci=
-es when
->> > writing to a filesystem are rather hopeless. How much hopeless dep=
-ends on
->> > the load of the filesystem (e.g., in your case of mostly idle file=
-system I
->> > can imagine some tweaks could reduce your latencies to an acceptab=
-le level
->> > but once the disk gets loaded you'll be screwed). So I'd suggest t=
-hat
->> > having RT thread just store log in memory (or write to a pipe) and=
- have
->> > another non-RT thread write the data to disk would be a much more =
-robust
->> > design.
->>
->> Windows seems to do pretty well at this, and I think it should be fi=
-xable on
->> Linux too. =A0"All" that needs to be done is to remove the pte_wrpro=
-tect from
->> page_mkclean_one. =A0The fallout from that might be unpleasant, thou=
-gh, but
->> it would probably speed up a number of workloads.
-> =A0Well, but Linux's mm pretty much depends the pte_wrprotect() so th=
-at's
-> unlikely to go away in a forseeable future. The reason is that we nee=
-d to
-> reliably account the number of dirty pages so that we can throttle
-> processes that dirty too much of memory and also protect agaist syste=
-m
-> going into out-of-memory problems when too many pages would be dirty =
-(and
-> thus hard to reclaim). Thus we create clean pages as write-protected,=
- when
-> they are first written to, we account them as dirtied and unprotect t=
-hem.
-> When pages are cleaned by writeback, we decrement number of dirty pag=
-es
-> accordingly and write-protect them again.
+On 2011=E5=B9=B411=E6=9C=8801=E6=97=A5 03:38, Ted Ts'o Wrote:
+> On Tue, Nov 01, 2011 at 01:39:34AM +0800, Coly Li wrote:
+>> In some application, we allocate a big file which occupies most spac=
+e of a file system, while the file system built on
+>> (expensive) SSD. In such configuration, we want less blocks allocate=
+d for inode table and bitmap. If the max extent
+>> length could be much big, there is chance to have much less block gr=
+oups, which results more blocks for regular file.
+>> Current bigalloc code does well already, but there is still chance t=
+o do better. The sys-admin team believe
+>> cluster-based-extent can help Ext4 to consume as less meta data memo=
+ry as raw disk does, and gain as more available data
+>> blocks as raw disks does, too. This is a small number on one single =
+SSD, but in our cluster environment, this effort can
+>> help to save a recognized amount of capex.
+>=20
+> OK, but you're not running into the 16TB file size limitation, are
+> you? =20
+No, we are not in this problem.
 
-What about skipping pte_wrprotect for mlocked pages and continuing to
-account them dirty even if they're actually clean?  This should be a
-straightforward patch except for the effect on stable pages for
-writeback.  (It would also have unfortunate side effects on
-ctime/mtime without my other patch to rearrange that code.)
+> That would be a lot of SSD's. =20
+Yes, IMHO that's a lot of SSDs.
 
->
->> Adding a whole separate process just to copy data from memory to dis=
-k sounds
->> a bit like a hack -- that's what mmap + mlock would do if it worked =
-better.
-> =A0Well, always only guarantees you cannot hit major fault when acces=
-sing
-> the page. And we keep that promise - we only hit a minor fault. But I=
- agree
-> that for your usecase this is impractical.
+>I assume the issue then is you
+> want to minimize the number of extents, limited by the 15-bit extent
+> length field?
+Not only extents, but also minimize inode table blocks, bitmap blocks.
 
-Not really true.  We never fault in the page, but make_write can wait
-for I/O (for hundreds of ms) which is just as bad.
+>=20
+> What cluster size are you thinking about?
+Currently we test 1MB cluster size. The extreme ideal configuration (of=
+ one use case) is, there is only one block group
+on the whole file system. (In this use case) we are willing to try bigg=
+est possible cluster size if we are able to.
 
->
-> I can see as theoretically feasible for writeback to skip mlocked pag=
-es
-> which would help your case. But practically, I do not see how to impl=
-ement
-> that efficiently (just skipping a dirty page when we find it's mlocke=
-d
-> seems like a way to waste CPU needlessly).
->
->> Incidentally, pipes are no good. =A0I haven't root-caused it yet, bu=
-t both
->> reading to and writing from pipes, even if O_NONBLOCK, can block. =A0=
-I
->> haven't root-caused it yet.
-> =A0Interesting. I imagine they could block on memory allocation but I=
- guess
-> you don't put that much pressure on your system. So it might be inter=
-esting
-> to know where else they block...
+And how do you plan to
+> initialize it?  Via fallocate, or by explicitly writing zeros to the
+> whole file (so all of the blocks are marked as initialzied?  Is it
+> going to be sparse file?
+In the above application I mentioned, the file is allocated by fallocat=
+e(2). Writing to the file is appending write with
+8MB length, when writing reaches file end, it goes back to the beginnin=
+g of the file and continue to write.
 
-I'll figure it out in a couple of days, I imagine.
-
---Andy
+Thanks.
+--=20
+Coly Li
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
