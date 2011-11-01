@@ -1,79 +1,69 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] e2fsck: return more status if fsck aborts
-Date: Tue, 01 Nov 2011 12:32:28 -0500
-Message-ID: <4EB02D2C.3090809@redhat.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2 01/15] ext4: add a function which extends a group
+ without checking parameters
+Date: Tue, 1 Nov 2011 18:24:35 -0400
+Message-ID: <20111101222435.GF32161@thunk.org>
+References: <1314691825-12295-1-git-send-email-xiaoqiangnk@gmail.com>
+ <1314691825-12295-2-git-send-email-xiaoqiangnk@gmail.com>
+ <CAGBYx2aT6wGc1T+ijycua3+tbJo4_pxE2tt2q4c+yDogqNnLhQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: adilger@dilger.ca, linux-ext4@vger.kernel.org
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:23598 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750736Ab1KARc3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Nov 2011 13:32:29 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pA1HWTp2009087
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Tue, 1 Nov 2011 13:32:29 -0400
-Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id pA1HWSCZ002740
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 1 Nov 2011 13:32:29 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:39622 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753294Ab1KAWYi convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Nov 2011 18:24:38 -0400
+Content-Disposition: inline
+In-Reply-To: <CAGBYx2aT6wGc1T+ijycua3+tbJo4_pxE2tt2q4c+yDogqNnLhQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If we abort fsck (due to ENOMEM for example) we exit
-with only the FSCK_ERROR flag.  It seems useful
-to do the same sorts of checks as we do on normal
-exit, and return whether the filesystem was modified,
-whether there are still uncorrected errors, etc, even
-in the abort case.
+On Sun, Oct 30, 2011 at 09:48:43PM +0800, Yongqiang Yang wrote:
+> ping?
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+I was very tempted to integrate this during this merge window, since
+it only touches the online resize code, and it was pretty easy to test
+it.  And, it would have been nice to have the new online resize
+support released at about the same time as e2fsprogs 1.42, especially
+it's much faster and handles flex_bg correctly.
 
-diff --git a/e2fsck/util.c b/e2fsck/util.c
-index fb9a87a..d761ae5 100644
---- a/e2fsck/util.c
-+++ b/e2fsck/util.c
-@@ -45,18 +45,37 @@ extern e2fsck_t e2fsck_global_ctx;   /* Try your very best not to use this! */
- 
- void fatal_error(e2fsck_t ctx, const char *msg)
- {
-+	ext2_filsys fs = ctx->fs;
-+	int exit_value = FSCK_ERROR;
-+
- 	if (msg)
- 		fprintf (stderr, "e2fsck: %s\n", msg);
--	if (ctx->fs && ctx->fs->io) {
-+	if (!fs)
-+		goto out;
-+	if (fs->io) {
- 		if (ctx->fs->io->magic == EXT2_ET_MAGIC_IO_CHANNEL)
- 			io_channel_flush(ctx->fs->io);
- 		else
- 			fprintf(stderr, "e2fsck: io manager magic bad!\n");
- 	}
-+	if (ext2fs_test_changed(fs)) {
-+		exit_value |= FSCK_NONDESTRUCT;
-+		printf(_("\n%s: ***** FILE SYSTEM WAS MODIFIED *****\n"),
-+			ctx->device_name);
-+		if (ctx->mount_flags & EXT2_MF_ISROOT)
-+			exit_value |= FSCK_REBOOT;
-+	}
-+	if (!ext2fs_test_valid(fs)) {
-+		printf(_("\n%s: ********** WARNING: Filesystem still has "
-+			 "errors **********\n\n"), ctx->device_name);
-+		exit_value |= FSCK_UNCORRECTED;
-+		exit_value &= ~FSCK_NONDESTRUCT;
-+	}
-+out:
- 	ctx->flags |= E2F_FLAG_ABORT;
- 	if (ctx->flags & E2F_FLAG_SETJMP_OK)
- 		longjmp(ctx->abort_loc, 1);
--	exit(FSCK_ERROR);
-+	exit(exit_value);
- }
- 
- void *e2fsck_allocate_memory(e2fsck_t ctx, unsigned int size,
+Unfortunately, I tried testing both with the old and new resize2fs
+binaries, and in both cases after created a stock ext4 filesystem
+using the mke2fs.conf defaults as shipped with e2fsprogs, resized the
+file system, and umounted the file system, the e2fsck reported file
+system corruption.
 
+I'm guesing you didn't test with the uninit_bg feature?  And it looks
+like something is going wrong with the block bitmap in the last block
+group.
+
+I've put the online-resize patches with some cleanup work and some
+changes so it would patch cleanly and compile into the end of the ext4
+patch tree in the ext4 patch queue repository:
+
+      git://repo.or.cz/ext4-patch-queue.git
+
+On the whole the patch series seemed well written, but it looks like
+it needs just a bit more polishing.  Hopefully we can get this fixed
+up after the current merge window closes, and we can put it at the
+beginning of the patches for the next merge window.
+
+						- Ted
+
+# e2fsck -f /dev/vdc
+e2fsck 1.42-WIP (16-Oct-2011)
+Last group block bitmap uninitialized.  Fix<y>? yes
+
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+Block bitmap differences:  +(26206211--26206213) +26206215 +(26206219--26206221) +26206223 +(26206227--26206229) +26206231 +(26206235--26206237) +26206239 +(26206243--26206245) +26206247 +(26206251--26206253) +26206255 +(26206259--26206261) +26206263 +(26206267--26206269) +26206271 +(26206275--26206277) +26206279 +(26206283--26206285) +26206287 +(26206291--26206293) +26206295 +(26206299--26206301) +26206303 +(26206307--26206309) +26206311 +(26206315--26206317) +26206319 +(26206323--26206325) +26206327 +(26206331--26206333) +26206335 +(26206339--26206341) +26206343 +(26206347--26206349) +26206351 +(26206355--26206357) +26206359 +(26206363--26206365) +26206367 +(26206371--26206373) +26206375 +(26206379--26206381) +26206383 +(26206387--26206389) +26206391 +(26206395--26206397) +26206399 +(262
+ 06403--26206405) +26206407 +(26206411--26206413) +26206415 +(26206419--26206421) +26206423 +(26206427--26206429) +26206431 +(26206435--26206437) +26206439 +(26206443--26206445) +26206447 +(26206451--26206453) +26206455 +(26206459--26206461) +26206463 -(26206465--26206466) -26206470 -(26206472--26206474) -26206478 -(26206480--26206482) -26206486 -(26206488--26206490) -26206494 -(26206496--26206498) -26206502 -(26206504--26206506) -26206510 -(26206512--26206514) -26206518 -(26206520--26206522) -26206526 -(26206528--26206530) -26206534 -(26206536--26206538) -26206542 -(26206544--26206546) -26206550 -(26206552--26206554) -26206558 -(26206560--26206562) -26206566 -(26206568--26206570) -26206574 -(26206576--26206578) -26206582 -(26206584--26206586) -26206590 -(26206592--26206594) -26206598 -(2
+ 6206600--26206602) -26206606 -(26206608--26206610) -26206614 -(26206616--26206618) -26206622 -(26206624--26206626) -26206630 -(26206632--26206634) -26206638 -(26206640--26206642) -26206646 -(26206648--26206650) -26206654 -26206656 -26206662 -(26206664--26206666) -26206670 -(26206672--26206674) -26206678 -(26206680--26206682) -26206686 -(26206688--26206690) -26206694 -(26206696--26206698) -26206702 -(26206704--26206706) -26206710 -(26206712--26206714) -26206718 -(26206720--26206722) -26206726 -(26206728--26206730) -26206734 -(26206736--26206738) -26206742 -(26206744--26206746) -26206750 -(26206752--26206754) -26206758 -(26206760--26206762) -26206766 -(26206768--26206770) -26206774 -(26206776--26206778) -26206782 -(26206784--26206786) -26206790 -(26206792--26206794) -26206798 -(26206800--2
+ 6206802) -26206806 -(26206808--26206810) -26206814 -(26206816--26206818) -26206822 -(26206824--26206826) -26206830 -(26206832--26206834) -26206838 -(26206840--26206842) -26206846 -(26206848--26206850) -26206854 -(26206856--26206858) -26206862 -(26206864--26206866) -26206870 -(26206872--26206874) -26206878 -(26206880--26206882) -26206886 -(26206888--26206890) -26206894 -(26206896--26206898) -26206902 -(26206904--26206906) -26206910 -(26206912--26206914) -26206918 -(26206920--26206922) -26206926 -(26206928--26206930) -26206934 -(26206936--26206938) -26206942 -(26206944--26206946) -26206950 -(26206952--26206954) -26206958 -(26206960--26206962) -26206966 -(26206968--26206970) -26206974 -(26206976--26206978) -26206982 -(26206984--26206986) -26206990 -(26206992--26206994) -26206998 -(26207000-
+ -26207002) -26207006 -(26207008--26207010) -26207014 -(26207016--26207018) -26207022 -(26207024--26207026) -26207030 -(26207032--26207034) -26207038 -(26207040--26207042) -26207046 -(26207048--26207050) -26207054 -(26207056--26207058) -26207062 -(26207064--26207066) -26207070 -(26207072--26207074) -26207078 -(26207080--26207082) -26207086 -(26207088--26207090) -26207094 -(26207096--26207098) -26207102 -(26207104--26207106) -26207110 -(26207112--26207114) -26207118 -(26207120--26207122) -26207126 -(26207128--26207130) -26207134 -(26207136--26207138) -26207142 -(26207144--26207146) -26207150 ....
