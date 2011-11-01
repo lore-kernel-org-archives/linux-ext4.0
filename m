@@ -1,90 +1,121 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH] ext4: fix a syntax error in ext4_ext_insert_extent
-Date: Tue,  1 Nov 2011 11:46:40 +0800
-Message-ID: <1320119200-21741-1-git-send-email-xiaoqiangnk@gmail.com>
-Cc: linux-ext4@vger.kernel.org, Yongqiang Yang <xiaoqiangnk@gmail.com>
-To: tytso@mit.edu
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 1/2] jbd/jbd2: validate sb->s_first in journal_get_superblock()
+Date: Tue, 1 Nov 2011 00:55:50 -0600
+Message-ID: <B934EB96-248A-4E03-AADE-C191630080BA@dilger.ca>
+References: <1320113103-27406-1-git-send-email-guaneryu@gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: Eryu Guan <guaneryu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:50855 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750779Ab1KAFxM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Nov 2011 01:53:12 -0400
-Received: by iaby12 with SMTP id y12so7963202iab.19
-        for <linux-ext4@vger.kernel.org>; Mon, 31 Oct 2011 22:53:11 -0700 (PDT)
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:17117 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750987Ab1KAGzg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Nov 2011 02:55:36 -0400
+In-Reply-To: <1320113103-27406-1-git-send-email-guaneryu@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch fixes a syntax error which omits a comma. Besides this,
-logical block number is unsigend 32 bits, so printk should use %u
-instead %d.
+On 2011-10-31, at 8:05 PM, Eryu Guan wrote:
+> I hit a J_ASSERT(blocknr != 0) failure in cleanup_journal_tail() when
+> mounting a fsfuzzed ext3 image. It turns out that the corrupted ext3
+> image has s_first = 0 in journal superblock, and the 0 is passed to
+> journal->j_head in journal_reset(), then to blocknr in
+> cleanup_journal_tail(), in the end the J_ASSERT failed.
+> 
+> So validate s_first after reading journal superblock from disk in
+> journal_get_superblock() to ensure s_first is valid.
+> 
+> The following script could reproduce it:
+> 
+> fstype=ext3
+> blocksize=1024
+> img=$fstype.img
+> offset=0
+> found=0
+> magic="c0 3b 39 98"
+> 
+> dd if=/dev/zero of=$img bs=1M count=8
+> mkfs -t $fstype -b $blocksize -F $img
+> filesize=`stat -c %s $img`
+> while [ $offset -lt $filesize ]
+> do
+>        if od -j $offset -N 4 -t x1 $img | grep -i "$magic";then
+>                echo "Found journal: $offset"
+>                found=1
+>                break
+>        fi
+>        offset=`echo "$offset+$blocksize" | bc`
+> done
+> 
+> if [ $found -ne 1 ];then
+>        echo "Magic \"$magic\" not found"
+>        exit 1
+> fi
+> 
+> dd if=/dev/zero of=$img seek=$(($offset+23)) conv=notrunc bs=1 count=1
+> 
+> mkdir -p ./mnt
+> mount -o loop $img ./mnt
+> 
+> Cc: Jan Kara <jack@suse.cz>
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> Signed-off-by: Eryu Guan <guaneryu@gmail.com>
+> ---
+> fs/jbd/journal.c  |    8 ++++++++
+> fs/jbd2/journal.c |    8 ++++++++
+> 2 files changed, 16 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+> index 9fe061f..0c401de 100644
+> --- a/fs/jbd/journal.c
+> +++ b/fs/jbd/journal.c
+> @@ -1135,6 +1135,14 @@ static int journal_get_superblock(journal_t *journal)
+> 		goto out;
+> 	}
+> 
+> +	if (be32_to_cpu(sb->s_first) == 0 ||
+> +		be32_to_cpu(sb->s_first) >= journal->j_maxlen) {
 
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
----
- fs/ext4/extents.c |   16 ++++++++--------
- 1 files changed, 8 insertions(+), 8 deletions(-)
+(style) Please fix the indenting to align with '(' on previous line.
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 4b10b58..61fa9e1 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -1682,7 +1682,7 @@ int ext4_ext_insert_extent(handle_t *handle, struct inode *inode,
- 	/* try to insert block into found extent and return */
- 	if (ex && !(flag & EXT4_GET_BLOCKS_PRE_IO)
- 		&& ext4_can_extents_be_merged(inode, ex, newext)) {
--		ext_debug("append [%d]%d block to %d:[%d]%d (from %llu)\n",
-+		ext_debug("append [%d]%d block to %u:[%d]%d (from %llu)\n",
- 			  ext4_ext_is_uninitialized(newext),
- 			  ext4_ext_get_actual_len(newext),
- 			  le32_to_cpu(ex->ee_block),
-@@ -1720,7 +1720,7 @@ int ext4_ext_insert_extent(handle_t *handle, struct inode *inode,
- 	if (le32_to_cpu(newext->ee_block) > le32_to_cpu(fex->ee_block))
- 		next = ext4_ext_next_leaf_block(path);
- 	if (next != EXT_MAX_BLOCKS) {
--		ext_debug("next leaf block - %d\n", next);
-+		ext_debug("next leaf block - %u\n", next);
- 		BUG_ON(npath != NULL);
- 		npath = ext4_ext_find_extent(inode, next, NULL);
- 		if (IS_ERR(npath))
-@@ -1758,7 +1758,7 @@ has_space:
- 
- 	if (!nearex) {
- 		/* there is no extent in this leaf, create first one */
--		ext_debug("first extent in the leaf: %d:%llu:[%d]%d\n",
-+		ext_debug("first extent in the leaf: %u:%llu:[%d]%d\n",
- 				le32_to_cpu(newext->ee_block),
- 				ext4_ext_pblock(newext),
- 				ext4_ext_is_uninitialized(newext),
-@@ -1768,8 +1768,8 @@ has_space:
- 		if (le32_to_cpu(newext->ee_block)
- 			   > le32_to_cpu(nearex->ee_block)) {
- 			/* Insert after */
--			ext_debug("insert %d:%llu:[%d]%d %s before: "
--					"nearest 0x%p\n"
-+			ext_debug("insert %u:%llu:[%d]%d before: "
-+					"nearest %p\n",
- 					le32_to_cpu(newext->ee_block),
- 					ext4_ext_pblock(newext),
- 					ext4_ext_is_uninitialized(newext),
-@@ -1779,8 +1779,8 @@ has_space:
- 		} else {
- 			/* Insert before */
- 			BUG_ON(newext->ee_block == nearex->ee_block);
--			ext_debug("insert %d:%llu:[%d]%d %s after: "
--					"nearest 0x%p\n"
-+			ext_debug("insert %u:%llu:[%d]%d after: "
-+					"nearest %p\n",
- 					le32_to_cpu(newext->ee_block),
- 					ext4_ext_pblock(newext),
- 					ext4_ext_is_uninitialized(newext),
-@@ -1789,7 +1789,7 @@ has_space:
- 		}
- 		len = EXT_LAST_EXTENT(eh) - nearex + 1;
- 		if (len > 0) {
--			ext_debug("insert %d:%llu:[%d]%d: "
-+			ext_debug("insert %u:%llu:[%d]%d: "
- 					"move %d extents from 0x%p to 0x%p\n",
- 					le32_to_cpu(newext->ee_block),
- 					ext4_ext_pblock(newext),
--- 
-1.7.5.1
+> +		printk(KERN_WARNING
+> +			"JBD: Invalid start block of journal: %u\n",
+> +			be32_to_cpu(sb->s_first));
+> +		goto out;
+> +	}
+> +
+> 	return 0;
+> 
+> out:
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index f24df13..e2d0e13 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -1251,6 +1251,14 @@ static int journal_get_superblock(journal_t *journal)
+> 		goto out;
+> 	}
+> 
+> +	if (be32_to_cpu(sb->s_first) == 0 ||
+> +		be32_to_cpu(sb->s_first) >= journal->j_maxlen) {
+
+(style) same.
+
+> +		printk(KERN_WARNING
+> +			"JBD2: Invalid start block of journal: %u\n",
+> +			be32_to_cpu(sb->s_first));
+> +		goto out;
+> +	}
+> +
+> 	return 0;
+
+Looks fine otherwise.
+
+Cheers, Andreas
+
+
+
+
 
