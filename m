@@ -1,92 +1,50 @@
-From: Johannes Weiner <jweiner@redhat.com>
-Subject: Re: [patch 3/5] mm: try to distribute dirty pages fairly across zones
-Date: Tue, 1 Nov 2011 11:55:53 +0100
-Message-ID: <20111101105553.GG5819@redhat.com>
-References: <1317367044-475-1-git-send-email-jweiner@redhat.com>
- <1317367044-475-4-git-send-email-jweiner@redhat.com>
- <20110930142805.GC869@tiehlicka.suse.cz>
- <20111028201829.GA20607@localhost>
- <20111031113321.GA30890@localhost>
-Mime-Version: 1.0
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: bigalloc and max file size
+Date: Tue, 1 Nov 2011 07:47:58 -0400
+Message-ID: <898A7160-25A8-44BA-B08B-C8FADC87F8EA@MIT.EDU>
+References: <B327AF5F-B58A-43A2-BCB2-D0345F550D43@mit.edu> <97D9C5CC-0F22-4BC7-BDFA-7781D33CA7F3@whamcloud.com> <E0A4425F-9C68-4929-83CD-9B2CA3F87979@mit.edu> <4EACE2B7.9070402@coly.li> <F1D09DA1-3E1E-4D31-9F26-4AADAAF7A91D@mit.edu> <4EAE6BD4.9080705@coly.li> <583E0040-4EFA-4EBC-A738-A8968BB9135C@mit.edu> <422BEB28-76D0-4FD8-B7AE-130C9AAE10C0@dilger.ca> <20111031162223.GD16825@thunk.org> <4EAEDD56.6000709@coly.li> <20111031193837.GH16825@thunk.org> <4EAF471E.3030701@coly.li>
+Mime-Version: 1.0 (Apple Message framework v1251.1)
 Content-Type: text/plain; charset=us-ascii
-Cc: Michal Hocko <mhocko@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
-        Mel Gorman <mgorman@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
-        Rik van Riel <riel@redhat.com>, Minchan Kim <minchan.kim@gmail.com>,
-        Chris Mason <chris.mason@oracle.com>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "Li, Shaohua" <shaohua.li@intel.com>,
-        "xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-        "linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "linux-mm@kvack.org" <linux-mm@kvack.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Wu Fengguang <fengguang.wu@intel.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20111031113321.GA30890@localhost>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Transfer-Encoding: 8BIT
+Cc: Theodore Tso <tytso@MIT.EDU>, Andreas Dilger <adilger@dilger.ca>,
+	Andreas Dilger <adilger@whamcloud.com>,
+	linux-ext4 development <linux-ext4@vger.kernel.org>,
+	Alex Zhuravlev <bzzz@whamcloud.com>, Tao Ma <tm@tao.ma>,
+	"hao.bigrat@gmail.com" <hao.bigrat@gmail.com>
+To: i@coly.li
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from DMZ-MAILSEC-SCANNER-3.MIT.EDU ([18.9.25.14]:45488 "EHLO
+	dmz-mailsec-scanner-3.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753680Ab1KALsC convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Nov 2011 07:48:02 -0400
+In-Reply-To: <4EAF471E.3030701@coly.li>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 31, 2011 at 07:33:21PM +0800, Wu Fengguang wrote:
-> > //regression
-> > 3) much increased cpu %user and %system for btrfs
-> 
-> Sorry I find out that the CPU time regressions for btrfs are caused by
-> some additional trace events enabled on btrfs (for debugging an
-> unrelated btrfs hang bug) which results in 7 times more trace event
-> lines:
-> 
->  2701238 /export/writeback/thresh=1000M/btrfs-1dd-4k-8p-2941M-1000M:10-3.1.0-rc9-ioless-full-nfs-wq5-next-20111014+
-> 19054054 /export/writeback/thresh=1000M/btrfs-1dd-4k-8p-2941M-1000M:10-3.1.0-rc9-ioless-full-per-zone-dirty-next-20111014+
-> 
-> So no real regressions.
 
-Phew :-)
-
-> Besides, the patchset also performs good on random writes:
+On Oct 31, 2011, at 9:10 PM, Coly Li wrote:
 > 
-> 3.1.0-rc9-ioless-full-nfs-wq5-next-20111014+  3.1.0-rc9-ioless-full-per-zone-dirty-next-20111014+  
-> ------------------------  ------------------------  
->                     1.65        -5.1%         1.57  MMAP-RANDWRITE-4K/btrfs-fio_fat_mmap_randwrite_4k-4k-8p-4096M-20:10-X
->                    18.65        -6.4%        17.46  MMAP-RANDWRITE-4K/ext3-fio_fat_mmap_randwrite_4k-4k-8p-4096M-20:10-X
->                     2.09        +1.2%         2.12  MMAP-RANDWRITE-4K/ext4-fio_fat_mmap_randwrite_4k-4k-8p-4096M-20:10-X
->                     2.49        -0.3%         2.48  MMAP-RANDWRITE-4K/xfs-fio_fat_mmap_randwrite_4k-4k-8p-4096M-20:10-X
->                    51.35        +0.0%        51.36  MMAP-RANDWRITE-64K/btrfs-fio_fat_mmap_randwrite_64k-64k-8p-4096M-20:10-X
->                    45.20        +0.5%        45.43  MMAP-RANDWRITE-64K/ext3-fio_fat_mmap_randwrite_64k-64k-8p-4096M-20:10-X
->                    44.77        +0.7%        45.10  MMAP-RANDWRITE-64K/ext4-fio_fat_mmap_randwrite_64k-64k-8p-4096M-20:10-X
->                    45.11        +2.5%        46.23  MMAP-RANDWRITE-64K/xfs-fio_fat_mmap_randwrite_64k-64k-8p-4096M-20:10-X
->                   211.31        +0.2%       211.74  TOTAL write_bw
+>> I assume the issue then is you
+>> want to minimize the number of extents, limited by the 15-bit extent
+>> length field?
+> Not only extents, but also minimize inode table blocks, bitmap blocks.
 
-Hmm, mmapped IO page allocations are not annotated yet, so I expect
-this to be just runtime variations?
 
-> And writes to USB key:
-> 
-> 3.1.0-rc9-ioless-full-nfs-wq5-next-20111014+  3.1.0-rc9-ioless-full-per-zone-dirty-next-20111014+  
-> ------------------------  ------------------------  
->                     5.94        +0.8%         5.99  UKEY-thresh=1G/btrfs-1dd-4k-8p-4096M-1024M:10-X
->                     2.64        -0.8%         2.62  UKEY-thresh=1G/ext3-10dd-4k-8p-4096M-1024M:10-X
->                     5.10        +0.3%         5.12  UKEY-thresh=1G/ext3-1dd-4k-8p-4096M-1024M:10-X
->                     3.26        -0.8%         3.24  UKEY-thresh=1G/ext3-2dd-4k-8p-4096M-1024M:10-X
->                     5.63        -0.5%         5.60  UKEY-thresh=1G/ext4-10dd-4k-8p-4096M-1024M:10-X
->                     6.04        -0.1%         6.04  UKEY-thresh=1G/ext4-1dd-4k-8p-4096M-1024M:10-X
->                     5.90        -0.2%         5.88  UKEY-thresh=1G/ext4-2dd-4k-8p-4096M-1024M:10-X
->                     2.45       +22.6%         3.00  UKEY-thresh=1G/xfs-10dd-4k-8p-4096M-1024M:10-X
->                     6.18        -0.4%         6.16  UKEY-thresh=1G/xfs-1dd-4k-8p-4096M-1024M:10-X
->                     4.81        +0.0%         4.81  UKEY-thresh=1G/xfs-2dd-4k-8p-4096M-1024M:10-X
->                    47.94        +1.1%        48.45  TOTAL write_bw
-> 
-> In summary, I see no problem at all in these trivial writeback tests.
-> 
-> Tested-by: Wu Fengguang <fengguang.wu@intel.com>
+So this makes no sense to me.  Bigalloc doesn't have any effect on the number of inode table blocks, and while it certainly shrinks the number block allocation bitmap blocks, changing the extent tree format has no effect on the number of bitmap blocks.
 
-Thanks!
+Perhaps I'm not making myself clear.  I was trying to figure out the basis for the desire to use units of clusters for the extent length in the extent tree block.    Is that the reason you were so interested in this change of the bigalloc format?   So you could have a smaller extent tree?
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+>> 
+>> What cluster size are you thinking about?
+> Currently we test 1MB cluster size. The extreme ideal configuration (of one use case) is, there is only one block group
+> on the whole file system. (In this use case) we are willing to try biggest possible cluster size if we are able to.
+
+This is where you have a single file which is nearly as big as the entire file system?   In that case, why are you using an ext4 file system at all?   Why not just use a raw partition instead, plus an auxiliary partition for the smaller files?
+
+I'm not being critical; I'm just trying to understand your use case and constraints.
+
+Regards,
+
+-- Ted
+
