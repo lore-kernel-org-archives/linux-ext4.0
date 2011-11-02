@@ -1,87 +1,100 @@
-From: Eric Gouriou <egouriou@google.com>
-Subject: Re: [PATCH] ext4: let ext4_ext_convet_to_initialized initialize
- var(eh) before using it
-Date: Wed, 2 Nov 2011 01:22:59 -0700
-Message-ID: <CAMUAhYQPPt6Bke6zE=r3XAa6ukHUrxQe-R_oqBLOUM22j65WDQ@mail.gmail.com>
-References: <1320110481-12080-1-git-send-email-xiaoqiangnk@gmail.com>
-	<20111101225222.GH32161@thunk.org>
-	<CAMUAhYSh4VUbh3oG9hwi0FxMs=gMDiOHqvRhDgZTmP-_8PuW3g@mail.gmail.com>
+From: Eryu Guan <guaneryu@gmail.com>
+Subject: Re: [PATCH] ext3: call ext3_mark_recovery_complete() when recovery is
+ really needed
+Date: Wed, 2 Nov 2011 22:04:54 +0800
+Message-ID: <CA+dCu88f-5FVBHk6-jv0X_PSJ=aS=+uRVJemS3-=p_+5FiCfmA@mail.gmail.com>
+References: <1320113179-27491-1-git-send-email-guaneryu@gmail.com> <20111101224307.GF18701@quack.suse.cz>
+Reply-To: guaneryu@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Ted Ts'o" <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:49246 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752530Ab1KBIXA convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Nov 2011 04:23:00 -0400
-Received: by gyb13 with SMTP id 13so7939424gyb.19
-        for <linux-ext4@vger.kernel.org>; Wed, 02 Nov 2011 01:22:59 -0700 (PDT)
-In-Reply-To: <CAMUAhYSh4VUbh3oG9hwi0FxMs=gMDiOHqvRhDgZTmP-_8PuW3g@mail.gmail.com>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:57622 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755577Ab1KBOFP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Nov 2011 10:05:15 -0400
+Received: by wwi36 with SMTP id 36so284586wwi.1
+        for <linux-ext4@vger.kernel.org>; Wed, 02 Nov 2011 07:05:14 -0700 (PDT)
+In-Reply-To: <20111101224307.GF18701@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-[Resend of my earlier message with HTML gunk removed and one edit. ]
+On Wed, Nov 2, 2011 at 6:43 AM, Jan Kara <jack@suse.cz> wrote:
+> On Tue 01-11-11 10:06:19, Eryu Guan wrote:
+>> Call ext3_mark_recovery_complete() in ext3_fill_super() only if
+>> needs_recovery is non-zero.
+>>
+>> Besides that, print out "recovery complete" message after calling
+>> ext3_mark_recovery_complete().
+> =A0OK, I don't see a problem in this patch. But is there some benefit=
+ in it?
+> I'm slightly nervous it could change something subtle...
 
-On Tue, Nov 1, 2011 at 15:52, Ted Ts'o <tytso@mit.edu> wrote:
->
-> On Tue, Nov 01, 2011 at 09:21:21AM +0800, Yongqiang Yang wrote:
-> > ext4_ext_convert_to_initialized() does not initialize eh before usi=
-ng it
-> > and this is introduced in commit 864d21652.
-> >
-> > Cc:Eric Gouriou <egouriou@google.com>
-> > Cc:"Theodore Ts'o" <tytso@mit.edu>
-> > Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
->
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 eof_block =3D map-=
->m_lblk + map->m_len;
-> >
-> > =C2=A0 =C2=A0 =C2=A0 depth =3D ext_depth(inode);
-> > + =C2=A0 =C2=A0 eh =3D path[depth].p_hdr;
-> > =C2=A0 =C2=A0 =C2=A0 ex =3D path[depth].p_ext;
-> > =C2=A0 =C2=A0 =C2=A0 ee_block =3D le32_to_cpu(ex->ee_block);
-> > =C2=A0 =C2=A0 =C2=A0 ee_len =3D ext4_ext_get_actual_len(ex);
->
-> Hmmm, nice catch.
->
-> Looks like Eric dropped this line when he forward ported this patch t=
-o
-> v3.1.
+I think current code may confuse people. The variable 'needs_recovery' =
+in
+ext3_fill_super() only be used in this 'if' switch, but all the 'if'
+does is printing
+out a log message and no matter what value 'needs_recovery' is,
+ext3_mark_recovery_complete() is always being called.
 
-Indeed I screwed up. Apologies for the trouble. I tested the patch thor=
-oughly
-on our kernel version, ported it to ~ 2.6.39 and tested. This was a few=
- months
-ago and could not find the time to complete the work then. When I got a=
- chance
-to resume the effort, the upstream kernel had changed but I was not sup=
-posed
-to even build it due to security concerns with the kernel.org sources.
-So I redid
-the port blind, verified [the file] built but did not test.
+This change makes the logic more clear and of course reduce a little ov=
+erhead
+when mounting clean fs.
 
-> =C2=A0Interestingly, I did test this using xfstests, and it didn't
-> complain. =C2=A0Which probably means we don't have a good test covera=
-ge
-> that triggers the specific preconditions of this optimization. =C2=A0=
-Oops.
-> I'll fix this up now.
+This change also consists with ext4 counter part
+3733         if (needs_recovery) {
+3734                 ext4_msg(sb, KERN_INFO, "recovery complete");
+3735                 ext4_mark_recovery_complete(sb, es);
+3736         }
+
+But, yes, current code exists for a long time and no one complains abou=
+t it, the
+change is trivial. If people worry more, I'm fine with skipping this pa=
+tch.
+
+Thanks.
+Eryu Guan
 >
-> Eric, when you have a chance, could you work up an xfstests test that
-> automates the various tests that you ran manually when you developed
-> this patch? =C2=A0Thanks!!
-
-Sure, but the "chance" may not manifest itself soon.
-
-=C2=A0Eric
-
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0Honza
+>>
+>> Cc: Jan Kara <jack@suse.cz>
+>> Signed-off-by: Eryu Guan <guaneryu@gmail.com>
+>> ---
+>> =A0fs/ext3/super.c | =A0 =A05 +++--
+>> =A01 files changed, 3 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+>> index 7beb69a..2681e0d 100644
+>> --- a/fs/ext3/super.c
+>> +++ b/fs/ext3/super.c
+>> @@ -2060,9 +2060,10 @@ static int ext3_fill_super (struct super_bloc=
+k *sb, void *data, int silent)
+>> =A0 =A0 =A0 EXT3_SB(sb)->s_mount_state |=3D EXT3_ORPHAN_FS;
+>> =A0 =A0 =A0 ext3_orphan_cleanup(sb, es);
+>> =A0 =A0 =A0 EXT3_SB(sb)->s_mount_state &=3D ~EXT3_ORPHAN_FS;
+>> - =A0 =A0 if (needs_recovery)
+>> + =A0 =A0 if (needs_recovery) {
+>> + =A0 =A0 =A0 =A0 =A0 =A0 ext3_mark_recovery_complete(sb, es);
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext3_msg(sb, KERN_INFO, "recovery comple=
+te");
+>> - =A0 =A0 ext3_mark_recovery_complete(sb, es);
+>> + =A0 =A0 }
+>> =A0 =A0 =A0 ext3_msg(sb, KERN_INFO, "mounted filesystem with %s data=
+ mode",
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 test_opt(sb,DATA_FLAGS) =3D=3D EXT3_MOUN=
+T_JOURNAL_DATA ? "journal":
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 test_opt(sb,DATA_FLAGS) =3D=3D EXT3_MOUN=
+T_ORDERED_DATA ? "ordered":
+>> --
+>> 1.7.7.1
+>>
+> --
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
 >
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 =C2=A0 =C2=A0 =C2=A0- Ted
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
