@@ -1,39 +1,38 @@
-From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: Re: [BUG] aborted ext4 leads to inifinity loop in balance_dirty_pages
-Date: Wed, 02 Nov 2011 14:24:01 +0900
-Message-ID: <4EB0D3F1.6020102@sx.jp.nec.com>
-References: <4EA6A5E5.2050604@sx.jp.nec.com> <20111025134045.GB8072@quack.suse.cz> <4EAA3EE7.4040802@sx.jp.nec.com> <20111101231342.GJ18701@quack.suse.cz>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH] mm: Improve cmtime update on shared writable mmaps
+Date: Wed, 2 Nov 2011 03:38:12 -0400
+Message-ID: <20111102073812.GB17580@infradead.org>
+References: <CALCETrWoZeFpznU5Nv=+PvL9QRkTnS4atiGXx0jqZP_E3TJPqw@mail.gmail.com>
+ <6e365cb75f3318ab45d7145aededcc55b8ededa3.1319844715.git.luto@amacapital.net>
+ <20111101225342.GG18701@quack.suse.cz>
+ <CALCETrW3ZZ=474cXY0HH1=fHTwKJUo--ufPfD1WLpGRC4_CPrw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>,
-	Andreas Dilger <adilger@dilger.ca>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
+	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Andy Lutomirski <luto@amacapital.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO200.gate.nec.co.jp ([202.32.8.215]:57298 "EHLO
-	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750985Ab1KBFc6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Nov 2011 01:32:58 -0400
-Received: from tyo202.gate.nec.co.jp ([10.7.69.202])
-	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id pA25Wvcu021867
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 2 Nov 2011 14:32:57 +0900 (JST)
-In-Reply-To: <20111101231342.GJ18701@quack.suse.cz>
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:49310
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751450Ab1KBHiS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Nov 2011 03:38:18 -0400
+Content-Disposition: inline
+In-Reply-To: <CALCETrW3ZZ=474cXY0HH1=fHTwKJUo--ufPfD1WLpGRC4_CPrw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2011/11/02 8:13, Jan Kara wrote:
->> The problem is that we cannot unmount the corrupted filesystem due to
->> un-killable dd process. We must bring down the system to resume the service
->> with no dirty pages. I think it is important for the service continuity
->> to be able to kill the thread handling in balance_dirty_pages().
->    Sure. Then allowing a process to be killed while waiting in
-> balance_dirty_pages() would solve your problem. That can be done relatively
-> easily. I can write the patch, just now the code is under rewrite from
-> IO-less dirty throttling patches so I'll wait for a while for it to settle
-> down.
+On Tue, Nov 01, 2011 at 04:02:24PM -0700, Andy Lutomirski wrote:
+> Hmm.  Isn't it permitted to at least read from an fs while holding the
+> page lock?  I thought that the page lock was held for the entire
+> duration of a read and at the beginning of writeback.
+> 
+> I can push this down to the ->writepage implementations or to the
+> clear_page_dirty_for_io callers, but that will result in a bigger
+> patch.
 
-Thanks for working this on.
+Besides the current way that seems to be the only reasonable place to
+do it.  Pushing it into ->writepage also has the benefit that
+filesystems could piggy back the ctime update onto the transaction that
+updates the extent tree.
 
-Regards,
-Kazuya Mio
