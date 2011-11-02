@@ -1,44 +1,32 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] mm: Improve cmtime update on shared writable mmaps
-Date: Wed, 2 Nov 2011 11:19:03 -0400
-Message-ID: <20111102151903.GA15045@thunk.org>
-References: <CALCETrWoZeFpznU5Nv=+PvL9QRkTnS4atiGXx0jqZP_E3TJPqw@mail.gmail.com>
- <6e365cb75f3318ab45d7145aededcc55b8ededa3.1319844715.git.luto@amacapital.net>
- <20111101225342.GG18701@quack.suse.cz>
- <CALCETrW3ZZ=474cXY0HH1=fHTwKJUo--ufPfD1WLpGRC4_CPrw@mail.gmail.com>
- <20111102150200.GC31575@quack.suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH 0/2] ext4: remove a couple mount options
+Date: Wed, 02 Nov 2011 11:32:05 -0500
+Message-ID: <4EB17085.9060107@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andy Lutomirski <luto@amacapital.net>,
-	Andreas Dilger <adilger@dilger.ca>, linux-kernel@vger.kernel.org,
-	linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20111102150200.GC31575@quack.suse.cz>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:44870 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932601Ab1KBQcH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 2 Nov 2011 12:32:07 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pA2GW766024913
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Wed, 2 Nov 2011 12:32:07 -0400
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pA2GW5dP028312
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 2 Nov 2011 12:32:06 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 02, 2011 at 04:02:00PM +0100, Jan Kara wrote:
->   That's a good question. Locking of i_flags was always kind of unclear to
-> me. They are certainly read without any locks and in the couple of places
-> where setting can actually race VFS uses i_mutex for serialization which is
-> kind of overkill (and unusable from page fault due to locking constraints).
-> Probably using atomic bitops for setting i_flags would be needed.
+I think that the journal=update and resize mount options are a
+bit pointless these days, so here are patches to remove them.
 
-Adding a set of inode_{test,set,clear}_flag() inline functions, and
-then converting accesses of i_flags to use them would be a great
-cleanup task.  It's been on my mental todo list for a while, but it's
-a pretty invasive change.  What we have right now is definitely racy,
-though, and we only get away with it because i_flags changes happen
-relatively rarely.  Fixing this would be definitely be a Good Thing.
+I'm not adamant about it, but thought I'd put it out there
+as a proposal, after looking at our long list of mount options
+and the testing requirements for it.
 
-						- Ted
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+-Eric
