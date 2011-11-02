@@ -1,51 +1,73 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 2/2 V2] ext4: remove the resize mount option
-Date: Wed, 02 Nov 2011 12:50:11 -0500
-Message-ID: <4EB182D3.5000300@redhat.com>
-References: <4EB17085.9060107@redhat.com> <4EB1717B.1000202@redhat.com> <4EB171AA.2040006@redhat.com> <10B11A15-3B01-485E-9818-0ED5578170E2@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 1/8 bigalloc] ext4: get blocks from ext4_ext_get_actual_len
+Date: Wed, 2 Nov 2011 12:29:12 -0600
+Message-ID: <3CF57267-8DFB-4AFE-94AA-48036AC80C19@dilger.ca>
+References: <1320144817-16397-1-git-send-email-hao.bigrat@gmail.com> <1320144817-16397-2-git-send-email-hao.bigrat@gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: linux-ext4@vger.kernel.org, Robin Dong <sanbai@taobao.com>
+To: Robin Dong <hao.bigrat@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:25760 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755796Ab1KBRuO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 2 Nov 2011 13:50:14 -0400
-In-Reply-To: <10B11A15-3B01-485E-9818-0ED5578170E2@dilger.ca>
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:11623 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754731Ab1KBS2r convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Nov 2011 14:28:47 -0400
+In-Reply-To: <1320144817-16397-2-git-send-email-hao.bigrat@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/2/11 12:41 PM, Andreas Dilger wrote:
-> On 2011-11-02, at 10:36 AM, Eric Sandeen wrote:
->> The resize mount option seems to be of limited value,
->> especially in the age of online resize2fs.  Nuke it.
+On 2011-11-01, at 4:53 AM, Robin Dong wrote:
+> From: Robin Dong <sanbai@taobao.com>
 > 
-> I agree that it is useless today.  That said, with the new online
-> resize support that Yongqiang Yang is working on, it would again
-> be possible to just do "remount -o resize={any larger size}" and
-> it would work without the need for an ioctl or special user tool.
-> 
-> That might be useful in initrd/appliance kind of environments that
-> put a premium on userspace tools.  I don't run such an environment,
-> but I've read many times about distro installs that want to do an
-> image install to the disk and then resize it.  Maybe in the age of
-> DVDs and 4GB memory sticks this isn't needed anymore?
-> 
-> I'm not dead set on keeping it, just pointing out that it might
-> again become useful in the same release that this patch lands in.
-> 
-> Cheers, Andreas
+> Since ee_len's unit change to cluster, it need to transform from clusters
+> to blocks when use ext4_ext_get_actual_len.
 
-Hm.  Well, just because it -can- be done ... should it be done?
-We could do all sorts of things via mount options if we really
-wanted to.  mount -o tune2fs=^journal, you name it.
+Robin,
+thanks for working on and submitting these patches so quickly.
 
-I don't have a super-strong preference either way, but we do
-have a tool for this already, so duplicating it in a mount option
-seems odd to me.
+> struct ext4_extent {
+> 	__le32	ee_block;	/* first logical block extent covers */
+> -	__le16	ee_len;		/* number of blocks covered by extent */
+> +	__le16	ee_len;		/* number of clusters covered by extent */
 
-Thanks,
--Eric
+It would make sense that ee_block should also be changed to be measured
+in units of clusters instead of blocks, since there is no value to
+using extents with cluster size if they are not also cluster aligned.
+
+I think this would also simplify some of the code.
+
+> static int ext4_valid_extent(struct inode *inode, struct ext4_extent *ext)
+> {
+> +	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+
+Why allocate "*sbi" on the stack in all of these functions for a
+single use?  This provides no benefit, but can increase the stack
+usage considerably due to repeated allocations.
+
+> 	ext4_fsblk_t block = ext4_ext_pblock(ext);
+> +	int len = EXT4_C2B(sbi, ext4_ext_get_actual_len(ext));
+
+It probably makes more sense to pass "sb" or "sbi" as a parameter to 
+ext4_ext_get_actual_len() and then have it return the proper length
+in blocks (i.e. call EXT4_C2B() internally), which will simplify all
+of the callers and avoid potential bugs if some code does not use it.
+
+> @@ -1523,7 +1534,7 @@ ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
+> 	ext1_ee_len = ext4_ext_get_actual_len(ex1);
+> 	ext2_ee_len = ext4_ext_get_actual_len(ex2);
+> 
+> -	if (le32_to_cpu(ex1->ee_block) + ext1_ee_len !=
+> +	if (le32_to_cpu(ex1->ee_block) + EXT4_C2B(sbi, ext1_ee_len) !=
+> 			le32_to_cpu(ex2->ee_block))
+
+If both ee_len and ee_block are in the same units (blocks or clusters),
+then there is no need to convert units for this function at all.
+
+
+Cheers, Andreas
+
+
+
+
 
