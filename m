@@ -1,26 +1,26 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 2/2] ext4: remove a couple mount options
-Date: Wed, 02 Nov 2011 11:36:11 -0500
-Message-ID: <4EB1717B.1000202@redhat.com>
-References: <4EB17085.9060107@redhat.com>
+Subject: [PATCH 2/2 V2] ext4: remove the resize mount option
+Date: Wed, 02 Nov 2011 11:36:58 -0500
+Message-ID: <4EB171AA.2040006@redhat.com>
+References: <4EB17085.9060107@redhat.com> <4EB1717B.1000202@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45641 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:32255 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932731Ab1KBQgN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 2 Nov 2011 12:36:13 -0400
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pA2GaCiX023435
+	id S932731Ab1KBQhA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 2 Nov 2011 12:37:00 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pA2Gb00w026716
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Wed, 2 Nov 2011 12:36:13 -0400
+	for <linux-ext4@vger.kernel.org>; Wed, 2 Nov 2011 12:37:00 -0400
 Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id pA2GaBPg008514
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 2 Nov 2011 12:36:12 -0400
-In-Reply-To: <4EB17085.9060107@redhat.com>
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pA2Gawhn031204
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 2 Nov 2011 12:36:59 -0400
+In-Reply-To: <4EB1717B.1000202@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -29,6 +29,8 @@ especially in the age of online resize2fs.  Nuke it.
 
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
+V2: get the subject right.
+
  Documentation/filesystems/ext4.txt |    5 -----
  fs/ext4/super.c                    |   29 ++++++-----------------------
  2 files changed, 6 insertions(+), 28 deletions(-)
@@ -151,4 +153,5 @@ index 6a5faac..0f11e99 100644
  			if (!ext4_setup_super(sb, es, 0))
  				sb->s_flags &= ~MS_RDONLY;
  			if (EXT4_HAS_INCOMPAT_FEATURE(sb,
+
 
