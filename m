@@ -1,73 +1,86 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 1/8 bigalloc] ext4: get blocks from ext4_ext_get_actual_len
-Date: Wed, 2 Nov 2011 12:29:12 -0600
-Message-ID: <3CF57267-8DFB-4AFE-94AA-48036AC80C19@dilger.ca>
-References: <1320144817-16397-1-git-send-email-hao.bigrat@gmail.com> <1320144817-16397-2-git-send-email-hao.bigrat@gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org, Robin Dong <sanbai@taobao.com>
-To: Robin Dong <hao.bigrat@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:11623 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754731Ab1KBS2r convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Nov 2011 14:28:47 -0400
-In-Reply-To: <1320144817-16397-2-git-send-email-hao.bigrat@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Latency writing to an mlocked ext4 mapping
+Date: Wed, 2 Nov 2011 21:17:07 +0100
+Message-ID: <20111102201707.GD31575@quack.suse.cz>
+References: <CALCETrU23vyCXPG6mJU9qaPeAGOWDQtur5C+LRT154V5FM=Ajg@mail.gmail.com>
+ <CALCETrX=-CnNQ9+4tRbqMG4mfuy2FBPXXoJeBVDVPnEiRJYRFQ@mail.gmail.com>
+ <CALCETrUcOKQAJTTmCSD3Q3wYS-zLqv6tBa4AdkK50bNobRhDUQ@mail.gmail.com>
+ <20111025122618.GA8072@quack.suse.cz>
+ <CALCETrWoZeFpznU5Nv=+PvL9QRkTnS4atiGXx0jqZP_E3TJPqw@mail.gmail.com>
+ <20111031231031.GD10107@quack.suse.cz>
+ <CALCETrViG6t1forOFtO-R=bGABvtLcECxJ8m8Tenv6rwxLg_ew@mail.gmail.com>
+ <20111101230320.GH18701@quack.suse.cz>
+ <CALCETrVKHyRtizmTs=4hZzOs+7JLnvv0WtkSLYLDmM0fs2ce-w@mail.gmail.com>
+ <CALCETrWNCy0VN-rQM-xPksiJ50DW-KM+w2NBprNOPhvnizZW=Q@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: quoted-printable
+Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andy Lutomirski <luto@amacapital.net>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <CALCETrWNCy0VN-rQM-xPksiJ50DW-KM+w2NBprNOPhvnizZW=Q@mail.gmail.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2011-11-01, at 4:53 AM, Robin Dong wrote:
-> From: Robin Dong <sanbai@taobao.com>
-> 
-> Since ee_len's unit change to cluster, it need to transform from clusters
-> to blocks when use ext4_ext_get_actual_len.
+On Tue 01-11-11 18:51:04, Andy Lutomirski wrote:
+> On Tue, Nov 1, 2011 at 4:10 PM, Andy Lutomirski <luto@amacapital.net> w=
+rote:
+> > On Tue, Nov 1, 2011 at 4:03 PM, Jan Kara <jack@suse.cz> wrote:
+> >> Avoiding IO during a minor fault would be a decent thing which might=
+ be
+> >> worth pursuing. As you properly noted "stable pages during writeback=
+"
+> >> requirement is one obstacle which won't be that trivial to avoid tho=
+ugh...
+> >
+> > There's an easy solution that would be good enough for me: add a moun=
+t
+> > option to turn off stable pages.
+> >
+> > Is the other problem just a race, perhaps? =A0__block_page_mkwrite ca=
+lls
+> > __block_write_begin (which calls get_block, which I think is where th=
+e
+> > latency comes from) *before* wait_on_page_writeback, which means that
+> > there might not be any space allocated yet.
+>=20
+> I think I'm right (other than calling it a race).  If I change my code =
+to do:
+>=20
+> - map the file (with MCL_FUTURE set)
+> - fallocate
+> - dirty all pages
+> - fsync
+> - dirty all pages again
+>=20
+> in the non-real-time thread, then a short test that was a mediocre
+> reproducer seems to work.
+>=20
+> This is annoying, though -- I'm not generating twice as much write I/O
+> as I used to.  Is there any way to force the delalloc code to do its
+> thing without triggering writeback?  I don't think fallocate has this
+> effect.
+  fallocate() will preallocate blocks on disk backing the mapped page. Th=
+at
+should get rid of latency in __block_write_begin(). Extents will still be
+marked as uninitialized, but conversion from uninitialized to initialized
+state happens during writeback / IO completion so you should not care muc=
+h
+about it.
 
-Robin,
-thanks for working on and submitting these patches so quickly.
+									Honza
+--=20
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
 
-> struct ext4_extent {
-> 	__le32	ee_block;	/* first logical block extent covers */
-> -	__le16	ee_len;		/* number of blocks covered by extent */
-> +	__le16	ee_len;		/* number of clusters covered by extent */
-
-It would make sense that ee_block should also be changed to be measured
-in units of clusters instead of blocks, since there is no value to
-using extents with cluster size if they are not also cluster aligned.
-
-I think this would also simplify some of the code.
-
-> static int ext4_valid_extent(struct inode *inode, struct ext4_extent *ext)
-> {
-> +	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-
-Why allocate "*sbi" on the stack in all of these functions for a
-single use?  This provides no benefit, but can increase the stack
-usage considerably due to repeated allocations.
-
-> 	ext4_fsblk_t block = ext4_ext_pblock(ext);
-> +	int len = EXT4_C2B(sbi, ext4_ext_get_actual_len(ext));
-
-It probably makes more sense to pass "sb" or "sbi" as a parameter to 
-ext4_ext_get_actual_len() and then have it return the proper length
-in blocks (i.e. call EXT4_C2B() internally), which will simplify all
-of the callers and avoid potential bugs if some code does not use it.
-
-> @@ -1523,7 +1534,7 @@ ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
-> 	ext1_ee_len = ext4_ext_get_actual_len(ex1);
-> 	ext2_ee_len = ext4_ext_get_actual_len(ex2);
-> 
-> -	if (le32_to_cpu(ex1->ee_block) + ext1_ee_len !=
-> +	if (le32_to_cpu(ex1->ee_block) + EXT4_C2B(sbi, ext1_ee_len) !=
-> 			le32_to_cpu(ex2->ee_block))
-
-If both ee_len and ee_block are in the same units (blocks or clusters),
-then there is no need to convert units for this function at all.
-
-
-Cheers, Andreas
-
-
-
-
-
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter=
+.ca/
+Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
