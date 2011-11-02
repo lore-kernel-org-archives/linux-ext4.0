@@ -1,382 +1,93 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] mm: Improve cmtime update on shared writable mmaps
-Date: Wed, 2 Nov 2011 16:02:00 +0100
-Message-ID: <20111102150200.GC31575@quack.suse.cz>
-References: <CALCETrWoZeFpznU5Nv=+PvL9QRkTnS4atiGXx0jqZP_E3TJPqw@mail.gmail.com>
- <6e365cb75f3318ab45d7145aededcc55b8ededa3.1319844715.git.luto@amacapital.net>
- <20111101225342.GG18701@quack.suse.cz>
- <CALCETrW3ZZ=474cXY0HH1=fHTwKJUo--ufPfD1WLpGRC4_CPrw@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext4: let ext4_ext_convet_to_initialized initialize var(eh)
+ before using it
+Date: Wed, 02 Nov 2011 10:04:13 -0500
+Message-ID: <4EB15BED.10901@redhat.com>
+References: <1320110481-12080-1-git-send-email-xiaoqiangnk@gmail.com> <20111101225222.GH32161@thunk.org> <CAMUAhYSh4VUbh3oG9hwi0FxMs=gMDiOHqvRhDgZTmP-_8PuW3g@mail.gmail.com> <CAMUAhYQPPt6Bke6zE=r3XAa6ukHUrxQe-R_oqBLOUM22j65WDQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
-	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Andy Lutomirski <luto@amacapital.net>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: "Ted Ts'o" <tytso@mit.edu>, Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Eric Gouriou <egouriou@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:33967 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:12462 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932181Ab1KBPCF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 2 Nov 2011 11:02:05 -0400
-Content-Disposition: inline
-In-Reply-To: <CALCETrW3ZZ=474cXY0HH1=fHTwKJUo--ufPfD1WLpGRC4_CPrw@mail.gmail.com>
+	id S932573Ab1KBPET (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 2 Nov 2011 11:04:19 -0400
+In-Reply-To: <CAMUAhYQPPt6Bke6zE=r3XAa6ukHUrxQe-R_oqBLOUM22j65WDQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 01-11-11 16:02:24, Andy Lutomirski wrote:
-> On Tue, Nov 1, 2011 at 3:53 PM, Jan Kara <jack@suse.cz> wrote:
-> > On Fri 28-10-11 16:39:25, Andy Lutomirski wrote:
-> >> We used to update a file's time on do_wp_page. =A0This caused late=
-ncy
-> >> whenever file_update_time would sleep (this happens on ext4). =A0I=
-t is
-> >> also, IMO, less than ideal: any copy, backup, or 'make' run taken
-> >> after do_wp_page but before an mmap user finished writing would se=
-e
-> >> the new timestamp but the old contents.
-> >>
-> >> With this patch, cmtime is updated after a page is written. =A0Whe=
-n the
-> >> mm code transfers the dirty bit from a pte to the associated struc=
-t
-> >> page, it also sets a new page flag indicating that the page was
-> >> modified directly from userspace. =A0The inode's time is then upda=
-ted in
-> >> clear_page_dirty_for_io.
-> >>
-> >> We can't update cmtime in all contexts in which ptes are unmapped:
-> >> various reclaim paths can unmap ptes from GFP_NOFS paths.
-> >>
-> >> Signed-off-by: Andy Lutomirski <luto@amacapital.net>
-> >> ---
-> >>
-> >> I'm not thrilled about using a page flag for this, but I haven't
-> >> spotted a better way. =A0Updating the time in writepage would touc=
-h
-> >> a lot of files and would interact oddly with write.
-> > =A0I see two problems with this patch:
-> > 1) Using a page flags is really a no-go. We are rather short on pag=
-e flags
-> > so using them for such minor thing is a real wastage. Moreover it s=
-hould be
-> > rather easy to just use an inode flag instead.
->=20
-> Am I allowed to set inode flags without holding any locks?
-  That's a good question. Locking of i_flags was always kind of unclear=
- to
-me. They are certainly read without any locks and in the couple of plac=
-es
-where setting can actually race VFS uses i_mutex for serialization whic=
-h is
-kind of overkill (and unusable from page fault due to locking constrain=
-ts).
-Probably using atomic bitops for setting i_flags would be needed.
+On 11/2/11 3:22 AM, Eric Gouriou wrote:
+> [Resend of my earlier message with HTML gunk removed and one edit. ]
+> 
+> On Tue, Nov 1, 2011 at 15:52, Ted Ts'o <tytso@mit.edu> wrote:
+>>
+>> On Tue, Nov 01, 2011 at 09:21:21AM +0800, Yongqiang Yang wrote:
+>>> ext4_ext_convert_to_initialized() does not initialize eh before using it
+>>> and this is introduced in commit 864d21652.
+>>>
+>>> Cc:Eric Gouriou <egouriou@google.com>
+>>> Cc:"Theodore Ts'o" <tytso@mit.edu>
+>>> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+>>
+>>>               eof_block = map->m_lblk + map->m_len;
+>>>
+>>>       depth = ext_depth(inode);
+>>> +     eh = path[depth].p_hdr;
+>>>       ex = path[depth].p_ext;
+>>>       ee_block = le32_to_cpu(ex->ee_block);
+>>>       ee_len = ext4_ext_get_actual_len(ex);
+>>
+>> Hmmm, nice catch.
+>>
+>> Looks like Eric dropped this line when he forward ported this patch to
+>> v3.1.
+> 
+> Indeed I screwed up. Apologies for the trouble. I tested the patch thoroughly
+> on our kernel version, ported it to ~ 2.6.39 and tested. This was a few months
+> ago and could not find the time to complete the work then. When I got a chance
+> to resume the effort, the upstream kernel had changed but I was not supposed
+> to even build it due to security concerns with the kernel.org sources.
+> So I redid
+> the port blind, verified [the file] built but did not test.
+> 
+>>  Interestingly, I did test this using xfstests, and it didn't
+>> complain.  Which probably means we don't have a good test coverage
+>> that triggers the specific preconditions of this optimization.  Oops.
+>> I'll fix this up now.
+>>
+>> Eric, when you have a chance, could you work up an xfstests test that
+>> automates the various tests that you ran manually when you developed
+>> this patch?  Thanks!!
+> 
+> Sure, but the "chance" may not manifest itself soon.
 
-> > 2) You cannot call inode_update_time_writable() from
-> > clear_page_dirty_for_io() because that is called under a page lock =
-and thus
-> > would create lock inversion problems.
->=20
-> Hmm.  Isn't it permitted to at least read from an fs while holding th=
-e
-> page lock?  I thought that the page lock was held for the entire
-> duration of a read and at the beginning of writeback.
-  You are right that page lock is held during the whole ->readpage() ca=
-ll.
-But that does not mean any reading can be done while page lock is held.=
-=2E.
-Page lock is also held during the ->writepage() call but that is one of
-reasons why several filesystems ignore that callback and use ->writepag=
-es()
-callback which allows them to do some fs internal locking before taking=
- the
-page lock.
+Which probably means "never" :(
 
-> I can push this down to the ->writepage implementations or to the
-> clear_page_dirty_for_io callers, but that will result in a bigger
-> patch.
-  Yes, I think this might be a way to go. Actually using
-block_write_full_page() callback for updating times might somewhat redu=
-ce
-number of filesystems that need to be modified...
+This is definitely a "do as I say not as I (always) do" but in general:
+having testcases used for testing commits, and not putting them into
+the existing regression suite, is bad development practice.  It should
+be a priority for all of us.
 
-								Honza
+I know sometimes it is difficult or impossible (my latest xattr race testcase
+requires (for now) a bunch of libraries from Ceph, and I haven't found a way
+around that yet) but "I don't have time" is a poor excuse.
 
-> >> =A0fs/inode.c =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 | =A0 51 +++++++++++=
-+++++++++++++++++++-------------
-> >> =A0include/linux/fs.h =A0 =A0 =A0 =A0 | =A0 =A01 +
-> >> =A0include/linux/page-flags.h | =A0 =A05 ++++
-> >> =A0mm/page-writeback.c =A0 =A0 =A0 =A0| =A0 19 +++++++++++++---
-> >> =A0mm/rmap.c =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0| =A0 18 +++++++++=
-++++-
-> >> =A05 files changed, 72 insertions(+), 22 deletions(-)
-> >>
-> >> diff --git a/fs/inode.c b/fs/inode.c
-> >> index ec79246..ee93a25 100644
-> >> --- a/fs/inode.c
-> >> +++ b/fs/inode.c
-> >> @@ -1461,21 +1461,8 @@ void touch_atime(struct vfsmount *mnt, stru=
-ct dentry *dentry)
-> >> =A0}
-> >> =A0EXPORT_SYMBOL(touch_atime);
-> >>
-> >> -/**
-> >> - * =A0 file_update_time =A0 =A0 =A0 =A0- =A0 =A0 =A0 update mtime=
- and ctime time
-> >> - * =A0 @file: file accessed
-> >> - *
-> >> - * =A0 Update the mtime and ctime members of an inode and mark th=
-e inode
-> >> - * =A0 for writeback. =A0Note that this function is meant exclusi=
-vely for
-> >> - * =A0 usage in the file write path of filesystems, and filesyste=
-ms may
-> >> - * =A0 choose to explicitly ignore update via this function with =
-the
-> >> - * =A0 S_NOCMTIME inode flag, e.g. for network filesystem where t=
-hese
-> >> - * =A0 timestamps are handled by the server.
-> >> - */
-> >> -
-> >> -void file_update_time(struct file *file)
-> >> +static void do_inode_update_time(struct file *file, struct inode =
-*inode)
-> >> =A0{
-> >> - =A0 =A0 struct inode *inode =3D file->f_path.dentry->d_inode;
-> >> =A0 =A0 =A0 struct timespec now;
-> >> =A0 =A0 =A0 enum { S_MTIME =3D 1, S_CTIME =3D 2, S_VERSION =3D 4 }=
- sync_it =3D 0;
-> >>
-> >> @@ -1497,7 +1484,7 @@ void file_update_time(struct file *file)
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 return;
-> >>
-> >> =A0 =A0 =A0 /* Finally allowed to write? Takes lock. */
-> >> - =A0 =A0 if (mnt_want_write_file(file))
-> >> + =A0 =A0 if (file && mnt_want_write_file(file))
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 return;
-> >>
-> >> =A0 =A0 =A0 /* Only change inode inside the lock region */
-> >> @@ -1508,10 +1495,42 @@ void file_update_time(struct file *file)
-> >> =A0 =A0 =A0 if (sync_it & S_MTIME)
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 inode->i_mtime =3D now;
-> >> =A0 =A0 =A0 mark_inode_dirty_sync(inode);
-> >> - =A0 =A0 mnt_drop_write(file->f_path.mnt);
-> >> +
-> >> + =A0 =A0 if (file)
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 mnt_drop_write(file->f_path.mnt);
-> >> +}
-> >> +
-> >> +/**
-> >> + * =A0 file_update_time =A0 =A0 =A0 =A0- =A0 =A0 =A0 update mtime=
- and ctime time
-> >> + * =A0 @file: file accessed
-> >> + *
-> >> + * =A0 Update the mtime and ctime members of an inode and mark th=
-e inode
-> >> + * =A0 for writeback. =A0Note that this function is meant exclusi=
-vely for
-> >> + * =A0 usage in the file write path of filesystems, and filesyste=
-ms may
-> >> + * =A0 choose to explicitly ignore update via this function with =
-the
-> >> + * =A0 S_NOCMTIME inode flag, e.g. for network filesystem where t=
-hese
-> >> + * =A0 timestamps are handled by the server.
-> >> + */
-> >> +
-> >> +void file_update_time(struct file *file)
-> >> +{
-> >> + =A0 =A0 do_inode_update_time(file, file->f_path.dentry->d_inode)=
-;
-> >> =A0}
-> >> =A0EXPORT_SYMBOL(file_update_time);
-> >>
-> >> +/**
-> >> + * =A0 inode_update_time_writable =A0 =A0 =A0- =A0 =A0 =A0 update=
- mtime and ctime
-> >> + * =A0 @inode: inode accessed
-> >> + *
-> >> + * =A0 Same as file_update_time, except that the caller is respon=
-sible
-> >> + * =A0 for checking that the mount is writable.
-> >> + */
-> >> +
-> >> +void inode_update_time_writable(struct inode *inode)
-> >> +{
-> >> + =A0 =A0 do_inode_update_time(0, inode);
-> >> +}
-> >> +
-> >> =A0int inode_needs_sync(struct inode *inode)
-> >> =A0{
-> >> =A0 =A0 =A0 if (IS_SYNC(inode))
-> >> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> >> index 277f497..9e28927 100644
-> >> --- a/include/linux/fs.h
-> >> +++ b/include/linux/fs.h
-> >> @@ -2553,6 +2553,7 @@ extern int inode_newsize_ok(const struct ino=
-de *, loff_t offset);
-> >> =A0extern void setattr_copy(struct inode *inode, const struct iatt=
-r *attr);
-> >>
-> >> =A0extern void file_update_time(struct file *file);
-> >> +extern void inode_update_time_writable(struct inode *inode);
-> >>
-> >> =A0extern int generic_show_options(struct seq_file *m, struct vfsm=
-ount *mnt);
-> >> =A0extern void save_mount_options(struct super_block *sb, char *op=
-tions);
-> >> diff --git a/include/linux/page-flags.h b/include/linux/page-flags=
-=2Eh
-> >> index e90a673..4eed012 100644
-> >> --- a/include/linux/page-flags.h
-> >> +++ b/include/linux/page-flags.h
-> >> @@ -107,6 +107,7 @@ enum pageflags {
-> >> =A0#ifdef CONFIG_TRANSPARENT_HUGEPAGE
-> >> =A0 =A0 =A0 PG_compound_lock,
-> >> =A0#endif
-> >> + =A0 =A0 PG_update_cmtime, =A0 =A0 =A0 /* Dirtied via writable ma=
-pping. */
-> >> =A0 =A0 =A0 __NR_PAGEFLAGS,
-> >>
-> >> =A0 =A0 =A0 /* Filesystems */
-> >> @@ -273,6 +274,10 @@ PAGEFLAG_FALSE(HWPoison)
-> >> =A0#define __PG_HWPOISON 0
-> >> =A0#endif
-> >>
-> >> +/* Whoever clears PG_update_cmtime must update the cmtime. */
-> >> +SETPAGEFLAG(UpdateCMTime, update_cmtime)
-> >> +TESTCLEARFLAG(UpdateCMTime, update_cmtime)
-> >> +
-> >> =A0u64 stable_page_flags(struct page *page);
-> >>
-> >> =A0static inline int PageUptodate(struct page *page)
-> >> diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-> >> index 0e309cd..41c48ea 100644
-> >> --- a/mm/page-writeback.c
-> >> +++ b/mm/page-writeback.c
-> >> @@ -1460,7 +1460,8 @@ EXPORT_SYMBOL(set_page_dirty_lock);
-> >>
-> >> =A0/*
-> >> =A0 * Clear a page's dirty flag, while caring for dirty memory acc=
-ounting.
-> >> - * Returns true if the page was previously dirty.
-> >> + * Returns true if the page was previously dirty. =A0Also updates=
- inode time
-> >> + * if necessary.
-> >> =A0 *
-> >> =A0 * This is for preparing to put the page under writeout. =A0We =
-leave the page
-> >> =A0 * tagged as dirty in the radix tree so that a concurrent write=
--for-sync
-> >> @@ -1474,6 +1475,7 @@ EXPORT_SYMBOL(set_page_dirty_lock);
-> >> =A0 */
-> >> =A0int clear_page_dirty_for_io(struct page *page)
-> >> =A0{
-> >> + =A0 =A0 int ret;
-> >> =A0 =A0 =A0 struct address_space *mapping =3D page_mapping(page);
-> >>
-> >> =A0 =A0 =A0 BUG_ON(!PageLocked(page));
-> >> @@ -1520,11 +1522,20 @@ int clear_page_dirty_for_io(struct page *p=
-age)
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 dec_zone_page_state(pa=
-ge, NR_FILE_DIRTY);
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 dec_bdi_stat(mapping->=
-backing_dev_info,
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 BDI_RECLAIMABLE);
-> >> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return 1;
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ret =3D 1;
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out;
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
-> >> - =A0 =A0 =A0 =A0 =A0 =A0 return 0;
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 ret =3D 0;
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 goto out;
-> >> =A0 =A0 =A0 }
-> >> - =A0 =A0 return TestClearPageDirty(page);
-> >> + =A0 =A0 ret =3D TestClearPageDirty(page);
-> >> +
-> >> +out:
-> >> + =A0 =A0 /* We know that the inode (if any) is on a writable moun=
-t. */
-> >> + =A0 =A0 if (mapping && mapping->host && TestClearPageUpdateCMTim=
-e(page))
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 inode_update_time_writable(mapping->host=
-);
-> >> +
-> >> + =A0 =A0 return ret;
-> >> =A0}
-> >> =A0EXPORT_SYMBOL(clear_page_dirty_for_io);
-> >>
-> >> diff --git a/mm/rmap.c b/mm/rmap.c
-> >> index 8005080..2ee595d 100644
-> >> --- a/mm/rmap.c
-> >> +++ b/mm/rmap.c
-> >> @@ -937,6 +937,16 @@ int page_mkclean(struct page *page)
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct address_space *mapping =3D page=
-_mapping(page);
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (mapping) {
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ret =3D page_mkclean_f=
-ile(mapping, page);
-> >> +
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /*
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* If dirtied via shar=
-ed writable mapping, cmtime
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* needs to be updated=
-=2E =A0If dirtied only through
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* write(), etc, then =
-the writer already updated
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* cmtime.
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0*/
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (ret)
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 SetPageU=
-pdateCMTime(page);
-> >> +
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (page_test_and_clea=
-r_dirty(page_to_pfn(page), 1))
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ret =3D=
- 1;
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
-> >> @@ -1203,8 +1213,10 @@ int try_to_unmap_one(struct page *page, str=
-uct vm_area_struct *vma,
-> >> =A0 =A0 =A0 pteval =3D ptep_clear_flush_notify(vma, address, pte);
-> >>
-> >> =A0 =A0 =A0 /* Move the dirty bit to the physical page now the pte=
- is gone. */
-> >> - =A0 =A0 if (pte_dirty(pteval))
-> >> + =A0 =A0 if (pte_dirty(pteval)) {
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 SetPageUpdateCMTime(page);
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 set_page_dirty(page);
-> >> + =A0 =A0 }
-> >>
-> >> =A0 =A0 =A0 /* Update high watermark before we lower rss */
-> >> =A0 =A0 =A0 update_hiwater_rss(mm);
-> >> @@ -1388,8 +1400,10 @@ static int try_to_unmap_cluster(unsigned lo=
-ng cursor, unsigned int *mapcount,
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 set_pte_at(mm, address=
-, pte, pgoff_to_pte(page->index));
-> >>
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* Move the dirty bit to the physical =
-page now the pte is gone. */
-> >> - =A0 =A0 =A0 =A0 =A0 =A0 if (pte_dirty(pteval))
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 if (pte_dirty(pteval)) {
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 SetPageUpdateCMTime(page=
-);
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 set_page_dirty(page);
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 }
-> >>
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 page_remove_rmap(page);
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 page_cache_release(page);
-> >> --
-> >> 1.7.6.4
-> >>
-> > --
-> > Jan Kara <jack@suse.cz>
-> > SUSE Labs, CR
---=20
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+How did you do the tests?  I'd be glad to give you a hand with the formalized
+testcase if you need it.
+
+Thanks,
+
+-Eric (Sandeen)
+
+>  Eric
+> 
+>>
+>>                                                - Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
