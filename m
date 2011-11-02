@@ -1,86 +1,125 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Latency writing to an mlocked ext4 mapping
-Date: Wed, 2 Nov 2011 21:17:07 +0100
-Message-ID: <20111102201707.GD31575@quack.suse.cz>
-References: <CALCETrU23vyCXPG6mJU9qaPeAGOWDQtur5C+LRT154V5FM=Ajg@mail.gmail.com>
- <CALCETrX=-CnNQ9+4tRbqMG4mfuy2FBPXXoJeBVDVPnEiRJYRFQ@mail.gmail.com>
- <CALCETrUcOKQAJTTmCSD3Q3wYS-zLqv6tBa4AdkK50bNobRhDUQ@mail.gmail.com>
- <20111025122618.GA8072@quack.suse.cz>
- <CALCETrWoZeFpznU5Nv=+PvL9QRkTnS4atiGXx0jqZP_E3TJPqw@mail.gmail.com>
- <20111031231031.GD10107@quack.suse.cz>
- <CALCETrViG6t1forOFtO-R=bGABvtLcECxJ8m8Tenv6rwxLg_ew@mail.gmail.com>
- <20111101230320.GH18701@quack.suse.cz>
- <CALCETrVKHyRtizmTs=4hZzOs+7JLnvv0WtkSLYLDmM0fs2ce-w@mail.gmail.com>
- <CALCETrWNCy0VN-rQM-xPksiJ50DW-KM+w2NBprNOPhvnizZW=Q@mail.gmail.com>
+From: Greg KH <greg@kroah.com>
+Subject: Re: [PATCH] ext4: fix BUG_ON() in ext4_ext_insert_extent() for .32
+ longterm
+Date: Wed, 2 Nov 2011 14:00:24 -0700
+Message-ID: <20111102210024.GA9949@kroah.com>
+References: <20110927193523.GB3309@thunk.org>
+ <1317206703-5604-1-git-send-email-tm@tao.ma>
+ <20111027094329.GB31921@thunk.org>
+ <20111027115322.GB6379@kroah.com>
+ <20111028023607.GA23772@gmail.com>
+ <20111028052406.GA21306@kroah.com>
+ <20111028084652.GA25104@gmail.com>
+ <20111028090759.GA22822@kroah.com>
+ <20111028123402.GA26003@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: quoted-printable
-Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andy Lutomirski <luto@amacapital.net>
-Return-path: <owner-linux-mm@kvack.org>
+Content-Type: text/plain; charset=us-ascii
+To: Ted Ts'o <tytso@mit.edu>, Tao Ma <tm@tao.ma>,
+	linux-ext4@vger.kernel.org,
+	Xiaoyun Mao <xiaoyun.maoxy@aliyun-inc.com>,
+	Yingbin Wang <yingbin.wangyb@aliyun-inc.com>,
+	Jia Wan <jia.wanj@
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from out5.smtp.messagingengine.com ([66.111.4.29]:53753 "EHLO
+	out5.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752063Ab1KBVFv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Nov 2011 17:05:51 -0400
 Content-Disposition: inline
-In-Reply-To: <CALCETrWNCy0VN-rQM-xPksiJ50DW-KM+w2NBprNOPhvnizZW=Q@mail.gmail.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20111028123402.GA26003@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 01-11-11 18:51:04, Andy Lutomirski wrote:
-> On Tue, Nov 1, 2011 at 4:10 PM, Andy Lutomirski <luto@amacapital.net> w=
-rote:
-> > On Tue, Nov 1, 2011 at 4:03 PM, Jan Kara <jack@suse.cz> wrote:
-> >> Avoiding IO during a minor fault would be a decent thing which might=
- be
-> >> worth pursuing. As you properly noted "stable pages during writeback=
-"
-> >> requirement is one obstacle which won't be that trivial to avoid tho=
-ugh...
-> >
-> > There's an easy solution that would be good enough for me: add a moun=
-t
-> > option to turn off stable pages.
-> >
-> > Is the other problem just a race, perhaps? =A0__block_page_mkwrite ca=
-lls
-> > __block_write_begin (which calls get_block, which I think is where th=
-e
-> > latency comes from) *before* wait_on_page_writeback, which means that
-> > there might not be any space allocated yet.
->=20
-> I think I'm right (other than calling it a race).  If I change my code =
-to do:
->=20
-> - map the file (with MCL_FUTURE set)
-> - fallocate
-> - dirty all pages
-> - fsync
-> - dirty all pages again
->=20
-> in the non-real-time thread, then a short test that was a mediocre
-> reproducer seems to work.
->=20
-> This is annoying, though -- I'm not generating twice as much write I/O
-> as I used to.  Is there any way to force the delalloc code to do its
-> thing without triggering writeback?  I don't think fallocate has this
-> effect.
-  fallocate() will preallocate blocks on disk backing the mapped page. Th=
-at
-should get rid of latency in __block_write_begin(). Extents will still be
-marked as uninitialized, but conversion from uninitialized to initialized
-state happens during writeback / IO completion so you should not care muc=
-h
-about it.
+On Fri, Oct 28, 2011 at 08:34:02PM +0800, Zheng Liu wrote:
+> On Fri, Oct 28, 2011 at 11:07:59AM +0200, Greg KH wrote:
+> > On Fri, Oct 28, 2011 at 04:46:52PM +0800, Zheng Liu wrote:
+> > > On Fri, Oct 28, 2011 at 07:24:06AM +0200, Greg KH wrote:
+> > > > On Fri, Oct 28, 2011 at 10:36:08AM +0800, Zheng Liu wrote:
+> > > > > On Thu, Oct 27, 2011 at 01:53:22PM +0200, Greg KH wrote:
+> > > > > > On Thu, Oct 27, 2011 at 05:43:29AM -0400, Ted Ts'o wrote:
+> > > > > > > On Wed, Sep 28, 2011 at 06:45:03PM +0800, Tao Ma wrote:
+> > > > > > > > actually this bug does show up in 2.6.39 and I think stable tree still
+> > > > > > > > needs this fix. After some careful test, my colleague has generated
+> > > > > > > > the patch. Please considering ack it so that Greg can add it into the
+> > > > > > > > stable tree.
+> > > > > > > 
+> > > > > > > Sorry for the delay, but yes.  This patch would be good for the stable
+> > > > > > > tree for 2.6.39 (if Greg is still accepting patches for
+> > > > > > > 2.6.39-stable).  It doesn't apply for upstream ext4 since the code has
+> > > > > > > been changed/refactored since then, but it's a good fix.
+> > > > > > 
+> > > > > > No, .39 has not been maintained for quite some time now, sorry.
+> > > > > Hi Greg,
+> > > > > 
+> > > > > Thank you for your attention. Actually this bug is between from .32 to
+> > > > > .39. Please considering to apply this patch to other stable or longterm
+> > > > > trees.
+> > > > 
+> > > > Ah, ok, that makes sense, can you provide me a patch that will apply to
+> > > > the .32 and .33-longterm kernels?
+> > > Hi Greg,
+> > > 
+> > > I couldn't download the .32 and .33-longterm kernels from kernel.org
+> > > because the full sources were not found on that server. Thus this patch
+> > > is generated from the .32-mainline kernel and can be applied to the .32
+> > > and .33 kernels.
+> > 
+> > The .32 and .33 longterm kernels are part of the linux-stable tree on
+> > git.kernel.org, they are in their own branch.  Please redo this against
+> > those trees, as I'm pretty sure that there will be conflicts, due to all
+> > of the different changes since the .0 releases.
+> Hi Greg
+> 
+> This patch is for .32 longterm kernel. Please try it again.
+> 
+> regards,
+> Zheng
+> 
+> >From bc522003378af679afd227ff87497dfb4fd4d652 Mon Sep 17 00:00:00 2001
+> From: Zheng Liu <wenqing.lz@taobao.com>
+> Date: Fri, 28 Oct 2011 19:41:19 +0800
+> Subject: [PATCH] ext4: fix BUG_ON() in ext4_ext_insert_extent()
+>  
+> We will meet with a BUG_ON() if following script is run.
+>  
+> mkfs.ext4 -b 4096 /dev/sdb1 1000000
+> mount -t ext4 /dev/sdb1 /mnt/sdb1
+> fallocate -l 100M /mnt/sdb1/test
+> sync
+> for((i=0;i<170;i++))
+> do
+>         dd if=/dev/zero of=/mnt/sdb1/test conv=notrunc bs=256k count=1
+> seek=`expr $i \* 2`
+> done
+> umount /mnt/sdb1
+> mount -t ext4 /dev/sdb1 /mnt/sdb1
+> dd if=/dev/zero of=/mnt/sdb1/test conv=notrunc bs=256k count=1 seek=341
+> umount /mnt/sdb1
+> mount /dev/sdb1 /mnt/sdb1
+> dd if=/dev/zero of=/mnt/sdb1/test conv=notrunc bs=256k count=1 seek=340
+> sync
+>  
+> The reason is that it forgot to mark dirty when splitting two extents in
+> ext4_ext_convert_to_initialized(). Althrough ex has been updated in
+> memory,
+> it is not dirtied both in ext4_ext_convert_to_initialized() and 
+> ext4_ext_insert_extent(). The disk layout is corrupted. Then it will
+> meet with
+> a BUG_ON() when writting at the start of that extent again.
+>  
+> Cc: stable@kernel.org #for 2.6.32
+> Cc: Greg Kroah-Hartman <greg@kroah.com>
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: Xiaoyun Mao <xiaoyun.maoxy@aliyun-inc.com>
+> Cc: Yingbin Wang <yingbin.wangyb@aliyun-inc.com>
+> Cc: Jia Wan <jia.wanj@aliyun-inc.com>
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 
-									Honza
---=20
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Sorry for dragging this out, but what commit id does this correspond to
+in Linus's tree?  I can't seem to figure it out.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter=
-.ca/
-Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
+Or does it not correspond to anything?  If so, I need a sentence that
+says why it doesn't for the patch changelog.
+
+thanks,
+
+greg k-h
