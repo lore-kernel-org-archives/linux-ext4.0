@@ -1,56 +1,141 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH] ext4: fix BUG_ON() in ext4_ext_insert_extent() for .32
- longterm
-Date: Thu, 3 Nov 2011 11:06:44 +0800
-Message-ID: <20111103030643.GA9967@gmail.com>
-References: <20110927193523.GB3309@thunk.org>
- <1317206703-5604-1-git-send-email-tm@tao.ma>
- <20111027094329.GB31921@thunk.org>
- <20111027115322.GB6379@kroah.com>
- <20111028023607.GA23772@gmail.com>
- <20111028052406.GA21306@kroah.com>
- <20111028084652.GA25104@gmail.com>
- <20111028090759.GA22822@kroah.com>
- <20111028123402.GA26003@gmail.com>
- <20111102210024.GA9949@kroah.com>
+From: Tao Ma <tm@tao.ma>
+Subject: Re: [PATCH V1 02/17] ext4: Add the basic function for inline data
+ support.
+Date: Thu, 03 Nov 2011 12:23:20 +0800
+Message-ID: <4EB21738.1010704@tao.ma>
+References: <4EA7B788.3040503@tao.ma> <1319614468-11227-1-git-send-email-tm@tao.ma> <1319614468-11227-2-git-send-email-tm@tao.ma> <E38E92E9-2937-47BA-A9F4-B1F75C9FDE4A@dilger.ca> <4EA81B50.1060802@tao.ma> <DACDC44B-F60E-493E-9C15-67EDFCDFD34D@dilger.ca> <4EA8AB25.4030506@tao.ma> <42CED85D-7936-4D51-B405-787F65F0C10A@whamcloud.com> <4EA97075.4050307@tao.ma> <4209A71E-F65C-4335-BD80-ACCABDB6E7D2@whamcloud.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ted Ts'o <tytso@mit.edu>, Tao Ma <tm@tao.ma>,
-	linux-ext4@vger.kernel.org,
-	Xiaoyun Mao <xiaoyun.maoxy@aliyun-inc.com>,
-	Yingbin Wang <yingbin.wangyb@aliyun-inc.com>,
-	Jia Wan <jia.wanj@aliyun-inc.com>
-To: Greg KH <greg@kroah.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"tytso@mit.edu" <tytso@mit.edu>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: Andreas Dilger <adilger@whamcloud.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:48582 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754670Ab1KCDFZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Nov 2011 23:05:25 -0400
-Received: by iage36 with SMTP id e36so828259iag.19
-        for <linux-ext4@vger.kernel.org>; Wed, 02 Nov 2011 20:05:24 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <20111102210024.GA9949@kroah.com>
+Received: from oproxy4-pub.bluehost.com ([69.89.21.11]:50528 "HELO
+	oproxy4-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751116Ab1KCEX3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Nov 2011 00:23:29 -0400
+In-Reply-To: <4209A71E-F65C-4335-BD80-ACCABDB6E7D2@whamcloud.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 02, 2011 at 02:00:24PM -0700, Greg KH wrote:
-[snip]
+On 11/03/2011 05:16 AM, Andreas Dilger wrote:
+> On 2011-10-27, at 8:53 AM, Tao Ma wrote:
+>> On 10/27/2011 05:57 PM, Andreas Dilger wrote:
+>>> if ANY other xattr exists it will be pushed to an external block, and
+>>> then if this data xattr grows (much more likely than the other xattr
+>>> changing) it won't fit into the inode, and now performance is
+>>> permanently worse than before.
+>>
+>> OK, since it seems that lustre uses xattr heavily, I will try my best to
+>> avoid the performance regression for xattr operations.
 > 
-> Sorry for dragging this out, but what commit id does this correspond to
-> in Linus's tree?  I can't seem to figure it out.
+> I don't even think it is very much a Lustre problem, since it always
+> stores file data in a separate filesystem from the metadata, and
+> 60-byte files are going to have terrible performance either way.
 > 
-> Or does it not correspond to anything?  If so, I need a sentence that
-> says why it doesn't for the patch changelog.
+> My main concern is for SELinux (enabled by default on most systems
+> today).  If the "small file" data is stored in the xattr space, and
+> this pushes the SELinux xattr to an external block, we have added
+> code complexity and a gratuitous format change (data in inode and
+> metadata in block, instead of metadata in inode and data in block)
+> with no real benefit at all.
+Fair enough. Thanks for the explanation.
+> 
+>>> In our environment we use at least 512-byte inodes on the metadata server, but I still don't want half if that space wasted on this xattr if so much is not needed.
+>>
+>> btw, I have another idea about using the not-used extent space for
+>> storing inline data like what we do for a symlink. So I will still use a
+>> xattr entry to indicate whether the inode will have inline data or not.
+>> If yes, the initialized xattr value len will be zero while the extent
+>> space(60 bytes) will be used to store the inline data. And if the file
+>> size is larger than 60, it will begin to insert xattr values. In such
+>> case, we supports inline data and don't use too much space after the
+>> i_extra_isize. What do you think of it?
+> 
+> I think this is an interesting idea.  Since only the "data" xattr could
+> use this space, it gives us an extra 60 bytes of space to be used in
+> the inode and does not consume the xattr space.  The main drawback is
+> that this would add special case handling based on the xattr name, but
+> I think it is worthwhile to investigate how complex that code is and
+> what kind of performance improvement it gives.
+> 
+> Looking at my FC13 installation, it seems like a large number of
+> files could benefit from just 60 bytes of inline storage.  So more
+> than 10% of all of the files on the filesystem would fit in i_blocks.
+> This filesystem includes a lot of source and build files, but I also
+> think this is pretty typical of normal Linux usage.
+> 
+> # find / -xdev -type f -size -61c | wc -l
+> 35661
+> # find / -xdev -type f | wc -l
+> 335515
+> 
+> The "fsstats" tool is useful for collecting interesting data like this:
+> (http://www.pdsi-scidac.org/fsstats/files/fsstats-1.4.5.tar.gz)
+> and it shows the same is true for directories as well:
+> 
+> 
+> directory size (entries): Range of entries, count of directories in range,
+>  number of dirs in range as a % of total num of dirs, number of dirs in
+>  this range or smaller as a % total number of dirs, total entries in range,
+>  number of entries in range as a % of total number of entries, number of
+>  entries in this range or smaller as a % of total number of entries.
+> 
+>   count=33476 avg=11.38 ents
+>   min=0.00 ents max=3848.00 ents
+>   [   0-   1 ents]: 11257 (33.63%) ( 33.63%)   9968.00 ents ( 2.62%) (  2.62%)
+>   [   2-   3 ents]:  7080 (21.15%) ( 54.78%)  16608.00 ents ( 4.36%) (  6.97%)
+>   [   4-   7 ents]:  5793 (17.30%) ( 72.08%)  30674.00 ents ( 8.05%) ( 15.02%)
+>   [   8-  15 ents]:  3971 (11.86%) ( 83.94%)  43315.00 ents (11.37%) ( 26.39%)
+>   [  16-  31 ents]:  2731 ( 8.16%) ( 92.10%)  59612.00 ents (15.64%) ( 42.04%)
+>   [  32-  63 ents]:  1610 ( 4.81%) ( 96.91%)  69326.00 ents (18.19%) ( 60.23%)
+>   [  64- 127 ents]:   705 ( 2.11%) ( 99.02%)  61633.00 ents (16.17%) ( 76.40%)
+>   [ 128- 255 ents]:   236 ( 0.70%) ( 99.72%)  40005.00 ents (10.50%) ( 86.90%)
+>   [ 256- 511 ents]:    66 ( 0.20%) ( 99.92%)  21923.00 ents ( 5.75%) ( 92.66%)
+>   [ 512-1023 ents]:    19 ( 0.06%) ( 99.98%)  14249.00 ents ( 3.74%) ( 96.40%)
+>   [1024-2047 ents]:     6 ( 0.02%) ( 99.99%)   7756.00 ents ( 2.04%) ( 98.43%)
+>   [2048-4095 ents]:     2 ( 0.01%) (100.00%)   5979.00 ents ( 1.57%) (100.00%)
+> 
+> A simple test of the performance gains might be running "file" on
+> everything in /etc and /usr, and measuring this with blktrace to
+> see what kind of seek reduction is seen from not doing seeks to
+> read the small files from an external block.
+Thanks for the test tools, and yes, I will try to test it when I finish
+my V2.
+> I think it is still useful to try to store the data in the large inode
+> xattr space if it is larger than i_blocks, especially for larger inodes,
+> but if there is not enough space for all the xattrs to fit into the
+> inode, I think "data" should be the first one to be pushed out of the
+> inode since that changes the format back to a normal ext* file.
+Oh, that does mean that we need to change the normal way we handling
+xattr set. I am not sure of it. Maybe we need an option in sysfs that
+can be tuned so that the user can tell us whether his inline file
+content is more important or the xattr. :)
+> 
+> 
+> We might also consider a reiserfs-like approach where multiple small
+> files could be packed into the same shared xattr block, but then the
+> xattr name would need to change from "data" to e.g. "inode.generation"
+> so that it can be located within the block shared between inodes.
+I'd like to defer it to a later version since it means that we still
+need to do 2 I/Os for a small file, the same as a ext* file. Having said
+that, it does be helpful for a sequence of small file read(file
+iteration or tar) if the underlying block device do a good readahead
+job. And this should help in the bigalloc case I mentioned in another
+thread about changing extent lengh to cluster(the case is when we tar a
+kernel source and do 'sync', it is very time-consuming for a bigalloc
+volume).
+> 
+> Tail packing is more complex, so such a change would only make sense
+> if real-world testing showed a benefit.  There is already the concept
+> of shared external xattr blocks, so maybe it isn't too bad.  Together
+> with bigalloc, it might make sense to be able to pack many small files
+> into one cluster if there is a binomial distribution of file sizes?
+It is a bit complicate than the current code base. So let me first
+implement all the suggestions above and then try to investigate whether
+it really helps.
 
-Hi Greg,
-
-This patch doesn't apply for upstream because the code has been
-refactored since 3.0.
-
-Regards,
-Zheng
-
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Thanks
+Tao
