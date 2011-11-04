@@ -1,70 +1,477 @@
-From: Johann Lombardi <johann@whamcloud.com>
-Subject: Re: [PATCH v3] ext4: make quota as first class supported feature
-Date: Fri, 4 Nov 2011 10:20:22 +0100
-Message-ID: <20111104092022.GD6205@granier.hd.free.fr>
-References: <1320372920-21308-1-git-send-email-adityakali@google.com>
+From: Bobi Jam <bobijam@whamcloud.com>
+Subject: Re: [PATCH] ext4: expand commit callback
+Date: Fri, 04 Nov 2011 20:17:49 +0800
+Message-ID: <4EB3D7ED.1060900@whamcloud.com>
+References: <y> <1319626156-2444-1-git-send-email-bobijam@whamcloud.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: adilger@dilger.ca, tytso@mit.edu, dmonakhov@openvz.org,
-	jack@suse.cz, linux-ext4@vger.kernel.org
-To: Aditya Kali <adityakali@google.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:57344 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751403Ab1KDJYW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Nov 2011 05:24:22 -0400
-Received: by wyh15 with SMTP id 15so2063036wyh.19
-        for <linux-ext4@vger.kernel.org>; Fri, 04 Nov 2011 02:24:21 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <1320372920-21308-1-git-send-email-adityakali@google.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:57837 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752074Ab1KDMSM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Nov 2011 08:18:12 -0400
+Received: by iage36 with SMTP id e36so2474902iag.19
+        for <linux-ext4@vger.kernel.org>; Fri, 04 Nov 2011 05:18:11 -0700 (PDT)
+In-Reply-To: <1319626156-2444-1-git-send-email-bobijam@whamcloud.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 03, 2011 at 07:15:20PM -0700, Aditya Kali wrote:
-> +#ifdef CONFIG_QUOTA
-> +	/* Enable quota usage during mount. */
-> +	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) &&
-> +	    !(sb->s_flags & MS_RDONLY)) {
-> +		ext4_quota_enable(sb, USRQUOTA, QFMT_VFS_V1,
-> +				  DQUOT_USAGE_ENABLED);
-> +		ext4_quota_enable(sb, GRPQUOTA, QFMT_VFS_V1,
-> +				  DQUOT_USAGE_ENABLED);
+ping. Any comment on this patch proposal? Thanks.
 
-I think we should print an error message if one of the calls to ext4_quota_enable() failed. Space accounting in the quota files won't be accurate any more and e2fsck is required.
-
-> +static int ext4_quota_enable(struct super_block *sb, int type, int format_id,
-> +			     unsigned int flags)
+On 2011-10-26 18:49, Bobi Jam wrote:
+> The per-commit callback is now used by mballoc code to manage free
+> space bitmaps after deleted blocks have been released. This patch
+> expand it to contain multiple different callbacks.
+> 
+> Signed-off-by: Bobi Jam <bobijam@whamcloud.com>
+> Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
+> ---
+>  fs/ext4/ext4_jbd2.h |   72 ++++++++++++++++++++++++
+>  fs/ext4/mballoc.c   |  150 ++++++++++++++++++++++++---------------------------
+>  fs/ext4/mballoc.h   |   18 ++++---
+>  fs/ext4/super.c     |   18 ++++++
+>  4 files changed, 170 insertions(+), 88 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+> index 5802fa1..c65a774 100644
+> --- a/fs/ext4/ext4_jbd2.h
+> +++ b/fs/ext4/ext4_jbd2.h
+> @@ -104,6 +104,78 @@
+>  #define EXT4_MAXQUOTAS_INIT_BLOCKS(sb) (MAXQUOTAS*EXT4_QUOTA_INIT_BLOCKS(sb))
+>  #define EXT4_MAXQUOTAS_DEL_BLOCKS(sb) (MAXQUOTAS*EXT4_QUOTA_DEL_BLOCKS(sb))
+>  
+> +/**
+> + *   struct ext4_journal_cb_entry - Base structure for callback information.
+> + *
+> + *   This struct is a 'seed' structure for a using with your own callback
+> + *   structs. If you are using callbacks you must allocate one of these
+> + *   or another struct of your own definition which has this struct
+> + *   as it's first element and pass it to ext4_journal_callback_add().
+> + */
+> +struct ext4_journal_cb_entry {
+> +	/* list information for other callbacks attached to the same handle */
+> +	struct list_head jce_list;
+> +
+> +	/*  Function to call with this callback structure */
+> +	void (*jce_func)(struct super_block *sb,
+> +			 struct ext4_journal_cb_entry *jce, int error);
+> +
+> +	/* user data goes here */
+> +};
+> +
+> +/**
+> + * ext4_journal_callback_add: add a function to call after transaction commit
+> + * @handle: active journal transaction handle to register callback on
+> + * @func: callback function to call after the transaction has committed:
+> + *        @sb: superblock of current filesystem for transaction
+> + *        @jce: returned journal callback data
+> + *        @rc: journal state at commit (0 = transaction committed properly)
+> + * @jce: journal callback data (internal and function private data struct)
+> + *
+> + * The registered function will be called in the context of the journal thread
+> + * after the transaction for which the handle was created has completed.
+> + *
+> + * No locks are held when the callback function is called, so it is safe to
+> + * call blocking functions from within the callback, but the callback should
+> + * not block or run for too long, or the filesystem will be blocked waiting for
+> + * the next transaction to commit. No journaling functions can be used, or
+> + * there is a risk of deadlock.
+> + *
+> + * There is no guaranteed calling order of multiple registered callbacks on
+> + * the same transaction.
+> + */
+> +static inline void ext4_journal_callback_add(handle_t *handle,
+> +			void (*func)(struct super_block *sb,
+> +				     struct ext4_journal_cb_entry *jce,
+> +				     int rc),
+> +			struct ext4_journal_cb_entry *jce)
 > +{
-> +	struct ext4_sb_info *sbi = EXT4_SB(sb);
-> +	struct inode *qf_inode;
-> +	int err;
+> +	struct ext4_sb_info *sbi =
+> +			EXT4_SB(handle->h_transaction->t_journal->j_private);
 > +
-> +	if (!sbi->s_qf_inums[type])
-> +		return -EPERM;
+> +	/* Add the jce to transaction's private list */
+> +	jce->jce_func = func;
+> +	spin_lock(&sbi->s_md_lock);
+> +	list_add_tail(&jce->jce_list, &handle->h_transaction->t_private_list);
+> +	spin_unlock(&sbi->s_md_lock);
+> +}
 > +
-> +	qf_inode = ext4_iget(sb, sbi->s_qf_inums[type]);
-> +	if (IS_ERR(qf_inode)) {
-> +		ext4_error(sb, "Bad quota inode # %lu", sbi->s_qf_inums[type]);
-> +		return PTR_ERR(qf_inode);
-> +	}
+> +/**
+> + * ext4_journal_callback_del: delete a registered callback
+> + * @handle: active journal transaction handle on which callback was registered
+> + * @jce: registered journal callback entry to unregister
+> + */
+> +static inline void ext4_journal_callback_del(handle_t *handle,
+> +					     struct ext4_journal_cb_entry *jce)
+> +{
+> +	struct ext4_sb_info *sbi =
+> +			EXT4_SB(handle->h_transaction->t_journal->j_private);
 > +
+> +	spin_lock(&sbi->s_md_lock);
+> +	list_del_init(&jce->jce_list);
+> +	spin_unlock(&sbi->s_md_lock);
+> +}
+> +
+>  int
+>  ext4_mark_iloc_dirty(handle_t *handle,
+>  		     struct inode *inode,
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 17a5a57..b90da57 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -21,6 +21,7 @@
+>   * mballoc.c contains the multiblocks allocation routines
+>   */
+>  
+> +#include "ext4_jbd2.h"
+>  #include "mballoc.h"
+>  #include <linux/debugfs.h>
+>  #include <linux/slab.h>
+> @@ -338,7 +339,7 @@
+>   */
+>  static struct kmem_cache *ext4_pspace_cachep;
+>  static struct kmem_cache *ext4_ac_cachep;
+> -static struct kmem_cache *ext4_free_ext_cachep;
+> +static struct kmem_cache *ext4_free_data_cachep;
+>  
+>  /* We create slab caches for groupinfo data structures based on the
+>   * superblock block size.  There will be one per mounted filesystem for
+> @@ -356,7 +357,8 @@ static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
+>  					ext4_group_t group);
+>  static void ext4_mb_generate_from_freelist(struct super_block *sb, void *bitmap,
+>  						ext4_group_t group);
+> -static void release_blocks_on_commit(journal_t *journal, transaction_t *txn);
+> +static void ext4_free_data_callback(struct super_block *sb,
+> +					struct ext4_journal_cb_entry *jce, int error);
+>  
+>  static inline void *mb_correct_addr_and_bit(int *bit, void *addr)
+>  {
+> @@ -2511,8 +2513,6 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
+>  		proc_create_data("mb_groups", S_IRUGO, sbi->s_proc,
+>  				 &ext4_mb_seq_groups_fops, sb);
+>  
+> -	if (sbi->s_journal)
+> -		sbi->s_journal->j_commit_callback = release_blocks_on_commit;
+>  out:
+>  	if (ret) {
+>  		kfree(sbi->s_mb_offsets);
+> @@ -2616,58 +2616,54 @@ static inline int ext4_issue_discard(struct super_block *sb,
+>   * This function is called by the jbd2 layer once the commit has finished,
+>   * so we know we can free the blocks that were released with that commit.
+>   */
+> -static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
+> +static void ext4_free_data_callback(struct super_block *sb,
+> +				    struct ext4_journal_cb_entry *jce,
+> +				    int rc)
+>  {
+> -	struct super_block *sb = journal->j_private;
+> +	struct ext4_free_data *entry = (struct ext4_free_data *)jce;
+>  	struct ext4_buddy e4b;
+>  	struct ext4_group_info *db;
+>  	int err, count = 0, count2 = 0;
+> -	struct ext4_free_data *entry;
+> -	struct list_head *l, *ltmp;
+>  
+> -	list_for_each_safe(l, ltmp, &txn->t_private_list) {
+> -		entry = list_entry(l, struct ext4_free_data, list);
+> +	mb_debug(1, "gonna free %u blocks in group %u (0x%p):",
+> +		 entry->efd_count, entry->efd_group, entry);
+>  
+> -		mb_debug(1, "gonna free %u blocks in group %u (0x%p):",
+> -			 entry->count, entry->group, entry);
+> +	if (test_opt(sb, DISCARD))
+> +		ext4_issue_discard(sb, entry->efd_group,
+> +				   entry->efd_start_blk, entry->efd_count);
+>  
+> -		if (test_opt(sb, DISCARD))
+> -			ext4_issue_discard(sb, entry->group,
+> -					   entry->start_blk, entry->count);
+> +	err = ext4_mb_load_buddy(sb, entry->efd_group, &e4b);
+> +	/* we expect to find existing buddy because it's pinned */
+> +	BUG_ON(err != 0);
+>  
+> -		err = ext4_mb_load_buddy(sb, entry->group, &e4b);
+> -		/* we expect to find existing buddy because it's pinned */
+> -		BUG_ON(err != 0);
+> +	db = e4b.bd_info;
+> +	/* there are blocks to put in buddy to make them really free */
+> +	count += entry->efd_count;
+> +	count2++;
+> +	ext4_lock_group(sb, entry->efd_group);
+> +	/* Take it out of per group rb tree */
+> +	rb_erase(&entry->efd_node, &(db->bb_free_root));
+> +	mb_free_blocks(NULL, &e4b, entry->efd_start_blk, entry->efd_count);
+>  
+> -		db = e4b.bd_info;
+> -		/* there are blocks to put in buddy to make them really free */
+> -		count += entry->count;
+> -		count2++;
+> -		ext4_lock_group(sb, entry->group);
+> -		/* Take it out of per group rb tree */
+> -		rb_erase(&entry->node, &(db->bb_free_root));
+> -		mb_free_blocks(NULL, &e4b, entry->start_blk, entry->count);
 > +	/*
-> +	 * When we journal data on quota file, we have to flush journal to see
-> +	 * all updates to the file when we bypass pagecache...
+> +	 * Clear the trimmed flag for the group so that the next
+> +	 * ext4_trim_fs can trim it.
+> +	 * If the volume is mounted with -o discard, online discard
+> +	 * is supported and the free blocks will be trimmed online.
 > +	 */
-> +	if (sbi->s_journal &&
-> +	    ext4_should_journal_data(qf_inode)) {
-> +		/*
-> +		 * We don't need to lock updates but journal_flush() could
-> +		 * otherwise be livelocked...
-> +		 */
-> +		jbd2_journal_lock_updates(sbi->s_journal);
-> +		err = jbd2_journal_flush(sbi->s_journal);
-> +		jbd2_journal_unlock_updates(sbi->s_journal);
-> +		if (err)
-> +			return err;
+> +	if (!test_opt(sb, DISCARD))
+> +		EXT4_MB_GRP_CLEAR_TRIMMED(db);
+>  
+> -		/*
+> -		 * Clear the trimmed flag for the group so that the next
+> -		 * ext4_trim_fs can trim it.
+> -		 * If the volume is mounted with -o discard, online discard
+> -		 * is supported and the free blocks will be trimmed online.
+> +	if (!db->bb_free_root.rb_node) {
+> +		/* No more items in the per group rb tree
+> +		 * balance refcounts from ext4_mb_free_metadata()
+>  		 */
+> -		if (!test_opt(sb, DISCARD))
+> -			EXT4_MB_GRP_CLEAR_TRIMMED(db);
+> -
+> -		if (!db->bb_free_root.rb_node) {
+> -			/* No more items in the per group rb tree
+> -			 * balance refcounts from ext4_mb_free_metadata()
+> -			 */
+> -			page_cache_release(e4b.bd_buddy_page);
+> -			page_cache_release(e4b.bd_bitmap_page);
+> -		}
+> -		ext4_unlock_group(sb, entry->group);
+> -		kmem_cache_free(ext4_free_ext_cachep, entry);
+> -		ext4_mb_unload_buddy(&e4b);
+> +		page_cache_release(e4b.bd_buddy_page);
+> +		page_cache_release(e4b.bd_bitmap_page);
+>  	}
+> +	ext4_unlock_group(sb, entry->efd_group);
+> +	kmem_cache_free(ext4_free_data_cachep, entry);
+> +	ext4_mb_unload_buddy(&e4b);
+>  
+>  	mb_debug(1, "freed %u blocks in %u structures\n", count, count2);
+>  }
+> @@ -2720,9 +2716,9 @@ int __init ext4_init_mballoc(void)
+>  		return -ENOMEM;
+>  	}
+>  
+> -	ext4_free_ext_cachep = KMEM_CACHE(ext4_free_data,
+> -					  SLAB_RECLAIM_ACCOUNT);
+> -	if (ext4_free_ext_cachep == NULL) {
+> +	ext4_free_data_cachep = KMEM_CACHE(ext4_free_data,
+> +					   SLAB_RECLAIM_ACCOUNT);
+> +	if (ext4_free_data_cachep == NULL) {
+>  		kmem_cache_destroy(ext4_pspace_cachep);
+>  		kmem_cache_destroy(ext4_ac_cachep);
+>  		return -ENOMEM;
+> @@ -2740,7 +2736,7 @@ void ext4_exit_mballoc(void)
+>  	rcu_barrier();
+>  	kmem_cache_destroy(ext4_pspace_cachep);
+>  	kmem_cache_destroy(ext4_ac_cachep);
+> -	kmem_cache_destroy(ext4_free_ext_cachep);
+> +	kmem_cache_destroy(ext4_free_data_cachep);
+>  	ext4_groupinfo_destroy_slabs();
+>  	ext4_remove_debugfs_entry();
+>  }
+> @@ -3290,8 +3286,8 @@ static void ext4_mb_generate_from_freelist(struct super_block *sb, void *bitmap,
+>  	n = rb_first(&(grp->bb_free_root));
+>  
+>  	while (n) {
+> -		entry = rb_entry(n, struct ext4_free_data, node);
+> -		ext4_set_bits(bitmap, entry->start_blk, entry->count);
+> +		entry = rb_entry(n, struct ext4_free_data, efd_node);
+> +		ext4_set_bits(bitmap, entry->efd_start_blk, entry->efd_count);
+>  		n = rb_next(n);
+>  	}
+>  	return;
+> @@ -4386,9 +4382,9 @@ out:
+>  static int can_merge(struct ext4_free_data *entry1,
+>  			struct ext4_free_data *entry2)
+>  {
+> -	if ((entry1->t_tid == entry2->t_tid) &&
+> -	    (entry1->group == entry2->group) &&
+> -	    ((entry1->start_blk + entry1->count) == entry2->start_blk))
+> +	if ((entry1->efd_tid == entry2->efd_tid) &&
+> +	    (entry1->efd_group == entry2->efd_group) &&
+> +	    ((entry1->efd_start_blk + entry1->efd_count) == entry2->efd_start_blk))
+>  		return 1;
+>  	return 0;
+>  }
+> @@ -4402,7 +4398,6 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+>  	struct ext4_free_data *entry;
+>  	struct ext4_group_info *db = e4b->bd_info;
+>  	struct super_block *sb = e4b->bd_sb;
+> -	struct ext4_sb_info *sbi = EXT4_SB(sb);
+>  	struct rb_node **n = &db->bb_free_root.rb_node, *node;
+>  	struct rb_node *parent = NULL, *new_node;
+>  
+> @@ -4410,8 +4405,8 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+>  	BUG_ON(e4b->bd_bitmap_page == NULL);
+>  	BUG_ON(e4b->bd_buddy_page == NULL);
+>  
+> -	new_node = &new_entry->node;
+> -	block = new_entry->start_blk;
+> +	new_node = &new_entry->efd_node;
+> +	block = new_entry->efd_start_blk;
+>  
+>  	if (!*n) {
+>  		/* first free block exent. We need to
+> @@ -4424,10 +4419,10 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+>  	}
+>  	while (*n) {
+>  		parent = *n;
+> -		entry = rb_entry(parent, struct ext4_free_data, node);
+> -		if (block < entry->start_blk)
+> +		entry = rb_entry(parent, struct ext4_free_data, efd_node);
+> +		if (block < entry->efd_start_blk)
+>  			n = &(*n)->rb_left;
+> -		else if (block >= (entry->start_blk + entry->count))
+> +		else if (block >= (entry->efd_start_blk + entry->efd_count))
+>  			n = &(*n)->rb_right;
+>  		else {
+>  			ext4_grp_locked_error(sb, group, 0,
+> @@ -4443,34 +4438,29 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+>  	/* Now try to see the extent can be merged to left and right */
+>  	node = rb_prev(new_node);
+>  	if (node) {
+> -		entry = rb_entry(node, struct ext4_free_data, node);
+> +		entry = rb_entry(node, struct ext4_free_data, efd_node);
+>  		if (can_merge(entry, new_entry)) {
+> -			new_entry->start_blk = entry->start_blk;
+> -			new_entry->count += entry->count;
+> +			new_entry->efd_start_blk = entry->efd_start_blk;
+> +			new_entry->efd_count += entry->efd_count;
+>  			rb_erase(node, &(db->bb_free_root));
+> -			spin_lock(&sbi->s_md_lock);
+> -			list_del(&entry->list);
+> -			spin_unlock(&sbi->s_md_lock);
+> -			kmem_cache_free(ext4_free_ext_cachep, entry);
+> +			ext4_journal_callback_del(handle, &entry->efd_jce);
+> +			kmem_cache_free(ext4_free_data_cachep, entry);
+>  		}
+>  	}
+>  
+>  	node = rb_next(new_node);
+>  	if (node) {
+> -		entry = rb_entry(node, struct ext4_free_data, node);
+> +		entry = rb_entry(node, struct ext4_free_data, efd_node);
+>  		if (can_merge(new_entry, entry)) {
+> -			new_entry->count += entry->count;
+> +			new_entry->efd_count += entry->efd_count;
+>  			rb_erase(node, &(db->bb_free_root));
+> -			spin_lock(&sbi->s_md_lock);
+> -			list_del(&entry->list);
+> -			spin_unlock(&sbi->s_md_lock);
+> -			kmem_cache_free(ext4_free_ext_cachep, entry);
+> +			ext4_journal_callback_del(handle, &entry->efd_jce);
+> +			kmem_cache_free(ext4_free_data_cachep, entry);
+>  		}
+>  	}
+>  	/* Add the extent to transaction's private list */
+> -	spin_lock(&sbi->s_md_lock);
+> -	list_add(&new_entry->list, &handle->h_transaction->t_private_list);
+> -	spin_unlock(&sbi->s_md_lock);
+> +	ext4_journal_callback_add(handle, ext4_free_data_callback,
+> +				  &new_entry->efd_jce);
+>  	return 0;
+>  }
+>  
+> @@ -4613,15 +4603,15 @@ do_more:
+>  		 * blocks being freed are metadata. these blocks shouldn't
+>  		 * be used until this transaction is committed
+>  		 */
+> -		new_entry = kmem_cache_alloc(ext4_free_ext_cachep, GFP_NOFS);
+> +		new_entry = kmem_cache_alloc(ext4_free_data_cachep, GFP_NOFS);
+>  		if (!new_entry) {
+>  			err = -ENOMEM;
+>  			goto error_return;
+>  		}
+> -		new_entry->start_blk = bit;
+> -		new_entry->group  = block_group;
+> -		new_entry->count = count;
+> -		new_entry->t_tid = handle->h_transaction->t_tid;
+> +		new_entry->efd_start_blk = bit;
+> +		new_entry->efd_group  = block_group;
+> +		new_entry->efd_count = count;
+> +		new_entry->efd_tid = handle->h_transaction->t_tid;
+>  
+>  		ext4_lock_group(sb, block_group);
+>  		mb_clear_bits(bitmap_bh->b_data, bit, count);
+> diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+> index 9d4a636..1e47c2e 100644
+> --- a/fs/ext4/mballoc.h
+> +++ b/fs/ext4/mballoc.h
+> @@ -96,21 +96,23 @@ extern u8 mb_enable_debug;
+>  
+>  
+>  struct ext4_free_data {
+> -	/* this links the free block information from group_info */
+> -	struct rb_node node;
+> +	/* MUST be the first member */
+> +	struct ext4_journal_cb_entry	efd_jce;
+> +
+> +	/* ext4_free_data private data starts from here */
+>  
+> -	/* this links the free block information from ext4_sb_info */
+> -	struct list_head list;
+> +	/* this links the free block information from group_info */
+> +	struct rb_node			efd_node;
+>  
+>  	/* group which free block extent belongs */
+> -	ext4_group_t group;
+> +	ext4_group_t			efd_group;
+>  
+>  	/* free block extent */
+> -	ext4_grpblk_t start_blk;
+> -	ext4_grpblk_t count;
+> +	ext4_grpblk_t			efd_start_blk;
+> +	ext4_grpblk_t			efd_count;
+>  
+>  	/* transaction which freed this extent */
+> -	tid_t	t_tid;
+> +	tid_t				efd_tid;
+>  };
+>  
+>  struct ext4_prealloc_space {
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 44d0c8d..5e2205e 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -414,6 +414,22 @@ static void save_error_info(struct super_block *sb, const char *func,
+>  	ext4_commit_super(sb, 1);
+>  }
+>  
+> +static void ext4_journal_commit_callback(journal_t *journal, transaction_t *txn)
+> +{
+> +	struct super_block		*sb = journal->j_private;
+> +	struct ext4_sb_info		*sbi = EXT4_SB(sb);
+> +	int				error = is_journal_aborted(journal);
+> +	struct ext4_journal_cb_entry	*jce, *tmp;
+> +
+> +	spin_lock(&sbi->s_md_lock);
+> +	list_for_each_entry_safe(jce, tmp, &txn->t_private_list, jce_list) {
+> +		list_del_init(&jce->jce_list);
+> +		spin_unlock(&sbi->s_md_lock);
+> +		jce->jce_func(sb, jce, error);
+> +		spin_lock(&sbi->s_md_lock);
+> +	}
+> +	spin_unlock(&sbi->s_md_lock);
+> +}
+>  
+>  /* Deal with the reporting of failure conditions on a filesystem such as
+>   * inconsistencies detected or read IO failures.
+> @@ -3605,6 +3621,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  	}
+>  	set_task_ioprio(sbi->s_journal->j_task, journal_ioprio);
+>  
+> +	sbi->s_journal->j_commit_callback = ext4_journal_commit_callback;
+> +
+>  	/*
+>  	 * The journal may have updated the bg summary counts, so we
+>  	 * need to update the global counters.
 
-iput(qf_inode) is missing in this error path.
 
-Cheers,
-Johann
+-- 
+Bobi Jam  <bobijam@whamcloud.com>
