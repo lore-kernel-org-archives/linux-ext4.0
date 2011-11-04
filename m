@@ -1,33 +1,70 @@
 From: Johann Lombardi <johann@whamcloud.com>
-Subject: Re: quotacheck on 'tune2fs -O quota'
-Date: Fri, 4 Nov 2011 10:03:56 +0100
-Message-ID: <20111104090356.GC6205@granier.hd.free.fr>
-References: <4EB224A9.8030606@whamcloud.com>
- <CAGr1F2FMvsZ6eLJid4z0RpJcAm5paEfbJwrtFE7iqbr_bA4BTA@mail.gmail.com>
+Subject: Re: [PATCH v3] ext4: make quota as first class supported feature
+Date: Fri, 4 Nov 2011 10:20:22 +0100
+Message-ID: <20111104092022.GD6205@granier.hd.free.fr>
+References: <1320372920-21308-1-git-send-email-adityakali@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Niu <niu@whamcloud.com>, tytso@mit.edu, linux-ext4@vger.kernel.org
+Cc: adilger@dilger.ca, tytso@mit.edu, dmonakhov@openvz.org,
+	jack@suse.cz, linux-ext4@vger.kernel.org
 To: Aditya Kali <adityakali@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:61973 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751443Ab1KDJHz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Nov 2011 05:07:55 -0400
-Received: by wwi36 with SMTP id 36so3156110wwi.1
-        for <linux-ext4@vger.kernel.org>; Fri, 04 Nov 2011 02:07:54 -0700 (PDT)
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:57344 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751403Ab1KDJYW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Nov 2011 05:24:22 -0400
+Received: by wyh15 with SMTP id 15so2063036wyh.19
+        for <linux-ext4@vger.kernel.org>; Fri, 04 Nov 2011 02:24:21 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <CAGr1F2FMvsZ6eLJid4z0RpJcAm5paEfbJwrtFE7iqbr_bA4BTA@mail.gmail.com>
+In-Reply-To: <1320372920-21308-1-git-send-email-adityakali@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 03, 2011 at 05:13:21PM -0700, Aditya Kali wrote:
-> I have a patch that removes use of existing quota files altogether by
-> tune2fs. This is because since we cannot rely on the data in the
-> existing quota files (we have to recompute the quota on the system
-> anyways), there is no point in reusing those files.
+On Thu, Nov 03, 2011 at 07:15:20PM -0700, Aditya Kali wrote:
+> +#ifdef CONFIG_QUOTA
+> +	/* Enable quota usage during mount. */
+> +	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) &&
+> +	    !(sb->s_flags & MS_RDONLY)) {
+> +		ext4_quota_enable(sb, USRQUOTA, QFMT_VFS_V1,
+> +				  DQUOT_USAGE_ENABLED);
+> +		ext4_quota_enable(sb, GRPQUOTA, QFMT_VFS_V1,
+> +				  DQUOT_USAGE_ENABLED);
 
-The old quota files also contain enforcement information which will thus be lost.
-To sum up, there is no way to upgrade without losing all quota limits?
+I think we should print an error message if one of the calls to ext4_quota_enable() failed. Space accounting in the quota files won't be accurate any more and e2fsck is required.
+
+> +static int ext4_quota_enable(struct super_block *sb, int type, int format_id,
+> +			     unsigned int flags)
+> +{
+> +	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> +	struct inode *qf_inode;
+> +	int err;
+> +
+> +	if (!sbi->s_qf_inums[type])
+> +		return -EPERM;
+> +
+> +	qf_inode = ext4_iget(sb, sbi->s_qf_inums[type]);
+> +	if (IS_ERR(qf_inode)) {
+> +		ext4_error(sb, "Bad quota inode # %lu", sbi->s_qf_inums[type]);
+> +		return PTR_ERR(qf_inode);
+> +	}
+> +
+> +	/*
+> +	 * When we journal data on quota file, we have to flush journal to see
+> +	 * all updates to the file when we bypass pagecache...
+> +	 */
+> +	if (sbi->s_journal &&
+> +	    ext4_should_journal_data(qf_inode)) {
+> +		/*
+> +		 * We don't need to lock updates but journal_flush() could
+> +		 * otherwise be livelocked...
+> +		 */
+> +		jbd2_journal_lock_updates(sbi->s_journal);
+> +		err = jbd2_journal_flush(sbi->s_journal);
+> +		jbd2_journal_unlock_updates(sbi->s_journal);
+> +		if (err)
+> +			return err;
+
+iput(qf_inode) is missing in this error path.
 
 Cheers,
 Johann
