@@ -1,138 +1,84 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [BUG] aborted ext4 leads to inifinity loop in
- balance_dirty_pages
-Date: Tue, 8 Nov 2011 01:03:35 +0100
-Message-ID: <20111108000335.GA7518@quack.suse.cz>
-References: <4EA6A5E5.2050604@sx.jp.nec.com>
- <20111025134045.GB8072@quack.suse.cz>
- <4EAA3EE7.4040802@sx.jp.nec.com>
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="pf9I7BMVVzbSWLtt"
-Cc: Jan Kara <jack@suse.cz>, ext4 <linux-ext4@vger.kernel.org>,
-	Theodore Tso <tytso@mit.edu>,
-	Andreas Dilger <adilger@dilger.ca>
-To: Kazuya Mio <k-mio@sx.jp.nec.com>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: [PATCH V3 0/15] ext4: add new online resize interface
+Date: Tue,  8 Nov 2011 07:13:13 +0800
+Message-ID: <1320707608-14246-1-git-send-email-xiaoqiangnk@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:52312 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750978Ab1KHADh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 Nov 2011 19:03:37 -0500
-Content-Disposition: inline
-In-Reply-To: <4EAA3EE7.4040802@sx.jp.nec.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:65327 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751217Ab1KHB2N (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Nov 2011 20:28:13 -0500
+Received: by iage36 with SMTP id e36so6468027iag.19
+        for <linux-ext4@vger.kernel.org>; Mon, 07 Nov 2011 17:28:13 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hi all,
 
---pf9I7BMVVzbSWLtt
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+ V2->V3:
+   initialize block bitmap of last group.
+   remove code initalizing inode bitmap and inode tables.
 
-On Fri 28-10-11 14:34:31, Kazuya Mio wrote:
-> 2011/10/25 22:40, Jan Kara wrote:
-> >  Please no. Generally this boils down to what do we do with dirty data
-> >when there's error in writing them out. Currently we just throw them away
-> >(e.g. in media error case) but I don't think that's a generally good thing
-> >because e.g. admin may want to copy the data to other working storage or
-> >so. So I think we should rather keep the data and provide a mechanism for
-> >userspace to ask kernel to get rid of the data (so that we don't eventually
-> >run OOM).
-> 
-> I see. I agree with you.
-> 
-> >>Do you have any ideas?
-> >  So the question is what would you like to achieve. If you just want to
-> >unblock a thread then a solution would be to make a thread at
-> >balance_dirty_pages() killable. If generally you want to get rid of dirty
-> >memory, then I don't have a really good answer but throwing dirty data away
-> >seems like a bad answer to me.
-> 
-> The problem is that we cannot unmount the corrupted filesystem due to
-> un-killable dd process. We must bring down the system to resume the service
-> with no dirty pages. I think it is important for the service continuity
-> to be able to kill the thread handling in balance_dirty_pages().
-  OK, attached are two patches based on latest Linus's tree that should
-make your task killable. Can you test them?
+This patch series adds new resize implementation to ext4.
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+-- What's new resize implementation?
+   It is a new online resize interface for ext4.  It can be used via
+   ioctl with EXT4_IOC_RESIZE_FS and a 64 bit integer indicating size
+   of the resized fs in block.
 
---pf9I7BMVVzbSWLtt
-Content-Type: text/x-patch; charset=us-ascii
-Content-Disposition: attachment; filename="0001-mm-Make-task-in-balance_dirty_pages-killable.patch"
+-- Difference between current resize and new resize.
+   New resize lets kernel do all work, like allocating bitmaps and
+   inode tables and can support flex_bg and BLOCK_UNINIT features.
+   Besides these, new resize is much faster than current resize.
 
->From 62d9916059c0441b3f545158f723c7006bcdc1e8 Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Mon, 7 Nov 2011 18:41:05 +0100
-Subject: [PATCH 1/2] mm: Make task in balance_dirty_pages() killable
+   Below are benchmarks I made on my personal computer, fses with
+   flex_bg size = 16 were resized to 230GB evry time. The first
+   row shows the size of a fs from which the fs was resized to 230GB.
+   The datas were collected by 'time resize2fs'.
 
-There is no reason why task in balance_dirty_pages() shouldn't be killable
-and it helps in recovering from some error conditions (like when filesystem
-goes in error state and cannot accept writeback anymore but we still want to
-kill processes using it to be able to unmount it).
+                      new resize
+                20GB          50GB      100GB
+      real    0m3.558s     0m2.891s    0m0.394s
+      user    0m0.004s     0m0.000s    0m0.394s
+      sys     0m0.048s     0m0.048s    0m0.028s
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- mm/page-writeback.c |    4 +++-
- 1 files changed, 3 insertions(+), 1 deletions(-)
+                      current resize
+                20GB          50GB      100GB
+      real    5m2.770s     4m43.757s  3m14.840s
+      user    0m0.040s     0m0.032s   0m0.024s
+      sys     0m0.464s     0m0.432s   0m0.324s
 
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 0360d1b..e83c286 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -1133,8 +1133,10 @@ pause:
- 					  pages_dirtied,
- 					  pause,
- 					  start_time);
--		__set_current_state(TASK_UNINTERRUPTIBLE);
-+		__set_current_state(TASK_KILLABLE);
- 		io_schedule_timeout(pause);
-+		if (fatal_signal_pending(current))
-+			break;
- 
- 		dirty_thresh = hard_dirty_limit(dirty_thresh);
- 		/*
--- 
-1.7.1
+   According to data above, new resize is faster than current resize in both
+   user and sys time.  New resize performs well in sys time, because it
+   supports BLOCK_UNINIT and adds multi-groups each time.
 
+-- About supporting new features.
+   YES! New resize can support new feature like bigalloc and exclude bitmap
+   easily.  Because it lets kernel do all work.
 
---pf9I7BMVVzbSWLtt
-Content-Type: text/x-patch; charset=us-ascii
-Content-Disposition: attachment; filename="0002-fs-Make-write-2-interruptible-by-a-signal.patch"
+Yongqiang.
 
->From 6eefa10d92cc35b66a8166cc26472d383b572b0d Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Mon, 7 Nov 2011 18:46:39 +0100
-Subject: [PATCH 2/2] fs: Make write(2) interruptible by a signal
+git diff --stat
 
-Currently write(2) to a file is not interruptible by a signal. Sometimes this
-is desirable (e.g. when you want to quickly kill a process hogging your disk or
-when some process gets blocked in balance_dirty_pages() indefinitely due to a
-filesystem being in an error condition).
+ Documentation/filesystems/ext4.txt |    7 +
+ fs/ext4/ext4.h                     |   10 +
+ fs/ext4/ioctl.c                    |   39 ++
+ fs/ext4/resize.c                   | 1167 +++++++++++++++++++++++++++---------
+ 4 files changed, 942 insertions(+), 281 deletions(-)
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- mm/filemap.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
-
-diff --git a/mm/filemap.c b/mm/filemap.c
-index c0018f2..6b01d2f 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -2407,6 +2407,10 @@ static ssize_t generic_perform_write(struct file *file,
- 						iov_iter_count(i));
- 
- again:
-+		if (signal_pending(current)) {
-+			status = -EINTR;
-+			break;
-+		}
- 
- 		/*
- 		 * Bring in the user page that we will copy from _first_.
--- 
-1.7.1
-
-
---pf9I7BMVVzbSWLtt--
+[PATCH V3 01/15] ext4: add a function which extends a group without
+[PATCH V3 02/15] ext4: add a function which adds a new desc to a fs
+[PATCH V3 03/15] ext4: add a function which sets up a new group desc
+[PATCH V3 04/15] ext4: add a function which updates super block
+[PATCH V3 05/15] ext4: add a structure which will be used by
+[PATCH V3 06/15] ext4: add a function which sets up group blocks of
+[PATCH V3 07/15] ext4: add a function which adds several group
+[PATCH V3 08/15] ext4: add a function which sets up a flex groups
+[PATCH V3 09/15] ext4: enable ext4_update_super() to handle a flex
+[PATCH V3 10/15] ext4: pass verify_reserved_gdb() the number of
+[PATCH V3 11/15] ext4: add a new function which allocates bitmaps
+[PATCH V3 12/15] ext4: add a new function which adds a flex group to
+[PATCH V3 13/15] ext4: add new online resize interface
+[PATCH V3 14/15] ext4: let ext4_group_extend() use common code
+[PATCH V3 15/15] ext4: let ext4_group_add() use common code
