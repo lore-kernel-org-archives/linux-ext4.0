@@ -1,85 +1,120 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [BUG] aborted ext4 leads to inifinity loop in balance_dirty_pages
-Date: Mon, 07 Nov 2011 21:45:31 +0400
-Message-ID: <87pqh3ltc4.fsf@dmbot.sw.ru>
-References: <4EA6A5E5.2050604@sx.jp.nec.com> <20111025134045.GB8072@quack.suse.cz> <4EAA3EE7.4040802@sx.jp.nec.com> <87y5vsl5ue.fsf@dmbot.sw.ru> <20111107172939.GH15796@quack.suse.cz>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [PATCH 15/28] ext4: Calculate and verify block bitmap checksum
+Date: Mon, 7 Nov 2011 12:00:08 -0800
+Message-ID: <20111107200008.GW12447@tux1.beaverton.ibm.com>
+References: <20111008075343.20506.23155.stgit@elm3c44.beaverton.ibm.com> <20111008075522.20506.22239.stgit@elm3c44.beaverton.ibm.com> <AE869D1A-2A06-4849-8752-74924B0C05BD@dilger.ca> <20111013071631.GQ12447@tux1.beaverton.ibm.com>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Kazuya Mio <k-mio@sx.jp.nec.com>, Jan Kara <jack@suse.cz>,
-	ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>,
-	Andreas Dilger <adilger@dilger.ca>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:52835 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933124Ab1KGRpl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Nov 2011 12:45:41 -0500
-Received: by bke11 with SMTP id 11so3827208bke.19
-        for <linux-ext4@vger.kernel.org>; Mon, 07 Nov 2011 09:45:40 -0800 (PST)
-In-Reply-To: <20111107172939.GH15796@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Theodore Tso <tytso@mit.edu>,
+	Sunil Mushran <sunil.mushran@oracle.com>,
+	Martin K Petersen <martin.petersen@oracle.com>,
+	Greg Freemyer <greg.freemyer@gmail.com>,
+	Amir Goldstein <amir73il@gmail.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Andi Kleen <andi@firstfloor.org>,
+	Mingming Cao <cmm@us.ibm.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
+To: Andreas Dilger <adilger.kernel@dilger.ca>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20111013071631.GQ12447@tux1.beaverton.ibm.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 7 Nov 2011 18:29:39 +0100, Jan Kara <jack@suse.cz> wrote:
-> On Mon 07-11-11 12:00:41, Dmitry Monakhov wrote:
-> > On Fri, 28 Oct 2011 14:34:31 +0900, Kazuya Mio <k-mio@sx.jp.nec.com> wrote:
-> > > 2011/10/25 22:40, Jan Kara wrote:
-> > > >   Please no. Generally this boils down to what do we do with dirty data
-> > > > when there's error in writing them out. Currently we just throw them away
-> > > > (e.g. in media error case) but I don't think that's a generally good thing
-> > > > because e.g. admin may want to copy the data to other working storage or
-> > > > so. So I think we should rather keep the data and provide a mechanism for
-> > > > userspace to ask kernel to get rid of the data (so that we don't eventually
-> > > > run OOM).
+On Thu, Oct 13, 2011 at 12:16:31AM -0700, Darrick J. Wong wrote:
+> On Wed, Oct 12, 2011 at 06:00:40PM -0600, Andreas Dilger wrote:
+> > On 2011-10-08, at 1:55 AM, Darrick J. Wong wrote:
+> > > Compute and verify the checksum of the block bitmap; this checksum is
+> > > stored in the block group descriptor.
 > > > 
-> > > I see. I agree with you.
-> > > 
-> > > >> Do you have any ideas?
-> > > >   So the question is what would you like to achieve. If you just want to
-> > > > unblock a thread then a solution would be to make a thread at
-> > > > balance_dirty_pages() killable. If generally you want to get rid of dirty
-> > > > memory, then I don't have a really good answer but throwing dirty data away
-> > > > seems like a bad answer to me.
-> > > 
-> > > The problem is that we cannot unmount the corrupted filesystem due to
-> > > un-killable dd process. We must bring down the system to resume the service
-> > > with no dirty pages. I think it is important for the service continuity
-> > > to be able to kill the thread handling in balance_dirty_pages().
-> > In fact you are very lucky because dd is just deadlocked, in many cases
-> > journal abort result in BUG_ON triggering(if IO load is high enough).
->   Can you provide the exact kernel message? I'd be interested...
-Several times i've failed in journal_stop() here:
-int jbd2_journal_stop(handle_t *handle)
-{
-        transaction_t *transaction = handle->h_transaction;
-        journal_t *journal = transaction->t_journal;
-        int err, wait_for_commit = 0;
-        tid_t tid;
-        pid_t pid;
-
-        J_ASSERT(journal_current_handle() == handle);
-
-        if (is_handle_aborted(handle))
-                err = -EIO;
-        else {
-                J_ASSERT(atomic_read(&transaction->t_updates) > 0);
-##FAILED HERE ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                err = 0;
-        }
-
-
+> > > @@ -353,11 +360,26 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
+> > > 	/*
+> > > 	 * file system mounted not to panic on error,
+> > > +	 * -EIO with corrupt bitmap
+> > > 	 */
+> > > +	ext4_lock_group(sb, block_group);
+> > > +	if (!ext4_valid_block_bitmap(sb, desc, block_group, bh) ||
+> > > +	    !ext4_block_bitmap_csum_verify(sb, block_group, desc, bh,
+> > > +					   EXT4_BLOCKS_PER_GROUP(sb) / 8)) {
+> > > +		ext4_unlock_group(sb, block_group);
+> > > +		put_bh(bh);
+> > > +		ext4_error(sb, "Corrupt block bitmap - block_group = %u, "
+> > > +			   "block_bitmap = %llu", block_group, bitmap_blk);
+> > > +		return NULL;
+> > > +	}
+> > > +	ext4_unlock_group(sb, block_group);
+> > > +	set_buffer_verified(bh);
+> > 
+> > I've been thinking a while that we should add per-group error flags
+> > for the block and inode bitmaps.  That way, if we detect errors with
+> > either one, we can set the flag in the group descriptor and avoid
+> > using it for any allocations in the future.  Otherwise, we try to
+> > read the bitmap in repeatedly.
 > 
-> > This is because transaction abort check is racy. Right now i've no good
-> > fix which has reasonable performance. My latest idea is to protect
-> > transaction abort check via SRCU.
->   Yeah, the code does not seem to care about races too much but I don't see
-> which BUG_ON would be triggered...
+> I think there's some code in ext4 somewhere that does that.  I also wonder if
+> the possibility that we're seeing a transient corruption error is worth
+> rechecking the block until it fails?  (I suspect not, but I decided to throw
+> that out there anyway.)
+
+There's a bit of code in ext4_init_block_bitmap that makes a block group
+unwritable if the bg checksum fails to verify:
+
+/* If checksum is bad mark all blocks used to prevent allocation
+ * essentially implementing a per-group read-only flag. */
+if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
+	ext4_error(sb, "Checksum bad for group %u",
+			block_group);
+	ext4_free_blks_set(sb, gdp, 0);
+	ext4_free_inodes_set(sb, gdp, 0);
+	ext4_itable_unused_set(sb, gdp, 0);
+	memset(bh->b_data, 0xff, sb->s_blocksize);
+	ext4_block_bitmap_csum_set(sb, block_group, gdp, bh,
+				   EXT4_BLOCKS_PER_GROUP(sb) /
+				   8);
+	return 0;
+}
+
+Do people think that doing this in the event of a block/inode bitmap checksum
+failure is a good idea?
+
+--D
 > 
-> 								Honza
-> -- 
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
+> > > @@ -803,6 +842,11 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
+> > > 	if (groups_per_page == 0)
+> > > 		groups_per_page = 1;
+> > > 
+> > > +	csd = kzalloc(sizeof(struct ext4_csum_data) * groups_per_page,
+> > > +		      GFP_NOFS);
+> > > +	if (csd == NULL)
+> > > +		goto out;
+> > > +
+> > > 	/* allocate buffer_heads to read bitmaps */
+> > > 	if (groups_per_page > 1) {
+> > > 		err = -ENOMEM;
+> > > @@ -880,22 +924,25 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
+> > > 		 * get set with buffer lock held.
+> > > 		 */
+> > > 		set_bitmap_uptodate(bh[i]);
+> > > -		bh[i]->b_end_io = end_buffer_read_sync;
+> > > +		csd[i].cd_sb = sb;
+> > > +		csd[i].cd_group = first_group + i;
+> > > +		bh[i]->b_private = csd + i;
+> > > +		bh[i]->b_end_io = ext4_end_buffer_read_sync;
+> > 
+> > It seems to be allocating this extra csd[] and calling the more complex
+> > ext4_end_buffer_read_sync() callback regardless of whether the checksum
+> > code is enabled or not.  Would it be better to only set the custom
+> > callback if we need to verify the checksum?
+> 
+> Yep, we could go straight to end_buffer_read_sync in the no-csum case.
+> 
+> --D
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
