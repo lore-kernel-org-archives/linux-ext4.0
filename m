@@ -1,120 +1,64 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCH 15/28] ext4: Calculate and verify block bitmap checksum
-Date: Mon, 7 Nov 2011 12:00:08 -0800
-Message-ID: <20111107200008.GW12447@tux1.beaverton.ibm.com>
-References: <20111008075343.20506.23155.stgit@elm3c44.beaverton.ibm.com> <20111008075522.20506.22239.stgit@elm3c44.beaverton.ibm.com> <AE869D1A-2A06-4849-8752-74924B0C05BD@dilger.ca> <20111013071631.GQ12447@tux1.beaverton.ibm.com>
-Reply-To: djwong@us.ibm.com
+From: Johann Lombardi <johann@whamcloud.com>
+Subject: Re: [PATCH v3] ext4: make quota as first class supported feature
+Date: Mon, 7 Nov 2011 21:35:28 +0100
+Message-ID: <20111107203528.GA3191@granier.hd.free.fr>
+References: <1320372920-21308-1-git-send-email-adityakali@google.com>
+ <20111104092022.GD6205@granier.hd.free.fr>
+ <CAGr1F2GfixM0m0Hz7eK7CNJHY40Rpxi2szYXw=PT9jZaqSncBg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>,
-	Sunil Mushran <sunil.mushran@oracle.com>,
-	Martin K Petersen <martin.petersen@oracle.com>,
-	Greg Freemyer <greg.freemyer@gmail.com>,
-	Amir Goldstein <amir73il@gmail.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Andi Kleen <andi@firstfloor.org>,
-	Mingming Cao <cmm@us.ibm.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
-To: Andreas Dilger <adilger.kernel@dilger.ca>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: Aditya Kali <adityakali@google.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:58178 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751697Ab1KGUjh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Nov 2011 15:39:37 -0500
+Received: by eye27 with SMTP id 27so3858901eye.19
+        for <linux-ext4@vger.kernel.org>; Mon, 07 Nov 2011 12:39:36 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <20111013071631.GQ12447@tux1.beaverton.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <CAGr1F2GfixM0m0Hz7eK7CNJHY40Rpxi2szYXw=PT9jZaqSncBg@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 13, 2011 at 12:16:31AM -0700, Darrick J. Wong wrote:
-> On Wed, Oct 12, 2011 at 06:00:40PM -0600, Andreas Dilger wrote:
-> > On 2011-10-08, at 1:55 AM, Darrick J. Wong wrote:
-> > > Compute and verify the checksum of the block bitmap; this checksum is
-> > > stored in the block group descriptor.
-> > > 
-> > > @@ -353,11 +360,26 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
-> > > 	/*
-> > > 	 * file system mounted not to panic on error,
-> > > +	 * -EIO with corrupt bitmap
-> > > 	 */
-> > > +	ext4_lock_group(sb, block_group);
-> > > +	if (!ext4_valid_block_bitmap(sb, desc, block_group, bh) ||
-> > > +	    !ext4_block_bitmap_csum_verify(sb, block_group, desc, bh,
-> > > +					   EXT4_BLOCKS_PER_GROUP(sb) / 8)) {
-> > > +		ext4_unlock_group(sb, block_group);
-> > > +		put_bh(bh);
-> > > +		ext4_error(sb, "Corrupt block bitmap - block_group = %u, "
-> > > +			   "block_bitmap = %llu", block_group, bitmap_blk);
-> > > +		return NULL;
-> > > +	}
-> > > +	ext4_unlock_group(sb, block_group);
-> > > +	set_buffer_verified(bh);
-> > 
-> > I've been thinking a while that we should add per-group error flags
-> > for the block and inode bitmaps.  That way, if we detect errors with
-> > either one, we can set the flag in the group descriptor and avoid
-> > using it for any allocations in the future.  Otherwise, we try to
-> > read the bitmap in repeatedly.
-> 
-> I think there's some code in ext4 somewhere that does that.  I also wonder if
-> the possibility that we're seeing a transient corruption error is worth
-> rechecking the block until it fails?  (I suspect not, but I decided to throw
-> that out there anyway.)
+On Fri, Nov 04, 2011 at 10:43:10AM -0700, Aditya Kali wrote:
+> On Fri, Nov 4, 2011 at 2:20 AM, Johann Lombardi <johann@whamcloud.com=
+> wrote:
+> > On Thu, Nov 03, 2011 at 07:15:20PM -0700, Aditya Kali wrote:
+> >> +#ifdef CONFIG_QUOTA
+> >> + =A0 =A0 /* Enable quota usage during mount. */
+> >> + =A0 =A0 if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPA=
+T_QUOTA) &&
+> >> + =A0 =A0 =A0 =A0 !(sb->s_flags & MS_RDONLY)) {
+> >> + =A0 =A0 =A0 =A0 =A0 =A0 ext4_quota_enable(sb, USRQUOTA, QFMT_VFS=
+_V1,
+> >> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 DQUO=
+T_USAGE_ENABLED);
+> >> + =A0 =A0 =A0 =A0 =A0 =A0 ext4_quota_enable(sb, GRPQUOTA, QFMT_VFS=
+_V1,
+> >> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 DQUO=
+T_USAGE_ENABLED);
+> >
+> > I think we should print an error message if one of the calls to ext=
+4_quota_enable() failed. Space accounting in the quota files won't be a=
+ccurate any more and e2fsck is required.
+>=20
+> Are you suggesting that we mark the filesystem has having errors if
+> this fails (use ext4_error() ) or simply print a warning in dmesg?
 
-There's a bit of code in ext4_init_block_bitmap that makes a block group
-unwritable if the bg checksum fails to verify:
+A warning in dmesg is the least we could do IMHO. Marking the filesyste=
+m as having errors would be even better, i think.
+BTW, we have the same problem if CONFIG_QUOTA is not defined.
 
-/* If checksum is bad mark all blocks used to prevent allocation
- * essentially implementing a per-group read-only flag. */
-if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
-	ext4_error(sb, "Checksum bad for group %u",
-			block_group);
-	ext4_free_blks_set(sb, gdp, 0);
-	ext4_free_inodes_set(sb, gdp, 0);
-	ext4_itable_unused_set(sb, gdp, 0);
-	memset(bh->b_data, 0xff, sb->s_blocksize);
-	ext4_block_bitmap_csum_set(sb, block_group, gdp, bh,
-				   EXT4_BLOCKS_PER_GROUP(sb) /
-				   8);
-	return 0;
-}
+> I am currently marking the filesystem as having errors if ext4_iget()
+> fails for the quota inode. But dquot_enable() could fail for other
+> reasons too (specially if we allow using user-specified quota files).
 
-Do people think that doing this in the event of a block/inode bitmap checksum
-failure is a good idea?
-
---D
-> 
-> > > @@ -803,6 +842,11 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
-> > > 	if (groups_per_page == 0)
-> > > 		groups_per_page = 1;
-> > > 
-> > > +	csd = kzalloc(sizeof(struct ext4_csum_data) * groups_per_page,
-> > > +		      GFP_NOFS);
-> > > +	if (csd == NULL)
-> > > +		goto out;
-> > > +
-> > > 	/* allocate buffer_heads to read bitmaps */
-> > > 	if (groups_per_page > 1) {
-> > > 		err = -ENOMEM;
-> > > @@ -880,22 +924,25 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
-> > > 		 * get set with buffer lock held.
-> > > 		 */
-> > > 		set_bitmap_uptodate(bh[i]);
-> > > -		bh[i]->b_end_io = end_buffer_read_sync;
-> > > +		csd[i].cd_sb = sb;
-> > > +		csd[i].cd_group = first_group + i;
-> > > +		bh[i]->b_private = csd + i;
-> > > +		bh[i]->b_end_io = ext4_end_buffer_read_sync;
-> > 
-> > It seems to be allocating this extra csd[] and calling the more complex
-> > ext4_end_buffer_read_sync() callback regardless of whether the checksum
-> > code is enabled or not.  Would it be better to only set the custom
-> > callback if we need to verify the checksum?
-> 
-> Yep, we could go straight to end_buffer_read_sync in the no-csum case.
-> 
-> --D
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
+Cheers,
+Johann
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
