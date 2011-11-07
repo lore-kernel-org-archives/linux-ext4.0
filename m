@@ -1,66 +1,76 @@
-From: Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: [PATCH 15/28] ext4: Calculate and verify block bitmap checksum
-Date: Mon, 7 Nov 2011 14:44:02 -0700
-Message-ID: <EEB33371-CE71-4283-A5B1-E09083F08DCB@dilger.ca>
-References: <20111008075343.20506.23155.stgit@elm3c44.beaverton.ibm.com> <20111008075522.20506.22239.stgit@elm3c44.beaverton.ibm.com> <AE869D1A-2A06-4849-8752-74924B0C05BD@dilger.ca> <20111013071631.GQ12447@tux1.beaverton.ibm.com> <20111107200008.GW12447@tux1.beaverton.ibm.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Theodore Tso <tytso@mit.edu>,
-	Sunil Mushran <sunil.mushran@oracle.com>,
-	Martin K Petersen <martin.petersen@oracle.com>,
-	Greg Freemyer <greg.freemyer@gmail.com>,
-	Amir Goldstein <amir73il@gmail.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Andi Kleen <andi@firstfloor.org>,
-	Mingming Cao <cmm@us.ibm.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
-To: djwong@us.ibm.com
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20111107200008.GW12447@tux1.beaverton.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Aditya Kali <adityakali@google.com>
+Subject: Re: quotacheck on 'tune2fs -O quota'
+Date: Mon, 7 Nov 2011 13:56:48 -0800
+Message-ID: <CAGr1F2ENDTZxVA95oEQBWCV-SC-izbzrTdacdCbnXcz5WBwHww@mail.gmail.com>
+References: <4EB224A9.8030606@whamcloud.com> <CAGr1F2FMvsZ6eLJid4z0RpJcAm5paEfbJwrtFE7iqbr_bA4BTA@mail.gmail.com>
+ <20111104090356.GC6205@granier.hd.free.fr> <CAGr1F2FQ=MAqd8NiamZ39K9dX8YC_JiaUszFod3tG=CK+W0GGQ@mail.gmail.com>
+ <20111107203836.GB3191@granier.hd.free.fr> <20111107212825.GI24234@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Johann Lombardi <johann@whamcloud.com>, linux-ext4@vger.kernel.org
+To: "Ted Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:46191 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752544Ab1KGV5L convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Nov 2011 16:57:11 -0500
+Received: by qao25 with SMTP id 25so1079033qao.19
+        for <linux-ext4@vger.kernel.org>; Mon, 07 Nov 2011 13:57:10 -0800 (PST)
+In-Reply-To: <20111107212825.GI24234@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-11-07, at 1:00 PM, Darrick J. Wong wrote:
-> On Thu, Oct 13, 2011 at 12:16:31AM -0700, Darrick J. Wong wrote:
->> On Wed, Oct 12, 2011 at 06:00:40PM -0600, Andreas Dilger wrote:
->>> I've been thinking a while that we should add per-group error flags
->>> for the block and inode bitmaps.  That way, if we detect errors with
->>> either one, we can set the flag in the group descriptor and avoid
->>> using it for any allocations in the future.  Otherwise, we try to
->>> read the bitmap in repeatedly.
->> 
->> I think there's some code in ext4 somewhere that does that.  I also wonder if
->> the possibility that we're seeing a transient corruption error is worth
->> rechecking the block until it fails?  (I suspect not, but I decided to throw
->> that out there anyway.)
-> 
-> There's a bit of code in ext4_init_block_bitmap that makes a block group
-> unwritable if the bg checksum fails to verify:
-> 
-> /* If checksum is bad mark all blocks used to prevent allocation
-> * essentially implementing a per-group read-only flag. */
-> if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
-> 	ext4_error(sb, "Checksum bad for group %u",
-> 			block_group);
-> 	ext4_free_blks_set(sb, gdp, 0);
-> 	ext4_free_inodes_set(sb, gdp, 0);
-> 	ext4_itable_unused_set(sb, gdp, 0);
-> 	memset(bh->b_data, 0xff, sb->s_blocksize);
-> 	ext4_block_bitmap_csum_set(sb, block_group, gdp, bh,
-> 				   EXT4_BLOCKS_PER_GROUP(sb) /
-> 				   8);
-> 	return 0;
-> }
-> 
-> Do people think that doing this in the event of a block/inode bitmap checksum
-> failure is a good idea?
+On Mon, Nov 7, 2011 at 1:28 PM, Ted Ts'o <tytso@mit.edu> wrote:
+> On Mon, Nov 07, 2011 at 09:38:36PM +0100, Johann Lombardi wrote:
+>> > I agree it would be useful to allow upgrades using existing quota
+>> > files. I just didn't have a way of doing this correctly though so =
+I
+>> > had removed it. But this patch fixes it, so I am all for including=
+ it.
+>>
+>> Great, thanks.
+>
+> It's more than useful, it's mandatory. =C2=A0It wasn't important for
+> Aditya's application since he was mainly worried about tracking disk
+> space usage. =C2=A0But for anyone who cares about doing quota enforce=
+ment,
+> losing the quota limits when you ran e2fsck is a non-starter.
+>
+> Just to get this on record, since we discussed this on the weekly
+> conference call. =C2=A0I'm currently planning on making quota disable=
+d by
+> default in e2fsprogs, so that anyone who wants to use quota will have
+> to use an --enable-quota configure option. =C2=A0That's because I'm n=
+ot
+> completely convinced that quota is fully baked and tested. =C2=A0Afte=
+r
+> reviewing Niu's patches, I'll apply them, and that way the quota
+> feature won't hold up the e2fsprogs 1.42 release. =C2=A0People who fe=
+el
+> comfortable using it can enable it via --enable-quota, and after we
+> give it a bit more of a shakedown, we can enable it by default in som=
+e
+> 1.42.X maintenance release.
+>
+Sounds good to me.
 
-For me, yes.  The sanity checks we do on the block bitmaps are only very basic
-(e.g. bits for bitmaps themselves are set, for inode table).  Blocking any
-allocation from a single group with a bad checksum is not harmful in the long
-term, and can avoid an explosion of corruption if blocks would otherwise be allocated multiple times.
+Thanks,
 
-Cheers, Andreas
+> Thanks to Niu and whamcloud for implementing this critically needed
+> bit of functionality!
+>
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0-=
+ Ted
+>
+
+
+
+--=20
+Aditya
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
