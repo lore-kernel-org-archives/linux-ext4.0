@@ -1,82 +1,50 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [BUG] aborted ext4 leads to inifinity loop in
- balance_dirty_pages
-Date: Mon, 7 Nov 2011 22:23:35 +0100
-Message-ID: <20111107212335.GI15796@quack.suse.cz>
-References: <4EA6A5E5.2050604@sx.jp.nec.com>
- <20111025134045.GB8072@quack.suse.cz>
- <4EAA3EE7.4040802@sx.jp.nec.com>
- <87y5vsl5ue.fsf@dmbot.sw.ru>
- <20111107172939.GH15796@quack.suse.cz>
- <87pqh3ltc4.fsf@dmbot.sw.ru>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: quotacheck on 'tune2fs -O quota'
+Date: Mon, 7 Nov 2011 16:28:25 -0500
+Message-ID: <20111107212825.GI24234@thunk.org>
+References: <4EB224A9.8030606@whamcloud.com>
+ <CAGr1F2FMvsZ6eLJid4z0RpJcAm5paEfbJwrtFE7iqbr_bA4BTA@mail.gmail.com>
+ <20111104090356.GC6205@granier.hd.free.fr>
+ <CAGr1F2FQ=MAqd8NiamZ39K9dX8YC_JiaUszFod3tG=CK+W0GGQ@mail.gmail.com>
+ <20111107203836.GB3191@granier.hd.free.fr>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Kazuya Mio <k-mio@sx.jp.nec.com>,
-	ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>,
-	Andreas Dilger <adilger@dilger.ca>
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Cc: Aditya Kali <adityakali@google.com>, linux-ext4@vger.kernel.org
+To: Johann Lombardi <johann@whamcloud.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:43257 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751676Ab1KGVXk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 Nov 2011 16:23:40 -0500
+Received: from li9-11.members.linode.com ([67.18.176.11]:53257 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751246Ab1KGV22 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 7 Nov 2011 16:28:28 -0500
 Content-Disposition: inline
-In-Reply-To: <87pqh3ltc4.fsf@dmbot.sw.ru>
+In-Reply-To: <20111107203836.GB3191@granier.hd.free.fr>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 07-11-11 21:45:31, Dmitry Monakhov wrote:
-> On Mon, 7 Nov 2011 18:29:39 +0100, Jan Kara <jack@suse.cz> wrote:
-> > On Mon 07-11-11 12:00:41, Dmitry Monakhov wrote:
-> > > On Fri, 28 Oct 2011 14:34:31 +0900, Kazuya Mio <k-mio@sx.jp.nec.com> wrote:
-> > > > 2011/10/25 22:40, Jan Kara wrote:
-> > > > >   Please no. Generally this boils down to what do we do with dirty data
-> > > > > when there's error in writing them out. Currently we just throw them away
-> > > > > (e.g. in media error case) but I don't think that's a generally good thing
-> > > > > because e.g. admin may want to copy the data to other working storage or
-> > > > > so. So I think we should rather keep the data and provide a mechanism for
-> > > > > userspace to ask kernel to get rid of the data (so that we don't eventually
-> > > > > run OOM).
-> > > > 
-> > > > I see. I agree with you.
-> > > > 
-> > > > >> Do you have any ideas?
-> > > > >   So the question is what would you like to achieve. If you just want to
-> > > > > unblock a thread then a solution would be to make a thread at
-> > > > > balance_dirty_pages() killable. If generally you want to get rid of dirty
-> > > > > memory, then I don't have a really good answer but throwing dirty data away
-> > > > > seems like a bad answer to me.
-> > > > 
-> > > > The problem is that we cannot unmount the corrupted filesystem due to
-> > > > un-killable dd process. We must bring down the system to resume the service
-> > > > with no dirty pages. I think it is important for the service continuity
-> > > > to be able to kill the thread handling in balance_dirty_pages().
-> > > In fact you are very lucky because dd is just deadlocked, in many cases
-> > > journal abort result in BUG_ON triggering(if IO load is high enough).
-> >   Can you provide the exact kernel message? I'd be interested...
-> Several times i've failed in journal_stop() here:
-> int jbd2_journal_stop(handle_t *handle)
-> {
->         transaction_t *transaction = handle->h_transaction;
->         journal_t *journal = transaction->t_journal;
->         int err, wait_for_commit = 0;
->         tid_t tid;
->         pid_t pid;
+On Mon, Nov 07, 2011 at 09:38:36PM +0100, Johann Lombardi wrote:
+> > I agree it would be useful to allow upgrades using existing quota
+> > files. I just didn't have a way of doing this correctly though so I
+> > had removed it. But this patch fixes it, so I am all for including it.
 > 
->         J_ASSERT(journal_current_handle() == handle);
-> 
->         if (is_handle_aborted(handle))
->                 err = -EIO;
->         else {
->                 J_ASSERT(atomic_read(&transaction->t_updates) > 0);
-> ##FAILED HERE ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
->                 err = 0;
->         }
-  Hum, interesting. The logic wrt t_updates looks correct to me. Whenever
-we create a new handle in a transaction, we increase t_updates. Whenever we
-remove the handle, decrease t_updates. Whether the journal / handle is
-aborted or not does not play any role here. So I fail to see how the
-assertion can be triggered - only if we tried to release a handle twice or
-something like that...
+> Great, thanks.
 
-								Honza
+It's more than useful, it's mandatory.  It wasn't important for
+Aditya's application since he was mainly worried about tracking disk
+space usage.  But for anyone who cares about doing quota enforcement,
+losing the quota limits when you ran e2fsck is a non-starter.
+
+Just to get this on record, since we discussed this on the weekly
+conference call.  I'm currently planning on making quota disabled by
+default in e2fsprogs, so that anyone who wants to use quota will have
+to use an --enable-quota configure option.  That's because I'm not
+completely convinced that quota is fully baked and tested.  After
+reviewing Niu's patches, I'll apply them, and that way the quota
+feature won't hold up the e2fsprogs 1.42 release.  People who feel
+comfortable using it can enable it via --enable-quota, and after we
+give it a bit more of a shakedown, we can enable it by default in some
+1.42.X maintenance release.
+
+Thanks to Niu and whamcloud for implementing this critically needed
+bit of functionality!
+
+					- Ted
