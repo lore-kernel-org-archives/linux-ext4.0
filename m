@@ -1,52 +1,59 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: e2fsprogs 1.42-WIP busted on big endian
-Date: Tue, 8 Nov 2011 15:28:09 -0500
-Message-ID: <20111108202809.GO24234@thunk.org>
-References: <4EB958E5.3080604@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] libext2: advance group in ext2fs_open2 during swapping
+Date: Tue, 08 Nov 2011 16:26:35 -0600
+Message-ID: <4EB9AC9B.5020803@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:37566 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750769Ab1KHU2L (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 Nov 2011 15:28:11 -0500
-Content-Disposition: inline
-In-Reply-To: <4EB958E5.3080604@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:52351 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753302Ab1KHW0i (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 8 Nov 2011 17:26:38 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pA8MQcGR005326
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Tue, 8 Nov 2011 17:26:38 -0500
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id pA8MQZHT022353
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 8 Nov 2011 17:26:38 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 08, 2011 at 10:29:25AM -0600, Eric Sandeen wrote:
-> This was noted in commit ccc7cf032852dd5c84b227bafb481b1d158e2b5e:
-> 
-> 
-> commit ccc7cf032852dd5c84b227bafb481b1d158e2b5e
-> Author: Theodore Ts'o <tytso@mit.edu>
-> Date:   Fri Jul 30 18:41:47 2010 -0400
-> 
->     libext2fs: fix obvious big-endian bugs introduced by 64-bit changes
->     
->     These patches fix obvious bone-headed mistakes, so e2fsprogs will now
->     build and mostly work on powerpc.  The m_meta_bg, u_mke2fs, and
->     u_tune2fs tests are still failing, however, so there's still work to do...
->     
->     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> 
-> but not fixed yet.  Just a heads up, when contemplating a 1.42
-> release.  I will try to find some time to look into it, but it's not
-> a simple regression, something must have gone wrong in the bowls of
-> 64-bitness.
+Without this change, we go back to getting group descriptor
+"0" each time we go around the "for i" loop.  It must properly
+advance through the filesystem.
 
-Um, thanks for reminding me!  I'll try to schedule time to look at
-them later in this week, but if you get a chance ahead of me, let me
-know if you make any progress.
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-One of the other things on my todo list is I noticed that apparently I
-accidently broke the shared library ABI for the e2tools package, and
-I need to figure out what I need to fix up so that e2tools doesn't
-have to be recompiled.
+(I couldn't decipher the removed comment; maybe it was typed when
+you thought you would do:
 
-						- Ted
+                        gdp = ext2fs_group_desc(fs, dest, j);
 
-       
+which would also work ... ?  It'd be clever, but I think my change
+is more explicitly obvious.  Either way works.
+
+We still have failing tests but at least nothing hangs now:
+Tests failed: f_mmp f_mmp_garbage m_mmp t_mmp_1on t_mmp_2off 
+
+
+diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+index 0cefe3f..40a52c5 100644
+--- a/lib/ext2fs/openfs.c
++++ b/lib/ext2fs/openfs.c
+@@ -356,8 +356,8 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
+ 			goto cleanup;
+ #ifdef WORDS_BIGENDIAN
+ 		for (j=0; j < groups_per_block; j++) {
+-			/* The below happens to work... be careful. */
+-			gdp = ext2fs_group_desc(fs, fs->group_desc, j);
++			gdp = ext2fs_group_desc(fs, fs->group_desc,
++						i * groups_per_block + j);
+ 			ext2fs_swap_group_desc2(fs, gdp);
+ 		}
+ #endif
+
