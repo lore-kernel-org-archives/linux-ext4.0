@@ -1,66 +1,74 @@
-From: NamJae Jeon <linkinjeon@gmail.com>
-Subject: Re: [PATCH v2] ext4: fix NULL pointer dereference from orig_data in
- fill_super and remount.
-Date: Tue, 8 Nov 2011 08:42:53 +0900
-Message-ID: <CAKYAXd9qWfLntfuUnhZdEsL2u428=GZ=DDu2V9S518YjKXEFMw@mail.gmail.com>
-References: <1320674511-1980-1-git-send-email-linkinjeon@gmail.com>
-	<20111107151939.GA24234@thunk.org>
-	<CAKYAXd_u813Q0k1iMMnfwORxXYDEBtpaKMig1FGBOKpNW3s3rg@mail.gmail.com>
-	<E08B31F5-C43D-4145-BC38-C1C967CDD18E@MIT.EDU>
+From: Matt Parnell <mparnell@gmail.com>
+Subject: Re: Bug In ext4 in kernels > 2.6.39 - Not mounting with arguments/options
+ I specify in fstab on root remount
+Date: Mon, 07 Nov 2011 17:48:15 -0800
+Message-ID: <4EB88A5F.1050507@gmail.com>
+References: <CABeR262=5V1wuXPDVr_qLTeFTc4zDSFKVYKvO_+1w60XmwJvKA@mail.gmail.com> <4E6F6D89.5040905@redhat.com> <CABeR260PEDEF1cyX5JPs3VC0hpThmKNtDAhDd-sPDZ2grtL+=g@mail.gmail.com> <20111009234433.GU7948@thunk.org> <4EA0E72D.8020305@gmail.com> <20111022050031.GC4196@thunk.org> <4EA27607.20407@gmail.com> <20111022093218.GF4196@thunk.org> <4EB7416A.7080006@gmail.com> <4EB76C21.5060104@gmail.com> <20111107154759.GB24234@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:64997 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751819Ab1KGXmz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Nov 2011 18:42:55 -0500
-In-Reply-To: <E08B31F5-C43D-4145-BC38-C1C967CDD18E@MIT.EDU>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:53915 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752062Ab1KGXtK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Nov 2011 18:49:10 -0500
+Received: by iage36 with SMTP id e36so6394837iag.19
+        for <linux-ext4@vger.kernel.org>; Mon, 07 Nov 2011 15:49:09 -0800 (PST)
+In-Reply-To: <20111107154759.GB24234@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2011/11/8 Theodore Tso <tytso@mit.edu>:
+On 11/07/2011 07:47 AM, Ted Ts'o wrote:
+> On Sun, Nov 06, 2011 at 09:26:57PM -0800, Matt Parnell wrote:
+>> I figured it out. data=writeback isn't needed and is done by default
+>> if there's no journal, as per commit
+>> 373cd5c53d5ea6622c319ecd84e29e2737d488bd http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=373cd5c53d5ea6622c319ecd84e29e2737d488bd
+>>
+>> ...sorry about throwing you guys through loops over this, although
+>> I'm guessing there's still a bug in that the kernel should just warn
+>> the user about the option when it's used and otherwise ignore it
+>> instead of breaking if there's no journal.
+> Ah, OK.  It wasn't clear to me that you were running without a year.
+> You're right, we shouldn't complain in that case, since we ignore the
+> messages when mounting the file system.  Actually, we parse the
+> options when we are mounting the file system, but then we zero them
+> out when we discover that there's no journal; but in any case, we
+> should similarly ignore the pointless data=* mount options (for a file
+> system w/o a journal) on the remount operation as well.
 >
-> On Nov 7, 2011, at 6:06 PM, NamJae Jeon wrote:
+>       	     	      	     	     	       	  - Ted
 >
->> =C2=A0if(data) {
->> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0orig_data =3D=
- kstrdup(data, GFP_KERNEL);
->> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0if(!orig_data=
-)
->> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0return ret;
->> =C2=A0 =C2=A0 =C2=A0 =C2=A0}
+> commit eb513689c97e3e73bb9b4459d490a8e894b4a546
+> Author: Theodore Ts'o<tytso@mit.edu>
+> Date:   Mon Nov 7 10:47:42 2011 -0500
 >
-> As I said earlier, the use of kstrdup() in the ext4 mount code is so =
-that we can print the mount options used in the mount request. =C2=A0 S=
-o if the kstrdup() fails, the worst that will happen is that the printk=
- will print the the mount had no mount options, instead of the mount op=
-tions which had been passed this might be misleading, but it's not the =
-end of the world; it's only a cosmetic issue. =C2=A0But if the kstrdup(=
-) failed, the other memory allocations (that in general will be for muc=
-h more memory) will also fail, so the mount will return ENOMEM before e=
-ver getting to the printjk. =C2=A0 So a pendant might make the above ch=
-ange, but in practice it's not really that important to do that particu=
-lar checking in this case.
+>      ext4: ignore journalled data options on remount if fs has no journal
 >
-> This is why it's important to really understand the code in question =
-instead of just posting patches without understanding the underlying co=
-de, and understanding what might or might not go wrong both before appl=
-ying the patch, and after applying the patch. =C2=A0 And of course, tes=
-ting all of the use cases is also really important.
-Okay, I understand clearly.
-Thanks.
+>      This avoids a confusing failure in the init scripts when the
+>      /etc/fstab has data=writeback or data=journal but the file system does
+>      not have a journal.  So check for this case explicitly, and warn the
+>      user that we are ignoring the (pointless, since they have no journal)
+>      data=* mount option.
 >
-> Best regards,
+>      Signed-off-by: "Theodore Ts'o"<tytso@mit.edu>
 >
-> -- Ted
->
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 9953d80..0435013 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1683,7 +1683,9 @@ static int parse_options(char *options, struct super_block *sb,
+>   			data_opt = EXT4_MOUNT_WRITEBACK_DATA;
+>   		datacheck:
+>   			if (is_remount) {
+> -				if (test_opt(sb, DATA_FLAGS) != data_opt) {
+> +				if (!sbi->s_journal)
+> +					ext4_msg(sb, KERN_WARNING, "Remounting file system with no journal so ignoring journalled data option");
+> +				else if (test_opt(sb, DATA_FLAGS) != data_opt) {
+>   					ext4_msg(sb, KERN_ERR,
+>   						"Cannot change data mode on remount");
+>   					return 0;
+Great! I'm glad we managed to track this one down. I'm not using the 
+flags anymore, but I'll be glad when your patch there makes it into ext4 
+for other users.
