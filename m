@@ -1,102 +1,113 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH V3 0/15] ext4: add new online resize interface
-Date: Tue, 8 Nov 2011 00:06:45 -0700
-Message-ID: <B6C5796D-0A41-4131-A947-9BF554B8CEFD@dilger.ca>
-References: <1320707608-14246-1-git-send-email-xiaoqiangnk@gmail.com>
+Subject: Re: [PATCH V3 01/15] ext4: add a function which extends a group without checking parameters
+Date: Tue, 8 Nov 2011 00:12:48 -0700
+Message-ID: <E849D75B-FA54-4426-9B01-9672931221B1@dilger.ca>
+References: <1320707608-14246-1-git-send-email-xiaoqiangnk@gmail.com> <1320707608-14246-2-git-send-email-xiaoqiangnk@gmail.com>
 Mime-Version: 1.0 (iPhone Mail 8L1)
 Content-Type: text/plain;
 	charset=us-ascii
 Content-Transfer-Encoding: 8BIT
 Cc: "tytso@mit.edu" <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>
 To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from shawmail.shawcable.com ([64.59.128.220]:35063 "EHLO
+Received: from shawmail.shawcable.com ([64.59.128.220]:14809 "EHLO
 	mail.shawcable.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751038Ab1KHHFn convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Nov 2011 02:05:43 -0500
-In-Reply-To: <1320707608-14246-1-git-send-email-xiaoqiangnk@gmail.com>
+	with ESMTP id S1751314Ab1KHHLp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Nov 2011 02:11:45 -0500
+In-Reply-To: <1320707608-14246-2-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 On 2011-11-07, at 4:13 PM, Yongqiang Yang <xiaoqiangnk@gmail.com> wrote:
+> This patch added a function named __ext4_group_extend() whose code
+> is copied from ext4_group_extend().  __ext4_group_extend() assumes
+> the parameter is valid and has been checked by caller.
 
-> Hi all,
-> 
-> V2->V3:
->   initialize block bitmap of last group.
->   remove code initalizing inode bitmap and inode tables.
+To be honest, I don't like the use of underscores to rename such functions, since they convey no meaning to the reader, or perhaps only "these functions are similar but not the same, in some unspecified way".
 
-Thanks for the great work. I haven't looked through the patches yet, but just a high level question...
+I'd much prefer something like ext4_group_extend_nocheck() or similar that indicates how it is different from ext4_group_extend().
 
-> This patch series adds new resize implementation to ext4.
-> 
-> -- What's new resize implementation?
->   It is a new online resize interface for ext4.  It can be used via
->   ioctl with EXT4_IOC_RESIZE_FS and a 64 bit integer indicating size
->   of the resized fs in block.
-> 
-> -- Difference between current resize and new resize.
->   New resize lets kernel do all work, like allocating bitmaps and
->   inode tables and can support flex_bg and BLOCK_UNINIT features.
->   Besides these, new resize is much faster than current resize.
+> __ext4_group_extend() will be used by new resize implementation. It
+> can also be used by ext4_group_extend(), but this patch series does
+> not do this.
 
-Does this also support META_BG filesystems?  One major limitation of the current resize implementation is that mke2fs does not prepare filesystems over 16TB for resizing.  With METABG it would be possible to online resize without any preparation. One drawback of METABG is that there is no backup group descriptor for the last group if it is the only one in the METABG. I recall Ted had a suggestion to add a GDT backup for the last group in the superblock (maybe at the end), since it is only 64 bytes big, and this could be done compatibly under the METABG flag, since an all-zero backup for an old fs (if there are any) is no worse that no backup at all. 
+If this is intended to replace the old resize functionality, it makes sense to remove the code duplication as part of this series, or in fact as part of this patch. 
 
-It is also not currently possible to resize from a sub-16TB filesystem to above 16TB.  Did you test with a 64-byte group descriptor for filesystemsbelow 16TB?
-
-These aren't at all reasons to reject this patch series, but since you are in the middle of working on this code it might be easier for you to implement this functionality if it isn't already in the patches. 
-
->   Below are benchmarks I made on my personal computer, fses with
->   flex_bg size = 16 were resized to 230GB evry time. The first
->   row shows the size of a fs from which the fs was resized to 230GB.
->   The datas were collected by 'time resize2fs'.
+> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+> fs/ext4/resize.c |   53 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+> 1 files changed, 53 insertions(+), 0 deletions(-)
 > 
->                      new resize
->                20GB          50GB      100GB
->      real    0m3.558s     0m2.891s    0m0.394s
->      user    0m0.004s     0m0.000s    0m0.394s
->      sys     0m0.048s     0m0.048s    0m0.028s
+> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+> index 996780a..ff77512 100644
+> --- a/fs/ext4/resize.c
+> +++ b/fs/ext4/resize.c
+> @@ -969,6 +969,59 @@ exit_put:
+> } /* ext4_group_add */
 > 
->                      current resize
->                20GB          50GB      100GB
->      real    5m2.770s     4m43.757s  3m14.840s
->      user    0m0.040s     0m0.032s   0m0.024s
->      sys     0m0.464s     0m0.432s   0m0.324s
+> /*
+> + * extend a group without checking assuming that checking has been done.
+> + */
+> +static int __ext4_group_extend(struct super_block *sb,
+> +                   ext4_fsblk_t o_blocks_count, ext4_grpblk_t add)
+> +{
+> +    struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+> +    handle_t *handle;
+> +    int err = 0, err2;
+> +
+> +    /* We will update the superblock, one block bitmap, and
+> +     * one group descriptor via ext4_group_add_blocks().
+> +     */
+> +    handle = ext4_journal_start_sb(sb, 3);
+> +    if (IS_ERR(handle)) {
+> +        err = PTR_ERR(handle);
+> +        ext4_warning(sb, "error %d on journal start", err);
+> +        goto out;
+> +    }
+> +
+> +    err = ext4_journal_get_write_access(handle, EXT4_SB(sb)->s_sbh);
+> +    if (err) {
+> +        ext4_warning(sb, "error %d on journal write access", err);
+> +        ext4_journal_stop(handle);
+> +        goto out;
+> +    }
+> +
+> +    ext4_blocks_count_set(es, o_blocks_count + add);
+> +    ext4_debug("freeing blocks %llu through %llu\n", o_blocks_count,
+> +           o_blocks_count + add);
+> +    /* We add the blocks to the bitmap and set the group need init bit */
+> +    err = ext4_group_add_blocks(handle, sb, o_blocks_count, add);
+> +    if (err)
+> +        goto exit_journal;
+> +    ext4_handle_dirty_super(handle, sb);
+> +    ext4_debug("freed blocks %llu through %llu\n", o_blocks_count,
+> +           o_blocks_count + add);
+> +exit_journal:
+> +    err2 = ext4_journal_stop(handle);
+> +    if (err2 && !err)
+> +        err = err2;
+> +
+> +    if (!err) {
+> +        if (test_opt(sb, DEBUG))
+> +            printk(KERN_DEBUG "EXT4-fs: extended group to %llu "
+> +                   "blocks\n", ext4_blocks_count(es));
+> +        update_backups(sb, EXT4_SB(sb)->s_sbh->b_blocknr, (char *)es,
+> +                   sizeof(struct ext4_super_block));
+> +    }
+> +out:
+> +    return err;
+> +}
+> +
+> +/*
+>  * Extend the filesystem to the new number of blocks specified.  This entry
+>  * point is only used to extend the current filesystem to the end of the last
+>  * existing group.  It can be accessed via ioctl, or by "remount,resize=<size>"
+> -- 
+> 1.7.5.1
 > 
->   According to data above, new resize is faster than current resize in both
->   user and sys time.  New resize performs well in sys time, because it
->   supports BLOCK_UNINIT and adds multi-groups each time.
-> 
-> -- About supporting new features.
->   YES! New resize can support new feature like bigalloc and exclude bitmap
->   easily.  Because it lets kernel do all work.
-> 
-> Yongqiang.
-> 
-> git diff --stat
-> 
-> Documentation/filesystems/ext4.txt |    7 +
-> fs/ext4/ext4.h                     |   10 +
-> fs/ext4/ioctl.c                    |   39 ++
-> fs/ext4/resize.c                   | 1167 +++++++++++++++++++++++++++---------
-> 4 files changed, 942 insertions(+), 281 deletions(-)
-> 
-> [PATCH V3 01/15] ext4: add a function which extends a group without
-> [PATCH V3 02/15] ext4: add a function which adds a new desc to a fs
-> [PATCH V3 03/15] ext4: add a function which sets up a new group desc
-> [PATCH V3 04/15] ext4: add a function which updates super block
-> [PATCH V3 05/15] ext4: add a structure which will be used by
-> [PATCH V3 06/15] ext4: add a function which sets up group blocks of
-> [PATCH V3 07/15] ext4: add a function which adds several group
-> [PATCH V3 08/15] ext4: add a function which sets up a flex groups
-> [PATCH V3 09/15] ext4: enable ext4_update_super() to handle a flex
-> [PATCH V3 10/15] ext4: pass verify_reserved_gdb() the number of
-> [PATCH V3 11/15] ext4: add a new function which allocates bitmaps
-> [PATCH V3 12/15] ext4: add a new function which adds a flex group to
-> [PATCH V3 13/15] ext4: add new online resize interface
-> [PATCH V3 14/15] ext4: let ext4_group_extend() use common code
-> [PATCH V3 15/15] ext4: let ext4_group_add() use common code
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
