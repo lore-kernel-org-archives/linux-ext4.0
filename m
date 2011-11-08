@@ -1,158 +1,174 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [PATCH V3 0/15] ext4: add new online resize interface
-Date: Tue, 8 Nov 2011 16:38:30 +0800
-Message-ID: <CAGBYx2bfFva5n8X+Nuwjzu-5bZRVYGLx20YZyx=aH9EgKO5EGQ@mail.gmail.com>
-References: <1320707608-14246-1-git-send-email-xiaoqiangnk@gmail.com>
-	<B6C5796D-0A41-4131-A947-9BF554B8CEFD@dilger.ca>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v3] ext4: make quota as first class supported feature
+Date: Tue, 8 Nov 2011 14:55:14 +0100
+Message-ID: <20111108135514.GB9658@quack.suse.cz>
+References: <1320372920-21308-1-git-send-email-adityakali@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "tytso@mit.edu" <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=us-ascii
+Cc: adilger@dilger.ca, tytso@mit.edu, dmonakhov@openvz.org,
+	jack@suse.cz, linux-ext4@vger.kernel.org
+To: Aditya Kali <adityakali@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:56565 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751298Ab1KHIib convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Nov 2011 03:38:31 -0500
-Received: by qao25 with SMTP id 25so129516qao.19
-        for <linux-ext4@vger.kernel.org>; Tue, 08 Nov 2011 00:38:30 -0800 (PST)
-In-Reply-To: <B6C5796D-0A41-4131-A947-9BF554B8CEFD@dilger.ca>
+Received: from cantor2.suse.de ([195.135.220.15]:33350 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932361Ab1KHNzR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 8 Nov 2011 08:55:17 -0500
+Content-Disposition: inline
+In-Reply-To: <1320372920-21308-1-git-send-email-adityakali@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 8, 2011 at 3:06 PM, Andreas Dilger <adilger@dilger.ca> wrot=
-e:
-> On 2011-11-07, at 4:13 PM, Yongqiang Yang <xiaoqiangnk@gmail.com> wro=
-te:
->
->> Hi all,
->>
->> V2->V3:
->> =A0 initialize block bitmap of last group.
->> =A0 remove code initalizing inode bitmap and inode tables.
->
-> Thanks for the great work. I haven't looked through the patches yet, =
-but just a high level question...
->
->> This patch series adds new resize implementation to ext4.
->>
->> -- What's new resize implementation?
->> =A0 It is a new online resize interface for ext4. =A0It can be used =
-via
->> =A0 ioctl with EXT4_IOC_RESIZE_FS and a 64 bit integer indicating si=
-ze
->> =A0 of the resized fs in block.
->>
->> -- Difference between current resize and new resize.
->> =A0 New resize lets kernel do all work, like allocating bitmaps and
->> =A0 inode tables and can support flex_bg and BLOCK_UNINIT features.
->> =A0 Besides these, new resize is much faster than current resize.
->
-> Does this also support META_BG filesystems? =A0One major limitation o=
-f
-NO:-)  The intention of this patch series is to enable a new online
-resize interface which receives a block count indicating the size the
-filesystem is expected to be.  So in new online resize, everything
-except new size of filesystems is done in kernel, such as allocating
-group tables.  After this patch series merged, any changes on online
-resize can be easily undertaken, like supporting snapshot.
+  Thanks for the patch. I did a detailed review of it. I have quite some
+comments but all of them are easily fixable so I think we should be mostly
+ready in the next iteration.
 
-the current resize implementation is that mke2fs does not prepare
-filesystems over 16TB for resizing. =A0With METABG it would be possible
-to online resize without any preparation. One drawback of METABG is
-that there is no backup group descriptor for the last group if it is
-the only one in the METABG. I recall Ted had a suggestion to add a GDT
-backup for the last group in the superblock (maybe at the end), since
-it is only 64 bytes big, and this could be done compatibly under the
-METABG flag, since an all-zero backup for an old fs (if there are any)
-is no worse that no backup at all.
->
-> It is also not currently possible to resize from a sub-16TB filesyste=
-m to above 16TB. =A0Did you test with a 64-byte group descriptor for fi=
-lesystemsbelow 16TB?
-YES.   I tested with a disk with 220GB capacity.
+On Thu 03-11-11 19:15:20, Aditya Kali wrote:
+> +static const struct quotactl_ops ext4_new_qctl_operations = {
+  ext4_new_qctl_operations is rather poor name. What if you need to create
+even newer set of operations in future? So I'd rather name them by "what
+they do" - so something like ext4_sysfile_qctl_operations - meaning that these
+operations handle quota stored in hidden system files.
 
->
-> These aren't at all reasons to reject this patch series, but since yo=
-u are in the middle of working on this code it might be easier for you =
-to implement this functionality if it isn't already in the patches.
+> +       .quota_on_meta  = ext4_quota_on_meta,
+> +       .quota_off      = ext4_quota_off,
+> +       .quota_sync     = dquot_quota_sync,
+> +       .get_info       = dquot_get_dqinfo,
+> +       .set_info       = dquot_set_dqinfo,
+> +       .get_dqblk      = dquot_get_dqblk,
+> +       .set_dqblk      = dquot_set_dqblk
+..
+> @@ -3610,6 +3623,15 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  #ifdef CONFIG_QUOTA
+>  	sb->s_qcop = &ext4_qctl_operations;
+>  	sb->dq_op = &ext4_quota_operations;
+> +
+> +	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) {
+> +		/* Use new qctl operations with quota on function that does not
+> +		 * require user specified quota file path. */
+> +		sb->s_qcop = &ext4_new_qctl_operations;
+> +
+> +		sbi->s_qf_inums[USRQUOTA] = es->s_usr_quota_inum;
+> +		sbi->s_qf_inums[GRPQUOTA] = es->s_grp_quota_inum;
+  You need to convert from ondisk format here - i.e. use le32_to_cpu().
 
-Yes.  I can add meta_bg support after the patch series merged.
-
-Yongqiang.
->
->> =A0 Below are benchmarks I made on my personal computer, fses with
->> =A0 flex_bg size =3D 16 were resized to 230GB evry time. The first
->> =A0 row shows the size of a fs from which the fs was resized to 230G=
-B.
->> =A0 The datas were collected by 'time resize2fs'.
->>
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0new resize
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A020GB =A0 =A0 =A0 =A0 =A050GB =A0 =A0 =
-=A0100GB
->> =A0 =A0 =A0real =A0 =A00m3.558s =A0 =A0 0m2.891s =A0 =A00m0.394s
->> =A0 =A0 =A0user =A0 =A00m0.004s =A0 =A0 0m0.000s =A0 =A00m0.394s
->> =A0 =A0 =A0sys =A0 =A0 0m0.048s =A0 =A0 0m0.048s =A0 =A00m0.028s
->>
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0current resize
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A020GB =A0 =A0 =A0 =A0 =A050GB =A0 =A0 =
-=A0100GB
->> =A0 =A0 =A0real =A0 =A05m2.770s =A0 =A0 4m43.757s =A03m14.840s
->> =A0 =A0 =A0user =A0 =A00m0.040s =A0 =A0 0m0.032s =A0 0m0.024s
->> =A0 =A0 =A0sys =A0 =A0 0m0.464s =A0 =A0 0m0.432s =A0 0m0.324s
->>
->> =A0 According to data above, new resize is faster than current resiz=
-e in both
->> =A0 user and sys time. =A0New resize performs well in sys time, beca=
-use it
->> =A0 supports BLOCK_UNINIT and adds multi-groups each time.
->>
->> -- About supporting new features.
->> =A0 YES! New resize can support new feature like bigalloc and exclud=
-e bitmap
->> =A0 easily. =A0Because it lets kernel do all work.
->>
->> Yongqiang.
->>
->> git diff --stat
->>
->> Documentation/filesystems/ext4.txt | =A0 =A07 +
->> fs/ext4/ext4.h =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 | =A0 10 +
->> fs/ext4/ioctl.c =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0| =A0 39 ++
->> fs/ext4/resize.c =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 | 1167 ++++++++=
-+++++++++++++++++++---------
->> 4 files changed, 942 insertions(+), 281 deletions(-)
->>
->> [PATCH V3 01/15] ext4: add a function which extends a group without
->> [PATCH V3 02/15] ext4: add a function which adds a new desc to a fs
->> [PATCH V3 03/15] ext4: add a function which sets up a new group desc
->> [PATCH V3 04/15] ext4: add a function which updates super block
->> [PATCH V3 05/15] ext4: add a structure which will be used by
->> [PATCH V3 06/15] ext4: add a function which sets up group blocks of
->> [PATCH V3 07/15] ext4: add a function which adds several group
->> [PATCH V3 08/15] ext4: add a function which sets up a flex groups
->> [PATCH V3 09/15] ext4: enable ext4_update_super() to handle a flex
->> [PATCH V3 10/15] ext4: pass verify_reserved_gdb() the number of
->> [PATCH V3 11/15] ext4: add a new function which allocates bitmaps
->> [PATCH V3 12/15] ext4: add a new function which adds a flex group to
->> [PATCH V3 13/15] ext4: add new online resize interface
->> [PATCH V3 14/15] ext4: let ext4_group_extend() use common code
->> [PATCH V3 15/15] ext4: let ext4_group_add() use common code
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4=
-" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
+> +	}
+>  #endif
+>  	memcpy(sb->s_uuid, es->s_uuid, sizeof(es->s_uuid));
+>  
+> @@ -3815,8 +3837,21 @@ no_journal:
+>  	} else
+>  		descr = "out journal";
+>  
+> -	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. "
+> -		 "Opts: %s%s%s", descr, sbi->s_es->s_mount_opts,
+> +#ifdef CONFIG_QUOTA
+> +	/* Enable quota usage during mount. */
+> +	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) &&
+> +	    !(sb->s_flags & MS_RDONLY)) {
+> +		ext4_quota_enable(sb, USRQUOTA, QFMT_VFS_V1,
+> +				  DQUOT_USAGE_ENABLED);
+> +		ext4_quota_enable(sb, GRPQUOTA, QFMT_VFS_V1,
+> +				  DQUOT_USAGE_ENABLED);
+> +	}
+  You should check the return value here and fail the mount in case turning
+quotas on fails... Also you should set DQUOT_QUOTA_SYS_FILE in
+sb_dqopt(sb)->flags before calling ext4_quota_enable() to indicate that
+quota file is a hidden system file and generic quota code can then skip
+some rather costly steps during quota handling to keep user visible and
+kernel visible content in sync.
 
 
+> +#endif  /* CONFIG_QUOTA */
+> +
+> +	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. quota=%s. "
+> +		 "Opts: %s%s%s", descr,
+> +		 sb_any_quota_loaded(sb) ? "on" : "off",
+> +		 sbi->s_es->s_mount_opts,
+>  		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data);
+  Should info about quotas really be in the message? After all it's just
+another feature and we definitely don't report all the features filesystem
+has set.
 
---=20
-Best Wishes
-Yongqiang Yang
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> @@ -4183,6 +4218,12 @@ static int ext4_commit_super(struct super_block *sb, int sync)
+>  	es->s_free_inodes_count =
+>  		cpu_to_le32(percpu_counter_sum_positive(
+>  				&EXT4_SB(sb)->s_freeinodes_counter));
+> +#ifdef CONFIG_QUOTA
+> +	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) {
+> +		es->s_usr_quota_inum = EXT4_SB(sb)->s_qf_inums[USRQUOTA];
+> +		es->s_grp_quota_inum = EXT4_SB(sb)->s_qf_inums[GRPQUOTA];
+> +	}
+> +#endif
+  Is there really need to reset these numbers? They should be stable
+during the whole lifetime of a filesystem, no (modulo changes by tune2fs)?
+If I'm missing something and numbers indeed can change, you should convert
+them to on disk format - i.e. cpu_to_le32().
+
+> @@ -4814,6 +4855,59 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
+>  	return dquot_quota_on(sb, type, format_id, path);
+>  }
+>  
+> +static int ext4_quota_enable(struct super_block *sb, int type, int format_id,
+> +			     unsigned int flags)
+> +{
+> +	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> +	struct inode *qf_inode;
+> +	int err;
+> +
+> +	if (!sbi->s_qf_inums[type])
+> +		return -EPERM;
+> +
+> +	qf_inode = ext4_iget(sb, sbi->s_qf_inums[type]);
+> +	if (IS_ERR(qf_inode)) {
+> +		ext4_error(sb, "Bad quota inode # %lu", sbi->s_qf_inums[type]);
+> +		return PTR_ERR(qf_inode);
+> +	}
+> +
+> +	/*
+> +	 * When we journal data on quota file, we have to flush journal to see
+> +	 * all updates to the file when we bypass pagecache...
+> +	 */
+> +	if (sbi->s_journal &&
+> +	    ext4_should_journal_data(qf_inode)) {
+> +		/*
+> +		 * We don't need to lock updates but journal_flush() could
+> +		 * otherwise be livelocked...
+> +		 */
+> +		jbd2_journal_lock_updates(sbi->s_journal);
+> +		err = jbd2_journal_flush(sbi->s_journal);
+> +		jbd2_journal_unlock_updates(sbi->s_journal);
+> +		if (err)
+> +			return err;
+> +	}
+  Why do you have the above check? Since this function is called only for
+reserved quota inodes which are hidden, ext4_should_journal_data() will
+never be true for them.
+
+> +
+> +	err = dquot_enable(qf_inode, type, format_id, flags);
+> +	iput(qf_inode);
+> +
+> +	return err;
+> +}
+> @@ -4837,7 +4931,12 @@ static int ext4_quota_off(struct super_block *sb, int type)
+>  	ext4_journal_stop(handle);
+>  
+>  out:
+> -	return dquot_quota_off(sb, type);
+> +	/* Disable only the limits if QUOTA feature is set. */
+> +	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA))
+> +		return dquot_disable(sb, type, DQUOT_LIMITS_ENABLED);
+> +	else
+> +		return dquot_disable(sb, type,
+> +				DQUOT_USAGE_ENABLED | DQUOT_LIMITS_ENABLED);
+>  }
+  Hmm, most of the work ext4_quota_off() does is unnecessary when quota is
+handled internally - there's no need to sync the filesystem, no need to
+update mtime or ctime... So I'd rather provide a new ext4_quota_off()
+function in case quota feature is enabled and that would just call
+dquot_disable(sb, type, DQUOT_LIMITS_ENABLED).
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
