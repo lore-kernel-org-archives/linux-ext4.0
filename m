@@ -1,62 +1,52 @@
-From: Curt Wohlgemuth <curtw@google.com>
-Subject: Bug with "fix partial page writes"
-Date: Tue, 8 Nov 2011 14:59:52 -0800
-Message-ID: <CAO81RMa4uRsOsaK4G78EDvOenJpEdTp4y+rtkiDxaK9cASbMtA@mail.gmail.com>
+From: Kazuya Mio <k-mio@sx.jp.nec.com>
+Subject: Re: [BUG] aborted ext4 leads to inifinity loop in balance_dirty_pages
+Date: Wed, 09 Nov 2011 17:28:20 +0900
+Message-ID: <4EBA39A4.3040708@sx.jp.nec.com>
+References: <4EA6A5E5.2050604@sx.jp.nec.com> <20111025134045.GB8072@quack.suse.cz> <4EAA3EE7.4040802@sx.jp.nec.com> <20111108000335.GA7518@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Hugh Dickins <hughd@google.com>
-To: Allison Henderson <achender@linux.vnet.ibm.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>,
+	Andreas Dilger <adilger@dilger.ca>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:59098 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753606Ab1KHW7x (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Nov 2011 17:59:53 -0500
-Received: by qyk27 with SMTP id 27so4270900qyk.19
-        for <linux-ext4@vger.kernel.org>; Tue, 08 Nov 2011 14:59:52 -0800 (PST)
+Received: from TYO200.gate.nec.co.jp ([202.32.8.215]:35723 "EHLO
+	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750863Ab1KIIhH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Nov 2011 03:37:07 -0500
+Received: from tyo202.gate.nec.co.jp ([10.7.69.202])
+	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id pA98b5fL027862
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 9 Nov 2011 17:37:05 +0900 (JST)
+In-Reply-To: <20111108000335.GA7518@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-It appears that there's a bug with this patch:
+2011/11/08 9:03, Jan Kara wrote:
+> On Fri 28-10-11 14:34:31, Kazuya Mio wrote:
+>> 2011/10/25 22:40, Jan Kara wrote:
+>>>   Please no. Generally this boils down to what do we do with dirty data
+>>> when there's error in writing them out. Currently we just throw them away
+>>> (e.g. in media error case) but I don't think that's a generally good thing
+>>> because e.g. admin may want to copy the data to other working storage or
+>>> so. So I think we should rather keep the data and provide a mechanism for
+>>> userspace to ask kernel to get rid of the data (so that we don't eventually
+>>> run OOM).
+>>
+>> I see. I agree with you.
+>>
+>>>> Do you have any ideas?
+>>>   So the question is what would you like to achieve. If you just want to
+>>> unblock a thread then a solution would be to make a thread at
+>>> balance_dirty_pages() killable. If generally you want to get rid of dirty
+>>> memory, then I don't have a really good answer but throwing dirty data away
+>>> seems like a bad answer to me.
+>>
+>> The problem is that we cannot unmount the corrupted filesystem due to
+>> un-killable dd process. We must bring down the system to resume the service
+>> with no dirty pages. I think it is important for the service continuity
+>> to be able to kill the thread handling in balance_dirty_pages().
+>    OK, attached are two patches based on latest Linus's tree that should
+> make your task killable. Can you test them?
 
--------------------------------------------
-commit 02fac1297eb3f471a27368271aadd285548297b0
-Author: Allison Henderson <achender@linux.vnet.ibm.com>
-Date:   Tue Sep 6 21:53:01 2011 -0400
-
-    ext4: fix partial page writes
-...
--------------------------------------------
-
-Hugh Dickens found a bug with some nasty testing and lockdep that
-crashed in ext4_da_write_end(), and after looking at the code with
-him, it appears that the call to
-ext4_discard_partial_page_buffers_no_lock() in this routine is
-manipulating an unlocked, and possibly non-existent page:
-
-
--------------------------------------------
-...
-	ret2 = generic_write_end(file, mapping, pos, len, copied,
-							page, fsdata);
-
-	page_len = PAGE_CACHE_SIZE -
-			((pos + copied - 1) & (PAGE_CACHE_SIZE - 1));
-
-	if (page_len > 0) {
-		ret = ext4_discard_partial_page_buffers_no_lock(handle,
-			inode, page, pos + copied - 1, page_len,
-			EXT4_DISCARD_PARTIAL_PG_ZERO_UNMAPPED);
-	}
-...
--------------------------------------------
-
-Note that generic_write_end() will unlock and release the page before
-it returns.
-
-I've no good answer for how to fix this properly, but I wanted to let
-Allison know about this, if she hadn't already.  I looked but didn't
-see any related email on the linux-ext4 list for this problem.
-
-Thanks,
-Curt
+I'm trying to reproduce now, but it's hard. Could you wait a few days?
