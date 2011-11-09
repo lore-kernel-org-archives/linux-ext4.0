@@ -1,83 +1,58 @@
-From: Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH 0/4] 32/64 bit llseek hashes (v4)
-Date: Wed, 09 Nov 2011 08:59:29 -0600
-Message-ID: <4EBA9551.4000404@redhat.com>
-References: <20110817095717.1879649.41075.stgit@fsdevel3> <4E5D6058.8040805@fastmail.fm>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, yong.fan-KloliPT79xf2eFz/2MeuCQ@public.gmane.org,
-	adilger-KloliPT79xf2eFz/2MeuCQ@public.gmane.org, "J. Bruce Fields" <bfields-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-	"Ted Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
-To: Bernd Schubert <bernd.schubert-97jfqw80gc6171pxa8y+qA@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <4E5D6058.8040805-97jfqw80gc6171pxa8y+qA@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] mke2fs: do not initialize block bitmaps of groups having super block
+Date: Wed, 9 Nov 2011 09:23:46 -0700
+Message-ID: <D8CD6456-1740-4FA6-83E5-EFB0045EE74E@dilger.ca>
+References: <1320836006-6946-1-git-send-email-xiaoqiangnk@gmail.com>
+Mime-Version: 1.0 (iPhone Mail 8L1)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: "tytso@mit.edu" <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from shawmail.shawcable.com ([64.59.128.220]:58641 "EHLO
+	mail.shawcable.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751201Ab1KIQWo convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Nov 2011 11:22:44 -0500
+In-Reply-To: <1320836006-6946-1-git-send-email-xiaoqiangnk@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 8/30/11 5:12 PM, Bernd Schubert wrote:
-> On 08/17/2011 11:57 AM, Bernd Schubert wrote:
->> With the ext3/ext4 directory index implementation hashes are used to specify
->> offsets for llseek(). For compatibility with NFSv2 and 32-bit user space
->> on 64-bit systems (kernel space) ext3/ext4 currently only return 32-bit
->> hashes and therefore the probability of hash collisions for larger directories
->> is rather high. As recently reported on the NFS mailing list that theoretical
->> problem also happens on real systems:
->> http://comments.gmane.org/gmane.linux.nfs/40863
->>
->> The following series adds two new f_mode flags to tell ext4
->> to use 32-bit or 64-bit hash values for llseek() calls.
->> These flags can then used by network file systems, such as NFS, to
->> request 32-bit or 64-bit offsets (hashes).
->>
->> Version 4
->> - Andreas noticed there was HAVE_IS_COMPAT_TASK instead of
->>    CONFIG_COMPAT in the
->>    "Return 32/64-bit dir name hash according to usage type"
->>    patch
->>
->> Version 3:
->> - remove patch "RFC: Remove check for a 32-bit cookie in nfsd4_readdir()",
->>    I think Bruce wanted to take it seperately as bug fix. It should be applied
->>    before applying the remaining NFS patches, as without it NFSv4 will always
->>    fail with the new 64-bit ext4 seek hashes.
->> - split "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)" into two
->>    two separate patches as suggested by Bruce, one patch to rename
->>    'access' to 'may_flags'. And the remainder of the original patch to set
->>    FMODE_32BITHASH/FMODE_64BITHASH flags and to introduce the new
->>    NFSD_MAY_64BIT_COOKIE flag
->>
->> Version 2:
->> - use f_mode instead of O_* flags and also in a separate patch
->> - introduce EXT4_HTREE_EOF_32BIT and EXT4_HTREE_EOF_64BIT
->> - fix SEEK_END in ext4_dir_llseek()
->> - set f_mode flags in NFS code as early as possible and introduce a new
->>    NFSD_MAY_64BIT_COOKIE flag for that
->>
-> 
-> Ted,
-> 
-> any chance you could take this series or at least ack the ext4 part? Bruce already acked the NFS patches.
-> 
-> 
->     Acked-by: J. Bruce Fields <bfields-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-> 
+On 2011-11-09, at 3:53 AM, Yongqiang Yang <xiaoqiangnk@gmail.com> wrote:
 
-Ted, what is the status of these patches for ext4 at this point?
+> Now mke2fs initializes block bitmaps of groups having super block, on
+> the other hand ext4_init_block_bitmap in kernel can handle this case
+> rightly.  So let mke2fs let block bitmaps of groups having super block
+> be uninitialized.
 
--eric
+Is that true of older kernels, or only newer ones?  What about filesystems with META_BG set?
 
+Cheers, Andreas
+
+> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+> ---
+> lib/ext2fs/alloc_sb.c |    2 --
+> 1 files changed, 0 insertions(+), 2 deletions(-)
 > 
-> Thanks,
-> Bernd
+> diff --git a/lib/ext2fs/alloc_sb.c b/lib/ext2fs/alloc_sb.c
+> index 0d1c000..7517fbc 100644
+> --- a/lib/ext2fs/alloc_sb.c
+> +++ b/lib/ext2fs/alloc_sb.c
+> @@ -65,8 +65,6 @@ int ext2fs_reserve_super_and_bgd(ext2_filsys fs,
+>        ext2fs_mark_block_bitmap2(bmap, 0);
+> 
+>    if (old_desc_blk) {
+> -        if (fs->super->s_reserved_gdt_blocks && fs->block_map == bmap)
+> -            ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
+>        for (j=0; j < old_desc_blocks; j++)
+>            if (old_desc_blk + j < ext2fs_blocks_count(fs->super))
+>                ext2fs_mark_block_bitmap2(bmap,
 > -- 
+> 1.7.5.1
+> 
+> --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+> the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
