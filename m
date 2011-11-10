@@ -1,64 +1,85 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH v2 6/8] ext4: Count data request of write operations in buffered io
-Date: Thu, 10 Nov 2011 18:34:52 +0800
-Message-ID: <1320921294-30321-7-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH v2 7/8] ext4: Count all requests in direct io
+Date: Thu, 10 Nov 2011 18:34:53 +0800
+Message-ID: <1320921294-30321-8-git-send-email-wenqing.lz@taobao.com>
 References: <1320921294-30321-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>,
 	Wang Shaoyan <wangshaoyan.pt@taobao.com>
 To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:41237 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932250Ab1KJKeB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Nov 2011 05:34:01 -0500
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1320921294-30321-1-git-send-email-wenqing.lz@taobao.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-'Issue' flag in buffer_head doesn't be used.
+ext4_ios_submit_io() function is defined to be called by __blockdev_direct_IO()
+to count direct io.
 
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 Signed-off-by: Wang Shaoyan <wangshaoyan.pt@taobao.com>
 ---
- fs/ext4/inode.c |    8 +++++++-
- 1 files changed, 7 insertions(+), 1 deletions(-)
+ fs/ext4/ext4.h     |    2 ++
+ fs/ext4/indirect.c |    2 +-
+ fs/ext4/inode.c    |   12 +++++++++++-
+ 3 files changed, 14 insertions(+), 2 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 39a1495..68032e9 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1916,6 +1916,8 @@ extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
+ extern qsize_t *ext4_get_reserved_space(struct inode *inode);
+ extern void ext4_da_update_reserve_space(struct inode *inode,
+ 					int used, int quota_claim);
++extern void ext4_ios_submit_io(int rw, struct bio *bio,
++			       struct inode *inode, loff_t file_offset);
+ 
+ /* indirect.c */
+ extern int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 0d7174e..a27bb19 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -819,7 +819,7 @@ retry:
+ 		ret = __blockdev_direct_IO(rw, iocb, inode,
+ 				 inode->i_sb->s_bdev, iov,
+ 				 offset, nr_segs,
+-				 ext4_get_block, NULL, NULL, 0);
++				 ext4_get_block, NULL, ext4_ios_submit_io, 0);
+ 	} else {
+ 		ret = blockdev_direct_IO(rw, iocb, inode, iov,
+ 				 offset, nr_segs, ext4_get_block);
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c584f89..e552fb2 100644
+index e552fb2..600a742 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -1907,6 +1907,8 @@ static int ext4_writepage(struct page *page,
- 	struct inode *inode = page->mapping->host;
+@@ -2962,7 +2962,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+ 					 offset, nr_segs,
+ 					 ext4_get_block_write,
+ 					 ext4_end_io_dio,
+-					 NULL,
++					 ext4_ios_submit_io,
+ 					 DIO_LOCKING | DIO_SKIP_HOLES);
+ 		if (iocb->private)
+ 			EXT4_I(inode)->cur_aio_dio = NULL;
+@@ -3003,6 +3003,16 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+ 	return ext4_ind_direct_IO(rw, iocb, iov, offset, nr_segs);
+ }
  
- 	trace_ext4_writepage(page);
-+	__ext4_io_stat(WRITE, EXT4_IOS_REGULAR_DATA,
-+		       ext4_blocks_per_page(inode));
- 	size = i_size_read(inode);
- 	if (page->index == size >> PAGE_CACHE_SHIFT)
- 		len = size & ~PAGE_CACHE_MASK;
-@@ -2081,6 +2083,8 @@ static int write_cache_pages_da(struct address_space *mapping,
- 			logical = (sector_t) page->index <<
- 				(PAGE_CACHE_SHIFT - inode->i_blkbits);
- 
-+			__ext4_io_stat(WRITE, EXT4_IOS_REGULAR_DATA,
-+				       ext4_blocks_per_page(inode));
- 			if (!page_has_buffers(page)) {
- 				mpage_add_bh_to_extent(mpd, logical,
- 						       PAGE_CACHE_SIZE,
-@@ -3454,8 +3458,10 @@ int ext4_block_zero_page_range(handle_t *handle,
- 	err = 0;
- 	if (ext4_should_journal_data(inode)) {
- 		err = ext4_handle_dirty_metadata(handle, inode, bh);
--	} else
-+	} else {
-+		ext4_ios_write_one(handle, bh, EXT4_IOS_REGULAR_DATA);
- 		mark_buffer_dirty(bh);
-+	}
- 
- unlock:
- 	unlock_page(page);
++void ext4_ios_submit_io(int rw, struct bio *bio,
++			struct inode *inode, loff_t file_offset)
++{
++	int tmprw = !!rw;
++
++	/* ext4 io type statistic */
++	__ext4_io_stat(tmprw, EXT4_IOS_REGULAR_DATA, ext4_blocks_per_page(inode));
++	submit_bio(rw, bio);
++}
++
+ static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
+ 			      const struct iovec *iov, loff_t offset,
+ 			      unsigned long nr_segs)
 -- 
 1.7.4.1
 
