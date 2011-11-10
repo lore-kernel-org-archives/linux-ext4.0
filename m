@@ -1,260 +1,108 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] e2fsprogs: fix mmp tests on hard 4k devices
-Date: Wed, 9 Nov 2011 17:16:52 -0700
-Message-ID: <EB140F5C-89E1-4C8D-9004-630A5C34F386@dilger.ca>
-References: <4EBAEE97.7040406@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [PATCH 15/28] ext4: Calculate and verify block bitmap checksum
+Date: Wed, 9 Nov 2011 16:57:12 -0800
+Message-ID: <20111110005656.GX12447@tux1.beaverton.ibm.com>
+References: <20111008075343.20506.23155.stgit@elm3c44.beaverton.ibm.com> <20111008075522.20506.22239.stgit@elm3c44.beaverton.ibm.com> <AE869D1A-2A06-4849-8752-74924B0C05BD@dilger.ca> <20111013071631.GQ12447@tux1.beaverton.ibm.com> <20111107200008.GW12447@tux1.beaverton.ibm.com> <EEB33371-CE71-4283-A5B1-E09083F08DCB@dilger.ca>
+Reply-To: djwong@us.ibm.com
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: Theodore Tso <tytso@mit.edu>,
+	Sunil Mushran <sunil.mushran@oracle.com>,
+	Martin K Petersen <martin.petersen@oracle.com>,
+	Greg Freemyer <greg.freemyer@gmail.com>,
+	Amir Goldstein <amir73il@gmail.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Andi Kleen <andi@firstfloor.org>,
+	Mingming Cao <cmm@us.ibm.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
+To: Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:39943 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754603Ab1KJAQy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Nov 2011 19:16:54 -0500
-In-Reply-To: <4EBAEE97.7040406@redhat.com>
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:35234 "EHLO e6.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752247Ab1KJA5D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 9 Nov 2011 19:57:03 -0500
+Received: from /spool/local
+	by e6.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Wed, 9 Nov 2011 19:57:02 -0500
+Content-Disposition: inline
+In-Reply-To: <EEB33371-CE71-4283-A5B1-E09083F08DCB@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-11-09, at 2:20 PM, Eric Sandeen wrote:
-> Several of the mmp tests were failing on an s390 guest because
-> direct IO cannot be done on sub-sector sizes, and they were
-> doing 1k IOs to files on a 4k logical/physical device.
+On Mon, Nov 07, 2011 at 02:44:02PM -0700, Andreas Dilger wrote:
+> On 2011-11-07, at 1:00 PM, Darrick J. Wong wrote:
+> > On Thu, Oct 13, 2011 at 12:16:31AM -0700, Darrick J. Wong wrote:
+> >> On Wed, Oct 12, 2011 at 06:00:40PM -0600, Andreas Dilger wrote:
+> >>> I've been thinking a while that we should add per-group error flags
+> >>> for the block and inode bitmaps.  That way, if we detect errors with
+> >>> either one, we can set the flag in the group descriptor and avoid
+> >>> using it for any allocations in the future.  Otherwise, we try to
+> >>> read the bitmap in repeatedly.
+> >> 
+> >> I think there's some code in ext4 somewhere that does that.  I also wonder if
+> >> the possibility that we're seeing a transient corruption error is worth
+> >> rechecking the block until it fails?  (I suspect not, but I decided to throw
+> >> that out there anyway.)
+> > 
+> > There's a bit of code in ext4_init_block_bitmap that makes a block group
+> > unwritable if the bg checksum fails to verify:
+> > 
+> > /* If checksum is bad mark all blocks used to prevent allocation
+> > * essentially implementing a per-group read-only flag. */
+> > if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
+> > 	ext4_error(sb, "Checksum bad for group %u",
+> > 			block_group);
+> > 	ext4_free_blks_set(sb, gdp, 0);
+> > 	ext4_free_inodes_set(sb, gdp, 0);
+> > 	ext4_itable_unused_set(sb, gdp, 0);
+> > 	memset(bh->b_data, 0xff, sb->s_blocksize);
+> > 	ext4_block_bitmap_csum_set(sb, block_group, gdp, bh,
+> > 				   EXT4_BLOCKS_PER_GROUP(sb) /
+> > 				   8);
+> > 	return 0;
+> > }
+> > 
+> > Do people think that doing this in the event of a block/inode bitmap checksum
+> > failure is a good idea?
+> 
+> For me, yes.  The sanity checks we do on the block bitmaps are only very
+> basic (e.g. bits for bitmaps themselves are set, for inode table).  Blocking
+> any allocation from a single group with a bad checksum is not harmful in the
+> long term, and can avoid an explosion of corruption if blocks would otherwise
+> be allocated multiple times.
 
-Looks good to me.  Thanks for the patch.
+On second thought, let's see what happens with groups that fail checksums ...
+it seems that ext4_check_descriptors() fails the mount in the event of a group
+descriptor failing checksum.  Both ext4_read_inode_bitmap() and
+ext4_read_block_bitmap() return NULL if the respective bitmap fails checksum.
+It looks like most of ext4's block {de,}allocate functions will fail on NULL
+bitmap pointer, so it shouldn't be possible to allocate (or deallocate) from a
+broken group.
 
-Acked-by: Andreas Dilger <adilger@dilger.ca>
+There is one small deficiency: we need an explicit flag that marks the group
+dead.  That way if either bitmap fails checksum, the other _bitmap_read()
+function will know to just return NULL, and the group becomes totally frozen to
+allocation activity.
 
-> A few tests could just be changed to 4k, but others
-> needed fixed up output as well.
-> 
-> In the course of this it seems mke2fs should have more helpful
-> error reporting for these issues, but that's another patch.
-> 
-> With this I have all tests passing on s390 again.
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> ---
-> 
-> diff --git a/tests/f_mmp/script b/tests/f_mmp/script
-> index 548734a..4aca447 100644
-> --- a/tests/f_mmp/script
-> +++ b/tests/f_mmp/script
-> @@ -12,7 +12,7 @@ if [ $? == 0 ]; then
-> fi
-> 
-> echo "make the test image ..." > $test_name.log
-> -$MKE2FS -q -F -o Linux -b 1024 -O mmp -E mmp_update_interval=1 $TMPFILE 100 >> $test_name.log 2>&1
-> +$MKE2FS -q -F -o Linux -b 4096 -O mmp -E mmp_update_interval=1 $TMPFILE 100 >> $test_name.log 2>&1
-> status=$?
-> if [ "$status" != 0 ] ; then
-> 	echo "mke2fs -O mmp failed" > $test_name.failed
-> diff --git a/tests/f_mmp_garbage/expect.1 b/tests/f_mmp_garbage/expect.1
-> index 4ee5cfb..a8add10 100644
-> --- a/tests/f_mmp_garbage/expect.1
-> +++ b/tests/f_mmp_garbage/expect.1
-> @@ -5,5 +5,5 @@ Pass 2: Checking directory structure
-> Pass 3: Checking directory connectivity
-> Pass 4: Checking reference counts
-> Pass 5: Checking group summary information
-> -test_filesys: 11/16 files (0.0% non-contiguous), 22/100 blocks
-> +test_filesys: 11/64 files (0.0% non-contiguous), 13/100 blocks
-> Exit status is 0
-> diff --git a/tests/f_mmp_garbage/expect.2 b/tests/f_mmp_garbage/expect.2
-> index 3bf3869..6630002 100644
-> --- a/tests/f_mmp_garbage/expect.2
-> +++ b/tests/f_mmp_garbage/expect.2
-> @@ -3,5 +3,5 @@ Pass 2: Checking directory structure
-> Pass 3: Checking directory connectivity
-> Pass 4: Checking reference counts
-> Pass 5: Checking group summary information
-> -test_filesys: 11/16 files (0.0% non-contiguous), 22/100 blocks
-> +test_filesys: 11/64 files (0.0% non-contiguous), 13/100 blocks
-> Exit status is 0
-> diff --git a/tests/f_mmp_garbage/script b/tests/f_mmp_garbage/script
-> index 3c80032..8b5a22a 100644
-> --- a/tests/f_mmp_garbage/script
-> +++ b/tests/f_mmp_garbage/script
-> @@ -12,7 +12,7 @@ if [ $? == 0 ] ; then
-> fi
-> 
-> echo "make the test image ..." > $test_name.log
-> -$MKE2FS -q -F -o Linux -b 1024 -O mmp -E mmp_update_interval=1 $TMPFILE 100 >> $test_name.log 2>&1
-> +$MKE2FS -q -F -o Linux -b 4096 -O mmp -E mmp_update_interval=1 $TMPFILE 100 >> $test_name.log 2>&1
-> status=$?
-> if [ "$status" != 0 ] ; then
-> 	echo "mke2fs -O mmp failed" > $test_name.failed
-> diff --git a/tests/m_mmp/expect.1 b/tests/m_mmp/expect.1
-> index 3a00815..d3319b3 100644
-> --- a/tests/m_mmp/expect.1
-> +++ b/tests/m_mmp/expect.1
-> @@ -1,55 +1,55 @@
-> Filesystem label=
-> OS type: Linux
-> -Block size=2048 (log=1)
-> -Fragment size=2048 (log=1)
-> +Block size=4096 (log=2)
-> +Fragment size=4096 (log=2)
-> Stride=0 blocks, Stripe width=0 blocks
-> -16384 inodes, 32768 blocks
-> -1638 blocks (5.00%) reserved for the super user
-> +65536 inodes, 65536 blocks
-> +3276 blocks (5.00%) reserved for the super user
-> First data block=0
-> -Maximum filesystem blocks=33554432
-> +Maximum filesystem blocks=67108864
-> 2 block groups
-> -16384 blocks per group, 16384 fragments per group
-> -8192 inodes per group
-> +32768 blocks per group, 32768 fragments per group
-> +32768 inodes per group
-> Superblock backups stored on blocks: 
-> -	16384
-> +	32768
-> 
-> Allocating group tables: 0/21/2   done                            
-> Writing inode tables: 0/21/2   done                            
-> Multiple mount protection is enabled with update interval 5 seconds.
-> Writing superblocks and filesystem accounting information: 0/21/2   done
-> 
-> -Filesystem features: ext_attr resize_inode dir_index filetype mmp sparse_super
-> +Filesystem features: ext_attr resize_inode dir_index filetype mmp sparse_super large_file
-> 
-> Pass 1: Checking inodes, blocks, and sizes
-> Pass 2: Checking directory structure
-> Pass 3: Checking directory connectivity
-> Pass 4: Checking reference counts
-> Pass 5: Checking group summary information
-> -test_filesys: 11/16384 files (0.0% non-contiguous), 1105/32768 blocks
-> +test_filesys: 11/65536 files (0.0% non-contiguous), 2093/65536 blocks
-> Exit status is 0
-> 
-> Filesystem volume name:   <none>
-> Last mounted on:          <not available>
-> Filesystem magic number:  0xEF53
-> Filesystem revision #:    1 (dynamic)
-> -Filesystem features:      ext_attr resize_inode dir_index filetype mmp sparse_super
-> +Filesystem features:      ext_attr resize_inode dir_index filetype mmp sparse_super large_file
-> Default mount options:    (none)
-> Filesystem state:         clean
-> Errors behavior:          Continue
-> Filesystem OS type:       Linux
-> -Inode count:              16384
-> -Block count:              32768
-> -Reserved block count:     1638
-> -Free blocks:              31663
-> -Free inodes:              16373
-> +Inode count:              65536
-> +Block count:              65536
-> +Reserved block count:     3276
-> +Free blocks:              63443
-> +Free inodes:              65525
-> First block:              0
-> -Block size:               2048
-> -Fragment size:            2048
-> -Reserved GDT blocks:      31
-> -Blocks per group:         16384
-> -Fragments per group:      16384
-> -Inodes per group:         8192
-> -Inode blocks per group:   512
-> +Block size:               4096
-> +Fragment size:            4096
-> +Reserved GDT blocks:      15
-> +Blocks per group:         32768
-> +Fragments per group:      32768
-> +Inodes per group:         32768
-> +Inode blocks per group:   1024
-> Mount count:              0
-> Check interval:           15552000 (6 months)
-> Reserved blocks uid:      0
-> @@ -57,23 +57,23 @@ Reserved blocks gid:      0
-> First inode:              11
-> Inode size:	          128
-> Default directory hash:   half_md4
-> -MMP block number:         557
-> +MMP block number:         1049
-> MMP update interval:      5
-> 
-> 
-> -Group 0: (Blocks 0-16383)
-> +Group 0: (Blocks 0-32767)
->   Primary superblock at 0, Group descriptors at 1-1
-> -  Reserved GDT blocks at 2-32
-> -  Block bitmap at 33 (+33), Inode bitmap at 34 (+34)
-> -  Inode table at 35-546 (+35)
-> -  15826 free blocks, 8181 free inodes, 2 directories
-> -  Free blocks: 558-16383
-> -  Free inodes: 12-8192
-> -Group 1: (Blocks 16384-32767)
-> -  Backup superblock at 16384, Group descriptors at 16385-16385
-> -  Reserved GDT blocks at 16386-16416
-> -  Block bitmap at 16417 (+33), Inode bitmap at 16418 (+34)
-> -  Inode table at 16419-16930 (+35)
-> -  15837 free blocks, 8192 free inodes, 0 directories
-> -  Free blocks: 16931-32767
-> -  Free inodes: 8193-16384
-> +  Reserved GDT blocks at 2-16
-> +  Block bitmap at 17 (+17), Inode bitmap at 18 (+18)
-> +  Inode table at 19-1042 (+19)
-> +  31718 free blocks, 32757 free inodes, 2 directories
-> +  Free blocks: 1050-32767
-> +  Free inodes: 12-32768
-> +Group 1: (Blocks 32768-65535)
-> +  Backup superblock at 32768, Group descriptors at 32769-32769
-> +  Reserved GDT blocks at 32770-32784
-> +  Block bitmap at 32785 (+17), Inode bitmap at 32786 (+18)
-> +  Inode table at 32787-33810 (+19)
-> +  31725 free blocks, 32768 free inodes, 0 directories
-> +  Free blocks: 33811-65535
-> +  Free inodes: 32769-65536
-> diff --git a/tests/m_mmp/script b/tests/m_mmp/script
-> index 1547463..b3e206a 100644
-> --- a/tests/m_mmp/script
-> +++ b/tests/m_mmp/script
-> @@ -10,6 +10,6 @@ if [ $? == 0 ]; then
-> 	echo "skipped for tmpfs (no O_DIRECT support)"
-> 	return 0
-> fi
-> -MKE2FS_OPTS="-O mmp"
-> +MKE2FS_OPTS="-b 4096 -O mmp"
-> . $cmd_dir/run_mke2fs
-> unset MKE2FS_DEVICE_SECTSIZE
-> diff --git a/tests/t_mmp_1on/script b/tests/t_mmp_1on/script
-> index ee9884f..3b0a376 100644
-> --- a/tests/t_mmp_1on/script
-> +++ b/tests/t_mmp_1on/script
-> @@ -11,7 +11,7 @@ if [ $? == 0 ] ; then
-> 	return 0
-> fi
-> 
-> -$MKE2FS -q -F -o Linux -b 1024 $TMPFILE 100 > $test_name.log 2>&1
-> +$MKE2FS -q -F -o Linux -b 4096 $TMPFILE 100 > $test_name.log 2>&1
-> status=$?
-> if [ "$status" != 0 ] ; then
-> 	echo "mke2fs failed" > $test_name.failed
-> diff --git a/tests/t_mmp_2off/script b/tests/t_mmp_2off/script
-> index ec9f71e..56c6bed 100644
-> --- a/tests/t_mmp_2off/script
-> +++ b/tests/t_mmp_2off/script
-> @@ -11,7 +11,7 @@ if [ $? == 0 ]; then
-> 	return 0
-> fi
-> 
-> -$MKE2FS -q -F -o Linux -b 1024 -O mmp $TMPFILE 100 > $test_name.log 2>&1
-> +$MKE2FS -q -F -o Linux -b 4096 -O mmp $TMPFILE 100 > $test_name.log 2>&1
-> status=$?
-> if [ "$status" != 0 ] ; then
-> 	echo "mke2fs -O mmp failed" > $test_name.failed
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I think ext4_new_inode need to be taught to continue scanning groups if it
+encounters a "dead" group?  I'm not sure yet if the same thing needs to be
+applied to the block allocation code.
 
+I'm actually wondering how it is that a group could pass checksum verification
+at mount time but fail it later, which is what that code snippet seems designed
+to catch.  Maybe something related to online resize?   Either way, I'm now
+wondering if we really need something like that for the simple case of bitmaps
+failing checksum.  I think we're already covered, but maybe I missed something?
 
-Cheers, Andreas
-
-
-
-
+--D
+> 
+> Cheers, Andreas
+> 
+> 
+> 
+> 
+> 
 
