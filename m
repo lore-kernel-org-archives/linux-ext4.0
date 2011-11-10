@@ -1,100 +1,65 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 2/4] e2fsprogs: Tidy up mmp handling in debugfs
-Date: Thu, 10 Nov 2011 16:53:22 -0600
-Message-ID: <4EBC55E2.3080600@redhat.com>
+Subject: [PATCH 3/4] e2fsprogs: Fix write size in ext2fs_mmp_write
+Date: Thu, 10 Nov 2011 17:00:12 -0600
+Message-ID: <4EBC577C.9010607@redhat.com>
 References: <4EBC5524.3000105@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34545 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:4966 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753081Ab1KJWxY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 10 Nov 2011 17:53:24 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pAAMrOBi014247
+	id S1753251Ab1KJXAO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 10 Nov 2011 18:00:14 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pAAN0Equ021613
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Thu, 10 Nov 2011 17:53:24 -0500
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Nov 2011 18:00:14 -0500
 Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pAAMrNkO010278
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 10 Nov 2011 17:53:24 -0500
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id pAAN0CRj012017
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Nov 2011 18:00:13 -0500
 In-Reply-To: <4EBC5524.3000105@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Several small fixes:
+Without this change, we will write data past the end of the
+mmp buf.  Valgrind catches this:
 
-* Gracefully fail mmp commands if fs is not open
-* Show magic number in dump_mmp command
-* Fix header in output for set_mmp_value -l
+==6373== Syscall param write(buf) points to unaddressable byte(s)
+==6373==    at 0x362260E470: __write_nocancel (in /lib64/libpthread-2.12.2.so)
+==6373==    by 0x41CF83: raw_write_blk (unix_io.c:255)
+==6373==    by 0x41D2BC: unix_write_blk64 (unix_io.c:757)
+==6373==    by 0x41A05D: ext2fs_mmp_write (mmp.c:130)
+==6373==    by 0x40B0C9: do_set_mmp_value (set_fields.c:806)
+==6373==    by 0x421B61: really_execute_command (execute_cmd.c:108)
+==6373==    by 0x421C54: ss_execute_line (execute_cmd.c:234)
+==6373==    by 0x403743: main (debugfs.c:2339)
+==6373==  Address 0x63f000 is not stack'd, malloc'd or (recently) free'd
+
+and in my testing it led to silent failures while writing the mmp
+block in debugfs:
+
+write(3, "xV4\22PMM\342\325V\274N\0\0\0\0host.name."..., 4096) = -1 EFAULT (Bad address)
 
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
 
-diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-index eba3b69..1fb8f44 100644
---- a/debugfs/debugfs.c
-+++ b/debugfs/debugfs.c
-@@ -2165,11 +2165,15 @@ void do_punch(int argc, char *argv[])
+p.s. I could do with a comment about what a negative "count" means...?
+
+diff --git a/lib/ext2fs/mmp.c b/lib/ext2fs/mmp.c
+index 91f4fb2..b27d9a4 100644
+--- a/lib/ext2fs/mmp.c
++++ b/lib/ext2fs/mmp.c
+@@ -127,7 +127,7 @@ errcode_t ext2fs_mmp_write(ext2_filsys fs, blk64_t mmp_blk, void *buf)
  
- void do_dump_mmp(int argc, char *argv[])
- {
--	struct ext2_super_block *sb = current_fs->super;
-+	struct ext2_super_block *sb;
- 	struct mmp_struct *mmp_s;
- 	time_t t;
- 	errcode_t retval = 0;
+ 	/* I was tempted to make this use O_DIRECT and the mmp_fd, but
+ 	 * this caused no end of grief, while leaving it as-is works. */
+-	retval = io_channel_write_blk64(fs->io, mmp_blk, -fs->blocksize, buf);
++	retval = io_channel_write_blk64(fs->io, mmp_blk, -(int)sizeof(struct mmp_struct), buf);
  
-+	if (check_fs_open(argv[0]))
-+		return;
-+
-+	sb  = current_fs->super;
- 	if (sb->s_mmp_block <= sb->s_first_data_block ||
- 	    sb->s_mmp_block >= ext2fs_blocks_count(sb)) {
- 		com_err(argv[0], EXT2_ET_MMP_BAD_BLOCK, "while dumping it.\n");
-@@ -2203,6 +2207,7 @@ void do_dump_mmp(int argc, char *argv[])
- 	fprintf(stdout, "time: %lld -- %s", mmp_s->mmp_time, ctime(&t));
- 	fprintf(stdout, "node_name: %s\n", mmp_s->mmp_nodename);
- 	fprintf(stdout, "device_name: %s\n", mmp_s->mmp_bdevname);
-+	fprintf(stdout, "magic: 0x%x\n", mmp_s->mmp_magic);
- }
- 
- static int source_file(const char *cmd_file, int sci_idx)
-diff --git a/debugfs/set_fields.c b/debugfs/set_fields.c
-index d461275..0041160 100644
---- a/debugfs/set_fields.c
-+++ b/debugfs/set_fields.c
-@@ -242,6 +242,9 @@ static struct field_set_info ext4_bg_fields[] = {
- 	{ 0, 0, 0, 0 }
- };
- 
-+/* forward declaration */
-+static struct field_set_info mmp_fields[];
-+
- static int check_suffix(const char *field)
- {
- 	int len = strlen(field);
-@@ -561,6 +564,9 @@ static void print_possible_fields(struct field_set_info *fields)
- 	} else if (fields == inode_fields) {
- 		type = "Inode";
- 		cmd = "set_inode";
-+	} else if (fields == mmp_fields) {
-+		type = "MMP";
-+		cmd = "set_mmp_value";
- 	} else {
- 		type = "Block group descriptor";
- 		cmd = "set_block_group";
-@@ -768,6 +774,9 @@ void do_set_mmp_value(int argc, char *argv[])
- 		return;
- 	}
- 
-+	if (check_fs_open(argv[0]))
-+		return;
-+
- 	if (current_fs->super->s_mmp_block == 0) {
- 		com_err(argv[0], 0, "no MMP block allocated\n");
- 		return;
+ #ifdef WORDS_BIGENDIAN
+ 	ext2fs_swap_mmp(mmp_s);
 
 
