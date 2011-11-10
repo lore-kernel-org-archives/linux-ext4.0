@@ -1,52 +1,71 @@
-From: Robin Dong <hao.bigrat@gmail.com>
-Subject: [PATCH] e2fsprogs: fix "Illegal block number" for scan_block_bitmap()
-Date: Thu, 10 Nov 2011 20:15:24 +0800
-Message-ID: <1320927324-3613-1-git-send-email-hao.bigrat@gmail.com>
-Cc: Robin Dong <sanbai@taobao.com>
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] libext2fs: use HAVE_FSTAT64 instead of HAVE_STAT64 for ext2fs_stat()
+Date: Thu, 10 Nov 2011 07:40:30 -0500
+Message-ID: <1320928830-1296-1-git-send-email-tytso@mit.edu>
+Cc: 647245@bugs.debian.org, Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:46246 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751219Ab1KJMPf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Nov 2011 07:15:35 -0500
-Received: by qyk27 with SMTP id 27so5776908qyk.19
-        for <linux-ext4@vger.kernel.org>; Thu, 10 Nov 2011 04:15:34 -0800 (PST)
+Received: from li9-11.members.linode.com ([67.18.176.11]:37372 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751987Ab1KJMkd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 10 Nov 2011 07:40:33 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Robin Dong <sanbai@taobao.com>
+Commit 6b56f3d92d introduced the use of HAVE_STAT64 without arranging
+that it be defined in configure.in.  Previously ext4.h used
+HAVE_OPEN64, but apparently there are (broken) platforms that have
+open64() but not stat64().  Go figure.
 
-After:
-# mke2fs -O ^has_journal,^resize_inode,^uninit_bg,extent,meta_bg,flex_bg,bigalloc /dev/sda
-# e2freefrag /dev/sda
+We do need to consistently use a single test for ext2fs_stat(),
+ext2fs_fstat(), and struct ext2fs_struct_stat, or we could end up
+passing a struct stat64 to a fstat() system call, or some such.  I've
+elected to use HAVE_FSTAT64 because: (a) it's already defined in the
+configure script, and (b) if we ever come across a really broken
+platform that defines fstat64() but not stat64(), we can always
+emulate stat64() using open64() followed by a fstat64().
 
-It will report error message like:
+This commit fixed a bug whose symptoms were that mke2fs would not work
+if given a file > 2GB on 32-bit platforms.
 
- Illegal block number passed to ext2fs_test_block_bitmap #1732133 for block bitmap for /dev/sda
- Illegal block number passed to ext2fs_test_block_bitmap #1732134 for block bitmap for /dev/sda
- Illegal block number passed to ext2fs_test_block_bitmap #1732135 for block bitmap for /dev/sda
+Addresses-Debian-Bug: #647245
 
-One bit in bitmap of bigalloc-ext4 means a cluster not a block, therefore ext2fs_fast_test_block_bitmap2
-should check cluster.
-
-Signed-off-by: Robin Dong <sanbai@taobao.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- misc/e2freefrag.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ lib/ext2fs/ext2fs.h |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/misc/e2freefrag.c b/misc/e2freefrag.c
-index b442f32..a09df6b 100644
---- a/misc/e2freefrag.c
-+++ b/misc/e2freefrag.c
-@@ -121,7 +121,7 @@ void scan_block_bitmap(ext2_filsys fs, struct chunk_info *info)
- 				chunk_start_blk = blk;
- 			}
- 			used = ext2fs_fast_test_block_bitmap2(fs->block_map,
--							     chunk_start_blk);
-+				chunk_start_blk >> fs->cluster_ratio_bits);
- 			if (!used) {
- 				last_chunk_size++;
- 				chunk_free++;
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index d90c1ee..4de20c9 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -604,7 +604,7 @@ typedef struct ext2_icount *ext2_icount_t;
+ #define EXT2FS_NUM_B2C(fs, blks)	(((blks) + EXT2FS_CLUSTER_MASK(fs)) >> \
+ 					 (fs)->cluster_ratio_bits)
+ 
+-#if defined(HAVE_STAT64) && !defined(__OSX_AVAILABLE_BUT_DEPRECATED)
++#if defined(HAVE_FSTAT64) && !defined(__OSX_AVAILABLE_BUT_DEPRECATED)
+ typedef struct stat64 ext2fs_struct_stat;
+ #else
+ typedef struct stat ext2fs_struct_stat;
+@@ -1697,7 +1697,7 @@ _INLINE_ int ext2fs_open_file(const char *pathname, int flags, mode_t mode)
+ 
+ _INLINE_ int ext2fs_stat(const char *path, ext2fs_struct_stat *buf)
+ {
+-#if defined(HAVE_STAT64) && !defined(__OSX_AVAILABLE_BUT_DEPRECATED)
++#if defined(HAVE_FSTAT64) && !defined(__OSX_AVAILABLE_BUT_DEPRECATED)
+ 	return stat64(path, buf);
+ #else
+ 	return stat(path, buf);
+@@ -1706,7 +1706,7 @@ _INLINE_ int ext2fs_stat(const char *path, ext2fs_struct_stat *buf)
+ 
+ _INLINE_ int ext2fs_fstat(int fd, ext2fs_struct_stat *buf)
+ {
+-#if defined(HAVE_STAT64) && !defined(__OSX_AVAILABLE_BUT_DEPRECATED)
++#if defined(HAVE_FSTAT64) && !defined(__OSX_AVAILABLE_BUT_DEPRECATED)
+ 	return fstat64(fd, buf);
+ #else
+ 	return fstat(fd, buf);
 -- 
-1.7.3.2
+1.7.4.1.22.gec8e1.dirty
 
