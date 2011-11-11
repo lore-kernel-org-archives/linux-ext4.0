@@ -1,58 +1,89 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: ext3/4: BUGS in changing journal mode in flight
-Date: Fri, 11 Nov 2011 16:20:21 +0800
-Message-ID: <CAGBYx2YaJZqCgC6akmUm-NF7RgXGZJSyZxeWpW1KYeh09egkbw@mail.gmail.com>
+From: Steven Whitehouse <swhiteho@redhat.com>
+Subject: Re: [PATCH v2 1/8] vfs: Add a new flag and related functions in
+ buffer to count io types
+Date: Fri, 11 Nov 2011 10:48:33 +0000
+Message-ID: <1321008513.2710.33.camel@menhir>
+References: <1320921294-30321-1-git-send-email-wenqing.lz@taobao.com>
+	 <1320921294-30321-2-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>, "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Zheng Liu <wenqing.lz@taobao.com>,
+	Wang Shaoyan <wangshaoyan.pt@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:53435 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756209Ab1KKIUW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Nov 2011 03:20:22 -0500
-Received: by vcbf1 with SMTP id f1so3193506vcb.19
-        for <linux-ext4@vger.kernel.org>; Fri, 11 Nov 2011 00:20:21 -0800 (PST)
+Received: from mx1.redhat.com ([209.132.183.28]:13694 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751384Ab1KKKq6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 11 Nov 2011 05:46:58 -0500
+In-Reply-To: <1320921294-30321-2-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Jan and Ted,
+Hi,
 
-Both ext3 and ext4 have an attribute 'j', thus users can change
-journal mode of a file in flight.  However, neither ext3 or ext4
-supports the feature rightly, specifically file systems will be
-mounted RO due to I/O error in journal.  The error happens like this:
-when the journal mode of a file is changed from ordered to journaled,
-then data blocks will be revoked in truncate, if the revoked block was
-allocated as meta blocks last time, then its revoked flag is not
-cleared, so revoke on a revoked buffer happens, then journal report an
-I/O error.
+On Thu, 2011-11-10 at 18:34 +0800, Zheng Liu wrote:
+> From: Zheng Liu <wenqing.lz@taobao.com>
+> 
+> 'Issue' flag is added into buffer_head to indicate that a request is issued
+> to the disk. When an io doesn't hit page cache, 'Issue' flag will be set in
+> submit_bh(). Filesystem can understand request is sent to the disk according
+> to whether or not this flag is set. This flag will be cleared after filesystem
+> tests it. If filesystem doesn't want to count the io type, it can ignore this
+> flag.
+> 
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> Signed-off-by: Wang Shaoyan <wangshaoyan.pt@taobao.com>
+> ---
+>  fs/buffer.c                 |    3 +++
+>  include/linux/buffer_head.h |    5 +++++
+>  2 files changed, 8 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/buffer.c b/fs/buffer.c
+> index 70a1974..f681caa 100644
+> --- a/fs/buffer.c
+> +++ b/fs/buffer.c
+> @@ -2920,6 +2920,9 @@ int submit_bh(int rw, struct buffer_head * bh)
+>  	BUG_ON(buffer_delay(bh));
+>  	BUG_ON(buffer_unwritten(bh));
+>  
+> +	/* set issue flag for indicating a request is issued to the disk */
+> +	set_buffer_issue(bh);
+> +
+>  	/*
+>  	 * Only clear out a write error when rewriting
+>  	 */
+> diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+> index 458f497..2bccdb4 100644
+> --- a/include/linux/buffer_head.h
+> +++ b/include/linux/buffer_head.h
+> @@ -38,6 +38,10 @@ enum bh_state_bits {
+>  	BH_PrivateStart,/* not a state bit, but the first bit available
+>  			 * for private allocation by other entities
+>  			 */
+> +
+> +	BH_Issue,	/* Issue a request to the disk when this request
+> +			 * doesn't hit cache
+> +			 */
+>  };
+This looks like it will collide with any fs using more than one private
+flag, for example, ext4.
 
-Now revoked flag is cleared in get_access, actually it can be cleared
-immediately after the transaction is closed(non-current transaction).
 
-I can think of 3 solutions addressing the problem.
+Steve.
 
-1. clear revoked flag on a buffer when allocating a block.
-    This solution introduces overhead to ordered mode, because we have
-to look up dev's buffer every time. So I think the solution can be
-ignored.
 
-2. clear revoked flag in commit_call_back function.
-   This solution has some overhead too.  in ext3 commit_call_back is
-not used at all, so changing to ext3 is not trivial.
 
-3. clear revoked flag in write_revoke_table.
-   IMHO, this solution is the best one.  We just need to add a field
-in in-memory journal super block pointing to the super block of host
-file system.
+>  
+>  #define MAX_BUF_PER_PAGE (PAGE_CACHE_SIZE / 512)
+> @@ -124,6 +128,7 @@ BUFFER_FNS(Delay, delay)
+>  BUFFER_FNS(Boundary, boundary)
+>  BUFFER_FNS(Write_EIO, write_io_error)
+>  BUFFER_FNS(Unwritten, unwritten)
+> +BUFFER_FNS(Issue, issue)
+>  
+>  #define bh_offset(bh)		((unsigned long)(bh)->b_data & ~PAGE_MASK)
+>  #define touch_buffer(bh)	mark_page_accessed(bh->b_page)
 
-What's your opinions?
 
-There are some other problems in ext4 when changing journal mode, such
-as allocating dealloc blocks, but they can be addressed easily.
-
-Yongqiang.
--- 
-Best Wishes
-Yongqiang Yang
