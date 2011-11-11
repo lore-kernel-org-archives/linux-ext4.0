@@ -1,112 +1,270 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH v2 2/8] ext4: Add new data structures and related
- functions to count io types
-Date: Fri, 11 Nov 2011 23:45:55 +0800
-Message-ID: <20111111154555.GC6826@gmail.com>
-References: <1320921294-30321-1-git-send-email-wenqing.lz@taobao.com>
- <1320921294-30321-3-git-send-email-wenqing.lz@taobao.com>
- <1321009091.2710.41.camel@menhir>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] e2fsprogs: fix mmp tests on hard 4k devices
+Date: Fri, 11 Nov 2011 11:18:43 -0600
+Message-ID: <4EBD58F3.3050907@redhat.com>
+References: <4EBAEE97.7040406@redhat.com> <4EBBEF74.2070907@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Zheng Liu <wenqing.lz@taobao.com>,
-	Wang Shaoyan <wangshaoyan.pt@taobao.com>
-To: Steven Whitehouse <swhiteho@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:47431 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753264Ab1KKPob (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Nov 2011 10:44:31 -0500
-Content-Disposition: inline
-In-Reply-To: <1321009091.2710.41.camel@menhir>
+Received: from mx1.redhat.com ([209.132.183.28]:3451 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753386Ab1KKRSq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 11 Nov 2011 12:18:46 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pABHIiOa030554
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Nov 2011 12:18:44 -0500
+Received: from Liberator-563.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pABHIgW2028826
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Nov 2011 12:18:43 -0500
+In-Reply-To: <4EBBEF74.2070907@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 11, 2011 at 10:58:11AM +0000, Steven Whitehouse wrote:
-> Hi,
+On 11/10/11 9:36 AM, Eric Sandeen wrote:
+> On 11/9/11 3:20 PM, Eric Sandeen wrote:
+>> Several of the mmp tests were failing on an s390 guest because
+>> direct IO cannot be done on sub-sector sizes, and they were
+>> doing 1k IOs to files on a 4k logical/physical device.
+>>
+>> A few tests could just be changed to 4k, but others
+>> needed fixed up output as well.
+>>
+>> In the course of this it seems mke2fs should have more helpful
+>> error reporting for these issues, but that's another patch.
+>>
+>> With this I have all tests passing on s390 again.
 > 
-> On Thu, 2011-11-10 at 18:34 +0800, Zheng Liu wrote:
-> > From: Zheng Liu <wenqing.lz@taobao.com>
-> > 
-> > A per-cpu counter is defined to store io types in ext4. We define 10 io types
-> > in ext4, which includes 9 metadata types and 1 data type. Read and write
-> > operations are counted separately. When checks 'Issue' flag, filesystem needs
-> > to lock buffer.
-> > 
-> > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> > Signed-off-by: Wang Shaoyan <wangshaoyan.pt@taobao.com>
-> > ---
-> >  fs/ext4/ext4.h  |   53 +++++++++++++++++++++++++++++++++++++++++++++++++++++
-> >  fs/ext4/super.c |   19 +++++++++++++++++++
-> >  2 files changed, 72 insertions(+), 0 deletions(-)
-> > 
-> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> > index 5b0e26a..39a1495 100644
-> > --- a/fs/ext4/ext4.h
-> > +++ b/fs/ext4/ext4.h
-> > @@ -1108,6 +1108,23 @@ struct ext4_super_block {
-> >  #define EXT4_MF_FS_ABORTED	0x0002	/* Fatal error detected */
-> >  
-> >  /*
-> > + * ext4 io types
-> > + */
-> > +enum {
-> > +	EXT4_IOS_SUPER_BLOCK = 0,
-> > +	EXT4_IOS_GROUP_DESC,
-> > +	EXT4_IOS_INODE_BITMAP,
-> > +	EXT4_IOS_BLOCK_BITMAP,
-> > +	EXT4_IOS_INODE_TABLE,
-> > +	EXT4_IOS_EXTENT_BLOCK,
-> > +	EXT4_IOS_INDIRECT_BLOCK,
-> > +	EXT4_IOS_DIR_ENTRY,
-> > +	EXT4_IOS_EXTENDED_ATTR,
-> > +	EXT4_IOS_REGULAR_DATA,
-> > +	EXT4_IOS_TYPE_END,
-> > +};
-> > +
-> > +/*
-> >   * fourth extended-fs super-block data in memory
-> >   */
-> >  struct ext4_sb_info {
-> > @@ -1284,6 +1301,11 @@ static inline void ext4_set_io_unwritten_flag(struct inode *inode,
-> >  	}
-> >  }
-> >  
-> > +static inline unsigned ext4_blocks_per_page(struct inode *inode)
-> > +{
-> > +	return PAGE_CACHE_SIZE >> inode->i_blkbits;
-> > +}
-> > +
-> >  /*
-> >   * Inode dynamic state flags
-> >   */
-> > @@ -1926,6 +1948,37 @@ extern int ext4_group_extend(struct super_block *sb,
-> >  				ext4_fsblk_t n_blocks_count);
-> >  
-> >  /* super.c */
-> > +extern void __ext4_io_stat(int, int, unsigned long);
-> > +#define ext4_ios_read(bh, type, count)					\
-> > +	do {								\
-> > +		if (!bh)						\
-> > +			break;						\
-> > +		lock_buffer(bh);					\
-> > +		if (buffer_issue(bh)) {					\
-> > +			clear_buffer_issue(bh);				\
-> > +			__ext4_io_stat(READ, type, count);		\
-> > +		}							\
-> > +		unlock_buffer(bh);					\
-> > +	} while (0)
-> Why not just test_and_clear_bit(BH_Issue) ? I don't follow why the
-> buffer needs to be locked and unlocked,
+> I think I will need to V2 this one... now something is not right on
+> my x86 box.  Sorry.  Stay tuned please...
 
-test_and_clear_bit(BH_Issue) is better. Calling lock/unlock_buffer() is
-to ensure 'Issue' flag can be set or cleared atomically. It is
-unnecessary after using test_and_clear_bit(BH_Issue).
+The bug was elsewhere; see my other 4 patch series.
 
-Regards,
-Zheng
+Thanks,
+-Eric
 
+>> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+>> ---
+>>
+>> diff --git a/tests/f_mmp/script b/tests/f_mmp/script
+>> index 548734a..4aca447 100644
+>> --- a/tests/f_mmp/script
+>> +++ b/tests/f_mmp/script
+>> @@ -12,7 +12,7 @@ if [ $? == 0 ]; then
+>>  fi
+>>  
+>>  echo "make the test image ..." > $test_name.log
+>> -$MKE2FS -q -F -o Linux -b 1024 -O mmp -E mmp_update_interval=1 $TMPFILE 100 >> $test_name.log 2>&1
+>> +$MKE2FS -q -F -o Linux -b 4096 -O mmp -E mmp_update_interval=1 $TMPFILE 100 >> $test_name.log 2>&1
+>>  status=$?
+>>  if [ "$status" != 0 ] ; then
+>>  	echo "mke2fs -O mmp failed" > $test_name.failed
+>> diff --git a/tests/f_mmp_garbage/expect.1 b/tests/f_mmp_garbage/expect.1
+>> index 4ee5cfb..a8add10 100644
+>> --- a/tests/f_mmp_garbage/expect.1
+>> +++ b/tests/f_mmp_garbage/expect.1
+>> @@ -5,5 +5,5 @@ Pass 2: Checking directory structure
+>>  Pass 3: Checking directory connectivity
+>>  Pass 4: Checking reference counts
+>>  Pass 5: Checking group summary information
+>> -test_filesys: 11/16 files (0.0% non-contiguous), 22/100 blocks
+>> +test_filesys: 11/64 files (0.0% non-contiguous), 13/100 blocks
+>>  Exit status is 0
+>> diff --git a/tests/f_mmp_garbage/expect.2 b/tests/f_mmp_garbage/expect.2
+>> index 3bf3869..6630002 100644
+>> --- a/tests/f_mmp_garbage/expect.2
+>> +++ b/tests/f_mmp_garbage/expect.2
+>> @@ -3,5 +3,5 @@ Pass 2: Checking directory structure
+>>  Pass 3: Checking directory connectivity
+>>  Pass 4: Checking reference counts
+>>  Pass 5: Checking group summary information
+>> -test_filesys: 11/16 files (0.0% non-contiguous), 22/100 blocks
+>> +test_filesys: 11/64 files (0.0% non-contiguous), 13/100 blocks
+>>  Exit status is 0
+>> diff --git a/tests/f_mmp_garbage/script b/tests/f_mmp_garbage/script
+>> index 3c80032..8b5a22a 100644
+>> --- a/tests/f_mmp_garbage/script
+>> +++ b/tests/f_mmp_garbage/script
+>> @@ -12,7 +12,7 @@ if [ $? == 0 ] ; then
+>>  fi
+>>  
+>>  echo "make the test image ..." > $test_name.log
+>> -$MKE2FS -q -F -o Linux -b 1024 -O mmp -E mmp_update_interval=1 $TMPFILE 100 >> $test_name.log 2>&1
+>> +$MKE2FS -q -F -o Linux -b 4096 -O mmp -E mmp_update_interval=1 $TMPFILE 100 >> $test_name.log 2>&1
+>>  status=$?
+>>  if [ "$status" != 0 ] ; then
+>>  	echo "mke2fs -O mmp failed" > $test_name.failed
+>> diff --git a/tests/m_mmp/expect.1 b/tests/m_mmp/expect.1
+>> index 3a00815..d3319b3 100644
+>> --- a/tests/m_mmp/expect.1
+>> +++ b/tests/m_mmp/expect.1
+>> @@ -1,55 +1,55 @@
+>>  Filesystem label=
+>>  OS type: Linux
+>> -Block size=2048 (log=1)
+>> -Fragment size=2048 (log=1)
+>> +Block size=4096 (log=2)
+>> +Fragment size=4096 (log=2)
+>>  Stride=0 blocks, Stripe width=0 blocks
+>> -16384 inodes, 32768 blocks
+>> -1638 blocks (5.00%) reserved for the super user
+>> +65536 inodes, 65536 blocks
+>> +3276 blocks (5.00%) reserved for the super user
+>>  First data block=0
+>> -Maximum filesystem blocks=33554432
+>> +Maximum filesystem blocks=67108864
+>>  2 block groups
+>> -16384 blocks per group, 16384 fragments per group
+>> -8192 inodes per group
+>> +32768 blocks per group, 32768 fragments per group
+>> +32768 inodes per group
+>>  Superblock backups stored on blocks: 
+>> -	16384
+>> +	32768
+>>  
+>>  Allocating group tables: 0/21/2   done                            
+>>  Writing inode tables: 0/21/2   done                            
+>>  Multiple mount protection is enabled with update interval 5 seconds.
+>>  Writing superblocks and filesystem accounting information: 0/21/2   done
+>>  
+>> -Filesystem features: ext_attr resize_inode dir_index filetype mmp sparse_super
+>> +Filesystem features: ext_attr resize_inode dir_index filetype mmp sparse_super large_file
+>>   
+>>  Pass 1: Checking inodes, blocks, and sizes
+>>  Pass 2: Checking directory structure
+>>  Pass 3: Checking directory connectivity
+>>  Pass 4: Checking reference counts
+>>  Pass 5: Checking group summary information
+>> -test_filesys: 11/16384 files (0.0% non-contiguous), 1105/32768 blocks
+>> +test_filesys: 11/65536 files (0.0% non-contiguous), 2093/65536 blocks
+>>  Exit status is 0
+>>  
+>>  Filesystem volume name:   <none>
+>>  Last mounted on:          <not available>
+>>  Filesystem magic number:  0xEF53
+>>  Filesystem revision #:    1 (dynamic)
+>> -Filesystem features:      ext_attr resize_inode dir_index filetype mmp sparse_super
+>> +Filesystem features:      ext_attr resize_inode dir_index filetype mmp sparse_super large_file
+>>  Default mount options:    (none)
+>>  Filesystem state:         clean
+>>  Errors behavior:          Continue
+>>  Filesystem OS type:       Linux
+>> -Inode count:              16384
+>> -Block count:              32768
+>> -Reserved block count:     1638
+>> -Free blocks:              31663
+>> -Free inodes:              16373
+>> +Inode count:              65536
+>> +Block count:              65536
+>> +Reserved block count:     3276
+>> +Free blocks:              63443
+>> +Free inodes:              65525
+>>  First block:              0
+>> -Block size:               2048
+>> -Fragment size:            2048
+>> -Reserved GDT blocks:      31
+>> -Blocks per group:         16384
+>> -Fragments per group:      16384
+>> -Inodes per group:         8192
+>> -Inode blocks per group:   512
+>> +Block size:               4096
+>> +Fragment size:            4096
+>> +Reserved GDT blocks:      15
+>> +Blocks per group:         32768
+>> +Fragments per group:      32768
+>> +Inodes per group:         32768
+>> +Inode blocks per group:   1024
+>>  Mount count:              0
+>>  Check interval:           15552000 (6 months)
+>>  Reserved blocks uid:      0
+>> @@ -57,23 +57,23 @@ Reserved blocks gid:      0
+>>  First inode:              11
+>>  Inode size:	          128
+>>  Default directory hash:   half_md4
+>> -MMP block number:         557
+>> +MMP block number:         1049
+>>  MMP update interval:      5
+>>  
+>>  
+>> -Group 0: (Blocks 0-16383)
+>> +Group 0: (Blocks 0-32767)
+>>    Primary superblock at 0, Group descriptors at 1-1
+>> -  Reserved GDT blocks at 2-32
+>> -  Block bitmap at 33 (+33), Inode bitmap at 34 (+34)
+>> -  Inode table at 35-546 (+35)
+>> -  15826 free blocks, 8181 free inodes, 2 directories
+>> -  Free blocks: 558-16383
+>> -  Free inodes: 12-8192
+>> -Group 1: (Blocks 16384-32767)
+>> -  Backup superblock at 16384, Group descriptors at 16385-16385
+>> -  Reserved GDT blocks at 16386-16416
+>> -  Block bitmap at 16417 (+33), Inode bitmap at 16418 (+34)
+>> -  Inode table at 16419-16930 (+35)
+>> -  15837 free blocks, 8192 free inodes, 0 directories
+>> -  Free blocks: 16931-32767
+>> -  Free inodes: 8193-16384
+>> +  Reserved GDT blocks at 2-16
+>> +  Block bitmap at 17 (+17), Inode bitmap at 18 (+18)
+>> +  Inode table at 19-1042 (+19)
+>> +  31718 free blocks, 32757 free inodes, 2 directories
+>> +  Free blocks: 1050-32767
+>> +  Free inodes: 12-32768
+>> +Group 1: (Blocks 32768-65535)
+>> +  Backup superblock at 32768, Group descriptors at 32769-32769
+>> +  Reserved GDT blocks at 32770-32784
+>> +  Block bitmap at 32785 (+17), Inode bitmap at 32786 (+18)
+>> +  Inode table at 32787-33810 (+19)
+>> +  31725 free blocks, 32768 free inodes, 0 directories
+>> +  Free blocks: 33811-65535
+>> +  Free inodes: 32769-65536
+>> diff --git a/tests/m_mmp/script b/tests/m_mmp/script
+>> index 1547463..b3e206a 100644
+>> --- a/tests/m_mmp/script
+>> +++ b/tests/m_mmp/script
+>> @@ -10,6 +10,6 @@ if [ $? == 0 ]; then
+>>  	echo "skipped for tmpfs (no O_DIRECT support)"
+>>  	return 0
+>>  fi
+>> -MKE2FS_OPTS="-O mmp"
+>> +MKE2FS_OPTS="-b 4096 -O mmp"
+>>  . $cmd_dir/run_mke2fs
+>>  unset MKE2FS_DEVICE_SECTSIZE
+>> diff --git a/tests/t_mmp_1on/script b/tests/t_mmp_1on/script
+>> index ee9884f..3b0a376 100644
+>> --- a/tests/t_mmp_1on/script
+>> +++ b/tests/t_mmp_1on/script
+>> @@ -11,7 +11,7 @@ if [ $? == 0 ] ; then
+>>  	return 0
+>>  fi
+>>  
+>> -$MKE2FS -q -F -o Linux -b 1024 $TMPFILE 100 > $test_name.log 2>&1
+>> +$MKE2FS -q -F -o Linux -b 4096 $TMPFILE 100 > $test_name.log 2>&1
+>>  status=$?
+>>  if [ "$status" != 0 ] ; then
+>>  	echo "mke2fs failed" > $test_name.failed
+>> diff --git a/tests/t_mmp_2off/script b/tests/t_mmp_2off/script
+>> index ec9f71e..56c6bed 100644
+>> --- a/tests/t_mmp_2off/script
+>> +++ b/tests/t_mmp_2off/script
+>> @@ -11,7 +11,7 @@ if [ $? == 0 ]; then
+>>  	return 0
+>>  fi
+>>  
+>> -$MKE2FS -q -F -o Linux -b 1024 -O mmp $TMPFILE 100 > $test_name.log 2>&1
+>> +$MKE2FS -q -F -o Linux -b 4096 -O mmp $TMPFILE 100 > $test_name.log 2>&1
+>>  status=$?
+>>  if [ "$status" != 0 ] ; then
+>>  	echo "mke2fs -O mmp failed" > $test_name.failed
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-> Steve.
-> 
-> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
