@@ -1,263 +1,280 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 4/4] e2fsprogs: fix mmp tests on hard 4k devices (resend)
-Date: Thu, 10 Nov 2011 17:04:00 -0600
-Message-ID: <4EBC5860.60901@redhat.com>
-References: <4EBC5524.3000105@redhat.com>
+From: Aditya Kali <adityakali@google.com>
+Subject: Re: [PATCH v3] ext4: make quota as first class supported feature
+Date: Thu, 10 Nov 2011 16:59:58 -0800
+Message-ID: <CAGr1F2H6DhtmpviBLF+4re1Q9_s0ZB01+ob9WkCqX+TcLW6CFg@mail.gmail.com>
+References: <1320372920-21308-1-git-send-email-adityakali@google.com> <20111108135514.GB9658@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------050301020802080706060006"
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: adilger@dilger.ca, tytso@mit.edu, dmonakhov@openvz.org,
+	linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60170 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753029Ab1KJXEC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 10 Nov 2011 18:04:02 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pAAN41il017156
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Thu, 10 Nov 2011 18:04:01 -0500
-Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pAAN40XH012737
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 10 Nov 2011 18:04:01 -0500
-In-Reply-To: <4EBC5524.3000105@redhat.com>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:44855 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752151Ab1KKBAT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Nov 2011 20:00:19 -0500
+Received: by ywf7 with SMTP id 7so3664909ywf.19
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Nov 2011 17:00:18 -0800 (PST)
+In-Reply-To: <20111108135514.GB9658@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------050301020802080706060006
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Thanks for the feedback. I will address all the comments in next revisi=
+on.
+Some comments inline:
 
-Several of the mmp tests were failing on an s390 guest because
-direct IO cannot be done on sub-sector sizes, and they were
-doing 1k IOs to files on a 4k logical/physical device.
+On Tue, Nov 8, 2011 at 5:55 AM, Jan Kara <jack@suse.cz> wrote:
+> =C2=A0Thanks for the patch. I did a detailed review of it. I have qui=
+te some
+> comments but all of them are easily fixable so I think we should be m=
+ostly
+> ready in the next iteration.
+>
+> On Thu 03-11-11 19:15:20, Aditya Kali wrote:
+>> +static const struct quotactl_ops ext4_new_qctl_operations =3D {
+> =C2=A0ext4_new_qctl_operations is rather poor name. What if you need =
+to create
+> even newer set of operations in future? So I'd rather name them by "w=
+hat
+> they do" - so something like ext4_sysfile_qctl_operations - meaning t=
+hat these
+> operations handle quota stored in hidden system files.
+>
+>> + =C2=A0 =C2=A0 =C2=A0 .quota_on_meta =C2=A0=3D ext4_quota_on_meta,
+>> + =C2=A0 =C2=A0 =C2=A0 .quota_off =C2=A0 =C2=A0 =C2=A0=3D ext4_quota=
+_off,
+>> + =C2=A0 =C2=A0 =C2=A0 .quota_sync =C2=A0 =C2=A0 =3D dquot_quota_syn=
+c,
+>> + =C2=A0 =C2=A0 =C2=A0 .get_info =C2=A0 =C2=A0 =C2=A0 =3D dquot_get_=
+dqinfo,
+>> + =C2=A0 =C2=A0 =C2=A0 .set_info =C2=A0 =C2=A0 =C2=A0 =3D dquot_set_=
+dqinfo,
+>> + =C2=A0 =C2=A0 =C2=A0 .get_dqblk =C2=A0 =C2=A0 =C2=A0=3D dquot_get_=
+dqblk,
+>> + =C2=A0 =C2=A0 =C2=A0 .set_dqblk =C2=A0 =C2=A0 =C2=A0=3D dquot_set_=
+dqblk
+> ..
+>> @@ -3610,6 +3623,15 @@ static int ext4_fill_super(struct super_block=
+ *sb, void *data, int silent)
+>> =C2=A0#ifdef CONFIG_QUOTA
+>> =C2=A0 =C2=A0 =C2=A0 sb->s_qcop =3D &ext4_qctl_operations;
+>> =C2=A0 =C2=A0 =C2=A0 sb->dq_op =3D &ext4_quota_operations;
+>> +
+>> + =C2=A0 =C2=A0 if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_C=
+OMPAT_QUOTA)) {
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 /* Use new qctl operatio=
+ns with quota on function that does not
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0* require user spe=
+cified quota file path. */
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 sb->s_qcop =3D &ext4_new=
+_qctl_operations;
+>> +
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 sbi->s_qf_inums[USRQUOTA=
+] =3D es->s_usr_quota_inum;
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 sbi->s_qf_inums[GRPQUOTA=
+] =3D es->s_grp_quota_inum;
+> =C2=A0You need to convert from ondisk format here - i.e. use le32_to_=
+cpu().
+>
+>> + =C2=A0 =C2=A0 }
+>> =C2=A0#endif
+>> =C2=A0 =C2=A0 =C2=A0 memcpy(sb->s_uuid, es->s_uuid, sizeof(es->s_uui=
+d));
+>>
+>> @@ -3815,8 +3837,21 @@ no_journal:
+>> =C2=A0 =C2=A0 =C2=A0 } else
+>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 descr =3D "out jour=
+nal";
+>>
+>> - =C2=A0 =C2=A0 ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. =
+"
+>> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0"Opts: %s%s%s", de=
+scr, sbi->s_es->s_mount_opts,
+>> +#ifdef CONFIG_QUOTA
+>> + =C2=A0 =C2=A0 /* Enable quota usage during mount. */
+>> + =C2=A0 =C2=A0 if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_C=
+OMPAT_QUOTA) &&
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 !(sb->s_flags & MS_RDONLY)) {
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext4_quota_enable(sb, US=
+RQUOTA, QFMT_VFS_V1,
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
+=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 DQUOT_USAGE_ENABLED);
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext4_quota_enable(sb, GR=
+PQUOTA, QFMT_VFS_V1,
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
+=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 DQUOT_USAGE_ENABLED);
+>> + =C2=A0 =C2=A0 }
+> =C2=A0You should check the return value here and fail the mount in ca=
+se turning
+> quotas on fails... Also you should set DQUOT_QUOTA_SYS_FILE in
+> sb_dqopt(sb)->flags before calling ext4_quota_enable() to indicate th=
+at
+> quota file is a hidden system file and generic quota code can then sk=
+ip
+> some rather costly steps during quota handling to keep user visible a=
+nd
+> kernel visible content in sync.
+>
+>
+>> +#endif =C2=A0/* CONFIG_QUOTA */
+>> +
+>> + =C2=A0 =C2=A0 ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. =
+quota=3D%s. "
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0"Opts: %s%s%s", de=
+scr,
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0sb_any_quota_loade=
+d(sb) ? "on" : "off",
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0sbi->s_es->s_mount=
+_opts,
+>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0*sbi->s_es->s=
+_mount_opts ? "; " : "", orig_data);
+> =C2=A0Should info about quotas really be in the message? After all it=
+'s just
+> another feature and we definitely don't report all the features files=
+ystem
+> has set.
+>
+>> @@ -4183,6 +4218,12 @@ static int ext4_commit_super(struct super_blo=
+ck *sb, int sync)
+>> =C2=A0 =C2=A0 =C2=A0 es->s_free_inodes_count =3D
+>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 cpu_to_le32(percpu_=
+counter_sum_positive(
+>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 &EXT4_SB(sb)->s_freeinodes_counter)=
+);
+>> +#ifdef CONFIG_QUOTA
+>> + =C2=A0 =C2=A0 if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_C=
+OMPAT_QUOTA)) {
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 es->s_usr_quota_inum =3D=
+ EXT4_SB(sb)->s_qf_inums[USRQUOTA];
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 es->s_grp_quota_inum =3D=
+ EXT4_SB(sb)->s_qf_inums[GRPQUOTA];
+>> + =C2=A0 =C2=A0 }
+>> +#endif
+> =C2=A0Is there really need to reset these numbers? They should be sta=
+ble
+> during the whole lifetime of a filesystem, no (modulo changes by tune=
+2fs)?
+> If I'm missing something and numbers indeed can change, you should co=
+nvert
+> them to on disk format - i.e. cpu_to_le32().
+>
+Currently tune2fs does not support enabling quota feature on mounted
+filesystem. (I think we should probably make it enable quotas on a
+read-only mount though). Even in that case, this is incorrect. I will
+remove this.
 
-A few tests could just be changed to 4k, but others
-needed fixed up output as well.
 
-With this I have all tests passing on s390 again.
+>> @@ -4814,6 +4855,59 @@ static int ext4_quota_on(struct super_block *=
+sb, int type, int format_id,
+>> =C2=A0 =C2=A0 =C2=A0 return dquot_quota_on(sb, type, format_id, path=
+);
+>> =C2=A0}
+>>
+>> +static int ext4_quota_enable(struct super_block *sb, int type, int =
+format_id,
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
+=A0 =C2=A0 =C2=A0 =C2=A0unsigned int flags)
+>> +{
+>> + =C2=A0 =C2=A0 struct ext4_sb_info *sbi =3D EXT4_SB(sb);
+>> + =C2=A0 =C2=A0 struct inode *qf_inode;
+>> + =C2=A0 =C2=A0 int err;
+>> +
+>> + =C2=A0 =C2=A0 if (!sbi->s_qf_inums[type])
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 return -EPERM;
+>> +
+>> + =C2=A0 =C2=A0 qf_inode =3D ext4_iget(sb, sbi->s_qf_inums[type]);
+>> + =C2=A0 =C2=A0 if (IS_ERR(qf_inode)) {
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext4_error(sb, "Bad quot=
+a inode # %lu", sbi->s_qf_inums[type]);
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 return PTR_ERR(qf_inode)=
+;
+>> + =C2=A0 =C2=A0 }
+>> +
+>> + =C2=A0 =C2=A0 /*
+>> + =C2=A0 =C2=A0 =C2=A0* When we journal data on quota file, we have =
+to flush journal to see
+>> + =C2=A0 =C2=A0 =C2=A0* all updates to the file when we bypass pagec=
+ache...
+>> + =C2=A0 =C2=A0 =C2=A0*/
+>> + =C2=A0 =C2=A0 if (sbi->s_journal &&
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext4_should_journal_data(qf_inode)) {
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 /*
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0* We don't need to=
+ lock updates but journal_flush() could
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0* otherwise be liv=
+elocked...
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0*/
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 jbd2_journal_lock_update=
+s(sbi->s_journal);
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 err =3D jbd2_journal_flu=
+sh(sbi->s_journal);
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 jbd2_journal_unlock_upda=
+tes(sbi->s_journal);
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 if (err)
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
+=A0 return err;
+>> + =C2=A0 =C2=A0 }
+> =C2=A0Why do you have the above check? Since this function is called =
+only for
+> reserved quota inodes which are hidden, ext4_should_journal_data() wi=
+ll
+> never be true for them.
+>
+This inode could refer to a user-visible file if existing quota file
+was used by tune2fs. We will need to remove the journal flag on the
+inode if present at tune2fs time.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+>> +
+>> + =C2=A0 =C2=A0 err =3D dquot_enable(qf_inode, type, format_id, flag=
+s);
+>> + =C2=A0 =C2=A0 iput(qf_inode);
+>> +
+>> + =C2=A0 =C2=A0 return err;
+>> +}
+>> @@ -4837,7 +4931,12 @@ static int ext4_quota_off(struct super_block =
+*sb, int type)
+>> =C2=A0 =C2=A0 =C2=A0 ext4_journal_stop(handle);
+>>
+>> =C2=A0out:
+>> - =C2=A0 =C2=A0 return dquot_quota_off(sb, type);
+>> + =C2=A0 =C2=A0 /* Disable only the limits if QUOTA feature is set. =
+*/
+>> + =C2=A0 =C2=A0 if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_C=
+OMPAT_QUOTA))
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 return dquot_disable(sb,=
+ type, DQUOT_LIMITS_ENABLED);
+>> + =C2=A0 =C2=A0 else
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 return dquot_disable(sb,=
+ type,
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
+=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 DQUOT_USAGE_ENABLED | DQUOT_LIMITS_ENAB=
+LED);
+>> =C2=A0}
+> =C2=A0Hmm, most of the work ext4_quota_off() does is unnecessary when=
+ quota is
+> handled internally - there's no need to sync the filesystem, no need =
+to
+> update mtime or ctime... So I'd rather provide a new ext4_quota_off()
+> function in case quota feature is enabled and that would just call
+> dquot_disable(sb, type, DQUOT_LIMITS_ENABLED).
+>
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
+=A0 =C2=A0Honza
+> --
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
+>
 
-(attaching patch to deal with ctrl characters in patch)
 
---------------050301020802080706060006
-Content-Type: text/x-diff;
- name="mmp_test_fixes.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="mmp_test_fixes.patch"
 
-diff --git a/tests/f_mmp/script b/tests/f_mmp/script
-index 548734a..4aca447 100644
---- a/tests/f_mmp/script
-+++ b/tests/f_mmp/script
-@@ -12,7 +12,7 @@ if [ $? == 0 ]; then
- fi
- 
- echo "make the test image ..." > $test_name.log
--$MKE2FS -q -F -o Linux -b 1024 -O mmp -E mmp_update_interval=1 $TMPFILE 100 >> $test_name.log 2>&1
-+$MKE2FS -q -F -o Linux -b 4096 -O mmp -E mmp_update_interval=1 $TMPFILE 100 >> $test_name.log 2>&1
- status=$?
- if [ "$status" != 0 ] ; then
- 	echo "mke2fs -O mmp failed" > $test_name.failed
-diff --git a/tests/f_mmp_garbage/expect.1 b/tests/f_mmp_garbage/expect.1
-index 4ee5cfb..a8add10 100644
---- a/tests/f_mmp_garbage/expect.1
-+++ b/tests/f_mmp_garbage/expect.1
-@@ -5,5 +5,5 @@ Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
- Pass 4: Checking reference counts
- Pass 5: Checking group summary information
--test_filesys: 11/16 files (0.0% non-contiguous), 22/100 blocks
-+test_filesys: 11/64 files (0.0% non-contiguous), 13/100 blocks
- Exit status is 0
-diff --git a/tests/f_mmp_garbage/expect.2 b/tests/f_mmp_garbage/expect.2
-index 3bf3869..6630002 100644
---- a/tests/f_mmp_garbage/expect.2
-+++ b/tests/f_mmp_garbage/expect.2
-@@ -3,5 +3,5 @@ Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
- Pass 4: Checking reference counts
- Pass 5: Checking group summary information
--test_filesys: 11/16 files (0.0% non-contiguous), 22/100 blocks
-+test_filesys: 11/64 files (0.0% non-contiguous), 13/100 blocks
- Exit status is 0
-diff --git a/tests/f_mmp_garbage/script b/tests/f_mmp_garbage/script
-index 3c80032..8b5a22a 100644
---- a/tests/f_mmp_garbage/script
-+++ b/tests/f_mmp_garbage/script
-@@ -12,7 +12,7 @@ if [ $? == 0 ] ; then
- fi
- 
- echo "make the test image ..." > $test_name.log
--$MKE2FS -q -F -o Linux -b 1024 -O mmp -E mmp_update_interval=1 $TMPFILE 100 >> $test_name.log 2>&1
-+$MKE2FS -q -F -o Linux -b 4096 -O mmp -E mmp_update_interval=1 $TMPFILE 100 >> $test_name.log 2>&1
- status=$?
- if [ "$status" != 0 ] ; then
- 	echo "mke2fs -O mmp failed" > $test_name.failed
-diff --git a/tests/m_mmp/expect.1 b/tests/m_mmp/expect.1
-index 3a00815..d3319b3 100644
---- a/tests/m_mmp/expect.1
-+++ b/tests/m_mmp/expect.1
-@@ -1,55 +1,55 @@
- Filesystem label=
- OS type: Linux
--Block size=2048 (log=1)
--Fragment size=2048 (log=1)
-+Block size=4096 (log=2)
-+Fragment size=4096 (log=2)
- Stride=0 blocks, Stripe width=0 blocks
--16384 inodes, 32768 blocks
--1638 blocks (5.00%) reserved for the super user
-+65536 inodes, 65536 blocks
-+3276 blocks (5.00%) reserved for the super user
- First data block=0
--Maximum filesystem blocks=33554432
-+Maximum filesystem blocks=67108864
- 2 block groups
--16384 blocks per group, 16384 fragments per group
--8192 inodes per group
-+32768 blocks per group, 32768 fragments per group
-+32768 inodes per group
- Superblock backups stored on blocks: 
--	16384
-+	32768
- 
- Allocating group tables: 0/21/2   done                            
- Writing inode tables: 0/21/2   done                            
- Multiple mount protection is enabled with update interval 5 seconds.
- Writing superblocks and filesystem accounting information: 0/21/2   done
- 
--Filesystem features: ext_attr resize_inode dir_index filetype mmp sparse_super
-+Filesystem features: ext_attr resize_inode dir_index filetype mmp sparse_super large_file
-  
- Pass 1: Checking inodes, blocks, and sizes
- Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
- Pass 4: Checking reference counts
- Pass 5: Checking group summary information
--test_filesys: 11/16384 files (0.0% non-contiguous), 1105/32768 blocks
-+test_filesys: 11/65536 files (0.0% non-contiguous), 2093/65536 blocks
- Exit status is 0
- 
- Filesystem volume name:   <none>
- Last mounted on:          <not available>
- Filesystem magic number:  0xEF53
- Filesystem revision #:    1 (dynamic)
--Filesystem features:      ext_attr resize_inode dir_index filetype mmp sparse_super
-+Filesystem features:      ext_attr resize_inode dir_index filetype mmp sparse_super large_file
- Default mount options:    (none)
- Filesystem state:         clean
- Errors behavior:          Continue
- Filesystem OS type:       Linux
--Inode count:              16384
--Block count:              32768
--Reserved block count:     1638
--Free blocks:              31663
--Free inodes:              16373
-+Inode count:              65536
-+Block count:              65536
-+Reserved block count:     3276
-+Free blocks:              63443
-+Free inodes:              65525
- First block:              0
--Block size:               2048
--Fragment size:            2048
--Reserved GDT blocks:      31
--Blocks per group:         16384
--Fragments per group:      16384
--Inodes per group:         8192
--Inode blocks per group:   512
-+Block size:               4096
-+Fragment size:            4096
-+Reserved GDT blocks:      15
-+Blocks per group:         32768
-+Fragments per group:      32768
-+Inodes per group:         32768
-+Inode blocks per group:   1024
- Mount count:              0
- Check interval:           15552000 (6 months)
- Reserved blocks uid:      0
-@@ -57,23 +57,23 @@ Reserved blocks gid:      0
- First inode:              11
- Inode size:	          128
- Default directory hash:   half_md4
--MMP block number:         557
-+MMP block number:         1049
- MMP update interval:      5
- 
- 
--Group 0: (Blocks 0-16383)
-+Group 0: (Blocks 0-32767)
-   Primary superblock at 0, Group descriptors at 1-1
--  Reserved GDT blocks at 2-32
--  Block bitmap at 33 (+33), Inode bitmap at 34 (+34)
--  Inode table at 35-546 (+35)
--  15826 free blocks, 8181 free inodes, 2 directories
--  Free blocks: 558-16383
--  Free inodes: 12-8192
--Group 1: (Blocks 16384-32767)
--  Backup superblock at 16384, Group descriptors at 16385-16385
--  Reserved GDT blocks at 16386-16416
--  Block bitmap at 16417 (+33), Inode bitmap at 16418 (+34)
--  Inode table at 16419-16930 (+35)
--  15837 free blocks, 8192 free inodes, 0 directories
--  Free blocks: 16931-32767
--  Free inodes: 8193-16384
-+  Reserved GDT blocks at 2-16
-+  Block bitmap at 17 (+17), Inode bitmap at 18 (+18)
-+  Inode table at 19-1042 (+19)
-+  31718 free blocks, 32757 free inodes, 2 directories
-+  Free blocks: 1050-32767
-+  Free inodes: 12-32768
-+Group 1: (Blocks 32768-65535)
-+  Backup superblock at 32768, Group descriptors at 32769-32769
-+  Reserved GDT blocks at 32770-32784
-+  Block bitmap at 32785 (+17), Inode bitmap at 32786 (+18)
-+  Inode table at 32787-33810 (+19)
-+  31725 free blocks, 32768 free inodes, 0 directories
-+  Free blocks: 33811-65535
-+  Free inodes: 32769-65536
-diff --git a/tests/m_mmp/script b/tests/m_mmp/script
-index 1547463..b3e206a 100644
---- a/tests/m_mmp/script
-+++ b/tests/m_mmp/script
-@@ -10,6 +10,6 @@ if [ $? == 0 ]; then
- 	echo "skipped for tmpfs (no O_DIRECT support)"
- 	return 0
- fi
--MKE2FS_OPTS="-O mmp"
-+MKE2FS_OPTS="-b 4096 -O mmp"
- . $cmd_dir/run_mke2fs
- unset MKE2FS_DEVICE_SECTSIZE
-diff --git a/tests/t_mmp_1on/script b/tests/t_mmp_1on/script
-index ee9884f..3b0a376 100644
---- a/tests/t_mmp_1on/script
-+++ b/tests/t_mmp_1on/script
-@@ -11,7 +11,7 @@ if [ $? == 0 ] ; then
- 	return 0
- fi
- 
--$MKE2FS -q -F -o Linux -b 1024 $TMPFILE 100 > $test_name.log 2>&1
-+$MKE2FS -q -F -o Linux -b 4096 $TMPFILE 100 > $test_name.log 2>&1
- status=$?
- if [ "$status" != 0 ] ; then
- 	echo "mke2fs failed" > $test_name.failed
-diff --git a/tests/t_mmp_2off/script b/tests/t_mmp_2off/script
-index ec9f71e..56c6bed 100644
---- a/tests/t_mmp_2off/script
-+++ b/tests/t_mmp_2off/script
-@@ -11,7 +11,7 @@ if [ $? == 0 ]; then
- 	return 0
- fi
- 
--$MKE2FS -q -F -o Linux -b 1024 -O mmp $TMPFILE 100 > $test_name.log 2>&1
-+$MKE2FS -q -F -o Linux -b 4096 -O mmp $TMPFILE 100 > $test_name.log 2>&1
- status=$?
- if [ "$status" != 0 ] ; then
- 	echo "mke2fs -O mmp failed" > $test_name.failed
-
---------------050301020802080706060006--
+--=20
+Aditya
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
