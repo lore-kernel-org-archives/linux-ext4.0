@@ -1,48 +1,40 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: [PATCH v2] ext4: expand commit callback
-Date: Fri, 11 Nov 2011 22:50:53 -0700
-Message-ID: <315DE858-FDCD-49BD-8E4E-0EAD0D389B96@whamcloud.com>
-References: <4EBA4CC1.5020605@whamcloud.com> <20111109101707.GA3639@infradead.org>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: Bobi Jam <bobijam@whamcloud.com>, Theodore Tso <tytso@MIT.EDU>,
-	linux-ext4@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: [PATCH] ext4: fix up a undefined error in ext4_free_blocks
+Date: Sun, 13 Nov 2011 13:02:01 +0800
+Message-ID: <1321160521-12129-1-git-send-email-xiaoqiangnk@gmail.com>
+Cc: linux-ext4@vger.kernel.org, Yongqiang Yang <xiaoqiangnk@gmail.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:35090 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751359Ab1KLFu5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Nov 2011 00:50:57 -0500
-Received: by gyc15 with SMTP id 15so3560226gyc.19
-        for <linux-ext4@vger.kernel.org>; Fri, 11 Nov 2011 21:50:57 -0800 (PST)
-In-Reply-To: <20111109101707.GA3639@infradead.org>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:62182 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750910Ab1KMHXl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 13 Nov 2011 02:23:41 -0500
+Received: by iage36 with SMTP id e36so5894602iag.19
+        for <linux-ext4@vger.kernel.org>; Sat, 12 Nov 2011 23:23:40 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-11-09, at 3:17 AM, Christoph Hellwig wrote:
-> On Wed, Nov 09, 2011 at 05:49:53PM +0800, Bobi Jam wrote:
->> This patch has been rebased on v3.2-rc1-91.
->> 
->> The per-commit callback was used by mballoc code to manage free
->> space bitmaps after deleted blocks have been released. This patch
->> expand it to contain multiple different callbacks.
-> 
-> It fails to explain why you do it, both in text and by sending it
-> together with a patch that actually makes use of it.
+sbi is not defined, so let ext4_free_blocks use
+EXT4_SB(sb) instead.
 
-We discussed this patch previously on the ext4 concall.  The code is
-being restructured to allow multiple commit callbacks to be registered.
+Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+---
+ fs/ext4/balloc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-The block freeing code in ext4 is being modified in the patch to use
-the updated commit callback.  This is used to mark deleted blocks as
-available for allocation after the journal transaction has committed.
-
-Cheers, Andreas
---
-Andreas Dilger 
-Principal Engineer
-Whamcloud, Inc.
-
-
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index f6dba45..12ccacd 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -565,7 +565,7 @@ ext4_fsblk_t ext4_count_free_clusters(struct super_block *sb)
+ 	brelse(bitmap_bh);
+ 	printk(KERN_DEBUG "ext4_count_free_clusters: stored = %llu"
+ 	       ", computed = %llu, %llu\n",
+-	       EXT4_B2C(sbi, ext4_free_blocks_count(es)),
++	       EXT4_B2C(EXT4_SB(sb), ext4_free_blocks_count(es)),
+ 	       desc_count, bitmap_count);
+ 	return bitmap_count;
+ #else
+-- 
+1.7.5.1
 
