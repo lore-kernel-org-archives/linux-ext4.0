@@ -1,64 +1,160 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [BUG] aborted ext4 leads to inifinity loop in
- balance_dirty_pages
-Date: Mon, 14 Nov 2011 12:11:10 +0100
-Message-ID: <20111114111110.GA5230@quack.suse.cz>
-References: <4EA6A5E5.2050604@sx.jp.nec.com>
- <20111025134045.GB8072@quack.suse.cz>
- <4EAA3EE7.4040802@sx.jp.nec.com>
- <20111108000335.GA7518@quack.suse.cz>
- <4EC0E827.6040504@sx.jp.nec.com>
+Subject: Re: [PATCH 1/2] jbd: allocate transacion from special cache
+Date: Mon, 14 Nov 2011 13:53:57 +0100
+Message-ID: <20111114125357.GH5230@quack.suse.cz>
+References: <1321183772-6181-1-git-send-email-xiaoqiangnk@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, ext4 <linux-ext4@vger.kernel.org>,
-	Theodore Tso <tytso@mit.edu>,
-	Andreas Dilger <adilger@dilger.ca>
-To: Kazuya Mio <k-mio@sx.jp.nec.com>
+Cc: jack@suse.cz, linux-ext4@vger.kernel.org
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:47507 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:58172 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751106Ab1KNLLc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 Nov 2011 06:11:32 -0500
+	id S1752349Ab1KNMyT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 Nov 2011 07:54:19 -0500
 Content-Disposition: inline
-In-Reply-To: <4EC0E827.6040504@sx.jp.nec.com>
+In-Reply-To: <1321183772-6181-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 14-11-11 19:06:31, Kazuya Mio wrote:
-> 2011/11/08 9:03, Jan Kara wrote:
-> > On Fri 28-10-11 14:34:31, Kazuya Mio wrote:
-> >> 2011/10/25 22:40, Jan Kara wrote:
-> >>>   Please no. Generally this boils down to what do we do with dirty data
-> >>> when there's error in writing them out. Currently we just throw them away
-> >>> (e.g. in media error case) but I don't think that's a generally good thing
-> >>> because e.g. admin may want to copy the data to other working storage or
-> >>> so. So I think we should rather keep the data and provide a mechanism for
-> >>> userspace to ask kernel to get rid of the data (so that we don't eventually
-> >>> run OOM).
-> >>
-> >> I see. I agree with you.
-> >>
-> >>>> Do you have any ideas?
-> >>>   So the question is what would you like to achieve. If you just want to
-> >>> unblock a thread then a solution would be to make a thread at
-> >>> balance_dirty_pages() killable. If generally you want to get rid of dirty
-> >>> memory, then I don't have a really good answer but throwing dirty data away
-> >>> seems like a bad answer to me.
-> >>
-> >> The problem is that we cannot unmount the corrupted filesystem due to
-> >> un-killable dd process. We must bring down the system to resume the service
-> >> with no dirty pages. I think it is important for the service continuity
-> >> to be able to kill the thread handling in balance_dirty_pages().
-> >    OK, attached are two patches based on latest Linus's tree that should
-> > make your task killable. Can you test them?
+On Sun 13-11-11 19:29:31, Yongqiang Yang wrote:
+> transaction_t is 100 bytes under 32-bit systems. Transactions
+> allocated from general cache comsume 128 bytes. This patch
+> lets jbd allocates transacion from special cache.
 > 
-> Sorry for the late reply.
-> I confirmed that these patches fix the problem.
-> 
-> Reported-and-tested-by: Kazuya Mio <k-mio@sx.jp.nec.com>
-  Thanks for testing! I've sent patches for inclusion...
+> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+  Space saving isn't probably a good argument here since the number of
+transactions on the system is going to be rather low (a couple per ext3
+filesystem). The reason why I wanted this change for JBD2 is that it makes
+debugging of memory corruption of a transaction structure much easier (and
+I've been tracking down issues like this several times already).
+
+That being said, I don't find strong need to have this in ext3 and thus
+I'll take the change in jbd/ext3 if Ted takes the similar change to
+jbd2/ext4 to keep compatibility. Manish Katiyar was working on it
+(http://comments.gmane.org/gmane.comp.file-systems.ext4/25884) but it seems
+it wasn't merged yet.
 
 									Honza
+
+> ---
+>  fs/jbd/checkpoint.c  |    2 +-
+>  fs/jbd/journal.c     |    3 +++
+>  fs/jbd/transaction.c |   31 +++++++++++++++++++++++++++++--
+>  include/linux/jbd.h  |    5 +++++
+>  4 files changed, 38 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/jbd/checkpoint.c b/fs/jbd/checkpoint.c
+> index f94fc48..4d98046 100644
+> --- a/fs/jbd/checkpoint.c
+> +++ b/fs/jbd/checkpoint.c
+> @@ -764,5 +764,5 @@ void __journal_drop_transaction(journal_t *journal, transaction_t *transaction)
+>  
+>  	trace_jbd_drop_transaction(journal, transaction);
+>  	jbd_debug(1, "Dropping transaction %d, all done\n", transaction->t_tid);
+> -	kfree(transaction);
+> +	journal_free_transaction(transaction);
+>  }
+> diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+> index 9fe061f..45ca982 100644
+> --- a/fs/jbd/journal.c
+> +++ b/fs/jbd/journal.c
+> @@ -2004,6 +2004,8 @@ static int __init journal_init_caches(void)
+>  		ret = journal_init_journal_head_cache();
+>  	if (ret == 0)
+>  		ret = journal_init_handle_cache();
+> +	if (ret == 0)
+> +		ret = journal_init_transaction_cache();
+>  	return ret;
+>  }
+>  
+> @@ -2012,6 +2014,7 @@ static void journal_destroy_caches(void)
+>  	journal_destroy_revoke_caches();
+>  	journal_destroy_journal_head_cache();
+>  	journal_destroy_handle_cache();
+> +	journal_destroy_transaction_cache();
+>  }
+>  
+>  static int __init journal_init(void)
+> diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
+> index 7e59c6e..20d76f1 100644
+> --- a/fs/jbd/transaction.c
+> +++ b/fs/jbd/transaction.c
+> @@ -30,6 +30,32 @@
+>  
+>  static void __journal_temp_unlink_buffer(struct journal_head *jh);
+>  
+> +static struct kmem_cache *transaction_cache;
+> +int __init journal_init_transaction_cache(void)
+> +{
+> +	J_ASSERT(!transaction_cache);
+> +	transaction_cache = KMEM_CACHE(transaction_s,
+> +				       SLAB_HWCACHE_ALIGN|SLAB_TEMPORARY);
+> +	if (transaction_cache)
+> +		return 0;
+> +	return -ENOMEM;
+> +}
+> +
+> +void __init journal_destroy_transaction_cache(void)
+> +{
+> +	if (transaction_cache) {
+> +		kmem_cache_destroy(transaction_cache);
+> +		transaction_cache = NULL;
+> +	}
+> +}
+> +
+> +void journal_free_transaction(transaction_t *transaction)
+> +{
+> +	if (unlikely(ZERO_OR_NULL_PTR(transaction)))
+> +		return;
+> +	kmem_cache_free(transaction_cache, transaction);
+> +}
+> +
+>  /*
+>   * get_transaction: obtain a new transaction_t object.
+>   *
+> @@ -100,11 +126,12 @@ static int start_this_handle(journal_t *journal, handle_t *handle)
+>  
+>  alloc_transaction:
+>  	if (!journal->j_running_transaction) {
+> -		new_transaction = kzalloc(sizeof(*new_transaction), GFP_NOFS);
+> +		new_transaction = kmem_cache_alloc(transaction_cache, GFP_NOFS);
+>  		if (!new_transaction) {
+>  			congestion_wait(BLK_RW_ASYNC, HZ/50);
+>  			goto alloc_transaction;
+>  		}
+> +		memset(new_transaction, 0, sizeof(*new_transaction));
+>  	}
+>  
+>  	jbd_debug(3, "New handle %p going live.\n", handle);
+> @@ -233,7 +260,7 @@ repeat_locked:
+>  	lock_map_acquire(&handle->h_lockdep_map);
+>  out:
+>  	if (unlikely(new_transaction))		/* It's usually NULL */
+> -		kfree(new_transaction);
+> +		journal_free_transaction(new_transaction);
+>  	return ret;
+>  }
+>  
+> diff --git a/include/linux/jbd.h b/include/linux/jbd.h
+> index c7acdde..0f9f0b6 100644
+> --- a/include/linux/jbd.h
+> +++ b/include/linux/jbd.h
+> @@ -807,6 +807,11 @@ journal_write_metadata_buffer(transaction_t	  *transaction,
+>  /* Transaction locking */
+>  extern void		__wait_on_journal (journal_t *);
+>  
+> +/* Transaction cache support */
+> +extern void journal_destroy_transaction_cache(void);
+> +extern int  journal_init_transaction_cache(void);
+> +extern void journal_free_transaction(transaction_t *);
+> +
+>  /*
+>   * Journal locking.
+>   *
+> -- 
+> 1.7.5.1
+> 
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
