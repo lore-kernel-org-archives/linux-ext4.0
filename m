@@ -1,120 +1,54 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: ext3/4: BUGS in changing journal mode in flight
-Date: Mon, 14 Nov 2011 15:08:41 +0800
-Message-ID: <CAGBYx2b_Rv_iGM=8mPoh06xhwad_=G1T=98C7X2aghNOBhrWYw@mail.gmail.com>
-References: <CAGBYx2YaJZqCgC6akmUm-NF7RgXGZJSyZxeWpW1KYeh09egkbw@mail.gmail.com>
-	<20111111152651.GD5050@quack.suse.cz>
+From: Kazuya Mio <k-mio@sx.jp.nec.com>
+Subject: Re: [BUG] aborted ext4 leads to inifinity loop in balance_dirty_pages
+Date: Mon, 14 Nov 2011 19:06:31 +0900
+Message-ID: <4EC0E827.6040504@sx.jp.nec.com>
+References: <4EA6A5E5.2050604@sx.jp.nec.com> <20111025134045.GB8072@quack.suse.cz> <4EAA3EE7.4040802@sx.jp.nec.com> <20111108000335.GA7518@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Ted Ts'o" <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>,
+	Andreas Dilger <adilger@dilger.ca>
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:47645 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751761Ab1KNHIm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Nov 2011 02:08:42 -0500
-Received: by yenr9 with SMTP id r9so4852613yen.19
-        for <linux-ext4@vger.kernel.org>; Sun, 13 Nov 2011 23:08:41 -0800 (PST)
-In-Reply-To: <20111111152651.GD5050@quack.suse.cz>
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:45855 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754190Ab1KNKJk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Nov 2011 05:09:40 -0500
+In-Reply-To: <20111108000335.GA7518@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 11, 2011 at 11:26 PM, Jan Kara <jack@suse.cz> wrote:
-> =A0Hello,
->
-> On Fri 11-11-11 16:20:21, Yongqiang Yang wrote:
->> Both ext3 and ext4 have an attribute 'j', thus users can change
->> journal mode of a file in flight. =A0However, neither ext3 or ext4
->> supports the feature rightly, specifically file systems will be
->> mounted RO due to I/O error in journal. =A0The error happens like th=
-is:
-> =A0I suppose you have tested this, right?
->
->> when the journal mode of a file is changed from ordered to journaled=
-,
->> then data blocks will be revoked in truncate, if the revoked block w=
-as
->> allocated as meta blocks last time, then its revoked flag is not
->> cleared, so revoke on a revoked buffer happens, then journal report =
-an
->> I/O error.
-> =A0So let me check whether I understand the problem: We have a buffer=
- that
-> has been previously used for metadata, then truncated (BH_Revoked set=
-),
-> allocated as data, switched the inode to journal mode, and then delet=
-ion of
-> the inode causes error because we try to revoke a buffer with BH_Revo=
-ked
-> set. Nasty.
->
->> Now revoked flag is cleared in get_access, actually it can be cleare=
-d
->> immediately after the transaction is closed(non-current transaction)=
-=2E
-> =A0I'm not sure what you mean by closed but there is a difference bet=
-ween a
-> BH_Revoked flag and the fact whether the buffer is recorded as revoke=
-d in
-> the journal. If we concentrate on the flag, which is the problem here=
-, then
-> the flag seems to be used as "is buffer revoked in the running trasac=
-tion".
-> Which means we can clear the flag as soon as we are done with adding
-> buffers to the transation.
->
->> I can think of 3 solutions addressing the problem.
+2011/11/08 9:03, Jan Kara wrote:
+> On Fri 28-10-11 14:34:31, Kazuya Mio wrote:
+>> 2011/10/25 22:40, Jan Kara wrote:
+>>>   Please no. Generally this boils down to what do we do with dirty data
+>>> when there's error in writing them out. Currently we just throw them away
+>>> (e.g. in media error case) but I don't think that's a generally good thing
+>>> because e.g. admin may want to copy the data to other working storage or
+>>> so. So I think we should rather keep the data and provide a mechanism for
+>>> userspace to ask kernel to get rid of the data (so that we don't eventually
+>>> run OOM).
 >>
->> 1. clear revoked flag on a buffer when allocating a block.
->> =A0 =A0 This solution introduces overhead to ordered mode, because w=
-e have
->> to look up dev's buffer every time. So I think the solution can be
->> ignored.
+>> I see. I agree with you.
 >>
->> 2. clear revoked flag in commit_call_back function.
->> =A0 =A0This solution has some overhead too. =A0in ext3 commit_call_b=
-ack is
->> not used at all, so changing to ext3 is not trivial.
+>>>> Do you have any ideas?
+>>>   So the question is what would you like to achieve. If you just want to
+>>> unblock a thread then a solution would be to make a thread at
+>>> balance_dirty_pages() killable. If generally you want to get rid of dirty
+>>> memory, then I don't have a really good answer but throwing dirty data away
+>>> seems like a bad answer to me.
 >>
->> 3. clear revoked flag in write_revoke_table.
->> =A0 =A0IMHO, this solution is the best one. =A0We just need to add a=
- field
->> in in-memory journal super block pointing to the super block of host
->> file system.
->>
->> What's your opinions?
-> =A0Hum, maybe journal_switch_revoke_table() would be a better place t=
-han
-> write_revoke_table() to do the clearing. Or we could just add a separ=
-ate
-> call just before journal_switch_revoke_table() which will also get a
-> superblock as a parameter so that we don't have to store it in the jo=
-urnal
-> structure.
-Sorry for noise.  There is block_device(j_fs_dev) holding client fs in
-journal_s, so we can do this easily.
+>> The problem is that we cannot unmount the corrupted filesystem due to
+>> un-killable dd process. We must bring down the system to resume the service
+>> with no dirty pages. I think it is important for the service continuity
+>> to be able to kill the thread handling in balance_dirty_pages().
+>    OK, attached are two patches based on latest Linus's tree that should
+> make your task killable. Can you test them?
 
-Thanks,
-Yongqiang.
->
-> =A0Thanks for spotting the problem!
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0Honza
-> --
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
->
+Sorry for the late reply.
+I confirmed that these patches fix the problem.
 
+Reported-and-tested-by: Kazuya Mio <k-mio@sx.jp.nec.com>
 
-
---=20
-Best Wishes
-Yongqiang Yang
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Regards,
+Kazuya Mio
