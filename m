@@ -1,131 +1,162 @@
 From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: [PATCH v3 09/11] e4defrag: Fix error messages more clearly
-Date: Mon, 14 Nov 2011 15:25:13 +0900
-Message-ID: <4EC0B449.4010409@sx.jp.nec.com>
+Subject: [PATCH v3 11/11] e4defrag: Remove unnecessary code
+Date: Mon, 14 Nov 2011 15:25:35 +0900
+Message-ID: <4EC0B45F.3060106@sx.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
 Cc: Theodore Tso <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>
 To: ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:57380 "EHLO
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:57408 "EHLO
 	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751855Ab1KNGcO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Nov 2011 01:32:14 -0500
+	with ESMTP id S1751855Ab1KNGcT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Nov 2011 01:32:19 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-There are some error messages we don't really understand what happens.
-This patch fixes those messages.
+Remove unused header include, duplicate code, and so on.
 
 Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
 ---
- misc/e4defrag.c |   39 ++++++++++++++++++++++++---------------
- 1 file changed, 24 insertions(+), 15 deletions(-)
+ misc/e4defrag.c |   53 ++++++++++++-----------------------------------------
+ 1 file changed, 12 insertions(+), 41 deletions(-)
 diff --git a/misc/e4defrag.c b/misc/e4defrag.c
-index 7cf0cf0..9938c12 100644
+index 0b4873d..c07a79b 100644
 --- a/misc/e4defrag.c
 +++ b/misc/e4defrag.c
-@@ -324,6 +324,7 @@ static int is_ext4(const char *file)
+@@ -20,25 +20,17 @@
+ #endif
  
- 		mnt_type = realloc(mnt_type, strlen(mnt->mnt_type) + 1);
- 		if (mnt_type == NULL) {
-+			perror("Failed to allocate memory");
- 			endmntent(fp);
- 			return -1;
- 		}
-@@ -518,10 +519,9 @@ static int file_frag_count(int fd)
-  *
-  * @fd:			defrag target file's descriptor.
-  * @file:		file name.
-- * @extents:		file extents.
-  * @blk_count:		file blocks.
-  */
--static int file_check(int fd, const char *file, int extents, blk64_t blk_count)
-+static int file_check(int fd, const char *file, blk64_t blk_count)
- {
- 	int	ret;
- 	struct flock	lock;
-@@ -536,9 +536,7 @@ static int file_check(int fd, const char *file, int extents, blk64_t blk_count)
- 	ret = check_free_size(fd, file, blk_count);
- 	if (ret < 0) {
- 		if ((mode_flag & DETAIL) && ret == -ENOSPC) {
--			printf("\033[79;0H\033[K[%u/%u] \"%s\"\t\t"
--				"  extents: %d -> %d\n", defraged_file_count,
--				total_count, file, extents, extents);
-+			PRINT_FILE_NAME(file);
- 			IN_FTW_PRINT_ERR_MSG(
- 			"Defrag size is larger than filesystem's free space");
- 		}
-@@ -731,11 +729,9 @@ static int get_file_extents(int fd, struct fiemap_extent_list **ext_list_head)
- 		!(ext_buf[EXTENT_MAX_COUNT-1].fe_flags
- 					& FIEMAP_EXTENT_LAST));
+ #include "config.h"
+-#include <ctype.h>
+-#include <dirent.h>
+-#include <endian.h>
+ #include <errno.h>
+ #include <fcntl.h>
+ #include <ftw.h>
+-#include <limits.h>
+ #include <mntent.h>
+ #include <stdio.h>
+-#include <stdlib.h>
+-#include <string.h>
+ #include <unistd.h>
+ #include <linux/fs.h>
+ #include <sys/ioctl.h>
+ #include <sys/mman.h>
+ #include <sys/stat.h>
+ #include <sys/statfs.h>
+-#include <sys/syscall.h>
+-#include <sys/vfs.h>
  
--	FREE(fiemap_buf);
--	return 0;
- out:
- 	FREE(fiemap_buf);
--	return -1;
-+	return (errno == 0) ? 0 : -1;
+ #include "e2p/e2p.h"
+ #include "ext2fs/ext2_types.h"
+@@ -335,15 +327,14 @@ static int is_ext4(const char *file)
+ 		strncpy(lost_found_dir, mnt->mnt_dir, PATH_MAX);
+ 	}
+ 
+-	endmntent(fp);
+-	if (strcmp(mnt_type, FS_EXT4) == 0) {
+-		FREE(mnt_type);
+-		return 0;
+-	} else {
+-		FREE(mnt_type);
++	ret = strcmp(mnt_type, FS_EXT4);
++	if (ret != 0)
+ 		PRINT_ERR_MSG(NGMSG_EXT4);
+-		return -1;
+-	}
++
++	endmntent(fp);
++	FREE(mnt_type);
++
++	return (ret == 0) ? 0 : -1;
  }
  
  /*
-@@ -877,7 +873,7 @@ static int call_defrag(int fd, int donor_fd, const char *file,
- 			if (mode_flag & DETAIL) {
- 				printf("\n");
- 				PRINT_ERR_MSG_WITH_ERRNO(
--					"Failed to free page");
-+					"Failed to synchronize the file");
- 			} else {
- 				printf("\t[ NG ]\n");
+@@ -381,9 +372,6 @@ static int page_in_core(int fd, struct move_extent defrag_data,
+ 	void	*page = NULL;
+ 	loff_t	offset, end_offset, length;
+ 
+-	if (vec == NULL || *vec != NULL)
+-		return -1;
+-
+ 	pagesize = sysconf(_SC_PAGESIZE);
+ 	if (pagesize < 0)
+ 		return -1;
+@@ -505,7 +493,6 @@ static int file_frag_count(int fd)
+ 	 * ioctl just get file fragment count.
+ 	 */
+ 	memset(&fiemap_buf, 0, sizeof(struct fiemap));
+-	fiemap_buf.fm_start = 0;
+ 	fiemap_buf.fm_length = FIEMAP_MAX_OFFSET;
+ 	fiemap_buf.fm_flags |= FIEMAP_FLAG_SYNC;
+ 
+@@ -883,7 +870,7 @@ static int call_defrag(int fd, int donor_fd, const char *file,
+ 
+ 		/* Free pages */
+ 		ret = defrag_fadvise(fd, move_data, vec, page_num);
+-		if (vec) {
++		if (vec != NULL) {
+ 			free(vec);
+ 			vec = NULL;
+ 		}
+@@ -1030,14 +1017,6 @@ static int file_defrag(const char *file, const struct stat64 *buf,
+ 	if (file_check(fd, file, blk_count) < 0)
+ 		goto out;
+ 
+-	if (fsync(fd) < 0) {
+-		if (mode_flag & DETAIL) {
+-			PRINT_FILE_NAME(file);
+-			PRINT_ERR_MSG_WITH_ERRNO("Failed to sync(fsync)");
+-		}
+-		goto out;
+-	}
+-
+ 	orig_score = e2p_get_fragscore(fd, threshold, EXTENT_MAX_BLKS, &err);
+ 	if (err != 0) {
+ 		errno = err;
+@@ -1216,9 +1195,6 @@ int main(int argc, char *argv[])
+ 	struct stat64	buf;
+ 
+ 	/* Parse arguments */
+-	if (argc == 1)
+-		goto out;
+-
+ 	while ((opt = getopt(argc, argv, "Fv")) != EOF) {
+ 		switch (opt) {
+ 		case 'F':
+@@ -1285,7 +1261,6 @@ int main(int argc, char *argv[])
+ 				continue;
  			}
-@@ -1001,13 +997,19 @@ static int file_defrag(const char *file, const struct stat64 *buf,
- 			PRINT_ERR_MSG_WITH_ERRNO(NGMSG_FILE_EXTENT);
- 		}
- 		goto out;
-+	} else if (orig_list == NULL) {
-+		if (mode_flag & DETAIL) {
-+			PRINT_FILE_NAME(file);
-+			IN_FTW_PRINT_ERR_MSG("File has no blocks");
-+		}
-+		goto out;
- 	}
- 
- 	/* Count file fragments before defrag */
- 	file_frags_start = get_exts_count(orig_list);
- 
- 	blk_count = buf->st_blocks / (block_size / 512);
--	if (file_check(fd, file, file_frags_start, blk_count) < 0)
-+	if (file_check(fd, file, blk_count) < 0)
- 		goto out;
- 
- 	if (fsync(fd) < 0) {
-@@ -1093,6 +1095,12 @@ static int file_defrag(const char *file, const struct stat64 *buf,
- 			PRINT_ERR_MSG_WITH_ERRNO(NGMSG_FILE_EXTENT);
- 		}
- 		goto out;
-+	} else if (donor_list == NULL) {
-+		if (mode_flag & DETAIL) {
-+			PRINT_FILE_NAME(file);
-+			IN_FTW_PRINT_ERR_MSG("Temporary file was removed");
-+		}
-+		goto out;
- 	}
- 
- 	donor_score = e2p_get_fragscore(donor_fd, threshold,
-@@ -1140,7 +1148,7 @@ check_improvement:
- 		file_frags_end = file_frag_count(fd);
- 		if (file_frags_end < 0) {
- 			printf("\n");
--			PRINT_ERR_MSG_WITH_ERRNO(NGMSG_FILE_INFO);
-+			PRINT_ERR_MSG_WITH_ERRNO(NGMSG_FILE_EXTENT);
- 			goto out;
- 		}
- 
-@@ -1286,10 +1294,7 @@ int main(int argc, char *argv[])
- 		}
+ 			arg_type = DIRNAME;
+-			strncpy(dir_name, argv[i], strnlen(argv[i], PATH_MAX));
+ 		} else if (S_ISREG(buf.st_mode)) {
+ 			/* Regular file */
+ 			arg_type = FILENAME;
+@@ -1314,17 +1289,16 @@ int main(int argc, char *argv[])
  
  		switch (arg_type) {
--		case DIRNAME:
--			printf("ext4 defragmentation for directory(%s)\n",
--					argv[i]);
+ 		case DIRNAME: {
+-			int mount_dir_len = 0;
+-			mount_dir_len = strnlen(lost_found_dir, PATH_MAX);
++			int mount_dir_len = strnlen(lost_found_dir, PATH_MAX);
+ 
+ 			strncat(lost_found_dir, "/lost+found",
+ 				PATH_MAX - strnlen(lost_found_dir, PATH_MAX));
+ 
+-			/* Not the case("e4defrag  mount_piont_dir") */
++			/* Not the case("e4defrag  mount_point_dir") */
+ 			if (dir_name[mount_dir_len] != '\0') {
+ 				/*
+-				 * "e4defrag mount_piont_dir/lost+found"
+-				 * or "e4defrag mount_piont_dir/lost+found/"
++				 * "e4defrag mount_point_dir/lost+found"
++				 * or "e4defrag mount_point_dir/lost+found/"
+ 				 */
+ 				if (strncmp(lost_found_dir, dir_name,
+ 					    strnlen(lost_found_dir,
+@@ -1337,9 +1311,6 @@ int main(int argc, char *argv[])
+ 					PRINT_FILE_NAME(argv[i]);
+ 					continue;
+ 				}
