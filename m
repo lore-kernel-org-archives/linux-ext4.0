@@ -1,40 +1,30 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 3/3] mke2fs: Add extended option to select quota type
-Date: Mon, 14 Nov 2011 10:57:55 -0500
-Message-ID: <20111114155755.GC7698@thunk.org>
-References: <1320365913-25857-1-git-send-email-adityakali@google.com>
- <1320365913-25857-3-git-send-email-adityakali@google.com>
+Subject: Re: [PATCH 1/3] libquota: quota file read support
+Date: Mon, 14 Nov 2011 10:58:41 -0500
+Message-ID: <20111114155841.GD7698@thunk.org>
+References: <4EB68D67.909@whamcloud.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: adilger@dilger.ca, tytso.mit.edu@google.com, niu@whamcloud.com,
-	linux-ext4@vger.kernel.org
-To: Aditya Kali <adityakali@google.com>
+Cc: adityakali@google.com, linux-ext4@vger.kernel.org
+To: Niu <niu@whamcloud.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38436 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:38441 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751651Ab1KNP56 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 Nov 2011 10:57:58 -0500
+	id S1752528Ab1KNP6n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 Nov 2011 10:58:43 -0500
 Content-Disposition: inline
-In-Reply-To: <1320365913-25857-3-git-send-email-adityakali@google.com>
+In-Reply-To: <4EB68D67.909@whamcloud.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 03, 2011 at 05:18:33PM -0700, Aditya Kali wrote:
-> mke2fs was creating both user and group quota inodes on enabling
-> the quota feature. This patch adds the extended option 'quotatype'
-> that can be used to exclusively specify the quota type that the
-> user wants to initialize.
+On Sun, Nov 06, 2011 at 09:36:39PM +0800, Niu wrote:
+> This patch adds read quota file support, which includes:
+> - Improve scan dquot APIs & fix defects in scan dquot functions;
+> - Implement quota_file_open();
+> - Introduce quota_update_inode() to update usage in old quota file,
+>   and keep the limits unchanged.
 > 
->  # Ex: Default behavior without extended option creates both
->  # user and group quota inodes:
->  $ mke2fs -t ext4 -O quota /dev/ram1
-> 
->  # To enable only user quotas:
->  $ mke2fs -t ext4 -O quota -E quotatype=usr /dev/ram1
->  # To enable only group quotas:
->  $ mke2fs -t ext4 -O quota -E quotatype=grp /dev/ram1
-> 
-> Signed-off-by: Aditya Kali <adityakali@google.com>
+> Signed-off-by: Niu Yawei <niu@whamcloud.com>
 
 Thanks, applied.
 
