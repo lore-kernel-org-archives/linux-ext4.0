@@ -1,224 +1,329 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/2] jbd: allocate transacion from special cache
-Date: Mon, 14 Nov 2011 16:35:57 +0100
-Message-ID: <20111114153557.GM5230@quack.suse.cz>
-References: <1321183772-6181-1-git-send-email-xiaoqiangnk@gmail.com>
- <20111114125357.GH5230@quack.suse.cz>
- <CAE0An6csGmxsnUVtwpHSD-1hOqBe_h2vGUFHHCLAnX0=-0JONw@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack@suse.cz>, Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	linux-ext4@vger.kernel.org
-To: Manish Katiyar <mkatiyar@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] Make quota support disabled by support
+Date: Mon, 14 Nov 2011 10:47:04 -0500
+Message-ID: <1321285624-22675-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:44058 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753107Ab1KNPgT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 Nov 2011 10:36:19 -0500
-Content-Disposition: inline
-In-Reply-To: <CAE0An6csGmxsnUVtwpHSD-1hOqBe_h2vGUFHHCLAnX0=-0JONw@mail.gmail.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:56361 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753181Ab1KNPrI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 Nov 2011 10:47:08 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 14-11-11 07:22:03, Manish Katiyar wrote:
-> On Mon, Nov 14, 2011 at 4:53 AM, Jan Kara <jack@suse.cz> wrote:
-> > On Sun 13-11-11 19:29:31, Yongqiang Yang wrote:
-> >> transaction_t is 100 bytes under 32-bit systems. Transactions
-> >> allocated from general cache comsume 128 bytes. This patch
-> >> lets jbd allocates transacion from special cache.
-> >>
-> >> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-> > =A0Space saving isn't probably a good argument here since the numbe=
-r of
-> > transactions on the system is going to be rather low (a couple per =
-ext3
-> > filesystem). The reason why I wanted this change for JBD2 is that i=
-t makes
-> > debugging of memory corruption of a transaction structure much easi=
-er (and
-> > I've been tracking down issues like this several times already).
-> >
-> > That being said, I don't find strong need to have this in ext3 and =
-thus
-> > I'll take the change in jbd/ext3
->=20
-> I had submitted a similar patch for ext3, but it was rejected by
-> Andrew Morton. http://lists.openwall.net/linux-ext4/2011/06/13/15
-  Now I remember :) Anyway, "it makes debugging simpler" is really the
-reason which would change Andrew's mind I guess. I actually used a patc=
-h
-like this once or twice exactly to debug some stuff... That's why I thi=
-nk
-the patch has a value for ext4/jbd2 and I'll follow their lead with ext=
-3.
+Quota support can be enabled using --enable-quota.  There are still
+some buglets that we need to fix up before it can be considered 100%
+supported, so let's disable it for the 1.42 release.
 
-								Honza
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ RELEASE-NOTES       |    9 +++--
+ configure           |   95 ++++++++-------------------------------------------
+ configure.in        |   42 ++++++----------------
+ debian/rules        |    2 +-
+ lib/config.h.in     |    3 ++
+ lib/ext2fs/ext2fs.h |   10 +++++
+ misc/mke2fs.c       |    5 ++-
+ 7 files changed, 50 insertions(+), 116 deletions(-)
 
-> > if Ted takes the similar change to
-> > jbd2/ext4 to keep compatibility. Manish Katiyar was working on it
-> > (http://comments.gmane.org/gmane.comp.file-systems.ext4/25884) but =
-it seems
-> > it wasn't merged yet.
-> >
-> > =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0Honza
-> >
-> >> ---
-> >> =A0fs/jbd/checkpoint.c =A0| =A0 =A02 +-
-> >> =A0fs/jbd/journal.c =A0 =A0 | =A0 =A03 +++
-> >> =A0fs/jbd/transaction.c | =A0 31 +++++++++++++++++++++++++++++--
-> >> =A0include/linux/jbd.h =A0| =A0 =A05 +++++
-> >> =A04 files changed, 38 insertions(+), 3 deletions(-)
-> >>
-> >> diff --git a/fs/jbd/checkpoint.c b/fs/jbd/checkpoint.c
-> >> index f94fc48..4d98046 100644
-> >> --- a/fs/jbd/checkpoint.c
-> >> +++ b/fs/jbd/checkpoint.c
-> >> @@ -764,5 +764,5 @@ void __journal_drop_transaction(journal_t *jou=
-rnal, transaction_t *transaction)
-> >>
-> >> =A0 =A0 =A0 trace_jbd_drop_transaction(journal, transaction);
-> >> =A0 =A0 =A0 jbd_debug(1, "Dropping transaction %d, all done\n", tr=
-ansaction->t_tid);
-> >> - =A0 =A0 kfree(transaction);
-> >> + =A0 =A0 journal_free_transaction(transaction);
-> >> =A0}
-> >> diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-> >> index 9fe061f..45ca982 100644
-> >> --- a/fs/jbd/journal.c
-> >> +++ b/fs/jbd/journal.c
-> >> @@ -2004,6 +2004,8 @@ static int __init journal_init_caches(void)
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 ret =3D journal_init_journal_head_cach=
-e();
-> >> =A0 =A0 =A0 if (ret =3D=3D 0)
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 ret =3D journal_init_handle_cache();
-> >> + =A0 =A0 if (ret =3D=3D 0)
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 ret =3D journal_init_transaction_cache()=
-;
-> >> =A0 =A0 =A0 return ret;
-> >> =A0}
-> >>
-> >> @@ -2012,6 +2014,7 @@ static void journal_destroy_caches(void)
-> >> =A0 =A0 =A0 journal_destroy_revoke_caches();
-> >> =A0 =A0 =A0 journal_destroy_journal_head_cache();
-> >> =A0 =A0 =A0 journal_destroy_handle_cache();
-> >> + =A0 =A0 journal_destroy_transaction_cache();
-> >> =A0}
-> >>
-> >> =A0static int __init journal_init(void)
-> >> diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
-> >> index 7e59c6e..20d76f1 100644
-> >> --- a/fs/jbd/transaction.c
-> >> +++ b/fs/jbd/transaction.c
-> >> @@ -30,6 +30,32 @@
-> >>
-> >> =A0static void __journal_temp_unlink_buffer(struct journal_head *j=
-h);
-> >>
-> >> +static struct kmem_cache *transaction_cache;
-> >> +int __init journal_init_transaction_cache(void)
-> >> +{
-> >> + =A0 =A0 J_ASSERT(!transaction_cache);
-> >> + =A0 =A0 transaction_cache =3D KMEM_CACHE(transaction_s,
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-=A0 =A0SLAB_HWCACHE_ALIGN|SLAB_TEMPORARY);
-> >> + =A0 =A0 if (transaction_cache)
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 return 0;
-> >> + =A0 =A0 return -ENOMEM;
-> >> +}
-> >> +
-> >> +void __init journal_destroy_transaction_cache(void)
-> >> +{
-> >> + =A0 =A0 if (transaction_cache) {
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 kmem_cache_destroy(transaction_cache);
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 transaction_cache =3D NULL;
-> >> + =A0 =A0 }
-> >> +}
-> >> +
-> >> +void journal_free_transaction(transaction_t *transaction)
-> >> +{
-> >> + =A0 =A0 if (unlikely(ZERO_OR_NULL_PTR(transaction)))
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 return;
-> >> + =A0 =A0 kmem_cache_free(transaction_cache, transaction);
-> >> +}
-> >> +
-> >> =A0/*
-> >> =A0 * get_transaction: obtain a new transaction_t object.
-> >> =A0 *
-> >> @@ -100,11 +126,12 @@ static int start_this_handle(journal_t *jour=
-nal, handle_t *handle)
-> >>
-> >> =A0alloc_transaction:
-> >> =A0 =A0 =A0 if (!journal->j_running_transaction) {
-> >> - =A0 =A0 =A0 =A0 =A0 =A0 new_transaction =3D kzalloc(sizeof(*new_=
-transaction), GFP_NOFS);
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 new_transaction =3D kmem_cache_alloc(tra=
-nsaction_cache, GFP_NOFS);
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!new_transaction) {
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 congestion_wait(BLK_RW=
-_ASYNC, HZ/50);
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto alloc_transaction=
-;
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 memset(new_transaction, 0, sizeof(*new_t=
-ransaction));
-> >> =A0 =A0 =A0 }
-> >>
-> >> =A0 =A0 =A0 jbd_debug(3, "New handle %p going live.\n", handle);
-> >> @@ -233,7 +260,7 @@ repeat_locked:
-> >> =A0 =A0 =A0 lock_map_acquire(&handle->h_lockdep_map);
-> >> =A0out:
-> >> =A0 =A0 =A0 if (unlikely(new_transaction)) =A0 =A0 =A0 =A0 =A0/* I=
-t's usually NULL */
-> >> - =A0 =A0 =A0 =A0 =A0 =A0 kfree(new_transaction);
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 journal_free_transaction(new_transaction=
-);
-> >> =A0 =A0 =A0 return ret;
-> >> =A0}
-> >>
-> >> diff --git a/include/linux/jbd.h b/include/linux/jbd.h
-> >> index c7acdde..0f9f0b6 100644
-> >> --- a/include/linux/jbd.h
-> >> +++ b/include/linux/jbd.h
-> >> @@ -807,6 +807,11 @@ journal_write_metadata_buffer(transaction_t =A0=
- =A0 =A0 =A0*transaction,
-> >> =A0/* Transaction locking */
-> >> =A0extern void =A0 =A0 =A0 =A0 =A0__wait_on_journal (journal_t *);
-> >>
-> >> +/* Transaction cache support */
-> >> +extern void journal_destroy_transaction_cache(void);
-> >> +extern int =A0journal_init_transaction_cache(void);
-> >> +extern void journal_free_transaction(transaction_t *);
-> >> +
-> >> =A0/*
-> >> =A0 * Journal locking.
-> >> =A0 *
-> >> --
-> >> 1.7.5.1
-> >>
-> > --
-> > Jan Kara <jack@suse.cz>
-> > SUSE Labs, CR
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext=
-4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at =A0http://vger.kernel.org/majordomo-info.htm=
-l
-> >
->=20
->=20
->=20
-> --=20
-> Thanks -
-> Manish
---=20
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/RELEASE-NOTES b/RELEASE-NOTES
+index 7b36af9..afc738f 100644
+--- a/RELEASE-NOTES
++++ b/RELEASE-NOTES
+@@ -14,10 +14,6 @@ called 'bigalloc', which must be enabled when the file system is
+ initially formatted.  It is not backwards compatible with older
+ kernels.
+ 
+-This release of e2fsprogs has support for integrated feature, where
+-the quota files are hidden system files that are automatically
+-maintained by e2fsck.
+-
+ Added support for the Multi-Mount Protection (MMP) feature.
+ 
+ Fix a bug in e2fsck where if the free blocks and inodes counts are
+@@ -202,6 +198,11 @@ Updated/clarified man pages.  (Addresses Debian Bugs: #639411,
+ Programming notes
+ -----------------
+ 
++Initial support for quota as an integrated feature, where the quota
++files are hidden system files that are automatically maintained by
++e2fsck is present, although disabled by default.  It must be enabled
++by using the configure option --enable-quota.
++
+ Reserved the on-disk fields for the metadata checksum and snapshot
+ features, which are currently in development.
+ 
+diff --git a/configure b/configure
+index 6c8eb49..0e8d6fb 100755
+--- a/configure
++++ b/configure
+@@ -808,7 +808,7 @@ enable_blkid_debug
+ enable_testio_debug
+ enable_libuuid
+ enable_libblkid
+-enable_libquota
++enable_quota
+ enable_debugfs
+ enable_imager
+ enable_resizer
+@@ -1462,7 +1462,7 @@ Optional Features:
+   --disable-testio-debug  disable the use of the test I/O manager for debugging
+   --disable-libuuid	  do not build private uuid library
+   --disable-libblkid	  do not build private blkid library
+-  --disable-libquota	  do not build private quota library
++  --enable-libquota	  enable quota support
+   --disable-debugfs   	  disable support of debugfs program
+   --disable-imager   	  disable support of e2image program
+   --disable-resizer   	  disable support of e2resize program
+@@ -5204,97 +5204,32 @@ $as_echo "no" >&6; }
+         fi
+ 
+ fi
+-LIBQUOTA=
+-DEPLIBQUOTA=
+-STATIC_LIBQUOTA=
+-DEPSTATIC_LIBQUOTA=
+-PROFILED_LIBQUOTA=
+-DEPPROFILED_LIBQUOTA=
+-QUOTA_CMT=
+-# Check whether --enable-libquota was given.
+-if test "${enable_libquota+set}" = set; then :
+-  enableval=$enable_libquota; if test "$enableval" = "no"
+-then
+-	if test -z "$PKG_CONFIG"; then
+-		as_fn_error "pkg-config not installed; please install it." "$LINENO" 5
+-	fi
+ 
+-	as_ac_Lib=`$as_echo "ac_cv_lib_quota_LIBQUOTA=\`$PKG_CONFIG --libs quota\`;
+-		 STATIC_LIBQUOTA=\`$PKG_CONFIG --static --libs quota\`" | $as_tr_sh`
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for LIBQUOTA=\`$PKG_CONFIG --libs quota\`;
+-		 STATIC_LIBQUOTA=\`$PKG_CONFIG --static --libs quota\` in -lquota" >&5
+-$as_echo_n "checking for LIBQUOTA=\`$PKG_CONFIG --libs quota\`;
+-		 STATIC_LIBQUOTA=\`$PKG_CONFIG --static --libs quota\` in -lquota... " >&6; }
+-if { as_var=$as_ac_Lib; eval "test \"\${$as_var+set}\" = set"; }; then :
+-  $as_echo_n "(cached) " >&6
++# Check whether --enable-quota was given.
++if test "${enable_quota+set}" = set; then :
++  enableval=$enable_quota; if test "$enableval" = "no"
++then
++	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Disabling quota support" >&5
++$as_echo "Disabling quota support" >&6; }
+ else
+-  ac_check_lib_save_LIBS=$LIBS
+-LIBS="-lquota  $LIBS"
+-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+-/* end confdefs.h.  */
++	$as_echo "#define CONFIG_QUOTA 1" >>confdefs.h
+ 
+-/* Override any GCC internal prototype to avoid an error.
+-   Use char because int might match the return type of a GCC
+-   builtin and then its argument prototype would still apply.  */
+-#ifdef __cplusplus
+-extern "C"
+-#endif
+-char LIBQUOTA=`$PKG_CONFIG --libs quota`;
+-		 STATIC_LIBQUOTA=`$PKG_CONFIG --static --libs quota` ();
+-int
+-main ()
+-{
+-return LIBQUOTA=`$PKG_CONFIG --libs quota`;
+-		 STATIC_LIBQUOTA=`$PKG_CONFIG --static --libs quota` ();
+-  ;
+-  return 0;
+-}
+-_ACEOF
+-if ac_fn_c_try_link "$LINENO"; then :
+-  eval "$as_ac_Lib=yes"
+-else
+-  eval "$as_ac_Lib=no"
+-fi
+-rm -f core conftest.err conftest.$ac_objext \
+-    conftest$ac_exeext conftest.$ac_ext
+-LIBS=$ac_check_lib_save_LIBS
+-fi
+-eval ac_res=\$$as_ac_Lib
+-	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+-$as_echo "$ac_res" >&6; }
+-eval as_val=\$$as_ac_Lib
+-   if test "x$as_val" = x""yes; then :
+-  as_fn_error "external quota library not found" "$LINENO" 5
+-else
+-  $LIBQUOTA
++	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Enabling quota support" >&5
++$as_echo "Enabling quota support" >&6; }
+ fi
+ 
+-	QUOTA_CMT=#
+-	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Disabling private quota library" >&5
+-$as_echo "Disabling private quota library" >&6; }
+ else
+-	LIBQUOTA='$(LIB)/libquota'$LIB_EXT
+-	DEPLIBQUOTA=$LIBQUOTA
+-	STATIC_LIBQUOTA='$(LIB)/libquota'$STATIC_LIB_EXT
+-	DEPSTATIC_LIBQUOTA=$STATIC_LIBQUOTA
+-	PROFILED_LIBQUOTA='$(LIB)/libquota'$PROFILED_LIB_EXT
+-	DEPPROFILED_LIBQUOTA=$PROFILED_LIBQUOTA
+-	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Enabling private quota library" >&5
+-$as_echo "Enabling private quota library" >&6; }
++  { $as_echo "$as_me:${as_lineno-$LINENO}: result: Disabling quota support by default" >&5
++$as_echo "Disabling quota support by default" >&6; }
++
+ fi
+ 
+-else
+-  LIBQUOTA='$(LIB)/libquota'$LIB_EXT
++LIBQUOTA='$(LIB)/libquota'$LIB_EXT
+ DEPLIBQUOTA=$LIBQUOTA
+ STATIC_LIBQUOTA='$(LIB)/libquota'$STATIC_LIB_EXT
+ DEPSTATIC_LIBQUOTA=$STATIC_LIBQUOTA
+ PROFILED_LIBQUOTA='$(LIB)/libquota'$PROFILED_LIB_EXT
+ DEPPROFILED_LIBQUOTA=$PROFILED_LIBQUOTA
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Enabling private quota library by default" >&5
+-$as_echo "Enabling private quota library by default" >&6; }
+-
+-fi
+-
+ 
+ 
+ 
+diff --git a/configure.in b/configure.in
+index 0b609bb..2b81619 100644
+--- a/configure.in
++++ b/configure.in
+@@ -526,49 +526,31 @@ AC_SUBST(PROFILED_LIBBLKID)
+ AC_SUBST(DEPPROFILED_LIBBLKID)
+ AC_SUBST(BLKID_CMT)
+ dnl
+-dnl handle --disable-libquota
++dnl handle --enable-quota
+ dnl
+ PKG_PROG_PKG_CONFIG
+-LIBQUOTA=
+-DEPLIBQUOTA=
+-STATIC_LIBQUOTA=
+-DEPSTATIC_LIBQUOTA=
+-PROFILED_LIBQUOTA=
+-DEPPROFILED_LIBQUOTA=
+-QUOTA_CMT=
+-AC_ARG_ENABLE([libquota],
+-[  --disable-libquota	  do not build private quota library],
++AH_TEMPLATE([CONFIG_QUOTA], [Define to 1 to enable quota support])
++AC_ARG_ENABLE([quota],
++[  --enable-libquota	  enable quota support],
+ if test "$enableval" = "no"
+ then
+-	if test -z "$PKG_CONFIG"; then
+-		AC_MSG_ERROR([pkg-config not installed; please install it.])
+-	fi
+-
+-	AC_CHECK_LIB(quota,
+-		[LIBQUOTA=`$PKG_CONFIG --libs quota`;
+-		 STATIC_LIBQUOTA=`$PKG_CONFIG --static --libs quota`],
+-		[AC_MSG_ERROR([external quota library not found])],
+-		[$LIBQUOTA])
+-	QUOTA_CMT=#
+-	AC_MSG_RESULT([Disabling private quota library])
++	AC_MSG_RESULT([Disabling quota support])
+ else
+-	LIBQUOTA='$(LIB)/libquota'$LIB_EXT
+-	DEPLIBQUOTA=$LIBQUOTA
+-	STATIC_LIBQUOTA='$(LIB)/libquota'$STATIC_LIB_EXT
+-	DEPSTATIC_LIBQUOTA=$STATIC_LIBQUOTA
+-	PROFILED_LIBQUOTA='$(LIB)/libquota'$PROFILED_LIB_EXT
+-	DEPPROFILED_LIBQUOTA=$PROFILED_LIBQUOTA
+-	AC_MSG_RESULT([Enabling private quota library])
++	AC_DEFINE(CONFIG_QUOTA, 1)
++	AC_MSG_RESULT([Enabling quota support])
+ fi
+ ,
++AC_MSG_RESULT([Disabling quota support by default])
++)
++dnl
++dnl Define stuff expected for quota library
++dnl
+ LIBQUOTA='$(LIB)/libquota'$LIB_EXT
+ DEPLIBQUOTA=$LIBQUOTA
+ STATIC_LIBQUOTA='$(LIB)/libquota'$STATIC_LIB_EXT
+ DEPSTATIC_LIBQUOTA=$STATIC_LIBQUOTA
+ PROFILED_LIBQUOTA='$(LIB)/libquota'$PROFILED_LIB_EXT
+ DEPPROFILED_LIBQUOTA=$PROFILED_LIBQUOTA
+-AC_MSG_RESULT([Enabling private quota library by default])
+-)
+ AC_SUBST(LIBQUOTA)
+ AC_SUBST(DEPLIBQUOTA)
+ AC_SUBST(STATIC_LIBQUOTA)
+diff --git a/debian/rules b/debian/rules
+index 2d8e4ea..c950cd7 100755
+--- a/debian/rules
++++ b/debian/rules
+@@ -129,7 +129,7 @@ endif
+ BF_CFLAGS = -Os -fomit-frame-pointer
+ 
+ COMMON_CONF_FLAGS = --disable-e2initrd-helper --enable-elf-shlibs \
+-	--infodir=/usr/share/info
++	--enable-quota --infodir=/usr/share/info
+ ifeq ($(UTIL_LINUX_NG),yes)
+ COMMON_CONF_FLAGS += --disable-fsck --disable-libblkid \
+ 			--disable-libuuid --disable-uuidd
+diff --git a/lib/config.h.in b/lib/config.h.in
+index a58745e..0e83634 100644
+--- a/lib/config.h.in
++++ b/lib/config.h.in
+@@ -12,6 +12,9 @@
+ /* Define to 1 if debugging ext3/4 journal code */
+ #undef CONFIG_JBD_DEBUG
+ 
++/* Define to 1 to enable quota support */
++#undef CONFIG_QUOTA
++
+ /* Define to 1 if the testio I/O manager should be enabled */
+ #undef CONFIG_TESTIO_DEBUG
+ 
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 4de20c9..08f1946 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -577,6 +577,7 @@ typedef struct ext2_icount *ext2_icount_t;
+ 					 EXT4_FEATURE_INCOMPAT_MMP|\
+ 					 EXT4_FEATURE_INCOMPAT_64BIT)
+ #endif
++#ifdef CONFIG_QUOTA
+ #define EXT2_LIB_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|\
+ 					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE|\
+ 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE|\
+@@ -585,6 +586,15 @@ typedef struct ext2_icount *ext2_icount_t;
+ 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM|\
+ 					 EXT4_FEATURE_RO_COMPAT_BIGALLOC|\
+ 					 EXT4_FEATURE_RO_COMPAT_QUOTA)
++#else
++#define EXT2_LIB_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|\
++					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE|\
++					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE|\
++					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK|\
++					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|\
++					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM|\
++					 EXT4_FEATURE_RO_COMPAT_BIGALLOC)
++#endif
+ 
+ /*
+  * These features are only allowed if EXT2_FLAG_SOFTSUPP_FEATURES is passed
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index a07e866..ebd5f34 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -847,7 +847,10 @@ static __u32 ok_features[3] = {
+ 		EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|
+ 		EXT4_FEATURE_RO_COMPAT_GDT_CSUM|
+ 		EXT4_FEATURE_RO_COMPAT_BIGALLOC|
+-		EXT4_FEATURE_RO_COMPAT_QUOTA
++#ifdef CONFIG_QUOTA
++		EXT4_FEATURE_RO_COMPAT_QUOTA|
++#endif
++		0
+ };
+ 
+ 
+-- 
+1.7.4.1.22.gec8e1.dirty
+
