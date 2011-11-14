@@ -1,618 +1,598 @@
 From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: [PATCH v3 02/11] e4defrag: Remove -c option which checks the file
- fragmentation
-Date: Mon, 14 Nov 2011 15:24:13 +0900
-Message-ID: <4EC0B40D.3090007@sx.jp.nec.com>
+Subject: [PATCH v3 03/11] e4defrag: Remove old fragmentation score calculation
+ code
+Date: Mon, 14 Nov 2011 15:24:24 +0900
+Message-ID: <4EC0B418.10107@sx.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
 Cc: Theodore Tso <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>
 To: ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO200.gate.nec.co.jp ([202.32.8.215]:51586 "EHLO
+Received: from TYO200.gate.nec.co.jp ([202.32.8.215]:51587 "EHLO
 	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751855Ab1KNGhs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Nov 2011 01:37:48 -0500
+	with ESMTP id S1752211Ab1KNGhu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Nov 2011 01:37:50 -0500
 Received: from tyo202.gate.nec.co.jp ([10.7.69.202])
-	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id pAE6bkOR024374
+	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id pAE6bnPS024377
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 14 Nov 2011 15:37:46 +0900 (JST)
+	for <linux-ext4@vger.kernel.org>; Mon, 14 Nov 2011 15:37:49 +0900 (JST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Remove -c option from e4defrag, because users might misunderstand when to do
-e4defrag by seeing the output of -c option.
+Remove the old fragmentation score calculation to replace with
+e2p_get_fragscore().
 
 Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
 ---
- misc/e4defrag.8.in |   29 ---
- misc/e4defrag.c    |  408 +----------------------------------------------------
- 2 files changed, 12 insertions(+), 425 deletions(-)
-diff --git a/misc/e4defrag.8.in b/misc/e4defrag.8.in
-index 75e1bc9..3997f75 100644
---- a/misc/e4defrag.8.in
-+++ b/misc/e4defrag.8.in
-@@ -1,12 +1,9 @@
--.TH E4DEFRAG 8 "May 2009" "e4defrag version 2.0"
-+.TH E4DEFRAG 8 "Nov 2011" "e4defrag version 2.1"
- .SH NAME
- e4defrag \- online defragmenter for ext4 filesystem
- .SH SYNOPSIS
- .B e4defrag
- [
--.B \-c
--]
--[
- .B \-v
- ]
- .I target
-@@ -34,26 +31,6 @@ gets the mount point of it and reduces fragmentation of all files in this mount
- point.
- .SH OPTIONS
- .TP
--.B \-c
--Get a current fragmentation count and an ideal fragmentation count, and
--calculate fragmentation score based on them. By seeing this score, we can
--determine whether we should execute
--.B e4defrag
--to
--.IR target .
--When used with
--.B \-v
--option, the current fragmentation count and the ideal fragmentation count are
--printed for each file.
--.IP
--Also this option outputs the average data size in one extent. If you see it,
--you'll find the file has ideal extents or not. Note that the maximum extent
--size is 131072KB in ext4 filesystem (if block size is 4KB).
--.IP
--If this option is specified,
--.I target
--is never defragmented.
--.TP
- .B \-v
- Print error messages and the fragmentation count before and after defrag for
- each file.
-@@ -68,9 +45,7 @@ doesn't defragment files in mount point of other device.
- .PP
- Non-privileged users can execute
- .B e4defrag
--to their own file, but the score is not printed if
--.B \-c
--option is specified. Therefore, it is desirable to be executed by root user.
-+to their own file.
- .SH AUTHOR
- Written by Akira Fujita <a-fujita@rs.jp.nec.com> and Takashi Sato
- <t-sato@yk.jp.nec.com>.
+ misc/e4defrag.c |  350 ++++----------------------------------------------------
+ 1 file changed, 30 insertions(+), 320 deletions(-)
 diff --git a/misc/e4defrag.c b/misc/e4defrag.c
-index 6491edd..9eef9dd 100644
+index 9eef9dd..cde8d52 100644
 --- a/misc/e4defrag.c
 +++ b/misc/e4defrag.c
-@@ -55,13 +55,7 @@
- #define PRINT_FILE_NAME(file)	fprintf(stderr, " \"%s\"\n", (file))
- #define PRINT_ERR_MSG_WITH_ERRNO(msg)	\
- 	fprintf(stderr, "\t%s:%s\t[ NG ]\n", (msg), strerror(errno))
--#define STATISTIC_ERR_MSG(msg)	\
--	fprintf(stderr, "\t%s\n", (msg))
--#define STATISTIC_ERR_MSG_WITH_ERRNO(msg)	\
--	fprintf(stderr, "\t%s:%s\n", (msg), strerror(errno))
- #define min(x, y) (((x) > (y)) ? (y) : (x))
--#define CALC_SCORE(ratio) \
--	((ratio) > 10 ? (80 + 20 * (ratio) / 100) : (8 * (ratio)))
- /* Wrap up the free function */
- #define FREE(tmp)				\
- 	do {					\
-@@ -86,7 +80,6 @@
- 
- /* The mode of defrag */
- #define DETAIL			0x01
--#define STATISTIC		0x02
- 
- #define DEVNAME			0
- #define DIRNAME			1
-@@ -97,9 +90,6 @@
- #define FS_EXT4			"ext4"
- #define ROOT_UID		0
- 
--#define BOUND_SCORE		55
--#define SHOW_FRAG_FILES	5
--
+@@ -33,7 +33,6 @@
+ #include <string.h>
+ #include <unistd.h>
+ #include <ext2fs/ext2_types.h>
+-#include <ext2fs/ext2fs.h>
+ #include <linux/fs.h>
+ #include <sys/ioctl.h>
+ #include <ext2fs/fiemap.h>
+@@ -93,9 +92,6 @@
  /* Magic number for ext4 */
  #define EXT4_SUPER_MAGIC	0xEF53
  
-@@ -114,8 +104,7 @@
- 
- /* The following macros are error message */
- #define MSG_USAGE		\
--"Usage	: e4defrag [-v] file...| directory...| device...\n\
--	: e4defrag  -c  file...| directory...| device...\n"
-+"Usage	: e4defrag [-v] file...| directory...| device...\n"
- 
- #define NGMSG_EXT4		"Filesystem is not ext4 filesystem"
- #define NGMSG_FILE_EXTENT	"Failed to get file extents"
-@@ -156,14 +145,6 @@ struct move_extent {
- 	__u64 moved_len;	/* moved block length */
- };
- 
--struct frag_statistic_ino {
--	int now_count;	/* the file's extents count of before defrag */
--	int best_count; /* the best file's extents count */
--	__u64 size_per_ext;	/* size(KB) per extent */
--	float ratio;	/* the ratio of fragmentation */
--	char msg_buffer[PATH_MAX + 1];	/* pathname of the file */
--};
+-/* Definition of flex_bg */
+-#define EXT4_FEATURE_INCOMPAT_FLEX_BG		0x0200
 -
- char	lost_found_dir[PATH_MAX + 1];
- int	block_size;
- int	extents_before_defrag;
-@@ -179,8 +160,6 @@ unsigned int	total_count;
- __u8 log_groups_per_flex;
- __u32 blocks_per_group;
- __u32 feature_incompat;
--ext4_fsblk_t	files_block_count;
--struct frag_statistic_ino	frag_rank[SHOW_FRAG_FILES];
- 
+ /* The following macro is used for ioctl FS_IOC_FIEMAP
+  * EXTENT_MAX_COUNT:	the maximum number of extents for exchanging between
+  *			kernel-space and user-space per ioctl
+@@ -157,10 +153,6 @@ unsigned int	frag_files_after_defrag;
+ unsigned int	regular_count;
+ unsigned int	succeed_cnt;
+ unsigned int	total_count;
+-__u8 log_groups_per_flex;
+-__u32 blocks_per_group;
+-__u32 feature_incompat;
+-
  
  /* Local definitions of some syscalls glibc may not yet have */
-@@ -1059,252 +1038,6 @@ static int get_best_count(ext4_fsblk_t block_count)
+ 
+@@ -277,7 +269,7 @@ static int get_mount_point(const char *devname, char *mount_point,
+  *
+  * @file:		the file's name.
+  */
+-static int is_ext4(const char *file, char *devname)
++static int is_ext4(const char *file)
+ {
+ 	int 	maxlen = 0;
+ 	int	len, ret;
+@@ -334,7 +326,6 @@ static int is_ext4(const char *file, char *devname)
+ 		memset(mnt_type, 0, strlen(mnt->mnt_type) + 1);
+ 		strncpy(mnt_type, mnt->mnt_type, strlen(mnt->mnt_type));
+ 		strncpy(lost_found_dir, mnt->mnt_dir, PATH_MAX);
+-		strncpy(devname, mnt->mnt_fsname, strlen(mnt->mnt_fsname) + 1);
+ 	}
+ 
+ 	endmntent(fp);
+@@ -591,119 +582,26 @@ static int file_check(int fd, const struct stat64 *buf, const char *file,
+ }
+ 
+ /*
+- * insert_extent_by_logical() -	Sequentially insert extent by logical.
++ * insert_exts_list() -	insert the extent into extent list.
+  *
+- * @ext_list_head:	the head of logical extent list.
++ * @ext_list_head:	the head of extent list.
+  * @ext:		the extent element which will be inserted.
+  */
+-static int insert_extent_by_logical(struct fiemap_extent_list **ext_list_head,
++static void insert_exts_list(struct fiemap_extent_list **ext_list_head,
+ 			struct fiemap_extent_list *ext)
+ {
+-	struct fiemap_extent_list	*ext_list_tmp = *ext_list_head;
+-
+-	if (ext == NULL)
+-		goto out;
+-
+-	/* First element */
+-	if (*ext_list_head == NULL) {
+-		(*ext_list_head) = ext;
+-		(*ext_list_head)->prev = *ext_list_head;
+-		(*ext_list_head)->next = *ext_list_head;
+-		return 0;
+-	}
+-
+-	if (ext->data.logical <= ext_list_tmp->data.logical) {
+-		/* Insert before head */
+-		if (ext_list_tmp->data.logical <
+-			ext->data.logical + ext->data.len)
+-			/* Overlap */
+-			goto out;
+-		/* Adjust head */
+-		*ext_list_head = ext;
+-	} else {
+-		/* Insert into the middle or last of the list */
+-		do {
+-			if (ext->data.logical < ext_list_tmp->data.logical)
+-				break;
+-			ext_list_tmp = ext_list_tmp->next;
+-		} while (ext_list_tmp != (*ext_list_head));
+-		if (ext->data.logical <
+-		    ext_list_tmp->prev->data.logical +
+-			ext_list_tmp->prev->data.len)
+-			/* Overlap */
+-			goto out;
+-
+-		if (ext_list_tmp != *ext_list_head &&
+-		    ext_list_tmp->data.logical <
+-		    ext->data.logical + ext->data.len)
+-			/* Overlap */
+-			goto out;
+-	}
+-	ext_list_tmp = ext_list_tmp->prev;
+-	/* Insert "ext" after "ext_list_tmp" */
+-	insert(ext_list_tmp, ext);
+-	return 0;
+-out:
+-	errno = EINVAL;
+-	return -1;
+-}
+-
+-/*
+- * insert_extent_by_physical() -	Sequentially insert extent by physical.
+- *
+- * @ext_list_head:	the head of physical extent list.
+- * @ext:		the extent element which will be inserted.
+- */
+-static int insert_extent_by_physical(struct fiemap_extent_list **ext_list_head,
+-			struct fiemap_extent_list *ext)
+-{
+-	struct fiemap_extent_list	*ext_list_tmp = *ext_list_head;
+-
+-	if (ext == NULL)
+-		goto out;
++	struct fiemap_extent_list *ext_list_tmp;
+ 
+ 	/* First element */
+ 	if (*ext_list_head == NULL) {
+ 		(*ext_list_head) = ext;
+ 		(*ext_list_head)->prev = *ext_list_head;
+ 		(*ext_list_head)->next = *ext_list_head;
+-		return 0;
++		return;
+ 	}
+ 
+-	if (ext->data.physical <= ext_list_tmp->data.physical) {
+-		/* Insert before head */
+-		if (ext_list_tmp->data.physical <
+-					ext->data.physical + ext->data.len)
+-			/* Overlap */
+-			goto out;
+-		/* Adjust head */
+-		*ext_list_head = ext;
+-	} else {
+-		/* Insert into the middle or last of the list */
+-		do {
+-			if (ext->data.physical < ext_list_tmp->data.physical)
+-				break;
+-			ext_list_tmp = ext_list_tmp->next;
+-		} while (ext_list_tmp != (*ext_list_head));
+-		if (ext->data.physical <
+-		    ext_list_tmp->prev->data.physical +
+-				ext_list_tmp->prev->data.len)
+-			/* Overlap */
+-			goto out;
+-
+-		if (ext_list_tmp != *ext_list_head &&
+-		    ext_list_tmp->data.physical <
+-				ext->data.physical + ext->data.len)
+-			/* Overlap */
+-			goto out;
+-	}
+-	ext_list_tmp = ext_list_tmp->prev;
+-	/* Insert "ext" after "ext_list_tmp" */
++	ext_list_tmp = (*ext_list_head)->prev;
+ 	insert(ext_list_tmp, ext);
+-	return 0;
+-out:
+-	errno = EINVAL;
+-	return -1;
+ }
+ 
+ /*
+@@ -712,28 +610,21 @@ out:
+  * @ext_group_head:		the head of a exts_group list.
+  * @exts_group:			the exts_group element which will be inserted.
+  */
+-static int insert_exts_group(struct fiemap_extent_group **ext_group_head,
++static void insert_exts_group(struct fiemap_extent_group **ext_group_head,
+ 				struct fiemap_extent_group *exts_group)
+ {
+-	struct fiemap_extent_group	*ext_group_tmp = NULL;
+-
+-	if (exts_group == NULL) {
+-		errno = EINVAL;
+-		return -1;
+-	}
++	struct fiemap_extent_group *ext_group_tmp;
+ 
+ 	/* Initialize list */
+ 	if (*ext_group_head == NULL) {
+ 		(*ext_group_head) = exts_group;
+ 		(*ext_group_head)->prev = *ext_group_head;
+ 		(*ext_group_head)->next = *ext_group_head;
+-		return 0;
++		return;
+ 	}
+ 
+ 	ext_group_tmp = (*ext_group_head)->prev;
+ 	insert(ext_group_tmp, exts_group);
+-
+-	return 0;
+ }
+ 
+ /*
+@@ -769,11 +660,8 @@ static int join_extents(struct fiemap_extent_list *ext_list_head,
+ 			ext_group_tmp->start = ext_list_start;
+ 			ext_group_tmp->end = ext_list_tmp->prev;
+ 
+-			if (insert_exts_group(ext_group_head,
+-				ext_group_tmp) < 0) {
+-				FREE(ext_group_tmp);
+-				return -1;
+-			}
++			insert_exts_group(ext_group_head, ext_group_tmp);
++
+ 			ext_list_start = ext_list_tmp;
+ 			len = ext_list_tmp->data.len;
+ 			ext_list_tmp = ext_list_tmp->next;
+@@ -846,12 +734,7 @@ static int get_file_extents(int fd, struct fiemap_extent_list **ext_list_head)
+ 			ext_list->data.len = ext_buf[i].fe_length
+ 						/ block_size;
+ 
+-			ret = insert_extent_by_physical(
+-					ext_list_head, ext_list);
+-			if (ret < 0) {
+-				FREE(ext_list);
+-				goto out;
+-			}
++			insert_exts_list(ext_list_head, ext_list);
+ 		}
+ 		/* Record file's logical offset this time */
+ 		pos = ext_buf[EXTENT_MAX_COUNT-1].fe_logical +
+@@ -873,88 +756,23 @@ out:
+ }
+ 
+ /*
+- * get_logical_count() -	Get the file logical extents count.
++ * get_exts_count() -	Get the file extents count.
+  *
+- * @logical_list_head:	the head of the logical extent list.
++ * @ext_list_head:	the head of the extent list.
+  */
+-static int get_logical_count(struct fiemap_extent_list *logical_list_head)
++static int get_exts_count(struct fiemap_extent_list *ext_list_head)
+ {
+ 	int ret = 0;
+-	struct fiemap_extent_list *ext_list_tmp  = logical_list_head;
++	struct fiemap_extent_list *ext_list_tmp  = ext_list_head;
+ 
+ 	do {
+ 		ret++;
+ 		ext_list_tmp = ext_list_tmp->next;
+-	} while (ext_list_tmp != logical_list_head);
+-
+-	return ret;
+-}
+-
+-/*
+- * get_physical_count() -	Get the file physical extents count.
+- *
+- * @physical_list_head:	the head of the physical extent list.
+- */
+-static int get_physical_count(struct fiemap_extent_list *physical_list_head)
+-{
+-	int ret = 0;
+-	struct fiemap_extent_list *ext_list_tmp = physical_list_head;
+-
+-	do {
+-		if ((ext_list_tmp->data.physical + ext_list_tmp->data.len)
+-				!= ext_list_tmp->next->data.physical) {
+-			/* This extent and next extent are not continuous. */
+-			ret++;
+-		}
+-
+-		ext_list_tmp = ext_list_tmp->next;
+-	} while (ext_list_tmp != physical_list_head);
++	} while (ext_list_tmp != ext_list_head);
+ 
  	return ret;
  }
  
+-/*
+- * change_physical_to_logical() -	Change list from physical to logical.
+- *
+- * @physical_list_head:	the head of physical extent list.
+- * @logical_list_head:	the head of logical extent list.
+- */
+-static int change_physical_to_logical(
+-			struct fiemap_extent_list **physical_list_head,
+-			struct fiemap_extent_list **logical_list_head)
+-{
+-	int ret;
+-	struct fiemap_extent_list *ext_list_tmp = *physical_list_head;
+-	struct fiemap_extent_list *ext_list_next = ext_list_tmp->next;
+-
+-	while (1) {
+-		if (ext_list_tmp == ext_list_next) {
+-			ret = insert_extent_by_logical(
+-				logical_list_head, ext_list_tmp);
+-			if (ret < 0)
+-				return -1;
+-
+-			*physical_list_head = NULL;
+-			break;
+-		}
+-
+-		ext_list_tmp->prev->next = ext_list_tmp->next;
+-		ext_list_tmp->next->prev = ext_list_tmp->prev;
+-		*physical_list_head = ext_list_next;
+-
+-		ret = insert_extent_by_logical(
+-			logical_list_head, ext_list_tmp);
+-		if (ret < 0) {
+-			FREE(ext_list_tmp);
+-			return -1;
+-		}
+-		ext_list_tmp = ext_list_next;
+-		ext_list_next = ext_list_next->next;
+-	}
+-
+-	return 0;
+-}
+-
+ /* get_file_blocks() -  Get total file blocks.
+  *
+  * @ext_list_head:	the extent list head of the target file
+@@ -1017,28 +835,6 @@ static void free_exts_group(struct fiemap_extent_group *ext_group_head)
+ }
+ 
+ /*
+- * get_best_count() -	Get the file best extents count.
+- *
+- * @block_count:		the file's physical block count.
+- */
+-static int get_best_count(ext4_fsblk_t block_count)
+-{
+-	int ret;
+-	unsigned int flex_bg_num;
+-
+-	/* Calcuate best extents count */
+-	if (feature_incompat & EXT4_FEATURE_INCOMPAT_FLEX_BG) {
+-		flex_bg_num = 1 << log_groups_per_flex;
+-		ret = ((block_count - 1) /
+-			((ext4_fsblk_t)blocks_per_group *
+-				flex_bg_num)) + 1;
+-	} else
+-		ret = ((block_count - 1) / blocks_per_group) + 1;
+-
+-	return ret;
+-}
 -
 -/*
-- * file_statistic() -	Get statistic info of the file's fragments.
-- *
-- * @file:		the file's name.
-- * @buf:		the pointer of the struct stat64.
-- * @flag:		file type.
-- * @ftwbuf:		the pointer of a struct FTW.
-- */
--static int file_statistic(const char *file, const struct stat64 *buf,
--			int flag EXT2FS_ATTR((unused)),
--			struct FTW *ftwbuf EXT2FS_ATTR((unused)))
--{
--	int	fd;
--	int	ret;
--	int	now_ext_count, best_ext_count = 0, physical_ext_count;
--	int	i, j;
--	__u64	size_per_ext = 0;
--	float	ratio = 0.0;
--	ext4_fsblk_t	blk_count = 0;
--	char	msg_buffer[PATH_MAX + 24];
--	struct fiemap_extent_list *physical_list_head = NULL;
--	struct fiemap_extent_list *logical_list_head = NULL;
--
--	defraged_file_count++;
--
--	if (mode_flag & DETAIL) {
--		if (total_count == 1 && regular_count == 1)
--			printf("<File>\n");
--		else {
--			printf("[%u/%u]", defraged_file_count, total_count);
--			fflush(stdout);
--		}
--	}
--	if (lost_found_dir[0] != '\0' &&
--	    !memcmp(file, lost_found_dir, strnlen(lost_found_dir, PATH_MAX))) {
--		if (mode_flag & DETAIL) {
--			PRINT_FILE_NAME(file);
--			STATISTIC_ERR_MSG(NGMSG_LOST_FOUND);
--		}
--			return 0;
--	}
--
--	if (!S_ISREG(buf->st_mode)) {
--		if (mode_flag & DETAIL) {
--			PRINT_FILE_NAME(file);
--			STATISTIC_ERR_MSG(NGMSG_FILE_UNREG);
--		}
--		return 0;
--	}
--
--	/* Access authority */
--	if (current_uid != ROOT_UID &&
--		buf->st_uid != current_uid) {
--		if (mode_flag & DETAIL) {
--			PRINT_FILE_NAME(file);
--			STATISTIC_ERR_MSG(
--				"File is not current user's file"
--				" or current user is not root");
--		}
--		return 0;
--	}
--
--	/* Empty file */
--	if (buf->st_size == 0) {
--		if (mode_flag & DETAIL) {
--			PRINT_FILE_NAME(file);
--			STATISTIC_ERR_MSG("File size is 0");
--		}
--		return 0;
--	}
--
--	/* Has no blocks */
--	if (buf->st_blocks == 0) {
--		if (mode_flag & DETAIL) {
--			PRINT_FILE_NAME(file);
--			STATISTIC_ERR_MSG("File has no blocks");
--		}
--		return 0;
--	}
--
--	fd = open64(file, O_RDONLY);
--	if (fd < 0) {
--		if (mode_flag & DETAIL) {
--			PRINT_FILE_NAME(file);
--			STATISTIC_ERR_MSG_WITH_ERRNO(NGMSG_FILE_OPEN);
--		}
--		return 0;
--	}
--
--	/* Get file's physical extents  */
--	ret = get_file_extents(fd, &physical_list_head);
+  * print_progress -	Print defrag progress
+  *
+  * @file:		file name.
+@@ -1170,15 +966,11 @@ static int file_defrag(const char *file, const struct stat64 *buf,
+ 	int	fd;
+ 	int	donor_fd = -1;
+ 	int	ret;
+-	int	best;
+ 	int	file_frags_start, file_frags_end;
+-	int	orig_physical_cnt, donor_physical_cnt = 0;
+ 	char	tmp_inode_name[PATH_MAX + 8];
+ 	ext4_fsblk_t			blk_count = 0;
+-	struct fiemap_extent_list	*orig_list_physical = NULL;
+-	struct fiemap_extent_list	*orig_list_logical = NULL;
+-	struct fiemap_extent_list	*donor_list_physical = NULL;
+-	struct fiemap_extent_list	*donor_list_logical = NULL;
++	struct fiemap_extent_list	*orig_list = NULL;
++	struct fiemap_extent_list	*donor_list = NULL;
+ 	struct fiemap_extent_group	*orig_group_head = NULL;
+ 	struct fiemap_extent_group	*orig_group_tmp = NULL;
+ 
+@@ -1234,21 +1026,7 @@ static int file_defrag(const char *file, const struct stat64 *buf,
+ 	}
+ 
+ 	/* Get file's extents */
+-	ret = get_file_extents(fd, &orig_list_physical);
 -	if (ret < 0) {
 -		if (mode_flag & DETAIL) {
 -			PRINT_FILE_NAME(file);
--			STATISTIC_ERR_MSG_WITH_ERRNO(NGMSG_FILE_EXTENT);
+-			PRINT_ERR_MSG_WITH_ERRNO(NGMSG_FILE_EXTENT);
 -		}
 -		goto out;
 -	}
 -
 -	/* Get the count of file's continuous physical region */
--	physical_ext_count = get_physical_count(physical_list_head);
+-	orig_physical_cnt = get_physical_count(orig_list_physical);
 -
 -	/* Change list from physical to logical */
--	ret = change_physical_to_logical(&physical_list_head,
--							&logical_list_head);
+-	ret = change_physical_to_logical(&orig_list_physical,
+-							&orig_list_logical);
++	ret = get_file_extents(fd, &orig_list);
+ 	if (ret < 0) {
+ 		if (mode_flag & DETAIL) {
+ 			PRINT_FILE_NAME(file);
+@@ -1258,9 +1036,9 @@ static int file_defrag(const char *file, const struct stat64 *buf,
+ 	}
+ 
+ 	/* Count file fragments before defrag */
+-	file_frags_start = get_logical_count(orig_list_logical);
++	file_frags_start = get_exts_count(orig_list);
+ 
+-	blk_count = get_file_blocks(orig_list_logical);
++	blk_count = get_file_blocks(orig_list);
+ 	if (file_check(fd, buf, file, file_frags_start, blk_count) < 0)
+ 		goto out;
+ 
+@@ -1272,16 +1050,8 @@ static int file_defrag(const char *file, const struct stat64 *buf,
+ 		goto out;
+ 	}
+ 
+-	if (current_uid == ROOT_UID)
+-		best = get_best_count(blk_count);
+-	else
+-		best = 1;
+-
+-	if (file_frags_start <= best)
+-		goto check_improvement;
+-
+ 	/* Combine extents to group */
+-	ret = join_extents(orig_list_logical, &orig_group_head);
++	ret = join_extents(orig_list, &orig_group_head);
+ 	if (ret < 0) {
+ 		if (mode_flag & DETAIL) {
+ 			PRINT_FILE_NAME(file);
+@@ -1335,7 +1105,7 @@ static int file_defrag(const char *file, const struct stat64 *buf,
+ 	} while (orig_group_tmp != orig_group_head);
+ 
+ 	/* Get donor inode's extents */
+-	ret = get_file_extents(donor_fd, &donor_list_physical);
++	ret = get_file_extents(donor_fd, &donor_list);
+ 	if (ret < 0) {
+ 		if (mode_flag & DETAIL) {
+ 			PRINT_FILE_NAME(file);
+@@ -1344,21 +1114,6 @@ static int file_defrag(const char *file, const struct stat64 *buf,
+ 		goto out;
+ 	}
+ 
+-	/* Calcuate donor inode's continuous physical region */
+-	donor_physical_cnt = get_physical_count(donor_list_physical);
+-
+-	/* Change donor extent list from physical to logical */
+-	ret = change_physical_to_logical(&donor_list_physical,
+-							&donor_list_logical);
 -	if (ret < 0) {
 -		if (mode_flag & DETAIL) {
 -			PRINT_FILE_NAME(file);
--			STATISTIC_ERR_MSG_WITH_ERRNO(NGMSG_FILE_EXTENT);
+-			PRINT_ERR_MSG_WITH_ERRNO(NGMSG_FILE_EXTENT);
 -		}
 -		goto out;
 -	}
 -
--	/* Count file fragments before defrag */
--	now_ext_count = get_logical_count(logical_list_head);
--
--	if (current_uid == ROOT_UID) {
--		/* Calculate the size per extent */
--		blk_count = get_file_blocks(logical_list_head);
--
--		best_ext_count = get_best_count(blk_count);
--
--		/* e4defrag rounds size_per_ext up to a block size boundary */
--		size_per_ext = blk_count * (buf->st_blksize / 1024) /
--							now_ext_count;
--
--		ratio = (float)(physical_ext_count - best_ext_count) * 100 /
--							blk_count;
--
--		extents_before_defrag += now_ext_count;
--		extents_after_defrag += best_ext_count;
--		files_block_count += blk_count;
--	}
--
--	if (total_count == 1 && regular_count == 1) {
--		/* File only */
--		if (mode_flag & DETAIL) {
--			int count = 0;
--			struct fiemap_extent_list *ext_list_tmp =
--						logical_list_head;
--
--			/* Print extents info */
--			do {
--				count++;
--				printf("[ext %d]:\tstart %llu:\tlogical "
--						"%llu:\tlen %llu\n", count,
--						ext_list_tmp->data.physical,
--						ext_list_tmp->data.logical,
--						ext_list_tmp->data.len);
--				ext_list_tmp = ext_list_tmp->next;
--			} while (ext_list_tmp != logical_list_head);
--
--		} else {
--			printf("%-40s%10s/%-10s%9s\n",
--					"<File>", "now", "best", "size/ext");
--			if (current_uid == ROOT_UID) {
--				if (strlen(file) > 40)
--					printf("%s\n%50d/%-10d%6llu KB\n",
--						file, now_ext_count,
--						best_ext_count, size_per_ext);
--				else
--					printf("%-40s%10d/%-10d%6llu KB\n",
--						file, now_ext_count,
--						best_ext_count, size_per_ext);
--			} else {
--				if (strlen(file) > 40)
--					printf("%s\n%50d/%-10s%7s\n",
--							file, now_ext_count,
--							"-", "-");
--				else
--					printf("%-40s%10d/%-10s%7s\n",
--							file, now_ext_count,
--							"-", "-");
--			}
--		}
--		succeed_cnt++;
--		goto out;
--	}
--
--	if (mode_flag & DETAIL) {
--		/* Print statistic info */
--		sprintf(msg_buffer, "[%u/%u]%s",
--				defraged_file_count, total_count, file);
--		if (current_uid == ROOT_UID) {
--			if (strlen(msg_buffer) > 40)
--				printf("\033[79;0H\033[K%s\n"
--						"%50d/%-10d%6llu KB\n",
--						msg_buffer, now_ext_count,
--						best_ext_count, size_per_ext);
--			else
--				printf("\033[79;0H\033[K%-40s"
--						"%10d/%-10d%6llu KB\n",
--						msg_buffer, now_ext_count,
--						best_ext_count, size_per_ext);
--		} else {
--			if (strlen(msg_buffer) > 40)
--				printf("\033[79;0H\033[K%s\n%50d/%-10s%7s\n",
--						msg_buffer, now_ext_count,
--							"-", "-");
--			else
--				printf("\033[79;0H\033[K%-40s%10d/%-10s%7s\n",
--						msg_buffer, now_ext_count,
--							"-", "-");
--		}
--	}
--
--	for (i = 0; i < SHOW_FRAG_FILES; i++) {
--		if (ratio >= frag_rank[i].ratio) {
--			for (j = SHOW_FRAG_FILES - 1; j > i; j--) {
--				memset(&frag_rank[j], 0,
--					sizeof(struct frag_statistic_ino));
--				strncpy(frag_rank[j].msg_buffer,
--					frag_rank[j - 1].msg_buffer,
--					strnlen(frag_rank[j - 1].msg_buffer,
--					PATH_MAX));
--				frag_rank[j].now_count =
--					frag_rank[j - 1].now_count;
--				frag_rank[j].best_count =
--					frag_rank[j - 1].best_count;
--				frag_rank[j].size_per_ext =
--					frag_rank[j - 1].size_per_ext;
--				frag_rank[j].ratio =
--					frag_rank[j - 1].ratio;
--			}
--			memset(&frag_rank[i], 0,
--					sizeof(struct frag_statistic_ino));
--			strncpy(frag_rank[i].msg_buffer, file,
--						strnlen(file, PATH_MAX));
--			frag_rank[i].now_count = now_ext_count;
--			frag_rank[i].best_count = best_ext_count;
--			frag_rank[i].size_per_ext = size_per_ext;
--			frag_rank[i].ratio = ratio;
--			break;
--		}
--	}
--
--	succeed_cnt++;
--
--out:
--	close(fd);
--	free_ext(physical_list_head);
--	free_ext(logical_list_head);
--	return 0;
--}
--
- /*
-  * print_progress -	Print defrag progress
-  *
-@@ -1486,7 +1219,7 @@ static int file_defrag(const char *file, const struct stat64 *buf,
- 	if (buf->st_blocks == 0) {
- 		if (mode_flag & DETAIL) {
- 			PRINT_FILE_NAME(file);
--			STATISTIC_ERR_MSG("File has no blocks");
-+			IN_FTW_PRINT_ERR_MSG("File has no blocks");
- 		}
- 		return 0;
+-check_improvement:
+ 	if (mode_flag & DETAIL) {
+ 		if (file_frags_start != 1)
+ 			frag_files_before_defrag++;
+@@ -1366,26 +1121,8 @@ check_improvement:
+ 		extents_before_defrag += file_frags_start;
  	}
-@@ -1703,7 +1436,7 @@ out:
+ 
+-	if (file_frags_start <= best ||
+-			orig_physical_cnt <= donor_physical_cnt) {
+-		printf("\033[79;0H\033[K[%u/%u]%s:\t%3d%%",
+-			defraged_file_count, total_count, file, 100);
+-		if (mode_flag & DETAIL)
+-			printf("  extents: %d -> %d",
+-				file_frags_start, file_frags_start);
+-
+-		printf("\t[ OK ]\n");
+-		succeed_cnt++;
+-
+-		if (file_frags_start != 1)
+-			frag_files_after_defrag++;
+-
+-		extents_after_defrag += file_frags_start;
+-		goto out;
+-	}
+-
+ 	/* Defrag the file */
+-	ret = call_defrag(fd, donor_fd, file, buf, donor_list_logical);
++	ret = call_defrag(fd, donor_fd, file, buf, donor_list);
+ 
+ 	/* Count file fragments after defrag and print extents info */
+ 	if (mode_flag & DETAIL) {
+@@ -1420,9 +1157,8 @@ out:
+ 	close(fd);
+ 	if (donor_fd != -1)
+ 		close(donor_fd);
+-	free_ext(orig_list_physical);
+-	free_ext(orig_list_logical);
+-	free_ext(donor_list_physical);
++	free_ext(orig_list);
++	free_ext(donor_list);
+ 	free_exts_group(orig_group_head);
+ 	return 0;
+ }
+@@ -1436,14 +1172,12 @@ out:
  int main(int argc, char *argv[])
  {
  	int	opt;
--	int	i, j, ret = 0;
-+	int	i, ret = 0;
+-	int	i, ret = 0;
++	int	i;
  	int	flags = FTW_PHYS | FTW_MOUNT;
  	int	arg_type = -1;
  	int	success_flag = 0;
-@@ -1716,14 +1449,11 @@ int main(int argc, char *argv[])
- 	if (argc == 1)
- 		goto out;
+ 	char	dir_name[PATH_MAX + 1];
+-	char	dev_name[PATH_MAX + 1];
+ 	struct stat64	buf;
+-	ext2_filsys fs = NULL;
  
--	while ((opt = getopt(argc, argv, "vc")) != EOF) {
-+	while ((opt = getopt(argc, argv, "v")) != EOF) {
- 		switch (opt) {
- 		case 'v':
- 			mode_flag |= DETAIL;
- 			break;
--		case 'c':
--			mode_flag |= STATISTIC;
--			break;
- 		default:
- 			goto out;
- 		}
-@@ -1744,7 +1474,6 @@ int main(int argc, char *argv[])
+ 	/* Parse arguments */
+ 	if (argc == 1)
+@@ -1474,12 +1208,8 @@ int main(int argc, char *argv[])
  		extents_before_defrag = 0;
  		extents_after_defrag = 0;
  		defraged_file_count = 0;
--		files_block_count = 0;
- 		blocks_per_group = 0;
- 		feature_incompat = 0;
- 		log_groups_per_flex = 0;
-@@ -1752,11 +1481,6 @@ int main(int argc, char *argv[])
+-		blocks_per_group = 0;
+-		feature_incompat = 0;
+-		log_groups_per_flex = 0;
+ 
  		memset(dir_name, 0, PATH_MAX + 1);
- 		memset(dev_name, 0, PATH_MAX + 1);
+-		memset(dev_name, 0, PATH_MAX + 1);
  		memset(lost_found_dir, 0, PATH_MAX + 1);
--		memset(frag_rank, 0,
--			sizeof(struct frag_statistic_ino) * SHOW_FRAG_FILES);
--
--		if ((mode_flag & STATISTIC) && i > optind)
--			printf("\n");
  
  #if BYTE_ORDER != BIG_ENDIAN && BYTE_ORDER != LITTLE_ENDIAN
- 		PRINT_ERR_MSG("Endian's type is not big/little endian");
-@@ -1781,9 +1505,8 @@ int main(int argc, char *argv[])
+@@ -1496,7 +1226,6 @@ int main(int argc, char *argv[])
+ 
+ 		if (S_ISBLK(buf.st_mode)) {
+ 			/* Block device */
+-			strncpy(dev_name, argv[i], strnlen(argv[i], PATH_MAX));
+ 			if (get_mount_point(argv[i], dir_name, PATH_MAX) < 0)
  				continue;
- 			}
- 			arg_type = DEVNAME;
--			if (!(mode_flag & STATISTIC))
--				printf("ext4 defragmentation for device(%s)\n",
--					argv[i]);
-+			printf("ext4 defragmentation for device(%s)\n",
-+				argv[i]);
- 		} else if (S_ISDIR(buf.st_mode)) {
- 			/* Directory */
- 			if (access(argv[i], R_OK) < 0) {
-@@ -1839,9 +1562,8 @@ int main(int argc, char *argv[])
- 
- 		switch (arg_type) {
- 		case DIRNAME:
--			if (!(mode_flag & STATISTIC))
--				printf("ext4 defragmentation "
--					"for directory(%s)\n", argv[i]);
-+			printf("ext4 defragmentation for directory(%s)\n",
-+					argv[i]);
- 
- 			int mount_dir_len = 0;
- 			mount_dir_len = strnlen(lost_found_dir, PATH_MAX);
-@@ -1881,55 +1603,6 @@ int main(int argc, char *argv[])
- 
- 			nftw64(dir_name, calc_entry_counts, FTW_OPEN_FD, flags);
- 
--			if (mode_flag & STATISTIC) {
--				if (mode_flag & DETAIL)
--					printf("%-40s%10s/%-10s%9s\n",
--					"<File>", "now", "best", "size/ext");
--
--				if (!(mode_flag & DETAIL) &&
--						current_uid != ROOT_UID) {
--					printf(" Done.\n");
--					success_flag = 1;
--					continue;
--				}
--
--				nftw64(dir_name, file_statistic,
--							FTW_OPEN_FD, flags);
--
--				if (succeed_cnt != 0 &&
--					current_uid == ROOT_UID) {
--					if (mode_flag & DETAIL)
--						printf("\n");
--					printf("%-40s%10s/%-10s%9s\n",
--						"<Fragmented files>", "now",
--						"best", "size/ext");
--					for (j = 0; j < SHOW_FRAG_FILES; j++) {
--						if (strlen(frag_rank[j].
--							msg_buffer) > 37) {
--							printf("%d. %s\n%50d/"
--							"%-10d%6llu KB\n",
--							j + 1,
--							frag_rank[j].msg_buffer,
--							frag_rank[j].now_count,
--							frag_rank[j].best_count,
--							frag_rank[j].
--								size_per_ext);
--						} else if (strlen(frag_rank[j].
--							msg_buffer) > 0) {
--							printf("%d. %-37s%10d/"
--							"%-10d%6llu KB\n",
--							j + 1,
--							frag_rank[j].msg_buffer,
--							frag_rank[j].now_count,
--							frag_rank[j].best_count,
--							frag_rank[j].
--								size_per_ext);
--						} else
--							break;
--					}
--				}
--				break;
--			}
- 			/* File tree walk */
- 			nftw64(dir_name, file_defrag, FTW_OPEN_FD, flags);
- 			printf("\n\tSuccess:\t\t\t[ %u/%u ]\n", succeed_cnt,
-@@ -1966,12 +1639,8 @@ int main(int argc, char *argv[])
+ 			if (lstat64(dir_name, &buf) < 0) {
+@@ -1532,7 +1261,7 @@ int main(int argc, char *argv[])
+ 		 * filesystem type checked in get_mount_point()
+ 		 */
+ 		if (arg_type == FILENAME || arg_type == DIRNAME) {
+-			if (is_ext4(argv[i], dev_name) < 0)
++			if (is_ext4(argv[i]) < 0)
  				continue;
+ 			if (realpath(argv[i], dir_name) == NULL) {
+ 				perror("Couldn't get full path");
+@@ -1541,25 +1270,6 @@ int main(int argc, char *argv[])
  			}
+ 		}
  
--			if (mode_flag & STATISTIC) {
--				file_statistic(argv[i], &buf, FTW_F, NULL);
--				break;
--			} else
--				printf("ext4 defragmentation for %s\n",
--								 argv[i]);
-+			printf("ext4 defragmentation for %s\n", argv[i]);
-+
- 			/* Defrag single file process */
- 			file_defrag(argv[i], &buf, FTW_F, NULL);
- 			if (succeed_cnt != 0)
-@@ -1984,63 +1653,6 @@ int main(int argc, char *argv[])
- 
- 		if (succeed_cnt != 0)
- 			success_flag = 1;
--		if (mode_flag & STATISTIC) {
--			if (current_uid != ROOT_UID) {
--				printf(" Done.\n");
+-		if (current_uid == ROOT_UID) {
+-			/* Get super block info */
+-			ret = ext2fs_open(dev_name, 0, 0, block_size,
+-					unix_io_manager, &fs);
+-			if (ret) {
+-				if (mode_flag & DETAIL) {
+-					perror("Can't get super block info");
+-					PRINT_FILE_NAME(argv[i]);
+-				}
 -				continue;
 -			}
 -
--			if (!succeed_cnt) {
--				if (mode_flag & DETAIL)
--					printf("\n");
+-			blocks_per_group = fs->super->s_blocks_per_group;
+-			feature_incompat = fs->super->s_feature_incompat;
+-			log_groups_per_flex = fs->super->s_log_groups_per_flex;
 -
--				if (arg_type == DEVNAME)
--					printf(" In this device(%s), "
--					"none can be defragmented.\n", argv[i]);
--				else if (arg_type == DIRNAME)
--					printf(" In this directory(%s), "
--					"none can be defragmented.\n", argv[i]);
--				else
--					printf(" This file(%s) "
--					"can't be defragmented.\n", argv[i]);
--			} else {
--				float files_ratio = 0.0;
--				float score = 0.0;
--				__u64 size_per_ext = files_block_count *
--						(buf.st_blksize / 1024) /
--						extents_before_defrag;
--				files_ratio = (float)(extents_before_defrag -
--						extents_after_defrag) *
--						100 / files_block_count;
--				score = CALC_SCORE(files_ratio);
--				printf("\n Total/best extents\t\t\t\t%d/%d\n"
--					" Average size per extent"
--					"\t\t\t%llu KB\n"
--					" Fragmentation score\t\t\t\t%.0f\n",
--						extents_before_defrag,
--						extents_after_defrag,
--						size_per_ext, score);
--				printf(" [0-30 no problem:"
--					" 31-55 a little bit fragmented:"
--					" 56- needs defrag]\n");
--
--				if (arg_type == DEVNAME)
--					printf(" This device (%s) ", argv[i]);
--				else if (arg_type == DIRNAME)
--					printf(" This directory (%s) ",
--								argv[i]);
--				else
--					printf(" This file (%s) ", argv[i]);
--
--				if (score > BOUND_SCORE)
--					printf("needs defragmentation.\n");
--				else
--					printf("does not need "
--							"defragmentation.\n");
--			}
--			printf(" Done.\n");
+-			ext2fs_close(fs);
 -		}
