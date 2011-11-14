@@ -1,214 +1,95 @@
 From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: [PATCH v3 01/11] libe2p: Add new function e2p_get_fragscore()
-Date: Mon, 14 Nov 2011 15:23:54 +0900
-Message-ID: <4EC0B3FA.9080607@sx.jp.nec.com>
+Subject: [PATCH v3 06/11] e4defrag: Allow user who has read+write access to
+ defrag
+Date: Mon, 14 Nov 2011 15:24:43 +0900
+Message-ID: <4EC0B42B.3030002@sx.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
 Cc: Theodore Tso <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>
 To: ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:57227 "EHLO
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:57323 "EHLO
 	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750944Ab1KNGbk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Nov 2011 01:31:40 -0500
+	with ESMTP id S1751700Ab1KNGcC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Nov 2011 01:32:02 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds e2p_get_fragscore() to libe2p. e2p_get_fragscore() returns
-the fragmentation score. If the number of extents per specified blocks is
-smaller than 1, the fragmentation score is set to zero that means the file has
-no fragmentation. On the other hand, if it is bigger than 1,
-the fragmentation score is set to more than 1 that means the file has
-bad fragmentation. The higher fragmentation score means the worse fragmentation.
-
-Fragmentation score treats extents, whose file offset continues and
-whose status is the same, as one chunk. If the number of extents
-in chunk is equal to the ideal number of extents, the chunk is not used for
-the fragmentation score because there is no fragmentation in the chunk.
-The ideal number of extents is calculated based on @max_chunk_blks.
+Anyone who has read+write access can defrag the file for this fix.
+Currently, non-root user needs owner authority to defrag the file. But non-root
+user who is not owner might have read+write access.
 
 Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
 ---
- lib/e2p/Makefile.in      |    6 +-
- lib/e2p/e2p.h            |    3 +
- lib/e2p/fragment_score.c |  133 +++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 140 insertions(+), 2 deletions(-)
-diff --git a/lib/e2p/Makefile.in b/lib/e2p/Makefile.in
-index e2d0940..b0a1398 100644
---- a/lib/e2p/Makefile.in
-+++ b/lib/e2p/Makefile.in
-@@ -19,7 +19,7 @@ all::	e2p.pc
- OBJS=		feature.o fgetflags.o fsetflags.o fgetversion.o fsetversion.o \
- 		getflags.o getversion.o hashstr.o iod.o ls.o mntopts.o \
- 		parse_num.o pe.o pf.o ps.o setflags.o setversion.o uuid.o \
--		ostype.o percent.o
-+		ostype.o percent.o fragment_score.o
+ misc/e4defrag.8.in |    3 +--
+ misc/e4defrag.c    |   24 ++++--------------------
+ 2 files changed, 5 insertions(+), 22 deletions(-)
+diff --git a/misc/e4defrag.8.in b/misc/e4defrag.8.in
+index e91ac85..d922426 100644
+--- a/misc/e4defrag.8.in
++++ b/misc/e4defrag.8.in
+@@ -46,9 +46,8 @@ is a device or a mount point,
+ .B e4defrag
+ doesn't defragment files in mount point of other device.
+ .PP
+-Non-privileged users can execute
+ .B e4defrag
+-to their own file.
++can be called for the file only if read and write access are allowed.
+ .SH AUTHOR
+ Written by Akira Fujita <a-fujita@rs.jp.nec.com> and Takashi Sato
+ <t-sato@yk.jp.nec.com>.
+diff --git a/misc/e4defrag.c b/misc/e4defrag.c
+index 8b19776..effd774 100644
+--- a/misc/e4defrag.c
++++ b/misc/e4defrag.c
+@@ -156,7 +156,6 @@ int	extents_before_defrag;
+ int	extents_after_defrag;
+ int	mode_flag;
+ unsigned int	threshold;
+-unsigned int	current_uid;
+ unsigned int	defraged_file_count;
+ unsigned int	frag_files_before_defrag;
+ unsigned int	frag_files_after_defrag;
+@@ -477,6 +476,7 @@ static int check_free_size(int fd, const char *file, ext4_fsblk_t blk_count)
+ {
+ 	ext4_fsblk_t	free_blk_count;
+ 	struct statfs64	fsbuf;
++	uid_t		current_uid = getuid();
  
- SRCS=		$(srcdir)/feature.c $(srcdir)/fgetflags.c \
- 		$(srcdir)/fsetflags.c $(srcdir)/fgetversion.c \
-@@ -28,7 +28,7 @@ SRCS=		$(srcdir)/feature.c $(srcdir)/fgetflags.c \
- 		$(srcdir)/ls.c $(srcdir)/mntopts.c $(srcdir)/parse_num.c \
- 		$(srcdir)/pe.c $(srcdir)/pf.c $(srcdir)/ps.c \
- 		$(srcdir)/setflags.c $(srcdir)/setversion.c $(srcdir)/uuid.c \
--		$(srcdir)/ostype.c $(srcdir)/percent.c
-+		$(srcdir)/ostype.c $(srcdir)/percent.c $(srcdir)/fragment_score.c
- HFILES= e2p.h
+ 	if (fstatfs64(fd, &fsbuf) < 0) {
+ 		if (mode_flag & DETAIL) {
+@@ -528,13 +528,12 @@ static int file_frag_count(int fd)
+  * file_check() -	Check file's attributes.
+  *
+  * @fd:			defrag target file's descriptor.
+- * @buf:		a pointer of the struct stat64.
+  * @file:		file name.
+  * @extents:		file extents.
+  * @blk_count:		file blocks.
+  */
+-static int file_check(int fd, const struct stat64 *buf, const char *file,
+-		int extents, ext4_fsblk_t blk_count)
++static int file_check(int fd, const char *file, int extents,
++					ext4_fsblk_t blk_count)
+ {
+ 	int	ret;
+ 	struct flock	lock;
+@@ -558,20 +557,6 @@ static int file_check(int fd, const struct stat64 *buf, const char *file,
+ 		return -1;
+ 	}
  
- LIBRARY= libe2p
-@@ -182,3 +182,5 @@ ostype.o: $(srcdir)/ostype.c $(top_builddir)/lib/config.h \
- percent.o: $(srcdir)/percent.c $(top_builddir)/lib/config.h \
-  $(top_builddir)/lib/dirpaths.h $(srcdir)/e2p.h \
-  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h
-+fragment_score.o: $(srcdir)/fragment_score.c $(srcdir)/e2p.h \
-+ $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h
-diff --git a/lib/e2p/e2p.h b/lib/e2p/e2p.h
-index 4a68dd9..5881256 100644
---- a/lib/e2p/e2p.h
-+++ b/lib/e2p/e2p.h
-@@ -72,3 +72,6 @@ char *e2p_os2string(int os_type);
- int e2p_string2os(char *str);
- 
- unsigned int e2p_percent(int percent, unsigned int base);
-+
-+unsigned int e2p_get_fragscore(int fd, unsigned int threshold,
-+			unsigned int max_chunk_blks, int *errp);
-diff --git a/lib/e2p/fragment_score.c b/lib/e2p/fragment_score.c
-new file mode 100644
-index 0000000..ba2b3ff
---- /dev/null
-+++ b/lib/e2p/fragment_score.c
-@@ -0,0 +1,133 @@
-+/*
-+ * fragment_score.c --- Get file fragmentation score.
-+ *
-+ * Copyright (C) 2011	Kazuya Mio <k-mio@sx.jp.nec.com>
-+ *			NEC Software Tohoku, Ltd.
-+ *
-+ * %Begin-Header%
-+ * This file may be redistributed under the terms of the GNU Library
-+ * General Public License, version 2.
-+ * %End-Header%
-+ */
-+
-+#include "config.h"
-+#if HAVE_ERRNO_H
-+#include <errno.h>
-+#endif
-+#include <string.h>
-+#include <sys/ioctl.h>
-+#include <ext2fs/ext2_types.h>
-+#include <ext2fs/fiemap.h>
-+#include "e2p.h"
-+
-+#define FIGETBSZ	_IO(0x00, 2)
-+
-+#define bad_contiguous_exts(max, cnt, len) \
-+	((!max && cnt > 1) || len <= (__u64)max * (cnt - 1))
-+
-+static int is_extent_continued(struct fiemap_extent *prev_fm_ext,
-+			     struct fiemap_extent *cur_fm_ext)
-+{
-+	/* Check a hole between the extent */
-+	if ((prev_fm_ext->fe_logical + prev_fm_ext->fe_length)
-+		< cur_fm_ext->fe_logical)
-+		return 0;
-+
-+	/* Check a defference of unwritten flag */
-+	if ((prev_fm_ext->fe_flags & FIEMAP_EXTENT_UNWRITTEN)
-+		!= (cur_fm_ext->fe_flags & FIEMAP_EXTENT_UNWRITTEN))
-+		return 0;
-+
-+	/* Two extents are continued */
-+	return 1;
-+}
-+
-+/*
-+ * This function returns the fragmentation score that shows how badly fragmented
-+ * the file might be. The score is extents per @threshold, so the higher score
-+ * means the worse fragmentation.
-+ *
-+ * Fragmentation score treats extents, whose file offset continues and
-+ * whose status is the same, as one chunk. If the number of extents
-+ * in chunk is equal to the ideal number of extents, the chunk is not used for
-+ * the fragmentation score because there is no fragment in the chunk.
-+ * The ideal number of extents is calculated based on @max_chunk_blks.
-+ */
-+unsigned int  e2p_get_fragscore(int fd, unsigned int threshold,
-+					unsigned int max_chunk_blks, int *errp)
-+{
-+	char buf[4096] = "";
-+	struct fiemap *fiemap = (struct fiemap *)buf;
-+	struct fiemap_extent *fm_ext = &fiemap->fm_extents[0];
-+	struct fiemap_extent prev_fm_ext;
-+	unsigned int count = (sizeof(buf) - sizeof(*fiemap)) /
-+				sizeof(struct fiemap_extent);
-+	unsigned int total_cnt = 0, total_len = 0;
-+	unsigned int ext_cnt = 0, ext_len = 0;
-+	unsigned int i;
-+	int bs, last = 0;
-+
-+	if (!threshold) {
-+		*errp = EINVAL;
-+		return 0;
-+	}
-+
-+	/* Get the block size */
-+	if (ioctl(fd, FIGETBSZ, &bs) < 0) {
-+		*errp = errno;
-+		return 0;
-+	}
-+
-+	memset(fiemap, 0, sizeof(struct fiemap));
-+	fiemap->fm_length = ~0ULL;
-+	fiemap->fm_extent_count = count;
-+
-+	do {
-+		if (ioctl(fd, FS_IOC_FIEMAP, (unsigned long) fiemap) < 0) {
-+			*errp = errno;
-+			return 0;
-+		}
-+
-+		/* If 0 extents are returned, then more ioctls are not needed */
-+		if (fiemap->fm_mapped_extents == 0)
-+			break;
-+
-+		for (i = 0; i < fiemap->fm_mapped_extents; i++) {
-+			if (ext_cnt && !is_extent_continued(&prev_fm_ext,
-+								&fm_ext[i])) {
-+				if (bad_contiguous_exts(max_chunk_blks,
-+							ext_cnt, ext_len)) {
-+					total_cnt += ext_cnt;
-+					total_len += ext_len;
-+				}
-+				ext_cnt = 0;
-+				ext_len = 0;
-+			}
-+			ext_cnt++;
-+			ext_len += fm_ext[i].fe_length / bs;
-+
-+			memcpy(&prev_fm_ext, &fm_ext[i],
-+					sizeof(struct fiemap_extent));
-+
-+			if (fm_ext[i].fe_flags & FIEMAP_EXTENT_LAST)
-+				last = 1;
-+		}
-+
-+		fiemap->fm_start = (fm_ext[i-1].fe_logical +
-+				    fm_ext[i-1].fe_length);
-+	} while (last == 0);
-+
-+	/* Check the tail contiguous extent */
-+	if (ext_cnt) {
-+		if (bad_contiguous_exts(max_chunk_blks, ext_cnt, ext_len)) {
-+			total_cnt += ext_cnt;
-+			total_len += ext_len;
-+		}
-+	}
-+
-+	/* Return 0 if there is no valid contiguous extent */
-+	if (!total_len)
-+		return 0;
-+
-+	return (unsigned int)(total_cnt / ((double)total_len / threshold));
-+}
+-	/* Access authority */
+-	if (current_uid != ROOT_UID &&
+-		buf->st_uid != current_uid) {
+-		if (mode_flag & DETAIL) {
+-			printf("\033[79;0H\033[K[%u/%u] \"%s\"\t\t"
+-				"  extents: %d -> %d\n", defraged_file_count,
+-				total_count, file, extents, extents);
+-			IN_FTW_PRINT_ERR_MSG(
+-				"File is not current user's file"
+-				" or current user is not root");
+-		}
+-		return -1;
+-	}
