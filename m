@@ -1,179 +1,214 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH 2/2] ext4: let ext4 cache uninitialized extents
-Date: Mon, 14 Nov 2011 11:07:06 +0800
-Message-ID: <1321240026-844-3-git-send-email-xiaoqiangnk@gmail.com>
-References: <1321240026-844-1-git-send-email-xiaoqiangnk@gmail.com>
-Cc: tytso@mit.edu, Yongqiang Yang <xiaoqiangnk@gmail.com>
-To: linux-ext4@vger.kernel.org
+From: Kazuya Mio <k-mio@sx.jp.nec.com>
+Subject: [PATCH v3 01/11] libe2p: Add new function e2p_get_fragscore()
+Date: Mon, 14 Nov 2011 15:23:54 +0900
+Message-ID: <4EC0B3FA.9080607@sx.jp.nec.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>
+To: ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:38112 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750993Ab1KNF3i (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Nov 2011 00:29:38 -0500
-Received: by mail-iy0-f174.google.com with SMTP id e36so6824050iag.19
-        for <linux-ext4@vger.kernel.org>; Sun, 13 Nov 2011 21:29:37 -0800 (PST)
-In-Reply-To: <1321240026-844-1-git-send-email-xiaoqiangnk@gmail.com>
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:57227 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750944Ab1KNGbk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Nov 2011 01:31:40 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-For now, ext4 does not cache uninitialized extents.  Thus,
-ext4_ext_map_blocks on a fallocated file lookups extent tree
-every time.  This patch tries to cache uninitialized extents.
+This patch adds e2p_get_fragscore() to libe2p. e2p_get_fragscore() returns
+the fragmentation score. If the number of extents per specified blocks is
+smaller than 1, the fragmentation score is set to zero that means the file has
+no fragmentation. On the other hand, if it is bigger than 1,
+the fragmentation score is set to more than 1 that means the file has
+bad fragmentation. The higher fragmentation score means the worse fragmentation.
 
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Fragmentation score treats extents, whose file offset continues and
+whose status is the same, as one chunk. If the number of extents
+in chunk is equal to the ideal number of extents, the chunk is not used for
+the fragmentation score because there is no fragmentation in the chunk.
+The ideal number of extents is calculated based on @max_chunk_blks.
+
+Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
 ---
- fs/ext4/ext4.h    |    1 +
- fs/ext4/extents.c |   52 +++++++++++++++++++++++++++++++++++++++++-----------
- 2 files changed, 42 insertions(+), 11 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 604c200..80d29ed 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -770,6 +770,7 @@ do {									       \
- /*
-  * storage for cached extent
-  * If ec_len == 0, then the cache is invalid.
-+ * If ec_len > EXT_INIT_MAX_LEN, then the cache is uninitialized.
-  * If ec_start == 0, then the cache represents a gap (null mapping)
-  */
- struct ext4_ext_cache {
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index a99d123..7d68186 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2009,6 +2009,18 @@ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
- 	ext4_ext_put_in_cache(inode, lblock, len, 0);
- }
+ lib/e2p/Makefile.in      |    6 +-
+ lib/e2p/e2p.h            |    3 +
+ lib/e2p/fragment_score.c |  133 +++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 140 insertions(+), 2 deletions(-)
+diff --git a/lib/e2p/Makefile.in b/lib/e2p/Makefile.in
+index e2d0940..b0a1398 100644
+--- a/lib/e2p/Makefile.in
++++ b/lib/e2p/Makefile.in
+@@ -19,7 +19,7 @@ all::	e2p.pc
+ OBJS=		feature.o fgetflags.o fsetflags.o fgetversion.o fsetversion.o \
+ 		getflags.o getversion.o hashstr.o iod.o ls.o mntopts.o \
+ 		parse_num.o pe.o pf.o ps.o setflags.o setversion.o uuid.o \
+-		ostype.o percent.o
++		ostype.o percent.o fragment_score.o
  
-+static unsigned int ext4_ext_cache_get_actual_len(struct ext4_ext_cache *cex)
+ SRCS=		$(srcdir)/feature.c $(srcdir)/fgetflags.c \
+ 		$(srcdir)/fsetflags.c $(srcdir)/fgetversion.c \
+@@ -28,7 +28,7 @@ SRCS=		$(srcdir)/feature.c $(srcdir)/fgetflags.c \
+ 		$(srcdir)/ls.c $(srcdir)/mntopts.c $(srcdir)/parse_num.c \
+ 		$(srcdir)/pe.c $(srcdir)/pf.c $(srcdir)/ps.c \
+ 		$(srcdir)/setflags.c $(srcdir)/setversion.c $(srcdir)/uuid.c \
+-		$(srcdir)/ostype.c $(srcdir)/percent.c
++		$(srcdir)/ostype.c $(srcdir)/percent.c $(srcdir)/fragment_score.c
+ HFILES= e2p.h
+ 
+ LIBRARY= libe2p
+@@ -182,3 +182,5 @@ ostype.o: $(srcdir)/ostype.c $(top_builddir)/lib/config.h \
+ percent.o: $(srcdir)/percent.c $(top_builddir)/lib/config.h \
+  $(top_builddir)/lib/dirpaths.h $(srcdir)/e2p.h \
+  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h
++fragment_score.o: $(srcdir)/fragment_score.c $(srcdir)/e2p.h \
++ $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h
+diff --git a/lib/e2p/e2p.h b/lib/e2p/e2p.h
+index 4a68dd9..5881256 100644
+--- a/lib/e2p/e2p.h
++++ b/lib/e2p/e2p.h
+@@ -72,3 +72,6 @@ char *e2p_os2string(int os_type);
+ int e2p_string2os(char *str);
+ 
+ unsigned int e2p_percent(int percent, unsigned int base);
++
++unsigned int e2p_get_fragscore(int fd, unsigned int threshold,
++			unsigned int max_chunk_blks, int *errp);
+diff --git a/lib/e2p/fragment_score.c b/lib/e2p/fragment_score.c
+new file mode 100644
+index 0000000..ba2b3ff
+--- /dev/null
++++ b/lib/e2p/fragment_score.c
+@@ -0,0 +1,133 @@
++/*
++ * fragment_score.c --- Get file fragmentation score.
++ *
++ * Copyright (C) 2011	Kazuya Mio <k-mio@sx.jp.nec.com>
++ *			NEC Software Tohoku, Ltd.
++ *
++ * %Begin-Header%
++ * This file may be redistributed under the terms of the GNU Library
++ * General Public License, version 2.
++ * %End-Header%
++ */
++
++#include "config.h"
++#if HAVE_ERRNO_H
++#include <errno.h>
++#endif
++#include <string.h>
++#include <sys/ioctl.h>
++#include <ext2fs/ext2_types.h>
++#include <ext2fs/fiemap.h>
++#include "e2p.h"
++
++#define FIGETBSZ	_IO(0x00, 2)
++
++#define bad_contiguous_exts(max, cnt, len) \
++	((!max && cnt > 1) || len <= (__u64)max * (cnt - 1))
++
++static int is_extent_continued(struct fiemap_extent *prev_fm_ext,
++			     struct fiemap_extent *cur_fm_ext)
 +{
-+	return cex->ec_start == 0 ? cex->ec_len :
-+	       (cex->ec_len <= EXT_INIT_MAX_LEN ? cex->ec_len :
-+		(cex->ec_len - EXT_INIT_MAX_LEN));
++	/* Check a hole between the extent */
++	if ((prev_fm_ext->fe_logical + prev_fm_ext->fe_length)
++		< cur_fm_ext->fe_logical)
++		return 0;
++
++	/* Check a defference of unwritten flag */
++	if ((prev_fm_ext->fe_flags & FIEMAP_EXTENT_UNWRITTEN)
++		!= (cur_fm_ext->fe_flags & FIEMAP_EXTENT_UNWRITTEN))
++		return 0;
++
++	/* Two extents are continued */
++	return 1;
 +}
 +
-+static int ext4_ext_cache_is_uninitialized(struct ext4_ext_cache *cex)
++/*
++ * This function returns the fragmentation score that shows how badly fragmented
++ * the file might be. The score is extents per @threshold, so the higher score
++ * means the worse fragmentation.
++ *
++ * Fragmentation score treats extents, whose file offset continues and
++ * whose status is the same, as one chunk. If the number of extents
++ * in chunk is equal to the ideal number of extents, the chunk is not used for
++ * the fragmentation score because there is no fragment in the chunk.
++ * The ideal number of extents is calculated based on @max_chunk_blks.
++ */
++unsigned int  e2p_get_fragscore(int fd, unsigned int threshold,
++					unsigned int max_chunk_blks, int *errp)
 +{
-+	return cex->ec_start == 0 ? 0 : cex->ec_len > EXT_INIT_MAX_LEN;
-+}
++	char buf[4096] = "";
++	struct fiemap *fiemap = (struct fiemap *)buf;
++	struct fiemap_extent *fm_ext = &fiemap->fm_extents[0];
++	struct fiemap_extent prev_fm_ext;
++	unsigned int count = (sizeof(buf) - sizeof(*fiemap)) /
++				sizeof(struct fiemap_extent);
++	unsigned int total_cnt = 0, total_len = 0;
++	unsigned int ext_cnt = 0, ext_len = 0;
++	unsigned int i;
++	int bs, last = 0;
 +
- /*
-  * ext4_ext_check_cache()
-  * Checks to see if the given block is in the cache.
-@@ -2042,11 +2054,14 @@ static int ext4_ext_check_cache(struct inode *inode, ext4_lblk_t block,
- 	if (cex->ec_len == 0)
- 		goto errout;
- 
--	if (in_range(block, cex->ec_block, cex->ec_len)) {
-+	if (in_range(block, cex->ec_block,
-+		     ext4_ext_cache_get_actual_len(cex))) {
- 		memcpy(ex, cex, sizeof(struct ext4_ext_cache));
--		ext_debug("%u cached by %u:%u:%llu\n",
--				block,
--				cex->ec_block, cex->ec_len, cex->ec_start);
-+		ext_debug("%u cached by %u:[%d]%u:%llu\n",
-+			  block, cex->ec_block,
-+			  ext4_ext_cache_is_uninitialized(cex),
-+			  ext4_ext_cache_get_actual_len(cex),
-+			  cex->ec_start);
- 		ret = 1;
- 	}
- errout:
-@@ -2061,6 +2076,7 @@ errout:
- 
- #define CACHE_EXTENT_HOLE		1
- #define CACHE_EXTENT_INITIALIZED	2
-+#define CACHE_EXTENT_UNINITIALIZED	3
- /*
-  * ext4_ext_in_cache()
-  * Checks to see if the given block is in the cache.
-@@ -2084,9 +2100,11 @@ ext4_ext_in_cache(struct inode *inode, ext4_lblk_t block,
- 	if (ext4_ext_check_cache(inode, block, &cex)) {
- 		ex->ee_block = cpu_to_le32(cex.ec_block);
- 		ext4_ext_store_pblock(ex, cex.ec_start);
--		ex->ee_len = cpu_to_le16(cex.ec_len);
-+		ex->ee_len = ext4_ext_cache_get_actual_len(&cex);
- 		if (cex.ec_start == 0)
- 			ret = CACHE_EXTENT_HOLE;
-+		else if (ext4_ext_cache_is_uninitialized(&cex))
-+			ret = CACHE_EXTENT_UNINITIALIZED;
- 		else
- 			ret = CACHE_EXTENT_INITIALIZED;
- 	}
-@@ -3483,6 +3501,7 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
- 			ext4_set_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
- 		if (ext4_should_dioread_nolock(inode))
- 			map->m_flags |= EXT4_MAP_UNINIT;
-+		ext4_ext_invalidate_cache(inode);
- 		goto out;
- 	}
- 	/* IO end_io complete, convert the filled extent to written */
-@@ -3493,6 +3512,7 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
- 			ext4_update_inode_fsync_trans(handle, inode, 1);
- 			err = check_eofblocks_fl(handle, inode, map->m_lblk,
- 						 path, map->m_len);
-+			ext4_ext_invalidate_cache(inode);
- 		} else
- 			err = ret;
- 		goto out2;
-@@ -3514,14 +3534,21 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
- 		 * the buffer head will be unmapped so that
- 		 * a read from the block returns 0s.
- 		 */
-+		int depth = ext_depth(inode);
-+		struct ext4_extent *ex = path[depth].p_ext;
-+		ext4_ext_put_in_cache(inode, le32_to_cpu(ex->ee_block),
-+				      le16_to_cpu(ex->ee_len),
-+				      ext4_ext_pblock(ex));
- 		map->m_flags |= EXT4_MAP_UNWRITTEN;
- 		goto out1;
- 	}
- 
- 	/* buffered write, writepage time, convert*/
- 	ret = ext4_ext_convert_to_initialized(handle, inode, map, path);
--	if (ret >= 0)
-+	if (ret >= 0) {
- 		ext4_update_inode_fsync_trans(handle, inode, 1);
-+		ext4_ext_invalidate_cache(inode);
++	if (!threshold) {
++		*errp = EINVAL;
++		return 0;
 +	}
- out:
- 	if (ret <= 0) {
- 		err = ret;
-@@ -3744,6 +3771,12 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 			/* we should allocate requested block */
- 			break;
- 
-+		case CACHE_EXTENT_UNINITIALIZED:
-+			if (flags & EXT4_GET_BLOCKS_CREATE)
-+				break;
 +
-+			map->m_flags |= EXT4_MAP_UNWRITTEN;
++	/* Get the block size */
++	if (ioctl(fd, FIGETBSZ, &bs) < 0) {
++		*errp = errno;
++		return 0;
++	}
 +
- 		case CACHE_EXTENT_INITIALIZED:
- 			/* block is already allocated */
- 			if (sbi->s_cluster_ratio > 1)
-@@ -3808,10 +3841,6 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 				  ee_block, ee_len, newblock);
- 
- 			if ((flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) == 0) {
--				/*
--				 * Do not put uninitialized extent
--				 * in the cache
--				 */
- 				if (!ext4_ext_is_uninitialized(ex)) {
- 					ext4_ext_put_in_cache(inode, ee_block,
- 						ee_len, ee_start);
-@@ -4165,7 +4194,8 @@ out:
- 	if (allocated > map->m_len)
- 		allocated = map->m_len;
- 	ext4_ext_show_leaf(inode, path);
--	map->m_flags |= EXT4_MAP_MAPPED;
-+	if (!(map->m_flags&EXT4_MAP_UNWRITTEN))
-+		map->m_flags |= EXT4_MAP_MAPPED;
- 	map->m_pblk = newblock;
- 	map->m_len = allocated;
- out2:
--- 
-1.7.5.1
-
++	memset(fiemap, 0, sizeof(struct fiemap));
++	fiemap->fm_length = ~0ULL;
++	fiemap->fm_extent_count = count;
++
++	do {
++		if (ioctl(fd, FS_IOC_FIEMAP, (unsigned long) fiemap) < 0) {
++			*errp = errno;
++			return 0;
++		}
++
++		/* If 0 extents are returned, then more ioctls are not needed */
++		if (fiemap->fm_mapped_extents == 0)
++			break;
++
++		for (i = 0; i < fiemap->fm_mapped_extents; i++) {
++			if (ext_cnt && !is_extent_continued(&prev_fm_ext,
++								&fm_ext[i])) {
++				if (bad_contiguous_exts(max_chunk_blks,
++							ext_cnt, ext_len)) {
++					total_cnt += ext_cnt;
++					total_len += ext_len;
++				}
++				ext_cnt = 0;
++				ext_len = 0;
++			}
++			ext_cnt++;
++			ext_len += fm_ext[i].fe_length / bs;
++
++			memcpy(&prev_fm_ext, &fm_ext[i],
++					sizeof(struct fiemap_extent));
++
++			if (fm_ext[i].fe_flags & FIEMAP_EXTENT_LAST)
++				last = 1;
++		}
++
++		fiemap->fm_start = (fm_ext[i-1].fe_logical +
++				    fm_ext[i-1].fe_length);
++	} while (last == 0);
++
++	/* Check the tail contiguous extent */
++	if (ext_cnt) {
++		if (bad_contiguous_exts(max_chunk_blks, ext_cnt, ext_len)) {
++			total_cnt += ext_cnt;
++			total_len += ext_len;
++		}
++	}
++
++	/* Return 0 if there is no valid contiguous extent */
++	if (!total_len)
++		return 0;
++
++	return (unsigned int)(total_cnt / ((double)total_len / threshold));
++}
