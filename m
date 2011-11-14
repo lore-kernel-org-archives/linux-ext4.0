@@ -1,31 +1,33 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/3] libquota: quota file read support
-Date: Mon, 14 Nov 2011 10:58:41 -0500
-Message-ID: <20111114155841.GD7698@thunk.org>
-References: <4EB68D67.909@whamcloud.com>
+Subject: Re: [PATCH 2/3] tune2fs: preserve old limits when turn on quota
+ feature
+Date: Mon, 14 Nov 2011 10:59:35 -0500
+Message-ID: <20111114155935.GE7698@thunk.org>
+References: <4EB68DF8.7030608@whamcloud.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: adityakali@google.com, linux-ext4@vger.kernel.org
 To: Niu <niu@whamcloud.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38441 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:38445 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752528Ab1KNP6n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 Nov 2011 10:58:43 -0500
+	id S1752528Ab1KNP7h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 Nov 2011 10:59:37 -0500
 Content-Disposition: inline
-In-Reply-To: <4EB68D67.909@whamcloud.com>
+In-Reply-To: <4EB68DF8.7030608@whamcloud.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Nov 06, 2011 at 09:36:39PM +0800, Niu wrote:
-> This patch adds read quota file support, which includes:
-> - Improve scan dquot APIs & fix defects in scan dquot functions;
-> - Implement quota_file_open();
-> - Introduce quota_update_inode() to update usage in old quota file,
->   and keep the limits unchanged.
+On Sun, Nov 06, 2011 at 09:39:04PM +0800, Niu wrote:
+> When turn on quota by tune2fs, if the old quota file exist, the quota
+> usage should be recomputed but the old limits should be preserved.
 > 
 > Signed-off-by: Niu Yawei <niu@whamcloud.com>
 
 Thanks, applied.
+
+Note: it looks like we need a similar fix for e2fsck, so that the
+limits are preserved, right?  From what I can tell a patch to fix this
+hasn't crossed my desk yet....
 
 					- Ted
