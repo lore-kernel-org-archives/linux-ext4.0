@@ -1,92 +1,91 @@
-From: Jan Engelhardt <jengelh@medozas.de>
-Subject: ext4 offers less blocks than other fs
-Date: Tue, 15 Nov 2011 20:51:18 +0100 (CET)
-Message-ID: <alpine.LNX.2.01.1111152031020.11901@frira.zrqbmnf.qr>
+From: akpm@linux-foundation.org
+Subject: [patch 1/1] ext4: use proper little-endian bitops
+Date: Tue, 15 Nov 2011 14:56:06 -0800
+Message-ID: <201111152256.pAFMu6Xw017147@wpaz9.hot.corp.google.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ASCII
+Content-Transfer-Encoding: 8bit
+Cc: linux-ext4@vger.kernel.org, akpm@linux-foundation.org,
+	akinobu.mita@gmail.com, adilger.kernel@dilger.ca
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from seven.medozas.de ([188.40.89.202]:49578 "EHLO seven.medozas.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757327Ab1KOTvT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Nov 2011 14:51:19 -0500
-Received: from localhost (localhost [127.0.0.1])
-	by seven.medozas.de (Postfix) with ESMTP id 14EF121A01DF
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Nov 2011 20:51:18 +0100 (CET)
+Received: from mail-ey0-f202.google.com ([209.85.215.202]:62151 "EHLO
+	mail-ey0-f202.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756800Ab1KOW4K (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Nov 2011 17:56:10 -0500
+Received: by eyg5 with SMTP id 5so200774eyg.1
+        for <linux-ext4@vger.kernel.org>; Tue, 15 Nov 2011 14:56:09 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi.
+From: Akinobu Mita <akinobu.mita@gmail.com>
+Subject: ext4: use proper little-endian bitops
 
+ext4_{set,clear}_bit() is defined as __test_and_{set,clear}_bit_le() for
+ext4.  Only two ext4_{set,clear}_bit() calls check the return value.  The
+rest of calls ignore the return value and they can be replaced with
+__{set,clear}_bit_le().
 
-In moving away from some ntfs-3g filesystem to ext4 (migration of a 
-Windows-esque fileserver), I see a rather steep metadata use with ext4 
-such that moving the data was not completely possible. Per df:
+This changes ext4_{set,clear}_bit() from __test_and_{set,clear}_bit_le()
+to __{set,clear}_bit_le() and introduces ext4_test_and_{set,clear}_bit()
+for the two places where old bit needs to be returned.
 
-Filesystem           1K-blocks      Used Available Use% Mounted on
-/dev/dm-5            1953514324 1952543856    970468 100% /mnt/old
-/dev/mapper/data     1922858888 1922858880         0 100% /mnt/new
-[attempted a rsync as root]
+This ext4_{set,clear}_bit() change is considered safe, because if someone
+uses these macros without noticing the change, new ext4_{set,clear}_bit
+don't have return value and causes compiler errors where the return value
+is used.
 
-The blockdev size is just minimally different:
-20:32 nas:~ # blockdev --getsize64 /dev/dm-5
-2000398671872
-20:32 nas:~ # blockdev --getsize64 /dev/dm-6
-2000396836864
+This also removes unused ext4_find_first_zero_bit().
 
-And there is a 29 GB(!) difference between 1953514324 and 1922858888,
-so my question is: where is all of that going?
+Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
 
-(e2fsprogs 1.41.14)
-Filesystem volume name:   data
-Last mounted on:          /mnt/new
-Filesystem UUID:          807fec49-7a8a-3520-a648-be677475377c
-Filesystem magic number:  0xEF53
-Filesystem revision #:    1 (dynamic)
-Filesystem features:      has_journal ext_attr resize_inode dir_index filetype
-needs_recovery extent flex_bg sparse_super large_file huge_file uninit_bg
-dir_nlink extra_isize
-Filesystem flags:         signed_directory_hash 
-Default mount options:    (none)
-Filesystem state:         clean
-Errors behavior:          Continue
-Filesystem OS type:       Linux
-Inode count:              122101760
-Block count:              488378134
-Reserved block count:     24418906
-Free blocks:              480664715
-Free inodes:              122101749
-First block:              0
-Block size:               4096
-Fragment size:            4096
-Reserved GDT blocks:      907
-Blocks per group:         32768
-Fragments per group:      32768
-Inodes per group:         8192
-Inode blocks per group:   512
-Flex block group size:    16
-Filesystem created:       Mon Nov 14 20:43:23 2011
-Last mount time:          Mon Nov 14 20:43:55 2011
-Last write time:          Mon Nov 14 20:43:55 2011
-Mount count:              1
-Maximum mount count:      26
-Last checked:             Mon Nov 14 20:43:23 2011
-Check interval:           15552000 (6 months)
-Next check after:         Sat May 12 21:43:23 2012
-Lifetime writes:          144 MB
-Reserved blocks uid:      0 (user root)
-Reserved blocks gid:      0 (group root)
-First inode:              11
-Inode size:               256
-Required extra isize:     28
-Desired extra isize:      28
-Journal inode:            8
-Default directory hash:   half_md4
-Directory Hash Seed:      5e2619e2-7683-4589-b390-57e569444705
-Journal backup:           inode blocks
-Journal features:         (none)
-Journal size:             128M
-Journal length:           32768
-Journal sequence:         0x00002751
-Journal start:            4341
-[Details about groups 0-14904 omitted.]
+ fs/ext4/ext4.h   |    7 ++++---
+ fs/ext4/ialloc.c |    4 ++--
+ 2 files changed, 6 insertions(+), 5 deletions(-)
+
+diff -puN fs/ext4/ext4.h~ext4-use-proper-little-endian-bitops fs/ext4/ext4.h
+--- a/fs/ext4/ext4.h~ext4-use-proper-little-endian-bitops
++++ a/fs/ext4/ext4.h
+@@ -957,12 +957,13 @@ struct ext4_inode_info {
+ #define test_opt2(sb, opt)		(EXT4_SB(sb)->s_mount_opt2 & \
+ 					 EXT4_MOUNT2_##opt)
+ 
+-#define ext4_set_bit			__test_and_set_bit_le
++#define ext4_test_and_set_bit		__test_and_set_bit_le
++#define ext4_set_bit			__set_bit_le
+ #define ext4_set_bit_atomic		ext2_set_bit_atomic
+-#define ext4_clear_bit			__test_and_clear_bit_le
++#define ext4_test_and_clear_bit		__test_and_clear_bit_le
++#define ext4_clear_bit			__clear_bit_le
+ #define ext4_clear_bit_atomic		ext2_clear_bit_atomic
+ #define ext4_test_bit			test_bit_le
+-#define ext4_find_first_zero_bit	find_first_zero_bit_le
+ #define ext4_find_next_zero_bit		find_next_zero_bit_le
+ #define ext4_find_next_bit		find_next_bit_le
+ 
+diff -puN fs/ext4/ialloc.c~ext4-use-proper-little-endian-bitops fs/ext4/ialloc.c
+--- a/fs/ext4/ialloc.c~ext4-use-proper-little-endian-bitops
++++ a/fs/ext4/ialloc.c
+@@ -252,7 +252,7 @@ void ext4_free_inode(handle_t *handle, s
+ 		fatal = ext4_journal_get_write_access(handle, bh2);
+ 	}
+ 	ext4_lock_group(sb, block_group);
+-	cleared = ext4_clear_bit(bit, bitmap_bh->b_data);
++	cleared = ext4_test_and_clear_bit(bit, bitmap_bh->b_data);
+ 	if (fatal || !cleared) {
+ 		ext4_unlock_group(sb, block_group);
+ 		goto out;
+@@ -618,7 +618,7 @@ static int ext4_claim_inode(struct super
+ 	 */
+ 	down_read(&grp->alloc_sem);
+ 	ext4_lock_group(sb, group);
+-	if (ext4_set_bit(ino, inode_bitmap_bh->b_data)) {
++	if (ext4_test_and_set_bit(ino, inode_bitmap_bh->b_data)) {
+ 		/* not a free inode */
+ 		retval = 1;
+ 		goto err_ret;
+_
