@@ -1,18 +1,16 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH 2/2] ext3: flush journal onmy when journal mode is changed from journaled
-Date: Tue, 15 Nov 2011 16:02:32 +0800
-Message-ID: <1321344152-13033-2-git-send-email-xiaoqiangnk@gmail.com>
-References: <1321344152-13033-1-git-send-email-xiaoqiangnk@gmail.com>
+Subject: [RESEND PATCH 2/2] ext3: flush journal only when journal mode is changed from journaled
+Date: Tue, 15 Nov 2011 16:04:49 +0800
+Message-ID: <1321344289-13125-1-git-send-email-xiaoqiangnk@gmail.com>
 Cc: linux-ext4@vger.kernel.org, Yongqiang Yang <xiaoqiangnk@gmail.com>
 To: jack@suse.cz
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:57673 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753493Ab1KOK1X (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Nov 2011 05:27:23 -0500
-Received: by iage36 with SMTP id e36so8279442iag.19
-        for <linux-ext4@vger.kernel.org>; Tue, 15 Nov 2011 02:27:23 -0800 (PST)
-In-Reply-To: <1321344152-13033-1-git-send-email-xiaoqiangnk@gmail.com>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:45973 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754574Ab1KOK3c (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Nov 2011 05:29:32 -0500
+Received: by ywt32 with SMTP id 32so3279937ywt.19
+        for <linux-ext4@vger.kernel.org>; Tue, 15 Nov 2011 02:29:32 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
