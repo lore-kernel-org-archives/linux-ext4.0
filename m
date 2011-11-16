@@ -1,39 +1,81 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [Cluster-devel] fallocate vs O_(D)SYNC
-Date: Wed, 16 Nov 2011 08:42:34 -0500
-Message-ID: <20111116134234.GA24258@infradead.org>
-References: <20111116084256.GA22963@infradead.org>
- <1321436588.2713.5.camel@menhir>
- <20111116105413.GA2916@quack.suse.cz>
- <20111116124550.GA11650@infradead.org>
- <20111116133915.GD8195@quack.suse.cz>
+From: Ferenc Wagner <wferi@niif.hu>
+Subject: Re: [PATCH] PM / Freezer: Freeze filesystems while freezing processes (v2)
+Date: Wed, 16 Nov 2011 14:49:23 +0100
+Message-ID: <874ny4jhy4.fsf@tac.ki.iif.hu>
+References: <4E1C70AD.1010101@u-club.de> <201109260010.50649.rjw@sisk.pl>
+	<4EA2DDD3.8080306@u-club.de> <201110222335.29573.rjw@sisk.pl>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	mfasheh@suse.com, jlbec@evilplan.org, cluster-devel@redhat.com
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:42560
-	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757225Ab1KPNmh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 Nov 2011 08:42:37 -0500
-Content-Disposition: inline
-In-Reply-To: <20111116133915.GD8195@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Christoph <cr2005@u-club.de>, "Theodore Ts'o" <tytso@mit.edu>,
+	LKML <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
+	Christoph Hellwig <hch@infradead.org>,
+	Nigel Cunningham <nigel@tuxonice.net>,
+	Pavel Machek <pavel@ucw.cz>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	Linux PM list <linux-pm@vger.kernel.org>
+To: "Rafael J. Wysocki" <rjw@sisk.pl>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <201110222335.29573.rjw@sisk.pl> (Rafael J. Wysocki's message of
+	"Sat, 22 Oct 2011 23:35:29 +0200")
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Nov 16, 2011 at 02:39:15PM +0100, Jan Kara wrote:
-> > This would work fine with XFS and be equivalent to what it does for
-> > O_DSYNC now.  But I'd rather see every filesystem do the right thing
-> > and make sure the update actually is on disk when doing O_(D)SYNC
-> > operations.
->   OK, I don't really have a strong opinion here. Are you afraid that just
-> calling fsync() need not be enough to push all updates fallocate did to
-> disk?
+"Rafael J. Wysocki" <rjw@sisk.pl> writes:
 
-No, the point is that you should not have to call fsync when doing
-O_SYNC I/O.  That's the whole point of it.
+> On Saturday, October 22, 2011, Christoph wrote:
+>
+>>> PM / Freezer: Freeze filesystems while freezing processes (v2)
+>>> 
+>>> On Sunday, August 07, 2011, Dave Chinner wrote:
+>>>
+>>>> On Sat, Aug 06, 2011 at 11:17:18PM +0200, Rafael J. Wysocki wrote:
+>>>>
+>>>>> From: Rafael J. Wysocki <rjw@sisk.pl>
+>>>>> 
+>>>>> Freeze all filesystems during the freezing of tasks by calling 
+>>>>> freeze_bdev() for each of them and thaw them during the thawing of
+>>>>> tasks with the help of thaw_bdev().
+>>>>> 
+>>>>> This is needed by hibernation, because some filesystems (e.g. XFS) 
+>>>>> deadlock with the preallocation of memory used by it if the memory 
+>>>>> pressure caused by it is too heavy.
+>>>
+>>> Below is an alternative fix, the changelog pretty much explains the
+>>> idea.
+>>> 
+>>> I've tested it on Toshiba Portege R500, but I don't have an XFS
+>>> partition to verify that it really helps, so I'd appreciate it if
+>>> someone able to reproduce the original issue could test it and report
+>>> back.
+>> 
+>> Well, the kernel bugtracker is still down and I just like to post my
+>> experience with kernel (x64) v3.1-rc8/9 + patches. My machine is a
+>> MacBookPro, doomed with 4GB RAM running debian.
+>> 
+>> Bug #1
+>> 
+>> on the way to hibernate, machine hangs on
+>> 
+>> "PM: Preallocating image memory..."
+>> 
+>> this patch worked for me now for weeks:
+>> "[PATCH] PM / Freezer: Freeze filesystems while freezing processes (v2)"
+>> https://lkml.org/lkml/2011/9/24/77
+>
+> This patch is going to be merged into 3.2.
 
+Hi,
+
+I was the original reporter of the Bugzilla issue, just didn't know
+about this thread until recently.  Anyway, I'm running 3.2-rc1 now,
+which contains the alternative fix, and I can confirm that it indeed
+works: hibernation does not deadlock on my XFS rooted system anymore
+during memory preallocation.  Thanks everybody for his or her work on
+the issue!
+
+To add something still, preallocation now ends with a couple of seconds
+of heavy disk activity, but with several seconds of total inactivity
+beforehand.  Is this warranted by some CPU intensive task at that stage?
+-- 
+Thanks,
+Feri.
