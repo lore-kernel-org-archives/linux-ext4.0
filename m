@@ -1,46 +1,65 @@
-From: David Rientjes <rientjes@google.com>
-Subject: Re: [PATCH] ext4: slab caches set to SLAB_MEM_SPREAD flags.
-Date: Wed, 16 Nov 2011 13:52:46 -0800 (PST)
-Message-ID: <alpine.DEB.2.00.1111161347000.16596@chino.kir.corp.google.com>
-References: <1321455848-1929-1-git-send-email-linkinjeon@gmail.com> <47270FB7-96AC-4F41-98D3-9AD469080DBE@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] e2undo: cast dptr to blk64_t to retrieve block number
+Date: Wed, 16 Nov 2011 17:34:33 -0600
+Message-ID: <4EC44889.7050307@redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Namjae Jeon <linkinjeon@gmail.com>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	Amit Sahrawat <amit.sahrawat83@gmail.com>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:47949 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751383Ab1KPVwu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Nov 2011 16:52:50 -0500
-Received: by yenq3 with SMTP id q3so223537yen.19
-        for <linux-ext4@vger.kernel.org>; Wed, 16 Nov 2011 13:52:49 -0800 (PST)
-In-Reply-To: <47270FB7-96AC-4F41-98D3-9AD469080DBE@mit.edu>
+Received: from mx1.redhat.com ([209.132.183.28]:39402 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753962Ab1KPXee (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 16 Nov 2011 18:34:34 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pAGNYYEk031894
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Nov 2011 18:34:34 -0500
+Received: from Liberator-563.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pAGNYXWQ003423
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Nov 2011 18:34:34 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 16 Nov 2011, Theodore Tso wrote:
+A 32-bit s390 build was failing on a 64-bit s390x host, when
+make check failed e2undo tests, like this:
 
-> On Nov 16, 2011, at 10:04 AM, Namjae Jeon wrote:
-> 
-> > If slab caches set to SLAB_MEM_SPREAD flags, The allocation is spread 
-> > evenly over all the memory nodes instead of favoring allocation on the 
-> > node local to current cpu.
-> 
-> And why do you think this is a good thing?   For mballoc in particular, 
-> the data structures are used immediately and then freed immediately --- 
-> on the local node, so using a non-local memory just makes things worse 
-> in a NUMA system.
-> 
+md5sum before mke2fs 922c8a591c882dbdd1a381d18547cfd5
+using mke2fs to test e2undo
+Overwriting existing filesystem; this can be undone using the command:
+    e2undo /tmp/mke2fs-tmp.EM9XjmTA81.e2undo /tmp/tmp.EM9XjmTA81
 
-I don't think this has the effect that Namjae thinks it does: this is only 
-useful for CONFIG_SLAB and when you have cpusets enabled with 
-cpuset.memory_spread_slab set.
+md5sum after mke2fs cbf32fb6c3db45280ad013f42ac294f1
+Replayed transaction of size 32768 at location 0
+Replayed transaction of size 32768 at location 0
+Replayed transaction of size 32768 at location 0
+Replayed transaction of size 32768 at location 0
+Replayed transaction of size 0 at location 0
+md5sum after e2undo 31b4e14307c5b7ccce5b8d300c2ad5f1
 
-To test how useful it is, you should enable CONFIG_SLAB and then mount 
-cpusets, set cpuset.memory_spread_slab, and create an MPOL_INTERLEAVE 
-mempolicy over all online nodes.  This will have the same effect as adding 
-SLAB_MEM_SPREAD to these slab caches (it just doesn't require the 
-mempolicy) and will be able to quantify the effects without any changes to 
-the kernel at all.
+Note the "at location 0" for the block number.
+
+A proper cast in e2undo.c fixes this up.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+We should have a bingo game for the rest of the unsigned longs that
+are surely lurking around ;)
+
+diff --git a/misc/e2undo.c b/misc/e2undo.c
+index f97ddc2..b1cb750 100644
+--- a/misc/e2undo.c
++++ b/misc/e2undo.c
+@@ -206,7 +206,7 @@ int main(int argc, char *argv[])
+ 				_("Failed tdb_fetch %s\n"), tdb_errorstr(tdb));
+ 			exit(1);
+ 		}
+-		blk_num = *(unsigned long *)key.dptr;
++		blk_num = *(blk64_t *)key.dptr;
+ 		printf(_("Replayed transaction of size %zd at location %llu\n"),
+ 							data.dsize, blk_num);
+ 		retval = io_channel_write_blk64(channel, blk_num,
+
+
