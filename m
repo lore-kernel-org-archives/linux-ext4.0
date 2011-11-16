@@ -1,64 +1,88 @@
-From: Mark Fasheh <mfasheh@suse.de>
-Subject: Re: [Cluster-devel] fallocate vs O_(D)SYNC
-Date: Wed, 16 Nov 2011 12:03:10 -0800
-Message-ID: <20111116200310.GN23779__26395.1629320674$1321473805$gmane$org@wotan.suse.de>
-References: <20111116084256.GA22963@infradead.org> <1321436588.2713.5.camel@menhir> <20111116105413.GA2916@quack.suse.cz> <20111116124550.GA11650@infradead.org> <20111116133915.GD8195@quack.suse.cz> <20111116134234.GA24258@infradead.org> <20111116155755.GA22284@quack.suse.cz> <20111116161806.GP29279@shiny> <20111116193540.GL23779@wotan.suse.de>
-Reply-To: Mark Fasheh <mfasheh@suse.de>
+From: "Rafael J. Wysocki" <rjw@sisk.pl>
+Subject: Re: [PATCH] PM / Freezer: Freeze filesystems while freezing processes (v2)
+Date: Wed, 16 Nov 2011 22:50:41 +0100
+Message-ID: <201111162250.42080.rjw@sisk.pl>
+References: <4E1C70AD.1010101@u-club.de> <201110222335.29573.rjw@sisk.pl> <874ny4jhy4.fsf@tac.ki.iif.hu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-To: Chris Mason <chris.mason@oracle.com>, Jan Kara <jack@suse.cz>,
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: Christoph <cr2005@u-club.de>, "Theodore Ts'o" <tytso@mit.edu>,
+	LKML <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
 	Christoph Hellwig <hch@infradead.org>,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	linux-btrfs@vger.kernel.org, linux-ext4@
+	Nigel Cunningham <nigel@tuxonice.net>,
+	Pavel Machek <pavel@ucw.cz>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	Linux PM list <linux-pm@vger.kernel.org>
+To: Ferenc Wagner <wferi@niif.hu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:49709 "EHLO mx2.suse.de"
+Received: from ogre.sisk.pl ([217.79.144.158]:42891 "EHLO ogre.sisk.pl"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751953Ab1KPUDL convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Nov 2011 15:03:11 -0500
-Content-Disposition: inline
-In-Reply-To: <20111116193540.GL23779@wotan.suse.de>
+	id S1751744Ab1KPVr7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 16 Nov 2011 16:47:59 -0500
+In-Reply-To: <874ny4jhy4.fsf@tac.ki.iif.hu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 16, 2011 at 11:35:40AM -0800, Mark Fasheh wrote:
-> > We should do it per FS though, I'll patch up btrfs.
+On Wednesday, November 16, 2011, Ferenc Wagner wrote:
+> "Rafael J. Wysocki" <rjw@sisk.pl> writes:
 > 
-> I agree about doing it per FS. Ocfs2 just needs a one-liner to mark the
-> journal transaction as synchronous.
+> > On Saturday, October 22, 2011, Christoph wrote:
+> >
+> >>> PM / Freezer: Freeze filesystems while freezing processes (v2)
+> >>> 
+> >>> On Sunday, August 07, 2011, Dave Chinner wrote:
+> >>>
+> >>>> On Sat, Aug 06, 2011 at 11:17:18PM +0200, Rafael J. Wysocki wrote:
+> >>>>
+> >>>>> From: Rafael J. Wysocki <rjw@sisk.pl>
+> >>>>> 
+> >>>>> Freeze all filesystems during the freezing of tasks by calling 
+> >>>>> freeze_bdev() for each of them and thaw them during the thawing of
+> >>>>> tasks with the help of thaw_bdev().
+> >>>>> 
+> >>>>> This is needed by hibernation, because some filesystems (e.g. XFS) 
+> >>>>> deadlock with the preallocation of memory used by it if the memory 
+> >>>>> pressure caused by it is too heavy.
+> >>>
+> >>> Below is an alternative fix, the changelog pretty much explains the
+> >>> idea.
+> >>> 
+> >>> I've tested it on Toshiba Portege R500, but I don't have an XFS
+> >>> partition to verify that it really helps, so I'd appreciate it if
+> >>> someone able to reproduce the original issue could test it and report
+> >>> back.
+> >> 
+> >> Well, the kernel bugtracker is still down and I just like to post my
+> >> experience with kernel (x64) v3.1-rc8/9 + patches. My machine is a
+> >> MacBookPro, doomed with 4GB RAM running debian.
+> >> 
+> >> Bug #1
+> >> 
+> >> on the way to hibernate, machine hangs on
+> >> 
+> >> "PM: Preallocating image memory..."
+> >> 
+> >> this patch worked for me now for weeks:
+> >> "[PATCH] PM / Freezer: Freeze filesystems while freezing processes (v2)"
+> >> https://lkml.org/lkml/2011/9/24/77
+> >
+> > This patch is going to be merged into 3.2.
+> 
+> Hi,
+> 
+> I was the original reporter of the Bugzilla issue, just didn't know
+> about this thread until recently.  Anyway, I'm running 3.2-rc1 now,
+> which contains the alternative fix, and I can confirm that it indeed
+> works: hibernation does not deadlock on my XFS rooted system anymore
+> during memory preallocation.  Thanks everybody for his or her work on
+> the issue!
+> 
+> To add something still, preallocation now ends with a couple of seconds
+> of heavy disk activity, but with several seconds of total inactivity
+> beforehand.  Is this warranted by some CPU intensive task at that stage?
 
-Joel, here's an (untested) patch to fix this in Ocfs2.
-	--Mark
+Quilte frankly, I have no idea.
 
---
-Mark Fasheh
-
-From: Mark Fasheh <mfasheh@suse.com>
-
-ocfs2: honor O_(D)SYNC flag in fallocate
-
-We need to sync the transaction which updates i_size if the file is marked
-as needing sync semantics.
-
-Signed-off-by: Mark Fasheh <mfasheh@suse.de>
----
- fs/ocfs2/file.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
-
-diff --git a/fs/ocfs2/file.c b/fs/ocfs2/file.c
-index de4ea1a..cac00b4 100644
---- a/fs/ocfs2/file.c
-+++ b/fs/ocfs2/file.c
-@@ -1950,6 +1950,9 @@ static int __ocfs2_change_file_space(struct file *file, struct inode *inode,
- 	if (ret < 0)
- 		mlog_errno(ret);
- 
-+	if (file->f_flags & O_SYNC)
-+		handle->h_sync = 1;
-+
- 	ocfs2_commit_trans(osb, handle);
- 
- out_inode_unlock:
--- 
-1.7.6
-
+Thanks,
+Rafael
