@@ -1,48 +1,44 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [PATCH] ext4: slab caches set to SLAB_MEM_SPREAD flags.
-Date: Wed, 16 Nov 2011 10:51:59 -0500
-Message-ID: <47270FB7-96AC-4F41-98D3-9AD469080DBE@mit.edu>
-References: <1321455848-1929-1-git-send-email-linkinjeon@gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1251.1)
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Tso <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	Amit Sahrawat <amit.sahrawat83@gmail.com>
-To: Namjae Jeon <linkinjeon@gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [Cluster-devel] fallocate vs O_(D)SYNC
+Date: Wed, 16 Nov 2011 16:57:55 +0100
+Message-ID: <20111116155755.GA22284@quack.suse.cz>
+References: <20111116084256.GA22963@infradead.org>
+ <1321436588.2713.5.camel@menhir>
+ <20111116105413.GA2916@quack.suse.cz>
+ <20111116124550.GA11650@infradead.org>
+ <20111116133915.GD8195@quack.suse.cz>
+ <20111116134234.GA24258@infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Steven Whitehouse <swhiteho@redhat.com>,
+	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	mfasheh@suse.com, jlbec@evilplan.org, cluster-devel@redhat.com
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DMZ-MAILSEC-SCANNER-1.MIT.EDU ([18.9.25.12]:53346 "EHLO
-	dmz-mailsec-scanner-1.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751517Ab1KPPwI convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 Nov 2011 10:52:08 -0500
-In-Reply-To: <1321455848-1929-1-git-send-email-linkinjeon@gmail.com>
+Received: from cantor2.suse.de ([195.135.220.15]:57445 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753968Ab1KPP6R (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 16 Nov 2011 10:58:17 -0500
+Content-Disposition: inline
+In-Reply-To: <20111116134234.GA24258@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed 16-11-11 08:42:34, Christoph Hellwig wrote:
+> On Wed, Nov 16, 2011 at 02:39:15PM +0100, Jan Kara wrote:
+> > > This would work fine with XFS and be equivalent to what it does for
+> > > O_DSYNC now.  But I'd rather see every filesystem do the right thing
+> > > and make sure the update actually is on disk when doing O_(D)SYNC
+> > > operations.
+> >   OK, I don't really have a strong opinion here. Are you afraid that just
+> > calling fsync() need not be enough to push all updates fallocate did to
+> > disk?
+> 
+> No, the point is that you should not have to call fsync when doing
+> O_SYNC I/O.  That's the whole point of it.
+  I agree with you that userspace shouldn't have to call fsync. What I
+meant is that sys_fallocate() or do_fallocate() can call
+generic_write_sync(file, pos, len), and that would be completely
+transparent to userspace.
 
-On Nov 16, 2011, at 10:04 AM, Namjae Jeon wrote:
-
-> If slab caches set to SLAB_MEM_SPREAD flags, The allocation is spread=
- evenly over all the memory nodes instead of favoring allocation on the=
- node local to current cpu.
-
-And why do you think this is a good thing?   For mballoc in particular,=
- the data structures are used immediately and then freed immediately --=
-- on the local node, so using a non-local memory just makes things wors=
-e in a NUMA system.
-
-=46or the pageio, they are used immediately, and may end up getting fre=
-ed on the same CPU if the I/O interrupt (and hence competion callbacks)=
- happen on the same CPU that they are submitted on=85.
-
-Regards,
-
--- Ted
-
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+									Honza
