@@ -1,81 +1,84 @@
-From: Ferenc Wagner <wferi@niif.hu>
-Subject: Re: [PATCH] PM / Freezer: Freeze filesystems while freezing processes (v2)
-Date: Wed, 16 Nov 2011 14:49:23 +0100
-Message-ID: <874ny4jhy4.fsf@tac.ki.iif.hu>
-References: <4E1C70AD.1010101@u-club.de> <201109260010.50649.rjw@sisk.pl>
-	<4EA2DDD3.8080306@u-club.de> <201110222335.29573.rjw@sisk.pl>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph <cr2005@u-club.de>, "Theodore Ts'o" <tytso@mit.edu>,
-	LKML <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
-	Christoph Hellwig <hch@infradead.org>,
-	Nigel Cunningham <nigel@tuxonice.net>,
-	Pavel Machek <pavel@ucw.cz>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	Linux PM list <linux-pm@vger.kernel.org>
-To: "Rafael J. Wysocki" <rjw@sisk.pl>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <201110222335.29573.rjw@sisk.pl> (Rafael J. Wysocki's message of
-	"Sat, 22 Oct 2011 23:35:29 +0200")
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Namjae Jeon <linkinjeon@gmail.com>
+Subject: [PATCH] ext4: slab caches set to SLAB_MEM_SPREAD flags.
+Date: Thu, 17 Nov 2011 00:04:08 +0900
+Message-ID: <1321455848-1929-1-git-send-email-linkinjeon@gmail.com>
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Namjae Jeon <linkinjeon@gmail.com>,
+	Amit Sahrawat <amit.sahrawat83@gmail.com>
+To: tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:33850 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751915Ab1KPPEd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Nov 2011 10:04:33 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-"Rafael J. Wysocki" <rjw@sisk.pl> writes:
+If slab caches set to SLAB_MEM_SPREAD flags, The allocation is spread evenly over all the memory nodes instead of favoring allocation on the node local to current cpu.
 
-> On Saturday, October 22, 2011, Christoph wrote:
->
->>> PM / Freezer: Freeze filesystems while freezing processes (v2)
->>> 
->>> On Sunday, August 07, 2011, Dave Chinner wrote:
->>>
->>>> On Sat, Aug 06, 2011 at 11:17:18PM +0200, Rafael J. Wysocki wrote:
->>>>
->>>>> From: Rafael J. Wysocki <rjw@sisk.pl>
->>>>> 
->>>>> Freeze all filesystems during the freezing of tasks by calling 
->>>>> freeze_bdev() for each of them and thaw them during the thawing of
->>>>> tasks with the help of thaw_bdev().
->>>>> 
->>>>> This is needed by hibernation, because some filesystems (e.g. XFS) 
->>>>> deadlock with the preallocation of memory used by it if the memory 
->>>>> pressure caused by it is too heavy.
->>>
->>> Below is an alternative fix, the changelog pretty much explains the
->>> idea.
->>> 
->>> I've tested it on Toshiba Portege R500, but I don't have an XFS
->>> partition to verify that it really helps, so I'd appreciate it if
->>> someone able to reproduce the original issue could test it and report
->>> back.
->> 
->> Well, the kernel bugtracker is still down and I just like to post my
->> experience with kernel (x64) v3.1-rc8/9 + patches. My machine is a
->> MacBookPro, doomed with 4GB RAM running debian.
->> 
->> Bug #1
->> 
->> on the way to hibernate, machine hangs on
->> 
->> "PM: Preallocating image memory..."
->> 
->> this patch worked for me now for weeks:
->> "[PATCH] PM / Freezer: Freeze filesystems while freezing processes (v2)"
->> https://lkml.org/lkml/2011/9/24/77
->
-> This patch is going to be merged into 3.2.
+Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
+Signed-off-by: Amit Sahrawat <amit.sahrawat83@gmail.com>
+---
+ fs/ext4/mballoc.c |    9 +++++----
+ fs/ext4/page-io.c |    6 ++++--
+ 2 files changed, 9 insertions(+), 6 deletions(-)
 
-Hi,
-
-I was the original reporter of the Bugzilla issue, just didn't know
-about this thread until recently.  Anyway, I'm running 3.2-rc1 now,
-which contains the alternative fix, and I can confirm that it indeed
-works: hibernation does not deadlock on my XFS rooted system anymore
-during memory preallocation.  Thanks everybody for his or her work on
-the issue!
-
-To add something still, preallocation now ends with a couple of seconds
-of heavy disk activity, but with several seconds of total inactivity
-beforehand.  Is this warranted by some CPU intensive task at that stage?
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index e2d8be8..86efde7 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2407,7 +2407,8 @@ static int ext4_groupinfo_create_slab(size_t size)
+ 				bb_counters[blocksize_bits + 2]);
+ 
+ 	cachep = kmem_cache_create(ext4_groupinfo_slab_names[cache_index],
+-					slab_size, 0, SLAB_RECLAIM_ACCOUNT,
++					slab_size, 0, SLAB_RECLAIM_ACCOUNT |
++					SLAB_MEM_SPREAD,
+ 					NULL);
+ 
+ 	ext4_groupinfo_caches[cache_index] = cachep;
+@@ -2730,19 +2731,19 @@ static void ext4_remove_debugfs_entry(void)
+ int __init ext4_init_mballoc(void)
+ {
+ 	ext4_pspace_cachep = KMEM_CACHE(ext4_prealloc_space,
+-					SLAB_RECLAIM_ACCOUNT);
++					SLAB_RECLAIM_ACCOUNT | SLAB_MEM_SPREAD);
+ 	if (ext4_pspace_cachep == NULL)
+ 		return -ENOMEM;
+ 
+ 	ext4_ac_cachep = KMEM_CACHE(ext4_allocation_context,
+-				    SLAB_RECLAIM_ACCOUNT);
++				SLAB_RECLAIM_ACCOUNT | SLAB_MEM_SPREAD);
+ 	if (ext4_ac_cachep == NULL) {
+ 		kmem_cache_destroy(ext4_pspace_cachep);
+ 		return -ENOMEM;
+ 	}
+ 
+ 	ext4_free_ext_cachep = KMEM_CACHE(ext4_free_data,
+-					  SLAB_RECLAIM_ACCOUNT);
++					SLAB_RECLAIM_ACCOUNT | SLAB_MEM_SPREAD);
+ 	if (ext4_free_ext_cachep == NULL) {
+ 		kmem_cache_destroy(ext4_pspace_cachep);
+ 		kmem_cache_destroy(ext4_ac_cachep);
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 7ce1d0b..4f848e0 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -34,10 +34,12 @@ static struct kmem_cache *io_page_cachep, *io_end_cachep;
+ 
+ int __init ext4_init_pageio(void)
+ {
+-	io_page_cachep = KMEM_CACHE(ext4_io_page, SLAB_RECLAIM_ACCOUNT);
++	io_page_cachep = KMEM_CACHE(ext4_io_page, SLAB_RECLAIM_ACCOUNT |
++				SLAB_MEM_SPREAD);
+ 	if (io_page_cachep == NULL)
+ 		return -ENOMEM;
+-	io_end_cachep = KMEM_CACHE(ext4_io_end, SLAB_RECLAIM_ACCOUNT);
++	io_end_cachep = KMEM_CACHE(ext4_io_end, SLAB_RECLAIM_ACCOUNT |
++				SLAB_MEM_SPREAD);
+ 	if (io_end_cachep == NULL) {
+ 		kmem_cache_destroy(io_page_cachep);
+ 		return -ENOMEM;
 -- 
-Thanks,
-Feri.
+1.7.4.4
+
