@@ -1,42 +1,33 @@
 From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [PATCH 1/2] debugfs: add filefrag command
-Date: Thu, 17 Nov 2011 16:27:39 -0500
-Message-ID: <DBBE60E4-D215-459C-BBBF-59666069D462@mit.edu>
-References: <1321564364-22803-1-git-send-email-tytso@mit.edu> <4EC57A6A.80306@redhat.com>
+Subject: Re: [PATCH] ext4: slab caches set to SLAB_MEM_SPREAD flags.
+Date: Thu, 17 Nov 2011 16:34:52 -0500
+Message-ID: <A5A56693-9C4C-4957-AAA5-3D1BD8AA7DCE@mit.edu>
+References: <1321455848-1929-1-git-send-email-linkinjeon@gmail.com> <47270FB7-96AC-4F41-98D3-9AD469080DBE@mit.edu> <alpine.DEB.2.00.1111161347000.16596@chino.kir.corp.google.com> <CADDb1s1pLddZ4TQciL=yO-17WwQDyLmzP1E8U0UsyiQqez8Q8A@mail.gmail.com> <CAKYAXd9wCJFuJZ8uxHESuq92G9EUc0Dq0ejAwbJk0OrwhCcVCA@mail.gmail.com> <8343168C-D5F7-43E4-B614-45FBAF5B29A7@mit.edu>
 Mime-Version: 1.0 (Apple Message framework v1251.1)
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: Theodore Tso <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Theodore Tso <tytso@mit.edu>, David Rientjes <rientjes@google.com>,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Amit Sahrawat <amit.sahrawat83@gmail.com>
+To: NamJae Jeon <linkinjeon@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DMZ-MAILSEC-SCANNER-2.MIT.EDU ([18.9.25.13]:59660 "EHLO
-	dmz-mailsec-scanner-2.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751898Ab1KQV1g convert rfc822-to-8bit
+Received: from DMZ-MAILSEC-SCANNER-6.MIT.EDU ([18.7.68.35]:54844 "EHLO
+	dmz-mailsec-scanner-6.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752554Ab1KQVeu convert rfc822-to-8bit
 	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 17 Nov 2011 16:27:36 -0500
-In-Reply-To: <4EC57A6A.80306@redhat.com>
+	Thu, 17 Nov 2011 16:34:50 -0500
+In-Reply-To: <8343168C-D5F7-43E4-B614-45FBAF5B29A7@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
-On Nov 17, 2011, at 4:19 PM, Eric Sandeen wrote:
-
-> On 11/17/11 3:12 PM, Theodore Ts'o wrote:
->> Add the ability to report on the fragmentation of a file on a file
->> system opened using debugfs.
->> 
->> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
->> ---
->> debugfs/Makefile.in      |    8 +-
->> debugfs/debug_cmds.ct    |    3 +
->> debugfs/debugfs.8.in     |   21 +++
->> debugfs/debugfs.h        |    1 +
->> debugfs/filefrag.c       |  324 ++++++++++++++++++++++++++++++++++++++++++++++
+On Nov 17, 2011, at 10:11 AM, Theodore Tso wrote:
 > 
-> Is it possible to share any of ^^^ that code ^^^ with misc/filefrag.c somehow?
+> So accessing non-local memory can be a really, really big deal.  And this
+> isn't just theoretical, but have you considered what might happen on a 8
+> core AMD machine?
 
-Well, the debugs code accesses the file system directly; I thought about creating glue code that created an interface similar to FIEMAP ioctl, but the glue code ends up being more than the code to do just do the fragmentation calculation.
+Sorry, typo.  This should have read, "have you considered what might happen on a 8 _socket_ AMD machine"?
 
 -- Ted
 
