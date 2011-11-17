@@ -1,65 +1,41 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] e2undo: cast dptr to blk64_t to retrieve block number
-Date: Wed, 16 Nov 2011 17:34:33 -0600
-Message-ID: <4EC44889.7050307@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: [PATCH 2/6] ext4: remove useless BUG_ON in ext4_ext_insert_extent
+Date: Thu, 17 Nov 2011 10:03:21 +0800
+Message-ID: <1321495405-9583-2-git-send-email-xiaoqiangnk@gmail.com>
+References: <1321495405-9583-1-git-send-email-xiaoqiangnk@gmail.com>
+Cc: linux-ext4@vger.kernel.org, Yongqiang Yang <xiaoqiangnk@gmail.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39402 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753962Ab1KPXee (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 Nov 2011 18:34:34 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pAGNYYEk031894
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Nov 2011 18:34:34 -0500
-Received: from Liberator-563.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pAGNYXWQ003423
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Nov 2011 18:34:34 -0500
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:38853 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754843Ab1KQEbw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Nov 2011 23:31:52 -0500
+Received: by mail-iy0-f174.google.com with SMTP id e36so1594550iag.19
+        for <linux-ext4@vger.kernel.org>; Wed, 16 Nov 2011 20:31:51 -0800 (PST)
+In-Reply-To: <1321495405-9583-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-A 32-bit s390 build was failing on a 64-bit s390x host, when
-make check failed e2undo tests, like this:
+npath is set to NULL and is not set again before BUG_ON, so
+the BUG_ON is useless.
 
-md5sum before mke2fs 922c8a591c882dbdd1a381d18547cfd5
-using mke2fs to test e2undo
-Overwriting existing filesystem; this can be undone using the command:
-    e2undo /tmp/mke2fs-tmp.EM9XjmTA81.e2undo /tmp/tmp.EM9XjmTA81
-
-md5sum after mke2fs cbf32fb6c3db45280ad013f42ac294f1
-Replayed transaction of size 32768 at location 0
-Replayed transaction of size 32768 at location 0
-Replayed transaction of size 32768 at location 0
-Replayed transaction of size 32768 at location 0
-Replayed transaction of size 0 at location 0
-md5sum after e2undo 31b4e14307c5b7ccce5b8d300c2ad5f1
-
-Note the "at location 0" for the block number.
-
-A proper cast in e2undo.c fixes this up.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
+ fs/ext4/extents.c |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
 
-We should have a bingo game for the rest of the unsigned longs that
-are surely lurking around ;)
-
-diff --git a/misc/e2undo.c b/misc/e2undo.c
-index f97ddc2..b1cb750 100644
---- a/misc/e2undo.c
-+++ b/misc/e2undo.c
-@@ -206,7 +206,7 @@ int main(int argc, char *argv[])
- 				_("Failed tdb_fetch %s\n"), tdb_errorstr(tdb));
- 			exit(1);
- 		}
--		blk_num = *(unsigned long *)key.dptr;
-+		blk_num = *(blk64_t *)key.dptr;
- 		printf(_("Replayed transaction of size %zd at location %llu\n"),
- 							data.dsize, blk_num);
- 		retval = io_channel_write_blk64(channel, blk_num,
-
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 6b4a558..8591bc8 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1718,7 +1718,6 @@ int ext4_ext_insert_extent(handle_t *handle, struct inode *inode,
+ 		next = ext4_ext_next_leaf_block(path);
+ 	if (next != EXT_MAX_BLOCKS) {
+ 		ext_debug("next leaf block - %u\n", next);
+-		BUG_ON(npath != NULL);
+ 		npath = ext4_ext_find_extent(inode, next, NULL);
+ 		if (IS_ERR(npath))
+ 			return PTR_ERR(npath);
+-- 
+1.7.5.1
 
