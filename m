@@ -1,385 +1,455 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/2] debugfs: fix gcc -Wall complaints
-Date: Thu, 17 Nov 2011 16:12:44 -0500
-Message-ID: <1321564364-22803-2-git-send-email-tytso@mit.edu>
-References: <1321564364-22803-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 1/2] debugfs: add filefrag command
+Date: Thu, 17 Nov 2011 16:12:43 -0500
+Message-ID: <1321564364-22803-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33085 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:33087 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751843Ab1KQVMp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751898Ab1KQVMp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 17 Nov 2011 16:12:45 -0500
-In-Reply-To: <1321564364-22803-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Add the ability to report on the fragmentation of a file on a file
+system opened using debugfs.
+
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- debugfs/debugfs.c    |    8 +++---
- debugfs/debugfs.h    |    3 ++
- debugfs/filefrag.c   |    2 +-
- debugfs/set_fields.c |   55 ++++++++++++++++++++++++++-----------------------
- misc/e2freefrag.c    |   44 +++++++++++++++++++++------------------
- 5 files changed, 61 insertions(+), 51 deletions(-)
+ debugfs/Makefile.in      |    8 +-
+ debugfs/debug_cmds.ct    |    3 +
+ debugfs/debugfs.8.in     |   21 +++
+ debugfs/debugfs.h        |    1 +
+ debugfs/filefrag.c       |  324 ++++++++++++++++++++++++++++++++++++++++++++++
+ debugfs/ro_debug_cmds.ct |    3 +
+ 6 files changed, 357 insertions(+), 3 deletions(-)
+ create mode 100644 debugfs/filefrag.c
 
-diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-index fda8d92..5751004 100644
---- a/debugfs/debugfs.c
-+++ b/debugfs/debugfs.c
-@@ -284,7 +284,6 @@ void do_init_filesys(int argc, char **argv)
- 	root = cwd = EXT2_ROOT_INO;
- 	return;
- }
--#endif /* READ_ONLY */
+diff --git a/debugfs/Makefile.in b/debugfs/Makefile.in
+index e03a3c6..c6aaa3a 100644
+--- a/debugfs/Makefile.in
++++ b/debugfs/Makefile.in
+@@ -17,15 +17,17 @@ MANPAGES=	debugfs.8
+ MK_CMDS=	_SS_DIR_OVERRIDE=../lib/ss ../lib/ss/mk_cmds
  
- static void print_features(struct ext2_super_block * s, FILE *f)
- {
-@@ -304,6 +303,7 @@ static void print_features(struct ext2_super_block * s, FILE *f)
- 		fputs("(none)", f);
- 	fputs("\n", f);
- }
-+#endif /* READ_ONLY */
+ DEBUG_OBJS= debug_cmds.o debugfs.o util.o ncheck.o icheck.o ls.o \
+-	lsdel.o dump.o set_fields.o logdump.o htree.o unused.o e2freefrag.o
++	lsdel.o dump.o set_fields.o logdump.o htree.o unused.o e2freefrag.o \
++	filefrag.o
  
- static void print_bg_opts(ext2_filsys fs, dgrp_t group, int mask,
- 			  const char *str, int *first, FILE *f)
-@@ -933,7 +933,7 @@ void do_dump_extents(int argc, char **argv)
+ RO_DEBUG_OBJS= ro_debug_cmds.o ro_debugfs.o util.o ncheck.o icheck.o ls.o \
+-	lsdel.o logdump.o htree.o e2freefrag.o
++	lsdel.o logdump.o htree.o e2freefrag.o filefrag.o
  
- static int print_blocks_proc(ext2_filsys fs EXT2FS_ATTR((unused)),
- 			     blk64_t *blocknr,
--			     e2_blkcnt_t blockcnt,
-+			     e2_blkcnt_t blockcnt EXT2FS_ATTR((unused)),
- 			     blk64_t ref_block EXT2FS_ATTR((unused)),
- 			     int ref_offset EXT2FS_ATTR((unused)),
- 			     void *private EXT2FS_ATTR((unused)))
-@@ -1286,6 +1286,7 @@ void do_print_working_directory(int argc, char *argv[])
- 	return;
- }
+ SRCS= debug_cmds.c $(srcdir)/debugfs.c $(srcdir)/util.c $(srcdir)/ls.c \
+ 	$(srcdir)/ncheck.c $(srcdir)/icheck.c $(srcdir)/lsdel.c \
+ 	$(srcdir)/dump.c $(srcdir)/set_fields.c ${srcdir}/logdump.c \
+-	$(srcdir)/htree.c $(srcdir)/unused.c
++	$(srcdir)/htree.c $(srcdir)/unused.c ${srcdir}/../misc/e2freefrag.c \
++	$(srcdir)/filefrag.c
  
-+#ifndef READ_ONLY
- /*
-  * Given a mode, return the ext2 file type
-  */
-@@ -1315,7 +1316,6 @@ static int ext2_file_type(unsigned int mode)
- 	return 0;
- }
+ LIBS= $(LIBEXT2FS) $(LIBE2P) $(LIBSS) $(LIBCOM_ERR) $(LIBBLKID) \
+ 	$(LIBUUID)
+diff --git a/debugfs/debug_cmds.ct b/debugfs/debug_cmds.ct
+index 47de672..af969b1 100644
+--- a/debugfs/debug_cmds.ct
++++ b/debugfs/debug_cmds.ct
+@@ -52,6 +52,9 @@ request do_dump_extents, "Dump extents information ",
+ request do_blocks, "Dump blocks used by an inode ",
+ 	blocks;
  
--#ifndef READ_ONLY
- static void make_link(char *sourcename, char *destname)
- {
- 	ext2_ino_t	ino;
-@@ -2190,7 +2190,7 @@ void do_punch(int argc, char *argv[])
- }
- #endif /* READ_ONLY */
++request do_filefrag, "Report fragmentation information for an inode",
++	filefrag;
++
+ request do_link, "Create directory link",
+ 	link, ln;
  
--void do_dump_mmp(int argc, char *argv[])
-+void do_dump_mmp(int argc EXT2FS_ATTR((unused)), char *argv[])
- {
- 	struct ext2_super_block *sb;
- 	struct mmp_struct *mmp_s;
+diff --git a/debugfs/debugfs.8.in b/debugfs/debugfs.8.in
+index 69490ff..70c8326 100644
+--- a/debugfs/debugfs.8.in
++++ b/debugfs/debugfs.8.in
+@@ -251,6 +251,27 @@ Set or clear various filesystem features in the superblock.  After setting
+ or clearing any filesystem features that were requested, print the current
+ state of the filesystem feature set.
+ .TP
++.I filefrag [-dvr] filespec
++Print the number of contiguous extents in
++.IR filespec .
++If
++.I filespec
++is a directory and the
++.I -d
++option is not specified,
++.I filefrag
++will print the number of contiguous extents for each file in
++the directory.  The
++.I -v
++option will cause
++.I filefrag
++print a tabular listing of the contiguous extents in the
++file.  The
++.I -r
++option will cause
++.I filefrag
++to do a recursive listing of the directory.
++.TP
+ .I find_free_block [count [goal]]
+ Find the first 
+ .I count
 diff --git a/debugfs/debugfs.h b/debugfs/debugfs.h
-index 0afa1df..eb044b1 100644
+index 6d7dfcd..0afa1df 100644
 --- a/debugfs/debugfs.h
 +++ b/debugfs/debugfs.h
-@@ -133,5 +133,8 @@ extern void do_set_current_time(int argc, char **argv);
- extern void do_supported_features(int argc, char **argv);
+@@ -134,3 +134,4 @@ extern void do_supported_features(int argc, char **argv);
  extern void do_punch(int argc, char **argv);
  
-+extern void do_dump_mmp(int argc, char **argv);
-+extern void do_set_mmp_value(int argc, char **argv);
-+
  extern void do_freefrag(int argc, char **argv);
- extern void do_filefrag(int argc, char *argv[]);
++extern void do_filefrag(int argc, char *argv[]);
 diff --git a/debugfs/filefrag.c b/debugfs/filefrag.c
-index 30933b6..7f28bc0 100644
---- a/debugfs/filefrag.c
+new file mode 100644
+index 0000000..30933b6
+--- /dev/null
 +++ b/debugfs/filefrag.c
-@@ -271,7 +271,7 @@ void do_filefrag(int argc, char *argv[])
- 		return;
- 
- 	reset_getopt();
--	while ((c = getopt (argc, argv, "dvr")) != EOF) {
-+	while ((c = getopt(argc, argv, "dvr")) != EOF) {
- 		switch (c) {
- 		case 'd':
- 			fs.options |= DIR_OPT;
-diff --git a/debugfs/set_fields.c b/debugfs/set_fields.c
-index 0041160..08bfd8d 100644
---- a/debugfs/set_fields.c
-+++ b/debugfs/set_fields.c
-@@ -44,6 +44,7 @@ static struct ext2_super_block set_sb;
- static struct ext2_inode_large set_inode;
- static struct ext2_group_desc set_gd;
- static struct ext4_group_desc set_gd4;
-+static struct mmp_struct set_mmp;
- static dgrp_t set_bg;
- static ext2_ino_t set_ino;
- static int array_idx;
-@@ -68,6 +69,8 @@ static errcode_t parse_hashalg(struct field_set_info *info, char *field, char *a
- static errcode_t parse_time(struct field_set_info *info, char *field, char *arg);
- static errcode_t parse_bmap(struct field_set_info *info, char *field, char *arg);
- static errcode_t parse_gd_csum(struct field_set_info *info, char *field, char *arg);
-+static errcode_t parse_mmp_clear(struct field_set_info *info, char *field,
-+				 char *arg);
- 
- static struct field_set_info super_fields[] = {
- 	{ "inodes_count", &set_sb.s_inodes_count, NULL, 4, parse_uint },
-@@ -242,8 +245,17 @@ static struct field_set_info ext4_bg_fields[] = {
- 	{ 0, 0, 0, 0 }
- };
- 
--/* forward declaration */
--static struct field_set_info mmp_fields[];
-+static struct field_set_info mmp_fields[] = {
-+	{ "clear", &set_mmp.mmp_magic, NULL, sizeof(set_mmp), parse_mmp_clear },
-+	{ "magic", &set_mmp.mmp_magic, NULL, 4, parse_uint },
-+	{ "seq", &set_mmp.mmp_seq, NULL, 4, parse_uint },
-+	{ "time", &set_mmp.mmp_time, NULL, 8, parse_uint },
-+	{ "nodename", &set_mmp.mmp_nodename, NULL, sizeof(set_mmp.mmp_nodename),
-+		parse_string },
-+	{ "bdevname", &set_mmp.mmp_bdevname, NULL, sizeof(set_mmp.mmp_bdevname),
-+		parse_string },
-+	{ "check_interval", &set_mmp.mmp_check_interval, NULL, 2, parse_uint },
-+};
- 
- static int check_suffix(const char *field)
- {
-@@ -412,7 +424,8 @@ static errcode_t parse_uint(struct field_set_info *info, char *field,
- 	return 0;
- }
- 
--static errcode_t parse_int(struct field_set_info *info, char *field, char *arg)
-+static errcode_t parse_int(struct field_set_info *info,
-+			   char *field EXT2FS_ATTR((unused)), char *arg)
- {
- 	long	num;
- 	char *tmp;
-@@ -443,8 +456,8 @@ static errcode_t parse_int(struct field_set_info *info, char *field, char *arg)
- 	return 0;
- }
- 
--static errcode_t parse_string(struct field_set_info *info, char *field,
--			      char *arg)
-+static errcode_t parse_string(struct field_set_info *info,
-+			      char *field EXT2FS_ATTR((unused)), char *arg)
- {
- 	char	*cp = (char *) info->ptr;
- 
-@@ -457,7 +470,8 @@ static errcode_t parse_string(struct field_set_info *info, char *field,
- 	return 0;
- }
- 
--static errcode_t parse_time(struct field_set_info *info, char *field, char *arg)
-+static errcode_t parse_time(struct field_set_info *info,
-+			    char *field EXT2FS_ATTR((unused)), char *arg)
- {
- 	time_t		t;
- 	__u32		*ptr32;
-@@ -475,7 +489,8 @@ static errcode_t parse_time(struct field_set_info *info, char *field, char *arg)
- 	return 0;
- }
- 
--static errcode_t parse_uuid(struct field_set_info *info, char *field, char *arg)
-+static errcode_t parse_uuid(struct field_set_info *info,
-+			    char *field EXT2FS_ATTR((unused)), char *arg)
- {
- 	unsigned char *	p = (unsigned char *) info->ptr;
- 
-@@ -493,8 +508,8 @@ static errcode_t parse_uuid(struct field_set_info *info, char *field, char *arg)
- 	return 0;
- }
- 
--static errcode_t parse_hashalg(struct field_set_info *info, char *field,
--			       char *arg)
-+static errcode_t parse_hashalg(struct field_set_info *info,
-+			       char *field EXT2FS_ATTR((unused)), char *arg)
- {
- 	int	hashv;
- 	unsigned char	*p = (unsigned char *) info->ptr;
-@@ -508,8 +523,8 @@ static errcode_t parse_hashalg(struct field_set_info *info, char *field,
- 	return 0;
- }
- 
--static errcode_t parse_bmap(struct field_set_info *info, char *field,
--			    char *arg)
-+static errcode_t parse_bmap(struct field_set_info *info,
-+			    char *field EXT2FS_ATTR((unused)), char *arg)
- {
- 	unsigned long	num;
- 	blk_t		blk;
-@@ -733,8 +748,9 @@ void do_set_block_group_descriptor(int argc, char *argv[])
- 	}
- }
- 
--static errcode_t parse_mmp_clear(struct field_set_info *info, char *field,
--				 char *arg)
-+static errcode_t parse_mmp_clear(struct field_set_info *info,
-+				 char *field EXT2FS_ATTR((unused)),
-+				 char *arg EXT2FS_ATTR((unused)))
- {
- 	errcode_t retval;
- 
-@@ -747,19 +763,6 @@ static errcode_t parse_mmp_clear(struct field_set_info *info, char *field,
- 	return 1; /* we don't need the MMP block written again */
- }
- 
--struct mmp_struct set_mmp;
--static struct field_set_info mmp_fields[] = {
--	{ "clear", &set_mmp.mmp_magic, NULL, sizeof(set_mmp), parse_mmp_clear },
--	{ "magic", &set_mmp.mmp_magic, NULL, 4, parse_uint },
--	{ "seq", &set_mmp.mmp_seq, NULL, 4, parse_uint },
--	{ "time", &set_mmp.mmp_time, NULL, 8, parse_uint },
--	{ "nodename", &set_mmp.mmp_nodename, NULL, sizeof(set_mmp.mmp_nodename),
--		parse_string },
--	{ "bdevname", &set_mmp.mmp_bdevname, NULL, sizeof(set_mmp.mmp_bdevname),
--		parse_string },
--	{ "check_interval", &set_mmp.mmp_check_interval, NULL, 2, parse_uint },
--};
--
- void do_set_mmp_value(int argc, char *argv[])
- {
- 	const char *usage = "<field> <value>\n"
-diff --git a/misc/e2freefrag.c b/misc/e2freefrag.c
-index 0964e66..30af43e 100644
---- a/misc/e2freefrag.c
-+++ b/misc/e2freefrag.c
-@@ -30,7 +30,7 @@ extern int optind;
- #include "ext2fs/ext2fs.h"
- #include "e2freefrag.h"
- 
--void usage(const char *prog)
-+static void usage(const char *prog)
- {
- 	fprintf(stderr, "usage: %s [-c chunksize in kb] [-h] "
- 		"device_name\n", prog);
-@@ -51,7 +51,7 @@ static int ul_log2(unsigned long arg)
-         return l;
- }
- 
--void init_chunk_info(ext2_filsys fs, struct chunk_info *info)
-+static void init_chunk_info(ext2_filsys fs, struct chunk_info *info)
- {
- 	int i;
- 
-@@ -74,15 +74,16 @@ void init_chunk_info(ext2_filsys fs, struct chunk_info *info)
- 	}
- }
- 
--void update_chunk_stats(struct chunk_info *info, unsigned long chunk_size)
-+static void update_chunk_stats(struct chunk_info *info,
-+			       unsigned long chunk_size)
- {
--	unsigned long index;
-+	unsigned long idx;
- 
--	index = ul_log2(chunk_size) + 1;
--	if (index >= MAX_HIST)
--		index = MAX_HIST-1;
--	info->histogram.fc_chunks[index]++;
--	info->histogram.fc_blocks[index] += chunk_size;
-+	idx = ul_log2(chunk_size) + 1;
-+	if (idx >= MAX_HIST)
-+		idx = MAX_HIST-1;
-+	info->histogram.fc_chunks[idx]++;
-+	info->histogram.fc_blocks[idx] += chunk_size;
- 
- 	if (chunk_size > info->max)
- 		info->max = chunk_size;
-@@ -92,7 +93,7 @@ void update_chunk_stats(struct chunk_info *info, unsigned long chunk_size)
- 	info->real_free_chunks++;
- }
- 
--void scan_block_bitmap(ext2_filsys fs, struct chunk_info *info)
-+static void scan_block_bitmap(ext2_filsys fs, struct chunk_info *info)
- {
- 	unsigned long long blocks_count = ext2fs_blocks_count(fs->super);
- 	unsigned long long chunks = (blocks_count + info->blks_in_chunk) >>
-@@ -142,10 +143,11 @@ void scan_block_bitmap(ext2_filsys fs, struct chunk_info *info)
- 		update_chunk_stats(info, last_chunk_size);
- }
- 
--errcode_t get_chunk_info(ext2_filsys fs, struct chunk_info *info, FILE *f)
-+static errcode_t get_chunk_info(ext2_filsys fs, struct chunk_info *info,
-+				FILE *f)
- {
- 	unsigned long total_chunks;
--	char *unitp = "KMGTPEZY";
-+	const char *unitp = "KMGTPEZY";
- 	int units = 10;
- 	unsigned long start = 0, end;
- 	int i, retval = 0;
-@@ -211,7 +213,7 @@ errcode_t get_chunk_info(ext2_filsys fs, struct chunk_info *info, FILE *f)
- 	return retval;
- }
- 
--void close_device(char *device_name, ext2_filsys fs)
-+static void close_device(char *device_name, ext2_filsys fs)
- {
- 	int retval = ext2fs_close(fs);
- 
-@@ -219,7 +221,7 @@ void close_device(char *device_name, ext2_filsys fs)
- 		com_err(device_name, retval, "while closing the filesystem.\n");
- }
- 
--void collect_info(ext2_filsys fs, struct chunk_info *chunk_info, FILE *f)
-+static void collect_info(ext2_filsys fs, struct chunk_info *chunk_info, FILE *f)
- {
- 	unsigned int retval = 0;
- 
-@@ -243,7 +245,8 @@ void collect_info(ext2_filsys fs, struct chunk_info *chunk_info, FILE *f)
- 	}
- }
- 
--void open_device(char *device_name, ext2_filsys *fs)
-+#ifndef DEBUGFS
-+static void open_device(char *device_name, ext2_filsys *fs)
- {
- 	int retval;
- 	int flag = EXT2_FLAG_FORCE;
-@@ -254,9 +257,9 @@ void open_device(char *device_name, ext2_filsys *fs)
- 		exit(1);
- 	}
- }
-+#endif
- 
- #ifdef DEBUGFS
--
- #include "debugfs.h"
- 
- void do_freefrag(int argc, char **argv)
-@@ -264,10 +267,8 @@ void do_freefrag(int argc, char **argv)
- int main(int argc, char *argv[])
- #endif
- {
--	struct chunk_info chunk_info = { };
--	errcode_t retval = 0;
-+	struct chunk_info chunk_info;
- 	ext2_filsys fs = NULL;
--	char *device_name;
- 	char *progname;
- 	char *end;
- 	int c;
-@@ -276,9 +277,12 @@ int main(int argc, char *argv[])
- 	if (check_fs_open(argv[0]))
- 		return;
- #else
-+	char *device_name;
+@@ -0,0 +1,324 @@
++/*
++ * filefrag.c --- display the fragmentation information for a file
++ *
++ * Copyright (C) 2011 Theodore Ts'o.  This file may be redistributed
++ * under the terms of the GNU Public License.
++ */
 +
- 	add_error_table(&et_ext2_error_table);
- #endif
- 	progname = argv[0];
-+	memset(&chunk_info, 0, sizeof(chunk_info));
- 
- 	while ((c = getopt(argc, argv, "c:h")) != EOF) {
- 		switch (c) {
-@@ -326,6 +330,6 @@ int main(int argc, char *argv[])
- #ifndef DEBUGFS
- 	close_device(device_name, fs);
- 
--	return retval;
++#include "config.h"
++#include <stdio.h>
++#include <unistd.h>
++#include <stdlib.h>
++#include <ctype.h>
++#include <string.h>
++#include <time.h>
++#ifdef HAVE_ERRNO_H
++#include <errno.h>
++#endif
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <fcntl.h>
++#include <utime.h>
++#ifdef HAVE_GETOPT_H
++#include <getopt.h>
++#else
++extern int optind;
++extern char *optarg;
++#endif
++
++#include "debugfs.h"
++
++#define VERBOSE_OPT	0x0001
++#define DIR_OPT		0x0002
++#define RECURSIVE_OPT	0x0004
++
++struct dir_list {
++	char		*name;
++	ext2_ino_t	ino;
++	struct dir_list	*next;
++};
++
++struct filefrag_struct {
++	FILE		*f;
++	const char	*name;
++	const char	*dir_name;
++	int		options;
++	int		logical_width;
++	int		physical_width;
++	int		ext;
++	int		cont_ext;
++	e2_blkcnt_t	num;
++	e2_blkcnt_t	logical_start;
++	blk64_t		physical_start;
++	blk64_t		expected;
++	struct dir_list *dir_list, *dir_last;
++};
++
++static int int_log10(unsigned long long arg)
++{
++	int     l = 0;
++
++	arg = arg / 10;
++	while (arg) {
++		l++;
++		arg = arg / 10;
++	}
++	return l;
++}
++
++static void print_header(struct filefrag_struct *fs)
++{
++	if (fs->options & VERBOSE_OPT) {
++		fprintf(fs->f, "%4s %*s %*s %*s %*s\n", "ext",
++			fs->logical_width, "logical", fs->physical_width,
++			"physical", fs->physical_width, "expected",
++			fs->logical_width, "length");
++	}
++}
++
++static void report_filefrag(struct filefrag_struct *fs)
++{
++	if (fs->num == 0)
++		return;
++	if (fs->options & VERBOSE_OPT) {
++		if (fs->expected)
++			fprintf(fs->f, "%4d %*lu %*llu %*llu %*lu\n", fs->ext,
++				fs->logical_width,
++				(unsigned long) fs->logical_start,
++				fs->physical_width, fs->physical_start,
++				fs->physical_width, fs->expected,
++				fs->logical_width, (unsigned long) fs->num);
++		else
++			fprintf(fs->f, "%4d %*lu %*llu %*s %*lu\n", fs->ext,
++				fs->logical_width,
++				(unsigned long) fs->logical_start,
++				fs->physical_width, fs->physical_start,
++				fs->physical_width, "",
++				fs->logical_width, (unsigned long) fs->num);
++	}
++	fs->ext++;
++}
++
++static int filefrag_blocks_proc(ext2_filsys ext4_fs EXT2FS_ATTR((unused)),
++				blk64_t *blocknr, e2_blkcnt_t blockcnt,
++				blk64_t ref_block EXT2FS_ATTR((unused)),
++				int ref_offset EXT2FS_ATTR((unused)),
++				void *private)
++{
++	struct filefrag_struct *fs = private;
++
++	if (blockcnt < 0 || *blocknr == 0)
++		return 0;
++
++	if ((fs->num == 0) || (blockcnt != fs->logical_start + fs->num) ||
++	    (*blocknr != fs->physical_start + fs->num)) {
++		report_filefrag(fs);
++		if (blockcnt == fs->logical_start + fs->num)
++			fs->expected = fs->physical_start + fs->num;
++		else
++			fs->expected = 0;
++		fs->logical_start = blockcnt;
++		fs->physical_start = *blocknr;
++		fs->num = 1;
++		fs->cont_ext++;
++	} else
++		fs->num++;
 +	return 0;
- #endif
- }
++}
++
++static void filefrag(ext2_ino_t ino, struct ext2_inode *inode,
++		     struct filefrag_struct *fs)
++{
++	errcode_t	retval;
++	int		blocksize = current_fs->blocksize;
++
++	fs->logical_width = int_log10((EXT2_I_SIZE(inode) + blocksize - 1) /
++				      blocksize) + 1;
++	if (fs->logical_width < 7)
++		fs->logical_width = 7;
++	fs->ext = 0;
++	fs->cont_ext = 0;
++	fs->logical_start = 0;
++	fs->physical_start = 0;
++	fs->num = 0;
++
++	if (fs->options & VERBOSE_OPT) {
++		blk64_t num_blocks = ext2fs_inode_i_blocks(current_fs, inode);
++
++		if (!(current_fs->super->s_feature_ro_compat &
++		     EXT4_FEATURE_RO_COMPAT_HUGE_FILE) ||
++		    !(inode->i_flags & EXT4_HUGE_FILE_FL))
++			num_blocks /= current_fs->blocksize / 512;
++
++		fprintf(fs->f, "\n%s has %llu block(s), i_size is %llu\n",
++			fs->name, num_blocks, EXT2_I_SIZE(inode));
++	}
++	print_header(fs);
++	retval = ext2fs_block_iterate3(current_fs, ino,
++				       BLOCK_FLAG_READ_ONLY, NULL,
++				       filefrag_blocks_proc, fs);
++	if (retval)
++		com_err("ext2fs_block_iterate3", retval, 0);
++
++	report_filefrag(fs);
++	fprintf(fs->f, "%s: %d contiguous extents%s\n", fs->name, fs->ext,
++		LINUX_S_ISDIR(inode->i_mode) ? " (dir)" : "");
++}
++
++static int filefrag_dir_proc(ext2_ino_t dir EXT2FS_ATTR((unused)),
++			     int	entry,
++			     struct ext2_dir_entry *dirent,
++			     int	offset EXT2FS_ATTR((unused)),
++			     int	blocksize EXT2FS_ATTR((unused)),
++			     char	*buf EXT2FS_ATTR((unused)),
++			     void	*private)
++{
++	struct filefrag_struct *fs = private;
++	struct ext2_inode	inode;
++	ext2_ino_t		ino;
++	char			name[EXT2_NAME_LEN + 1];
++	char			*cp;
++	int			thislen;
++
++	if (entry == DIRENT_DELETED_FILE)
++		return 0;
++
++	thislen = dirent->name_len & 0xFF;
++	strncpy(name, dirent->name, thislen);
++	name[thislen] = '\0';
++	ino = dirent->inode;
++
++	if (!strcmp(name, ".") || !strcmp(name, ".."))
++		return 0;
++
++	cp = malloc(strlen(fs->dir_name) + strlen(name) + 2);
++	if (!cp) {
++		fprintf(stderr, "Couldn't allocate memory for %s/%s\n",
++			fs->dir_name, name);
++		return 0;
++	}
++
++	sprintf(cp, "%s/%s", fs->dir_name, name);
++	fs->name = cp;
++
++	if (debugfs_read_inode(ino, &inode, fs->name))
++		goto errout;
++
++	filefrag(ino, &inode, fs);
++
++	if ((fs->options & RECURSIVE_OPT) && LINUX_S_ISDIR(inode.i_mode)) {
++		struct dir_list *p;
++
++		p = malloc(sizeof(struct dir_list));
++		if (!p) {
++			fprintf(stderr, "Couldn't allocate dir_list for %s\n",
++				fs->name);
++			goto errout;
++		}
++		memset(p, 0, sizeof(struct dir_list));
++		p->name = cp;
++		p->ino = ino;
++		if (fs->dir_last)
++			fs->dir_last->next = p;
++		else
++			fs->dir_list = p;
++		fs->dir_last = p;
++		return 0;
++	}
++errout:
++	free(cp);
++	fs->name = 0;
++	return 0;
++}
++
++
++static void dir_iterate(ext2_ino_t ino, struct filefrag_struct *fs)
++{
++	errcode_t	retval;
++	struct dir_list	*p = NULL;
++
++	fs->dir_name = fs->name;
++
++	while (1) {
++		retval = ext2fs_dir_iterate2(current_fs, ino, 0,
++					     0, filefrag_dir_proc, fs);
++		if (retval)
++			com_err("ext2fs_dir_iterate2", retval, 0);
++		if (p) {
++			free(p->name);
++			fs->dir_list = p->next;
++			if (!fs->dir_list)
++				fs->dir_last = 0;
++			free(p);
++		}
++		p = fs->dir_list;
++		if (!p)
++			break;
++		ino = p->ino;
++		fs->dir_name = p->name;
++	}
++}
++
++void do_filefrag(int argc, char *argv[])
++{
++	struct filefrag_struct fs;
++	struct ext2_inode inode;
++	ext2_ino_t	ino;
++	int		c;
++
++	memset(&fs, 0, sizeof(fs));
++	if (check_fs_open(argv[0]))
++		return;
++
++	reset_getopt();
++	while ((c = getopt (argc, argv, "dvr")) != EOF) {
++		switch (c) {
++		case 'd':
++			fs.options |= DIR_OPT;
++			break;
++		case 'v':
++			fs.options |= VERBOSE_OPT;
++			break;
++		case 'r':
++			fs.options |= RECURSIVE_OPT;
++			break;
++		default:
++			goto print_usage;
++		}
++	}
++
++	if (argc > optind+1) {
++	print_usage:
++		com_err(0, 0, "Usage: filefrag [-dv] file");
++		return;
++	}
++
++	if (argc == optind) {
++		ino = cwd;
++		fs.name = ".";
++	} else {
++		ino = string_to_inode(argv[optind]);
++		fs.name = argv[optind];
++	}
++	if (!ino)
++		return;
++
++	if (debugfs_read_inode(ino, &inode, argv[0]))
++		return;
++
++	fs.f = open_pager();
++	fs.physical_width = int_log10(ext2fs_blocks_count(current_fs->super));
++	fs.physical_width++;
++	if (fs.physical_width < 8)
++		fs.physical_width = 8;
++
++	if (!LINUX_S_ISDIR(inode.i_mode) || (fs.options & DIR_OPT))
++		filefrag(ino, &inode, &fs);
++	else
++		dir_iterate(ino, &fs);
++
++	fprintf(fs.f, "\n");
++	close_pager(fs.f);
++
++	return;
++}
+diff --git a/debugfs/ro_debug_cmds.ct b/debugfs/ro_debug_cmds.ct
+index 7eb552d..4feb621 100644
+--- a/debugfs/ro_debug_cmds.ct
++++ b/debugfs/ro_debug_cmds.ct
+@@ -45,6 +45,9 @@ request do_dump_extents, "Dump extents information ",
+ request do_blocks, "Dump blocks used by an inode ",
+ 	blocks;
+ 
++request do_filefrag, "Report fragmentation information for an inode",
++	filefrag;
++
+ request do_testi, "Test an inode's in-use flag",
+ 	testi;
+ 
 -- 
 1.7.4.1.22.gec8e1.dirty
 
