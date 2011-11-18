@@ -1,17 +1,17 @@
 From: Robin Dong <hao.bigrat@gmail.com>
-Subject: [PATCH 4/5 bigalloc] e2fsck: support cluster unit of ee_block and ee_len
-Date: Fri, 18 Nov 2011 18:55:29 +0800
-Message-ID: <1321613730-10600-5-git-send-email-hao.bigrat@gmail.com>
+Subject: [PATCH 5/5 bigalloc] e2fsprogs: make ext2fs_extent_set_bmap() to support cluster unit of ee_block and ee_len
+Date: Fri, 18 Nov 2011 18:55:30 +0800
+Message-ID: <1321613730-10600-6-git-send-email-hao.bigrat@gmail.com>
 References: <1321613730-10600-1-git-send-email-hao.bigrat@gmail.com>
 Cc: Robin Dong <sanbai@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:33147 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752262Ab1KRKzv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Nov 2011 05:55:51 -0500
-Received: by mail-iy0-f174.google.com with SMTP id e36so3440789iag.19
-        for <linux-ext4@vger.kernel.org>; Fri, 18 Nov 2011 02:55:51 -0800 (PST)
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:53369 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752262Ab1KRKzy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Nov 2011 05:55:54 -0500
+Received: by mail-yw0-f46.google.com with SMTP id 32so2287845ywt.19
+        for <linux-ext4@vger.kernel.org>; Fri, 18 Nov 2011 02:55:54 -0800 (PST)
 In-Reply-To: <1321613730-10600-1-git-send-email-hao.bigrat@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -20,180 +20,224 @@ From: Robin Dong <sanbai@taobao.com>
 
 Signed-off-by: Robin Dong <sanbai@taobao.com>
 ---
- e2fsck/pass1.c |   63 +++++++++++++++++++++++++++++++++++++++----------------
- 1 files changed, 44 insertions(+), 19 deletions(-)
+ lib/ext2fs/extent.c |   76 ++++++++++++++++++++++++++++++---------------------
+ 1 files changed, 45 insertions(+), 31 deletions(-)
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 532e132..70d26df 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -1741,6 +1741,8 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
- {
- 	struct ext2fs_extent	extent;
- 	blk64_t			blk;
-+	blk64_t			elblk;
-+	__u32			elen;
- 	e2_blkcnt_t		blockcnt;
- 	unsigned int		i;
- 	int			is_dir, is_leaf;
-@@ -1753,6 +1755,8 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
+diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
+index 32eb171..c646604 100644
+--- a/lib/ext2fs/extent.c
++++ b/lib/ext2fs/extent.c
+@@ -516,7 +516,7 @@ retry:
+ 			ix++;
+ 			end_blk = ext2fs_le32_to_cpu(ix->ei_block);
+ 		} else
+-			end_blk = path->end_blk;
++			end_blk = EXT2FS_B2C(handle->fs, path->end_blk);
  
- 	pctx->errcode = ext2fs_extent_get(ehandle, EXT2_EXTENT_FIRST_SIB,
- 					  &extent);
-+	elblk = extent.e_lblk << ctx->fs->cluster_ratio_bits;
-+	elen = extent.e_len << ctx->fs->cluster_ratio_bits;
- 	while (!pctx->errcode && info.num_entries-- > 0) {
- 		is_leaf = extent.e_flags & EXT2_EXTENT_FLAGS_LEAF;
- 		is_dir = LINUX_S_ISDIR(pctx->inode->i_mode);
-@@ -1762,18 +1766,18 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
- 		    extent.e_pblk < ctx->fs->super->s_first_data_block ||
- 		    extent.e_pblk >= ext2fs_blocks_count(ctx->fs->super))
- 			problem = PR_1_EXTENT_BAD_START_BLK;
--		else if (extent.e_lblk < start_block)
-+		else if (elblk < start_block)
- 			problem = PR_1_OUT_OF_ORDER_EXTENTS;
- 		else if (is_leaf &&
--			 (extent.e_pblk + extent.e_len) >
-+			 (extent.e_pblk + elen) >
- 			 ext2fs_blocks_count(ctx->fs->super))
- 			problem = PR_1_EXTENT_ENDS_BEYOND;
- 
- 		if (problem) {
- 		report_problem:
- 			pctx->blk = extent.e_pblk;
--			pctx->blk2 = extent.e_lblk;
--			pctx->num = extent.e_len;
-+			pctx->blk2 = elblk;
-+			pctx->num = elen;
- 			if (fix_problem(ctx, problem, pctx)) {
- 				e2fsck_read_bitmaps(ctx);
- 				pctx->errcode =
-@@ -1785,6 +1789,10 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
- 				pctx->errcode = ext2fs_extent_get(ehandle,
- 								  EXT2_EXTENT_CURRENT,
- 								  &extent);
-+				elblk = extent.e_lblk <<
-+					ctx->fs->cluster_ratio_bits;
-+				elen = extent.e_len <<
-+					ctx->fs->cluster_ratio_bits;
- 				if (pctx->errcode == EXT2_ET_NO_CURRENT_NODE) {
- 					pctx->errcode = 0;
- 					break;
-@@ -1805,11 +1813,13 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
- 					goto report_problem;
- 				return;
- 			}
--			scan_extent_node(ctx, pctx, pb, extent.e_lblk, ehandle);
-+			scan_extent_node(ctx, pctx, pb, elblk, ehandle);
- 			if (pctx->errcode)
- 				return;
- 			pctx->errcode = ext2fs_extent_get(ehandle,
- 						  EXT2_EXTENT_UP, &extent);
-+			elblk = extent.e_lblk << ctx->fs->cluster_ratio_bits;
-+			elen = extent.e_len << ctx->fs->cluster_ratio_bits;
- 			if (pctx->errcode) {
- 				pctx->str = "EXT2_EXTENT_UP";
- 				return;
-@@ -1835,12 +1845,12 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
- 				       (unsigned long) pctx->ino, type,
- 				       (unsigned long) pb->previous_block+1,
- 				       (unsigned long) extent.e_pblk,
--				       (unsigned long) extent.e_lblk,
--				       (unsigned long) extent.e_len);
-+				       (unsigned long) elblk,
-+				       (unsigned long) elen);
- 			}
- 			pb->fragmented = 1;
- 		}
--		while (is_dir && ++pb->last_db_block < extent.e_lblk) {
-+		while (is_dir && ++pb->last_db_block < elblk) {
- 			pctx->errcode = ext2fs_add_dir_block2(ctx->fs->dblist,
- 							      pb->ino, 0,
- 							      pb->last_db_block);
-@@ -1850,8 +1860,7 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
- 				goto failed_add_dir_block;
- 			}
- 		}
--		for (blk = extent.e_pblk, blockcnt = extent.e_lblk, i = 0;
--		     i < extent.e_len;
-+		for (blk = extent.e_pblk, blockcnt = elblk, i = 0; i < elen;
- 		     blk++, blockcnt++, i++) {
- 			if (!(ctx->fs->cluster_ratio_bits &&
- 			      pb->previous_block &&
-@@ -1865,7 +1874,8 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
- 
- 			pb->previous_block = blk;
- 
--			if (is_dir) {
-+			if (is_dir && i < (pctx->inode->i_size /
-+						ctx->fs->blocksize)) {
- 				pctx->errcode = ext2fs_add_dir_block2(ctx->fs->dblist, pctx->ino, blk, blockcnt);
- 				if (pctx->errcode) {
- 					pctx->blk = blk;
-@@ -1878,14 +1888,16 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
- 				}
- 			}
- 		}
--		if (is_dir && extent.e_len > 0)
-+		if (is_dir && elen > 0)
- 			pb->last_db_block = blockcnt - 1;
--		pb->previous_block = extent.e_pblk + extent.e_len - 1;
--		start_block = pb->last_block = extent.e_lblk + extent.e_len - 1;
-+		pb->previous_block = extent.e_pblk + elen - 1;
-+		start_block = pb->last_block = elblk + elen - 1;
- 	next:
- 		pctx->errcode = ext2fs_extent_get(ehandle,
- 						  EXT2_EXTENT_NEXT_SIB,
- 						  &extent);
-+		elblk = extent.e_lblk << ctx->fs->cluster_ratio_bits;
-+		elen = extent.e_len << ctx->fs->cluster_ratio_bits;
+ 		extent->e_len = end_blk - extent->e_lblk;
  	}
- 	if (pctx->errcode == EXT2_ET_EXTENT_NO_NEXT)
- 		pctx->errcode = 0;
-@@ -1944,6 +1956,7 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
- 	int		dirty_inode = 0;
- 	int		extent_fs;
- 	__u64		size;
-+	__u32		last_cluster;
+@@ -854,7 +854,7 @@ static errcode_t extent_node_split(ext2_extent_handle_t handle)
  
- 	pb.ino = ino;
- 	pb.num_blocks = 0;
-@@ -2055,9 +2068,15 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
- 		else if (nblock > (pb.last_block + 1))
- 			bad_size = 1;
- 		else if (nblock < (pb.last_block + 1)) {
--			if (((pb.last_block + 1) - nblock) >
--			    fs->super->s_prealloc_dir_blocks)
--				bad_size = 2;
-+			if (fs->cluster_ratio_bits > 0) {
-+				if ((EXT2FS_B2C(fs, pb.last_block) -
-+						EXT2FS_B2C(fs, nblock)) > 1)
-+					bad_size = 2;
-+			} else {
-+				if (((pb.last_block + 1) - nblock) >
-+				    fs->super->s_prealloc_dir_blocks)
-+					bad_size = 2;
-+			}
+ 	/* save the position we were originally splitting... */
+ 	orig_height = info.max_depth - info.curr_level;
+-	orig_lblk = extent.e_lblk;
++	orig_lblk = EXT2FS_C2B(handle->fs, extent.e_lblk);
+ 
+ 	/* Is there room in the parent for a new entry? */
+ 	if (handle->level &&
+@@ -1000,7 +1000,8 @@ static errcode_t extent_node_split(ext2_extent_handle_t handle)
+ 
+ 		extent.e_lblk = new_node_start;
+ 		extent.e_pblk = new_node_pblk;
+-		extent.e_len = handle->path[0].end_blk - extent.e_lblk;
++		extent.e_len = EXT2FS_B2C(handle->fs, handle->path[0].end_blk -
++				EXT2FS_C2B(handle->fs, extent.e_lblk));
+ 		retval = ext2fs_extent_replace(handle, 0, &extent);
+ 		if (retval)
+ 			goto done;
+@@ -1157,6 +1158,7 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
+ 	struct ext2fs_extent	extent, next_extent, prev_extent;
+ 	struct ext2fs_extent	newextent;
+ 	struct ext2_extent_info	info;
++	ext2_filsys		fs = handle->fs;
+ 
+ 	EXT2_CHECK_MAGIC(handle, EXT2_ET_MAGIC_EXTENT_HANDLE);
+ 
+@@ -1182,7 +1184,7 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
+ 	if (physical) {
+ 		newextent.e_len = 1;
+ 		newextent.e_pblk = physical;
+-		newextent.e_lblk = logical;
++		newextent.e_lblk = EXT2FS_B2C(handle->fs, logical);
+ 		newextent.e_flags = EXT2_EXTENT_FLAGS_LEAF;
+ 		if (new_uninit)
+ 			newextent.e_flags |= EXT2_EXTENT_FLAGS_UNINIT;
+@@ -1204,7 +1206,7 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
+ 	if ((retval = ext2fs_extent_get_info(handle, &info)))
+ 		return retval;
+ 	orig_height = info.max_depth - info.curr_level;
+-	orig_lblk = extent.e_lblk;
++	orig_lblk = EXT2FS_C2B(handle->fs, extent.e_lblk);
+ 
+ 	/* go to the logical spot we want to (re/un)map */
+ 	retval = ext2fs_extent_goto(handle, logical);
+@@ -1267,7 +1269,8 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
+ 
+ 	/* check if already pointing to the requested physical */
+ 	if (mapped && (new_uninit == extent_uninit) &&
+-	    (extent.e_pblk + (logical - extent.e_lblk) == physical)) {
++	    (extent.e_pblk + (logical - EXT2FS_C2B(handle->fs, extent.e_lblk))
++	     == physical)) {
+ #ifdef DEBUG
+ 		printf("physical block (at %llu) unchanged\n", logical);
+ #endif
+@@ -1278,25 +1281,30 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
+ #ifdef DEBUG
+ 		printf("mapping unmapped logical block %llu\n", logical);
+ #endif
+-		if ((logical == extent.e_lblk + extent.e_len) &&
+-		    (physical == extent.e_pblk + extent.e_len) &&
++		if ((logical == EXT2FS_C2B(fs, extent.e_lblk + extent.e_len)) &&
++		    (physical == extent.e_pblk +
++		     EXT2FS_C2B(fs, extent.e_len)) &&
+ 		    (new_uninit == extent_uninit) &&
+-		    ((int) extent.e_len < max_len-1)) {
++		    ((int) EXT2FS_C2B(fs, extent.e_len) < max_len - 1)) {
+ 			extent.e_len++;
+ 			retval = ext2fs_extent_replace(handle, 0, &extent);
+-		} else if ((logical == extent.e_lblk - 1) &&
+-			   (physical == extent.e_pblk - 1) &&
++		} else if ((logical == EXT2FS_C2B(fs, extent.e_lblk - 1)) &&
++			   (physical == extent.e_pblk -
++			    EXT2FS_CLUSTER_RATIO(fs)) &&
+ 			   (new_uninit == extent_uninit) &&
+-			   ((int) extent.e_len < max_len - 1)) {
++			   ((int) EXT2FS_C2B(fs, extent.e_len) < max_len - 1)) {
+ 			extent.e_len++;
+ 			extent.e_lblk--;
+-			extent.e_pblk--;
++			extent.e_pblk -= EXT2FS_CLUSTER_RATIO(fs);
+ 			retval = ext2fs_extent_replace(handle, 0, &extent);
+ 		} else if (has_next &&
+-			   (logical == next_extent.e_lblk - 1) &&
+-			   (physical == next_extent.e_pblk - 1) &&
++			   (logical == EXT2FS_C2B(fs,
++					next_extent.e_lblk - 1)) &&
++			   (physical == next_extent.e_pblk -
++			    EXT2FS_CLUSTER_RATIO(fs)) &&
+ 			   (new_uninit == next_uninit) &&
+-			   ((int) next_extent.e_len < max_len - 1)) {
++			   ((int) EXT2FS_C2B(fs, next_extent.e_len) <
++			    max_len - 1)) {
+ 			retval = ext2fs_extent_get(handle,
+ 						   EXT2_EXTENT_NEXT_LEAF,
+ 						   &next_extent);
+@@ -1304,9 +1312,9 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
+ 				goto done;
+ 			next_extent.e_len++;
+ 			next_extent.e_lblk--;
+-			next_extent.e_pblk--;
++			next_extent.e_pblk -= EXT2FS_CLUSTER_RATIO(fs);
+ 			retval = ext2fs_extent_replace(handle, 0, &next_extent);
+-		} else if (logical < extent.e_lblk)
++		} else if (logical < EXT2FS_C2B(fs, extent.e_lblk))
+ 			retval = ext2fs_extent_insert(handle, 0, &newextent);
+ 		else
+ 			retval = ext2fs_extent_insert(handle,
+@@ -1316,7 +1324,8 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
+ 		retval = ext2fs_extent_fix_parents(handle);
+ 		if (retval)
+ 			goto done;
+-	} else if ((logical == extent.e_lblk) && (extent.e_len == 1))  {
++	} else if ((logical == EXT2FS_C2B(fs, extent.e_lblk)) &&
++			(extent.e_len == 1))  {
+ #ifdef DEBUG
+ 		printf("(re/un)mapping only block in extent\n");
+ #endif
+@@ -1333,23 +1342,27 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
+ 
+ 		if (retval)
+ 			goto done;
+-	} else if (logical == extent.e_lblk + extent.e_len - 1)  {
++	} else if (logical == EXT2FS_C2B(fs, extent.e_lblk +
++				extent.e_len - 1))  {
+ #ifdef DEBUG
+ 		printf("(re/un)mapping last block in extent\n");
+ #endif
+ 		if (physical) {
+ 			if (has_next &&
+-			    (logical == (next_extent.e_lblk - 1)) &&
+-			    (physical == (next_extent.e_pblk - 1)) &&
++			    (logical == (EXT2FS_C2B(fs,
++					next_extent.e_lblk - 1))) &&
++			    (physical == (next_extent.e_pblk -
++					  EXT2FS_CLUSTER_RATIO(fs))) &&
+ 			    (new_uninit == next_uninit) &&
+-			    ((int) next_extent.e_len < max_len - 1)) {
++			    ((int) EXT2FS_C2B(fs, next_extent.e_len) <
++			     max_len - 1)) {
+ 				retval = ext2fs_extent_get(handle,
+ 					EXT2_EXTENT_NEXT_LEAF, &next_extent);
+ 				if (retval)
+ 					goto done;
+ 				next_extent.e_len++;
+ 				next_extent.e_lblk--;
+-				next_extent.e_pblk--;
++				next_extent.e_pblk -= EXT2FS_CLUSTER_RATIO(fs);
+ 				retval = ext2fs_extent_replace(handle, 0,
+ 							       &next_extent);
+ 				if (retval)
+@@ -1370,18 +1383,19 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
+ 		retval = ext2fs_extent_replace(handle, 0, &extent);
+ 		if (retval)
+ 			goto done;
+-	} else if (logical == extent.e_lblk) {
++	} else if (logical == EXT2FS_C2B(fs, extent.e_lblk)) {
+ #ifdef DEBUG
+ 		printf("(re/un)mapping first block in extent\n");
+ #endif
+ 		if (physical) {
+ 			if (has_prev &&
+-			    (logical == (prev_extent.e_lblk +
++			    (logical == EXT2FS_C2B(fs, prev_extent.e_lblk +
+ 					 prev_extent.e_len)) &&
+ 			    (physical == (prev_extent.e_pblk +
+-					  prev_extent.e_len)) &&
++					  EXT2FS_C2B(fs, prev_extent.e_len))) &&
+ 			    (new_uninit == prev_uninit) &&
+-			    ((int) prev_extent.e_len < max_len-1)) {
++			    ((int) EXT2FS_C2B(fs, prev_extent.e_len) <
++			     max_len - 1)) {
+ 				retval = ext2fs_extent_get(handle, 
+ 					EXT2_EXTENT_PREV_LEAF, &prev_extent);
+ 				if (retval)
+@@ -1400,7 +1414,7 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
+ 			if (retval)
+ 				goto done;
  		}
- 	} else {
- 		e2_blkcnt_t blkpg = ctx->blocks_per_page;
-@@ -2068,8 +2087,14 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
- 		    (size < (__u64)pb.last_block * fs->blocksize) &&
- 		    (pb.last_block / blkpg * blkpg != pb.last_block ||
- 		     size < (__u64)(pb.last_block & ~(blkpg-1)) *fs->blocksize) &&
--		    !(inode->i_flags & EXT4_EOFBLOCKS_FL))
--			bad_size = 3;
-+		    !(inode->i_flags & EXT4_EOFBLOCKS_FL)) {
-+			last_cluster = EXT2FS_NUM_B2C(fs, (size + fs->blocksize
-+						- 1) / fs->blocksize);
-+			if (fs->cluster_ratio_bits <= 0 ||
-+					last_cluster < ((pb.last_block + 1) >>
-+						fs->cluster_ratio_bits))
-+				bad_size = 3;
-+		}
- 		else if (!(extent_fs && (inode->i_flags & EXT4_EXTENTS_FL)) &&
- 			 size > ext2_max_sizes[fs->super->s_log_block_size])
- 			/* too big for a direct/indirect-mapped file */
+-		extent.e_pblk++;
++		extent.e_pblk += EXT2FS_CLUSTER_RATIO(fs);
+ 		extent.e_lblk++;
+ 		extent.e_len--;
+ 		retval = ext2fs_extent_replace(handle, 0, &extent);
+@@ -1417,7 +1431,7 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
+ 		orig_length = extent.e_len;
+ 
+ 		/* shorten pre-split extent */
+-		extent.e_len = (logical - extent.e_lblk);
++		extent.e_len = (EXT2FS_B2C(fs, logical) - extent.e_lblk);
+ 		retval = ext2fs_extent_replace(handle, 0, &extent);
+ 		if (retval)
+ 			goto done;
+@@ -1430,7 +1444,7 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
+ 				goto done;
+ 		}
+ 		/* add post-split extent */
+-		extent.e_pblk += extent.e_len + 1;
++		extent.e_pblk += EXT2FS_C2B(fs, extent.e_len + 1);
+ 		extent.e_lblk += extent.e_len + 1;
+ 		extent.e_len = orig_length - extent.e_len - 1;
+ 		retval = ext2fs_extent_insert(handle,
 -- 
 1.7.3.2
 
