@@ -1,72 +1,45 @@
-From: Steven Whitehouse <swhiteho@redhat.com>
-Subject: Re: fallocate vs O_(D)SYNC
-Date: Fri, 18 Nov 2011 12:09:36 +0000
-Message-ID: <1321618176.2729.33.camel@menhir>
-References: <20111116084256.GA22963@infradead.org>
-	<1321436588.2713.5.camel@menhir> <20111116105413.GA2916@quack.suse.cz>
-	<20111116124550.GA11650@infradead.org>
-	<20111116133915.GD8195@quack.suse.cz>
-	<20111116134234.GA24258@infradead.org>
-	<20111116155755.GA22284@quack.suse.cz>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] e2undo: cast dptr to blk64_t to retrieve block number
+Date: Fri, 18 Nov 2011 17:45:57 -0500
+Message-ID: <20111118224557.GB4130@thunk.org>
+References: <4EC44889.7050307@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: cluster-devel@redhat.com, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <cluster-devel-bounces@redhat.com>
-In-Reply-To: <20111116155755.GA22284@quack.suse.cz>
-List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:33312 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756808Ab1KRWp7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Nov 2011 17:45:59 -0500
+Content-Disposition: inline
+In-Reply-To: <4EC44889.7050307@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Wed, Nov 16, 2011 at 05:34:33PM -0600, Eric Sandeen wrote:
+> A 32-bit s390 build was failing on a 64-bit s390x host, when
+> make check failed e2undo tests, like this:
+> 
+> md5sum before mke2fs 922c8a591c882dbdd1a381d18547cfd5
+> using mke2fs to test e2undo
+> Overwriting existing filesystem; this can be undone using the command:
+>     e2undo /tmp/mke2fs-tmp.EM9XjmTA81.e2undo /tmp/tmp.EM9XjmTA81
+> 
+> md5sum after mke2fs cbf32fb6c3db45280ad013f42ac294f1
+> Replayed transaction of size 32768 at location 0
+> Replayed transaction of size 32768 at location 0
+> Replayed transaction of size 32768 at location 0
+> Replayed transaction of size 32768 at location 0
+> Replayed transaction of size 0 at location 0
+> md5sum after e2undo 31b4e14307c5b7ccce5b8d300c2ad5f1
+> 
+> Note the "at location 0" for the block number.
+> 
+> A proper cast in e2undo.c fixes this up.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-Here is what I'm planning for GFS2:
+Thanks, applied.
 
-
-Add sync of metadata after fallocate for O_SYNC files to ensure that we
-meet expectations for everything being on disk in this case.
-Unfortunately, the offset and len parameters are modified during the
-course of the fallocate function, so I've had to add a couple of new
-variables to call generic_write_sync() at the end.
-
-I know that potentially this will sync data as well within the range,
-but I think that is a fairly harmless side-effect overall, since we
-would not normally expect there to be any dirty data within the range in
-question.
-
-Signed-off-by: Steven Whitehouse <swhiteho@redhat.com>
-Cc: Christoph Hellwig <hch@infradead.org>
-Cc: Benjamin Marzinski <bmarzins@redhat.com>
-
-diff --git a/fs/gfs2/file.c b/fs/gfs2/file.c
-index 6336bc6..9b6c6ac 100644
---- a/fs/gfs2/file.c
-+++ b/fs/gfs2/file.c
-@@ -752,6 +752,8 @@ static long gfs2_fallocate(struct file *file, int mode, loff_t offset,
- 	loff_t bytes, max_bytes;
- 	struct gfs2_alloc *al;
- 	int error;
-+	const loff_t pos = offset;
-+	const loff_t count = len;
- 	loff_t bsize_mask = ~((loff_t)sdp->sd_sb.sb_bsize - 1);
- 	loff_t next = (offset + len - 1) >> sdp->sd_sb.sb_bsize_shift;
- 	loff_t max_chunk_size = UINT_MAX & bsize_mask;
-@@ -834,6 +836,9 @@ retry:
- 		gfs2_quota_unlock(ip);
- 		gfs2_alloc_put(ip);
- 	}
-+
-+	if (error == 0)
-+		error = generic_write_sync(file, pos, count);
- 	goto out_unlock;
- 
- out_trans_fail:
+						- Ted
