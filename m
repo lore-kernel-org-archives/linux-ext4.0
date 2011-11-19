@@ -1,98 +1,73 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH v4 01/15] ext4: add a function which extends a group without checking parameters
-Date: Sat, 19 Nov 2011 17:57:07 +0800
-Message-ID: <1321696641-14437-2-git-send-email-xiaoqiangnk@gmail.com>
-References: <1321696641-14437-1-git-send-email-xiaoqiangnk@gmail.com>
-Cc: adilger@dilger.ca, linux-ext4@vger.kernel.org,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: [PATCH v4 0/15] ext4: add new online resize interface
+Date: Sat, 19 Nov 2011 17:57:06 +0800
+Message-ID: <1321696641-14437-1-git-send-email-xiaoqiangnk@gmail.com>
+Cc: adilger@dilger.ca, linux-ext4@vger.kernel.org
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-iy0-f174.google.com ([209.85.210.174]:48182 "EHLO
 	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751636Ab1KSMbD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Nov 2011 07:31:03 -0500
-Received: by mail-iy0-f174.google.com with SMTP id e36so4861656iag.19
-        for <linux-ext4@vger.kernel.org>; Sat, 19 Nov 2011 04:31:03 -0800 (PST)
-In-Reply-To: <1321696641-14437-1-git-send-email-xiaoqiangnk@gmail.com>
+	with ESMTP id S1751605Ab1KSMbB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Nov 2011 07:31:01 -0500
+Received: by iage36 with SMTP id e36so4861656iag.19
+        for <linux-ext4@vger.kernel.org>; Sat, 19 Nov 2011 04:31:00 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Hi all,
 
-This patch added a function named ext4_group_extend_no_check() whose code
-is copied from ext4_group_extend().  ext4_group_extend_no_check() assumes
-the parameter is valid and has been checked by caller.
+This patch series adds new resize implementation to ext4.
 
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/resize.c |   53 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 53 insertions(+), 0 deletions(-)
+-- What's new resize implementation?
+   It is a new online resize interface for ext4.  It can be used via
+   ioctl with EXT4_IOC_RESIZE_FS and a 64 bit integer indicating size
+   of the resized fs in block.
 
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 996780a..ac5565c 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -969,6 +969,59 @@ exit_put:
- } /* ext4_group_add */
- 
- /*
-+ * extend a group without checking assuming that checking has been done.
-+ */
-+static int ext4_group_extend_no_check(struct super_block *sb,
-+			ext4_fsblk_t o_blocks_count, ext4_grpblk_t add)
-+{
-+	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
-+	handle_t *handle;
-+	int err = 0, err2;
-+
-+	/* We will update the superblock, one block bitmap, and
-+	 * one group descriptor via ext4_group_add_blocks().
-+	 */
-+	handle = ext4_journal_start_sb(sb, 3);
-+	if (IS_ERR(handle)) {
-+		err = PTR_ERR(handle);
-+		ext4_warning(sb, "error %d on journal start", err);
-+		goto out;
-+	}
-+
-+	err = ext4_journal_get_write_access(handle, EXT4_SB(sb)->s_sbh);
-+	if (err) {
-+		ext4_warning(sb, "error %d on journal write access", err);
-+		ext4_journal_stop(handle);
-+		goto out;
-+	}
-+
-+	ext4_blocks_count_set(es, o_blocks_count + add);
-+	ext4_debug("freeing blocks %llu through %llu\n", o_blocks_count,
-+		   o_blocks_count + add);
-+	/* We add the blocks to the bitmap and set the group need init bit */
-+	err = ext4_group_add_blocks(handle, sb, o_blocks_count, add);
-+	if (err)
-+		goto exit_journal;
-+	ext4_handle_dirty_super(handle, sb);
-+	ext4_debug("freed blocks %llu through %llu\n", o_blocks_count,
-+		   o_blocks_count + add);
-+exit_journal:
-+	err2 = ext4_journal_stop(handle);
-+	if (err2 && !err)
-+		err = err2;
-+
-+	if (!err) {
-+		if (test_opt(sb, DEBUG))
-+			printk(KERN_DEBUG "EXT4-fs: extended group to %llu "
-+			       "blocks\n", ext4_blocks_count(es));
-+		update_backups(sb, EXT4_SB(sb)->s_sbh->b_blocknr, (char *)es,
-+			       sizeof(struct ext4_super_block));
-+	}
-+out:
-+	return err;
-+}
-+
-+/*
-  * Extend the filesystem to the new number of blocks specified.  This entry
-  * point is only used to extend the current filesystem to the end of the last
-  * existing group.  It can be accessed via ioctl, or by "remount,resize=<size>"
--- 
-1.7.5.1
+-- Difference between current resize and new resize.
+   New resize lets kernel do all work, like allocating bitmaps and
+   inode tables and can support flex_bg and BLOCK_UNINIT features.
+   Besides these, new resize is much faster than current resize.
+
+   Below are benchmarks I made on my personal computer, fses with
+   flex_bg size = 16 were resized to 230GB evry time. The first
+   row shows the size of a fs from which the fs was resized to 230GB.
+   The datas were collected by 'time resize2fs'.
+
+                      new resize
+                20GB          50GB      100GB
+      real    0m3.558s     0m2.891s    0m0.394s
+      user    0m0.004s     0m0.000s    0m0.394s
+      sys     0m0.048s     0m0.048s    0m0.028s
+
+                      current resize
+                20GB          50GB      100GB
+      real    5m2.770s     4m43.757s  3m14.840s
+      user    0m0.040s     0m0.032s   0m0.024s
+      sys     0m0.464s     0m0.432s   0m0.324s
+
+   According to data above, new resize is faster than current resize in both
+   user and sys time.  New resize performs well in sys time, because it
+   supports BLOCK_UNINIT and adds multi-groups each time.
+
+-- About supporting new features.
+   YES! New resize can support new feature like bigalloc and exclude bitmap
+   easily.  Because it lets kernel do all work.
+
+ V3->V4:
+   rename __ext4_group_extend to ext4_group_extend_no_check.
+
+ V2->V3:
+   initialize block bitmap of last group.
+   remove code initalizing inode bitmap and inode tables.
+
+Yongqiang.
+
+git diff --stat
+
+ Documentation/filesystems/ext4.txt |    7 +
+ fs/ext4/ext4.h                     |   10 +
+ fs/ext4/ioctl.c                    |   39 ++
+ fs/ext4/resize.c                   | 1167 +++++++++++++++++++++++++++---------
+ 4 files changed, 942 insertions(+), 281 deletions(-)
+
 
