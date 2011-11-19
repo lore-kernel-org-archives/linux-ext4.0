@@ -1,82 +1,62 @@
-From: Andreas Dilger <aedilger@gmail.com>
-Subject: Re: [PATCH v4 0/15] ext4: add new online resize interface
-Date: Sat, 19 Nov 2011 11:13:57 -0700
-Message-ID: <E4904E52-7428-478D-AE2E-B29EA825CDB1@gmail.com>
-References: <1321696641-14437-1-git-send-email-xiaoqiangnk@gmail.com>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "tytso@mit.edu" <tytso@mit.edu>,
-	"adilger@dilger.ca" <adilger@dilger.ca>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:52818 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751406Ab1KSSOF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Nov 2011 13:14:05 -0500
-Received: by iage36 with SMTP id e36so5134859iag.19
-        for <linux-ext4@vger.kernel.org>; Sat, 19 Nov 2011 10:14:03 -0800 (PST)
-In-Reply-To: <1321696641-14437-1-git-send-email-xiaoqiangnk@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>
+Subject: Re: [PATCH] ext4: remove unneeded variable.
+Date: Sun, 20 Nov 2011 01:41:26 +0530
+Message-ID: <4EC80D6E.3090404@linux.vnet.ibm.com>
+References: <1321023744-16249-1-git-send-email-linkinjeon@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: tytso@mit.edu, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	Amit Sahrawat <amit.sahrawat83@gmail.com>
+To: Namjae Jeon <linkinjeon@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1321023744-16249-1-git-send-email-linkinjeon@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2011-11-19, at 2:57, Yongqiang Yang <xiaoqiangnk@gmail.com> wrote:
-> This patch series adds new resize implementation to ext4.
+On 11/11/2011 08:32 PM, Namjae Jeon wrote:
+> ret2 is not needed in ext4_flush_completed_IO().
 > 
-> -- What's new resize implementation?
->   It is a new online resize interface for ext4.  It can be used via
->   ioctl with EXT4_IOC_RESIZE_FS and a 64 bit integer indicating size
->   of the resized fs in block.
-> 
-> -- Difference between current resize and new resize.
->   New resize lets kernel do all work, like allocating bitmaps and
->   inode tables and can support flex_bg and BLOCK_UNINIT features.
->   Besides these, new resize is much faster than current resize.
-> 
->   Below are benchmarks I made on my personal computer, fses with
->   flex_bg size = 16 were resized to 230GB evry time. The first
->   row shows the size of a fs from which the fs was resized to 230GB.
->   The datas were collected by 'time resize2fs'.
-> 
->                      new resize
->                20GB          50GB      100GB
->      real    0m3.558s     0m2.891s    0m0.394s
->      user    0m0.004s     0m0.000s    0m0.394s
->      sys     0m0.048s     0m0.048s    0m0.028s
-> 
->                      current resize
->                20GB          50GB      100GB
->      real    5m2.770s     4m43.757s  3m14.840s
->      user    0m0.040s     0m0.032s   0m0.024s
->      sys     0m0.464s     0m0.432s   0m0.324s
 
-These stats must be backward, because resizing 20GB takes more time than resizing 100GB. 
+Not needed? I went through the code briefly, and I don't agree.
 
->   According to data above, new resize is faster than current resize in both
->   user and sys time.  New resize performs well in sys time, because it
->   supports BLOCK_UNINIT and adds multi-groups each time.
+> Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
+> Signed-off-by: Amit Sahrawat <amit.sahrawat83@gmail.com>
+> ---
+>  fs/ext4/fsync.c |    5 +----
+>  1 files changed, 1 insertions(+), 4 deletions(-)
 > 
-> -- About supporting new features.
->   YES! New resize can support new feature like bigalloc and exclude bitmap
->   easily.  Because it lets kernel do all work.
+> diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+> index 00a2cb7..40397ac 100644
+> --- a/fs/ext4/fsync.c
+> +++ b/fs/ext4/fsync.c
+> @@ -81,7 +81,6 @@ int ext4_flush_completed_IO(struct inode *inode)
+>  	struct ext4_inode_info *ei = EXT4_I(inode);
+>  	unsigned long flags;
+>  	int ret = 0;
+> -	int ret2 = 0;
 > 
-> V3->V4:
->   rename __ext4_group_extend to ext4_group_extend_no_check.
-> 
-> V2->V3:
->   initialize block bitmap of last group.
->   remove code initalizing inode bitmap and inode tables.
-> 
-> Yongqiang.
-> 
-> git diff --stat
-> 
-> Documentation/filesystems/ext4.txt |    7 +
-> fs/ext4/ext4.h                     |   10 +
-> fs/ext4/ioctl.c                    |   39 ++
-> fs/ext4/resize.c                   | 1167 +++++++++++++++++++++++++++---------
-> 4 files changed, 942 insertions(+), 281 deletions(-)
-> 
-> 
+>  	dump_completed_IO(inode);
+>  	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
+> @@ -105,12 +104,10 @@ int ext4_flush_completed_IO(struct inode *inode)
+>  		 */
+>  		spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
+>  		ret = ext4_end_io_nolock(io);
+> -		if (ret < 0)
+> -			ret2 = ret;
+>  		spin_lock_irqsave(&ei->i_completed_io_lock, flags);
+>  	}
+>  	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
+> -	return (ret2 < 0) ? ret2 : 0;
+> +	return (ret < 0) ? ret : 0;
+>  }
+
+Please note that there is a while loop involved here. Which means, that ret2
+is used to store the last negative value of ret. And due to the loop, ret can
+be over-written in the next loop iteration, which we can afford, because we
+have already stored what we need to save, in ret2. And this ret2 value is used
+to return appropriate value to the caller. 
+
+Thanks,
+Srivatsa S. Bhat
