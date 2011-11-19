@@ -1,96 +1,113 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH v4 03/15] ext4: add a function which sets up a new group desc
-Date: Sat, 19 Nov 2011 17:57:09 +0800
-Message-ID: <1321696641-14437-4-git-send-email-xiaoqiangnk@gmail.com>
+Subject: [PATCH v4 04/15] ext4: add a function which updates super block
+Date: Sat, 19 Nov 2011 17:57:10 +0800
+Message-ID: <1321696641-14437-5-git-send-email-xiaoqiangnk@gmail.com>
 References: <1321696641-14437-1-git-send-email-xiaoqiangnk@gmail.com>
 Cc: adilger@dilger.ca, linux-ext4@vger.kernel.org,
 	Yongqiang Yang <xiaoqiangnk@gmail.com>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:37586 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751799Ab1KSMbJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Nov 2011 07:31:09 -0500
-Received: by ghbz2 with SMTP id z2so1450020ghb.19
-        for <linux-ext4@vger.kernel.org>; Sat, 19 Nov 2011 04:31:08 -0800 (PST)
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:48182 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751636Ab1KSMbL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Nov 2011 07:31:11 -0500
+Received: by mail-iy0-f174.google.com with SMTP id e36so4861656iag.19
+        for <linux-ext4@vger.kernel.org>; Sat, 19 Nov 2011 04:31:11 -0800 (PST)
 In-Reply-To: <1321696641-14437-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
 
-This patch adds a function named ext4_setup_new_desc() which sets
-up a new group descriptor and whose code is sopied from ext4_group_add().
+This patch adds a function named ext4_update_super() which updates
+super block and whose code is copied from ext4_group_add().
 
 The function will be used by new resize implementation.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/resize.c |   55 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 55 insertions(+), 0 deletions(-)
+ fs/ext4/resize.c |   72 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 72 insertions(+), 0 deletions(-)
 
 diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 9a5486e..a50eab3 100644
+index a50eab3..859b63f 100644
 --- a/fs/ext4/resize.c
 +++ b/fs/ext4/resize.c
-@@ -777,6 +777,61 @@ out:
+@@ -832,6 +832,78 @@ static int ext4_setup_new_desc(handle_t *handle, struct super_block *sb,
  	return err;
  }
  
 +/*
-+ * ext4_setup_new_desc() sets up group descriptors specified by @input.
++ * ext4_update_super() updates super so that new the added group can be seen
++ *   by the filesystem.
 + *
-+ * @handle: journal handle
 + * @sb: super block
 + */
-+static int ext4_setup_new_desc(handle_t *handle, struct super_block *sb,
-+			       struct ext4_new_group_data *input)
++static void ext4_update_super(struct super_block *sb,
++			      struct ext4_new_group_data *input)
 +{
 +	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	ext4_group_t group;
-+	struct ext4_group_desc *gdp;
-+	struct buffer_head *gdb_bh;
-+	int gdb_off, gdb_num, err = 0;
-+
-+	group = input->group;
-+
-+	gdb_off = group % EXT4_DESC_PER_BLOCK(sb);
-+	gdb_num = group / EXT4_DESC_PER_BLOCK(sb);
++	struct ext4_super_block *es = sbi->s_es;
 +
 +	/*
-+	 * get_write_access() has been called on gdb_bh by ext4_add_new_desc().
++	 * Make the new blocks and inodes valid next.  We do this before
++	 * increasing the group count so that once the group is enabled,
++	 * all of its blocks and inodes are already valid.
++	 *
++	 * We always allocate group-by-group, then block-by-block or
++	 * inode-by-inode within a group, so enabling these
++	 * blocks/inodes before the group is live won't actually let us
++	 * allocate the new space yet.
 +	 */
-+	gdb_bh = sbi->s_group_desc[gdb_num];
-+	/* Update group descriptor block for new group */
-+	gdp = (struct ext4_group_desc *)((char *)gdb_bh->b_data +
-+				 gdb_off * EXT4_DESC_SIZE(sb));
++	ext4_blocks_count_set(es, ext4_blocks_count(es) +
++		input->blocks_count);
++	le32_add_cpu(&es->s_inodes_count, EXT4_INODES_PER_GROUP(sb));
 +
-+	memset(gdp, 0, EXT4_DESC_SIZE(sb));
-+	 /* LV FIXME */
-+	memset(gdp, 0, EXT4_DESC_SIZE(sb));
-+	ext4_block_bitmap_set(sb, gdp, input->block_bitmap); /* LV FIXME */
-+	ext4_inode_bitmap_set(sb, gdp, input->inode_bitmap); /* LV FIXME */
-+	ext4_inode_table_set(sb, gdp, input->inode_table); /* LV FIXME */
-+	ext4_free_group_clusters_set(sb, gdp,
-+				     EXT4_B2C(sbi, input->free_blocks_count));
-+	ext4_free_inodes_set(sb, gdp, EXT4_INODES_PER_GROUP(sb));
-+	gdp->bg_flags = cpu_to_le16(EXT4_BG_INODE_ZEROED);
-+	gdp->bg_checksum = ext4_group_desc_csum(sbi, input->group, gdp);
++	/*
++	 * We need to protect s_groups_count against other CPUs seeing
++	 * inconsistent state in the superblock.
++	 *
++	 * The precise rules we use are:
++	 *
++	 * * Writers must perform a smp_wmb() after updating all dependent
++	 *   data and before modifying the groups count
++	 *
++	 * * Readers must perform an smp_rmb() after reading the groups count
++	 *   and before reading any dependent data.
++	 *
++	 * NB. These rules can be relaxed when checking the group count
++	 * while freeing data, as we can only allocate from a block
++	 * group after serialising against the group count, and we can
++	 * only then free after serialising in turn against that
++	 * allocation.
++	 */
++	smp_wmb();
 +
-+	err = ext4_handle_dirty_metadata(handle, NULL, gdb_bh);
-+	if (unlikely(err)) {
-+		ext4_std_error(sb, err);
-+		return err;
++	/* Update the global fs size fields */
++	sbi->s_groups_count++;
++
++	/* Update the reserved block counts only once the new group is
++	 * active. */
++	ext4_r_blocks_count_set(es, ext4_r_blocks_count(es) +
++		input->reserved_blocks);
++
++	/* Update the free space counts */
++	percpu_counter_add(&sbi->s_freeclusters_counter,
++			   EXT4_B2C(sbi, input->free_blocks_count));
++	percpu_counter_add(&sbi->s_freeinodes_counter,
++			   EXT4_INODES_PER_GROUP(sb));
++
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG) &&
++	    sbi->s_log_groups_per_flex) {
++		ext4_group_t flex_group;
++		flex_group = ext4_flex_group(sbi, input->group);
++		atomic_add(EXT4_B2C(sbi, input->free_blocks_count),
++			   &sbi->s_flex_groups[flex_group].free_clusters);
++		atomic_add(EXT4_INODES_PER_GROUP(sb),
++			   &sbi->s_flex_groups[flex_group].free_inodes);
 +	}
 +
-+	/*
-+	 * We can allocate memory for mb_alloc based on the new group
-+	 * descriptor
-+	 */
-+	err = ext4_mb_add_groupinfo(sb, group, gdp);
-+
-+	return err;
 +}
 +
  /* Add group descriptor data to an existing or new group descriptor block.
