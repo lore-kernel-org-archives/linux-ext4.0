@@ -1,119 +1,98 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH v2] jbd: clear revoked flag on buffers before a new transaction started
-Date: Sat, 19 Nov 2011 17:34:29 +0800
-Message-ID: <1321695269-3319-1-git-send-email-xiaoqiangnk@gmail.com>
-Cc: linux-ext4@vger.kernel.org, Yongqiang Yang <xiaoqiangnk@gmail.com>
-To: jack@suse.cz
+Subject: [PATCH v4 01/15] ext4: add a function which extends a group without checking parameters
+Date: Sat, 19 Nov 2011 17:57:07 +0800
+Message-ID: <1321696641-14437-2-git-send-email-xiaoqiangnk@gmail.com>
+References: <1321696641-14437-1-git-send-email-xiaoqiangnk@gmail.com>
+Cc: adilger@dilger.ca, linux-ext4@vger.kernel.org,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:35322 "EHLO
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:48182 "EHLO
 	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750994Ab1KSMIG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Nov 2011 07:08:06 -0500
-Received: by iage36 with SMTP id e36so4841730iag.19
-        for <linux-ext4@vger.kernel.org>; Sat, 19 Nov 2011 04:08:05 -0800 (PST)
+	with ESMTP id S1751636Ab1KSMbD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Nov 2011 07:31:03 -0500
+Received: by mail-iy0-f174.google.com with SMTP id e36so4861656iag.19
+        for <linux-ext4@vger.kernel.org>; Sat, 19 Nov 2011 04:31:03 -0800 (PST)
+In-Reply-To: <1321696641-14437-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently, we clear revoked flag only when a block is reused.  However,
-this can tigger a false journal error.  Consider a situation when a block
-is used as a meta block and is deleted(revoked) in ordered mode, then the
-block is allocated as a data block to a file.  At this moment, user changes
-the file's journal mode from ordered to journaled and truncates the file.
-The block will be considered re-revoked by journal because it has revoked
-flag still pending from the last transaction and an assertion triggers.
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
 
-We fix the problem by keeping the revoked status more uptodate - we clear
-revoked flag when switching revoke tables to reflect there is no revoked
-buffers in current transaction any more.
+This patch added a function named ext4_group_extend_no_check() whose code
+is copied from ext4_group_extend().  ext4_group_extend_no_check() assumes
+the parameter is valid and has been checked by caller.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/jbd/commit.c     |    6 ++++++
- fs/jbd/revoke.c     |   34 ++++++++++++++++++++++++++++++++++
- include/linux/jbd.h |    1 +
- 3 files changed, 41 insertions(+), 0 deletions(-)
+ fs/ext4/resize.c |   53 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 53 insertions(+), 0 deletions(-)
 
-diff --git a/fs/jbd/commit.c b/fs/jbd/commit.c
-index 8799207..f2b9a57 100644
---- a/fs/jbd/commit.c
-+++ b/fs/jbd/commit.c
-@@ -392,6 +392,12 @@ void journal_commit_transaction(journal_t *journal)
- 	jbd_debug (3, "JBD: commit phase 1\n");
- 
- 	/*
-+	 * Clear revoked flag to reflect there is no revoked buffers
-+	 * in the next transaction which is going to be started.
-+	 */
-+	journal_clear_buffer_revoked_flags(journal);
-+
-+	/*
- 	 * Switch to a new revoke table.
- 	 */
- 	journal_switch_revoke_table(journal);
-diff --git a/fs/jbd/revoke.c b/fs/jbd/revoke.c
-index 034eb82..501d363 100644
---- a/fs/jbd/revoke.c
-+++ b/fs/jbd/revoke.c
-@@ -47,6 +47,10 @@
-  *   overwriting the new data.  We don't even need to clear the revoke
-  *   bit here.
-  *
-+ * We cache revoke status of a buffer in the current transaction in b_states
-+ * bits.  As the name says, revokevalid flag indicates that the cached revoke
-+ * status of a buffer is valid and we can rely on the cached status.
-+ *
-  * Revoke information on buffers is a tri-state value:
-  *
-  * RevokeValid clear:	no cached revoke status, need to look it up
-@@ -474,6 +478,36 @@ int journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
- 	return did_revoke;
- }
- 
-+/*
-+ * journal_clear_revoked_flag clears revoked flag of buffers in
-+ * revoke table to reflect there is no revoked buffers in the next
-+ * transaction which is going to be started.
-+ */
-+void journal_clear_buffer_revoked_flags(journal_t *journal)
-+{
-+	struct jbd_revoke_table_s *revoke = journal->j_revoke;
-+	int i = 0;
-+
-+	for (i = 0; i < revoke->hash_size; i++) {
-+		struct list_head *hash_list;
-+		struct list_head *list_entry;
-+		hash_list = &revoke->hash_table[i];
-+
-+		list_for_each(list_entry, hash_list) {
-+			struct jbd_revoke_record_s *record;
-+			struct buffer_head *bh;
-+			record = (struct jbd_revoke_record_s *)list_entry;
-+			bh = __find_get_block(journal->j_fs_dev,
-+					      record->blocknr,
-+					      journal->j_blocksize);
-+			if (bh) {
-+				clear_buffer_revoked(bh);
-+				__brelse(bh);
-+			}
-+		}
-+	}
-+}
-+
- /* journal_switch_revoke table select j_revoke for next transaction
-  * we do not want to suspend any processing until all revokes are
-  * written -bzzz
-diff --git a/include/linux/jbd.h b/include/linux/jbd.h
-index 0f9f0b6..5aa964e 100644
---- a/include/linux/jbd.h
-+++ b/include/linux/jbd.h
-@@ -918,6 +918,7 @@ extern int	journal_set_revoke(journal_t *, unsigned int, tid_t);
- extern int	journal_test_revoke(journal_t *, unsigned int, tid_t);
- extern void	journal_clear_revoke(journal_t *);
- extern void	journal_switch_revoke_table(journal_t *journal);
-+extern void	journal_clear_buffer_revoked_flags(journal_t *journal);
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 996780a..ac5565c 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -969,6 +969,59 @@ exit_put:
+ } /* ext4_group_add */
  
  /*
-  * The log thread user interface:
++ * extend a group without checking assuming that checking has been done.
++ */
++static int ext4_group_extend_no_check(struct super_block *sb,
++			ext4_fsblk_t o_blocks_count, ext4_grpblk_t add)
++{
++	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
++	handle_t *handle;
++	int err = 0, err2;
++
++	/* We will update the superblock, one block bitmap, and
++	 * one group descriptor via ext4_group_add_blocks().
++	 */
++	handle = ext4_journal_start_sb(sb, 3);
++	if (IS_ERR(handle)) {
++		err = PTR_ERR(handle);
++		ext4_warning(sb, "error %d on journal start", err);
++		goto out;
++	}
++
++	err = ext4_journal_get_write_access(handle, EXT4_SB(sb)->s_sbh);
++	if (err) {
++		ext4_warning(sb, "error %d on journal write access", err);
++		ext4_journal_stop(handle);
++		goto out;
++	}
++
++	ext4_blocks_count_set(es, o_blocks_count + add);
++	ext4_debug("freeing blocks %llu through %llu\n", o_blocks_count,
++		   o_blocks_count + add);
++	/* We add the blocks to the bitmap and set the group need init bit */
++	err = ext4_group_add_blocks(handle, sb, o_blocks_count, add);
++	if (err)
++		goto exit_journal;
++	ext4_handle_dirty_super(handle, sb);
++	ext4_debug("freed blocks %llu through %llu\n", o_blocks_count,
++		   o_blocks_count + add);
++exit_journal:
++	err2 = ext4_journal_stop(handle);
++	if (err2 && !err)
++		err = err2;
++
++	if (!err) {
++		if (test_opt(sb, DEBUG))
++			printk(KERN_DEBUG "EXT4-fs: extended group to %llu "
++			       "blocks\n", ext4_blocks_count(es));
++		update_backups(sb, EXT4_SB(sb)->s_sbh->b_blocknr, (char *)es,
++			       sizeof(struct ext4_super_block));
++	}
++out:
++	return err;
++}
++
++/*
+  * Extend the filesystem to the new number of blocks specified.  This entry
+  * point is only used to extend the current filesystem to the end of the last
+  * existing group.  It can be accessed via ioctl, or by "remount,resize=<size>"
 -- 
 1.7.5.1
 
