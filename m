@@ -1,64 +1,119 @@
-From: Robin Dong <hao.bigrat@gmail.com>
-Subject: Re: [PATCH] e2fsck: fix "can't find dup_blk" error
-Date: Sat, 19 Nov 2011 16:32:01 +0800
-Message-ID: <CAFZ0FUUQ9LA67DS2tJLd1KoQpKT-YCd4A=GCiAui2Xju4tFQXw@mail.gmail.com>
-References: <1321584758-4259-1-git-send-email-hao.bigrat@gmail.com>
-	<20111119040215.GE4130@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: [PATCH v2] jbd2: clear revoked flag on buffers before a new transaction started
+Date: Sat, 19 Nov 2011 17:32:05 +0800
+Message-ID: <1321695125-2237-1-git-send-email-xiaoqiangnk@gmail.com>
+Cc: linux-ext4@vger.kernel.org, Yongqiang Yang <xiaoqiangnk@gmail.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:49478 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752113Ab1KSIcC convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Nov 2011 03:32:02 -0500
-Received: by ggnr5 with SMTP id r5so899098ggn.19
-        for <linux-ext4@vger.kernel.org>; Sat, 19 Nov 2011 00:32:01 -0800 (PST)
-In-Reply-To: <20111119040215.GE4130@thunk.org>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:64766 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750994Ab1KSMFo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Nov 2011 07:05:44 -0500
+Received: by ghbz2 with SMTP id z2so1439039ghb.19
+        for <linux-ext4@vger.kernel.org>; Sat, 19 Nov 2011 04:05:43 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2011/11/19 Ted Ts'o <tytso@mit.edu>:
-> On Fri, Nov 18, 2011 at 10:52:38AM +0800, Robin Dong wrote:
->> From: Robin Dong <sanbai@taobao.com>
->>
->> After:
->> 1. mke2fs -O ^has_journal,^resize_inode,^uninit_bg,extent,meta_bg,fl=
-ex_bg,bigalloc /dev/sda
->> 2. mount -t ext4 /dev/sda /test/
->> 3. create file (8192K size, extent' e_len is 2) /test/1 ~ /test/10
->> 4. use tool to change the /test/5 extent's e_len to 100, corrupt fil=
-e
->> 5. e2fsck -f /dev/sda
->
-> I can't replicate this. =A0I presume it only shows up with your
-> modification to the bigalloc format?
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0- Ted
->
+Currently, we clear revoked flag only when a block is reused.  However,
+this can tigger a false journal error.  Consider a situation when a block
+is used as a meta block and is deleted(revoked) in ordered mode, then the
+block is allocated as a data block to a file.  At this moment, user changes
+the file's journal mode from ordered to journaled and truncates the file.
+The block will be considered re-revoked by journal because it has revoked
+flag still pending from the last transaction and an assertion triggers.
 
-Hi, Ted
+We fix the problem by keeping the revoked status more uptodate - we clear
+revoked flag when switching revoke tables to reflect there is no revoked
+buffers in current transaction any more.
 
-I am not using my modification bigalloc format.
-I use the upstream kernel (3.2-rc2) and uptodate e2fsprogs master
-branch code, the error report will emerge after my steps above.
-My /dev/sda is small (about 100G), so I guess:
+Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+---
+ fs/jbd2/commit.c     |    6 ++++++
+ fs/jbd2/revoke.c     |   34 ++++++++++++++++++++++++++++++++++
+ include/linux/jbd2.h |    1 +
+ 3 files changed, 41 insertions(+), 0 deletions(-)
 
-# create /test/1 ~ /test/100 (e_len =3D=3D 2)
-# make /test/5 's e_len to 1024
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 264f0bb..b4bf73f 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -430,6 +430,12 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	jbd_debug (3, "JBD: commit phase 1\n");
+ 
+ 	/*
++	 * Clear revoked flag to reflect there is no revoked buffers
++	 * in the next transaction which is going to be started.
++	 */
++	journal_clear_buffer_revoked_flags(journal);
++
++	/*
+ 	 * Switch to a new revoke table.
+ 	 */
+ 	jbd2_journal_switch_revoke_table(journal);
+diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
+index 1b67105..66547de 100644
+--- a/fs/jbd2/revoke.c
++++ b/fs/jbd2/revoke.c
+@@ -47,6 +47,10 @@
+  *   overwriting the new data.  We don't even need to clear the revoke
+  *   bit here.
+  *
++ * We cache revoke status of a buffer in the current transaction in b_states
++ * bits.  As the name says, revokevalid flag indicates that the cached revoke
++ * status of a buffer is valid and we can rely on the cached status.
++ *
+  * Revoke information on buffers is a tri-state value:
+  *
+  * RevokeValid clear:	no cached revoke status, need to look it up
+@@ -474,6 +478,36 @@ int jbd2_journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
+ 	return did_revoke;
+ }
+ 
++/*
++ * journal_clear_revoked_flag clears revoked flag of buffers in
++ * revoke table to reflect there is no revoked buffers in the next
++ * transaction which is going to be started.
++ */
++void journal_clear_buffer_revoked_flags(journal_t *journal)
++{
++	struct jbd2_revoke_table_s *revoke = journal->j_revoke;
++	int i = 0;
++
++	for (i = 0; i < revoke->hash_size; i++) {
++		struct list_head *hash_list;
++		struct list_head *list_entry;
++		hash_list = &revoke->hash_table[i];
++
++		list_for_each(list_entry, hash_list) {
++			struct jbd2_revoke_record_s *record;
++			struct buffer_head *bh;
++			record = (struct jbd2_revoke_record_s *)list_entry;
++			bh = __find_get_block(journal->j_fs_dev,
++					      record->blocknr,
++					      journal->j_blocksize);
++			if (bh) {
++				clear_buffer_revoked(bh);
++				__brelse(bh);
++			}
++		}
++	}
++}
++
+ /* journal_switch_revoke table select j_revoke for next transaction
+  * we do not want to suspend any processing until all revokes are
+  * written -bzzz
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index e44d114..3041ee1 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1156,6 +1156,7 @@ extern int	jbd2_journal_set_revoke(journal_t *, unsigned long long, tid_t);
+ extern int	jbd2_journal_test_revoke(journal_t *, unsigned long long, tid_t);
+ extern void	jbd2_journal_clear_revoke(journal_t *);
+ extern void	jbd2_journal_switch_revoke_table(journal_t *journal);
++extern void	journal_clear_buffer_revoked_flags(journal_t *journal);
+ 
+ /*
+  * The log thread user interface:
+-- 
+1.7.5.1
 
-may replicate this problem on larger disk.
-
-
---=20
---
-Best Regard
-Robin Dong
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
