@@ -1,41 +1,33 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/5 bigalloc] e2fsprogs: add tool e2wreck to corrupt fs
- for e2fsck testing
-Date: Fri, 18 Nov 2011 22:31:44 -0500
-Message-ID: <20111119033144.GD4130@thunk.org>
-References: <1321613730-10600-1-git-send-email-hao.bigrat@gmail.com>
- <1321613730-10600-2-git-send-email-hao.bigrat@gmail.com>
+Subject: Re: [PATCH] e2fsck: fix "can't find dup_blk" error
+Date: Fri, 18 Nov 2011 23:02:15 -0500
+Message-ID: <20111119040215.GE4130@thunk.org>
+References: <1321584758-4259-1-git-send-email-hao.bigrat@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, Robin Dong <sanbai@taobao.com>
 To: Robin Dong <hao.bigrat@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:52534 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:53587 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752009Ab1KSDbs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 18 Nov 2011 22:31:48 -0500
+	id S1751457Ab1KSECT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Nov 2011 23:02:19 -0500
 Content-Disposition: inline
-In-Reply-To: <1321613730-10600-2-git-send-email-hao.bigrat@gmail.com>
+In-Reply-To: <1321584758-4259-1-git-send-email-hao.bigrat@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 18, 2011 at 06:55:26PM +0800, Robin Dong wrote:
+On Fri, Nov 18, 2011 at 10:52:38AM +0800, Robin Dong wrote:
 > From: Robin Dong <sanbai@taobao.com>
 > 
-> We need a tool to wreck filesystem to test e2fsck
-> 
-> Signed-off-by: Robin Dong <sanbai@taobao.com>
+> After:
+> 1. mke2fs -O ^has_journal,^resize_inode,^uninit_bg,extent,meta_bg,flex_bg,bigalloc /dev/sda
+> 2. mount -t ext4 /dev/sda /test/
+> 3. create file (8192K size, extent' e_len is 2) /test/1 ~ /test/10
+> 4. use tool to change the /test/5 extent's e_len to 100, corrupt file
+> 5. e2fsck -f /dev/sda
 
-I don't understand why you need this tool.  Debugfs is a more general
-tool that will do pretty much everything your proposed e2wreck tool
-will do.
+I can't replicate this.  I presume it only shows up with your
+modification to the bigalloc format?
 
-The one exception to this is low-level extent tree modifications ---
-that functionality is there in the tst_extent program, which is a
-debugging program I used when developing the extent support for
-e2fsck.  Go to the lib/ext2fs directory, and run "make tst_extents".
-It's been on my todo list to get a more cleaner support for low-level
-extent manipulation to debugfs, but I haven't gotten around to it,
-since tst_extents is a serviceable enough, if hacky, substitute.
-
-      		       		   	      	     - Ted
+						- Ted
