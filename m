@@ -1,73 +1,88 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH v4 0/15] ext4: add new online resize interface
-Date: Sat, 19 Nov 2011 17:57:06 +0800
-Message-ID: <1321696641-14437-1-git-send-email-xiaoqiangnk@gmail.com>
-Cc: adilger@dilger.ca, linux-ext4@vger.kernel.org
+Subject: [PATCH v4 02/15] ext4: add a function which adds a new desc to a fs
+Date: Sat, 19 Nov 2011 17:57:08 +0800
+Message-ID: <1321696641-14437-3-git-send-email-xiaoqiangnk@gmail.com>
+References: <1321696641-14437-1-git-send-email-xiaoqiangnk@gmail.com>
+Cc: adilger@dilger.ca, linux-ext4@vger.kernel.org,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-iy0-f174.google.com ([209.85.210.174]:48182 "EHLO
 	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751605Ab1KSMbB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Nov 2011 07:31:01 -0500
-Received: by iage36 with SMTP id e36so4861656iag.19
-        for <linux-ext4@vger.kernel.org>; Sat, 19 Nov 2011 04:31:00 -0800 (PST)
+	with ESMTP id S1751636Ab1KSMbG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Nov 2011 07:31:06 -0500
+Received: by mail-iy0-f174.google.com with SMTP id e36so4861656iag.19
+        for <linux-ext4@vger.kernel.org>; Sat, 19 Nov 2011 04:31:06 -0800 (PST)
+In-Reply-To: <1321696641-14437-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all,
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
 
-This patch series adds new resize implementation to ext4.
+This patch adds a function named ext4_add_new_desc() which adds
+a new desc to a fs and whose code is copied from ext4_group_add().
 
--- What's new resize implementation?
-   It is a new online resize interface for ext4.  It can be used via
-   ioctl with EXT4_IOC_RESIZE_FS and a 64 bit integer indicating size
-   of the resized fs in block.
+The function will be used by new resize implementation.
 
--- Difference between current resize and new resize.
-   New resize lets kernel do all work, like allocating bitmaps and
-   inode tables and can support flex_bg and BLOCK_UNINIT features.
-   Besides these, new resize is much faster than current resize.
+Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/resize.c |   42 ++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 42 insertions(+), 0 deletions(-)
 
-   Below are benchmarks I made on my personal computer, fses with
-   flex_bg size = 16 were resized to 230GB evry time. The first
-   row shows the size of a fs from which the fs was resized to 230GB.
-   The datas were collected by 'time resize2fs'.
-
-                      new resize
-                20GB          50GB      100GB
-      real    0m3.558s     0m2.891s    0m0.394s
-      user    0m0.004s     0m0.000s    0m0.394s
-      sys     0m0.048s     0m0.048s    0m0.028s
-
-                      current resize
-                20GB          50GB      100GB
-      real    5m2.770s     4m43.757s  3m14.840s
-      user    0m0.040s     0m0.032s   0m0.024s
-      sys     0m0.464s     0m0.432s   0m0.324s
-
-   According to data above, new resize is faster than current resize in both
-   user and sys time.  New resize performs well in sys time, because it
-   supports BLOCK_UNINIT and adds multi-groups each time.
-
--- About supporting new features.
-   YES! New resize can support new feature like bigalloc and exclude bitmap
-   easily.  Because it lets kernel do all work.
-
- V3->V4:
-   rename __ext4_group_extend to ext4_group_extend_no_check.
-
- V2->V3:
-   initialize block bitmap of last group.
-   remove code initalizing inode bitmap and inode tables.
-
-Yongqiang.
-
-git diff --stat
-
- Documentation/filesystems/ext4.txt |    7 +
- fs/ext4/ext4.h                     |   10 +
- fs/ext4/ioctl.c                    |   39 ++
- fs/ext4/resize.c                   | 1167 +++++++++++++++++++++++++++---------
- 4 files changed, 942 insertions(+), 281 deletions(-)
-
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index ac5565c..9a5486e 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -735,6 +735,48 @@ exit_err:
+ 	}
+ }
+ 
++/*
++ * ext4_add_new_desc() adds group descriptor of group @group
++ *
++ * @handle: journal handle
++ * @sb; super block
++ * @group: the group no. of the first group desc to be added
++ * @resize_inode: the resize inode
++ */
++static int ext4_add_new_desc(handle_t *handle, struct super_block *sb,
++			     ext4_group_t group, struct inode *resize_inode)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct ext4_super_block *es = sbi->s_es;
++	struct buffer_head *gdb_bh;
++	int gdb_off, gdb_num, err = 0;
++	int reserved_gdb = ext4_bg_has_super(sb, group) ?
++		le16_to_cpu(es->s_reserved_gdt_blocks) : 0;
++
++	gdb_off = group % EXT4_DESC_PER_BLOCK(sb);
++	gdb_num = group / EXT4_DESC_PER_BLOCK(sb);
++
++	/*
++	 * We will only either add reserved group blocks to a backup group
++	 * or remove reserved blocks for the first group in a new group block.
++	 * Doing both would be mean more complex code, and sane people don't
++	 * use non-sparse filesystems anymore.  This is already checked above.
++	 */
++	if (gdb_off) {
++		gdb_bh = sbi->s_group_desc[gdb_num];
++		err = ext4_journal_get_write_access(handle, gdb_bh);
++		if (err)
++			goto out;
++
++		if (reserved_gdb && ext4_bg_num_gdb(sb, group))
++			err = reserve_backup_gdb(handle, resize_inode, group);
++	} else
++		err = add_new_gdb(handle, resize_inode, group);
++
++out:
++	return err;
++}
++
+ /* Add group descriptor data to an existing or new group descriptor block.
+  * Ensure we handle all possible error conditions _before_ we start modifying
+  * the filesystem, because we cannot abort the transaction and not have it
+-- 
+1.7.5.1
 
