@@ -1,93 +1,70 @@
 From: NamJae Jeon <linkinjeon@gmail.com>
-Subject: Re: [PATCH] ext4: remove unneeded variable.
-Date: Sun, 20 Nov 2011 06:53:23 +0900
-Message-ID: <CAKYAXd8BdKXOPEV0d4hN27Mb5kDbEfYnhcF5+Lxcw2nFkCKFpw@mail.gmail.com>
-References: <1321023744-16249-1-git-send-email-linkinjeon@gmail.com>
-	<4EC80D6E.3090404@linux.vnet.ibm.com>
-	<4EC81AF1.2080108@linux.vnet.ibm.com>
+Subject: Re: [PATCH] ext4: slab caches set to SLAB_MEM_SPREAD flags.
+Date: Sun, 20 Nov 2011 07:16:51 +0900
+Message-ID: <CAKYAXd85nEpYhiA3VFC53TA4jQJfWixDagab4WRWrsSANyLp-Q@mail.gmail.com>
+References: <1321455848-1929-1-git-send-email-linkinjeon@gmail.com>
+	<47270FB7-96AC-4F41-98D3-9AD469080DBE@mit.edu>
+	<alpine.DEB.2.00.1111161347000.16596@chino.kir.corp.google.com>
+	<CADDb1s1pLddZ4TQciL=yO-17WwQDyLmzP1E8U0UsyiQqez8Q8A@mail.gmail.com>
+	<710B9EAE-A4C8-4E8F-9AA1-F6CBDC84FD54@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: tytso@mit.edu, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	Amit Sahrawat <amit.sahrawat83@gmail.com>
-To: "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <4EC81AF1.2080108@linux.vnet.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Amit Sahrawat <amit.sahrawat83@gmail.com>,
+	David Rientjes <rientjes@google.com>,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:54557 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754140Ab1KSWQx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Nov 2011 17:16:53 -0500
+In-Reply-To: <710B9EAE-A4C8-4E8F-9AA1-F6CBDC84FD54@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-2011/11/20 Srivatsa S. Bhat <srivatsa.bhat@linux.vnet.ibm.com>:
-> On 11/20/2011 01:41 AM, Srivatsa S. Bhat wrote:
->> On 11/11/2011 08:32 PM, Namjae Jeon wrote:
->>> ret2 is not needed in ext4_flush_completed_IO().
->>>
->>
->> Not needed? I went through the code briefly, and I don't agree.
->>
->>> Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
->>> Signed-off-by: Amit Sahrawat <amit.sahrawat83@gmail.com>
->>> ---
->>> =C2=A0fs/ext4/fsync.c | =C2=A0 =C2=A05 +----
->>> =C2=A01 files changed, 1 insertions(+), 4 deletions(-)
->>>
->>> diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
->>> index 00a2cb7..40397ac 100644
->>> --- a/fs/ext4/fsync.c
->>> +++ b/fs/ext4/fsync.c
->>> @@ -81,7 +81,6 @@ int ext4_flush_completed_IO(struct inode *inode)
->>> =C2=A0 =C2=A0 =C2=A0struct ext4_inode_info *ei =3D EXT4_I(inode);
->>> =C2=A0 =C2=A0 =C2=A0unsigned long flags;
->>> =C2=A0 =C2=A0 =C2=A0int ret =3D 0;
->>> - =C2=A0 =C2=A0int ret2 =3D 0;
->>>
->>> =C2=A0 =C2=A0 =C2=A0dump_completed_IO(inode);
->>> =C2=A0 =C2=A0 =C2=A0spin_lock_irqsave(&ei->i_completed_io_lock, fla=
-gs);
->>> @@ -105,12 +104,10 @@ int ext4_flush_completed_IO(struct inode *ino=
-de)
->>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 */
->>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0spin_unlock_irqrest=
-ore(&ei->i_completed_io_lock, flags);
->>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0ret =3D ext4_end_io=
-_nolock(io);
->>> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0if (ret < 0)
->>> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0ret2 =3D ret;
->>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0spin_lock_irqsave(&=
-ei->i_completed_io_lock, flags);
->>> =C2=A0 =C2=A0 =C2=A0}
->>> =C2=A0 =C2=A0 =C2=A0spin_unlock_irqrestore(&ei->i_completed_io_lock=
-, flags);
->>> - =C2=A0 =C2=A0return (ret2 < 0) ? ret2 : 0;
->>> + =C2=A0 =C2=A0return (ret < 0) ? ret : 0;
->>> =C2=A0}
->>
->> Please note that there is a while loop involved here. Which means, t=
-hat ret2
->> is used to store the last negative value of ret. And due to the loop=
-, ret can
->> be over-written in the next loop iteration, which we can afford, bec=
-ause we
->> have already stored what we need to save, in ret2. And this ret2 val=
-ue is used
->> to return appropriate value to the caller.
->>
+2011/11/20 Theodore Tso <tytso@mit.edu>:
 >
-> Actually, what I really meant was, removing ret2 as merely "unneeded"=
- might not
-> be the right thing to do because once you apply your patch, you end u=
-p altering
-> the value returned by this function!
+> On Nov 17, 2011, at 12:11 AM, Amit Sahrawat wrote:
+>> We looked for the details regarding the introduction of
+>> SLAB_MEM_SHARED(http://linux.derkeiler.com/Mailing-Lists/Kernel/2006=
+-02/msg01409.html
+>> - provide the slab cache infrastructure to support cpuset memory
+>> spreading), and further the changes were introduced across all
+>> filesystems - http://lwn.net/Articles/173654/.
 >
-> If the return value is indeed wrong in the current code, you should r=
-ather
-> be saying that this is a bug fix, with appropriate justification IMO.
+> The main thing I see when I look at this list was it was focused only=
+ on the file system's inode structures, or other structures which were =
+long lived and likely to be accessed from many NUMA nodes other than th=
+e one where it was originally allocated.
 >
-Thanks for your review. My thinking was reaching for to while loop().
-I will remember your advice.
-Thanks Srivatsa.
-> Thanks,
-> Srivatsa S. Bhat
+> It's unfortunate that this has gotten turned into a much broader gene=
+ralization that all slab caches should have this flag set. =C2=A0 Perha=
+ps it might be interesting to reflect on the fact that if it was always=
+ good to do this, that a flag wouldn't be used to control this behavior=
+, but rather it would be done conditionally?
+>
+> It's all very good to send =C2=A0lots of clean up patches, perhaps as=
+ a way to learn how to submit kernel patches. =C2=A0 But I would ask pe=
+ople who do this to understand a bit more deeply what is going on. =C2=A0=
+What's most important for people who are getting started with kernel de=
+velopment is not so much the mechanics of submitting patches, but under=
+standing why things work the way they do.
+
+Actually I checked btrfs before I posted this patch, I was more
+confused by temparal slab caches similar with page_io caches of ext4
+were not even using the spread flags in btrfs.
+I apologize for lacking a point. I will post a patch after
+understanding a bit more deeply.
+
+>
+> Best regards,
+>
+> -- Ted
 >
 >
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
