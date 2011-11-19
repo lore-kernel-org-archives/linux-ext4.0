@@ -1,80 +1,35 @@
-From: "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>
-Subject: Re: [PATCH] ext4: remove unneeded variable.
-Date: Sun, 20 Nov 2011 02:39:05 +0530
-Message-ID: <4EC81AF1.2080108@linux.vnet.ibm.com>
-References: <1321023744-16249-1-git-send-email-linkinjeon@gmail.com> <4EC80D6E.3090404@linux.vnet.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: [PATCH] ext4: slab caches set to SLAB_MEM_SPREAD flags.
+Date: Sat, 19 Nov 2011 16:14:01 -0500
+Message-ID: <2F5A5082-690F-4C74-A92F-6CC157489B46@mit.edu>
+References: <1321455848-1929-1-git-send-email-linkinjeon@gmail.com> <47270FB7-96AC-4F41-98D3-9AD469080DBE@mit.edu> <alpine.DEB.2.00.1111161347000.16596@chino.kir.corp.google.com> <CADDb1s1pLddZ4TQciL=yO-17WwQDyLmzP1E8U0UsyiQqez8Q8A@mail.gmail.com> <CAKYAXd9wCJFuJZ8uxHESuq92G9EUc0Dq0ejAwbJk0OrwhCcVCA@mail.gmail.com> <8343168C-D5F7-43E4-B614-45FBAF5B29A7@mit.edu> <A5A56693-9C4C-4957-AAA5-3D1BD8AA7DCE@mit.edu> <CAKYAXd99NrOC77=p31nax223UOxOONv3_JcLXUpXign8=58Vxw@mail.gmail.com> <0912364C-C313-4BCA-9EE2-73F55FE012E6@mit.edu> <CAKYAXd91gcPbfAqRRkW7HhxRDXstzGVRbwqzve40z6BTDEj4_w@mail.gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1251.1)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Theodore Tso <tytso@mit.edu>, David Rientjes <rientjes@google.com>,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	Amit Sahrawat <amit.sahrawat83@gmail.com>
-To: Namjae Jeon <linkinjeon@gmail.com>
+To: NamJae Jeon <linkinjeon@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp04.in.ibm.com ([122.248.162.4]:39172 "EHLO
-	e28smtp04.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752402Ab1KSVJN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Nov 2011 16:09:13 -0500
-Received: from /spool/local
-	by e28smtp04.in.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <srivatsa.bhat@linux.vnet.ibm.com>;
-	Sun, 20 Nov 2011 02:39:10 +0530
-In-Reply-To: <4EC80D6E.3090404@linux.vnet.ibm.com>
+Received: from DMZ-MAILSEC-SCANNER-6.MIT.EDU ([18.7.68.35]:46582 "EHLO
+	dmz-mailsec-scanner-6.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752992Ab1KSVOH convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 19 Nov 2011 16:14:07 -0500
+In-Reply-To: <CAKYAXd91gcPbfAqRRkW7HhxRDXstzGVRbwqzve40z6BTDEj4_w@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/20/2011 01:41 AM, Srivatsa S. Bhat wrote:
-> On 11/11/2011 08:32 PM, Namjae Jeon wrote:
->> ret2 is not needed in ext4_flush_completed_IO().
->>
-> 
-> Not needed? I went through the code briefly, and I don't agree.
-> 
->> Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
->> Signed-off-by: Amit Sahrawat <amit.sahrawat83@gmail.com>
->> ---
->>  fs/ext4/fsync.c |    5 +----
->>  1 files changed, 1 insertions(+), 4 deletions(-)
->>
->> diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
->> index 00a2cb7..40397ac 100644
->> --- a/fs/ext4/fsync.c
->> +++ b/fs/ext4/fsync.c
->> @@ -81,7 +81,6 @@ int ext4_flush_completed_IO(struct inode *inode)
->>  	struct ext4_inode_info *ei = EXT4_I(inode);
->>  	unsigned long flags;
->>  	int ret = 0;
->> -	int ret2 = 0;
->>
->>  	dump_completed_IO(inode);
->>  	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
->> @@ -105,12 +104,10 @@ int ext4_flush_completed_IO(struct inode *inode)
->>  		 */
->>  		spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
->>  		ret = ext4_end_io_nolock(io);
->> -		if (ret < 0)
->> -			ret2 = ret;
->>  		spin_lock_irqsave(&ei->i_completed_io_lock, flags);
->>  	}
->>  	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
->> -	return (ret2 < 0) ? ret2 : 0;
->> +	return (ret < 0) ? ret : 0;
->>  }
-> 
-> Please note that there is a while loop involved here. Which means, that ret2
-> is used to store the last negative value of ret. And due to the loop, ret can
-> be over-written in the next loop iteration, which we can afford, because we
-> have already stored what we need to save, in ret2. And this ret2 value is used
-> to return appropriate value to the caller. 
-> 
 
-Actually, what I really meant was, removing ret2 as merely "unneeded" might not
-be the right thing to do because once you apply your patch, you end up altering
-the value returned by this function!
+On Nov 19, 2011, at 10:40 AM, NamJae Jeon wrote:
 
-If the return value is indeed wrong in the current code, you should rather
-be saying that this is a bug fix, with appropriate justification IMO. 
+> Thanks for your opinion.
+> Have you thought that mem spread flags is not needed in group info
+> caches same with page_io and mballoc ?
 
-Thanks,
-Srivatsa S. Bhat
+The group info structures are long lived structures that live a long time and will likely be accessed by many NUMA nodes.   So setting the men spread flag for the group info cache is more likely to be useful.   My guess is that any benefit will be extremely hard to measure (especially since the amount of memory used by the group info structures is a pittance compared to the memory used by the inode cache), but at least theoretically it would be sound to have that flag set with the group info slab cache.
+
+Regards,
+
+-- Ted
 
