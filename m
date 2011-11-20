@@ -1,53 +1,45 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH v4 0/15] ext4: add new online resize interface
-Date: Sun, 20 Nov 2011 10:15:12 -0700
-Message-ID: <906726DA-EC86-40CB-AB3E-7F3871609BF3@dilger.ca>
-References: <1321696641-14437-1-git-send-email-xiaoqiangnk@gmail.com> <E4904E52-7428-478D-AE2E-B29EA825CDB1@gmail.com> <CAGBYx2a0T7sK9REJ8tb_FrVrPDBMfhHZj-mjS1ueSbznQy9JPg@mail.gmail.com>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "tytso@mit.edu" <tytso@mit.edu>,
-	"adilger@dilger.ca" <adilger@dilger.ca>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/2] dumpe2fs: dump blocks count used by super and GDT
+Date: Sun, 20 Nov 2011 13:28:18 -0500
+Message-ID: <20111120182818.GA12868@thunk.org>
+References: <1321405328-5298-1-git-send-email-xiaoqiangnk@gmail.com>
+ <20111120044310.GJ4130@thunk.org>
+ <CAGBYx2Yca4EPk6ZZ8Q0jqbCxK9bURYcht9FKo9gcSWLmvVAMhQ@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
 To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from shawmail.shawcable.com ([64.59.128.220]:26616 "EHLO
-	mail.shawcable.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752867Ab1KTRPP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Nov 2011 12:15:15 -0500
-In-Reply-To: <CAGBYx2a0T7sK9REJ8tb_FrVrPDBMfhHZj-mjS1ueSbznQy9JPg@mail.gmail.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:58634 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753709Ab1KTS2V (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 20 Nov 2011 13:28:21 -0500
+Content-Disposition: inline
+In-Reply-To: <CAGBYx2Yca4EPk6ZZ8Q0jqbCxK9bURYcht9FKo9gcSWLmvVAMhQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-11-19, at 20:14, Yongqiang Yang <xiaoqiangnk@gmail.com> wrote:
+On Sun, Nov 20, 2011 at 03:08:23PM +0800, Yongqiang Yang wrote:
+> Some users are confused by static metadata blocks allocated by extN
+> file systems.   Blocks used as inode tables and bitmaps can be
+> calculated by data from dumpe2fs.  However, blocks taken up by super
+> blocks and GDT can not be calculated.   So this patch prints the
+> number of blocks used by super blocks and GDT.   IMHO, it is useful
+> for some users who know little about extN.   I met several users who
+> ask why a fresh ext4 has used so many blocks compared to others.    I
+> know most of them are used as inode tables.   Without this patch, we
+> can explain the problem.   I just think we can explain the problem
+> with explicit numbers with the patch.
 
-> On Sun, Nov 20, 2011 at 2:13 AM, Andreas Dilger <aedilger@gmail.com> wrote:
->> On 2011-11-19, at 2:57, Yongqiang Yang <xiaoqiangnk@gmail.com> wrote:
->>> 
->>>   Below are benchmarks I made on my personal computer, fses with
->>>   flex_bg size = 16 were resized to 230GB evry time. The first
->>>   row shows the size of a fs from which the fs was resized to 230GB.
->>>   The datas were collected by 'time resize2fs'.
->>> 
->>>                      new resize
->>>                20GB          50GB      100GB
->>>      real    0m3.558s     0m2.891s    0m0.394s
->>>      user    0m0.004s     0m0.000s    0m0.394s
->>>      sys     0m0.048s     0m0.048s    0m0.028s
->>> 
->>>                      current resize
->>>                20GB          50GB      100GB
->>>      real    5m2.770s     4m43.757s  3m14.840s
->>>      user    0m0.040s     0m0.032s   0m0.024s
->>>      sys     0m0.464s     0m0.432s   0m0.324s
->> 
->> These stats must be backward, because resizing 20GB takes more time than resizing 100GB.
-> 
-> Every time, the filesystem was resized from 20/50/100GB to 230GB, so
-> resizing 20GB should takes more time than resizing 100GB.   I am not
-> sure what you meant.
+The reason most of the users are complaining is not because of
+superblocks and the GDT blocks, however.  It's really the inode table
+blocks (somewhat), and especially, the 5% reserved blocks for root.
+This is the sort of thing that's better explained in a FAQ entry,
+since most users are also not likely to use dumpe2fs.
 
-Sorry, I didn't read closely enough. I thought it was resizing by the given amount. 
+And if they are going to use dumpe2fs, I'd much rather the FAQ entry
+explain it and they can then look at the details of the block layout
+in the dumpe2fs output (i."e. dumpe2fs /dev/hdXX | grep superblock")
+if they really need to count the number of superblocks.
 
-Cheers, Andreas
+   	       	       	     	 	   - Ted
