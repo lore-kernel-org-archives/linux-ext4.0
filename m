@@ -1,59 +1,50 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [PATCH 1/2] dumpe2fs: dump blocks count used by super and GDT
-Date: Sun, 20 Nov 2011 15:08:23 +0800
-Message-ID: <CAGBYx2Yca4EPk6ZZ8Q0jqbCxK9bURYcht9FKo9gcSWLmvVAMhQ@mail.gmail.com>
-References: <1321405328-5298-1-git-send-email-xiaoqiangnk@gmail.com>
-	<20111120044310.GJ4130@thunk.org>
+From: Christian Kujau <lists@nerdbynature.de>
+Subject: Re: e2fsprogs: Avoid infinite loop in ext2fs_find_block_device()
+Date: Sun, 20 Nov 2011 00:17:07 -0800 (PST)
+Message-ID: <alpine.DEB.2.01.1111200011530.8000@trent.utfs.org>
+References: <4EB23889.1010807@whamcloud.com> <4EB2A983.6070203@redhat.com> <121461D1-4A28-4B65-960D-7549D2782FFA@mit.edu> <4EB3DF9E.7010601@whamcloud.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Theodore Tso <tytso@MIT.EDU>, Eric Sandeen <sandeen@redhat.com>,
+	linux-ext4@vger.kernel.org
+To: Niu <niu@whamcloud.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:39726 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751091Ab1KTHIY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Nov 2011 02:08:24 -0500
-Received: by ywt32 with SMTP id 32so3749218ywt.19
-        for <linux-ext4@vger.kernel.org>; Sat, 19 Nov 2011 23:08:23 -0800 (PST)
-In-Reply-To: <20111120044310.GJ4130@thunk.org>
+Received: from trent.utfs.org ([194.246.123.103]:35213 "EHLO trent.utfs.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751504Ab1KTIZg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 20 Nov 2011 03:25:36 -0500
+In-Reply-To: <4EB3DF9E.7010601@whamcloud.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Nov 20, 2011 at 12:43 PM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Wed, Nov 16, 2011 at 09:02:07AM +0800, Yongqiang Yang wrote:
->> Blocks count used by super and GDT is dumped so that users
->> can know how many blocks are taken up by super and GDT.
->>
->> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
->
-> I'm not convinced this is sufficiently useful to be worth adding to
-> dumpe2fs. =A0How many users really need to know this?
-Some users are confused by static metadata blocks allocated by extN
-file systems.   Blocks used as inode tables and bitmaps can be
-calculated by data from dumpe2fs.  However, blocks taken up by super
-blocks and GDT can not be calculated.   So this patch prints the
-number of blocks used by super blocks and GDT.   IMHO, it is useful
-for some users who know little about extN.   I met several users who
-ask why a fresh ext4 has used so many blocks compared to others.    I
-know most of them are used as inode tables.   Without this patch, we
-can explain the problem.   I just think we can explain the problem
-with explicit numbers with the patch.
+On Fri, 4 Nov 2011 at 20:50, Niu wrote:
+> diff --git a/lib/ext2fs/ext2fsP.h b/lib/ext2fs/ext2fsP.h
+> index b182d7f..82e1ba0 100644
+> --- a/lib/ext2fs/ext2fsP.h
+> +++ b/lib/ext2fs/ext2fsP.h
+> @@ -11,6 +11,8 @@
+>  
+>  #include "ext2fs.h"
+>  
+[...]
+> --- a/lib/ext2fs/finddev.c
+> +++ b/lib/ext2fs/finddev.c
+> @@ -34,6 +34,7 @@
+>  
+>  #include "ext2_fs.h"
+>  #include "ext2fs.h"
+> +#include "ext2fsP.h"
 
+On the very real chance of making a fool of myself: if ext2fsP.h includes 
+ext2fs.h and now finddev.c will include ext2fsP.h - shouldn't we omit the '#include 
+"ext2fs.h"' in finddev.c (and namei.c) now?
 
-Yongqiang.
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0- Ted
->
+I guess the compiler/preprocessor will figure this out, just wondering about
+code cleanliness. Then again we have names like 'ext2_fs.h' and 
+'ext2fs.h', I guess only an insider will know the difference :-)
 
+Christian.
+-- 
+BOFH excuse #97:
 
-
---=20
-Best Wishes
-Yongqiang Yang
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Small animal kamikaze attack on power supplies
