@@ -1,50 +1,53 @@
-From: Christian Kujau <lists@nerdbynature.de>
-Subject: Re: e2fsprogs: Avoid infinite loop in ext2fs_find_block_device()
-Date: Sun, 20 Nov 2011 00:17:07 -0800 (PST)
-Message-ID: <alpine.DEB.2.01.1111200011530.8000@trent.utfs.org>
-References: <4EB23889.1010807@whamcloud.com> <4EB2A983.6070203@redhat.com> <121461D1-4A28-4B65-960D-7549D2782FFA@mit.edu> <4EB3DF9E.7010601@whamcloud.com>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Theodore Tso <tytso@MIT.EDU>, Eric Sandeen <sandeen@redhat.com>,
-	linux-ext4@vger.kernel.org
-To: Niu <niu@whamcloud.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH v4 0/15] ext4: add new online resize interface
+Date: Sun, 20 Nov 2011 10:15:12 -0700
+Message-ID: <906726DA-EC86-40CB-AB3E-7F3871609BF3@dilger.ca>
+References: <1321696641-14437-1-git-send-email-xiaoqiangnk@gmail.com> <E4904E52-7428-478D-AE2E-B29EA825CDB1@gmail.com> <CAGBYx2a0T7sK9REJ8tb_FrVrPDBMfhHZj-mjS1ueSbznQy9JPg@mail.gmail.com>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: "tytso@mit.edu" <tytso@mit.edu>,
+	"adilger@dilger.ca" <adilger@dilger.ca>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from trent.utfs.org ([194.246.123.103]:35213 "EHLO trent.utfs.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751504Ab1KTIZg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 20 Nov 2011 03:25:36 -0500
-In-Reply-To: <4EB3DF9E.7010601@whamcloud.com>
+Received: from shawmail.shawcable.com ([64.59.128.220]:26616 "EHLO
+	mail.shawcable.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752867Ab1KTRPP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Nov 2011 12:15:15 -0500
+In-Reply-To: <CAGBYx2a0T7sK9REJ8tb_FrVrPDBMfhHZj-mjS1ueSbznQy9JPg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 4 Nov 2011 at 20:50, Niu wrote:
-> diff --git a/lib/ext2fs/ext2fsP.h b/lib/ext2fs/ext2fsP.h
-> index b182d7f..82e1ba0 100644
-> --- a/lib/ext2fs/ext2fsP.h
-> +++ b/lib/ext2fs/ext2fsP.h
-> @@ -11,6 +11,8 @@
->  
->  #include "ext2fs.h"
->  
-[...]
-> --- a/lib/ext2fs/finddev.c
-> +++ b/lib/ext2fs/finddev.c
-> @@ -34,6 +34,7 @@
->  
->  #include "ext2_fs.h"
->  #include "ext2fs.h"
-> +#include "ext2fsP.h"
+On 2011-11-19, at 20:14, Yongqiang Yang <xiaoqiangnk@gmail.com> wrote:
 
-On the very real chance of making a fool of myself: if ext2fsP.h includes 
-ext2fs.h and now finddev.c will include ext2fsP.h - shouldn't we omit the '#include 
-"ext2fs.h"' in finddev.c (and namei.c) now?
+> On Sun, Nov 20, 2011 at 2:13 AM, Andreas Dilger <aedilger@gmail.com> wrote:
+>> On 2011-11-19, at 2:57, Yongqiang Yang <xiaoqiangnk@gmail.com> wrote:
+>>> 
+>>>   Below are benchmarks I made on my personal computer, fses with
+>>>   flex_bg size = 16 were resized to 230GB evry time. The first
+>>>   row shows the size of a fs from which the fs was resized to 230GB.
+>>>   The datas were collected by 'time resize2fs'.
+>>> 
+>>>                      new resize
+>>>                20GB          50GB      100GB
+>>>      real    0m3.558s     0m2.891s    0m0.394s
+>>>      user    0m0.004s     0m0.000s    0m0.394s
+>>>      sys     0m0.048s     0m0.048s    0m0.028s
+>>> 
+>>>                      current resize
+>>>                20GB          50GB      100GB
+>>>      real    5m2.770s     4m43.757s  3m14.840s
+>>>      user    0m0.040s     0m0.032s   0m0.024s
+>>>      sys     0m0.464s     0m0.432s   0m0.324s
+>> 
+>> These stats must be backward, because resizing 20GB takes more time than resizing 100GB.
+> 
+> Every time, the filesystem was resized from 20/50/100GB to 230GB, so
+> resizing 20GB should takes more time than resizing 100GB.   I am not
+> sure what you meant.
 
-I guess the compiler/preprocessor will figure this out, just wondering about
-code cleanliness. Then again we have names like 'ext2_fs.h' and 
-'ext2fs.h', I guess only an insider will know the difference :-)
+Sorry, I didn't read closely enough. I thought it was resizing by the given amount. 
 
-Christian.
--- 
-BOFH excuse #97:
-
-Small animal kamikaze attack on power supplies
+Cheers, Andreas
