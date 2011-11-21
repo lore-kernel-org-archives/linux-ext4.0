@@ -1,56 +1,151 @@
 From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V2 19/19] ext4: Enable ext4 inline support.
-Date: Tue, 22 Nov 2011 00:39:57 +0800
-Message-ID: <1321893597-11024-19-git-send-email-tm@tao.ma>
+Subject: [PATCH V2 17/19] ext4: let empty_dir handle inline dir.
+Date: Tue, 22 Nov 2011 00:39:55 +0800
+Message-ID: <1321893597-11024-17-git-send-email-tm@tao.ma>
 References: <4ECA7DB3.9040605@tao.ma>
  <1321893597-11024-1-git-send-email-tm@tao.ma>
 Cc: tytso@mit.edu, linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org, adilger@dilger.ca
 To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy5-pub.bluehost.com ([67.222.38.55]:57376 "HELO
-	oproxy5-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752046Ab1KURlE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Nov 2011 12:41:04 -0500
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <1321893597-11024-1-git-send-email-tm@tao.ma>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 From: Tao Ma <boyu.mt@taobao.com>
 
+empty_dir is used when deleting a dir. So it should handle
+inline dir properly.
+
 Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/ext4.h   |    1 +
- fs/ext4/ialloc.c |    4 ++++
- 2 files changed, 5 insertions(+), 0 deletions(-)
+ fs/ext4/inline.c |   69 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/namei.c  |    8 ++++++
+ fs/ext4/xattr.h  |    6 ++++
+ 3 files changed, 83 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index a88bc00..784893a 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1414,6 +1414,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
- #define EXT4_FEATURE_INCOMPAT_FLEX_BG		0x0200
- #define EXT4_FEATURE_INCOMPAT_EA_INODE		0x0400 /* EA in inode */
- #define EXT4_FEATURE_INCOMPAT_DIRDATA		0x1000 /* data in dirent */
-+#define EXT4_FEATURE_INCOMPAT_INLINEDATA	0x2000 /* data in inode */
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 302925e..4930e2e 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -1407,6 +1407,75 @@ out:
+ 	return err;
+ }
  
- #define EXT2_FEATURE_COMPAT_SUPP	EXT4_FEATURE_COMPAT_EXT_ATTR
- #define EXT2_FEATURE_INCOMPAT_SUPP	(EXT4_FEATURE_INCOMPAT_FILETYPE| \
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 00beb4f..4f7fe21 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -897,6 +897,10 @@ got:
- 
- 	ei->i_extra_isize = EXT4_SB(sb)->s_want_extra_isize;
- 
-+	ei->i_inline_off = 0;
-+	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_INLINEDATA))
-+		ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
++int empty_inline_dir(struct inode *dir, int *has_inline_data)
++{
++	int err, inline_size;
++	struct ext4_iloc iloc;
++	void *inline_pos;
++	unsigned int offset;
++	struct ext4_dir_entry_2 *de, *de1;
++	int ret = 1;
 +
- 	ret = inode;
- 	dquot_initialize(inode);
- 	err = dquot_alloc_inode(inode);
++	err = ext4_get_inode_loc(dir, &iloc);
++	if (err) {
++		EXT4_ERROR_INODE(dir, "error %d getting inode %lu block",
++				 err, dir->i_ino);
++		return 1;
++	}
++
++	down_read(&EXT4_I(dir)->xattr_sem);
++	if (!ext4_has_inline_data(dir)) {
++		*has_inline_data = 0;
++		goto out;
++	}
++
++	de = ext4_get_inline_entry(dir, &iloc, 0,
++				   &inline_pos, &inline_size);
++	de1 = ext4_get_inline_entry(dir, &iloc,
++			ext4_rec_len_from_disk(de->rec_len, inline_size),
++			&inline_pos, &inline_size);
++	if (le32_to_cpu(de->inode) != dir->i_ino ||
++			!le32_to_cpu(de1->inode) ||
++			strcmp(".", de->name) ||
++			strcmp("..", de1->name)) {
++		ext4_warning(dir->i_sb,
++			     "bad directory (dir #%lu) - no `.' or `..'",
++			     dir->i_ino);
++		ret = 1;
++		goto out;
++	}
++
++	offset = ext4_rec_len_from_disk(de->rec_len, inline_size) +
++		 ext4_rec_len_from_disk(de1->rec_len, inline_size);
++	while (offset < dir->i_size) {
++		de = ext4_get_inline_entry(dir, &iloc, offset,
++					   &inline_pos, &inline_size);
++		if (ext4_check_dir_entry(dir, NULL, de,
++					 iloc.bh, inline_pos,
++					 inline_size, offset)) {
++			ext4_warning(dir->i_sb,
++				     "bad inline directory (dir #%lu) - "
++				     "inode %u, rec_len %u, name_len %d"
++				     "inline size %d\n",
++				     dir->i_ino, le32_to_cpu(de->inode),
++				     le16_to_cpu(de->rec_len), de->name_len,
++				     inline_size);
++			ret = 1;
++			goto out;
++		}
++		if (le32_to_cpu(de->inode)) {
++			ret = 0;
++			goto out;
++		}
++		offset += ext4_rec_len_from_disk(de->rec_len, inline_size);
++	}
++
++out:
++	up_read(&EXT4_I(dir)->xattr_sem);
++	brelse(iloc.bh);
++	return ret;
++}
++
+ int ext4_destroy_inline_data(handle_t *handle, struct inode *inode)
+ {
+ 	int ret;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index cefcec6..24cdb61 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2015,6 +2015,14 @@ static int empty_dir(struct inode *inode)
+ 	struct super_block *sb;
+ 	int err = 0;
+ 
++	if (ext4_has_inline_data(inode)) {
++		int has_inline_data = 1;
++
++		err = empty_inline_dir(inode, &has_inline_data);
++		if (has_inline_data)
++			return err;
++	}
++
+ 	sb = inode->i_sb;
+ 	if (inode->i_size < EXT4_DIR_REC_LEN(1) + EXT4_DIR_REC_LEN(2) ||
+ 	    !(bh = ext4_bread(NULL, inode, 0, 0, &err))) {
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index ccd994e..d889582 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -178,6 +178,7 @@ extern int ext4_delete_inline_entry(handle_t *handle,
+ 				    struct inode *dir,
+ 				    struct ext4_dir_entry_2 *de_del,
+ 				    struct buffer_head *bh);
++extern int empty_inline_dir(struct inode *dir, int *has_inline_data);
+ # else  /* CONFIG_EXT4_FS_XATTR */
+ 
+ static inline int
+@@ -381,6 +382,11 @@ static inline int ext4_delete_inline_entry(handle_t *handle,
+ {
+ 	return 0;
+ }
++
++static inline int empty_inline_dir(struct inode *dir, int *has_inline_data)
++{
++	return 0;
++}
+ # endif  /* CONFIG_EXT4_FS_XATTR */
+ 
+ #ifdef CONFIG_EXT4_FS_SECURITY
 -- 
 1.7.0.4
-
