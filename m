@@ -1,60 +1,65 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [RFC][PATCH 0/8] xfstests: rework large filesystem testing
-Date: Mon, 21 Nov 2011 07:10:45 -0500
-Message-ID: <CF9FF112-852A-473B-99E4-3A5B790AE147@mit.edu>
-References: <1321875088-30801-1-git-send-email-david@fromorbit.com>
-Mime-Version: 1.0 (Apple Message framework v1251.1)
-Content-Type: text/plain; charset=us-ascii
+From: Yu Jian <yujian@whamcloud.com>
+Subject: Increase xattr space by allocating contiguous xattr blocks
+Date: Mon, 21 Nov 2011 20:22:26 +0800
+Message-ID: <4ECA4282.5020908@whamcloud.com>
+References: <4EC10664.1080501@tuxadero.com> <CAO47_-9nfO32nwOAQMVdqw6iWGWK+FWb+MD=WeOz_vr4YrrKmw@mail.gmail.com> <20111115142246.GA7516@thunk.org> <246EA1CC-3C33-4D41-80C0-2331C426EBB0@whamcloud.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>, xfs@oss.sgi.com,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
+Cc: Andreas Dilger <adilger@whamcloud.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Yu Jian <yujian@whamcloud.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DMZ-MAILSEC-SCANNER-7.MIT.EDU ([18.7.68.36]:60725 "EHLO
-	dmz-mailsec-scanner-7.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752251Ab1KUMKr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 Nov 2011 07:10:47 -0500
-In-Reply-To: <1321875088-30801-1-git-send-email-david@fromorbit.com>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:52446 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751009Ab1KUMWj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Nov 2011 07:22:39 -0500
+Received: by ghbz2 with SMTP id z2so2703508ghb.19
+        for <linux-ext4@vger.kernel.org>; Mon, 21 Nov 2011 04:22:38 -0800 (PST)
+In-Reply-To: <246EA1CC-3C33-4D41-80C0-2331C426EBB0@whamcloud.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hello Ted,
 
-On Nov 21, 2011, at 6:31 AM, Dave Chinner wrote:
+I'm working on the patches for large xattrs support again based on the 
+previous patch made by Kalpak Shah. There are some small issues in the 
+previous patch, I'd fix them and rebase the patch on the latest ext4 codes.
 
-> ext4, however, still has serious issues with this - either we take
-> the mkfs.ext4 time hit to initialise all the block groups, or we
-> take it during the preallocation.  IOWs, the "don't do work at mkfs
-> but do it after mount" hack^Wtradeoff simply does not work for
-> testing large filesystems in this manner.  While it is possible to
-> run large filesystem tests on ext4 using this mechanism, it is
-> extremely painful to do so.
+Per the thread of 
+http://kerneltrap.org/mailarchive/linux-ext4/2009/2/9/4931244, there are 
+two features need to be implemented:
+1) store large xattr value (with value_size > blocksize) in an external 
+xattr inode
+2) increase xattr space by allocating a single chunk of up to 64kB (in 
+size) contiguous xattr blocks
 
-For testing, we can disable the "do it after the mount " aspect
-of  ext4 by using the mount option "noinit_itable".   We basically
-only need to zero the inode table to make sure e2fsck doesn't
-confuse old inode tables as new ones in the event that the block
-group descriptors get compromised and we can't trust them to
-determine the high watermark of inodes used per block group,
-something which is only a concern in the case of kernel bugs
-or hardware failures (or power failures in no journal mode).
-(We could also compare the inode crime with the fs mkfs time
-in the superblock, but ext4 gets used on desktops and
-on things like android tablets where I've learned through
-bitter experience that we can't trust the system clock to be
-correct.) 
+The first one has been implemented in the previous patch, and I'm 
+working on the second one, which would handle "medium-sized" xattrs more 
+efficiently.
 
-In any case it's safe to turn of the inode table initialization for
-testing purposes.   In the long term, once we get checksums
-into  the inode table block, we won't need to zero out the inode
-tables at all.
+Now, I've the same question as that in the above thread:
+In xattr.{h,c}, all of the macros and functions assume the xattr space 
+is contiguous with entries growing downwards and values growing upwards 
+(aligned to the end of the space). Especially, the create, replace, 
+remove and shift operations of xattrs are all performed inside a 
+contiguous buffer. This is no problem with in-inode xattr space and 
+single external xattr block which is associated with one block buffer. 
+But for multiple xattr blocks, since the data of them would be read into 
+different block buffers, which are not contiguous, most of the existing 
+macros and functions need to be changed. Is this way acceptable?
 
-As far as xfstests are concerned, if there's a convenient way
-to add mount options automatically (on a per file system 
-basis) when --large-fs is specified, we should be able to 
-make this work for ext4 file systems.
+In order to make most of the codes remain as-is, we could allocate a 
+contiguous large buffer (up to 64kB in size) to handle all of the data. 
+However, we have to memcpy the data from block buffers to the large 
+buffer, and after the data are changed, we need memcpy the data back to 
+block buffers to make the data written into the block device. Is this 
+way reasonable?
 
-Regards,
+Could you please give me some suggestions on how to solve this issue?
 
--- Ted
-
+Thanks!
+-- 
+Best regards,
+Yu Jian
