@@ -1,47 +1,123 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: [PATCH 5/8] xfstests: use command line option for setting extra space
-Date: Mon, 21 Nov 2011 22:31:25 +1100
-Message-ID: <1321875088-30801-6-git-send-email-david@fromorbit.com>
+Subject: [PATCH 4/8] xfstests: use preallocation for ag-wiper
+Date: Mon, 21 Nov 2011 22:31:24 +1100
+Message-ID: <1321875088-30801-5-git-send-email-david@fromorbit.com>
 References: <1321875088-30801-1-git-send-email-david@fromorbit.com>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
 To: xfs@oss.sgi.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:10672 "EHLO
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:2168 "EHLO
 	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755139Ab1KULgv (ORCPT
+	by vger.kernel.org with ESMTP id S1756059Ab1KULgu (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 Nov 2011 06:36:51 -0500
+	Mon, 21 Nov 2011 06:36:50 -0500
 In-Reply-To: <1321875088-30801-1-git-send-email-david@fromorbit.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Dave Chinner <dchinner@redhat.com>
 
-Allow the extra free space to leave in large scratch filesystems to
-be specified by a command line option rather than just via an
-environment variable.
+To enable sane testing of large scale filesystems, the --large-fs
+test option uses xfs_db magic to mark AGs full without doing any IO.
+This leaves only a small amount of free space left in the filesystem
+to stress the high AGs of the filesystem rather than the low AGs.
+
+This method requires us to have special filesystem check options to
+avoid free space checking in xfs_check, and we cannot current run
+xfs_repair on such a filesystem at all. As it is, free space
+checking on xfs_check does not scale, so we still need to avoid this
+checking regardless of how we fill the filesystem.
+
+We can acheive exactly the same fill behaviour by preallocating a
+single large file in the filesystem immediately after creating it.
+This is a filesystem independent manner of filling the filesystem,
+and allows us to do large filesystem testing on more than just XFS.
+
+Further, this preallocation method effectively adds a new "very
+large file" test. It also enables us to run an unmodified xfs_repair
+or filesystem specific fsck program to check the filesystem for
+sanity, so we can now do full sanity checking of such large
+filesystems.
 
 Signed-off-by: Dave Chinner <dchinner@redhat.com>
 ---
- common |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
+ common.rc |   58 +++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ 1 files changed, 53 insertions(+), 5 deletions(-)
 
-diff --git a/common b/common
-index da86cd9..78ac654 100644
---- a/common
-+++ b/common
-@@ -247,6 +247,11 @@ s/ .*//p
- 	    usage
- 	    ;;
+diff --git a/common.rc b/common.rc
+index 455886d..34467ec 100644
+--- a/common.rc
++++ b/common.rc
+@@ -276,6 +276,47 @@ _scratch_mkfs_options()
+     echo $SCRATCH_OPTIONS $MKFS_OPTIONS $* $SCRATCH_DEV
+ }
  
-+	--extra-space=*)
-+	    export SCRATCH_DEV_EMPTY_SPACE=${r#*=}
-+	    xpand=false
-+	    ;;
 +
- 	*)
- 	    start=$r
- 	    end=$r
--- 
-1.7.5.4
-
++_setup_large_xfs_fs()
++{
++	fs_size=$1
++	local tmp_dir=/tmp/
++
++	[ "$LARGE_SCRATCH_DEV" != yes ] && return 0
++	[ -z "$SCRATCH_DEV_EMPTY_SPACE" ] && SCRATCH_DEV_EMPTY_SPACE=0
++	[ $SCRATCH_DEV_EMPTY_SPACE -ge $fs_size ] && return 0
++
++	# calculate the size of the file we need to allocate.
++	# Default free space in the FS is 50GB, but you can specify more via
++	# SCRATCH_DEV_EMPTY_SPACE
++	file_size=$(($fs_size - 50*1024*1024*1024))
++	file_size=$(($file_size - $SCRATCH_DEV_EMPTY_SPACE))
++
++	# mount the filesystem, create the file, unmount it
++	_scratch_mount 2>&1 >$tmp_dir/mnt.err
++	local status=$?
++	if [ $status -ne 0 ]; then
++		echo "mount failed"
++		cat $tmp_dir/mnt.err >&2
++		rm -f $tmp_dir/mnt.err
++		return $status
++	fi
++	rm -f $tmp_dir/mnt.err
++
++	xfs_io -F -f \
++		-c "truncate $file_size" \
++		-c "falloc -k 0 $file_size" \
++		$SCRATCH_MNT/.use_space 2>&1 > /dev/null
++	status=$?
++	umount $SCRATCH_MNT
++	if [ $status -ne 0 ]; then
++		echo "large file prealloc failed"
++		cat $tmp_dir/mnt.err >&2
++		return $status
++	fi
++	return 0
++}
++
+ _scratch_mkfs_xfs()
+ {
+     # extra mkfs options can be added by tests
+@@ -305,16 +346,23 @@ _scratch_mkfs_xfs()
+         mkfs_status=$?
+     fi
+ 
++    if [ $mkfs_status -eq 0 -a "$LARGE_SCRATCH_DEV" = yes ]; then
++	# manually parse the mkfs output to get the fs size in bytes
++	local fs_size
++	fs_size=`cat $tmp_dir.mkfsstd | perl -ne '
++	    if (/^data\s+=\s+bsize=(\d+)\s+blocks=(\d+)/) {
++		my $size = $1 * $2;
++		print STDOUT "$size\n";
++	    }'`
++	_setup_large_xfs_fs $fs_size
++	mkfs_status=$?
++    fi
++
+     # output stored mkfs output
+     cat $tmp_dir.mkfserr >&2
+     cat $tmp_dir.mkfsstd
+     rm -f $tmp_dir.mkfserr $tmp_dir.mkfsstd
+ 
+-    if [ "$LARGE_SCRATCH_DEV" = yes ]; then
+-        [ -z "$SCRATCH_DEV_EMPTY_SPACE" ] && SCRATCH_DEV_EMPTY_SPACE=0
+-        ./tools/ag-wipe -q -r $SCRATCH_DEV_EMPTY_SPACE $SCRATCH_DEV
+-    fi
