@@ -1,143 +1,66 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: [PATCH 8/8] xfstests: enable large fs testing on ext4
-Date: Mon, 21 Nov 2011 22:31:28 +1100
-Message-ID: <1321875088-30801-9-git-send-email-david@fromorbit.com>
+Subject: [PATCH 7/8] xfstests: always us test option when checking large scratch device
+Date: Mon, 21 Nov 2011 22:31:27 +1100
+Message-ID: <1321875088-30801-8-git-send-email-david@fromorbit.com>
 References: <1321875088-30801-1-git-send-email-david@fromorbit.com>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
 To: xfs@oss.sgi.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:2168 "EHLO
-	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755631Ab1KULgv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 Nov 2011 06:36:51 -0500
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1321875088-30801-1-git-send-email-david@fromorbit.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 From: Dave Chinner <dchinner@redhat.com>
 
-Now that setting up large filesystem testing on sparse loopback
-devices uses a generic method for filling the filesystem, extent
-support to ext4 filesystems.
-
-ext4 is slightly more complex to fill as it does not support files
-larger than 16TB. Hence a slightly more complex method of using
-multiple smaller files to fill the space is necessary.
+Some tests call _check_scratch_device directly and when using a
+large filesystem this needs to run with a -t option to avoid
+consuming large amounts of memory. Make this happen in all cases
+that the scratch device is checked.
 
 Signed-off-by: Dave Chinner <dchinner@redhat.com>
 ---
- common.rc |   90 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 90 insertions(+), 0 deletions(-)
+ 017       |    7 ++-----
+ common.rc |    2 ++
+ 2 files changed, 4 insertions(+), 5 deletions(-)
 
+diff --git a/017 b/017
+index 9ca0e72..0a3ede3 100755
+--- a/017
++++ b/017
+@@ -48,9 +48,6 @@ _supported_os Linux
+ 
+ _require_scratch
+ 
+-checkopts=""
+-[ "$USE_BIG_LOOPFS" = yes ] && checkopts=-t
+-
+ echo "*** init FS"
+ 
+ rm -f $seq.full
+@@ -81,8 +78,8 @@ do
+         echo ""                             >>$seq.full
+         echo "*** XFS_CHECK ***"            >>$seq.full
+         echo ""                             >>$seq.full
+-        _scratch_xfs_check $checkopts       >>$seq.full 2>&1 \
+-            || _fail "xfs_check $checkopts failed"
++        _scratch_xfs_check                  >>$seq.full 2>&1 \
++            || _fail "xfs_check failed"
+         _scratch_mount -o remount,rw \
+             || _fail "remount rw failed"
+ done
 diff --git a/common.rc b/common.rc
-index 9b9041f..7bb8f50 100644
+index 12bd349..9b9041f 100644
 --- a/common.rc
 +++ b/common.rc
-@@ -366,6 +366,93 @@ _scratch_mkfs_xfs()
-     return $mkfs_status
+@@ -470,6 +470,8 @@ _scratch_xfs_check()
+     SCRATCH_OPTIONS=""
+     [ "$USE_EXTERNAL" = yes -a ! -z "$SCRATCH_LOGDEV" ] && \
+         SCRATCH_OPTIONS="-l $SCRATCH_LOGDEV"
++    [ "$LARGE_SCRATCH_DEV" = yes ] && \
++        SCRATCH_OPTIONS=$SCRATCH_OPTIONS" -t"
+     $XFS_CHECK_PROG $SCRATCH_OPTIONS $* $SCRATCH_DEV
  }
  
-+_setup_large_ext4_fs()
-+{
-+	fs_size=$1
-+	local tmp_dir=/tmp/
-+
-+	[ "$LARGE_SCRATCH_DEV" != yes ] && return 0
-+	[ -z "$SCRATCH_DEV_EMPTY_SPACE" ] && SCRATCH_DEV_EMPTY_SPACE=0
-+	[ $SCRATCH_DEV_EMPTY_SPACE -ge $fs_size ] && return 0
-+
-+	# Default free space in the FS is 50GB, but you can specify more via
-+	# SCRATCH_DEV_EMPTY_SPACE
-+	space_to_consume=$(($fs_size - 50*1024*1024*1024 - $SCRATCH_DEV_EMPTY_SPACE))
-+
-+	# mount the filesystem and create 16TB - 4KB files until we consume
-+	# all the necessary space.
-+	_scratch_mount 2>&1 >$tmp_dir/mnt.err
-+	local status=$?
-+	if [ $status -ne 0 ]; then
-+		echo "mount failed"
-+		cat $tmp_dir/mnt.err >&2
-+		rm -f $tmp_dir/mnt.err
-+		return $status
-+	fi
-+	rm -f $tmp_dir/mnt.err
-+
-+	file_size=$((16*1024*1024*1024*1024 - 4096))
-+	nfiles=0
-+	while [ $space_to_consume -gt $file_size ]; do
-+
-+		xfs_io -F -f \
-+			-c "truncate $file_size" \
-+			-c "falloc -k 0 $file_size" \
-+			$SCRATCH_MNT/.use_space.$nfiles 2>&1
-+		status=$?
-+		if [ $status -ne 0 ]; then
-+			break;
-+		fi
-+
-+		space_to_consume=$(( $space_to_consume - $file_size ))
-+		nfiles=$(($nfiles + 1))
-+	done
-+
-+	# consume the remaining space.
-+	if [ $space_to_consume -gt 0 ]; then
-+		xfs_io -F -f \
-+			-c "truncate $space_to_consume" \
-+			-c "falloc -k 0 $space_to_consume" \
-+			$SCRATCH_MNT/.use_space.$nfiles 2>&1
-+		status=$?
-+	fi
-+
-+	umount $SCRATCH_MNT
-+	if [ $status -ne 0 ]; then
-+		echo "large file prealloc failed"
-+		cat $tmp_dir/mnt.err >&2
-+		return $status
-+	fi
-+	return 0
-+}
-+_scratch_mkfs_ext4()
-+{
-+	local tmp_dir=/tmp/
-+
-+	/sbin/mkfs -t $FSTYP -- $MKFS_OPTIONS $* $SCRATCH_DEV \
-+			2>$tmp_dir.mkfserr 1>$tmp_dir.mkfsstd
-+	local mkfs_status=$?
-+
-+	if [ $mkfs_status -eq 0 -a "$LARGE_SCRATCH_DEV" = yes ]; then
-+		# manually parse the mkfs output to get the fs size in bytes
-+		fs_size=`cat $tmp_dir.mkfsstd | awk ' \
-+			/^Block size/ { split($2, a, "="); bs = a[2] ; } \
-+			/ inodes, / { blks = $3 } \
-+			/reserved for the super user/ { resv = $1 } \
-+			END { fssize = bs * blks - resv; print fssize }'`
-+
-+		_setup_large_ext4_fs $fs_size
-+		mkfs_status=$?
-+	fi
-+
-+	# output stored mkfs output
-+	cat $tmp_dir.mkfserr >&2
-+	cat $tmp_dir.mkfsstd
-+	rm -f $tmp_dir.mkfserr $tmp_dir.mkfsstd
-+
-+	return $mkfs_status
-+}
-+
- _scratch_mkfs()
- {
-     case $FSTYP in
-@@ -381,6 +468,9 @@ _scratch_mkfs()
-     btrfs)
-         $MKFS_BTRFS_PROG $MKFS_OPTIONS $* $SCRATCH_DEV > /dev/null
- 	;;
-+    ext4)
-+	_scratch_mkfs_ext4 $*
-+	;;
-     *)
- 	/sbin/mkfs -t $FSTYP -- $MKFS_OPTIONS $* $SCRATCH_DEV
- 	;;
 -- 
 1.7.5.4
 
