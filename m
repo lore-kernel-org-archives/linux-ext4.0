@@ -1,97 +1,65 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: Better organizing ext4 development community
-Date: Mon, 21 Nov 2011 10:58:36 -0500
-Message-ID: <E1RSWGS-0000op-NX@tytso-glaptop.cam.corp.google.com>
-To: linux-ext4@vger.kernel.org
+From: Tao Ma <tm@tao.ma>
+Subject: [PATCH V2 00/19] ext4: Add inline data support.
+Date: Tue, 22 Nov 2011 00:34:59 +0800
+Message-ID: <4ECA7DB3.9040605@tao.ma>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: Ted Ts'o <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Andreas Dilger <adilger@d
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:40435 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752673Ab1KUP6j (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 Nov 2011 10:58:39 -0500
+Received: from oproxy4-pub.bluehost.com ([69.89.21.11]:44532 "HELO
+	oproxy4-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753627Ab1KUQfO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Nov 2011 11:35:14 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hi Ted, Andreas and list,
+	This is the v2 attempt to add inline data support to ext4 inode.
+Formore information about the background, please refer to the thread
+http://marc.info/?l=linux-ext4&m=131715205428067&w=2
 
-There seems to be an increasing number of people interested in ext4 who
-have been contributing to ext4, and so I thought this might be a good
-time to pen a note about how we might be able to organize things a
-little better.
+In V1 I uses all the space between i_extra_isize and inode_size if
+inode_size = 256. For inode_size > 256, half of that space is used so as
+to leave some space for other xattrs. Andreas suggested that it would
+make xattr set/get less efficient since it takes too much space for a
+small inode and xttr would be evicted to the external block. So this V2
+now uses the extent space for an inode(60 bytes) at first and then it
+will try to extend inline data by using the xattr space. So if there are
+no other xattr, now we can have up to 132 bytes to store the inline data
+for a inode_size=256. And also as Amir suggested, I have moved all the
+corresponding codes to fs/ext4/inline.c so that we don't pollute inode.c
+too much.
 
-The weekly conference calls
-===========================
+Some simple tests shows that with a linux-3.0 vanilla source, the new
+dir can save more than 1% disk space. For my "/usr", it can save more
+than 3% spaces. I guess for volume with future bigalloc support, it
+should save more space for us for small dir.
 
-We have a weekly conference call at Monday 8am US/Pacific and 11am
-US/Eastern.  The people who participate on this call are primarily from
-the following companies (alphabetically): Google, HP, IBM, Red Hat, and
-Whamcloud.  The attendees are primarily mostly from the US, due to
-history of who has known about the calls, but also due to the time of
-the conference calls.
+There are still something to do in my list:
+1. yes, e2fsprogs is very important and we are working on it.
+2. evicting inline data in xattr set if the xattr can be inserted into
+inode as suggested by Andreas.
 
-Given there are more people who are participating on this call from
-Asia, especially from Tao Bao and other companies, I think it's
-important that we revisit whether that time is best, and to try to
-invite some folks from the other countries to participate.   I know that
-language may be a barrier in some cases, but I think it's important that
-we try to get a wider representation that has a chance to hear what's
-going.
+any suggestions are welcomed.
 
-I'd like to hear what folks from Asia think about this; if we started
-having some conference calls that alternated between being convenient
-for folks based out of Asia time zones and folks based out of US time
-zones, would that be helpful?
+git diff --stat master..
+ fs/ext4/Makefile  |    2 +-
+ fs/ext4/dir.c     |   36 +-
+ fs/ext4/ext4.h    |   72 +++-
+ fs/ext4/extents.c |    9 +-
+ fs/ext4/ialloc.c  |    4 +
+ fs/ext4/inline.c  | 1426
++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/inode.c   |  209 ++++++--
+ fs/ext4/namei.c   |  348 +++++++++----
+ fs/ext4/xattr.c   |   39 +--
+ fs/ext4/xattr.h   |  256 ++++++++++
+ 10 files changed, 2185 insertions(+), 216 deletions(-)
 
-Getting together for a face to face meeting
-===========================================
-
-Again, because of the fact that we quite a few newcomers to the ext4
-development community, it seems that it might be a good idea if we could
-get together so we could know each other better.  I'd like to propose
-that we try doing so either immediately before or immediately after the
-Linux Storage, File System, and MM workshop in San Fracisco, which will
-be taking place during the first week of April next year.  I'm hoping
-that we can get good representation from all of the companies who have
-an interest in ext4 development, and if we start early, we can hopefully
-get people thinking about some kind of discussion topic to propose for
-the LSF workshop (proposing a discussion topic that would be of general
-interest is how you get an invite to the LSF), and so people have ample
-time to work out the logistics --- getting travel approval, getting
-Visa's, etc.
-
-If you would be interested in attending an ext4 get together next year
-in April, please let me know, so I can start guaging interesting and
-numbers.
-
-Review Bottleneck
-=================
-
-Currently, patches, especially large patch series which introduce some
-new feature, have become bottlenecked on my time to review them.   It
-would be very helpful if we had more people reviewing patches.  And it
-needs to be substantive reviews, and preferably from people who work at
-companies other than the developer who has submitted the patches.
-
-So some way that we can get more people reviewing patches would
-certainly be helpful.  There have been some people who have suggested
-different ways that we might do things, from the method used in XFS
-(where no patch gets submitted until it gets an independent review;
-which would be a bit scary since at the moment so little review takes
-place I'm concerned it would hold back development significantly), to
-giving people patchwork accounts and formally delegating work to people
-(it has worked for some subsystems, and utterly failed for others).
-
-Or we could keep going with the current method, with people
-understanding that if you review other people's patches, it makes it
-more likely I will have time to integrate your patches (and if some
-folks do more review work, I'll take that into account about which
-patches series I'm more likely to review myself for integration).
-
-
-What do you think?  This, like all of the other parts of this note, was
-meant to start a discussion.  I've been extraordinarily pleased with
-Ext4 development: with what we've been able to achieve, and the people
-we've managed to attract to use and to work on this project.   With your
-help, we can make things even better!
-
-Cheers,
-
-						- Ted
+Thanks
+Tao
