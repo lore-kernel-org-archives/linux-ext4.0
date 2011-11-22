@@ -1,92 +1,132 @@
-From: Hugh Dickins <hughd@google.com>
-Subject: Re: Bug with "fix partial page writes"
-Date: Mon, 21 Nov 2011 14:04:18 -0800 (PST)
-Message-ID: <alpine.LSU.2.00.1111211331120.1879@sister.anvils>
-References: <CAO81RMa4uRsOsaK4G78EDvOenJpEdTp4y+rtkiDxaK9cASbMtA@mail.gmail.com> <alpine.LSU.2.00.1111201121120.1264@sister.anvils> <20111121165626.GD14568@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v2] jbd: clear revoked flag on buffers before a new
+ transaction started
+Date: Tue, 22 Nov 2011 01:23:26 +0100
+Message-ID: <20111122002326.GH4017@quack.suse.cz>
+References: <1321695269-3319-1-git-send-email-xiaoqiangnk@gmail.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
-	Curt Wohlgemuth <curtw@google.com>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: jack@suse.cz, linux-ext4@vger.kernel.org
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:40771 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753655Ab1KUWEf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Nov 2011 17:04:35 -0500
-Received: by ggnr5 with SMTP id r5so2852535ggn.19
-        for <linux-ext4@vger.kernel.org>; Mon, 21 Nov 2011 14:04:35 -0800 (PST)
-In-Reply-To: <20111121165626.GD14568@thunk.org>
+Received: from cantor2.suse.de ([195.135.220.15]:36550 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753194Ab1KVAX3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 21 Nov 2011 19:23:29 -0500
+Content-Disposition: inline
+In-Reply-To: <1321695269-3319-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 21 Nov 2011, Ted Ts'o wrote:
-> On Sun, Nov 20, 2011 at 12:59:10PM -0800, Hugh Dickins wrote:
+On Sat 19-11-11 17:34:29, Yongqiang Yang wrote:
+> Currently, we clear revoked flag only when a block is reused.  However,
+> this can tigger a false journal error.  Consider a situation when a block
+> is used as a meta block and is deleted(revoked) in ordered mode, then the
+> block is allocated as a data block to a file.  At this moment, user changes
+> the file's journal mode from ordered to journaled and truncates the file.
+> The block will be considered re-revoked by journal because it has revoked
+> flag still pending from the last transaction and an assertion triggers.
 > 
-> > I did not reproduce either problem above with that.  Instead I found
-> > that backing out 02fac1297eb3 made fsx on 3.2-rc1 fail in a few minutes.
-> > But leaving 02fac1297eb3 in, fsx still failed in 20 minutes or an hour.
-> > On 3.1, fsx failed in a few minutes.  On 3.0, fsx failed in half an hour.
-> > On 2.6.39, fsx failed in a few minutes.  I had to go back to 2.6.38 for
-> > fsx to run successfully under memory pressure for more than two hours.
-> > 
-> > It looks as if ext4 testing has not been running fsx under memory
-> > pressure recently.  And although I didn't reproduce my main problems
-> > that way, it could well be that getting fsx to run reliably again
-> > under memory pressure will be the way to fix those problems.
+> We fix the problem by keeping the revoked status more uptodate - we clear
+> revoked flag when switching revoke tables to reflect there is no revoked
+> buffers in current transaction any more.
+  Thanks. Merged into my tree. Will you create the same patch for JBD2 as
+well?
+
+								Honza
+
 > 
-> Yes, I think we've been relying mostly on xfstests, and not
-> necessarily under extreme memory pressures.  Out of curiosity, what
-> sort of configuration were you using when you did the above tests?
-> (memory, swap, fs bock size, etc.)  Was it the same as you did with
-> your make -j20 kernel stress test?  And where you using any special
-> fsx options?
-
-Thanks for your rapid replies.
-
-x86_64 kernel booted with "mem=700M cgroup_disable=memory" (latter to
-rule out any memcg effects), swap was 1.5G, ext2 block size was 1024,
-
-CONFIG_EXT4_FS=y
-CONFIG_EXT4_USE_FOR_EXT23=y
-CONFIG_EXT4_FS_XATTR=y
-CONFIG_EXT4_FS_POSIX_ACL=y
-# CONFIG_EXT4_FS_SECURITY is not set
-# CONFIG_EXT4_DEBUG is not set
-
-fsx options as below, no fallocation or holepunching:
-
-fsx foo -q -c 100 -l 100000000 &
-while :
-do	# memory hog mmaps and touches each page of 800MB private area
-	swapout 800
-done
-
-You might well wonder about the provenance of my fsx, and I'm not
-certain where it came from originally (perhaps akpm's toolbox about
-nine years ago).  So I got an xfstests.git tree
-
-HEAD e219e1cb59660b010ae8c1e22d41d319bb1e10c7
-Date:   Tue Nov 8 11:41:45 2011 +0800
-
-built the latest version of fsx there, and ran the script with that,
-on 3.2-rc2+ kernel pulled yesterday.
-
-This time I used a disk partition, to rule out any loop or tmpfs
-effects; but sized the partition to 460800 blocks to match what
-I'd been using with loop and tmpfs (after growing impatient when
-the first run on the whole 1.5G partition ran for half an hour -
-but in retrospect perhaps it was about to blow when I stopped it).
-
-It ran for 28 minutes before fsx failed with
-READ BAD DATA: offset = 0x97f50, size = 0xe1bf, fname = foo
-OFFSET	GOOD	BAD	RANGE
-0xa6000	0x537e	0x0000	0x    0
-operation# (mod 256) for the bad data unknown, check HOLE and EXTEND ops
-...
-0xa600f	0x4453	0x0000	0x    f
-operation# (mod 256) for the bad data unknown, check HOLE and EXTEND ops
-LOG DUMP (433525 total operations):
-followed by the usual trace of operations leading up to this point.
-
-Hugh
+> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+> ---
+>  fs/jbd/commit.c     |    6 ++++++
+>  fs/jbd/revoke.c     |   34 ++++++++++++++++++++++++++++++++++
+>  include/linux/jbd.h |    1 +
+>  3 files changed, 41 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/jbd/commit.c b/fs/jbd/commit.c
+> index 8799207..f2b9a57 100644
+> --- a/fs/jbd/commit.c
+> +++ b/fs/jbd/commit.c
+> @@ -392,6 +392,12 @@ void journal_commit_transaction(journal_t *journal)
+>  	jbd_debug (3, "JBD: commit phase 1\n");
+>  
+>  	/*
+> +	 * Clear revoked flag to reflect there is no revoked buffers
+> +	 * in the next transaction which is going to be started.
+> +	 */
+> +	journal_clear_buffer_revoked_flags(journal);
+> +
+> +	/*
+>  	 * Switch to a new revoke table.
+>  	 */
+>  	journal_switch_revoke_table(journal);
+> diff --git a/fs/jbd/revoke.c b/fs/jbd/revoke.c
+> index 034eb82..501d363 100644
+> --- a/fs/jbd/revoke.c
+> +++ b/fs/jbd/revoke.c
+> @@ -47,6 +47,10 @@
+>   *   overwriting the new data.  We don't even need to clear the revoke
+>   *   bit here.
+>   *
+> + * We cache revoke status of a buffer in the current transaction in b_states
+> + * bits.  As the name says, revokevalid flag indicates that the cached revoke
+> + * status of a buffer is valid and we can rely on the cached status.
+> + *
+>   * Revoke information on buffers is a tri-state value:
+>   *
+>   * RevokeValid clear:	no cached revoke status, need to look it up
+> @@ -474,6 +478,36 @@ int journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
+>  	return did_revoke;
+>  }
+>  
+> +/*
+> + * journal_clear_revoked_flag clears revoked flag of buffers in
+> + * revoke table to reflect there is no revoked buffers in the next
+> + * transaction which is going to be started.
+> + */
+> +void journal_clear_buffer_revoked_flags(journal_t *journal)
+> +{
+> +	struct jbd_revoke_table_s *revoke = journal->j_revoke;
+> +	int i = 0;
+> +
+> +	for (i = 0; i < revoke->hash_size; i++) {
+> +		struct list_head *hash_list;
+> +		struct list_head *list_entry;
+> +		hash_list = &revoke->hash_table[i];
+> +
+> +		list_for_each(list_entry, hash_list) {
+> +			struct jbd_revoke_record_s *record;
+> +			struct buffer_head *bh;
+> +			record = (struct jbd_revoke_record_s *)list_entry;
+> +			bh = __find_get_block(journal->j_fs_dev,
+> +					      record->blocknr,
+> +					      journal->j_blocksize);
+> +			if (bh) {
+> +				clear_buffer_revoked(bh);
+> +				__brelse(bh);
+> +			}
+> +		}
+> +	}
+> +}
+> +
+>  /* journal_switch_revoke table select j_revoke for next transaction
+>   * we do not want to suspend any processing until all revokes are
+>   * written -bzzz
+> diff --git a/include/linux/jbd.h b/include/linux/jbd.h
+> index 0f9f0b6..5aa964e 100644
+> --- a/include/linux/jbd.h
+> +++ b/include/linux/jbd.h
+> @@ -918,6 +918,7 @@ extern int	journal_set_revoke(journal_t *, unsigned int, tid_t);
+>  extern int	journal_test_revoke(journal_t *, unsigned int, tid_t);
+>  extern void	journal_clear_revoke(journal_t *);
+>  extern void	journal_switch_revoke_table(journal_t *journal);
+> +extern void	journal_clear_buffer_revoked_flags(journal_t *journal);
+>  
+>  /*
+>   * The log thread user interface:
+> -- 
+> 1.7.5.1
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
