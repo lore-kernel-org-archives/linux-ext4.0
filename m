@@ -1,158 +1,91 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: Better organizing ext4 development community
-Date: Tue, 22 Nov 2011 16:12:42 +1100
-Message-ID: <20111122051241.GL2386@dastard>
-References: <E1RSWGS-0000op-NX@tytso-glaptop.cam.corp.google.com>
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Subject: [patch] ext3: NULL dereference in ext3_evict_inode()
+Date: Tue, 22 Nov 2011 11:00:20 +0300
+Message-ID: <20111122080019.GA11805@elgon.mountain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:11754 "EHLO
-	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750765Ab1KVFMr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 22 Nov 2011 00:12:47 -0500
+Received: from acsinet15.oracle.com ([141.146.126.227]:59119 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755384Ab1KVIAm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Nov 2011 03:00:42 -0500
 Content-Disposition: inline
-In-Reply-To: <E1RSWGS-0000op-NX@tytso-glaptop.cam.corp.google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 21, 2011 at 10:58:36AM -0500, Theodore Ts'o wrote:
-> Review Bottleneck
-> =================
-> 
-> Currently, patches, especially large patch series which introduce some
-> new feature, have become bottlenecked on my time to review them.   It
-> would be very helpful if we had more people reviewing patches.  And it
-> needs to be substantive reviews, and preferably from people who work at
-> companies other than the developer who has submitted the patches.
-> 
-> So some way that we can get more people reviewing patches would
-> certainly be helpful.  There have been some people who have suggested
-> different ways that we might do things, from the method used in XFS
-> (where no patch gets submitted until it gets an independent review;
-> which would be a bit scary since at the moment so little review takes
-> place I'm concerned it would hold back development significantly),
+This is an fsfuzzer bug.  ->s_journal is set at the end of
+ext3_load_journal() but we try to use it in the error handling from
+ext3_get_journal() while it's still NULL.
 
-I think that's only a short-term concern, Ted.
+[  337.039041] BUG: unable to handle kernel NULL pointer dereference at 0000000000000024
+[  337.040380] IP: [<ffffffff816e6539>] _raw_spin_lock+0x9/0x30
+[  337.041687] PGD 0 
+[  337.043118] Oops: 0002 [#1] SMP 
+[  337.044483] CPU 3 
+[  337.044495] Modules linked in: ecb md4 cifs fuse kvm_intel kvm brcmsmac brcmutil crc8 cordic r8169 [last unloaded: scsi_wait_scan]
+[  337.047633] 
+[  337.049259] Pid: 8308, comm: mount Not tainted 3.2.0-rc2-next-20111121+ #24 SAMSUNG ELECTRONICS CO., LTD. RV411/RV511/E3511/S3511    /RV411/RV511/E3511/S3511    
+[  337.051064] RIP: 0010:[<ffffffff816e6539>]  [<ffffffff816e6539>] _raw_spin_lock+0x9/0x30
+[  337.052879] RSP: 0018:ffff8800b1d11ae8  EFLAGS: 00010282
+[  337.054668] RAX: 0000000000000100 RBX: 0000000000000000 RCX: ffff8800b77c2000
+[  337.056400] RDX: ffff8800a97b5c00 RSI: 0000000000000000 RDI: 0000000000000024
+[  337.058099] RBP: ffff8800b1d11ae8 R08: 6000000000000000 R09: e018000000000000
+[  337.059841] R10: ff67366cc2607c03 R11: 00000000110688e6 R12: 0000000000000000
+[  337.061607] R13: 0000000000000000 R14: 0000000000000000 R15: ffff8800a78f06e8
+[  337.063385] FS:  00007f9d95652800(0000) GS:ffff8800b7180000(0000) knlGS:0000000000000000
+[  337.065110] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  337.066801] CR2: 0000000000000024 CR3: 00000000aef2c000 CR4: 00000000000006e0
+[  337.068581] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+[  337.070321] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+[  337.072105] Process mount (pid: 8308, threadinfo ffff8800b1d10000, task ffff8800b1d02be0)
+[  337.073800] Stack:
+[  337.075487]  ffff8800b1d11b08 ffffffff811f48cf ffff88007ac9b158 0000000000000000
+[  337.077255]  ffff8800b1d11b38 ffffffff8119405d ffff88007ac9b158 ffff88007ac9b250
+[  337.078851]  ffffffff8181bda0 ffffffff8181bda0 ffff8800b1d11b68 ffffffff81131e31
+[  337.080284] Call Trace:
+[  337.081706]  [<ffffffff811f48cf>] log_start_commit+0x1f/0x40
+[  337.083107]  [<ffffffff8119405d>] ext3_evict_inode+0x1fd/0x2a0
+[  337.084490]  [<ffffffff81131e31>] evict+0xa1/0x1a0
+[  337.085857]  [<ffffffff81132031>] iput+0x101/0x210
+[  337.087220]  [<ffffffff811339d1>] iget_failed+0x21/0x30
+[  337.088581]  [<ffffffff811905fc>] ext3_iget+0x15c/0x450
+[  337.089936]  [<ffffffff8118b0c1>] ? ext3_rsv_window_add+0x81/0x100
+[  337.091284]  [<ffffffff816df9a4>] ext3_get_journal+0x15/0xde
+[  337.092641]  [<ffffffff811a2e9b>] ext3_fill_super+0xf2b/0x1c30
+[  337.093991]  [<ffffffff810ddf7d>] ? register_shrinker+0x4d/0x60
+[  337.095332]  [<ffffffff8111c112>] mount_bdev+0x1a2/0x1e0
+[  337.096680]  [<ffffffff811a1f70>] ? ext3_setup_super+0x210/0x210
+[  337.098026]  [<ffffffff8119a770>] ext3_mount+0x10/0x20
+[  337.099362]  [<ffffffff8111cbee>] mount_fs+0x3e/0x1b0
+[  337.100759]  [<ffffffff810eda1b>] ? __alloc_percpu+0xb/0x10
+[  337.102330]  [<ffffffff81135385>] vfs_kern_mount+0x65/0xc0
+[  337.103889]  [<ffffffff8113611f>] do_kern_mount+0x4f/0x100
+[  337.105442]  [<ffffffff811378fc>] do_mount+0x19c/0x890
+[  337.106989]  [<ffffffff810e8456>] ? memdup_user+0x46/0x90
+[  337.108572]  [<ffffffff810e84f3>] ? strndup_user+0x53/0x70
+[  337.110114]  [<ffffffff811383fb>] sys_mount+0x8b/0xe0
+[  337.111617]  [<ffffffff816ed93b>] system_call_fastpath+0x16/0x1b
+[  337.113133] Code: 38 c2 74 0f 66 0f 1f 44 00 00 f3 90 0f b6 03 38 c2 75 f7 48 83 c4 08 5b 5d c3 0f 1f 84 00 00 00 00 00 55 b8 00 01 00 00 48 89 e5 <f0> 66 0f c1 07 0f b6 d4 38 c2 74 0c 0f 1f 00 f3 90 0f b6 07 38 
+[  337.116588] RIP  [<ffffffff816e6539>] _raw_spin_lock+0x9/0x30
+[  337.118260]  RSP <ffff8800b1d11ae8>
+[  337.119998] CR2: 0000000000000024
+[  337.188701] ---[ end trace c36d790becac1615 ]---
 
-Indeed, look at the numbers. For XFS, we have a core group of 4-5
-active developers doing all the work and all the review for both the
-userspace and kernel changes[*] - ext4 has more than 2x the active
-developer base compared to XFS.
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
 
-However, it's worth a look at the amount of code this XFS dev group
-has changed and reviewed since 2.6.32 under the mandatory review
-policy.  Kernel code [**]:
-
-$ git diff --find-renames --stat v2.6.32.. -- fs/xfs/ |tail -1
-169 files changed, 24897 insertions(+), 30340 deletions(-)
-
-and commit count:
-
-$ glo v2.6.32.. -- fs/xfs | wc -l
-816
-
-In the same timeframe, the ext4 kernel code:
-
-$ git diff --find-renames --stat v2.6.32.. -- fs/ext4 fs/jdb2 |tail
--1
- 34 files changed, 12080 insertions(+), 6979 deletions(-)
-$ glo v2.6.32.. -- fs/ext4 fs/jdb2 | wc -l
-691
-
-The amount of change made to the ext4 kernel vs XFS kernel code
-bases in terms of LOC is 3-4x less, and the commit count is about
-20% less despite having 2x the developer code base than for XFS.
-That's a big differential in productivity when you consider it on
-a per-developer basis, regardless of the size of the code base.
-
-My point here is that mandatory code review does not actually slow
-down the rate of development. In fact, I'll argue that it speeds up
-the rate of development over the medium to long term because of
-several factors:
-
-1. it forces people to understand code they are not familiar with
-   and ask questions about it which the developer has to respond to,
-   thereby speeding up the learning cycle for both developers and
-   reviewers.
-
-2. it encourages people to review code, because if you don't review
-   patches as they are posted, then nobody is going to review your
-   patches promptly in return. This speeds up the review process.
-
-3. from 1) developer expertise improves, leading to improved quality
-   of submitted patches, which also then has the effect of making
-   review easier.
-
-4. from 2) and 3), it reduces the review burden on the maintainer,
-   because over time the maintainer can begin to trust that
-   Reviewed-by tags indicate that the change is good. This will take
-   time to build such trust, but without it there is no way for the
-   maintainer to know how hard to look at any given change before
-   deciding whether to merge it.
-
-5. from 2) and 3), the maintainer no longer needs to be a gate
-   keeper deciding whether changes are good or not. The maintainer
-   participates in that discussion just like any other developer,
-   including giving out Reviewed-by tags when they are satisfied a
-   change is good. IOWs, the bar to getting a change merged is
-   consensus and having sufficient reviewed-by tags on a patch
-   [series] to convince the maintainer that the change is
-   acceptible.
-
-6) from 4) and 5), the trust built into reviewed-by tag when used
-   in this manner removes the need for the maintainer to be the
-   ultimate expert about everything. In the XFS world the maintainer
-   is the person that maintains the tree that is pushed to Linus,
-   but otherwise they are just another developer that proposes
-   changes and reviews code like anyone else.
-
-7) from 6), it frees experts to develop and review code and improve
-   processes rather than having to spend most of their time being
-   patch monkeys, cat herders, gate keepers and, ultimately, a
-   bottleneck in the development process. Distributed review as
-   encoded by gathering Reviewed-by tags generates consensus about
-   whether changes are good or not, hence removing the need for the
-   maintainer to be the sole decision maker on a project.
-
-8) From 7), experts have more time available to mentor new
-   developers and also spend more time explaining complexities to
-   more experienced developers during review cycles.  This feeds
-   back into improving the knowledge base of the development group
-   via 1), 2) and 3).
-
-9) from all of the above, code and product quality improves at a
-   faster rate because of the continuously improving knowledge base
-   and increasing level of confidence that developers have in the
-   capability of their peers.
-
-I'm not going to argue that this policy the right solution for the
-problems Ted has brought up - that's for you guys to decide. All I'm
-doing is explaining why I think the mandatory review policy works
-for XFS, and how it could also benefit the ext4 community....
-
-Cheers,
-
-Dave.
-
-[*] FYI, Lucas had a great slide describing the relative developer
-breakdown between the filesystems at his talk at Linuxcon Europe.
-It's the slides 5-7 of this presentation:
-
-https://events.linuxfoundation.org/images/stories/pdf/lceu11_czerner1.pdf
-
-[**] I've ignored userspace because I don't have a ext4 userspace
-tree handy right now. The XFS xfsprogs changes (excluding
-translations) over the last 2 years (since 3.0.4 was release) are
-also significantly larger than the ext4 kernel codebase changes:
-
-$ git diff --find-renames --stat v3.0.4 -- [!p]* |tail -1
- 227 files changed, 11729 insertions(+), 8788 deletions(-)
-$ glo v3.0.4 -- [!p]* | wc -l
-934
-
--- 
-Dave Chinner
-david@fromorbit.com
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index 85fe655..7229fd0 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -225,6 +225,7 @@ void ext3_evict_inode (struct inode *inode)
+ 	 * use page cache.
+ 	 */
+ 	if (inode->i_nlink && ext3_should_journal_data(inode) &&
++	    EXT3_SB(inode->i_sb)->s_journal &&
+ 	    (S_ISLNK(inode->i_mode) || S_ISREG(inode->i_mode))) {
+ 		tid_t commit_tid = atomic_read(&ei->i_datasync_tid);
+ 		journal_t *journal = EXT3_SB(inode->i_sb)->s_journal;
