@@ -1,270 +1,174 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: Bug with "fix partial page writes"
-Date: Tue, 22 Nov 2011 09:44:51 +0800
-Message-ID: <CAGBYx2YxTfEKPPwCe5kifwDgfpC7x+QtdpLhrJpcHGixhVS3gA@mail.gmail.com>
-References: <CAO81RMa4uRsOsaK4G78EDvOenJpEdTp4y+rtkiDxaK9cASbMtA@mail.gmail.com>
-	<alpine.LSU.2.00.1111201121120.1264@sister.anvils>
-	<CAGBYx2b4+s+YSKFoPbNSw=vWVaCZyxHjQdKGMHhCztTppETT9Q@mail.gmail.com>
-	<4ECA8CA4.5040804@linux.vnet.ibm.com>
+Subject: Re: [PATCH v2] jbd: clear revoked flag on buffers before a new
+ transaction started
+Date: Tue, 22 Nov 2011 09:55:17 +0800
+Message-ID: <CAGBYx2YjzYSXXnTCej_YzdJ+2q9cMTOG24bso7FHB4ZJwa_Ttw@mail.gmail.com>
+References: <1321695269-3319-1-git-send-email-xiaoqiangnk@gmail.com>
+	<20111122002326.GH4017@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Hugh Dickins <hughd@google.com>,
-	Curt Wohlgemuth <curtw@google.com>, "Ted Ts'o" <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Allison Henderson <achender@linux.vnet.ibm.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <4ECA8CA4.5040804@linux.vnet.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:39592 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755030Ab1KVBzS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Nov 2011 20:55:18 -0500
+Received: by ggnr5 with SMTP id r5so3029274ggn.19
+        for <linux-ext4@vger.kernel.org>; Mon, 21 Nov 2011 17:55:18 -0800 (PST)
+In-Reply-To: <20111122002326.GH4017@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 22, 2011 at 1:38 AM, Allison Henderson
-<achender@linux.vnet.ibm.com> wrote:
-> On 11/20/2011 06:59 PM, Yongqiang Yang wrote:
+On Tue, Nov 22, 2011 at 8:23 AM, Jan Kara <jack@suse.cz> wrote:
+> On Sat 19-11-11 17:34:29, Yongqiang Yang wrote:
+>> Currently, we clear revoked flag only when a block is reused. =A0How=
+ever,
+>> this can tigger a false journal error. =A0Consider a situation when =
+a block
+>> is used as a meta block and is deleted(revoked) in ordered mode, the=
+n the
+>> block is allocated as a data block to a file. =A0At this moment, use=
+r changes
+>> the file's journal mode from ordered to journaled and truncates the =
+file.
+>> The block will be considered re-revoked by journal because it has re=
+voked
+>> flag still pending from the last transaction and an assertion trigge=
+rs.
 >>
->> Hi,
->>
->> I am curious about the reason we need this operation in write_begin
->> functions. =A0 =A0I had a look at the commit log just now. =A0 The c=
-ommit
->> log explains the intention is to handle writes on a hole and writes =
-on
->> EOF. =A0 Two cases can be handled successfully by block_write_begin.
->>
->>
->> Yongqiang.
->
-> Hi all,
->
-> Sorry I missed the first note that came through. =A0I have not been a=
-ble to
-> look at this in depth yet, but will do so when I get back from the ho=
-liday
-> break next Thurs. =A0Basically this patch was addressing a bug I foun=
-d when I
-> was trying to get the punch hole patch through an overnight run of fs=
-x.
->
-> With out this patch, fsx fails (after about 6 or so hours, with punch=
- hole
-> enabled). =A0The failure is triggered when a region of the test file =
-that is
-> supposed to contain zeros, ends up containing garbage. =A0In this cas=
-e what I
-> found was that a write operation that starts/ends in a hole or runs o=
-ff the
-> edge of the file, is supposed to zero out the part of the page that i=
-s still
-> in the hole or beyond EOF. =A0But instead of zeroing to the end of th=
-e page,
-> it would only zero to the edge of the block. =A0So it would only appe=
-ar to
-> work when blocksize =3D pagesize, but if blocksize < pagesize, we end=
- up with
-> extra garbage in the page.
-Thank you for your response.
-
-Well.  According to code in vfs, do_mpage_readpage can handle this by
-calling block_read_full_page.   Consider that current code can not
-handle the case above, then if there is a hole in a file, ext4 with
-punching hole does not work as well.   I am suspecting punch hole do
-something abnormal, eg. setting false uptodate status or operating on
-a unlocked page.   Just a guess:-)   I will have a look at the code.
+>> We fix the problem by keeping the revoked status more uptodate - we =
+clear
+>> revoked flag when switching revoke tables to reflect there is no rev=
+oked
+>> buffers in current transaction any more.
+> =A0Thanks. Merged into my tree. Will you create the same patch for JB=
+D2 as
+> well?
+YES!  I had sent out the patch for jbd2.  It seems that Ted is busy the=
+se days.
 
 Yongqiang.
 >
-> ext4_discard_partial_page_buffers_no_lock() and
-> ext4_discard_partial_page_buffers(), were modeled off of the original
-> ext4_block_zero_page_range routine, but modified to handle multiple b=
-locks
-> for a page. =A0ext4_discard_partial_page_buffers is simply a wrapper =
-that
-> locks the page before passing it to
-> ext4_discard_partial_page_buffers_no_lock. =A0In most cases I found t=
-hat the
-> page needs to be locked, but for ext4_da_write_end and ext4_da_write_=
-begin I
-> ran into deadlocks, so I added the wrapper for optional locking. =A0I=
- will
-> look more into it when I get back, but perhaps all we need here is so=
-me more
-> logic to figure out if the page is present and needs locking.
->
-> Allison Henderson
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0Honza
 >
 >>
->> On Mon, Nov 21, 2011 at 4:59 AM, Hugh Dickins<hughd@google.com> =A0w=
-rote:
->>>
->>> We've seen no response to this, so Cc'ing Ted and linux-kernel,
->>> and I'll fill in some more detail below.
->>>
->>> On Tue, 8 Nov 2011, Curt Wohlgemuth wrote:
->>>>
->>>> It appears that there's a bug with this patch:
->>>>
->>>> -------------------------------------------
->>>> commit 02fac1297eb3f471a27368271aadd285548297b0
->>>> Author: Allison Henderson<achender@linux.vnet.ibm.com>
->>>> Date: =A0 Tue Sep 6 21:53:01 2011 -0400
->>>>
->>>> =A0 =A0 ext4: fix partial page writes
->>>> ...
->>>> -------------------------------------------
->>>>
->>>> Hugh Dickins found a bug with some nasty testing and lockdep that
->>>
->>> It's the tmpfs swapping test that I've been running, with variation=
-s,
->>> for years. =A0System booted with mem=3D700M and 1.5G swap, two repe=
-titious
->>> make -j20 kernel builds (of a 2.6.24 kernel: I stuck with that beca=
-use
->>> the balance of built to unbuilt source grows smaller with later ker=
-nels),
->>> one directly in a tmpfs (irrelevant in this case, except for the ad=
-ded
->>> pressure it generates), the other in a 1k-block ext2 (that I drive =
-with
->>> ext4's CONFIG_EXT4_USE_FOR_EXT23) on /dev/loop0 on a 450MB tmpfs fi=
-le.
->>>
->>> The first oops I got was indeed down in lockdep, but I've since see=
-n
->>> crashes from the same cause without lockdep configured in. =A0I've =
-not
->>> bothered to write down the stacks, beyond noting ext4_da_write_end(=
-)'s
->>> call to ext4_discard_partial_page_buffers_no_lock() in them, since =
-the
->>> code there is clearly at fault as Curt describes.
->>>
->>>> crashed in ext4_da_write_end(), and after looking at the code with
->>>> him, it appears that the call to
->>>> ext4_discard_partial_page_buffers_no_lock() in this routine is
->>>> manipulating an unlocked, and possibly non-existent page:
->>>>
->>>>
->>>> -------------------------------------------
->>>> ...
->>>> =A0 =A0 =A0 ret2 =3D generic_write_end(file, mapping, pos, len, co=
-pied,
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 page, fsdata);
->>>>
->>>> =A0 =A0 =A0 page_len =3D PAGE_CACHE_SIZE -
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ((pos + copied - 1)& =A0=
-(PAGE_CACHE_SIZE - 1));
->>>>
->>>> =A0 =A0 =A0 if (page_len> =A00) {
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 ret =3D ext4_discard_partial_page_buff=
-ers_no_lock(handle,
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 inode, page, pos + cop=
-ied - 1, page_len,
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 EXT4_DISCARD_PARTIAL_P=
-G_ZERO_UNMAPPED);
->>>> =A0 =A0 =A0 }
->>>> ...
->>>> -------------------------------------------
->>>>
->>>> Note that generic_write_end() will unlock and release the page bef=
-ore
->>>> it returns.
->>>
->>> Exactly. =A0And clearly the loop-on-tmpfs aspect of the test is
->>> irrelevant, except in generating more pressure to trigger it.
->>>
->>>>
->>>> I've no good answer for how to fix this properly, but I wanted to =
-let
->>>> Allison know about this, if she hadn't already. =A0I looked but di=
-dn't
->>>> see any related email on the linux-ext4 list for this problem.
->>>
->>> There was a second problem I was seeing, more elusive and much hard=
-er
->>> to attribute: occasionally the build on ext2 would fail with errors
->>> from ld (almost always of the kind "In function `no symbol': multip=
-le
->>> definition of `no symbol'" and "Warning: size of symbol `' changed"=
-:
->>> I don't know if there's anything to be deduced from that). =A0I too=
-k
->>> these to indicate an error in filesystem or loop or tmpfs or swap.
->>>
->>> First suspect was loop changes from hch in 3.2-rc1, but backing tho=
-se
->>> out made no difference. =A0I thought I was facing a week's bisectio=
-n
->>> (since it would need at least a day to conclude any stage good), bu=
-t
->>> took a gamble on backing out *both* parts of 02fac1297eb3: page_len
->>> additions to ext4_da_write_begin() as well as page_len additions to
->>> ext4_da_write_end().
->>>
->>> That gamble paid off: the test then showed no problems in several
->>> days running on two machines. =A0So, both parts of 02fac1297eb3 are
->>> bad, but it's not so easy to see what's wrong with the write_begin.
->>>
->>> My *guess* is that the partial page fixes have interfered with the
->>> subtle page-dirty buffer-dirty protocol in some way, which manifest=
-s
->>> only under memory pressure.
->>>
->>> It's conceivable that loop and tmpfs and swap play a part in this
->>> further error, but I don't think so: I have no evidence for that,
->>> and no such problem was seen before 3.2-rc1.
->>>
->>> ---
->>>
->>> I wanted to find you an easier way to reproduce the problem, so I
->>> tried fsx (I'm still using a pretty old fsx, no fallocate or punch
->>> hole), run in ext2 on a kernel booted with mem=3D700M. =A0Sorry, I =
-did
->>> this a week ago, then didn't find time to write it up, and failed t=
-o
->>> note when my ext2 was in /dev/loop0 and when it was directly on dis=
-k.
->>>
->>> fsx foo -q -c 100 -l 100000000&
->>> while :
->>> do =A0 =A0 =A0# memory hog mmaps and touches each page of 800MB pri=
-vate area
->>> =A0 =A0 =A0 =A0swapout 800
->>> done
->>>
->>> I did not reproduce either problem above with that. =A0Instead I fo=
-und
->>> that backing out 02fac1297eb3 made fsx on 3.2-rc1 fail in a few min=
-utes.
->>> But leaving 02fac1297eb3 in, fsx still failed in 20 minutes or an h=
-our.
->>> On 3.1, fsx failed in a few minutes. =A0On 3.0, fsx failed in half =
-an hour.
->>> On 2.6.39, fsx failed in a few minutes. =A0I had to go back to 2.6.=
-38 for
->>> fsx to run successfully under memory pressure for more than two hou=
-rs.
->>>
->>> It looks as if ext4 testing has not been running fsx under memory
->>> pressure recently. =A0And although I didn't reproduce my main probl=
-ems
->>> that way, it could well be that getting fsx to run reliably again
->>> under memory pressure will be the way to fix those problems.
->>>
->>> Thanks,
->>> Hugh
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-ext=
-4" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at =A0http://vger.kernel.org/majordomo-info.htm=
-l
->>>
+>> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+>> ---
+>> =A0fs/jbd/commit.c =A0 =A0 | =A0 =A06 ++++++
+>> =A0fs/jbd/revoke.c =A0 =A0 | =A0 34 ++++++++++++++++++++++++++++++++=
+++
+>> =A0include/linux/jbd.h | =A0 =A01 +
+>> =A03 files changed, 41 insertions(+), 0 deletions(-)
 >>
+>> diff --git a/fs/jbd/commit.c b/fs/jbd/commit.c
+>> index 8799207..f2b9a57 100644
+>> --- a/fs/jbd/commit.c
+>> +++ b/fs/jbd/commit.c
+>> @@ -392,6 +392,12 @@ void journal_commit_transaction(journal_t *jour=
+nal)
+>> =A0 =A0 =A0 jbd_debug (3, "JBD: commit phase 1\n");
 >>
+>> =A0 =A0 =A0 /*
+>> + =A0 =A0 =A0* Clear revoked flag to reflect there is no revoked buf=
+fers
+>> + =A0 =A0 =A0* in the next transaction which is going to be started.
+>> + =A0 =A0 =A0*/
+>> + =A0 =A0 journal_clear_buffer_revoked_flags(journal);
+>> +
+>> + =A0 =A0 /*
+>> =A0 =A0 =A0 =A0* Switch to a new revoke table.
+>> =A0 =A0 =A0 =A0*/
+>> =A0 =A0 =A0 journal_switch_revoke_table(journal);
+>> diff --git a/fs/jbd/revoke.c b/fs/jbd/revoke.c
+>> index 034eb82..501d363 100644
+>> --- a/fs/jbd/revoke.c
+>> +++ b/fs/jbd/revoke.c
+>> @@ -47,6 +47,10 @@
+>> =A0 * =A0 overwriting the new data. =A0We don't even need to clear t=
+he revoke
+>> =A0 * =A0 bit here.
+>> =A0 *
+>> + * We cache revoke status of a buffer in the current transaction in=
+ b_states
+>> + * bits. =A0As the name says, revokevalid flag indicates that the c=
+ached revoke
+>> + * status of a buffer is valid and we can rely on the cached status=
+=2E
+>> + *
+>> =A0 * Revoke information on buffers is a tri-state value:
+>> =A0 *
+>> =A0 * RevokeValid clear: =A0 =A0 =A0 =A0no cached revoke status, nee=
+d to look it up
+>> @@ -474,6 +478,36 @@ int journal_cancel_revoke(handle_t *handle, str=
+uct journal_head *jh)
+>> =A0 =A0 =A0 return did_revoke;
+>> =A0}
 >>
->
+>> +/*
+>> + * journal_clear_revoked_flag clears revoked flag of buffers in
+>> + * revoke table to reflect there is no revoked buffers in the next
+>> + * transaction which is going to be started.
+>> + */
+>> +void journal_clear_buffer_revoked_flags(journal_t *journal)
+>> +{
+>> + =A0 =A0 struct jbd_revoke_table_s *revoke =3D journal->j_revoke;
+>> + =A0 =A0 int i =3D 0;
+>> +
+>> + =A0 =A0 for (i =3D 0; i < revoke->hash_size; i++) {
+>> + =A0 =A0 =A0 =A0 =A0 =A0 struct list_head *hash_list;
+>> + =A0 =A0 =A0 =A0 =A0 =A0 struct list_head *list_entry;
+>> + =A0 =A0 =A0 =A0 =A0 =A0 hash_list =3D &revoke->hash_table[i];
+>> +
+>> + =A0 =A0 =A0 =A0 =A0 =A0 list_for_each(list_entry, hash_list) {
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct jbd_revoke_record_s=
+ *record;
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct buffer_head *bh;
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 record =3D (struct jbd_rev=
+oke_record_s *)list_entry;
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 bh =3D __find_get_block(jo=
+urnal->j_fs_dev,
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 record->blocknr,
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 journal->j_blocksize);
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (bh) {
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 clear_buff=
+er_revoked(bh);
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 __brelse(b=
+h);
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+>> + =A0 =A0 =A0 =A0 =A0 =A0 }
+>> + =A0 =A0 }
+>> +}
+>> +
+>> =A0/* journal_switch_revoke table select j_revoke for next transacti=
+on
+>> =A0 * we do not want to suspend any processing until all revokes are
+>> =A0 * written -bzzz
+>> diff --git a/include/linux/jbd.h b/include/linux/jbd.h
+>> index 0f9f0b6..5aa964e 100644
+>> --- a/include/linux/jbd.h
+>> +++ b/include/linux/jbd.h
+>> @@ -918,6 +918,7 @@ extern int =A0 =A0 =A0 =A0journal_set_revoke(jou=
+rnal_t *, unsigned int, tid_t);
+>> =A0extern int =A0 journal_test_revoke(journal_t *, unsigned int, tid=
+_t);
+>> =A0extern void =A0journal_clear_revoke(journal_t *);
+>> =A0extern void =A0journal_switch_revoke_table(journal_t *journal);
+>> +extern void =A0journal_clear_buffer_revoked_flags(journal_t *journa=
+l);
+>>
+>> =A0/*
+>> =A0 * The log thread user interface:
+>> --
+>> 1.7.5.1
+>>
+> --
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
 >
 
 
@@ -272,3 +176,8 @@ l
 --=20
 Best Wishes
 Yongqiang Yang
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
