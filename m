@@ -1,120 +1,49 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: Better organizing ext4 development community
-Date: Tue, 22 Nov 2011 10:57:46 +0800
-Message-ID: <4ECB0FAA.1090800@tao.ma>
-References: <E1RSWGS-0000op-NX@tytso-glaptop.cam.corp.google.com>
+From: Yu Jian <yujian@whamcloud.com>
+Subject: Re: Increase xattr space by allocating contiguous xattr blocks
+Date: Tue, 22 Nov 2011 11:32:19 +0800
+Message-ID: <4ECB17C3.7020601@whamcloud.com>
+References: <4EC10664.1080501@tuxadero.com> <CAO47_-9nfO32nwOAQMVdqw6iWGWK+FWb+MD=WeOz_vr4YrrKmw@mail.gmail.com> <20111115142246.GA7516@thunk.org> <246EA1CC-3C33-4D41-80C0-2331C426EBB0@whamcloud.com> <4ECA4282.5020908@whamcloud.com> <401CC4FF-8955-4D5F-B620-5C39AF566123@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger@whamcloud.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy4-pub.bluehost.com ([69.89.21.11]:58935 "HELO
-	oproxy4-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753786Ab1KVC5y (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Nov 2011 21:57:54 -0500
-In-Reply-To: <E1RSWGS-0000op-NX@tytso-glaptop.cam.corp.google.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:59621 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751552Ab1KVDca (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Nov 2011 22:32:30 -0500
+Received: by iage36 with SMTP id e36so8145061iag.19
+        for <linux-ext4@vger.kernel.org>; Mon, 21 Nov 2011 19:32:29 -0800 (PST)
+In-Reply-To: <401CC4FF-8955-4D5F-B620-5C39AF566123@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
-On 11/21/2011 11:58 PM, Theodore Ts'o wrote:
-> There seems to be an increasing number of people interested in ext4 who
-> have been contributing to ext4, and so I thought this might be a good
-> time to pen a note about how we might be able to organize things a
-> little better.
-> 
-> The weekly conference calls
-> ===========================
-> 
-> We have a weekly conference call at Monday 8am US/Pacific and 11am
-> US/Eastern.  The people who participate on this call are primarily from
-> the following companies (alphabetically): Google, HP, IBM, Red Hat, and
-> Whamcloud.  The attendees are primarily mostly from the US, due to
-> history of who has known about the calls, but also due to the time of
-> the conference calls.
-> 
-> Given there are more people who are participating on this call from
-> Asia, especially from Tao Bao and other companies, I think it's
-> important that we revisit whether that time is best, and to try to
-> invite some folks from the other countries to participate.   I know that
-> language may be a barrier in some cases, but I think it's important that
-> we try to get a wider representation that has a chance to hear what's
-> going.
-> 
-> I'd like to hear what folks from Asia think about this; if we started
-> having some conference calls that alternated between being convenient
-> for folks based out of Asia time zones and folks based out of US time
-> zones, would that be helpful?
-We are glad to attend this conference call, but have 2 concerns here:
-1. about the time. Are there any guys from Europe attend this concall?
-If not, I would recommend 4-5PM PT, which means 7-8PM east time and
-aroudn 8am here in Asia. We have the concall at that time when I was in
-my previous company. If there are some guys from Europe, I think it
-would be a pain for them and then I am OK with the current time.
-2. about the access number. Are there any local provider for the concall
-service? I don't think the company(or us) can cover the long-distance
-call :) and a local access number or a toll free one would be great.
-> 
-> Getting together for a face to face meeting
-> ===========================================
-> 
-> Again, because of the fact that we quite a few newcomers to the ext4
-> development community, it seems that it might be a good idea if we could
-> get together so we could know each other better.  I'd like to propose
-> that we try doing so either immediately before or immediately after the
-> Linux Storage, File System, and MM workshop in San Fracisco, which will
-> be taking place during the first week of April next year.  I'm hoping
-> that we can get good representation from all of the companies who have
-> an interest in ext4 development, and if we start early, we can hopefully
-> get people thinking about some kind of discussion topic to propose for
-> the LSF workshop (proposing a discussion topic that would be of general
-> interest is how you get an invite to the LSF), and so people have ample
-> time to work out the logistics --- getting travel approval, getting
-> Visa's, etc.
-> 
-> If you would be interested in attending an ext4 get together next year
-> in April, please let me know, so I can start guaging interesting and
-> numbers.
-Coly and I had attended this year's LSF and it would be really
-appreciated if we will get invited next year also.
-> 
-> Review Bottleneck
-> =================
-> 
-> Currently, patches, especially large patch series which introduce some
-> new feature, have become bottlenecked on my time to review them.   It
-> would be very helpful if we had more people reviewing patches.  And it
-> needs to be substantive reviews, and preferably from people who work at
-> companies other than the developer who has submitted the patches.
-> 
-> So some way that we can get more people reviewing patches would
-> certainly be helpful.  There have been some people who have suggested
-> different ways that we might do things, from the method used in XFS
-> (where no patch gets submitted until it gets an independent review;
-> which would be a bit scary since at the moment so little review takes
-> place I'm concerned it would hold back development significantly), to
-> giving people patchwork accounts and formally delegating work to people
-> (it has worked for some subsystems, and utterly failed for others).
-> 
-> Or we could keep going with the current method, with people
-> understanding that if you review other people's patches, it makes it
-> more likely I will have time to integrate your patches (and if some
-> folks do more review work, I'll take that into account about which
-> patches series I'm more likely to review myself for integration).
-Fine, we will try to spare some time to review others work if we
-consider ourselves qualified.
-> 
-> 
-> What do you think?  This, like all of the other parts of this note, was
-> meant to start a discussion.  I've been extraordinarily pleased with
-> Ext4 development: with what we've been able to achieve, and the people
-> we've managed to attract to use and to work on this project.   With your
-> help, we can make things even better!
-yeah, actually Tao Bao had began to migrate our production systems to be
-based on ext4 earlier this year and we will continue to put more guys in
-the ext4 development. And we would be glad to see ext4 be more stable
-and feature complete in the near future.
+On 11/21/11 11:08 PM, Theodore Tso wrote:
+>
+> On Nov 21, 2011, at 7:22 AM, Yu Jian wrote:
+>
+>> Now, I've the same question as that in the above thread:
+>> In xattr.{h,c}, all of the macros and functions assume the xattr space is contiguous with entries growing downwards and values growing upwards (aligned to the end of the space). Especially, the create, replace, remove and shift operations of xattrs are all performed inside a contiguous buffer. This is no problem with in-inode xattr space and single external xattr block which is associated with one block buffer. But for multiple xattr blocks, since the data of them would be read into different block buffers, which are not contiguous, most of the existing macros and functions need to be changed. Is this way acceptable?
+>
+> It depends on how cleanly you can implement it, and if you can create some better xfstests to exercise xattr operations --- especially if deleting xattrs will cause existing xattrs to get moved around for better packing, we need to be absolutely sure that the code is completely reliable and doesn't end up corrupting some xattr other than the one that is being inserted, deleted, or replaced.
+>
+> Currently, one of the primary xattr tests that is in xfstests (#62) doesn't work on ext4 at all, since it assumes that files are returned by readdir in file creation order for newly created directory.   So the lack of test coverage is something that would have to be addressed if we want to do major surgery to the xattr code.  I'd suggest creating a new series of test from scratch, since I don't believe test #62 can be easily reworked so that it will work under ext4.
+>
+>> In order to make most of the codes remain as-is, we could allocate a contiguous large buffer (up to 64kB in size) to handle all of the data. However, we have to memcpy the data from block buffers to the large buffer, and after the data are changed, we need memcpy the data back to block buffers to make the data written into the block device. Is this way reasonable?
+>
+> This is no doubt the simpler way to go.   The downsides of doing this are pretty obvious: overhead to do the copy, the extra memory pressure, the need to do the memory allocation (vmalloc is slow, since it requires messing with page tables; if you need to count on contiguous free pages, you may end up stalling while you wait for the pressure on the mm defrag routines).   Also, if there are people who want to do large amounts of xattr operations on PCIe attached flash, the extra overhead of doing the copy will definitely show up on the benchmarks.
+>
+> The first is approach is no doubt he better one, but it at the same time it would be tricker to implement.   If it would be totally up to me, I'd suggest the first approach, but it would need to be approached with care (and a lot of testing).
 
-Thanks
-Tao
+Thanks Ted for the suggestions. I'd use the first approach.
+>
+> Regards,
+>
+> -- Ted
+>
+>
+-- 
+Best regards,
+Yu Jian
