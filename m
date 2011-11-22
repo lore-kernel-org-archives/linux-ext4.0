@@ -1,52 +1,102 @@
-From: Andrew Watts <akwatts@ymail.com>
-Subject: Re: [OOPS]: Kernel 3.1 (ext3?)
-Date: Tue, 22 Nov 2011 06:42:49 -0500
-Message-ID: <20111122114247.GB20081@zeus>
-References: <20111110132929.GA11417@zeus>
- <20111114195352.GB17328@quack.suse.cz>
- <alpine.DEB.2.00.1111151004050.22502@router.home>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [patch] ext3: NULL dereference in ext3_evict_inode()
+Date: Tue, 22 Nov 2011 13:36:56 +0100
+Message-ID: <20111122123656.GC8058@quack.suse.cz>
+References: <20111122080019.GA11805@elgon.mountain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-mm@kvack.org
-To: Christoph Lameter <cl@linux.com>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org
+To: Dan Carpenter <dan.carpenter@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:59196 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750851Ab1KVMg6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 22 Nov 2011 07:36:58 -0500
 Content-Disposition: inline
-In-Reply-To: <alpine.DEB.2.00.1111151004050.22502@router.home>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20111122080019.GA11805@elgon.mountain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 15, 2011 at 10:05:25AM -0600, Christoph Lameter wrote:
-> On Mon, 14 Nov 2011, Jan Kara wrote:
-> 
-> > On Thu 10-11-11 08:29:37, Andrew Watts wrote:
-> > > I had the following kernel panic today on 3.1 (machine was compiling code
-> > > unattended). It would appear to be a bug/regression introduced sometime
-> > > between 2.6.39.4 and 3.1.
-> >   Hmm, the report is missing a line (top one) saying why the kernel
-> > actually crashed. Can you add that?
-> >
-> >   Also it seems you are using SLUB allocator, right? This seems like a
-> > problem there so adding some CCs.
-> 
-> Likely some data corruption. Enable slub debugging by passing
-> 
-> slub_debug
-> 
-> on the kernel commandline please to get some information as to where and
-> when this happens.
-> 
+On Tue 22-11-11 11:00:20, Dan Carpenter wrote:
+> This is an fsfuzzer bug.  ->s_journal is set at the end of
+> ext3_load_journal() but we try to use it in the error handling from
+> ext3_get_journal() while it's still NULL.
+  Thanks, I've merged the patch and added a comment before the check
+explaining why the s_journal check is needed.
 
-Hi Christoph.
+								Honza
 
-Thank you for your reply. I'll enable slub debugging and post anything of
-interest.
-
-~ Andy
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+> 
+> [  337.039041] BUG: unable to handle kernel NULL pointer dereference at 0000000000000024
+> [  337.040380] IP: [<ffffffff816e6539>] _raw_spin_lock+0x9/0x30
+> [  337.041687] PGD 0 
+> [  337.043118] Oops: 0002 [#1] SMP 
+> [  337.044483] CPU 3 
+> [  337.044495] Modules linked in: ecb md4 cifs fuse kvm_intel kvm brcmsmac brcmutil crc8 cordic r8169 [last unloaded: scsi_wait_scan]
+> [  337.047633] 
+> [  337.049259] Pid: 8308, comm: mount Not tainted 3.2.0-rc2-next-20111121+ #24 SAMSUNG ELECTRONICS CO., LTD. RV411/RV511/E3511/S3511    /RV411/RV511/E3511/S3511    
+> [  337.051064] RIP: 0010:[<ffffffff816e6539>]  [<ffffffff816e6539>] _raw_spin_lock+0x9/0x30
+> [  337.052879] RSP: 0018:ffff8800b1d11ae8  EFLAGS: 00010282
+> [  337.054668] RAX: 0000000000000100 RBX: 0000000000000000 RCX: ffff8800b77c2000
+> [  337.056400] RDX: ffff8800a97b5c00 RSI: 0000000000000000 RDI: 0000000000000024
+> [  337.058099] RBP: ffff8800b1d11ae8 R08: 6000000000000000 R09: e018000000000000
+> [  337.059841] R10: ff67366cc2607c03 R11: 00000000110688e6 R12: 0000000000000000
+> [  337.061607] R13: 0000000000000000 R14: 0000000000000000 R15: ffff8800a78f06e8
+> [  337.063385] FS:  00007f9d95652800(0000) GS:ffff8800b7180000(0000) knlGS:0000000000000000
+> [  337.065110] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> [  337.066801] CR2: 0000000000000024 CR3: 00000000aef2c000 CR4: 00000000000006e0
+> [  337.068581] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> [  337.070321] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> [  337.072105] Process mount (pid: 8308, threadinfo ffff8800b1d10000, task ffff8800b1d02be0)
+> [  337.073800] Stack:
+> [  337.075487]  ffff8800b1d11b08 ffffffff811f48cf ffff88007ac9b158 0000000000000000
+> [  337.077255]  ffff8800b1d11b38 ffffffff8119405d ffff88007ac9b158 ffff88007ac9b250
+> [  337.078851]  ffffffff8181bda0 ffffffff8181bda0 ffff8800b1d11b68 ffffffff81131e31
+> [  337.080284] Call Trace:
+> [  337.081706]  [<ffffffff811f48cf>] log_start_commit+0x1f/0x40
+> [  337.083107]  [<ffffffff8119405d>] ext3_evict_inode+0x1fd/0x2a0
+> [  337.084490]  [<ffffffff81131e31>] evict+0xa1/0x1a0
+> [  337.085857]  [<ffffffff81132031>] iput+0x101/0x210
+> [  337.087220]  [<ffffffff811339d1>] iget_failed+0x21/0x30
+> [  337.088581]  [<ffffffff811905fc>] ext3_iget+0x15c/0x450
+> [  337.089936]  [<ffffffff8118b0c1>] ? ext3_rsv_window_add+0x81/0x100
+> [  337.091284]  [<ffffffff816df9a4>] ext3_get_journal+0x15/0xde
+> [  337.092641]  [<ffffffff811a2e9b>] ext3_fill_super+0xf2b/0x1c30
+> [  337.093991]  [<ffffffff810ddf7d>] ? register_shrinker+0x4d/0x60
+> [  337.095332]  [<ffffffff8111c112>] mount_bdev+0x1a2/0x1e0
+> [  337.096680]  [<ffffffff811a1f70>] ? ext3_setup_super+0x210/0x210
+> [  337.098026]  [<ffffffff8119a770>] ext3_mount+0x10/0x20
+> [  337.099362]  [<ffffffff8111cbee>] mount_fs+0x3e/0x1b0
+> [  337.100759]  [<ffffffff810eda1b>] ? __alloc_percpu+0xb/0x10
+> [  337.102330]  [<ffffffff81135385>] vfs_kern_mount+0x65/0xc0
+> [  337.103889]  [<ffffffff8113611f>] do_kern_mount+0x4f/0x100
+> [  337.105442]  [<ffffffff811378fc>] do_mount+0x19c/0x890
+> [  337.106989]  [<ffffffff810e8456>] ? memdup_user+0x46/0x90
+> [  337.108572]  [<ffffffff810e84f3>] ? strndup_user+0x53/0x70
+> [  337.110114]  [<ffffffff811383fb>] sys_mount+0x8b/0xe0
+> [  337.111617]  [<ffffffff816ed93b>] system_call_fastpath+0x16/0x1b
+> [  337.113133] Code: 38 c2 74 0f 66 0f 1f 44 00 00 f3 90 0f b6 03 38 c2 75 f7 48 83 c4 08 5b 5d c3 0f 1f 84 00 00 00 00 00 55 b8 00 01 00 00 48 89 e5 <f0> 66 0f c1 07 0f b6 d4 38 c2 74 0c 0f 1f 00 f3 90 0f b6 07 38 
+> [  337.116588] RIP  [<ffffffff816e6539>] _raw_spin_lock+0x9/0x30
+> [  337.118260]  RSP <ffff8800b1d11ae8>
+> [  337.119998] CR2: 0000000000000024
+> [  337.188701] ---[ end trace c36d790becac1615 ]---
+> 
+> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+> 
+> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+> index 85fe655..7229fd0 100644
+> --- a/fs/ext3/inode.c
+> +++ b/fs/ext3/inode.c
+> @@ -225,6 +225,7 @@ void ext3_evict_inode (struct inode *inode)
+>  	 * use page cache.
+>  	 */
+>  	if (inode->i_nlink && ext3_should_journal_data(inode) &&
+> +	    EXT3_SB(inode->i_sb)->s_journal &&
+>  	    (S_ISLNK(inode->i_mode) || S_ISREG(inode->i_mode))) {
+>  		tid_t commit_tid = atomic_read(&ei->i_datasync_tid);
+>  		journal_t *journal = EXT3_SB(inode->i_sb)->s_journal;
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
