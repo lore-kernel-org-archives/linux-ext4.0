@@ -1,113 +1,286 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH 2/2] ext4: let ext4_discard_partial_buffers handle pages without buffers correctly
-Date: Wed, 23 Nov 2011 17:15:26 +0800
-Message-ID: <1322039726-3587-2-git-send-email-xiaoqiangnk@gmail.com>
-References: <1322039726-3587-1-git-send-email-xiaoqiangnk@gmail.com>
-Cc: achender@linux.vnet.ibm.com, tytso@mit.edu,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>
-To: linux-ext4@vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] xfstests: Sort recursive getfattr output in 062
+Date: Wed, 23 Nov 2011 11:09:37 -0600
+Message-ID: <4ECD28D1.1080800@redhat.com>
+References: <4EC10664.1080501@tuxadero.com> <CAO47_-9nfO32nwOAQMVdqw6iWGWK+FWb+MD=WeOz_vr4YrrKmw@mail.gmail.com> <20111115142246.GA7516@thunk.org> <246EA1CC-3C33-4D41-80C0-2331C426EBB0@whamcloud.com> <4ECA4282.5020908@whamcloud.com> <401CC4FF-8955-4D5F-B620-5C39AF566123@mit.edu> <4ECB2ADE.3010007@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Yu Jian <yujian@whamcloud.com>,
+	Andreas Dilger <adilger@whamcloud.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	xfs-oss <xfs@oss.sgi.com>
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:54225 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752441Ab1KWLse (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Nov 2011 06:48:34 -0500
-Received: by mail-iy0-f174.google.com with SMTP id e36so1471959iag.19
-        for <linux-ext4@vger.kernel.org>; Wed, 23 Nov 2011 03:48:33 -0800 (PST)
-In-Reply-To: <1322039726-3587-1-git-send-email-xiaoqiangnk@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:33388 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750896Ab1KWRJm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 23 Nov 2011 12:09:42 -0500
+In-Reply-To: <4ECB2ADE.3010007@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If a page has been read to memory and never been written, it has no buffers,
-but we should handle the page in truncate or punch hole.
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-Vfs code of writing operations has handled holes correctly, so this patch removes
-the code handling hole in writing operations.
+Test 062 was made "generic" a while back, but it fails on any filesystem
+which returns getfattr -R results (aka readdir results) in something
+other than inode-order.
 
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
----
- fs/ext4/inode.c |   41 ++---------------------------------------
- 1 files changed, 2 insertions(+), 39 deletions(-)
+With a little awk-fu we can sort the records from getfattr -R so that
+the output is the same for xfs as well as ext4, etc.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 20a1d17..bd793d6 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2385,7 +2385,6 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
- 	pgoff_t index;
- 	struct inode *inode = mapping->host;
- 	handle_t *handle;
--	loff_t page_len;
- 
- 	index = pos >> PAGE_CACHE_SHIFT;
- 
-@@ -2432,13 +2431,6 @@ retry:
- 		 */
- 		if (pos + len > inode->i_size)
- 			ext4_truncate_failed_write(inode);
--	} else {
--		page_len = pos & (PAGE_CACHE_SIZE - 1);
--		if (page_len > 0) {
--			ret = ext4_discard_partial_page_buffers_no_lock(handle,
--				inode, page, pos - page_len, page_len,
--				EXT4_DISCARD_PARTIAL_PG_ZERO_UNMAPPED);
--		}
- 	}
- 
- 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-@@ -2481,7 +2473,6 @@ static int ext4_da_write_end(struct file *file,
- 	loff_t new_i_size;
- 	unsigned long start, end;
- 	int write_mode = (int)(unsigned long)fsdata;
--	loff_t page_len;
- 
- 	if (write_mode == FALL_BACK_TO_NONDELALLOC) {
- 		if (ext4_should_order_data(inode)) {
-@@ -2530,16 +2521,6 @@ static int ext4_da_write_end(struct file *file,
- 	}
- 	ret2 = generic_write_end(file, mapping, pos, len, copied,
- 							page, fsdata);
--
--	page_len = PAGE_CACHE_SIZE -
--			((pos + copied - 1) & (PAGE_CACHE_SIZE - 1));
--
--	if (page_len > 0) {
--		ret = ext4_discard_partial_page_buffers_no_lock(handle,
--			inode, page, pos + copied - 1, page_len,
--			EXT4_DISCARD_PARTIAL_PG_ZERO_UNMAPPED);
--	}
--
- 	copied = ret2;
- 	if (ret2 < 0)
- 		ret = ret2;
-@@ -3201,26 +3182,8 @@ int ext4_discard_partial_page_buffers_no_lock(handle_t *handle,
- 
- 	iblock = index << (PAGE_CACHE_SHIFT - inode->i_sb->s_blocksize_bits);
- 
--	if (!page_has_buffers(page)) {
--		/*
--		 * If the range to be discarded covers a partial block
--		 * we need to get the page buffers.  This is because
--		 * partial blocks cannot be released and the page needs
--		 * to be updated with the contents of the block before
--		 * we write the zeros on top of it.
--		 */
--		if ((from & (blocksize - 1)) ||
--		    ((from + length) & (blocksize - 1))) {
--			create_empty_buffers(page, blocksize, 0);
--		} else {
--			/*
--			 * If there are no partial blocks,
--			 * there is nothing to update,
--			 * so we can return now
--			 */
--			return 0;
--		}
--	}
-+	if (!page_has_buffers(page))
-+		create_empty_buffers(page, blocksize, 0);
- 
- 	/* Find the buffer that contains "offset" */
- 	bh = page_buffers(page);
--- 
-1.7.5.1
+Also filter out lost+found which extN creates at mkfs time, but
+some other filesystems do not.
 
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+- ---
+
+diff --git a/062 b/062
+index f666e1b..7005c4e 100755
+- --- a/062
++++ b/062
+@@ -46,6 +46,13 @@ _cleanup()
+ }
+ trap "_cleanup; exit \$status" 0 1 2 3 15
+ 
++# getfattr -R returns info in readdir order which varies from fs to fs.
++# This sorts the output by filename
++_sort_getfattr_output()
++{
++	awk '{a[FNR]=$0}END{n = asort(a); for(i=1; i <= n; i++) print a[i],"\n"}' RS=''
++}
++
+ getfattr()
+ {
+     $GETFATTR_PROG --absolute-names -dh $@ 2>&1 | _filter_scratch
+@@ -67,7 +74,7 @@ _create_test_bed()
+ 	mknod $SCRATCH_MNT/dev/c c 0 0
+ 	mknod $SCRATCH_MNT/dev/p p
+ 	# sanity check
+- -	find $SCRATCH_MNT | LC_COLLATE=POSIX sort | _filter_scratch
++	find $SCRATCH_MNT | LC_COLLATE=POSIX sort | _filter_scratch | grep -v "lost+found"
+ }
+ 
+ # real QA test starts here
+@@ -160,18 +167,18 @@ _extend_test_bed()
+ 	# whack a symlink in the middle, just to be difficult
+ 	ln -s $SCRATCH_MNT/here/up $SCRATCH_MNT/descend/and
+ 	# dump out our new starting point
+- -	find $SCRATCH_MNT | LC_COLLATE=POSIX sort | _filter_scratch
++	find $SCRATCH_MNT | LC_COLLATE=POSIX sort | _filter_scratch | grep -v "lost+found"
+ }
+ 
+ _extend_test_bed
+ 
+ echo
+ echo "*** directory descent with us following symlinks"
+- -getfattr -h -L -R -m '.' -e hex $SCRATCH_MNT
++getfattr -h -L -R -m '.' -e hex $SCRATCH_MNT | _sort_getfattr_output
+ 
+ echo
+ echo "*** directory descent without following symlinks"
+- -getfattr -h -P -R -m '.' -e hex $SCRATCH_MNT
++getfattr -h -P -R -m '.' -e hex $SCRATCH_MNT | _sort_getfattr_output
+ 
+ 
+ # 
+diff --git a/062.out b/062.out
+index 699254a..7d05c85 100644
+- --- a/062.out
++++ b/062.out
+@@ -508,115 +508,115 @@ SCRATCH_MNT/lnk
+ SCRATCH_MNT/reg
+ 
+ *** directory descent with us following symlinks
+- -# file: SCRATCH_MNT/reg
+- -trusted.name=0xbabe
+- -trusted.name3=0xdeface
+- -user.name=0xbabe
+- -user.name3=0xdeface
++# file: SCRATCH_MNT/descend
++user.1=0x3233
++user.x=0x797a 
+ 
+- -# file: SCRATCH_MNT/dir
+- -trusted.name=0xbabe
+- -trusted.name3=0xdeface
+- -user.name=0xbabe
+- -user.name3=0xdeface
++# file: SCRATCH_MNT/descend/and/ascend
++trusted.9=0x3837
++trusted.a=0x6263 
+ 
+- -# file: SCRATCH_MNT/lnk
+- -trusted.name=0xbabe
+- -trusted.name3=0xdeface
++# file: SCRATCH_MNT/descend/down
++user.1=0x3233
++user.x=0x797a 
++
++# file: SCRATCH_MNT/descend/down/here
++user.1=0x3233
++user.x=0x797a 
+ 
+ # file: SCRATCH_MNT/dev/b
+ trusted.name=0xbabe
+- -trusted.name3=0xdeface
++trusted.name3=0xdeface 
+ 
+ # file: SCRATCH_MNT/dev/c
+ trusted.name=0xbabe
+- -trusted.name3=0xdeface
++trusted.name3=0xdeface 
+ 
+ # file: SCRATCH_MNT/dev/p
+ trusted.name=0xbabe
++trusted.name3=0xdeface 
++
++# file: SCRATCH_MNT/dir
++trusted.name=0xbabe
+ trusted.name3=0xdeface
++user.name=0xbabe
++user.name3=0xdeface 
+ 
+ # file: SCRATCH_MNT/here
+ trusted.9=0x3837
+- -trusted.a=0x6263
++trusted.a=0x6263 
+ 
+ # file: SCRATCH_MNT/here/up
+ trusted.9=0x3837
+- -trusted.a=0x6263
++trusted.a=0x6263 
+ 
+ # file: SCRATCH_MNT/here/up/ascend
+ trusted.9=0x3837
+- -trusted.a=0x6263
++trusted.a=0x6263 
+ 
++# file: SCRATCH_MNT/lnk
++trusted.name=0xbabe
++trusted.name3=0xdeface 
++
++# file: SCRATCH_MNT/reg
++trusted.name=0xbabe
++trusted.name3=0xdeface
++user.name=0xbabe
++user.name3=0xdeface 
++
++
++*** directory descent without following symlinks
+ # file: SCRATCH_MNT/descend
+ user.1=0x3233
+- -user.x=0x797a
++user.x=0x797a 
+ 
+ # file: SCRATCH_MNT/descend/down
+ user.1=0x3233
+- -user.x=0x797a
++user.x=0x797a 
+ 
+ # file: SCRATCH_MNT/descend/down/here
+ user.1=0x3233
+- -user.x=0x797a
+- -
+- -# file: SCRATCH_MNT/descend/and/ascend
+- -trusted.9=0x3837
+- -trusted.a=0x6263
+- -
+- -
+- -*** directory descent without following symlinks
+- -# file: SCRATCH_MNT/reg
+- -trusted.name=0xbabe
+- -trusted.name3=0xdeface
+- -user.name=0xbabe
+- -user.name3=0xdeface
+- -
+- -# file: SCRATCH_MNT/dir
+- -trusted.name=0xbabe
+- -trusted.name3=0xdeface
+- -user.name=0xbabe
+- -user.name3=0xdeface
+- -
+- -# file: SCRATCH_MNT/lnk
+- -trusted.name=0xbabe
+- -trusted.name3=0xdeface
++user.x=0x797a 
+ 
+ # file: SCRATCH_MNT/dev/b
+ trusted.name=0xbabe
+- -trusted.name3=0xdeface
++trusted.name3=0xdeface 
+ 
+ # file: SCRATCH_MNT/dev/c
+ trusted.name=0xbabe
+- -trusted.name3=0xdeface
++trusted.name3=0xdeface 
+ 
+ # file: SCRATCH_MNT/dev/p
+ trusted.name=0xbabe
++trusted.name3=0xdeface 
++
++# file: SCRATCH_MNT/dir
++trusted.name=0xbabe
+ trusted.name3=0xdeface
++user.name=0xbabe
++user.name3=0xdeface 
+ 
+ # file: SCRATCH_MNT/here
+ trusted.9=0x3837
+- -trusted.a=0x6263
++trusted.a=0x6263 
+ 
+ # file: SCRATCH_MNT/here/up
+ trusted.9=0x3837
+- -trusted.a=0x6263
++trusted.a=0x6263 
+ 
+ # file: SCRATCH_MNT/here/up/ascend
+ trusted.9=0x3837
+- -trusted.a=0x6263
++trusted.a=0x6263 
+ 
+- -# file: SCRATCH_MNT/descend
+- -user.1=0x3233
+- -user.x=0x797a
+- -
+- -# file: SCRATCH_MNT/descend/down
+- -user.1=0x3233
+- -user.x=0x797a
++# file: SCRATCH_MNT/lnk
++trusted.name=0xbabe
++trusted.name3=0xdeface 
+ 
+- -# file: SCRATCH_MNT/descend/down/here
+- -user.1=0x3233
+- -user.x=0x797a
++# file: SCRATCH_MNT/reg
++trusted.name=0xbabe
++trusted.name3=0xdeface
++user.name=0xbabe
++user.name3=0xdeface 
+ 
+ 
+ 
+
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG/MacGPG2 v2.0.17 (Darwin)
+Comment: GPGTools - http://gpgtools.org
+Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
+
+iQIcBAEBAgAGBQJOzSjQAAoJECCuFpLhPd7gsJIP/j2BKTvft/QjnLxs+gJT/f0S
+H7L9r/izHcQ5Z/xk9t4unpOr35EsXOuwMzWN8OrB3fCx0J7gkIj7s7dNFrou8K8w
+bkVW6lzy5VUOHPzkqFSNLHSf2YLrrXNfPBLgOQl8A4lkNzY4gjy74uw05bLL4z3y
+u+gmjwuOMRTwGe3N9l/q6VR7UybHRyYBE62Ee2SPBa59FFWdicqzQBGVj0OOAdQg
+asTekASb8fXv/A4GNMFyNpZtA65ov8puISeGjV/A9Dhrx843qn1IFLA3UfcWEPEf
+qF5MDkg0ZuDDzN8YOiZM5S6mY7KAGSiKAHlF9nNZistCMJy4UDWh2lGLCIDEoO8l
+oRpbEOQy8tq7v7ppgp4kmh+8aIj0bletjZbgumPiu8KrRNCyXlBpGYGsBIPH+wgn
+P0i7EKILkF7gRM6Gs4U7Ek88mLcDSrsRGjI7JWQgOufUoo9noZM4pBlfw+ngx3DC
+NlhxisqyWcwDAVV1MBNvoSNGB5iLNCTgb/Ppgb7SdwNJ/heX9EAgKTsTnyENjtYe
+ILcuWf0CLYRPG9gun3JIXS/IibJY4Eqi3E9jo+Et5q6eOGTFuD0hjgERULUzH9d2
+wwWFq7KPtdJJbWK0mANn2HK0GQH79gskmWsFS8Mxl7JCSMfPOFdbHNSbqdzNKXJS
++OIS7v24/L/pNQNtuqEt
+=hW9Q
+-----END PGP SIGNATURE-----
