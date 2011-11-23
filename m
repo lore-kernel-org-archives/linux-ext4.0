@@ -1,74 +1,152 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] xfstests: mount other filesystems with selinux context as
- well
-Date: Wed, 23 Nov 2011 11:50:26 -0600
-Message-ID: <4ECD3262.105@redhat.com>
+Subject: [PATCH] xfstests: make xattr test 020 generic
+Date: Wed, 23 Nov 2011 13:11:53 -0600
+Message-ID: <4ECD4579.4080706@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 Cc: ext4 development <linux-ext4@vger.kernel.org>
 To: xfs-oss <xfs@oss.sgi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:25323 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:25568 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754871Ab1KWRua (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Nov 2011 12:50:30 -0500
+	id S1753725Ab1KWTL6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 23 Nov 2011 14:11:58 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 -----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
-For some reason, non-xfs filesystems aren't getting mounted with
-the selinux context; perhaps because none of the xattr tests used
-to work on anything but xfs?
+020 can be made generic by limiting the total attribute space
+used in the tests as appropriate.  Unless we know we have a
+large-xattr-capable fs, limit total space to a bit under one
+fs block.
 
-Anyway, 062 fails for extN unless we mount with the fs-wide
-context.
+Now passes for me on ext3, ext4, btrfs, as well as xfs.
 
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 - ---
 
-diff --git a/common.rc b/common.rc
-index cab0b64..5998ff2 100644
-- --- a/common.rc
-+++ b/common.rc
-@@ -86,14 +86,17 @@ _mount_opts()
- 	export MOUNT_OPTIONS=$NFS_MOUNT_OPTIONS
- 	;;
-     ext2|ext3|ext4|ext4dev)
-- -	# acls & xattrs aren't turned on by default on ext$FOO
-+	export SELINUX_MOUNT_OPTIONS
-+	# acls & xattrs aren't turned on by default on ext$FOO in old kernels
- 	export MOUNT_OPTIONS="-o acl,user_xattr $EXT_MOUNT_OPTIONS"
- 	;;
-     reiserfs)
-+	export SELINUX_MOUNT_OPTIONS
- 	# acls & xattrs aren't turned on by default on reiserfs
- 	export MOUNT_OPTIONS="-o acl,user_xattr $REISERFS_MOUNT_OPTIONS"
- 	;;
-     gfs2)
-+	export SELINUX_MOUNT_OPTIONS
- 	# acls aren't turned on by default on gfs2
- 	export MOUNT_OPTIONS="-o acl $GFS2_MOUNT_OPTIONS"
- 	;;
+incidentally the test used to send a 100k xattr value to
+the attr command on xfs; it wrote only 64k but did not complain.
+Feature or bug?
+
+diff --git a/020 b/020
+index 56b9c3c..d196318 100755
+- --- a/020
++++ b/020
+@@ -80,7 +80,7 @@ _attr_list()
+ 
+ 
+ # real QA test starts here
+- -_supported_fs xfs udf
++_supported_fs generic
+ _supported_os Linux
+ 
+ _require_attrs
+@@ -119,9 +119,19 @@ _attr_list $testfile
+ 
+ echo "*** add lots of attributes"
+ v=0
+- -while [ $v -lt 1000 ]
++
++# set maximum total attr space based on fs type
++if [ "$FSTYP" == "xfs" -o "$FSTYP" == "udf" ]; then
++	NUMATTRS=1000
++else # Assume max ~1 block of attrs
++	BLOCK_SIZE=`stat -f $TEST_DEV | grep "Block size" | cut -d " " -f3`
++	# user.attribute_XXX="value.XXX" is about 32 bytes; leave some overhead
++	let NUMATTRS=$BLOCK_SIZE/40
++fi
++
++while [ $v -lt $NUMATTRS ]
+ do
+- -    echo "value_$v" | attr -s "attribute_$v" $testfile >>$seq.full
++    echo -n "value_$v" | attr -s "attribute_$v" $testfile >>$seq.full
+     if [ $? -ne 0 ]
+     then
+         echo "!!! failed to add \"attribute_$v\""
+@@ -139,11 +149,12 @@ getfattr --absolute-names $testfile \
+     	/^#/ { next }
+ 	/^[ 	]*$/ { next }
+         { l++ } 
+- -	END {print "   *** " (l - 1) " attribute(s)" }'
++	END {print "   *** " (l - 1) " attribute(s)" }' \
++    | sed s/$NUMATTRS/NUMATTRS/
+ 
+ echo "*** remove lots of attributes"
+ v=0
+- -while [ $v -lt 1000 ]
++while [ $v -lt $NUMATTRS ]
+ do
+     if ! $ATTR_PROG -r "attribute_$v" $testfile >>$seq.full
+     then
+@@ -156,11 +167,21 @@ done
+ 
+ _attr_list $testfile
+ 
++# Set max attr vlue size based on fs type
++if [ "$FSTYP" == "xfs" -o "$FSTYP" == "udf" -o "$FSTYP" == "btrfs" ]; then
++	ATTRVAL_SIZE=64
++else # Assume max ~1 block of attrs
++	BLOCK_SIZE=`stat -f $TEST_DEV | grep "Block size" | cut -d " " -f3`
++	# leave a little overhead
++	let ATTRVAL_SIZE=$BLOCK_SIZE-256
++fi
++
+ echo "*** really long value"
+- -dd if=/dev/zero bs=1024 count=100 2>/dev/null \
++dd if=/dev/zero bs=1 count=$ATTRVAL_SIZE 2>/dev/null \
+     | _attr -s "long_attr" $testfile >/dev/null
+- -    
+- -_attr -g "long_attr" $testfile | tail -n +2 | od -t x1
++
++OCTAL_SIZE=`echo "obase=8; $ATTRVAL_SIZE" | bc` 
++_attr -q -g "long_attr" $testfile | od -t x1 | sed -e "s/^0*$OCTAL_SIZE$/ATTRSIZE/"
+ _attr -r "long_attr" $testfile >/dev/null
+ 
+ 
+diff --git a/020.out b/020.out
+index 3e444be..b303200 100644
+- --- a/020.out
++++ b/020.out
+@@ -40,7 +40,7 @@ user.snrub="fish2\012"
+ 
+ *** add lots of attributes
+ *** check
+- -   *** 1000 attribute(s)
++   *** NUMATTRS attribute(s)
+ *** remove lots of attributes
+    *** print attributes
+ # file: <TESTFILE>
+@@ -49,8 +49,7 @@ user.snrub="fish2\012"
+ *** really long value
+ 0000000 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ *
+- -0200000 0a
+- -0200001
++ATTRSIZE
+ *** set/get/remove really long names (expect failure)
+ attr_set: Invalid argument
+ Could not set "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" for <TESTFILE>
 
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG/MacGPG2 v2.0.17 (Darwin)
 Comment: GPGTools - http://gpgtools.org
 Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
 
-iQIcBAEBAgAGBQJOzTJgAAoJECCuFpLhPd7gv14QAJPmvzzrv7hTUq6Fuw5uLrnY
-AJ/h2dxdJyKfcdSQe6InI9EmDOt6kD3GPR5PnfWn06tvNz2vHDeKwb8m29vaidcW
-2RGvTdtxEl/3z7ePv2PBuPqib+Ns27aaOL6cXZbv9aikN6QwDOEdja99aH6ALyN/
-4sVHlyabTUS3858KDtlYlSsVm9StvMNKf3BsKhaGOBfgN1tAQkgLc4PekGiY4uFn
-Dkm7G8uLgqIOuzEP0mwodAvFtDaFOuxmlJrWsKc2hzb9n6fqNBR8qb2XkpYJjoc/
-8KLCNu8o1TvEVYrObRq6bRfGbLRLjbfdVBWC2382BtZnGgF5jONR6xP9CN8bKAkk
-Cns7AYGIndRzXy46d1U1lxrPtHw7VTIUUPuKf3iNICQc/voiSlpEL/R3RH5rFgaw
-nRA1y+ufQNxNjFBKw9FwjuQ3+Eq+NZeytFoUETZVptxgtD+hkKl5oVGsTtqS2gpq
-pJoWBMb7agQdARVBgOXNQ937KFwP5NV4fMZ157K0pwp1QPkCiV6ueP23T/XRAFhU
-zAHPN22h4Ab1g5xiQWVZwfqCYkm8CjV0h6GAi2uwXCij1sqiv5IYehy/XIv171y4
-lEVYkQl390wpaMtmpO6xDHRMlGPQX2T00JEGoUqIpATFX6h3JkX3LdB+FIvdzh06
-AtgjqsaI8FmcvMfZlcBi
-=6s9a
+iQIcBAEBAgAGBQJOzUV4AAoJECCuFpLhPd7gZ6QP/39tqAYI/Luh4s8YaMADgop0
+w/zH6swZDZni2/iBgBbfvx4Gg+UEYYVZ3CnJ6Q5LnIUbD/L5/IXNDxmxmin4782C
+M8Hdl1Tjy/tQDu/AtIPI7e9FOAxCJVO781ArO9BXwgtPEk8CJVZFOnQ1ZZkpyI0T
+JVKS+I/iuDxX97kYLCCwLkk8tVPzr8X61nymrwSkf/YMxlcMXrVuGbr1Usoac97o
+QyRy53ivePGdW62eRVpUSHNU7jm1SaCAWX6OrnC31EzRwUdpeO8yHiVEFhI0he3x
+g1ODe/fxCoXbT+EkmEAWbBx6TvyscgOTWcQ7tGWmcNkjP2xN7jVde7NJDrRWAS2C
+aFzC3qbtl6Bw9AMX3roglxWFbFsheggtspDiO/El4Vx/zEbdMEFvrAP51rtRqFha
+VK6W98FweFY1Zb73ZRqR7EozFN86JXroEIPnvLlqoxcRF2M0iRerZuf/8CWE/rqb
+LAwfmZbDmXlPpK+lskbS3LJnMJZ6LaDnx64z0EUQFRT3jmSRKV949E2/V/mtx/t4
+Fj9ECrGbD+f7fBe7kqdkb6RdtCDCU4ZdD20G++n7+Uiype82cUrPnrPBxDrDOD3Q
+BQRYCsBsRIyVXrcLsZ0YicAPAPJGa8bxd0Hg2ZI4WTnBEpQhuvXdk69IHBMX3NFN
+aMIIVDdshJ+bPCC/0jor
+=A/u5
 -----END PGP SIGNATURE-----
