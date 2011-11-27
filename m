@@ -1,10 +1,10 @@
 From: Cong Wang <amwang@redhat.com>
-Subject: [PATCH 37/62] jbd: remove the second argument of k[un]map_atomic()
-Date: Sun, 27 Nov 2011 13:27:17 +0800
-Message-ID: <1322371662-26166-38-git-send-email-amwang@redhat.com>
+Subject: [PATCH 38/62] jbd2: remove the second argument of k[un]map_atomic()
+Date: Sun, 27 Nov 2011 13:27:18 +0800
+Message-ID: <1322371662-26166-39-git-send-email-amwang@redhat.com>
 References: <1322371662-26166-1-git-send-email-amwang@redhat.com>
 Cc: akpm@linux-foundation.org, Cong Wang <amwang@redhat.com>,
-	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+	"Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
 To: linux-kernel@vger.kernel.org
 Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <1322371662-26166-1-git-send-email-amwang@redhat.com>
@@ -14,24 +14,42 @@ List-Id: linux-ext4.vger.kernel.org
 
 Signed-off-by: Cong Wang <amwang@redhat.com>
 ---
- fs/jbd/journal.c     |   12 ++++++------
- fs/jbd/transaction.c |    4 ++--
- 2 files changed, 8 insertions(+), 8 deletions(-)
+ fs/jbd2/commit.c      |    4 ++--
+ fs/jbd2/journal.c     |   12 ++++++------
+ fs/jbd2/transaction.c |    4 ++--
+ 3 files changed, 10 insertions(+), 10 deletions(-)
 
-diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-index fea8dd6..de8ae3e 100644
---- a/fs/jbd/journal.c
-+++ b/fs/jbd/journal.c
-@@ -328,7 +328,7 @@ repeat:
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 68d704d..5b272bc 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -286,10 +286,10 @@ static __u32 jbd2_checksum_data(__u32 crc32_sum, struct buffer_head *bh)
+ 	char *addr;
+ 	__u32 checksum;
+ 
+-	addr = kmap_atomic(page, KM_USER0);
++	addr = kmap_atomic(page);
+ 	checksum = crc32_be(crc32_sum,
+ 		(void *)(addr + offset_in_page(bh->b_data)), bh->b_size);
+-	kunmap_atomic(addr, KM_USER0);
++	kunmap_atomic(addr);
+ 
+ 	return checksum;
+ }
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 0fa0123..f251d6a 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -345,7 +345,7 @@ repeat:
  		new_offset = offset_in_page(jh2bh(jh_in)->b_data);
  	}
  
 -	mapped_data = kmap_atomic(new_page, KM_USER0);
 +	mapped_data = kmap_atomic(new_page);
  	/*
- 	 * Check for escaping
- 	 */
-@@ -337,7 +337,7 @@ repeat:
+ 	 * Fire data frozen trigger if data already wasn't frozen.  Do this
+ 	 * before checking for escaping, as the trigger may modify the magic
+@@ -364,7 +364,7 @@ repeat:
  		need_copy_out = 1;
  		do_escape = 1;
  	}
@@ -40,7 +58,7 @@ index fea8dd6..de8ae3e 100644
  
  	/*
  	 * Do we need to do a data copy?
-@@ -354,9 +354,9 @@ repeat:
+@@ -385,9 +385,9 @@ repeat:
  		}
  
  		jh_in->b_frozen_data = tmp;
@@ -52,7 +70,7 @@ index fea8dd6..de8ae3e 100644
  
  		new_page = virt_to_page(tmp);
  		new_offset = offset_in_page(tmp);
-@@ -368,9 +368,9 @@ repeat:
+@@ -406,9 +406,9 @@ repeat:
  	 * copying, we can finally do so.
  	 */
  	if (do_escape) {
@@ -64,21 +82,24 @@ index fea8dd6..de8ae3e 100644
  	}
  
  	set_bh_page(new_bh, new_page, new_offset);
-diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
-index 7e59c6e..e59a112 100644
---- a/fs/jbd/transaction.c
-+++ b/fs/jbd/transaction.c
-@@ -712,9 +712,9 @@ done:
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index a0e41a4..5d8de98 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -782,12 +782,12 @@ done:
  			    "Possible IO failure.\n");
  		page = jh2bh(jh)->b_page;
  		offset = offset_in_page(jh2bh(jh)->b_data);
 -		source = kmap_atomic(page, KM_USER0);
 +		source = kmap_atomic(page);
+ 		/* Fire data frozen trigger just before we copy the data */
+ 		jbd2_buffer_frozen_trigger(jh, source + offset,
+ 					   jh->b_triggers);
  		memcpy(jh->b_frozen_data, source+offset, jh2bh(jh)->b_size);
 -		kunmap_atomic(source, KM_USER0);
 +		kunmap_atomic(source);
- 	}
- 	jbd_unlock_bh_state(bh);
  
+ 		/*
+ 		 * Now that the frozen data is saved off, we need to store
 -- 
 1.7.4.4
