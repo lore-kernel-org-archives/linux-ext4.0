@@ -1,105 +1,119 @@
-From: Cong Wang <amwang@redhat.com>
-Subject: [PATCH 38/62] jbd2: remove the second argument of k[un]map_atomic()
-Date: Sun, 27 Nov 2011 13:27:18 +0800
-Message-ID: <1322371662-26166-39-git-send-email-amwang@redhat.com>
-References: <1322371662-26166-1-git-send-email-amwang@redhat.com>
-Cc: akpm@linux-foundation.org, Cong Wang <amwang@redhat.com>,
-	"Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1322371662-26166-1-git-send-email-amwang@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Tao Ma <tm@tao.ma>
+Subject: Re: [PATCH 1/2] ext4: let mpage_submit_io works well when blocksize
+ < pagesize
+Date: Sun, 27 Nov 2011 16:59:14 +0800
+Message-ID: <4ED1FBE2.8020001@tao.ma>
+References: <1322039726-3587-1-git-send-email-xiaoqiangnk@gmail.com> <4ED100E8.109@tao.ma> <CAGBYx2a_Xm5e3ESuh2YpBpcrEM4j5_TPegQC3WO1yQVtmqJ2Pw@mail.gmail.com> <4ED10448.1040204@tao.ma> <CAGBYx2apFEheGGtJWeLeKKGBWeq849AW6+wwqvEopM0PeJQd=w@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"achender@linux.vnet.ibm.com" <achender@linux.vnet.ibm.com>,
+	"tytso@mit.edu" <tytso@mit.edu>
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from oproxy7-pub.bluehost.com ([67.222.55.9]:35409 "HELO
+	oproxy7-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1750987Ab1K0I7k (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 27 Nov 2011 03:59:40 -0500
+In-Reply-To: <CAGBYx2apFEheGGtJWeLeKKGBWeq849AW6+wwqvEopM0PeJQd=w@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On 11/27/2011 09:29 AM, Yongqiang Yang wrote:
+> 
+> 
+> On Saturday, November 26, 2011, Tao Ma <tm@tao.ma <mailto:tm@tao.ma>> wrote:
+>> On 11/26/2011 11:13 PM, Yongqiang Yang wrote:
+>>> Hi,
+>>>
+>>> It can be tested by xfstests 61 or 91, I did not remember which one.
+>> ok, I will try it later. But I still wonder how it happens. See my
+>> comments below.
+>>>
+>>> It can be reproduced by reading on a fallocted block and write the block
+>>> after the fallocted block.  Then the written block can not be written
+>>> out by da_writepages.
+>> Why? in read no bh will be created, and in write only the written bh
+>> will be mapped and set unwritten. How could that happen? Sorry, but this
+>> explanation doesn't convince me.
+> Ok!  The bug was found with punch hole enabled, and punch hole creates
+> empty buffers sometimes.
+> Actually, punching hole can read the whole page like read operation
+> does, but it do not.  May be this is the source of the  problem.
+> The problemastic  function is discard_partial_buffers.   I post a patch
+> fixing another bug in it in this series.  If we read whole page in this
+> function, the problem can also be solved.
+Got it and thanks for the explanation. So we introduced a bug and then
+fix it in another way. ;)
 
-Signed-off-by: Cong Wang <amwang@redhat.com>
----
- fs/jbd2/commit.c      |    4 ++--
- fs/jbd2/journal.c     |   12 ++++++------
- fs/jbd2/transaction.c |    4 ++--
- 3 files changed, 10 insertions(+), 10 deletions(-)
+Thanks
+Tao
+> 
+> Yongqiang.
+>>>
+>>> Yongqiang.
+>>>
+>>> On Saturday, November 26, 2011, Tao Ma <tm@tao.ma <mailto:tm@tao.ma>
+> <mailto:tm@tao.ma <mailto:tm@tao.ma>>> wrote:
+>>>> Hi Yongqiang,
+>>>> On 11/23/2011 05:15 PM, Yongqiang Yang wrote:
+>>>>> If there is a unwritten but clean buffer in a page and there is a
+>>> dirty buffer
+>>>>> after the buffer, then mpage_submit_io does not write the dirty
+>>> buffer out.
+>>>>> As a result, da_writepages loops forever.
+>>>> Did you ever meet with this bug or just find it to be a possible bug by
+>>>> skimming the code? Actually, I can't find a proper way to get a buffer
+>>>> which can satisfy the check.
+>>>>
+>>>> Thanks
+>>>> Tao
+>>>>>
+>>>>> This patch fixes the problem by checking dirty flag.
+>>>>>
+>>>>> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com
+> <mailto:xiaoqiangnk@gmail.com>
+>>> <mailto:xiaoqiangnk@gmail.com <mailto:xiaoqiangnk@gmail.com>>>
+>>>>> ---
+>>>>>  fs/ext4/inode.c |    7 +++++--
+>>>>>  1 files changed, 5 insertions(+), 2 deletions(-)
+>>>>>
+>>>>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+>>>>> index 755f6c7..20a1d17 100644
+>>>>> --- a/fs/ext4/inode.c
+>>>>> +++ b/fs/ext4/inode.c
+>>>>> @@ -1339,8 +1339,11 @@ static int mpage_da_submit_io(struct
+>>> mpage_da_data *mpd,
+>>>>>                                       clear_buffer_unwritten(bh);
+>>>>>                               }
+>>>>>
+>>>>> -                             /* skip page if block allocation
+> undone */
+>>>>> -                             if (buffer_delay(bh) ||
+>>> buffer_unwritten(bh))
+>>>>> +                             /*
+>>>>> +                              * skip page if block allocation
+> undone and
+>>>>> +                              * block is dirty
+>>>>> +                              */
+>>>>> +                             if (ext4_bh_delay_or_unwritten(NULL, bh))
+>>>>>                                       skip_page = 1;
+>>>>>                               bh = bh->b_this_page;
+>>>>>                               block_start += bh->b_size;
+>>>>
+>>>>
+>>>>
+>>>
+>>> --
+>>> Best Wishes
+>>> Yongqiang Yang
+>>>
+>>
+>>
+> 
+> -- 
+> Best Wishes
+> Yongqiang Yang
+> 
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 68d704d..5b272bc 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -286,10 +286,10 @@ static __u32 jbd2_checksum_data(__u32 crc32_sum, struct buffer_head *bh)
- 	char *addr;
- 	__u32 checksum;
- 
--	addr = kmap_atomic(page, KM_USER0);
-+	addr = kmap_atomic(page);
- 	checksum = crc32_be(crc32_sum,
- 		(void *)(addr + offset_in_page(bh->b_data)), bh->b_size);
--	kunmap_atomic(addr, KM_USER0);
-+	kunmap_atomic(addr);
- 
- 	return checksum;
- }
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 0fa0123..f251d6a 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -345,7 +345,7 @@ repeat:
- 		new_offset = offset_in_page(jh2bh(jh_in)->b_data);
- 	}
- 
--	mapped_data = kmap_atomic(new_page, KM_USER0);
-+	mapped_data = kmap_atomic(new_page);
- 	/*
- 	 * Fire data frozen trigger if data already wasn't frozen.  Do this
- 	 * before checking for escaping, as the trigger may modify the magic
-@@ -364,7 +364,7 @@ repeat:
- 		need_copy_out = 1;
- 		do_escape = 1;
- 	}
--	kunmap_atomic(mapped_data, KM_USER0);
-+	kunmap_atomic(mapped_data);
- 
- 	/*
- 	 * Do we need to do a data copy?
-@@ -385,9 +385,9 @@ repeat:
- 		}
- 
- 		jh_in->b_frozen_data = tmp;
--		mapped_data = kmap_atomic(new_page, KM_USER0);
-+		mapped_data = kmap_atomic(new_page);
- 		memcpy(tmp, mapped_data + new_offset, jh2bh(jh_in)->b_size);
--		kunmap_atomic(mapped_data, KM_USER0);
-+		kunmap_atomic(mapped_data);
- 
- 		new_page = virt_to_page(tmp);
- 		new_offset = offset_in_page(tmp);
-@@ -406,9 +406,9 @@ repeat:
- 	 * copying, we can finally do so.
- 	 */
- 	if (do_escape) {
--		mapped_data = kmap_atomic(new_page, KM_USER0);
-+		mapped_data = kmap_atomic(new_page);
- 		*((unsigned int *)(mapped_data + new_offset)) = 0;
--		kunmap_atomic(mapped_data, KM_USER0);
-+		kunmap_atomic(mapped_data);
- 	}
- 
- 	set_bh_page(new_bh, new_page, new_offset);
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index a0e41a4..5d8de98 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -782,12 +782,12 @@ done:
- 			    "Possible IO failure.\n");
- 		page = jh2bh(jh)->b_page;
- 		offset = offset_in_page(jh2bh(jh)->b_data);
--		source = kmap_atomic(page, KM_USER0);
-+		source = kmap_atomic(page);
- 		/* Fire data frozen trigger just before we copy the data */
- 		jbd2_buffer_frozen_trigger(jh, source + offset,
- 					   jh->b_triggers);
- 		memcpy(jh->b_frozen_data, source+offset, jh2bh(jh)->b_size);
--		kunmap_atomic(source, KM_USER0);
-+		kunmap_atomic(source);
- 
- 		/*
- 		 * Now that the frozen data is saved off, we need to store
--- 
-1.7.4.4
