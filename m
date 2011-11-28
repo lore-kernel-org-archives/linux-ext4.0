@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 06/22] ext4: Calculate and verify inode checksums
-Date: Mon, 28 Nov 2011 15:26:56 -0800
-Message-ID: <20111128232656.19194.82262.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 11/22] ext4: Calculate and verify checksums for htree nodes
+Date: Mon, 28 Nov 2011 15:27:33 -0800
+Message-ID: <20111128232733.19194.12875.stgit@elm3c44.beaverton.ibm.com>
 References: <20111128232615.19194.80081.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -19,257 +19,266 @@ Cc: Sunil Mushran <sunil.mushran@oracle.com>,
 To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20111128232615.19194.80081.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This patch introduces to ext4 the ability to calculate and verify inode
-checksums.  This requires the use of a new ro compatibility flag and some
-accompanying e2fsprogs patches to provide the relevant features in tune2fs and
-e2fsck.  The inode generation changes have been integrated into this patch.
+Calculate and verify the checksum for directory index tree (htree) node blocks.
+The checksum is stored in the last 4 bytes of the htree block and requires the
+dx_entry array to stop 1 dx_entry short of the end of the block.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/ext4/ext4.h   |   10 +++--
- fs/ext4/ialloc.c |   13 ++++++
- fs/ext4/inode.c  |  111 ++++++++++++++++++++++++++++++++++++++++++++++++++----
- fs/ext4/ioctl.c  |    7 +++
- 4 files changed, 130 insertions(+), 11 deletions(-)
+ fs/ext4/namei.c |  168 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 164 insertions(+), 4 deletions(-)
 
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 4022320..6953d9f 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -633,7 +633,8 @@ struct ext4_inode {
- 			__le16	l_i_file_acl_high;
- 			__le16	l_i_uid_high;	/* these 2 fields */
- 			__le16	l_i_gid_high;	/* were reserved2[0] */
--			__u32	l_i_reserved2;
-+			__le16	l_i_checksum_lo;/* crc32c(uuid+inum+inode) LE */
-+			__le16	l_i_reserved;
- 		} linux2;
- 		struct {
- 			__le16	h_i_reserved1;	/* Obsoleted fragment number/size which are removed in ext4 */
-@@ -649,7 +650,7 @@ struct ext4_inode {
- 		} masix2;
- 	} osd2;				/* OS dependent 2 */
- 	__le16	i_extra_isize;
--	__le16	i_pad1;
-+	__le16	i_checksum_hi;	/* crc32c(uuid+inum+inode) BE */
- 	__le32  i_ctime_extra;  /* extra Change time      (nsec << 2 | epoch) */
- 	__le32  i_mtime_extra;  /* extra Modification time(nsec << 2 | epoch) */
- 	__le32  i_atime_extra;  /* extra Access time      (nsec << 2 | epoch) */
-@@ -751,7 +752,7 @@ do {									       \
- #define i_gid_low	i_gid
- #define i_uid_high	osd2.linux2.l_i_uid_high
- #define i_gid_high	osd2.linux2.l_i_gid_high
--#define i_reserved2	osd2.linux2.l_i_reserved2
-+#define i_checksum_lo	osd2.linux2.l_i_checksum_lo
- 
- #elif defined(__GNU__)
- 
-@@ -891,6 +892,9 @@ struct ext4_inode_info {
- 	 */
- 	tid_t i_sync_tid;
- 	tid_t i_datasync_tid;
-+
-+	/* crc32c(uuid+inum) */
-+	__u32 i_uuid_inum_csum;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 363b9c0..f91a0ed 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -145,6 +145,15 @@ struct dx_map_entry
+ 	u16 size;
  };
  
- /*
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 00beb4f..6151a68 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -892,6 +892,19 @@ got:
- 	inode->i_generation = sbi->s_next_generation++;
- 	spin_unlock(&sbi->s_next_gen_lock);
- 
-+	/* Precompute second piece of csum */
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+		__u32 csum;
-+		struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+		__le32 inum = cpu_to_le32(inode->i_ino);
-+		__le32 gen = cpu_to_le32(inode->i_generation);
-+		csum = ext4_chksum(sbi, sbi->s_uuid_csum, (__u8 *)&inum,
-+				   sizeof(inum));
-+		ei->i_uuid_inum_csum = ext4_chksum(sbi, csum, (__u8 *)&gen,
-+						   sizeof(gen));
-+	}
++/*
++ * This goes at the end of each htree block.  If you want to use the
++ * reserved field, you'll have to update the checksum code to include it.
++ */
++struct dx_tail {
++	u32 reserved;
++	u32 checksum;	/* crc32c(uuid+inum+dirblock) */
++};
 +
- 	ext4_clear_state_flags(ei); /* Only relevant on 32-bit archs */
- 	ext4_set_inode_state(inode, EXT4_STATE_NEW);
+ static inline ext4_lblk_t dx_get_block(struct dx_entry *entry);
+ static void dx_set_block(struct dx_entry *entry, ext4_lblk_t value);
+ static inline unsigned dx_get_hash(struct dx_entry *entry);
+@@ -180,6 +189,120 @@ static struct buffer_head * ext4_dx_find_entry(struct inode *dir,
+ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
+ 			     struct inode *inode);
  
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 47eeabc..d11b7cb 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -48,6 +48,73 @@
- 
- #define MPAGE_DA_EXTENT_TAIL 0x01
- 
-+static __u32 ext4_inode_csum(struct inode *inode, struct ext4_inode *raw,
-+			      struct ext4_inode_info *ei)
++/* checksumming functions */
++static struct dx_countlimit *get_dx_countlimit(struct inode *inode,
++					       struct ext4_dir_entry *dirent,
++					       int *offset)
++{
++	struct ext4_dir_entry *dp;
++	struct dx_root_info *root;
++	int count_offset;
++
++	if (le16_to_cpu(dirent->rec_len) == EXT4_BLOCK_SIZE(inode->i_sb))
++		count_offset = 8;
++	else if (le16_to_cpu(dirent->rec_len) == 12) {
++		dp = (struct ext4_dir_entry *)(((void *)dirent) + 12);
++		if (le16_to_cpu(dp->rec_len) !=
++		    EXT4_BLOCK_SIZE(inode->i_sb) - 12)
++			return NULL;
++		root = (struct dx_root_info *)(((void *)dp + 12));
++		if (root->reserved_zero ||
++		    root->info_length != sizeof(struct dx_root_info))
++			return NULL;
++		count_offset = 32;
++	} else
++		return NULL;
++
++	if (offset)
++		*offset = count_offset;
++	return (struct dx_countlimit *)(((void *)dirent) + count_offset);
++}
++
++static __le32 ext4_dx_csum(struct inode *inode, struct ext4_dir_entry *dirent,
++			   int count_offset, int count, struct dx_tail *t)
 +{
 +	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+	__u16 csum_lo;
-+	__u16 csum_hi = 0;
-+	__u32 csum;
++	struct ext4_inode_info *ei = EXT4_I(inode);
++	__u32 csum, old_csum;
++	int size;
 +
-+	csum_lo = raw->i_checksum_lo;
-+	raw->i_checksum_lo = 0;
-+	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
-+	    EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi)) {
-+		csum_hi = raw->i_checksum_hi;
-+		raw->i_checksum_hi = 0;
-+	}
++	size = count_offset + (count * sizeof(struct dx_entry));
++	old_csum = t->checksum;
++	t->checksum = 0;
++	csum = ext4_chksum(sbi, ei->i_uuid_inum_csum, (__u8 *)dirent, size);
++	csum = ext4_chksum(sbi, csum, (__u8 *)t, sizeof(struct dx_tail));
++	t->checksum = old_csum;
 +
-+	csum = ext4_chksum(sbi, ei->i_uuid_inum_csum, (__u8 *)raw,
-+			   EXT4_INODE_SIZE(inode->i_sb));
-+
-+	raw->i_checksum_lo = csum_lo;
-+	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
-+	    EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi))
-+		raw->i_checksum_hi = csum_hi;
-+
-+	return csum;
++	return cpu_to_le32(csum);
 +}
 +
-+static int ext4_inode_csum_verify(struct inode *inode, struct ext4_inode *raw,
-+				  struct ext4_inode_info *ei)
++static int ext4_dx_csum_verify(struct inode *inode,
++			       struct ext4_dir_entry *dirent)
 +{
-+	__u32 provided, calculated;
++	struct dx_countlimit *c;
++	struct dx_tail *t;
++	int count_offset, limit, count;
 +
-+	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
-+	    cpu_to_le32(EXT4_OS_LINUX) ||
-+	    !EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
++					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
 +		return 1;
 +
-+	provided = le16_to_cpu(raw->i_checksum_lo);
-+	calculated = ext4_inode_csum(inode, raw, ei);
-+	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
-+	    EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi))
-+		provided |= ((__u32)le16_to_cpu(raw->i_checksum_hi)) << 16;
-+	else
-+		calculated &= 0xFFFF;
++	c = get_dx_countlimit(inode, dirent, &count_offset);
++	if (!c) {
++		EXT4_ERROR_INODE(inode, "dir seems corrupt?  Run e2fsck -D.");
++		return 1;
++	}
++	limit = le16_to_cpu(c->limit);
++	count = le16_to_cpu(c->count);
++	if (count_offset + (limit * sizeof(struct dx_entry)) >
++	    EXT4_BLOCK_SIZE(inode->i_sb) - sizeof(struct dx_tail)) {
++		EXT4_ERROR_INODE(inode, "metadata_csum set but no space for "
++				 "tree checksum found.  Run e2fsck -D.");
++		return 1;
++	}
++	t = (struct dx_tail *)(((struct dx_entry *)c) + limit);
 +
-+	return provided == calculated;
++	if (t->checksum != ext4_dx_csum(inode, dirent, count_offset, count, t))
++		return 0;
++	return 1;
 +}
 +
-+static void ext4_inode_csum_set(struct inode *inode, struct ext4_inode *raw,
-+				struct ext4_inode_info *ei)
++static void ext4_dx_csum_set(struct inode *inode, struct ext4_dir_entry *dirent)
 +{
-+	__u32 csum;
++	struct dx_countlimit *c;
++	struct dx_tail *t;
++	int count_offset, limit, count;
 +
-+	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
-+	    cpu_to_le32(EXT4_OS_LINUX) ||
-+	    !EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
++					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
 +		return;
 +
-+	csum = ext4_inode_csum(inode, raw, ei);
-+	raw->i_checksum_lo = cpu_to_le16(csum & 0xFFFF);
-+	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
-+	    EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi))
-+		raw->i_checksum_hi = cpu_to_le16(csum >> 16);
++	c = get_dx_countlimit(inode, dirent, &count_offset);
++	if (!c) {
++		EXT4_ERROR_INODE(inode, "dir seems corrupt?  Run e2fsck -D.");
++		return;
++	}
++	limit = le16_to_cpu(c->limit);
++	count = le16_to_cpu(c->count);
++	if (count_offset + (limit * sizeof(struct dx_entry)) >
++	    EXT4_BLOCK_SIZE(inode->i_sb) - sizeof(struct dx_tail)) {
++		EXT4_ERROR_INODE(inode, "metadata_csum set but no space for "
++				 "tree checksum.  Run e2fsck -D.");
++		return;
++	}
++	t = (struct dx_tail *)(((struct dx_entry *)c) + limit);
++
++	t->checksum = ext4_dx_csum(inode, dirent, count_offset, count, t);
 +}
 +
- static inline int ext4_begin_ordered_truncate(struct inode *inode,
- 					      loff_t new_size)
++static inline int ext4_handle_dirty_dx_node(handle_t *handle,
++					    struct inode *inode,
++					    struct buffer_head *bh)
++{
++	ext4_dx_csum_set(inode, (struct ext4_dir_entry *)bh->b_data);
++	return ext4_handle_dirty_metadata(handle, inode, bh);
++}
++
+ /*
+  * p is at least 6 bytes before the end of page
+  */
+@@ -239,12 +362,20 @@ static inline unsigned dx_root_limit(struct inode *dir, unsigned infosize)
  {
-@@ -3785,6 +3852,39 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	if (ret < 0)
- 		goto bad_inode;
- 	raw_inode = ext4_raw_inode(&iloc);
+ 	unsigned entry_space = dir->i_sb->s_blocksize - EXT4_DIR_REC_LEN(1) -
+ 		EXT4_DIR_REC_LEN(2) - infosize;
 +
-+	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
-+		ei->i_extra_isize = le16_to_cpu(raw_inode->i_extra_isize);
-+		if (EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize >
-+		    EXT4_INODE_SIZE(inode->i_sb)) {
-+			EXT4_ERROR_INODE(inode, "bad extra_isize (%u != %u)",
-+				EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize,
-+				EXT4_INODE_SIZE(inode->i_sb));
-+			ret = -EIO;
-+			goto bad_inode;
-+		}
-+	} else
-+		ei->i_extra_isize = 0;
++	if (EXT4_HAS_RO_COMPAT_FEATURE(dir->i_sb,
++				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		entry_space -= sizeof(struct dx_tail);
+ 	return entry_space / sizeof(struct dx_entry);
+ }
+ 
+ static inline unsigned dx_node_limit(struct inode *dir)
+ {
+ 	unsigned entry_space = dir->i_sb->s_blocksize - EXT4_DIR_REC_LEN(0);
 +
-+	/* Precompute second piece of csum */
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+		struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+		__u32 csum;
-+		__le32 inum = cpu_to_le32(inode->i_ino);
-+		__le32 gen = raw_inode->i_generation;
-+		csum = ext4_chksum(sbi, sbi->s_uuid_csum, (__u8 *)&inum,
-+				   sizeof(inum));
-+		ei->i_uuid_inum_csum = ext4_chksum(sbi, csum, (__u8 *)&gen,
-+						   sizeof(gen));
-+	}
-+
-+	if (!ext4_inode_csum_verify(inode, raw_inode, ei)) {
-+		EXT4_ERROR_INODE(inode, "checksum invalid");
-+		ret = -EIO;
-+		goto bad_inode;
-+	}
-+
- 	inode->i_mode = le16_to_cpu(raw_inode->i_mode);
- 	inode->i_uid = (uid_t)le16_to_cpu(raw_inode->i_uid_low);
- 	inode->i_gid = (gid_t)le16_to_cpu(raw_inode->i_gid_low);
-@@ -3862,12 +3962,6 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
++	if (EXT4_HAS_RO_COMPAT_FEATURE(dir->i_sb,
++				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		entry_space -= sizeof(struct dx_tail);
+ 	return entry_space / sizeof(struct dx_entry);
+ }
+ 
+@@ -390,6 +521,15 @@ dx_probe(const struct qstr *d_name, struct inode *dir,
+ 		goto fail;
  	}
  
- 	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
--		ei->i_extra_isize = le16_to_cpu(raw_inode->i_extra_isize);
--		if (EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize >
--		    EXT4_INODE_SIZE(inode->i_sb)) {
--			ret = -EIO;
--			goto bad_inode;
--		}
- 		if (ei->i_extra_isize == 0) {
- 			/* The extra space is currently unused. Use it. */
- 			ei->i_extra_isize = sizeof(struct ext4_inode) -
-@@ -3879,8 +3973,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 			if (*magic == cpu_to_le32(EXT4_XATTR_MAGIC))
- 				ext4_set_inode_state(inode, EXT4_STATE_XATTR);
++	if (!buffer_verified(bh) &&
++	    !ext4_dx_csum_verify(dir, (struct ext4_dir_entry *)bh->b_data)) {
++		ext4_warning(dir->i_sb, "Root failed checksum");
++		brelse(bh);
++		*err = ERR_BAD_DX_DIR;
++		goto fail;
++	}
++	set_buffer_verified(bh);
++
+ 	entries = (struct dx_entry *) (((char *)&root->info) +
+ 				       root->info.info_length);
+ 
+@@ -450,6 +590,17 @@ dx_probe(const struct qstr *d_name, struct inode *dir,
+ 		if (!(bh = ext4_bread (NULL,dir, dx_get_block(at), 0, err)))
+ 			goto fail2;
+ 		at = entries = ((struct dx_node *) bh->b_data)->entries;
++
++		if (!buffer_verified(bh) &&
++		    !ext4_dx_csum_verify(dir,
++					 (struct ext4_dir_entry *)bh->b_data)) {
++			ext4_warning(dir->i_sb, "Node failed checksum");
++			brelse(bh);
++			*err = ERR_BAD_DX_DIR;
++			goto fail;
++		}
++		set_buffer_verified(bh);
++
+ 		if (dx_get_limit(entries) != dx_node_limit (dir)) {
+ 			ext4_warning(dir->i_sb,
+ 				     "dx entry: limit != node limit");
+@@ -549,6 +700,15 @@ static int ext4_htree_next_block(struct inode *dir, __u32 hash,
+ 		if (!(bh = ext4_bread(NULL, dir, dx_get_block(p->at),
+ 				      0, &err)))
+ 			return err; /* Failure */
++
++		if (!buffer_verified(bh) &&
++		    !ext4_dx_csum_verify(dir,
++					 (struct ext4_dir_entry *)bh->b_data)) {
++			ext4_warning(dir->i_sb, "Node failed checksum");
++			return -EIO;
++		}
++		set_buffer_verified(bh);
++
+ 		p++;
+ 		brelse(p->bh);
+ 		p->bh = bh;
+@@ -1224,7 +1384,7 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
+ 	err = ext4_handle_dirty_metadata(handle, dir, bh2);
+ 	if (err)
+ 		goto journal_error;
+-	err = ext4_handle_dirty_metadata(handle, dir, frame->bh);
++	err = ext4_handle_dirty_dx_node(handle, dir, frame->bh);
+ 	if (err)
+ 		goto journal_error;
+ 	brelse(bh2);
+@@ -1411,7 +1571,7 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
+ 	frame->bh = bh;
+ 	bh = bh2;
+ 
+-	ext4_handle_dirty_metadata(handle, dir, frame->bh);
++	ext4_handle_dirty_dx_node(handle, dir, frame->bh);
+ 	ext4_handle_dirty_metadata(handle, dir, bh);
+ 
+ 	de = do_split(handle,dir, &bh, frame, &hinfo, &retval);
+@@ -1586,7 +1746,7 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
+ 			dxtrace(dx_show_index("node", frames[1].entries));
+ 			dxtrace(dx_show_index("node",
+ 			       ((struct dx_node *) bh2->b_data)->entries));
+-			err = ext4_handle_dirty_metadata(handle, dir, bh2);
++			err = ext4_handle_dirty_dx_node(handle, dir, bh2);
+ 			if (err)
+ 				goto journal_error;
+ 			brelse (bh2);
+@@ -1612,7 +1772,7 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
+ 			if (err)
+ 				goto journal_error;
  		}
--	} else
--		ei->i_extra_isize = 0;
-+	}
- 
- 	EXT4_INODE_GET_XTIME(i_ctime, inode, raw_inode);
- 	EXT4_INODE_GET_XTIME(i_mtime, inode, raw_inode);
-@@ -4105,6 +4198,8 @@ static int ext4_do_update_inode(handle_t *handle,
- 		raw_inode->i_extra_isize = cpu_to_le16(ei->i_extra_isize);
- 	}
- 
-+	ext4_inode_csum_set(inode, raw_inode, ei);
-+
- 	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
- 	rc = ext4_handle_dirty_metadata(handle, NULL, bh);
- 	if (!err)
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index a567968..4217f99 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -150,6 +150,13 @@ flags_out:
- 		if (!inode_owner_or_capable(inode))
- 			return -EPERM;
- 
-+		if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+			ext4_warning(sb, "Setting inode version is not "
-+				     "supported with metadata_csum enabled.");
-+			return -ENOTTY;
-+		}
-+
- 		err = mnt_want_write(filp->f_path.mnt);
- 		if (err)
- 			return err;
-
+-		err = ext4_handle_dirty_metadata(handle, dir, frames[0].bh);
++		err = ext4_handle_dirty_dx_node(handle, dir, frames[0].bh);
+ 		if (err) {
+ 			ext4_std_error(inode->i_sb, err);
+ 			goto cleanup;
