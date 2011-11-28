@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 12/22] ext4: Calculate and verify checksums of directory leaf
-	blocks
-Date: Mon, 28 Nov 2011 15:27:39 -0800
-Message-ID: <20111128232739.19194.34861.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 08/22] ext4: Calculate and verify checksums for inode bitmaps
+Date: Mon, 28 Nov 2011 15:27:10 -0800
+Message-ID: <20111128232710.19194.97716.stgit@elm3c44.beaverton.ibm.com>
 References: <20111128232615.19194.80081.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -20,579 +19,209 @@ Cc: Sunil Mushran <sunil.mushran@oracle.com>,
 To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:56809 "EHLO e9.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755578Ab1K1X1w (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Nov 2011 18:27:52 -0500
-Received: from /spool/local
-	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Mon, 28 Nov 2011 18:27:51 -0500
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20111128232615.19194.80081.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Calculate and verify the checksums for directory leaf blocks (i.e. blocks that
-only contain actual directory entries).  The checksum lives in what looks to be
-an unused directory entry with a 0 name_len at the end of the block.  This
-scheme is not used for internal htree nodes because the mechanism in place
-there only costs one dx_entry, whereas the "empty" directory entry would cost
-two dx_entries.
+Compute and verify the checksum of the inode bitmap; the checkum is stored in
+the block group descriptor.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/ext4/dir.c   |   12 +++
- fs/ext4/ext4.h  |   16 +++
- fs/ext4/namei.c |  260 ++++++++++++++++++++++++++++++++++++++++++++++++++++---
- 3 files changed, 273 insertions(+), 15 deletions(-)
+ fs/ext4/bitmap.c |   40 ++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ext4.h   |   22 ++++++++++++++++++++--
+ fs/ext4/ialloc.c |   30 +++++++++++++++++++++++++++---
+ 3 files changed, 87 insertions(+), 5 deletions(-)
 
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index 164c560..bc40c9e 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -180,6 +180,18 @@ static int ext4_readdir(struct file *filp,
- 			continue;
- 		}
+diff --git a/fs/ext4/bitmap.c b/fs/ext4/bitmap.c
+index 285d23a..efb918f 100644
+--- a/fs/ext4/bitmap.c
++++ b/fs/ext4/bitmap.c
+@@ -42,3 +42,43 @@ static __u32 ext4_bitmap_csum(struct super_block *sb, ext4_group_t group,
  
-+		/* Check the checksum */
-+		if (!buffer_verified(bh) &&
-+		    !ext4_dirent_csum_verify(inode,
-+				(struct ext4_dir_entry *)bh->b_data)) {
-+			EXT4_ERROR_FILE(filp, 0, "directory fails checksum "
-+					"at offset %llu",
-+					(unsigned long long)filp->f_pos);
-+			filp->f_pos += sb->s_blocksize - offset;
-+			continue;
-+		}
-+		set_buffer_verified(bh);
+ 	return csum;
+ }
 +
- revalidate:
- 		/* If the dir block has changed since the last call to
- 		 * readdir(2), then we might be pointing to an invalid
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 9b5871b..5efa492 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1535,6 +1535,18 @@ struct ext4_dir_entry_2 {
- };
- 
- /*
-+ * This is a bogus directory entry at the end of each leaf block that
-+ * records checksums.
-+ */
-+struct ext4_dir_entry_tail {
-+	__le32	reserved_zero1;		/* Pretend to be unused */
-+	__le16	rec_len;		/* 12 */
-+	__u8	reserved_zero2;		/* Zero name length */
-+	__u8	reserved_ft;		/* 0xDE, fake file type */
-+	__le32	checksum;		/* crc32c(uuid+inum+dirblock) */
-+};
-+
-+/*
-  * Ext4 directory file types.  Only the low 3 bits are used.  The
-  * other bits are reserved for now.
-  */
-@@ -1549,6 +1561,8 @@ struct ext4_dir_entry_2 {
- 
- #define EXT4_FT_MAX		8
- 
-+#define EXT4_FT_DIR_CSUM	0xDE
-+
- /*
-  * EXT4_DIR_PAD defines the directory entries boundaries
-  *
-@@ -1977,6 +1991,8 @@ extern long ext4_compat_ioctl(struct file *, unsigned int, unsigned long);
- extern int ext4_ext_migrate(struct inode *);
- 
- /* namei.c */
-+extern int ext4_dirent_csum_verify(struct inode *inode,
-+				   struct ext4_dir_entry *dirent);
- extern int ext4_orphan_add(handle_t *, struct inode *);
- extern int ext4_orphan_del(handle_t *, struct inode *);
- extern int ext4_htree_fill_tree(struct file *dir_file, __u32 start_hash,
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index f91a0ed..5a9ad93 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -190,6 +190,115 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
- 			     struct inode *inode);
- 
- /* checksumming functions */
-+#define EXT4_DIRENT_TAIL(block, blocksize) \
-+	((struct ext4_dir_entry_tail *)(((void *)(block)) + \
-+					((blocksize) - \
-+					 sizeof(struct ext4_dir_entry_tail))))
-+
-+static void initialize_dirent_tail(struct ext4_dir_entry_tail *t,
-+				   unsigned int blocksize)
++int ext4_inode_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
++				  struct ext4_group_desc *gdp,
++				  struct buffer_head *bh, int sz)
 +{
-+	memset(t, 0, sizeof(struct ext4_dir_entry_tail));
-+	t->rec_len = ext4_rec_len_to_disk(sizeof(struct ext4_dir_entry_tail),
-+					  blocksize);
-+	t->reserved_ft = EXT4_FT_DIR_CSUM;
-+}
++	__u32 hi;
++	__u32 provided, calculated;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
 +
-+/* Walk through a dirent block to find a checksum "dirent" at the tail */
-+static struct ext4_dir_entry_tail *get_dirent_tail(struct inode *inode,
-+						   struct ext4_dir_entry *de)
-+{
-+	struct ext4_dir_entry_tail *t;
-+
-+#ifdef PARANOID
-+	struct ext4_dir_entry *d, *top;
-+
-+	d = de;
-+	top = (struct ext4_dir_entry *)(((void *)de) +
-+		(EXT4_BLOCK_SIZE(inode->i_sb) -
-+		sizeof(struct ext4_dir_entry_tail)));
-+	while (d < top && d->rec_len)
-+		d = (struct ext4_dir_entry *)(((void *)d) +
-+		    le16_to_cpu(d->rec_len));
-+
-+	if (d != top)
-+		return NULL;
-+
-+	t = (struct ext4_dir_entry_tail *)d;
-+#else
-+	t = EXT4_DIRENT_TAIL(de, EXT4_BLOCK_SIZE(inode->i_sb));
-+#endif
-+
-+	if (t->reserved_zero1 ||
-+	    le16_to_cpu(t->rec_len) != sizeof(struct ext4_dir_entry_tail) ||
-+	    t->reserved_zero2 ||
-+	    t->reserved_ft != EXT4_FT_DIR_CSUM)
-+		return NULL;
-+
-+	return t;
-+}
-+
-+static __le32 ext4_dirent_csum(struct inode *inode,
-+			       struct ext4_dir_entry *dirent, int size)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	__u32 csum;
-+
-+	csum = ext4_chksum(sbi, ei->i_uuid_inum_csum, (__u8 *)dirent, size);
-+	return cpu_to_le32(csum);
-+}
-+
-+int ext4_dirent_csum_verify(struct inode *inode, struct ext4_dir_entry *dirent)
-+{
-+	struct ext4_dir_entry_tail *t;
-+
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
++			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
 +		return 1;
 +
-+	t = get_dirent_tail(inode, dirent);
-+	if (!t) {
-+		EXT4_ERROR_INODE(inode, "metadata_csum set but no space in dir "
-+				 "leaf for checksum.  Please run e2fsck -D.");
-+		return 0;
-+	}
++	provided = le16_to_cpu(gdp->bg_inode_bitmap_csum_lo);
++	calculated = ext4_bitmap_csum(sb, group, bh, sz);
++	if (sbi->s_desc_size >= EXT4_BG_INODE_BITMAP_CSUM_HI_LOCATION) {
++		hi = le16_to_cpu(gdp->bg_inode_bitmap_csum_hi);
++		provided |= (hi << 16);
++	} else
++		calculated &= 0xFFFF;
 +
-+	if (t->checksum != ext4_dirent_csum(inode, dirent,
-+					    (void *)t - (void *)dirent))
-+		return 0;
-+
-+	return 1;
++	return provided == calculated;
 +}
 +
-+static void ext4_dirent_csum_set(struct inode *inode,
-+				 struct ext4_dir_entry *dirent)
++void ext4_inode_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
++				struct ext4_group_desc *gdp,
++				struct buffer_head *bh, int sz)
 +{
-+	struct ext4_dir_entry_tail *t;
++	__u32 csum;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
 +
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
++			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
 +		return;
 +
-+	t = get_dirent_tail(inode, dirent);
-+	if (!t) {
-+		EXT4_ERROR_INODE(inode, "metadata_csum set but no space in dir "
-+				 "leaf for checksum.  Please run e2fsck -D.");
-+		return;
-+	}
-+
-+	t->checksum = ext4_dirent_csum(inode, dirent,
-+				       (void *)t - (void *)dirent);
++	csum = ext4_bitmap_csum(sb, group, bh, sz);
++	gdp->bg_inode_bitmap_csum_lo = cpu_to_le16(csum & 0xFFFF);
++	if (sbi->s_desc_size >= EXT4_BG_INODE_BITMAP_CSUM_HI_LOCATION)
++		gdp->bg_inode_bitmap_csum_hi = cpu_to_le16(csum >> 16);
 +}
-+
-+static inline int ext4_handle_dirty_dirent_node(handle_t *handle,
-+						struct inode *inode,
-+						struct buffer_head *bh)
-+{
-+	ext4_dirent_csum_set(inode, (struct ext4_dir_entry *)bh->b_data);
-+	return ext4_handle_dirty_metadata(handle, inode, bh);
-+}
-+
- static struct dx_countlimit *get_dx_countlimit(struct inode *inode,
- 					       struct ext4_dir_entry *dirent,
- 					       int *offset)
-@@ -737,6 +846,11 @@ static int htree_dirblock_to_tree(struct file *dir_file,
- 	if (!(bh = ext4_bread (NULL, dir, block, 0, &err)))
- 		return err;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 6953d9f..97b617d 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -290,7 +290,9 @@ struct ext4_group_desc
+ 	__le16	bg_free_inodes_count_lo;/* Free inodes count */
+ 	__le16	bg_used_dirs_count_lo;	/* Directories count */
+ 	__le16	bg_flags;		/* EXT4_BG_flags (INODE_UNINIT, etc) */
+-	__u32	bg_reserved[2];		/* Likely block/inode bitmap checksum */
++	__le32  bg_exclude_bitmap_lo;   /* Exclude bitmap for snapshots */
++	__le16  bg_block_bitmap_csum_lo;/* crc32c(s_uuid+grp_num+bbitmap) LE */
++	__le16  bg_inode_bitmap_csum_lo;/* crc32c(s_uuid+grp_num+ibitmap) LE */
+ 	__le16  bg_itable_unused_lo;	/* Unused inodes count */
+ 	__le16  bg_checksum;		/* crc16(sb_uuid+group+desc) */
+ 	__le32	bg_block_bitmap_hi;	/* Blocks bitmap block MSB */
+@@ -300,9 +302,19 @@ struct ext4_group_desc
+ 	__le16	bg_free_inodes_count_hi;/* Free inodes count MSB */
+ 	__le16	bg_used_dirs_count_hi;	/* Directories count MSB */
+ 	__le16  bg_itable_unused_hi;    /* Unused inodes count MSB */
+-	__u32	bg_reserved2[3];
++	__le32  bg_exclude_bitmap_hi;   /* Exclude bitmap block MSB */
++	__le16  bg_block_bitmap_csum_hi;/* crc32c(s_uuid+grp_num+bbitmap) BE */
++	__le16  bg_inode_bitmap_csum_hi;/* crc32c(s_uuid+grp_num+ibitmap) BE */
++	__u32   bg_reserved;
+ };
  
-+	if (!buffer_verified(bh) &&
-+	    !ext4_dirent_csum_verify(dir, (struct ext4_dir_entry *)bh->b_data))
-+		return -EIO;
-+	set_buffer_verified(bh);
++#define EXT4_BG_INODE_BITMAP_CSUM_HI_LOCATION	\
++	(offsetof(struct ext4_group_desc, bg_inode_bitmap_csum_hi) + \
++	 sizeof(__le16))
++#define EXT4_BG_BLOCK_BITMAP_CSUM_HI_LOCATION	\
++	(offsetof(struct ext4_group_desc, bg_block_bitmap_csum_hi) + \
++	 sizeof(__le16))
 +
- 	de = (struct ext4_dir_entry_2 *) bh->b_data;
- 	top = (struct ext4_dir_entry_2 *) ((char *) de +
- 					   dir->i_sb->s_blocksize -
-@@ -1096,6 +1210,15 @@ restart:
- 			brelse(bh);
- 			goto next;
+ /*
+  * Structure of a flex block group info
+  */
+@@ -1795,6 +1807,12 @@ struct mmpd_data {
+ 
+ /* bitmap.c */
+ extern unsigned int ext4_count_free(struct buffer_head *, unsigned);
++void ext4_inode_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
++				struct ext4_group_desc *gdp,
++				struct buffer_head *bh, int sz);
++int ext4_inode_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
++				  struct ext4_group_desc *gdp,
++				  struct buffer_head *bh, int sz);
+ 
+ /* balloc.c */
+ extern unsigned int ext4_block_group(struct super_block *sb,
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 6151a68..3bddfe3 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -82,12 +82,17 @@ static unsigned ext4_init_inode_bitmap(struct super_block *sb,
+ 		ext4_free_inodes_set(sb, gdp, 0);
+ 		ext4_itable_unused_set(sb, gdp, 0);
+ 		memset(bh->b_data, 0xff, sb->s_blocksize);
++		ext4_inode_bitmap_csum_set(sb, block_group, gdp, bh,
++					   EXT4_INODES_PER_GROUP(sb) / 8);
+ 		return 0;
+ 	}
+ 
+ 	memset(bh->b_data, 0, (EXT4_INODES_PER_GROUP(sb) + 7) / 8);
+ 	ext4_mark_bitmap_end(EXT4_INODES_PER_GROUP(sb), sb->s_blocksize * 8,
+ 			bh->b_data);
++	ext4_inode_bitmap_csum_set(sb, block_group, gdp, bh,
++				   EXT4_INODES_PER_GROUP(sb) / 8);
++	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
+ 
+ 	return EXT4_INODES_PER_GROUP(sb);
+ }
+@@ -118,12 +123,12 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 		return NULL;
+ 	}
+ 	if (bitmap_uptodate(bh))
+-		return bh;
++		goto verify;
+ 
+ 	lock_buffer(bh);
+ 	if (bitmap_uptodate(bh)) {
+ 		unlock_buffer(bh);
+-		return bh;
++		goto verify;
+ 	}
+ 
+ 	ext4_lock_group(sb, block_group);
+@@ -131,6 +136,7 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 		ext4_init_inode_bitmap(sb, bh, block_group, desc);
+ 		set_bitmap_uptodate(bh);
+ 		set_buffer_uptodate(bh);
++		set_buffer_verified(bh);
+ 		ext4_unlock_group(sb, block_group);
+ 		unlock_buffer(bh);
+ 		return bh;
+@@ -144,7 +150,7 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 		 */
+ 		set_bitmap_uptodate(bh);
+ 		unlock_buffer(bh);
+-		return bh;
++		goto verify;
+ 	}
+ 	/*
+ 	 * submit the buffer_head for read. We can
+@@ -161,6 +167,20 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 			    block_group, bitmap_blk);
+ 		return NULL;
+ 	}
++
++verify:
++	ext4_lock_group(sb, block_group);
++	if (!buffer_verified(bh) &&
++	    !ext4_inode_bitmap_csum_verify(sb, block_group, desc, bh,
++					   EXT4_INODES_PER_GROUP(sb) / 8)) {
++		ext4_unlock_group(sb, block_group);
++		put_bh(bh);
++		ext4_error(sb, "Corrupt inode bitmap - block_group = %u, "
++			   "inode_bitmap = %llu", block_group, bitmap_blk);
++		return NULL;
++	}
++	ext4_unlock_group(sb, block_group);
++	set_buffer_verified(bh);
+ 	return bh;
+ }
+ 
+@@ -265,6 +285,8 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
+ 		ext4_used_dirs_set(sb, gdp, count);
+ 		percpu_counter_dec(&sbi->s_dirs_counter);
+ 	}
++	ext4_inode_bitmap_csum_set(sb, block_group, gdp, bitmap_bh,
++				   EXT4_INODES_PER_GROUP(sb) / 8);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
+ 	ext4_unlock_group(sb, block_group);
+ 
+@@ -673,6 +695,8 @@ static int ext4_claim_inode(struct super_block *sb,
+ 			atomic_inc(&sbi->s_flex_groups[f].used_dirs);
  		}
-+		if (!buffer_verified(bh) &&
-+		    !ext4_dirent_csum_verify(dir,
-+				(struct ext4_dir_entry *)bh->b_data)) {
-+			EXT4_ERROR_INODE(dir, "checksumming directory "
-+					 "block %lu", (unsigned long)block);
-+			brelse(bh);
-+			goto next;
-+		}
-+		set_buffer_verified(bh);
- 		i = search_dirblock(bh, dir, d_name,
- 			    block << EXT4_BLOCK_SIZE_BITS(sb), res_dir);
- 		if (i == 1) {
-@@ -1147,6 +1270,16 @@ static struct buffer_head * ext4_dx_find_entry(struct inode *dir, const struct q
- 		if (!(bh = ext4_bread(NULL, dir, block, 0, err)))
- 			goto errout;
- 
-+		if (!buffer_verified(bh) &&
-+		    !ext4_dirent_csum_verify(dir,
-+				(struct ext4_dir_entry *)bh->b_data)) {
-+			EXT4_ERROR_INODE(dir, "checksumming directory "
-+					 "block %lu", (unsigned long)block);
-+			brelse(bh);
-+			*err = -EIO;
-+			goto errout;
-+		}
-+		set_buffer_verified(bh);
- 		retval = search_dirblock(bh, dir, d_name,
- 					 block << EXT4_BLOCK_SIZE_BITS(sb),
- 					 res_dir);
-@@ -1319,8 +1452,14 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
- 	char *data1 = (*bh)->b_data, *data2;
- 	unsigned split, move, size;
- 	struct ext4_dir_entry_2 *de = NULL, *de2;
-+	struct ext4_dir_entry_tail *t;
-+	int	csum_size = 0;
- 	int	err = 0, i;
- 
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(dir->i_sb,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		csum_size = sizeof(struct ext4_dir_entry_tail);
-+
- 	bh2 = ext4_append (handle, dir, &newblock, &err);
- 	if (!(bh2)) {
- 		brelse(*bh);
-@@ -1367,10 +1506,20 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
- 	/* Fancy dance to stay within two buffers */
- 	de2 = dx_move_dirents(data1, data2, map + split, count - split, blocksize);
- 	de = dx_pack_dirents(data1, blocksize);
--	de->rec_len = ext4_rec_len_to_disk(data1 + blocksize - (char *) de,
-+	de->rec_len = ext4_rec_len_to_disk(data1 + (blocksize - csum_size) -
-+					   (char *) de,
- 					   blocksize);
--	de2->rec_len = ext4_rec_len_to_disk(data2 + blocksize - (char *) de2,
-+	de2->rec_len = ext4_rec_len_to_disk(data2 + (blocksize - csum_size) -
-+					    (char *) de2,
- 					    blocksize);
-+	if (csum_size) {
-+		t = EXT4_DIRENT_TAIL(data2, blocksize);
-+		initialize_dirent_tail(t, blocksize);
-+
-+		t = EXT4_DIRENT_TAIL(data1, blocksize);
-+		initialize_dirent_tail(t, blocksize);
-+	}
-+
- 	dxtrace(dx_show_leaf (hinfo, (struct ext4_dir_entry_2 *) data1, blocksize, 1));
- 	dxtrace(dx_show_leaf (hinfo, (struct ext4_dir_entry_2 *) data2, blocksize, 1));
- 
-@@ -1381,7 +1530,7 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
- 		de = de2;
  	}
- 	dx_insert_block(frame, hash2 + continued, newblock);
--	err = ext4_handle_dirty_metadata(handle, dir, bh2);
-+	err = ext4_handle_dirty_dirent_node(handle, dir, bh2);
- 	if (err)
- 		goto journal_error;
- 	err = ext4_handle_dirty_dx_node(handle, dir, frame->bh);
-@@ -1421,11 +1570,16 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 	unsigned short	reclen;
- 	int		nlen, rlen, err;
- 	char		*top;
-+	int		csum_size = 0;
-+
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		csum_size = sizeof(struct ext4_dir_entry_tail);
- 
- 	reclen = EXT4_DIR_REC_LEN(namelen);
- 	if (!de) {
- 		de = (struct ext4_dir_entry_2 *)bh->b_data;
--		top = bh->b_data + blocksize - reclen;
-+		top = bh->b_data + (blocksize - csum_size) - reclen;
- 		while ((char *) de <= top) {
- 			if (ext4_check_dir_entry(dir, NULL, de, bh, offset))
- 				return -EIO;
-@@ -1481,7 +1635,7 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 	dir->i_version++;
- 	ext4_mark_inode_dirty(handle, dir);
- 	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
--	err = ext4_handle_dirty_metadata(handle, dir, bh);
-+	err = ext4_handle_dirty_dirent_node(handle, dir, bh);
- 	if (err)
- 		ext4_std_error(dir->i_sb, err);
- 	return 0;
-@@ -1502,6 +1656,7 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
- 	struct dx_frame	frames[2], *frame;
- 	struct dx_entry *entries;
- 	struct ext4_dir_entry_2	*de, *de2;
-+	struct ext4_dir_entry_tail *t;
- 	char		*data1, *top;
- 	unsigned	len;
- 	int		retval;
-@@ -1509,6 +1664,11 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
- 	struct dx_hash_info hinfo;
- 	ext4_lblk_t  block;
- 	struct fake_dirent *fde;
-+	int		csum_size = 0;
-+
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		csum_size = sizeof(struct ext4_dir_entry_tail);
- 
- 	blocksize =  dir->i_sb->s_blocksize;
- 	dxtrace(printk(KERN_DEBUG "Creating index: inode %lu\n", dir->i_ino));
-@@ -1529,7 +1689,7 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
- 		brelse(bh);
- 		return -EIO;
- 	}
--	len = ((char *) root) + blocksize - (char *) de;
-+	len = ((char *) root) + (blocksize - csum_size) - (char *) de;
- 
- 	/* Allocate new block for the 0th block's dirents */
- 	bh2 = ext4_append(handle, dir, &block, &retval);
-@@ -1545,8 +1705,15 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
- 	top = data1 + len;
- 	while ((char *)(de2 = ext4_next_entry(de, blocksize)) < top)
- 		de = de2;
--	de->rec_len = ext4_rec_len_to_disk(data1 + blocksize - (char *) de,
-+	de->rec_len = ext4_rec_len_to_disk(data1 + (blocksize - csum_size) -
-+					   (char *) de,
- 					   blocksize);
-+
-+	if (csum_size) {
-+		t = EXT4_DIRENT_TAIL(data1, blocksize);
-+		initialize_dirent_tail(t, blocksize);
-+	}
-+
- 	/* Initialize the root; the dot dirents already exist */
- 	de = (struct ext4_dir_entry_2 *) (&root->dotdot);
- 	de->rec_len = ext4_rec_len_to_disk(blocksize - EXT4_DIR_REC_LEN(2),
-@@ -1572,7 +1739,7 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
- 	bh = bh2;
- 
- 	ext4_handle_dirty_dx_node(handle, dir, frame->bh);
--	ext4_handle_dirty_metadata(handle, dir, bh);
-+	ext4_handle_dirty_dirent_node(handle, dir, bh);
- 
- 	de = do_split(handle,dir, &bh, frame, &hinfo, &retval);
- 	if (!de) {
-@@ -1608,11 +1775,17 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- 	struct inode *dir = dentry->d_parent->d_inode;
- 	struct buffer_head *bh;
- 	struct ext4_dir_entry_2 *de;
-+	struct ext4_dir_entry_tail *t;
- 	struct super_block *sb;
- 	int	retval;
- 	int	dx_fallback=0;
- 	unsigned blocksize;
- 	ext4_lblk_t block, blocks;
-+	int	csum_size = 0;
-+
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		csum_size = sizeof(struct ext4_dir_entry_tail);
- 
- 	sb = dir->i_sb;
- 	blocksize = sb->s_blocksize;
-@@ -1631,6 +1804,11 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- 		bh = ext4_bread(handle, dir, block, 0, &retval);
- 		if(!bh)
- 			return retval;
-+		if (!buffer_verified(bh) &&
-+		    !ext4_dirent_csum_verify(dir,
-+				(struct ext4_dir_entry *)bh->b_data))
-+			return -EIO;
-+		set_buffer_verified(bh);
- 		retval = add_dirent_to_buf(handle, dentry, inode, NULL, bh);
- 		if (retval != -ENOSPC) {
- 			brelse(bh);
-@@ -1647,7 +1825,13 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- 		return retval;
- 	de = (struct ext4_dir_entry_2 *) bh->b_data;
- 	de->inode = 0;
--	de->rec_len = ext4_rec_len_to_disk(blocksize, blocksize);
-+	de->rec_len = ext4_rec_len_to_disk(blocksize - csum_size, blocksize);
-+
-+	if (csum_size) {
-+		t = EXT4_DIRENT_TAIL(bh->b_data, blocksize);
-+		initialize_dirent_tail(t, blocksize);
-+	}
-+
- 	retval = add_dirent_to_buf(handle, dentry, inode, de, bh);
- 	brelse(bh);
- 	if (retval == 0)
-@@ -1679,6 +1863,11 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
- 	if (!(bh = ext4_bread(handle,dir, dx_get_block(frame->at), 0, &err)))
- 		goto cleanup;
- 
-+	if (!buffer_verified(bh) &&
-+	    !ext4_dirent_csum_verify(dir, (struct ext4_dir_entry *)bh->b_data))
-+		goto journal_error;
-+	set_buffer_verified(bh);
-+
- 	BUFFER_TRACE(bh, "get_write_access");
- 	err = ext4_journal_get_write_access(handle, bh);
- 	if (err)
-@@ -1804,12 +1993,17 @@ static int ext4_delete_entry(handle_t *handle,
- {
- 	struct ext4_dir_entry_2 *de, *pde;
- 	unsigned int blocksize = dir->i_sb->s_blocksize;
-+	int csum_size = 0;
- 	int i, err;
- 
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(dir->i_sb,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		csum_size = sizeof(struct ext4_dir_entry_tail);
-+
- 	i = 0;
- 	pde = NULL;
- 	de = (struct ext4_dir_entry_2 *) bh->b_data;
--	while (i < bh->b_size) {
-+	while (i < bh->b_size - csum_size) {
- 		if (ext4_check_dir_entry(dir, NULL, de, bh, i))
- 			return -EIO;
- 		if (de == de_del)  {
-@@ -1830,7 +2024,7 @@ static int ext4_delete_entry(handle_t *handle,
- 				de->inode = 0;
- 			dir->i_version++;
- 			BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
--			err = ext4_handle_dirty_metadata(handle, dir, bh);
-+			err = ext4_handle_dirty_dirent_node(handle, dir, bh);
- 			if (unlikely(err)) {
- 				ext4_std_error(dir->i_sb, err);
- 				return err;
-@@ -1972,9 +2166,15 @@ static int ext4_mkdir(struct inode *dir, struct dentry *dentry, int mode)
- 	struct inode *inode;
- 	struct buffer_head *dir_block = NULL;
- 	struct ext4_dir_entry_2 *de;
-+	struct ext4_dir_entry_tail *t;
- 	unsigned int blocksize = dir->i_sb->s_blocksize;
-+	int csum_size = 0;
- 	int err, retries = 0;
- 
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(dir->i_sb,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		csum_size = sizeof(struct ext4_dir_entry_tail);
-+
- 	if (EXT4_DIR_LINK_MAX(dir))
- 		return -EMLINK;
- 
-@@ -2015,16 +2215,24 @@ retry:
- 	ext4_set_de_type(dir->i_sb, de, S_IFDIR);
- 	de = ext4_next_entry(de, blocksize);
- 	de->inode = cpu_to_le32(dir->i_ino);
--	de->rec_len = ext4_rec_len_to_disk(blocksize - EXT4_DIR_REC_LEN(1),
-+	de->rec_len = ext4_rec_len_to_disk(blocksize -
-+					   (csum_size + EXT4_DIR_REC_LEN(1)),
- 					   blocksize);
- 	de->name_len = 2;
- 	strcpy(de->name, "..");
- 	ext4_set_de_type(dir->i_sb, de, S_IFDIR);
- 	set_nlink(inode, 2);
-+
-+	if (csum_size) {
-+		t = EXT4_DIRENT_TAIL(dir_block->b_data, blocksize);
-+		initialize_dirent_tail(t, blocksize);
-+	}
-+
- 	BUFFER_TRACE(dir_block, "call ext4_handle_dirty_metadata");
--	err = ext4_handle_dirty_metadata(handle, inode, dir_block);
-+	err = ext4_handle_dirty_dirent_node(handle, inode, dir_block);
- 	if (err)
- 		goto out_clear_inode;
-+	set_buffer_verified(dir_block);
- 	err = ext4_mark_inode_dirty(handle, inode);
- 	if (!err)
- 		err = ext4_add_entry(handle, dentry, inode);
-@@ -2074,6 +2282,14 @@ static int empty_dir(struct inode *inode)
- 				     inode->i_ino);
- 		return 1;
- 	}
-+	if (!buffer_verified(bh) &&
-+	    !ext4_dirent_csum_verify(inode,
-+			(struct ext4_dir_entry *)bh->b_data)) {
-+		EXT4_ERROR_INODE(inode, "checksum error reading directory "
-+				 "lblock 0");
-+		return -EIO;
-+	}
-+	set_buffer_verified(bh);
- 	de = (struct ext4_dir_entry_2 *) bh->b_data;
- 	de1 = ext4_next_entry(de, sb->s_blocksize);
- 	if (le32_to_cpu(de->inode) != inode->i_ino ||
-@@ -2105,6 +2321,14 @@ static int empty_dir(struct inode *inode)
- 				offset += sb->s_blocksize;
- 				continue;
- 			}
-+			if (!buffer_verified(bh) &&
-+			    !ext4_dirent_csum_verify(inode,
-+					(struct ext4_dir_entry *)bh->b_data)) {
-+				EXT4_ERROR_INODE(inode, "checksum error "
-+						 "reading directory lblock 0");
-+				return -EIO;
-+			}
-+			set_buffer_verified(bh);
- 			de = (struct ext4_dir_entry_2 *) bh->b_data;
- 		}
- 		if (ext4_check_dir_entry(inode, NULL, de, bh, offset)) {
-@@ -2605,6 +2829,11 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		dir_bh = ext4_bread(handle, old_inode, 0, 0, &retval);
- 		if (!dir_bh)
- 			goto end_rename;
-+		if (!buffer_verified(dir_bh) &&
-+		    !ext4_dirent_csum_verify(old_inode,
-+				(struct ext4_dir_entry *)dir_bh->b_data))
-+			goto end_rename;
-+		set_buffer_verified(dir_bh);
- 		if (le32_to_cpu(PARENT_INO(dir_bh->b_data,
- 				old_dir->i_sb->s_blocksize)) != old_dir->i_ino)
- 			goto end_rename;
-@@ -2635,7 +2864,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 					ext4_current_time(new_dir);
- 		ext4_mark_inode_dirty(handle, new_dir);
- 		BUFFER_TRACE(new_bh, "call ext4_handle_dirty_metadata");
--		retval = ext4_handle_dirty_metadata(handle, new_dir, new_bh);
-+		retval = ext4_handle_dirty_dirent_node(handle, new_dir, new_bh);
- 		if (unlikely(retval)) {
- 			ext4_std_error(new_dir->i_sb, retval);
- 			goto end_rename;
-@@ -2689,7 +2918,8 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		PARENT_INO(dir_bh->b_data, new_dir->i_sb->s_blocksize) =
- 						cpu_to_le32(new_dir->i_ino);
- 		BUFFER_TRACE(dir_bh, "call ext4_handle_dirty_metadata");
--		retval = ext4_handle_dirty_metadata(handle, old_inode, dir_bh);
-+		retval = ext4_handle_dirty_dirent_node(handle, old_inode,
-+						       dir_bh);
- 		if (retval) {
- 			ext4_std_error(old_dir->i_sb, retval);
- 			goto end_rename;
-
++	ext4_inode_bitmap_csum_set(sb, group, gdp, inode_bitmap_bh,
++				   EXT4_INODES_PER_GROUP(sb) / 8);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, group, gdp);
+ err_ret:
+ 	ext4_unlock_group(sb, group);
