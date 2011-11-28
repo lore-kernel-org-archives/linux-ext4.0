@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 01/14] removed two instances of trailing whitespaces
-Date: Mon, 28 Nov 2011 14:37:08 -0800
-Message-ID: <20111128223708.28705.22518.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 04/14] Replace 2D array references by pointer references in
+	loops.
+Date: Mon, 28 Nov 2011 14:37:31 -0800
+Message-ID: <20111128223731.28705.99216.stgit@elm3c44.beaverton.ibm.com>
 References: <20111128223659.28705.56719.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,44 +18,62 @@ Cc: Theodore Tso <tytso@mit.edu>,
 To: Andrew Morton <akpm@linux-foundation.org>,
 	Herbert Xu <herbert@gondor.apana.org.au>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:50127 "EHLO e2.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751530Ab1K1WoK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Nov 2011 17:44:10 -0500
+Received: from /spool/local
+	by e2.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Mon, 28 Nov 2011 17:44:08 -0500
 In-Reply-To: <20111128223659.28705.56719.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-	- remove trailing whitespace from lib/crc32.c
-	- remove trailing whitespace from lib/crc32defs.h
+This change has no effect on X86 code but improves PPC
+performance.
 
 Signed-off-by: Bob Pearson <rpearson@systemfabricworks.com>
 ---
- lib/crc32.c     |    2 +-
- lib/crc32defs.h |    2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ lib/crc32.c |   21 +++++++++++----------
+ 1 files changed, 11 insertions(+), 10 deletions(-)
 
 
 diff --git a/lib/crc32.c b/lib/crc32.c
-index a6e633a..23b08ba 100644
+index 7a0e5a9..c93c9ae 100644
 --- a/lib/crc32.c
 +++ b/lib/crc32.c
-@@ -316,7 +316,7 @@ EXPORT_SYMBOL(crc32_be);
-  * in the correct multiple to subtract, we can shift a byte at a time.
-  * This produces a 40-bit (rather than a 33-bit) intermediate remainder,
-  * but again the multiple of the polynomial to subtract depends only on
-- * the high bits, the high 8 bits in this case.  
-+ * the high bits, the high 8 bits in this case.
-  *
-  * The multiple we need in that case is the low 32 bits of a 40-bit
-  * value whose high 8 bits are given, and which is a multiple of the
-diff --git a/lib/crc32defs.h b/lib/crc32defs.h
-index 9b6773d..f5a5401 100644
---- a/lib/crc32defs.h
-+++ b/lib/crc32defs.h
-@@ -8,7 +8,7 @@
+@@ -53,20 +53,21 @@ static inline u32
+ crc32_body(u32 crc, unsigned char const *buf, size_t len, const u32 (*tab)[256])
+ {
+ # ifdef __LITTLE_ENDIAN
+-#  define DO_CRC(x) crc = tab[0][(crc ^ (x)) & 255] ^ (crc >> 8)
+-#  define DO_CRC4 crc = tab[3][(crc) & 255] ^ \
+-		tab[2][(crc >> 8) & 255] ^ \
+-		tab[1][(crc >> 16) & 255] ^ \
+-		tab[0][(crc >> 24) & 255]
++#  define DO_CRC(x) (crc = t0[(crc ^ (x)) & 255] ^ (crc >> 8))
++#  define DO_CRC4 crc = t3[(crc) & 255] ^ \
++			t2[(crc >> 8) & 255] ^ \
++			t1[(crc >> 16) & 255] ^ \
++			t0[(crc >> 24) & 255]
+ # else
+-#  define DO_CRC(x) crc = tab[0][((crc >> 24) ^ (x)) & 255] ^ (crc << 8)
+-#  define DO_CRC4 crc = tab[0][(crc) & 255] ^ \
+-		tab[1][(crc >> 8) & 255] ^ \
+-		tab[2][(crc >> 16) & 255] ^ \
+-		tab[3][(crc >> 24) & 255]
++#  define DO_CRC(x) (crc = t0[((crc >> 24) ^ (x)) & 255] ^ (crc << 8))
++#  define DO_CRC4 crc = t0[(crc) & 255] ^ \
++			t1[(crc >> 8) & 255] ^ \
++			t2[(crc >> 16) & 255] ^ \
++			t3[(crc >> 24) & 255]
+ # endif
+ 	const u32 *b;
+ 	size_t    rem_len;
++	const u32 *t0 = tab[0], *t1 = tab[1], *t2 = tab[2], *t3 = tab[3];
  
- /* How many bits at a time to use.  Requires a table of 4<<CRC_xx_BITS bytes. */
- /* For less performance-sensitive, use 4 */
--#ifndef CRC_LE_BITS 
-+#ifndef CRC_LE_BITS
- # define CRC_LE_BITS 8
- #endif
- #ifndef CRC_BE_BITS
+ 	/* Align it */
+ 	if (unlikely((long)buf & 3 && len)) {
+
