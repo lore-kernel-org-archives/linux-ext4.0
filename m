@@ -1,55 +1,208 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH v3 0/8] Filesystem io types statistic
-Date: Mon, 28 Nov 2011 20:13:12 +0800
-Message-ID: <1322482392-5346-1-git-send-email-wenqing.lz@taobao.com>
-Cc: axboe@kernel.dk, swhiteho@redhat.com, adityakali@google.com
-To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:50792 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752750Ab1K1MLK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Nov 2011 07:11:10 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Subject: [PATCH v3 1/8] ext4: add percpu counters and related functions to account io types.
+Date: Mon, 28 Nov 2011 20:20:21 +0800
+Message-ID: <1322482828-5529-1-git-send-email-wenqing.lz@taobao.com>
+References: <1322482392-5346-1-git-send-email-wenqing.lz@taobao.com>
+Cc: Jens Axboe <axboe@kernel.dk>,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	Aditya Kali <adityakali@google.com>,
+	Wang Shaoyan <wangshaoyan.pt@taobao.com>,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1322482392-5346-1-git-send-email-wenqing.lz@taobao.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi all,
+From: Zheng Liu <wenqing.lz@taobao.com>
 
-Since the last discussion[1], here is a third version of filesystem io type
-accouting. This version only is implemented in ext4 because I don't add any
-generic mechanism in buffer layer. Now, in ext4, we can know the number of 
-different IO requests that are issued to the disk from io_stats file.
+Add percpu counters in ext4_sb_info and related functions to save the result of
+io types. IO types in ext4 are splitted as follows:
 
-Changes since v2:
-* Define wrapper function for io type accouting in ext4:
-  submit_bh(), bh_submit_read(), sb_bread(), sb_breadahead() and ll_rw_blocK() 
-  are replaced by these wrapper functions. In these wrapper functions, 
-  percpu_couters are added to account the number of different IO requests which
-  are issued to the disk.
-* Add per-device counter: 
-  The percpu_counter is moved into ext4_sb_info structure in order to supprt
-  per-device accouting.
-* Add io_stats_reset to reset counter:
-  io_stats_reset file is created in /sys/fs/ext4/$DEVICE/. We can use 
-  'echo 1 > /sys/fs/ext4/$DEVICE/io_stats_reset' command to reset counter.
-* Add version information into io_stats:
-  'Version' field is printed in io_stats in order to userspace tool can parse
-  the format according to the current version.
+* Metadata:
+ - super block
+ - group descriptor
+ - inode bitmap
+ - block bitmap
+ - inode table
+ - extent block
+ - indirect block
+ - dir index and entry
+ - extended attribute
+* Data:
+ - regular data block
 
-Changes since v1:
-* Totoally redisgn the implementation:
-  A 'Issue' flag is added in buffer_head structure to let filesystem can check
-  it and do related things.
+CC: Jens Axboe <axboe@kernel.dk>
+CC: Steven Whitehouse <swhiteho@redhat.com>
+CC: Aditya Kali <adityakali@google.com>
+Signed-off-by: Wang Shaoyan <wangshaoyan.pt@taobao.com>
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+---
+ fs/ext4/ext4.h  |   37 +++++++++++++++++++++++++++++++++
+ fs/ext4/super.c |   60 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 97 insertions(+), 0 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 5b0e26a..cd9c7f9 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1108,6 +1108,23 @@ struct ext4_super_block {
+ #define EXT4_MF_FS_ABORTED	0x0002	/* Fatal error detected */
+ 
+ /*
++ * ext4 io types
++ */
++enum {
++	EXT4_IOS_SUPER_BLOCK = 0,
++	EXT4_IOS_GROUP_DESC,
++	EXT4_IOS_INODE_BITMAP,
++	EXT4_IOS_BLOCK_BITMAP,
++	EXT4_IOS_INODE_TABLE,
++	EXT4_IOS_EXTENT_BLOCK,
++	EXT4_IOS_INDIRECT_BLOCK,
++	EXT4_IOS_DIR_ENTRY,
++	EXT4_IOS_EXTENDED_ATTR,
++	EXT4_IOS_REGULAR_DATA,
++	EXT4_IOS_TYPE_END,
++};
++
++/*
+  * fourth extended-fs super-block data in memory
+  */
+ struct ext4_sb_info {
+@@ -1249,6 +1266,9 @@ struct ext4_sb_info {
+ 
+ 	/* record the last minlen when FITRIM is called. */
+ 	atomic_t s_last_trim_minblks;
++
++	/* for io type accouting */
++	struct percpu_counter s_ios_counters[EXT4_IOS_TYPE_END][2];
+ };
+ 
+ static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
+@@ -1284,6 +1304,11 @@ static inline void ext4_set_io_unwritten_flag(struct inode *inode,
+ 	}
+ }
+ 
++static inline unsigned int ext4_blocks_per_page(struct inode *inode)
++{
++	return PAGE_CACHE_SIZE >> inode->i_blkbits;
++}
++
+ /*
+  * Inode dynamic state flags
+  */
+@@ -1926,6 +1951,18 @@ extern int ext4_group_extend(struct super_block *sb,
+ 				ext4_fsblk_t n_blocks_count);
+ 
+ /* super.c */
++extern void __ext4_io_stat(struct super_block *sb, int rw,
++			   int type, unsigned long count);
++extern void ext4_ios_write(struct super_block *sb, handle_t *handle,
++			   struct buffer_head *bh, int type,
++			   unsigned long count);
++
++static inline void ext4_ios_read(struct super_block *sb, int type,
++				 unsigned long count)
++{
++	__ext4_io_stat(sb, READ, type, count);
++}
++
+ extern void *ext4_kvmalloc(size_t size, gfp_t flags);
+ extern void *ext4_kvzalloc(size_t size, gfp_t flags);
+ extern void ext4_kvfree(void *ptr);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 3858767..3ef3e03b 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -842,6 +842,10 @@ static void ext4_put_super(struct super_block *sb)
+ 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+ 	percpu_counter_destroy(&sbi->s_dirs_counter);
+ 	percpu_counter_destroy(&sbi->s_dirtyclusters_counter);
++	for (i = 0; i < EXT4_IOS_TYPE_END; i++) {
++		percpu_counter_destroy(&sbi->s_ios_counters[i][READ]);
++		percpu_counter_destroy(&sbi->s_ios_counters[i][WRITE]);
++	}
+ 	brelse(sbi->s_sbh);
+ #ifdef CONFIG_QUOTA
+ 	for (i = 0; i < MAXQUOTAS; i++)
+@@ -3157,6 +3161,16 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	}
+ 
+ 	/*
++	 * Note: s_ios_counters must be initialized as soon as possible becuase
++	 *       ext4 io type accouting depends on it
++	 */
++	for (i = 0; i < EXT4_IOS_TYPE_END; i++) {
++		if (percpu_counter_init(&sbi->s_ios_counters[i][READ], 0))
++			goto out_init_ios;
++		if (percpu_counter_init(&sbi->s_ios_counters[i][WRITE], 0))
++			goto out_init_ios;
++	}
++	/*
+ 	 * The ext4 superblock will not be buffer aligned for other than 1kB
+ 	 * block sizes.  We need to calculate the offset from buffer start.
+ 	 */
+@@ -3875,6 +3889,11 @@ out_fail:
+ 	sb->s_fs_info = NULL;
+ 	kfree(sbi->s_blockgroup_lock);
+ 	kfree(sbi);
++out_init_ios:
++	for (i = 0; i < EXT4_IOS_TYPE_END; i++) {
++		percpu_counter_destroy(&sbi->s_ios_counters[i][READ]);
++		percpu_counter_destroy(&sbi->s_ios_counters[i][WRITE]);
++	}
+ out_free_orig:
+ 	kfree(orig_data);
+ 	return ret;
+@@ -4940,6 +4959,47 @@ out:
+ 
+ #endif
+ 
++static inline u64 ext4_get_ios_counter(struct ext4_sb_info *sbi,
++					int rw, int type)
++{
++	return percpu_counter_sum(&sbi->s_ios_counters[type][rw]);
++}
++
++static inline void ext4_reset_ios_counter(struct ext4_sb_info *sbi)
++{
++	int i;
++
++	for (i = 0; i < EXT4_IOS_TYPE_END; i++) {
++		percpu_counter_set(&sbi->s_ios_counters[i][READ], 0);
++		percpu_counter_set(&sbi->s_ios_counters[i][WRITE], 0);
++	}
++}
++
++void __ext4_io_stat(struct super_block *sb, int rw,
++		    int type, unsigned long count)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++
++	BUG_ON(type < 0 || type >= EXT4_IOS_TYPE_END);
++	percpu_counter_add(&sbi->s_ios_counters[type][rw], count);
++}
++
++void ext4_ios_write(struct super_block *sb, handle_t *handle,
++		    struct buffer_head *bh, int type, unsigned long count)
++{
++	if (!bh)
++		goto count;
++	if (!handle || !ext4_handle_valid(handle)) {
++		if (buffer_dirty(bh))
++			return;
++	} else {
++		if (buffer_jbddirty(bh))
++			return;
++	}
++count:
++	__ext4_io_stat(sb, WRITE, type, count);
++}
++
+ static struct dentry *ext4_mount(struct file_system_type *fs_type, int flags,
+ 		       const char *dev_name, void *data)
+ {
+-- 
+1.7.4.1
 
-Steven,
-
-I don't add the flag into the buffer layer as you said before. I think that
-it is too tricky if we just OR the __REQ_* flags together. I wish Jens can give
-some suggestions.
-
-Any comments or suggestions are welcome.
-
-[1]. http://www.spinics.net/lists/linux-ext4/msg28817.html
-
-Regards,
-Zheng
