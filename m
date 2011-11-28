@@ -1,7 +1,9 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH v5.1 00/14] crc32c: Add faster algorithm and self-test code
-Date: Mon, 28 Nov 2011 14:36:59 -0800
-Message-ID: <20111128223659.28705.56719.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 07/14] crc32.c provides a choice of one of several algorithms
+	for
+Date: Mon, 28 Nov 2011 14:37:52 -0800
+Message-ID: <20111128223752.28705.93860.stgit@elm3c44.beaverton.ibm.com>
+References: <20111128223659.28705.56719.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
@@ -16,49 +18,164 @@ Cc: Theodore Tso <tytso@mit.edu>,
 To: Andrew Morton <akpm@linux-foundation.org>,
 	Herbert Xu <herbert@gondor.apana.org.au>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-crypto-owner@vger.kernel.org>
-Sender: linux-crypto-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:58155 "EHLO e3.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754976Ab1K1Wkm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Nov 2011 17:40:42 -0500
+Received: from /spool/local
+	by e3.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Mon, 28 Nov 2011 17:40:39 -0500
+In-Reply-To: <20111128223659.28705.56719.stgit@elm3c44.beaverton.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all,
+computing the LSB and LSB versions of the CRC32 checksum
+based on the parameters CRC_LE_BITS and CRC_BE_BITS. In the
+original version the values 1, 2, 4 and 8 respectively selected
+versions of the alrogithm that computed the crc 1, 2, 4 and 32
+bits as a time. This patch series adds a new version that computes
+the CRC 64 bits at a time. To make things easier to understand
+the parameter has been reinterpreted to actually stand for the
+number of bits processed in each step of the algorithm so that
+the old value 8 has been replaced with the value 32. This also
+allows us to add in a widely used crc algorithm that
+computes the crc 8 bits at a time called the Sarwate algorithm.
 
-This patchset (re)uses Bob Pearson's crc32 slice-by-8 code to stamp out a
-software crc32c implementation.  It removes the crc32c implementation in
-crypto/ in favor of using the stamped-out one in lib/.  There is also a change
-to Kconfig so that the kernel builder can pick an implementation best suited
-for the hardware.
+Signed-off-by: Bob Pearson <rpearson@systemfabricworks.com>
+---
+ lib/crc32.c          |   17 ++++++++++++++---
+ lib/crc32defs.h      |   18 ++++++++++--------
+ lib/gen_crc32table.c |   11 ++++++++++-
+ 3 files changed, 34 insertions(+), 12 deletions(-)
 
-The motivation for this patchset is that I am working on adding full metadata
-checksumming to ext4.  As far as performance impact of adding checksumming
-goes, I see nearly no change with a standard mail server ffsb simulation.  On a
-test that involves only file creation and deletion and extent tree writes, I
-see a drop of about 50 pcercent with the current kernel crc32c implementation;
-this improves to a drop of about 20 percent with the enclosed crc32c code.
 
-When metadata is usually a small fraction of total IO, this new implementation
-doesn't help much because metadata is usually a small fraction of total IO.
-However, when we are doing IO that is almost all metadata (such as rm -rf'ing a
-tree), then this patch speeds up the operation substantially.
+diff --git a/lib/crc32.c b/lib/crc32.c
+index ff6bb9a..157b35f 100644
+--- a/lib/crc32.c
++++ b/lib/crc32.c
+@@ -27,13 +27,13 @@
+ #include <linux/types.h>
+ #include "crc32defs.h"
+ 
+-#if CRC_LE_BITS == 8
++#if CRC_LE_BITS > 8
+ # define tole(x) (__force u32) __constant_cpu_to_le32(x)
+ #else
+ # define tole(x) (x)
+ #endif
+ 
+-#if CRC_BE_BITS == 8
++#if CRC_BE_BITS > 8
+ # define tobe(x) (__force u32) __constant_cpu_to_be32(x)
+ #else
+ # define tobe(x) (x)
+@@ -45,7 +45,7 @@ MODULE_AUTHOR("Matt Domsch <Matt_Domsch@dell.com>");
+ MODULE_DESCRIPTION("Ethernet CRC32 calculations");
+ MODULE_LICENSE("GPL");
+ 
+-#if CRC_LE_BITS == 8 || CRC_BE_BITS == 8
++#if CRC_LE_BITS > 8 || CRC_BE_BITS > 8
+ 
+ static inline u32
+ crc32_body(u32 crc, unsigned char const *buf, size_t len, const u32 (*tab)[256])
+@@ -126,6 +126,12 @@ u32 __pure crc32_le(u32 crc, unsigned char const *p, size_t len)
+ 		crc = (crc >> 4) ^ crc32table_le[0][crc & 15];
+ 	}
+ # elif CRC_LE_BITS == 8
++	/* aka Sarwate algorithm */
++	while (len--) {
++		crc ^= *p++;
++		crc = (crc >> 8) ^ crc32table_le[0][crc & 255];
++	}
++# else
+ 	const u32      (*tab)[] = crc32table_le;
+ 
+ 	crc = (__force u32) __cpu_to_le32(crc);
+@@ -169,6 +175,11 @@ u32 __pure crc32_be(u32 crc, unsigned char const *p, size_t len)
+ 		crc = (crc << 4) ^ crc32table_be[0][crc >> 28];
+ 	}
+ # elif CRC_BE_BITS == 8
++	while (len--) {
++		crc ^= *p++ << 24;
++		crc = (crc << 8) ^ crc32table_be[0][crc >> 24];
++	}
++# else
+ 	const u32      (*tab)[] = crc32table_be;
+ 
+ 	crc = (__force u32) __cpu_to_be32(crc);
+diff --git a/lib/crc32defs.h b/lib/crc32defs.h
+index f5a5401..daa3a5e 100644
+--- a/lib/crc32defs.h
++++ b/lib/crc32defs.h
+@@ -6,27 +6,29 @@
+ #define CRCPOLY_LE 0xedb88320
+ #define CRCPOLY_BE 0x04c11db7
+ 
+-/* How many bits at a time to use.  Requires a table of 4<<CRC_xx_BITS bytes. */
+-/* For less performance-sensitive, use 4 */
++/* How many bits at a time to use.  Valid values are 1, 2, 4, 8, and 32. */
++/* For less performance-sensitive, use 4 or 8 */
+ #ifndef CRC_LE_BITS
+-# define CRC_LE_BITS 8
++# define CRC_LE_BITS 32
+ #endif
+ #ifndef CRC_BE_BITS
+-# define CRC_BE_BITS 8
++# define CRC_BE_BITS 32
+ #endif
+ 
+ /*
+  * Little-endian CRC computation.  Used with serial bit streams sent
+  * lsbit-first.  Be sure to use cpu_to_le32() to append the computed CRC.
+  */
+-#if CRC_LE_BITS > 8 || CRC_LE_BITS < 1 || CRC_LE_BITS & CRC_LE_BITS-1
+-# error CRC_LE_BITS must be a power of 2 between 1 and 8
++#if CRC_LE_BITS > 32 || CRC_LE_BITS < 1 || CRC_LE_BITS == 16 || \
++	CRC_LE_BITS & CRC_LE_BITS-1
++# error "CRC_LE_BITS must be one of {1, 2, 4, 8, 32}"
+ #endif
+ 
+ /*
+  * Big-endian CRC computation.  Used with serial bit streams sent
+  * msbit-first.  Be sure to use cpu_to_be32() to append the computed CRC.
+  */
+-#if CRC_BE_BITS > 8 || CRC_BE_BITS < 1 || CRC_BE_BITS & CRC_BE_BITS-1
+-# error CRC_BE_BITS must be a power of 2 between 1 and 8
++#if CRC_BE_BITS > 32 || CRC_BE_BITS < 1 || CRC_BE_BITS == 16 || \
++	CRC_BE_BITS & CRC_BE_BITS-1
++# error "CRC_BE_BITS must be one of {1, 2, 4, 8, 32}"
+ #endif
+diff --git a/lib/gen_crc32table.c b/lib/gen_crc32table.c
+index eced769..99ac744 100644
+--- a/lib/gen_crc32table.c
++++ b/lib/gen_crc32table.c
+@@ -4,8 +4,17 @@
+ 
+ #define ENTRIES_PER_LINE 4
+ 
++#if CRC_LE_BITS <= 8
+ #define LE_TABLE_SIZE (1 << CRC_LE_BITS)
++#else
++#define LE_TABLE_SIZE 256
++#endif
++
++#if CRC_BE_BITS <= 8
+ #define BE_TABLE_SIZE (1 << CRC_BE_BITS)
++#else
++#define BE_TABLE_SIZE 256
++#endif
+ 
+ static uint32_t crc32table_le[4][256];
+ static uint32_t crc32table_be[4][256];
+@@ -24,7 +33,7 @@ static void crc32init_le(void)
+ 
+ 	crc32table_le[0][0] = 0;
+ 
+-	for (i = 1 << (CRC_LE_BITS - 1); i; i >>= 1) {
++	for (i = LE_TABLE_SIZE >> 1; i; i >>= 1) {
+ 		crc = (crc >> 1) ^ ((crc & 1) ? CRCPOLY_LE : 0);
+ 		for (j = 0; j < LE_TABLE_SIZE; j += 2 * i)
+ 			crc32table_le[0][i + j] = crc ^ crc32table_le[0][j];
 
-Incidentally, given that iscsi, sctp, and btrfs also use crc32c, this patchset
-should improve their speed as well.  I have not yet quantified that, however.
-This latest submission combines Bob's patches from late August 2011 with mine
-so that they can be one coherent patch set.  Please excuse my inability to
-combine some of the patches; I've been advised to leave Bob's patches alone and
-build atop them instead. :/
-
-Since the last posting, I've also collected some crc32c test results on a bunch
-of different x86/powerpc/sparc platforms.  The results can be viewed here:
-http://goo.gl/sgt3i ; the "crc32-kern-le" and "crc32c" columns describe the
-performance of the kernel's current crc32 and crc32c software implementations.
-The "crc32c-by8-le" column shows crc32c performance with this patchset applied.
-I expect crc32 performance to be roughly the same.
-
-The two _boost columns at the right side of the spreadsheet shows how much
-faster the new implementation is over the old one.  As you can see, crc32 rises
-substantially, and crc32c experiences a huge increase.  I'm hoping this patch
-set meets with everyone's approval and can go in soon.  Herbert Xu didn't
-appear to have any strong objections to last month's posting, so I'm wondering
-if Andrew has an opinion?
-
---D
