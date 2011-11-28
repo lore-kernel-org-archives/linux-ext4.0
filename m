@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 15/22] ext4: Add checksums to the MMP block
-Date: Mon, 28 Nov 2011 15:28:01 -0800
-Message-ID: <20111128232801.19194.76198.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 21/22] jbd2: Checksum commit blocks
+Date: Mon, 28 Nov 2011 15:28:43 -0800
+Message-ID: <20111128232843.19194.12270.stgit@elm3c44.beaverton.ibm.com>
 References: <20111128232615.19194.80081.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -19,129 +19,138 @@ Cc: Sunil Mushran <sunil.mushran@oracle.com>,
 To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <20111128232615.19194.80081.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Compute and verify a checksum for the MMP block.
+Calculate and verify the checksum of commit blocks.  In checksum v2, deprecate
+most of the checksum v1 commit block checksum fields, since each block has its
+own checksum.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/ext4/ext4.h |    6 +++++-
- fs/ext4/mmp.c  |   44 +++++++++++++++++++++++++++++++++++++++-----
- 2 files changed, 44 insertions(+), 6 deletions(-)
+ fs/jbd2/commit.c     |   21 ++++++++++++++++++++-
+ fs/jbd2/recovery.c   |   31 +++++++++++++++++++++++++++++++
+ include/linux/jbd2.h |   11 +++++++++++
+ 3 files changed, 62 insertions(+), 1 deletions(-)
 
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index a9a14b3..43f7a20 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1780,7 +1780,8 @@ struct mmp_struct {
- 	__le16	mmp_check_interval;
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 229d5dc..e083e55 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -86,6 +86,24 @@ nope:
+ 	__brelse(bh);
+ }
  
- 	__le16	mmp_pad1;
--	__le32	mmp_pad2[227];
-+	__le32	mmp_pad2[226];
-+	__le32	mmp_checksum;		/* crc32c(uuid+mmp_block) */
- };
- 
- /* arguments passed to the mmp thread */
-@@ -2379,6 +2380,9 @@ extern int ext4_bio_write_page(struct ext4_io_submit *io,
- 
- /* mmp.c */
- extern int ext4_multi_mount_protect(struct super_block *, ext4_fsblk_t);
-+extern void ext4_mmp_csum_set(struct super_block *sb, struct mmp_struct *mmp);
-+extern int ext4_mmp_csum_verify(struct super_block *sb,
-+				struct mmp_struct *mmp);
- 
- /* BH_Uninit flag: blocks are allocated but uninitialized on disk */
- enum ext4_state_bits {
-diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
-index 7ea4ba4..8c23c3c 100644
---- a/fs/ext4/mmp.c
-+++ b/fs/ext4/mmp.c
-@@ -6,12 +6,45 @@
- 
- #include "ext4.h"
- 
-+/* Checksumming functions */
-+static __u32 ext4_mmp_csum(struct super_block *sb, struct mmp_struct *mmp)
++static void jbd2_commit_block_csum_set(journal_t *j,
++				       struct journal_head *descriptor)
 +{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	int offset = offsetof(struct mmp_struct, mmp_checksum);
++	struct commit_header *h;
 +	__u32 csum;
 +
-+	csum = ext4_chksum(sbi, sbi->s_uuid_csum, (char *)mmp, offset);
-+
-+	return cpu_to_le32(csum);
-+}
-+
-+int ext4_mmp_csum_verify(struct super_block *sb, struct mmp_struct *mmp)
-+{
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		return 1;
-+
-+	return mmp->mmp_checksum == ext4_mmp_csum(sb, mmp);
-+}
-+
-+void ext4_mmp_csum_set(struct super_block *sb, struct mmp_struct *mmp)
-+{
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
 +		return;
 +
-+	mmp->mmp_checksum = ext4_mmp_csum(sb, mmp);
++	h = (struct commit_header *)(jh2bh(descriptor)->b_data);
++	h->h_chksum_type = 0;
++	h->h_chksum_size = 0;
++	h->h_chksum[0] = 0;
++	csum = jbd2_chksum(j, j->j_uuid_csum, jh2bh(descriptor)->b_data,
++			   j->j_blocksize);
++	h->h_chksum[0] = cpu_to_be32(csum);
 +}
 +
  /*
-  * Write the MMP block using WRITE_SYNC to try to get the block on-disk
-  * faster.
-  */
--static int write_mmp_block(struct buffer_head *bh)
-+static int write_mmp_block(struct super_block *sb, struct buffer_head *bh)
- {
-+	struct mmp_struct *mmp = (struct mmp_struct *)(bh->b_data);
-+
-+	ext4_mmp_csum_set(sb, mmp);
- 	mark_buffer_dirty(bh);
- 	lock_buffer(bh);
- 	bh->b_end_io = end_buffer_write_sync;
-@@ -59,7 +92,8 @@ static int read_mmp_block(struct super_block *sb, struct buffer_head **bh,
+  * Done it all: now submit the commit record.  We should have
+  * cleaned up our previous buffers by now, so if we are in abort
+@@ -129,6 +147,7 @@ static int journal_submit_commit_record(journal_t *journal,
+ 		tmp->h_chksum_size 	= JBD2_CRC32_CHKSUM_SIZE;
+ 		tmp->h_chksum[0] 	= cpu_to_be32(crc32_sum);
  	}
++	jbd2_commit_block_csum_set(journal, descriptor);
  
- 	mmp = (struct mmp_struct *)((*bh)->b_data);
--	if (le32_to_cpu(mmp->mmp_magic) != EXT4_MMP_MAGIC)
-+	if (le32_to_cpu(mmp->mmp_magic) != EXT4_MMP_MAGIC ||
-+	    !ext4_mmp_csum_verify(sb, mmp))
- 		return -EINVAL;
+ 	JBUFFER_TRACE(descriptor, "submit commit block");
+ 	lock_buffer(bh);
+@@ -351,7 +370,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	struct blk_plug plug;
+ 	int csum_size = 0;
  
+-	if (JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
++	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2))
+ 		csum_size = sizeof(struct jbd2_journal_block_tail);
+ 
+ 	/*
+diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
+index 7bf250a..173e543 100644
+--- a/fs/jbd2/recovery.c
++++ b/fs/jbd2/recovery.c
+@@ -372,6 +372,24 @@ static int calc_chksums(journal_t *journal, struct buffer_head *bh,
  	return 0;
-@@ -120,7 +154,7 @@ static int kmmpd(void *data)
- 		mmp->mmp_time = cpu_to_le64(get_seconds());
- 		last_update_time = jiffies;
+ }
  
--		retval = write_mmp_block(bh);
-+		retval = write_mmp_block(sb, bh);
- 		/*
- 		 * Don't spew too many error messages. Print one every
- 		 * (s_mmp_update_interval * 60) seconds.
-@@ -200,7 +234,7 @@ static int kmmpd(void *data)
- 	mmp->mmp_seq = cpu_to_le32(EXT4_MMP_SEQ_CLEAN);
- 	mmp->mmp_time = cpu_to_le64(get_seconds());
- 
--	retval = write_mmp_block(bh);
-+	retval = write_mmp_block(sb, bh);
- 
- failed:
- 	kfree(data);
-@@ -299,7 +333,7 @@ skip:
- 	seq = mmp_new_seq();
- 	mmp->mmp_seq = cpu_to_le32(seq);
- 
--	retval = write_mmp_block(bh);
-+	retval = write_mmp_block(sb, bh);
- 	if (retval)
- 		goto failed;
- 
++static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
++{
++	struct commit_header *h;
++	__u32 provided, calculated;
++
++	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
++		return 1;
++
++	h = buf;
++	provided = h->h_chksum[0];
++	h->h_chksum[0] = 0;
++	calculated = jbd2_chksum(j, j->j_uuid_csum, buf, j->j_blocksize);
++	h->h_chksum[0] = provided;
++
++	provided = be32_to_cpu(provided);
++	return provided == calculated;
++}
++
+ static int do_one_pass(journal_t *journal,
+ 			struct recovery_info *info, enum passtype pass)
+ {
+@@ -682,6 +700,19 @@ static int do_one_pass(journal_t *journal,
+ 				}
+ 				crc32_sum = ~0;
+ 			}
++			if (pass == PASS_SCAN &&
++			    !jbd2_commit_block_csum_verify(journal,
++							   bh->b_data)) {
++				info->end_transaction = next_commit_ID;
++
++				if (!JBD2_HAS_INCOMPAT_FEATURE(journal,
++				     JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT)) {
++					journal->j_failed_commit =
++						next_commit_ID;
++					brelse(bh);
++					break;
++				}
++			}
+ 			brelse(bh);
+ 			next_commit_ID++;
+ 			continue;
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 9d28938..d948ddf 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -155,6 +155,17 @@ typedef struct journal_header_s
+ #define JBD2_CHECKSUM_BYTES (32 / sizeof(u32))
+ /*
+  * Commit block header for storing transactional checksums:
++ *
++ * NOTE: If FEATURE_COMPAT_CHECKSUM (checksum v1) is set, the h_chksum*
++ * fields are used to store a checksum of the descriptor and data blocks.
++ *
++ * If FEATURE_INCOMPAT_CSUM_V2 (checksum v2) is set, then the h_chksum
++ * field is used to store crc32c(uuid+commit_block).  Each journal metadata
++ * block gets its own checksum, and data block checksums are stored in
++ * journal_block_tag (in the descriptor).  The other h_chksum* fields are
++ * not used.
++ *
++ * Checksum v1 and v2 are mutually exclusive features.
+  */
+ struct commit_header {
+ 	__be32		h_magic;
+
