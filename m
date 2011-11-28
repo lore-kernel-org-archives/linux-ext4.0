@@ -1,40 +1,48 @@
-From: Alex <alex.vizor@gmail.com>
-Subject: Re: WARNING: at fs/inode.c:884 unlock_new_inode+0x34/0x59()
-Date: Mon, 28 Nov 2011 22:08:50 +0300
-Message-ID: <4ED3DC42.20504@gmail.com>
-References: <4ED2994A.9080907@gmail.com> <4ED29C63.8070601@gmail.com> <20111127213432.GA22465@thunk.org> <4ED3CF24.2050702@gmail.com> <0F03D476-02D9-4C10-8A4D-7949E5B07CBB@mit.edu>
+From: Valerie Aurora <val@vaaconsulting.com>
+Subject: Re: [RFC PATCH 0/3] VFS: Fix s_umount thaw/write deadlock
+Date: Mon, 28 Nov 2011 13:58:42 -0700
+Message-ID: <CAD-Xujmnxp+wmWc6uMBbSTZC3_60wkfUxjiHduo3ddUu8mFnwg@mail.gmail.com>
+References: <CAD-Xujmjai2evYC4a4CdNPtjh_9xhbELcZePtGSS54VPRGpznA@mail.gmail.com>
+	<20111027213935.GA20902@infradead.org>
+	<CAD-XujmonJPfq9zUaL-ZS6zz5dfgvxtcjJwxwrxpR33LohvK9g@mail.gmail.com>
+	<CAD-Xujn--+2pRMrk2OJvCbH6nbG+wiGOPp8CRAm=a8MagqV8JQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:48216 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753768Ab1K1TIz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Nov 2011 14:08:55 -0500
-Received: by bke11 with SMTP id 11so8913854bke.19
-        for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 11:08:54 -0800 (PST)
-In-Reply-To: <0F03D476-02D9-4C10-8A4D-7949E5B07CBB@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.cz>,
+	Dave Chinner <david@fromorbit.com>,
+	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
+	Greg Freemyer <greg.freemyer@gmail.com>,
+	linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>,
+	Surbhi Palande <csurbhi@gmail.com>,
+	Christopher Chaltain <christopher.chaltain@canonical.com>
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <CAD-Xujn--+2pRMrk2OJvCbH6nbG+wiGOPp8CRAm=a8MagqV8JQ@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 11/28/2011 09:28 PM, Theodore Tso wrote:
-> On Nov 28, 2011, at 1:12 PM, Alex wrote:
->
->> Hi Ted,
+On Sat, Oct 29, 2011 at 5:59 PM, Valerie Aurora <val@vaaconsulting.com>=
+ wrote:
+> On Thu, Oct 27, 2011 at 3:08 PM, Valerie Aurora <val@vaaconsulting.co=
+m> wrote:
+>> On Thu, Oct 27, 2011 at 2:39 PM, Christoph Hellwig <hch@infradead.or=
+g> wrote:
+>>> Any plans to resubmit these with the updates and in proper format?
 >>
->> This is full dmesg with suspend to disk. This time no fs errors happened. And unfortunately I don't remember what kind of errors were there last time.
->>
-> OK, so you have a very large number of warnings, spanning over several seconds.   That sounds to me like a memory corruption problem, as opposed to some kind of race that only happens for a symlink creation happening right during the suspend/resume.
+>> Yes, coming tomorrow. =A0We found more bugs during testing which
+>> fortunately Surbhi Palande already fixed and submitted patches for,
+>> but got lost in the shuffle.
 >
-> I can fix the warning and arrange to print more debugging information so that if this happens again, we get more information, but if you can't reproduce it, I'm not sure there's much more I can do for now.
->
-> Regards,
->
-> -- Ted
->
-Yes I can reproduce this, it happens after every s2disk.
+> Ironically, this has been held up by a disk failure. :) A few more da=
+ys.
 
-Tanks,
-Alex
+I no longer have time to consult in addition to my full-time job, so
+Canonical is taking the lead on this again.
+
+-VAL
+--
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
