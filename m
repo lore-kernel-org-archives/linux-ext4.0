@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 01/22] ext4: Create a new BH_Verified flag to avoid
-	unnecessary metadata validation
-Date: Mon, 28 Nov 2011 15:26:22 -0800
-Message-ID: <20111128232622.19194.42676.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 04/22] ext4: Only call out to crc32c if necessary
+Date: Mon, 28 Nov 2011 15:26:43 -0800
+Message-ID: <20111128232642.19194.80905.stgit@elm3c44.beaverton.ibm.com>
 References: <20111128232615.19194.80081.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -25,126 +24,115 @@ In-Reply-To: <20111128232615.19194.80081.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Create a new BH_Verified flag to indicate that we've verified all the data in a
-buffer_head for correctness.  This allows us to bypass expensive verification
-steps when they are not necessary without missing them when they are.
-
-v2: The later jbd2 metadata checksumming patches need a BH_Verified flag for
-journal metadata, so put the flag in jbd2.h so that both drivers can share the
-same bit.
+Only obtain a reference to the cryptoapi and crc32c if we happen to mount a
+filesystem with metadata checksumming enabled.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/ext4/extents.c          |   35 ++++++++++++++++++++++++++---------
- include/linux/jbd_common.h |    2 ++
- 2 files changed, 28 insertions(+), 9 deletions(-)
+ fs/ext4/Kconfig |    2 ++
+ fs/ext4/ext4.h  |   23 +++++++++++++++++++++++
+ fs/ext4/super.c |   15 +++++++++++++++
+ 3 files changed, 40 insertions(+), 0 deletions(-)
 
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 61fa9e1..00f97f4 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -396,6 +396,26 @@ int ext4_ext_check_inode(struct inode *inode)
- 	return ext4_ext_check(inode, ext_inode_hdr(inode), ext_depth(inode));
- }
+diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
+index 9ed1bb1..c22f170 100644
+--- a/fs/ext4/Kconfig
++++ b/fs/ext4/Kconfig
+@@ -2,6 +2,8 @@ config EXT4_FS
+ 	tristate "The Extended 4 (ext4) filesystem"
+ 	select JBD2
+ 	select CRC16
++	select CRYPTO
++	select CRYPTO_CRC32C
+ 	help
+ 	  This is the next generation of the ext3 filesystem.
  
-+static int __ext4_ext_check_block(const char *function, unsigned int line,
-+				  struct inode *inode,
-+				  struct ext4_extent_header *eh,
-+				  int depth,
-+				  struct buffer_head *bh)
-+{
-+	int ret;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index e496e72..eab64c2 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -29,6 +29,7 @@
+ #include <linux/wait.h>
+ #include <linux/blockgroup_lock.h>
+ #include <linux/percpu_counter.h>
++#include <crypto/hash.h>
+ #ifdef __KERNEL__
+ #include <linux/compat.h>
+ #endif
+@@ -1255,6 +1256,9 @@ struct ext4_sb_info {
+ 
+ 	/* Precomputed FS UUID checksum */
+ 	__u32 s_uuid_csum;
 +
-+	if (buffer_verified(bh))
-+		return 0;
-+	ret = ext4_ext_check(inode, eh, depth);
-+	if (ret)
-+		return ret;
-+	set_buffer_verified(bh);
-+	return ret;
-+}
-+
-+#define ext4_ext_check_block(inode, eh, depth, bh)	\
-+	__ext4_ext_check_block(__func__, __LINE__, inode, eh, depth, bh)
-+
- #ifdef EXT_DEBUG
- static void ext4_ext_show_path(struct inode *inode, struct ext4_ext_path *path)
- {
-@@ -652,8 +672,6 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
- 	i = depth;
- 	/* walk through the tree */
- 	while (i) {
--		int need_to_validate = 0;
--
- 		ext_debug("depth %d: num %d, max %d\n",
- 			  ppos, le16_to_cpu(eh->eh_entries), le16_to_cpu(eh->eh_max));
- 
-@@ -672,8 +690,6 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
- 				put_bh(bh);
- 				goto err;
- 			}
--			/* validate the extent entries */
--			need_to_validate = 1;
- 		}
- 		eh = ext_block_hdr(bh);
- 		ppos++;
-@@ -687,7 +703,7 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
- 		path[ppos].p_hdr = eh;
- 		i--;
- 
--		if (need_to_validate && ext4_ext_check(inode, eh, i))
-+		if (ext4_ext_check_block(inode, eh, i, bh))
- 			goto err;
- 	}
- 
-@@ -1328,7 +1344,8 @@ got_index:
- 			return -EIO;
- 		eh = ext_block_hdr(bh);
- 		/* subtract from p_depth to get proper eh_depth */
--		if (ext4_ext_check(inode, eh, path->p_depth - depth)) {
-+		if (ext4_ext_check_block(inode, eh,
-+					 path->p_depth - depth, bh)) {
- 			put_bh(bh);
- 			return -EIO;
- 		}
-@@ -1341,7 +1358,7 @@ got_index:
- 	if (bh == NULL)
- 		return -EIO;
- 	eh = ext_block_hdr(bh);
--	if (ext4_ext_check(inode, eh, path->p_depth - depth)) {
-+	if (ext4_ext_check_block(inode, eh, path->p_depth - depth, bh)) {
- 		put_bh(bh);
- 		return -EIO;
- 	}
-@@ -2572,8 +2589,8 @@ again:
- 				err = -EIO;
- 				break;
- 			}
--			if (ext4_ext_check(inode, ext_block_hdr(bh),
--							depth - i - 1)) {
-+			if (ext4_ext_check_block(inode, ext_block_hdr(bh),
-+							depth - i - 1, bh)) {
- 				err = -EIO;
- 				break;
- 			}
-diff --git a/include/linux/jbd_common.h b/include/linux/jbd_common.h
-index 6230f85..6133679 100644
---- a/include/linux/jbd_common.h
-+++ b/include/linux/jbd_common.h
-@@ -12,6 +12,7 @@ enum jbd_state_bits {
- 	BH_State,		/* Pins most journal_head state */
- 	BH_JournalHead,		/* Pins bh->b_private and jh->b_bh */
- 	BH_Unshadow,		/* Dummy bit, for BJ_Shadow wakeup filtering */
-+	BH_Verified,		/* Metadata block has been verified ok */
- 	BH_JBDPrivateStart,	/* First bit available for private use by FS */
++	/* Reference to checksum algorithm driver via cryptoapi */
++	struct crypto_shash *s_chksum_driver;
  };
  
-@@ -24,6 +25,7 @@ TAS_BUFFER_FNS(Revoked, revoked)
- BUFFER_FNS(RevokeValid, revokevalid)
- TAS_BUFFER_FNS(RevokeValid, revokevalid)
- BUFFER_FNS(Freed, freed)
-+BUFFER_FNS(Verified, verified)
+ static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
+@@ -1596,6 +1600,25 @@ static inline __le16 ext4_rec_len_to_disk(unsigned len, unsigned blocksize)
+ #define DX_HASH_HALF_MD4_UNSIGNED	4
+ #define DX_HASH_TEA_UNSIGNED		5
  
- static inline struct buffer_head *jh2bh(struct journal_head *jh)
- {
++static inline u32 ext4_chksum(struct ext4_sb_info *sbi, u32 crc,
++			      const void *address, unsigned int length)
++{
++	struct {
++		struct shash_desc shash;
++		char ctx[crypto_shash_descsize(sbi->s_chksum_driver)];
++	} desc;
++	int err;
++
++	desc.shash.tfm = sbi->s_chksum_driver;
++	desc.shash.flags = 0;
++	*(u32 *)desc.ctx = crc;
++
++	err = crypto_shash_update(&desc.shash, address, length);
++	BUG_ON(err);
++
++	return *(u32 *)desc.ctx;
++}
++
+ #ifdef __KERNEL__
+ 
+ /* hash info structure used by the directory hash */
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index a56c14e..a555811 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -887,6 +887,8 @@ static void ext4_put_super(struct super_block *sb)
+ 	unlock_super(sb);
+ 	kobject_put(&sbi->s_kobj);
+ 	wait_for_completion(&sbi->s_kobj_unregister);
++	if (sbi->s_chksum_driver)
++		crypto_free_shash(sbi->s_chksum_driver);
+ 	kfree(sbi->s_blockgroup_lock);
+ 	kfree(sbi);
+ }
+@@ -3200,6 +3202,17 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		goto cantfind_ext4;
+ 	}
+ 
++	/* Load the checksum driver */
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
++				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
++		sbi->s_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
++		if (IS_ERR(sbi->s_chksum_driver)) {
++			ret = PTR_ERR(sbi->s_chksum_driver);
++			sbi->s_chksum_driver = NULL;
++			goto failed_mount;
++		}
++	}
++
+ 	/* Set defaults before we parse the mount options */
+ 	def_mount_opts = le32_to_cpu(es->s_default_mount_opts);
+ 	set_opt(sb, INIT_INODE_TABLE);
+@@ -3880,6 +3893,8 @@ failed_mount2:
+ 		brelse(sbi->s_group_desc[i]);
+ 	ext4_kvfree(sbi->s_group_desc);
+ failed_mount:
++	if (sbi->s_chksum_driver)
++		crypto_free_shash(sbi->s_chksum_driver);
+ 	if (sbi->s_proc) {
+ 		remove_proc_entry(sb->s_id, ext4_proc_root);
+ 	}
