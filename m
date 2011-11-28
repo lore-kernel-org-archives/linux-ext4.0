@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 09/22] ext4: Calculate and verify block bitmap checksum
-Date: Mon, 28 Nov 2011 15:27:18 -0800
-Message-ID: <20111128232718.19194.61327.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 13/22] ext4: Calculate and verify checksums of extended
+	attribute blocks
+Date: Mon, 28 Nov 2011 15:27:46 -0800
+Message-ID: <20111128232746.19194.80055.stgit@elm3c44.beaverton.ibm.com>
 References: <20111128232615.19194.80081.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -19,391 +20,203 @@ Cc: Sunil Mushran <sunil.mushran@oracle.com>,
 To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <20111128232615.19194.80081.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Compute and verify the checksum of the block bitmap; this checksum is stored in
-the block group descriptor.
+Calculate and verify the checksums of extended attribute blocks.  This only
+applies to separate EA blocks that are pointed to by inode->i_file_acl (i.e.
+external EA blocks); the checksum lives in the EA header.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/ext4/balloc.c  |   38 ++++++++++++++++----
- fs/ext4/bitmap.c  |   40 +++++++++++++++++++++
- fs/ext4/ext4.h    |   10 +++++
- fs/ext4/ialloc.c  |    4 ++
- fs/ext4/mballoc.c |   99 ++++++++++++++++++++++++++++++++++++++++++++++-------
- 5 files changed, 169 insertions(+), 22 deletions(-)
+ fs/ext4/xattr.c |   87 ++++++++++++++++++++++++++++++++++++++++++++++---------
+ fs/ext4/xattr.h |    4 ++-
+ 2 files changed, 76 insertions(+), 15 deletions(-)
 
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 12ccacd..dcac4bd 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -172,6 +172,8 @@ void ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 		ext4_free_inodes_set(sb, gdp, 0);
- 		ext4_itable_unused_set(sb, gdp, 0);
- 		memset(bh->b_data, 0xff, sb->s_blocksize);
-+		ext4_block_bitmap_csum_set(sb, block_group, gdp, bh,
-+					   EXT4_BLOCKS_PER_GROUP(sb) / 8);
- 		return;
- 	}
- 	memset(bh->b_data, 0, sb->s_blocksize);
-@@ -208,6 +210,9 @@ void ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 	 */
- 	ext4_mark_bitmap_end(num_clusters_in_group(sb, block_group),
- 			     sb->s_blocksize * 8, bh->b_data);
-+	ext4_block_bitmap_csum_set(sb, block_group, gdp, bh,
-+				   EXT4_BLOCKS_PER_GROUP(sb) / 8);
-+	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
- }
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 93a00d8..b44dc30 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -122,6 +122,58 @@ const struct xattr_handler *ext4_xattr_handlers[] = {
+ 	NULL
+ };
  
- /* Return the number of free blocks in a block group.  It is used when
-@@ -273,10 +278,10 @@ struct ext4_group_desc * ext4_get_group_desc(struct super_block *sb,
- 	return desc;
- }
- 
--static int ext4_valid_block_bitmap(struct super_block *sb,
--					struct ext4_group_desc *desc,
--					unsigned int block_group,
--					struct buffer_head *bh)
-+int ext4_valid_block_bitmap(struct super_block *sb,
-+			    struct ext4_group_desc *desc,
-+			    unsigned int block_group,
-+			    struct buffer_head *bh)
- {
- 	ext4_grpblk_t offset;
- 	ext4_grpblk_t next_zero_bit;
-@@ -353,12 +358,12 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
- 	}
- 
- 	if (bitmap_uptodate(bh))
--		return bh;
-+		goto verify;
- 
- 	lock_buffer(bh);
- 	if (bitmap_uptodate(bh)) {
- 		unlock_buffer(bh);
--		return bh;
-+		goto verify;
- 	}
- 	ext4_lock_group(sb, block_group);
- 	if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
-@@ -377,7 +382,7 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
- 		 */
- 		set_bitmap_uptodate(bh);
- 		unlock_buffer(bh);
--		return bh;
-+		goto verify;
- 	}
- 	/*
- 	 * submit the buffer_head for read. We can
-@@ -394,11 +399,26 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
- 			    block_group, bitmap_blk);
- 		return NULL;
- 	}
--	ext4_valid_block_bitmap(sb, desc, block_group, bh);
-+
-+verify:
-+	if (buffer_verified(bh))
-+		return bh;
- 	/*
- 	 * file system mounted not to panic on error,
--	 * continue with corrupt bitmap
-+	 * -EIO with corrupt bitmap
- 	 */
-+	ext4_lock_group(sb, block_group);
-+	if (!ext4_valid_block_bitmap(sb, desc, block_group, bh) ||
-+	    !ext4_block_bitmap_csum_verify(sb, block_group, desc, bh,
-+					   EXT4_BLOCKS_PER_GROUP(sb) / 8)) {
-+		ext4_unlock_group(sb, block_group);
-+		put_bh(bh);
-+		ext4_error(sb, "Corrupt block bitmap - block_group = %u, "
-+			   "block_bitmap = %llu", block_group, bitmap_blk);
-+		return NULL;
-+	}
-+	ext4_unlock_group(sb, block_group);
-+	set_buffer_verified(bh);
- 	return bh;
- }
- 
-diff --git a/fs/ext4/bitmap.c b/fs/ext4/bitmap.c
-index efb918f..7fd5d1c 100644
---- a/fs/ext4/bitmap.c
-+++ b/fs/ext4/bitmap.c
-@@ -82,3 +82,43 @@ void ext4_inode_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
- 	if (sbi->s_desc_size >= EXT4_BG_INODE_BITMAP_CSUM_HI_LOCATION)
- 		gdp->bg_inode_bitmap_csum_hi = cpu_to_le16(csum >> 16);
- }
-+
-+int ext4_block_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
-+				  struct ext4_group_desc *gdp,
-+				  struct buffer_head *bh, int sz)
++static __le32 ext4_xattr_block_csum(struct inode *inode,
++				    sector_t block_nr,
++				    struct ext4_xattr_header *hdr)
 +{
-+	__u32 hi;
-+	__u32 provided, calculated;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++	struct ext4_inode_info *ei = EXT4_I(inode);
++	__u32 csum, old;
 +
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		return 1;
-+
-+	provided = le16_to_cpu(gdp->bg_block_bitmap_csum_lo);
-+	calculated = ext4_bitmap_csum(sb, group, bh, sz);
-+	if (sbi->s_desc_size >= EXT4_BG_BLOCK_BITMAP_CSUM_HI_LOCATION) {
-+		hi = le16_to_cpu(gdp->bg_block_bitmap_csum_hi);
-+		provided |= (hi << 16);
++	old = hdr->h_checksum;
++	hdr->h_checksum = 0;
++	if (le32_to_cpu(hdr->h_refcount) != 1) {
++		block_nr = cpu_to_le64(block_nr);
++		csum = ext4_chksum(sbi, sbi->s_uuid_csum, (__u8 *)&block_nr,
++				   sizeof(block_nr));
 +	} else
-+		calculated &= 0xFFFF;
-+
-+	return provided == calculated;
++		csum = ei->i_uuid_inum_csum;
++	csum = ext4_chksum(sbi, csum, (__u8 *)hdr,
++			   EXT4_BLOCK_SIZE(inode->i_sb));
++	hdr->h_checksum = old;
++	return cpu_to_le32(csum);
 +}
 +
-+void ext4_block_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
-+				struct ext4_group_desc *gdp,
-+				struct buffer_head *bh, int sz)
++static int ext4_xattr_block_csum_verify(struct inode *inode,
++					sector_t block_nr,
++					struct ext4_xattr_header *hdr)
 +{
-+	__u32 csum;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
++		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) &&
++	    (hdr->h_checksum != ext4_xattr_block_csum(inode, block_nr, hdr)))
++		return 0;
++	return 1;
++}
 +
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++static void ext4_xattr_block_csum_set(struct inode *inode,
++				      sector_t block_nr,
++				      struct ext4_xattr_header *hdr)
++{
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
++		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
 +		return;
 +
-+	csum = ext4_bitmap_csum(sb, group, bh, sz);
-+	gdp->bg_block_bitmap_csum_lo = cpu_to_le16(csum & 0xFFFF);
-+	if (sbi->s_desc_size >= EXT4_BG_BLOCK_BITMAP_CSUM_HI_LOCATION)
-+		gdp->bg_block_bitmap_csum_hi = cpu_to_le16(csum >> 16);
++	hdr->h_checksum = ext4_xattr_block_csum(inode, block_nr, hdr);
 +}
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 97b617d..9b5871b 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1813,8 +1813,18 @@ void ext4_inode_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
- int ext4_inode_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
- 				  struct ext4_group_desc *gdp,
- 				  struct buffer_head *bh, int sz);
-+void ext4_block_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
-+				struct ext4_group_desc *gdp,
-+				struct buffer_head *bh, int sz);
-+int ext4_block_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
-+				  struct ext4_group_desc *gdp,
-+				  struct buffer_head *bh, int sz);
- 
- /* balloc.c */
-+extern int ext4_valid_block_bitmap(struct super_block *sb,
-+				   struct ext4_group_desc *desc,
-+				   unsigned int block_group,
-+				   struct buffer_head *bh);
- extern unsigned int ext4_block_group(struct super_block *sb,
- 			ext4_fsblk_t blocknr);
- extern ext4_grpblk_t ext4_block_group_offset(struct super_block *sb,
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 3bddfe3..8c8b61e 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -854,6 +854,10 @@ got:
- 			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
- 			ext4_free_group_clusters_set(sb, gdp,
- 				ext4_free_clusters_after_init(sb, group, gdp));
-+			ext4_block_bitmap_csum_set(sb, group, gdp,
-+						   block_bitmap_bh,
-+						   EXT4_BLOCKS_PER_GROUP(sb) /
-+						   8);
- 			gdp->bg_checksum = ext4_group_desc_csum(sbi, group,
- 								gdp);
- 		}
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index e2d8be8..dbd1453 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -754,6 +754,53 @@ void ext4_mb_generate_buddy(struct super_block *sb,
- 	spin_unlock(&EXT4_SB(sb)->s_bal_lock);
++
++static inline int ext4_handle_dirty_xattr_block(handle_t *handle,
++						struct inode *inode,
++						struct buffer_head *bh)
++{
++	ext4_xattr_block_csum_set(inode, bh->b_blocknr, BHDR(bh));
++	return ext4_handle_dirty_metadata(handle, inode, bh);
++}
++
+ static inline const struct xattr_handler *
+ ext4_xattr_handler(int name_index)
+ {
+@@ -156,14 +208,21 @@ ext4_xattr_check_names(struct ext4_xattr_entry *entry, void *end)
  }
  
-+static void ext4_mb_verify_block_bitmap(struct super_block *sb,
-+					ext4_group_t group,
-+					struct buffer_head *bh)
-+{
-+	struct ext4_group_desc *desc;
-+
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		return;
-+
+ static inline int
+-ext4_xattr_check_block(struct buffer_head *bh)
++ext4_xattr_check_block(struct inode *inode, struct buffer_head *bh)
+ {
+ 	int error;
+ 
 +	if (buffer_verified(bh))
-+		return;
++		return 0;
 +
-+	desc = ext4_get_group_desc(sb, group, NULL);
-+	if (!desc)
-+		return;
-+
-+	ext4_lock_group(sb, group);
-+	if (!ext4_valid_block_bitmap(sb, desc, group, bh) ||
-+	    !ext4_block_bitmap_csum_verify(sb, group, desc, bh,
-+					   EXT4_BLOCKS_PER_GROUP(sb) / 8)) {
-+		ext4_unlock_group(sb, group);
-+		ext4_error(sb, "Corrupt block bitmap, group = %u", group);
-+		return;
-+	}
-+	set_buffer_verified(bh);
-+	ext4_unlock_group(sb, group);
-+}
-+
-+struct ext4_csum_data {
-+	struct super_block	*cd_sb;
-+	ext4_group_t		cd_group;
-+};
-+
-+static void ext4_end_buffer_read_sync(struct buffer_head *bh, int uptodate)
-+{
-+	struct super_block *sb =
-+		((struct ext4_csum_data *)bh->b_private)->cd_sb;
-+	ext4_group_t group = ((struct ext4_csum_data *)bh->b_private)->cd_group;
-+
-+	if (uptodate)
-+		ext4_mb_verify_block_bitmap(sb, group, bh);
-+
-+	bh->b_private = NULL;
-+	end_buffer_read_sync(bh, uptodate);
-+}
-+
- /* The buddy information is attached the buddy cache inode
-  * for convenience. The information regarding each group
-  * is loaded via ext4_mb_load_buddy. The information involve
-@@ -786,11 +833,12 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
- 	int first_block;
- 	struct super_block *sb;
- 	struct buffer_head *bhs;
--	struct buffer_head **bh;
-+	struct buffer_head **bh = NULL;
- 	struct inode *inode;
- 	char *data;
- 	char *bitmap;
- 	struct ext4_group_info *grinfo;
-+	struct ext4_csum_data *csd = NULL;
- 
- 	mb_debug(1, "init page %lu\n", page->index);
- 
-@@ -804,6 +852,14 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
- 	if (groups_per_page == 0)
- 		groups_per_page = 1;
- 
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+		csd = kzalloc(sizeof(struct ext4_csum_data) * groups_per_page,
-+			      GFP_NOFS);
-+		if (csd == NULL)
-+			goto out;
-+	}
-+
- 	/* allocate buffer_heads to read bitmaps */
- 	if (groups_per_page > 1) {
- 		err = -ENOMEM;
-@@ -845,11 +901,13 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
- 		if (bh[i] == NULL)
- 			goto out;
- 
--		if (bitmap_uptodate(bh[i]))
-+		if (bitmap_uptodate(bh[i]) &&
-+		    (csd && buffer_verified(bh[i])))
- 			continue;
- 
- 		lock_buffer(bh[i]);
- 		if (bitmap_uptodate(bh[i])) {
-+			ext4_mb_verify_block_bitmap(sb, first_group + i, bh[i]);
- 			unlock_buffer(bh[i]);
- 			continue;
- 		}
-@@ -860,6 +918,7 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
- 			set_bitmap_uptodate(bh[i]);
- 			set_buffer_uptodate(bh[i]);
- 			ext4_unlock_group(sb, first_group + i);
-+			ext4_mb_verify_block_bitmap(sb, first_group + i, bh[i]);
- 			unlock_buffer(bh[i]);
- 			continue;
- 		}
-@@ -870,6 +929,7 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
- 			 * bitmap is also uptodate
- 			 */
- 			set_bitmap_uptodate(bh[i]);
-+			ext4_mb_verify_block_bitmap(sb, first_group + i, bh[i]);
- 			unlock_buffer(bh[i]);
- 			continue;
- 		}
-@@ -881,22 +941,28 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
- 		 * get set with buffer lock held.
- 		 */
- 		set_bitmap_uptodate(bh[i]);
--		bh[i]->b_end_io = end_buffer_read_sync;
-+		if (csd) {
-+			csd[i].cd_sb = sb;
-+			csd[i].cd_group = first_group + i;
-+			bh[i]->b_private = csd + i;
-+			bh[i]->b_end_io = ext4_end_buffer_read_sync;
-+		} else
-+			bh[i]->b_end_io = end_buffer_read_sync;
- 		submit_bh(READ, bh[i]);
- 		mb_debug(1, "read bitmap for group %u\n", first_group + i);
- 	}
- 
--	/* wait for I/O completion */
--	for (i = 0; i < groups_per_page; i++)
--		if (bh[i])
--			wait_on_buffer(bh[i]);
--
--	err = -EIO;
--	for (i = 0; i < groups_per_page; i++)
--		if (bh[i] && !buffer_uptodate(bh[i]))
--			goto out;
--
-+	/* Wait for I/O completion and checksum verification */
- 	err = 0;
-+	for (i = 0; i < groups_per_page; i++) {
-+		if (bh[i] == NULL)
-+			continue;
-+		wait_on_buffer(bh[i]);
-+		if (!buffer_uptodate(bh[i]) ||
-+		    (csd && !buffer_verified(bh[i])))
-+			err = -EIO;
-+	}
-+
- 	first_block = page->index * blocks_per_page;
- 	for (i = 0; i < blocks_per_page; i++) {
- 		int group;
-@@ -973,6 +1039,7 @@ out:
- 		if (bh != &bhs)
- 			kfree(bh);
- 	}
-+	kfree(csd);
- 	return err;
+ 	if (BHDR(bh)->h_magic != cpu_to_le32(EXT4_XATTR_MAGIC) ||
+ 	    BHDR(bh)->h_blocks != cpu_to_le32(1))
+ 		return -EIO;
++	if (!ext4_xattr_block_csum_verify(inode, bh->b_blocknr, BHDR(bh)))
++		return -EIO;
+ 	error = ext4_xattr_check_names(BFIRST(bh), bh->b_data + bh->b_size);
++	if (!error)
++		set_buffer_verified(bh);
+ 	return error;
  }
  
-@@ -2850,6 +2917,8 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 	}
- 	len = ext4_free_group_clusters(sb, gdp) - ac->ac_b_ex.fe_len;
- 	ext4_free_group_clusters_set(sb, gdp, len);
-+	ext4_block_bitmap_csum_set(sb, ac->ac_b_ex.fe_group, gdp, bitmap_bh,
-+				   EXT4_BLOCKS_PER_GROUP(sb) / 8);
- 	gdp->bg_checksum = ext4_group_desc_csum(sbi, ac->ac_b_ex.fe_group, gdp);
+@@ -226,7 +285,7 @@ ext4_xattr_block_get(struct inode *inode, int name_index, const char *name,
+ 		goto cleanup;
+ 	ea_bdebug(bh, "b_count=%d, refcount=%d",
+ 		atomic_read(&(bh->b_count)), le32_to_cpu(BHDR(bh)->h_refcount));
+-	if (ext4_xattr_check_block(bh)) {
++	if (ext4_xattr_check_block(inode, bh)) {
+ bad_block:
+ 		EXT4_ERROR_INODE(inode, "bad block %llu",
+ 				 EXT4_I(inode)->i_file_acl);
+@@ -370,7 +429,7 @@ ext4_xattr_block_list(struct dentry *dentry, char *buffer, size_t buffer_size)
+ 		goto cleanup;
+ 	ea_bdebug(bh, "b_count=%d, refcount=%d",
+ 		atomic_read(&(bh->b_count)), le32_to_cpu(BHDR(bh)->h_refcount));
+-	if (ext4_xattr_check_block(bh)) {
++	if (ext4_xattr_check_block(inode, bh)) {
+ 		EXT4_ERROR_INODE(inode, "bad block %llu",
+ 				 EXT4_I(inode)->i_file_acl);
+ 		error = -EIO;
+@@ -489,7 +548,7 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
+ 				 EXT4_FREE_BLOCKS_FORGET);
+ 	} else {
+ 		le32_add_cpu(&BHDR(bh)->h_refcount, -1);
+-		error = ext4_handle_dirty_metadata(handle, inode, bh);
++		error = ext4_handle_dirty_xattr_block(handle, inode, bh);
+ 		if (IS_SYNC(inode))
+ 			ext4_handle_sync(handle);
+ 		dquot_free_block(inode, 1);
+@@ -662,7 +721,7 @@ ext4_xattr_block_find(struct inode *inode, struct ext4_xattr_info *i,
+ 		ea_bdebug(bs->bh, "b_count=%d, refcount=%d",
+ 			atomic_read(&(bs->bh->b_count)),
+ 			le32_to_cpu(BHDR(bs->bh)->h_refcount));
+-		if (ext4_xattr_check_block(bs->bh)) {
++		if (ext4_xattr_check_block(inode, bs->bh)) {
+ 			EXT4_ERROR_INODE(inode, "bad block %llu",
+ 					 EXT4_I(inode)->i_file_acl);
+ 			error = -EIO;
+@@ -725,9 +784,9 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ 			if (error == -EIO)
+ 				goto bad_block;
+ 			if (!error)
+-				error = ext4_handle_dirty_metadata(handle,
+-								   inode,
+-								   bs->bh);
++				error = ext4_handle_dirty_xattr_block(handle,
++								      inode,
++								      bs->bh);
+ 			if (error)
+ 				goto cleanup;
+ 			goto inserted;
+@@ -796,9 +855,9 @@ inserted:
+ 				ea_bdebug(new_bh, "reusing; refcount now=%d",
+ 					le32_to_cpu(BHDR(new_bh)->h_refcount));
+ 				unlock_buffer(new_bh);
+-				error = ext4_handle_dirty_metadata(handle,
+-								   inode,
+-								   new_bh);
++				error = ext4_handle_dirty_xattr_block(handle,
++								      inode,
++								      new_bh);
+ 				if (error)
+ 					goto cleanup_dquot;
+ 			}
+@@ -854,8 +913,8 @@ getblk_failed:
+ 			set_buffer_uptodate(new_bh);
+ 			unlock_buffer(new_bh);
+ 			ext4_xattr_cache_insert(new_bh);
+-			error = ext4_handle_dirty_metadata(handle,
+-							   inode, new_bh);
++			error = ext4_handle_dirty_xattr_block(handle,
++							      inode, new_bh);
+ 			if (error)
+ 				goto cleanup;
+ 		}
+@@ -1192,7 +1251,7 @@ retry:
+ 		error = -EIO;
+ 		if (!bh)
+ 			goto cleanup;
+-		if (ext4_xattr_check_block(bh)) {
++		if (ext4_xattr_check_block(inode, bh)) {
+ 			EXT4_ERROR_INODE(inode, "bad block %llu",
+ 					 EXT4_I(inode)->i_file_acl);
+ 			error = -EIO;
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index 25b7387..91f31ca 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -27,7 +27,9 @@ struct ext4_xattr_header {
+ 	__le32	h_refcount;	/* reference count */
+ 	__le32	h_blocks;	/* number of disk blocks used */
+ 	__le32	h_hash;		/* hash value of all attributes */
+-	__u32	h_reserved[4];	/* zero right now */
++	__le32	h_checksum;	/* crc32c(uuid+id+xattrblock) */
++				/* id = inum if refcount=1, blknum otherwise */
++	__u32	h_reserved[3];	/* zero right now */
+ };
  
- 	ext4_unlock_group(sb, ac->ac_b_ex.fe_group);
-@@ -4716,6 +4785,8 @@ do_more:
- 
- 	ret = ext4_free_group_clusters(sb, gdp) + count_clusters;
- 	ext4_free_group_clusters_set(sb, gdp, ret);
-+	ext4_block_bitmap_csum_set(sb, block_group, gdp, bitmap_bh,
-+				   EXT4_BLOCKS_PER_GROUP(sb) / 8);
- 	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
- 	ext4_unlock_group(sb, block_group);
- 	percpu_counter_add(&sbi->s_freeclusters_counter, count_clusters);
-@@ -4860,6 +4931,8 @@ int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
- 	mb_free_blocks(NULL, &e4b, bit, count);
- 	blk_free_count = blocks_freed + ext4_free_group_clusters(sb, desc);
- 	ext4_free_group_clusters_set(sb, desc, blk_free_count);
-+	ext4_block_bitmap_csum_set(sb, block_group, desc, bitmap_bh,
-+				   EXT4_BLOCKS_PER_GROUP(sb) / 8);
- 	desc->bg_checksum = ext4_group_desc_csum(sbi, block_group, desc);
- 	ext4_unlock_group(sb, block_group);
- 	percpu_counter_add(&sbi->s_freeclusters_counter,
+ struct ext4_xattr_ibody_header {
+
