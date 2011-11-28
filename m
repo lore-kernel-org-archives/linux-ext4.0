@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 10/22] ext4: Verify and calculate checksums for extent tree
-	blocks
-Date: Mon, 28 Nov 2011 15:27:25 -0800
-Message-ID: <20111128232725.19194.12626.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 15/22] ext4: Add checksums to the MMP block
+Date: Mon, 28 Nov 2011 15:28:01 -0800
+Message-ID: <20111128232801.19194.76198.stgit@elm3c44.beaverton.ibm.com>
 References: <20111128232615.19194.80081.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -20,170 +19,129 @@ Cc: Sunil Mushran <sunil.mushran@oracle.com>,
 To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:34779 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755823Ab1K1XaK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Nov 2011 18:30:10 -0500
-Received: from /spool/local
-	by e2.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Mon, 28 Nov 2011 18:30:08 -0500
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20111128232615.19194.80081.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Calculate and verify the checksum for each extent tree block.  The checksum is
-located in the space immediately after the last possible ext4_extent in the
-block.  The space is is typically the last 4-8 bytes in the block.
+Compute and verify a checksum for the MMP block.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/ext4/ext4_extents.h |   25 +++++++++++++++++++++++-
- fs/ext4/extents.c      |   50 ++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 74 insertions(+), 1 deletions(-)
+ fs/ext4/ext4.h |    6 +++++-
+ fs/ext4/mmp.c  |   44 +++++++++++++++++++++++++++++++++++++++-----
+ 2 files changed, 44 insertions(+), 6 deletions(-)
 
 
-diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-index a52db3a..56e891a 100644
---- a/fs/ext4/ext4_extents.h
-+++ b/fs/ext4/ext4_extents.h
-@@ -62,10 +62,22 @@
- /*
-  * ext4_inode has i_block array (60 bytes total).
-  * The first 12 bytes store ext4_extent_header;
-- * the remainder stores an array of ext4_extent.
-+ * the remainder stores an array of ext4_extent,
-+ * followed by ext4_extent_tail.
-  */
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index a9a14b3..43f7a20 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1780,7 +1780,8 @@ struct mmp_struct {
+ 	__le16	mmp_check_interval;
  
- /*
-+ * This is the extent tail on-disk structure.
-+ * All other extent structures are 12 bytes long.  It turns out that
-+ * block_size % 12 >= 4 for all valid block sizes (1k, 2k, 4k).
-+ * Therefore, this tail structure can be crammed into the end of the block
-+ * without having to rebalance the tree.
-+ */
-+struct ext4_extent_tail {
-+	__le32	et_checksum;	/* crc32c(uuid+inum+extent_block) */
-+};
-+
-+/*
-  * This is the extent on-disk structure.
-  * It's used at the bottom of the tree.
-  */
-@@ -101,6 +113,17 @@ struct ext4_extent_header {
+ 	__le16	mmp_pad1;
+-	__le32	mmp_pad2[227];
++	__le32	mmp_pad2[226];
++	__le32	mmp_checksum;		/* crc32c(uuid+mmp_block) */
+ };
  
- #define EXT4_EXT_MAGIC		cpu_to_le16(0xf30a)
+ /* arguments passed to the mmp thread */
+@@ -2379,6 +2380,9 @@ extern int ext4_bio_write_page(struct ext4_io_submit *io,
  
-+#define EXT4_EXTENT_TAIL_OFFSET(hdr) \
-+	(sizeof(struct ext4_extent_header) + \
-+	 (sizeof(struct ext4_extent) * le16_to_cpu((hdr)->eh_max)))
-+
-+static inline struct ext4_extent_tail *
-+find_ext4_extent_tail(struct ext4_extent_header *eh)
+ /* mmp.c */
+ extern int ext4_multi_mount_protect(struct super_block *, ext4_fsblk_t);
++extern void ext4_mmp_csum_set(struct super_block *sb, struct mmp_struct *mmp);
++extern int ext4_mmp_csum_verify(struct super_block *sb,
++				struct mmp_struct *mmp);
+ 
+ /* BH_Uninit flag: blocks are allocated but uninitialized on disk */
+ enum ext4_state_bits {
+diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
+index 7ea4ba4..8c23c3c 100644
+--- a/fs/ext4/mmp.c
++++ b/fs/ext4/mmp.c
+@@ -6,12 +6,45 @@
+ 
+ #include "ext4.h"
+ 
++/* Checksumming functions */
++static __u32 ext4_mmp_csum(struct super_block *sb, struct mmp_struct *mmp)
 +{
-+	return (struct ext4_extent_tail *)(((void *)eh) +
-+					   EXT4_EXTENT_TAIL_OFFSET(eh));
-+}
-+
- /*
-  * Array of ext4_ext_path contains path to some extent.
-  * Creation/lookup routines use it for traversal/splitting/etc.
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 00f97f4..5db751e 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -45,6 +45,46 @@
- 
- #include <trace/events/ext4.h>
- 
-+static __le32 ext4_extent_block_csum(struct inode *inode,
-+				     struct ext4_extent_header *eh)
-+{
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	int offset = offsetof(struct mmp_struct, mmp_checksum);
 +	__u32 csum;
 +
-+	csum = ext4_chksum(sbi, ei->i_uuid_inum_csum, (__u8 *)eh,
-+			   EXT4_EXTENT_TAIL_OFFSET(eh));
++	csum = ext4_chksum(sbi, sbi->s_uuid_csum, (char *)mmp, offset);
++
 +	return cpu_to_le32(csum);
 +}
 +
-+static int ext4_extent_block_csum_verify(struct inode *inode,
-+					 struct ext4_extent_header *eh)
++int ext4_mmp_csum_verify(struct super_block *sb, struct mmp_struct *mmp)
 +{
-+	struct ext4_extent_tail *et;
-+
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
++				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
 +		return 1;
 +
-+	et = find_ext4_extent_tail(eh);
-+	if (et->et_checksum != ext4_extent_block_csum(inode, eh))
-+		return 0;
-+	return 1;
++	return mmp->mmp_checksum == ext4_mmp_csum(sb, mmp);
 +}
 +
-+static void ext4_extent_block_csum_set(struct inode *inode,
-+				       struct ext4_extent_header *eh)
++void ext4_mmp_csum_set(struct super_block *sb, struct mmp_struct *mmp)
 +{
-+	struct ext4_extent_tail *et;
-+
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
++				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
 +		return;
 +
-+	et = find_ext4_extent_tail(eh);
-+	et->et_checksum = ext4_extent_block_csum(inode, eh);
++	mmp->mmp_checksum = ext4_mmp_csum(sb, mmp);
 +}
 +
- static int ext4_split_extent(handle_t *handle,
- 				struct inode *inode,
- 				struct ext4_ext_path *path,
-@@ -103,6 +143,7 @@ static int __ext4_ext_dirty(const char *where, unsigned int line,
+ /*
+  * Write the MMP block using WRITE_SYNC to try to get the block on-disk
+  * faster.
+  */
+-static int write_mmp_block(struct buffer_head *bh)
++static int write_mmp_block(struct super_block *sb, struct buffer_head *bh)
  {
- 	int err;
- 	if (path->p_bh) {
-+		ext4_extent_block_csum_set(inode, ext_block_hdr(path->p_bh));
- 		/* path points to block */
- 		err = __ext4_handle_dirty_metadata(where, line, handle,
- 						   inode, path->p_bh);
-@@ -375,6 +416,12 @@ static int __ext4_ext_check(const char *function, unsigned int line,
- 		error_msg = "invalid extent entries";
- 		goto corrupted;
++	struct mmp_struct *mmp = (struct mmp_struct *)(bh->b_data);
++
++	ext4_mmp_csum_set(sb, mmp);
+ 	mark_buffer_dirty(bh);
+ 	lock_buffer(bh);
+ 	bh->b_end_io = end_buffer_write_sync;
+@@ -59,7 +92,8 @@ static int read_mmp_block(struct super_block *sb, struct buffer_head **bh,
  	}
-+	/* Verify checksum on non-root extent tree nodes */
-+	if (ext_depth(inode) != depth &&
-+	    !ext4_extent_block_csum_verify(inode, eh)) {
-+		error_msg = "extent tree corrupted";
-+		goto corrupted;
-+	}
+ 
+ 	mmp = (struct mmp_struct *)((*bh)->b_data);
+-	if (le32_to_cpu(mmp->mmp_magic) != EXT4_MMP_MAGIC)
++	if (le32_to_cpu(mmp->mmp_magic) != EXT4_MMP_MAGIC ||
++	    !ext4_mmp_csum_verify(sb, mmp))
+ 		return -EINVAL;
+ 
  	return 0;
+@@ -120,7 +154,7 @@ static int kmmpd(void *data)
+ 		mmp->mmp_time = cpu_to_le64(get_seconds());
+ 		last_update_time = jiffies;
  
- corrupted:
-@@ -914,6 +961,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
- 		le16_add_cpu(&neh->eh_entries, m);
- 	}
+-		retval = write_mmp_block(bh);
++		retval = write_mmp_block(sb, bh);
+ 		/*
+ 		 * Don't spew too many error messages. Print one every
+ 		 * (s_mmp_update_interval * 60) seconds.
+@@ -200,7 +234,7 @@ static int kmmpd(void *data)
+ 	mmp->mmp_seq = cpu_to_le32(EXT4_MMP_SEQ_CLEAN);
+ 	mmp->mmp_time = cpu_to_le64(get_seconds());
  
-+	ext4_extent_block_csum_set(inode, neh);
- 	set_buffer_uptodate(bh);
- 	unlock_buffer(bh);
+-	retval = write_mmp_block(bh);
++	retval = write_mmp_block(sb, bh);
  
-@@ -992,6 +1040,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
- 				sizeof(struct ext4_extent_idx) * m);
- 			le16_add_cpu(&neh->eh_entries, m);
- 		}
-+		ext4_extent_block_csum_set(inode, neh);
- 		set_buffer_uptodate(bh);
- 		unlock_buffer(bh);
+ failed:
+ 	kfree(data);
+@@ -299,7 +333,7 @@ skip:
+ 	seq = mmp_new_seq();
+ 	mmp->mmp_seq = cpu_to_le32(seq);
  
-@@ -1089,6 +1138,7 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
- 	else
- 		neh->eh_max = cpu_to_le16(ext4_ext_space_block(inode, 0));
- 	neh->eh_magic = EXT4_EXT_MAGIC;
-+	ext4_extent_block_csum_set(inode, neh);
- 	set_buffer_uptodate(bh);
- 	unlock_buffer(bh);
+-	retval = write_mmp_block(bh);
++	retval = write_mmp_block(sb, bh);
+ 	if (retval)
+ 		goto failed;
  
-
