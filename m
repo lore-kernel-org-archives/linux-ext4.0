@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 02/50] libext2fs: Add metadata checksum flag
-Date: Mon, 28 Nov 2011 16:28:09 -0800
-Message-ID: <20111129002809.17953.92292.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 05/50] debugfs: Dump inode checksum when appropriate
+Date: Mon, 28 Nov 2011 16:28:29 -0800
+Message-ID: <20111129002829.17953.17918.stgit@elm3c44.beaverton.ibm.com>
 References: <20111129002755.17953.19556.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,77 +16,54 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:48438 "EHLO e4.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750900Ab1K2A22 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Nov 2011 19:28:28 -0500
+Received: from e34.co.us.ibm.com ([32.97.110.152]:60040 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750900Ab1K2A2g (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Nov 2011 19:28:36 -0500
 Received: from /spool/local
-	by e4.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e34.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Mon, 28 Nov 2011 19:28:27 -0500
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pAT0SCaf323288
-	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 19:28:12 -0500
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pAT0SBjP016804
-	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 19:28:12 -0500
+	Mon, 28 Nov 2011 17:28:36 -0700
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay01.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pAT0SXhI112396
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 17:28:33 -0700
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pAT0SVWi015428
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 17:28:33 -0700
 In-Reply-To: <20111129002755.17953.19556.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add a feature flag to enable metadata checksumming in e2fsprogs.  Also add a
-runtime flag to disable checksum verification; this flag will be used by
-debugfs to salvage filesystems and tune2fs when resetting checksums.
+Dump inode checksum when displaying inode info
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- lib/blkid/probe.h   |    1 +
- lib/ext2fs/ext2fs.h |    7 +++++--
- 2 files changed, 6 insertions(+), 2 deletions(-)
+ debugfs/debugfs.c |   13 +++++++++++++
+ 1 files changed, 13 insertions(+), 0 deletions(-)
 
 
-diff --git a/lib/blkid/probe.h b/lib/blkid/probe.h
-index 37e80ef..d6809e1 100644
---- a/lib/blkid/probe.h
-+++ b/lib/blkid/probe.h
-@@ -110,6 +110,7 @@ struct ext2_super_block {
- #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
- #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
- #define EXT4_FEATURE_RO_COMPAT_QUOTA		0x0100
-+#define EXT4_FEATURE_RO_COMPAT_METADATA_CSUM	0x0400
- 
- /* for s_feature_incompat */
- #define EXT2_FEATURE_INCOMPAT_FILETYPE		0x0002
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 08f1946..4ff7f4f 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -199,6 +199,7 @@ typedef struct ext2_file *ext2_file_t;
- #define EXT2_FLAG_PRINT_PROGRESS	0x40000
- #define EXT2_FLAG_DIRECT_IO		0x80000
- #define EXT2_FLAG_SKIP_MMP		0x100000
-+#define EXT2_FLAG_IGNORE_CSUM_ERRORS	0x200000
- 
- /*
-  * Special flag in the ext2 inode i_flag field that means that this is
-@@ -585,7 +586,8 @@ typedef struct ext2_icount *ext2_icount_t;
- 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|\
- 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM|\
- 					 EXT4_FEATURE_RO_COMPAT_BIGALLOC|\
--					 EXT4_FEATURE_RO_COMPAT_QUOTA)
-+					 EXT4_FEATURE_RO_COMPAT_QUOTA|\
-+					 EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)
- #else
- #define EXT2_LIB_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|\
- 					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE|\
-@@ -593,7 +595,8 @@ typedef struct ext2_icount *ext2_icount_t;
- 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK|\
- 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|\
- 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM|\
--					 EXT4_FEATURE_RO_COMPAT_BIGALLOC)
-+					 EXT4_FEATURE_RO_COMPAT_BIGALLOC|\
-+					 EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)
- #endif
- 
- /*
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index 419c76c..1d2b2f3 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -803,6 +803,19 @@ void internal_dump_inode(FILE *out, const char *prefix,
+ 	if (EXT2_INODE_SIZE(current_fs->super) > EXT2_GOOD_OLD_INODE_SIZE)
+ 		internal_dump_inode_extra(out, prefix, inode_num,
+ 					  (struct ext2_inode_large *) inode);
++	if (current_fs->super->s_creator_os == EXT2_OS_LINUX &&
++	    current_fs->super->s_feature_ro_compat &
++		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) {
++		__u32 crc = inode->i_checksum_lo;
++		if (is_large_inode &&
++		    large_inode->i_extra_isize >=
++				(offsetof(struct ext2_inode_large,
++					  i_checksum_hi) -
++				 EXT2_GOOD_OLD_INODE_SIZE))
++			crc |= ((__u32)large_inode->i_checksum_hi) << 16;
++		fprintf(out, "Inode checksum: 0x%08x\n", crc);
++	}
++
+ 	if (LINUX_S_ISLNK(inode->i_mode) && ext2fs_inode_data_blocks(current_fs,inode) == 0)
+ 		fprintf(out, "%sFast_link_dest: %.*s\n", prefix,
+ 			(int) inode->i_size, (char *)inode->i_block);
 
