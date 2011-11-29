@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 41/50] e2fsck: Verify and correct MMP checksum problems
-Date: Mon, 28 Nov 2011 16:32:37 -0800
-Message-ID: <20111129003237.17953.78162.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 47/50] e2fsck: Check commit block checksum during recovery
+Date: Mon, 28 Nov 2011 16:33:18 -0800
+Message-ID: <20111129003318.17953.83170.stgit@elm3c44.beaverton.ibm.com>
 References: <20111129002755.17953.19556.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,78 +16,104 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e8.ny.us.ibm.com ([32.97.182.138]:41241 "EHLO e8.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753047Ab1K2AdL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Nov 2011 19:33:11 -0500
+Received: from e36.co.us.ibm.com ([32.97.110.154]:55786 "EHLO
+	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752662Ab1K2AdZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Nov 2011 19:33:25 -0500
 Received: from /spool/local
-	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e36.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Mon, 28 Nov 2011 19:33:09 -0500
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pAT0Wf4R3031272
-	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 19:32:41 -0500
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pAT0We11023960
-	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 22:32:41 -0200
+	Mon, 28 Nov 2011 17:33:25 -0700
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pAT0XN4N132430
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 17:33:23 -0700
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pAT0XKhZ014952
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 17:33:23 -0700
 In-Reply-To: <20111129002755.17953.19556.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Check and handle MMP checksum problems by resetting the block.
+When recovering a journal with checksum v2, verify the commit block checksum.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- e2fsck/problem.c |    5 +++++
- e2fsck/problem.h |    3 +++
- e2fsck/unix.c    |    5 +++++
- 3 files changed, 13 insertions(+), 0 deletions(-)
+ e2fsck/recovery.c       |   33 +++++++++++++++++++++++++++++++++
+ lib/ext2fs/kernel-jbd.h |   11 +++++++++++
+ 2 files changed, 44 insertions(+), 0 deletions(-)
 
 
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index 35e078c..c36c527 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -428,6 +428,11 @@ static struct e2fsck_problem problem_table[] = {
- 	  N_("@S has invalid MMP magic.  "),
- 	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK},
- 
-+	/* Superblock has invalid MMP checksum. */
-+	{ PR_0_MMP_CSUM_INVALID,
-+	  N_("@S MMP block checksum does not match MMP block.  "),
-+	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK},
-+
- 	/* Pass 1 errors */
- 
- 	/* Pass 1: Checking inodes, blocks, and sizes */
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index 0045872..503cb39 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -242,6 +242,9 @@ struct problem_context {
- /* Superblock has invalid MMP magic. */
- #define PR_0_MMP_INVALID_MAGIC			0x000043
- 
-+/* Superblock has invalid MMP checksum. */
-+#define PR_0_MMP_CSUM_INVALID			0x000044
-+
- 
- /*
-  * Pass 1 errors
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index 0881002..3f7ca62 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -1086,6 +1086,11 @@ check_error:
- 			ext2fs_mmp_clear(fs);
- 			retval = 0;
- 		}
-+	} else if (retval == EXT2_ET_MMP_CSUM_INVALID) {
-+		if (fix_problem(ctx, PR_0_MMP_CSUM_INVALID, &pctx)) {
-+			ext2fs_mmp_clear(fs);
-+			retval = 0;
-+		}
- 	}
- 	return retval;
+diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
+index a192378..beafacc 100644
+--- a/e2fsck/recovery.c
++++ b/e2fsck/recovery.c
+@@ -375,6 +375,26 @@ static int calc_chksums(journal_t *journal, struct buffer_head *bh,
+ 	return 0;
  }
+ 
++static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
++{
++	struct commit_header *h;
++	__u32 provided, calculated;
++
++	if (!JFS_HAS_INCOMPAT_FEATURE(j, JFS_FEATURE_INCOMPAT_CSUM_V2))
++		return 1;
++
++	h = buf;
++	provided = h->h_chksum[0];
++	h->h_chksum[0] = 0;
++	calculated = ext2fs_crc32c_le(~0, j->j_superblock->s_uuid,
++				      sizeof(j->j_superblock->s_uuid));
++	calculated = ext2fs_crc32c_le(calculated, buf, j->j_blocksize);
++	h->h_chksum[0] = provided;
++
++	provided = ext2fs_be32_to_cpu(provided);
++	return provided == calculated;
++}
++
+ static int do_one_pass(journal_t *journal,
+ 			struct recovery_info *info, enum passtype pass)
+ {
+@@ -696,6 +716,19 @@ static int do_one_pass(journal_t *journal,
+ 				}
+ 				crc32_sum = ~0;
+ 			}
++			if (pass == PASS_SCAN &&
++			    !jbd2_commit_block_csum_verify(journal,
++							   bh->b_data)) {
++				info->end_transaction = next_commit_ID;
++
++				if (!JFS_HAS_INCOMPAT_FEATURE(journal,
++				     JFS_FEATURE_INCOMPAT_ASYNC_COMMIT)) {
++					journal->j_failed_commit =
++						next_commit_ID;
++					brelse(bh);
++					break;
++				}
++			}
+ 			brelse(bh);
+ 			next_commit_ID++;
+ 			continue;
+diff --git a/lib/ext2fs/kernel-jbd.h b/lib/ext2fs/kernel-jbd.h
+index b79eed5..c650582 100644
+--- a/lib/ext2fs/kernel-jbd.h
++++ b/lib/ext2fs/kernel-jbd.h
+@@ -121,6 +121,17 @@ typedef struct journal_header_s
+ #define JBD2_CHECKSUM_BYTES (32 / sizeof(__u32))
+ /*
+  * Commit block header for storing transactional checksums:
++ *
++ * NOTE: If FEATURE_COMPAT_CHECKSUM (checksum v1) is set, the h_chksum*
++ * fields are used to store a checksum of the descriptor and data blocks.
++ *
++ * If FEATURE_INCOMPAT_CSUM_V2 (checksum v2) is set, then the h_chksum
++ * field is used to store crc32c(uuid+commit_block).  Each journal metadata
++ * block gets its own checksum, and data block checksums are stored in
++ * journal_block_tag (in the descriptor).  The other h_chksum* fields are
++ * not used.
++ *
++ * Checksum v1 and v2 are mutually exclusive features.
+  */
+ struct commit_header {
+ 	__u32		h_magic;
 
