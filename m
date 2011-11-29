@@ -1,161 +1,58 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 22/22] jbd2: Checksum data blocks that are stored in the
-	journal
-Date: Mon, 28 Nov 2011 15:28:50 -0800
-Message-ID: <20111128232850.19194.23882.stgit@elm3c44.beaverton.ibm.com>
-References: <20111128232615.19194.80081.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH v2.1 00/50] e2fsprogs: Add metadata checksumming
+Date: Mon, 28 Nov 2011 16:27:56 -0800
+Message-ID: <20111129002755.17953.19556.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Cc: Sunil Mushran <sunil.mushran@oracle.com>,
-	Martin K Petersen <martin.petersen@oracle.com>,
-	Greg Freemyer <greg.freemyer@gmail.com>,
 	Amir Goldstein <amir73il@gmail.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
 	Andi Kleen <andi@firstfloor.org>,
 	Mingming Cao <cmm@us.ibm.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
+	Joel Becker <jlbec@evilplan.org>, linux-ext4@vger.kernel.org,
+	Coly Li <colyli@gmail.com>
 To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20111128232615.19194.80081.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:60779 "EHLO e2.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750876Ab1K2A2D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Nov 2011 19:28:03 -0500
+Received: from /spool/local
+	by e2.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Mon, 28 Nov 2011 19:28:02 -0500
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pAT0RxYh313554
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 19:27:59 -0500
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pAT0RvEZ018105
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 22:27:58 -0200
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Calculate and verify checksums of each data block being stored in the journal.
+Hi all,
 
-Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
----
- fs/jbd2/commit.c     |   22 ++++++++++++++++++++++
- fs/jbd2/journal.c    |   10 ++++++++--
- fs/jbd2/recovery.c   |   30 ++++++++++++++++++++++++++++++
- include/linux/jbd2.h |    1 +
- 4 files changed, 61 insertions(+), 2 deletions(-)
+This patchset adds support in e2fsprogs for attaching crc32c checksums to most
+of the ext4 metadata objects.  A full design document is on the ext4 wiki[1].
+Please see the cover letter for the kernel patches for a more thorough summary
+of this work.
 
+Please have a look at the design document and patches, and please feel free to
+suggest any changes.
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index e083e55..231a02f 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -339,6 +339,26 @@ static void jbd2_descr_block_csum_set(journal_t *j,
- 	tail->t_checksum = cpu_to_be32(csum);
- }
- 
-+static void jbd2_block_tag_csum_set(journal_t *j, journal_block_tag_t *tag,
-+				    struct buffer_head *bh, __u32 sequence)
-+{
-+	struct page *page = bh->b_page;
-+	__u8 *addr;
-+	__u32 csum;
-+
-+	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
-+		return;
-+
-+	sequence = cpu_to_be32(sequence);
-+	addr = kmap_atomic(page, KM_USER0);
-+	csum = jbd2_chksum(j, j->j_uuid_csum, (__u8 *)&sequence,
-+			  sizeof(sequence));
-+	csum = jbd2_chksum(j, csum, addr + offset_in_page(bh->b_data),
-+			  bh->b_size);
-+	kunmap_atomic(addr, KM_USER0);
-+
-+	tag->t_checksum = cpu_to_be32(csum);
-+}
- /*
-  * jbd2_journal_commit_transaction
-  *
-@@ -649,6 +669,8 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 		tag = (journal_block_tag_t *) tagp;
- 		write_tag_block(tag_bytes, tag, jh2bh(jh)->b_blocknr);
- 		tag->t_flags = cpu_to_be32(tag_flag);
-+		jbd2_block_tag_csum_set(journal, tag, jh2bh(new_jh),
-+					commit_transaction->t_tid);
- 		tagp += tag_bytes;
- 		space_left -= tag_bytes;
- 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index bea3c6e..e7e414f 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1989,10 +1989,16 @@ int jbd2_journal_blocks_per_page(struct inode *inode)
-  */
- size_t journal_tag_bytes(journal_t *journal)
- {
-+	journal_block_tag_t tag;
-+	size_t x = 0;
-+
-+	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2))
-+		x += sizeof(tag.t_checksum);
-+
- 	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_64BIT))
--		return JBD2_TAG_SIZE64;
-+		return x + JBD2_TAG_SIZE64;
- 	else
--		return JBD2_TAG_SIZE32;
-+		return x + JBD2_TAG_SIZE32;
- }
- 
- /*
-diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-index 173e543..d4ad942 100644
---- a/fs/jbd2/recovery.c
-+++ b/fs/jbd2/recovery.c
-@@ -390,6 +390,23 @@ static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
- 	return provided == calculated;
- }
- 
-+static int jbd2_block_tag_csum_verify(journal_t *j, journal_block_tag_t *tag,
-+				      void *buf, __u32 sequence)
-+{
-+	__u32 provided, calculated;
-+
-+	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
-+		return 1;
-+
-+	sequence = cpu_to_be32(sequence);
-+	calculated = jbd2_chksum(j, j->j_uuid_csum, (__u8 *)&sequence,
-+				 sizeof(sequence));
-+	calculated = jbd2_chksum(j, calculated, buf, j->j_blocksize);
-+	provided = be32_to_cpu(tag->t_checksum);
-+
-+	return provided == cpu_to_be32(calculated);
-+}
-+
- static int do_one_pass(journal_t *journal,
- 			struct recovery_info *info, enum passtype pass)
- {
-@@ -566,6 +583,19 @@ static int do_one_pass(journal_t *journal,
- 						goto skip_write;
- 					}
- 
-+					/* Look for block corruption */
-+					if (!jbd2_block_tag_csum_verify(
-+						journal, tag, obh->b_data,
-+						be32_to_cpu(tmp->h_sequence))) {
-+						brelse(obh);
-+						success = -EIO;
-+						printk(KERN_ERR "JBD: Invalid "
-+						       "checksum recovering "
-+						       "block %llu in log\n",
-+						       blocknr);
-+						continue;
-+					}
-+
- 					/* Find a buffer for the new
- 					 * data being restored */
- 					nbh = __getblk(journal->j_fs_dev,
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index d948ddf..3ca096f 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -190,6 +190,7 @@ typedef struct journal_block_tag_s
- 	__be32		t_blocknr;	/* The on-disk block number */
- 	__be32		t_flags;	/* See below */
- 	__be32		t_blocknr_high; /* most-significant high 32bits. */
-+	__be32		t_checksum;	/* crc32c(uuid+seq+block) */
- } journal_block_tag_t;
- 
- #define JBD2_TAG_SIZE32 (offsetof(journal_block_tag_t, t_blocknr_high))
+v2: Checksum the MMP block, store the checksum type in the superblock, include
+the inode generation in file checksums, and finally solve the problem of limited
+space in block groups by splitting the checksum into two halves.
+
+v2.1: Checksum the reserved parts of the htree tail structure.
+
+This patchset has been tested on 3.2.0-rc3 on x64, i386, ppc64, and ppc32.  The
+patches seems to work fine on all four platforms.  The patchset is based atop
+the 1.42 WIP-1120 release.
+
+--D
+
+[1] https://ext4.wiki.kernel.org/index.php/Ext4_Metadata_Checksums
+
