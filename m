@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 46/50] e2fsck: Check descriptor block checksum when recovering
-	journal
-Date: Mon, 28 Nov 2011 16:33:12 -0800
-Message-ID: <20111129003312.17953.39483.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 43/50] libext2fs: Add feature flags for jbd2 v2 checksums
+Date: Mon, 28 Nov 2011 16:32:51 -0800
+Message-ID: <20111129003251.17953.25950.stgit@elm3c44.beaverton.ibm.com>
 References: <20111129002755.17953.19556.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,125 +16,146 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:56192 "EHLO e2.ny.us.ibm.com"
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:56178 "EHLO e2.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753107Ab1K2Adh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1753016Ab1K2Adh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 28 Nov 2011 19:33:37 -0500
 Received: from /spool/local
 	by e2.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Mon, 28 Nov 2011 19:33:36 -0500
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pAT0XEn5336508
-	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 19:33:14 -0500
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pAT0XDtx021982
-	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 17:33:14 -0700
+	Mon, 28 Nov 2011 19:33:35 -0500
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pAT0WxQh349158
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 19:32:59 -0500
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pAT0Wrav016860
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 19:32:59 -0500
 In-Reply-To: <20111129002755.17953.19556.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Verify the descriptor block checksum when recovering a journal.
+Add the necessary structure fields, flags, and constants that are needed to
+extend checksum coverage to all journal metadata blocks.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- e2fsck/recovery.c       |   39 ++++++++++++++++++++++++++++++++++++++-
- lib/ext2fs/kernel-jbd.h |    5 +++++
- 2 files changed, 43 insertions(+), 1 deletions(-)
+ lib/e2p/feature.c       |    2 ++
+ lib/ext2fs/kernel-jbd.h |   12 ++++++++----
+ misc/dumpe2fs.c         |   29 +++++++++++++++++++++++++++++
+ 3 files changed, 39 insertions(+), 4 deletions(-)
 
 
-diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
-index 8979193..a192378 100644
---- a/e2fsck/recovery.c
-+++ b/e2fsck/recovery.c
-@@ -174,6 +174,27 @@ static int jread(struct buffer_head **bhp, journal_t *journal,
- 	return 0;
- }
+diff --git a/lib/e2p/feature.c b/lib/e2p/feature.c
+index dc52ba7..f85ed14 100644
+--- a/lib/e2p/feature.c
++++ b/lib/e2p/feature.c
+@@ -98,6 +98,8 @@ static struct feature jrnl_feature_list[] = {
+                        "journal_incompat_revoke" },
+        {       E2P_FEATURE_INCOMPAT, JFS_FEATURE_INCOMPAT_ASYNC_COMMIT,
+                        "journal_async_commit" },
++       {       E2P_FEATURE_INCOMPAT, JFS_FEATURE_INCOMPAT_CSUM_V2,
++                       "journal_checksum_v2" },
+        {       0, 0, 0 },
+ };
  
-+static int jbd2_descr_block_csum_verify(journal_t *j,
-+					void *buf)
-+{
-+	struct journal_block_tail *tail;
-+	__u32 provided, calculated;
-+
-+	if (!JFS_HAS_INCOMPAT_FEATURE(j, JFS_FEATURE_INCOMPAT_CSUM_V2))
-+		return 1;
-+
-+	tail = (struct journal_block_tail *)(buf + j->j_blocksize -
-+			sizeof(struct journal_block_tail));
-+	provided = tail->t_checksum;
-+	tail->t_checksum = 0;
-+	calculated = ext2fs_crc32c_le(~0, j->j_superblock->s_uuid,
-+				      sizeof(j->j_superblock->s_uuid));
-+	calculated = ext2fs_crc32c_le(calculated, buf, j->j_blocksize);
-+	tail->t_checksum = provided;
-+
-+	provided = ext2fs_be32_to_cpu(provided);
-+	return provided == calculated;
-+}
- 
- /*
-  * Count the number of in-use tags in a journal descriptor block.
-@@ -186,6 +207,9 @@ static int count_tags(journal_t *journal, struct buffer_head *bh)
- 	int			nr = 0, size = journal->j_blocksize;
- 	int			tag_bytes = journal_tag_bytes(journal);
- 
-+	if (JFS_HAS_INCOMPAT_FEATURE(journal, JFS_FEATURE_INCOMPAT_CSUM_V2))
-+		size -= sizeof(struct journal_block_tail);
-+
- 	tagp = &bh->b_data[sizeof(journal_header_t)];
- 
- 	while ((tagp - bh->b_data + tag_bytes) <= size) {
-@@ -364,6 +388,7 @@ static int do_one_pass(journal_t *journal,
- 	int			blocktype;
- 	int			tag_bytes = journal_tag_bytes(journal);
- 	__u32			crc32_sum = ~0; /* Transactional Checksums */
-+	int			descr_csum_size = 0;
- 
- 	/* Precompute the maximum metadata descriptors in a descriptor block */
- 	int			MAX_BLOCKS_PER_DESC;
-@@ -454,6 +479,18 @@ static int do_one_pass(journal_t *journal,
- 
- 		switch(blocktype) {
- 		case JFS_DESCRIPTOR_BLOCK:
-+			/* Verify checksum first */
-+			if (JFS_HAS_INCOMPAT_FEATURE(journal,
-+					JFS_FEATURE_INCOMPAT_CSUM_V2))
-+				descr_csum_size =
-+					sizeof(struct journal_block_tail);
-+			if (descr_csum_size > 0 &&
-+			    !jbd2_descr_block_csum_verify(journal,
-+							  bh->b_data)) {
-+				err = -EIO;
-+				goto failed;
-+			}
-+
- 			/* If it is a valid descriptor block, replay it
- 			 * in pass REPLAY; if journal_checksums enabled, then
- 			 * calculate checksums in PASS_SCAN, otherwise,
-@@ -484,7 +521,7 @@ static int do_one_pass(journal_t *journal,
- 
- 			tagp = &bh->b_data[sizeof(journal_header_t)];
- 			while ((tagp - bh->b_data + tag_bytes)
--			       <= journal->j_blocksize) {
-+			       <= journal->j_blocksize - descr_csum_size) {
- 				unsigned long io_block;
- 
- 				tag = (journal_block_tag_t *) tagp;
 diff --git a/lib/ext2fs/kernel-jbd.h b/lib/ext2fs/kernel-jbd.h
-index 187cb38..b79eed5 100644
+index 066c031..08479d3 100644
 --- a/lib/ext2fs/kernel-jbd.h
 +++ b/lib/ext2fs/kernel-jbd.h
-@@ -147,6 +147,11 @@ typedef struct journal_block_tag_s
- #define JBD_TAG_SIZE64 (sizeof(journal_block_tag_t))
- #define JBD_TAG_SIZE32 (8)
+@@ -114,6 +114,7 @@ typedef struct journal_header_s
+ #define JBD2_CRC32_CHKSUM   1
+ #define JBD2_MD5_CHKSUM     2
+ #define JBD2_SHA1_CHKSUM    3
++#define JBD2_CRC32C_CHKSUM  4
  
-+/* Tail of descriptor block, for checksumming */
-+struct journal_block_tail {
-+	__u32		t_checksum;
-+};
+ #define JBD2_CRC32_CHKSUM_SIZE 4
+ 
+@@ -205,7 +206,10 @@ typedef struct journal_superblock_s
+ 	__u32	s_max_trans_data;	/* Limit of data blocks per trans. */
+ 
+ /* 0x0050 */
+-	__u32	s_padding[44];
++	__u8	s_checksum_type;	/* checksum type */
++	__u8	s_padding2[3];
++	__u32	s_padding[42];
++	__u32	s_checksum;		/* crc32c(superblock) */
+ 
+ /* 0x0100 */
+ 	__u8	s_users[16*48];		/* ids of all fs'es sharing the log */
+@@ -224,18 +228,18 @@ typedef struct journal_superblock_s
+ 
+ #define JFS_FEATURE_COMPAT_CHECKSUM	0x00000001
+ 
+-#define JFS_FEATURE_INCOMPAT_REVOKE	0x00000001
+-
+ #define JFS_FEATURE_INCOMPAT_REVOKE		0x00000001
+ #define JFS_FEATURE_INCOMPAT_64BIT		0x00000002
+ #define JFS_FEATURE_INCOMPAT_ASYNC_COMMIT	0x00000004
++#define JFS_FEATURE_INCOMPAT_CSUM_V2		0x00000008
+ 
+ /* Features known to this kernel version: */
+ #define JFS_KNOWN_COMPAT_FEATURES	0
+ #define JFS_KNOWN_ROCOMPAT_FEATURES	0
+ #define JFS_KNOWN_INCOMPAT_FEATURES	(JFS_FEATURE_INCOMPAT_REVOKE|\
+ 					 JFS_FEATURE_INCOMPAT_ASYNC_COMMIT|\
+-					 JFS_FEATURE_INCOMPAT_64BIT)
++					 JFS_FEATURE_INCOMPAT_64BIT|\
++					 JFS_FEATURE_INCOMPAT_CSUM_V2)
+ 
+ #ifdef __KERNEL__
+ 
+diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
+index 33c0933..a9cec88 100644
+--- a/misc/dumpe2fs.c
++++ b/misc/dumpe2fs.c
+@@ -313,6 +313,16 @@ static void list_bad_blocks(ext2_filsys fs, int dump)
+ 	ext2fs_badblocks_list_free(bb_list);
+ }
+ 
++static char *journal_checksum_type_str(__u8 type)
++{
++	switch (type) {
++	case JBD2_CRC32C_CHKSUM:
++		return "crc32c";
++	default:
++		return "unknown";
++	}
++}
 +
- /*
-  * The revoke descriptor: used on disk to describe a series of blocks to
-  * be revoked from the log
+ static void print_inline_journal_information(ext2_filsys fs)
+ {
+ 	journal_superblock_t	*jsb;
+@@ -379,6 +389,15 @@ static void print_inline_journal_information(ext2_filsys fs)
+ 	       (unsigned int)ntohl(jsb->s_maxlen),
+ 	       (unsigned int)ntohl(jsb->s_sequence),
+ 	       (unsigned int)ntohl(jsb->s_start));
++	if (jsb->s_feature_compat &
++	    ext2fs_cpu_to_be32(JFS_FEATURE_COMPAT_CHECKSUM))
++		printf(_("Journal checksum type:    crc32\n"));
++	if (jsb->s_feature_incompat &
++	    ext2fs_cpu_to_be32(JFS_FEATURE_INCOMPAT_CSUM_V2))
++		printf(_("Journal checksum type:    %s\n"
++			 "Journal checksum:         0x%08x\n"),
++		       journal_checksum_type_str(jsb->s_checksum_type),
++		       ext2fs_be32_to_cpu(jsb->s_checksum));
+ }
+ 
+ static void print_journal_information(ext2_filsys fs)
+@@ -404,6 +423,16 @@ static void print_journal_information(ext2_filsys fs)
+ 		exit(1);
+ 	}
+ 
++	if (jsb->s_feature_compat &
++	    ext2fs_cpu_to_be32(JFS_FEATURE_COMPAT_CHECKSUM))
++		printf(_("Journal checksum type:    crc32\n"));
++	if (jsb->s_feature_incompat &
++	    ext2fs_cpu_to_be32(JFS_FEATURE_INCOMPAT_CSUM_V2))
++		printf(_("Journal checksum type:    %s\n"
++			 "Journal checksum:         0x%08x\n"),
++		       journal_checksum_type_str(jsb->s_checksum_type),
++		       ext2fs_be32_to_cpu(jsb->s_checksum));
++
+ 	printf(_("\nJournal block size:       %u\n"
+ 		 "Journal length:           %u\n"
+ 		 "Journal first block:      %u\n"
 
