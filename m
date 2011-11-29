@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 19/50] tune2fs: Enable extent tree checksums
-Date: Mon, 28 Nov 2011 16:29:59 -0800
-Message-ID: <20111129002959.17953.70467.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 20/50] e2fsck: Verify extent tree blocks and clear the bad ones
+Date: Mon, 28 Nov 2011 16:30:06 -0800
+Message-ID: <20111129003006.17953.91956.stgit@elm3c44.beaverton.ibm.com>
 References: <20111129002755.17953.19556.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,98 +16,101 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:50948 "EHLO e3.ny.us.ibm.com"
+Received: from e7.ny.us.ibm.com ([32.97.182.137]:59521 "EHLO e7.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752216Ab1K2Aa5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Nov 2011 19:30:57 -0500
+	id S1752216Ab1K2AbA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Nov 2011 19:31:00 -0500
 Received: from /spool/local
-	by e3.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e7.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Mon, 28 Nov 2011 19:30:56 -0500
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pAT0U6x93526660
-	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 19:30:06 -0500
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pAT0U1vO003231
-	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 19:30:05 -0500
+	Mon, 28 Nov 2011 19:30:59 -0500
+Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pAT0UKhJ302670
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 19:30:20 -0500
+Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av04.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pAT0UC4I005067
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 17:30:15 -0700
 In-Reply-To: <20111129002755.17953.19556.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add to tune2fs the ability to recalculate extent tree checksums when altering
-the metadata checksum feature flag.
+When we encounter an extent tree block that passes the header check but fails
+the checksum, offer to clear just that extent block instead of failing the
+whole tree, which results in the entire inode being wiped out.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- misc/tune2fs.c |   49 +++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 49 insertions(+), 0 deletions(-)
+ e2fsck/pass1.c   |   11 +++++++++--
+ e2fsck/problem.c |    6 ++++++
+ e2fsck/problem.h |    3 +++
+ 3 files changed, 18 insertions(+), 2 deletions(-)
 
 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 12a22ed..c7b9fd3 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -376,6 +376,48 @@ static void request_fsck_afterwards(ext2_filsys fs)
- 		printf(_("(and reboot afterwards!)\n"));
- }
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 537538c..f7be09a 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -1761,7 +1761,9 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
  
-+/* Rewrite extents */
-+static errcode_t rewrite_extents(ext2_filsys fs, ext2_ino_t ino,
-+				 struct ext2_inode *inode)
-+{
-+	ext2_extent_handle_t	handle;
-+	struct ext2fs_extent	extent;
-+	int			op = EXT2_EXTENT_ROOT;
-+	errcode_t		errcode;
+ 	pctx->errcode = ext2fs_extent_get(ehandle, EXT2_EXTENT_FIRST_SIB,
+ 					  &extent);
+-	while (!pctx->errcode && info.num_entries-- > 0) {
++	while ((pctx->errcode == 0 ||
++		pctx->errcode == EXT2_ET_EXTENT_CSUM_INVALID) &&
++	       info.num_entries-- > 0) {
+ 		is_leaf = extent.e_flags & EXT2_EXTENT_FLAGS_LEAF;
+ 		is_dir = LINUX_S_ISDIR(pctx->inode->i_mode);
+ 
+@@ -1776,6 +1778,8 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
+ 			 (extent.e_pblk + extent.e_len) >
+ 			 ext2fs_blocks_count(ctx->fs->super))
+ 			problem = PR_1_EXTENT_ENDS_BEYOND;
++		else if (pctx->errcode == EXT2_ET_EXTENT_CSUM_INVALID)
++			problem = PR_1_EXTENT_CSUM_INVALID;
+ 
+ 		if (problem) {
+ 		report_problem:
+@@ -1809,7 +1813,10 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
+ 			if (pctx->errcode) {
+ 				pctx->str = "EXT2_EXTENT_DOWN";
+ 				problem = PR_1_EXTENT_HEADER_INVALID;
+-				if (pctx->errcode == EXT2_ET_EXTENT_HEADER_BAD)
++				if (pctx->errcode ==
++					EXT2_ET_EXTENT_HEADER_BAD ||
++				    pctx->errcode ==
++					EXT2_ET_EXTENT_CSUM_INVALID)
+ 					goto report_problem;
+ 				return;
+ 			}
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index e74ad79..96b0de5 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -946,6 +946,12 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("The bad @b @i looks @n.  "),
+ 	  PROMPT_CLEAR, 0 },
+ 
++	/* Extent block does not match extent */
++	{ PR_1_EXTENT_CSUM_INVALID,
++	  N_("@i %i extent block checksum does not match extent\n\t(logical @b "
++	     "%c, @n physical @b %b, len %N)\n"),
++	  PROMPT_CLEAR, 0 },
 +
-+	if (!(inode->i_flags & EXT4_EXTENTS_FL))
-+		return 0;
-+
-+	errcode = ext2fs_extent_open(fs, ino, &handle);
-+	if (errcode)
-+		return errcode;
-+
-+	while (1) {
-+		errcode = ext2fs_extent_get(handle, op, &extent);
-+		if (errcode)
-+			break;
-+
-+		/* Root node is in the separately checksummed inode */
-+		if (op == EXT2_EXTENT_ROOT) {
-+			op = EXT2_EXTENT_NEXT;
-+			continue;
-+		}
-+		op = EXT2_EXTENT_NEXT;
-+
-+		/* Only visit the first extent in each extent block */
-+		if (extent.e_flags & EXT2_EXTENT_FLAGS_SECOND_VISIT)
-+			continue;
-+		errcode = ext2fs_extent_replace(handle, 0, &extent);
-+		if (errcode)
-+			break;
-+	}
-+
-+	/* Ok if we run off the end */
-+	if (errcode == EXT2_ET_EXTENT_NO_NEXT)
-+		errcode = 0;
-+	return errcode;
-+}
+ 	/* Pass 1b errors */
+ 
+ 	/* Pass 1B: Rescan for duplicate/bad blocks */
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index 1d63598..a1e7ffb 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -553,6 +553,9 @@ struct problem_context {
+ /* inode checksum does not match inode */
+ #define PR_1_INODE_CSUM_INVALID		0x010066
+ 
++/* extent block checksum does not match extent block */
++#define PR_1_EXTENT_CSUM_INVALID	0x010067
 +
  /*
-  * Forcibly set checksums in all inodes.
+  * Pass 1b errors
   */
-@@ -416,6 +458,13 @@ static void rewrite_inodes(ext2_filsys fs)
- 			com_err("set_csum", retval, "while writing inode");
- 			exit(1);
- 		}
-+
-+		retval = rewrite_extents(fs, ino, inode);
-+		if (retval) {
-+			com_err("rewrite_extents", retval,
-+				"while rewriting extents");
-+			exit(1);
-+		}
- 	} while (ino);
- 
- 	ext2fs_free_mem(&inode);
 
