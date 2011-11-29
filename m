@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 27/50] tune2fs: Rebuild and checksum directories when toggling
-	metadata_csum or changing UUID
-Date: Mon, 28 Nov 2011 16:30:57 -0800
-Message-ID: <20111129003057.17953.89.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 48/50] e2fsck: Verify data block checksums when recovering
+	journal
+Date: Mon, 28 Nov 2011 16:33:25 -0800
+Message-ID: <20111129003325.17953.78225.stgit@elm3c44.beaverton.ibm.com>
 References: <20111129002755.17953.19556.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,257 +17,153 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:50674 "EHLO e1.ny.us.ibm.com"
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:56173 "EHLO e2.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753107Ab1K2Ada (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Nov 2011 19:33:30 -0500
+	id S1752869Ab1K2Adh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Nov 2011 19:33:37 -0500
 Received: from /spool/local
-	by e1.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e2.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Mon, 28 Nov 2011 19:33:25 -0500
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pAT0V0Wf336894
-	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 19:31:00 -0500
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pAT0Uxg8007732
-	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 19:31:00 -0500
+	Mon, 28 Nov 2011 19:33:36 -0500
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pAT0XSdb2756750
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 19:33:28 -0500
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pAT0XQWx006914
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 22:33:27 -0200
 In-Reply-To: <20111129002755.17953.19556.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Since all the metadata checksums depend on the fs UUID, tune2fs must be able to
-rewrite the checksums of _all_ metadata.  It's not that hard to add in the bits
-to resize the directory block structures at the same time.
+Check the data block checksums when recovering the journal.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- misc/tune2fs.c |  193 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 193 insertions(+), 0 deletions(-)
+ e2fsck/jfs_user.h       |   11 -----------
+ e2fsck/recovery.c       |   32 ++++++++++++++++++++++++++++++++
+ lib/ext2fs/kernel-jbd.h |   31 +++++++++++++++++++++++++++++++
+ 3 files changed, 63 insertions(+), 11 deletions(-)
 
 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index c7b9fd3..236a324 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -106,6 +106,8 @@ struct blk_move {
- 
- 
- static const char *please_fsck = N_("Please run e2fsck on the filesystem.\n");
-+static const char *please_dir_fsck =
-+		N_("Please run e2fsck -D on the filesystem.\n");
- 
- #ifdef CONFIG_BUILD_FINDFS
- void do_findfs(int argc, char **argv);
-@@ -364,6 +366,18 @@ static int check_fsck_needed(ext2_filsys fs)
- 	return 1;
+diff --git a/e2fsck/jfs_user.h b/e2fsck/jfs_user.h
+index 9e33306..4baba54 100644
+--- a/e2fsck/jfs_user.h
++++ b/e2fsck/jfs_user.h
+@@ -104,17 +104,6 @@ _INLINE_ void do_cache_destroy(lkmem_cache_t *cache)
+ 	free(cache);
  }
  
-+static void request_dir_fsck_afterwards(ext2_filsys fs)
+-/*
+- * helper functions to deal with 32 or 64bit block numbers.
+- */
+-_INLINE_ size_t journal_tag_bytes(journal_t *journal)
+-{
+-	if (JFS_HAS_INCOMPAT_FEATURE(journal, JFS_FEATURE_INCOMPAT_64BIT))
+-		return JBD_TAG_SIZE64;
+-	else
+-		return JBD_TAG_SIZE32;
+-}
+-
+ #undef _INLINE_
+ #endif
+ 
+diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
+index beafacc..5cda381 100644
+--- a/e2fsck/recovery.c
++++ b/e2fsck/recovery.c
+@@ -395,6 +395,25 @@ static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
+ 	return provided == calculated;
+ }
+ 
++static int jbd2_block_tag_csum_verify(journal_t *j, journal_block_tag_t *tag,
++				      void *buf, __u32 sequence)
 +{
-+	static int requested;
++	__u32 provided, calculated;
 +
-+	if (requested++)
-+		return;
-+	fs->super->s_state &= ~EXT2_VALID_FS;
-+	printf("\n%s\n", _(please_dir_fsck));
-+	if (mount_flags & EXT2_MF_READONLY)
-+		printf(_("(and reboot afterwards!)\n"));
++	if (!JFS_HAS_INCOMPAT_FEATURE(j, JFS_FEATURE_INCOMPAT_CSUM_V2))
++		return 1;
++
++	sequence = ext2fs_cpu_to_be32(sequence);
++	calculated = ext2fs_crc32c_le(~0, j->j_superblock->s_uuid,
++				      sizeof(j->j_superblock->s_uuid));
++	calculated = ext2fs_crc32c_le(calculated, (__u8 *)&sequence,
++				      sizeof(sequence));
++	calculated = ext2fs_crc32c_le(calculated, buf, j->j_blocksize);
++	provided = ext2fs_be32_to_cpu(tag->t_checksum);
++
++	return provided == ext2fs_cpu_to_be32(calculated);
 +}
 +
- static void request_fsck_afterwards(ext2_filsys fs)
+ static int do_one_pass(journal_t *journal,
+ 			struct recovery_info *info, enum passtype pass)
  {
- 	static int requested = 0;
-@@ -419,6 +433,176 @@ static errcode_t rewrite_extents(ext2_filsys fs, ext2_ino_t ino,
- }
+@@ -575,6 +594,19 @@ static int do_one_pass(journal_t *journal,
+ 						goto skip_write;
+ 					}
  
- /*
-+ * Rewrite directory blocks with checksums
-+ */
-+struct rewrite_dir_context {
-+	char *buf;
-+	errcode_t errcode;
-+	ext2_ino_t dir;
-+	int is_htree;
-+};
++					/* Look for block corruption */
++					if (!jbd2_block_tag_csum_verify(
++						journal, tag, obh->b_data,
++						be32_to_cpu(tmp->h_sequence))) {
++						brelse(obh);
++						success = -EIO;
++						printk(KERN_ERR "JBD: Invalid "
++						       "checksum recovering "
++						       "block %ld in log\n",
++						       blocknr);
++						continue;
++					}
 +
-+static int rewrite_dir_block(ext2_filsys fs,
-+			     blk64_t	*blocknr,
-+			     e2_blkcnt_t blockcnt,
-+			     blk64_t	ref_block EXT2FS_ATTR((unused)),
-+			     int	ref_offset EXT2FS_ATTR((unused)),
-+			     void	*priv_data)
-+{
-+	struct ext2_dx_countlimit *dcl = NULL;
-+	struct rewrite_dir_context *ctx = priv_data;
-+	int dcl_offset, changed = 0;
-+
-+	ctx->errcode = ext2fs_read_dir_block4(fs, *blocknr, ctx->buf, 0,
-+					      ctx->dir);
-+	if (ctx->errcode)
-+		return BLOCK_ABORT;
-+
-+	/* if htree node... */
-+	if (ctx->is_htree)
-+		ext2fs_get_dx_countlimit(fs, (struct ext2_dir_entry *)ctx->buf,
-+					 &dcl, &dcl_offset);
-+	if (dcl) {
-+		if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+			/* Ensure limit is the max size */
-+			int max_entries = (fs->blocksize - dcl_offset) /
-+					  sizeof(struct ext2_dx_entry);
-+			if (ext2fs_le16_to_cpu(dcl->limit) != max_entries) {
-+				changed = 1;
-+				dcl->limit = ext2fs_cpu_to_le16(max_entries);
-+			}
-+		} else {
-+			/* If htree block is full then rebuild the dir */
-+			if (ext2fs_le16_to_cpu(dcl->count) ==
-+			    ext2fs_le16_to_cpu(dcl->limit)) {
-+				request_dir_fsck_afterwards(fs);
-+				return 0;
-+			}
-+			/*
-+			 * Ensure dcl->limit is small enough to leave room for
-+			 * the checksum tail.
-+			 */
-+			int max_entries = (fs->blocksize - (dcl_offset +
-+						sizeof(struct ext2_dx_tail))) /
-+					  sizeof(struct ext2_dx_entry);
-+			if (ext2fs_le16_to_cpu(dcl->limit) != max_entries)
-+				dcl->limit = ext2fs_cpu_to_le16(max_entries);
-+			/* Always rewrite checksum */
-+			changed = 1;
-+		}
-+	} else {
-+		unsigned int rec_len, name_size;
-+		char *top = ctx->buf + fs->blocksize;
-+		struct ext2_dir_entry *de = (struct ext2_dir_entry *)ctx->buf;
-+		struct ext2_dir_entry *last_de = NULL, *penultimate_de = NULL;
-+
-+		/* Find last and penultimate dirent */
-+		while ((char *)de < top) {
-+			penultimate_de = last_de;
-+			last_de = de;
-+			ctx->errcode = ext2fs_get_rec_len(fs, de, &rec_len);
-+			if (!ctx->errcode && !rec_len)
-+				ctx->errcode = EXT2_ET_DIR_CORRUPTED;
-+			if (ctx->errcode)
-+				return BLOCK_ABORT;
-+			de = (struct ext2_dir_entry *)(((void *)de) + rec_len);
-+		}
-+		ctx->errcode = ext2fs_get_rec_len(fs, last_de, &rec_len);
-+		if (ctx->errcode)
-+			return BLOCK_ABORT;
-+		name_size = last_de->name_len & 0xFF;
-+
-+		if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+			if (!penultimate_de)
-+				return 0;
-+			if (last_de->inode ||
-+			    name_size ||
-+			    rec_len != sizeof(struct ext2_dir_entry_tail))
-+				return 0;
-+			/*
-+			 * The last dirent is unused and the right length to
-+			 * have stored a checksum.  Erase it.
-+			 */
-+			ctx->errcode = ext2fs_get_rec_len(fs, penultimate_de,
-+							  &rec_len);
-+			if (!rec_len)
-+				ctx->errcode = EXT2_ET_DIR_CORRUPTED;
-+			if (ctx->errcode)
-+				return BLOCK_ABORT;
-+			ext2fs_set_rec_len(fs, rec_len +
-+					sizeof(struct ext2_dir_entry_tail),
-+					penultimate_de);
-+			changed = 1;
-+		} else {
-+			int csum_size = sizeof(struct ext2_dir_entry_tail);
-+			struct ext2_dir_entry_tail *t;
-+
-+			/*
-+			 * If the last dirent looks like the tail, just update
-+			 * the checksum.
-+			 */
-+			if (!last_de->inode &&
-+			    rec_len == csum_size) {
-+				t = (struct ext2_dir_entry_tail *)last_de;
-+				t->reserved_name_len = EXT2_DIR_NAME_LEN_CSUM;
-+				changed = 1;
-+				goto out;
-+			}
-+			if (name_size & 3)
-+				name_size = (name_size & ~3) + 4;
-+			/* If there's not enough space for the tail, e2fsck */
-+			if (rec_len <= (8 + name_size + csum_size)) {
-+				request_dir_fsck_afterwards(fs);
-+				return 0;
-+			}
-+			/* Shorten that last de and insert the tail */
-+			ext2fs_set_rec_len(fs, rec_len - csum_size, last_de);
-+			t = EXT2_DIRENT_TAIL(ctx->buf, fs->blocksize);
-+			ext2fs_initialize_dirent_tail(fs, t);
-+
-+			/* Always update checksum */
-+			changed = 1;
-+		}
-+	}
-+
-+out:
-+	if (!changed)
-+		return 0;
-+
-+	ctx->errcode = ext2fs_write_dir_block4(fs, *blocknr, ctx->buf,
-+					       0, ctx->dir);
-+	if (ctx->errcode)
-+		return BLOCK_ABORT;
-+
-+	return 0;
-+}
-+
-+errcode_t rewrite_directory(ext2_filsys fs, ext2_ino_t dir,
-+			    struct ext2_inode *inode)
-+{
-+	errcode_t	retval;
-+	struct rewrite_dir_context ctx;
-+
-+	retval = ext2fs_get_mem(fs->blocksize, &ctx.buf);
-+	if (retval)
-+		return retval;
-+
-+	ctx.is_htree = (inode->i_flags & EXT2_INDEX_FL);
-+	ctx.dir = dir;
-+	retval = ext2fs_block_iterate3(fs, dir, BLOCK_FLAG_READ_ONLY |
-+						BLOCK_FLAG_DATA_ONLY,
-+				       0, rewrite_dir_block, &ctx);
-+
-+	ext2fs_free_mem(&ctx.buf);
-+	if (retval)
-+		return retval;
-+
-+	return ctx.errcode;
-+}
+ 					/* Find a buffer for the new
+ 					 * data being restored */
+ 					nbh = __getblk(journal->j_fs_dev,
+diff --git a/lib/ext2fs/kernel-jbd.h b/lib/ext2fs/kernel-jbd.h
+index c650582..a86150c 100644
+--- a/lib/ext2fs/kernel-jbd.h
++++ b/lib/ext2fs/kernel-jbd.h
+@@ -153,6 +153,7 @@ typedef struct journal_block_tag_s
+ 	__u32		t_blocknr;	/* The on-disk block number */
+ 	__u32		t_flags;	/* See below */
+ 	__u32		t_blocknr_high; /* most-significant high 32bits. */
++	__u32		t_checksum;	/* crc32c(uuid+seq+block) */
+ } journal_block_tag_t;
+ 
+ #define JBD_TAG_SIZE64 (sizeof(journal_block_tag_t))
+@@ -261,6 +262,36 @@ typedef struct journal_superblock_s
+ 					 JFS_FEATURE_INCOMPAT_64BIT|\
+ 					 JFS_FEATURE_INCOMPAT_CSUM_V2)
+ 
++#if (defined(E2FSCK_INCLUDE_INLINE_FUNCS) || !defined(NO_INLINE_FUNCS))
++#ifdef E2FSCK_INCLUDE_INLINE_FUNCS
++#define _INLINE_ extern
++#else
++#ifdef __GNUC__
++#define _INLINE_ extern __inline__
++#else				/* For Watcom C */
++#define _INLINE_ extern inline
++#endif
++#endif
 +
 +/*
-  * Forcibly set checksums in all inodes.
-  */
- static void rewrite_inodes(ext2_filsys fs)
-@@ -465,6 +649,15 @@ static void rewrite_inodes(ext2_filsys fs)
- 				"while rewriting extents");
- 			exit(1);
- 		}
++ * helper functions to deal with 32 or 64bit block numbers.
++ */
++_INLINE_ size_t journal_tag_bytes(journal_t *journal)
++{
++	journal_block_tag_t tag;
++	size_t x = 0;
 +
-+		if (LINUX_S_ISDIR(inode->i_mode)) {
-+			retval = rewrite_directory(fs, ino, inode);
-+			if (retval) {
-+				com_err("rewrite_directory", retval,
-+					"while rewriting directories");
-+				exit(1);
-+			}
-+		}
- 	} while (ino);
++	if (JFS_HAS_INCOMPAT_FEATURE(journal, JFS_FEATURE_INCOMPAT_CSUM_V2))
++		x += sizeof(tag.t_checksum);
++
++	if (JFS_HAS_INCOMPAT_FEATURE(journal, JFS_FEATURE_INCOMPAT_64BIT))
++		return x + JBD_TAG_SIZE64;
++	else
++		return x + JBD_TAG_SIZE32;
++}
++#undef _INLINE_
++#endif
++
+ #ifdef __KERNEL__
  
- 	ext2fs_free_mem(&inode);
+ #include <linux/fs.h>
 
