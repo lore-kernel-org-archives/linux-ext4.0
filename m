@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 01/50] libext2fs: Read and write full size inodes
-Date: Mon, 28 Nov 2011 16:28:02 -0800
-Message-ID: <20111129002802.17953.11136.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 02/50] libext2fs: Add metadata checksum flag
+Date: Mon, 28 Nov 2011 16:28:09 -0800
+Message-ID: <20111129002809.17953.92292.stgit@elm3c44.beaverton.ibm.com>
 References: <20111129002755.17953.19556.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,331 +16,77 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:60847 "EHLO e2.ny.us.ibm.com"
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:48438 "EHLO e4.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750900Ab1K2A2L (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Nov 2011 19:28:11 -0500
+	id S1750900Ab1K2A22 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Nov 2011 19:28:28 -0500
 Received: from /spool/local
-	by e2.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e4.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Mon, 28 Nov 2011 19:28:10 -0500
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pAT0S8Mu322482
-	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 19:28:08 -0500
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pAT0S4D8005433
-	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 22:28:08 -0200
+	Mon, 28 Nov 2011 19:28:27 -0500
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pAT0SCaf323288
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 19:28:12 -0500
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pAT0SBjP016804
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 19:28:12 -0500
 In-Reply-To: <20111129002755.17953.19556.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Change libext2fs to read and write full-size inodes in preparation for the
-metadata checksumming patchset, which will require this.  Due to ABI
-compatibility requirements, this change must be hidden from client programs.
+Add a feature flag to enable metadata checksumming in e2fsprogs.  Also add a
+runtime flag to disable checksum verification; this flag will be used by
+debugfs to salvage filesystems and tune2fs when resetting checksums.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- e2fsck/pass1.c       |    3 +
- lib/ext2fs/ext2fsP.h |    2 -
- lib/ext2fs/inode.c   |  139 +++++++++++++++++++++++++++++---------------------
- 3 files changed, 83 insertions(+), 61 deletions(-)
+ lib/blkid/probe.h   |    1 +
+ lib/ext2fs/ext2fs.h |    7 +++++--
+ 2 files changed, 6 insertions(+), 2 deletions(-)
 
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 532e132..7a32a90 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -680,7 +680,8 @@ void e2fsck_pass1(e2fsck_t ctx)
- 	}
- 	block_buf = (char *) e2fsck_allocate_memory(ctx, fs->blocksize * 3,
- 						    "block interate buffer");
--	e2fsck_use_inode_shortcuts(ctx, 1);
-+	if (EXT2_INODE_SIZE(fs->super) == EXT2_GOOD_OLD_INODE_SIZE)
-+		e2fsck_use_inode_shortcuts(ctx, 1);
- 	old_op = ehandler_operation(_("opening inode scan"));
- 	pctx.errcode = ext2fs_open_inode_scan(fs, ctx->inode_buffer_blocks,
- 					      &scan);
-diff --git a/lib/ext2fs/ext2fsP.h b/lib/ext2fs/ext2fsP.h
-index 82e1ba0..cf60458 100644
---- a/lib/ext2fs/ext2fsP.h
-+++ b/lib/ext2fs/ext2fsP.h
-@@ -75,7 +75,7 @@ struct ext2_inode_cache {
+diff --git a/lib/blkid/probe.h b/lib/blkid/probe.h
+index 37e80ef..d6809e1 100644
+--- a/lib/blkid/probe.h
++++ b/lib/blkid/probe.h
+@@ -110,6 +110,7 @@ struct ext2_super_block {
+ #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
+ #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
+ #define EXT4_FEATURE_RO_COMPAT_QUOTA		0x0100
++#define EXT4_FEATURE_RO_COMPAT_METADATA_CSUM	0x0400
  
- struct ext2_inode_cache_ent {
- 	ext2_ino_t		ino;
--	struct ext2_inode	inode;
-+	struct ext2_inode	*inode;
- };
+ /* for s_feature_incompat */
+ #define EXT2_FEATURE_INCOMPAT_FILETYPE		0x0002
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 08f1946..4ff7f4f 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -199,6 +199,7 @@ typedef struct ext2_file *ext2_file_t;
+ #define EXT2_FLAG_PRINT_PROGRESS	0x40000
+ #define EXT2_FLAG_DIRECT_IO		0x80000
+ #define EXT2_FLAG_SKIP_MMP		0x100000
++#define EXT2_FLAG_IGNORE_CSUM_ERRORS	0x200000
  
- /* Function prototypes */
-diff --git a/lib/ext2fs/inode.c b/lib/ext2fs/inode.c
-index 6c524ff..7b0db60 100644
---- a/lib/ext2fs/inode.c
-+++ b/lib/ext2fs/inode.c
-@@ -74,7 +74,9 @@ errcode_t ext2fs_flush_icache(ext2_filsys fs)
- 
- static errcode_t create_icache(ext2_filsys fs)
- {
-+	int		i;
- 	errcode_t	retval;
-+	void		*p;
- 
- 	if (fs->icache)
- 		return 0;
-@@ -93,13 +95,20 @@ static errcode_t create_icache(ext2_filsys fs)
- 	fs->icache->cache_size = 4;
- 	fs->icache->refcount = 1;
- 	retval = ext2fs_get_array(fs->icache->cache_size,
--				  sizeof(struct ext2_inode_cache_ent),
-+				  sizeof(struct ext2_inode_cache_ent) +
-+				  EXT2_INODE_SIZE(fs->super),
- 				  &fs->icache->cache);
- 	if (retval) {
- 		ext2fs_free_mem(&fs->icache->buffer);
- 		ext2fs_free_mem(&fs->icache);
- 		return retval;
- 	}
-+
-+	for (i = 0, p = (void *)(fs->icache->cache + fs->icache->cache_size);
-+	     i < fs->icache->cache_size;
-+	     i++, p += EXT2_INODE_SIZE(fs->super))
-+		fs->icache->cache[i].inode = p;
-+
- 	ext2fs_flush_icache(fs);
- 	return 0;
- }
-@@ -407,6 +416,8 @@ errcode_t ext2fs_get_next_inode_full(ext2_inode_scan scan, ext2_ino_t *ino,
- {
- 	errcode_t	retval;
- 	int		extra_bytes = 0;
-+	const int	length = EXT2_INODE_SIZE(scan->fs->super);
-+	struct ext2_inode	*iptr = inode;
- 
- 	EXT2_CHECK_MAGIC(scan, EXT2_ET_MAGIC_INODE_SCAN);
- 
-@@ -469,6 +480,12 @@ errcode_t ext2fs_get_next_inode_full(ext2_inode_scan scan, ext2_ino_t *ino,
- #endif
- 	}
- 
-+	if (bufsize < length) {
-+		retval = ext2fs_get_mem(length, &iptr);
-+		if (retval)
-+			return retval;
-+	}
-+
- 	retval = 0;
- 	if (extra_bytes) {
- 		memcpy(scan->temp_buffer+extra_bytes, scan->ptr,
-@@ -477,26 +494,26 @@ errcode_t ext2fs_get_next_inode_full(ext2_inode_scan scan, ext2_ino_t *ino,
- 		scan->bytes_left -= scan->inode_size - extra_bytes;
- 
- #ifdef WORDS_BIGENDIAN
--		memset(inode, 0, bufsize);
-+		memset(iptr, 0, length);
- 		ext2fs_swap_inode_full(scan->fs,
--			       (struct ext2_inode_large *) inode,
-+			       (struct ext2_inode_large *) iptr,
- 			       (struct ext2_inode_large *) scan->temp_buffer,
--			       0, bufsize);
-+			       0, length);
+ /*
+  * Special flag in the ext2 inode i_flag field that means that this is
+@@ -585,7 +586,8 @@ typedef struct ext2_icount *ext2_icount_t;
+ 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|\
+ 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM|\
+ 					 EXT4_FEATURE_RO_COMPAT_BIGALLOC|\
+-					 EXT4_FEATURE_RO_COMPAT_QUOTA)
++					 EXT4_FEATURE_RO_COMPAT_QUOTA|\
++					 EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)
  #else
--		*inode = *((struct ext2_inode *) scan->temp_buffer);
-+		memcpy(iptr, scan->temp_buffer, length);
- #endif
- 		if (scan->scan_flags & EXT2_SF_BAD_EXTRA_BYTES)
- 			retval = EXT2_ET_BAD_BLOCK_IN_INODE_TABLE;
- 		scan->scan_flags &= ~EXT2_SF_BAD_EXTRA_BYTES;
- 	} else {
- #ifdef WORDS_BIGENDIAN
--		memset(inode, 0, bufsize);
-+		memset(iptr, 0, length);
- 		ext2fs_swap_inode_full(scan->fs,
--				(struct ext2_inode_large *) inode,
-+				(struct ext2_inode_large *) iptr,
- 				(struct ext2_inode_large *) scan->ptr,
--				0, bufsize);
-+				0, length);
- #else
--		memcpy(inode, scan->ptr, bufsize);
-+		memcpy(iptr, scan->ptr, length);
- #endif
- 		scan->ptr += scan->inode_size;
- 		scan->bytes_left -= scan->inode_size;
-@@ -507,6 +524,10 @@ errcode_t ext2fs_get_next_inode_full(ext2_inode_scan scan, ext2_ino_t *ino,
- 	scan->inodes_left--;
- 	scan->current_inode++;
- 	*ino = scan->current_inode;
-+	if (inode != iptr) {
-+		memcpy(inode, iptr, bufsize);
-+		ext2fs_free_mem(&iptr);
-+	}
- 	return retval;
- }
- 
-@@ -527,8 +548,10 @@ errcode_t ext2fs_read_inode_full(ext2_filsys fs, ext2_ino_t ino,
- 	unsigned long 	group, block, offset;
- 	char 		*ptr;
- 	errcode_t	retval;
--	int 		clen, i, inodes_per_block, length;
-+	int		clen, i, inodes_per_block;
- 	io_channel	io;
-+	int		length = EXT2_INODE_SIZE(fs->super);
-+	struct ext2_inode	*iptr = inode;
- 
- 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
- 
-@@ -547,13 +570,10 @@ errcode_t ext2fs_read_inode_full(ext2_filsys fs, ext2_ino_t ino,
- 			return retval;
- 	}
- 	/* Check to see if it's in the inode cache */
--	if (bufsize == sizeof(struct ext2_inode)) {
--		/* only old good inode can be retrieved from the cache */
--		for (i=0; i < fs->icache->cache_size; i++) {
--			if (fs->icache->cache[i].ino == ino) {
--				*inode = fs->icache->cache[i].inode;
--				return 0;
--			}
-+	for (i = 0; i < fs->icache->cache_size; i++) {
-+		if (fs->icache->cache[i].ino == ino) {
-+			memcpy(inode, fs->icache->cache[i].inode, bufsize);
-+			return 0;
- 		}
- 	}
- 	if (fs->flags & EXT2_FLAG_IMAGE_FILE) {
-@@ -578,11 +598,13 @@ errcode_t ext2fs_read_inode_full(ext2_filsys fs, ext2_ino_t ino,
- 	}
- 	offset &= (EXT2_BLOCK_SIZE(fs->super) - 1);
- 
--	length = EXT2_INODE_SIZE(fs->super);
--	if (bufsize < length)
--		length = bufsize;
-+	if (bufsize < length) {
-+		retval = ext2fs_get_mem(length, &iptr);
-+		if (retval)
-+			return retval;
-+	}
- 
--	ptr = (char *) inode;
-+	ptr = (char *) iptr;
- 	while (length) {
- 		clen = length;
- 		if ((offset + length) > fs->blocksize)
-@@ -604,18 +626,24 @@ errcode_t ext2fs_read_inode_full(ext2_filsys fs, ext2_ino_t ino,
- 		ptr += clen;
- 		block_nr++;
- 	}
-+	length = EXT2_INODE_SIZE(fs->super);
- 
- #ifdef WORDS_BIGENDIAN
--	ext2fs_swap_inode_full(fs, (struct ext2_inode_large *) inode,
--			       (struct ext2_inode_large *) inode,
--			       0, bufsize);
-+	ext2fs_swap_inode_full(fs, (struct ext2_inode_large *) iptr,
-+			       (struct ext2_inode_large *) iptr,
-+			       0, length);
+ #define EXT2_LIB_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|\
+ 					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE|\
+@@ -593,7 +595,8 @@ typedef struct ext2_icount *ext2_icount_t;
+ 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK|\
+ 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|\
+ 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM|\
+-					 EXT4_FEATURE_RO_COMPAT_BIGALLOC)
++					 EXT4_FEATURE_RO_COMPAT_BIGALLOC|\
++					 EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)
  #endif
  
- 	/* Update the inode cache */
- 	fs->icache->cache_last = (fs->icache->cache_last + 1) %
- 		fs->icache->cache_size;
- 	fs->icache->cache[fs->icache->cache_last].ino = ino;
--	fs->icache->cache[fs->icache->cache_last].inode = *inode;
-+	memcpy(fs->icache->cache[fs->icache->cache_last].inode, iptr, length);
-+
-+	if (iptr != inode) {
-+		memcpy(inode, iptr, bufsize);
-+		ext2fs_free_mem(&iptr);
-+	}
- 
- 	return 0;
- }
-@@ -633,9 +661,10 @@ errcode_t ext2fs_write_inode_full(ext2_filsys fs, ext2_ino_t ino,
- 	blk64_t block_nr;
- 	unsigned long group, block, offset;
- 	errcode_t retval = 0;
--	struct ext2_inode_large temp_inode, *w_inode;
-+	struct ext2_inode_large *w_inode;
- 	char *ptr;
--	int clen, i, length;
-+	int clen, i;
-+	int length = EXT2_INODE_SIZE(fs->super);
- 
- 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
- 
-@@ -646,46 +675,43 @@ errcode_t ext2fs_write_inode_full(ext2_filsys fs, ext2_ino_t ino,
- 			return retval;
- 	}
- 
-+	if ((ino == 0) || (ino > fs->super->s_inodes_count))
-+		return EXT2_ET_BAD_INODE_NUM;
-+
-+	/* Prepare our shadow buffer for read/modify/byteswap/write */
-+	retval = ext2fs_get_mem(length, &w_inode);
-+	if (retval)
-+		return retval;
-+	if (bufsize < length)
-+		retval = ext2fs_read_inode_full(fs, ino,
-+						(struct ext2_inode *)w_inode,
-+						length);
-+	if (retval)
-+		goto errout;
-+
- 	/* Check to see if the inode cache needs to be updated */
- 	if (fs->icache) {
- 		for (i=0; i < fs->icache->cache_size; i++) {
- 			if (fs->icache->cache[i].ino == ino) {
--				fs->icache->cache[i].inode = *inode;
-+				memcpy(fs->icache->cache[i].inode, inode,
-+				       bufsize);
- 				break;
- 			}
- 		}
- 	} else {
- 		retval = create_icache(fs);
- 		if (retval)
--			return retval;
-+			goto errout;
- 	}
-+	memcpy(w_inode, inode, bufsize);
- 
--	if (!(fs->flags & EXT2_FLAG_RW))
--		return EXT2_ET_RO_FILSYS;
--
--	if ((ino == 0) || (ino > fs->super->s_inodes_count))
--		return EXT2_ET_BAD_INODE_NUM;
--
--	length = bufsize;
--	if (length < EXT2_INODE_SIZE(fs->super))
--		length = EXT2_INODE_SIZE(fs->super);
--
--	if (length > (int) sizeof(struct ext2_inode_large)) {
--		w_inode = malloc(length);
--		if (!w_inode) {
--			retval = ENOMEM;
--			goto errout;
--		}
--	} else
--		w_inode = &temp_inode;
--	memset(w_inode, 0, length);
-+	if (!(fs->flags & EXT2_FLAG_RW)) {
-+		retval = EXT2_ET_RO_FILSYS;
-+		goto errout;
-+	}
- 
- #ifdef WORDS_BIGENDIAN
--	ext2fs_swap_inode_full(fs, w_inode,
--			       (struct ext2_inode_large *) inode,
--			       1, bufsize);
--#else
--	memcpy(w_inode, inode, bufsize);
-+	ext2fs_swap_inode_full(fs, w_inode, w_inode, 1, length);
- #endif
- 
- 	group = (ino - 1) / EXT2_INODES_PER_GROUP(fs->super);
-@@ -700,10 +726,6 @@ errcode_t ext2fs_write_inode_full(ext2_filsys fs, ext2_ino_t ino,
- 
- 	offset &= (EXT2_BLOCK_SIZE(fs->super) - 1);
- 
--	length = EXT2_INODE_SIZE(fs->super);
--	if (length > bufsize)
--		length = bufsize;
+ /*
+
