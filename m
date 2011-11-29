@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 42/50] tune2fs: Force MMP update when changing metadata_csum
-	flag
-Date: Mon, 28 Nov 2011 16:32:45 -0800
-Message-ID: <20111129003245.17953.69209.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 44/50] e2fsck: Check journal superblock checksum prior to
+	recovery
+Date: Mon, 28 Nov 2011 16:32:58 -0800
+Message-ID: <20111129003258.17953.24550.stgit@elm3c44.beaverton.ibm.com>
 References: <20111129002755.17953.19556.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,42 +17,129 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:33629 "EHLO e5.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752788Ab1K2Acv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Nov 2011 19:32:51 -0500
+Received: from e35.co.us.ibm.com ([32.97.110.153]:49276 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753024Ab1K2AdK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Nov 2011 19:33:10 -0500
 Received: from /spool/local
-	by e5.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e35.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Mon, 28 Nov 2011 19:32:51 -0500
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pAT0WlYB2298074
-	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 19:32:47 -0500
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pAT0WkAc032481
-	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 19:32:47 -0500
+	Mon, 28 Nov 2011 17:33:09 -0700
+Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
+	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pAT0X6Fs110662
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 17:33:06 -0700
+Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av04.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pAT0X0An020265
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2011 17:33:05 -0700
 In-Reply-To: <20111129002755.17953.19556.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When changing the metadata_csum flag, always force out a new MMP block.
+Ensure that the journal superblock passes checksum before recovering the
+filesystem.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- misc/tune2fs.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+ e2fsck/journal.c |   59 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 59 insertions(+), 0 deletions(-)
 
 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 8301927..2b06a86 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -704,6 +704,7 @@ static void rewrite_metadata_checksums(ext2_filsys fs)
- 	ext2fs_read_bitmaps(fs);
- 	ext2fs_mark_ib_dirty(fs);
- 	ext2fs_mark_bb_dirty(fs);
-+	ext2fs_mmp_update2(fs, 1);
- 	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
- 	fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
- 	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+diff --git a/e2fsck/journal.c b/e2fsck/journal.c
+index 915b8bb..2ac2e54 100644
+--- a/e2fsck/journal.c
++++ b/e2fsck/journal.c
+@@ -40,6 +40,53 @@ static int bh_count = 0;
+  */
+ #undef USE_INODE_IO
+ 
++/* Checksumming functions */
++int e2fsck_journal_verify_csum_type(journal_t *j, journal_superblock_t *jsb)
++{
++	if (!JFS_HAS_INCOMPAT_FEATURE(j, JFS_FEATURE_INCOMPAT_CSUM_V2))
++		return 1;
++
++	return jsb->s_checksum_type == JBD2_CRC32C_CHKSUM;
++}
++
++static __u32 e2fsck_journal_sb_csum(journal_t *j, journal_superblock_t *jsb)
++{
++	__u32 crc, old_crc;
++
++	old_crc = jsb->s_checksum;
++	jsb->s_checksum = 0;
++	crc = ext2fs_crc32c_le(~0, (unsigned char *)jsb,
++			       sizeof(journal_superblock_t));
++	jsb->s_checksum = old_crc;
++
++	return crc;
++}
++
++int e2fsck_journal_sb_csum_verify(journal_t *j, journal_superblock_t *jsb)
++{
++	__u32 provided, calculated;
++
++	if (!JFS_HAS_INCOMPAT_FEATURE(j, JFS_FEATURE_INCOMPAT_CSUM_V2))
++		return 1;
++
++	provided = ext2fs_be32_to_cpu(jsb->s_checksum);
++	calculated = e2fsck_journal_sb_csum(j, jsb);
++
++	return provided == calculated;
++}
++
++errcode_t e2fsck_journal_sb_csum_set(journal_t *j, journal_superblock_t *jsb)
++{
++	__u32 crc;
++
++	if (!JFS_HAS_INCOMPAT_FEATURE(j, JFS_FEATURE_INCOMPAT_CSUM_V2))
++		return 0;
++
++	crc = e2fsck_journal_sb_csum(j, jsb);
++	jsb->s_checksum = ext2fs_cpu_to_be32(crc);
++	return 0;
++}
++
+ /* Kernel compatibility functions for handling the journal.  These allow us
+  * to use the recovery.c file virtually unchanged from the kernel, so we
+  * don't have to do much to keep kernel and user recovery in sync.
+@@ -560,6 +607,15 @@ static errcode_t e2fsck_journal_load(journal_t *journal)
+ 	if (JFS_HAS_RO_COMPAT_FEATURE(journal, ~JFS_KNOWN_ROCOMPAT_FEATURES))
+ 		return EXT2_ET_RO_UNSUPP_FEATURE;
+ 
++	/* Checksum v1 and v2 are mutually exclusive features. */
++	if (JFS_HAS_INCOMPAT_FEATURE(journal, JFS_FEATURE_INCOMPAT_CSUM_V2) &&
++	    JFS_HAS_COMPAT_FEATURE(journal, JFS_FEATURE_COMPAT_CHECKSUM))
++		return EXT2_ET_CORRUPT_SUPERBLOCK;
++
++	if (!e2fsck_journal_verify_csum_type(journal, jsb) ||
++	    !e2fsck_journal_sb_csum_verify(journal, jsb))
++		return EXT2_ET_CORRUPT_SUPERBLOCK;
++
+ 	/* We have now checked whether we know enough about the journal
+ 	 * format to be able to proceed safely, so any other checks that
+ 	 * fail we should attempt to recover from. */
+@@ -627,6 +683,7 @@ static void e2fsck_journal_reset_super(e2fsck_t ctx, journal_superblock_t *jsb,
+ 	for (i = 0; i < 4; i ++)
+ 		new_seq ^= u.val[i];
+ 	jsb->s_sequence = htonl(new_seq);
++	e2fsck_journal_sb_csum_set(journal, jsb);
+ 
+ 	mark_buffer_dirty(journal->j_sb_buffer);
+ 	ll_rw_block(WRITE, 1, &journal->j_sb_buffer);
+@@ -667,6 +724,7 @@ static void e2fsck_journal_release(e2fsck_t ctx, journal_t *journal,
+ 		jsb->s_sequence = htonl(journal->j_transaction_sequence);
+ 		if (reset)
+ 			jsb->s_start = 0; /* this marks the journal as empty */
++		e2fsck_journal_sb_csum_set(journal, jsb);
+ 		mark_buffer_dirty(journal->j_sb_buffer);
+ 	}
+ 	brelse(journal->j_sb_buffer);
+@@ -843,6 +901,7 @@ static errcode_t recover_ext3_journal(e2fsck_t ctx)
+ 		ctx->fs->super->s_state |= EXT2_ERROR_FS;
+ 		ext2fs_mark_super_dirty(ctx->fs);
+ 		journal->j_superblock->s_errno = 0;
++		e2fsck_journal_sb_csum_set(journal, journal->j_superblock);
+ 		mark_buffer_dirty(journal->j_sb_buffer);
+ 	}
+ 
 
