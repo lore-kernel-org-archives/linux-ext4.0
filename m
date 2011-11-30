@@ -1,48 +1,52 @@
-From: Curt Wohlgemuth <curtw@google.com>
-Subject: [PATCH] ext4: Remove unused local variable
-Date: Wed, 30 Nov 2011 14:02:04 -0800
-Message-ID: <1322690524-25028-1-git-send-email-curtw@google.com>
-Cc: linux-ext4@vger.kernel.org, Curt Wohlgemuth <curtw@google.com>
-To: tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gx0-f202.google.com ([209.85.161.202]:37720 "EHLO
-	mail-gx0-f202.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751457Ab1K3WCI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Nov 2011 17:02:08 -0500
-Received: by ggnp2 with SMTP id p2so149383ggn.1
-        for <linux-ext4@vger.kernel.org>; Wed, 30 Nov 2011 14:02:07 -0800 (PST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH v5.1 00/14] crc32c: Add faster algorithm and self-test
+ code
+Date: Wed, 30 Nov 2011 14:29:11 -0800
+Message-ID: <20111130142911.673c2d99.akpm@linux-foundation.org>
+References: <20111128223659.28705.56719.stgit@elm3c44.beaverton.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Herbert Xu <herbert@gondor.hengli.com.au>,
+	Theodore Tso <tytso@mit.edu>,
+	Joakim Tjernlund <joakim.tjernlund@transmode.se>,
+	Bob Pearson <rpearson@systemfabricworks.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-crypto <linux-crypto@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <djwong@us.ibm.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20111128223659.28705.56719.stgit@elm3c44.beaverton.ibm.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-In get_implied_cluster_alloc(), rr_cluster_end was being
-defined and set, but was never used.  Removed this.
+On Mon, 28 Nov 2011 14:36:59 -0800
+"Darrick J. Wong" <djwong@us.ibm.com> wrote:
 
-Signed-off-by: Curt Wohlgemuth <curtw@google.com>
----
- fs/ext4/extents.c |    3 +--
- 1 files changed, 1 insertions(+), 2 deletions(-)
+> This patchset (re)uses Bob Pearson's crc32 slice-by-8 code to stamp out a
+> software crc32c implementation.
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 61fa9e1..fc5a673 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3626,7 +3626,7 @@ static int get_implied_cluster_alloc(struct super_block *sb,
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	ext4_lblk_t c_offset = map->m_lblk & (sbi->s_cluster_ratio-1);
- 	ext4_lblk_t ex_cluster_start, ex_cluster_end;
--	ext4_lblk_t rr_cluster_start, rr_cluster_end;
-+	ext4_lblk_t rr_cluster_start;
- 	ext4_lblk_t ee_block = le32_to_cpu(ex->ee_block);
- 	ext4_fsblk_t ee_start = ext4_ext_pblock(ex);
- 	unsigned short ee_len = ext4_ext_get_actual_len(ex);
-@@ -3637,7 +3637,6 @@ static int get_implied_cluster_alloc(struct super_block *sb,
- 
- 	/* The requested region passed into ext4_map_blocks() */
- 	rr_cluster_start = EXT4_B2C(sbi, map->m_lblk);
--	rr_cluster_end = EXT4_B2C(sbi, map->m_lblk + map->m_len - 1);
- 
- 	if ((rr_cluster_start == ex_cluster_end) ||
- 	    (rr_cluster_start == ex_cluster_start)) {
--- 
-1.7.3.1
+I think the attributions here are all messed up.  As the patches stand,
+it appears that you wrote all of them.  But I don't think that is the
+case.
+
+If Bob wrote a particular patch then that patch should be sent with a
+From: Bob Pearson <rpearson@systemfabricworks.com> right at the start
+of the changelog so that he is recorded as the primary author.  If the
+email sender (ie: you) was the primary author then this attribution can
+be omitted and we fall back to using the From: from the email headers.
+
+Also, every one of these patches should have you own signed-off-by,
+regardless of its authorship.  For reasons explained in
+Documentation/SubmittingPatches, section 12.
+
+Please fix these things up and resend.
+
+Also, it would be conventional and useful if each patch title was
+prefixed by its subsystem identifier.  ie, "removed two instances of
+trailing whitespaces" should be titled "crc32: remove two instances of
+trailing whitespace" or "lib/crc32.c: remove two instances of trailing
+whitespaces".
 
