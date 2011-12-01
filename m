@@ -1,71 +1,70 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCH v5.2 00/14] crc32c: Add faster algorithm and self-test
-	code
-Date: Thu, 1 Dec 2011 12:31:22 -0800
-Message-ID: <20111201203122.GC23175@tux1.beaverton.ibm.com>
-References: <20111201201341.5876.83743.stgit@elm3c44.beaverton.ibm.com> <20111201202053.GG1495@noexit.corp.google.com>
-Reply-To: djwong@us.ibm.com
+From: Allison Henderson <achender@linux.vnet.ibm.com>
+Subject: Re: [PATCH 4/6] ext4: remove code related to punching hole from ext4_ext_insert_extent
+Date: Thu, 01 Dec 2011 13:55:37 -0700
+Message-ID: <4ED7E9C9.2020307@linux.vnet.ibm.com>
+References: <1321495405-9583-1-git-send-email-xiaoqiangnk@gmail.com> <1321495405-9583-4-git-send-email-xiaoqiangnk@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Andrew Morton <akpm@linux-foundation.org>,
-	Theodore Tso <tytso@mit.edu>,
-	Joakim Tjernlund <joakim.tjernlund@transmode.se>,
-	Bob Pearson <rpearson@systemfabricworks.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-crypto <linux-crypto@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org,
-	Herbert Xu <herbert@gondor.apana.org.au>
-Return-path: <linux-crypto-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20111201202053.GG1495@noexit.corp.google.com>
-Sender: linux-crypto-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:58692 "EHLO e1.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753526Ab1LAU40 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 1 Dec 2011 15:56:26 -0500
+Received: from /spool/local
+	by e1.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <achender@linux.vnet.ibm.com>;
+	Thu, 1 Dec 2011 15:56:25 -0500
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pB1KteeM327130
+	for <linux-ext4@vger.kernel.org>; Thu, 1 Dec 2011 15:55:44 -0500
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pB1KtdSf022189
+	for <linux-ext4@vger.kernel.org>; Thu, 1 Dec 2011 18:55:39 -0200
+In-Reply-To: <1321495405-9583-4-git-send-email-xiaoqiangnk@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 01, 2011 at 12:20:53PM -0800, Joel Becker wrote:
-> On Thu, Dec 01, 2011 at 12:13:41PM -0800, Darrick J. Wong wrote:
-> > Hi all,
-> > 
-> > This patchset (re)uses Bob Pearson's crc32 slice-by-8 code to stamp out a
-> > software crc32c implementation.  It removes the crc32c implementation in
-> > crypto/ in favor of using the stamped-out one in lib/.  There is also a change
-> > to Kconfig so that the kernel builder can pick an implementation best suited
-> > for the hardware.
-> > 
-> > The motivation for this patchset is that I am working on adding full metadata
-> > checksumming to ext4.  As far as performance impact of adding checksumming
-> > goes, I see nearly no change with a standard mail server ffsb simulation.  On a
-> > test that involves only file creation and deletion and extent tree writes, I
-> > see a drop of about 50 pcercent with the current kernel crc32c implementation;
-> > this improves to a drop of about 20 percent with the enclosed crc32c code.
-> > 
-> > When metadata is usually a small fraction of total IO, this new implementation
-> > doesn't help much because metadata is usually a small fraction of total IO.
-> > However, when we are doing IO that is almost all metadata (such as rm -rf'ing a
-> > tree), then this patch speeds up the operation substantially.
-> > 
-> > Incidentally, given that iscsi, sctp, and btrfs also use crc32c, this patchset
-> > should improve their speed as well.  I have not yet quantified that, however.
-> 
-> 	I thought they usually used the SSE instruction for crc32 or
-> equivalent.
+On 11/16/2011 07:03 PM, Yongqiang Yang wrote:
+> Punch hole should never call ext4_ext_insert_extent, so this patch
+> removes code related to it from ext4_ext_insert_extent.
+>
+> Signed-off-by: Yongqiang Yang<xiaoqiangnk@gmail.com>
+> ---
+>   fs/ext4/extents.c |    2 --
+>   1 files changed, 0 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 6888d1a..720070d 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -1737,8 +1737,6 @@ int ext4_ext_insert_extent(handle_t *handle, struct inode *inode,
+>   	 * There is no free space in the found leaf.
+>   	 * We're gonna add a new leaf in the tree.
+>   	 */
+> -	if (flag&  EXT4_GET_BLOCKS_PUNCH_OUT_EXT)
+> -		flags = EXT4_MB_USE_ROOT_BLOCKS;
+>   	err = ext4_ext_create_new_leaf(handle, inode, flags, path, newext);
+>   	if (err)
+>   		goto cleanup;
 
-They seem to call crc32c(), which is in crypto/crc32c.  If you're interested in
-hardware accelerated crc32c on Intel, it is still the case that the wrapper for
-that can be loaded via crc32c-intel.
+Hi Yongqiang,
 
---D
-> 
-> Joel
-> 
-> -- 
-> 
-> "I almost ran over an angel
->  He had a nice big fat cigar.
->  'In a sense,' he said, 'You're alone here
->  So if you jump, you'd best jump far.'"
-> 
-> 			http://www.jlbec.org/
-> 			jlbec@evilplan.org
-> 
+Actually I believe it does end up inserting an extent if an extent gets 
+split. For example, we punch a hole in the middle of an extent, so we 
+first split the extent into three pieces, and remove the middle piece.
+
+Because inserting the extra extents can require extra blocks, the 
+operation may temporarily consume blocks. The problem that this causes 
+is that if the file system is really full, it can fail with ENOSPC, even 
+though punch hole is an operation that is supposed to free blocks.  The 
+above EXT4_MB_USE_ROOT_BLOCKS flag was put in so that when we punch 
+holes, we can borrow reserved blocks to complete the operation to avoid 
+the ENOSPC problem.  I had a script to catch this and added to xfstests 
+(test 256). So unless there was a change somewhere that I missed, it 
+does not make sense to me to take it out at this point.
+
+Allison Henderson
+
