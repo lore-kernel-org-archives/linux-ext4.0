@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH v5.2 00/14] crc32c: Add faster algorithm and self-test code
-Date: Thu, 01 Dec 2011 12:13:41 -0800
-Message-ID: <20111201201341.5876.83743.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 01/14] crc32: removed two instances of trailing whitespaces
+Date: Thu, 01 Dec 2011 12:13:50 -0800
+Message-ID: <20111201201350.5876.11817.stgit@elm3c44.beaverton.ibm.com>
+References: <20111201201341.5876.83743.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
@@ -15,65 +16,48 @@ Cc: Theodore Tso <tytso@mit.edu>,
 	Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org,
 	Herbert Xu <herbert@gondor.apana.org.au>
 To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:34368 "EHLO e9.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754051Ab1LAUOk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 1 Dec 2011 15:14:40 -0500
-Received: from /spool/local
-	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Thu, 1 Dec 2011 15:14:39 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20111201201341.5876.83743.stgit@elm3c44.beaverton.ibm.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi all,
+	- remove trailing whitespace from lib/crc32.c
+	- remove trailing whitespace from lib/crc32defs.h
 
-This patchset (re)uses Bob Pearson's crc32 slice-by-8 code to stamp out a
-software crc32c implementation.  It removes the crc32c implementation in
-crypto/ in favor of using the stamped-out one in lib/.  There is also a change
-to Kconfig so that the kernel builder can pick an implementation best suited
-for the hardware.
+From: Bob Pearson <rpearson@systemfabricworks.com>
+Signed-off-by: Bob Pearson <rpearson@systemfabricworks.com>
+[djwong@us.ibm.com: changelog tweaks]
+Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+---
+ lib/crc32.c     |    2 +-
+ lib/crc32defs.h |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-The motivation for this patchset is that I am working on adding full metadata
-checksumming to ext4.  As far as performance impact of adding checksumming
-goes, I see nearly no change with a standard mail server ffsb simulation.  On a
-test that involves only file creation and deletion and extent tree writes, I
-see a drop of about 50 pcercent with the current kernel crc32c implementation;
-this improves to a drop of about 20 percent with the enclosed crc32c code.
 
-When metadata is usually a small fraction of total IO, this new implementation
-doesn't help much because metadata is usually a small fraction of total IO.
-However, when we are doing IO that is almost all metadata (such as rm -rf'ing a
-tree), then this patch speeds up the operation substantially.
-
-Incidentally, given that iscsi, sctp, and btrfs also use crc32c, this patchset
-should improve their speed as well.  I have not yet quantified that, however.
-This latest submission combines Bob's patches from late August 2011 with mine
-so that they can be one coherent patch set.  Please excuse my inability to
-combine some of the patches; I've been advised to leave Bob's patches alone and
-build atop them instead. :/
-
-Since the last posting, I've also collected some crc32c test results on a bunch
-of different x86/powerpc/sparc platforms.  The results can be viewed here:
-http://goo.gl/sgt3i ; the "crc32-kern-le" and "crc32c" columns describe the
-performance of the kernel's current crc32 and crc32c software implementations.
-The "crc32c-by8-le" column shows crc32c performance with this patchset applied.
-I expect crc32 performance to be roughly the same.
-
-The two _boost columns at the right side of the spreadsheet shows how much
-faster the new implementation is over the old one.  As you can see, crc32 rises
-substantially, and crc32c experiences a huge increase.  I'm hoping this patch
-set meets with everyone's approval and can go in soon.  Herbert Xu didn't
-appear to have any strong objections to last month's posting, so I'm wondering
-if Andrew has an opinion?
-
-v2: Use the crypto testmgr api for self-test.
-v3: Get rid of the -be version, which had no users.
-v4: Allow kernel builder a choice of speed vs. space optimization.
-v5: Reuse lib/crc32 for crc32c as well, and make crypto/crc32c use lib/crc32.c.
-v5.1: Include Bob Pearson's patches in submission request.
-v5.2: Fix changelogs for Bob's patches per akpm request.
-
---D
+diff --git a/lib/crc32.c b/lib/crc32.c
+index a6e633a..23b08ba 100644
+--- a/lib/crc32.c
++++ b/lib/crc32.c
+@@ -316,7 +316,7 @@ EXPORT_SYMBOL(crc32_be);
+  * in the correct multiple to subtract, we can shift a byte at a time.
+  * This produces a 40-bit (rather than a 33-bit) intermediate remainder,
+  * but again the multiple of the polynomial to subtract depends only on
+- * the high bits, the high 8 bits in this case.  
++ * the high bits, the high 8 bits in this case.
+  *
+  * The multiple we need in that case is the low 32 bits of a 40-bit
+  * value whose high 8 bits are given, and which is a multiple of the
+diff --git a/lib/crc32defs.h b/lib/crc32defs.h
+index 9b6773d..f5a5401 100644
+--- a/lib/crc32defs.h
++++ b/lib/crc32defs.h
+@@ -8,7 +8,7 @@
+ 
+ /* How many bits at a time to use.  Requires a table of 4<<CRC_xx_BITS bytes. */
+ /* For less performance-sensitive, use 4 */
+-#ifndef CRC_LE_BITS 
++#ifndef CRC_LE_BITS
+ # define CRC_LE_BITS 8
+ #endif
+ #ifndef CRC_BE_BITS
 
