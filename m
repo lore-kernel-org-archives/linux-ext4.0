@@ -1,12 +1,13 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 01/14] crc32: removed two instances of trailing whitespaces
-Date: Thu, 01 Dec 2011 12:13:50 -0800
-Message-ID: <20111201201350.5876.11817.stgit@elm3c44.beaverton.ibm.com>
+From: Joel Becker <jlbec@evilplan.org>
+Subject: Re: [PATCH v5.2 00/14] crc32c: Add faster algorithm and self-test
+ code
+Date: Thu, 1 Dec 2011 12:20:53 -0800
+Message-ID: <20111201202053.GG1495@noexit.corp.google.com>
 References: <20111201201341.5876.83743.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Theodore Tso <tytso@mit.edu>,
 	Joakim Tjernlund <joakim.tjernlund@transmode.se>,
 	Bob Pearson <rpearson@systemfabricworks.com>,
 	linux-kernel <linux-kernel@vger.kernel.org>,
@@ -15,49 +16,48 @@ Cc: Theodore Tso <tytso@mit.edu>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org,
 	Herbert Xu <herbert@gondor.apana.org.au>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: "Darrick J. Wong" <djwong@us.ibm.com>
+Return-path: <linux-crypto-owner@vger.kernel.org>
+Content-Disposition: inline
 In-Reply-To: <20111201201341.5876.83743.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: linux-crypto-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-	- remove trailing whitespace from lib/crc32.c
-	- remove trailing whitespace from lib/crc32defs.h
+On Thu, Dec 01, 2011 at 12:13:41PM -0800, Darrick J. Wong wrote:
+> Hi all,
+> 
+> This patchset (re)uses Bob Pearson's crc32 slice-by-8 code to stamp out a
+> software crc32c implementation.  It removes the crc32c implementation in
+> crypto/ in favor of using the stamped-out one in lib/.  There is also a change
+> to Kconfig so that the kernel builder can pick an implementation best suited
+> for the hardware.
+> 
+> The motivation for this patchset is that I am working on adding full metadata
+> checksumming to ext4.  As far as performance impact of adding checksumming
+> goes, I see nearly no change with a standard mail server ffsb simulation.  On a
+> test that involves only file creation and deletion and extent tree writes, I
+> see a drop of about 50 pcercent with the current kernel crc32c implementation;
+> this improves to a drop of about 20 percent with the enclosed crc32c code.
+> 
+> When metadata is usually a small fraction of total IO, this new implementation
+> doesn't help much because metadata is usually a small fraction of total IO.
+> However, when we are doing IO that is almost all metadata (such as rm -rf'ing a
+> tree), then this patch speeds up the operation substantially.
+> 
+> Incidentally, given that iscsi, sctp, and btrfs also use crc32c, this patchset
+> should improve their speed as well.  I have not yet quantified that, however.
 
-From: Bob Pearson <rpearson@systemfabricworks.com>
-Signed-off-by: Bob Pearson <rpearson@systemfabricworks.com>
-[djwong@us.ibm.com: changelog tweaks]
-Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
----
- lib/crc32.c     |    2 +-
- lib/crc32defs.h |    2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+	I thought they usually used the SSE instruction for crc32 or
+equivalent.
 
+Joel
 
-diff --git a/lib/crc32.c b/lib/crc32.c
-index a6e633a..23b08ba 100644
---- a/lib/crc32.c
-+++ b/lib/crc32.c
-@@ -316,7 +316,7 @@ EXPORT_SYMBOL(crc32_be);
-  * in the correct multiple to subtract, we can shift a byte at a time.
-  * This produces a 40-bit (rather than a 33-bit) intermediate remainder,
-  * but again the multiple of the polynomial to subtract depends only on
-- * the high bits, the high 8 bits in this case.  
-+ * the high bits, the high 8 bits in this case.
-  *
-  * The multiple we need in that case is the low 32 bits of a 40-bit
-  * value whose high 8 bits are given, and which is a multiple of the
-diff --git a/lib/crc32defs.h b/lib/crc32defs.h
-index 9b6773d..f5a5401 100644
---- a/lib/crc32defs.h
-+++ b/lib/crc32defs.h
-@@ -8,7 +8,7 @@
- 
- /* How many bits at a time to use.  Requires a table of 4<<CRC_xx_BITS bytes. */
- /* For less performance-sensitive, use 4 */
--#ifndef CRC_LE_BITS 
-+#ifndef CRC_LE_BITS
- # define CRC_LE_BITS 8
- #endif
- #ifndef CRC_BE_BITS
+-- 
 
+"I almost ran over an angel
+ He had a nice big fat cigar.
+ 'In a sense,' he said, 'You're alone here
+ So if you jump, you'd best jump far.'"
+
+			http://www.jlbec.org/
+			jlbec@evilplan.org
