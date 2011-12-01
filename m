@@ -1,52 +1,38 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH v5.1 00/14] crc32c: Add faster algorithm and self-test
- code
-Date: Wed, 30 Nov 2011 14:29:11 -0800
-Message-ID: <20111130142911.673c2d99.akpm@linux-foundation.org>
-References: <20111128223659.28705.56719.stgit@elm3c44.beaverton.ibm.com>
+From: Kyungmin Park <kmpark@infradead.org>
+Subject: [PATCH] Set the initial TRIM information as TRIMMED
+Date: Thu, 01 Dec 2011 16:00:52 +0900
+Message-ID: <20111201070052.GA29708@july>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Herbert Xu <herbert@gondor.hengli.com.au>,
-	Theodore Tso <tytso@mit.edu>,
-	Joakim Tjernlund <joakim.tjernlund@transmode.se>,
-	Bob Pearson <rpearson@systemfabricworks.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-crypto <linux-crypto@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20111128223659.28705.56719.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: tytso@mit.edu, tm@tao.ma
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-disposition: inline
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 28 Nov 2011 14:36:59 -0800
-"Darrick J. Wong" <djwong@us.ibm.com> wrote:
+From: Kyungmin Park <kyungmin.park@samsung.com>
 
-> This patchset (re)uses Bob Pearson's crc32 slice-by-8 code to stamp out a
-> software crc32c implementation.
+Now trim information doesn't stored at disk so every boot time. it's cleared.
+and do the trim all disk groups.
+But assume that it's already trimmed at previous time so don't need to trim it again. So set the intial state as trimmed.
 
-I think the attributions here are all messed up.  As the patches stand,
-it appears that you wrote all of them.  But I don't think that is the
-case.
-
-If Bob wrote a particular patch then that patch should be sent with a
-From: Bob Pearson <rpearson@systemfabricworks.com> right at the start
-of the changelog so that he is recorded as the primary author.  If the
-email sender (ie: you) was the primary author then this attribution can
-be omitted and we fall back to using the From: from the email headers.
-
-Also, every one of these patches should have you own signed-off-by,
-regardless of its authorship.  For reasons explained in
-Documentation/SubmittingPatches, section 12.
-
-Please fix these things up and resend.
-
-Also, it would be conventional and useful if each patch title was
-prefixed by its subsystem identifier.  ie, "removed two instances of
-trailing whitespaces" should be titled "crc32: remove two instances of
-trailing whitespace" or "lib/crc32.c: remove two instances of trailing
-whitespaces".
-
+Signed-off-by: Kyungmin Park <kyungmin.park@samsung.com>
+---
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index e2d8be8..97ef342 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1098,6 +1098,12 @@ int ext4_mb_init_group(struct super_block *sb, ext4_group_t group)
+ 		goto err;
+ 	}
+ 	mark_page_accessed(page);
++
++	/*
++	 * TRIM information is not stored at disk so set the initial
++	 * state as trimmed. Since previous time it's already trimmed all
++	 */
++	EXT4_MB_GRP_SET_TRIMMED(this_grp);
+ err:
+ 	ext4_mb_put_buddy_page_lock(&e4b);
+ 	return ret;
