@@ -1,130 +1,64 @@
-From: Kyungmin Park <kmpark@infradead.org>
-Subject: Re: [PATCH] Set the initial TRIM information as TRIMMED
-Date: Thu, 1 Dec 2011 17:39:07 +0900
-Message-ID: <CAH9JG2XectT=vFBF04EaLtb-8xsuze1gAVs5jH6jb9qbHG7B4g@mail.gmail.com>
-References: <20111201070052.GA29708@july>
-	<4ED72F1D.7070207@tao.ma>
-	<CAH9JG2UADvsPX0s8TYTZ29j92AwDkVAGOhCwM-VFXQOP5yF7rA@mail.gmail.com>
-	<4ED73B13.7030600@tao.ma>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [PATCH v5.1 00/14] crc32c: Add faster algorithm and self-test
+	code
+Date: Thu, 1 Dec 2011 12:12:37 -0800
+Message-ID: <20111201201237.GB23175@tux1.beaverton.ibm.com>
+References: <20111128223659.28705.56719.stgit@elm3c44.beaverton.ibm.com> <20111130142911.673c2d99.akpm@linux-foundation.org>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Tao Ma <tm@tao.ma>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <4ED73B13.7030600@tao.ma>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Herbert Xu <herbert@gondor.hengli.com.au>,
+	Theodore Tso <tytso@mit.edu>,
+	Joakim Tjernlund <joakim.tjernlund@transmode.se>,
+	Bob Pearson <rpearson@systemfabricworks.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-crypto <linux-crypto@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-crypto-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20111130142911.673c2d99.akpm@linux-foundation.org>
+Sender: linux-crypto-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 12/1/11, Tao Ma <tm@tao.ma> wrote:
-> On 12/01/2011 04:19 PM, Kyungmin Park wrote:
->> On 12/1/11, Tao Ma <tm@tao.ma> wrote:
->>> Hi Kyungmin,
->>> On 12/01/2011 03:00 PM, Kyungmin Park wrote:
->>>> From: Kyungmin Park <kyungmin.park@samsung.com>
->>>>
->>>> Now trim information doesn't stored at disk so every boot time. it's
->>>> cleared.
->>>> and do the trim all disk groups.
->>>> But assume that it's already trimmed at previous time so don't need to
->>>> trim it again. So set the intial state as trimmed.
->>> sorry, I don't get your meaning here.
->>> Why can we assume that the group is already trimmed since it isn't
->>> stored in the disk?
->> To avoid the first time trim operation.
->> Every boot time. run the fitrim then it trims all block groups again.
->> but it's already done at previous time. so don't need to trim it
->> again.
->> Doesn't make sense? I think it's not designed behavior.
-> You make the assumption that we run the fitrim every time at boot time.
-> But what if the user don't run it at all? I guess "run fitrim during
-> boot" is your firmware's behaviour and it isn't an assumption for all
-> the other users.
->
-> Having said that, this flag will be cleared whenever some
-> blocks/clusters are freed. So maybe it doesn't matter for setting this
-> flag during the group initialization.
-Right,
+On Wed, Nov 30, 2011 at 02:29:11PM -0800, Andrew Morton wrote:
+> On Mon, 28 Nov 2011 14:36:59 -0800
+> "Darrick J. Wong" <djwong@us.ibm.com> wrote:
+> 
+> > This patchset (re)uses Bob Pearson's crc32 slice-by-8 code to stamp out a
+> > software crc32c implementation.
+> 
+> I think the attributions here are all messed up.  As the patches stand,
+> it appears that you wrote all of them.  But I don't think that is the
+> case.
+> 
+> If Bob wrote a particular patch then that patch should be sent with a
+> From: Bob Pearson <rpearson@systemfabricworks.com> right at the start
+> of the changelog so that he is recorded as the primary author.  If the
+> email sender (ie: you) was the primary author then this attribution can
+> be omitted and we fall back to using the From: from the email headers.
+> 
+> Also, every one of these patches should have you own signed-off-by,
+> regardless of its authorship.  For reasons explained in
+> Documentation/SubmittingPatches, section 12.
+> 
+> Please fix these things up and resend.
+> 
+> Also, it would be conventional and useful if each patch title was
+> prefixed by its subsystem identifier.  ie, "removed two instances of
+> trailing whitespaces" should be titled "crc32: remove two instances of
+> trailing whitespace" or "lib/crc32.c: remove two instances of trailing
+> whitespaces".
 
-I hope trim the real updated blocks only.
+Okay, I'll massage the changelogs to give them more descriptive subjects, and
+fix the attribution chain.  Thank you for the feedback.
 
-Thank you,
-Kyungmin Park
->
-> Thanks
-> Tao
->>
->> In your patch at http://patchwork.ozlabs.org/patch/102918/
->>
->> with the patch:
->> [root@boyu-tm linux-2.6]# time ./ftrim /mnt/ext4/a
->> real	0m5.625s
->> user	0m0.000s
->> sys	0m1.269s
->> [root@boyu-tm linux-2.6]# time ./ftrim /mnt/ext4/a
->> real	0m0.002s
->> user	0m0.000s
->> sys	0m0.001s
->> [root@boyu-tm linux-2.6]# time ./ftrim /mnt/ext4/a
->> real	0m0.002s
->> user	0m0.000s
->> sys	0m0.001s
->>
->> After reboot. it maybe become below
->>
->> [root@boyu-tm linux-2.6]# time ./ftrim /mnt/ext4/a
->> real	0m0.002s
->> user	0m0.000s
->> sys	0m0.001s
->> [root@boyu-tm linux-2.6]# time ./ftrim /mnt/ext4/a
->> real	0m0.002s
->> user	0m0.000s
->> sys	0m0.001s
->> [root@boyu-tm linux-2.6]# time ./ftrim /mnt/ext4/a
->> real	0m0.002s
->> user	0m0.000s
->> sys	0m0.001s
->>
->> Thank you,
->> Kyungmin Park
->>>
->>> Thanks
->>> Tao
->>>>
->>>> Signed-off-by: Kyungmin Park <kyungmin.park@samsung.com>
->>>> ---
->>>> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
->>>> index e2d8be8..97ef342 100644
->>>> --- a/fs/ext4/mballoc.c
->>>> +++ b/fs/ext4/mballoc.c
->>>> @@ -1098,6 +1098,12 @@ int ext4_mb_init_group(struct super_block *sb,
->>>> ext4_group_t group)
->>>>  		goto err;
->>>>  	}
->>>>  	mark_page_accessed(page);
->>>> +
->>>> +	/*
->>>> +	 * TRIM information is not stored at disk so set the initial
->>>> +	 * state as trimmed. Since previous time it's already trimmed all
->>>> +	 */
->>>> +	EXT4_MB_GRP_SET_TRIMMED(this_grp);
->>>>  err:
->>>>  	ext4_mb_put_buddy_page_lock(&e4b);
->>>>  	return ret;
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> Please read the FAQ at  http://www.tux.org/lkml/
->
+--D
+> 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+> 
