@@ -1,79 +1,98 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [PATCH 4/6] ext4: remove code related to punching hole from ext4_ext_insert_extent
-Date: Fri, 2 Dec 2011 09:09:33 +0800
-Message-ID: <CAGBYx2ZVMaYofC6WBQrKCD9H1Kw9KrkipS9jTRECw-1m14_tgg@mail.gmail.com>
-References: <1321495405-9583-1-git-send-email-xiaoqiangnk@gmail.com>
-	<1321495405-9583-4-git-send-email-xiaoqiangnk@gmail.com>
-	<4ED7E9C9.2020307@linux.vnet.ibm.com>
+Subject: Re: [PATCH 1/2] ext4: let mpage_submit_io works well when blocksize < pagesize
+Date: Fri, 2 Dec 2011 09:15:46 +0800
+Message-ID: <CAGBYx2Zubgp+ed297BebAjV_WYiiYnu_-Fjrz1EVkaemUCmzmg@mail.gmail.com>
+References: <1322039726-3587-1-git-send-email-xiaoqiangnk@gmail.com>
+	<4ED7DFD0.8020503@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
 To: Allison Henderson <achender@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:61541 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754382Ab1LBBJe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Dec 2011 20:09:34 -0500
-Received: by ghrr1 with SMTP id r1so2415888ghr.19
-        for <linux-ext4@vger.kernel.org>; Thu, 01 Dec 2011 17:09:33 -0800 (PST)
-In-Reply-To: <4ED7E9C9.2020307@linux.vnet.ibm.com>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:65165 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756216Ab1LBBPr convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Dec 2011 20:15:47 -0500
+Received: by ggnr5 with SMTP id r5so2412257ggn.19
+        for <linux-ext4@vger.kernel.org>; Thu, 01 Dec 2011 17:15:46 -0800 (PST)
+In-Reply-To: <4ED7DFD0.8020503@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 2, 2011 at 4:55 AM, Allison Henderson
+On Fri, Dec 2, 2011 at 4:13 AM, Allison Henderson
 <achender@linux.vnet.ibm.com> wrote:
-> On 11/16/2011 07:03 PM, Yongqiang Yang wrote:
+> On 11/23/2011 02:15 AM, Yongqiang Yang wrote:
 >>
->> Punch hole should never call ext4_ext_insert_extent, so this patch
->> removes code related to it from ext4_ext_insert_extent.
+>> If there is a unwritten but clean buffer in a page and there is a di=
+rty
+>> buffer
+>> after the buffer, then mpage_submit_io does not write the dirty buff=
+er
+>> out.
+>> As a result, da_writepages loops forever.
+>>
+>> This patch fixes the problem by checking dirty flag.
 >>
 >> Signed-off-by: Yongqiang Yang<xiaoqiangnk@gmail.com>
 >> ---
->> =A0fs/ext4/extents.c | =A0 =A02 --
->> =A01 files changed, 0 insertions(+), 2 deletions(-)
+>> =A0fs/ext4/inode.c | =A0 =A07 +++++--
+>> =A01 files changed, 5 insertions(+), 2 deletions(-)
 >>
->> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
->> index 6888d1a..720070d 100644
->> --- a/fs/ext4/extents.c
->> +++ b/fs/ext4/extents.c
->> @@ -1737,8 +1737,6 @@ int ext4_ext_insert_extent(handle_t *handle, s=
-truct
->> inode *inode,
->> =A0 =A0 =A0 =A0 * There is no free space in the found leaf.
->> =A0 =A0 =A0 =A0 * We're gonna add a new leaf in the tree.
->> =A0 =A0 =A0 =A0 */
->> - =A0 =A0 =A0 if (flag& =A0EXT4_GET_BLOCKS_PUNCH_OUT_EXT)
->> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 flags =3D EXT4_MB_USE_ROOT_BLOCKS;
->> =A0 =A0 =A0 =A0err =3D ext4_ext_create_new_leaf(handle, inode, flags=
-, path, newext);
->> =A0 =A0 =A0 =A0if (err)
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto cleanup;
+>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+>> index 755f6c7..20a1d17 100644
+>> --- a/fs/ext4/inode.c
+>> +++ b/fs/ext4/inode.c
+>> @@ -1339,8 +1339,11 @@ static int mpage_da_submit_io(struct mpage_da=
+_data
+>> *mpd,
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
+=A0 =A0 =A0clear_buffer_unwritten(bh);
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+>>
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* ski=
+p page if block allocation undone */
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (bu=
+ffer_delay(bh) ||
+>> buffer_unwritten(bh))
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /*
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* s=
+kip page if block allocation undone
+>> and
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* b=
+lock is dirty
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0*/
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (ex=
+t4_bh_delay_or_unwritten(NULL, bh))
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
+=A0 =A0 =A0skip_page =3D 1;
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0bh =3D=
+ bh->b_this_page;
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0block=
+_start +=3D bh->b_size;
 >
 > Hi Yongqiang,
 >
-> Actually I believe it does end up inserting an extent if an extent ge=
-ts
-> split. For example, we punch a hole in the middle of an extent, so we=
- first
-> split the extent into three pieces, and remove the middle piece.
->
-> Because inserting the extra extents can require extra blocks, the ope=
-ration
-> may temporarily consume blocks. The problem that this causes is that =
-if the
-> file system is really full, it can fail with ENOSPC, even though punc=
-h hole
-> is an operation that is supposed to free blocks. =A0The above
-> EXT4_MB_USE_ROOT_BLOCKS flag was put in so that when we punch holes, =
-we can
-> borrow reserved blocks to complete the operation to avoid the ENOSPC
-> problem. =A0I had a script to catch this and added to xfstests (test =
-256). So
-> unless there was a change somewhere that I missed, it does not make s=
-ense to
-> me to take it out at this point.
-Got it.  Thank you for your explanation.
+> Thank you for looking into the punch hole code, I know there's been s=
+ome
+> recent bugs reported, so I am looking at it too. =A0I've applied your=
+ patch
+> and ran it through an fsx stress test, and I notice there are some fa=
+ilures,
+> but it appears to run longer with the patch then with out it, so it m=
+ay not
+> be the cause of the errors I'm seeing. I think maybe something else m=
+ay have
+> happened between now and the last time it made it through 24hr of fsx=
+ (at
+> least for me :) ), so I'm continuing to look through the recent code
+On the other hand, xfstests have a lot of changes since your last
+test.   I am not sure if original xfstests did not discover some
+errors.
+> changes. =A0I will keep folks posted on my findings. =A0Thx!
+Did you test it by multi-thread tests or single thread tests?  If
+multi-thread, I suggest that we hold the i_mutex in punching hole.
+
 
 Yongqiang.
 >
