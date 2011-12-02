@@ -1,7 +1,7 @@
 From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: [PATCH] Set the initial TRIM information as TRIMMED
-Date: Fri, 02 Dec 2011 09:45:24 -0600
-Message-ID: <4ED8F294.1010500@redhat.com>
+Date: Fri, 02 Dec 2011 09:57:26 -0600
+Message-ID: <4ED8F566.4050005@redhat.com>
 References: <20111201070052.GA29708@july> <4ED7FA81.9090802@redhat.com> <CAH9JG2WYsybK6aTo3+S58JM568S_YG7YqhP2jfrQ4pQ12GA5UQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
@@ -10,10 +10,10 @@ Cc: Lukas Czerner <lczerner@redhat.com>, tytso@mit.edu, tm@tao.ma,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 To: Kyungmin Park <kmpark@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36239 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:32213 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754424Ab1LBPpd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 2 Dec 2011 10:45:33 -0500
+	id S1756864Ab1LBP5f (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 2 Dec 2011 10:57:35 -0500
 In-Reply-To: <CAH9JG2WYsybK6aTo3+S58JM568S_YG7YqhP2jfrQ4pQ12GA5UQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -68,10 +68,22 @@ On 12/1/11 6:01 PM, Kyungmin Park wrote:
 > burden to trim at boot time. it has still slower boot time.
 > some daemon or program run fitrm at filesystem. it consumes time and
 > hurt other boot processes.
+>>
+>> then we won't trim anything at all, right, despite there being many
+>> new free blocks?  Which would be rather unexpected.
+>>
+>> If we don't store the trimmed state on disk, I think we should
+>> probably stick with the slower first-time trim, and the more obvious
+>> behavior (all free blocks are always trimmed whenever a trim
+>> command is issued).
+> 
+> Umm how do you think, introduce the trim force command for this?
 
-Why not just do smaller FITRIM commands in the background while the phone
-is running?  Why do you want to trim the whole fs at boot time
-in the first place?
+Alternately, can we use a bit in bg_flags to keep a better view of this
+state on disk, if this is critical?
 
 -Eric
+
+> Thank you,
+> Kyungmin Park
 
