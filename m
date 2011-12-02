@@ -1,43 +1,95 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: WARNING: at fs/inode.c:884 unlock_new_inode+0x34/0x59()
-Date: Thu, 01 Dec 2011 16:33:37 -0600
-Message-ID: <4ED800C1.4040303@redhat.com>
-References: <4ED2994A.9080907@gmail.com> <4ED29C63.8070601@gmail.com> <20111127213432.GA22465@thunk.org> <4ED3CF24.2050702@gmail.com> <0F03D476-02D9-4C10-8A4D-7949E5B07CBB@mit.edu> <4ED3DC42.20504@gmail.com>
+From: Kyungmin Park <kmpark@infradead.org>
+Subject: Re: [PATCH] Set the initial TRIM information as TRIMMED
+Date: Fri, 2 Dec 2011 09:01:10 +0900
+Message-ID: <CAH9JG2WYsybK6aTo3+S58JM568S_YG7YqhP2jfrQ4pQ12GA5UQ@mail.gmail.com>
+References: <20111201070052.GA29708@july>
+	<4ED7FA81.9090802@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@MIT.EDU>, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org
-To: Alex <alex.vizor@gmail.com>
+Cc: tytso@mit.edu, tm@tao.ma, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>,
+	Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40332 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754960Ab1LAWdm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 1 Dec 2011 17:33:42 -0500
-In-Reply-To: <4ED3DC42.20504@gmail.com>
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:56026 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755597Ab1LBABL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Dec 2011 19:01:11 -0500
+In-Reply-To: <4ED7FA81.9090802@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/28/11 1:08 PM, Alex wrote:
-> On 11/28/2011 09:28 PM, Theodore Tso wrote:
->> On Nov 28, 2011, at 1:12 PM, Alex wrote:
+On 12/2/11, Eric Sandeen <sandeen@redhat.com> wrote:
+> On 12/1/11 1:00 AM, Kyungmin Park wrote:
+>> From: Kyungmin Park <kyungmin.park@samsung.com>
 >>
->>> Hi Ted,
->>>
->>> This is full dmesg with suspend to disk. This time no fs errors happened. And unfortunately I don't remember what kind of errors were there last time.
->>>
->> OK, so you have a very large number of warnings, spanning over several seconds.   That sounds to me like a memory corruption problem, as opposed to some kind of race that only happens for a symlink creation happening right during the suspend/resume.
+>> Now trim information doesn't stored at disk so every boot time. it's
+>> cleared.
+>> and do the trim all disk groups.
+>> But assume that it's already trimmed at previous time so don't need to
+>> trim it again. So set the intial state as trimmed.
 >>
->> I can fix the warning and arrange to print more debugging information so that if this happens again, we get more information, but if you can't reproduce it, I'm not sure there's much more I can do for now.
->>
->> Regards,
->>
->> -- Ted
->>
-> Yes I can reproduce this, it happens after every s2disk.
+>> Signed-off-by: Kyungmin Park <kyungmin.park@samsung.com>
+>> ---
+>> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+>> index e2d8be8..97ef342 100644
+>> --- a/fs/ext4/mballoc.c
+>> +++ b/fs/ext4/mballoc.c
+>> @@ -1098,6 +1098,12 @@ int ext4_mb_init_group(struct super_block *sb,
+>> ext4_group_t group)
+>>  		goto err;
+>>  	}
+>>  	mark_page_accessed(page);
+>> +
+>> +	/*
+>> +	 * TRIM information is not stored at disk so set the initial
+>> +	 * state as trimmed. Since previous time it's already trimmed all
+>> +	 */
+>> +	EXT4_MB_GRP_SET_TRIMMED(this_grp);
+>
+Hi,
 
-And FYI a few other users are hitting it, see https://bugzilla.redhat.com/show_bug.cgi?id=744275
+> Hm, so if there were freed but un-trimmed blocks at this point, we will
+> never trim them until we free _another_ block in the group, right?  That
+> might be a reasonable tradeoff, but it is somewhat surprising behavior.
+>
+> i.e. say we do:
+>
+> mount /mnt
+> rm -rf /mnt/very_big_file
+> umount /mnt
+>
+> mount /mnt
+> fitrim /mnt
+another word, you can run fitrim after rm -rf
+yes, it's trade-off.
 
-Several of the bugs dup'd to that bug are from distinct users.
+In my case, phone scenario, no umount system and data partition. it's
+burden to trim at boot time. it has still slower boot time.
+some daemon or program run fitrm at filesystem. it consumes time and
+hurt other boot processes.
+>
+> then we won't trim anything at all, right, despite there being many
+> new free blocks?  Which would be rather unexpected.
+>
+> If we don't store the trimmed state on disk, I think we should
+> probably stick with the slower first-time trim, and the more obvious
+> behavior (all free blocks are always trimmed whenever a trim
+> command is issued).
 
--Eric
+Umm how do you think, introduce the trim force command for this?
+
+Thank you,
+Kyungmin Park
+>
+> -Eric
+>
+>>  err:
+>>  	ext4_mb_put_buddy_page_lock(&e4b);
+>>  	return ret;
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
