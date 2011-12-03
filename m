@@ -1,89 +1,59 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] Set the initial TRIM information as TRIMMED
-Date: Fri, 02 Dec 2011 09:57:26 -0600
-Message-ID: <4ED8F566.4050005@redhat.com>
-References: <20111201070052.GA29708@july> <4ED7FA81.9090802@redhat.com> <CAH9JG2WYsybK6aTo3+S58JM568S_YG7YqhP2jfrQ4pQ12GA5UQ@mail.gmail.com>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [PATCH v5.2 00/14] crc32c: Add faster algorithm and self-test
+	code
+Date: Fri, 2 Dec 2011 18:30:37 -0800
+Message-ID: <20111203023037.GA16577@tux1.beaverton.ibm.com>
+References: <20111201201341.5876.83743.stgit@elm3c44.beaverton.ibm.com> <20111201202053.GG1495@noexit.corp.google.com> <20111201203122.GC23175@tux1.beaverton.ibm.com> <20111202002358.GA19842@gondor.apana.org.au>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Lukas Czerner <lczerner@redhat.com>, tytso@mit.edu, tm@tao.ma,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Kyungmin Park <kmpark@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Theodore Tso <tytso@mit.edu>,
+	Joakim Tjernlund <joakim.tjernlund@transmode.se>,
+	Bob Pearson <rpearson@systemfabricworks.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-crypto <linux-crypto@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org
+To: Herbert Xu <herbert@gondor.apana.org.au>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32213 "EHLO mx1.redhat.com"
+Received: from e9.ny.us.ibm.com ([32.97.182.139]:59247 "EHLO e9.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756864Ab1LBP5f (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 2 Dec 2011 10:57:35 -0500
-In-Reply-To: <CAH9JG2WYsybK6aTo3+S58JM568S_YG7YqhP2jfrQ4pQ12GA5UQ@mail.gmail.com>
+	id S1754989Ab1LCCao (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 2 Dec 2011 21:30:44 -0500
+Received: from /spool/local
+	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Fri, 2 Dec 2011 21:30:43 -0500
+Content-Disposition: inline
+In-Reply-To: <20111202002358.GA19842@gondor.apana.org.au>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 12/1/11 6:01 PM, Kyungmin Park wrote:
-> On 12/2/11, Eric Sandeen <sandeen@redhat.com> wrote:
->> On 12/1/11 1:00 AM, Kyungmin Park wrote:
->>> From: Kyungmin Park <kyungmin.park@samsung.com>
->>>
->>> Now trim information doesn't stored at disk so every boot time. it's
->>> cleared.
->>> and do the trim all disk groups.
->>> But assume that it's already trimmed at previous time so don't need to
->>> trim it again. So set the intial state as trimmed.
->>>
->>> Signed-off-by: Kyungmin Park <kyungmin.park@samsung.com>
->>> ---
->>> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
->>> index e2d8be8..97ef342 100644
->>> --- a/fs/ext4/mballoc.c
->>> +++ b/fs/ext4/mballoc.c
->>> @@ -1098,6 +1098,12 @@ int ext4_mb_init_group(struct super_block *sb,
->>> ext4_group_t group)
->>>  		goto err;
->>>  	}
->>>  	mark_page_accessed(page);
->>> +
->>> +	/*
->>> +	 * TRIM information is not stored at disk so set the initial
->>> +	 * state as trimmed. Since previous time it's already trimmed all
->>> +	 */
->>> +	EXT4_MB_GRP_SET_TRIMMED(this_grp);
->>
-> Hi,
+On Fri, Dec 02, 2011 at 08:23:58AM +0800, Herbert Xu wrote:
+> On Thu, Dec 01, 2011 at 12:31:22PM -0800, Darrick J. Wong wrote:
+> .
+> > They seem to call crc32c(), which is in crypto/crc32c.  If you're interested in
 > 
->> Hm, so if there were freed but un-trimmed blocks at this point, we will
->> never trim them until we free _another_ block in the group, right?  That
->> might be a reasonable tradeoff, but it is somewhat surprising behavior.
->>
->> i.e. say we do:
->>
->> mount /mnt
->> rm -rf /mnt/very_big_file
->> umount /mnt
->>
->> mount /mnt
->> fitrim /mnt
-> another word, you can run fitrim after rm -rf
-> yes, it's trade-off.
+> Nope, the crypto API layer will use the SSE implementation
+> where available.  Only when it isn't available will the C version
+> in crypto/ be used.
+
+There's a SSE version other than what's in crc32c-intel?
+
+(I suspect we're talking about the same thing?)
+
+--D
 > 
-> In my case, phone scenario, no umount system and data partition. it's
-> burden to trim at boot time. it has still slower boot time.
-> some daemon or program run fitrm at filesystem. it consumes time and
-> hurt other boot processes.
->>
->> then we won't trim anything at all, right, despite there being many
->> new free blocks?  Which would be rather unexpected.
->>
->> If we don't store the trimmed state on disk, I think we should
->> probably stick with the slower first-time trim, and the more obvious
->> behavior (all free blocks are always trimmed whenever a trim
->> command is issued).
+> Cheers,
+> -- 
+> Email: Herbert Xu <herbert@gondor.apana.org.au>
+> Home Page: http://gondor.apana.org.au/~herbert/
+> PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-> Umm how do you think, introduce the trim force command for this?
-
-Alternately, can we use a bit in bg_flags to keep a better view of this
-state on disk, if this is critical?
-
--Eric
-
-> Thank you,
-> Kyungmin Park
 
