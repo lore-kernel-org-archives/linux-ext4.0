@@ -1,7 +1,7 @@
 From: Kamal Mostafa <kamal@canonical.com>
-Subject: [PATCH 1/5 resend] Adding support to freeze and unfreeze a journal
-Date: Mon,  5 Dec 2011 12:54:45 -0800
-Message-ID: <1323118489-16326-2-git-send-email-kamal@canonical.com>
+Subject: [PATCH 3/5 resend] VFS: Fix s_umount thaw/write deadlock
+Date: Mon,  5 Dec 2011 12:54:47 -0800
+Message-ID: <1323118489-16326-4-git-send-email-kamal@canonical.com>
 References: <1323118489-16326-1-git-send-email-kamal@canonical.com>
 Cc: linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
@@ -10,8 +10,7 @@ Cc: linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
 	Kamal Mostafa <kamal@canonical.com>,
 	Christopher Chaltain <christopher.chaltain@canonical.com>,
 	"Peter M. Petrakis" <peter.petrakis@canonical.com>,
-	Mikulas Patocka <mpatocka@redhat.com>,
-	Surbhi Palande <surbhi.palande@canonical.com>
+	Mikulas Patocka <mpatocka@redhat.com>
 To: Jan Kara <jack@suse.cz>, Alexander Viro <viro@zeniv.linux.org.uk>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Matthew Wilcox <matthew@wil.cx>,
@@ -22,213 +21,283 @@ In-Reply-To: <1323118489-16326-1-git-send-email-kamal@canonical.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Surbhi Palande <surbhi.palande@canonical.com>
+From: Valerie Aurora <val@vaaconsulting.com>
 
-The journal should be frozen when a filesystem freezes. What this means is
-that until the filesystem is thawed again, no new transactions should be
-accepted by the journal. When the filesystem thaws, inturn it should thaw the
-journal and this should allow the journal to resume accepting new
-transactions. While the the filesystem has frozen the journal, the clients of
-the journal on calling jbd2_journal_start() will sleep on a wait queue.
-Thawing the journal will wake up the sleeping clients and journalling can
-progress normally.
+File system freeze/thaw require the superblock's s_umount lock.
+However, we write to the file system while holding the s_umount lock
+in several places (e.g., writeback and quotas).  Any of these can
+block on a frozen file system while holding s_umount, preventing any
+later thaw from occurring, since thaw requires s_umount.
 
-An example of the race condition that can happen without this patch is as
-follows:
-
-Say the filesystem is thawed when we begin. Let tx be the time at unit x
-
-P1: Process doing an aio write
-t1) ext4_file_write()
-  t2) generic_file_aio_write()
-    t3) __generic_file_aio_write()
-      // filesystem is not frozen, so we do not block in the next check.
-      t4) vfs_check_frozen()
-      t5) generic_write_checks()
------------------ Prempted------------------
-
-P2: Process that does filesystem freeze
-
-t6) freeze_super()
-  t7) sync_filesystem()
-  t8) sync_blockdev()
-  t9) sb->s_op->freeze_fs() (= ext4_freeze)
-    t10) jbd2_journal_lock_updates()
-    t11) jbd2_journal_flush()
-    // Need to unlock the journal before returning to user space.
-    t12) jbd2_journal_unlock_updates()
-    // Journal is unlocked and so we can start accepting new transactions now.
-
-// freezing process completes execution. Page cache is now clean and should
-// remain clean till the filesystem is frozen.
---------------------------------------------
-
-P1: writing process gets the control back
-t13) generic_file_buffered_write()
-  t14) generic_perform_write()
-    t15) a_ops->write_begin() (= ext4_write_begin)
-      t16) ext4_journal_start()
-	// New handle is started. We do not block here! Write continues
-	// dirtying the page cache while the filesystem is frozen!
+The solution is to add a check, vfs_is_frozen(), to all code paths
+that write while holding sb->s_umount and return without writing if it
+is true.
 
 BugLink: https://bugs.launchpad.net/bugs/897421
-Signed-off-by: Surbhi Palande <surbhi.palande@canonical.com>
-Acked-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Andreas Dilger <adilger.kernel@dilger.ca>
+Signed-off-by: Valerie Aurora <val@vaaconsulting.com>
 Cc: Kamal Mostafa <kamal@canonical.com>
 Tested-by: Peter M. Petrakis <peter.petrakis@canonical.com>
 Signed-off-by: Kamal Mostafa <kamal@canonical.com>
 ---
- fs/ext4/super.c       |   20 ++++++--------------
- fs/jbd2/journal.c     |    1 +
- fs/jbd2/transaction.c |   42 ++++++++++++++++++++++++++++++++++++++++++
- include/linux/jbd2.h  |    7 +++++++
- 4 files changed, 56 insertions(+), 14 deletions(-)
+ fs/drop_caches.c   |    8 ++++++++
+ fs/fs-writeback.c  |   50 +++++++++++++++++++++++++++++++++-----------------
+ fs/quota/quota.c   |   12 +++++++++++-
+ fs/super.c         |   26 ++++++++++++++++++++++++++
+ fs/sync.c          |    9 +++++----
+ include/linux/fs.h |    6 +++++-
+ 6 files changed, 88 insertions(+), 23 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 3858767..5bfdc21 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4330,23 +4330,15 @@ static int ext4_freeze(struct super_block *sb)
- 
- 	journal = EXT4_SB(sb)->s_journal;
- 
--	/* Now we set up the journal barrier. */
--	jbd2_journal_lock_updates(journal);
--
-+	error = jbd2_journal_freeze(journal);
- 	/*
--	 * Don't clear the needs_recovery flag if we failed to flush
-+	 * Don't clear the needs_recovery flag if we failed to freeze
- 	 * the journal.
- 	 */
--	error = jbd2_journal_flush(journal);
--	if (error < 0)
--		goto out;
--
--	/* Journal blocked and flushed, clear needs_recovery flag. */
--	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
--	error = ext4_commit_super(sb, 1);
--out:
--	/* we rely on s_frozen to stop further updates */
--	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
-+	if (error >= 0) {
-+		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
-+		error = ext4_commit_super(sb, 1);
-+	}
- 	return error;
- }
- 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 0fa0123..f0170cc 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -894,6 +894,7 @@ static journal_t * journal_init_common (void)
- 	init_waitqueue_head(&journal->j_wait_checkpoint);
- 	init_waitqueue_head(&journal->j_wait_commit);
- 	init_waitqueue_head(&journal->j_wait_updates);
-+	init_waitqueue_head(&journal->j_wait_frozen);
- 	mutex_init(&journal->j_barrier);
- 	mutex_init(&journal->j_checkpoint_mutex);
- 	spin_lock_init(&journal->j_revoke_lock);
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index a0e41a4..340ee35 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -173,6 +173,17 @@ repeat:
- 				journal->j_barrier_count == 0);
- 		goto repeat;
- 	}
-+	/* Don't let a new handle start when a journal is frozen.
-+	 * jbd2_journal_freeze calls jbd2_journal_unlock_updates() only after
-+	 * the j_flags indicate that the journal is frozen. So if the
-+	 * j_barrier_count is 0, then check if this was made 0 by the freezing
-+	 * process
-+	 */
-+	if (journal->j_flags & JBD2_FROZEN) {
-+		read_unlock(&journal->j_state_lock);
-+		wait_event(journal->j_wait_frozen, (journal->j_flags & JBD2_FROZEN));
-+		goto repeat;
-+	}
- 
- 	if (!journal->j_running_transaction) {
- 		read_unlock(&journal->j_state_lock);
-@@ -492,6 +503,37 @@ int jbd2_journal_restart(handle_t *handle, int nblocks)
- }
- EXPORT_SYMBOL(jbd2_journal_restart);
- 
-+int jbd2_journal_freeze(journal_t *journal)
-+{
-+	int error = 0;
-+	/* Now we set up the journal barrier. */
-+	jbd2_journal_lock_updates(journal);
+diff --git a/fs/drop_caches.c b/fs/drop_caches.c
+index c00e055..90f8f7e 100644
+--- a/fs/drop_caches.c
++++ b/fs/drop_caches.c
+@@ -57,6 +57,14 @@ int drop_caches_sysctl_handler(ctl_table *table, int write,
+ 	ret = proc_dointvec_minmax(table, write, buffer, length, ppos);
+ 	if (ret)
+ 		return ret;
 +
 +	/*
-+	 * Don't clear the needs_recovery flag if we failed to flush
-+	 * the journal.
++	 * Any file-system specific routines eventually called by
++	 * drop_pagecache_sb() and drop_slab() ought to check for a
++	 * frozen file system before writing to the disk.  Most file
++	 * systems won't write in this case but XFS is a notable
++	 * exception in certain cases.
 +	 */
-+	error = jbd2_journal_flush(journal);
-+	if (error >= 0) {
-+		write_lock(&journal->j_state_lock);
-+		journal->j_flags |= JBD2_FROZEN;
-+		write_unlock(&journal->j_state_lock);
+ 	if (write) {
+ 		if (sysctl_drop_caches & 1)
+ 			iterate_supers(drop_pagecache_sb, NULL);
+diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+index 73c3992..dbeaede 100644
+--- a/fs/fs-writeback.c
++++ b/fs/fs-writeback.c
+@@ -554,6 +554,14 @@ static long writeback_sb_inodes(struct super_block *sb,
+ 	while (!list_empty(&wb->b_io)) {
+ 		struct inode *inode = wb_inode(wb->b_io.prev);
+ 
++		if (inode->i_sb == sb && vfs_is_frozen(sb)) {
++			/*
++			 * Inode is on a frozen superblock; skip it for now.
++			 */
++			redirty_tail(inode, wb);
++			continue;
++		}
++
+ 		if (inode->i_sb != sb) {
+ 			if (work->sb) {
+ 				/*
+@@ -1266,40 +1274,48 @@ EXPORT_SYMBOL(writeback_inodes_sb);
+  * writeback_inodes_sb_if_idle	-	start writeback if none underway
+  * @sb: the superblock
+  *
+- * Invoke writeback_inodes_sb if no writeback is currently underway.
+- * Returns 1 if writeback was started, 0 if not.
++ * Invoke writeback_inodes_sb if no writeback is currently underway
++ * and no one else holds the s_umount lock.  Returns 1 if writeback
++ * was started, 0 if not.
+  */
+ int writeback_inodes_sb_if_idle(struct super_block *sb, enum wb_reason reason)
+ {
+ 	if (!writeback_in_progress(sb->s_bdi)) {
+-		down_read(&sb->s_umount);
+-		writeback_inodes_sb(sb, reason);
+-		up_read(&sb->s_umount);
+-		return 1;
+-	} else
+-		return 0;
++		/*
++		 * Trylock also avoids read-write deadlocks that could be
++		 * triggered by freeze.
++		 */
++		if (down_read_trylock(&sb->s_umount)) {
++			writeback_inodes_sb(sb, reason);
++			up_read(&sb->s_umount);
++			return 1;
++		}
 +	}
-+	jbd2_journal_unlock_updates(journal);
-+	return error;
-+}
-+EXPORT_SYMBOL(jbd2_journal_freeze);
-+
-+void jbd2_journal_thaw(journal_t * journal)
-+{
-+	write_lock(&journal->j_state_lock);
-+	journal->j_flags &= ~JBD2_FROZEN;
-+	write_unlock(&journal->j_state_lock);
-+	wake_up(&journal->j_wait_frozen);
-+}
-+EXPORT_SYMBOL(jbd2_journal_thaw);
-+
-+
++	return 0;
+ }
+ EXPORT_SYMBOL(writeback_inodes_sb_if_idle);
+ 
  /**
-  * void jbd2_journal_lock_updates () - establish a transaction barrier.
-  * @journal:  Journal to establish a barrier on.
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 2092ea2..bfa0752 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -658,6 +658,7 @@ jbd2_time_diff(unsigned long start, unsigned long end)
-  * @j_wait_checkpoint:  Wait queue to trigger checkpointing
-  * @j_wait_commit: Wait queue to trigger commit
-  * @j_wait_updates: Wait queue to wait for updates to complete
-+ * @j_wait_frozen: Wait queue to wait for journal to thaw
-  * @j_checkpoint_mutex: Mutex for locking against concurrent checkpoints
-  * @j_head: Journal head - identifies the first unused block in the journal
-  * @j_tail: Journal tail - identifies the oldest still-used block in the
-@@ -775,6 +776,9 @@ struct journal_s
- 	/* Wait queue to wait for updates to complete */
- 	wait_queue_head_t	j_wait_updates;
+- * writeback_inodes_sb_if_idle	-	start writeback if none underway
++ * writeback_inodes_sb_nr_if_idle	-	start writeback if none underway
+  * @sb: the superblock
+  * @nr: the number of pages to write
+  *
+- * Invoke writeback_inodes_sb if no writeback is currently underway.
+- * Returns 1 if writeback was started, 0 if not.
++ * Invoke writeback_inodes_sb_nr if no writeback is currently underway
++ * and no one else holds the s_umount lock.  Returns 1 if writeback
++ * was started, 0 if not.
+  */
+ int writeback_inodes_sb_nr_if_idle(struct super_block *sb,
+ 				   unsigned long nr,
+ 				   enum wb_reason reason)
+ {
+ 	if (!writeback_in_progress(sb->s_bdi)) {
+-		down_read(&sb->s_umount);
+-		writeback_inodes_sb_nr(sb, nr, reason);
+-		up_read(&sb->s_umount);
+-		return 1;
+-	} else
+-		return 0;
++		if (down_read_trylock(&sb->s_umount)) {
++			writeback_inodes_sb_nr(sb, nr, reason);
++			up_read(&sb->s_umount);
++			return 1;
++		}
++	}
++	return 0;
+ }
+ EXPORT_SYMBOL(writeback_inodes_sb_nr_if_idle);
  
-+	/* Wait queue to wait for journal to thaw*/
-+	wait_queue_head_t	j_wait_frozen;
+diff --git a/fs/quota/quota.c b/fs/quota/quota.c
+index 35f4b0e..47983d9 100644
+--- a/fs/quota/quota.c
++++ b/fs/quota/quota.c
+@@ -47,7 +47,7 @@ static int check_quotactl_permission(struct super_block *sb, int type, int cmd,
+ 
+ static void quota_sync_one(struct super_block *sb, void *arg)
+ {
+-	if (sb->s_qcop && sb->s_qcop->quota_sync)
++	if (sb->s_qcop && sb->s_qcop->quota_sync && !vfs_is_frozen(sb))
+ 		sb->s_qcop->quota_sync(sb, *(int *)arg, 1);
+ }
+ 
+@@ -368,8 +368,18 @@ SYSCALL_DEFINE4(quotactl, unsigned int, cmd, const char __user *, special,
+ 		goto out;
+ 	}
+ 
++	/*
++	 * It's not clear which quota functions may write to the file
++	 * system (all?).  Check for a frozen fs and bail out now.
++	 */
++	if (vfs_is_frozen(sb)) {
++		ret = -EBUSY;
++		goto out_drop_super;
++	}
 +
- 	/* Semaphore for locking against concurrent checkpoints */
- 	struct mutex		j_checkpoint_mutex;
+ 	ret = do_quotactl(sb, type, cmds, id, addr, pathp);
  
-@@ -953,6 +957,7 @@ struct journal_s
- #define JBD2_ABORT_ON_SYNCDATA_ERR	0x040	/* Abort the journal on file
- 						 * data write error in ordered
- 						 * mode */
-+#define JBD2_FROZEN	0x080 /* Journal thread frozen along with filesystem */
++out_drop_super:
+ 	drop_super(sb);
+ out:
+ 	if (pathp && !IS_ERR(pathp))
+diff --git a/fs/super.c b/fs/super.c
+index afd0f1a..a56696b 100644
+--- a/fs/super.c
++++ b/fs/super.c
+@@ -526,6 +526,10 @@ void sync_supers(void)
+  *
+  *	Scans the superblock list and calls given function, passing it
+  *	locked superblock and given argument.
++ *
++ *	Note: If @f is going to write to the file system, it must first
++ *	check if the file system is frozen (via vfs_is_frozen(sb)) and
++ *	refuse to write if so.
+  */
+ void iterate_supers(void (*f)(struct super_block *, void *), void *arg)
+ {
+@@ -595,6 +599,10 @@ EXPORT_SYMBOL(iterate_supers_type);
+  *	
+  *	Scans the superblock list and finds the superblock of the file system
+  *	mounted on the device given. %NULL is returned if no match is found.
++ *
++ *	Note: If caller is going to write to the superblock, it must first
++ *	check if the file system is frozen (via vfs_is_frozen(sb)) and
++ *	refuse to write if so.
+  */
+ 
+ struct super_block *get_super(struct block_device *bdev)
+@@ -1132,6 +1140,24 @@ out:
+  * Syncs the super to make sure the filesystem is consistent and calls the fs's
+  * freeze_fs.  Subsequent calls to this without first thawing the fs will return
+  * -EBUSY.
++ *
++ * During this function, sb->s_frozen goes through these values:
++ *
++ * SB_UNFROZEN: File system is normal, all writes progress as usual.
++ *
++ * SB_FREEZE_WRITE: The file system is in the process of being frozen
++ * and any remaining out-standing writes are being synced.  Writes
++ * that complete in-process writes should be permitted but new ones
++ * should be blocked.
++ *
++ * SB_FREEZE_TRANS: The file system is frozen.  The ->freeze_fs and
++ * ->unfreeze_fs ops are the only operations permitted to write to the
++ * file system in this state.
++ *
++ * sb->s_frozen is protected by sb->s_umount.  Additionally,
++ * SB_FREEZE_WRITE is only temporarily set during freeze/thaw while
++ * holding sb->s_umount for writing, so any other callers holding
++ * sb->s_umount will never see this state.
+  */
+ int freeze_super(struct super_block *sb)
+ {
+diff --git a/fs/sync.c b/fs/sync.c
+index 101b8ef..f497be8 100644
+--- a/fs/sync.c
++++ b/fs/sync.c
+@@ -68,7 +68,7 @@ int sync_filesystem(struct super_block *sb)
+ 	/*
+ 	 * No point in syncing out anything if the filesystem is read-only.
+ 	 */
+-	if (sb->s_flags & MS_RDONLY)
++	if ((sb->s_flags & MS_RDONLY) || vfs_is_frozen(sb))
+ 		return 0;
+ 
+ 	ret = __sync_filesystem(sb, 0);
+@@ -80,7 +80,7 @@ EXPORT_SYMBOL_GPL(sync_filesystem);
+ 
+ static void sync_one_sb(struct super_block *sb, void *arg)
+ {
+-	if (!(sb->s_flags & MS_RDONLY))
++	if (!(sb->s_flags & MS_RDONLY) && !vfs_is_frozen(sb))
+ 		__sync_filesystem(sb, *(int *)arg);
+ }
+ /*
+@@ -136,7 +136,7 @@ SYSCALL_DEFINE1(syncfs, int, fd)
+ {
+ 	struct file *file;
+ 	struct super_block *sb;
+-	int ret;
++	int ret = 0;
+ 	int fput_needed;
+ 
+ 	file = fget_light(fd, &fput_needed);
+@@ -145,7 +145,8 @@ SYSCALL_DEFINE1(syncfs, int, fd)
+ 	sb = file->f_dentry->d_sb;
+ 
+ 	down_read(&sb->s_umount);
+-	ret = sync_filesystem(sb);
++	if (!(sb->s_flags & MS_RDONLY) && !vfs_is_frozen(sb))
++		ret = sync_filesystem(sb);
+ 	up_read(&sb->s_umount);
+ 
+ 	fput_light(file, fput_needed);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index e313022..ac7a495 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1490,7 +1490,7 @@ extern void prune_dcache_sb(struct super_block *sb, int nr_to_scan);
+ extern struct timespec current_fs_time(struct super_block *sb);
  
  /*
-  * Function declarations for the journaling transaction and buffer
-@@ -1060,6 +1065,8 @@ extern void	 jbd2_journal_invalidatepage(journal_t *,
- 				struct page *, unsigned long);
- extern int	 jbd2_journal_try_to_free_buffers(journal_t *, struct page *, gfp_t);
- extern int	 jbd2_journal_stop(handle_t *);
-+extern int	 jbd2_journal_freeze(journal_t *);
-+extern void	 jbd2_journal_thaw(journal_t *);
- extern int	 jbd2_journal_flush (journal_t *);
- extern void	 jbd2_journal_lock_updates (journal_t *);
- extern void	 jbd2_journal_unlock_updates (journal_t *);
+- * Snapshotting support.
++ * Snapshotting support.  See freeze_super() for documentation.
+  */
+ enum {
+ 	SB_UNFROZEN = 0,
+@@ -1501,6 +1501,10 @@ enum {
+ #define vfs_check_frozen(sb, level) \
+ 	wait_event((sb)->s_wait_unfrozen, ((sb)->s_frozen < (level)))
+ 
++static inline int vfs_is_frozen(struct super_block *sb) {
++	return sb->s_frozen == SB_FREEZE_TRANS;
++}
++
+ /*
+  * until VFS tracks user namespaces for inodes, just make all files
+  * belong to init_user_ns
 -- 
 1.7.5.4
