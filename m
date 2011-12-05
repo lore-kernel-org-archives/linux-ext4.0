@@ -1,82 +1,96 @@
-From: Lukas Czerner <lczerner@redhat.com>
+From: Kyungmin Park <kmpark@infradead.org>
 Subject: Re: [PATCH] Set the initial TRIM information as TRIMMED
-Date: Mon, 5 Dec 2011 11:25:38 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1112051117540.4911@dhcp-27-109.brq.redhat.com>
-References: <20111201070052.GA29708@july> <4ED7FA81.9090802@redhat.com> <CAH9JG2WYsybK6aTo3+S58JM568S_YG7YqhP2jfrQ4pQ12GA5UQ@mail.gmail.com> <CAGpXXZL3CuZj2KmjiYrHNivqesBtVxzq=ZxGHkDPeYVD_tW_Xw@mail.gmail.com>
+Date: Mon, 5 Dec 2011 19:35:55 +0900
+Message-ID: <CAH9JG2WrrO105AeSwoZ9DCt3dyvqYuoefVZZJhx1YgHAFrTpCA@mail.gmail.com>
+References: <20111201070052.GA29708@july>
+	<alpine.LFD.2.00.1112051106070.4911@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1778763954-1323080742=:4911"
-Cc: Kyungmin Park <kmpark@infradead.org>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Lukas Czerner <lczerner@redhat.com>, tytso@mit.edu, tm@tao.ma,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Greg Freemyer <greg.freemyer@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: tytso@mit.edu, tm@tao.ma, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:17396 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755514Ab1LEKZt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Dec 2011 05:25:49 -0500
-In-Reply-To: <CAGpXXZL3CuZj2KmjiYrHNivqesBtVxzq=ZxGHkDPeYVD_tW_Xw@mail.gmail.com>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:55633 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755657Ab1LEKf4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Dec 2011 05:35:56 -0500
+In-Reply-To: <alpine.LFD.2.00.1112051106070.4911@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+On 12/5/11, Lukas Czerner <lczerner@redhat.com> wrote:
+> On Thu, 1 Dec 2011, Kyungmin Park wrote:
+>
+>> From: Kyungmin Park <kyungmin.park@samsung.com>
+>>
+>> Now trim information doesn't stored at disk so every boot time. it's
+>> cleared.
+>> and do the trim all disk groups.
+>> But assume that it's already trimmed at previous time so don't need to
+>> trim it again. So set the intial state as trimmed.
+>
+> Hi,
+>
+> I am sorry, but from the code and comments I have seen, I do not think
+> it does make sense to change that behaviour. I agree that discarding the
+> whole file system after the mount might not be necessarily needed, but
+> on the other hand, you can never assume that the blocks were already
+> trimmed, since it most likely will not be true.
+>
+> I think that the bigger problem is "running fitrim at boot time" which
+> does not make sense to me, because you'll be perfectly fine leaving this
+> up to the cron (or something similar). Also when you're booting you need
+> to be done ASAP so why to bother with other unnecessary operations ?
 
---8323328-1778763954-1323080742=:4911
-Content-Type: TEXT/PLAIN; charset=ISO-8859-1
-Content-Transfer-Encoding: 8BIT
+Okay please ignore the boot time, but still first trim operation needs
+to be considered.
+Unlike the pc world, the phone is turned off/on frequently. at that
+time it trims all block again.
+I know it's not hurt the flash life time, but want to avoid to useless
+trim operation on flash.
 
-On Thu, 1 Dec 2011, Greg Freemyer wrote:
+Yes, the best solution is that trim information is also stored at disk.
+Can you confirm the idea? store the trim information at bg_flags at
+struct ext4_block_desc?
 
-> On Thu, Dec 1, 2011 at 7:01 PM, Kyungmin Park <kmpark@infradead.org> wrote:
-> > On 12/2/11, Eric Sandeen <sandeen@redhat.com> wrote:
-> <snip>
-> > Hi,
-> >
-> >> Hm, so if there were freed but un-trimmed blocks at this point, we will
-> >> never trim them until we free _another_ block in the group, right?  That
-> >> might be a reasonable tradeoff, but it is somewhat surprising behavior.
-> >>
-> >> i.e. say we do:
-> >>
-> >> mount /mnt
-> >> rm -rf /mnt/very_big_file
-> >> umount /mnt
-> 
-> does umount need to force a fitrim if it's available?
-
-Please, do not. That will be weird, unexpected and also annoying,
-because fitrim can take a bit longer depending on the hadrware. So I do
-not thing doing fitrim at mount/umount time is a good idea.
-
-> 
-> >> mount /mnt
-> >> fitrim /mnt
-> 
-> That way if umount is clean, then the new logic could kick for the
-> next mount, but if there was not a clean umount, then in addition to
-> replaying the journal, the next mount could leave the fitrim info not
-> initialized.
-> 
-> I'm sure there are smarter ways to track it.  The biggest thing I'm
-> suggesting is for there to at least be a single boolean "fitrim'ed
-> state flag for the whole filesystem.  that could cleared on mount and
-> set on a clean umount.
-
-The flag makes some sense (if we really need some mechanism like that).
-But rather than setting it on (mount/umount) time we should set it after
-the fitrim and clear it after the unlink.
-
-Thanks!
--Lukas
-
-> 
-> Greg
+Thank you,
+Kyungmin Park
+>
+> The funniest thing about this patch is (no offense, really) that you've
+> solved the problem of "fitrim slowing down the boot process" by changing
+> kernel logic to assume something which will most likely be false, instead
+> of just *not* doing boot time fitrim at the first place, because this is
+> exactly what will happen with this patch.
+>
+> Thanks!
+> -Lukas
+>
+>>
+>> Signed-off-by: Kyungmin Park <kyungmin.park@samsung.com>
+>> ---
+>> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+>> index e2d8be8..97ef342 100644
+>> --- a/fs/ext4/mballoc.c
+>> +++ b/fs/ext4/mballoc.c
+>> @@ -1098,6 +1098,12 @@ int ext4_mb_init_group(struct super_block *sb,
+>> ext4_group_t group)
+>>  		goto err;
+>>  	}
+>>  	mark_page_accessed(page);
+>> +
+>> +	/*
+>> +	 * TRIM information is not stored at disk so set the initial
+>> +	 * state as trimmed. Since previous time it's already trimmed all
+>> +	 */
+>> +	EXT4_MB_GRP_SET_TRIMMED(this_grp);
+>>  err:
+>>  	ext4_mb_put_buddy_page_lock(&e4b);
+>>  	return ret;
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
--- 
---8323328-1778763954-1323080742=:4911--
+>
