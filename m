@@ -1,7 +1,7 @@
 From: Kamal Mostafa <kamal@canonical.com>
-Subject: [PATCH 3/5 resend] VFS: Fix s_umount thaw/write deadlock
-Date: Mon,  5 Dec 2011 12:54:47 -0800
-Message-ID: <1323118489-16326-4-git-send-email-kamal@canonical.com>
+Subject: [PATCH 4/5 resend] VFS: Rename vfs_check_frozen() to vfs_block_until_thawed()
+Date: Mon,  5 Dec 2011 12:54:48 -0800
+Message-ID: <1323118489-16326-5-git-send-email-kamal@canonical.com>
 References: <1323118489-16326-1-git-send-email-kamal@canonical.com>
 Cc: linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
@@ -23,15 +23,10 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Valerie Aurora <val@vaaconsulting.com>
 
-File system freeze/thaw require the superblock's s_umount lock.
-However, we write to the file system while holding the s_umount lock
-in several places (e.g., writeback and quotas).  Any of these can
-block on a frozen file system while holding s_umount, preventing any
-later thaw from occurring, since thaw requires s_umount.
-
-The solution is to add a check, vfs_is_frozen(), to all code paths
-that write while holding sb->s_umount and return without writing if it
-is true.
+The name of vfs_check_frozen() tends to de-emphasize an important
+fact: that it will block until the file system thaws to the specified
+level.  Make bugs slightly less likely by renaming to
+vfs_block_until_thawed().
 
 BugLink: https://bugs.launchpad.net/bugs/897421
 Signed-off-by: Valerie Aurora <val@vaaconsulting.com>
@@ -39,265 +34,247 @@ Cc: Kamal Mostafa <kamal@canonical.com>
 Tested-by: Peter M. Petrakis <peter.petrakis@canonical.com>
 Signed-off-by: Kamal Mostafa <kamal@canonical.com>
 ---
- fs/drop_caches.c   |    8 ++++++++
- fs/fs-writeback.c  |   50 +++++++++++++++++++++++++++++++++-----------------
- fs/quota/quota.c   |   12 +++++++++++-
- fs/super.c         |   26 ++++++++++++++++++++++++++
- fs/sync.c          |    9 +++++----
- include/linux/fs.h |    6 +++++-
- 6 files changed, 88 insertions(+), 23 deletions(-)
+ fs/btrfs/disk-io.c  |    4 ++--
+ fs/btrfs/file.c     |    2 +-
+ fs/buffer.c         |    7 ++++---
+ fs/ext4/inode.c     |    2 +-
+ fs/ext4/super.c     |    4 ++--
+ fs/fuse/file.c      |    2 +-
+ fs/gfs2/file.c      |    2 +-
+ fs/nilfs2/ioctl.c   |    2 +-
+ fs/nilfs2/segment.c |    2 +-
+ fs/ntfs/file.c      |    2 +-
+ fs/ocfs2/file.c     |    2 +-
+ fs/xfs/xfs_mount.h  |    2 +-
+ include/linux/fs.h  |    2 +-
+ mm/filemap.c        |    2 +-
+ mm/filemap_xip.c    |    2 +-
+ 15 files changed, 20 insertions(+), 19 deletions(-)
 
-diff --git a/fs/drop_caches.c b/fs/drop_caches.c
-index c00e055..90f8f7e 100644
---- a/fs/drop_caches.c
-+++ b/fs/drop_caches.c
-@@ -57,6 +57,14 @@ int drop_caches_sysctl_handler(ctl_table *table, int write,
- 	ret = proc_dointvec_minmax(table, write, buffer, length, ppos);
- 	if (ret)
- 		return ret;
-+
-+	/*
-+	 * Any file-system specific routines eventually called by
-+	 * drop_pagecache_sb() and drop_slab() ought to check for a
-+	 * frozen file system before writing to the disk.  Most file
-+	 * systems won't write in this case but XFS is a notable
-+	 * exception in certain cases.
-+	 */
- 	if (write) {
- 		if (sysctl_drop_caches & 1)
- 			iterate_supers(drop_pagecache_sb, NULL);
-diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-index 73c3992..dbeaede 100644
---- a/fs/fs-writeback.c
-+++ b/fs/fs-writeback.c
-@@ -554,6 +554,14 @@ static long writeback_sb_inodes(struct super_block *sb,
- 	while (!list_empty(&wb->b_io)) {
- 		struct inode *inode = wb_inode(wb->b_io.prev);
+diff --git a/fs/btrfs/disk-io.c b/fs/btrfs/disk-io.c
+index 632f8f3..308afe1 100644
+--- a/fs/btrfs/disk-io.c
++++ b/fs/btrfs/disk-io.c
+@@ -1569,7 +1569,7 @@ static int cleaner_kthread(void *arg)
+ 	struct btrfs_root *root = arg;
  
-+		if (inode->i_sb == sb && vfs_is_frozen(sb)) {
-+			/*
-+			 * Inode is on a frozen superblock; skip it for now.
-+			 */
-+			redirty_tail(inode, wb);
-+			continue;
-+		}
-+
- 		if (inode->i_sb != sb) {
- 			if (work->sb) {
- 				/*
-@@ -1266,40 +1274,48 @@ EXPORT_SYMBOL(writeback_inodes_sb);
-  * writeback_inodes_sb_if_idle	-	start writeback if none underway
-  * @sb: the superblock
+ 	do {
+-		vfs_check_frozen(root->fs_info->sb, SB_FREEZE_WRITE);
++		vfs_block_until_thawed(root->fs_info->sb, SB_FREEZE_WRITE);
+ 
+ 		if (!(root->fs_info->sb->s_flags & MS_RDONLY) &&
+ 		    mutex_trylock(&root->fs_info->cleaner_mutex)) {
+@@ -1603,7 +1603,7 @@ static int transaction_kthread(void *arg)
+ 
+ 	do {
+ 		delay = HZ * 30;
+-		vfs_check_frozen(root->fs_info->sb, SB_FREEZE_WRITE);
++		vfs_block_until_thawed(root->fs_info->sb, SB_FREEZE_WRITE);
+ 		mutex_lock(&root->fs_info->transaction_kthread_mutex);
+ 
+ 		spin_lock(&root->fs_info->trans_lock);
+diff --git a/fs/btrfs/file.c b/fs/btrfs/file.c
+index dafdfa0..40bff2e 100644
+--- a/fs/btrfs/file.c
++++ b/fs/btrfs/file.c
+@@ -1346,7 +1346,7 @@ static ssize_t btrfs_file_aio_write(struct kiocb *iocb,
+ 	ssize_t err = 0;
+ 	size_t count, ocount;
+ 
+-	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
++	vfs_block_until_thawed(inode->i_sb, SB_FREEZE_WRITE);
+ 
+ 	mutex_lock(&inode->i_mutex);
+ 
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 19d8eb7..fc679ba 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2338,8 +2338,9 @@ EXPORT_SYMBOL(block_commit_write);
+  * beyond EOF, then the page is guaranteed safe against truncation until we
+  * unlock the page.
   *
-- * Invoke writeback_inodes_sb if no writeback is currently underway.
-- * Returns 1 if writeback was started, 0 if not.
-+ * Invoke writeback_inodes_sb if no writeback is currently underway
-+ * and no one else holds the s_umount lock.  Returns 1 if writeback
-+ * was started, 0 if not.
+- * Direct callers of this function should call vfs_check_frozen() so that page
+- * fault does not busyloop until the fs is thawed.
++ * Direct callers of this function should call
++ * vfs_block_until_thawed() so that page fault does not busyloop until
++ * the fs is thawed.
   */
- int writeback_inodes_sb_if_idle(struct super_block *sb, enum wb_reason reason)
- {
- 	if (!writeback_in_progress(sb->s_bdi)) {
--		down_read(&sb->s_umount);
--		writeback_inodes_sb(sb, reason);
--		up_read(&sb->s_umount);
--		return 1;
--	} else
--		return 0;
-+		/*
-+		 * Trylock also avoids read-write deadlocks that could be
-+		 * triggered by freeze.
-+		 */
-+		if (down_read_trylock(&sb->s_umount)) {
-+			writeback_inodes_sb(sb, reason);
-+			up_read(&sb->s_umount);
-+			return 1;
-+		}
-+	}
-+	return 0;
+ int __block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 			 get_block_t get_block)
+@@ -2401,7 +2402,7 @@ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 	 * This check is racy but catches the common case. The check in
+ 	 * __block_page_mkwrite() is reliable.
+ 	 */
+-	vfs_check_frozen(sb, SB_FREEZE_WRITE);
++	vfs_block_until_thawed(sb, SB_FREEZE_WRITE);
+ 	ret = __block_page_mkwrite(vma, vmf, get_block);
+ 	return block_page_mkwrite_return(ret);
  }
- EXPORT_SYMBOL(writeback_inodes_sb_if_idle);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 848f436..3d54061 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4737,7 +4737,7 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	 * This check is racy but catches the common case. We rely on
+ 	 * __block_page_mkwrite() to do a reliable check.
+ 	 */
+-	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
++	vfs_block_until_thawed(inode->i_sb, SB_FREEZE_WRITE);
+ 	/* Delalloc case is easy... */
+ 	if (test_opt(inode->i_sb, DELALLOC) &&
+ 	    !ext4_should_journal_data(inode) &&
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 95f28b8..9fd8836 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -314,7 +314,7 @@ handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
+ 	 * handles are not stopped.
+ 	 */
+ 	if (!handle)
+-		vfs_check_frozen(sb, SB_FREEZE_TRANS);
++		vfs_block_until_thawed(sb, SB_FREEZE_TRANS);
  
- /**
-- * writeback_inodes_sb_if_idle	-	start writeback if none underway
-+ * writeback_inodes_sb_nr_if_idle	-	start writeback if none underway
-  * @sb: the superblock
-  * @nr: the number of pages to write
-  *
-- * Invoke writeback_inodes_sb if no writeback is currently underway.
-- * Returns 1 if writeback was started, 0 if not.
-+ * Invoke writeback_inodes_sb_nr if no writeback is currently underway
-+ * and no one else holds the s_umount lock.  Returns 1 if writeback
-+ * was started, 0 if not.
-  */
- int writeback_inodes_sb_nr_if_idle(struct super_block *sb,
- 				   unsigned long nr,
- 				   enum wb_reason reason)
- {
- 	if (!writeback_in_progress(sb->s_bdi)) {
--		down_read(&sb->s_umount);
--		writeback_inodes_sb_nr(sb, nr, reason);
--		up_read(&sb->s_umount);
--		return 1;
--	} else
--		return 0;
-+		if (down_read_trylock(&sb->s_umount)) {
-+			writeback_inodes_sb_nr(sb, nr, reason);
-+			up_read(&sb->s_umount);
-+			return 1;
-+		}
-+	}
-+	return 0;
- }
- EXPORT_SYMBOL(writeback_inodes_sb_nr_if_idle);
+ 	if (!journal)
+ 		return ext4_get_nojournal();
+@@ -4282,7 +4282,7 @@ int ext4_force_commit(struct super_block *sb)
  
-diff --git a/fs/quota/quota.c b/fs/quota/quota.c
-index 35f4b0e..47983d9 100644
---- a/fs/quota/quota.c
-+++ b/fs/quota/quota.c
-@@ -47,7 +47,7 @@ static int check_quotactl_permission(struct super_block *sb, int type, int cmd,
- 
- static void quota_sync_one(struct super_block *sb, void *arg)
- {
--	if (sb->s_qcop && sb->s_qcop->quota_sync)
-+	if (sb->s_qcop && sb->s_qcop->quota_sync && !vfs_is_frozen(sb))
- 		sb->s_qcop->quota_sync(sb, *(int *)arg, 1);
- }
- 
-@@ -368,8 +368,18 @@ SYSCALL_DEFINE4(quotactl, unsigned int, cmd, const char __user *, special,
- 		goto out;
+ 	journal = EXT4_SB(sb)->s_journal;
+ 	if (journal) {
+-		vfs_check_frozen(sb, SB_FREEZE_TRANS);
++		vfs_block_until_thawed(sb, SB_FREEZE_TRANS);
+ 		ret = ext4_journal_force_commit(journal);
  	}
  
-+	/*
-+	 * It's not clear which quota functions may write to the file
-+	 * system (all?).  Check for a frozen fs and bail out now.
-+	 */
-+	if (vfs_is_frozen(sb)) {
-+		ret = -EBUSY;
-+		goto out_drop_super;
-+	}
-+
- 	ret = do_quotactl(sb, type, cmds, id, addr, pathp);
+diff --git a/fs/fuse/file.c b/fs/fuse/file.c
+index 594f07a..42e5e30 100644
+--- a/fs/fuse/file.c
++++ b/fs/fuse/file.c
+@@ -944,7 +944,7 @@ static ssize_t fuse_file_aio_write(struct kiocb *iocb, const struct iovec *iov,
+ 		return err;
  
-+out_drop_super:
- 	drop_super(sb);
- out:
- 	if (pathp && !IS_ERR(pathp))
-diff --git a/fs/super.c b/fs/super.c
-index afd0f1a..a56696b 100644
---- a/fs/super.c
-+++ b/fs/super.c
-@@ -526,6 +526,10 @@ void sync_supers(void)
-  *
-  *	Scans the superblock list and calls given function, passing it
-  *	locked superblock and given argument.
-+ *
-+ *	Note: If @f is going to write to the file system, it must first
-+ *	check if the file system is frozen (via vfs_is_frozen(sb)) and
-+ *	refuse to write if so.
-  */
- void iterate_supers(void (*f)(struct super_block *, void *), void *arg)
- {
-@@ -595,6 +599,10 @@ EXPORT_SYMBOL(iterate_supers_type);
-  *	
-  *	Scans the superblock list and finds the superblock of the file system
-  *	mounted on the device given. %NULL is returned if no match is found.
-+ *
-+ *	Note: If caller is going to write to the superblock, it must first
-+ *	check if the file system is frozen (via vfs_is_frozen(sb)) and
-+ *	refuse to write if so.
-  */
+ 	mutex_lock(&inode->i_mutex);
+-	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
++	vfs_block_until_thawed(inode->i_sb, SB_FREEZE_WRITE);
  
- struct super_block *get_super(struct block_device *bdev)
-@@ -1132,6 +1140,24 @@ out:
-  * Syncs the super to make sure the filesystem is consistent and calls the fs's
-  * freeze_fs.  Subsequent calls to this without first thawing the fs will return
-  * -EBUSY.
-+ *
-+ * During this function, sb->s_frozen goes through these values:
-+ *
-+ * SB_UNFROZEN: File system is normal, all writes progress as usual.
-+ *
-+ * SB_FREEZE_WRITE: The file system is in the process of being frozen
-+ * and any remaining out-standing writes are being synced.  Writes
-+ * that complete in-process writes should be permitted but new ones
-+ * should be blocked.
-+ *
-+ * SB_FREEZE_TRANS: The file system is frozen.  The ->freeze_fs and
-+ * ->unfreeze_fs ops are the only operations permitted to write to the
-+ * file system in this state.
-+ *
-+ * sb->s_frozen is protected by sb->s_umount.  Additionally,
-+ * SB_FREEZE_WRITE is only temporarily set during freeze/thaw while
-+ * holding sb->s_umount for writing, so any other callers holding
-+ * sb->s_umount will never see this state.
-  */
- int freeze_super(struct super_block *sb)
- {
-diff --git a/fs/sync.c b/fs/sync.c
-index 101b8ef..f497be8 100644
---- a/fs/sync.c
-+++ b/fs/sync.c
-@@ -68,7 +68,7 @@ int sync_filesystem(struct super_block *sb)
- 	/*
- 	 * No point in syncing out anything if the filesystem is read-only.
+ 	/* We can write back this queue in page reclaim */
+ 	current->backing_dev_info = mapping->backing_dev_info;
+diff --git a/fs/gfs2/file.c b/fs/gfs2/file.c
+index ce36a56..9fea809 100644
+--- a/fs/gfs2/file.c
++++ b/fs/gfs2/file.c
+@@ -373,7 +373,7 @@ static int gfs2_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	 * and retry if the fs has been frozen after the page lock has
+ 	 * been acquired
  	 */
--	if (sb->s_flags & MS_RDONLY)
-+	if ((sb->s_flags & MS_RDONLY) || vfs_is_frozen(sb))
+-	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
++	vfs_block_until_thawed(inode->i_sb, SB_FREEZE_WRITE);
+ 
+ 	gfs2_holder_init(ip->i_gl, LM_ST_EXCLUSIVE, 0, &gh);
+ 	ret = gfs2_glock_nq(&gh);
+diff --git a/fs/nilfs2/ioctl.c b/fs/nilfs2/ioctl.c
+index 41d6743..084c8d9 100644
+--- a/fs/nilfs2/ioctl.c
++++ b/fs/nilfs2/ioctl.c
+@@ -655,7 +655,7 @@ static int nilfs_ioctl_clean_segments(struct inode *inode, struct file *filp,
+ 		goto out_free;
+ 	}
+ 
+-	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
++	vfs_block_until_thawed(inode->i_sb, SB_FREEZE_WRITE);
+ 
+ 	ret = nilfs_ioctl_move_blocks(inode->i_sb, &argv[0], kbufs[0]);
+ 	if (ret < 0)
+diff --git a/fs/nilfs2/segment.c b/fs/nilfs2/segment.c
+index bb24ab6..e3388f1 100644
+--- a/fs/nilfs2/segment.c
++++ b/fs/nilfs2/segment.c
+@@ -189,7 +189,7 @@ int nilfs_transaction_begin(struct super_block *sb,
+ 	if (ret > 0)
  		return 0;
  
- 	ret = __sync_filesystem(sb, 0);
-@@ -80,7 +80,7 @@ EXPORT_SYMBOL_GPL(sync_filesystem);
+-	vfs_check_frozen(sb, SB_FREEZE_WRITE);
++	vfs_block_until_thawed(sb, SB_FREEZE_WRITE);
  
- static void sync_one_sb(struct super_block *sb, void *arg)
- {
--	if (!(sb->s_flags & MS_RDONLY))
-+	if (!(sb->s_flags & MS_RDONLY) && !vfs_is_frozen(sb))
- 		__sync_filesystem(sb, *(int *)arg);
- }
+ 	nilfs = sb->s_fs_info;
+ 	down_read(&nilfs->ns_segctor_sem);
+diff --git a/fs/ntfs/file.c b/fs/ntfs/file.c
+index c587e2d..16f1ac6 100644
+--- a/fs/ntfs/file.c
++++ b/fs/ntfs/file.c
+@@ -2084,7 +2084,7 @@ static ssize_t ntfs_file_aio_write_nolock(struct kiocb *iocb,
+ 	if (err)
+ 		return err;
+ 	pos = *ppos;
+-	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
++	vfs_block_until_thawed(inode->i_sb, SB_FREEZE_WRITE);
+ 	/* We can write back this queue in page reclaim. */
+ 	current->backing_dev_info = mapping->backing_dev_info;
+ 	written = 0;
+diff --git a/fs/ocfs2/file.c b/fs/ocfs2/file.c
+index de4ea1a..f863955 100644
+--- a/fs/ocfs2/file.c
++++ b/fs/ocfs2/file.c
+@@ -2240,7 +2240,7 @@ static ssize_t ocfs2_file_aio_write(struct kiocb *iocb,
+ 	if (iocb->ki_left == 0)
+ 		return 0;
+ 
+-	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
++	vfs_block_until_thawed(inode->i_sb, SB_FREEZE_WRITE);
+ 
+ 	appending = file->f_flags & O_APPEND ? 1 : 0;
+ 	direct_io = file->f_flags & O_DIRECT ? 1 : 0;
+diff --git a/fs/xfs/xfs_mount.h b/fs/xfs/xfs_mount.h
+index bb24dac..bacfab8 100644
+--- a/fs/xfs/xfs_mount.h
++++ b/fs/xfs/xfs_mount.h
+@@ -312,7 +312,7 @@ void xfs_do_force_shutdown(struct xfs_mount *mp, int flags, char *fname,
+ #define SHUTDOWN_DEVICE_REQ	0x0020	/* failed all paths to the device */
+ 
+ #define xfs_test_for_freeze(mp)		((mp)->m_super->s_frozen)
+-#define xfs_wait_for_freeze(mp,l)	vfs_check_frozen((mp)->m_super, (l))
++#define xfs_wait_for_freeze(mp,l)	vfs_block_until_thawed((mp)->m_super, (l))
+ 
  /*
-@@ -136,7 +136,7 @@ SYSCALL_DEFINE1(syncfs, int, fd)
- {
- 	struct file *file;
- 	struct super_block *sb;
--	int ret;
-+	int ret = 0;
- 	int fput_needed;
- 
- 	file = fget_light(fd, &fput_needed);
-@@ -145,7 +145,8 @@ SYSCALL_DEFINE1(syncfs, int, fd)
- 	sb = file->f_dentry->d_sb;
- 
- 	down_read(&sb->s_umount);
--	ret = sync_filesystem(sb);
-+	if (!(sb->s_flags & MS_RDONLY) && !vfs_is_frozen(sb))
-+		ret = sync_filesystem(sb);
- 	up_read(&sb->s_umount);
- 
- 	fput_light(file, fput_needed);
+  * Flags for xfs_mountfs
 diff --git a/include/linux/fs.h b/include/linux/fs.h
-index e313022..ac7a495 100644
+index ac7a495..662e412 100644
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -1490,7 +1490,7 @@ extern void prune_dcache_sb(struct super_block *sb, int nr_to_scan);
- extern struct timespec current_fs_time(struct super_block *sb);
+@@ -1498,7 +1498,7 @@ enum {
+ 	SB_FREEZE_TRANS = 2,
+ };
  
- /*
-- * Snapshotting support.
-+ * Snapshotting support.  See freeze_super() for documentation.
-  */
- enum {
- 	SB_UNFROZEN = 0,
-@@ -1501,6 +1501,10 @@ enum {
- #define vfs_check_frozen(sb, level) \
+-#define vfs_check_frozen(sb, level) \
++#define vfs_block_until_thawed(sb, level) \
  	wait_event((sb)->s_wait_unfrozen, ((sb)->s_frozen < (level)))
  
-+static inline int vfs_is_frozen(struct super_block *sb) {
-+	return sb->s_frozen == SB_FREEZE_TRANS;
-+}
-+
- /*
-  * until VFS tracks user namespaces for inodes, just make all files
-  * belong to init_user_ns
+ static inline int vfs_is_frozen(struct super_block *sb) {
+diff --git a/mm/filemap.c b/mm/filemap.c
+index c0018f2..a973a13 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -2529,7 +2529,7 @@ ssize_t __generic_file_aio_write(struct kiocb *iocb, const struct iovec *iov,
+ 	count = ocount;
+ 	pos = *ppos;
+ 
+-	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
++	vfs_block_until_thawed(inode->i_sb, SB_FREEZE_WRITE);
+ 
+ 	/* We can write back this queue in page reclaim */
+ 	current->backing_dev_info = mapping->backing_dev_info;
+diff --git a/mm/filemap_xip.c b/mm/filemap_xip.c
+index f91b2f6..4539564 100644
+--- a/mm/filemap_xip.c
++++ b/mm/filemap_xip.c
+@@ -406,7 +406,7 @@ xip_file_write(struct file *filp, const char __user *buf, size_t len,
+ 	pos = *ppos;
+ 	count = len;
+ 
+-	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
++	vfs_block_until_thawed(inode->i_sb, SB_FREEZE_WRITE);
+ 
+ 	/* We can write back this queue in page reclaim */
+ 	current->backing_dev_info = mapping->backing_dev_info;
 -- 
 1.7.5.4
