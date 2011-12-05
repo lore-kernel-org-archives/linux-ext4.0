@@ -1,44 +1,34 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 10/22] ext4: Verify and calculate checksums for extent
- tree blocks
-Date: Mon, 5 Dec 2011 11:40:15 -0500
-Message-ID: <20111205164015.GD32031@thunk.org>
-References: <20111128232615.19194.80081.stgit@elm3c44.beaverton.ibm.com>
- <20111128232725.19194.12626.stgit@elm3c44.beaverton.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	Sunil Mushran <sunil.mushran@oracle.com>,
-	Martin K Petersen <martin.petersen@oracle.com>,
-	Greg Freemyer <greg.freemyer@gmail.com>,
-	Amir Goldstein <amir73il@gmail.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Andi Kleen <andi@firstfloor.org>,
-	Mingming Cao <cmm@us.ibm.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
-To: "Darrick J. Wong" <djwong@us.ibm.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] libext2fs: don't break when ext2fs_clear_generic_bmap() for 32-bit bitmaps
+Date: Mon,  5 Dec 2011 13:02:45 -0500
+Message-ID: <1323108165-1429-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:42486 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:60350 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932465Ab1LEQkV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Dec 2011 11:40:21 -0500
-Content-Disposition: inline
-In-Reply-To: <20111128232725.19194.12626.stgit@elm3c44.beaverton.ibm.com>
+	id S1756432Ab1LESCr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 Dec 2011 13:02:47 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 28, 2011 at 03:27:25PM -0800, Darrick J. Wong wrote:
->  /*
-> + * This is the extent tail on-disk structure.
-> + * All other extent structures are 12 bytes long.  It turns out that
-> + * block_size % 12 >= 4 for all valid block sizes (1k, 2k, 4k).
+This is only an issue for programs compiled against e2fsprogs 1.41
+that manipulate bitmaps directly.  Fortunately there are very few
+programs which do that, especially those that try to clear a bitmap.
 
-More generally, block_size % 12 is >= 4 for all powers of 2 greater
-than 12 bytes.  I'd probably remove (1k, 2k, 4k) because that might
-scare people who might say, "hey!  I'm using a 16k block size on my
-HPC system running on a Power or Itanium box --- am I going to be OK?".
-Valid block sizes go up to the page size of the hardware in question...
+Addresses-Sourceforge-Bugs: #3451486
 
-      	    	     	       	    	    - Ted
+Reported-by: robi6@users.sourceforge.net
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ lib/ext2fs/gen_bitmap64.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/lib/ext2fs/gen_bitmap64.c b/lib/ext2fs/gen_bitmap64.c
+index 9dbbf9f..4dc4e08 100644
+--- a/lib/ext2fs/gen_bitmap64.c
++++ b/lib/ext2fs/gen_bitmap64.c
+@@ -297,8 +297,8 @@ void ext2fs_clear_generic_bmap(ext2fs_generic_bitmap bitmap)
+ {
+ 	if (EXT2FS_IS_32_BITMAP(bitmap))
+ 		ext2fs_clear_generic_bitmap(bitmap);
