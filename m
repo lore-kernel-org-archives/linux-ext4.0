@@ -1,88 +1,234 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: WARNING: at fs/inode.c:884 unlock_new_inode+0x34/0x59()
-Date: Mon, 05 Dec 2011 14:54:54 -0600
-Message-ID: <4EDD2F9E.3000704@redhat.com>
-References: <4ED2994A.9080907@gmail.com> <4ED29C63.8070601@gmail.com> <20111127213432.GA22465@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Alex <alex.vizor@gmail.com>, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org, Dave Chinner <dchinner@redhat.com>
-To: "Ted Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47340 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932636Ab1LEUzF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Dec 2011 15:55:05 -0500
-In-Reply-To: <20111127213432.GA22465@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Kamal Mostafa <kamal@canonical.com>
+Subject: [PATCH 1/5 resend] Adding support to freeze and unfreeze a journal
+Date: Mon,  5 Dec 2011 12:54:45 -0800
+Message-ID: <1323118489-16326-2-git-send-email-kamal@canonical.com>
+References: <1323118489-16326-1-git-send-email-kamal@canonical.com>
+Cc: linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Surbhi Palande <csurbhi@gmail.com>,
+	Valerie Aurora <val@vaaconsulting.com>,
+	Kamal Mostafa <kamal@canonical.com>,
+	Christopher Chaltain <christopher.chaltain@canonical.com>,
+	"Peter M. Petrakis" <peter.petrakis@canonical.com>,
+	Mikulas Patocka <mpatocka@redhat.com>,
+	Surbhi Palande <surbhi.palande@canonical.com>
+To: Jan Kara <jack@suse.cz>, Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Matthew Wilcox <matthew@wil.cx>,
+	Randy Dunlap <rdunlap@xenotime.net>,
+	Theodore Tso <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1323118489-16326-1-git-send-email-kamal@canonical.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 11/27/11 3:34 PM, Ted Ts'o wrote:
-> On Sun, Nov 27, 2011 at 11:24:03PM +0300, Alex wrote:
->> BTW, after last resume from disk fs was corrupted but fsck managed
->> to fix this error. So I think severity of this issue should be
->> raised.
-> 
-> Can you reproduce this reliably?  What was running at the time of the s2disk?
-> 
-> What appears to be going on is that insert_inode_locked() is failing
-> at fs/ext4/ialloc.c:887, probably because there's another inode with
-> that inode number already on the superblock's hash list.  The error
-> codepath if insert_inode_locked() fail is incorrect; it's going to
-> fail_drop, which tries dropping the inode's dquot (but we haven't
-> calle ddquot_initialize)inode) yet) and calls unlock_new_inode(), but
-> I_NEW hasn't been set because insert_inode_locked().
+From: Surbhi Palande <surbhi.palande@canonical.com>
 
-OK; this looks to be the result of:
+The journal should be frozen when a filesystem freezes. What this means is
+that until the filesystem is thawed again, no new transactions should be
+accepted by the journal. When the filesystem thaws, inturn it should thaw the
+journal and this should allow the journal to resume accepting new
+transactions. While the the filesystem has frozen the journal, the clients of
+the journal on calling jbd2_journal_start() will sleep on a wait queue.
+Thawing the journal will wake up the sleeping clients and journalling can
+progress normally.
 
-commit 250df6ed274d767da844a5d9f05720b804240197
-Author: Dave Chinner <dchinner@redhat.com>
-Date:   Tue Mar 22 22:23:36 2011 +1100
+An example of the race condition that can happen without this patch is as
+follows:
 
-    fs: protect inode->i_state with inode->i_lock
+Say the filesystem is thawed when we begin. Let tx be the time at unit x
 
-(went in on 2.6.39)
+P1: Process doing an aio write
+t1) ext4_file_write()
+  t2) generic_file_aio_write()
+    t3) __generic_file_aio_write()
+      // filesystem is not frozen, so we do not block in the next check.
+      t4) vfs_check_frozen()
+      t5) generic_write_checks()
+----------------- Prempted------------------
 
-because before that, insert_inode_locked() used to unconditionally do:
+P2: Process that does filesystem freeze
 
--       inode->i_state |= I_NEW;
+t6) freeze_super()
+  t7) sync_filesystem()
+  t8) sync_blockdev()
+  t9) sb->s_op->freeze_fs() (= ext4_freeze)
+    t10) jbd2_journal_lock_updates()
+    t11) jbd2_journal_flush()
+    // Need to unlock the journal before returning to user space.
+    t12) jbd2_journal_unlock_updates()
+    // Journal is unlocked and so we can start accepting new transactions now.
 
-but that's gone now.  Now if the function fails it'll return the
-inode w/o I_NEW set.
+// freezing process completes execution. Page cache is now clean and should
+// remain clean till the filesystem is frozen.
+--------------------------------------------
 
-ext2/3/4, jffs2, and jfs all call unlock_new_inode() on insert_inode_locked()
-failure, and all would warn on this path.
+P1: writing process gets the control back
+t13) generic_file_buffered_write()
+  t14) generic_perform_write()
+    t15) a_ops->write_begin() (= ext4_write_begin)
+      t16) ext4_journal_start()
+	// New handle is started. We do not block here! Write continues
+	// dirtying the page cache while the filesystem is frozen!
 
-I'm still not clear on what's causing insert_inode_locked() to fail,
-but it used to be harmless (or at least silent) before.
+BugLink: https://bugs.launchpad.net/bugs/897421
+Signed-off-by: Surbhi Palande <surbhi.palande@canonical.com>
+Acked-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: Kamal Mostafa <kamal@canonical.com>
+Tested-by: Peter M. Petrakis <peter.petrakis@canonical.com>
+Signed-off-by: Kamal Mostafa <kamal@canonical.com>
+---
+ fs/ext4/super.c       |   20 ++++++--------------
+ fs/jbd2/journal.c     |    1 +
+ fs/jbd2/transaction.c |   42 ++++++++++++++++++++++++++++++++++++++++++
+ include/linux/jbd2.h  |    7 +++++++
+ 4 files changed, 56 insertions(+), 14 deletions(-)
 
-I suppose it makes most sense to fix all callers to not clear I_NEW
-on failure, unless it's too icky; it does seem weird to have I_NEW set
-if we return with failure.
-
--Eric
-
-
-
-
-> So the warning is easy to fix; we just need to have it jump to fail
-> instead of fail_drop.  But the bigger issue is why did
-> insert_inode_locked() failed in the first place.
-> 
-> Did this error happen *right* after the system resumed, or did some
-> amount of time pass before the warning triggered?  This could have
-> happened because the in-memory (or possibly on-disk) copy of the inode
-> allocation bitmap has gotten corrupted, for example.
-> 
-> What was the nature of the file system corruption which e2fsck decided
-> that it need to correct?
-> 
-> Regards,
-> 
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 3858767..5bfdc21 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4330,23 +4330,15 @@ static int ext4_freeze(struct super_block *sb)
+ 
+ 	journal = EXT4_SB(sb)->s_journal;
+ 
+-	/* Now we set up the journal barrier. */
+-	jbd2_journal_lock_updates(journal);
+-
++	error = jbd2_journal_freeze(journal);
+ 	/*
+-	 * Don't clear the needs_recovery flag if we failed to flush
++	 * Don't clear the needs_recovery flag if we failed to freeze
+ 	 * the journal.
+ 	 */
+-	error = jbd2_journal_flush(journal);
+-	if (error < 0)
+-		goto out;
+-
+-	/* Journal blocked and flushed, clear needs_recovery flag. */
+-	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+-	error = ext4_commit_super(sb, 1);
+-out:
+-	/* we rely on s_frozen to stop further updates */
+-	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
++	if (error >= 0) {
++		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
++		error = ext4_commit_super(sb, 1);
++	}
+ 	return error;
+ }
+ 
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 0fa0123..f0170cc 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -894,6 +894,7 @@ static journal_t * journal_init_common (void)
+ 	init_waitqueue_head(&journal->j_wait_checkpoint);
+ 	init_waitqueue_head(&journal->j_wait_commit);
+ 	init_waitqueue_head(&journal->j_wait_updates);
++	init_waitqueue_head(&journal->j_wait_frozen);
+ 	mutex_init(&journal->j_barrier);
+ 	mutex_init(&journal->j_checkpoint_mutex);
+ 	spin_lock_init(&journal->j_revoke_lock);
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index a0e41a4..340ee35 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -173,6 +173,17 @@ repeat:
+ 				journal->j_barrier_count == 0);
+ 		goto repeat;
+ 	}
++	/* Don't let a new handle start when a journal is frozen.
++	 * jbd2_journal_freeze calls jbd2_journal_unlock_updates() only after
++	 * the j_flags indicate that the journal is frozen. So if the
++	 * j_barrier_count is 0, then check if this was made 0 by the freezing
++	 * process
++	 */
++	if (journal->j_flags & JBD2_FROZEN) {
++		read_unlock(&journal->j_state_lock);
++		wait_event(journal->j_wait_frozen, (journal->j_flags & JBD2_FROZEN));
++		goto repeat;
++	}
+ 
+ 	if (!journal->j_running_transaction) {
+ 		read_unlock(&journal->j_state_lock);
+@@ -492,6 +503,37 @@ int jbd2_journal_restart(handle_t *handle, int nblocks)
+ }
+ EXPORT_SYMBOL(jbd2_journal_restart);
+ 
++int jbd2_journal_freeze(journal_t *journal)
++{
++	int error = 0;
++	/* Now we set up the journal barrier. */
++	jbd2_journal_lock_updates(journal);
++
++	/*
++	 * Don't clear the needs_recovery flag if we failed to flush
++	 * the journal.
++	 */
++	error = jbd2_journal_flush(journal);
++	if (error >= 0) {
++		write_lock(&journal->j_state_lock);
++		journal->j_flags |= JBD2_FROZEN;
++		write_unlock(&journal->j_state_lock);
++	}
++	jbd2_journal_unlock_updates(journal);
++	return error;
++}
++EXPORT_SYMBOL(jbd2_journal_freeze);
++
++void jbd2_journal_thaw(journal_t * journal)
++{
++	write_lock(&journal->j_state_lock);
++	journal->j_flags &= ~JBD2_FROZEN;
++	write_unlock(&journal->j_state_lock);
++	wake_up(&journal->j_wait_frozen);
++}
++EXPORT_SYMBOL(jbd2_journal_thaw);
++
++
+ /**
+  * void jbd2_journal_lock_updates () - establish a transaction barrier.
+  * @journal:  Journal to establish a barrier on.
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 2092ea2..bfa0752 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -658,6 +658,7 @@ jbd2_time_diff(unsigned long start, unsigned long end)
+  * @j_wait_checkpoint:  Wait queue to trigger checkpointing
+  * @j_wait_commit: Wait queue to trigger commit
+  * @j_wait_updates: Wait queue to wait for updates to complete
++ * @j_wait_frozen: Wait queue to wait for journal to thaw
+  * @j_checkpoint_mutex: Mutex for locking against concurrent checkpoints
+  * @j_head: Journal head - identifies the first unused block in the journal
+  * @j_tail: Journal tail - identifies the oldest still-used block in the
+@@ -775,6 +776,9 @@ struct journal_s
+ 	/* Wait queue to wait for updates to complete */
+ 	wait_queue_head_t	j_wait_updates;
+ 
++	/* Wait queue to wait for journal to thaw*/
++	wait_queue_head_t	j_wait_frozen;
++
+ 	/* Semaphore for locking against concurrent checkpoints */
+ 	struct mutex		j_checkpoint_mutex;
+ 
+@@ -953,6 +957,7 @@ struct journal_s
+ #define JBD2_ABORT_ON_SYNCDATA_ERR	0x040	/* Abort the journal on file
+ 						 * data write error in ordered
+ 						 * mode */
++#define JBD2_FROZEN	0x080 /* Journal thread frozen along with filesystem */
+ 
+ /*
+  * Function declarations for the journaling transaction and buffer
+@@ -1060,6 +1065,8 @@ extern void	 jbd2_journal_invalidatepage(journal_t *,
+ 				struct page *, unsigned long);
+ extern int	 jbd2_journal_try_to_free_buffers(journal_t *, struct page *, gfp_t);
+ extern int	 jbd2_journal_stop(handle_t *);
++extern int	 jbd2_journal_freeze(journal_t *);
++extern void	 jbd2_journal_thaw(journal_t *);
+ extern int	 jbd2_journal_flush (journal_t *);
+ extern void	 jbd2_journal_lock_updates (journal_t *);
+ extern void	 jbd2_journal_unlock_updates (journal_t *);
+-- 
+1.7.5.4
