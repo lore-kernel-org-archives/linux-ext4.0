@@ -1,7 +1,7 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 1/6] ext2: fix up error handling for insert_inode_locked
-Date: Tue, 06 Dec 2011 16:57:35 -0600
-Message-ID: <4EDE9DDF.2040906@redhat.com>
+Subject: [PATCH 2/6] ext3: fix up error handling for insert_inode_locked
+Date: Tue, 06 Dec 2011 16:59:08 -0600
+Message-ID: <4EDE9E3C.5040406@redhat.com>
 References: <4EDE9D54.1030506@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
@@ -21,25 +21,25 @@ WARN_ON if I_NEW is not set, so any failure spews a lot of
 warnings.
 
 (We also were doing dquot_drop, etc before we had initialized
-the inode, that gets skipped as well)
+the quota, that gets skipped as well)
 
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
 
-diff --git a/fs/ext2/ialloc.c b/fs/ext2/ialloc.c
-index c4e81df..769351a 100644
---- a/fs/ext2/ialloc.c
-+++ b/fs/ext2/ialloc.c
-@@ -574,7 +574,7 @@ got:
- 	spin_unlock(&sbi->s_next_gen_lock);
+diff --git a/fs/ext3/ialloc.c b/fs/ext3/ialloc.c
+index 5c866e0..7d0493b 100644
+--- a/fs/ext3/ialloc.c
++++ b/fs/ext3/ialloc.c
+@@ -526,7 +526,7 @@ got:
+ 		handle->h_sync = 1;
  	if (insert_inode_locked(inode) < 0) {
  		err = -EINVAL;
 -		goto fail_drop;
 +		goto fail_put;
  	}
- 
- 	dquot_initialize(inode);
-@@ -601,8 +601,9 @@ fail_free_drop:
+ 	spin_lock(&sbi->s_next_gen_lock);
+ 	inode->i_generation = sbi->s_next_generation++;
+@@ -582,8 +582,9 @@ fail_free_drop:
  fail_drop:
  	dquot_drop(inode);
  	inode->i_flags |= S_NOQUOTA;
@@ -48,5 +48,5 @@ index c4e81df..769351a 100644
 +fail_put:
 +	clear_nlink(inode);
  	iput(inode);
+ 	brelse(bitmap_bh);
  	return ERR_PTR(err);
- 
