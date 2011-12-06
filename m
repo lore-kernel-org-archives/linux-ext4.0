@@ -1,86 +1,98 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: Bug with "fix partial page writes" [3.2-rc regression]
-Date: Tue, 06 Dec 2011 14:15:32 -0700
-Message-ID: <4EDE85F4.4020503@linux.vnet.ibm.com>
-References: <CAO81RMa4uRsOsaK4G78EDvOenJpEdTp4y+rtkiDxaK9cASbMtA@mail.gmail.com> <alpine.LSU.2.00.1111201121120.1264@sister.anvils> <20111121165626.GD14568@thunk.org> <alpine.LSU.2.00.1111211331120.1879@sister.anvils> <alpine.LSU.2.00.1112051456580.3938@sister.anvils> <4EDD729E.2060402@linux.vnet.ibm.com> <alpine.LSU.2.00.1112060030220.1615@sister.anvils>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: "Ted Ts'o" <tytso@mit.edu>, Curt Wohlgemuth <curtw@google.com>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	Surbhi Palande <csurbhi@gmail.com>,
-	Rafael Wysocki <rjw@sisk.pl>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Hugh Dickins <hughd@google.com>
+From: Andy Whitcroft <apw@canonical.com>
+Subject: [PATCH 1/1] ext4: correct partial write discard size calculation
+Date: Tue,  6 Dec 2011 22:19:48 +0000
+Message-ID: <1323209988-14304-1-git-send-email-apw@canonical.com>
+Cc: linux-ext4@vger.kernel.org,
+	Allison Henderson <achender@linux.vnet.ibm.com>,
+	linux-kernel@vger.kernel.org, Andy Whitcroft <apw@canonical.com>
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:54111 "EHLO e4.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754239Ab1LFVPl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Dec 2011 16:15:41 -0500
-Received: from /spool/local
-	by e4.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <achender@linux.vnet.ibm.com>;
-	Tue, 6 Dec 2011 16:15:40 -0500
-In-Reply-To: <alpine.LSU.2.00.1112060030220.1615@sister.anvils>
+Received: from youngberry.canonical.com ([91.189.89.112]:59696 "EHLO
+	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755252Ab1LFWUL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Dec 2011 17:20:11 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 12/06/2011 01:55 AM, Hugh Dickins wrote:
-> On Mon, 5 Dec 2011, Allison Henderson wrote:
->> On 12/05/2011 04:38 PM, Hugh Dickins wrote:
->>>
->>> This has been outstanding for a month now, and we've heard no progress:
->>> please revert commit 02fac1297eb3 "ext4: fix partial page writes" for rc5.
->>>
->>> The problems appear on a 1k-blocksize filesystem under memory pressure:
->>> the hunk in ext4_da_write_end() causes oops, because it's playing with
->>> a page after generic_write_end() dropped our last reference to it; and
->>> backing out the hunk in ext4_da_write_begin() is then found to stop
->>> rare data corruption seen when kbuilding.
->>>
->>> Although I earlier reported that backing out the patch caused an fsx
->>> test to fail earlier, I've since found great variation in how soon it
->>> fails, and seen it fail just as quickly with 02fac1297eb3 still in.
->>> I also reported that I had to go back to 2.6.38 for fsx not to fail
->>> under memory pressure: you won't be surprised that that turned out to
->>> be because 2.6.38 defaults nomblk_io_submit but 2.6.39 mblk_io_submit.
->>
->> Have you tried Yongqiang's patch "[PATCH 1/2] ext4: let mpage_submit_io
->> works well when blocksize<  pagesize" ?  I have tried it and it does seem to
->> help, but I am still running into some failures that I am trying to debug,
->> but let please let us know if it helps the issues that you are seeing.  Thx!
->
-> That 1/2, or the 2/2 "ext4: let ext4_discard_partial_buffers handle
-> pages without buffers correctly"?  The latter is mostly a reversion
-> of your 02fac1297eb3, so that's the one I need to fix the oops and
-> rare data corruption.  Perhaps you're suggesting 1/2 for fsx failures
-> under memory pressure?
->
-> I've now tried the fsx test on three machines, with both 1/2 and 2/2
-> applied to 3.2-rc4.  On one machine, with ext2 on loop on tmpfs, the
-> fsx test failed in a couple of minutes with those patches; on another
-> machine, with ext2 on loop on tmpfs, it failed after about 40 minutes
-> with  the patches; on this laptop, with ext2 on SSD, it's just now
-> failed after 35 minutes with the patches.
->
-> That's not to say that Yongqiang's patches aren't good; but I cannot
-> detect whether they make any improvement or not, since lasting for 2 or
-> 40 minutes is typical for fsx under memory pressure with recent kernels.
+When copying large numbers of files we are seeing occasional write failures
+with errno EINVAL.  These are being returned from ext4_da_write_end()
+when attempting to discard the end portion of a partial write.  The error
+is detected and reported by the page index check below:
 
+    int ext4_discard_partial_page_buffers_no_lock(handle_t *handle,
+		    struct inode *inode, struct page *page, loff_t from,
+		    loff_t length, int flags)
+    {
+    [...]
+        if (index != page->index)
+                return -EINVAL;
+    [...]
 
-Well, initially I meant to just try the whole set, but now that I try 
-just one of them, I find that I get further with only the first one.  I 
-think Yongqiang and I have a similar set up because I get the hang if I 
-dont have the first patch, and I get the fsx write failure (in about 20 
-or so minutes) if I have the second one.  But I think Yongqiang's right, 
-we need to figure out why the page is uptodate when it shouldn't be.
+This code was introduced by the commit below:
 
+  commit 02fac1297eb3f471a27368271aadd285548297b0
+  Author: Allison Henderson <achender@linux.vnet.ibm.com>
+  Date:   Tue Sep 6 21:53:01 2011 -0400
 
->
-> Hugh
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+    ext4: fix partial page writes
+
+This error is triggering when a write occurs at pos == 0 and results in
+0 bytes being written (copied == 0):
+
+    page_len = PAGE_CACHE_SIZE -
+                    ((pos + copied - 1) & (PAGE_CACHE_SIZE - 1));
+    if (page_len > 0) {
+            ret = ext4_discard_partial_page_buffers_no_lock(handle,
+                    inode, page, pos + copied - 1, page_len,
+    [...]
+
+In this case we will calculate that we need to clear out only one byte of
+the page.  As we are aligned at the page boundary and wrote 0 bytes we
+actually need to clear the entire page.  Also note that when we attempt
+to apply the discard we will apply it at offset -1 (0 + 0 - 1), which is
+the wrong place:
+
+    page_len = 4096 - ((0 + 0 - 1) & 4095)
+    page_len = 1
+
+Firstly fix up the offset calculation.  Once this is done the erroring
+case will correctly believe that the entire page needs to be discarded.
+However in this case we did not actually write to the page so the page
+is not instantiated and no discard is required.  So also only apply the
+discard where we are not discarding the entire page.
+
+Signed-off-by: Andy Whitcroft <apw@canonical.com>
+---
+ fs/ext4/inode.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
+
+This issue is most easily reproducible within a VM on a fast, lightly
+loaded host.  In that configuration I can trigger a failure with about
+1/2GB of medium sized files (.debs in this case).  Without the patch
+the copy will fail 'EINVAL' 99% of the time, always failing within two
+iterations.  With the patch I have run 100 iterations of the same copy
+without failure.
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 240f6e2..c137168 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2533,11 +2533,11 @@ static int ext4_da_write_end(struct file *file,
+ 							page, fsdata);
+ 
+ 	page_len = PAGE_CACHE_SIZE -
+-			((pos + copied - 1) & (PAGE_CACHE_SIZE - 1));
++			((pos + copied) & (PAGE_CACHE_SIZE - 1));
+ 
+-	if (page_len > 0) {
++	if (page_len > 0 && page_len < PAGE_CACHE_SIZE) {
+ 		ret = ext4_discard_partial_page_buffers_no_lock(handle,
+-			inode, page, pos + copied - 1, page_len,
++			inode, page, pos + copied, page_len,
+ 			EXT4_DISCARD_PARTIAL_PG_ZERO_UNMAPPED);
+ 	}
+ 
+-- 
+1.7.5.4
 
