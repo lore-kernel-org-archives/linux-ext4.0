@@ -1,98 +1,66 @@
-From: Andy Whitcroft <apw@canonical.com>
-Subject: [PATCH 1/1] ext4: correct partial write discard size calculation
-Date: Tue,  6 Dec 2011 22:19:48 +0000
-Message-ID: <1323209988-14304-1-git-send-email-apw@canonical.com>
-Cc: linux-ext4@vger.kernel.org,
-	Allison Henderson <achender@linux.vnet.ibm.com>,
-	linux-kernel@vger.kernel.org, Andy Whitcroft <apw@canonical.com>
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
+From: Hugh Dickins <hughd@google.com>
+Subject: Re: Bug with "fix partial page writes" [3.2-rc regression]
+Date: Tue, 6 Dec 2011 14:31:37 -0800 (PST)
+Message-ID: <alpine.LSU.2.00.1112061412310.1949@sister.anvils>
+References: <CAO81RMa4uRsOsaK4G78EDvOenJpEdTp4y+rtkiDxaK9cASbMtA@mail.gmail.com> <alpine.LSU.2.00.1111201121120.1264@sister.anvils> <20111121165626.GD14568@thunk.org> <alpine.LSU.2.00.1111211331120.1879@sister.anvils> <alpine.LSU.2.00.1112051456580.3938@sister.anvils>
+ <4EDD729E.2060402@linux.vnet.ibm.com> <alpine.LSU.2.00.1112060030220.1615@sister.anvils> <CAGBYx2YA3B5-nLxwdHavmd=794ycrpqnMbvM=VabrdPL2FQ0sw@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323584-813777252-1323210711=:1949"
+Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
+	Ted Ts'o <tytso@mit.edu>, Curt Wohlgemuth <curtw@google.com>,
+	Surbhi Palande <csurbhi@gmail.com>,
+	Rafael Wysocki <rjw@sisk.pl>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from youngberry.canonical.com ([91.189.89.112]:59696 "EHLO
-	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755252Ab1LFWUL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Dec 2011 17:20:11 -0500
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:33213 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753286Ab1LFWcM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Dec 2011 17:32:12 -0500
+Received: by iakc1 with SMTP id c1so4318784iak.19
+        for <linux-ext4@vger.kernel.org>; Tue, 06 Dec 2011 14:32:11 -0800 (PST)
+In-Reply-To: <CAGBYx2YA3B5-nLxwdHavmd=794ycrpqnMbvM=VabrdPL2FQ0sw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When copying large numbers of files we are seeing occasional write failures
-with errno EINVAL.  These are being returned from ext4_da_write_end()
-when attempting to discard the end portion of a partial write.  The error
-is detected and reported by the page index check below:
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-    int ext4_discard_partial_page_buffers_no_lock(handle_t *handle,
-		    struct inode *inode, struct page *page, loff_t from,
-		    loff_t length, int flags)
-    {
-    [...]
-        if (index != page->index)
-                return -EINVAL;
-    [...]
+--8323584-813777252-1323210711=:1949
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 
-This code was introduced by the commit below:
+On Tue, 6 Dec 2011, Yongqiang Yang wrote:
+> On Tue, Dec 6, 2011 at 4:55 PM, Hugh Dickins <hughd@google.com> wrote:
+> >
+> > I've now tried the fsx test on three machines, with both 1/2 and 2/2
+> > applied to 3.2-rc4. =A0On one machine, with ext2 on loop on tmpfs, the
+> > fsx test failed in a couple of minutes with those patches; on another
+> > machine, with ext2 on loop on tmpfs, it failed after about 40 minutes
+> > with =A0the patches; on this laptop, with ext2 on SSD, it's just now
+> > failed after 35 minutes with the patches.
 
-  commit 02fac1297eb3f471a27368271aadd285548297b0
-  Author: Allison Henderson <achender@linux.vnet.ibm.com>
-  Date:   Tue Sep 6 21:53:01 2011 -0400
+> ext2?  So files are indirect mapped?  If so, the failure should has
+> nothing to do with punching hole, I remember that punch hole is not
+> supported for indirect mapped files.
 
-    ext4: fix partial page writes
+Yes, I am not trying to test hole punching: just trying to do my own
+testing under traditional loads, and hitting problems in changes which
+have gone into extN to fix up hole punching.
 
-This error is triggering when a write occurs at pos == 0 and results in
-0 bytes being written (copied == 0):
+Some of the time I've been using an old fsx which doesn't even know
+about fallocate(), some of the time a recent fsx from xfstests.  Most
+of the time I've been using ext2, but occasionally I try it on ext4.
 
-    page_len = PAGE_CACHE_SIZE -
-                    ((pos + copied - 1) & (PAGE_CACHE_SIZE - 1));
-    if (page_len > 0) {
-            ret = ext4_discard_partial_page_buffers_no_lock(handle,
-                    inode, page, pos + copied - 1, page_len,
-    [...]
+I think the only thing which makes the problems go away is blocksize
+same as pagesize; but it's a long time since I tried nomblk_io_submit,
+that made a big difference around 2.6.38/39, perhaps it still does.
 
-In this case we will calculate that we need to clear out only one byte of
-the page.  As we are aligned at the page boundary and wrote 0 bytes we
-actually need to clear the entire page.  Also note that when we attempt
-to apply the discard we will apply it at offset -1 (0 + 0 - 1), which is
-the wrong place:
+>=20
+> Do you mean fsx failure or the bug you reported earlier due to
+> referencing a unlocked page?
 
-    page_len = 4096 - ((0 + 0 - 1) & 4095)
-    page_len = 1
+In first quoted paragraph above, fsx failure.
 
-Firstly fix up the offset calculation.  Once this is done the erroring
-case will correctly believe that the entire page needs to be discarded.
-However in this case we did not actually write to the page so the page
-is not instantiated and no discard is required.  So also only apply the
-discard where we are not discarding the entire page.
-
-Signed-off-by: Andy Whitcroft <apw@canonical.com>
----
- fs/ext4/inode.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
-
-This issue is most easily reproducible within a VM on a fast, lightly
-loaded host.  In that configuration I can trigger a failure with about
-1/2GB of medium sized files (.debs in this case).  Without the patch
-the copy will fail 'EINVAL' 99% of the time, always failing within two
-iterations.  With the patch I have run 100 iterations of the same copy
-without failure.
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 240f6e2..c137168 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2533,11 +2533,11 @@ static int ext4_da_write_end(struct file *file,
- 							page, fsdata);
- 
- 	page_len = PAGE_CACHE_SIZE -
--			((pos + copied - 1) & (PAGE_CACHE_SIZE - 1));
-+			((pos + copied) & (PAGE_CACHE_SIZE - 1));
- 
--	if (page_len > 0) {
-+	if (page_len > 0 && page_len < PAGE_CACHE_SIZE) {
- 		ret = ext4_discard_partial_page_buffers_no_lock(handle,
--			inode, page, pos + copied - 1, page_len,
-+			inode, page, pos + copied, page_len,
- 			EXT4_DISCARD_PARTIAL_PG_ZERO_UNMAPPED);
- 	}
- 
--- 
-1.7.5.4
-
+Hugh
+--8323584-813777252-1323210711=:1949--
