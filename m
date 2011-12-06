@@ -1,10 +1,10 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 4/5 resend] VFS: Rename vfs_check_frozen() to
- vfs_block_until_thawed()
-Date: Tue, 6 Dec 2011 06:40:25 -0500
-Message-ID: <20111206114025.GA4439@infradead.org>
+Subject: Re: [PATCH 5/5 resend] Documentation: Correct s_umount state for
+ freeze_fs/unfreeze_fs
+Date: Tue, 6 Dec 2011 06:40:41 -0500
+Message-ID: <20111206114041.GB4439@infradead.org>
 References: <1323118489-16326-1-git-send-email-kamal@canonical.com>
- <1323118489-16326-5-git-send-email-kamal@canonical.com>
+ <1323118489-16326-6-git-send-email-kamal@canonical.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Jan Kara <jack@suse.cz>, Alexander Viro <viro@zeniv.linux.org.uk>,
@@ -20,24 +20,15 @@ Cc: Jan Kara <jack@suse.cz>, Alexander Viro <viro@zeniv.linux.org.uk>,
 	Mikulas Patocka <mpatocka@redhat.com>
 To: Kamal Mostafa <kamal@canonical.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:38910
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:38925
 	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S933231Ab1LFLkc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Dec 2011 06:40:32 -0500
+	by vger.kernel.org with ESMTP id S933231Ab1LFLkq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Dec 2011 06:40:46 -0500
 Content-Disposition: inline
-In-Reply-To: <1323118489-16326-5-git-send-email-kamal@canonical.com>
+In-Reply-To: <1323118489-16326-6-git-send-email-kamal@canonical.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 05, 2011 at 12:54:48PM -0800, Kamal Mostafa wrote:
-> From: Valerie Aurora <val@vaaconsulting.com>
-> 
-> The name of vfs_check_frozen() tends to de-emphasize an important
-> fact: that it will block until the file system thaws to the specified
-> level.  Make bugs slightly less likely by renaming to
-> vfs_block_until_thawed().
+Looks good,
 
-I really hate that name.  The old one wasn't perfect either, but unless
-you have a really good new one I'm strongly in favour of not repainting
-the bikeshed.
-
+Reviewed-by: Christoph Hellwig <hch@lst.de>
