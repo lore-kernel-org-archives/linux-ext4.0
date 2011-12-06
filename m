@@ -1,111 +1,48 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: Bug with "fix partial page writes" [3.2-rc regression]
-Date: Tue, 6 Dec 2011 17:32:05 +0800
-Message-ID: <CAGBYx2YA3B5-nLxwdHavmd=794ycrpqnMbvM=VabrdPL2FQ0sw@mail.gmail.com>
-References: <CAO81RMa4uRsOsaK4G78EDvOenJpEdTp4y+rtkiDxaK9cASbMtA@mail.gmail.com>
-	<alpine.LSU.2.00.1111201121120.1264@sister.anvils>
-	<20111121165626.GD14568@thunk.org>
-	<alpine.LSU.2.00.1111211331120.1879@sister.anvils>
-	<alpine.LSU.2.00.1112051456580.3938@sister.anvils>
-	<4EDD729E.2060402@linux.vnet.ibm.com>
-	<alpine.LSU.2.00.1112060030220.1615@sister.anvils>
+From: Matt Fleming <matt@console-pimps.org>
+Subject: Re: [PATCH 2/5 resend] Thaw the journal when you unfreeze the fs.
+Date: Tue, 06 Dec 2011 11:07:24 +0000
+Message-ID: <1323169644.4838.13.camel@mfleming-mobl1.ger.corp.intel.com>
+References: <1323118489-16326-1-git-send-email-kamal@canonical.com>
+	 <1323118489-16326-3-git-send-email-kamal@canonical.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
-	"Ted Ts'o" <tytso@mit.edu>, Curt Wohlgemuth <curtw@google.com>,
-	Surbhi Palande <csurbhi@gmail.com>,
-	Rafael Wysocki <rjw@sisk.pl>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Hugh Dickins <hughd@google.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:48571 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932901Ab1LFJcF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Dec 2011 04:32:05 -0500
-In-Reply-To: <alpine.LSU.2.00.1112060030220.1615@sister.anvils>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Matthew Wilcox <matthew@wil.cx>,
+	Randy Dunlap <rdunlap@xenotime.net>,
+	Theodore Tso <tytso@mit.edu>, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, Surbhi Palande <csurbhi@gmail.com>,
+	Valerie Aurora <val@vaaconsulting.com>,
+	Christopher Chaltain <christopher.chaltain@canonical.com>,
+	"Peter M. Petrakis" <peter.petrakis@canonical.com>,
+	Mikulas Patocka <mpatocka@redhat.com>,
+	Surbhi Palande <surbhi.palande@canonical.com>
+To: Kamal Mostafa <kamal@canonical.com>
+Return-path: <linux-doc-owner@vger.kernel.org>
+In-Reply-To: <1323118489-16326-3-git-send-email-kamal@canonical.com>
+Sender: linux-doc-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Dec 6, 2011 at 4:55 PM, Hugh Dickins <hughd@google.com> wrote:
-> On Mon, 5 Dec 2011, Allison Henderson wrote:
->> On 12/05/2011 04:38 PM, Hugh Dickins wrote:
->> >
->> > This has been outstanding for a month now, and we've heard no prog=
-ress:
->> > please revert commit 02fac1297eb3 "ext4: fix partial page writes" =
-for rc5.
->> >
->> > The problems appear on a 1k-blocksize filesystem under memory pres=
-sure:
->> > the hunk in ext4_da_write_end() causes oops, because it's playing =
-with
->> > a page after generic_write_end() dropped our last reference to it;=
- and
->> > backing out the hunk in ext4_da_write_begin() is then found to sto=
-p
->> > rare data corruption seen when kbuilding.
->> >
->> > Although I earlier reported that backing out the patch caused an f=
-sx
->> > test to fail earlier, I've since found great variation in how soon=
- it
->> > fails, and seen it fail just as quickly with 02fac1297eb3 still in=
-=2E
->> > I also reported that I had to go back to 2.6.38 for fsx not to fai=
-l
->> > under memory pressure: you won't be surprised that that turned out=
- to
->> > be because 2.6.38 defaults nomblk_io_submit but 2.6.39 mblk_io_sub=
-mit.
->>
->> Have you tried Yongqiang's patch "[PATCH 1/2] ext4: let mpage_submit=
-_io
->> works well when blocksize < pagesize" ? =A0I have tried it and it do=
-es seem to
->> help, but I am still running into some failures that I am trying to =
-debug,
->> but let please let us know if it helps the issues that you are seein=
-g. =A0Thx!
->
-> That 1/2, or the 2/2 "ext4: let ext4_discard_partial_buffers handle
-> pages without buffers correctly"? =A0The latter is mostly a reversion
-> of your 02fac1297eb3, so that's the one I need to fix the oops and
-> rare data corruption. =A0Perhaps you're suggesting 1/2 for fsx failur=
-es
-> under memory pressure?
->
-> I've now tried the fsx test on three machines, with both 1/2 and 2/2
-> applied to 3.2-rc4. =A0On one machine, with ext2 on loop on tmpfs, th=
-e
-> fsx test failed in a couple of minutes with those patches; on another
-> machine, with ext2 on loop on tmpfs, it failed after about 40 minutes
-> with =A0the patches; on this laptop, with ext2 on SSD, it's just now
-> failed after 35 minutes with the patches.
-ext2?  So files are indirect mapped?  If so, the failure should has
-nothing to do with punching hole, I remember that punch hole is not
-supported for indirect mapped files.
+On Mon, 2011-12-05 at 12:54 -0800, Kamal Mostafa wrote:
+> From: Surbhi Palande <surbhi.palande@canonical.com>
+> 
+> Thaw the journal so that transactions can resume
+> 
+> BugLink: https://bugs.launchpad.net/bugs/897421
+> Signed-off-by: Surbhi Palande <surbhi.palande@canonical.com>
+> Cc: Kamal Mostafa <kamal@canonical.com>
+> Tested-by: Peter M. Petrakis <peter.petrakis@canonical.com>
+> Signed-off-by: Kamal Mostafa <kamal@canonical.com>
+> ---
+>  fs/ext4/super.c |    4 ++++
+>  1 files changed, 4 insertions(+), 0 deletions(-)
 
-Do you mean fsx failure or the bug you reported earlier due to
-referencing a unlocked page?
+Shouldn't this patch really be merged with [PATCH 1/5] ? Otherwise it's
+possible to freeze a journal that will never be unfrozen, if say, you're
+doing a git bisect and you have [PATCH 1/5] applied but not [PATCH 2/5].
 
-Yongqiang.
->
-> That's not to say that Yongqiang's patches aren't good; but I cannot
-> detect whether they make any improvement or not, since lasting for 2 =
-or
-> 40 minutes is typical for fsx under memory pressure with recent kerne=
-ls.
->
-> Hugh
+-- 
+Matt Fleming, Intel Open Source Technology Center
 
-
-
---=20
-Best Wishes
-Yongqiang Yang
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
