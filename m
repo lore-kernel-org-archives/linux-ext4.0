@@ -1,86 +1,86 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCH 07/22] ext4: Create bitmap checksum helper functions
-Date: Tue, 6 Dec 2011 12:59:40 -0800
-Message-ID: <20111206205940.GH7137@tux1.beaverton.ibm.com>
-References: <20111128232615.19194.80081.stgit@elm3c44.beaverton.ibm.com> <20111128232703.19194.55084.stgit@elm3c44.beaverton.ibm.com> <20111205163329.GC32031@thunk.org> <3DBC0B29-0498-47B7-9E79-98FF4BFDC56E@dilger.ca>
-Reply-To: djwong@us.ibm.com
+From: Allison Henderson <achender@linux.vnet.ibm.com>
+Subject: Re: Bug with "fix partial page writes" [3.2-rc regression]
+Date: Tue, 06 Dec 2011 14:15:32 -0700
+Message-ID: <4EDE85F4.4020503@linux.vnet.ibm.com>
+References: <CAO81RMa4uRsOsaK4G78EDvOenJpEdTp4y+rtkiDxaK9cASbMtA@mail.gmail.com> <alpine.LSU.2.00.1111201121120.1264@sister.anvils> <20111121165626.GD14568@thunk.org> <alpine.LSU.2.00.1111211331120.1879@sister.anvils> <alpine.LSU.2.00.1112051456580.3938@sister.anvils> <4EDD729E.2060402@linux.vnet.ibm.com> <alpine.LSU.2.00.1112060030220.1615@sister.anvils>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Ted Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Sunil Mushran <sunil.mushran@oracle.com>,
-	Martin K Petersen <martin.petersen@oracle.com>,
-	Greg Freemyer <greg.freemyer@gmail.com>,
-	Amir Goldstein <amir73il@gmail.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Andi Kleen <andi@firstfloor.org>,
-	Mingming Cao <cmm@us.ibm.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Coly Li <colyli@gmail.com>
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: "Ted Ts'o" <tytso@mit.edu>, Curt Wohlgemuth <curtw@google.com>,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	Surbhi Palande <csurbhi@gmail.com>,
+	Rafael Wysocki <rjw@sisk.pl>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Hugh Dickins <hughd@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:57254 "EHLO e3.ny.us.ibm.com"
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:54111 "EHLO e4.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753670Ab1LFU74 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Dec 2011 15:59:56 -0500
+	id S1754239Ab1LFVPl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Dec 2011 16:15:41 -0500
 Received: from /spool/local
-	by e3.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 6 Dec 2011 15:59:55 -0500
-Content-Disposition: inline
-In-Reply-To: <3DBC0B29-0498-47B7-9E79-98FF4BFDC56E@dilger.ca>
+	by e4.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <achender@linux.vnet.ibm.com>;
+	Tue, 6 Dec 2011 16:15:40 -0500
+In-Reply-To: <alpine.LSU.2.00.1112060030220.1615@sister.anvils>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 06, 2011 at 10:19:12AM -0700, Andreas Dilger wrote:
-> On 2011-12-05, at 9:33, Ted Ts'o <tytso@mit.edu> wrote:
-> > Note: it's strictly speaking not necessary to mix in the group and
-> > s_csum_seed here.  It's useful for the inode table blocks (ITB's)
-> > because the checksum for a particular ITB is located *in* the ITB
-> > itself.  So if an ITB gets written to the wrong place, and in
-> > particular, on top of another ITB, we want to be able to know which
-> > cloned copy was written to the wrong place on disk.
-> > 
-> > But in the case of the inode and block allocation bitmaps, the
-> > checksums are stored in the block group descriptors; so if the bitmap
-> > is written to the wrong place (and on top of another bitmap), the
-> > checksum will fail to verify, independent of whether we've mixed in
-> > the fs-specific csum seed and the group number.
-> > 
-> > So I'd suggest dropping this, which will shave a few cycles off of the
-> > checksum calculation, and it will also simplify the code since we
-> > won't need this particular function.
-> 
-> I wouldn't mind keeping the group just to be consistent with all of the other
-> checksums that are used in the filesystem, which are largely inside the
-> structure being checked.
-> 
-> The s_uuid is definitely useful to keep as the seed because the block and
-> inode bitmaps are not initialized at mke2fs time with uninit_bg, and it is
-> possible to read a stale bitmap from disk that might belong to an earlier
-> instance of the filesystem in case of a failed or misplaced write of the
-> correct bitmap. 
+On 12/06/2011 01:55 AM, Hugh Dickins wrote:
+> On Mon, 5 Dec 2011, Allison Henderson wrote:
+>> On 12/05/2011 04:38 PM, Hugh Dickins wrote:
+>>>
+>>> This has been outstanding for a month now, and we've heard no progress:
+>>> please revert commit 02fac1297eb3 "ext4: fix partial page writes" for rc5.
+>>>
+>>> The problems appear on a 1k-blocksize filesystem under memory pressure:
+>>> the hunk in ext4_da_write_end() causes oops, because it's playing with
+>>> a page after generic_write_end() dropped our last reference to it; and
+>>> backing out the hunk in ext4_da_write_begin() is then found to stop
+>>> rare data corruption seen when kbuilding.
+>>>
+>>> Although I earlier reported that backing out the patch caused an fsx
+>>> test to fail earlier, I've since found great variation in how soon it
+>>> fails, and seen it fail just as quickly with 02fac1297eb3 still in.
+>>> I also reported that I had to go back to 2.6.38 for fsx not to fail
+>>> under memory pressure: you won't be surprised that that turned out to
+>>> be because 2.6.38 defaults nomblk_io_submit but 2.6.39 mblk_io_submit.
+>>
+>> Have you tried Yongqiang's patch "[PATCH 1/2] ext4: let mpage_submit_io
+>> works well when blocksize<  pagesize" ?  I have tried it and it does seem to
+>> help, but I am still running into some failures that I am trying to debug,
+>> but let please let us know if it helps the issues that you are seeing.  Thx!
+>
+> That 1/2, or the 2/2 "ext4: let ext4_discard_partial_buffers handle
+> pages without buffers correctly"?  The latter is mostly a reversion
+> of your 02fac1297eb3, so that's the one I need to fix the oops and
+> rare data corruption.  Perhaps you're suggesting 1/2 for fsx failures
+> under memory pressure?
+>
+> I've now tried the fsx test on three machines, with both 1/2 and 2/2
+> applied to 3.2-rc4.  On one machine, with ext2 on loop on tmpfs, the
+> fsx test failed in a couple of minutes with those patches; on another
+> machine, with ext2 on loop on tmpfs, it failed after about 40 minutes
+> with  the patches; on this laptop, with ext2 on SSD, it's just now
+> failed after 35 minutes with the patches.
+>
+> That's not to say that Yongqiang's patches aren't good; but I cannot
+> detect whether they make any improvement or not, since lasting for 2 or
+> 40 minutes is typical for fsx under memory pressure with recent kernels.
 
-Hmm... let's say you have bitmap B before mkfs and bitmap B' after mkfs + some
-file writes.  B' is lost during write.  It would be bad if B != B' and
-crc32c(B) == crc32c(B'), in which case you'd use the wrong bitmap.
 
-I suppose having the fsuuid + groupnum would probably help to make the inputs
-to crc32c() more distinct, which would be useful since iirc P(collision)
-decreases as the Hamming distance increases.  I'm running a simulation to check
-that claim.
+Well, initially I meant to just try the whole set, but now that I try 
+just one of them, I find that I get further with only the first one.  I 
+think Yongqiang and I have a similar set up because I get the hang if I 
+dont have the first patch, and I get the fsx write failure (in about 20 
+or so minutes) if I have the second one.  But I think Yongqiang's right, 
+we need to figure out why the page is uptodate when it shouldn't be.
 
---D
 
-> That isn't important for e2fsck, since it doesn't really use the bitmaps, but
-> it is important for the kernel not to use bad bitmaps and corrupt the
-> filesystem further. 
-> 
-> Cheers, Andreas--
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+>
+> Hugh
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+>
 
