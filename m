@@ -1,67 +1,94 @@
-From: Robin Dong <hao.bigrat@gmail.com>
-Subject: [PATCH] ext4: check flags's EXT4_GET_BLOCKS_DELALLOC_RESERVE before call ext4_find_delalloc_cluster()
-Date: Wed,  7 Dec 2011 14:04:39 +0800
-Message-ID: <1323237879-31800-1-git-send-email-hao.bigrat@gmail.com>
-Cc: Robin Dong <sanbai@taobao.com>
-To: linux-ext4@vger.kernel.org
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [PATCH 03/22] ext4: Record the checksum algorithm in use in
+	the superblock
+Date: Tue, 6 Dec 2011 23:42:57 -0800
+Message-ID: <20111207074257.GJ7137@tux1.beaverton.ibm.com>
+References: <20111128232615.19194.80081.stgit@elm3c44.beaverton.ibm.com> <20111128232636.19194.92115.stgit@elm3c44.beaverton.ibm.com> <E0964BB6-793D-49AF-A2B0-20748C6DAE2B@dilger.ca>
+Reply-To: djwong@us.ibm.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Tso <tytso@mit.edu>,
+	Sunil Mushran <sunil.mushran@oracle.com>,
+	Martin K Petersen <martin.petersen@oracle.com>,
+	Greg Freemyer <greg.freemyer@gmail.com>,
+	Amir Goldstein <amir73il@gmail.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Andi Kleen <andi@firstfloor.org>,
+	Mingming Cao <cmm@us.ibm.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
+To: Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:34396 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751199Ab1LGGFN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2011 01:05:13 -0500
-Received: by ggnr5 with SMTP id r5so250425ggn.19
-        for <linux-ext4@vger.kernel.org>; Tue, 06 Dec 2011 22:05:12 -0800 (PST)
+Received: from e31.co.us.ibm.com ([32.97.110.149]:43740 "EHLO
+	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753219Ab1LGHnm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2011 02:43:42 -0500
+Received: from /spool/local
+	by e31.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Wed, 7 Dec 2011 00:43:41 -0700
+Content-Disposition: inline
+In-Reply-To: <E0964BB6-793D-49AF-A2B0-20748C6DAE2B@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Robin Dong <sanbai@taobao.com>
+On Tue, Dec 06, 2011 at 10:01:35PM -0700, Andreas Dilger wrote:
+> On 2011-11-28, at 4:26 PM, Darrick J. Wong wrote:
+> > Record the type of checksum algorithm we're using for metadata in the
+> > superblock, in case we ever want/need to change the algorithm.
+> > 
+> > @@ -982,6 +982,9 @@ extern void ext4_set_bits(void *bm, int cur, int len);
+> > +/* Metadata checksum algorithm codes */
+> > +#define EXT4_CRC32C_CHKSUM		1
+> 
+> It might make sense to add a constant for the existing CRC16 type:
+> 
+> #define EXT4_CRC16_CHKSUM    0
+> #define EXT4_CRC32C_CHKSUM   1
+> #define EXT4_CHKSUM_MAX      1
 
-We found performance regression when using bigalloc with "nodelalloc"  (1MB cluster size):
+I disagree -- this field is only defined if metadata_csum is set, and most of
+the checksumming code doesn't know what crc16 is.  If a user somehow set the
+checksum type to "crc16", the code would keep using crc32c.  
 
-1. mke2fs -C 1048576 -O ^has_journal,bigalloc /dev/sda
-2. mount -o nodelalloc /dev/sda /test/
-3. time dd if=/dev/zero of=/test/io bs=1048576 count=1024
+If we ever extend ext4_chksum() to support other algorithms I suppose we could
+make it smart enough to switch algorithms based on the field setting, but I
+don't really want to do for crc16. :)
 
-The "dd" will cost about 2 seconds to finish, but if we mke2fs without "bigalloc",
-"dd" will only cost lesss than 1 second.
+> > +static int ext4_verify_csum_type(struct super_block *sb,
+> > +				 struct ext4_super_block *es)
+> > +{
+> > +	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
+> > +					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
+> > +		return 1;
+> > +
+> > +	return es->s_checksum_type == EXT4_CRC32C_CHKSUM;
+> > +}
+> 
+> Then this checks "return es->s_checksum_type <= EXT4_CHKSUM_MAX;".
 
-The reason is:  when using ext4 with "nodelalloc", it will call ext4_find_delalloc_cluster() nearly
-everytime it call ext4_ext_map_blocks(), and ext4_find_delalloc_cluster() will also scan all pages
-in cluster because no buffer is "delayed".
-A cluster has 256 pages (1MB cluster), so it will scan 256 * 256k pags when creating a 1G file. That
-severely hurts the performance.
+Not really -- this would allow us to mount a file system with metadata_csum=1
+and csum_type=crc16, and crc16 is not supported by most of the checksumming
+code.  I'd rather have the code reject the mount and send fs in for fsck, since
+crc32c is the only one it knows about.
 
-Therefore, we don't call ext4_find_delalloc_cluster() when use "nodelalloc".
+> > @@ -3182,6 +3192,14 @@ static int ext4_fill_super(struct super_block *sb, 
+> > +	/* Check for a known checksum algorithm */
+> > +	if (!ext4_verify_csum_type(sb, es)) {
+> > +		ext4_msg(sb, KERN_ERR, "VFS: Found ext4 filesystem with "
+> > +			 "unknown checksum algorithm.");
+> 
+> It would be useful if this error message printed the checksum type.
 
-Signed-off-by: Robin Dong <sanbai@taobao.com>
----
- fs/ext4/extents.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
+Agreed.
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 61fa9e1..e15d32b 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3724,7 +3724,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	if (!(flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) &&
- 		ext4_ext_in_cache(inode, map->m_lblk, &newex)) {
- 		if (!newex.ee_start_lo && !newex.ee_start_hi) {
--			if ((sbi->s_cluster_ratio > 1) &&
-+			if ((flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) &&
-+			    (sbi->s_cluster_ratio > 1) &&
- 			    ext4_find_delalloc_cluster(inode, map->m_lblk, 0))
- 				map->m_flags |= EXT4_MAP_FROM_CLUSTER;
- 
-@@ -3900,7 +3901,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 		}
- 	}
- 
--	if ((sbi->s_cluster_ratio > 1) &&
-+	if ((flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) &&
-+	    (sbi->s_cluster_ratio > 1) &&
- 	    ext4_find_delalloc_cluster(inode, map->m_lblk, 0))
- 		map->m_flags |= EXT4_MAP_FROM_CLUSTER;
- 
--- 
-1.7.4.1
+--D
+> 
+> Cheers, Andreas
+> 
+> 
+> 
+> 
+> 
 
