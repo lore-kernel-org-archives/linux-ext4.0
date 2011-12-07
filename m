@@ -1,53 +1,67 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: [PATCH 01/02] ext2: reserve INCOMPAT_INLINEDATA feature flag
-Date: Wed, 07 Dec 2011 09:43:46 +0800
-Message-ID: <4EDEC4D2.7080100@tao.ma>
-References: <BC7EBC84-486E-4BD5-A952-51C2B71BF455@whamcloud.com> <E8BB5200-9BE3-49FE-AFC2-18B2E7BBA5A8@whamcloud.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@whamcloud.com>
+From: Robin Dong <hao.bigrat@gmail.com>
+Subject: [PATCH] ext4: check flags's EXT4_GET_BLOCKS_DELALLOC_RESERVE before call ext4_find_delalloc_cluster()
+Date: Wed,  7 Dec 2011 14:04:39 +0800
+Message-ID: <1323237879-31800-1-git-send-email-hao.bigrat@gmail.com>
+Cc: Robin Dong <sanbai@taobao.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy6-pub.bluehost.com ([67.222.54.6]:59625 "HELO
-	oproxy6-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751744Ab1LGBnw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Dec 2011 20:43:52 -0500
-In-Reply-To: <E8BB5200-9BE3-49FE-AFC2-18B2E7BBA5A8@whamcloud.com>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:34396 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751199Ab1LGGFN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2011 01:05:13 -0500
+Received: by ggnr5 with SMTP id r5so250425ggn.19
+        for <linux-ext4@vger.kernel.org>; Tue, 06 Dec 2011 22:05:12 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 12/07/2011 08:13 AM, Andreas Dilger wrote:
-> Reserve the EXT4_FEATURE_INCOMPAT_INLINEDATA feature flag for use
-> with storing small file data in the i_blocks field (up to 60 bytes)
-> and/or the large xattr space (after i_extra_isize, up to the large
-> inode size).  On typical filesystems this can save 1-3% of the space,
-> and more importantly it also avoids seeking to read the data block.
-> 
-> This will become increasingly important with bigalloc filesystems,
-> since they consume a full cluster of blocks for each file, including
-> small directories that could easily fit into the inode itself.
-> 
-> Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
-> Originally-by: Tao Ma <tm@tao.ma>
-I am fine with it. Thanks.
+From: Robin Dong <sanbai@taobao.com>
 
-Tao
-> ---
->  lib/ext2fs/ext2_fs.h |    1 +
->  1 files changed, 1 insertions(+), 0 deletions(-)
-> 
-> diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-> index 0f8cde8..6cf47f9 100644
-> --- a/lib/ext2fs/ext2_fs.h
-> +++ b/lib/ext2fs/ext2_fs.h
-> @@ -719,6 +719,7 @@ struct ext2_super_block {
->  #define EXT4_FEATURE_INCOMPAT_FLEX_BG		0x0200
->  #define EXT4_FEATURE_INCOMPAT_EA_INODE		0x0400
->  #define EXT4_FEATURE_INCOMPAT_DIRDATA		0x1000
-> +#define EXT4_FEATURE_INCOMPAT_INLINEDATA	0x2000 /* data in inode */
->  
->  #define EXT2_FEATURE_COMPAT_SUPP	0
->  #define EXT2_FEATURE_INCOMPAT_SUPP    (EXT2_FEATURE_INCOMPAT_FILETYPE| \
+We found performance regression when using bigalloc with "nodelalloc"  (1MB cluster size):
+
+1. mke2fs -C 1048576 -O ^has_journal,bigalloc /dev/sda
+2. mount -o nodelalloc /dev/sda /test/
+3. time dd if=/dev/zero of=/test/io bs=1048576 count=1024
+
+The "dd" will cost about 2 seconds to finish, but if we mke2fs without "bigalloc",
+"dd" will only cost lesss than 1 second.
+
+The reason is:  when using ext4 with "nodelalloc", it will call ext4_find_delalloc_cluster() nearly
+everytime it call ext4_ext_map_blocks(), and ext4_find_delalloc_cluster() will also scan all pages
+in cluster because no buffer is "delayed".
+A cluster has 256 pages (1MB cluster), so it will scan 256 * 256k pags when creating a 1G file. That
+severely hurts the performance.
+
+Therefore, we don't call ext4_find_delalloc_cluster() when use "nodelalloc".
+
+Signed-off-by: Robin Dong <sanbai@taobao.com>
+---
+ fs/ext4/extents.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 61fa9e1..e15d32b 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3724,7 +3724,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ 	if (!(flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) &&
+ 		ext4_ext_in_cache(inode, map->m_lblk, &newex)) {
+ 		if (!newex.ee_start_lo && !newex.ee_start_hi) {
+-			if ((sbi->s_cluster_ratio > 1) &&
++			if ((flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) &&
++			    (sbi->s_cluster_ratio > 1) &&
+ 			    ext4_find_delalloc_cluster(inode, map->m_lblk, 0))
+ 				map->m_flags |= EXT4_MAP_FROM_CLUSTER;
+ 
+@@ -3900,7 +3901,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ 		}
+ 	}
+ 
+-	if ((sbi->s_cluster_ratio > 1) &&
++	if ((flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) &&
++	    (sbi->s_cluster_ratio > 1) &&
+ 	    ext4_find_delalloc_cluster(inode, map->m_lblk, 0))
+ 		map->m_flags |= EXT4_MAP_FROM_CLUSTER;
+ 
+-- 
+1.7.4.1
 
