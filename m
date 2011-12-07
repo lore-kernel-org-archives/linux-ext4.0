@@ -1,117 +1,137 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 3/5 resend] VFS: Fix s_umount thaw/write deadlock
-Date: Thu, 8 Dec 2011 00:16:58 +0100
-Message-ID: <20111207231658.GQ4622@quack.suse.cz>
-References: <1323118489-16326-1-git-send-email-kamal@canonical.com>
- <1323118489-16326-4-git-send-email-kamal@canonical.com>
- <20111206113544.GA21589@infradead.org>
+Subject: Re: [PATCH] ext4: replace ll_rw_block with other functions
+Date: Thu, 8 Dec 2011 00:20:20 +0100
+Message-ID: <20111207232020.GR4622@quack.suse.cz>
+References: <1322191841-9444-1-git-send-email-wenqing.lz@taobao.com>
+ <1323071779-4697-1-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Kamal Mostafa <kamal@canonical.com>, Jan Kara <jack@suse.cz>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Matthew Wilcox <matthew@wil.cx>,
-	Randy Dunlap <rdunlap@xenotime.net>,
-	Theodore Tso <tytso@mit.edu>, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Surbhi Palande <csurbhi@gmail.com>,
-	Valerie Aurora <val@vaaconsulting.com>,
-	Christopher Chaltain <christopher.chaltain@canonical.com>,
-	"Peter M. Petrakis" <peter.petrakis@canonical.com>,
-	Mikulas Patocka <mpatocka@redhat.com>,
-	Miao Xie <miaox@cn.fujitsu.com>
-To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:38959 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:39037 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752364Ab1LGXRA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 7 Dec 2011 18:17:00 -0500
+	id S1754538Ab1LGXUW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 7 Dec 2011 18:20:22 -0500
 Content-Disposition: inline
-In-Reply-To: <20111206113544.GA21589@infradead.org>
+In-Reply-To: <1323071779-4697-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 06-12-11 06:35:44, Christoph Hellwig wrote:
-> On Mon, Dec 05, 2011 at 12:54:47PM -0800, Kamal Mostafa wrote:
-> > diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-> > index 73c3992..dbeaede 100644
-> > --- a/fs/fs-writeback.c
-> > +++ b/fs/fs-writeback.c
-> > @@ -554,6 +554,14 @@ static long writeback_sb_inodes(struct super_block *sb,
-> >  	while (!list_empty(&wb->b_io)) {
-> >  		struct inode *inode = wb_inode(wb->b_io.prev);
-> >  
-> > +		if (inode->i_sb == sb && vfs_is_frozen(sb)) {
-> > +			/*
-> > +			 * Inode is on a frozen superblock; skip it for now.
-> > +			 */
-> > +			redirty_tail(inode, wb);
-> > +			continue;
-> > +		}
-> > +
+On Mon 05-12-11 15:56:19, Zheng Liu wrote:
+> From: Zheng Liu <wenqing.lz@taobao.com>
 > 
-> We make sure to not dirty any new inodes after the first phase of the
-> freeze, so this should be a BUG_ON/WARN_ON.
-  This is not really true in presence of mmaped writes. To block mmaped
-writes on a frozen filesystem, we need some synchronization between
-page_mkwrite() and freezing code. Currently, to avoid any additional
-locking overhead, we set page dirty and *then* check for filesystem being
-frozen. Only this order can make sure either the page is written (and
-write-protected) or the frozen check triggers and we wait... (see the
-comment in block_page_mkwrite()). The nasty sideeffect of this is that
-there can be dirty pages & inodes on a frozen filesystem. We are blocked in
-the page fault of these pages so user cannot write any data to these pages
-but still they are marked dirty.
-
-Alternatively we could have a different mechanism (rw semaphore?) to
-synchronize page faults and freezing but I'd hate the overhead for the case
-almost noone cares about...
-
-> While we're at it:  can anyway suggest a less cumbersome name than
-> writeback_inodes_sb_if_idle?  I'd go for
-> try_to_writeback_inodes_sb(_nr).
-  Sounds good.
-
-> > index 35f4b0e..47983d9 100644
-> > --- a/fs/quota/quota.c
-> > +++ b/fs/quota/quota.c
-> > @@ -47,7 +47,7 @@ static int check_quotactl_permission(struct super_block *sb, int type, int cmd,
-> >  
-> >  static void quota_sync_one(struct super_block *sb, void *arg)
-> >  {
-> > -	if (sb->s_qcop && sb->s_qcop->quota_sync)
-> > +	if (sb->s_qcop && sb->s_qcop->quota_sync && !vfs_is_frozen(sb))
-> >  		sb->s_qcop->quota_sync(sb, *(int *)arg, 1);
-> >  }
-> 
-> Again, this should be a BUG_ON/WARN_ON.  We shouldn't redirty quotas
-> after the freeze.
-  You cannot really turn the check into WARN_ON because we iterate over all
-superblocks and only in ->quota_sync() check whether something is dirty.
-But the check seems to be unnecessary, that is correct.
-
-> > @@ -368,8 +368,18 @@ SYSCALL_DEFINE4(quotactl, unsigned int, cmd, const char __user *, special,
-> >  		goto out;
-> >  	}
-> >  
-> > +	/*
-> > +	 * It's not clear which quota functions may write to the file
-> > +	 * system (all?).  Check for a frozen fs and bail out now.
-> > +	 */
-> > +	if (vfs_is_frozen(sb)) {
-> > +		ret = -EBUSY;
-> > +		goto out_drop_super;
-> > +	}
-> 
-> How about spending the three minutes to figure it out?
-> Q_GETFMT/Q_GETINFO/Q_XGETQSTAT and Q_GETQUOTA are the obvious read-only
-> candidates.
-  Q_GETQUOTA can actually cause filesystem modification (reservation of
-space in quota file) but the others are read-only. Also after some thought
-I'd prefer that quotactl(8) just blocks to be consistent with how other
-syscalls behave...
+> ll_rw_block() is deprecated. Thus we replace it with other functions.
+  You should have CC'd Ted Tso <tytso@mit.edu> on this one since he is the
+ext4 maintainer. Otherwise the patch looks good. You can add:
+  Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
+> 
+> CC: Jan Kara <jack@suse.cz>
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> ---
+>  fs/ext4/inode.c |   22 ++++++++++------------
+>  fs/ext4/namei.c |    9 ++++++---
+>  fs/ext4/super.c |   11 ++++++-----
+>  3 files changed, 22 insertions(+), 20 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index fffec40..2892d52 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -697,9 +697,11 @@ struct buffer_head *ext4_bread(handle_t *handle, struct inode *inode,
+>  	bh = ext4_getblk(handle, inode, block, create, err);
+>  	if (!bh)
+>  		return bh;
+> -	if (buffer_uptodate(bh))
+> +	if (bh_uptodate_or_lock(bh))
+>  		return bh;
+> -	ll_rw_block(READ | REQ_META | REQ_PRIO, 1, &bh);
+> +	get_bh(bh);
+> +	bh->b_end_io = end_buffer_read_sync;
+> +	submit_bh(READ | REQ_META | REQ_PRIO, bh);
+>  	wait_on_buffer(bh);
+>  	if (buffer_uptodate(bh))
+>  		return bh;
+> @@ -3301,12 +3303,10 @@ int ext4_discard_partial_page_buffers_no_lock(handle_t *handle,
+>  		if (PageUptodate(page))
+>  			set_buffer_uptodate(bh);
+>  
+> -		if (!buffer_uptodate(bh)) {
+> -			err = -EIO;
+> -			ll_rw_block(READ, 1, &bh);
+> -			wait_on_buffer(bh);
+> +		if (!bh_uptodate_or_lock(bh)) {
+> +			err = bh_submit_read(bh);
+>  			/* Uhhuh. Read error. Complain and punt.*/
+> -			if (!buffer_uptodate(bh))
+> +			if (err)
+>  				goto next;
+>  		}
+>  
+> @@ -3423,12 +3423,10 @@ int ext4_block_zero_page_range(handle_t *handle,
+>  	if (PageUptodate(page))
+>  		set_buffer_uptodate(bh);
+>  
+> -	if (!buffer_uptodate(bh)) {
+> -		err = -EIO;
+> -		ll_rw_block(READ, 1, &bh);
+> -		wait_on_buffer(bh);
+> +	if (!bh_uptodate_or_lock(bh)) {
+> +		err = bh_submit_read(bh);
+>  		/* Uhhuh. Read error. Complain and punt. */
+> -		if (!buffer_uptodate(bh))
+> +		if (err)
+>  			goto unlock;
+>  	}
+>  
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index aa4c782..35301bc 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -921,9 +921,12 @@ restart:
+>  				num++;
+>  				bh = ext4_getblk(NULL, dir, b++, 0, &err);
+>  				bh_use[ra_max] = bh;
+> -				if (bh)
+> -					ll_rw_block(READ | REQ_META | REQ_PRIO,
+> -						    1, &bh);
+> +				if (bh && !bh_uptodate_or_lock(bh)) {
+> +					get_bh(bh);
+> +					bh->b_end_io = end_buffer_read_sync;
+> +					submit_bh(READ | REQ_META | REQ_PRIO,
+> +							bh);
+> +				}
+>  			}
+>  		}
+>  		if ((bh = bh_use[ra_ptr++]) == NULL)
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 3858767..13a3259 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -4011,11 +4011,12 @@ static journal_t *ext4_get_dev_journal(struct super_block *sb,
+>  		goto out_bdev;
+>  	}
+>  	journal->j_private = sb;
+> -	ll_rw_block(READ, 1, &journal->j_sb_buffer);
+> -	wait_on_buffer(journal->j_sb_buffer);
+> -	if (!buffer_uptodate(journal->j_sb_buffer)) {
+> -		ext4_msg(sb, KERN_ERR, "I/O error on journal device");
+> -		goto out_journal;
+> +	if (!bh_uptodate_or_lock(journal->j_sb_buffer)) {
+> +		if (bh_submit_read(journal->j_sb_buffer)) {
+> +			ext4_msg(sb, KERN_ERR,
+> +				"I/O error on journal device");
+> +			goto out_journal;
+> +		}
+>  	}
+>  	if (be32_to_cpu(journal->j_superblock->s_nr_users) != 1) {
+>  		ext4_msg(sb, KERN_ERR, "External journal has more than one "
+> -- 
+> 1.7.4.1
+> 
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
