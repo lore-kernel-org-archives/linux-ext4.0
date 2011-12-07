@@ -1,64 +1,77 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: [PATCH 02/02] ext2: reserve INCOMPAT_LARGEDIR feature flag
-Date: Tue, 6 Dec 2011 17:16:00 -0700
-Message-ID: <512B3CCF-26FD-4DFB-BA22-2D6664E03BE5@whamcloud.com>
-References: <BC7EBC84-486E-4BD5-A952-51C2B71BF455@whamcloud.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [PATCH 01/02] ext2: reserve INCOMPAT_INLINEDATA feature flag
+Date: Tue, 6 Dec 2011 16:39:32 -0800
+Message-ID: <20111207003932.GI7137@tux1.beaverton.ibm.com>
+References: <BC7EBC84-486E-4BD5-A952-51C2B71BF455@whamcloud.com> <E8BB5200-9BE3-49FE-AFC2-18B2E7BBA5A8@whamcloud.com>
+Reply-To: djwong@us.ibm.com
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>,
 	Liang Zhen <liang@whamcloud.com>, Tao Ma <tm@tao.ma>
-To: Theodore Ts'o <tytso@mit.edu>
+To: Andreas Dilger <adilger@whamcloud.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:52020 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752896Ab1LGAQE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Dec 2011 19:16:04 -0500
-Received: by ghbz2 with SMTP id z2so44785ghb.19
-        for <linux-ext4@vger.kernel.org>; Tue, 06 Dec 2011 16:16:03 -0800 (PST)
-In-Reply-To: <BC7EBC84-486E-4BD5-A952-51C2B71BF455@whamcloud.com>
+Received: from e38.co.us.ibm.com ([32.97.110.159]:60813 "EHLO
+	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754053Ab1LGAkx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Dec 2011 19:40:53 -0500
+Received: from /spool/local
+	by e38.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Tue, 6 Dec 2011 17:40:52 -0700
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pB70dYdZ173610
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Dec 2011 17:39:34 -0700
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pB70dXsZ007356
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Dec 2011 17:39:33 -0700
+Content-Disposition: inline
+In-Reply-To: <E8BB5200-9BE3-49FE-AFC2-18B2E7BBA5A8@whamcloud.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Reserve the EXT4_FEATURE_INCOMPAT_LARGEDIR feature flag for use by
-directories larger than 2GB in size, or with more than 2-level htree.
-This allows directories to exceed the following size limits:
+On Tue, Dec 06, 2011 at 05:13:51PM -0700, Andreas Dilger wrote:
+> Reserve the EXT4_FEATURE_INCOMPAT_INLINEDATA feature flag for use
+> with storing small file data in the i_blocks field (up to 60 bytes)
+> and/or the large xattr space (after i_extra_isize, up to the large
+> inode size).  On typical filesystems this can save 1-3% of the space,
+> and more importantly it also avoids seeking to read the data block.
+> 
+> This will become increasingly important with bigalloc filesystems,
+> since they consume a full cluster of blocks for each file, including
+> small directories that could easily fit into the inode itself.
+> 
+> Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
+> Originally-by: Tao Ma <tm@tao.ma>
+> ---
+>  lib/ext2fs/ext2_fs.h |    1 +
+>  1 files changed, 1 insertions(+), 0 deletions(-)
+> 
+> diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+> index 0f8cde8..6cf47f9 100644
+> --- a/lib/ext2fs/ext2_fs.h
+> +++ b/lib/ext2fs/ext2_fs.h
+> @@ -719,6 +719,7 @@ struct ext2_super_block {
+>  #define EXT4_FEATURE_INCOMPAT_FLEX_BG		0x0200
+>  #define EXT4_FEATURE_INCOMPAT_EA_INODE		0x0400
+>  #define EXT4_FEATURE_INCOMPAT_DIRDATA		0x1000
+> +#define EXT4_FEATURE_INCOMPAT_INLINEDATA	0x2000 /* data in inode */
 
-             best case       typical case     worst case
-blocksize    8-byte name     64-byte name     255-byte name
-=========    ============    ============     =============
- 1024        768k entries    168k entries     36k entries
- 4096        50M entries     10.9M entries    2.9M entries
-16384        3.2B entries    713M entries     195M entries
+I was using 0x2000 for EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM, to change the
+block group checksum to use crc32c.
 
-The 2GB size limit could be handled by an RO_COMPAT feature (as was
-done with LARGE_FILE) since it only affects the use of i_size_high,
-but the 2-level htree limit is hard coded into the kernel code by
-the use of frame->at[2] allowing only 2 levels of index.
-
-Since it is impossible that a directory larger than 2GB would be
-created without a 3-level htree for blocksize 4096, a single
-INCOMPAT flag is used for both of these cases.
-
-Signed-off-by: Liang Zhen <liang@whamcloud.com>
-Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
----
- lib/ext2fs/ext2_fs.h |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
-
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index 6cf47f9..154356a 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -720,6 +720,7 @@ struct ext2_super_block {
- #define EXT4_FEATURE_INCOMPAT_EA_INODE		0x0400
- #define EXT4_FEATURE_INCOMPAT_DIRDATA		0x1000
- #define EXT4_FEATURE_INCOMPAT_INLINEDATA	0x2000 /* data in inode */
-+#define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree */
- 
- #define EXT2_FEATURE_COMPAT_SUPP	0
- #define EXT2_FEATURE_INCOMPAT_SUPP    (EXT2_FEATURE_INCOMPAT_FILETYPE| \
--- 
-1.7.2
-
+--D
+> 
+>  #define EXT2_FEATURE_COMPAT_SUPP	0
+>  #define EXT2_FEATURE_INCOMPAT_SUPP    (EXT2_FEATURE_INCOMPAT_FILETYPE| \
+> -- 
+> 1.7.2
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
