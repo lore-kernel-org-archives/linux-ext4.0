@@ -1,146 +1,69 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: Bug with "fix partial page writes" [3.2-rc regression]
-Date: Wed, 7 Dec 2011 16:28:56 +0800
-Message-ID: <CAGBYx2YmYRw_p5KHJCYaQNsCpe5OVV7X2TpaK=OE7znCiE7oZA@mail.gmail.com>
-References: <CAO81RMa4uRsOsaK4G78EDvOenJpEdTp4y+rtkiDxaK9cASbMtA@mail.gmail.com>
-	<alpine.LSU.2.00.1111201121120.1264@sister.anvils>
-	<20111121165626.GD14568@thunk.org>
-	<alpine.LSU.2.00.1111211331120.1879@sister.anvils>
-	<alpine.LSU.2.00.1112051456580.3938@sister.anvils>
-	<4EDD729E.2060402@linux.vnet.ibm.com>
-	<alpine.LSU.2.00.1112060030220.1615@sister.anvils>
-	<4EDE85F4.4020503@linux.vnet.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Hugh Dickins <hughd@google.com>, "Ted Ts'o" <tytso@mit.edu>,
-	Curt Wohlgemuth <curtw@google.com>,
-	Surbhi Palande <csurbhi@gmail.com>,
-	Rafael Wysocki <rjw@sisk.pl>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Allison Henderson <achender@linux.vnet.ibm.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <4EDE85F4.4020503@linux.vnet.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 03/22] ext4: Record the checksum algorithm in use in the superblock
+Date: Wed, 7 Dec 2011 01:40:39 -0700
+Message-ID: <949CB89A-7D4D-4429-AB9A-4B43B78D194D@dilger.ca>
+References: <20111128232615.19194.80081.stgit@elm3c44.beaverton.ibm.com> <20111128232636.19194.92115.stgit@elm3c44.beaverton.ibm.com> <E0964BB6-793D-49AF-A2B0-20748C6DAE2B@dilger.ca>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: "Darrick J. Wong" <djwong@us.ibm.com>,
+	Theodore Tso <tytso@mit.edu>,
+	Amir Goldstein <amir73il@gmail.com>,
+	Mingming Cao <cmm@us.ibm.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger.kernel@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:28056 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752760Ab1LGIkl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2011 03:40:41 -0500
+In-Reply-To: <E0964BB6-793D-49AF-A2B0-20748C6DAE2B@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Allison and Hugh,
+On 2011-12-06, at 10:01 PM, Andreas Dilger wrote:
+> On 2011-11-28, at 4:26 PM, Darrick J. Wong wrote:
+>> Record the type of checksum algorithm we're using for metadata in the
+>> superblock, in case we ever want/need to change the algorithm.
+>> 
+>> @@ -982,6 +982,9 @@ extern void ext4_set_bits(void *bm, int cur, int len);
+>> +/* Metadata checksum algorithm codes */
+>> +#define EXT4_CRC32C_CHKSUM		1
+> 
+> It might make sense to add a constant for the existing CRC16 type:
+> 
+> #define EXT4_CRC16_CHKSUM    0
+> #define EXT4_CRC32C_CHKSUM   1
+> #define EXT4_CHKSUM_MAX      1
 
- I think I found the problem and it has nothing to do with punching
-hole.  The patch [ext4: let ext4_bio_write_page handle EOF correctly]
-would fix up the problem.
+Never mind, I had EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM on the brain.
+CRC16 is completely unrelated to EXT4_FEATURE_RO_COMPAT_METADATA_CSUM.
 
-I post the patch so that it can be tested as early as possible.  The
-problem has not appeared on my machine since the patch is applied.
+>> +static int ext4_verify_csum_type(struct super_block *sb,
+>> +				 struct ext4_super_block *es)
+>> +{
+>> +	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
+>> +					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
+>> +		return 1;
+>> +
+>> +	return es->s_checksum_type == EXT4_CRC32C_CHKSUM;
+>> +}
+> 
+> Then this checks "return es->s_checksum_type <= EXT4_CHKSUM_MAX;".
+> 
+>> @@ -3182,6 +3192,14 @@ static int ext4_fill_super(struct super_block *sb, 
+>> +	/* Check for a known checksum algorithm */
+>> +	if (!ext4_verify_csum_type(sb, es)) {
+>> +		ext4_msg(sb, KERN_ERR, "VFS: Found ext4 filesystem with "
+>> +			 "unknown checksum algorithm.");
+> 
+> It would be useful if this error message printed the checksum type.
 
-Yongqiang.
-On Wed, Dec 7, 2011 at 5:15 AM, Allison Henderson
-<achender@linux.vnet.ibm.com> wrote:
-> On 12/06/2011 01:55 AM, Hugh Dickins wrote:
->>
->> On Mon, 5 Dec 2011, Allison Henderson wrote:
->>>
->>> On 12/05/2011 04:38 PM, Hugh Dickins wrote:
->>>>
->>>>
->>>> This has been outstanding for a month now, and we've heard no prog=
-ress:
->>>> please revert commit 02fac1297eb3 "ext4: fix partial page writes" =
-for
->>>> rc5.
->>>>
->>>> The problems appear on a 1k-blocksize filesystem under memory pres=
-sure:
->>>> the hunk in ext4_da_write_end() causes oops, because it's playing =
-with
->>>> a page after generic_write_end() dropped our last reference to it;=
- and
->>>> backing out the hunk in ext4_da_write_begin() is then found to sto=
-p
->>>> rare data corruption seen when kbuilding.
->>>>
->>>> Although I earlier reported that backing out the patch caused an f=
-sx
->>>> test to fail earlier, I've since found great variation in how soon=
- it
->>>> fails, and seen it fail just as quickly with 02fac1297eb3 still in=
-=2E
->>>> I also reported that I had to go back to 2.6.38 for fsx not to fai=
-l
->>>> under memory pressure: you won't be surprised that that turned out=
- to
->>>> be because 2.6.38 defaults nomblk_io_submit but 2.6.39 mblk_io_sub=
-mit.
->>>
->>>
->>> Have you tried Yongqiang's patch "[PATCH 1/2] ext4: let mpage_submi=
-t_io
->>> works well when blocksize< =A0pagesize" ? =A0I have tried it and it=
- does seem
->>> to
->>> help, but I am still running into some failures that I am trying to
->>> debug,
->>> but let please let us know if it helps the issues that you are seei=
-ng.
->>> =A0Thx!
->>
->>
->> That 1/2, or the 2/2 "ext4: let ext4_discard_partial_buffers handle
->> pages without buffers correctly"? =A0The latter is mostly a reversio=
-n
->> of your 02fac1297eb3, so that's the one I need to fix the oops and
->> rare data corruption. =A0Perhaps you're suggesting 1/2 for fsx failu=
-res
->> under memory pressure?
->>
->> I've now tried the fsx test on three machines, with both 1/2 and 2/2
->> applied to 3.2-rc4. =A0On one machine, with ext2 on loop on tmpfs, t=
-he
->> fsx test failed in a couple of minutes with those patches; on anothe=
-r
->> machine, with ext2 on loop on tmpfs, it failed after about 40 minute=
-s
->> with =A0the patches; on this laptop, with ext2 on SSD, it's just now
->> failed after 35 minutes with the patches.
->>
->> That's not to say that Yongqiang's patches aren't good; but I cannot
->> detect whether they make any improvement or not, since lasting for 2=
- or
->> 40 minutes is typical for fsx under memory pressure with recent kern=
-els.
->
->
->
-> Well, initially I meant to just try the whole set, but now that I try=
- just
-> one of them, I find that I get further with only the first one. =A0I =
-think
-> Yongqiang and I have a similar set up because I get the hang if I don=
-t have
-> the first patch, and I get the fsx write failure (in about 20 or so m=
-inutes)
-> if I have the second one. =A0But I think Yongqiang's right, we need t=
-o figure
-> out why the page is uptodate when it shouldn't be.
->
->
->>
->> Hugh
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4=
-" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->>
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+This is still a valid comment.
+
+Cheers, Andreas
 
 
 
---=20
-Best Wishes
-Yongqiang Yang
+
+
