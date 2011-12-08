@@ -1,77 +1,31 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext3: Fix error handling on inode bitmap corruption
-Date: Thu, 08 Dec 2011 16:40:42 -0600
-Message-ID: <4EE13CEA.6060209@redhat.com>
-References: <1323376115-23881-1-git-send-email-jack@suse.cz> <1323376115-23881-2-git-send-email-jack@suse.cz> <4EE12211.3000604@redhat.com> <20111208222816.GB24269@quack.suse.cz>
+From: Christian Brunner <chb@muc.de>
+Subject: Re: ceph and ext4
+Date: Thu, 8 Dec 2011 23:59:29 +0100
+Message-ID: <CAO47_-9vGg89HgxjT=dzSSsUxxdbZ=yJoYQk4Qge8WGPjeVmKw@mail.gmail.com>
+References: <4EC10664.1080501@tuxadero.com>
+	<CAO47_-9nfO32nwOAQMVdqw6iWGWK+FWb+MD=WeOz_vr4YrrKmw@mail.gmail.com>
+	<20111115142246.GA7516@thunk.org>
+	<246EA1CC-3C33-4D41-80C0-2331C426EBB0@whamcloud.com>
+Reply-To: chb@muc.de
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Ted Tso <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43425 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751700Ab1LHWlL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 8 Dec 2011 17:41:11 -0500
-In-Reply-To: <20111208222816.GB24269@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: "ceph-devel@vger.kernel.org" <ceph-devel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Jian Yu <yujian@whamcloud.com>
+To: Andreas Dilger <adilger@whamcloud.com>
+Return-path: <ceph-devel-owner@vger.kernel.org>
+In-Reply-To: <246EA1CC-3C33-4D41-80C0-2331C426EBB0@whamcloud.com>
+Sender: ceph-devel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 12/8/11 4:28 PM, Jan Kara wrote:
-> On Thu 08-12-11 14:46:09, Eric Sandeen wrote:
->> On 12/8/11 2:28 PM, Jan Kara wrote:
->>> When insert_inode_locked() fails in ext3_new_inode() it most likely
->>> means inode bitmap got corrupted and we allocated again inode which
->>> is already in use. Also doing unlock_new_inode() during error recovery
->>> is wrong since inode does not have I_NEW set. Fix the problem by jumping
->>> to fail: (instead of fail_drop:) which declares filesystem error and
->>> does not call unlock_new_inode().
->>>
->>> Signed-off-by: Jan Kara <jack@suse.cz>
->>
->> Reviewed-by: Eric Sandeen <sandeen@redhat.com>
->>
->> I think ext2 could use the same treatment.
->>
->> BTW, though, have you recently started seeing the issue?  We have
->> people hitting this when resuming after suspend; it seems likely
->> that the bitmap did get corrupted though, based on some other
->> things seen in similar bugs.
->   Interesting. I've got a report from IBM testing ext3 on SLE11 SP2 kernel
-> (3.0 based). Their filesystem got damaged (might be HW issue, not sure yet)
-> and they also observed warnings from unlock_new_inode().
+2011/11/15 Andreas Dilger <adilger@whamcloud.com>:
+> Coincidentally, we have someone working in those patches again. The main obstacle for accepting the previous patch as-is was that Ted wanted to add support for "medium-sized" xattrs that are addressed as a string of blocks, instead of via an inode.
+>
+> This will allow xattrs up to 64kB in size (in total) to be stored as efficiently as an external xattr block.
+>
 
-It may be that it has been failing in other ways, but now we get the WARN_ON
-and the long backtrace so it's reported more frequently...
+Did you make progress with this. I'm still having serious trouble with
+btrfs and would like to try these.
 
-I think there might be a hibernate issue that is causing the underlying
-corruption, trying to look into that now.
-
--Eric
-
-> 								Honza
->>> ---
->>>  fs/ext3/ialloc.c |    8 ++++++--
->>>  1 files changed, 6 insertions(+), 2 deletions(-)
->>>
->>> diff --git a/fs/ext3/ialloc.c b/fs/ext3/ialloc.c
->>> index 5c866e0..adae962 100644
->>> --- a/fs/ext3/ialloc.c
->>> +++ b/fs/ext3/ialloc.c
->>> @@ -525,8 +525,12 @@ got:
->>>  	if (IS_DIRSYNC(inode))
->>>  		handle->h_sync = 1;
->>>  	if (insert_inode_locked(inode) < 0) {
->>> -		err = -EINVAL;
->>> -		goto fail_drop;
->>> +		/*
->>> +		 * Likely a bitmap corruption causing inode to be allocated
->>> +		 * twice.
->>> +		 */
->>> +		err = -EIO;
->>> +		goto fail;
->>>  	}
->>>  	spin_lock(&sbi->s_next_gen_lock);
->>>  	inode->i_generation = sbi->s_next_generation++;
->>
-
+Thanks,
+Christian
