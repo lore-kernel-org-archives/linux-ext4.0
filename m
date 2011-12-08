@@ -1,87 +1,71 @@
-From: Hugh Dickins <hughd@google.com>
-Subject: Re: Bug with "fix partial page writes" [3.2-rc regression]
-Date: Thu, 8 Dec 2011 09:39:55 -0800 (PST)
-Message-ID: <alpine.LSU.2.00.1112080909300.22300@sister.anvils>
-References: <CAO81RMa4uRsOsaK4G78EDvOenJpEdTp4y+rtkiDxaK9cASbMtA@mail.gmail.com> <alpine.LSU.2.00.1111201121120.1264@sister.anvils> <20111121165626.GD14568@thunk.org> <alpine.LSU.2.00.1111211331120.1879@sister.anvils> <alpine.LSU.2.00.1112051456580.3938@sister.anvils>
- <4EDD729E.2060402@linux.vnet.ibm.com> <alpine.LSU.2.00.1112060030220.1615@sister.anvils> <4EDE85F4.4020503@linux.vnet.ibm.com> <CAGBYx2YmYRw_p5KHJCYaQNsCpe5OVV7X2TpaK=OE7znCiE7oZA@mail.gmail.com> <4EDF9CAB.3050502@linux.vnet.ibm.com>
- <4EE046C7.9030902@linux.vnet.ibm.com>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>, Ted Ts'o <tytso@mit.edu>,
-	Curt Wohlgemuth <curtw@google.com>,
+From: Kamal Mostafa <kamal@canonical.com>
+Subject: [PATCH v2 0/7] fix s_umount thaw/write and journal deadlock
+Date: Thu,  8 Dec 2011 10:04:30 -0800
+Message-ID: <1323367477-21685-1-git-send-email-kamal@canonical.com>
+Cc: linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	Surbhi Palande <csurbhi@gmail.com>,
-	Rafael Wysocki <rjw@sisk.pl>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Andy Whitcroft <apw@canonical.com>
-To: Allison Henderson <achender@linux.vnet.ibm.com>
+	Valerie Aurora <val@vaaconsulting.com>,
+	Kamal Mostafa <kamal@canonical.com>,
+	Christopher Chaltain <christopher.chaltain@canonical.com>,
+	"Peter M. Petrakis" <peter.petrakis@canonical.com>,
+	Mikulas Patocka <mpatocka@redhat.com>
+To: Jan Kara <jack@suse.cz>, Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Matthew Wilcox <matthew@wil.cx>,
+	Randy Dunlap <rdunlap@xenotime.net>,
+	Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:55788 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752567Ab1LHRk2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Dec 2011 12:40:28 -0500
-Received: by qcqz2 with SMTP id z2so1506585qcq.19
-        for <linux-ext4@vger.kernel.org>; Thu, 08 Dec 2011 09:40:28 -0800 (PST)
-In-Reply-To: <4EE046C7.9030902@linux.vnet.ibm.com>
+Received: from youngberry.canonical.com ([91.189.89.112]:48188 "EHLO
+	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752214Ab1LHSFM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Dec 2011 13:05:12 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 7 Dec 2011, Allison Henderson wrote:
-> On 12/07/2011 10:04 AM, Allison Henderson wrote:
-> > On 12/07/2011 01:28 AM, Yongqiang Yang wrote:
-> > > Hi Allison and Hugh,
-> > > 
-> > > I think I found the problem and it has nothing to do with punching
-> > > hole. The patch [ext4: let ext4_bio_write_page handle EOF correctly]
-> > > would fix up the problem.
-> > > 
-> > > I post the patch so that it can be tested as early as possible. The
-> > > problem has not appeared on my machine since the patch is applied.
-> > > 
-> > > Yongqiang.
-> > 
-> > Great! I will try it out with your other set in my sandbox and let you
-> > know what happens. Thx!
-> > 
-> > Allison Henderson
-> 
-> Well, it's been running several hours now with out problems, so I think it
-> will be ok, but I will let it run the full day.
-> 
-> Andy, I know you were also seeing issues in this area.  Could you try
-> Yongqiang patches?  The code you were modifying needed to be removed, so I
-> think they will resolve the issues you were seeing too.  Please try the
-> following patch sets:
-> 
-> [PATCH 1/2] ext4: let mpage_submit_io works well when blocksize < pagesize
-> [PATCH 2/2] ext4: let ext4_discard_partial_buffers handle pages without
-> buffers correctly
-> 
-> and
-> 
-> [PATCH 1/2] ext4: remove a wrong BUG_ON in ext4_ext_convert_to_initialized
-> [PATCH 2/2] ext4: let ext4_bio_write_page handle EOF correctly
+Thanks everyone for the feedback.  Here's [PATCH v2], with these notable
+changes since [PATCH 0/5 resend]:
+   - made bisect-safe "Freeze and thaw the journal on ext4 freeze"
+   - functional change: allow read-only quota subcmds when frozen
+   - added "VFS: Rename and refactor writeback_inodes_sb_if_idle"
+   - split-out "VFS: Avoid read-write deadlock in try_to_writeback_inodes_sb"
+   - split-out "VFS: Document s_frozen state through freeze_super"
+   - dropped "VFS: Rename vfs_check_frozen()"
 
-Those patches are working well for me, many thanks to Yongqiang.
+-----
 
-The last (or more of them?) fix behaviour going back several
-releases, and ought to be sent to -stable after verification.
+This set of filesystem freeze/thaw deadlock patches is submitted on
+behalf of the authors, Kamal Mostafa, Surbhi Palande and Valerie Aurora.
+The patches fix the bug:
 
-I ran fsx (args as before on 1024k block ext2fs under memory pressure)
-for 8 hours on three machines, and no problem showed up on any.
-I didn't have time to try ext4, but I expect that you did.
+BugLink: https://bugs.launchpad.net/bugs/897421
 
-And I've run kernel builds under memory pressure for 7.5 hours,
-no problem has showed up there either - although that's not long
-enough yet to validate the oops fix by itself, we've earlier run
-long enough with the first 2/2 to be sure that it fixes the oops,
-and the "corruption" that I saw.
+Kamal Mostafa (1):
+  VFS: Rename and refactor writeback_inodes_sb_if_idle
 
-Quotes around corruption now because, from Yongqiang's description,
-I'm guessing that ld was mmap'ing objfiles and acting on "data"
-from beyond eof.  Which ld does have the right to do, it should
-indeed be zeroed.
+Surbhi Palande (2):
+  Adding support to freeze and unfreeze a journal
+  Freeze and thaw the journal on ext4 freeze
 
-Only once, before the fixes, did I ever see an unexplained EINVAL
-(from cp), like Andy reports: I'm very hopeful his case is fixed too.
+Valerie Aurora (4):
 
-Thanks!
-Hugh
+  VFS: Fix s_umount thaw/write deadlock
+  VFS: Avoid read-write deadlock in try_to_writeback_inodes_sb
+  VFS: Document s_frozen state through freeze_super
+  Documentation: Correct s_umount state for freeze_fs/unfreeze_fs
+
+ Documentation/filesystems/Locking |    4 +-
+ fs/btrfs/extent-tree.c            |    2 +-
+ fs/ext4/inode.c                   |    2 +-
+ fs/ext4/super.c                   |   13 +++++-----
+ fs/fs-writeback.c                 |   46 +++++++++++++++++++++---------------
+ fs/jbd2/journal.c                 |    1 +
+ fs/jbd2/transaction.c             |   42 +++++++++++++++++++++++++++++++++
+ fs/quota/quota.c                  |   21 ++++++++++++++++-
+ fs/super.c                        |   26 +++++++++++++++++++++
+ fs/sync.c                         |    4 +-
+ include/linux/fs.h                |    7 +++++-
+ include/linux/jbd2.h              |    7 +++++
+ include/linux/writeback.h         |    4 +-
+ 13 files changed, 143 insertions(+), 36 deletions(-)
+
