@@ -1,64 +1,35 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext3: Fix error handling on inode bitmap corruption
-Date: Thu, 08 Dec 2011 14:46:09 -0600
-Message-ID: <4EE12211.3000604@redhat.com>
-References: <1323376115-23881-1-git-send-email-jack@suse.cz> <1323376115-23881-2-git-send-email-jack@suse.cz>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 0/4] 32/64 bit llseek hashes (v4)
+Date: Thu, 8 Dec 2011 16:10:36 -0500
+Message-ID: <20111208211036.GE32505@fieldses.org>
+References: <20110817095717.1879649.41075.stgit@fsdevel3>
+ <4E5D6058.8040805@fastmail.fm>
+ <4EBA9551.4000404@redhat.com>
+ <4EE0FF93.9060907@itwm.fraunhofer.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Ted Tso <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ted Ts'o <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+	Bernd Schubert <bernd.schubert@fastmail.fm>,
+	linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
+	adilger@whamcloud.com, "J. Bruce Fields" <bfields@redhat.com>
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:61470 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:44142 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751424Ab1LHUqf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 8 Dec 2011 15:46:35 -0500
-In-Reply-To: <1323376115-23881-2-git-send-email-jack@suse.cz>
+	id S1751405Ab1LHVKl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 8 Dec 2011 16:10:41 -0500
+Content-Disposition: inline
+In-Reply-To: <4EE0FF93.9060907@itwm.fraunhofer.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 12/8/11 2:28 PM, Jan Kara wrote:
-> When insert_inode_locked() fails in ext3_new_inode() it most likely
-> means inode bitmap got corrupted and we allocated again inode which
-> is already in use. Also doing unlock_new_inode() during error recovery
-> is wrong since inode does not have I_NEW set. Fix the problem by jumping
-> to fail: (instead of fail_drop:) which declares filesystem error and
-> does not call unlock_new_inode().
+On Thu, Dec 08, 2011 at 07:18:59PM +0100, Bernd Schubert wrote:
+> Ted,
 > 
-> Signed-off-by: Jan Kara <jack@suse.cz>
+> is there anything I can do to get those patched into 3.3?
+> The patches still apply in current linux-git.
 
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+They appear to solve a real problem for nfsd.  What's holding them up?
 
-I think ext2 could use the same treatment.
-
-BTW, though, have you recently started seeing the issue?  We have
-people hitting this when resuming after suspend; it seems likely
-that the bitmap did get corrupted though, based on some other
-things seen in similar bugs.
-
--Eric
-
-> ---
->  fs/ext3/ialloc.c |    8 ++++++--
->  1 files changed, 6 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext3/ialloc.c b/fs/ext3/ialloc.c
-> index 5c866e0..adae962 100644
-> --- a/fs/ext3/ialloc.c
-> +++ b/fs/ext3/ialloc.c
-> @@ -525,8 +525,12 @@ got:
->  	if (IS_DIRSYNC(inode))
->  		handle->h_sync = 1;
->  	if (insert_inode_locked(inode) < 0) {
-> -		err = -EINVAL;
-> -		goto fail_drop;
-> +		/*
-> +		 * Likely a bitmap corruption causing inode to be allocated
-> +		 * twice.
-> +		 */
-> +		err = -EIO;
-> +		goto fail;
->  	}
->  	spin_lock(&sbi->s_next_gen_lock);
->  	inode->i_generation = sbi->s_next_generation++;
-
+--b.
