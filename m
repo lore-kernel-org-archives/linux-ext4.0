@@ -1,7 +1,8 @@
 From: Kamal Mostafa <kamal@canonical.com>
-Subject: [PATCH v2 0/7] fix s_umount thaw/write and journal deadlock
-Date: Thu,  8 Dec 2011 10:04:30 -0800
-Message-ID: <1323367477-21685-1-git-send-email-kamal@canonical.com>
+Subject: [PATCH v2 2/7] Freeze and thaw the journal on ext4 freeze
+Date: Thu,  8 Dec 2011 10:04:32 -0800
+Message-ID: <1323367477-21685-3-git-send-email-kamal@canonical.com>
+References: <1323367477-21685-1-git-send-email-kamal@canonical.com>
 Cc: linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	Surbhi Palande <csurbhi@gmail.com>,
@@ -9,63 +10,75 @@ Cc: linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
 	Kamal Mostafa <kamal@canonical.com>,
 	Christopher Chaltain <christopher.chaltain@canonical.com>,
 	"Peter M. Petrakis" <peter.petrakis@canonical.com>,
-	Mikulas Patocka <mpatocka@redhat.com>
+	Mikulas Patocka <mpatocka@redhat.com>,
+	Surbhi Palande <surbhi.palande@canonical.com>
 To: Jan Kara <jack@suse.cz>, Alexander Viro <viro@zeniv.linux.org.uk>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Matthew Wilcox <matthew@wil.cx>,
 	Randy Dunlap <rdunlap@xenotime.net>,
 	Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from youngberry.canonical.com ([91.189.89.112]:48188 "EHLO
-	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752214Ab1LHSFM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Dec 2011 13:05:12 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1323367477-21685-1-git-send-email-kamal@canonical.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Thanks everyone for the feedback.  Here's [PATCH v2], with these notable
-changes since [PATCH 0/5 resend]:
-   - made bisect-safe "Freeze and thaw the journal on ext4 freeze"
-   - functional change: allow read-only quota subcmds when frozen
-   - added "VFS: Rename and refactor writeback_inodes_sb_if_idle"
-   - split-out "VFS: Avoid read-write deadlock in try_to_writeback_inodes_sb"
-   - split-out "VFS: Document s_frozen state through freeze_super"
-   - dropped "VFS: Rename vfs_check_frozen()"
+From: Surbhi Palande <surbhi.palande@canonical.com>
 
------
-
-This set of filesystem freeze/thaw deadlock patches is submitted on
-behalf of the authors, Kamal Mostafa, Surbhi Palande and Valerie Aurora.
-The patches fix the bug:
+Freeze and thaw the journal when you freeze and thaw the filesystem.
 
 BugLink: https://bugs.launchpad.net/bugs/897421
+Signed-off-by: Surbhi Palande <surbhi.palande@canonical.com>
+Cc: Kamal Mostafa <kamal@canonical.com>
+Tested-by: Peter M. Petrakis <peter.petrakis@canonical.com>
+Signed-off-by: Kamal Mostafa <kamal@canonical.com>
+---
+ fs/ext4/super.c |   13 ++++++-------
+ 1 files changed, 6 insertions(+), 7 deletions(-)
 
-Kamal Mostafa (1):
-  VFS: Rename and refactor writeback_inodes_sb_if_idle
-
-Surbhi Palande (2):
-  Adding support to freeze and unfreeze a journal
-  Freeze and thaw the journal on ext4 freeze
-
-Valerie Aurora (4):
-
-  VFS: Fix s_umount thaw/write deadlock
-  VFS: Avoid read-write deadlock in try_to_writeback_inodes_sb
-  VFS: Document s_frozen state through freeze_super
-  Documentation: Correct s_umount state for freeze_fs/unfreeze_fs
-
- Documentation/filesystems/Locking |    4 +-
- fs/btrfs/extent-tree.c            |    2 +-
- fs/ext4/inode.c                   |    2 +-
- fs/ext4/super.c                   |   13 +++++-----
- fs/fs-writeback.c                 |   46 +++++++++++++++++++++---------------
- fs/jbd2/journal.c                 |    1 +
- fs/jbd2/transaction.c             |   42 +++++++++++++++++++++++++++++++++
- fs/quota/quota.c                  |   21 ++++++++++++++++-
- fs/super.c                        |   26 +++++++++++++++++++++
- fs/sync.c                         |    4 +-
- include/linux/fs.h                |    7 +++++-
- include/linux/jbd2.h              |    7 +++++
- include/linux/writeback.h         |    4 +-
- 13 files changed, 143 insertions(+), 36 deletions(-)
-
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 3858767..751908b 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4330,14 +4330,11 @@ static int ext4_freeze(struct super_block *sb)
+ 
+ 	journal = EXT4_SB(sb)->s_journal;
+ 
+-	/* Now we set up the journal barrier. */
+-	jbd2_journal_lock_updates(journal);
+-
++	error = jbd2_journal_freeze(journal);
+ 	/*
+-	 * Don't clear the needs_recovery flag if we failed to flush
++	 * Don't clear the needs_recovery flag if we failed to freeze
+ 	 * the journal.
+ 	 */
+-	error = jbd2_journal_flush(journal);
+ 	if (error < 0)
+ 		goto out;
+ 
+@@ -4345,8 +4342,6 @@ static int ext4_freeze(struct super_block *sb)
+ 	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+ 	error = ext4_commit_super(sb, 1);
+ out:
+-	/* we rely on s_frozen to stop further updates */
+-	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
+ 	return error;
+ }
+ 
+@@ -4356,10 +4351,14 @@ out:
+  */
+ static int ext4_unfreeze(struct super_block *sb)
+ {
++	journal_t *journal;
+ 	if (sb->s_flags & MS_RDONLY)
+ 		return 0;
+ 
+ 	lock_super(sb);
++	journal = EXT4_SB(sb)->s_journal;
++
++	jbd2_journal_thaw(journal);
+ 	/* Reset the needs_recovery flag before the fs is unlocked. */
+ 	EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+ 	ext4_commit_super(sb, 1);
+-- 
+1.7.5.4
