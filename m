@@ -1,7 +1,7 @@
 From: Kamal Mostafa <kamal@canonical.com>
-Subject: [PATCH v2 4/7] VFS: Rename and refactor writeback_inodes_sb_if_idle
-Date: Thu,  8 Dec 2011 10:04:34 -0800
-Message-ID: <1323367477-21685-5-git-send-email-kamal@canonical.com>
+Subject: [PATCH v2 1/7] Adding support to freeze and unfreeze a journal
+Date: Thu,  8 Dec 2011 10:04:31 -0800
+Message-ID: <1323367477-21685-2-git-send-email-kamal@canonical.com>
 References: <1323367477-21685-1-git-send-email-kamal@canonical.com>
 Cc: linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
@@ -10,130 +10,190 @@ Cc: linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
 	Kamal Mostafa <kamal@canonical.com>,
 	Christopher Chaltain <christopher.chaltain@canonical.com>,
 	"Peter M. Petrakis" <peter.petrakis@canonical.com>,
-	Mikulas Patocka <mpatocka@redhat.com>
+	Mikulas Patocka <mpatocka@redhat.com>,
+	Surbhi Palande <surbhi.palande@canonical.com>
 To: Jan Kara <jack@suse.cz>, Alexander Viro <viro@zeniv.linux.org.uk>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Matthew Wilcox <matthew@wil.cx>,
 	Randy Dunlap <rdunlap@xenotime.net>,
 	Theodore Tso <tytso@mit.edu>
-Return-path: <linux-doc-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <1323367477-21685-1-git-send-email-kamal@canonical.com>
-Sender: linux-doc-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Rename writeback_inodes_sb{_nr}_if_idle to try_to_writeback_inodes_sb{_nr}
-and refactor to avoid duplicating logic.
+From: Surbhi Palande <surbhi.palande@canonical.com>
 
+The journal should be frozen when a filesystem freezes. What this means is
+that until the filesystem is thawed again, no new transactions should be
+accepted by the journal. When the filesystem thaws, inturn it should thaw the
+journal and this should allow the journal to resume accepting new
+transactions. While the the filesystem has frozen the journal, the clients of
+the journal on calling jbd2_journal_start() will sleep on a wait queue.
+Thawing the journal will wake up the sleeping clients and journalling can
+progress normally.
+
+An example of the race condition that can happen without this patch is as
+follows:
+
+Say the filesystem is thawed when we begin. Let tx be the time at unit x
+
+P1: Process doing an aio write
+t1) ext4_file_write()
+  t2) generic_file_aio_write()
+    t3) __generic_file_aio_write()
+      // filesystem is not frozen, so we do not block in the next check.
+      t4) vfs_check_frozen()
+      t5) generic_write_checks()
+----------------- Prempted------------------
+
+P2: Process that does filesystem freeze
+
+t6) freeze_super()
+  t7) sync_filesystem()
+  t8) sync_blockdev()
+  t9) sb->s_op->freeze_fs() (= ext4_freeze)
+    t10) jbd2_journal_lock_updates()
+    t11) jbd2_journal_flush()
+    // Need to unlock the journal before returning to user space.
+    t12) jbd2_journal_unlock_updates()
+    // Journal is unlocked and so we can start accepting new transactions now.
+
+// freezing process completes execution. Page cache is now clean and should
+// remain clean till the filesystem is frozen.
+--------------------------------------------
+
+P1: writing process gets the control back
+t13) generic_file_buffered_write()
+  t14) generic_perform_write()
+    t15) a_ops->write_begin() (= ext4_write_begin)
+      t16) ext4_journal_start()
+	// New handle is started. We do not block here! Write continues
+	// dirtying the page cache while the filesystem is frozen!
+
+BugLink: https://bugs.launchpad.net/bugs/897421
+Signed-off-by: Surbhi Palande <surbhi.palande@canonical.com>
+Acked-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: Kamal Mostafa <kamal@canonical.com>
+Tested-by: Peter M. Petrakis <peter.petrakis@canonical.com>
 Signed-off-by: Kamal Mostafa <kamal@canonical.com>
 ---
- fs/btrfs/extent-tree.c    |    2 +-
- fs/ext4/inode.c           |    2 +-
- fs/fs-writeback.c         |   25 +++++++++++--------------
- include/linux/writeback.h |    4 ++--
- 4 files changed, 15 insertions(+), 18 deletions(-)
+ fs/jbd2/journal.c     |    1 +
+ fs/jbd2/transaction.c |   42 ++++++++++++++++++++++++++++++++++++++++++
+ include/linux/jbd2.h  |    7 +++++++
+ 3 files changed, 50 insertions(+), 0 deletions(-)
 
-diff --git a/fs/btrfs/extent-tree.c b/fs/btrfs/extent-tree.c
-index f0d5718..6f6fe2b 100644
---- a/fs/btrfs/extent-tree.c
-+++ b/fs/btrfs/extent-tree.c
-@@ -3416,7 +3416,7 @@ static int shrink_delalloc(struct btrfs_root *root, u64 to_reclaim,
- 		smp_mb();
- 		nr_pages = min_t(unsigned long, nr_pages,
- 		       root->fs_info->delalloc_bytes >> PAGE_CACHE_SHIFT);
--		writeback_inodes_sb_nr_if_idle(root->fs_info->sb, nr_pages,
-+		try_to_writeback_inodes_sb_nr(root->fs_info->sb, nr_pages,
- 						WB_REASON_FS_FREE_SPACE);
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 0fa0123..f0170cc 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -894,6 +894,7 @@ static journal_t * journal_init_common (void)
+ 	init_waitqueue_head(&journal->j_wait_checkpoint);
+ 	init_waitqueue_head(&journal->j_wait_commit);
+ 	init_waitqueue_head(&journal->j_wait_updates);
++	init_waitqueue_head(&journal->j_wait_frozen);
+ 	mutex_init(&journal->j_barrier);
+ 	mutex_init(&journal->j_checkpoint_mutex);
+ 	spin_lock_init(&journal->j_revoke_lock);
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index a0e41a4..340ee35 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -173,6 +173,17 @@ repeat:
+ 				journal->j_barrier_count == 0);
+ 		goto repeat;
+ 	}
++	/* Don't let a new handle start when a journal is frozen.
++	 * jbd2_journal_freeze calls jbd2_journal_unlock_updates() only after
++	 * the j_flags indicate that the journal is frozen. So if the
++	 * j_barrier_count is 0, then check if this was made 0 by the freezing
++	 * process
++	 */
++	if (journal->j_flags & JBD2_FROZEN) {
++		read_unlock(&journal->j_state_lock);
++		wait_event(journal->j_wait_frozen, (journal->j_flags & JBD2_FROZEN));
++		goto repeat;
++	}
  
- 		spin_lock(&space_info->lock);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 848f436..0da75cd 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2373,7 +2373,7 @@ static int ext4_nonda_switch(struct super_block *sb)
- 	 * start pushing delalloc when 1/2 of free blocks are dirty.
- 	 */
- 	if (free_blocks < 2 * dirty_blocks)
--		writeback_inodes_sb_if_idle(sb, WB_REASON_FS_FREE_SPACE);
-+		try_to_writeback_inodes_sb(sb, WB_REASON_FS_FREE_SPACE);
- 
- 	return 0;
+ 	if (!journal->j_running_transaction) {
+ 		read_unlock(&journal->j_state_lock);
+@@ -492,6 +503,37 @@ int jbd2_journal_restart(handle_t *handle, int nblocks)
  }
-diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-index eee01cd..ea89b3f 100644
---- a/fs/fs-writeback.c
-+++ b/fs/fs-writeback.c
-@@ -1271,45 +1271,42 @@ void writeback_inodes_sb(struct super_block *sb, enum wb_reason reason)
- EXPORT_SYMBOL(writeback_inodes_sb);
+ EXPORT_SYMBOL(jbd2_journal_restart);
  
++int jbd2_journal_freeze(journal_t *journal)
++{
++	int error = 0;
++	/* Now we set up the journal barrier. */
++	jbd2_journal_lock_updates(journal);
++
++	/*
++	 * Don't clear the needs_recovery flag if we failed to flush
++	 * the journal.
++	 */
++	error = jbd2_journal_flush(journal);
++	if (error >= 0) {
++		write_lock(&journal->j_state_lock);
++		journal->j_flags |= JBD2_FROZEN;
++		write_unlock(&journal->j_state_lock);
++	}
++	jbd2_journal_unlock_updates(journal);
++	return error;
++}
++EXPORT_SYMBOL(jbd2_journal_freeze);
++
++void jbd2_journal_thaw(journal_t * journal)
++{
++	write_lock(&journal->j_state_lock);
++	journal->j_flags &= ~JBD2_FROZEN;
++	write_unlock(&journal->j_state_lock);
++	wake_up(&journal->j_wait_frozen);
++}
++EXPORT_SYMBOL(jbd2_journal_thaw);
++
++
  /**
-- * writeback_inodes_sb_if_idle	-	start writeback if none underway
-+ * try_to_writeback_inodes_sb	-	start writeback if none underway
-  * @sb: the superblock
-  *
-  * Invoke writeback_inodes_sb if no writeback is currently underway.
-  * Returns 1 if writeback was started, 0 if not.
-  */
--int writeback_inodes_sb_if_idle(struct super_block *sb, enum wb_reason reason)
-+int try_to_writeback_inodes_sb(struct super_block *sb, enum wb_reason reason)
- {
--	if (!writeback_in_progress(sb->s_bdi)) {
--		down_read(&sb->s_umount);
--		writeback_inodes_sb(sb, reason);
--		up_read(&sb->s_umount);
--		return 1;
--	} else
--		return 0;
-+	return try_to_writeback_inodes_sb_nr(sb, 0, reason);
- }
--EXPORT_SYMBOL(writeback_inodes_sb_if_idle);
-+EXPORT_SYMBOL(try_to_writeback_inodes_sb);
+  * void jbd2_journal_lock_updates () - establish a transaction barrier.
+  * @journal:  Journal to establish a barrier on.
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 2092ea2..bfa0752 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -658,6 +658,7 @@ jbd2_time_diff(unsigned long start, unsigned long end)
+  * @j_wait_checkpoint:  Wait queue to trigger checkpointing
+  * @j_wait_commit: Wait queue to trigger commit
+  * @j_wait_updates: Wait queue to wait for updates to complete
++ * @j_wait_frozen: Wait queue to wait for journal to thaw
+  * @j_checkpoint_mutex: Mutex for locking against concurrent checkpoints
+  * @j_head: Journal head - identifies the first unused block in the journal
+  * @j_tail: Journal tail - identifies the oldest still-used block in the
+@@ -775,6 +776,9 @@ struct journal_s
+ 	/* Wait queue to wait for updates to complete */
+ 	wait_queue_head_t	j_wait_updates;
  
- /**
-- * writeback_inodes_sb_if_idle	-	start writeback if none underway
-+ * try_to_writeback_inodes_sb_nr	-	start writeback if none underway
-  * @sb: the superblock
-  * @nr: the number of pages to write
-  *
-  * Invoke writeback_inodes_sb if no writeback is currently underway.
-  * Returns 1 if writeback was started, 0 if not.
-  */
--int writeback_inodes_sb_nr_if_idle(struct super_block *sb,
-+int try_to_writeback_inodes_sb_nr(struct super_block *sb,
- 				   unsigned long nr,
- 				   enum wb_reason reason)
- {
- 	if (!writeback_in_progress(sb->s_bdi)) {
- 		down_read(&sb->s_umount);
--		writeback_inodes_sb_nr(sb, nr, reason);
-+		if (nr == 0)
-+			writeback_inodes_sb(sb, reason);
-+		else
-+			writeback_inodes_sb_nr(sb, nr, reason);
- 		up_read(&sb->s_umount);
- 		return 1;
- 	} else
- 		return 0;
- }
--EXPORT_SYMBOL(writeback_inodes_sb_nr_if_idle);
-+EXPORT_SYMBOL(try_to_writeback_inodes_sb_nr);
++	/* Wait queue to wait for journal to thaw*/
++	wait_queue_head_t	j_wait_frozen;
++
+ 	/* Semaphore for locking against concurrent checkpoints */
+ 	struct mutex		j_checkpoint_mutex;
  
- /**
-  * sync_inodes_sb	-	sync sb inode pages
-diff --git a/include/linux/writeback.h b/include/linux/writeback.h
-index a378c29..e824225 100644
---- a/include/linux/writeback.h
-+++ b/include/linux/writeback.h
-@@ -89,8 +89,8 @@ int inode_wait(void *);
- void writeback_inodes_sb(struct super_block *, enum wb_reason reason);
- void writeback_inodes_sb_nr(struct super_block *, unsigned long nr,
- 							enum wb_reason reason);
--int writeback_inodes_sb_if_idle(struct super_block *, enum wb_reason reason);
--int writeback_inodes_sb_nr_if_idle(struct super_block *, unsigned long nr,
-+int try_to_writeback_inodes_sb(struct super_block *, enum wb_reason reason);
-+int try_to_writeback_inodes_sb_nr(struct super_block *, unsigned long nr,
- 							enum wb_reason reason);
- void sync_inodes_sb(struct super_block *);
- long writeback_inodes_wb(struct bdi_writeback *wb, long nr_pages,
+@@ -953,6 +957,7 @@ struct journal_s
+ #define JBD2_ABORT_ON_SYNCDATA_ERR	0x040	/* Abort the journal on file
+ 						 * data write error in ordered
+ 						 * mode */
++#define JBD2_FROZEN	0x080 /* Journal thread frozen along with filesystem */
+ 
+ /*
+  * Function declarations for the journaling transaction and buffer
+@@ -1060,6 +1065,8 @@ extern void	 jbd2_journal_invalidatepage(journal_t *,
+ 				struct page *, unsigned long);
+ extern int	 jbd2_journal_try_to_free_buffers(journal_t *, struct page *, gfp_t);
+ extern int	 jbd2_journal_stop(handle_t *);
++extern int	 jbd2_journal_freeze(journal_t *);
++extern void	 jbd2_journal_thaw(journal_t *);
+ extern int	 jbd2_journal_flush (journal_t *);
+ extern void	 jbd2_journal_lock_updates (journal_t *);
+ extern void	 jbd2_journal_unlock_updates (journal_t *);
 -- 
 1.7.5.4
-
