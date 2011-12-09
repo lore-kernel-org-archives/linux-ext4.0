@@ -1,78 +1,303 @@
-From: Eric Gouriou <egouriou@google.com>
-Subject: Re: [PATCH 1/2] ext4: remove a wrong BUG_ON in ext4_ext_convert_to_initialized
-Date: Fri, 9 Dec 2011 14:41:44 -0800
-Message-ID: <CAMUAhYSCFivbHbmeRRGxSC1qiFq1OQbhajNLCXn28rvvGTGPkg@mail.gmail.com>
-References: <1323235287-29806-1-git-send-email-xiaoqiangnk@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, achender@linux.vnet.ibm.com,
-	hughd@google.com, tytso@mit.edu
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+From: Aditya Kali <adityakali@google.com>
+Subject: [PATCH v4] ext4: make quota as first class supported feature
+Date: Fri,  9 Dec 2011 15:43:24 -0800
+Message-ID: <1323474204-15465-1-git-send-email-adityakali@google.com>
+Cc: Aditya Kali <adityakali@google.com>
+To: adilger@dilger.ca, tytso@mit.edu, dmonakhov@openvz.org,
+	jack@suse.cz, johann@whamcloud.com, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:37430 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751862Ab1LIWlp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Dec 2011 17:41:45 -0500
-Received: by qcqz2 with SMTP id z2so2551813qcq.19
-        for <linux-ext4@vger.kernel.org>; Fri, 09 Dec 2011 14:41:44 -0800 (PST)
-In-Reply-To: <1323235287-29806-1-git-send-email-xiaoqiangnk@gmail.com>
+Received: from mail-gy0-f202.google.com ([209.85.160.202]:39229 "EHLO
+	mail-gy0-f202.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755074Ab1LIXtW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Dec 2011 18:49:22 -0500
+Received: by ghrr18 with SMTP id r18so416320ghr.1
+        for <linux-ext4@vger.kernel.org>; Fri, 09 Dec 2011 15:49:21 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 6, 2011 at 21:21, Yongqiang Yang <xiaoqiangnk@gmail.com> wr=
-ote:
-> If a file is fallocated on a hole, map->m_lblk + map->m_len may be gr=
-eater
-> than ee_block + ee_len.
+This patch is an attempt towards supporting quotas as first class
+feature in ext4. It is based on the proposal at:
+https://ext4.wiki.kernel.org/index.php/Design_For_1st_Class_Quota_in_Ext4
+This patch introduces a new feature - EXT4_FEATURE_RO_COMPAT_QUOTA which, when
+turned on, enables quota accounting at mount time iteself. Also, the
+quota inodes are stored in two additional superblock fields.
+Some changes introduced by this patch that should be pointed out are:
+1) Two new ext4-superblock fields - s_usr_quota_inum and s_grp_quota_inum
+   for storing the quota inodes in use.
+2) Default quota inodes are: inode#3 for tracking userquota and inode#4 for
+   tracking group quota. The superblock fields can be set to use other inodes
+   as well.
+3) If the QUOTA feature and corresponding quota inodes are set in superblock,
+   the quota usage tracking is turned on at mount time. On 'quotaon' ioctl, the
+   quota limits enforcement is turned on. 'quotaoff' ioctl turns off only the
+   limits enforcement in this case.
+4) When QUOTA feature is in use, the quota mount options 'quota', 'usrquota',
+   'grpquota' are ignored by the kernel.
+5) mke2fs or tune2fs can be used to set the QUOTA feature and initialize quota
+   inodes. The default reserved inodes will not be visible to user as
+   regular files.
+6) The quota-tools will need to be modified to support hidden quota files on
+   ext4. E2fsprogs will also include support for creating and fixing quota
+   files.
+7) Support is only for the new V2 quota file format.
 
-Could you please detail a scenario that leads to this check being inval=
-id?
-As I'm to blame for the faulty BUG_ON I'd like to use this as an opport=
-unity
-to get properly edified.
+Signed-off-by: Aditya Kali <adityakali@google.com>
+---
+ fs/ext4/ext4.h      |    5 ++-
+ fs/ext4/ext4_jbd2.h |   18 +++++--
+ fs/ext4/super.c     |  130 ++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 144 insertions(+), 9 deletions(-)
 
-> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-> ---
-> =C2=A0fs/ext4/extents.c | =C2=A0 =C2=A01 -
-> =C2=A01 files changed, 0 insertions(+), 1 deletions(-)
->
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 6f0300e..29bb629 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -2943,7 +2943,6 @@ static int ext4_ext_convert_to_initialized(hand=
-le_t *handle,
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0/* Pre-conditions */
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0BUG_ON(!ext4_ext_is_uninitialized(ex));
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0BUG_ON(!in_range(map->m_lblk, ee_block, ee=
-_len));
-> - =C2=A0 =C2=A0 =C2=A0 BUG_ON(map->m_lblk + map->m_len > ee_block + e=
-e_len);
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 5b0e26a..747e600 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1269,6 +1269,8 @@ static inline struct timespec ext4_current_time(struct inode *inode)
+ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+ {
+ 	return ino == EXT4_ROOT_INO ||
++		ino == EXT4_USR_QUOTA_INO ||
++		ino == EXT4_GRP_QUOTA_INO ||
+ 		ino == EXT4_JOURNAL_INO ||
+ 		ino == EXT4_RESIZE_INO ||
+ 		(ino >= EXT4_FIRST_INO(sb) &&
+@@ -1440,7 +1442,8 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+ 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE | \
+ 					 EXT4_FEATURE_RO_COMPAT_BTREE_DIR |\
+ 					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE |\
+-					 EXT4_FEATURE_RO_COMPAT_BIGALLOC)
++					 EXT4_FEATURE_RO_COMPAT_BIGALLOC | \
++					 EXT4_FEATURE_RO_COMPAT_QUOTA)
+ 
+ /*
+  * Default values for user and/or group using reserved blocks
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 5802fa1..45de190 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -87,14 +87,20 @@
+ #ifdef CONFIG_QUOTA
+ /* Amount of blocks needed for quota update - we know that the structure was
+  * allocated so we need to update only data block */
+-#define EXT4_QUOTA_TRANS_BLOCKS(sb) (test_opt(sb, QUOTA) ? 1 : 0)
++#define EXT4_QUOTA_TRANS_BLOCKS(sb) ((test_opt(sb, QUOTA) ||\
++		EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) ?\
++		1 : 0)
+ /* Amount of blocks needed for quota insert/delete - we do some block writes
+  * but inode, sb and group updates are done only once */
+-#define EXT4_QUOTA_INIT_BLOCKS(sb) (test_opt(sb, QUOTA) ? (DQUOT_INIT_ALLOC*\
+-		(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)+3+DQUOT_INIT_REWRITE) : 0)
+-
+-#define EXT4_QUOTA_DEL_BLOCKS(sb) (test_opt(sb, QUOTA) ? (DQUOT_DEL_ALLOC*\
+-		(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)+3+DQUOT_DEL_REWRITE) : 0)
++#define EXT4_QUOTA_INIT_BLOCKS(sb) ((test_opt(sb, QUOTA) ||\
++		EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) ?\
++		(DQUOT_INIT_ALLOC*(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)\
++		 +3+DQUOT_INIT_REWRITE) : 0)
++
++#define EXT4_QUOTA_DEL_BLOCKS(sb) ((test_opt(sb, QUOTA) ||\
++		EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) ?\
++		(DQUOT_DEL_ALLOC*(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)\
++		 +3+DQUOT_DEL_REWRITE) : 0)
+ #else
+ #define EXT4_QUOTA_TRANS_BLOCKS(sb) 0
+ #define EXT4_QUOTA_INIT_BLOCKS(sb) 0
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 3858767..48267ba 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1239,12 +1239,18 @@ static int ext4_mark_dquot_dirty(struct dquot *dquot);
+ static int ext4_write_info(struct super_block *sb, int type);
+ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
+ 			 struct path *path);
++static int ext4_quota_on_sysfile(struct super_block *sb, int type,
++				 int format_id);
+ static int ext4_quota_off(struct super_block *sb, int type);
++static int ext4_quota_off_sysfile(struct super_block *sb, int type);
+ static int ext4_quota_on_mount(struct super_block *sb, int type);
+ static ssize_t ext4_quota_read(struct super_block *sb, int type, char *data,
+ 			       size_t len, loff_t off);
+ static ssize_t ext4_quota_write(struct super_block *sb, int type,
+ 				const char *data, size_t len, loff_t off);
++static int ext4_quota_enable(struct super_block *sb, int type, int format_id,
++			     unsigned int flags);
++static int ext4_enable_quotas(struct super_block *sb);
+ 
+ static const struct dquot_operations ext4_quota_operations = {
+ 	.get_reserved_space = ext4_get_reserved_space,
+@@ -1266,6 +1272,16 @@ static const struct quotactl_ops ext4_qctl_operations = {
+ 	.get_dqblk	= dquot_get_dqblk,
+ 	.set_dqblk	= dquot_set_dqblk
+ };
++
++static const struct quotactl_ops ext4_qctl_sysfile_operations = {
++	.quota_on_meta	= ext4_quota_on_sysfile,
++	.quota_off	= ext4_quota_off_sysfile,
++	.quota_sync	= dquot_quota_sync,
++	.get_info	= dquot_get_dqinfo,
++	.set_info	= dquot_set_dqinfo,
++	.get_dqblk	= dquot_get_dqblk,
++	.set_dqblk	= dquot_set_dqblk
++};
+ #endif
+ 
+ static const struct super_operations ext4_sops = {
+@@ -2713,6 +2729,16 @@ static int ext4_feature_set_ok(struct super_block *sb, int readonly)
+ 			 "extents feature\n");
+ 		return 0;
+ 	}
++
++#ifndef CONFIG_QUOTA
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) &&
++	    !readonly) {
++		ext4_msg(sb, KERN_ERR,
++			 "Filesystem with quota feature cannot be mounted RDWR "
++			 "without CONFIG_QUOTA");
++		return 0;
++	}
++#endif  /* CONFIG_QUOTA */
+ 	return 1;
+ }
+ 
+@@ -3610,6 +3636,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ #ifdef CONFIG_QUOTA
+ 	sb->s_qcop = &ext4_qctl_operations;
+ 	sb->dq_op = &ext4_quota_operations;
++
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) {
++		/* Use qctl operations for hidden quota files. */
++		sb->s_qcop = &ext4_qctl_sysfile_operations;
++	}
+ #endif
+ 	memcpy(sb->s_uuid, es->s_uuid, sizeof(es->s_uuid));
+ 
+@@ -3815,6 +3846,16 @@ no_journal:
+ 	} else
+ 		descr = "out journal";
+ 
++#ifdef CONFIG_QUOTA
++	/* Enable quota usage during mount. */
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) &&
++	    !(sb->s_flags & MS_RDONLY)) {
++		ret = ext4_enable_quotas(sb);
++		if (ret)
++			goto failed_mount7;
++	}
++#endif  /* CONFIG_QUOTA */
++
+ 	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. "
+ 		 "Opts: %s%s%s", descr, sbi->s_es->s_mount_opts,
+ 		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data);
+@@ -4554,8 +4595,13 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 			kfree(old_opts.s_qf_names[i]);
+ #endif
+ 	unlock_super(sb);
+-	if (enable_quota)
+-		dquot_resume(sb, -1);
++	if (enable_quota) {
++		if (sb_any_quota_suspended(sb))
++			dquot_resume(sb, -1);
++		else if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
++					EXT4_FEATURE_RO_COMPAT_QUOTA))
++			ext4_enable_quotas(sb);
++	}
+ 
+ 	ext4_msg(sb, KERN_INFO, "re-mounted. Opts: %s", orig_data);
+ 	kfree(orig_data);
+@@ -4814,6 +4860,74 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
+ 	return dquot_quota_on(sb, type, format_id, path);
+ }
+ 
++static int ext4_quota_enable(struct super_block *sb, int type, int format_id,
++			     unsigned int flags)
++{
++	int err;
++	struct inode *qf_inode;
++	unsigned long qf_inums[MAXQUOTAS] = {
++		le32_to_cpu(EXT4_SB(sb)->s_es->s_usr_quota_inum),
++		le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum)
++	};
++
++	BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA));
++
++	if (!qf_inums[type])
++		return -EPERM;
++
++	qf_inode = ext4_iget(sb, qf_inums[type]);
++	if (IS_ERR(qf_inode)) {
++		ext4_error(sb, "Bad quota inode # %lu", qf_inums[type]);
++		return PTR_ERR(qf_inode);
++	}
++
++	err = dquot_enable(qf_inode, type, format_id, flags);
++	iput(qf_inode);
++
++	return err;
++}
++
++/* Enable usage tracking for all quota types. */
++static int ext4_enable_quotas(struct super_block *sb)
++{
++	int type, err = 0;
++	unsigned long qf_inums[MAXQUOTAS] = {
++		le32_to_cpu(EXT4_SB(sb)->s_es->s_usr_quota_inum),
++		le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum)
++	};
++
++	sb_dqopt(sb)->flags |= DQUOT_QUOTA_SYS_FILE;
++	for (type = 0; type < MAXQUOTAS; type++) {
++		if (qf_inums[type]) {
++			err = ext4_quota_enable(sb, type, QFMT_VFS_V1,
++						DQUOT_USAGE_ENABLED);
++			if (err) {
++				ext4_warning(sb,
++					"Failed to enable quota (type=%d) "
++					"tracking. Please run e2fsck to fix.",
++					type);
++				return err;
++			}
++		}
++	}
++	return 0;
++}
++
++/*
++ * quota_on function that is used when QUOTA feature is set.
++ */
++static int ext4_quota_on_sysfile(struct super_block *sb, int type,
++				 int format_id)
++{
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA))
++		return -EINVAL;
++
++	/*
++	 * USAGE was enabled at mount time. Only need to enable LIMITS now.
++	 */
++	return ext4_quota_enable(sb, type, format_id, DQUOT_LIMITS_ENABLED);
++}
++
+ static int ext4_quota_off(struct super_block *sb, int type)
+ {
+ 	struct inode *inode = sb_dqopt(sb)->files[type];
+@@ -4840,6 +4954,18 @@ out:
+ 	return dquot_quota_off(sb, type);
+ }
+ 
++/*
++ * quota_off function that is used when QUOTA feature is set.
++ */
++static int ext4_quota_off_sysfile(struct super_block *sb, int type)
++{
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA))
++		return -EINVAL;
++
++	/* Disable only the limits. */
++	return dquot_disable(sb, type, DQUOT_LIMITS_ENABLED);
++}
++
+ /* Read data from quotafile - avoid pagecache and such because we cannot afford
+  * acquiring the locks... As quota files are never truncated and quota code
+  * itself serializes the operations (and no one else should touch the files)
+-- 
+1.7.3.1
 
-=46or a bit I thought this would break the fast path logic, however it =
-gets
-protected by the checks marked /*L1*/ and /*L2*/ since m_lblk =3D=3D ee=
-_block
-(L1) and m_len < ee_len (L2).
-
- Regards - Eric
-
->
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0/*
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0 * Attempt to transfer newly initialized b=
-locks from the currently
-> --
-> 1.7.5.1
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =C2=A0http://vger.kernel.org/majordomo-info.ht=
-ml
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
