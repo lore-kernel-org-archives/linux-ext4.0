@@ -1,73 +1,57 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 3/5 resend] VFS: Fix s_umount thaw/write deadlock
-Date: Fri, 9 Dec 2011 06:47:45 -0500
-Message-ID: <20111209114745.GA7543@infradead.org>
-References: <1323118489-16326-1-git-send-email-kamal@canonical.com>
- <1323118489-16326-4-git-send-email-kamal@canonical.com>
- <20111206113544.GA21589@infradead.org>
- <20111207231658.GQ4622@quack.suse.cz>
+From: Andy Whitcroft <apw@canonical.com>
+Subject: Re: Bug with "fix partial page writes" [3.2-rc regression]
+Date: Fri, 9 Dec 2011 13:33:44 +0000
+Message-ID: <20111209133343.GA434@shadowen.org>
+References: <alpine.LSU.2.00.1111211331120.1879@sister.anvils>
+ <alpine.LSU.2.00.1112051456580.3938@sister.anvils>
+ <4EDD729E.2060402@linux.vnet.ibm.com>
+ <alpine.LSU.2.00.1112060030220.1615@sister.anvils>
+ <4EDE85F4.4020503@linux.vnet.ibm.com>
+ <CAGBYx2YmYRw_p5KHJCYaQNsCpe5OVV7X2TpaK=OE7znCiE7oZA@mail.gmail.com>
+ <4EDF9CAB.3050502@linux.vnet.ibm.com>
+ <4EE046C7.9030902@linux.vnet.ibm.com>
+ <alpine.LSU.2.00.1112080909300.22300@sister.anvils>
+ <20111208181235.GE2686@shadowen.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Kamal Mostafa <kamal@canonical.com>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Matthew Wilcox <matthew@wil.cx>,
-	Randy Dunlap <rdunlap@xenotime.net>,
-	Theodore Tso <tytso@mit.edu>, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Surbhi Palande <csurbhi@gmail.com>,
-	Valerie Aurora <val@vaaconsulting.com>,
-	Christopher Chaltain <christopher.chaltain@canonical.com>,
-	"Peter M. Petrakis" <peter.petrakis@canonical.com>,
-	Mikulas Patocka <mpatocka@redhat.com>,
-	Miao Xie <miaox@cn.fujitsu.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-doc-owner@vger.kernel.org>
+Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	Ted Ts'o <tytso@mit.edu>, Curt Wohlgemuth <curtw@google.com>,
+	Surbhi Palande <csurbhi@gmail.com>,
+	Rafael Wysocki <rjw@sisk.pl>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Hugh Dickins <hughd@google.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from youngberry.canonical.com ([91.189.89.112]:56337 "EHLO
+	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752263Ab1LINds (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Dec 2011 08:33:48 -0500
 Content-Disposition: inline
-In-Reply-To: <20111207231658.GQ4622@quack.suse.cz>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20111208181235.GE2686@shadowen.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 08, 2011 at 12:16:58AM +0100, Jan Kara wrote:
-> > We make sure to not dirty any new inodes after the first phase of the
-> > freeze, so this should be a BUG_ON/WARN_ON.
->   This is not really true in presence of mmaped writes. To block mmaped
-> writes on a frozen filesystem, we need some synchronization between
-> page_mkwrite() and freezing code. Currently, to avoid any additional
-> locking overhead, we set page dirty and *then* check for filesystem being
-> frozen. Only this order can make sure either the page is written (and
-> write-protected) or the frozen check triggers and we wait... (see the
-> comment in block_page_mkwrite()). The nasty sideeffect of this is that
-> there can be dirty pages & inodes on a frozen filesystem. We are blocked in
-> the page fault of these pages so user cannot write any data to these pages
-> but still they are marked dirty.
+On Thu, Dec 08, 2011 at 06:12:35PM +0000, Andy Whitcroft wrote:
+> On Thu, Dec 08, 2011 at 09:39:55AM -0800, Hugh Dickins wrote:
 > 
-> Alternatively we could have a different mechanism (rw semaphore?) to
-> synchronize page faults and freezing but I'd hate the overhead for the case
-> almost noone cares about...
+> [...]
+> > > [PATCH 1/2] ext4: let mpage_submit_io works well when blocksize < pagesize
+> > > [PATCH 2/2] ext4: let ext4_discard_partial_buffers handle pages without
+> > > 
+> > > [PATCH 1/2] ext4: remove a wrong BUG_ON in ext4_ext_convert_to_initialized
+> > > [PATCH 2/2] ext4: let ext4_bio_write_page handle EOF correctly
+> [...]
+> > Only once, before the fixes, did I ever see an unexplained EINVAL
+> > (from cp), like Andy reports: I'm very hopeful his case is fixed too.
+> 
+> Yes I have reverted my fix and applied all four of these patches (above).
+> I have just completed a 100 iteration run of my test case without failure.
+> This would typically fail in the first iteration 90% of the time and
+> never survived more than two iterations.
+> 
+> I am comfortable saying they resolve my issue.
 
-I think the is the only sensible way to go forward.  Requiring hacks in
-lots of random places to work around the fact that a single place that
-might actually dirty pages despite supposedly blocking that from happen
-simply isn't maintainable over the long run.
+Are we likely to see these fixes in a 3.2-rcN or will they be going to
+stable?
 
-> > > +	 */
-> > > +	if (vfs_is_frozen(sb)) {
-> > > +		ret = -EBUSY;
-> > > +		goto out_drop_super;
-> > > +	}
-> > 
-> > How about spending the three minutes to figure it out?
-> > Q_GETFMT/Q_GETINFO/Q_XGETQSTAT and Q_GETQUOTA are the obvious read-only
-> > candidates.
->   Q_GETQUOTA can actually cause filesystem modification (reservation of
-> space in quota file) but the others are read-only. Also after some thought
-> I'd prefer that quotactl(8) just blocks to be consistent with how other
-> syscalls behave...
-
-How can a simple dqget cause modifications in the VFS quota code?
-Dirting anything for a simple read of the quota information is not
-only completely non-obvious but also doesn't make much sene.  We don't
-dirty metadata on stat() either..
-
+-apw
