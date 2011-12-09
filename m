@@ -1,40 +1,78 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: ceph and ext4
-Date: Fri, 9 Dec 2011 15:24:02 -0700
-Message-ID: <5D6C7B37-1594-48FF-A682-8CC1FE0A6870@whamcloud.com>
-References: <4EC10664.1080501@tuxadero.com> <CAO47_-9nfO32nwOAQMVdqw6iWGWK+FWb+MD=WeOz_vr4YrrKmw@mail.gmail.com> <20111115142246.GA7516@thunk.org> <246EA1CC-3C33-4D41-80C0-2331C426EBB0@whamcloud.com> <CAO47_-9vGg89HgxjT=dzSSsUxxdbZ=yJoYQk4Qge8WGPjeVmKw@mail.gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "ceph-devel@vger.kernel.org" <ceph-devel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Jian Yu <yujian@whamcloud.com>
-To: chb@muc.de
+From: Eric Gouriou <egouriou@google.com>
+Subject: Re: [PATCH 1/2] ext4: remove a wrong BUG_ON in ext4_ext_convert_to_initialized
+Date: Fri, 9 Dec 2011 14:41:44 -0800
+Message-ID: <CAMUAhYSCFivbHbmeRRGxSC1qiFq1OQbhajNLCXn28rvvGTGPkg@mail.gmail.com>
+References: <1323235287-29806-1-git-send-email-xiaoqiangnk@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, achender@linux.vnet.ibm.com,
+	hughd@google.com, tytso@mit.edu
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:43354 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751244Ab1LIWYG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Dec 2011 17:24:06 -0500
-In-Reply-To: <CAO47_-9vGg89HgxjT=dzSSsUxxdbZ=yJoYQk4Qge8WGPjeVmKw@mail.gmail.com>
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:37430 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751862Ab1LIWlp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Dec 2011 17:41:45 -0500
+Received: by qcqz2 with SMTP id z2so2551813qcq.19
+        for <linux-ext4@vger.kernel.org>; Fri, 09 Dec 2011 14:41:44 -0800 (PST)
+In-Reply-To: <1323235287-29806-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-12-08, at 3:59 PM, Christian Brunner wrote:
-> 2011/11/15 Andreas Dilger <adilger@whamcloud.com>:
->> Coincidentally, we have someone working in those patches again. The main obstacle for accepting the previous patch as-is was that Ted wanted to add support for "medium-sized" xattrs that are addressed as a string of blocks, instead of via an inode.
-> 
-> Did you make progress with this. I'm still having serious trouble with
-> btrfs and would like to try these.
+On Tue, Dec 6, 2011 at 21:21, Yongqiang Yang <xiaoqiangnk@gmail.com> wr=
+ote:
+> If a file is fallocated on a hole, map->m_lblk + map->m_len may be gr=
+eater
+> than ee_block + ee_len.
 
-The latest patches are available at http://review.whamcloud.com/1708, but are based on the RHEL6.1 2.6.32 kernel.  The work to implement "medium-sized" xattrs was more complex than anticipated, and is not finished yet.
+Could you please detail a scenario that leads to this check being inval=
+id?
+As I'm to blame for the faulty BUG_ON I'd like to use this as an opport=
+unity
+to get properly edified.
 
-The use of external inode xattrs is working, which allows xattr sizes up to 64kB.  The 64kB limit is imposed by the VFS and could potentially be increased.
+> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+> ---
+> =C2=A0fs/ext4/extents.c | =C2=A0 =C2=A01 -
+> =C2=A01 files changed, 0 insertions(+), 1 deletions(-)
+>
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 6f0300e..29bb629 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -2943,7 +2943,6 @@ static int ext4_ext_convert_to_initialized(hand=
+le_t *handle,
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0/* Pre-conditions */
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0BUG_ON(!ext4_ext_is_uninitialized(ex));
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0BUG_ON(!in_range(map->m_lblk, ee_block, ee=
+_len));
+> - =C2=A0 =C2=A0 =C2=A0 BUG_ON(map->m_lblk + map->m_len > ee_block + e=
+e_len);
 
-Cheers, Andreas
+=46or a bit I thought this would break the fast path logic, however it =
+gets
+protected by the checks marked /*L1*/ and /*L2*/ since m_lblk =3D=3D ee=
+_block
+(L1) and m_len < ee_len (L2).
+
+ Regards - Eric
+
+>
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0/*
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 * Attempt to transfer newly initialized b=
+locks from the currently
+> --
+> 1.7.5.1
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =C2=A0http://vger.kernel.org/majordomo-info.ht=
+ml
 --
-Andreas Dilger 
-Principal Engineer
-Whamcloud, Inc.
-
-
-
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
