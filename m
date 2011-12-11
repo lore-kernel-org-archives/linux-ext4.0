@@ -1,308 +1,106 @@
-From: Aditya Kali <adityakali@google.com>
-Subject: [PATCH] ext4: make quota as first class supported feature
-Date: Fri,  9 Dec 2011 16:08:48 -0800
-Message-ID: <1323475728-21814-1-git-send-email-adityakali@google.com>
-Cc: Aditya Kali <adityakali@google.com>
-To: adilger@dilger.ca, tytso@mit.edu, dmonakhov@openvz.org,
-	jack@suse.cz, johann@whamcloud.com, linux-ext4@vger.kernel.org
+From: Paul Mackerras <paulus@samba.org>
+Subject: Crash in __brelse with recent kernels copying sparse file
+Date: Mon, 12 Dec 2011 10:29:51 +1100
+Message-ID: <20111211232951.GA5380@bloggs.ozlabs.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: Ted Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gy0-f202.google.com ([209.85.160.202]:47232 "EHLO
-	mail-gy0-f202.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751721Ab1LJAIz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Dec 2011 19:08:55 -0500
-Received: by ghrr18 with SMTP id r18so417931ghr.1
-        for <linux-ext4@vger.kernel.org>; Fri, 09 Dec 2011 16:08:55 -0800 (PST)
+Received: from ozlabs.org ([203.10.76.45]:32819 "EHLO ozlabs.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752402Ab1LKXap (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 11 Dec 2011 18:30:45 -0500
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch is an attempt towards supporting quotas as first class
-feature in ext4. It is based on the proposal at:
-https://ext4.wiki.kernel.org/index.php/Design_For_1st_Class_Quota_in_Ext4
-This patch introduces a new feature - EXT4_FEATURE_RO_COMPAT_QUOTA which, when
-turned on, enables quota accounting at mount time iteself. Also, the
-quota inodes are stored in two additional superblock fields.
-Some changes introduced by this patch that should be pointed out are:
-1) Two new ext4-superblock fields - s_usr_quota_inum and s_grp_quota_inum
-   for storing the quota inodes in use.
-2) Default quota inodes are: inode#3 for tracking userquota and inode#4 for
-   tracking group quota. The superblock fields can be set to use other inodes
-   as well.
-3) If the QUOTA feature and corresponding quota inodes are set in superblock,
-   the quota usage tracking is turned on at mount time. On 'quotaon' ioctl, the
-   quota limits enforcement is turned on. 'quotaoff' ioctl turns off only the
-   limits enforcement in this case.
-4) When QUOTA feature is in use, the quota mount options 'quota', 'usrquota',
-   'grpquota' are ignored by the kernel.
-5) mke2fs or tune2fs can be used to set the QUOTA feature and initialize quota
-   inodes. The default reserved inodes will not be visible to user as
-   regular files.
-6) The quota-tools will need to be modified to support hidden quota files on
-   ext4. E2fsprogs will also include support for creating and fixing quota
-   files.
-7) Support is only for the new V2 quota file format.
+Hi,
 
-Signed-off-by: Aditya Kali <adityakali@google.com>
----
- fs/ext4/ext4.h      |    5 ++-
- fs/ext4/ext4_jbd2.h |   18 +++++--
- fs/ext4/super.c     |  135 ++++++++++++++++++++++++++++++++++++++++++++++++++-
- 3 files changed, 149 insertions(+), 9 deletions(-)
+I'm seeing a repeatable crash in __brelse with recent kernels while
+copying a sparse file with rsync.  I have a file that is about 12GB in
+length but which occupies about 5.5GB.  I copy it with:
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 5b0e26a..747e600 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1269,6 +1269,8 @@ static inline struct timespec ext4_current_time(struct inode *inode)
- static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
- {
- 	return ino == EXT4_ROOT_INO ||
-+		ino == EXT4_USR_QUOTA_INO ||
-+		ino == EXT4_GRP_QUOTA_INO ||
- 		ino == EXT4_JOURNAL_INO ||
- 		ino == EXT4_RESIZE_INO ||
- 		(ino >= EXT4_FIRST_INO(sb) &&
-@@ -1440,7 +1442,8 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
- 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE | \
- 					 EXT4_FEATURE_RO_COMPAT_BTREE_DIR |\
- 					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE |\
--					 EXT4_FEATURE_RO_COMPAT_BIGALLOC)
-+					 EXT4_FEATURE_RO_COMPAT_BIGALLOC | \
-+					 EXT4_FEATURE_RO_COMPAT_QUOTA)
- 
- /*
-  * Default values for user and/or group using reserved blocks
-diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index 5802fa1..45de190 100644
---- a/fs/ext4/ext4_jbd2.h
-+++ b/fs/ext4/ext4_jbd2.h
-@@ -87,14 +87,20 @@
- #ifdef CONFIG_QUOTA
- /* Amount of blocks needed for quota update - we know that the structure was
-  * allocated so we need to update only data block */
--#define EXT4_QUOTA_TRANS_BLOCKS(sb) (test_opt(sb, QUOTA) ? 1 : 0)
-+#define EXT4_QUOTA_TRANS_BLOCKS(sb) ((test_opt(sb, QUOTA) ||\
-+		EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) ?\
-+		1 : 0)
- /* Amount of blocks needed for quota insert/delete - we do some block writes
-  * but inode, sb and group updates are done only once */
--#define EXT4_QUOTA_INIT_BLOCKS(sb) (test_opt(sb, QUOTA) ? (DQUOT_INIT_ALLOC*\
--		(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)+3+DQUOT_INIT_REWRITE) : 0)
--
--#define EXT4_QUOTA_DEL_BLOCKS(sb) (test_opt(sb, QUOTA) ? (DQUOT_DEL_ALLOC*\
--		(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)+3+DQUOT_DEL_REWRITE) : 0)
-+#define EXT4_QUOTA_INIT_BLOCKS(sb) ((test_opt(sb, QUOTA) ||\
-+		EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) ?\
-+		(DQUOT_INIT_ALLOC*(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)\
-+		 +3+DQUOT_INIT_REWRITE) : 0)
-+
-+#define EXT4_QUOTA_DEL_BLOCKS(sb) ((test_opt(sb, QUOTA) ||\
-+		EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) ?\
-+		(DQUOT_DEL_ALLOC*(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)\
-+		 +3+DQUOT_DEL_REWRITE) : 0)
- #else
- #define EXT4_QUOTA_TRANS_BLOCKS(sb) 0
- #define EXT4_QUOTA_INIT_BLOCKS(sb) 0
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 3858767..4ba21ab 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1239,12 +1239,18 @@ static int ext4_mark_dquot_dirty(struct dquot *dquot);
- static int ext4_write_info(struct super_block *sb, int type);
- static int ext4_quota_on(struct super_block *sb, int type, int format_id,
- 			 struct path *path);
-+static int ext4_quota_on_sysfile(struct super_block *sb, int type,
-+				 int format_id);
- static int ext4_quota_off(struct super_block *sb, int type);
-+static int ext4_quota_off_sysfile(struct super_block *sb, int type);
- static int ext4_quota_on_mount(struct super_block *sb, int type);
- static ssize_t ext4_quota_read(struct super_block *sb, int type, char *data,
- 			       size_t len, loff_t off);
- static ssize_t ext4_quota_write(struct super_block *sb, int type,
- 				const char *data, size_t len, loff_t off);
-+static int ext4_quota_enable(struct super_block *sb, int type, int format_id,
-+			     unsigned int flags);
-+static int ext4_enable_quotas(struct super_block *sb);
- 
- static const struct dquot_operations ext4_quota_operations = {
- 	.get_reserved_space = ext4_get_reserved_space,
-@@ -1266,6 +1272,16 @@ static const struct quotactl_ops ext4_qctl_operations = {
- 	.get_dqblk	= dquot_get_dqblk,
- 	.set_dqblk	= dquot_set_dqblk
- };
-+
-+static const struct quotactl_ops ext4_qctl_sysfile_operations = {
-+	.quota_on_meta	= ext4_quota_on_sysfile,
-+	.quota_off	= ext4_quota_off_sysfile,
-+	.quota_sync	= dquot_quota_sync,
-+	.get_info	= dquot_get_dqinfo,
-+	.set_info	= dquot_set_dqinfo,
-+	.get_dqblk	= dquot_get_dqblk,
-+	.set_dqblk	= dquot_set_dqblk
-+};
- #endif
- 
- static const struct super_operations ext4_sops = {
-@@ -2713,6 +2729,16 @@ static int ext4_feature_set_ok(struct super_block *sb, int readonly)
- 			 "extents feature\n");
- 		return 0;
- 	}
-+
-+#ifndef CONFIG_QUOTA
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) &&
-+	    !readonly) {
-+		ext4_msg(sb, KERN_ERR,
-+			 "Filesystem with quota feature cannot be mounted RDWR "
-+			 "without CONFIG_QUOTA");
-+		return 0;
-+	}
-+#endif  /* CONFIG_QUOTA */
- 	return 1;
- }
- 
-@@ -3610,6 +3636,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- #ifdef CONFIG_QUOTA
- 	sb->s_qcop = &ext4_qctl_operations;
- 	sb->dq_op = &ext4_quota_operations;
-+
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) {
-+		/* Use qctl operations for hidden quota files. */
-+		sb->s_qcop = &ext4_qctl_sysfile_operations;
-+	}
- #endif
- 	memcpy(sb->s_uuid, es->s_uuid, sizeof(es->s_uuid));
- 
-@@ -3815,6 +3846,16 @@ no_journal:
- 	} else
- 		descr = "out journal";
- 
-+#ifdef CONFIG_QUOTA
-+	/* Enable quota usage during mount. */
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) &&
-+	    !(sb->s_flags & MS_RDONLY)) {
-+		ret = ext4_enable_quotas(sb);
-+		if (ret)
-+			goto failed_mount7;
-+	}
-+#endif  /* CONFIG_QUOTA */
-+
- 	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. "
- 		 "Opts: %s%s%s", descr, sbi->s_es->s_mount_opts,
- 		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data);
-@@ -4554,8 +4595,18 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 			kfree(old_opts.s_qf_names[i]);
- #endif
- 	unlock_super(sb);
--	if (enable_quota)
--		dquot_resume(sb, -1);
-+	if (enable_quota) {
-+		if (sb_any_quota_suspended(sb))
-+			dquot_resume(sb, -1);
-+		else if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+					EXT4_FEATURE_RO_COMPAT_QUOTA)) {
-+			err = ext4_enable_quotas(sb);
-+			if (err) {
-+				lock_super(sb);
-+				goto restore_opts;
-+			}
-+		}
-+	}
- 
- 	ext4_msg(sb, KERN_INFO, "re-mounted. Opts: %s", orig_data);
- 	kfree(orig_data);
-@@ -4814,6 +4865,74 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
- 	return dquot_quota_on(sb, type, format_id, path);
- }
- 
-+static int ext4_quota_enable(struct super_block *sb, int type, int format_id,
-+			     unsigned int flags)
-+{
-+	int err;
-+	struct inode *qf_inode;
-+	unsigned long qf_inums[MAXQUOTAS] = {
-+		le32_to_cpu(EXT4_SB(sb)->s_es->s_usr_quota_inum),
-+		le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum)
-+	};
-+
-+	BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA));
-+
-+	if (!qf_inums[type])
-+		return -EPERM;
-+
-+	qf_inode = ext4_iget(sb, qf_inums[type]);
-+	if (IS_ERR(qf_inode)) {
-+		ext4_error(sb, "Bad quota inode # %lu", qf_inums[type]);
-+		return PTR_ERR(qf_inode);
-+	}
-+
-+	err = dquot_enable(qf_inode, type, format_id, flags);
-+	iput(qf_inode);
-+
-+	return err;
-+}
-+
-+/* Enable usage tracking for all quota types. */
-+static int ext4_enable_quotas(struct super_block *sb)
-+{
-+	int type, err = 0;
-+	unsigned long qf_inums[MAXQUOTAS] = {
-+		le32_to_cpu(EXT4_SB(sb)->s_es->s_usr_quota_inum),
-+		le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum)
-+	};
-+
-+	sb_dqopt(sb)->flags |= DQUOT_QUOTA_SYS_FILE;
-+	for (type = 0; type < MAXQUOTAS; type++) {
-+		if (qf_inums[type]) {
-+			err = ext4_quota_enable(sb, type, QFMT_VFS_V1,
-+						DQUOT_USAGE_ENABLED);
-+			if (err) {
-+				ext4_warning(sb,
-+					"Failed to enable quota (type=%d) "
-+					"tracking. Please run e2fsck to fix.",
-+					type);
-+				return err;
-+			}
-+		}
-+	}
-+	return 0;
-+}
-+
-+/*
-+ * quota_on function that is used when QUOTA feature is set.
-+ */
-+static int ext4_quota_on_sysfile(struct super_block *sb, int type,
-+				 int format_id)
-+{
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA))
-+		return -EINVAL;
-+
-+	/*
-+	 * USAGE was enabled at mount time. Only need to enable LIMITS now.
-+	 */
-+	return ext4_quota_enable(sb, type, format_id, DQUOT_LIMITS_ENABLED);
-+}
-+
- static int ext4_quota_off(struct super_block *sb, int type)
- {
- 	struct inode *inode = sb_dqopt(sb)->files[type];
-@@ -4840,6 +4959,18 @@ out:
- 	return dquot_quota_off(sb, type);
- }
- 
-+/*
-+ * quota_off function that is used when QUOTA feature is set.
-+ */
-+static int ext4_quota_off_sysfile(struct super_block *sb, int type)
-+{
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA))
-+		return -EINVAL;
-+
-+	/* Disable only the limits. */
-+	return dquot_disable(sb, type, DQUOT_LIMITS_ENABLED);
-+}
-+
- /* Read data from quotafile - avoid pagecache and such because we cannot afford
-  * acquiring the locks... As quota files are never truncated and quota code
-  * itself serializes the operations (and no one else should touch the files)
--- 
-1.7.3.1
+% rsync -avSP rhel6-root.img rhel6-root2.img
 
+and at some point the system (a POWER7 12-core server) will crash like
+this:
+
+attempt to access beyond end of device
+sda8: rw=0, want=776392648163376, limit=168558560
+Unable to handle kernel paging request for data at address 0x6b6b6b6b6b6b6bcb
+Faulting instruction address: 0xc0000000001f5f38
+cpu 0x14: Vector: 300 (Data Access) at [c000001bd1aaecf0]
+    pc: c0000000001f5f38: .__brelse+0x18/0x60
+    lr: c0000000002e07a4: .ext4_ext_drop_refs+0x44/0x80
+    sp: c000001bd1aaef70
+   msr: 9000000000009032
+   dar: 6b6b6b6b6b6b6bcb
+ dsisr: 40000000
+  current = 0xc000001bd15b8010
+  paca    = 0xc00000000ffe4600
+    pid   = 19911, comm = flush-8:0
+enter ? for help
+[c000001bd1aaeff0] c0000000002e07a4 .ext4_ext_drop_refs+0x44/0x80
+[c000001bd1aaf090] c0000000002e0c58 .ext4_ext_find_extent+0x408/0x4c0
+[c000001bd1aaf180] c0000000002e145c .ext4_ext_insert_extent+0x2bc/0x14c0
+[c000001bd1aaf2c0] c0000000002e3fb8 .ext4_ext_map_blocks+0x628/0x1710
+[c000001bd1aaf420] c0000000002b2974 .ext4_map_blocks+0x224/0x310
+[c000001bd1aaf4d0] c0000000002b7f2c .mpage_da_map_and_submit+0xbc/0x490
+[c000001bd1aaf5a0] c0000000002b8688 .write_cache_pages_da+0x2c8/0x430
+[c000001bd1aaf720] c0000000002b8b28 .ext4_da_writepages+0x338/0x670
+[c000001bd1aaf8d0] c000000000157280 .do_writepages+0x40/0x90
+[c000001bd1aaf940] c0000000001ea830 .writeback_single_inode+0xe0/0x530
+[c000001bd1aafa00] c0000000001eb680 .writeback_sb_inodes+0x210/0x300
+[c000001bd1aafb20] c0000000001ebc84 .__writeback_inodes_wb+0xd4/0x140
+[c000001bd1aafbe0] c0000000001ebfec .wb_writeback+0x2fc/0x3e0
+[c000001bd1aafce0] c0000000001ed770 .wb_do_writeback+0x2f0/0x300
+[c000001bd1aafdf0] c0000000001ed848 .bdi_writeback_thread+0xc8/0x340
+[c000001bd1aafed0] c0000000000c5494 .kthread+0xb4/0xc0
+[c000001bd1aaff90] c000000000021f48 .kernel_thread+0x54/0x70
+
+In other words, __brelse got passed a pointer that was obtained from a
+freed object, which had been poisoned with the 0x6b6b... value (I have
+SLAB configured with debugging enabled).
+
+Digging a bit deeper, __brelse was called from ext4_ext_drop_refs, and
+in that function we have path=0xc000001bba9761e8, depth=0x101, and i=5
+at the time of the crash.  So it looks like path on entry to that
+function was 0xc000001bba9760c8, and if I dump out memory from there
+it looks like this:
+
+c000001bba9760c8 00000000001085d3 0101000000000000  |................|
+c000001bba9760d8 0000000000000000 c000001b4518cc3c  |............E..<|
+c000001bba9760e8 c000001b4518cc30 0000000000000000  |....E..0........|
+
+c000001bba9760f8 0000000000c69800 0100000000000000  |................|
+c000001bba976108 0000000000000000 c000001b88063030  |..............00|
+c000001bba976118 c000001b88063000 0000000000000000  |......0.........|
+
+c000001bba976128 0000584400000005 00ff000000000000  |..XD............|
+c000001bba976138 0000000000000000 c0000019395a0ff0  |............9Z..|
+c000001bba976148 c0000019395a0000 0000000000000000  |....9Z..........|
+
+c000001bba976158 0000000000000000 0000000000000000  |................|
+c000001bba976168 0000000000000000 0000000000000000  |................|
+c000001bba976178 0000000000000000 0000000000000000  |................|
+
+c000001bba976188 0000000000000000 0000000000000000  |................|
+c000001bba976198 0000000000000000 0000000000000000  |................|
+c000001bba9761a8 0000000000000000 0000000000000000  |................|
+
+c000001bba9761b8 0000000000000000 0000000000000000  |................|
+c000001bba9761c8 d84156c5635688c0 c0000000002e0ca4  |.AV.cV..........|
+c000001bba9761d8 09f911029d74e35b 6b6b6b6b6b6b6b6b  |.....t.[kkkkkkkk|
+
+c000001bba9761e8 6b6b6b6b6b6b6b6b 6b6b6b6b6b6b6b6b  |kkkkkkkkkkkkkkkk|
+c000001bba9761f8 6b6b6b6b6b6b6b6b 6b6b6b6b6b6b6b6b  |kkkkkkkkkkkkkkkk|
+c000001bba976208 6b6b6b6b6b6b6b6b 6b6b6b6b6b6b6b6b  |kkkkkkkkkkkkkkkk|
+
+So, the first three entries in this array have depth = 257, 256, 255,
+but clearly there are only 5 entries allocated, and we've run off the
+end of the array into a following freed object.
+
+Has anyone seen anything like this?  Any suggestions for patches to
+try, or ways to debug this further?
+
+Paul.
