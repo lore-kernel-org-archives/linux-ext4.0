@@ -1,76 +1,41 @@
-From: Paul Mackerras <paulus@samba.org>
-Subject: [PATCH] ext4: Fix crash due to getting bogus eh_depth value
-Date: Mon, 12 Dec 2011 21:49:52 +1100
-Message-ID: <20111212104952.GA14659@bloggs.ozlabs.ibm.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 19/22] jbd2: Checksum revocation blocks
+Date: Mon, 12 Dec 2011 10:39:35 -0500
+Message-ID: <20111212153935.GA13213@thunk.org>
+References: <20111128232615.19194.80081.stgit@elm3c44.beaverton.ibm.com>
+ <20111128232829.19194.79159.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>
-To: Ted Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ozlabs.org ([203.10.76.45]:35700 "EHLO ozlabs.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751459Ab1LLKvB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 Dec 2011 05:51:01 -0500
+Received: from li9-11.members.linode.com ([67.18.176.11]:46186 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751091Ab1LLPjk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 Dec 2011 10:39:40 -0500
 Content-Disposition: inline
+In-Reply-To: <20111128232829.19194.79159.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Commit 1939dd84b3 ("ext4: cleanup ext4_ext_grow_indepth code") added a
-reference to ext4_extent_header.eh_depth, but forget to pass the value
-read through le16_to_cpu.  The result is a crash on big-endian
-machines, such as this crash on a POWER7 server:
+On Mon, Nov 28, 2011 at 03:28:29PM -0800, Darrick J. Wong wrote:
+> +				/*
+> +				 * Ignoring corrupt revoke blocks is safe
+> +				 * because at worst it results in unnecessary
+> +				 * writes during recovery.
+> +				 */
 
-attempt to access beyond end of device
-sda8: rw=0, want=776392648163376, limit=168558560
-Unable to handle kernel paging request for data at address 0x6b6b6b6b6b6b6bcb
-Faulting instruction address: 0xc0000000001f5f38
-cpu 0x14: Vector: 300 (Data Access) at [c000001bd1aaecf0]
-    pc: c0000000001f5f38: .__brelse+0x18/0x60
-    lr: c0000000002e07a4: .ext4_ext_drop_refs+0x44/0x80
-    sp: c000001bd1aaef70
-   msr: 9000000000009032
-   dar: 6b6b6b6b6b6b6bcb
- dsisr: 40000000
-  current = 0xc000001bd15b8010
-  paca    = 0xc00000000ffe4600
-    pid   = 19911, comm = flush-8:0
-enter ? for help
-[c000001bd1aaeff0] c0000000002e07a4 .ext4_ext_drop_refs+0x44/0x80
-[c000001bd1aaf090] c0000000002e0c58 .ext4_ext_find_extent+0x408/0x4c0
-[c000001bd1aaf180] c0000000002e145c .ext4_ext_insert_extent+0x2bc/0x14c0
-[c000001bd1aaf2c0] c0000000002e3fb8 .ext4_ext_map_blocks+0x628/0x1710
-[c000001bd1aaf420] c0000000002b2974 .ext4_map_blocks+0x224/0x310
-[c000001bd1aaf4d0] c0000000002b7f2c .mpage_da_map_and_submit+0xbc/0x490
-[c000001bd1aaf5a0] c0000000002b8688 .write_cache_pages_da+0x2c8/0x430
-[c000001bd1aaf720] c0000000002b8b28 .ext4_da_writepages+0x338/0x670
-[c000001bd1aaf8d0] c000000000157280 .do_writepages+0x40/0x90
-[c000001bd1aaf940] c0000000001ea830 .writeback_single_inode+0xe0/0x530
-[c000001bd1aafa00] c0000000001eb680 .writeback_sb_inodes+0x210/0x300
-[c000001bd1aafb20] c0000000001ebc84 .__writeback_inodes_wb+0xd4/0x140
-[c000001bd1aafbe0] c0000000001ebfec .wb_writeback+0x2fc/0x3e0
-[c000001bd1aafce0] c0000000001ed770 .wb_do_writeback+0x2f0/0x300
-[c000001bd1aafdf0] c0000000001ed848 .bdi_writeback_thread+0xc8/0x340
-[c000001bd1aafed0] c0000000000c5494 .kthread+0xb4/0xc0
-[c000001bd1aaff90] c000000000021f48 .kernel_thread+0x54/0x70
+This is *not* true.  The reason why we have revoke blocks is because
+we have to handle the case where a metadata block (which is journaled)
+is released, and then the block is reused as a data block.  If we then
+replay the block, the "unnecessary write" will result the potential
+corruption of a data block.
 
-This is due to getting ext_depth(inode) == 0x101 and therefore running
-off the end of the path array in ext4_ext_drop_refs into following
-unallocated structures.
+So if we lose a revoke block, it's not possible to safely replay *any*
+part of the journal.  E2fsck might be able to do something about it by
+saving the old copy of all blocks written during the journal replay if
+it detects this case, and then alerting the system administrator that
+a particular data file may have gotten corrupted.  But it's going to
+be really messy...
 
-This fixes it by adding the necessary le16_to_cpu.
-
-Signed-off-by: Paul Mackerras <paulus@samba.org>
----
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 61fa9e1..61cdb97 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -1095,7 +1095,7 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
- 		  le32_to_cpu(EXT_FIRST_INDEX(neh)->ei_block),
- 		  ext4_idx_pblock(EXT_FIRST_INDEX(neh)));
- 
--	neh->eh_depth = cpu_to_le16(neh->eh_depth + 1);
-+	neh->eh_depth = cpu_to_le16(le16_to_cpu(neh->eh_depth) + 1);
- 	ext4_mark_inode_dirty(handle, inode);
- out:
- 	brelse(bh);
+						- Ted
