@@ -1,106 +1,154 @@
-From: Paul Mackerras <paulus@samba.org>
-Subject: Crash in __brelse with recent kernels copying sparse file
-Date: Mon, 12 Dec 2011 10:29:51 +1100
-Message-ID: <20111211232951.GA5380@bloggs.ozlabs.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Ted Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+From: Tao Ma <tm@tao.ma>
+Subject: [PATCH] ext4: Unify inode flags bit and inode flags.
+Date: Mon, 12 Dec 2011 09:59:49 +0800
+Message-ID: <1323655189-3417-1-git-send-email-tm@tao.ma>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ozlabs.org ([203.10.76.45]:32819 "EHLO ozlabs.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752402Ab1LKXap (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 11 Dec 2011 18:30:45 -0500
-Content-Disposition: inline
+Received: from oproxy4-pub.bluehost.com ([69.89.21.11]:58375 "HELO
+	oproxy4-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1752700Ab1LLCAf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 11 Dec 2011 21:00:35 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+From: Tao Ma <boyu.mt@taobao.com>
 
-I'm seeing a repeatable crash in __brelse with recent kernels while
-copying a sparse file with rsync.  I have a file that is about 12GB in
-length but which occupies about 5.5GB.  I copy it with:
+In order to make atomic set/get of inode flags, we create a enum of
+different inode flags. Now when we add a new inode flag(e.g inline data),
+we have to add both the 'enum' and the 'define' and calculate the value
+of 'define' by ourselves. This is a bit boring and error-prune.
+So this patch just unify these 2 fields.
 
-% rsync -avSP rhel6-root.img rhel6-root2.img
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+---
+ fs/ext4/ext4.h |  108 ++++++++++++++++++++++++++++----------------------------
+ 1 files changed, 54 insertions(+), 54 deletions(-)
 
-and at some point the system (a POWER7 12-core server) will crash like
-this:
-
-attempt to access beyond end of device
-sda8: rw=0, want=776392648163376, limit=168558560
-Unable to handle kernel paging request for data at address 0x6b6b6b6b6b6b6bcb
-Faulting instruction address: 0xc0000000001f5f38
-cpu 0x14: Vector: 300 (Data Access) at [c000001bd1aaecf0]
-    pc: c0000000001f5f38: .__brelse+0x18/0x60
-    lr: c0000000002e07a4: .ext4_ext_drop_refs+0x44/0x80
-    sp: c000001bd1aaef70
-   msr: 9000000000009032
-   dar: 6b6b6b6b6b6b6bcb
- dsisr: 40000000
-  current = 0xc000001bd15b8010
-  paca    = 0xc00000000ffe4600
-    pid   = 19911, comm = flush-8:0
-enter ? for help
-[c000001bd1aaeff0] c0000000002e07a4 .ext4_ext_drop_refs+0x44/0x80
-[c000001bd1aaf090] c0000000002e0c58 .ext4_ext_find_extent+0x408/0x4c0
-[c000001bd1aaf180] c0000000002e145c .ext4_ext_insert_extent+0x2bc/0x14c0
-[c000001bd1aaf2c0] c0000000002e3fb8 .ext4_ext_map_blocks+0x628/0x1710
-[c000001bd1aaf420] c0000000002b2974 .ext4_map_blocks+0x224/0x310
-[c000001bd1aaf4d0] c0000000002b7f2c .mpage_da_map_and_submit+0xbc/0x490
-[c000001bd1aaf5a0] c0000000002b8688 .write_cache_pages_da+0x2c8/0x430
-[c000001bd1aaf720] c0000000002b8b28 .ext4_da_writepages+0x338/0x670
-[c000001bd1aaf8d0] c000000000157280 .do_writepages+0x40/0x90
-[c000001bd1aaf940] c0000000001ea830 .writeback_single_inode+0xe0/0x530
-[c000001bd1aafa00] c0000000001eb680 .writeback_sb_inodes+0x210/0x300
-[c000001bd1aafb20] c0000000001ebc84 .__writeback_inodes_wb+0xd4/0x140
-[c000001bd1aafbe0] c0000000001ebfec .wb_writeback+0x2fc/0x3e0
-[c000001bd1aafce0] c0000000001ed770 .wb_do_writeback+0x2f0/0x300
-[c000001bd1aafdf0] c0000000001ed848 .bdi_writeback_thread+0xc8/0x340
-[c000001bd1aafed0] c0000000000c5494 .kthread+0xb4/0xc0
-[c000001bd1aaff90] c000000000021f48 .kernel_thread+0x54/0x70
-
-In other words, __brelse got passed a pointer that was obtained from a
-freed object, which had been poisoned with the 0x6b6b... value (I have
-SLAB configured with debugging enabled).
-
-Digging a bit deeper, __brelse was called from ext4_ext_drop_refs, and
-in that function we have path=0xc000001bba9761e8, depth=0x101, and i=5
-at the time of the crash.  So it looks like path on entry to that
-function was 0xc000001bba9760c8, and if I dump out memory from there
-it looks like this:
-
-c000001bba9760c8 00000000001085d3 0101000000000000  |................|
-c000001bba9760d8 0000000000000000 c000001b4518cc3c  |............E..<|
-c000001bba9760e8 c000001b4518cc30 0000000000000000  |....E..0........|
-
-c000001bba9760f8 0000000000c69800 0100000000000000  |................|
-c000001bba976108 0000000000000000 c000001b88063030  |..............00|
-c000001bba976118 c000001b88063000 0000000000000000  |......0.........|
-
-c000001bba976128 0000584400000005 00ff000000000000  |..XD............|
-c000001bba976138 0000000000000000 c0000019395a0ff0  |............9Z..|
-c000001bba976148 c0000019395a0000 0000000000000000  |....9Z..........|
-
-c000001bba976158 0000000000000000 0000000000000000  |................|
-c000001bba976168 0000000000000000 0000000000000000  |................|
-c000001bba976178 0000000000000000 0000000000000000  |................|
-
-c000001bba976188 0000000000000000 0000000000000000  |................|
-c000001bba976198 0000000000000000 0000000000000000  |................|
-c000001bba9761a8 0000000000000000 0000000000000000  |................|
-
-c000001bba9761b8 0000000000000000 0000000000000000  |................|
-c000001bba9761c8 d84156c5635688c0 c0000000002e0ca4  |.AV.cV..........|
-c000001bba9761d8 09f911029d74e35b 6b6b6b6b6b6b6b6b  |.....t.[kkkkkkkk|
-
-c000001bba9761e8 6b6b6b6b6b6b6b6b 6b6b6b6b6b6b6b6b  |kkkkkkkkkkkkkkkk|
-c000001bba9761f8 6b6b6b6b6b6b6b6b 6b6b6b6b6b6b6b6b  |kkkkkkkkkkkkkkkk|
-c000001bba976208 6b6b6b6b6b6b6b6b 6b6b6b6b6b6b6b6b  |kkkkkkkkkkkkkkkk|
-
-So, the first three entries in this array have depth = 257, 256, 255,
-but clearly there are only 5 entries allocated, and we've run off the
-end of the array into a following freed object.
-
-Has anyone seen anything like this?  Any suggestions for patches to
-try, or ways to debug this further?
-
-Paul.
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 5b0e26a..c5a8a8d 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -345,33 +345,64 @@ struct flex_groups {
+ #define	EXT4_N_BLOCKS			(EXT4_TIND_BLOCK + 1)
+ 
+ /*
++ * Inode flags used for atomic set/get
++ */
++enum {
++	EXT4_INODE_SECRM	= 0,	/* Secure deletion */
++	EXT4_INODE_UNRM		= 1,	/* Undelete */
++	EXT4_INODE_COMPR	= 2,	/* Compress file */
++	EXT4_INODE_SYNC		= 3,	/* Synchronous updates */
++	EXT4_INODE_IMMUTABLE	= 4,	/* Immutable file */
++	EXT4_INODE_APPEND	= 5,	/* writes to file may only append */
++	EXT4_INODE_NODUMP	= 6,	/* do not dump file */
++	EXT4_INODE_NOATIME	= 7,	/* do not update atime */
++/* Reserved for compression usage... */
++	EXT4_INODE_DIRTY	= 8,
++	EXT4_INODE_COMPRBLK	= 9,	/* One or more compressed clusters */
++	EXT4_INODE_NOCOMPR	= 10,	/* Don't compress */
++	EXT4_INODE_ECOMPR	= 11,	/* Compression error */
++/* End compression flags --- maybe not all used */
++	EXT4_INODE_INDEX	= 12,	/* hash-indexed directory */
++	EXT4_INODE_IMAGIC	= 13,	/* AFS directory */
++	EXT4_INODE_JOURNAL_DATA	= 14,	/* file data should be journaled */
++	EXT4_INODE_NOTAIL	= 15,	/* file tail should not be merged */
++	EXT4_INODE_DIRSYNC	= 16,	/* dirsync behaviour (directories only) */
++	EXT4_INODE_TOPDIR	= 17,	/* Top of directory hierarchies*/
++	EXT4_INODE_HUGE_FILE	= 18,	/* Set to each huge file */
++	EXT4_INODE_EXTENTS	= 19,	/* Inode uses extents */
++	EXT4_INODE_EA_INODE	= 21,	/* Inode used for large EA */
++	EXT4_INODE_EOFBLOCKS	= 22,	/* Blocks allocated beyond EOF */
++	EXT4_INODE_RESERVED	= 31,	/* reserved for ext4 lib */
++};
++
++/*
+  * Inode flags
+  */
+-#define	EXT4_SECRM_FL			0x00000001 /* Secure deletion */
+-#define	EXT4_UNRM_FL			0x00000002 /* Undelete */
+-#define	EXT4_COMPR_FL			0x00000004 /* Compress file */
+-#define EXT4_SYNC_FL			0x00000008 /* Synchronous updates */
+-#define EXT4_IMMUTABLE_FL		0x00000010 /* Immutable file */
+-#define EXT4_APPEND_FL			0x00000020 /* writes to file may only append */
+-#define EXT4_NODUMP_FL			0x00000040 /* do not dump file */
+-#define EXT4_NOATIME_FL			0x00000080 /* do not update atime */
++#define EXT4_SECRM_FL			(1 << EXT4_INODE_SECRM)
++#define EXT4_UNRM_FL			(1 << EXT4_INODE_UNRM)
++#define EXT4_COMPR_FL			(1 << EXT4_INODE_COMPR)
++#define EXT4_SYNC_FL			(1 << EXT4_INODE_SYNC)
++#define EXT4_IMMUTABLE_FL		(1 << EXT4_INODE_IMMUTABLE)
++#define EXT4_APPEND_FL			(1 << EXT4_INODE_APPEND)
++#define EXT4_NODUMP_FL			(1 << EXT4_INODE_NODUMP)
++#define EXT4_NOATIME_FL			(1 << EXT4_INODE_NOATIME)
+ /* Reserved for compression usage... */
+-#define EXT4_DIRTY_FL			0x00000100
+-#define EXT4_COMPRBLK_FL		0x00000200 /* One or more compressed clusters */
+-#define EXT4_NOCOMPR_FL			0x00000400 /* Don't compress */
+-#define EXT4_ECOMPR_FL			0x00000800 /* Compression error */
++#define EXT4_DIRTY_FL			(1 << EXT4_INODE_DIRTY)
++#define EXT4_COMPRBLK_FL		(1 << EXT4_INODE_COMPRBLK)
++#define EXT4_NOCOMPR_FL			(1 << EXT4_INODE_NOCOMPR)
++#define EXT4_ECOMPR_FL			(1 << EXT4_INODE_ECOMPR)
+ /* End compression flags --- maybe not all used */
+-#define EXT4_INDEX_FL			0x00001000 /* hash-indexed directory */
+-#define EXT4_IMAGIC_FL			0x00002000 /* AFS directory */
+-#define EXT4_JOURNAL_DATA_FL		0x00004000 /* file data should be journaled */
+-#define EXT4_NOTAIL_FL			0x00008000 /* file tail should not be merged */
+-#define EXT4_DIRSYNC_FL			0x00010000 /* dirsync behaviour (directories only) */
+-#define EXT4_TOPDIR_FL			0x00020000 /* Top of directory hierarchies*/
+-#define EXT4_HUGE_FILE_FL               0x00040000 /* Set to each huge file */
+-#define EXT4_EXTENTS_FL			0x00080000 /* Inode uses extents */
+-#define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for large EA */
+-#define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
+-#define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
++#define EXT4_INDEX_FL			(1 << EXT4_INODE_INDEX)
++#define EXT4_IMAGIC_FL			(1 << EXT4_INODE_IMAGIC)
++#define EXT4_JOURNAL_DATA_FL		(1 << EXT4_INODE_JOURNAL_DATA)
++#define EXT4_NOTAIL_FL			(1 << EXT4_INODE_NOTAIL)
++#define EXT4_DIRSYNC_FL			(1 << EXT4_INODE_DIRSYNC)
++#define EXT4_TOPDIR_FL			(1 << EXT4_INODE_TOPDIR)
++#define EXT4_HUGE_FILE_FL               (1 << EXT4_INODE_HUGE_FILE)
++#define EXT4_EXTENTS_FL			(1 << EXT4_INODE_EXTENTS)
++#define EXT4_EA_INODE_FL	        (1 << EXT4_INODE_EA_INODE)
++#define EXT4_EOFBLOCKS_FL		(1 << EXT4_INODE_EOFBLOCKS)
++#define EXT4_RESERVED_FL		(1 << EXT4_INODE_RESERVED)
+ 
+ #define EXT4_FL_USER_VISIBLE		0x004BDFFF /* User visible flags */
+ #define EXT4_FL_USER_MODIFIABLE		0x004B80FF /* User modifiable flags */
+@@ -399,37 +430,6 @@ static inline __u32 ext4_mask_flags(umode_t mode, __u32 flags)
+ 		return flags & EXT4_OTHER_FLMASK;
+ }
+ 
+-/*
+- * Inode flags used for atomic set/get
+- */
+-enum {
+-	EXT4_INODE_SECRM	= 0,	/* Secure deletion */
+-	EXT4_INODE_UNRM		= 1,	/* Undelete */
+-	EXT4_INODE_COMPR	= 2,	/* Compress file */
+-	EXT4_INODE_SYNC		= 3,	/* Synchronous updates */
+-	EXT4_INODE_IMMUTABLE	= 4,	/* Immutable file */
+-	EXT4_INODE_APPEND	= 5,	/* writes to file may only append */
+-	EXT4_INODE_NODUMP	= 6,	/* do not dump file */
+-	EXT4_INODE_NOATIME	= 7,	/* do not update atime */
+-/* Reserved for compression usage... */
+-	EXT4_INODE_DIRTY	= 8,
+-	EXT4_INODE_COMPRBLK	= 9,	/* One or more compressed clusters */
+-	EXT4_INODE_NOCOMPR	= 10,	/* Don't compress */
+-	EXT4_INODE_ECOMPR	= 11,	/* Compression error */
+-/* End compression flags --- maybe not all used */
+-	EXT4_INODE_INDEX	= 12,	/* hash-indexed directory */
+-	EXT4_INODE_IMAGIC	= 13,	/* AFS directory */
+-	EXT4_INODE_JOURNAL_DATA	= 14,	/* file data should be journaled */
+-	EXT4_INODE_NOTAIL	= 15,	/* file tail should not be merged */
+-	EXT4_INODE_DIRSYNC	= 16,	/* dirsync behaviour (directories only) */
+-	EXT4_INODE_TOPDIR	= 17,	/* Top of directory hierarchies*/
+-	EXT4_INODE_HUGE_FILE	= 18,	/* Set to each huge file */
+-	EXT4_INODE_EXTENTS	= 19,	/* Inode uses extents */
+-	EXT4_INODE_EA_INODE	= 21,	/* Inode used for large EA */
+-	EXT4_INODE_EOFBLOCKS	= 22,	/* Blocks allocated beyond EOF */
+-	EXT4_INODE_RESERVED	= 31,	/* reserved for ext4 lib */
+-};
