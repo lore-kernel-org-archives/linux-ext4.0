@@ -1,32 +1,48 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Fix crash due to getting bogus eh_depth value
-Date: Mon, 12 Dec 2011 11:00:40 -0500
-Message-ID: <20111212160040.GB4243@thunk.org>
-References: <20111212104952.GA14659@bloggs.ozlabs.ibm.com>
+From: Andrea Arcangeli <aarcange@redhat.com>
+Subject: Re: [PATCH 2/2] ext4: ext4_discard_partial_page_buffers_no_lock()
+ wrong parameters
+Date: Mon, 12 Dec 2011 17:55:17 +0100
+Message-ID: <20111212165517.GE16411@redhat.com>
+References: <1323656828-24465-1-git-send-email-aarcange@redhat.com>
+ <1323656828-24465-3-git-send-email-aarcange@redhat.com>
+ <CAGBYx2YTiHq4mkY5uh3ZawOAz1hbdzfgV2faBDEYZz-k9bySAA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Dmitry Monakhov <dmonakhov@openvz.org>
-To: Paul Mackerras <paulus@samba.org>
+Cc: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>,
+	Jan Kara <jack@suse.cz>
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:35171 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751398Ab1LLQAm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 Dec 2011 11:00:42 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:33739 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752147Ab1LLQzr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 Dec 2011 11:55:47 -0500
 Content-Disposition: inline
-In-Reply-To: <20111212104952.GA14659@bloggs.ozlabs.ibm.com>
+In-Reply-To: <CAGBYx2YTiHq4mkY5uh3ZawOAz1hbdzfgV2faBDEYZz-k9bySAA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 12, 2011 at 09:49:52PM +1100, Paul Mackerras wrote:
-> Commit 1939dd84b3 ("ext4: cleanup ext4_ext_grow_indepth code") added a
-> reference to ext4_extent_header.eh_depth, but forget to pass the value
-> read through le16_to_cpu.  The result is a crash on big-endian
-> machines, such as this crash on a POWER7 server:
+On Mon, Dec 12, 2011 at 11:17:54AM +0800, Yongqiang Yang wrote:
+> Hi Andrea,
+> 
+> The code you are testing are removed in recent patches,  the patches
+> have not been merged.
 
-Thanks for finding this!  While I was driving to work I had started
-thinking that 0x0101 was a very suspicious number, and I was thinking
-that it might have been a missing byte swap somewhere.
+I checked out the git ext4 tree and the two patches applies clean to
+it. So I'm unsure why you say it was removed. origin/dev origin/master
+are equal too.
 
-I'll get this pushed to Linus ASAP as a regression fix.
+> 
+> Please try following patches:
+> [PATCH 1/2] ext4: let mpage_submit_io works well when blocksize < pagesize
+> [PATCH 2/2] ext4: let ext4_discard_partial_buffers handle pages
+> without buffers correctly
+> 
+> and
+> 
+> [PATCH 1/2] ext4: remove a wrong BUG_ON in ext4_ext_convert_to_initialized
+> [PATCH 2/2] ext4: let ext4_bio_write_page handle EOF correctly
 
-     	      				- Ted
+Is there a git tree with these patches? I'm not subscribed to the list.
+
+Thanks,
+Andrea
