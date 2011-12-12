@@ -1,578 +1,126 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Crash in __brelse with recent kernels copying sparse file
-Date: Sun, 11 Dec 2011 21:43:59 -0500
-Message-ID: <20111212024359.GB12433@thunk.org>
-References: <20111211232951.GA5380@bloggs.ozlabs.ibm.com>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: Re: [PATCH 2/2] ext4: ext4_discard_partial_page_buffers_no_lock()
+ wrong parameters
+Date: Mon, 12 Dec 2011 11:17:54 +0800
+Message-ID: <CAGBYx2YTiHq4mkY5uh3ZawOAz1hbdzfgV2faBDEYZz-k9bySAA@mail.gmail.com>
+References: <1323656828-24465-1-git-send-email-aarcange@redhat.com>
+	<1323656828-24465-3-git-send-email-aarcange@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Paul Mackerras <paulus@samba.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>,
+	Jan Kara <jack@suse.cz>
+To: Andrea Arcangeli <aarcange@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:58411 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752756Ab1LLCoC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 11 Dec 2011 21:44:02 -0500
-Content-Disposition: inline
-In-Reply-To: <20111211232951.GA5380@bloggs.ozlabs.ibm.com>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:38803 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752857Ab1LLDRz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 11 Dec 2011 22:17:55 -0500
+Received: by ggdk6 with SMTP id k6so563307ggd.19
+        for <linux-ext4@vger.kernel.org>; Sun, 11 Dec 2011 19:17:55 -0800 (PST)
+In-Reply-To: <1323656828-24465-3-git-send-email-aarcange@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 12, 2011 at 10:29:51AM +1100, Paul Mackerras wrote:
-> Hi,
-> 
-> I'm seeing a repeatable crash in __brelse with recent kernels while
-> copying a sparse file with rsync.  I have a file that is about 12GB in
-> length but which occupies about 5.5GB.  I copy it with:
-> 
-> % rsync -avSP rhel6-root.img rhel6-root2.img
+Hi Andrea,
 
-Hmm, can you try this patch, and see if it triggers?
+The code you are testing are removed in recent patches,  the patches
+have not been merged.
 
-I've removed all of the static declarations so that the stack trace
-will hopefully be more accurate.  (I don't know if you have a reliable
-way to map hex addresses to line numbers on PowerPC, but it's
-critically important to do that given the huge number of static
-functions that generally get inlined, making the stack trace hard to
-decipher if you can't get the line numbers.)
+Please try following patches:
+[PATCH 1/2] ext4: let mpage_submit_io works well when blocksize < pages=
+ize
+[PATCH 2/2] ext4: let ext4_discard_partial_buffers handle pages
+without buffers correctly
 
-     	     	      	     	     - Ted
+and
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 61fa9e1..2bda07a 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -45,14 +45,14 @@
- 
- #include <trace/events/ext4.h>
- 
--static int ext4_split_extent(handle_t *handle,
-+int ext4_split_extent(handle_t *handle,
- 				struct inode *inode,
- 				struct ext4_ext_path *path,
- 				struct ext4_map_blocks *map,
- 				int split_flag,
- 				int flags);
- 
--static int ext4_ext_truncate_extend_restart(handle_t *handle,
-+int ext4_ext_truncate_extend_restart(handle_t *handle,
- 					    struct inode *inode,
- 					    int needed)
- {
-@@ -77,7 +77,7 @@ static int ext4_ext_truncate_extend_restart(handle_t *handle,
-  *  - EROFS
-  *  - ENOMEM
-  */
--static int ext4_ext_get_access(handle_t *handle, struct inode *inode,
-+int ext4_ext_get_access(handle_t *handle, struct inode *inode,
- 				struct ext4_ext_path *path)
- {
- 	if (path->p_bh) {
-@@ -97,7 +97,7 @@ static int ext4_ext_get_access(handle_t *handle, struct inode *inode,
-  */
- #define ext4_ext_dirty(handle, inode, path) \
- 		__ext4_ext_dirty(__func__, __LINE__, (handle), (inode), (path))
--static int __ext4_ext_dirty(const char *where, unsigned int line,
-+int __ext4_ext_dirty(const char *where, unsigned int line,
- 			    handle_t *handle, struct inode *inode,
- 			    struct ext4_ext_path *path)
- {
-@@ -113,7 +113,7 @@ static int __ext4_ext_dirty(const char *where, unsigned int line,
- 	return err;
- }
- 
--static ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
-+ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
- 			      struct ext4_ext_path *path,
- 			      ext4_lblk_t block)
- {
-@@ -162,7 +162,7 @@ static ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
- /*
-  * Allocation for a meta data block
-  */
--static ext4_fsblk_t
-+ext4_fsblk_t
- ext4_ext_new_meta_block(handle_t *handle, struct inode *inode,
- 			struct ext4_ext_path *path,
- 			struct ext4_extent *ex, int *err, unsigned int flags)
-@@ -175,7 +175,7 @@ ext4_ext_new_meta_block(handle_t *handle, struct inode *inode,
- 	return newblock;
- }
- 
--static inline int ext4_ext_space_block(struct inode *inode, int check)
-+int ext4_ext_space_block(struct inode *inode, int check)
- {
- 	int size;
- 
-@@ -188,7 +188,7 @@ static inline int ext4_ext_space_block(struct inode *inode, int check)
- 	return size;
- }
- 
--static inline int ext4_ext_space_block_idx(struct inode *inode, int check)
-+int ext4_ext_space_block_idx(struct inode *inode, int check)
- {
- 	int size;
- 
-@@ -201,7 +201,7 @@ static inline int ext4_ext_space_block_idx(struct inode *inode, int check)
- 	return size;
- }
- 
--static inline int ext4_ext_space_root(struct inode *inode, int check)
-+int ext4_ext_space_root(struct inode *inode, int check)
- {
- 	int size;
- 
-@@ -215,7 +215,7 @@ static inline int ext4_ext_space_root(struct inode *inode, int check)
- 	return size;
- }
- 
--static inline int ext4_ext_space_root_idx(struct inode *inode, int check)
-+int ext4_ext_space_root_idx(struct inode *inode, int check)
- {
- 	int size;
- 
-@@ -276,7 +276,7 @@ int ext4_ext_calc_metadata_amount(struct inode *inode, ext4_lblk_t lblock)
- 	return ext_depth(inode) + 1;
- }
- 
--static int
-+int
- ext4_ext_max_entries(struct inode *inode, int depth)
- {
- 	int max;
-@@ -296,7 +296,7 @@ ext4_ext_max_entries(struct inode *inode, int depth)
- 	return max;
- }
- 
--static int ext4_valid_extent(struct inode *inode, struct ext4_extent *ext)
-+int ext4_valid_extent(struct inode *inode, struct ext4_extent *ext)
- {
- 	ext4_fsblk_t block = ext4_ext_pblock(ext);
- 	int len = ext4_ext_get_actual_len(ext);
-@@ -304,7 +304,7 @@ static int ext4_valid_extent(struct inode *inode, struct ext4_extent *ext)
- 	return ext4_data_block_valid(EXT4_SB(inode->i_sb), block, len);
- }
- 
--static int ext4_valid_extent_idx(struct inode *inode,
-+int ext4_valid_extent_idx(struct inode *inode,
- 				struct ext4_extent_idx *ext_idx)
- {
- 	ext4_fsblk_t block = ext4_idx_pblock(ext_idx);
-@@ -312,7 +312,7 @@ static int ext4_valid_extent_idx(struct inode *inode,
- 	return ext4_data_block_valid(EXT4_SB(inode->i_sb), block, 1);
- }
- 
--static int ext4_valid_extent_entries(struct inode *inode,
-+int ext4_valid_extent_entries(struct inode *inode,
- 				struct ext4_extent_header *eh,
- 				int depth)
- {
-@@ -343,7 +343,7 @@ static int ext4_valid_extent_entries(struct inode *inode,
- 	return 1;
- }
- 
--static int __ext4_ext_check(const char *function, unsigned int line,
-+int __ext4_ext_check(const char *function, unsigned int line,
- 			    struct inode *inode, struct ext4_extent_header *eh,
- 			    int depth)
- {
-@@ -397,7 +397,7 @@ int ext4_ext_check_inode(struct inode *inode)
- }
- 
- #ifdef EXT_DEBUG
--static void ext4_ext_show_path(struct inode *inode, struct ext4_ext_path *path)
-+void ext4_ext_show_path(struct inode *inode, struct ext4_ext_path *path)
- {
- 	int k, l = path->p_depth;
- 
-@@ -418,7 +418,7 @@ static void ext4_ext_show_path(struct inode *inode, struct ext4_ext_path *path)
- 	ext_debug("\n");
- }
- 
--static void ext4_ext_show_leaf(struct inode *inode, struct ext4_ext_path *path)
-+void ext4_ext_show_leaf(struct inode *inode, struct ext4_ext_path *path)
- {
- 	int depth = ext_depth(inode);
- 	struct ext4_extent_header *eh;
-@@ -441,7 +441,7 @@ static void ext4_ext_show_leaf(struct inode *inode, struct ext4_ext_path *path)
- 	ext_debug("\n");
- }
- 
--static void ext4_ext_show_move(struct inode *inode, struct ext4_ext_path *path,
-+void ext4_ext_show_move(struct inode *inode, struct ext4_ext_path *path,
- 			ext4_fsblk_t newblock, int level)
- {
- 	int depth = ext_depth(inode);
-@@ -496,7 +496,7 @@ void ext4_ext_drop_refs(struct ext4_ext_path *path)
-  * binary search for the closest index of the given block
-  * the header must be checked before calling this
-  */
--static void
-+void
- ext4_ext_binsearch_idx(struct inode *inode,
- 			struct ext4_ext_path *path, ext4_lblk_t block)
- {
-@@ -556,7 +556,7 @@ ext4_ext_binsearch_idx(struct inode *inode,
-  * binary search for closest extent of the given block
-  * the header must be checked before calling this
-  */
--static void
-+void
- ext4_ext_binsearch(struct inode *inode,
- 		struct ext4_ext_path *path, ext4_lblk_t block)
- {
-@@ -638,6 +638,13 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
- 	eh = ext_inode_hdr(inode);
- 	depth = ext_depth(inode);
- 
-+	if (path && depth > (path->p_depth + 2)) {
-+		ext4_msg(inode->i_sb, KERN_CRIT,
-+			 "%s: inode %lu, depth %d > path->p_depth %d", __func__,
-+			 inode->i_ino, depth, path->p_depth);
-+		BUG_ON(1);
-+	}
-+
- 	/* account possible depth increase */
- 	if (!path) {
- 		path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 2),
-@@ -717,7 +724,7 @@ err:
-  * insert new index [@logical;@ptr] into the block at @curp;
-  * check where to insert: before @curp or after @curp
-  */
--static int ext4_ext_insert_index(handle_t *handle, struct inode *inode,
-+int ext4_ext_insert_index(handle_t *handle, struct inode *inode,
- 				 struct ext4_ext_path *curp,
- 				 int logical, ext4_fsblk_t ptr)
- {
-@@ -793,7 +800,7 @@ static int ext4_ext_insert_index(handle_t *handle, struct inode *inode,
-  *   into the newly allocated blocks
-  * - initializes subtree
-  */
--static int ext4_ext_split(handle_t *handle, struct inode *inode,
-+int ext4_ext_split(handle_t *handle, struct inode *inode,
- 			  unsigned int flags,
- 			  struct ext4_ext_path *path,
- 			  struct ext4_extent *newext, int at)
-@@ -1032,7 +1039,7 @@ cleanup:
-  * - initializes new top-level, creating index that points to the
-  *   just created block
-  */
--static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
-+int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
- 				 unsigned int flags,
- 				 struct ext4_extent *newext)
- {
-@@ -1108,7 +1115,7 @@ out:
-  * finds empty index and adds new leaf.
-  * if no free index is found, then it requests in-depth growing.
-  */
--static int ext4_ext_create_new_leaf(handle_t *handle, struct inode *inode,
-+int ext4_ext_create_new_leaf(handle_t *handle, struct inode *inode,
- 				    unsigned int flags,
- 				    struct ext4_ext_path *path,
- 				    struct ext4_extent *newext)
-@@ -1180,7 +1187,7 @@ out:
-  * returns 0 at @phys
-  * return value contains 0 (success) or error code
-  */
--static int ext4_ext_search_left(struct inode *inode,
-+int ext4_ext_search_left(struct inode *inode,
- 				struct ext4_ext_path *path,
- 				ext4_lblk_t *logical, ext4_fsblk_t *phys)
- {
-@@ -1245,7 +1252,7 @@ static int ext4_ext_search_left(struct inode *inode,
-  * returns 0 at @phys
-  * return value contains 0 (success) or error code
-  */
--static int ext4_ext_search_right(struct inode *inode,
-+int ext4_ext_search_right(struct inode *inode,
- 				 struct ext4_ext_path *path,
- 				 ext4_lblk_t *logical, ext4_fsblk_t *phys,
- 				 struct ext4_extent **ret_ex)
-@@ -1362,7 +1369,7 @@ found_extent:
-  * allocated block. Thus, index entries have to be consistent
-  * with leaves.
-  */
--static ext4_lblk_t
-+ext4_lblk_t
- ext4_ext_next_allocated_block(struct ext4_ext_path *path)
- {
- 	int depth;
-@@ -1396,7 +1403,7 @@ ext4_ext_next_allocated_block(struct ext4_ext_path *path)
-  * ext4_ext_next_leaf_block:
-  * returns first allocated block from next leaf or EXT_MAX_BLOCKS
-  */
--static ext4_lblk_t ext4_ext_next_leaf_block(struct ext4_ext_path *path)
-+ext4_lblk_t ext4_ext_next_leaf_block(struct ext4_ext_path *path)
- {
- 	int depth;
- 
-@@ -1427,7 +1434,7 @@ static ext4_lblk_t ext4_ext_next_leaf_block(struct ext4_ext_path *path)
-  * then we have to correct all indexes above.
-  * TODO: do we need to correct tree in all cases?
-  */
--static int ext4_ext_correct_indexes(handle_t *handle, struct inode *inode,
-+int ext4_ext_correct_indexes(handle_t *handle, struct inode *inode,
- 				struct ext4_ext_path *path)
- {
- 	struct ext4_extent_header *eh;
-@@ -1533,7 +1540,7 @@ ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
-  * Returns 0 if the extents (ex and ex+1) were _not_ merged and returns
-  * 1 if they got merged.
-  */
--static int ext4_ext_try_to_merge_right(struct inode *inode,
-+int ext4_ext_try_to_merge_right(struct inode *inode,
- 				 struct ext4_ext_path *path,
- 				 struct ext4_extent *ex)
- {
-@@ -1576,7 +1583,7 @@ static int ext4_ext_try_to_merge_right(struct inode *inode,
-  * This function tries to merge the @ex extent to neighbours in the tree.
-  * return 1 if merge left else 0.
-  */
--static int ext4_ext_try_to_merge(struct inode *inode,
-+int ext4_ext_try_to_merge(struct inode *inode,
- 				  struct ext4_ext_path *path,
- 				  struct ext4_extent *ex) {
- 	struct ext4_extent_header *eh;
-@@ -1605,7 +1612,7 @@ static int ext4_ext_try_to_merge(struct inode *inode,
-  * such that there will be no overlap, and then returns 1.
-  * If there is no overlap found, it returns 0.
-  */
--static unsigned int ext4_ext_check_overlap(struct ext4_sb_info *sbi,
-+unsigned int ext4_ext_check_overlap(struct ext4_sb_info *sbi,
- 					   struct inode *inode,
- 					   struct ext4_extent *newext,
- 					   struct ext4_ext_path *path)
-@@ -1830,7 +1837,7 @@ cleanup:
- 	return err;
- }
- 
--static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
-+int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
- 			       ext4_lblk_t num, ext_prepare_callback func,
- 			       void *cbdata)
- {
-@@ -1945,7 +1952,7 @@ static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
- 	return err;
- }
- 
--static void
-+void
- ext4_ext_put_in_cache(struct inode *inode, ext4_lblk_t block,
- 			__u32 len, ext4_fsblk_t start)
- {
-@@ -1965,7 +1972,7 @@ ext4_ext_put_in_cache(struct inode *inode, ext4_lblk_t block,
-  * calculate boundaries of the gap that the requested block fits into
-  * and cache this gap
-  */
--static void
-+void
- ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
- 				ext4_lblk_t block)
- {
-@@ -2025,7 +2032,7 @@ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
-  *
-  * Return 0 if cache is invalid; 1 if the cache is valid
-  */
--static int ext4_ext_check_cache(struct inode *inode, ext4_lblk_t block,
-+int ext4_ext_check_cache(struct inode *inode, ext4_lblk_t block,
- 	struct ext4_ext_cache *ex){
- 	struct ext4_ext_cache *cex;
- 	struct ext4_sb_info *sbi;
-@@ -2072,7 +2079,7 @@ errout:
-  *
-  * Return 0 if cache is invalid; 1 if the cache is valid
-  */
--static int
-+int
- ext4_ext_in_cache(struct inode *inode, ext4_lblk_t block,
- 			struct ext4_extent *ex)
- {
-@@ -2094,7 +2101,7 @@ ext4_ext_in_cache(struct inode *inode, ext4_lblk_t block,
-  * ext4_ext_rm_idx:
-  * removes index from the index block.
-  */
--static int ext4_ext_rm_idx(handle_t *handle, struct inode *inode,
-+int ext4_ext_rm_idx(handle_t *handle, struct inode *inode,
- 			struct ext4_ext_path *path)
- {
- 	int err;
-@@ -2188,7 +2195,7 @@ int ext4_ext_index_trans_blocks(struct inode *inode, int nrblocks, int chunk)
- 	return index;
- }
- 
--static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
-+int ext4_remove_blocks(handle_t *handle, struct inode *inode,
- 			      struct ext4_extent *ex,
- 			      ext4_fsblk_t *partial_cluster,
- 			      ext4_lblk_t from, ext4_lblk_t to)
-@@ -2292,7 +2299,7 @@ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
-  * @start:  The first block to remove
-  * @end:   The last block to remove
-  */
--static int
-+int
- ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 		 struct ext4_ext_path *path, ext4_fsblk_t *partial_cluster,
- 		 ext4_lblk_t start, ext4_lblk_t end)
-@@ -2466,7 +2473,7 @@ out:
-  * ext4_ext_more_to_rm:
-  * returns 1 if current index has to be freed (even partial)
-  */
--static int
-+int
- ext4_ext_more_to_rm(struct ext4_ext_path *path)
- {
- 	BUG_ON(path->p_idx == NULL);
-@@ -2483,7 +2490,7 @@ ext4_ext_more_to_rm(struct ext4_ext_path *path)
- 	return 1;
- }
- 
--static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
-+int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
- {
- 	struct super_block *sb = inode->i_sb;
- 	int depth = ext_depth(inode);
-@@ -2509,7 +2516,7 @@ again:
- 	 * after i_size and walking into the tree depth-wise.
- 	 */
- 	depth = ext_depth(inode);
--	path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 1), GFP_NOFS);
-+	path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 2), GFP_NOFS);
- 	if (path == NULL) {
- 		ext4_journal_stop(handle);
- 		return -ENOMEM;
-@@ -2693,7 +2700,7 @@ void ext4_ext_release(struct super_block *sb)
- }
- 
- /* FIXME!! we need to try to merge to left or right after zero-out  */
--static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
-+int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
- {
- 	ext4_fsblk_t ee_pblock;
- 	unsigned int ee_len;
-@@ -2738,7 +2745,7 @@ static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
-  *
-  * return 0 on success.
-  */
--static int ext4_split_extent_at(handle_t *handle,
-+int ext4_split_extent_at(handle_t *handle,
- 			     struct inode *inode,
- 			     struct ext4_ext_path *path,
- 			     ext4_lblk_t split,
-@@ -2842,7 +2849,7 @@ fix_extent_len:
-  *   c> Splits in three extents: Somone is splitting in middle of the extent
-  *
-  */
--static int ext4_split_extent(handle_t *handle,
-+int ext4_split_extent(handle_t *handle,
- 			      struct inode *inode,
- 			      struct ext4_ext_path *path,
- 			      struct ext4_map_blocks *map,
-@@ -2919,7 +2926,7 @@ out:
-  *    that are allocated and initialized.
-  *    It is guaranteed to be >= map->m_len.
-  */
--static int ext4_ext_convert_to_initialized(handle_t *handle,
-+int ext4_ext_convert_to_initialized(handle_t *handle,
- 					   struct inode *inode,
- 					   struct ext4_map_blocks *map,
- 					   struct ext4_ext_path *path)
-@@ -3130,7 +3137,7 @@ out:
-  *
-  * Returns the size of uninitialized extent to be written on success.
-  */
--static int ext4_split_unwritten_extents(handle_t *handle,
-+int ext4_split_unwritten_extents(handle_t *handle,
- 					struct inode *inode,
- 					struct ext4_map_blocks *map,
- 					struct ext4_ext_path *path,
-@@ -3166,7 +3173,7 @@ static int ext4_split_unwritten_extents(handle_t *handle,
- 	return ext4_split_extent(handle, inode, path, map, split_flag, flags);
- }
- 
--static int ext4_convert_unwritten_extents_endio(handle_t *handle,
-+int ext4_convert_unwritten_extents_endio(handle_t *handle,
- 					      struct inode *inode,
- 					      struct ext4_ext_path *path)
- {
-@@ -3200,7 +3207,7 @@ out:
- 	return err;
- }
- 
--static void unmap_underlying_metadata_blocks(struct block_device *bdev,
-+void unmap_underlying_metadata_blocks(struct block_device *bdev,
- 			sector_t block, int count)
- {
- 	int i;
-@@ -3211,7 +3218,7 @@ static void unmap_underlying_metadata_blocks(struct block_device *bdev,
- /*
-  * Handle EOFBLOCKS_FL flag, clearing it if necessary
-  */
--static int check_eofblocks_fl(handle_t *handle, struct inode *inode,
-+int check_eofblocks_fl(handle_t *handle, struct inode *inode,
- 			      ext4_lblk_t lblk,
- 			      struct ext4_ext_path *path,
- 			      unsigned int len)
-@@ -3271,7 +3278,7 @@ static int check_eofblocks_fl(handle_t *handle, struct inode *inode,
-  * block sooner). This is useful when blocks are truncated sequentially from
-  * lblk_start towards lblk_end.
-  */
--static int ext4_find_delalloc_range(struct inode *inode,
-+int ext4_find_delalloc_range(struct inode *inode,
- 				    ext4_lblk_t lblk_start,
- 				    ext4_lblk_t lblk_end,
- 				    int search_hint_reverse)
-@@ -3404,7 +3411,7 @@ int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk,
-  * In the non-bigalloc case, this function will just end up returning num_blks
-  * without ever calling ext4_find_delalloc_range.
-  */
--static unsigned int
-+unsigned int
- get_reserved_cluster_alloc(struct inode *inode, ext4_lblk_t lblk_start,
- 			   unsigned int num_blks)
- {
-@@ -3444,7 +3451,7 @@ get_reserved_cluster_alloc(struct inode *inode, ext4_lblk_t lblk_start,
- 	return allocated_clusters;
- }
- 
--static int
-+int
- ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
- 			struct ext4_map_blocks *map,
- 			struct ext4_ext_path *path, int flags,
-@@ -3618,7 +3625,7 @@ out2:
-  * ext4_ext_map_blocks() will then allocate one or more new clusters
-  * by calling ext4_mb_new_blocks().
-  */
--static int get_implied_cluster_alloc(struct super_block *sb,
-+int get_implied_cluster_alloc(struct super_block *sb,
- 				     struct ext4_map_blocks *map,
- 				     struct ext4_extent *ex,
- 				     struct ext4_ext_path *path)
-@@ -4254,7 +4261,7 @@ out_stop:
- 	ext4_journal_stop(handle);
- }
- 
--static void ext4_falloc_update_inode(struct inode *inode,
-+void ext4_falloc_update_inode(struct inode *inode,
- 				int mode, loff_t new_size, int update_ctime)
- {
- 	struct timespec now;
-@@ -4452,7 +4459,7 @@ int ext4_convert_unwritten_extents(struct inode *inode, loff_t offset,
- /*
-  * Callback function called for each extent to gather FIEMAP information.
-  */
--static int ext4_ext_fiemap_cb(struct inode *inode, ext4_lblk_t next,
-+int ext4_ext_fiemap_cb(struct inode *inode, ext4_lblk_t next,
- 		       struct ext4_ext_cache *newex, struct ext4_extent *ex,
- 		       void *data)
- {
-@@ -4654,7 +4661,7 @@ found_delayed_extent:
- /* fiemap flags we can handle specified here */
- #define EXT4_FIEMAP_FLAGS	(FIEMAP_FLAG_SYNC|FIEMAP_FLAG_XATTR)
- 
--static int ext4_xattr_fiemap(struct inode *inode,
-+int ext4_xattr_fiemap(struct inode *inode,
- 				struct fiemap_extent_info *fieinfo)
- {
- 	__u64 physical = 0;
+[PATCH 1/2] ext4: remove a wrong BUG_ON in ext4_ext_convert_to_initiali=
+zed
+[PATCH 2/2] ext4: let ext4_bio_write_page handle EOF correctly
+
+Yongqiang.
+
+On Mon, Dec 12, 2011 at 10:27 AM, Andrea Arcangeli <aarcange@redhat.com=
+> wrote:
+> If "copied" is zero (it can happen if the pte is unmapped before the
+> atomic copy_user that does the data copy runs) the "from" passed to
+> ext4_discard_partial_page_buffers_no_lock() points to pos-1, which
+> would correspond to a logical page index before the page->index
+> leading to ext4_discard_partial_page_buffers_no_lock() returning
+> -EINVAL (because index !=3D page->index). In such a case write() retu=
+rns
+> -EINVAL and userland gets a failure and filemap.c doesn't retry the
+> copy_user anymore.
+>
+> I'm not certain of why exactly
+> ext4_discard_partial_page_buffers_no_lock() is run here, so it's hard
+> to tell if this is the correct fix. But it that functions clears data
+> starting from the "from" parameter, so regardless of the -EINVAL
+> retval, the right "from" to start clearing data should be pos+copied,
+> not pos+copied-1. If this assumption is correct, it could mean that
+> this bug in addition to the -EINVAL error, could also zero out 1 byte
+> by mistake. I'm not sure what the implications for that are (not sure
+> if data corruption is possible in some circumstances because of
+> that). I guess normally this functions runs on unmapped buffers and
+> the EXT4_DISCARD_PARTIAL_PG_ZERO_UNMAPPED makes it a noop on those.
+>
+> After fixing the hang in ext4_da_should_update_i_disksize, this write
+> -EINVAL error becomes trivially reproducible with experimental knumad
+> autonuma code running at heavy frequency (not the normal case). But
+> like for the ext4_da_should_update_i_disksize hang, it should not be
+> impossible to reproduce it with legacy swapping behavior.
+>
+> After dropping all caches a md5sum is successful and I can't find
+> errors anymore with this patch, the -EINVAL stops, but it's not
+> conclusive (and I haven't run e2fsck -f yet but I doubt this affects
+> metadata coherency, seems more like a delayalloc data issue).
+>
+> Signed-off-by: Andrea Arcangeli <aarcange@redhat.com>
+> ---
+> =A0fs/ext4/inode.c | =A0 =A06 +++---
+> =A01 files changed, 3 insertions(+), 3 deletions(-)
+>
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 63f9541..528c4c5 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -2534,11 +2534,11 @@ static int ext4_da_write_end(struct file *fil=
+e,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0page, fsdata);
+>
+> =A0 =A0 =A0 =A0page_len =3D PAGE_CACHE_SIZE -
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ((pos + copied - 1) & (=
+PAGE_CACHE_SIZE - 1));
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ((pos + copied) & (PAGE=
+_CACHE_SIZE - 1));
+>
+> - =A0 =A0 =A0 if (page_len > 0) {
+> + =A0 =A0 =A0 if (page_len < PAGE_CACHE_SIZE) {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ret =3D ext4_discard_partial_page_buff=
+ers_no_lock(handle,
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 inode, page, pos + copi=
+ed - 1, page_len,
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 inode, page, pos + copi=
+ed, page_len,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT4_DISCARD_PARTIAL_P=
+G_ZERO_UNMAPPED);
+> =A0 =A0 =A0 =A0}
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+
+
+
+--=20
+Best Wishes
+Yongqiang Yang
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
