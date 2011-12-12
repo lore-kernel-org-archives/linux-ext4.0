@@ -1,72 +1,44 @@
-From: Andrea Arcangeli <aarcange@redhat.com>
-Subject: [PATCH 2/2] ext4: ext4_discard_partial_page_buffers_no_lock() wrong parameters
-Date: Mon, 12 Dec 2011 03:27:08 +0100
-Message-ID: <1323656828-24465-3-git-send-email-aarcange@redhat.com>
-References: <1323656828-24465-1-git-send-email-aarcange@redhat.com>
-Cc: Theodore Tso <tytso@MIT.EDU>, Jan Kara <jack@suse.cz>
-To: linux-ext4@vger.kernel.org
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Unify inode flags bit and inode flags.
+Date: Sun, 11 Dec 2011 21:40:00 -0500
+Message-ID: <20111212024000.GA12433@thunk.org>
+References: <1323655189-3417-1-git-send-email-tm@tao.ma>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:3268 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752764Ab1LLC1w (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 11 Dec 2011 21:27:52 -0500
-In-Reply-To: <1323656828-24465-1-git-send-email-aarcange@redhat.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:41211 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752756Ab1LLCkF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 11 Dec 2011 21:40:05 -0500
+Content-Disposition: inline
+In-Reply-To: <1323655189-3417-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If "copied" is zero (it can happen if the pte is unmapped before the
-atomic copy_user that does the data copy runs) the "from" passed to
-ext4_discard_partial_page_buffers_no_lock() points to pos-1, which
-would correspond to a logical page index before the page->index
-leading to ext4_discard_partial_page_buffers_no_lock() returning
--EINVAL (because index != page->index). In such a case write() returns
--EINVAL and userland gets a failure and filemap.c doesn't retry the
-copy_user anymore.
+On Mon, Dec 12, 2011 at 09:59:49AM +0800, Tao Ma wrote:
+> From: Tao Ma <boyu.mt@taobao.com>
+> 
+> In order to make atomic set/get of inode flags, we create a enum of
+> different inode flags. Now when we add a new inode flag(e.g inline data),
+> we have to add both the 'enum' and the 'define' and calculate the value
+> of 'define' by ourselves. This is a bit boring and error-prune.
+> So this patch just unify these 2 fields.
 
-I'm not certain of why exactly
-ext4_discard_partial_page_buffers_no_lock() is run here, so it's hard
-to tell if this is the correct fix. But it that functions clears data
-starting from the "from" parameter, so regardless of the -EINVAL
-retval, the right "from" to start clearing data should be pos+copied,
-not pos+copied-1. If this assumption is correct, it could mean that
-this bug in addition to the -EINVAL error, could also zero out 1 byte
-by mistake. I'm not sure what the implications for that are (not sure
-if data corruption is possible in some circumstances because of
-that). I guess normally this functions runs on unmapped buffers and
-the EXT4_DISCARD_PARTIAL_PG_ZERO_UNMAPPED makes it a noop on those.
+This was deliberate.  The problem is these flags also have to be in
+sync with the hex values defined in include/linux/fs.h (and in some
+other file systems' header files), not to mention the definitions in
+e2fsprogs.
 
-After fixing the hang in ext4_da_should_update_i_disksize, this write
--EINVAL error becomes trivially reproducible with experimental knumad
-autonuma code running at heavy frequency (not the normal case). But
-like for the ext4_da_should_update_i_disksize hang, it should not be
-impossible to reproduce it with legacy swapping behavior.
+This is because the lsattr and chattr command was originally defined
+originally for ext2/3, but then other file systems (reiserfs, xfs,
+btrfs, etc) decided they would also use the same ioctls and userspace
+commands.  So we have partial overlap of these flags, and when we
+define new flags we have to be a little careful to make sure we
+coordinate between all of the places where these flags are defined.
 
-After dropping all caches a md5sum is successful and I can't find
-errors anymore with this patch, the -EINVAL stops, but it's not
-conclusive (and I haven't run e2fsck -f yet but I doubt this affects
-metadata coherency, seems more like a delayalloc data issue).
+So the fact that this is also an ABI is why I don't want to use an
+enum and to calculate the values from that.
 
-Signed-off-by: Andrea Arcangeli <aarcange@redhat.com>
----
- fs/ext4/inode.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 63f9541..528c4c5 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2534,11 +2534,11 @@ static int ext4_da_write_end(struct file *file,
- 							page, fsdata);
- 
- 	page_len = PAGE_CACHE_SIZE -
--			((pos + copied - 1) & (PAGE_CACHE_SIZE - 1));
-+			((pos + copied) & (PAGE_CACHE_SIZE - 1));
- 
--	if (page_len > 0) {
-+	if (page_len < PAGE_CACHE_SIZE) {
- 		ret = ext4_discard_partial_page_buffers_no_lock(handle,
--			inode, page, pos + copied - 1, page_len,
-+			inode, page, pos + copied, page_len,
- 			EXT4_DISCARD_PARTIAL_PG_ZERO_UNMAPPED);
- 	}
- 
+					- Ted
