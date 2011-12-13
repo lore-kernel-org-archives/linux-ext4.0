@@ -1,104 +1,109 @@
-From: "Jimmy Zakia" <downsyl4@aol.com>
-Subject: From Libyan embassy
-Date: Tue, 13 Dec 2011 05:17:26 -0800
-Message-ID: <201112131320.pBDDK3gA029261__16097.2679885619$1323782509$gmane$org@imr-db02.mx.aol.com>
-Reply-To: <jimmyzakky30@yahoo.com.hk>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [Bug #39732] JBD: Spotted dirty metadata buffer (dev = dm-2,
+ blocknr = 2512725). There's a risk of filesystem corruption in case of
+ system crash.
+Date: Tue, 13 Dec 2011 18:35:42 +0100
+Message-ID: <20111213173542.GH11747@quack.suse.cz>
+References: <Sm7qbRR0zn.A.yAG.LepWOB@chimera>
+ <gUVi6eNP8RE.A.z7G.OfpWOB@chimera>
+ <20111213041144.GF28734@smp.if.uj.edu.pl>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----=_NextPart_000_00FC_01C2A9A6.1ED5D006"
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset=us-ascii
+Cc: "Rafael J. Wysocki" <rjw@sisk.pl>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Kernel Testers List <kernel-testers@vger.kernel.org>,
+	Maciej Rutecki <maciej.rutecki@gmail.com>,
+	Florian Mickler <florian@mickler.org>,
+	linux-ext4@vger.kernel.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Theodore Ts'o <tytso@mit.edu>
+To: Witold Baryluk <baryluk@smp.if.uj.edu.pl>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imr-db02.mx.aol.com ([205.188.91.96]:34412 "EHLO
-	imr-db02.mx.aol.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751539Ab1LMNVk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Dec 2011 08:21:40 -0500
+Received: from cantor2.suse.de ([195.135.220.15]:56126 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753930Ab1LMRfq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 13 Dec 2011 12:35:46 -0500
+Content-Disposition: inline
+In-Reply-To: <20111213041144.GF28734@smp.if.uj.edu.pl>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a multi-part message in MIME format.
+  Hi,
 
-------=_NextPart_000_00FC_01C2A9A6.1ED5D006
-Content-Type: text/plain;
-	charset="Windows-1251"
-Content-Transfer-Encoding: 7bit
+On Tue 13-12-11 05:11:44, Witold Baryluk wrote:
+> On 08-28 21:01, Rafael J. Wysocki wrote:
+> > This message has been generated automatically as a part of a report
+> > of regressions introduced between 2.6.39 and 3.0.
+> > 
+> > The following bug entry is on the current list of known regressions
+> > introduced between 2.6.39 and 3.0.  Please verify if it still should
+> > be listed and let the tracking team know (either way).
+> > 
+> > 
+> > Bug-Entry	: http://bugzilla.kernel.org/show_bug.cgi?id=39732
+> > Subject		: JBD: Spotted dirty metadata buffer (dev = dm-2, blocknr = 2512725). There's a risk of filesystem corruption in case of system crash.
+> > Submitter	: Witold Baryluk <baryluk@smp.if.uj.edu.pl>
+> > Date		: 2011-07-22 04:22 (38 days old)
+> 
+> This bug still exists in 3.1.0 and 3.2.0-rc5
+> 
+> I spoted it again few days ago, because I moved from me laptop with 2GB
+> to temporary desktop with 256MB of RAM, and not it
+> triggers like a mad.
+> 
+> So my initial suspicious that it only shows up on big memory
+> presure was correct.
+> 
+> 
+> It is just like this 
+> # dmesg | grep dirty
+> [122647.953872] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 1019852). There's a risk of filesystem corruption in case of system crash.
+> [122647.954598] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 1043195). There's a risk of filesystem corruption in case of system crash.
+> [122647.955213] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 1043197). There's a risk of filesystem corruption in case of system crash.
+> [122689.978864] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 498559). There's a risk of filesystem corruption in case of system crash.
+> [122705.485461] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 68282). There's a risk of filesystem corruption in case of system crash.
+> [122705.486046] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 68284). There's a risk of filesystem corruption in case of system crash.
+> [122705.496916] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 68365). There's a risk of filesystem corruption in case of system crash.
+> [122705.612423] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 69218). There's a risk of filesystem corruption in case of system crash.
+> [122706.531297] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 833896). There's a risk of filesystem corruption in case of system crash.
+> [122720.863807] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 914979). There's a risk of filesystem corruption in case of system crash.
+> [122721.046789] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 890090). There's a risk of filesystem corruption in case of system crash.
+> [122721.088280] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 916474). There's a risk of filesystem corruption in case of system crash.
+> [122721.176979] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 928182). There's a risk of filesystem corruption in case of system crash.
+> [122721.177593] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 927783). There's a risk of filesystem corruption in case of system crash.
+> [122721.371654] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 920655). There's a risk of filesystem corruption in case of system crash.
+> [122721.543676] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 967035). There's a risk of filesystem corruption in case of system crash.
+> [122728.396687] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 1043474). There's a risk of filesystem corruption in case of system crash.
+> [122736.283876] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 713478). There's a risk of filesystem corruption in case of system crash.
+> [122743.576350] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 745551). There's a risk of filesystem corruption in case of system crash.
+> [122743.889259] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 828117). There's a risk of filesystem corruption in case of system crash.
+> [122752.077022] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 905082). There's a risk of filesystem corruption in case of system crash.
+> [122752.125005] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 905294). There's a risk of filesystem corruption in case of system crash.
+> [122752.784390] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 1030306). There's a risk of filesystem corruption in case of system crash.
+> [122752.785053] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 1031593). There's a risk of filesystem corruption in case of system crash.
+> #
+> 
+> dm-4 is ext4 partition mounted at /var
+> dm-4 is on LVM on luksCrypt on ATA drive.
+> 
+> I'm using currently stock Debian testing kernel:
+> $ uname -a
+> Linux sredniczarny 3.1.0-1-686-pae #1 SMP Tue Nov 29 19:01:56 UTC 2011 i686 GNU/Linux
+> $ cat /proc/version
+> Linux version 3.1.0-1-686-pae (Debian 3.1.4-1) (waldi@debian.org) (gcc version 4.6.2 (Debian 4.6.2-4) ) #1 SMP Tue Nov 29 19:01:56 UTC 2011
+> $
+> 
+> 32-bit intel compatible cpu
+  Thanks for report. Actually I was able to reproduce these messages with
+data=journal mode as well when running bash_shared_mapping test. The
+culprit of the problem is that block_mkwrite() as used in
+ext4_page_mkwrite() marks buffers dirty and JBD2 notices this before
+we clear dirty bits later in ext4_page_mkwrite() (since JBD2 doesn't use
+page lock for protection when inspecting buffers). So for data=journal mode
+we'll probably have to reimplement what block_page_mkwrite() does in a
+slightly different manner tweaked for the needs of data=journal mode.
 
-In a brief introduction, I am an embassy attaché with the Libyan Government in the Hague, Netherlands.
-Please kindly see the attachment for more details and respond immediately
-
-------=_NextPart_000_00FC_01C2A9A6.1ED5D006
-Content-Type: application/octet-stream;
-	name="attachment.rtf"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
-	filename="attachment.rtf"
-
-e1xydGYxXGFuc2lcYW5zaWNwZzEyNTJcZGVmZjBcZGVmbGFuZzEwMzN7XGZv
-bnR0Ymx7XGYwXGZzd2lzc1xmY2hhcnNldDAgQXJpYWw7fX0NCntcKlxnZW5l
-cmF0b3IgTXNmdGVkaXQgNS40MS4yMS4yNTAwO31cdmlld2tpbmQ0XHVjMVxw
-YXJkXGYwXGZzMjAgSmltbXkgWmFraWEgU2FobGlccGFyDQpFbWJhc3N5IG9m
-IExpYnlhXHBhcg0KUGFya3dlZyAxNSwgMjU4NUpIXHBhcg0KVGhlIEhhZ3Vl
-LCBUaGUgTmV0aGVybGFuZHMgIFxwYXINClxwYXINCjEzdGggRGVjLiAyMDEx
-XHBhcg0KIFxwYXINCkVtYmFzc3kgb2YgTGlieWEsIFRoZSBIYWd1ZSwgTmV0
-aGVybGFuZHM7IEZ1bmQgVHJhbnNmZXIgQXNzaXN0YW5jZVxwYXINCiBccGFy
-DQpEZWFyIFNpcixccGFyDQogXHBhcg0KSSBoYXZlIGRlY2lkZWQgdG8gY29u
-dGFjdCB5b3UgdG8gYXNzaXN0IHVzIHRyYW5zZmVyIGFuZCBkZXBvc2l0IHRo
-aXMgc3VtIG9mIG1vbmV5IG1lbnRpb25lZCBiZWxvdyBpbnRvIHlvdXIgcGVy
-c29uYWwgYWNjb3VudCBvciBhbnkgb3RoZXIgYWNjb3VudCB5b3UgZGVjaWRl
-IHNhZmUuXHBhcg0KIFxwYXINCkluIGEgYnJpZWYgaW50cm9kdWN0aW9uLCBJ
-IGFtIGFuIGVtYmFzc3kgYXR0YWNoXCdlOSB3aXRoIHRoZSBMaWJ5YW4gR292
-ZXJubWVudCBpbiBUaGUgSGFndWUsIE5ldGhlcmxhbmRzLiBXZSBhcmUgY3Vy
-cmVudGx5IGF1ZGl0aW5nIGFuZCByZWN0aWZ5aW5nIHRoZSBhY2NvdW50IG9m
-IG91ciBGb3JlaWduIE1pc3Npb25zIGFuZCBFbWJhc3NpZXMgYWJyb2FkIGFu
-ZCBpbiBwYXJ0aWN1bGFyIGluIEV1cm9wZS4gVGhpcyBleGNpc2UgaXMgbmVj
-ZXNzaXRhdGVkIGJ5IHRoZSBvbi1nb2luZyBwb2xpdGljYWwgY2hhbmdlIGlu
-IG15IGNvdW50cnkgdW5kZXIgdGhlIE5hdGlvbmFsIFRyYW5zaXRpb25hbCBD
-b3VuY2lsIChOVEMpLiBJdCBpcyBleHBlY3RlZCB0aGF0IHRoZXJlIHdpbGwg
-YmUgbmV3IEFtYmFzc2Fkb3JpYWwgcG9zdGluZyBpbiB0aGUgY29taW5nIG1v
-bnRocyB3aGljaCB3aWxsIGRlZmluaXRlbHkgYWZmZWN0IHRoZSBwcmVzZW50
-IEFtYmFzc2Fkb3IgYW5kIGFsbCBzdGFmZiBvZiBMaWJ5YSBFbWJhc3N5IGlu
-IFRoZSBOZXRoZXJsYW5kcy5ccGFyDQogXHBhcg0KSG93ZXZlciwgaW4gdGhl
-IGNvdXJzZSBvZiBvdXIgYXVkaXRpbmcsIHdlIGhhdmUgaHVnZSBzdW0gb2Yg
-ZXhjZXNzIG1vbmV5IGluIHRoZSB0dW5lIG9mIFVTJDgsNTAwLDAwMC4wMCAo
-RWlnaHQgTWlsbGlvbiwgRml2ZSBIdW5kcmVkIFRob3VzYW5kIFUuUyBEb2xs
-YXJzKSB3aGljaCBpcyBseWluZyBsb29zZSBhbmQgdW5jbGFpbWVkIGluIG9u
-ZSBvZiB0aGUgbG9jYWwgYmFua3MgaGVyZSBpbiBUaGUgTmV0aGVybGFuZHMu
-IFdlIGhhdmUgcXVpY2tseSBhbmQgc21hcnRseSBpbiBjb2xsYWJvcmF0aW9u
-IHdpdGggdGhlIEFtYmFzc2Fkb3IgYW5kIHNvbWUgYXV0aG9yaXRpZXMgaW4g
-dGhlIE5hdGlvbmFsIFRyYW5zaXRpb25hbCBDb3VuY2lsIChOVEMpIGRlY2lk
-ZWQgdG8ga2VlcCB0aGlzIG1vbmV5IHRvIG91cnNlbHZlcy4gV2UgYXJlIHRh
-a2luZyBhZHZhbnRhZ2Ugb2Ygb3VyIHBvc2l0aW9uIGFuZCB0aGF0IG9mIHRo
-ZSBwb2xpdGljYWwgaW5zdGFiaWxpdHkgaW4gbXkgY291bnRyeSB0byBkbyB0
-aGlzIGtub3dpbmcgdGhhdCBub2JvZHkgd2lsbCBmaW5kIG91dC4gSG93ZXZl
-ciwgd2Ugd291bGQgbGlrZSB0byBtb3ZlIHRoaXMgbW9uZXkgZnVydGhlciB0
-byBhbm90aGVyIGZvcmVpZ24gYWNjb3VudCwgcHJlZmVyYWJseSBvdXRzaWRl
-IFRoZSBOZXRoZXJsYW5kcy5ccGFyDQogXHBhcg0KVG8gdGhpcyBlZmZlY3Qs
-IGFuZCBmb3IgcmVhc29uIG9mIGFub255bWl0eSwgd2UgaGF2ZSBjaG9zZW4g
-eW91IHRocm91Z2ggdGhlIGludGVybmF0aW9uYWwgc2VhcmNoIGRpcmVjdG9y
-eSB0byBhc3Npc3QgdXMgaW4gdHJhbnNmZXJyaW5nIGFuZCBkZXBvc2l0aW5n
-IHRoaXMgbW9uZXkgaW4geW91ciBwZXJzb25hbCBiYW5rIGFjY291bnQgb3Ig
-YW55IG90aGVyIGFjY291bnQgeW91IGRlZW1lZCBzYWZlci4gVGhpcyByZWNv
-bW1lbmRhdGlvbiBpcyBiYXNlZCBvbiB0aGUgZmFjdCB0aGF0IHlvdSB3aWxs
-IG5vdCBiZXRyYXkgdGhlIHRydXN0IGFuZCBjb25maWRlbmNlIHdlIGFyZSBy
-ZXBvc2luZyBvbiB5b3UuIFdlIGhhdmUgZGVjaWRlZCB0aGVyZWFmdGVyLCB0
-byBnaXZlIHlvdSAzMCUgb2YgdGhlIFVTJDgsNTAwLDAwMC4wMCBmb3IgeW91
-ciBhc3Npc3RhbmNlIGFuZCBjb3Jyb2JvcmF0aW9uIHdoaWxlIHRoZSByZXN0
-IDcwJSB3aWxsIGJlIHNhZmVseSBrZXB0IGZvciB1cy5ccGFyDQogXHBhcg0K
-UGxlYXNlIGtpbmRseSBpbmRpY2F0ZSB5b3VyIGludGVyZXN0IHRvIGFzc2lz
-dCB1cyBrZWVwIHRoaXMgbW9uZXkgaW4geW91ciBhY2NvdW50IGFzIHNvb24g
-YXMgcG9zc2libGUuIEl0IGlzIGFsc28gbXkgcGxlYXN1cmUgdG8gaW5mb3Jt
-IHlvdSB0aGF0IGV2ZXJ5IGFycmFuZ2VtZW50IHRvIHJlbGVhc2UgdGhlIG1v
-bmV5IGZyb20gdGhlIGJhbmsgaGVyZSBoYXMgYmVlbiBjb25jbHVkZWQuIFRo
-aXMgYnVzaW5lc3MgaXMgdG90YWxseSByaXNrIGZyZWUuXHBhcg0KIFxwYXIN
-CkZpbmFsbHksIHdlIGV4cGVjdCB5b3UgaW4gY29uZmlkZW5jZSBhbmQgdHJ1
-c3QgdG8ga2VlcCBldmVyeSBhc3BlY3Qgb2YgdGhpcyB0cmFuc2FjdGlvbiBz
-ZWNyZXQgYW5kIGNvbmZpZGVudGlhbCBhcyBhbnkgbWlzdGFrZSB3aWxsIHB1
-dCBteSBmdXR1cmUgY2FyZWVyIGluIGplb3BhcmR5LiBJIG1heSBpbnZpdGUg
-eW91IG9yIHZpc2l0IHlvdSBmb3Igb25lIG9uIG9uZSBkaXNjdXNzaW9uIGFu
-ZCBwZXJmZWN0aW9uIG9mIHRoZSBkZWFsIGFzIHNvb24gSSBjb25maXJtIHRo
-YXQgeW91IGNhbiBoYW5kbGUgdGhlIHRyYW5zYWN0aW9uLlxwYXINCiBccGFy
-DQpUaGFua3MgZm9yIHlvdXIgYW50aWNpcGF0ZWQgY28tb3BlcmF0aW9uLCB3
-aGlsZSB3YWl0aW5nIGZvciB5b3VyIGFjY2VwdGFuY2UgdG8gYXNzaXN0IHVz
-LiBccGFyDQogXHBhcg0KWW91cnMgc2luY2VyZWx5LFxwYXINCiAgXHBhcg0K
-SmltbXkgWmFraWEgU2FobGlccGFyDQp9DQoA
-
-------=_NextPart_000_00FC_01C2A9A6.1ED5D006--
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
