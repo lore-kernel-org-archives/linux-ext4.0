@@ -1,64 +1,269 @@
-From: Andrea Arcangeli <aarcange@redhat.com>
-Subject: Re: [PATCH 2/2] ext4: ext4_discard_partial_page_buffers_no_lock()
- wrong parameters
-Date: Tue, 13 Dec 2011 01:40:47 +0100
-Message-ID: <20111213004047.GH16411@redhat.com>
-References: <1323656828-24465-1-git-send-email-aarcange@redhat.com>
- <1323656828-24465-3-git-send-email-aarcange@redhat.com>
- <CAGBYx2YTiHq4mkY5uh3ZawOAz1hbdzfgV2faBDEYZz-k9bySAA@mail.gmail.com>
- <20111212165517.GE16411@redhat.com>
- <4EE65F13.3030800@linux.vnet.ibm.com>
+From: Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>
+Subject: [PATCH] update 068 to reproduce an unfreeze hanging up problem
+Date: Tue, 13 Dec 2011 09:42:46 +0900
+Message-ID: <20111213094245.4004.61FB500B@jp.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>, linux-ext4@vger.kernel.org,
-	Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
-To: Allison Henderson <achender@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:61189 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753968Ab1LMAlQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 Dec 2011 19:41:16 -0500
-Content-Disposition: inline
-In-Reply-To: <4EE65F13.3030800@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="US-ASCII"
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Allison,
+update 068 to reproduce an unfreeze hanging up problem which is unfreeze
+function, thaw_super(), sometimes hangs up if flush kernel thread does
+writeback to the same filesystem concurrently.
+The problem occurs on ext4 and ext3. They are reported at
+ext4:
+http://marc.info/?l=linux-ext4&m=132339590004560&w=2
+ext3:
+http://marc.info/?l=linux-ext4&m=131536612113658&w=2
 
-On Mon, Dec 12, 2011 at 01:07:47PM -0700, Allison Henderson wrote:
-> Hi Andrea,
-> 
-> I think what Yongqiang means is that the code you are modifying is being 
-> removed in the patches listed above and replaced with a different 
-> solution.  The patches have not yet been merged so you will not see them 
-> in a git tree yet, so you will need to apply them yourself.  If you are 
-> not subscribed to the list, you can still find the patches here:
-> 
-> http://www.spinics.net/lists/linux-ext4/msg29109.html
-> http://www.spinics.net/lists/linux-ext4/msg29110.html
-> 
-> http://www.spinics.net/lists/linux-ext4/msg29375.html
-> http://www.spinics.net/lists/linux-ext4/msg29376.html
+This test runs freeze/unfreeze under heavy load. If the problem is
+reproduced, this test will hang up because "xfs_freeze -u" hangs up...
 
-Thanks for the links. Applied all 4.
+Signed-off-by: Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>
+---
+ 068     |   17 +++----
+ 068.out |  160 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 167 insertions(+), 10 deletions(-)
 
-> We want to make sure the solution works for everyone, so please apply 
-> these patches and let us know if it corrects the issues you are seeing. 
->   Thx!
-
-With all 4 patches applied, my 1/2 patch is still needed to avoid the
-hang and writes hangs all the time (but now they don't return -EINVAL
-anymore).
-
-My patch 2/2 is not needed with the above 4 patches applied so that
-can be discared if you apply the above 4 patches (but I suggest you
-check my patch 2/2 too because if it happens to be correct it could
-mean there's the potential of 1 byte data corruption in current
-upstream kernels in some circumstances, in addition to the -EINVAL
-failure in write()).
-
-Let me know if you need me to test me anything else in relation to the
-copied=0 case.
+diff --git a/068 b/068
+index 5d0053d..3b3597d 100755
+--- a/068
++++ b/068
+@@ -32,7 +32,7 @@ here=`pwd`
+ tmp=/tmp/$$
+ status=0	# success is the default!
+ 
+-ITERATIONS=10
++ITERATIONS=50
+ 
+ _cleanup()
+ {
+@@ -51,7 +51,7 @@ trap "_cleanup" 0 1 2 3 15
+ . ./common.filter
+ 
+ # real QA test starts here
+-_supported_fs xfs
++_supported_fs ext3 ext4 xfs
+ _supported_os Linux IRIX
+ 
+ _require_scratch
+@@ -62,7 +62,7 @@ rm -f $seq.full
+ umount $SCRATCH_DEV >/dev/null 2>&1
+ echo "*** MKFS ***"                         >>$seq.full
+ echo ""                                     >>$seq.full
+-_scratch_mkfs_xfs                           >>$seq.full 2>&1 \
++_scratch_mkfs                               >>$seq.full 2>&1 \
+     || _fail "mkfs failed"
+ _scratch_mount                              >>$seq.full 2>&1 \
+     || _fail "mount failed"
+@@ -75,12 +75,11 @@ touch $tmp.running
+     STRESS_DIR="$SCRATCH_MNT/fsstress_test_dir"
+     mkdir "$STRESS_DIR"
+ 
+-    procs=2
+-    nops=200
++    procs=100
++    nops=1000
+     while [ -f "$tmp.running" ]
+-      do
+-      #	-w ensures that the only ops are ones which cause write I/O
+-      $FSSTRESS_PROG -d $STRESS_DIR -w -p $procs -n $nops $FSSTRESS_AVOID \
++    do
++      $FSSTRESS_PROG -d $STRESS_DIR -p $procs -n $nops $FSSTRESS_AVOID \
+ 	  > /dev/null 2>&1
+     done
+ 
+@@ -99,13 +98,11 @@ do
+ 	xfs_freeze -f "$SCRATCH_MNT" | tee -a $seq.full
+ 	[ $? != 0 ] && echo xfs_freeze -f "$SCRATCH_MNT" failed | \
+ 	    tee -a $seq.full
+-	sleep 2
+ 
+ 	echo "*** thawing  \$SCRATCH_MNT" | tee -a $seq.full
+ 	xfs_freeze -u "$SCRATCH_MNT" | tee -a $seq.full
+ 	[ $? != 0 ] && echo xfs_freeze -u "$SCRATCH_MNT" failed | \
+ 	    tee -a $seq.full
+-	sleep 2
+ 
+ 	echo  | tee -a $seq.full
+ 	let i=$i+1
+diff --git a/068.out b/068.out
+index 363d0e9..11eb58d 100644
+--- a/068.out
++++ b/068.out
+@@ -41,3 +41,163 @@ QA output created by 068
+ *** freezing $SCRATCH_MNT
+ *** thawing  $SCRATCH_MNT
+ 
++*** iteration: 10
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 11
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 12
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 13
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 14
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 15
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 16
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 17
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 18
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 19
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 20
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 21
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 22
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 23
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 24
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 25
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 26
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 27
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 28
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 29
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 30
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 31
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 32
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 33
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 34
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 35
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 36
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 37
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 38
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 39
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 40
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 41
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 42
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 43
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 44
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 45
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 46
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 47
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 48
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
++*** iteration: 49
++*** freezing $SCRATCH_MNT
++*** thawing  $SCRATCH_MNT
++
+-- 
+1.7.1
 
 Thanks,
-Andrea
+Masayoshi Mizuma
+
+
