@@ -1,116 +1,37 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] update 068 to reproduce an unfreeze hanging up problem
-Date: Tue, 13 Dec 2011 17:32:12 +1100
-Message-ID: <20111213063212.GC14273@dastard>
-References: <20111213094245.4004.61FB500B@jp.fujitsu.com>
+From: Joakim Tjernlund <joakim.tjernlund@transmode.se>
+Subject: Re: [PATCH 14/14] crc32: Select an algorithm via kconfig
+Date: Tue, 13 Dec 2011 09:27:10 +0100
+Message-ID: <OF62576D22.A1ACD2B5-ONC1257965.002E3817-C1257965.002E6F16@transmode.se>
+References: <20111201201341.5876.83743.stgit@elm3c44.beaverton.ibm.com> <20111201201517.5876.39207.stgit@elm3c44.beaverton.ibm.com> <20111202002505.GB19842@gondor.apana.org.au> <20111203023646.GB16577@tux1.beaverton.ibm.com> <20111212225857.GM7137@tux1.beaverton.ibm.com> <02ea01ccb923$48193ff0$d84bbfd0$@systemfabricworks.com> <20111213063228.GN7137@tux1.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
-	linux-ext4@vger.kernel.org
-To: Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20111213094245.4004.61FB500B@jp.fujitsu.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Cc: "'Andreas Dilger'" <adilger.kernel@dilger.ca>,
+	"'Andrew Morton'" <akpm@linux-foundation.org>,
+	"'Mingming Cao'" <cmm@us.ibm.com>,
+	"'Herbert Xu'" <herbert@gondor.apana.org.au>,
+	"'linux-crypto'" <linux-crypto@vger.kernel.org>,
+	linux-ext4@vger.kernel.org,
+	"'linux-fsdevel'" <linux-fsdevel@vger.kernel.org>,
+	"'linux-kernel'" <linux-kernel@vger.kernel.org>,
+	Bob Pearson <rpearson@systemfabricworks.com>,
+	"'Theodore Tso'" <tytso@mit.edu>
+To: djwong@us.ibm.com
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20111213063228.GN7137@tux1.beaverton.ibm.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Dec 13, 2011 at 09:42:46AM +0900, Masayoshi MIZUMA wrote:
-> update 068 to reproduce an unfreeze hanging up problem which is unfreeze
-> function, thaw_super(), sometimes hangs up if flush kernel thread does
-> writeback to the same filesystem concurrently.
+"Darrick J. Wong" <djwong@us.ibm.com> wrote on 2011/12/13 07:32:28:
+>
+> On Mon, Dec 12, 2011 at 05:10:45PM -0600, Bob Pearson wrote:
+> > That choice was for Joakim who measured better performance on his 32 bit PPC
+> > platform with "by 4".
+>
+> Ok.  On my 1.33GHz PowerBook I get ~255MB/s with slice by 4 and ~270MB/s with
+> slice by 8.  I think it's a PPC 7447, and definitely 32-bit.  In any case, it
+> reports having 32K of L1D cache.
 
-That's not exactly what I asked to be done when I reviewed the
-original patch -  I asked you to "make 068 generic" because it
-already exercises freeze/thaw under a stressful workload. What I
-expected was a change to "supported_fs" and the scratch mkfs
-command so it will run on all filesystems.
+I tested Bobs early version on my mpc8321(266MHz, embedded CPU) and it was just
+half the speed compared with current crc32.
 
-test 068 will catch problems like the one your specific test
-catches, but maybe not every time. Test 068 will catch problems your
-test case won't, though - it's a trade-off between having lots of
-tests that are similar but slightly different (difficult to
-maintain, increases runtime, etc), and having one test that
-exercises the functionality in a simple manner likely to detect
-problems.
-
-Test 068 is likely to detect problems because it:
-
-	a) allows fsstress to try to do stuff while the filesystem
-	is frozen by waiting a short time before thawing, hence load
-	processes can get stuck either during the freeze of once the
-	freeze is complete. Without that window, we are much less
-	likely to test opeations on a frozen filesystem.
-
-	b) allows more dirty data/metadata to build up between
-	thaw/freeze commands, rather than running them as quickly as
-	possible. This means freeze has more work to do, extenting
-	the different phases of the freeze, making it more likely we
-	have processes hit in different phases and hence test
-	different parts of the freeze process.
-
-IOWs, test 068 gives good coverage across most aspects of
-freezing/thawing filesystems under load - and a lot of that woul dbe
-lost by changing the test to mimic the ext4 specific test case you
-have. It will still be able to trigger the problem you are trying to
-expose, but it also has a much better chance of triggering problems
-at different points of the freeze/thaw lifecycle that your specific
-test....
-
-> The problem occurs on ext4 and ext3. They are reported at
-> ext4:
-> http://marc.info/?l=linux-ext4&m=132339590004560&w=2
-> ext3:
-> http://marc.info/?l=linux-ext4&m=131536612113658&w=2
-> 
-> This test runs freeze/unfreeze under heavy load. If the problem is
-> reproduced, this test will hang up because "xfs_freeze -u" hangs up...
-
-> -ITERATIONS=10
-> +ITERATIONS=50
-
-....
-
-> -    procs=2
-> -    nops=200
-> +    procs=100
-> +    nops=1000
-
->      while [ -f "$tmp.running" ]
-> -      do
-> -      #	-w ensures that the only ops are ones which cause write I/O
-> -      $FSSTRESS_PROG -d $STRESS_DIR -w -p $procs -n $nops $FSSTRESS_AVOID \
-> +    do
-> +      $FSSTRESS_PROG -d $STRESS_DIR -p $procs -n $nops $FSSTRESS_AVOID \
->  	  > /dev/null 2>&1
-
-And this is one of those cases - it is the write operations
-that are the ones that cause trouble for freeze/thaw, so changing
-the test to use read operations simply reduces the stress that is
-being put on the filesytem freeze...
-
-Also, you don't need lots of processes and ops to keep the filesystems
-busy while freeze/thaw cycles are going on - if fsstress completes,
-it simply gets started again. Hence it doesn't need to be configured
-to run for a long time by ramping up processes and opcount. Yes, the
-proc count could probably be increased a bit to increase the freeze
-load, but i don't think that will improve the test all that much...
-
-> @@ -99,13 +98,11 @@ do
->  	xfs_freeze -f "$SCRATCH_MNT" | tee -a $seq.full
->  	[ $? != 0 ] && echo xfs_freeze -f "$SCRATCH_MNT" failed | \
->  	    tee -a $seq.full
-> -	sleep 2
-
-And this simulates typical freeze/do something/thaw cycles. It also
-allows fsstress to execute operations while the filesytem is frozen
-and potentially try to grab things like the superblock lock because
-fsstress issued a sync() system call. Dropping the sleep makes the
-test less likely to find problems....
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+ Jocke
