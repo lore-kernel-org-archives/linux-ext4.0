@@ -1,64 +1,98 @@
-From: Miao Xie <miaox@cn.fujitsu.com>
-Subject: Re: [PATCH v2 4/7] VFS: Rename and refactor writeback_inodes_sb_if_idle
-Date: Tue, 13 Dec 2011 11:34:05 +0800
-Message-ID: <4EE6C7AD.3020907@cn.fujitsu.com>
-References: <1323367477-21685-1-git-send-email-kamal@canonical.com> <1323367477-21685-5-git-send-email-kamal@canonical.com>
-Reply-To: miaox@cn.fujitsu.com
+From: Witold Baryluk <baryluk@smp.if.uj.edu.pl>
+Subject: Re: [Bug #39732] JBD: Spotted dirty metadata buffer (dev = dm-2,
+ blocknr = 2512725). There's a risk of filesystem corruption in case of
+ system crash.
+Date: Tue, 13 Dec 2011 05:11:44 +0100
+Message-ID: <20111213041144.GF28734@smp.if.uj.edu.pl>
+References: <Sm7qbRR0zn.A.yAG.LepWOB@chimera>
+ <gUVi6eNP8RE.A.z7G.OfpWOB@chimera>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=GB2312
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, Alexander Viro <viro@zeniv.linux.org.uk>,
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Kernel Testers List <kernel-testers@vger.kernel.org>,
+	Maciej Rutecki <maciej.rutecki@gmail.com>,
+	Florian Mickler <florian@mickler.org>,
+	linux-ext4@vger.kernel.org,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Matthew Wilcox <matthew@wil.cx>,
-	Randy Dunlap <rdunlap@xenotime.net>,
-	Theodore Tso <tytso@mit.edu>, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Surbhi Palande <csurbhi@gmail.com>,
-	Valerie Aurora <val@vaaconsulting.com>,
-	Christopher Chaltain <christopher.chaltain@canonical.com>,
-	"Peter M. Petrakis" <peter.petrakis@canonical.com>,
-	Mikulas Patocka <mpatocka@redhat.com>
-To: Kamal Mostafa <kamal@canonical.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:53365 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1754280Ab1LMDfD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 Dec 2011 22:35:03 -0500
-In-Reply-To: <1323367477-21685-5-git-send-email-kamal@canonical.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+	Theodore Ts'o <tytso@mit.edu>
+To: "Rafael J. Wysocki" <rjw@sisk.pl>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <gUVi6eNP8RE.A.z7G.OfpWOB@chimera>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On thu, 8 Dec 2011 10:04:34 -0800, Kamal Mostafa wrote:
->  /**
-> - * writeback_inodes_sb_if_idle	-	start writeback if none underway
-> + * try_to_writeback_inodes_sb_nr	-	start writeback if none underway
->   * @sb: the superblock
->   * @nr: the number of pages to write
->   *
->   * Invoke writeback_inodes_sb if no writeback is currently underway.
->   * Returns 1 if writeback was started, 0 if not.
->   */
-> -int writeback_inodes_sb_nr_if_idle(struct super_block *sb,
-> +int try_to_writeback_inodes_sb_nr(struct super_block *sb,
->  				   unsigned long nr,
->  				   enum wb_reason reason)
->  {
->  	if (!writeback_in_progress(sb->s_bdi)) {
->  		down_read(&sb->s_umount);
-> -		writeback_inodes_sb_nr(sb, nr, reason);
-> +		if (nr == 0)
-> +			writeback_inodes_sb(sb, reason);
-> +		else
-> +			writeback_inodes_sb_nr(sb, nr, reason);
->  		up_read(&sb->s_umount);
->  		return 1;
->  	} else
->  		return 0;
+On 08-28 21:01, Rafael J. Wysocki wrote:
+> This message has been generated automatically as a part of a report
+> of regressions introduced between 2.6.39 and 3.0.
+> 
+> The following bug entry is on the current list of known regressions
+> introduced between 2.6.39 and 3.0.  Please verify if it still should
+> be listed and let the tracking team know (either way).
+> 
+> 
+> Bug-Entry	: http://bugzilla.kernel.org/show_bug.cgi?id=39732
+> Subject		: JBD: Spotted dirty metadata buffer (dev = dm-2, blocknr = 2512725). There's a risk of filesystem corruption in case of system crash.
+> Submitter	: Witold Baryluk <baryluk@smp.if.uj.edu.pl>
+> Date		: 2011-07-22 04:22 (38 days old)
+> 
 
-The comment said "Returns 1 if writeback was started", so if writeback_in_progress()
-return true, I think this function also should return 1.
+Hi,
 
-BTW: Does anyone know when this patchset will be merged into the main tree?
+This bug still exists in 3.1.0 and 3.2.0-rc5
 
-Thanks
-Miao
+I spoted it again few days ago, because I moved from me laptop with 2GB
+to temporary desktop with 256MB of RAM, and not it
+triggers like a mad.
+
+So my initial suspicious that it only shows up on big memory
+presure was correct.
+
+
+It is just like this 
+# dmesg | grep dirty
+[122647.953872] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 1019852). There's a risk of filesystem corruption in case of system crash.
+[122647.954598] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 1043195). There's a risk of filesystem corruption in case of system crash.
+[122647.955213] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 1043197). There's a risk of filesystem corruption in case of system crash.
+[122689.978864] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 498559). There's a risk of filesystem corruption in case of system crash.
+[122705.485461] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 68282). There's a risk of filesystem corruption in case of system crash.
+[122705.486046] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 68284). There's a risk of filesystem corruption in case of system crash.
+[122705.496916] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 68365). There's a risk of filesystem corruption in case of system crash.
+[122705.612423] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 69218). There's a risk of filesystem corruption in case of system crash.
+[122706.531297] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 833896). There's a risk of filesystem corruption in case of system crash.
+[122720.863807] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 914979). There's a risk of filesystem corruption in case of system crash.
+[122721.046789] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 890090). There's a risk of filesystem corruption in case of system crash.
+[122721.088280] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 916474). There's a risk of filesystem corruption in case of system crash.
+[122721.176979] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 928182). There's a risk of filesystem corruption in case of system crash.
+[122721.177593] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 927783). There's a risk of filesystem corruption in case of system crash.
+[122721.371654] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 920655). There's a risk of filesystem corruption in case of system crash.
+[122721.543676] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 967035). There's a risk of filesystem corruption in case of system crash.
+[122728.396687] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 1043474). There's a risk of filesystem corruption in case of system crash.
+[122736.283876] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 713478). There's a risk of filesystem corruption in case of system crash.
+[122743.576350] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 745551). There's a risk of filesystem corruption in case of system crash.
+[122743.889259] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 828117). There's a risk of filesystem corruption in case of system crash.
+[122752.077022] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 905082). There's a risk of filesystem corruption in case of system crash.
+[122752.125005] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 905294). There's a risk of filesystem corruption in case of system crash.
+[122752.784390] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 1030306). There's a risk of filesystem corruption in case of system crash.
+[122752.785053] JBD: Spotted dirty metadata buffer (dev = dm-3, blocknr = 1031593). There's a risk of filesystem corruption in case of system crash.
+#
+
+dm-4 is ext4 partition mounted at /var
+dm-4 is on LVM on luksCrypt on ATA drive.
+
+I'm using currently stock Debian testing kernel:
+$ uname -a
+Linux sredniczarny 3.1.0-1-686-pae #1 SMP Tue Nov 29 19:01:56 UTC 2011 i686 GNU/Linux
+$ cat /proc/version
+Linux version 3.1.0-1-686-pae (Debian 3.1.4-1) (waldi@debian.org) (gcc version 4.6.2 (Debian 4.6.2-4) ) #1 SMP Tue Nov 29 19:01:56 UTC 2011
+$
+
+32-bit intel compatible cpu
+
+
+Regards,
+Witek
+
+-- 
+Witold Baryluk
