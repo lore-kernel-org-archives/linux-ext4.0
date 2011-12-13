@@ -1,98 +1,84 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [PATCH 2/2] ext4: ext4_discard_partial_page_buffers_no_lock()
- wrong parameters
-Date: Tue, 13 Dec 2011 09:16:24 +0800
-Message-ID: <CAGBYx2Znz3U4zE9gquabkFrPG6ZfLXRKc6WMc_SbUJRxUf9zfA@mail.gmail.com>
-References: <1323656828-24465-1-git-send-email-aarcange@redhat.com>
-	<1323656828-24465-3-git-send-email-aarcange@redhat.com>
-	<CAGBYx2YTiHq4mkY5uh3ZawOAz1hbdzfgV2faBDEYZz-k9bySAA@mail.gmail.com>
-	<20111212165517.GE16411@redhat.com>
-	<4EE65F13.3030800@linux.vnet.ibm.com>
-	<20111213004047.GH16411@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>,
-	Jan Kara <jack@suse.cz>, Hugh Dickins <hughd@google.com>,
-	Andy Whitcroft <apw@canonical.com>
-To: Andrea Arcangeli <aarcange@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: display the correct mount option in /proc/mounts for [no]init_itable
+Date: Mon, 12 Dec 2011 22:07:42 -0500
+Message-ID: <1323745662-24330-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, stable@kernel.org
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:45101 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753910Ab1LMBQZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Dec 2011 20:16:25 -0500
-Received: by ggdk6 with SMTP id k6so1830299ggd.19
-        for <linux-ext4@vger.kernel.org>; Mon, 12 Dec 2011 17:16:24 -0800 (PST)
-In-Reply-To: <20111213004047.GH16411@redhat.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:45061 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753468Ab1LMDHs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 Dec 2011 22:07:48 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 13, 2011 at 8:40 AM, Andrea Arcangeli <aarcange@redhat.com>=
- wrote:
-> Hi Allison,
->
-> On Mon, Dec 12, 2011 at 01:07:47PM -0700, Allison Henderson wrote:
->> Hi Andrea,
->>
->> I think what Yongqiang means is that the code you are modifying is b=
-eing
->> removed in the patches listed above and replaced with a different
->> solution. =A0The patches have not yet been merged so you will not se=
-e them
->> in a git tree yet, so you will need to apply them yourself. =A0If yo=
-u are
->> not subscribed to the list, you can still find the patches here:
->>
->> http://www.spinics.net/lists/linux-ext4/msg29109.html
->> http://www.spinics.net/lists/linux-ext4/msg29110.html
->>
->> http://www.spinics.net/lists/linux-ext4/msg29375.html
->> http://www.spinics.net/lists/linux-ext4/msg29376.html
->
-> Thanks for the links. Applied all 4.
->
->> We want to make sure the solution works for everyone, so please appl=
-y
->> these patches and let us know if it corrects the issues you are seei=
-ng.
->> =A0 Thx!
->
-> With all 4 patches applied, my 1/2 patch is still needed to avoid the
-> hang and writes hangs all the time (but now they don't return -EINVAL
-> anymore).
->
-> My patch 2/2 is not needed with the above 4 patches applied so that
-> can be discared if you apply the above 4 patches (but I suggest you
-> check my patch 2/2 too because if it happens to be correct it could
-> mean there's the potential of 1 byte data corruption in current
-> upstream kernels in some circumstances, in addition to the -EINVAL
-> failure in write()).
-page_len is removed in the 2nd patch, so there is no problem related
-to it any more.
+/proc/mounts was showing the mount option [no]init_inode_table when
+the correct mount option that will be accepted by parse_options() is
+[no]init_itable.
 
-Hi Andy and Hugh,
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: stable@kernel.org
+---
+ fs/ext4/super.c |   17 ++++++++---------
+ 1 files changed, 8 insertions(+), 9 deletions(-)
 
-Andrea found the reason of EINVAL,  and the 2nd patch we have tested
-can fix it.  Many thanks to Andrea.
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 3858767..3e1329e 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1155,9 +1155,9 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ 		seq_puts(seq, ",block_validity");
+ 
+ 	if (!test_opt(sb, INIT_INODE_TABLE))
+-		seq_puts(seq, ",noinit_inode_table");
++		seq_puts(seq, ",noinit_itable");
+ 	else if (sbi->s_li_wait_mult != EXT4_DEF_LI_WAIT_MULT)
+-		seq_printf(seq, ",init_inode_table=%u",
++		seq_printf(seq, ",init_itable=%u",
+ 			   (unsigned) sbi->s_li_wait_mult);
+ 
+ 	ext4_show_quota_options(seq, sb);
+@@ -1333,8 +1333,7 @@ enum {
+ 	Opt_nomblk_io_submit, Opt_block_validity, Opt_noblock_validity,
+ 	Opt_inode_readahead_blks, Opt_journal_ioprio,
+ 	Opt_dioread_nolock, Opt_dioread_lock,
+-	Opt_discard, Opt_nodiscard,
+-	Opt_init_inode_table, Opt_noinit_inode_table,
++	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
+ };
+ 
+ static const match_table_t tokens = {
+@@ -1407,9 +1406,9 @@ static const match_table_t tokens = {
+ 	{Opt_dioread_lock, "dioread_lock"},
+ 	{Opt_discard, "discard"},
+ 	{Opt_nodiscard, "nodiscard"},
+-	{Opt_init_inode_table, "init_itable=%u"},
+-	{Opt_init_inode_table, "init_itable"},
+-	{Opt_noinit_inode_table, "noinit_itable"},
++	{Opt_init_itable, "init_itable=%u"},
++	{Opt_init_itable, "init_itable"},
++	{Opt_noinit_itable, "noinit_itable"},
+ 	{Opt_err, NULL},
+ };
+ 
+@@ -1892,7 +1891,7 @@ set_qf_format:
+ 		case Opt_dioread_lock:
+ 			clear_opt(sb, DIOREAD_NOLOCK);
+ 			break;
+-		case Opt_init_inode_table:
++		case Opt_init_itable:
+ 			set_opt(sb, INIT_INODE_TABLE);
+ 			if (args[0].from) {
+ 				if (match_int(&args[0], &option))
+@@ -1903,7 +1902,7 @@ set_qf_format:
+ 				return 0;
+ 			sbi->s_li_wait_mult = option;
+ 			break;
+-		case Opt_noinit_inode_table:
++		case Opt_noinit_itable:
+ 			clear_opt(sb, INIT_INODE_TABLE);
+ 			break;
+ 		default:
+-- 
+1.7.4.1.22.gec8e1.dirty
 
-
-Yongqiang.
->
-> Let me know if you need me to test me anything else in relation to th=
-e
-> copied=3D0 case.
->
-> Thanks,
-> Andrea
-
-
-
---=20
-Best Wishes
-Yongqiang Yang
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
