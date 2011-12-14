@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 34/51] tune2fs: Store checksum algorithm type in superblock
-Date: Tue, 13 Dec 2011 17:17:04 -0800
-Message-ID: <20111214011704.20947.39579.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 33/51] libext2fs: Record the checksum algorithm in use in the
+	superblock
+Date: Tue, 13 Dec 2011 17:16:56 -0800
+Message-ID: <20111214011656.20947.85170.stgit@elm3c44.beaverton.ibm.com>
 References: <20111214011316.20947.13706.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,48 +17,150 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:50550 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756370Ab1LNBRK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 13 Dec 2011 20:17:10 -0500
+Received: from e34.co.us.ibm.com ([32.97.110.152]:33798 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756518Ab1LNBRY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Dec 2011 20:17:24 -0500
 Received: from /spool/local
-	by e2.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e34.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 13 Dec 2011 20:17:10 -0500
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pBE1H7MR300114
-	for <linux-ext4@vger.kernel.org>; Tue, 13 Dec 2011 20:17:07 -0500
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pBE1H5fB017195
-	for <linux-ext4@vger.kernel.org>; Tue, 13 Dec 2011 23:17:07 -0200
+	Tue, 13 Dec 2011 18:17:24 -0700
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pBE1H4xv155552
+	for <linux-ext4@vger.kernel.org>; Tue, 13 Dec 2011 18:17:05 -0700
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pBE1Gxiw023095
+	for <linux-ext4@vger.kernel.org>; Tue, 13 Dec 2011 18:17:04 -0700
 In-Reply-To: <20111214011316.20947.13706.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Actually records the checksum algorithm type in the superblock when enabling
-checksumming.
+Record the type of checksum algorithm we're using for metadata in the
+superblock, in case we ever want/need to change the algorithm.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- misc/tune2fs.c |    6 ++++++
- 1 files changed, 6 insertions(+), 0 deletions(-)
+ debugfs/set_fields.c      |    1 +
+ lib/e2p/ls.c              |   15 ++++++++++++++-
+ lib/ext2fs/csum.c         |    9 +++++++++
+ lib/ext2fs/ext2_err.et.in |    3 +++
+ lib/ext2fs/ext2fs.h       |    1 +
+ lib/ext2fs/openfs.c       |   12 ++++++++----
+ 6 files changed, 36 insertions(+), 5 deletions(-)
 
 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 4b91192..7299ad6 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -699,6 +699,12 @@ static void rewrite_metadata_checksums(ext2_filsys fs)
- 	ext2fs_mark_bb_dirty(fs);
- 	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
- 	fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
-+	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		fs->super->s_checksum_type = EXT2_CRC32C_CHKSUM;
-+	else
-+		fs->super->s_checksum_type = 0;
-+	ext2fs_mark_super_dirty(fs);
+diff --git a/debugfs/set_fields.c b/debugfs/set_fields.c
+index 08bfd8d..871bf20 100644
+--- a/debugfs/set_fields.c
++++ b/debugfs/set_fields.c
+@@ -151,6 +151,7 @@ static struct field_set_info super_fields[] = {
+ 	{ "grp_quota_inum", &set_sb.s_grp_quota_inum, NULL, 4, parse_uint },
+ 	{ "overhead_blocks", &set_sb.s_overhead_blocks, NULL, 4, parse_uint },
+ 	{ "checksum", &set_sb.s_checksum, NULL, 4, parse_uint },
++	{ "checksum_type", &set_sb.s_checksum_type, NULL, 1, parse_uint },
+ 	{ 0, 0, 0, 0 }
+ };
+ 
+diff --git a/lib/e2p/ls.c b/lib/e2p/ls.c
+index f05e16d..d2e84eb 100644
+--- a/lib/e2p/ls.c
++++ b/lib/e2p/ls.c
+@@ -196,6 +196,16 @@ static __u64 e2p_free_blocks_count(struct ext2_super_block *super)
+ #define EXT2_GOOD_OLD_REV 0
+ #endif
+ 
++static const char *checksum_type(__u8 type)
++{
++	switch (type) {
++	case EXT2_CRC32C_CHKSUM:
++		return "crc32c";
++	default:
++		return "unknown";
++	}
++}
++
+ void list_super2(struct ext2_super_block * sb, FILE *f)
+ {
+ 	int inode_blocks_per_group;
+@@ -421,9 +431,12 @@ void list_super2(struct ext2_super_block * sb, FILE *f)
+ 		fprintf(f, "Group quota inode:        %u\n",
+ 			sb->s_grp_quota_inum);
+ 
+-	if (sb->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)
++	if (sb->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) {
++		fprintf(f, "Checksum type:            %s\n",
++			checksum_type(sb->s_checksum_type));
+ 		fprintf(f, "Checksum:                 0x%08x\n",
+ 			sb->s_checksum);
++	}
  }
  
- /*
+ void list_super (struct ext2_super_block * s)
+diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
+index c064c0d..00a1d6a 100644
+--- a/lib/ext2fs/csum.c
++++ b/lib/ext2fs/csum.c
+@@ -30,6 +30,15 @@
+ #define STATIC static
+ #endif
+ 
++int ext2fs_verify_csum_type(ext2_filsys fs, struct ext2_super_block *sb)
++{
++	if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		return 1;
++
++	return sb->s_checksum_type == EXT2_CRC32C_CHKSUM;
++}
++
+ static __u32 ext2fs_superblock_csum(ext2_filsys fs, struct ext2_super_block *sb)
+ {
+ 	int offset = offsetof(struct ext2_super_block, s_checksum);
+diff --git a/lib/ext2fs/ext2_err.et.in b/lib/ext2fs/ext2_err.et.in
+index 0fab4e0..01f9f7b 100644
+--- a/lib/ext2fs/ext2_err.et.in
++++ b/lib/ext2fs/ext2_err.et.in
+@@ -464,4 +464,7 @@ ec	EXT2_ET_EXT_ATTR_CSUM_INVALID,
+ ec	EXT2_ET_SB_CSUM_INVALID,
+ 	"Superblock checksum does not match superblock"
+ 
++ec	EXT2_ET_UNKNOWN_CSUM,
++	"Unknown checksum algorithm"
++
+ 	end
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 972bcd6..bcb8526 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -940,6 +940,7 @@ extern __u32 ext2fs_crc32c_be(__u32 crc, unsigned char const *p, size_t len);
+ extern __u32 ext2fs_crc32c_le(__u32 crc, unsigned char const *p, size_t len);
+ 
+ /* csum.c */
++extern int ext2fs_verify_csum_type(ext2_filsys fs, struct ext2_super_block *sb);
+ extern errcode_t ext2fs_superblock_csum_set(ext2_filsys fs,
+ 					    struct ext2_super_block *sb);
+ extern int ext2fs_superblock_csum_verify(ext2_filsys fs,
+diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+index 3abdaf0..257ec78 100644
+--- a/lib/ext2fs/openfs.c
++++ b/lib/ext2fs/openfs.c
+@@ -193,10 +193,14 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
+ 	if (fs->orig_super)
+ 		memcpy(fs->orig_super, fs->super, SUPERBLOCK_SIZE);
+ 
+-	if (!(fs->flags & EXT2_FLAG_IGNORE_CSUM_ERRORS) &&
+-	    !ext2fs_superblock_csum_verify(fs, fs->super)) {
+-		retval = EXT2_ET_SB_CSUM_INVALID;
+-		goto cleanup;
++	if (!(fs->flags & EXT2_FLAG_IGNORE_CSUM_ERRORS)) {
++		retval = 0;
++		if (!ext2fs_verify_csum_type(fs, fs->super))
++			retval = EXT2_ET_UNKNOWN_CSUM;
++		if (!ext2fs_superblock_csum_verify(fs, fs->super))
++			retval = EXT2_ET_SB_CSUM_INVALID;
++		if (retval)
++			goto cleanup;
+ 	}
+ 
+ #ifdef WORDS_BIGENDIAN
 
