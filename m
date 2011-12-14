@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 07/51] e2fsck: Verify and correct inode checksums
-Date: Tue, 13 Dec 2011 17:14:03 -0800
-Message-ID: <20111214011403.20947.54324.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 06/51] tune2fs: Add inode checksum support
+Date: Tue, 13 Dec 2011 17:13:57 -0800
+Message-ID: <20111214011357.20947.64963.stgit@elm3c44.beaverton.ibm.com>
 References: <20111214011316.20947.13706.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,92 +16,200 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e37.co.us.ibm.com ([32.97.110.158]:50130 "EHLO
-	e37.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756432Ab1LNBOK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Dec 2011 20:14:10 -0500
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:40066 "EHLO e4.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756279Ab1LNBOE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 13 Dec 2011 20:14:04 -0500
 Received: from /spool/local
-	by e37.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e4.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 13 Dec 2011 18:14:09 -0700
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pBE1E6dw123754
-	for <linux-ext4@vger.kernel.org>; Tue, 13 Dec 2011 18:14:06 -0700
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pBE1E50q003776
-	for <linux-ext4@vger.kernel.org>; Tue, 13 Dec 2011 18:14:06 -0700
+	Tue, 13 Dec 2011 20:14:03 -0500
+Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pBE1E0B2348876
+	for <linux-ext4@vger.kernel.org>; Tue, 13 Dec 2011 20:14:00 -0500
+Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av04.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pBE1Dwq2012903
+	for <linux-ext4@vger.kernel.org>; Tue, 13 Dec 2011 18:13:59 -0700
 In-Reply-To: <20111214011316.20947.13706.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Detect mismatches of the inode and checksum, and prompt the user to fix the
-situation.
+This patch adds to tune2fs the ability to toggle the metadata checksum rocompat
+feature flag, which will rewrite the inode table with checksums.  Disallow
+changing the UUID while the fs is mounted, because rewriting the metadata
+objects is racy.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- e2fsck/pass1.c   |    9 ++++++++-
- e2fsck/problem.c |    7 ++++++-
- e2fsck/problem.h |    3 +++
- 3 files changed, 17 insertions(+), 2 deletions(-)
+ misc/tune2fs.c |  106 +++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 104 insertions(+), 2 deletions(-)
 
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 62e49c6..15320c6 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -729,7 +729,8 @@ void e2fsck_pass1(e2fsck_t ctx)
- 			ext2fs_mark_inode_bitmap2(ctx->inode_used_map, ino);
- 			continue;
- 		}
--		if (pctx.errcode) {
-+		if (pctx.errcode &&
-+		    pctx.errcode != EXT2_ET_INODE_CSUM_INVALID) {
- 			fix_problem(ctx, PR_1_ISCAN_ERROR, &pctx);
- 			ctx->flags |= E2F_FLAG_ABORT;
- 			return;
-@@ -739,6 +740,12 @@ void e2fsck_pass1(e2fsck_t ctx)
- 		pctx.ino = ino;
- 		pctx.inode = inode;
- 		ctx->stashed_ino = ino;
-+
-+		/* Clear corrupt inode */
-+		if (pctx.errcode == EXT2_ET_INODE_CSUM_INVALID &&
-+		    fix_problem(ctx, PR_1_INODE_CSUM_INVALID, &pctx))
-+			goto clear_inode;
-+
- 		if (inode->i_links_count) {
- 			pctx.errcode = ext2fs_icount_store(ctx->inode_link_info,
- 					   ino, inode->i_links_count);
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index f042b89..89dc72b 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -934,7 +934,12 @@ static struct e2fsck_problem problem_table[] = {
- 	/* Quota inode is user visible */
- 	{ PR_1_QUOTA_INODE_NOT_HIDDEN,
- 	  N_("@q @i is visible to the user.  "),
--	  PROMPT_CLEAR, PR_PREEN_OK },
-+	  PROMPT_FIX, PR_PREEN_OK },
-+
-+	/* inode checksum does not match inode */
-+	{ PR_1_INODE_CSUM_INVALID,
-+	  N_("@i %i checksum does not match @i.  "),
-+	  PROMPT_FIX, PR_PREEN_OK },
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 74a0489..260b040 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -91,6 +91,7 @@ static char *extended_cmd;
+ static unsigned long new_inode_size;
+ static char *ext_mount_opts;
+ static int usrquota, grpquota;
++static int rewrite_checksums;
  
- 	/* Invalid bad inode */
- 	{ PR_1_INVALID_BAD_INODE,
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index 9db29d8..f9f8cd7 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -550,6 +550,9 @@ struct problem_context {
- /* Invalid bad inode */
- #define PR_1_INVALID_BAD_INODE		0x010065
+ int journal_size, journal_flags;
+ char *journal_device;
+@@ -142,7 +143,8 @@ static __u32 ok_features[3] = {
+ 		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
+ 		EXT4_FEATURE_RO_COMPAT_GDT_CSUM |
+ 		EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER |
+-		EXT4_FEATURE_RO_COMPAT_QUOTA
++		EXT4_FEATURE_RO_COMPAT_QUOTA |
++		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM
+ };
  
-+/* inode checksum does not match inode */
-+#define PR_1_INODE_CSUM_INVALID		0x010066
-+
+ static __u32 clear_ok_features[3] = {
+@@ -160,7 +162,8 @@ static __u32 clear_ok_features[3] = {
+ 		EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
+ 		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
+ 		EXT4_FEATURE_RO_COMPAT_GDT_CSUM |
+-		EXT4_FEATURE_RO_COMPAT_QUOTA
++		EXT4_FEATURE_RO_COMPAT_QUOTA |
++		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM
+ };
+ 
  /*
-  * Pass 1b errors
+@@ -351,6 +354,16 @@ static int update_mntopts(ext2_filsys fs, char *mntopts)
+ 	return 0;
+ }
+ 
++static int check_fsck_needed(ext2_filsys fs)
++{
++	if (fs->super->s_state & EXT2_VALID_FS)
++		return 0;
++	printf("\n%s\n", _(please_fsck));
++	if (mount_flags & EXT2_MF_READONLY)
++		printf(_("(and reboot afterwards!)\n"));
++	return 1;
++}
++
+ static void request_fsck_afterwards(ext2_filsys fs)
+ {
+ 	static int requested = 0;
+@@ -364,6 +377,59 @@ static void request_fsck_afterwards(ext2_filsys fs)
+ }
+ 
+ /*
++ * Forcibly set checksums in all inodes.
++ */
++static void rewrite_inodes(ext2_filsys fs)
++{
++	int length = EXT2_INODE_SIZE(fs->super);
++	struct ext2_inode *inode;
++	ext2_inode_scan	scan;
++	errcode_t	retval;
++	ext2_ino_t	ino;
++
++	if (fs->super->s_creator_os != EXT2_OS_LINUX)
++		return;
++
++	retval = ext2fs_open_inode_scan(fs, 0, &scan);
++	if (retval) {
++		com_err("set_csum", retval, "while opening inode scan");
++		exit(1);
++	}
++
++	retval = ext2fs_get_mem(length, &inode);
++	if (retval) {
++		com_err("set_csum", retval, "while allocating memory");
++		exit(1);
++	}
++
++	do {
++		retval = ext2fs_get_next_inode_full(scan, &ino, inode, length);
++		if (retval) {
++			com_err("set_csum", retval, "while getting next inode");
++			exit(1);
++		}
++		if (!ino)
++			break;
++
++		retval = ext2fs_write_inode_full(fs, ino, inode, length);
++		if (retval) {
++			com_err("set_csum", retval, "while writing inode");
++			exit(1);
++		}
++	} while (ino);
++
++	ext2fs_free_mem(&inode);
++	ext2fs_close_inode_scan(scan);
++}
++
++static void rewrite_metadata_checksums(ext2_filsys fs)
++{
++	fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
++	rewrite_inodes(fs);
++	fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
++}
++
++/*
+  * Update the feature set as provided by the user.
   */
+ static int update_feature_set(ext2_filsys fs, char *features)
+@@ -536,6 +602,20 @@ mmp_error:
+ 	}
+ 
+ 	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
++		       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
++		if (check_fsck_needed(fs))
++			exit(1);
++		rewrite_checksums = 1;
++	}
++
++	if (FEATURE_OFF(E2P_FEATURE_RO_INCOMPAT,
++			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
++		if (check_fsck_needed(fs))
++			exit(1);
++		rewrite_checksums = 1;
++	}
++
++	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
+ 		       EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
+ 		for (i = 0; i < fs->group_desc_count; i++) {
+ 			gd = ext2fs_group_desc(fs, fs->group_desc, i);
+@@ -2128,6 +2208,23 @@ retry_open:
+ 		int set_csum = 0;
+ 		dgrp_t i;
+ 
++		if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
++			/*
++			 * Changing the UUID requires rewriting all metadata,
++			 * which can race with a mounted fs.  Don't allow that.
++			 */
++			if (mount_flags & EXT2_MF_MOUNTED) {
++				fputs(_("The UUID may only be "
++					"changed when the filesystem is "
++					"unmounted.\n"), stderr);
++				exit(1);
++			}
++
++			if (check_fsck_needed(fs))
++				exit(1);
++		}
++
+ 		if (sb->s_feature_ro_compat &
+ 		    EXT4_FEATURE_RO_COMPAT_GDT_CSUM) {
+ 			/*
+@@ -2159,7 +2256,12 @@ retry_open:
+ 			fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
+ 		}
+ 		ext2fs_mark_super_dirty(fs);
++		if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++			rewrite_checksums = 1;
+ 	}
++	if (rewrite_checksums)
++		rewrite_metadata_checksums(fs);
+ 	if (I_flag) {
+ 		if (mount_flags & EXT2_MF_MOUNTED) {
+ 			fputs(_("The inode size may only be "
 
