@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 26/51] tune2fs: Rebuild and checksum directories when toggling
-	metadata_csum or changing UUID
-Date: Tue, 13 Dec 2011 17:16:10 -0800
-Message-ID: <20111214011610.20947.18930.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 19/51] tune2fs: Enable extent tree checksums
+Date: Tue, 13 Dec 2011 17:15:24 -0800
+Message-ID: <20111214011524.20947.10013.stgit@elm3c44.beaverton.ibm.com>
 References: <20111214011316.20947.13706.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,255 +16,96 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:46376 "EHLO e5.ny.us.ibm.com"
+Received: from e7.ny.us.ibm.com ([32.97.182.137]:35010 "EHLO e7.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756382Ab1LNBQS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 13 Dec 2011 20:16:18 -0500
+	id S1756424Ab1LNBQW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 13 Dec 2011 20:16:22 -0500
 Received: from /spool/local
-	by e5.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e7.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 13 Dec 2011 20:16:17 -0500
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pBE1GECu3354780
-	for <linux-ext4@vger.kernel.org>; Tue, 13 Dec 2011 20:16:14 -0500
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pBE1GCgc013010
-	for <linux-ext4@vger.kernel.org>; Tue, 13 Dec 2011 23:16:14 -0200
+	Tue, 13 Dec 2011 20:16:21 -0500
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pBE1FRa1202830
+	for <linux-ext4@vger.kernel.org>; Tue, 13 Dec 2011 20:15:27 -0500
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pBE1FPrB008138
+	for <linux-ext4@vger.kernel.org>; Tue, 13 Dec 2011 23:15:27 -0200
 In-Reply-To: <20111214011316.20947.13706.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Since all the metadata checksums depend on the fs UUID, tune2fs must be able to
-rewrite the checksums of _all_ metadata.  It's not that hard to add in the bits
-to resize the directory block structures at the same time.
+Add to tune2fs the ability to recalculate extent tree checksums when altering
+the metadata checksum feature flag.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- misc/tune2fs.c |  193 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 193 insertions(+), 0 deletions(-)
+ misc/tune2fs.c |   49 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 49 insertions(+), 0 deletions(-)
 
 
 diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index c7b9fd3..236a324 100644
+index 12a22ed..c7b9fd3 100644
 --- a/misc/tune2fs.c
 +++ b/misc/tune2fs.c
-@@ -106,6 +106,8 @@ struct blk_move {
- 
- 
- static const char *please_fsck = N_("Please run e2fsck on the filesystem.\n");
-+static const char *please_dir_fsck =
-+		N_("Please run e2fsck -D on the filesystem.\n");
- 
- #ifdef CONFIG_BUILD_FINDFS
- void do_findfs(int argc, char **argv);
-@@ -364,6 +366,18 @@ static int check_fsck_needed(ext2_filsys fs)
- 	return 1;
+@@ -376,6 +376,48 @@ static void request_fsck_afterwards(ext2_filsys fs)
+ 		printf(_("(and reboot afterwards!)\n"));
  }
  
-+static void request_dir_fsck_afterwards(ext2_filsys fs)
++/* Rewrite extents */
++static errcode_t rewrite_extents(ext2_filsys fs, ext2_ino_t ino,
++				 struct ext2_inode *inode)
 +{
-+	static int requested;
++	ext2_extent_handle_t	handle;
++	struct ext2fs_extent	extent;
++	int			op = EXT2_EXTENT_ROOT;
++	errcode_t		errcode;
 +
-+	if (requested++)
-+		return;
-+	fs->super->s_state &= ~EXT2_VALID_FS;
-+	printf("\n%s\n", _(please_dir_fsck));
-+	if (mount_flags & EXT2_MF_READONLY)
-+		printf(_("(and reboot afterwards!)\n"));
-+}
-+
- static void request_fsck_afterwards(ext2_filsys fs)
- {
- 	static int requested = 0;
-@@ -419,6 +433,176 @@ static errcode_t rewrite_extents(ext2_filsys fs, ext2_ino_t ino,
- }
- 
- /*
-+ * Rewrite directory blocks with checksums
-+ */
-+struct rewrite_dir_context {
-+	char *buf;
-+	errcode_t errcode;
-+	ext2_ino_t dir;
-+	int is_htree;
-+};
-+
-+static int rewrite_dir_block(ext2_filsys fs,
-+			     blk64_t	*blocknr,
-+			     e2_blkcnt_t blockcnt,
-+			     blk64_t	ref_block EXT2FS_ATTR((unused)),
-+			     int	ref_offset EXT2FS_ATTR((unused)),
-+			     void	*priv_data)
-+{
-+	struct ext2_dx_countlimit *dcl = NULL;
-+	struct rewrite_dir_context *ctx = priv_data;
-+	int dcl_offset, changed = 0;
-+
-+	ctx->errcode = ext2fs_read_dir_block4(fs, *blocknr, ctx->buf, 0,
-+					      ctx->dir);
-+	if (ctx->errcode)
-+		return BLOCK_ABORT;
-+
-+	/* if htree node... */
-+	if (ctx->is_htree)
-+		ext2fs_get_dx_countlimit(fs, (struct ext2_dir_entry *)ctx->buf,
-+					 &dcl, &dcl_offset);
-+	if (dcl) {
-+		if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+			/* Ensure limit is the max size */
-+			int max_entries = (fs->blocksize - dcl_offset) /
-+					  sizeof(struct ext2_dx_entry);
-+			if (ext2fs_le16_to_cpu(dcl->limit) != max_entries) {
-+				changed = 1;
-+				dcl->limit = ext2fs_cpu_to_le16(max_entries);
-+			}
-+		} else {
-+			/* If htree block is full then rebuild the dir */
-+			if (ext2fs_le16_to_cpu(dcl->count) ==
-+			    ext2fs_le16_to_cpu(dcl->limit)) {
-+				request_dir_fsck_afterwards(fs);
-+				return 0;
-+			}
-+			/*
-+			 * Ensure dcl->limit is small enough to leave room for
-+			 * the checksum tail.
-+			 */
-+			int max_entries = (fs->blocksize - (dcl_offset +
-+						sizeof(struct ext2_dx_tail))) /
-+					  sizeof(struct ext2_dx_entry);
-+			if (ext2fs_le16_to_cpu(dcl->limit) != max_entries)
-+				dcl->limit = ext2fs_cpu_to_le16(max_entries);
-+			/* Always rewrite checksum */
-+			changed = 1;
-+		}
-+	} else {
-+		unsigned int rec_len, name_size;
-+		char *top = ctx->buf + fs->blocksize;
-+		struct ext2_dir_entry *de = (struct ext2_dir_entry *)ctx->buf;
-+		struct ext2_dir_entry *last_de = NULL, *penultimate_de = NULL;
-+
-+		/* Find last and penultimate dirent */
-+		while ((char *)de < top) {
-+			penultimate_de = last_de;
-+			last_de = de;
-+			ctx->errcode = ext2fs_get_rec_len(fs, de, &rec_len);
-+			if (!ctx->errcode && !rec_len)
-+				ctx->errcode = EXT2_ET_DIR_CORRUPTED;
-+			if (ctx->errcode)
-+				return BLOCK_ABORT;
-+			de = (struct ext2_dir_entry *)(((void *)de) + rec_len);
-+		}
-+		ctx->errcode = ext2fs_get_rec_len(fs, last_de, &rec_len);
-+		if (ctx->errcode)
-+			return BLOCK_ABORT;
-+		name_size = last_de->name_len & 0xFF;
-+
-+		if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+			if (!penultimate_de)
-+				return 0;
-+			if (last_de->inode ||
-+			    name_size ||
-+			    rec_len != sizeof(struct ext2_dir_entry_tail))
-+				return 0;
-+			/*
-+			 * The last dirent is unused and the right length to
-+			 * have stored a checksum.  Erase it.
-+			 */
-+			ctx->errcode = ext2fs_get_rec_len(fs, penultimate_de,
-+							  &rec_len);
-+			if (!rec_len)
-+				ctx->errcode = EXT2_ET_DIR_CORRUPTED;
-+			if (ctx->errcode)
-+				return BLOCK_ABORT;
-+			ext2fs_set_rec_len(fs, rec_len +
-+					sizeof(struct ext2_dir_entry_tail),
-+					penultimate_de);
-+			changed = 1;
-+		} else {
-+			int csum_size = sizeof(struct ext2_dir_entry_tail);
-+			struct ext2_dir_entry_tail *t;
-+
-+			/*
-+			 * If the last dirent looks like the tail, just update
-+			 * the checksum.
-+			 */
-+			if (!last_de->inode &&
-+			    rec_len == csum_size) {
-+				t = (struct ext2_dir_entry_tail *)last_de;
-+				t->reserved_name_len = EXT2_DIR_NAME_LEN_CSUM;
-+				changed = 1;
-+				goto out;
-+			}
-+			if (name_size & 3)
-+				name_size = (name_size & ~3) + 4;
-+			/* If there's not enough space for the tail, e2fsck */
-+			if (rec_len <= (8 + name_size + csum_size)) {
-+				request_dir_fsck_afterwards(fs);
-+				return 0;
-+			}
-+			/* Shorten that last de and insert the tail */
-+			ext2fs_set_rec_len(fs, rec_len - csum_size, last_de);
-+			t = EXT2_DIRENT_TAIL(ctx->buf, fs->blocksize);
-+			ext2fs_initialize_dirent_tail(fs, t);
-+
-+			/* Always update checksum */
-+			changed = 1;
-+		}
-+	}
-+
-+out:
-+	if (!changed)
++	if (!(inode->i_flags & EXT4_EXTENTS_FL))
 +		return 0;
 +
-+	ctx->errcode = ext2fs_write_dir_block4(fs, *blocknr, ctx->buf,
-+					       0, ctx->dir);
-+	if (ctx->errcode)
-+		return BLOCK_ABORT;
++	errcode = ext2fs_extent_open(fs, ino, &handle);
++	if (errcode)
++		return errcode;
 +
-+	return 0;
++	while (1) {
++		errcode = ext2fs_extent_get(handle, op, &extent);
++		if (errcode)
++			break;
++
++		/* Root node is in the separately checksummed inode */
++		if (op == EXT2_EXTENT_ROOT) {
++			op = EXT2_EXTENT_NEXT;
++			continue;
++		}
++		op = EXT2_EXTENT_NEXT;
++
++		/* Only visit the first extent in each extent block */
++		if (extent.e_flags & EXT2_EXTENT_FLAGS_SECOND_VISIT)
++			continue;
++		errcode = ext2fs_extent_replace(handle, 0, &extent);
++		if (errcode)
++			break;
++	}
++
++	/* Ok if we run off the end */
++	if (errcode == EXT2_ET_EXTENT_NO_NEXT)
++		errcode = 0;
++	return errcode;
 +}
 +
-+errcode_t rewrite_directory(ext2_filsys fs, ext2_ino_t dir,
-+			    struct ext2_inode *inode)
-+{
-+	errcode_t	retval;
-+	struct rewrite_dir_context ctx;
-+
-+	retval = ext2fs_get_mem(fs->blocksize, &ctx.buf);
-+	if (retval)
-+		return retval;
-+
-+	ctx.is_htree = (inode->i_flags & EXT2_INDEX_FL);
-+	ctx.dir = dir;
-+	retval = ext2fs_block_iterate3(fs, dir, BLOCK_FLAG_READ_ONLY |
-+						BLOCK_FLAG_DATA_ONLY,
-+				       0, rewrite_dir_block, &ctx);
-+
-+	ext2fs_free_mem(&ctx.buf);
-+	if (retval)
-+		return retval;
-+
-+	return ctx.errcode;
-+}
-+
-+/*
+ /*
   * Forcibly set checksums in all inodes.
   */
- static void rewrite_inodes(ext2_filsys fs)
-@@ -465,6 +649,15 @@ static void rewrite_inodes(ext2_filsys fs)
- 				"while rewriting extents");
+@@ -416,6 +458,13 @@ static void rewrite_inodes(ext2_filsys fs)
+ 			com_err("set_csum", retval, "while writing inode");
  			exit(1);
  		}
 +
-+		if (LINUX_S_ISDIR(inode->i_mode)) {
-+			retval = rewrite_directory(fs, ino, inode);
-+			if (retval) {
-+				com_err("rewrite_directory", retval,
-+					"while rewriting directories");
-+				exit(1);
-+			}
++		retval = rewrite_extents(fs, ino, inode);
++		if (retval) {
++			com_err("rewrite_extents", retval,
++				"while rewriting extents");
++			exit(1);
 +		}
  	} while (ino);
  
