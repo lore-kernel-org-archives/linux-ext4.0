@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 17/23] jbd2: Grab a reference to the crc32c driver only when
-	necessary
-Date: Tue, 13 Dec 2011 16:48:11 -0800
-Message-ID: <20111214004811.28243.62143.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 23/23] ext4/jbd2: Add metadata checksumming to the list of
+	supported features
+Date: Tue, 13 Dec 2011 16:48:54 -0800
+Message-ID: <20111214004854.28243.32973.stgit@elm3c44.beaverton.ibm.com>
 References: <20111214004613.28243.54122.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -25,125 +25,51 @@ In-Reply-To: <20111214004613.28243.54122.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Obtain a reference to the crc32c driver only when the journal needs it for
-checksum v2.
+Activate the metadata checksumming feature by adding it to ext4 and jbd2's
+lists of supported features.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/jbd2/Kconfig      |    2 ++
- fs/jbd2/journal.c    |   25 +++++++++++++++++++++++++
- include/linux/jbd2.h |   23 +++++++++++++++++++++++
- 3 files changed, 50 insertions(+), 0 deletions(-)
+ fs/ext4/ext4.h       |    6 ++++--
+ include/linux/jbd2.h |    3 ++-
+ 2 files changed, 6 insertions(+), 3 deletions(-)
 
 
-diff --git a/fs/jbd2/Kconfig b/fs/jbd2/Kconfig
-index f32f346..69a48c2 100644
---- a/fs/jbd2/Kconfig
-+++ b/fs/jbd2/Kconfig
-@@ -1,6 +1,8 @@
- config JBD2
- 	tristate
- 	select CRC32
-+	select CRYPTO
-+	select CRYPTO_CRC32C
- 	help
- 	  This is a generic journaling layer for block devices that support
- 	  both 32-bit and 64-bit block numbers.  It is currently used by
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 300b46f..bb7f03f 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1284,6 +1284,17 @@ static int journal_get_superblock(journal_t *journal)
- 		goto out;
- 	}
- 
-+	/* Load the checksum driver */
-+	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2)) {
-+		journal->j_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
-+		if (IS_ERR(journal->j_chksum_driver)) {
-+			printk(KERN_ERR "JBD: Cannot load crc32c driver.\n");
-+			err = PTR_ERR(journal->j_chksum_driver);
-+			journal->j_chksum_driver = NULL;
-+			goto out;
-+		}
-+	}
-+
- 	set_buffer_verified(bh);
- 
- 	return 0;
-@@ -1440,6 +1451,8 @@ int jbd2_journal_destroy(journal_t *journal)
- 		iput(journal->j_inode);
- 	if (journal->j_revoke)
- 		jbd2_journal_destroy_revoke(journal);
-+	if (journal->j_chksum_driver)
-+		crypto_free_shash(journal->j_chksum_driver);
- 	kfree(journal->j_wbuf);
- 	kfree(journal);
- 
-@@ -1556,6 +1569,18 @@ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
- 		sb->s_checksum_type = JBD2_CRC32C_CHKSUM;
- 		sb->s_feature_compat &=
- 			~cpu_to_be32(JBD2_FEATURE_COMPAT_CHECKSUM);
-+
-+		/* Load the checksum driver */
-+		if (journal->j_chksum_driver == NULL) {
-+			journal->j_chksum_driver = crypto_alloc_shash("crc32c",
-+								      0, 0);
-+			if (IS_ERR(journal->j_chksum_driver)) {
-+				printk(KERN_ERR "JBD: Cannot load crc32c "
-+				       "driver.\n");
-+				journal->j_chksum_driver = NULL;
-+				return 0;
-+			}
-+		}
- 	}
- 
- 	/* If enabling v1 checksums, downgrade superblock */
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index ecd9b45..5b2abf9 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -31,6 +31,7 @@
- #include <linux/mutex.h>
- #include <linux/timer.h>
- #include <linux/slab.h>
-+#include <crypto/hash.h>
- #endif
- 
- #define journal_oom_retry 1
-@@ -965,6 +966,9 @@ struct journal_s
- 	 * superblock pointer here
- 	 */
- 	void *j_private;
-+
-+	/* Reference to checksum algorithm driver via cryptoapi */
-+	struct crypto_shash *j_chksum_driver;
- };
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index f6bf9d0..ca30846 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1461,7 +1461,8 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+ 					 EXT4_FEATURE_INCOMPAT_EXTENTS| \
+ 					 EXT4_FEATURE_INCOMPAT_64BIT| \
+ 					 EXT4_FEATURE_INCOMPAT_FLEX_BG| \
+-					 EXT4_FEATURE_INCOMPAT_MMP)
++					 EXT4_FEATURE_INCOMPAT_MMP| \
++					 EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM)
+ #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
+ 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
+@@ -1469,7 +1470,8 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+ 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE | \
+ 					 EXT4_FEATURE_RO_COMPAT_BTREE_DIR |\
+ 					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE |\
+-					 EXT4_FEATURE_RO_COMPAT_BIGALLOC)
++					 EXT4_FEATURE_RO_COMPAT_BIGALLOC |\
++					 EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)
  
  /*
-@@ -1283,6 +1287,25 @@ static inline int jbd_space_needed(journal_t *journal)
+  * Default values for user and/or group using reserved blocks
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 51d4a0b..b1c5857 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -296,7 +296,8 @@ typedef struct journal_superblock_s
+ #define JBD2_KNOWN_ROCOMPAT_FEATURES	0
+ #define JBD2_KNOWN_INCOMPAT_FEATURES	(JBD2_FEATURE_INCOMPAT_REVOKE | \
+ 					JBD2_FEATURE_INCOMPAT_64BIT | \
+-					JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT)
++					JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT | \
++					JBD2_FEATURE_INCOMPAT_CSUM_V2)
  
- extern int jbd_blocks_per_page(struct inode *inode);
- 
-+static inline u32 jbd2_chksum(journal_t *journal, u32 crc,
-+			      const void *address, unsigned int length)
-+{
-+	struct {
-+		struct shash_desc shash;
-+		char ctx[crypto_shash_descsize(journal->j_chksum_driver)];
-+	} desc;
-+	int err;
-+
-+	desc.shash.tfm = journal->j_chksum_driver;
-+	desc.shash.flags = 0;
-+	*(u32 *)desc.ctx = crc;
-+
-+	err = crypto_shash_update(&desc.shash, address, length);
-+	BUG_ON(err);
-+
-+	return *(u32 *)desc.ctx;
-+}
-+
  #ifdef __KERNEL__
  
- #define buffer_trace_init(bh)	do {} while (0)
