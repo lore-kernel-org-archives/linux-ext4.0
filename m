@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 04/23] ext4: Only call out to crc32c if necessary
-Date: Tue, 13 Dec 2011 16:46:41 -0800
-Message-ID: <20111214004641.28243.11910.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 03/23] ext4: Record the checksum algorithm in use in the
+	superblock
+Date: Tue, 13 Dec 2011 16:46:34 -0800
+Message-ID: <20111214004634.28243.83101.stgit@elm3c44.beaverton.ibm.com>
 References: <20111214004613.28243.54122.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -19,122 +20,53 @@ Cc: Sunil Mushran <sunil.mushran@oracle.com>,
 To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20111214004613.28243.54122.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Only obtain a reference to the cryptoapi and crc32c if we happen to mount a
-filesystem with metadata checksumming enabled.
+Record the type of checksum algorithm we're using for metadata in the
+superblock, in case we ever want/need to change the algorithm.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/ext4/Kconfig |    2 ++
- fs/ext4/ext4.h  |   23 +++++++++++++++++++++++
- fs/ext4/super.c |   16 ++++++++++++++++
- 3 files changed, 41 insertions(+), 0 deletions(-)
+ fs/ext4/super.c |   18 ++++++++++++++++++
+ 1 files changed, 18 insertions(+), 0 deletions(-)
 
 
-diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
-index 9ed1bb1..c22f170 100644
---- a/fs/ext4/Kconfig
-+++ b/fs/ext4/Kconfig
-@@ -2,6 +2,8 @@ config EXT4_FS
- 	tristate "The Extended 4 (ext4) filesystem"
- 	select JBD2
- 	select CRC16
-+	select CRYPTO
-+	select CRYPTO_CRC32C
- 	help
- 	  This is the next generation of the ext3 filesystem.
- 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index b8242a1..84e6f68 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -29,6 +29,7 @@
- #include <linux/wait.h>
- #include <linux/blockgroup_lock.h>
- #include <linux/percpu_counter.h>
-+#include <crypto/hash.h>
- #ifdef __KERNEL__
- #include <linux/compat.h>
- #endif
-@@ -1259,6 +1260,9 @@ struct ext4_sb_info {
- 
- 	/* record the last minlen when FITRIM is called. */
- 	atomic_t s_last_trim_minblks;
-+
-+	/* Reference to checksum algorithm driver via cryptoapi */
-+	struct crypto_shash *s_chksum_driver;
- };
- 
- static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
-@@ -1614,6 +1618,25 @@ static inline __le16 ext4_rec_len_to_disk(unsigned len, unsigned blocksize)
- #define DX_HASH_HALF_MD4_UNSIGNED	4
- #define DX_HASH_TEA_UNSIGNED		5
- 
-+static inline u32 ext4_chksum(struct ext4_sb_info *sbi, u32 crc,
-+			      const void *address, unsigned int length)
-+{
-+	struct {
-+		struct shash_desc shash;
-+		char ctx[crypto_shash_descsize(sbi->s_chksum_driver)];
-+	} desc;
-+	int err;
-+
-+	desc.shash.tfm = sbi->s_chksum_driver;
-+	desc.shash.flags = 0;
-+	*(u32 *)desc.ctx = crc;
-+
-+	err = crypto_shash_update(&desc.shash, address, length);
-+	BUG_ON(err);
-+
-+	return *(u32 *)desc.ctx;
-+}
-+
- #ifdef __KERNEL__
- 
- /* hash info structure used by the directory hash */
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index a56c14e..8ff94dc 100644
+index 3858767..a56c14e 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -887,6 +887,8 @@ static void ext4_put_super(struct super_block *sb)
- 	unlock_super(sb);
- 	kobject_put(&sbi->s_kobj);
- 	wait_for_completion(&sbi->s_kobj_unregister);
-+	if (sbi->s_chksum_driver)
-+		crypto_free_shash(sbi->s_chksum_driver);
- 	kfree(sbi->s_blockgroup_lock);
- 	kfree(sbi);
- }
-@@ -3200,6 +3202,18 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		goto cantfind_ext4;
- 	}
+@@ -111,6 +111,16 @@ static struct file_system_type ext3_fs_type = {
+ #define IS_EXT3_SB(sb) (0)
+ #endif
  
-+	/* Load the checksum driver */
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+		sbi->s_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
-+		if (IS_ERR(sbi->s_chksum_driver)) {
-+			ext4_msg(sb, KERN_ERR, "Cannot load crc32c driver.");
-+			ret = PTR_ERR(sbi->s_chksum_driver);
-+			sbi->s_chksum_driver = NULL;
-+			goto failed_mount;
-+		}
++static int ext4_verify_csum_type(struct super_block *sb,
++				 struct ext4_super_block *es)
++{
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
++					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		return 1;
++
++	return es->s_checksum_type == EXT4_CRC32C_CHKSUM;
++}
++
+ void *ext4_kvmalloc(size_t size, gfp_t flags)
+ {
+ 	void *ret;
+@@ -3182,6 +3192,14 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		goto cantfind_ext4;
+ 	sbi->s_kbytes_written = le64_to_cpu(es->s_kbytes_written);
+ 
++	/* Check for a known checksum algorithm */
++	if (!ext4_verify_csum_type(sb, es)) {
++		ext4_msg(sb, KERN_ERR, "VFS: Found ext4 filesystem with "
++			 "unknown checksum algorithm.");
++		silent = 1;
++		goto cantfind_ext4;
 +	}
 +
  	/* Set defaults before we parse the mount options */
  	def_mount_opts = le32_to_cpu(es->s_default_mount_opts);
  	set_opt(sb, INIT_INODE_TABLE);
-@@ -3880,6 +3894,8 @@ failed_mount2:
- 		brelse(sbi->s_group_desc[i]);
- 	ext4_kvfree(sbi->s_group_desc);
- failed_mount:
-+	if (sbi->s_chksum_driver)
-+		crypto_free_shash(sbi->s_chksum_driver);
- 	if (sbi->s_proc) {
- 		remove_proc_entry(sb->s_id, ext4_proc_root);
- 	}
-
