@@ -1,49 +1,75 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [GIT PULL] ext4 bugfixes for 3.2-rc5
-Date: Wed, 14 Dec 2011 14:20:40 -0500
-Message-ID: <E1RauNd-0008W1-02@tytso-glaptop.cam.corp.google.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Wu Fengguang <fengguang.wu@intel.com>
+Subject: Re: ext4 data=writeback performs worse than data=ordered now
+Date: Wed, 14 Dec 2011 23:02:43 +0800
+Message-ID: <20111214150243.GA25725@localhost>
+References: <20111214133400.GA18565@localhost>
+ <20111214143014.GB18080@thunk.org>
+ <4EE8B810.8040405@tao.ma>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ted Ts'o <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>, "Li, Shaohua" <shaohua.li@intel.com>,
+	LKML <linux-kernel@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: Tao Ma <tm@tao.ma>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mga03.intel.com ([143.182.124.21]:12089 "EHLO mga03.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754960Ab1LNXsS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 Dec 2011 18:48:18 -0500
+Content-Disposition: inline
+In-Reply-To: <4EE8B810.8040405@tao.ma>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Linus,
+On Wed, Dec 14, 2011 at 10:52:00PM +0800, Tao Ma wrote:
+> Hi Ted/Fengguang,
+> On 12/14/2011 10:30 PM, Ted Ts'o wrote:
+> > On Wed, Dec 14, 2011 at 09:34:00PM +0800, Wu Fengguang wrote:
+> >> Hi,
+> >>
+> >> Shaohua recently found that ext4 writeback mode could perform worse
+> >> than ordered mode in some cases. It may not be a big problem, however
+> >> we'd like to share some information on our findings.
+> >>
+> >> I tested both 3.2 and 3.1 kernels on normal SATA disks and USB key.
+> >> The interesting thing is, data=writeback used to run a bit faster
+> >> than data=ordered, however situation get inverted presumably by the
+> >> IO-less dirty throttling.
+> > 
+> > Interesting.  What sort of workloads are you using to do these
+> > measurements?  How many writer threads; I assume you are doing
+> > sequential writes which are extending one or more files, etc?
+> > 
+> > I suspect it's due to the throttling meaning that each thread is
+> > getting to send less data to the disk, and so there is more seeking
+> > going on with data=writeback, where as with data=ordered, at each
+> > journal commit we are forcing all of the dirty pages out to disk, one
+> > inode at a time, and this is resulting in a more efficient writeback
+> > compared to when the writeback code is getting to make its own choices
+> > about how much each inode gets to write out at at time.
+> > 
+> > It would be interesting to see what would happen if in
+> > ext4_da_writepages(), we completely ignore how many pages are
+> > requested to be written back by the writeback code, and just simply
+> > write back all of the dirty pages, and see if that brings the
+> > performance back.
+> I guess fengguang's test is a buffer write dd test. Here we have found
+> some performance regression from 18 because of the delayed allocation.
+> In case of delayed allocation, we will create the extent tree during
+> writepages which would delay the write because ext4_da_write_begin would
+> down_read the i_data_sem to map the block while writepages would
+> down_write it so we have seen some severe delay in ext4_da_write_begin
+> (around 3s). And instead of increasing the page numbers of every
+> writepages, some tests shows that the decrease makes the performance
+> increase. I will dive into it soon to see what's going on there.
+> 
+> So Fengguang, would you please keep the page number in
+> ext4_da_writepages passed by writeback(instead of the bumping) and check
+> the result?
 
-There is a signed tag tytso-for-linus-20111214 covering these patches,
-which fix a potential hang, crash (on big endian), and data corruption
-bugs which show up when using fsx and/or Hugh's kernel compile/mm
-torture test.
+Sure, can you provide a patch for me to test?
 
-Please pull,
-
-						- Ted
-
-The following changes since commit dc47ce90c3a822cd7c9e9339fe4d5f61dcb26b50:
-
-  Linux 3.2-rc5 (2011-12-09 15:09:32 -0800)
-
-are available in the git repository at:
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
-
-Andrea Arcangeli (1):
-      ext4: avoid hangs in ext4_da_should_update_i_disksize()
-
-Paul Mackerras (1):
-      ext4: Fix crash due to getting bogus eh_depth value on big-endian systems
-
-Theodore Ts'o (2):
-      ext4: fix ext4_end_io_dio() racing against fsync()
-      ext4: display the correct mount option in /proc/mounts for [no]init_itable
-
-Yongqiang Yang (4):
-      ext4: avoid potential hang in mpage_submit_io() when blocksize < pagesize
-      ext4: correctly handle pages w/o buffers in ext4_discard_partial_buffers()
-      ext4: remove a wrong BUG_ON in ext4_ext_convert_to_initialized
-      ext4: handle EOF correctly in ext4_bio_write_page()
-
- fs/ext4/extents.c |    3 +-
- fs/ext4/inode.c   |   54 +++++++++-------------------------------------------
- fs/ext4/page-io.c |   12 +++++++++++
- fs/ext4/super.c   |   17 +++++++--------
- 4 files changed, 31 insertions(+), 55 deletions(-)
+Thanks,
+Fengguang
