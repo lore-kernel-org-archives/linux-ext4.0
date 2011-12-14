@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 50/51] libext2fs: Bring the CRC32c implementation up to date
-	with the kernel implementation
-Date: Tue, 13 Dec 2011 17:18:46 -0800
-Message-ID: <20111214011846.20947.9182.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 51/51] e2fsck: Refactor crc32_be code
+Date: Tue, 13 Dec 2011 17:18:53 -0800
+Message-ID: <20111214011853.20947.90727.stgit@elm3c44.beaverton.ibm.com>
 References: <20111214011316.20947.13706.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,1031 +16,926 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:48930 "EHLO e3.ny.us.ibm.com"
+Received: from e8.ny.us.ibm.com ([32.97.182.138]:56181 "EHLO e8.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932093Ab1LNBSw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 13 Dec 2011 20:18:52 -0500
+	id S1756300Ab1LNBTA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 13 Dec 2011 20:19:00 -0500
 Received: from /spool/local
-	by e3.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 13 Dec 2011 20:18:51 -0500
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pBE1Inrr3494094
-	for <linux-ext4@vger.kernel.org>; Tue, 13 Dec 2011 20:18:49 -0500
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pBE1ImuS024440
-	for <linux-ext4@vger.kernel.org>; Tue, 13 Dec 2011 23:18:49 -0200
+	Tue, 13 Dec 2011 20:18:59 -0500
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pBE1IuWK3444958
+	for <linux-ext4@vger.kernel.org>; Tue, 13 Dec 2011 20:18:57 -0500
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pBE1Itoi023249
+	for <linux-ext4@vger.kernel.org>; Tue, 13 Dec 2011 23:18:56 -0200
 In-Reply-To: <20111214011316.20947.13706.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The crc32c implementation in the kernel has been refactored a bit to reduce the
-amount of code that needs to be maintained, and to speed up tune2fs/e2fsck on
-PowerPC by 5-10%.  Port the crc32c changes over, and provide a crc32_be so that
-we can remove the duplicate functionality from e2fsck.  Also drop crc32c_be and
-crc32_le since neither got used.
+Remove crc32_be in favor of the implementation in libext2fs.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- lib/ext2fs/crc32c.c          |  692 +++++++++++++++---------------------------
- lib/ext2fs/crc32c_defs.h     |   12 +
- lib/ext2fs/ext2fs.h          |    2 
- lib/ext2fs/gen_crc32ctable.c |   96 +++---
- 4 files changed, 296 insertions(+), 506 deletions(-)
+ e2fsck/Makefile.in      |   38 ---
+ e2fsck/crc32.c          |  570 -----------------------------------------------
+ e2fsck/crc32defs.h      |   64 -----
+ e2fsck/e2fsck.h         |    3 
+ e2fsck/gen_crc32table.c |  101 --------
+ e2fsck/recovery.c       |    8 -
+ 6 files changed, 10 insertions(+), 774 deletions(-)
+ delete mode 100644 e2fsck/crc32.c
+ delete mode 100644 e2fsck/crc32defs.h
+ delete mode 100644 e2fsck/gen_crc32table.c
 
 
-diff --git a/lib/ext2fs/crc32c.c b/lib/ext2fs/crc32c.c
-index 6be4336..1ad068f 100644
---- a/lib/ext2fs/crc32c.c
-+++ b/lib/ext2fs/crc32c.c
-@@ -32,7 +32,6 @@
- #include <stdint.h>
- #include <stdlib.h>
- #include <stdio.h>
--#define __force
- #define min(x, y)		((x) > (y) ? (y) : (x))
- #define __ALIGN_KERNEL_MASK(x, mask)	(((x) + (mask)) & ~(mask))
- #define __ALIGN_KERNEL(x, a)	__ALIGN_KERNEL_MASK(x, (typeof(x))(a) - 1)
-@@ -58,400 +57,189 @@
- #endif
+diff --git a/e2fsck/Makefile.in b/e2fsck/Makefile.in
+index b5336a4..26a93cd 100644
+--- a/e2fsck/Makefile.in
++++ b/e2fsck/Makefile.in
+@@ -64,7 +64,7 @@ COMPILE_ET=$(top_builddir)/lib/et/compile_et --build-tree
+ #
+ #MCHECK= -DMCHECK
  
- #if CRC_LE_BITS > 8
--# define tole(x) (__force uint32_t) __constant_cpu_to_le32(x)
-+# define tole(x) __constant_cpu_to_le32(x)
- #else
- # define tole(x) (x)
- #endif
+-OBJS= crc32.o dict.o unix.o e2fsck.o super.o pass1.o pass1b.o pass2.o \
++OBJS= dict.o unix.o e2fsck.o super.o pass1.o pass1b.o pass2.o \
+ 	pass3.o pass4.o pass5.o journal.o badblocks.o util.o dirinfo.o \
+ 	dx_dirinfo.o ehandler.o problem.o message.o quota.o recovery.o \
+ 	region.o revoke.o ea_refcount.o rehash.o profile.o prof_err.o \
+@@ -78,11 +78,9 @@ PROFILED_OBJS= profiled/dict.o profiled/unix.o profiled/e2fsck.o \
+ 	profiled/message.o profiled/problem.o profiled/quota.o \
+ 	profiled/recovery.o profiled/region.o profiled/revoke.o \
+ 	profiled/ea_refcount.o profiled/rehash.o profiled/profile.o \
+-	profiled/crc32.o profiled/prof_err.o profiled/sigcatcher.o
++	profiled/prof_err.o profiled/sigcatcher.o
  
- #if CRC_BE_BITS > 8
--# define tobe(x) (__force uint32_t) __constant_cpu_to_be32(x)
-+# define tobe(x) __constant_cpu_to_be32(x)
- #else
- # define tobe(x) (x)
- #endif
+ SRCS= $(srcdir)/e2fsck.c \
+-	$(srcdir)/crc32.c \
+-	$(srcdir)/gen_crc32table.c \
+ 	$(srcdir)/dict.c \
+ 	$(srcdir)/super.c \
+ 	$(srcdir)/pass1.c \
+@@ -132,15 +130,6 @@ e2fsck.profiled: $(PROFILED_OBJS)  $(PROFILED_DEPLIBS)
+ 	$(Q) $(LD) $(ALL_LDFLAGS) -g -pg -o e2fsck.profiled $(PROFILED_OBJS) \
+ 		$(PROFILED_LIBS) 
  
- #include "crc32c_table.h"
+-gen_crc32table: $(srcdir)/gen_crc32table.c
+-	$(E) "	CC $@"
+-	$(Q) $(BUILD_CC) $(BUILD_CFLAGS) -o gen_crc32table \
+-		$(srcdir)/gen_crc32table.c
+-
+-crc32table.h: gen_crc32table
+-	$(E) "	GEN32TABLE $@"
+-	$(Q) ./gen_crc32table > crc32table.h
+-
+ tst_sigcatcher: $(srcdir)/sigcatcher.c
+ 	$(Q) $(CC) $(BUILD_LDFLAGS) $(ALL_CFLAGS) $(RDYNAMIC) \
+ 		$(srcdir)/sigcatcher.c -DDEBUG -o tst_sigcatcher
+@@ -151,10 +140,6 @@ tst_problem: $(srcdir)/problem.c $(srcdir)/problem.h $(LIBEXT2FS) \
+ 		$(srcdir)/problem.c -DUNITTEST $(LIBEXT2FS) $(LIBCOM_ERR) \
+ 		$(LIBINTL)
  
--#if CRC_LE_BITS == 32
--/* slice by 4 algorithm */
--static uint32_t crc32c_le_body(uint32_t crc, uint8_t const *buf, size_t len)
+-tst_crc32: $(srcdir)/crc32.c $(LIBEXT2FS) $(DEPLIBCOM_ERR)
+-	$(Q) $(CC) $(BUILD_LDFLAGS) $(ALL_CFLAGS) -o tst_crc32 $(srcdir)/crc32.c \
+-		-DUNITTEST $(LIBEXT2FS) $(LIBCOM_ERR)
+-
+ tst_refcount: ea_refcount.c $(DEPLIBCOM_ERR)
+ 	$(E) "	LD $@"
+ 	$(Q) $(CC) -o tst_refcount $(srcdir)/ea_refcount.c \
+@@ -165,10 +150,9 @@ tst_region: region.c $(DEPLIBCOM_ERR)
+ 	$(Q) $(CC) -o tst_region $(srcdir)/region.c \
+ 		$(ALL_CFLAGS) -DTEST_PROGRAM $(LIBCOM_ERR)
+ 
+-check:: tst_refcount tst_region tst_crc32 tst_problem
++check:: tst_refcount tst_region tst_problem
+ 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_refcount
+ 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_region
+-	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_crc32
+ 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_problem
+ 
+ extend: extend.o
+@@ -265,9 +249,8 @@ uninstall:
+ clean:
+ 	$(RM) -f $(PROGS) \#* *\# *.s *.o *.a *~ core e2fsck.static \
+ 		e2fsck.shared e2fsck.profiled flushb e2fsck.8 \
+-		tst_problem tst_crc32 tst_region tst_refcount gen_crc32table \
+-		crc32table.h e2fsck.conf.5 prof_err.c prof_err.h \
+-		test_profile
++		tst_problem tst_region tst_refcount e2fsck.conf.5 \
++		prof_err.c prof_err.h test_profile
+ 	$(RM) -rf profiled
+ 
+ mostlyclean: clean
+@@ -288,17 +271,6 @@ e2fsck.o: $(srcdir)/e2fsck.c $(top_builddir)/lib/config.h $(srcdir)/e2fsck.h \
+  $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
+  $(top_srcdir)/lib/quota/quota.h $(top_srcdir)/lib/../e2fsck/dict.h \
+  $(srcdir)/problem.h
+-crc32.o: $(srcdir)/crc32.c $(top_builddir)/lib/config.h $(srcdir)/e2fsck.h \
+- $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
+- $(top_srcdir)/lib/ext2fs/ext2fs.h $(top_srcdir)/lib/ext2fs/ext3_extents.h \
+- $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
+- $(top_builddir)/lib/ext2fs/ext2_err.h \
+- $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
+- $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
+- $(top_srcdir)/lib/quota/quota.h $(top_srcdir)/lib/../e2fsck/dict.h \
+- $(srcdir)/crc32defs.h crc32table.h
+-gen_crc32table.o: $(srcdir)/gen_crc32table.c $(top_builddir)/lib/config.h \
+- $(srcdir)/crc32defs.h
+ dict.o: $(srcdir)/dict.c $(top_builddir)/lib/config.h $(srcdir)/dict.h
+ super.o: $(srcdir)/super.c $(top_builddir)/lib/config.h $(srcdir)/e2fsck.h \
+  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
+diff --git a/e2fsck/crc32.c b/e2fsck/crc32.c
+deleted file mode 100644
+index 0497a38..0000000
+--- a/e2fsck/crc32.c
++++ /dev/null
+@@ -1,570 +0,0 @@
+-/*
+- * crc32.c --- CRC32 function
+- *
+- * Copyright (C) 2008 Theodore Ts'o.
+- *
+- * %Begin-Header%
+- * This file may be redistributed under the terms of the GNU Public
+- * License.
+- * %End-Header%
+- */
+-
+-/*
+- * Oct 15, 2000 Matt Domsch <Matt_Domsch@dell.com>
+- * Nicer crc32 functions/docs submitted by linux@horizon.com.  Thanks!
+- * Code was from the public domain, copyright abandoned.  Code was
+- * subsequently included in the kernel, thus was re-licensed under the
+- * GNU GPL v2.
+- *
+- * Oct 12, 2000 Matt Domsch <Matt_Domsch@dell.com>
+- * Same crc32 function was used in 5 other places in the kernel.
+- * I made one version, and deleted the others.
+- * There are various incantations of crc32().  Some use a seed of 0 or ~0.
+- * Some xor at the end with ~0.  The generic crc32() function takes
+- * seed as an argument, and doesn't xor at the end.  Then individual
+- * users can do whatever they need.
+- *   drivers/net/smc9194.c uses seed ~0, doesn't xor with ~0.
+- *   fs/jffs2 uses seed 0, doesn't xor with ~0.
+- *   fs/partitions/efi.c uses seed ~0, xor's with ~0.
+- *
+- * This source code is licensed under the GNU General Public License,
+- * Version 2.  See the file COPYING for more details.
+- */
+-
+-#include "config.h"
+-#include <stdlib.h>
+-#include <unistd.h>
+-#include <string.h>
+-#include <ctype.h>
+-
+-#ifdef UNITTEST
+-#undef ENABLE_NLS
+-#endif
+-#include "e2fsck.h"
+-
+-#include "crc32defs.h"
+-#if CRC_LE_BITS == 8
+-#define tole(x) __constant_cpu_to_le32(x)
+-#define tobe(x) __constant_cpu_to_be32(x)
+-#else
+-#define tole(x) (x)
+-#define tobe(x) (x)
+-#endif
+-#include "crc32table.h"
+-
+-#ifdef UNITTEST
+-
+-/**
+- * crc32_le() - Calculate bitwise little-endian Ethernet AUTODIN II CRC32
+- * @crc: seed value for computation.  ~0 for Ethernet, sometimes 0 for
+- *	other uses, or the previous crc32 value if computing incrementally.
+- * @p: pointer to buffer over which CRC is run
+- * @len: length of buffer @p
+- */
+-__u32 crc32_le(__u32 crc, unsigned char const *p, size_t len);
+-
+-#if CRC_LE_BITS == 1
+-/*
+- * In fact, the table-based code will work in this case, but it can be
+- * simplified by inlining the table in ?: form.
+- */
+-
+-__u32 crc32_le(__u32 crc, unsigned char const *p, size_t len)
 -{
--	const uint8_t *p8;
--	const uint32_t *p32;
--	size_t init_bytes;
--	size_t words;
--	size_t end_bytes;
--	size_t i;
--	uint32_t q;
--	uint8_t i0, i1, i2, i3;
--
--	crc = (__force uint32_t) __cpu_to_le32(crc);
--
--	/* unroll loop into 'init_bytes' odd bytes followed by
--	 * 'words' aligned 4 byte words followed by
--	 * 'end_bytes' odd bytes at the end */
--	p8 = buf;
--	p32 = (uint32_t *)PTR_ALIGN(p8, 4);
--	init_bytes = min((uintptr_t)p32 - (uintptr_t)p8, len);
--	words = (len - init_bytes) >> 2;
--	end_bytes = (len - init_bytes) & 3;
--
--	for (i = 0; i < init_bytes; i++) {
--#ifndef WORDS_BIGENDIAN
--		i0 = *p8++ ^ crc;
--		crc = t0_le[i0] ^ (crc >> 8);
--#else
--		i0 = *p8++ ^ (crc >> 24);
--		crc = t0_le[i0] ^ (crc << 8);
--#endif
+-	int i;
+-	while (len--) {
+-		crc ^= *p++;
+-		for (i = 0; i < 8; i++)
+-			crc = (crc >> 1) ^ ((crc & 1) ? CRCPOLY_LE : 0);
 -	}
--
--	/* using pre-increment below slightly faster */
--	p32--;
--
--	for (i = 0; i < words; i++) {
--#ifndef WORDS_BIGENDIAN
--		q = *++p32 ^ crc;
--		i3 = q;
--		i2 = q >> 8;
--		i1 = q >> 16;
--		i0 = q >> 24;
--		crc = t3_le[i3] ^ t2_le[i2] ^ t1_le[i1] ^ t0_le[i0];
--#else
--		q = *++p32 ^ crc;
--		i3 = q >> 24;
--		i2 = q >> 16;
--		i1 = q >> 8;
--		i0 = q;
--		crc = t3_le[i3] ^ t2_le[i2] ^ t1_le[i1] ^ t0_le[i0];
--#endif
--	}
-+#if CRC_LE_BITS > 8 || CRC_BE_BITS > 8
- 
--	p8 = (uint8_t *)(++p32);
--
--	for (i = 0; i < end_bytes; i++) {
--#ifndef WORDS_BIGENDIAN
--		i0 = *p8++ ^ crc;
--		crc = t0_le[i0] ^ (crc >> 8);
--#else
--		i0 = *p8++ ^ (crc >> 24);
--		crc = t0_le[i0] ^ (crc << 8);
--#endif
--	}
--
--	return __le32_to_cpu((__force __le32)crc);
+-	return crc;
 -}
--#endif
+-#else				/* Table-based approach */
 -
--#if CRC_BE_BITS == 32
--static uint32_t crc32c_be_body(uint32_t crc, uint8_t const *buf, size_t len)
-+/* implements slicing-by-4 or slicing-by-8 algorithm */
-+static inline uint32_t
-+crc32_body(uint32_t crc, unsigned char const *buf, size_t len,
-+	   const uint32_t (*tab)[256])
- {
--	const uint8_t *p8;
--	const uint32_t *p32;
--	size_t init_bytes;
--	size_t words;
--	size_t end_bytes;
--	size_t i;
--	uint32_t q;
--	uint8_t i0, i1, i2, i3;
--
--	crc = (__force uint32_t) __cpu_to_be32(crc);
--
--	p8 = buf;
--	p32 = (uint32_t *)PTR_ALIGN(p8, 4);
--	init_bytes = min((uintptr_t)p32 - (uintptr_t)p8, len);
--	words = (len - init_bytes) >> 2;
--	end_bytes = (len - init_bytes) & 3;
--
--	for (i = 0; i < init_bytes; i++) {
--#ifndef WORDS_BIGENDIAN
--		i0 = *p8++ ^ crc;
--		crc = t0_be[i0] ^ (crc >> 8);
--#else
--		i0 = *p8++ ^ (crc >> 24);
--		crc = t0_be[i0] ^ (crc << 8);
--#endif
--	}
--
--	p32--;
--
--	for (i = 0; i < words; i++) {
--#ifndef WORDS_BIGENDIAN
--		q = *++p32 ^ crc;
--		i3 = q;
--		i2 = q >> 8;
--		i1 = q >> 16;
--		i0 = q >> 24;
--		crc = t3_be[i3] ^ t2_be[i2] ^ t1_be[i1] ^ t0_be[i0];
--#else
--		q = *++p32 ^ crc;
--		i3 = q >> 24;
--		i2 = q >> 16;
--		i1 = q >> 8;
--		i0 = q;
--		crc = t3_be[i3] ^ t2_be[i2] ^ t1_be[i1] ^ t0_be[i0];
--#endif
--	}
--
--	p8 = (uint8_t *)(++p32);
--
--	for (i = 0; i < end_bytes; i++) {
--#ifndef WORDS_BIGENDIAN
--		i0 = *p8++ ^ crc;
--		crc = t0_be[i0] ^ (crc >> 8);
--#else
--		i0 = *p8++ ^ (crc >> 24);
--		crc = t0_be[i0] ^ (crc << 8);
--#endif
--	}
--
--	return __be32_to_cpu((__force __be32)crc);
--}
--#endif
--
--#if CRC_LE_BITS == 64
--/* slice by 8 algorithm */
--static uint32_t crc32c_le_body(uint32_t crc, uint8_t const *buf, size_t len)
+-__u32 crc32_le(__u32 crc, unsigned char const *p, size_t len)
 -{
--	const uint8_t *p8;
--	const uint32_t *p32;
--	size_t init_bytes;
--	size_t words;
--	size_t end_bytes;
--	size_t i;
--	uint32_t q;
--	uint8_t i0, i1, i2, i3;
+-# if CRC_LE_BITS == 8
+-	const __u32      *b =(__u32 *)p;
+-	const __u32      *tab = crc32table_le;
 -
--	crc = (__force uint32_t) __cpu_to_le32(crc);
+-# ifdef WORDS_BIGENDIAN
+-#  define DO_CRC(x) crc = tab[ ((crc >> 24) ^ (x)) & 255] ^ (crc<<8)
+-# else
+-#  define DO_CRC(x) crc = tab[ (crc ^ (x)) & 255 ] ^ (crc>>8)
+-# endif
 -
--	p8 = buf;
--	p32 = (uint32_t *)PTR_ALIGN(p8, 8);
--	init_bytes = min((uintptr_t)p32 - (uintptr_t)p8, len);
--	words = (len - init_bytes) >> 3;
--	end_bytes = (len - init_bytes) & 7;
--
--	for (i = 0; i < init_bytes; i++) {
--#ifndef WORDS_BIGENDIAN
--		i0 = *p8++ ^ crc;
--		crc = t0_le[i0] ^ (crc >> 8);
--#else
--		i0 = *p8++ ^ (crc >> 24);
--		crc = t0_le[i0] ^ (crc << 8);
--#endif
+-	crc = __cpu_to_le32(crc);
+-	/* Align it */
+-	if(unlikely(((long)b)&3 && len)){
+-		do {
+-			__u8 *p = (__u8 *)b;
+-			DO_CRC(*p++);
+-			b = (void *)p;
+-		} while ((--len) && ((long)b)&3 );
 -	}
--
--	p32--;
--
--	for (i = 0; i < words; i++) {
--#ifndef WORDS_BIGENDIAN
--		q = *++p32 ^ crc;
--		i3 = q;
--		i2 = q >> 8;
--		i1 = q >> 16;
--		i0 = q >> 24;
--		crc = t7_le[i3] ^ t6_le[i2] ^ t5_le[i1] ^ t4_le[i0];
--
--		q = *++p32;
--		i3 = q;
--		i2 = q >> 8;
--		i1 = q >> 16;
--		i0 = q >> 24;
--		crc ^= t3_le[i3] ^ t2_le[i2] ^ t1_le[i1] ^ t0_le[i0];
--#else
--		q = *++p32 ^ crc;
--		i3 = q >> 24;
--		i2 = q >> 16;
--		i1 = q >> 8;
--		i0 = q;
--		crc = t7_le[i3] ^ t6_le[i2] ^ t5_le[i1] ^ t4_le[i0];
--
--		q = *++p32;
--		i3 = q >> 24;
--		i2 = q >> 16;
--		i1 = q >> 8;
--		i0 = q;
--		crc ^= t3_le[i3] ^ t2_le[i2] ^ t1_le[i1] ^ t0_le[i0];
--#endif
+-	if(likely(len >= 4)){
+-		/* load data 32 bits wide, xor data 32 bits wide. */
+-		size_t save_len = len & 3;
+-	        len = len >> 2;
+-		--b; /* use pre increment below(*++b) for speed */
+-		do {
+-			crc ^= *++b;
+-			DO_CRC(0);
+-			DO_CRC(0);
+-			DO_CRC(0);
+-			DO_CRC(0);
+-		} while (--len);
+-		b++; /* point to next byte(s) */
+-		len = save_len;
 -	}
--
--	p8 = (uint8_t *)(++p32);
--
--	for (i = 0; i < end_bytes; i++) {
--#ifndef WORDS_BIGENDIAN
--		i0 = *p8++ ^ crc;
--		crc = t0_le[i0] ^ (crc >> 8);
--#else
--		i0 = *p8++ ^ (crc >> 24);
--		crc = t0_le[i0] ^ (crc << 8);
--#endif
+-	/* And the last few bytes */
+-	if(len){
+-		do {
+-			__u8 *p = (__u8 *)b;
+-			DO_CRC(*p++);
+-			b = (void *)p;
+-		} while (--len);
 -	}
 -
 -	return __le32_to_cpu(crc);
+-#undef ENDIAN_SHIFT
+-#undef DO_CRC
+-
+-# elif CRC_LE_BITS == 4
+-	while (len--) {
+-		crc ^= *p++;
+-		crc = (crc >> 4) ^ crc32table_le[crc & 15];
+-		crc = (crc >> 4) ^ crc32table_le[crc & 15];
+-	}
+-	return crc;
+-# elif CRC_LE_BITS == 2
+-	while (len--) {
+-		crc ^= *p++;
+-		crc = (crc >> 2) ^ crc32table_le[crc & 3];
+-		crc = (crc >> 2) ^ crc32table_le[crc & 3];
+-		crc = (crc >> 2) ^ crc32table_le[crc & 3];
+-		crc = (crc >> 2) ^ crc32table_le[crc & 3];
+-	}
+-	return crc;
+-# endif
 -}
 -#endif
 -
--#if CRC_BE_BITS == 64
--static uint32_t crc32c_be_body(uint32_t crc, uint8_t const *buf, size_t len)
+-#endif /* UNITTEST */
+-
+-/**
+- * crc32_be() - Calculate bitwise big-endian Ethernet AUTODIN II CRC32
+- * @crc: seed value for computation.  ~0 for Ethernet, sometimes 0 for
+- *	other uses, or the previous crc32 value if computing incrementally.
+- * @p: pointer to buffer over which CRC is run
+- * @len: length of buffer @p
+- */
+-__u32 crc32_be(__u32 crc, unsigned char const *p, size_t len);
+-
+-#if CRC_BE_BITS == 1
+-/*
+- * In fact, the table-based code will work in this case, but it can be
+- * simplified by inlining the table in ?: form.
+- */
+-
+-__u32 crc32_be(__u32 crc, unsigned char const *p, size_t len)
 -{
--	const uint8_t *p8;
--	const uint32_t *p32;
--	size_t init_bytes;
--	size_t words;
--	size_t end_bytes;
--	size_t i;
-+# ifndef WORDS_BIGENDIAN
-+#  define DO_CRC(x) (crc = t0[(crc ^ (x)) & 255] ^ (crc >> 8))
-+#  define DO_CRC4 (t3[(q) & 255] ^ t2[(q >> 8) & 255] ^ \
-+		   t1[(q >> 16) & 255] ^ t0[(q >> 24) & 255])
-+#  define DO_CRC8 (t7[(q) & 255] ^ t6[(q >> 8) & 255] ^ \
-+		   t5[(q >> 16) & 255] ^ t4[(q >> 24) & 255])
-+# else
-+#  define DO_CRC(x) (crc = t0[((crc >> 24) ^ (x)) & 255] ^ (crc << 8))
-+#  define DO_CRC4 (t0[(q) & 255] ^ t1[(q >> 8) & 255] ^ \
-+		   t2[(q >> 16) & 255] ^ t3[(q >> 24) & 255])
-+#  define DO_CRC8 (t4[(q) & 255] ^ t5[(q >> 8) & 255] ^ \
-+		   t6[(q >> 16) & 255] ^ t7[(q >> 24) & 255])
-+# endif
-+	const uint32_t *b;
-+	size_t rem_len;
-+	const uint32_t *t0 = tab[0], *t1 = tab[1], *t2 = tab[2], *t3 = tab[3];
-+	const uint32_t *t4 = tab[4], *t5 = tab[5], *t6 = tab[6], *t7 = tab[7];
- 	uint32_t q;
--	uint8_t i0, i1, i2, i3;
--
--	crc = (__force uint32_t) __cpu_to_be32(crc);
- 
--	p8 = buf;
--	p32 = (uint32_t *)PTR_ALIGN(p8, 8);
--	init_bytes = min((uintptr_t)p32 - (uintptr_t)p8, len);
--	words = (len - init_bytes) >> 3;
--	end_bytes = (len - init_bytes) & 7;
--
--	for (i = 0; i < init_bytes; i++) {
--#ifndef WORDS_BIGENDIAN
--		i0 = *p8++ ^ crc;
--		crc = t0_be[i0] ^ (crc >> 8);
--#else
--		i0 = *p8++ ^ (crc >> 24);
--		crc = t0_be[i0] ^ (crc << 8);
--#endif
-+	/* Align it */
-+	if (unlikely((long)buf & 3 && len)) {
-+		do {
-+			DO_CRC(*buf++);
-+		} while ((--len) && ((long)buf)&3);
- 	}
- 
--	p32--;
--
--	for (i = 0; i < words; i++) {
--#ifndef WORDS_BIGENDIAN
--		q = *++p32 ^ crc;
--		i3 = q;
--		i2 = q >> 8;
--		i1 = q >> 16;
--		i0 = q >> 24;
--		crc = t7_be[i3] ^ t6_be[i2] ^ t5_be[i1] ^ t4_be[i0];
--
--		q = *++p32;
--		i3 = q;
--		i2 = q >> 8;
--		i1 = q >> 16;
--		i0 = q >> 24;
--		crc ^= t3_be[i3] ^ t2_be[i2] ^ t1_be[i1] ^ t0_be[i0];
--#else
--		q = *++p32 ^ crc;
--		i3 = q >> 24;
--		i2 = q >> 16;
--		i1 = q >> 8;
--		i0 = q;
--		crc = t7_be[i3] ^ t6_be[i2] ^ t5_be[i1] ^ t4_be[i0];
-+# if CRC_LE_BITS == 32
-+	rem_len = len & 3;
-+	len = len >> 2;
-+# else
-+	rem_len = len & 7;
-+	len = len >> 3;
-+# endif
- 
--		q = *++p32;
--		i3 = q >> 24;
--		i2 = q >> 16;
--		i1 = q >> 8;
--		i0 = q;
--		crc ^= t3_be[i3] ^ t2_be[i2] ^ t1_be[i1] ^ t0_be[i0];
--#endif
-+	b = (const uint32_t *)buf;
-+	for (--b; len; --len) {
-+		q = crc ^ *++b; /* use pre increment for speed */
-+# if CRC_LE_BITS == 32
-+		crc = DO_CRC4;
-+# else
-+		crc = DO_CRC8;
-+		q = *++b;
-+		crc ^= DO_CRC4;
-+# endif
- 	}
--
--	p8 = (uint8_t *)(++p32);
--
--	for (i = 0; i < end_bytes; i++) {
--#ifndef WORDS_BIGENDIAN
--		i0 = *p8++ ^ crc;
--		crc = t0_be[i0] ^ (crc >> 8);
--#else
--		i0 = *p8++ ^ (crc >> 24);
--		crc = t0_be[i0] ^ (crc << 8);
--#endif
-+	len = rem_len;
-+	/* And the last few bytes */
-+	if (len) {
-+		uint8_t *p = (uint8_t *)(b + 1) - 1;
-+		do {
-+			DO_CRC(*++p); /* use pre increment for speed */
-+		} while (--len);
- 	}
--
--	return __be32_to_cpu(crc);
-+	return crc;
-+#undef DO_CRC
-+#undef DO_CRC4
-+#undef DO_CRC8
- }
- #endif
- 
- /**
-- * crc32c_le() - Calculate bitwise little-endian CRC32c.
-- * @crc: seed value for computation.  ~0 for ext4, sometimes 0 for
-- *	other uses, or the previous crc32c value if computing incrementally.
-+ * crc32_le() - Calculate bitwise little-endian Ethernet AUTODIN II CRC32
-+ * @crc: seed value for computation.  ~0 for Ethernet, sometimes 0 for
-+ *	other uses, or the previous crc32 value if computing incrementally.
-  * @p: pointer to buffer over which CRC is run
-  * @len: length of buffer @p
-  */
--uint32_t ext2fs_crc32c_le(uint32_t crc, unsigned char const *p, size_t len)
-+static inline uint32_t crc32_le_generic(uint32_t crc, unsigned char const *p,
-+					size_t len, const uint32_t (*tab)[256],
-+					uint32_t polynomial)
- {
- #if CRC_LE_BITS == 1
- 	int i;
- 	while (len--) {
- 		crc ^= *p++;
- 		for (i = 0; i < 8; i++)
--			crc = (crc >> 1) ^ ((crc & 1) ? CRCPOLY_LE : 0);
-+			crc = (crc >> 1) ^ ((crc & 1) ? polynomial : 0);
- 	}
- # elif CRC_LE_BITS == 2
- 	while (len--) {
- 		crc ^= *p++;
--		crc = (crc >> 2) ^ t0_le[crc & 0x03];
--		crc = (crc >> 2) ^ t0_le[crc & 0x03];
--		crc = (crc >> 2) ^ t0_le[crc & 0x03];
--		crc = (crc >> 2) ^ t0_le[crc & 0x03];
-+		crc = (crc >> 2) ^ tab[0][crc & 3];
-+		crc = (crc >> 2) ^ tab[0][crc & 3];
-+		crc = (crc >> 2) ^ tab[0][crc & 3];
-+		crc = (crc >> 2) ^ tab[0][crc & 3];
- 	}
- # elif CRC_LE_BITS == 4
- 	while (len--) {
- 		crc ^= *p++;
--		crc = (crc >> 4) ^ t0_le[crc & 0x0f];
--		crc = (crc >> 4) ^ t0_le[crc & 0x0f];
-+		crc = (crc >> 4) ^ tab[0][crc & 15];
-+		crc = (crc >> 4) ^ tab[0][crc & 15];
- 	}
- # elif CRC_LE_BITS == 8
-+	/* aka Sarwate algorithm */
- 	while (len--) {
- 		crc ^= *p++;
--		crc = (crc >> 8) ^ t0_le[crc & 0xff];
-+		crc = (crc >> 8) ^ tab[0][crc & 255];
- 	}
- # else
--	crc = crc32c_le_body(crc, p, len);
--# endif
-+	crc = __cpu_to_le32(crc);
-+	crc = crc32_body(crc, p, len, tab);
-+	crc = __le32_to_cpu(crc);
-+#endif
- 	return crc;
- }
- 
-+uint32_t ext2fs_crc32c_le(uint32_t crc, unsigned char const *p, size_t len)
-+{
-+	return crc32_le_generic(crc, p, len, crc32ctable_le, CRC32C_POLY_LE);
-+}
-+
- /**
-- * crc32c_be() - Calculate bitwise big-endian CRC32c.
-- * @crc: seed value for computation.  ~0 for ext4, sometimes 0 for
-- *	other uses, or the previous crc32c value if computing incrementally.
-+ * crc32_be() - Calculate bitwise big-endian Ethernet AUTODIN II CRC32
-+ * @crc: seed value for computation.  ~0 for Ethernet, sometimes 0 for
-+ *	other uses, or the previous crc32 value if computing incrementally.
-  * @p: pointer to buffer over which CRC is run
-  * @len: length of buffer @p
-  */
--uint32_t ext2fs_crc32c_be(uint32_t crc, unsigned char const *p, size_t len)
-+static inline uint32_t crc32_be_generic(uint32_t crc, unsigned char const *p,
-+					size_t len, const uint32_t (*tab)[256],
-+					uint32_t polynomial)
- {
- #if CRC_BE_BITS == 1
- 	int i;
- 	while (len--) {
- 		crc ^= *p++ << 24;
- 		for (i = 0; i < 8; i++)
--			crc = (crc << 1) ^
--			      ((crc & 0x80000000) ? CRCPOLY_BE : 0);
-+			crc =
-+			    (crc << 1) ^ ((crc & 0x80000000) ? polynomial :
-+					  0);
- 	}
- # elif CRC_BE_BITS == 2
- 	while (len--) {
- 		crc ^= *p++ << 24;
--		crc = (crc << 2) ^ t0_be[crc >> 30];
--		crc = (crc << 2) ^ t0_be[crc >> 30];
--		crc = (crc << 2) ^ t0_be[crc >> 30];
--		crc = (crc << 2) ^ t0_be[crc >> 30];
-+		crc = (crc << 2) ^ tab[0][crc >> 30];
-+		crc = (crc << 2) ^ tab[0][crc >> 30];
-+		crc = (crc << 2) ^ tab[0][crc >> 30];
-+		crc = (crc << 2) ^ tab[0][crc >> 30];
- 	}
- # elif CRC_BE_BITS == 4
- 	while (len--) {
- 		crc ^= *p++ << 24;
--		crc = (crc << 4) ^ t0_be[crc >> 28];
--		crc = (crc << 4) ^ t0_be[crc >> 28];
-+		crc = (crc << 4) ^ tab[0][crc >> 28];
-+		crc = (crc << 4) ^ tab[0][crc >> 28];
- 	}
- # elif CRC_BE_BITS == 8
- 	while (len--) {
- 		crc ^= *p++ << 24;
--		crc = (crc << 8) ^ t0_be[crc >> 24];
-+		crc = (crc << 8) ^ tab[0][crc >> 24];
- 	}
- # else
--	crc = crc32c_be_body(crc, p, len);
-+	crc = __cpu_to_be32(crc);
-+	crc = crc32_body(crc, p, len, tab);
-+	crc = __be32_to_cpu(crc);
- # endif
- 	return crc;
- }
- 
-+uint32_t ext2fs_crc32_be(uint32_t crc, unsigned char const *p, size_t len)
-+{
-+	return crc32_be_generic(crc, p, len, crc32table_be, CRCPOLY_BE);
-+}
-+
- #ifdef UNITTEST
- static uint8_t test_buf[] = {
- 	0xd9, 0xd7, 0x6a, 0x13, 0x3a, 0xb1, 0x05, 0x48,
-@@ -972,137 +760,137 @@ static struct crc_test {
- 	uint32_t crc;		/* random starting crc */
- 	uint32_t start;		/* random offset in buf */
- 	uint32_t length;	/* random length of test */
--	uint32_t crc_le;	/* expected crc32_le result */
--	uint32_t crc_be;	/* expected crc32_be result */
-+	uint32_t crc32c_le;	/* expected crc32c_le result */
-+	uint32_t crc32_be;	/* expected crc32_be result */
- } test[] = {
--	{0xffffffff, 0x00000000, 0x00001000, 0x13934bef, 0x14f3b75f},
--	{0xfe7328ea, 0x00000763, 0x00000717, 0xed2c0d70, 0x57531214},
--	{0x4c40684e, 0x00000721, 0x0000011e, 0xd7f46ccc, 0xedf12ec3},
--	{0x6b487f90, 0x00000264, 0x000007bc, 0x759e9939, 0x9af8e387},
--	{0x9f5810db, 0x00000afa, 0x00000255, 0x2685197f, 0x716de6ed},
--	{0xb15c4755, 0x00000d5b, 0x000002a4, 0xd8fadcb5, 0xfc34ae3f},
--	{0x06518253, 0x00000ffb, 0x00000004, 0xabee2433, 0xfa30ac9e},
--	{0xd9e71c55, 0x00000a2a, 0x00000259, 0x96682af2, 0xe5907ea3},
--	{0x0c1ae843, 0x00000ce4, 0x0000031b, 0x7b637c43, 0xe7f71b04},
--	{0xec3cd517, 0x000002ff, 0x00000566, 0x5d719a77, 0xed16e045},
--	{0x77828e95, 0x0000067f, 0x0000038f, 0x43ee5b6c, 0x35999927},
--	{0xec87b4e3, 0x00000d1c, 0x000002e3, 0x2ddd2eee, 0x9452d3f8},
--	{0x412158bb, 0x00000eee, 0x00000111, 0x67b38ba2, 0x177976d0},
--	{0x2e52de3e, 0x00000c4a, 0x000003b5, 0xbcc5d61d, 0xf60fee71},
--	{0x6ddaae8b, 0x00000d99, 0x00000266, 0x8b535544, 0x1dab8596},
--	{0x049b6cb1, 0x000009c5, 0x000000b0, 0xfc22cabc, 0x47ebc954},
--	{0x77d4b954, 0x0000028a, 0x000007fa, 0x71d00923, 0x905585ef},
--	{0x5e192355, 0x00000ac1, 0x000001fa, 0xb966b81a, 0x33c12903},
--	{0x7d80b71d, 0x00000213, 0x000001e0, 0x2bba371a, 0x5f4bd8d9},
--	{0x01f6f1e4, 0x000001d6, 0x00000395, 0xb7e8a647, 0x2a7943a1},
--	{0x1dfabb13, 0x00000e14, 0x000001eb, 0x53917fba, 0x8dee1e5d},
--	{0xb00a4449, 0x00000bf6, 0x00000409, 0xedecb577, 0x628e087d},
--	{0x7ecd3981, 0x0000083f, 0x0000016b, 0xefef62b9, 0xda4f94e6},
--	{0xf8f330d2, 0x000004be, 0x00000757, 0x9357c9f3, 0x8e2d5c2f},
--	{0x03c38af2, 0x00000d23, 0x000002dc, 0x360fa8c0, 0x6294c0d6},
--	{0x687bb79b, 0x00000f3d, 0x000000c2, 0x448d3be2, 0x08f48f3a},
--	{0x6710f550, 0x000009e9, 0x00000603, 0xdbfd1998, 0xc950ac29},
--	{0x873171d1, 0x00000787, 0x000004d5, 0xab7f1b62, 0xe66896ab},
--	{0x373b1314, 0x00000f0f, 0x000000f0, 0x184098ab, 0x4038e674},
--	{0x90fad9cd, 0x00000ead, 0x00000152, 0x23ce52ff, 0x9eff3974},
--	{0x19676fe7, 0x0000007d, 0x0000070d, 0xf8a76f1e, 0xfbc5c8a9},
--	{0x89facd45, 0x000005f3, 0x00000473, 0x4331a006, 0xb8f0f0cc},
--	{0x6f173747, 0x00000fc3, 0x0000003c, 0xb012f08e, 0x5126e378},
--	{0x4b44a106, 0x0000075a, 0x0000008b, 0xf6f7ac38, 0xf9b1781b},
--	{0xb620ad06, 0x00000774, 0x0000017e, 0xd34558e6, 0xb175edd3},
--	{0x976f21e9, 0x000008d7, 0x0000034a, 0xe533aa3a, 0x1e4367b9},
--	{0x687628c0, 0x000006c5, 0x0000061b, 0x3a840b15, 0xfb5989a0},
--	{0xe24ac108, 0x00000cd0, 0x0000032f, 0x51010ae8, 0xcdd8f182},
--	{0x361c44a3, 0x00000304, 0x00000719, 0xfd7bd481, 0x12de540f},
--	{0xd93ff95e, 0x00000db7, 0x0000008e, 0xcfbbc304, 0x42eecd5a},
--	{0xed752d12, 0x00000883, 0x00000091, 0x65a6c868, 0x9ebfa578},
--	{0xb4ff4b54, 0x000003d3, 0x000001c1, 0xf82597e7, 0xa8ad2b19},
--	{0x111b520f, 0x00000708, 0x000000eb, 0xc3e109f3, 0x323ace17},
--	{0x62c806f2, 0x00000ba3, 0x0000045c, 0x874d3a72, 0xaf1a1360},
--	{0x40d97470, 0x000005e1, 0x0000058d, 0x87a9684f, 0x524244a8},
--	{0x4312179c, 0x00000056, 0x0000070e, 0x809a00f5, 0xf9e940b0},
--	{0x13d5f84c, 0x00000a2d, 0x00000104, 0xf3d27578, 0x5d33341c},
--	{0x1f302cb2, 0x00000151, 0x00000014, 0x1e162693, 0x53c3cfc3},
--	{0xe491db24, 0x00000600, 0x000006f6, 0x7ff09615, 0xa300ecf7},
--	{0xf9a98069, 0x000002ba, 0x000002ad, 0x01af7387, 0x31c0911e},
--	{0xe9c477ad, 0x0000015f, 0x00000778, 0x6facf9a0, 0x1993b688},
--	{0x353f32b2, 0x0000087c, 0x00000783, 0x6cc964ea, 0x418db561},
--	{0x78e1b24f, 0x00000650, 0x000006a8, 0xb3bb7c27, 0xf2aad006},
--	{0x61aa400e, 0x00000049, 0x00000254, 0xb8cd1681, 0x79150b15},
--	{0xb84b10b0, 0x00000f73, 0x0000008c, 0x406a6450, 0x0c705222},
--	{0x9fa99c9c, 0x00000a7c, 0x000004d7, 0xfb3d21b4, 0xe4e789df},
--	{0x3fc9ebe3, 0x00000cd9, 0x000000d6, 0x43803f9c, 0x5a152be5},
--	{0x529879cd, 0x000002f2, 0x00000595, 0x78b4c6a6, 0xf7236ec4},
--	{0x3a933019, 0x00000516, 0x00000266, 0xdcb45436, 0x2c7935f5},
--	{0x887b4977, 0x00000227, 0x0000038d, 0xc5f7c3d9, 0x0d6d7df6},
--	{0x770745de, 0x000008c6, 0x00000739, 0xf69145e8, 0x47d5efc9},
--	{0x28be3b47, 0x00000c46, 0x0000032b, 0x764c028f, 0x1eb70d64},
--	{0x5013a050, 0x00000cf6, 0x00000309, 0xea8fe164, 0x186affa4},
--	{0x2ec4c9ba, 0x000006e8, 0x0000078d, 0xa35557a9, 0xb41f49ec},
--	{0xa9f950c9, 0x00000d33, 0x000002cc, 0x41ea8618, 0xab8dfae3},
--	{0x5b520229, 0x000007b2, 0x00000484, 0x44569f1f, 0x607a8052},
--	{0xd8dcbbfc, 0x0000002f, 0x0000048c, 0xdb88ab8b, 0xf1c411f1},
--	{0x25529792, 0x00000d1d, 0x000002e2, 0x20cda404, 0x32683a2d},
--	{0x9f3f6d71, 0x00000238, 0x0000079a, 0x0720443e, 0x4b8ba2ff},
--	{0x64121215, 0x000007ff, 0x0000038f, 0x6aacff2c, 0x3b84233b},
--	{0xfb6cdde0, 0x00000ef8, 0x00000107, 0xbd43a0f1, 0x926624d0},
--	{0x221c9d6f, 0x000007b6, 0x0000014f, 0xb67f834b, 0x2bdedda4},
--	{0x030e1de4, 0x00000836, 0x000004b4, 0x0d67d26a, 0x75a73b73},
--	{0xb56fa6cf, 0x00000c07, 0x000003f8, 0x60601ac1, 0x10a43f35},
--	{0xb55c89f5, 0x0000098e, 0x000001d4, 0x2400efbe, 0x006e28eb},
--	{0x5e90b6d5, 0x0000070b, 0x000003ea, 0x3bb5d6ea, 0xb175fa6b},
--	{0x2a7045ae, 0x00000961, 0x00000633, 0xfca89e4b, 0x962cd6d2},
--	{0x8b374ea9, 0x000006ba, 0x00000780, 0xbce036ed, 0x4dc8279b},
--	{0x8bd90bc9, 0x00000562, 0x00000369, 0xcb26a24b, 0x50dee743},
--	{0x5b1b1762, 0x000000fd, 0x0000051a, 0x33cdda07, 0xee75ff7b},
--	{0xa4153555, 0x0000058f, 0x000005c7, 0xbe50eeca, 0xe73fffcc},
--	{0x0be1f931, 0x00000651, 0x00000672, 0x95a25753, 0x4ad6270f},
--	{0xb7e78618, 0x00000a7f, 0x000002bb, 0xe06bcc1c, 0x1a35ee59},
--	{0x4a9bc41b, 0x00000e51, 0x000001ae, 0x709e8d2c, 0x75080ca8},
--	{0xfc359d13, 0x00000440, 0x000002f8, 0x0a58451f, 0x6fa3cfbf},
--	{0x5aa48619, 0x000006d1, 0x00000284, 0x928ead83, 0xbd600efc},
--	{0xa609afa8, 0x0000053e, 0x00000272, 0xb048c141, 0x184f80bb},
--	{0x3f108afb, 0x00000949, 0x00000150, 0x9a6bb5bc, 0x0ea02be1},
--	{0x79bec2d3, 0x000008ed, 0x00000712, 0x32692d57, 0x2eb13289},
--	{0x9429e067, 0x00000bc3, 0x0000043c, 0x5295ceff, 0x8a9014a7},
--	{0xae58b96a, 0x0000082d, 0x000007d2, 0xc2a681ba, 0x6af94089},
--	{0x95df24be, 0x00000985, 0x000004c1, 0x3a287765, 0x379fcb42},
--	{0x5e94976f, 0x00000596, 0x000004ed, 0xff00c489, 0x991fc1f5},
--	{0xf5e5f1de, 0x00000d31, 0x000002ce, 0x35f28e91, 0x543def1a},
--	{0xa2c219cf, 0x00000a3c, 0x00000374, 0x707d21eb, 0xa6d28bc1},
--	{0xf21b6ceb, 0x00000919, 0x00000135, 0x0847fb8b, 0x224468c2},
--	{0xaa988728, 0x00000787, 0x00000771, 0x885aeaa4, 0x814db00b},
--	{0xaa5dfaac, 0x000003e5, 0x0000051b, 0x52c48ab7, 0x725bef8a},
--	{0x0a053968, 0x00000d2a, 0x000002d5, 0x7a90256d, 0xc53b9402},
--	{0x1421dc20, 0x00000eef, 0x00000110, 0x97d6da24, 0x10846935},
--	{0xb47c2166, 0x00000a6a, 0x00000209, 0xcfd6cc52, 0x46e2797e},
--	{0x77dd1955, 0x000000de, 0x00000266, 0xba74bcaa, 0x4fa3fe9c},
--	{0x68a03cc2, 0x0000082f, 0x000007b0, 0x752bd5d8, 0x4f760c63},
--	{0x0226b0a3, 0x00000a5f, 0x000005a0, 0x82de4970, 0x8ee1310e},
--	{0x637bf3b1, 0x00000d93, 0x0000026c, 0x5c7115cb, 0x9f6a0ced},
--	{0x3b120edf, 0x00000c13, 0x000003ec, 0x80d7d20f, 0x241657d5},
--	{0xe2456780, 0x000002eb, 0x00000641, 0xc0a5d289, 0x74df96b4},
--	{0x9b2e7125, 0x00000c0c, 0x000003f3, 0xcc15f57e, 0x03e290bf},
--	{0x153033ef, 0x00000787, 0x000006b6, 0x3cde443b, 0x7bf1d121},
--	{0x18458b3f, 0x0000066c, 0x00000561, 0x9a2bd8c6, 0x9d564bef},
--	{0x4ff9d4b9, 0x00000c8f, 0x0000033a, 0xd0ee6d6d, 0xee00aa0b},
--	{0xdf84b5d9, 0x00000802, 0x0000029a, 0xdab0d74a, 0xd0cb63dc},
--	{0x81ee15df, 0x000003ce, 0x00000725, 0x9942e2de, 0xe48fb26b},
--	{0x5c768e04, 0x00000afd, 0x00000160, 0x36110831, 0x8dc74483},
--	{0xe5e18094, 0x00000b4b, 0x000000a0, 0xffa3e4a7, 0xc0145e1b},
--	{0xed7263b6, 0x00000d0d, 0x000002f2, 0xb0006a35, 0x5468ae3a},
--	{0x5bfde7d7, 0x000006fb, 0x00000554, 0xa4193b76, 0xb73d34b2},
--	{0x67f4a743, 0x00000b85, 0x0000047a, 0xf05c8d8f, 0x4f843e49},
--	{0xf13bdf22, 0x00000ff7, 0x00000008, 0x816351eb, 0x41f537f6},
--	{0x08ecc608, 0x00000d5d, 0x00000098, 0x90492772, 0xf5172204},
--	{0x296f52ba, 0x000004f9, 0x00000788, 0x5e5a4896, 0xe01d5b46},
--	{0xbe4624c2, 0x00000427, 0x000004ef, 0xcd267b94, 0x7b9069f4},
--	{0x906f7c7c, 0x00000a05, 0x0000003f, 0x03fcfc33, 0x7b6ff563},
--	{0x8f7b323e, 0x00000458, 0x000004c7, 0xcd4969c8, 0xd4c22ada},
--	{0x88d6593d, 0x00000597, 0x000005b5, 0xf199cd3b, 0x5c3e8ca2},
--	{0x978a7768, 0x00000268, 0x000001d3, 0xb28c95bd, 0x49a2cc67},
--	{0x857a621e, 0x000007a7, 0x000003a8, 0xf4bf84ab, 0xde26f369},
--	{0xb0e121ef, 0x000005be, 0x00000644, 0x28747c14, 0x61d4dc6b},
-+	{0xffffffff, 0x00000000, 0x00001000, 0x13934bef, 0xd8ddcdc3},
-+	{0xfe7328ea, 0x00000763, 0x00000717, 0xed2c0d70, 0xc863aef8},
-+	{0x4c40684e, 0x00000721, 0x0000011e, 0xd7f46ccc, 0x173a11c4},
-+	{0x6b487f90, 0x00000264, 0x000007bc, 0x759e9939, 0xd6307c56},
-+	{0x9f5810db, 0x00000afa, 0x00000255, 0x2685197f, 0x2e5c9201},
-+	{0xb15c4755, 0x00000d5b, 0x000002a4, 0xd8fadcb5, 0xf682c4be},
-+	{0x06518253, 0x00000ffb, 0x00000004, 0xabee2433, 0x3d8abdf9},
-+	{0xd9e71c55, 0x00000a2a, 0x00000259, 0x96682af2, 0x47b4d26c},
-+	{0x0c1ae843, 0x00000ce4, 0x0000031b, 0x7b637c43, 0x62b47e8b},
-+	{0xec3cd517, 0x000002ff, 0x00000566, 0x5d719a77, 0xff5bc5b7},
-+	{0x77828e95, 0x0000067f, 0x0000038f, 0x43ee5b6c, 0x1a0cfacd},
-+	{0xec87b4e3, 0x00000d1c, 0x000002e3, 0x2ddd2eee, 0x275118a7},
-+	{0x412158bb, 0x00000eee, 0x00000111, 0x67b38ba2, 0xa74ecff5},
-+	{0x2e52de3e, 0x00000c4a, 0x000003b5, 0xbcc5d61d, 0xbd800707},
-+	{0x6ddaae8b, 0x00000d99, 0x00000266, 0x8b535544, 0xecbde1a1},
-+	{0x049b6cb1, 0x000009c5, 0x000000b0, 0xfc22cabc, 0xfb78eb9f},
-+	{0x77d4b954, 0x0000028a, 0x000007fa, 0x71d00923, 0x8c116f85},
-+	{0x5e192355, 0x00000ac1, 0x000001fa, 0xb966b81a, 0x5aa17bbe},
-+	{0x7d80b71d, 0x00000213, 0x000001e0, 0x2bba371a, 0xb5906aa6},
-+	{0x01f6f1e4, 0x000001d6, 0x00000395, 0xb7e8a647, 0x3ad112b1},
-+	{0x1dfabb13, 0x00000e14, 0x000001eb, 0x53917fba, 0xbaee0339},
-+	{0xb00a4449, 0x00000bf6, 0x00000409, 0xedecb577, 0x6f3a3979},
-+	{0x7ecd3981, 0x0000083f, 0x0000016b, 0xefef62b9, 0xe3e52eed},
-+	{0xf8f330d2, 0x000004be, 0x00000757, 0x9357c9f3, 0x0835bc1b},
-+	{0x03c38af2, 0x00000d23, 0x000002dc, 0x360fa8c0, 0x2ca885e6},
-+	{0x687bb79b, 0x00000f3d, 0x000000c2, 0x448d3be2, 0x79be2f78},
-+	{0x6710f550, 0x000009e9, 0x00000603, 0xdbfd1998, 0x1d25f627},
-+	{0x873171d1, 0x00000787, 0x000004d5, 0xab7f1b62, 0xa76a5656},
-+	{0x373b1314, 0x00000f0f, 0x000000f0, 0x184098ab, 0xba273974},
-+	{0x90fad9cd, 0x00000ead, 0x00000152, 0x23ce52ff, 0xb7bc958c},
-+	{0x19676fe7, 0x0000007d, 0x0000070d, 0xf8a76f1e, 0xf882b644},
-+	{0x89facd45, 0x000005f3, 0x00000473, 0x4331a006, 0xe9dc1396},
-+	{0x6f173747, 0x00000fc3, 0x0000003c, 0xb012f08e, 0xc6b888ee},
-+	{0x4b44a106, 0x0000075a, 0x0000008b, 0xf6f7ac38, 0x60cd2b74},
-+	{0xb620ad06, 0x00000774, 0x0000017e, 0xd34558e6, 0x3a0a615b},
-+	{0x976f21e9, 0x000008d7, 0x0000034a, 0xe533aa3a, 0xa99e60be},
-+	{0x687628c0, 0x000006c5, 0x0000061b, 0x3a840b15, 0x9bfcaef2},
-+	{0xe24ac108, 0x00000cd0, 0x0000032f, 0x51010ae8, 0x20958672},
-+	{0x361c44a3, 0x00000304, 0x00000719, 0xfd7bd481, 0xd70ff2b2},
-+	{0xd93ff95e, 0x00000db7, 0x0000008e, 0xcfbbc304, 0xad716acd},
-+	{0xed752d12, 0x00000883, 0x00000091, 0x65a6c868, 0x95c71c7b},
-+	{0xb4ff4b54, 0x000003d3, 0x000001c1, 0xf82597e7, 0x44b7f99b},
-+	{0x111b520f, 0x00000708, 0x000000eb, 0xc3e109f3, 0x71bc01ee},
-+	{0x62c806f2, 0x00000ba3, 0x0000045c, 0x874d3a72, 0xc539b753},
-+	{0x40d97470, 0x000005e1, 0x0000058d, 0x87a9684f, 0xea6073a5},
-+	{0x4312179c, 0x00000056, 0x0000070e, 0x809a00f5, 0x209aea3b},
-+	{0x13d5f84c, 0x00000a2d, 0x00000104, 0xf3d27578, 0xe087a8b6},
-+	{0x1f302cb2, 0x00000151, 0x00000014, 0x1e162693, 0x95e4b90e},
-+	{0xe491db24, 0x00000600, 0x000006f6, 0x7ff09615, 0x77611523},
-+	{0xf9a98069, 0x000002ba, 0x000002ad, 0x01af7387, 0xea925faa},
-+	{0xe9c477ad, 0x0000015f, 0x00000778, 0x6facf9a0, 0x1130f736},
-+	{0x353f32b2, 0x0000087c, 0x00000783, 0x6cc964ea, 0x32459994},
-+	{0x78e1b24f, 0x00000650, 0x000006a8, 0xb3bb7c27, 0x5a632f78},
-+	{0x61aa400e, 0x00000049, 0x00000254, 0xb8cd1681, 0xdf2652d5},
-+	{0xb84b10b0, 0x00000f73, 0x0000008c, 0x406a6450, 0x3619d31b},
-+	{0x9fa99c9c, 0x00000a7c, 0x000004d7, 0xfb3d21b4, 0xea31c743},
-+	{0x3fc9ebe3, 0x00000cd9, 0x000000d6, 0x43803f9c, 0x1f76a809},
-+	{0x529879cd, 0x000002f2, 0x00000595, 0x78b4c6a6, 0x63b9b93f},
-+	{0x3a933019, 0x00000516, 0x00000266, 0xdcb45436, 0x8f99c98c},
-+	{0x887b4977, 0x00000227, 0x0000038d, 0xc5f7c3d9, 0xaf5e3091},
-+	{0x770745de, 0x000008c6, 0x00000739, 0xf69145e8, 0x53d0dce1},
-+	{0x28be3b47, 0x00000c46, 0x0000032b, 0x764c028f, 0x106d0905},
-+	{0x5013a050, 0x00000cf6, 0x00000309, 0xea8fe164, 0x62180b57},
-+	{0x2ec4c9ba, 0x000006e8, 0x0000078d, 0xa35557a9, 0xf44430a4},
-+	{0xa9f950c9, 0x00000d33, 0x000002cc, 0x41ea8618, 0x587b4eb3},
-+	{0x5b520229, 0x000007b2, 0x00000484, 0x44569f1f, 0x92406c32},
-+	{0xd8dcbbfc, 0x0000002f, 0x0000048c, 0xdb88ab8b, 0x13bfe70e},
-+	{0x25529792, 0x00000d1d, 0x000002e2, 0x20cda404, 0x19d3b4e4},
-+	{0x9f3f6d71, 0x00000238, 0x0000079a, 0x0720443e, 0x3c107021},
-+	{0x64121215, 0x000007ff, 0x0000038f, 0x6aacff2c, 0xb82fdc3e},
-+	{0xfb6cdde0, 0x00000ef8, 0x00000107, 0xbd43a0f1, 0xab0d3c1d},
-+	{0x221c9d6f, 0x000007b6, 0x0000014f, 0xb67f834b, 0x1371ad05},
-+	{0x030e1de4, 0x00000836, 0x000004b4, 0x0d67d26a, 0xe2e72df1},
-+	{0xb56fa6cf, 0x00000c07, 0x000003f8, 0x60601ac1, 0x039de73e},
-+	{0xb55c89f5, 0x0000098e, 0x000001d4, 0x2400efbe, 0xfe39a2bb},
-+	{0x5e90b6d5, 0x0000070b, 0x000003ea, 0x3bb5d6ea, 0xf0f794a0},
-+	{0x2a7045ae, 0x00000961, 0x00000633, 0xfca89e4b, 0xe66ce41c},
-+	{0x8b374ea9, 0x000006ba, 0x00000780, 0xbce036ed, 0x4cb28ef7},
-+	{0x8bd90bc9, 0x00000562, 0x00000369, 0xcb26a24b, 0x40236d1d},
-+	{0x5b1b1762, 0x000000fd, 0x0000051a, 0x33cdda07, 0xc32e420a},
-+	{0xa4153555, 0x0000058f, 0x000005c7, 0xbe50eeca, 0x83a67f35},
-+	{0x0be1f931, 0x00000651, 0x00000672, 0x95a25753, 0x88f1aac1},
-+	{0xb7e78618, 0x00000a7f, 0x000002bb, 0xe06bcc1c, 0x74274f66},
-+	{0x4a9bc41b, 0x00000e51, 0x000001ae, 0x709e8d2c, 0x54eff534},
-+	{0xfc359d13, 0x00000440, 0x000002f8, 0x0a58451f, 0x55e9363f},
-+	{0x5aa48619, 0x000006d1, 0x00000284, 0x928ead83, 0x31041c06},
-+	{0xa609afa8, 0x0000053e, 0x00000272, 0xb048c141, 0x4704efba},
-+	{0x3f108afb, 0x00000949, 0x00000150, 0x9a6bb5bc, 0x4e4430c8},
-+	{0x79bec2d3, 0x000008ed, 0x00000712, 0x32692d57, 0x11d52a7b},
-+	{0x9429e067, 0x00000bc3, 0x0000043c, 0x5295ceff, 0x04640f4d},
-+	{0xae58b96a, 0x0000082d, 0x000007d2, 0xc2a681ba, 0xf7ca4a2c},
-+	{0x95df24be, 0x00000985, 0x000004c1, 0x3a287765, 0x2c4af003},
-+	{0x5e94976f, 0x00000596, 0x000004ed, 0xff00c489, 0x5ae11687},
-+	{0xf5e5f1de, 0x00000d31, 0x000002ce, 0x35f28e91, 0x30d47957},
-+	{0xa2c219cf, 0x00000a3c, 0x00000374, 0x707d21eb, 0x2a14a255},
-+	{0xf21b6ceb, 0x00000919, 0x00000135, 0x0847fb8b, 0xcb8d3b93},
-+	{0xaa988728, 0x00000787, 0x00000771, 0x885aeaa4, 0x6531b509},
-+	{0xaa5dfaac, 0x000003e5, 0x0000051b, 0x52c48ab7, 0xe43cc5e9},
-+	{0x0a053968, 0x00000d2a, 0x000002d5, 0x7a90256d, 0x8004765c},
-+	{0x1421dc20, 0x00000eef, 0x00000110, 0x97d6da24, 0x1378f6ff},
-+	{0xb47c2166, 0x00000a6a, 0x00000209, 0xcfd6cc52, 0x676e14a5},
-+	{0x77dd1955, 0x000000de, 0x00000266, 0xba74bcaa, 0xc71b429c},
-+	{0x68a03cc2, 0x0000082f, 0x000007b0, 0x752bd5d8, 0x19ed14aa},
-+	{0x0226b0a3, 0x00000a5f, 0x000005a0, 0x82de4970, 0xf654d3ed},
-+	{0x637bf3b1, 0x00000d93, 0x0000026c, 0x5c7115cb, 0x3cccb57e},
-+	{0x3b120edf, 0x00000c13, 0x000003ec, 0x80d7d20f, 0x92132798},
-+	{0xe2456780, 0x000002eb, 0x00000641, 0xc0a5d289, 0x6160c87a},
-+	{0x9b2e7125, 0x00000c0c, 0x000003f3, 0xcc15f57e, 0x6f00f637},
-+	{0x153033ef, 0x00000787, 0x000006b6, 0x3cde443b, 0xb46caa6e},
-+	{0x18458b3f, 0x0000066c, 0x00000561, 0x9a2bd8c6, 0xb6c29121},
-+	{0x4ff9d4b9, 0x00000c8f, 0x0000033a, 0xd0ee6d6d, 0xc81cf380},
-+	{0xdf84b5d9, 0x00000802, 0x0000029a, 0xdab0d74a, 0xb2464559},
-+	{0x81ee15df, 0x000003ce, 0x00000725, 0x9942e2de, 0x4ccf571b},
-+	{0x5c768e04, 0x00000afd, 0x00000160, 0x36110831, 0xae0b305a},
-+	{0xe5e18094, 0x00000b4b, 0x000000a0, 0xffa3e4a7, 0x6c8a4f09},
-+	{0xed7263b6, 0x00000d0d, 0x000002f2, 0xb0006a35, 0x7e04af8c},
-+	{0x5bfde7d7, 0x000006fb, 0x00000554, 0xa4193b76, 0xb3a91d12},
-+	{0x67f4a743, 0x00000b85, 0x0000047a, 0xf05c8d8f, 0xfb472fdf},
-+	{0xf13bdf22, 0x00000ff7, 0x00000008, 0x816351eb, 0xf347f235},
-+	{0x08ecc608, 0x00000d5d, 0x00000098, 0x90492772, 0x0b7f1521},
-+	{0x296f52ba, 0x000004f9, 0x00000788, 0x5e5a4896, 0x1cc67088},
-+	{0xbe4624c2, 0x00000427, 0x000004ef, 0xcd267b94, 0x550caefd},
-+	{0x906f7c7c, 0x00000a05, 0x0000003f, 0x03fcfc33, 0x9ed82a02},
-+	{0x8f7b323e, 0x00000458, 0x000004c7, 0xcd4969c8, 0x633c38a8},
-+	{0x88d6593d, 0x00000597, 0x000005b5, 0xf199cd3b, 0x0491452f},
-+	{0x978a7768, 0x00000268, 0x000001d3, 0xb28c95bd, 0x1a42fe61},
-+	{0x857a621e, 0x000007a7, 0x000003a8, 0xf4bf84ab, 0xcd0694c6},
-+	{0xb0e121ef, 0x000005be, 0x00000644, 0x28747c14, 0xf0510c72},
- 	{0, 0, 0, 0, 0},
- };
- 
-@@ -1114,15 +902,15 @@ static int test_crc32c(void)
- 	while (t->length) {
- 		uint32_t be, le;
- 		le = ext2fs_crc32c_le(t->crc, test_buf + t->start, t->length);
--		be = ext2fs_crc32c_be(t->crc, test_buf + t->start, t->length);
--		if (le != t->crc_le) {
-+		be = ext2fs_crc32_be(t->crc, test_buf + t->start, t->length);
-+		if (le != t->crc32c_le) {
- 			printf("Test %d LE fails, %x != %x\n",
--			       (t - test), le, t->crc_le);
-+			       (t - test), le, t->crc32c_le);
- 			failures++;
- 		}
--		if (be != t->crc_be) {
-+		if (be != t->crc32_be) {
- 			printf("Test %d BE fails, %x != %x\n",
--			       (t - test), be, t->crc_be);
-+			       (t - test), be, t->crc32_be);
- 			failures++;
- 		}
- 		t++;
-diff --git a/lib/ext2fs/crc32c_defs.h b/lib/ext2fs/crc32c_defs.h
-index 023f2c0..3f9a09e 100644
---- a/lib/ext2fs/crc32c_defs.h
-+++ b/lib/ext2fs/crc32c_defs.h
-@@ -1,10 +1,18 @@
- /*
-+ * There are multiple 16-bit CRC polynomials in common use, but this is
-+ * *the* standard CRC-32 polynomial, first popularized by Ethernet.
-+ * x^32+x^26+x^23+x^22+x^16+x^12+x^11+x^10+x^8+x^7+x^5+x^4+x^2+x^1+x^0
-+ */
-+#define CRCPOLY_LE 0xedb88320
-+#define CRCPOLY_BE 0x04c11db7
-+
-+/*
-  * This is the CRC32c polynomial, as outlined by Castagnoli.
-  * x^32+x^28+x^27+x^26+x^25+x^23+x^22+x^20+x^19+x^18+x^14+x^13+x^11+x^10+x^9+
-  * x^8+x^6+x^0
-  */
--#define CRCPOLY_LE 0x82F63B78
--#define CRCPOLY_BE 0x1EDC6F41
-+#define CRC32C_POLY_LE 0x82F63B78
-+#define CRC32C_POLY_BE 0x1EDC6F41
- 
- /* How many bits at a time to use.  Valid values are 1, 2, 4, 8, 32 and 64. */
- /* For less performance-sensitive, use 4 */
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index a09597e..7344289 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -940,7 +940,7 @@ extern int ext2fs_super_and_bgd_loc(ext2_filsys fs,
- extern void ext2fs_update_dynamic_rev(ext2_filsys fs);
- 
- /* crc32c.c */
--extern __u32 ext2fs_crc32c_be(__u32 crc, unsigned char const *p, size_t len);
-+extern __u32 ext2fs_crc32_be(__u32 crc, unsigned char const *p, size_t len);
- extern __u32 ext2fs_crc32c_le(__u32 crc, unsigned char const *p, size_t len);
- 
- /* csum.c */
-diff --git a/lib/ext2fs/gen_crc32ctable.c b/lib/ext2fs/gen_crc32ctable.c
-index 9996e9d..a0742ee 100644
---- a/lib/ext2fs/gen_crc32ctable.c
-+++ b/lib/ext2fs/gen_crc32ctable.c
-@@ -4,23 +4,27 @@
- 
- #define ENTRIES_PER_LINE 4
- 
--#if CRC_LE_BITS <= 8
--#define LE_TABLE_SIZE (1 << CRC_LE_BITS)
-+#if CRC_LE_BITS > 8
-+# define LE_TABLE_ROWS (CRC_LE_BITS/8)
-+# define LE_TABLE_SIZE 256
- #else
--#define LE_TABLE_SIZE 256
-+# define LE_TABLE_ROWS 1
-+# define LE_TABLE_SIZE (1 << CRC_LE_BITS)
- #endif
- 
--#if CRC_BE_BITS <= 8
--#define BE_TABLE_SIZE (1 << CRC_BE_BITS)
-+#if CRC_BE_BITS > 8
-+# define BE_TABLE_ROWS (CRC_BE_BITS/8)
-+# define BE_TABLE_SIZE 256
- #else
--#define BE_TABLE_SIZE 256
-+# define BE_TABLE_ROWS 1
-+# define BE_TABLE_SIZE (1 << CRC_BE_BITS)
- #endif
- 
--static uint32_t crc32ctable_le[8][256];
--static uint32_t crc32ctable_be[8][256];
-+static uint32_t crc32table_be[BE_TABLE_ROWS][256];
-+static uint32_t crc32ctable_le[LE_TABLE_ROWS][256];
- 
- /**
-- * crc32cinit_le() - allocate and initialize LE table data
-+ * crc32init_le() - allocate and initialize LE table data
-  *
-  * crc is the crc of the byte i; other entries are filled in based on the
-  * fact that crctable[i^j] = crctable[i] ^ crctable[j].
-@@ -34,13 +38,13 @@ static void crc32cinit_le(void)
- 	crc32ctable_le[0][0] = 0;
- 
- 	for (i = LE_TABLE_SIZE >> 1; i; i >>= 1) {
--		crc = (crc >> 1) ^ ((crc & 1) ? CRCPOLY_LE : 0);
-+		crc = (crc >> 1) ^ ((crc & 1) ? CRC32C_POLY_LE : 0);
- 		for (j = 0; j < LE_TABLE_SIZE; j += 2 * i)
- 			crc32ctable_le[0][i + j] = crc ^ crc32ctable_le[0][j];
- 	}
- 	for (i = 0; i < LE_TABLE_SIZE; i++) {
- 		crc = crc32ctable_le[0][i];
--		for (j = 1; j < 8; j++) {
-+		for (j = 1; j < LE_TABLE_ROWS; j++) {
- 			crc = crc32ctable_le[0][crc & 0xff] ^ (crc >> 8);
- 			crc32ctable_le[j][i] = crc;
- 		}
-@@ -48,75 +52,65 @@ static void crc32cinit_le(void)
- }
- 
- /**
-- * crc32cinit_be() - allocate and initialize BE table data
-+ * crc32init_be() - allocate and initialize BE table data
-  */
--static void crc32cinit_be(void)
-+static void crc32init_be(void)
- {
- 	unsigned i, j;
- 	uint32_t crc = 0x80000000;
- 
--	crc32ctable_be[0][0] = 0;
-+	crc32table_be[0][0] = 0;
- 
- 	for (i = 1; i < BE_TABLE_SIZE; i <<= 1) {
- 		crc = (crc << 1) ^ ((crc & 0x80000000) ? CRCPOLY_BE : 0);
- 		for (j = 0; j < i; j++)
--			crc32ctable_be[0][i + j] = crc ^ crc32ctable_be[0][j];
-+			crc32table_be[0][i + j] = crc ^ crc32table_be[0][j];
- 	}
- 	for (i = 0; i < BE_TABLE_SIZE; i++) {
--		crc = crc32ctable_be[0][i];
--		for (j = 1; j < 8; j++) {
--			crc = crc32ctable_be[0][(crc >> 24) & 0xff] ^
--			      (crc << 8);
--			crc32ctable_be[j][i] = crc;
-+		crc = crc32table_be[0][i];
-+		for (j = 1; j < BE_TABLE_ROWS; j++) {
-+			crc = crc32table_be[0][(crc >> 24) & 0xff] ^ (crc << 8);
-+			crc32table_be[j][i] = crc;
- 		}
- 	}
- }
- 
--static void output_table(uint32_t table[8][256], int len, char trans)
-+static void output_table(uint32_t (*table)[256], int rows, int len, char *trans)
- {
- 	int i, j;
- 
--	for (j = 0 ; j < 8; j++) {
--		printf("static const uint32_t t%d_%ce[] = {", j, trans);
-+	for (j = 0 ; j < rows; j++) {
-+		printf("{");
- 		for (i = 0; i < len - 1; i++) {
--			if ((i % ENTRIES_PER_LINE) == 0)
-+			if (i % ENTRIES_PER_LINE == 0)
- 				printf("\n");
--			printf("to%ce(0x%8.8xL),", trans, table[j][i]);
--			if ((i % ENTRIES_PER_LINE) != (ENTRIES_PER_LINE - 1))
--				printf(" ");
--		}
--		printf("to%ce(0x%8.8xL)};\n\n", trans, table[j][len - 1]);
--
--		if (trans == 'l') {
--			if ((j+1)*8 >= CRC_LE_BITS)
--				break;
--		} else {
--			if ((j+1)*8 >= CRC_BE_BITS)
--				break;
-+			printf("%s(0x%8.8xL), ", trans, table[j][i]);
- 		}
-+		printf("%s(0x%8.8xL)},\n", trans, table[j][len - 1]);
- 	}
- }
- 
- int main(int argc, char **argv)
- {
--	printf("/*\n");
--	printf(" * crc32ctable.h - CRC32c tables\n");
--	printf(" *    this file is generated - do not edit\n");
--	printf(" *	# gen_crc32ctable > crc32c_table.h\n");
--	printf(" *    with\n");
--	printf(" *	CRC_LE_BITS = %d\n", CRC_LE_BITS);
--	printf(" *	CRC_BE_BITS = %d\n", CRC_BE_BITS);
--	printf(" */\n");
--	printf("#include <stdint.h>\n");
-+	printf("/* this file is generated - do not edit */\n\n");
- 
-+	if (CRC_BE_BITS > 1) {
-+		crc32init_be();
-+		printf("static const uint32_t "
-+		       "crc32table_be[%d][%d] = {",
-+		       BE_TABLE_ROWS, BE_TABLE_SIZE);
-+		output_table(crc32table_be, LE_TABLE_ROWS,
-+			     BE_TABLE_SIZE, "tobe");
-+		printf("};\n");
-+	}
- 	if (CRC_LE_BITS > 1) {
- 		crc32cinit_le();
--		output_table(crc32ctable_le, LE_TABLE_SIZE, 'l');
+-	int i;
+-	while (len--) {
+-		crc ^= *p++ << 24;
+-		for (i = 0; i < 8; i++)
+-			crc =
+-			    (crc << 1) ^ ((crc & 0x80000000) ? CRCPOLY_BE :
+-					  0);
 -	}
+-	return crc;
+-}
+-
+-#else				/* Table-based approach */
+-__u32 crc32_be(__u32 crc, unsigned char const *p, size_t len)
+-{
+-# if CRC_BE_BITS == 8
+-	const __u32      *b =(const __u32 *)p;
+-	const __u32      *tab = crc32table_be;
+-
+-# ifdef WORDS_BIGENDIAN
+-#  define DO_CRC(x) crc = tab[ ((crc >> 24) ^ (x)) & 255] ^ (crc<<8)
+-# else
+-#  define DO_CRC(x) crc = tab[ (crc ^ (x)) & 255 ] ^ (crc>>8)
+-# endif
+-
+-	crc = __cpu_to_be32(crc);
+-	/* Align it */
+-	if(unlikely(((long)b)&3 && len)){
+-		do {
+-			const __u8 *q = (const __u8 *)b;
+-			DO_CRC(*q++);
+-			b = (const __u32 *)q;
+-		} while ((--len) && ((long)b)&3 );
+-	}
+-	if(likely(len >= 4)){
+-		/* load data 32 bits wide, xor data 32 bits wide. */
+-		size_t save_len = len & 3;
+-	        len = len >> 2;
+-		--b; /* use pre increment below(*++b) for speed */
+-		do {
+-			crc ^= *++b;
+-			DO_CRC(0);
+-			DO_CRC(0);
+-			DO_CRC(0);
+-			DO_CRC(0);
+-		} while (--len);
+-		b++; /* point to next byte(s) */
+-		len = save_len;
+-	}
+-	/* And the last few bytes */
+-	if(len){
+-		do {
+-			const __u8 *q = (const __u8 *)b;
+-			DO_CRC(*q++);
+-			b = (const void *)q;
+-		} while (--len);
+-	}
+-	return __be32_to_cpu(crc);
+-#undef ENDIAN_SHIFT
+-#undef DO_CRC
+-
+-# elif CRC_BE_BITS == 4
+-	while (len--) {
+-		crc ^= *p++ << 24;
+-		crc = (crc << 4) ^ crc32table_be[crc >> 28];
+-		crc = (crc << 4) ^ crc32table_be[crc >> 28];
+-	}
+-	return crc;
+-# elif CRC_BE_BITS == 2
+-	while (len--) {
+-		crc ^= *p++ << 24;
+-		crc = (crc << 2) ^ crc32table_be[crc >> 30];
+-		crc = (crc << 2) ^ crc32table_be[crc >> 30];
+-		crc = (crc << 2) ^ crc32table_be[crc >> 30];
+-		crc = (crc << 2) ^ crc32table_be[crc >> 30];
+-	}
+-	return crc;
+-# endif
+-}
+-#endif
+-
+-/*
+- * A brief CRC tutorial.
+- *
+- * A CRC is a long-division remainder.  You add the CRC to the message,
+- * and the whole thing (message+CRC) is a multiple of the given
+- * CRC polynomial.  To check the CRC, you can either check that the
+- * CRC matches the recomputed value, *or* you can check that the
+- * remainder computed on the message+CRC is 0.  This latter approach
+- * is used by a lot of hardware implementations, and is why so many
+- * protocols put the end-of-frame flag after the CRC.
+- *
+- * It's actually the same long division you learned in school, except that
+- * - We're working in binary, so the digits are only 0 and 1, and
+- * - When dividing polynomials, there are no carries.  Rather than add and
+- *   subtract, we just xor.  Thus, we tend to get a bit sloppy about
+- *   the difference between adding and subtracting.
+- *
+- * A 32-bit CRC polynomial is actually 33 bits long.  But since it's
+- * 33 bits long, bit 32 is always going to be set, so usually the CRC
+- * is written in hex with the most significant bit omitted.  (If you're
+- * familiar with the IEEE 754 floating-point format, it's the same idea.)
+- *
+- * Note that a CRC is computed over a string of *bits*, so you have
+- * to decide on the endianness of the bits within each byte.  To get
+- * the best error-detecting properties, this should correspond to the
+- * order they're actually sent.  For example, standard RS-232 serial is
+- * little-endian; the most significant bit (sometimes used for parity)
+- * is sent last.  And when appending a CRC word to a message, you should
+- * do it in the right order, matching the endianness.
+- *
+- * Just like with ordinary division, the remainder is always smaller than
+- * the divisor (the CRC polynomial) you're dividing by.  Each step of the
+- * division, you take one more digit (bit) of the dividend and append it
+- * to the current remainder.  Then you figure out the appropriate multiple
+- * of the divisor to subtract to being the remainder back into range.
+- * In binary, it's easy - it has to be either 0 or 1, and to make the
+- * XOR cancel, it's just a copy of bit 32 of the remainder.
+- *
+- * When computing a CRC, we don't care about the quotient, so we can
+- * throw the quotient bit away, but subtract the appropriate multiple of
+- * the polynomial from the remainder and we're back to where we started,
+- * ready to process the next bit.
+- *
+- * A big-endian CRC written this way would be coded like:
+- * for (i = 0; i < input_bits; i++) {
+- * 	multiple = remainder & 0x80000000 ? CRCPOLY : 0;
+- * 	remainder = (remainder << 1 | next_input_bit()) ^ multiple;
+- * }
+- * Notice how, to get at bit 32 of the shifted remainder, we look
+- * at bit 31 of the remainder *before* shifting it.
+- *
+- * But also notice how the next_input_bit() bits we're shifting into
+- * the remainder don't actually affect any decision-making until
+- * 32 bits later.  Thus, the first 32 cycles of this are pretty boring.
+- * Also, to add the CRC to a message, we need a 32-bit-long hole for it at
+- * the end, so we have to add 32 extra cycles shifting in zeros at the
+- * end of every message,
+- *
+- * So the standard trick is to rearrage merging in the next_input_bit()
+- * until the moment it's needed.  Then the first 32 cycles can be precomputed,
+- * and merging in the final 32 zero bits to make room for the CRC can be
+- * skipped entirely.
+- * This changes the code to:
+- * for (i = 0; i < input_bits; i++) {
+- *      remainder ^= next_input_bit() << 31;
+- * 	multiple = (remainder & 0x80000000) ? CRCPOLY : 0;
+- * 	remainder = (remainder << 1) ^ multiple;
+- * }
+- * With this optimization, the little-endian code is simpler:
+- * for (i = 0; i < input_bits; i++) {
+- *      remainder ^= next_input_bit();
+- * 	multiple = (remainder & 1) ? CRCPOLY : 0;
+- * 	remainder = (remainder >> 1) ^ multiple;
+- * }
+- *
+- * Note that the other details of endianness have been hidden in CRCPOLY
+- * (which must be bit-reversed) and next_input_bit().
+- *
+- * However, as long as next_input_bit is returning the bits in a sensible
+- * order, we can actually do the merging 8 or more bits at a time rather
+- * than one bit at a time:
+- * for (i = 0; i < input_bytes; i++) {
+- * 	remainder ^= next_input_byte() << 24;
+- * 	for (j = 0; j < 8; j++) {
+- * 		multiple = (remainder & 0x80000000) ? CRCPOLY : 0;
+- * 		remainder = (remainder << 1) ^ multiple;
+- * 	}
+- * }
+- * Or in little-endian:
+- * for (i = 0; i < input_bytes; i++) {
+- * 	remainder ^= next_input_byte();
+- * 	for (j = 0; j < 8; j++) {
+- * 		multiple = (remainder & 1) ? CRCPOLY : 0;
+- * 		remainder = (remainder << 1) ^ multiple;
+- * 	}
+- * }
+- * If the input is a multiple of 32 bits, you can even XOR in a 32-bit
+- * word at a time and increase the inner loop count to 32.
+- *
+- * You can also mix and match the two loop styles, for example doing the
+- * bulk of a message byte-at-a-time and adding bit-at-a-time processing
+- * for any fractional bytes at the end.
+- *
+- * The only remaining optimization is to the byte-at-a-time table method.
+- * Here, rather than just shifting one bit of the remainder to decide
+- * in the correct multiple to subtract, we can shift a byte at a time.
+- * This produces a 40-bit (rather than a 33-bit) intermediate remainder,
+- * but again the multiple of the polynomial to subtract depends only on
+- * the high bits, the high 8 bits in this case.
+- *
+- * The multiple we need in that case is the low 32 bits of a 40-bit
+- * value whose high 8 bits are given, and which is a multiple of the
+- * generator polynomial.  This is simply the CRC-32 of the given
+- * one-byte message.
+- *
+- * Two more details: normally, appending zero bits to a message which
+- * is already a multiple of a polynomial produces a larger multiple of that
+- * polynomial.  To enable a CRC to detect this condition, it's common to
+- * invert the CRC before appending it.  This makes the remainder of the
+- * message+crc come out not as zero, but some fixed non-zero value.
+- *
+- * The same problem applies to zero bits prepended to the message, and
+- * a similar solution is used.  Instead of starting with a remainder of
+- * 0, an initial remainder of all ones is used.  As long as you start
+- * the same way on decoding, it doesn't make a difference.
+- */
+-
+-#ifdef UNITTEST
+-
+-#include <stdlib.h>
+-#include <stdio.h>
+-
+-const __u8 byte_rev_table[256] = {
+-	0x00, 0x80, 0x40, 0xc0, 0x20, 0xa0, 0x60, 0xe0,
+-	0x10, 0x90, 0x50, 0xd0, 0x30, 0xb0, 0x70, 0xf0,
+-	0x08, 0x88, 0x48, 0xc8, 0x28, 0xa8, 0x68, 0xe8,
+-	0x18, 0x98, 0x58, 0xd8, 0x38, 0xb8, 0x78, 0xf8,
+-	0x04, 0x84, 0x44, 0xc4, 0x24, 0xa4, 0x64, 0xe4,
+-	0x14, 0x94, 0x54, 0xd4, 0x34, 0xb4, 0x74, 0xf4,
+-	0x0c, 0x8c, 0x4c, 0xcc, 0x2c, 0xac, 0x6c, 0xec,
+-	0x1c, 0x9c, 0x5c, 0xdc, 0x3c, 0xbc, 0x7c, 0xfc,
+-	0x02, 0x82, 0x42, 0xc2, 0x22, 0xa2, 0x62, 0xe2,
+-	0x12, 0x92, 0x52, 0xd2, 0x32, 0xb2, 0x72, 0xf2,
+-	0x0a, 0x8a, 0x4a, 0xca, 0x2a, 0xaa, 0x6a, 0xea,
+-	0x1a, 0x9a, 0x5a, 0xda, 0x3a, 0xba, 0x7a, 0xfa,
+-	0x06, 0x86, 0x46, 0xc6, 0x26, 0xa6, 0x66, 0xe6,
+-	0x16, 0x96, 0x56, 0xd6, 0x36, 0xb6, 0x76, 0xf6,
+-	0x0e, 0x8e, 0x4e, 0xce, 0x2e, 0xae, 0x6e, 0xee,
+-	0x1e, 0x9e, 0x5e, 0xde, 0x3e, 0xbe, 0x7e, 0xfe,
+-	0x01, 0x81, 0x41, 0xc1, 0x21, 0xa1, 0x61, 0xe1,
+-	0x11, 0x91, 0x51, 0xd1, 0x31, 0xb1, 0x71, 0xf1,
+-	0x09, 0x89, 0x49, 0xc9, 0x29, 0xa9, 0x69, 0xe9,
+-	0x19, 0x99, 0x59, 0xd9, 0x39, 0xb9, 0x79, 0xf9,
+-	0x05, 0x85, 0x45, 0xc5, 0x25, 0xa5, 0x65, 0xe5,
+-	0x15, 0x95, 0x55, 0xd5, 0x35, 0xb5, 0x75, 0xf5,
+-	0x0d, 0x8d, 0x4d, 0xcd, 0x2d, 0xad, 0x6d, 0xed,
+-	0x1d, 0x9d, 0x5d, 0xdd, 0x3d, 0xbd, 0x7d, 0xfd,
+-	0x03, 0x83, 0x43, 0xc3, 0x23, 0xa3, 0x63, 0xe3,
+-	0x13, 0x93, 0x53, 0xd3, 0x33, 0xb3, 0x73, 0xf3,
+-	0x0b, 0x8b, 0x4b, 0xcb, 0x2b, 0xab, 0x6b, 0xeb,
+-	0x1b, 0x9b, 0x5b, 0xdb, 0x3b, 0xbb, 0x7b, 0xfb,
+-	0x07, 0x87, 0x47, 0xc7, 0x27, 0xa7, 0x67, 0xe7,
+-	0x17, 0x97, 0x57, 0xd7, 0x37, 0xb7, 0x77, 0xf7,
+-	0x0f, 0x8f, 0x4f, 0xcf, 0x2f, 0xaf, 0x6f, 0xef,
+-	0x1f, 0x9f, 0x5f, 0xdf, 0x3f, 0xbf, 0x7f, 0xff,
+-};
+-
+-static inline __u8 bitrev8(__u8 byte)
+-{
+-	return byte_rev_table[byte];
+-}
+-
+-static inline __u16 bitrev16(__u16 x)
+-{
+-	return (bitrev8(x & 0xff) << 8) | bitrev8(x >> 8);
+-}
+-
+-/**
+- * bitrev32 - reverse the order of bits in a u32 value
+- * @x: value to be bit-reversed
+- */
+-static __u32 bitrev32(__u32 x)
+-{
+-	return (bitrev16(x & 0xffff) << 16) | bitrev16(x >> 16);
+-}
+-
+-#if 0				/*Not used at present */
+-
+-static void
+-buf_dump(char const *prefix, unsigned char const *buf, size_t len)
+-{
+-	fputs(prefix, stdout);
+-	while (len--)
+-		printf(" %02x", *buf++);
+-	putchar('\n');
+-
+-}
+-#endif
+-
+-static void bytereverse(unsigned char *buf, size_t len)
+-{
+-	while (len--) {
+-		unsigned char x = bitrev8(*buf);
+-		*buf++ = x;
+-	}
+-}
+-
+-static void random_garbage(unsigned char *buf, size_t len)
+-{
+-	while (len--)
+-		*buf++ = (unsigned char) random();
+-}
+-
+-#if 0				/* Not used at present */
+-static void store_le(__u32 x, unsigned char *buf)
+-{
+-	buf[0] = (unsigned char) x;
+-	buf[1] = (unsigned char) (x >> 8);
+-	buf[2] = (unsigned char) (x >> 16);
+-	buf[3] = (unsigned char) (x >> 24);
+-}
+-#endif
+-
+-static void store_be(__u32 x, unsigned char *buf)
+-{
+-	buf[0] = (unsigned char) (x >> 24);
+-	buf[1] = (unsigned char) (x >> 16);
+-	buf[2] = (unsigned char) (x >> 8);
+-	buf[3] = (unsigned char) x;
+-}
+-
+-/*
+- * This checks that CRC(buf + CRC(buf)) = 0, and that
+- * CRC commutes with bit-reversal.  This has the side effect
+- * of bytewise bit-reversing the input buffer, and returns
+- * the CRC of the reversed buffer.
+- */
+-static __u32 test_step(__u32 init, unsigned char *buf, size_t len)
+-{
+-	__u32 crc1, crc2;
+-	size_t i;
+-
+-	crc1 = crc32_be(init, buf, len);
+-	store_be(crc1, buf + len);
+-	crc2 = crc32_be(init, buf, len + 4);
+-	if (crc2)
+-		printf("\nCRC cancellation fail: 0x%08x should be 0\n",
+-		       crc2);
+-
+-	for (i = 0; i <= len + 4; i++) {
+-		crc2 = crc32_be(init, buf, i);
+-		crc2 = crc32_be(crc2, buf + i, len + 4 - i);
+-		if (crc2)
+-			printf("\nCRC split fail: 0x%08x\n", crc2);
+-	}
+-
+-	/* Now swap it around for the other test */
+-
+-	bytereverse(buf, len + 4);
+-	init = bitrev32(init);
+-	crc2 = bitrev32(crc1);
+-	if (crc1 != bitrev32(crc2))
+-		printf("\nBit reversal fail: 0x%08x -> 0x%08x -> 0x%08x\n",
+-		       crc1, crc2, bitrev32(crc2));
+-	crc1 = crc32_le(init, buf, len);
+-	if (crc1 != crc2)
+-		printf("\nCRC endianness fail: 0x%08x != 0x%08x\n", crc1,
+-		       crc2);
+-	crc2 = crc32_le(init, buf, len + 4);
+-	if (crc2)
+-		printf("\nCRC cancellation fail: 0x%08x should be 0\n",
+-		       crc2);
+-
+-	for (i = 0; i <= len + 4; i++) {
+-		crc2 = crc32_le(init, buf, i);
+-		crc2 = crc32_le(crc2, buf + i, len + 4 - i);
+-		if (crc2)
+-			printf("\nCRC split fail: 0x%08x\n", crc2);
+-	}
+-
+-	return crc1;
+-}
+-
+-#define SIZE 64
+-#define INIT1 0
+-#define INIT2 0
+-
+-int main(int argc, char **argv)
+-{
+-	unsigned char buf1[SIZE + 4];
+-	unsigned char buf2[SIZE + 4];
+-	unsigned char buf3[SIZE + 4];
+-	int i, j;
+-	__u32 crc1, crc2, crc3;
+-	int exit_status = 0;
+-
+-	for (i = 0; i <= SIZE; i++) {
+-		printf("\rTesting length %d...", i);
+-		fflush(stdout);
+-		random_garbage(buf1, i);
+-		random_garbage(buf2, i);
+-		for (j = 0; j < i; j++)
+-			buf3[j] = buf1[j] ^ buf2[j];
+-
+-		crc1 = test_step(INIT1, buf1, i);
+-		crc2 = test_step(INIT2, buf2, i);
+-		/* Now check that CRC(buf1 ^ buf2) = CRC(buf1) ^ CRC(buf2) */
+-		crc3 = test_step(INIT1 ^ INIT2, buf3, i);
+-		if (crc3 != (crc1 ^ crc2)) {
+-			printf("CRC XOR fail: 0x%08x != 0x%08x ^ 0x%08x\n",
+-			       crc3, crc1, crc2);
+-			exit_status++;
+-		}
+-	}
+-	printf("\nAll test complete.  No failures expected.\n");
+-	return 0;
+-}
+-
+-#endif				/* UNITTEST */
+diff --git a/e2fsck/crc32defs.h b/e2fsck/crc32defs.h
+deleted file mode 100644
+index 27414d2..0000000
+--- a/e2fsck/crc32defs.h
++++ /dev/null
+@@ -1,64 +0,0 @@
+-/*
+- * There are multiple 16-bit CRC polynomials in common use, but this is
+- * *the* standard CRC-32 polynomial, first popularized by Ethernet.
+- * x^32+x^26+x^23+x^22+x^16+x^12+x^11+x^10+x^8+x^7+x^5+x^4+x^2+x^1+x^0
+- */
+-#define CRCPOLY_LE 0xedb88320
+-#define CRCPOLY_BE 0x04c11db7
+-
+-/* How many bits at a time to use.  Requires a table of 4<<CRC_xx_BITS bytes. */
+-/* For less performance-sensitive, use 4 */
+-#ifndef CRC_LE_BITS
+-# define CRC_LE_BITS 8
+-#endif
+-#ifndef CRC_BE_BITS
+-# define CRC_BE_BITS 8
+-#endif
+-
+-/*
+- * Little-endian CRC computation.  Used with serial bit streams sent
+- * lsbit-first.  Be sure to use cpu_to_le32() to append the computed CRC.
+- */
+-#if CRC_LE_BITS > 8 || CRC_LE_BITS < 1 || CRC_LE_BITS & CRC_LE_BITS-1
+-# error CRC_LE_BITS must be a power of 2 between 1 and 8
+-#endif
+-
+-/*
+- * Big-endian CRC computation.  Used with serial bit streams sent
+- * msbit-first.  Be sure to use cpu_to_be32() to append the computed CRC.
+- */
+-#if CRC_BE_BITS > 8 || CRC_BE_BITS < 1 || CRC_BE_BITS & CRC_BE_BITS-1
+-# error CRC_BE_BITS must be a power of 2 between 1 and 8
+-#endif
+-
+-#define ___constant_swab32(x) \
+-	((__u32)( \
+-		(((__u32)(x) & (__u32)0x000000ffUL) << 24) | \
+-		(((__u32)(x) & (__u32)0x0000ff00UL) <<  8) | \
+-		(((__u32)(x) & (__u32)0x00ff0000UL) >>  8) | \
+-		(((__u32)(x) & (__u32)0xff000000UL) >> 24) ))
+-
+-
+-#ifdef WORDS_BIGENDIAN
+-#define __constant_cpu_to_le32(x) ___constant_swab32((x))
+-#define __constant_cpu_to_be32(x) (x)
+-#define __be32_to_cpu(x) (x)
+-#define __cpu_to_be32(x) (x)
+-#define __cpu_to_le32(x) (ext2fs_swab32((x)))
+-#define __le32_to_cpu(x) (ext2fs_swab32((x)))
+-#else
+-#define __constant_cpu_to_le32(x) (x)
+-#define __constant_cpu_to_be32(x) ___constant_swab32((x))
+-#define __be32_to_cpu(x) (ext2fs_swab32((x)))
+-#define __cpu_to_be32(x) (ext2fs_swab32((x)))
+-#define __cpu_to_le32(x) (x)
+-#define __le32_to_cpu(x) (x)
+-#endif
+-
+-#if (__GNUC__ >= 3)
+-#define likely(x)	__builtin_expect(!!(x), 1)
+-#define unlikely(x)	__builtin_expect(!!(x), 0)
+-#else
+-#define likely(x)	(x)
+-#define unlikely(x)	(x)
+-#endif
+diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
+index 96a0cc9..d0249cb 100644
+--- a/e2fsck/e2fsck.h
++++ b/e2fsck/e2fsck.h
+@@ -397,9 +397,6 @@ extern int e2fsck_run(e2fsck_t ctx);
+ extern void read_bad_blocks_file(e2fsck_t ctx, const char *bad_blocks_file,
+ 				 int replace_bad_blocks);
+ 
+-/* crc32.c */
+-extern __u32 crc32_be(__u32 crc, unsigned char const *p, size_t len);
+-
+ /* dirinfo.c */
+ extern void e2fsck_add_dir_info(e2fsck_t ctx, ext2_ino_t ino, ext2_ino_t parent);
+ extern void e2fsck_free_dir_info(e2fsck_t ctx);
+diff --git a/e2fsck/gen_crc32table.c b/e2fsck/gen_crc32table.c
+deleted file mode 100644
+index 2c1aa8e..0000000
+--- a/e2fsck/gen_crc32table.c
++++ /dev/null
+@@ -1,101 +0,0 @@
+-/*
+- * gen_crc32table.c --- Generate CRC32 tables.
+- *
+- * Copyright (C) 2008 Theodore Ts'o.
+- *
+- * %Begin-Header%
+- * This file may be redistributed under the terms of the GNU Public
+- * License.
+- * %End-Header%
+- */
+-
+-#include <stdio.h>
+-#include "crc32defs.h"
+-#include <inttypes.h>
+-
+-#define ENTRIES_PER_LINE 4
+-
+-#define LE_TABLE_SIZE (1 << CRC_LE_BITS)
+-#define BE_TABLE_SIZE (1 << CRC_BE_BITS)
+-
+-static uint32_t crc32table_le[LE_TABLE_SIZE];
+-static uint32_t crc32table_be[BE_TABLE_SIZE];
+-
+-/**
+- * crc32init_le() - allocate and initialize LE table data
+- *
+- * crc is the crc of the byte i; other entries are filled in based on the
+- * fact that crctable[i^j] = crctable[i] ^ crctable[j].
+- *
+- */
+-static void crc32init_le(void)
+-{
+-	unsigned i, j;
+-	uint32_t crc = 1;
+-
+-	crc32table_le[0] = 0;
+-
+-	for (i = 1 << (CRC_LE_BITS - 1); i; i >>= 1) {
+-		crc = (crc >> 1) ^ ((crc & 1) ? CRCPOLY_LE : 0);
+-		for (j = 0; j < LE_TABLE_SIZE; j += 2 * i)
+-			crc32table_le[i + j] = crc ^ crc32table_le[j];
+-	}
+-}
+-
+-/**
+- * crc32init_be() - allocate and initialize BE table data
+- */
+-static void crc32init_be(void)
+-{
+-	unsigned i, j;
+-	uint32_t crc = 0x80000000;
+-
+-	crc32table_be[0] = 0;
+-
+-	for (i = 1; i < BE_TABLE_SIZE; i <<= 1) {
+-		crc = (crc << 1) ^ ((crc & 0x80000000) ? CRCPOLY_BE : 0);
+-		for (j = 0; j < i; j++)
+-			crc32table_be[i + j] = crc ^ crc32table_be[j];
+-	}
+-}
+-
+-static void output_table(uint32_t table[], int len, const char *trans)
+-{
+-	int i;
+-
+-	for (i = 0; i < len - 1; i++) {
+-		if (i % ENTRIES_PER_LINE == 0)
+-			printf("\n");
+-		printf("%s(0x%8.8xL), ", trans, table[i]);
+-	}
+-	printf("%s(0x%8.8xL)\n", trans, table[len - 1]);
+-}
+-
+-#ifdef __GNUC__
+-#define ATTR(x) __attribute__(x)
+-#else
+-#define ATTR(x)
+-#endif
+-
+-int main(int argc ATTR((unused)), char** argv ATTR((unused)))
+-{
+-	printf("/* this file is generated - do not edit */\n\n");
+-
+-	printf("#ifdef UNITTEST\n");
+-	if (CRC_LE_BITS > 1) {
+-		crc32init_le();
+-		printf("static const __u32 crc32table_le[] = {");
+-		output_table(crc32table_le, LE_TABLE_SIZE, "tole");
+-		printf("};\n");
+-	}
+-	printf("#endif /* UNITTEST */\n");
+-
+-	if (CRC_BE_BITS > 1) {
+-		crc32init_be();
+-		printf("static const __u32 crc32table_be[] = {");
+-		output_table(crc32table_be, BE_TABLE_SIZE, "tobe");
+-		printf("};\n");
+-	}
+-
+-	return 0;
+-}
+diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
+index d7c470e..4a8d850 100644
+--- a/e2fsck/recovery.c
++++ b/e2fsck/recovery.c
+@@ -356,7 +356,8 @@ static int calc_chksums(journal_t *journal, struct buffer_head *bh,
+ 
+ 	num_blks = count_tags(journal, bh);
+ 	/* Calculate checksum of the descriptor block. */
+-	*crc32_sum = crc32_be(*crc32_sum, (void *)bh->b_data, bh->b_size);
++	*crc32_sum = ext2fs_crc32_be(*crc32_sum, (void *)bh->b_data,
++				     bh->b_size);
+ 
+ 	for (i = 0; i < num_blks; i++) {
+ 		io_block = (*next_log_block)++;
+@@ -367,8 +368,9 @@ static int calc_chksums(journal_t *journal, struct buffer_head *bh,
+ 				"%lu in log\n", err, io_block);
+ 			return 1;
+ 		} else {
+-			*crc32_sum = crc32_be(*crc32_sum, (void *)obh->b_data,
+-				     obh->b_size);
++			*crc32_sum = ext2fs_crc32_be(*crc32_sum,
++						     (void *)obh->b_data,
++						     obh->b_size);
+ 		}
+ 		brelse(obh);
+ 	}
+
