@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 14/23] ext4: Add checksums to the MMP block
-Date: Tue, 13 Dec 2011 16:47:51 -0800
-Message-ID: <20111214004751.28243.14984.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 17/23] jbd2: Grab a reference to the crc32c driver only when
+	necessary
+Date: Tue, 13 Dec 2011 16:48:11 -0800
+Message-ID: <20111214004811.28243.62143.stgit@elm3c44.beaverton.ibm.com>
 References: <20111214004613.28243.54122.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -19,128 +20,130 @@ Cc: Sunil Mushran <sunil.mushran@oracle.com>,
 To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e35.co.us.ibm.com ([32.97.110.153]:37026 "EHLO
-	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756408Ab1LNAs5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Dec 2011 19:48:57 -0500
-Received: from /spool/local
-	by e35.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 13 Dec 2011 17:48:55 -0700
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20111214004613.28243.54122.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Compute and verify a checksum for the MMP block.
+Obtain a reference to the crc32c driver only when the journal needs it for
+checksum v2.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/ext4/ext4.h |    3 +++
- fs/ext4/mmp.c  |   44 +++++++++++++++++++++++++++++++++++++++-----
- 2 files changed, 42 insertions(+), 5 deletions(-)
+ fs/jbd2/Kconfig      |    2 ++
+ fs/jbd2/journal.c    |   25 +++++++++++++++++++++++++
+ include/linux/jbd2.h |   23 +++++++++++++++++++++++
+ 3 files changed, 50 insertions(+), 0 deletions(-)
 
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index ae71af3..f6bf9d0 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2378,6 +2378,9 @@ extern int ext4_bio_write_page(struct ext4_io_submit *io,
- 
- /* mmp.c */
- extern int ext4_multi_mount_protect(struct super_block *, ext4_fsblk_t);
-+extern void ext4_mmp_csum_set(struct super_block *sb, struct mmp_struct *mmp);
-+extern int ext4_mmp_csum_verify(struct super_block *sb,
-+				struct mmp_struct *mmp);
- 
- /* BH_Uninit flag: blocks are allocated but uninitialized on disk */
- enum ext4_state_bits {
-diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
-index 7ea4ba4..142e9d7 100644
---- a/fs/ext4/mmp.c
-+++ b/fs/ext4/mmp.c
-@@ -6,12 +6,45 @@
- 
- #include "ext4.h"
- 
-+/* Checksumming functions */
-+static __u32 ext4_mmp_csum(struct super_block *sb, struct mmp_struct *mmp)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	int offset = offsetof(struct mmp_struct, mmp_checksum);
-+	__u32 csum;
-+
-+	csum = ext4_chksum(sbi, sbi->s_csum_seed, (char *)mmp, offset);
-+
-+	return cpu_to_le32(csum);
-+}
-+
-+int ext4_mmp_csum_verify(struct super_block *sb, struct mmp_struct *mmp)
-+{
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		return 1;
-+
-+	return mmp->mmp_checksum == ext4_mmp_csum(sb, mmp);
-+}
-+
-+void ext4_mmp_csum_set(struct super_block *sb, struct mmp_struct *mmp)
-+{
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		return;
-+
-+	mmp->mmp_checksum = ext4_mmp_csum(sb, mmp);
-+}
-+
- /*
-  * Write the MMP block using WRITE_SYNC to try to get the block on-disk
-  * faster.
-  */
--static int write_mmp_block(struct buffer_head *bh)
-+static int write_mmp_block(struct super_block *sb, struct buffer_head *bh)
- {
-+	struct mmp_struct *mmp = (struct mmp_struct *)(bh->b_data);
-+
-+	ext4_mmp_csum_set(sb, mmp);
- 	mark_buffer_dirty(bh);
- 	lock_buffer(bh);
- 	bh->b_end_io = end_buffer_write_sync;
-@@ -59,7 +92,8 @@ static int read_mmp_block(struct super_block *sb, struct buffer_head **bh,
+diff --git a/fs/jbd2/Kconfig b/fs/jbd2/Kconfig
+index f32f346..69a48c2 100644
+--- a/fs/jbd2/Kconfig
++++ b/fs/jbd2/Kconfig
+@@ -1,6 +1,8 @@
+ config JBD2
+ 	tristate
+ 	select CRC32
++	select CRYPTO
++	select CRYPTO_CRC32C
+ 	help
+ 	  This is a generic journaling layer for block devices that support
+ 	  both 32-bit and 64-bit block numbers.  It is currently used by
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 300b46f..bb7f03f 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1284,6 +1284,17 @@ static int journal_get_superblock(journal_t *journal)
+ 		goto out;
  	}
  
- 	mmp = (struct mmp_struct *)((*bh)->b_data);
--	if (le32_to_cpu(mmp->mmp_magic) != EXT4_MMP_MAGIC)
-+	if (le32_to_cpu(mmp->mmp_magic) != EXT4_MMP_MAGIC ||
-+	    !ext4_mmp_csum_verify(sb, mmp))
- 		return -EINVAL;
++	/* Load the checksum driver */
++	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2)) {
++		journal->j_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
++		if (IS_ERR(journal->j_chksum_driver)) {
++			printk(KERN_ERR "JBD: Cannot load crc32c driver.\n");
++			err = PTR_ERR(journal->j_chksum_driver);
++			journal->j_chksum_driver = NULL;
++			goto out;
++		}
++	}
++
+ 	set_buffer_verified(bh);
  
  	return 0;
-@@ -120,7 +154,7 @@ static int kmmpd(void *data)
- 		mmp->mmp_time = cpu_to_le64(get_seconds());
- 		last_update_time = jiffies;
+@@ -1440,6 +1451,8 @@ int jbd2_journal_destroy(journal_t *journal)
+ 		iput(journal->j_inode);
+ 	if (journal->j_revoke)
+ 		jbd2_journal_destroy_revoke(journal);
++	if (journal->j_chksum_driver)
++		crypto_free_shash(journal->j_chksum_driver);
+ 	kfree(journal->j_wbuf);
+ 	kfree(journal);
  
--		retval = write_mmp_block(bh);
-+		retval = write_mmp_block(sb, bh);
- 		/*
- 		 * Don't spew too many error messages. Print one every
- 		 * (s_mmp_update_interval * 60) seconds.
-@@ -200,7 +234,7 @@ static int kmmpd(void *data)
- 	mmp->mmp_seq = cpu_to_le32(EXT4_MMP_SEQ_CLEAN);
- 	mmp->mmp_time = cpu_to_le64(get_seconds());
+@@ -1556,6 +1569,18 @@ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
+ 		sb->s_checksum_type = JBD2_CRC32C_CHKSUM;
+ 		sb->s_feature_compat &=
+ 			~cpu_to_be32(JBD2_FEATURE_COMPAT_CHECKSUM);
++
++		/* Load the checksum driver */
++		if (journal->j_chksum_driver == NULL) {
++			journal->j_chksum_driver = crypto_alloc_shash("crc32c",
++								      0, 0);
++			if (IS_ERR(journal->j_chksum_driver)) {
++				printk(KERN_ERR "JBD: Cannot load crc32c "
++				       "driver.\n");
++				journal->j_chksum_driver = NULL;
++				return 0;
++			}
++		}
+ 	}
  
--	retval = write_mmp_block(bh);
-+	retval = write_mmp_block(sb, bh);
+ 	/* If enabling v1 checksums, downgrade superblock */
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index ecd9b45..5b2abf9 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -31,6 +31,7 @@
+ #include <linux/mutex.h>
+ #include <linux/timer.h>
+ #include <linux/slab.h>
++#include <crypto/hash.h>
+ #endif
  
- failed:
- 	kfree(data);
-@@ -299,7 +333,7 @@ skip:
- 	seq = mmp_new_seq();
- 	mmp->mmp_seq = cpu_to_le32(seq);
+ #define journal_oom_retry 1
+@@ -965,6 +966,9 @@ struct journal_s
+ 	 * superblock pointer here
+ 	 */
+ 	void *j_private;
++
++	/* Reference to checksum algorithm driver via cryptoapi */
++	struct crypto_shash *j_chksum_driver;
+ };
  
--	retval = write_mmp_block(bh);
-+	retval = write_mmp_block(sb, bh);
- 	if (retval)
- 		goto failed;
+ /*
+@@ -1283,6 +1287,25 @@ static inline int jbd_space_needed(journal_t *journal)
  
-
+ extern int jbd_blocks_per_page(struct inode *inode);
+ 
++static inline u32 jbd2_chksum(journal_t *journal, u32 crc,
++			      const void *address, unsigned int length)
++{
++	struct {
++		struct shash_desc shash;
++		char ctx[crypto_shash_descsize(journal->j_chksum_driver)];
++	} desc;
++	int err;
++
++	desc.shash.tfm = journal->j_chksum_driver;
++	desc.shash.flags = 0;
++	*(u32 *)desc.ctx = crc;
++
++	err = crypto_shash_update(&desc.shash, address, length);
++	BUG_ON(err);
++
++	return *(u32 *)desc.ctx;
++}
++
+ #ifdef __KERNEL__
+ 
+ #define buffer_trace_init(bh)	do {} while (0)
