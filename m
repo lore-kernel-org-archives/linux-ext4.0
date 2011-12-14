@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 18/23] jbd2: Update structure definitions and flags to support
-	extended checksumming
-Date: Tue, 13 Dec 2011 16:48:17 -0800
-Message-ID: <20111214004817.28243.43348.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 14/23] ext4: Add checksums to the MMP block
+Date: Tue, 13 Dec 2011 16:47:51 -0800
+Message-ID: <20111214004751.28243.14984.stgit@elm3c44.beaverton.ibm.com>
 References: <20111214004613.28243.54122.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -20,135 +19,128 @@ Cc: Sunil Mushran <sunil.mushran@oracle.com>,
 To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e35.co.us.ibm.com ([32.97.110.153]:37026 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756408Ab1LNAs5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Dec 2011 19:48:57 -0500
+Received: from /spool/local
+	by e35.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Tue, 13 Dec 2011 17:48:55 -0700
 In-Reply-To: <20111214004613.28243.54122.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Add structure definitions, flags, and constants to extend checksum protection
-to all journal blocks.
+Compute and verify a checksum for the MMP block.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/jbd2/journal.c    |   50 ++++++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/jbd2.h |    3 +++
- 2 files changed, 53 insertions(+), 0 deletions(-)
+ fs/ext4/ext4.h |    3 +++
+ fs/ext4/mmp.c  |   44 +++++++++++++++++++++++++++++++++++++++-----
+ 2 files changed, 42 insertions(+), 5 deletions(-)
 
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index bb7f03f..bc80533 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -109,6 +109,34 @@ int jbd2_verify_csum_type(journal_t *j, journal_superblock_t *sb)
- 	return sb->s_checksum_type == JBD2_CRC32C_CHKSUM;
- }
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index ae71af3..f6bf9d0 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2378,6 +2378,9 @@ extern int ext4_bio_write_page(struct ext4_io_submit *io,
  
-+static __u32 jbd2_superblock_csum(journal_t *j, journal_superblock_t *sb)
+ /* mmp.c */
+ extern int ext4_multi_mount_protect(struct super_block *, ext4_fsblk_t);
++extern void ext4_mmp_csum_set(struct super_block *sb, struct mmp_struct *mmp);
++extern int ext4_mmp_csum_verify(struct super_block *sb,
++				struct mmp_struct *mmp);
+ 
+ /* BH_Uninit flag: blocks are allocated but uninitialized on disk */
+ enum ext4_state_bits {
+diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
+index 7ea4ba4..142e9d7 100644
+--- a/fs/ext4/mmp.c
++++ b/fs/ext4/mmp.c
+@@ -6,12 +6,45 @@
+ 
+ #include "ext4.h"
+ 
++/* Checksumming functions */
++static __u32 ext4_mmp_csum(struct super_block *sb, struct mmp_struct *mmp)
 +{
-+	__u32 csum, old_csum;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	int offset = offsetof(struct mmp_struct, mmp_checksum);
++	__u32 csum;
 +
-+	old_csum = sb->s_checksum;
-+	sb->s_checksum = 0;
-+	csum = jbd2_chksum(j, ~0, (char *)sb, sizeof(journal_superblock_t));
-+	sb->s_checksum = old_csum;
++	csum = ext4_chksum(sbi, sbi->s_csum_seed, (char *)mmp, offset);
 +
-+	return cpu_to_be32(csum);
++	return cpu_to_le32(csum);
 +}
 +
-+int jbd2_superblock_csum_verify(journal_t *j, journal_superblock_t *sb)
++int ext4_mmp_csum_verify(struct super_block *sb, struct mmp_struct *mmp)
 +{
-+	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
++				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
 +		return 1;
 +
-+	return sb->s_checksum == jbd2_superblock_csum(j, sb);
++	return mmp->mmp_checksum == ext4_mmp_csum(sb, mmp);
 +}
 +
-+void jbd2_superblock_csum_set(journal_t *j, journal_superblock_t *sb)
++void ext4_mmp_csum_set(struct super_block *sb, struct mmp_struct *mmp)
 +{
-+	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
++				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
 +		return;
 +
-+	sb->s_checksum = jbd2_superblock_csum(j, sb);
++	mmp->mmp_checksum = ext4_mmp_csum(sb, mmp);
 +}
 +
  /*
-  * Helper function used to manage commit timeouts
+  * Write the MMP block using WRITE_SYNC to try to get the block on-disk
+  * faster.
   */
-@@ -1178,6 +1206,7 @@ void jbd2_journal_update_superblock(journal_t *journal, int wait)
- 	sb->s_sequence = cpu_to_be32(journal->j_tail_sequence);
- 	sb->s_start    = cpu_to_be32(journal->j_tail);
- 	sb->s_errno    = cpu_to_be32(journal->j_errno);
-+	jbd2_superblock_csum_set(journal, sb);
- 	read_unlock(&journal->j_state_lock);
- 
- 	BUFFER_TRACE(bh, "marking dirty");
-@@ -1295,6 +1324,17 @@ static int journal_get_superblock(journal_t *journal)
- 		}
+-static int write_mmp_block(struct buffer_head *bh)
++static int write_mmp_block(struct super_block *sb, struct buffer_head *bh)
+ {
++	struct mmp_struct *mmp = (struct mmp_struct *)(bh->b_data);
++
++	ext4_mmp_csum_set(sb, mmp);
+ 	mark_buffer_dirty(bh);
+ 	lock_buffer(bh);
+ 	bh->b_end_io = end_buffer_write_sync;
+@@ -59,7 +92,8 @@ static int read_mmp_block(struct super_block *sb, struct buffer_head **bh,
  	}
  
-+	/* Check superblock checksum */
-+	if (!jbd2_superblock_csum_verify(journal, sb)) {
-+		printk(KERN_ERR "JBD: journal checksum error\n");
-+		goto out;
-+	}
-+
-+	/* Precompute checksum seed for all metadata */
-+	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2))
-+		journal->j_csum_seed = jbd2_chksum(journal, ~0, sb->s_uuid,
-+						   sizeof(sb->s_uuid));
-+
- 	set_buffer_verified(bh);
+ 	mmp = (struct mmp_struct *)((*bh)->b_data);
+-	if (le32_to_cpu(mmp->mmp_magic) != EXT4_MMP_MAGIC)
++	if (le32_to_cpu(mmp->mmp_magic) != EXT4_MMP_MAGIC ||
++	    !ext4_mmp_csum_verify(sb, mmp))
+ 		return -EINVAL;
  
  	return 0;
-@@ -1581,6 +1621,13 @@ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
- 				return 0;
- 			}
- 		}
-+
-+		/* Precompute checksum seed for all metadata */
-+		if (JBD2_HAS_INCOMPAT_FEATURE(journal,
-+					      JBD2_FEATURE_INCOMPAT_CSUM_V2))
-+			journal->j_csum_seed = jbd2_chksum(journal, ~0,
-+							   sb->s_uuid,
-+							   sizeof(sb->s_uuid));
- 	}
+@@ -120,7 +154,7 @@ static int kmmpd(void *data)
+ 		mmp->mmp_time = cpu_to_le64(get_seconds());
+ 		last_update_time = jiffies;
  
- 	/* If enabling v1 checksums, downgrade superblock */
-@@ -1591,6 +1638,7 @@ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
- 	sb->s_feature_compat    |= cpu_to_be32(compat);
- 	sb->s_feature_ro_compat |= cpu_to_be32(ro);
- 	sb->s_feature_incompat  |= cpu_to_be32(incompat);
-+	jbd2_journal_update_superblock(journal, 0);
+-		retval = write_mmp_block(bh);
++		retval = write_mmp_block(sb, bh);
+ 		/*
+ 		 * Don't spew too many error messages. Print one every
+ 		 * (s_mmp_update_interval * 60) seconds.
+@@ -200,7 +234,7 @@ static int kmmpd(void *data)
+ 	mmp->mmp_seq = cpu_to_le32(EXT4_MMP_SEQ_CLEAN);
+ 	mmp->mmp_time = cpu_to_le64(get_seconds());
  
- 	return 1;
- #undef COMPAT_FEATURE_ON
-@@ -1621,6 +1669,7 @@ void jbd2_journal_clear_features(journal_t *journal, unsigned long compat,
- 	sb->s_feature_compat    &= ~cpu_to_be32(compat);
- 	sb->s_feature_ro_compat &= ~cpu_to_be32(ro);
- 	sb->s_feature_incompat  &= ~cpu_to_be32(incompat);
-+	jbd2_journal_update_superblock(journal, 0);
- }
- EXPORT_SYMBOL(jbd2_journal_clear_features);
+-	retval = write_mmp_block(bh);
++	retval = write_mmp_block(sb, bh);
  
-@@ -1669,6 +1718,7 @@ static int journal_convert_superblock_v1(journal_t *journal,
+ failed:
+ 	kfree(data);
+@@ -299,7 +333,7 @@ skip:
+ 	seq = mmp_new_seq();
+ 	mmp->mmp_seq = cpu_to_le32(seq);
  
- 	sb->s_nr_users = cpu_to_be32(1);
- 	sb->s_header.h_blocktype = cpu_to_be32(JBD2_SUPERBLOCK_V2);
-+	jbd2_superblock_csum_set(journal, sb);
- 	journal->j_format_version = 2;
+-	retval = write_mmp_block(bh);
++	retval = write_mmp_block(sb, bh);
+ 	if (retval)
+ 		goto failed;
  
- 	bh = journal->j_sb_buffer;
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 5b2abf9..51d4a0b 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -969,6 +969,9 @@ struct journal_s
- 
- 	/* Reference to checksum algorithm driver via cryptoapi */
- 	struct crypto_shash *j_chksum_driver;
-+
-+	/* Precomputed journal UUID checksum for seeding other checksums */
-+	__u32 j_csum_seed;
- };
- 
- /*
+
