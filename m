@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 36/51] libext2fs: Block group checksum should use
-	metadata_csum algorithm (if feature flag set)
-Date: Tue, 13 Dec 2011 17:17:17 -0800
-Message-ID: <20111214011717.20947.73708.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 38/51] mke2fs: Warn if not enabling all the features that
+	metadata_csum wants
+Date: Tue, 13 Dec 2011 17:17:31 -0800
+Message-ID: <20111214011731.20947.27437.stgit@elm3c44.beaverton.ibm.com>
 References: <20111214011316.20947.13706.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,124 +17,85 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:53037 "EHLO e1.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756373Ab1LNBRY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 13 Dec 2011 20:17:24 -0500
+Received: from e37.co.us.ibm.com ([32.97.110.158]:45134 "EHLO
+	e37.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932084Ab1LNBRh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Dec 2011 20:17:37 -0500
 Received: from /spool/local
-	by e1.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e37.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 13 Dec 2011 20:17:23 -0500
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pBE1HKAS310036
-	for <linux-ext4@vger.kernel.org>; Tue, 13 Dec 2011 20:17:20 -0500
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pBE1HJQW019928
-	for <linux-ext4@vger.kernel.org>; Tue, 13 Dec 2011 20:17:20 -0500
+	Tue, 13 Dec 2011 18:17:36 -0700
+Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
+	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pBE1HY4X066844
+	for <linux-ext4@vger.kernel.org>; Tue, 13 Dec 2011 18:17:34 -0700
+Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av04.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pBE1HWDc030778
+	for <linux-ext4@vger.kernel.org>; Tue, 13 Dec 2011 18:17:34 -0700
 In-Reply-To: <20111214011316.20947.13706.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Change the block group algorithm to use the same algorithm as the rest of the
-metadata_csum, if a certain incompat feature flag is set.
+There are some features (gdt_csum, 64bit, bg_use_meta_csum) that help
+metadata_csum to work optimally.  Print a warning if the user tries to create a
+filesystem without those features.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- lib/e2p/feature.c |    2 ++
- lib/ext2fs/csum.c |   62 ++++++++++++++++++++++++++++++++++++-----------------
- 2 files changed, 44 insertions(+), 20 deletions(-)
+ misc/mke2fs.c |   35 ++++++++++++++++++++++++++++++++++-
+ 1 files changed, 34 insertions(+), 1 deletions(-)
 
 
-diff --git a/lib/e2p/feature.c b/lib/e2p/feature.c
-index 63486f3..dc52ba7 100644
---- a/lib/e2p/feature.c
-+++ b/lib/e2p/feature.c
-@@ -85,6 +85,8 @@ static struct feature feature_list[] = {
- 			"mmp" },
- 	{       E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_FLEX_BG,
- 			"flex_bg"},
-+	{	E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM,
-+			"bg_use_meta_csum"},
- 	{	0, 0, 0 },
- };
- 
-diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
-index 00a1d6a..f938c83 100644
---- a/lib/ext2fs/csum.c
-+++ b/lib/ext2fs/csum.c
-@@ -721,32 +721,54 @@ STATIC __u16 ext2fs_group_desc_csum(ext2_filsys fs, dgrp_t group)
- 
- 	desc = ext2fs_group_desc(fs, fs->group_desc, group);
- 
--	if (fs->super->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_GDT_CSUM) {
--		size_t offset = offsetof(struct ext2_group_desc, bg_checksum);
--
- #ifdef WORDS_BIGENDIAN
--		struct ext4_group_desc swabdesc;
-+	struct ext4_group_desc swabdesc;
- 
--		/* Have to swab back to little-endian to do the checksum */
--		memcpy(&swabdesc, desc, size);
--		ext2fs_swap_group_desc2(fs,
--					(struct ext2_group_desc *) &swabdesc);
--		desc = (struct ext2_group_desc *) &swabdesc;
-+	/* Have to swab back to little-endian to do the checksum */
-+	memcpy(&swabdesc, desc, size);
-+	ext2fs_swap_group_desc2(fs,
-+				(struct ext2_group_desc *) &swabdesc);
-+	desc = (struct ext2_group_desc *) &swabdesc;
- 
--		group = ext2fs_swab32(group);
-+	group = ext2fs_swab32(group);
- #endif
--		crc = ext2fs_crc16(~0, fs->super->s_uuid,
--				   sizeof(fs->super->s_uuid));
--		crc = ext2fs_crc16(crc, &group, sizeof(group));
--		crc = ext2fs_crc16(crc, desc, offset);
--		offset += sizeof(desc->bg_checksum); /* skip checksum */
--		/* for checksum of struct ext4_group_desc do the rest...*/
--		if (offset < size) {
--			crc = ext2fs_crc16(crc, (char *)desc + offset,
--					   size - offset);
--		}
-+
-+	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) &&
-+	    EXT2_HAS_INCOMPAT_FEATURE(fs->super,
-+			EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM)) {
-+		/* new metadata csum code */
-+		__u16 old_crc;
-+		__u32 crc32;
-+
-+		old_crc = desc->bg_checksum;
-+		desc->bg_checksum = 0;
-+		crc32 = ext2fs_crc32c_le(~0, fs->super->s_uuid,
-+					 sizeof(fs->super->s_uuid));
-+		crc32 = ext2fs_crc32c_le(crc32, (unsigned char *)&group,
-+					 sizeof(group));
-+		crc32 = ext2fs_crc32c_le(crc32, (unsigned char *)desc,
-+					 size);
-+		desc->bg_checksum = old_crc;
-+
-+		crc = crc32 & 0xFFFF;
-+		goto out;
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index ba7625d..c07c468 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -884,7 +884,8 @@ static __u32 ok_features[3] = {
+ 		EXT2_FEATURE_INCOMPAT_META_BG|
+ 		EXT4_FEATURE_INCOMPAT_FLEX_BG|
+ 		EXT4_FEATURE_INCOMPAT_MMP |
+-		EXT4_FEATURE_INCOMPAT_64BIT,
++		EXT4_FEATURE_INCOMPAT_64BIT |
++		EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM,
+ 	/* R/O compat */
+ 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE|
+ 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
+@@ -2298,6 +2299,38 @@ int main (int argc, char *argv[])
+ 		exit(1);
  	}
  
-+	/* old crc16 code */
-+	size_t offset = offsetof(struct ext2_group_desc, bg_checksum);
-+	crc = ext2fs_crc16(~0, fs->super->s_uuid,
-+			   sizeof(fs->super->s_uuid));
-+	crc = ext2fs_crc16(crc, &group, sizeof(group));
-+	crc = ext2fs_crc16(crc, desc, offset);
-+	offset += sizeof(desc->bg_checksum); /* skip checksum */
-+	/* for checksum of struct ext4_group_desc do the rest...*/
-+	if (offset < size) {
-+		crc = ext2fs_crc16(crc, (char *)desc + offset,
-+				   size - offset);
++	/* Check the user's mkfs options for metadata checksumming */
++	if (!quiet &&
++	    EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
++		if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++				EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
++			printf(_("Group descriptor checksums "
++				 "are not enabled.  This reduces the "
++				 "coverage of metadata checksumming.  "
++				 "Pass -O uninit_bg to rectify.\n"));
++		if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++				EXT4_FEATURE_RO_COMPAT_GDT_CSUM) &&
++		    !EXT2_HAS_INCOMPAT_FEATURE(fs->super,
++				EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM))
++			printf(_("Group descriptor checksums will not use "
++				 "the faster metadata_checksum algorithm.  "
++				 "Pass -O bg_use_meta_csum to rectify.\n"));
++		if (!EXT2_HAS_INCOMPAT_FEATURE(fs->super,
++				EXT3_FEATURE_INCOMPAT_EXTENTS))
++			printf(_("Extents are not enabled.  The file extent "
++				 "tree can be checksummed, whereas block maps "
++				 "cannot.  Not enabling extents reduces the "
++				 "coverage of metadata checksumming.  "
++				 "Pass -O extents to rectify.\n"));
++		if (!EXT2_HAS_INCOMPAT_FEATURE(fs->super,
++				EXT4_FEATURE_INCOMPAT_64BIT))
++			printf(_("64-bit filesystem support is not "
++				 "enabled.  The larger fields afforded by "
++				 "this feature enable full-strength "
++				 "checksumming.  Pass -O 64bit to rectify.\n"));
 +	}
 +
-+out:
- 	return crc;
- }
- 
+ 	/* Can't undo discard ... */
+ 	if (!noaction && discard && (io_ptr != undo_io_manager)) {
+ 		retval = mke2fs_discard_device(fs);
 
