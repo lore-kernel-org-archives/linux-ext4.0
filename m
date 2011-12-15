@@ -1,104 +1,43 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: ext4 data=writeback performs worse than data=ordered now
-Date: Thu, 15 Dec 2011 10:10:44 -0800
-Message-ID: <20111215181044.GD8233@tux1.beaverton.ibm.com>
-References: <20111214133400.GA18565@localhost> <20111214143014.GB18080@thunk.org> <1323910977.22361.423.camel@sli10-conroe> <20111215012039.GC8233@tux1.beaverton.ibm.com> <1323913345.22361.442.camel@sli10-conroe>
-Reply-To: djwong@us.ibm.com
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [GIT PULL] ext4 bugfixes for 3.2-rc5
+Date: Thu, 15 Dec 2011 14:08:46 -0500
+Message-ID: <20111215190846.GA2709@thunk.org>
+References: <E1RauNd-0008W1-02@tytso-glaptop.cam.corp.google.com>
+ <CA+55aFw6n=WaDWRn7NqtBei1x0-w1PkH5x6r3iQSSPZvxYvDhQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Ted Ts'o" <tytso@mit.edu>,
-	"Wu, Fengguang" <fengguang.wu@intel.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>, LKML <linux-kernel@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: Shaohua Li <shaohua.li@intel.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e38.co.us.ibm.com ([32.97.110.159]:60823 "EHLO
-	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751503Ab1LOSLC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Dec 2011 13:11:02 -0500
-Received: from /spool/local
-	by e38.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Thu, 15 Dec 2011 11:11:02 -0700
+Received: from li9-11.members.linode.com ([67.18.176.11]:35635 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759360Ab1LOTIt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 Dec 2011 14:08:49 -0500
 Content-Disposition: inline
-In-Reply-To: <1323913345.22361.442.camel@sli10-conroe>
+In-Reply-To: <CA+55aFw6n=WaDWRn7NqtBei1x0-w1PkH5x6r3iQSSPZvxYvDhQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 15, 2011 at 09:42:25AM +0800, Shaohua Li wrote:
-> On Thu, 2011-12-15 at 09:20 +0800, Darrick J. Wong wrote:
-> > On Thu, Dec 15, 2011 at 09:02:57AM +0800, Shaohua Li wrote:
-> > > On Wed, 2011-12-14 at 22:30 +0800, Ted Ts'o wrote:
-> > > > On Wed, Dec 14, 2011 at 09:34:00PM +0800, Wu Fengguang wrote:
-> > > > > Hi,
-> > > > > 
-> > > > > Shaohua recently found that ext4 writeback mode could perform worse
-> > > > > than ordered mode in some cases. It may not be a big problem, however
-> > > > > we'd like to share some information on our findings.
-> > > > > 
-> > > > > I tested both 3.2 and 3.1 kernels on normal SATA disks and USB key.
-> > > > > The interesting thing is, data=writeback used to run a bit faster
-> > > > > than data=ordered, however situation get inverted presumably by the
-> > > > > IO-less dirty throttling.
-> > > > 
-> > > > Interesting.  What sort of workloads are you using to do these
-> > > > measurements?  How many writer threads; I assume you are doing
-> > > > sequential writes which are extending one or more files, etc?
-> > > > 
-> > > > I suspect it's due to the throttling meaning that each thread is
-> > > > getting to send less data to the disk, and so there is more seeking
-> > > > going on with data=writeback, where as with data=ordered, at each
-> > > > journal commit we are forcing all of the dirty pages out to disk, one
-> > > > inode at a time, and this is resulting in a more efficient writeback
-> > > > compared to when the writeback code is getting to make its own choices
-> > > > about how much each inode gets to write out at at time.
-> > > > 
-> > > > It would be interesting to see what would happen if in
-> > > > ext4_da_writepages(), we completely ignore how many pages are
-> > > > requested to be written back by the writeback code, and just simply
-> > > > write back all of the dirty pages, and see if that brings the
-> > > > performance back.
-> > > I saw the issue in a machine with a LSI 1068e HBA card and 12 disks.
-> > > there is about 20% performance regression with data=writeback comparing
-> > > 3.1 and 3.2-rc. with data=order, there is small regression too.
-> > > Reverting writeback changes recover the regression for both cases.
-> > > 
-> > > My investigation shows the block size writing to disk isn't changed with
-> > > data=writeback. The block size is still very big, 256k IIRC, which is
-> > > the max block size in the disks. And I just have one thread for each
-> > > disk, so seek definitely isn't a problem in my workload.
-> > > 
-> > > I found sometimes one disk hasn't any request inflight, but we can't
-> > > send request to the disk, because the scsi host's resource (the queue
-> > > depth) is used out, looks we send too many requests from other disks and
-> > > leave some disks starved. The resource imbalance in scsi isn't a new
-> > 
-> > I wonder, does the patch in:
-> > http://lkml.indiana.edu/hypermail/linux/kernel/1105.3/02339.html
-> > help with this starvation problem?  I noticed a similar problem and sent a
-> > patch, but LSI folks never responded.  Maybe two complaining users can change
-> > that.  The biggest MaxQ I've seen on LSI SAS is 511, and the driver clamps the
-> > value it passes to the SCSI layer to whatever the controller reports as its
-> > MaxQ (in /proc/mpt/summary).
-> this should recover the regression too. But I'm afraid it's just a
-> workaround and will hide some issues. what if I have 120 disks instead
-> of 12 disks? I observed one disk can burst 20 requests while the total
-> the scsi host queue depth is 127, leaving other disks starved. I'm
-> hoping to understand why there is such imbalance.
-
-<shrug> I didn't say it would /fix/ the imbalanced-starvation problem, but we
-might as well take full advantage of the hardware.  Even if all it does is
-enable the user to plug in more disks before things get whacky, I was hoping
-that someone else could at least give it a spin and say "Yes, this does what
-it's alleged to do, and without breaking things". :)
-
-afaict SCSI doesn't try to balance requests heading towards the HBA; it's all
-FCFS.
-
---D
+On Wed, Dec 14, 2011 at 06:50:07PM -0800, Linus Torvalds wrote:
+> On Wed, Dec 14, 2011 at 11:20 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> >
+> > There is a signed tag tytso-for-linus-20111214 covering these patches,
+> > which fix a potential hang, crash (on big endian), and data corruption
+> > bugs which show up when using fsx and/or Hugh's kernel compile/mm
+> > torture test.
 > 
-> Thanks,
-> Shaohua
-> 
+> Ok, since I build my own git versions, I have one that can pull signed
+> tags and automatically verifies them and saves the signed tag
+> information as part of the commit object.
 
+Cool!  Does it save enough that GPG signature information can be
+verified later?  I'm a little fuzzy on what is covered by the
+signature which gets verified when you run the command "git verify-tag
+tytso-for-linus-20111214".  Better yet, does the new version of git
+have a command that will automatically verify the digital signature
+found in a merge commit?
+
+And this isn't in 1.7.8 yet, right?  I'd have to build version of git
+based on the next branch to play with this new signatury goodness?
+
+      	     	  	    	      - Ted
