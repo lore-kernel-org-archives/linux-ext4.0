@@ -1,79 +1,58 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [GIT PULL] ext4 bugfixes for 3.2-rc5
-Date: Wed, 14 Dec 2011 18:50:07 -0800
-Message-ID: <CA+55aFw6n=WaDWRn7NqtBei1x0-w1PkH5x6r3iQSSPZvxYvDhQ@mail.gmail.com>
-References: <E1RauNd-0008W1-02@tytso-glaptop.cam.corp.google.com>
+From: Wu Fengguang <fengguang.wu@intel.com>
+Subject: Re: ext4 data=writeback performs worse than data=ordered now
+Date: Thu, 15 Dec 2011 13:02:34 +0800
+Message-ID: <20111215050233.GA8959@localhost>
+References: <20111214133400.GA18565@localhost>
+ <20111214143014.GB18080@thunk.org>
+ <1323910977.22361.423.camel@sli10-conroe>
+ <20111215010010.GA14805@localhost>
+ <20111215122759.7ce0b7b5@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:61278 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758613Ab1LOCub (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Dec 2011 21:50:31 -0500
-In-Reply-To: <E1RauNd-0008W1-02@tytso-glaptop.cam.corp.google.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Li, Shaohua" <shaohua.li@intel.com>, Ted Ts'o <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>, LKML <linux-kernel@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-raid@vger.kernel.org" <linux-raid@vger.kernel.org>,
+	Jens Axboe <axboe@kernel.dk>
+To: NeilBrown <neilb@suse.de>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20111215122759.7ce0b7b5@notabene.brown>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Dec 14, 2011 at 11:20 AM, Theodore Ts'o <tytso@mit.edu> wrote:
->
-> There is a signed tag tytso-for-linus-20111214 covering these patches,
-> which fix a potential hang, crash (on big endian), and data corruption
-> bugs which show up when using fsx and/or Hugh's kernel compile/mm
-> torture test.
+On Thu, Dec 15, 2011 at 09:27:59AM +0800, NeilBrown wrote:
+> On Thu, 15 Dec 2011 09:00:10 +0800 Wu Fengguang <fengguang.wu@intel.com>
+> wrote:
+> 
+> > > I found sometimes one disk hasn't any request inflight, but we can't
+> > > send request to the disk, because the scsi host's resource (the queue
+> > > depth) is used out, looks we send too many requests from other disks and
+> > > leave some disks starved. The resource imbalance in scsi isn't a new
+> > > problem, even 3.1 has such issue, so I'd think writeback introduces new
+> > > imbalance between the 12 disks. In fact, if I limit disk's queue depth
+> > > to 10, in this way the 12 disks will not impact each other in scsi
+> > > layer, the performance regression fully disappears for both writeback
+> > > and order mode.
+> > 
+> > I observe similar issue in MD. The default
+> > 
+> >         q->nr_requests = BLKDEV_MAX_RQ;
+> > 
+> > is too small for large arrays, and I end up doing
+> > 
+> >         echo 1280 > /sys/block/md0/queue/nr_requests
+> > 
+> > in my tests.
+> 
+> And you find this makes a difference?
+> 
+> That is very surprising because md devices don't use requests (and really use
+> the 'queue' at all) and definitely don't make use of nr_requests.
 
-Ok, since I build my own git versions, I have one that can pull signed
-tags and automatically verifies them and saves the signed tag
-information as part of the commit object.
+Yes it is: /sys/block/md0/queue/nr_requests cannot be modified at all...
 
-Which is all fine, but your tag-names are just ugly. I could edit the
-end result (another advantage of the new git version - it starts the
-editor automatically), but I decided to not do so, and instead use
-this as a "teaching moment" for everybody.
+Sorry for the noise!
 
-Everybody: you can now create a signed tag, and just point me at it.
-You don't even have to have a separate branch for me to pull any more,
-just the signed tag is fine.
-
-So it would actually be nicer if you used temporary tag names the way
-you use temporary branch names when  you ask me to pull. The tag
-*content* will be saved from now on (unless I screw up while traveling
-or something and pull with a machine that has an older git version),
-so there's very little advantage in then saving the tags separately by
-having ugly tag-names with long lifetimes.
-
-I pushed out, so you can see this in action in the current git tree by doing
-
- [torvalds@i5 linux]$ git show --abbrev-commit 2240a7bb479c
-
-to see the normal commit message. And then to see the actual
-saved-away signed tag information, do
-
-  [torvalds@i5 linux]$ git cat-file commit 2240a7bb479c
-
-which should all work with old versions of git too - it's just the
-merger that needs a new version of git. It's easy to parse: it's the
-standard "git tag" format, except it is indented by a space to show
-that it's part of the header (and then the first empty line is what
-ends the commit object headers). So you can basically do something
-like
-
-   git cat-file commit 2240a7bb479c |
-        awk '/^mergetag /,/^$/ { print }' |
-        sed 's/^mergetag//' |
-        sed 's/^ //'
-
-to re-create the tag object, and then you can verify it (the part
-*before* the "-----BEGIN PGP SIGNATURE-----" line should match the
-signature inside the PGP signature - trivial format).
-
-It got verified when I pulled it (the gpg verification output shows up
-as part of the comments in the commit message editing thing), but
-using the above you can now verify it after-the-fact too, without
-having access to your original tag object - since the data is embedded
-in the git merge commit.
-
-Hmm?
-
-                              Linus
+Fengguang
