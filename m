@@ -1,7 +1,7 @@
 From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V3 15/21] ext4: make ext4_delete_entry generic.
-Date: Sun, 18 Dec 2011 22:24:32 +0800
-Message-ID: <1324218278-2460-15-git-send-email-tm@tao.ma>
+Subject: [PATCH V3 19/21] ext4: Let fiemap work with inline data.
+Date: Sun, 18 Dec 2011 22:24:36 +0800
+Message-ID: <1324218278-2460-19-git-send-email-tm@tao.ma>
 References: <4EEDF6B1.7050206@tao.ma>
  <1324218278-2460-1-git-send-email-tm@tao.ma>
 Cc: adilger@dilger.ca, tytso@mit.edu, linux-kernel@vger.kernel.org,
@@ -14,131 +14,113 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Tao Ma <boyu.mt@taobao.com>
 
-Currently ext4_delete_entry is used only for dir entry
-removing from a dir block. So let us create a new function
-ext4_generic_delete_entry and this function takes a entry_buf
-and a buf_size so that it can be used for inline data.
+fiemap is used to find the disk layout of a file, as for inline data,
+let us just pretend like a file with just one extent.
 
 Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/ext4.h  |    6 +++++
- fs/ext4/namei.c |   62 ++++++++++++++++++++++++++++++++++++------------------
- 2 files changed, 47 insertions(+), 21 deletions(-)
+ fs/ext4/extents.c |    9 +++++++++
+ fs/ext4/inline.c  |   35 +++++++++++++++++++++++++++++++++++
+ fs/ext4/xattr.h   |   10 ++++++++++
+ 3 files changed, 54 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 16efcad..48185ba 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1974,6 +1974,12 @@ extern int search_dir(struct buffer_head *bh,
- 		      const struct qstr *d_name,
- 		      unsigned int offset,
- 		      struct ext4_dir_entry_2 **res_dir);
-+extern int ext4_generic_delete_entry(handle_t *handle,
-+				     struct inode *dir,
-+				     struct ext4_dir_entry_2 *de_del,
-+				     struct buffer_head *bh,
-+				     void *entry_buf,
-+				     int buf_size);
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index a0063b7..45e1c12 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4923,6 +4923,15 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 	ext4_lblk_t start_blk;
+ 	int error = 0;
  
- /* resize.c */
- extern int ext4_group_add(struct super_block *sb,
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 92f7b67..f706b0f 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1693,32 +1693,28 @@ cleanup:
++	if (ext4_has_inline_data(inode)) {
++		int has_inline = 1;
++
++		error = ext4_inline_data_fiemap(inode, fieinfo, &has_inline);
++
++		if (has_inline)
++			return error;
++	}
++
+ 	/* fallback to generic here if not in extents fmt */
+ 	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
+ 		return generic_block_fiemap(inode, fieinfo, start, len,
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 3159f32..4203aa4 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -15,6 +15,7 @@
+ #include "ext4.h"
+ #include "xattr.h"
+ #include "truncate.h"
++#include <linux/fiemap.h>
+ 
+ #define EXT4_XATTR_SYSTEM_DATA_NAME	"data"
+ #define EXT4_MIN_INLINE_DATA_SIZE	((sizeof(__le32) * EXT4_N_BLOCKS))
+@@ -1519,3 +1520,37 @@ int ext4_destroy_inline_data(handle_t *handle, struct inode *inode)
+ 
+ 	return ret;
  }
- 
- /*
-- * ext4_delete_entry deletes a directory entry by merging it with the
-- * previous entry
-+ * ext4_generic_delete_entry deletes a directory entry by merging it
-+ * with the previous entry
-  */
--static int ext4_delete_entry(handle_t *handle,
--			     struct inode *dir,
--			     struct ext4_dir_entry_2 *de_del,
--			     struct buffer_head *bh)
-+int ext4_generic_delete_entry(handle_t *handle,
-+			      struct inode *dir,
-+			      struct ext4_dir_entry_2 *de_del,
-+			      struct buffer_head *bh,
-+			      void *entry_buf,
-+			      int buf_size)
- {
- 	struct ext4_dir_entry_2 *de, *pde;
- 	unsigned int blocksize = dir->i_sb->s_blocksize;
--	int i, err;
-+	int i;
- 
- 	i = 0;
- 	pde = NULL;
--	de = (struct ext4_dir_entry_2 *) bh->b_data;
--	while (i < bh->b_size) {
-+	de = (struct ext4_dir_entry_2 *)entry_buf;
-+	while (i < buf_size) {
- 		if (ext4_check_dir_entry(dir, NULL, de, bh,
- 					 bh->b_data, bh->b_size, i))
- 			return -EIO;
- 		if (de == de_del)  {
--			BUFFER_TRACE(bh, "get_write_access");
--			err = ext4_journal_get_write_access(handle, bh);
--			if (unlikely(err)) {
--				ext4_std_error(dir->i_sb, err);
--				return err;
--			}
- 			if (pde)
- 				pde->rec_len = ext4_rec_len_to_disk(
- 					ext4_rec_len_from_disk(pde->rec_len,
-@@ -1729,12 +1725,6 @@ static int ext4_delete_entry(handle_t *handle,
- 			else
- 				de->inode = 0;
- 			dir->i_version++;
--			BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
--			err = ext4_handle_dirty_metadata(handle, dir, bh);
--			if (unlikely(err)) {
--				ext4_std_error(dir->i_sb, err);
--				return err;
--			}
- 			return 0;
- 		}
- 		i += ext4_rec_len_from_disk(de->rec_len, blocksize);
-@@ -1744,6 +1734,36 @@ static int ext4_delete_entry(handle_t *handle,
- 	return -ENOENT;
- }
- 
-+static int ext4_delete_entry(handle_t *handle,
-+			     struct inode *dir,
-+			     struct ext4_dir_entry_2 *de_del,
-+			     struct buffer_head *bh)
++
++int ext4_inline_data_fiemap(struct inode *inode,
++			    struct fiemap_extent_info *fieinfo,
++			    int *has_inline)
 +{
-+	int err;
++	__u64 physical = 0;
++	__u64 length;
++	__u32 flags = FIEMAP_EXTENT_DATA_INLINE | FIEMAP_EXTENT_LAST;
++	int error = 0;
++	struct ext4_iloc iloc;
 +
-+	BUFFER_TRACE(bh, "get_write_access");
-+	err = ext4_journal_get_write_access(handle, bh);
-+	if (unlikely(err))
++	down_read(&EXT4_I(inode)->xattr_sem);
++	if (!ext4_has_inline_data(inode)) {
++		*has_inline = 0;
++		goto out;
++	}
++
++	error = ext4_get_inode_loc(inode, &iloc);
++	if (error)
 +		goto out;
 +
-+	err = ext4_generic_delete_entry(handle, dir, de_del,
-+					bh, bh->b_data,
-+					dir->i_sb->s_blocksize);
-+	if (err)
-+		goto out;
++	physical = iloc.bh->b_blocknr << inode->i_sb->s_blocksize_bits;
++	physical += (char *)ext4_raw_inode(&iloc) - iloc.bh->b_data;
++	physical += offsetof(struct ext4_inode, i_block);
++	length = i_size_read(inode);
 +
-+	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
-+	err = ext4_handle_dirty_metadata(handle, dir, bh);
-+	if (unlikely(err))
-+		goto out;
-+
-+	return 0;
++	if (physical)
++		error = fiemap_fill_next_extent(fieinfo, 0, physical,
++						length, flags);
++	brelse(iloc.bh);
 +out:
-+	if (err != -ENOENT)
-+		ext4_std_error(dir->i_sb, err);
-+	return err;
++	up_read(&EXT4_I(inode)->xattr_sem);
++	return (error < 0 ? error : 0);
 +}
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index 55bb2fc..6bfdf9c 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -181,6 +181,9 @@ extern struct buffer_head *ext4_get_first_inline_block(struct inode *inode,
+ 						       void **buf,
+ 						       int *buf_size,
+ 						       int *retval);
++extern int ext4_inline_data_fiemap(struct inode *inode,
++				   struct fiemap_extent_info *fieinfo,
++				   int *has_inline);
+ # else  /* CONFIG_EXT4_FS_XATTR */
+ 
+ static inline int
+@@ -391,6 +394,13 @@ ext4_get_first_inline_block(struct inode *inode,
+ {
+ 	return NULL;
+ }
 +
- /*
-  * DIR_NLINK feature is set if 1) nlinks > EXT4_LINK_MAX or 2) nlinks == 2,
-  * since this indicates that nlinks count was previously 1.
++static inline int ext4_inline_data_fiemap(struct inode *inode,
++					  struct fiemap_extent_info *fieinfo,
++					  int *has_inline)
++{
++	return 0;
++}
+ # endif  /* CONFIG_EXT4_FS_XATTR */
+ 
+ #ifdef CONFIG_EXT4_FS_SECURITY
 -- 
 1.7.0.4
