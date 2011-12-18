@@ -1,80 +1,156 @@
-From: boyu <boyu.mt@taobao.com>
-Subject: [PATCH V3 00/21] ext4: Add inline data support.
-Date: Sun, 18 Dec 2011 22:18:08 +0800
-Message-ID: <4EEDF620.8070008@taobao.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: LKML <linux-kernel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger@dilger.ca>, <tm@tao.ma>
-To: undisclosed-recipients:;
+From: Tao Ma <tm@tao.ma>
+Subject: [PATCH V3 17/21] ext4: let empty_dir handle inline dir.
+Date: Sun, 18 Dec 2011 22:24:34 +0800
+Message-ID: <1324218278-2460-17-git-send-email-tm@tao.ma>
+References: <4EEDF6B1.7050206@tao.ma>
+ <1324218278-2460-1-git-send-email-tm@tao.ma>
+Cc: adilger@dilger.ca, tytso@mit.edu, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gateway.alibaba-inc.com ([121.0.29.128]:56587 "EHLO
-	CNHZ-ExGW-01.ali.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751127Ab1LROdQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 18 Dec 2011 09:33:16 -0500
+Received: from oproxy9.bluehost.com ([69.89.24.6]:40479 "HELO
+	oproxy9.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751556Ab1LROgj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 18 Dec 2011 09:36:39 -0500
+In-Reply-To: <1324218278-2460-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted, Andreas and list,
-        This is the v3 attempt to add inline data support to ext4 inode=
-=2E
-=46or more information about the background, please refer to the thread
-http://marc.info/?l=3Dlinux-ext4&m=3D131715205428067&w=3D2
+From: Tao Ma <boyu.mt@taobao.com>
 
-Changelog from v2 to v3:
-1. Add support for evict data from inode if we can store xattr in it.
-2. Add support for fiemap
-3. Some nasty bug fixes
+empty_dir is used when deleting a dir. So it should handle
+inline dir properly.
 
-The v2 can be found here:
-http://marc.info/?l=3Dlinux-ext4&m=3D132189338604177&w=3D2
+Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+---
+ fs/ext4/inline.c |   69 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/namei.c  |    8 ++++++
+ fs/ext4/xattr.h  |    6 ++++
+ 3 files changed, 83 insertions(+), 0 deletions(-)
 
-The v1 can be found here:
-http://marc.info/?l=3Dlinux-ext4&m=3D131961438221255&w=3D2
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 1d5cfd0..1872532 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -1425,6 +1425,75 @@ out:
+ 	return err;
+ }
+ 
++int empty_inline_dir(struct inode *dir, int *has_inline_data)
++{
++	int err, inline_size;
++	struct ext4_iloc iloc;
++	void *inline_pos;
++	unsigned int offset;
++	struct ext4_dir_entry_2 *de, *de1;
++	int ret = 1;
++
++	err = ext4_get_inode_loc(dir, &iloc);
++	if (err) {
++		EXT4_ERROR_INODE(dir, "error %d getting inode %lu block",
++				 err, dir->i_ino);
++		return 1;
++	}
++
++	down_read(&EXT4_I(dir)->xattr_sem);
++	if (!ext4_has_inline_data(dir)) {
++		*has_inline_data = 0;
++		goto out;
++	}
++
++	de = ext4_get_inline_entry(dir, &iloc, 0,
++				   &inline_pos, &inline_size);
++	de1 = ext4_get_inline_entry(dir, &iloc,
++			ext4_rec_len_from_disk(de->rec_len, inline_size),
++			&inline_pos, &inline_size);
++	if (le32_to_cpu(de->inode) != dir->i_ino ||
++			!le32_to_cpu(de1->inode) ||
++			strcmp(".", de->name) ||
++			strcmp("..", de1->name)) {
++		ext4_warning(dir->i_sb,
++			     "bad directory (dir #%lu) - no `.' or `..'",
++			     dir->i_ino);
++		ret = 1;
++		goto out;
++	}
++
++	offset = ext4_rec_len_from_disk(de->rec_len, inline_size) +
++		 ext4_rec_len_from_disk(de1->rec_len, inline_size);
++	while (offset < dir->i_size) {
++		de = ext4_get_inline_entry(dir, &iloc, offset,
++					   &inline_pos, &inline_size);
++		if (ext4_check_dir_entry(dir, NULL, de,
++					 iloc.bh, inline_pos,
++					 inline_size, offset)) {
++			ext4_warning(dir->i_sb,
++				     "bad inline directory (dir #%lu) - "
++				     "inode %u, rec_len %u, name_len %d"
++				     "inline size %d\n",
++				     dir->i_ino, le32_to_cpu(de->inode),
++				     le16_to_cpu(de->rec_len), de->name_len,
++				     inline_size);
++			ret = 1;
++			goto out;
++		}
++		if (le32_to_cpu(de->inode)) {
++			ret = 0;
++			goto out;
++		}
++		offset += ext4_rec_len_from_disk(de->rec_len, inline_size);
++	}
++
++out:
++	up_read(&EXT4_I(dir)->xattr_sem);
++	brelse(iloc.bh);
++	return ret;
++}
++
+ int ext4_destroy_inline_data(handle_t *handle, struct inode *inode)
+ {
+ 	int ret;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index cefcec6..24cdb61 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2015,6 +2015,14 @@ static int empty_dir(struct inode *inode)
+ 	struct super_block *sb;
+ 	int err = 0;
+ 
++	if (ext4_has_inline_data(inode)) {
++		int has_inline_data = 1;
++
++		err = empty_inline_dir(inode, &has_inline_data);
++		if (has_inline_data)
++			return err;
++	}
++
+ 	sb = inode->i_sb;
+ 	if (inode->i_size < EXT4_DIR_REC_LEN(1) + EXT4_DIR_REC_LEN(2) ||
+ 	    !(bh = ext4_bread(NULL, inode, 0, 0, &err))) {
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index e26b7a6..ed707df 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -176,6 +176,7 @@ extern int ext4_delete_inline_entry(handle_t *handle,
+ 				    struct inode *dir,
+ 				    struct ext4_dir_entry_2 *de_del,
+ 				    struct buffer_head *bh);
++extern int empty_inline_dir(struct inode *dir, int *has_inline_data);
+ # else  /* CONFIG_EXT4_FS_XATTR */
+ 
+ static inline int
+@@ -373,6 +374,11 @@ static inline int ext4_delete_inline_entry(handle_t *handle,
+ {
+ 	return 0;
+ }
++
++static inline int empty_inline_dir(struct inode *dir, int *has_inline_data)
++{
++	return 0;
++}
+ # endif  /* CONFIG_EXT4_FS_XATTR */
+ 
+ #ifdef CONFIG_EXT4_FS_SECURITY
+-- 
+1.7.0.4
 
-any suggestions are welcomed.
-
-git diff --stat master..
- fs/ext4/Makefile  |    2 +-
- fs/ext4/dir.c     |   39 +-
- fs/ext4/ext4.h    |   77 +++-
- fs/ext4/extents.c |   18 +-
- fs/ext4/ialloc.c  |    4 +
- fs/ext4/inline.c  | 1642 +++++++++++++++++++++++++++++++++++++++++++++=
-++++++++
- fs/ext4/inode.c   |  236 ++++++--
- fs/ext4/namei.c   |  364 +++++++++----
- fs/ext4/xattr.c   |   64 +--
- fs/ext4/xattr.h   |  263 +++++++++
- 10 files changed, 2481 insertions(+), 228 deletions(-)
-
-Thanks
-Tao
-
-
-________________________________
-
-This email (including any attachments) is confidential and may be legal=
-ly privileged. If you received this email in error, please delete it im=
-mediately and do not copy it or use it for any purpose or disclose its =
-contents to any other person. Thank you.
-
-=E6=9C=AC=E7=94=B5=E9=82=AE(=E5=8C=85=E6=8B=AC=E4=BB=BB=E4=BD=95=E9=99=84=
-=E4=BB=B6)=E5=8F=AF=E8=83=BD=E5=90=AB=E6=9C=89=E6=9C=BA=E5=AF=86=E8=B5=84=
-=E6=96=99=E5=B9=B6=E5=8F=97=E6=B3=95=E5=BE=8B=E4=BF=9D=E6=8A=A4=E3=80=82=
-=E5=A6=82=E6=82=A8=E4=B8=8D=E6=98=AF=E6=AD=A3=E7=A1=AE=E7=9A=84=E6=94=B6=
-=E4=BB=B6=E4=BA=BA=EF=BC=8C=E8=AF=B7=E6=82=A8=E7=AB=8B=E5=8D=B3=E5=88=A0=
-=E9=99=A4=E6=9C=AC=E9=82=AE=E4=BB=B6=E3=80=82=E8=AF=B7=E4=B8=8D=E8=A6=81=
-=E5=B0=86=E6=9C=AC=E7=94=B5=E9=82=AE=E8=BF=9B=E8=A1=8C=E5=A4=8D=E5=88=B6=
-=E5=B9=B6=E7=94=A8=E4=BD=9C=E4=BB=BB=E4=BD=95=E5=85=B6=E4=BB=96=E7=94=A8=
-=E9=80=94=E3=80=81=E6=88=96=E9=80=8F=E9=9C=B2=E6=9C=AC=E9=82=AE=E4=BB=B6=
-=E4=B9=8B=E5=86=85=E5=AE=B9=E3=80=82=E8=B0=A2=E8=B0=A2=E3=80=82
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
