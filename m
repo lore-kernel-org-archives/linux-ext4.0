@@ -1,31 +1,28 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Fix error handling on inode bitmap corruption
-Date: Sun, 18 Dec 2011 16:28:24 -0500
-Message-ID: <20111218212824.GB7226@thunk.org>
-References: <1323376115-23881-1-git-send-email-jack@suse.cz>
+Subject: Re: [PATCH] ext4: Remove unused local variable
+Date: Sun, 18 Dec 2011 17:40:38 -0500
+Message-ID: <20111218224038.GC7226@thunk.org>
+References: <1322690524-25028-1-git-send-email-curtw@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+To: Curt Wohlgemuth <curtw@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:34177 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:33793 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751941Ab1LRV22 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 18 Dec 2011 16:28:28 -0500
+	id S1751465Ab1LRWkm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 18 Dec 2011 17:40:42 -0500
 Content-Disposition: inline
-In-Reply-To: <1323376115-23881-1-git-send-email-jack@suse.cz>
+In-Reply-To: <1322690524-25028-1-git-send-email-curtw@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 08, 2011 at 09:28:34PM +0100, Jan Kara wrote:
-> When insert_inode_locked() fails in ext4_new_inode() it most likely means inode
-> bitmap got corrupted and we allocated again inode which is already in use. Also
-> doing unlock_new_inode() during error recovery is wrong since the inode does
-> not have I_NEW set. Fix the problem by jumping to fail: (instead of fail_drop:)
-> which declares filesystem error and does not call unlock_new_inode().
+On Wed, Nov 30, 2011 at 02:02:04PM -0800, Curt Wohlgemuth wrote:
+> In get_implied_cluster_alloc(), rr_cluster_end was being
+> defined and set, but was never used.  Removed this.
 > 
-> Signed-off-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: Curt Wohlgemuth <curtw@google.com>
 
 Applied, thanks.
 
-					- Ted
+							- Ted
