@@ -1,7 +1,7 @@
 From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V3 20/21] ext4: Evict inline data out if we needs to strore xattr in inode.
-Date: Sun, 18 Dec 2011 22:24:37 +0800
-Message-ID: <1324218278-2460-20-git-send-email-tm@tao.ma>
+Subject: [PATCH V3 11/21] ext4: let add_dir_entry handle inline data properly.
+Date: Sun, 18 Dec 2011 22:24:28 +0800
+Message-ID: <1324218278-2460-11-git-send-email-tm@tao.ma>
 References: <4EEDF6B1.7050206@tao.ma>
  <1324218278-2460-1-git-send-email-tm@tao.ma>
 Cc: adilger@dilger.ca, tytso@mit.edu, linux-kernel@vger.kernel.org,
@@ -14,171 +14,392 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Tao Ma <boyu.mt@taobao.com>
 
-Now we stores data in the inode, but in case we need to store some
-xattrs and inode doesn't have enough space, Andreas suggested that
-we should keep the xattr(metadata) in and data should be pushed out.
-So this patch does the work.
+This patch let add_dir_entry handle the inline data case. So the
+dir is initialized as inline dir first and then we can try to add
+some files to it, when the inline space can't hold all the entries,
+a dir block will be created and the dir entry will be moved to it.
 
 Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/inline.c |   86 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/xattr.c  |   25 ++++++++++++++-
- fs/ext4/xattr.h  |    3 ++
- 3 files changed, 112 insertions(+), 2 deletions(-)
+ fs/ext4/ext4.h   |    2 +
+ fs/ext4/inline.c |  276 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/namei.c  |   19 ++++
+ fs/ext4/xattr.h  |   19 ++++
+ 4 files changed, 316 insertions(+), 0 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index e5847b4..e61c967 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2262,6 +2262,8 @@ static inline void ext4_mark_super_dirty(struct super_block *sb)
+ 
+ /* dir.c */
+ extern const struct file_operations ext4_dir_operations;
++extern void ext4_show_inline_dir(struct inode *dir, struct buffer_head *bh,
++				 void *inline_start, int inline_size);
+ 
+ /* file.c */
+ extern const struct inode_operations ext4_file_inode_operations;
 diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 4203aa4..f6f27e1 100644
+index eb9018b..db70d3e 100644
 --- a/fs/ext4/inline.c
 +++ b/fs/ext4/inline.c
-@@ -1554,3 +1554,89 @@ out:
- 	up_read(&EXT4_I(inode)->xattr_sem);
- 	return (error < 0 ? error : 0);
+@@ -927,6 +927,282 @@ int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
+ 	return copied;
  }
+ 
++#ifdef INLINE_DIR_DEBUG
++void ext4_show_inline_dir(struct inode *dir, struct buffer_head *bh,
++			  void *inline_start, int inline_size)
++{
++	int offset;
++	unsigned short de_len;
++	struct ext4_dir_entry_2 *de = inline_start;
++	void *dlimit = inline_start + inline_size;
++
++	trace_printk("inode %lu\n", dir->i_ino);
++	offset = 0;
++	while ((void *)de < dlimit) {
++		de_len = ext4_rec_len_from_disk(de->rec_len, inline_size);
++		trace_printk("de: offset %u reclen %u name %*.s "
++			     "namelen %u ino %u\n",
++			     offset, de_len, de->name_len, de->name,
++			     de->name_len, le32_to_cpu(de->inode));
++		if (ext4_check_dir_entry(dir, NULL, de, bh,
++					 inline_start, inline_size, offset))
++			BUG();
++
++		offset += de_len;
++		de = (struct ext4_dir_entry_2 *) ((char *) de + de_len);
++	}
++}
++#else
++#define ext4_show_inline_dir(dir, bh, inline_start, inline_size)
++#endif
 +
 +/*
-+ * Called during xattr set, and if we can sparse space 'needed',
-+ * just create the extent tree evict the data to the outer block.
-+ *
-+ * We use jbd2 instead of page cache to move data to the 1st block
-+ * so that the whole transaction can be committed as a whole and
-+ * the data isn't lost because of the delayed page cache write.
++ * Add a new entry into a inline dir.
++ * It will return -ENOSPC if no space is available, and -EIO
++ * and -EEXIST if directory entry already exists.
 + */
-+int ext4_try_to_evict_inline_data(handle_t *handle,
-+				  struct inode *inode,
-+				  int needed)
++static int ext4_add_dirent_to_inline(handle_t *handle,
++				     struct dentry *dentry,
++				     struct inode *inode,
++				     struct ext4_iloc *iloc,
++				     void *inline_start, int inline_size)
 +{
-+	int error;
++	struct inode	*dir = dentry->d_parent->d_inode;
++	const char	*name = dentry->d_name.name;
++	int		namelen = dentry->d_name.len;
++	unsigned short	reclen;
++	int		err;
++	struct ext4_dir_entry_2 *de;
++
++	reclen = EXT4_DIR_REC_LEN(namelen);
++	err = ext4_find_dest_de(dir, inode, iloc->bh,
++				inline_start, inline_size,
++				name, namelen, &de);
++	if (err)
++		return err;
++
++	err = ext4_journal_get_write_access(handle, iloc->bh);
++	if (err)
++		return err;
++	ext4_insert_dentry(inode, de, inline_size, name, namelen);
++
++	ext4_show_inline_dir(dir, iloc->bh, inline_start, inline_size);
++
++	/*
++	 * XXX shouldn't update any times until successful
++	 * completion of syscall, but too many callers depend
++	 * on this.
++	 *
++	 * XXX similarly, too many callers depend on
++	 * ext4_new_inode() setting the times, but error
++	 * recovery deletes the inode, so the worst that can
++	 * happen is that the times are slightly out of date
++	 * and/or different from the directory change time.
++	 */
++	dir->i_mtime = dir->i_ctime = ext4_current_time(dir);
++	ext4_update_dx_flag(dir);
++	dir->i_version++;
++	ext4_mark_inode_dirty(handle, dir);
++	return 1;
++}
++
++void* ext4_get_inline_xattr_pos(struct inode *inode, struct ext4_iloc *iloc)
++{
 +	struct ext4_xattr_entry *entry;
 +	struct ext4_xattr_ibody_header *header;
-+	struct ext4_inode *raw_inode;
-+	struct ext4_iloc iloc;
-+	void *buf = NULL;
-+	struct buffer_head *data_bh = NULL;
-+	struct ext4_map_blocks map;
 +
-+	error = ext4_get_inode_loc(inode, &iloc);
-+	if (error)
-+		return error;
++	BUG_ON(!EXT4_I(inode)->i_inline_off);
 +
-+	raw_inode = ext4_raw_inode(&iloc);
-+	header = IHDR(inode, raw_inode);
-+	entry = (struct ext4_xattr_entry *)((void *)raw_inode +
++	header = IHDR(inode, ext4_raw_inode(iloc));
++	entry = (struct ext4_xattr_entry *)((void *)ext4_raw_inode(iloc) +
 +					    EXT4_I(inode)->i_inline_off);
-+	if (EXT4_XATTR_LEN(entry->e_name_len) +
-+	    EXT4_XATTR_SIZE(le32_to_cpu(entry->e_value_size)) < needed) {
-+		error = -ENOSPC;
-+		goto out;
-+	}
 +
-+	buf = kmalloc(ext4_get_inline_size(inode), GFP_NOFS);
-+	if (!buf) {
-+		error = -ENOMEM;
-+		goto out;
-+	}
-+
-+	error = ext4_read_inline_data(inode, buf,
-+				      ext4_get_inline_size(inode), &iloc);
-+	if (error < 0)
-+		goto out;
-+
-+	error = ext4_destroy_inline_data_nolock(handle, inode);
-+	if (error)
-+		goto out;
-+
-+	map.m_lblk = 0;
-+	map.m_len = 1;
-+	map.m_flags = 0;
-+	error = ext4_map_blocks(handle, inode, &map, EXT4_GET_BLOCKS_CREATE);
-+	if (error < 0)
-+		goto out;
-+	if (!(map.m_flags & EXT4_MAP_MAPPED)) {
-+		error = -EIO;
-+		goto out;
-+	}
-+
-+	data_bh = sb_getblk(inode->i_sb, map.m_pblk);
-+	if (!data_bh) {
-+		error = -EIO;
-+		goto out;
-+	}
-+
-+	lock_buffer(data_bh);
-+	error = ext4_journal_get_create_access(handle, data_bh);
-+	if (error) {
-+		unlock_buffer(data_bh);
-+		error = -EIO;
-+		goto out;
-+	}
-+	memcpy(data_bh->b_data, buf, data_bh->b_size);
-+	set_buffer_uptodate(data_bh);
-+	unlock_buffer(data_bh);
-+	error = ext4_handle_dirty_metadata(handle,
-+					   inode, data_bh);
-+out:
-+	brelse(data_bh);
-+	kfree(buf);
-+	brelse(iloc.bh);
-+	return error;
++	return (void *)IFIRST(header) + le16_to_cpu(entry->e_value_offs);
 +}
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 71ef45e..6785250 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -910,8 +910,21 @@ int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
- 	if (EXT4_I(inode)->i_extra_isize == 0)
- 		return -ENOSPC;
- 	error = ext4_xattr_set_entry(i, s);
--	if (error)
-+	if (error && error != -ENOSPC)
- 		return error;
-+	if (error && ext4_has_inline_data(inode)) {
-+		error = ext4_try_to_evict_inline_data(handle, inode,
-+				EXT4_XATTR_LEN(strlen(i->name) +
-+				EXT4_XATTR_SIZE(i->value_len)));
-+		if (error)
-+			return error;
-+		error = ext4_xattr_ibody_find(inode, i, is);
-+		if (error)
-+			return error;
-+		error = ext4_xattr_set_entry(i, s);
-+		if (error)
-+			return error;
-+	}
- 	header = IHDR(inode, ext4_raw_inode(&is->iloc));
- 	if (!IS_LAST_ENTRY(s->first)) {
- 		header->h_magic = cpu_to_le32(EXT4_XATTR_MAGIC);
-@@ -1057,9 +1070,17 @@ ext4_xattr_set(struct inode *inode, int name_index, const char *name,
- {
- 	handle_t *handle;
- 	int error, retries = 0;
-+	int credits = EXT4_DATA_TRANS_BLOCKS(inode->i_sb);
- 
- retry:
--	handle = ext4_journal_start(inode, EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
-+	/*
-+	 * In case of inline data, we may push out the data to a block,
-+	 * So reserve the journal space first.
-+	 */
-+	if (ext4_has_inline_data(inode))
-+		credits += ext4_writepage_trans_blocks(inode) + 1;
 +
-+	handle = ext4_journal_start(inode, credits);
- 	if (IS_ERR(handle)) {
- 		error = PTR_ERR(handle);
- 	} else {
++/* Set the final de to cover the whole block. */
++static void ext4_update_final_de(void *de_buf, int old_size, int new_size)
++{
++	struct ext4_dir_entry_2 *de, *prev_de;
++	void *limit;
++	int de_len;
++
++	de = (struct ext4_dir_entry_2 *)de_buf;
++	if (old_size) {
++		limit = de_buf + old_size;
++		do {
++			prev_de = de;
++			de_len = ext4_rec_len_from_disk(de->rec_len, old_size);
++			de_buf += de_len;
++			de = (struct ext4_dir_entry_2 *)de_buf;
++		} while (de_buf < limit);
++
++		prev_de->rec_len = ext4_rec_len_to_disk(de_len + new_size -
++							old_size, new_size);
++	} else {
++		/* this is just created, so create an empty entry. */
++		de->inode = 0;
++		de->rec_len = ext4_rec_len_to_disk(new_size, new_size);
++	}
++}
++
++static int ext4_update_inline_dir(handle_t *handle, struct dentry *dentry,
++				  struct inode *dir,
++				  struct ext4_iloc *iloc)
++{
++	int ret, reclen = EXT4_DIR_REC_LEN(dentry->d_name.len);
++	int old_size = EXT4_I(dir)->i_inline_size - EXT4_MIN_INLINE_DATA_SIZE;
++
++	ret = ext4_update_inline_data(handle, dir,
++				EXT4_I(dir)->i_inline_size + reclen);
++	if (ret)
++		return ret;
++
++	ext4_update_final_de(ext4_get_inline_xattr_pos(dir, iloc), old_size,
++			     EXT4_I(dir)->i_inline_size -
++						EXT4_MIN_INLINE_DATA_SIZE);
++	dir->i_size = EXT4_I(dir)->i_disksize = EXT4_I(dir)->i_inline_size;
++	return 0;
++}
++
++/*
++ * Try to add the new entry to the inline data.
++ * If succeeds, return 0. If not, extended the inline dir and copied data to
++ * the new created block.
++ */
++int ext4_try_add_inline_entry(handle_t *handle, struct dentry *dentry,
++			      struct inode *inode)
++{
++	int ret, inline_size;
++	void *inline_start, *backup_buf = NULL;
++	struct buffer_head *dir_block = NULL;
++	struct ext4_iloc iloc;
++	int blocksize = inode->i_sb->s_blocksize;
++	struct inode *dir = dentry->d_parent->d_inode;
++
++	ret = ext4_get_inode_loc(dir, &iloc);
++	if (ret)
++		return ret;
++
++	down_write(&EXT4_I(dir)->xattr_sem);
++	if (!ext4_has_inline_data(dir))
++		goto out;
++
++	inline_start = ext4_raw_inode(&iloc)->i_block;
++	inline_size = EXT4_MIN_INLINE_DATA_SIZE;
++
++	ret = ext4_add_dirent_to_inline(handle, dentry, inode, &iloc,
++					inline_start, inline_size);
++	if (ret != -ENOSPC)
++		goto out;
++
++	/* check whether it can be inserted to inline xattr space. */
++	inline_size = EXT4_I(dir)->i_inline_size -
++			EXT4_MIN_INLINE_DATA_SIZE;
++	if (inline_size > 0) {
++		inline_start = ext4_get_inline_xattr_pos(dir, &iloc);
++
++		ret = ext4_add_dirent_to_inline(handle, dentry, inode, &iloc,
++						inline_start, inline_size);
++		if (ret != -ENOSPC)
++			goto out;
++	}
++
++	/* Try to add more xattr space.*/
++	ret = ext4_update_inline_dir(handle, dentry, dir, &iloc);
++	if (ret && ret != -ENOSPC)
++		goto out;
++	else if (!ret) {
++		inline_size = EXT4_I(dir)->i_inline_size -
++				EXT4_MIN_INLINE_DATA_SIZE;
++		inline_start = ext4_get_inline_xattr_pos(dir, &iloc);
++
++		ret = ext4_add_dirent_to_inline(handle, dentry, inode, &iloc,
++						inline_start, inline_size);
++		if (ret != -ENOSPC)
++			goto out;
++	}
++
++	/*
++	 * The inline space is filled up, so create a new block for it.
++	 * As the extent tree will be created, we have to save the inline
++	 * dir first.
++	 */
++	inline_size = EXT4_I(dir)->i_inline_size;
++	backup_buf = kmalloc(inline_size, GFP_NOFS);
++	if (!backup_buf) {
++		ret = -ENOMEM;
++		goto out;
++	}
++
++	memcpy(backup_buf, (void *)ext4_raw_inode(&iloc)->i_block,
++	       EXT4_MIN_INLINE_DATA_SIZE);
++	if (inline_size > EXT4_MIN_INLINE_DATA_SIZE)
++		memcpy(backup_buf + EXT4_MIN_INLINE_DATA_SIZE,
++		       ext4_get_inline_xattr_pos(dir, &iloc),
++		       inline_size - EXT4_MIN_INLINE_DATA_SIZE);
++
++	/* clear the entry and the flag in dir now. */
++	ret = ext4_destroy_inline_data_nolock(handle, dir);
++	if (ret)
++		goto out;
++
++	dir->i_size = EXT4_I(dir)->i_disksize = blocksize;
++	dir_block = ext4_bread(handle, dir, 0, 1, &ret);
++	if (!dir_block)
++		goto out;
++
++	BUFFER_TRACE(dir_block, "get_write_access");
++	ret = ext4_journal_get_write_access(handle, dir_block);
++	if (ret)
++		goto out;
++	memcpy(dir_block->b_data, backup_buf, inline_size);
++
++	/* Set the final de to cover the whole block. */
++	ext4_update_final_de(dir_block->b_data, inline_size,
++			     blocksize);
++
++	BUFFER_TRACE(dir_block, "call ext4_handle_dirty_metadata");
++	ret = ext4_handle_dirty_metadata(handle, dir, dir_block);
++
++out:
++	kfree(backup_buf);
++	brelse(dir_block);
++	if (!ret || ret == 1)
++		ext4_mark_inode_dirty(handle, dir);
++	up_write(&EXT4_I(dir)->xattr_sem);
++	brelse(iloc.bh);
++	return ret;
++}
++
++/*
++ * Try to create the inline data for the new dir.
++ * If it succeeds, return 0, otherwise return the error.
++ * In case of ENOSPC, the caller should create the normal disk layout dir.
++ */
++int ext4_try_create_inline_dir(handle_t *handle, struct inode *parent,
++			       struct inode *inode)
++{
++	int ret, inline_size = EXT4_MIN_INLINE_DATA_SIZE;
++	struct ext4_iloc iloc;
++	struct ext4_dir_entry_2 *de;
++
++	ret = ext4_get_inode_loc(inode, &iloc);
++	if (ret)
++		return ret;
++
++	ret = ext4_prepare_inline_data(handle, inode, inline_size);
++	if (ret)
++		goto out;
++
++	de = (struct ext4_dir_entry_2 *)ext4_raw_inode(&iloc)->i_block;
++	ext4_init_dot_dotdot(parent, inode, de, inline_size);
++	inode->i_size = EXT4_I(inode)->i_disksize = inline_size;
++out:
++	brelse(iloc.bh);
++	return ret;
++}
++
+ int ext4_destroy_inline_data(handle_t *handle, struct inode *inode)
+ {
+ 	int ret;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 21acbc9..77312dc 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1486,6 +1486,17 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+ 	blocksize = sb->s_blocksize;
+ 	if (!dentry->d_name.len)
+ 		return -EINVAL;
++
++	if (ext4_has_inline_data(dir)) {
++		retval = ext4_try_add_inline_entry(handle, dentry, inode);
++		if (retval < 0)
++			return retval;
++		if (retval == 1) {
++			retval = 0;
++			return retval;
++		}
++	}
++
+ 	if (is_dx(dir)) {
+ 		retval = ext4_dx_add_entry(handle, dentry, inode);
+ 		if (!retval || (retval != ERR_BAD_DX_DIR))
+@@ -1862,6 +1873,14 @@ static int ext4_init_new_dir(handle_t *handle, struct inode *parent,
+ 	int err;
+ 	int blocksize = inode->i_sb->s_blocksize;
+ 
++	if (ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)) {
++		err = ext4_try_create_inline_dir(handle, parent, inode);
++		if (err < 0 && err != ENOSPC)
++			goto out;
++		if (!err)
++			goto out;
++	}
++
+ 	inode->i_size = EXT4_I(inode)->i_disksize = blocksize;
+ 	dir_block = ext4_bread(handle, inode, 0, 1, &err);
+ 	if (!dir_block)
 diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index 6bfdf9c..feb06ec 100644
+index a0d43c7..0229a78 100644
 --- a/fs/ext4/xattr.h
 +++ b/fs/ext4/xattr.h
-@@ -184,6 +184,9 @@ extern struct buffer_head *ext4_get_first_inline_block(struct inode *inode,
- extern int ext4_inline_data_fiemap(struct inode *inode,
- 				   struct fiemap_extent_info *fieinfo,
- 				   int *has_inline);
-+extern int ext4_try_to_evict_inline_data(handle_t *handle,
-+					 struct inode *inode,
-+					 int needed);
+@@ -161,6 +161,11 @@ extern int ext4_da_write_inline_data_begin(struct address_space *mapping,
+ extern int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
+ 					 unsigned len, unsigned copied,
+ 					 struct page *page);
++extern int ext4_try_add_inline_entry(handle_t *handle, struct dentry *dentry,
++				     struct inode *inode);
++extern int ext4_try_create_inline_dir(handle_t *handle,
++				      struct inode *parent,
++				      struct inode *inode);
  # else  /* CONFIG_EXT4_FS_XATTR */
  
  static inline int
+@@ -324,6 +329,20 @@ static inline int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
+ {
+ 	return 0;
+ }
++
++static inline int ext4_try_add_inline_entry(handle_t *handle,
++					    struct dentry *dentry,
++					    struct inode *inode)
++{
++	return 0;
++}
++
++static inline int ext4_try_create_inline_dir(handle_t *handle,
++					     struct inode *parent,
++					     struct inode *inode)
++{
++	return 0;
++}
+ # endif  /* CONFIG_EXT4_FS_XATTR */
+ 
+ #ifdef CONFIG_EXT4_FS_SECURITY
 -- 
 1.7.0.4
