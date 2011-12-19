@@ -1,9 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCH 08/51] mke2fs: Allow metadata checksums to be turned on
-	at mkfs time
-Date: Mon, 19 Dec 2011 08:59:51 -0800
-Message-ID: <20111219165951.GE8233@tux1.beaverton.ibm.com>
-References: <20111214011316.20947.13706.stgit@elm3c44.beaverton.ibm.com> <20111214011410.20947.96920.stgit@elm3c44.beaverton.ibm.com> <76441870-91E6-402F-B1F7-F67C97D0B02B@dilger.ca>
+Subject: Re: [PATCH 01/51] libext2fs: Read and write full size inodes
+Date: Mon, 19 Dec 2011 09:46:31 -0800
+Message-ID: <20111219174631.GF8233@tux1.beaverton.ibm.com>
+References: <20111214011316.20947.13706.stgit@elm3c44.beaverton.ibm.com> <20111214011324.20947.25259.stgit@elm3c44.beaverton.ibm.com> <15FBE485-FC42-46A4-A2BE-9931A3B933A5@dilger.ca>
 Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -16,90 +15,37 @@ Cc: Theodore Tso <tytso@mit.edu>,
 	Coly Li <colyli@gmail.com>
 To: Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:48637 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752129Ab1LSRFk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 19 Dec 2011 12:05:40 -0500
+Received: from e36.co.us.ibm.com ([32.97.110.154]:59674 "EHLO
+	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751096Ab1LSRqf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Dec 2011 12:46:35 -0500
 Received: from /spool/local
-	by e2.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e36.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Mon, 19 Dec 2011 12:05:28 -0500
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pBJH0wMF096538
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Dec 2011 12:01:00 -0500
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pBJGxqca019856
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Dec 2011 09:59:53 -0700
+	Mon, 19 Dec 2011 10:46:35 -0700
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pBJHkXG8158182
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Dec 2011 10:46:33 -0700
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pBJHkW5Z024326
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Dec 2011 10:46:33 -0700
 Content-Disposition: inline
-In-Reply-To: <76441870-91E6-402F-B1F7-F67C97D0B02B@dilger.ca>
+In-Reply-To: <15FBE485-FC42-46A4-A2BE-9931A3B933A5@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 19, 2011 at 11:28:44AM +0100, Andreas Dilger wrote:
-> On 2011-12-14, at 2:14 AM, Darrick J. Wong wrote:
-> > Write out checksummed inodes even when writing out a zeroed table.
-> 
-> Looking at the code, this is only writing out checksummed inodes
-> for the reserved inodes, not all of them, right?  Otherwise, going
-> back to writing out the whole inode table would be really slowing
-> down mke2fs compared to lazy_itable_init.
+On Mon, Dec 19, 2011 at 10:36:14AM +0100, Andreas Dilger wrote:
+> <html><body class="ApplePlainTextBody" style="word-wrap: break-word;
+<html mail snip>
+> </span>}<br></blockquote><br>Instead of having an icache that is allocating
+> temporary buffers<br>to handle the inode size mismatch, and then copying the
+> inode data<br>into the icache each time, it makes more sense to use the
+> allocated<br>buffers for the icache directly.<br><br>Cheers,
+> Andreas<br><br><br><br><br><br></body></html>
 
-Assuming that the inodes numbered less than EXT2_FIRST_INO are reserved, then
-yes it should be only writing reserved inodes (unless the user forces mkfs to
-write all inodes).
+Ok, I guess we can go for the larger reorganization of the code.  I was trying
+not to read stuff into the cache before it was verified, but as long as we take
+care of the cache bookkeeping it's fine.
 
 --D
-> 
-> > diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> > index 0ef2531..98af8b0 100644
-> > --- a/misc/mke2fs.c
-> > +++ b/misc/mke2fs.c
-> > @@ -305,6 +305,27 @@ _("Warning: the backup superblock/group descriptors at block %u contain\n"
-> > 	ext2fs_badblocks_list_iterate_end(bb_iter);
-> > }
-> > 
-> > +static void write_reserved_inodes(ext2_filsys fs)
-> > +{
-> > +	errcode_t	retval;
-> > +	ext2_ino_t	ino;
-> > +	struct ext2_inode *inode;
-> > +
-> > +	retval = ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
-> > +	if (retval) {
-> > +		com_err("inode_init", retval,
-> > +			"while allocating memory");
-> > +		exit(1);
-> > +	}
-> > +	bzero(inode, EXT2_INODE_SIZE(fs->super));
-> > +
-> > +	for (ino = 1; ino < EXT2_FIRST_INO(fs->super); ino++)
-> > +		ext2fs_write_inode_full(fs, ino, inode,
-> > +					EXT2_INODE_SIZE(fs->super));
-> > +
-> > +	ext2fs_free_mem(&inode);
-> > +}
-> > +
-> > static void write_inode_tables(ext2_filsys fs, int lazy_flag, int itable_zeroed)
-> > {
-> > 	errcode_t	retval;
-> > @@ -350,6 +371,12 @@ static void write_inode_tables(ext2_filsys fs, int lazy_flag, int itable_zeroed)
-> > 	ext2fs_zero_blocks2(0, 0, 0, 0, 0);
-> > 	ext2fs_numeric_progress_close(fs, &progress,
-> > 				      _("done                            \n"));
-> > +
-> > +	/* Reserved inodes must always have correct checksums */
-> > +	if (fs->super->s_creator_os == EXT2_OS_LINUX &&
-> > +	    fs->super->s_feature_ro_compat &
-> > +	    EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)
-> > +		write_reserved_inodes(fs);
-> 
-> > }
-> 
-> 
-> Cheers, Andreas
-> 
-> 
-> 
-> 
-> 
 
