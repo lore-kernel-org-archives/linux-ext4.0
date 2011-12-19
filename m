@@ -1,92 +1,40 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 05/10] libext2fs: add pseudo bitmap backend type
- EXT2FS_BMAP64_AUTODIR
-Date: Mon, 19 Dec 2011 12:16:51 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1112191215220.30656@dhcp-27-109.brq.redhat.com>
-References: <1324190558-7436-1-git-send-email-tytso@mit.edu> <1324190558-7436-6-git-send-email-tytso@mit.edu>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: Andreas Dilger <adilger@whamcloud.com>
+Subject: Re: [PATCH V3 01/21] ext4: Move extra inode read to a new function.
+Date: Mon, 19 Dec 2011 09:32:41 +0100
+Message-ID: <BB5BC380-D840-4AD8-80CC-C320AF780FEF@whamcloud.com>
+References: <4EEDF6B1.7050206@tao.ma> <1324218278-2460-1-git-send-email-tm@tao.ma>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"adilger@dilger.ca" <adilger@dilger.ca>,
+	"tytso@mit.edu" <tytso@mit.edu>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:61615 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751858Ab1LSLQ4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 19 Dec 2011 06:16:56 -0500
-In-Reply-To: <1324190558-7436-6-git-send-email-tytso@mit.edu>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:35638 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752408Ab1LSLRi convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Dec 2011 06:17:38 -0500
+In-Reply-To: <1324218278-2460-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, 18 Dec 2011, Theodore Ts'o wrote:
+On 2011-12-18, at 15:24, Tao Ma <tm@tao.ma> wrote:
 
-> This backend type will automatically switch between the bitarray and
-> the rbtree backend based on the number of directories in the file
-> system.
+> From: Tao Ma <boyu.mt@taobao.com>
 > 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  lib/ext2fs/Makefile.in    |    3 +++
->  lib/ext2fs/ext2fs.h       |    1 +
->  lib/ext2fs/gen_bitmap64.c |    8 ++++++++
->  3 files changed, 12 insertions(+), 0 deletions(-)
+> Currently, in ext4_iget we do a simple check to see whether
+> there does exist some information starting from the end
+> of i_extra_size. With inline data added, this procedure
+> is more complicated. So move it to a new function named
+> ext4_iget_extra_inode.
 > 
-> diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
-> index 4c5ebed..ef55494 100644
-> --- a/lib/ext2fs/Makefile.in
-> +++ b/lib/ext2fs/Makefile.in
-> @@ -400,6 +400,9 @@ check:: tst_bitops tst_badblocks tst_iscan tst_types tst_icount \
->  	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) \
->  		./tst_bitmaps -t 2 -f $(srcdir)/tst_bitmaps_cmds > tst_bitmaps_out
->  	diff $(srcdir)/tst_bitmaps_exp tst_bitmaps_out
-> +	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) \
-> +		./tst_bitmaps -t 3 -f $(srcdir)/tst_bitmaps_cmds > tst_bitmaps_out
-> +	diff $(srcdir)/tst_bitmaps_exp tst_bitmaps_out
->  
->  installdirs::
->  	$(E) "	MKINSTALLDIRS $(libdir) $(includedir)/ext2fs"
-> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-> index 5ffb036..f2df66e 100644
-> --- a/lib/ext2fs/ext2fs.h
-> +++ b/lib/ext2fs/ext2fs.h
-> @@ -294,6 +294,7 @@ struct struct_ext2_filsys {
->  
->  #define EXT2FS_BMAP64_BITARRAY	1
->  #define EXT2FS_BMAP64_RBTREE	2
-> +#define EXT2FS_BMAP64_AUTODIR	3
->  
->  /*
->   * Return flags for the block iterator functions
-> diff --git a/lib/ext2fs/gen_bitmap64.c b/lib/ext2fs/gen_bitmap64.c
-> index c9b4051..7b066a2 100644
-> --- a/lib/ext2fs/gen_bitmap64.c
-> +++ b/lib/ext2fs/gen_bitmap64.c
-> @@ -86,6 +86,7 @@ errcode_t ext2fs_alloc_generic_bmap(ext2_filsys fs, errcode_t magic,
->  {
->  	ext2fs_generic_bitmap	bitmap;
->  	struct ext2_bitmap_ops	*ops;
-> +	ext2_ino_t num_dirs;
->  	errcode_t retval;
->  
->  	if (!type)
-> @@ -98,6 +99,13 @@ errcode_t ext2fs_alloc_generic_bmap(ext2_filsys fs, errcode_t magic,
->  	case EXT2FS_BMAP64_RBTREE:
->  		ops = &ext2fs_blkmap64_rbtree;
->  		break;
-> +	case EXT2FS_BMAP64_AUTODIR:
-> +		retval = ext2fs_get_num_dirs(fs, &num_dirs);
-> +		if (retval || num_dirs > (fs->super->s_inodes_count / 320))
-> +			ops = &ext2fs_blkmap64_bitarray;
-> +		else
-> +			ops = &ext2fs_blkmap64_rbtree;
-> +		break;
+> +        } else
+> +            ext4_iget_extra_inode(inode, raw_inode, ei);
+>    } else
 
-It is good that even if ext2fs_get_num_dirs() would fail (but it can
-not in current implementation - it always return 0), we will set backend
-operation struct anyway.
+(style) if one half of an if-else uses braces then the other half should as well. 
 
->  	default:
->  		return EINVAL;
->  	}
-> 
-
--- 
+Cheers, Andreas
