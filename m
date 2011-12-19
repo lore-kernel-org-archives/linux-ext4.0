@@ -1,8 +1,9 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCH 23/51] e2fsck: Verify htree root/node checksums
-Date: Mon, 19 Dec 2011 11:46:21 -0800
-Message-ID: <20111219194621.GG8233@tux1.beaverton.ibm.com>
-References: <20111214011316.20947.13706.stgit@elm3c44.beaverton.ibm.com> <20111214011551.20947.72443.stgit@elm3c44.beaverton.ibm.com> <785BDE1C-35D8-4934-8FE0-F3EF54BDCEF0@whamcloud.com>
+Subject: Re: [PATCH 20/51] e2fsck: Verify extent tree blocks and clear the
+	bad ones
+Date: Mon, 19 Dec 2011 11:47:07 -0800
+Message-ID: <20111219194707.GH8233@tux1.beaverton.ibm.com>
+References: <20111214011316.20947.13706.stgit@elm3c44.beaverton.ibm.com> <20111214011531.20947.535.stgit@elm3c44.beaverton.ibm.com> <FC050168-CB90-4951-9FE7-9D02596E0E23@whamcloud.com>
 Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -17,85 +18,58 @@ Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Coly Li <colyli@gmail.com>
 To: Andreas Dilger <adilger@whamcloud.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:41251 "EHLO e9.ny.us.ibm.com"
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:50497 "EHLO e5.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752393Ab1LSTqc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 19 Dec 2011 14:46:32 -0500
+	id S1752145Ab1LSTuQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 Dec 2011 14:50:16 -0500
 Received: from /spool/local
-	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e5.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Mon, 19 Dec 2011 14:46:31 -0500
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pBJJkNrt067222
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Dec 2011 14:46:24 -0500
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pBJJkM4j017246
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Dec 2011 12:46:23 -0700
+	Mon, 19 Dec 2011 14:50:15 -0500
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pBJJlAkb155136
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Dec 2011 14:47:10 -0500
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pBJJl859028103
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Dec 2011 14:47:10 -0500
 Content-Disposition: inline
-In-Reply-To: <785BDE1C-35D8-4934-8FE0-F3EF54BDCEF0@whamcloud.com>
+In-Reply-To: <FC050168-CB90-4951-9FE7-9D02596E0E23@whamcloud.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 19, 2011 at 07:57:21AM +0100, Andreas Dilger wrote:
+On Mon, Dec 19, 2011 at 07:50:07AM +0100, Andreas Dilger wrote:
 > On 2011-12-14, at 2:15, "Darrick J. Wong" <djwong@us.ibm.com> wrote:
 > 
-> > Check htree internal node checksums.  If broken, ask user to clear the htree
-> > index and recreate it later.
+> > When we encounter an extent tree block that passes the header check but fails
+> > the checksum, offer to clear just that extent block instead of failing the
+> > whole tree, which results in the entire inode being wiped out.
 > > 
-> > @@ -560,8 +572,12 @@ static void parse_int_node(ext2_filsys fs,
-> > #endif
-> > 
-> >    count = ext2fs_le16_to_cpu(limit->count);
-> > -    expect_limit = (fs->blocksize - ((char *) ent - block_buf)) /
-> > -        sizeof(struct ext2_dx_entry);
-> > +    if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-> > +                       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-> > +        csum_size = sizeof(struct ext2_dx_tail);
-> > +    expect_limit = (fs->blocksize -
-> > +            (csum_size + ((char *) ent - block_buf))) /
-> > +               sizeof(struct ext2_dx_entry);
-> 
-> How does this handle the case where the METADATA_CSUM feature is newly
-> enabled but there is a dirent usinf the end of the leaf block?  It definitely
-> shouldn't cause the last entry to be considered invalid. 
-
-For htree nodes, tune2fs decrements limit if count < limit.  If count == limit,
-then fsck is run to rebuild the htree index.  For its part, e2fsck will notice
-that count == limit, zero the htree node, and add the directory inode to the
-pass3 rebuild list.
-
-> > @@ -829,7 +850,7 @@ static int check_dir_block(ext2_filsys fs,
-> >               (rec_len == fs->blocksize) &&
-> >               (dirent->name_len == 0) &&
-> >               (ext2fs_le16_to_cpu(limit->limit) ==
-> > -                ((fs->blocksize-8) /
-> > +                ((fs->blocksize - (8 + csum_size)) /
-> >                 sizeof(struct ext2_dx_entry))))
-> >            dx_db->type = DX_DIRBLOCK_NODE;
-> 
-> Same here.  
-> 
 > > diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-> > index 96b0de5..2e9ab7f 100644
+> > index e74ad79..96b0de5 100644
 > > --- a/e2fsck/problem.c
 > > +++ b/e2fsck/problem.c
-> > @@ -1374,6 +1374,16 @@ static struct e2fsck_problem problem_table[] = {
-> >      N_("i_file_acl_hi @F %N, @s zero.\n"),
-> >      PROMPT_CLEAR, PR_PREEN_OK },
+> > @@ -946,6 +946,12 @@ static struct e2fsck_problem problem_table[] = {
+> >      N_("The bad @b @i looks @n.  "),
+> >      PROMPT_CLEAR, 0 },
 > > 
-> > +    /* htree root node fails checksum */
-> > +    { PR_2_HTREE_ROOT_CSUM_INVALID,
-> > +      N_("@p @h %d: root node fails checksum\n"),
-> > +      PROMPT_CLEAR_HTREE, PR_PREEN_OK },
-> > +
-> > +    /* htree internal node fails checksum */
-> > +    { PR_2_HTREE_NODE_CSUM_INVALID,
-> > +      N_("@p @h %d: node fails checksum\n"),
+> > +    /* Extent block does not match extent */
+> > +    { PR_1_EXTENT_CSUM_INVALID,
+> > +      N_("@i %i extent block checksum does not match extent\n\t(logical @b "
+> > +         "%c, @n physical @b %b, len %N)\n"),
+> > +      PROMPT_CLEAR, 0 },
 > 
-> This error message should include "internal" in the printed message. 
+> Since the comment above the problem definition is the only place that the
+> full string can be found, it should match the printed string exactly. In this
+> case it is missing "inode" at the start and "checksum" in the middle of the
+> comment. 
 
-How about "htree node"?  I wondered why the other PR_*_HTREE messages don't say
-"htree" -- is there a particular reason for this?
+Ok.
 
 --D
+> 
+> Cheers, Andreas--
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
