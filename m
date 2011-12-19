@@ -1,43 +1,46 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: [PATCH V3 01/21] ext4: Move extra inode read to a new function.
-Date: Mon, 19 Dec 2011 22:27:58 +0800
-Message-ID: <4EEF49EE.2080302@tao.ma>
-References: <4EEDF6B1.7050206@tao.ma> <1324218278-2460-1-git-send-email-tm@tao.ma> <BB5BC380-D840-4AD8-80CC-C320AF780FEF@whamcloud.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2] ext4: directly leave out of
+ ext4_find_delalloc_range() if filesystem mount with "nodelalloc"
+Date: Mon, 19 Dec 2011 10:39:07 -0500
+Message-ID: <20111219153907.GA27501@thunk.org>
+References: <1323237879-31800-1-git-send-email-hao.bigrat@gmail.com>
+ <1323327594-4914-1-git-send-email-hao.bigrat@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"adilger@dilger.ca" <adilger@dilger.ca>,
-	"tytso@mit.edu" <tytso@mit.edu>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: Andreas Dilger <adilger@whamcloud.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Robin Dong <sanbai@taobao.com>
+To: Robin Dong <hao.bigrat@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy9.bluehost.com ([69.89.24.6]:40099 "HELO
-	oproxy9.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751229Ab1LSO2I (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Dec 2011 09:28:08 -0500
-In-Reply-To: <BB5BC380-D840-4AD8-80CC-C320AF780FEF@whamcloud.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:43361 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751032Ab1LSPjM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 Dec 2011 10:39:12 -0500
+Content-Disposition: inline
+In-Reply-To: <1323327594-4914-1-git-send-email-hao.bigrat@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 12/19/2011 04:32 PM, Andreas Dilger wrote:
-> On 2011-12-18, at 15:24, Tao Ma <tm@tao.ma> wrote:
+On Thu, Dec 08, 2011 at 02:59:54PM +0800, Robin Dong wrote:
+> From: Robin Dong <sanbai@taobao.com>
 > 
->> From: Tao Ma <boyu.mt@taobao.com>
->>
->> Currently, in ext4_iget we do a simple check to see whether
->> there does exist some information starting from the end
->> of i_extra_size. With inline data added, this procedure
->> is more complicated. So move it to a new function named
->> ext4_iget_extra_inode.
->>
->> +        } else
->> +            ext4_iget_extra_inode(inode, raw_inode, ei);
->>    } else
+> We found performance regression when using bigalloc with "nodelalloc"  (1MB cluster size):
 > 
-> (style) if one half of an if-else uses braces then the other half should as well. 
-sure, I will change it in the next version. Thanks for the review.
+> 1. mke2fs -C 1048576 -O ^has_journal,bigalloc /dev/sda
+> 2. mount -o nodelalloc /dev/sda /test/
+> 3. time dd if=/dev/zero of=/test/io bs=1048576 count=1024
+> 
+> The "dd" will cost about 2 seconds to finish, but if we mke2fs without "bigalloc",
+> "dd" will only cost lesss than 1 second.
+> 
+> The reason is:  when using ext4 with "nodelalloc", it will call ext4_find_delalloc_cluster() nearly
+> everytime it call ext4_ext_map_blocks(), and ext4_find_delalloc_range() will also scan all pages
+> in cluster because no buffer is "delayed".
+> A cluster has 256 pages (1MB cluster), so it will scan 256 * 256k pags when creating a 1G file. That
+> severely hurts the performance.
+> 
+> Therefore, we return out from ext4_find_delalloc_range() when using "nodelalloc".
+> 
+> Signed-off-by: Robin Dong <sanbai@taobao.com>
 
-Thanks
-Tao
+Thanks, applied.
+
+					- Ted
