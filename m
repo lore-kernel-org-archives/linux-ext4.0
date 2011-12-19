@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCH 04/51] libext2fs: Add inode checksum support
-Date: Mon, 19 Dec 2011 12:05:03 -0800
-Message-ID: <20111219200503.GK8233@tux1.beaverton.ibm.com>
-References: <20111214011316.20947.13706.stgit@elm3c44.beaverton.ibm.com> <20111214011343.20947.52860.stgit@elm3c44.beaverton.ibm.com> <4CD3617E-A647-4CAF-9C35-DF24656CB440@dilger.ca>
+Subject: Re: [PATCH 07/51] e2fsck: Verify and correct inode checksums
+Date: Mon, 19 Dec 2011 12:12:21 -0800
+Message-ID: <20111219201221.GL8233@tux1.beaverton.ibm.com>
+References: <20111214011316.20947.13706.stgit@elm3c44.beaverton.ibm.com> <20111214011403.20947.54324.stgit@elm3c44.beaverton.ibm.com> <701CAD1A-51A8-4F0F-8323-4B2091BF8F78@dilger.ca>
 Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -15,125 +15,84 @@ Cc: Theodore Tso <tytso@mit.edu>,
 	Coly Li <colyli@gmail.com>
 To: Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e7.ny.us.ibm.com ([32.97.182.137]:34547 "EHLO e7.ny.us.ibm.com"
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:50329 "EHLO e3.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752929Ab1LSUFk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 19 Dec 2011 15:05:40 -0500
+	id S1753029Ab1LSURE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 Dec 2011 15:17:04 -0500
 Received: from /spool/local
-	by e7.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e3.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Mon, 19 Dec 2011 15:05:39 -0500
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pBJK56bd3285230
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Dec 2011 15:05:07 -0500
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pBJK53VZ031923
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Dec 2011 13:05:05 -0700
+	Mon, 19 Dec 2011 15:17:03 -0500
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pBJKCUtN113300
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Dec 2011 15:12:31 -0500
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pBJKCOSQ011119
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Dec 2011 15:12:26 -0500
 Content-Disposition: inline
-In-Reply-To: <4CD3617E-A647-4CAF-9C35-DF24656CB440@dilger.ca>
+In-Reply-To: <701CAD1A-51A8-4F0F-8323-4B2091BF8F78@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 19, 2011 at 03:12:03PM +0100, Andreas Dilger wrote:
-> On 2011-12-13, at 7:13 PM, Darrick J. Wong wrote:
-> > diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
-> > index 596923e..1f7c641 100644
-> > --- a/lib/ext2fs/csum.c
-> > +++ b/lib/ext2fs/csum.c
-> > @@ -30,6 +30,89 @@
-> > #define STATIC static
-> > #endif
+On Mon, Dec 19, 2011 at 11:28:24AM +0100, Andreas Dilger wrote:
+> On 2011-12-14, at 2:14 AM, Darrick J. Wong wrote:
+> > Detect mismatches of the inode and checksum, and prompt the user to fix the
+> > situation.
 > > 
-> > +static errcode_t ext2fs_inode_csum(ext2_filsys fs, ext2_ino_t inum,
-> > +			       struct ext2_inode_large *inode,
-> > +			       __u32 *crc, int has_hi)
-> > +{
-> > +	__u32 ncrc;
+> > @@ -739,6 +740,12 @@ void e2fsck_pass1(e2fsck_t ctx)
+> > 		pctx.ino = ino;
+> > 		pctx.inode = inode;
+> > 		ctx->stashed_ino = ino;
+> > +
+> > +		/* Clear corrupt inode */
+> > +		if (pctx.errcode == EXT2_ET_INODE_CSUM_INVALID &&
+> > +		    fix_problem(ctx, PR_1_INODE_CSUM_INVALID, &pctx))
+> > +			goto clear_inode;
 > 
-> Why use "ncrc" in this function instead of just using "*crc" directly?
+> If the user enters "n" here to clear the inode, does it make sense to
+> also ask if they want the checksum be corrected?  If this is also "n"
+> (as is the case with "e2fsck -n") then nothing is done, but in some
+> cases it makes sense to allow the user to keep the inode rather than
+> only having the option to erase it.
+
+I was thinking something like this might work:
+
+if (csum_invalid)
+	ask and then jump to clear_inode;
+
+...all other inode sanity checks go here...
+
+if (csum_was_invalid)
+	ask and correct inode checksum;
+
+That way, if the inode manages to survive all the other sanity checks, the user
+has the opportunity to save the inode.  If the inode contains junk, then the
+user will probably clear the inode on account of the garbage.
+
+Come to think of it, this is probably a good idea for everything else.  I
+think?
+
+> > diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+> > index f042b89..89dc72b 100644
+> > --- a/e2fsck/problem.c
+> > +++ b/e2fsck/problem.c
+> > @@ -934,7 +934,12 @@ static struct e2fsck_problem problem_table[] = {
+> > +	/* inode checksum does not match inode */
+> > +	{ PR_1_INODE_CSUM_INVALID,
+> > +	  N_("@i %i checksum does not match @i.  "),
+> > +	  PROMPT_FIX, PR_PREEN_OK },
 > 
-> > +	struct ext2_inode_large *desc = inode;
-> > +	size_t size = fs->super->s_inode_size;
-> > +	__u16 old_lo;
-> > +	__u16 old_hi = 0;
-> > +	errcode_t retval = 0;
-> 
-> Also, it seems "retval" isn't useful, since it is always 0, which can
-> be returned directly at the end.
+> Also, "PROMPT_FIX" is misleading if the "fix" is to erase the inode.
+> It should instead be "PROMPT_CLEAR_INODE".
 
-In the old days it wasn't automatic that retval is always 0, therefore I
-allocated a temporary ncrc in case the function failed.  Since that no longer
-happens and ext2fs_inode_csum is a static function now, I will undo all
-that.
-
-> > +
-> > +	old_lo = inode->i_checksum_lo;
-> > +	inode->i_checksum_lo = 0;
-> > +	if (has_hi) {
-> > +		old_hi = inode->i_checksum_hi;
-> > +		inode->i_checksum_hi = 0;
-> > +	}
-> > +
-> > +	inum = ext2fs_cpu_to_le32(inum);
-> > +	ncrc = ext2fs_crc32c_le(~0, fs->super->s_uuid,
-> > +				sizeof(fs->super->s_uuid));
-> > +	ncrc = ext2fs_crc32c_le(ncrc, (unsigned char *)&inum, sizeof(inum));
-> > +	ncrc = ext2fs_crc32c_le(ncrc, (unsigned char *)desc, size);
-> > +	*crc = ncrc;
-> > +
-> > +	inode->i_checksum_lo = old_lo;
-> > +	if (has_hi)
-> > +		inode->i_checksum_hi = old_hi;
-> > +	return retval;
-> > +}
-> > +
-> > +int ext2fs_inode_csum_verify(ext2_filsys fs, ext2_ino_t inum,
-> > +			     struct ext2_inode_large *inode)
-> > +{
-> > +	errcode_t retval;
-> > +	__u32 provided, calculated;
-> > +	int has_hi;
-> > +
-> > +	if (fs->super->s_creator_os != EXT2_OS_LINUX ||
-> > +	    !EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-> > +					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-> > +		return 1;
-> > +
-> > +	has_hi = (EXT2_INODE_SIZE(fs->super) > EXT2_GOOD_OLD_INODE_SIZE &&
-> > +		  inode->i_extra_isize >= EXT4_INODE_CSUM_HI_EXTRA_LOCATION);
-> > +
-> > +	provided = ext2fs_le16_to_cpu(inode->i_checksum_lo);
-> > +	retval = ext2fs_inode_csum(fs, inum, inode, &calculated, has_hi);
-> > +	if (retval)
-> > +		return 0;
-> > +	if (has_hi) {
-> > +		__u32 hi = ext2fs_le16_to_cpu(inode->i_checksum_hi);
-> > +		provided |= hi << 16;
-> 
-> It seems a bit odd to get the low bytes of "provided" before calculating
-> the checksum, but the high bytes of after calculating the checksum.  It
-> isn't incorrect since the checksum is preserved over the call to
-> ext2fs_inode_csum(), but seems a bit strange.
-
-I think this is a merge error.
-
-> > diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-> > index ce2fd66..4bcf1de 100644
-> > --- a/lib/ext2fs/ext2_fs.h
-> > +++ b/lib/ext2fs/ext2_fs.h
-> > @@ -459,6 +459,10 @@ struct ext2_inode_large {
-> > 	__u32	i_version_hi;	/* high 32 bits for 64-bit version */
-> > };
-> > 
-> > +#define EXT4_INODE_CSUM_HI_EXTRA_LOCATION	\
-> > +	(offsetof(struct ext2_inode_large, i_checksum_hi) + sizeof(__u16) - \
-> > +	 EXT2_GOOD_OLD_INODE_SIZE)
-> 
-> It also makes sense to call this EXT4_INODE_CSUM_HI_END or similar, since
-> _LOCATION incorrectly implies (to me at least) that this is the offset of
-> the i_checksum_hi field, when it is actually the byte beyond the end.
-
-_END it is.
+Ok.
 
 --D
+> 
+> Cheers, Andreas
+> 
+> 
+> 
+> 
+> 
 
