@@ -1,45 +1,37 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] mm: add missing mutex lock arround notify_change
-Date: Tue, 20 Dec 2011 17:45:58 -0500
-Message-ID: <20111220224558.GA27615@thunk.org>
-References: <20111216112534.GA13147@dztty>
- <20111216125556.db2bf308.akpm@linux-foundation.org>
- <20111217214137.GY2203@ZenIV.linux.org.uk>
- <20111217221028.GZ2203@ZenIV.linux.org.uk>
- <20111220220901.GA1770@thunk.org>
+From: Junio C Hamano <gitster@pobox.com>
+Subject: Re: [GIT PULL] ext4 bugfixes for 3.2-rc5
+Date: Tue, 20 Dec 2011 21:28:15 -0800
+Message-ID: <7vd3biijdc.fsf@alter.siamese.dyndns.org>
+References: <E1RauNd-0008W1-02@tytso-glaptop.cam.corp.google.com>
+ <CA+55aFw6n=WaDWRn7NqtBei1x0-w1PkH5x6r3iQSSPZvxYvDhQ@mail.gmail.com>
+ <20111215190846.GA2709@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Al Viro <viro@ZenIV.linux.org.uk>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Djalal Harouni <tixxdz@opendz.org>, Hugh Dickins <hughd@google.com>,
-	Minchan Kim <minchan.kim@gmail.com>,
-	KAMEZAWA Hiroyuki <kamezawa.hiroyu@jp.fujitsu.com>,
-	Wu Fengguang <fengguang.wu@intel.com>, linux-mm@kvack.org,
-	linux-kernel@vger.kernel.org,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Neil Brown <neilb@suse.de>,
-	Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
-	Christoph Hellwig <hch@infradead.org>, linux-ext4@vger.kernel.org
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20111220220901.GA1770@thunk.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from b-pb-sasl-quonix.pobox.com ([208.72.237.35]:56595 "EHLO
+	smtp.pobox.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750698Ab1LUF2S (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 21 Dec 2011 00:28:18 -0500
+In-Reply-To: <20111215190846.GA2709@thunk.org> (Ted Ts'o's message of "Thu,
+ 15 Dec 2011 14:08:46 -0500")
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-I just took a closer look, and we don't need to take immediate action;
-there is no security issue here were someone could modify a writable
-suid file as I had originally feared.  It's not as obvious as it could
-be because of how the code is broken up, but in mext_check_arguments()
-in fs/ext4/move_extent.c, we return with an error if the donor file
-has the SUID or SGID bit set, so we'll never actually end up calling
-file_remove_suid().  So in fact the right patch is just to remove the
-call to file_remove_suid() altogether.
+Ted Ts'o <tytso@mit.edu> writes:
 
-						- Ted
+> Cool!  Does it save enough that GPG signature information can be
+> verified later?  I'm a little fuzzy on what is covered by the
+> signature which gets verified when you run the command "git verify-tag
+> tytso-for-linus-20111214".  Better yet, does the new version of git
+> have a command that will automatically verify the digital signature
+> found in a merge commit?
+>
+> And this isn't in 1.7.8 yet, right?  I'd have to build version of git
+> based on the next branch to play with this new signatury goodness?
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+The 'master' branch as of this week has the topic merged.
+
+
