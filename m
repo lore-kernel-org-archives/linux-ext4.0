@@ -1,240 +1,140 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [PATCH 2/2] jbd2: remove all t_handle_lock statements
-Date: Thu, 22 Dec 2011 22:07:32 +0800
-Message-ID: <CAGBYx2YBq_=N0Gnky7RhNHhyTybhP1fLB6Fzzp-GLhEy6Lyekw@mail.gmail.com>
-References: <20111216201915.4a012154.toshi.okajima@jp.fujitsu.com>
-	<CAGBYx2YZ4M8QwwOcnLAaf+934WAcZoNS_pPrw8j3Nkr3=6fA5g@mail.gmail.com>
-	<4EF066F0.5010809@jp.fujitsu.com>
-	<20111222203639.4200538e.toshi.okajima@jp.fujitsu.com>
-	<20111222210007.ca8fb54f.toshi.okajima@jp.fujitsu.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] jbd: Remove j_barrier mutex
+Date: Thu, 22 Dec 2011 15:07:45 +0100
+Message-ID: <1324562865-4720-1-git-send-email-jack@suse.cz>
+Cc: akmp@suse.cz, rjw@sisk.pl, Jan Kara <jack@suse.cz>,
+	Andrew Morton <akpm@linux-foundation.org>
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:48926 "EHLO
-	mail-tul01m020-f174.google.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751689Ab1LVOHd convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 22 Dec 2011 09:07:33 -0500
-Received: by obcwo16 with SMTP id wo16so4153126obc.19
-        for <linux-ext4@vger.kernel.org>; Thu, 22 Dec 2011 06:07:33 -0800 (PST)
-In-Reply-To: <20111222210007.ca8fb54f.toshi.okajima@jp.fujitsu.com>
+Received: from cantor2.suse.de ([195.135.220.15]:54022 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751689Ab1LVOIP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 22 Dec 2011 09:08:15 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 22, 2011 at 8:00 PM, Toshiyuki Okajima
-<toshi.okajima@jp.fujitsu.com> wrote:
-> Remove all t_handle_lock statements because they are not necessary an=
-ymore.
->
-> Because there is read_lock(&journal->j_state_lock) or
-> write_lock(&journal->j_state_lock) on all the forward codes beyond th=
-e place
-> which needs a spin_lock(&transaction->t_handle_lock).
->
-> Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-> Cc:
-> ---
-> =A0fs/jbd2/commit.c =A0 =A0 =A0| =A0 =A04 ----
-> =A0fs/jbd2/transaction.c | =A0 18 +++---------------
-> =A0include/linux/jbd2.h =A0| =A0 =A08 --------
-> =A03 files changed, 3 insertions(+), 27 deletions(-)
->
-> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-> index 68d704d..1030d47 100644
-> --- a/fs/jbd2/commit.c
-> +++ b/fs/jbd2/commit.c
-> @@ -364,22 +364,18 @@ void jbd2_journal_commit_transaction(journal_t =
-*journal)
-> =A0 =A0 =A0 =A0stats.run.rs_running =3D jbd2_time_diff(commit_transac=
-tion->t_start,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0stats.run.rs_locked);
->
-> - =A0 =A0 =A0 spin_lock(&commit_transaction->t_handle_lock);
-> =A0 =A0 =A0 =A0while (atomic_read(&commit_transaction->t_updates)) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0DEFINE_WAIT(wait);
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0prepare_to_wait(&journal->j_wait_updat=
-es, &wait,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0TASK_UNINTERRUPTIBLE);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (atomic_read(&commit_transaction->t=
-_updates)) {
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 spin_unlock(&commit_tra=
-nsaction->t_handle_lock);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0write_unlock(&journal-=
->j_state_lock);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0schedule();
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0write_lock(&journal->j=
-_state_lock);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 spin_lock(&commit_trans=
-action->t_handle_lock);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0finish_wait(&journal->j_wait_updates, =
-&wait);
-> =A0 =A0 =A0 =A0}
-> - =A0 =A0 =A0 spin_unlock(&commit_transaction->t_handle_lock);
->
-> =A0 =A0 =A0 =A0J_ASSERT (atomic_read(&commit_transaction->t_outstandi=
-ng_credits) <=3D
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0journal->j_max_transac=
-tion_buffers);
-> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-> index 76f2eca..7f84e3f 100644
-> --- a/fs/jbd2/transaction.c
-> +++ b/fs/jbd2/transaction.c
-> @@ -56,7 +56,6 @@ jbd2_get_transaction(journal_t *journal, transactio=
-n_t *transaction)
-> =A0 =A0 =A0 =A0transaction->t_start_time =3D ktime_get();
-> =A0 =A0 =A0 =A0transaction->t_tid =3D journal->j_transaction_sequence=
-++;
-> =A0 =A0 =A0 =A0transaction->t_expires =3D jiffies + journal->j_commit=
-_interval;
-> - =A0 =A0 =A0 spin_lock_init(&transaction->t_handle_lock);
-> =A0 =A0 =A0 =A0atomic_set(&transaction->t_updates, 0);
-> =A0 =A0 =A0 =A0atomic_set(&transaction->t_outstanding_credits, 0);
-> =A0 =A0 =A0 =A0atomic_set(&transaction->t_handle_count, 0);
-> @@ -100,10 +99,8 @@ static inline void update_t_max_wait(transaction_=
-t *transaction,
-> =A0 =A0 =A0 =A0if (jbd2_journal_enable_debug &&
-> =A0 =A0 =A0 =A0 =A0 =A0time_after(transaction->t_start, ts)) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ts =3D jbd2_time_diff(ts, transaction-=
->t_start);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 spin_lock(&transaction->t_handle_lock);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (ts > transaction->t_max_wait)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0transaction->t_max_wai=
-t =3D ts;
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 spin_unlock(&transaction->t_handle_lock=
-);
-Hi Toshiyuki,
+j_barrier mutex is used for serializing different journal lock operations.  The
+problem with it is that e.g. FIFREEZE ioctl results in process leaving kernel
+with j_barrier mutex held which makes lockdep freak out. Also hibernation code
+wants to freeze filesystem but it cannot do so because it then cannot hibernate
+the system because of mutex being locked.
 
-     I think you removed too much.  t_handle_lock is needed here to
-protect t_max_wait.   I meant just removing t_handle_lock from where I
-commented in your patch post out last time.
+So we remove j_barrier mutex and use direct wait on j_barrier_count instead.
+Since locking journal is a rare operation we don't have to care about fairness
+or such things.
 
-Yongqiang.
-> =A0 =A0 =A0 =A0}
-> =A0#endif
-> =A0}
-> @@ -401,19 +398,18 @@ int jbd2_journal_extend(handle_t *handle, int n=
-blocks)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto error_out;
-> =A0 =A0 =A0 =A0}
->
-> - =A0 =A0 =A0 spin_lock(&transaction->t_handle_lock);
-> =A0 =A0 =A0 =A0wanted =3D atomic_read(&transaction->t_outstanding_cre=
-dits) + nblocks;
->
-> =A0 =A0 =A0 =A0if (wanted > journal->j_max_transaction_buffers) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0jbd_debug(3, "denied handle %p %d bloc=
-ks: "
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0"transaction too l=
-arge\n", handle, nblocks);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto unlock;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto error_out;
-> =A0 =A0 =A0 =A0}
->
-> =A0 =A0 =A0 =A0if (wanted > __jbd2_log_space_left(journal)) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0jbd_debug(3, "denied handle %p %d bloc=
-ks: "
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0"insufficient log =
-space\n", handle, nblocks);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto unlock;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto error_out;
-> =A0 =A0 =A0 =A0}
->
-> =A0 =A0 =A0 =A0handle->h_buffer_credits +=3D nblocks;
-> @@ -421,8 +417,6 @@ int jbd2_journal_extend(handle_t *handle, int nbl=
-ocks)
-> =A0 =A0 =A0 =A0result =3D 0;
->
-> =A0 =A0 =A0 =A0jbd_debug(3, "extended handle %p by %d\n", handle, nbl=
-ocks);
-> -unlock:
-> - =A0 =A0 =A0 spin_unlock(&transaction->t_handle_lock);
-> =A0error_out:
-> =A0 =A0 =A0 =A0read_unlock(&journal->j_state_lock);
-> =A0out:
-> @@ -464,12 +458,10 @@ int jbd2__journal_restart(handle_t *handle, int=
- nblocks, gfp_t gfp_mask)
-> =A0 =A0 =A0 =A0J_ASSERT(journal_current_handle() =3D=3D handle);
->
-> =A0 =A0 =A0 =A0read_lock(&journal->j_state_lock);
-> - =A0 =A0 =A0 spin_lock(&transaction->t_handle_lock);
-> =A0 =A0 =A0 =A0atomic_sub(handle->h_buffer_credits,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 &transaction->t_outstanding_credi=
-ts);
-> =A0 =A0 =A0 =A0if (atomic_dec_and_test(&transaction->t_updates))
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0wake_up(&journal->j_wait_updates);
-> - =A0 =A0 =A0 spin_unlock(&transaction->t_handle_lock);
->
-> =A0 =A0 =A0 =A0jbd_debug(2, "restarting handle %p\n", handle);
-> =A0 =A0 =A0 =A0tid =3D transaction->t_tid;
-> @@ -516,14 +508,10 @@ void jbd2_journal_lock_updates(journal_t *journ=
-al)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (!transaction)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0break;
->
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 spin_lock(&transaction->t_handle_lock);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!atomic_read(&transaction->t_update=
-s)) {
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 spin_unlock(&transactio=
-n->t_handle_lock);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!atomic_read(&transaction->t_update=
-s))
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0break;
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0prepare_to_wait(&journal->j_wait_updat=
-es, &wait,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0TASK_U=
-NINTERRUPTIBLE);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 spin_unlock(&transaction->t_handle_lock=
-);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0write_unlock(&journal->j_state_lock);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0schedule();
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0finish_wait(&journal->j_wait_updates, =
-&wait);
-> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> index 2092ea2..55f7a8c 100644
-> --- a/include/linux/jbd2.h
-> +++ b/include/linux/jbd2.h
-> @@ -440,9 +440,6 @@ struct transaction_chp_stats_s {
-> =A0* =A0 =A0->j_list_lock
-> =A0*
-> =A0* =A0 =A0j_state_lock
-> - * =A0 =A0->t_handle_lock
-> - *
-> - * =A0 =A0j_state_lock
-> =A0* =A0 =A0->j_list_lock =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0(jou=
-rnal_unmap_buffer)
-> =A0*
-> =A0*/
-> @@ -538,11 +535,6 @@ struct transaction_s
-> =A0 =A0 =A0 =A0struct list_head =A0 =A0 =A0 =A0t_inode_list;
->
-> =A0 =A0 =A0 =A0/*
-> - =A0 =A0 =A0 =A0* Protects info related to handles
-> - =A0 =A0 =A0 =A0*/
-> - =A0 =A0 =A0 spinlock_t =A0 =A0 =A0 =A0 =A0 =A0 =A0t_handle_lock;
-> -
-> - =A0 =A0 =A0 /*
-> =A0 =A0 =A0 =A0 * Longest time some handle had to wait for running tr=
-ansaction
-> =A0 =A0 =A0 =A0 */
-> =A0 =A0 =A0 =A0unsigned long =A0 =A0 =A0 =A0 =A0 t_max_wait;
-> --
-> 1.5.5.6
+CC: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/jbd/journal.c     |    1 -
+ fs/jbd/transaction.c |   36 +++++++++++++++++++++---------------
+ include/linux/jbd.h  |    4 ----
+ 3 files changed, 21 insertions(+), 20 deletions(-)
 
+  I carry this patch in my tree and plan to merge it in the next merge window
+unless someone objects.
 
-
---=20
-Best Wishes
-Yongqiang Yang
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+index fea8dd6..1656dc2 100644
+--- a/fs/jbd/journal.c
++++ b/fs/jbd/journal.c
+@@ -721,7 +721,6 @@ static journal_t * journal_init_common (void)
+ 	init_waitqueue_head(&journal->j_wait_checkpoint);
+ 	init_waitqueue_head(&journal->j_wait_commit);
+ 	init_waitqueue_head(&journal->j_wait_updates);
+-	mutex_init(&journal->j_barrier);
+ 	mutex_init(&journal->j_checkpoint_mutex);
+ 	spin_lock_init(&journal->j_revoke_lock);
+ 	spin_lock_init(&journal->j_list_lock);
+diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
+index 7e59c6e..7fce94b 100644
+--- a/fs/jbd/transaction.c
++++ b/fs/jbd/transaction.c
+@@ -426,17 +426,34 @@ int journal_restart(handle_t *handle, int nblocks)
+  * void journal_lock_updates () - establish a transaction barrier.
+  * @journal:  Journal to establish a barrier on.
+  *
+- * This locks out any further updates from being started, and blocks
+- * until all existing updates have completed, returning only once the
+- * journal is in a quiescent state with no updates running.
+- *
+- * The journal lock should not be held on entry.
++ * This locks out any further updates from being started, and blocks until all
++ * existing updates have completed, returning only once the journal is in a
++ * quiescent state with no updates running.
++ *
++ * We do not use simple mutex for synchronization as there are syscalls which
++ * want to return with filesystem locked and that trips up lockdep. Also
++ * hibernate needs to lock filesystem but locked mutex then blocks hibernation.
++ * Since locking filesystem is rare operation, we use simple counter and
++ * waitqueue for locking.
+  */
+ void journal_lock_updates(journal_t *journal)
+ {
+ 	DEFINE_WAIT(wait);
+ 
++wait:
++	/* Wait for previous locked operation to finish */
++	wait_event(journal->j_wait_transaction_locked,
++		   journal->j_barrier_count == 0);
++
+ 	spin_lock(&journal->j_state_lock);
++	/*
++	 * Check reliably under the lock whether we are the ones winning the race
++	 * and locking the journal
++	 */
++	if (journal->j_barrier_count > 0) {
++		spin_unlock(&journal->j_state_lock);
++		goto wait;
++	}
+ 	++journal->j_barrier_count;
+ 
+ 	/* Wait until there are no running updates */
+@@ -460,14 +477,6 @@ void journal_lock_updates(journal_t *journal)
+ 		spin_lock(&journal->j_state_lock);
+ 	}
+ 	spin_unlock(&journal->j_state_lock);
+-
+-	/*
+-	 * We have now established a barrier against other normal updates, but
+-	 * we also need to barrier against other journal_lock_updates() calls
+-	 * to make sure that we serialise special journal-locked operations
+-	 * too.
+-	 */
+-	mutex_lock(&journal->j_barrier);
+ }
+ 
+ /**
+@@ -475,14 +484,11 @@ void journal_lock_updates(journal_t *journal)
+  * @journal:  Journal to release the barrier on.
+  *
+  * Release a transaction barrier obtained with journal_lock_updates().
+- *
+- * Should be called without the journal lock held.
+  */
+ void journal_unlock_updates (journal_t *journal)
+ {
+ 	J_ASSERT(journal->j_barrier_count != 0);
+ 
+-	mutex_unlock(&journal->j_barrier);
+ 	spin_lock(&journal->j_state_lock);
+ 	--journal->j_barrier_count;
+ 	spin_unlock(&journal->j_state_lock);
+diff --git a/include/linux/jbd.h b/include/linux/jbd.h
+index 492cc12..d211732 100644
+--- a/include/linux/jbd.h
++++ b/include/linux/jbd.h
+@@ -497,7 +497,6 @@ struct transaction_s
+  * @j_format_version: Version of the superblock format
+  * @j_state_lock: Protect the various scalars in the journal
+  * @j_barrier_count:  Number of processes waiting to create a barrier lock
+- * @j_barrier: The barrier lock itself
+  * @j_running_transaction: The current running transaction..
+  * @j_committing_transaction: the transaction we are pushing to disk
+  * @j_checkpoint_transactions: a linked circular list of all transactions
+@@ -580,9 +579,6 @@ struct journal_s
+ 	 */
+ 	int			j_barrier_count;
+ 
+-	/* The barrier lock itself */
+-	struct mutex		j_barrier;
