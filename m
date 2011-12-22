@@ -1,87 +1,40 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext2,ext3,ext4: don't inherit APPEND_FL or IMMUTABLE_FL
- for new inodes
-Date: Thu, 22 Dec 2011 12:06:36 -0600
-Message-ID: <4EF371AC.6000001@redhat.com>
-References: <20110814020617.GB3524@thunk.org> <1313288886-32689-1-git-send-email-tytso@mit.edu>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext2,ext3,ext4: don't inherit APPEND_FL or
+ IMMUTABLE_FL for new inodes
+Date: Thu, 22 Dec 2011 13:19:49 -0500
+Message-ID: <20111222181949.GE5041@thunk.org>
+References: <20110814020617.GB3524@thunk.org>
+ <1313288886-32689-1-git-send-email-tytso@mit.edu>
+ <4EF371AC.6000001@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48498 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753357Ab1LVSGk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 22 Dec 2011 13:06:40 -0500
-In-Reply-To: <1313288886-32689-1-git-send-email-tytso@mit.edu>
+Received: from li9-11.members.linode.com ([67.18.176.11]:44208 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752425Ab1LVSTw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 22 Dec 2011 13:19:52 -0500
+Content-Disposition: inline
+In-Reply-To: <4EF371AC.6000001@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 8/13/11 9:28 PM, Theodore Ts'o wrote:
-> This doesn't make much sense, and it exposes a bug in the kernel where
-> attempts to create a new file in an append-only directory using
-> O_CREAT will fail (but still leave a zero-length file).  This was
-> discovered when xfstests #79 was generalized so it could run on all
-> file systems.
-
-Curious about the status of this one; I think it makes sense to me, but
-I don't think it ever made it upstream?  I'd be willing to give it a:
-
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
-
-Are there concerns about it or did it just slip through the cracks?
-
-
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/ext4/ext4.h          |    3 +--
->  include/linux/ext2_fs.h |    4 ++--
->  include/linux/ext3_fs.h |    4 ++--
->  3 files changed, 5 insertions(+), 6 deletions(-)
+On Thu, Dec 22, 2011 at 12:06:36PM -0600, Eric Sandeen wrote:
+> On 8/13/11 9:28 PM, Theodore Ts'o wrote:
+> > This doesn't make much sense, and it exposes a bug in the kernel where
+> > attempts to create a new file in an append-only directory using
+> > O_CREAT will fail (but still leave a zero-length file).  This was
+> > discovered when xfstests #79 was generalized so it could run on all
+> > file systems.
 > 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index e717dfd..be593d5 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -357,8 +357,7 @@ struct flex_groups {
->  
->  /* Flags that should be inherited by new inodes from their parent. */
->  #define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
-> -			   EXT4_SYNC_FL | EXT4_IMMUTABLE_FL | EXT4_APPEND_FL |\
-> -			   EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
-> +			   EXT4_SYNC_FL | EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
->  			   EXT4_NOCOMPR_FL | EXT4_JOURNAL_DATA_FL |\
->  			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL)
->  
-> diff --git a/include/linux/ext2_fs.h b/include/linux/ext2_fs.h
-> index 53792bf..ce1b719 100644
-> --- a/include/linux/ext2_fs.h
-> +++ b/include/linux/ext2_fs.h
-> @@ -197,8 +197,8 @@ struct ext2_group_desc
->  
->  /* Flags that should be inherited by new inodes from their parent. */
->  #define EXT2_FL_INHERITED (EXT2_SECRM_FL | EXT2_UNRM_FL | EXT2_COMPR_FL |\
-> -			   EXT2_SYNC_FL | EXT2_IMMUTABLE_FL | EXT2_APPEND_FL |\
-> -			   EXT2_NODUMP_FL | EXT2_NOATIME_FL | EXT2_COMPRBLK_FL|\
-> +			   EXT2_SYNC_FL | EXT2_NODUMP_FL |\
-> +			   EXT2_NOATIME_FL | EXT2_COMPRBLK_FL |\
->  			   EXT2_NOCOMP_FL | EXT2_JOURNAL_DATA_FL |\
->  			   EXT2_NOTAIL_FL | EXT2_DIRSYNC_FL)
->  
-> diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
-> index 67a803a..0244611 100644
-> --- a/include/linux/ext3_fs.h
-> +++ b/include/linux/ext3_fs.h
-> @@ -180,8 +180,8 @@ struct ext3_group_desc
->  
->  /* Flags that should be inherited by new inodes from their parent. */
->  #define EXT3_FL_INHERITED (EXT3_SECRM_FL | EXT3_UNRM_FL | EXT3_COMPR_FL |\
-> -			   EXT3_SYNC_FL | EXT3_IMMUTABLE_FL | EXT3_APPEND_FL |\
-> -			   EXT3_NODUMP_FL | EXT3_NOATIME_FL | EXT3_COMPRBLK_FL|\
-> +			   EXT3_SYNC_FL | EXT3_NODUMP_FL |\
-> +			   EXT3_NOATIME_FL | EXT3_COMPRBLK_FL |\
->  			   EXT3_NOCOMPR_FL | EXT3_JOURNAL_DATA_FL |\
->  			   EXT3_NOTAIL_FL | EXT3_DIRSYNC_FL)
->  
+> Curious about the status of this one; I think it makes sense to me, but
+> I don't think it ever made it upstream?  I'd be willing to give it a:
+> 
+> Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+> 
+> Are there concerns about it or did it just slip through the cracks?
 
+Yes, it's there.  It hit upstream as of v3.2-rc1.  Commit id 1cd9f097
+
+     	  	     	 	  - Ted
