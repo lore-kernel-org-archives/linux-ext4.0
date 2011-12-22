@@ -1,50 +1,158 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext2,ext3,ext4: don't inherit APPEND_FL or IMMUTABLE_FL
- for new inodes
-Date: Thu, 22 Dec 2011 12:23:41 -0600
-Message-ID: <4EF375AD.4080306@redhat.com>
-References: <20110814020617.GB3524@thunk.org> <1313288886-32689-1-git-send-email-tytso@mit.edu> <4EF371AC.6000001@redhat.com> <20111222181949.GE5041@thunk.org>
+From: "Rafael J. Wysocki" <rjw@sisk.pl>
+Subject: Re: [PATCH] jbd: Remove j_barrier mutex
+Date: Thu, 22 Dec 2011 21:34:21 +0100
+Message-ID: <201112222134.22097.rjw@sisk.pl>
+References: <1324562865-4720-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: Text/Plain;
+  charset="iso-8859-2"
 Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Ted Ts'o" <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, akmp@suse.cz,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:63030 "EHLO mx1.redhat.com"
+Received: from ogre.sisk.pl ([217.79.144.158]:37960 "EHLO ogre.sisk.pl"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751671Ab1LVSXo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 22 Dec 2011 13:23:44 -0500
-In-Reply-To: <20111222181949.GE5041@thunk.org>
+	id S1751135Ab1LVUbP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 22 Dec 2011 15:31:15 -0500
+In-Reply-To: <1324562865-4720-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 12/22/11 12:19 PM, Ted Ts'o wrote:
-> On Thu, Dec 22, 2011 at 12:06:36PM -0600, Eric Sandeen wrote:
->> On 8/13/11 9:28 PM, Theodore Ts'o wrote:
->>> This doesn't make much sense, and it exposes a bug in the kernel where
->>> attempts to create a new file in an append-only directory using
->>> O_CREAT will fail (but still leave a zero-length file).  This was
->>> discovered when xfstests #79 was generalized so it could run on all
->>> file systems.
->>
->> Curious about the status of this one; I think it makes sense to me, but
->> I don't think it ever made it upstream?  I'd be willing to give it a:
->>
->> Reviewed-by: Eric Sandeen <sandeen@redhat.com>
->>
->> Are there concerns about it or did it just slip through the cracks?
+On Thursday, December 22, 2011, Jan Kara wrote:
+> j_barrier mutex is used for serializing different journal lock operations.  The
+> problem with it is that e.g. FIFREEZE ioctl results in process leaving kernel
+> with j_barrier mutex held which makes lockdep freak out. Also hibernation code
+> wants to freeze filesystem but it cannot do so because it then cannot hibernate
+> the system because of mutex being locked.
 > 
-> Yes, it's there.  It hit upstream as of v3.2-rc1.  Commit id 1cd9f097
+> So we remove j_barrier mutex and use direct wait on j_barrier_count instead.
+> Since locking journal is a rare operation we don't have to care about fairness
+> or such things.
 
-Argh sorry, how did I miss that, I thought my tree was up to date, oh well.
+Thanks a lot for doing that! :-)
 
-Sorry for the noise & thanks,
+Rafael
 
--Eric
 
->      	  	     	 	  - Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> CC: Andrew Morton <akpm@linux-foundation.org>
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/jbd/journal.c     |    1 -
+>  fs/jbd/transaction.c |   36 +++++++++++++++++++++---------------
+>  include/linux/jbd.h  |    4 ----
+>  3 files changed, 21 insertions(+), 20 deletions(-)
+> 
+>   I carry this patch in my tree and plan to merge it in the next merge window
+> unless someone objects.
+> 
+> diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+> index fea8dd6..1656dc2 100644
+> --- a/fs/jbd/journal.c
+> +++ b/fs/jbd/journal.c
+> @@ -721,7 +721,6 @@ static journal_t * journal_init_common (void)
+>  	init_waitqueue_head(&journal->j_wait_checkpoint);
+>  	init_waitqueue_head(&journal->j_wait_commit);
+>  	init_waitqueue_head(&journal->j_wait_updates);
+> -	mutex_init(&journal->j_barrier);
+>  	mutex_init(&journal->j_checkpoint_mutex);
+>  	spin_lock_init(&journal->j_revoke_lock);
+>  	spin_lock_init(&journal->j_list_lock);
+> diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
+> index 7e59c6e..7fce94b 100644
+> --- a/fs/jbd/transaction.c
+> +++ b/fs/jbd/transaction.c
+> @@ -426,17 +426,34 @@ int journal_restart(handle_t *handle, int nblocks)
+>   * void journal_lock_updates () - establish a transaction barrier.
+>   * @journal:  Journal to establish a barrier on.
+>   *
+> - * This locks out any further updates from being started, and blocks
+> - * until all existing updates have completed, returning only once the
+> - * journal is in a quiescent state with no updates running.
+> - *
+> - * The journal lock should not be held on entry.
+> + * This locks out any further updates from being started, and blocks until all
+> + * existing updates have completed, returning only once the journal is in a
+> + * quiescent state with no updates running.
+> + *
+> + * We do not use simple mutex for synchronization as there are syscalls which
+> + * want to return with filesystem locked and that trips up lockdep. Also
+> + * hibernate needs to lock filesystem but locked mutex then blocks hibernation.
+> + * Since locking filesystem is rare operation, we use simple counter and
+> + * waitqueue for locking.
+>   */
+>  void journal_lock_updates(journal_t *journal)
+>  {
+>  	DEFINE_WAIT(wait);
+>  
+> +wait:
+> +	/* Wait for previous locked operation to finish */
+> +	wait_event(journal->j_wait_transaction_locked,
+> +		   journal->j_barrier_count == 0);
+> +
+>  	spin_lock(&journal->j_state_lock);
+> +	/*
+> +	 * Check reliably under the lock whether we are the ones winning the race
+> +	 * and locking the journal
+> +	 */
+> +	if (journal->j_barrier_count > 0) {
+> +		spin_unlock(&journal->j_state_lock);
+> +		goto wait;
+> +	}
+>  	++journal->j_barrier_count;
+>  
+>  	/* Wait until there are no running updates */
+> @@ -460,14 +477,6 @@ void journal_lock_updates(journal_t *journal)
+>  		spin_lock(&journal->j_state_lock);
+>  	}
+>  	spin_unlock(&journal->j_state_lock);
+> -
+> -	/*
+> -	 * We have now established a barrier against other normal updates, but
+> -	 * we also need to barrier against other journal_lock_updates() calls
+> -	 * to make sure that we serialise special journal-locked operations
+> -	 * too.
+> -	 */
+> -	mutex_lock(&journal->j_barrier);
+>  }
+>  
+>  /**
+> @@ -475,14 +484,11 @@ void journal_lock_updates(journal_t *journal)
+>   * @journal:  Journal to release the barrier on.
+>   *
+>   * Release a transaction barrier obtained with journal_lock_updates().
+> - *
+> - * Should be called without the journal lock held.
+>   */
+>  void journal_unlock_updates (journal_t *journal)
+>  {
+>  	J_ASSERT(journal->j_barrier_count != 0);
+>  
+> -	mutex_unlock(&journal->j_barrier);
+>  	spin_lock(&journal->j_state_lock);
+>  	--journal->j_barrier_count;
+>  	spin_unlock(&journal->j_state_lock);
+> diff --git a/include/linux/jbd.h b/include/linux/jbd.h
+> index 492cc12..d211732 100644
+> --- a/include/linux/jbd.h
+> +++ b/include/linux/jbd.h
+> @@ -497,7 +497,6 @@ struct transaction_s
+>   * @j_format_version: Version of the superblock format
+>   * @j_state_lock: Protect the various scalars in the journal
+>   * @j_barrier_count:  Number of processes waiting to create a barrier lock
+> - * @j_barrier: The barrier lock itself
+>   * @j_running_transaction: The current running transaction..
+>   * @j_committing_transaction: the transaction we are pushing to disk
+>   * @j_checkpoint_transactions: a linked circular list of all transactions
+> @@ -580,9 +579,6 @@ struct journal_s
+>  	 */
+>  	int			j_barrier_count;
+>  
+> -	/* The barrier lock itself */
+> -	struct mutex		j_barrier;
+> -
+>  	/*
+>  	 * Transactions: The current running transaction...
+>  	 * [j_state_lock] [caller holding open handle]
+> 
 
