@@ -1,115 +1,80 @@
-From: Djalal Harouni <tixxdz@opendz.org>
-Subject: [PATCH] fs/ext4: add missing ext4_resize_end
-Date: Thu, 22 Dec 2011 16:00:57 +0100
-Message-ID: <20111222150057.GA10845@dztty>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	stable@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] ext3: Don't warn from writepage when readonly inode is spotted after error
+Date: Thu, 22 Dec 2011 16:56:55 +0100
+Message-ID: <1324569415-9824-1-git-send-email-jack@suse.cz>
+Cc: Jan Kara <jack@suse.cz>
+To: <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:59880 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753100Ab1LVP5S (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 22 Dec 2011 10:57:18 -0500
+Received: from relay2.suse.de (charybdis-ext.suse.de [195.135.221.2])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx2.suse.de (Postfix) with ESMTP id DF18589994
+	for <linux-ext4@vger.kernel.org>; Thu, 22 Dec 2011 16:57:17 +0100 (CET)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Online resize ioctls 'EXT4_IOC_GROUP_EXTEND' and 'EXT4_IOC_GROUP_ADD'
-call ext4_resize_begin() to check permissions and to set the
-EXT4_RESIZING bit lock, they do their work and they must finish with
-ext4_resize_end() which calls clear_bit_unlock() to unlock and to
-avoid -EBUSY errors for the next resize operations.
+WARN_ON_ONCE(IS_RDONLY(inode)) tends to trip when filesystem hits error and is
+remounted read-only. This unnecessarily scares users (well, they should be
+scared because of filesystem error, but the stack trace distracts them from the
+right source of their fear ;-). We could as well just remove the WARN_ON but
+it's not hard to fix it to not trip on filesystem with errors and not use more
+cycles in the common case so that's what we do.
 
-This patch adds the missing ext4_resize_end() calls on error paths.
-
-Patch tested.
-
-Cc: stable@vger.kernel.org
-Signed-off-by: Djalal Harouni <tixxdz@opendz.org>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ioctl.c |   28 ++++++++++++++++++----------
- 1 files changed, 18 insertions(+), 10 deletions(-)
+ fs/ext3/inode.c |   18 +++++++++++++++---
+ 1 files changed, 15 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index a567968..ab25f57 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -182,19 +182,22 @@ setversion_out:
- 		if (err)
- 			return err;
+  I carry this patch in my tree and will merge it with Linus in the next merge
+window if noone objects.
+
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index a8d3217..91ac85b 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -1623,7 +1623,11 @@ static int ext3_ordered_writepage(struct page *page,
+ 	int err;
  
--		if (get_user(n_blocks_count, (__u32 __user *)arg))
--			return -EFAULT;
-+		if (get_user(n_blocks_count, (__u32 __user *)arg)) {
-+			err = -EFAULT;
-+			goto group_extend_out;
-+		}
+ 	J_ASSERT(PageLocked(page));
+-	WARN_ON_ONCE(IS_RDONLY(inode));
++	/*
++	 * We don't want to warn for emergency remount. The condition is ordered to avoid
++	 * dereferencing inode->i_sb in non-error case to avoid slow-downs.
++	 */
++	WARN_ON_ONCE(IS_RDONLY(inode) && !(EXT3_SB(inode->i_sb)->s_mount_state & EXT3_ERROR_FS));
  
- 		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
- 			       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
- 			ext4_msg(sb, KERN_ERR,
- 				 "Online resizing not supported with bigalloc");
--			return -EOPNOTSUPP;
-+			err = -EOPNOTSUPP;
-+			goto group_extend_out;
- 		}
+ 	/*
+ 	 * We give up here if we're reentered, because it might be for a
+@@ -1698,7 +1702,11 @@ static int ext3_writeback_writepage(struct page *page,
+ 	int err;
  
- 		err = mnt_want_write(filp->f_path.mnt);
- 		if (err)
--			return err;
-+			goto group_extend_out;
+ 	J_ASSERT(PageLocked(page));
+-	WARN_ON_ONCE(IS_RDONLY(inode));
++	/*
++	 * We don't want to warn for emergency remount. The condition is ordered to avoid
++	 * dereferencing inode->i_sb in non-error case to avoid slow-downs.
++	 */
++	WARN_ON_ONCE(IS_RDONLY(inode) && !(EXT3_SB(inode->i_sb)->s_mount_state & EXT3_ERROR_FS));
  
- 		err = ext4_group_extend(sb, EXT4_SB(sb)->s_es, n_blocks_count);
- 		if (EXT4_SB(sb)->s_journal) {
-@@ -204,9 +207,10 @@ setversion_out:
- 		}
- 		if (err == 0)
- 			err = err2;
-+
- 		mnt_drop_write(filp->f_path.mnt);
-+group_extend_out:
- 		ext4_resize_end(sb);
--
- 		return err;
- 	}
+ 	if (ext3_journal_current_handle())
+ 		goto out_fail;
+@@ -1741,7 +1749,11 @@ static int ext3_journalled_writepage(struct page *page,
+ 	int err;
  
-@@ -267,19 +271,22 @@ mext_out:
- 			return err;
+ 	J_ASSERT(PageLocked(page));
+-	WARN_ON_ONCE(IS_RDONLY(inode));
++	/*
++	 * We don't want to warn for emergency remount. The condition is ordered to avoid
++	 * dereferencing inode->i_sb in non-error case to avoid slow-downs.
++	 */
++	WARN_ON_ONCE(IS_RDONLY(inode) && !(EXT3_SB(inode->i_sb)->s_mount_state & EXT3_ERROR_FS));
  
- 		if (copy_from_user(&input, (struct ext4_new_group_input __user *)arg,
--				sizeof(input)))
--			return -EFAULT;
-+				sizeof(input))) {
-+			err = -EFAULT;
-+			goto group_add_out;
-+		}
- 
- 		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
- 			       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
- 			ext4_msg(sb, KERN_ERR,
- 				 "Online resizing not supported with bigalloc");
--			return -EOPNOTSUPP;
-+			err = -EOPNOTSUPP;
-+			goto group_add_out;
- 		}
- 
- 		err = mnt_want_write(filp->f_path.mnt);
- 		if (err)
--			return err;
-+			goto group_add_out;
- 
- 		err = ext4_group_add(sb, &input);
- 		if (EXT4_SB(sb)->s_journal) {
-@@ -289,9 +296,10 @@ mext_out:
- 		}
- 		if (err == 0)
- 			err = err2;
-+
- 		mnt_drop_write(filp->f_path.mnt);
-+group_add_out:
- 		ext4_resize_end(sb);
--
- 		return err;
- 	}
- 
+ 	if (ext3_journal_current_handle())
+ 		goto no_write;
 -- 
 1.7.1
+
