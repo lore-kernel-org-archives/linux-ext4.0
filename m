@@ -1,145 +1,69 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH v5 09/15] ext4: enable ext4_update_super() to handle a flex groups
-Date: Fri, 23 Dec 2011 16:14:59 +0800
-Message-ID: <1324628105-32559-10-git-send-email-xiaoqiangnk@gmail.com>
+Subject: [PATCH v5 10/15] ext4: pass verify_reserved_gdb() the number of group decriptors
+Date: Fri, 23 Dec 2011 16:15:00 +0800
+Message-ID: <1324628105-32559-11-git-send-email-xiaoqiangnk@gmail.com>
 References: <1324628105-32559-1-git-send-email-xiaoqiangnk@gmail.com>
 Cc: tytso@mit.edu, Yongqiang Yang <xiaoqiangnk@gmail.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:44621 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756762Ab1LWLxP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Dec 2011 06:53:15 -0500
-Received: by mail-iy0-f174.google.com with SMTP id h11so15005675iae.19
-        for <linux-ext4@vger.kernel.org>; Fri, 23 Dec 2011 03:53:15 -0800 (PST)
+Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:47472 "EHLO
+	mail-tul01m020-f174.google.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756762Ab1LWLxR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 23 Dec 2011 06:53:17 -0500
+Received: by mail-tul01m020-f174.google.com with SMTP id wo16so4941593obc.19
+        for <linux-ext4@vger.kernel.org>; Fri, 23 Dec 2011 03:53:17 -0800 (PST)
 In-Reply-To: <1324628105-32559-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
 
-This patch enables ext4_update_super() to handle a flex groups.
+The 64bit resizer adds a flex group each time, so verify_reserved_gdb
+can not use s_groups_count directly, it should use the number of group
+decriptors before the added group.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/resize.c |   58 +++++++++++++++++++++++++++++++++++++----------------
- 1 files changed, 40 insertions(+), 18 deletions(-)
+ fs/ext4/resize.c |    7 ++++---
+ 1 files changed, 4 insertions(+), 3 deletions(-)
 
 diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 5223245..fdce84c 100644
+index fdce84c..f368190 100644
 --- a/fs/ext4/resize.c
 +++ b/fs/ext4/resize.c
-@@ -1152,17 +1152,24 @@ static int ext4_setup_new_descs(handle_t *handle, struct super_block *sb,
- }
- 
- /*
-- * ext4_update_super() updates super so that new the added group can be seen
-- *   by the filesystem.
-+ * ext4_update_super() updates super block so that new added groups can be seen
-+ * by the filesystem.
-  *
-  * @sb: super block
-+ * @flex_gd: new added groups
+@@ -624,10 +624,10 @@ static unsigned ext4_list_backups(struct super_block *sb, unsigned *three,
+  * groups in current filesystem that have BACKUPS, or -ve error code.
   */
- static void ext4_update_super(struct super_block *sb,
--			      struct ext4_new_group_data *input)
-+			     struct ext4_new_flex_group_data *flex_gd)
+ static int verify_reserved_gdb(struct super_block *sb,
++			       ext4_group_t end,
+ 			       struct buffer_head *primary)
  {
-+	ext4_fsblk_t blocks_count = 0;
-+	ext4_fsblk_t free_blocks = 0;
-+	ext4_fsblk_t reserved_blocks = 0;
-+	struct ext4_new_group_data *group_data = flex_gd->groups;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct ext4_super_block *es = sbi->s_es;
-+	int i;
+ 	const ext4_fsblk_t blk = primary->b_blocknr;
+-	const ext4_group_t end = EXT4_SB(sb)->s_groups_count;
+ 	unsigned three = 1;
+ 	unsigned five = 5;
+ 	unsigned seven = 7;
+@@ -702,7 +702,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 	if (!gdb_bh)
+ 		return -EIO;
  
-+	BUG_ON(flex_gd->count == 0 || group_data == NULL);
- 	/*
- 	 * Make the new blocks and inodes valid next.  We do this before
- 	 * increasing the group count so that once the group is enabled,
-@@ -1173,9 +1180,19 @@ static void ext4_update_super(struct super_block *sb,
- 	 * blocks/inodes before the group is live won't actually let us
- 	 * allocate the new space yet.
- 	 */
--	ext4_blocks_count_set(es, ext4_blocks_count(es) +
--		input->blocks_count);
--	le32_add_cpu(&es->s_inodes_count, EXT4_INODES_PER_GROUP(sb));
-+	for (i = 0; i < flex_gd->count; i++) {
-+		blocks_count += group_data[i].blocks_count;
-+		free_blocks += group_data[i].free_blocks_count;
-+	}
-+
-+	reserved_blocks = ext4_r_blocks_count(es) * 100;
-+	do_div(reserved_blocks, ext4_blocks_count(es));
-+	reserved_blocks *= blocks_count;
-+	do_div(reserved_blocks, 100);
-+
-+	ext4_blocks_count_set(es, ext4_blocks_count(es) + blocks_count);
-+	le32_add_cpu(&es->s_inodes_count, EXT4_INODES_PER_GROUP(sb) *
-+		     flex_gd->count);
- 
- 	/*
- 	 * We need to protect s_groups_count against other CPUs seeing
-@@ -1183,11 +1200,11 @@ static void ext4_update_super(struct super_block *sb,
- 	 *
- 	 * The precise rules we use are:
- 	 *
--	 * * Writers must perform a smp_wmb() after updating all dependent
--	 *   data and before modifying the groups count
-+	 * * Writers must perform a smp_wmb() after updating all
-+	 *   dependent data and before modifying the groups count
- 	 *
--	 * * Readers must perform an smp_rmb() after reading the groups count
--	 *   and before reading any dependent data.
-+	 * * Readers must perform an smp_rmb() after reading the groups
-+	 *   count and before reading any dependent data.
- 	 *
- 	 * NB. These rules can be relaxed when checking the group count
- 	 * while freeing data, as we can only allocate from a block
-@@ -1198,29 +1215,34 @@ static void ext4_update_super(struct super_block *sb,
- 	smp_wmb();
- 
- 	/* Update the global fs size fields */
--	sbi->s_groups_count++;
-+	sbi->s_groups_count += flex_gd->count;
- 
- 	/* Update the reserved block counts only once the new group is
- 	 * active. */
- 	ext4_r_blocks_count_set(es, ext4_r_blocks_count(es) +
--		input->reserved_blocks);
-+				reserved_blocks);
- 
- 	/* Update the free space counts */
- 	percpu_counter_add(&sbi->s_freeclusters_counter,
--			   EXT4_B2C(sbi, input->free_blocks_count));
-+			   EXT4_B2C(sbi, free_blocks));
- 	percpu_counter_add(&sbi->s_freeinodes_counter,
--			   EXT4_INODES_PER_GROUP(sb));
-+			   EXT4_INODES_PER_GROUP(sb) * flex_gd->count);
- 
--	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG) &&
-+	if (EXT4_HAS_INCOMPAT_FEATURE(sb,
-+				      EXT4_FEATURE_INCOMPAT_FLEX_BG) &&
- 	    sbi->s_log_groups_per_flex) {
- 		ext4_group_t flex_group;
--		flex_group = ext4_flex_group(sbi, input->group);
--		atomic_add(EXT4_B2C(sbi, input->free_blocks_count),
-+		flex_group = ext4_flex_group(sbi, group_data[0].group);
-+		atomic_add(EXT4_B2C(sbi, free_blocks),
- 			   &sbi->s_flex_groups[flex_group].free_clusters);
--		atomic_add(EXT4_INODES_PER_GROUP(sb),
-+		atomic_add(EXT4_INODES_PER_GROUP(sb) * flex_gd->count,
- 			   &sbi->s_flex_groups[flex_group].free_inodes);
- 	}
- 
-+	if (test_opt(sb, DEBUG))
-+		printk(KERN_DEBUG "EXT4-fs: added group %u:"
-+		       "%llu blocks(%llu free %llu reserved)\n", flex_gd->count,
-+		       blocks_count, free_blocks, reserved_blocks);
- }
- 
- /* Add group descriptor data to an existing or new group descriptor block.
+-	gdbackups = verify_reserved_gdb(sb, gdb_bh);
++	gdbackups = verify_reserved_gdb(sb, group, gdb_bh);
+ 	if (gdbackups < 0) {
+ 		err = gdbackups;
+ 		goto exit_bh;
+@@ -865,7 +865,8 @@ static int reserve_backup_gdb(handle_t *handle, struct inode *inode,
+ 			err = -EIO;
+ 			goto exit_bh;
+ 		}
+-		if ((gdbackups = verify_reserved_gdb(sb, primary[res])) < 0) {
++		gdbackups = verify_reserved_gdb(sb, group, primary[res]);
++		if (gdbackups < 0) {
+ 			brelse(primary[res]);
+ 			err = gdbackups;
+ 			goto exit_bh;
 -- 
 1.7.5.1
 
