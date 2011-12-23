@@ -1,158 +1,160 @@
-From: "Rafael J. Wysocki" <rjw@sisk.pl>
-Subject: Re: [PATCH] jbd: Remove j_barrier mutex
-Date: Thu, 22 Dec 2011 21:34:21 +0100
-Message-ID: <201112222134.22097.rjw@sisk.pl>
-References: <1324562865-4720-1-git-send-email-jack@suse.cz>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: Re: [PATCH] fs/ext4: add missing ext4_resize_end
+Date: Fri, 23 Dec 2011 09:14:20 +0800
+Message-ID: <CAGBYx2YgN_iqcKOfAwzH_t63us+ECgxcNMEsaRz0j5aoY5tORw@mail.gmail.com>
+References: <20111222150057.GA10845@dztty>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-2"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, akmp@suse.cz,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	stable@vger.kernel.org
+To: Djalal Harouni <tixxdz@opendz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ogre.sisk.pl ([217.79.144.158]:37960 "EHLO ogre.sisk.pl"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751135Ab1LVUbP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 22 Dec 2011 15:31:15 -0500
-In-Reply-To: <1324562865-4720-1-git-send-email-jack@suse.cz>
+Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:34512 "EHLO
+	mail-tul01m020-f174.google.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753755Ab1LWBOV convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 22 Dec 2011 20:14:21 -0500
+In-Reply-To: <20111222150057.GA10845@dztty>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thursday, December 22, 2011, Jan Kara wrote:
-> j_barrier mutex is used for serializing different journal lock operations.  The
-> problem with it is that e.g. FIFREEZE ioctl results in process leaving kernel
-> with j_barrier mutex held which makes lockdep freak out. Also hibernation code
-> wants to freeze filesystem but it cannot do so because it then cannot hibernate
-> the system because of mutex being locked.
-> 
-> So we remove j_barrier mutex and use direct wait on j_barrier_count instead.
-> Since locking journal is a rare operation we don't have to care about fairness
-> or such things.
+Thanks.
 
-Thanks a lot for doing that! :-)
+The patch looks good.   I have to update the new resize patch too.
 
-Rafael
+Yongqiang.
 
-
-> CC: Andrew Morton <akpm@linux-foundation.org>
-> Signed-off-by: Jan Kara <jack@suse.cz>
+On Thu, Dec 22, 2011 at 11:00 PM, Djalal Harouni <tixxdz@opendz.org> wr=
+ote:
+> Online resize ioctls 'EXT4_IOC_GROUP_EXTEND' and 'EXT4_IOC_GROUP_ADD'
+> call ext4_resize_begin() to check permissions and to set the
+> EXT4_RESIZING bit lock, they do their work and they must finish with
+> ext4_resize_end() which calls clear_bit_unlock() to unlock and to
+> avoid -EBUSY errors for the next resize operations.
+>
+> This patch adds the missing ext4_resize_end() calls on error paths.
+>
+> Patch tested.
+>
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Djalal Harouni <tixxdz@opendz.org>
 > ---
->  fs/jbd/journal.c     |    1 -
->  fs/jbd/transaction.c |   36 +++++++++++++++++++++---------------
->  include/linux/jbd.h  |    4 ----
->  3 files changed, 21 insertions(+), 20 deletions(-)
-> 
->   I carry this patch in my tree and plan to merge it in the next merge window
-> unless someone objects.
-> 
-> diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-> index fea8dd6..1656dc2 100644
-> --- a/fs/jbd/journal.c
-> +++ b/fs/jbd/journal.c
-> @@ -721,7 +721,6 @@ static journal_t * journal_init_common (void)
->  	init_waitqueue_head(&journal->j_wait_checkpoint);
->  	init_waitqueue_head(&journal->j_wait_commit);
->  	init_waitqueue_head(&journal->j_wait_updates);
-> -	mutex_init(&journal->j_barrier);
->  	mutex_init(&journal->j_checkpoint_mutex);
->  	spin_lock_init(&journal->j_revoke_lock);
->  	spin_lock_init(&journal->j_list_lock);
-> diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
-> index 7e59c6e..7fce94b 100644
-> --- a/fs/jbd/transaction.c
-> +++ b/fs/jbd/transaction.c
-> @@ -426,17 +426,34 @@ int journal_restart(handle_t *handle, int nblocks)
->   * void journal_lock_updates () - establish a transaction barrier.
->   * @journal:  Journal to establish a barrier on.
->   *
-> - * This locks out any further updates from being started, and blocks
-> - * until all existing updates have completed, returning only once the
-> - * journal is in a quiescent state with no updates running.
-> - *
-> - * The journal lock should not be held on entry.
-> + * This locks out any further updates from being started, and blocks until all
-> + * existing updates have completed, returning only once the journal is in a
-> + * quiescent state with no updates running.
-> + *
-> + * We do not use simple mutex for synchronization as there are syscalls which
-> + * want to return with filesystem locked and that trips up lockdep. Also
-> + * hibernate needs to lock filesystem but locked mutex then blocks hibernation.
-> + * Since locking filesystem is rare operation, we use simple counter and
-> + * waitqueue for locking.
->   */
->  void journal_lock_updates(journal_t *journal)
->  {
->  	DEFINE_WAIT(wait);
->  
-> +wait:
-> +	/* Wait for previous locked operation to finish */
-> +	wait_event(journal->j_wait_transaction_locked,
-> +		   journal->j_barrier_count == 0);
+> =A0fs/ext4/ioctl.c | =A0 28 ++++++++++++++++++----------
+> =A01 files changed, 18 insertions(+), 10 deletions(-)
+>
+> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+> index a567968..ab25f57 100644
+> --- a/fs/ext4/ioctl.c
+> +++ b/fs/ext4/ioctl.c
+> @@ -182,19 +182,22 @@ setversion_out:
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (err)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return err;
+>
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (get_user(n_blocks_count, (__u32 __u=
+ser *)arg))
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return -EFAULT;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (get_user(n_blocks_count, (__u32 __u=
+ser *)arg)) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 err =3D -EFAULT;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto group_extend_out;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 EXT4_FEAT=
+URE_RO_COMPAT_BIGALLOC)) {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext4_msg(sb, KERN_ERR,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 "Onli=
+ne resizing not supported with bigalloc");
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return -EOPNOTSUPP;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 err =3D -EOPNOTSUPP;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto group_extend_out;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0err =3D mnt_want_write(filp->f_path.mn=
+t);
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (err)
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return err;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto group_extend_out;
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0err =3D ext4_group_extend(sb, EXT4_SB(=
+sb)->s_es, n_blocks_count);
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (EXT4_SB(sb)->s_journal) {
+> @@ -204,9 +207,10 @@ setversion_out:
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (err =3D=3D 0)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0err =3D err2;
 > +
->  	spin_lock(&journal->j_state_lock);
-> +	/*
-> +	 * Check reliably under the lock whether we are the ones winning the race
-> +	 * and locking the journal
-> +	 */
-> +	if (journal->j_barrier_count > 0) {
-> +		spin_unlock(&journal->j_state_lock);
-> +		goto wait;
-> +	}
->  	++journal->j_barrier_count;
->  
->  	/* Wait until there are no running updates */
-> @@ -460,14 +477,6 @@ void journal_lock_updates(journal_t *journal)
->  		spin_lock(&journal->j_state_lock);
->  	}
->  	spin_unlock(&journal->j_state_lock);
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0mnt_drop_write(filp->f_path.mnt);
+> +group_extend_out:
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext4_resize_end(sb);
 > -
-> -	/*
-> -	 * We have now established a barrier against other normal updates, but
-> -	 * we also need to barrier against other journal_lock_updates() calls
-> -	 * to make sure that we serialise special journal-locked operations
-> -	 * too.
-> -	 */
-> -	mutex_lock(&journal->j_barrier);
->  }
->  
->  /**
-> @@ -475,14 +484,11 @@ void journal_lock_updates(journal_t *journal)
->   * @journal:  Journal to release the barrier on.
->   *
->   * Release a transaction barrier obtained with journal_lock_updates().
-> - *
-> - * Should be called without the journal lock held.
->   */
->  void journal_unlock_updates (journal_t *journal)
->  {
->  	J_ASSERT(journal->j_barrier_count != 0);
->  
-> -	mutex_unlock(&journal->j_barrier);
->  	spin_lock(&journal->j_state_lock);
->  	--journal->j_barrier_count;
->  	spin_unlock(&journal->j_state_lock);
-> diff --git a/include/linux/jbd.h b/include/linux/jbd.h
-> index 492cc12..d211732 100644
-> --- a/include/linux/jbd.h
-> +++ b/include/linux/jbd.h
-> @@ -497,7 +497,6 @@ struct transaction_s
->   * @j_format_version: Version of the superblock format
->   * @j_state_lock: Protect the various scalars in the journal
->   * @j_barrier_count:  Number of processes waiting to create a barrier lock
-> - * @j_barrier: The barrier lock itself
->   * @j_running_transaction: The current running transaction..
->   * @j_committing_transaction: the transaction we are pushing to disk
->   * @j_checkpoint_transactions: a linked circular list of all transactions
-> @@ -580,9 +579,6 @@ struct journal_s
->  	 */
->  	int			j_barrier_count;
->  
-> -	/* The barrier lock itself */
-> -	struct mutex		j_barrier;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return err;
+> =A0 =A0 =A0 =A0}
+>
+> @@ -267,19 +271,22 @@ mext_out:
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return err;
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (copy_from_user(&input, (struct ext=
+4_new_group_input __user *)arg,
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 sizeof(=
+input)))
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return -EFAULT;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 sizeof(=
+input))) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 err =3D -EFAULT;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto group_add_out;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 EXT4_FEAT=
+URE_RO_COMPAT_BIGALLOC)) {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext4_msg(sb, KERN_ERR,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 "Onli=
+ne resizing not supported with bigalloc");
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return -EOPNOTSUPP;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 err =3D -EOPNOTSUPP;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto group_add_out;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0err =3D mnt_want_write(filp->f_path.mn=
+t);
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (err)
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return err;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto group_add_out;
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0err =3D ext4_group_add(sb, &input);
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (EXT4_SB(sb)->s_journal) {
+> @@ -289,9 +296,10 @@ mext_out:
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (err =3D=3D 0)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0err =3D err2;
+> +
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0mnt_drop_write(filp->f_path.mnt);
+> +group_add_out:
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext4_resize_end(sb);
 > -
->  	/*
->  	 * Transactions: The current running transaction...
->  	 * [j_state_lock] [caller holding open handle]
-> 
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return err;
+> =A0 =A0 =A0 =A0}
+>
+> --
+> 1.7.1
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kerne=
+l" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at =A0http://www.tux.org/lkml/
 
+
+
+--=20
+Best Wishes
+Yongqiang Yang
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
