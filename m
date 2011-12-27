@@ -1,40 +1,83 @@
-From: Xi Wang <xi.wang@gmail.com>
-Subject: Re: [PATCH] ext4: avoid oversized shift in ext4_fill_flex_info()
-Date: Mon, 26 Dec 2011 21:26:22 -0500
-Message-ID: <3C498AE4-D26A-41AD-A862-EE1C80290C7B@gmail.com>
-References: <1324881404-3791-1-git-send-email-xi.wang@gmail.com> <C0DF217A-64C8-49E3-B979-652DB2C362C3@gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
+From: Joel Becker <jlbec@evilplan.org>
+Subject: Re: [PATCH] jbd: Remove j_barrier mutex
+Date: Tue, 27 Dec 2011 10:51:00 -0800
+Message-ID: <20111227185100.GA30094@dhcp-172-17-9-228.mtv.corp.google.com>
+References: <1324562865-4720-1-git-send-email-jack@suse.cz>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <aedilger@gmail.com>
+Cc: linux-ext4@vger.kernel.org, akmp@suse.cz, rjw@sisk.pl,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:36469 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752253Ab1L0C0Z convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Dec 2011 21:26:25 -0500
-Received: by iaeh11 with SMTP id h11so19660627iae.19
-        for <linux-ext4@vger.kernel.org>; Mon, 26 Dec 2011 18:26:24 -0800 (PST)
-In-Reply-To: <C0DF217A-64C8-49E3-B979-652DB2C362C3@gmail.com>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:37082 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751903Ab1L0SvL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Dec 2011 13:51:11 -0500
+Content-Disposition: inline
+In-Reply-To: <1324562865-4720-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Dec 26, 2011, at 2:20 AM, Andreas Dilger wrote:
-> While this is true in theory, it is not possible to have 2^32 groups per flex group. This would mean 2^32 block bitmaps and inode bitmaps in a single group, which is impossible. 
+On Thu, Dec 22, 2011 at 03:07:45PM +0100, Jan Kara wrote:
+> j_barrier mutex is used for serializing different journal lock operations.  The
+> problem with it is that e.g. FIFREEZE ioctl results in process leaving kernel
+> with j_barrier mutex held which makes lockdep freak out. Also hibernation code
+> wants to freeze filesystem but it cannot do so because it then cannot hibernate
+> the system because of mutex being locked.
+> 
+> So we remove j_barrier mutex and use direct wait on j_barrier_count instead.
+> Since locking journal is a rare operation we don't have to care about fairness
+> or such things.
+> 
+> CC: Andrew Morton <akpm@linux-foundation.org>
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-This patch is based on commit 503358ae "ext4: avoid divide by zero
-when trying to mount a corrupted file system", as I quote: "If
-s_log_groups_per_flex is greater than 31, then groups_per_flex will
-will overflow and cause a divide by zero error."  The intent is to
-avoid oversized shift in that commit, because the behavior is
-undefined in C and may vary on different architectures.
+Strikes me as pretty reasonable.
 
-My understanding is that sbi->s_es->s_log_groups_per_flex needs a
-sanity check if it is read from a malicious or corrupted filesystem
-in ext4_fill_flex_info(), which is called from ext4_fill_super().
+>  void journal_lock_updates(journal_t *journal)
+>  {
+>  	DEFINE_WAIT(wait);
+>  
+> +wait:
+> +	/* Wait for previous locked operation to finish */
+> +	wait_event(journal->j_wait_transaction_locked,
+> +		   journal->j_barrier_count == 0);
+> +
+>  	spin_lock(&journal->j_state_lock);
+> +	/*
+> +	 * Check reliably under the lock whether we are the ones winning the race
+> +	 * and locking the journal
+> +	 */
+> +	if (journal->j_barrier_count > 0) {
+> +		spin_unlock(&journal->j_state_lock);
+> +		goto wait;
+> +	}
 
-Did I miss anything?
+I suppose I'd prefer:
 
-- xi
+	do {
+		wait_event(journal->j_wait_transaction_locked,
+			   journal->j_barrier_count == 0);
+
+		spin_lock(&journal->j_state_lock);
+		if (journal->j_barrier_count == 0)
+			break;
+		spin_unlock(&journal->j_state_lock);
+	} while (1);
+  	++journal->j_barrier_count;
+
+because I hate using goto for trivial loops, but that's a nitpick.
+
+ACK.
+
+Joel
+
+-- 
+
+You can use a screwdriver to screw in screws or to clean your ears,
+however, the latter needs real skill, determination and a lack of fear
+of injuring yourself.  It is much the same with JavaScript.
+	- Chris Heilmann
+
+			http://www.jlbec.org/
+			jlbec@evilplan.org
