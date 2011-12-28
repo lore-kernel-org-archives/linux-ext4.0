@@ -1,83 +1,64 @@
-From: Joel Becker <jlbec@evilplan.org>
-Subject: Re: [PATCH] jbd: Remove j_barrier mutex
-Date: Tue, 27 Dec 2011 10:51:00 -0800
-Message-ID: <20111227185100.GA30094@dhcp-172-17-9-228.mtv.corp.google.com>
-References: <1324562865-4720-1-git-send-email-jack@suse.cz>
+From: markk@clara.co.uk
+Subject: fallocate() not "atomic" if insufficient disk space?
+Date: Wed, 28 Dec 2011 16:09:03 -0000
+Message-ID: <e10c1a3b87ce0766dcc538b8332cb9a4.squirrel@ssl-webmail-vh.clara.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, akmp@suse.cz, rjw@sisk.pl,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:37082 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751903Ab1L0SvL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Dec 2011 13:51:11 -0500
-Content-Disposition: inline
-In-Reply-To: <1324562865-4720-1-git-send-email-jack@suse.cz>
+Received: from claranet-outbound-smtp04.uk.clara.net ([195.8.89.37]:35192 "EHLO
+	claranet-outbound-smtp04.uk.clara.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754019Ab1L1Quu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 28 Dec 2011 11:50:50 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 22, 2011 at 03:07:45PM +0100, Jan Kara wrote:
-> j_barrier mutex is used for serializing different journal lock operations.  The
-> problem with it is that e.g. FIFREEZE ioctl results in process leaving kernel
-> with j_barrier mutex held which makes lockdep freak out. Also hibernation code
-> wants to freeze filesystem but it cannot do so because it then cannot hibernate
-> the system because of mutex being locked.
-> 
-> So we remove j_barrier mutex and use direct wait on j_barrier_count instead.
-> Since locking journal is a rare operation we don't have to care about fairness
-> or such things.
-> 
-> CC: Andrew Morton <akpm@linux-foundation.org>
-> Signed-off-by: Jan Kara <jack@suse.cz>
+Hi,
 
-Strikes me as pretty reasonable.
+I've been experimenting with using fallocate() to pre-allocate space for a
+file on an ext4 partition. I'm testing with Ubuntu kernel
+3.0.0-14-generic. Does fallocate() behave in the same way on more
+recent/vanilla kernels?
 
->  void journal_lock_updates(journal_t *journal)
->  {
->  	DEFINE_WAIT(wait);
->  
-> +wait:
-> +	/* Wait for previous locked operation to finish */
-> +	wait_event(journal->j_wait_transaction_locked,
-> +		   journal->j_barrier_count == 0);
-> +
->  	spin_lock(&journal->j_state_lock);
-> +	/*
-> +	 * Check reliably under the lock whether we are the ones winning the race
-> +	 * and locking the journal
-> +	 */
-> +	if (journal->j_barrier_count > 0) {
-> +		spin_unlock(&journal->j_state_lock);
-> +		goto wait;
-> +	}
+What I expected to happen is that if fallocate() fails due to lack of disk
+space, no space is allocated, i.e. either nothing happens or the
+allocation succeeds.
 
-I suppose I'd prefer:
+What actually seems to happen is that all remaining space in the partition
+gets allocated to the file. (Thus risking that other programs will fail
+due to lack of disk space until the file is deleted.)
 
-	do {
-		wait_event(journal->j_wait_transaction_locked,
-			   journal->j_barrier_count == 0);
+If it's relevant, the partition in question has no journal and is mounted
+with barrier=0.
 
-		spin_lock(&journal->j_state_lock);
-		if (journal->j_barrier_count == 0)
-			break;
-		spin_unlock(&journal->j_state_lock);
-	} while (1);
-  	++journal->j_barrier_count;
+Example on a partition with ~100MB free:
 
-because I hate using goto for trivial loops, but that's a nitpick.
+$ fallocate -o 0 -l 999999999 blah
+fallocate: blah: fallocate failed: No space left on device
+$ df /
+Filesystem           1K-blocks      Used Available Use% Mounted on
+/dev/sdb1              3849136   3653604         0 100% /
+$ du blah
+107860	blah
+$ ls -l blah
+-rw-r--r-- 1 mark mark 110444544 2011-12-28 15:51 blah
+$ rm blah
 
-ACK.
+Same issue when specifying -n to call fallocate() with FALLOC_FL_KEEP_SIZE:
 
-Joel
+$ fallocate -n -o 0 -l 999999999 blah
+fallocate: blah: fallocate failed: No space left on device
+$ df /
+Filesystem           1K-blocks      Used Available Use% Mounted on
+/dev/sdb1              3849136   3653604         0 100% /
+$ du blah
+107860	blah
+$ ls -l blah
+-rw-r--r-- 1 mark mark 0 2011-12-28 15:52 blah
 
--- 
 
-You can use a screwdriver to screw in screws or to clean your ears,
-however, the latter needs real skill, determination and a lack of fear
-of injuring yourself.  It is much the same with JavaScript.
-	- Chris Heilmann
+-- Mark
 
-			http://www.jlbec.org/
-			jlbec@evilplan.org
+
