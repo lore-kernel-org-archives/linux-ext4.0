@@ -1,64 +1,30 @@
-From: markk@clara.co.uk
-Subject: fallocate() not "atomic" if insufficient disk space?
-Date: Wed, 28 Dec 2011 16:09:03 -0000
-Message-ID: <e10c1a3b87ce0766dcc538b8332cb9a4.squirrel@ssl-webmail-vh.clara.net>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/5] ext4: allocate delalloc blocks before changing
+ journal mode
+Date: Wed, 28 Dec 2011 12:14:24 -0500
+Message-ID: <20111228171424.GA12370@thunk.org>
+References: <1321344474-14707-1-git-send-email-xiaoqiangnk@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from claranet-outbound-smtp04.uk.clara.net ([195.8.89.37]:35192 "EHLO
-	claranet-outbound-smtp04.uk.clara.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754019Ab1L1Quu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 28 Dec 2011 11:50:50 -0500
+Received: from li9-11.members.linode.com ([67.18.176.11]:42194 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753812Ab1L1ROi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 28 Dec 2011 12:14:38 -0500
+Content-Disposition: inline
+In-Reply-To: <1321344474-14707-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Tue, Nov 15, 2011 at 04:07:50PM +0800, Yongqiang Yang wrote:
+> delalloc blocks should be allocated before changing journal mode,
+> otherwise they can not be allocated and even more truncate on
+> delalloc blocks could triggre BUG by flushing delalloc buffers.
+> 
+> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 
-I've been experimenting with using fallocate() to pre-allocate space for a
-file on an ext4 partition. I'm testing with Ubuntu kernel
-3.0.0-14-generic. Does fallocate() behave in the same way on more
-recent/vanilla kernels?
+Applied, thanks.
 
-What I expected to happen is that if fallocate() fails due to lack of disk
-space, no space is allocated, i.e. either nothing happens or the
-allocation succeeds.
-
-What actually seems to happen is that all remaining space in the partition
-gets allocated to the file. (Thus risking that other programs will fail
-due to lack of disk space until the file is deleted.)
-
-If it's relevant, the partition in question has no journal and is mounted
-with barrier=0.
-
-Example on a partition with ~100MB free:
-
-$ fallocate -o 0 -l 999999999 blah
-fallocate: blah: fallocate failed: No space left on device
-$ df /
-Filesystem           1K-blocks      Used Available Use% Mounted on
-/dev/sdb1              3849136   3653604         0 100% /
-$ du blah
-107860	blah
-$ ls -l blah
--rw-r--r-- 1 mark mark 110444544 2011-12-28 15:51 blah
-$ rm blah
-
-Same issue when specifying -n to call fallocate() with FALLOC_FL_KEEP_SIZE:
-
-$ fallocate -n -o 0 -l 999999999 blah
-fallocate: blah: fallocate failed: No space left on device
-$ df /
-Filesystem           1K-blocks      Used Available Use% Mounted on
-/dev/sdb1              3849136   3653604         0 100% /
-$ du blah
-107860	blah
-$ ls -l blah
--rw-r--r-- 1 mark mark 0 2011-12-28 15:52 blah
-
-
--- Mark
-
-
+					- Ted
