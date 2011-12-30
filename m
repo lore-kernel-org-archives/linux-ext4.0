@@ -1,83 +1,112 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH V6 02/15] ext4: add a function which adds a new desc to a fs
-Date: Fri, 30 Dec 2011 18:53:44 +0800
-Message-ID: <1325242437-26934-3-git-send-email-xiaoqiangnk@gmail.com>
+Subject: [PATCH V6 04/15] ext4: add a function which updates super block
+Date: Fri, 30 Dec 2011 18:53:46 +0800
+Message-ID: <1325242437-26934-5-git-send-email-xiaoqiangnk@gmail.com>
 References: <1325242437-26934-1-git-send-email-xiaoqiangnk@gmail.com>
 Cc: linux-ext4@vger.kernel.org, Yongqiang Yang <xiaoqiangnk@gmail.com>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:36790 "EHLO
-	mail-tul01m020-f174.google.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750877Ab1L3OhH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 30 Dec 2011 09:37:07 -0500
-Received: by mail-tul01m020-f174.google.com with SMTP id wo16so10192121obc.19
-        for <linux-ext4@vger.kernel.org>; Fri, 30 Dec 2011 06:37:07 -0800 (PST)
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:45478 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750991Ab1L3OhL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Dec 2011 09:37:11 -0500
+Received: by iaeh11 with SMTP id h11so25392161iae.19
+        for <linux-ext4@vger.kernel.org>; Fri, 30 Dec 2011 06:37:11 -0800 (PST)
 In-Reply-To: <1325242437-26934-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
 
-This patch adds a function named ext4_add_new_desc() which adds
-a new desc to a fs and whose code is copied from ext4_group_add().
+This patch adds a function named ext4_update_super() which updates
+super block and whose code is copied from ext4_group_add().
 
 The function will be used by new resize implementation.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/resize.c |   42 ++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 42 insertions(+), 0 deletions(-)
+ fs/ext4/resize.c |   72 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 72 insertions(+), 0 deletions(-)
 
 diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index ac5565c..9a5486e 100644
+index a50eab3..859b63f 100644
 --- a/fs/ext4/resize.c
 +++ b/fs/ext4/resize.c
-@@ -735,6 +735,48 @@ exit_err:
- 	}
+@@ -832,6 +832,78 @@ static int ext4_setup_new_desc(handle_t *handle, struct super_block *sb,
+ 	return err;
  }
  
 +/*
-+ * ext4_add_new_desc() adds group descriptor of group @group
++ * ext4_update_super() updates super so that new the added group can be seen
++ *   by the filesystem.
 + *
-+ * @handle: journal handle
-+ * @sb; super block
-+ * @group: the group no. of the first group desc to be added
-+ * @resize_inode: the resize inode
++ * @sb: super block
 + */
-+static int ext4_add_new_desc(handle_t *handle, struct super_block *sb,
-+			     ext4_group_t group, struct inode *resize_inode)
++static void ext4_update_super(struct super_block *sb,
++			      struct ext4_new_group_data *input)
 +{
 +	struct ext4_sb_info *sbi = EXT4_SB(sb);
 +	struct ext4_super_block *es = sbi->s_es;
-+	struct buffer_head *gdb_bh;
-+	int gdb_off, gdb_num, err = 0;
-+	int reserved_gdb = ext4_bg_has_super(sb, group) ?
-+		le16_to_cpu(es->s_reserved_gdt_blocks) : 0;
-+
-+	gdb_off = group % EXT4_DESC_PER_BLOCK(sb);
-+	gdb_num = group / EXT4_DESC_PER_BLOCK(sb);
 +
 +	/*
-+	 * We will only either add reserved group blocks to a backup group
-+	 * or remove reserved blocks for the first group in a new group block.
-+	 * Doing both would be mean more complex code, and sane people don't
-+	 * use non-sparse filesystems anymore.  This is already checked above.
++	 * Make the new blocks and inodes valid next.  We do this before
++	 * increasing the group count so that once the group is enabled,
++	 * all of its blocks and inodes are already valid.
++	 *
++	 * We always allocate group-by-group, then block-by-block or
++	 * inode-by-inode within a group, so enabling these
++	 * blocks/inodes before the group is live won't actually let us
++	 * allocate the new space yet.
 +	 */
-+	if (gdb_off) {
-+		gdb_bh = sbi->s_group_desc[gdb_num];
-+		err = ext4_journal_get_write_access(handle, gdb_bh);
-+		if (err)
-+			goto out;
++	ext4_blocks_count_set(es, ext4_blocks_count(es) +
++		input->blocks_count);
++	le32_add_cpu(&es->s_inodes_count, EXT4_INODES_PER_GROUP(sb));
 +
-+		if (reserved_gdb && ext4_bg_num_gdb(sb, group))
-+			err = reserve_backup_gdb(handle, resize_inode, group);
-+	} else
-+		err = add_new_gdb(handle, resize_inode, group);
++	/*
++	 * We need to protect s_groups_count against other CPUs seeing
++	 * inconsistent state in the superblock.
++	 *
++	 * The precise rules we use are:
++	 *
++	 * * Writers must perform a smp_wmb() after updating all dependent
++	 *   data and before modifying the groups count
++	 *
++	 * * Readers must perform an smp_rmb() after reading the groups count
++	 *   and before reading any dependent data.
++	 *
++	 * NB. These rules can be relaxed when checking the group count
++	 * while freeing data, as we can only allocate from a block
++	 * group after serialising against the group count, and we can
++	 * only then free after serialising in turn against that
++	 * allocation.
++	 */
++	smp_wmb();
 +
-+out:
-+	return err;
++	/* Update the global fs size fields */
++	sbi->s_groups_count++;
++
++	/* Update the reserved block counts only once the new group is
++	 * active. */
++	ext4_r_blocks_count_set(es, ext4_r_blocks_count(es) +
++		input->reserved_blocks);
++
++	/* Update the free space counts */
++	percpu_counter_add(&sbi->s_freeclusters_counter,
++			   EXT4_B2C(sbi, input->free_blocks_count));
++	percpu_counter_add(&sbi->s_freeinodes_counter,
++			   EXT4_INODES_PER_GROUP(sb));
++
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG) &&
++	    sbi->s_log_groups_per_flex) {
++		ext4_group_t flex_group;
++		flex_group = ext4_flex_group(sbi, input->group);
++		atomic_add(EXT4_B2C(sbi, input->free_blocks_count),
++			   &sbi->s_flex_groups[flex_group].free_clusters);
++		atomic_add(EXT4_INODES_PER_GROUP(sb),
++			   &sbi->s_flex_groups[flex_group].free_inodes);
++	}
++
 +}
 +
  /* Add group descriptor data to an existing or new group descriptor block.
