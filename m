@@ -1,117 +1,99 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH V6 RESEND 04/15] ext4: add a function which updates super block
-Date: Fri, 30 Dec 2011 19:00:01 +0800
-Message-ID: <1325242812-27005-5-git-send-email-xiaoqiangnk@gmail.com>
+Subject: [PATCH V6 RESEND 05/15] ext4: add a structure which will be used by 64bit-resize interface
+Date: Fri, 30 Dec 2011 19:00:02 +0800
+Message-ID: <1325242812-27005-6-git-send-email-xiaoqiangnk@gmail.com>
 References: <1325242812-27005-1-git-send-email-xiaoqiangnk@gmail.com>
 Cc: linux-ext4@vger.kernel.org, Yongqiang Yang <xiaoqiangnk@gmail.com>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-iy0-f174.google.com ([209.85.210.174]:41000 "EHLO
 	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750877Ab1L3Olm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Dec 2011 09:41:42 -0500
+	with ESMTP id S1751355Ab1L3Olo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Dec 2011 09:41:44 -0500
 Received: by mail-iy0-f174.google.com with SMTP id h11so25397943iae.19
-        for <linux-ext4@vger.kernel.org>; Fri, 30 Dec 2011 06:41:42 -0800 (PST)
+        for <linux-ext4@vger.kernel.org>; Fri, 30 Dec 2011 06:41:44 -0800 (PST)
 In-Reply-To: <1325242812-27005-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
 
-This patch adds a function named ext4_update_super() which updates
-super block and whose code is copied from ext4_group_add().
-
-The function will be used by new resize implementation.
+This patch adds a structure which will be used by 64bit-resize interface.
+Two functions which allocate and destroy the structure respectively are
+added.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/resize.c |   72 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 72 insertions(+), 0 deletions(-)
+ fs/ext4/resize.c |   55 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 55 insertions(+), 0 deletions(-)
 
 diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index a50eab3..859b63f 100644
+index 859b63f..78f3bab 100644
 --- a/fs/ext4/resize.c
 +++ b/fs/ext4/resize.c
-@@ -832,6 +832,78 @@ static int ext4_setup_new_desc(handle_t *handle, struct super_block *sb,
+@@ -134,6 +134,61 @@ static int verify_group_input(struct super_block *sb,
  	return err;
  }
  
 +/*
-+ * ext4_update_super() updates super so that new the added group can be seen
-+ *   by the filesystem.
-+ *
-+ * @sb: super block
++ * ext4_new_flex_group_data is used by 64bit-resize interface to add a flex
++ * group each time.
 + */
-+static void ext4_update_super(struct super_block *sb,
-+			      struct ext4_new_group_data *input)
++struct ext4_new_flex_group_data {
++	struct ext4_new_group_data *groups;	/* new_group_data for groups
++						   in the flex group */
++	__u16 *bg_flags;			/* block group flags of groups
++						   in @groups */
++	ext4_group_t count;			/* number of groups in @groups
++						 */
++};
++
++/*
++ * alloc_flex_gd() allocates a ext4_new_flex_group_data with size of
++ * @flexbg_size.
++ *
++ * Returns NULL on failure otherwise address of the allocated structure.
++ */
++static struct ext4_new_flex_group_data *alloc_flex_gd(unsigned long flexbg_size)
 +{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct ext4_super_block *es = sbi->s_es;
++	struct ext4_new_flex_group_data *flex_gd;
 +
-+	/*
-+	 * Make the new blocks and inodes valid next.  We do this before
-+	 * increasing the group count so that once the group is enabled,
-+	 * all of its blocks and inodes are already valid.
-+	 *
-+	 * We always allocate group-by-group, then block-by-block or
-+	 * inode-by-inode within a group, so enabling these
-+	 * blocks/inodes before the group is live won't actually let us
-+	 * allocate the new space yet.
-+	 */
-+	ext4_blocks_count_set(es, ext4_blocks_count(es) +
-+		input->blocks_count);
-+	le32_add_cpu(&es->s_inodes_count, EXT4_INODES_PER_GROUP(sb));
++	flex_gd = kmalloc(sizeof(*flex_gd), GFP_NOFS);
++	if (flex_gd == NULL)
++		goto out3;
 +
-+	/*
-+	 * We need to protect s_groups_count against other CPUs seeing
-+	 * inconsistent state in the superblock.
-+	 *
-+	 * The precise rules we use are:
-+	 *
-+	 * * Writers must perform a smp_wmb() after updating all dependent
-+	 *   data and before modifying the groups count
-+	 *
-+	 * * Readers must perform an smp_rmb() after reading the groups count
-+	 *   and before reading any dependent data.
-+	 *
-+	 * NB. These rules can be relaxed when checking the group count
-+	 * while freeing data, as we can only allocate from a block
-+	 * group after serialising against the group count, and we can
-+	 * only then free after serialising in turn against that
-+	 * allocation.
-+	 */
-+	smp_wmb();
++	flex_gd->count = flexbg_size;
 +
-+	/* Update the global fs size fields */
-+	sbi->s_groups_count++;
++	flex_gd->groups = kmalloc(sizeof(struct ext4_new_group_data) *
++				  flexbg_size, GFP_NOFS);
++	if (flex_gd->groups == NULL)
++		goto out2;
 +
-+	/* Update the reserved block counts only once the new group is
-+	 * active. */
-+	ext4_r_blocks_count_set(es, ext4_r_blocks_count(es) +
-+		input->reserved_blocks);
++	flex_gd->bg_flags = kmalloc(flexbg_size * sizeof(__u16), GFP_NOFS);
++	if (flex_gd->bg_flags == NULL)
++		goto out1;
 +
-+	/* Update the free space counts */
-+	percpu_counter_add(&sbi->s_freeclusters_counter,
-+			   EXT4_B2C(sbi, input->free_blocks_count));
-+	percpu_counter_add(&sbi->s_freeinodes_counter,
-+			   EXT4_INODES_PER_GROUP(sb));
++	return flex_gd;
 +
-+	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG) &&
-+	    sbi->s_log_groups_per_flex) {
-+		ext4_group_t flex_group;
-+		flex_group = ext4_flex_group(sbi, input->group);
-+		atomic_add(EXT4_B2C(sbi, input->free_blocks_count),
-+			   &sbi->s_flex_groups[flex_group].free_clusters);
-+		atomic_add(EXT4_INODES_PER_GROUP(sb),
-+			   &sbi->s_flex_groups[flex_group].free_inodes);
-+	}
-+
++out1:
++	kfree(flex_gd->groups);
++out2:
++	kfree(flex_gd);
++out3:
++	return NULL;
 +}
 +
- /* Add group descriptor data to an existing or new group descriptor block.
-  * Ensure we handle all possible error conditions _before_ we start modifying
-  * the filesystem, because we cannot abort the transaction and not have it
++void free_flex_gd(struct ext4_new_flex_group_data *flex_gd)
++{
++	kfree(flex_gd->bg_flags);
++	kfree(flex_gd->groups);
++	kfree(flex_gd);
++}
++
+ static struct buffer_head *bclean(handle_t *handle, struct super_block *sb,
+ 				  ext4_fsblk_t blk)
+ {
 -- 
 1.7.5.1
 
