@@ -1,71 +1,75 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCH 4/5] ext4: flush journal when switching from journal
-	data mode
-Date: Thu, 29 Dec 2011 13:01:53 -0800
-Message-ID: <20111229210153.GN8233@tux1.beaverton.ibm.com>
-References: <1321344474-14707-1-git-send-email-xiaoqiangnk@gmail.com> <1321344474-14707-4-git-send-email-xiaoqiangnk@gmail.com> <20111228185643.GD12370@thunk.org>
-Reply-To: djwong@us.ibm.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>, linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: [PATCH 00/15] ext4: add new online resize
+Date: Fri, 30 Dec 2011 18:53:42 +0800
+Message-ID: <1325242437-26934-1-git-send-email-xiaoqiangnk@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e39.co.us.ibm.com ([32.97.110.160]:51421 "EHLO
-	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753768Ab1L2VCc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Dec 2011 16:02:32 -0500
-Received: from /spool/local
-	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Thu, 29 Dec 2011 14:02:32 -0700
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pBTL1t5B142596
-	for <linux-ext4@vger.kernel.org>; Thu, 29 Dec 2011 14:01:56 -0700
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pBTL1sQb005852
-	for <linux-ext4@vger.kernel.org>; Thu, 29 Dec 2011 14:01:55 -0700
-Content-Disposition: inline
-In-Reply-To: <20111228185643.GD12370@thunk.org>
+Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:36790 "EHLO
+	mail-tul01m020-f174.google.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750877Ab1L3OhD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 30 Dec 2011 09:37:03 -0500
+Received: by obcwo16 with SMTP id wo16so10192121obc.19
+        for <linux-ext4@vger.kernel.org>; Fri, 30 Dec 2011 06:37:02 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Dec 28, 2011 at 01:56:43PM -0500, Ted Ts'o wrote:
-> On Tue, Nov 15, 2011 at 04:07:53PM +0800, Yongqiang Yang wrote:
-> > When switching from journal data mode, the data blocks
-> > in journal will have no revoke record.  Thus, data could be
-> > corrupted during replay.  However, there is no such problem in
-> > switching to journal data mode.  So we flush journal only in
-> > the case that swithes from journal data mode.
-> > 
-> > Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-> 
-> Applied, with a slightly different (and more explanatory commit
-> message):
-> 
-> ext4: flush journal when switching from data=journal mode
-> 
-> From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-> 
-> It's necessary to flush the journal when switching away from
-> data=journal mode.  This is because there are no revoke records when
-> we are data blocks are journalled,
+Hi all,
 
-Minor nit, but did you mean "when data blocks are journalled" ?
+Here is the 6th version of the patch series adding new resize
+implementation to ext4.
 
---D
-> which are required in the other journal modes.
-> 
-> However, it is not necessary to flush the journal when switching into
-> data=journal mode, and flushing the journal is expensive.  So let's
-> avoid it in that case.
-> 
-> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> 
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+
+-- What's new resize implementation?
+   It is a new online resize interface for ext4.  It can be used via
+   ioctl with EXT4_IOC_RESIZE_FS and a 64 bit integer indicating size
+   of the resized fs in block.
+
+-- Difference between current resize and new resize.
+   New resize lets kernel do all work, like allocating bitmaps and
+   inode tables and can support flex_bg and BLOCK_UNINIT features.
+   Besides these, new resize is much faster than current resize.
+
+   Below are benchmarks I made on my personal computer, fses with
+   flex_bg size = 16 were resized to 230GB evry time. The first
+   row shows the size of a fs from which the fs was resized to 230GB.
+   The datas were collected by 'time resize2fs'.
+
+                      new resize
+                20GB          50GB      100GB
+      real    0m3.558s     0m2.891s    0m0.394s
+      user    0m0.004s     0m0.000s    0m0.394s
+      sys     0m0.048s     0m0.048s    0m0.028s
+
+                      current resize
+                20GB          50GB      100GB
+      real    5m2.770s     4m43.757s  3m14.840s
+      user    0m0.040s     0m0.032s   0m0.024s
+      sys     0m0.464s     0m0.432s   0m0.324s
+
+   According to data above, new resize is faster than current resize in both
+   user and sys time.  New resize performs well in sys time, because it
+   supports BLOCK_UNINIT and adds multi-groups each time.
+
+-- About supporting new features.
+   YES! New resize can support new feature like bigalloc and exclude bitmap
+   easily.  Because it lets kernel do all work.
+
+ V5->V6:
+   add code initializing inode bitmap and inode tables back.
+
+ V4->V5:
+   release resizing error lock in error case of IOC_RESIZEFS
+   Thanks Djalal <tixxdz@opendz.org> for pointing it out and his
+   patch for IOC_GROUP_EXTEND and IOC_GROUP_ADD.
+
+ V3->V4:
+   rename __ext4_group_extend to ext4_group_extend_no_check
+
+ V2->V3:
+   initialize block bitmap of last group.
+   remove code initializing inode bitmap and inode tables.
+
+Yongqiang.
 
