@@ -1,129 +1,93 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [PATCH 2/2 take2] jbd2: delete spin_lock(t_handle_lock) inside wirte_lock(j_state_lock)
-Date: Sat, 31 Dec 2011 14:35:12 +0800
-Message-ID: <CAGBYx2ZcJFO5nycxuom9nkgk1hYss_+H+oVxTTkZa0KiFhFusg@mail.gmail.com>
-References: <20111216201915.4a012154.toshi.okajima@jp.fujitsu.com>
-	<CAGBYx2YZ4M8QwwOcnLAaf+934WAcZoNS_pPrw8j3Nkr3=6fA5g@mail.gmail.com>
-	<4EF066F0.5010809@jp.fujitsu.com>
-	<20111222203639.4200538e.toshi.okajima@jp.fujitsu.com>
-	<20111222210007.ca8fb54f.toshi.okajima@jp.fujitsu.com>
-	<CAGBYx2YBq_=N0Gnky7RhNHhyTybhP1fLB6Fzzp-GLhEy6Lyekw@mail.gmail.com>
-	<4EF7BDE2.4000309@jp.fujitsu.com>
-	<20111226101727.1ca09119.toshi.okajima@jp.fujitsu.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+From: Andreas Dilger <adilger@whamcloud.com>
+Subject: Re: [PATCH V6 RESEND] ext4: add new online resize
+Date: Sat, 31 Dec 2011 10:40:24 -0700
+Message-ID: <9CB90BD7-CB4D-42D5-9254-A0455ADB0E15@whamcloud.com>
+References: <1325242812-27005-1-git-send-email-xiaoqiangnk@gmail.com>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: "tytso@mit.edu" <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:56909 "EHLO
-	mail-tul01m020-f174.google.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750786Ab1LaGfO convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 31 Dec 2011 01:35:14 -0500
-Received: by obcwo16 with SMTP id wo16so10669628obc.19
-        for <linux-ext4@vger.kernel.org>; Fri, 30 Dec 2011 22:35:13 -0800 (PST)
-In-Reply-To: <20111226101727.1ca09119.toshi.okajima@jp.fujitsu.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:44223 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752536Ab1LaUEC convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 31 Dec 2011 15:04:02 -0500
+Received: by iaeh11 with SMTP id h11so27189268iae.19
+        for <linux-ext4@vger.kernel.org>; Sat, 31 Dec 2011 12:04:02 -0800 (PST)
+In-Reply-To: <1325242812-27005-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Looks good to me.
+The main issue I have with this patch is that the series starts by adding a bunch of unused functions, and only wires them I to the existing resize code at the very end. 
 
-Thanks,
-Yongqiang.
-On Mon, Dec 26, 2011 at 9:17 AM, Toshiyuki Okajima
-<toshi.okajima@jp.fujitsu.com> wrote:
-> Delete all spin_lock(t_handle_lock) statements inside write_lock(j_st=
-ate_lock)
-> because the critical code sections can be protected by write_lock(j_s=
-tate_lock)
-> only.
->
-> Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-> Reported-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-> ---
-> =A0fs/jbd2/commit.c =A0 =A0 =A0| =A0 =A04 ----
-> =A0fs/jbd2/transaction.c | =A0 =A06 +-----
-> =A02 files changed, 1 insertions(+), 9 deletions(-)
->
-> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-> index 68d704d..1030d47 100644
-> --- a/fs/jbd2/commit.c
-> +++ b/fs/jbd2/commit.c
-> @@ -364,22 +364,18 @@ void jbd2_journal_commit_transaction(journal_t =
-*journal)
-> =A0 =A0 =A0 =A0stats.run.rs_running =3D jbd2_time_diff(commit_transac=
-tion->t_start,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0stats.run.rs_locked);
->
-> - =A0 =A0 =A0 spin_lock(&commit_transaction->t_handle_lock);
-> =A0 =A0 =A0 =A0while (atomic_read(&commit_transaction->t_updates)) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0DEFINE_WAIT(wait);
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0prepare_to_wait(&journal->j_wait_updat=
-es, &wait,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0TASK_UNINTERRUPTIBLE);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (atomic_read(&commit_transaction->t=
-_updates)) {
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 spin_unlock(&commit_tra=
-nsaction->t_handle_lock);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0write_unlock(&journal-=
->j_state_lock);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0schedule();
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0write_lock(&journal->j=
-_state_lock);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 spin_lock(&commit_trans=
-action->t_handle_lock);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0finish_wait(&journal->j_wait_updates, =
-&wait);
-> =A0 =A0 =A0 =A0}
-> - =A0 =A0 =A0 spin_unlock(&commit_transaction->t_handle_lock);
->
-> =A0 =A0 =A0 =A0J_ASSERT (atomic_read(&commit_transaction->t_outstandi=
-ng_credits) <=3D
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0journal->j_max_transac=
-tion_buffers);
-> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-> index 76f2eca..c418ed9 100644
-> --- a/fs/jbd2/transaction.c
-> +++ b/fs/jbd2/transaction.c
-> @@ -516,14 +516,10 @@ void jbd2_journal_lock_updates(journal_t *journ=
-al)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (!transaction)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0break;
->
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 spin_lock(&transaction->t_handle_lock);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!atomic_read(&transaction->t_update=
-s)) {
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 spin_unlock(&transactio=
-n->t_handle_lock);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!atomic_read(&transaction->t_update=
-s))
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0break;
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0prepare_to_wait(&journal->j_wait_updat=
-es, &wait,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0TASK_U=
-NINTERRUPTIBLE);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 spin_unlock(&transaction->t_handle_lock=
-);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0write_unlock(&journal->j_state_lock);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0schedule();
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0finish_wait(&journal->j_wait_updates, =
-&wait);
+A better approach would be to have the early patches refactor the existing functions so that they are used by the current resize code, and the new resize functionality is enabled at the end. 
+
+That allows verifying that the existing code continues to work through the entire series, and that the functions being added actually work properly even before the new ioctl is added. 
+
+Cheers, Andreas
+
+On 2011-12-30, at 3:59, Yongqiang Yang <xiaoqiangnk@gmail.com> wrote:
+
+> Hi all,
+> 
+> Here is the 6th veriosn of patch series adding new resize implementation
+> to ext4.
+> 
+> -- What's new resize implementation?
+>   It is a new online resize interface for ext4.  It can be used via
+>   ioctl with EXT4_IOC_RESIZE_FS and a 64 bit integer indicating size
+>   of the resized fs in block.
+> 
+> -- Difference between current resize and new resize.
+>   New resize lets kernel do all work, like allocating bitmaps and
+>   inode tables and can support flex_bg and BLOCK_UNINIT features.
+>   Besides these, new resize is much faster than current resize.
+> 
+>   Below are benchmarks I made on my personal computer, fses with
+>   flex_bg size = 16 were resized to 230GB evry time. The first
+>   row shows the size of a fs from which the fs was resized to 230GB.
+>   The datas were collected by 'time resize2fs'.
+> 
+>                      new resize
+>                20GB          50GB      100GB
+>      real    0m3.558s     0m2.891s    0m0.394s
+>      user    0m0.004s     0m0.000s    0m0.394s
+>      sys     0m0.048s     0m0.048s    0m0.028s
+> 
+>                      current resize
+>                20GB          50GB      100GB
+>      real    5m2.770s     4m43.757s  3m14.840s
+>      user    0m0.040s     0m0.032s   0m0.024s
+>      sys     0m0.464s     0m0.432s   0m0.324s
+> 
+>   According to data above, new resize is faster than current resize in both
+>   user and sys time.  New resize performs well in sys time, because it
+>   supports BLOCK_UNINIT and adds multi-groups each time.
+> 
+> -- About supporting new features.
+>   YES! New resize can support new feature like bigalloc and exclude bitmap
+>   easily.  Because it lets kernel do all work.
+> 
+> V5->V6:
+>   add code initializing inode bitmap and inode tables back.
+> 
+> V4->V5:
+>   release resizing error lock in error case of IOC_RESIZEFS
+>   Thanks Djalal <tixxdz@opendz.org> for pointing it out and his
+>   patch for IOC_GROUP_EXTEND and IOC_GROUP_ADD.
+> 
+> V3->V4:
+>   rename __ext4_group_extend to ext4_group_extend_no_check
+> 
+> V2->V3:
+>   initialize block bitmap of last group.
+>   remove code initializing inode bitmap and inode tables.
+> 
+> Yongqiang.
+> 
 > --
-> 1.5.5.6
-
-
-
---=20
-Best Wishes
-Yongqiang Yang
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
