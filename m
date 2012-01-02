@@ -1,75 +1,83 @@
-From: Ben Hutchings <ben@decadent.org.uk>
-Subject: [PATCH] ext4: Report max_batch_time option correctly
-Date: Mon, 02 Jan 2012 14:13:02 +0000
-Message-ID: <1325513582.13595.213.camel@deadeye>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] jbd: Remove j_barrier mutex
+Date: Mon, 2 Jan 2012 20:49:45 +0100
+Message-ID: <20120102194945.GD3626@quack.suse.cz>
+References: <1324562865-4720-1-git-send-email-jack@suse.cz>
+ <20111227185100.GA30094@dhcp-172-17-9-228.mtv.corp.google.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha512";
-	protocol="application/pgp-signature"; boundary="=-x/d4o0ih4Oahw/u1Vurn"
-Cc: linux-ext4@vger.kernel.org, Russell Coker <russell@coker.com.au>,
-	654206@bugs.debian.org
-To: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org, akmp@suse.cz,
+	rjw@sisk.pl, Andrew Morton <akpm@linux-foundation.org>
+To: Joel Becker <jlbec@evilplan.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from shadbolt.e.decadent.org.uk ([88.96.1.126]:48789 "EHLO
-	shadbolt.e.decadent.org.uk" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752653Ab2ABONS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jan 2012 09:13:18 -0500
+Received: from cantor2.suse.de ([195.135.220.15]:59131 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751251Ab2ABTts (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Jan 2012 14:49:48 -0500
+Content-Disposition: inline
+In-Reply-To: <20111227185100.GA30094@dhcp-172-17-9-228.mtv.corp.google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Tue 27-12-11 10:51:00, Joel Becker wrote:
+> On Thu, Dec 22, 2011 at 03:07:45PM +0100, Jan Kara wrote:
+> > j_barrier mutex is used for serializing different journal lock operations.  The
+> > problem with it is that e.g. FIFREEZE ioctl results in process leaving kernel
+> > with j_barrier mutex held which makes lockdep freak out. Also hibernation code
+> > wants to freeze filesystem but it cannot do so because it then cannot hibernate
+> > the system because of mutex being locked.
+> > 
+> > So we remove j_barrier mutex and use direct wait on j_barrier_count instead.
+> > Since locking journal is a rare operation we don't have to care about fairness
+> > or such things.
+> > 
+> > CC: Andrew Morton <akpm@linux-foundation.org>
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> 
+> Strikes me as pretty reasonable.
+> 
+> >  void journal_lock_updates(journal_t *journal)
+> >  {
+> >  	DEFINE_WAIT(wait);
+> >  
+> > +wait:
+> > +	/* Wait for previous locked operation to finish */
+> > +	wait_event(journal->j_wait_transaction_locked,
+> > +		   journal->j_barrier_count == 0);
+> > +
+> >  	spin_lock(&journal->j_state_lock);
+> > +	/*
+> > +	 * Check reliably under the lock whether we are the ones winning the race
+> > +	 * and locking the journal
+> > +	 */
+> > +	if (journal->j_barrier_count > 0) {
+> > +		spin_unlock(&journal->j_state_lock);
+> > +		goto wait;
+> > +	}
+> 
+> I suppose I'd prefer:
+> 
+> 	do {
+> 		wait_event(journal->j_wait_transaction_locked,
+> 			   journal->j_barrier_count == 0);
+> 
+> 		spin_lock(&journal->j_state_lock);
+> 		if (journal->j_barrier_count == 0)
+> 			break;
+> 		spin_unlock(&journal->j_state_lock);
+> 	} while (1);
+>   	++journal->j_barrier_count;
+> 
+> because I hate using goto for trivial loops, but that's a nitpick.
+  Frankly, I'm more used to parsing simple goto loops like mine than
+infinite-loop + break statements in cases like this. So I'll take the
+liberty of being a maintainer and keep the goto. But thanks for the
+suggestion anyway.
 
---=-x/d4o0ih4Oahw/u1Vurn
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+> ACK.
+  Thanks for review!
 
-Currently the value reported for max_batch_time is really the
-value of min_batch_time.
-
-Reported-by: Russell Coker <russell@coker.com.au>
-Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
----
- fs/ext4/super.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 3e1329e..410e993 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1096,7 +1096,7 @@ static int ext4_show_options(struct seq_file *seq, st=
-ruct vfsmount *vfs)
- 	}
- 	if (sbi->s_max_batch_time !=3D EXT4_DEF_MAX_BATCH_TIME) {
- 		seq_printf(seq, ",max_batch_time=3D%u",
--			   (unsigned) sbi->s_min_batch_time);
-+			   (unsigned) sbi->s_max_batch_time);
- 	}
-=20
- 	/*
---=20
-1.7.7.3
-
-
-
---=-x/d4o0ih4Oahw/u1Vurn
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.11 (GNU/Linux)
-
-iQIVAwUATwG7bue/yOyVhhEJAQqB9RAAnSAUja74AA4nqEUFORvYT9mYmCyHscJC
-L0T7Vrb0LXoTw01G0lk3my34yEOfwpmp0wg6pbGHfd9MpdbOMWN9RDb3M6Qky+ec
-usSbGKGaz5l6bHTTMjxGi4IMLSx2MmwRDqKyugNePk+LQjKiLRCEG8IyllBH57J/
-SU+zpLxEu0Bm5QLtkeDkRYrON9PcQjxisSG9CWtpCYu+tzRDfffXDI5++hd21PL+
-RYg6nnqwjgYfsg8YlxsaMllmyLH1/4helVt8I/eUw5Lv2Lp3S2CDP3Uieubj/gxF
-+iPQC/tKyZPENvA8apy1j3pNgyTIpv3g6lq1QsfT4Vt31o7xBYFtqAKSAy//zvgs
-JfbAQ+uvNiFSsV5vVbfSQ5INI2uUfeqUUo8LPngJv5mdoPatSwx1xDzKbZEFtslf
-5dX8TMzvTYw7GtqLeNFWNMjdmh6QSuPrN/2prfsKom6rttOjVY0/4riTaTuvTdKc
-NxCvRvCEq5CWOayOaKCilueZnoQLEy2AW3wibdaZgdrn/n3XvWXVlVIbX+zl95cu
-wbOHyTnZYI0JhffG2/st/Bjjn0Xzphn/XR3WuFKn/Jw0K+zhLoUC2WcKCm1EZxDr
-U0zXSXd6Hl88tu3BM7U/zK5GOGeR98VZSN+gmjHPM+Bp2tIYoXHQbuRmBUTKXBZ7
-kfDFF/As4Ic=
-=s3rL
------END PGP SIGNATURE-----
-
---=-x/d4o0ih4Oahw/u1Vurn--
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
