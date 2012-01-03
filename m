@@ -1,110 +1,51 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] fs/ext{3,4}: fix potential race when setversion ioctl
- updates inode
-Date: Tue, 3 Jan 2012 13:46:24 +0100
-Message-ID: <20120103124624.GB31457@quack.suse.cz>
-References: <20120103013152.GA26455@dztty>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext4: Report max_batch_time option correctly
+Date: Tue, 03 Jan 2012 09:46:24 -0600
+Message-ID: <4F0322D0.2070403@redhat.com>
+References: <1325513582.13595.213.camel@deadeye>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Al Viro <viro@zeniv.linux.org.uk>
-To: Djalal Harouni <tixxdz@opendz.org>
+	linux-ext4@vger.kernel.org, Russell Coker <russell@coker.com.au>,
+	654206@bugs.debian.org
+To: Ben Hutchings <ben@decadent.org.uk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:35107 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:23203 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751574Ab2ACMq0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 Jan 2012 07:46:26 -0500
-Content-Disposition: inline
-In-Reply-To: <20120103013152.GA26455@dztty>
+	id S1753827Ab2ACPqq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 Jan 2012 10:46:46 -0500
+In-Reply-To: <1325513582.13595.213.camel@deadeye>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
-
-On Tue 03-01-12 02:31:52, Djalal Harouni wrote:
+On 1/2/12 8:13 AM, Ben Hutchings wrote:
+> Currently the value reported for max_batch_time is really the
+> value of min_batch_time.
 > 
-> The EXT{3,4}_IOC_SETVERSION ioctl() updates the inode without i_mutex,
-> this can lead to a race with the other operations that update the same
-> inode.
-> 
-> Patch tested.
-  Thanks for the patch but I don't quite understand the problem.
-i_generation is set when:
-  a) inode is loaded from disk
-  b) inode is allocated
-  c) in SETVERSION ioctl
+> Reported-by: Russell Coker <russell@coker.com.au>
+> Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
 
-  The only thing that can race here seems to be c) against c) and that is
-racy with i_mutex as well. So what problems do you exactly observe without
-the patch?
+whoops, yep!
 
-								Honza
-> Signed-off-by: Djalal Harouni <tixxdz@opendz.org>
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+
 > ---
->  fs/ext3/ioctl.c |    6 +++++-
->  fs/ext4/ioctl.c |    6 +++++-
->  2 files changed, 10 insertions(+), 2 deletions(-)
+>  fs/ext4/super.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
 > 
-> diff --git a/fs/ext3/ioctl.c b/fs/ext3/ioctl.c
-> index ba1b54e..e7b2ed9 100644
-> --- a/fs/ext3/ioctl.c
-> +++ b/fs/ext3/ioctl.c
-> @@ -134,10 +134,11 @@ flags_out:
->  			goto setversion_out;
->  		}
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 3e1329e..410e993 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1096,7 +1096,7 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
+>  	}
+>  	if (sbi->s_max_batch_time != EXT4_DEF_MAX_BATCH_TIME) {
+>  		seq_printf(seq, ",max_batch_time=%u",
+> -			   (unsigned) sbi->s_min_batch_time);
+> +			   (unsigned) sbi->s_max_batch_time);
+>  	}
 >  
-> +		mutex_lock(&inode->i_mutex);
->  		handle = ext3_journal_start(inode, 1);
->  		if (IS_ERR(handle)) {
->  			err = PTR_ERR(handle);
-> -			goto setversion_out;
-> +			goto unlock_out;
->  		}
->  		err = ext3_reserve_inode_write(handle, inode, &iloc);
->  		if (err == 0) {
-> @@ -146,6 +147,9 @@ flags_out:
->  			err = ext3_mark_iloc_dirty(handle, inode, &iloc);
->  		}
->  		ext3_journal_stop(handle);
-> +
-> +unlock_out:
-> +		mutex_unlock(&inode->i_mutex);
->  setversion_out:
->  		mnt_drop_write(filp->f_path.mnt);
->  		return err;
-> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-> index a567968..46a8de6 100644
-> --- a/fs/ext4/ioctl.c
-> +++ b/fs/ext4/ioctl.c
-> @@ -158,10 +158,11 @@ flags_out:
->  			goto setversion_out;
->  		}
->  
-> +		mutex_lock(&inode->i_mutex);
->  		handle = ext4_journal_start(inode, 1);
->  		if (IS_ERR(handle)) {
->  			err = PTR_ERR(handle);
-> -			goto setversion_out;
-> +			goto unlock_out;
->  		}
->  		err = ext4_reserve_inode_write(handle, inode, &iloc);
->  		if (err == 0) {
-> @@ -170,6 +171,9 @@ flags_out:
->  			err = ext4_mark_iloc_dirty(handle, inode, &iloc);
->  		}
->  		ext4_journal_stop(handle);
-> +
-> +unlock_out:
-> +		mutex_unlock(&inode->i_mutex);
->  setversion_out:
->  		mnt_drop_write(filp->f_path.mnt);
->  		return err;
-> -- 
-> 1.7.1
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+>  	/*
+
