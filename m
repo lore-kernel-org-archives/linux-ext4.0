@@ -1,51 +1,35 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: Report max_batch_time option correctly
-Date: Tue, 03 Jan 2012 09:46:24 -0600
-Message-ID: <4F0322D0.2070403@redhat.com>
-References: <1325513582.13595.213.camel@deadeye>
+From: Sushil Mantri <sushilmantri@gmail.com>
+Subject: A stackable filesystem to trace low level filesystem operations
+Date: Tue, 3 Jan 2012 16:20:21 -0500
+Message-ID: <CAFFtA8429YabMVLp-f15GXBknK+W2oMpqYkZT42zLFaSJ-RBVA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, Russell Coker <russell@coker.com.au>,
-	654206@bugs.debian.org
-To: Ben Hutchings <ben@decadent.org.uk>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:23203 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753827Ab2ACPqq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 Jan 2012 10:46:46 -0500
-In-Reply-To: <1325513582.13595.213.camel@deadeye>
+Received: from mail-wi0-f174.google.com ([209.85.212.174]:44229 "EHLO
+	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754671Ab2ACVUX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jan 2012 16:20:23 -0500
+Received: by wibhm6 with SMTP id hm6so9446628wib.19
+        for <linux-ext4@vger.kernel.org>; Tue, 03 Jan 2012 13:20:22 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 1/2/12 8:13 AM, Ben Hutchings wrote:
-> Currently the value reported for max_batch_time is really the
-> value of min_batch_time.
-> 
-> Reported-by: Russell Coker <russell@coker.com.au>
-> Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
+Hi All,
 
-whoops, yep!
+Sorry but this isn't a ext4 specific question but a general filesystem question.
 
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+I am looking for a way to track filesystem level operation like
+operation(read/write), filename, offset, size of read/write, pid of
+the requesting process. The goal of my project is to collect such
+traces and understand access usage of directories and more. I would
+like to filter other operation like open,close, etc and requests to
+procfs, etc. There was a stackable file system earlier called Tracefs.
+It isn't supported anymore though. The original paper can be found
+here: filesystems.org/docs/tracefs-fast04/tracefs.ps
 
-> ---
->  fs/ext4/super.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 3e1329e..410e993 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1096,7 +1096,7 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
->  	}
->  	if (sbi->s_max_batch_time != EXT4_DEF_MAX_BATCH_TIME) {
->  		seq_printf(seq, ",max_batch_time=%u",
-> -			   (unsigned) sbi->s_min_batch_time);
-> +			   (unsigned) sbi->s_max_batch_time);
->  	}
->  
->  	/*
+Can you please suggest me what is the best option i have. I am
+currently looking at SystemTap.
 
+Thanks,
+Sushil
