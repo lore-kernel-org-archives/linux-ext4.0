@@ -1,91 +1,51 @@
 From: Djalal Harouni <tixxdz@opendz.org>
-Subject: [PATCH] fs/ext{3,4}: fix potential race when setversion ioctl
- updates inode
-Date: Tue, 3 Jan 2012 02:31:52 +0100
-Message-ID: <20120103013152.GA26455@dztty>
+Subject: Re: [PATCH] fs/ext4: add missing ext4_resize_end
+Date: Tue, 3 Jan 2012 11:47:49 +0100
+Message-ID: <20120103104749.GA18875@dztty>
+References: <20111222150057.GA10845@dztty>
+ <CAGBYx2YgN_iqcKOfAwzH_t63us+ECgxcNMEsaRz0j5aoY5tORw@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Al Viro <viro@zeniv.linux.org.uk>
-To: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
+Cc: Theodore Ts'o <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	stable@vger.kernel.org
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from numidia.opendz.org ([98.142.220.152]:56276 "EHLO
+Received: from numidia.opendz.org ([98.142.220.152]:47751 "EHLO
 	numidia.opendz.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750778Ab2ACB2r (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jan 2012 20:28:47 -0500
+	with ESMTP id S1752442Ab2ACKon (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jan 2012 05:44:43 -0500
 Content-Disposition: inline
+In-Reply-To: <CAGBYx2YgN_iqcKOfAwzH_t63us+ECgxcNMEsaRz0j5aoY5tORw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri, Dec 23, 2011 at 09:14:20AM +0800, Yongqiang Yang wrote:
+> Thanks.
+> 
+> The patch looks good.   I have to update the new resize patch too.
+> 
+> Yongqiang.
+> 
+> On Thu, Dec 22, 2011 at 11:00 PM, Djalal Harouni <tixxdz@opendz.org> wrote:
+> > Online resize ioctls 'EXT4_IOC_GROUP_EXTEND' and 'EXT4_IOC_GROUP_ADD'
+> > call ext4_resize_begin() to check permissions and to set the
+> > EXT4_RESIZING bit lock, they do their work and they must finish with
+> > ext4_resize_end() which calls clear_bit_unlock() to unlock and to
+> > avoid -EBUSY errors for the next resize operations.
+> >
+> > This patch adds the missing ext4_resize_end() calls on error paths.
+Any news on this one ?
 
-The EXT{3,4}_IOC_SETVERSION ioctl() updates the inode without i_mutex,
-this can lead to a race with the other operations that update the same
-inode.
+If we call EXT4_IOC_GROUP_EXTEND ioctl and get_user() fails with -EFAULT
+then any new call will return -EBUSY, unless we unmount/mount the fs.
 
-Patch tested.
+In rare situations this can lead to a corrupt filesystem, I've experienced
+this, but I'm not sure what I did. fsck fix it.
 
-Signed-off-by: Djalal Harouni <tixxdz@opendz.org>
----
- fs/ext3/ioctl.c |    6 +++++-
- fs/ext4/ioctl.c |    6 +++++-
- 2 files changed, 10 insertions(+), 2 deletions(-)
+Thanks.
 
-diff --git a/fs/ext3/ioctl.c b/fs/ext3/ioctl.c
-index ba1b54e..e7b2ed9 100644
---- a/fs/ext3/ioctl.c
-+++ b/fs/ext3/ioctl.c
-@@ -134,10 +134,11 @@ flags_out:
- 			goto setversion_out;
- 		}
- 
-+		mutex_lock(&inode->i_mutex);
- 		handle = ext3_journal_start(inode, 1);
- 		if (IS_ERR(handle)) {
- 			err = PTR_ERR(handle);
--			goto setversion_out;
-+			goto unlock_out;
- 		}
- 		err = ext3_reserve_inode_write(handle, inode, &iloc);
- 		if (err == 0) {
-@@ -146,6 +147,9 @@ flags_out:
- 			err = ext3_mark_iloc_dirty(handle, inode, &iloc);
- 		}
- 		ext3_journal_stop(handle);
-+
-+unlock_out:
-+		mutex_unlock(&inode->i_mutex);
- setversion_out:
- 		mnt_drop_write(filp->f_path.mnt);
- 		return err;
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index a567968..46a8de6 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -158,10 +158,11 @@ flags_out:
- 			goto setversion_out;
- 		}
- 
-+		mutex_lock(&inode->i_mutex);
- 		handle = ext4_journal_start(inode, 1);
- 		if (IS_ERR(handle)) {
- 			err = PTR_ERR(handle);
--			goto setversion_out;
-+			goto unlock_out;
- 		}
- 		err = ext4_reserve_inode_write(handle, inode, &iloc);
- 		if (err == 0) {
-@@ -170,6 +171,9 @@ flags_out:
- 			err = ext4_mark_iloc_dirty(handle, inode, &iloc);
- 		}
- 		ext4_journal_stop(handle);
-+
-+unlock_out:
-+		mutex_unlock(&inode->i_mutex);
- setversion_out:
- 		mnt_drop_write(filp->f_path.mnt);
- 		return err;
 -- 
-1.7.1
+tixxdz
+http://opendz.org
