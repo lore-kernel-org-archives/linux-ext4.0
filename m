@@ -1,15 +1,15 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH V7 11/12] ext4: let ext4_group_extend() use common code
-Date: Wed,  4 Jan 2012 00:07:33 -0500
-Message-ID: <1325653654-10478-12-git-send-email-tytso@mit.edu>
+Subject: [PATCH V7 02/12] ext4: add a function which adds a new group descriptors to a fs
+Date: Wed,  4 Jan 2012 00:07:24 -0500
+Message-ID: <1325653654-10478-3-git-send-email-tytso@mit.edu>
 References: <1325653654-10478-1-git-send-email-tytso@mit.edu>
 Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:50290 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:50285 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750904Ab2ADFHf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1750819Ab2ADFHf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 4 Jan 2012 00:07:35 -0500
 In-Reply-To: <1325653654-10478-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
@@ -17,61 +17,75 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
 
-ext4_group_extend_no_check() is moved out from ext4_group_extend(),
-this patch lets ext4_group_extend() call ext4_group_extentd_no_check()
-instead.
+This patch adds a function named ext4_add_new_descs() which adds one
+or more new group descriptors to a fs and whose code is copied from
+ext4_group_add().
+
+The function will be used by new resize implementation.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/resize.c |   41 ++---------------------------------------
- 1 files changed, 2 insertions(+), 39 deletions(-)
+ fs/ext4/resize.c |   46 ++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 46 insertions(+), 0 deletions(-)
 
 diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 5fe2a01..eba706d 100644
+index 1c3c2b5..3bb4e7b 100644
 --- a/fs/ext4/resize.c
 +++ b/fs/ext4/resize.c
-@@ -1795,8 +1795,7 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
- 	ext4_grpblk_t last;
- 	ext4_grpblk_t add;
- 	struct buffer_head *bh;
--	handle_t *handle;
--	int err, err2;
-+	int err;
- 	ext4_group_t group;
- 
- 	o_blocks_count = ext4_blocks_count(es);
-@@ -1852,43 +1851,7 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
+@@ -735,6 +735,52 @@ exit_err:
  	}
- 	brelse(bh);
+ }
  
--	/* We will update the superblock, one block bitmap, and
--	 * one group descriptor via ext4_free_blocks().
--	 */
--	handle = ext4_journal_start_sb(sb, 3);
--	if (IS_ERR(handle)) {
--		err = PTR_ERR(handle);
--		ext4_warning(sb, "error %d on journal start", err);
--		goto exit_put;
--	}
--
--	if ((err = ext4_journal_get_write_access(handle,
--						 EXT4_SB(sb)->s_sbh))) {
--		ext4_warning(sb, "error %d on journal write access", err);
--		ext4_journal_stop(handle);
--		goto exit_put;
--	}
--	ext4_blocks_count_set(es, o_blocks_count + add);
--	ext4_debug("freeing blocks %llu through %llu\n", o_blocks_count,
--		   o_blocks_count + add);
--	/* We add the blocks to the bitmap and set the group need init bit */
--	err = ext4_group_add_blocks(handle, sb, o_blocks_count, add);
--	ext4_handle_dirty_super(handle, sb);
--	ext4_debug("freed blocks %llu through %llu\n", o_blocks_count,
--		   o_blocks_count + add);
--	err2 = ext4_journal_stop(handle);
--	if (!err && err2)
--		err = err2;
--
--	if (err)
--		goto exit_put;
++/*
++ * ext4_add_new_descs() adds @count group descriptor of groups
++ * starting at @group
++ *
++ * @handle: journal handle
++ * @sb: super block
++ * @group: the group no. of the first group desc to be added
++ * @resize_inode: the resize inode
++ * @count: number of group descriptors to be added
++ */
++static int ext4_add_new_descs(handle_t *handle, struct super_block *sb,
++			      ext4_group_t group, struct inode *resize_inode,
++			      ext4_group_t count)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct ext4_super_block *es = sbi->s_es;
++	struct buffer_head *gdb_bh;
++	int i, gdb_off, gdb_num, err = 0;
++
++	for (i = 0; i < count; i++, group++) {
++		int reserved_gdb = ext4_bg_has_super(sb, group) ?
++			le16_to_cpu(es->s_reserved_gdt_blocks) : 0;
++
++		gdb_off = group % EXT4_DESC_PER_BLOCK(sb);
++		gdb_num = group / EXT4_DESC_PER_BLOCK(sb);
++
++		/*
++		 * We will only either add reserved group blocks to a backup group
++		 * or remove reserved blocks for the first group in a new group block.
++		 * Doing both would be mean more complex code, and sane people don't
++		 * use non-sparse filesystems anymore.  This is already checked above.
++		 */
++		if (gdb_off) {
++			gdb_bh = sbi->s_group_desc[gdb_num];
++			err = ext4_journal_get_write_access(handle, gdb_bh);
++
++			if (!err && reserved_gdb && ext4_bg_num_gdb(sb, group))
++				err = reserve_backup_gdb(handle, resize_inode, group);
++		} else
++			err = add_new_gdb(handle, resize_inode, group);
++		if (err)
++			break;
++	}
++	return err;
++}
++
+ /* Add group descriptor data to an existing or new group descriptor block.
+  * Ensure we handle all possible error conditions _before_ we start modifying
+  * the filesystem, because we cannot abort the transaction and not have it
+-- 
+1.7.8.11.gefc1f.dirty
+
