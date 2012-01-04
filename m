@@ -1,59 +1,53 @@
-From: Andreas Dilger <aedilger@gmail.com>
-Subject: Re: [PATCH] mke2fs: correct help text for option -G of mke2fs
-Date: Wed, 4 Jan 2012 00:22:58 -0700
-Message-ID: <65F5DCD8-3B25-4F40-8966-2C23700E0CDA@gmail.com>
-References: <1325647785-8672-1-git-send-email-xiaoqiangnk@gmail.com>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "tytso@mit.edu" <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: e4defrag modifies folder's mtime.
+Date: Wed, 4 Jan 2012 18:43:57 +1100
+Message-ID: <20120104074357.GC17026@dastard>
+References: <4F00BE34.1080006@gmail.com>
+ <20120103203443.GC30502@thunk.org>
+ <20120104045318.GA17026@dastard>
+ <20120104052718.GB13438@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Thomas Lindroth <thomas.lindroth@gmail.com>,
+	linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:52086 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751581Ab2ADHWs convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2012 02:22:48 -0500
-Received: by iaeh11 with SMTP id h11so32129760iae.19
-        for <linux-ext4@vger.kernel.org>; Tue, 03 Jan 2012 23:22:48 -0800 (PST)
-In-Reply-To: <1325647785-8672-1-git-send-email-xiaoqiangnk@gmail.com>
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:36911 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751940Ab2ADHoL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2012 02:44:11 -0500
+Content-Disposition: inline
+In-Reply-To: <20120104052718.GB13438@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Probably "flex_group_size" or "flex_group_factor" is as clear and a lot shorter. 
-
-Cheers, Andreas
-
-On 2012-01-03, at 20:29, Yongqiang Yang <xiaoqiangnk@gmail.com> wrote:
-
-> The option '-G' is used to pass number of groups in a flex_bg, the
-> previous help text - 'meta-group-size' - could confuse users with
-> meta_bg.
+On Wed, Jan 04, 2012 at 12:27:18AM -0500, Ted Ts'o wrote:
+> On Wed, Jan 04, 2012 at 03:53:18PM +1100, Dave Chinner wrote:
+> > 
+> > xfs_fsr doesn't use these donor files to avoid mtime updates - it
+> > uses invisible IO (i.e. O_NOATIME|O_NOCMTIME) to do that.
 > 
-> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-> ---
-> misc/mke2fs.c |    2 +-
-> 1 files changed, 1 insertions(+), 1 deletions(-)
+> O_NOCMTIME doesn't exist yet.  From include/linux/fs.h:
 > 
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index 0ef2531..52746fe 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -116,7 +116,7 @@ static void usage(void)
->    fprintf(stderr, _("Usage: %s [-c|-l filename] [-b block-size] "
->    "[-C cluster-size]\n\t[-i bytes-per-inode] [-I inode-size] "
->    "[-J journal-options]\n"
-> -    "\t[-G meta group size] [-N number-of-inodes]\n"
-> +    "\t[-G number-of-groups-per-flex_bg] [-N number-of-inodes]\n"
->    "\t[-m reserved-blocks-percentage] [-o creator-os]\n"
->    "\t[-g blocks-per-group] [-L volume-label] "
->    "[-M last-mounted-directory]\n\t[-O feature[,...]] "
-> -- 
-> 1.7.5.1
+> /*
+>  * Don't update ctime and mtime.
+>  *
+>  * Currently a special hack for the XFS open_by_handle ioctl, but we'll
+>  * hopefully graduate it to a proper O_CMTIME flag supported by open(2) soon.
+>  */
+> #define FMODE_NOCMTIME		((__force fmode_t)0x800)
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> I'd have to check, but it wouldn't surprise me if glibc is filtering
+> out all fcntl flags it doesn't understand, so for now, this is an
+> XFS-only special...
+
+Sounds to me like e2defrag needs it, so perhaps it should finally
+be made a proper open flag like the comment says rather than
+inventing some other way of solving the problem....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
