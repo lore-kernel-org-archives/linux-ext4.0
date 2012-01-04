@@ -1,74 +1,52 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [PATCH V6 RESEND 03/15] ext4: add a function which sets up a new
- group desc
-Date: Wed, 4 Jan 2012 12:02:51 +0800
-Message-ID: <CAGBYx2bwkJddazUT4H1D2JQC2pJx7p1MdcBZT4PdbVaN7kKk_Q@mail.gmail.com>
-References: <1325242812-27005-1-git-send-email-xiaoqiangnk@gmail.com>
-	<1325242812-27005-4-git-send-email-xiaoqiangnk@gmail.com>
-	<20120104022427.GF30502@thunk.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: e4defrag modifies folder's mtime.
+Date: Wed, 4 Jan 2012 15:53:18 +1100
+Message-ID: <20120104045318.GA17026@dastard>
+References: <4F00BE34.1080006@gmail.com>
+ <20120103203443.GC30502@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Thomas Lindroth <thomas.lindroth@gmail.com>,
+	linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:38659 "EHLO
-	mail-tul01m020-f174.google.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755446Ab2ADECw convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 Jan 2012 23:02:52 -0500
-Received: by obcwo16 with SMTP id wo16so13252430obc.19
-        for <linux-ext4@vger.kernel.org>; Tue, 03 Jan 2012 20:02:52 -0800 (PST)
-In-Reply-To: <20120104022427.GF30502@thunk.org>
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:38943 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755007Ab2ADExV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jan 2012 23:53:21 -0500
+Content-Disposition: inline
+In-Reply-To: <20120103203443.GC30502@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 4, 2012 at 10:24 AM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Fri, Dec 30, 2011 at 07:00:00PM +0800, Yongqiang Yang wrote:
->> +
->> + =A0 =A0 memset(gdp, 0, EXT4_DESC_SIZE(sb));
->> + =A0 =A0 =A0/* LV FIXME */
->> + =A0 =A0 memset(gdp, 0, EXT4_DESC_SIZE(sb));
->> + =A0 =A0 ext4_block_bitmap_set(sb, gdp, input->block_bitmap); /* LV=
- FIXME */
->> + =A0 =A0 ext4_inode_bitmap_set(sb, gdp, input->inode_bitmap); /* LV=
- FIXME */
->> + =A0 =A0 ext4_inode_table_set(sb, gdp, input->inode_table); /* LV F=
-IXME */
->
-> There is a duplicated (and unneeded) call to memset above. =A0Also, t=
-he
-> LV FIXME was a comment introduced by Laurent Vivier in commit bd81d8e=
-e
-> because at the time input->block_bitmap was a 32-bit value. =A0In the
-> new ext4_new_group_data structure, input->block_bitmap is now a 64-bi=
-t
-> field, so the need for "LV FIXME" is gone, and should be removed.
->
-> I'll remove the duplicate memset() calls and the "LV FIXME".
->
-> For future reference, this is why it's better to use something
-> descriptive about the FIXME "64-bit FIXME", as opposed to your
-> initials. =A0And it's best if there's an explicit comment explaining =
-why
-> the fixme is there (and what the consequences of leaving partially
-> broken code in the kernel :-), so that future code maintainers won't
-> have to do code archeology to figure out what the FIXME is all about.
-Thanks for your explanation.  I did not figure out what 'LV FIXME'
-means, so I left them.   Now I am understood.
+On Tue, Jan 03, 2012 at 03:34:43PM -0500, Ted Ts'o wrote:
+> On Sun, Jan 01, 2012 at 09:12:36PM +0100, Thomas Lindroth wrote:
+> > I ran e4defrag from e2fsprogs-1.42 on a file system and a lot of
+> > folders had their mtime updated as a result. This confuses both my
+> > backup program and myself. I guess the folder timestamps change
+> > because the temporary donor file is created in the same directory as
+> > the original file. XFS's defrag program put the donor files in a
+> > temporary folder in the root of the file system. Maybe e4defrag
+> > could do the same.
+> 
+> Yes, that could be done if the user running the program (which does
+> not have to be root) has write access to the root directory of the
+> file system.  There will certainly be cases where this will not be
+> true, however.
 
-Yongqiang.
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 - Ted
+xfs_fsr doesn't use these donor files to avoid mtime updates - it
+uses invisible IO (i.e. O_NOATIME|O_NOCMTIME) to do that.
 
+Also xfs_fsr needs root permissions because it uses the XFS
+open-by-handle interfaces. Indeed, it doesn't always use tmp donor
+dirs in the root directory - it only ever does that when doing an
+entire fs re-organisation. If you are just defragging a single file,
+it creates the tmp file in the same directory as the file being
+defragged...
 
+Cheers,
 
---=20
-Best Wishes
-Yongqiang Yang
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
