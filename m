@@ -1,45 +1,54 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH V6 RESEND 13/15] ext4: add new online resize interface
-Date: Wed, 4 Jan 2012 00:03:33 -0500
-Message-ID: <20120104050333.GA13438@thunk.org>
-References: <1325242812-27005-1-git-send-email-xiaoqiangnk@gmail.com>
- <1325242812-27005-14-git-send-email-xiaoqiangnk@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH V7 00/12] Add new online resize (Ted's modified version)
+Date: Wed,  4 Jan 2012 00:07:22 -0500
+Message-ID: <1325653654-10478-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:50268 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:50271 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750704Ab2ADFDf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Jan 2012 00:03:35 -0500
-Content-Disposition: inline
-In-Reply-To: <1325242812-27005-14-git-send-email-xiaoqiangnk@gmail.com>
+	id S1750782Ab2ADFHf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Jan 2012 00:07:35 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 30, 2011 at 07:00:10PM +0800, Yongqiang Yang wrote:
-> +		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
-> +			       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
-> +			ext4_msg(sb, KERN_ERR,
-> +				 "Online resizing not supported with bigalloc");
-> +			return -EOPNOTSUPP;
-> +		}
+This is a revised set of the on-line resizing patches after my
+cleanups.  I've folded some patches together, as well as collapsed a few
+functions to make the code easier to understatnd/maintain.
 
-I've also added checks to disable on-line resizing if the meta_bg file
-system feature is set, since the on-line resizing code in this patch
-series does not support the meta_bg block group descriptor layout
-(which is required for file systems > 32-bits).
+I've also fixed up the English in a few places in the commit
+descriptions and in the comments, as well as made some style fix ups.
 
-In addition, I've added a check so that if the requested number of
-blocks is greater than 2**32-1, and the 64-bit option is not set, to
-bail out with an error.
+Finally, I've added some error checking to make sure the on-line
+resizing code doesn't try to resize file systems that it can't handle
+(most notably, meta_bg file systems).  We do need to add meta_bg support
+into the on-line resize, but this patch series has enough benefits that
+we should get this merged first, and then we can add the meta_bg support
+later.
 
-In theory the resize2fs userspace code will be doing these checks, but
-(a) at some point in the future the meta_bg support will be added, and
-so if the kernel doesn't support meta_bg, it needs to fail, and not
-depend on userspace to do this check.  Also (b) we want to make sure
-this code doesn't do something crazy in case someone calls the ioctl
-directly.
+Yongqiang Yang (12):
+  ext4: add a function which extends a group without checking
+    parameters
+  ext4: add a function which adds a new group descriptors to a fs
+  ext4: add a structure which will be used by 64bit-resize interface
+  ext4: add a function which sets up group blocks of a flex bg
+  ext4: add a function which sets up a block group descriptors of a
+    flex bg
+  ext4: add a function which updates the super block during online
+    resizing
+  ext4: pass verify_reserved_gdb() the number of group decriptors
+  ext4: add a new function which allocates bitmaps and inode tables
+  ext4: add a new function which adds a flex group to a fs
+  ext4: add new online resize interface
+  ext4: let ext4_group_extend() use common code
+  ext4: let ext4_group_add() use common code
 
-						- Ted
+ Documentation/filesystems/ext4.txt |    7 +
+ fs/ext4/ext4.h                     |   10 +
+ fs/ext4/ioctl.c                    |   58 ++
+ fs/ext4/resize.c                   | 1175 +++++++++++++++++++++++++++---------
+ 4 files changed, 961 insertions(+), 289 deletions(-)
+
+-- 
+1.7.8.11.gefc1f.dirty
+
