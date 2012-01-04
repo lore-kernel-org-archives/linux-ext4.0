@@ -1,15 +1,15 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH V7 06/12] ext4: add a function which updates the super block during online resizing
-Date: Wed,  4 Jan 2012 00:07:28 -0500
-Message-ID: <1325653654-10478-7-git-send-email-tytso@mit.edu>
+Subject: [PATCH V7 09/12] ext4: add a new function which adds a flex group to a fs
+Date: Wed,  4 Jan 2012 00:07:31 -0500
+Message-ID: <1325653654-10478-10-git-send-email-tytso@mit.edu>
 References: <1325653654-10478-1-git-send-email-tytso@mit.edu>
 Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:50284 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:50287 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750816Ab2ADFHf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1750884Ab2ADFHf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 4 Jan 2012 00:07:35 -0500
 In-Reply-To: <1325653654-10478-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
@@ -17,118 +17,103 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
 
-This patch adds a function named ext4_update_super() which updates
-super block so the newly created block groups are visible to the file
-system.  This code is copied from ext4_group_add().
-
-The function will be used by new resize implementation.
+This patch adds a new function named ext4_flex_group_add() which adds a
+flex group to a fs.  The function is used by 64bit-resize interface.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/resize.c |   94 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 94 insertions(+), 0 deletions(-)
+ fs/ext4/resize.c |   82 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 82 insertions(+), 0 deletions(-)
 
 diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 098bdb8..eb0aebc 100644
+index a4075de..dac2356 100644
 --- a/fs/ext4/resize.c
 +++ b/fs/ext4/resize.c
-@@ -1142,6 +1142,100 @@ static int ext4_setup_new_descs(handle_t *handle, struct super_block *sb,
- 	return err;
+@@ -1348,6 +1348,88 @@ static void ext4_update_super(struct super_block *sb,
+ 		       blocks_count, free_blocks, reserved_blocks);
  }
  
-+/*
-+ * ext4_update_super() updates the super block so that the newly added
-+ * groups can be seen by the filesystem.
-+ *
-+ * @sb: super block
-+ * @flex_gd: new added groups
++/* Add a flex group to an fs. Ensure we handle all possible error conditions
++ * _before_ we start modifying the filesystem, because we cannot abort the
++ * transaction and not have it write the data to disk.
 + */
-+static void ext4_update_super(struct super_block *sb,
-+			     struct ext4_new_flex_group_data *flex_gd)
++static int ext4_flex_group_add(struct super_block *sb,
++			       struct inode *resize_inode,
++			       struct ext4_new_flex_group_data *flex_gd)
 +{
-+	ext4_fsblk_t blocks_count = 0;
-+	ext4_fsblk_t free_blocks = 0;
-+	ext4_fsblk_t reserved_blocks = 0;
-+	struct ext4_new_group_data *group_data = flex_gd->groups;
 +	struct ext4_sb_info *sbi = EXT4_SB(sb);
 +	struct ext4_super_block *es = sbi->s_es;
-+	int i;
++	ext4_fsblk_t o_blocks_count;
++	ext4_grpblk_t last;
++	ext4_group_t group;
++	handle_t *handle;
++	unsigned reserved_gdb;
++	int err = 0, err2 = 0, credit;
 +
-+	BUG_ON(flex_gd->count == 0 || group_data == NULL);
++	BUG_ON(!flex_gd->count || !flex_gd->groups || !flex_gd->bg_flags);
++
++	reserved_gdb = le16_to_cpu(es->s_reserved_gdt_blocks);
++	o_blocks_count = ext4_blocks_count(es);
++	ext4_get_group_no_and_offset(sb, o_blocks_count, &group, &last);
++	BUG_ON(last);
++
++	err = setup_new_flex_group_blocks(sb, flex_gd);
++	if (err)
++		goto exit;
 +	/*
-+	 * Make the new blocks and inodes valid next.  We do this before
-+	 * increasing the group count so that once the group is enabled,
-+	 * all of its blocks and inodes are already valid.
-+	 *
-+	 * We always allocate group-by-group, then block-by-block or
-+	 * inode-by-inode within a group, so enabling these
-+	 * blocks/inodes before the group is live won't actually let us
-+	 * allocate the new space yet.
++	 * We will always be modifying at least the superblock and  GDT
++	 * block.  If we are adding a group past the last current GDT block,
++	 * we will also modify the inode and the dindirect block.  If we
++	 * are adding a group with superblock/GDT backups  we will also
++	 * modify each of the reserved GDT dindirect blocks.
 +	 */
-+	for (i = 0; i < flex_gd->count; i++) {
-+		blocks_count += group_data[i].blocks_count;
-+		free_blocks += group_data[i].free_blocks_count;
++	credit = flex_gd->count * 4 + reserved_gdb;
++	handle = ext4_journal_start_sb(sb, credit);
++	if (IS_ERR(handle)) {
++		err = PTR_ERR(handle);
++		goto exit;
 +	}
 +
-+	reserved_blocks = ext4_r_blocks_count(es) * 100;
-+	do_div(reserved_blocks, ext4_blocks_count(es));
-+	reserved_blocks *= blocks_count;
-+	do_div(reserved_blocks, 100);
++	err = ext4_journal_get_write_access(handle, sbi->s_sbh);
++	if (err)
++		goto exit_journal;
 +
-+	ext4_blocks_count_set(es, ext4_blocks_count(es) + blocks_count);
-+	le32_add_cpu(&es->s_inodes_count, EXT4_INODES_PER_GROUP(sb) *
-+		     flex_gd->count);
++	group = flex_gd->groups[0].group;
++	BUG_ON(group != EXT4_SB(sb)->s_groups_count);
++	err = ext4_add_new_descs(handle, sb, group,
++				resize_inode, flex_gd->count);
++	if (err)
++		goto exit_journal;
 +
-+	/*
-+	 * We need to protect s_groups_count against other CPUs seeing
-+	 * inconsistent state in the superblock.
-+	 *
-+	 * The precise rules we use are:
-+	 *
-+	 * * Writers must perform a smp_wmb() after updating all
-+	 *   dependent data and before modifying the groups count
-+	 *
-+	 * * Readers must perform an smp_rmb() after reading the groups
-+	 *   count and before reading any dependent data.
-+	 *
-+	 * NB. These rules can be relaxed when checking the group count
-+	 * while freeing data, as we can only allocate from a block
-+	 * group after serialising against the group count, and we can
-+	 * only then free after serialising in turn against that
-+	 * allocation.
-+	 */
-+	smp_wmb();
++	err = ext4_setup_new_descs(handle, sb, flex_gd);
++	if (err)
++		goto exit_journal;
 +
-+	/* Update the global fs size fields */
-+	sbi->s_groups_count += flex_gd->count;
++	ext4_update_super(sb, flex_gd);
 +
-+	/* Update the reserved block counts only once the new group is
-+	 * active. */
-+	ext4_r_blocks_count_set(es, ext4_r_blocks_count(es) +
-+				reserved_blocks);
++	err = ext4_handle_dirty_super(handle, sb);
 +
-+	/* Update the free space counts */
-+	percpu_counter_add(&sbi->s_freeclusters_counter,
-+			   EXT4_B2C(sbi, free_blocks));
-+	percpu_counter_add(&sbi->s_freeinodes_counter,
-+			   EXT4_INODES_PER_GROUP(sb) * flex_gd->count);
++exit_journal:
++	err2 = ext4_journal_stop(handle);
++	if (!err)
++		err = err2;
 +
-+	if (EXT4_HAS_INCOMPAT_FEATURE(sb,
-+				      EXT4_FEATURE_INCOMPAT_FLEX_BG) &&
-+	    sbi->s_log_groups_per_flex) {
-+		ext4_group_t flex_group;
-+		flex_group = ext4_flex_group(sbi, group_data[0].group);
-+		atomic_add(EXT4_B2C(sbi, free_blocks),
-+			   &sbi->s_flex_groups[flex_group].free_clusters);
-+		atomic_add(EXT4_INODES_PER_GROUP(sb) * flex_gd->count,
-+			   &sbi->s_flex_groups[flex_group].free_inodes);
++	if (!err) {
++		int i;
++		update_backups(sb, sbi->s_sbh->b_blocknr, (char *)es,
++			       sizeof(struct ext4_super_block));
++		for (i = 0; i < flex_gd->count; i++, group++) {
++			struct buffer_head *gdb_bh;
++			int gdb_num;
++			gdb_num = group / EXT4_BLOCKS_PER_GROUP(sb);
++			gdb_bh = sbi->s_group_desc[gdb_num];
++			update_backups(sb, gdb_bh->b_blocknr, gdb_bh->b_data,
++				       gdb_bh->b_size);
++		}
 +	}
-+
-+	if (test_opt(sb, DEBUG))
-+		printk(KERN_DEBUG "EXT4-fs: added group %u:"
-+		       "%llu blocks(%llu free %llu reserved)\n", flex_gd->count,
-+		       blocks_count, free_blocks, reserved_blocks);
++exit:
++	return err;
 +}
 +
  /* Add group descriptor data to an existing or new group descriptor block.
