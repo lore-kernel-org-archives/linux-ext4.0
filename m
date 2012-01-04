@@ -1,357 +1,312 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH V7 10/12] ext4: add new online resize interface
-Date: Wed,  4 Jan 2012 00:07:32 -0500
-Message-ID: <1325653654-10478-11-git-send-email-tytso@mit.edu>
+Subject: [PATCH V7 04/12] ext4: add a function which sets up group blocks of a flex bg
+Date: Wed,  4 Jan 2012 00:07:26 -0500
+Message-ID: <1325653654-10478-5-git-send-email-tytso@mit.edu>
 References: <1325653654-10478-1-git-send-email-tytso@mit.edu>
 Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:50294 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:50291 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750946Ab2ADFHg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Jan 2012 00:07:36 -0500
+	id S1750917Ab2ADFHf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Jan 2012 00:07:35 -0500
 In-Reply-To: <1325653654-10478-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
 
-This patch adds new online resize interface, whose input argument is a
-64-bit integer indicating how many blocks there are in the resized fs.
-
-In new resize impelmentation, all work like allocating group tables
-are done by kernel side, so the new resize interface can support
-flex_bg feature and prepares ground for suppoting resize with features
-like bigalloc and exclude bitmap. Besides these, user-space tools just
-passes in the new number of blocks.
-
-We delay initializing the bitmaps and inode tables of added groups if
-possible and add multi groups (a flex groups) each time, so new resize
-is very fast like mkfs.
+This patch adds a function named setup_new_flex_group_blocks() which
+sets up group blocks of a flex bg.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- Documentation/filesystems/ext4.txt |    7 ++
- fs/ext4/ext4.h                     |    2 +
- fs/ext4/ioctl.c                    |   58 ++++++++++++
- fs/ext4/resize.c                   |  177 ++++++++++++++++++++++++++++++++++++
- 4 files changed, 244 insertions(+), 0 deletions(-)
+ fs/ext4/ext4.h   |    8 ++
+ fs/ext4/resize.c |  250 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 258 insertions(+), 0 deletions(-)
 
-diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
-index 4917cf2..10ec463 100644
---- a/Documentation/filesystems/ext4.txt
-+++ b/Documentation/filesystems/ext4.txt
-@@ -581,6 +581,13 @@ Table of Ext4 specific ioctls
- 			      behaviour may change in the future as it is
- 			      not necessary and has been done this way only
- 			      for sake of simplicity.
-+
-+ EXT4_IOC_RESIZE_FS	      Resize the filesystem to a new size.  The number
-+			      of blocks of resized filesystem is passed in via
-+			      64 bit integer argument.  The kernel allocates
-+			      bitmaps and inode table, the userspace tool thus
-+			      just passes the new number of blocks.
-+
- ..............................................................................
- 
- References
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 05058e2..4bc0e82 100644
+index 0e43bba..05058e2 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -583,6 +583,7 @@ enum {
-  /* note ioctl 11 reserved for filesystem-independent FIEMAP ioctl */
- #define EXT4_IOC_ALLOC_DA_BLKS		_IO('f', 12)
- #define EXT4_IOC_MOVE_EXT		_IOWR('f', 15, struct move_extent)
-+#define EXT4_IOC_RESIZE_FS		_IOW('f', 16, __u64)
+@@ -511,6 +511,14 @@ struct ext4_new_group_data {
+ 	__u32 free_blocks_count;
+ };
  
- #if defined(__KERNEL__) && defined(CONFIG_COMPAT)
++/* Indexes used to index group tables in ext4_new_group_data */
++enum {
++	BLOCK_BITMAP = 0,	/* block bitmap */
++	INODE_BITMAP,		/* inode bitmap */
++	INODE_TABLE,		/* inode tables */
++	GROUP_TABLE_COUNT,
++};
++
  /*
-@@ -1929,6 +1930,7 @@ extern int ext4_group_add(struct super_block *sb,
- extern int ext4_group_extend(struct super_block *sb,
- 				struct ext4_super_block *es,
- 				ext4_fsblk_t n_blocks_count);
-+extern int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count);
+  * Flags used by ext4_map_blocks()
+  */
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 6076d5e..e8ccb2f 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -234,6 +234,256 @@ static int extend_or_restart_transaction(handle_t *handle, int thresh)
+ }
  
- /* super.c */
- extern void *ext4_kvmalloc(size_t size, gfp_t flags);
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index ff1aab7..53baf16 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -18,6 +18,8 @@
- #include "ext4_jbd2.h"
- #include "ext4.h"
- 
-+#define MAX_32_NUM ((((unsigned long long) 1) << 32) - 1)
+ /*
++ * set_flexbg_block_bitmap() mark @count blocks starting from @block used.
++ *
++ * Helper function for ext4_setup_new_group_blocks() which set .
++ *
++ * @sb: super block
++ * @handle: journal handle
++ * @flex_gd: flex group data
++ */
++static int set_flexbg_block_bitmap(struct super_block *sb, handle_t *handle,
++			struct ext4_new_flex_group_data *flex_gd,
++			ext4_fsblk_t block, ext4_group_t count)
++{
++	ext4_group_t count2;
 +
- long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- {
- 	struct inode *inode = filp->f_dentry->d_inode;
-@@ -329,6 +331,61 @@ mext_out:
- 		return err;
- 	}
- 
-+	case EXT4_IOC_RESIZE_FS: {
-+		ext4_fsblk_t n_blocks_count;
-+		struct super_block *sb = inode->i_sb;
-+		int err = 0, err2 = 0;
++	ext4_debug("mark blocks [%llu/%u] used\n", block, count);
++	for (count2 = count; count > 0; count -= count2, block += count2) {
++		ext4_fsblk_t start;
++		struct buffer_head *bh;
++		ext4_group_t group;
++		int err;
 +
-+		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+			       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "Online resizing not (yet) supported with bigalloc");
-+			return -EOPNOTSUPP;
++		ext4_get_group_no_and_offset(sb, block, &group, NULL);
++		start = ext4_group_first_block_no(sb, group);
++		group -= flex_gd->groups[0].group;
++
++		count2 = sb->s_blocksize * 8 - (block - start);
++		if (count2 > count)
++			count2 = count;
++
++		if (flex_gd->bg_flags[group] & EXT4_BG_BLOCK_UNINIT) {
++			BUG_ON(flex_gd->count > 1);
++			continue;
 +		}
 +
-+		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
-+			       EXT4_FEATURE_INCOMPAT_META_BG)) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "Online resizing not (yet) supported with meta_bg");
-+			return -EOPNOTSUPP;
-+		}
-+
-+		if (copy_from_user(&n_blocks_count, (__u64 __user *)arg,
-+				   sizeof(__u64))) {
-+			return -EFAULT;
-+		}
-+
-+		if (n_blocks_count > MAX_32_NUM &&
-+		    !EXT4_HAS_INCOMPAT_FEATURE(sb,
-+					       EXT4_FEATURE_INCOMPAT_64BIT)) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "File system only supports 32-bit block numbers");
-+			return -EOPNOTSUPP;
-+		}
-+
-+		err = ext4_resize_begin(sb);
++		err = extend_or_restart_transaction(handle, 1);
 +		if (err)
 +			return err;
 +
-+		err = mnt_want_write(filp->f_path.mnt);
++		bh = sb_getblk(sb, flex_gd->groups[group].block_bitmap);
++		if (!bh)
++			return -EIO;
++
++		err = ext4_journal_get_write_access(handle, bh);
 +		if (err)
-+			goto resizefs_out;
++			return err;
++		ext4_debug("mark block bitmap %#04llx (+%llu/%u)\n", block,
++			   block - start, count2);
++		ext4_set_bits(bh->b_data, block - start, count2);
 +
-+		err = ext4_resize_fs(sb, n_blocks_count);
-+		if (EXT4_SB(sb)->s_journal) {
-+			jbd2_journal_lock_updates(EXT4_SB(sb)->s_journal);
-+			err2 = jbd2_journal_flush(EXT4_SB(sb)->s_journal);
-+			jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
-+		}
-+		if (err == 0)
-+			err = err2;
-+		mnt_drop_write(filp->f_path.mnt);
-+resizefs_out:
-+		ext4_resize_end(sb);
-+
-+		return err;
++		err = ext4_handle_dirty_metadata(handle, NULL, bh);
++		if (unlikely(err))
++			return err;
++		brelse(bh);
 +	}
 +
- 	case FITRIM:
- 	{
- 		struct request_queue *q = bdev_get_queue(sb->s_bdev);
-@@ -427,6 +484,7 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- 	}
- 	case EXT4_IOC_MOVE_EXT:
- 	case FITRIM:
-+	case EXT4_IOC_RESIZE_FS:
- 		break;
- 	default:
- 		return -ENOIOCTLCMD;
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index dac2356..5fe2a01 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -1430,6 +1430,70 @@ exit:
- 	return err;
- }
- 
-+static int ext4_setup_next_flex_gd(struct super_block *sb,
-+				    struct ext4_new_flex_group_data *flex_gd,
-+				    ext4_fsblk_t n_blocks_count,
-+				    unsigned long flexbg_size)
-+{
-+	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
-+	struct ext4_new_group_data *group_data = flex_gd->groups;
-+	ext4_fsblk_t o_blocks_count;
-+	ext4_group_t n_group;
-+	ext4_group_t group;
-+	ext4_group_t last_group;
-+	ext4_grpblk_t last;
-+	ext4_grpblk_t blocks_per_group;
-+	unsigned long i;
-+
-+	blocks_per_group = EXT4_BLOCKS_PER_GROUP(sb);
-+
-+	o_blocks_count = ext4_blocks_count(es);
-+
-+	if (o_blocks_count == n_blocks_count)
-+		return 0;
-+
-+	ext4_get_group_no_and_offset(sb, o_blocks_count, &group, &last);
-+	BUG_ON(last);
-+	ext4_get_group_no_and_offset(sb, n_blocks_count - 1, &n_group, &last);
-+
-+	last_group = group | (flexbg_size - 1);
-+	if (last_group > n_group)
-+		last_group = n_group;
-+
-+	flex_gd->count = last_group - group + 1;
-+
-+	for (i = 0; i < flex_gd->count; i++) {
-+		int overhead;
-+
-+		group_data[i].group = group + i;
-+		group_data[i].blocks_count = blocks_per_group;
-+		overhead = ext4_bg_has_super(sb, group + i) ?
-+			   (1 + ext4_bg_num_gdb(sb, group + i) +
-+			    le16_to_cpu(es->s_reserved_gdt_blocks)) : 0;
-+		group_data[i].free_blocks_count = blocks_per_group - overhead;
-+		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
-+			flex_gd->bg_flags[i] = EXT4_BG_BLOCK_UNINIT |
-+					       EXT4_BG_INODE_UNINIT;
-+		else
-+			flex_gd->bg_flags[i] = EXT4_BG_INODE_ZEROED;
-+	}
-+
-+	if (last_group == n_group &&
-+	    EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+				       EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
-+		/* We need to initialize block bitmap of last group. */
-+		flex_gd->bg_flags[i - 1] &= ~EXT4_BG_BLOCK_UNINIT;
-+
-+	if ((last_group == n_group) && (last != blocks_per_group - 1)) {
-+		group_data[i - 1].blocks_count = last + 1;
-+		group_data[i - 1].free_blocks_count -= blocks_per_group-
-+					last - 1;
-+	}
-+
-+	return 1;
++	return 0;
 +}
 +
- /* Add group descriptor data to an existing or new group descriptor block.
-  * Ensure we handle all possible error conditions _before_ we start modifying
-  * the filesystem, because we cannot abort the transaction and not have it
-@@ -1827,3 +1891,116 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
- exit_put:
- 	return err;
- } /* ext4_group_extend */
-+
 +/*
-+ * ext4_resize_fs() resizes a fs to new size specified by @n_blocks_count
++ * Set up the block and inode bitmaps, and the inode table for the new groups.
++ * This doesn't need to be part of the main transaction, since we are only
++ * changing blocks outside the actual filesystem.  We still do journaling to
++ * ensure the recovery is correct in case of a failure just after resize.
++ * If any part of this fails, we simply abort the resize.
 + *
-+ * @sb: super block of the fs to be resized
-+ * @n_blocks_count: the number of blocks resides in the resized fs
++ * setup_new_flex_group_blocks handles a flex group as follow:
++ *  1. copy super block and GDT, and initialize group tables if necessary.
++ *     In this step, we only set bits in blocks bitmaps for blocks taken by
++ *     super block and GDT.
++ *  2. allocate group tables in block bitmaps, that is, set bits in block
++ *     bitmap for blocks taken by group tables.
 + */
-+int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
++static int setup_new_flex_group_blocks(struct super_block *sb,
++				struct ext4_new_flex_group_data *flex_gd)
 +{
-+	struct ext4_new_flex_group_data *flex_gd = NULL;
++	int group_table_count[] = {1, 1, EXT4_SB(sb)->s_itb_per_group};
++	ext4_fsblk_t start;
++	ext4_fsblk_t block;
 +	struct ext4_sb_info *sbi = EXT4_SB(sb);
 +	struct ext4_super_block *es = sbi->s_es;
-+	struct buffer_head *bh;
-+	struct inode *resize_inode;
-+	ext4_fsblk_t o_blocks_count;
-+	ext4_group_t o_group;
-+	ext4_group_t n_group;
-+	ext4_grpblk_t offset;
-+	unsigned long n_desc_blocks;
-+	unsigned long o_desc_blocks;
-+	unsigned long desc_blocks;
-+	int err = 0, flexbg_size = 1;
++	struct ext4_new_group_data *group_data = flex_gd->groups;
++	__u16 *bg_flags = flex_gd->bg_flags;
++	handle_t *handle;
++	ext4_group_t group, count;
++	struct buffer_head *bh = NULL;
++	int reserved_gdb, i, j, err = 0, err2;
 +
-+	o_blocks_count = ext4_blocks_count(es);
++	BUG_ON(!flex_gd->count || !group_data ||
++	       group_data[0].group != sbi->s_groups_count);
 +
-+	if (test_opt(sb, DEBUG))
-+		printk(KERN_DEBUG "EXT4-fs: resizing filesystem from %llu "
-+		       "upto %llu blocks\n", o_blocks_count, n_blocks_count);
++	reserved_gdb = le16_to_cpu(es->s_reserved_gdt_blocks);
 +
-+	if (n_blocks_count < o_blocks_count) {
-+		/* On-line shrinking not supported */
-+		ext4_warning(sb, "can't shrink FS - resize aborted");
-+		return -EINVAL;
-+	}
++	/* This transaction may be extended/restarted along the way */
++	handle = ext4_journal_start_sb(sb, EXT4_MAX_TRANS_DATA);
++	if (IS_ERR(handle))
++		return PTR_ERR(handle);
 +
-+	if (n_blocks_count == o_blocks_count)
-+		/* Nothing need to do */
-+		return 0;
++	group = group_data[0].group;
++	for (i = 0; i < flex_gd->count; i++, group++) {
++		unsigned long gdblocks;
 +
-+	ext4_get_group_no_and_offset(sb, n_blocks_count - 1, &n_group, &offset);
-+	ext4_get_group_no_and_offset(sb, o_blocks_count, &o_group, &offset);
++		gdblocks = ext4_bg_num_gdb(sb, group);
++		start = ext4_group_first_block_no(sb, group);
 +
-+	n_desc_blocks = (n_group + EXT4_DESC_PER_BLOCK(sb)) /
-+			EXT4_DESC_PER_BLOCK(sb);
-+	o_desc_blocks = (sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) /
-+			EXT4_DESC_PER_BLOCK(sb);
-+	desc_blocks = n_desc_blocks - o_desc_blocks;
++		/* Copy all of the GDT blocks into the backup in this group */
++		for (j = 0, block = start + 1; j < gdblocks; j++, block++) {
++			struct buffer_head *gdb;
 +
-+	if (desc_blocks &&
-+	    (!EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_RESIZE_INODE) ||
-+	     le16_to_cpu(es->s_reserved_gdt_blocks) < desc_blocks)) {
-+		ext4_warning(sb, "No reserved GDT blocks, can't resize");
-+		return -EPERM;
-+	}
++			ext4_debug("update backup group %#04llx\n", block);
++			err = extend_or_restart_transaction(handle, 1);
++			if (err)
++				goto out;
 +
-+	resize_inode = ext4_iget(sb, EXT4_RESIZE_INO);
-+	if (IS_ERR(resize_inode)) {
-+		ext4_warning(sb, "Error opening resize inode");
-+		return PTR_ERR(resize_inode);
-+	}
++			gdb = sb_getblk(sb, block);
++			if (!gdb) {
++				err = -EIO;
++				goto out;
++			}
 +
-+	/* See if the device is actually as big as what was requested */
-+	bh = sb_bread(sb, n_blocks_count - 1);
-+	if (!bh) {
-+		ext4_warning(sb, "can't read last block, resize aborted");
-+		return -ENOSPC;
-+	}
-+	brelse(bh);
++			err = ext4_journal_get_write_access(handle, gdb);
++			if (err) {
++				brelse(gdb);
++				goto out;
++			}
++			memcpy(gdb->b_data, sbi->s_group_desc[j]->b_data,
++			       gdb->b_size);
++			set_buffer_uptodate(gdb);
 +
-+	if (offset != 0) {
-+		/* extend the last group */
-+		ext4_grpblk_t add;
-+		add = EXT4_BLOCKS_PER_GROUP(sb) - offset;
-+		err = ext4_group_extend_no_check(sb, o_blocks_count, add);
++			err = ext4_handle_dirty_metadata(handle, NULL, gdb);
++			if (unlikely(err)) {
++				brelse(gdb);
++				goto out;
++			}
++			brelse(gdb);
++		}
++
++		/* Zero out all of the reserved backup group descriptor
++		 * table blocks
++		 */
++		if (ext4_bg_has_super(sb, group)) {
++			err = sb_issue_zeroout(sb, gdblocks + start + 1,
++					reserved_gdb, GFP_NOFS);
++			if (err)
++				goto out;
++		}
++
++		/* Initialize group tables of the grop @group */
++		if (!(bg_flags[i] & EXT4_BG_INODE_ZEROED))
++			goto handle_bb;
++
++		/* Zero out all of the inode table blocks */
++		block = group_data[i].inode_table;
++		ext4_debug("clear inode table blocks %#04llx -> %#04lx\n",
++			   block, sbi->s_itb_per_group);
++		err = sb_issue_zeroout(sb, block, sbi->s_itb_per_group,
++				       GFP_NOFS);
 +		if (err)
 +			goto out;
++
++handle_bb:
++		if (bg_flags[i] & EXT4_BG_BLOCK_UNINIT)
++			goto handle_ib;
++
++		/* Initialize block bitmap of the @group */
++		block = group_data[i].block_bitmap;
++		err = extend_or_restart_transaction(handle, 1);
++		if (err)
++			goto out;
++
++		bh = bclean(handle, sb, block);
++		if (IS_ERR(bh)) {
++			err = PTR_ERR(bh);
++			goto out;
++		}
++		if (ext4_bg_has_super(sb, group)) {
++			ext4_debug("mark backup superblock %#04llx (+0)\n",
++				   start);
++			ext4_set_bits(bh->b_data, 0, gdblocks + reserved_gdb +
++						     1);
++		}
++		ext4_mark_bitmap_end(group_data[i].blocks_count,
++				     sb->s_blocksize * 8, bh->b_data);
++		err = ext4_handle_dirty_metadata(handle, NULL, bh);
++		if (err)
++			goto out;
++		brelse(bh);
++
++handle_ib:
++		if (bg_flags[i] & EXT4_BG_INODE_UNINIT)
++			continue;
++
++		/* Initialize inode bitmap of the @group */
++		block = group_data[i].inode_bitmap;
++		err = extend_or_restart_transaction(handle, 1);
++		if (err)
++			goto out;
++		/* Mark unused entries in inode bitmap used */
++		bh = bclean(handle, sb, block);
++		if (IS_ERR(bh)) {
++			err = PTR_ERR(bh);
++			goto out;
++		}
++
++		ext4_mark_bitmap_end(EXT4_INODES_PER_GROUP(sb),
++				     sb->s_blocksize * 8, bh->b_data);
++		err = ext4_handle_dirty_metadata(handle, NULL, bh);
++		if (err)
++			goto out;
++		brelse(bh);
 +	}
++	bh = NULL;
 +
-+	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG) &&
-+	    es->s_log_groups_per_flex)
-+		flexbg_size = 1 << es->s_log_groups_per_flex;
++	/* Mark group tables in block bitmap */
++	for (j = 0; j < GROUP_TABLE_COUNT; j++) {
++		count = group_table_count[j];
++		start = (&group_data[0].block_bitmap)[j];
++		block = start;
++		for (i = 1; i < flex_gd->count; i++) {
++			block += group_table_count[j];
++			if (block == (&group_data[i].block_bitmap)[j]) {
++				count += group_table_count[j];
++				continue;
++			}
++			err = set_flexbg_block_bitmap(sb, handle,
++						flex_gd, start, count);
++			if (err)
++				goto out;
++			count = group_table_count[j];
++			start = group_data[i].block_bitmap;
++			block = start;
++		}
 +
-+	o_blocks_count = ext4_blocks_count(es);
-+	if (o_blocks_count == n_blocks_count)
-+		goto out;
-+
-+	flex_gd = alloc_flex_gd(flexbg_size);
-+	if (flex_gd == NULL) {
-+		err = -ENOMEM;
-+		goto out;
-+	}
-+
-+	/* Add flex groups. Note that a regular group is a
-+	 * flex group with 1 group.
-+	 */
-+	while (ext4_setup_next_flex_gd(sb, flex_gd, n_blocks_count,
-+					      flexbg_size)) {
-+		ext4_alloc_group_tables(sb, flex_gd, flexbg_size);
-+		err = ext4_flex_group_add(sb, resize_inode, flex_gd);
-+		if (unlikely(err))
-+			break;
++		if (count) {
++			err = set_flexbg_block_bitmap(sb, handle,
++						flex_gd, start, count);
++			if (err)
++				goto out;
++		}
 +	}
 +
 +out:
-+	if (flex_gd)
-+		free_flex_gd(flex_gd);
++	brelse(bh);
++	err2 = ext4_journal_stop(handle);
++	if (err2 && !err)
++		err = err2;
 +
-+	iput(resize_inode);
-+	if (test_opt(sb, DEBUG))
-+		printk(KERN_DEBUG "EXT4-fs: resized filesystem from %llu "
-+		       "upto %llu blocks\n", o_blocks_count, n_blocks_count);
 +	return err;
 +}
++
++/*
+  * Set up the block and inode bitmaps, and the inode table for the new group.
+  * This doesn't need to be part of the main transaction, since we are only
+  * changing blocks outside the actual filesystem.  We still do journaling to
 -- 
 1.7.8.11.gefc1f.dirty
 
