@@ -1,44 +1,21 @@
-From: Djalal Harouni <tixxdz@opendz.org>
-Subject: [PATCH] ext4: make local symbol ext4_initxattrs static
-Date: Wed, 4 Jan 2012 14:51:20 +0100
-Message-ID: <20120104135120.GA12859@dztty>
+From: Ganesh Patil <patil.ganesh170@gmail.com>
+Subject: kmalloc question.
+Date: Wed, 4 Jan 2012 19:52:36 +0530
+Message-ID: <CAN2Q5ruw_sMPvK9hH_t_8aEKVD7rNh22g3bQU7T2uY_tSYQT3Q@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from numidia.opendz.org ([98.142.220.152]:49291 "EHLO
-	numidia.opendz.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755349Ab2ADNsR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2012 08:48:17 -0500
-Content-Disposition: inline
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:48736 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752743Ab2ADOWi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2012 09:22:38 -0500
+Received: by eaad14 with SMTP id d14so9401409eaa.19
+        for <linux-ext4@vger.kernel.org>; Wed, 04 Jan 2012 06:22:37 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The ext4_initxattrs symbol is used only in this file, so it should be
-declared static.
-
-Signed-off-by: Djalal Harouni <tixxdz@opendz.org>
----
- fs/ext4/xattr_security.c |    5 +++--
- 1 files changed, 3 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext4/xattr_security.c b/fs/ext4/xattr_security.c
-index 34e4350..e247f8b 100644
---- a/fs/ext4/xattr_security.c
-+++ b/fs/ext4/xattr_security.c
-@@ -48,8 +48,9 @@ ext4_xattr_security_set(struct dentry *dentry, const char *name,
- 			      name, value, size, flags);
- }
- 
--int ext4_initxattrs(struct inode *inode, const struct xattr *xattr_array,
--		    void *fs_info)
-+static int
-+ext4_initxattrs(struct inode *inode, const struct xattr *xattr_array,
-+		void *fs_info)
- {
- 	const struct xattr *xattr;
- 	handle_t *handle = fs_info;
+where allocate kmalloc function memory?
 -- 
-1.7.1
+Regards,
+Ganesh Patil.
