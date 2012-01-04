@@ -1,142 +1,266 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH V2] xfstests: make 275 pass
-Date: Wed, 04 Jan 2012 14:54:25 -0600
-Message-ID: <4F04BC81.1000207@redhat.com>
-References: <4F04A6E6.1090304@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Eryu Guan <eguan@redhat.com>
-To: xfs-oss <xfs@oss.sgi.com>
+From: Paul Gortmaker <paul.gortmaker@windriver.com>
+Subject: [PATCH] ext2/3/4: delete unneeded includes of module.h
+Date: Wed,  4 Jan 2012 15:59:47 -0500
+Message-ID: <1325710787-32576-1-git-send-email-paul.gortmaker@windriver.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: tytso@mit.edu, adilger.kernel@dilger.ca, akpm@linux-foundation.org,
+	jack@suse.cz
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32830 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756825Ab2ADUy2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Jan 2012 15:54:28 -0500
-In-Reply-To: <4F04A6E6.1090304@redhat.com>
+Received: from mail.windriver.com ([147.11.1.11]:47125 "EHLO
+	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754038Ab2ADVAR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2012 16:00:17 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ok, this is a significant rework of 275, which made too many
-assumptions about details of space usage and failed on several
-filesystems (it passed on xfs, but only by accident).
+Delete any instances of include module.h that were not strictly
+required.  In the case of ext2, the declaration of MODULE_LICENSE
+etc. were in inode.c but the module_init/exit were in super.c, so
+relocate the MODULE_LICENCE/AUTHOR block to super.c which makes it
+consistent with ext3 and ext4 at the same time.
 
-This new version tries to leave about 256k free, then tries
-a single 1M IO, and fails only if 0 bytes are written.
+Signed-off-by: Paul Gortmaker <paul.gortmaker@windriver.com>
 
-It also sends a lot more to $seq.full for debugging on failure
-and fixes a few other stylistic things.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-diff --git a/275 b/275
-index 214262e..8f521f8 100755
---- a/275
-+++ b/275
-@@ -1,8 +1,8 @@
- #! /bin/bash
- # FS QA Test No. 275
- #
--# The posix write test. when write size is larger than disk free size,
--# should write as more as possible
-+# The posix write test.  When write size is larger than disk free size,
-+# should write as much as possible until ENOSPC.
- #
- #-----------------------------------------------------------------------
- # Copyright (c) 2011-2012 Fujitsu, Inc.  All Rights Reserved.
-@@ -30,13 +30,12 @@ echo "QA output created by $seq"
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index 91a6945..740cad8 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -26,7 +26,6 @@
+ #include <linux/highuid.h>
+ #include <linux/pagemap.h>
+ #include <linux/quotaops.h>
+-#include <linux/module.h>
+ #include <linux/writeback.h>
+ #include <linux/buffer_head.h>
+ #include <linux/mpage.h>
+@@ -36,10 +35,6 @@
+ #include "acl.h"
+ #include "xip.h"
  
- here=`pwd`
- tmp=/tmp/$$
--status=0    # success is the default!
-+status=1    # failure is the default!
- trap "_cleanup; exit \$status" 0 1 2 3 15
+-MODULE_AUTHOR("Remy Card and others");
+-MODULE_DESCRIPTION("Second Extended Filesystem");
+-MODULE_LICENSE("GPL");
+-
+ static int __ext2_write_inode(struct inode *inode, int do_sync);
  
- _cleanup()
- {
- 	cd /
--	rm -f $SCRATCH_MNT/* $tmp.*
- 	_scratch_unmount
+ /*
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index bd8ac16..9e7e203 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -1521,5 +1521,8 @@ static void __exit exit_ext2_fs(void)
+ 	exit_ext2_xattr();
  }
  
-@@ -49,7 +48,7 @@ _supported_os IRIX Linux
- _require_scratch
++MODULE_AUTHOR("Remy Card and others");
++MODULE_DESCRIPTION("Second Extended Filesystem");
++MODULE_LICENSE("GPL");
+ module_init(init_ext2_fs)
+ module_exit(exit_ext2_fs)
+diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+index d27b71f..6dcafc7 100644
+--- a/fs/ext2/xattr.c
++++ b/fs/ext2/xattr.c
+@@ -54,7 +54,6 @@
+  */
  
- echo "------------------------------"
--echo "write lack test"
-+echo "write until ENOSPC test"
- echo "------------------------------"
+ #include <linux/buffer_head.h>
+-#include <linux/module.h>
+ #include <linux/init.h>
+ #include <linux/slab.h>
+ #include <linux/mbcache.h>
+diff --git a/fs/ext2/xattr_security.c b/fs/ext2/xattr_security.c
+index c922adc..be7a8d0 100644
+--- a/fs/ext2/xattr_security.c
++++ b/fs/ext2/xattr_security.c
+@@ -3,7 +3,6 @@
+  * Handler for storing security labels as extended attributes.
+  */
  
- rm -f $seq.full
-@@ -59,31 +58,38 @@ _scratch_mkfs_sized $((1 * 1024 * 1024 * 1024)) >>$seq.full 2>&1
- _scratch_mount
+-#include <linux/module.h>
+ #include <linux/slab.h>
+ #include <linux/string.h>
+ #include <linux/fs.h>
+diff --git a/fs/ext2/xattr_trusted.c b/fs/ext2/xattr_trusted.c
+index 667e46a..2989467 100644
+--- a/fs/ext2/xattr_trusted.c
++++ b/fs/ext2/xattr_trusted.c
+@@ -5,7 +5,6 @@
+  * Copyright (C) 2003 by Andreas Gruenbacher, <a.gruenbacher@computer.org>
+  */
  
- rm -rf $SCRATCH_MNT/*
--cd $SCRATCH_MNT
+-#include <linux/module.h>
+ #include <linux/string.h>
+ #include <linux/capability.h>
+ #include <linux/fs.h>
+diff --git a/fs/ext2/xattr_user.c b/fs/ext2/xattr_user.c
+index 099d20f..f470e44 100644
+--- a/fs/ext2/xattr_user.c
++++ b/fs/ext2/xattr_user.c
+@@ -6,7 +6,6 @@
+  */
  
--dd if=/dev/zero of=tmp1 bs=4K count=1 >/dev/null 2>&1
--if [ $? -ne 0 ]
--then
--	echo "create file err"
--	status=1
--	exit
--fi
-+dd if=/dev/zero of=$SCRATCH_MNT/tmp1 bs=256K count=1 >>$seq.full 2>&1
-+[ $? -ne 0 ] && _fail "Error creating file"
+ #include <linux/init.h>
+-#include <linux/module.h>
+ #include <linux/string.h>
+ #include "ext2.h"
+ #include "xattr.h"
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index 85fe655..779c8de 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -22,7 +22,6 @@
+  *  Assorted race fixes, rewrite of ext3_get_block() by Al Viro, 2000
+  */
  
--dd if=/dev/zero of=tmp2 bs=1M >/dev/null 2>&1
--dd if=/dev/zero of=tmp3 bs=4K >/dev/null 2>&1
-+# Attempt to completely fill fs
-+dd if=/dev/zero of=$SCRATCH_MNT/tmp2 bs=1M >>$seq.full 2>&1
- sync
-+dd if=/dev/zero of=$SCRATCH_MNT/tmp3 bs=4K >>$seq.full 2>&1
-+sync
-+# Last effort, use O_SYNC
-+dd if=/dev/zero of=$SCRATCH_MNT/tmp4 bs=4K oflag=sync >>$seq.full 2>&1
-+# Save space usage info to the full file
-+echo "Pre rm space:" >> $seq.full
-+df $SCRATCH_MNT >>$seq.full 2>&1
+-#include <linux/module.h>
+ #include <linux/fs.h>
+ #include <linux/time.h>
+ #include <linux/ext3_jbd.h>
+diff --git a/fs/ext3/xattr_security.c b/fs/ext3/xattr_security.c
+index 3c218b8..ea26f2a 100644
+--- a/fs/ext3/xattr_security.c
++++ b/fs/ext3/xattr_security.c
+@@ -3,7 +3,6 @@
+  * Handler for storing security labels as extended attributes.
+  */
  
--rm -f tmp1
-+# Should leave approx 256k free
-+rm -f $SCRATCH_MNT/tmp1
- sync
-+echo "Post rm space:" >> $seq.full
-+df $SCRATCH_MNT >>$seq.full 2>&1
-+_freespace=`df -k $SCRATCH_MNT | tail -n 1 | awk '{print $4}'`
-+[ $_freespace -gt 1024 ] && _fail "could not sufficiently fill filesystem"
-+
-+# Try a write larger than available space
-+dd if=/dev/zero of=$SCRATCH_MNT/tmp1 bs=1M count=1 >>$seq.full 2>&1
-+echo "Bytes written until ENOSPC:" >>$seq.full
-+du $SCRATCH_MNT/tmp1 >>$seq.full
+-#include <linux/module.h>
+ #include <linux/slab.h>
+ #include <linux/string.h>
+ #include <linux/fs.h>
+diff --git a/fs/ext3/xattr_trusted.c b/fs/ext3/xattr_trusted.c
+index dc8edda..2526a88 100644
+--- a/fs/ext3/xattr_trusted.c
++++ b/fs/ext3/xattr_trusted.c
+@@ -5,7 +5,6 @@
+  * Copyright (C) 2003 by Andreas Gruenbacher, <a.gruenbacher@computer.org>
+  */
  
--dd if=/dev/zero of=tmp1 bs=8K count=1 >/dev/null 2>&1
--_filesize=`du tmp1 | awk '{print $1}'`
--if [ $_filesize -ne 4 ]
--then
--	echo "write file err"
--	status=1
--	exit
--fi
-+# And at least some of it should succeed.
-+_filesize=`du $SCRATCH_MNT/tmp1 | awk '{print $1}'`
-+[ $_filesize -eq 0 ] && _fail "write file err: Partial write until enospc failed; wrote 0 bytes."
+-#include <linux/module.h>
+ #include <linux/string.h>
+ #include <linux/capability.h>
+ #include <linux/fs.h>
+diff --git a/fs/ext3/xattr_user.c b/fs/ext3/xattr_user.c
+index 7a32197..b32e473 100644
+--- a/fs/ext3/xattr_user.c
++++ b/fs/ext3/xattr_user.c
+@@ -5,7 +5,6 @@
+  * Copyright (C) 2001 by Andreas Gruenbacher, <a.gruenbacher@computer.org>
+  */
  
- echo "done"
-+status=0
- exit
-diff --git a/275.out b/275.out
-index 30af43c..69b9d52 100644
---- a/275.out
-+++ b/275.out
-@@ -1,5 +1,5 @@
- QA output created by 275
- ------------------------------
--write lack test
-+write until ENOSPC test
- ------------------------------
- done
+-#include <linux/module.h>
+ #include <linux/string.h>
+ #include <linux/fs.h>
+ #include <linux/ext3_jbd.h>
+diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
+index 8efb2f0..3f11656 100644
+--- a/fs/ext4/block_validity.c
++++ b/fs/ext4/block_validity.c
+@@ -13,7 +13,6 @@
+ #include <linux/namei.h>
+ #include <linux/quotaops.h>
+ #include <linux/buffer_head.h>
+-#include <linux/module.h>
+ #include <linux/swap.h>
+ #include <linux/pagemap.h>
+ #include <linux/blkdev.h>
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 607b155..841faf5 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -29,7 +29,6 @@
+  *   - smart tree reduction
+  */
+ 
+-#include <linux/module.h>
+ #include <linux/fs.h>
+ #include <linux/time.h>
+ #include <linux/jbd2.h>
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 3cfc73f..830e1b2 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -20,7 +20,6 @@
+  *	(sct@redhat.com), 1993, 1998
+  */
+ 
+-#include <linux/module.h>
+ #include "ext4_jbd2.h"
+ #include "truncate.h"
+ 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 92655fd..7ea726f 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -18,7 +18,6 @@
+  *  Assorted race fixes, rewrite of ext4_get_block() by Al Viro, 2000
+  */
+ 
+-#include <linux/module.h>
+ #include <linux/fs.h>
+ #include <linux/time.h>
+ #include <linux/jbd2.h>
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index 16ac228..e7d6bb0 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -12,7 +12,6 @@
+  *
+  */
+ 
+-#include <linux/module.h>
+ #include <linux/slab.h>
+ #include "ext4_jbd2.h"
+ 
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 7e106c8..4758518 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -6,7 +6,6 @@
+  * Written by Theodore Ts'o, 2010.
+  */
+ 
+-#include <linux/module.h>
+ #include <linux/fs.h>
+ #include <linux/time.h>
+ #include <linux/jbd2.h>
+diff --git a/fs/ext4/xattr_security.c b/fs/ext4/xattr_security.c
+index 34e4350..b60f9f8 100644
+--- a/fs/ext4/xattr_security.c
++++ b/fs/ext4/xattr_security.c
+@@ -3,7 +3,6 @@
+  * Handler for storing security labels as extended attributes.
+  */
+ 
+-#include <linux/module.h>
+ #include <linux/string.h>
+ #include <linux/fs.h>
+ #include <linux/security.h>
+diff --git a/fs/ext4/xattr_trusted.c b/fs/ext4/xattr_trusted.c
+index 37e6ebc..95f1f4a 100644
+--- a/fs/ext4/xattr_trusted.c
++++ b/fs/ext4/xattr_trusted.c
+@@ -5,7 +5,6 @@
+  * Copyright (C) 2003 by Andreas Gruenbacher, <a.gruenbacher@computer.org>
+  */
+ 
+-#include <linux/module.h>
+ #include <linux/string.h>
+ #include <linux/capability.h>
+ #include <linux/fs.h>
+diff --git a/fs/ext4/xattr_user.c b/fs/ext4/xattr_user.c
+index 98c3753..0edb7611 100644
+--- a/fs/ext4/xattr_user.c
++++ b/fs/ext4/xattr_user.c
+@@ -5,7 +5,6 @@
+  * Copyright (C) 2001 by Andreas Gruenbacher, <a.gruenbacher@computer.org>
+  */
+ 
+-#include <linux/module.h>
+ #include <linux/string.h>
+ #include <linux/fs.h>
+ #include "ext4_jbd2.h"
+-- 
+1.7.7
 
