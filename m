@@ -1,61 +1,42 @@
-From: Djalal Harouni <tixxdz@opendz.org>
-Subject: Re: [PATCH] fs/ext{3,4}: fix potential race when setversion ioctl
- updates inode
-Date: Wed, 4 Jan 2012 00:14:32 +0100
-Message-ID: <20120103231432.GA23522@dztty>
-References: <20120103013152.GA26455@dztty>
- <20120103124624.GB31457@quack.suse.cz>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: A stackable filesystem to trace low level filesystem operations
+Date: Wed, 4 Jan 2012 11:03:14 +1100
+Message-ID: <20120104000314.GV23662@dastard>
+References: <CAFFtA8429YabMVLp-f15GXBknK+W2oMpqYkZT42zLFaSJ-RBVA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Al Viro <viro@zeniv.linux.org.uk>
-To: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org
+To: Sushil Mantri <sushilmantri@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from numidia.opendz.org ([98.142.220.152]:56679 "EHLO
-	numidia.opendz.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754399Ab2ACXL2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jan 2012 18:11:28 -0500
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:24494 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755244Ab2ADADR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jan 2012 19:03:17 -0500
 Content-Disposition: inline
-In-Reply-To: <20120103124624.GB31457@quack.suse.cz>
+In-Reply-To: <CAFFtA8429YabMVLp-f15GXBknK+W2oMpqYkZT42zLFaSJ-RBVA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 03, 2012 at 01:46:24PM +0100, Jan Kara wrote:
->   Hello,
+On Tue, Jan 03, 2012 at 04:20:21PM -0500, Sushil Mantri wrote:
+> Hi All,
 > 
-> On Tue 03-01-12 02:31:52, Djalal Harouni wrote:
-> > 
-> > The EXT{3,4}_IOC_SETVERSION ioctl() updates the inode without i_mutex,
-> > this can lead to a race with the other operations that update the same
-> > inode.
-> > 
-> > Patch tested.
->   Thanks for the patch but I don't quite understand the problem.
-> i_generation is set when:
->   a) inode is loaded from disk
->   b) inode is allocated
->   c) in SETVERSION ioctl
+> Sorry but this isn't a ext4 specific question but a general filesystem question.
 > 
->   The only thing that can race here seems to be c) against c) and that is
-> racy with i_mutex as well. So what problems do you exactly observe without
-> the patch?
-Right, but what about the related i_ctime change ? (i_ctime is updated in
-other places...)
+> I am looking for a way to track filesystem level operation like
+> operation(read/write), filename, offset, size of read/write, pid of
+> the requesting process. The goal of my project is to collect such
+> traces and understand access usage of directories and more. I would
+> like to filter other operation like open,close, etc and requests to
+> procfs, etc. There was a stackable file system earlier called Tracefs.
+> It isn't supported anymore though. The original paper can be found
+> here: filesystems.org/docs/tracefs-fast04/tracefs.ps
 
-The i_ctime update must reflect the _appropriate_ inode modification
-operation. This is why IMHO we should protect them to avoid a lost update.
+Add your own trace points to the VFS and extract and filter them
+with trace-cmd.
 
-BTW the i_generation which is used by NFS and fuse filesystems is updated
-even if the inode is marked immutable, is this the intended behaviour?
+Cheers,
 
-
-> 								Honza
-Thanks for your response.
-
+Dave.
 -- 
-tixxdz
-http://opendz.org
+Dave Chinner
+david@fromorbit.com
