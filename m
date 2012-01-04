@@ -1,42 +1,41 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: e4defrag modifies folder's mtime.
-Date: Wed, 4 Jan 2012 00:27:18 -0500
-Message-ID: <20120104052718.GB13438@thunk.org>
-References: <4F00BE34.1080006@gmail.com>
- <20120103203443.GC30502@thunk.org>
- <20120104045318.GA17026@dastard>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Thomas Lindroth <thomas.lindroth@gmail.com>,
-	linux-ext4@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: [PATCH] mke2fs: correct help text for option -G of mke2fs
+Date: Wed,  4 Jan 2012 11:29:45 +0800
+Message-ID: <1325647785-8672-1-git-send-email-xiaoqiangnk@gmail.com>
+Cc: linux-ext4@vger.kernel.org, Yongqiang Yang <xiaoqiangnk@gmail.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:40892 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751061Ab2ADF1V (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Jan 2012 00:27:21 -0500
-Content-Disposition: inline
-In-Reply-To: <20120104045318.GA17026@dastard>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:44569 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753454Ab2ADHTt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2012 02:19:49 -0500
+Received: by iaeh11 with SMTP id h11so32125660iae.19
+        for <linux-ext4@vger.kernel.org>; Tue, 03 Jan 2012 23:19:49 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 04, 2012 at 03:53:18PM +1100, Dave Chinner wrote:
-> 
-> xfs_fsr doesn't use these donor files to avoid mtime updates - it
-> uses invisible IO (i.e. O_NOATIME|O_NOCMTIME) to do that.
+The option '-G' is used to pass number of groups in a flex_bg, the
+previous help text - 'meta-group-size' - could confuse users with
+meta_bg.
 
-O_NOCMTIME doesn't exist yet.  From include/linux/fs.h:
+Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+---
+ misc/mke2fs.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-/*
- * Don't update ctime and mtime.
- *
- * Currently a special hack for the XFS open_by_handle ioctl, but we'll
- * hopefully graduate it to a proper O_CMTIME flag supported by open(2) soon.
- */
-#define FMODE_NOCMTIME		((__force fmode_t)0x800)
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 0ef2531..52746fe 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -116,7 +116,7 @@ static void usage(void)
+ 	fprintf(stderr, _("Usage: %s [-c|-l filename] [-b block-size] "
+ 	"[-C cluster-size]\n\t[-i bytes-per-inode] [-I inode-size] "
+ 	"[-J journal-options]\n"
+-	"\t[-G meta group size] [-N number-of-inodes]\n"
++	"\t[-G number-of-groups-per-flex_bg] [-N number-of-inodes]\n"
+ 	"\t[-m reserved-blocks-percentage] [-o creator-os]\n"
+ 	"\t[-g blocks-per-group] [-L volume-label] "
+ 	"[-M last-mounted-directory]\n\t[-O feature[,...]] "
+-- 
+1.7.5.1
 
-I'd have to check, but it wouldn't surprise me if glibc is filtering
-out all fcntl flags it doesn't understand, so for now, this is an
-XFS-only special...
-
-						- Ted
