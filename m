@@ -1,53 +1,81 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: e4defrag modifies folder's mtime.
-Date: Wed, 4 Jan 2012 18:43:57 +1100
-Message-ID: <20120104074357.GC17026@dastard>
-References: <4F00BE34.1080006@gmail.com>
- <20120103203443.GC30502@thunk.org>
- <20120104045318.GA17026@dastard>
- <20120104052718.GB13438@thunk.org>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: Re: [PATCH] mke2fs: correct help text for option -G of mke2fs
+Date: Wed, 4 Jan 2012 15:47:31 +0800
+Message-ID: <CAGBYx2Yc+NnEMw1rNAbH-GNq6xZ+ZJ8Z7iYBqoWc+7Cas6eD4g@mail.gmail.com>
+References: <1325647785-8672-1-git-send-email-xiaoqiangnk@gmail.com>
+	<65F5DCD8-3B25-4F40-8966-2C23700E0CDA@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Thomas Lindroth <thomas.lindroth@gmail.com>,
-	linux-ext4@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: "tytso@mit.edu" <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <aedilger@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:36911 "EHLO
-	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751940Ab2ADHoL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2012 02:44:11 -0500
-Content-Disposition: inline
-In-Reply-To: <20120104052718.GB13438@thunk.org>
+Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:36816 "EHLO
+	mail-tul01m020-f174.google.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753837Ab2ADHrb convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Jan 2012 02:47:31 -0500
+Received: by obcwo16 with SMTP id wo16so13366609obc.19
+        for <linux-ext4@vger.kernel.org>; Tue, 03 Jan 2012 23:47:31 -0800 (PST)
+In-Reply-To: <65F5DCD8-3B25-4F40-8966-2C23700E0CDA@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 04, 2012 at 12:27:18AM -0500, Ted Ts'o wrote:
-> On Wed, Jan 04, 2012 at 03:53:18PM +1100, Dave Chinner wrote:
-> > 
-> > xfs_fsr doesn't use these donor files to avoid mtime updates - it
-> > uses invisible IO (i.e. O_NOATIME|O_NOCMTIME) to do that.
-> 
-> O_NOCMTIME doesn't exist yet.  From include/linux/fs.h:
-> 
-> /*
->  * Don't update ctime and mtime.
->  *
->  * Currently a special hack for the XFS open_by_handle ioctl, but we'll
->  * hopefully graduate it to a proper O_CMTIME flag supported by open(2) soon.
->  */
-> #define FMODE_NOCMTIME		((__force fmode_t)0x800)
-> 
-> I'd have to check, but it wouldn't surprise me if glibc is filtering
-> out all fcntl flags it doesn't understand, so for now, this is an
-> XFS-only special...
+On Wed, Jan 4, 2012 at 3:22 PM, Andreas Dilger <aedilger@gmail.com> wro=
+te:
+> Probably "flex_group_size" or "flex_group_factor" is as clear and a l=
+ot shorter.
+I will resend a patch using flex_group_factor.
 
-Sounds to me like e2defrag needs it, so perhaps it should finally
-be made a proper open flag like the comment says rather than
-inventing some other way of solving the problem....
+Thanks,
+Yongqiang.
+>
+> Cheers, Andreas
+>
+> On 2012-01-03, at 20:29, Yongqiang Yang <xiaoqiangnk@gmail.com> wrote=
+:
+>
+>> The option '-G' is used to pass number of groups in a flex_bg, the
+>> previous help text - 'meta-group-size' - could confuse users with
+>> meta_bg.
+>>
+>> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+>> ---
+>> misc/mke2fs.c | =A0 =A02 +-
+>> 1 files changed, 1 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+>> index 0ef2531..52746fe 100644
+>> --- a/misc/mke2fs.c
+>> +++ b/misc/mke2fs.c
+>> @@ -116,7 +116,7 @@ static void usage(void)
+>> =A0 =A0fprintf(stderr, _("Usage: %s [-c|-l filename] [-b block-size]=
+ "
+>> =A0 =A0"[-C cluster-size]\n\t[-i bytes-per-inode] [-I inode-size] "
+>> =A0 =A0"[-J journal-options]\n"
+>> - =A0 =A0"\t[-G meta group size] [-N number-of-inodes]\n"
+>> + =A0 =A0"\t[-G number-of-groups-per-flex_bg] [-N number-of-inodes]\=
+n"
+>> =A0 =A0"\t[-m reserved-blocks-percentage] [-o creator-os]\n"
+>> =A0 =A0"\t[-g blocks-per-group] [-L volume-label] "
+>> =A0 =A0"[-M last-mounted-directory]\n\t[-O feature[,...]] "
+>> --
+>> 1.7.5.1
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4=
+" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
 
-Cheers,
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+
+--=20
+Best Wishes
+Yongqiang Yang
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
