@@ -1,52 +1,45 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: e4defrag modifies folder's mtime.
-Date: Wed, 4 Jan 2012 15:53:18 +1100
-Message-ID: <20120104045318.GA17026@dastard>
-References: <4F00BE34.1080006@gmail.com>
- <20120103203443.GC30502@thunk.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH V6 RESEND 13/15] ext4: add new online resize interface
+Date: Wed, 4 Jan 2012 00:03:33 -0500
+Message-ID: <20120104050333.GA13438@thunk.org>
+References: <1325242812-27005-1-git-send-email-xiaoqiangnk@gmail.com>
+ <1325242812-27005-14-git-send-email-xiaoqiangnk@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Thomas Lindroth <thomas.lindroth@gmail.com>,
-	linux-ext4@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:38943 "EHLO
-	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755007Ab2ADExV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jan 2012 23:53:21 -0500
+Received: from li9-11.members.linode.com ([67.18.176.11]:50268 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750704Ab2ADFDf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Jan 2012 00:03:35 -0500
 Content-Disposition: inline
-In-Reply-To: <20120103203443.GC30502@thunk.org>
+In-Reply-To: <1325242812-27005-14-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 03, 2012 at 03:34:43PM -0500, Ted Ts'o wrote:
-> On Sun, Jan 01, 2012 at 09:12:36PM +0100, Thomas Lindroth wrote:
-> > I ran e4defrag from e2fsprogs-1.42 on a file system and a lot of
-> > folders had their mtime updated as a result. This confuses both my
-> > backup program and myself. I guess the folder timestamps change
-> > because the temporary donor file is created in the same directory as
-> > the original file. XFS's defrag program put the donor files in a
-> > temporary folder in the root of the file system. Maybe e4defrag
-> > could do the same.
-> 
-> Yes, that could be done if the user running the program (which does
-> not have to be root) has write access to the root directory of the
-> file system.  There will certainly be cases where this will not be
-> true, however.
+On Fri, Dec 30, 2011 at 07:00:10PM +0800, Yongqiang Yang wrote:
+> +		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+> +			       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
+> +			ext4_msg(sb, KERN_ERR,
+> +				 "Online resizing not supported with bigalloc");
+> +			return -EOPNOTSUPP;
+> +		}
 
-xfs_fsr doesn't use these donor files to avoid mtime updates - it
-uses invisible IO (i.e. O_NOATIME|O_NOCMTIME) to do that.
+I've also added checks to disable on-line resizing if the meta_bg file
+system feature is set, since the on-line resizing code in this patch
+series does not support the meta_bg block group descriptor layout
+(which is required for file systems > 32-bits).
 
-Also xfs_fsr needs root permissions because it uses the XFS
-open-by-handle interfaces. Indeed, it doesn't always use tmp donor
-dirs in the root directory - it only ever does that when doing an
-entire fs re-organisation. If you are just defragging a single file,
-it creates the tmp file in the same directory as the file being
-defragged...
+In addition, I've added a check so that if the requested number of
+blocks is greater than 2**32-1, and the 64-bit option is not set, to
+bail out with an error.
 
-Cheers,
+In theory the resize2fs userspace code will be doing these checks, but
+(a) at some point in the future the meta_bg support will be added, and
+so if the kernel doesn't support meta_bg, it needs to fail, and not
+depend on userspace to do this check.  Also (b) we want to make sure
+this code doesn't do something crazy in case someone calls the ioctl
+directly.
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+						- Ted
