@@ -1,15 +1,15 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH V7 09/12] ext4: add a new function which adds a flex group to a fs
-Date: Wed,  4 Jan 2012 00:07:31 -0500
-Message-ID: <1325653654-10478-10-git-send-email-tytso@mit.edu>
+Subject: [PATCH V7 11/12] ext4: let ext4_group_extend() use common code
+Date: Wed,  4 Jan 2012 00:07:33 -0500
+Message-ID: <1325653654-10478-12-git-send-email-tytso@mit.edu>
 References: <1325653654-10478-1-git-send-email-tytso@mit.edu>
 Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:50287 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:50290 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750884Ab2ADFHf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1750904Ab2ADFHf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 4 Jan 2012 00:07:35 -0500
 In-Reply-To: <1325653654-10478-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
@@ -17,108 +17,61 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
 
-This patch adds a new function named ext4_flex_group_add() which adds a
-flex group to a fs.  The function is used by 64bit-resize interface.
+ext4_group_extend_no_check() is moved out from ext4_group_extend(),
+this patch lets ext4_group_extend() call ext4_group_extentd_no_check()
+instead.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/resize.c |   82 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 82 insertions(+), 0 deletions(-)
+ fs/ext4/resize.c |   41 ++---------------------------------------
+ 1 files changed, 2 insertions(+), 39 deletions(-)
 
 diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index a4075de..dac2356 100644
+index 5fe2a01..eba706d 100644
 --- a/fs/ext4/resize.c
 +++ b/fs/ext4/resize.c
-@@ -1348,6 +1348,88 @@ static void ext4_update_super(struct super_block *sb,
- 		       blocks_count, free_blocks, reserved_blocks);
- }
+@@ -1795,8 +1795,7 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
+ 	ext4_grpblk_t last;
+ 	ext4_grpblk_t add;
+ 	struct buffer_head *bh;
+-	handle_t *handle;
+-	int err, err2;
++	int err;
+ 	ext4_group_t group;
  
-+/* Add a flex group to an fs. Ensure we handle all possible error conditions
-+ * _before_ we start modifying the filesystem, because we cannot abort the
-+ * transaction and not have it write the data to disk.
-+ */
-+static int ext4_flex_group_add(struct super_block *sb,
-+			       struct inode *resize_inode,
-+			       struct ext4_new_flex_group_data *flex_gd)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct ext4_super_block *es = sbi->s_es;
-+	ext4_fsblk_t o_blocks_count;
-+	ext4_grpblk_t last;
-+	ext4_group_t group;
-+	handle_t *handle;
-+	unsigned reserved_gdb;
-+	int err = 0, err2 = 0, credit;
-+
-+	BUG_ON(!flex_gd->count || !flex_gd->groups || !flex_gd->bg_flags);
-+
-+	reserved_gdb = le16_to_cpu(es->s_reserved_gdt_blocks);
-+	o_blocks_count = ext4_blocks_count(es);
-+	ext4_get_group_no_and_offset(sb, o_blocks_count, &group, &last);
-+	BUG_ON(last);
-+
-+	err = setup_new_flex_group_blocks(sb, flex_gd);
-+	if (err)
-+		goto exit;
-+	/*
-+	 * We will always be modifying at least the superblock and  GDT
-+	 * block.  If we are adding a group past the last current GDT block,
-+	 * we will also modify the inode and the dindirect block.  If we
-+	 * are adding a group with superblock/GDT backups  we will also
-+	 * modify each of the reserved GDT dindirect blocks.
-+	 */
-+	credit = flex_gd->count * 4 + reserved_gdb;
-+	handle = ext4_journal_start_sb(sb, credit);
-+	if (IS_ERR(handle)) {
-+		err = PTR_ERR(handle);
-+		goto exit;
-+	}
-+
-+	err = ext4_journal_get_write_access(handle, sbi->s_sbh);
-+	if (err)
-+		goto exit_journal;
-+
-+	group = flex_gd->groups[0].group;
-+	BUG_ON(group != EXT4_SB(sb)->s_groups_count);
-+	err = ext4_add_new_descs(handle, sb, group,
-+				resize_inode, flex_gd->count);
-+	if (err)
-+		goto exit_journal;
-+
-+	err = ext4_setup_new_descs(handle, sb, flex_gd);
-+	if (err)
-+		goto exit_journal;
-+
-+	ext4_update_super(sb, flex_gd);
-+
-+	err = ext4_handle_dirty_super(handle, sb);
-+
-+exit_journal:
-+	err2 = ext4_journal_stop(handle);
-+	if (!err)
-+		err = err2;
-+
-+	if (!err) {
-+		int i;
-+		update_backups(sb, sbi->s_sbh->b_blocknr, (char *)es,
-+			       sizeof(struct ext4_super_block));
-+		for (i = 0; i < flex_gd->count; i++, group++) {
-+			struct buffer_head *gdb_bh;
-+			int gdb_num;
-+			gdb_num = group / EXT4_BLOCKS_PER_GROUP(sb);
-+			gdb_bh = sbi->s_group_desc[gdb_num];
-+			update_backups(sb, gdb_bh->b_blocknr, gdb_bh->b_data,
-+				       gdb_bh->b_size);
-+		}
-+	}
-+exit:
-+	return err;
-+}
-+
- /* Add group descriptor data to an existing or new group descriptor block.
-  * Ensure we handle all possible error conditions _before_ we start modifying
-  * the filesystem, because we cannot abort the transaction and not have it
--- 
-1.7.8.11.gefc1f.dirty
-
+ 	o_blocks_count = ext4_blocks_count(es);
+@@ -1852,43 +1851,7 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
+ 	}
+ 	brelse(bh);
+ 
+-	/* We will update the superblock, one block bitmap, and
+-	 * one group descriptor via ext4_free_blocks().
+-	 */
+-	handle = ext4_journal_start_sb(sb, 3);
+-	if (IS_ERR(handle)) {
+-		err = PTR_ERR(handle);
+-		ext4_warning(sb, "error %d on journal start", err);
+-		goto exit_put;
+-	}
+-
+-	if ((err = ext4_journal_get_write_access(handle,
+-						 EXT4_SB(sb)->s_sbh))) {
+-		ext4_warning(sb, "error %d on journal write access", err);
+-		ext4_journal_stop(handle);
+-		goto exit_put;
+-	}
+-	ext4_blocks_count_set(es, o_blocks_count + add);
+-	ext4_debug("freeing blocks %llu through %llu\n", o_blocks_count,
+-		   o_blocks_count + add);
+-	/* We add the blocks to the bitmap and set the group need init bit */
+-	err = ext4_group_add_blocks(handle, sb, o_blocks_count, add);
+-	ext4_handle_dirty_super(handle, sb);
+-	ext4_debug("freed blocks %llu through %llu\n", o_blocks_count,
+-		   o_blocks_count + add);
+-	err2 = ext4_journal_stop(handle);
+-	if (!err && err2)
+-		err = err2;
+-
+-	if (err)
+-		goto exit_put;
