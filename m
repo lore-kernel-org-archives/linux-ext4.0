@@ -1,77 +1,92 @@
-From: Sunil Mushran <sunil.mushran@oracle.com>
-Subject: Re: fallocate() not "atomic" if insufficient disk space?
-Date: Wed, 04 Jan 2012 16:19:52 -0800
-Message-ID: <4F04ECA8.8090609@oracle.com>
-References: <e10c1a3b87ce0766dcc538b8332cb9a4.squirrel@ssl-webmail-vh.clara.net>    <4EFE45B1.9040902@redhat.com> <7fe41d7a6b28729267d6e337893837b4.squirrel@ssl-webmail-vh.clara.net>
+From: Djalal Harouni <tixxdz@opendz.org>
+Subject: Re: [PATCH] fs/ext{3,4}: fix potential race when setversion ioctl
+ updates inode
+Date: Thu, 5 Jan 2012 01:40:09 +0100
+Message-ID: <20120105003751.GA4010@dztty>
+References: <20120103013152.GA26455@dztty>
+ <20120104174609.GD28907@quack.suse.cz>
+ <6C16105A-D0EE-413E-B993-F223CFC75307@dilger.ca>
+ <20120104233254.GH28907@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: markk@clara.co.uk
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"Darrick J. Wong" <djwong@us.ibm.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	linux-kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Al Viro <viro@zeniv.linux.org.uk>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from acsinet15.oracle.com ([141.146.126.227]:47171 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757414Ab2AEAU7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2012 19:20:59 -0500
-In-Reply-To: <7fe41d7a6b28729267d6e337893837b4.squirrel@ssl-webmail-vh.clara.net>
+Received: from numidia.opendz.org ([98.142.220.152]:34554 "EHLO
+	numidia.opendz.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757296Ab2AEAhG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2012 19:37:06 -0500
+Content-Disposition: inline
+In-Reply-To: <20120104233254.GH28907@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 01/04/2012 02:40 PM, markk@clara.co.uk wrote:
-> Has anyone tested how posix_fallocate() handles ENOSPC on non-Linux
-> systems (Solaris, BSD etc.)?
->
-> Though the documentation doesn't specifically state what happens on an
-> out-of-disk-space condition, I would have assumed that the filesystem
-> should either check for sufficient space before allocating any, or back
-> out/undo any partial allocation on failure. The current
-> leave-the-disk-full behaviour is definitely not ideal IMHO. The filesystem
-> is much better placed than the calling program to revert any changes.
->
-> If a program created a non-sparse file and wanted to allocate a region
-> beyond its current end, failure of fallocate() is fairly simple to recover
-> from; just truncate the file.  But in the general case it's not possible
-> (or at least very tricky) to properly recover when fallocate() fails due
-> to insufficient disk space...
->
-> Suppose the fallocate program were modified to properly restore the file
-> state when fallocate() returns ENOSPC. Here's what it would need to do:
->   - Open the file.
->   - Build a map of the holes in the file. You could use SEEK_HOLE/SEEK_END,
-> but I don't think that's sufficient to tell if the file has space
-> allocated beyond its apparent length (i.e. if fallocate() was previously
-> used with FALLOC_FL_KEEP_SIZE). So you'd probably need to use fiemap
-> (which is Linux-specific and quite complicated).
->   - Call fallocate() with the user-specified offset and length. If it
-> returns ENOSPC, then:
->      - loop through the list of holes, calling fallocate() with
-> FALLOC_FL_PUNCH_HOLE to restore any holes which were in the fallocated
-> region (between offset and offset+length-1 bytes). That's only
-> possible if the user's kernel and filesystem are recent enough to
-> support hole punching.
->      - If offset+length was greater than the file's original size,
-> ftruncate() to its original length.
->      - If there was originally space allocated past the end of the file,
-> call fallocate() with FALLOC_FL_KEEP_SIZE to restore the allocation.
->
-> A possible real-world example could be a (sparse) virtual machine hard
-> disk image which the user wants to make non-sparse. He uses the fallocate
-> command to fully allocate its entire size, not realising there is
-> insufficient disk space. So fallocate() fails and the disk is full. If the
-> user doesn't have a program to scan a file and punch holes in the all-zero
-> regions (assuming the kernel/filesystem support hole punching) the only
-> way to recover would be to copy the image file to another partition (cp
-> --sparse=always) and back again.
->
-> It would be much simpler/easier if the filesystem could handle running out
-> of disk space; the filesystem can keep a list of allocated regions and on
-> running out can just free them again before returning ENOSPC.
->
+On Thu, Jan 05, 2012 at 12:32:54AM +0100, Jan Kara wrote:
+> On Wed 04-01-12 16:15:04, Andreas Dilger wrote:
+> > On 2012-01-04, at 10:46 AM, Jan Kara wrote:
+> > > On Tue 03-01-12 02:31:52, Djalal Harouni wrote:
+> > >> 
+> > >> The EXT{3,4}_IOC_SETVERSION ioctl() updates the inode without i_mutex,
+> > >> this can lead to a race with the other operations that update the same
+> > >> inode.
+> > >> 
+> > >> Patch tested.
+> > > 
+> > >  OK, so I've taken the patch into my tree, just updated the changelog
+> > > which result of our discussion in this thread. I also took the ext4 part
+> > > since there is no risk of conflict and the patch looks obvious.
+> > 
+> > Actually, I'd like to hear more about whether this is a real problem, or
+> > if it is just a theoretical problem found during code inspection or from
+> > some static code analysis tool?
+>   As far as I understood that was just a theoretical issue and I applied
+> the patch just on the grounds that it is more consistent to use i_mutex for
+> i_generation changes.
+This was found using a static code analysis tool (currently a PoC) which
+is a part of a research project at our university.
 
-While it is not ideal, the current behaviour is consistent with write(2). Partial writes are part
-of the POSIX spec. And the aftermath is handled purely by userspace.
+And later, code inspection confirms that i_ctime updates can be disturbed.
 
-What you say is easy and simple is not only inconsistent but also a lot of work for something that
-can mostly be avoided if the app were to check freespace upfront and issue fallocate(2) only
-if the freespace is considerably larger than the requested pre-allocated space.
+I should have specified this. Sorry.
 
+> > With the metadata checksum feature we were discussing using the inode
+> > generation as part of the seed for the directory leaf block checksum, so
+> > that it wasn't possible to incorrectly access stale directory blocks from
+> > a previous incarnation of the same inode number.
+> > 
+> > We were discussing just disabling this ioctl on filesystems with metadata
+> > checksums, and printing a deprecation warning for filesystems without that
+> > feature enabled.  I'm not aware of any real-world use for this ioctl, since
+> > NFS cannot use it to reconstruct handles because there's no API to allocate
+> > an inode with a specific number, so setting the generation is pointless.
+>   OK, I didn't know this. I'm fine with deprecating the ioctl if it's
+> useless but since that's going to take a while I think the cleanup still
+> makes some sense.
+Actually I've grepped this ioctl but did not found use cases, but as
+ext{3,2} also support it, I did not say anything (this is old, there is
+even the EXT4_IOC_SETVERSION_OLD ioctl ?). I don't know if this ioctl is
+used or not.
+
+Only the reiserfs and ext{2,3,4} filesystems support this ioctl. The reiserfs
+do not use mutexes at all, even in the REISERFS_IOC_SETFLAGS ioctl which will
+test and set _all_ the possible values of the i_flags field.
+Perhaps I should also send a patch for this ?
+
+And perhaps ext2 should also be updated.
+
+> 								Honza
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
+Thanks for the feedback.
+
+-- 
+tixxdz
+http://opendz.org
