@@ -1,7 +1,7 @@
 From: Sander Eikelenboom <linux@eikelenboom.it>
 Subject: Re: can't recover ext4 on lvm from ext4_mb_generate_buddy:739: group 1687, 32254 clusters in bitmap, 32258 in gd
-Date: Thu, 5 Jan 2012 21:45:46 +0100
-Message-ID: <676824156.20120105214546@eikelenboom.it>
+Date: Thu, 5 Jan 2012 22:31:27 +0100
+Message-ID: <1136620602.20120105223127@eikelenboom.it>
 References: <217150909.20120105113759@eikelenboom.it> <197607646.20120105142107@eikelenboom.it> <6FC155DD-80C1-4088-B745-6B74D9D5AA48@mit.edu> <4910694144.20120105171428@eikelenboom.it> <20120105181535.GB26382@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -10,14 +10,15 @@ Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
 	<dm-devel@redhat.com>
 To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from static.121.164.40.188.clients.your-server.de ([188.40.164.121]:35734
+Received: from static.121.164.40.188.clients.your-server.de ([188.40.164.121]:35811
 	"EHLO smtp.eikelenboom.it" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754234Ab2AEUp4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jan 2012 15:45:56 -0500
+	with ESMTP id S1758302Ab2AEVbj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jan 2012 16:31:39 -0500
 In-Reply-To: <20120105181535.GB26382@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hello Ted,
 
 Thursday, January 5, 2012, 7:15:35 PM, you wrote:
 
@@ -47,11 +48,15 @@ Thursday, January 5, 2012, 7:15:35 PM, you wrote:
 >                                                 - Ted
 
 
-Also found some old info that might be related, http://answers.softpicks.net/answers/topic/2-6-28-ext4-xen-and-lvm-volume-becomes-ro-after-snapshot-1610734-1.htm
-I'm also running under xen (host only, no guests started), will try baremetal as well to see if that plays a role.
+OK Xen is out of the equation, it also happens on baremetal.
+Last time under both Xen and baremetal i got a slightly different error (different numbers (group)
 
---
-Sander
+[  823.782633] EXT4-fs error (device dm-2): ext4_mb_generate_buddy:739: group 1865, 32254 clusters in bitmap, 32258 in gd
+[  823.788129] Aborting journal on device dm-2-8.
+[  823.852443] EXT4-fs (dm-2): Remounting filesystem read-only
+[  823.857956] EXT4-fs error (device dm-2) in ext4_da_write_end:2532: IO failure
+[  823.858646] EXT4-fs (dm-2): ext4_da_writepages: jbd2_start: 12288 pages, ino 4079617; err -30
+
 
 
 >> 
