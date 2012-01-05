@@ -1,64 +1,281 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] fs/ext{3,4}: fix potential race when setversion ioctl
- updates inode
-Date: Thu, 5 Jan 2012 12:42:05 +0100
-Message-ID: <20120105114205.GB14947@quack.suse.cz>
-References: <20120103013152.GA26455@dztty>
- <20120104174609.GD28907@quack.suse.cz>
- <6C16105A-D0EE-413E-B993-F223CFC75307@dilger.ca>
- <20120104233254.GH28907@quack.suse.cz>
- <20120105003751.GA4010@dztty>
+Subject: Re: [PATCH] ext2/3/4: delete unneeded includes of module.h
+Date: Thu, 5 Jan 2012 13:14:32 +0100
+Message-ID: <20120105121432.GD14947@quack.suse.cz>
+References: <1325710787-32576-1-git-send-email-paul.gortmaker@windriver.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger.kernel@dilger.ca>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"Darrick J. Wong" <djwong@us.ibm.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	linux-kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Al Viro <viro@zeniv.linux.org.uk>
-To: Djalal Harouni <tixxdz@opendz.org>
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca, akpm@linux-foundation.org,
+	jack@suse.cz, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Paul Gortmaker <paul.gortmaker@windriver.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:47851 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:54438 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755739Ab2AELmK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 Jan 2012 06:42:10 -0500
+	id S1752281Ab2AEMOf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Jan 2012 07:14:35 -0500
 Content-Disposition: inline
-In-Reply-To: <20120105003751.GA4010@dztty>
+In-Reply-To: <1325710787-32576-1-git-send-email-paul.gortmaker@windriver.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 05-01-12 01:40:09, Djalal Harouni wrote:
-> On Thu, Jan 05, 2012 at 12:32:54AM +0100, Jan Kara wrote:
-> > > With the metadata checksum feature we were discussing using the inode
-> > > generation as part of the seed for the directory leaf block checksum, so
-> > > that it wasn't possible to incorrectly access stale directory blocks from
-> > > a previous incarnation of the same inode number.
-> > > 
-> > > We were discussing just disabling this ioctl on filesystems with metadata
-> > > checksums, and printing a deprecation warning for filesystems without that
-> > > feature enabled.  I'm not aware of any real-world use for this ioctl, since
-> > > NFS cannot use it to reconstruct handles because there's no API to allocate
-> > > an inode with a specific number, so setting the generation is pointless.
-> >   OK, I didn't know this. I'm fine with deprecating the ioctl if it's
-> > useless but since that's going to take a while I think the cleanup still
-> > makes some sense.
-> Actually I've grepped this ioctl but did not found use cases, but as
-> ext{3,2} also support it, I did not say anything (this is old, there is
-> even the EXT4_IOC_SETVERSION_OLD ioctl ?). I don't know if this ioctl is
-> used or not.
-> 
-> Only the reiserfs and ext{2,3,4} filesystems support this ioctl. The reiserfs
-> do not use mutexes at all, even in the REISERFS_IOC_SETFLAGS ioctl which will
-> test and set _all_ the possible values of the i_flags field.
-> Perhaps I should also send a patch for this ?
-  Yes, possibly reiserfs should use i_mutex for that ioctl.
-
-> And perhaps ext2 should also be updated.
-  Sure. Send a patch my way when you have it.
+On Wed 04-01-12 15:59:47, Paul Gortmaker wrote:
+> Delete any instances of include module.h that were not strictly
+> required.  In the case of ext2, the declaration of MODULE_LICENSE
+> etc. were in inode.c but the module_init/exit were in super.c, so
+> relocate the MODULE_LICENCE/AUTHOR block to super.c which makes it
+> consistent with ext3 and ext4 at the same time.
+  Thanks. I've taken the patch into my tree. But please separate ext2,
+ext3, and ext4 changes next time since ext4 is maintained in a different
+tree so ideally a different person would carry that part of the patch.
 
 								Honza
+
+> Signed-off-by: Paul Gortmaker <paul.gortmaker@windriver.com>
+> 
+> diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+> index 91a6945..740cad8 100644
+> --- a/fs/ext2/inode.c
+> +++ b/fs/ext2/inode.c
+> @@ -26,7 +26,6 @@
+>  #include <linux/highuid.h>
+>  #include <linux/pagemap.h>
+>  #include <linux/quotaops.h>
+> -#include <linux/module.h>
+>  #include <linux/writeback.h>
+>  #include <linux/buffer_head.h>
+>  #include <linux/mpage.h>
+> @@ -36,10 +35,6 @@
+>  #include "acl.h"
+>  #include "xip.h"
+>  
+> -MODULE_AUTHOR("Remy Card and others");
+> -MODULE_DESCRIPTION("Second Extended Filesystem");
+> -MODULE_LICENSE("GPL");
+> -
+>  static int __ext2_write_inode(struct inode *inode, int do_sync);
+>  
+>  /*
+> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+> index bd8ac16..9e7e203 100644
+> --- a/fs/ext2/super.c
+> +++ b/fs/ext2/super.c
+> @@ -1521,5 +1521,8 @@ static void __exit exit_ext2_fs(void)
+>  	exit_ext2_xattr();
+>  }
+>  
+> +MODULE_AUTHOR("Remy Card and others");
+> +MODULE_DESCRIPTION("Second Extended Filesystem");
+> +MODULE_LICENSE("GPL");
+>  module_init(init_ext2_fs)
+>  module_exit(exit_ext2_fs)
+> diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+> index d27b71f..6dcafc7 100644
+> --- a/fs/ext2/xattr.c
+> +++ b/fs/ext2/xattr.c
+> @@ -54,7 +54,6 @@
+>   */
+>  
+>  #include <linux/buffer_head.h>
+> -#include <linux/module.h>
+>  #include <linux/init.h>
+>  #include <linux/slab.h>
+>  #include <linux/mbcache.h>
+> diff --git a/fs/ext2/xattr_security.c b/fs/ext2/xattr_security.c
+> index c922adc..be7a8d0 100644
+> --- a/fs/ext2/xattr_security.c
+> +++ b/fs/ext2/xattr_security.c
+> @@ -3,7 +3,6 @@
+>   * Handler for storing security labels as extended attributes.
+>   */
+>  
+> -#include <linux/module.h>
+>  #include <linux/slab.h>
+>  #include <linux/string.h>
+>  #include <linux/fs.h>
+> diff --git a/fs/ext2/xattr_trusted.c b/fs/ext2/xattr_trusted.c
+> index 667e46a..2989467 100644
+> --- a/fs/ext2/xattr_trusted.c
+> +++ b/fs/ext2/xattr_trusted.c
+> @@ -5,7 +5,6 @@
+>   * Copyright (C) 2003 by Andreas Gruenbacher, <a.gruenbacher@computer.org>
+>   */
+>  
+> -#include <linux/module.h>
+>  #include <linux/string.h>
+>  #include <linux/capability.h>
+>  #include <linux/fs.h>
+> diff --git a/fs/ext2/xattr_user.c b/fs/ext2/xattr_user.c
+> index 099d20f..f470e44 100644
+> --- a/fs/ext2/xattr_user.c
+> +++ b/fs/ext2/xattr_user.c
+> @@ -6,7 +6,6 @@
+>   */
+>  
+>  #include <linux/init.h>
+> -#include <linux/module.h>
+>  #include <linux/string.h>
+>  #include "ext2.h"
+>  #include "xattr.h"
+> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+> index 85fe655..779c8de 100644
+> --- a/fs/ext3/inode.c
+> +++ b/fs/ext3/inode.c
+> @@ -22,7 +22,6 @@
+>   *  Assorted race fixes, rewrite of ext3_get_block() by Al Viro, 2000
+>   */
+>  
+> -#include <linux/module.h>
+>  #include <linux/fs.h>
+>  #include <linux/time.h>
+>  #include <linux/ext3_jbd.h>
+> diff --git a/fs/ext3/xattr_security.c b/fs/ext3/xattr_security.c
+> index 3c218b8..ea26f2a 100644
+> --- a/fs/ext3/xattr_security.c
+> +++ b/fs/ext3/xattr_security.c
+> @@ -3,7 +3,6 @@
+>   * Handler for storing security labels as extended attributes.
+>   */
+>  
+> -#include <linux/module.h>
+>  #include <linux/slab.h>
+>  #include <linux/string.h>
+>  #include <linux/fs.h>
+> diff --git a/fs/ext3/xattr_trusted.c b/fs/ext3/xattr_trusted.c
+> index dc8edda..2526a88 100644
+> --- a/fs/ext3/xattr_trusted.c
+> +++ b/fs/ext3/xattr_trusted.c
+> @@ -5,7 +5,6 @@
+>   * Copyright (C) 2003 by Andreas Gruenbacher, <a.gruenbacher@computer.org>
+>   */
+>  
+> -#include <linux/module.h>
+>  #include <linux/string.h>
+>  #include <linux/capability.h>
+>  #include <linux/fs.h>
+> diff --git a/fs/ext3/xattr_user.c b/fs/ext3/xattr_user.c
+> index 7a32197..b32e473 100644
+> --- a/fs/ext3/xattr_user.c
+> +++ b/fs/ext3/xattr_user.c
+> @@ -5,7 +5,6 @@
+>   * Copyright (C) 2001 by Andreas Gruenbacher, <a.gruenbacher@computer.org>
+>   */
+>  
+> -#include <linux/module.h>
+>  #include <linux/string.h>
+>  #include <linux/fs.h>
+>  #include <linux/ext3_jbd.h>
+> diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
+> index 8efb2f0..3f11656 100644
+> --- a/fs/ext4/block_validity.c
+> +++ b/fs/ext4/block_validity.c
+> @@ -13,7 +13,6 @@
+>  #include <linux/namei.h>
+>  #include <linux/quotaops.h>
+>  #include <linux/buffer_head.h>
+> -#include <linux/module.h>
+>  #include <linux/swap.h>
+>  #include <linux/pagemap.h>
+>  #include <linux/blkdev.h>
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 607b155..841faf5 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -29,7 +29,6 @@
+>   *   - smart tree reduction
+>   */
+>  
+> -#include <linux/module.h>
+>  #include <linux/fs.h>
+>  #include <linux/time.h>
+>  #include <linux/jbd2.h>
+> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+> index 3cfc73f..830e1b2 100644
+> --- a/fs/ext4/indirect.c
+> +++ b/fs/ext4/indirect.c
+> @@ -20,7 +20,6 @@
+>   *	(sct@redhat.com), 1993, 1998
+>   */
+>  
+> -#include <linux/module.h>
+>  #include "ext4_jbd2.h"
+>  #include "truncate.h"
+>  
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 92655fd..7ea726f 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -18,7 +18,6 @@
+>   *  Assorted race fixes, rewrite of ext4_get_block() by Al Viro, 2000
+>   */
+>  
+> -#include <linux/module.h>
+>  #include <linux/fs.h>
+>  #include <linux/time.h>
+>  #include <linux/jbd2.h>
+> diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+> index 16ac228..e7d6bb0 100644
+> --- a/fs/ext4/migrate.c
+> +++ b/fs/ext4/migrate.c
+> @@ -12,7 +12,6 @@
+>   *
+>   */
+>  
+> -#include <linux/module.h>
+>  #include <linux/slab.h>
+>  #include "ext4_jbd2.h"
+>  
+> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+> index 7e106c8..4758518 100644
+> --- a/fs/ext4/page-io.c
+> +++ b/fs/ext4/page-io.c
+> @@ -6,7 +6,6 @@
+>   * Written by Theodore Ts'o, 2010.
+>   */
+>  
+> -#include <linux/module.h>
+>  #include <linux/fs.h>
+>  #include <linux/time.h>
+>  #include <linux/jbd2.h>
+> diff --git a/fs/ext4/xattr_security.c b/fs/ext4/xattr_security.c
+> index 34e4350..b60f9f8 100644
+> --- a/fs/ext4/xattr_security.c
+> +++ b/fs/ext4/xattr_security.c
+> @@ -3,7 +3,6 @@
+>   * Handler for storing security labels as extended attributes.
+>   */
+>  
+> -#include <linux/module.h>
+>  #include <linux/string.h>
+>  #include <linux/fs.h>
+>  #include <linux/security.h>
+> diff --git a/fs/ext4/xattr_trusted.c b/fs/ext4/xattr_trusted.c
+> index 37e6ebc..95f1f4a 100644
+> --- a/fs/ext4/xattr_trusted.c
+> +++ b/fs/ext4/xattr_trusted.c
+> @@ -5,7 +5,6 @@
+>   * Copyright (C) 2003 by Andreas Gruenbacher, <a.gruenbacher@computer.org>
+>   */
+>  
+> -#include <linux/module.h>
+>  #include <linux/string.h>
+>  #include <linux/capability.h>
+>  #include <linux/fs.h>
+> diff --git a/fs/ext4/xattr_user.c b/fs/ext4/xattr_user.c
+> index 98c3753..0edb7611 100644
+> --- a/fs/ext4/xattr_user.c
+> +++ b/fs/ext4/xattr_user.c
+> @@ -5,7 +5,6 @@
+>   * Copyright (C) 2001 by Andreas Gruenbacher, <a.gruenbacher@computer.org>
+>   */
+>  
+> -#include <linux/module.h>
+>  #include <linux/string.h>
+>  #include <linux/fs.h>
+>  #include "ext4_jbd2.h"
+> -- 
+> 1.7.7
+> 
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
